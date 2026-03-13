@@ -1,0 +1,13 @@
+{
+  "name": "karasu",
+  "version": "0.0.0",
+  "private": true,
+  "workspaces": [
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "npm run dev --workspace=packages/app",
+    "build": "npm run build --workspace=packages/core && npm run build --workspace=packages/app",
+    "test": "vitest run"
+  }
+}
