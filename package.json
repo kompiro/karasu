@@ -5,6 +5,9 @@
   "workspaces": [
     "packages/*"
   ],
+  "overrides": {
+    "dompurify": "^3.3.2"
+  },
   "scripts": {
     "dev": "npm run dev --workspace=packages/app",
     "build": "npm run build --workspace=packages/core && npm run build --workspace=packages/app",
