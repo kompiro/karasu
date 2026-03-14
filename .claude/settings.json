@@ -17,7 +17,13 @@
       "Bash(npx vite:*)",
       "Bash(git -C /workspaces/karasu status)",
       "Bash(git -C /workspaces/karasu diff --cached)",
-      "Bash(git -C /workspaces/karasu add -A)"
+      "Bash(git -C /workspaces/karasu add -A)",
+      "Bash(git -C /workspaces/karasu diff --cached --stat)",
+      "Bash(git -C:*)",
+      "Bash(npm ls:*)",
+      "Bash(find /workspaces/karasu/packages/app/src -type f \\\\\\( -name \"*.ts\" -o -name \"*.tsx\" \\\\\\) -exec wc -l {} +)",
+      "Bash(find /workspaces/karasu/node_modules/monaco-editor -name *.worker.js)",
+      "Bash(find /workspaces/karasu/node_modules/monaco-editor/esm -name *.worker* -type f)"
     ]
   },
   "defaultMode": "acceptEdits"

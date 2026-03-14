@@ -59,6 +59,13 @@ service {
   opacity: 0.6;
 }
 
+@new {
+  badge-color: #10B981;
+  badge-icon: "✨";
+  badge-label: "新規";
+  opacity: 0.5;
+}
+
 edge {
   color: #94A3B8;
   stroke-width: 1.5px;
@@ -78,6 +85,7 @@ export function App() {
   const { svg, warnings, diagnostics } = useKarasu(krsSource, styleSource);
 
   const handleEditorChange = useCallback((value: string) => {
+    console.info("KRS source updated:", value);
     setKrsSource(value);
   }, []);
 
