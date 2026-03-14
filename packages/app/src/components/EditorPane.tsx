@@ -41,8 +41,8 @@ function registerKrsLanguage(monaco: Monaco): void {
     ],
     tokenizer: {
       root: [
-        [/\\@import/, "keyword"],
-        [/\\@\w+/, "annotation"],
+        [/@@import/, "keyword"],
+        [/@@\w+/, "annotation"],
         [/-->/, "operator"],
         [/->/, "operator"],
         [/\[/, "delimiter.bracket"],
