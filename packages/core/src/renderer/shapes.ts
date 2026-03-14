@@ -56,15 +56,33 @@ function renderPerson(
   fill: string, stroke: string, sw: number, dash: string
 ): string {
   const cx = x + w / 2;
-  const headR = Math.min(w, h) * 0.15;
-  const headY = y + headR + 4;
-  const bodyTop = headY + headR + 4;
+  const headR = Math.min(w, h) * 0.13;
+  const headCy = y + headR + 2;
+  const gap = 3;
+  const shoulderTop = headCy + headR + gap;
   const bodyBottom = y + h;
-  const bodyW = w * 0.6;
+  const shoulderW = w * 0.45;
+  const torsoW = w * 0.7;
+  const shoulderH = (bodyBottom - shoulderTop) * 0.25;
+  const torsoTop = shoulderTop + shoulderH;
+  const cornerR = 4;
+
+  // Single outline: shoulder trapezoid flowing into torso with rounded bottom
+  const bodyPath = [
+    `M${cx - shoulderW / 2} ${shoulderTop}`,
+    `L${cx + shoulderW / 2} ${shoulderTop}`,
+    `L${cx + torsoW / 2} ${torsoTop}`,
+    `L${cx + torsoW / 2} ${bodyBottom - cornerR}`,
+    `Q${cx + torsoW / 2} ${bodyBottom} ${cx + torsoW / 2 - cornerR} ${bodyBottom}`,
+    `L${cx - torsoW / 2 + cornerR} ${bodyBottom}`,
+    `Q${cx - torsoW / 2} ${bodyBottom} ${cx - torsoW / 2} ${bodyBottom - cornerR}`,
+    `L${cx - torsoW / 2} ${torsoTop}`,
+    `Z`,
+  ].join(" ");
 
   return [
-    `<circle cx="${cx}" cy="${headY}" r="${headR}" fill="${fill}" stroke="${stroke}" stroke-width="${sw}"${dash}/>`,
-    `<path d="M${cx - bodyW / 2} ${bodyTop} Q${cx - bodyW / 2} ${bodyBottom} ${cx} ${bodyBottom} Q${cx + bodyW / 2} ${bodyBottom} ${cx + bodyW / 2} ${bodyTop} Z" fill="${fill}" stroke="${stroke}" stroke-width="${sw}"${dash}/>`,
+    `<circle cx="${cx}" cy="${headCy}" r="${headR}" fill="${fill}" stroke="${stroke}" stroke-width="${sw}"${dash}/>`,
+    `<path d="${bodyPath}" fill="${fill}" stroke="${stroke}" stroke-width="${sw}"${dash}/>`,
   ].join("\n");
 }
 
