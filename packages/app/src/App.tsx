@@ -1,8 +1,10 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useMemo } from "react";
 import { EditorPane } from "./components/EditorPane.js";
 import { PreviewPane } from "./components/PreviewPane.js";
 import { WarningPanel } from "./components/WarningPanel.js";
+import { Breadcrumb } from "./components/Breadcrumb.js";
 import { useKarasu } from "./hooks/useKarasu.js";
+import { Parser } from "@karasu/core";
 
 const SAMPLE_KRS = `@import "default.krs.style"
 
@@ -100,18 +102,58 @@ edge[async] {
 export function App() {
   const [krsSource, setKrsSource] = useState(SAMPLE_KRS);
   const [styleSource] = useState(SAMPLE_STYLE);
+  const [viewPath, setViewPath] = useState<string[]>([]);
 
-  const { svg, warnings, diagnostics } = useKarasu(krsSource, styleSource);
+  const { svg, warnings, diagnostics } = useKarasu(krsSource, styleSource, viewPath);
 
   const handleEditorChange = useCallback((value: string) => {
     console.info("KRS source updated:", value);
     setKrsSource(value);
   }, []);
 
+  const handleDrillDown = useCallback((newPath: string[]) => {
+    setViewPath(newPath);
+  }, []);
+
+  // Build breadcrumb items from the AST
+  const breadcrumbItems = useMemo(() => {
+    try {
+      const parseResult = Parser.parse(krsSource);
+      const systems = parseResult.value.systems;
+      if (systems.length === 0) return [];
+
+      const items: { id: string; label: string }[] = [];
+      const system = systems[0];
+      items.push({ id: system.id ?? system.label, label: system.label });
+
+      let current = system;
+      for (const segment of viewPath) {
+        const child = current.children.find(
+          (c) => (c.id ?? c.label) === segment
+        );
+        if (!child) break;
+        items.push({ id: child.id ?? child.label, label: child.label });
+        current = child;
+      }
+
+      return items;
+    } catch {
+      return [];
+    }
+  }, [krsSource, viewPath]);
+
   return (
     <div className="app">
       <EditorPane value={krsSource} onChange={handleEditorChange} />
-      <PreviewPane svg={svg} diagnostics={diagnostics} />
+      <div className="preview-column">
+        <Breadcrumb items={breadcrumbItems} onNavigate={setViewPath} />
+        <PreviewPane
+          svg={svg}
+          diagnostics={diagnostics}
+          viewPath={viewPath}
+          onDrillDown={handleDrillDown}
+        />
+      </div>
       <WarningPanel warnings={warnings} />
     </div>
   );

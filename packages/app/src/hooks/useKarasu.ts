@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { compile, type Warning, type Diagnostic, resolveIconManifest } from "@karasu/core";
+import { compile, type Warning, type Diagnostic, type ViewPath, resolveIconManifest } from "@karasu/core";
 import iconManifest from "@karasu/core/icons/icons.json";
 import databaseSvg from "@karasu/core/icons/database.svg?raw";
 
@@ -18,10 +18,11 @@ const DEBOUNCE_MS = 300;
 
 export function useKarasu(
   krsSource: string,
-  styleSource: string
+  styleSource: string,
+  viewPath: ViewPath = []
 ): KarasuState {
   const [state, setState] = useState<KarasuState>(() => {
-    const result = compile(krsSource, styleSource || undefined);
+    const result = compile(krsSource, styleSource || undefined, viewPath);
     return {
       svg: result.svg,
       warnings: result.warnings,
@@ -37,7 +38,7 @@ export function useKarasu(
 
     timerRef.current = setTimeout(() => {
       try {
-        const result = compile(krsSource, styleSource || undefined);
+        const result = compile(krsSource, styleSource || undefined, viewPath);
         const hasErrors = result.diagnostics.some((d) => d.severity === "error");
 
         if (hasErrors) {
@@ -67,7 +68,7 @@ export function useKarasu(
     return () => {
       if (timerRef.current) clearTimeout(timerRef.current);
     };
-  }, [krsSource, styleSource]);
+  }, [krsSource, styleSource, viewPath]);
 
   return state;
 }
