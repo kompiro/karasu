@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { Lexer } from "../lexer/lexer.js";
+import { Lexer } from "./lexer.js";
 import { TokenType } from "../types/tokens.js";
 
 function tokenTypes(source: string): TokenType[] {

@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
-import { resolveStyles } from "../resolver/style-resolver.js";
-import { analyze } from "../resolver/warnings.js";
+import { resolveStyles } from "./style-resolver.js";
+import { analyze } from "./warnings.js";
 import type { KrsNode } from "../types/ast.js";
 import type { StyleSheet, StyleRule } from "../types/style.js";
 import type { SourceRange } from "../types/tokens.js";

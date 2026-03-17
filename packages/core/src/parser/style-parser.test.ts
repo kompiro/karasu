@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { StyleParser, computeSpecificity } from "../parser/style-parser.js";
+import { StyleParser, computeSpecificity } from "./style-parser.js";
 
 describe("StyleParser", () => {
   it("parses empty input", () => {
