@@ -21,6 +21,7 @@ function registerKrsLanguage(monaco: Monaco): void {
       "service",
       "domain",
       "usecase",
+      "resource",
       "person",
       "deploy",
       "war",

@@ -24,6 +24,16 @@ const DEFAULT_NODE_STYLE: ResolvedNodeStyle = {
   shape: "box",
 };
 
+const KIND_STYLE_OVERRIDES: Partial<
+  Record<string, Partial<ResolvedNodeStyle>>
+> = {
+  resource: {
+    shape: "cylinder",
+    backgroundColor: "#1E3A5F",
+    borderColor: "#3B82F6",
+  },
+};
+
 const DEFAULT_EDGE_STYLE: ResolvedEdgeStyle = {
   color: "#94A3B8",
   strokeWidth: 1.5,
@@ -51,7 +61,7 @@ export function resolveStyles(
   function processNodes(nodes: KrsNode[]): void {
     for (const node of nodes) {
       const key = node.id ?? node.label;
-      nodeStyles.set(key, resolveNodeStyle(node, allRules));
+      nodeStyles.set(key, resolveNodeStyle(node, allRules, node.kind));
       processNodes(node.children);
     }
   }
@@ -82,7 +92,8 @@ function collectEdges(node: KrsNode): KrsEdge[] {
 
 function resolveNodeStyle(
   node: KrsNode,
-  rules: StyleRule[]
+  rules: StyleRule[],
+  kind: string
 ): ResolvedNodeStyle {
   const matching = rules.filter((rule) =>
     nodeSelectorMatches(node, rule.selector)
@@ -96,7 +107,7 @@ function resolveNodeStyle(
     Object.assign(merged, rule.properties);
   }
 
-  return toResolvedNodeStyle(merged);
+  return toResolvedNodeStyle(merged, kind);
 }
 
 function resolveEdgeStyle(
@@ -161,9 +172,11 @@ function edgeSelectorMatches(
 }
 
 function toResolvedNodeStyle(
-  props: Record<string, string>
+  props: Record<string, string>,
+  kind?: string
 ): ResolvedNodeStyle {
-  const style = { ...DEFAULT_NODE_STYLE };
+  const kindOverride = kind ? KIND_STYLE_OVERRIDES[kind] : undefined;
+  const style = { ...DEFAULT_NODE_STYLE, ...kindOverride };
 
   if (props["background-color"]) style.backgroundColor = props["background-color"];
   if (props["color"]) style.color = props["color"];

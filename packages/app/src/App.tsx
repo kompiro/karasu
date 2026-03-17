@@ -10,7 +10,15 @@ system "ECプラットフォーム" {
   person Customer "顧客" "商品を購入する一般ユーザー"
   person Admin "管理者" "システムを運用する担当者"
 
-  service ECommerce "ECサイト" "商品管理と注文処理"
+  service ECommerce "ECサイト" "商品管理と注文処理" {
+    domain Order "受注" {
+      usecase PlaceOrder "注文を受け付ける" {
+        resource OrderTable "注文テーブル"
+        resource InventoryAPI "在庫API" [external]
+      }
+      usecase CancelOrder "注文をキャンセルする"
+    }
+  }
   service Payment "決済サービス" "クレジットカード決済処理" [external]
   service Inventory "在庫管理" "在庫データの管理" [external] @deprecated
 
@@ -50,6 +58,17 @@ service {
   color: #D1D5DB;
   border-color: #374151;
   border-style: dashed;
+}
+
+resource {
+  background-color: #1E3A5F;
+  color: #BFDBFE;
+  border-color: #3B82F6;
+  border-width: 2px;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: normal;
+  shape: cylinder;
 }
 
 @deprecated {

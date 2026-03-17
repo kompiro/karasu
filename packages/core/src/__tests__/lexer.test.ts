@@ -32,12 +32,13 @@ describe("Lexer", () => {
   });
 
   it("tokenizes keywords", () => {
-    const types = tokenTypes("system service domain usecase person");
+    const types = tokenTypes("system service domain usecase resource person");
     expect(types).toEqual([
       TokenType.System,
       TokenType.Service,
       TokenType.Domain,
       TokenType.Usecase,
+      TokenType.Resource,
       TokenType.Person,
       TokenType.EOF,
     ]);

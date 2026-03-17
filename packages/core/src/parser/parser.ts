@@ -19,6 +19,7 @@ const LOGICAL_KEYWORDS = new Set<string>([
   "service",
   "domain",
   "usecase",
+  "resource",
   "person",
 ]);
 
@@ -234,6 +235,7 @@ export class Parser {
       type === TokenType.Service ||
       type === TokenType.Domain ||
       type === TokenType.Usecase ||
+      type === TokenType.Resource ||
       type === TokenType.Person
     );
   }

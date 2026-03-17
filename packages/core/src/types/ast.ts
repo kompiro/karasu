@@ -5,6 +5,7 @@ export type LogicalNodeKind =
   | "service"
   | "domain"
   | "usecase"
+  | "resource"
   | "person";
 
 export type EdgeKind = "sync" | "async";

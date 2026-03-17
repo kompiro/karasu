@@ -13,6 +13,7 @@ export enum TokenType {
   Service = "Service",
   Domain = "Domain",
   Usecase = "Usecase",
+  Resource = "Resource",
   Person = "Person",
 
   // Keywords (physical)

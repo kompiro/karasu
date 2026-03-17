@@ -122,12 +122,15 @@ system "Test" {
     expect(edges[0].kind).toBe("async");
   });
 
-  it("parses nested nodes", () => {
+  it("parses nested nodes with full hierarchy", () => {
     const result = Parser.parse(`
 system "Test" {
   service ECommerce "EC" {
     domain Order "受注" {
-      usecase PlaceOrder "注文を受け付ける"
+      usecase PlaceOrder "注文を受け付ける" {
+        resource OrderTable "注文テーブル"
+        resource InventoryAPI "在庫API" [external]
+      }
     }
   }
 }
@@ -137,7 +140,21 @@ system "Test" {
     const domain = service.children[0];
     expect(domain.kind).toBe("domain");
     expect(domain.children).toHaveLength(1);
-    expect(domain.children[0].kind).toBe("usecase");
+    const usecase = domain.children[0];
+    expect(usecase.kind).toBe("usecase");
+    expect(usecase.children).toHaveLength(2);
+
+    const table = usecase.children[0];
+    expect(table.kind).toBe("resource");
+    expect(table.id).toBe("OrderTable");
+    expect(table.label).toBe("注文テーブル");
+    expect(table.tags).toEqual([]);
+
+    const api = usecase.children[1];
+    expect(api.kind).toBe("resource");
+    expect(api.id).toBe("InventoryAPI");
+    expect(api.label).toBe("在庫API");
+    expect(api.tags).toEqual(["external"]);
   });
 
   it("parses deploy block", () => {
