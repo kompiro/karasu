@@ -1,60 +1,32 @@
-import type { ResolvedNodeStyle, ShapeKind } from "../types/style.js";
+import type { ResolvedNodeStyle } from "../types/style.js";
+import { el } from "./svg-builder.js";
+import {
+  registerShape,
+  getShape,
+  type ShapeContext,
+  type ShapeRenderFn,
+} from "./shape-registry.js";
 
-function escapeXml(s: string): string {
-  return s
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;");
-}
+// ---------------------------------------------------------------------------
+// Built-in shape definitions
+// ---------------------------------------------------------------------------
 
-export function renderShape(
-  x: number,
-  y: number,
-  width: number,
-  height: number,
-  style: ResolvedNodeStyle
-): string {
-  const shape = typeof style.shape === "string" ? style.shape : "box";
-  const fill = escapeXml(style.backgroundColor);
-  const stroke = escapeXml(style.borderColor);
-  const strokeWidth = style.borderWidth;
-  const strokeDash =
-    style.borderStyle === "dashed"
-      ? ' stroke-dasharray="8 4"'
-      : style.borderStyle === "dotted"
-        ? ' stroke-dasharray="2 2"'
-        : "";
+const box: ShapeRenderFn = (ctx) =>
+  el("rect", {
+    x: ctx.x,
+    y: ctx.y,
+    width: ctx.width,
+    height: ctx.height,
+    rx: ctx.borderRadius,
+    ry: ctx.borderRadius,
+    fill: ctx.fill,
+    stroke: ctx.stroke,
+    "stroke-width": ctx.strokeWidth,
+    "stroke-dasharray": ctx.strokeDasharray || undefined,
+  });
 
-  switch (shape) {
-    case "box":
-      return renderBox(x, y, width, height, fill, stroke, strokeWidth, strokeDash, style.borderRadius);
-    case "person":
-      return renderPerson(x, y, width, height, fill, stroke, strokeWidth, strokeDash);
-    case "cylinder":
-      return renderCylinder(x, y, width, height, fill, stroke, strokeWidth, strokeDash);
-    case "queue":
-      return renderQueue(x, y, width, height, fill, stroke, strokeWidth, strokeDash);
-    case "hexagon":
-      return renderHexagon(x, y, width, height, fill, stroke, strokeWidth, strokeDash);
-    case "cloud":
-      return renderCloud(x, y, width, height, fill, stroke, strokeWidth, strokeDash);
-    default:
-      return renderBox(x, y, width, height, fill, stroke, strokeWidth, strokeDash, style.borderRadius);
-  }
-}
-
-function renderBox(
-  x: number, y: number, w: number, h: number,
-  fill: string, stroke: string, sw: number, dash: string, radius: number
-): string {
-  return `<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="${radius}" ry="${radius}" fill="${fill}" stroke="${stroke}" stroke-width="${sw}"${dash}/>`;
-}
-
-function renderPerson(
-  x: number, y: number, w: number, h: number,
-  fill: string, stroke: string, sw: number, dash: string
-): string {
+const person: ShapeRenderFn = (ctx) => {
+  const { x, y, width: w, height: h, fill, stroke, strokeWidth: sw, strokeDasharray: dash } = ctx;
   const cx = x + w / 2;
   const headR = Math.min(w, h) * 0.13;
   const headCy = y + headR + 2;
@@ -67,7 +39,6 @@ function renderPerson(
   const torsoTop = shoulderTop + shoulderH;
   const cornerR = 4;
 
-  // Single outline: shoulder trapezoid flowing into torso with rounded bottom
   const bodyPath = [
     `M${cx - shoulderW / 2} ${shoulderTop}`,
     `L${cx + shoulderW / 2} ${shoulderTop}`,
@@ -81,41 +52,53 @@ function renderPerson(
   ].join(" ");
 
   return [
-    `<circle cx="${cx}" cy="${headCy}" r="${headR}" fill="${fill}" stroke="${stroke}" stroke-width="${sw}"${dash}/>`,
-    `<path d="${bodyPath}" fill="${fill}" stroke="${stroke}" stroke-width="${sw}"${dash}/>`,
+    el("circle", {
+      cx, cy: headCy, r: headR, fill, stroke,
+      "stroke-width": sw, "stroke-dasharray": dash || undefined,
+    }),
+    el("path", {
+      d: bodyPath, fill, stroke,
+      "stroke-width": sw, "stroke-dasharray": dash || undefined,
+    }),
   ].join("\n");
-}
+};
 
-function renderCylinder(
-  x: number, y: number, w: number, h: number,
-  fill: string, stroke: string, sw: number, dash: string
-): string {
+const cylinder: ShapeRenderFn = (ctx) => {
+  const { x, y, width: w, height: h, fill, stroke, strokeWidth: sw, strokeDasharray: dash } = ctx;
   const ry = Math.min(h * 0.12, 15);
   const bodyH = h - ry * 2;
 
   return [
-    `<path d="M${x} ${y + ry} L${x} ${y + ry + bodyH} A${w / 2} ${ry} 0 0 0 ${x + w} ${y + ry + bodyH} L${x + w} ${y + ry} A${w / 2} ${ry} 0 0 1 ${x} ${y + ry}" fill="${fill}" stroke="${stroke}" stroke-width="${sw}"${dash}/>`,
-    `<ellipse cx="${x + w / 2}" cy="${y + ry}" rx="${w / 2}" ry="${ry}" fill="${fill}" stroke="${stroke}" stroke-width="${sw}"${dash}/>`,
+    el("path", {
+      d: `M${x} ${y + ry} L${x} ${y + ry + bodyH} A${w / 2} ${ry} 0 0 0 ${x + w} ${y + ry + bodyH} L${x + w} ${y + ry} A${w / 2} ${ry} 0 0 1 ${x} ${y + ry}`,
+      fill, stroke, "stroke-width": sw, "stroke-dasharray": dash || undefined,
+    }),
+    el("ellipse", {
+      cx: x + w / 2, cy: y + ry, rx: w / 2, ry,
+      fill, stroke, "stroke-width": sw, "stroke-dasharray": dash || undefined,
+    }),
   ].join("\n");
-}
+};
 
-function renderQueue(
-  x: number, y: number, w: number, h: number,
-  fill: string, stroke: string, sw: number, dash: string
-): string {
+const queue: ShapeRenderFn = (ctx) => {
+  const { x, y, width: w, height: h, fill, stroke, strokeWidth: sw, strokeDasharray: dash } = ctx;
   const rx = Math.min(w * 0.1, 15);
   const bodyW = w - rx * 2;
 
   return [
-    `<path d="M${x + rx} ${y} L${x + rx + bodyW} ${y} A${rx} ${h / 2} 0 0 1 ${x + rx + bodyW} ${y + h} L${x + rx} ${y + h} A${rx} ${h / 2} 0 0 0 ${x + rx} ${y}" fill="${fill}" stroke="${stroke}" stroke-width="${sw}"${dash}/>`,
-    `<ellipse cx="${x + rx + bodyW}" cy="${y + h / 2}" rx="${rx}" ry="${h / 2}" fill="${fill}" stroke="${stroke}" stroke-width="${sw}"${dash}/>`,
+    el("path", {
+      d: `M${x + rx} ${y} L${x + rx + bodyW} ${y} A${rx} ${h / 2} 0 0 1 ${x + rx + bodyW} ${y + h} L${x + rx} ${y + h} A${rx} ${h / 2} 0 0 0 ${x + rx} ${y}`,
+      fill, stroke, "stroke-width": sw, "stroke-dasharray": dash || undefined,
+    }),
+    el("ellipse", {
+      cx: x + rx + bodyW, cy: y + h / 2, rx, ry: h / 2,
+      fill, stroke, "stroke-width": sw, "stroke-dasharray": dash || undefined,
+    }),
   ].join("\n");
-}
+};
 
-function renderHexagon(
-  x: number, y: number, w: number, h: number,
-  fill: string, stroke: string, sw: number, dash: string
-): string {
+const hexagon: ShapeRenderFn = (ctx) => {
+  const { x, y, width: w, height: h, fill, stroke, strokeWidth: sw, strokeDasharray: dash } = ctx;
   const inset = w * 0.2;
   const points = [
     `${x + inset},${y}`,
@@ -125,14 +108,15 @@ function renderHexagon(
     `${x + inset},${y + h}`,
     `${x},${y + h / 2}`,
   ].join(" ");
-  return `<polygon points="${points}" fill="${fill}" stroke="${stroke}" stroke-width="${sw}"${dash}/>`;
-}
 
-function renderCloud(
-  x: number, y: number, w: number, h: number,
-  fill: string, stroke: string, sw: number, dash: string
-): string {
-  // Simplified cloud shape using bezier curves
+  return el("polygon", {
+    points, fill, stroke,
+    "stroke-width": sw, "stroke-dasharray": dash || undefined,
+  });
+};
+
+const cloud: ShapeRenderFn = (ctx) => {
+  const { x, y, width: w, height: h, fill, stroke, strokeWidth: sw, strokeDasharray: dash } = ctx;
   const cx = x + w / 2;
   const cy = y + h / 2;
   const rx = w / 2;
@@ -147,5 +131,58 @@ function renderCloud(
     `Z`,
   ].join(" ");
 
-  return `<path d="${path}" fill="${fill}" stroke="${stroke}" stroke-width="${sw}"${dash}/>`;
+  return el("path", {
+    d: path, fill, stroke,
+    "stroke-width": sw, "stroke-dasharray": dash || undefined,
+  });
+};
+
+// ---------------------------------------------------------------------------
+// Registration
+// ---------------------------------------------------------------------------
+
+export function registerBuiltinShapes(): void {
+  registerShape("box", box);
+  registerShape("person", person);
+  registerShape("cylinder", cylinder);
+  registerShape("queue", queue);
+  registerShape("hexagon", hexagon);
+  registerShape("cloud", cloud);
+}
+
+// Auto-register on import
+registerBuiltinShapes();
+
+// ---------------------------------------------------------------------------
+// Public render entry point (used by svg-renderer)
+// ---------------------------------------------------------------------------
+
+export function renderShape(
+  x: number,
+  y: number,
+  width: number,
+  height: number,
+  style: ResolvedNodeStyle
+): string {
+  const shapeName = typeof style.shape === "string" ? style.shape : style.shape.url;
+  const render = getShape(shapeName) ?? getShape("box")!;
+
+  const ctx: ShapeContext = {
+    x,
+    y,
+    width,
+    height,
+    fill: style.backgroundColor,
+    stroke: style.borderColor,
+    strokeWidth: style.borderWidth,
+    strokeDasharray:
+      style.borderStyle === "dashed"
+        ? "8 4"
+        : style.borderStyle === "dotted"
+          ? "2 2"
+          : "",
+    borderRadius: style.borderRadius,
+  };
+
+  return render(ctx);
 }

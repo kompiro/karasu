@@ -1,16 +1,10 @@
-import type { KrsNode, KrsEdge } from "../types/ast.js";
-import type { ResolvedNodeStyle, ResolvedEdgeStyle, ResolvedStyles } from "../types/style.js";
-import { layout, type LayoutResult, type LayoutNode } from "./layout.js";
+import type { KrsNode } from "../types/ast.js";
+import type { ResolvedNodeStyle, ResolvedStyles } from "../types/style.js";
+import { layout, type LayoutNode } from "./layout.js";
 import { renderShape } from "./shapes.js";
 import { renderEdge, renderArrowMarker } from "./edge-routing.js";
-
-function escapeXml(s: string): string {
-  return s
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;");
-}
+import { el, escapeXml } from "./svg-builder.js";
+import { getIconDef } from "./shape-registry.js";
 
 export function render(
   systems: KrsNode[],
@@ -19,7 +13,9 @@ export function render(
   const layoutResult = layout(systems);
 
   if (layoutResult.nodes.size === 0) {
-    return '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 100"><text x="100" y="50" text-anchor="middle" fill="#9CA3AF" font-family="sans-serif">No nodes to render</text></svg>';
+    return el("svg", { xmlns: "http://www.w3.org/2000/svg", viewBox: "0 0 200 100" },
+      el("text", { x: 100, y: 50, "text-anchor": "middle", fill: "#9CA3AF", "font-family": "sans-serif" }, "No nodes to render"),
+    );
   }
 
   const padding = 40;
@@ -28,16 +24,11 @@ export function render(
 
   const parts: string[] = [];
 
-  parts.push(
-    `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${width} ${height}" width="${width}" height="${height}">`
-  );
-
   // Defs: arrow markers
-  parts.push("<defs>");
+  const defParts: string[] = [];
   const defaultEdgeColor = styles.defaultEdgeStyle.color;
-  parts.push(renderArrowMarker("arrow-default", defaultEdgeColor));
+  defParts.push(renderArrowMarker("arrow-default", defaultEdgeColor));
 
-  // Collect unique edge colors for markers
   const edgeColors = new Set<string>();
   for (const [, style] of styles.edges) {
     edgeColors.add(style.color);
@@ -48,91 +39,126 @@ export function render(
   for (const color of edgeColors) {
     if (!colorToMarkerId.has(color)) {
       const id = `arrow-${markerIdx++}`;
-      parts.push(renderArrowMarker(id, color));
+      defParts.push(renderArrowMarker(id, color));
       colorToMarkerId.set(color, id);
     }
   }
-  parts.push("</defs>");
+  parts.push(el("defs", {}, ...defParts));
 
   // Background
-  parts.push(
-    `<rect width="${width}" height="${height}" fill="#0F172A" rx="0"/>`
-  );
+  parts.push(el("rect", { width, height, fill: "#0F172A", rx: 0 }));
 
   // System label
   if (systems.length > 0 && systems[0].label) {
     parts.push(
-      `<text x="${padding / 2}" y="${padding / 2 + 4}" fill="#64748B" font-size="14px" font-family="sans-serif" font-weight="bold">${escapeXml(systems[0].label)}</text>`
+      el("text", {
+        x: padding / 2, y: padding / 2 + 4,
+        fill: "#64748B", "font-size": "14px", "font-family": "sans-serif", "font-weight": "bold",
+      }, escapeXml(systems[0].label)),
     );
   }
 
-  // Render edges first (below nodes)
-  parts.push('<g class="edges">');
+  // Edges (below nodes)
+  const edgeParts: string[] = [];
   for (const edgeLayout of layoutResult.edges) {
     const edgeKey = `${edgeLayout.from}->${edgeLayout.to}`;
     const edgeStyle = styles.edges.get(edgeKey) ?? styles.defaultEdgeStyle;
     const markerId = colorToMarkerId.get(edgeStyle.color) ?? "arrow-default";
-    parts.push(renderEdge(edgeLayout, edgeStyle, markerId));
+    edgeParts.push(renderEdge(edgeLayout, edgeStyle, markerId));
   }
-  parts.push("</g>");
+  parts.push(el("g", { class: "edges" }, ...edgeParts));
 
-  // Render nodes
-  parts.push('<g class="nodes">');
-
-  // Collect all original KRS nodes to find edges
-  const krsNodeMap = new Map<string, KrsNode>();
-  function collectKrsNodes(node: KrsNode): void {
-    if (node.kind !== "system") {
-      krsNodeMap.set(node.id ?? node.label, node);
-    }
-    for (const child of node.children) collectKrsNodes(child);
-  }
-  for (const system of systems) collectKrsNodes(system);
-
+  // Nodes
+  const nodeParts: string[] = [];
   for (const [nodeId, layoutNode] of layoutResult.nodes) {
-    const nodeStyle =
-      styles.nodes.get(nodeId) ?? styles.defaultNodeStyle;
-    parts.push(renderNode(layoutNode, nodeStyle));
+    const nodeStyle = styles.nodes.get(nodeId) ?? styles.defaultNodeStyle;
+    nodeParts.push(renderNode(layoutNode, nodeStyle));
   }
-  parts.push("</g>");
+  parts.push(el("g", { class: "nodes" }, ...nodeParts));
 
-  parts.push("</svg>");
-
-  return parts.join("\n");
+  return el("svg", {
+    xmlns: "http://www.w3.org/2000/svg",
+    viewBox: `0 0 ${width} ${height}`,
+    width,
+    height,
+  }, ...parts);
 }
 
 function renderNode(
   node: LayoutNode,
   style: ResolvedNodeStyle
 ): string {
-  const parts: string[] = [];
-
-  // Group with opacity
-  const opacity = style.opacity < 1 ? ` opacity="${style.opacity}"` : "";
-  parts.push(`<g${opacity}>`);
+  const children: string[] = [];
 
   // Shape
-  parts.push(renderShape(node.x, node.y, node.width, node.height, style));
+  children.push(renderShape(node.x, node.y, node.width, node.height, style));
 
-  // Label text
-  const textColor = escapeXml(style.color);
+  // Resolve text positions — use icon text slots if available, otherwise default
+  const shapeName = typeof style.shape === "string" ? style.shape : style.shape.url;
+  const iconDef = getIconDef(shapeName);
+
+  const textColor = style.color;
   const fontSize = style.fontSize;
-  const fontWeight = style.fontWeight;
-  const fontFamily = escapeXml(style.fontFamily);
 
-  const textX = node.x + node.width / 2;
-  let textY = node.y + node.height / 2;
-  if (node.description) textY -= 8;
+  if (iconDef?.labelSlot) {
+    // Icon with text slots: transform slot coordinates from viewBox to node space
+    const vw = iconDef.viewBoxWidth ?? 24;
+    const vh = iconDef.viewBoxHeight ?? 24;
+    const scaleX = node.width / vw;
+    const scaleY = node.height / vh;
 
-  parts.push(
-    `<text x="${textX}" y="${textY}" text-anchor="middle" dominant-baseline="central" fill="${textColor}" font-size="${fontSize}px" font-weight="${fontWeight}" font-family="${fontFamily}">${escapeXml(node.label)}</text>`
-  );
+    const labelX = node.x + iconDef.labelSlot.x * scaleX;
+    const labelY = node.y + iconDef.labelSlot.y * scaleY;
+    const labelAnchor = iconDef.labelSlot.textAnchor ?? "middle";
 
-  // Description text
-  if (node.description) {
-    parts.push(
-      `<text x="${textX}" y="${textY + fontSize + 4}" text-anchor="middle" dominant-baseline="central" fill="${textColor}" font-size="${Math.round(fontSize * 0.8)}px" font-family="${fontFamily}" opacity="0.7">${escapeXml(node.description)}</text>`
+    children.push(
+      el("text", {
+        x: labelX, y: labelY,
+        "text-anchor": labelAnchor, "dominant-baseline": "central",
+        fill: textColor, "font-size": `${fontSize}px`,
+        "font-weight": style.fontWeight, "font-family": style.fontFamily,
+      }, escapeXml(node.label)),
     );
+
+    if (node.description && iconDef.descriptionSlot) {
+      const descX = node.x + iconDef.descriptionSlot.x * scaleX;
+      const descY = node.y + iconDef.descriptionSlot.y * scaleY;
+      const descAnchor = iconDef.descriptionSlot.textAnchor ?? "middle";
+
+      children.push(
+        el("text", {
+          x: descX, y: descY,
+          "text-anchor": descAnchor, "dominant-baseline": "central",
+          fill: textColor, "font-size": `${Math.round(fontSize * 0.8)}px`,
+          "font-family": style.fontFamily, opacity: 0.7,
+        }, escapeXml(node.description)),
+      );
+    }
+  } else {
+    // Default: center text in node
+    const textX = node.x + node.width / 2;
+    let textY = node.y + node.height / 2;
+    if (node.description) textY -= 8;
+
+    children.push(
+      el("text", {
+        x: textX, y: textY,
+        "text-anchor": "middle", "dominant-baseline": "central",
+        fill: textColor, "font-size": `${fontSize}px`,
+        "font-weight": style.fontWeight, "font-family": style.fontFamily,
+      }, escapeXml(node.label)),
+    );
+
+    if (node.description) {
+      children.push(
+        el("text", {
+          x: textX, y: textY + fontSize + 4,
+          "text-anchor": "middle", "dominant-baseline": "central",
+          fill: textColor, "font-size": `${Math.round(fontSize * 0.8)}px`,
+          "font-family": style.fontFamily, opacity: 0.7,
+        }, escapeXml(node.description)),
+      );
+    }
   }
 
   // Badge
@@ -141,21 +167,26 @@ function renderNode(
     const badgeY = node.y - 6;
     const badgeColor = style.badgeColor ?? "#EF4444";
 
-    parts.push(
-      `<circle cx="${badgeX}" cy="${badgeY}" r="10" fill="${escapeXml(badgeColor)}"/>`
-    );
+    children.push(el("circle", { cx: badgeX, cy: badgeY, r: 10, fill: badgeColor }));
     if (style.badgeIcon) {
-      parts.push(
-        `<text x="${badgeX}" y="${badgeY}" text-anchor="middle" dominant-baseline="central" fill="white" font-size="10px">${escapeXml(style.badgeIcon)}</text>`
+      children.push(
+        el("text", {
+          x: badgeX, y: badgeY,
+          "text-anchor": "middle", "dominant-baseline": "central",
+          fill: "white", "font-size": "10px",
+        }, escapeXml(style.badgeIcon)),
       );
     }
     if (style.badgeLabel) {
-      parts.push(
-        `<text x="${badgeX + 14}" y="${badgeY}" dominant-baseline="central" fill="${escapeXml(badgeColor)}" font-size="9px" font-weight="bold" font-family="sans-serif">${escapeXml(style.badgeLabel)}</text>`
+      children.push(
+        el("text", {
+          x: badgeX + 14, y: badgeY,
+          "dominant-baseline": "central",
+          fill: badgeColor, "font-size": "9px", "font-weight": "bold", "font-family": "sans-serif",
+        }, escapeXml(style.badgeLabel)),
       );
     }
   }
 
-  parts.push("</g>");
-  return parts.join("\n");
+  return el("g", { opacity: style.opacity < 1 ? style.opacity : undefined }, ...children);
 }

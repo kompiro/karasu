@@ -1,11 +1,18 @@
 import { useState, useEffect, useRef } from "react";
-import { compile, type CompileResult, type Warning, type Diagnostic } from "@karasu/core";
+import { compile, type Warning, type Diagnostic, resolveIconManifest } from "@karasu/core";
+import iconManifest from "@karasu/core/icons/icons.json";
+import databaseSvg from "@karasu/core/icons/database.svg?raw";
 
 export interface KarasuState {
   svg: string;
   warnings: Warning[];
   diagnostics: Diagnostic[];
 }
+
+// Register icons from manifest on module load
+resolveIconManifest(iconManifest, {
+  "database.svg": databaseSvg,
+});
 
 const DEBOUNCE_MS = 300;
 

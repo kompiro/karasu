@@ -29,6 +29,30 @@ export { StyleParser } from "./parser/style-parser.js";
 export { resolveStyles } from "./resolver/style-resolver.js";
 export { analyze } from "./resolver/warnings.js";
 export { render } from "./renderer/svg-renderer.js";
+export { el, escapeXml } from "./renderer/svg-builder.js";
+export {
+  registerShape,
+  registerIcon,
+  getShape,
+  getIconDef,
+  hasShape,
+  getRegisteredShapeNames,
+  type ShapeContext,
+  type ShapeRenderFn,
+  type SvgIconDef,
+  type SvgIconTextSlot,
+} from "./renderer/shape-registry.js";
+export { registerBuiltinShapes } from "./renderer/shapes.js";
+export {
+  parseSvgIcon,
+  loadAndRegisterIcon,
+  loadAndRegisterIcons,
+} from "./renderer/svg-icon-loader.js";
+export {
+  resolveIconManifest,
+  type IconManifest,
+  type IconManifestEntry,
+} from "./renderer/icon-manifest.js";
 
 import type { ParseResult } from "./types/ast.js";
 import type { KrsFile } from "./types/ast.js";
@@ -39,6 +63,7 @@ import { StyleParser } from "./parser/style-parser.js";
 import { resolveStyles } from "./resolver/style-resolver.js";
 import { analyze } from "./resolver/warnings.js";
 import { render } from "./renderer/svg-renderer.js";
+import "./renderer/shapes.js"; // ensure built-in shapes are registered
 import type { Diagnostic } from "./types/ast.js";
 
 export interface CompileResult {

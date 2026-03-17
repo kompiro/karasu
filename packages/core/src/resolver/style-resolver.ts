@@ -1,4 +1,5 @@
 import type { KrsNode, KrsEdge } from "../types/ast.js";
+import { hasShape } from "../renderer/shape-registry.js";
 import type {
   StyleSheet,
   StyleRule,
@@ -183,6 +184,8 @@ function toResolvedNodeStyle(
       style.shape = match ? { url: match[1] } : "box";
     } else if (SHAPE_KEYWORDS.has(shapeVal)) {
       style.shape = shapeVal as ShapeKind;
+    } else if (hasShape(shapeVal)) {
+      style.shape = { url: shapeVal };
     }
   }
   if (props["badge-color"]) style.badgeColor = props["badge-color"];
