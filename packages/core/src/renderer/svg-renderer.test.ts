@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
-import { render } from "../renderer/svg-renderer.js";
+import { render } from "./svg-renderer.js";
 import { resolveStyles } from "../resolver/style-resolver.js";
+import { extractView } from "../view/view-extract.js";
 import { Parser } from "../parser/parser.js";
 import { StyleParser } from "../parser/style-parser.js";
 
@@ -8,7 +9,8 @@ function renderFromSource(krs: string, style?: string): string {
   const parseResult = Parser.parse(krs);
   const sheets = style ? [StyleParser.parse(style).value] : [];
   const styles = resolveStyles(parseResult.value.systems, sheets);
-  return render(parseResult.value.systems, styles);
+  const viewSlice = extractView(parseResult.value.systems, []);
+  return render(viewSlice, styles);
 }
 
 describe("SVG Renderer", () => {

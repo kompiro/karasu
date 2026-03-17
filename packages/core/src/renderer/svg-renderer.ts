@@ -1,18 +1,20 @@
-import type { KrsNode } from "../types/ast.js";
 import type { ResolvedNodeStyle, ResolvedStyles } from "../types/style.js";
-import { layout, type LayoutNode } from "./layout.js";
+import type { ViewSlice } from "../view/view-extract.js";
+import { layout, type ContainerRect, type LayoutNode } from "./layout.js";
 import { renderShape } from "./shapes.js";
 import { renderEdge, renderArrowMarker } from "./edge-routing.js";
 import { el, escapeXml } from "./svg-builder.js";
 import { getIconDef } from "./shape-registry.js";
 
+const GHOST_OPACITY = 0.3;
+
 export function render(
-  systems: KrsNode[],
+  viewSlice: ViewSlice,
   styles: ResolvedStyles
 ): string {
-  const layoutResult = layout(systems);
+  const layoutResult = layout(viewSlice);
 
-  if (layoutResult.nodes.size === 0) {
+  if (layoutResult.nodes.size === 0 && layoutResult.containers.length === 0) {
     return el("svg", { xmlns: "http://www.w3.org/2000/svg", viewBox: "0 0 200 100" },
       el("text", { x: 100, y: 50, "text-anchor": "middle", fill: "#9CA3AF", "font-family": "sans-serif" }, "No nodes to render"),
     );
@@ -48,33 +50,68 @@ export function render(
   // Background
   parts.push(el("rect", { width, height, fill: "#0F172A", rx: 0 }));
 
-  // System label
-  if (systems.length > 0 && systems[0].label) {
+  // System label (when at system view, no containers)
+  if (layoutResult.containers.length === 0 && viewSlice.containerNode) {
     parts.push(
       el("text", {
         x: padding / 2, y: padding / 2 + 4,
         fill: "#64748B", "font-size": "14px", "font-family": "sans-serif", "font-weight": "bold",
-      }, escapeXml(systems[0].label)),
+      }, escapeXml(viewSlice.containerNode.label)),
     );
   }
 
-  // Edges (below nodes)
-  const edgeParts: string[] = [];
+  // Ghost ancestor containers (outermost first)
+  for (const container of layoutResult.containers) {
+    if (container.ghost) {
+      const containerStyle = styles.nodes.get(container.id) ?? styles.defaultNodeStyle;
+      parts.push(renderContainer(container, containerStyle, true));
+    }
+  }
+
+  // Focused container
+  for (const container of layoutResult.containers) {
+    if (!container.ghost) {
+      const containerStyle = styles.nodes.get(container.id) ?? styles.defaultNodeStyle;
+      parts.push(renderContainer(container, containerStyle, false));
+    }
+  }
+
+  // Ghost edges
+  const ghostEdgeParts: string[] = [];
+  const normalEdgeParts: string[] = [];
   for (const edgeLayout of layoutResult.edges) {
     const edgeKey = `${edgeLayout.from}->${edgeLayout.to}`;
     const edgeStyle = styles.edges.get(edgeKey) ?? styles.defaultEdgeStyle;
     const markerId = colorToMarkerId.get(edgeStyle.color) ?? "arrow-default";
-    edgeParts.push(renderEdge(edgeLayout, edgeStyle, markerId));
+    const rendered = renderEdge(edgeLayout, edgeStyle, markerId);
+    if (edgeLayout.ghost) {
+      ghostEdgeParts.push(rendered);
+    } else {
+      normalEdgeParts.push(rendered);
+    }
   }
-  parts.push(el("g", { class: "edges" }, ...edgeParts));
+  if (ghostEdgeParts.length > 0) {
+    parts.push(el("g", { class: "ghost-edges", opacity: GHOST_OPACITY }, ...ghostEdgeParts));
+  }
+  parts.push(el("g", { class: "edges" }, ...normalEdgeParts));
 
-  // Nodes
-  const nodeParts: string[] = [];
+  // Nodes (ghost persons first, then normal children)
+  const ghostNodeParts: string[] = [];
+  const normalNodeParts: string[] = [];
   for (const [nodeId, layoutNode] of layoutResult.nodes) {
     const nodeStyle = styles.nodes.get(nodeId) ?? styles.defaultNodeStyle;
-    nodeParts.push(renderNode(layoutNode, nodeStyle));
+    const hasChildren = hasChildrenInAst(viewSlice, nodeId);
+    const rendered = renderNode(layoutNode, nodeStyle, nodeId, hasChildren);
+    if (layoutNode.ghost) {
+      ghostNodeParts.push(rendered);
+    } else {
+      normalNodeParts.push(rendered);
+    }
   }
-  parts.push(el("g", { class: "nodes" }, ...nodeParts));
+  if (ghostNodeParts.length > 0) {
+    parts.push(el("g", { class: "ghost-nodes", opacity: GHOST_OPACITY }, ...ghostNodeParts));
+  }
+  parts.push(el("g", { class: "nodes" }, ...normalNodeParts));
 
   return el("svg", {
     xmlns: "http://www.w3.org/2000/svg",
@@ -84,16 +121,55 @@ export function render(
   }, ...parts);
 }
 
+function renderContainer(
+  container: ContainerRect,
+  style: ResolvedNodeStyle,
+  ghost: boolean
+): string {
+  const children: string[] = [];
+  children.push(
+    el("rect", {
+      x: container.x,
+      y: container.y,
+      width: container.width,
+      height: container.height,
+      fill: "none",
+      stroke: style.borderColor,
+      "stroke-width": style.borderWidth,
+      "stroke-dasharray": ghost ? "8 4" : undefined,
+      rx: style.borderRadius,
+    }),
+  );
+  children.push(
+    el("text", {
+      x: container.x + 12,
+      y: container.y + 18,
+      fill: style.color,
+      "font-size": "12px",
+      "font-family": style.fontFamily,
+      "font-weight": "bold",
+      opacity: 0.7,
+    }, escapeXml(container.label)),
+  );
+
+  return el("g", {
+    "data-container-id": container.id,
+    opacity: ghost ? GHOST_OPACITY : undefined,
+  }, ...children);
+}
+
 function renderNode(
   node: LayoutNode,
-  style: ResolvedNodeStyle
+  style: ResolvedNodeStyle,
+  nodeId: string,
+  hasChildren: boolean
 ): string {
   const children: string[] = [];
 
   // Shape
   children.push(renderShape(node.x, node.y, node.width, node.height, style));
 
-  // Resolve text positions — use icon text slots if available, otherwise default
+  // Resolve text positions
   const shapeName = typeof style.shape === "string" ? style.shape : style.shape.url;
   const iconDef = getIconDef(shapeName);
 
@@ -101,7 +177,6 @@ function renderNode(
   const fontSize = style.fontSize;
 
   if (iconDef?.labelSlot) {
-    // Icon with text slots: transform slot coordinates from viewBox to node space
     const vw = iconDef.viewBoxWidth ?? 24;
     const vh = iconDef.viewBoxHeight ?? 24;
     const scaleX = node.width / vw;
@@ -135,7 +210,6 @@ function renderNode(
       );
     }
   } else {
-    // Default: center text in node
     const textX = node.x + node.width / 2;
     let textY = node.y + node.height / 2;
     if (node.description) textY -= 8;
@@ -188,5 +262,19 @@ function renderNode(
     }
   }
 
-  return el("g", { opacity: style.opacity < 1 ? style.opacity : undefined }, ...children);
+  return el("g", {
+    "data-node-id": nodeId,
+    style: hasChildren ? "cursor: pointer" : undefined,
+    opacity: style.opacity < 1 ? style.opacity : undefined,
+  }, ...children);
+}
+
+function hasChildrenInAst(viewSlice: ViewSlice, nodeId: string): boolean {
+  for (const child of viewSlice.childNodes) {
+    const id = child.id ?? child.label;
+    if (id === nodeId) {
+      return child.children.length > 0;
+    }
+  }
+  return false;
 }

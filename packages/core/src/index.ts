@@ -24,6 +24,9 @@ export type {
 
 export type { Warning, WarningKind } from "./types/warnings.js";
 
+export type { ViewPath, ViewSlice } from "./view/view-extract.js";
+export { extractView } from "./view/view-extract.js";
+
 export { Parser } from "./parser/parser.js";
 export { StyleParser } from "./parser/style-parser.js";
 export { resolveStyles } from "./resolver/style-resolver.js";
@@ -63,6 +66,7 @@ import { StyleParser } from "./parser/style-parser.js";
 import { resolveStyles } from "./resolver/style-resolver.js";
 import { analyze } from "./resolver/warnings.js";
 import { render } from "./renderer/svg-renderer.js";
+import { extractView, type ViewPath } from "./view/view-extract.js";
 import "./renderer/shapes.js"; // ensure built-in shapes are registered
 import type { Diagnostic } from "./types/ast.js";
 
@@ -74,7 +78,8 @@ export interface CompileResult {
 
 export function compile(
   krsSource: string,
-  styleSource?: string
+  styleSource?: string,
+  viewPath?: ViewPath
 ): CompileResult {
   const parseResult: ParseResult<KrsFile> = Parser.parse(krsSource);
   const diagnostics = [...parseResult.diagnostics];
@@ -86,8 +91,9 @@ export function compile(
     sheets = [styleResult.value];
   }
 
+  const viewSlice = extractView(parseResult.value.systems, viewPath ?? []);
   const styles = resolveStyles(parseResult.value.systems, sheets);
-  const svg = render(parseResult.value.systems, styles);
+  const svg = render(viewSlice, styles);
   const warnings = analyze(parseResult.value, sheets);
 
   return { svg, warnings, diagnostics };
