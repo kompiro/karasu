@@ -9,13 +9,14 @@ karasu の設計の根幹となる考え方。
 **何を・なぜ** の観点でシステムを記述する。
 
 ```
-system → service → domain → usecase
+system → service → domain → usecase → resource
 ```
 
 - `system`：owned/external なサービスの関係を示す器
 - `service`：独立したビジネス機能の単位
 - `domain`：サービス内のビジネス上の関心事の境界（DDD の Bounded Context に近い）
 - `usecase`：ドメイン内の業務・操作
+- `resource`：usecase が操作する対象（テーブル、外部API、ファイル等）
 
 ### 物理構造（How）
 
@@ -50,6 +51,7 @@ system（全体俯瞰）
   └─ service（ビジネス機能）
        └─ domain（関心事の境界）
             └─ usecase（業務）
+                 └─ resource（操作対象）
 ```
 
 任意のノードからドリルダウンして詳細図へ遷移できる。
@@ -81,4 +83,5 @@ karasu は C4 Model に触発されつつも独自の語彙を採用している
 | Container | `service` | ビジネス機能の単位であることを明示 |
 | Component | `domain` | ドメイン境界であることを明示 |
 | Code | `usecase` | 業務・操作の単位を表現 |
+| （なし） | `resource` | usecase が操作する対象を明示 |
 | （なし） | `deploy` / `realizes` | 物理構造を論理構造と分離して表現 |
