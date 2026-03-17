@@ -8,22 +8,14 @@
       "Bash(npm install:*)",
       "Bash(npm audit:*)",
       "Bash(npm show:*)",
-      "Bash(node -e \"const t=JSON.parse\\(require\\(''''fs''''\\).readFileSync\\(''''/dev/stdin'''',''''utf8''''\\)\\); const vers=Object.keys\\(t\\).filter\\(v=>/^3\\\\./.test\\(v\\)\\).slice\\(-3\\); vers.forEach\\(v=>console.log\\(v, t[v]\\)\\)\")",
-      "Bash(find /workspaces/karasu/packages -type d -not -path */node_modules*)",
-      "Bash(grep -v \"^\\\\.\\\\.$\")",
-      "Bash(grep -v \"^\\\\.$\")",
       "Bash(npx vitest:*)",
       "Bash(npx tsc:*)",
       "Bash(npx vite:*)",
-      "Bash(git -C /workspaces/karasu status)",
-      "Bash(git -C /workspaces/karasu diff --cached)",
-      "Bash(git -C /workspaces/karasu add -A)",
-      "Bash(git -C /workspaces/karasu diff --cached --stat)",
-      "Bash(git -C:*)",
+      "Bash(git:*)",
       "Bash(npm ls:*)",
-      "Bash(find /workspaces/karasu/packages/app/src -type f \\\\\\( -name \"*.ts\" -o -name \"*.tsx\" \\\\\\) -exec wc -l {} +)",
-      "Bash(find /workspaces/karasu/node_modules/monaco-editor -name *.worker.js)",
-      "Bash(find /workspaces/karasu/node_modules/monaco-editor/esm -name *.worker* -type f)"
+      "Bash(find:*)",
+      "Bash(npm run:*)",
+      "Bash(grep:*)"
     ]
   },
   "defaultMode": "acceptEdits"
