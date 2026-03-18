@@ -177,3 +177,263 @@ body,
   max-height: 120px;
   overflow-y: auto;
 }
+
+/* ===== Project Mode Layout ===== */
+
+.app-project-mode {
+  display: grid;
+  grid-template-rows: 40px 1fr auto;
+  grid-template-columns: 200px 1fr 1fr;
+  height: 100%;
+  width: 100%;
+}
+
+/* Project Selector (top bar) */
+.project-selector {
+  grid-row: 1;
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 12px;
+  background: #1e293b;
+  border-bottom: 1px solid #334155;
+}
+
+.project-selector-dropdown {
+  background: #0f172a;
+  color: #e2e8f0;
+  border: 1px solid #334155;
+  border-radius: 4px;
+  padding: 4px 8px;
+  font-size: 12px;
+  font-family: inherit;
+  min-width: 180px;
+}
+
+.project-selector-dropdown:focus {
+  outline: none;
+  border-color: #60a5fa;
+}
+
+.project-selector-actions,
+.project-selector-create {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.project-selector-btn {
+  background: #334155;
+  color: #e2e8f0;
+  border: 1px solid #475569;
+  border-radius: 4px;
+  padding: 3px 8px;
+  font-size: 11px;
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.project-selector-btn:hover {
+  background: #475569;
+}
+
+.project-selector-btn-danger:hover {
+  background: #7f1d1d;
+  border-color: #ef4444;
+}
+
+.project-selector-input {
+  background: #0f172a;
+  color: #e2e8f0;
+  border: 1px solid #60a5fa;
+  border-radius: 4px;
+  padding: 3px 8px;
+  font-size: 12px;
+  font-family: inherit;
+  width: 160px;
+}
+
+.project-selector-input:focus {
+  outline: none;
+}
+
+/* File Tree (left sidebar) */
+.file-tree {
+  grid-row: 2;
+  grid-column: 1;
+  background: #0f172a;
+  border-right: 1px solid #1e293b;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+}
+
+.file-tree-header {
+  padding: 4px 8px 4px 12px;
+  font-size: 11px;
+  font-weight: 600;
+  color: #94a3b8;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  border-bottom: 1px solid #1e293b;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.file-tree-header-actions {
+  display: flex;
+  gap: 2px;
+}
+
+.file-tree-header-btn {
+  background: transparent;
+  color: #94a3b8;
+  border: none;
+  border-radius: 3px;
+  padding: 2px 6px;
+  font-size: 12px;
+  cursor: pointer;
+  line-height: 1;
+}
+
+.file-tree-header-btn:hover {
+  background: #334155;
+  color: #e2e8f0;
+}
+
+.file-tree-content {
+  flex: 1;
+  overflow-y: auto;
+}
+
+.file-tree-item {
+  display: flex;
+  align-items: center;
+  padding: 4px 8px;
+  font-size: 12px;
+  color: #cbd5e1;
+  cursor: pointer;
+  user-select: none;
+}
+
+.file-tree-item:hover {
+  background: #1e293b;
+}
+
+.file-tree-item-selected {
+  background: #1e3a5f;
+  color: #e2e8f0;
+}
+
+.file-tree-icon {
+  margin-right: 4px;
+  font-size: 10px;
+  width: 12px;
+  text-align: center;
+  color: #64748b;
+}
+
+.file-tree-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Inline input in file tree */
+.file-tree-inline-input {
+  background: #0f172a;
+  color: #e2e8f0;
+  border: 1px solid #60a5fa;
+  border-radius: 3px;
+  padding: 2px 6px;
+  font-size: 12px;
+  font-family: inherit;
+  width: calc(100% - 16px);
+  margin: 2px 0;
+  outline: none;
+}
+
+/* Context menu */
+.context-menu {
+  position: fixed;
+  z-index: 1000;
+  background: #1e293b;
+  border: 1px solid #334155;
+  border-radius: 6px;
+  padding: 4px 0;
+  min-width: 140px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+}
+
+.context-menu-item {
+  display: block;
+  width: 100%;
+  padding: 6px 12px;
+  font-size: 12px;
+  font-family: inherit;
+  color: #e2e8f0;
+  background: transparent;
+  border: none;
+  text-align: left;
+  cursor: pointer;
+}
+
+.context-menu-item:hover {
+  background: #334155;
+}
+
+.context-menu-item-danger:hover {
+  background: #7f1d1d;
+  color: #fca5a5;
+}
+
+.context-menu-separator {
+  height: 1px;
+  background: #334155;
+  margin: 4px 0;
+}
+
+/* Project mode: editor and preview columns */
+.app-project-mode .editor-pane {
+  grid-row: 2;
+  grid-column: 2;
+  overflow: hidden;
+  border-right: 1px solid #1e293b;
+}
+
+.app-project-mode .preview-column {
+  grid-row: 2;
+  grid-column: 3;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.app-project-mode .warning-panel {
+  grid-row: 3;
+  grid-column: 1 / -1;
+}
+
+/* OPFS Banner */
+.opfs-banner {
+  grid-column: 1 / -1;
+  background: #78350f;
+  border-bottom: 1px solid #f59e0b;
+  padding: 6px 12px;
+  font-size: 12px;
+  color: #fde68a;
+  text-align: center;
+}
+
+/* Loading */
+.app-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: #94a3b8;
+  font-size: 14px;
+}
