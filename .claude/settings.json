@@ -18,8 +18,27 @@
       "Bash(grep:*)",
       "Bash(node -e \":*)",
       "WebSearch",
-      "Bash(npm test:*)"
+      "Bash(npm test:*)",
+      "Bash(wc -l /workspaces/karasu/packages/core/src/**/*.ts /workspaces/karasu/packages/app/src/**/*.ts*)",
+      "Bash(npx oxlint:*)",
+      "Bash(npx oxfmt:*)"
+    ],
+    "additionalDirectories": [
+      "/workspaces/karasu"
     ]
   },
-  "defaultMode": "acceptEdits"
+  "defaultMode": "acceptEdits",
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "FILE=$(cat | jq -r '.tool_input.file_path'); if [[ \"$FILE\" == *.ts || \"$FILE\" == *.tsx ]]; then cd /workspaces/karasu && npx oxfmt --write \"$FILE\" 2>&1 && npx oxlint \"$FILE\" 2>&1; fi"
+          }
+        ]
+      }
+    ]
+  }
 }
