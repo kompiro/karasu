@@ -29,6 +29,16 @@
   },
   "defaultMode": "acceptEdits",
   "hooks": {
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "prompt",
+            "prompt": "Was a plan just executed with code changes (file edits/writes)? Only answer yes if implementation work was done — not for questions, discussions, commits, or config changes only. Respond {\"decision\": \"block\", \"reason\": \"Plan execution completed. Run /commit to commit changes.\"} if yes, otherwise {\"decision\": \"allow\"}."
+          }
+        ]
+      }
+    ],
     "PostToolUse": [
       {
         "matcher": "Edit|Write",
