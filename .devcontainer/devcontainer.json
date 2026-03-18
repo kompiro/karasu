@@ -25,8 +25,7 @@
   "customizations": {
     "vscode": {
       "extensions": [
-        "dbaeumer.vscode-eslint",
-        "esbenp.prettier-vscode",
+        "oxc.oxc-vscode",
         "vitest.explorer",
         "ms-vscode.vscode-typescript-next",
         "ms-azuretools.vscode-containers"
@@ -35,16 +34,16 @@
         "js/ts.tsdk.path": "node_modules/typescript/lib",
         "editor.formatOnSave": true,
         "[typescript]": {
-          "editor.defaultFormatter": "esbenp.prettier-vscode"
+          "editor.defaultFormatter": "oxc.oxc-vscode"
         },
         "[typescriptreact]": {
-          "editor.defaultFormatter": "esbenp.prettier-vscode"
+          "editor.defaultFormatter": "oxc.oxc-vscode"
         },
         "[javascript]": {
-          "editor.defaultFormatter": "esbenp.prettier-vscode"
+          "editor.defaultFormatter": "oxc.oxc-vscode"
         },
         "[json]": {
-          "editor.defaultFormatter": "esbenp.prettier-vscode"
+          "editor.defaultFormatter": "oxc.oxc-vscode"
         }
       }
     }
