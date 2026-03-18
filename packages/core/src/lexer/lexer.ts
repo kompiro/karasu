@@ -232,9 +232,9 @@ export class Lexer {
 }
 
 function isIdentStart(ch: string): boolean {
-  return /[a-zA-Z_]/.test(ch);
+  return /[\p{L}_]/u.test(ch);
 }
 
 function isIdentPart(ch: string): boolean {
-  return /[a-zA-Z0-9_]/.test(ch);
+  return /[\p{L}\p{N}_]/u.test(ch);
 }

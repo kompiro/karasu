@@ -51,7 +51,7 @@ function registerKrsLanguage(monaco: Monaco): void {
         [/\{/, "delimiter.curly"],
         [/\}/, "delimiter.curly"],
         [
-          /[a-zA-Z_]\w*/,
+          /[a-zA-Z_\u00C0-\u024F\u0370-\u03FF\u3000-\u9FFF\uAC00-\uD7AF\uF900-\uFAFF]+[\w\u00C0-\u024F\u0370-\u03FF\u3000-\u9FFF\uAC00-\uD7AF\uF900-\uFAFF]*/,
           {
             cases: {
               "@keywords": "keyword",

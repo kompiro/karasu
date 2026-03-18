@@ -152,16 +152,31 @@ export class Parser {
 
   private parseNodeImport(): ImportDeclaration {
     const start = this.advance(); // import
-    this.expect(TokenType.LeftBrace);
+
+    if (this.peek().type !== TokenType.LeftBrace) {
+      this.error(
+        `Expected { but got ${this.peek().type} ("${this.peek().value}")`
+      );
+      // LeftBrace がない場合は空の import 宣言を返す
+      return { ids: [], path: "", loc: this.range(start.loc) };
+    }
+    this.advance(); // {
 
     const ids: string[] = [];
     while (
       this.peek().type !== TokenType.RightBrace &&
       this.peek().type !== TokenType.EOF
     ) {
-      const id = this.expect(TokenType.Identifier);
-      ids.push(id.value);
-      this.match(TokenType.Comma);
+      if (this.peek().type === TokenType.Identifier) {
+        ids.push(this.advance().value);
+        this.match(TokenType.Comma);
+      } else {
+        // 予期しないトークン: エラーを記録してスキップ
+        this.error(
+          `Expected identifier but got ${this.peek().type} ("${this.peek().value}")`
+        );
+        this.advance();
+      }
     }
     this.expect(TokenType.RightBrace);
     this.expect(TokenType.From);
