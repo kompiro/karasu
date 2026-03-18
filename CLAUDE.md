@@ -1,6 +1,6 @@
 # karasu — CLAUDE.md
 
-**karasu**（烏）はテキストベースのアーキテクチャモデリングツールです。
+**karasu**（鴉）はテキストベースのアーキテクチャモデリングツールです。
 C4 Modelに触発されつつも独自の語彙を持ち、論理構造と物理構造を分離して表現します。
 
 ## 命名の由来
@@ -13,15 +13,15 @@ C4 Modelに触発されつつも独自の語彙を持ち、論理構造と物理
 
 ## ドキュメント
 
-| ドキュメント | 場所 |
-|------------|------|
-| .krs 構文リファレンス | `docs/spec/syntax.md` |
-| .krs.style 構文リファレンス | `docs/spec/style.md` |
-| タグ・アノテーション一覧 | `docs/spec/tags-annotations.md` |
-| コアコンセプト（論理/物理分離など） | `docs/design/concepts.md` |
-| 設計判断の経緯（ADR） | `docs/design/adr/` |
-| 実装予定の機能 | `docs/features/planned/` |
-| 検討中のアイデア | `docs/features/ideas/` |
+| ドキュメント                        | 場所                            |
+| ----------------------------------- | ------------------------------- |
+| .krs 構文リファレンス               | `docs/spec/syntax.md`           |
+| .krs.style 構文リファレンス         | `docs/spec/style.md`            |
+| タグ・アノテーション一覧            | `docs/spec/tags-annotations.md` |
+| コアコンセプト（論理/物理分離など） | `docs/design/concepts.md`       |
+| 設計判断の経緯（ADR）               | `docs/design/adr/`              |
+| 実装予定の機能                      | `docs/features/planned/`        |
+| 検討中のアイデア                    | `docs/features/ideas/`          |
 
 ---
 
@@ -42,13 +42,13 @@ karasu/
 
 ### 技術スタック
 
-| 用途 | 技術 |
-|------|------|
-| 言語 | TypeScript |
-| ビルド（app） | Vite |
-| UIフレームワーク | React |
+| 用途                   | 技術          |
+| ---------------------- | ------------- |
+| 言語                   | TypeScript    |
+| ビルド（app）          | Vite          |
+| UIフレームワーク       | React         |
 | エディタコンポーネント | Monaco Editor |
-| テスト | Vitest |
+| テスト                 | Vitest        |
 
 ### 実装の進め方
 

@@ -1,4 +1,4 @@
-# karasu（烏）
+# karasu（鴉）
 
 テキストベースのアーキテクチャモデリングツール。
 C4 Model に触発されつつも独自の語彙を持ち、**論理構造と物理構造を分離**して表現します。
@@ -33,15 +33,15 @@ system "ECプラットフォーム" {
 
 ## ドキュメント
 
-| ドキュメント | 場所 |
-|------------|------|
-| .krs 構文リファレンス | [docs/spec/syntax.md](docs/spec/syntax.md) |
-| .krs.style 構文リファレンス | [docs/spec/style.md](docs/spec/style.md) |
-| タグ・アノテーション一覧 | [docs/spec/tags-annotations.md](docs/spec/tags-annotations.md) |
-| コアコンセプト（論理/物理分離など） | [docs/design/concepts.md](docs/design/concepts.md) |
-| 設計判断の経緯（ADR） | [docs/design/adr/](docs/design/adr/) |
-| 実装予定の機能 | [docs/features/planned/](docs/features/planned/) |
-| 検討中のアイデア | [docs/features/ideas/](docs/features/ideas/) |
+| ドキュメント                        | 場所                                                           |
+| ----------------------------------- | -------------------------------------------------------------- |
+| .krs 構文リファレンス               | [docs/spec/syntax.md](docs/spec/syntax.md)                     |
+| .krs.style 構文リファレンス         | [docs/spec/style.md](docs/spec/style.md)                       |
+| タグ・アノテーション一覧            | [docs/spec/tags-annotations.md](docs/spec/tags-annotations.md) |
+| コアコンセプト（論理/物理分離など） | [docs/design/concepts.md](docs/design/concepts.md)             |
+| 設計判断の経緯（ADR）               | [docs/design/adr/](docs/design/adr/)                           |
+| 実装予定の機能                      | [docs/features/planned/](docs/features/planned/)               |
+| 検討中のアイデア                    | [docs/features/ideas/](docs/features/ideas/)                   |
 
 ## リポジトリ構成
 
@@ -57,13 +57,13 @@ karasu/
 
 ## 技術スタック
 
-| 用途 | 技術 |
-|------|------|
-| 言語 | TypeScript |
-| ビルド（app） | Vite |
-| UIフレームワーク | React |
+| 用途                   | 技術          |
+| ---------------------- | ------------- |
+| 言語                   | TypeScript    |
+| ビルド（app）          | Vite          |
+| UIフレームワーク       | React         |
 | エディタコンポーネント | Monaco Editor |
-| テスト | Vitest |
+| テスト                 | Vitest        |
 
 ## インスピレーション
 

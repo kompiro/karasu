@@ -42,7 +42,7 @@ UMLのRealization関係に対応。「このデプロイ単位がこのサービ
 
 ## ドリルダウン型アーキテクチャ把握
 
-ツール名「karasu（烏）」の由来でもあるコンセプト。
+ツール名「karasu（鴉）」の由来でもあるコンセプト。
 世界を俯瞰して情報を集め、必要な場所へ降りていく鴉のように、
 図をドリルダウンしながらアーキテクチャを把握していく。
 
@@ -77,11 +77,11 @@ karasu はこれを自動検出して警告を出す。
 
 karasu は C4 Model に触発されつつも独自の語彙を採用している。
 
-| C4 Model | karasu | 変更理由 |
-|----------|--------|---------|
-| Context Diagram | `system` | "context" は意味が曖昧 |
-| Container | `service` | ビジネス機能の単位であることを明示 |
-| Component | `domain` | ドメイン境界であることを明示 |
-| Code | `usecase` | 業務・操作の単位を表現 |
-| （なし） | `resource` | usecase が操作する対象を明示 |
-| （なし） | `deploy` / `realizes` | 物理構造を論理構造と分離して表現 |
+| C4 Model        | karasu                | 変更理由                           |
+| --------------- | --------------------- | ---------------------------------- |
+| Context Diagram | `system`              | "context" は意味が曖昧             |
+| Container       | `service`             | ビジネス機能の単位であることを明示 |
+| Component       | `domain`              | ドメイン境界であることを明示       |
+| Code            | `usecase`             | 業務・操作の単位を表現             |
+| （なし）        | `resource`            | usecase が操作する対象を明示       |
+| （なし）        | `deploy` / `realizes` | 物理構造を論理構造と分離して表現   |
