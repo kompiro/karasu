@@ -34,13 +34,7 @@ const DEPLOY_KEYWORDS = new Set<string>([
   "artifact",
 ]);
 
-const PROPERTY_KEYWORDS = new Set<string>([
-  "runtime",
-  "realizes",
-  "schedule",
-  "image",
-  "type",
-]);
+const PROPERTY_KEYWORDS = new Set<string>(["runtime", "realizes", "schedule", "image", "type"]);
 
 export class Parser {
   private tokens: Token[];
@@ -58,19 +52,23 @@ export class Parser {
   }
 
   private peek(): Token {
-    return this.tokens[this.pos] ?? {
-      type: TokenType.EOF,
-      value: "",
-      loc: { line: 0, column: 0, offset: 0 },
-    };
+    return (
+      this.tokens[this.pos] ?? {
+        type: TokenType.EOF,
+        value: "",
+        loc: { line: 0, column: 0, offset: 0 },
+      }
+    );
   }
 
   private peekAt(offset: number): Token {
-    return this.tokens[this.pos + offset] ?? {
-      type: TokenType.EOF,
-      value: "",
-      loc: { line: 0, column: 0, offset: 0 },
-    };
+    return (
+      this.tokens[this.pos + offset] ?? {
+        type: TokenType.EOF,
+        value: "",
+        loc: { line: 0, column: 0, offset: 0 },
+      }
+    );
   }
 
   private advance(): Token {
@@ -154,27 +152,20 @@ export class Parser {
     const start = this.advance(); // import
 
     if (this.peek().type !== TokenType.LeftBrace) {
-      this.error(
-        `Expected { but got ${this.peek().type} ("${this.peek().value}")`
-      );
+      this.error(`Expected { but got ${this.peek().type} ("${this.peek().value}")`);
       // LeftBrace がない場合は空の import 宣言を返す
       return { ids: [], path: "", loc: this.range(start.loc) };
     }
     this.advance(); // {
 
     const ids: string[] = [];
-    while (
-      this.peek().type !== TokenType.RightBrace &&
-      this.peek().type !== TokenType.EOF
-    ) {
+    while (this.peek().type !== TokenType.RightBrace && this.peek().type !== TokenType.EOF) {
       if (this.peek().type === TokenType.Identifier) {
         ids.push(this.advance().value);
         this.match(TokenType.Comma);
       } else {
         // 予期しないトークン: エラーを記録してスキップ
-        this.error(
-          `Expected identifier but got ${this.peek().type} ("${this.peek().value}")`
-        );
+        this.error(`Expected identifier but got ${this.peek().type} ("${this.peek().value}")`);
         this.advance();
       }
     }
@@ -213,17 +204,13 @@ export class Parser {
   }
 
   private parseBlockContents(children: KrsNode[], edges: KrsEdge[]): void {
-    while (
-      this.peek().type !== TokenType.RightBrace &&
-      this.peek().type !== TokenType.EOF
-    ) {
+    while (this.peek().type !== TokenType.RightBrace && this.peek().type !== TokenType.EOF) {
       const token = this.peek();
 
       // Check for edge: Identifier -> or -->
       if (
         token.type === TokenType.Identifier &&
-        (this.peekAt(1).type === TokenType.Arrow ||
-          this.peekAt(1).type === TokenType.DashedArrow)
+        (this.peekAt(1).type === TokenType.Arrow || this.peekAt(1).type === TokenType.DashedArrow)
       ) {
         edges.push(this.parseEdge());
         continue;
@@ -313,10 +300,7 @@ export class Parser {
     if (this.peek().type !== TokenType.LeftBracket) return tags;
 
     this.advance(); // [
-    while (
-      this.peek().type !== TokenType.RightBracket &&
-      this.peek().type !== TokenType.EOF
-    ) {
+    while (this.peek().type !== TokenType.RightBracket && this.peek().type !== TokenType.EOF) {
       if (this.peek().type === TokenType.Identifier) {
         tags.push(this.advance().value);
       } else if (this.peek().type === TokenType.Comma) {
@@ -369,15 +353,12 @@ export class Parser {
     this.expect(TokenType.LeftBrace);
 
     const nodes: DeployNode[] = [];
-    while (
-      this.peek().type !== TokenType.RightBrace &&
-      this.peek().type !== TokenType.EOF
-    ) {
+    while (this.peek().type !== TokenType.RightBrace && this.peek().type !== TokenType.EOF) {
       if (DEPLOY_KEYWORDS.has(this.peek().value)) {
         nodes.push(this.parseDeployNode());
       } else {
         this.error(
-          `Unexpected token in deploy block: ${this.peek().type} ("${this.peek().value}")`
+          `Unexpected token in deploy block: ${this.peek().type} ("${this.peek().value}")`,
         );
         this.advance();
       }
@@ -400,10 +381,7 @@ export class Parser {
 
     const properties: DeployNodeProperties = {};
 
-    while (
-      this.peek().type !== TokenType.RightBrace &&
-      this.peek().type !== TokenType.EOF
-    ) {
+    while (this.peek().type !== TokenType.RightBrace && this.peek().type !== TokenType.EOF) {
       if (PROPERTY_KEYWORDS.has(this.peek().value)) {
         const propToken = this.advance();
         const propName = propToken.value as keyof DeployNodeProperties;
@@ -416,9 +394,7 @@ export class Parser {
           this.error(`Expected value for property "${propName}"`);
         }
       } else {
-        this.error(
-          `Unexpected token in deploy node: ${this.peek().type} ("${this.peek().value}")`
-        );
+        this.error(`Unexpected token in deploy node: ${this.peek().type} ("${this.peek().value}")`);
         this.advance();
       }
     }

@@ -23,9 +23,7 @@ describe("ProjectManager", () => {
       const indexKrs = await fs.readFile(`${project.rootPath}/index.krs`);
       expect(indexKrs).toContain("system");
 
-      const style = await fs.readFile(
-        `${project.rootPath}/default.krs.style`
-      );
+      const style = await fs.readFile(`${project.rootPath}/default.krs.style`);
       expect(style).toContain("person");
     });
 
@@ -35,10 +33,7 @@ describe("ProjectManager", () => {
 
       const projects = await pm.listProjects();
       expect(projects).toHaveLength(2);
-      expect(projects.map((p) => p.name)).toEqual([
-        "Project A",
-        "Project B",
-      ]);
+      expect(projects.map((p) => p.name)).toEqual(["Project A", "Project B"]);
     });
   });
 
@@ -62,9 +57,7 @@ describe("ProjectManager", () => {
     });
 
     it("throws when project not found", async () => {
-      await expect(pm.deleteProject("nonexistent")).rejects.toThrow(
-        "Project not found"
-      );
+      await expect(pm.deleteProject("nonexistent")).rejects.toThrow("Project not found");
     });
   });
 
@@ -82,9 +75,7 @@ describe("ProjectManager", () => {
     });
 
     it("throws when project not found", async () => {
-      await expect(
-        pm.renameProject("nonexistent", "Name")
-      ).rejects.toThrow("Project not found");
+      await expect(pm.renameProject("nonexistent", "Name")).rejects.toThrow("Project not found");
     });
   });
 

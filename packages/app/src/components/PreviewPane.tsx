@@ -35,7 +35,7 @@ export function PreviewPane({ svg, diagnostics, viewPath, onDrillDown }: Preview
       dragStart.current = { x: e.clientX - transform.x, y: e.clientY - transform.y };
       mouseDownPos.current = { x: e.clientX, y: e.clientY };
     },
-    [transform.x, transform.y]
+    [transform.x, transform.y],
   );
 
   const handleMouseMove = useCallback(
@@ -47,7 +47,7 @@ export function PreviewPane({ svg, diagnostics, viewPath, onDrillDown }: Preview
         y: e.clientY - dragStart.current.y,
       }));
     },
-    [isDragging]
+    [isDragging],
   );
 
   const handleMouseUp = useCallback(
@@ -76,7 +76,7 @@ export function PreviewPane({ svg, diagnostics, viewPath, onDrillDown }: Preview
         onDrillDown([...viewPath, nodeId]);
       }
     },
-    [isDragging, viewPath, onDrillDown]
+    [isDragging, viewPath, onDrillDown],
   );
 
   const handleMouseLeave = useCallback(() => {
@@ -105,11 +105,9 @@ export function PreviewPane({ svg, diagnostics, viewPath, onDrillDown }: Preview
       </div>
       {errors.length > 0 && (
         <div className="error-banner">
-          {errors.map((e, i) => (
-            <div key={i}>
-              {e.loc
-                ? `Line ${e.loc.start.line}: ${e.message}`
-                : e.message}
+          {errors.map((e) => (
+            <div key={e.loc ? `${e.loc.start.line}:${e.message}` : e.message}>
+              {e.loc ? `Line ${e.loc.start.line}: ${e.message}` : e.message}
             </div>
           ))}
         </div>

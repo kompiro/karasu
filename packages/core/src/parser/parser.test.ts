@@ -15,13 +15,8 @@ describe("Parser", () => {
   });
 
   it("parses multiple @import", () => {
-    const result = Parser.parse(
-      '@import "base.krs.style"\n@import "theme.krs.style"'
-    );
-    expect(result.value.styleImports).toEqual([
-      "base.krs.style",
-      "theme.krs.style",
-    ]);
+    const result = Parser.parse('@import "base.krs.style"\n@import "theme.krs.style"');
+    expect(result.value.styleImports).toEqual(["base.krs.style", "theme.krs.style"]);
   });
 
   it("parses import declaration", () => {

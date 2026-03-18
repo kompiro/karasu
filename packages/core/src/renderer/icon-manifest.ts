@@ -27,7 +27,7 @@ export interface IconManifest {
  */
 export function resolveIconManifest(
   manifest: IconManifest,
-  svgContents: Record<string, string>
+  svgContents: Record<string, string>,
 ): void {
   for (const entry of manifest.icons) {
     const svg = svgContents[entry.file];

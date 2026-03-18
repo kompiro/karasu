@@ -24,9 +24,7 @@ const DEFAULT_NODE_STYLE: ResolvedNodeStyle = {
   shape: "box",
 };
 
-const KIND_STYLE_OVERRIDES: Partial<
-  Record<string, Partial<ResolvedNodeStyle>>
-> = {
+const KIND_STYLE_OVERRIDES: Partial<Record<string, Partial<ResolvedNodeStyle>>> = {
   resource: {
     shape: "cylinder",
     backgroundColor: "#1E3A5F",
@@ -41,19 +39,9 @@ const DEFAULT_EDGE_STYLE: ResolvedEdgeStyle = {
   strokeStyle: "solid",
 };
 
-const SHAPE_KEYWORDS = new Set<string>([
-  "box",
-  "person",
-  "cylinder",
-  "queue",
-  "hexagon",
-  "cloud",
-]);
+const SHAPE_KEYWORDS = new Set<string>(["box", "person", "cylinder", "queue", "hexagon", "cloud"]);
 
-export function resolveStyles(
-  systems: KrsNode[],
-  sheets: StyleSheet[]
-): ResolvedStyles {
+export function resolveStyles(systems: KrsNode[], sheets: StyleSheet[]): ResolvedStyles {
   const allRules = sheets.flatMap((s) => s.rules);
   const nodeStyles = new Map<string, ResolvedNodeStyle>();
   const edgeStyles = new Map<string, ResolvedEdgeStyle>();
@@ -90,17 +78,9 @@ function collectEdges(node: KrsNode): KrsEdge[] {
   return edges;
 }
 
-function resolveNodeStyle(
-  node: KrsNode,
-  rules: StyleRule[],
-  kind: string
-): ResolvedNodeStyle {
-  const matching = rules.filter((rule) =>
-    nodeSelectorMatches(node, rule.selector)
-  );
-  matching.sort(
-    (a, b) => a.specificity - b.specificity || a.sourceIndex - b.sourceIndex
-  );
+function resolveNodeStyle(node: KrsNode, rules: StyleRule[], kind: string): ResolvedNodeStyle {
+  const matching = rules.filter((rule) => nodeSelectorMatches(node, rule.selector));
+  matching.sort((a, b) => a.specificity - b.specificity || a.sourceIndex - b.sourceIndex);
 
   const merged: Record<string, string> = {};
   for (const rule of matching) {
@@ -110,16 +90,9 @@ function resolveNodeStyle(
   return toResolvedNodeStyle(merged, kind);
 }
 
-function resolveEdgeStyle(
-  edge: KrsEdge,
-  rules: StyleRule[]
-): ResolvedEdgeStyle {
-  const matching = rules.filter((rule) =>
-    edgeSelectorMatches(edge, rule.selector)
-  );
-  matching.sort(
-    (a, b) => a.specificity - b.specificity || a.sourceIndex - b.sourceIndex
-  );
+function resolveEdgeStyle(edge: KrsEdge, rules: StyleRule[]): ResolvedEdgeStyle {
+  const matching = rules.filter((rule) => edgeSelectorMatches(edge, rule.selector));
+  matching.sort((a, b) => a.specificity - b.specificity || a.sourceIndex - b.sourceIndex);
 
   const merged: Record<string, string> = {};
   for (const rule of matching) {
@@ -129,10 +102,7 @@ function resolveEdgeStyle(
   return toResolvedEdgeStyle(merged, edge);
 }
 
-function nodeSelectorMatches(
-  node: KrsNode,
-  selector: StyleSelector
-): boolean {
+function nodeSelectorMatches(node: KrsNode, selector: StyleSelector): boolean {
   if (selector.id) return node.id === selector.id;
   if (selector.nodeType === "edge") return false;
   if (selector.nodeType && selector.nodeType !== node.kind) return false;
@@ -140,8 +110,7 @@ function nodeSelectorMatches(
     if (!selector.tags.every((t) => node.tags.includes(t))) return false;
   }
   if (selector.annotations.length > 0) {
-    if (!selector.annotations.every((a) => node.annotations.includes(a)))
-      return false;
+    if (!selector.annotations.every((a) => node.annotations.includes(a))) return false;
   }
   // A bare selector with no type, tags, annotations, or id shouldn't match anything
   if (
@@ -155,12 +124,8 @@ function nodeSelectorMatches(
   return true;
 }
 
-function edgeSelectorMatches(
-  edge: KrsEdge,
-  selector: StyleSelector
-): boolean {
-  if (selector.nodeType !== "edge" && selector.nodeType !== undefined)
-    return false;
+function edgeSelectorMatches(edge: KrsEdge, selector: StyleSelector): boolean {
+  if (selector.nodeType !== "edge" && selector.nodeType !== undefined) return false;
   if (selector.nodeType !== "edge") return false;
   if (selector.tags.length > 0) {
     const edgeTags = [...edge.tags];
@@ -171,10 +136,7 @@ function edgeSelectorMatches(
   return true;
 }
 
-function toResolvedNodeStyle(
-  props: Record<string, string>,
-  kind?: string
-): ResolvedNodeStyle {
+function toResolvedNodeStyle(props: Record<string, string>, kind?: string): ResolvedNodeStyle {
   const kindOverride = kind ? KIND_STYLE_OVERRIDES[kind] : undefined;
   const style = { ...DEFAULT_NODE_STYLE, ...kindOverride };
 
@@ -186,8 +148,7 @@ function toResolvedNodeStyle(
     style.borderStyle = props["border-style"] as "solid" | "dashed" | "dotted";
   if (props["border-radius"]) style.borderRadius = parseFloat(props["border-radius"]);
   if (props["font-size"]) style.fontSize = parseFloat(props["font-size"]);
-  if (props["font-weight"])
-    style.fontWeight = props["font-weight"] as "normal" | "bold";
+  if (props["font-weight"]) style.fontWeight = props["font-weight"] as "normal" | "bold";
   if (props["font-family"]) style.fontFamily = props["font-family"];
   if (props["opacity"]) style.opacity = parseFloat(props["opacity"]);
   if (props["shape"]) {
@@ -208,17 +169,13 @@ function toResolvedNodeStyle(
   return style;
 }
 
-function toResolvedEdgeStyle(
-  props: Record<string, string>,
-  edge: KrsEdge
-): ResolvedEdgeStyle {
+function toResolvedEdgeStyle(props: Record<string, string>, edge: KrsEdge): ResolvedEdgeStyle {
   const style = { ...DEFAULT_EDGE_STYLE };
 
   if (props["color"]) style.color = props["color"];
   if (props["stroke-width"]) style.strokeWidth = parseFloat(props["stroke-width"]);
   if (props["font-size"]) style.fontSize = parseFloat(props["font-size"]);
-  if (props["border-style"])
-    style.strokeStyle = props["border-style"] as "solid" | "dashed";
+  if (props["border-style"]) style.strokeStyle = props["border-style"] as "solid" | "dashed";
 
   // Async edges default to dashed
   if (edge.kind === "async" && !props["border-style"]) {

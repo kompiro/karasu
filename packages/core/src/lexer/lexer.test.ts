@@ -83,11 +83,7 @@ describe("Lexer", () => {
   });
 
   it("tokenizes arrows", () => {
-    expect(tokenTypes("-> -->")).toEqual([
-      TokenType.Arrow,
-      TokenType.DashedArrow,
-      TokenType.EOF,
-    ]);
+    expect(tokenTypes("-> -->")).toEqual([TokenType.Arrow, TokenType.DashedArrow, TokenType.EOF]);
   });
 
   it("tokenizes @import", () => {

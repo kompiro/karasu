@@ -70,7 +70,7 @@ describe("Incomplete import followed by other tokens - no infinite loop", () => 
 
   it("should not hang on '@import ...\\nimport\\nsystem ...'", () => {
     const result = Parser.parse(
-      '@import "default.krs.style"\nimport\nsystem "Test" {\n  person User "User"\n}'
+      '@import "default.krs.style"\nimport\nsystem "Test" {\n  person User "User"\n}',
     );
     expect(result.diagnostics.length).toBeGreaterThan(0);
     expect(result.value.styleImports).toEqual(["default.krs.style"]);
@@ -86,7 +86,7 @@ describe("Incomplete import followed by other tokens - no infinite loop", () => 
     const fs = new InMemoryFileSystemProvider();
     await fs.writeFile(
       "/index.krs",
-      '@import "s.krs.style"\nimport\nsystem "Test" {\n  person User "User"\n}'
+      '@import "s.krs.style"\nimport\nsystem "Test" {\n  person User "User"\n}',
     );
     await fs.writeFile("/s.krs.style", "");
     const result = await compileProject("/index.krs", fs);

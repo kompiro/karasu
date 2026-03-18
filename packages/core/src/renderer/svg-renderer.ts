@@ -8,15 +8,18 @@ import { getIconDef } from "./shape-registry.js";
 
 const GHOST_OPACITY = 0.3;
 
-export function render(
-  viewSlice: ViewSlice,
-  styles: ResolvedStyles
-): string {
+export function render(viewSlice: ViewSlice, styles: ResolvedStyles): string {
   const layoutResult = layout(viewSlice);
 
   if (layoutResult.nodes.size === 0 && layoutResult.containers.length === 0) {
-    return el("svg", { xmlns: "http://www.w3.org/2000/svg", viewBox: "0 0 200 100" },
-      el("text", { x: 100, y: 50, "text-anchor": "middle", fill: "#9CA3AF", "font-family": "sans-serif" }, "No nodes to render"),
+    return el(
+      "svg",
+      { xmlns: "http://www.w3.org/2000/svg", viewBox: "0 0 200 100" },
+      el(
+        "text",
+        { x: 100, y: 50, "text-anchor": "middle", fill: "#9CA3AF", "font-family": "sans-serif" },
+        "No nodes to render",
+      ),
     );
   }
 
@@ -53,10 +56,18 @@ export function render(
   // System label (when at system view, no containers)
   if (layoutResult.containers.length === 0 && viewSlice.containerNode) {
     parts.push(
-      el("text", {
-        x: padding / 2, y: padding / 2 + 4,
-        fill: "#64748B", "font-size": "14px", "font-family": "sans-serif", "font-weight": "bold",
-      }, escapeXml(viewSlice.containerNode.label)),
+      el(
+        "text",
+        {
+          x: padding / 2,
+          y: padding / 2 + 4,
+          fill: "#64748B",
+          "font-size": "14px",
+          "font-family": "sans-serif",
+          "font-weight": "bold",
+        },
+        escapeXml(viewSlice.containerNode.label),
+      ),
     );
   }
 
@@ -113,18 +124,22 @@ export function render(
   }
   parts.push(el("g", { class: "nodes" }, ...normalNodeParts));
 
-  return el("svg", {
-    xmlns: "http://www.w3.org/2000/svg",
-    viewBox: `0 0 ${width} ${height}`,
-    width,
-    height,
-  }, ...parts);
+  return el(
+    "svg",
+    {
+      xmlns: "http://www.w3.org/2000/svg",
+      viewBox: `0 0 ${width} ${height}`,
+      width,
+      height,
+    },
+    ...parts,
+  );
 }
 
 function renderContainer(
   container: ContainerRect,
   style: ResolvedNodeStyle,
-  ghost: boolean
+  ghost: boolean,
 ): string {
   const children: string[] = [];
   children.push(
@@ -141,28 +156,36 @@ function renderContainer(
     }),
   );
   children.push(
-    el("text", {
-      x: container.x + 12,
-      y: container.y + 18,
-      fill: style.color,
-      "font-size": "12px",
-      "font-family": style.fontFamily,
-      "font-weight": "bold",
-      opacity: 0.7,
-    }, escapeXml(container.label)),
+    el(
+      "text",
+      {
+        x: container.x + 12,
+        y: container.y + 18,
+        fill: style.color,
+        "font-size": "12px",
+        "font-family": style.fontFamily,
+        "font-weight": "bold",
+        opacity: 0.7,
+      },
+      escapeXml(container.label),
+    ),
   );
 
-  return el("g", {
-    "data-container-id": container.id,
-    opacity: ghost ? GHOST_OPACITY : undefined,
-  }, ...children);
+  return el(
+    "g",
+    {
+      "data-container-id": container.id,
+      opacity: ghost ? GHOST_OPACITY : undefined,
+    },
+    ...children,
+  );
 }
 
 function renderNode(
   node: LayoutNode,
   style: ResolvedNodeStyle,
   nodeId: string,
-  hasChildren: boolean
+  hasChildren: boolean,
 ): string {
   const children: string[] = [];
 
@@ -187,12 +210,20 @@ function renderNode(
     const labelAnchor = iconDef.labelSlot.textAnchor ?? "middle";
 
     children.push(
-      el("text", {
-        x: labelX, y: labelY,
-        "text-anchor": labelAnchor, "dominant-baseline": "central",
-        fill: textColor, "font-size": `${fontSize}px`,
-        "font-weight": style.fontWeight, "font-family": style.fontFamily,
-      }, escapeXml(node.label)),
+      el(
+        "text",
+        {
+          x: labelX,
+          y: labelY,
+          "text-anchor": labelAnchor,
+          "dominant-baseline": "central",
+          fill: textColor,
+          "font-size": `${fontSize}px`,
+          "font-weight": style.fontWeight,
+          "font-family": style.fontFamily,
+        },
+        escapeXml(node.label),
+      ),
     );
 
     if (node.description && iconDef.descriptionSlot) {
@@ -201,12 +232,20 @@ function renderNode(
       const descAnchor = iconDef.descriptionSlot.textAnchor ?? "middle";
 
       children.push(
-        el("text", {
-          x: descX, y: descY,
-          "text-anchor": descAnchor, "dominant-baseline": "central",
-          fill: textColor, "font-size": `${Math.round(fontSize * 0.8)}px`,
-          "font-family": style.fontFamily, opacity: 0.7,
-        }, escapeXml(node.description)),
+        el(
+          "text",
+          {
+            x: descX,
+            y: descY,
+            "text-anchor": descAnchor,
+            "dominant-baseline": "central",
+            fill: textColor,
+            "font-size": `${Math.round(fontSize * 0.8)}px`,
+            "font-family": style.fontFamily,
+            opacity: 0.7,
+          },
+          escapeXml(node.description),
+        ),
       );
     }
   } else {
@@ -215,22 +254,38 @@ function renderNode(
     if (node.description) textY -= 8;
 
     children.push(
-      el("text", {
-        x: textX, y: textY,
-        "text-anchor": "middle", "dominant-baseline": "central",
-        fill: textColor, "font-size": `${fontSize}px`,
-        "font-weight": style.fontWeight, "font-family": style.fontFamily,
-      }, escapeXml(node.label)),
+      el(
+        "text",
+        {
+          x: textX,
+          y: textY,
+          "text-anchor": "middle",
+          "dominant-baseline": "central",
+          fill: textColor,
+          "font-size": `${fontSize}px`,
+          "font-weight": style.fontWeight,
+          "font-family": style.fontFamily,
+        },
+        escapeXml(node.label),
+      ),
     );
 
     if (node.description) {
       children.push(
-        el("text", {
-          x: textX, y: textY + fontSize + 4,
-          "text-anchor": "middle", "dominant-baseline": "central",
-          fill: textColor, "font-size": `${Math.round(fontSize * 0.8)}px`,
-          "font-family": style.fontFamily, opacity: 0.7,
-        }, escapeXml(node.description)),
+        el(
+          "text",
+          {
+            x: textX,
+            y: textY + fontSize + 4,
+            "text-anchor": "middle",
+            "dominant-baseline": "central",
+            fill: textColor,
+            "font-size": `${Math.round(fontSize * 0.8)}px`,
+            "font-family": style.fontFamily,
+            opacity: 0.7,
+          },
+          escapeXml(node.description),
+        ),
       );
     }
   }
@@ -244,29 +299,48 @@ function renderNode(
     children.push(el("circle", { cx: badgeX, cy: badgeY, r: 10, fill: badgeColor }));
     if (style.badgeIcon) {
       children.push(
-        el("text", {
-          x: badgeX, y: badgeY,
-          "text-anchor": "middle", "dominant-baseline": "central",
-          fill: "white", "font-size": "10px",
-        }, escapeXml(style.badgeIcon)),
+        el(
+          "text",
+          {
+            x: badgeX,
+            y: badgeY,
+            "text-anchor": "middle",
+            "dominant-baseline": "central",
+            fill: "white",
+            "font-size": "10px",
+          },
+          escapeXml(style.badgeIcon),
+        ),
       );
     }
     if (style.badgeLabel) {
       children.push(
-        el("text", {
-          x: badgeX + 14, y: badgeY,
-          "dominant-baseline": "central",
-          fill: badgeColor, "font-size": "9px", "font-weight": "bold", "font-family": "sans-serif",
-        }, escapeXml(style.badgeLabel)),
+        el(
+          "text",
+          {
+            x: badgeX + 14,
+            y: badgeY,
+            "dominant-baseline": "central",
+            fill: badgeColor,
+            "font-size": "9px",
+            "font-weight": "bold",
+            "font-family": "sans-serif",
+          },
+          escapeXml(style.badgeLabel),
+        ),
       );
     }
   }
 
-  return el("g", {
-    "data-node-id": nodeId,
-    style: hasChildren ? "cursor: pointer" : undefined,
-    opacity: style.opacity < 1 ? style.opacity : undefined,
-  }, ...children);
+  return el(
+    "g",
+    {
+      "data-node-id": nodeId,
+      style: hasChildren ? "cursor: pointer" : undefined,
+      opacity: style.opacity < 1 ? style.opacity : undefined,
+    },
+    ...children,
+  );
 }
 
 function hasChildrenInAst(viewSlice: ViewSlice, nodeId: string): boolean {

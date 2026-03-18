@@ -65,9 +65,7 @@ export class InMemoryFileSystemProvider implements FileSystemProvider {
       }
     }
 
-    return Array.from(entries.values()).sort((a, b) =>
-      a.name.localeCompare(b.name)
-    );
+    return Array.from(entries.values()).sort((a, b) => a.name.localeCompare(b.name));
   }
 
   async exists(path: string): Promise<boolean> {

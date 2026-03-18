@@ -58,22 +58,11 @@ export {
 } from "./renderer/icon-manifest.js";
 
 // FileSystem abstractions
-export type {
-  FileSystemProvider,
-  DirEntry,
-  FsEvent,
-  Disposable,
-} from "./fs/types.js";
+export type { FileSystemProvider, DirEntry, FsEvent, Disposable } from "./fs/types.js";
 export { InMemoryFileSystemProvider } from "./fs/in-memory-provider.js";
 export { ImportResolver, type ResolvedProject } from "./fs/import-resolver.js";
 export type { Project } from "./fs/project.js";
-export {
-  normalizePath,
-  resolvePath,
-  dirname,
-  basename,
-  extname,
-} from "./fs/path-utils.js";
+export { normalizePath, resolvePath, dirname, basename, extname } from "./fs/path-utils.js";
 
 import type { ParseResult } from "./types/ast.js";
 import type { KrsFile } from "./types/ast.js";
@@ -99,7 +88,7 @@ export interface CompileResult {
 export function compile(
   krsSource: string,
   styleSource?: string,
-  viewPath?: ViewPath
+  viewPath?: ViewPath,
 ): CompileResult {
   const parseResult: ParseResult<KrsFile> = Parser.parse(krsSource);
   const diagnostics = [...parseResult.diagnostics];
@@ -127,25 +116,16 @@ export function compile(
 export async function compileProject(
   entryPath: string,
   fs: FileSystemProvider,
-  viewPath?: ViewPath
+  viewPath?: ViewPath,
 ): Promise<CompileResult> {
   const resolver = new ImportResolver(fs);
   const resolved = await resolver.resolve(entryPath);
   const diagnostics = [...resolved.diagnostics];
 
-  const viewSlice = extractView(
-    resolved.krsFile.systems,
-    viewPath ?? []
-  );
-  const styles = resolveStyles(
-    resolved.krsFile.systems,
-    resolved.styleSheets
-  );
+  const viewSlice = extractView(resolved.krsFile.systems, viewPath ?? []);
+  const styles = resolveStyles(resolved.krsFile.systems, resolved.styleSheets);
   const svg = render(viewSlice, styles);
-  const warnings = analyze(
-    resolved.krsFile,
-    resolved.styleSheets
-  );
+  const warnings = analyze(resolved.krsFile, resolved.styleSheets);
 
   return { svg, warnings, diagnostics };
 }

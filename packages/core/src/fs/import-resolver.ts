@@ -2,7 +2,7 @@ import type { FileSystemProvider } from "./types.js";
 import type { Diagnostic, KrsFile } from "../types/ast.js";
 import { Parser } from "../parser/parser.js";
 import { StyleParser } from "../parser/style-parser.js";
-import { resolvePath, dirname } from "./path-utils.js";
+import { resolvePath } from "./path-utils.js";
 import type { StyleSheet } from "../types/style.js";
 
 export interface ResolvedProject {
@@ -36,10 +36,7 @@ export class ImportResolver {
     this.diagnostics = [];
 
     const krsFile = await this.resolveKrs(entryPath);
-    const styleSheets = await this.resolveStyles(
-      entryPath,
-      krsFile.styleImports
-    );
+    const styleSheets = await this.resolveStyles(entryPath, krsFile.styleImports);
 
     return {
       krsFile,
@@ -99,9 +96,7 @@ export class ImportResolver {
         let found = false;
         for (const system of importedFile.systems) {
           // system 直下の子ノード（service, person）から id でマッチ
-          const matchingChildren = system.children.filter(
-            (child) => child.id === id
-          );
+          const matchingChildren = system.children.filter((child) => child.id === id);
           if (matchingChildren.length > 0) {
             // マージ先の system を探す（既にある system にマージ）
             // system が無ければ import 元の system 構造ごと持ってくる
@@ -124,9 +119,7 @@ export class ImportResolver {
           if (matchingNodes.length > 0) {
             found = true;
             // deploy ブロックにマージ
-            const existingDeploy = mergedFile.deploys.find(
-              (d) => d.label === deploy.label
-            );
+            const existingDeploy = mergedFile.deploys.find((d) => d.label === deploy.label);
             if (existingDeploy) {
               existingDeploy.nodes.push(...matchingNodes);
             } else {
@@ -162,16 +155,16 @@ export class ImportResolver {
   private mergeNodeIntoSystems(
     systems: import("../types/ast.js").KrsNode[],
     sourceSystem: import("../types/ast.js").KrsNode,
-    node: import("../types/ast.js").KrsNode
+    node: import("../types/ast.js").KrsNode,
   ): void {
     // 同名の system を探す
     const targetSystem = systems.find(
-      (s) => s.label === sourceSystem.label || s.id === sourceSystem.id
+      (s) => s.label === sourceSystem.label || s.id === sourceSystem.id,
     );
     if (targetSystem) {
       // 重複チェック
       const alreadyExists = targetSystem.children.some(
-        (c) => c.id === node.id && c.kind === node.kind
+        (c) => c.id === node.id && c.kind === node.kind,
       );
       if (!alreadyExists) {
         targetSystem.children.push(node);
@@ -180,7 +173,7 @@ export class ImportResolver {
       for (const edge of sourceSystem.edges) {
         if (edge.from === node.id || edge.to === node.id) {
           const edgeExists = targetSystem.edges.some(
-            (e) => e.from === edge.from && e.to === edge.to
+            (e) => e.from === edge.from && e.to === edge.to,
           );
           if (!edgeExists) {
             targetSystem.edges.push(edge);
@@ -195,10 +188,7 @@ export class ImportResolver {
    * @param basePath スタイル import を含む .krs ファイルのパス
    * @param styleImports @import で指定されたパスの配列
    */
-  private async resolveStyles(
-    basePath: string,
-    styleImports: string[]
-  ): Promise<StyleSheet[]> {
+  private async resolveStyles(basePath: string, styleImports: string[]): Promise<StyleSheet[]> {
     const sheets: StyleSheet[] = [];
 
     for (const importPath of styleImports) {
@@ -215,9 +205,7 @@ export class ImportResolver {
   /**
    * 単一のスタイルファイルを解決する（循環参照検出付き）。
    */
-  private async resolveStyleFile(
-    filePath: string
-  ): Promise<StyleSheet | null> {
+  private async resolveStyleFile(filePath: string): Promise<StyleSheet | null> {
     if (this.visitedStyles.has(filePath)) {
       this.diagnostics.push({
         severity: "warning",

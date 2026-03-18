@@ -19,10 +19,7 @@ function nodeId(node: KrsNode): string {
   return node.id ?? node.label;
 }
 
-export function extractView(
-  systems: KrsNode[],
-  path: ViewPath
-): ViewSlice {
+export function extractView(systems: KrsNode[], path: ViewPath): ViewSlice {
   const empty: ViewSlice = {
     containerNode: null,
     childNodes: [],
@@ -39,9 +36,7 @@ export function extractView(
   // System view (default)
   if (path.length === 0) {
     const childIds = new Set(system.children.map(nodeId));
-    const childEdges = system.edges.filter(
-      (e) => childIds.has(e.from) && childIds.has(e.to)
-    );
+    const childEdges = system.edges.filter((e) => childIds.has(e.from) && childIds.has(e.to));
     return {
       containerNode: system,
       childNodes: system.children,
@@ -66,9 +61,7 @@ export function extractView(
   // The last node in ancestorChain is the container; ancestors are everything before it
   const containerNode = ancestorChain.pop()!;
   const childIds = new Set(containerNode.children.map(nodeId));
-  const childEdges = containerNode.edges.filter(
-    (e) => childIds.has(e.from) && childIds.has(e.to)
-  );
+  const childEdges = containerNode.edges.filter((e) => childIds.has(e.from) && childIds.has(e.to));
 
   // Ghost persons: only for service view (path.length === 1)
   let ghostPersons: KrsNode[] = [];
@@ -80,7 +73,7 @@ export function extractView(
     const connectedEdges = system.edges.filter(
       (e) =>
         (persons.some((p) => nodeId(p) === e.from) && e.to === containerId) ||
-        (persons.some((p) => nodeId(p) === e.to) && e.from === containerId)
+        (persons.some((p) => nodeId(p) === e.to) && e.from === containerId),
     );
     const connectedPersonIds = new Set(
       connectedEdges.flatMap((e) => {
@@ -88,7 +81,7 @@ export function extractView(
         if (e.from !== containerId) ids.push(e.from);
         if (e.to !== containerId) ids.push(e.to);
         return ids;
-      })
+      }),
     );
     ghostPersons = persons.filter((p) => connectedPersonIds.has(nodeId(p)));
     ghostPersonEdges = connectedEdges;

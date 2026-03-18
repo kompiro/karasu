@@ -58,7 +58,7 @@ system "Test" {
   border-style: dashed;
   background-color: #1F2937;
 }
-      `
+      `,
     );
     expect(svg).toContain("stroke-dasharray");
     expect(svg).toContain("#1F2937");
@@ -75,7 +75,7 @@ system "Test" {
 person {
   shape: person;
 }
-      `
+      `,
     );
     expect(svg).toContain("<circle");
     expect(svg).toContain("<path");
@@ -95,7 +95,7 @@ system "Test" {
   badge-label: "非推奨";
   opacity: 0.6;
 }
-      `
+      `,
     );
     expect(svg).toContain("#EF4444");
     expect(svg).toContain("非推奨");

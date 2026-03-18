@@ -24,7 +24,7 @@ export function ProjectSelector({
       const project = projects.find((p) => p.id === e.target.value);
       if (project) onSelectProject(project);
     },
-    [projects, onSelectProject]
+    [projects, onSelectProject],
   );
 
   const handleCreate = useCallback(() => {
@@ -40,7 +40,7 @@ export function ProjectSelector({
       if (e.key === "Enter") handleCreate();
       if (e.key === "Escape") setIsCreating(false);
     },
-    [handleCreate]
+    [handleCreate],
   );
 
   const handleDelete = useCallback(() => {
@@ -77,10 +77,7 @@ export function ProjectSelector({
           <button onClick={handleCreate} className="project-selector-btn">
             OK
           </button>
-          <button
-            onClick={() => setIsCreating(false)}
-            className="project-selector-btn"
-          >
+          <button onClick={() => setIsCreating(false)} className="project-selector-btn">
             Cancel
           </button>
         </div>

@@ -1,5 +1,3 @@
 {
-  "icons": [
-    { "name": "database", "file": "database.svg" }
-  ]
+  "icons": [{ "name": "database", "file": "database.svg" }]
 }

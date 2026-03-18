@@ -1,5 +1,11 @@
 import { useState, useEffect, useRef } from "react";
-import { compile, type Warning, type Diagnostic, type ViewPath, resolveIconManifest } from "@karasu/core";
+import {
+  compile,
+  type Warning,
+  type Diagnostic,
+  type ViewPath,
+  resolveIconManifest,
+} from "@karasu/core";
 import iconManifest from "@karasu/core/icons/icons.json";
 import databaseSvg from "@karasu/core/icons/database.svg?raw";
 
@@ -19,7 +25,7 @@ const DEBOUNCE_MS = 300;
 export function useKarasu(
   krsSource: string,
   styleSource: string,
-  viewPath: ViewPath = []
+  viewPath: ViewPath = [],
 ): KarasuState {
   const [state, setState] = useState<KarasuState>(() => {
     const result = compile(krsSource, styleSource || undefined, viewPath);
@@ -58,9 +64,7 @@ export function useKarasu(
       } catch {
         setState((prev) => ({
           ...prev,
-          diagnostics: [
-            { severity: "error", message: "パース中にエラーが発生しました" },
-          ],
+          diagnostics: [{ severity: "error", message: "パース中にエラーが発生しました" }],
         }));
       }
     }, DEBOUNCE_MS);

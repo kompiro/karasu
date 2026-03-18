@@ -1,4 +1,4 @@
-import Editor, { type Monaco } from "@monaco-editor/react";
+import KarasuEditor, { type Monaco } from "@monaco-editor/react";
 import { useCallback, useRef } from "react";
 
 interface EditorPaneProps {
@@ -106,12 +106,12 @@ export function EditorPane({ value, onChange }: EditorPaneProps) {
     (newValue: string | undefined) => {
       onChange(newValue ?? "");
     },
-    [onChange]
+    [onChange],
   );
 
   return (
     <div className="editor-pane">
-      <Editor
+      <KarasuEditor
         height="100%"
         language={KRS_LANGUAGE_ID}
         theme="karasu-dark"

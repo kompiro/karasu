@@ -1,12 +1,6 @@
 import type { SourceRange } from "./tokens.js";
 
-export type LogicalNodeKind =
-  | "system"
-  | "service"
-  | "domain"
-  | "usecase"
-  | "resource"
-  | "person";
+export type LogicalNodeKind = "system" | "service" | "domain" | "usecase" | "resource" | "person";
 
 export type EdgeKind = "sync" | "async";
 

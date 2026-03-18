@@ -17,7 +17,7 @@ export function Breadcrumb({ items, onNavigate }: BreadcrumbProps) {
       const newPath = items.slice(1, index + 1).map((item) => item.id);
       onNavigate(newPath);
     },
-    [items, onNavigate]
+    [items, onNavigate],
   );
 
   if (items.length === 0) return null;
@@ -27,15 +27,12 @@ export function Breadcrumb({ items, onNavigate }: BreadcrumbProps) {
       {items.map((item, index) => {
         const isLast = index === items.length - 1;
         return (
-          <span key={index}>
+          <span key={item.id}>
             {index > 0 && <span className="breadcrumb-separator">&gt;</span>}
             {isLast ? (
               <span className="breadcrumb-current">{item.label}</span>
             ) : (
-              <button
-                className="breadcrumb-link"
-                onClick={() => handleClick(index)}
-              >
+              <button className="breadcrumb-link" onClick={() => handleClick(index)}>
                 {item.label}
               </button>
             )}

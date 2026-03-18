@@ -1,9 +1,5 @@
 import { TokenType, type Token } from "../types/tokens.js";
-import type {
-  StyleSheet,
-  StyleRule,
-  StyleSelector,
-} from "../types/style.js";
+import type { StyleSheet, StyleRule, StyleSelector } from "../types/style.js";
 import type { Diagnostic, ParseResult } from "../types/ast.js";
 import { StyleLexer } from "../lexer/style-lexer.js";
 
@@ -24,11 +20,13 @@ export class StyleParser {
   }
 
   private peek(): Token {
-    return this.tokens[this.pos] ?? {
-      type: TokenType.EOF,
-      value: "",
-      loc: { line: 0, column: 0, offset: 0 },
-    };
+    return (
+      this.tokens[this.pos] ?? {
+        type: TokenType.EOF,
+        value: "",
+        loc: { line: 0, column: 0, offset: 0 },
+      }
+    );
   }
 
   private advance(): Token {
@@ -73,10 +71,7 @@ export class StyleParser {
     this.expect(TokenType.LeftBrace);
 
     const properties: Record<string, string> = {};
-    while (
-      this.peek().type !== TokenType.RightBrace &&
-      this.peek().type !== TokenType.EOF
-    ) {
+    while (this.peek().type !== TokenType.RightBrace && this.peek().type !== TokenType.EOF) {
       this.parseDeclaration(properties);
     }
     this.expect(TokenType.RightBrace);
@@ -190,10 +185,7 @@ export class StyleParser {
         if (this.peek().type === TokenType.LeftParen) {
           this.advance(); // (
           let arg = "";
-          while (
-            this.peek().type !== TokenType.RightParen &&
-            this.peek().type !== TokenType.EOF
-          ) {
+          while (this.peek().type !== TokenType.RightParen && this.peek().type !== TokenType.EOF) {
             if (this.peek().type === TokenType.StringLiteral) {
               arg = this.advance().value;
             } else {

@@ -22,25 +22,12 @@ export function ProjectModeApp() {
   const pmRef = useRef(new ProjectManager(fs));
   const pm = pmRef.current;
 
-  const {
-    currentProject,
-    projects,
-    currentFilePath,
-    fileContent,
-    viewPath,
-    loading,
-  } = state;
+  const { currentProject, projects, currentFilePath, fileContent, viewPath, loading } = state;
 
   // エントリパスを計算（現在のプロジェクトの index.krs）
-  const entryPath = currentProject
-    ? `${currentProject.rootPath}/index.krs`
-    : null;
+  const entryPath = currentProject ? `${currentProject.rootPath}/index.krs` : null;
 
-  const { svg, warnings, diagnostics, recompile } = useKarasuProject(
-    entryPath,
-    fs,
-    viewPath
-  );
+  const { svg, warnings, diagnostics, recompile } = useKarasuProject(entryPath, fs, viewPath);
 
   // 初期化: プロジェクト一覧を読み込み
   useEffect(() => {
@@ -99,7 +86,7 @@ export function ProjectModeApp() {
         dispatch({ type: "SELECT_FILE", path, content: "" });
       }
     },
-    [fs, dispatch]
+    [fs, dispatch],
   );
 
   // エディタ変更時: ファイルに保存 + コンパイル
@@ -111,7 +98,7 @@ export function ProjectModeApp() {
         recompile();
       }
     },
-    [currentFilePath, fs, dispatch, recompile]
+    [currentFilePath, fs, dispatch, recompile],
   );
 
   // ドリルダウン
@@ -119,7 +106,7 @@ export function ProjectModeApp() {
     (newPath: string[]) => {
       dispatch({ type: "SET_VIEW_PATH", path: newPath });
     },
-    [dispatch]
+    [dispatch],
   );
 
   // プロジェクト操作
@@ -127,7 +114,7 @@ export function ProjectModeApp() {
     (project: Project) => {
       dispatch({ type: "SET_CURRENT_PROJECT", project });
     },
-    [dispatch]
+    [dispatch],
   );
 
   const handleCreateProject = useCallback(
@@ -136,7 +123,7 @@ export function ProjectModeApp() {
       dispatch({ type: "ADD_PROJECT", project });
       dispatch({ type: "SET_CURRENT_PROJECT", project });
     },
-    [pm, dispatch]
+    [pm, dispatch],
   );
 
   const handleDeleteProject = useCallback(
@@ -150,7 +137,7 @@ export function ProjectModeApp() {
         dispatch({ type: "SET_CURRENT_PROJECT", project: remaining[0] });
       }
     },
-    [pm, dispatch, projects]
+    [pm, dispatch, projects],
   );
 
   // ファイル操作コールバック
@@ -158,7 +145,7 @@ export function ProjectModeApp() {
     (path: string) => {
       handleSelectFile(path);
     },
-    [handleSelectFile]
+    [handleSelectFile],
   );
 
   const handleFileDeleted = useCallback(
@@ -167,7 +154,7 @@ export function ProjectModeApp() {
         dispatch({ type: "SELECT_FILE", path: "", content: "" });
       }
     },
-    [currentFilePath, dispatch]
+    [currentFilePath, dispatch],
   );
 
   const handleFileRenamed = useCallback(
@@ -176,7 +163,7 @@ export function ProjectModeApp() {
         handleSelectFile(newPath);
       }
     },
-    [currentFilePath, handleSelectFile]
+    [currentFilePath, handleSelectFile],
   );
 
   // ブレッドクラム
@@ -193,9 +180,7 @@ export function ProjectModeApp() {
 
       let current = system;
       for (const segment of viewPath) {
-        const child = current.children.find(
-          (c) => (c.id ?? c.label) === segment
-        );
+        const child = current.children.find((c) => (c.id ?? c.label) === segment);
         if (!child) break;
         items.push({ id: child.id ?? child.label, label: child.label });
         current = child;
@@ -235,9 +220,7 @@ export function ProjectModeApp() {
       <div className="preview-column">
         <Breadcrumb
           items={breadcrumbItems}
-          onNavigate={(path) =>
-            dispatch({ type: "SET_VIEW_PATH", path })
-          }
+          onNavigate={(path) => dispatch({ type: "SET_VIEW_PATH", path })}
         />
         <PreviewPane
           svg={svg}

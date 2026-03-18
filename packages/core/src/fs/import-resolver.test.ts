@@ -17,7 +17,7 @@ describe("ImportResolver", () => {
         "/project/index.krs",
         `system "Test" {
           service Svc "Service" "A service"
-        }`
+        }`,
       );
 
       const result = await resolver.resolve("/project/index.krs");
@@ -32,7 +32,7 @@ describe("ImportResolver", () => {
         expect.objectContaining({
           severity: "error",
           message: expect.stringContaining("File not found"),
-        })
+        }),
       );
     });
   });
@@ -44,22 +44,20 @@ describe("ImportResolver", () => {
         `@import "default.krs.style"
 system "Test" {
   service Svc "Service" "desc"
-}`
+}`,
       );
       await fs.writeFile(
         "/project/default.krs.style",
         `person {
   background-color: #1D4ED8;
   shape: person;
-}`
+}`,
       );
 
       const result = await resolver.resolve("/project/index.krs");
       expect(result.styleSheets).toHaveLength(1);
       expect(result.styleSheets[0].rules).toHaveLength(1);
-      expect(result.styleSheets[0].rules[0].properties["background-color"]).toBe(
-        "#1D4ED8"
-      );
+      expect(result.styleSheets[0].rules[0].properties["background-color"]).toBe("#1D4ED8");
     });
 
     it("returns error diagnostic for missing style file", async () => {
@@ -68,7 +66,7 @@ system "Test" {
         `@import "missing.krs.style"
 system "Test" {
   service Svc "Service" "desc"
-}`
+}`,
       );
 
       const result = await resolver.resolve("/project/index.krs");
@@ -76,7 +74,7 @@ system "Test" {
         expect.objectContaining({
           severity: "error",
           message: expect.stringContaining("Style file not found"),
-        })
+        }),
       );
     });
   });
@@ -88,13 +86,13 @@ system "Test" {
         `import { Payment } from "services/payment.krs"
 system "EC" {
   service ECommerce "EC" "Main service"
-}`
+}`,
       );
       await fs.writeFile(
         "/project/services/payment.krs",
         `system "EC" {
   service Payment "Payment" "Payment service" [external]
-}`
+}`,
       );
 
       const result = await resolver.resolve("/project/index.krs");
@@ -114,13 +112,13 @@ system "EC" {
         `import { NonExistent } from "other.krs"
 system "Test" {
   service Svc "Service" "desc"
-}`
+}`,
       );
       await fs.writeFile(
         "/project/other.krs",
         `system "Test" {
   service Actual "Actual" "desc"
-}`
+}`,
       );
 
       const result = await resolver.resolve("/project/index.krs");
@@ -128,7 +126,7 @@ system "Test" {
         expect.objectContaining({
           severity: "error",
           message: expect.stringContaining('"NonExistent" not found'),
-        })
+        }),
       );
     });
 
@@ -138,7 +136,7 @@ system "Test" {
         `import { X } from "missing.krs"
 system "Test" {
   service Svc "Service" "desc"
-}`
+}`,
       );
 
       const result = await resolver.resolve("/project/index.krs");
@@ -146,7 +144,7 @@ system "Test" {
         expect.objectContaining({
           severity: "error",
           message: expect.stringContaining("File not found"),
-        })
+        }),
       );
     });
   });
@@ -158,28 +156,26 @@ system "Test" {
         `import { Svc2, Svc3 } from "b.krs"
 system "Chain" {
   service Svc1 "Service1" "first"
-}`
+}`,
       );
       await fs.writeFile(
         "/project/b.krs",
         `import { Svc3 } from "c.krs"
 system "Chain" {
   service Svc2 "Service2" "second"
-}`
+}`,
       );
       await fs.writeFile(
         "/project/c.krs",
         `system "Chain" {
   service Svc3 "Service3" "third"
-}`
+}`,
       );
 
       const result = await resolver.resolve("/project/a.krs");
       expect(result.diagnostics.filter((d) => d.severity === "error")).toHaveLength(0);
 
-      const chainSystem = result.krsFile.systems.find(
-        (s) => s.label === "Chain"
-      );
+      const chainSystem = result.krsFile.systems.find((s) => s.label === "Chain");
       expect(chainSystem).toBeDefined();
       const childIds = chainSystem!.children.map((c) => c.id);
       expect(childIds).toContain("Svc1");
@@ -195,14 +191,14 @@ system "Chain" {
         `import { Y } from "b.krs"
 system "Circular" {
   service X "X" "desc"
-}`
+}`,
       );
       await fs.writeFile(
         "/project/b.krs",
         `import { X } from "a.krs"
 system "Circular" {
   service Y "Y" "desc"
-}`
+}`,
       );
 
       const result = await resolver.resolve("/project/a.krs");
@@ -210,7 +206,7 @@ system "Circular" {
         expect.objectContaining({
           severity: "warning",
           message: expect.stringContaining("Circular import"),
-        })
+        }),
       );
     });
 
@@ -223,12 +219,9 @@ system "Circular" {
 @import "a.krs.style"
 system "Test" {
   service Svc "Service" "desc"
-}`
+}`,
       );
-      await fs.writeFile(
-        "/project/a.krs.style",
-        `person { background-color: #000; }`
-      );
+      await fs.writeFile("/project/a.krs.style", `person { background-color: #000; }`);
 
       const result = await resolver.resolve("/project/index.krs");
       // Second import of same file should be detected as circular
@@ -236,7 +229,7 @@ system "Test" {
         expect.objectContaining({
           severity: "warning",
           message: expect.stringContaining("Circular style import"),
-        })
+        }),
       );
     });
   });
@@ -249,13 +242,13 @@ system "Test" {
 system "EC" {
   service ECommerce "EC" "main"
   ECommerce -> Payment "pay"
-}`
+}`,
       );
       await fs.writeFile(
         "/project/payment.krs",
         `system "EC" {
   service Payment "Payment" "external" [external]
-}`
+}`,
       );
 
       const result = await resolver.resolve("/project/index.krs");
@@ -268,7 +261,7 @@ system "EC" {
 
       // The edge ECommerce -> Payment should exist in the original system
       expect(ecSystem!.edges).toContainEqual(
-        expect.objectContaining({ from: "ECommerce", to: "Payment" })
+        expect.objectContaining({ from: "ECommerce", to: "Payment" }),
       );
     });
   });

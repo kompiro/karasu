@@ -148,11 +148,13 @@ export function layout(viewSlice: ViewSlice): LayoutResult {
   }
 
   // Build containers (innermost first: focused container, then ancestors)
-  const hasContainer = viewSlice.ancestorChain.length > 0 || viewSlice.containerNode?.kind !== "system";
+  const hasContainer =
+    viewSlice.ancestorChain.length > 0 || viewSlice.containerNode?.kind !== "system";
 
   // Calculate the offset needed for nesting
   const containerCount = viewSlice.ancestorChain.length + (hasContainer ? 1 : 0);
-  const totalNestOffset = containerCount * GHOST_MARGIN + (hasContainer ? CONTAINER_LABEL_HEIGHT : 0);
+  const totalNestOffset =
+    containerCount * GHOST_MARGIN + (hasContainer ? CONTAINER_LABEL_HEIGHT : 0);
 
   // Offset all child nodes for nesting
   if (totalNestOffset > 0) {
@@ -172,7 +174,8 @@ export function layout(viewSlice: ViewSlice): LayoutResult {
     const containerX = totalNestOffset - CONTAINER_PADDING;
     const containerY = totalNestOffset - CONTAINER_LABEL_HEIGHT - CONTAINER_PADDING / 2;
     const containerW = childMaxWidth - totalNestOffset + CONTAINER_PADDING * 2;
-    const containerH = childMaxHeight - totalNestOffset + CONTAINER_LABEL_HEIGHT + CONTAINER_PADDING;
+    const containerH =
+      childMaxHeight - totalNestOffset + CONTAINER_LABEL_HEIGHT + CONTAINER_PADDING;
     containers.push({
       id: viewSlice.containerNode.id ?? viewSlice.containerNode.label,
       label: viewSlice.containerNode.label,
@@ -386,7 +389,7 @@ function buildContainersForEmpty(viewSlice: ViewSlice): ContainerRect[] {
 function computeEdgePoints(
   edge: KrsEdge,
   layoutNodes: Map<string, LayoutNode>,
-  layers: Map<string, number>
+  layers: Map<string, number>,
 ): LayoutEdge | null {
   const fromNode = layoutNodes.get(edge.from);
   const toNode = layoutNodes.get(edge.to);
@@ -432,7 +435,7 @@ function computeEdgePoints(
 function assignLayers(
   nodeIds: string[],
   adj: Map<string, string[]>,
-  inDegree: Map<string, number>
+  inDegree: Map<string, number>,
 ): Map<string, number> {
   const layers = new Map<string, number>();
   const queue: string[] = [];

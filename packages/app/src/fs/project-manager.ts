@@ -111,10 +111,7 @@ export class ProjectManager {
     // プロジェクトディレクトリとデフォルトファイルを作成
     await this.fs.mkdir(project.rootPath);
     await this.fs.writeFile(`${project.rootPath}/index.krs`, DEFAULT_KRS);
-    await this.fs.writeFile(
-      `${project.rootPath}/default.krs.style`,
-      DEFAULT_STYLE
-    );
+    await this.fs.writeFile(`${project.rootPath}/default.krs.style`, DEFAULT_STYLE);
 
     // メタデータ更新
     const projects = await this.listProjects();

@@ -20,7 +20,7 @@ export class OpfsFileSystemProvider implements FileSystemProvider {
    */
   private async traverse(
     path: string,
-    options?: { create?: boolean }
+    options?: { create?: boolean },
   ): Promise<{ dir: FileSystemDirectoryHandle; name: string }> {
     const segments = path.split("/").filter((s) => s !== "");
     if (segments.length === 0) {
@@ -119,10 +119,10 @@ export class OpfsFileSystemProvider implements FileSystemProvider {
 
   async mkdir(path: string): Promise<void> {
     const segments = path.split("/").filter((s) => s !== "");
-    let dir = await this.getRoot();
+    let _dir = await this.getRoot();
 
     for (const seg of segments) {
-      dir = await dir.getDirectoryHandle(seg, { create: true });
+      _dir = await _dir.getDirectoryHandle(seg, { create: true });
     }
   }
 }

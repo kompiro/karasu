@@ -1,11 +1,8 @@
-import type { KrsNode, KrsFile, DeployBlock } from "../types/ast.js";
+import type { KrsNode, KrsFile } from "../types/ast.js";
 import type { StyleSheet } from "../types/style.js";
 import type { Warning } from "../types/warnings.js";
 
-export function analyze(
-  file: KrsFile,
-  sheets: StyleSheet[]
-): Warning[] {
+export function analyze(file: KrsFile, sheets: StyleSheet[]): Warning[] {
   const warnings: Warning[] = [];
 
   warnings.push(...detectDomainDispersal(file));
@@ -47,10 +44,7 @@ function detectDomainDispersal(file: KrsFile): Warning[] {
       warnings.push({
         kind: "domain-dispersal",
         message: `domain "${domainName}" が複数の service に分散しています`,
-        details: [
-          ...Array.from(services),
-          "ドメインの凝集性を確認してください",
-        ],
+        details: [...Array.from(services), "ドメインの凝集性を確認してください"],
       });
     }
   }
@@ -80,9 +74,7 @@ function detectStyleConflicts(sheets: StyleSheet[]): Warning[] {
       warnings.push({
         kind: "style-conflict",
         message: `セレクタ "${selector}" が複数のスタイルファイルで定義されています`,
-        details: Array.from(sheetIndices).map(
-          (i) => `スタイルファイル ${i + 1}`
-        ),
+        details: Array.from(sheetIndices).map((i) => `スタイルファイル ${i + 1}`),
       });
     }
   }
@@ -117,9 +109,12 @@ function detectMissingProperties(file: KrsFile): Warning[] {
   return warnings;
 }
 
-function serializeSelector(
-  selector: { nodeType?: string; tags: string[]; annotations: string[]; id?: string }
-): string {
+function serializeSelector(selector: {
+  nodeType?: string;
+  tags: string[];
+  annotations: string[];
+  id?: string;
+}): string {
   const parts: string[] = [];
   if (selector.id) parts.push(`#${selector.id}`);
   if (selector.nodeType) parts.push(selector.nodeType);

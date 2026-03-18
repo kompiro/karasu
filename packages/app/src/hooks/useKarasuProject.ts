@@ -22,7 +22,7 @@ const DEBOUNCE_MS = 300;
 export function useKarasuProject(
   entryPath: string | null,
   fs: FileSystemProvider | null,
-  viewPath: ViewPath = []
+  viewPath: ViewPath = [],
 ): KarasuProjectState & { recompile: () => void } {
   const [state, setState] = useState<KarasuProjectState>({
     svg: "",
@@ -48,9 +48,7 @@ export function useKarasuProject(
     timerRef.current = setTimeout(async () => {
       try {
         const result = await compileProject(entryPath, fs, viewPath);
-        const hasErrors = result.diagnostics.some(
-          (d) => d.severity === "error"
-        );
+        const hasErrors = result.diagnostics.some((d) => d.severity === "error");
 
         if (hasErrors) {
           setState({

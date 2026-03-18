@@ -28,16 +28,14 @@ export function WarningPanel({ warnings }: WarningPanelProps) {
       </div>
       {!collapsed && (
         <ul className="warning-list">
-          {warnings.map((w, i) => (
-            <li key={i} className="warning-item">
-              <span className="warning-icon warning">
-                {WARNING_ICONS[w.kind] ?? "\u26A0"}
-              </span>
+          {warnings.map((w) => (
+            <li key={`${w.kind}:${w.message}`} className="warning-item">
+              <span className="warning-icon warning">{WARNING_ICONS[w.kind] ?? "\u26A0"}</span>
               {w.message}
               {w.details.length > 0 && (
                 <div className="warning-details">
-                  {w.details.map((d, j) => (
-                    <div key={j}>{d}</div>
+                  {w.details.map((d) => (
+                    <div key={d}>{d}</div>
                   ))}
                 </div>
               )}

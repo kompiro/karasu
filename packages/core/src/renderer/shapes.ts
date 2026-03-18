@@ -53,12 +53,20 @@ const person: ShapeRenderFn = (ctx) => {
 
   return [
     el("circle", {
-      cx, cy: headCy, r: headR, fill, stroke,
-      "stroke-width": sw, "stroke-dasharray": dash || undefined,
+      cx,
+      cy: headCy,
+      r: headR,
+      fill,
+      stroke,
+      "stroke-width": sw,
+      "stroke-dasharray": dash || undefined,
     }),
     el("path", {
-      d: bodyPath, fill, stroke,
-      "stroke-width": sw, "stroke-dasharray": dash || undefined,
+      d: bodyPath,
+      fill,
+      stroke,
+      "stroke-width": sw,
+      "stroke-dasharray": dash || undefined,
     }),
   ].join("\n");
 };
@@ -71,11 +79,20 @@ const cylinder: ShapeRenderFn = (ctx) => {
   return [
     el("path", {
       d: `M${x} ${y + ry} L${x} ${y + ry + bodyH} A${w / 2} ${ry} 0 0 0 ${x + w} ${y + ry + bodyH} L${x + w} ${y + ry} A${w / 2} ${ry} 0 0 1 ${x} ${y + ry}`,
-      fill, stroke, "stroke-width": sw, "stroke-dasharray": dash || undefined,
+      fill,
+      stroke,
+      "stroke-width": sw,
+      "stroke-dasharray": dash || undefined,
     }),
     el("ellipse", {
-      cx: x + w / 2, cy: y + ry, rx: w / 2, ry,
-      fill, stroke, "stroke-width": sw, "stroke-dasharray": dash || undefined,
+      cx: x + w / 2,
+      cy: y + ry,
+      rx: w / 2,
+      ry,
+      fill,
+      stroke,
+      "stroke-width": sw,
+      "stroke-dasharray": dash || undefined,
     }),
   ].join("\n");
 };
@@ -88,11 +105,20 @@ const queue: ShapeRenderFn = (ctx) => {
   return [
     el("path", {
       d: `M${x + rx} ${y} L${x + rx + bodyW} ${y} A${rx} ${h / 2} 0 0 1 ${x + rx + bodyW} ${y + h} L${x + rx} ${y + h} A${rx} ${h / 2} 0 0 0 ${x + rx} ${y}`,
-      fill, stroke, "stroke-width": sw, "stroke-dasharray": dash || undefined,
+      fill,
+      stroke,
+      "stroke-width": sw,
+      "stroke-dasharray": dash || undefined,
     }),
     el("ellipse", {
-      cx: x + rx + bodyW, cy: y + h / 2, rx, ry: h / 2,
-      fill, stroke, "stroke-width": sw, "stroke-dasharray": dash || undefined,
+      cx: x + rx + bodyW,
+      cy: y + h / 2,
+      rx,
+      ry: h / 2,
+      fill,
+      stroke,
+      "stroke-width": sw,
+      "stroke-dasharray": dash || undefined,
     }),
   ].join("\n");
 };
@@ -110,8 +136,11 @@ const hexagon: ShapeRenderFn = (ctx) => {
   ].join(" ");
 
   return el("polygon", {
-    points, fill, stroke,
-    "stroke-width": sw, "stroke-dasharray": dash || undefined,
+    points,
+    fill,
+    stroke,
+    "stroke-width": sw,
+    "stroke-dasharray": dash || undefined,
   });
 };
 
@@ -132,8 +161,11 @@ const cloud: ShapeRenderFn = (ctx) => {
   ].join(" ");
 
   return el("path", {
-    d: path, fill, stroke,
-    "stroke-width": sw, "stroke-dasharray": dash || undefined,
+    d: path,
+    fill,
+    stroke,
+    "stroke-width": sw,
+    "stroke-dasharray": dash || undefined,
   });
 };
 
@@ -162,7 +194,7 @@ export function renderShape(
   y: number,
   width: number,
   height: number,
-  style: ResolvedNodeStyle
+  style: ResolvedNodeStyle,
 ): string {
   const shapeName = typeof style.shape === "string" ? style.shape : style.shape.url;
   const render = getShape(shapeName) ?? getShape("box")!;
@@ -176,11 +208,7 @@ export function renderShape(
     stroke: style.borderColor,
     strokeWidth: style.borderWidth,
     strokeDasharray:
-      style.borderStyle === "dashed"
-        ? "8 4"
-        : style.borderStyle === "dotted"
-          ? "2 2"
-          : "",
+      style.borderStyle === "dashed" ? "8 4" : style.borderStyle === "dotted" ? "2 2" : "",
     borderRadius: style.borderRadius,
   };
 
