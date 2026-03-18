@@ -15,7 +15,10 @@
       "Bash(npm ls:*)",
       "Bash(find:*)",
       "Bash(npm run:*)",
-      "Bash(grep:*)"
+      "Bash(grep:*)",
+      "Bash(node -e \":*)",
+      "WebSearch",
+      "Bash(npm test:*)"
     ]
   },
   "defaultMode": "acceptEdits"
