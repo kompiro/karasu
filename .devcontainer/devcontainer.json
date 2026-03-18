@@ -28,7 +28,8 @@
         "dbaeumer.vscode-eslint",
         "esbenp.prettier-vscode",
         "vitest.explorer",
-        "ms-vscode.vscode-typescript-next"
+        "ms-vscode.vscode-typescript-next",
+        "ms-azuretools.vscode-containers"
       ],
       "settings": {
         "js/ts.tsdk.path": "node_modules/typescript/lib",
