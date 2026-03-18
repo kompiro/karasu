@@ -57,16 +57,36 @@ export {
   type IconManifestEntry,
 } from "./renderer/icon-manifest.js";
 
+// FileSystem abstractions
+export type {
+  FileSystemProvider,
+  DirEntry,
+  FsEvent,
+  Disposable,
+} from "./fs/types.js";
+export { InMemoryFileSystemProvider } from "./fs/in-memory-provider.js";
+export { ImportResolver, type ResolvedProject } from "./fs/import-resolver.js";
+export type { Project } from "./fs/project.js";
+export {
+  normalizePath,
+  resolvePath,
+  dirname,
+  basename,
+  extname,
+} from "./fs/path-utils.js";
+
 import type { ParseResult } from "./types/ast.js";
 import type { KrsFile } from "./types/ast.js";
 import type { StyleSheet } from "./types/style.js";
 import type { Warning } from "./types/warnings.js";
+import type { FileSystemProvider } from "./fs/types.js";
 import { Parser } from "./parser/parser.js";
 import { StyleParser } from "./parser/style-parser.js";
 import { resolveStyles } from "./resolver/style-resolver.js";
 import { analyze } from "./resolver/warnings.js";
 import { render } from "./renderer/svg-renderer.js";
 import { extractView, type ViewPath } from "./view/view-extract.js";
+import { ImportResolver } from "./fs/import-resolver.js";
 import "./renderer/shapes.js"; // ensure built-in shapes are registered
 import type { Diagnostic } from "./types/ast.js";
 
@@ -95,6 +115,37 @@ export function compile(
   const styles = resolveStyles(parseResult.value.systems, sheets);
   const svg = render(viewSlice, styles);
   const warnings = analyze(parseResult.value, sheets);
+
+  return { svg, warnings, diagnostics };
+}
+
+/**
+ * FileSystemProvider 経由でプロジェクトをコンパイルする。
+ * エントリ .krs ファイルから @import / import を再帰的に解決し、
+ * マージ済みの AST をレンダリングする。
+ */
+export async function compileProject(
+  entryPath: string,
+  fs: FileSystemProvider,
+  viewPath?: ViewPath
+): Promise<CompileResult> {
+  const resolver = new ImportResolver(fs);
+  const resolved = await resolver.resolve(entryPath);
+  const diagnostics = [...resolved.diagnostics];
+
+  const viewSlice = extractView(
+    resolved.krsFile.systems,
+    viewPath ?? []
+  );
+  const styles = resolveStyles(
+    resolved.krsFile.systems,
+    resolved.styleSheets
+  );
+  const svg = render(viewSlice, styles);
+  const warnings = analyze(
+    resolved.krsFile,
+    resolved.styleSheets
+  );
 
   return { svg, warnings, diagnostics };
 }
