@@ -5,18 +5,18 @@ const META_PATH = "/meta/projects.json";
 const DEFAULT_KRS = `@import "default.krs.style"
 
 system "New Project" {
-  person User "User" "A user of the system"
+  user User "User" "A user of the system"
   service App "Application" "Main application"
   User -> App "uses"
 }
 `;
 
-const DEFAULT_STYLE = `person {
+const DEFAULT_STYLE = `user {
   background-color: #1D4ED8;
   color: #FFFFFF;
   border-color: #1E40AF;
   border-width: 2;
-  shape: person;
+  shape: user;
   font-weight: bold;
   font-size: 13;
 }

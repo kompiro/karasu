@@ -34,7 +34,7 @@ system "Test" {
   it("renders multiple nodes with edges", () => {
     const svg = renderFromSource(`
 system "Test" {
-  person Customer "顧客"
+  user Customer "顧客"
   service Shop "ショップ"
   Customer -> Shop "購入"
 }
@@ -64,16 +64,16 @@ system "Test" {
     expect(svg).toContain("#1F2937");
   });
 
-  it("renders person shape", () => {
+  it("renders user shape", () => {
     const svg = renderFromSource(
       `
 system "Test" {
-  person Customer "顧客"
+  user Customer "顧客"
 }
       `,
       `
-person {
-  shape: person;
+user {
+  shape: user;
 }
       `,
     );

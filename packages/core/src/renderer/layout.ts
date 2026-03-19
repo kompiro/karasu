@@ -54,7 +54,7 @@ export function layout(viewSlice: ViewSlice): LayoutResult {
   const allNodes = viewSlice.childNodes;
   const allEdges = viewSlice.childEdges;
 
-  if (allNodes.length === 0 && viewSlice.ghostPersons.length === 0) {
+  if (allNodes.length === 0 && viewSlice.ghostUsers.length === 0) {
     // Empty container: still produce container rects
     const containers = buildContainersForEmpty(viewSlice);
     const outermost = containers.length > 0 ? containers[0] : null;
@@ -221,36 +221,36 @@ export function layout(viewSlice: ViewSlice): LayoutResult {
   // Reverse so outermost is first
   containers.reverse();
 
-  // Ghost persons: position to the left of the main container
-  const ghostPersonNodes: LayoutNode[] = [];
-  if (viewSlice.ghostPersons.length > 0) {
+  // Ghost users: position to the left of the main container
+  const ghostUserNodes: LayoutNode[] = [];
+  if (viewSlice.ghostUsers.length > 0) {
     const mainContainer = containers.find((c) => !c.ghost) ?? containers[0];
-    const personX = (mainContainer?.x ?? 0) - 20;
-    let personY = (mainContainer?.y ?? 0) + CONTAINER_LABEL_HEIGHT + NODE_GAP;
+    const userX = (mainContainer?.x ?? 0) - 20;
+    let userY = (mainContainer?.y ?? 0) + CONTAINER_LABEL_HEIGHT + NODE_GAP;
 
-    for (const person of viewSlice.ghostPersons) {
-      const dims = measureNode(person);
-      const pid = person.id ?? person.label;
+    for (const userNode of viewSlice.ghostUsers) {
+      const dims = measureNode(userNode);
+      const uid = userNode.id ?? userNode.label;
       const gNode: LayoutNode = {
-        id: pid,
-        label: person.label,
-        description: person.description,
-        x: personX - dims.width,
-        y: personY,
+        id: uid,
+        label: userNode.label,
+        description: userNode.description,
+        x: userX - dims.width,
+        y: userY,
         width: dims.width,
         height: dims.height,
         ghost: true,
       };
-      layoutNodes.set(pid, gNode);
-      ghostPersonNodes.push(gNode);
-      personY += dims.height + NODE_GAP / 2;
+      layoutNodes.set(uid, gNode);
+      ghostUserNodes.push(gNode);
+      userY += dims.height + NODE_GAP / 2;
     }
   }
 
-  // Expand outermost container to include ghost persons
-  if (ghostPersonNodes.length > 0 && containers.length > 0) {
-    const minX = Math.min(...ghostPersonNodes.map((n) => n.x)) - GHOST_MARGIN;
-    const maxY = Math.max(...ghostPersonNodes.map((n) => n.y + n.height)) + GHOST_MARGIN;
+  // Expand outermost container to include ghost users
+  if (ghostUserNodes.length > 0 && containers.length > 0) {
+    const minX = Math.min(...ghostUserNodes.map((n) => n.x)) - GHOST_MARGIN;
+    const maxY = Math.max(...ghostUserNodes.map((n) => n.y + n.height)) + GHOST_MARGIN;
     const outermost = containers[0];
     if (minX < outermost.x) {
       const dx = outermost.x - minX;
@@ -269,23 +269,23 @@ export function layout(viewSlice: ViewSlice): LayoutResult {
     if (le) layoutEdges.push(le);
   }
 
-  // Ghost person edges
-  for (const edge of viewSlice.ghostPersonEdges) {
+  // Ghost user edges
+  for (const edge of viewSlice.ghostUserEdges) {
     const containerId = viewSlice.containerNode
       ? (viewSlice.containerNode.id ?? viewSlice.containerNode.label)
       : "";
-    // Ghost person edges connect to the container box, not a laid-out node
+    // Ghost user edges connect to the container box, not a laid-out node
     const mainContainer = containers.find((c) => !c.ghost);
-    const personNode = layoutNodes.get(edge.from === containerId ? edge.to : edge.from);
-    if (!personNode || !mainContainer) continue;
+    const ghostNode = layoutNodes.get(edge.from === containerId ? edge.to : edge.from);
+    if (!ghostNode || !mainContainer) continue;
 
     const fromPoint = {
-      x: personNode.x + personNode.width,
-      y: personNode.y + personNode.height / 2,
+      x: ghostNode.x + ghostNode.width,
+      y: ghostNode.y + ghostNode.height / 2,
     };
     const toPoint = {
       x: mainContainer.x,
-      y: personNode.y + personNode.height / 2,
+      y: ghostNode.y + ghostNode.height / 2,
     };
 
     layoutEdges.push({

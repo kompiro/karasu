@@ -14,7 +14,7 @@ export enum TokenType {
   Domain = "Domain",
   Usecase = "Usecase",
   Resource = "Resource",
-  Person = "Person",
+  User = "User",
 
   // Keywords (physical)
   Deploy = "Deploy",
@@ -33,6 +33,7 @@ export enum TokenType {
   Schedule = "Schedule",
   Image = "Image",
   Type = "Type",
+  Role = "Role",
 
   // Imports
   AtImport = "AtImport",

@@ -24,7 +24,7 @@ describe("ProjectManager", () => {
       expect(indexKrs).toContain("system");
 
       const style = await fs.readFile(`${project.rootPath}/default.krs.style`);
-      expect(style).toContain("person");
+      expect(style).toContain("user");
     });
 
     it("adds project to metadata", async () => {

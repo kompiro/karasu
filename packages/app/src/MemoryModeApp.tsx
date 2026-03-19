@@ -9,9 +9,9 @@ import { Parser } from "@karasu/core";
 const SAMPLE_KRS = `@import "default.krs.style"
 
 system "ECプラットフォーム" {
-  person Customer "顧客" "商品を購入する一般ユーザー"
-  person Seller "出品者" "商品を出品するショップオーナー"
-  person Admin "管理者" "システムを運用する担当者"
+  user Customer "顧客" "商品を購入する一般ユーザー" [human]
+  user Seller "出品者" "商品を出品するショップオーナー" [human]
+  user Admin "管理者" "システムを運用する担当者" [human]
 
   service ECommerce "ECサイト" "商品の閲覧・購入・出品を提供する" {
     domain Catalog "商品カタログ" {
@@ -82,7 +82,7 @@ system "ECプラットフォーム" {
 
 const SAMPLE_STYLE = `/* karasu default theme */
 
-person {
+user {
   background-color: #1D4ED8;
   color: #DBEAFE;
   border-color: #1E40AF;
@@ -90,7 +90,7 @@ person {
   border-radius: 8px;
   font-size: 13px;
   font-weight: bold;
-  shape: person;
+  shape: user;
 }
 
 service {

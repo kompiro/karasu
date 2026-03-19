@@ -9,8 +9,8 @@ function parseSystem(krs: string): KrsNode[] {
 
 const FULL_KRS = `
 system "ECプラットフォーム" {
-  person Customer "顧客" "商品を購入する一般ユーザー"
-  person Admin "管理者" "システムを運用する担当者"
+  user Customer "顧客" "商品を購入する一般ユーザー"
+  user Admin "管理者" "システムを運用する担当者"
 
   service ECommerce "ECサイト" "商品管理と注文処理" {
     domain Order "受注" {
@@ -46,7 +46,7 @@ describe("extractView", () => {
         "Payment",
       ]);
       expect(view.ancestorChain).toHaveLength(0);
-      expect(view.ghostPersons).toHaveLength(0);
+      expect(view.ghostUsers).toHaveLength(0);
     });
 
     it("includes edges between direct children", () => {
@@ -80,20 +80,20 @@ describe("extractView", () => {
       expect(view.ancestorChain[0].kind).toBe("system");
     });
 
-    it("includes ghost persons connected to the service", () => {
+    it("includes ghost users connected to the service", () => {
       const systems = parseSystem(FULL_KRS);
       const view = extractView(systems, ["ECommerce"]);
 
-      expect(view.ghostPersons.map((n) => n.id ?? n.label)).toEqual(["Customer", "Admin"]);
-      expect(view.ghostPersonEdges).toHaveLength(2);
+      expect(view.ghostUsers.map((n) => n.id ?? n.label)).toEqual(["Customer", "Admin"]);
+      expect(view.ghostUserEdges).toHaveLength(2);
     });
 
-    it("excludes unconnected persons", () => {
+    it("excludes unconnected users", () => {
       const systems = parseSystem(FULL_KRS);
       const view = extractView(systems, ["Payment"]);
 
-      // Payment has no person connections
-      expect(view.ghostPersons).toHaveLength(0);
+      // Payment has no user connections
+      expect(view.ghostUsers).toHaveLength(0);
       expect(view.childNodes).toHaveLength(0); // Payment has no children
     });
   });
@@ -116,11 +116,11 @@ describe("extractView", () => {
       expect(view.ancestorChain[1].kind).toBe("service");
     });
 
-    it("does not include ghost persons at domain level", () => {
+    it("does not include ghost users at domain level", () => {
       const systems = parseSystem(FULL_KRS);
       const view = extractView(systems, ["ECommerce", "Order"]);
 
-      expect(view.ghostPersons).toHaveLength(0);
+      expect(view.ghostUsers).toHaveLength(0);
     });
   });
 

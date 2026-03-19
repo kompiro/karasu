@@ -30,6 +30,9 @@ const KIND_STYLE_OVERRIDES: Partial<Record<string, Partial<ResolvedNodeStyle>>> 
     backgroundColor: "#1E3A5F",
     borderColor: "#3B82F6",
   },
+  user: {
+    shape: "user",
+  },
 };
 
 const DEFAULT_EDGE_STYLE: ResolvedEdgeStyle = {
@@ -39,7 +42,7 @@ const DEFAULT_EDGE_STYLE: ResolvedEdgeStyle = {
   strokeStyle: "solid",
 };
 
-const SHAPE_KEYWORDS = new Set<string>(["box", "person", "cylinder", "queue", "hexagon", "cloud"]);
+const SHAPE_KEYWORDS = new Set<string>(["box", "user", "cylinder", "queue", "hexagon", "cloud"]);
 
 export function resolveStyles(systems: KrsNode[], sheets: StyleSheet[]): ResolvedStyles {
   const allRules = sheets.flatMap((s) => s.rules);

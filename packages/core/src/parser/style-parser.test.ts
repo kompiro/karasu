@@ -119,11 +119,11 @@ service, domain {
 
   it("parses shape property", () => {
     const result = StyleParser.parse(`
-person {
-  shape: person;
+user {
+  shape: user;
 }
     `);
-    expect(result.value.rules[0].properties["shape"]).toBe("person");
+    expect(result.value.rules[0].properties["shape"]).toBe("user");
   });
 
   it("parses shape url value", () => {

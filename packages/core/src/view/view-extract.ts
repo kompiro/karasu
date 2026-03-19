@@ -11,8 +11,8 @@ export interface ViewSlice {
   childNodes: KrsNode[];
   childEdges: KrsEdge[];
   ancestorChain: KrsNode[];
-  ghostPersons: KrsNode[];
-  ghostPersonEdges: KrsEdge[];
+  ghostUsers: KrsNode[];
+  ghostUserEdges: KrsEdge[];
 }
 
 function nodeId(node: KrsNode): string {
@@ -25,8 +25,8 @@ export function extractView(systems: KrsNode[], path: ViewPath): ViewSlice {
     childNodes: [],
     childEdges: [],
     ancestorChain: [],
-    ghostPersons: [],
-    ghostPersonEdges: [],
+    ghostUsers: [],
+    ghostUserEdges: [],
   };
 
   if (systems.length === 0) return empty;
@@ -42,8 +42,8 @@ export function extractView(systems: KrsNode[], path: ViewPath): ViewSlice {
       childNodes: system.children,
       childEdges,
       ancestorChain: [],
-      ghostPersons: [],
-      ghostPersonEdges: [],
+      ghostUsers: [],
+      ghostUserEdges: [],
     };
   }
 
@@ -63,19 +63,19 @@ export function extractView(systems: KrsNode[], path: ViewPath): ViewSlice {
   const childIds = new Set(containerNode.children.map(nodeId));
   const childEdges = containerNode.edges.filter((e) => childIds.has(e.from) && childIds.has(e.to));
 
-  // Ghost persons: only for service view (path.length === 1)
-  let ghostPersons: KrsNode[] = [];
-  let ghostPersonEdges: KrsEdge[] = [];
+  // Ghost users: only for service view (path.length === 1)
+  let ghostUsers: KrsNode[] = [];
+  let ghostUserEdges: KrsEdge[] = [];
 
   if (path.length === 1) {
     const containerId = nodeId(containerNode);
-    const persons = system.children.filter((c) => c.kind === "person");
+    const users = system.children.filter((c) => c.kind === "user");
     const connectedEdges = system.edges.filter(
       (e) =>
-        (persons.some((p) => nodeId(p) === e.from) && e.to === containerId) ||
-        (persons.some((p) => nodeId(p) === e.to) && e.from === containerId),
+        (users.some((p) => nodeId(p) === e.from) && e.to === containerId) ||
+        (users.some((p) => nodeId(p) === e.to) && e.from === containerId),
     );
-    const connectedPersonIds = new Set(
+    const connectedUserIds = new Set(
       connectedEdges.flatMap((e) => {
         const ids: string[] = [];
         if (e.from !== containerId) ids.push(e.from);
@@ -83,8 +83,8 @@ export function extractView(systems: KrsNode[], path: ViewPath): ViewSlice {
         return ids;
       }),
     );
-    ghostPersons = persons.filter((p) => connectedPersonIds.has(nodeId(p)));
-    ghostPersonEdges = connectedEdges;
+    ghostUsers = users.filter((p) => connectedUserIds.has(nodeId(p)));
+    ghostUserEdges = connectedEdges;
   }
 
   return {
@@ -92,7 +92,7 @@ export function extractView(systems: KrsNode[], path: ViewPath): ViewSlice {
     childNodes: containerNode.children,
     childEdges,
     ancestorChain,
-    ghostPersons,
-    ghostPersonEdges,
+    ghostUsers,
+    ghostUserEdges,
   };
 }

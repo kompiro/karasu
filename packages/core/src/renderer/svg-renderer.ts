@@ -106,7 +106,7 @@ export function render(viewSlice: ViewSlice, styles: ResolvedStyles): string {
   }
   parts.push(el("g", { class: "edges" }, ...normalEdgeParts));
 
-  // Nodes (ghost persons first, then normal children)
+  // Nodes (ghost users first, then normal children)
   const ghostNodeParts: string[] = [];
   const normalNodeParts: string[] = [];
   for (const [nodeId, layoutNode] of layoutResult.nodes) {

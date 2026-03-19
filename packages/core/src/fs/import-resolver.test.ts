@@ -48,9 +48,9 @@ system "Test" {
       );
       await fs.writeFile(
         "/project/default.krs.style",
-        `person {
+        `user {
   background-color: #1D4ED8;
-  shape: person;
+  shape: user;
 }`,
       );
 
@@ -221,7 +221,7 @@ system "Test" {
   service Svc "Service" "desc"
 }`,
       );
-      await fs.writeFile("/project/a.krs.style", `person { background-color: #000; }`);
+      await fs.writeFile("/project/a.krs.style", `user { background-color: #000; }`);
 
       const result = await resolver.resolve("/project/index.krs");
       // Second import of same file should be detected as circular

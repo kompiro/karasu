@@ -32,14 +32,14 @@ describe("Lexer", () => {
   });
 
   it("tokenizes keywords", () => {
-    const types = tokenTypes("system service domain usecase resource person");
+    const types = tokenTypes("system service domain usecase resource user");
     expect(types).toEqual([
       TokenType.System,
       TokenType.Service,
       TokenType.Domain,
       TokenType.Usecase,
       TokenType.Resource,
-      TokenType.Person,
+      TokenType.User,
       TokenType.EOF,
     ]);
   });
@@ -136,7 +136,7 @@ describe("Lexer", () => {
   it("tokenizes a complete system block", () => {
     const source = `
 system "ECプラットフォーム" {
-  person Customer "顧客" "商品を購入する一般ユーザー"
+  user Customer "顧客" "商品を購入する一般ユーザー"
   service ECommerce "ECサイト" [external] @deprecated
   Customer -> ECommerce "商品を購入する"
   Customer --> ECommerce "非同期処理"
@@ -146,7 +146,7 @@ system "ECプラットフォーム" {
       TokenType.System,
       TokenType.StringLiteral,
       TokenType.LeftBrace,
-      TokenType.Person,
+      TokenType.User,
       TokenType.Identifier, // Customer
       TokenType.StringLiteral,
       TokenType.StringLiteral,
