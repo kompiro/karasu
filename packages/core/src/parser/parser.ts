@@ -34,7 +34,14 @@ const DEPLOY_KEYWORDS = new Set<string>([
   "artifact",
 ]);
 
-const PROPERTY_KEYWORDS = new Set<string>(["runtime", "realizes", "schedule", "image", "type", "role"]);
+const PROPERTY_KEYWORDS = new Set<string>([
+  "runtime",
+  "realizes",
+  "schedule",
+  "image",
+  "type",
+  "role",
+]);
 
 export class Parser {
   private tokens: Token[];
