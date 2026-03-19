@@ -10,12 +10,16 @@
 | `[external]` | システム境界の外側 | 枠線を破線、色をグレー系に |
 | `[async]` | 非同期通信（エッジ用） | 破線矢印 |
 | `[sync]` | 同期通信（エッジ用） | 実線矢印（デフォルト） |
+| `[human]` | 人間の利用者 | user ノードにのみ使用。デフォルトスタイルへの影響なし |
+| `[ai]` | AIエージェント | user ノードにのみ使用。デフォルトスタイルへの影響なし |
 
 ### 記述例
 
 ```
 service Payment "決済サービス" [external]
 ECommerce --> Inventory "在庫を同期する" [async]
+user Customer "顧客" [human]
+user AIAgent "注文自動化エージェント" [ai]
 ```
 
 ---

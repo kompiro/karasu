@@ -62,7 +62,7 @@ system → service → domain → usecase → resource
 ### 必須（フェーズ1）
 
 1. **テキストベースのモデル記述**
-   - `.krs` 構文による論理構造の記述（system / service / domain / usecase / resource / person）
+   - `.krs` 構文による論理構造の記述（system / service / domain / usecase / resource / user）
    - エッジ宣言（同期 `->` / 非同期 `-->`）
    - タグ（`[external]`, `[async]` 等）とアノテーション（`@new`, `@deprecated` 等）
 
