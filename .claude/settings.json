@@ -21,13 +21,15 @@
       "Bash(npm test:*)",
       "Bash(wc -l /workspaces/karasu/packages/core/src/**/*.ts /workspaces/karasu/packages/app/src/**/*.ts*)",
       "Bash(npx oxlint:*)",
-      "Bash(npx oxfmt:*)"
+      "Bash(npx oxfmt:*)",
+      "Bash(ls /workspaces/karasu/.claude/skills/*/)",
+      "Bash(gh:*)"
     ],
     "additionalDirectories": [
-      "/workspaces/karasu"
+      "/workspaces/karasu",
+      "/workspaces/karasu/.claude"
     ]
   },
-  "defaultMode": "acceptEdits",
   "hooks": {
     "Stop": [
       {
@@ -50,5 +52,6 @@
         ]
       }
     ]
-  }
+  },
+  "defaultMode": "acceptEdits"
 }
