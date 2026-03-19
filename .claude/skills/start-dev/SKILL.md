@@ -1,9 +1,10 @@
 ---
-name: feature-development
+name: start-dev
 description: >
   機能ブランチ開発ワークフロー: Issue作成 → worktree作成 → 計画 → 実装 → コミット → PR作成。
   セッション内で worktree を管理する。
-  トリガー: "feature開発", "feature workflow", "新機能開発", "PRワークフロー"
+  Trigger when the user says: "feature開発", "開発開始", "新機能開発", "PRワークフロー",
+  "start dev", "start feature", "new feature", or similar phrases requesting to start development.
 ---
 
 # Feature Development Workflow
