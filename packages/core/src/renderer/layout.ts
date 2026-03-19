@@ -5,6 +5,7 @@ export interface LayoutNode {
   id: string;
   label: string;
   description?: string;
+  role?: string;
   x: number;
   y: number;
   width: number;
@@ -118,6 +119,7 @@ export function layout(viewSlice: ViewSlice): LayoutResult {
         id: nid,
         label: krsNode.label,
         description: krsNode.description,
+        role: krsNode.role,
         x: xOffset,
         y,
         width: dims.width,
@@ -235,6 +237,7 @@ export function layout(viewSlice: ViewSlice): LayoutResult {
         id: uid,
         label: userNode.label,
         description: userNode.description,
+        role: userNode.role,
         x: userX - dims.width,
         y: userY,
         width: dims.width,
@@ -477,10 +480,14 @@ function measureNode(node: KrsNode): { width: number; height: number } {
   const descWidth = node.description
     ? estimateTextWidth(node.description, CHAR_WIDTH * DESCRIPTION_FONT_RATIO)
     : 0;
+  const roleWidth = node.role
+    ? estimateTextWidth(node.role, CHAR_WIDTH * DESCRIPTION_FONT_RATIO)
+    : 0;
 
-  const width = Math.max(labelWidth, descWidth, 80) + NODE_PADDING_X * 2;
+  const width = Math.max(labelWidth, descWidth, roleWidth, 80) + NODE_PADDING_X * 2;
   let height = NODE_PADDING_Y * 2 + LINE_HEIGHT;
   if (node.description) height += LINE_HEIGHT;
+  if (node.role) height += LINE_HEIGHT;
 
   return { width, height };
 }

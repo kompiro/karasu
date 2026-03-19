@@ -250,8 +250,9 @@ function renderNode(
     }
   } else {
     const textX = node.x + node.width / 2;
+    const textLines = 1 + (node.description ? 1 : 0) + (node.role ? 1 : 0);
     let textY = node.y + node.height / 2;
-    if (node.description) textY -= 8;
+    if (textLines > 1) textY -= ((textLines - 1) * (fontSize + 4)) / 2;
 
     children.push(
       el(
@@ -270,13 +271,15 @@ function renderNode(
       ),
     );
 
+    let nextY = textY + fontSize + 4;
+
     if (node.description) {
       children.push(
         el(
           "text",
           {
             x: textX,
-            y: textY + fontSize + 4,
+            y: nextY,
             "text-anchor": "middle",
             "dominant-baseline": "central",
             fill: textColor,
@@ -285,6 +288,27 @@ function renderNode(
             opacity: 0.7,
           },
           escapeXml(node.description),
+        ),
+      );
+      nextY += fontSize + 4;
+    }
+
+    if (node.role) {
+      children.push(
+        el(
+          "text",
+          {
+            x: textX,
+            y: nextY,
+            "text-anchor": "middle",
+            "dominant-baseline": "central",
+            fill: textColor,
+            "font-size": `${Math.round(fontSize * 0.75)}px`,
+            "font-family": style.fontFamily,
+            "font-style": "italic",
+            opacity: 0.6,
+          },
+          escapeXml(node.role),
         ),
       );
     }

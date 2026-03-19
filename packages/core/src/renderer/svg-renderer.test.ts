@@ -131,4 +131,18 @@ system "ECプラットフォーム" {
     `);
     expect(svg).toContain("ECプラットフォーム");
   });
+
+  it("renders role text on user node", () => {
+    const svg = renderFromSource(`
+system "Test" {
+  user Admin "管理者" "システムを運用する" [human] {
+    role "システム管理者"
+  }
+}
+    `);
+    expect(svg).toContain("管理者");
+    expect(svg).toContain("システムを運用する");
+    expect(svg).toContain("システム管理者");
+    expect(svg).toContain('font-style="italic"');
+  });
 });
