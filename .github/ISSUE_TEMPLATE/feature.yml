@@ -1,0 +1,30 @@
+name: 機能リクエスト
+description: 新機能の提案または docs/features/ のドキュメントに基づく実装リクエスト
+labels: ["enhancement"]
+body:
+  - type: input
+    id: feature-doc
+    attributes:
+      label: 関連する機能ドキュメント
+      description: "docs/features/ 内のファイルパス（あれば）"
+      placeholder: "docs/features/planned/drilldown.md"
+    validations:
+      required: false
+
+  - type: textarea
+    id: summary
+    attributes:
+      label: 概要
+      description: "実装したい機能の概要"
+    validations:
+      required: true
+
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: 受け入れ条件
+      description: "完了の基準（チェックリスト形式推奨）"
+      value: |
+        - [ ]
+    validations:
+      required: false
