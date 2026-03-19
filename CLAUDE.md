@@ -65,3 +65,26 @@ karasu/
 1. 左ペイン：Monaco Editor（`.krs` の編集）
 2. 右ペイン：SVGプレビュー（リアルタイム更新）
 3. 警告パネル（スタイル衝突・ドメイン分散などの表示）
+
+---
+
+## 開発ワークフロー
+
+### ブランチ戦略
+
+- `main` ブランチへの直接コミットは避け、PR 経由でマージする
+- 機能開発はセッション内で `git worktree add` により worktree を作成して行う
+- ブランチ命名規則: `feat/`, `fix/`, `docs/`, `chore/`, `refactor/` + kebab-case
+
+### PR ワークフロー
+
+1. `docs/features/` で機能を定義する
+2. GitHub Issue に転記する（`gh issue create`）
+3. `git worktree add` で worktree を作成し、その中で開発する
+4. Plan モードで実装計画を作成し、レビューを受ける
+5. 実装 → `/commit` → PR 作成（`Closes #N` で Issue 紐付け）
+6. CI（test, lint, format, typecheck, build）が通過することを確認する
+7. 手動検証チェックリストを実施する
+8. レビュー → マージ → `git worktree remove` でクリーンアップ
+
+詳細な手順は `.claude/workflows/feature-development.md` を参照。
