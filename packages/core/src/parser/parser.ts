@@ -20,7 +20,7 @@ const LOGICAL_KEYWORDS = new Set<string>([
   "domain",
   "usecase",
   "resource",
-  "person",
+  "user",
 ]);
 
 const DEPLOY_KEYWORDS = new Set<string>([
@@ -34,7 +34,14 @@ const DEPLOY_KEYWORDS = new Set<string>([
   "artifact",
 ]);
 
-const PROPERTY_KEYWORDS = new Set<string>(["runtime", "realizes", "schedule", "image", "type"]);
+const PROPERTY_KEYWORDS = new Set<string>([
+  "runtime",
+  "realizes",
+  "schedule",
+  "image",
+  "type",
+  "role",
+]);
 
 export class Parser {
   private tokens: Token[];
@@ -238,7 +245,7 @@ export class Parser {
       type === TokenType.Domain ||
       type === TokenType.Usecase ||
       type === TokenType.Resource ||
-      type === TokenType.Person
+      type === TokenType.User
     );
   }
 
@@ -249,6 +256,7 @@ export class Parser {
     let id: string | undefined;
     let label = "";
     let description: string | undefined;
+    let role: string | undefined;
 
     // After keyword, we may have: Identifier StringLiteral or just StringLiteral
     if (this.peek().type === TokenType.Identifier) {
@@ -278,6 +286,15 @@ export class Parser {
 
     if (this.peek().type === TokenType.LeftBrace) {
       this.advance();
+      // user ノードの場合、role プロパティを先にパース
+      if (kind === "user" && this.peek().type === TokenType.Role) {
+        this.advance(); // consume 'role'
+        if (this.peek().type === TokenType.StringLiteral) {
+          role = this.advance().value;
+        } else {
+          this.error('Expected string literal after "role"');
+        }
+      }
       this.parseBlockContents(children, edges);
       end = this.expect(TokenType.RightBrace);
     }
@@ -287,6 +304,7 @@ export class Parser {
       id,
       label,
       description,
+      role,
       tags,
       annotations,
       children,

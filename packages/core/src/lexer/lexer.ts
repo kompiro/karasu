@@ -6,7 +6,7 @@ const KEYWORDS: Record<string, TokenType> = {
   domain: TokenType.Domain,
   usecase: TokenType.Usecase,
   resource: TokenType.Resource,
-  person: TokenType.Person,
+  user: TokenType.User,
   deploy: TokenType.Deploy,
   war: TokenType.War,
   jar: TokenType.Jar,
@@ -21,6 +21,7 @@ const KEYWORDS: Record<string, TokenType> = {
   schedule: TokenType.Schedule,
   image: TokenType.Image,
   type: TokenType.Type,
+  role: TokenType.Role,
   import: TokenType.Import,
   from: TokenType.From,
 };

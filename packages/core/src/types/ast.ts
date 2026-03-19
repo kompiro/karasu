@@ -1,6 +1,6 @@
 import type { SourceRange } from "./tokens.js";
 
-export type LogicalNodeKind = "system" | "service" | "domain" | "usecase" | "resource" | "person";
+export type LogicalNodeKind = "system" | "service" | "domain" | "usecase" | "resource" | "user";
 
 export type EdgeKind = "sync" | "async";
 
@@ -19,6 +19,7 @@ export interface KrsNode {
   id?: string;
   label: string;
   description?: string;
+  role?: string;
   tags: string[];
   annotations: string[];
   children: KrsNode[];

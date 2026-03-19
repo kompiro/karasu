@@ -54,7 +54,7 @@ stroke-width:     1.5px;
 font-size:        11px;
 
 /* karasu固有プロパティ（CSS非対応のため例外） */
-shape:            box;           /* box | person | cylinder | queue | hexagon | cloud | url("...") */
+shape:            box;           /* box | user | cylinder | queue | hexagon | cloud | url("...") */
 
 /* アノテーション用プロパティ（バッジ表示） */
 badge-color:      #EF4444;
@@ -69,7 +69,7 @@ badge-label:      "非推奨";
 | キーワード | 形状 | 主な用途 |
 |-----------|------|---------|
 | `box` | 角丸長方形 | service, domain（デフォルト） |
-| `person` | 人型（頭+体） | person |
+| `user` | 人型（頭+体） | user |
 | `cylinder` | 円柱 | db系 |
 | `queue` | 横向き円柱 | queue系 |
 | `hexagon` | 六角形 | マイクロサービス |
@@ -126,7 +126,7 @@ function specificity(selector) {
 
 ```css
 /* ── 種別セレクタ ── */
-person {
+user {
   background-color: #1D4ED8;
   color:            #DBEAFE;
   border-color:     #1E40AF;
@@ -134,7 +134,7 @@ person {
   border-radius:    8px;
   font-size:        13px;
   font-weight:      bold;
-  shape:            person;
+  shape:            user;
 }
 
 service {
@@ -205,7 +205,7 @@ impl {
 }
 
 /* ── 複合セレクタ ── */
-person[external] {
+user[external] {
   color: #9CA3AF;
 }
 

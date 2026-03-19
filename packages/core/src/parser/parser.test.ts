@@ -37,18 +37,18 @@ describe("Parser", () => {
   it("parses nodes with id, label, and description", () => {
     const result = Parser.parse(`
 system "Test" {
-  person Customer "顧客" "商品を購入する一般ユーザー"
+  user Customer "顧客" "商品を購入する一般ユーザー"
   service ECommerce "ECサイト" "商品管理と注文処理"
 }
     `);
     const sys = result.value.systems[0];
     expect(sys.children).toHaveLength(2);
 
-    const person = sys.children[0];
-    expect(person.kind).toBe("person");
-    expect(person.id).toBe("Customer");
-    expect(person.label).toBe("顧客");
-    expect(person.description).toBe("商品を購入する一般ユーザー");
+    const userNode = sys.children[0];
+    expect(userNode.kind).toBe("user");
+    expect(userNode.id).toBe("Customer");
+    expect(userNode.label).toBe("顧客");
+    expect(userNode.description).toBe("商品を購入する一般ユーザー");
 
     const service = sys.children[1];
     expect(service.kind).toBe("service");
@@ -91,7 +91,7 @@ system "Test" {
   it("parses sync edges", () => {
     const result = Parser.parse(`
 system "Test" {
-  person Customer "顧客"
+  user Customer "顧客"
   service Shop "ショップ"
   Customer -> Shop "商品を購入する"
 }
@@ -190,7 +190,7 @@ deploy "本番環境" {
 @import "default.krs.style"
 
 system "ECプラットフォーム" {
-  person Customer "顧客" "商品を購入する一般ユーザー"
+  user Customer "顧客" "商品を購入する一般ユーザー"
   service ECommerce "ECサイト" "商品管理と注文処理"
   service Payment "決済サービス" [external]
   Customer -> ECommerce "商品を購入する"
@@ -212,6 +212,51 @@ deploy "本番環境" {
     const sys = result.value.systems[0];
     expect(sys.children).toHaveLength(3);
     expect(sys.edges).toHaveLength(2);
+  });
+
+  it("parses user with role property", () => {
+    const result = Parser.parse(`
+system "Test" {
+  user Admin "管理者" [human] {
+    role "システム管理者"
+  }
+}
+    `);
+    expect(result.diagnostics).toHaveLength(0);
+    const user = result.value.systems[0].children[0];
+    expect(user.kind).toBe("user");
+    expect(user.id).toBe("Admin");
+    expect(user.label).toBe("管理者");
+    expect(user.role).toBe("システム管理者");
+    expect(user.tags).toEqual(["human"]);
+  });
+
+  it("parses user with [ai] tag", () => {
+    const result = Parser.parse(`
+system "Test" {
+  user AIAgent "注文自動化エージェント" [ai] {
+    role "注文処理担当"
+  }
+}
+    `);
+    expect(result.diagnostics).toHaveLength(0);
+    const user = result.value.systems[0].children[0];
+    expect(user.kind).toBe("user");
+    expect(user.tags).toEqual(["ai"]);
+    expect(user.role).toBe("注文処理担当");
+  });
+
+  it("parses user without role (simple form)", () => {
+    const result = Parser.parse(`
+system "Test" {
+  user Admin "管理者" [human]
+}
+    `);
+    expect(result.diagnostics).toHaveLength(0);
+    const user = result.value.systems[0].children[0];
+    expect(user.kind).toBe("user");
+    expect(user.role).toBeUndefined();
+    expect(user.tags).toEqual(["human"]);
   });
 
   it("reports errors for unexpected tokens", () => {

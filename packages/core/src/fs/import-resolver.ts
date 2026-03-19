@@ -95,7 +95,7 @@ export class ImportResolver {
       for (const id of nodeImport.ids) {
         let found = false;
         for (const system of importedFile.systems) {
-          // system 直下の子ノード（service, person）から id でマッチ
+          // system 直下の子ノード（service, user）から id でマッチ
           const matchingChildren = system.children.filter((child) => child.id === id);
           if (matchingChildren.length > 0) {
             // マージ先の system を探す（既にある system にマージ）

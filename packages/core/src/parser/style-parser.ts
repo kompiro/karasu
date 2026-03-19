@@ -109,7 +109,7 @@ export class StyleParser {
       return selector;
     }
 
-    // Type selector (identifier like "service", "edge", "person")
+    // Type selector (identifier like "service", "edge", "user")
     if (
       this.peek().type === TokenType.Identifier &&
       this.peek().value !== "{" &&

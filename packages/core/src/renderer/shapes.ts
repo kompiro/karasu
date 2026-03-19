@@ -25,7 +25,7 @@ const box: ShapeRenderFn = (ctx) =>
     "stroke-dasharray": ctx.strokeDasharray || undefined,
   });
 
-const person: ShapeRenderFn = (ctx) => {
+const user: ShapeRenderFn = (ctx) => {
   const { x, y, width: w, height: h, fill, stroke, strokeWidth: sw, strokeDasharray: dash } = ctx;
   const cx = x + w / 2;
   const headR = Math.min(w, h) * 0.13;
@@ -175,7 +175,7 @@ const cloud: ShapeRenderFn = (ctx) => {
 
 export function registerBuiltinShapes(): void {
   registerShape("box", box);
-  registerShape("person", person);
+  registerShape("user", user);
   registerShape("cylinder", cylinder);
   registerShape("queue", queue);
   registerShape("hexagon", hexagon);
