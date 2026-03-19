@@ -23,7 +23,8 @@
       "Bash(npx oxlint:*)",
       "Bash(npx oxfmt:*)",
       "Bash(ls /workspaces/karasu/.claude/skills/*/)",
-      "Bash(gh:*)"
+      "Bash(gh:*)",
+      "Bash(npm ci:*)"
     ],
     "additionalDirectories": [
       "/workspaces/karasu",
