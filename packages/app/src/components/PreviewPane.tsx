@@ -1,4 +1,10 @@
-import { useRef, useState, useCallback, type WheelEvent, type MouseEvent } from "react";
+import {
+  useRef,
+  useState,
+  useCallback,
+  type WheelEvent,
+  type MouseEvent,
+} from "react";
 import type { Diagnostic } from "@karasu/core";
 
 interface PreviewPaneProps {
@@ -10,7 +16,12 @@ interface PreviewPaneProps {
 
 const CLICK_THRESHOLD = 3;
 
-export function PreviewPane({ svg, diagnostics, viewPath, onDrillDown }: PreviewPaneProps) {
+export function PreviewPane({
+  svg,
+  diagnostics,
+  viewPath,
+  onDrillDown,
+}: PreviewPaneProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [transform, setTransform] = useState({ scale: 1, x: 0, y: 0 });
   const [isDragging, setIsDragging] = useState(false);
@@ -32,7 +43,10 @@ export function PreviewPane({ svg, diagnostics, viewPath, onDrillDown }: Preview
     (e: MouseEvent) => {
       if (e.button !== 0) return;
       setIsDragging(true);
-      dragStart.current = { x: e.clientX - transform.x, y: e.clientY - transform.y };
+      dragStart.current = {
+        x: e.clientX - transform.x,
+        y: e.clientY - transform.y,
+      };
       mouseDownPos.current = { x: e.clientX, y: e.clientY };
     },
     [transform.x, transform.y],

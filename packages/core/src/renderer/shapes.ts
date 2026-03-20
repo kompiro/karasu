@@ -26,7 +26,16 @@ const box: ShapeRenderFn = (ctx) =>
   });
 
 const user: ShapeRenderFn = (ctx) => {
-  const { x, y, width: w, height: h, fill, stroke, strokeWidth: sw, strokeDasharray: dash } = ctx;
+  const {
+    x,
+    y,
+    width: w,
+    height: h,
+    fill,
+    stroke,
+    strokeWidth: sw,
+    strokeDasharray: dash,
+  } = ctx;
   const cx = x + w / 2;
   const headR = Math.min(w, h) * 0.13;
   const headCy = y + headR + 2;
@@ -72,7 +81,16 @@ const user: ShapeRenderFn = (ctx) => {
 };
 
 const cylinder: ShapeRenderFn = (ctx) => {
-  const { x, y, width: w, height: h, fill, stroke, strokeWidth: sw, strokeDasharray: dash } = ctx;
+  const {
+    x,
+    y,
+    width: w,
+    height: h,
+    fill,
+    stroke,
+    strokeWidth: sw,
+    strokeDasharray: dash,
+  } = ctx;
   const ry = Math.min(h * 0.12, 15);
   const bodyH = h - ry * 2;
 
@@ -98,7 +116,16 @@ const cylinder: ShapeRenderFn = (ctx) => {
 };
 
 const queue: ShapeRenderFn = (ctx) => {
-  const { x, y, width: w, height: h, fill, stroke, strokeWidth: sw, strokeDasharray: dash } = ctx;
+  const {
+    x,
+    y,
+    width: w,
+    height: h,
+    fill,
+    stroke,
+    strokeWidth: sw,
+    strokeDasharray: dash,
+  } = ctx;
   const rx = Math.min(w * 0.1, 15);
   const bodyW = w - rx * 2;
 
@@ -124,7 +151,16 @@ const queue: ShapeRenderFn = (ctx) => {
 };
 
 const hexagon: ShapeRenderFn = (ctx) => {
-  const { x, y, width: w, height: h, fill, stroke, strokeWidth: sw, strokeDasharray: dash } = ctx;
+  const {
+    x,
+    y,
+    width: w,
+    height: h,
+    fill,
+    stroke,
+    strokeWidth: sw,
+    strokeDasharray: dash,
+  } = ctx;
   const inset = w * 0.2;
   const points = [
     `${x + inset},${y}`,
@@ -145,7 +181,16 @@ const hexagon: ShapeRenderFn = (ctx) => {
 };
 
 const cloud: ShapeRenderFn = (ctx) => {
-  const { x, y, width: w, height: h, fill, stroke, strokeWidth: sw, strokeDasharray: dash } = ctx;
+  const {
+    x,
+    y,
+    width: w,
+    height: h,
+    fill,
+    stroke,
+    strokeWidth: sw,
+    strokeDasharray: dash,
+  } = ctx;
   const cx = x + w / 2;
   const cy = y + h / 2;
   const rx = w / 2;
@@ -196,7 +241,8 @@ export function renderShape(
   height: number,
   style: ResolvedNodeStyle,
 ): string {
-  const shapeName = typeof style.shape === "string" ? style.shape : style.shape.url;
+  const shapeName =
+    typeof style.shape === "string" ? style.shape : style.shape.url;
   const render = getShape(shapeName) ?? getShape("box")!;
 
   const ctx: ShapeContext = {
@@ -208,7 +254,11 @@ export function renderShape(
     stroke: style.borderColor,
     strokeWidth: style.borderWidth,
     strokeDasharray:
-      style.borderStyle === "dashed" ? "8 4" : style.borderStyle === "dotted" ? "2 2" : "",
+      style.borderStyle === "dashed"
+        ? "8 4"
+        : style.borderStyle === "dotted"
+          ? "2 2"
+          : "",
     borderRadius: style.borderRadius,
   };
 

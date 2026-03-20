@@ -81,13 +81,16 @@ export function appReducer(state: AppState, action: AppAction): AppState {
       return {
         ...state,
         projects: state.projects.filter((p) => p.id !== action.id),
-        currentProject: state.currentProject?.id === action.id ? null : state.currentProject,
+        currentProject:
+          state.currentProject?.id === action.id ? null : state.currentProject,
       };
 
     case "RENAME_PROJECT":
       return {
         ...state,
-        projects: state.projects.map((p) => (p.id === action.id ? { ...p, name: action.name } : p)),
+        projects: state.projects.map((p) =>
+          p.id === action.id ? { ...p, name: action.name } : p,
+        ),
         currentProject:
           state.currentProject?.id === action.id
             ? { ...state.currentProject, name: action.name }

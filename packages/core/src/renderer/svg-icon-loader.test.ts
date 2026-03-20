@@ -1,5 +1,9 @@
 import { describe, it, expect, beforeEach } from "vitest";
-import { parseSvgIcon, loadAndRegisterIcon, loadAndRegisterIcons } from "./svg-icon-loader.js";
+import {
+  parseSvgIcon,
+  loadAndRegisterIcon,
+  loadAndRegisterIcons,
+} from "./svg-icon-loader.js";
 import { getShape, getIconDef, clearRegistry } from "./shape-registry.js";
 import { registerBuiltinShapes } from "./shapes.js";
 
