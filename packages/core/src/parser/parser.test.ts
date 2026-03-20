@@ -259,6 +259,150 @@ system "Test" {
     expect(user.tags).toEqual(["human"]);
   });
 
+  it("parses service with team and links", () => {
+    const result = Parser.parse(`
+system "Test" {
+  service ECommerce "ECサイト" "商品管理と注文処理" {
+    team "EC開発チーム"
+    link "設計Wiki" "https://wiki.example.com/ec"
+    link "画面設計" "https://figma.com/ec-design"
+  }
+}
+    `);
+    expect(result.diagnostics).toHaveLength(0);
+    const service = result.value.systems[0].children[0];
+    expect(service.kind).toBe("service");
+    expect(service.team).toBe("EC開発チーム");
+    expect(service.links).toHaveLength(2);
+    expect(service.links[0]).toEqual({ label: "設計Wiki", url: "https://wiki.example.com/ec" });
+    expect(service.links[1]).toEqual({ label: "画面設計", url: "https://figma.com/ec-design" });
+  });
+
+  it("parses domain with team", () => {
+    const result = Parser.parse(`
+system "Test" {
+  service ECommerce "EC" {
+    domain Order "受注" {
+      team "受注チーム"
+    }
+  }
+}
+    `);
+    expect(result.diagnostics).toHaveLength(0);
+    const domain = result.value.systems[0].children[0].children[0];
+    expect(domain.kind).toBe("domain");
+    expect(domain.team).toBe("受注チーム");
+  });
+
+  it("parses user with role and link", () => {
+    const result = Parser.parse(`
+system "Test" {
+  user Customer "顧客" [human] {
+    role "商品を購入する一般ユーザー"
+    link "ペルソナ定義" "https://wiki.example.com/persona"
+  }
+}
+    `);
+    expect(result.diagnostics).toHaveLength(0);
+    const user = result.value.systems[0].children[0];
+    expect(user.role).toBe("商品を購入する一般ユーザー");
+    expect(user.links).toHaveLength(1);
+    expect(user.links[0]).toEqual({ label: "ペルソナ定義", url: "https://wiki.example.com/persona" });
+  });
+
+  it("parses resource with link", () => {
+    const result = Parser.parse(`
+system "Test" {
+  service S "S" {
+    domain D "D" {
+      usecase U "U" {
+        resource OrderTable "注文テーブル" {
+          link "テーブル定義" "https://wiki.example.com/order-table"
+        }
+      }
+    }
+  }
+}
+    `);
+    expect(result.diagnostics).toHaveLength(0);
+    const resource = result.value.systems[0].children[0].children[0].children[0].children[0];
+    expect(resource.kind).toBe("resource");
+    expect(resource.links).toHaveLength(1);
+    expect(resource.links[0].label).toBe("テーブル定義");
+  });
+
+  it("returns empty links array when no links specified", () => {
+    const result = Parser.parse(`
+system "Test" {
+  service S "S"
+}
+    `);
+    const service = result.value.systems[0].children[0];
+    expect(service.links).toEqual([]);
+  });
+
+  it("warns when team is used on user node", () => {
+    const result = Parser.parse(`
+system "Test" {
+  user Admin "管理者" {
+    team "チーム名"
+  }
+}
+    `);
+    expect(result.diagnostics).toHaveLength(1);
+    expect(result.diagnostics[0].severity).toBe("warning");
+    expect(result.diagnostics[0].message).toContain("team");
+    expect(result.diagnostics[0].message).toContain("user");
+  });
+
+  it("errors when link has missing URL", () => {
+    const result = Parser.parse(`
+system "Test" {
+  service S "S" {
+    link "ラベルのみ"
+  }
+}
+    `);
+    expect(result.diagnostics.length).toBeGreaterThan(0);
+    expect(result.diagnostics.some((d) => d.severity === "error")).toBe(true);
+  });
+
+  it("parses properties in any order", () => {
+    const result = Parser.parse(`
+system "Test" {
+  service ECommerce "EC" {
+    link "Wiki" "https://wiki.example.com"
+    team "ECチーム"
+    link "設計" "https://design.example.com"
+  }
+}
+    `);
+    expect(result.diagnostics).toHaveLength(0);
+    const service = result.value.systems[0].children[0];
+    expect(service.team).toBe("ECチーム");
+    expect(service.links).toHaveLength(2);
+  });
+
+  it("parses service with team, links, and child nodes", () => {
+    const result = Parser.parse(`
+system "Test" {
+  service ECommerce "EC" {
+    team "ECチーム"
+    link "Wiki" "https://wiki.example.com"
+    domain "受注" {
+      usecase "注文する"
+    }
+  }
+}
+    `);
+    expect(result.diagnostics).toHaveLength(0);
+    const service = result.value.systems[0].children[0];
+    expect(service.team).toBe("ECチーム");
+    expect(service.links).toHaveLength(1);
+    expect(service.children).toHaveLength(1);
+    expect(service.children[0].kind).toBe("domain");
+  });
+
   it("reports errors for unexpected tokens", () => {
     const result = Parser.parse("??? system");
     expect(result.diagnostics.length).toBeGreaterThan(0);

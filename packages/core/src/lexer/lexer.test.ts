@@ -61,13 +61,16 @@ describe("Lexer", () => {
   });
 
   it("tokenizes property keywords", () => {
-    const types = tokenTypes("runtime realizes schedule image type");
+    const types = tokenTypes("runtime realizes schedule image type role team link");
     expect(types).toEqual([
       TokenType.Runtime,
       TokenType.Realizes,
       TokenType.Schedule,
       TokenType.Image,
       TokenType.Type,
+      TokenType.Role,
+      TokenType.Team,
+      TokenType.Link,
       TokenType.EOF,
     ]);
   });

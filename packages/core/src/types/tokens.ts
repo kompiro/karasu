@@ -27,13 +27,15 @@ export enum TokenType {
   Job = "Job",
   Artifact = "Artifact",
 
-  // Properties (physical)
+  // Properties
   Runtime = "Runtime",
   Realizes = "Realizes",
   Schedule = "Schedule",
   Image = "Image",
   Type = "Type",
   Role = "Role",
+  Team = "Team",
+  Link = "Link",
 
   // Imports
   AtImport = "AtImport",

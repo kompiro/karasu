@@ -22,6 +22,8 @@ const KEYWORDS: Record<string, TokenType> = {
   image: TokenType.Image,
   type: TokenType.Type,
   role: TokenType.Role,
+  team: TokenType.Team,
+  link: TokenType.Link,
   import: TokenType.Import,
   from: TokenType.From,
 };

@@ -14,12 +14,19 @@ export type DeployNodeKind =
   | "job"
   | "artifact";
 
+export interface LinkEntry {
+  label: string;
+  url: string;
+}
+
 export interface KrsNode {
   kind: LogicalNodeKind;
   id?: string;
   label: string;
   description?: string;
   role?: string;
+  team?: string;
+  links: LinkEntry[];
   tags: string[];
   annotations: string[];
   children: KrsNode[];

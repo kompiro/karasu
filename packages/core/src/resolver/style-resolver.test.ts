@@ -14,6 +14,7 @@ function makeNode(overrides: Partial<KrsNode> & { kind: KrsNode["kind"]; label: 
   return {
     tags: [],
     annotations: [],
+    links: [],
     children: [],
     edges: [],
     loc: dummyLoc,

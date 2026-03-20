@@ -4,7 +4,7 @@ import { PreviewPane } from "./components/PreviewPane.js";
 import { WarningPanel } from "./components/WarningPanel.js";
 import { Breadcrumb } from "./components/Breadcrumb.js";
 import { useKarasu } from "./hooks/useKarasu.js";
-import { Parser } from "@karasu/core";
+import { Parser, type KrsNode } from "@karasu/core";
 
 const SAMPLE_KRS = `@import "default.krs.style"
 
@@ -178,9 +178,11 @@ export function MemoryModeApp() {
       const system = systems[0];
       items.push({ id: system.id ?? system.label, label: system.label });
 
-      let current = system;
+      let current: KrsNode = system;
       for (const segment of viewPath) {
-        const child = current.children.find((c) => (c.id ?? c.label) === segment);
+        const child: KrsNode | undefined = current.children.find(
+          (c) => (c.id ?? c.label) === segment,
+        );
         if (!child) break;
         items.push({ id: child.id ?? child.label, label: child.label });
         current = child;

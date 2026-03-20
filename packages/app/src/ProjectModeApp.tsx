@@ -9,7 +9,7 @@ import { FileTree } from "./components/FileTree.js";
 import { useAppContext } from "./state/app-context.js";
 import { useKarasuProject } from "./hooks/useKarasuProject.js";
 import { ProjectManager } from "./fs/project-manager.js";
-import type { Project } from "@karasu/core";
+import type { Project, KrsNode } from "@karasu/core";
 
 const LAST_PROJECT_KEY = "karasu-last-project-id";
 
@@ -178,9 +178,11 @@ export function ProjectModeApp() {
       const system = systems[0];
       items.push({ id: system.id ?? system.label, label: system.label });
 
-      let current = system;
+      let current: KrsNode = system;
       for (const segment of viewPath) {
-        const child = current.children.find((c) => (c.id ?? c.label) === segment);
+        const child: KrsNode | undefined = current.children.find(
+          (c) => (c.id ?? c.label) === segment,
+        );
         if (!child) break;
         items.push({ id: child.id ?? child.label, label: child.label });
         current = child;

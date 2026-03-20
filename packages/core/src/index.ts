@@ -2,6 +2,7 @@ export type {
   KrsFile,
   KrsNode,
   KrsEdge,
+  LinkEntry,
   DeployBlock,
   DeployNode,
   ImportDeclaration,

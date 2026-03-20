@@ -3,6 +3,7 @@ import type {
   KrsFile,
   KrsNode,
   KrsEdge,
+  LinkEntry,
   DeployBlock,
   DeployNode,
   DeployNodeProperties,
@@ -41,6 +42,8 @@ const PROPERTY_KEYWORDS = new Set<string>([
   "image",
   "type",
   "role",
+  "team",
+  "link",
 ]);
 
 export class Parser {
@@ -202,6 +205,7 @@ export class Parser {
     return {
       kind: "system",
       label: label.value,
+      links: [],
       tags: [],
       annotations: [],
       children,
@@ -257,6 +261,8 @@ export class Parser {
     let label = "";
     let description: string | undefined;
     let role: string | undefined;
+    let team: string | undefined;
+    const links: LinkEntry[] = [];
 
     // After keyword, we may have: Identifier StringLiteral or just StringLiteral
     if (this.peek().type === TokenType.Identifier) {
@@ -286,15 +292,56 @@ export class Parser {
 
     if (this.peek().type === TokenType.LeftBrace) {
       this.advance();
-      // user ノードの場合、role プロパティを先にパース
-      if (kind === "user" && this.peek().type === TokenType.Role) {
-        this.advance(); // consume 'role'
-        if (this.peek().type === TokenType.StringLiteral) {
-          role = this.advance().value;
-        } else {
-          this.error('Expected string literal after "role"');
+
+      // Parse properties (role, team, link) before block contents
+      while (
+        this.peek().type === TokenType.Role ||
+        this.peek().type === TokenType.Team ||
+        this.peek().type === TokenType.Link
+      ) {
+        const propToken = this.advance();
+
+        if (propToken.type === TokenType.Role) {
+          if (kind !== "user") {
+            this.diagnostics.push({
+              severity: "warning",
+              message: `"role" is only valid for user nodes, found in ${kind}`,
+              loc: this.range(propToken.loc),
+            });
+          }
+          if (this.peek().type === TokenType.StringLiteral) {
+            role = this.advance().value;
+          } else {
+            this.error('Expected string literal after "role"');
+          }
+        } else if (propToken.type === TokenType.Team) {
+          if (kind !== "service" && kind !== "domain") {
+            this.diagnostics.push({
+              severity: "warning",
+              message: `"team" is only valid for service and domain nodes, found in ${kind}`,
+              loc: this.range(propToken.loc),
+            });
+          }
+          if (this.peek().type === TokenType.StringLiteral) {
+            team = this.advance().value;
+          } else {
+            this.error('Expected string literal after "team"');
+          }
+        } else if (propToken.type === TokenType.Link) {
+          if (this.peek().type !== TokenType.StringLiteral) {
+            this.error('Expected label string after "link"');
+            continue;
+          }
+          const linkLabel = this.advance().value;
+          if (this.peek().type !== TokenType.StringLiteral) {
+            this.error('Expected URL string after link label');
+            continue;
+          }
+          const linkUrl = this.advance().value;
+          links.push({ label: linkLabel, url: linkUrl });
         }
       }
+
       this.parseBlockContents(children, edges);
       end = this.expect(TokenType.RightBrace);
     }
@@ -305,6 +352,8 @@ export class Parser {
       label,
       description,
       role,
+      team,
+      links,
       tags,
       annotations,
       children,
