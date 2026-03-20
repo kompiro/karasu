@@ -6,12 +6,7 @@ import {
   type Dispatch,
   type ReactNode,
 } from "react";
-import {
-  appReducer,
-  initialState,
-  type AppState,
-  type AppAction,
-} from "./app-reducer";
+import { appReducer, initialState, type AppState, type AppAction } from "./app-reducer";
 import type { FileSystemProvider } from "@karasu/core";
 
 interface AppContextValue {
@@ -22,13 +17,7 @@ interface AppContextValue {
 
 const AppContext = createContext<AppContextValue | null>(null);
 
-export function AppProvider({
-  children,
-  fs,
-}: {
-  children: ReactNode;
-  fs: FileSystemProvider;
-}) {
+export function AppProvider({ children, fs }: { children: ReactNode; fs: FileSystemProvider }) {
   const [state, dispatch] = useReducer(appReducer, initialState);
   const value = useMemo(() => ({ state, dispatch, fs }), [state, dispatch, fs]);
 

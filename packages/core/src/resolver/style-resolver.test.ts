@@ -10,9 +10,7 @@ const dummyLoc: SourceRange = {
   end: { line: 1, column: 1, offset: 0 },
 };
 
-function makeNode(
-  overrides: Partial<KrsNode> & { kind: KrsNode["kind"]; label: string },
-): KrsNode {
+function makeNode(overrides: Partial<KrsNode> & { kind: KrsNode["kind"]; label: string }): KrsNode {
   const base = {
     tags: [] as string[],
     annotations: [] as string[],
@@ -90,13 +88,7 @@ describe("resolveStyles", () => {
       ],
     });
     const sheet: StyleSheet = {
-      rules: [
-        makeRule(
-          { tags: ["external"], annotations: [] },
-          { "border-style": "dashed" },
-          10,
-        ),
-      ],
+      rules: [makeRule({ tags: ["external"], annotations: [] }, { "border-style": "dashed" }, 10)],
     };
     const result = resolveStyles([system], [sheet]);
     expect(result.nodes.get("Pay")!.borderStyle).toBe("dashed");
@@ -150,12 +142,7 @@ describe("resolveStyles", () => {
           1,
           0,
         ),
-        makeRule(
-          { tags: ["external"], annotations: [] },
-          { "background-color": "#BBB" },
-          10,
-          1,
-        ),
+        makeRule({ tags: ["external"], annotations: [] }, { "background-color": "#BBB" }, 10, 1),
       ],
     };
     const result = resolveStyles([system], [sheet]);
@@ -178,18 +165,8 @@ describe("resolveStyles", () => {
     });
     const sheet: StyleSheet = {
       rules: [
-        makeRule(
-          { tags: ["external"], annotations: [] },
-          { "background-color": "#AAA" },
-          10,
-          0,
-        ),
-        makeRule(
-          { tags: [], annotations: ["deprecated"] },
-          { "background-color": "#BBB" },
-          10,
-          1,
-        ),
+        makeRule({ tags: ["external"], annotations: [] }, { "background-color": "#AAA" }, 10, 0),
+        makeRule({ tags: [], annotations: ["deprecated"] }, { "background-color": "#BBB" }, 10, 1),
       ],
     };
     const result = resolveStyles([system], [sheet]);
@@ -211,18 +188,8 @@ describe("resolveStyles", () => {
     });
     const sheet: StyleSheet = {
       rules: [
-        makeRule(
-          { tags: ["external"], annotations: [] },
-          { "background-color": "#AAA" },
-          10,
-          0,
-        ),
-        makeRule(
-          { id: "EC", tags: [], annotations: [] },
-          { "background-color": "#CCC" },
-          100,
-          1,
-        ),
+        makeRule({ tags: ["external"], annotations: [] }, { "background-color": "#AAA" }, 10, 0),
+        makeRule({ id: "EC", tags: [], annotations: [] }, { "background-color": "#CCC" }, 100, 1),
       ],
     };
     const result = resolveStyles([system], [sheet]);
@@ -250,12 +217,7 @@ describe("resolveStyles", () => {
     });
     const sheet: StyleSheet = {
       rules: [
-        makeRule(
-          { nodeType: "edge", tags: [], annotations: [] },
-          { color: "#FF0000" },
-          1,
-          0,
-        ),
+        makeRule({ nodeType: "edge", tags: [], annotations: [] }, { color: "#FF0000" }, 1, 0),
       ],
     };
     const result = resolveStyles([system], [sheet]);
@@ -277,17 +239,13 @@ describe("analyze", () => {
               kind: "service",
               id: "EC",
               label: "EC",
-              children: [
-                makeNode({ kind: "domain", id: "Order", label: "受注" }),
-              ],
+              children: [makeNode({ kind: "domain", id: "Order", label: "受注" })],
             }),
             makeNode({
               kind: "service",
               id: "Legacy",
               label: "Legacy",
-              children: [
-                makeNode({ kind: "domain", id: "Order2", label: "受注" }),
-              ],
+              children: [makeNode({ kind: "domain", id: "Order2", label: "受注" })],
             }),
           ],
         }),
@@ -342,22 +300,10 @@ describe("analyze", () => {
 
   it("detects style conflicts across sheets", () => {
     const sheet1: StyleSheet = {
-      rules: [
-        makeRule(
-          { nodeType: "service", tags: [], annotations: [] },
-          { color: "#AAA" },
-          1,
-        ),
-      ],
+      rules: [makeRule({ nodeType: "service", tags: [], annotations: [] }, { color: "#AAA" }, 1)],
     };
     const sheet2: StyleSheet = {
-      rules: [
-        makeRule(
-          { nodeType: "service", tags: [], annotations: [] },
-          { color: "#BBB" },
-          1,
-        ),
-      ],
+      rules: [makeRule({ nodeType: "service", tags: [], annotations: [] }, { color: "#BBB" }, 1)],
     };
     const file = makeFile({});
     const warnings = analyze(file, [sheet1, sheet2]);

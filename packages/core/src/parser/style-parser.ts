@@ -71,10 +71,7 @@ export class StyleParser {
     this.expect(TokenType.LeftBrace);
 
     const properties: Record<string, string> = {};
-    while (
-      this.peek().type !== TokenType.RightBrace &&
-      this.peek().type !== TokenType.EOF
-    ) {
+    while (this.peek().type !== TokenType.RightBrace && this.peek().type !== TokenType.EOF) {
       this.parseDeclaration(properties);
     }
     this.expect(TokenType.RightBrace);
@@ -188,10 +185,7 @@ export class StyleParser {
         if (this.peek().type === TokenType.LeftParen) {
           this.advance(); // (
           let arg = "";
-          while (
-            this.peek().type !== TokenType.RightParen &&
-            this.peek().type !== TokenType.EOF
-          ) {
+          while (this.peek().type !== TokenType.RightParen && this.peek().type !== TokenType.EOF) {
             if (this.peek().type === TokenType.StringLiteral) {
               arg = this.advance().value;
             } else {

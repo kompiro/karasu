@@ -57,9 +57,7 @@ describe("ProjectManager", () => {
     });
 
     it("throws when project not found", async () => {
-      await expect(pm.deleteProject("nonexistent")).rejects.toThrow(
-        "Project not found",
-      );
+      await expect(pm.deleteProject("nonexistent")).rejects.toThrow("Project not found");
     });
   });
 
@@ -77,9 +75,7 @@ describe("ProjectManager", () => {
     });
 
     it("throws when project not found", async () => {
-      await expect(pm.renameProject("nonexistent", "Name")).rejects.toThrow(
-        "Project not found",
-      );
+      await expect(pm.renameProject("nonexistent", "Name")).rejects.toThrow("Project not found");
     });
   });
 

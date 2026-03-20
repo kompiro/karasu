@@ -66,22 +66,11 @@ export {
 } from "./renderer/icon-manifest.js";
 
 // FileSystem abstractions
-export type {
-  FileSystemProvider,
-  DirEntry,
-  FsEvent,
-  Disposable,
-} from "./fs/types.js";
+export type { FileSystemProvider, DirEntry, FsEvent, Disposable } from "./fs/types.js";
 export { InMemoryFileSystemProvider } from "./fs/in-memory-provider.js";
 export { ImportResolver, type ResolvedProject } from "./fs/import-resolver.js";
 export type { Project } from "./fs/project.js";
-export {
-  normalizePath,
-  resolvePath,
-  dirname,
-  basename,
-  extname,
-} from "./fs/path-utils.js";
+export { normalizePath, resolvePath, dirname, basename, extname } from "./fs/path-utils.js";
 
 import type { ParseResult } from "./types/ast.js";
 import type { KrsFile } from "./types/ast.js";

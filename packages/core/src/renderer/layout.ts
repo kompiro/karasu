@@ -1,9 +1,4 @@
-import type {
-  KrsNode,
-  KrsEdge,
-  LogicalNodeKind,
-  CommonProperties,
-} from "../types/ast.js";
+import type { KrsNode, KrsEdge, LogicalNodeKind, CommonProperties } from "../types/ast.js";
 import type { ViewSlice } from "../view/view-extract.js";
 import { summarizeDescription } from "./description-summary.js";
 
@@ -79,9 +74,7 @@ export function layout(viewSlice: ViewSlice): LayoutResult {
       edges: [],
       containers,
       width: outermost ? outermost.x + outermost.width + CONTAINER_PADDING : 0,
-      height: outermost
-        ? outermost.y + outermost.height + CONTAINER_PADDING
-        : 0,
+      height: outermost ? outermost.y + outermost.height + CONTAINER_PADDING : 0,
     };
   }
 
@@ -174,12 +167,10 @@ export function layout(viewSlice: ViewSlice): LayoutResult {
 
   // Build containers (innermost first: focused container, then ancestors)
   const hasContainer =
-    viewSlice.ancestorChain.length > 0 ||
-    viewSlice.containerNode?.kind !== "system";
+    viewSlice.ancestorChain.length > 0 || viewSlice.containerNode?.kind !== "system";
 
   // Calculate the offset needed for nesting
-  const containerCount =
-    viewSlice.ancestorChain.length + (hasContainer ? 1 : 0);
+  const containerCount = viewSlice.ancestorChain.length + (hasContainer ? 1 : 0);
   const totalNestOffset =
     containerCount * GHOST_MARGIN + (hasContainer ? CONTAINER_LABEL_HEIGHT : 0);
 
@@ -199,14 +190,10 @@ export function layout(viewSlice: ViewSlice): LayoutResult {
   if (hasContainer && viewSlice.containerNode) {
     // Focused container wraps child nodes
     const containerX = totalNestOffset - CONTAINER_PADDING;
-    const containerY =
-      totalNestOffset - CONTAINER_LABEL_HEIGHT - CONTAINER_PADDING / 2;
+    const containerY = totalNestOffset - CONTAINER_LABEL_HEIGHT - CONTAINER_PADDING / 2;
     const containerW = childMaxWidth - totalNestOffset + CONTAINER_PADDING * 2;
     const containerH =
-      childMaxHeight -
-      totalNestOffset +
-      CONTAINER_LABEL_HEIGHT +
-      CONTAINER_PADDING;
+      childMaxHeight - totalNestOffset + CONTAINER_LABEL_HEIGHT + CONTAINER_PADDING;
     containers.push({
       id: viewSlice.containerNode.id ?? viewSlice.containerNode.label,
       label: viewSlice.containerNode.label,
@@ -223,8 +210,7 @@ export function layout(viewSlice: ViewSlice): LayoutResult {
     const ancestor = viewSlice.ancestorChain[i];
     const depth = viewSlice.ancestorChain.length - i; // 1 for immediate parent
     const margin = depth * GHOST_MARGIN;
-    const innerContainer =
-      containers.length > 0 ? containers[containers.length - 1] : null;
+    const innerContainer = containers.length > 0 ? containers[containers.length - 1] : null;
 
     let gx: number, gy: number, gw: number, gh: number;
     if (innerContainer) {
@@ -289,8 +275,7 @@ export function layout(viewSlice: ViewSlice): LayoutResult {
   // Expand outermost container to include ghost users
   if (ghostUserNodes.length > 0 && containers.length > 0) {
     const minX = Math.min(...ghostUserNodes.map((n) => n.x)) - GHOST_MARGIN;
-    const maxY =
-      Math.max(...ghostUserNodes.map((n) => n.y + n.height)) + GHOST_MARGIN;
+    const maxY = Math.max(...ghostUserNodes.map((n) => n.y + n.height)) + GHOST_MARGIN;
     const outermost = containers[0];
     if (minX < outermost.x) {
       const dx = outermost.x - minX;
@@ -316,9 +301,7 @@ export function layout(viewSlice: ViewSlice): LayoutResult {
       : "";
     // Ghost user edges connect to the container box, not a laid-out node
     const mainContainer = containers.find((c) => !c.ghost);
-    const ghostNode = layoutNodes.get(
-      edge.from === containerId ? edge.to : edge.from,
-    );
+    const ghostNode = layoutNodes.get(edge.from === containerId ? edge.to : edge.from);
     if (!ghostNode || !mainContainer) continue;
 
     const fromPoint = {
@@ -412,8 +395,7 @@ function buildContainersForEmpty(viewSlice: ViewSlice): ContainerRect[] {
 
   for (let i = viewSlice.ancestorChain.length - 1; i >= 0; i--) {
     const ancestor = viewSlice.ancestorChain[i];
-    const inner =
-      containers.length > 0 ? containers[containers.length - 1] : null;
+    const inner = containers.length > 0 ? containers[containers.length - 1] : null;
     containers.push({
       id: ancestor.id ?? ancestor.label,
       label: ancestor.label,
@@ -539,20 +521,20 @@ function measureNode(node: KrsNode): { width: number; height: number } {
   const descWidth = descSummary
     ? estimateTextWidth(descSummary, CHAR_WIDTH * DESCRIPTION_FONT_RATIO)
     : 0;
-  const roleWidth = role
-    ? estimateTextWidth(role, CHAR_WIDTH * DESCRIPTION_FONT_RATIO)
-    : 0;
+  const roleWidth = role ? estimateTextWidth(role, CHAR_WIDTH * DESCRIPTION_FONT_RATIO) : 0;
 
   // Meta row: link count icon + team name
   const hasMetaRow = node.properties.links.length > 0 || !!team;
   let metaWidth = 0;
   if (hasMetaRow) {
     if (node.properties.links.length > 0)
-      metaWidth += estimateTextWidth(`🔗${node.properties.links.length}`, CHAR_WIDTH * META_FONT_RATIO);
+      metaWidth += estimateTextWidth(
+        `🔗${node.properties.links.length}`,
+        CHAR_WIDTH * META_FONT_RATIO,
+      );
     if (team) {
       if (metaWidth > 0) metaWidth += CHAR_WIDTH; // spacing
-      const teamDisplay =
-        [...team].length > 15 ? [...team].slice(0, 15).join("") + "…" : team;
+      const teamDisplay = [...team].length > 15 ? [...team].slice(0, 15).join("") + "…" : team;
       metaWidth += estimateTextWidth(`👥${teamDisplay}`, CHAR_WIDTH * META_FONT_RATIO);
     }
   }

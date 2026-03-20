@@ -132,9 +132,7 @@ service {
   shape: url("shapes/cloud.svg");
 }
     `);
-    expect(result.value.rules[0].properties["shape"]).toBe(
-      'url("shapes/cloud.svg")',
-    );
+    expect(result.value.rules[0].properties["shape"]).toBe('url("shapes/cloud.svg")');
   });
 
   it("parses font-family with comma-separated values", () => {
@@ -143,9 +141,7 @@ service {
   font-family: "Noto Sans JP", sans-serif;
 }
     `);
-    expect(result.value.rules[0].properties["font-family"]).toBe(
-      '"Noto Sans JP" , sans-serif',
-    );
+    expect(result.value.rules[0].properties["font-family"]).toBe('"Noto Sans JP" , sans-serif');
   });
 
   it("handles comments", () => {
@@ -178,21 +174,15 @@ domain {
 
 describe("computeSpecificity", () => {
   it("type selector = 1", () => {
-    expect(
-      computeSpecificity({ nodeType: "service", tags: [], annotations: [] }),
-    ).toBe(1);
+    expect(computeSpecificity({ nodeType: "service", tags: [], annotations: [] })).toBe(1);
   });
 
   it("tag selector = 10", () => {
-    expect(computeSpecificity({ tags: ["external"], annotations: [] })).toBe(
-      10,
-    );
+    expect(computeSpecificity({ tags: ["external"], annotations: [] })).toBe(10);
   });
 
   it("annotation selector = 10", () => {
-    expect(computeSpecificity({ tags: [], annotations: ["deprecated"] })).toBe(
-      10,
-    );
+    expect(computeSpecificity({ tags: [], annotations: ["deprecated"] })).toBe(10);
   });
 
   it("type + tag = 11", () => {
@@ -206,14 +196,10 @@ describe("computeSpecificity", () => {
   });
 
   it("tag + annotation = 20", () => {
-    expect(
-      computeSpecificity({ tags: ["external"], annotations: ["deprecated"] }),
-    ).toBe(20);
+    expect(computeSpecificity({ tags: ["external"], annotations: ["deprecated"] })).toBe(20);
   });
 
   it("id = 100", () => {
-    expect(
-      computeSpecificity({ id: "ECommerce", tags: [], annotations: [] }),
-    ).toBe(100);
+    expect(computeSpecificity({ id: "ECommerce", tags: [], annotations: [] })).toBe(100);
   });
 });

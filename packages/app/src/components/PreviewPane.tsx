@@ -1,10 +1,4 @@
-import {
-  useRef,
-  useState,
-  useCallback,
-  type WheelEvent,
-  type MouseEvent,
-} from "react";
+import { useRef, useState, useCallback, type WheelEvent, type MouseEvent } from "react";
 import type { Diagnostic, NodeMetadata } from "@karasu/core";
 import { NodeDetailPanel } from "./NodeDetailPanel.js";
 

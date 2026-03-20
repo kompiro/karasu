@@ -48,9 +48,7 @@ export function useKarasu(
     timerRef.current = setTimeout(() => {
       try {
         const result = compile(krsSource, styleSource || undefined, viewPath);
-        const hasErrors = result.diagnostics.some(
-          (d) => d.severity === "error",
-        );
+        const hasErrors = result.diagnostics.some((d) => d.severity === "error");
 
         if (hasErrors) {
           setState({
@@ -71,9 +69,7 @@ export function useKarasu(
       } catch {
         setState((prev) => ({
           ...prev,
-          diagnostics: [
-            { severity: "error", message: "パース中にエラーが発生しました" },
-          ],
+          diagnostics: [{ severity: "error", message: "パース中にエラーが発生しました" }],
         }));
       }
     }, DEBOUNCE_MS);

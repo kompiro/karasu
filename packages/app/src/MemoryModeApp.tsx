@@ -157,11 +157,7 @@ export function MemoryModeApp() {
   const [styleSource] = useState(SAMPLE_STYLE);
   const [viewPath, setViewPath] = useState<string[]>([]);
 
-  const { svg, warnings, diagnostics, nodeMetadata } = useKarasu(
-    krsSource,
-    styleSource,
-    viewPath,
-  );
+  const { svg, warnings, diagnostics, nodeMetadata } = useKarasu(krsSource, styleSource, viewPath);
 
   const handleEditorChange = useCallback((value: string) => {
     setKrsSource(value);

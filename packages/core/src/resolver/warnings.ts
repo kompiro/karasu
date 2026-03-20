@@ -47,10 +47,7 @@ function detectDomainDispersal(file: KrsFile): Warning[] {
       warnings.push({
         kind: "domain-dispersal",
         message: `domain "${domainName}" が複数の service に分散しています`,
-        details: [
-          ...Array.from(services),
-          "ドメインの凝集性を確認してください",
-        ],
+        details: [...Array.from(services), "ドメインの凝集性を確認してください"],
       });
     }
   }
@@ -80,9 +77,7 @@ function detectStyleConflicts(sheets: StyleSheet[]): Warning[] {
       warnings.push({
         kind: "style-conflict",
         message: `セレクタ "${selector}" が複数のスタイルファイルで定義されています`,
-        details: Array.from(sheetIndices).map(
-          (i) => `スタイルファイル ${i + 1}`,
-        ),
+        details: Array.from(sheetIndices).map((i) => `スタイルファイル ${i + 1}`),
       });
     }
   }

@@ -16,13 +16,7 @@ export interface StyleSheet {
   rules: StyleRule[];
 }
 
-export type ShapeKind =
-  | "box"
-  | "user"
-  | "cylinder"
-  | "queue"
-  | "hexagon"
-  | "cloud";
+export type ShapeKind = "box" | "user" | "cylinder" | "queue" | "hexagon" | "cloud";
 
 export interface ResolvedNodeStyle {
   backgroundColor: string;

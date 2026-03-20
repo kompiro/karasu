@@ -7,11 +7,8 @@ loader.config({ monaco });
 // Web Worker の設定（カスタム言語のみ使用のため editor.worker のみ）
 self.MonacoEnvironment = {
   getWorker(_workerId: string, _label: string) {
-    return new Worker(
-      new URL("monaco-editor/esm/vs/editor/editor.worker.js", import.meta.url),
-      {
-        type: "module",
-      },
-    );
+    return new Worker(new URL("monaco-editor/esm/vs/editor/editor.worker.js", import.meta.url), {
+      type: "module",
+    });
   },
 };
