@@ -9,7 +9,11 @@ interface EditorPaneProps {
 const KRS_LANGUAGE_ID = "krs";
 
 function registerKrsLanguage(monaco: Monaco): void {
-  if (monaco.languages.getLanguages().some((l: { id: string }) => l.id === KRS_LANGUAGE_ID)) {
+  if (
+    monaco.languages
+      .getLanguages()
+      .some((l: { id: string }) => l.id === KRS_LANGUAGE_ID)
+  ) {
     return;
   }
 
@@ -24,6 +28,9 @@ function registerKrsLanguage(monaco: Monaco): void {
       "resource",
       "user",
       "role",
+      "description",
+      "team",
+      "link",
       "deploy",
       "war",
       "jar",

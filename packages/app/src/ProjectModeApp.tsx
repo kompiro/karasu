@@ -22,12 +22,25 @@ export function ProjectModeApp() {
   const pmRef = useRef(new ProjectManager(fs));
   const pm = pmRef.current;
 
-  const { currentProject, projects, currentFilePath, fileContent, viewPath, loading } = state;
+  const {
+    currentProject,
+    projects,
+    currentFilePath,
+    fileContent,
+    viewPath,
+    loading,
+  } = state;
 
   // エントリパスを計算（現在のプロジェクトの index.krs）
-  const entryPath = currentProject ? `${currentProject.rootPath}/index.krs` : null;
+  const entryPath = currentProject
+    ? `${currentProject.rootPath}/index.krs`
+    : null;
 
-  const { svg, warnings, diagnostics, recompile } = useKarasuProject(entryPath, fs, viewPath);
+  const { svg, warnings, diagnostics, recompile } = useKarasuProject(
+    entryPath,
+    fs,
+    viewPath,
+  );
 
   // 初期化: プロジェクト一覧を読み込み
   useEffect(() => {
@@ -178,9 +191,10 @@ export function ProjectModeApp() {
       const system = systems[0];
       items.push({ id: system.id ?? system.label, label: system.label });
 
-      let current = system;
+      let current: import("@karasu/core").KrsNode = system;
       for (const segment of viewPath) {
-        const child = current.children.find((c) => (c.id ?? c.label) === segment);
+        const child: import("@karasu/core").KrsNode | undefined =
+          current.children.find((c) => (c.id ?? c.label) === segment);
         if (!child) break;
         items.push({ id: child.id ?? child.label, label: child.label });
         current = child;

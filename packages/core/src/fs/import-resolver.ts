@@ -36,7 +36,10 @@ export class ImportResolver {
     this.diagnostics = [];
 
     const krsFile = await this.resolveKrs(entryPath);
-    const styleSheets = await this.resolveStyles(entryPath, krsFile.styleImports);
+    const styleSheets = await this.resolveStyles(
+      entryPath,
+      krsFile.styleImports,
+    );
 
     return {
       krsFile,
@@ -53,6 +56,7 @@ export class ImportResolver {
       styleImports: [],
       nodeImports: [],
       systems: [],
+      services: [],
       deploys: [],
     };
 
@@ -84,6 +88,7 @@ export class ImportResolver {
     const file = parseResult.value;
     mergedFile.styleImports.push(...file.styleImports);
     mergedFile.systems.push(...file.systems);
+    mergedFile.services.push(...file.services);
     mergedFile.deploys.push(...file.deploys);
 
     // import { X } from "other.krs" を解決
@@ -96,12 +101,18 @@ export class ImportResolver {
         let found = false;
         for (const system of importedFile.systems) {
           // system 直下の子ノード（service, user）から id でマッチ
-          const matchingChildren = system.children.filter((child) => child.id === id);
+          const matchingChildren = system.children.filter(
+            (child) => child.id === id,
+          );
           if (matchingChildren.length > 0) {
             // マージ先の system を探す（既にある system にマージ）
             // system が無ければ import 元の system 構造ごと持ってくる
             for (const matchedChild of matchingChildren) {
-              this.mergeNodeIntoSystems(mergedFile.systems, system, matchedChild);
+              this.mergeNodeIntoSystems(
+                mergedFile.systems,
+                system,
+                matchedChild,
+              );
             }
             found = true;
           }
@@ -119,7 +130,9 @@ export class ImportResolver {
           if (matchingNodes.length > 0) {
             found = true;
             // deploy ブロックにマージ
-            const existingDeploy = mergedFile.deploys.find((d) => d.label === deploy.label);
+            const existingDeploy = mergedFile.deploys.find(
+              (d) => d.label === deploy.label,
+            );
             if (existingDeploy) {
               existingDeploy.nodes.push(...matchingNodes);
             } else {
@@ -153,7 +166,7 @@ export class ImportResolver {
    * なければ新しい system は追加しない（ノード単独では意味をなさないため）。
    */
   private mergeNodeIntoSystems(
-    systems: import("../types/ast.js").KrsNode[],
+    systems: import("../types/ast.js").SystemNode[],
     sourceSystem: import("../types/ast.js").KrsNode,
     node: import("../types/ast.js").KrsNode,
   ): void {
@@ -188,7 +201,10 @@ export class ImportResolver {
    * @param basePath スタイル import を含む .krs ファイルのパス
    * @param styleImports @import で指定されたパスの配列
    */
-  private async resolveStyles(basePath: string, styleImports: string[]): Promise<StyleSheet[]> {
+  private async resolveStyles(
+    basePath: string,
+    styleImports: string[],
+  ): Promise<StyleSheet[]> {
     const sheets: StyleSheet[] = [];
 
     for (const importPath of styleImports) {
