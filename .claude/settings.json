@@ -28,7 +28,8 @@
     ],
     "additionalDirectories": [
       "/workspaces/karasu",
-      "/workspaces/karasu/.claude"
+      "/workspaces/karasu/.claude",
+      "/workspaces/karasu/.claude/worktrees"
     ]
   },
   "hooks": {
