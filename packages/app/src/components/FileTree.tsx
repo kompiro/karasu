@@ -80,17 +80,22 @@ export function FileTree({
         setTree((prev) => updateNode(prev, node.path, { expanded: false }));
       } else {
         const children = await loadDir(node.path, fs);
-        setTree((prev) => updateNode(prev, node.path, { expanded: true, children }));
+        setTree((prev) =>
+          updateNode(prev, node.path, { expanded: true, children }),
+        );
       }
     },
     [fs],
   );
 
-  const handleContextMenu = useCallback((e: React.MouseEvent, node: FileTreeNode) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setContextMenu({ x: e.clientX, y: e.clientY, node });
-  }, []);
+  const handleContextMenu = useCallback(
+    (e: React.MouseEvent, node: FileTreeNode) => {
+      e.preventDefault();
+      e.stopPropagation();
+      setContextMenu({ x: e.clientX, y: e.clientY, node });
+    },
+    [],
+  );
 
   const handleContentContextMenu = useCallback(
     (e: React.MouseEvent) => {
@@ -241,24 +246,37 @@ export function FileTree({
       <div className="file-tree-header">
         <span>Files</span>
         <div className="file-tree-header-actions">
-          <button className="file-tree-header-btn" onClick={handleNewFile} title="New File">
+          <button
+            className="file-tree-header-btn"
+            onClick={handleNewFile}
+            title="New File"
+          >
             +File
           </button>
-          <button className="file-tree-header-btn" onClick={handleNewDir} title="New Folder">
+          <button
+            className="file-tree-header-btn"
+            onClick={handleNewDir}
+            title="New Folder"
+          >
             +Dir
           </button>
         </div>
       </div>
-      <div className="file-tree-content" onContextMenu={handleContentContextMenu}>
+      <div
+        className="file-tree-content"
+        onContextMenu={handleContentContextMenu}
+      >
         {/* Root-level inline input */}
-        {inlineInput && inlineInput.parentPath === rootPath && inlineInput.mode === "create" && (
-          <InlineInput
-            depth={0}
-            initialValue=""
-            onConfirm={handleInlineConfirm}
-            onCancel={() => setInlineInput(null)}
-          />
-        )}
+        {inlineInput &&
+          inlineInput.parentPath === rootPath &&
+          inlineInput.mode === "create" && (
+            <InlineInput
+              depth={0}
+              initialValue=""
+              onConfirm={handleInlineConfirm}
+              onCancel={() => setInlineInput(null)}
+            />
+          )}
         {tree.map((node) => (
           <FileTreeItem
             key={node.path}
@@ -310,7 +328,8 @@ function FileTreeItem({
 }) {
   const isSelected = node.path === currentFilePath;
   const isDir = node.kind === "directory";
-  const isRenaming = inlineInput?.mode === "rename" && inlineInput?.targetPath === node.path;
+  const isRenaming =
+    inlineInput?.mode === "rename" && inlineInput?.targetPath === node.path;
 
   const handleClick = () => {
     if (isDir) {
@@ -349,14 +368,16 @@ function FileTreeItem({
       {isDir && node.expanded && (
         <>
           {/* Inline input for creating inside this directory */}
-          {inlineInput && inlineInput.parentPath === node.path && inlineInput.mode === "create" && (
-            <InlineInput
-              depth={depth + 1}
-              initialValue=""
-              onConfirm={onInlineConfirm}
-              onCancel={onInlineCancel}
-            />
-          )}
+          {inlineInput &&
+            inlineInput.parentPath === node.path &&
+            inlineInput.mode === "create" && (
+              <InlineInput
+                depth={depth + 1}
+                initialValue=""
+                onConfirm={onInlineConfirm}
+                onCancel={onInlineCancel}
+              />
+            )}
           {node.children?.map((child) => (
             <FileTreeItem
               key={child.path}
@@ -450,13 +471,23 @@ function ContextMenu({
   const isNamedNode = node.name !== "";
 
   return (
-    <div className="context-menu" style={{ left: x, top: y }} onClick={(e) => e.stopPropagation()}>
+    <div
+      className="context-menu"
+      style={{ left: x, top: y }}
+      onClick={(e) => e.stopPropagation()}
+    >
       {isDir && (
         <>
-          <button className="context-menu-item" onClick={() => onAction("new-file")}>
+          <button
+            className="context-menu-item"
+            onClick={() => onAction("new-file")}
+          >
             New File
           </button>
-          <button className="context-menu-item" onClick={() => onAction("new-dir")}>
+          <button
+            className="context-menu-item"
+            onClick={() => onAction("new-dir")}
+          >
             New Folder
           </button>
           {isNamedNode && <div className="context-menu-separator" />}
@@ -464,7 +495,10 @@ function ContextMenu({
       )}
       {isNamedNode && (
         <>
-          <button className="context-menu-item" onClick={() => onAction("rename")}>
+          <button
+            className="context-menu-item"
+            onClick={() => onAction("rename")}
+          >
             Rename
           </button>
           <button
@@ -479,7 +513,10 @@ function ContextMenu({
   );
 }
 
-async function loadDir(dirPath: string, fs: FileSystemProvider): Promise<FileTreeNode[]> {
+async function loadDir(
+  dirPath: string,
+  fs: FileSystemProvider,
+): Promise<FileTreeNode[]> {
   try {
     const entries = await fs.readDir(dirPath);
     return entries.map((entry: DirEntry) => ({

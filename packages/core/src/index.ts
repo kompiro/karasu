@@ -11,6 +11,13 @@ export type {
   LogicalNodeKind,
   DeployNodeKind,
   EdgeKind,
+  CommonProperties,
+  SystemNode,
+  ServiceNode,
+  DomainNode,
+  UsecaseNode,
+  ResourceNode,
+  UserNode,
 } from "./types/ast.js";
 
 export type {
@@ -59,11 +66,22 @@ export {
 } from "./renderer/icon-manifest.js";
 
 // FileSystem abstractions
-export type { FileSystemProvider, DirEntry, FsEvent, Disposable } from "./fs/types.js";
+export type {
+  FileSystemProvider,
+  DirEntry,
+  FsEvent,
+  Disposable,
+} from "./fs/types.js";
 export { InMemoryFileSystemProvider } from "./fs/in-memory-provider.js";
 export { ImportResolver, type ResolvedProject } from "./fs/import-resolver.js";
 export type { Project } from "./fs/project.js";
-export { normalizePath, resolvePath, dirname, basename, extname } from "./fs/path-utils.js";
+export {
+  normalizePath,
+  resolvePath,
+  dirname,
+  basename,
+  extname,
+} from "./fs/path-utils.js";
 
 import type { ParseResult } from "./types/ast.js";
 import type { KrsFile } from "./types/ast.js";
@@ -155,14 +173,15 @@ function buildNodeMetadata(
 
   function addNode(node: KrsNode): void {
     const id = node.id ?? node.label;
+    const description = node.properties.description;
     map.set(id, {
       kind: node.kind,
       label: node.label,
-      description: node.description,
-      descriptionSummary: node.description ? summarizeDescription(node.description) : undefined,
-      links: node.links,
-      team: node.team,
-      role: node.role,
+      description,
+      descriptionSummary: description ? summarizeDescription(description) : undefined,
+      links: node.properties.links,
+      team: node.kind === "service" ? node.properties.team : undefined,
+      role: node.kind === "user" ? node.properties.role : undefined,
       tags: [...node.tags],
       annotations: [...node.annotations],
       hasChildren: node.children.length > 0,

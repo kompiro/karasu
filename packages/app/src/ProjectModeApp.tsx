@@ -22,10 +22,19 @@ export function ProjectModeApp() {
   const pmRef = useRef(new ProjectManager(fs));
   const pm = pmRef.current;
 
-  const { currentProject, projects, currentFilePath, fileContent, viewPath, loading } = state;
+  const {
+    currentProject,
+    projects,
+    currentFilePath,
+    fileContent,
+    viewPath,
+    loading,
+  } = state;
 
   // エントリパスを計算（現在のプロジェクトの index.krs）
-  const entryPath = currentProject ? `${currentProject.rootPath}/index.krs` : null;
+  const entryPath = currentProject
+    ? `${currentProject.rootPath}/index.krs`
+    : null;
 
   const { svg, warnings, diagnostics, nodeMetadata, recompile } = useKarasuProject(
     entryPath,

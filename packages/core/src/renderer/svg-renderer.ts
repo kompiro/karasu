@@ -17,7 +17,13 @@ export function render(viewSlice: ViewSlice, styles: ResolvedStyles): string {
       { xmlns: "http://www.w3.org/2000/svg", viewBox: "0 0 200 100" },
       el(
         "text",
-        { x: 100, y: 50, "text-anchor": "middle", fill: "#9CA3AF", "font-family": "sans-serif" },
+        {
+          x: 100,
+          y: 50,
+          "text-anchor": "middle",
+          fill: "#9CA3AF",
+          "font-family": "sans-serif",
+        },
         "No nodes to render",
       ),
     );
@@ -74,7 +80,8 @@ export function render(viewSlice: ViewSlice, styles: ResolvedStyles): string {
   // Ghost ancestor containers (outermost first)
   for (const container of layoutResult.containers) {
     if (container.ghost) {
-      const containerStyle = styles.nodes.get(container.id) ?? styles.defaultNodeStyle;
+      const containerStyle =
+        styles.nodes.get(container.id) ?? styles.defaultNodeStyle;
       parts.push(renderContainer(container, containerStyle, true));
     }
   }
@@ -82,7 +89,8 @@ export function render(viewSlice: ViewSlice, styles: ResolvedStyles): string {
   // Focused container
   for (const container of layoutResult.containers) {
     if (!container.ghost) {
-      const containerStyle = styles.nodes.get(container.id) ?? styles.defaultNodeStyle;
+      const containerStyle =
+        styles.nodes.get(container.id) ?? styles.defaultNodeStyle;
       parts.push(renderContainer(container, containerStyle, false));
     }
   }
@@ -102,7 +110,13 @@ export function render(viewSlice: ViewSlice, styles: ResolvedStyles): string {
     }
   }
   if (ghostEdgeParts.length > 0) {
-    parts.push(el("g", { class: "ghost-edges", opacity: GHOST_OPACITY }, ...ghostEdgeParts));
+    parts.push(
+      el(
+        "g",
+        { class: "ghost-edges", opacity: GHOST_OPACITY },
+        ...ghostEdgeParts,
+      ),
+    );
   }
   parts.push(el("g", { class: "edges" }, ...normalEdgeParts));
 
@@ -119,7 +133,13 @@ export function render(viewSlice: ViewSlice, styles: ResolvedStyles): string {
     }
   }
   if (ghostNodeParts.length > 0) {
-    parts.push(el("g", { class: "ghost-nodes", opacity: GHOST_OPACITY }, ...ghostNodeParts));
+    parts.push(
+      el(
+        "g",
+        { class: "ghost-nodes", opacity: GHOST_OPACITY },
+        ...ghostNodeParts,
+      ),
+    );
   }
   parts.push(el("g", { class: "nodes" }, ...normalNodeParts));
 
@@ -187,13 +207,14 @@ function renderNode(node: LayoutNode, style: ResolvedNodeStyle, nodeId: string):
   children.push(renderShape(node.x, node.y, node.width, node.height, style));
 
   // Resolve text positions
-  const shapeName = typeof style.shape === "string" ? style.shape : style.shape.url;
+  const shapeName =
+    typeof style.shape === "string" ? style.shape : style.shape.url;
   const iconDef = getIconDef(shapeName);
 
   const textColor = style.color;
   const fontSize = style.fontSize;
-  const displayDesc = node.descriptionSummary ?? node.description;
-  const hasMetaRow = node.linkCount > 0 || !!node.team;
+  const displayDesc = node.descriptionSummary ?? node.properties.description;
+  const hasMetaRow = node.linkCount > 0 || !!node.properties.team;
 
   if (iconDef?.labelSlot) {
     const vw = iconDef.viewBoxWidth ?? 24;
@@ -246,7 +267,7 @@ function renderNode(node: LayoutNode, style: ResolvedNodeStyle, nodeId: string):
     }
   } else {
     const textX = node.x + node.width / 2;
-    const textLines = 1 + (displayDesc ? 1 : 0) + (node.role ? 1 : 0) + (hasMetaRow ? 1 : 0);
+    const textLines = 1 + (displayDesc ? 1 : 0) + (node.properties.role ? 1 : 0) + (hasMetaRow ? 1 : 0);
     let textY = node.y + node.height / 2;
     if (textLines > 1) textY -= ((textLines - 1) * (fontSize + 4)) / 2;
 
@@ -289,7 +310,7 @@ function renderNode(node: LayoutNode, style: ResolvedNodeStyle, nodeId: string):
       nextY += fontSize + 4;
     }
 
-    if (node.role) {
+    if (node.properties.role) {
       children.push(
         el(
           "text",
@@ -304,7 +325,7 @@ function renderNode(node: LayoutNode, style: ResolvedNodeStyle, nodeId: string):
             "font-style": "italic",
             opacity: 0.6,
           },
-          escapeXml(node.role),
+          escapeXml(node.properties.role),
         ),
       );
       nextY += fontSize + 4;
@@ -321,13 +342,13 @@ function renderNode(node: LayoutNode, style: ResolvedNodeStyle, nodeId: string):
         "font-family": style.fontFamily,
       };
 
-      if (node.linkCount > 0 && node.team) {
+      if (node.linkCount > 0 && node.properties.team) {
         // Both link count and team: render separately so link is clickable
         const gap = 8;
         const linkText = `🔗${node.linkCount}`;
-        const teamChars = [...node.team];
+        const teamChars = [...node.properties.team];
         const teamDisplay =
-          teamChars.length > 15 ? teamChars.slice(0, 15).join("") + "…" : node.team;
+          teamChars.length > 15 ? teamChars.slice(0, 15).join("") + "…" : node.properties.team;
         const teamText = `👥${teamDisplay}`;
         children.push(
           el(
@@ -347,10 +368,10 @@ function renderNode(node: LayoutNode, style: ResolvedNodeStyle, nodeId: string):
             el("text", { ...metaAttrs, x: textX, y: nextY }, escapeXml(`🔗${node.linkCount}`)),
           ),
         );
-      } else if (node.team) {
-        const teamChars = [...node.team];
+      } else if (node.properties.team) {
+        const teamChars = [...node.properties.team];
         const teamDisplay =
-          teamChars.length > 15 ? teamChars.slice(0, 15).join("") + "…" : node.team;
+          teamChars.length > 15 ? teamChars.slice(0, 15).join("") + "…" : node.properties.team;
         children.push(
           el("text", { ...metaAttrs, x: textX, y: nextY }, escapeXml(`👥${teamDisplay}`)),
         );
@@ -364,7 +385,9 @@ function renderNode(node: LayoutNode, style: ResolvedNodeStyle, nodeId: string):
     const badgeY = node.y - 6;
     const badgeColor = style.badgeColor ?? "#EF4444";
 
-    children.push(el("circle", { cx: badgeX, cy: badgeY, r: 10, fill: badgeColor }));
+    children.push(
+      el("circle", { cx: badgeX, cy: badgeY, r: 10, fill: badgeColor }),
+    );
     if (style.badgeIcon) {
       children.push(
         el(

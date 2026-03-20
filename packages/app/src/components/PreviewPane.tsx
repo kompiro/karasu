@@ -1,4 +1,10 @@
-import { useRef, useState, useCallback, type WheelEvent, type MouseEvent } from "react";
+import {
+  useRef,
+  useState,
+  useCallback,
+  type WheelEvent,
+  type MouseEvent,
+} from "react";
 import type { Diagnostic, NodeMetadata } from "@karasu/core";
 import { NodeDetailPanel } from "./NodeDetailPanel.js";
 
@@ -47,7 +53,10 @@ export function PreviewPane({
     (e: MouseEvent) => {
       if (e.button !== 0) return;
       setIsDragging(true);
-      dragStart.current = { x: e.clientX - transform.x, y: e.clientY - transform.y };
+      dragStart.current = {
+        x: e.clientX - transform.x,
+        y: e.clientY - transform.y,
+      };
       mouseDownPos.current = { x: e.clientX, y: e.clientY };
     },
     [transform.x, transform.y],

@@ -2,7 +2,11 @@ import type { ResolvedEdgeStyle } from "../types/style.js";
 import type { LayoutEdge } from "./layout.js";
 import { el, escapeXml } from "./svg-builder.js";
 
-export function renderEdge(edge: LayoutEdge, style: ResolvedEdgeStyle, markerId: string): string {
+export function renderEdge(
+  edge: LayoutEdge,
+  style: ResolvedEdgeStyle,
+  markerId: string,
+): string {
   const { fromPoint, toPoint } = edge;
   const parts: string[] = [];
 

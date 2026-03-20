@@ -51,7 +51,9 @@ export function useKarasuProject(
     timerRef.current = setTimeout(async () => {
       try {
         const result = await compileProject(entryPath, fs, viewPath);
-        const hasErrors = result.diagnostics.some((d) => d.severity === "error");
+        const hasErrors = result.diagnostics.some(
+          (d) => d.severity === "error",
+        );
 
         if (hasErrors) {
           setState({
