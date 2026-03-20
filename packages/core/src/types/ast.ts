@@ -1,6 +1,12 @@
 import type { SourceRange } from "./tokens.js";
 
-export type LogicalNodeKind = "system" | "service" | "domain" | "usecase" | "resource" | "user";
+export type LogicalNodeKind =
+  | "system"
+  | "service"
+  | "domain"
+  | "usecase"
+  | "resource"
+  | "user";
 
 export type EdgeKind = "sync" | "async";
 
@@ -14,18 +20,76 @@ export type DeployNodeKind =
   | "job"
   | "artifact";
 
-export interface KrsNode {
-  kind: LogicalNodeKind;
+// ─── 共通 ─────────────────────────────────────────
+
+export interface LinkEntry {
+  url: string;
+  label?: string;
+  loc: SourceRange;
+}
+
+interface BaseNodeFields {
   id?: string;
   label: string;
-  description?: string;
-  role?: string;
   tags: string[];
   annotations: string[];
   children: KrsNode[];
   edges: KrsEdge[];
   loc: SourceRange;
 }
+
+export interface CommonProperties {
+  description?: string;
+  links: LinkEntry[];
+}
+
+// ─── 種別ごとの型 ──────────────────────────────────
+
+export interface SystemNode extends BaseNodeFields {
+  kind: "system";
+  properties: CommonProperties;
+}
+
+export interface ServiceNode extends BaseNodeFields {
+  kind: "service";
+  properties: CommonProperties & {
+    team?: string;
+  };
+}
+
+export interface DomainNode extends BaseNodeFields {
+  kind: "domain";
+  properties: CommonProperties;
+}
+
+export interface UsecaseNode extends BaseNodeFields {
+  kind: "usecase";
+  properties: CommonProperties;
+}
+
+export interface ResourceNode extends BaseNodeFields {
+  kind: "resource";
+  properties: CommonProperties;
+}
+
+export interface UserNode extends BaseNodeFields {
+  kind: "user";
+  properties: CommonProperties & {
+    role?: string;
+  };
+}
+
+// ─── Union ─────────────────────────────────────────
+
+export type KrsNode =
+  | SystemNode
+  | ServiceNode
+  | DomainNode
+  | UsecaseNode
+  | ResourceNode
+  | UserNode;
+
+// ─── エッジ（変更なし） ────────────────────────────
 
 export interface KrsEdge {
   from: string;
@@ -35,6 +99,8 @@ export interface KrsEdge {
   tags: string[];
   loc: SourceRange;
 }
+
+// ─── 物理図（変更なし） ────────────────────────────
 
 export interface DeployNodeProperties {
   runtime?: string;
@@ -57,6 +123,8 @@ export interface DeployBlock {
   loc: SourceRange;
 }
 
+// ─── ファイル ──────────────────────────────────────
+
 export interface ImportDeclaration {
   ids: string[];
   path: string;
@@ -66,9 +134,12 @@ export interface ImportDeclaration {
 export interface KrsFile {
   styleImports: string[];
   nodeImports: ImportDeclaration[];
-  systems: KrsNode[];
+  systems: SystemNode[];
+  services: ServiceNode[];
   deploys: DeployBlock[];
 }
+
+// ─── Diagnostics ───────────────────────────────────
 
 export type DiagnosticSeverity = "error" | "warning";
 

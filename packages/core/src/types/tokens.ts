@@ -33,7 +33,13 @@ export enum TokenType {
   Schedule = "Schedule",
   Image = "Image",
   Type = "Type",
+
+  // Properties (logical)
   Role = "Role",
+  Description = "Description",
+  Team = "Team",
+  Link = "Link",
+  TripleQuote = "TripleQuote",
 
   // Imports
   AtImport = "AtImport",

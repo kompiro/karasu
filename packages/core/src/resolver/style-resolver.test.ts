@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { resolveStyles } from "./style-resolver.js";
 import { analyze } from "./warnings.js";
-import type { KrsNode } from "../types/ast.js";
+import type { KrsNode, KrsFile } from "../types/ast.js";
 import type { StyleSheet, StyleRule } from "../types/style.js";
 import type { SourceRange } from "../types/tokens.js";
 
@@ -10,13 +10,27 @@ const dummyLoc: SourceRange = {
   end: { line: 1, column: 1, offset: 0 },
 };
 
-function makeNode(overrides: Partial<KrsNode> & { kind: KrsNode["kind"]; label: string }): KrsNode {
-  return {
-    tags: [],
-    annotations: [],
-    children: [],
+function makeNode(
+  overrides: Partial<KrsNode> & { kind: KrsNode["kind"]; label: string },
+): KrsNode {
+  const base = {
+    tags: [] as string[],
+    annotations: [] as string[],
+    children: [] as KrsNode[],
     edges: [],
     loc: dummyLoc,
+    properties: { links: [] },
+  };
+  return { ...base, ...overrides } as KrsNode;
+}
+
+function makeFile(overrides: Partial<KrsFile>): KrsFile {
+  return {
+    styleImports: [],
+    nodeImports: [],
+    systems: [],
+    services: [],
+    deploys: [],
     ...overrides,
   };
 }
@@ -76,7 +90,13 @@ describe("resolveStyles", () => {
       ],
     });
     const sheet: StyleSheet = {
-      rules: [makeRule({ tags: ["external"], annotations: [] }, { "border-style": "dashed" }, 10)],
+      rules: [
+        makeRule(
+          { tags: ["external"], annotations: [] },
+          { "border-style": "dashed" },
+          10,
+        ),
+      ],
     };
     const result = resolveStyles([system], [sheet]);
     expect(result.nodes.get("Pay")!.borderStyle).toBe("dashed");
@@ -130,7 +150,12 @@ describe("resolveStyles", () => {
           1,
           0,
         ),
-        makeRule({ tags: ["external"], annotations: [] }, { "background-color": "#BBB" }, 10, 1),
+        makeRule(
+          { tags: ["external"], annotations: [] },
+          { "background-color": "#BBB" },
+          10,
+          1,
+        ),
       ],
     };
     const result = resolveStyles([system], [sheet]);
@@ -153,8 +178,18 @@ describe("resolveStyles", () => {
     });
     const sheet: StyleSheet = {
       rules: [
-        makeRule({ tags: ["external"], annotations: [] }, { "background-color": "#AAA" }, 10, 0),
-        makeRule({ tags: [], annotations: ["deprecated"] }, { "background-color": "#BBB" }, 10, 1),
+        makeRule(
+          { tags: ["external"], annotations: [] },
+          { "background-color": "#AAA" },
+          10,
+          0,
+        ),
+        makeRule(
+          { tags: [], annotations: ["deprecated"] },
+          { "background-color": "#BBB" },
+          10,
+          1,
+        ),
       ],
     };
     const result = resolveStyles([system], [sheet]);
@@ -176,8 +211,18 @@ describe("resolveStyles", () => {
     });
     const sheet: StyleSheet = {
       rules: [
-        makeRule({ tags: ["external"], annotations: [] }, { "background-color": "#AAA" }, 10, 0),
-        makeRule({ id: "EC", tags: [], annotations: [] }, { "background-color": "#CCC" }, 100, 1),
+        makeRule(
+          { tags: ["external"], annotations: [] },
+          { "background-color": "#AAA" },
+          10,
+          0,
+        ),
+        makeRule(
+          { id: "EC", tags: [], annotations: [] },
+          { "background-color": "#CCC" },
+          100,
+          1,
+        ),
       ],
     };
     const result = resolveStyles([system], [sheet]);
@@ -205,7 +250,12 @@ describe("resolveStyles", () => {
     });
     const sheet: StyleSheet = {
       rules: [
-        makeRule({ nodeType: "edge", tags: [], annotations: [] }, { color: "#FF0000" }, 1, 0),
+        makeRule(
+          { nodeType: "edge", tags: [], annotations: [] },
+          { color: "#FF0000" },
+          1,
+          0,
+        ),
       ],
     };
     const result = resolveStyles([system], [sheet]);
@@ -217,9 +267,7 @@ describe("resolveStyles", () => {
 
 describe("analyze", () => {
   it("detects domain dispersal", () => {
-    const file = {
-      styleImports: [],
-      nodeImports: [],
+    const file = makeFile({
       systems: [
         makeNode({
           kind: "system",
@@ -229,29 +277,29 @@ describe("analyze", () => {
               kind: "service",
               id: "EC",
               label: "EC",
-              children: [makeNode({ kind: "domain", id: "Order", label: "受注" })],
+              children: [
+                makeNode({ kind: "domain", id: "Order", label: "受注" }),
+              ],
             }),
             makeNode({
               kind: "service",
               id: "Legacy",
               label: "Legacy",
-              children: [makeNode({ kind: "domain", id: "Order2", label: "受注" })],
+              children: [
+                makeNode({ kind: "domain", id: "Order2", label: "受注" }),
+              ],
             }),
           ],
         }),
-      ],
-      deploys: [],
-    };
+      ] as KrsFile["systems"],
+    });
     const warnings = analyze(file, []);
     expect(warnings.some((w) => w.kind === "domain-dispersal")).toBe(true);
     expect(warnings[0].message).toContain("受注");
   });
 
   it("detects missing runtime", () => {
-    const file = {
-      styleImports: [],
-      nodeImports: [],
-      systems: [],
+    const file = makeFile({
       deploys: [
         {
           label: "prod",
@@ -266,16 +314,13 @@ describe("analyze", () => {
           loc: dummyLoc,
         },
       ],
-    };
+    });
     const warnings = analyze(file, []);
     expect(warnings.some((w) => w.kind === "missing-runtime")).toBe(true);
   });
 
   it("detects missing realizes", () => {
-    const file = {
-      styleImports: [],
-      nodeImports: [],
-      systems: [],
+    const file = makeFile({
       deploys: [
         {
           label: "prod",
@@ -290,24 +335,31 @@ describe("analyze", () => {
           loc: dummyLoc,
         },
       ],
-    };
+    });
     const warnings = analyze(file, []);
     expect(warnings.some((w) => w.kind === "missing-realizes")).toBe(true);
   });
 
   it("detects style conflicts across sheets", () => {
     const sheet1: StyleSheet = {
-      rules: [makeRule({ nodeType: "service", tags: [], annotations: [] }, { color: "#AAA" }, 1)],
+      rules: [
+        makeRule(
+          { nodeType: "service", tags: [], annotations: [] },
+          { color: "#AAA" },
+          1,
+        ),
+      ],
     };
     const sheet2: StyleSheet = {
-      rules: [makeRule({ nodeType: "service", tags: [], annotations: [] }, { color: "#BBB" }, 1)],
+      rules: [
+        makeRule(
+          { nodeType: "service", tags: [], annotations: [] },
+          { color: "#BBB" },
+          1,
+        ),
+      ],
     };
-    const file = {
-      styleImports: [],
-      nodeImports: [],
-      systems: [],
-      deploys: [],
-    };
+    const file = makeFile({});
     const warnings = analyze(file, [sheet1, sheet2]);
     expect(warnings.some((w) => w.kind === "style-conflict")).toBe(true);
   });
