@@ -144,7 +144,10 @@ export class StyleLexer {
   private isHexColor(): boolean {
     // Look ahead from pos+1: count consecutive hex chars
     let offset = 1;
-    while (this.pos + offset < this.source.length && isHexChar(this.source[this.pos + offset])) {
+    while (
+      this.pos + offset < this.source.length &&
+      isHexChar(this.source[this.pos + offset])
+    ) {
       offset++;
     }
     const hexLen = offset - 1;
@@ -153,7 +156,10 @@ export class StyleLexer {
     const nextChar = this.source[this.pos + offset] ?? "";
     const followedByIdent = /[a-zA-Z_]/.test(nextChar);
     // If hex chars are followed by more ident chars, it's an ID not a color
-    return !followedByIdent && (hexLen === 3 || hexLen === 4 || hexLen === 6 || hexLen === 8);
+    return (
+      !followedByIdent &&
+      (hexLen === 3 || hexLen === 4 || hexLen === 6 || hexLen === 8)
+    );
   }
 
   private readHexColor(loc: SourceLocation): Token {
@@ -182,7 +188,10 @@ export class StyleLexer {
 
   private readIdentifier(loc: SourceLocation): Token {
     let value = "";
-    while (this.pos < this.source.length && isIdentPartWithHyphen(this.peek())) {
+    while (
+      this.pos < this.source.length &&
+      isIdentPartWithHyphen(this.peek())
+    ) {
       value += this.advance();
     }
     return { type: TokenType.Identifier, value, loc };
@@ -191,7 +200,10 @@ export class StyleLexer {
   private readValue(loc: SourceLocation): Token {
     let value = "";
     // Read number part (including decimal)
-    while (this.pos < this.source.length && (isDigit(this.peek()) || this.peek() === ".")) {
+    while (
+      this.pos < this.source.length &&
+      (isDigit(this.peek()) || this.peek() === ".")
+    ) {
       value += this.advance();
     }
     // Read optional unit suffix (px, %, em, etc.)

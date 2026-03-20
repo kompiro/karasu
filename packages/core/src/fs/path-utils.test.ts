@@ -1,5 +1,11 @@
 import { describe, it, expect } from "vitest";
-import { normalizePath, resolvePath, dirname, basename, extname } from "./path-utils";
+import {
+  normalizePath,
+  resolvePath,
+  dirname,
+  basename,
+  extname,
+} from "./path-utils";
 
 describe("normalizePath", () => {
   it("removes . segments", () => {
@@ -58,7 +64,9 @@ describe("resolvePath", () => {
   });
 
   it("resolves nested relative path", () => {
-    expect(resolvePath("/project/index.krs", "services/ec.krs")).toBe("/project/services/ec.krs");
+    expect(resolvePath("/project/index.krs", "services/ec.krs")).toBe(
+      "/project/services/ec.krs",
+    );
   });
 });
 
