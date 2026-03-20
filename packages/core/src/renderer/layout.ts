@@ -1,11 +1,18 @@
-import type { KrsNode, KrsEdge } from "../types/ast.js";
+import type { KrsNode, KrsEdge, LogicalNodeKind } from "../types/ast.js";
 import type { ViewSlice } from "../view/view-extract.js";
+import { summarizeDescription } from "./description-summary.js";
 
 export interface LayoutNode {
   id: string;
+  kind: LogicalNodeKind;
   label: string;
   description?: string;
+  descriptionSummary?: string;
   role?: string;
+  team?: string;
+  linkCount: number;
+  hasChildren: boolean;
+  hasDescription: boolean;
   x: number;
   y: number;
   width: number;
@@ -117,9 +124,17 @@ export function layout(viewSlice: ViewSlice): LayoutResult {
 
       layoutNodes.set(nid, {
         id: nid,
+        kind: krsNode.kind,
         label: krsNode.label,
         description: krsNode.description,
+        descriptionSummary: krsNode.description
+          ? summarizeDescription(krsNode.description)
+          : undefined,
         role: krsNode.role,
+        team: krsNode.team,
+        linkCount: krsNode.links.length,
+        hasChildren: krsNode.children.length > 0,
+        hasDescription: !!krsNode.description,
         x: xOffset,
         y,
         width: dims.width,
@@ -235,9 +250,17 @@ export function layout(viewSlice: ViewSlice): LayoutResult {
       const uid = userNode.id ?? userNode.label;
       const gNode: LayoutNode = {
         id: uid,
+        kind: userNode.kind,
         label: userNode.label,
         description: userNode.description,
+        descriptionSummary: userNode.description
+          ? summarizeDescription(userNode.description)
+          : undefined,
         role: userNode.role,
+        team: userNode.team,
+        linkCount: userNode.links.length,
+        hasChildren: userNode.children.length > 0,
+        hasDescription: !!userNode.description,
         x: userX - dims.width,
         y: userY,
         width: dims.width,
@@ -475,19 +498,43 @@ function assignLayers(
   return layers;
 }
 
+const META_FONT_RATIO = 0.7;
+const INFO_BUTTON_WIDTH = 24;
+
 function measureNode(node: KrsNode): { width: number; height: number } {
   const labelWidth = estimateTextWidth(node.label, CHAR_WIDTH);
-  const descWidth = node.description
-    ? estimateTextWidth(node.description, CHAR_WIDTH * DESCRIPTION_FONT_RATIO)
+
+  // Use summary for width calculation instead of full description
+  const descSummary = node.description ? summarizeDescription(node.description) : undefined;
+  const descWidth = descSummary
+    ? estimateTextWidth(descSummary, CHAR_WIDTH * DESCRIPTION_FONT_RATIO)
     : 0;
   const roleWidth = node.role
     ? estimateTextWidth(node.role, CHAR_WIDTH * DESCRIPTION_FONT_RATIO)
     : 0;
 
-  const width = Math.max(labelWidth, descWidth, roleWidth, 80) + NODE_PADDING_X * 2;
+  // Meta row: link count icon + team name
+  const hasMetaRow = node.links.length > 0 || !!node.team;
+  let metaWidth = 0;
+  if (hasMetaRow) {
+    if (node.links.length > 0) metaWidth += estimateTextWidth(`🔗${node.links.length}`, CHAR_WIDTH * META_FONT_RATIO);
+    if (node.team) {
+      if (metaWidth > 0) metaWidth += CHAR_WIDTH; // spacing
+      const teamDisplay = [...node.team].length > 15
+        ? [...node.team].slice(0, 15).join("") + "…"
+        : node.team;
+      metaWidth += estimateTextWidth(`👥${teamDisplay}`, CHAR_WIDTH * META_FONT_RATIO);
+    }
+  }
+
+  // Info button adds width for nodes with children and description
+  const infoButtonExtra = (node.children.length > 0 && node.description) ? INFO_BUTTON_WIDTH : 0;
+
+  const width = Math.max(labelWidth, descWidth, roleWidth, metaWidth, 80) + NODE_PADDING_X * 2 + infoButtonExtra;
   let height = NODE_PADDING_Y * 2 + LINE_HEIGHT;
   if (node.description) height += LINE_HEIGHT;
   if (node.role) height += LINE_HEIGHT;
+  if (hasMetaRow) height += LINE_HEIGHT;
 
   return { width, height };
 }

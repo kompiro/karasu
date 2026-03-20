@@ -78,12 +78,27 @@ import { render } from "./renderer/svg-renderer.js";
 import { extractView, type ViewPath } from "./view/view-extract.js";
 import { ImportResolver } from "./fs/import-resolver.js";
 import "./renderer/shapes.js"; // ensure built-in shapes are registered
-import type { Diagnostic } from "./types/ast.js";
+import type { Diagnostic, LogicalNodeKind, LinkEntry, KrsNode } from "./types/ast.js";
+import { summarizeDescription } from "./renderer/description-summary.js";
+
+export interface NodeMetadata {
+  kind: LogicalNodeKind;
+  label: string;
+  description?: string;
+  descriptionSummary?: string;
+  links: LinkEntry[];
+  team?: string;
+  role?: string;
+  tags: string[];
+  annotations: string[];
+  hasChildren: boolean;
+}
 
 export interface CompileResult {
   svg: string;
   warnings: Warning[];
   diagnostics: Diagnostic[];
+  nodeMetadata: Map<string, NodeMetadata>;
 }
 
 export function compile(
@@ -105,8 +120,9 @@ export function compile(
   const styles = resolveStyles(parseResult.value.systems, sheets);
   const svg = render(viewSlice, styles);
   const warnings = analyze(parseResult.value, sheets);
+  const nodeMetadata = buildNodeMetadata(viewSlice);
 
-  return { svg, warnings, diagnostics };
+  return { svg, warnings, diagnostics, nodeMetadata };
 }
 
 /**
@@ -127,6 +143,36 @@ export async function compileProject(
   const styles = resolveStyles(resolved.krsFile.systems, resolved.styleSheets);
   const svg = render(viewSlice, styles);
   const warnings = analyze(resolved.krsFile, resolved.styleSheets);
+  const nodeMetadata = buildNodeMetadata(viewSlice);
 
-  return { svg, warnings, diagnostics };
+  return { svg, warnings, diagnostics, nodeMetadata };
+}
+
+function buildNodeMetadata(viewSlice: import("./view/view-extract.js").ViewSlice): Map<string, NodeMetadata> {
+  const map = new Map<string, NodeMetadata>();
+
+  function addNode(node: KrsNode): void {
+    const id = node.id ?? node.label;
+    map.set(id, {
+      kind: node.kind,
+      label: node.label,
+      description: node.description,
+      descriptionSummary: node.description ? summarizeDescription(node.description) : undefined,
+      links: node.links,
+      team: node.team,
+      role: node.role,
+      tags: [...node.tags],
+      annotations: [...node.annotations],
+      hasChildren: node.children.length > 0,
+    });
+  }
+
+  for (const node of viewSlice.childNodes) {
+    addNode(node);
+  }
+  for (const node of viewSlice.ghostUsers) {
+    addNode(node);
+  }
+
+  return map;
 }

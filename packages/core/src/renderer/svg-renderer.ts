@@ -111,8 +111,7 @@ export function render(viewSlice: ViewSlice, styles: ResolvedStyles): string {
   const normalNodeParts: string[] = [];
   for (const [nodeId, layoutNode] of layoutResult.nodes) {
     const nodeStyle = styles.nodes.get(nodeId) ?? styles.defaultNodeStyle;
-    const hasChildren = hasChildrenInAst(viewSlice, nodeId);
-    const rendered = renderNode(layoutNode, nodeStyle, nodeId, hasChildren);
+    const rendered = renderNode(layoutNode, nodeStyle, nodeId);
     if (layoutNode.ghost) {
       ghostNodeParts.push(rendered);
     } else {
@@ -185,7 +184,6 @@ function renderNode(
   node: LayoutNode,
   style: ResolvedNodeStyle,
   nodeId: string,
-  hasChildren: boolean,
 ): string {
   const children: string[] = [];
 
@@ -198,6 +196,8 @@ function renderNode(
 
   const textColor = style.color;
   const fontSize = style.fontSize;
+  const displayDesc = node.descriptionSummary ?? node.description;
+  const hasMetaRow = node.linkCount > 0 || !!node.team;
 
   if (iconDef?.labelSlot) {
     const vw = iconDef.viewBoxWidth ?? 24;
@@ -226,7 +226,7 @@ function renderNode(
       ),
     );
 
-    if (node.description && iconDef.descriptionSlot) {
+    if (displayDesc && iconDef.descriptionSlot) {
       const descX = node.x + iconDef.descriptionSlot.x * scaleX;
       const descY = node.y + iconDef.descriptionSlot.y * scaleY;
       const descAnchor = iconDef.descriptionSlot.textAnchor ?? "middle";
@@ -244,13 +244,13 @@ function renderNode(
             "font-family": style.fontFamily,
             opacity: 0.7,
           },
-          escapeXml(node.description),
+          escapeXml(displayDesc),
         ),
       );
     }
   } else {
     const textX = node.x + node.width / 2;
-    const textLines = 1 + (node.description ? 1 : 0) + (node.role ? 1 : 0);
+    const textLines = 1 + (displayDesc ? 1 : 0) + (node.role ? 1 : 0) + (hasMetaRow ? 1 : 0);
     let textY = node.y + node.height / 2;
     if (textLines > 1) textY -= ((textLines - 1) * (fontSize + 4)) / 2;
 
@@ -273,7 +273,7 @@ function renderNode(
 
     let nextY = textY + fontSize + 4;
 
-    if (node.description) {
+    if (displayDesc) {
       children.push(
         el(
           "text",
@@ -287,7 +287,7 @@ function renderNode(
             "font-family": style.fontFamily,
             opacity: 0.7,
           },
-          escapeXml(node.description),
+          escapeXml(displayDesc),
         ),
       );
       nextY += fontSize + 4;
@@ -309,6 +309,35 @@ function renderNode(
             opacity: 0.6,
           },
           escapeXml(node.role),
+        ),
+      );
+      nextY += fontSize + 4;
+    }
+
+    // Meta row: link count + team
+    if (hasMetaRow) {
+      const metaParts: string[] = [];
+      if (node.linkCount > 0) metaParts.push(`🔗${node.linkCount}`);
+      if (node.team) {
+        const teamChars = [...node.team];
+        const teamDisplay = teamChars.length > 15
+          ? teamChars.slice(0, 15).join("") + "…"
+          : node.team;
+        metaParts.push(`👥${teamDisplay}`);
+      }
+      children.push(
+        el(
+          "text",
+          {
+            x: textX,
+            y: nextY,
+            "text-anchor": "middle",
+            "dominant-baseline": "central",
+            fill: "#94A3B8",
+            "font-size": `${Math.round(fontSize * 0.7)}px`,
+            "font-family": style.fontFamily,
+          },
+          escapeXml(metaParts.join("  ")),
         ),
       );
     }
@@ -356,23 +385,51 @@ function renderNode(
     }
   }
 
+  // Info button for container nodes with description
+  if (node.hasChildren && node.hasDescription) {
+    const btnX = node.x + node.width - 16;
+    const btnY = node.y + 14;
+    children.push(
+      el(
+        "g",
+        { "data-info-button": nodeId, style: "cursor: pointer" },
+        el("circle", {
+          cx: btnX,
+          cy: btnY,
+          r: 8,
+          fill: "none",
+          stroke: "#64748B",
+          "stroke-width": 1,
+        }),
+        el(
+          "text",
+          {
+            x: btnX,
+            y: btnY,
+            "text-anchor": "middle",
+            "dominant-baseline": "central",
+            fill: "#64748B",
+            "font-size": "10px",
+            "font-family": "sans-serif",
+            "font-style": "italic",
+          },
+          "i",
+        ),
+      ),
+    );
+  }
+
   return el(
     "g",
     {
       "data-node-id": nodeId,
-      style: hasChildren ? "cursor: pointer" : undefined,
+      "data-node-kind": node.kind,
+      "data-has-children": node.hasChildren ? "true" : "false",
+      "data-has-description": node.hasDescription ? "true" : "false",
+      "data-link-count": node.linkCount > 0 ? String(node.linkCount) : undefined,
+      style: node.hasChildren ? "cursor: pointer" : undefined,
       opacity: style.opacity < 1 ? style.opacity : undefined,
     },
     ...children,
   );
-}
-
-function hasChildrenInAst(viewSlice: ViewSlice, nodeId: string): boolean {
-  for (const child of viewSlice.childNodes) {
-    const id = child.id ?? child.label;
-    if (id === nodeId) {
-      return child.children.length > 0;
-    }
-  }
-  return false;
 }
