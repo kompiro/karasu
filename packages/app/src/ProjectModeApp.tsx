@@ -27,7 +27,11 @@ export function ProjectModeApp() {
   // エントリパスを計算（現在のプロジェクトの index.krs）
   const entryPath = currentProject ? `${currentProject.rootPath}/index.krs` : null;
 
-  const { svg, warnings, diagnostics, nodeMetadata, recompile } = useKarasuProject(entryPath, fs, viewPath);
+  const { svg, warnings, diagnostics, nodeMetadata, recompile } = useKarasuProject(
+    entryPath,
+    fs,
+    viewPath,
+  );
 
   // 初期化: プロジェクト一覧を読み込み
   useEffect(() => {

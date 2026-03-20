@@ -307,7 +307,10 @@ system "Test" {
     const user = result.value.systems[0].children[0];
     expect(user.role).toBe("商品を購入する一般ユーザー");
     expect(user.links).toHaveLength(1);
-    expect(user.links[0]).toEqual({ label: "ペルソナ定義", url: "https://wiki.example.com/persona" });
+    expect(user.links[0]).toEqual({
+      label: "ペルソナ定義",
+      url: "https://wiki.example.com/persona",
+    });
   });
 
   it("parses resource with link", () => {

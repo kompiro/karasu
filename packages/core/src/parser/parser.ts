@@ -334,7 +334,7 @@ export class Parser {
           }
           const linkLabel = this.advance().value;
           if (this.peek().type !== TokenType.StringLiteral) {
-            this.error('Expected URL string after link label');
+            this.error("Expected URL string after link label");
             continue;
           }
           const linkUrl = this.advance().value;

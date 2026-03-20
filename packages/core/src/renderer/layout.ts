@@ -517,20 +517,23 @@ function measureNode(node: KrsNode): { width: number; height: number } {
   const hasMetaRow = node.links.length > 0 || !!node.team;
   let metaWidth = 0;
   if (hasMetaRow) {
-    if (node.links.length > 0) metaWidth += estimateTextWidth(`🔗${node.links.length}`, CHAR_WIDTH * META_FONT_RATIO);
+    if (node.links.length > 0)
+      metaWidth += estimateTextWidth(`🔗${node.links.length}`, CHAR_WIDTH * META_FONT_RATIO);
     if (node.team) {
       if (metaWidth > 0) metaWidth += CHAR_WIDTH; // spacing
-      const teamDisplay = [...node.team].length > 15
-        ? [...node.team].slice(0, 15).join("") + "…"
-        : node.team;
+      const teamDisplay =
+        [...node.team].length > 15 ? [...node.team].slice(0, 15).join("") + "…" : node.team;
       metaWidth += estimateTextWidth(`👥${teamDisplay}`, CHAR_WIDTH * META_FONT_RATIO);
     }
   }
 
   // Info button adds width for nodes with children and description
-  const infoButtonExtra = (node.children.length > 0 && node.description) ? INFO_BUTTON_WIDTH : 0;
+  const infoButtonExtra = node.children.length > 0 && node.description ? INFO_BUTTON_WIDTH : 0;
 
-  const width = Math.max(labelWidth, descWidth, roleWidth, metaWidth, 80) + NODE_PADDING_X * 2 + infoButtonExtra;
+  const width =
+    Math.max(labelWidth, descWidth, roleWidth, metaWidth, 80) +
+    NODE_PADDING_X * 2 +
+    infoButtonExtra;
   let height = NODE_PADDING_Y * 2 + LINE_HEIGHT;
   if (node.description) height += LINE_HEIGHT;
   if (node.role) height += LINE_HEIGHT;

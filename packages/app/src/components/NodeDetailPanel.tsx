@@ -73,16 +73,10 @@ export function NodeDetailPanel({ metadata, anchorX, anchorY, onClose }: NodeDet
 
       {(metadata.team || metadata.role || metadata.tags.length > 0) && (
         <div className="node-detail-section">
-          {metadata.team && (
-            <div className="node-detail-prop">👥 {metadata.team}</div>
-          )}
-          {metadata.role && (
-            <div className="node-detail-prop">📌 {metadata.role}</div>
-          )}
+          {metadata.team && <div className="node-detail-prop">👥 {metadata.team}</div>}
+          {metadata.role && <div className="node-detail-prop">📌 {metadata.role}</div>}
           {metadata.tags.length > 0 && (
-            <div className="node-detail-prop">
-              🏷 {metadata.tags.map((t) => `[${t}]`).join(" ")}
-            </div>
+            <div className="node-detail-prop">🏷 {metadata.tags.map((t) => `[${t}]`).join(" ")}</div>
           )}
         </div>
       )}

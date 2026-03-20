@@ -148,7 +148,9 @@ export async function compileProject(
   return { svg, warnings, diagnostics, nodeMetadata };
 }
 
-function buildNodeMetadata(viewSlice: import("./view/view-extract.js").ViewSlice): Map<string, NodeMetadata> {
+function buildNodeMetadata(
+  viewSlice: import("./view/view-extract.js").ViewSlice,
+): Map<string, NodeMetadata> {
   const map = new Map<string, NodeMetadata>();
 
   function addNode(node: KrsNode): void {

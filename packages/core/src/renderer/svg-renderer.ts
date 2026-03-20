@@ -180,11 +180,7 @@ function renderContainer(
   );
 }
 
-function renderNode(
-  node: LayoutNode,
-  style: ResolvedNodeStyle,
-  nodeId: string,
-): string {
+function renderNode(node: LayoutNode, style: ResolvedNodeStyle, nodeId: string): string {
   const children: string[] = [];
 
   // Shape
@@ -320,9 +316,8 @@ function renderNode(
       if (node.linkCount > 0) metaParts.push(`🔗${node.linkCount}`);
       if (node.team) {
         const teamChars = [...node.team];
-        const teamDisplay = teamChars.length > 15
-          ? teamChars.slice(0, 15).join("") + "…"
-          : node.team;
+        const teamDisplay =
+          teamChars.length > 15 ? teamChars.slice(0, 15).join("") + "…" : node.team;
         metaParts.push(`👥${teamDisplay}`);
       }
       children.push(

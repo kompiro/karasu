@@ -65,26 +65,23 @@ export function PreviewPane({
     [isDragging],
   );
 
-  const openDetailPanel = useCallback(
-    (nodeId: string, target: Element) => {
-      const rect = target.getBoundingClientRect();
-      const containerRect = containerRef.current?.getBoundingClientRect();
-      if (!containerRect) return;
+  const openDetailPanel = useCallback((nodeId: string, target: Element) => {
+    const rect = target.getBoundingClientRect();
+    const containerRect = containerRef.current?.getBoundingClientRect();
+    if (!containerRect) return;
 
-      // Position panel to the right of the node
-      let anchorX = rect.right - containerRect.left + 8;
-      const anchorY = rect.top - containerRect.top;
+    // Position panel to the right of the node
+    let anchorX = rect.right - containerRect.left + 8;
+    const anchorY = rect.top - containerRect.top;
 
-      // If near right edge, position to the left
-      if (anchorX + 360 > containerRect.width) {
-        anchorX = rect.left - containerRect.left - 368;
-        if (anchorX < 0) anchorX = 8;
-      }
+    // If near right edge, position to the left
+    if (anchorX + 360 > containerRect.width) {
+      anchorX = rect.left - containerRect.left - 368;
+      if (anchorX < 0) anchorX = 8;
+    }
 
-      setDetailPanel({ nodeId, anchorX, anchorY });
-    },
-    [],
-  );
+    setDetailPanel({ nodeId, anchorX, anchorY });
+  }, []);
 
   const handleMouseUp = useCallback(
     (e: MouseEvent) => {
