@@ -108,6 +108,17 @@ export function PreviewPane({
         return;
       }
 
+      // Check for link button click
+      const linkButton = target.closest("[data-link-button]");
+      if (linkButton) {
+        const nodeId = linkButton.getAttribute("data-link-button");
+        if (nodeId) {
+          const nodeGroup = linkButton.closest("[data-node-id]") ?? linkButton;
+          openDetailPanel(nodeId, nodeGroup);
+        }
+        return;
+      }
+
       // Check for node click
       const nodeGroup = target.closest("[data-node-id]");
       if (!nodeGroup) {

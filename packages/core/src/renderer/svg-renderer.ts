@@ -312,29 +312,49 @@ function renderNode(node: LayoutNode, style: ResolvedNodeStyle, nodeId: string):
 
     // Meta row: link count + team
     if (hasMetaRow) {
-      const metaParts: string[] = [];
-      if (node.linkCount > 0) metaParts.push(`🔗${node.linkCount}`);
-      if (node.team) {
+      const metaFontSize = `${Math.round(fontSize * 0.7)}px`;
+      const metaAttrs = {
+        "text-anchor": "middle" as const,
+        "dominant-baseline": "central" as const,
+        fill: "#94A3B8",
+        "font-size": metaFontSize,
+        "font-family": style.fontFamily,
+      };
+
+      if (node.linkCount > 0 && node.team) {
+        // Both link count and team: render separately so link is clickable
+        const gap = 8;
+        const linkText = `🔗${node.linkCount}`;
         const teamChars = [...node.team];
         const teamDisplay =
           teamChars.length > 15 ? teamChars.slice(0, 15).join("") + "…" : node.team;
-        metaParts.push(`👥${teamDisplay}`);
+        const teamText = `👥${teamDisplay}`;
+        children.push(
+          el(
+            "g",
+            { "data-link-button": nodeId, style: "cursor: pointer", "pointer-events": "all" },
+            el("text", { ...metaAttrs, x: textX - gap, y: nextY }, escapeXml(linkText)),
+          ),
+        );
+        children.push(
+          el("text", { ...metaAttrs, x: textX + gap, y: nextY }, escapeXml(teamText)),
+        );
+      } else if (node.linkCount > 0) {
+        children.push(
+          el(
+            "g",
+            { "data-link-button": nodeId, style: "cursor: pointer", "pointer-events": "all" },
+            el("text", { ...metaAttrs, x: textX, y: nextY }, escapeXml(`🔗${node.linkCount}`)),
+          ),
+        );
+      } else if (node.team) {
+        const teamChars = [...node.team];
+        const teamDisplay =
+          teamChars.length > 15 ? teamChars.slice(0, 15).join("") + "…" : node.team;
+        children.push(
+          el("text", { ...metaAttrs, x: textX, y: nextY }, escapeXml(`👥${teamDisplay}`)),
+        );
       }
-      children.push(
-        el(
-          "text",
-          {
-            x: textX,
-            y: nextY,
-            "text-anchor": "middle",
-            "dominant-baseline": "central",
-            fill: "#94A3B8",
-            "font-size": `${Math.round(fontSize * 0.7)}px`,
-            "font-family": style.fontFamily,
-          },
-          escapeXml(metaParts.join("  ")),
-        ),
-      );
     }
   }
 
@@ -387,12 +407,12 @@ function renderNode(node: LayoutNode, style: ResolvedNodeStyle, nodeId: string):
     children.push(
       el(
         "g",
-        { "data-info-button": nodeId, style: "cursor: pointer" },
+        { "data-info-button": nodeId, style: "cursor: pointer", "pointer-events": "all" },
         el("circle", {
           cx: btnX,
           cy: btnY,
           r: 8,
-          fill: "none",
+          fill: "transparent",
           stroke: "#64748B",
           "stroke-width": 1,
         }),
