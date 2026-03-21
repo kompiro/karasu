@@ -309,10 +309,13 @@ export class Parser {
     const start = this.peek().loc;
     const url = this.expect(TokenType.StringLiteral);
     let label: string | undefined;
+    let end = url.loc;
     if (this.peek().type === TokenType.StringLiteral) {
-      label = this.advance().value;
+      const labelToken = this.advance();
+      label = labelToken.value;
+      end = labelToken.loc;
     }
-    return { url: url.value, label, loc: this.range(start, this.peek().loc) };
+    return { url: url.value, label, loc: this.range(start, end) };
   }
 
   private isLogicalKeyword(token: Token): boolean {
@@ -336,22 +339,23 @@ export class Parser {
 
     let id: string | undefined;
     let label = "";
+    let lastConsumed = start;
 
     // After keyword, we may have: Identifier StringLiteral or just StringLiteral
     if (this.peek().type === TokenType.Identifier) {
-      id = this.advance().value;
+      lastConsumed = this.advance();
+      id = lastConsumed.value;
       if (this.peek().type === TokenType.StringLiteral) {
-        label = this.advance().value;
+        lastConsumed = this.advance();
+        label = lastConsumed.value;
       }
     } else if (this.peek().type === TokenType.StringLiteral) {
-      label = this.advance().value;
+      lastConsumed = this.advance();
+      label = lastConsumed.value;
     }
 
     // Detect deprecated positional description and emit error
-    if (
-      this.peek().type === TokenType.StringLiteral &&
-      this.peek().type !== TokenType.LeftBracket
-    ) {
+    if (this.peek().type === TokenType.StringLiteral) {
       this.diagnostics.push({
         severity: "error",
         message:
@@ -377,7 +381,7 @@ export class Parser {
     // Optional body
     const children: KrsNode[] = [];
     const edges: KrsEdge[] = [];
-    let end = start;
+    let end = lastConsumed;
 
     if (this.peek().type === TokenType.LeftBrace) {
       this.advance();
