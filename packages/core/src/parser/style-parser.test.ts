@@ -186,9 +186,13 @@ describe("computeSpecificity", () => {
   });
 
   it("type + tag = 11", () => {
-    expect(computeSpecificity({ nodeType: "service", tags: ["external"], annotations: [] })).toBe(
-      11,
-    );
+    expect(
+      computeSpecificity({
+        nodeType: "service",
+        tags: ["external"],
+        annotations: [],
+      }),
+    ).toBe(11);
   });
 
   it("tag + annotation = 20", () => {

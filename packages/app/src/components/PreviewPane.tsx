@@ -32,7 +32,10 @@ export function PreviewPane({ svg, diagnostics, viewPath, onDrillDown }: Preview
     (e: MouseEvent) => {
       if (e.button !== 0) return;
       setIsDragging(true);
-      dragStart.current = { x: e.clientX - transform.x, y: e.clientY - transform.y };
+      dragStart.current = {
+        x: e.clientX - transform.x,
+        y: e.clientY - transform.y,
+      };
       mouseDownPos.current = { x: e.clientX, y: e.clientY };
     },
     [transform.x, transform.y],

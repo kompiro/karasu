@@ -1,10 +1,12 @@
 import { describe, it, expect } from "vitest";
 import { Parser } from "./parser.js";
+import type { ServiceNode, UserNode } from "../types/ast.js";
 
 describe("Parser", () => {
   it("parses empty input", () => {
     const result = Parser.parse("");
     expect(result.value.systems).toHaveLength(0);
+    expect(result.value.services).toHaveLength(0);
     expect(result.value.deploys).toHaveLength(0);
     expect(result.diagnostics).toHaveLength(0);
   });
@@ -34,13 +36,18 @@ describe("Parser", () => {
     expect(result.value.systems[0].children).toHaveLength(0);
   });
 
-  it("parses nodes with id, label, and description", () => {
+  it("parses description in property block", () => {
     const result = Parser.parse(`
 system "Test" {
-  user Customer "顧客" "商品を購入する一般ユーザー"
-  service ECommerce "ECサイト" "商品管理と注文処理"
+  user Customer "顧客" {
+    description "商品を購入する一般ユーザー"
+  }
+  service ECommerce "ECサイト" {
+    description "商品管理と注文処理"
+  }
 }
     `);
+    expect(result.diagnostics).toHaveLength(0);
     const sys = result.value.systems[0];
     expect(sys.children).toHaveLength(2);
 
@@ -48,13 +55,23 @@ system "Test" {
     expect(userNode.kind).toBe("user");
     expect(userNode.id).toBe("Customer");
     expect(userNode.label).toBe("顧客");
-    expect(userNode.description).toBe("商品を購入する一般ユーザー");
+    expect(userNode.properties.description).toBe("商品を購入する一般ユーザー");
 
     const service = sys.children[1];
     expect(service.kind).toBe("service");
     expect(service.id).toBe("ECommerce");
     expect(service.label).toBe("ECサイト");
-    expect(service.description).toBe("商品管理と注文処理");
+    expect(service.properties.description).toBe("商品管理と注文処理");
+  });
+
+  it("rejects positional description with error", () => {
+    const result = Parser.parse(`
+system "Test" {
+  service ECommerce "ECサイト" "商品管理と注文処理"
+}
+    `);
+    expect(result.diagnostics.length).toBeGreaterThan(0);
+    expect(result.diagnostics[0].message).toContain("位置引数の description は廃止されました");
   });
 
   it("parses tags", () => {
@@ -190,8 +207,12 @@ deploy "本番環境" {
 @import "default.krs.style"
 
 system "ECプラットフォーム" {
-  user Customer "顧客" "商品を購入する一般ユーザー"
-  service ECommerce "ECサイト" "商品管理と注文処理"
+  user Customer "顧客" {
+    description "商品を購入する一般ユーザー"
+  }
+  service ECommerce "ECサイト" {
+    description "商品管理と注文処理"
+  }
   service Payment "決済サービス" [external]
   Customer -> ECommerce "商品を購入する"
   ECommerce --> Payment "決済を処理する"
@@ -223,11 +244,11 @@ system "Test" {
 }
     `);
     expect(result.diagnostics).toHaveLength(0);
-    const user = result.value.systems[0].children[0];
+    const user = result.value.systems[0].children[0] as UserNode;
     expect(user.kind).toBe("user");
     expect(user.id).toBe("Admin");
     expect(user.label).toBe("管理者");
-    expect(user.role).toBe("システム管理者");
+    expect(user.properties.role).toBe("システム管理者");
     expect(user.tags).toEqual(["human"]);
   });
 
@@ -240,10 +261,10 @@ system "Test" {
 }
     `);
     expect(result.diagnostics).toHaveLength(0);
-    const user = result.value.systems[0].children[0];
+    const user = result.value.systems[0].children[0] as UserNode;
     expect(user.kind).toBe("user");
     expect(user.tags).toEqual(["ai"]);
-    expect(user.role).toBe("注文処理担当");
+    expect(user.properties.role).toBe("注文処理担当");
   });
 
   it("parses user without role (simple form)", () => {
@@ -253,10 +274,130 @@ system "Test" {
 }
     `);
     expect(result.diagnostics).toHaveLength(0);
-    const user = result.value.systems[0].children[0];
+    const user = result.value.systems[0].children[0] as UserNode;
     expect(user.kind).toBe("user");
-    expect(user.role).toBeUndefined();
+    expect(user.properties.role).toBeUndefined();
     expect(user.tags).toEqual(["human"]);
+  });
+
+  it("parses team property on service", () => {
+    const result = Parser.parse(`
+system "Test" {
+  service ECommerce "ECサイト" {
+    team "EC開発チーム"
+  }
+}
+    `);
+    expect(result.diagnostics).toHaveLength(0);
+    const service = result.value.systems[0].children[0] as ServiceNode;
+    expect(service.kind).toBe("service");
+    expect(service.properties.team).toBe("EC開発チーム");
+  });
+
+  it("parses link property", () => {
+    const result = Parser.parse(`
+system "Test" {
+  service ECommerce "ECサイト" {
+    link "https://wiki.example.com/ec" "設計Wiki"
+  }
+}
+    `);
+    expect(result.diagnostics).toHaveLength(0);
+    const service = result.value.systems[0].children[0] as ServiceNode;
+    expect(service.properties.links).toHaveLength(1);
+    expect(service.properties.links[0].url).toBe("https://wiki.example.com/ec");
+    expect(service.properties.links[0].label).toBe("設計Wiki");
+  });
+
+  it("parses link without label", () => {
+    const result = Parser.parse(`
+system "Test" {
+  service ECommerce "ECサイト" {
+    link "https://wiki.example.com/ec"
+  }
+}
+    `);
+    expect(result.diagnostics).toHaveLength(0);
+    const service = result.value.systems[0].children[0] as ServiceNode;
+    expect(service.properties.links).toHaveLength(1);
+    expect(service.properties.links[0].url).toBe("https://wiki.example.com/ec");
+    expect(service.properties.links[0].label).toBeUndefined();
+  });
+
+  it("parses multiple links", () => {
+    const result = Parser.parse(`
+system "Test" {
+  service ECommerce "ECサイト" {
+    link "https://wiki.example.com/ec" "設計Wiki"
+    link "https://figma.com/file/xxx" "画面設計"
+  }
+}
+    `);
+    expect(result.diagnostics).toHaveLength(0);
+    const service = result.value.systems[0].children[0] as ServiceNode;
+    expect(service.properties.links).toHaveLength(2);
+    expect(service.properties.links[0].url).toBe("https://wiki.example.com/ec");
+    expect(service.properties.links[1].url).toBe("https://figma.com/file/xxx");
+  });
+
+  it("parses triple-quoted description", () => {
+    const result = Parser.parse(`
+system "Test" {
+  service ECommerce "ECサイト" {
+    description """
+      商品管理と注文処理を担当するサービス。
+
+      ## 責務
+      - 商品カタログの管理
+      """
+  }
+}
+    `);
+    expect(result.diagnostics).toHaveLength(0);
+    const service = result.value.systems[0].children[0] as ServiceNode;
+    expect(service.properties.description).toContain("商品管理と注文処理を担当するサービス。");
+    expect(service.properties.description).toContain("## 責務");
+  });
+
+  it("parses top-level service", () => {
+    const result = Parser.parse(`
+service Monitoring "監視サービス" {
+  description "配置先のシステムが未定"
+  team "SRE チーム"
+}
+    `);
+    expect(result.diagnostics).toHaveLength(0);
+    expect(result.value.services).toHaveLength(1);
+    const service = result.value.services[0];
+    expect(service.kind).toBe("service");
+    expect(service.id).toBe("Monitoring");
+    expect(service.label).toBe("監視サービス");
+    expect(service.properties.description).toBe("配置先のシステムが未定");
+    expect(service.properties.team).toBe("SRE チーム");
+  });
+
+  it("parses property block mixed with child nodes", () => {
+    const result = Parser.parse(`
+system "Test" {
+  service ECommerce "ECサイト" {
+    description "商品管理"
+    team "ECチーム"
+    link "https://example.com" "Wiki"
+
+    domain "受注" {
+      usecase "注文を受け付ける"
+    }
+  }
+}
+    `);
+    expect(result.diagnostics).toHaveLength(0);
+    const service = result.value.systems[0].children[0] as ServiceNode;
+    expect(service.properties.description).toBe("商品管理");
+    expect(service.properties.team).toBe("ECチーム");
+    expect(service.properties.links).toHaveLength(1);
+    expect(service.children).toHaveLength(1);
+    expect(service.children[0].kind).toBe("domain");
+    expect(service.children[0].children).toHaveLength(1);
   });
 
   it("reports errors for unexpected tokens", () => {

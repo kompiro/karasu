@@ -10,6 +10,14 @@ export type {
   LogicalNodeKind,
   DeployNodeKind,
   EdgeKind,
+  LinkEntry,
+  CommonProperties,
+  SystemNode,
+  ServiceNode,
+  DomainNode,
+  UsecaseNode,
+  ResourceNode,
+  UserNode,
 } from "./types/ast.js";
 
 export type {

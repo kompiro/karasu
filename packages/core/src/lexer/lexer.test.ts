@@ -72,6 +72,17 @@ describe("Lexer", () => {
     ]);
   });
 
+  it("tokenizes logical property keywords", () => {
+    const types = tokenTypes("description team link role");
+    expect(types).toEqual([
+      TokenType.Description,
+      TokenType.Team,
+      TokenType.Link,
+      TokenType.Role,
+      TokenType.EOF,
+    ]);
+  });
+
   it("tokenizes string literals", () => {
     const values = tokenValues('"hello" "world"');
     expect(values).toEqual(["hello", "world"]);
@@ -136,7 +147,9 @@ describe("Lexer", () => {
   it("tokenizes a complete system block", () => {
     const source = `
 system "ECプラットフォーム" {
-  user Customer "顧客" "商品を購入する一般ユーザー"
+  user Customer "顧客" {
+    description "商品を購入する一般ユーザー"
+  }
   service ECommerce "ECサイト" [external] @deprecated
   Customer -> ECommerce "商品を購入する"
   Customer --> ECommerce "非同期処理"
@@ -149,7 +162,10 @@ system "ECプラットフォーム" {
       TokenType.User,
       TokenType.Identifier, // Customer
       TokenType.StringLiteral,
+      TokenType.LeftBrace,
+      TokenType.Description,
       TokenType.StringLiteral,
+      TokenType.RightBrace,
       TokenType.Service,
       TokenType.Identifier, // ECommerce
       TokenType.StringLiteral,
@@ -168,5 +184,25 @@ system "ECプラットフォーム" {
       TokenType.StringLiteral,
       TokenType.RightBrace,
     ]);
+  });
+
+  it("tokenizes triple-quoted string", () => {
+    const source = `description """\n  line1\n  line2\n  """`;
+    const tokens = new Lexer(source).tokenize();
+    expect(tokens[0].type).toBe(TokenType.Description);
+    expect(tokens[1].type).toBe(TokenType.TripleQuote);
+  });
+
+  it("dedents triple-quoted string based on closing indent", () => {
+    const source = `description """\n    line1\n    line2\n    """`;
+    const tokens = new Lexer(source).tokenize();
+    expect(tokens[1].type).toBe(TokenType.TripleQuote);
+    expect(tokens[1].value).toBe("line1\nline2");
+  });
+
+  it("handles triple-quoted string with mixed indentation", () => {
+    const source = `description """\n    first\n      indented\n    """`;
+    const tokens = new Lexer(source).tokenize();
+    expect(tokens[1].value).toBe("first\n  indented");
   });
 });

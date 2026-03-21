@@ -87,4 +87,4 @@ karasu/
 7. 手動検証チェックリストを実施する
 8. レビュー → マージ → `git worktree remove` でクリーンアップ
 
-詳細な手順は `.claude/workflows/feature-development.md` を参照。
+詳細な手順は `/start-dev` スキルを参照。

@@ -1,11 +1,16 @@
-import type { KrsNode, KrsEdge } from "../types/ast.js";
+import type { KrsNode, KrsEdge, LogicalNodeKind, CommonProperties } from "../types/ast.js";
 import type { ViewSlice } from "../view/view-extract.js";
 
+export type LayoutNodeProperties = CommonProperties & {
+  role?: string;
+  team?: string;
+};
+
 export interface LayoutNode {
+  kind: LogicalNodeKind;
   id: string;
   label: string;
-  description?: string;
-  role?: string;
+  properties: LayoutNodeProperties;
   x: number;
   y: number;
   width: number;
@@ -116,10 +121,10 @@ export function layout(viewSlice: ViewSlice): LayoutResult {
       const y = layerIdx * (dims.height + LAYER_GAP) + NODE_GAP;
 
       layoutNodes.set(nid, {
+        kind: krsNode.kind,
         id: nid,
         label: krsNode.label,
-        description: krsNode.description,
-        role: krsNode.role,
+        properties: extractLayoutProperties(krsNode),
         x: xOffset,
         y,
         width: dims.width,
@@ -234,10 +239,10 @@ export function layout(viewSlice: ViewSlice): LayoutResult {
       const dims = measureNode(userNode);
       const uid = userNode.id ?? userNode.label;
       const gNode: LayoutNode = {
+        kind: userNode.kind,
         id: uid,
         label: userNode.label,
-        description: userNode.description,
-        role: userNode.role,
+        properties: extractLayoutProperties(userNode),
         x: userX - dims.width,
         y: userY,
         width: dims.width,
@@ -475,19 +480,29 @@ function assignLayers(
   return layers;
 }
 
+function extractLayoutProperties(node: KrsNode): LayoutNodeProperties {
+  const props: LayoutNodeProperties = {
+    description: node.properties.description,
+    links: node.properties.links,
+  };
+  if (node.kind === "user") props.role = node.properties.role;
+  if (node.kind === "service") props.team = node.properties.team;
+  return props;
+}
+
 function measureNode(node: KrsNode): { width: number; height: number } {
   const labelWidth = estimateTextWidth(node.label, CHAR_WIDTH);
-  const descWidth = node.description
-    ? estimateTextWidth(node.description, CHAR_WIDTH * DESCRIPTION_FONT_RATIO)
+  const description = node.properties.description;
+  const role = node.kind === "user" ? node.properties.role : undefined;
+  const descWidth = description
+    ? estimateTextWidth(description, CHAR_WIDTH * DESCRIPTION_FONT_RATIO)
     : 0;
-  const roleWidth = node.role
-    ? estimateTextWidth(node.role, CHAR_WIDTH * DESCRIPTION_FONT_RATIO)
-    : 0;
+  const roleWidth = role ? estimateTextWidth(role, CHAR_WIDTH * DESCRIPTION_FONT_RATIO) : 0;
 
   const width = Math.max(labelWidth, descWidth, roleWidth, 80) + NODE_PADDING_X * 2;
   let height = NODE_PADDING_Y * 2 + LINE_HEIGHT;
-  if (node.description) height += LINE_HEIGHT;
-  if (node.role) height += LINE_HEIGHT;
+  if (description) height += LINE_HEIGHT;
+  if (role) height += LINE_HEIGHT;
 
   return { width, height };
 }

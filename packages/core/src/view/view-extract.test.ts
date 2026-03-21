@@ -9,10 +9,16 @@ function parseSystem(krs: string): KrsNode[] {
 
 const FULL_KRS = `
 system "ECプラットフォーム" {
-  user Customer "顧客" "商品を購入する一般ユーザー"
-  user Admin "管理者" "システムを運用する担当者"
+  user Customer "顧客" {
+    description "商品を購入する一般ユーザー"
+  }
+  user Admin "管理者" {
+    description "システムを運用する担当者"
+  }
 
-  service ECommerce "ECサイト" "商品管理と注文処理" {
+  service ECommerce "ECサイト" {
+    description "商品管理と注文処理"
+
     domain Order "受注" {
       usecase PlaceOrder "注文を受け付ける" {
         resource OrderTable "注文テーブル"
@@ -24,7 +30,9 @@ system "ECプラットフォーム" {
       usecase ShipOrder "出荷する"
     }
   }
-  service Payment "決済サービス" "クレジットカード決済処理" [external]
+  service Payment "決済サービス" [external] {
+    description "クレジットカード決済処理"
+  }
 
   Customer -> ECommerce "商品を購入する"
   Admin -> ECommerce "商品を管理する"

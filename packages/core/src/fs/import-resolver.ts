@@ -53,6 +53,7 @@ export class ImportResolver {
       styleImports: [],
       nodeImports: [],
       systems: [],
+      services: [],
       deploys: [],
     };
 
@@ -84,6 +85,7 @@ export class ImportResolver {
     const file = parseResult.value;
     mergedFile.styleImports.push(...file.styleImports);
     mergedFile.systems.push(...file.systems);
+    mergedFile.services.push(...file.services);
     mergedFile.deploys.push(...file.deploys);
 
     // import { X } from "other.krs" を解決
@@ -109,6 +111,14 @@ export class ImportResolver {
           // system 自体が id にマッチする場合
           if (system.id === id || system.label === id) {
             mergedFile.systems.push(system);
+            found = true;
+          }
+        }
+
+        // services からも探す
+        for (const service of importedFile.services) {
+          if (service.id === id || service.label === id) {
+            mergedFile.services.push(service);
             found = true;
           }
         }
@@ -153,7 +163,7 @@ export class ImportResolver {
    * なければ新しい system は追加しない（ノード単独では意味をなさないため）。
    */
   private mergeNodeIntoSystems(
-    systems: import("../types/ast.js").KrsNode[],
+    systems: import("../types/ast.js").SystemNode[],
     sourceSystem: import("../types/ast.js").KrsNode,
     node: import("../types/ast.js").KrsNode,
   ): void {

@@ -117,7 +117,9 @@ system "Test" {
   it("renders description text", () => {
     const svg = renderFromSource(`
 system "Test" {
-  service ECommerce "ECサイト" "商品管理と注文処理"
+  service ECommerce "ECサイト" {
+    description "商品管理と注文処理"
+  }
 }
     `);
     expect(svg).toContain("商品管理と注文処理");
@@ -135,7 +137,8 @@ system "ECプラットフォーム" {
   it("renders role text on user node", () => {
     const svg = renderFromSource(`
 system "Test" {
-  user Admin "管理者" "システムを運用する" [human] {
+  user Admin "管理者" [human] {
+    description "システムを運用する"
     role "システム管理者"
   }
 }

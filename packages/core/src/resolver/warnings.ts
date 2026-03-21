@@ -38,6 +38,9 @@ function detectDomainDispersal(file: KrsFile): Warning[] {
       walk(child);
     }
   }
+  for (const service of file.services) {
+    walk(service);
+  }
 
   for (const [domainName, services] of domainToServices) {
     if (services.size > 1) {

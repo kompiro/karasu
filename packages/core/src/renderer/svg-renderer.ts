@@ -17,7 +17,13 @@ export function render(viewSlice: ViewSlice, styles: ResolvedStyles): string {
       { xmlns: "http://www.w3.org/2000/svg", viewBox: "0 0 200 100" },
       el(
         "text",
-        { x: 100, y: 50, "text-anchor": "middle", fill: "#9CA3AF", "font-family": "sans-serif" },
+        {
+          x: 100,
+          y: 50,
+          "text-anchor": "middle",
+          fill: "#9CA3AF",
+          "font-family": "sans-serif",
+        },
         "No nodes to render",
       ),
     );
@@ -226,7 +232,7 @@ function renderNode(
       ),
     );
 
-    if (node.description && iconDef.descriptionSlot) {
+    if (node.properties.description && iconDef.descriptionSlot) {
       const descX = node.x + iconDef.descriptionSlot.x * scaleX;
       const descY = node.y + iconDef.descriptionSlot.y * scaleY;
       const descAnchor = iconDef.descriptionSlot.textAnchor ?? "middle";
@@ -244,13 +250,13 @@ function renderNode(
             "font-family": style.fontFamily,
             opacity: 0.7,
           },
-          escapeXml(node.description),
+          escapeXml(node.properties.description),
         ),
       );
     }
   } else {
     const textX = node.x + node.width / 2;
-    const textLines = 1 + (node.description ? 1 : 0) + (node.role ? 1 : 0);
+    const textLines = 1 + (node.properties.description ? 1 : 0) + (node.properties.role ? 1 : 0);
     let textY = node.y + node.height / 2;
     if (textLines > 1) textY -= ((textLines - 1) * (fontSize + 4)) / 2;
 
@@ -273,7 +279,7 @@ function renderNode(
 
     let nextY = textY + fontSize + 4;
 
-    if (node.description) {
+    if (node.properties.description) {
       children.push(
         el(
           "text",
@@ -287,13 +293,13 @@ function renderNode(
             "font-family": style.fontFamily,
             opacity: 0.7,
           },
-          escapeXml(node.description),
+          escapeXml(node.properties.description),
         ),
       );
       nextY += fontSize + 4;
     }
 
-    if (node.role) {
+    if (node.properties.role) {
       children.push(
         el(
           "text",
@@ -308,7 +314,7 @@ function renderNode(
             "font-style": "italic",
             opacity: 0.6,
           },
-          escapeXml(node.role),
+          escapeXml(node.properties.role),
         ),
       );
     }

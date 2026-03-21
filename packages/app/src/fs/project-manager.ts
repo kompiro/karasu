@@ -5,8 +5,12 @@ const META_PATH = "/meta/projects.json";
 const DEFAULT_KRS = `@import "default.krs.style"
 
 system "New Project" {
-  user User "User" "A user of the system"
-  service App "Application" "Main application"
+  user User "User" {
+    description "A user of the system"
+  }
+  service App "Application" {
+    description "Main application"
+  }
   User -> App "uses"
 }
 `;

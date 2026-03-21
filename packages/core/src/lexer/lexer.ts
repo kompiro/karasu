@@ -22,6 +22,9 @@ const KEYWORDS: Record<string, TokenType> = {
   image: TokenType.Image,
   type: TokenType.Type,
   role: TokenType.Role,
+  description: TokenType.Description,
+  team: TokenType.Team,
+  link: TokenType.Link,
   import: TokenType.Import,
   from: TokenType.From,
 };
@@ -142,6 +145,9 @@ export class Lexer {
         this.advance();
         return { type: TokenType.Comma, value: ",", loc };
       case '"':
+        if (this.peekAt(1) === '"' && this.peekAt(2) === '"') {
+          return this.readTripleQuoteString(loc);
+        }
         return this.readString(loc);
       case "-":
         return this.readArrow(loc);
@@ -174,6 +180,38 @@ export class Lexer {
     }
     if (this.peek() === '"') this.advance(); // closing "
     return { type: TokenType.StringLiteral, value, loc };
+  }
+
+  private readTripleQuoteString(loc: SourceLocation): Token {
+    // Consume opening """
+    this.advance(); // "
+    this.advance(); // "
+    this.advance(); // "
+
+    // Skip immediate newline after opening """
+    if (this.peek() === "\n") {
+      this.advance();
+    } else if (this.peek() === "\r" && this.peekAt(1) === "\n") {
+      this.advance();
+      this.advance();
+    }
+
+    let raw = "";
+    while (this.pos < this.source.length) {
+      if (this.peek() === '"' && this.peekAt(1) === '"' && this.peekAt(2) === '"') {
+        break;
+      }
+      raw += this.advance();
+    }
+
+    // Consume closing """
+    if (this.peek() === '"') this.advance();
+    if (this.peek() === '"') this.advance();
+    if (this.peek() === '"') this.advance();
+
+    // Dedent: use the indentation of the closing """ line as the common prefix
+    const value = dedentTripleQuote(raw);
+    return { type: TokenType.TripleQuote, value, loc };
   }
 
   private readArrow(loc: SourceLocation): Token {
@@ -235,4 +273,28 @@ function isIdentStart(ch: string): boolean {
 
 function isIdentPart(ch: string): boolean {
   return /[\p{L}\p{N}_]/u.test(ch);
+}
+
+/**
+ * Dedent triple-quoted string content.
+ * Uses the indentation of the last line (closing """ line) as the common prefix to strip.
+ * Trailing newline before closing """ is removed.
+ */
+function dedentTripleQuote(raw: string): string {
+  const lines = raw.split("\n");
+
+  // The last line contains only the indentation of the closing """
+  const lastLine = lines[lines.length - 1];
+  const indent = lastLine.match(/^(\s*)/)?.[1] ?? "";
+
+  // Remove the last line (closing """ indent only) if it's whitespace-only
+  if (/^\s*$/.test(lastLine)) {
+    lines.pop();
+  }
+
+  if (indent.length === 0) return lines.join("\n");
+
+  return lines
+    .map((line) => (line.startsWith(indent) ? line.slice(indent.length) : line))
+    .join("\n");
 }

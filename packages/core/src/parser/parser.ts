@@ -11,6 +11,10 @@ import type {
   ParseResult,
   LogicalNodeKind,
   DeployNodeKind,
+  SystemNode,
+  ServiceNode,
+  LinkEntry,
+  CommonProperties,
 } from "../types/ast.js";
 import { Lexer } from "../lexer/lexer.js";
 
@@ -34,13 +38,12 @@ const DEPLOY_KEYWORDS = new Set<string>([
   "artifact",
 ]);
 
-const PROPERTY_KEYWORDS = new Set<string>([
+const DEPLOY_PROPERTY_KEYWORDS = new Set<string>([
   "runtime",
   "realizes",
   "schedule",
   "image",
   "type",
-  "role",
 ]);
 
 export class Parser {
@@ -121,6 +124,7 @@ export class Parser {
       styleImports: [],
       nodeImports: [],
       systems: [],
+      services: [],
       deploys: [],
     };
 
@@ -136,6 +140,9 @@ export class Parser {
           break;
         case TokenType.System:
           file.systems.push(this.parseSystemBlock());
+          break;
+        case TokenType.Service:
+          file.services.push(this.parseNodeDecl() as ServiceNode);
           break;
         case TokenType.Deploy:
           file.deploys.push(this.parseDeployBlock());
@@ -187,15 +194,16 @@ export class Parser {
     };
   }
 
-  private parseSystemBlock(): KrsNode {
+  private parseSystemBlock(): SystemNode {
     const start = this.advance(); // system
     const label = this.expect(TokenType.StringLiteral);
     this.expect(TokenType.LeftBrace);
 
     const children: KrsNode[] = [];
     const edges: KrsEdge[] = [];
+    const properties: CommonProperties = { links: [] };
 
-    this.parseBlockContents(children, edges);
+    this.parseBlockContentsWithProperties(children, edges, "system", properties);
 
     const end = this.expect(TokenType.RightBrace);
 
@@ -206,13 +214,65 @@ export class Parser {
       annotations: [],
       children,
       edges,
+      properties,
       loc: this.range(start.loc, end.loc),
     };
   }
 
-  private parseBlockContents(children: KrsNode[], edges: KrsEdge[]): void {
+  private parseBlockContentsWithProperties(
+    children: KrsNode[],
+    edges: KrsEdge[],
+    kind: LogicalNodeKind,
+    properties: CommonProperties & { role?: string; team?: string },
+  ): void {
     while (this.peek().type !== TokenType.RightBrace && this.peek().type !== TokenType.EOF) {
       const token = this.peek();
+
+      // Property: description
+      if (token.type === TokenType.Description) {
+        this.advance();
+        properties.description = this.parseDescriptionValue();
+        continue;
+      }
+
+      // Property: link
+      if (token.type === TokenType.Link) {
+        this.advance();
+        properties.links.push(this.parseLink());
+        continue;
+      }
+
+      // Property: role (user only)
+      if (token.type === TokenType.Role) {
+        if (kind === "user") {
+          this.advance();
+          if (this.peek().type === TokenType.StringLiteral) {
+            properties.role = this.advance().value;
+          } else {
+            this.error('Expected string literal after "role"');
+          }
+        } else {
+          this.error(`"role" property is only valid for user nodes`);
+          this.advance();
+        }
+        continue;
+      }
+
+      // Property: team (service only)
+      if (token.type === TokenType.Team) {
+        if (kind === "service") {
+          this.advance();
+          if (this.peek().type === TokenType.StringLiteral) {
+            properties.team = this.advance().value;
+          } else {
+            this.error('Expected string literal after "team"');
+          }
+        } else {
+          this.error(`"team" property is only valid for service nodes`);
+          this.advance();
+        }
+        continue;
+      }
 
       // Check for edge: Identifier -> or -->
       if (
@@ -232,6 +292,30 @@ export class Parser {
       this.error(`Unexpected token in block: ${token.type} ("${token.value}")`);
       this.advance();
     }
+  }
+
+  private parseDescriptionValue(): string {
+    if (this.peek().type === TokenType.TripleQuote) {
+      return this.advance().value;
+    }
+    if (this.peek().type === TokenType.StringLiteral) {
+      return this.advance().value;
+    }
+    this.error('Expected string literal or triple-quoted string after "description"');
+    return "";
+  }
+
+  private parseLink(): LinkEntry {
+    const start = this.peek().loc;
+    const url = this.expect(TokenType.StringLiteral);
+    let label: string | undefined;
+    let end = url.loc;
+    if (this.peek().type === TokenType.StringLiteral) {
+      const labelToken = this.advance();
+      label = labelToken.value;
+      end = labelToken.loc;
+    }
+    return { url: url.value, label, loc: this.range(start, end) };
   }
 
   private isLogicalKeyword(token: Token): boolean {
@@ -255,22 +339,32 @@ export class Parser {
 
     let id: string | undefined;
     let label = "";
-    let description: string | undefined;
-    let role: string | undefined;
+    let lastConsumed = start;
 
     // After keyword, we may have: Identifier StringLiteral or just StringLiteral
     if (this.peek().type === TokenType.Identifier) {
-      id = this.advance().value;
+      lastConsumed = this.advance();
+      id = lastConsumed.value;
       if (this.peek().type === TokenType.StringLiteral) {
-        label = this.advance().value;
+        lastConsumed = this.advance();
+        label = lastConsumed.value;
       }
     } else if (this.peek().type === TokenType.StringLiteral) {
-      label = this.advance().value;
+      lastConsumed = this.advance();
+      label = lastConsumed.value;
     }
 
-    // Optional description
+    // Detect deprecated positional description and emit error
     if (this.peek().type === TokenType.StringLiteral) {
-      description = this.advance().value;
+      this.diagnostics.push({
+        severity: "error",
+        message:
+          `位置引数の description は廃止されました。description プロパティを使用してください: ` +
+          `${kind}${id ? " " + id : ""} "${label}" { description "..." }`,
+        loc: this.range(this.peek().loc),
+      });
+      // Consume the positional description to continue parsing
+      this.advance();
     }
 
     // Optional tags
@@ -279,38 +373,90 @@ export class Parser {
     // Optional annotations
     const annotations = this.parseAnnotations();
 
+    // Properties
+    const properties: CommonProperties & { role?: string; team?: string } = {
+      links: [],
+    };
+
     // Optional body
     const children: KrsNode[] = [];
     const edges: KrsEdge[] = [];
-    let end = start;
+    let end = lastConsumed;
 
     if (this.peek().type === TokenType.LeftBrace) {
       this.advance();
-      // user ノードの場合、role プロパティを先にパース
-      if (kind === "user" && this.peek().type === TokenType.Role) {
-        this.advance(); // consume 'role'
-        if (this.peek().type === TokenType.StringLiteral) {
-          role = this.advance().value;
-        } else {
-          this.error('Expected string literal after "role"');
-        }
-      }
-      this.parseBlockContents(children, edges);
+      this.parseBlockContentsWithProperties(children, edges, kind, properties);
       end = this.expect(TokenType.RightBrace);
     }
 
-    return {
-      kind,
+    const base = {
       id,
       label,
-      description,
-      role,
       tags,
       annotations,
       children,
       edges,
       loc: this.range(start.loc, end.loc),
     };
+
+    switch (kind) {
+      case "system":
+        return {
+          ...base,
+          kind,
+          properties: {
+            description: properties.description,
+            links: properties.links,
+          },
+        };
+      case "service":
+        return {
+          ...base,
+          kind,
+          properties: {
+            description: properties.description,
+            links: properties.links,
+            team: properties.team,
+          },
+        };
+      case "user":
+        return {
+          ...base,
+          kind,
+          properties: {
+            description: properties.description,
+            links: properties.links,
+            role: properties.role,
+          },
+        };
+      case "domain":
+        return {
+          ...base,
+          kind,
+          properties: {
+            description: properties.description,
+            links: properties.links,
+          },
+        };
+      case "usecase":
+        return {
+          ...base,
+          kind,
+          properties: {
+            description: properties.description,
+            links: properties.links,
+          },
+        };
+      case "resource":
+        return {
+          ...base,
+          kind,
+          properties: {
+            description: properties.description,
+            links: properties.links,
+          },
+        };
+    }
   }
 
   private parseTags(): string[] {
@@ -400,7 +546,7 @@ export class Parser {
     const properties: DeployNodeProperties = {};
 
     while (this.peek().type !== TokenType.RightBrace && this.peek().type !== TokenType.EOF) {
-      if (PROPERTY_KEYWORDS.has(this.peek().value)) {
+      if (DEPLOY_PROPERTY_KEYWORDS.has(this.peek().value)) {
         const propToken = this.advance();
         const propName = propToken.value as keyof DeployNodeProperties;
         // Value can be string literal or identifier

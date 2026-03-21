@@ -16,7 +16,7 @@ describe("ImportResolver", () => {
       await fs.writeFile(
         "/project/index.krs",
         `system "Test" {
-          service Svc "Service" "A service"
+          service Svc "Service"
         }`,
       );
 
@@ -43,7 +43,7 @@ describe("ImportResolver", () => {
         "/project/index.krs",
         `@import "default.krs.style"
 system "Test" {
-  service Svc "Service" "desc"
+  service Svc "Service"
 }`,
       );
       await fs.writeFile(
@@ -65,7 +65,7 @@ system "Test" {
         "/project/index.krs",
         `@import "missing.krs.style"
 system "Test" {
-  service Svc "Service" "desc"
+  service Svc "Service"
 }`,
       );
 
@@ -85,13 +85,13 @@ system "Test" {
         "/project/index.krs",
         `import { Payment } from "services/payment.krs"
 system "EC" {
-  service ECommerce "EC" "Main service"
+  service ECommerce "EC"
 }`,
       );
       await fs.writeFile(
         "/project/services/payment.krs",
         `system "EC" {
-  service Payment "Payment" "Payment service" [external]
+  service Payment "Payment" [external]
 }`,
       );
 
@@ -111,13 +111,13 @@ system "EC" {
         "/project/index.krs",
         `import { NonExistent } from "other.krs"
 system "Test" {
-  service Svc "Service" "desc"
+  service Svc "Service"
 }`,
       );
       await fs.writeFile(
         "/project/other.krs",
         `system "Test" {
-  service Actual "Actual" "desc"
+  service Actual "Actual"
 }`,
       );
 
@@ -135,7 +135,7 @@ system "Test" {
         "/project/index.krs",
         `import { X } from "missing.krs"
 system "Test" {
-  service Svc "Service" "desc"
+  service Svc "Service"
 }`,
       );
 
@@ -155,20 +155,20 @@ system "Test" {
         "/project/a.krs",
         `import { Svc2, Svc3 } from "b.krs"
 system "Chain" {
-  service Svc1 "Service1" "first"
+  service Svc1 "Service1"
 }`,
       );
       await fs.writeFile(
         "/project/b.krs",
         `import { Svc3 } from "c.krs"
 system "Chain" {
-  service Svc2 "Service2" "second"
+  service Svc2 "Service2"
 }`,
       );
       await fs.writeFile(
         "/project/c.krs",
         `system "Chain" {
-  service Svc3 "Service3" "third"
+  service Svc3 "Service3"
 }`,
       );
 
@@ -190,14 +190,14 @@ system "Chain" {
         "/project/a.krs",
         `import { Y } from "b.krs"
 system "Circular" {
-  service X "X" "desc"
+  service X "X"
 }`,
       );
       await fs.writeFile(
         "/project/b.krs",
         `import { X } from "a.krs"
 system "Circular" {
-  service Y "Y" "desc"
+  service Y "Y"
 }`,
       );
 
@@ -218,7 +218,7 @@ system "Circular" {
         `@import "a.krs.style"
 @import "a.krs.style"
 system "Test" {
-  service Svc "Service" "desc"
+  service Svc "Service"
 }`,
       );
       await fs.writeFile("/project/a.krs.style", `user { background-color: #000; }`);
@@ -240,14 +240,14 @@ system "Test" {
         "/project/index.krs",
         `import { Payment } from "payment.krs"
 system "EC" {
-  service ECommerce "EC" "main"
+  service ECommerce "EC"
   ECommerce -> Payment "pay"
 }`,
       );
       await fs.writeFile(
         "/project/payment.krs",
         `system "EC" {
-  service Payment "Payment" "external" [external]
+  service Payment "Payment" [external]
 }`,
       );
 

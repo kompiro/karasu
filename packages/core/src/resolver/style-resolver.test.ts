@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { resolveStyles } from "./style-resolver.js";
 import { analyze } from "./warnings.js";
-import type { KrsNode } from "../types/ast.js";
+import type { KrsNode, KrsFile } from "../types/ast.js";
 import type { StyleSheet, StyleRule } from "../types/style.js";
 import type { SourceRange } from "../types/tokens.js";
 
@@ -11,12 +11,24 @@ const dummyLoc: SourceRange = {
 };
 
 function makeNode(overrides: Partial<KrsNode> & { kind: KrsNode["kind"]; label: string }): KrsNode {
-  return {
-    tags: [],
-    annotations: [],
-    children: [],
+  const base = {
+    tags: [] as string[],
+    annotations: [] as string[],
+    children: [] as KrsNode[],
     edges: [],
     loc: dummyLoc,
+    properties: { links: [] },
+  };
+  return { ...base, ...overrides } as KrsNode;
+}
+
+function makeFile(overrides: Partial<KrsFile>): KrsFile {
+  return {
+    styleImports: [],
+    nodeImports: [],
+    systems: [],
+    services: [],
+    deploys: [],
     ...overrides,
   };
 }
@@ -217,9 +229,7 @@ describe("resolveStyles", () => {
 
 describe("analyze", () => {
   it("detects domain dispersal", () => {
-    const file = {
-      styleImports: [],
-      nodeImports: [],
+    const file = makeFile({
       systems: [
         makeNode({
           kind: "system",
@@ -239,19 +249,15 @@ describe("analyze", () => {
             }),
           ],
         }),
-      ],
-      deploys: [],
-    };
+      ] as KrsFile["systems"],
+    });
     const warnings = analyze(file, []);
     expect(warnings.some((w) => w.kind === "domain-dispersal")).toBe(true);
     expect(warnings[0].message).toContain("受注");
   });
 
   it("detects missing runtime", () => {
-    const file = {
-      styleImports: [],
-      nodeImports: [],
-      systems: [],
+    const file = makeFile({
       deploys: [
         {
           label: "prod",
@@ -266,16 +272,13 @@ describe("analyze", () => {
           loc: dummyLoc,
         },
       ],
-    };
+    });
     const warnings = analyze(file, []);
     expect(warnings.some((w) => w.kind === "missing-runtime")).toBe(true);
   });
 
   it("detects missing realizes", () => {
-    const file = {
-      styleImports: [],
-      nodeImports: [],
-      systems: [],
+    const file = makeFile({
       deploys: [
         {
           label: "prod",
@@ -290,7 +293,7 @@ describe("analyze", () => {
           loc: dummyLoc,
         },
       ],
-    };
+    });
     const warnings = analyze(file, []);
     expect(warnings.some((w) => w.kind === "missing-realizes")).toBe(true);
   });
@@ -302,12 +305,7 @@ describe("analyze", () => {
     const sheet2: StyleSheet = {
       rules: [makeRule({ nodeType: "service", tags: [], annotations: [] }, { color: "#BBB" }, 1)],
     };
-    const file = {
-      styleImports: [],
-      nodeImports: [],
-      systems: [],
-      deploys: [],
-    };
+    const file = makeFile({});
     const warnings = analyze(file, [sheet1, sheet2]);
     expect(warnings.some((w) => w.kind === "style-conflict")).toBe(true);
   });
