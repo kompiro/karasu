@@ -32,10 +32,7 @@ export function Breadcrumb({ items, onNavigate }: BreadcrumbProps) {
             {isLast ? (
               <span className="breadcrumb-current">{item.label}</span>
             ) : (
-              <button
-                className="breadcrumb-link"
-                onClick={() => handleClick(index)}
-              >
+              <button className="breadcrumb-link" onClick={() => handleClick(index)}>
                 {item.label}
               </button>
             )}

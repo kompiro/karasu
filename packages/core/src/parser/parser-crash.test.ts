@@ -1,10 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { Parser } from "./parser.js";
-import {
-  compile,
-  compileProject,
-  InMemoryFileSystemProvider,
-} from "../index.js";
+import { compile, compileProject, InMemoryFileSystemProvider } from "../index.js";
 
 describe("Incomplete import - Parser", () => {
   it("should not crash on 'import'", () => {
@@ -67,9 +63,7 @@ describe("Incomplete import - compileProject", () => {
 
 describe("Incomplete import followed by other tokens - no infinite loop", () => {
   it("should not hang on 'import\\nsystem ...'", () => {
-    const result = Parser.parse(
-      'import\nsystem "Test" {\n  user User "User"\n}',
-    );
+    const result = Parser.parse('import\nsystem "Test" {\n  user User "User"\n}');
     expect(result.diagnostics.length).toBeGreaterThan(0);
     expect(result.value.systems).toHaveLength(1);
   });

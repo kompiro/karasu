@@ -77,10 +77,7 @@ export function ProjectSelector({
           <button onClick={handleCreate} className="project-selector-btn">
             OK
           </button>
-          <button
-            onClick={() => setIsCreating(false)}
-            className="project-selector-btn"
-          >
+          <button onClick={() => setIsCreating(false)} className="project-selector-btn">
             Cancel
           </button>
         </div>

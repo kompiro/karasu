@@ -77,10 +77,7 @@ describe("extractView", () => {
 
       expect(view.containerNode?.kind).toBe("service");
       expect(view.containerNode?.id).toBe("ECommerce");
-      expect(view.childNodes.map((n) => n.id ?? n.label)).toEqual([
-        "Order",
-        "Shipping",
-      ]);
+      expect(view.childNodes.map((n) => n.id ?? n.label)).toEqual(["Order", "Shipping"]);
     });
 
     it("builds ancestor chain with system", () => {
@@ -95,10 +92,7 @@ describe("extractView", () => {
       const systems = parseSystem(FULL_KRS);
       const view = extractView(systems, ["ECommerce"]);
 
-      expect(view.ghostUsers.map((n) => n.id ?? n.label)).toEqual([
-        "Customer",
-        "Admin",
-      ]);
+      expect(view.ghostUsers.map((n) => n.id ?? n.label)).toEqual(["Customer", "Admin"]);
       expect(view.ghostUserEdges).toHaveLength(2);
     });
 
@@ -118,10 +112,7 @@ describe("extractView", () => {
       const view = extractView(systems, ["ECommerce", "Order"]);
 
       expect(view.containerNode?.kind).toBe("domain");
-      expect(view.childNodes.map((n) => n.id ?? n.label)).toEqual([
-        "PlaceOrder",
-        "CancelOrder",
-      ]);
+      expect(view.childNodes.map((n) => n.id ?? n.label)).toEqual(["PlaceOrder", "CancelOrder"]);
     });
 
     it("builds ancestor chain with system and service", () => {
@@ -147,10 +138,7 @@ describe("extractView", () => {
       const view = extractView(systems, ["ECommerce", "Order", "PlaceOrder"]);
 
       expect(view.containerNode?.kind).toBe("usecase");
-      expect(view.childNodes.map((n) => n.id ?? n.label)).toEqual([
-        "OrderTable",
-        "InventoryAPI",
-      ]);
+      expect(view.childNodes.map((n) => n.id ?? n.label)).toEqual(["OrderTable", "InventoryAPI"]);
     });
 
     it("builds full ancestor chain", () => {
@@ -158,11 +146,7 @@ describe("extractView", () => {
       const view = extractView(systems, ["ECommerce", "Order", "PlaceOrder"]);
 
       expect(view.ancestorChain).toHaveLength(3);
-      expect(view.ancestorChain.map((n) => n.kind)).toEqual([
-        "system",
-        "service",
-        "domain",
-      ]);
+      expect(view.ancestorChain.map((n) => n.kind)).toEqual(["system", "service", "domain"]);
     });
   });
 

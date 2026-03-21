@@ -17,13 +17,8 @@ describe("Parser", () => {
   });
 
   it("parses multiple @import", () => {
-    const result = Parser.parse(
-      '@import "base.krs.style"\n@import "theme.krs.style"',
-    );
-    expect(result.value.styleImports).toEqual([
-      "base.krs.style",
-      "theme.krs.style",
-    ]);
+    const result = Parser.parse('@import "base.krs.style"\n@import "theme.krs.style"');
+    expect(result.value.styleImports).toEqual(["base.krs.style", "theme.krs.style"]);
   });
 
   it("parses import declaration", () => {
@@ -76,9 +71,7 @@ system "Test" {
 }
     `);
     expect(result.diagnostics.length).toBeGreaterThan(0);
-    expect(result.diagnostics[0].message).toContain(
-      "位置引数の description は廃止されました",
-    );
+    expect(result.diagnostics[0].message).toContain("位置引数の description は廃止されました");
   });
 
   it("parses tags", () => {
@@ -362,9 +355,7 @@ system "Test" {
     `);
     expect(result.diagnostics).toHaveLength(0);
     const service = result.value.systems[0].children[0] as ServiceNode;
-    expect(service.properties.description).toContain(
-      "商品管理と注文処理を担当するサービス。",
-    );
+    expect(service.properties.description).toContain("商品管理と注文処理を担当するサービス。");
     expect(service.properties.description).toContain("## 責務");
   });
 

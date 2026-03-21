@@ -23,9 +23,7 @@ describe("ImportResolver", () => {
       const result = await resolver.resolve("/project/index.krs");
       expect(result.krsFile.systems).toHaveLength(1);
       expect(result.krsFile.systems[0].label).toBe("Test");
-      expect(
-        result.diagnostics.filter((d) => d.severity === "error"),
-      ).toHaveLength(0);
+      expect(result.diagnostics.filter((d) => d.severity === "error")).toHaveLength(0);
     });
 
     it("returns error diagnostic for missing file", async () => {
@@ -59,9 +57,7 @@ system "Test" {
       const result = await resolver.resolve("/project/index.krs");
       expect(result.styleSheets).toHaveLength(1);
       expect(result.styleSheets[0].rules).toHaveLength(1);
-      expect(
-        result.styleSheets[0].rules[0].properties["background-color"],
-      ).toBe("#1D4ED8");
+      expect(result.styleSheets[0].rules[0].properties["background-color"]).toBe("#1D4ED8");
     });
 
     it("returns error diagnostic for missing style file", async () => {
@@ -100,9 +96,7 @@ system "EC" {
       );
 
       const result = await resolver.resolve("/project/index.krs");
-      expect(
-        result.diagnostics.filter((d) => d.severity === "error"),
-      ).toHaveLength(0);
+      expect(result.diagnostics.filter((d) => d.severity === "error")).toHaveLength(0);
 
       // EC system should have both ECommerce and Payment
       const ecSystem = result.krsFile.systems.find((s) => s.label === "EC");
@@ -179,13 +173,9 @@ system "Chain" {
       );
 
       const result = await resolver.resolve("/project/a.krs");
-      expect(
-        result.diagnostics.filter((d) => d.severity === "error"),
-      ).toHaveLength(0);
+      expect(result.diagnostics.filter((d) => d.severity === "error")).toHaveLength(0);
 
-      const chainSystem = result.krsFile.systems.find(
-        (s) => s.label === "Chain",
-      );
+      const chainSystem = result.krsFile.systems.find((s) => s.label === "Chain");
       expect(chainSystem).toBeDefined();
       const childIds = chainSystem!.children.map((c) => c.id);
       expect(childIds).toContain("Svc1");
@@ -231,10 +221,7 @@ system "Test" {
   service Svc "Service"
 }`,
       );
-      await fs.writeFile(
-        "/project/a.krs.style",
-        `user { background-color: #000; }`,
-      );
+      await fs.writeFile("/project/a.krs.style", `user { background-color: #000; }`);
 
       const result = await resolver.resolve("/project/index.krs");
       // Second import of same file should be detected as circular

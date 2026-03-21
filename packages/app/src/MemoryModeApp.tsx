@@ -157,11 +157,7 @@ export function MemoryModeApp() {
   const [styleSource] = useState(SAMPLE_STYLE);
   const [viewPath, setViewPath] = useState<string[]>([]);
 
-  const { svg, warnings, diagnostics } = useKarasu(
-    krsSource,
-    styleSource,
-    viewPath,
-  );
+  const { svg, warnings, diagnostics } = useKarasu(krsSource, styleSource, viewPath);
 
   const handleEditorChange = useCallback((value: string) => {
     setKrsSource(value);
@@ -184,8 +180,9 @@ export function MemoryModeApp() {
 
       let current: import("@karasu/core").KrsNode = system;
       for (const segment of viewPath) {
-        const child: import("@karasu/core").KrsNode | undefined =
-          current.children.find((c) => (c.id ?? c.label) === segment);
+        const child: import("@karasu/core").KrsNode | undefined = current.children.find(
+          (c) => (c.id ?? c.label) === segment,
+        );
         if (!child) break;
         items.push({ id: child.id ?? child.label, label: child.label });
         current = child;

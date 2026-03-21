@@ -5,11 +5,7 @@
  * and the remaining SVG body for use as a registered shape.
  */
 
-import {
-  registerIcon,
-  type SvgIconDef,
-  type SvgIconTextSlot,
-} from "./shape-registry.js";
+import { registerIcon, type SvgIconDef, type SvgIconTextSlot } from "./shape-registry.js";
 
 /**
  * Parse an SVG string into an SvgIconDef.
@@ -73,15 +69,9 @@ export function loadAndRegisterIcons(icons: Record<string, string>): void {
 // Internal helpers
 // ---------------------------------------------------------------------------
 
-function extractTextSlot(
-  svg: string,
-  className: string,
-): SvgIconTextSlot | undefined {
+function extractTextSlot(svg: string, className: string): SvgIconTextSlot | undefined {
   // Match <text ... class="krs-label" ...> or <text ... class="krs-description" ...>
-  const pattern = new RegExp(
-    `<text\\s[^>]*class\\s*=\\s*"${className}"[^>]*>`,
-    "i",
-  );
+  const pattern = new RegExp(`<text\\s[^>]*class\\s*=\\s*"${className}"[^>]*>`, "i");
   const match = svg.match(pattern);
   if (!match) return undefined;
 

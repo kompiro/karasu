@@ -45,9 +45,7 @@ describe("Lexer", () => {
   });
 
   it("tokenizes deploy keywords", () => {
-    const types = tokenTypes(
-      "deploy war jar oci lambda function assets job artifact",
-    );
+    const types = tokenTypes("deploy war jar oci lambda function assets job artifact");
     expect(types).toEqual([
       TokenType.Deploy,
       TokenType.War,
@@ -96,11 +94,7 @@ describe("Lexer", () => {
   });
 
   it("tokenizes arrows", () => {
-    expect(tokenTypes("-> -->")).toEqual([
-      TokenType.Arrow,
-      TokenType.DashedArrow,
-      TokenType.EOF,
-    ]);
+    expect(tokenTypes("-> -->")).toEqual([TokenType.Arrow, TokenType.DashedArrow, TokenType.EOF]);
   });
 
   it("tokenizes @import", () => {

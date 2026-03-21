@@ -80,8 +80,7 @@ export function render(viewSlice: ViewSlice, styles: ResolvedStyles): string {
   // Ghost ancestor containers (outermost first)
   for (const container of layoutResult.containers) {
     if (container.ghost) {
-      const containerStyle =
-        styles.nodes.get(container.id) ?? styles.defaultNodeStyle;
+      const containerStyle = styles.nodes.get(container.id) ?? styles.defaultNodeStyle;
       parts.push(renderContainer(container, containerStyle, true));
     }
   }
@@ -89,8 +88,7 @@ export function render(viewSlice: ViewSlice, styles: ResolvedStyles): string {
   // Focused container
   for (const container of layoutResult.containers) {
     if (!container.ghost) {
-      const containerStyle =
-        styles.nodes.get(container.id) ?? styles.defaultNodeStyle;
+      const containerStyle = styles.nodes.get(container.id) ?? styles.defaultNodeStyle;
       parts.push(renderContainer(container, containerStyle, false));
     }
   }
@@ -110,13 +108,7 @@ export function render(viewSlice: ViewSlice, styles: ResolvedStyles): string {
     }
   }
   if (ghostEdgeParts.length > 0) {
-    parts.push(
-      el(
-        "g",
-        { class: "ghost-edges", opacity: GHOST_OPACITY },
-        ...ghostEdgeParts,
-      ),
-    );
+    parts.push(el("g", { class: "ghost-edges", opacity: GHOST_OPACITY }, ...ghostEdgeParts));
   }
   parts.push(el("g", { class: "edges" }, ...normalEdgeParts));
 
@@ -134,13 +126,7 @@ export function render(viewSlice: ViewSlice, styles: ResolvedStyles): string {
     }
   }
   if (ghostNodeParts.length > 0) {
-    parts.push(
-      el(
-        "g",
-        { class: "ghost-nodes", opacity: GHOST_OPACITY },
-        ...ghostNodeParts,
-      ),
-    );
+    parts.push(el("g", { class: "ghost-nodes", opacity: GHOST_OPACITY }, ...ghostNodeParts));
   }
   parts.push(el("g", { class: "nodes" }, ...normalNodeParts));
 
@@ -213,8 +199,7 @@ function renderNode(
   children.push(renderShape(node.x, node.y, node.width, node.height, style));
 
   // Resolve text positions
-  const shapeName =
-    typeof style.shape === "string" ? style.shape : style.shape.url;
+  const shapeName = typeof style.shape === "string" ? style.shape : style.shape.url;
   const iconDef = getIconDef(shapeName);
 
   const textColor = style.color;
@@ -271,10 +256,7 @@ function renderNode(
     }
   } else {
     const textX = node.x + node.width / 2;
-    const textLines =
-      1 +
-      (node.properties.description ? 1 : 0) +
-      (node.properties.role ? 1 : 0);
+    const textLines = 1 + (node.properties.description ? 1 : 0) + (node.properties.role ? 1 : 0);
     let textY = node.y + node.height / 2;
     if (textLines > 1) textY -= ((textLines - 1) * (fontSize + 4)) / 2;
 
@@ -344,9 +326,7 @@ function renderNode(
     const badgeY = node.y - 6;
     const badgeColor = style.badgeColor ?? "#EF4444";
 
-    children.push(
-      el("circle", { cx: badgeX, cy: badgeY, r: 10, fill: badgeColor }),
-    );
+    children.push(el("circle", { cx: badgeX, cy: badgeY, r: 10, fill: badgeColor }));
     if (style.badgeIcon) {
       children.push(
         el(

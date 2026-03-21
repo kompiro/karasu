@@ -36,9 +36,7 @@ export function extractView(systems: KrsNode[], path: ViewPath): ViewSlice {
   // System view (default)
   if (path.length === 0) {
     const childIds = new Set(system.children.map(nodeId));
-    const childEdges = system.edges.filter(
-      (e) => childIds.has(e.from) && childIds.has(e.to),
-    );
+    const childEdges = system.edges.filter((e) => childIds.has(e.from) && childIds.has(e.to));
     return {
       containerNode: system,
       childNodes: system.children,
@@ -63,9 +61,7 @@ export function extractView(systems: KrsNode[], path: ViewPath): ViewSlice {
   // The last node in ancestorChain is the container; ancestors are everything before it
   const containerNode = ancestorChain.pop()!;
   const childIds = new Set(containerNode.children.map(nodeId));
-  const childEdges = containerNode.edges.filter(
-    (e) => childIds.has(e.from) && childIds.has(e.to),
-  );
+  const childEdges = containerNode.edges.filter((e) => childIds.has(e.from) && childIds.has(e.to));
 
   // Ghost users: only for service view (path.length === 1)
   let ghostUsers: KrsNode[] = [];

@@ -1,12 +1,6 @@
 import type { SourceRange } from "./tokens.js";
 
-export type LogicalNodeKind =
-  | "system"
-  | "service"
-  | "domain"
-  | "usecase"
-  | "resource"
-  | "user";
+export type LogicalNodeKind = "system" | "service" | "domain" | "usecase" | "resource" | "user";
 
 export type EdgeKind = "sync" | "async";
 
@@ -81,13 +75,7 @@ export interface UserNode extends BaseNodeFields {
 
 // ─── Union ─────────────────────────────────────────
 
-export type KrsNode =
-  | SystemNode
-  | ServiceNode
-  | DomainNode
-  | UsecaseNode
-  | ResourceNode
-  | UserNode;
+export type KrsNode = SystemNode | ServiceNode | DomainNode | UsecaseNode | ResourceNode | UserNode;
 
 // ─── エッジ（変更なし） ────────────────────────────
 

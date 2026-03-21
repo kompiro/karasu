@@ -198,11 +198,7 @@ export class Lexer {
 
     let raw = "";
     while (this.pos < this.source.length) {
-      if (
-        this.peek() === '"' &&
-        this.peekAt(1) === '"' &&
-        this.peekAt(2) === '"'
-      ) {
+      if (this.peek() === '"' && this.peekAt(1) === '"' && this.peekAt(2) === '"') {
         break;
       }
       raw += this.advance();
@@ -251,10 +247,7 @@ export class Lexer {
   private peekWord(): string {
     let word = "";
     let offset = 0;
-    while (
-      this.pos + offset < this.source.length &&
-      isIdentPart(this.source[this.pos + offset])
-    ) {
+    while (this.pos + offset < this.source.length && isIdentPart(this.source[this.pos + offset])) {
       word += this.source[this.pos + offset];
       offset++;
     }
