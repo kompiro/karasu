@@ -115,6 +115,14 @@ export class ImportResolver {
           }
         }
 
+        // services からも探す
+        for (const service of importedFile.services) {
+          if (service.id === id || service.label === id) {
+            mergedFile.services.push(service);
+            found = true;
+          }
+        }
+
         // deploy からも探す
         for (const deploy of importedFile.deploys) {
           const matchingNodes = deploy.nodes.filter((n) => n.id === id);

@@ -8,8 +8,8 @@ export type LayoutNodeProperties = CommonProperties & {
 };
 
 export interface LayoutNode {
-  id: string;
   kind: LogicalNodeKind;
+  id: string;
   label: string;
   properties: LayoutNodeProperties;
   descriptionSummary?: string;
@@ -126,8 +126,8 @@ export function layout(viewSlice: ViewSlice): LayoutResult {
       const y = layerIdx * (dims.height + LAYER_GAP) + NODE_GAP;
 
       layoutNodes.set(nid, {
-        id: nid,
         kind: krsNode.kind,
+        id: nid,
         label: krsNode.label,
         properties: extractLayoutProperties(krsNode),
         descriptionSummary: krsNode.properties.description
@@ -250,8 +250,8 @@ export function layout(viewSlice: ViewSlice): LayoutResult {
       const dims = measureNode(userNode);
       const uid = userNode.id ?? userNode.label;
       const gNode: LayoutNode = {
-        id: uid,
         kind: userNode.kind,
+        id: uid,
         label: userNode.label,
         properties: extractLayoutProperties(userNode),
         descriptionSummary: userNode.properties.description
