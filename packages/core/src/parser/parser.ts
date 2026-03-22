@@ -258,9 +258,9 @@ export class Parser {
         continue;
       }
 
-      // Property: team (service only)
+      // Property: team (service and domain)
       if (token.type === TokenType.Team) {
-        if (kind === "service") {
+        if (kind === "service" || kind === "domain") {
           this.advance();
           if (this.peek().type === TokenType.StringLiteral) {
             properties.team = this.advance().value;
@@ -268,7 +268,7 @@ export class Parser {
             this.error('Expected string literal after "team"');
           }
         } else {
-          this.error(`"team" property is only valid for service nodes`);
+          this.error(`"team" property is only valid for service and domain nodes`);
           this.advance();
         }
         continue;
