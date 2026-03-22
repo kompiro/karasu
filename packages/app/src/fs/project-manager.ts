@@ -63,7 +63,6 @@ resource {
   color: #E0F2FE;
   border-color: #0C4A6E;
   border-width: 2;
-  shape: cylinder;
   font-size: 12;
 }
 
