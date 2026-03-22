@@ -40,6 +40,9 @@ export function NodeDetailPanel({ metadata, anchorX, anchorY, onClose }: NodeDet
         zIndex: 100,
       }}
       onClick={(e) => e.stopPropagation()}
+      onMouseDown={(e) => e.stopPropagation()}
+      onMouseUp={(e) => e.stopPropagation()}
+      onWheel={(e) => e.stopPropagation()}
     >
       <div className="node-detail-header">
         <span className="node-detail-icon">{icon}</span>
@@ -63,7 +66,7 @@ export function NodeDetailPanel({ metadata, anchorX, anchorY, onClose }: NodeDet
             {metadata.links.map((link, i) => (
               <li key={i}>
                 <a href={link.url} target="_blank" rel="noopener noreferrer">
-                  {link.label} ↗
+                  {link.label || link.url} ↗
                 </a>
               </li>
             ))}

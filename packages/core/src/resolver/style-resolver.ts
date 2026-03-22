@@ -102,7 +102,7 @@ function resolveNodeStyle(node: KrsNode, rules: StyleRule[], kind: string): Reso
   // Apply tag-based default shape for resource nodes (only if no explicit shape in user stylesheet)
   if (kind === "resource" && !merged["shape"]) {
     for (const tag of node.tags) {
-      if (tag in RESOURCE_TAG_SHAPES) {
+      if (Object.hasOwn(RESOURCE_TAG_SHAPES, tag)) {
         style.shape = RESOURCE_TAG_SHAPES[tag];
         break;
       }

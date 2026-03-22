@@ -506,7 +506,7 @@ function extractLayoutProperties(node: KrsNode): LayoutNodeProperties {
     links: node.properties.links,
   };
   if (node.kind === "user") props.role = node.properties.role;
-  if (node.kind === "service") props.team = node.properties.team;
+  if (node.kind === "service" || node.kind === "domain") props.team = node.properties.team;
   return props;
 }
 
@@ -514,7 +514,7 @@ function measureNode(node: KrsNode): { width: number; height: number } {
   const labelWidth = estimateTextWidth(node.label, CHAR_WIDTH);
   const description = node.properties.description;
   const role = node.kind === "user" ? node.properties.role : undefined;
-  const team = node.kind === "service" ? node.properties.team : undefined;
+  const team = node.kind === "service" || node.kind === "domain" ? node.properties.team : undefined;
 
   // Use summary for width calculation instead of full description
   const descSummary = description ? summarizeDescription(description) : undefined;

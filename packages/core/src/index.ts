@@ -169,7 +169,7 @@ function buildNodeMetadata(
       description,
       descriptionSummary: description ? summarizeDescription(description) : undefined,
       links: node.properties.links,
-      team: node.kind === "service" ? node.properties.team : undefined,
+      team: node.kind === "service" || node.kind === "domain" ? node.properties.team : undefined,
       role: node.kind === "user" ? node.properties.role : undefined,
       tags: [...node.tags],
       annotations: [...node.annotations],
