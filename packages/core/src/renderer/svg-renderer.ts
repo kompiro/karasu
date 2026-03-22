@@ -329,21 +329,32 @@ function renderNode(node: LayoutNode, style: ResolvedNodeStyle, nodeId: string):
       };
 
       if (node.linkCount > 0 && node.properties.team) {
-        // Both link count and team: render separately so link is clickable
-        const gap = 8;
+        // Both link count and team: render link on the left, team on the right
         const linkText = `🔗${node.linkCount}`;
         const teamChars = [...node.properties.team];
         const teamDisplay =
           teamChars.length > 15 ? teamChars.slice(0, 15).join("") + "…" : node.properties.team;
         const teamText = `👥${teamDisplay}`;
+        const contentLeft = node.x + 40;
+        const contentRight = node.x + node.width - 40;
         children.push(
           el(
             "g",
             { "data-link-button": nodeId, style: "cursor: pointer", "pointer-events": "all" },
-            el("text", { ...metaAttrs, x: textX - gap, y: nextY }, escapeXml(linkText)),
+            el(
+              "text",
+              { ...metaAttrs, "text-anchor": "start", x: contentLeft, y: nextY },
+              escapeXml(linkText),
+            ),
           ),
         );
-        children.push(el("text", { ...metaAttrs, x: textX + gap, y: nextY }, escapeXml(teamText)));
+        children.push(
+          el(
+            "text",
+            { ...metaAttrs, "text-anchor": "end", x: contentRight, y: nextY },
+            escapeXml(teamText),
+          ),
+        );
       } else if (node.linkCount > 0) {
         children.push(
           el(
