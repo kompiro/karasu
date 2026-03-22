@@ -516,11 +516,8 @@ function measureNode(node: KrsNode): { width: number; height: number } {
   const role = node.kind === "user" ? node.properties.role : undefined;
   const team = node.kind === "service" || node.kind === "domain" ? node.properties.team : undefined;
 
-  // Use summary for width calculation instead of full description
-  const descSummary = description ? summarizeDescription(description) : undefined;
-  const descWidth = descSummary
-    ? estimateTextWidth(descSummary, CHAR_WIDTH * DESCRIPTION_FONT_RATIO)
-    : 0;
+  // Description should not widen the box beyond label width
+  const descWidth = 0;
   const roleWidth = role ? estimateTextWidth(role, CHAR_WIDTH * DESCRIPTION_FONT_RATIO) : 0;
 
   // Meta row: link count icon + team name

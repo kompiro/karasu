@@ -29,15 +29,15 @@ export function stripMarkdown(text: string): string {
 /**
  * description の Markdown 全文から図上に表示するサマリを生成する。
  *
- * 1. 先頭の段落（最初の空行まで）を取得
+ * 1. 最初の1行のみを取得
  * 2. Markdown 記法を除去してプレーンテキストに
  * 3. maxLength 文字で打ち切り、超過時は "…" を付与
  */
 export function summarizeDescription(markdown: string, maxLength = 50): string {
-  // 最初の段落を取得
-  const firstParagraph = markdown.split(/\n\s*\n/)[0] ?? "";
+  // 最初の1行を取得
+  const firstLine = markdown.split(/\n/)[0] ?? "";
   // Markdown 記法を除去
-  const plain = stripMarkdown(firstParagraph).replace(/\n/g, " ").trim();
+  const plain = stripMarkdown(firstLine).trim();
   // 文字数制限（Unicode 対応）
   const chars = [...plain];
   if (chars.length <= maxLength) return plain;

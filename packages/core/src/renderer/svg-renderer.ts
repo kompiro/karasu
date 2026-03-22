@@ -277,6 +277,14 @@ function renderNode(node: LayoutNode, style: ResolvedNodeStyle, nodeId: string):
     let nextY = textY + fontSize + 4;
 
     if (displayDesc) {
+      // Truncate description to fit within the node width
+      const descFontSize = Math.round(fontSize * 0.8);
+      const availableWidth = node.width - 40 * 2; // NODE_PADDING_X = 40
+      const descCharWidth = 9 * 0.8; // CHAR_WIDTH * DESCRIPTION_FONT_RATIO
+      const maxChars = Math.max(1, Math.floor(availableWidth / descCharWidth));
+      const descChars = [...displayDesc];
+      const truncatedDesc =
+        descChars.length > maxChars ? descChars.slice(0, maxChars).join("") + "…" : displayDesc;
       children.push(
         el(
           "text",
@@ -286,11 +294,11 @@ function renderNode(node: LayoutNode, style: ResolvedNodeStyle, nodeId: string):
             "text-anchor": "middle",
             "dominant-baseline": "central",
             fill: textColor,
-            "font-size": `${Math.round(fontSize * 0.8)}px`,
+            "font-size": `${descFontSize}px`,
             "font-family": style.fontFamily,
             opacity: 0.7,
           },
-          escapeXml(displayDesc),
+          escapeXml(truncatedDesc),
         ),
       );
       nextY += fontSize + 4;

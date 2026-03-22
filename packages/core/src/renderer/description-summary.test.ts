@@ -52,9 +52,9 @@ describe("summarizeDescription", () => {
     expect(result).toBe("abcde…");
   });
 
-  it("extracts first paragraph only", () => {
-    const md = "First paragraph.\n\nSecond paragraph.";
-    expect(summarizeDescription(md)).toBe("First paragraph.");
+  it("extracts first line only", () => {
+    const md = "First line.\nSecond line.\n\nSecond paragraph.";
+    expect(summarizeDescription(md)).toBe("First line.");
   });
 
   it("strips Markdown from the summary", () => {
@@ -66,9 +66,9 @@ describe("summarizeDescription", () => {
     expect(summarizeDescription("")).toBe("");
   });
 
-  it("collapses newlines within first paragraph", () => {
+  it("returns only the first line when multiple lines exist", () => {
     const md = "Line one\nLine two";
-    expect(summarizeDescription(md)).toBe("Line one Line two");
+    expect(summarizeDescription(md)).toBe("Line one");
   });
 
   it("handles Unicode correctly", () => {
