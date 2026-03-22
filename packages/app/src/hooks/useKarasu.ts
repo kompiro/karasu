@@ -4,6 +4,7 @@ import {
   type Warning,
   type Diagnostic,
   type ViewPath,
+  type NodeMetadata,
   resolveIconManifest,
 } from "@karasu/core";
 import iconManifest from "@karasu/core/icons/icons.json";
@@ -13,6 +14,7 @@ export interface KarasuState {
   svg: string;
   warnings: Warning[];
   diagnostics: Diagnostic[];
+  nodeMetadata: Map<string, NodeMetadata>;
 }
 
 // Register icons from manifest on module load
@@ -33,6 +35,7 @@ export function useKarasu(
       svg: result.svg,
       warnings: result.warnings,
       diagnostics: result.diagnostics,
+      nodeMetadata: result.nodeMetadata,
     };
   });
 
@@ -52,6 +55,7 @@ export function useKarasu(
             svg: lastValidSvg.current,
             warnings: result.warnings,
             diagnostics: result.diagnostics,
+            nodeMetadata: result.nodeMetadata,
           });
         } else {
           lastValidSvg.current = result.svg;
@@ -59,6 +63,7 @@ export function useKarasu(
             svg: result.svg,
             warnings: result.warnings,
             diagnostics: result.diagnostics,
+            nodeMetadata: result.nodeMetadata,
           });
         }
       } catch {

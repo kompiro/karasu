@@ -5,12 +5,14 @@ import {
   type Diagnostic,
   type ViewPath,
   type FileSystemProvider,
+  type NodeMetadata,
 } from "@karasu/core";
 
 export interface KarasuProjectState {
   svg: string;
   warnings: Warning[];
   diagnostics: Diagnostic[];
+  nodeMetadata: Map<string, NodeMetadata>;
 }
 
 const DEBOUNCE_MS = 300;
@@ -28,6 +30,7 @@ export function useKarasuProject(
     svg: "",
     warnings: [],
     diagnostics: [],
+    nodeMetadata: new Map(),
   });
 
   const lastValidSvg = useRef("");
@@ -55,6 +58,7 @@ export function useKarasuProject(
             svg: lastValidSvg.current,
             warnings: result.warnings,
             diagnostics: result.diagnostics,
+            nodeMetadata: result.nodeMetadata,
           });
         } else {
           lastValidSvg.current = result.svg;
@@ -62,6 +66,7 @@ export function useKarasuProject(
             svg: result.svg,
             warnings: result.warnings,
             diagnostics: result.diagnostics,
+            nodeMetadata: result.nodeMetadata,
           });
         }
       } catch {

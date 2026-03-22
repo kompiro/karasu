@@ -9,7 +9,7 @@ import { FileTree } from "./components/FileTree.js";
 import { useAppContext } from "./state/app-context.js";
 import { useKarasuProject } from "./hooks/useKarasuProject.js";
 import { ProjectManager } from "./fs/project-manager.js";
-import type { Project } from "@karasu/core";
+import type { Project, KrsNode } from "@karasu/core";
 
 const LAST_PROJECT_KEY = "karasu-last-project-id";
 
@@ -27,7 +27,11 @@ export function ProjectModeApp() {
   // エントリパスを計算（現在のプロジェクトの index.krs）
   const entryPath = currentProject ? `${currentProject.rootPath}/index.krs` : null;
 
-  const { svg, warnings, diagnostics, recompile } = useKarasuProject(entryPath, fs, viewPath);
+  const { svg, warnings, diagnostics, nodeMetadata, recompile } = useKarasuProject(
+    entryPath,
+    fs,
+    viewPath,
+  );
 
   // 初期化: プロジェクト一覧を読み込み
   useEffect(() => {
@@ -178,9 +182,9 @@ export function ProjectModeApp() {
       const system = systems[0];
       items.push({ id: system.id ?? system.label, label: system.label });
 
-      let current: import("@karasu/core").KrsNode = system;
+      let current: KrsNode = system;
       for (const segment of viewPath) {
-        const child: import("@karasu/core").KrsNode | undefined = current.children.find(
+        const child: KrsNode | undefined = current.children.find(
           (c) => (c.id ?? c.label) === segment,
         );
         if (!child) break;
@@ -228,6 +232,7 @@ export function ProjectModeApp() {
           svg={svg}
           diagnostics={diagnostics}
           viewPath={viewPath}
+          nodeMetadata={nodeMetadata}
           onDrillDown={handleDrillDown}
         />
       </div>

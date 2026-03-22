@@ -1,5 +1,6 @@
 import type { KrsNode, KrsEdge, LogicalNodeKind, CommonProperties } from "../types/ast.js";
 import type { ViewSlice } from "../view/view-extract.js";
+import { summarizeDescription } from "./description-summary.js";
 
 export type LayoutNodeProperties = CommonProperties & {
   role?: string;
@@ -11,6 +12,10 @@ export interface LayoutNode {
   id: string;
   label: string;
   properties: LayoutNodeProperties;
+  descriptionSummary?: string;
+  linkCount: number;
+  hasChildren: boolean;
+  hasDescription: boolean;
   x: number;
   y: number;
   width: number;
@@ -125,6 +130,12 @@ export function layout(viewSlice: ViewSlice): LayoutResult {
         id: nid,
         label: krsNode.label,
         properties: extractLayoutProperties(krsNode),
+        descriptionSummary: krsNode.properties.description
+          ? summarizeDescription(krsNode.properties.description)
+          : undefined,
+        linkCount: krsNode.properties.links.length,
+        hasChildren: krsNode.children.length > 0,
+        hasDescription: !!krsNode.properties.description,
         x: xOffset,
         y,
         width: dims.width,
@@ -243,6 +254,12 @@ export function layout(viewSlice: ViewSlice): LayoutResult {
         id: uid,
         label: userNode.label,
         properties: extractLayoutProperties(userNode),
+        descriptionSummary: userNode.properties.description
+          ? summarizeDescription(userNode.properties.description)
+          : undefined,
+        linkCount: userNode.properties.links.length,
+        hasChildren: userNode.children.length > 0,
+        hasDescription: !!userNode.properties.description,
         x: userX - dims.width,
         y: userY,
         width: dims.width,
@@ -480,13 +497,16 @@ function assignLayers(
   return layers;
 }
 
+const META_FONT_RATIO = 0.7;
+const INFO_BUTTON_WIDTH = 24;
+
 function extractLayoutProperties(node: KrsNode): LayoutNodeProperties {
   const props: LayoutNodeProperties = {
     description: node.properties.description,
     links: node.properties.links,
   };
   if (node.kind === "user") props.role = node.properties.role;
-  if (node.kind === "service") props.team = node.properties.team;
+  if (node.kind === "service" || node.kind === "domain") props.team = node.properties.team;
   return props;
 }
 
@@ -494,15 +514,39 @@ function measureNode(node: KrsNode): { width: number; height: number } {
   const labelWidth = estimateTextWidth(node.label, CHAR_WIDTH);
   const description = node.properties.description;
   const role = node.kind === "user" ? node.properties.role : undefined;
-  const descWidth = description
-    ? estimateTextWidth(description, CHAR_WIDTH * DESCRIPTION_FONT_RATIO)
-    : 0;
+  const team = node.kind === "service" || node.kind === "domain" ? node.properties.team : undefined;
+
+  // Description should not widen the box beyond label width
+  const descWidth = 0;
   const roleWidth = role ? estimateTextWidth(role, CHAR_WIDTH * DESCRIPTION_FONT_RATIO) : 0;
 
-  const width = Math.max(labelWidth, descWidth, roleWidth, 80) + NODE_PADDING_X * 2;
+  // Meta row: link count icon + team name
+  const hasMetaRow = node.properties.links.length > 0 || !!team;
+  let metaWidth = 0;
+  if (hasMetaRow) {
+    if (node.properties.links.length > 0)
+      metaWidth += estimateTextWidth(
+        `🔗${node.properties.links.length}`,
+        CHAR_WIDTH * META_FONT_RATIO,
+      );
+    if (team) {
+      if (metaWidth > 0) metaWidth += CHAR_WIDTH; // spacing
+      const teamDisplay = [...team].length > 15 ? [...team].slice(0, 15).join("") + "…" : team;
+      metaWidth += estimateTextWidth(`👥${teamDisplay}`, CHAR_WIDTH * META_FONT_RATIO);
+    }
+  }
+
+  // Info button adds width for nodes with children and description
+  const infoButtonExtra = node.children.length > 0 && description ? INFO_BUTTON_WIDTH : 0;
+
+  const width =
+    Math.max(labelWidth, descWidth, roleWidth, metaWidth, 80) +
+    NODE_PADDING_X * 2 +
+    infoButtonExtra;
   let height = NODE_PADDING_Y * 2 + LINE_HEIGHT;
   if (description) height += LINE_HEIGHT;
   if (role) height += LINE_HEIGHT;
+  if (hasMetaRow) height += LINE_HEIGHT;
 
   return { width, height };
 }

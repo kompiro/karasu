@@ -26,13 +26,20 @@ const DEFAULT_NODE_STYLE: ResolvedNodeStyle = {
 
 const KIND_STYLE_OVERRIDES: Partial<Record<string, Partial<ResolvedNodeStyle>>> = {
   resource: {
-    shape: "cylinder",
+    shape: "box",
     backgroundColor: "#1E3A5F",
     borderColor: "#3B82F6",
   },
   user: {
     shape: "user",
   },
+};
+
+const RESOURCE_TAG_SHAPES: Record<string, ShapeKind> = {
+  table: "cylinder",
+  queue: "queue",
+  api: "hexagon",
+  storage: "cloud",
 };
 
 const DEFAULT_EDGE_STYLE: ResolvedEdgeStyle = {
@@ -90,7 +97,19 @@ function resolveNodeStyle(node: KrsNode, rules: StyleRule[], kind: string): Reso
     Object.assign(merged, rule.properties);
   }
 
-  return toResolvedNodeStyle(merged, kind);
+  const style = toResolvedNodeStyle(merged, kind);
+
+  // Apply tag-based default shape for resource nodes (only if no explicit shape in user stylesheet)
+  if (kind === "resource" && !merged["shape"]) {
+    for (const tag of node.tags) {
+      if (Object.hasOwn(RESOURCE_TAG_SHAPES, tag)) {
+        style.shape = RESOURCE_TAG_SHAPES[tag];
+        break;
+      }
+    }
+  }
+
+  return style;
 }
 
 function resolveEdgeStyle(edge: KrsEdge, rules: StyleRule[]): ResolvedEdgeStyle {

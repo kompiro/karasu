@@ -27,7 +27,7 @@ export enum TokenType {
   Job = "Job",
   Artifact = "Artifact",
 
-  // Properties (physical)
+  // Properties
   Runtime = "Runtime",
   Realizes = "Realizes",
   Schedule = "Schedule",

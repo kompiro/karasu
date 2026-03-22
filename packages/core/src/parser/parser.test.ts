@@ -340,6 +340,66 @@ system "Test" {
     expect(service.properties.links[1].url).toBe("https://figma.com/file/xxx");
   });
 
+  it("parses user with role and link", () => {
+    const result = Parser.parse(`
+system "Test" {
+  user Customer "顧客" [human] {
+    role "商品を購入する一般ユーザー"
+    link "https://wiki.example.com/persona" "ペルソナ定義"
+  }
+}
+    `);
+    expect(result.diagnostics).toHaveLength(0);
+    const user = result.value.systems[0].children[0] as UserNode;
+    expect(user.properties.role).toBe("商品を購入する一般ユーザー");
+    expect(user.properties.links).toHaveLength(1);
+    expect(user.properties.links[0].url).toBe("https://wiki.example.com/persona");
+    expect(user.properties.links[0].label).toBe("ペルソナ定義");
+  });
+
+  it("parses resource with link", () => {
+    const result = Parser.parse(`
+system "Test" {
+  service S "S" {
+    domain D "D" {
+      usecase U "U" {
+        resource OrderTable "注文テーブル" {
+          link "https://wiki.example.com/order-table" "テーブル定義"
+        }
+      }
+    }
+  }
+}
+    `);
+    expect(result.diagnostics).toHaveLength(0);
+    const resource = result.value.systems[0].children[0].children[0].children[0].children[0];
+    expect(resource.kind).toBe("resource");
+    expect(resource.properties.links).toHaveLength(1);
+    expect(resource.properties.links[0].label).toBe("テーブル定義");
+  });
+
+  it("returns empty links array when no links specified", () => {
+    const result = Parser.parse(`
+system "Test" {
+  service S "S"
+}
+    `);
+    const service = result.value.systems[0].children[0];
+    expect(service.properties.links).toEqual([]);
+  });
+
+  it("errors when team is used on user node", () => {
+    const result = Parser.parse(`
+system "Test" {
+  user Admin "管理者" {
+    team "チーム名"
+  }
+}
+    `);
+    expect(result.diagnostics.length).toBeGreaterThanOrEqual(1);
+    expect(result.diagnostics[0].message).toContain("team");
+  });
+
   it("parses triple-quoted description", () => {
     const result = Parser.parse(`
 system "Test" {

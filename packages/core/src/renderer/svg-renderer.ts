@@ -117,8 +117,7 @@ export function render(viewSlice: ViewSlice, styles: ResolvedStyles): string {
   const normalNodeParts: string[] = [];
   for (const [nodeId, layoutNode] of layoutResult.nodes) {
     const nodeStyle = styles.nodes.get(nodeId) ?? styles.defaultNodeStyle;
-    const hasChildren = hasChildrenInAst(viewSlice, nodeId);
-    const rendered = renderNode(layoutNode, nodeStyle, nodeId, hasChildren);
+    const rendered = renderNode(layoutNode, nodeStyle, nodeId);
     if (layoutNode.ghost) {
       ghostNodeParts.push(rendered);
     } else {
@@ -187,12 +186,7 @@ function renderContainer(
   );
 }
 
-function renderNode(
-  node: LayoutNode,
-  style: ResolvedNodeStyle,
-  nodeId: string,
-  hasChildren: boolean,
-): string {
+function renderNode(node: LayoutNode, style: ResolvedNodeStyle, nodeId: string): string {
   const children: string[] = [];
 
   // Shape
@@ -204,6 +198,8 @@ function renderNode(
 
   const textColor = style.color;
   const fontSize = style.fontSize;
+  const displayDesc = node.descriptionSummary ?? node.properties.description;
+  const hasMetaRow = node.linkCount > 0 || !!node.properties.team;
 
   if (iconDef?.labelSlot) {
     const vw = iconDef.viewBoxWidth ?? 24;
@@ -232,7 +228,7 @@ function renderNode(
       ),
     );
 
-    if (node.properties.description && iconDef.descriptionSlot) {
+    if (displayDesc && iconDef.descriptionSlot) {
       const descX = node.x + iconDef.descriptionSlot.x * scaleX;
       const descY = node.y + iconDef.descriptionSlot.y * scaleY;
       const descAnchor = iconDef.descriptionSlot.textAnchor ?? "middle";
@@ -250,13 +246,14 @@ function renderNode(
             "font-family": style.fontFamily,
             opacity: 0.7,
           },
-          escapeXml(node.properties.description),
+          escapeXml(displayDesc),
         ),
       );
     }
   } else {
     const textX = node.x + node.width / 2;
-    const textLines = 1 + (node.properties.description ? 1 : 0) + (node.properties.role ? 1 : 0);
+    const textLines =
+      1 + (displayDesc ? 1 : 0) + (node.properties.role ? 1 : 0) + (hasMetaRow ? 1 : 0);
     let textY = node.y + node.height / 2;
     if (textLines > 1) textY -= ((textLines - 1) * (fontSize + 4)) / 2;
 
@@ -279,7 +276,15 @@ function renderNode(
 
     let nextY = textY + fontSize + 4;
 
-    if (node.properties.description) {
+    if (displayDesc) {
+      // Truncate description to fit within the node width
+      const descFontSize = Math.round(fontSize * 0.8);
+      const availableWidth = node.width - 40 * 2; // NODE_PADDING_X = 40
+      const descCharWidth = 9 * 0.8; // CHAR_WIDTH * DESCRIPTION_FONT_RATIO
+      const maxChars = Math.max(1, Math.floor(availableWidth / descCharWidth));
+      const descChars = [...displayDesc];
+      const truncatedDesc =
+        descChars.length > maxChars ? descChars.slice(0, maxChars).join("") + "…" : displayDesc;
       children.push(
         el(
           "text",
@@ -289,11 +294,11 @@ function renderNode(
             "text-anchor": "middle",
             "dominant-baseline": "central",
             fill: textColor,
-            "font-size": `${Math.round(fontSize * 0.8)}px`,
+            "font-size": `${descFontSize}px`,
             "font-family": style.fontFamily,
             opacity: 0.7,
           },
-          escapeXml(node.properties.description),
+          escapeXml(truncatedDesc),
         ),
       );
       nextY += fontSize + 4;
@@ -317,6 +322,63 @@ function renderNode(
           escapeXml(node.properties.role),
         ),
       );
+      nextY += fontSize + 4;
+    }
+
+    // Meta row: link count + team
+    if (hasMetaRow) {
+      const metaFontSize = `${Math.round(fontSize * 0.7)}px`;
+      const metaAttrs = {
+        "text-anchor": "middle" as const,
+        "dominant-baseline": "central" as const,
+        fill: "#94A3B8",
+        "font-size": metaFontSize,
+        "font-family": style.fontFamily,
+      };
+
+      if (node.linkCount > 0 && node.properties.team) {
+        // Both link count and team: render link on the left, team on the right
+        const linkText = `🔗${node.linkCount}`;
+        const teamChars = [...node.properties.team];
+        const teamDisplay =
+          teamChars.length > 15 ? teamChars.slice(0, 15).join("") + "…" : node.properties.team;
+        const teamText = `👥${teamDisplay}`;
+        const contentLeft = node.x + 40;
+        const contentRight = node.x + node.width - 40;
+        children.push(
+          el(
+            "g",
+            { "data-link-button": nodeId, style: "cursor: pointer", "pointer-events": "all" },
+            el(
+              "text",
+              { ...metaAttrs, "text-anchor": "start", x: contentLeft, y: nextY },
+              escapeXml(linkText),
+            ),
+          ),
+        );
+        children.push(
+          el(
+            "text",
+            { ...metaAttrs, "text-anchor": "end", x: contentRight, y: nextY },
+            escapeXml(teamText),
+          ),
+        );
+      } else if (node.linkCount > 0) {
+        children.push(
+          el(
+            "g",
+            { "data-link-button": nodeId, style: "cursor: pointer", "pointer-events": "all" },
+            el("text", { ...metaAttrs, x: textX, y: nextY }, escapeXml(`🔗${node.linkCount}`)),
+          ),
+        );
+      } else if (node.properties.team) {
+        const teamChars = [...node.properties.team];
+        const teamDisplay =
+          teamChars.length > 15 ? teamChars.slice(0, 15).join("") + "…" : node.properties.team;
+        children.push(
+          el("text", { ...metaAttrs, x: textX, y: nextY }, escapeXml(`👥${teamDisplay}`)),
+        );
+      }
     }
   }
 
@@ -362,23 +424,51 @@ function renderNode(
     }
   }
 
+  // Info button for container nodes with description
+  if (node.hasChildren && node.hasDescription) {
+    const btnX = node.x + node.width - 16;
+    const btnY = node.y + 14;
+    children.push(
+      el(
+        "g",
+        { "data-info-button": nodeId, style: "cursor: pointer", "pointer-events": "all" },
+        el("circle", {
+          cx: btnX,
+          cy: btnY,
+          r: 8,
+          fill: "transparent",
+          stroke: "#64748B",
+          "stroke-width": 1,
+        }),
+        el(
+          "text",
+          {
+            x: btnX,
+            y: btnY,
+            "text-anchor": "middle",
+            "dominant-baseline": "central",
+            fill: "#64748B",
+            "font-size": "10px",
+            "font-family": "sans-serif",
+            "font-style": "italic",
+          },
+          "i",
+        ),
+      ),
+    );
+  }
+
   return el(
     "g",
     {
       "data-node-id": nodeId,
-      style: hasChildren ? "cursor: pointer" : undefined,
+      "data-node-kind": node.kind,
+      "data-has-children": node.hasChildren ? "true" : "false",
+      "data-has-description": node.hasDescription ? "true" : "false",
+      "data-link-count": node.linkCount > 0 ? String(node.linkCount) : undefined,
+      style: node.hasChildren ? "cursor: pointer" : undefined,
       opacity: style.opacity < 1 ? style.opacity : undefined,
     },
     ...children,
   );
-}
-
-function hasChildrenInAst(viewSlice: ViewSlice, nodeId: string): boolean {
-  for (const child of viewSlice.childNodes) {
-    const id = child.id ?? child.label;
-    if (id === nodeId) {
-      return child.children.length > 0;
-    }
-  }
-  return false;
 }

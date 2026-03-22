@@ -53,7 +53,9 @@ export interface ServiceNode extends BaseNodeFields {
 
 export interface DomainNode extends BaseNodeFields {
   kind: "domain";
-  properties: CommonProperties;
+  properties: CommonProperties & {
+    team?: string;
+  };
 }
 
 export interface UsecaseNode extends BaseNodeFields {
