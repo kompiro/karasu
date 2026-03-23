@@ -12,12 +12,14 @@
     "dev": "npm run dev --workspace=packages/app",
     "build": "npm run build --workspace=packages/core && npm run build --workspace=packages/app",
     "test": "vitest run",
+    "test:coverage": "npm run test:coverage --workspace=packages/core && npm run test:coverage --workspace=packages/app",
     "lint": "oxlint packages/",
     "lint:fix": "oxlint --fix packages/",
     "format": "oxfmt --write packages/",
     "format:check": "oxfmt --check packages/"
   },
   "devDependencies": {
+    "@vitest/coverage-v8": "^3.2.4",
     "oxfmt": "^0.41.0",
     "oxlint": "^1.56.0"
   }
