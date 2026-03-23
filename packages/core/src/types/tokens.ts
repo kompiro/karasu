@@ -39,6 +39,7 @@ export enum TokenType {
   Description = "Description",
   Team = "Team",
   Link = "Link",
+  Links = "Links",
   TripleQuote = "TripleQuote",
 
   // Imports
@@ -61,6 +62,13 @@ export enum TokenType {
   Hash = "Hash", // #
   Colon = "Colon",
   Semicolon = "Semicolon",
+
+  // Indentation (YAML-style .krs)
+  Indent = "Indent",
+  Dedent = "Dedent",
+  Newline = "Newline",
+  Pipe = "Pipe",
+  Dash = "Dash",
 
   // Common
   EOF = "EOF",

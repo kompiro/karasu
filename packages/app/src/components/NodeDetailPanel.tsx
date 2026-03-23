@@ -66,7 +66,7 @@ export function NodeDetailPanel({ metadata, anchorX, anchorY, onClose }: NodeDet
             {metadata.links.map((link, i) => (
               <li key={i}>
                 <a href={link.url} target="_blank" rel="noopener noreferrer">
-                  {link.label || link.url} ↗
+                  {link.url} ↗
                 </a>
               </li>
             ))}

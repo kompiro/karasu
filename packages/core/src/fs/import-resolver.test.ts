@@ -15,9 +15,8 @@ describe("ImportResolver", () => {
     it("resolves a single krs file", async () => {
       await fs.writeFile(
         "/project/index.krs",
-        `system "Test" {
-          service Svc "Service"
-        }`,
+        `system "Test":
+  service Svc "Service"`,
       );
 
       const result = await resolver.resolve("/project/index.krs");
@@ -42,9 +41,8 @@ describe("ImportResolver", () => {
       await fs.writeFile(
         "/project/index.krs",
         `@import "default.krs.style"
-system "Test" {
-  service Svc "Service"
-}`,
+system "Test":
+  service Svc "Service"`,
       );
       await fs.writeFile(
         "/project/default.krs.style",
@@ -64,9 +62,8 @@ system "Test" {
       await fs.writeFile(
         "/project/index.krs",
         `@import "missing.krs.style"
-system "Test" {
-  service Svc "Service"
-}`,
+system "Test":
+  service Svc "Service"`,
       );
 
       const result = await resolver.resolve("/project/index.krs");
@@ -84,15 +81,13 @@ system "Test" {
       await fs.writeFile(
         "/project/index.krs",
         `import { Payment } from "services/payment.krs"
-system "EC" {
-  service ECommerce "EC"
-}`,
+system "EC":
+  service ECommerce "EC"`,
       );
       await fs.writeFile(
         "/project/services/payment.krs",
-        `system "EC" {
-  service Payment "Payment" [external]
-}`,
+        `system "EC":
+  service Payment "Payment" [external]`,
       );
 
       const result = await resolver.resolve("/project/index.krs");
@@ -110,15 +105,13 @@ system "EC" {
       await fs.writeFile(
         "/project/index.krs",
         `import { NonExistent } from "other.krs"
-system "Test" {
-  service Svc "Service"
-}`,
+system "Test":
+  service Svc "Service"`,
       );
       await fs.writeFile(
         "/project/other.krs",
-        `system "Test" {
-  service Actual "Actual"
-}`,
+        `system "Test":
+  service Actual "Actual"`,
       );
 
       const result = await resolver.resolve("/project/index.krs");
@@ -134,9 +127,8 @@ system "Test" {
       await fs.writeFile(
         "/project/index.krs",
         `import { X } from "missing.krs"
-system "Test" {
-  service Svc "Service"
-}`,
+system "Test":
+  service Svc "Service"`,
       );
 
       const result = await resolver.resolve("/project/index.krs");
@@ -154,22 +146,19 @@ system "Test" {
       await fs.writeFile(
         "/project/a.krs",
         `import { Svc2, Svc3 } from "b.krs"
-system "Chain" {
-  service Svc1 "Service1"
-}`,
+system "Chain":
+  service Svc1 "Service1"`,
       );
       await fs.writeFile(
         "/project/b.krs",
         `import { Svc3 } from "c.krs"
-system "Chain" {
-  service Svc2 "Service2"
-}`,
+system "Chain":
+  service Svc2 "Service2"`,
       );
       await fs.writeFile(
         "/project/c.krs",
-        `system "Chain" {
-  service Svc3 "Service3"
-}`,
+        `system "Chain":
+  service Svc3 "Service3"`,
       );
 
       const result = await resolver.resolve("/project/a.krs");
@@ -189,16 +178,14 @@ system "Chain" {
       await fs.writeFile(
         "/project/a.krs",
         `import { Y } from "b.krs"
-system "Circular" {
-  service X "X"
-}`,
+system "Circular":
+  service X "X"`,
       );
       await fs.writeFile(
         "/project/b.krs",
         `import { X } from "a.krs"
-system "Circular" {
-  service Y "Y"
-}`,
+system "Circular":
+  service Y "Y"`,
       );
 
       const result = await resolver.resolve("/project/a.krs");
@@ -217,9 +204,8 @@ system "Circular" {
         "/project/index.krs",
         `@import "a.krs.style"
 @import "a.krs.style"
-system "Test" {
-  service Svc "Service"
-}`,
+system "Test":
+  service Svc "Service"`,
       );
       await fs.writeFile("/project/a.krs.style", `user { background-color: #000; }`);
 
@@ -239,16 +225,14 @@ system "Test" {
       await fs.writeFile(
         "/project/index.krs",
         `import { Payment } from "payment.krs"
-system "EC" {
+system "EC":
   service ECommerce "EC"
-  ECommerce -> Payment "pay"
-}`,
+  ECommerce -> Payment "pay"`,
       );
       await fs.writeFile(
         "/project/payment.krs",
-        `system "EC" {
-  service Payment "Payment" [external]
-}`,
+        `system "EC":
+  service Payment "Payment" [external]`,
       );
 
       const result = await resolver.resolve("/project/index.krs");

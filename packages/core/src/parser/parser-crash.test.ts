@@ -63,14 +63,14 @@ describe("Incomplete import - compileProject", () => {
 
 describe("Incomplete import followed by other tokens - no infinite loop", () => {
   it("should not hang on 'import\\nsystem ...'", () => {
-    const result = Parser.parse('import\nsystem "Test" {\n  user User "User"\n}');
+    const result = Parser.parse('import\nsystem "Test":\n  user User "User"');
     expect(result.diagnostics.length).toBeGreaterThan(0);
     expect(result.value.systems).toHaveLength(1);
   });
 
   it("should not hang on '@import ...\\nimport\\nsystem ...'", () => {
     const result = Parser.parse(
-      '@import "default.krs.style"\nimport\nsystem "Test" {\n  user User "User"\n}',
+      '@import "default.krs.style"\nimport\nsystem "Test":\n  user User "User"',
     );
     expect(result.diagnostics.length).toBeGreaterThan(0);
     expect(result.value.styleImports).toEqual(["default.krs.style"]);
@@ -78,7 +78,7 @@ describe("Incomplete import followed by other tokens - no infinite loop", () => 
   });
 
   it("should not hang on 'import { system ...'", () => {
-    const result = Parser.parse('import {\nsystem "Test" {}');
+    const result = Parser.parse('import {\nsystem "Test":\n  service S "S"');
     expect(result.diagnostics.length).toBeGreaterThan(0);
   });
 
@@ -86,7 +86,7 @@ describe("Incomplete import followed by other tokens - no infinite loop", () => 
     const fs = new InMemoryFileSystemProvider();
     await fs.writeFile(
       "/index.krs",
-      '@import "s.krs.style"\nimport\nsystem "Test" {\n  user User "User"\n}',
+      '@import "s.krs.style"\nimport\nsystem "Test":\n  user User "User"',
     );
     await fs.writeFile("/s.krs.style", "");
     const result = await compileProject("/index.krs", fs);

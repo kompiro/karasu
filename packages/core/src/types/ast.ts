@@ -18,7 +18,6 @@ export type DeployNodeKind =
 
 export interface LinkEntry {
   url: string;
-  label?: string;
   loc: SourceRange;
 }
 

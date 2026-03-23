@@ -29,24 +29,25 @@ describe("Parser", () => {
   });
 
   it("parses a minimal system", () => {
-    const result = Parser.parse('system "My System" {}');
+    const source = [
+      'system "My System":',
+      '  service S "placeholder"',
+    ].join("\n");
+    const result = Parser.parse(source);
     expect(result.value.systems).toHaveLength(1);
     expect(result.value.systems[0].kind).toBe("system");
     expect(result.value.systems[0].label).toBe("My System");
-    expect(result.value.systems[0].children).toHaveLength(0);
   });
 
   it("parses description in property block", () => {
-    const result = Parser.parse(`
-system "Test" {
-  user Customer "顧客" {
-    description "商品を購入する一般ユーザー"
-  }
-  service ECommerce "ECサイト" {
-    description "商品管理と注文処理"
-  }
-}
-    `);
+    const source = [
+      'system "Test":',
+      '  user Customer "顧客":',
+      '    description: "商品を購入する一般ユーザー"',
+      '  service ECommerce "ECサイト":',
+      '    description: "商品管理と注文処理"',
+    ].join("\n");
+    const result = Parser.parse(source);
     expect(result.diagnostics).toHaveLength(0);
     const sys = result.value.systems[0];
     expect(sys.children).toHaveLength(2);
@@ -65,54 +66,54 @@ system "Test" {
   });
 
   it("rejects positional description with error", () => {
-    const result = Parser.parse(`
-system "Test" {
-  service ECommerce "ECサイト" "商品管理と注文処理"
-}
-    `);
+    const source = [
+      'system "Test":',
+      '  service ECommerce "ECサイト" "商品管理と注文処理"',
+    ].join("\n");
+    const result = Parser.parse(source);
     expect(result.diagnostics.length).toBeGreaterThan(0);
-    expect(result.diagnostics[0].message).toContain("位置引数の description は廃止されました");
+    expect(result.diagnostics.some((d) => d.message.includes("位置引数の description は廃止されました"))).toBe(true);
   });
 
   it("parses tags", () => {
-    const result = Parser.parse(`
-system "Test" {
-  service Payment "決済" [external]
-}
-    `);
+    const source = [
+      'system "Test":',
+      '  service Payment "決済" [external]',
+    ].join("\n");
+    const result = Parser.parse(source);
     const service = result.value.systems[0].children[0];
     expect(service.tags).toEqual(["external"]);
   });
 
   it("parses annotations", () => {
-    const result = Parser.parse(`
-system "Test" {
-  service Legacy "旧システム" @deprecated @migration_target
-}
-    `);
+    const source = [
+      'system "Test":',
+      '  service Legacy "旧システム" @deprecated @migration_target',
+    ].join("\n");
+    const result = Parser.parse(source);
     const service = result.value.systems[0].children[0];
     expect(service.annotations).toEqual(["deprecated", "migration_target"]);
   });
 
   it("parses tags and annotations combined", () => {
-    const result = Parser.parse(`
-system "Test" {
-  service Legacy "旧システム" [external] @deprecated
-}
-    `);
+    const source = [
+      'system "Test":',
+      '  service Legacy "旧システム" [external] @deprecated',
+    ].join("\n");
+    const result = Parser.parse(source);
     const service = result.value.systems[0].children[0];
     expect(service.tags).toEqual(["external"]);
     expect(service.annotations).toEqual(["deprecated"]);
   });
 
   it("parses sync edges", () => {
-    const result = Parser.parse(`
-system "Test" {
-  user Customer "顧客"
-  service Shop "ショップ"
-  Customer -> Shop "商品を購入する"
-}
-    `);
+    const source = [
+      'system "Test":',
+      '  user Customer "顧客"',
+      '  service Shop "ショップ"',
+      '  Customer -> Shop "商品を購入する"',
+    ].join("\n");
+    const result = Parser.parse(source);
     const edges = result.value.systems[0].edges;
     expect(edges).toHaveLength(1);
     expect(edges[0].from).toBe("Customer");
@@ -122,31 +123,28 @@ system "Test" {
   });
 
   it("parses async edges", () => {
-    const result = Parser.parse(`
-system "Test" {
-  service A "A"
-  service B "B"
-  A --> B "非同期処理"
-}
-    `);
+    const source = [
+      'system "Test":',
+      '  service A "A"',
+      '  service B "B"',
+      '  A --> B "非同期処理"',
+    ].join("\n");
+    const result = Parser.parse(source);
     const edges = result.value.systems[0].edges;
     expect(edges).toHaveLength(1);
     expect(edges[0].kind).toBe("async");
   });
 
   it("parses nested nodes with full hierarchy", () => {
-    const result = Parser.parse(`
-system "Test" {
-  service ECommerce "EC" {
-    domain Order "受注" {
-      usecase PlaceOrder "注文を受け付ける" {
-        resource OrderTable "注文テーブル"
-        resource InventoryAPI "在庫API" [external]
-      }
-    }
-  }
-}
-    `);
+    const source = [
+      'system "Test":',
+      '  service ECommerce "EC":',
+      '    domain Order "受注":',
+      '      usecase PlaceOrder "注文を受け付ける":',
+      '        resource OrderTable "注文テーブル"',
+      '        resource InventoryAPI "在庫API" [external]',
+    ].join("\n");
+    const result = Parser.parse(source);
     const service = result.value.systems[0].children[0];
     expect(service.children).toHaveLength(1);
     const domain = service.children[0];
@@ -170,20 +168,19 @@ system "Test" {
   });
 
   it("parses deploy block", () => {
-    const result = Parser.parse(`
-deploy "本番環境" {
-  oci "order-service" {
-    image "order:2.1.0"
-    runtime "Node.js 20"
-    realizes ECommerce
-  }
-  job "monthly-billing" {
-    schedule "0 0 1 * *"
-    runtime "Java 21"
-    realizes Billing
-  }
-}
-    `);
+    const source = [
+      'deploy "本番環境":',
+      '  oci "order-service":',
+      '    image: "order:2.1.0"',
+      '    runtime: "Node.js 20"',
+      '    realizes: ECommerce',
+      '  job "monthly-billing":',
+      '    schedule: "0 0 1 * *"',
+      '    runtime: "Java 21"',
+      '    realizes: Billing',
+    ].join("\n");
+    const result = Parser.parse(source);
+    expect(result.diagnostics).toHaveLength(0);
     expect(result.value.deploys).toHaveLength(1);
     const deploy = result.value.deploys[0];
     expect(deploy.label).toBe("本番環境");
@@ -203,28 +200,24 @@ deploy "本番環境" {
   });
 
   it("parses a complete file with imports, system, and deploy", () => {
-    const result = Parser.parse(`
-@import "default.krs.style"
-
-system "ECプラットフォーム" {
-  user Customer "顧客" {
-    description "商品を購入する一般ユーザー"
-  }
-  service ECommerce "ECサイト" {
-    description "商品管理と注文処理"
-  }
-  service Payment "決済サービス" [external]
-  Customer -> ECommerce "商品を購入する"
-  ECommerce --> Payment "決済を処理する"
-}
-
-deploy "本番環境" {
-  war "order.war" {
-    runtime "Tomcat 9"
-    realizes ECommerce
-  }
-}
-    `);
+    const source = [
+      '@import "default.krs.style"',
+      '',
+      'system "ECプラットフォーム":',
+      '  user Customer "顧客":',
+      '    description: "商品を購入する一般ユーザー"',
+      '  service ECommerce "ECサイト":',
+      '    description: "商品管理と注文処理"',
+      '  service Payment "決済サービス" [external]',
+      '  Customer -> ECommerce "商品を購入する"',
+      '  ECommerce --> Payment "決済を処理する"',
+      '',
+      'deploy "本番環境":',
+      '  war "order.war":',
+      '    runtime: "Tomcat 9"',
+      '    realizes: ECommerce',
+    ].join("\n");
+    const result = Parser.parse(source);
     expect(result.diagnostics).toHaveLength(0);
     expect(result.value.styleImports).toEqual(["default.krs.style"]);
     expect(result.value.systems).toHaveLength(1);
@@ -236,13 +229,12 @@ deploy "本番環境" {
   });
 
   it("parses user with role property", () => {
-    const result = Parser.parse(`
-system "Test" {
-  user Admin "管理者" [human] {
-    role "システム管理者"
-  }
-}
-    `);
+    const source = [
+      'system "Test":',
+      '  user Admin "管理者" [human]:',
+      '    role: "システム管理者"',
+    ].join("\n");
+    const result = Parser.parse(source);
     expect(result.diagnostics).toHaveLength(0);
     const user = result.value.systems[0].children[0] as UserNode;
     expect(user.kind).toBe("user");
@@ -253,13 +245,12 @@ system "Test" {
   });
 
   it("parses user with [ai] tag", () => {
-    const result = Parser.parse(`
-system "Test" {
-  user AIAgent "注文自動化エージェント" [ai] {
-    role "注文処理担当"
-  }
-}
-    `);
+    const source = [
+      'system "Test":',
+      '  user AIAgent "注文自動化エージェント" [ai]:',
+      '    role: "注文処理担当"',
+    ].join("\n");
+    const result = Parser.parse(source);
     expect(result.diagnostics).toHaveLength(0);
     const user = result.value.systems[0].children[0] as UserNode;
     expect(user.kind).toBe("user");
@@ -268,11 +259,11 @@ system "Test" {
   });
 
   it("parses user without role (simple form)", () => {
-    const result = Parser.parse(`
-system "Test" {
-  user Admin "管理者" [human]
-}
-    `);
+    const source = [
+      'system "Test":',
+      '  user Admin "管理者" [human]',
+    ].join("\n");
+    const result = Parser.parse(source);
     expect(result.diagnostics).toHaveLength(0);
     const user = result.value.systems[0].children[0] as UserNode;
     expect(user.kind).toBe("user");
@@ -281,58 +272,27 @@ system "Test" {
   });
 
   it("parses team property on service", () => {
-    const result = Parser.parse(`
-system "Test" {
-  service ECommerce "ECサイト" {
-    team "EC開発チーム"
-  }
-}
-    `);
+    const source = [
+      'system "Test":',
+      '  service ECommerce "ECサイト":',
+      '    team: "EC開発チーム"',
+    ].join("\n");
+    const result = Parser.parse(source);
     expect(result.diagnostics).toHaveLength(0);
     const service = result.value.systems[0].children[0] as ServiceNode;
     expect(service.kind).toBe("service");
     expect(service.properties.team).toBe("EC開発チーム");
   });
 
-  it("parses link property", () => {
-    const result = Parser.parse(`
-system "Test" {
-  service ECommerce "ECサイト" {
-    link "https://wiki.example.com/ec" "設計Wiki"
-  }
-}
-    `);
-    expect(result.diagnostics).toHaveLength(0);
-    const service = result.value.systems[0].children[0] as ServiceNode;
-    expect(service.properties.links).toHaveLength(1);
-    expect(service.properties.links[0].url).toBe("https://wiki.example.com/ec");
-    expect(service.properties.links[0].label).toBe("設計Wiki");
-  });
-
-  it("parses link without label", () => {
-    const result = Parser.parse(`
-system "Test" {
-  service ECommerce "ECサイト" {
-    link "https://wiki.example.com/ec"
-  }
-}
-    `);
-    expect(result.diagnostics).toHaveLength(0);
-    const service = result.value.systems[0].children[0] as ServiceNode;
-    expect(service.properties.links).toHaveLength(1);
-    expect(service.properties.links[0].url).toBe("https://wiki.example.com/ec");
-    expect(service.properties.links[0].label).toBeUndefined();
-  });
-
-  it("parses multiple links", () => {
-    const result = Parser.parse(`
-system "Test" {
-  service ECommerce "ECサイト" {
-    link "https://wiki.example.com/ec" "設計Wiki"
-    link "https://figma.com/file/xxx" "画面設計"
-  }
-}
-    `);
+  it("parses links with YAML list syntax", () => {
+    const source = [
+      'system "Test":',
+      '  service ECommerce "ECサイト":',
+      '    links:',
+      '      - "https://wiki.example.com/ec"',
+      '      - "https://figma.com/file/xxx"',
+    ].join("\n");
+    const result = Parser.parse(source);
     expect(result.diagnostics).toHaveLength(0);
     const service = result.value.systems[0].children[0] as ServiceNode;
     expect(service.properties.links).toHaveLength(2);
@@ -340,79 +300,52 @@ system "Test" {
     expect(service.properties.links[1].url).toBe("https://figma.com/file/xxx");
   });
 
-  it("parses user with role and link", () => {
-    const result = Parser.parse(`
-system "Test" {
-  user Customer "顧客" [human] {
-    role "商品を購入する一般ユーザー"
-    link "https://wiki.example.com/persona" "ペルソナ定義"
-  }
-}
-    `);
+  it("parses single link in YAML list", () => {
+    const source = [
+      'system "Test":',
+      '  service S "S":',
+      '    links:',
+      '      - "https://example.com"',
+    ].join("\n");
+    const result = Parser.parse(source);
     expect(result.diagnostics).toHaveLength(0);
-    const user = result.value.systems[0].children[0] as UserNode;
-    expect(user.properties.role).toBe("商品を購入する一般ユーザー");
-    expect(user.properties.links).toHaveLength(1);
-    expect(user.properties.links[0].url).toBe("https://wiki.example.com/persona");
-    expect(user.properties.links[0].label).toBe("ペルソナ定義");
-  });
-
-  it("parses resource with link", () => {
-    const result = Parser.parse(`
-system "Test" {
-  service S "S" {
-    domain D "D" {
-      usecase U "U" {
-        resource OrderTable "注文テーブル" {
-          link "https://wiki.example.com/order-table" "テーブル定義"
-        }
-      }
-    }
-  }
-}
-    `);
-    expect(result.diagnostics).toHaveLength(0);
-    const resource = result.value.systems[0].children[0].children[0].children[0].children[0];
-    expect(resource.kind).toBe("resource");
-    expect(resource.properties.links).toHaveLength(1);
-    expect(resource.properties.links[0].label).toBe("テーブル定義");
+    const service = result.value.systems[0].children[0] as ServiceNode;
+    expect(service.properties.links).toHaveLength(1);
+    expect(service.properties.links[0].url).toBe("https://example.com");
   });
 
   it("returns empty links array when no links specified", () => {
-    const result = Parser.parse(`
-system "Test" {
-  service S "S"
-}
-    `);
+    const source = [
+      'system "Test":',
+      '  service S "S"',
+    ].join("\n");
+    const result = Parser.parse(source);
     const service = result.value.systems[0].children[0];
     expect(service.properties.links).toEqual([]);
   });
 
   it("errors when team is used on user node", () => {
-    const result = Parser.parse(`
-system "Test" {
-  user Admin "管理者" {
-    team "チーム名"
-  }
-}
-    `);
+    const source = [
+      'system "Test":',
+      '  user Admin "管理者":',
+      '    team: "チーム名"',
+    ].join("\n");
+    const result = Parser.parse(source);
     expect(result.diagnostics.length).toBeGreaterThanOrEqual(1);
-    expect(result.diagnostics[0].message).toContain("team");
+    expect(result.diagnostics.some((d) => d.message.includes("team"))).toBe(true);
   });
 
-  it("parses triple-quoted description", () => {
-    const result = Parser.parse(`
-system "Test" {
-  service ECommerce "ECサイト" {
-    description """
-      商品管理と注文処理を担当するサービス。
-
-      ## 責務
-      - 商品カタログの管理
-      """
-  }
-}
-    `);
+  it("parses pipe description", () => {
+    const source = [
+      'system "Test":',
+      '  service ECommerce "ECサイト":',
+      '    description: |',
+      '      商品管理と注文処理を担当するサービス。',
+      '',
+      '      ## 責務',
+      '      - 商品カタログの管理',
+    ].join("\n");
+    const result = Parser.parse(source);
     expect(result.diagnostics).toHaveLength(0);
     const service = result.value.systems[0].children[0] as ServiceNode;
     expect(service.properties.description).toContain("商品管理と注文処理を担当するサービス。");
@@ -420,12 +353,12 @@ system "Test" {
   });
 
   it("parses top-level service", () => {
-    const result = Parser.parse(`
-service Monitoring "監視サービス" {
-  description "配置先のシステムが未定"
-  team "SRE チーム"
-}
-    `);
+    const source = [
+      'service Monitoring "監視サービス":',
+      '  description: "配置先のシステムが未定"',
+      '  team: "SRE チーム"',
+    ].join("\n");
+    const result = Parser.parse(source);
     expect(result.diagnostics).toHaveLength(0);
     expect(result.value.services).toHaveLength(1);
     const service = result.value.services[0];
@@ -437,19 +370,18 @@ service Monitoring "監視サービス" {
   });
 
   it("parses property block mixed with child nodes", () => {
-    const result = Parser.parse(`
-system "Test" {
-  service ECommerce "ECサイト" {
-    description "商品管理"
-    team "ECチーム"
-    link "https://example.com" "Wiki"
-
-    domain "受注" {
-      usecase "注文を受け付ける"
-    }
-  }
-}
-    `);
+    const source = [
+      'system "Test":',
+      '  service ECommerce "ECサイト":',
+      '    description: "商品管理"',
+      '    team: "ECチーム"',
+      '    links:',
+      '      - "https://example.com"',
+      '',
+      '    domain "受注":',
+      '      usecase "注文を受け付ける"',
+    ].join("\n");
+    const result = Parser.parse(source);
     expect(result.diagnostics).toHaveLength(0);
     const service = result.value.systems[0].children[0] as ServiceNode;
     expect(service.properties.description).toBe("商品管理");

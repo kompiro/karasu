@@ -3,7 +3,6 @@ import type {
   KrsFile,
   KrsNode,
   KrsEdge,
-  LinkEntry,
   DeployBlock,
   DeployNode,
   DeployNodeProperties,
@@ -56,9 +55,11 @@ export class Parser {
   }
 
   static parse(source: string): ParseResult<KrsFile> {
-    const tokens = new Lexer(source).tokenize();
-    const parser = new Parser(tokens);
-    return parser.parseFile();
+    const lexResult = new Lexer(source).tokenizeWithDiagnostics();
+    const parser = new Parser(lexResult.tokens);
+    const result = parser.parseFile();
+    result.diagnostics = [...lexResult.diagnostics, ...result.diagnostics];
+    return result;
   }
 
   private peek(): Token {
@@ -104,6 +105,12 @@ export class Parser {
     return false;
   }
 
+  private skipNewlines(): void {
+    while (this.peek().type === TokenType.Newline) {
+      this.advance();
+    }
+  }
+
   private error(message: string): void {
     this.diagnostics.push({
       severity: "error",
@@ -129,7 +136,9 @@ export class Parser {
     };
 
     while (this.peek().type !== TokenType.EOF) {
+      this.skipNewlines();
       const token = this.peek();
+      if (token.type === TokenType.EOF) break;
 
       switch (token.type) {
         case TokenType.AtImport:
@@ -167,7 +176,6 @@ export class Parser {
 
     if (this.peek().type !== TokenType.LeftBrace) {
       this.error(`Expected { but got ${this.peek().type} ("${this.peek().value}")`);
-      // LeftBrace がない場合は空の import 宣言を返す
       return { ids: [], path: "", loc: this.range(start.loc) };
     }
     this.advance(); // {
@@ -178,7 +186,6 @@ export class Parser {
         ids.push(this.advance().value);
         this.match(TokenType.Comma);
       } else {
-        // 予期しないトークン: エラーを記録してスキップ
         this.error(`Expected identifier but got ${this.peek().type} ("${this.peek().value}")`);
         this.advance();
       }
@@ -197,7 +204,9 @@ export class Parser {
   private parseSystemBlock(): SystemNode {
     const start = this.advance(); // system
     const label = this.expect(TokenType.StringLiteral);
-    this.expect(TokenType.LeftBrace);
+    this.expect(TokenType.Colon);
+    this.skipNewlines();
+    this.expect(TokenType.Indent);
 
     const children: KrsNode[] = [];
     const edges: KrsEdge[] = [];
@@ -205,7 +214,7 @@ export class Parser {
 
     this.parseBlockContentsWithProperties(children, edges, "system", properties);
 
-    const end = this.expect(TokenType.RightBrace);
+    const end = this.expect(TokenType.Dedent);
 
     return {
       kind: "system",
@@ -225,20 +234,34 @@ export class Parser {
     kind: LogicalNodeKind,
     properties: CommonProperties & { role?: string; team?: string },
   ): void {
-    while (this.peek().type !== TokenType.RightBrace && this.peek().type !== TokenType.EOF) {
+    while (this.peek().type !== TokenType.Dedent && this.peek().type !== TokenType.EOF) {
+      this.skipNewlines();
+      if (this.peek().type === TokenType.Dedent || this.peek().type === TokenType.EOF) break;
+
       const token = this.peek();
 
       // Property: description
       if (token.type === TokenType.Description) {
         this.advance();
+        this.expect(TokenType.Colon);
         properties.description = this.parseDescriptionValue();
         continue;
       }
 
-      // Property: link
-      if (token.type === TokenType.Link) {
+      // Property: links (YAML list)
+      if (token.type === TokenType.Links) {
         this.advance();
-        properties.links.push(this.parseLink());
+        this.expect(TokenType.Colon);
+        this.skipNewlines();
+        this.expect(TokenType.Indent);
+        while (this.peek().type !== TokenType.Dedent && this.peek().type !== TokenType.EOF) {
+          this.skipNewlines();
+          if (this.peek().type === TokenType.Dedent) break;
+          this.expect(TokenType.Dash);
+          const url = this.expect(TokenType.StringLiteral);
+          properties.links.push({ url: url.value, loc: this.range(url.loc) });
+        }
+        this.expect(TokenType.Dedent);
         continue;
       }
 
@@ -246,10 +269,11 @@ export class Parser {
       if (token.type === TokenType.Role) {
         if (kind === "user") {
           this.advance();
+          this.expect(TokenType.Colon);
           if (this.peek().type === TokenType.StringLiteral) {
             properties.role = this.advance().value;
           } else {
-            this.error('Expected string literal after "role"');
+            this.error('Expected string literal after "role:"');
           }
         } else {
           this.error(`"role" property is only valid for user nodes`);
@@ -262,10 +286,11 @@ export class Parser {
       if (token.type === TokenType.Team) {
         if (kind === "service" || kind === "domain") {
           this.advance();
+          this.expect(TokenType.Colon);
           if (this.peek().type === TokenType.StringLiteral) {
             properties.team = this.advance().value;
           } else {
-            this.error('Expected string literal after "team"');
+            this.error('Expected string literal after "team:"');
           }
         } else {
           this.error(`"team" property is only valid for service and domain nodes`);
@@ -295,27 +320,21 @@ export class Parser {
   }
 
   private parseDescriptionValue(): string {
-    if (this.peek().type === TokenType.TripleQuote) {
-      return this.advance().value;
+    if (this.peek().type === TokenType.Pipe) {
+      this.advance(); // |
+      this.skipNewlines();
+      // Lexer emits the pipe block content as a StringLiteral
+      if (this.peek().type === TokenType.StringLiteral) {
+        return this.advance().value;
+      }
+      this.error('Expected text block after "|"');
+      return "";
     }
     if (this.peek().type === TokenType.StringLiteral) {
       return this.advance().value;
     }
-    this.error('Expected string literal or triple-quoted string after "description"');
+    this.error('Expected string literal or "|" after "description:"');
     return "";
-  }
-
-  private parseLink(): LinkEntry {
-    const start = this.peek().loc;
-    const url = this.expect(TokenType.StringLiteral);
-    let label: string | undefined;
-    let end = url.loc;
-    if (this.peek().type === TokenType.StringLiteral) {
-      const labelToken = this.advance();
-      label = labelToken.value;
-      end = labelToken.loc;
-    }
-    return { url: url.value, label, loc: this.range(start, end) };
   }
 
   private isLogicalKeyword(token: Token): boolean {
@@ -360,10 +379,10 @@ export class Parser {
         severity: "error",
         message:
           `位置引数の description は廃止されました。description プロパティを使用してください: ` +
-          `${kind}${id ? " " + id : ""} "${label}" { description "..." }`,
+          `${kind}${id ? " " + id : ""} "${label}":` +
+          `\n  description: "..."`,
         loc: this.range(this.peek().loc),
       });
-      // Consume the positional description to continue parsing
       this.advance();
     }
 
@@ -378,15 +397,17 @@ export class Parser {
       links: [],
     };
 
-    // Optional body
+    // Optional body: colon + indent block
     const children: KrsNode[] = [];
     const edges: KrsEdge[] = [];
     let end = lastConsumed;
 
-    if (this.peek().type === TokenType.LeftBrace) {
-      this.advance();
+    if (this.peek().type === TokenType.Colon) {
+      this.advance(); // :
+      this.skipNewlines();
+      this.expect(TokenType.Indent);
       this.parseBlockContentsWithProperties(children, edges, kind, properties);
-      end = this.expect(TokenType.RightBrace);
+      end = this.expect(TokenType.Dedent);
     }
 
     const base = {
@@ -436,6 +457,7 @@ export class Parser {
           properties: {
             description: properties.description,
             links: properties.links,
+            team: properties.team,
           },
         };
       case "usecase":
@@ -514,10 +536,14 @@ export class Parser {
   private parseDeployBlock(): DeployBlock {
     const start = this.advance(); // deploy
     const label = this.expect(TokenType.StringLiteral);
-    this.expect(TokenType.LeftBrace);
+    this.expect(TokenType.Colon);
+    this.skipNewlines();
+    this.expect(TokenType.Indent);
 
     const nodes: DeployNode[] = [];
-    while (this.peek().type !== TokenType.RightBrace && this.peek().type !== TokenType.EOF) {
+    while (this.peek().type !== TokenType.Dedent && this.peek().type !== TokenType.EOF) {
+      this.skipNewlines();
+      if (this.peek().type === TokenType.Dedent) break;
       if (DEPLOY_KEYWORDS.has(this.peek().value)) {
         nodes.push(this.parseDeployNode());
       } else {
@@ -528,7 +554,7 @@ export class Parser {
       }
     }
 
-    const end = this.expect(TokenType.RightBrace);
+    const end = this.expect(TokenType.Dedent);
 
     return {
       label: label.value,
@@ -541,29 +567,39 @@ export class Parser {
     const start = this.advance(); // deploy kind keyword
     const kind = start.value as DeployNodeKind;
     const id = this.expect(TokenType.StringLiteral);
-    this.expect(TokenType.LeftBrace);
 
     const properties: DeployNodeProperties = {};
+    let end: Token = id;
 
-    while (this.peek().type !== TokenType.RightBrace && this.peek().type !== TokenType.EOF) {
-      if (DEPLOY_PROPERTY_KEYWORDS.has(this.peek().value)) {
-        const propToken = this.advance();
-        const propName = propToken.value as keyof DeployNodeProperties;
-        // Value can be string literal or identifier
-        if (this.peek().type === TokenType.StringLiteral) {
-          properties[propName] = this.advance().value;
-        } else if (this.peek().type === TokenType.Identifier) {
-          properties[propName] = this.advance().value;
+    if (this.peek().type === TokenType.Colon) {
+      this.advance(); // :
+      this.skipNewlines();
+      this.expect(TokenType.Indent);
+
+      while (this.peek().type !== TokenType.Dedent && this.peek().type !== TokenType.EOF) {
+        this.skipNewlines();
+        if (this.peek().type === TokenType.Dedent) break;
+        if (DEPLOY_PROPERTY_KEYWORDS.has(this.peek().value)) {
+          const propToken = this.advance();
+          const propName = propToken.value as keyof DeployNodeProperties;
+          this.expect(TokenType.Colon);
+          if (this.peek().type === TokenType.StringLiteral) {
+            properties[propName] = this.advance().value;
+          } else if (this.peek().type === TokenType.Identifier) {
+            properties[propName] = this.advance().value;
+          } else {
+            this.error(`Expected value for property "${propName}"`);
+          }
         } else {
-          this.error(`Expected value for property "${propName}"`);
+          this.error(
+            `Unexpected token in deploy node: ${this.peek().type} ("${this.peek().value}")`,
+          );
+          this.advance();
         }
-      } else {
-        this.error(`Unexpected token in deploy node: ${this.peek().type} ("${this.peek().value}")`);
-        this.advance();
       }
-    }
 
-    const end = this.expect(TokenType.RightBrace);
+      end = this.expect(TokenType.Dedent);
+    }
 
     return {
       kind,
