@@ -12,8 +12,7 @@ export function BreadcrumbBar({ items, onNavigate }: BreadcrumbBarProps) {
 
   return (
     <>
-      <div className="breadcrumb-bar">
-        <Breadcrumb items={items} onNavigate={onNavigate} />
+      <div className="preview-toolbar">
         <button
           className="reference-trigger-btn"
           onClick={() => setRefOpen(true)}
@@ -23,6 +22,7 @@ export function BreadcrumbBar({ items, onNavigate }: BreadcrumbBarProps) {
           ?
         </button>
       </div>
+      <Breadcrumb items={items} onNavigate={onNavigate} />
       <ReferencePanel isOpen={refOpen} onClose={() => setRefOpen(false)} />
     </>
   );
