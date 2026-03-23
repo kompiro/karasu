@@ -1,9 +1,10 @@
-import { useEffect, useCallback, useMemo, useRef } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { Parser } from "@karasu/core";
 import { EditorPane } from "./components/EditorPane.js";
 import { PreviewPane } from "./components/PreviewPane.js";
 import { WarningPanel } from "./components/WarningPanel.js";
 import { Breadcrumb } from "./components/Breadcrumb.js";
+import { ReferencePanel } from "./components/ReferencePanel.js";
 import { ProjectSelector } from "./components/ProjectSelector.js";
 import { FileTree } from "./components/FileTree.js";
 import { useAppContext } from "./state/app-context.js";
@@ -22,6 +23,7 @@ export function ProjectModeApp() {
   const pmRef = useRef(new ProjectManager(fs));
   const pm = pmRef.current;
 
+  const [refOpen, setRefOpen] = useState(false);
   const { currentProject, projects, currentFilePath, fileContent, viewPath, loading } = state;
 
   // エントリパスを計算（現在のプロジェクトの index.krs）
@@ -224,10 +226,20 @@ export function ProjectModeApp() {
       )}
       <EditorPane value={fileContent} onChange={handleEditorChange} />
       <div className="preview-column">
-        <Breadcrumb
-          items={breadcrumbItems}
-          onNavigate={(path) => dispatch({ type: "SET_VIEW_PATH", path })}
-        />
+        <div className="breadcrumb-bar">
+          <Breadcrumb
+            items={breadcrumbItems}
+            onNavigate={(path) => dispatch({ type: "SET_VIEW_PATH", path })}
+          />
+          <button
+            className="reference-trigger-btn"
+            onClick={() => setRefOpen(true)}
+            aria-label="Open reference"
+            title="Reference"
+          >
+            ?
+          </button>
+        </div>
         <PreviewPane
           svg={svg}
           diagnostics={diagnostics}
@@ -235,6 +247,7 @@ export function ProjectModeApp() {
           nodeMetadata={nodeMetadata}
           onDrillDown={handleDrillDown}
         />
+        <ReferencePanel isOpen={refOpen} onClose={() => setRefOpen(false)} />
       </div>
       <WarningPanel warnings={warnings} />
     </div>

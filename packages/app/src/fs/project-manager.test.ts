@@ -22,9 +22,10 @@ describe("ProjectManager", () => {
       // デフォルトファイルが作成されている
       const indexKrs = await fs.readFile(`${project.rootPath}/index.krs`);
       expect(indexKrs).toContain("system");
+      expect(indexKrs).not.toContain("@import");
 
-      const style = await fs.readFile(`${project.rootPath}/default.krs.style`);
-      expect(style).toContain("user");
+      // ビルトインスタイルが暗黙適用されるため default.krs.style は作成されない
+      expect(await fs.exists(`${project.rootPath}/default.krs.style`)).toBe(false);
     });
 
     it("adds project to metadata", async () => {
