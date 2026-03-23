@@ -4,6 +4,7 @@ import { EditorPane } from "./components/EditorPane.js";
 import { PreviewPane } from "./components/PreviewPane.js";
 import { WarningPanel } from "./components/WarningPanel.js";
 import { BreadcrumbBar } from "./components/BreadcrumbBar.js";
+import { DiagramTabBar } from "./components/DiagramTabBar.js";
 import { ProjectSelector } from "./components/ProjectSelector.js";
 import { FileTree } from "./components/FileTree.js";
 import { useAppContext } from "./state/app-context.js";
@@ -22,16 +23,22 @@ export function ProjectModeApp() {
   const pmRef = useRef(new ProjectManager(fs));
   const pm = pmRef.current;
 
-  const { currentProject, projects, currentFilePath, fileContent, viewPath, loading } = state;
+  const {
+    currentProject,
+    projects,
+    currentFilePath,
+    fileContent,
+    viewPath,
+    diagramType,
+    highlightedNodeId,
+    loading,
+  } = state;
 
   // エントリパスを計算（現在のプロジェクトの index.krs）
   const entryPath = currentProject ? `${currentProject.rootPath}/index.krs` : null;
 
-  const { svg, warnings, diagnostics, nodeMetadata, recompile } = useKarasuProject(
-    entryPath,
-    fs,
-    viewPath,
-  );
+  const { svg, warnings, diagnostics, nodeMetadata, hasDeployDiagram, recompile } =
+    useKarasuProject(entryPath, fs, viewPath, diagramType);
 
   // 初期化: プロジェクト一覧を読み込み
   useEffect(() => {
@@ -109,6 +116,23 @@ export function ProjectModeApp() {
   const handleDrillDown = useCallback(
     (newPath: string[]) => {
       dispatch({ type: "SET_VIEW_PATH", path: newPath });
+    },
+    [dispatch],
+  );
+
+  // タブ切り替え
+  const handleDiagramTypeChange = useCallback(
+    (type: typeof diagramType) => {
+      dispatch({ type: "SET_DIAGRAM_TYPE", diagramType: type });
+    },
+    [dispatch],
+  );
+
+  // Deploy コンテナクリック → System タブへクロスナビゲーション
+  const handleContainerClick = useCallback(
+    (containerId: string) => {
+      dispatch({ type: "SET_DIAGRAM_TYPE", diagramType: "system" });
+      dispatch({ type: "SET_HIGHLIGHTED_NODE", nodeId: containerId });
     },
     [dispatch],
   );
@@ -224,16 +248,25 @@ export function ProjectModeApp() {
       )}
       <EditorPane value={fileContent} onChange={handleEditorChange} />
       <div className="preview-column">
-        <BreadcrumbBar
-          items={breadcrumbItems}
-          onNavigate={(path) => dispatch({ type: "SET_VIEW_PATH", path })}
+        <DiagramTabBar
+          current={diagramType}
+          hasDeployDiagram={hasDeployDiagram}
+          onChange={handleDiagramTypeChange}
         />
+        {diagramType === "system" && (
+          <BreadcrumbBar
+            items={breadcrumbItems}
+            onNavigate={(path) => dispatch({ type: "SET_VIEW_PATH", path })}
+          />
+        )}
         <PreviewPane
           svg={svg}
           diagnostics={diagnostics}
           viewPath={viewPath}
           nodeMetadata={nodeMetadata}
           onDrillDown={handleDrillDown}
+          onContainerClick={handleContainerClick}
+          highlightedNodeId={highlightedNodeId}
         />
       </div>
       <WarningPanel warnings={warnings} />

@@ -4,6 +4,7 @@ import {
   type Warning,
   type Diagnostic,
   type ViewPath,
+  type DiagramType,
   type FileSystemProvider,
   type NodeMetadata,
 } from "@karasu/core";
@@ -13,6 +14,7 @@ export interface KarasuProjectState {
   warnings: Warning[];
   diagnostics: Diagnostic[];
   nodeMetadata: Map<string, NodeMetadata>;
+  hasDeployDiagram: boolean;
 }
 
 const DEBOUNCE_MS = 300;
@@ -25,12 +27,14 @@ export function useKarasuProject(
   entryPath: string | null,
   fs: FileSystemProvider | null,
   viewPath: ViewPath = [],
+  diagramType: DiagramType = "system",
 ): KarasuProjectState & { recompile: () => void } {
   const [state, setState] = useState<KarasuProjectState>({
     svg: "",
     warnings: [],
     diagnostics: [],
     nodeMetadata: new Map(),
+    hasDeployDiagram: false,
   });
 
   const lastValidSvg = useRef("");
@@ -50,7 +54,7 @@ export function useKarasuProject(
 
     timerRef.current = setTimeout(async () => {
       try {
-        const result = await compileProject(entryPath, fs, viewPath);
+        const result = await compileProject(entryPath, fs, viewPath, diagramType);
         const hasErrors = result.diagnostics.some((d) => d.severity === "error");
 
         if (hasErrors) {
@@ -59,6 +63,7 @@ export function useKarasuProject(
             warnings: result.warnings,
             diagnostics: result.diagnostics,
             nodeMetadata: result.nodeMetadata,
+            hasDeployDiagram: result.hasDeployDiagram,
           });
         } else {
           lastValidSvg.current = result.svg;
@@ -67,6 +72,7 @@ export function useKarasuProject(
             warnings: result.warnings,
             diagnostics: result.diagnostics,
             nodeMetadata: result.nodeMetadata,
+            hasDeployDiagram: result.hasDeployDiagram,
           });
         }
       } catch {
@@ -86,7 +92,7 @@ export function useKarasuProject(
       if (timerRef.current) clearTimeout(timerRef.current);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [entryPath, fs, viewPath, recompileCounter.current]);
+  }, [entryPath, fs, viewPath, diagramType, recompileCounter.current]);
 
   return { ...state, recompile };
 }
