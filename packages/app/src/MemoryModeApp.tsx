@@ -2,8 +2,7 @@ import { useState, useCallback, useMemo } from "react";
 import { EditorPane } from "./components/EditorPane.js";
 import { PreviewPane } from "./components/PreviewPane.js";
 import { WarningPanel } from "./components/WarningPanel.js";
-import { Breadcrumb } from "./components/Breadcrumb.js";
-import { ReferencePanel } from "./components/ReferencePanel.js";
+import { BreadcrumbBar } from "./components/BreadcrumbBar.js";
 import { useKarasu } from "./hooks/useKarasu.js";
 import { Parser, type KrsNode } from "@karasu/core";
 
@@ -86,7 +85,6 @@ const SAMPLE_KRS = `system "ECプラットフォーム" {
 export function MemoryModeApp() {
   const [krsSource, setKrsSource] = useState(SAMPLE_KRS);
   const [viewPath, setViewPath] = useState<string[]>([]);
-  const [refOpen, setRefOpen] = useState(false);
 
   const { svg, warnings, diagnostics, nodeMetadata } = useKarasu(krsSource, "", viewPath);
 
@@ -129,17 +127,7 @@ export function MemoryModeApp() {
     <div className="app">
       <EditorPane value={krsSource} onChange={handleEditorChange} />
       <div className="preview-column">
-        <div className="breadcrumb-bar">
-          <Breadcrumb items={breadcrumbItems} onNavigate={setViewPath} />
-          <button
-            className="reference-trigger-btn"
-            onClick={() => setRefOpen(true)}
-            aria-label="Open reference"
-            title="Reference"
-          >
-            ?
-          </button>
-        </div>
+        <BreadcrumbBar items={breadcrumbItems} onNavigate={setViewPath} />
         <PreviewPane
           svg={svg}
           diagnostics={diagnostics}
@@ -147,7 +135,6 @@ export function MemoryModeApp() {
           nodeMetadata={nodeMetadata}
           onDrillDown={handleDrillDown}
         />
-        <ReferencePanel isOpen={refOpen} onClose={() => setRefOpen(false)} />
       </div>
       <WarningPanel warnings={warnings} />
     </div>

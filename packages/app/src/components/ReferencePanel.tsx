@@ -22,10 +22,15 @@ export function ReferencePanel({ isOpen, onClose }: ReferencePanelProps) {
   const ref = getReference();
 
   const handleCopy = useCallback(() => {
-    navigator.clipboard.writeText(ref.builtinStyleSource).then(() => {
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    });
+    navigator.clipboard.writeText(ref.builtinStyleSource).then(
+      () => {
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2000);
+      },
+      () => {
+        /* clipboard access denied — silently ignore */
+      },
+    );
   }, [ref.builtinStyleSource]);
 
   if (!isOpen) return null;

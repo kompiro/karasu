@@ -109,7 +109,13 @@ let _cachedSheet: StyleSheet | null = null;
 
 export function getBuiltinStyleSheet(): StyleSheet {
   if (!_cachedSheet) {
-    _cachedSheet = StyleParser.parse(BUILTIN_STYLE_SOURCE).value;
+    const result = StyleParser.parse(BUILTIN_STYLE_SOURCE);
+    if (result.diagnostics.length > 0) {
+      throw new Error(
+        `Built-in stylesheet has parse errors: ${result.diagnostics.map((d) => d.message).join(", ")}`,
+      );
+    }
+    _cachedSheet = result.value;
   }
   return _cachedSheet;
 }

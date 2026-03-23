@@ -42,8 +42,11 @@ export interface KarasuReference {
   builtinStyleSource: string;
 }
 
+let _cachedReference: KarasuReference | null = null;
+
 export function getReference(): KarasuReference {
-  return {
+  if (_cachedReference) return _cachedReference;
+  _cachedReference = {
     nodeKinds: [
       {
         kind: "system",
@@ -256,4 +259,5 @@ export function getReference(): KarasuReference {
     ],
     builtinStyleSource: BUILTIN_STYLE_SOURCE,
   };
+  return _cachedReference;
 }
