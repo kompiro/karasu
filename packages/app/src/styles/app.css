@@ -565,24 +565,23 @@ body,
   flex-shrink: 0;
 }
 
-.reference-trigger-btn {
+.toolbar-btn {
   background: #334155;
   color: #94a3b8;
   border: 1px solid #475569;
   border-radius: 4px;
-  width: 24px;
-  height: 24px;
-  font-size: 13px;
-  font-weight: bold;
+  padding: 2px 8px;
+  font-size: 11px;
   font-family: inherit;
   cursor: pointer;
   display: flex;
   align-items: center;
-  justify-content: center;
+  gap: 4px;
   flex-shrink: 0;
+  white-space: nowrap;
 }
 
-.reference-trigger-btn:hover {
+.toolbar-btn:hover {
   background: #475569;
   color: #e2e8f0;
 }

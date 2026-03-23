@@ -14,12 +14,11 @@ export function BreadcrumbBar({ items, onNavigate }: BreadcrumbBarProps) {
     <>
       <div className="preview-toolbar">
         <button
-          className="reference-trigger-btn"
+          className="toolbar-btn"
           onClick={() => setRefOpen(true)}
           aria-label="Open reference"
-          title="Reference"
         >
-          ?
+          ? Reference
         </button>
       </div>
       <Breadcrumb items={items} onNavigate={onNavigate} />
