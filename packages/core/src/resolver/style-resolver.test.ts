@@ -337,15 +337,26 @@ describe("analyze", () => {
     expect(warnings.some((w) => w.kind === "missing-realizes")).toBe(true);
   });
 
-  it("detects style conflicts across sheets", () => {
-    const sheet1: StyleSheet = {
+  it("detects style conflicts across user sheets", () => {
+    const builtin = getBuiltinStyleSheet();
+    const userSheet1: StyleSheet = {
       rules: [makeRule({ nodeType: "service", tags: [], annotations: [] }, { color: "#AAA" }, 1)],
     };
-    const sheet2: StyleSheet = {
+    const userSheet2: StyleSheet = {
       rules: [makeRule({ nodeType: "service", tags: [], annotations: [] }, { color: "#BBB" }, 1)],
     };
     const file = makeFile({});
-    const warnings = analyze(file, [sheet1, sheet2]);
+    const warnings = analyze(file, [builtin, userSheet1, userSheet2]);
     expect(warnings.some((w) => w.kind === "style-conflict")).toBe(true);
+  });
+
+  it("does not warn when user sheet overrides builtin", () => {
+    const builtin = getBuiltinStyleSheet();
+    const userSheet: StyleSheet = {
+      rules: [makeRule({ nodeType: "service", tags: [], annotations: [] }, { color: "#AAA" }, 1)],
+    };
+    const file = makeFile({});
+    const warnings = analyze(file, [builtin, userSheet]);
+    expect(warnings.some((w) => w.kind === "style-conflict")).toBe(false);
   });
 });
