@@ -1,8 +1,8 @@
 # YAML スタイル構文への移行検討
 
 - **日付**: 2026-03-23
-- **ステータス**: 検討中
-- **関連**: [GitHub Issue #13](https://github.com/kompiro/karasu/issues/13), [GitHub Issue #7](https://github.com/kompiro/karasu/issues/7), [AST 再構成](ast-restructure.md), [.krs 構文リファレンス](../spec/syntax.md), [GitHub Issue #5](https://github.com/kompiro/karasu/issues/5)
+- **ステータス**: 完了
+- **関連**: [GitHub Issue #7](https://github.com/kompiro/karasu/issues/7), [AST 再構成](ast-restructure.md), [.krs 構文リファレンス](../spec/syntax.md), [GitHub Issue #5](https://github.com/kompiro/karasu/issues/5)
 
 ## 背景・課題
 
