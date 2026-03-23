@@ -148,7 +148,10 @@ export class Lexer {
       this.emit(TokenType.Indent, "");
     } else if (spaces < currentIndent) {
       // DEDENT (possibly multiple)
-      while (this.indentStack.length > 1 && spaces < this.indentStack[this.indentStack.length - 1]) {
+      while (
+        this.indentStack.length > 1 &&
+        spaces < this.indentStack[this.indentStack.length - 1]
+      ) {
         this.indentStack.pop();
         this.emit(TokenType.Dedent, "");
       }

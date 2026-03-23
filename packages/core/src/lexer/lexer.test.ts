@@ -61,9 +61,13 @@ describe("Lexer", () => {
   });
 
   it("generates multiple DEDENTs when dedenting several levels", () => {
-    const source = ['system "S":', "  service S1 \"S1\":", "    domain \"D\":", "      usecase \"U\"", "service S2 \"S2\""].join(
-      "\n",
-    );
+    const source = [
+      'system "S":',
+      '  service S1 "S1":',
+      '    domain "D":',
+      '      usecase "U"',
+      'service S2 "S2"',
+    ].join("\n");
     const types = significantTypes(source);
     // After usecase "U", we go from indent 6 back to 0 → 3 DEDENTs
     expect(types).toEqual([
@@ -192,12 +196,14 @@ describe("Lexer", () => {
       TokenType.StringLiteral, // collected pipe block text
       TokenType.Dedent,
     ]);
-    const strToken = tokens.find((t) => t.type === TokenType.StringLiteral && t.value.includes("line"));
+    const strToken = tokens.find(
+      (t) => t.type === TokenType.StringLiteral && t.value.includes("line"),
+    );
     expect(strToken?.value).toBe("line1\nline2");
   });
 
   it("pipe block preserves relative indentation", () => {
-    const source = 'description: |\n  first\n    indented\n  back';
+    const source = "description: |\n  first\n    indented\n  back";
     // At top level, pipe block indent = 0, content starts at indent 2
     const tokens = new Lexer(source).tokenize();
     const str = tokens.find((t) => t.type === TokenType.StringLiteral && t.value.includes("first"));
@@ -205,7 +211,7 @@ describe("Lexer", () => {
   });
 
   it("pipe block preserves blank lines", () => {
-    const source = 'description: |\n  line1\n\n  line2';
+    const source = "description: |\n  line1\n\n  line2";
     const tokens = new Lexer(source).tokenize();
     const str = tokens.find((t) => t.type === TokenType.StringLiteral && t.value.includes("line1"));
     expect(str?.value).toBe("line1\n\nline2");
@@ -301,7 +307,7 @@ describe("Lexer", () => {
   });
 
   it("tokenizes links with dash list items", () => {
-    const source = ['links:', '  - "https://example.com"', '  - "https://other.com"'].join("\n");
+    const source = ["links:", '  - "https://example.com"', '  - "https://other.com"'].join("\n");
     const types = significantTypes(source);
     expect(types).toEqual([
       TokenType.Links,
@@ -317,7 +323,7 @@ describe("Lexer", () => {
 
   describe("diagnostics", () => {
     it("reports tab indentation as error", () => {
-      const result = new Lexer("\tservice S \"S\"").tokenizeWithDiagnostics();
+      const result = new Lexer('\tservice S "S"').tokenizeWithDiagnostics();
       expect(result.diagnostics.length).toBeGreaterThan(0);
       expect(result.diagnostics[0].message).toContain("Tabs");
     });
