@@ -1,4 +1,10 @@
-import type { KrsNode, KrsEdge, LogicalNodeKind, CommonProperties } from "../types/ast.js";
+import type {
+  KrsNode,
+  KrsEdge,
+  LogicalNodeKind,
+  DeployNodeKind,
+  CommonProperties,
+} from "../types/ast.js";
 import type { ViewSlice } from "../view/view-extract.js";
 import { summarizeDescription } from "./description-summary.js";
 
@@ -8,7 +14,7 @@ export type LayoutNodeProperties = CommonProperties & {
 };
 
 export interface LayoutNode {
-  kind: LogicalNodeKind;
+  kind: LogicalNodeKind | DeployNodeKind;
   id: string;
   label: string;
   properties: LayoutNodeProperties;

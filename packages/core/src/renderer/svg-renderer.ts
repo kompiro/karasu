@@ -1,6 +1,6 @@
 import type { ResolvedNodeStyle, ResolvedStyles } from "../types/style.js";
 import type { ViewSlice } from "../view/view-extract.js";
-import { layout, type ContainerRect, type LayoutNode } from "./layout.js";
+import { layout, type ContainerRect, type LayoutNode, type LayoutResult } from "./layout.js";
 import { renderShape } from "./shapes.js";
 import { renderEdge, renderArrowMarker } from "./edge-routing.js";
 import { el, escapeXml } from "./svg-builder.js";
@@ -10,7 +10,18 @@ const GHOST_OPACITY = 0.3;
 
 export function render(viewSlice: ViewSlice, styles: ResolvedStyles): string {
   const layoutResult = layout(viewSlice);
+  const title =
+    layoutResult.containers.length === 0 && viewSlice.containerNode
+      ? viewSlice.containerNode.label
+      : undefined;
+  return renderFromLayout(layoutResult, styles, title);
+}
 
+export function renderFromLayout(
+  layoutResult: LayoutResult,
+  styles: ResolvedStyles,
+  title?: string,
+): string {
   if (layoutResult.nodes.size === 0 && layoutResult.containers.length === 0) {
     return el(
       "svg",
@@ -59,8 +70,8 @@ export function render(viewSlice: ViewSlice, styles: ResolvedStyles): string {
   // Background
   parts.push(el("rect", { width, height, fill: "#0F172A", rx: 0 }));
 
-  // System label (when at system view, no containers)
-  if (layoutResult.containers.length === 0 && viewSlice.containerNode) {
+  // Title label (when no containers — e.g., system-level view)
+  if (title) {
     parts.push(
       el(
         "text",
@@ -72,7 +83,7 @@ export function render(viewSlice: ViewSlice, styles: ResolvedStyles): string {
           "font-family": "sans-serif",
           "font-weight": "bold",
         },
-        escapeXml(viewSlice.containerNode.label),
+        escapeXml(title),
       ),
     );
   }
