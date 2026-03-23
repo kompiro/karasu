@@ -2,9 +2,7 @@ import type { FileSystemProvider, Project } from "@karasu/core";
 
 const META_PATH = "/meta/projects.json";
 
-const DEFAULT_KRS = `@import "default.krs.style"
-
-system "New Project" {
+const DEFAULT_KRS = `system "New Project" {
   user User "User" {
     description "A user of the system"
   }
@@ -12,68 +10,6 @@ system "New Project" {
     description "Main application"
   }
   User -> App "uses"
-}
-`;
-
-const DEFAULT_STYLE = `user {
-  background-color: #1D4ED8;
-  color: #FFFFFF;
-  border-color: #1E40AF;
-  border-width: 2;
-  shape: user;
-  font-weight: bold;
-  font-size: 13;
-}
-
-service {
-  background-color: #0369A1;
-  color: #FFFFFF;
-  border-color: #075985;
-  border-width: 2;
-  shape: box;
-  font-weight: bold;
-  font-size: 13;
-}
-
-[external] {
-  background-color: #1F2937;
-  border-style: dashed;
-}
-
-domain {
-  background-color: #1E3A5F;
-  color: #E0F2FE;
-  border-color: #0C4A6E;
-  border-width: 1;
-  shape: box;
-  font-size: 12;
-}
-
-usecase {
-  background-color: #1E3A5F;
-  color: #E0F2FE;
-  border-color: #0C4A6E;
-  border-width: 1;
-  shape: box;
-  font-size: 12;
-}
-
-resource {
-  background-color: #1E3A5F;
-  color: #E0F2FE;
-  border-color: #0C4A6E;
-  border-width: 2;
-  font-size: 12;
-}
-
-edge {
-  color: #94A3B8;
-  stroke-width: 1.5;
-  font-size: 11;
-}
-
-edge[async] {
-  stroke-style: dashed;
 }
 `;
 
@@ -114,7 +50,6 @@ export class ProjectManager {
     // プロジェクトディレクトリとデフォルトファイルを作成
     await this.fs.mkdir(project.rootPath);
     await this.fs.writeFile(`${project.rootPath}/index.krs`, DEFAULT_KRS);
-    await this.fs.writeFile(`${project.rootPath}/default.krs.style`, DEFAULT_STYLE);
 
     // メタデータ更新
     const projects = await this.listProjects();

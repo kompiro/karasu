@@ -4,10 +4,13 @@ import { resolveStyles } from "../resolver/style-resolver.js";
 import { extractView } from "../view/view-extract.js";
 import { Parser } from "../parser/parser.js";
 import { StyleParser } from "../parser/style-parser.js";
+import { getBuiltinStyleSheet } from "../builtins/default-style.js";
 
 function renderFromSource(krs: string, style?: string): string {
   const parseResult = Parser.parse(krs);
-  const sheets = style ? [StyleParser.parse(style).value] : [];
+  const sheets = style
+    ? [getBuiltinStyleSheet(), StyleParser.parse(style).value]
+    : [getBuiltinStyleSheet()];
   const styles = resolveStyles(parseResult.value.systems, sheets);
   const viewSlice = extractView(parseResult.value.systems, []);
   return render(viewSlice, styles);

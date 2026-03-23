@@ -230,7 +230,7 @@ export class ImportResolver {
       source = await this.fs.readFile(filePath);
     } catch {
       this.diagnostics.push({
-        severity: "error",
+        severity: "warning",
         message: `Style file not found: ${filePath}`,
       });
       return null;

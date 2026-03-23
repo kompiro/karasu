@@ -56,14 +56,17 @@ function detectDomainDispersal(file: KrsFile): Warning[] {
 }
 
 function detectStyleConflicts(sheets: StyleSheet[]): Warning[] {
-  if (sheets.length <= 1) return [];
+  // Skip the builtin sheet (index 0) — it is designed to be overridden.
+  // Only detect conflicts among user sheets (index 1+).
+  const userSheets = sheets.slice(1);
+  if (userSheets.length <= 1) return [];
   const warnings: Warning[] = [];
 
-  // Group rules by serialized selector, tracking which sheet they came from
+  // Group rules by serialized selector, tracking which user sheet they came from
   const selectorToSheets = new Map<string, Set<number>>();
 
-  for (let i = 0; i < sheets.length; i++) {
-    for (const rule of sheets[i].rules) {
+  for (let i = 0; i < userSheets.length; i++) {
+    for (const rule of userSheets[i].rules) {
       const key = serializeSelector(rule.selector);
       if (!selectorToSheets.has(key)) {
         selectorToSheets.set(key, new Set());

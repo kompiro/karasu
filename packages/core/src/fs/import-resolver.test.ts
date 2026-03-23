@@ -60,7 +60,7 @@ system "Test" {
       expect(result.styleSheets[0].rules[0].properties["background-color"]).toBe("#1D4ED8");
     });
 
-    it("returns error diagnostic for missing style file", async () => {
+    it("returns warning diagnostic for missing style file", async () => {
       await fs.writeFile(
         "/project/index.krs",
         `@import "missing.krs.style"
@@ -72,7 +72,7 @@ system "Test" {
       const result = await resolver.resolve("/project/index.krs");
       expect(result.diagnostics).toContainEqual(
         expect.objectContaining({
-          severity: "error",
+          severity: "warning",
           message: expect.stringContaining("Style file not found"),
         }),
       );

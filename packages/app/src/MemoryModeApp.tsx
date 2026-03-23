@@ -2,18 +2,24 @@ import { useState, useCallback, useMemo } from "react";
 import { EditorPane } from "./components/EditorPane.js";
 import { PreviewPane } from "./components/PreviewPane.js";
 import { WarningPanel } from "./components/WarningPanel.js";
-import { Breadcrumb } from "./components/Breadcrumb.js";
+import { BreadcrumbBar } from "./components/BreadcrumbBar.js";
 import { useKarasu } from "./hooks/useKarasu.js";
 import { Parser, type KrsNode } from "@karasu/core";
 
-const SAMPLE_KRS = `@import "default.krs.style"
+const SAMPLE_KRS = `system "ECプラットフォーム" {
+  user Customer "顧客" [human] {
+    description "商品を購入する一般ユーザー"
+  }
+  user Seller "出品者" [human] {
+    description "商品を出品するショップオーナー"
+  }
+  user Admin "管理者" [human] {
+    description "システムを運用する担当者"
+  }
 
-system "ECプラットフォーム" {
-  user Customer "顧客" "商品を購入する一般ユーザー" [human]
-  user Seller "出品者" "商品を出品するショップオーナー" [human]
-  user Admin "管理者" "システムを運用する担当者" [human]
+  service ECommerce "ECサイト" {
+    description "商品の閲覧・購入・出品を提供する"
 
-  service ECommerce "ECサイト" "商品の閲覧・購入・出品を提供する" {
     domain Catalog "商品カタログ" {
       usecase SearchProducts "商品を検索する" {
         resource ProductTable "商品テーブル"
@@ -65,10 +71,18 @@ system "ECプラットフォーム" {
       }
     }
   }
-  service Payment "決済" "クレジットカード・電子マネー決済" [external]
-  service Inventory "在庫管理" "在庫データの一元管理" [external]
-  service Shipping "配送" "配送手配と追跡" [external]
-  service Notification "通知" "メール・プッシュ通知の送信"
+  service Payment "決済" [external] {
+    description "クレジットカード・電子マネー決済"
+  }
+  service Inventory "在庫管理" [external] {
+    description "在庫データの一元管理"
+  }
+  service Shipping "配送" [external] {
+    description "配送手配と追跡"
+  }
+  service Notification "通知" {
+    description "メール・プッシュ通知の送信"
+  }
 
   Customer -> ECommerce "商品を購入する"
   Seller -> ECommerce "商品を出品する"
@@ -80,84 +94,15 @@ system "ECプラットフォーム" {
 }
 `;
 
-const SAMPLE_STYLE = `/* karasu default theme */
-
-user {
-  background-color: #1D4ED8;
-  color: #DBEAFE;
-  border-color: #1E40AF;
-  border-width: 2px;
-  border-radius: 8px;
-  font-size: 13px;
-  font-weight: bold;
-  shape: user;
-}
-
-service {
-  background-color: #0369A1;
-  color: #E0F2FE;
-  border-color: #075985;
-  border-width: 2px;
-  border-radius: 8px;
-  font-size: 13px;
-  font-weight: bold;
-  shape: box;
-}
-
-[external] {
-  background-color: #1F2937;
-  color: #D1D5DB;
-  border-color: #374151;
-  border-style: dashed;
-}
-
-resource {
-  background-color: #1E3A5F;
-  color: #BFDBFE;
-  border-color: #3B82F6;
-  border-width: 2px;
-  border-radius: 8px;
-  font-size: 12px;
-  font-weight: normal;
-  shape: cylinder;
-}
-
-@deprecated {
-  badge-color: #EF4444;
-  badge-icon: "⚠";
-  badge-label: "非推奨";
-  opacity: 0.6;
-}
-
-@new {
-  badge-color: #10B981;
-  badge-icon: "✨";
-  badge-label: "新規";
-  opacity: 0.5;
-}
-
-edge {
-  color: #94A3B8;
-  stroke-width: 1.5px;
-  font-size: 11px;
-}
-
-edge[async] {
-  border-style: dashed;
-  color: #6B7280;
-}
-`;
-
 /**
  * MemoryModeApp — OPFS 非対応ブラウザ向けの単一ファイル編集モード。
  * 現在の App.tsx のロジックをそのまま抽出したもの。
  */
 export function MemoryModeApp() {
   const [krsSource, setKrsSource] = useState(SAMPLE_KRS);
-  const [styleSource] = useState(SAMPLE_STYLE);
   const [viewPath, setViewPath] = useState<string[]>([]);
 
-  const { svg, warnings, diagnostics, nodeMetadata } = useKarasu(krsSource, styleSource, viewPath);
+  const { svg, warnings, diagnostics, nodeMetadata } = useKarasu(krsSource, "", viewPath);
 
   const handleEditorChange = useCallback((value: string) => {
     setKrsSource(value);
@@ -198,7 +143,7 @@ export function MemoryModeApp() {
     <div className="app">
       <EditorPane value={krsSource} onChange={handleEditorChange} />
       <div className="preview-column">
-        <Breadcrumb items={breadcrumbItems} onNavigate={setViewPath} />
+        <BreadcrumbBar items={breadcrumbItems} onNavigate={setViewPath} />
         <PreviewPane
           svg={svg}
           diagnostics={diagnostics}

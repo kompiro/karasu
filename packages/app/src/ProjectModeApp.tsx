@@ -3,7 +3,7 @@ import { Parser } from "@karasu/core";
 import { EditorPane } from "./components/EditorPane.js";
 import { PreviewPane } from "./components/PreviewPane.js";
 import { WarningPanel } from "./components/WarningPanel.js";
-import { Breadcrumb } from "./components/Breadcrumb.js";
+import { BreadcrumbBar } from "./components/BreadcrumbBar.js";
 import { ProjectSelector } from "./components/ProjectSelector.js";
 import { FileTree } from "./components/FileTree.js";
 import { useAppContext } from "./state/app-context.js";
@@ -224,7 +224,7 @@ export function ProjectModeApp() {
       )}
       <EditorPane value={fileContent} onChange={handleEditorChange} />
       <div className="preview-column">
-        <Breadcrumb
+        <BreadcrumbBar
           items={breadcrumbItems}
           onNavigate={(path) => dispatch({ type: "SET_VIEW_PATH", path })}
         />

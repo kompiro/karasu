@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { resolveStyles } from "./style-resolver.js";
 import { analyze } from "./warnings.js";
+import { getBuiltinStyleSheet } from "../builtins/default-style.js";
 import type { KrsNode, KrsFile } from "../types/ast.js";
 import type { StyleSheet, StyleRule } from "../types/style.js";
 import type { SourceRange } from "../types/tokens.js";
@@ -223,7 +224,45 @@ describe("resolveStyles", () => {
     const result = resolveStyles([system], [sheet]);
     const edgeStyle = result.edges.get("A->B")!;
     expect(edgeStyle.color).toBe("#FF0000");
-    expect(edgeStyle.strokeStyle).toBe("dashed"); // async default
+  });
+
+  it("resolves async edge as dashed via builtin stylesheet", () => {
+    const system = makeNode({
+      kind: "system",
+      label: "Test",
+      children: [
+        makeNode({ kind: "service", id: "A", label: "A" }),
+        makeNode({ kind: "service", id: "B", label: "B" }),
+      ],
+      edges: [
+        {
+          from: "A",
+          to: "B",
+          label: "call",
+          kind: "async",
+          tags: [],
+          loc: dummyLoc,
+        },
+      ],
+    });
+    const result = resolveStyles([system], [getBuiltinStyleSheet()]);
+    const edgeStyle = result.edges.get("A->B")!;
+    expect(edgeStyle.strokeStyle).toBe("dashed");
+  });
+
+  it("user stylesheet overrides builtin", () => {
+    const system = makeNode({
+      kind: "system",
+      label: "Test",
+      children: [makeNode({ kind: "resource", id: "DB", label: "DB" })],
+    });
+    const userSheet: StyleSheet = {
+      rules: [
+        makeRule({ nodeType: "resource", tags: [], annotations: [] }, { shape: "hexagon" }, 1, 0),
+      ],
+    };
+    const result = resolveStyles([system], [getBuiltinStyleSheet(), userSheet]);
+    expect(result.nodes.get("DB")!.shape).toBe("hexagon");
   });
 });
 
@@ -298,15 +337,26 @@ describe("analyze", () => {
     expect(warnings.some((w) => w.kind === "missing-realizes")).toBe(true);
   });
 
-  it("detects style conflicts across sheets", () => {
-    const sheet1: StyleSheet = {
+  it("detects style conflicts across user sheets", () => {
+    const builtin = getBuiltinStyleSheet();
+    const userSheet1: StyleSheet = {
       rules: [makeRule({ nodeType: "service", tags: [], annotations: [] }, { color: "#AAA" }, 1)],
     };
-    const sheet2: StyleSheet = {
+    const userSheet2: StyleSheet = {
       rules: [makeRule({ nodeType: "service", tags: [], annotations: [] }, { color: "#BBB" }, 1)],
     };
     const file = makeFile({});
-    const warnings = analyze(file, [sheet1, sheet2]);
+    const warnings = analyze(file, [builtin, userSheet1, userSheet2]);
     expect(warnings.some((w) => w.kind === "style-conflict")).toBe(true);
+  });
+
+  it("does not warn when user sheet overrides builtin", () => {
+    const builtin = getBuiltinStyleSheet();
+    const userSheet: StyleSheet = {
+      rules: [makeRule({ nodeType: "service", tags: [], annotations: [] }, { color: "#AAA" }, 1)],
+    };
+    const file = makeFile({});
+    const warnings = analyze(file, [builtin, userSheet]);
+    expect(warnings.some((w) => w.kind === "style-conflict")).toBe(false);
   });
 });
