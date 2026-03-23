@@ -165,6 +165,7 @@ export interface TeamNode {
     owns: string[];   // service/domain の ID を参照
   };
   members: MemberNode[];
+  teams: TeamNode[];  // sub-teams（ネスト許可）
   loc: SourceRange;
 }
 
@@ -176,7 +177,18 @@ export interface OrganizationBlock {
 }
 ```
 
-`KrsFile` に `organizations: OrganizationBlock[]` を追加する。
+`KrsFile` に以下を追加する:
+
+```typescript
+export interface KrsFile {
+  // ...既存フィールド...
+  organizations: OrganizationBlock[];
+  ownerIndex: Map<string, string>;  // serviceId/domainId → teamId（パース時に構築）
+}
+```
+
+**`ownerIndex`** はパース完了時に `owns` 宣言を走査して構築する。
+これにより logical 図のレンダラーが「このサービスを owns しているチーム名」を O(1) で参照できる。
 
 ### 2. Lexer の変更（`packages/core/src/lexer/lexer.ts`）
 
@@ -205,20 +217,47 @@ case TokenType.Organization:
 新規メソッド:
 
 - `parseOrganizationBlock()` → `OrganizationBlock`
-- `parseTeamBlock()` → `TeamNode`
+- `parseTeamBlock()` → `TeamNode`（`team` キーワードを再帰的に処理して sub-team を構築）
 - `parseMemberBlock()` → `MemberNode`
 
 `parseBlockContentsWithProperties()` の `team` 処理に deprecation warning を追加。
 
-### 4. Org ビューパス型（`packages/core/src/view/org-view-extract.ts`）
+`parseFile()` の末尾でファイル全体を走査し `ownerIndex` を構築する:
 
 ```typescript
-export type OrgViewPath = [] | [teamId: string];  // [] = team 一覧, [id] = メンバー一覧
+private buildOwnerIndex(organizations: OrganizationBlock[]): Map<string, string> {
+  const index = new Map<string, string>();
+  for (const org of organizations) {
+    this.indexTeams(org.teams, index);
+  }
+  return index;
+}
+
+private indexTeams(teams: TeamNode[], index: Map<string, string>): void {
+  for (const team of teams) {
+    for (const id of team.properties.owns) {
+      index.set(id, team.id);
+    }
+    this.indexTeams(team.teams, index); // 再帰
+  }
+}
+```
+
+### 4. Org ビューパス型（`packages/core/src/view/org-view-extract.ts`）
+
+複数の `organization` は `deploy` と同様に1つのタブにまとめて表示する。
+`OrgViewPath` はチーム階層へのドリルダウンパスを表す（sub-team のネストに対応）。
+
+```typescript
+// [] = 全 org のチーム一覧（フラット表示）
+// ["teamId"] = そのチームのメンバー＋sub-team
+// ["teamId", "subTeamId"] = sub-team のメンバー
+export type OrgViewPath = string[];
 
 export interface OrgViewSlice {
-  organization: OrganizationBlock | null;
-  teams: TeamNode[];
-  focusedTeam: TeamNode | null;
+  teams: TeamNode[];           // トップレベルの場合: 全 org のチームをフラットに結合
+  focusedTeam: TeamNode | null; // ドリルダウン先のチーム
+  ancestorChain: TeamNode[];   // パンくず用
 }
 
 export function extractOrgView(
@@ -229,18 +268,34 @@ export function extractOrgView(
 
 ### 5. Org レンダラー（`packages/core/src/renderer/org-renderer.ts`）
 
-- `path === []`: チームカードをフラットに並べる
-  - カード内にチーム名・owns 先サービス名・メンバー数を表示
-- `path === [teamId]`: メンバーカードを並べる
-  - カード内にメンバー名・slack・github を表示
+`ResolvedStyles` を適用する。org 図のノード種別（`team`, `member`）に対応するスタイルを追加。
+
+```typescript
+export function renderOrgView(
+  slice: OrgViewSlice,
+  styles: ResolvedStyles
+): string
+```
+
+- `path === []`: チームカードをグリッドに並べる
+  - カード内にチーム名・owns 先サービス名・メンバー数・sub-team 数を表示
+  - sub-team があるチームはドリルダウン可能
+- `path.length > 0`: focusedTeam のメンバー一覧 ＋ sub-team 一覧を表示
+  - メンバーカード: メンバー名・slack・github
+  - sub-team カード: チーム名・メンバー数（さらにドリルダウン可能）
 
 SVG の基本要素は既存の `svg-builder.ts` を再利用する。
 レイアウトは `layout.ts` を使わず、単純なグリッド配置（行 × 列）で実装する。
 
-### 6. `owns` バリデーション（`packages/core/src/resolver/warnings.ts`）
+### 6. バリデーション
 
+**`owns` バリデーション**（`packages/core/src/resolver/warnings.ts`）:
 - `owns` で参照している ID が `KrsFile.systems` 内の service/domain に存在しない → warning
-- 同一 ID を複数チームが `owns` している → warning
+- 同一 ID を複数チームが `owns` している → warning（`ownerIndex` 構築時に検出）
+
+**チーム ID 重複チェック**（パース時、`buildOwnerIndex` と同じ走査で実施）:
+- 同一 `organization` 内（および sub-team を含む全階層）で `team id` が重複 → **error**
+- エラーの場合も AST は構築を続け、後続の処理が落ちないようにする
 
 ### 7. App 側の変更
 
@@ -264,14 +319,17 @@ const [orgPath, setOrgPath] = useState<OrgViewPath>([]);
 - Logical: 既存の `viewPath` を使用
 - Org: `orgPath` から `organization → team` のパンくずを生成
 
-### 8. `useKarasu` フックの拡張方針
+### 8. `useOrgView` フック（`packages/app/src/hooks/useOrgView.ts`）
 
-org 図専用の `useOrgView(source, orgPath)` フックを別途追加するか、`useKarasu` に統合するかを決める必要がある（未解決の問いを参照）。
+`useKarasu` と同一ファイルに同居させる必要はないため、責務を分割して独立したフックとして実装する。
 
-## 未解決の問い
+```typescript
+// packages/app/src/hooks/useOrgView.ts
+export function useOrgView(source: string, orgPath: OrgViewPath): {
+  orgSvg: string;
+  orgDiagnostics: Diagnostic[];
+}
+```
 
-1. **`organization` が複数ある場合**: 最初のスコープでは先頭の 1 つだけ表示でよいか？複数切り替え UI が必要か？
-2. **`team` ネストなし**: Issue #14 の設計方針通り team のネストはなし。将来的に sub-team が必要になったときの拡張性をどこまで考慮するか？
-3. **org 図のスタイル**: `ResolvedStyles` を org 図にも適用するか？最初のスコープでは固定色で十分か？
-4. **`useKarasu` 拡張 vs 新規フック**: `useOrgView` を独立させるか、`useKarasu` に統合するか。
-5. **`owns` の逆引き表示**: 将来、logical 図のノードに「このサービスを owns しているチーム名」を表示する要望が来る可能性がある。AST に逆引きデータを持たせるか、描画時に都度計算するか？
+`MemoryModeApp` / `ProjectModeApp` では `useKarasu` と `useOrgView` を並列に呼び出し、
+`viewKind` に応じて表示を切り替える。
