@@ -26,14 +26,10 @@ function makeSlice(): DeployViewSlice {
       {
         serviceId: "Payment",
         serviceLabel: "決済サービス",
-        units: [
-          { kind: "lambda", id: "payment-fn", properties: { runtime: "Go 1.22" }, loc: LOC },
-        ],
+        units: [{ kind: "lambda", id: "payment-fn", properties: { runtime: "Go 1.22" }, loc: LOC }],
       },
     ],
-    unclassifiedUnits: [
-      { kind: "job", id: "migration", properties: {}, loc: LOC },
-    ],
+    unclassifiedUnits: [{ kind: "job", id: "migration", properties: {}, loc: LOC }],
     ghostEdges: [{ from: "ECommerce", to: "Payment", kind: "sync" }],
   };
 }
