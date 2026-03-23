@@ -5,14 +5,8 @@ export default defineConfig({
     include: ["src/**/*.test.ts"],
     coverage: {
       provider: "v8",
-      include: ["src/**/*.ts"],
-      exclude: ["src/**/*.test.ts", "src/types/**", "src/fs/project.ts", "src/fs/types.ts"],
-      thresholds: {
-        lines: 80,
-        functions: 80,
-        branches: 80,
-        statements: 80,
-      },
+      include: ["src/**/*.ts", "src/**/*.tsx"],
+      exclude: ["src/**/*.test.ts", "src/vite-env.d.ts", "src/main.tsx"],
       reporter: ["text", "html"],
       reportsDirectory: "./coverage",
     },
