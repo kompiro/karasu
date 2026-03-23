@@ -38,6 +38,16 @@ export { extractView } from "./view/view-extract.js";
 export { Parser } from "./parser/parser.js";
 export { StyleParser } from "./parser/style-parser.js";
 export { resolveStyles } from "./resolver/style-resolver.js";
+export { getBuiltinStyleSheet, BUILTIN_STYLE_SOURCE } from "./builtins/default-style.js";
+export {
+  getReference,
+  type KarasuReference,
+  type NodeKindInfo,
+  type TagInfo,
+  type AnnotationInfo,
+  type StylePropertyInfo,
+  type ShapeInfo,
+} from "./builtins/reference.js";
 export { analyze } from "./resolver/warnings.js";
 export { render } from "./renderer/svg-renderer.js";
 export { el, escapeXml } from "./renderer/svg-builder.js";
@@ -84,6 +94,7 @@ import { analyze } from "./resolver/warnings.js";
 import { render } from "./renderer/svg-renderer.js";
 import { extractView, type ViewPath } from "./view/view-extract.js";
 import { ImportResolver } from "./fs/import-resolver.js";
+import { getBuiltinStyleSheet, BUILTIN_STYLE_SOURCE } from "./builtins/default-style.js";
 import "./renderer/shapes.js"; // ensure built-in shapes are registered
 import type { Diagnostic, LogicalNodeKind, LinkEntry, KrsNode } from "./types/ast.js";
 import { summarizeDescription } from "./renderer/description-summary.js";
@@ -116,11 +127,11 @@ export function compile(
   const parseResult: ParseResult<KrsFile> = Parser.parse(krsSource);
   const diagnostics = [...parseResult.diagnostics];
 
-  let sheets: StyleSheet[] = [];
+  const sheets: StyleSheet[] = [getBuiltinStyleSheet()];
   if (styleSource) {
     const styleResult = StyleParser.parse(styleSource);
     diagnostics.push(...styleResult.diagnostics);
-    sheets = [styleResult.value];
+    sheets.push(styleResult.value);
   }
 
   const viewSlice = extractView(parseResult.value.systems, viewPath ?? []);
@@ -146,10 +157,11 @@ export async function compileProject(
   const resolved = await resolver.resolve(entryPath);
   const diagnostics = [...resolved.diagnostics];
 
+  const allSheets = [getBuiltinStyleSheet(), ...resolved.styleSheets];
   const viewSlice = extractView(resolved.krsFile.systems, viewPath ?? []);
-  const styles = resolveStyles(resolved.krsFile.systems, resolved.styleSheets);
+  const styles = resolveStyles(resolved.krsFile.systems, allSheets);
   const svg = render(viewSlice, styles);
-  const warnings = analyze(resolved.krsFile, resolved.styleSheets);
+  const warnings = analyze(resolved.krsFile, allSheets);
   const nodeMetadata = buildNodeMetadata(viewSlice);
 
   return { svg, warnings, diagnostics, nodeMetadata };

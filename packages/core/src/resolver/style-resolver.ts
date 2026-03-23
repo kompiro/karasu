@@ -24,24 +24,6 @@ const DEFAULT_NODE_STYLE: ResolvedNodeStyle = {
   shape: "box",
 };
 
-const KIND_STYLE_OVERRIDES: Partial<Record<string, Partial<ResolvedNodeStyle>>> = {
-  resource: {
-    shape: "box",
-    backgroundColor: "#1E3A5F",
-    borderColor: "#3B82F6",
-  },
-  user: {
-    shape: "user",
-  },
-};
-
-const RESOURCE_TAG_SHAPES: Record<string, ShapeKind> = {
-  table: "cylinder",
-  queue: "queue",
-  api: "hexagon",
-  storage: "cloud",
-};
-
 const DEFAULT_EDGE_STYLE: ResolvedEdgeStyle = {
   color: "#94A3B8",
   strokeWidth: 1.5,
@@ -52,14 +34,22 @@ const DEFAULT_EDGE_STYLE: ResolvedEdgeStyle = {
 const SHAPE_KEYWORDS = new Set<string>(["box", "user", "cylinder", "queue", "hexagon", "cloud"]);
 
 export function resolveStyles(systems: KrsNode[], sheets: StyleSheet[]): ResolvedStyles {
-  const allRules = sheets.flatMap((s) => s.rules);
+  // Clone rules with globally renumbered sourceIndex to preserve cascade order across sheets.
+  // This avoids mutating cached sheets (e.g. the builtin singleton).
+  let globalIndex = 0;
+  const allRules: StyleRule[] = [];
+  for (const sheet of sheets) {
+    for (const rule of sheet.rules) {
+      allRules.push({ ...rule, sourceIndex: globalIndex++ });
+    }
+  }
   const nodeStyles = new Map<string, ResolvedNodeStyle>();
   const edgeStyles = new Map<string, ResolvedEdgeStyle>();
 
   function processNodes(nodes: KrsNode[]): void {
     for (const node of nodes) {
       const key = node.id ?? node.label;
-      nodeStyles.set(key, resolveNodeStyle(node, allRules, node.kind));
+      nodeStyles.set(key, resolveNodeStyle(node, allRules));
       processNodes(node.children);
     }
   }
@@ -88,7 +78,7 @@ function collectEdges(node: KrsNode): KrsEdge[] {
   return edges;
 }
 
-function resolveNodeStyle(node: KrsNode, rules: StyleRule[], kind: string): ResolvedNodeStyle {
+function resolveNodeStyle(node: KrsNode, rules: StyleRule[]): ResolvedNodeStyle {
   const matching = rules.filter((rule) => nodeSelectorMatches(node, rule.selector));
   matching.sort((a, b) => a.specificity - b.specificity || a.sourceIndex - b.sourceIndex);
 
@@ -97,19 +87,7 @@ function resolveNodeStyle(node: KrsNode, rules: StyleRule[], kind: string): Reso
     Object.assign(merged, rule.properties);
   }
 
-  const style = toResolvedNodeStyle(merged, kind);
-
-  // Apply tag-based default shape for resource nodes (only if no explicit shape in user stylesheet)
-  if (kind === "resource" && !merged["shape"]) {
-    for (const tag of node.tags) {
-      if (Object.hasOwn(RESOURCE_TAG_SHAPES, tag)) {
-        style.shape = RESOURCE_TAG_SHAPES[tag];
-        break;
-      }
-    }
-  }
-
-  return style;
+  return toResolvedNodeStyle(merged);
 }
 
 function resolveEdgeStyle(edge: KrsEdge, rules: StyleRule[]): ResolvedEdgeStyle {
@@ -121,7 +99,7 @@ function resolveEdgeStyle(edge: KrsEdge, rules: StyleRule[]): ResolvedEdgeStyle 
     Object.assign(merged, rule.properties);
   }
 
-  return toResolvedEdgeStyle(merged, edge);
+  return toResolvedEdgeStyle(merged);
 }
 
 function nodeSelectorMatches(node: KrsNode, selector: StyleSelector): boolean {
@@ -158,9 +136,8 @@ function edgeSelectorMatches(edge: KrsEdge, selector: StyleSelector): boolean {
   return true;
 }
 
-function toResolvedNodeStyle(props: Record<string, string>, kind?: string): ResolvedNodeStyle {
-  const kindOverride = kind ? KIND_STYLE_OVERRIDES[kind] : undefined;
-  const style = { ...DEFAULT_NODE_STYLE, ...kindOverride };
+function toResolvedNodeStyle(props: Record<string, string>): ResolvedNodeStyle {
+  const style = { ...DEFAULT_NODE_STYLE };
 
   if (props["background-color"]) style.backgroundColor = props["background-color"];
   if (props["color"]) style.color = props["color"];
@@ -191,18 +168,13 @@ function toResolvedNodeStyle(props: Record<string, string>, kind?: string): Reso
   return style;
 }
 
-function toResolvedEdgeStyle(props: Record<string, string>, edge: KrsEdge): ResolvedEdgeStyle {
+function toResolvedEdgeStyle(props: Record<string, string>): ResolvedEdgeStyle {
   const style = { ...DEFAULT_EDGE_STYLE };
 
   if (props["color"]) style.color = props["color"];
   if (props["stroke-width"]) style.strokeWidth = parseFloat(props["stroke-width"]);
   if (props["font-size"]) style.fontSize = parseFloat(props["font-size"]);
   if (props["border-style"]) style.strokeStyle = props["border-style"] as "solid" | "dashed";
-
-  // Async edges default to dashed
-  if (edge.kind === "async" && !props["border-style"]) {
-    style.strokeStyle = "dashed";
-  }
 
   return style;
 }

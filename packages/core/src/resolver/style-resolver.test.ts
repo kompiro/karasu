@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { resolveStyles } from "./style-resolver.js";
 import { analyze } from "./warnings.js";
+import { getBuiltinStyleSheet } from "../builtins/default-style.js";
 import type { KrsNode, KrsFile } from "../types/ast.js";
 import type { StyleSheet, StyleRule } from "../types/style.js";
 import type { SourceRange } from "../types/tokens.js";
@@ -223,7 +224,45 @@ describe("resolveStyles", () => {
     const result = resolveStyles([system], [sheet]);
     const edgeStyle = result.edges.get("A->B")!;
     expect(edgeStyle.color).toBe("#FF0000");
-    expect(edgeStyle.strokeStyle).toBe("dashed"); // async default
+  });
+
+  it("resolves async edge as dashed via builtin stylesheet", () => {
+    const system = makeNode({
+      kind: "system",
+      label: "Test",
+      children: [
+        makeNode({ kind: "service", id: "A", label: "A" }),
+        makeNode({ kind: "service", id: "B", label: "B" }),
+      ],
+      edges: [
+        {
+          from: "A",
+          to: "B",
+          label: "call",
+          kind: "async",
+          tags: [],
+          loc: dummyLoc,
+        },
+      ],
+    });
+    const result = resolveStyles([system], [getBuiltinStyleSheet()]);
+    const edgeStyle = result.edges.get("A->B")!;
+    expect(edgeStyle.strokeStyle).toBe("dashed");
+  });
+
+  it("user stylesheet overrides builtin", () => {
+    const system = makeNode({
+      kind: "system",
+      label: "Test",
+      children: [makeNode({ kind: "resource", id: "DB", label: "DB" })],
+    });
+    const userSheet: StyleSheet = {
+      rules: [
+        makeRule({ nodeType: "resource", tags: [], annotations: [] }, { shape: "hexagon" }, 1, 0),
+      ],
+    };
+    const result = resolveStyles([system], [getBuiltinStyleSheet(), userSheet]);
+    expect(result.nodes.get("DB")!.shape).toBe("hexagon");
   });
 });
 
