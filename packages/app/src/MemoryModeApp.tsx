@@ -7,11 +7,19 @@ import { useKarasu } from "./hooks/useKarasu.js";
 import { Parser, type KrsNode } from "@karasu/core";
 
 const SAMPLE_KRS = `system "ECプラットフォーム" {
-  user Customer "顧客" "商品を購入する一般ユーザー" [human]
-  user Seller "出品者" "商品を出品するショップオーナー" [human]
-  user Admin "管理者" "システムを運用する担当者" [human]
+  user Customer "顧客" [human] {
+    description "商品を購入する一般ユーザー"
+  }
+  user Seller "出品者" [human] {
+    description "商品を出品するショップオーナー"
+  }
+  user Admin "管理者" [human] {
+    description "システムを運用する担当者"
+  }
 
-  service ECommerce "ECサイト" "商品の閲覧・購入・出品を提供する" {
+  service ECommerce "ECサイト" {
+    description "商品の閲覧・購入・出品を提供する"
+
     domain Catalog "商品カタログ" {
       usecase SearchProducts "商品を検索する" {
         resource ProductTable "商品テーブル"
@@ -63,10 +71,18 @@ const SAMPLE_KRS = `system "ECプラットフォーム" {
       }
     }
   }
-  service Payment "決済" "クレジットカード・電子マネー決済" [external]
-  service Inventory "在庫管理" "在庫データの一元管理" [external]
-  service Shipping "配送" "配送手配と追跡" [external]
-  service Notification "通知" "メール・プッシュ通知の送信"
+  service Payment "決済" [external] {
+    description "クレジットカード・電子マネー決済"
+  }
+  service Inventory "在庫管理" [external] {
+    description "在庫データの一元管理"
+  }
+  service Shipping "配送" [external] {
+    description "配送手配と追跡"
+  }
+  service Notification "通知" {
+    description "メール・プッシュ通知の送信"
+  }
 
   Customer -> ECommerce "商品を購入する"
   Seller -> ECommerce "商品を出品する"
