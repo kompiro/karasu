@@ -31,9 +31,8 @@ deploy → war / oci / job / ...
 物理と論理の対応は `realizes` で明示する。
 
 ```
-oci "order-service" {
-  realizes ECommerce   // 物理（具象）→ 論理（抽象）
-}
+oci "order-service":
+  realizes: ECommerce   // 物理（具象）→ 論理（抽象）
 ```
 
 UMLのRealization関係に対応。「このデプロイ単位がこのサービスを実現している」という宣言。

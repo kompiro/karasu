@@ -41,7 +41,7 @@ user AIAgent "注文自動化エージェント" [ai]
 
 ```
 service Legacy "旧システム" [external] @deprecated @migration-target
-service NewAPI "新API"                 @new @experimental
+service NewAPI "新API" @new @experimental
 ```
 
 ---
