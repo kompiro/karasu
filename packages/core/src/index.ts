@@ -34,6 +34,12 @@ export type { Warning, WarningKind } from "./types/warnings.js";
 
 export type { ViewPath, ViewSlice } from "./view/view-extract.js";
 export { extractView } from "./view/view-extract.js";
+export type {
+  DeployViewSlice,
+  DeployContainer,
+  DeployGhostEdge,
+} from "./view/deploy-view-extract.js";
+export { extractDeployView } from "./view/deploy-view-extract.js";
 
 export { Parser } from "./parser/parser.js";
 export { StyleParser } from "./parser/style-parser.js";
@@ -49,7 +55,8 @@ export {
   type ShapeInfo,
 } from "./builtins/reference.js";
 export { analyze } from "./resolver/warnings.js";
-export { render } from "./renderer/svg-renderer.js";
+export { render, renderFromLayout } from "./renderer/svg-renderer.js";
+export { renderDeploy } from "./renderer/deploy-renderer.js";
 export { el, escapeXml } from "./renderer/svg-builder.js";
 export {
   registerShape,
@@ -92,7 +99,9 @@ import { StyleParser } from "./parser/style-parser.js";
 import { resolveStyles } from "./resolver/style-resolver.js";
 import { analyze } from "./resolver/warnings.js";
 import { render } from "./renderer/svg-renderer.js";
+import { renderDeploy } from "./renderer/deploy-renderer.js";
 import { extractView, type ViewPath } from "./view/view-extract.js";
+import { extractDeployView } from "./view/deploy-view-extract.js";
 import { ImportResolver } from "./fs/import-resolver.js";
 import { getBuiltinStyleSheet, BUILTIN_STYLE_SOURCE } from "./builtins/default-style.js";
 import "./renderer/shapes.js"; // ensure built-in shapes are registered
@@ -112,17 +121,21 @@ export interface NodeMetadata {
   hasChildren: boolean;
 }
 
+export type DiagramType = "system" | "deploy";
+
 export interface CompileResult {
   svg: string;
   warnings: Warning[];
   diagnostics: Diagnostic[];
   nodeMetadata: Map<string, NodeMetadata>;
+  hasDeployDiagram: boolean;
 }
 
 export function compile(
   krsSource: string,
   styleSource?: string,
   viewPath?: ViewPath,
+  diagramType?: DiagramType,
 ): CompileResult {
   const parseResult: ParseResult<KrsFile> = Parser.parse(krsSource);
   const diagnostics = [...parseResult.diagnostics];
@@ -134,13 +147,24 @@ export function compile(
     sheets.push(styleResult.value);
   }
 
-  const viewSlice = extractView(parseResult.value.systems, viewPath ?? []);
   const styles = resolveStyles(parseResult.value.systems, sheets);
-  const svg = render(viewSlice, styles);
   const warnings = analyze(parseResult.value, sheets);
-  const nodeMetadata = buildNodeMetadata(viewSlice);
+  const hasDeployDiagram = parseResult.value.deploys.length > 0;
 
-  return { svg, warnings, diagnostics, nodeMetadata };
+  let svg: string;
+  let nodeMetadata: Map<string, NodeMetadata>;
+
+  if (diagramType === "deploy") {
+    const deploySlice = extractDeployView(parseResult.value.deploys, parseResult.value.systems);
+    svg = renderDeploy(deploySlice, styles);
+    nodeMetadata = new Map();
+  } else {
+    const viewSlice = extractView(parseResult.value.systems, viewPath ?? []);
+    svg = render(viewSlice, styles);
+    nodeMetadata = buildNodeMetadata(viewSlice);
+  }
+
+  return { svg, warnings, diagnostics, nodeMetadata, hasDeployDiagram };
 }
 
 /**
@@ -152,19 +176,31 @@ export async function compileProject(
   entryPath: string,
   fs: FileSystemProvider,
   viewPath?: ViewPath,
+  diagramType?: DiagramType,
 ): Promise<CompileResult> {
   const resolver = new ImportResolver(fs);
   const resolved = await resolver.resolve(entryPath);
   const diagnostics = [...resolved.diagnostics];
 
   const allSheets = [getBuiltinStyleSheet(), ...resolved.styleSheets];
-  const viewSlice = extractView(resolved.krsFile.systems, viewPath ?? []);
   const styles = resolveStyles(resolved.krsFile.systems, allSheets);
-  const svg = render(viewSlice, styles);
   const warnings = analyze(resolved.krsFile, allSheets);
-  const nodeMetadata = buildNodeMetadata(viewSlice);
+  const hasDeployDiagram = resolved.krsFile.deploys.length > 0;
 
-  return { svg, warnings, diagnostics, nodeMetadata };
+  let svg: string;
+  let nodeMetadata: Map<string, NodeMetadata>;
+
+  if (diagramType === "deploy") {
+    const deploySlice = extractDeployView(resolved.krsFile.deploys, resolved.krsFile.systems);
+    svg = renderDeploy(deploySlice, styles);
+    nodeMetadata = new Map();
+  } else {
+    const viewSlice = extractView(resolved.krsFile.systems, viewPath ?? []);
+    svg = render(viewSlice, styles);
+    nodeMetadata = buildNodeMetadata(viewSlice);
+  }
+
+  return { svg, warnings, diagnostics, nodeMetadata, hasDeployDiagram };
 }
 
 function buildNodeMetadata(
