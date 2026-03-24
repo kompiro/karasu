@@ -209,11 +209,11 @@ function buildNodeMetadata(
   const map = new Map<string, NodeMetadata>();
 
   function addNode(node: KrsNode): void {
-    const id = node.id ?? node.label;
+    const id = node.id;
     const description = node.properties.description;
     map.set(id, {
       kind: node.kind,
-      label: node.label,
+      label: node.label ?? node.id,
       description,
       descriptionSummary: description ? summarizeDescription(description) : undefined,
       links: node.properties.links,

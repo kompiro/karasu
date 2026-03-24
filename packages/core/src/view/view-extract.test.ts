@@ -8,29 +8,31 @@ function parseSystem(krs: string): KrsNode[] {
 }
 
 const FULL_KRS = `
-system "ECプラットフォーム" {
-  user Customer "顧客" {
+system ECPlatform {
+  label "ECプラットフォーム"
+
+  user Customer {
     description "商品を購入する一般ユーザー"
   }
-  user Admin "管理者" {
+  user Admin {
     description "システムを運用する担当者"
   }
 
-  service ECommerce "ECサイト" {
+  service ECommerce {
     description "商品管理と注文処理"
 
-    domain Order "受注" {
-      usecase PlaceOrder "注文を受け付ける" {
-        resource OrderTable "注文テーブル"
-        resource InventoryAPI "在庫API" [external]
+    domain Order {
+      usecase PlaceOrder {
+        resource OrderTable
+        resource InventoryAPI [external]
       }
-      usecase CancelOrder "注文をキャンセルする"
+      usecase CancelOrder
     }
-    domain Shipping "発送" {
-      usecase ShipOrder "出荷する"
+    domain Shipping {
+      usecase ShipOrder
     }
   }
-  service Payment "決済サービス" [external] {
+  service Payment [external] {
     description "クレジットカード決済処理"
   }
 
@@ -47,7 +49,7 @@ describe("extractView", () => {
       const view = extractView(systems, []);
 
       expect(view.containerNode?.kind).toBe("system");
-      expect(view.childNodes.map((n) => n.id ?? n.label)).toEqual([
+      expect(view.childNodes.map((n) => n.id)).toEqual([
         "Customer",
         "Admin",
         "ECommerce",
@@ -77,7 +79,7 @@ describe("extractView", () => {
 
       expect(view.containerNode?.kind).toBe("service");
       expect(view.containerNode?.id).toBe("ECommerce");
-      expect(view.childNodes.map((n) => n.id ?? n.label)).toEqual(["Order", "Shipping"]);
+      expect(view.childNodes.map((n) => n.id)).toEqual(["Order", "Shipping"]);
     });
 
     it("builds ancestor chain with system", () => {
@@ -92,7 +94,7 @@ describe("extractView", () => {
       const systems = parseSystem(FULL_KRS);
       const view = extractView(systems, ["ECommerce"]);
 
-      expect(view.ghostUsers.map((n) => n.id ?? n.label)).toEqual(["Customer", "Admin"]);
+      expect(view.ghostUsers.map((n) => n.id)).toEqual(["Customer", "Admin"]);
       expect(view.ghostUserEdges).toHaveLength(2);
     });
 
@@ -112,7 +114,7 @@ describe("extractView", () => {
       const view = extractView(systems, ["ECommerce", "Order"]);
 
       expect(view.containerNode?.kind).toBe("domain");
-      expect(view.childNodes.map((n) => n.id ?? n.label)).toEqual(["PlaceOrder", "CancelOrder"]);
+      expect(view.childNodes.map((n) => n.id)).toEqual(["PlaceOrder", "CancelOrder"]);
     });
 
     it("builds ancestor chain with system and service", () => {
@@ -138,7 +140,7 @@ describe("extractView", () => {
       const view = extractView(systems, ["ECommerce", "Order", "PlaceOrder"]);
 
       expect(view.containerNode?.kind).toBe("usecase");
-      expect(view.childNodes.map((n) => n.id ?? n.label)).toEqual(["OrderTable", "InventoryAPI"]);
+      expect(view.childNodes.map((n) => n.id)).toEqual(["OrderTable", "InventoryAPI"]);
     });
 
     it("builds full ancestor chain", () => {

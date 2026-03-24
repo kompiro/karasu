@@ -109,7 +109,7 @@ export class ImportResolver {
           }
 
           // system 自体が id にマッチする場合
-          if (system.id === id || system.label === id) {
+          if (system.id === id) {
             mergedFile.systems.push(system);
             found = true;
           }
@@ -117,7 +117,7 @@ export class ImportResolver {
 
         // services からも探す
         for (const service of importedFile.services) {
-          if (service.id === id || service.label === id) {
+          if (service.id === id) {
             mergedFile.services.push(service);
             found = true;
           }
@@ -168,9 +168,7 @@ export class ImportResolver {
     node: import("../types/ast.js").KrsNode,
   ): void {
     // 同名の system を探す
-    const targetSystem = systems.find(
-      (s) => s.label === sourceSystem.label || s.id === sourceSystem.id,
-    );
+    const targetSystem = systems.find((s) => s.id === sourceSystem.id);
     if (targetSystem) {
       // 重複チェック
       const alreadyExists = targetSystem.children.some(

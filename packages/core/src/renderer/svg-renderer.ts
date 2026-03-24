@@ -12,7 +12,7 @@ export function render(viewSlice: ViewSlice, styles: ResolvedStyles): string {
   const layoutResult = layout(viewSlice);
   const title =
     layoutResult.containers.length === 0 && viewSlice.containerNode
-      ? viewSlice.containerNode.label
+      ? (viewSlice.containerNode.label ?? viewSlice.containerNode.id)
       : undefined;
   return renderFromLayout(layoutResult, styles, title);
 }

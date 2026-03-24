@@ -204,15 +204,13 @@ export function ProjectModeApp() {
 
       const items: { id: string; label: string }[] = [];
       const system = systems[0];
-      items.push({ id: system.id ?? system.label, label: system.label });
+      items.push({ id: system.id, label: system.label ?? system.id });
 
       let current: KrsNode = system;
       for (const segment of viewPath) {
-        const child: KrsNode | undefined = current.children.find(
-          (c) => (c.id ?? c.label) === segment,
-        );
+        const child: KrsNode | undefined = current.children.find((c) => c.id === segment);
         if (!child) break;
-        items.push({ id: child.id ?? child.label, label: child.label });
+        items.push({ id: child.id, label: child.label ?? child.id });
         current = child;
       }
 
