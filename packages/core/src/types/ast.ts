@@ -23,8 +23,8 @@ export interface LinkEntry {
 }
 
 interface BaseNodeFields {
-  id?: string;
-  label: string;
+  id: string;
+  label?: string;
   tags: string[];
   annotations: string[];
   children: KrsNode[];

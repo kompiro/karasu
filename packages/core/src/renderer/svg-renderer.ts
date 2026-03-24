@@ -72,7 +72,7 @@ export function render(viewSlice: ViewSlice, styles: ResolvedStyles): string {
           "font-family": "sans-serif",
           "font-weight": "bold",
         },
-        escapeXml(viewSlice.containerNode.label),
+        escapeXml(viewSlice.containerNode.label ?? viewSlice.containerNode.id),
       ),
     );
   }

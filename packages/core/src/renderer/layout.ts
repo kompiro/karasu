@@ -79,7 +79,7 @@ export function layout(viewSlice: ViewSlice): LayoutResult {
   }
 
   // Layout child nodes using topological sort
-  const nodeIds = allNodes.map((n) => n.id ?? n.label);
+  const nodeIds = allNodes.map((n) => n.id);
   const idSet = new Set(nodeIds);
   const adj = new Map<string, string[]>();
   const inDegree = new Map<string, number>();
@@ -110,7 +110,7 @@ export function layout(viewSlice: ViewSlice): LayoutResult {
 
   const nodeMap = new Map<string, KrsNode>();
   for (const node of allNodes) {
-    nodeMap.set(node.id ?? node.label, node);
+    nodeMap.set(node.id, node);
   }
 
   const sortedLayers = Array.from(nodesByLayer.keys()).sort((a, b) => a - b);
@@ -128,7 +128,7 @@ export function layout(viewSlice: ViewSlice): LayoutResult {
       layoutNodes.set(nid, {
         kind: krsNode.kind,
         id: nid,
-        label: krsNode.label,
+        label: krsNode.label ?? krsNode.id,
         properties: extractLayoutProperties(krsNode),
         descriptionSummary: krsNode.properties.description
           ? summarizeDescription(krsNode.properties.description)
@@ -195,8 +195,8 @@ export function layout(viewSlice: ViewSlice): LayoutResult {
     const containerH =
       childMaxHeight - totalNestOffset + CONTAINER_LABEL_HEIGHT + CONTAINER_PADDING;
     containers.push({
-      id: viewSlice.containerNode.id ?? viewSlice.containerNode.label,
-      label: viewSlice.containerNode.label,
+      id: viewSlice.containerNode.id,
+      label: viewSlice.containerNode.label ?? viewSlice.containerNode.id,
       x: containerX,
       y: containerY,
       width: Math.max(containerW, 200),
@@ -226,8 +226,8 @@ export function layout(viewSlice: ViewSlice): LayoutResult {
     }
 
     containers.push({
-      id: ancestor.id ?? ancestor.label,
-      label: ancestor.label,
+      id: ancestor.id,
+      label: ancestor.label ?? ancestor.id,
       x: gx,
       y: gy,
       width: gw,
@@ -248,11 +248,11 @@ export function layout(viewSlice: ViewSlice): LayoutResult {
 
     for (const userNode of viewSlice.ghostUsers) {
       const dims = measureNode(userNode);
-      const uid = userNode.id ?? userNode.label;
+      const uid = userNode.id;
       const gNode: LayoutNode = {
         kind: userNode.kind,
         id: uid,
-        label: userNode.label,
+        label: userNode.label ?? userNode.id,
         properties: extractLayoutProperties(userNode),
         descriptionSummary: userNode.properties.description
           ? summarizeDescription(userNode.properties.description)
@@ -296,9 +296,7 @@ export function layout(viewSlice: ViewSlice): LayoutResult {
 
   // Ghost user edges
   for (const edge of viewSlice.ghostUserEdges) {
-    const containerId = viewSlice.containerNode
-      ? (viewSlice.containerNode.id ?? viewSlice.containerNode.label)
-      : "";
+    const containerId = viewSlice.containerNode ? viewSlice.containerNode.id : "";
     // Ghost user edges connect to the container box, not a laid-out node
     const mainContainer = containers.find((c) => !c.ghost);
     const ghostNode = layoutNodes.get(edge.from === containerId ? edge.to : edge.from);
@@ -383,8 +381,8 @@ function buildContainersForEmpty(viewSlice: ViewSlice): ContainerRect[] {
 
   if (viewSlice.containerNode && viewSlice.containerNode.kind !== "system") {
     containers.push({
-      id: viewSlice.containerNode.id ?? viewSlice.containerNode.label,
-      label: viewSlice.containerNode.label,
+      id: viewSlice.containerNode.id,
+      label: viewSlice.containerNode.label ?? viewSlice.containerNode.id,
       x: viewSlice.ancestorChain.length * GHOST_MARGIN + GHOST_MARGIN,
       y: viewSlice.ancestorChain.length * GHOST_MARGIN + GHOST_MARGIN,
       width: minW,
@@ -397,8 +395,8 @@ function buildContainersForEmpty(viewSlice: ViewSlice): ContainerRect[] {
     const ancestor = viewSlice.ancestorChain[i];
     const inner = containers.length > 0 ? containers[containers.length - 1] : null;
     containers.push({
-      id: ancestor.id ?? ancestor.label,
-      label: ancestor.label,
+      id: ancestor.id,
+      label: ancestor.label ?? ancestor.id,
       x: inner ? inner.x - GHOST_MARGIN : GHOST_MARGIN,
       y: inner ? inner.y - GHOST_MARGIN : GHOST_MARGIN,
       width: inner ? inner.width + GHOST_MARGIN * 2 : minW + GHOST_MARGIN * 2,
@@ -511,7 +509,7 @@ function extractLayoutProperties(node: KrsNode): LayoutNodeProperties {
 }
 
 function measureNode(node: KrsNode): { width: number; height: number } {
-  const labelWidth = estimateTextWidth(node.label, CHAR_WIDTH);
+  const labelWidth = estimateTextWidth(node.label ?? node.id, CHAR_WIDTH);
   const description = node.properties.description;
   const role = node.kind === "user" ? node.properties.role : undefined;
   const team = node.kind === "service" || node.kind === "domain" ? node.properties.team : undefined;
