@@ -121,34 +121,27 @@ export function layoutDeploy(slice: DeployViewSlice): LayoutResult {
     currentX += containerW + CONTAINER_GAP;
   }
 
-  // Build container center map for edge routing
-  const containerCenters = new Map<string, { x: number; y: number }>();
-  for (const c of containers) {
-    containerCenters.set(c.id, { x: c.x + c.width / 2, y: c.y + c.height / 2 });
-  }
-
   // Ghost edges between service containers
+  const containerById = new Map(containers.map((c) => [c.id, c]));
   const layoutEdges: LayoutEdge[] = [];
   for (const edge of slice.ghostEdges) {
-    const fromCenter = containerCenters.get(edge.from);
-    const toCenter = containerCenters.get(edge.to);
-    if (!fromCenter || !toCenter) continue;
-
-    const fromContainer = containers.find((c) => c.id === edge.from);
-    const toContainer = containers.find((c) => c.id === edge.to);
+    const fromContainer = containerById.get(edge.from);
+    const toContainer = containerById.get(edge.to);
     if (!fromContainer || !toContainer) continue;
 
     // Connect right edge of from-container to left edge of to-container
     // (or vice versa depending on horizontal order)
     let fromPoint: { x: number; y: number };
     let toPoint: { x: number; y: number };
+    const fromCenterY = fromContainer.y + fromContainer.height / 2;
+    const toCenterY = toContainer.y + toContainer.height / 2;
 
     if (fromContainer.x < toContainer.x) {
-      fromPoint = { x: fromContainer.x + fromContainer.width, y: fromCenter.y };
-      toPoint = { x: toContainer.x, y: toCenter.y };
+      fromPoint = { x: fromContainer.x + fromContainer.width, y: fromCenterY };
+      toPoint = { x: toContainer.x, y: toCenterY };
     } else {
-      fromPoint = { x: fromContainer.x, y: fromCenter.y };
-      toPoint = { x: toContainer.x + toContainer.width, y: toCenter.y };
+      fromPoint = { x: fromContainer.x, y: fromCenterY };
+      toPoint = { x: toContainer.x + toContainer.width, y: toCenterY };
     }
 
     layoutEdges.push({
