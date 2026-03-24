@@ -29,20 +29,43 @@ describe("Parser", () => {
   });
 
   it("parses a minimal system", () => {
-    const result = Parser.parse('system "My System" {}');
+    const result = Parser.parse("system MySystem {}");
     expect(result.value.systems).toHaveLength(1);
     expect(result.value.systems[0].kind).toBe("system");
-    expect(result.value.systems[0].label).toBe("My System");
+    expect(result.value.systems[0].id).toBe("MySystem");
     expect(result.value.systems[0].children).toHaveLength(0);
+  });
+
+  it("parses label as property", () => {
+    const result = Parser.parse(`
+system MySystem {
+  label "My System"
+}
+    `);
+    expect(result.diagnostics).toHaveLength(0);
+    expect(result.value.systems[0].label).toBe("My System");
+  });
+
+  it("uses id as display name when label is omitted", () => {
+    const result = Parser.parse("system MySystem {}");
+    expect(result.value.systems[0].label).toBeUndefined();
+    expect(result.value.systems[0].id).toBe("MySystem");
+  });
+
+  it("errors when id is missing", () => {
+    const result = Parser.parse("system { }");
+    expect(result.diagnostics.length).toBeGreaterThan(0);
   });
 
   it("parses description in property block", () => {
     const result = Parser.parse(`
-system "Test" {
-  user Customer "顧客" {
+system Test {
+  user Customer {
+    label "顧客"
     description "商品を購入する一般ユーザー"
   }
-  service ECommerce "ECサイト" {
+  service ECommerce {
+    label "ECサイト"
     description "商品管理と注文処理"
   }
 }
@@ -64,20 +87,10 @@ system "Test" {
     expect(service.properties.description).toBe("商品管理と注文処理");
   });
 
-  it("rejects positional description with error", () => {
-    const result = Parser.parse(`
-system "Test" {
-  service ECommerce "ECサイト" "商品管理と注文処理"
-}
-    `);
-    expect(result.diagnostics.length).toBeGreaterThan(0);
-    expect(result.diagnostics[0].message).toContain("位置引数の description は廃止されました");
-  });
-
   it("parses tags", () => {
     const result = Parser.parse(`
-system "Test" {
-  service Payment "決済" [external]
+system Test {
+  service Payment [external]
 }
     `);
     const service = result.value.systems[0].children[0];
@@ -86,8 +99,8 @@ system "Test" {
 
   it("parses annotations", () => {
     const result = Parser.parse(`
-system "Test" {
-  service Legacy "旧システム" @deprecated @migration_target
+system Test {
+  service Legacy @deprecated @migration_target
 }
     `);
     const service = result.value.systems[0].children[0];
@@ -96,8 +109,8 @@ system "Test" {
 
   it("parses tags and annotations combined", () => {
     const result = Parser.parse(`
-system "Test" {
-  service Legacy "旧システム" [external] @deprecated
+system Test {
+  service Legacy [external] @deprecated
 }
     `);
     const service = result.value.systems[0].children[0];
@@ -107,9 +120,9 @@ system "Test" {
 
   it("parses sync edges", () => {
     const result = Parser.parse(`
-system "Test" {
-  user Customer "顧客"
-  service Shop "ショップ"
+system Test {
+  user Customer
+  service Shop
   Customer -> Shop "商品を購入する"
 }
     `);
@@ -123,9 +136,9 @@ system "Test" {
 
   it("parses async edges", () => {
     const result = Parser.parse(`
-system "Test" {
-  service A "A"
-  service B "B"
+system Test {
+  service A
+  service B
   A --> B "非同期処理"
 }
     `);
@@ -136,12 +149,16 @@ system "Test" {
 
   it("parses nested nodes with full hierarchy", () => {
     const result = Parser.parse(`
-system "Test" {
-  service ECommerce "EC" {
-    domain Order "受注" {
-      usecase PlaceOrder "注文を受け付ける" {
-        resource OrderTable "注文テーブル"
-        resource InventoryAPI "在庫API" [external]
+system Test {
+  service ECommerce {
+    domain Order {
+      usecase PlaceOrder {
+        resource OrderTable {
+          label "注文テーブル"
+        }
+        resource InventoryAPI [external] {
+          label "在庫API"
+        }
       }
     }
   }
@@ -206,14 +223,15 @@ deploy "本番環境" {
     const result = Parser.parse(`
 @import "default.krs.style"
 
-system "ECプラットフォーム" {
-  user Customer "顧客" {
+system ECPlatform {
+  label "ECプラットフォーム"
+  user Customer {
     description "商品を購入する一般ユーザー"
   }
-  service ECommerce "ECサイト" {
+  service ECommerce {
     description "商品管理と注文処理"
   }
-  service Payment "決済サービス" [external]
+  service Payment [external]
   Customer -> ECommerce "商品を購入する"
   ECommerce --> Payment "決済を処理する"
 }
@@ -237,8 +255,9 @@ deploy "本番環境" {
 
   it("parses user with role property", () => {
     const result = Parser.parse(`
-system "Test" {
-  user Admin "管理者" [human] {
+system Test {
+  user Admin [human] {
+    label "管理者"
     role "システム管理者"
   }
 }
@@ -254,8 +273,8 @@ system "Test" {
 
   it("parses user with [ai] tag", () => {
     const result = Parser.parse(`
-system "Test" {
-  user AIAgent "注文自動化エージェント" [ai] {
+system Test {
+  user AIAgent [ai] {
     role "注文処理担当"
   }
 }
@@ -269,8 +288,8 @@ system "Test" {
 
   it("parses user without role (simple form)", () => {
     const result = Parser.parse(`
-system "Test" {
-  user Admin "管理者" [human]
+system Test {
+  user Admin [human]
 }
     `);
     expect(result.diagnostics).toHaveLength(0);
@@ -282,8 +301,8 @@ system "Test" {
 
   it("parses team property on service", () => {
     const result = Parser.parse(`
-system "Test" {
-  service ECommerce "ECサイト" {
+system Test {
+  service ECommerce {
     team "EC開発チーム"
   }
 }
@@ -296,8 +315,8 @@ system "Test" {
 
   it("parses link property", () => {
     const result = Parser.parse(`
-system "Test" {
-  service ECommerce "ECサイト" {
+system Test {
+  service ECommerce {
     link "https://wiki.example.com/ec" "設計Wiki"
   }
 }
@@ -311,8 +330,8 @@ system "Test" {
 
   it("parses link without label", () => {
     const result = Parser.parse(`
-system "Test" {
-  service ECommerce "ECサイト" {
+system Test {
+  service ECommerce {
     link "https://wiki.example.com/ec"
   }
 }
@@ -326,8 +345,8 @@ system "Test" {
 
   it("parses multiple links", () => {
     const result = Parser.parse(`
-system "Test" {
-  service ECommerce "ECサイト" {
+system Test {
+  service ECommerce {
     link "https://wiki.example.com/ec" "設計Wiki"
     link "https://figma.com/file/xxx" "画面設計"
   }
@@ -342,8 +361,8 @@ system "Test" {
 
   it("parses user with role and link", () => {
     const result = Parser.parse(`
-system "Test" {
-  user Customer "顧客" [human] {
+system Test {
+  user Customer [human] {
     role "商品を購入する一般ユーザー"
     link "https://wiki.example.com/persona" "ペルソナ定義"
   }
@@ -359,11 +378,11 @@ system "Test" {
 
   it("parses resource with link", () => {
     const result = Parser.parse(`
-system "Test" {
-  service S "S" {
-    domain D "D" {
-      usecase U "U" {
-        resource OrderTable "注文テーブル" {
+system Test {
+  service S {
+    domain D {
+      usecase U {
+        resource OrderTable {
           link "https://wiki.example.com/order-table" "テーブル定義"
         }
       }
@@ -380,8 +399,8 @@ system "Test" {
 
   it("returns empty links array when no links specified", () => {
     const result = Parser.parse(`
-system "Test" {
-  service S "S"
+system Test {
+  service S
 }
     `);
     const service = result.value.systems[0].children[0];
@@ -390,8 +409,8 @@ system "Test" {
 
   it("errors when team is used on user node", () => {
     const result = Parser.parse(`
-system "Test" {
-  user Admin "管理者" {
+system Test {
+  user Admin {
     team "チーム名"
   }
 }
@@ -402,8 +421,8 @@ system "Test" {
 
   it("parses triple-quoted description", () => {
     const result = Parser.parse(`
-system "Test" {
-  service ECommerce "ECサイト" {
+system Test {
+  service ECommerce {
     description """
       商品管理と注文処理を担当するサービス。
 
@@ -421,7 +440,8 @@ system "Test" {
 
   it("parses top-level service", () => {
     const result = Parser.parse(`
-service Monitoring "監視サービス" {
+service Monitoring {
+  label "監視サービス"
   description "配置先のシステムが未定"
   team "SRE チーム"
 }
@@ -438,14 +458,14 @@ service Monitoring "監視サービス" {
 
   it("parses property block mixed with child nodes", () => {
     const result = Parser.parse(`
-system "Test" {
-  service ECommerce "ECサイト" {
+system Test {
+  service ECommerce {
     description "商品管理"
     team "ECチーム"
     link "https://example.com" "Wiki"
 
-    domain "受注" {
-      usecase "注文を受け付ける"
+    domain Order {
+      usecase PlaceOrder
     }
   }
 }

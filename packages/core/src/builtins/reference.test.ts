@@ -9,6 +9,13 @@ describe("getReference", () => {
     expect(kinds).toEqual(["system", "service", "domain", "usecase", "resource", "user"]);
   });
 
+  it("all node kinds include label and description as properties", () => {
+    for (const kind of ref.nodeKinds) {
+      expect(kind.properties).toContain("label");
+      expect(kind.properties).toContain("description");
+    }
+  });
+
   it("includes all tags", () => {
     const tags = ref.tags.map((t) => t.name);
     expect(tags).toContain("external");

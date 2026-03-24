@@ -48,7 +48,7 @@ export function resolveStyles(systems: KrsNode[], sheets: StyleSheet[]): Resolve
 
   function processNodes(nodes: KrsNode[]): void {
     for (const node of nodes) {
-      const key = node.id ?? node.label;
+      const key = node.id;
       nodeStyles.set(key, resolveNodeStyle(node, allRules));
       processNodes(node.children);
     }

@@ -14,15 +14,15 @@ export function analyze(file: KrsFile, sheets: StyleSheet[]): Warning[] {
 
 function detectDomainDispersal(file: KrsFile): Warning[] {
   const warnings: Warning[] = [];
-  // Map: domain label -> set of parent service ids/labels
+  // Map: domain display name (label ?? id) -> set of parent service IDs
   const domainToServices = new Map<string, Set<string>>();
 
   function walk(node: KrsNode, parentServiceName?: string): void {
     if (node.kind === "service") {
-      parentServiceName = node.id ?? node.label;
+      parentServiceName = node.id;
     }
     if (node.kind === "domain" && parentServiceName) {
-      const domainName = node.label || node.id || "";
+      const domainName = node.label ?? node.id;
       if (!domainToServices.has(domainName)) {
         domainToServices.set(domainName, new Set());
       }

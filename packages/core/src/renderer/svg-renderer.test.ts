@@ -18,15 +18,17 @@ function renderFromSource(krs: string, style?: string): string {
 
 describe("SVG Renderer", () => {
   it("renders empty system", () => {
-    const svg = renderFromSource('system "Empty" {}');
+    const svg = renderFromSource("system Empty {}");
     expect(svg).toContain("<svg");
     expect(svg).toContain("No nodes to render");
   });
 
   it("renders a single node", () => {
     const svg = renderFromSource(`
-system "Test" {
-  service ECommerce "ECサイト"
+system Test {
+  service ECommerce {
+    label "ECサイト"
+  }
 }
     `);
     expect(svg).toContain("<svg");
@@ -36,9 +38,13 @@ system "Test" {
 
   it("renders multiple nodes with edges", () => {
     const svg = renderFromSource(`
-system "Test" {
-  user Customer "顧客"
-  service Shop "ショップ"
+system Test {
+  user Customer {
+    label "顧客"
+  }
+  service Shop {
+    label "ショップ"
+  }
   Customer -> Shop "購入"
 }
     `);
@@ -52,8 +58,10 @@ system "Test" {
   it("applies styles from stylesheet", () => {
     const svg = renderFromSource(
       `
-system "Test" {
-  service ECommerce "ECサイト" [external]
+system Test {
+  service ECommerce [external] {
+    label "ECサイト"
+  }
 }
       `,
       `
@@ -70,8 +78,8 @@ system "Test" {
   it("renders user shape", () => {
     const svg = renderFromSource(
       `
-system "Test" {
-  user Customer "顧客"
+system Test {
+  user Customer
 }
       `,
       `
@@ -87,8 +95,10 @@ user {
   it("renders badge for annotated nodes", () => {
     const svg = renderFromSource(
       `
-system "Test" {
-  service Legacy "旧" @deprecated
+system Test {
+  service Legacy @deprecated {
+    label "旧"
+  }
 }
       `,
       `
@@ -107,9 +117,9 @@ system "Test" {
 
   it("renders async edges as dashed", () => {
     const svg = renderFromSource(`
-system "Test" {
-  service A "A"
-  service B "B"
+system Test {
+  service A
+  service B
   A --> B "非同期"
 }
     `);
@@ -119,8 +129,8 @@ system "Test" {
 
   it("renders description text", () => {
     const svg = renderFromSource(`
-system "Test" {
-  service ECommerce "ECサイト" {
+system Test {
+  service ECommerce {
     description "商品管理と注文処理"
   }
 }
@@ -130,8 +140,9 @@ system "Test" {
 
   it("renders system label", () => {
     const svg = renderFromSource(`
-system "ECプラットフォーム" {
-  service ECommerce "EC"
+system ECPlatform {
+  label "ECプラットフォーム"
+  service ECommerce
 }
     `);
     expect(svg).toContain("ECプラットフォーム");
@@ -139,8 +150,9 @@ system "ECプラットフォーム" {
 
   it("renders role text on user node", () => {
     const svg = renderFromSource(`
-system "Test" {
-  user Admin "管理者" [human] {
+system Test {
+  user Admin [human] {
+    label "管理者"
     description "システムを運用する"
     role "システム管理者"
   }
