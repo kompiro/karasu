@@ -2,7 +2,7 @@
 
 - **日付**: 2026-03-23
 - **ステータス**: ドラフト
-- **関連**: [Issue #14](https://github.com/kompiro/karasu/issues/14), [syntax.md](../spec/syntax.md), [ast-restructure.md](ast-restructure.md), [ui-toolbar-design.md](ui-toolbar-design.md)
+- **関連**: [Issue #14](https://github.com/kompiro/karasu/issues/14), [syntax.md](../spec/syntax.md), [ast-restructure.md](ast-restructure.md), [ADR-0007: ツールバーボタン アイコン+ラベル必須](../adr/0007-toolbar-icon-label.md)
 
 ## 背景・課題
 
@@ -94,8 +94,7 @@ org 図を別ファイルに分離する。
 ```typescript
 // packages/core/src/renderer/org-renderer.ts
 export function renderOrgView(
-  organizations: OrganizationBlock[],
-  orgPath: OrgViewPath,
+  slice: OrgViewSlice,
   styles: ResolvedStyles
 ): string
 ```
@@ -123,7 +122,7 @@ const [viewKind, setViewKind] = useState<"logical" | "physical" | "org">("logica
 ```
 
 - メリット: 既存の `viewPath` パターンと自然に統合できる
-- ツールバーに「Logical」「Physical」「Org」ボタンを追加（アイコン+テキストラベル、`ui-toolbar-design.md` に従う）
+- ツールバーに「Logical」「Physical」「Org」ボタンを追加（アイコン+テキストラベル、[ADR-0007](../adr/0007-toolbar-icon-label.md) に従う）
 
 ---
 
@@ -290,7 +289,7 @@ SVG の基本要素は既存の `svg-builder.ts` を再利用する。
 ### 6. バリデーション
 
 **`owns` バリデーション**（`packages/core/src/resolver/warnings.ts`）:
-- `owns` で参照している ID が `KrsFile.systems` 内の service/domain に存在しない → warning
+- `owns` で参照している ID が `KrsFile.systems`（内部の service/domain を再帰的に走査）または `KrsFile.services`（トップレベル service）に存在しない → warning
 - 同一 ID を複数チームが `owns` している → warning（`ownerIndex` 構築時に検出）
 
 **チーム ID 重複チェック**（パース時、`buildOwnerIndex` と同じ走査で実施）:
@@ -307,7 +306,7 @@ const [viewPath, setViewPath] = useState<string[]>([]);
 const [orgPath, setOrgPath] = useState<OrgViewPath>([]);
 ```
 
-**ツールバーボタン（`ui-toolbar-design.md` のルールに従う）**:
+**ツールバーボタン（[ADR-0007](../adr/0007-toolbar-icon-label.md) のルールに従う）**:
 
 ```
 [≡ Logical]  [⬡ Physical]  [👥 Org]
@@ -333,3 +332,9 @@ export function useOrgView(source: string, orgPath: OrgViewPath): {
 
 `MemoryModeApp` / `ProjectModeApp` では `useKarasu` と `useOrgView` を並列に呼び出し、
 `viewKind` に応じて表示を切り替える。
+
+---
+
+## 実装時の注意
+
+- `docs/spec/syntax.md` に `organization` / `team` / `member` ブロックの構文を追記すること
