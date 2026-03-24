@@ -27,7 +27,13 @@ function makeTeam(
   id: string,
   opts: {
     label?: string;
-    members?: { id: string; label?: string; slack?: string; github?: string; description?: string }[];
+    members?: {
+      id: string;
+      label?: string;
+      slack?: string;
+      github?: string;
+      description?: string;
+    }[];
     teams?: TeamNode[];
     owns?: string[];
   } = {},
@@ -130,7 +136,10 @@ describe("renderOrgView", () => {
 
     it("renders member cards for focused team members", () => {
       const team = makeTeam("backend", {
-        members: [{ id: "alice", label: "Alice" }, { id: "bob", label: "Bob" }],
+        members: [
+          { id: "alice", label: "Alice" },
+          { id: "bob", label: "Bob" },
+        ],
       });
       const slice: OrgViewSlice = {
         teams: [],
