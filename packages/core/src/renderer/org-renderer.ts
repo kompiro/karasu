@@ -40,12 +40,7 @@ function subLabelStyle(style: ResolvedNodeStyle): Record<string, unknown> {
   };
 }
 
-function renderTeamCard(
-  team: TeamNode,
-  x: number,
-  y: number,
-  style: ResolvedNodeStyle,
-): string {
+function renderTeamCard(team: TeamNode, x: number, y: number, style: ResolvedNodeStyle): string {
   const id = escapeXml(team.id);
   const label = escapeXml(team.label ?? team.id);
   const hasChildren = team.members.length > 0 || team.teams.length > 0;
@@ -55,7 +50,9 @@ function renderTeamCard(
   const ownsText = team.properties.owns.length > 0 ? `owns: ${ownsList}${ownsMore}` : "";
 
   const countText = [
-    team.members.length > 0 ? `${team.members.length} member${team.members.length > 1 ? "s" : ""}` : "",
+    team.members.length > 0
+      ? `${team.members.length} member${team.members.length > 1 ? "s" : ""}`
+      : "",
     team.teams.length > 0 ? `${team.teams.length} sub-team${team.teams.length > 1 ? "s" : ""}` : "",
   ]
     .filter(Boolean)
@@ -63,30 +60,42 @@ function renderTeamCard(
 
   const parts: string[] = [
     el("rect", { width: CARD_WIDTH, height: CARD_HEIGHT, ...cardStyle(style) }),
-    el("text", {
-      x: CARD_WIDTH / 2,
-      y: HEADER_HEIGHT,
-      ...labelStyle(style),
-    }, label),
+    el(
+      "text",
+      {
+        x: CARD_WIDTH / 2,
+        y: HEADER_HEIGHT,
+        ...labelStyle(style),
+      },
+      label,
+    ),
   ];
 
   if (ownsText) {
     parts.push(
-      el("text", {
-        x: CARD_WIDTH / 2,
-        y: HEADER_HEIGHT + 22,
-        ...subLabelStyle(style),
-      }, escapeXml(ownsText)),
+      el(
+        "text",
+        {
+          x: CARD_WIDTH / 2,
+          y: HEADER_HEIGHT + 22,
+          ...subLabelStyle(style),
+        },
+        escapeXml(ownsText),
+      ),
     );
   }
 
   if (countText) {
     parts.push(
-      el("text", {
-        x: CARD_WIDTH / 2,
-        y: CARD_HEIGHT - 14,
-        ...subLabelStyle(style),
-      }, escapeXml(countText)),
+      el(
+        "text",
+        {
+          x: CARD_WIDTH / 2,
+          y: CARD_HEIGHT - 14,
+          ...subLabelStyle(style),
+        },
+        escapeXml(countText),
+      ),
     );
   }
 
@@ -111,50 +120,54 @@ function renderMemberCard(
   const id = escapeXml(member.id);
   const label = escapeXml(member.label ?? member.id);
 
-  const details = [member.properties.slack, member.properties.github]
-    .filter(Boolean)
-    .join(" · ");
+  const details = [member.properties.slack, member.properties.github].filter(Boolean).join(" · ");
 
   const parts: string[] = [
     el("rect", { width: CARD_WIDTH, height: CARD_HEIGHT, ...cardStyle(style) }),
-    el("text", {
-      x: CARD_WIDTH / 2,
-      y: HEADER_HEIGHT,
-      ...labelStyle(style),
-    }, label),
+    el(
+      "text",
+      {
+        x: CARD_WIDTH / 2,
+        y: HEADER_HEIGHT,
+        ...labelStyle(style),
+      },
+      label,
+    ),
   ];
 
   if (details) {
     parts.push(
-      el("text", {
-        x: CARD_WIDTH / 2,
-        y: HEADER_HEIGHT + 22,
-        ...subLabelStyle(style),
-      }, escapeXml(details)),
+      el(
+        "text",
+        {
+          x: CARD_WIDTH / 2,
+          y: HEADER_HEIGHT + 22,
+          ...subLabelStyle(style),
+        },
+        escapeXml(details),
+      ),
     );
   }
 
   if (member.properties.description) {
     const desc = member.properties.description.slice(0, 40);
     parts.push(
-      el("text", {
-        x: CARD_WIDTH / 2,
-        y: CARD_HEIGHT - 14,
-        ...subLabelStyle(style),
-      }, escapeXml(desc)),
+      el(
+        "text",
+        {
+          x: CARD_WIDTH / 2,
+          y: CARD_HEIGHT - 14,
+          ...subLabelStyle(style),
+        },
+        escapeXml(desc),
+      ),
     );
   }
 
-  return el(
-    "g",
-    { transform: `translate(${x},${y})`, "data-node-id": id },
-    ...parts,
-  );
+  return el("g", { transform: `translate(${x},${y})`, "data-node-id": id }, ...parts);
 }
 
-function gridLayout(
-  count: number,
-): { totalWidth: number; totalHeight: number } {
+function gridLayout(count: number): { totalWidth: number; totalHeight: number } {
   const cols = Math.min(count, CARDS_PER_ROW);
   const rows = Math.ceil(count / CARDS_PER_ROW);
   return {
@@ -189,13 +202,17 @@ export function renderOrgView(
         "svg",
         { xmlns: "http://www.w3.org/2000/svg", viewBox: "0 0 200 100" },
         el("rect", { width: 200, height: 100, fill: BG_COLOR }),
-        el("text", {
-          x: 100,
-          y: 50,
-          "text-anchor": "middle",
-          fill: "#9CA3AF",
-          "font-family": "sans-serif",
-        }, "No teams defined"),
+        el(
+          "text",
+          {
+            x: 100,
+            y: 50,
+            "text-anchor": "middle",
+            fill: "#9CA3AF",
+            "font-family": "sans-serif",
+          },
+          "No teams defined",
+        ),
       );
     }
 
@@ -224,8 +241,7 @@ export function renderOrgView(
     })),
     ...focused.teams.map((t) => ({
       id: t.id,
-      render: (x: number, y: number) =>
-        renderTeamCard(t, x, y, styleMap.get(t.id) ?? teamStyle),
+      render: (x: number, y: number) => renderTeamCard(t, x, y, styleMap.get(t.id) ?? teamStyle),
     })),
   ];
 
@@ -236,13 +252,17 @@ export function renderOrgView(
       "svg",
       { xmlns: "http://www.w3.org/2000/svg", viewBox: `0 0 ${totalWidth} ${totalHeight}` },
       el("rect", { width: totalWidth, height: totalHeight, fill: BG_COLOR }),
-      el("text", {
-        x: totalWidth / 2,
-        y: 50,
-        "text-anchor": "middle",
-        fill: "#9CA3AF",
-        "font-family": "sans-serif",
-      }, "No members"),
+      el(
+        "text",
+        {
+          x: totalWidth / 2,
+          y: 50,
+          "text-anchor": "middle",
+          fill: "#9CA3AF",
+          "font-family": "sans-serif",
+        },
+        "No members",
+      ),
     );
   }
 

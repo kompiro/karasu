@@ -1,4 +1,4 @@
-import type { OrganizationBlock, TeamNode, MemberNode } from "../types/ast.js";
+import type { OrganizationBlock, TeamNode } from "../types/ast.js";
 import type { StyleSheet, StyleRule, ResolvedNodeStyle, ShapeKind } from "../types/style.js";
 import { hasShape } from "../renderer/shape-registry.js";
 
@@ -29,7 +29,12 @@ function selectorMatchesOrgNode(node: OrgNodeDescriptor, selector: StyleRule["se
   if (selector.nodeType && selector.nodeType !== node.kind) return false;
   if (selector.tags.length > 0) return false; // org nodes have no tags
   if (selector.annotations.length > 0) return false; // org nodes have no annotations
-  if (!selector.nodeType && selector.tags.length === 0 && selector.annotations.length === 0 && !selector.id) {
+  if (
+    !selector.nodeType &&
+    selector.tags.length === 0 &&
+    selector.annotations.length === 0 &&
+    !selector.id
+  ) {
     return false;
   }
   return true;
@@ -42,7 +47,8 @@ function toResolvedNodeStyle(props: Record<string, string>): ResolvedNodeStyle {
   if (props["color"]) style.color = props["color"];
   if (props["border-color"]) style.borderColor = props["border-color"];
   if (props["border-width"]) style.borderWidth = parseFloat(props["border-width"]);
-  if (props["border-style"]) style.borderStyle = props["border-style"] as "solid" | "dashed" | "dotted";
+  if (props["border-style"])
+    style.borderStyle = props["border-style"] as "solid" | "dashed" | "dotted";
   if (props["border-radius"]) style.borderRadius = parseFloat(props["border-radius"]);
   if (props["font-size"]) style.fontSize = parseFloat(props["font-size"]);
   if (props["font-weight"]) style.fontWeight = props["font-weight"] as "normal" | "bold";

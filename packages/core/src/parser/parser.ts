@@ -584,9 +584,7 @@ export class Parser {
       } else if (token.type === TokenType.Team) {
         teams.push(this.parseTeamBlock());
       } else {
-        this.error(
-          `Unexpected token in organization block: ${token.type} ("${token.value}")`,
-        );
+        this.error(`Unexpected token in organization block: ${token.type} ("${token.value}")`);
         this.advance();
       }
     }

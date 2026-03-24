@@ -2,13 +2,23 @@ import { describe, it, expect } from "vitest";
 import { extractOrgView } from "./org-view-extract.js";
 import type { OrganizationBlock, TeamNode } from "../types/ast.js";
 
-const mockLoc = { start: { line: 0, column: 0, offset: 0 }, end: { line: 0, column: 0, offset: 0 } };
+const mockLoc = {
+  start: { line: 0, column: 0, offset: 0 },
+  end: { line: 0, column: 0, offset: 0 },
+};
 
-function makeTeam(id: string, opts: { members?: { id: string }[]; teams?: TeamNode[]; owns?: string[] } = {}): TeamNode {
+function makeTeam(
+  id: string,
+  opts: { members?: { id: string }[]; teams?: TeamNode[]; owns?: string[] } = {},
+): TeamNode {
   return {
     id,
     properties: { links: [], owns: opts.owns ?? [] },
-    members: (opts.members ?? []).map((m) => ({ id: m.id, properties: { links: [] }, loc: mockLoc })),
+    members: (opts.members ?? []).map((m) => ({
+      id: m.id,
+      properties: { links: [] },
+      loc: mockLoc,
+    })),
     teams: opts.teams ?? [],
     loc: mockLoc,
   };

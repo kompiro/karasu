@@ -114,13 +114,16 @@ export function MemoryModeApp() {
     setKrsSource(value);
   }, []);
 
-  const handleDrillDown = useCallback((newPath: string[]) => {
-    if (viewKind === "org") {
-      setOrgPath(newPath);
-    } else {
-      setViewPath(newPath);
-    }
-  }, [viewKind]);
+  const handleDrillDown = useCallback(
+    (newPath: string[]) => {
+      if (viewKind === "org") {
+        setOrgPath(newPath);
+      } else {
+        setViewPath(newPath);
+      }
+    },
+    [viewKind],
+  );
 
   const handleViewKindChange = useCallback((kind: ViewKind) => {
     setViewKind(kind);
@@ -134,9 +137,7 @@ export function MemoryModeApp() {
         const orgs = parseResult.value.organizations;
         if (orgs.length === 0) return [];
 
-        const items: { id: string; label: string }[] = [
-          { id: "__org__", label: "Org" },
-        ];
+        const items: { id: string; label: string }[] = [{ id: "__org__", label: "Org" }];
 
         let teams = orgs.flatMap((o) => o.teams);
         for (const segment of orgPath) {
