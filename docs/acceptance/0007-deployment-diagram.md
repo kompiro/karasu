@@ -10,9 +10,17 @@ system 図と行き来できることを確認する。
 以下の内容を `index.krs` に記述する:
 
 ```
-system "ECプラットフォーム" {
-  service ECommerce "ECサイト" "商品管理と注文処理"
-  service Payment   "決済サービス" "クレジットカード決済処理"
+system ECPlatform {
+  label "ECプラットフォーム"
+
+  service ECommerce {
+    label "ECサイト"
+    description "商品管理と注文処理"
+  }
+  service Payment {
+    label "決済サービス"
+    description "クレジットカード決済処理"
+  }
 
   ECommerce -> Payment "決済を処理する"
 }
@@ -90,7 +98,22 @@ deploy "本番環境" {
 ## AT-0007-05: Deploy タブなし（deploy ブロックなし）
 
 **手順**
-1. `deploy` ブロックを含まない `index.krs` を開く
+1. 以下の `deploy` ブロックを含まない `index.krs` を開く:
+
+```
+system ECPlatform {
+  label "ECプラットフォーム"
+
+  service ECommerce {
+    label "ECサイト"
+  }
+  service Payment {
+    label "決済サービス"
+  }
+
+  ECommerce -> Payment "決済を処理する"
+}
+```
 
 **期待結果**
 - 「Deploy」タブがグレーアウトして表示される
