@@ -4,7 +4,8 @@ export type WarningKind =
   | "domain-dispersal"
   | "style-conflict"
   | "missing-runtime"
-  | "missing-realizes";
+  | "missing-realizes"
+  | "invalid-owns";
 
 export interface Warning {
   kind: WarningKind;

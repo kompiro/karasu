@@ -18,6 +18,9 @@ export type {
   UsecaseNode,
   ResourceNode,
   UserNode,
+  OrganizationBlock,
+  TeamNode,
+  MemberNode,
 } from "./types/ast.js";
 
 export type {
@@ -34,6 +37,8 @@ export type { Warning, WarningKind } from "./types/warnings.js";
 
 export type { ViewPath, ViewSlice } from "./view/view-extract.js";
 export { extractView } from "./view/view-extract.js";
+export type { OrgViewPath, OrgViewSlice } from "./view/org-view-extract.js";
+export { extractOrgView } from "./view/org-view-extract.js";
 
 export { Parser } from "./parser/parser.js";
 export { StyleParser } from "./parser/style-parser.js";
@@ -50,6 +55,7 @@ export {
 } from "./builtins/reference.js";
 export { analyze } from "./resolver/warnings.js";
 export { render } from "./renderer/svg-renderer.js";
+export { renderOrgView } from "./renderer/org-renderer.js";
 export { el, escapeXml } from "./renderer/svg-builder.js";
 export {
   registerShape,
@@ -90,9 +96,12 @@ import type { FileSystemProvider } from "./fs/types.js";
 import { Parser } from "./parser/parser.js";
 import { StyleParser } from "./parser/style-parser.js";
 import { resolveStyles } from "./resolver/style-resolver.js";
+import { resolveOrgStyles, DEFAULT_ORG_NODE_STYLE } from "./resolver/org-styles.js";
 import { analyze } from "./resolver/warnings.js";
 import { render } from "./renderer/svg-renderer.js";
+import { renderOrgView as _renderOrgView } from "./renderer/org-renderer.js";
 import { extractView, type ViewPath } from "./view/view-extract.js";
+import { extractOrgView, type OrgViewPath } from "./view/org-view-extract.js";
 import { ImportResolver } from "./fs/import-resolver.js";
 import { getBuiltinStyleSheet, BUILTIN_STYLE_SOURCE } from "./builtins/default-style.js";
 import "./renderer/shapes.js"; // ensure built-in shapes are registered
@@ -197,4 +206,31 @@ function buildNodeMetadata(
   }
 
   return map;
+}
+
+export interface OrgCompileResult {
+  svg: string;
+  diagnostics: Diagnostic[];
+}
+
+export function compileOrgView(
+  krsSource: string,
+  styleSource?: string,
+  orgPath?: OrgViewPath,
+): OrgCompileResult {
+  const parseResult: ParseResult<KrsFile> = Parser.parse(krsSource);
+  const diagnostics = [...parseResult.diagnostics];
+
+  const sheets: StyleSheet[] = [getBuiltinStyleSheet()];
+  if (styleSource) {
+    const styleResult = StyleParser.parse(styleSource);
+    diagnostics.push(...styleResult.diagnostics);
+    sheets.push(styleResult.value);
+  }
+
+  const slice = extractOrgView(parseResult.value.organizations, orgPath ?? []);
+  const styleMap = resolveOrgStyles(parseResult.value.organizations, sheets);
+  const svg = _renderOrgView(slice, styleMap, DEFAULT_ORG_NODE_STYLE);
+
+  return { svg, diagnostics };
 }

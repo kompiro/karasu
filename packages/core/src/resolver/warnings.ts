@@ -1,4 +1,4 @@
-import type { KrsNode, KrsFile } from "../types/ast.js";
+import type { KrsNode, KrsFile, TeamNode } from "../types/ast.js";
 import type { StyleSheet } from "../types/style.js";
 import type { Warning } from "../types/warnings.js";
 
@@ -8,6 +8,7 @@ export function analyze(file: KrsFile, sheets: StyleSheet[]): Warning[] {
   warnings.push(...detectDomainDispersal(file));
   warnings.push(...detectStyleConflicts(sheets));
   warnings.push(...detectMissingProperties(file));
+  warnings.push(...detectInvalidOwns(file));
 
   return warnings;
 }
@@ -110,6 +111,51 @@ function detectMissingProperties(file: KrsFile): Warning[] {
         });
       }
     }
+  }
+
+  return warnings;
+}
+
+function detectInvalidOwns(file: KrsFile): Warning[] {
+  const warnings: Warning[] = [];
+
+  // Build the set of all valid service/domain IDs
+  const validIds = new Set<string>();
+  function collectIds(nodes: KrsNode[]): void {
+    for (const node of nodes) {
+      if (node.kind === "service" || node.kind === "domain") {
+        validIds.add(node.id);
+      }
+      collectIds(node.children);
+    }
+  }
+  for (const system of file.systems) {
+    collectIds(system.children);
+  }
+  for (const service of file.services) {
+    validIds.add(service.id);
+    collectIds(service.children);
+  }
+
+  // Check each owns reference
+  function checkTeams(teams: TeamNode[]): void {
+    for (const team of teams) {
+      for (const ownedId of team.properties.owns) {
+        if (!validIds.has(ownedId)) {
+          warnings.push({
+            kind: "invalid-owns",
+            message: `team "${team.id}" owns "${ownedId}" but no service or domain with that id exists`,
+            details: [],
+            loc: team.loc,
+          });
+        }
+      }
+      checkTeams(team.teams);
+    }
+  }
+
+  for (const org of file.organizations) {
+    checkTeams(org.teams);
   }
 
   return warnings;
