@@ -1,4 +1,4 @@
-import { useRef, useState, useCallback, type WheelEvent, type MouseEvent } from "react";
+import { useRef, useState, useCallback, useEffect, type WheelEvent, type MouseEvent } from "react";
 import type { Diagnostic, NodeMetadata } from "@karasu/core";
 import { NodeDetailPanel } from "./NodeDetailPanel.js";
 
@@ -8,6 +8,12 @@ interface PreviewPaneProps {
   viewPath: string[];
   nodeMetadata: Map<string, NodeMetadata>;
   onDrillDown: (newPath: string[]) => void;
+  /** Called when user clicks a deploy container to cross-navigate to system view */
+  onContainerClick?: (containerId: string) => void;
+  /** Node or container id to highlight after cross-navigation */
+  highlightedNodeId?: string | null;
+  /** Called when a node interaction clears the cross-navigation highlight */
+  onClearHighlight?: () => void;
 }
 
 interface DetailPanelState {
@@ -24,8 +30,12 @@ export function PreviewPane({
   viewPath,
   nodeMetadata,
   onDrillDown,
+  onContainerClick,
+  highlightedNodeId,
+  onClearHighlight,
 }: PreviewPaneProps) {
   const containerRef = useRef<HTMLDivElement>(null);
+  const svgRef = useRef<HTMLDivElement>(null);
   const [transform, setTransform] = useState({ scale: 1, x: 0, y: 0 });
   const [isDragging, setIsDragging] = useState(false);
   const [detailPanel, setDetailPanel] = useState<DetailPanelState | null>(null);
@@ -122,6 +132,16 @@ export function PreviewPane({
         return;
       }
 
+      // Check for container click (deploy diagram cross-navigation)
+      const containerGroup = target.closest("[data-container-id]");
+      if (containerGroup && onContainerClick) {
+        const containerId = containerGroup.getAttribute("data-container-id");
+        if (containerId && containerId !== "__unclassified__") {
+          onContainerClick(containerId);
+          return;
+        }
+      }
+
       // Check for node click
       const nodeGroup = target.closest("[data-node-id]");
       if (!nodeGroup) {
@@ -136,18 +156,39 @@ export function PreviewPane({
       if (hasChildren && nodeId) {
         // Drill down
         setDetailPanel(null);
+        onClearHighlight?.();
         onDrillDown([...viewPath, nodeId]);
       } else if (nodeId) {
         // Open detail panel for leaf nodes
+        onClearHighlight?.();
         openDetailPanel(nodeId, nodeGroup);
       }
     },
-    [isDragging, viewPath, onDrillDown, openDetailPanel],
+    [isDragging, viewPath, onDrillDown, openDetailPanel, onContainerClick, onClearHighlight],
   );
 
   const handleMouseLeave = useCallback(() => {
     setIsDragging(false);
   }, []);
+
+  // Apply highlight to the target node or container after SVG injection
+  useEffect(() => {
+    if (!svgRef.current) return;
+
+    // Clear previous highlights
+    const prev = svgRef.current.querySelectorAll(".karasu-highlighted");
+    prev.forEach((el) => el.classList.remove("karasu-highlighted"));
+
+    if (!highlightedNodeId) return;
+
+    // Try node first, then container
+    const target =
+      svgRef.current.querySelector(`[data-node-id="${CSS.escape(highlightedNodeId)}"]`) ??
+      svgRef.current.querySelector(`[data-container-id="${CSS.escape(highlightedNodeId)}"]`);
+    if (target) {
+      target.classList.add("karasu-highlighted");
+    }
+  }, [highlightedNodeId, svg]);
 
   const panelMetadata = detailPanel ? nodeMetadata.get(detailPanel.nodeId) : undefined;
 
@@ -168,6 +209,7 @@ export function PreviewPane({
             transform: `translate(${transform.x}px, ${transform.y}px) scale(${transform.scale})`,
             transformOrigin: "center center",
           }}
+          ref={svgRef}
           dangerouslySetInnerHTML={{ __html: svg }}
         />
         {detailPanel && panelMetadata && (
