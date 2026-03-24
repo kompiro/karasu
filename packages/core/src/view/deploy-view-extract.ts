@@ -80,7 +80,8 @@ export function extractDeployView(deploys: DeployBlock[], systems: SystemNode[])
     });
   }
 
-  // Build ghost edges from system-level edges between realized services
+  // Build ghost edges from system-level edges between realized services.
+  // Only top-level system.edges are considered; edges nested inside service children are not.
   const realizesTargets = new Set(groupedByRealizes.keys());
   const ghostEdges: DeployGhostEdge[] = [];
 
