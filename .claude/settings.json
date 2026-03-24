@@ -43,18 +43,6 @@
         ]
       }
     ],
-    "PreToolUse": [
-      {
-        "matcher": "Bash",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "CMD=$(jq -r '.tool_input.command'); echo \"$CMD\" | head -1 | grep -qE '(^git[[:space:]]|^git[[:space:]]+-C[[:space:]]+[^[:space:]]+[[:space:]]+)push' || exit 0; DIR=$(echo \"$CMD\" | grep -oP '(?<=-C )\\S+' | head -1); [ -z \"$DIR\" ] && DIR=/workspaces/karasu; cd \"$DIR\" && npm run format:check 2>&1 && exit 0; echo '{\"hookSpecificOutput\":{\"hookEventName\":\"PreToolUse\",\"permissionDecision\":\"deny\",\"permissionDecisionReason\":\"Format check failed. Run: npm run format\"}}'",
-            "statusMessage": "Checking format before push..."
-          }
-        ]
-      }
-    ],
     "PostToolUse": [
       {
         "matcher": "Edit|Write",

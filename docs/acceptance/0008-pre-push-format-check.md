@@ -1,15 +1,14 @@
-# AT-0008: Pre-push Format Check Hook (Claude Code)
+# AT-0008: Pre-push Checks (lefthook)
 
 ## Overview
 
-Verify that the Claude Code `PreToolUse` hook correctly blocks `git push`
-when formatting violations exist, and allows push when all files pass
-`oxfmt --check`.
+Verify that the lefthook `pre-push` hook correctly runs format check, lint,
+and type check in parallel before pushing, blocking the push if any check fails.
 
 ## Prerequisites
 
-- Claude Code session is active (hook fires via Claude Code, not bare git)
-- `.claude/settings.json` contains the `PreToolUse` / `Bash` hook
+- `npm install` has been run (lefthook is installed)
+- `lefthook install` has been run to register git hooks
 
 ## Test Items
 
@@ -18,26 +17,48 @@ when formatting violations exist, and allows push when all files pass
 **Steps:**
 1. Introduce a deliberate formatting violation in any `.ts` file under `packages/`
 2. Stage and commit the change
-3. Ask Claude to push the branch
+3. Run `git push`
 
-**Expected:** Push is blocked before execution with the message:
-`Format check failed. Run: npm run format`
-
----
-
-### AT-0008-02: Push succeeds when all files are correctly formatted
-
-**Steps:**
-1. Ensure `npm run format:check` passes locally
-2. Ask Claude to push the branch
-
-**Expected:** Push proceeds normally; no hook error is shown
+**Expected:** Push is blocked with a format check failure message
 
 ---
 
-### AT-0008-03: Non-push Bash commands are not affected
+### AT-0008-02: Push is blocked when lint errors exist
 
 **Steps:**
-1. Ask Claude to run a Bash command that is not `git push` (e.g., `npm run build`)
+1. Introduce a lint error (e.g., unused variable) in any `.ts` file under `packages/`
+2. Stage and commit the change
+3. Run `git push`
 
-**Expected:** The hook exits silently without running `format:check`
+**Expected:** Push is blocked with a lint failure message
+
+---
+
+### AT-0008-03: Push is blocked when type errors exist
+
+**Steps:**
+1. Introduce a type error in any `.ts` file under `packages/`
+2. Stage and commit the change
+3. Run `git push`
+
+**Expected:** Push is blocked with a type check failure message
+
+---
+
+### AT-0008-04: Push succeeds when all checks pass
+
+**Steps:**
+1. Ensure `npm run format:check`, `npm run lint`, and `npm run typecheck` all pass
+2. Run `git push`
+
+**Expected:** Push proceeds normally; all checks show ✔️ in lefthook output
+
+---
+
+### AT-0008-05: Checks run in parallel
+
+**Steps:**
+1. Run `npx lefthook run pre-push --force`
+
+**Expected:** format, lint, and typecheck commands start simultaneously and
+the summary shows individual elapsed times (typecheck takes longest at ~2s)
