@@ -35,6 +35,7 @@ export enum TokenType {
   Type = "Type",
 
   // Properties (logical)
+  Label = "Label",
   Role = "Role",
   Description = "Description",
   Team = "Team",

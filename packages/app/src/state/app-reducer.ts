@@ -1,4 +1,4 @@
-import type { Project, DirEntry } from "@karasu/core";
+import type { Project, DirEntry, DiagramType } from "@karasu/core";
 
 export interface AppState {
   // プロジェクト管理
@@ -10,6 +10,9 @@ export interface AppState {
   fileTree: DirEntry[];
   // ビュー
   viewPath: string[];
+  diagramType: DiagramType;
+  // クロスナビゲーション
+  highlightedNodeId: string | null;
   // UI
   loading: boolean;
 }
@@ -21,6 +24,8 @@ export const initialState: AppState = {
   fileContent: "",
   fileTree: [],
   viewPath: [],
+  diagramType: "system",
+  highlightedNodeId: null,
   loading: true,
 };
 
@@ -31,6 +36,8 @@ export type AppAction =
   | { type: "UPDATE_FILE_CONTENT"; content: string }
   | { type: "SET_FILE_TREE"; tree: DirEntry[] }
   | { type: "SET_VIEW_PATH"; path: string[] }
+  | { type: "SET_DIAGRAM_TYPE"; diagramType: DiagramType }
+  | { type: "SET_HIGHLIGHTED_NODE"; nodeId: string | null }
   | { type: "SET_LOADING"; loading: boolean }
   | { type: "ADD_PROJECT"; project: Project }
   | { type: "REMOVE_PROJECT"; id: string }
@@ -49,6 +56,8 @@ export function appReducer(state: AppState, action: AppAction): AppState {
         fileContent: "",
         fileTree: [],
         viewPath: [],
+        diagramType: "system",
+        highlightedNodeId: null,
       };
 
     case "SELECT_FILE":
@@ -57,6 +66,8 @@ export function appReducer(state: AppState, action: AppAction): AppState {
         currentFilePath: action.path,
         fileContent: action.content,
         viewPath: [],
+        diagramType: "system",
+        highlightedNodeId: null,
       };
 
     case "UPDATE_FILE_CONTENT":
@@ -67,6 +78,17 @@ export function appReducer(state: AppState, action: AppAction): AppState {
 
     case "SET_VIEW_PATH":
       return { ...state, viewPath: action.path };
+
+    case "SET_DIAGRAM_TYPE":
+      return {
+        ...state,
+        diagramType: action.diagramType,
+        viewPath: [],
+        highlightedNodeId: null,
+      };
+
+    case "SET_HIGHLIGHTED_NODE":
+      return { ...state, highlightedNodeId: action.nodeId };
 
     case "SET_LOADING":
       return { ...state, loading: action.loading };

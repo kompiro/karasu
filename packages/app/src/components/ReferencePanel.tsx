@@ -114,7 +114,18 @@ A --> B "label"   // async (dashed arrow)`}
 
       <h3>Node Declaration</h3>
       <div className="reference-code-block">
-        <pre>{`<kind> <id> "<label>" "<description>" [<tags>] @<annotations>`}</pre>
+        <pre>{`// minimal (id only)
+<kind> <id>
+
+// with tags and annotations
+<kind> <id> [<tags>] @<annotations>
+
+// with block (properties and/or children)
+<kind> <id> [<tags>] @<annotations> {
+  label "<表示名>"        // display name; id used if omitted
+  description "<説明>"    // free-form description
+  // kind-specific properties (team, role, link, …)
+}`}</pre>
       </div>
     </div>
   );

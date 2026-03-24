@@ -76,19 +76,9 @@ describe("Lexer", () => {
   });
 
   it("tokenizes logical property keywords", () => {
-    const types = tokenTypes("description team link role");
+    const types = tokenTypes("label description team link role");
     expect(types).toEqual([
-      TokenType.Description,
-      TokenType.Team,
-      TokenType.Link,
-      TokenType.Role,
-      TokenType.EOF,
-    ]);
-  });
-
-  it("tokenizes logical property keywords", () => {
-    const types = tokenTypes("description team link role");
-    expect(types).toEqual([
+      TokenType.Label,
       TokenType.Description,
       TokenType.Team,
       TokenType.Link,

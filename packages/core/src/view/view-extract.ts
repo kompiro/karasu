@@ -16,7 +16,7 @@ export interface ViewSlice {
 }
 
 function nodeId(node: KrsNode): string {
-  return node.id ?? node.label;
+  return node.id;
 }
 
 export function extractView(systems: KrsNode[], path: ViewPath): ViewSlice {

@@ -15,14 +15,14 @@ describe("ImportResolver", () => {
     it("resolves a single krs file", async () => {
       await fs.writeFile(
         "/project/index.krs",
-        `system "Test" {
-          service Svc "Service"
+        `system Test {
+          service Svc
         }`,
       );
 
       const result = await resolver.resolve("/project/index.krs");
       expect(result.krsFile.systems).toHaveLength(1);
-      expect(result.krsFile.systems[0].label).toBe("Test");
+      expect(result.krsFile.systems[0].id).toBe("Test");
       expect(result.diagnostics.filter((d) => d.severity === "error")).toHaveLength(0);
     });
 
@@ -42,8 +42,8 @@ describe("ImportResolver", () => {
       await fs.writeFile(
         "/project/index.krs",
         `@import "default.krs.style"
-system "Test" {
-  service Svc "Service"
+system Test {
+  service Svc
 }`,
       );
       await fs.writeFile(
@@ -64,8 +64,8 @@ system "Test" {
       await fs.writeFile(
         "/project/index.krs",
         `@import "missing.krs.style"
-system "Test" {
-  service Svc "Service"
+system Test {
+  service Svc
 }`,
       );
 
@@ -84,14 +84,14 @@ system "Test" {
       await fs.writeFile(
         "/project/index.krs",
         `import { Payment } from "services/payment.krs"
-system "EC" {
-  service ECommerce "EC"
+system EC {
+  service ECommerce
 }`,
       );
       await fs.writeFile(
         "/project/services/payment.krs",
-        `system "EC" {
-  service Payment "Payment" [external]
+        `system EC {
+  service Payment [external]
 }`,
       );
 
@@ -99,7 +99,7 @@ system "EC" {
       expect(result.diagnostics.filter((d) => d.severity === "error")).toHaveLength(0);
 
       // EC system should have both ECommerce and Payment
-      const ecSystem = result.krsFile.systems.find((s) => s.label === "EC");
+      const ecSystem = result.krsFile.systems.find((s) => s.id === "EC");
       expect(ecSystem).toBeDefined();
       const childIds = ecSystem!.children.map((c) => c.id);
       expect(childIds).toContain("ECommerce");
@@ -110,14 +110,14 @@ system "EC" {
       await fs.writeFile(
         "/project/index.krs",
         `import { NonExistent } from "other.krs"
-system "Test" {
-  service Svc "Service"
+system Test {
+  service Svc
 }`,
       );
       await fs.writeFile(
         "/project/other.krs",
-        `system "Test" {
-  service Actual "Actual"
+        `system Test {
+  service Actual
 }`,
       );
 
@@ -134,8 +134,8 @@ system "Test" {
       await fs.writeFile(
         "/project/index.krs",
         `import { X } from "missing.krs"
-system "Test" {
-  service Svc "Service"
+system Test {
+  service Svc
 }`,
       );
 
@@ -154,28 +154,28 @@ system "Test" {
       await fs.writeFile(
         "/project/a.krs",
         `import { Svc2, Svc3 } from "b.krs"
-system "Chain" {
-  service Svc1 "Service1"
+system Chain {
+  service Svc1
 }`,
       );
       await fs.writeFile(
         "/project/b.krs",
         `import { Svc3 } from "c.krs"
-system "Chain" {
-  service Svc2 "Service2"
+system Chain {
+  service Svc2
 }`,
       );
       await fs.writeFile(
         "/project/c.krs",
-        `system "Chain" {
-  service Svc3 "Service3"
+        `system Chain {
+  service Svc3
 }`,
       );
 
       const result = await resolver.resolve("/project/a.krs");
       expect(result.diagnostics.filter((d) => d.severity === "error")).toHaveLength(0);
 
-      const chainSystem = result.krsFile.systems.find((s) => s.label === "Chain");
+      const chainSystem = result.krsFile.systems.find((s) => s.id === "Chain");
       expect(chainSystem).toBeDefined();
       const childIds = chainSystem!.children.map((c) => c.id);
       expect(childIds).toContain("Svc1");
@@ -189,15 +189,15 @@ system "Chain" {
       await fs.writeFile(
         "/project/a.krs",
         `import { Y } from "b.krs"
-system "Circular" {
-  service X "X"
+system Circular {
+  service X
 }`,
       );
       await fs.writeFile(
         "/project/b.krs",
         `import { X } from "a.krs"
-system "Circular" {
-  service Y "Y"
+system Circular {
+  service Y
 }`,
       );
 
@@ -217,8 +217,8 @@ system "Circular" {
         "/project/index.krs",
         `@import "a.krs.style"
 @import "a.krs.style"
-system "Test" {
-  service Svc "Service"
+system Test {
+  service Svc
 }`,
       );
       await fs.writeFile("/project/a.krs.style", `user { background-color: #000; }`);
@@ -239,20 +239,20 @@ system "Test" {
       await fs.writeFile(
         "/project/index.krs",
         `import { Payment } from "payment.krs"
-system "EC" {
-  service ECommerce "EC"
+system EC {
+  service ECommerce
   ECommerce -> Payment "pay"
 }`,
       );
       await fs.writeFile(
         "/project/payment.krs",
-        `system "EC" {
-  service Payment "Payment" [external]
+        `system EC {
+  service Payment [external]
 }`,
       );
 
       const result = await resolver.resolve("/project/index.krs");
-      const ecSystem = result.krsFile.systems.find((s) => s.label === "EC");
+      const ecSystem = result.krsFile.systems.find((s) => s.id === "EC");
       expect(ecSystem).toBeDefined();
 
       // Payment should be merged into the system

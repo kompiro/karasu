@@ -21,6 +21,7 @@ const KEYWORDS: Record<string, TokenType> = {
   schedule: TokenType.Schedule,
   image: TokenType.Image,
   type: TokenType.Type,
+  label: TokenType.Label,
   role: TokenType.Role,
   description: TokenType.Description,
   team: TokenType.Team,

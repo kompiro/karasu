@@ -12,7 +12,6 @@ import type {
   ParseResult,
   LogicalNodeKind,
   DeployNodeKind,
-  SystemNode,
   ServiceNode,
   CommonProperties,
 } from "../types/ast.js";
@@ -194,39 +193,29 @@ export class Parser {
     };
   }
 
-  private parseSystemBlock(): SystemNode {
-    const start = this.advance(); // system
-    const label = this.expect(TokenType.StringLiteral);
-    this.expect(TokenType.LeftBrace);
-
-    const children: KrsNode[] = [];
-    const edges: KrsEdge[] = [];
-    const properties: CommonProperties = { links: [] };
-
-    this.parseBlockContentsWithProperties(children, edges, "system", properties);
-
-    const end = this.expect(TokenType.RightBrace);
-
-    return {
-      kind: "system",
-      label: label.value,
-      tags: [],
-      annotations: [],
-      children,
-      edges,
-      properties,
-      loc: this.range(start.loc, end.loc),
-    };
+  private parseSystemBlock(): import("../types/ast.js").SystemNode {
+    return this.parseNodeDecl() as import("../types/ast.js").SystemNode;
   }
 
   private parseBlockContentsWithProperties(
     children: KrsNode[],
     edges: KrsEdge[],
     kind: LogicalNodeKind,
-    properties: CommonProperties & { role?: string; team?: string },
+    properties: CommonProperties & { role?: string; team?: string; label?: string },
   ): void {
     while (this.peek().type !== TokenType.RightBrace && this.peek().type !== TokenType.EOF) {
       const token = this.peek();
+
+      // Property: label
+      if (token.type === TokenType.Label) {
+        this.advance();
+        if (this.peek().type === TokenType.StringLiteral) {
+          properties.label = this.advance().value;
+        } else {
+          this.error('Expected string literal after "label"');
+        }
+        continue;
+      }
 
       // Property: description
       if (token.type === TokenType.Description) {
@@ -337,34 +326,16 @@ export class Parser {
     const start = this.advance(); // keyword
     const kind = start.value as LogicalNodeKind;
 
-    let id: string | undefined;
-    let label = "";
-    let lastConsumed = start;
-
-    // After keyword, we may have: Identifier StringLiteral or just StringLiteral
-    if (this.peek().type === TokenType.Identifier) {
-      lastConsumed = this.advance();
-      id = lastConsumed.value;
-      if (this.peek().type === TokenType.StringLiteral) {
-        lastConsumed = this.advance();
-        label = lastConsumed.value;
-      }
-    } else if (this.peek().type === TokenType.StringLiteral) {
-      lastConsumed = this.advance();
-      label = lastConsumed.value;
-    }
-
-    // Detect deprecated positional description and emit error
-    if (this.peek().type === TokenType.StringLiteral) {
-      this.diagnostics.push({
-        severity: "error",
-        message:
-          `位置引数の description は廃止されました。description プロパティを使用してください: ` +
-          `${kind}${id ? " " + id : ""} "${label}" { description "..." }`,
-        loc: this.range(this.peek().loc),
-      });
-      // Consume the positional description to continue parsing
-      this.advance();
+    // id is now required
+    let id: string;
+    let idToken: Token;
+    if (this.peek().type !== TokenType.Identifier) {
+      this.error(`Expected identifier (id) after "${kind}"`);
+      id = "__missing_id";
+      idToken = start; // fallback location
+    } else {
+      idToken = this.advance();
+      id = idToken.value;
     }
 
     // Optional tags
@@ -373,15 +344,15 @@ export class Parser {
     // Optional annotations
     const annotations = this.parseAnnotations();
 
-    // Properties
-    const properties: CommonProperties & { role?: string; team?: string } = {
+    // Properties (label is now a property inside the block)
+    const properties: CommonProperties & { role?: string; team?: string; label?: string } = {
       links: [],
     };
 
     // Optional body
     const children: KrsNode[] = [];
     const edges: KrsEdge[] = [];
-    let end = lastConsumed;
+    let end = idToken;
 
     if (this.peek().type === TokenType.LeftBrace) {
       this.advance();
@@ -391,7 +362,7 @@ export class Parser {
 
     const base = {
       id,
-      label,
+      label: properties.label,
       tags,
       annotations,
       children,
