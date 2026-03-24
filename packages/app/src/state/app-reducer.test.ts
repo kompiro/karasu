@@ -2,7 +2,13 @@ import { describe, it, expect } from "vitest";
 import { appReducer, initialState } from "./app-reducer.js";
 import type { AppState } from "./app-reducer.js";
 
-const PROJECT = { id: "p1", name: "Project", rootPath: "/projects/p1" };
+const PROJECT = {
+  id: "p1",
+  name: "Project",
+  rootPath: "/projects/p1",
+  createdAt: "2026-01-01T00:00:00Z",
+  updatedAt: "2026-01-01T00:00:00Z",
+};
 
 function stateWith(overrides: Partial<AppState>): AppState {
   return { ...initialState, ...overrides };
