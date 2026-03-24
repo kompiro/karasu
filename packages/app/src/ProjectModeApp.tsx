@@ -263,7 +263,7 @@ export function ProjectModeApp() {
           viewPath={viewPath}
           nodeMetadata={nodeMetadata}
           onDrillDown={handleDrillDown}
-          onContainerClick={handleContainerClick}
+          onContainerClick={diagramType === "deploy" ? handleContainerClick : undefined}
           highlightedNodeId={highlightedNodeId}
         />
       </div>
