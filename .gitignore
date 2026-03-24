@@ -4,3 +4,6 @@ dist/
 *.local
 .claude/worktrees/
 coverage/
+
+# QA checklists (generated, not committed)
+docs/qa/
