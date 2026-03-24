@@ -586,6 +586,22 @@ body,
   color: #e2e8f0;
 }
 
+.toolbar-btn.active {
+  background: #0369a1;
+  color: #e0f2fe;
+  border-color: #0284c7;
+}
+
+.view-kind-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px;
+  background: #1e293b;
+  border-bottom: 1px solid #334155;
+  flex-shrink: 0;
+}
+
 /* ===== Reference Panel ===== */
 
 .reference-panel-overlay {
