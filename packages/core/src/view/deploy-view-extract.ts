@@ -65,8 +65,8 @@ export function extractDeployView(deploys: DeployBlock[], systems: SystemNode[])
   const serviceLabelMap = new Map<string, string>();
   for (const system of systems) {
     for (const child of system.children) {
-      const id = child.id ?? child.label;
-      serviceLabelMap.set(id, child.label);
+      const id = child.id;
+      serviceLabelMap.set(id, child.label ?? child.id);
     }
   }
 

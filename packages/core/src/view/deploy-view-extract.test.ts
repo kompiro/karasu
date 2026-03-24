@@ -7,6 +7,7 @@ const LOC = { start: { line: 1, column: 0, offset: 0 }, end: { line: 1, column: 
 function makeSystem(edges: { from: string; to: string; label?: string }[] = []): SystemNode {
   return {
     kind: "system",
+    id: "EC",
     label: "EC",
     tags: [],
     annotations: [],
