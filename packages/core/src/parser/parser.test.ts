@@ -53,7 +53,7 @@ system MySystem {
   });
 
   it("errors when id is missing", () => {
-    const result = Parser.parse('system { }');
+    const result = Parser.parse("system { }");
     expect(result.diagnostics.length).toBeGreaterThan(0);
   });
 

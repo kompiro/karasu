@@ -327,11 +327,16 @@ export class Parser {
     const kind = start.value as LogicalNodeKind;
 
     // id is now required
+    let id: string;
+    let idToken: Token;
     if (this.peek().type !== TokenType.Identifier) {
       this.error(`Expected identifier (id) after "${kind}"`);
+      id = "__missing_id";
+      idToken = start; // fallback location
+    } else {
+      idToken = this.advance();
+      id = idToken.value;
     }
-    const idToken = this.advance();
-    const id = idToken.value;
 
     // Optional tags
     const tags = this.parseTags();

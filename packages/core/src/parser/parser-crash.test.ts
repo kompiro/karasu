@@ -2,6 +2,25 @@ import { describe, it, expect } from "vitest";
 import { Parser } from "./parser.js";
 import { compile, compileProject, InMemoryFileSystemProvider } from "../index.js";
 
+describe("Missing id - Parser", () => {
+  it("should not crash on 'system { }'", () => {
+    const result = Parser.parse("system { }");
+    expect(() => Parser.parse("system { }")).not.toThrow();
+    expect(result.diagnostics.length).toBeGreaterThan(0);
+    expect(result.diagnostics[0].message).toContain("Expected identifier");
+  });
+
+  it("should not crash on 'service { }'", () => {
+    expect(() => Parser.parse("system S { service { } }")).not.toThrow();
+  });
+
+  it("still parses subsequent nodes after missing id", () => {
+    const result = Parser.parse("system { }\nsystem Valid {}");
+    expect(result.diagnostics.length).toBeGreaterThan(0);
+    expect(result.value.systems.some((s) => s.id === "Valid")).toBe(true);
+  });
+});
+
 describe("Incomplete import - Parser", () => {
   it("should not crash on 'import'", () => {
     expect(() => Parser.parse("import")).not.toThrow();

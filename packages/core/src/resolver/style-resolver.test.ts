@@ -272,7 +272,7 @@ describe("analyze", () => {
       systems: [
         makeNode({
           kind: "system",
-          label: "Test",
+          id: "Test",
           children: [
             makeNode({
               kind: "service",
