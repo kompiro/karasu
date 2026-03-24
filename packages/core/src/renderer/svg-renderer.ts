@@ -164,7 +164,7 @@ function renderContainer(
       y: container.y,
       width: container.width,
       height: container.height,
-      fill: "none",
+      fill: "transparent",
       stroke: style.borderColor,
       "stroke-width": style.borderWidth,
       "stroke-dasharray": ghost ? "8 4" : undefined,
