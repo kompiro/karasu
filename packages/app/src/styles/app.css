@@ -122,6 +122,58 @@ body,
   color: #64748b;
 }
 
+/* Diagram tab bar */
+.diagram-tab-bar {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 4px 8px;
+  background: #1e293b;
+  border-bottom: 1px solid #334155;
+  flex-shrink: 0;
+}
+
+.diagram-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 12px;
+  border: none;
+  border-radius: 4px;
+  background: transparent;
+  color: #94a3b8;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition:
+    background 0.15s,
+    color 0.15s;
+}
+
+.diagram-tab:hover:not(.diagram-tab--disabled) {
+  background: #334155;
+  color: #e2e8f0;
+}
+
+.diagram-tab--active {
+  background: #334155;
+  color: #e2e8f0;
+}
+
+.diagram-tab--disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.diagram-tab-icon {
+  font-size: 10px;
+}
+
+/* Cross-navigation highlight */
+.karasu-highlighted {
+  filter: drop-shadow(0 0 6px #f59e0b) drop-shadow(0 0 12px #f59e0b44);
+}
+
 /* Breadcrumb */
 .breadcrumb {
   display: flex;
