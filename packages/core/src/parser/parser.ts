@@ -564,6 +564,10 @@ export class Parser {
   private parseOrganizationBlock(): OrganizationBlock {
     const start = this.advance(); // organization
     const idToken = this.expect(TokenType.Identifier);
+    let label: string | undefined;
+    if (this.peek().type === TokenType.StringLiteral) {
+      label = this.advance().value;
+    }
     this.expect(TokenType.LeftBrace);
 
     const properties: CommonProperties = { links: [] };
@@ -595,6 +599,7 @@ export class Parser {
 
     return {
       id: idToken.value,
+      label,
       properties,
       teams,
       loc: this.range(start.loc, end.loc),
@@ -604,6 +609,10 @@ export class Parser {
   private parseTeamBlock(): TeamNode {
     const start = this.advance(); // team
     const idToken = this.expect(TokenType.Identifier);
+    let label: string | undefined;
+    if (this.peek().type === TokenType.StringLiteral) {
+      label = this.advance().value;
+    }
     this.expect(TokenType.LeftBrace);
 
     const properties: CommonProperties & { owns: string[] } = { links: [], owns: [] };
@@ -639,6 +648,7 @@ export class Parser {
 
     return {
       id: idToken.value,
+      label,
       properties,
       members,
       teams,
@@ -649,6 +659,10 @@ export class Parser {
   private parseMemberBlock(): MemberNode {
     const start = this.advance(); // member
     const idToken = this.expect(TokenType.Identifier);
+    let label: string | undefined;
+    if (this.peek().type === TokenType.StringLiteral) {
+      label = this.advance().value;
+    }
     this.expect(TokenType.LeftBrace);
 
     const properties: CommonProperties & { slack?: string; github?: string } = { links: [] };
@@ -685,6 +699,7 @@ export class Parser {
 
     return {
       id: idToken.value,
+      label,
       properties,
       loc: this.range(start.loc, end.loc),
     };
