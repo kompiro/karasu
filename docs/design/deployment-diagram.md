@@ -103,7 +103,7 @@ deploy ブロックが存在しない場合は `Deploy` タブをグレーアウ
 
 ## 将来スコープ（今回対象外）
 
-- インフラ構成図（prod/staging 環境差異、クラスタ、リージョンのトポロジー）— 新しい図種として別途設計
-- System 図からのクリックジャンプ（ドリルダウンとの競合を解決してから）
-- deploy ノードのスタイルシステム統合（現在はハードコードのカラー）
-- 複数の deploy ブロック対応（現在は最初のブロックのみ使用）
+- [#28](https://github.com/kompiro/karasu/issues/28) インフラ構成図（prod/staging 環境差異、クラスタ、リージョンのトポロジー）— 新しい図種として別途設計
+- [#29](https://github.com/kompiro/karasu/issues/29) System 図からのクリックジャンプ（ドリルダウンとの競合を解決してから）
+- [#30](https://github.com/kompiro/karasu/issues/30) deploy ノードのスタイルシステム統合（現在はハードコードのカラー）
+- [#31](https://github.com/kompiro/karasu/issues/31) 複数の deploy ブロック対応（現在は最初のブロックのみ使用）
