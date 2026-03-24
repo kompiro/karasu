@@ -90,6 +90,37 @@ export interface KrsEdge {
   loc: SourceRange;
 }
 
+// ─── 組織図 ────────────────────────────────────────
+
+export interface MemberNode {
+  id: string;
+  label?: string;
+  properties: CommonProperties & {
+    slack?: string;
+    github?: string;
+  };
+  loc: SourceRange;
+}
+
+export interface TeamNode {
+  id: string;
+  label?: string;
+  properties: CommonProperties & {
+    owns: string[];
+  };
+  members: MemberNode[];
+  teams: TeamNode[];
+  loc: SourceRange;
+}
+
+export interface OrganizationBlock {
+  id: string;
+  label?: string;
+  properties: CommonProperties;
+  teams: TeamNode[];
+  loc: SourceRange;
+}
+
 // ─── 物理図（変更なし） ────────────────────────────
 
 export interface DeployNodeProperties {
@@ -127,6 +158,8 @@ export interface KrsFile {
   systems: SystemNode[];
   services: ServiceNode[];
   deploys: DeployBlock[];
+  organizations: OrganizationBlock[];
+  ownerIndex: Map<string, string>;
 }
 
 // ─── Diagnostics ───────────────────────────────────

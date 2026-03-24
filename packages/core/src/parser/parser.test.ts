@@ -299,7 +299,7 @@ system Test {
     expect(user.tags).toEqual(["human"]);
   });
 
-  it("parses team property on service", () => {
+  it("parses team property on service (deprecated)", () => {
     const result = Parser.parse(`
 system Test {
   service ECommerce {
@@ -307,7 +307,9 @@ system Test {
   }
 }
     `);
-    expect(result.diagnostics).toHaveLength(0);
+    expect(result.diagnostics).toHaveLength(1);
+    expect(result.diagnostics[0].severity).toBe("warning");
+    expect(result.diagnostics[0].message).toContain("deprecated");
     const service = result.value.systems[0].children[0] as ServiceNode;
     expect(service.kind).toBe("service");
     expect(service.properties.team).toBe("EC開発チーム");
@@ -438,7 +440,7 @@ system Test {
     expect(service.properties.description).toContain("## 責務");
   });
 
-  it("parses top-level service", () => {
+  it("parses top-level service with deprecated team property", () => {
     const result = Parser.parse(`
 service Monitoring {
   label "監視サービス"
@@ -446,7 +448,9 @@ service Monitoring {
   team "SRE チーム"
 }
     `);
-    expect(result.diagnostics).toHaveLength(0);
+    expect(result.diagnostics).toHaveLength(1);
+    expect(result.diagnostics[0].severity).toBe("warning");
+    expect(result.diagnostics[0].message).toContain("deprecated");
     expect(result.value.services).toHaveLength(1);
     const service = result.value.services[0];
     expect(service.kind).toBe("service");
@@ -470,7 +474,9 @@ system Test {
   }
 }
     `);
-    expect(result.diagnostics).toHaveLength(0);
+    // team emits a deprecation warning
+    expect(result.diagnostics).toHaveLength(1);
+    expect(result.diagnostics[0].severity).toBe("warning");
     const service = result.value.systems[0].children[0] as ServiceNode;
     expect(service.properties.description).toBe("商品管理");
     expect(service.properties.team).toBe("ECチーム");
