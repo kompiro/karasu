@@ -12,6 +12,8 @@ interface PreviewPaneProps {
   onContainerClick?: (containerId: string) => void;
   /** Node or container id to highlight after cross-navigation */
   highlightedNodeId?: string | null;
+  /** Called when a node interaction clears the cross-navigation highlight */
+  onClearHighlight?: () => void;
 }
 
 interface DetailPanelState {
@@ -30,6 +32,7 @@ export function PreviewPane({
   onDrillDown,
   onContainerClick,
   highlightedNodeId,
+  onClearHighlight,
 }: PreviewPaneProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const svgRef = useRef<HTMLDivElement>(null);
@@ -153,13 +156,15 @@ export function PreviewPane({
       if (hasChildren && nodeId) {
         // Drill down
         setDetailPanel(null);
+        onClearHighlight?.();
         onDrillDown([...viewPath, nodeId]);
       } else if (nodeId) {
         // Open detail panel for leaf nodes
+        onClearHighlight?.();
         openDetailPanel(nodeId, nodeGroup);
       }
     },
-    [isDragging, viewPath, onDrillDown, openDetailPanel, onContainerClick],
+    [isDragging, viewPath, onDrillDown, openDetailPanel, onContainerClick, onClearHighlight],
   );
 
   const handleMouseLeave = useCallback(() => {

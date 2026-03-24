@@ -265,6 +265,7 @@ export function ProjectModeApp() {
           onDrillDown={handleDrillDown}
           onContainerClick={diagramType === "deploy" ? handleContainerClick : undefined}
           highlightedNodeId={highlightedNodeId}
+          onClearHighlight={() => dispatch({ type: "SET_HIGHLIGHTED_NODE", nodeId: null })}
         />
       </div>
       <WarningPanel warnings={warnings} />
