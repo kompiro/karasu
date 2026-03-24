@@ -11,7 +11,7 @@ const dummyLoc: SourceRange = {
   end: { line: 1, column: 1, offset: 0 },
 };
 
-function makeNode(overrides: Partial<KrsNode> & { kind: KrsNode["kind"]; label: string }): KrsNode {
+function makeNode(overrides: Partial<KrsNode> & { kind: KrsNode["kind"]; id: string }): KrsNode {
   const base = {
     tags: [] as string[],
     annotations: [] as string[],
@@ -47,7 +47,7 @@ describe("resolveStyles", () => {
   it("returns default styles when no rules match", () => {
     const system = makeNode({
       kind: "system",
-      label: "Test",
+      id: "Test",
       children: [makeNode({ kind: "service", id: "Svc", label: "Service" })],
     });
     const result = resolveStyles([system], []);
@@ -59,7 +59,7 @@ describe("resolveStyles", () => {
   it("applies type selector styles", () => {
     const system = makeNode({
       kind: "system",
-      label: "Test",
+      id: "Test",
       children: [makeNode({ kind: "service", id: "Svc", label: "Service" })],
     });
     const sheet: StyleSheet = {
@@ -78,7 +78,7 @@ describe("resolveStyles", () => {
   it("applies tag selector styles", () => {
     const system = makeNode({
       kind: "system",
-      label: "Test",
+      id: "Test",
       children: [
         makeNode({
           kind: "service",
@@ -98,7 +98,7 @@ describe("resolveStyles", () => {
   it("applies annotation selector styles", () => {
     const system = makeNode({
       kind: "system",
-      label: "Test",
+      id: "Test",
       children: [
         makeNode({
           kind: "service",
@@ -125,7 +125,7 @@ describe("resolveStyles", () => {
   it("higher specificity overrides lower", () => {
     const system = makeNode({
       kind: "system",
-      label: "Test",
+      id: "Test",
       children: [
         makeNode({
           kind: "service",
@@ -153,7 +153,7 @@ describe("resolveStyles", () => {
   it("same specificity: later source index wins", () => {
     const system = makeNode({
       kind: "system",
-      label: "Test",
+      id: "Test",
       children: [
         makeNode({
           kind: "service",
@@ -177,7 +177,7 @@ describe("resolveStyles", () => {
   it("ID selector overrides everything", () => {
     const system = makeNode({
       kind: "system",
-      label: "Test",
+      id: "Test",
       children: [
         makeNode({
           kind: "service",
@@ -200,7 +200,7 @@ describe("resolveStyles", () => {
   it("resolves edge styles", () => {
     const system = makeNode({
       kind: "system",
-      label: "Test",
+      id: "Test",
       children: [
         makeNode({ kind: "service", id: "A", label: "A" }),
         makeNode({ kind: "service", id: "B", label: "B" }),
@@ -229,7 +229,7 @@ describe("resolveStyles", () => {
   it("resolves async edge as dashed via builtin stylesheet", () => {
     const system = makeNode({
       kind: "system",
-      label: "Test",
+      id: "Test",
       children: [
         makeNode({ kind: "service", id: "A", label: "A" }),
         makeNode({ kind: "service", id: "B", label: "B" }),
@@ -253,7 +253,7 @@ describe("resolveStyles", () => {
   it("user stylesheet overrides builtin", () => {
     const system = makeNode({
       kind: "system",
-      label: "Test",
+      id: "Test",
       children: [makeNode({ kind: "resource", id: "DB", label: "DB" })],
     });
     const userSheet: StyleSheet = {
@@ -272,7 +272,7 @@ describe("analyze", () => {
       systems: [
         makeNode({
           kind: "system",
-          label: "Test",
+          id: "Test",
           children: [
             makeNode({
               kind: "service",
