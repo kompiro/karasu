@@ -68,7 +68,7 @@ describe("renderDeploy", () => {
   it("includes unclassified unit", () => {
     const svg = renderDeploy(makeSlice(), styles);
     expect(svg).toContain("migration");
-    expect(svg).toContain("未分類");
+    expect(svg).toContain("Unclassified");
   });
 
   it("includes data-container-id attributes", () => {

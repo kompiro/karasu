@@ -12,7 +12,7 @@ const CONTAINER_PADDING_X = 20;
 const CONTAINER_PADDING_TOP = 36; // room for container label
 const CONTAINER_PADDING_BOTTOM = 20;
 const OUTER_PADDING = 40;
-const UNCLASSIFIED_LABEL = "未分類";
+const UNCLASSIFIED_LABEL = "Unclassified";
 
 function estimateTextWidth(text: string): number {
   let width = 0;
@@ -34,9 +34,10 @@ function measureDeployUnit(unit: DeployNode): { width: number; height: number } 
   return { width, height };
 }
 
-function measureContainerWidth(units: DeployNode[]): number {
+function measureContainerWidth(units: DeployNode[], label: string): number {
+  const labelWidth = estimateTextWidth(label) + CONTAINER_PADDING_X * 2 + 24;
   const maxUnitWidth = Math.max(...units.map((u) => measureDeployUnit(u).width), 80);
-  return maxUnitWidth + CONTAINER_PADDING_X * 2;
+  return Math.max(maxUnitWidth + CONTAINER_PADDING_X * 2, labelWidth);
 }
 
 function measureContainerHeight(units: DeployNode[]): number {
@@ -75,7 +76,7 @@ export function layoutDeploy(slice: DeployViewSlice): LayoutResult {
   let maxHeight = 0;
 
   for (const group of groups) {
-    const containerW = measureContainerWidth(group.units);
+    const containerW = measureContainerWidth(group.units, group.label);
     const containerH = measureContainerHeight(group.units);
     const containerY = OUTER_PADDING;
 
