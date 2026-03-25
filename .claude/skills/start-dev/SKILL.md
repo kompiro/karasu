@@ -33,7 +33,7 @@ description: >
 1. main を最新化する: `git fetch origin main`
 2. ブランチ命名規則に従って worktree を作成する:
    ```
-   git worktree add .claude/worktrees/<機能名> -b <branch-name> origin/main
+   git worktree add .worktrees/<機能名> -b <branch-name> origin/main
    ```
    - `feat/<機能名>` — 新機能
    - `fix/<修正名>` — バグ修正
@@ -42,7 +42,7 @@ description: >
    - `refactor/<対象名>` — リファクタリング
 3. worktree に移動し、依存関係をインストールする:
    ```
-   cd .claude/worktrees/<機能名>
+   cd .worktrees/<機能名>
    npm ci
    ```
 
@@ -98,7 +98,7 @@ description: >
 2. マージ済みであることを確認してから worktree を削除する:
    ```
    cd /workspaces/karasu
-   git worktree remove .claude/worktrees/<機能名>
+   git worktree remove .worktrees/<機能名>
    git branch -d <branch-name>
    ```
 
