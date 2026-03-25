@@ -33,7 +33,7 @@ description: >
 4. main からの差分コミット一覧を取得する: `git log --oneline origin/main..HEAD`
    - コミットがない場合はエラーメッセージを表示して終了する
 5. worktree 内かどうかを判定する: `git rev-parse --show-toplevel`
-   - `.claude/worktrees/` を含む場合は worktree 内と判定する
+   - `.worktrees/` を含む場合は worktree 内と判定する
 6. 関連 Issue を検出する:
    - ブランチ名からパターンマッチ（例: `feat/issue-42-xxx` → #42）
    - コミットメッセージ内の `#N` パターン
@@ -118,7 +118,7 @@ description: >
    **worktree 内の場合:**
    ```
    cd /workspaces/karasu
-   git worktree remove .claude/worktrees/<機能名>
+   git worktree remove .worktrees/<機能名>
    git branch -d <branch-name>
    ```
 
