@@ -2,8 +2,11 @@ node_modules/
 dist/
 .DS_Store
 *.local
-.claude/worktrees/
+.worktrees/
 coverage/
 
 # QA checklists (generated, not committed)
 docs/qa/
+
+# Docs review reports (generated, not committed)
+docs/review/
