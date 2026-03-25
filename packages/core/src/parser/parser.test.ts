@@ -608,4 +608,37 @@ organization Corp {
     expect(errors.length).toBeGreaterThanOrEqual(1);
     expect(errors[0].message).toContain("alpha");
   });
+
+  it("parses label property inside organization, team, and member blocks", () => {
+    const result = Parser.parse(`
+organization Corp {
+  label "Corp Label"
+  team backend {
+    label "Backend Team"
+    member alice {
+      label "Alice Smith"
+    }
+  }
+}
+    `);
+    expect(result.diagnostics).toHaveLength(0);
+    const org = result.value.organizations[0];
+    expect(org.label).toBe("Corp Label");
+    const team = org.teams[0];
+    expect(team.label).toBe("Backend Team");
+    const member = team.members[0];
+    expect(member.label).toBe("Alice Smith");
+  });
+
+  it("label property overrides positional label", () => {
+    const result = Parser.parse(`
+organization Corp {
+  team backend "Positional" {
+    label "Property"
+  }
+}
+    `);
+    expect(result.diagnostics).toHaveLength(0);
+    expect(result.value.organizations[0].teams[0].label).toBe("Property");
+  });
 });

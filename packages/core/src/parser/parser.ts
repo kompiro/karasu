@@ -575,7 +575,14 @@ export class Parser {
 
     while (this.peek().type !== TokenType.RightBrace && this.peek().type !== TokenType.EOF) {
       const token = this.peek();
-      if (token.type === TokenType.Description) {
+      if (token.type === TokenType.Label) {
+        this.advance();
+        if (this.peek().type === TokenType.StringLiteral) {
+          label = this.advance().value;
+        } else {
+          this.error('Expected string literal after "label"');
+        }
+      } else if (token.type === TokenType.Description) {
         this.advance();
         properties.description = this.parseDescriptionValue();
       } else if (token.type === TokenType.Link) {
@@ -619,7 +626,14 @@ export class Parser {
 
     while (this.peek().type !== TokenType.RightBrace && this.peek().type !== TokenType.EOF) {
       const token = this.peek();
-      if (token.type === TokenType.Description) {
+      if (token.type === TokenType.Label) {
+        this.advance();
+        if (this.peek().type === TokenType.StringLiteral) {
+          label = this.advance().value;
+        } else {
+          this.error('Expected string literal after "label"');
+        }
+      } else if (token.type === TokenType.Description) {
         this.advance();
         properties.description = this.parseDescriptionValue();
       } else if (token.type === TokenType.Link) {
@@ -667,7 +681,14 @@ export class Parser {
 
     while (this.peek().type !== TokenType.RightBrace && this.peek().type !== TokenType.EOF) {
       const token = this.peek();
-      if (token.type === TokenType.Description) {
+      if (token.type === TokenType.Label) {
+        this.advance();
+        if (this.peek().type === TokenType.StringLiteral) {
+          label = this.advance().value;
+        } else {
+          this.error('Expected string literal after "label"');
+        }
+      } else if (token.type === TokenType.Description) {
         this.advance();
         properties.description = this.parseDescriptionValue();
       } else if (token.type === TokenType.Link) {
