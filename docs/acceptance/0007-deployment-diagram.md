@@ -1,3 +1,7 @@
+---
+type: product
+---
+
 # AT-0007: Deployment Diagram
 
 ## 概要

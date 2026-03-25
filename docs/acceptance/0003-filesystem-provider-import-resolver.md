@@ -1,3 +1,7 @@
+---
+type: product
+---
+
 # AT-0003: FileSystemProvider と @import 解決
 
 - **日付**: 2026-03-18
