@@ -55,6 +55,25 @@ resource {
   font-size: 12;
 }
 
+team {
+  background-color: #065F46;
+  color: #D1FAE5;
+  border-color: #047857;
+  border-width: 2;
+  shape: box;
+  font-weight: bold;
+  font-size: 13;
+}
+
+member {
+  background-color: #1E3A5F;
+  color: #E0F2FE;
+  border-color: #0C4A6E;
+  border-width: 1;
+  shape: user;
+  font-size: 12;
+}
+
 /* ── リソースタグ → シェイプ ── */
 resource[table]   { shape: cylinder; }
 resource[queue]   { shape: queue; }
@@ -105,6 +124,7 @@ edge[async] {
 }
 `;
 
+// Reset cache whenever this module is reloaded or in tests
 let _cachedSheet: StyleSheet | null = null;
 
 export function getBuiltinStyleSheet(): StyleSheet {

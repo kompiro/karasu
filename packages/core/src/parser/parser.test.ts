@@ -299,7 +299,7 @@ system Test {
     expect(user.tags).toEqual(["human"]);
   });
 
-  it("parses team property on service", () => {
+  it("parses team property on service (deprecated)", () => {
     const result = Parser.parse(`
 system Test {
   service ECommerce {
@@ -307,7 +307,9 @@ system Test {
   }
 }
     `);
-    expect(result.diagnostics).toHaveLength(0);
+    expect(result.diagnostics).toHaveLength(1);
+    expect(result.diagnostics[0].severity).toBe("warning");
+    expect(result.diagnostics[0].message).toContain("deprecated");
     const service = result.value.systems[0].children[0] as ServiceNode;
     expect(service.kind).toBe("service");
     expect(service.properties.team).toBe("EC開発チーム");
@@ -438,7 +440,7 @@ system Test {
     expect(service.properties.description).toContain("## 責務");
   });
 
-  it("parses top-level service", () => {
+  it("parses top-level service with deprecated team property", () => {
     const result = Parser.parse(`
 service Monitoring {
   label "監視サービス"
@@ -446,7 +448,9 @@ service Monitoring {
   team "SRE チーム"
 }
     `);
-    expect(result.diagnostics).toHaveLength(0);
+    expect(result.diagnostics).toHaveLength(1);
+    expect(result.diagnostics[0].severity).toBe("warning");
+    expect(result.diagnostics[0].message).toContain("deprecated");
     expect(result.value.services).toHaveLength(1);
     const service = result.value.services[0];
     expect(service.kind).toBe("service");
@@ -470,7 +474,9 @@ system Test {
   }
 }
     `);
-    expect(result.diagnostics).toHaveLength(0);
+    // team emits a deprecation warning
+    expect(result.diagnostics).toHaveLength(1);
+    expect(result.diagnostics[0].severity).toBe("warning");
     const service = result.value.systems[0].children[0] as ServiceNode;
     expect(service.properties.description).toBe("商品管理");
     expect(service.properties.team).toBe("ECチーム");
@@ -483,5 +489,156 @@ system Test {
   it("reports errors for unexpected tokens", () => {
     const result = Parser.parse("??? system");
     expect(result.diagnostics.length).toBeGreaterThan(0);
+  });
+
+  // ─── Organization ─────────────────────────────────────────────────────────
+
+  it("parses organization block with teams and members", () => {
+    const result = Parser.parse(`
+organization ExampleCorp {
+  team backend "バックエンドチーム" {
+    owns ECommerce
+    owns Order
+
+    member alice "Alice" {
+      slack "@alice"
+      github "alice-dev"
+    }
+    member bob "Bob" {
+      description "SRE担当"
+    }
+  }
+  team frontend "フロントエンドチーム" {
+    owns WebApp
+    member carol "Carol" {
+      github "carol-fe"
+    }
+  }
+}
+    `);
+    expect(result.diagnostics).toHaveLength(0);
+    expect(result.value.organizations).toHaveLength(1);
+
+    const org = result.value.organizations[0];
+    expect(org.id).toBe("ExampleCorp");
+    expect(org.teams).toHaveLength(2);
+
+    const backend = org.teams[0];
+    expect(backend.id).toBe("backend");
+    expect(backend.label).toBe("バックエンドチーム");
+    expect(backend.properties.owns).toEqual(["ECommerce", "Order"]);
+    expect(backend.members).toHaveLength(2);
+
+    const alice = backend.members[0];
+    expect(alice.id).toBe("alice");
+    expect(alice.label).toBe("Alice");
+    expect(alice.properties.slack).toBe("@alice");
+    expect(alice.properties.github).toBe("alice-dev");
+
+    const bob = backend.members[1];
+    expect(bob.properties.description).toBe("SRE担当");
+
+    const frontend = org.teams[1];
+    expect(frontend.id).toBe("frontend");
+    expect(frontend.properties.owns).toEqual(["WebApp"]);
+    expect(frontend.members).toHaveLength(1);
+  });
+
+  it("parses sub-team nesting", () => {
+    const result = Parser.parse(`
+organization Corp {
+  team platform "プラットフォーム" {
+    team infra "インフラ" {
+      member dave "Dave" {}
+    }
+    team security "セキュリティ" {}
+  }
+}
+    `);
+    expect(result.diagnostics).toHaveLength(0);
+    const platform = result.value.organizations[0].teams[0];
+    expect(platform.teams).toHaveLength(2);
+    expect(platform.teams[0].id).toBe("infra");
+    expect(platform.teams[0].members).toHaveLength(1);
+    expect(platform.teams[1].id).toBe("security");
+  });
+
+  it("builds ownerIndex at parse time", () => {
+    const result = Parser.parse(`
+system Test {
+  service ECommerce {}
+  service Payment {}
+}
+organization Corp {
+  team backend {
+    owns ECommerce
+    owns Payment
+  }
+}
+    `);
+    expect(result.diagnostics).toHaveLength(0);
+    expect(result.value.ownerIndex.get("ECommerce")).toBe("backend");
+    expect(result.value.ownerIndex.get("Payment")).toBe("backend");
+  });
+
+  it("errors on duplicate owns across teams", () => {
+    const result = Parser.parse(`
+organization Corp {
+  team teamA {
+    owns ECommerce
+  }
+  team teamB {
+    owns ECommerce
+  }
+}
+    `);
+    const errors = result.diagnostics.filter((d) => d.severity === "error");
+    expect(errors.length).toBeGreaterThanOrEqual(1);
+    expect(errors[0].message).toContain("ECommerce");
+  });
+
+  it("errors on duplicate team IDs", () => {
+    const result = Parser.parse(`
+organization Corp {
+  team alpha {}
+  team alpha {}
+}
+    `);
+    const errors = result.diagnostics.filter((d) => d.severity === "error");
+    expect(errors.length).toBeGreaterThanOrEqual(1);
+    expect(errors[0].message).toContain("alpha");
+  });
+
+  it("parses label property inside organization, team, and member blocks", () => {
+    const result = Parser.parse(`
+organization Corp {
+  label "Corp Label"
+  team backend {
+    label "Backend Team"
+    member alice {
+      label "Alice Smith"
+    }
+  }
+}
+    `);
+    expect(result.diagnostics).toHaveLength(0);
+    const org = result.value.organizations[0];
+    expect(org.label).toBe("Corp Label");
+    const team = org.teams[0];
+    expect(team.label).toBe("Backend Team");
+    const member = team.members[0];
+    expect(member.label).toBe("Alice Smith");
+  });
+
+  it("label property overrides positional label", () => {
+    const result = Parser.parse(`
+organization Corp {
+  team backend "Positional" {
+    label "Property"
+  }
+}
+    `);
+    expect(result.diagnostics).toHaveLength(0);
+    expect(result.value.organizations[0].teams[0].label).toBe("Property");
   });
 });

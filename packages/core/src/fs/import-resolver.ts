@@ -55,6 +55,8 @@ export class ImportResolver {
       systems: [],
       services: [],
       deploys: [],
+      organizations: [],
+      ownerIndex: new Map(),
     };
 
     if (this.visitedKrs.has(filePath)) {

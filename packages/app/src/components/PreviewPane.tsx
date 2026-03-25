@@ -42,7 +42,9 @@ export function PreviewPane({
   const dragStart = useRef({ x: 0, y: 0 });
   const mouseDownPos = useRef({ x: 0, y: 0 });
 
-  const errors = diagnostics.filter((d) => d.severity === "error");
+  const visibleDiagnostics = diagnostics.filter(
+    (d) => d.severity === "error" || d.severity === "warning",
+  );
 
   const handleWheel = useCallback((e: WheelEvent) => {
     e.preventDefault();
@@ -221,11 +223,14 @@ export function PreviewPane({
           />
         )}
       </div>
-      {errors.length > 0 && (
-        <div className="error-banner">
-          {errors.map((e) => (
-            <div key={e.loc ? `${e.loc.start.line}:${e.message}` : e.message}>
-              {e.loc ? `Line ${e.loc.start.line}: ${e.message}` : e.message}
+      {visibleDiagnostics.length > 0 && (
+        <div className="diagnostic-banner">
+          {visibleDiagnostics.map((d) => (
+            <div
+              key={d.loc ? `${d.loc.start.line}:${d.message}` : d.message}
+              className={`diagnostic-banner__item diagnostic-banner__item--${d.severity}`}
+            >
+              {d.loc ? `Line ${d.loc.start.line}: ${d.message}` : d.message}
             </div>
           ))}
         </div>

@@ -4,15 +4,23 @@ interface DiagramTabBarProps {
   current: DiagramType;
   hasDeployDiagram: boolean;
   onChange: (type: DiagramType) => void;
+  viewKind: "logical" | "org";
+  onViewKindChange: (kind: "logical" | "org") => void;
 }
 
-export function DiagramTabBar({ current, hasDeployDiagram, onChange }: DiagramTabBarProps) {
+export function DiagramTabBar({
+  current,
+  hasDeployDiagram,
+  onChange,
+  viewKind,
+  onViewKindChange,
+}: DiagramTabBarProps) {
   return (
     <div className="diagram-tab-bar" role="tablist">
       <button
-        className={`diagram-tab ${current === "system" ? "diagram-tab--active" : ""}`}
+        className={`diagram-tab ${viewKind === "logical" && current === "system" ? "diagram-tab--active" : ""}`}
         role="tab"
-        aria-selected={current === "system"}
+        aria-selected={viewKind === "logical" && current === "system"}
         onClick={() => onChange("system")}
       >
         <span className="diagram-tab-icon">⬡</span>
@@ -20,9 +28,9 @@ export function DiagramTabBar({ current, hasDeployDiagram, onChange }: DiagramTa
       </button>
       {hasDeployDiagram ? (
         <button
-          className={`diagram-tab ${current === "deploy" ? "diagram-tab--active" : ""}`}
+          className={`diagram-tab ${viewKind === "logical" && current === "deploy" ? "diagram-tab--active" : ""}`}
           role="tab"
-          aria-selected={current === "deploy"}
+          aria-selected={viewKind === "logical" && current === "deploy"}
           onClick={() => onChange("deploy")}
         >
           <span className="diagram-tab-icon">⬢</span>
@@ -40,6 +48,15 @@ export function DiagramTabBar({ current, hasDeployDiagram, onChange }: DiagramTa
           Deploy
         </span>
       )}
+      <button
+        className={`diagram-tab ${viewKind === "org" ? "diagram-tab--active" : ""}`}
+        role="tab"
+        aria-selected={viewKind === "org"}
+        onClick={() => onViewKindChange("org")}
+      >
+        <span className="diagram-tab-icon">👥</span>
+        Org
+      </button>
     </div>
   );
 }

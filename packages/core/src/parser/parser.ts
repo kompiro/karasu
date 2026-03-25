@@ -14,6 +14,9 @@ import type {
   DeployNodeKind,
   ServiceNode,
   CommonProperties,
+  OrganizationBlock,
+  TeamNode,
+  MemberNode,
 } from "../types/ast.js";
 import { Lexer } from "../lexer/lexer.js";
 
@@ -125,6 +128,8 @@ export class Parser {
       systems: [],
       services: [],
       deploys: [],
+      organizations: [],
+      ownerIndex: new Map(),
     };
 
     while (this.peek().type !== TokenType.EOF) {
@@ -146,11 +151,16 @@ export class Parser {
         case TokenType.Deploy:
           file.deploys.push(this.parseDeployBlock());
           break;
+        case TokenType.Organization:
+          file.organizations.push(this.parseOrganizationBlock());
+          break;
         default:
           this.error(`Unexpected token: ${token.type} ("${token.value}")`);
           this.advance();
       }
     }
+
+    file.ownerIndex = this.buildOwnerIndex(file.organizations);
 
     return { value: file, diagnostics: this.diagnostics };
   }
@@ -247,9 +257,14 @@ export class Parser {
         continue;
       }
 
-      // Property: team (service and domain)
+      // Property: team (service and domain) — deprecated
       if (token.type === TokenType.Team) {
         if (kind === "service" || kind === "domain") {
+          this.diagnostics.push({
+            severity: "warning",
+            message: `"team" property is deprecated; use an organization block with "owns" instead`,
+            loc: this.range(token.loc),
+          });
           this.advance();
           if (this.peek().type === TokenType.StringLiteral) {
             properties.team = this.advance().value;
@@ -542,5 +557,210 @@ export class Parser {
       properties,
       loc: this.range(start.loc, end.loc),
     };
+  }
+
+  // ─── Organization ──────────────────────────────────────────────────────────
+
+  private parseOrganizationBlock(): OrganizationBlock {
+    const start = this.advance(); // organization
+    const idToken = this.expect(TokenType.Identifier);
+    let label: string | undefined;
+    if (this.peek().type === TokenType.StringLiteral) {
+      label = this.advance().value;
+    }
+    this.expect(TokenType.LeftBrace);
+
+    const properties: CommonProperties = { links: [] };
+    const teams: TeamNode[] = [];
+
+    while (this.peek().type !== TokenType.RightBrace && this.peek().type !== TokenType.EOF) {
+      const token = this.peek();
+      if (token.type === TokenType.Label) {
+        this.advance();
+        if (this.peek().type === TokenType.StringLiteral) {
+          label = this.advance().value;
+        } else {
+          this.error('Expected string literal after "label"');
+        }
+      } else if (token.type === TokenType.Description) {
+        this.advance();
+        properties.description = this.parseDescriptionValue();
+      } else if (token.type === TokenType.Link) {
+        this.advance();
+        properties.links.push(this.parseLink());
+      } else if (token.type === TokenType.Team) {
+        teams.push(this.parseTeamBlock());
+      } else {
+        this.error(`Unexpected token in organization block: ${token.type} ("${token.value}")`);
+        this.advance();
+      }
+    }
+
+    const end = this.expect(TokenType.RightBrace);
+
+    // Validate duplicate team IDs within this organization
+    const seen = new Set<string>();
+    this.collectTeamIds(teams, seen);
+
+    return {
+      id: idToken.value,
+      label,
+      properties,
+      teams,
+      loc: this.range(start.loc, end.loc),
+    };
+  }
+
+  private parseTeamBlock(): TeamNode {
+    const start = this.advance(); // team
+    const idToken = this.expect(TokenType.Identifier);
+    let label: string | undefined;
+    if (this.peek().type === TokenType.StringLiteral) {
+      label = this.advance().value;
+    }
+    this.expect(TokenType.LeftBrace);
+
+    const properties: CommonProperties & { owns: string[] } = { links: [], owns: [] };
+    const members: MemberNode[] = [];
+    const teams: TeamNode[] = [];
+
+    while (this.peek().type !== TokenType.RightBrace && this.peek().type !== TokenType.EOF) {
+      const token = this.peek();
+      if (token.type === TokenType.Label) {
+        this.advance();
+        if (this.peek().type === TokenType.StringLiteral) {
+          label = this.advance().value;
+        } else {
+          this.error('Expected string literal after "label"');
+        }
+      } else if (token.type === TokenType.Description) {
+        this.advance();
+        properties.description = this.parseDescriptionValue();
+      } else if (token.type === TokenType.Link) {
+        this.advance();
+        properties.links.push(this.parseLink());
+      } else if (token.type === TokenType.Owns) {
+        this.advance();
+        if (this.peek().type === TokenType.Identifier) {
+          properties.owns.push(this.advance().value);
+        } else {
+          this.error('Expected identifier after "owns"');
+        }
+      } else if (token.type === TokenType.Member) {
+        members.push(this.parseMemberBlock());
+      } else if (token.type === TokenType.Team) {
+        teams.push(this.parseTeamBlock());
+      } else {
+        this.error(`Unexpected token in team block: ${token.type} ("${token.value}")`);
+        this.advance();
+      }
+    }
+
+    const end = this.expect(TokenType.RightBrace);
+
+    return {
+      id: idToken.value,
+      label,
+      properties,
+      members,
+      teams,
+      loc: this.range(start.loc, end.loc),
+    };
+  }
+
+  private parseMemberBlock(): MemberNode {
+    const start = this.advance(); // member
+    const idToken = this.expect(TokenType.Identifier);
+    let label: string | undefined;
+    if (this.peek().type === TokenType.StringLiteral) {
+      label = this.advance().value;
+    }
+    this.expect(TokenType.LeftBrace);
+
+    const properties: CommonProperties & { slack?: string; github?: string } = { links: [] };
+
+    while (this.peek().type !== TokenType.RightBrace && this.peek().type !== TokenType.EOF) {
+      const token = this.peek();
+      if (token.type === TokenType.Label) {
+        this.advance();
+        if (this.peek().type === TokenType.StringLiteral) {
+          label = this.advance().value;
+        } else {
+          this.error('Expected string literal after "label"');
+        }
+      } else if (token.type === TokenType.Description) {
+        this.advance();
+        properties.description = this.parseDescriptionValue();
+      } else if (token.type === TokenType.Link) {
+        this.advance();
+        properties.links.push(this.parseLink());
+      } else if (token.type === TokenType.Slack) {
+        this.advance();
+        if (this.peek().type === TokenType.StringLiteral) {
+          properties.slack = this.advance().value;
+        } else {
+          this.error('Expected string literal after "slack"');
+        }
+      } else if (token.type === TokenType.Github) {
+        this.advance();
+        if (this.peek().type === TokenType.StringLiteral) {
+          properties.github = this.advance().value;
+        } else {
+          this.error('Expected string literal after "github"');
+        }
+      } else {
+        this.error(`Unexpected token in member block: ${token.type} ("${token.value}")`);
+        this.advance();
+      }
+    }
+
+    const end = this.expect(TokenType.RightBrace);
+
+    return {
+      id: idToken.value,
+      label,
+      properties,
+      loc: this.range(start.loc, end.loc),
+    };
+  }
+
+  private buildOwnerIndex(organizations: OrganizationBlock[]): Map<string, string> {
+    const index = new Map<string, string>();
+    for (const org of organizations) {
+      this.indexTeams(org.teams, index);
+    }
+    return index;
+  }
+
+  private indexTeams(teams: TeamNode[], index: Map<string, string>): void {
+    for (const team of teams) {
+      for (const ownedId of team.properties.owns) {
+        if (index.has(ownedId)) {
+          this.diagnostics.push({
+            severity: "error",
+            message: `"${ownedId}" is already owned by team "${index.get(ownedId)}"; multiple teams cannot own the same service or domain`,
+            loc: team.loc,
+          });
+        } else {
+          index.set(ownedId, team.id);
+        }
+      }
+      this.indexTeams(team.teams, index);
+    }
+  }
+
+  private collectTeamIds(teams: TeamNode[], seen: Set<string>): void {
+    for (const team of teams) {
+      if (seen.has(team.id)) {
+        this.diagnostics.push({
+          severity: "error",
+          message: `Duplicate team id "${team.id}"`,
+          loc: team.loc,
+        });
+      } else {
+        seen.add(team.id);
+      }
+      this.collectTeamIds(team.teams, seen);
+    }
   }
 }

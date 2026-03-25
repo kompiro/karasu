@@ -11,6 +11,8 @@ export interface AppState {
   // ビュー
   viewPath: string[];
   diagramType: DiagramType;
+  viewKind: "logical" | "org";
+  orgPath: string[];
   // クロスナビゲーション
   highlightedNodeId: string | null;
   // UI
@@ -25,6 +27,8 @@ export const initialState: AppState = {
   fileTree: [],
   viewPath: [],
   diagramType: "system",
+  viewKind: "logical",
+  orgPath: [],
   highlightedNodeId: null,
   loading: true,
 };
@@ -39,6 +43,8 @@ export type AppAction =
   | { type: "SET_DIAGRAM_TYPE"; diagramType: DiagramType }
   | { type: "SET_HIGHLIGHTED_NODE"; nodeId: string | null }
   | { type: "SET_LOADING"; loading: boolean }
+  | { type: "SET_VIEW_KIND"; viewKind: "logical" | "org" }
+  | { type: "SET_ORG_PATH"; path: string[] }
   | { type: "ADD_PROJECT"; project: Project }
   | { type: "REMOVE_PROJECT"; id: string }
   | { type: "RENAME_PROJECT"; id: string; name: string };
@@ -57,6 +63,8 @@ export function appReducer(state: AppState, action: AppAction): AppState {
         fileTree: [],
         viewPath: [],
         diagramType: "system",
+        viewKind: "logical",
+        orgPath: [],
         highlightedNodeId: null,
       };
 
@@ -67,6 +75,8 @@ export function appReducer(state: AppState, action: AppAction): AppState {
         fileContent: action.content,
         viewPath: [],
         diagramType: "system",
+        viewKind: "logical",
+        orgPath: [],
         highlightedNodeId: null,
       };
 
@@ -92,6 +102,12 @@ export function appReducer(state: AppState, action: AppAction): AppState {
 
     case "SET_LOADING":
       return { ...state, loading: action.loading };
+
+    case "SET_VIEW_KIND":
+      return { ...state, viewKind: action.viewKind, orgPath: [] };
+
+    case "SET_ORG_PATH":
+      return { ...state, orgPath: action.path };
 
     case "ADD_PROJECT":
       return {
