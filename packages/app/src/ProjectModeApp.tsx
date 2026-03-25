@@ -43,7 +43,11 @@ export function ProjectModeApp() {
   const { svg, warnings, diagnostics, nodeMetadata, hasDeployDiagram, recompile } =
     useKarasuProject(entryPath, fs, viewPath, diagramType);
 
-  const { orgSvg, orgDiagnostics, orgWarnings } = useOrgView(fileContent, "", orgPath as OrgViewPath);
+  const { orgSvg, orgDiagnostics, orgWarnings } = useOrgView(
+    fileContent,
+    "",
+    orgPath as OrgViewPath,
+  );
 
   // 初期化: プロジェクト一覧を読み込み
   useEffect(() => {
