@@ -7,3 +7,6 @@ coverage/
 
 # QA checklists (generated, not committed)
 docs/qa/
+
+# Docs review reports (generated, not committed)
+docs/review/
