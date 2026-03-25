@@ -225,7 +225,12 @@ export function renderOrgView(
 
     return el(
       "svg",
-      { xmlns: "http://www.w3.org/2000/svg", viewBox: `0 0 ${totalWidth} ${totalHeight}`, width: totalWidth, height: totalHeight },
+      {
+        xmlns: "http://www.w3.org/2000/svg",
+        viewBox: `0 0 ${totalWidth} ${totalHeight}`,
+        width: totalWidth,
+        height: totalHeight,
+      },
       el("rect", { width: totalWidth, height: totalHeight, fill: BG_COLOR }),
       ...cards,
     );
@@ -250,7 +255,12 @@ export function renderOrgView(
     const totalHeight = 100;
     return el(
       "svg",
-      { xmlns: "http://www.w3.org/2000/svg", viewBox: `0 0 ${totalWidth} ${totalHeight}`, width: totalWidth, height: totalHeight },
+      {
+        xmlns: "http://www.w3.org/2000/svg",
+        viewBox: `0 0 ${totalWidth} ${totalHeight}`,
+        width: totalWidth,
+        height: totalHeight,
+      },
       el("rect", { width: totalWidth, height: totalHeight, fill: BG_COLOR }),
       el(
         "text",
@@ -274,7 +284,12 @@ export function renderOrgView(
 
   return el(
     "svg",
-    { xmlns: "http://www.w3.org/2000/svg", viewBox: `0 0 ${totalWidth} ${totalHeight}`, width: totalWidth, height: totalHeight },
+    {
+      xmlns: "http://www.w3.org/2000/svg",
+      viewBox: `0 0 ${totalWidth} ${totalHeight}`,
+      width: totalWidth,
+      height: totalHeight,
+    },
     el("rect", { width: totalWidth, height: totalHeight, fill: BG_COLOR }),
     ...renderedItems,
   );

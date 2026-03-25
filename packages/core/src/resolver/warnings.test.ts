@@ -11,7 +11,7 @@ organization Corp {
 }
 `;
     const result = compile(krs);
-    const w = result.warnings.find((w) => w.kind === "invalid-owns");
+    const w = result.warnings.find((warning) => warning.kind === "invalid-owns");
     expect(w).toBeDefined();
     expect(w?.message).toBe(
       'team "backend" owns "NonExistentService" but no service or domain with that id exists',
