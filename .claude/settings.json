@@ -55,5 +55,8 @@
       }
     ]
   },
-  "defaultMode": "acceptEdits"
+  "defaultMode": "acceptEdits",
+  "enabledPlugins": {
+    "commit-commands@claude-plugins-official": true
+  }
 }
