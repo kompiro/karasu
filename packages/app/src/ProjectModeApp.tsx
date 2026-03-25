@@ -43,7 +43,7 @@ export function ProjectModeApp() {
   const { svg, warnings, diagnostics, nodeMetadata, hasDeployDiagram, recompile } =
     useKarasuProject(entryPath, fs, viewPath, diagramType);
 
-  const { orgSvg, orgDiagnostics } = useOrgView(fileContent, "", orgPath as OrgViewPath);
+  const { orgSvg, orgDiagnostics, orgWarnings } = useOrgView(fileContent, "", orgPath as OrgViewPath);
 
   // 初期化: プロジェクト一覧を読み込み
   useEffect(() => {
@@ -321,7 +321,7 @@ export function ProjectModeApp() {
           onClearHighlight={() => dispatch({ type: "SET_HIGHLIGHTED_NODE", nodeId: null })}
         />
       </div>
-      <WarningPanel warnings={warnings} />
+      <WarningPanel warnings={viewKind === "org" ? orgWarnings : warnings} />
     </div>
   );
 }

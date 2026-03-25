@@ -247,6 +247,7 @@ function buildNodeMetadata(
 export interface OrgCompileResult {
   svg: string;
   diagnostics: Diagnostic[];
+  warnings: Warning[];
 }
 
 export function compileOrgView(
@@ -264,9 +265,10 @@ export function compileOrgView(
     sheets.push(styleResult.value);
   }
 
+  const warnings = analyze(parseResult.value, sheets);
   const slice = extractOrgView(parseResult.value.organizations, orgPath ?? []);
   const styleMap = resolveOrgStyles(parseResult.value.organizations, sheets);
   const svg = _renderOrgView(slice, styleMap, DEFAULT_ORG_NODE_STYLE);
 
-  return { svg, diagnostics };
+  return { svg, diagnostics, warnings };
 }

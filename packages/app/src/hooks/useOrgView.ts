@@ -1,9 +1,10 @@
 import { useState, useEffect, useRef } from "react";
-import { compileOrgView, type Diagnostic, type OrgViewPath } from "@karasu/core";
+import { compileOrgView, type Diagnostic, type Warning, type OrgViewPath } from "@karasu/core";
 
 export interface OrgViewState {
   orgSvg: string;
   orgDiagnostics: Diagnostic[];
+  orgWarnings: Warning[];
 }
 
 const DEBOUNCE_MS = 300;
@@ -15,7 +16,7 @@ export function useOrgView(
 ): OrgViewState {
   const [state, setState] = useState<OrgViewState>(() => {
     const result = compileOrgView(krsSource, styleSource || undefined, orgPath);
-    return { orgSvg: result.svg, orgDiagnostics: result.diagnostics };
+    return { orgSvg: result.svg, orgDiagnostics: result.diagnostics, orgWarnings: result.warnings };
   });
 
   const lastValidSvg = useRef(state.orgSvg);
@@ -30,10 +31,18 @@ export function useOrgView(
         const hasErrors = result.diagnostics.some((d) => d.severity === "error");
 
         if (hasErrors) {
-          setState({ orgSvg: lastValidSvg.current, orgDiagnostics: result.diagnostics });
+          setState((prev) => ({
+            orgSvg: lastValidSvg.current,
+            orgDiagnostics: result.diagnostics,
+            orgWarnings: prev.orgWarnings,
+          }));
         } else {
           lastValidSvg.current = result.svg;
-          setState({ orgSvg: result.svg, orgDiagnostics: result.diagnostics });
+          setState({
+            orgSvg: result.svg,
+            orgDiagnostics: result.diagnostics,
+            orgWarnings: result.warnings,
+          });
         }
       } catch {
         setState((prev) => ({
