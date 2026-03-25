@@ -29,7 +29,7 @@
     "additionalDirectories": [
       "/workspaces/karasu",
       "/workspaces/karasu/.claude",
-      "/workspaces/karasu/.claude/worktrees"
+      "/workspaces/karasu/.worktrees"
     ]
   },
   "hooks": {
@@ -55,5 +55,8 @@
       }
     ]
   },
-  "defaultMode": "acceptEdits"
+  "defaultMode": "acceptEdits",
+  "enabledPlugins": {
+    "commit-commands@claude-plugins-official": true
+  }
 }

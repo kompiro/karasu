@@ -34,6 +34,13 @@ export enum TokenType {
   Image = "Image",
   Type = "Type",
 
+  // Keywords (org)
+  Organization = "Organization",
+  Member = "Member",
+  Owns = "Owns",
+  Slack = "Slack",
+  Github = "Github",
+
   // Properties (logical)
   Label = "Label",
   Role = "Role",

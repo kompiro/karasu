@@ -4,12 +4,14 @@ import { EditorPane } from "./components/EditorPane.js";
 import { PreviewPane } from "./components/PreviewPane.js";
 import { WarningPanel } from "./components/WarningPanel.js";
 import { BreadcrumbBar } from "./components/BreadcrumbBar.js";
+import { DiagramTabBar } from "./components/DiagramTabBar.js";
 import { ProjectSelector } from "./components/ProjectSelector.js";
 import { FileTree } from "./components/FileTree.js";
 import { useAppContext } from "./state/app-context.js";
 import { useKarasuProject } from "./hooks/useKarasuProject.js";
+import { useOrgView } from "./hooks/useOrgView.js";
 import { ProjectManager } from "./fs/project-manager.js";
-import type { Project, KrsNode } from "@karasu/core";
+import type { Project, KrsNode, OrgViewPath } from "@karasu/core";
 
 const LAST_PROJECT_KEY = "karasu-last-project-id";
 
@@ -22,15 +24,29 @@ export function ProjectModeApp() {
   const pmRef = useRef(new ProjectManager(fs));
   const pm = pmRef.current;
 
-  const { currentProject, projects, currentFilePath, fileContent, viewPath, loading } = state;
+  const {
+    currentProject,
+    projects,
+    currentFilePath,
+    fileContent,
+    viewPath,
+    diagramType,
+    viewKind,
+    orgPath,
+    highlightedNodeId,
+    loading,
+  } = state;
 
   // エントリパスを計算（現在のプロジェクトの index.krs）
   const entryPath = currentProject ? `${currentProject.rootPath}/index.krs` : null;
 
-  const { svg, warnings, diagnostics, nodeMetadata, recompile } = useKarasuProject(
-    entryPath,
-    fs,
-    viewPath,
+  const { svg, warnings, diagnostics, nodeMetadata, hasDeployDiagram, recompile } =
+    useKarasuProject(entryPath, fs, viewPath, diagramType);
+
+  const { orgSvg, orgDiagnostics, orgWarnings } = useOrgView(
+    fileContent,
+    "",
+    orgPath as OrgViewPath,
   );
 
   // 初期化: プロジェクト一覧を読み込み
@@ -108,7 +124,36 @@ export function ProjectModeApp() {
   // ドリルダウン
   const handleDrillDown = useCallback(
     (newPath: string[]) => {
-      dispatch({ type: "SET_VIEW_PATH", path: newPath });
+      if (viewKind === "org") {
+        dispatch({ type: "SET_ORG_PATH", path: newPath });
+      } else {
+        dispatch({ type: "SET_VIEW_PATH", path: newPath });
+      }
+    },
+    [dispatch, viewKind],
+  );
+
+  // ビュー切り替え
+  const handleViewKindChange = useCallback(
+    (kind: "logical" | "org") => {
+      dispatch({ type: "SET_VIEW_KIND", viewKind: kind });
+    },
+    [dispatch],
+  );
+
+  // タブ切り替え
+  const handleDiagramTypeChange = useCallback(
+    (type: typeof diagramType) => {
+      dispatch({ type: "SET_DIAGRAM_TYPE", diagramType: type });
+    },
+    [dispatch],
+  );
+
+  // Deploy コンテナクリック → System タブへクロスナビゲーション
+  const handleContainerClick = useCallback(
+    (containerId: string) => {
+      dispatch({ type: "SET_DIAGRAM_TYPE", diagramType: "system" });
+      dispatch({ type: "SET_HIGHLIGHTED_NODE", nodeId: containerId });
     },
     [dispatch],
   );
@@ -196,6 +241,29 @@ export function ProjectModeApp() {
     }
   }, [fileContent, viewPath]);
 
+  const orgBreadcrumbItems = useMemo(() => {
+    if (!fileContent) return [];
+    try {
+      const parseResult = Parser.parse(fileContent);
+      const orgs = parseResult.value.organizations;
+      if (orgs.length === 0) return [];
+
+      const items: { id: string; label: string }[] = [{ id: "__org__", label: "Org" }];
+
+      let teams = orgs.flatMap((o) => o.teams);
+      for (const segment of orgPath) {
+        const team = teams.find((t) => t.id === segment);
+        if (!team) break;
+        items.push({ id: team.id, label: team.label ?? team.id });
+        teams = team.teams;
+      }
+
+      return items;
+    } catch {
+      return [];
+    }
+  }, [fileContent, orgPath]);
+
   if (loading) {
     return <div className="app-loading">Loading...</div>;
   }
@@ -222,19 +290,42 @@ export function ProjectModeApp() {
       )}
       <EditorPane value={fileContent} onChange={handleEditorChange} />
       <div className="preview-column">
-        <BreadcrumbBar
-          items={breadcrumbItems}
-          onNavigate={(path) => dispatch({ type: "SET_VIEW_PATH", path })}
+        <DiagramTabBar
+          current={diagramType}
+          hasDeployDiagram={hasDeployDiagram}
+          onChange={(type) => {
+            handleViewKindChange("logical");
+            handleDiagramTypeChange(type);
+          }}
+          viewKind={viewKind}
+          onViewKindChange={handleViewKindChange}
         />
+        {viewKind === "logical" && diagramType === "system" && (
+          <BreadcrumbBar
+            items={breadcrumbItems}
+            onNavigate={(path) => dispatch({ type: "SET_VIEW_PATH", path })}
+          />
+        )}
+        {viewKind === "org" && (
+          <BreadcrumbBar
+            items={orgBreadcrumbItems}
+            onNavigate={(path) => dispatch({ type: "SET_ORG_PATH", path })}
+          />
+        )}
         <PreviewPane
-          svg={svg}
-          diagnostics={diagnostics}
-          viewPath={viewPath}
+          svg={viewKind === "org" ? orgSvg : svg}
+          diagnostics={viewKind === "org" ? orgDiagnostics : diagnostics}
+          viewPath={viewKind === "org" ? orgPath : viewPath}
           nodeMetadata={nodeMetadata}
           onDrillDown={handleDrillDown}
+          onContainerClick={
+            viewKind === "logical" && diagramType === "deploy" ? handleContainerClick : undefined
+          }
+          highlightedNodeId={highlightedNodeId}
+          onClearHighlight={() => dispatch({ type: "SET_HIGHLIGHTED_NODE", nodeId: null })}
         />
       </div>
-      <WarningPanel warnings={warnings} />
+      <WarningPanel warnings={viewKind === "org" ? orgWarnings : warnings} />
     </div>
   );
 }

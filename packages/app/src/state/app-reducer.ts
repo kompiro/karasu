@@ -1,4 +1,4 @@
-import type { Project, DirEntry } from "@karasu/core";
+import type { Project, DirEntry, DiagramType } from "@karasu/core";
 
 export interface AppState {
   // プロジェクト管理
@@ -10,6 +10,11 @@ export interface AppState {
   fileTree: DirEntry[];
   // ビュー
   viewPath: string[];
+  diagramType: DiagramType;
+  viewKind: "logical" | "org";
+  orgPath: string[];
+  // クロスナビゲーション
+  highlightedNodeId: string | null;
   // UI
   loading: boolean;
 }
@@ -21,6 +26,10 @@ export const initialState: AppState = {
   fileContent: "",
   fileTree: [],
   viewPath: [],
+  diagramType: "system",
+  viewKind: "logical",
+  orgPath: [],
+  highlightedNodeId: null,
   loading: true,
 };
 
@@ -31,7 +40,11 @@ export type AppAction =
   | { type: "UPDATE_FILE_CONTENT"; content: string }
   | { type: "SET_FILE_TREE"; tree: DirEntry[] }
   | { type: "SET_VIEW_PATH"; path: string[] }
+  | { type: "SET_DIAGRAM_TYPE"; diagramType: DiagramType }
+  | { type: "SET_HIGHLIGHTED_NODE"; nodeId: string | null }
   | { type: "SET_LOADING"; loading: boolean }
+  | { type: "SET_VIEW_KIND"; viewKind: "logical" | "org" }
+  | { type: "SET_ORG_PATH"; path: string[] }
   | { type: "ADD_PROJECT"; project: Project }
   | { type: "REMOVE_PROJECT"; id: string }
   | { type: "RENAME_PROJECT"; id: string; name: string };
@@ -49,6 +62,10 @@ export function appReducer(state: AppState, action: AppAction): AppState {
         fileContent: "",
         fileTree: [],
         viewPath: [],
+        diagramType: "system",
+        viewKind: "logical",
+        orgPath: [],
+        highlightedNodeId: null,
       };
 
     case "SELECT_FILE":
@@ -57,6 +74,10 @@ export function appReducer(state: AppState, action: AppAction): AppState {
         currentFilePath: action.path,
         fileContent: action.content,
         viewPath: [],
+        diagramType: "system",
+        viewKind: "logical",
+        orgPath: [],
+        highlightedNodeId: null,
       };
 
     case "UPDATE_FILE_CONTENT":
@@ -68,8 +89,25 @@ export function appReducer(state: AppState, action: AppAction): AppState {
     case "SET_VIEW_PATH":
       return { ...state, viewPath: action.path };
 
+    case "SET_DIAGRAM_TYPE":
+      return {
+        ...state,
+        diagramType: action.diagramType,
+        viewPath: [],
+        highlightedNodeId: null,
+      };
+
+    case "SET_HIGHLIGHTED_NODE":
+      return { ...state, highlightedNodeId: action.nodeId };
+
     case "SET_LOADING":
       return { ...state, loading: action.loading };
+
+    case "SET_VIEW_KIND":
+      return { ...state, viewKind: action.viewKind, orgPath: [] };
+
+    case "SET_ORG_PATH":
+      return { ...state, orgPath: action.path };
 
     case "ADD_PROJECT":
       return {

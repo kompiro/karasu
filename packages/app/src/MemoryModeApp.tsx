@@ -4,7 +4,8 @@ import { PreviewPane } from "./components/PreviewPane.js";
 import { WarningPanel } from "./components/WarningPanel.js";
 import { BreadcrumbBar } from "./components/BreadcrumbBar.js";
 import { useKarasu } from "./hooks/useKarasu.js";
-import { Parser, type KrsNode } from "@karasu/core";
+import { useOrgView } from "./hooks/useOrgView.js";
+import { Parser, type KrsNode, type OrgViewPath } from "@karasu/core";
 
 const SAMPLE_KRS = `system "ECプラットフォーム" {
   user Customer "顧客" [human] {
@@ -98,22 +99,60 @@ const SAMPLE_KRS = `system "ECプラットフォーム" {
  * MemoryModeApp — OPFS 非対応ブラウザ向けの単一ファイル編集モード。
  * 現在の App.tsx のロジックをそのまま抽出したもの。
  */
+type ViewKind = "logical" | "org";
+
 export function MemoryModeApp() {
   const [krsSource, setKrsSource] = useState(SAMPLE_KRS);
   const [viewPath, setViewPath] = useState<string[]>([]);
+  const [viewKind, setViewKind] = useState<ViewKind>("logical");
+  const [orgPath, setOrgPath] = useState<OrgViewPath>([]);
 
   const { svg, warnings, diagnostics, nodeMetadata } = useKarasu(krsSource, "", viewPath);
+  const { orgSvg, orgDiagnostics } = useOrgView(krsSource, "", orgPath);
 
   const handleEditorChange = useCallback((value: string) => {
     setKrsSource(value);
   }, []);
 
-  const handleDrillDown = useCallback((newPath: string[]) => {
-    setViewPath(newPath);
+  const handleDrillDown = useCallback(
+    (newPath: string[]) => {
+      if (viewKind === "org") {
+        setOrgPath(newPath);
+      } else {
+        setViewPath(newPath);
+      }
+    },
+    [viewKind],
+  );
+
+  const handleViewKindChange = useCallback((kind: ViewKind) => {
+    setViewKind(kind);
   }, []);
 
   // Build breadcrumb items from the AST
   const breadcrumbItems = useMemo(() => {
+    if (viewKind === "org") {
+      try {
+        const parseResult = Parser.parse(krsSource);
+        const orgs = parseResult.value.organizations;
+        if (orgs.length === 0) return [];
+
+        const items: { id: string; label: string }[] = [{ id: "__org__", label: "Org" }];
+
+        let teams = orgs.flatMap((o) => o.teams);
+        for (const segment of orgPath) {
+          const team = teams.find((t) => t.id === segment);
+          if (!team) break;
+          items.push({ id: team.id, label: team.label ?? team.id });
+          teams = team.teams;
+        }
+
+        return items;
+      } catch {
+        return [];
+      }
+    }
+
     try {
       const parseResult = Parser.parse(krsSource);
       const systems = parseResult.value.systems;
@@ -135,17 +174,36 @@ export function MemoryModeApp() {
     } catch {
       return [];
     }
-  }, [krsSource, viewPath]);
+  }, [krsSource, viewPath, viewKind, orgPath]);
+
+  const activeSvg = viewKind === "org" ? orgSvg : svg;
+  const activeDiagnostics = viewKind === "org" ? orgDiagnostics : diagnostics;
+  const activePath = viewKind === "org" ? orgPath : viewPath;
+  const activeNavigate = viewKind === "org" ? setOrgPath : setViewPath;
 
   return (
     <div className="app">
       <EditorPane value={krsSource} onChange={handleEditorChange} />
       <div className="preview-column">
-        <BreadcrumbBar items={breadcrumbItems} onNavigate={setViewPath} />
+        <div className="view-kind-toolbar">
+          <button
+            className={`toolbar-btn${viewKind === "logical" ? " active" : ""}`}
+            onClick={() => handleViewKindChange("logical")}
+          >
+            ≡ Logical
+          </button>
+          <button
+            className={`toolbar-btn${viewKind === "org" ? " active" : ""}`}
+            onClick={() => handleViewKindChange("org")}
+          >
+            👥 Org
+          </button>
+        </div>
+        <BreadcrumbBar items={breadcrumbItems} onNavigate={activeNavigate} />
         <PreviewPane
-          svg={svg}
-          diagnostics={diagnostics}
-          viewPath={viewPath}
+          svg={activeSvg}
+          diagnostics={activeDiagnostics}
+          viewPath={activePath}
           nodeMetadata={nodeMetadata}
           onDrillDown={handleDrillDown}
         />

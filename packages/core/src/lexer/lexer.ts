@@ -26,6 +26,11 @@ const KEYWORDS: Record<string, TokenType> = {
   description: TokenType.Description,
   team: TokenType.Team,
   link: TokenType.Link,
+  organization: TokenType.Organization,
+  member: TokenType.Member,
+  owns: TokenType.Owns,
+  slack: TokenType.Slack,
+  github: TokenType.Github,
   import: TokenType.Import,
   from: TokenType.From,
 };

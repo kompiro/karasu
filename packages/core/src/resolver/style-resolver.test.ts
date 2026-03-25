@@ -30,6 +30,8 @@ function makeFile(overrides: Partial<KrsFile>): KrsFile {
     systems: [],
     services: [],
     deploys: [],
+    organizations: [],
+    ownerIndex: new Map(),
     ...overrides,
   };
 }

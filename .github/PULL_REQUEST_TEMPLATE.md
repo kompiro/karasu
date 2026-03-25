@@ -1,26 +1,26 @@
-## 目的
+## Purpose
 
-<!-- 関連する Issue へのリンク -->
-<!-- 例: Closes #12 -->
+<!-- Link to related issue(s) -->
+<!-- e.g. Closes #12 -->
 
-## 概要
+## Summary
 
-<!-- この PR で行う変更の要約（1-3 行） -->
+<!-- Brief description of the changes in this PR (1-3 lines) -->
 
-## 変更内容
+## Changes
 
-<!-- 主要な変更をリストで記述 -->
+<!-- List the main changes -->
 
 -
 
-## 手動検証チェックリスト
+## Manual Verification Checklist
 
-<!-- CI では検証できない項目をチェックリストで記述 -->
-<!-- 該当なしの場合は「該当なし — すべて自動テストでカバー済み」と記載 -->
+<!-- List items that cannot be verified by CI -->
+<!-- If none, write "N/A — all covered by automated tests" -->
 
 - [ ]
 
-## 関連ドキュメント
+## Related Docs
 
-<!-- 更新または参照すべきドキュメント -->
-<!-- 例: docs/acceptance/NNNN-xxx.md -->
+<!-- Documents updated or referenced -->
+<!-- e.g. docs/acceptance/NNNN-xxx.md -->
