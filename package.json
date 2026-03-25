@@ -16,10 +16,12 @@
     "lint": "oxlint packages/",
     "lint:fix": "oxlint --fix packages/",
     "format": "oxfmt --write packages/",
-    "format:check": "oxfmt --check packages/"
+    "format:check": "oxfmt --check packages/",
+    "typecheck": "npm run typecheck --workspaces"
   },
   "devDependencies": {
     "@vitest/coverage-v8": "^3.2.4",
+    "lefthook": "^2.1.4",
     "oxfmt": "^0.41.0",
     "oxlint": "^1.56.0"
   }
