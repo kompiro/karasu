@@ -11,14 +11,15 @@ Verify that the organization diagram feature renders correctly, supports drill-d
 
 - App running (`npm run dev`)
 - Browser open at `http://localhost:5173`
+- A project is selected (e.g., Getting Started)
 
 ## Test Cases
 
 ### TC-01: Basic Org Rendering
 
 **Steps:**
-1. Open the app (MemoryMode)
-2. Replace the editor content with:
+1. Open the app (ProjectMode — default)
+2. Replace the `index.krs` content in the editor with:
    ```krs
    organization ExampleCorp {
      team backend "バックエンドチーム" {
@@ -39,7 +40,7 @@ Verify that the organization diagram feature renders correctly, supports drill-d
      }
    }
    ```
-3. Click the **👥 Org** toolbar button
+3. Click the **👥 Org** tab in the diagram tab bar
 
 **Expected:**
 - Preview renders two team cards (backend, frontend)
@@ -78,7 +79,7 @@ Verify that the organization diagram feature renders correctly, supports drill-d
 ### TC-04: Sub-Team Nesting
 
 **Steps:**
-1. Add a sub-team to the editor content:
+1. Replace `index.krs` content with:
    ```krs
    organization Corp {
      team platform "プラットフォーム" {
@@ -89,7 +90,7 @@ Verify that the organization diagram feature renders correctly, supports drill-d
      }
    }
    ```
-2. Click **👥 Org**
+2. Click the **👥 Org** tab in the diagram tab bar
 3. Click the **platform** card
 4. Verify sub-teams are shown, click **infra**
 
@@ -103,7 +104,7 @@ Verify that the organization diagram feature renders correctly, supports drill-d
 ### TC-05: Invalid `owns` Warning
 
 **Steps:**
-1. Enter:
+1. Replace `index.krs` content with:
    ```krs
    organization Corp {
      team backend {
@@ -111,7 +112,7 @@ Verify that the organization diagram feature renders correctly, supports drill-d
      }
    }
    ```
-2. Click **👥 Org**
+2. Click the **👥 Org** tab in the diagram tab bar
 
 **Expected:**
 - Warning panel shows: `team "backend" owns "NonExistentService" but no service or domain with that id exists`
@@ -121,7 +122,7 @@ Verify that the organization diagram feature renders correctly, supports drill-d
 ### TC-06: Duplicate Team ID Error
 
 **Steps:**
-1. Enter:
+1. Replace `index.krs` content with:
    ```krs
    organization Corp {
      team alpha {}
@@ -138,8 +139,8 @@ Verify that the organization diagram feature renders correctly, supports drill-d
 ### TC-07: Deprecated `team` Property Warning
 
 **Steps:**
-1. Switch back to **≡ Logical** view
-2. Enter a service with the old `team` property:
+1. Click the **⬡ System** tab in the diagram tab bar to switch to logical view
+2. Replace `index.krs` content with:
    ```krs
    system Test {
      service ECommerce {
@@ -157,7 +158,7 @@ Verify that the organization diagram feature renders correctly, supports drill-d
 ### TC-08: Multiple Organizations
 
 **Steps:**
-1. Enter:
+1. Replace `index.krs` content with:
    ```krs
    organization OrgA {
      team teamA {}
@@ -166,7 +167,7 @@ Verify that the organization diagram feature renders correctly, supports drill-d
      team teamB {}
    }
    ```
-2. Click **👥 Org**
+2. Click the **👥 Org** tab in the diagram tab bar
 
 **Expected:**
 - Both teamA and teamB shown in the same Org tab (flattened)
@@ -176,8 +177,8 @@ Verify that the organization diagram feature renders correctly, supports drill-d
 ### TC-09: Logical View Unaffected
 
 **Steps:**
-1. Enter both a `system` block and an `organization` block
-2. Switch between **≡ Logical** and **👥 Org** views
+1. Replace `index.krs` content with both a `system` block and an `organization` block
+2. Switch between **⬡ System** tab and **👥 Org** tab in the diagram tab bar
 
 **Expected:**
 - Logical view shows the system diagram as before
@@ -195,3 +196,4 @@ Verify that the organization diagram feature renders correctly, supports drill-d
 | Duplicate ID error | `parser.test.ts` |
 | Duplicate owns error | `parser.test.ts` |
 | Deprecation warning | `parser.test.ts` |
+| Invalid owns warning | `packages/core/src/resolver/warnings.test.ts` |
