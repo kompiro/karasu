@@ -29,6 +29,9 @@ description: >
 各 AT ファイルから未チェックの `- [ ]` 項目を抽出し、AT ファイルごとにグループ化する。
 すでにチェック済みの `- [x]` 項目は含めない。
 
+AT ファイルのセクション見出しには、元の AT ファイルへのリンクを付ける。
+リンクパスはリポジトリルートからの相対パス（例: `docs/acceptance/0006-builtin-style-and-reference.md`）を使用する。
+
 ### 4. チェックリストの生成
 
 以下の形式で `docs/qa/YYYY-MM-DD-checklist.md` を生成する（今日の日付を使用）。
@@ -48,7 +51,7 @@ description: >
 
 手動確認が必要な項目です。アプリを起動して順番に確認してください。
 
-### AT-0006: Built-in Style & Reference Panel
+### [AT-0006: Built-in Style & Reference Panel](docs/acceptance/0006-builtin-style-and-reference.md)
 
 #### AC-1: ビルトインスタイルの適用（Phase 1）
 
