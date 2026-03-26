@@ -30,9 +30,7 @@ describe("ReferencePanel", () => {
       "Style Properties",
     );
     // Syntax-only content is gone
-    expect(container.querySelector(".reference-tab-body")?.textContent).not.toContain(
-      "Node Kinds",
-    );
+    expect(container.querySelector(".reference-tab-body")?.textContent).not.toContain("Node Kinds");
   });
 
   it("clicking the overlay calls onClose", () => {
