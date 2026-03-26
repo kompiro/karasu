@@ -114,7 +114,14 @@ import { extractDeployView } from "./view/deploy-view-extract.js";
 import { ImportResolver } from "./fs/import-resolver.js";
 import { getBuiltinStyleSheet, BUILTIN_STYLE_SOURCE } from "./builtins/default-style.js";
 import "./renderer/shapes.js"; // ensure built-in shapes are registered
-import type { Diagnostic, LogicalNodeKind, DeployNodeKind, LinkEntry, KrsNode, DeployNode } from "./types/ast.js";
+import type {
+  Diagnostic,
+  LogicalNodeKind,
+  DeployNodeKind,
+  LinkEntry,
+  KrsNode,
+  DeployNode,
+} from "./types/ast.js";
 import type { DeployViewSlice } from "./view/deploy-view-extract.js";
 import { summarizeDescription } from "./renderer/description-summary.js";
 

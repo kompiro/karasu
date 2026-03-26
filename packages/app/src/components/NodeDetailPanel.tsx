@@ -84,8 +84,12 @@ export function NodeDetailPanel({ metadata, anchorX, anchorY, onClose }: NodeDet
 
       {(metadata.runtime || metadata.realizes) && (
         <div className="node-detail-section">
-          {metadata.runtime && <div className="node-detail-prop">🖥 runtime: {metadata.runtime}</div>}
-          {metadata.realizes && <div className="node-detail-prop">🔗 realizes: {metadata.realizes}</div>}
+          {metadata.runtime && (
+            <div className="node-detail-prop">🖥 runtime: {metadata.runtime}</div>
+          )}
+          {metadata.realizes && (
+            <div className="node-detail-prop">🔗 realizes: {metadata.realizes}</div>
+          )}
         </div>
       )}
 
