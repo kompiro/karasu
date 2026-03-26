@@ -1,4 +1,4 @@
-# ADR-0010: Enable Merge Queue for Main Branch Protection
+# ADR-0010: Main Branch Health Strategy
 
 ## Status
 
@@ -6,42 +6,47 @@ Accepted
 
 ## Context
 
-The main branch was protected with `strict_required_status_checks_policy: true`, which requires every PR to be up to date with `main` before it can be merged. This means developers must manually rebase or merge the latest `main` into their branch whenever another PR is merged ahead of them — causing friction, especially when multiple PRs are in flight.
+The main branch was protected with `strict_required_status_checks_policy: true`, which requires every PR to be up to date with `main` before it can be merged. This causes friction: developers must manually rebase or merge the latest `main` into their branch whenever another PR is merged ahead of them.
+
+The ideal solution was GitHub's merge queue, which automates rebasing and re-testing before merging. However, the merge queue feature is unavailable for private repositories on GitHub Pro (requires GitHub Team or higher).
 
 ## Decision
 
-Enable GitHub's merge queue for the main branch and disable the strict up-to-date requirement.
+Adopt a two-layered approach to ensure main branch health without the merge queue:
 
-**Ruleset changes:**
+**1. Push trigger on CI (`ci.yml`)**
 
-- Remove `strict_required_status_checks_policy: true` → set to `false`
-- Add `merge_queue` rule with the following parameters:
-  - Merge method: squash (consistent with existing allowed merge methods)
-  - Grouping strategy: `ALLGREEN` (each PR tested independently)
-  - Min entries to merge: 1
-  - Max entries to build/merge: 5
+Add `push: branches: [main]` to the CI workflow. This runs the full check suite immediately after every merge to `main`. If a merge breaks `main`, GitHub automatically sends an email notification to the repository owner.
 
-**CI changes:**
+**2. Scheduled health check (`health-check.yml`)**
 
-- Add `merge_group` trigger to `.github/workflows/ci.yml` so that CI runs inside the merge queue context
+Add a separate workflow that runs the full check suite on `main` daily at 09:00 JST. This catches latent failures that are not caused by a specific merge (e.g., external dependency changes, environment drift). GitHub automatically sends an email notification on failure.
+
+**`merge_group` trigger (retained for future use)**
+
+The `merge_group` trigger is kept in `ci.yml`. If the plan is upgraded to GitHub Team or higher in the future, the merge queue can be enabled without additional CI changes.
 
 ## Consequences
 
 **Positive:**
 
-- Developers no longer need to manually keep branches up to date; the merge queue handles rebasing and re-testing automatically
-- Merge safety is maintained: a PR is only merged if CI passes against the latest `main` at the time of merging
-- Reduces wasted CI runs caused by developers repeatedly rebasing just to satisfy the strict check
+- Any failure on `main` is caught within minutes (push trigger) and at least once daily (scheduled check)
+- Notification is automatic via GitHub email — no external service required
+- The `strict_required_status_checks_policy` concern is partially mitigated: while PRs can still be merged without being up to date, failures are detected quickly after the fact
+- Easy to upgrade to full merge queue later if the GitHub plan changes
 
 **Negative:**
 
-- PRs must be explicitly added to the merge queue (click "Merge when ready") instead of being merged directly; this is a minor UX change
-- If the queue is busy, a PR may wait longer than a direct merge would take
+- CI still runs twice on every merge to `main` (PR check + push trigger), which is slightly wasteful
+- The push trigger catches breakage *after* it reaches `main`, whereas the merge queue would have prevented it from reaching `main` in the first place
 
 ## Alternatives Considered
 
-**Keep `strict_required_status_checks_policy: true` (status quo):**
-Safe but requires manual developer action on every competing merge, which is inefficient.
+**Merge queue (original plan):**
+Ideal, but not available for private repositories on GitHub Pro.
 
-**Disable strict checks without merge queue:**
-Removes developer friction but also removes the guarantee that CI has passed against the latest `main`, increasing the risk of broken builds on `main`.
+**Keep `strict_required_status_checks_policy: true` with manual rebasing:**
+Safe but creates developer friction. Rejected in favor of detecting failures quickly rather than preventing them at merge time.
+
+**Disable strict checks with no additional monitoring:**
+Reduces friction but leaves `main` health unobserved. Rejected.
