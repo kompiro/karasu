@@ -1,0 +1,41 @@
+# ADR-0010: Main Branch Health Strategy
+
+## Status
+
+Accepted
+
+## Context
+
+The main branch was protected with `strict_required_status_checks_policy: true`, which requires every PR to be up to date with `main` before it can be merged. This causes friction: developers must manually rebase or merge the latest `main` into their branch whenever another PR is merged ahead of them.
+
+The ideal solution was GitHub's merge queue, which automates rebasing and re-testing before merging. However, the merge queue feature is unavailable for private repositories on GitHub Pro (requires GitHub Team or higher).
+
+## Decision
+
+Add `push: branches: [main]` to the CI workflow (`ci.yml`). This runs the full check suite immediately after every merge to `main`. If a merge breaks `main`, GitHub automatically sends an email notification to the repository owner.
+
+The `merge_group` trigger is also retained in `ci.yml` for future use if the plan is upgraded to GitHub Team or higher.
+
+## Consequences
+
+**Positive:**
+
+- Any failure on `main` is detected within minutes and reported via GitHub email — no external service required
+- Simple: a single trigger addition with no new infrastructure
+- Easy to upgrade to full merge queue later if the GitHub plan changes
+
+**Negative:**
+
+- Breakage is detected *after* it reaches `main`, whereas the merge queue would have prevented it from reaching `main` in the first place
+- CI runs twice on every merge to `main` (PR check + push trigger)
+
+## Alternatives Considered
+
+**Merge queue (original plan):**
+Ideal, but not available for private repositories on GitHub Pro.
+
+**Scheduled health check in addition to push trigger:**
+Provides periodic monitoring but adds maintenance overhead. Rejected as unnecessary since email notifications from the push trigger are already immediate.
+
+**Keep `strict_required_status_checks_policy: true` with manual rebasing:**
+Safe but creates developer friction. Rejected.
