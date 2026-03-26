@@ -1,5 +1,5 @@
 ---
-type: product
+type: tool
 ---
 
 # AT-0010: PreviewPane component behavior tests
