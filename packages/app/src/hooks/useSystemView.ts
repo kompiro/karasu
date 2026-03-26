@@ -10,7 +10,7 @@ import {
 import iconManifest from "@karasu/core/icons/icons.json";
 import databaseSvg from "@karasu/core/icons/database.svg?raw";
 
-export interface KarasuState {
+export interface SystemViewState {
   svg: string;
   warnings: Warning[];
   diagnostics: Diagnostic[];
@@ -24,12 +24,12 @@ resolveIconManifest(iconManifest, {
 
 const DEBOUNCE_MS = 300;
 
-export function useKarasu(
+export function useSystemView(
   krsSource: string,
   styleSource: string,
   viewPath: ViewPath = [],
-): KarasuState {
-  const [state, setState] = useState<KarasuState>(() => {
+): SystemViewState {
+  const [state, setState] = useState<SystemViewState>(() => {
     const result = compile(krsSource, styleSource || undefined, viewPath);
     return {
       svg: result.svg,

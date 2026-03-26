@@ -8,7 +8,8 @@ import { DiagramTabBar } from "./components/DiagramTabBar.js";
 import { ProjectSelector } from "./components/ProjectSelector.js";
 import { FileTree } from "./components/FileTree.js";
 import { useAppContext } from "./state/app-context.js";
-import { useKarasuProject } from "./hooks/useKarasuProject.js";
+import { useProjectSystemView } from "./hooks/useProjectSystemView.js";
+import { useProjectDeployView } from "./hooks/useProjectDeployView.js";
 import { useOrgView } from "./hooks/useOrgView.js";
 import { ProjectManager } from "./fs/project-manager.js";
 import type { Project, KrsNode, OrgViewPath } from "@karasu/core";
@@ -40,8 +41,32 @@ export function ProjectModeApp() {
   // エントリパスを計算（現在のプロジェクトの index.krs）
   const entryPath = currentProject ? `${currentProject.rootPath}/index.krs` : null;
 
-  const { svg, warnings, diagnostics, nodeMetadata, hasDeployDiagram, recompile } =
-    useKarasuProject(entryPath, fs, viewPath, diagramType);
+  const {
+    svg: systemSvg,
+    warnings: systemWarnings,
+    diagnostics: systemDiagnostics,
+    nodeMetadata: systemNodeMetadata,
+    hasDeployDiagram,
+    recompile: recompileSystem,
+  } = useProjectSystemView(entryPath, fs, viewPath);
+
+  const {
+    svg: deploySvg,
+    warnings: deployWarnings,
+    diagnostics: deployDiagnostics,
+    nodeMetadata: deployNodeMetadata,
+    recompile: recompileDeploy,
+  } = useProjectDeployView(entryPath, fs, viewPath);
+
+  const recompile = useCallback(() => {
+    recompileSystem();
+    recompileDeploy();
+  }, [recompileSystem, recompileDeploy]);
+
+  const svg = diagramType === "system" ? systemSvg : deploySvg;
+  const warnings = diagramType === "system" ? systemWarnings : deployWarnings;
+  const diagnostics = diagramType === "system" ? systemDiagnostics : deployDiagnostics;
+  const nodeMetadata = diagramType === "system" ? systemNodeMetadata : deployNodeMetadata;
 
   const { orgSvg, orgDiagnostics, orgWarnings } = useOrgView(
     fileContent,
