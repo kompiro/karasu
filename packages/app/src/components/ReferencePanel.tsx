@@ -6,18 +6,20 @@ interface ReferencePanelProps {
   onClose: () => void;
 }
 
-type Tab = "syntax" | "styles" | "tags" | "builtin";
+type Tab = "syntax" | "styles" | "tags" | "builtin" | "samples";
 
 const TAB_LABELS: Record<Tab, string> = {
   syntax: "Syntax",
   styles: "Styles",
   tags: "Tags & Annotations",
   builtin: "Built-in Theme",
+  samples: "Samples",
 };
 
 export function ReferencePanel({ isOpen, onClose }: ReferencePanelProps) {
   const [activeTab, setActiveTab] = useState<Tab>("syntax");
   const [copied, setCopied] = useState(false);
+  const [sampleCopied, setSampleCopied] = useState(false);
 
   const ref = getReference();
 
@@ -32,6 +34,18 @@ export function ReferencePanel({ isOpen, onClose }: ReferencePanelProps) {
       },
     );
   }, [ref.builtinStyleSource]);
+
+  const handleSampleCopy = useCallback(() => {
+    navigator.clipboard.writeText(ref.sampleKrs).then(
+      () => {
+        setSampleCopied(true);
+        setTimeout(() => setSampleCopied(false), 2000);
+      },
+      () => {
+        /* clipboard access denied — silently ignore */
+      },
+    );
+  }, [ref.sampleKrs]);
 
   if (!isOpen) return null;
 
@@ -63,6 +77,9 @@ export function ReferencePanel({ isOpen, onClose }: ReferencePanelProps) {
           {activeTab === "tags" && <TagsTab />}
           {activeTab === "builtin" && (
             <BuiltinTab source={ref.builtinStyleSource} onCopy={handleCopy} copied={copied} />
+          )}
+          {activeTab === "samples" && (
+            <SamplesTab source={ref.sampleKrs} onCopy={handleSampleCopy} copied={sampleCopied} />
           )}
         </div>
       </div>
@@ -317,6 +334,30 @@ function BuiltinTab({
     <div className="reference-tab-body">
       <div className="reference-builtin-header">
         <span>Built-in default theme (lowest cascade priority)</span>
+        <button className="reference-copy-btn" onClick={onCopy}>
+          {copied ? "Copied!" : "Copy"}
+        </button>
+      </div>
+      <div className="reference-code-block">
+        <pre>{source}</pre>
+      </div>
+    </div>
+  );
+}
+
+function SamplesTab({
+  source,
+  onCopy,
+  copied,
+}: {
+  source: string;
+  onCopy: () => void;
+  copied: boolean;
+}) {
+  return (
+    <div className="reference-tab-body">
+      <div className="reference-builtin-header">
+        <span>Complete example — system + deploy + org</span>
         <button className="reference-copy-btn" onClick={onCopy}>
           {copied ? "Copied!" : "Copy"}
         </button>

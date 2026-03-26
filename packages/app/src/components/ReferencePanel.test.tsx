@@ -45,6 +45,19 @@ describe("ReferencePanel", () => {
     expect(defaultProps.onClose).not.toHaveBeenCalled();
   });
 
+  it("Samples tab shows system+deploy+org content", () => {
+    const { container } = render(<ReferencePanel {...defaultProps} />);
+    const samplesTab = Array.from(container.querySelectorAll(".reference-panel-tab")).find(
+      (el) => el.textContent === "Samples",
+    )!;
+    expect(samplesTab).toBeTruthy();
+    fireEvent.click(samplesTab);
+    const body = container.querySelector(".reference-tab-body")?.textContent ?? "";
+    expect(body).toContain("system");
+    expect(body).toContain("deploy");
+    expect(body).toContain("organization");
+  });
+
   it("Copy button shows 'Copied!' after click and reverts after 2 seconds", async () => {
     vi.useFakeTimers();
     // Mock clipboard API

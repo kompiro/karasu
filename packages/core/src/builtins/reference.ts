@@ -40,6 +40,7 @@ export interface KarasuReference {
   styleProperties: StylePropertyInfo[];
   shapes: ShapeInfo[];
   builtinStyleSource: string;
+  sampleKrs: string;
 }
 
 let _cachedReference: KarasuReference | null = null;
@@ -258,6 +259,100 @@ export function getReference(): KarasuReference {
       { name: "cloud", description: "雲形", defaultFor: "resource[storage]" },
     ],
     builtinStyleSource: BUILTIN_STYLE_SOURCE,
+    sampleKrs: `system "ECプラットフォーム" {
+  user Customer "顧客" [human] {
+    description "商品を購入する一般ユーザー"
+  }
+  user Seller "出品者" [human] {
+    description "商品を出品するショップオーナー"
+  }
+  user Admin "管理者" [human] {
+    description "システムを運用する担当者"
+  }
+
+  service ECommerce "ECサイト" {
+    description "商品の閲覧・購入・出品を提供する"
+
+    domain Catalog "商品カタログ" {
+      usecase SearchProducts "商品を検索する" {
+        resource ProductTable "商品テーブル"
+        resource SearchIndex "検索インデックス" [external]
+      }
+      usecase RegisterProduct "商品を登録する" {
+        resource ProductTable "商品テーブル"
+        resource ImageStorage "画像ストレージ" [external]
+      }
+    }
+    domain Order "受注" {
+      usecase PlaceOrder "注文を確定する" {
+        resource OrderTable "注文テーブル"
+        resource InventoryAPI "在庫API" [external]
+        resource PaymentAPI "決済API" [external]
+      }
+      usecase ShowOrderHistory "注文履歴を照会する"
+    }
+    domain Member "会員" {
+      usecase Register "会員登録する" {
+        resource MemberTable "会員テーブル"
+      }
+      usecase EditProfile "プロフィールを編集する"
+    }
+  }
+  service Payment "決済" [external] {
+    description "クレジットカード・電子マネー決済"
+  }
+  service Inventory "在庫管理" [external] {
+    description "在庫データの一元管理"
+  }
+  service Notification "通知" {
+    description "メール・プッシュ通知の送信"
+  }
+
+  Customer -> ECommerce "商品を購入する"
+  Seller -> ECommerce "商品を出品する"
+  Admin -> ECommerce "システムを管理する"
+  ECommerce -> Payment "決済を処理する"
+  ECommerce -> Inventory "在庫を照会する"
+  ECommerce --> Notification "注文確認を送信する"
+}
+
+deploy "本番環境" {
+  oci "ecommerce-app" {
+    runtime "Kubernetes (GKE)"
+    realizes ECommerce
+  }
+  oci "notification-worker" {
+    runtime "Cloud Run"
+    realizes Notification
+  }
+}
+
+organization "EC開発組織" {
+  team platform "プラットフォームチーム" {
+    owns ECommerce
+
+    team commerce "コマースチーム" {
+      owns ECommerce.Catalog
+      owns ECommerce.Order
+      member alice "Alice" {
+        github "alice-dev"
+      }
+    }
+    team member-team "会員チーム" {
+      owns ECommerce.Member
+      member bob "Bob" {
+        description "会員基盤担当"
+      }
+    }
+  }
+  team notification "通知チーム" {
+    owns Notification
+    member carol "Carol" {
+      slack "@carol"
+    }
+  }
+}
+`,
   };
   return _cachedReference;
 }

@@ -8,9 +8,6 @@ afterEach(cleanup);
 
 const noop = () => {};
 const emptySvg = '<svg xmlns="http://www.w3.org/2000/svg"></svg>';
-const emptySvgWithNode = `<svg xmlns="http://www.w3.org/2000/svg">
-  <g class="karasu-node" data-id="SomeNode"><text>Node</text></g>
-</svg>`;
 const emptyDiagnostics: Diagnostic[] = [];
 const emptyWarnings: Warning[] = [];
 const sysWarning: Warning = { kind: "domain-dispersal", message: "sys warning", details: [] };

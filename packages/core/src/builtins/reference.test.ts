@@ -58,4 +58,10 @@ describe("getReference", () => {
     expect(ref.builtinStyleSource).toContain("user");
     expect(ref.builtinStyleSource).toContain("edge");
   });
+
+  it("includes sampleKrs with system, deploy, and organization blocks", () => {
+    expect(ref.sampleKrs).toContain("system");
+    expect(ref.sampleKrs).toContain("deploy");
+    expect(ref.sampleKrs).toContain("organization");
+  });
 });

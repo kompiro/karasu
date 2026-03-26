@@ -1,5 +1,5 @@
 import { useEffect, useCallback, useMemo, useRef } from "react";
-import { Parser, InMemoryFileSystemProvider, type KrsNode, type OrgViewPath } from "@karasu/core";
+import { Parser, InMemoryFileSystemProvider, getReference, type KrsNode, type OrgViewPath } from "@karasu/core";
 import { EditorPane } from "./components/EditorPane.js";
 import { KarasuPreviewColumn } from "./components/KarasuPreviewColumn.js";
 import { AppProvider } from "./state/app-context.js";
@@ -10,94 +10,6 @@ import { useOrgView } from "./hooks/useOrgView.js";
 import type { ActiveView } from "./state/app-reducer.js";
 
 const MEMORY_FILE_PATH = "/memory/index.krs";
-
-const SAMPLE_KRS = `system "ECプラットフォーム" {
-  user Customer "顧客" [human] {
-    description "商品を購入する一般ユーザー"
-  }
-  user Seller "出品者" [human] {
-    description "商品を出品するショップオーナー"
-  }
-  user Admin "管理者" [human] {
-    description "システムを運用する担当者"
-  }
-
-  service ECommerce "ECサイト" {
-    description "商品の閲覧・購入・出品を提供する"
-
-    domain Catalog "商品カタログ" {
-      usecase SearchProducts "商品を検索する" {
-        resource ProductTable "商品テーブル"
-        resource SearchIndex "検索インデックス" [external]
-      }
-      usecase ShowProductDetail "商品詳細を表示する"
-      usecase RegisterProduct "商品を登録する" {
-        resource ProductTable "商品テーブル"
-        resource ImageStorage "画像ストレージ" [external]
-      }
-    }
-    domain Cart "カート" {
-      usecase AddToCart "カートに追加する" {
-        resource CartTable "カートテーブル"
-      }
-      usecase ShowCart "カートを表示する"
-      usecase UpdateQuantity "数量を変更する"
-    }
-    domain Order "受注" {
-      usecase PlaceOrder "注文を確定する" {
-        resource OrderTable "注文テーブル"
-        resource InventoryAPI "在庫API" [external]
-        resource PaymentAPI "決済API" [external]
-      }
-      usecase CancelOrder "注文をキャンセルする" {
-        resource OrderTable "注文テーブル"
-      }
-      usecase ShowOrderHistory "注文履歴を照会する"
-    }
-    domain Review "レビュー" {
-      usecase PostReview "レビューを投稿する" {
-        resource ReviewTable "レビューテーブル"
-      }
-      usecase ListReviews "レビュー一覧を表示する"
-    }
-    domain Recommend "レコメンド" {
-      usecase ShowRecommendations "おすすめ商品を表示する" {
-        resource BrowsingHistory "閲覧履歴テーブル"
-        resource RecommendEngine "レコメンドエンジン" [external]
-      }
-    }
-    domain Member "会員" {
-      usecase Register "会員登録する" {
-        resource MemberTable "会員テーブル"
-      }
-      usecase EditProfile "プロフィールを編集する"
-      usecase ManageAddresses "配送先を管理する" {
-        resource AddressTable "配送先テーブル"
-      }
-    }
-  }
-  service Payment "決済" [external] {
-    description "クレジットカード・電子マネー決済"
-  }
-  service Inventory "在庫管理" [external] {
-    description "在庫データの一元管理"
-  }
-  service Shipping "配送" [external] {
-    description "配送手配と追跡"
-  }
-  service Notification "通知" {
-    description "メール・プッシュ通知の送信"
-  }
-
-  Customer -> ECommerce "商品を購入する"
-  Seller -> ECommerce "商品を出品する"
-  Admin -> ECommerce "システムを管理する"
-  ECommerce -> Payment "決済を処理する"
-  ECommerce -> Inventory "在庫を照会する"
-  ECommerce -> Shipping "配送を依頼する"
-  ECommerce --> Notification "注文確認を送信する"
-}
-`;
 
 /**
  * MemoryModeApp — OPFS 非対応ブラウザ向けの単一ファイル編集モード。
@@ -117,11 +29,12 @@ function MemoryModeInner() {
   const { state, dispatch, fs } = useAppContext();
   const { fileContent, viewPath, activeView, orgPath, highlightedNodeId } = state;
 
-  // Initialize: write SAMPLE_KRS to in-memory FS and select the file
+  // Initialize: write sample KRS to in-memory FS and select the file
   useEffect(() => {
     (async () => {
-      await fs.writeFile(MEMORY_FILE_PATH, SAMPLE_KRS);
-      dispatch({ type: "SELECT_FILE", path: MEMORY_FILE_PATH, content: SAMPLE_KRS });
+      const sampleKrs = getReference().sampleKrs;
+      await fs.writeFile(MEMORY_FILE_PATH, sampleKrs);
+      dispatch({ type: "SELECT_FILE", path: MEMORY_FILE_PATH, content: sampleKrs });
       dispatch({ type: "SET_LOADING", loading: false });
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
