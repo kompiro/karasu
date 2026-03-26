@@ -1,5 +1,11 @@
 import { useEffect, useCallback, useMemo, useRef } from "react";
-import { Parser, InMemoryFileSystemProvider, getReference, type KrsNode, type OrgViewPath } from "@karasu/core";
+import {
+  Parser,
+  InMemoryFileSystemProvider,
+  getReference,
+  type KrsNode,
+  type OrgViewPath,
+} from "@karasu/core";
 import { EditorPane } from "./components/EditorPane.js";
 import { KarasuPreviewColumn } from "./components/KarasuPreviewColumn.js";
 import { AppProvider } from "./state/app-context.js";
@@ -62,7 +68,11 @@ function MemoryModeInner() {
     recompileDeploy();
   }, [recompileSystem, recompileDeploy]);
 
-  const { orgSvg, orgDiagnostics, orgWarnings } = useOrgView(fileContent, "", orgPath as OrgViewPath);
+  const { orgSvg, orgDiagnostics, orgWarnings } = useOrgView(
+    fileContent,
+    "",
+    orgPath as OrgViewPath,
+  );
 
   const nodeMetadata = activeView === "deploy" ? deployNodeMetadata : systemNodeMetadata;
 

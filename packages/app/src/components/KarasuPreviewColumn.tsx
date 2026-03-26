@@ -56,7 +56,11 @@ export function KarasuPreviewColumn({
   onDrillDown,
 }: KarasuPreviewColumnProps) {
   const svg =
-    activeView === "system" ? systemView.svg : activeView === "deploy" ? deployView.svg : orgView.svg;
+    activeView === "system"
+      ? systemView.svg
+      : activeView === "deploy"
+        ? deployView.svg
+        : orgView.svg;
   const diagnostics =
     activeView === "system"
       ? systemView.diagnostics
@@ -80,10 +84,7 @@ export function KarasuPreviewColumn({
         />
       )}
       {activeView === "org" && (
-        <BreadcrumbBar
-          items={orgView.breadcrumbItems}
-          onNavigate={orgView.onBreadcrumbNavigate}
-        />
+        <BreadcrumbBar items={orgView.breadcrumbItems} onNavigate={orgView.onBreadcrumbNavigate} />
       )}
       <PreviewPane
         svg={svg}
