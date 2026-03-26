@@ -4,9 +4,10 @@ on:
   pull_request:
     branches: [main]
     types: [opened, synchronize, reopened]
+  merge_group:
 
 concurrency:
-  group: ci-${{ github.head_ref }}
+  group: ci-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
