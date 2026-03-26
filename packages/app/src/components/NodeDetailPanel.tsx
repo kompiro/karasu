@@ -71,8 +71,8 @@ export function NodeDetailPanel({ metadata, anchorX, anchorY, onClose }: NodeDet
         <div className="node-detail-section">
           <div className="node-detail-section-title">🔗 リンク</div>
           <ul className="node-detail-links">
-            {metadata.links.map((link, i) => (
-              <li key={i}>
+            {metadata.links.map((link) => (
+              <li key={link.url}>
                 <a href={link.url} target="_blank" rel="noopener noreferrer">
                   {link.label || link.url} ↗
                 </a>
