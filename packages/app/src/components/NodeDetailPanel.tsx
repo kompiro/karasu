@@ -17,6 +17,14 @@ const KIND_ICONS: Record<string, string> = {
   usecase: "📋",
   resource: "💾",
   user: "👤",
+  oci: "🐳",
+  lambda: "λ",
+  jar: "☕",
+  war: "📦",
+  function: "ƒ",
+  assets: "📁",
+  job: "⏱",
+  artifact: "🗄",
 };
 
 export function NodeDetailPanel({ metadata, anchorX, anchorY, onClose }: NodeDetailPanelProps) {
@@ -71,6 +79,17 @@ export function NodeDetailPanel({ metadata, anchorX, anchorY, onClose }: NodeDet
               </li>
             ))}
           </ul>
+        </div>
+      )}
+
+      {(metadata.runtime || metadata.realizes) && (
+        <div className="node-detail-section">
+          {metadata.runtime && (
+            <div className="node-detail-prop">🖥 runtime: {metadata.runtime}</div>
+          )}
+          {metadata.realizes && (
+            <div className="node-detail-prop">🔗 realizes: {metadata.realizes}</div>
+          )}
         </div>
       )}
 
