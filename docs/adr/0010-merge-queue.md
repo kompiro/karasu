@@ -12,41 +12,30 @@ The ideal solution was GitHub's merge queue, which automates rebasing and re-tes
 
 ## Decision
 
-Adopt a two-layered approach to ensure main branch health without the merge queue:
+Add `push: branches: [main]` to the CI workflow (`ci.yml`). This runs the full check suite immediately after every merge to `main`. If a merge breaks `main`, GitHub automatically sends an email notification to the repository owner.
 
-**1. Push trigger on CI (`ci.yml`)**
-
-Add `push: branches: [main]` to the CI workflow. This runs the full check suite immediately after every merge to `main`. If a merge breaks `main`, GitHub automatically sends an email notification to the repository owner.
-
-**2. Scheduled health check (`health-check.yml`)**
-
-Add a separate workflow that runs the full check suite on `main` daily at 09:00 JST. This catches latent failures that are not caused by a specific merge (e.g., external dependency changes, environment drift). GitHub automatically sends an email notification on failure.
-
-**`merge_group` trigger (retained for future use)**
-
-The `merge_group` trigger is kept in `ci.yml`. If the plan is upgraded to GitHub Team or higher in the future, the merge queue can be enabled without additional CI changes.
+The `merge_group` trigger is also retained in `ci.yml` for future use if the plan is upgraded to GitHub Team or higher.
 
 ## Consequences
 
 **Positive:**
 
-- Any failure on `main` is caught within minutes (push trigger) and at least once daily (scheduled check)
-- Notification is automatic via GitHub email — no external service required
-- The `strict_required_status_checks_policy` concern is partially mitigated: while PRs can still be merged without being up to date, failures are detected quickly after the fact
+- Any failure on `main` is detected within minutes and reported via GitHub email — no external service required
+- Simple: a single trigger addition with no new infrastructure
 - Easy to upgrade to full merge queue later if the GitHub plan changes
 
 **Negative:**
 
-- CI still runs twice on every merge to `main` (PR check + push trigger), which is slightly wasteful
-- The push trigger catches breakage *after* it reaches `main`, whereas the merge queue would have prevented it from reaching `main` in the first place
+- Breakage is detected *after* it reaches `main`, whereas the merge queue would have prevented it from reaching `main` in the first place
+- CI runs twice on every merge to `main` (PR check + push trigger)
 
 ## Alternatives Considered
 
 **Merge queue (original plan):**
 Ideal, but not available for private repositories on GitHub Pro.
 
-**Keep `strict_required_status_checks_policy: true` with manual rebasing:**
-Safe but creates developer friction. Rejected in favor of detecting failures quickly rather than preventing them at merge time.
+**Scheduled health check in addition to push trigger:**
+Provides periodic monitoring but adds maintenance overhead. Rejected as unnecessary since email notifications from the push trigger are already immediate.
 
-**Disable strict checks with no additional monitoring:**
-Reduces friction but leaves `main` health unobserved. Rejected.
+**Keep `strict_required_status_checks_policy: true` with manual rebasing:**
+Safe but creates developer friction. Rejected.
