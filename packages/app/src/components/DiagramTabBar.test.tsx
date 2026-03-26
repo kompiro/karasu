@@ -1,0 +1,55 @@
+// @vitest-environment jsdom
+import { describe, it, expect, vi, afterEach } from "vitest";
+import { render, fireEvent, cleanup } from "@testing-library/react";
+
+afterEach(cleanup);
+import { DiagramTabBar } from "./DiagramTabBar.js";
+
+function baseProps() {
+  return {
+    current: "system" as const,
+    hasDeployDiagram: true,
+    onChange: vi.fn(),
+    viewKind: "logical" as const,
+    onViewKindChange: vi.fn(),
+  };
+}
+
+describe("DiagramTabBar", () => {
+  // Tab buttons contain icon spans (e.g. "⬡System"), so we match by regex.
+  it("clicking System tab calls onChange('system')", () => {
+    const props = baseProps();
+    const { getByRole } = render(<DiagramTabBar {...props} />);
+    fireEvent.click(getByRole("tab", { name: /System/ }));
+    expect(props.onChange).toHaveBeenCalledWith("system");
+  });
+
+  it("clicking Deploy tab calls onChange('deploy') when hasDeployDiagram is true", () => {
+    const props = baseProps();
+    const { getByRole } = render(<DiagramTabBar {...props} />);
+    fireEvent.click(getByRole("tab", { name: /Deploy/ }));
+    expect(props.onChange).toHaveBeenCalledWith("deploy");
+  });
+
+  it("clicking Org tab calls onViewKindChange('org')", () => {
+    const props = baseProps();
+    const { getByRole } = render(<DiagramTabBar {...props} />);
+    fireEvent.click(getByRole("tab", { name: /Org/ }));
+    expect(props.onViewKindChange).toHaveBeenCalledWith("org");
+  });
+
+  it("Deploy tab has aria-disabled when hasDeployDiagram is false", () => {
+    const props = { ...baseProps(), hasDeployDiagram: false };
+    const { getByRole } = render(<DiagramTabBar {...props} />);
+    expect(getByRole("tab", { name: /Deploy/ })).toHaveProperty("ariaDisabled", "true");
+  });
+
+  it("active tab has aria-selected=true; others have aria-selected=false", () => {
+    const props = baseProps(); // current="system", viewKind="logical"
+    const { getAllByRole } = render(<DiagramTabBar {...props} />);
+    const [systemTab, deployTab, orgTab] = getAllByRole("tab");
+    expect(systemTab.getAttribute("aria-selected")).toBe("true");
+    expect(deployTab.getAttribute("aria-selected")).toBe("false");
+    expect(orgTab.getAttribute("aria-selected")).toBe("false");
+  });
+});
