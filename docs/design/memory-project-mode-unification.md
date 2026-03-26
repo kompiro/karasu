@@ -102,101 +102,47 @@ export class InMemoryFileSystemProvider implements FileSystemProvider {
 
 現在の `ProjectModeApp` のプレビュー列（`.preview-column`）に含まれる要素：
 - `DiagramTabBar`（タブバー）
-- `BreadcrumbBar`（logical/system 時）
+- `BreadcrumbBar`（system 時）
 - `BreadcrumbBar`（org 時）
 - `PreviewPane`
 - ※ `WarningPanel` は現在 `.preview-column` の外にある
 
-### 設計の論点：props の渡し方
+### ビューの3分類
 
-#### 案1: フラットな二重ビュー props（コンポーネントが内部でビュー切り替え）
+タブが表すビューを `system` / `deploy` / `org` の3つとして扱う。
+現在の Reducer 状態 `diagramType: "system" | "deploy"` ＋ `viewKind: "logical" | "org"` の2軸を、
+`activeView: "system" | "deploy" | "org"` の1軸に統一する。
 
-```typescript
-interface KarasuPreviewColumnProps {
-  viewKind: "logical" | "org";
-  diagramType: DiagramType;
-  hasDeployDiagram: boolean;
-  onViewKindChange: (kind: "logical" | "org") => void;
-  onDiagramTypeChange: (type: DiagramType) => void;
+この分類にすると各ビューの責務が明確になる：
 
-  // logical ビューのデータ
-  svg: string;
-  diagnostics: Diagnostic[];
-  viewPath: string[];
-  breadcrumbItems: BreadcrumbItem[];
-  warnings: Warning[];
-  onViewPathNavigate: (path: string[]) => void;
+| ビュー | BreadcrumbBar | WarningPanel の警告 | クロスナビゲーション |
+|--------|:---:|-----|-----|
+| `system` | ✓（システム階層） | logical warnings | ❌ |
+| `deploy` | ❌ | logical warnings | ✓（`onContainerClick` でシステムビューへ） |
+| `org` | ✓（組織階層） | org warnings | ❌ |
 
-  // org ビューのデータ
-  orgSvg: string;
-  orgDiagnostics: Diagnostic[];
-  orgPath: OrgViewPath;
-  orgBreadcrumbItems: BreadcrumbItem[];
-  orgWarnings: Warning[];
-  onOrgPathNavigate: (path: OrgViewPath) => void;
-
-  // 共通
-  nodeMetadata: Map<string, NodeMetadata>;
-  onDrillDown: (path: string[]) => void;
-
-  // クロスナビゲーション（deploy 専用、省略可）
-  highlightedNodeId?: string | null;
-  onClearHighlight?: () => void;
-  onContainerClick?: (containerId: string) => void;
-}
-```
-
-**メリット**: コンポーネントが自己完結。BreadcrumbBar の条件分岐ロジック（`viewKind === "logical" && diagramType === "system"` vs `viewKind === "org"`）が内部に収まる。
-**デメリット**: props が約20個と多い。logical/org のデータが並列に混在して視認性が低い。
-
-#### 案2: アクティブビュー props（親がアクティブビューを計算して渡す）
+### 決定した props 設計：3ビューオブジェクト
 
 ```typescript
-interface KarasuPreviewColumnProps {
-  viewKind: "logical" | "org";
-  diagramType: DiagramType;
-  hasDeployDiagram: boolean;
-  onViewKindChange: (kind: "logical" | "org") => void;
-  onDiagramTypeChange: (type: DiagramType) => void;
+type ActiveView = "system" | "deploy" | "org";
 
-  // 親がアクティブビューを計算して渡す
-  svg: string;                          // activeSvg
-  diagnostics: Diagnostic[];            // activeDiagnostics
-  breadcrumbItems: BreadcrumbItem[];    // viewKind に応じて親が選択
-  warnings: Warning[];                  // activeWarnings
-  onNavigate: (path: string[]) => void; // activeNavigate
-  viewPath: string[] | OrgViewPath;
-
-  // 共通
-  nodeMetadata: Map<string, NodeMetadata>;
-  onDrillDown: (path: string[]) => void;
-
-  // クロスナビゲーション（deploy 専用）
-  highlightedNodeId?: string | null;
-  onClearHighlight?: () => void;
-  onContainerClick?: (containerId: string) => void;
-}
-```
-
-`MemoryModeApp` は既に `activeSvg = viewKind === "org" ? orgSvg : svg` を計算しており、
-このパターンと自然に合致する。
-
-**メリット**: props が約14個に削減。`MemoryModeApp` の既存パターン（`activeSvg` 計算）と合う。
-**デメリット**: BreadcrumbBar の表示条件（deploy タブ時は非表示）を親で制御する必要がある。
-`breadcrumbItems = []` で非表示を表現するか、別途 `showBreadcrumb` boolean を渡すか、判断が必要。
-
-#### 案3: ビューオブジェクト（structured props）← 推奨
-
-logical/org それぞれのデータをオブジェクトにまとめ、コンポーネントが内部で切り替える。
-
-```typescript
-interface LogicalViewProps {
+interface SystemViewProps {
   svg: string;
   diagnostics: Diagnostic[];
   viewPath: string[];
   breadcrumbItems: { id: string; label: string }[];
   warnings: Warning[];
   onBreadcrumbNavigate: (path: string[]) => void;
+}
+
+interface DeployViewProps {
+  svg: string;
+  diagnostics: Diagnostic[];
+  warnings: Warning[];
+  // クロスナビゲーションは deploy 専用なのでここに集約
+  highlightedNodeId?: string | null;
+  onClearHighlight?: () => void;
+  onContainerClick?: (containerId: string) => void;
 }
 
 interface OrgViewProps {
@@ -209,99 +155,125 @@ interface OrgViewProps {
 }
 
 interface KarasuPreviewColumnProps {
-  // タブ制御
-  viewKind: "logical" | "org";
-  diagramType: DiagramType;
+  activeView: ActiveView;
   hasDeployDiagram: boolean;
-  onViewKindChange: (kind: "logical" | "org") => void;
-  onDiagramTypeChange: (type: DiagramType) => void;
+  onActiveViewChange: (view: ActiveView) => void;
 
-  // ビュー別データ
-  logicalView: LogicalViewProps;
+  systemView: SystemViewProps;
+  deployView: DeployViewProps;
   orgView: OrgViewProps;
 
-  // 共通
   nodeMetadata: Map<string, NodeMetadata>;
   onDrillDown: (path: string[]) => void;
-
-  // クロスナビゲーション（deploy 専用、省略可）
-  highlightedNodeId?: string | null;
-  onClearHighlight?: () => void;
-  onContainerClick?: (containerId: string) => void;
 }
 ```
 
 **メリット**:
-- トップレベル props は10個（管理しやすい）
-- logical/org のデータが明確に分離されて視認性が高い
-- BreadcrumbBar の条件分岐（deploy タブ時は非表示）をコンポーネントが `diagramType` を参照して制御できる
-- `WarningPanel` の切り替えもコンポーネント内部に収まる
+- トップレベル props は7個（`activeView`, `hasDeployDiagram`, `onActiveViewChange`, `systemView`, `deployView`, `orgView`, `nodeMetadata`, `onDrillDown`）
+- クロスナビゲーション props（`highlightedNodeId`, `onClearHighlight`, `onContainerClick`）が `deployView` に集約され、トップレベルから消える
+- `activeView` の1軸で「どのビューか」が表現される。`viewKind` と `diagramType` の組み合わせを親が意識しなくてよい
+- ビューごとに必要な props が異なることが型で表現される（`deployView` には `breadcrumbItems` がない、など）
 
-**デメリット**:
-- `LogicalViewProps`, `OrgViewProps` の型定義が必要
-- 親が両ビューのデータをオブジェクトとして組み立てる必要がある（ただし既存フック呼び出しの結果を詰め替えるだけ）
-
-### 案3 のコンポーネントイメージ
+### コンポーネントイメージ
 
 ```tsx
 export function KarasuPreviewColumn({
-  viewKind, diagramType, hasDeployDiagram,
-  onViewKindChange, onDiagramTypeChange,
-  logicalView, orgView,
+  activeView, hasDeployDiagram, onActiveViewChange,
+  systemView, deployView, orgView,
   nodeMetadata, onDrillDown,
-  highlightedNodeId, onClearHighlight, onContainerClick,
 }: KarasuPreviewColumnProps) {
-  const activeView = viewKind === "org" ? orgView : logicalView;
-  const showBreadcrumb =
-    viewKind === "org" || (viewKind === "logical" && diagramType === "system");
-
   return (
     <div className="preview-column">
       <DiagramTabBar
-        current={diagramType}
+        active={activeView}
         hasDeployDiagram={hasDeployDiagram}
-        onChange={(type) => { onViewKindChange("logical"); onDiagramTypeChange(type); }}
-        viewKind={viewKind}
-        onViewKindChange={onViewKindChange}
+        onChange={onActiveViewChange}
       />
-      {showBreadcrumb && (
+      {activeView === "system" && (
         <BreadcrumbBar
-          items={activeView.breadcrumbItems}
-          onNavigate={activeView.onBreadcrumbNavigate}
+          items={systemView.breadcrumbItems}
+          onNavigate={systemView.onBreadcrumbNavigate}
+        />
+      )}
+      {activeView === "org" && (
+        <BreadcrumbBar
+          items={orgView.breadcrumbItems}
+          onNavigate={orgView.onBreadcrumbNavigate}
         />
       )}
       <PreviewPane
-        svg={activeView.svg}
-        diagnostics={activeView.diagnostics}
-        viewPath={viewKind === "org" ? orgView.orgPath : logicalView.viewPath}
+        svg={activeView === "system" ? systemView.svg : activeView === "deploy" ? deployView.svg : orgView.svg}
+        diagnostics={activeView === "system" ? systemView.diagnostics : activeView === "deploy" ? deployView.diagnostics : orgView.diagnostics}
+        viewPath={activeView === "system" ? systemView.viewPath : activeView === "org" ? orgView.orgPath : []}
         nodeMetadata={nodeMetadata}
-        onDrillDown={onDrillDown}
-        onContainerClick={
-          viewKind === "logical" && diagramType === "deploy" ? onContainerClick : undefined
-        }
-        highlightedNodeId={highlightedNodeId}
-        onClearHighlight={onClearHighlight}
+        onDrillDown={activeView !== "deploy" ? onDrillDown : undefined}
+        onContainerClick={activeView === "deploy" ? deployView.onContainerClick : undefined}
+        highlightedNodeId={activeView === "deploy" ? deployView.highlightedNodeId : undefined}
+        onClearHighlight={activeView === "deploy" ? deployView.onClearHighlight : undefined}
       />
-      <WarningPanel warnings={activeView.warnings} />
+      <WarningPanel
+        warnings={activeView === "org" ? orgView.warnings : systemView.warnings}
+      />
     </div>
   );
 }
 ```
 
+### Reducer 状態の変更
+
+`activeView` の導入に伴い `app-reducer.ts` の状態・アクションも変更が必要：
+
+```typescript
+// 変更前
+state.diagramType: "system" | "deploy"
+state.viewKind: "logical" | "org"
+action: SET_DIAGRAM_TYPE, SET_VIEW_KIND
+
+// 変更後
+state.activeView: "system" | "deploy" | "org"
+action: SET_ACTIVE_VIEW
+```
+
+`DiagramTabBar` コンポーネントのインターフェースも `current` + `viewKind` → `active: ActiveView` に変更する。
+
 ### WarningPanel の配置について
 
 現在 `WarningPanel` は `.preview-column` の**外**にある（両アプリ共通）。
-`KarasuPreviewColumn` に取り込むと CSS レイアウトへの影響が生じる可能性がある。
+3ビューモデルにすると `KarasuPreviewColumn` 内で `activeView === "org"` の条件分岐が完結するため、
+**内包する**のが自然。ただし CSS レイアウトへの影響を確認する必要がある。
 
-選択肢：
-- **内包する**: コンポーネントが完全に自己完結する。CSS 調整が必要になる可能性あり。
-- **外部に置く**: `WarningPanel` は props として警告リストだけ受け取り、親が配置を担う。
-  `KarasuPreviewColumn` は `onGetActiveWarnings` 等は持たず、コンポーネント外で `activeWarnings` を計算する。
+---
+
+## リファクタリングの進め方
+
+`ProjectModeApp` が全機能（deploy、クロスナビ）を持つ「正解の実装」であるため、
+ProjectModeApp で3ビューモデルを確立してから MemoryModeApp に適用する。
+
+### ステップ1: Reducer 状態の統一（ProjectModeApp のみ影響）
+
+- `app-reducer.ts`: `diagramType` + `viewKind` → `activeView: "system" | "deploy" | "org"`
+- `DiagramTabBar`: `current: DiagramType` + `viewKind` → `active: ActiveView`
+- `ProjectModeApp`: 新しい状態に合わせて更新
+
+### ステップ2: KarasuPreviewColumn の抽出（ProjectModeApp から）
+
+- `packages/app/src/components/KarasuPreviewColumn.tsx` を新規作成
+- `ProjectModeApp` の `.preview-column` の内容を移行
+- 3ビューオブジェクト props を確立し、`ProjectModeApp` から正常動作を確認
+
+### ステップ3: InMemoryFileSystemProvider の実装
+
+- `packages/app/src/fs/in-memory-provider.ts`（設計は前節参照）
+
+### ステップ4: MemoryModeApp の移行
+
+- `useAppContext`（`InMemoryFileSystemProvider` を注入）に書き換え
+- `KarasuPreviewColumn` を使用
+- `SAMPLE_KRS` を Deploy 図・Org 図も含む内容に更新（必要に応じて）
 
 ---
 
 ## 未解決の問い
 
-1. `KarasuPreviewColumn` の props 設計として案3（ビューオブジェクト）で進めるか
-2. `WarningPanel` を `KarasuPreviewColumn` に内包するか、外部に置くか
-3. `MemoryModeApp` の `SAMPLE_KRS` は Deploy 図・Org 図の例も含めた内容に更新するか
+1. `WarningPanel` を `KarasuPreviewColumn` に内包するか、CSS レイアウトへの影響を確認する
+2. `MemoryModeApp` の `SAMPLE_KRS` は Deploy 図・Org 図の例も含めた内容に更新するか
