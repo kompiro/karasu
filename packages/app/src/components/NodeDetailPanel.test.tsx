@@ -13,6 +13,8 @@ function baseMetadata(overrides: Partial<NodeMetadata> = {}): NodeMetadata {
     description: "",
     links: [],
     tags: [],
+    annotations: [],
+    hasChildren: false,
     ...overrides,
   };
 }
@@ -37,14 +39,10 @@ describe("NodeDetailPanel", () => {
 
   it("sanitizes XSS in description — <script> tag is removed", () => {
     const { container } = render(
-      <NodeDetailPanel
-        {...baseProps({ description: '<script>alert(1)</script>safe text' })}
-      />,
+      <NodeDetailPanel {...baseProps({ description: "<script>alert(1)</script>safe text" })} />,
     );
     expect(container.querySelector("script")).toBeNull();
-    expect(container.querySelector(".node-detail-description")?.textContent).toContain(
-      "safe text",
-    );
+    expect(container.querySelector(".node-detail-description")?.textContent).toContain("safe text");
   });
 
   it("click inside the panel does not propagate to parent", () => {
