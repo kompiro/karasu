@@ -31,7 +31,7 @@ export function WarningPanel({ warnings }: WarningPanelProps) {
           {warnings.map((w) => (
             <li key={`${w.kind}:${w.message}`} className="warning-item">
               <span className="warning-icon warning">{WARNING_ICONS[w.kind] ?? "\u26A0"}</span>
-              {w.message}
+              {w.loc ? `Line ${w.loc.start.line}: ${w.message}` : w.message}
               {w.details.length > 0 && (
                 <div className="warning-details">
                   {w.details.map((d) => (
