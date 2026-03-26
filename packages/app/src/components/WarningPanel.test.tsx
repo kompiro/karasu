@@ -61,4 +61,28 @@ describe("WarningPanel", () => {
     const { container } = render(<WarningPanel warnings={[warning]} />);
     expect(container.querySelector(".warning-icon")?.textContent).toBe("\u26A0");
   });
+
+  it("displays message without prefix when loc is absent", () => {
+    const { container } = render(
+      <WarningPanel warnings={[makeWarning("domain-dispersal", 'domain "payments" is dispersed')]} />,
+    );
+    const item = container.querySelector(".warning-item")!;
+    expect(item.textContent).toContain('domain "payments" is dispersed');
+    expect(item.textContent).not.toContain("Line");
+  });
+
+  it("displays Line N: prefix when loc is present", () => {
+    const warning: Warning = {
+      kind: "domain-dispersal",
+      message: 'domain "payments" is dispersed',
+      details: [],
+      loc: {
+        start: { line: 12, column: 1, offset: 0 },
+        end: { line: 12, column: 20, offset: 19 },
+      },
+    };
+    const { container } = render(<WarningPanel warnings={[warning]} />);
+    const item = container.querySelector(".warning-item")!;
+    expect(item.textContent).toContain('Line 12: domain "payments" is dispersed');
+  });
 });
