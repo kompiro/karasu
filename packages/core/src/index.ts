@@ -114,17 +114,20 @@ import { extractDeployView } from "./view/deploy-view-extract.js";
 import { ImportResolver } from "./fs/import-resolver.js";
 import { getBuiltinStyleSheet, BUILTIN_STYLE_SOURCE } from "./builtins/default-style.js";
 import "./renderer/shapes.js"; // ensure built-in shapes are registered
-import type { Diagnostic, LogicalNodeKind, LinkEntry, KrsNode } from "./types/ast.js";
+import type { Diagnostic, LogicalNodeKind, DeployNodeKind, LinkEntry, KrsNode, DeployNode } from "./types/ast.js";
+import type { DeployViewSlice } from "./view/deploy-view-extract.js";
 import { summarizeDescription } from "./renderer/description-summary.js";
 
 export interface NodeMetadata {
-  kind: LogicalNodeKind;
+  kind: LogicalNodeKind | DeployNodeKind;
   label: string;
   description?: string;
   descriptionSummary?: string;
   links: LinkEntry[];
   team?: string;
   role?: string;
+  runtime?: string;
+  realizes?: string;
   tags: string[];
   annotations: string[];
   hasChildren: boolean;
@@ -166,7 +169,7 @@ export function compile(
   if (diagramType === "deploy") {
     const deploySlice = extractDeployView(parseResult.value.deploys, parseResult.value.systems);
     svg = renderDeploy(deploySlice, styles);
-    nodeMetadata = new Map();
+    nodeMetadata = buildDeployNodeMetadata(deploySlice);
   } else {
     const viewSlice = extractView(parseResult.value.systems, viewPath ?? []);
     svg = render(viewSlice, styles);
@@ -202,7 +205,7 @@ export async function compileProject(
   if (diagramType === "deploy") {
     const deploySlice = extractDeployView(resolved.krsFile.deploys, resolved.krsFile.systems);
     svg = renderDeploy(deploySlice, styles);
-    nodeMetadata = new Map();
+    nodeMetadata = buildDeployNodeMetadata(deploySlice);
   } else {
     const viewSlice = extractView(resolved.krsFile.systems, viewPath ?? []);
     svg = render(viewSlice, styles);
@@ -240,6 +243,30 @@ function buildNodeMetadata(
   for (const node of viewSlice.ghostUsers) {
     addNode(node);
   }
+
+  return map;
+}
+
+function buildDeployNodeMetadata(deploySlice: DeployViewSlice): Map<string, NodeMetadata> {
+  const map = new Map<string, NodeMetadata>();
+
+  function addUnit(unit: DeployNode): void {
+    map.set(unit.id, {
+      kind: unit.kind,
+      label: unit.id,
+      links: [],
+      tags: [],
+      annotations: [],
+      hasChildren: false,
+      runtime: unit.properties.runtime,
+      realizes: unit.properties.realizes,
+    });
+  }
+
+  for (const container of deploySlice.containers) {
+    for (const unit of container.units) addUnit(unit);
+  }
+  for (const unit of deploySlice.unclassifiedUnits) addUnit(unit);
 
   return map;
 }
