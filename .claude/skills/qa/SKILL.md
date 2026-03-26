@@ -17,6 +17,9 @@ description: >
 
 `docs/acceptance/*.md` を全件読み込む。
 
+フロントマターの `type` フィールドを確認し、`type: product` または `type` フィールドなしのファイルのみを対象とする。
+`type: tool` のファイルはスキップする。
+
 ### 2. 自動検証コマンドの実行
 
 各 AT ファイルの bash コードブロック（` ```bash ` で囲まれた部分）を抽出し、

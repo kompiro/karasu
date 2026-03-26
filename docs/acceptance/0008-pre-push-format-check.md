@@ -1,3 +1,7 @@
+---
+type: tool
+---
+
 # AT-0008: Pre-push Checks (lefthook)
 
 ## Overview
