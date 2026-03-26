@@ -1,3 +1,7 @@
+---
+type: product
+---
+
 # AT-0007: Organization Diagram
 
 - **Date**: 2026-03-24

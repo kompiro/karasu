@@ -1,3 +1,7 @@
+---
+type: product
+---
+
 # AT-0006: Built-in Style & Reference Panel
 
 - **日付**: 2026-03-23
