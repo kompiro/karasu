@@ -1,18 +1,16 @@
 import { useEffect, useCallback, useMemo, useRef } from "react";
 import { Parser } from "@karasu/core";
 import { EditorPane } from "./components/EditorPane.js";
-import { PreviewPane } from "./components/PreviewPane.js";
-import { WarningPanel } from "./components/WarningPanel.js";
-import { BreadcrumbBar } from "./components/BreadcrumbBar.js";
-import { DiagramTabBar } from "./components/DiagramTabBar.js";
 import { ProjectSelector } from "./components/ProjectSelector.js";
 import { FileTree } from "./components/FileTree.js";
+import { KarasuPreviewColumn } from "./components/KarasuPreviewColumn.js";
 import { useAppContext } from "./state/app-context.js";
 import { useProjectSystemView } from "./hooks/useProjectSystemView.js";
 import { useProjectDeployView } from "./hooks/useProjectDeployView.js";
 import { useOrgView } from "./hooks/useOrgView.js";
 import { ProjectManager } from "./fs/project-manager.js";
 import type { Project, KrsNode, OrgViewPath } from "@karasu/core";
+import type { ActiveView } from "./state/app-reducer.js";
 
 const LAST_PROJECT_KEY = "karasu-last-project-id";
 
@@ -31,8 +29,7 @@ export function ProjectModeApp() {
     currentFilePath,
     fileContent,
     viewPath,
-    diagramType,
-    viewKind,
+    activeView,
     orgPath,
     highlightedNodeId,
     loading,
@@ -63,10 +60,7 @@ export function ProjectModeApp() {
     recompileDeploy();
   }, [recompileSystem, recompileDeploy]);
 
-  const svg = diagramType === "system" ? systemSvg : deploySvg;
-  const warnings = diagramType === "system" ? systemWarnings : deployWarnings;
-  const diagnostics = diagramType === "system" ? systemDiagnostics : deployDiagnostics;
-  const nodeMetadata = diagramType === "system" ? systemNodeMetadata : deployNodeMetadata;
+  const nodeMetadata = activeView === "deploy" ? deployNodeMetadata : systemNodeMetadata;
 
   const { orgSvg, orgDiagnostics, orgWarnings } = useOrgView(
     fileContent,
@@ -149,27 +143,19 @@ export function ProjectModeApp() {
   // ドリルダウン
   const handleDrillDown = useCallback(
     (newPath: string[]) => {
-      if (viewKind === "org") {
+      if (activeView === "org") {
         dispatch({ type: "SET_ORG_PATH", path: newPath });
       } else {
         dispatch({ type: "SET_VIEW_PATH", path: newPath });
       }
     },
-    [dispatch, viewKind],
+    [dispatch, activeView],
   );
 
   // ビュー切り替え
-  const handleViewKindChange = useCallback(
-    (kind: "logical" | "org") => {
-      dispatch({ type: "SET_VIEW_KIND", viewKind: kind });
-    },
-    [dispatch],
-  );
-
-  // タブ切り替え
-  const handleDiagramTypeChange = useCallback(
-    (type: typeof diagramType) => {
-      dispatch({ type: "SET_DIAGRAM_TYPE", diagramType: type });
+  const handleActiveViewChange = useCallback(
+    (view: ActiveView) => {
+      dispatch({ type: "SET_ACTIVE_VIEW", activeView: view });
     },
     [dispatch],
   );
@@ -177,7 +163,7 @@ export function ProjectModeApp() {
   // Deploy コンテナクリック → System タブへクロスナビゲーション
   const handleContainerClick = useCallback(
     (containerId: string) => {
-      dispatch({ type: "SET_DIAGRAM_TYPE", diagramType: "system" });
+      dispatch({ type: "SET_ACTIVE_VIEW", activeView: "system" });
       dispatch({ type: "SET_HIGHLIGHTED_NODE", nodeId: containerId });
     },
     [dispatch],
@@ -314,43 +300,37 @@ export function ProjectModeApp() {
         />
       )}
       <EditorPane value={fileContent} onChange={handleEditorChange} />
-      <div className="preview-column">
-        <DiagramTabBar
-          current={diagramType}
-          hasDeployDiagram={hasDeployDiagram}
-          onChange={(type) => {
-            handleViewKindChange("logical");
-            handleDiagramTypeChange(type);
-          }}
-          viewKind={viewKind}
-          onViewKindChange={handleViewKindChange}
-        />
-        {viewKind === "logical" && diagramType === "system" && (
-          <BreadcrumbBar
-            items={breadcrumbItems}
-            onNavigate={(path) => dispatch({ type: "SET_VIEW_PATH", path })}
-          />
-        )}
-        {viewKind === "org" && (
-          <BreadcrumbBar
-            items={orgBreadcrumbItems}
-            onNavigate={(path) => dispatch({ type: "SET_ORG_PATH", path })}
-          />
-        )}
-        <PreviewPane
-          svg={viewKind === "org" ? orgSvg : svg}
-          diagnostics={viewKind === "org" ? orgDiagnostics : diagnostics}
-          viewPath={viewKind === "org" ? orgPath : viewPath}
-          nodeMetadata={nodeMetadata}
-          onDrillDown={handleDrillDown}
-          onContainerClick={
-            viewKind === "logical" && diagramType === "deploy" ? handleContainerClick : undefined
-          }
-          highlightedNodeId={highlightedNodeId}
-          onClearHighlight={() => dispatch({ type: "SET_HIGHLIGHTED_NODE", nodeId: null })}
-        />
-      </div>
-      <WarningPanel warnings={viewKind === "org" ? orgWarnings : warnings} />
+      <KarasuPreviewColumn
+        activeView={activeView}
+        hasDeployDiagram={hasDeployDiagram}
+        onActiveViewChange={handleActiveViewChange}
+        systemView={{
+          svg: systemSvg,
+          diagnostics: systemDiagnostics,
+          viewPath,
+          breadcrumbItems,
+          warnings: systemWarnings,
+          onBreadcrumbNavigate: (path) => dispatch({ type: "SET_VIEW_PATH", path }),
+        }}
+        deployView={{
+          svg: deploySvg,
+          diagnostics: deployDiagnostics,
+          warnings: deployWarnings,
+          highlightedNodeId,
+          onClearHighlight: () => dispatch({ type: "SET_HIGHLIGHTED_NODE", nodeId: null }),
+          onContainerClick: handleContainerClick,
+        }}
+        orgView={{
+          svg: orgSvg,
+          diagnostics: orgDiagnostics,
+          orgPath: orgPath as OrgViewPath,
+          breadcrumbItems: orgBreadcrumbItems,
+          warnings: orgWarnings,
+          onBreadcrumbNavigate: (path) => dispatch({ type: "SET_ORG_PATH", path }),
+        }}
+        nodeMetadata={nodeMetadata}
+        onDrillDown={handleDrillDown}
+      />
     </div>
   );
 }

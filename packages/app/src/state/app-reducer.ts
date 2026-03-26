@@ -1,4 +1,6 @@
-import type { Project, DirEntry, DiagramType } from "@karasu/core";
+import type { Project, DirEntry } from "@karasu/core";
+
+export type ActiveView = "system" | "deploy" | "org";
 
 export interface AppState {
   // プロジェクト管理
@@ -10,8 +12,7 @@ export interface AppState {
   fileTree: DirEntry[];
   // ビュー
   viewPath: string[];
-  diagramType: DiagramType;
-  viewKind: "logical" | "org";
+  activeView: ActiveView;
   orgPath: string[];
   // クロスナビゲーション
   highlightedNodeId: string | null;
@@ -26,8 +27,7 @@ export const initialState: AppState = {
   fileContent: "",
   fileTree: [],
   viewPath: [],
-  diagramType: "system",
-  viewKind: "logical",
+  activeView: "system",
   orgPath: [],
   highlightedNodeId: null,
   loading: true,
@@ -40,10 +40,9 @@ export type AppAction =
   | { type: "UPDATE_FILE_CONTENT"; content: string }
   | { type: "SET_FILE_TREE"; tree: DirEntry[] }
   | { type: "SET_VIEW_PATH"; path: string[] }
-  | { type: "SET_DIAGRAM_TYPE"; diagramType: DiagramType }
+  | { type: "SET_ACTIVE_VIEW"; activeView: ActiveView }
   | { type: "SET_HIGHLIGHTED_NODE"; nodeId: string | null }
   | { type: "SET_LOADING"; loading: boolean }
-  | { type: "SET_VIEW_KIND"; viewKind: "logical" | "org" }
   | { type: "SET_ORG_PATH"; path: string[] }
   | { type: "ADD_PROJECT"; project: Project }
   | { type: "REMOVE_PROJECT"; id: string }
@@ -62,8 +61,7 @@ export function appReducer(state: AppState, action: AppAction): AppState {
         fileContent: "",
         fileTree: [],
         viewPath: [],
-        diagramType: "system",
-        viewKind: "logical",
+        activeView: "system",
         orgPath: [],
         highlightedNodeId: null,
       };
@@ -74,8 +72,7 @@ export function appReducer(state: AppState, action: AppAction): AppState {
         currentFilePath: action.path,
         fileContent: action.content,
         viewPath: [],
-        diagramType: "system",
-        viewKind: "logical",
+        activeView: "system",
         orgPath: [],
         highlightedNodeId: null,
       };
@@ -89,12 +86,13 @@ export function appReducer(state: AppState, action: AppAction): AppState {
     case "SET_VIEW_PATH":
       return { ...state, viewPath: action.path };
 
-    case "SET_DIAGRAM_TYPE":
+    case "SET_ACTIVE_VIEW":
       return {
         ...state,
-        diagramType: action.diagramType,
+        activeView: action.activeView,
         viewPath: [],
         highlightedNodeId: null,
+        ...(action.activeView === "org" ? { orgPath: [] } : {}),
       };
 
     case "SET_HIGHLIGHTED_NODE":
@@ -102,9 +100,6 @@ export function appReducer(state: AppState, action: AppAction): AppState {
 
     case "SET_LOADING":
       return { ...state, loading: action.loading };
-
-    case "SET_VIEW_KIND":
-      return { ...state, viewKind: action.viewKind, orgPath: [] };
 
     case "SET_ORG_PATH":
       return { ...state, orgPath: action.path };

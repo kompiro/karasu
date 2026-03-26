@@ -7,11 +7,9 @@ import { DiagramTabBar } from "./DiagramTabBar.js";
 
 function baseProps() {
   return {
-    current: "system" as const,
+    active: "system" as const,
     hasDeployDiagram: true,
     onChange: vi.fn(),
-    viewKind: "logical" as const,
-    onViewKindChange: vi.fn(),
   };
 }
 
@@ -31,11 +29,11 @@ describe("DiagramTabBar", () => {
     expect(props.onChange).toHaveBeenCalledWith("deploy");
   });
 
-  it("clicking Org tab calls onViewKindChange('org')", () => {
+  it("clicking Org tab calls onChange('org')", () => {
     const props = baseProps();
     const { getByRole } = render(<DiagramTabBar {...props} />);
     fireEvent.click(getByRole("tab", { name: /Org/ }));
-    expect(props.onViewKindChange).toHaveBeenCalledWith("org");
+    expect(props.onChange).toHaveBeenCalledWith("org");
   });
 
   it("Deploy tab has aria-disabled when hasDeployDiagram is false", () => {
@@ -45,11 +43,29 @@ describe("DiagramTabBar", () => {
   });
 
   it("active tab has aria-selected=true; others have aria-selected=false", () => {
-    const props = baseProps(); // current="system", viewKind="logical"
+    const props = baseProps(); // active="system"
     const { getAllByRole } = render(<DiagramTabBar {...props} />);
     const [systemTab, deployTab, orgTab] = getAllByRole("tab");
     expect(systemTab.getAttribute("aria-selected")).toBe("true");
     expect(deployTab.getAttribute("aria-selected")).toBe("false");
     expect(orgTab.getAttribute("aria-selected")).toBe("false");
+  });
+
+  it("Deploy tab is active when active='deploy'", () => {
+    const props = { ...baseProps(), active: "deploy" as const };
+    const { getAllByRole } = render(<DiagramTabBar {...props} />);
+    const [systemTab, deployTab, orgTab] = getAllByRole("tab");
+    expect(systemTab.getAttribute("aria-selected")).toBe("false");
+    expect(deployTab.getAttribute("aria-selected")).toBe("true");
+    expect(orgTab.getAttribute("aria-selected")).toBe("false");
+  });
+
+  it("Org tab is active when active='org'", () => {
+    const props = { ...baseProps(), active: "org" as const };
+    const { getAllByRole } = render(<DiagramTabBar {...props} />);
+    const [systemTab, deployTab, orgTab] = getAllByRole("tab");
+    expect(systemTab.getAttribute("aria-selected")).toBe("false");
+    expect(deployTab.getAttribute("aria-selected")).toBe("false");
+    expect(orgTab.getAttribute("aria-selected")).toBe("true");
   });
 });
