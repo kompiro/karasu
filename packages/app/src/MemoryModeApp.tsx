@@ -3,7 +3,7 @@ import { EditorPane } from "./components/EditorPane.js";
 import { PreviewPane } from "./components/PreviewPane.js";
 import { WarningPanel } from "./components/WarningPanel.js";
 import { BreadcrumbBar } from "./components/BreadcrumbBar.js";
-import { useKarasu } from "./hooks/useKarasu.js";
+import { useSystemView } from "./hooks/useSystemView.js";
 import { useOrgView } from "./hooks/useOrgView.js";
 import { Parser, type KrsNode, type OrgViewPath } from "@karasu/core";
 
@@ -107,7 +107,7 @@ export function MemoryModeApp() {
   const [viewKind, setViewKind] = useState<ViewKind>("logical");
   const [orgPath, setOrgPath] = useState<OrgViewPath>([]);
 
-  const { svg, warnings, diagnostics, nodeMetadata } = useKarasu(krsSource, "", viewPath);
+  const { svg, warnings, diagnostics, nodeMetadata } = useSystemView(krsSource, "", viewPath);
   const { orgSvg, orgDiagnostics } = useOrgView(krsSource, "", orgPath);
 
   const handleEditorChange = useCallback((value: string) => {
