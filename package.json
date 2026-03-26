@@ -13,7 +13,7 @@
     "build": "npm run build --workspace=packages/core && npm run build --workspace=packages/app",
     "test": "vitest run",
     "test:coverage": "npm run test:coverage --workspace=packages/core && npm run test:coverage --workspace=packages/app",
-    "lint": "oxlint packages/",
+    "lint": "oxlint --deny-warnings packages/",
     "lint:fix": "oxlint --fix packages/",
     "format": "oxfmt --write packages/",
     "format:check": "oxfmt --check packages/",
