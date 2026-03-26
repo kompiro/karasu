@@ -166,7 +166,10 @@ export function compile(
     sheets.push(styleResult.value);
   }
 
-  const deploySliceForStyle = extractDeployView(parseResult.value.deploys, parseResult.value.systems);
+  const deploySliceForStyle = extractDeployView(
+    parseResult.value.deploys,
+    parseResult.value.systems,
+  );
   const deployUnits = [
     ...deploySliceForStyle.containers.flatMap((c) => c.units),
     ...deploySliceForStyle.unclassifiedUnits,
