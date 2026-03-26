@@ -26,9 +26,16 @@ system "Example" {
 
 ### ケース2: loc あり Warning の表示
 
-- loc 付き Warning は現状のパーサー実装では一部の警告種別で生成される
-- 該当する Warning が表示された場合、`Line N: <メッセージ>` の形式で表示されること
-- **確認**: 行番号が正しく `Line N:` として先頭に表示されること
+1. エディタに以下を入力する:
+
+```
+deploy "prod" {
+  node "api" {}
+}
+```
+
+2. WarningPanel に `missing-runtime` / `missing-realizes` の警告が表示される
+3. **確認**: `Line N: デプロイノード "api" に runtime が指定されていません` のように行番号プレフィックスが表示されること
 
 ## 自動テスト
 
