@@ -1,4 +1,8 @@
-# AT: PreviewPane component behavior tests
+---
+type: product
+---
+
+# AT-0010: PreviewPane component behavior tests
 
 - **Related Issue**: #40
 - **Date**: 2026-03-25
