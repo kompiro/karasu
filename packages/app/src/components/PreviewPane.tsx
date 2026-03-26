@@ -38,6 +38,7 @@ export function PreviewPane({
   const svgRef = useRef<HTMLDivElement>(null);
   const [transform, setTransform] = useState({ scale: 1, x: 0, y: 0 });
   const [isDragging, setIsDragging] = useState(false);
+  const isDraggingRef = useRef(false);
   const [detailPanel, setDetailPanel] = useState<DetailPanelState | null>(null);
   const dragStart = useRef({ x: 0, y: 0 });
   const mouseDownPos = useRef({ x: 0, y: 0 });
@@ -58,6 +59,7 @@ export function PreviewPane({
   const handleMouseDown = useCallback(
     (e: MouseEvent) => {
       if (e.button !== 0) return;
+      isDraggingRef.current = true;
       setIsDragging(true);
       dragStart.current = {
         x: e.clientX - transform.x,
@@ -100,7 +102,8 @@ export function PreviewPane({
 
   const handleMouseUp = useCallback(
     (e: MouseEvent) => {
-      const wasDragging = isDragging;
+      const wasDragging = isDraggingRef.current;
+      isDraggingRef.current = false;
       setIsDragging(false);
 
       if (!wasDragging) return;
@@ -166,10 +169,11 @@ export function PreviewPane({
         openDetailPanel(nodeId, nodeGroup);
       }
     },
-    [isDragging, viewPath, onDrillDown, openDetailPanel, onContainerClick, onClearHighlight],
+    [viewPath, onDrillDown, openDetailPanel, onContainerClick, onClearHighlight],
   );
 
   const handleMouseLeave = useCallback(() => {
+    isDraggingRef.current = false;
     setIsDragging(false);
   }, []);
 
