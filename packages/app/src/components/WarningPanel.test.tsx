@@ -64,7 +64,9 @@ describe("WarningPanel", () => {
 
   it("displays message without prefix when loc is absent", () => {
     const { container } = render(
-      <WarningPanel warnings={[makeWarning("domain-dispersal", 'domain "payments" is dispersed')]} />,
+      <WarningPanel
+        warnings={[makeWarning("domain-dispersal", 'domain "payments" is dispersed')]}
+      />,
     );
     const item = container.querySelector(".warning-item")!;
     expect(item.textContent).toContain('domain "payments" is dispersed');
