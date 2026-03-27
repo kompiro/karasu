@@ -2,7 +2,7 @@
 
 - **日付**: 2026-03-17
 - **ステータス**: 検討中
-- **関連**: [コアコンセプト](concepts.md), [.krs 構文リファレンス](../spec/syntax.md), [ドリルダウン機能 (Issue #21)](https://github.com/kompiro/karasu/issues/21)
+- **関連**: [コアコンセプト](../concepts.md), [.krs 構文リファレンス](../spec/syntax.md), [ドリルダウン機能 (Issue #21)](https://github.com/kompiro/karasu/issues/21)
 
 ## 背景・課題
 

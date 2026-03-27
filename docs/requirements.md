@@ -122,6 +122,6 @@ system → service → domain → usecase → resource
 | [構文リファレンス](spec/syntax.md) | `.krs` の構文詳細 |
 | [スタイルリファレンス](spec/style.md) | `.krs.style` の構文詳細 |
 | [タグ・アノテーション](spec/tags-annotations.md) | タグとアノテーションの一覧 |
-| [コアコンセプト](design/concepts.md) | 論理/物理分離、ドリルダウンの設計思想 |
+| [コアコンセプト](concepts.md) | 論理/物理分離、ドリルダウンの設計思想 |
 | [ドリルダウン機能 (Issue #21)](https://github.com/kompiro/karasu/issues/21) | ドリルダウンの動作仕様 |
 | [SVG/PNG エクスポート (Issue #22)](https://github.com/kompiro/karasu/issues/22) | エクスポート機能の仕様 |
