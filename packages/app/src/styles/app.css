@@ -4,63 +4,63 @@
    Named for Huginn & Muninn — thought and memory surveying the world.
    ================================================================ */
 
-@import url('https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+@import url("https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap");
 
 /* ── Design Tokens ──────────────────────────────────────────────── */
 :root {
   /* Surface depths — from void to raised */
-  --bg-void:     #07090f;
-  --bg-base:     #0c0f1a;
-  --bg-surface:  #111827;
-  --bg-raised:   #172035;
-  --bg-overlay:  #1d2840;
+  --bg-void: #07090f;
+  --bg-base: #0c0f1a;
+  --bg-surface: #111827;
+  --bg-raised: #172035;
+  --bg-overlay: #1d2840;
   --bg-selected: #1a3050;
 
   /* Borders — from barely-there to visible */
-  --border-faint:   rgba(255, 255, 255, 0.03);
-  --border-subtle:  rgba(255, 255, 255, 0.055);
+  --border-faint: rgba(255, 255, 255, 0.03);
+  --border-subtle: rgba(255, 255, 255, 0.055);
   --border-default: rgba(255, 255, 255, 0.09);
-  --border-strong:  rgba(255, 255, 255, 0.15);
-  --border-active:  #3d5a8a;
+  --border-strong: rgba(255, 255, 255, 0.15);
+  --border-active: #3d5a8a;
 
   /* Text hierarchy */
-  --text-primary:   #dce8ff;
+  --text-primary: #dce8ff;
   --text-secondary: #7b92b4;
-  --text-muted:     #3d5068;
-  --text-link:      #5ba4f5;
-  --text-link-hover:#82beff;
+  --text-muted: #3d5068;
+  --text-link: #5ba4f5;
+  --text-link-hover: #82beff;
 
   /* Accent — electric blue */
-  --accent:         #4d8fff;
-  --accent-hover:   #6aaeff;
-  --accent-dim:     rgba(77, 143, 255, 0.10);
-  --accent-glow:    rgba(77, 143, 255, 0.22);
+  --accent: #4d8fff;
+  --accent-hover: #6aaeff;
+  --accent-dim: rgba(77, 143, 255, 0.1);
+  --accent-glow: rgba(77, 143, 255, 0.22);
 
   /* Raven iridescence — purple shimmer like a crow's feather in light */
-  --feather:        #8b7cf6;
-  --feather-dim:    rgba(139, 124, 246, 0.07);
-  --feather-glow:   rgba(139, 124, 246, 0.18);
+  --feather: #8b7cf6;
+  --feather-dim: rgba(139, 124, 246, 0.07);
+  --feather-glow: rgba(139, 124, 246, 0.18);
 
   /* Semantic states */
-  --error:          #f87171;
-  --error-dim:      rgba(248, 113, 113, 0.10);
-  --warning:        #fbbf24;
-  --warning-dim:    rgba(251, 191, 36, 0.08);
-  --success:        #34d399;
+  --error: #f87171;
+  --error-dim: rgba(248, 113, 113, 0.1);
+  --warning: #fbbf24;
+  --warning-dim: rgba(251, 191, 36, 0.08);
+  --success: #34d399;
 
   /* Geometry */
-  --radius-xs:      3px;
-  --radius-sm:      5px;
-  --radius-md:      7px;
-  --radius-lg:      10px;
+  --radius-xs: 3px;
+  --radius-sm: 5px;
+  --radius-md: 7px;
+  --radius-lg: 10px;
 
   /* Layout */
-  --sidebar-w:      210px;
-  --topbar-h:       38px;
+  --sidebar-w: 210px;
+  --topbar-h: 38px;
 
   /* Typography */
-  --font-ui:   'Figtree', -apple-system, 'Helvetica Neue', sans-serif;
-  --font-mono: 'JetBrains Mono', 'Fira Code', 'Consolas', monospace;
+  --font-ui: "Figtree", -apple-system, "Helvetica Neue", sans-serif;
+  --font-mono: "JetBrains Mono", "Fira Code", "Consolas", monospace;
 }
 
 /* ── Base Reset ─────────────────────────────────────────────────── */
@@ -85,10 +85,20 @@ body,
 }
 
 /* Refined scrollbars */
-::-webkit-scrollbar          { width: 5px; height: 5px; }
-::-webkit-scrollbar-track    { background: transparent; }
-::-webkit-scrollbar-thumb    { background: var(--border-strong); border-radius: 3px; }
-::-webkit-scrollbar-thumb:hover { background: var(--border-active); }
+::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--border-strong);
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--border-active);
+}
 
 /* ================================================================
    MEMORY MODE LAYOUT — 2-pane (editor | preview)
@@ -113,7 +123,7 @@ body,
 
 /* Iridescent seam along editor/preview boundary */
 .editor-pane::after {
-  content: '';
+  content: "";
   position: absolute;
   top: 0;
   right: 0;
@@ -153,7 +163,10 @@ body,
     radial-gradient(ellipse 80% 60% at 50% 50%, transparent 60%, var(--bg-base) 100%),
     linear-gradient(var(--border-faint) 1px, transparent 1px),
     linear-gradient(90deg, var(--border-faint) 1px, transparent 1px);
-  background-size: 100% 100%, 28px 28px, 28px 28px;
+  background-size:
+    100% 100%,
+    28px 28px,
+    28px 28px;
 }
 
 .preview-container {
@@ -193,7 +206,9 @@ body,
   letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--text-muted);
-  transition: background 0.15s, color 0.15s;
+  transition:
+    background 0.15s,
+    color 0.15s;
 }
 
 .warning-panel-header:hover {
@@ -223,9 +238,15 @@ body,
   border-left-color: var(--border-strong);
 }
 
-.warning-icon { margin-right: 6px; }
-.warning-icon.error   { color: var(--error); }
-.warning-icon.warning { color: var(--warning); }
+.warning-icon {
+  margin-right: 6px;
+}
+.warning-icon.error {
+  color: var(--error);
+}
+.warning-icon.warning {
+  color: var(--warning);
+}
 
 .warning-details {
   margin-left: 20px;
@@ -263,7 +284,9 @@ body,
   font-family: var(--font-ui);
   letter-spacing: 0.015em;
   cursor: pointer;
-  transition: color 0.15s, border-color 0.15s;
+  transition:
+    color 0.15s,
+    border-color 0.15s;
   white-space: nowrap;
 }
 
@@ -288,9 +311,7 @@ body,
 
 /* ── Cross-navigation highlight ─────────────────────────────────── */
 .karasu-highlighted {
-  filter:
-    drop-shadow(0 0 6px var(--accent-glow))
-    drop-shadow(0 0 16px var(--accent-dim));
+  filter: drop-shadow(0 0 6px var(--accent-glow)) drop-shadow(0 0 16px var(--accent-dim));
 }
 
 /* ── Breadcrumb ─────────────────────────────────────────────────── */
@@ -323,7 +344,9 @@ body,
   font-family: var(--font-ui);
   padding: 2px 5px;
   border-radius: var(--radius-xs);
-  transition: background 0.1s, color 0.1s;
+  transition:
+    background 0.1s,
+    color 0.1s;
 }
 
 .breadcrumb-link:hover {
@@ -359,8 +382,12 @@ body,
   backdrop-filter: blur(6px);
 }
 
-.diagnostic-banner__item--error   { color: var(--error); }
-.diagnostic-banner__item--warning { color: var(--warning); }
+.diagnostic-banner__item--error {
+  color: var(--error);
+}
+.diagnostic-banner__item--warning {
+  color: var(--warning);
+}
 
 /* ================================================================
    PROJECT MODE LAYOUT — sidebar + editor + preview
@@ -385,16 +412,12 @@ body,
   background: var(--bg-void);
   border-bottom: 1px solid var(--border-default);
   /* Barely-visible top highlight — depth cue */
-  background-image: linear-gradient(
-    to bottom,
-    rgba(255, 255, 255, 0.025) 0%,
-    transparent 100%
-  );
+  background-image: linear-gradient(to bottom, rgba(255, 255, 255, 0.025) 0%, transparent 100%);
 }
 
 /* Raven glyph wordmark — the bird watching over */
 .project-selector::before {
-  content: '鴉';
+  content: "鴉";
   font-size: 15px;
   color: var(--text-muted);
   margin-right: 2px;
@@ -414,7 +437,9 @@ body,
   font-family: var(--font-ui);
   min-width: 176px;
   cursor: pointer;
-  transition: border-color 0.15s, box-shadow 0.15s;
+  transition:
+    border-color 0.15s,
+    box-shadow 0.15s;
   appearance: none;
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%233d5068' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
   background-repeat: no-repeat;
@@ -473,7 +498,9 @@ body,
   box-shadow: 0 0 0 2px var(--accent-dim);
 }
 
-.project-selector-input:focus { outline: none; }
+.project-selector-input:focus {
+  outline: none;
+}
 
 /* ── File Tree (left sidebar) ───────────────────────────────────── */
 .file-tree {
@@ -500,7 +527,10 @@ body,
   justify-content: space-between;
 }
 
-.file-tree-header-actions { display: flex; gap: 2px; }
+.file-tree-header-actions {
+  display: flex;
+  gap: 2px;
+}
 
 .file-tree-header-btn {
   background: transparent;
@@ -511,7 +541,9 @@ body,
   font-size: 12px;
   cursor: pointer;
   line-height: 1;
-  transition: background 0.12s, color 0.12s;
+  transition:
+    background 0.12s,
+    color 0.12s;
 }
 
 .file-tree-header-btn:hover {
@@ -533,7 +565,10 @@ body,
   color: var(--text-secondary);
   cursor: pointer;
   user-select: none;
-  transition: background 0.1s, border-color 0.1s, color 0.1s;
+  transition:
+    background 0.1s,
+    border-color 0.1s,
+    color 0.1s;
   border-left: 2px solid transparent;
 }
 
@@ -595,8 +630,14 @@ body,
 }
 
 @keyframes contextMenuReveal {
-  from { opacity: 0; transform: scale(0.95) translateY(-5px); }
-  to   { opacity: 1; transform: scale(1)    translateY(0); }
+  from {
+    opacity: 0;
+    transform: scale(0.95) translateY(-5px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
 }
 
 .context-menu-item {
@@ -610,7 +651,9 @@ body,
   border: none;
   text-align: left;
   cursor: pointer;
-  transition: background 0.1s, color 0.1s;
+  transition:
+    background 0.1s,
+    color 0.1s;
 }
 
 .context-menu-item:hover {
@@ -639,7 +682,7 @@ body,
 }
 
 .app-project-mode .editor-pane::after {
-  content: '';
+  content: "";
   position: absolute;
   top: 0;
   right: 0;
@@ -714,14 +757,12 @@ body,
   gap: 8px;
   padding: 10px 12px;
   border-bottom: 1px solid var(--border-default);
-  background: linear-gradient(
-    to bottom,
-    var(--bg-overlay) 0%,
-    var(--bg-raised)  100%
-  );
+  background: linear-gradient(to bottom, var(--bg-overlay) 0%, var(--bg-raised) 100%);
 }
 
-.node-detail-icon { font-size: 15px; }
+.node-detail-icon {
+  font-size: 15px;
+}
 
 .node-detail-label {
   font-weight: 600;
@@ -757,7 +798,9 @@ body,
   overflow-y: auto;
 }
 
-.node-detail-description p { margin-bottom: 8px; }
+.node-detail-description p {
+  margin-bottom: 8px;
+}
 .node-detail-description h1,
 .node-detail-description h2,
 .node-detail-description h3 {
@@ -793,15 +836,22 @@ body,
   font-weight: 700;
 }
 
-.node-detail-links { list-style: none; padding: 0; }
-.node-detail-links li { margin: 2px 0; }
+.node-detail-links {
+  list-style: none;
+  padding: 0;
+}
+.node-detail-links li {
+  margin: 2px 0;
+}
 .node-detail-links a {
   color: var(--text-link);
   text-decoration: none;
   font-size: 13px;
   transition: color 0.12s;
 }
-.node-detail-links a:hover { color: var(--text-link-hover); }
+.node-detail-links a:hover {
+  color: var(--text-link-hover);
+}
 
 .node-detail-prop {
   font-size: 11.5px;
@@ -876,8 +926,12 @@ body,
 }
 
 @keyframes overlayFadeIn {
-  from { opacity: 0; }
-  to   { opacity: 1; }
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
 }
 
 .reference-panel {
@@ -894,8 +948,14 @@ body,
 }
 
 @keyframes panelSlideIn {
-  from { transform: translateX(24px); opacity: 0; }
-  to   { transform: translateX(0);    opacity: 1; }
+  from {
+    transform: translateX(24px);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
 }
 
 .reference-panel-header {
@@ -904,11 +964,7 @@ body,
   justify-content: space-between;
   padding: 11px 16px;
   border-bottom: 1px solid var(--border-default);
-  background: linear-gradient(
-    to bottom,
-    var(--bg-overlay) 0%,
-    var(--bg-raised)  100%
-  );
+  background: linear-gradient(to bottom, var(--bg-overlay) 0%, var(--bg-raised) 100%);
   flex-shrink: 0;
 }
 
@@ -990,7 +1046,9 @@ body,
   letter-spacing: 0.09em;
 }
 
-.reference-tab-body h3:first-child { margin-top: 0; }
+.reference-tab-body h3:first-child {
+  margin-top: 0;
+}
 
 .reference-table {
   width: 100%;
@@ -1040,7 +1098,7 @@ body,
 
 /* Subtle inner top highlight */
 .reference-code-block::before {
-  content: '';
+  content: "";
   position: absolute;
   top: 0;
   left: 0;
