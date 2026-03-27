@@ -83,7 +83,7 @@ description: >
 
 ### 7. CI 確認
 
-1. `gh pr checks <pr-number>` で CI の状態を確認する
+1. `gh pr checks <pr-number> --watch` で CI の完了を待つ
 2. CI が失敗した場合は修正し、追加コミットをプッシュする
 3. CI が通過したらユーザーに手動検証を依頼する
 
