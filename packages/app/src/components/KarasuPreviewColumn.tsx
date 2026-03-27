@@ -96,7 +96,15 @@ export function KarasuPreviewColumn({
         highlightedNodeId={activeView === "deploy" ? deployView.highlightedNodeId : undefined}
         onClearHighlight={activeView === "deploy" ? deployView.onClearHighlight : undefined}
       />
-      <WarningPanel warnings={activeView === "org" ? orgView.warnings : systemView.warnings} />
+      <WarningPanel
+        warnings={
+          activeView === "org"
+            ? orgView.warnings
+            : activeView === "deploy"
+              ? deployView.warnings
+              : systemView.warnings
+        }
+      />
     </div>
   );
 }

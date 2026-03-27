@@ -105,16 +105,22 @@ describe("KarasuPreviewColumn", () => {
       expect(queryByText("Root")).toBeNull();
     });
 
-    it("shows system warnings (not deploy) in WarningPanel when deploy is active", () => {
+    it("shows deploy warnings in WarningPanel when deploy is active", () => {
+      const depWarning: Warning = { kind: "missing-runtime", message: "dep warning", details: [] };
       const props = makeProps({
         activeView: "deploy",
         systemView: {
           ...makeProps().systemView,
           warnings: [sysWarning],
         },
+        deployView: {
+          ...makeProps().deployView,
+          warnings: [depWarning],
+        },
       });
-      const { getByText } = render(<KarasuPreviewColumn {...props} />);
-      expect(getByText("sys warning")).toBeTruthy();
+      const { getByText, queryByText } = render(<KarasuPreviewColumn {...props} />);
+      expect(getByText("dep warning")).toBeTruthy();
+      expect(queryByText("sys warning")).toBeNull();
     });
   });
 
