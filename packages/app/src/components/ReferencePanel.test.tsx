@@ -45,6 +45,88 @@ describe("ReferencePanel", () => {
     expect(defaultProps.onClose).not.toHaveBeenCalled();
   });
 
+  it("Syntax tab shows system node kinds by default", () => {
+    const { container } = render(<ReferencePanel {...defaultProps} />);
+    const body = container.querySelector(".reference-tab-body")?.textContent ?? "";
+    expect(body).toContain("system");
+    expect(body).toContain("service");
+  });
+
+  it("Syntax tab shows deploy unit kinds when activeView=deploy", () => {
+    const { container } = render(<ReferencePanel {...defaultProps} activeView="deploy" />);
+    const body = container.querySelector(".reference-tab-body")?.textContent ?? "";
+    expect(body).toContain("oci");
+    expect(body).toContain("jar");
+    expect(body).toContain("lambda");
+  });
+
+  it("Syntax tab shows org kinds when activeView=org", () => {
+    const { container } = render(<ReferencePanel {...defaultProps} activeView="org" />);
+    const body = container.querySelector(".reference-tab-body")?.textContent ?? "";
+    expect(body).toContain("organization");
+    expect(body).toContain("team");
+    expect(body).toContain("member");
+  });
+
+  it("Tags tab shows tags list for system view", () => {
+    const { container } = render(<ReferencePanel {...defaultProps} />);
+    const tagsTab = Array.from(container.querySelectorAll(".reference-panel-tab")).find(
+      (el) => el.textContent === "Tags & Annotations",
+    )!;
+    fireEvent.click(tagsTab);
+    const body = container.querySelector(".reference-tab-body")?.textContent ?? "";
+    expect(body).toContain("external");
+    expect(body).toContain("deprecated");
+  });
+
+  it("Tags tab shows unsupported message for deploy view", () => {
+    const { container } = render(<ReferencePanel {...defaultProps} activeView="deploy" />);
+    const tagsTab = Array.from(container.querySelectorAll(".reference-panel-tab")).find(
+      (el) => el.textContent === "Tags & Annotations",
+    )!;
+    fireEvent.click(tagsTab);
+    expect(container.querySelector(".reference-unsupported")).toBeTruthy();
+  });
+
+  it("Tags tab shows unsupported message for org view", () => {
+    const { container } = render(<ReferencePanel {...defaultProps} activeView="org" />);
+    const tagsTab = Array.from(container.querySelectorAll(".reference-panel-tab")).find(
+      (el) => el.textContent === "Tags & Annotations",
+    )!;
+    fireEvent.click(tagsTab);
+    expect(container.querySelector(".reference-unsupported")).toBeTruthy();
+  });
+
+  it("Styles tab shows deploy selector examples when activeView=deploy", () => {
+    const { container } = render(<ReferencePanel {...defaultProps} activeView="deploy" />);
+    const stylesTab = Array.from(container.querySelectorAll(".reference-panel-tab")).find(
+      (el) => el.textContent === "Styles",
+    )!;
+    fireEvent.click(stylesTab);
+    const body = container.querySelector(".reference-tab-body")?.textContent ?? "";
+    expect(body).toContain("deploy diagram selectors");
+  });
+
+  it("Styles tab shows org selector examples when activeView=org", () => {
+    const { container } = render(<ReferencePanel {...defaultProps} activeView="org" />);
+    const stylesTab = Array.from(container.querySelectorAll(".reference-panel-tab")).find(
+      (el) => el.textContent === "Styles",
+    )!;
+    fireEvent.click(stylesTab);
+    const body = container.querySelector(".reference-tab-body")?.textContent ?? "";
+    expect(body).toContain("org diagram selectors");
+  });
+
+  it("Built-in Theme tab notes it applies to all diagram types", () => {
+    const { container } = render(<ReferencePanel {...defaultProps} activeView="deploy" />);
+    const builtinTab = Array.from(container.querySelectorAll(".reference-panel-tab")).find(
+      (el) => el.textContent === "Built-in Theme",
+    )!;
+    fireEvent.click(builtinTab);
+    const body = container.querySelector(".reference-tab-body")?.textContent ?? "";
+    expect(body).toContain("すべての図種別");
+  });
+
   it("Samples tab shows system+deploy+org content", () => {
     const { container } = render(<ReferencePanel {...defaultProps} />);
     const samplesTab = Array.from(container.querySelectorAll(".reference-panel-tab")).find(

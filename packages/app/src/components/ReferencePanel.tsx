@@ -1,9 +1,11 @@
 import { useState, useCallback } from "react";
 import { getReference } from "@karasu/core";
+import type { ActiveView } from "../state/app-reducer.js";
 
 interface ReferencePanelProps {
   isOpen: boolean;
   onClose: () => void;
+  activeView?: ActiveView;
 }
 
 type Tab = "syntax" | "styles" | "tags" | "builtin" | "samples";
@@ -16,7 +18,7 @@ const TAB_LABELS: Record<Tab, string> = {
   samples: "Samples",
 };
 
-export function ReferencePanel({ isOpen, onClose }: ReferencePanelProps) {
+export function ReferencePanel({ isOpen, onClose, activeView = "system" }: ReferencePanelProps) {
   const [activeTab, setActiveTab] = useState<Tab>("syntax");
   const [copied, setCopied] = useState(false);
   const [sampleCopied, setSampleCopied] = useState(false);
@@ -72,9 +74,9 @@ export function ReferencePanel({ isOpen, onClose }: ReferencePanelProps) {
         </div>
 
         <div className="reference-panel-content">
-          {activeTab === "syntax" && <SyntaxTab />}
-          {activeTab === "styles" && <StylesTab />}
-          {activeTab === "tags" && <TagsTab />}
+          {activeTab === "syntax" && <SyntaxTab activeView={activeView} />}
+          {activeTab === "styles" && <StylesTab activeView={activeView} />}
+          {activeTab === "tags" && <TagsTab activeView={activeView} />}
           {activeTab === "builtin" && (
             <BuiltinTab source={ref.builtinStyleSource} onCopy={handleCopy} copied={copied} />
           )}
@@ -87,10 +89,154 @@ export function ReferencePanel({ isOpen, onClose }: ReferencePanelProps) {
   );
 }
 
-function SyntaxTab() {
+function SyntaxTab({ activeView }: { activeView: ActiveView }) {
   const ref = getReference();
+
+  if (activeView === "deploy") {
+    return (
+      <div className="reference-tab-body">
+        <h3>Block Declaration</h3>
+        <div className="reference-code-block">
+          <pre>{`deploy "<name>" {
+  // deploy units
+}`}</pre>
+        </div>
+
+        <h3>Deploy Unit Kinds</h3>
+        <table className="reference-table">
+          <thead>
+            <tr>
+              <th>Kind</th>
+              <th>Description</th>
+              <th>Properties</th>
+            </tr>
+          </thead>
+          <tbody>
+            {ref.deployUnitKinds.map((k) => (
+              <tr key={k.kind}>
+                <td>
+                  <code>{k.kind}</code>
+                </td>
+                <td>{k.description}</td>
+                <td>
+                  {k.properties.map((p) => (
+                    <code key={p}>{p}</code>
+                  ))}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+
+        <h3>Unit Declaration</h3>
+        <div className="reference-code-block">
+          <pre>{`<kind> <id> {
+  label "<表示名>"
+  runtime "<runtime>"   // ⚠ 省略可（警告）
+  realizes <serviceId>  // ⚠ 省略可（警告）
+}
+
+// oci のみ image を指定可
+oci <id> {
+  image "<image:tag>"
+  runtime "<runtime>"
+  realizes <serviceId>
+}
+
+// job のみ schedule を指定可
+job <id> {
+  schedule "0 0 * * *"  // cron 形式。省略で単発実行
+  runtime "<runtime>"
+  realizes <serviceId>
+}
+
+// artifact は任意種別の逃げ弁
+artifact <id> {
+  type "<custom-type>"
+  runtime "<runtime>"
+  realizes <serviceId>
+}`}</pre>
+        </div>
+      </div>
+    );
+  }
+
+  if (activeView === "org") {
+    return (
+      <div className="reference-tab-body">
+        <h3>Block Declaration</h3>
+        <div className="reference-code-block">
+          <pre>{`organization "<name>" {
+  // teams
+}`}</pre>
+        </div>
+
+        <h3>Org Kinds</h3>
+        <table className="reference-table">
+          <thead>
+            <tr>
+              <th>Kind</th>
+              <th>Description</th>
+              <th>Contains</th>
+              <th>Properties</th>
+            </tr>
+          </thead>
+          <tbody>
+            {ref.orgKinds.map((k) => (
+              <tr key={k.kind}>
+                <td>
+                  <code>{k.kind}</code>
+                </td>
+                <td>{k.description}</td>
+                <td>
+                  {k.canContain.length > 0
+                    ? k.canContain.map((c) => <code key={c}>{c}</code>)
+                    : "—"}
+                </td>
+                <td>
+                  {k.properties.map((p) => (
+                    <code key={p}>{p}</code>
+                  ))}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+
+        <h3>Node Declaration</h3>
+        <div className="reference-code-block">
+          <pre>{`organization <id> {
+  label "<表示名>"
+
+  team <id> {
+    label "<チーム名>"
+    owns <serviceId>    // 対応サービス・ドメインを宣言
+    owns <domainId>
+
+    member <id> {
+      label "<名前>"
+      slack  "@handle"  // 省略可
+      github "username" // 省略可
+    }
+
+    team <id> { ... }   // サブチームのネスト可
+  }
+}`}</pre>
+        </div>
+      </div>
+    );
+  }
+
+  // system (default)
   return (
     <div className="reference-tab-body">
+      <h3>Block Declaration</h3>
+      <div className="reference-code-block">
+        <pre>{`system "<name>" {
+  // services, users, edges
+}`}</pre>
+      </div>
+
       <h3>Node Kinds</h3>
       <table className="reference-table">
         <thead>
@@ -148,11 +294,36 @@ A --> B "label"   // async (dashed arrow)`}
   );
 }
 
-function StylesTab() {
+function StylesTab({ activeView }: { activeView: ActiveView }) {
   const ref = getReference();
+
+  const selectorExamples =
+    activeView === "deploy"
+      ? `/* deploy diagram selectors */
+oci { background-color: #0369A1; }
+jar { border-color: #075985; }
+war { opacity: 0.8; }
+#myUnit { background-color: #1D4ED8; }`
+      : activeView === "org"
+        ? `/* org diagram selectors */
+team { background-color: #0369A1; }
+member { border-color: #075985; }
+#myTeam { background-color: #1D4ED8; }`
+        : `/* system diagram selectors */
+service { background-color: #0369A1; }
+domain[external] { border-style: dashed; }
+user[human] { shape: user; }
+edge[async] { border-style: dashed; }
+#ECommerce { background-color: #1D4ED8; }`;
+
   return (
     <div className="reference-tab-body">
-      <h3>Selector Syntax</h3>
+      <h3>Selector Examples</h3>
+      <div className="reference-code-block">
+        <pre>{selectorExamples}</pre>
+      </div>
+
+      <h3>Selector Specificity</h3>
       <table className="reference-table">
         <thead>
           <tr>
@@ -263,8 +434,19 @@ function StylesTab() {
   );
 }
 
-function TagsTab() {
+function TagsTab({ activeView }: { activeView: ActiveView }) {
   const ref = getReference();
+
+  if (activeView !== "system") {
+    return (
+      <div className="reference-tab-body">
+        <p className="reference-unsupported">
+          Tags &amp; Annotations はこのダイアグラムでは未対応です。
+        </p>
+      </div>
+    );
+  }
+
   return (
     <div className="reference-tab-body">
       <h3>Tags</h3>
@@ -333,7 +515,7 @@ function BuiltinTab({
   return (
     <div className="reference-tab-body">
       <div className="reference-builtin-header">
-        <span>Built-in default theme (lowest cascade priority)</span>
+        <span>すべての図種別に適用される built-in テーマ（最低カスケード優先度）</span>
         <button className="reference-copy-btn" onClick={onCopy}>
           {copied ? "Copied!" : "Copy"}
         </button>

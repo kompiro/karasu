@@ -1,9 +1,11 @@
+import { useState } from "react";
 import type { Diagnostic, NodeMetadata, Warning, OrgViewPath } from "@karasu/core";
 import type { ActiveView } from "../state/app-reducer.js";
 import { DiagramTabBar } from "./DiagramTabBar.js";
 import { BreadcrumbBar } from "./BreadcrumbBar.js";
 import { PreviewPane } from "./PreviewPane.js";
 import { WarningPanel } from "./WarningPanel.js";
+import { ReferencePanel } from "./ReferencePanel.js";
 
 interface SystemViewProps {
   svg: string;
@@ -55,6 +57,8 @@ export function KarasuPreviewColumn({
   nodeMetadata,
   onDrillDown,
 }: KarasuPreviewColumnProps) {
+  const [refOpen, setRefOpen] = useState(false);
+
   const svg =
     activeView === "system"
       ? systemView.svg
@@ -77,6 +81,16 @@ export function KarasuPreviewColumn({
         hasDeployDiagram={hasDeployDiagram}
         onChange={onActiveViewChange}
       />
+      <div className="preview-toolbar">
+        <button
+          className="toolbar-btn"
+          onClick={() => setRefOpen(true)}
+          aria-label="Open reference"
+        >
+          ? Reference
+        </button>
+      </div>
+      <ReferencePanel isOpen={refOpen} onClose={() => setRefOpen(false)} activeView={activeView} />
       {activeView === "system" && (
         <BreadcrumbBar
           items={systemView.breadcrumbItems}
