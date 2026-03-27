@@ -197,6 +197,18 @@ describe("KarasuPreviewColumn", () => {
     });
   });
 
+  describe("Reference button", () => {
+    it("shows Reference button for all active views", () => {
+      for (const activeView of ["system", "deploy", "org"] as const) {
+        const { getByRole, unmount } = render(
+          <KarasuPreviewColumn {...makeProps({ activeView })} />,
+        );
+        expect(getByRole("button", { name: /Open reference/ })).toBeTruthy();
+        unmount();
+      }
+    });
+  });
+
   describe("hasDeployDiagram=false", () => {
     it("renders Deploy tab as disabled", () => {
       const props = makeProps({ hasDeployDiagram: false });

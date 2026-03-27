@@ -59,6 +59,29 @@ describe("getReference", () => {
     expect(ref.builtinStyleSource).toContain("edge");
   });
 
+  it("includes all deploy unit kinds", () => {
+    const kinds = ref.deployUnitKinds.map((k) => k.kind);
+    expect(kinds).toEqual(["war", "jar", "oci", "lambda", "function", "assets", "job", "artifact"]);
+  });
+
+  it("all deploy unit kinds include runtime and realizes as properties", () => {
+    for (const kind of ref.deployUnitKinds) {
+      expect(kind.properties).toContain("runtime");
+      expect(kind.properties).toContain("realizes");
+    }
+  });
+
+  it("includes all org kinds", () => {
+    const kinds = ref.orgKinds.map((k) => k.kind);
+    expect(kinds).toEqual(["organization", "team", "member"]);
+  });
+
+  it("team kind can contain team and member", () => {
+    const team = ref.orgKinds.find((k) => k.kind === "team")!;
+    expect(team.canContain).toContain("team");
+    expect(team.canContain).toContain("member");
+  });
+
   it("includes sampleKrs with system, deploy, and organization blocks", () => {
     expect(ref.sampleKrs).toContain("system");
     expect(ref.sampleKrs).toContain("deploy");

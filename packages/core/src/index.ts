@@ -58,6 +58,8 @@ export {
   type AnnotationInfo,
   type StylePropertyInfo,
   type ShapeInfo,
+  type DeployUnitKindInfo,
+  type OrgKindInfo,
 } from "./builtins/reference.js";
 export { analyze } from "./resolver/warnings.js";
 export { render, renderFromLayout } from "./renderer/svg-renderer.js";
