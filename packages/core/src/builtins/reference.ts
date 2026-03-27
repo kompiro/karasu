@@ -259,52 +259,68 @@ export function getReference(): KarasuReference {
       { name: "cloud", description: "雲形", defaultFor: "resource[storage]" },
     ],
     builtinStyleSource: BUILTIN_STYLE_SOURCE,
-    sampleKrs: `system ECPlatform "ECプラットフォーム" {
-  user Customer "顧客" [human] {
+    sampleKrs: `system ECPlatform {
+  label "ECプラットフォーム"
+
+  user Customer [human] {
+    label "顧客"
     description "商品を購入する一般ユーザー"
   }
-  user Seller "出品者" [human] {
+  user Seller [human] {
+    label "出品者"
     description "商品を出品するショップオーナー"
   }
-  user Admin "管理者" [human] {
+  user Admin [human] {
+    label "管理者"
     description "システムを運用する担当者"
   }
 
-  service ECommerce "ECサイト" {
+  service ECommerce {
+    label "ECサイト"
     description "商品の閲覧・購入・出品を提供する"
 
-    domain Catalog "商品カタログ" {
-      usecase SearchProducts "商品を検索する" {
-        resource ProductTable "商品テーブル"
-        resource SearchIndex "検索インデックス" [external]
+    domain Catalog {
+      label "商品カタログ"
+      usecase SearchProducts {
+        label "商品を検索する"
+        resource ProductTable { label "商品テーブル" }
+        resource SearchIndex [external] { label "検索インデックス" }
       }
-      usecase RegisterProduct "商品を登録する" {
-        resource ProductTable "商品テーブル"
-        resource ImageStorage "画像ストレージ" [external]
+      usecase RegisterProduct {
+        label "商品を登録する"
+        resource ProductTable { label "商品テーブル" }
+        resource ImageStorage [external] { label "画像ストレージ" }
       }
     }
-    domain Order "受注" {
-      usecase PlaceOrder "注文を確定する" {
-        resource OrderTable "注文テーブル"
-        resource InventoryAPI "在庫API" [external]
-        resource PaymentAPI "決済API" [external]
+    domain Order {
+      label "受注"
+      usecase PlaceOrder {
+        label "注文を確定する"
+        resource OrderTable { label "注文テーブル" }
+        resource InventoryAPI [external] { label "在庫API" }
+        resource PaymentAPI [external] { label "決済API" }
       }
-      usecase ShowOrderHistory "注文履歴を照会する"
+      usecase ShowOrderHistory { label "注文履歴を照会する" }
     }
-    domain Member "会員" {
-      usecase Register "会員登録する" {
-        resource MemberTable "会員テーブル"
+    domain Member {
+      label "会員"
+      usecase Register {
+        label "会員登録する"
+        resource MemberTable { label "会員テーブル" }
       }
-      usecase EditProfile "プロフィールを編集する"
+      usecase EditProfile { label "プロフィールを編集する" }
     }
   }
-  service Payment "決済" [external] {
+  service Payment [external] {
+    label "決済"
     description "クレジットカード・電子マネー決済"
   }
-  service Inventory "在庫管理" [external] {
+  service Inventory [external] {
+    label "在庫管理"
     description "在庫データの一元管理"
   }
-  service Notification "通知" {
+  service Notification {
+    label "通知"
     description "メール・プッシュ通知の送信"
   }
 
@@ -316,38 +332,49 @@ export function getReference(): KarasuReference {
   ECommerce --> Notification "注文確認を送信する"
 }
 
-deploy Production "本番環境" {
-  oci ecommerceApp "ecommerce-app" {
+deploy Production {
+  label "本番環境"
+  oci ecommerceApp {
+    label "ecommerce-app"
     runtime "Kubernetes (GKE)"
     realizes ECommerce
   }
-  oci notificationWorker "notification-worker" {
+  oci notificationWorker {
+    label "notification-worker"
     runtime "Cloud Run"
     realizes Notification
   }
 }
 
-organization ECOrg "EC開発組織" {
-  team platform "プラットフォームチーム" {
+organization ECOrg {
+  label "EC開発組織"
+  team platform {
+    label "プラットフォームチーム"
     owns ECommerce
 
-    team commerce "コマースチーム" {
+    team commerce {
+      label "コマースチーム"
       owns ECommerce.Catalog
       owns ECommerce.Order
-      member alice "Alice" {
+      member alice {
+        label "Alice"
         github "alice-dev"
       }
     }
-    team member-team "会員チーム" {
+    team member-team {
+      label "会員チーム"
       owns ECommerce.Member
-      member bob "Bob" {
+      member bob {
+        label "Bob"
         description "会員基盤担当"
       }
     }
   }
-  team notification "通知チーム" {
+  team notification {
+    label "通知チーム"
     owns Notification
-    member carol "Carol" {
+    member carol {
+      label "Carol"
       slack "@carol"
     }
   }
