@@ -89,7 +89,7 @@ export function KarasuPreviewColumn({
       />
       <div className="preview-toolbar">
         <button
-          className="toolbar-btn"
+          className="toolbar-btn toolbar-btn--reference"
           onClick={() => setRefOpen(true)}
           aria-label="Open reference"
         >
