@@ -354,16 +354,16 @@ organization ECOrg {
 
     team commerce {
       label "コマースチーム"
-      owns ECommerce.Catalog
-      owns ECommerce.Order
+      owns Catalog
+      owns Order
       member alice {
         label "Alice"
         github "alice-dev"
       }
     }
-    team member-team {
+    team "member-team" {
       label "会員チーム"
-      owns ECommerce.Member
+      owns Member
       member bob {
         label "Bob"
         description "会員基盤担当"
