@@ -38,10 +38,8 @@ system "ECプラットフォーム" {
 | .krs 構文リファレンス               | [docs/spec/syntax.md](docs/spec/syntax.md)                     |
 | .krs.style 構文リファレンス         | [docs/spec/style.md](docs/spec/style.md)                       |
 | タグ・アノテーション一覧            | [docs/spec/tags-annotations.md](docs/spec/tags-annotations.md) |
-| コアコンセプト（論理/物理分離など） | [docs/design/concepts.md](docs/design/concepts.md)             |
-| 設計判断の経緯（ADR）               | [docs/design/adr/](docs/design/adr/)                           |
-| 実装予定の機能                      | [docs/features/planned/](docs/features/planned/)               |
-| 検討中のアイデア                    | [docs/features/ideas/](docs/features/ideas/)                   |
+| コアコンセプト（論理/物理分離など） | [docs/concepts.md](docs/concepts.md)                           |
+| 設計判断の経緯（ADR）               | [docs/adr/](docs/adr/)                                         |
 
 ## リポジトリ構成
 
