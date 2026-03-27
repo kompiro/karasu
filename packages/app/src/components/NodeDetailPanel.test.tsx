@@ -21,6 +21,7 @@ function baseMetadata(overrides: Partial<NodeMetadata> = {}): NodeMetadata {
 
 function baseProps(overrides: Partial<NodeMetadata> = {}) {
   return {
+    nodeId: "test-node",
     metadata: baseMetadata(overrides),
     anchorX: 0,
     anchorY: 0,
@@ -61,5 +62,44 @@ describe("NodeDetailPanel", () => {
     const { getByRole } = render(<NodeDetailPanel {...props} />);
     fireEvent.click(getByRole("button", { name: "Close" }));
     expect(props.onClose).toHaveBeenCalledOnce();
+  });
+
+  it("renders deploy navigation button when hasDeployContainer is true", () => {
+    const onNavigateToDeploy = vi.fn();
+    const onClose = vi.fn();
+    const { getByText } = render(
+      <NodeDetailPanel
+        {...baseProps({ hasDeployContainer: true })}
+        onClose={onClose}
+        onNavigateToDeploy={onNavigateToDeploy}
+      />,
+    );
+    const btn = getByText(/Deploy 図で確認/);
+    fireEvent.click(btn);
+    expect(onNavigateToDeploy).toHaveBeenCalledWith("test-node");
+    expect(onClose).toHaveBeenCalled();
+  });
+
+  it("does not render deploy button when hasDeployContainer is false", () => {
+    const { queryByText } = render(
+      <NodeDetailPanel {...baseProps({ hasDeployContainer: false })} />,
+    );
+    expect(queryByText(/Deploy 図で確認/)).toBeNull();
+  });
+
+  it("renders org navigation button when team is set and onNavigateToOrg is provided", () => {
+    const onNavigateToOrg = vi.fn();
+    const onClose = vi.fn();
+    const { getByText } = render(
+      <NodeDetailPanel
+        {...baseProps({ team: "ec-team" })}
+        onClose={onClose}
+        onNavigateToOrg={onNavigateToOrg}
+      />,
+    );
+    const btn = getByText(/ec-team/);
+    fireEvent.click(btn);
+    expect(onNavigateToOrg).toHaveBeenCalledWith("ec-team");
+    expect(onClose).toHaveBeenCalled();
   });
 });
