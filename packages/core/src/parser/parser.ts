@@ -278,9 +278,9 @@ export class Parser {
         continue;
       }
 
-      // Check for edge: Identifier -> or -->
+      // Check for edge: Identifier/StringLiteral -> or -->
       if (
-        token.type === TokenType.Identifier &&
+        (token.type === TokenType.Identifier || token.type === TokenType.StringLiteral) &&
         (this.peekAt(1).type === TokenType.Arrow || this.peekAt(1).type === TokenType.DashedArrow)
       ) {
         edges.push(this.parseEdge());
@@ -337,15 +337,24 @@ export class Parser {
     );
   }
 
+  /** Accept either an identifier or a string literal as an id/reference token. */
+  private parseIdOrString(context: string): Token {
+    if (this.peek().type === TokenType.Identifier || this.peek().type === TokenType.StringLiteral) {
+      return this.advance();
+    }
+    this.error(`Expected identifier or string literal after "${context}"`);
+    return this.peek();
+  }
+
   private parseNodeDecl(): KrsNode {
     const start = this.advance(); // keyword
     const kind = start.value as LogicalNodeKind;
 
-    // id is now required
+    // id: accept identifier (e.g. ECommerce) or string literal (e.g. "e-commerce")
     let id: string;
     let idToken: Token;
-    if (this.peek().type !== TokenType.Identifier) {
-      this.error(`Expected identifier (id) after "${kind}"`);
+    if (this.peek().type !== TokenType.Identifier && this.peek().type !== TokenType.StringLiteral) {
+      this.error(`Expected identifier or string literal (id) after "${kind}"`);
       id = "__missing_id";
       idToken = start; // fallback location
     } else {
@@ -476,9 +485,9 @@ export class Parser {
   }
 
   private parseEdge(): KrsEdge {
-    const fromToken = this.advance(); // from identifier
+    const fromToken = this.advance(); // from identifier or string literal
     const arrowToken = this.advance(); // -> or -->
-    const toToken = this.expect(TokenType.Identifier);
+    const toToken = this.parseIdOrString("edge target");
 
     let label: string | undefined;
     if (this.peek().type === TokenType.StringLiteral) {
@@ -499,12 +508,28 @@ export class Parser {
 
   private parseDeployBlock(): DeployBlock {
     const start = this.advance(); // deploy
-    const label = this.expect(TokenType.StringLiteral);
+    // Accept identifier (new: deploy Production) or string literal (legacy: deploy "name")
+    const idToken =
+      this.peek().type === TokenType.Identifier
+        ? this.advance()
+        : this.expect(TokenType.StringLiteral);
     this.expect(TokenType.LeftBrace);
 
     const nodes: DeployNode[] = [];
+    let label: string | undefined;
+
     while (this.peek().type !== TokenType.RightBrace && this.peek().type !== TokenType.EOF) {
-      if (DEPLOY_KEYWORDS.has(this.peek().value)) {
+      if (this.peek().value === "label") {
+        this.advance();
+        if (
+          this.peek().type === TokenType.StringLiteral ||
+          this.peek().type === TokenType.Identifier
+        ) {
+          label = this.advance().value;
+        } else {
+          this.error(`Expected value for property "label"`);
+        }
+      } else if (DEPLOY_KEYWORDS.has(this.peek().value)) {
         nodes.push(this.parseDeployNode());
       } else {
         this.error(
@@ -517,7 +542,8 @@ export class Parser {
     const end = this.expect(TokenType.RightBrace);
 
     return {
-      label: label.value,
+      id: idToken.value,
+      label,
       nodes,
       loc: this.range(start.loc, end.loc),
     };
@@ -526,13 +552,28 @@ export class Parser {
   private parseDeployNode(): DeployNode {
     const start = this.advance(); // deploy kind keyword
     const kind = start.value as DeployNodeKind;
-    const id = this.expect(TokenType.StringLiteral);
+    // Accept identifier (new: oci myApp) or string literal (legacy: oci "my-app")
+    const idToken =
+      this.peek().type === TokenType.Identifier
+        ? this.advance()
+        : this.expect(TokenType.StringLiteral);
     this.expect(TokenType.LeftBrace);
 
     const properties: DeployNodeProperties = {};
+    let label: string | undefined;
 
     while (this.peek().type !== TokenType.RightBrace && this.peek().type !== TokenType.EOF) {
-      if (DEPLOY_PROPERTY_KEYWORDS.has(this.peek().value)) {
+      if (this.peek().value === "label") {
+        this.advance();
+        if (
+          this.peek().type === TokenType.StringLiteral ||
+          this.peek().type === TokenType.Identifier
+        ) {
+          label = this.advance().value;
+        } else {
+          this.error(`Expected value for property "label"`);
+        }
+      } else if (DEPLOY_PROPERTY_KEYWORDS.has(this.peek().value)) {
         const propToken = this.advance();
         const propName = propToken.value as keyof DeployNodeProperties;
         // Value can be string literal or identifier
@@ -553,7 +594,8 @@ export class Parser {
 
     return {
       kind,
-      id: id.value,
+      id: idToken.value,
+      label,
       properties,
       loc: this.range(start.loc, end.loc),
     };
@@ -563,7 +605,7 @@ export class Parser {
 
   private parseOrganizationBlock(): OrganizationBlock {
     const start = this.advance(); // organization
-    const idToken = this.expect(TokenType.Identifier);
+    const idToken = this.parseIdOrString("organization");
     let label: string | undefined;
     if (this.peek().type === TokenType.StringLiteral) {
       label = this.advance().value;
@@ -613,7 +655,7 @@ export class Parser {
 
   private parseTeamBlock(): TeamNode {
     const start = this.advance(); // team
-    const idToken = this.expect(TokenType.Identifier);
+    const idToken = this.parseIdOrString("team");
     let label: string | undefined;
     if (this.peek().type === TokenType.StringLiteral) {
       label = this.advance().value;
@@ -641,10 +683,13 @@ export class Parser {
         properties.links.push(this.parseLink());
       } else if (token.type === TokenType.Owns) {
         this.advance();
-        if (this.peek().type === TokenType.Identifier) {
+        if (
+          this.peek().type === TokenType.Identifier ||
+          this.peek().type === TokenType.StringLiteral
+        ) {
           properties.owns.push(this.advance().value);
         } else {
-          this.error('Expected identifier after "owns"');
+          this.error('Expected identifier or string literal after "owns"');
         }
       } else if (token.type === TokenType.Member) {
         members.push(this.parseMemberBlock());
@@ -670,7 +715,7 @@ export class Parser {
 
   private parseMemberBlock(): MemberNode {
     const start = this.advance(); // member
-    const idToken = this.expect(TokenType.Identifier);
+    const idToken = this.parseIdOrString("member");
     let label: string | undefined;
     if (this.peek().type === TokenType.StringLiteral) {
       label = this.advance().value;

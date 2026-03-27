@@ -186,7 +186,7 @@ system Test {
     expect(api.tags).toEqual(["external"]);
   });
 
-  it("parses deploy block", () => {
+  it("parses deploy block (legacy string literal syntax)", () => {
     const result = Parser.parse(`
 deploy "本番環境" {
   oci "order-service" {
@@ -203,18 +203,56 @@ deploy "本番環境" {
     `);
     expect(result.value.deploys).toHaveLength(1);
     const deploy = result.value.deploys[0];
-    expect(deploy.label).toBe("本番環境");
+    expect(deploy.id).toBe("本番環境");
+    expect(deploy.label).toBeUndefined();
     expect(deploy.nodes).toHaveLength(2);
 
     const oci = deploy.nodes[0];
     expect(oci.kind).toBe("oci");
     expect(oci.id).toBe("order-service");
+    expect(oci.label).toBeUndefined();
     expect(oci.properties.image).toBe("order:2.1.0");
     expect(oci.properties.runtime).toBe("Node.js 20");
     expect(oci.properties.realizes).toBe("ECommerce");
 
     const job = deploy.nodes[1];
     expect(job.kind).toBe("job");
+    expect(job.properties.schedule).toBe("0 0 1 * *");
+    expect(job.properties.realizes).toBe("Billing");
+  });
+
+  it("parses deploy block with identifier id and label properties", () => {
+    const result = Parser.parse(`
+deploy Production {
+  label "本番環境"
+  oci ecommerceApp {
+    label "EC Application"
+    runtime "Node.js 20"
+    realizes ECommerce
+  }
+  job billingJob {
+    schedule "0 0 1 * *"
+    realizes Billing
+  }
+}
+    `);
+    expect(result.value.deploys).toHaveLength(1);
+    const deploy = result.value.deploys[0];
+    expect(deploy.id).toBe("Production");
+    expect(deploy.label).toBe("本番環境");
+    expect(deploy.nodes).toHaveLength(2);
+
+    const oci = deploy.nodes[0];
+    expect(oci.kind).toBe("oci");
+    expect(oci.id).toBe("ecommerceApp");
+    expect(oci.label).toBe("EC Application");
+    expect(oci.properties.runtime).toBe("Node.js 20");
+    expect(oci.properties.realizes).toBe("ECommerce");
+
+    const job = deploy.nodes[1];
+    expect(job.kind).toBe("job");
+    expect(job.id).toBe("billingJob");
+    expect(job.label).toBeUndefined();
     expect(job.properties.schedule).toBe("0 0 1 * *");
     expect(job.properties.realizes).toBe("Billing");
   });
@@ -640,5 +678,64 @@ organization Corp {
     `);
     expect(result.diagnostics).toHaveLength(0);
     expect(result.value.organizations[0].teams[0].label).toBe("Property");
+  });
+
+  // ─── String literal ids ────────────────────────────────────────────────────
+
+  it("parses logical node with string literal id", () => {
+    const result = Parser.parse(`
+system "e-commerce" {
+  label "ECサイト"
+  service "order-service" {
+    label "受注サービス"
+  }
+}
+    `);
+    expect(result.diagnostics).toHaveLength(0);
+    const sys = result.value.systems[0];
+    expect(sys.id).toBe("e-commerce");
+    expect(sys.label).toBe("ECサイト");
+    expect(sys.children[0].id).toBe("order-service");
+    expect(sys.children[0].label).toBe("受注サービス");
+  });
+
+  it("parses edge with string literal from and to", () => {
+    const result = Parser.parse(`
+system S {
+  service "order-service" {}
+  service "payment-gateway" {}
+  "order-service" --> "payment-gateway" "決済を呼び出す"
+}
+    `);
+    expect(result.diagnostics).toHaveLength(0);
+    const edge = result.value.systems[0].edges[0];
+    expect(edge.from).toBe("order-service");
+    expect(edge.to).toBe("payment-gateway");
+    expect(edge.label).toBe("決済を呼び出す");
+  });
+
+  it("parses organization and team with string literal ids", () => {
+    const result = Parser.parse(`
+organization "dev-team" {
+  label "開発チーム"
+  team "backend-team" {
+    label "バックエンド"
+    owns "order-service"
+    owns "payment-gateway"
+    member "alice-smith" {
+      label "Alice"
+    }
+  }
+}
+    `);
+    expect(result.diagnostics).toHaveLength(0);
+    const org = result.value.organizations[0];
+    expect(org.id).toBe("dev-team");
+    expect(org.label).toBe("開発チーム");
+    const team = org.teams[0];
+    expect(team.id).toBe("backend-team");
+    expect(team.label).toBe("バックエンド");
+    expect(team.properties.owns).toEqual(["order-service", "payment-gateway"]);
+    expect(team.members[0].id).toBe("alice-smith");
   });
 });

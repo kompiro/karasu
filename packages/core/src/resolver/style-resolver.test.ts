@@ -301,6 +301,7 @@ describe("analyze", () => {
     const file = makeFile({
       deploys: [
         {
+          id: "prod",
           label: "prod",
           nodes: [
             {
@@ -322,6 +323,7 @@ describe("analyze", () => {
     const file = makeFile({
       deploys: [
         {
+          id: "prod",
           label: "prod",
           nodes: [
             {
