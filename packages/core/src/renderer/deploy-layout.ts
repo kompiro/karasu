@@ -27,7 +27,7 @@ function estimateTextWidth(text: string): number {
 }
 
 function measureDeployUnit(unit: DeployNode): { width: number; height: number } {
-  const labelWidth = estimateTextWidth(unit.id);
+  const labelWidth = estimateTextWidth(unit.label ?? unit.id);
   const width = Math.max(labelWidth, 80) + NODE_PADDING_X * 2;
   let height = NODE_PADDING_Y * 2 + LINE_HEIGHT;
   if (unit.properties.runtime) height += LINE_HEIGHT;
@@ -99,7 +99,7 @@ export function layoutDeploy(slice: DeployViewSlice): LayoutResult {
       layoutNodes.set(unit.id, {
         kind: unit.kind,
         id: unit.id,
-        label: unit.id,
+        label: unit.label ?? unit.id,
         properties: {
           description: unit.properties.runtime,
           links: [],

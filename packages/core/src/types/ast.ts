@@ -134,12 +134,14 @@ export interface DeployNodeProperties {
 export interface DeployNode {
   kind: DeployNodeKind;
   id: string;
+  label?: string;
   properties: DeployNodeProperties;
   loc: SourceRange;
 }
 
 export interface DeployBlock {
-  label: string;
+  id: string;
+  label?: string;
   nodes: DeployNode[];
   loc: SourceRange;
 }

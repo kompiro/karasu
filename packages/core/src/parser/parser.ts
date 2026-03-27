@@ -499,12 +499,28 @@ export class Parser {
 
   private parseDeployBlock(): DeployBlock {
     const start = this.advance(); // deploy
-    const label = this.expect(TokenType.StringLiteral);
+    // Accept identifier (new: deploy Production) or string literal (legacy: deploy "name")
+    const idToken =
+      this.peek().type === TokenType.Identifier
+        ? this.advance()
+        : this.expect(TokenType.StringLiteral);
     this.expect(TokenType.LeftBrace);
 
     const nodes: DeployNode[] = [];
+    let label: string | undefined;
+
     while (this.peek().type !== TokenType.RightBrace && this.peek().type !== TokenType.EOF) {
-      if (DEPLOY_KEYWORDS.has(this.peek().value)) {
+      if (this.peek().value === "label") {
+        this.advance();
+        if (
+          this.peek().type === TokenType.StringLiteral ||
+          this.peek().type === TokenType.Identifier
+        ) {
+          label = this.advance().value;
+        } else {
+          this.error(`Expected value for property "label"`);
+        }
+      } else if (DEPLOY_KEYWORDS.has(this.peek().value)) {
         nodes.push(this.parseDeployNode());
       } else {
         this.error(
@@ -517,7 +533,8 @@ export class Parser {
     const end = this.expect(TokenType.RightBrace);
 
     return {
-      label: label.value,
+      id: idToken.value,
+      label,
       nodes,
       loc: this.range(start.loc, end.loc),
     };
@@ -526,13 +543,28 @@ export class Parser {
   private parseDeployNode(): DeployNode {
     const start = this.advance(); // deploy kind keyword
     const kind = start.value as DeployNodeKind;
-    const id = this.expect(TokenType.StringLiteral);
+    // Accept identifier (new: oci myApp) or string literal (legacy: oci "my-app")
+    const idToken =
+      this.peek().type === TokenType.Identifier
+        ? this.advance()
+        : this.expect(TokenType.StringLiteral);
     this.expect(TokenType.LeftBrace);
 
     const properties: DeployNodeProperties = {};
+    let label: string | undefined;
 
     while (this.peek().type !== TokenType.RightBrace && this.peek().type !== TokenType.EOF) {
-      if (DEPLOY_PROPERTY_KEYWORDS.has(this.peek().value)) {
+      if (this.peek().value === "label") {
+        this.advance();
+        if (
+          this.peek().type === TokenType.StringLiteral ||
+          this.peek().type === TokenType.Identifier
+        ) {
+          label = this.advance().value;
+        } else {
+          this.error(`Expected value for property "label"`);
+        }
+      } else if (DEPLOY_PROPERTY_KEYWORDS.has(this.peek().value)) {
         const propToken = this.advance();
         const propName = propToken.value as keyof DeployNodeProperties;
         // Value can be string literal or identifier
@@ -553,7 +585,8 @@ export class Parser {
 
     return {
       kind,
-      id: id.value,
+      id: idToken.value,
+      label,
       properties,
       loc: this.range(start.loc, end.loc),
     };

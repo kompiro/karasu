@@ -52,15 +52,19 @@ function makeDeployBlock(
   nodes: Array<{
     kind: "oci" | "jar" | "war" | "lambda" | "function" | "assets" | "job" | "artifact";
     id: string;
+    label?: string;
     realizes?: string;
     runtime?: string;
   }>,
+  opts: { id?: string; label?: string } = {},
 ): DeployBlock {
   return {
-    label: "本番環境",
+    id: opts.id ?? "Production",
+    label: "label" in opts ? opts.label : "本番環境",
     nodes: nodes.map((n) => ({
       kind: n.kind,
       id: n.id,
+      label: n.label,
       properties: { realizes: n.realizes, runtime: n.runtime },
       loc: LOC,
     })),
@@ -145,5 +149,14 @@ describe("extractDeployView", () => {
     const deploy = makeDeployBlock([{ kind: "oci", id: "api", realizes: "ECommerce" }]);
     const result = extractDeployView([deploy], [makeSystem()]);
     expect(result.deployLabel).toBe("本番環境");
+  });
+
+  it("falls back to deploy block id when label is absent", () => {
+    const deploy = makeDeployBlock([{ kind: "oci", id: "api", realizes: "ECommerce" }], {
+      id: "Production",
+      label: undefined,
+    });
+    const result = extractDeployView([deploy], [makeSystem()]);
+    expect(result.deployLabel).toBe("Production");
   });
 });

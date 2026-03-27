@@ -99,7 +99,7 @@ export function extractDeployView(deploys: DeployBlock[], systems: SystemNode[])
   }
 
   return {
-    deployLabel: deployBlock.label,
+    deployLabel: deployBlock.label ?? deployBlock.id,
     containers,
     unclassifiedUnits,
     ghostEdges,

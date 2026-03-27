@@ -158,6 +158,41 @@ describe("layoutDeploy", () => {
     expect(node.hasDescription).toBe(true);
   });
 
+  it("uses unit label as display text when set", () => {
+    const slice: DeployViewSlice = {
+      deployLabel: "本番環境",
+      containers: [
+        {
+          serviceId: "ECommerce",
+          serviceLabel: "ECサイト",
+          units: [
+            {
+              kind: "oci" as const,
+              id: "ecommerceApp",
+              label: "EC Application",
+              properties: { runtime: "Node.js 20" },
+              loc: LOC,
+            },
+          ],
+        },
+      ],
+      unclassifiedUnits: [],
+      ghostEdges: [],
+    };
+    const result = layoutDeploy(slice);
+    const node = result.nodes.get("ecommerceApp")!;
+    expect(node.label).toBe("EC Application");
+  });
+
+  it("falls back to unit id as display text when label is absent", () => {
+    const slice = makeSlice([
+      { serviceId: "ECommerce", serviceLabel: "ECサイト", unitIds: ["order-api"] },
+    ]);
+    const result = layoutDeploy(slice);
+    const node = result.nodes.get("order-api")!;
+    expect(node.label).toBe("order-api");
+  });
+
   it("has positive total dimensions", () => {
     const slice = makeSlice([
       { serviceId: "ECommerce", serviceLabel: "ECサイト", unitIds: ["order-api"] },
