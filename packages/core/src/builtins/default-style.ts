@@ -80,6 +80,63 @@ resource[queue]   { shape: queue; }
 resource[api]     { shape: hexagon; }
 resource[storage] { shape: cloud; }
 
+/* ── デプロイノード種別 ── */
+oci {
+  background-color: #1E3A5F;
+  border-color: #3B82F6;
+  badge-label: "oci";
+  badge-color: #3B82F6;
+}
+
+lambda {
+  background-color: #3B1F5F;
+  border-color: #A855F7;
+  badge-label: "lambda";
+  badge-color: #A855F7;
+}
+
+jar {
+  background-color: #1F3B2A;
+  border-color: #22C55E;
+  badge-label: "jar";
+  badge-color: #22C55E;
+}
+
+war {
+  background-color: #3B2A1F;
+  border-color: #F97316;
+  badge-label: "war";
+  badge-color: #F97316;
+}
+
+function {
+  background-color: #2D3B1F;
+  border-color: #EAB308;
+  badge-label: "function";
+  badge-color: #EAB308;
+}
+
+assets {
+  background-color: #1F3B3B;
+  border-color: #06B6D4;
+  badge-label: "assets";
+  badge-color: #06B6D4;
+}
+
+job {
+  background-color: #3B2222;
+  border-color: #EF4444;
+  badge-label: "job";
+  badge-color: #EF4444;
+}
+
+artifact {
+  background-color: #2D2D2D;
+  border-color: #9CA3AF;
+  badge-label: "artifact";
+  badge-color: #9CA3AF;
+}
+
 /* ── タグ ── */
 [external] {
   background-color: #1F2937;

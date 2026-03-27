@@ -2,7 +2,7 @@ import { describe, it, expect } from "vitest";
 import { resolveStyles } from "./style-resolver.js";
 import { analyze } from "./warnings.js";
 import { getBuiltinStyleSheet } from "../builtins/default-style.js";
-import type { KrsNode, KrsFile } from "../types/ast.js";
+import type { KrsNode, KrsFile, DeployNode } from "../types/ast.js";
 import type { StyleSheet, StyleRule } from "../types/style.js";
 import type { SourceRange } from "../types/tokens.js";
 
@@ -362,5 +362,53 @@ describe("analyze", () => {
     const file = makeFile({});
     const warnings = analyze(file, [builtin, userSheet]);
     expect(warnings.some((w) => w.kind === "style-conflict")).toBe(false);
+  });
+});
+
+describe("resolveStyles with deployNodes", () => {
+  function makeDeployUnit(kind: DeployNode["kind"], id: string): DeployNode {
+    return { kind, id, properties: {}, loc: dummyLoc };
+  }
+
+  it("resolves oci deploy node style from builtin sheet", () => {
+    const builtin = getBuiltinStyleSheet();
+    const unit = makeDeployUnit("oci", "order-api");
+    const result = resolveStyles([], [builtin], [unit]);
+    const style = result.nodes.get("order-api")!;
+    expect(style.backgroundColor).toBe("#1E3A5F");
+    expect(style.borderColor).toBe("#3B82F6");
+    expect(style.badgeLabel).toBe("oci");
+  });
+
+  it("resolves lambda deploy node style from builtin sheet", () => {
+    const builtin = getBuiltinStyleSheet();
+    const unit = makeDeployUnit("lambda", "payment-fn");
+    const result = resolveStyles([], [builtin], [unit]);
+    const style = result.nodes.get("payment-fn")!;
+    expect(style.backgroundColor).toBe("#3B1F5F");
+    expect(style.borderColor).toBe("#A855F7");
+    expect(style.badgeLabel).toBe("lambda");
+  });
+
+  it("allows user stylesheet to override deploy node color", () => {
+    const builtin = getBuiltinStyleSheet();
+    const userSheet: StyleSheet = {
+      rules: [
+        makeRule(
+          { nodeType: "oci", tags: [], annotations: [] },
+          { "background-color": "#FF0000" },
+          1,
+        ),
+      ],
+    };
+    const unit = makeDeployUnit("oci", "my-container");
+    const result = resolveStyles([], [builtin, userSheet], [unit]);
+    expect(result.nodes.get("my-container")!.backgroundColor).toBe("#FF0000");
+  });
+
+  it("does not include deploy nodes in nodes map when deployNodes is omitted", () => {
+    const builtin = getBuiltinStyleSheet();
+    const result = resolveStyles([], [builtin]);
+    expect(result.nodes.has("order-api")).toBe(false);
   });
 });

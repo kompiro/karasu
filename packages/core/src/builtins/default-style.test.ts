@@ -89,4 +89,23 @@ describe("getBuiltinStyleSheet", () => {
     expect(deprecated).toBeDefined();
     expect(newAnnotation).toBeDefined();
   });
+
+  it("contains all deploy node kind rules", () => {
+    const sheet = getBuiltinStyleSheet();
+    const kinds = ["oci", "lambda", "jar", "war", "function", "assets", "job", "artifact"];
+    const foundKinds = sheet.rules
+      .filter((r) => r.selector.nodeType && kinds.includes(r.selector.nodeType))
+      .map((r) => r.selector.nodeType!);
+    for (const kind of kinds) {
+      expect(foundKinds).toContain(kind);
+    }
+  });
+
+  it("contains correct colors for oci deploy kind", () => {
+    const sheet = getBuiltinStyleSheet();
+    const rule = sheet.rules.find((r) => r.selector.nodeType === "oci");
+    expect(rule?.properties["background-color"]).toBe("#1E3A5F");
+    expect(rule?.properties["border-color"]).toBe("#3B82F6");
+    expect(rule?.properties["badge-label"]).toBe('"oci"');
+  });
 });

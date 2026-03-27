@@ -166,7 +166,15 @@ export function compile(
     sheets.push(styleResult.value);
   }
 
-  const styles = resolveStyles(parseResult.value.systems, sheets);
+  const deploySliceForStyle = extractDeployView(
+    parseResult.value.deploys,
+    parseResult.value.systems,
+  );
+  const deployUnits = [
+    ...deploySliceForStyle.containers.flatMap((c) => c.units),
+    ...deploySliceForStyle.unclassifiedUnits,
+  ];
+  const styles = resolveStyles(parseResult.value.systems, sheets, deployUnits);
   const warnings = analyze(parseResult.value, sheets);
   const hasDeployDiagram = parseResult.value.deploys.length > 0;
 
@@ -174,7 +182,7 @@ export function compile(
   let nodeMetadata: Map<string, NodeMetadata>;
 
   if (diagramType === "deploy") {
-    const deploySlice = extractDeployView(parseResult.value.deploys, parseResult.value.systems);
+    const deploySlice = deploySliceForStyle;
     svg = renderDeploy(deploySlice, styles);
     nodeMetadata = buildDeployNodeMetadata(deploySlice);
   } else {
@@ -202,7 +210,12 @@ export async function compileProject(
   const diagnostics = [...resolved.diagnostics];
 
   const allSheets = [getBuiltinStyleSheet(), ...resolved.styleSheets];
-  const styles = resolveStyles(resolved.krsFile.systems, allSheets);
+  const deploySliceForStyle = extractDeployView(resolved.krsFile.deploys, resolved.krsFile.systems);
+  const deployUnits = [
+    ...deploySliceForStyle.containers.flatMap((c) => c.units),
+    ...deploySliceForStyle.unclassifiedUnits,
+  ];
+  const styles = resolveStyles(resolved.krsFile.systems, allSheets, deployUnits);
   const warnings = analyze(resolved.krsFile, allSheets);
   const hasDeployDiagram = resolved.krsFile.deploys.length > 0;
 
@@ -210,7 +223,7 @@ export async function compileProject(
   let nodeMetadata: Map<string, NodeMetadata>;
 
   if (diagramType === "deploy") {
-    const deploySlice = extractDeployView(resolved.krsFile.deploys, resolved.krsFile.systems);
+    const deploySlice = deploySliceForStyle;
     svg = renderDeploy(deploySlice, styles);
     nodeMetadata = buildDeployNodeMetadata(deploySlice);
   } else {

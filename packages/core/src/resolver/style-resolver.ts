@@ -1,4 +1,4 @@
-import type { KrsNode, KrsEdge } from "../types/ast.js";
+import type { KrsNode, KrsEdge, DeployNode } from "../types/ast.js";
 import { hasShape } from "../renderer/shape-registry.js";
 import type {
   StyleSheet,
@@ -33,7 +33,11 @@ const DEFAULT_EDGE_STYLE: ResolvedEdgeStyle = {
 
 const SHAPE_KEYWORDS = new Set<string>(["box", "user", "cylinder", "queue", "hexagon", "cloud"]);
 
-export function resolveStyles(systems: KrsNode[], sheets: StyleSheet[]): ResolvedStyles {
+export function resolveStyles(
+  systems: KrsNode[],
+  sheets: StyleSheet[],
+  deployNodes?: DeployNode[],
+): ResolvedStyles {
   // Clone rules with globally renumbered sourceIndex to preserve cascade order across sheets.
   // This avoids mutating cached sheets (e.g. the builtin singleton).
   let globalIndex = 0;
@@ -59,6 +63,12 @@ export function resolveStyles(systems: KrsNode[], sheets: StyleSheet[]): Resolve
     for (const edge of collectEdges(system)) {
       const key = `${edge.from}->${edge.to}`;
       edgeStyles.set(key, resolveEdgeStyle(edge, allRules));
+    }
+  }
+
+  if (deployNodes) {
+    for (const unit of deployNodes) {
+      nodeStyles.set(unit.id, resolveDeployNodeStyle(unit, allRules));
     }
   }
 
@@ -100,6 +110,27 @@ function resolveEdgeStyle(edge: KrsEdge, rules: StyleRule[]): ResolvedEdgeStyle 
   }
 
   return toResolvedEdgeStyle(merged);
+}
+
+function resolveDeployNodeStyle(unit: DeployNode, rules: StyleRule[]): ResolvedNodeStyle {
+  const matching = rules.filter((rule) => {
+    const sel = rule.selector;
+    if (sel.id) return sel.id === unit.id;
+    if (sel.nodeType === "edge") return false;
+    if (sel.nodeType && sel.nodeType !== unit.kind) return false;
+    if (sel.tags.length > 0) return false;
+    if (sel.annotations.length > 0) return false;
+    if (!sel.nodeType && !sel.id) return false;
+    return true;
+  });
+  matching.sort((a, b) => a.specificity - b.specificity || a.sourceIndex - b.sourceIndex);
+
+  const merged: Record<string, string> = {};
+  for (const rule of matching) {
+    Object.assign(merged, rule.properties);
+  }
+
+  return toResolvedNodeStyle(merged);
 }
 
 function nodeSelectorMatches(node: KrsNode, selector: StyleSelector): boolean {
