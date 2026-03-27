@@ -124,7 +124,7 @@ describe("ReferencePanel", () => {
     )!;
     fireEvent.click(builtinTab);
     const body = container.querySelector(".reference-tab-body")?.textContent ?? "";
-    expect(body).toContain("すべての図種別");
+    expect(body).toContain("all diagram types");
   });
 
   it("Samples tab shows system+deploy+org content", () => {

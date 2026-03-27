@@ -515,7 +515,7 @@ function BuiltinTab({
   return (
     <div className="reference-tab-body">
       <div className="reference-builtin-header">
-        <span>すべての図種別に適用される built-in テーマ（最低カスケード優先度）</span>
+        <span>Built-in default theme — applies to all diagram types (lowest cascade priority)</span>
         <button className="reference-copy-btn" onClick={onCopy}>
           {copied ? "Copied!" : "Copy"}
         </button>
