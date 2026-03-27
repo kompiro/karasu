@@ -2,7 +2,7 @@ import type { FileSystemProvider, Project } from "@karasu/core";
 
 const META_PATH = "/meta/projects.json";
 
-const DEFAULT_KRS = `system "My Project" {
+const DEFAULT_KRS = `system MyProject "My Project" {
   user User "User" [human] {
     description "A user of the system"
   }
@@ -12,14 +12,14 @@ const DEFAULT_KRS = `system "My Project" {
   User -> App "uses"
 }
 
-deploy "Production" {
-  oci "app-container" {
+deploy Production "Production" {
+  oci appContainer "app-container" {
     runtime "Docker"
     realizes App
   }
 }
 
-organization "Team" {
+organization Team "Team" {
   team dev "Development" {
     owns App
     member alice "Alice" {

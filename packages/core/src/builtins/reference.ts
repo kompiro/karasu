@@ -259,7 +259,7 @@ export function getReference(): KarasuReference {
       { name: "cloud", description: "雲形", defaultFor: "resource[storage]" },
     ],
     builtinStyleSource: BUILTIN_STYLE_SOURCE,
-    sampleKrs: `system "ECプラットフォーム" {
+    sampleKrs: `system ECPlatform "ECプラットフォーム" {
   user Customer "顧客" [human] {
     description "商品を購入する一般ユーザー"
   }
@@ -316,18 +316,18 @@ export function getReference(): KarasuReference {
   ECommerce --> Notification "注文確認を送信する"
 }
 
-deploy "本番環境" {
-  oci "ecommerce-app" {
+deploy Production "本番環境" {
+  oci ecommerceApp "ecommerce-app" {
     runtime "Kubernetes (GKE)"
     realizes ECommerce
   }
-  oci "notification-worker" {
+  oci notificationWorker "notification-worker" {
     runtime "Cloud Run"
     realizes Notification
   }
 }
 
-organization "EC開発組織" {
+organization ECOrg "EC開発組織" {
   team platform "プラットフォームチーム" {
     owns ECommerce
 
