@@ -266,14 +266,42 @@ export function getReference(): KarasuReference {
       },
     ],
     deployUnitKinds: [
-      { kind: "war", description: "WAR / EAR（Servlet・EJBコンテナ）", properties: ["label", "runtime", "realizes"] },
-      { kind: "jar", description: "実行可能 JAR（Spring Boot など）", properties: ["label", "runtime", "realizes"] },
-      { kind: "oci", description: "コンテナイメージ", properties: ["label", "image", "runtime", "realizes"] },
+      {
+        kind: "war",
+        description: "WAR / EAR（Servlet・EJBコンテナ）",
+        properties: ["label", "runtime", "realizes"],
+      },
+      {
+        kind: "jar",
+        description: "実行可能 JAR（Spring Boot など）",
+        properties: ["label", "runtime", "realizes"],
+      },
+      {
+        kind: "oci",
+        description: "コンテナイメージ",
+        properties: ["label", "image", "runtime", "realizes"],
+      },
       { kind: "lambda", description: "AWS Lambda", properties: ["label", "runtime", "realizes"] },
-      { kind: "function", description: "Azure Functions / Google Cloud Functions", properties: ["label", "runtime", "realizes"] },
-      { kind: "assets", description: "静的ファイル・SPA（CDN配信）", properties: ["label", "runtime", "realizes"] },
-      { kind: "job", description: "バッチ処理。schedule 省略で単発実行、指定で定期実行", properties: ["label", "runtime", "schedule", "realizes"] },
-      { kind: "artifact", description: "上記に該当しない任意種別", properties: ["label", "type", "runtime", "realizes"] },
+      {
+        kind: "function",
+        description: "Azure Functions / Google Cloud Functions",
+        properties: ["label", "runtime", "realizes"],
+      },
+      {
+        kind: "assets",
+        description: "静的ファイル・SPA（CDN配信）",
+        properties: ["label", "runtime", "realizes"],
+      },
+      {
+        kind: "job",
+        description: "バッチ処理。schedule 省略で単発実行、指定で定期実行",
+        properties: ["label", "runtime", "schedule", "realizes"],
+      },
+      {
+        kind: "artifact",
+        description: "上記に該当しない任意種別",
+        properties: ["label", "type", "runtime", "realizes"],
+      },
     ],
     orgKinds: [
       {
