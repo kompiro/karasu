@@ -2,7 +2,7 @@
 
 - **日付**: 2026-03-23
 - **ステータス**: 完了
-- **関連**: [`docs/spec/syntax.md`](../spec/syntax.md) — deploy ブロック構文, [`docs/concepts.md`](../concepts.md) — 論理/物理分離
+- **関連**: [`docs/spec/syntax.md`](../spec/syntax.md) — deploy ブロック構文, [`docs/concepts.md`](../concepts.md) — 論理/物理分離, [ADR-0011](../adr/0011-deployment-diagram-design.md) — 設計決定の記録
 
 ## 背景・課題
 
