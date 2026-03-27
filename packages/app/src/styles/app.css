@@ -903,6 +903,20 @@ body,
   border-color: rgba(77, 143, 255, 0.3);
 }
 
+/* Reference button — stands out as a persistent entry point */
+.toolbar-btn--reference {
+  background: var(--bg-raised);
+  color: var(--text-secondary);
+  border-color: var(--border-strong);
+  font-weight: 600;
+}
+
+.toolbar-btn--reference:hover {
+  background: var(--accent-dim);
+  color: var(--accent-hover);
+  border-color: rgba(77, 143, 255, 0.4);
+}
+
 .view-kind-toolbar {
   display: flex;
   align-items: center;
