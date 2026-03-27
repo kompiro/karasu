@@ -679,4 +679,63 @@ organization Corp {
     expect(result.diagnostics).toHaveLength(0);
     expect(result.value.organizations[0].teams[0].label).toBe("Property");
   });
+
+  // ─── String literal ids ────────────────────────────────────────────────────
+
+  it("parses logical node with string literal id", () => {
+    const result = Parser.parse(`
+system "e-commerce" {
+  label "ECサイト"
+  service "order-service" {
+    label "受注サービス"
+  }
+}
+    `);
+    expect(result.diagnostics).toHaveLength(0);
+    const sys = result.value.systems[0];
+    expect(sys.id).toBe("e-commerce");
+    expect(sys.label).toBe("ECサイト");
+    expect(sys.children[0].id).toBe("order-service");
+    expect(sys.children[0].label).toBe("受注サービス");
+  });
+
+  it("parses edge with string literal from and to", () => {
+    const result = Parser.parse(`
+system S {
+  service "order-service" {}
+  service "payment-gateway" {}
+  "order-service" --> "payment-gateway" "決済を呼び出す"
+}
+    `);
+    expect(result.diagnostics).toHaveLength(0);
+    const edge = result.value.systems[0].edges[0];
+    expect(edge.from).toBe("order-service");
+    expect(edge.to).toBe("payment-gateway");
+    expect(edge.label).toBe("決済を呼び出す");
+  });
+
+  it("parses organization and team with string literal ids", () => {
+    const result = Parser.parse(`
+organization "dev-team" {
+  label "開発チーム"
+  team "backend-team" {
+    label "バックエンド"
+    owns "order-service"
+    owns "payment-gateway"
+    member "alice-smith" {
+      label "Alice"
+    }
+  }
+}
+    `);
+    expect(result.diagnostics).toHaveLength(0);
+    const org = result.value.organizations[0];
+    expect(org.id).toBe("dev-team");
+    expect(org.label).toBe("開発チーム");
+    const team = org.teams[0];
+    expect(team.id).toBe("backend-team");
+    expect(team.label).toBe("バックエンド");
+    expect(team.properties.owns).toEqual(["order-service", "payment-gateway"]);
+    expect(team.members[0].id).toBe("alice-smith");
+  });
 });
