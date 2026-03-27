@@ -195,7 +195,15 @@ export function PreviewPane({
         openDetailPanel(nodeId, nodeGroup);
       }
     },
-    [viewPath, onDrillDown, openDetailPanel, onContainerClick, onDeployButtonClick, onTeamButtonClick, onClearHighlight],
+    [
+      viewPath,
+      onDrillDown,
+      openDetailPanel,
+      onContainerClick,
+      onDeployButtonClick,
+      onTeamButtonClick,
+      onClearHighlight,
+    ],
   );
 
   const handleMouseLeave = useCallback(() => {

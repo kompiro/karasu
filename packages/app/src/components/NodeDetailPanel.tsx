@@ -108,18 +108,20 @@ export function NodeDetailPanel({
 
       {(metadata.team || metadata.role || metadata.tags.length > 0) && (
         <div className="node-detail-section">
-          {metadata.team && (
-            onNavigateToOrg ? (
+          {metadata.team &&
+            (onNavigateToOrg ? (
               <button
                 className="node-detail-nav-btn"
-                onClick={() => { onNavigateToOrg(metadata.team!); onClose(); }}
+                onClick={() => {
+                  onNavigateToOrg(metadata.team!);
+                  onClose();
+                }}
               >
                 👥 {metadata.team} →
               </button>
             ) : (
               <div className="node-detail-prop">👥 {metadata.team}</div>
-            )
-          )}
+            ))}
           {metadata.role && <div className="node-detail-prop">📌 {metadata.role}</div>}
           {metadata.tags.length > 0 && (
             <div className="node-detail-prop">🏷 {metadata.tags.map((t) => `[${t}]`).join(" ")}</div>
@@ -131,7 +133,10 @@ export function NodeDetailPanel({
         <div className="node-detail-section">
           <button
             className="node-detail-nav-btn"
-            onClick={() => { onNavigateToDeploy(nodeId); onClose(); }}
+            onClick={() => {
+              onNavigateToDeploy(nodeId);
+              onClose();
+            }}
           >
             🚀 Deploy 図で確認 →
           </button>

@@ -6,11 +6,7 @@ import { Parser } from "../parser/parser.js";
 import { StyleParser } from "../parser/style-parser.js";
 import { getBuiltinStyleSheet } from "../builtins/default-style.js";
 
-function renderFromSource(
-  krs: string,
-  style?: string,
-  serviceIdsWithDeploy?: Set<string>,
-): string {
+function renderFromSource(krs: string, style?: string, serviceIdsWithDeploy?: Set<string>): string {
   const parseResult = Parser.parse(krs);
   const sheets = style
     ? [getBuiltinStyleSheet(), StyleParser.parse(style).value]
