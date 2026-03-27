@@ -46,32 +46,13 @@ description: >
    git push -u origin <branch-name>
    ```
 2. `git log --oneline origin/main..HEAD` と `git diff origin/main...HEAD --stat` で変更内容を分析する
-3. PR 本文を生成する。以下のテンプレートに従う:
+3. PR 本文を生成する。`.github/PULL_REQUEST_TEMPLATE.md` のセクション構成に従い、コメントを実際の内容で埋める:
 
-   ```
-   ## 目的
-
-   Closes #<Issue番号>
-   （Issue がない場合はこのセクションに変更の目的を1行で記述）
-
-   ## 概要
-
-   （コミット履歴と差分から要約を生成。1-3行）
-
-   ## 変更内容
-
-   - （主要な変更をリストで記述）
-   - （コミット単位ではなく、意味のある変更単位でまとめる）
-
-   ## 手動検証チェックリスト
-
-   - [ ] （CI では検証できない項目）
-   （該当なしの場合は「該当なし — すべて自動テストでカバー済み」と記載）
-
-   ## 関連ドキュメント
-
-   （更新された docs/ 内のファイルをリスト。なければ「なし」）
-   ```
+   - **Purpose**: `Closes #N` で Issue と紐付け。Issue がない場合は変更の目的を1行で記述
+   - **Summary**: コミット履歴と差分から1-3行で要約
+   - **Changes**: 主要な変更をリストで記述（コミット単位ではなく意味のある変更単位でまとめる）
+   - **Manual Verification Checklist**: CI では検証できない項目。なければ `N/A — all covered by automated tests`
+   - **Related Docs**: 更新した docs/ 内のファイル。なければ `N/A`
 
 4. PR タイトルを生成する:
    - Conventional Commits 形式に準拠する（例: `feat(core): add team property parsing`）
@@ -87,10 +68,9 @@ description: >
 ### 2. CI 確認
 
 1. PR 番号を取得する（`gh pr create` の出力から）
-2. CI の状態を確認する: `gh pr checks <pr-number>`
+2. CI の完了を待つ: `gh pr checks <pr-number> --watch`
 3. CI の結果に応じて対応する:
    - **全て通過**: ユーザーに手動検証チェックリストの実施を依頼する
-   - **実行中**: 少し待ってから再確認を提案する
    - **失敗**: 失敗したジョブのログを確認し、修正を提案する
      - 修正が必要な場合: 修正 → `/commit` → `git push` → 再度 CI 確認
 4. CI 通過後のメッセージ:
