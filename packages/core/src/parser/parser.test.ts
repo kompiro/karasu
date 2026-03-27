@@ -186,7 +186,7 @@ system Test {
     expect(api.tags).toEqual(["external"]);
   });
 
-  it("parses deploy block", () => {
+  it("parses deploy block (legacy string literal syntax)", () => {
     const result = Parser.parse(`
 deploy "本番環境" {
   oci "order-service" {
@@ -203,18 +203,56 @@ deploy "本番環境" {
     `);
     expect(result.value.deploys).toHaveLength(1);
     const deploy = result.value.deploys[0];
-    expect(deploy.label).toBe("本番環境");
+    expect(deploy.id).toBe("本番環境");
+    expect(deploy.label).toBeUndefined();
     expect(deploy.nodes).toHaveLength(2);
 
     const oci = deploy.nodes[0];
     expect(oci.kind).toBe("oci");
     expect(oci.id).toBe("order-service");
+    expect(oci.label).toBeUndefined();
     expect(oci.properties.image).toBe("order:2.1.0");
     expect(oci.properties.runtime).toBe("Node.js 20");
     expect(oci.properties.realizes).toBe("ECommerce");
 
     const job = deploy.nodes[1];
     expect(job.kind).toBe("job");
+    expect(job.properties.schedule).toBe("0 0 1 * *");
+    expect(job.properties.realizes).toBe("Billing");
+  });
+
+  it("parses deploy block with identifier id and label properties", () => {
+    const result = Parser.parse(`
+deploy Production {
+  label "本番環境"
+  oci ecommerceApp {
+    label "EC Application"
+    runtime "Node.js 20"
+    realizes ECommerce
+  }
+  job billingJob {
+    schedule "0 0 1 * *"
+    realizes Billing
+  }
+}
+    `);
+    expect(result.value.deploys).toHaveLength(1);
+    const deploy = result.value.deploys[0];
+    expect(deploy.id).toBe("Production");
+    expect(deploy.label).toBe("本番環境");
+    expect(deploy.nodes).toHaveLength(2);
+
+    const oci = deploy.nodes[0];
+    expect(oci.kind).toBe("oci");
+    expect(oci.id).toBe("ecommerceApp");
+    expect(oci.label).toBe("EC Application");
+    expect(oci.properties.runtime).toBe("Node.js 20");
+    expect(oci.properties.realizes).toBe("ECommerce");
+
+    const job = deploy.nodes[1];
+    expect(job.kind).toBe("job");
+    expect(job.id).toBe("billingJob");
+    expect(job.label).toBeUndefined();
     expect(job.properties.schedule).toBe("0 0 1 * *");
     expect(job.properties.realizes).toBe("Billing");
   });
