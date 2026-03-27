@@ -1,160 +1,120 @@
-import { useState, useCallback, useMemo } from "react";
+import { useEffect, useCallback, useMemo, useRef } from "react";
+import {
+  Parser,
+  InMemoryFileSystemProvider,
+  getReference,
+  type KrsNode,
+  type OrgViewPath,
+} from "@karasu/core";
 import { EditorPane } from "./components/EditorPane.js";
-import { PreviewPane } from "./components/PreviewPane.js";
-import { WarningPanel } from "./components/WarningPanel.js";
-import { BreadcrumbBar } from "./components/BreadcrumbBar.js";
-import { useSystemView } from "./hooks/useSystemView.js";
+import { KarasuPreviewColumn } from "./components/KarasuPreviewColumn.js";
+import { AppProvider } from "./state/app-context.js";
+import { useAppContext } from "./state/app-context.js";
+import { useProjectSystemView } from "./hooks/useProjectSystemView.js";
+import { useProjectDeployView } from "./hooks/useProjectDeployView.js";
 import { useOrgView } from "./hooks/useOrgView.js";
-import { Parser, type KrsNode, type OrgViewPath } from "@karasu/core";
+import type { ActiveView } from "./state/app-reducer.js";
 
-const SAMPLE_KRS = `system "ECプラットフォーム" {
-  user Customer "顧客" [human] {
-    description "商品を購入する一般ユーザー"
-  }
-  user Seller "出品者" [human] {
-    description "商品を出品するショップオーナー"
-  }
-  user Admin "管理者" [human] {
-    description "システムを運用する担当者"
-  }
-
-  service ECommerce "ECサイト" {
-    description "商品の閲覧・購入・出品を提供する"
-
-    domain Catalog "商品カタログ" {
-      usecase SearchProducts "商品を検索する" {
-        resource ProductTable "商品テーブル"
-        resource SearchIndex "検索インデックス" [external]
-      }
-      usecase ShowProductDetail "商品詳細を表示する"
-      usecase RegisterProduct "商品を登録する" {
-        resource ProductTable "商品テーブル"
-        resource ImageStorage "画像ストレージ" [external]
-      }
-    }
-    domain Cart "カート" {
-      usecase AddToCart "カートに追加する" {
-        resource CartTable "カートテーブル"
-      }
-      usecase ShowCart "カートを表示する"
-      usecase UpdateQuantity "数量を変更する"
-    }
-    domain Order "受注" {
-      usecase PlaceOrder "注文を確定する" {
-        resource OrderTable "注文テーブル"
-        resource InventoryAPI "在庫API" [external]
-        resource PaymentAPI "決済API" [external]
-      }
-      usecase CancelOrder "注文をキャンセルする" {
-        resource OrderTable "注文テーブル"
-      }
-      usecase ShowOrderHistory "注文履歴を照会する"
-    }
-    domain Review "レビュー" {
-      usecase PostReview "レビューを投稿する" {
-        resource ReviewTable "レビューテーブル"
-      }
-      usecase ListReviews "レビュー一覧を表示する"
-    }
-    domain Recommend "レコメンド" {
-      usecase ShowRecommendations "おすすめ商品を表示する" {
-        resource BrowsingHistory "閲覧履歴テーブル"
-        resource RecommendEngine "レコメンドエンジン" [external]
-      }
-    }
-    domain Member "会員" {
-      usecase Register "会員登録する" {
-        resource MemberTable "会員テーブル"
-      }
-      usecase EditProfile "プロフィールを編集する"
-      usecase ManageAddresses "配送先を管理する" {
-        resource AddressTable "配送先テーブル"
-      }
-    }
-  }
-  service Payment "決済" [external] {
-    description "クレジットカード・電子マネー決済"
-  }
-  service Inventory "在庫管理" [external] {
-    description "在庫データの一元管理"
-  }
-  service Shipping "配送" [external] {
-    description "配送手配と追跡"
-  }
-  service Notification "通知" {
-    description "メール・プッシュ通知の送信"
-  }
-
-  Customer -> ECommerce "商品を購入する"
-  Seller -> ECommerce "商品を出品する"
-  Admin -> ECommerce "システムを管理する"
-  ECommerce -> Payment "決済を処理する"
-  ECommerce -> Inventory "在庫を照会する"
-  ECommerce -> Shipping "配送を依頼する"
-  ECommerce --> Notification "注文確認を送信する"
-}
-`;
+const MEMORY_FILE_PATH = "/memory/index.krs";
 
 /**
  * MemoryModeApp — OPFS 非対応ブラウザ向けの単一ファイル編集モード。
- * 現在の App.tsx のロジックをそのまま抽出したもの。
+ * AppProvider + InMemoryFileSystemProvider で ProjectModeApp と同等の機能を提供する。
  */
-type ViewKind = "logical" | "org";
-
 export function MemoryModeApp() {
-  const [krsSource, setKrsSource] = useState(SAMPLE_KRS);
-  const [viewPath, setViewPath] = useState<string[]>([]);
-  const [viewKind, setViewKind] = useState<ViewKind>("logical");
-  const [orgPath, setOrgPath] = useState<OrgViewPath>([]);
+  const inMemoryFs = useRef(new InMemoryFileSystemProvider()).current;
 
-  const { svg, warnings, diagnostics, nodeMetadata } = useSystemView(krsSource, "", viewPath);
-  const { orgSvg, orgDiagnostics } = useOrgView(krsSource, "", orgPath);
+  return (
+    <AppProvider fs={inMemoryFs}>
+      <MemoryModeInner />
+    </AppProvider>
+  );
+}
 
-  const handleEditorChange = useCallback((value: string) => {
-    setKrsSource(value);
+function MemoryModeInner() {
+  const { state, dispatch, fs } = useAppContext();
+  const { fileContent, viewPath, activeView, orgPath, highlightedNodeId } = state;
+
+  // Initialize: write sample KRS to in-memory FS and select the file
+  useEffect(() => {
+    (async () => {
+      const sampleKrs = getReference().sampleKrs;
+      await fs.writeFile(MEMORY_FILE_PATH, sampleKrs);
+      dispatch({ type: "SELECT_FILE", path: MEMORY_FILE_PATH, content: sampleKrs });
+      dispatch({ type: "SET_LOADING", loading: false });
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  const {
+    svg: systemSvg,
+    warnings: systemWarnings,
+    diagnostics: systemDiagnostics,
+    nodeMetadata: systemNodeMetadata,
+    hasDeployDiagram,
+    recompile: recompileSystem,
+  } = useProjectSystemView(MEMORY_FILE_PATH, fs, viewPath);
+
+  const {
+    svg: deploySvg,
+    warnings: deployWarnings,
+    diagnostics: deployDiagnostics,
+    nodeMetadata: deployNodeMetadata,
+    recompile: recompileDeploy,
+  } = useProjectDeployView(MEMORY_FILE_PATH, fs, viewPath);
+
+  const recompile = useCallback(() => {
+    recompileSystem();
+    recompileDeploy();
+  }, [recompileSystem, recompileDeploy]);
+
+  const { orgSvg, orgDiagnostics, orgWarnings } = useOrgView(
+    fileContent,
+    "",
+    orgPath as OrgViewPath,
+  );
+
+  const nodeMetadata = activeView === "deploy" ? deployNodeMetadata : systemNodeMetadata;
+
+  const handleEditorChange = useCallback(
+    async (value: string) => {
+      dispatch({ type: "UPDATE_FILE_CONTENT", content: value });
+      await fs.writeFile(MEMORY_FILE_PATH, value);
+      recompile();
+    },
+    [dispatch, fs, recompile],
+  );
 
   const handleDrillDown = useCallback(
     (newPath: string[]) => {
-      if (viewKind === "org") {
-        setOrgPath(newPath);
+      if (activeView === "org") {
+        dispatch({ type: "SET_ORG_PATH", path: newPath });
       } else {
-        setViewPath(newPath);
+        dispatch({ type: "SET_VIEW_PATH", path: newPath });
       }
     },
-    [viewKind],
+    [dispatch, activeView],
   );
 
-  const handleViewKindChange = useCallback((kind: ViewKind) => {
-    setViewKind(kind);
-  }, []);
+  const handleActiveViewChange = useCallback(
+    (view: ActiveView) => {
+      dispatch({ type: "SET_ACTIVE_VIEW", activeView: view });
+    },
+    [dispatch],
+  );
 
-  // Build breadcrumb items from the AST
+  const handleContainerClick = useCallback(
+    (containerId: string) => {
+      dispatch({ type: "SET_ACTIVE_VIEW", activeView: "system" });
+      dispatch({ type: "SET_HIGHLIGHTED_NODE", nodeId: containerId });
+    },
+    [dispatch],
+  );
+
   const breadcrumbItems = useMemo(() => {
-    if (viewKind === "org") {
-      try {
-        const parseResult = Parser.parse(krsSource);
-        const orgs = parseResult.value.organizations;
-        if (orgs.length === 0) return [];
-
-        const items: { id: string; label: string }[] = [{ id: "__org__", label: "Org" }];
-
-        let teams = orgs.flatMap((o) => o.teams);
-        for (const segment of orgPath) {
-          const team = teams.find((t) => t.id === segment);
-          if (!team) break;
-          items.push({ id: team.id, label: team.label ?? team.id });
-          teams = team.teams;
-        }
-
-        return items;
-      } catch {
-        return [];
-      }
-    }
-
+    if (!fileContent) return [];
     try {
-      const parseResult = Parser.parse(krsSource);
+      const parseResult = Parser.parse(fileContent);
       const systems = parseResult.value.systems;
       if (systems.length === 0) return [];
 
@@ -174,41 +134,65 @@ export function MemoryModeApp() {
     } catch {
       return [];
     }
-  }, [krsSource, viewPath, viewKind, orgPath]);
+  }, [fileContent, viewPath]);
 
-  const activeSvg = viewKind === "org" ? orgSvg : svg;
-  const activeDiagnostics = viewKind === "org" ? orgDiagnostics : diagnostics;
-  const activePath = viewKind === "org" ? orgPath : viewPath;
-  const activeNavigate = viewKind === "org" ? setOrgPath : setViewPath;
+  const orgBreadcrumbItems = useMemo(() => {
+    if (!fileContent) return [];
+    try {
+      const parseResult = Parser.parse(fileContent);
+      const orgs = parseResult.value.organizations;
+      if (orgs.length === 0) return [];
+
+      const items: { id: string; label: string }[] = [{ id: "__org__", label: "Org" }];
+
+      let teams = orgs.flatMap((o) => o.teams);
+      for (const segment of orgPath) {
+        const team = teams.find((t) => t.id === segment);
+        if (!team) break;
+        items.push({ id: team.id, label: team.label ?? team.id });
+        teams = team.teams;
+      }
+
+      return items;
+    } catch {
+      return [];
+    }
+  }, [fileContent, orgPath]);
 
   return (
     <div className="app">
-      <EditorPane value={krsSource} onChange={handleEditorChange} />
-      <div className="preview-column">
-        <div className="view-kind-toolbar">
-          <button
-            className={`toolbar-btn${viewKind === "logical" ? " active" : ""}`}
-            onClick={() => handleViewKindChange("logical")}
-          >
-            ≡ Logical
-          </button>
-          <button
-            className={`toolbar-btn${viewKind === "org" ? " active" : ""}`}
-            onClick={() => handleViewKindChange("org")}
-          >
-            👥 Org
-          </button>
-        </div>
-        <BreadcrumbBar items={breadcrumbItems} onNavigate={activeNavigate} />
-        <PreviewPane
-          svg={activeSvg}
-          diagnostics={activeDiagnostics}
-          viewPath={activePath}
-          nodeMetadata={nodeMetadata}
-          onDrillDown={handleDrillDown}
-        />
-      </div>
-      <WarningPanel warnings={warnings} />
+      <EditorPane value={fileContent} onChange={handleEditorChange} />
+      <KarasuPreviewColumn
+        activeView={activeView}
+        hasDeployDiagram={hasDeployDiagram}
+        onActiveViewChange={handleActiveViewChange}
+        systemView={{
+          svg: systemSvg,
+          diagnostics: systemDiagnostics,
+          viewPath,
+          breadcrumbItems,
+          warnings: systemWarnings,
+          onBreadcrumbNavigate: (path) => dispatch({ type: "SET_VIEW_PATH", path }),
+        }}
+        deployView={{
+          svg: deploySvg,
+          diagnostics: deployDiagnostics,
+          warnings: deployWarnings,
+          highlightedNodeId,
+          onClearHighlight: () => dispatch({ type: "SET_HIGHLIGHTED_NODE", nodeId: null }),
+          onContainerClick: handleContainerClick,
+        }}
+        orgView={{
+          svg: orgSvg,
+          diagnostics: orgDiagnostics,
+          orgPath: orgPath as OrgViewPath,
+          breadcrumbItems: orgBreadcrumbItems,
+          warnings: orgWarnings,
+          onBreadcrumbNavigate: (path) => dispatch({ type: "SET_ORG_PATH", path }),
+        }}
+        nodeMetadata={nodeMetadata}
+        onDrillDown={handleDrillDown}
+      />
     </div>
   );
 }

@@ -14,23 +14,40 @@ function stateWith(overrides: Partial<AppState>): AppState {
   return { ...initialState, ...overrides };
 }
 
-describe("appReducer — diagramType / highlightedNodeId", () => {
-  describe("SET_DIAGRAM_TYPE", () => {
-    it("updates diagramType", () => {
-      const next = appReducer(initialState, { type: "SET_DIAGRAM_TYPE", diagramType: "deploy" });
-      expect(next.diagramType).toBe("deploy");
+describe("appReducer — activeView / highlightedNodeId", () => {
+  describe("SET_ACTIVE_VIEW", () => {
+    it("updates activeView to deploy", () => {
+      const next = appReducer(initialState, { type: "SET_ACTIVE_VIEW", activeView: "deploy" });
+      expect(next.activeView).toBe("deploy");
+    });
+
+    it("updates activeView to org", () => {
+      const next = appReducer(initialState, { type: "SET_ACTIVE_VIEW", activeView: "org" });
+      expect(next.activeView).toBe("org");
     });
 
     it("resets viewPath to []", () => {
       const state = stateWith({ viewPath: ["SomeSystem"] });
-      const next = appReducer(state, { type: "SET_DIAGRAM_TYPE", diagramType: "deploy" });
+      const next = appReducer(state, { type: "SET_ACTIVE_VIEW", activeView: "deploy" });
       expect(next.viewPath).toEqual([]);
     });
 
     it("clears highlightedNodeId", () => {
       const state = stateWith({ highlightedNodeId: "Payment" });
-      const next = appReducer(state, { type: "SET_DIAGRAM_TYPE", diagramType: "system" });
+      const next = appReducer(state, { type: "SET_ACTIVE_VIEW", activeView: "system" });
       expect(next.highlightedNodeId).toBeNull();
+    });
+
+    it("resets orgPath when switching to org", () => {
+      const state = stateWith({ orgPath: ["TeamA"] });
+      const next = appReducer(state, { type: "SET_ACTIVE_VIEW", activeView: "org" });
+      expect(next.orgPath).toEqual([]);
+    });
+
+    it("does not reset orgPath when switching to system", () => {
+      const state = stateWith({ orgPath: ["TeamA"] });
+      const next = appReducer(state, { type: "SET_ACTIVE_VIEW", activeView: "system" });
+      expect(next.orgPath).toEqual(["TeamA"]);
     });
   });
 
@@ -47,18 +64,18 @@ describe("appReducer — diagramType / highlightedNodeId", () => {
     });
 
     it("does not affect other state fields", () => {
-      const state = stateWith({ diagramType: "deploy", viewPath: ["A"] });
+      const state = stateWith({ activeView: "deploy", viewPath: ["A"] });
       const next = appReducer(state, { type: "SET_HIGHLIGHTED_NODE", nodeId: "X" });
-      expect(next.diagramType).toBe("deploy");
+      expect(next.activeView).toBe("deploy");
       expect(next.viewPath).toEqual(["A"]);
     });
   });
 
   describe("SELECT_FILE", () => {
-    it("resets diagramType to system", () => {
-      const state = stateWith({ diagramType: "deploy" });
+    it("resets activeView to system", () => {
+      const state = stateWith({ activeView: "deploy" });
       const next = appReducer(state, { type: "SELECT_FILE", path: "/p/index.krs", content: "" });
-      expect(next.diagramType).toBe("system");
+      expect(next.activeView).toBe("system");
     });
 
     it("clears highlightedNodeId", () => {
@@ -75,10 +92,10 @@ describe("appReducer — diagramType / highlightedNodeId", () => {
   });
 
   describe("SET_CURRENT_PROJECT", () => {
-    it("resets diagramType to system", () => {
-      const state = stateWith({ diagramType: "deploy" });
+    it("resets activeView to system", () => {
+      const state = stateWith({ activeView: "deploy" });
       const next = appReducer(state, { type: "SET_CURRENT_PROJECT", project: PROJECT });
-      expect(next.diagramType).toBe("system");
+      expect(next.activeView).toBe("system");
     });
 
     it("clears highlightedNodeId", () => {

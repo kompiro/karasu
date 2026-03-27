@@ -1,26 +1,18 @@
-import type { DiagramType } from "@karasu/core";
+import type { ActiveView } from "../state/app-reducer.js";
 
 interface DiagramTabBarProps {
-  current: DiagramType;
+  active: ActiveView;
   hasDeployDiagram: boolean;
-  onChange: (type: DiagramType) => void;
-  viewKind: "logical" | "org";
-  onViewKindChange: (kind: "logical" | "org") => void;
+  onChange: (view: ActiveView) => void;
 }
 
-export function DiagramTabBar({
-  current,
-  hasDeployDiagram,
-  onChange,
-  viewKind,
-  onViewKindChange,
-}: DiagramTabBarProps) {
+export function DiagramTabBar({ active, hasDeployDiagram, onChange }: DiagramTabBarProps) {
   return (
     <div className="diagram-tab-bar" role="tablist">
       <button
-        className={`diagram-tab ${viewKind === "logical" && current === "system" ? "diagram-tab--active" : ""}`}
+        className={`diagram-tab ${active === "system" ? "diagram-tab--active" : ""}`}
         role="tab"
-        aria-selected={viewKind === "logical" && current === "system"}
+        aria-selected={active === "system"}
         onClick={() => onChange("system")}
       >
         <span className="diagram-tab-icon">⬡</span>
@@ -28,9 +20,9 @@ export function DiagramTabBar({
       </button>
       {hasDeployDiagram ? (
         <button
-          className={`diagram-tab ${viewKind === "logical" && current === "deploy" ? "diagram-tab--active" : ""}`}
+          className={`diagram-tab ${active === "deploy" ? "diagram-tab--active" : ""}`}
           role="tab"
-          aria-selected={viewKind === "logical" && current === "deploy"}
+          aria-selected={active === "deploy"}
           onClick={() => onChange("deploy")}
         >
           <span className="diagram-tab-icon">⬢</span>
@@ -49,10 +41,10 @@ export function DiagramTabBar({
         </span>
       )}
       <button
-        className={`diagram-tab ${viewKind === "org" ? "diagram-tab--active" : ""}`}
+        className={`diagram-tab ${active === "org" ? "diagram-tab--active" : ""}`}
         role="tab"
-        aria-selected={viewKind === "org"}
-        onClick={() => onViewKindChange("org")}
+        aria-selected={active === "org"}
+        onClick={() => onChange("org")}
       >
         <span className="diagram-tab-icon">👥</span>
         Org

@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { Parser } from "./parser.js";
+import { getReference } from "../builtins/reference.js";
 import type { ServiceNode, UserNode } from "../types/ast.js";
 
 describe("Parser", () => {
@@ -737,5 +738,14 @@ organization "dev-team" {
     expect(team.label).toBe("バックエンド");
     expect(team.properties.owns).toEqual(["order-service", "payment-gateway"]);
     expect(team.members[0].id).toBe("alice-smith");
+  });
+
+  it("parses sampleKrs from getReference() without diagnostics", () => {
+    const { sampleKrs } = getReference();
+    const result = Parser.parse(sampleKrs);
+    expect(result.diagnostics).toHaveLength(0);
+    expect(result.value.systems).toHaveLength(1);
+    expect(result.value.deploys).toHaveLength(1);
+    expect(result.value.organizations).toHaveLength(1);
   });
 });
