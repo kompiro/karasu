@@ -6,6 +6,7 @@ import {
   type ViewPath,
   type FileSystemProvider,
   type NodeMetadata,
+  type DeployBlockInfo,
 } from "@karasu/core";
 
 interface DeployViewState {
@@ -13,6 +14,7 @@ interface DeployViewState {
   warnings: Warning[];
   diagnostics: Diagnostic[];
   nodeMetadata: Map<string, NodeMetadata>;
+  deployBlocks: DeployBlockInfo[];
 }
 
 const DEBOUNCE_MS = 300;
@@ -21,12 +23,14 @@ export function useDeployView(
   entryPath: string | null,
   fs: FileSystemProvider | null,
   viewPath: ViewPath = [],
+  selectedDeployBlockId: string | null = null,
 ): DeployViewState & { recompile: () => void } {
   const [state, setState] = useState<DeployViewState>({
     svg: "",
     warnings: [],
     diagnostics: [],
     nodeMetadata: new Map(),
+    deployBlocks: [],
   });
 
   const lastValidSvg = useRef("");
@@ -44,11 +48,17 @@ export function useDeployView(
 
     if (timerRef.current) clearTimeout(timerRef.current);
 
-    const currentKey = `${entryPath}:deploy`;
+    const currentKey = `${entryPath}:deploy:${selectedDeployBlockId ?? ""}`;
 
     timerRef.current = setTimeout(async () => {
       try {
-        const result = await compileProject(entryPath, fs, viewPath, "deploy");
+        const result = await compileProject(
+          entryPath,
+          fs,
+          viewPath,
+          "deploy",
+          selectedDeployBlockId ?? undefined,
+        );
         const hasErrors = result.diagnostics.some((d) => d.severity === "error");
 
         if (hasErrors) {
@@ -58,6 +68,7 @@ export function useDeployView(
             warnings: result.warnings,
             diagnostics: result.diagnostics,
             nodeMetadata: result.nodeMetadata,
+            deployBlocks: result.deployBlocks,
           });
         } else {
           lastValidSvg.current = result.svg;
@@ -67,6 +78,7 @@ export function useDeployView(
             warnings: result.warnings,
             diagnostics: result.diagnostics,
             nodeMetadata: result.nodeMetadata,
+            deployBlocks: result.deployBlocks,
           });
         }
       } catch {
@@ -86,7 +98,7 @@ export function useDeployView(
       if (timerRef.current) clearTimeout(timerRef.current);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [entryPath, fs, viewPath, recompileCounter.current]);
+  }, [entryPath, fs, viewPath, selectedDeployBlockId, recompileCounter.current]);
 
   return { ...state, recompile };
 }

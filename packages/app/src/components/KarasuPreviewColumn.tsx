@@ -1,5 +1,5 @@
 import { useState } from "react";
-import type { Diagnostic, NodeMetadata, Warning, OrgViewPath } from "@karasu/core";
+import type { Diagnostic, NodeMetadata, Warning, OrgViewPath, DeployBlockInfo } from "@karasu/core";
 import type { ActiveView } from "../state/app-reducer.js";
 import { DiagramTabBar } from "./DiagramTabBar.js";
 import { BreadcrumbBar } from "./BreadcrumbBar.js";
@@ -51,6 +51,10 @@ interface KarasuPreviewColumnProps {
 
   nodeMetadata: Map<string, NodeMetadata>;
   onDrillDown: (path: string[]) => void;
+
+  deployBlocks?: DeployBlockInfo[];
+  selectedDeployBlockId?: string | null;
+  onDeployBlockChange?: (id: string) => void;
 }
 
 export function KarasuPreviewColumn({
@@ -62,6 +66,9 @@ export function KarasuPreviewColumn({
   orgView,
   nodeMetadata,
   onDrillDown,
+  deployBlocks,
+  selectedDeployBlockId,
+  onDeployBlockChange,
 }: KarasuPreviewColumnProps) {
   const [refOpen, setRefOpen] = useState(false);
 
@@ -86,6 +93,9 @@ export function KarasuPreviewColumn({
         active={activeView}
         hasDeployDiagram={hasDeployDiagram}
         onChange={onActiveViewChange}
+        deployBlocks={deployBlocks}
+        selectedDeployBlockId={selectedDeployBlockId}
+        onDeployBlockChange={onDeployBlockChange}
       />
       <div className="preview-toolbar">
         <button

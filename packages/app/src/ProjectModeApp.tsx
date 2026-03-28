@@ -31,6 +31,7 @@ export function ProjectModeApp() {
     viewPath,
     activeView,
     orgPath,
+    selectedDeployBlockId,
     highlightedNodeId,
     loading,
   } = state;
@@ -52,8 +53,9 @@ export function ProjectModeApp() {
     warnings: deployWarnings,
     diagnostics: deployDiagnostics,
     nodeMetadata: deployNodeMetadata,
+    deployBlocks,
     recompile: recompileDeploy,
-  } = useDeployView(entryPath, fs, viewPath);
+  } = useDeployView(entryPath, fs, viewPath, selectedDeployBlockId);
 
   const recompile = useCallback(() => {
     recompileSystem();
@@ -165,6 +167,14 @@ export function ProjectModeApp() {
     (containerId: string) => {
       dispatch({ type: "SET_ACTIVE_VIEW", activeView: "system" });
       dispatch({ type: "SET_HIGHLIGHTED_NODE", nodeId: containerId });
+    },
+    [dispatch],
+  );
+
+  // Deploy ブロックセレクタ変更
+  const handleDeployBlockChange = useCallback(
+    (id: string) => {
+      dispatch({ type: "SET_SELECTED_DEPLOY_BLOCK", id });
     },
     [dispatch],
   );
@@ -352,6 +362,9 @@ export function ProjectModeApp() {
         }}
         nodeMetadata={nodeMetadata}
         onDrillDown={handleDrillDown}
+        deployBlocks={deployBlocks}
+        selectedDeployBlockId={selectedDeployBlockId}
+        onDeployBlockChange={handleDeployBlockChange}
       />
     </div>
   );
