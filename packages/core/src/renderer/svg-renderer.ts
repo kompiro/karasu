@@ -470,10 +470,7 @@ function renderNode(
   // Container nodes (hasChildren) need the button because clicking the body drills down.
   // Leaf nodes also get the button for discoverability, even though clicking the body also opens the panel.
   const showInfoButton =
-    node.hasDescription ||
-    node.linkCount > 0 ||
-    !!node.properties.team ||
-    !!node.properties.role;
+    node.hasDescription || node.linkCount > 0 || !!node.properties.team || !!node.properties.role;
   const btnY = node.y + 14;
   let btnSlot = 0; // 0 = rightmost, increments leftward
 
