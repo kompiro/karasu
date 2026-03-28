@@ -508,10 +508,7 @@ function assignLayers(
 const META_FONT_RATIO = 0.7;
 const INFO_BUTTON_WIDTH = 24;
 
-function extractLayoutProperties(
-  node: KrsNode,
-  resolvedTeam?: string,
-): LayoutNodeProperties {
+function extractLayoutProperties(node: KrsNode, resolvedTeam?: string): LayoutNodeProperties {
   const props: LayoutNodeProperties = {
     description: node.properties.description,
     links: node.properties.links,

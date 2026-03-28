@@ -16,7 +16,7 @@ organization Corp {
 }
 `;
     const result = compile(krs);
-    const w = result.warnings.find((w) => w.kind === "deprecated-team-property");
+    const w = result.warnings.find((warning) => warning.kind === "deprecated-team-property");
     expect(w).toBeDefined();
     expect(w?.message).toContain("MyService");
     expect(w?.message).toContain("owns");
