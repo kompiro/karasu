@@ -134,6 +134,7 @@ export function KarasuPreviewColumn({
       {isFullView ? (
         <iframe
           srcDoc={fullViewSvg}
+          sandbox="allow-same-origin"
           style={{ width: "100%", flex: 1, border: "none", minHeight: 0 }}
           title="Full diagram view"
         />
