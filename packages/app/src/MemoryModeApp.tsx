@@ -63,16 +63,18 @@ function MemoryModeInner() {
     recompile: recompileDeploy,
   } = useDeployView(MEMORY_FILE_PATH, fs, viewPath);
 
+  const {
+    orgSvg,
+    orgDiagnostics,
+    orgWarnings,
+    recompile: recompileOrg,
+  } = useOrgView(MEMORY_FILE_PATH, fs, orgPath as OrgViewPath);
+
   const recompile = useCallback(() => {
     recompileSystem();
     recompileDeploy();
-  }, [recompileSystem, recompileDeploy]);
-
-  const { orgSvg, orgDiagnostics, orgWarnings } = useOrgView(
-    fileContent,
-    "",
-    orgPath as OrgViewPath,
-  );
+    recompileOrg();
+  }, [recompileSystem, recompileDeploy, recompileOrg]);
 
   const nodeMetadata = activeView === "deploy" ? deployNodeMetadata : systemNodeMetadata;
 

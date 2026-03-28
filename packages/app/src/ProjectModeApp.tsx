@@ -57,18 +57,20 @@ export function ProjectModeApp() {
     recompile: recompileDeploy,
   } = useDeployView(entryPath, fs, viewPath, selectedDeployBlockId);
 
+  const {
+    orgSvg,
+    orgDiagnostics,
+    orgWarnings,
+    recompile: recompileOrg,
+  } = useOrgView(entryPath, fs, orgPath as OrgViewPath);
+
   const recompile = useCallback(() => {
     recompileSystem();
     recompileDeploy();
-  }, [recompileSystem, recompileDeploy]);
+    recompileOrg();
+  }, [recompileSystem, recompileDeploy, recompileOrg]);
 
   const nodeMetadata = activeView === "deploy" ? deployNodeMetadata : systemNodeMetadata;
-
-  const { orgSvg, orgDiagnostics, orgWarnings } = useOrgView(
-    fileContent,
-    "",
-    orgPath as OrgViewPath,
-  );
 
   // 初期化: プロジェクト一覧を読み込み
   useEffect(() => {

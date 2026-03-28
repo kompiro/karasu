@@ -325,6 +325,29 @@ export interface OrgCompileResult {
   warnings: Warning[];
 }
 
+export async function compileProjectOrgView(
+  entryPath: string,
+  fs: FileSystemProvider,
+  orgPath?: OrgViewPath,
+): Promise<OrgCompileResult> {
+  const resolver = new ImportResolver(fs);
+  const resolved = await resolver.resolve(entryPath);
+  const diagnostics = [...resolved.diagnostics];
+
+  const allSheets = [getBuiltinStyleSheet(), ...resolved.styleSheets];
+  const warnings = analyze(resolved.krsFile, allSheets);
+  const slice = extractOrgView(resolved.krsFile.organizations, orgPath ?? []);
+  const styles = resolveStyles(
+    resolved.krsFile.systems,
+    allSheets,
+    undefined,
+    resolved.krsFile.organizations,
+  );
+  const svg = _renderOrgView(slice, styles);
+
+  return { svg, diagnostics, warnings };
+}
+
 export function compileOrgView(
   krsSource: string,
   styleSource?: string,
