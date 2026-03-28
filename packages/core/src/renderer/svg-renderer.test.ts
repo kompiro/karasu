@@ -13,7 +13,7 @@ function renderFromSource(krs: string, style?: string, serviceIdsWithDeploy?: Se
     : [getBuiltinStyleSheet()];
   const styles = resolveStyles(parseResult.value.systems, sheets);
   const viewSlice = extractView(parseResult.value.systems, []);
-  return render(viewSlice, styles, serviceIdsWithDeploy);
+  return render(viewSlice, styles, serviceIdsWithDeploy, parseResult.value.ownerIndex);
 }
 
 describe("SVG Renderer", () => {
@@ -178,6 +178,47 @@ system Test {
     `);
     expect(svg).toContain('data-team-button="ec-team"');
     expect(svg).toContain("👥");
+  });
+
+  it("renders info button on leaf service node with description", () => {
+    const svg = renderFromSource(`
+system Test {
+  service ECommerce {
+    label "ECサイト"
+    description "商品管理と注文処理"
+  }
+}
+    `);
+    expect(svg).toContain('data-info-button="ECommerce"');
+  });
+
+  it("renders info button on leaf service node with team (from ownerIndex)", () => {
+    const svg = renderFromSource(
+      `
+system Test {
+  service ECommerce {
+    label "ECサイト"
+  }
+}
+organization Corp {
+  team ecTeam {
+    owns ECommerce
+  }
+}
+      `,
+    );
+    expect(svg).toContain('data-info-button="ECommerce"');
+  });
+
+  it("does not render info button on node with no metadata", () => {
+    const svg = renderFromSource(`
+system Test {
+  service ECommerce {
+    label "ECサイト"
+  }
+}
+    `);
+    expect(svg).not.toContain('data-info-button="ECommerce"');
   });
 
   it("does not render deploy button when serviceIdsWithDeploy is not provided", () => {

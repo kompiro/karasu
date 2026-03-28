@@ -466,7 +466,14 @@ function renderNode(
   // Buttons are 16px diameter (r=8), spaced 20px apart from right edge
   const isServiceOrDomain = node.kind === "service" || node.kind === "domain";
   const showDeployButton = isServiceOrDomain && (serviceIdsWithDeploy?.has(nodeId) ?? false);
-  const showInfoButton = node.hasChildren && node.hasDescription;
+  // Show info button when the node has any metadata worth displaying in the detail panel.
+  // Container nodes (hasChildren) need the button because clicking the body drills down.
+  // Leaf nodes also get the button for discoverability, even though clicking the body also opens the panel.
+  const showInfoButton =
+    node.hasDescription ||
+    node.linkCount > 0 ||
+    !!node.properties.team ||
+    !!node.properties.role;
   const btnY = node.y + 14;
   let btnSlot = 0; // 0 = rightmost, increments leftward
 
