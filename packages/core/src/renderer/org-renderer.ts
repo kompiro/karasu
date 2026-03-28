@@ -45,9 +45,8 @@ function renderTeamCard(team: TeamNode, x: number, y: number, style: ResolvedNod
   const label = escapeXml(team.label ?? team.id);
   const hasChildren = team.members.length > 0 || team.teams.length > 0;
 
-  const ownsList = team.properties.owns.slice(0, 3).join(", ");
-  const ownsMore = team.properties.owns.length > 3 ? ` +${team.properties.owns.length - 3}` : "";
-  const ownsText = team.properties.owns.length > 0 ? `owns: ${ownsList}${ownsMore}` : "";
+  const visibleOwns = team.properties.owns.slice(0, 3);
+  const ownsOverflow = team.properties.owns.length > 3 ? team.properties.owns.length - 3 : 0;
 
   const countText = [
     team.members.length > 0
@@ -71,16 +70,38 @@ function renderTeamCard(team: TeamNode, x: number, y: number, style: ResolvedNod
     ),
   ];
 
-  if (ownsText) {
+  visibleOwns.forEach((serviceId, i) => {
+    parts.push(
+      el(
+        "g",
+        {
+          "data-owned-service-button": serviceId,
+          style: "cursor: pointer",
+          "pointer-events": "all",
+        },
+        el(
+          "text",
+          {
+            x: CARD_WIDTH / 2,
+            y: HEADER_HEIGHT + 22 + i * 16,
+            ...subLabelStyle(style),
+          },
+          escapeXml(`→ ${serviceId}`),
+        ),
+      ),
+    );
+  });
+
+  if (ownsOverflow > 0) {
     parts.push(
       el(
         "text",
         {
           x: CARD_WIDTH / 2,
-          y: HEADER_HEIGHT + 22,
+          y: HEADER_HEIGHT + 22 + visibleOwns.length * 16,
           ...subLabelStyle(style),
         },
-        escapeXml(ownsText),
+        escapeXml(`+${ownsOverflow} more`),
       ),
     );
   }

@@ -14,6 +14,8 @@ interface PreviewPaneProps {
   onDeployButtonClick?: (serviceId: string) => void;
   /** Called when user clicks the team label on a system node to cross-navigate to org view */
   onTeamButtonClick?: (teamId: string) => void;
+  /** Called when user clicks an owned service link on an org team node to cross-navigate to system view */
+  onOwnedServiceClick?: (serviceId: string) => void;
   /** Node or container id to highlight after cross-navigation */
   highlightedNodeId?: string | null;
   /** Called when a node interaction clears the cross-navigation highlight */
@@ -37,6 +39,7 @@ export function PreviewPane({
   onContainerClick,
   onDeployButtonClick,
   onTeamButtonClick,
+  onOwnedServiceClick,
   highlightedNodeId,
   onClearHighlight,
 }: PreviewPaneProps) {
@@ -163,6 +166,16 @@ export function PreviewPane({
         }
       }
 
+      // Check for owned service button click (org → system cross-navigation)
+      const ownedServiceButton = target.closest("[data-owned-service-button]");
+      if (ownedServiceButton && onOwnedServiceClick) {
+        const serviceId = ownedServiceButton.getAttribute("data-owned-service-button");
+        if (serviceId) {
+          onOwnedServiceClick(serviceId);
+          return;
+        }
+      }
+
       // Check for container click (deploy diagram cross-navigation)
       const containerGroup = target.closest("[data-container-id]");
       if (containerGroup && onContainerClick) {
@@ -202,6 +215,7 @@ export function PreviewPane({
       onContainerClick,
       onDeployButtonClick,
       onTeamButtonClick,
+      onOwnedServiceClick,
       onClearHighlight,
     ],
   );
