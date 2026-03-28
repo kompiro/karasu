@@ -7,3 +7,5 @@ pre-push:
       run: npm run lint
     typecheck:
       run: npm run typecheck
+    knip:
+      run: npm run knip
