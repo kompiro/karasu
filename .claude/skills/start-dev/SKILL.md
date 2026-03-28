@@ -104,6 +104,11 @@ description: >
 1. `gh pr checks <pr-number> --watch` で CI の完了を待つ
 2. CI が失敗した場合は修正し、追加コミットをプッシュする
 3. CI が通過したらユーザーに手動検証を依頼する
+4. 動作確認用に worktree のパスと開発サーバーの起動方法を表示する:
+   ```
+   Worktree: .worktrees/<機能名>
+   起動: cd .worktrees/<機能名> && npm run dev
+   ```
 
 > ここで Claude の作業は一旦完了。
 > レビューと PR マージは GitHub 上でユーザーが行う。
