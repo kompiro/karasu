@@ -2,12 +2,12 @@
 type: product
 ---
 
-# AT-0029: System → Deploy / Org Cross-Navigation
+# AT-0029: System ↔ Deploy / Org Cross-Navigation
 
 ## 概要
 
-system 図のサービスノードから deploy 図・org 図へのクロスナビゲーションを確認する。
-ノード上の「D」ボタン、チームラベル、および NodeDetailPanel 内のリンクを通じて移動できる。
+system 図のサービスノードから deploy 図・org 図へのクロスナビゲーション、および
+org 図の team ノードから system 図へのクロスナビゲーションを確認する。
 
 ## 前提条件
 
@@ -20,11 +20,13 @@ system ECPlatform {
   service ECommerce {
     label "ECサイト"
     description "商品管理と注文処理"
-    team "EC開発チーム"
   }
   service Payment {
     label "決済サービス"
     description "クレジットカード決済処理"
+  }
+  service Legacy {
+    label "旧システム"
   }
 
   ECommerce -> Payment "決済を処理する"
@@ -41,9 +43,11 @@ deploy "本番環境" {
   }
 }
 
-org {
-  team "EC開発チーム" {
+organization Corp {
+  team ecTeam {
     label "EC開発チーム"
+    owns ECommerce
+    owns Payment
   }
 }
 ```
@@ -58,7 +62,7 @@ org {
 **期待結果**
 - `ECサイト` ノードの右上に青い「D」ボタン（円）が表示される
 - `決済サービス` ノードにも「D」ボタンが表示される
-- deploy コンテナを持たないノード（user など）には「D」ボタンが表示されない
+- `旧システム`（deploy コンテナなし）には「D」ボタンが表示されない
 
 ---
 
@@ -69,7 +73,7 @@ org {
 
 **期待結果**
 - 自動的に「Deploy」タブに切り替わる
-- `ECサイト` コンテナ（deploy 図）がハイライトされる
+- `ECサイト` に対応するコンテナ（order-api）がハイライトされる
 - 別の操作をするまでハイライトが維持される
 
 ---
@@ -132,7 +136,7 @@ org {
 ## AT-0029-08: deploy コンテナのないサービスには Deploy ボタン/リンクが表示されない
 
 **手順**
-1. deploy ブロックのないサービスノードを確認する
+1. `旧システム` ノードの info ボタンをクリックする
 
 **期待結果**
 - 「D」ボタンが表示されない
