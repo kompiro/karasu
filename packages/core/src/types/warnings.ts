@@ -5,7 +5,8 @@ export type WarningKind =
   | "style-conflict"
   | "missing-runtime"
   | "missing-realizes"
-  | "invalid-owns";
+  | "invalid-owns"
+  | "deprecated-team-property";
 
 export interface Warning {
   kind: WarningKind;
