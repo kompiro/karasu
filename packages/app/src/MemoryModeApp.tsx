@@ -212,6 +212,7 @@ function MemoryModeInner() {
         }}
         nodeMetadata={nodeMetadata}
         onDrillDown={handleDrillDown}
+        fullViewSvg=""
       />
     </div>
   );

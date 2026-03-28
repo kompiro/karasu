@@ -52,6 +52,7 @@ interface KarasuPreviewColumnProps {
 
   nodeMetadata: Map<string, NodeMetadata>;
   onDrillDown: (path: string[]) => void;
+  fullViewSvg: string;
 }
 
 export function KarasuPreviewColumn({
@@ -63,8 +64,10 @@ export function KarasuPreviewColumn({
   orgView,
   nodeMetadata,
   onDrillDown,
+  fullViewSvg,
 }: KarasuPreviewColumnProps) {
   const [refOpen, setRefOpen] = useState(false);
+  const [isFullView, setIsFullView] = useState(false);
 
   const svg =
     activeView === "system"
@@ -90,10 +93,23 @@ export function KarasuPreviewColumn({
       />
       <div className="preview-toolbar">
         <button
+          className={`toolbar-btn toolbar-btn--fullview${isFullView ? " toolbar-btn--active" : ""}`}
+          onClick={() => setIsFullView((v) => !v)}
+          aria-label="Toggle full view"
+          aria-pressed={isFullView}
+          disabled={!fullViewSvg}
+        >
+          ⊞ Full View
+        </button>
+        <button
           className="toolbar-btn toolbar-btn--export"
-          onClick={() => downloadSvg(svg, `diagram-${activeView}.svg`)}
+          onClick={() =>
+            isFullView
+              ? downloadSvg(fullViewSvg, `diagram-${activeView}-full.svg`)
+              : downloadSvg(svg, `diagram-${activeView}.svg`)
+          }
           aria-label="Export SVG"
-          disabled={!svg}
+          disabled={!(isFullView ? fullViewSvg : svg)}
         >
           ↓ Export SVG
         </button>
@@ -115,30 +131,38 @@ export function KarasuPreviewColumn({
       {activeView === "org" && (
         <BreadcrumbBar items={orgView.breadcrumbItems} onNavigate={orgView.onBreadcrumbNavigate} />
       )}
-      <PreviewPane
-        svg={svg}
-        diagnostics={diagnostics}
-        viewPath={viewPath}
-        nodeMetadata={nodeMetadata}
-        onDrillDown={activeView !== "deploy" ? onDrillDown : () => {}}
-        onContainerClick={activeView === "deploy" ? deployView.onContainerClick : undefined}
-        onDeployButtonClick={activeView === "system" ? systemView.onDeployButtonClick : undefined}
-        onTeamButtonClick={activeView === "system" ? systemView.onTeamButtonClick : undefined}
-        highlightedNodeId={
-          activeView === "deploy"
-            ? deployView.highlightedNodeId
-            : activeView === "org"
-              ? orgView.highlightedNodeId
-              : undefined
-        }
-        onClearHighlight={
-          activeView === "deploy"
-            ? deployView.onClearHighlight
-            : activeView === "org"
-              ? orgView.onClearHighlight
-              : undefined
-        }
-      />
+      {isFullView ? (
+        <iframe
+          srcDoc={fullViewSvg}
+          style={{ width: "100%", flex: 1, border: "none", minHeight: 0 }}
+          title="Full diagram view"
+        />
+      ) : (
+        <PreviewPane
+          svg={svg}
+          diagnostics={diagnostics}
+          viewPath={viewPath}
+          nodeMetadata={nodeMetadata}
+          onDrillDown={activeView !== "deploy" ? onDrillDown : () => {}}
+          onContainerClick={activeView === "deploy" ? deployView.onContainerClick : undefined}
+          onDeployButtonClick={activeView === "system" ? systemView.onDeployButtonClick : undefined}
+          onTeamButtonClick={activeView === "system" ? systemView.onTeamButtonClick : undefined}
+          highlightedNodeId={
+            activeView === "deploy"
+              ? deployView.highlightedNodeId
+              : activeView === "org"
+                ? orgView.highlightedNodeId
+                : undefined
+          }
+          onClearHighlight={
+            activeView === "deploy"
+              ? deployView.onClearHighlight
+              : activeView === "org"
+                ? orgView.onClearHighlight
+                : undefined
+          }
+        />
+      )}
       <WarningPanel
         warnings={
           activeView === "org"

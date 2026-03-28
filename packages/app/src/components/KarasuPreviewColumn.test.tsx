@@ -44,6 +44,7 @@ function makeProps(overrides: Partial<Parameters<typeof KarasuPreviewColumn>[0]>
     },
     nodeMetadata: new Map(),
     onDrillDown: vi.fn(),
+    fullViewSvg: "",
     ...overrides,
   };
 }

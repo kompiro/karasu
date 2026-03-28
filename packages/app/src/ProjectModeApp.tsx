@@ -8,6 +8,7 @@ import { useAppContext } from "./state/app-context.js";
 import { useSystemView } from "./hooks/useSystemView.js";
 import { useDeployView } from "./hooks/useDeployView.js";
 import { useOrgView } from "./hooks/useOrgView.js";
+import { useFullViewSvg } from "./hooks/useFullViewSvg.js";
 import { ProjectManager } from "./fs/project-manager.js";
 import type { Project, KrsNode, OrgViewPath } from "@karasu/core";
 import type { ActiveView } from "./state/app-reducer.js";
@@ -67,6 +68,8 @@ export function ProjectModeApp() {
     "",
     orgPath as OrgViewPath,
   );
+
+  const { fullViewSvg } = useFullViewSvg(entryPath, fs);
 
   // 初期化: プロジェクト一覧を読み込み
   useEffect(() => {
@@ -352,6 +355,7 @@ export function ProjectModeApp() {
         }}
         nodeMetadata={nodeMetadata}
         onDrillDown={handleDrillDown}
+        fullViewSvg={fullViewSvg}
       />
     </div>
   );
