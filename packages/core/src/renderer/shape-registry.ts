@@ -16,6 +16,8 @@ export interface ShapeContext {
   strokeWidth: number;
   strokeDasharray: string;
   borderRadius: number;
+  /** Text color — used for {{color}} placeholder injection in built-in icons */
+  color: string;
 }
 
 export type ShapeRenderFn = (ctx: ShapeContext) => string;
@@ -51,6 +53,8 @@ export interface SvgIconDef {
   labelSlot?: SvgIconTextSlot;
   /** Description text position extracted from class="krs-description" */
   descriptionSlot?: SvgIconTextSlot;
+  /** Whether this is a built-in icon that receives placeholder injection ({{color}}, {{fill}}, etc.) */
+  builtIn?: boolean;
 }
 
 const shapeRegistry = new Map<string, ShapeRenderFn>();
@@ -93,7 +97,15 @@ export function registerIcon(def: SvgIconDef): void {
   registerShape(def.name, (ctx) => {
     const scaleX = ctx.width / vw;
     const scaleY = ctx.height / vh;
-    return `<g transform="translate(${ctx.x}, ${ctx.y}) scale(${scaleX}, ${scaleY})">${def.body}</g>`;
+    let body = def.body;
+    if (def.builtIn) {
+      body = body
+        .replace(/\{\{color\}\}/g, ctx.color)
+        .replace(/\{\{fill\}\}/g, ctx.fill)
+        .replace(/\{\{stroke\}\}/g, ctx.stroke)
+        .replace(/\{\{strokeWidth\}\}/g, String(ctx.strokeWidth));
+    }
+    return `<g transform="translate(${ctx.x}, ${ctx.y}) scale(${scaleX}, ${scaleY})">${body}</g>`;
   });
 }
 
