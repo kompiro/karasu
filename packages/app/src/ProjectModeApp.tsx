@@ -5,8 +5,8 @@ import { ProjectSelector } from "./components/ProjectSelector.js";
 import { FileTree } from "./components/FileTree.js";
 import { KarasuPreviewColumn } from "./components/KarasuPreviewColumn.js";
 import { useAppContext } from "./state/app-context.js";
-import { useProjectSystemView } from "./hooks/useProjectSystemView.js";
-import { useProjectDeployView } from "./hooks/useProjectDeployView.js";
+import { useSystemView } from "./hooks/useSystemView.js";
+import { useDeployView } from "./hooks/useDeployView.js";
 import { useOrgView } from "./hooks/useOrgView.js";
 import { ProjectManager } from "./fs/project-manager.js";
 import type { Project, KrsNode, OrgViewPath } from "@karasu/core";
@@ -45,7 +45,7 @@ export function ProjectModeApp() {
     nodeMetadata: systemNodeMetadata,
     hasDeployDiagram,
     recompile: recompileSystem,
-  } = useProjectSystemView(entryPath, fs, viewPath);
+  } = useSystemView(entryPath, fs, viewPath);
 
   const {
     svg: deploySvg,
@@ -53,7 +53,7 @@ export function ProjectModeApp() {
     diagnostics: deployDiagnostics,
     nodeMetadata: deployNodeMetadata,
     recompile: recompileDeploy,
-  } = useProjectDeployView(entryPath, fs, viewPath);
+  } = useDeployView(entryPath, fs, viewPath);
 
   const recompile = useCallback(() => {
     recompileSystem();

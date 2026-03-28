@@ -10,8 +10,8 @@ import { EditorPane } from "./components/EditorPane.js";
 import { KarasuPreviewColumn } from "./components/KarasuPreviewColumn.js";
 import { AppProvider } from "./state/app-context.js";
 import { useAppContext } from "./state/app-context.js";
-import { useProjectSystemView } from "./hooks/useProjectSystemView.js";
-import { useProjectDeployView } from "./hooks/useProjectDeployView.js";
+import { useSystemView } from "./hooks/useSystemView.js";
+import { useDeployView } from "./hooks/useDeployView.js";
 import { useOrgView } from "./hooks/useOrgView.js";
 import type { ActiveView } from "./state/app-reducer.js";
 
@@ -53,7 +53,7 @@ function MemoryModeInner() {
     nodeMetadata: systemNodeMetadata,
     hasDeployDiagram,
     recompile: recompileSystem,
-  } = useProjectSystemView(MEMORY_FILE_PATH, fs, viewPath);
+  } = useSystemView(MEMORY_FILE_PATH, fs, viewPath);
 
   const {
     svg: deploySvg,
@@ -61,7 +61,7 @@ function MemoryModeInner() {
     diagnostics: deployDiagnostics,
     nodeMetadata: deployNodeMetadata,
     recompile: recompileDeploy,
-  } = useProjectDeployView(MEMORY_FILE_PATH, fs, viewPath);
+  } = useDeployView(MEMORY_FILE_PATH, fs, viewPath);
 
   const recompile = useCallback(() => {
     recompileSystem();

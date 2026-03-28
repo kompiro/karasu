@@ -8,7 +8,7 @@ import {
   type NodeMetadata,
 } from "@karasu/core";
 
-export interface ProjectDeployViewState {
+export interface DeployViewState {
   svg: string;
   warnings: Warning[];
   diagnostics: Diagnostic[];
@@ -17,12 +17,12 @@ export interface ProjectDeployViewState {
 
 const DEBOUNCE_MS = 300;
 
-export function useProjectDeployView(
+export function useDeployView(
   entryPath: string | null,
   fs: FileSystemProvider | null,
   viewPath: ViewPath = [],
-): ProjectDeployViewState & { recompile: () => void } {
-  const [state, setState] = useState<ProjectDeployViewState>({
+): DeployViewState & { recompile: () => void } {
+  const [state, setState] = useState<DeployViewState>({
     svg: "",
     warnings: [],
     diagnostics: [],
