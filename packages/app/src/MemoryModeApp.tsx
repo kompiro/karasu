@@ -11,7 +11,7 @@ import { KarasuPreviewColumn } from "./components/KarasuPreviewColumn.js";
 import { AppProvider } from "./state/app-context.js";
 import { useAppContext } from "./state/app-context.js";
 import { useSystemView } from "./hooks/useSystemView.js";
-import { useProjectDeployView } from "./hooks/useProjectDeployView.js";
+import { useDeployView } from "./hooks/useDeployView.js";
 import { useOrgView } from "./hooks/useOrgView.js";
 import type { ActiveView } from "./state/app-reducer.js";
 
@@ -61,7 +61,7 @@ function MemoryModeInner() {
     diagnostics: deployDiagnostics,
     nodeMetadata: deployNodeMetadata,
     recompile: recompileDeploy,
-  } = useProjectDeployView(MEMORY_FILE_PATH, fs, viewPath);
+  } = useDeployView(MEMORY_FILE_PATH, fs, viewPath);
 
   const recompile = useCallback(() => {
     recompileSystem();
