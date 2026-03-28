@@ -15,7 +15,7 @@ import { registerIcon, type SvgIconDef, type SvgIconTextSlot } from "./shape-reg
  *   extracting their position as text slots
  * - Removes those text elements from the body
  */
-export function parseSvgIcon(name: string, svgString: string): SvgIconDef {
+export function parseSvgIcon(name: string, svgString: string, builtIn?: boolean): SvgIconDef {
   // Extract viewBox
   const viewBoxMatch = svgString.match(/viewBox\s*=\s*"([^"]+)"/);
   let viewBoxWidth = 24;
@@ -44,14 +44,15 @@ export function parseSvgIcon(name: string, svgString: string): SvgIconDef {
     body: body.trim(),
     labelSlot,
     descriptionSlot,
+    builtIn,
   };
 }
 
 /**
  * Parse and register an SVG icon in one step.
  */
-export function loadAndRegisterIcon(name: string, svgString: string): void {
-  const def = parseSvgIcon(name, svgString);
+export function loadAndRegisterIcon(name: string, svgString: string, builtIn?: boolean): void {
+  const def = parseSvgIcon(name, svgString, builtIn);
   registerIcon(def);
 }
 
@@ -59,9 +60,9 @@ export function loadAndRegisterIcon(name: string, svgString: string): void {
  * Register multiple SVG icons at once.
  * @param icons - Map of icon name to SVG string content
  */
-export function loadAndRegisterIcons(icons: Record<string, string>): void {
+export function loadAndRegisterIcons(icons: Record<string, string>, builtIn?: boolean): void {
   for (const [name, svgString] of Object.entries(icons)) {
-    loadAndRegisterIcon(name, svgString);
+    loadAndRegisterIcon(name, svgString, builtIn);
   }
 }
 

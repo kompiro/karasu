@@ -210,6 +210,7 @@ export function renderShape(
     strokeDasharray:
       style.borderStyle === "dashed" ? "8 4" : style.borderStyle === "dotted" ? "2 2" : "",
     borderRadius: style.borderRadius,
+    color: style.color,
   };
 
   return render(ctx);

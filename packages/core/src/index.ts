@@ -62,6 +62,7 @@ export {
   type OrgKindInfo,
 } from "./builtins/reference.js";
 export { analyze } from "./resolver/warnings.js";
+export type { DisplayMode } from "./renderer/layout.js";
 export { render, renderFromLayout } from "./renderer/svg-renderer.js";
 export { renderOrgView } from "./renderer/org-renderer.js";
 export { renderDeploy } from "./renderer/deploy-renderer.js";
@@ -108,6 +109,7 @@ import { resolveStyles } from "./resolver/style-resolver.js";
 import { resolveOrgStyles, DEFAULT_ORG_NODE_STYLE } from "./resolver/org-styles.js";
 import { analyze } from "./resolver/warnings.js";
 import { render } from "./renderer/svg-renderer.js";
+import type { DisplayMode } from "./renderer/layout.js";
 import { renderOrgView as _renderOrgView } from "./renderer/org-renderer.js";
 import { renderDeploy } from "./renderer/deploy-renderer.js";
 import { extractView, type ViewPath } from "./view/view-extract.js";
@@ -166,6 +168,7 @@ export function compile(
   viewPath?: ViewPath,
   diagramType?: DiagramType,
   selectedDeployId?: string,
+  displayMode?: DisplayMode,
 ): CompileResult {
   const parseResult: ParseResult<KrsFile> = Parser.parse(krsSource);
   const diagnostics = [...parseResult.diagnostics];
@@ -202,7 +205,7 @@ export function compile(
     nodeMetadata = buildDeployNodeMetadata(deploySlice);
   } else {
     const viewSlice = extractView(parseResult.value.systems, viewPath ?? []);
-    svg = render(viewSlice, styles, serviceIdsWithDeploy, ownerIndex);
+    svg = render(viewSlice, styles, serviceIdsWithDeploy, ownerIndex, displayMode);
     nodeMetadata = buildNodeMetadata(viewSlice, serviceIdsWithDeploy, ownerIndex);
   }
 
@@ -220,6 +223,7 @@ export async function compileProject(
   viewPath?: ViewPath,
   diagramType?: DiagramType,
   selectedDeployId?: string,
+  displayMode?: DisplayMode,
 ): Promise<CompileResult> {
   const resolver = new ImportResolver(fs);
   const resolved = await resolver.resolve(entryPath);
@@ -251,7 +255,7 @@ export async function compileProject(
     nodeMetadata = buildDeployNodeMetadata(deploySlice);
   } else {
     const viewSlice = extractView(resolved.krsFile.systems, viewPath ?? []);
-    svg = render(viewSlice, styles, serviceIdsWithDeploy, ownerIndex);
+    svg = render(viewSlice, styles, serviceIdsWithDeploy, ownerIndex, displayMode);
     nodeMetadata = buildNodeMetadata(viewSlice, serviceIdsWithDeploy, ownerIndex);
   }
 
