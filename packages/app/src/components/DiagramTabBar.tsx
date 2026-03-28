@@ -1,12 +1,23 @@
+import type { DeployBlockInfo } from "@karasu/core";
 import type { ActiveView } from "../state/app-reducer.js";
 
 interface DiagramTabBarProps {
   active: ActiveView;
   hasDeployDiagram: boolean;
   onChange: (view: ActiveView) => void;
+  deployBlocks?: DeployBlockInfo[];
+  selectedDeployBlockId?: string | null;
+  onDeployBlockChange?: (id: string) => void;
 }
 
-export function DiagramTabBar({ active, hasDeployDiagram, onChange }: DiagramTabBarProps) {
+export function DiagramTabBar({
+  active,
+  hasDeployDiagram,
+  onChange,
+  deployBlocks,
+  selectedDeployBlockId,
+  onDeployBlockChange,
+}: DiagramTabBarProps) {
   return (
     <div className="diagram-tab-bar" role="tablist">
       <button
@@ -39,6 +50,20 @@ export function DiagramTabBar({ active, hasDeployDiagram, onChange }: DiagramTab
           <span className="diagram-tab-icon">⬢</span>
           Deploy
         </span>
+      )}
+      {active === "deploy" && deployBlocks && deployBlocks.length > 1 && (
+        <select
+          className="deploy-block-selector"
+          value={selectedDeployBlockId ?? deployBlocks[0].id}
+          onChange={(e) => onDeployBlockChange?.(e.target.value)}
+          aria-label="deploy block selector"
+        >
+          {deployBlocks.map((b) => (
+            <option key={b.id} value={b.id}>
+              {b.label}
+            </option>
+          ))}
+        </select>
       )}
       <button
         className={`diagram-tab ${active === "org" ? "diagram-tab--active" : ""}`}

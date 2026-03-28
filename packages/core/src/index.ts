@@ -146,12 +146,18 @@ export interface NodeMetadata {
 
 export type DiagramType = "system" | "deploy";
 
+export interface DeployBlockInfo {
+  id: string;
+  label: string;
+}
+
 export interface CompileResult {
   svg: string;
   warnings: Warning[];
   diagnostics: Diagnostic[];
   nodeMetadata: Map<string, NodeMetadata>;
   hasDeployDiagram: boolean;
+  deployBlocks: DeployBlockInfo[];
 }
 
 export function compile(
@@ -159,6 +165,7 @@ export function compile(
   styleSource?: string,
   viewPath?: ViewPath,
   diagramType?: DiagramType,
+  selectedDeployId?: string,
 ): CompileResult {
   const parseResult: ParseResult<KrsFile> = Parser.parse(krsSource);
   const diagnostics = [...parseResult.diagnostics];
@@ -173,6 +180,7 @@ export function compile(
   const deploySliceForStyle = extractDeployView(
     parseResult.value.deploys,
     parseResult.value.systems,
+    selectedDeployId,
   );
   const deployUnits = [
     ...deploySliceForStyle.containers.flatMap((c) => c.units),
@@ -181,6 +189,7 @@ export function compile(
   const styles = resolveStyles(parseResult.value.systems, sheets, deployUnits);
   const warnings = analyze(parseResult.value, sheets);
   const hasDeployDiagram = parseResult.value.deploys.length > 0;
+  const deployBlocks = parseResult.value.deploys.map((d) => ({ id: d.id, label: d.label ?? d.id }));
   const serviceIdsWithDeploy = new Set(deploySliceForStyle.containers.map((c) => c.serviceId));
   const ownerIndex = parseResult.value.ownerIndex;
 
@@ -197,7 +206,7 @@ export function compile(
     nodeMetadata = buildNodeMetadata(viewSlice, serviceIdsWithDeploy, ownerIndex);
   }
 
-  return { svg, warnings, diagnostics, nodeMetadata, hasDeployDiagram };
+  return { svg, warnings, diagnostics, nodeMetadata, hasDeployDiagram, deployBlocks };
 }
 
 /**
@@ -210,13 +219,18 @@ export async function compileProject(
   fs: FileSystemProvider,
   viewPath?: ViewPath,
   diagramType?: DiagramType,
+  selectedDeployId?: string,
 ): Promise<CompileResult> {
   const resolver = new ImportResolver(fs);
   const resolved = await resolver.resolve(entryPath);
   const diagnostics = [...resolved.diagnostics];
 
   const allSheets = [getBuiltinStyleSheet(), ...resolved.styleSheets];
-  const deploySliceForStyle = extractDeployView(resolved.krsFile.deploys, resolved.krsFile.systems);
+  const deploySliceForStyle = extractDeployView(
+    resolved.krsFile.deploys,
+    resolved.krsFile.systems,
+    selectedDeployId,
+  );
   const deployUnits = [
     ...deploySliceForStyle.containers.flatMap((c) => c.units),
     ...deploySliceForStyle.unclassifiedUnits,
@@ -224,6 +238,7 @@ export async function compileProject(
   const styles = resolveStyles(resolved.krsFile.systems, allSheets, deployUnits);
   const warnings = analyze(resolved.krsFile, allSheets);
   const hasDeployDiagram = resolved.krsFile.deploys.length > 0;
+  const deployBlocks = resolved.krsFile.deploys.map((d) => ({ id: d.id, label: d.label ?? d.id }));
   const serviceIdsWithDeploy = new Set(deploySliceForStyle.containers.map((c) => c.serviceId));
   const ownerIndex = resolved.krsFile.ownerIndex;
 
@@ -240,7 +255,7 @@ export async function compileProject(
     nodeMetadata = buildNodeMetadata(viewSlice, serviceIdsWithDeploy, ownerIndex);
   }
 
-  return { svg, warnings, diagnostics, nodeMetadata, hasDeployDiagram };
+  return { svg, warnings, diagnostics, nodeMetadata, hasDeployDiagram, deployBlocks };
 }
 
 function buildNodeMetadata(
