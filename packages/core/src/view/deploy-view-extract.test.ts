@@ -159,4 +159,44 @@ describe("extractDeployView", () => {
     const result = extractDeployView([deploy], [makeSystem()]);
     expect(result.deployLabel).toBe("Production");
   });
+
+  describe("selectedId", () => {
+    it("selects first block by default when no selectedId given (multiple blocks)", () => {
+      const prod = makeDeployBlock([{ kind: "oci", id: "prod-api", realizes: "ECommerce" }], {
+        id: "prod",
+        label: "本番環境",
+      });
+      const staging = makeDeployBlock(
+        [{ kind: "oci", id: "staging-api", realizes: "ECommerce" }],
+        { id: "staging", label: "ステージング" },
+      );
+      const result = extractDeployView([prod, staging], [makeSystem()]);
+      expect(result.deployLabel).toBe("本番環境");
+      expect(result.containers[0].units[0].id).toBe("prod-api");
+    });
+
+    it("selects block by id when selectedId matches", () => {
+      const prod = makeDeployBlock([{ kind: "oci", id: "prod-api", realizes: "ECommerce" }], {
+        id: "prod",
+        label: "本番環境",
+      });
+      const staging = makeDeployBlock(
+        [{ kind: "oci", id: "staging-api", realizes: "ECommerce" }],
+        { id: "staging", label: "ステージング" },
+      );
+      const result = extractDeployView([prod, staging], [makeSystem()], "staging");
+      expect(result.deployLabel).toBe("ステージング");
+      expect(result.containers[0].units[0].id).toBe("staging-api");
+    });
+
+    it("falls back to first block when selectedId not found", () => {
+      const prod = makeDeployBlock([{ kind: "oci", id: "prod-api", realizes: "ECommerce" }], {
+        id: "prod",
+        label: "本番環境",
+      });
+      const result = extractDeployView([prod], [makeSystem()], "nonexistent");
+      expect(result.deployLabel).toBe("本番環境");
+      expect(result.containers[0].units[0].id).toBe("prod-api");
+    });
+  });
 });

@@ -31,8 +31,14 @@ export interface DeployViewSlice {
  * Extracts a DeployViewSlice from deploy blocks + system nodes.
  * Groups deploy units by their `realizes` value and derives ghost edges
  * from system-level edges between the realized services.
+ *
+ * @param selectedId - id of the deploy block to render; falls back to the first block if not found
  */
-export function extractDeployView(deploys: DeployBlock[], systems: SystemNode[]): DeployViewSlice {
+export function extractDeployView(
+  deploys: DeployBlock[],
+  systems: SystemNode[],
+  selectedId?: string,
+): DeployViewSlice {
   const empty: DeployViewSlice = {
     deployLabel: "",
     containers: [],
@@ -42,8 +48,9 @@ export function extractDeployView(deploys: DeployBlock[], systems: SystemNode[])
 
   if (deploys.length === 0) return empty;
 
-  // Use the first deploy block
-  const deployBlock = deploys[0];
+  const deployBlock = selectedId
+    ? (deploys.find((d) => d.id === selectedId) ?? deploys[0])
+    : deploys[0];
 
   // Group units by realizes target
   const groupedByRealizes = new Map<string, DeployNode[]>();
