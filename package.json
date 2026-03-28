@@ -10,7 +10,7 @@
   },
   "scripts": {
     "dev": "npm run dev --workspace=packages/app",
-    "build": "npm run build --workspace=packages/core && npm run build --workspace=packages/app",
+    "build": "npm run build --workspace=packages/core && npm run build --workspace=packages/app && npm run build --workspace=packages/cli",
     "test": "vitest run",
     "test:coverage": "npm run test:coverage --workspace=packages/core && npm run test:coverage --workspace=packages/app",
     "lint": "oxlint --deny-warnings packages/",
