@@ -1,17 +1,21 @@
+import { useState, useEffect, useMemo } from "react";
 import { MemoryModeApp } from "./MemoryModeApp.js";
 import { ProjectModeApp } from "./ProjectModeApp.js";
+import { ServeModeApp } from "./ServeModeApp.js";
 import { AppProvider } from "./state/app-context.js";
 import { OpfsFileSystemProvider } from "./fs/opfs-provider.js";
-import { detectStorageMode } from "./fs/detect-storage-mode.js";
-import { useMemo } from "react";
+import { detectAppMode, type AppMode } from "./fs/detect-storage-mode.js";
 
 export function App() {
-  const mode = useMemo(() => detectStorageMode(), []);
+  const [mode, setMode] = useState<AppMode | null>(null);
 
-  if (mode === "memory") {
-    return <MemoryModeApp />;
-  }
+  useEffect(() => {
+    detectAppMode().then(setMode);
+  }, []);
 
+  if (mode === null) return null;
+  if (mode === "serve") return <ServeModeApp />;
+  if (mode === "memory") return <MemoryModeApp />;
   return <OpfsApp />;
 }
 
