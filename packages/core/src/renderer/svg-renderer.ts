@@ -12,8 +12,9 @@ export function render(
   viewSlice: ViewSlice,
   styles: ResolvedStyles,
   serviceIdsWithDeploy?: Set<string>,
+  ownerIndex?: Map<string, string>,
 ): string {
-  const layoutResult = layout(viewSlice);
+  const layoutResult = layout(viewSlice, ownerIndex);
   const title =
     layoutResult.containers.length === 0 && viewSlice.containerNode
       ? (viewSlice.containerNode.label ?? viewSlice.containerNode.id)

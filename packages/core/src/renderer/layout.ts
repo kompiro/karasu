@@ -67,7 +67,7 @@ const CONTAINER_PADDING = 40;
 const CONTAINER_LABEL_HEIGHT = 30;
 const GHOST_MARGIN = 30;
 
-export function layout(viewSlice: ViewSlice): LayoutResult {
+export function layout(viewSlice: ViewSlice, ownerIndex?: Map<string, string>): LayoutResult {
   const allNodes = viewSlice.childNodes;
   const allEdges = viewSlice.childEdges;
 
@@ -128,14 +128,18 @@ export function layout(viewSlice: ViewSlice): LayoutResult {
 
     for (const nid of nodesInLayer) {
       const krsNode = nodeMap.get(nid)!;
-      const dims = measureNode(krsNode);
+      const resolvedTeam =
+        krsNode.kind === "service" || krsNode.kind === "domain"
+          ? (ownerIndex?.get(nid) ?? krsNode.properties.team)
+          : undefined;
+      const dims = measureNode(krsNode, resolvedTeam);
       const y = layerIdx * (dims.height + LAYER_GAP) + NODE_GAP;
 
       layoutNodes.set(nid, {
         kind: krsNode.kind,
         id: nid,
         label: krsNode.label ?? krsNode.id,
-        properties: extractLayoutProperties(krsNode),
+        properties: extractLayoutProperties(krsNode, resolvedTeam),
         descriptionSummary: krsNode.properties.description
           ? summarizeDescription(krsNode.properties.description)
           : undefined,
@@ -253,13 +257,13 @@ export function layout(viewSlice: ViewSlice): LayoutResult {
     let userY = (mainContainer?.y ?? 0) + CONTAINER_LABEL_HEIGHT + NODE_GAP;
 
     for (const userNode of viewSlice.ghostUsers) {
-      const dims = measureNode(userNode);
+      const dims = measureNode(userNode, undefined);
       const uid = userNode.id;
       const gNode: LayoutNode = {
         kind: userNode.kind,
         id: uid,
         label: userNode.label ?? userNode.id,
-        properties: extractLayoutProperties(userNode),
+        properties: extractLayoutProperties(userNode, undefined),
         descriptionSummary: userNode.properties.description
           ? summarizeDescription(userNode.properties.description)
           : undefined,
@@ -504,21 +508,24 @@ function assignLayers(
 const META_FONT_RATIO = 0.7;
 const INFO_BUTTON_WIDTH = 24;
 
-function extractLayoutProperties(node: KrsNode): LayoutNodeProperties {
+function extractLayoutProperties(
+  node: KrsNode,
+  resolvedTeam?: string,
+): LayoutNodeProperties {
   const props: LayoutNodeProperties = {
     description: node.properties.description,
     links: node.properties.links,
   };
   if (node.kind === "user") props.role = node.properties.role;
-  if (node.kind === "service" || node.kind === "domain") props.team = node.properties.team;
+  if (node.kind === "service" || node.kind === "domain") props.team = resolvedTeam;
   return props;
 }
 
-function measureNode(node: KrsNode): { width: number; height: number } {
+function measureNode(node: KrsNode, resolvedTeam?: string): { width: number; height: number } {
   const labelWidth = estimateTextWidth(node.label ?? node.id, CHAR_WIDTH);
   const description = node.properties.description;
   const role = node.kind === "user" ? node.properties.role : undefined;
-  const team = node.kind === "service" || node.kind === "domain" ? node.properties.team : undefined;
+  const team = node.kind === "service" || node.kind === "domain" ? resolvedTeam : undefined;
 
   // Description should not widen the box beyond label width
   const descWidth = 0;
