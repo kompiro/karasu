@@ -197,6 +197,15 @@ export function ProjectModeApp() {
     [dispatch],
   );
 
+  // Org チームノードの所有サービスクリック → System タブへクロスナビゲーション
+  const handleOwnedServiceClick = useCallback(
+    (serviceId: string) => {
+      dispatch({ type: "SET_ACTIVE_VIEW", activeView: "system" });
+      dispatch({ type: "SET_HIGHLIGHTED_NODE", nodeId: serviceId });
+    },
+    [dispatch],
+  );
+
   // プロジェクト操作
   const handleSelectProject = useCallback(
     (project: Project) => {
@@ -359,6 +368,7 @@ export function ProjectModeApp() {
           onBreadcrumbNavigate: (path) => dispatch({ type: "SET_ORG_PATH", path }),
           highlightedNodeId,
           onClearHighlight: () => dispatch({ type: "SET_HIGHLIGHTED_NODE", nodeId: null }),
+          onOwnedServiceClick: handleOwnedServiceClick,
         }}
         nodeMetadata={nodeMetadata}
         onDrillDown={handleDrillDown}

@@ -38,6 +38,8 @@ interface OrgViewProps {
   onBreadcrumbNavigate: (path: string[]) => void;
   highlightedNodeId?: string | null;
   onClearHighlight?: () => void;
+  /** Called when user clicks an owned service link on a team node to cross-navigate to system view */
+  onOwnedServiceClick?: (serviceId: string) => void;
 }
 
 interface KarasuPreviewColumnProps {
@@ -125,6 +127,7 @@ export function KarasuPreviewColumn({
         onContainerClick={activeView === "deploy" ? deployView.onContainerClick : undefined}
         onDeployButtonClick={activeView === "system" ? systemView.onDeployButtonClick : undefined}
         onTeamButtonClick={activeView === "system" ? systemView.onTeamButtonClick : undefined}
+        onOwnedServiceClick={activeView === "org" ? orgView.onOwnedServiceClick : undefined}
         highlightedNodeId={
           activeView === "deploy"
             ? deployView.highlightedNodeId

@@ -127,6 +127,14 @@ function MemoryModeInner() {
     [dispatch],
   );
 
+  const handleOwnedServiceClick = useCallback(
+    (serviceId: string) => {
+      dispatch({ type: "SET_ACTIVE_VIEW", activeView: "system" });
+      dispatch({ type: "SET_HIGHLIGHTED_NODE", nodeId: serviceId });
+    },
+    [dispatch],
+  );
+
   const breadcrumbItems = useMemo(() => {
     if (!fileContent) return [];
     try {
@@ -209,6 +217,7 @@ function MemoryModeInner() {
           onBreadcrumbNavigate: (path) => dispatch({ type: "SET_ORG_PATH", path }),
           highlightedNodeId,
           onClearHighlight: () => dispatch({ type: "SET_HIGHLIGHTED_NODE", nodeId: null }),
+          onOwnedServiceClick: handleOwnedServiceClick,
         }}
         nodeMetadata={nodeMetadata}
         onDrillDown={handleDrillDown}
