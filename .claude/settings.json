@@ -33,6 +33,19 @@
     ]
   },
   "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "pkill -f 'vite' 2>/dev/null || true",
+            "if": "Bash(git worktree remove:*)",
+            "statusMessage": "Stopping dev server..."
+          }
+        ]
+      }
+    ],
     "Stop": [
       {
         "hooks": [
@@ -55,8 +68,9 @@
       }
     ]
   },
-  "defaultMode": "acceptEdits",
   "enabledPlugins": {
-    "commit-commands@claude-plugins-official": true
-  }
+    "commit-commands@claude-plugins-official": true,
+    "frontend-design@claude-plugins-official": true
+  },
+  "defaultMode": "acceptEdits"
 }
