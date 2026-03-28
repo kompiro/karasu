@@ -740,6 +740,188 @@ organization "dev-team" {
     expect(team.members[0].id).toBe("alice-smith");
   });
 
+  // ─── Identifier forms: camelCase vs string literal ────────────────────────
+
+  it("camelCase and string literal ids produce the same AST shape for system/service", () => {
+    const camel = Parser.parse(`
+system MySystem {
+  service myService {
+    label "サービス"
+  }
+}
+    `);
+    const quoted = Parser.parse(`
+system "MySystem" {
+  service "myService" {
+    label "サービス"
+  }
+}
+    `);
+    expect(camel.diagnostics).toHaveLength(0);
+    expect(quoted.diagnostics).toHaveLength(0);
+    expect(camel.value.systems[0].id).toBe(quoted.value.systems[0].id);
+    expect(camel.value.systems[0].children[0].id).toBe(quoted.value.systems[0].children[0].id);
+    expect(camel.value.systems[0].children[0].label).toBe(
+      quoted.value.systems[0].children[0].label,
+    );
+  });
+
+  it("camelCase and string literal ids produce the same AST shape for organization/team", () => {
+    const camel = Parser.parse(`
+organization Corp {
+  team ecTeam {
+    owns ECommerce
+  }
+}
+    `);
+    const quoted = Parser.parse(`
+organization "Corp" {
+  team "ecTeam" {
+    owns ECommerce
+  }
+}
+    `);
+    expect(camel.diagnostics).toHaveLength(0);
+    expect(quoted.diagnostics).toHaveLength(0);
+    expect(camel.value.organizations[0].id).toBe(quoted.value.organizations[0].id);
+    expect(camel.value.organizations[0].teams[0].id).toBe(
+      quoted.value.organizations[0].teams[0].id,
+    );
+    expect(camel.value.organizations[0].teams[0].properties.owns).toEqual(
+      quoted.value.organizations[0].teams[0].properties.owns,
+    );
+  });
+
+  it("accepts identifiers with numbers (e.g. v2Service, order2)", () => {
+    const result = Parser.parse(`
+system Test {
+  service v2Service {
+    domain order2 {
+      usecase placeOrder3
+    }
+  }
+}
+    `);
+    expect(result.diagnostics).toHaveLength(0);
+    const service = result.value.systems[0].children[0];
+    expect(service.id).toBe("v2Service");
+    const domain = service.children[0];
+    expect(domain.id).toBe("order2");
+    expect(domain.children[0].id).toBe("placeOrder3");
+  });
+
+  it("accepts Japanese string identifiers for organization and team", () => {
+    const result = Parser.parse(`
+organization "Corp社" {
+  team "EC開発チーム" {
+    owns ECommerce
+  }
+}
+    `);
+    expect(result.diagnostics).toHaveLength(0);
+    const org = result.value.organizations[0];
+    expect(org.id).toBe("Corp社");
+    const team = org.teams[0];
+    expect(team.id).toBe("EC開発チーム");
+    expect(team.properties.owns).toEqual(["ECommerce"]);
+  });
+
+  it("accepts Japanese string identifier for member", () => {
+    const result = Parser.parse(`
+organization "Corp社" {
+  team "EC開発チーム" {
+    member "山田太郎" {
+      slack "@yamada"
+      github "yamada-taro"
+    }
+  }
+}
+    `);
+    expect(result.diagnostics).toHaveLength(0);
+    const member = result.value.organizations[0].teams[0].members[0];
+    expect(member.id).toBe("山田太郎");
+    expect(member.properties.slack).toBe("@yamada");
+    expect(member.properties.github).toBe("yamada-taro");
+  });
+
+  it("owns references work with camelCase ids", () => {
+    const result = Parser.parse(`
+organization Corp {
+  team ecTeam {
+    owns ECommerce
+    owns PaymentService
+  }
+}
+    `);
+    expect(result.diagnostics).toHaveLength(0);
+    expect(result.value.organizations[0].teams[0].properties.owns).toEqual([
+      "ECommerce",
+      "PaymentService",
+    ]);
+  });
+
+  it("owns references work with string literal ids", () => {
+    const result = Parser.parse(`
+organization "corp" {
+  team "ec-team" {
+    owns "e-commerce"
+    owns "payment-service"
+  }
+}
+    `);
+    expect(result.diagnostics).toHaveLength(0);
+    expect(result.value.organizations[0].teams[0].properties.owns).toEqual([
+      "e-commerce",
+      "payment-service",
+    ]);
+  });
+
+  it("owns references work with mixed camelCase and string literal ids", () => {
+    const result = Parser.parse(`
+organization Corp {
+  team ecTeam {
+    owns ECommerce
+    owns "payment-service"
+  }
+}
+    `);
+    expect(result.diagnostics).toHaveLength(0);
+    expect(result.value.organizations[0].teams[0].properties.owns).toEqual([
+      "ECommerce",
+      "payment-service",
+    ]);
+  });
+
+  it("ownerIndex is built correctly with camelCase team id and string literal owns", () => {
+    const result = Parser.parse(`
+system S {
+  service "e-commerce" {}
+}
+organization Corp {
+  team ecTeam {
+    owns "e-commerce"
+  }
+}
+    `);
+    expect(result.diagnostics).toHaveLength(0);
+    expect(result.value.ownerIndex.get("e-commerce")).toBe("ecTeam");
+  });
+
+  it("edge supports mixed camelCase and string literal endpoint ids", () => {
+    const result = Parser.parse(`
+system Test {
+  service MyService {}
+  service "payment-gateway" {}
+  MyService -> "payment-gateway" "決済を呼び出す"
+}
+    `);
+    expect(result.diagnostics).toHaveLength(0);
+    const edge = result.value.systems[0].edges[0];
+    expect(edge.from).toBe("MyService");
+    expect(edge.to).toBe("payment-gateway");
+    expect(edge.label).toBe("決済を呼び出す");
+  });
+
   it("parses sampleKrs from getReference() without diagnostics", () => {
     const { sampleKrs } = getReference();
     const result = Parser.parse(sampleKrs);
