@@ -1,4 +1,4 @@
-export type StorageMode = "opfs" | "memory";
+type StorageMode = "opfs" | "memory";
 
 /** OPFS の利用可否を判定し、ストレージモードを返す。
  *  URLパラメータ `?mode=memory` で強制的にメモリモードに切り替えられる。 */
