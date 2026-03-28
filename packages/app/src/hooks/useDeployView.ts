@@ -8,7 +8,7 @@ import {
   type NodeMetadata,
 } from "@karasu/core";
 
-export interface DeployViewState {
+interface DeployViewState {
   svg: string;
   warnings: Warning[];
   diagnostics: Diagnostic[];

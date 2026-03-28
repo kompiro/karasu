@@ -11,7 +11,7 @@ import {
 import iconManifest from "@karasu/core/icons/icons.json";
 import databaseSvg from "@karasu/core/icons/database.svg?raw";
 
-export interface SystemViewState {
+interface SystemViewState {
   svg: string;
   warnings: Warning[];
   diagnostics: Diagnostic[];

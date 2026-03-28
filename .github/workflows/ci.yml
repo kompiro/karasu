@@ -32,6 +32,9 @@ jobs:
       - name: Format check
         run: npm run format:check
 
+      - name: Knip
+        run: npm run knip
+
       - name: Typecheck (core)
         run: npm run typecheck --workspace=packages/core
 

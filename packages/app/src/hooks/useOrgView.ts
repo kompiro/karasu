@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { compileOrgView, type Diagnostic, type Warning, type OrgViewPath } from "@karasu/core";
 
-export interface OrgViewState {
+interface OrgViewState {
   orgSvg: string;
   orgDiagnostics: Diagnostic[];
   orgWarnings: Warning[];
