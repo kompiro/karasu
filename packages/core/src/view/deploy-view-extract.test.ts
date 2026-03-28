@@ -166,10 +166,10 @@ describe("extractDeployView", () => {
         id: "prod",
         label: "本番環境",
       });
-      const staging = makeDeployBlock(
-        [{ kind: "oci", id: "staging-api", realizes: "ECommerce" }],
-        { id: "staging", label: "ステージング" },
-      );
+      const staging = makeDeployBlock([{ kind: "oci", id: "staging-api", realizes: "ECommerce" }], {
+        id: "staging",
+        label: "ステージング",
+      });
       const result = extractDeployView([prod, staging], [makeSystem()]);
       expect(result.deployLabel).toBe("本番環境");
       expect(result.containers[0].units[0].id).toBe("prod-api");
@@ -180,10 +180,10 @@ describe("extractDeployView", () => {
         id: "prod",
         label: "本番環境",
       });
-      const staging = makeDeployBlock(
-        [{ kind: "oci", id: "staging-api", realizes: "ECommerce" }],
-        { id: "staging", label: "ステージング" },
-      );
+      const staging = makeDeployBlock([{ kind: "oci", id: "staging-api", realizes: "ECommerce" }], {
+        id: "staging",
+        label: "ステージング",
+      });
       const result = extractDeployView([prod, staging], [makeSystem()], "staging");
       expect(result.deployLabel).toBe("ステージング");
       expect(result.containers[0].units[0].id).toBe("staging-api");
