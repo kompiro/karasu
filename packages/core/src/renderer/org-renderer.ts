@@ -93,15 +93,29 @@ function renderTeamCard(team: TeamNode, x: number, y: number, style: ResolvedNod
   });
 
   if (ownsOverflow > 0) {
+    const overflowY = HEADER_HEIGHT + 22 + visibleOwns.length * 16;
     parts.push(
       el(
-        "text",
-        {
-          x: CARD_WIDTH / 2,
-          y: HEADER_HEIGHT + 22 + visibleOwns.length * 16,
-          ...subLabelStyle(style),
-        },
-        escapeXml(`+${ownsOverflow} more`),
+        "g",
+        { "data-noop": "true" },
+        el("rect", {
+          x: 0,
+          y: overflowY - 12,
+          width: CARD_WIDTH,
+          height: 16,
+          fill: "transparent",
+          "pointer-events": "all",
+        }),
+        el(
+          "text",
+          {
+            x: CARD_WIDTH / 2,
+            y: overflowY,
+            ...subLabelStyle(style),
+            "pointer-events": "none",
+          },
+          escapeXml(`+${ownsOverflow} more`),
+        ),
       ),
     );
   }

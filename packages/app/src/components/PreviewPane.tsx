@@ -166,6 +166,9 @@ export function PreviewPane({
         }
       }
 
+      // Explicitly non-interactive elements (e.g. "+N more" overflow label)
+      if (target.closest("[data-noop]")) return;
+
       // Check for owned service button click (org → system cross-navigation)
       const ownedServiceButton = target.closest("[data-owned-service-button]");
       if (ownedServiceButton && onOwnedServiceClick) {
