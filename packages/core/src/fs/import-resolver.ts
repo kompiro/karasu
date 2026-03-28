@@ -89,6 +89,10 @@ export class ImportResolver {
     mergedFile.systems.push(...file.systems);
     mergedFile.services.push(...file.services);
     mergedFile.deploys.push(...file.deploys);
+    mergedFile.organizations.push(...file.organizations);
+    for (const [ownedId, teamId] of file.ownerIndex) {
+      mergedFile.ownerIndex.set(ownedId, teamId);
+    }
 
     // import { X } from "other.krs" を解決
     for (const nodeImport of file.nodeImports) {

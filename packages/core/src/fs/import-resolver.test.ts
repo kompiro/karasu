@@ -234,6 +234,30 @@ system Test {
     });
   });
 
+  describe("organization and ownerIndex merging", () => {
+    it("merges organizations and ownerIndex from the parsed file", async () => {
+      await fs.writeFile(
+        "/project/index.krs",
+        `system MySystem {
+  service ECommerce {}
+  service Payment {}
+}
+organization Corp {
+  team ecTeam {
+    label "EC開発チーム"
+    owns ECommerce
+    owns Payment
+  }
+}`,
+      );
+
+      const result = await resolver.resolve("/project/index.krs");
+      expect(result.krsFile.organizations).toHaveLength(1);
+      expect(result.krsFile.ownerIndex.get("ECommerce")).toBe("ecTeam");
+      expect(result.krsFile.ownerIndex.get("Payment")).toBe("ecTeam");
+    });
+  });
+
   describe("edge merging", () => {
     it("merges edges related to imported nodes", async () => {
       await fs.writeFile(
