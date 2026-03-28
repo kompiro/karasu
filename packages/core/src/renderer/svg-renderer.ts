@@ -13,13 +13,14 @@ export function render(
   styles: ResolvedStyles,
   serviceIdsWithDeploy?: Set<string>,
   ownerIndex?: Map<string, string>,
+  exportLinks?: Map<string, string>,
 ): string {
   const layoutResult = layout(viewSlice, ownerIndex);
   const title =
     layoutResult.containers.length === 0 && viewSlice.containerNode
       ? (viewSlice.containerNode.label ?? viewSlice.containerNode.id)
       : undefined;
-  return renderFromLayout(layoutResult, styles, title, serviceIdsWithDeploy);
+  return renderFromLayout(layoutResult, styles, title, serviceIdsWithDeploy, exportLinks);
 }
 
 export function renderFromLayout(
@@ -27,6 +28,7 @@ export function renderFromLayout(
   styles: ResolvedStyles,
   title?: string,
   serviceIdsWithDeploy?: Set<string>,
+  exportLinks?: Map<string, string>,
 ): string {
   if (layoutResult.nodes.size === 0 && layoutResult.containers.length === 0) {
     return el(
@@ -134,7 +136,7 @@ export function renderFromLayout(
   const normalNodeParts: string[] = [];
   for (const [nodeId, layoutNode] of layoutResult.nodes) {
     const nodeStyle = styles.nodes.get(nodeId) ?? styles.defaultNodeStyle;
-    const rendered = renderNode(layoutNode, nodeStyle, nodeId, serviceIdsWithDeploy);
+    const rendered = renderNode(layoutNode, nodeStyle, nodeId, serviceIdsWithDeploy, exportLinks);
     if (layoutNode.ghost) {
       ghostNodeParts.push(rendered);
     } else {
@@ -208,6 +210,7 @@ function renderNode(
   style: ResolvedNodeStyle,
   nodeId: string,
   serviceIdsWithDeploy?: Set<string>,
+  exportLinks?: Map<string, string>,
 ): string {
   const children: string[] = [];
 
@@ -539,7 +542,7 @@ function renderNode(
     );
   }
 
-  return el(
+  const nodeEl = el(
     "g",
     {
       "data-node-id": nodeId,
@@ -552,4 +555,6 @@ function renderNode(
     },
     ...children,
   );
+  const exportHref = exportLinks?.get(nodeId);
+  return exportHref ? el("a", { href: exportHref }, nodeEl) : nodeEl;
 }
