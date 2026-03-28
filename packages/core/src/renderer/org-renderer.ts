@@ -45,9 +45,6 @@ function renderTeamCard(team: TeamNode, x: number, y: number, style: ResolvedNod
   const label = escapeXml(team.label ?? team.id);
   const hasChildren = team.members.length > 0 || team.teams.length > 0;
 
-  const visibleOwns = team.properties.owns.slice(0, 3);
-  const ownsOverflow = team.properties.owns.length > 3 ? team.properties.owns.length - 3 : 0;
-
   const countText = [
     team.members.length > 0
       ? `${team.members.length} member${team.members.length > 1 ? "s" : ""}`
@@ -56,6 +53,16 @@ function renderTeamCard(team: TeamNode, x: number, y: number, style: ResolvedNod
   ]
     .filter(Boolean)
     .join(" · ");
+
+  // When overflow label (+N more) and countText both appear, cap visible owns at 2
+  // so that overflow sits at y=90 and countText at y=106 with no overlap.
+  const hasCountText = countText.length > 0;
+  const MAX_VISIBLE_OWNS = team.properties.owns.length > 3 && hasCountText ? 2 : 3;
+  const visibleOwns = team.properties.owns.slice(0, MAX_VISIBLE_OWNS);
+  const ownsOverflow =
+    team.properties.owns.length > MAX_VISIBLE_OWNS
+      ? team.properties.owns.length - MAX_VISIBLE_OWNS
+      : 0;
 
   const parts: string[] = [
     el("rect", { width: CARD_WIDTH, height: CARD_HEIGHT, ...cardStyle(style) }),
