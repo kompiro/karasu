@@ -761,7 +761,9 @@ system "MySystem" {
     expect(quoted.diagnostics).toHaveLength(0);
     expect(camel.value.systems[0].id).toBe(quoted.value.systems[0].id);
     expect(camel.value.systems[0].children[0].id).toBe(quoted.value.systems[0].children[0].id);
-    expect(camel.value.systems[0].children[0].label).toBe(quoted.value.systems[0].children[0].label);
+    expect(camel.value.systems[0].children[0].label).toBe(
+      quoted.value.systems[0].children[0].label,
+    );
   });
 
   it("camelCase and string literal ids produce the same AST shape for organization/team", () => {
@@ -782,7 +784,9 @@ organization "Corp" {
     expect(camel.diagnostics).toHaveLength(0);
     expect(quoted.diagnostics).toHaveLength(0);
     expect(camel.value.organizations[0].id).toBe(quoted.value.organizations[0].id);
-    expect(camel.value.organizations[0].teams[0].id).toBe(quoted.value.organizations[0].teams[0].id);
+    expect(camel.value.organizations[0].teams[0].id).toBe(
+      quoted.value.organizations[0].teams[0].id,
+    );
     expect(camel.value.organizations[0].teams[0].properties.owns).toEqual(
       quoted.value.organizations[0].teams[0].properties.owns,
     );
