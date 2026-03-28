@@ -14,6 +14,10 @@ interface SystemViewProps {
   breadcrumbItems: { id: string; label: string }[];
   warnings: Warning[];
   onBreadcrumbNavigate: (path: string[]) => void;
+  /** Called when user clicks the deploy button on a service node */
+  onDeployButtonClick?: (serviceId: string) => void;
+  /** Called when user clicks the team label on a service/domain node */
+  onTeamButtonClick?: (teamId: string) => void;
 }
 
 interface DeployViewProps {
@@ -32,6 +36,8 @@ interface OrgViewProps {
   breadcrumbItems: { id: string; label: string }[];
   warnings: Warning[];
   onBreadcrumbNavigate: (path: string[]) => void;
+  highlightedNodeId?: string | null;
+  onClearHighlight?: () => void;
 }
 
 interface KarasuPreviewColumnProps {
@@ -107,8 +113,22 @@ export function KarasuPreviewColumn({
         nodeMetadata={nodeMetadata}
         onDrillDown={activeView !== "deploy" ? onDrillDown : () => {}}
         onContainerClick={activeView === "deploy" ? deployView.onContainerClick : undefined}
-        highlightedNodeId={activeView === "deploy" ? deployView.highlightedNodeId : undefined}
-        onClearHighlight={activeView === "deploy" ? deployView.onClearHighlight : undefined}
+        onDeployButtonClick={activeView === "system" ? systemView.onDeployButtonClick : undefined}
+        onTeamButtonClick={activeView === "system" ? systemView.onTeamButtonClick : undefined}
+        highlightedNodeId={
+          activeView === "deploy"
+            ? deployView.highlightedNodeId
+            : activeView === "org"
+              ? orgView.highlightedNodeId
+              : undefined
+        }
+        onClearHighlight={
+          activeView === "deploy"
+            ? deployView.onClearHighlight
+            : activeView === "org"
+              ? orgView.onClearHighlight
+              : undefined
+        }
       />
       <WarningPanel
         warnings={

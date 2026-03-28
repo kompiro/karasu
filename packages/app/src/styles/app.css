@@ -860,6 +860,25 @@ body,
   font-family: var(--font-mono);
 }
 
+.node-detail-nav-btn {
+  display: block;
+  width: 100%;
+  padding: 4px 8px;
+  background: transparent;
+  border: 1px solid #334155;
+  border-radius: 4px;
+  color: #60a5fa;
+  font-size: 12px;
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.node-detail-nav-btn:hover {
+  background: #1e3a5f;
+  border-color: #3b82f6;
+}
+
 /* ── Preview Toolbar ────────────────────────────────────────────── */
 .preview-toolbar {
   display: flex;

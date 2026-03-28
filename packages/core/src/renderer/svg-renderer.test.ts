@@ -6,14 +6,14 @@ import { Parser } from "../parser/parser.js";
 import { StyleParser } from "../parser/style-parser.js";
 import { getBuiltinStyleSheet } from "../builtins/default-style.js";
 
-function renderFromSource(krs: string, style?: string): string {
+function renderFromSource(krs: string, style?: string, serviceIdsWithDeploy?: Set<string>): string {
   const parseResult = Parser.parse(krs);
   const sheets = style
     ? [getBuiltinStyleSheet(), StyleParser.parse(style).value]
     : [getBuiltinStyleSheet()];
   const styles = resolveStyles(parseResult.value.systems, sheets);
   const viewSlice = extractView(parseResult.value.systems, []);
-  return render(viewSlice, styles);
+  return render(viewSlice, styles, serviceIdsWithDeploy, parseResult.value.ownerIndex);
 }
 
 describe("SVG Renderer", () => {
@@ -146,6 +146,90 @@ system ECPlatform {
 }
     `);
     expect(svg).toContain("ECプラットフォーム");
+  });
+
+  it("renders deploy button on service node when serviceIdsWithDeploy contains its id", () => {
+    const svg = renderFromSource(
+      `
+system Test {
+  service ECommerce {
+    label "ECサイト"
+  }
+  service Payment {
+    label "決済"
+  }
+}
+      `,
+      undefined,
+      new Set(["ECommerce"]),
+    );
+    expect(svg).toContain('data-deploy-button="ECommerce"');
+    expect(svg).not.toContain('data-deploy-button="Payment"');
+  });
+
+  it("renders clickable team button when service has team property", () => {
+    const svg = renderFromSource(`
+system Test {
+  service ECommerce {
+    label "ECサイト"
+    team "ec-team"
+  }
+}
+    `);
+    expect(svg).toContain('data-team-button="ec-team"');
+    expect(svg).toContain("👥");
+  });
+
+  it("renders info button on leaf service node with description", () => {
+    const svg = renderFromSource(`
+system Test {
+  service ECommerce {
+    label "ECサイト"
+    description "商品管理と注文処理"
+  }
+}
+    `);
+    expect(svg).toContain('data-info-button="ECommerce"');
+  });
+
+  it("renders info button on leaf service node with team (from ownerIndex)", () => {
+    const svg = renderFromSource(
+      `
+system Test {
+  service ECommerce {
+    label "ECサイト"
+  }
+}
+organization Corp {
+  team ecTeam {
+    owns ECommerce
+  }
+}
+      `,
+    );
+    expect(svg).toContain('data-info-button="ECommerce"');
+  });
+
+  it("does not render info button on node with no metadata", () => {
+    const svg = renderFromSource(`
+system Test {
+  service ECommerce {
+    label "ECサイト"
+  }
+}
+    `);
+    expect(svg).not.toContain('data-info-button="ECommerce"');
+  });
+
+  it("does not render deploy button when serviceIdsWithDeploy is not provided", () => {
+    const svg = renderFromSource(`
+system Test {
+  service ECommerce {
+    label "ECサイト"
+  }
+}
+    `);
+    expect(svg).not.toContain("data-deploy-button");
   });
 
   it("renders role text on user node", () => {

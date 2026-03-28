@@ -10,6 +10,10 @@ interface PreviewPaneProps {
   onDrillDown: (newPath: string[]) => void;
   /** Called when user clicks a deploy container to cross-navigate to system view */
   onContainerClick?: (containerId: string) => void;
+  /** Called when user clicks the deploy button on a system node to cross-navigate to deploy view */
+  onDeployButtonClick?: (serviceId: string) => void;
+  /** Called when user clicks the team label on a system node to cross-navigate to org view */
+  onTeamButtonClick?: (teamId: string) => void;
   /** Node or container id to highlight after cross-navigation */
   highlightedNodeId?: string | null;
   /** Called when a node interaction clears the cross-navigation highlight */
@@ -31,6 +35,8 @@ export function PreviewPane({
   nodeMetadata,
   onDrillDown,
   onContainerClick,
+  onDeployButtonClick,
+  onTeamButtonClick,
   highlightedNodeId,
   onClearHighlight,
 }: PreviewPaneProps) {
@@ -137,6 +143,26 @@ export function PreviewPane({
         return;
       }
 
+      // Check for deploy button click (system → deploy cross-navigation)
+      const deployButton = target.closest("[data-deploy-button]");
+      if (deployButton && onDeployButtonClick) {
+        const serviceId = deployButton.getAttribute("data-deploy-button");
+        if (serviceId) {
+          onDeployButtonClick(serviceId);
+          return;
+        }
+      }
+
+      // Check for team button click (system → org cross-navigation)
+      const teamButton = target.closest("[data-team-button]");
+      if (teamButton && onTeamButtonClick) {
+        const teamId = teamButton.getAttribute("data-team-button");
+        if (teamId) {
+          onTeamButtonClick(teamId);
+          return;
+        }
+      }
+
       // Check for container click (deploy diagram cross-navigation)
       const containerGroup = target.closest("[data-container-id]");
       if (containerGroup && onContainerClick) {
@@ -169,7 +195,15 @@ export function PreviewPane({
         openDetailPanel(nodeId, nodeGroup);
       }
     },
-    [viewPath, onDrillDown, openDetailPanel, onContainerClick, onClearHighlight],
+    [
+      viewPath,
+      onDrillDown,
+      openDetailPanel,
+      onContainerClick,
+      onDeployButtonClick,
+      onTeamButtonClick,
+      onClearHighlight,
+    ],
   );
 
   const handleMouseLeave = useCallback(() => {
@@ -220,10 +254,13 @@ export function PreviewPane({
         />
         {detailPanel && panelMetadata && (
           <NodeDetailPanel
+            nodeId={detailPanel.nodeId}
             metadata={panelMetadata}
             anchorX={detailPanel.anchorX}
             anchorY={detailPanel.anchorY}
             onClose={() => setDetailPanel(null)}
+            onNavigateToDeploy={onDeployButtonClick}
+            onNavigateToOrg={onTeamButtonClick}
           />
         )}
       </div>

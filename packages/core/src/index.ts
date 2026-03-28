@@ -140,6 +140,8 @@ export interface NodeMetadata {
   tags: string[];
   annotations: string[];
   hasChildren: boolean;
+  /** True when this service/domain node has a corresponding deploy container */
+  hasDeployContainer?: boolean;
 }
 
 export type DiagramType = "system" | "deploy";
@@ -179,6 +181,8 @@ export function compile(
   const styles = resolveStyles(parseResult.value.systems, sheets, deployUnits);
   const warnings = analyze(parseResult.value, sheets);
   const hasDeployDiagram = parseResult.value.deploys.length > 0;
+  const serviceIdsWithDeploy = new Set(deploySliceForStyle.containers.map((c) => c.serviceId));
+  const ownerIndex = parseResult.value.ownerIndex;
 
   let svg: string;
   let nodeMetadata: Map<string, NodeMetadata>;
@@ -189,8 +193,8 @@ export function compile(
     nodeMetadata = buildDeployNodeMetadata(deploySlice);
   } else {
     const viewSlice = extractView(parseResult.value.systems, viewPath ?? []);
-    svg = render(viewSlice, styles);
-    nodeMetadata = buildNodeMetadata(viewSlice);
+    svg = render(viewSlice, styles, serviceIdsWithDeploy, ownerIndex);
+    nodeMetadata = buildNodeMetadata(viewSlice, serviceIdsWithDeploy, ownerIndex);
   }
 
   return { svg, warnings, diagnostics, nodeMetadata, hasDeployDiagram };
@@ -220,6 +224,8 @@ export async function compileProject(
   const styles = resolveStyles(resolved.krsFile.systems, allSheets, deployUnits);
   const warnings = analyze(resolved.krsFile, allSheets);
   const hasDeployDiagram = resolved.krsFile.deploys.length > 0;
+  const serviceIdsWithDeploy = new Set(deploySliceForStyle.containers.map((c) => c.serviceId));
+  const ownerIndex = resolved.krsFile.ownerIndex;
 
   let svg: string;
   let nodeMetadata: Map<string, NodeMetadata>;
@@ -230,8 +236,8 @@ export async function compileProject(
     nodeMetadata = buildDeployNodeMetadata(deploySlice);
   } else {
     const viewSlice = extractView(resolved.krsFile.systems, viewPath ?? []);
-    svg = render(viewSlice, styles);
-    nodeMetadata = buildNodeMetadata(viewSlice);
+    svg = render(viewSlice, styles, serviceIdsWithDeploy, ownerIndex);
+    nodeMetadata = buildNodeMetadata(viewSlice, serviceIdsWithDeploy, ownerIndex);
   }
 
   return { svg, warnings, diagnostics, nodeMetadata, hasDeployDiagram };
@@ -239,23 +245,29 @@ export async function compileProject(
 
 function buildNodeMetadata(
   viewSlice: import("./view/view-extract.js").ViewSlice,
+  serviceIdsWithDeploy?: Set<string>,
+  ownerIndex?: Map<string, string>,
 ): Map<string, NodeMetadata> {
   const map = new Map<string, NodeMetadata>();
 
   function addNode(node: KrsNode): void {
     const id = node.id;
     const description = node.properties.description;
+    const isServiceOrDomain = node.kind === "service" || node.kind === "domain";
+    // Resolve team: ownerIndex (from org.team.owns) takes precedence over service.team property
+    const team = isServiceOrDomain ? (ownerIndex?.get(id) ?? node.properties.team) : undefined;
     map.set(id, {
       kind: node.kind,
       label: node.label ?? node.id,
       description,
       descriptionSummary: description ? summarizeDescription(description) : undefined,
       links: node.properties.links,
-      team: node.kind === "service" || node.kind === "domain" ? node.properties.team : undefined,
+      team,
       role: node.kind === "user" ? node.properties.role : undefined,
       tags: [...node.tags],
       annotations: [...node.annotations],
       hasChildren: node.children.length > 0,
+      hasDeployContainer: isServiceOrDomain ? (serviceIdsWithDeploy?.has(id) ?? false) : undefined,
     });
   }
 

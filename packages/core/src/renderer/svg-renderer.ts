@@ -8,19 +8,25 @@ import { getIconDef } from "./shape-registry.js";
 
 const GHOST_OPACITY = 0.3;
 
-export function render(viewSlice: ViewSlice, styles: ResolvedStyles): string {
-  const layoutResult = layout(viewSlice);
+export function render(
+  viewSlice: ViewSlice,
+  styles: ResolvedStyles,
+  serviceIdsWithDeploy?: Set<string>,
+  ownerIndex?: Map<string, string>,
+): string {
+  const layoutResult = layout(viewSlice, ownerIndex);
   const title =
     layoutResult.containers.length === 0 && viewSlice.containerNode
       ? (viewSlice.containerNode.label ?? viewSlice.containerNode.id)
       : undefined;
-  return renderFromLayout(layoutResult, styles, title);
+  return renderFromLayout(layoutResult, styles, title, serviceIdsWithDeploy);
 }
 
 export function renderFromLayout(
   layoutResult: LayoutResult,
   styles: ResolvedStyles,
   title?: string,
+  serviceIdsWithDeploy?: Set<string>,
 ): string {
   if (layoutResult.nodes.size === 0 && layoutResult.containers.length === 0) {
     return el(
@@ -128,7 +134,7 @@ export function renderFromLayout(
   const normalNodeParts: string[] = [];
   for (const [nodeId, layoutNode] of layoutResult.nodes) {
     const nodeStyle = styles.nodes.get(nodeId) ?? styles.defaultNodeStyle;
-    const rendered = renderNode(layoutNode, nodeStyle, nodeId);
+    const rendered = renderNode(layoutNode, nodeStyle, nodeId, serviceIdsWithDeploy);
     if (layoutNode.ghost) {
       ghostNodeParts.push(rendered);
     } else {
@@ -197,7 +203,12 @@ function renderContainer(
   );
 }
 
-function renderNode(node: LayoutNode, style: ResolvedNodeStyle, nodeId: string): string {
+function renderNode(
+  node: LayoutNode,
+  style: ResolvedNodeStyle,
+  nodeId: string,
+  serviceIdsWithDeploy?: Set<string>,
+): string {
   const children: string[] = [];
 
   // Shape
@@ -369,9 +380,17 @@ function renderNode(node: LayoutNode, style: ResolvedNodeStyle, nodeId: string):
         );
         children.push(
           el(
-            "text",
-            { ...metaAttrs, "text-anchor": "end", x: contentRight, y: nextY },
-            escapeXml(teamText),
+            "g",
+            {
+              "data-team-button": node.properties.team,
+              style: "cursor: pointer",
+              "pointer-events": "all",
+            },
+            el(
+              "text",
+              { ...metaAttrs, "text-anchor": "end", x: contentRight, y: nextY },
+              escapeXml(teamText),
+            ),
           ),
         );
       } else if (node.linkCount > 0) {
@@ -387,7 +406,15 @@ function renderNode(node: LayoutNode, style: ResolvedNodeStyle, nodeId: string):
         const teamDisplay =
           teamChars.length > 15 ? teamChars.slice(0, 15).join("") + "…" : node.properties.team;
         children.push(
-          el("text", { ...metaAttrs, x: textX, y: nextY }, escapeXml(`👥${teamDisplay}`)),
+          el(
+            "g",
+            {
+              "data-team-button": node.properties.team,
+              style: "cursor: pointer",
+              "pointer-events": "all",
+            },
+            el("text", { ...metaAttrs, x: textX, y: nextY }, escapeXml(`👥${teamDisplay}`)),
+          ),
         );
       }
     }
@@ -435,10 +462,21 @@ function renderNode(node: LayoutNode, style: ResolvedNodeStyle, nodeId: string):
     }
   }
 
-  // Info button for container nodes with description
-  if (node.hasChildren && node.hasDescription) {
-    const btnX = node.x + node.width - 16;
-    const btnY = node.y + 14;
+  // Top-right icon buttons: deploy button and info button
+  // Buttons are 16px diameter (r=8), spaced 20px apart from right edge
+  const isServiceOrDomain = node.kind === "service" || node.kind === "domain";
+  const showDeployButton = isServiceOrDomain && (serviceIdsWithDeploy?.has(nodeId) ?? false);
+  // Show info button when the node has any metadata worth displaying in the detail panel.
+  // Container nodes (hasChildren) need the button because clicking the body drills down.
+  // Leaf nodes also get the button for discoverability, even though clicking the body also opens the panel.
+  const showInfoButton =
+    node.hasDescription || node.linkCount > 0 || !!node.properties.team || !!node.properties.role;
+  const btnY = node.y + 14;
+  let btnSlot = 0; // 0 = rightmost, increments leftward
+
+  if (showInfoButton) {
+    const btnX = node.x + node.width - 16 - btnSlot * 20;
+    btnSlot++;
     children.push(
       el(
         "g",
@@ -464,6 +502,38 @@ function renderNode(node: LayoutNode, style: ResolvedNodeStyle, nodeId: string):
             "font-style": "italic",
           },
           "i",
+        ),
+      ),
+    );
+  }
+
+  if (showDeployButton) {
+    const btnX = node.x + node.width - 16 - btnSlot * 20;
+    children.push(
+      el(
+        "g",
+        { "data-deploy-button": nodeId, style: "cursor: pointer", "pointer-events": "all" },
+        el("circle", {
+          cx: btnX,
+          cy: btnY,
+          r: 8,
+          fill: "transparent",
+          stroke: "#3B82F6",
+          "stroke-width": 1,
+        }),
+        el(
+          "text",
+          {
+            x: btnX,
+            y: btnY,
+            "text-anchor": "middle",
+            "dominant-baseline": "central",
+            fill: "#3B82F6",
+            "font-size": "9px",
+            "font-family": "sans-serif",
+            "font-weight": "bold",
+          },
+          "D",
         ),
       ),
     );

@@ -169,6 +169,24 @@ export function ProjectModeApp() {
     [dispatch],
   );
 
+  // System ノードの Deploy ボタンクリック → Deploy タブへクロスナビゲーション
+  const handleDeployButtonClick = useCallback(
+    (serviceId: string) => {
+      dispatch({ type: "SET_ACTIVE_VIEW", activeView: "deploy" });
+      dispatch({ type: "SET_HIGHLIGHTED_NODE", nodeId: serviceId });
+    },
+    [dispatch],
+  );
+
+  // System ノードの Team ラベルクリック → Org タブへクロスナビゲーション
+  const handleTeamButtonClick = useCallback(
+    (teamId: string) => {
+      dispatch({ type: "SET_ACTIVE_VIEW", activeView: "org" });
+      dispatch({ type: "SET_HIGHLIGHTED_NODE", nodeId: teamId });
+    },
+    [dispatch],
+  );
+
   // プロジェクト操作
   const handleSelectProject = useCallback(
     (project: Project) => {
@@ -311,6 +329,8 @@ export function ProjectModeApp() {
           breadcrumbItems,
           warnings: systemWarnings,
           onBreadcrumbNavigate: (path) => dispatch({ type: "SET_VIEW_PATH", path }),
+          onDeployButtonClick: handleDeployButtonClick,
+          onTeamButtonClick: handleTeamButtonClick,
         }}
         deployView={{
           svg: deploySvg,
@@ -327,6 +347,8 @@ export function ProjectModeApp() {
           breadcrumbItems: orgBreadcrumbItems,
           warnings: orgWarnings,
           onBreadcrumbNavigate: (path) => dispatch({ type: "SET_ORG_PATH", path }),
+          highlightedNodeId,
+          onClearHighlight: () => dispatch({ type: "SET_HIGHLIGHTED_NODE", nodeId: null }),
         }}
         nodeMetadata={nodeMetadata}
         onDrillDown={handleDrillDown}

@@ -4,10 +4,15 @@ import DOMPurify from "dompurify";
 import type { NodeMetadata } from "@karasu/core";
 
 interface NodeDetailPanelProps {
+  nodeId: string;
   metadata: NodeMetadata;
   anchorX: number;
   anchorY: number;
   onClose: () => void;
+  /** Called when user navigates to deploy view from this panel */
+  onNavigateToDeploy?: (serviceId: string) => void;
+  /** Called when user navigates to org view from this panel */
+  onNavigateToOrg?: (teamId: string) => void;
 }
 
 const KIND_ICONS: Record<string, string> = {
@@ -27,7 +32,15 @@ const KIND_ICONS: Record<string, string> = {
   artifact: "🗄",
 };
 
-export function NodeDetailPanel({ metadata, anchorX, anchorY, onClose }: NodeDetailPanelProps) {
+export function NodeDetailPanel({
+  nodeId,
+  metadata,
+  anchorX,
+  anchorY,
+  onClose,
+  onNavigateToDeploy,
+  onNavigateToOrg,
+}: NodeDetailPanelProps) {
   const descriptionHtml = useMemo(() => {
     if (!metadata.description) return "";
     const raw = marked.parse(metadata.description, { async: false }) as string;
@@ -95,11 +108,38 @@ export function NodeDetailPanel({ metadata, anchorX, anchorY, onClose }: NodeDet
 
       {(metadata.team || metadata.role || metadata.tags.length > 0) && (
         <div className="node-detail-section">
-          {metadata.team && <div className="node-detail-prop">👥 {metadata.team}</div>}
+          {metadata.team &&
+            (onNavigateToOrg ? (
+              <button
+                className="node-detail-nav-btn"
+                onClick={() => {
+                  onNavigateToOrg(metadata.team!);
+                  onClose();
+                }}
+              >
+                👥 {metadata.team} →
+              </button>
+            ) : (
+              <div className="node-detail-prop">👥 {metadata.team}</div>
+            ))}
           {metadata.role && <div className="node-detail-prop">📌 {metadata.role}</div>}
           {metadata.tags.length > 0 && (
             <div className="node-detail-prop">🏷 {metadata.tags.map((t) => `[${t}]`).join(" ")}</div>
           )}
+        </div>
+      )}
+
+      {metadata.hasDeployContainer && onNavigateToDeploy && (
+        <div className="node-detail-section">
+          <button
+            className="node-detail-nav-btn"
+            onClick={() => {
+              onNavigateToDeploy(nodeId);
+              onClose();
+            }}
+          >
+            🚀 Deploy 図で確認 →
+          </button>
         </div>
       )}
     </div>
