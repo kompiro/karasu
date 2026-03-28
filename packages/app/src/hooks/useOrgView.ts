@@ -1,5 +1,11 @@
-import { useState, useEffect, useRef } from "react";
-import { compileOrgView, type Diagnostic, type Warning, type OrgViewPath } from "@karasu/core";
+import { useState, useEffect, useRef, useCallback } from "react";
+import {
+  compileProjectOrgView,
+  type Diagnostic,
+  type Warning,
+  type OrgViewPath,
+  type FileSystemProvider,
+} from "@karasu/core";
 
 interface OrgViewState {
   orgSvg: string;
@@ -10,52 +16,63 @@ interface OrgViewState {
 const DEBOUNCE_MS = 300;
 
 export function useOrgView(
-  krsSource: string,
-  styleSource: string,
+  entryPath: string | null,
+  fs: FileSystemProvider | null,
   orgPath: OrgViewPath = [],
-): OrgViewState {
-  const [state, setState] = useState<OrgViewState>(() => {
-    const result = compileOrgView(krsSource, styleSource || undefined, orgPath);
-    return { orgSvg: result.svg, orgDiagnostics: result.diagnostics, orgWarnings: result.warnings };
+): OrgViewState & { recompile: () => void } {
+  const [state, setState] = useState<OrgViewState>({
+    orgSvg: "",
+    orgDiagnostics: [],
+    orgWarnings: [],
   });
 
-  const lastValidSvg = useRef(state.orgSvg);
+  const lastValidSvg = useRef("");
   const timerRef = useRef<ReturnType<typeof setTimeout>>(undefined);
+  const recompileCounter = useRef(0);
+
+  const recompile = useCallback(() => {
+    recompileCounter.current++;
+    setState((prev) => ({ ...prev }));
+  }, []);
 
   useEffect(() => {
+    if (!entryPath || !fs) return;
+
     if (timerRef.current) clearTimeout(timerRef.current);
 
     timerRef.current = setTimeout(() => {
-      try {
-        const result = compileOrgView(krsSource, styleSource || undefined, orgPath);
-        const hasErrors = result.diagnostics.some((d) => d.severity === "error");
+      compileProjectOrgView(entryPath, fs, orgPath)
+        .then((result) => {
+          const hasErrors = result.diagnostics.some((d) => d.severity === "error");
 
-        if (hasErrors) {
+          if (hasErrors) {
+            setState((prev) => ({
+              orgSvg: lastValidSvg.current,
+              orgDiagnostics: result.diagnostics,
+              orgWarnings: prev.orgWarnings,
+            }));
+          } else {
+            lastValidSvg.current = result.svg;
+            setState({
+              orgSvg: result.svg,
+              orgDiagnostics: result.diagnostics,
+              orgWarnings: result.warnings,
+            });
+          }
+        })
+        .catch(() => {
           setState((prev) => ({
-            orgSvg: lastValidSvg.current,
-            orgDiagnostics: result.diagnostics,
-            orgWarnings: prev.orgWarnings,
+            ...prev,
+            orgDiagnostics: [{ severity: "error", message: "パース中にエラーが発生しました" }],
           }));
-        } else {
-          lastValidSvg.current = result.svg;
-          setState({
-            orgSvg: result.svg,
-            orgDiagnostics: result.diagnostics,
-            orgWarnings: result.warnings,
-          });
-        }
-      } catch {
-        setState((prev) => ({
-          ...prev,
-          orgDiagnostics: [{ severity: "error", message: "パース中にエラーが発生しました" }],
-        }));
-      }
+        });
     }, DEBOUNCE_MS);
 
     return () => {
       if (timerRef.current) clearTimeout(timerRef.current);
     };
-  }, [krsSource, styleSource, orgPath]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [entryPath, fs, orgPath, recompileCounter.current]);
 
-  return state;
+  return { ...state, recompile };
 }

@@ -1,9 +1,12 @@
 // @vitest-environment jsdom
-import { describe, it, expect, vi, afterEach } from "vitest";
-import { renderHook, act, cleanup } from "@testing-library/react";
+import { describe, it, expect, afterEach } from "vitest";
+import { renderHook, act, cleanup, waitFor } from "@testing-library/react";
 import { useOrgView } from "./useOrgView.js";
+import { InMemoryFileSystemProvider } from "@karasu/core";
 
 afterEach(cleanup);
+
+const ENTRY_PATH = "/test/index.krs";
 
 // Source with org structure that renders visible team nodes
 const ORG_SOURCE_A = `organization OrgA {
@@ -28,39 +31,52 @@ const ORG_SOURCE_B = `organization OrgB {
 }`;
 const INVALID_SOURCE = "!!! invalid krs !!!";
 
+async function makeFs(initialContent: string): Promise<InMemoryFileSystemProvider> {
+  const fs = new InMemoryFileSystemProvider();
+  await fs.writeFile(ENTRY_PATH, initialContent);
+  return fs;
+}
+
 describe("useOrgView", () => {
-  it("source changes are debounced by 300ms", () => {
-    vi.useFakeTimers();
-    const { result, rerender } = renderHook(({ src }) => useOrgView(src, "", []), {
-      initialProps: { src: ORG_SOURCE_A },
-    });
-    act(() => vi.advanceTimersByTime(300));
-    const initialSvg = result.current.orgSvg;
+  it("renders org SVG from filesystem", async () => {
+    const fs = await makeFs(ORG_SOURCE_A);
+    const { result } = renderHook(() => useOrgView(ENTRY_PATH, fs, []));
 
-    rerender({ src: ORG_SOURCE_B });
-
-    // Not yet updated
-    expect(result.current.orgSvg).toBe(initialSvg);
-
-    act(() => vi.advanceTimersByTime(300));
-
-    expect(result.current.orgSvg).not.toBe(initialSvg);
-    vi.useRealTimers();
+    await waitFor(() => expect(result.current.orgSvg).toBeTruthy(), { timeout: 1000 });
+    expect(result.current.orgSvg).toContain("TeamA");
   });
 
-  it("retains previous valid orgSvg when updated source has errors", () => {
-    vi.useFakeTimers();
-    const { result, rerender } = renderHook(({ src }) => useOrgView(src, "", []), {
-      initialProps: { src: ORG_SOURCE_A },
+  it("updates SVG when recompile is triggered after file change", async () => {
+    const fs = await makeFs(ORG_SOURCE_A);
+    const { result } = renderHook(() => useOrgView(ENTRY_PATH, fs, []));
+
+    await waitFor(() => expect(result.current.orgSvg).toBeTruthy(), { timeout: 1000 });
+    const initialSvg = result.current.orgSvg;
+
+    await act(async () => {
+      await fs.writeFile(ENTRY_PATH, ORG_SOURCE_B);
+      result.current.recompile();
     });
-    act(() => vi.advanceTimersByTime(300));
+
+    await waitFor(() => expect(result.current.orgSvg).not.toBe(initialSvg), { timeout: 1000 });
+  });
+
+  it("retains previous valid orgSvg when updated source has errors", async () => {
+    const fs = await makeFs(ORG_SOURCE_A);
+    const { result } = renderHook(() => useOrgView(ENTRY_PATH, fs, []));
+
+    await waitFor(() => expect(result.current.orgSvg).toBeTruthy(), { timeout: 1000 });
     const validSvg = result.current.orgSvg;
 
-    rerender({ src: INVALID_SOURCE });
-    act(() => vi.advanceTimersByTime(300));
+    await act(async () => {
+      await fs.writeFile(ENTRY_PATH, INVALID_SOURCE);
+      result.current.recompile();
+    });
 
+    await waitFor(
+      () => expect(result.current.orgDiagnostics.some((d) => d.severity === "error")).toBe(true),
+      { timeout: 1000 },
+    );
     expect(result.current.orgSvg).toBe(validSvg);
-    expect(result.current.orgDiagnostics.some((d) => d.severity === "error")).toBe(true);
-    vi.useRealTimers();
   });
 });

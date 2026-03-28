@@ -2,7 +2,7 @@ import { describe, it, expect } from "vitest";
 import { resolveStyles } from "./style-resolver.js";
 import { analyze } from "./warnings.js";
 import { getBuiltinStyleSheet } from "../builtins/default-style.js";
-import type { KrsNode, KrsFile, DeployNode } from "../types/ast.js";
+import type { KrsNode, KrsFile, DeployNode, OrganizationBlock, TeamNode } from "../types/ast.js";
 import type { StyleSheet, StyleRule } from "../types/style.js";
 import type { SourceRange } from "../types/tokens.js";
 
@@ -410,5 +410,108 @@ describe("resolveStyles with deployNodes", () => {
     const builtin = getBuiltinStyleSheet();
     const result = resolveStyles([], [builtin]);
     expect(result.nodes.has("order-api")).toBe(false);
+  });
+});
+
+describe("resolveStyles with organizations", () => {
+  function makeTeam(id: string, members: string[] = [], subTeams: TeamNode[] = []): TeamNode {
+    return {
+      id,
+      properties: { links: [], owns: [] },
+      members: members.map((mid) => ({ id: mid, properties: { links: [] }, loc: dummyLoc })),
+      teams: subTeams,
+      loc: dummyLoc,
+    };
+  }
+
+  function makeOrg(id: string, teams: TeamNode[]): OrganizationBlock {
+    return { id, properties: { links: [] }, teams, loc: dummyLoc };
+  }
+
+  it("resolves team node style from builtin sheet", () => {
+    const builtin = getBuiltinStyleSheet();
+    const org = makeOrg("Corp", [makeTeam("backend")]);
+    const result = resolveStyles([], [builtin], undefined, [org]);
+    const style = result.nodes.get("backend")!;
+    expect(style.backgroundColor).toBe("#065F46");
+    expect(style.borderColor).toBe("#047857");
+  });
+
+  it("resolves member node style from builtin sheet", () => {
+    const builtin = getBuiltinStyleSheet();
+    const org = makeOrg("Corp", [makeTeam("backend", ["alice"])]);
+    const result = resolveStyles([], [builtin], undefined, [org]);
+    const style = result.nodes.get("alice")!;
+    expect(style.backgroundColor).toBe("#1E3A5F");
+    expect(style.shape).toBe("user");
+  });
+
+  it("allows user stylesheet to override team color", () => {
+    const builtin = getBuiltinStyleSheet();
+    const userSheet: StyleSheet = {
+      rules: [
+        makeRule(
+          { nodeType: "team", tags: [], annotations: [] },
+          { "background-color": "#FF0000" },
+          1,
+        ),
+      ],
+    };
+    const org = makeOrg("Corp", [makeTeam("backend")]);
+    const result = resolveStyles([], [builtin, userSheet], undefined, [org]);
+    expect(result.nodes.get("backend")!.backgroundColor).toBe("#FF0000");
+  });
+
+  it("does not apply team style to member nodes", () => {
+    const builtin = getBuiltinStyleSheet();
+    const userSheet: StyleSheet = {
+      rules: [
+        makeRule(
+          { nodeType: "team", tags: [], annotations: [] },
+          { "background-color": "#FF0000" },
+          1,
+        ),
+      ],
+    };
+    const org = makeOrg("Corp", [makeTeam("backend", ["alice"])]);
+    const result = resolveStyles([], [builtin, userSheet], undefined, [org]);
+    // member should keep its own builtin color, not the team override
+    expect(result.nodes.get("alice")!.backgroundColor).toBe("#1E3A5F");
+  });
+
+  it("does not include org nodes when organizations is omitted", () => {
+    const builtin = getBuiltinStyleSheet();
+    const result = resolveStyles([], [builtin]);
+    expect(result.nodes.has("backend")).toBe(false);
+  });
+
+  it("collects nodes from multiple organizations", () => {
+    const builtin = getBuiltinStyleSheet();
+    const org1 = makeOrg("Corp1", [makeTeam("backend")]);
+    const org2 = makeOrg("Corp2", [makeTeam("frontend")]);
+    const result = resolveStyles([], [builtin], undefined, [org1, org2]);
+    expect(result.nodes.has("backend")).toBe(true);
+    expect(result.nodes.has("frontend")).toBe(true);
+  });
+
+  it("ID selector overrides type selector for org nodes", () => {
+    const builtin = getBuiltinStyleSheet();
+    const userSheet: StyleSheet = {
+      rules: [
+        makeRule(
+          { nodeType: "team", tags: [], annotations: [] },
+          { "background-color": "#111111" },
+          1,
+        ),
+        makeRule(
+          { id: "backend", tags: [], annotations: [] },
+          { "background-color": "#222222" },
+          100,
+        ),
+      ],
+    };
+    const org = makeOrg("Corp", [makeTeam("backend")]);
+    const result = resolveStyles([], [builtin, userSheet], undefined, [org]);
+    expect(result.nodes.get("backend")!.backgroundColor).toBe("#222222");
   });
 });
