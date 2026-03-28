@@ -1,6 +1,12 @@
 import type { ResolvedNodeStyle, ResolvedStyles } from "../types/style.js";
 import type { ViewSlice } from "../view/view-extract.js";
-import { layout, type ContainerRect, type LayoutNode, type LayoutResult } from "./layout.js";
+import {
+  layout,
+  type ContainerRect,
+  type DisplayMode,
+  type LayoutNode,
+  type LayoutResult,
+} from "./layout.js";
 import { renderShape } from "./shapes.js";
 import { renderEdge, renderArrowMarker } from "./edge-routing.js";
 import { el, escapeXml } from "./svg-builder.js";
@@ -8,19 +14,28 @@ import { getIconDef } from "./shape-registry.js";
 
 const GHOST_OPACITY = 0.3;
 
+// Icon-mode text layout constants (from design doc)
+const ICON_LABEL_MAX_WIDTH = 122; // px available for title text
+const ICON_LABEL_CHAR_WIDTH = 7.5; // approximate for 13px font
+const ICON_DESC_MAX_WIDTH = 144; // px available for description text
+const ICON_DESC_CHAR_WIDTH = 6.5; // approximate for 11px font
+const ICON_DESC_MAX_LINES = 3;
+const ICON_DESC_LINE_HEIGHT = 14; // px
+
 export function render(
   viewSlice: ViewSlice,
   styles: ResolvedStyles,
   serviceIdsWithDeploy?: Set<string>,
   ownerIndex?: Map<string, string>,
   exportLinks?: Map<string, string>,
+  displayMode?: DisplayMode,
 ): string {
-  const layoutResult = layout(viewSlice, ownerIndex);
+  const layoutResult = layout(viewSlice, ownerIndex, displayMode);
   const title =
     layoutResult.containers.length === 0 && viewSlice.containerNode
       ? (viewSlice.containerNode.label ?? viewSlice.containerNode.id)
       : undefined;
-  return renderFromLayout(layoutResult, styles, title, serviceIdsWithDeploy, exportLinks);
+  return renderFromLayout(layoutResult, styles, title, serviceIdsWithDeploy, exportLinks, displayMode);
 }
 
 export function renderFromLayout(
@@ -29,6 +44,7 @@ export function renderFromLayout(
   title?: string,
   serviceIdsWithDeploy?: Set<string>,
   exportLinks?: Map<string, string>,
+  displayMode?: DisplayMode,
 ): string {
   if (layoutResult.nodes.size === 0 && layoutResult.containers.length === 0) {
     return el(
@@ -136,7 +152,7 @@ export function renderFromLayout(
   const normalNodeParts: string[] = [];
   for (const [nodeId, layoutNode] of layoutResult.nodes) {
     const nodeStyle = styles.nodes.get(nodeId) ?? styles.defaultNodeStyle;
-    const rendered = renderNode(layoutNode, nodeStyle, nodeId, serviceIdsWithDeploy, exportLinks);
+    const rendered = renderNode(layoutNode, nodeStyle, nodeId, serviceIdsWithDeploy, exportLinks, displayMode);
     if (layoutNode.ghost) {
       ghostNodeParts.push(rendered);
     } else {
@@ -211,6 +227,7 @@ function renderNode(
   nodeId: string,
   serviceIdsWithDeploy?: Set<string>,
   exportLinks?: Map<string, string>,
+  displayMode?: DisplayMode,
 ): string {
   const children: string[] = [];
 
@@ -236,6 +253,13 @@ function renderNode(
     const labelY = node.y + iconDef.labelSlot.y * scaleY;
     const labelAnchor = iconDef.labelSlot.textAnchor ?? "middle";
 
+    // Icon-mode label truncation
+    const iconMode = displayMode === "icon";
+    const truncatedLabel = iconMode
+      ? truncateText(node.label, ICON_LABEL_MAX_WIDTH, ICON_LABEL_CHAR_WIDTH)
+      : node.label;
+    const labelFontSize = iconMode ? 13 : fontSize;
+
     children.push(
       el(
         "text",
@@ -245,11 +269,11 @@ function renderNode(
           "text-anchor": labelAnchor,
           "dominant-baseline": "central",
           fill: textColor,
-          "font-size": `${fontSize}px`,
+          "font-size": `${labelFontSize}px`,
           "font-weight": style.fontWeight,
           "font-family": style.fontFamily,
         },
-        escapeXml(node.label),
+        escapeXml(truncatedLabel),
       ),
     );
 
@@ -257,23 +281,60 @@ function renderNode(
       const descX = node.x + iconDef.descriptionSlot.x * scaleX;
       const descY = node.y + iconDef.descriptionSlot.y * scaleY;
       const descAnchor = iconDef.descriptionSlot.textAnchor ?? "middle";
+      const descFontSize = iconMode ? 11 : Math.round(fontSize * 0.8);
 
-      children.push(
-        el(
-          "text",
-          {
-            x: descX,
-            y: descY,
-            "text-anchor": descAnchor,
-            "dominant-baseline": "central",
-            fill: textColor,
-            "font-size": `${Math.round(fontSize * 0.8)}px`,
-            "font-family": style.fontFamily,
-            opacity: 0.7,
-          },
-          escapeXml(displayDesc),
-        ),
-      );
+      if (iconMode) {
+        // Multi-line description: wrap text into up to 3 lines with tspan elements
+        const lines = wrapText(
+          displayDesc,
+          ICON_DESC_MAX_WIDTH,
+          ICON_DESC_CHAR_WIDTH,
+          ICON_DESC_MAX_LINES,
+        );
+        const tspans = lines.map((line, i) =>
+          el(
+            "tspan",
+            {
+              x: descX,
+              dy: i === 0 ? "0" : `${ICON_DESC_LINE_HEIGHT}`,
+            },
+            escapeXml(line),
+          ),
+        );
+        children.push(
+          el(
+            "text",
+            {
+              x: descX,
+              y: descY,
+              "text-anchor": descAnchor,
+              "dominant-baseline": "hanging",
+              fill: textColor,
+              "font-size": `${descFontSize}px`,
+              "font-family": style.fontFamily,
+              opacity: 0.7,
+            },
+            ...tspans,
+          ),
+        );
+      } else {
+        children.push(
+          el(
+            "text",
+            {
+              x: descX,
+              y: descY,
+              "text-anchor": descAnchor,
+              "dominant-baseline": "central",
+              fill: textColor,
+              "font-size": `${descFontSize}px`,
+              "font-family": style.fontFamily,
+              opacity: 0.7,
+            },
+            escapeXml(displayDesc),
+          ),
+        );
+      }
     }
   } else {
     const textX = node.x + node.width / 2;
@@ -557,4 +618,61 @@ function renderNode(
   );
   const exportHref = exportLinks?.get(nodeId);
   return exportHref ? el("a", { href: exportHref }, nodeEl) : nodeEl;
+}
+
+// ---------------------------------------------------------------------------
+// Icon-mode text helpers
+// ---------------------------------------------------------------------------
+
+/**
+ * Truncate text to fit within a given pixel width, adding "…" if truncated.
+ * Uses a simple character width estimate (CJK characters counted as 1.5x).
+ */
+function truncateText(text: string, maxWidth: number, charWidth: number): string {
+  const chars = [...text];
+  let width = 0;
+  for (let i = 0; i < chars.length; i++) {
+    const cw = chars[i].charCodeAt(0) > 0x2e80 ? charWidth * 1.5 : charWidth;
+    if (width + cw > maxWidth) {
+      return chars.slice(0, i).join("") + "…";
+    }
+    width += cw;
+  }
+  return text;
+}
+
+/**
+ * Wrap text into multiple lines that fit within a given pixel width.
+ * Returns up to `maxLines` lines; the last line is truncated with "…" if text remains.
+ */
+function wrapText(text: string, maxWidth: number, charWidth: number, maxLines: number): string[] {
+  const chars = [...text];
+  const lines: string[] = [];
+  let lineStart = 0;
+  let lineWidth = 0;
+  let lastFitIdx = 0;
+
+  for (let i = 0; i < chars.length; i++) {
+    const cw = chars[i].charCodeAt(0) > 0x2e80 ? charWidth * 1.5 : charWidth;
+    if (lineWidth + cw > maxWidth) {
+      if (lines.length === maxLines - 1) {
+        // Last allowed line: truncate with ellipsis
+        lines.push(chars.slice(lineStart, i).join("") + "…");
+        return lines;
+      }
+      lines.push(chars.slice(lineStart, i).join(""));
+      lineStart = i;
+      lineWidth = cw;
+    } else {
+      lineWidth += cw;
+    }
+    lastFitIdx = i;
+  }
+
+  // Remaining text fits in a line
+  if (lineStart <= lastFitIdx) {
+    lines.push(chars.slice(lineStart).join(""));
+  }
+
+  return lines;
 }

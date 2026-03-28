@@ -67,7 +67,18 @@ const CONTAINER_PADDING = 40;
 const CONTAINER_LABEL_HEIGHT = 30;
 const GHOST_MARGIN = 30;
 
-export function layout(viewSlice: ViewSlice, ownerIndex?: Map<string, string>): LayoutResult {
+// Icon-mode card dimensions (from design doc)
+const ICON_CARD_WIDTH = 160;
+const ICON_CARD_HEIGHT_WITH_DESC = 100;
+const ICON_CARD_HEIGHT_NO_DESC = 56;
+
+export type DisplayMode = "shape" | "icon";
+
+export function layout(
+  viewSlice: ViewSlice,
+  ownerIndex?: Map<string, string>,
+  displayMode?: DisplayMode,
+): LayoutResult {
   const allNodes = viewSlice.childNodes;
   const allEdges = viewSlice.childEdges;
 
@@ -132,7 +143,7 @@ export function layout(viewSlice: ViewSlice, ownerIndex?: Map<string, string>): 
         krsNode.kind === "service" || krsNode.kind === "domain"
           ? (ownerIndex?.get(nid) ?? krsNode.properties.team)
           : undefined;
-      const dims = measureNode(krsNode, resolvedTeam);
+      const dims = measureNode(krsNode, resolvedTeam, displayMode);
       const y = layerIdx * (dims.height + LAYER_GAP) + NODE_GAP;
 
       layoutNodes.set(nid, {
@@ -257,7 +268,7 @@ export function layout(viewSlice: ViewSlice, ownerIndex?: Map<string, string>): 
     let userY = (mainContainer?.y ?? 0) + CONTAINER_LABEL_HEIGHT + NODE_GAP;
 
     for (const userNode of viewSlice.ghostUsers) {
-      const dims = measureNode(userNode, undefined);
+      const dims = measureNode(userNode, undefined, displayMode);
       const uid = userNode.id;
       const gNode: LayoutNode = {
         kind: userNode.kind,
@@ -518,7 +529,18 @@ function extractLayoutProperties(node: KrsNode, resolvedTeam?: string): LayoutNo
   return props;
 }
 
-function measureNode(node: KrsNode, resolvedTeam?: string): { width: number; height: number } {
+function measureNode(
+  node: KrsNode,
+  resolvedTeam?: string,
+  displayMode?: DisplayMode,
+): { width: number; height: number } {
+  if (displayMode === "icon") {
+    return {
+      width: ICON_CARD_WIDTH,
+      height: node.properties.description ? ICON_CARD_HEIGHT_WITH_DESC : ICON_CARD_HEIGHT_NO_DESC,
+    };
+  }
+
   const labelWidth = estimateTextWidth(node.label ?? node.id, CHAR_WIDTH);
   const description = node.properties.description;
   const role = node.kind === "user" ? node.properties.role : undefined;

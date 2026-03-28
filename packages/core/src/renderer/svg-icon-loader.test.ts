@@ -62,6 +62,16 @@ describe("parseSvgIcon", () => {
     expect(def.viewBoxWidth).toBe(24);
     expect(def.viewBoxHeight).toBe(24);
   });
+
+  it("sets builtIn flag when provided", () => {
+    const def = parseSvgIcon("db", SAMPLE_SVG, true);
+    expect(def.builtIn).toBe(true);
+  });
+
+  it("leaves builtIn undefined when not provided", () => {
+    const def = parseSvgIcon("db", SAMPLE_SVG);
+    expect(def.builtIn).toBeUndefined();
+  });
 });
 
 describe("loadAndRegisterIcon", () => {
@@ -80,6 +90,68 @@ describe("loadAndRegisterIcon", () => {
     const def = getIconDef("database");
     expect(def).toBeDefined();
     expect(def!.labelSlot).toEqual({ x: 80, y: 42, textAnchor: "middle" });
+  });
+
+  it("passes builtIn flag through to icon def", () => {
+    loadAndRegisterIcon("database", SAMPLE_SVG, true);
+    const def = getIconDef("database");
+    expect(def!.builtIn).toBe(true);
+  });
+});
+
+describe("builtIn placeholder injection", () => {
+  const PLACEHOLDER_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 100">
+    <rect fill="{{fill}}" stroke="{{stroke}}" stroke-width="{{strokeWidth}}"/>
+    <path d="M0 0" fill="{{color}}"/>
+  </svg>`;
+
+  beforeEach(() => {
+    clearRegistry();
+    registerBuiltinShapes();
+  });
+
+  it("replaces placeholders for builtIn icons", () => {
+    loadAndRegisterIcon("test-icon", PLACEHOLDER_SVG, true);
+    const shapeFn = getShape("test-icon")!;
+    const result = shapeFn({
+      x: 0,
+      y: 0,
+      width: 160,
+      height: 100,
+      fill: "#112233",
+      stroke: "#445566",
+      strokeWidth: 2,
+      strokeDasharray: "",
+      borderRadius: 0,
+      color: "#AABBCC",
+    });
+    expect(result).toContain("#AABBCC");
+    expect(result).toContain("#112233");
+    expect(result).toContain("#445566");
+    expect(result).toContain("2");
+    expect(result).not.toContain("{{color}}");
+    expect(result).not.toContain("{{fill}}");
+    expect(result).not.toContain("{{stroke}}");
+    expect(result).not.toContain("{{strokeWidth}}");
+  });
+
+  it("does NOT replace placeholders for non-builtIn icons", () => {
+    loadAndRegisterIcon("custom-icon", PLACEHOLDER_SVG);
+    const shapeFn = getShape("custom-icon")!;
+    const result = shapeFn({
+      x: 0,
+      y: 0,
+      width: 160,
+      height: 100,
+      fill: "#112233",
+      stroke: "#445566",
+      strokeWidth: 2,
+      strokeDasharray: "",
+      borderRadius: 0,
+      color: "#AABBCC",
+    });
+    expect(result).toContain("{{color}}");
+    expect(result).toContain("{{fill}}");
   });
 });
 
