@@ -74,8 +74,8 @@ function ServeModeInner() {
   } = useDeployView(SERVE_FILE_PATH, fs, viewPath);
 
   const { orgSvg, orgDiagnostics, orgWarnings } = useOrgView(
-    fileContent,
-    "",
+    SERVE_FILE_PATH,
+    fs,
     orgPath as OrgViewPath,
   );
 
