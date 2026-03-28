@@ -1,4 +1,4 @@
-import type { ResolvedNodeStyle } from "../types/style.js";
+import type { ResolvedNodeStyle, ResolvedStyles } from "../types/style.js";
 import type { OrgViewSlice } from "../view/org-view-extract.js";
 import type { TeamNode, MemberNode } from "../types/ast.js";
 import { el, escapeXml } from "./svg-builder.js";
@@ -227,14 +227,7 @@ function cardPos(index: number): { x: number; y: number } {
   };
 }
 
-export function renderOrgView(
-  slice: OrgViewSlice,
-  styleMap: Map<string, ResolvedNodeStyle>,
-  defaultStyle: ResolvedNodeStyle,
-): string {
-  const teamStyle: ResolvedNodeStyle = { ...defaultStyle };
-  const memberStyle: ResolvedNodeStyle = { ...defaultStyle };
-
+export function renderOrgView(slice: OrgViewSlice, styles: ResolvedStyles): string {
   if (slice.focusedTeam === null) {
     // Top-level: show all teams
     const teams = slice.teams;
@@ -260,7 +253,7 @@ export function renderOrgView(
 
     const { totalWidth, totalHeight } = gridLayout(teams.length);
     const cards = teams.map((team, i) => {
-      const style = styleMap.get(team.id) ?? teamStyle;
+      const style = styles.nodes.get(team.id) ?? styles.defaultNodeStyle;
       const { x, y } = cardPos(i);
       return renderTeamCard(team, x, y, style);
     });
@@ -284,11 +277,12 @@ export function renderOrgView(
     ...focused.members.map((m) => ({
       id: m.id,
       render: (x: number, y: number) =>
-        renderMemberCard(m, x, y, styleMap.get(m.id) ?? memberStyle),
+        renderMemberCard(m, x, y, styles.nodes.get(m.id) ?? styles.defaultNodeStyle),
     })),
     ...focused.teams.map((t) => ({
       id: t.id,
-      render: (x: number, y: number) => renderTeamCard(t, x, y, styleMap.get(t.id) ?? teamStyle),
+      render: (x: number, y: number) =>
+        renderTeamCard(t, x, y, styles.nodes.get(t.id) ?? styles.defaultNodeStyle),
     })),
   ];
 

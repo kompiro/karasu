@@ -1,4 +1,4 @@
-import type { KrsNode, KrsEdge, DeployNode } from "../types/ast.js";
+import type { KrsNode, KrsEdge, DeployNode, OrganizationBlock, TeamNode } from "../types/ast.js";
 import { hasShape } from "../renderer/shape-registry.js";
 import type {
   StyleSheet,
@@ -37,6 +37,7 @@ export function resolveStyles(
   systems: KrsNode[],
   sheets: StyleSheet[],
   deployNodes?: DeployNode[],
+  organizations?: OrganizationBlock[],
 ): ResolvedStyles {
   // Clone rules with globally renumbered sourceIndex to preserve cascade order across sheets.
   // This avoids mutating cached sheets (e.g. the builtin singleton).
@@ -69,6 +70,12 @@ export function resolveStyles(
   if (deployNodes) {
     for (const unit of deployNodes) {
       nodeStyles.set(unit.id, resolveDeployNodeStyle(unit, allRules));
+    }
+  }
+
+  if (organizations) {
+    for (const node of collectOrgNodes(organizations)) {
+      nodeStyles.set(node.id, resolveOrgNodeStyle(node, allRules));
     }
   }
 
@@ -118,6 +125,52 @@ function resolveDeployNodeStyle(unit: DeployNode, rules: StyleRule[]): ResolvedN
     if (sel.id) return sel.id === unit.id;
     if (sel.nodeType === "edge") return false;
     if (sel.nodeType && sel.nodeType !== unit.kind) return false;
+    if (sel.tags.length > 0) return false;
+    if (sel.annotations.length > 0) return false;
+    if (!sel.nodeType && !sel.id) return false;
+    return true;
+  });
+  matching.sort((a, b) => a.specificity - b.specificity || a.sourceIndex - b.sourceIndex);
+
+  const merged: Record<string, string> = {};
+  for (const rule of matching) {
+    Object.assign(merged, rule.properties);
+  }
+
+  return toResolvedNodeStyle(merged);
+}
+
+interface OrgNodeDescriptor {
+  id: string;
+  kind: "team" | "member";
+}
+
+function collectOrgNodes(organizations: OrganizationBlock[]): OrgNodeDescriptor[] {
+  const nodes: OrgNodeDescriptor[] = [];
+
+  function collectTeams(teams: TeamNode[]): void {
+    for (const team of teams) {
+      nodes.push({ id: team.id, kind: "team" });
+      for (const member of team.members) {
+        nodes.push({ id: member.id, kind: "member" });
+      }
+      collectTeams(team.teams);
+    }
+  }
+
+  for (const org of organizations) {
+    collectTeams(org.teams);
+  }
+
+  return nodes;
+}
+
+function resolveOrgNodeStyle(node: OrgNodeDescriptor, rules: StyleRule[]): ResolvedNodeStyle {
+  const matching = rules.filter((rule) => {
+    const sel = rule.selector;
+    if (sel.id) return sel.id === node.id;
+    if (sel.nodeType === "edge") return false;
+    if (sel.nodeType && sel.nodeType !== node.kind) return false;
     if (sel.tags.length > 0) return false;
     if (sel.annotations.length > 0) return false;
     if (!sel.nodeType && !sel.id) return false;

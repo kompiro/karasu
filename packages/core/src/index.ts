@@ -105,7 +105,6 @@ import type { FileSystemProvider } from "./fs/types.js";
 import { Parser } from "./parser/parser.js";
 import { StyleParser } from "./parser/style-parser.js";
 import { resolveStyles } from "./resolver/style-resolver.js";
-import { resolveOrgStyles, DEFAULT_ORG_NODE_STYLE } from "./resolver/org-styles.js";
 import { analyze } from "./resolver/warnings.js";
 import { render } from "./renderer/svg-renderer.js";
 import { renderOrgView as _renderOrgView } from "./renderer/org-renderer.js";
@@ -343,8 +342,13 @@ export function compileOrgView(
 
   const warnings = analyze(parseResult.value, sheets);
   const slice = extractOrgView(parseResult.value.organizations, orgPath ?? []);
-  const styleMap = resolveOrgStyles(parseResult.value.organizations, sheets);
-  const svg = _renderOrgView(slice, styleMap, DEFAULT_ORG_NODE_STYLE);
+  const styles = resolveStyles(
+    parseResult.value.systems,
+    sheets,
+    undefined,
+    parseResult.value.organizations,
+  );
+  const svg = _renderOrgView(slice, styles);
 
   return { svg, diagnostics, warnings };
 }
