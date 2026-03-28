@@ -14,6 +14,7 @@ export interface AppState {
   viewPath: string[];
   activeView: ActiveView;
   orgPath: string[];
+  selectedDeployBlockId: string | null;
   // クロスナビゲーション
   highlightedNodeId: string | null;
   // UI
@@ -29,6 +30,7 @@ export const initialState: AppState = {
   viewPath: [],
   activeView: "system",
   orgPath: [],
+  selectedDeployBlockId: null,
   highlightedNodeId: null,
   loading: true,
 };
@@ -44,6 +46,7 @@ export type AppAction =
   | { type: "SET_HIGHLIGHTED_NODE"; nodeId: string | null }
   | { type: "SET_LOADING"; loading: boolean }
   | { type: "SET_ORG_PATH"; path: string[] }
+  | { type: "SET_SELECTED_DEPLOY_BLOCK"; id: string | null }
   | { type: "ADD_PROJECT"; project: Project }
   | { type: "REMOVE_PROJECT"; id: string }
   | { type: "RENAME_PROJECT"; id: string; name: string };
@@ -63,6 +66,7 @@ export function appReducer(state: AppState, action: AppAction): AppState {
         viewPath: [],
         activeView: "system",
         orgPath: [],
+        selectedDeployBlockId: null,
         highlightedNodeId: null,
       };
 
@@ -74,6 +78,7 @@ export function appReducer(state: AppState, action: AppAction): AppState {
         viewPath: [],
         activeView: "system",
         orgPath: [],
+        selectedDeployBlockId: null,
         highlightedNodeId: null,
       };
 
@@ -103,6 +108,9 @@ export function appReducer(state: AppState, action: AppAction): AppState {
 
     case "SET_ORG_PATH":
       return { ...state, orgPath: action.path };
+
+    case "SET_SELECTED_DEPLOY_BLOCK":
+      return { ...state, selectedDeployBlockId: action.id };
 
     case "ADD_PROJECT":
       return {

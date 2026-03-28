@@ -32,6 +32,7 @@ export function ProjectModeApp() {
     viewPath,
     activeView,
     orgPath,
+    selectedDeployBlockId,
     highlightedNodeId,
     loading,
   } = state;
@@ -53,8 +54,9 @@ export function ProjectModeApp() {
     warnings: deployWarnings,
     diagnostics: deployDiagnostics,
     nodeMetadata: deployNodeMetadata,
+    deployBlocks,
     recompile: recompileDeploy,
-  } = useDeployView(entryPath, fs, viewPath);
+  } = useDeployView(entryPath, fs, viewPath, selectedDeployBlockId);
 
   const recompile = useCallback(() => {
     recompileSystem();
@@ -172,6 +174,14 @@ export function ProjectModeApp() {
     [dispatch],
   );
 
+  // Deploy ブロックセレクタ変更
+  const handleDeployBlockChange = useCallback(
+    (id: string) => {
+      dispatch({ type: "SET_SELECTED_DEPLOY_BLOCK", id });
+    },
+    [dispatch],
+  );
+
   // System ノードの Deploy ボタンクリック → Deploy タブへクロスナビゲーション
   const handleDeployButtonClick = useCallback(
     (serviceId: string) => {
@@ -186,6 +196,15 @@ export function ProjectModeApp() {
     (teamId: string) => {
       dispatch({ type: "SET_ACTIVE_VIEW", activeView: "org" });
       dispatch({ type: "SET_HIGHLIGHTED_NODE", nodeId: teamId });
+    },
+    [dispatch],
+  );
+
+  // Org チームノードの所有サービスクリック → System タブへクロスナビゲーション
+  const handleOwnedServiceClick = useCallback(
+    (serviceId: string) => {
+      dispatch({ type: "SET_ACTIVE_VIEW", activeView: "system" });
+      dispatch({ type: "SET_HIGHLIGHTED_NODE", nodeId: serviceId });
     },
     [dispatch],
   );
@@ -352,10 +371,14 @@ export function ProjectModeApp() {
           onBreadcrumbNavigate: (path) => dispatch({ type: "SET_ORG_PATH", path }),
           highlightedNodeId,
           onClearHighlight: () => dispatch({ type: "SET_HIGHLIGHTED_NODE", nodeId: null }),
+          onOwnedServiceClick: handleOwnedServiceClick,
         }}
         nodeMetadata={nodeMetadata}
         onDrillDown={handleDrillDown}
         fullViewSvg={fullViewSvg}
+        deployBlocks={deployBlocks}
+        selectedDeployBlockId={selectedDeployBlockId}
+        onDeployBlockChange={handleDeployBlockChange}
       />
     </div>
   );

@@ -45,10 +45,6 @@ function renderTeamCard(team: TeamNode, x: number, y: number, style: ResolvedNod
   const label = escapeXml(team.label ?? team.id);
   const hasChildren = team.members.length > 0 || team.teams.length > 0;
 
-  const ownsList = team.properties.owns.slice(0, 3).join(", ");
-  const ownsMore = team.properties.owns.length > 3 ? ` +${team.properties.owns.length - 3}` : "";
-  const ownsText = team.properties.owns.length > 0 ? `owns: ${ownsList}${ownsMore}` : "";
-
   const countText = [
     team.members.length > 0
       ? `${team.members.length} member${team.members.length > 1 ? "s" : ""}`
@@ -57,6 +53,16 @@ function renderTeamCard(team: TeamNode, x: number, y: number, style: ResolvedNod
   ]
     .filter(Boolean)
     .join(" · ");
+
+  // When overflow label (+N more) and countText both appear, cap visible owns at 2
+  // so that overflow sits at y=90 and countText at y=106 with no overlap.
+  const hasCountText = countText.length > 0;
+  const MAX_VISIBLE_OWNS = team.properties.owns.length > 3 && hasCountText ? 2 : 3;
+  const visibleOwns = team.properties.owns.slice(0, MAX_VISIBLE_OWNS);
+  const ownsOverflow =
+    team.properties.owns.length > MAX_VISIBLE_OWNS
+      ? team.properties.owns.length - MAX_VISIBLE_OWNS
+      : 0;
 
   const parts: string[] = [
     el("rect", { width: CARD_WIDTH, height: CARD_HEIGHT, ...cardStyle(style) }),
@@ -71,16 +77,52 @@ function renderTeamCard(team: TeamNode, x: number, y: number, style: ResolvedNod
     ),
   ];
 
-  if (ownsText) {
+  visibleOwns.forEach((serviceId, i) => {
     parts.push(
       el(
-        "text",
+        "g",
         {
-          x: CARD_WIDTH / 2,
-          y: HEADER_HEIGHT + 22,
-          ...subLabelStyle(style),
+          "data-owned-service-button": serviceId,
+          style: "cursor: pointer",
+          "pointer-events": "all",
         },
-        escapeXml(ownsText),
+        el(
+          "text",
+          {
+            x: CARD_WIDTH / 2,
+            y: HEADER_HEIGHT + 22 + i * 16,
+            ...subLabelStyle(style),
+          },
+          escapeXml(`→ ${serviceId}`),
+        ),
+      ),
+    );
+  });
+
+  if (ownsOverflow > 0) {
+    const overflowY = HEADER_HEIGHT + 22 + visibleOwns.length * 16;
+    parts.push(
+      el(
+        "g",
+        { "data-noop": "true" },
+        el("rect", {
+          x: 0,
+          y: overflowY - 12,
+          width: CARD_WIDTH,
+          height: 16,
+          fill: "transparent",
+          "pointer-events": "all",
+        }),
+        el(
+          "text",
+          {
+            x: CARD_WIDTH / 2,
+            y: overflowY,
+            ...subLabelStyle(style),
+            "pointer-events": "none",
+          },
+          escapeXml(`+${ownsOverflow} more`),
+        ),
       ),
     );
   }

@@ -94,18 +94,37 @@ describe("renderOrgView", () => {
       expect(svg).toContain('data-has-children="true"');
     });
 
-    it("shows owns text on team card", () => {
+    it("renders owned services as clickable data-owned-service-button elements", () => {
       const team = makeTeam("backend", { owns: ["OrderService", "PaymentService"] });
       const slice: OrgViewSlice = { teams: [team], focusedTeam: null, ancestorChain: [] };
       const svg = renderOrgView(slice, new Map(), DEFAULT_STYLE);
-      expect(svg).toContain("owns: OrderService, PaymentService");
+      expect(svg).toContain('data-owned-service-button="OrderService"');
+      expect(svg).toContain('data-owned-service-button="PaymentService"');
+      expect(svg).toContain("→ OrderService");
+      expect(svg).toContain("→ PaymentService");
     });
 
-    it("truncates owns list at 3 items with overflow count", () => {
+    it("shows at most 3 owned service buttons with overflow count (no members)", () => {
       const team = makeTeam("backend", { owns: ["A", "B", "C", "D"] });
       const slice: OrgViewSlice = { teams: [team], focusedTeam: null, ancestorChain: [] };
       const svg = renderOrgView(slice, new Map(), DEFAULT_STYLE);
-      expect(svg).toContain("A, B, C +1");
+      expect(svg).toContain('data-owned-service-button="A"');
+      expect(svg).toContain('data-owned-service-button="B"');
+      expect(svg).toContain('data-owned-service-button="C"');
+      expect(svg).not.toContain('data-owned-service-button="D"');
+      expect(svg).toContain("+1 more");
+    });
+
+    it("caps visible owns at 2 when overflow and countText both present to avoid overlap", () => {
+      const team = makeTeam("backend", { owns: ["A", "B", "C", "D"] });
+      team.members.push({ kind: "member", id: "alice", label: "Alice", properties: {} } as never);
+      const slice: OrgViewSlice = { teams: [team], focusedTeam: null, ancestorChain: [] };
+      const svg = renderOrgView(slice, new Map(), DEFAULT_STYLE);
+      expect(svg).toContain('data-owned-service-button="A"');
+      expect(svg).toContain('data-owned-service-button="B"');
+      expect(svg).not.toContain('data-owned-service-button="C"');
+      expect(svg).toContain("+2 more");
+      expect(svg).toContain("1 member");
     });
 
     it("renders more than 3 cards in grid rows", () => {

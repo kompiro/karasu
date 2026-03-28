@@ -1,5 +1,5 @@
 import { useState } from "react";
-import type { Diagnostic, NodeMetadata, Warning, OrgViewPath } from "@karasu/core";
+import type { Diagnostic, NodeMetadata, Warning, OrgViewPath, DeployBlockInfo } from "@karasu/core";
 import type { ActiveView } from "../state/app-reducer.js";
 import { DiagramTabBar } from "./DiagramTabBar.js";
 import { BreadcrumbBar } from "./BreadcrumbBar.js";
@@ -39,6 +39,8 @@ interface OrgViewProps {
   onBreadcrumbNavigate: (path: string[]) => void;
   highlightedNodeId?: string | null;
   onClearHighlight?: () => void;
+  /** Called when user clicks an owned service link on a team node to cross-navigate to system view */
+  onOwnedServiceClick?: (serviceId: string) => void;
 }
 
 interface KarasuPreviewColumnProps {
@@ -53,6 +55,10 @@ interface KarasuPreviewColumnProps {
   nodeMetadata: Map<string, NodeMetadata>;
   onDrillDown: (path: string[]) => void;
   fullViewSvg: string;
+
+  deployBlocks?: DeployBlockInfo[];
+  selectedDeployBlockId?: string | null;
+  onDeployBlockChange?: (id: string) => void;
 }
 
 export function KarasuPreviewColumn({
@@ -65,6 +71,9 @@ export function KarasuPreviewColumn({
   nodeMetadata,
   onDrillDown,
   fullViewSvg,
+  deployBlocks,
+  selectedDeployBlockId,
+  onDeployBlockChange,
 }: KarasuPreviewColumnProps) {
   const [refOpen, setRefOpen] = useState(false);
   const [isFullView, setIsFullView] = useState(false);
@@ -90,6 +99,9 @@ export function KarasuPreviewColumn({
         active={activeView}
         hasDeployDiagram={hasDeployDiagram}
         onChange={onActiveViewChange}
+        deployBlocks={deployBlocks}
+        selectedDeployBlockId={selectedDeployBlockId}
+        onDeployBlockChange={onDeployBlockChange}
       />
       <div className="preview-toolbar">
         <button
@@ -148,6 +160,7 @@ export function KarasuPreviewColumn({
           onContainerClick={activeView === "deploy" ? deployView.onContainerClick : undefined}
           onDeployButtonClick={activeView === "system" ? systemView.onDeployButtonClick : undefined}
           onTeamButtonClick={activeView === "system" ? systemView.onTeamButtonClick : undefined}
+          onOwnedServiceClick={activeView === "org" ? orgView.onOwnedServiceClick : undefined}
           highlightedNodeId={
             activeView === "deploy"
               ? deployView.highlightedNodeId

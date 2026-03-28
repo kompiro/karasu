@@ -309,6 +309,25 @@ body,
   opacity: 0.7;
 }
 
+.deploy-block-selector {
+  align-self: center;
+  margin-left: 4px;
+  padding: 2px 6px;
+  height: 22px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-default);
+  border-radius: 4px;
+  color: var(--text-secondary);
+  font-size: 11px;
+  font-family: var(--font-ui);
+  cursor: pointer;
+}
+
+.deploy-block-selector:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
 /* ── Cross-navigation highlight ─────────────────────────────────── */
 .karasu-highlighted {
   filter: drop-shadow(0 0 6px var(--accent-glow)) drop-shadow(0 0 16px var(--accent-dim));
