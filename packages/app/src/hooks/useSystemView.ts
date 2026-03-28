@@ -1,11 +1,12 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import {
-  compile,
+  compileProject,
+  resolveIconManifest,
   type Warning,
   type Diagnostic,
   type ViewPath,
+  type FileSystemProvider,
   type NodeMetadata,
-  resolveIconManifest,
 } from "@karasu/core";
 import iconManifest from "@karasu/core/icons/icons.json";
 import databaseSvg from "@karasu/core/icons/database.svg?raw";
@@ -15,6 +16,7 @@ export interface SystemViewState {
   warnings: Warning[];
   diagnostics: Diagnostic[];
   nodeMetadata: Map<string, NodeMetadata>;
+  hasDeployDiagram: boolean;
 }
 
 // Register icons from manifest on module load
@@ -25,51 +27,69 @@ resolveIconManifest(iconManifest, {
 const DEBOUNCE_MS = 300;
 
 export function useSystemView(
-  krsSource: string,
-  styleSource: string,
+  entryPath: string | null,
+  fs: FileSystemProvider | null,
   viewPath: ViewPath = [],
-): SystemViewState {
-  const [state, setState] = useState<SystemViewState>(() => {
-    const result = compile(krsSource, styleSource || undefined, viewPath);
-    return {
-      svg: result.svg,
-      warnings: result.warnings,
-      diagnostics: result.diagnostics,
-      nodeMetadata: result.nodeMetadata,
-    };
+): SystemViewState & { recompile: () => void } {
+  const [state, setState] = useState<SystemViewState>({
+    svg: "",
+    warnings: [],
+    diagnostics: [],
+    nodeMetadata: new Map(),
+    hasDeployDiagram: false,
   });
 
-  const lastValidSvg = useRef(state.svg);
+  const lastValidSvg = useRef("");
+  const lastValidSvgKey = useRef("");
   const timerRef = useRef<ReturnType<typeof setTimeout>>(undefined);
+  const recompileCounter = useRef(0);
+
+  const recompile = useCallback(() => {
+    recompileCounter.current++;
+    setState((prev) => ({ ...prev }));
+  }, []);
 
   useEffect(() => {
+    if (!entryPath || !fs) return;
+
     if (timerRef.current) clearTimeout(timerRef.current);
 
-    timerRef.current = setTimeout(() => {
+    const currentKey = `${entryPath}:system`;
+
+    timerRef.current = setTimeout(async () => {
       try {
-        const result = compile(krsSource, styleSource || undefined, viewPath);
+        const result = await compileProject(entryPath, fs, viewPath, "system");
         const hasErrors = result.diagnostics.some((d) => d.severity === "error");
 
         if (hasErrors) {
+          const svgToShow = lastValidSvgKey.current === currentKey ? lastValidSvg.current : "";
           setState({
-            svg: lastValidSvg.current,
+            svg: svgToShow,
             warnings: result.warnings,
             diagnostics: result.diagnostics,
             nodeMetadata: result.nodeMetadata,
+            hasDeployDiagram: result.hasDeployDiagram,
           });
         } else {
           lastValidSvg.current = result.svg;
+          lastValidSvgKey.current = currentKey;
           setState({
             svg: result.svg,
             warnings: result.warnings,
             diagnostics: result.diagnostics,
             nodeMetadata: result.nodeMetadata,
+            hasDeployDiagram: result.hasDeployDiagram,
           });
         }
       } catch {
         setState((prev) => ({
           ...prev,
-          diagnostics: [{ severity: "error", message: "パース中にエラーが発生しました" }],
+          diagnostics: [
+            {
+              severity: "error",
+              message: "プロジェクトのコンパイル中にエラーが発生しました",
+            },
+          ],
         }));
       }
     }, DEBOUNCE_MS);
@@ -77,7 +97,8 @@ export function useSystemView(
     return () => {
       if (timerRef.current) clearTimeout(timerRef.current);
     };
-  }, [krsSource, styleSource, viewPath]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [entryPath, fs, viewPath, recompileCounter.current]);
 
-  return state;
+  return { ...state, recompile };
 }
