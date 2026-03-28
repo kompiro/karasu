@@ -63,6 +63,7 @@ export {
 } from "./builtins/reference.js";
 export { analyze } from "./resolver/warnings.js";
 export { render, renderFromLayout } from "./renderer/svg-renderer.js";
+export { assembleMultiLevelSvg, type ExportLevel } from "./renderer/multi-level-svg.js";
 export { renderOrgView } from "./renderer/org-renderer.js";
 export { renderDeploy } from "./renderer/deploy-renderer.js";
 export { el, escapeXml } from "./renderer/svg-builder.js";
@@ -108,6 +109,7 @@ import { resolveStyles } from "./resolver/style-resolver.js";
 import { resolveOrgStyles, DEFAULT_ORG_NODE_STYLE } from "./resolver/org-styles.js";
 import { analyze } from "./resolver/warnings.js";
 import { render } from "./renderer/svg-renderer.js";
+import { assembleMultiLevelSvg, type ExportLevel } from "./renderer/multi-level-svg.js";
 import { renderOrgView as _renderOrgView } from "./renderer/org-renderer.js";
 import { renderDeploy } from "./renderer/deploy-renderer.js";
 import { extractView, type ViewPath } from "./view/view-extract.js";
@@ -241,6 +243,52 @@ export async function compileProject(
   }
 
   return { svg, warnings, diagnostics, nodeMetadata, hasDeployDiagram };
+}
+
+/**
+ * Generate a single self-navigating SVG that embeds all system drill-down levels.
+ * Uses CSS :target + :has() for JavaScript-free navigation.
+ * Requires Chrome 105+, Firefox 121+, Safari 15.4+.
+ */
+export async function buildExportSvgFromProject(
+  entryPath: string,
+  fs: FileSystemProvider,
+): Promise<string> {
+  const resolver = new ImportResolver(fs);
+  const resolved = await resolver.resolve(entryPath);
+
+  const allSheets = [getBuiltinStyleSheet(), ...resolved.styleSheets];
+  const deploySliceForStyle = extractDeployView(resolved.krsFile.deploys, resolved.krsFile.systems);
+  const deployUnits = [
+    ...deploySliceForStyle.containers.flatMap((c) => c.units),
+    ...deploySliceForStyle.unclassifiedUnits,
+  ];
+  const styles = resolveStyles(resolved.krsFile.systems, allSheets, deployUnits);
+  const serviceIdsWithDeploy = new Set(deploySliceForStyle.containers.map((c) => c.serviceId));
+  const ownerIndex = resolved.krsFile.ownerIndex;
+
+  // Render root level to discover which nodes have children
+  const rootSlice = extractView(resolved.krsFile.systems, []);
+  const rootMetadata = buildNodeMetadata(rootSlice, serviceIdsWithDeploy, ownerIndex);
+  const childNodeIds = [...rootMetadata.entries()]
+    .filter(([, meta]) => meta.hasChildren)
+    .map(([id]) => id);
+
+  // Re-render root with export links so child-bearing nodes are wrapped in <a>
+  const exportLinks = new Map(childNodeIds.map((id) => [id, `#krs-view-${id}`]));
+  const rootSvg = render(rootSlice, styles, serviceIdsWithDeploy, ownerIndex, exportLinks);
+
+  const levels: ExportLevel[] = [{ id: "root", svg: rootSvg, parentId: null }];
+
+  // Render one drill-down level for each node with children
+  for (const nodeId of childNodeIds) {
+    const childSlice = extractView(resolved.krsFile.systems, [nodeId]);
+    const childSvg = render(childSlice, styles, serviceIdsWithDeploy, ownerIndex);
+    const label = rootMetadata.get(nodeId)?.label ?? nodeId;
+    levels.push({ id: nodeId, svg: childSvg, parentId: "root", label });
+  }
+
+  return assembleMultiLevelSvg(levels);
 }
 
 function buildNodeMetadata(
