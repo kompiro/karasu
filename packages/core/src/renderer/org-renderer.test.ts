@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { renderOrgView } from "./org-renderer.js";
 import type { OrgViewSlice } from "../view/org-view-extract.js";
-import type { ResolvedNodeStyle } from "../types/style.js";
+import type { ResolvedNodeStyle, ResolvedStyles } from "../types/style.js";
 import type { TeamNode, MemberNode } from "../types/ast.js";
 
 const mockLoc = {
@@ -22,6 +22,22 @@ const DEFAULT_STYLE: ResolvedNodeStyle = {
   opacity: 1.0,
   shape: "box",
 };
+
+const DEFAULT_EDGE_STYLE = {
+  color: "#94A3B8",
+  strokeWidth: 1.5,
+  fontSize: 11,
+  strokeStyle: "solid" as const,
+};
+
+function makeStyles(nodeMap: Map<string, ResolvedNodeStyle> = new Map()): ResolvedStyles {
+  return {
+    nodes: nodeMap,
+    edges: new Map(),
+    defaultNodeStyle: DEFAULT_STYLE,
+    defaultEdgeStyle: DEFAULT_EDGE_STYLE,
+  };
+}
 
 function makeTeam(
   id: string,
@@ -64,7 +80,7 @@ describe("renderOrgView", () => {
   describe("top-level (focusedTeam === null)", () => {
     it("renders empty state when no teams", () => {
       const slice: OrgViewSlice = { teams: [], focusedTeam: null, ancestorChain: [] };
-      const svg = renderOrgView(slice, new Map(), DEFAULT_STYLE);
+      const svg = renderOrgView(slice, makeStyles());
       expect(svg).toContain("No teams defined");
       expect(svg).toContain("<svg");
     });
@@ -75,7 +91,7 @@ describe("renderOrgView", () => {
         makeTeam("frontend", { label: "Frontend" }),
       ];
       const slice: OrgViewSlice = { teams, focusedTeam: null, ancestorChain: [] };
-      const svg = renderOrgView(slice, new Map(), DEFAULT_STYLE);
+      const svg = renderOrgView(slice, makeStyles());
       expect(svg).toContain("Backend");
       expect(svg).toContain("Frontend");
       expect(svg).toContain('data-node-id="backend"');
@@ -88,7 +104,7 @@ describe("renderOrgView", () => {
         teams: [makeTeam("sre")],
       });
       const slice: OrgViewSlice = { teams: [team], focusedTeam: null, ancestorChain: [] };
-      const svg = renderOrgView(slice, new Map(), DEFAULT_STYLE);
+      const svg = renderOrgView(slice, makeStyles());
       expect(svg).toContain("2 members");
       expect(svg).toContain("1 sub-team");
       expect(svg).toContain('data-has-children="true"');
@@ -97,7 +113,7 @@ describe("renderOrgView", () => {
     it("renders owned services as clickable data-owned-service-button elements", () => {
       const team = makeTeam("backend", { owns: ["OrderService", "PaymentService"] });
       const slice: OrgViewSlice = { teams: [team], focusedTeam: null, ancestorChain: [] };
-      const svg = renderOrgView(slice, new Map(), DEFAULT_STYLE);
+      const svg = renderOrgView(slice, makeStyles());
       expect(svg).toContain('data-owned-service-button="OrderService"');
       expect(svg).toContain('data-owned-service-button="PaymentService"');
       expect(svg).toContain("→ OrderService");
@@ -107,7 +123,7 @@ describe("renderOrgView", () => {
     it("shows at most 3 owned service buttons with overflow count (no members)", () => {
       const team = makeTeam("backend", { owns: ["A", "B", "C", "D"] });
       const slice: OrgViewSlice = { teams: [team], focusedTeam: null, ancestorChain: [] };
-      const svg = renderOrgView(slice, new Map(), DEFAULT_STYLE);
+      const svg = renderOrgView(slice, makeStyles());
       expect(svg).toContain('data-owned-service-button="A"');
       expect(svg).toContain('data-owned-service-button="B"');
       expect(svg).toContain('data-owned-service-button="C"');
@@ -119,7 +135,7 @@ describe("renderOrgView", () => {
       const team = makeTeam("backend", { owns: ["A", "B", "C", "D"] });
       team.members.push({ kind: "member", id: "alice", label: "Alice", properties: {} } as never);
       const slice: OrgViewSlice = { teams: [team], focusedTeam: null, ancestorChain: [] };
-      const svg = renderOrgView(slice, new Map(), DEFAULT_STYLE);
+      const svg = renderOrgView(slice, makeStyles());
       expect(svg).toContain('data-owned-service-button="A"');
       expect(svg).toContain('data-owned-service-button="B"');
       expect(svg).not.toContain('data-owned-service-button="C"');
@@ -130,7 +146,7 @@ describe("renderOrgView", () => {
     it("renders more than 3 cards in grid rows", () => {
       const teams = Array.from({ length: 5 }, (_, i) => makeTeam(`team${i}`));
       const slice: OrgViewSlice = { teams, focusedTeam: null, ancestorChain: [] };
-      const svg = renderOrgView(slice, new Map(), DEFAULT_STYLE);
+      const svg = renderOrgView(slice, makeStyles());
       expect(svg).toContain('data-node-id="team0"');
       expect(svg).toContain('data-node-id="team4"');
     });
@@ -140,7 +156,7 @@ describe("renderOrgView", () => {
       const customStyle: ResolvedNodeStyle = { ...DEFAULT_STYLE, backgroundColor: "#FF0000" };
       const styleMap = new Map([["backend", customStyle]]);
       const slice: OrgViewSlice = { teams: [team], focusedTeam: null, ancestorChain: [] };
-      const svg = renderOrgView(slice, styleMap, DEFAULT_STYLE);
+      const svg = renderOrgView(slice, makeStyles(styleMap));
       expect(svg).toContain("#FF0000");
     });
   });
@@ -149,7 +165,7 @@ describe("renderOrgView", () => {
     it("renders empty state when focused team has no members or sub-teams", () => {
       const team = makeTeam("backend");
       const slice: OrgViewSlice = { teams: [], focusedTeam: team, ancestorChain: [] };
-      const svg = renderOrgView(slice, new Map(), DEFAULT_STYLE);
+      const svg = renderOrgView(slice, makeStyles());
       expect(svg).toContain("No members");
     });
 
@@ -165,7 +181,7 @@ describe("renderOrgView", () => {
         focusedTeam: team,
         ancestorChain: [],
       };
-      const svg = renderOrgView(slice, new Map(), DEFAULT_STYLE);
+      const svg = renderOrgView(slice, makeStyles());
       expect(svg).toContain("Alice");
       expect(svg).toContain("Bob");
       expect(svg).toContain('data-node-id="alice"');
@@ -177,7 +193,7 @@ describe("renderOrgView", () => {
         members: [{ id: "alice", slack: "@alice", github: "alice-gh" }],
       });
       const slice: OrgViewSlice = { teams: [], focusedTeam: team, ancestorChain: [] };
-      const svg = renderOrgView(slice, new Map(), DEFAULT_STYLE);
+      const svg = renderOrgView(slice, makeStyles());
       expect(svg).toContain("@alice · alice-gh");
     });
 
@@ -191,7 +207,7 @@ describe("renderOrgView", () => {
         ],
       });
       const slice: OrgViewSlice = { teams: [], focusedTeam: team, ancestorChain: [] };
-      const svg = renderOrgView(slice, new Map(), DEFAULT_STYLE);
+      const svg = renderOrgView(slice, makeStyles());
       expect(svg).toContain("This is a very long description that exc");
       expect(svg).not.toContain("exceeds forty characters in total");
     });
@@ -206,7 +222,7 @@ describe("renderOrgView", () => {
         focusedTeam: team,
         ancestorChain: [],
       };
-      const svg = renderOrgView(slice, new Map(), DEFAULT_STYLE);
+      const svg = renderOrgView(slice, makeStyles());
       expect(svg).toContain('data-node-id="alice"');
       expect(svg).toContain('data-node-id="sre"');
     });
