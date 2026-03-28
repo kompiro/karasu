@@ -1,7 +1,7 @@
 import { watch } from "chokidar";
 import type { ServerResponse } from "node:http";
 
-export type SseClient = ServerResponse;
+type SseClient = ServerResponse;
 
 export class FileWatcher {
   private clients: Set<SseClient> = new Set();

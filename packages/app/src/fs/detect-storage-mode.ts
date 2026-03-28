@@ -3,7 +3,7 @@ export type AppMode = StorageMode | "serve";
 
 /** OPFS の利用可否を判定し、ストレージモードを返す。
  *  URLパラメータ `?mode=memory` で強制的にメモリモードに切り替えられる。 */
-export function detectStorageMode(): StorageMode {
+function detectStorageMode(): StorageMode {
   try {
     if (
       typeof location !== "undefined" &&
