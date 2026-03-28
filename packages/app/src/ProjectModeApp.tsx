@@ -5,7 +5,7 @@ import { ProjectSelector } from "./components/ProjectSelector.js";
 import { FileTree } from "./components/FileTree.js";
 import { KarasuPreviewColumn } from "./components/KarasuPreviewColumn.js";
 import { useAppContext } from "./state/app-context.js";
-import { useProjectSystemView } from "./hooks/useProjectSystemView.js";
+import { useSystemView } from "./hooks/useSystemView.js";
 import { useProjectDeployView } from "./hooks/useProjectDeployView.js";
 import { useOrgView } from "./hooks/useOrgView.js";
 import { ProjectManager } from "./fs/project-manager.js";
@@ -45,7 +45,7 @@ export function ProjectModeApp() {
     nodeMetadata: systemNodeMetadata,
     hasDeployDiagram,
     recompile: recompileSystem,
-  } = useProjectSystemView(entryPath, fs, viewPath);
+  } = useSystemView(entryPath, fs, viewPath);
 
   const {
     svg: deploySvg,
