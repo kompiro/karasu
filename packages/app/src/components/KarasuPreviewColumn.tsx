@@ -6,6 +6,7 @@ import { BreadcrumbBar } from "./BreadcrumbBar.js";
 import { PreviewPane } from "./PreviewPane.js";
 import { WarningPanel } from "./WarningPanel.js";
 import { ReferencePanel } from "./ReferencePanel.js";
+import { downloadSvg } from "../utils/download-svg.js";
 
 interface SystemViewProps {
   svg: string;
@@ -88,6 +89,14 @@ export function KarasuPreviewColumn({
         onChange={onActiveViewChange}
       />
       <div className="preview-toolbar">
+        <button
+          className="toolbar-btn toolbar-btn--export"
+          onClick={() => downloadSvg(svg, `diagram-${activeView}.svg`)}
+          aria-label="Export SVG"
+          disabled={!svg}
+        >
+          ↓ Export SVG
+        </button>
         <button
           className="toolbar-btn toolbar-btn--reference"
           onClick={() => setRefOpen(true)}
