@@ -1,0 +1,17 @@
+{
+  "$schema": "https://unpkg.com/knip@latest/schema.json",
+  "workspaces": {
+    ".": {
+      "entry": [],
+      "project": []
+    },
+    "packages/core": {
+      "entry": ["src/index.ts"],
+      "project": ["src/**/*.ts", "!src/**/*.test.ts"]
+    },
+    "packages/app": {
+      "project": ["src/**/*.{ts,tsx}", "!src/**/*.test.{ts,tsx}"]
+    }
+  },
+  "ignoreBinaries": ["vitest"]
+}
