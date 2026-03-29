@@ -1,5 +1,11 @@
 import { useEffect, useCallback, useMemo, useRef, useState } from "react";
-import { Parser, InMemoryFileSystemProvider, type KrsNode, type OrgViewPath } from "@karasu/core";
+import {
+  Parser,
+  InMemoryFileSystemProvider,
+  type KrsNode,
+  type OrgViewPath,
+  type DisplayMode,
+} from "@karasu/core";
 import { KarasuPreviewColumn } from "./components/KarasuPreviewColumn.js";
 import { AppProvider, useAppContext } from "./state/app-context.js";
 import { useSystemView } from "./hooks/useSystemView.js";
@@ -50,7 +56,7 @@ export function ServeModeApp() {
 
 function ServeModeInner() {
   const { state, dispatch, fs } = useAppContext();
-  const { fileContent, viewPath, activeView, orgPath, highlightedNodeId } = state;
+  const { fileContent, viewPath, activeView, orgPath, highlightedNodeId, displayMode } = state;
   const [loadError, setLoadError] = useState<string | null>(null);
 
   // ref に recompile を格納し loadFile から参照できるようにする
@@ -63,7 +69,7 @@ function ServeModeInner() {
     nodeMetadata: systemNodeMetadata,
     hasDeployDiagram,
     recompile: recompileSystem,
-  } = useSystemView(SERVE_FILE_PATH, fs, viewPath);
+  } = useSystemView(SERVE_FILE_PATH, fs, viewPath, displayMode);
 
   const {
     svg: deploySvg,
@@ -256,6 +262,10 @@ function ServeModeInner() {
         activeView={activeView}
         hasDeployDiagram={hasDeployDiagram}
         onActiveViewChange={handleActiveViewChange}
+        displayMode={displayMode}
+        onDisplayModeChange={(mode: DisplayMode) =>
+          dispatch({ type: "SET_DISPLAY_MODE", displayMode: mode })
+        }
         systemView={{
           svg: systemSvg,
           diagnostics: systemDiagnostics,
