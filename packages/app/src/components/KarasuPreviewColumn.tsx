@@ -55,7 +55,7 @@ interface KarasuPreviewColumnProps {
 
   nodeMetadata: Map<string, NodeMetadata>;
   onDrillDown: (path: string[]) => void;
-  fullViewSvg: string;
+  drillViewSvg: string;
 
   deployBlocks?: DeployBlockInfo[];
   selectedDeployBlockId?: string | null;
@@ -71,17 +71,17 @@ export function KarasuPreviewColumn({
   orgView,
   nodeMetadata,
   onDrillDown,
-  fullViewSvg,
+  drillViewSvg,
   deployBlocks,
   selectedDeployBlockId,
   onDeployBlockChange,
 }: KarasuPreviewColumnProps) {
   const [refOpen, setRefOpen] = useState(false);
-  const [isFullView, setIsFullView] = useState(false);
+  const [isDrillView, setIsDrillView] = useState(false);
 
   // Reset full view mode when switching away from system tab
   useEffect(() => {
-    if (activeView !== "system") setIsFullView(false);
+    if (activeView !== "system") setIsDrillView(false);
   }, [activeView]);
 
   const svg =
@@ -99,7 +99,7 @@ export function KarasuPreviewColumn({
   const viewPath =
     activeView === "system" ? systemView.viewPath : activeView === "org" ? orgView.orgPath : [];
 
-  const exportFilename = (fullView: boolean) =>
+  const exportFilename = (drillView: boolean) =>
     buildSvgExportFilename(activeView, {
       breadcrumbItems:
         activeView === "system"
@@ -109,7 +109,7 @@ export function KarasuPreviewColumn({
             : [],
       deployBlocks,
       selectedDeployBlockId,
-      isFullView: fullView,
+      isFullView: drillView,
     });
 
   return (
@@ -124,23 +124,23 @@ export function KarasuPreviewColumn({
       />
       <div className="preview-toolbar">
         <button
-          className={`toolbar-btn toolbar-btn--fullview${isFullView ? " toolbar-btn--active" : ""}`}
-          onClick={() => setIsFullView((v) => !v)}
-          aria-label="Toggle full view"
-          aria-pressed={isFullView}
-          disabled={!fullViewSvg || activeView !== "system"}
+          className={`toolbar-btn toolbar-btn--drilldown${isDrillView ? " toolbar-btn--active" : ""}`}
+          onClick={() => setIsDrillView((v) => !v)}
+          aria-label="Toggle drill-down view"
+          aria-pressed={isDrillView}
+          disabled={!drillViewSvg || activeView !== "system"}
         >
-          ⊞ Full View
+          ⊞ Drill-down View
         </button>
         <button
           className="toolbar-btn toolbar-btn--export"
           onClick={() =>
-            isFullView
-              ? downloadSvg(fullViewSvg, exportFilename(true))
+            isDrillView
+              ? downloadSvg(drillViewSvg, exportFilename(true))
               : downloadSvg(svg, exportFilename(false))
           }
           aria-label="Export SVG"
-          disabled={!(isFullView ? fullViewSvg : svg)}
+          disabled={!(isDrillView ? drillViewSvg : svg)}
         >
           ↓ Export SVG
         </button>
@@ -162,12 +162,12 @@ export function KarasuPreviewColumn({
       {activeView === "org" && (
         <BreadcrumbBar items={orgView.breadcrumbItems} onNavigate={orgView.onBreadcrumbNavigate} />
       )}
-      {isFullView ? (
+      {isDrillView ? (
         <iframe
-          srcDoc={fullViewSvg}
+          srcDoc={drillViewSvg}
           sandbox="allow-same-origin"
           style={{ width: "100%", flex: 1, border: "none", minHeight: 0 }}
-          title="Full diagram view"
+          title="Drill-down diagram view"
         />
       ) : (
         <PreviewPane

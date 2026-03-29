@@ -3,11 +3,11 @@ import { buildExportSvgFromProject, type FileSystemProvider } from "@karasu/core
 
 const DEBOUNCE_MS = 300;
 
-export function useFullViewSvg(
+export function useDrillViewSvg(
   entryPath: string | null,
   fs: FileSystemProvider | null,
-): { fullViewSvg: string; recompile: () => void } {
-  const [fullViewSvg, setFullViewSvg] = useState("");
+): { drillViewSvg: string; recompile: () => void } {
+  const [drillViewSvg, setFullViewSvg] = useState("");
   const lastValidSvg = useRef("");
   const timerRef = useRef<ReturnType<typeof setTimeout>>(undefined);
   const recompileCounter = useRef(0);
@@ -39,5 +39,5 @@ export function useFullViewSvg(
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [entryPath, fs, recompileCounter.current]);
 
-  return { fullViewSvg, recompile };
+  return { drillViewSvg, recompile };
 }

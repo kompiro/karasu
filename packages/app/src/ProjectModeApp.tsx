@@ -8,7 +8,7 @@ import { useAppContext } from "./state/app-context.js";
 import { useSystemView } from "./hooks/useSystemView.js";
 import { useDeployView } from "./hooks/useDeployView.js";
 import { useOrgView } from "./hooks/useOrgView.js";
-import { useFullViewSvg } from "./hooks/useFullViewSvg.js";
+import { useDrillViewSvg } from "./hooks/useDrillViewSvg.js";
 import { ProjectManager } from "./fs/project-manager.js";
 import type { Project, KrsNode, OrgViewPath } from "@karasu/core";
 import type { ActiveView } from "./state/app-reducer.js";
@@ -65,7 +65,7 @@ export function ProjectModeApp() {
     recompile: recompileOrg,
   } = useOrgView(entryPath, fs, orgPath as OrgViewPath);
 
-  const { fullViewSvg, recompile: recompileFullView } = useFullViewSvg(entryPath, fs);
+  const { drillViewSvg, recompile: recompileFullView } = useDrillViewSvg(entryPath, fs);
 
   const recompile = useCallback(() => {
     recompileSystem();
@@ -378,7 +378,7 @@ export function ProjectModeApp() {
         }}
         nodeMetadata={nodeMetadata}
         onDrillDown={handleDrillDown}
-        fullViewSvg={fullViewSvg}
+        drillViewSvg={drillViewSvg}
         deployBlocks={deployBlocks}
         selectedDeployBlockId={selectedDeployBlockId}
         onDeployBlockChange={handleDeployBlockChange}

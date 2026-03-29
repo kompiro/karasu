@@ -20,10 +20,10 @@ export function buildSvgExportFilename(
     breadcrumbItems?: { id: string; label: string }[];
     deployBlocks?: DeployBlockItem[];
     selectedDeployBlockId?: string | null;
-    isFullView?: boolean;
+    isDrillView?: boolean;
   } = {},
 ): string {
-  const { breadcrumbItems = [], deployBlocks = [], selectedDeployBlockId, isFullView } = options;
+  const { breadcrumbItems = [], deployBlocks = [], selectedDeployBlockId, isDrillView } = options;
 
   let nodeName: string;
 
@@ -37,6 +37,6 @@ export function buildSvgExportFilename(
     nodeName = last && !isOrgSentinel ? sanitizeFilename(last.label, last.id) : view;
   }
 
-  const suffix = isFullView ? "-full" : "";
+  const suffix = isDrillView ? "-drilldown" : "";
   return `${view}-${nodeName}${suffix}.svg`;
 }
