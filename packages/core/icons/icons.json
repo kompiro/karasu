@@ -1,15 +1,15 @@
 {
   "icons": [
     { "name": "service", "file": "service.svg" },
-    { "name": "user", "file": "user.svg" },
+    { "name": "user-card", "file": "user.svg" },
     { "name": "domain", "file": "domain.svg" },
     { "name": "resource", "file": "resource.svg" },
     { "name": "team", "file": "team.svg" },
     { "name": "member", "file": "member.svg" },
     { "name": "database", "file": "database.svg" },
-    { "name": "queue", "file": "queue.svg" },
+    { "name": "queue-card", "file": "queue.svg" },
     { "name": "api", "file": "api.svg" },
-    { "name": "cloud", "file": "cloud.svg" },
+    { "name": "cloud-card", "file": "cloud.svg" },
     { "name": "oci", "file": "oci.svg" },
     { "name": "lambda", "file": "lambda.svg" },
     { "name": "jar", "file": "jar.svg" },

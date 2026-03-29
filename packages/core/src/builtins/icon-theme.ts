@@ -13,7 +13,7 @@ export const ICON_THEME_STYLE_SOURCE: string = `/* karasu icon theme */
 
 /* ── Logical nodes ── */
 service  { shape: url("service");  }
-user     { shape: url("user");     }
+user     { shape: url("user-card");     }
 domain   { shape: url("domain");   }
 usecase  { shape: url("domain");   }
 resource { shape: url("resource"); }
@@ -22,9 +22,9 @@ member   { shape: url("member");   }
 
 /* ── Resource tag variants ── */
 resource[table]   { shape: url("database"); }
-resource[queue]   { shape: url("queue");    }
+resource[queue]   { shape: url("queue-card");    }
 resource[api]     { shape: url("api");      }
-resource[storage] { shape: url("cloud");    }
+resource[storage] { shape: url("cloud-card");    }
 
 /* ── Deploy nodes ── */
 oci      { shape: url("oci");      }
