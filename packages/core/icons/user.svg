@@ -1,8 +1,7 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 100">
   <g class="krs-pictogram" transform="translate(6, 4)">
-    <ellipse cx="10" cy="4" rx="8" ry="3" fill="{{color}}"/>
-    <path d="M2 4v12c0 1.7 3.6 3 8 3s8-1.3 8-3V4" fill="none" stroke="{{color}}" stroke-width="1.5"/>
-    <ellipse cx="10" cy="16" rx="8" ry="3" fill="none" stroke="{{color}}" stroke-width="0.5"/>
+    <circle cx="10" cy="6" r="4.5" fill="{{color}}"/>
+    <path d="M2 18.5c0-4 3.6-7 8-7s8 3 8 7" fill="{{color}}" stroke="none"/>
   </g>
   <text class="krs-label" x="30" y="19" text-anchor="start"/>
   <text class="krs-description" x="8" y="44" text-anchor="start"/>

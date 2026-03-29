@@ -24,15 +24,17 @@ export interface IconManifest {
  *
  * @param manifest - The parsed icons.json content
  * @param svgContents - Map of filename → SVG string content (key matches entry.file)
+ * @param builtIn - Whether these icons are built-in (receive placeholder injection)
  */
 export function resolveIconManifest(
   manifest: IconManifest,
   svgContents: Record<string, string>,
+  builtIn?: boolean,
 ): void {
   for (const entry of manifest.icons) {
     const svg = svgContents[entry.file];
     if (svg) {
-      loadAndRegisterIcon(entry.name, svg);
+      loadAndRegisterIcon(entry.name, svg, builtIn);
     }
   }
 }
