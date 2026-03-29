@@ -80,10 +80,7 @@ export function NodeDetailPanel({
     >
       <div className="node-detail-header">
         {pictogramSvg ? (
-          <span
-            className="node-detail-icon"
-            dangerouslySetInnerHTML={{ __html: pictogramSvg }}
-          />
+          <span className="node-detail-icon" dangerouslySetInnerHTML={{ __html: pictogramSvg }} />
         ) : (
           <span className="node-detail-icon">{fallbackIcon}</span>
         )}

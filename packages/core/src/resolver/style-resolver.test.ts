@@ -371,7 +371,11 @@ describe("analyze", () => {
     const builtin = getBuiltinStyleSheet();
     const iconThemeSheet: StyleSheet = {
       rules: [
-        makeRule({ nodeType: "service", tags: [], annotations: [] }, { shape: 'url("service")' }, 0),
+        makeRule(
+          { nodeType: "service", tags: [], annotations: [] },
+          { shape: 'url("service")' },
+          0,
+        ),
       ],
     };
     const userSheet: StyleSheet = {
@@ -386,7 +390,11 @@ describe("analyze", () => {
     const builtin = getBuiltinStyleSheet();
     const iconThemeSheet: StyleSheet = {
       rules: [
-        makeRule({ nodeType: "service", tags: [], annotations: [] }, { shape: 'url("service")' }, 0),
+        makeRule(
+          { nodeType: "service", tags: [], annotations: [] },
+          { shape: 'url("service")' },
+          0,
+        ),
       ],
     };
     const userSheet1: StyleSheet = {

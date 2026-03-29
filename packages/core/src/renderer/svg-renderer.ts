@@ -244,7 +244,11 @@ function renderNode(
         stroke: style.borderColor,
         "stroke-width": style.borderWidth,
         "stroke-dasharray":
-          style.borderStyle === "dashed" ? "8 4" : style.borderStyle === "dotted" ? "2 2" : undefined,
+          style.borderStyle === "dashed"
+            ? "8 4"
+            : style.borderStyle === "dotted"
+              ? "2 2"
+              : undefined,
       }),
     );
   }

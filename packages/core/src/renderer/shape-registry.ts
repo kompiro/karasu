@@ -99,11 +99,7 @@ export function getIconDef(name: string): SvgIconDef | undefined {
  * @param color    - Fill color for {{color}} placeholder (built-in icons only)
  * @param size     - Width and height in pixels (default: 20)
  */
-export function renderPictogram(
-  iconName: string,
-  color: string,
-  size = 20,
-): string | undefined {
+export function renderPictogram(iconName: string, color: string, size = 20): string | undefined {
   const def = iconDefRegistry.get(iconName);
   if (!def?.pictogramBody) return undefined;
 
