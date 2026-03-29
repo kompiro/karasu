@@ -16,7 +16,6 @@ import { ReferencePanel } from "./ReferencePanel.js";
 import { downloadSvg } from "../utils/download-svg.js";
 import { buildSvgExportFilename } from "../utils/build-svg-export-filename.js";
 
-
 interface SystemViewProps {
   svg: string;
   diagnostics: Diagnostic[];

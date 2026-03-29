@@ -291,7 +291,6 @@ export async function compileProject(
   return { svg, warnings, diagnostics, nodeMetadata, hasDeployDiagram, deployBlocks };
 }
 
-
 function buildNodeMetadata(
   viewSlice: import("./view/view-extract.js").ViewSlice,
   serviceIdsWithDeploy?: Set<string>,
