@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import type { Diagnostic, NodeMetadata, Warning, OrgViewPath, DeployBlockInfo } from "@karasu/core";
 import type { ActiveView } from "../state/app-reducer.js";
 import { DiagramTabBar } from "./DiagramTabBar.js";
@@ -78,6 +78,11 @@ export function KarasuPreviewColumn({
   const [refOpen, setRefOpen] = useState(false);
   const [isFullView, setIsFullView] = useState(false);
 
+  // Reset full view mode when switching away from system tab
+  useEffect(() => {
+    if (activeView !== "system") setIsFullView(false);
+  }, [activeView]);
+
   const svg =
     activeView === "system"
       ? systemView.svg
@@ -109,7 +114,7 @@ export function KarasuPreviewColumn({
           onClick={() => setIsFullView((v) => !v)}
           aria-label="Toggle full view"
           aria-pressed={isFullView}
-          disabled={!fullViewSvg}
+          disabled={!fullViewSvg || activeView !== "system"}
         >
           ⊞ Full View
         </button>
