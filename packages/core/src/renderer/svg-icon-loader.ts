@@ -32,6 +32,9 @@ export function parseSvgIcon(name: string, svgString: string, builtIn?: boolean)
   const labelSlot = extractTextSlot(svgString, "krs-label");
   const descriptionSlot = extractTextSlot(svgString, "krs-description");
 
+  // Extract pictogram: inner content of <g class="krs-pictogram"> (paths/circles in 0–20px space)
+  const pictogramBody = extractPictogramBody(svgString);
+
   // Extract body: content between <svg ...> and </svg>, then remove krs-* text elements
   let body = extractSvgBody(svgString);
   body = removeTextSlotElements(body, "krs-label");
@@ -45,6 +48,7 @@ export function parseSvgIcon(name: string, svgString: string, builtIn?: boolean)
     labelSlot,
     descriptionSlot,
     builtIn,
+    pictogramBody,
   };
 }
 
@@ -89,6 +93,19 @@ function extractTextSlot(svg: string, className: string): SvgIconTextSlot | unde
     y: parseFloat(yMatch[1]),
     textAnchor: anchorMatch?.[1],
   };
+}
+
+/**
+ * Extract the inner content of <g class="krs-pictogram"> (paths/circles, etc.).
+ * The content is in 0–20px coordinate space (the translate on the group is excluded).
+ * Returns undefined if no krs-pictogram group is found.
+ */
+function extractPictogramBody(svgString: string): string | undefined {
+  // Match <g ... class="krs-pictogram" ...>CONTENT</g>
+  // Uses a non-greedy match; won't handle deeply nested <g> but sufficient for built-in icons.
+  const match = svgString.match(/<g\s[^>]*class\s*=\s*"krs-pictogram"[^>]*>([\s\S]*?)<\/g>/i);
+  if (!match) return undefined;
+  return match[1].trim();
 }
 
 function extractSvgBody(svgString: string): string {

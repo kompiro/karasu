@@ -55,6 +55,12 @@ export interface SvgIconDef {
   descriptionSlot?: SvgIconTextSlot;
   /** Whether this is a built-in icon that receives placeholder injection ({{color}}, {{fill}}, etc.) */
   builtIn?: boolean;
+  /**
+   * Inner content of the <g class="krs-pictogram"> element (path/circle/etc. only).
+   * Coordinates are in 0–20px space. Used to render a standalone 20×20 pictogram
+   * (e.g. in NodeDetailPanel) without the full icon card layout.
+   */
+  pictogramBody?: string;
 }
 
 const shapeRegistry = new Map<string, ShapeRenderFn>();
@@ -82,6 +88,31 @@ export function getRegisteredShapeNames(): string[] {
  */
 export function getIconDef(name: string): SvgIconDef | undefined {
   return iconDefRegistry.get(name);
+}
+
+/**
+ * Render the pictogram for a registered icon as an inline SVG string.
+ * The returned SVG has a fixed viewBox of "0 0 20 20" and the given pixel size.
+ * Returns undefined if the icon or its pictogramBody is not found.
+ *
+ * @param iconName - The registered icon name (e.g. "service", "user-card")
+ * @param color    - Fill color for {{color}} placeholder (built-in icons only)
+ * @param size     - Width and height in pixels (default: 20)
+ */
+export function renderPictogram(
+  iconName: string,
+  color: string,
+  size = 20,
+): string | undefined {
+  const def = iconDefRegistry.get(iconName);
+  if (!def?.pictogramBody) return undefined;
+
+  let body = def.pictogramBody;
+  if (def.builtIn) {
+    body = body.replace(/\{\{color\}\}/g, color);
+  }
+
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" width="${size}" height="${size}">${body}</svg>`;
 }
 
 /**

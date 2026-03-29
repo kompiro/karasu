@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 import { marked } from "marked";
 import DOMPurify from "dompurify";
+import { renderPictogram } from "@karasu/core";
 import type { NodeMetadata } from "@karasu/core";
 
 interface NodeDetailPanelProps {
@@ -15,21 +16,29 @@ interface NodeDetailPanelProps {
   onNavigateToOrg?: (teamId: string) => void;
 }
 
-const KIND_ICONS: Record<string, string> = {
+// Maps node kind to the registered icon name (mirrors ICON_THEME_STYLE_SOURCE).
+// Used to look up the SVG pictogram for consistent display with icon cards.
+const KIND_TO_ICON_NAME: Record<string, string> = {
+  service: "service",
+  user: "user-card",
+  domain: "domain",
+  usecase: "domain",
+  resource: "resource",
+  team: "team",
+  member: "member",
+  oci: "oci",
+  lambda: "lambda",
+  jar: "jar",
+  war: "war",
+  function: "function",
+  assets: "assets",
+  job: "job",
+  artifact: "artifact",
+};
+
+// Fallback emoji icons for kinds without a registered SVG pictogram.
+const KIND_FALLBACK_ICONS: Record<string, string> = {
   system: "🏗",
-  service: "⚙",
-  domain: "📦",
-  usecase: "📋",
-  resource: "💾",
-  user: "👤",
-  oci: "🐳",
-  lambda: "λ",
-  jar: "☕",
-  war: "📦",
-  function: "ƒ",
-  assets: "📁",
-  job: "⏱",
-  artifact: "🗄",
 };
 
 export function NodeDetailPanel({
@@ -47,7 +56,11 @@ export function NodeDetailPanel({
     return DOMPurify.sanitize(raw);
   }, [metadata.description]);
 
-  const icon = KIND_ICONS[metadata.kind] ?? "■";
+  // Prefer SVG pictogram from the icon registry for consistency with icon cards.
+  // Falls back to emoji for kinds without a registered icon (e.g. "system").
+  const iconName = KIND_TO_ICON_NAME[metadata.kind];
+  const pictogramSvg = iconName ? renderPictogram(iconName, "currentColor", 18) : undefined;
+  const fallbackIcon = KIND_FALLBACK_ICONS[metadata.kind] ?? "■";
 
   return (
     <div
@@ -66,7 +79,14 @@ export function NodeDetailPanel({
       onWheel={(e) => e.stopPropagation()}
     >
       <div className="node-detail-header">
-        <span className="node-detail-icon">{icon}</span>
+        {pictogramSvg ? (
+          <span
+            className="node-detail-icon"
+            dangerouslySetInnerHTML={{ __html: pictogramSvg }}
+          />
+        ) : (
+          <span className="node-detail-icon">{fallbackIcon}</span>
+        )}
         <span className="node-detail-label">{metadata.label}</span>
         <button className="node-detail-close" onClick={onClose} aria-label="Close">
           ×
