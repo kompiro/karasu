@@ -1,7 +1,7 @@
 import { sanitizeFilename } from "./sanitize-filename.js";
 import type { ActiveView } from "../state/app-reducer.js";
 
-export interface DeployBlockItem {
+interface DeployBlockItem {
   id: string;
   label?: string;
 }
@@ -34,8 +34,7 @@ export function buildSvgExportFilename(
     // For org view, "__org__" is a root sentinel — treat it as no selection
     const last = breadcrumbItems.at(-1);
     const isOrgSentinel = last?.id === "__org__";
-    nodeName =
-      last && !isOrgSentinel ? sanitizeFilename(last.label, last.id) : view;
+    nodeName = last && !isOrgSentinel ? sanitizeFilename(last.label, last.id) : view;
   }
 
   const suffix = isFullView ? "-full" : "";
