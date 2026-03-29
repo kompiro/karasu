@@ -65,6 +65,7 @@ export {
 export { analyze } from "./resolver/warnings.js";
 export type { DisplayMode } from "./renderer/layout.js";
 export { render, renderFromLayout } from "./renderer/svg-renderer.js";
+
 export { renderOrgView } from "./renderer/org-renderer.js";
 export { renderDeploy } from "./renderer/deploy-renderer.js";
 export { el, escapeXml } from "./renderer/svg-builder.js";
@@ -111,6 +112,7 @@ import { StyleParser } from "./parser/style-parser.js";
 import { resolveStyles } from "./resolver/style-resolver.js";
 import { analyze } from "./resolver/warnings.js";
 import { render } from "./renderer/svg-renderer.js";
+
 import type { DisplayMode } from "./renderer/layout.js";
 import { renderOrgView as _renderOrgView } from "./renderer/org-renderer.js";
 import { renderDeploy } from "./renderer/deploy-renderer.js";

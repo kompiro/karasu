@@ -13,6 +13,7 @@ import { useAppContext } from "./state/app-context.js";
 import { useSystemView } from "./hooks/useSystemView.js";
 import { useDeployView } from "./hooks/useDeployView.js";
 import { useOrgView } from "./hooks/useOrgView.js";
+
 import type { ActiveView } from "./state/app-reducer.js";
 import type { DisplayMode } from "@karasu/core";
 
@@ -170,7 +171,8 @@ function MemoryModeInner() {
       const orgs = parseResult.value.organizations;
       if (orgs.length === 0) return [];
 
-      const items: { id: string; label: string }[] = [{ id: "__org__", label: "Org" }];
+      const rootLabel = orgs[0].label ?? orgs[0].id;
+      const items: { id: string; label: string }[] = [{ id: "__org__", label: rootLabel }];
 
       let teams = orgs.flatMap((o) => o.teams);
       for (const segment of orgPath) {

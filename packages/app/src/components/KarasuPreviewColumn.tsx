@@ -13,6 +13,8 @@ import { BreadcrumbBar } from "./BreadcrumbBar.js";
 import { PreviewPane } from "./PreviewPane.js";
 import { WarningPanel } from "./WarningPanel.js";
 import { ReferencePanel } from "./ReferencePanel.js";
+import { downloadSvg } from "../utils/download-svg.js";
+import { buildSvgExportFilename } from "../utils/build-svg-export-filename.js";
 
 interface SystemViewProps {
   svg: string;
@@ -101,6 +103,17 @@ export function KarasuPreviewColumn({
   const viewPath =
     activeView === "system" ? systemView.viewPath : activeView === "org" ? orgView.orgPath : [];
 
+  const exportFilename = buildSvgExportFilename(activeView, {
+    breadcrumbItems:
+      activeView === "system"
+        ? systemView.breadcrumbItems
+        : activeView === "org"
+          ? orgView.breadcrumbItems
+          : [],
+    deployBlocks,
+    selectedDeployBlockId,
+  });
+
   return (
     <div className="preview-column">
       <DiagramTabBar
@@ -114,13 +127,21 @@ export function KarasuPreviewColumn({
       <div className="preview-toolbar">
         {activeView === "system" && (
           <button
-            className={`toolbar-btn${displayMode === "icon" ? " active" : ""}`}
+            className={`toolbar-btn toolbar-btn--icon-mode${displayMode === "icon" ? " active" : ""}`}
             onClick={() => onDisplayModeChange(displayMode === "icon" ? "shape" : "icon")}
             aria-label="Toggle icon mode"
           >
             ◇ Icon Mode
           </button>
         )}
+        <button
+          className="toolbar-btn toolbar-btn--export"
+          onClick={() => downloadSvg(svg, exportFilename)}
+          aria-label="Export SVG"
+          disabled={!svg}
+        >
+          ↓ Export SVG
+        </button>
         <button
           className="toolbar-btn toolbar-btn--reference"
           onClick={() => setRefOpen(true)}

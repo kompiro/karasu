@@ -625,7 +625,7 @@ function renderNode(
     );
   }
 
-  return el(
+  const nodeEl = el(
     "g",
     {
       "data-node-id": nodeId,
@@ -638,6 +638,7 @@ function renderNode(
     },
     ...children,
   );
+  return nodeEl;
 }
 
 // ---------------------------------------------------------------------------

@@ -8,6 +8,7 @@ import { useAppContext } from "./state/app-context.js";
 import { useSystemView } from "./hooks/useSystemView.js";
 import { useDeployView } from "./hooks/useDeployView.js";
 import { useOrgView } from "./hooks/useOrgView.js";
+
 import { ProjectManager } from "./fs/project-manager.js";
 import type { Project, KrsNode, OrgViewPath, DisplayMode } from "@karasu/core";
 import type { ActiveView } from "./state/app-reducer.js";
@@ -307,7 +308,8 @@ export function ProjectModeApp() {
       const orgs = parseResult.value.organizations;
       if (orgs.length === 0) return [];
 
-      const items: { id: string; label: string }[] = [{ id: "__org__", label: "Org" }];
+      const rootLabel = orgs[0].label ?? orgs[0].id;
+      const items: { id: string; label: string }[] = [{ id: "__org__", label: rootLabel }];
 
       let teams = orgs.flatMap((o) => o.teams);
       for (const segment of orgPath) {
