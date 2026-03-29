@@ -941,13 +941,15 @@ body,
   border-color: rgba(77, 143, 255, 0.3);
 }
 
-/* Export button — always visible as an actionable button */
+/* Icon Mode and Export buttons — always visible as actionable buttons */
+.toolbar-btn--icon-mode,
 .toolbar-btn--export {
   background: var(--bg-raised);
   color: var(--text-secondary);
   border-color: var(--border-strong);
 }
 
+.toolbar-btn--icon-mode:hover,
 .toolbar-btn--export:hover {
   background: var(--accent-dim);
   color: var(--accent-hover);

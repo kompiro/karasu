@@ -127,7 +127,7 @@ export function KarasuPreviewColumn({
       <div className="preview-toolbar">
         {activeView === "system" && (
           <button
-            className={`toolbar-btn${displayMode === "icon" ? " active" : ""}`}
+            className={`toolbar-btn toolbar-btn--icon-mode${displayMode === "icon" ? " active" : ""}`}
             onClick={() => onDisplayModeChange(displayMode === "icon" ? "shape" : "icon")}
             aria-label="Toggle icon mode"
           >
