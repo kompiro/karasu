@@ -7,6 +7,7 @@ import { PreviewPane } from "./PreviewPane.js";
 import { WarningPanel } from "./WarningPanel.js";
 import { ReferencePanel } from "./ReferencePanel.js";
 import { downloadSvg } from "../utils/download-svg.js";
+import { buildSvgExportFilename } from "../utils/build-svg-export-filename.js";
 
 interface SystemViewProps {
   svg: string;
@@ -98,6 +99,19 @@ export function KarasuPreviewColumn({
   const viewPath =
     activeView === "system" ? systemView.viewPath : activeView === "org" ? orgView.orgPath : [];
 
+  const exportFilename = (isFullView: boolean) =>
+    buildSvgExportFilename(activeView, {
+      breadcrumbItems:
+        activeView === "system"
+          ? systemView.breadcrumbItems
+          : activeView === "org"
+            ? orgView.breadcrumbItems
+            : [],
+      deployBlocks,
+      selectedDeployBlockId,
+      isFullView,
+    });
+
   return (
     <div className="preview-column">
       <DiagramTabBar
@@ -122,8 +136,8 @@ export function KarasuPreviewColumn({
           className="toolbar-btn toolbar-btn--export"
           onClick={() =>
             isFullView
-              ? downloadSvg(fullViewSvg, `diagram-${activeView}-full.svg`)
-              : downloadSvg(svg, `diagram-${activeView}.svg`)
+              ? downloadSvg(fullViewSvg, exportFilename(true))
+              : downloadSvg(svg, exportFilename(false))
           }
           aria-label="Export SVG"
           disabled={!(isFullView ? fullViewSvg : svg)}
