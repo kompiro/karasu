@@ -9,7 +9,24 @@ import {
   type NodeMetadata,
 } from "@karasu/core";
 import iconManifest from "@karasu/core/icons/icons.json";
+import serviceSvg from "@karasu/core/icons/service.svg?raw";
+import userSvg from "@karasu/core/icons/user.svg?raw";
+import domainSvg from "@karasu/core/icons/domain.svg?raw";
+import resourceSvg from "@karasu/core/icons/resource.svg?raw";
+import teamSvg from "@karasu/core/icons/team.svg?raw";
+import memberSvg from "@karasu/core/icons/member.svg?raw";
 import databaseSvg from "@karasu/core/icons/database.svg?raw";
+import queueSvg from "@karasu/core/icons/queue.svg?raw";
+import apiSvg from "@karasu/core/icons/api.svg?raw";
+import cloudSvg from "@karasu/core/icons/cloud.svg?raw";
+import ociSvg from "@karasu/core/icons/oci.svg?raw";
+import lambdaSvg from "@karasu/core/icons/lambda.svg?raw";
+import jarSvg from "@karasu/core/icons/jar.svg?raw";
+import warSvg from "@karasu/core/icons/war.svg?raw";
+import functionSvg from "@karasu/core/icons/function.svg?raw";
+import assetsSvg from "@karasu/core/icons/assets.svg?raw";
+import jobSvg from "@karasu/core/icons/job.svg?raw";
+import artifactSvg from "@karasu/core/icons/artifact.svg?raw";
 
 interface SystemViewState {
   svg: string;
@@ -19,10 +36,31 @@ interface SystemViewState {
   hasDeployDiagram: boolean;
 }
 
-// Register icons from manifest on module load
-resolveIconManifest(iconManifest, {
-  "database.svg": databaseSvg,
-});
+// Register icons from manifest on module load (builtIn: true for placeholder injection)
+resolveIconManifest(
+  iconManifest,
+  {
+    "service.svg": serviceSvg,
+    "user.svg": userSvg,
+    "domain.svg": domainSvg,
+    "resource.svg": resourceSvg,
+    "team.svg": teamSvg,
+    "member.svg": memberSvg,
+    "database.svg": databaseSvg,
+    "queue.svg": queueSvg,
+    "api.svg": apiSvg,
+    "cloud.svg": cloudSvg,
+    "oci.svg": ociSvg,
+    "lambda.svg": lambdaSvg,
+    "jar.svg": jarSvg,
+    "war.svg": warSvg,
+    "function.svg": functionSvg,
+    "assets.svg": assetsSvg,
+    "job.svg": jobSvg,
+    "artifact.svg": artifactSvg,
+  },
+  true,
+);
 
 const DEBOUNCE_MS = 300;
 
