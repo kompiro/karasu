@@ -7,6 +7,7 @@ import {
   type ViewPath,
   type FileSystemProvider,
   type NodeMetadata,
+  type DisplayMode,
 } from "@karasu/core";
 import iconManifest from "@karasu/core/icons/icons.json";
 import serviceSvg from "@karasu/core/icons/service.svg?raw";
@@ -68,6 +69,7 @@ export function useSystemView(
   entryPath: string | null,
   fs: FileSystemProvider | null,
   viewPath: ViewPath = [],
+  displayMode: DisplayMode = "shape",
 ): SystemViewState & { recompile: () => void } {
   const [state, setState] = useState<SystemViewState>({
     svg: "",
@@ -96,7 +98,14 @@ export function useSystemView(
 
     timerRef.current = setTimeout(async () => {
       try {
-        const result = await compileProject(entryPath, fs, viewPath, "system");
+        const result = await compileProject(
+          entryPath,
+          fs,
+          viewPath,
+          "system",
+          undefined,
+          displayMode,
+        );
         const hasErrors = result.diagnostics.some((d) => d.severity === "error");
 
         if (hasErrors) {
@@ -136,7 +145,7 @@ export function useSystemView(
       if (timerRef.current) clearTimeout(timerRef.current);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [entryPath, fs, viewPath, recompileCounter.current]);
+  }, [entryPath, fs, viewPath, displayMode, recompileCounter.current]);
 
   return { ...state, recompile };
 }
