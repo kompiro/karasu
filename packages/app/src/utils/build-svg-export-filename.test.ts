@@ -62,13 +62,13 @@ describe("buildSvgExportFilename", () => {
       ).toBe("deploy-block-a.svg");
     });
 
-    it("falls back to view name when no block is selected", () => {
+    it("falls back to first block when selectedDeployBlockId is null", () => {
       expect(
         buildSvgExportFilename("deploy", {
           deployBlocks: [{ id: "block-a", label: "Block A" }],
           selectedDeployBlockId: null,
         }),
-      ).toBe("deploy-deploy.svg");
+      ).toBe("deploy-Block_A.svg");
     });
 
     it("falls back to view name when deployBlocks is empty", () => {
@@ -77,23 +77,27 @@ describe("buildSvgExportFilename", () => {
   });
 
   describe("org view", () => {
-    it("uses the last breadcrumb item, skipping __org__ root sentinel", () => {
+    it("uses the last breadcrumb item label", () => {
       expect(
         buildSvgExportFilename("org", {
           breadcrumbItems: [
-            { id: "__org__", label: "Org" },
+            { id: "__org__", label: "EC開発組織" },
             { id: "team-a", label: "Team A" },
           ],
         }),
       ).toBe("org-Team_A.svg");
     });
 
-    it("falls back to view name when only the root sentinel is in breadcrumb", () => {
+    it("uses the root org label when only the root breadcrumb is present", () => {
       expect(
         buildSvgExportFilename("org", {
-          breadcrumbItems: [{ id: "__org__", label: "Org" }],
+          breadcrumbItems: [{ id: "__org__", label: "EC開発組織" }],
         }),
-      ).toBe("org-org.svg");
+      ).toBe("org-EC開発組織.svg");
+    });
+
+    it("falls back to view name when breadcrumbItems is empty", () => {
+      expect(buildSvgExportFilename("org", {})).toBe("org-org.svg");
     });
   });
 });

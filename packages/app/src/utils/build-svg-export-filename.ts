@@ -27,13 +27,12 @@ export function buildSvgExportFilename(
   let nodeName: string;
 
   if (view === "deploy") {
-    const block = deployBlocks.find((b) => b.id === selectedDeployBlockId);
+    // Fall back to first block when none is explicitly selected
+    const block = deployBlocks.find((b) => b.id === selectedDeployBlockId) ?? deployBlocks[0];
     nodeName = block ? sanitizeFilename(block.label ?? block.id, block.id) : view;
   } else {
-    // For org view, "__org__" is a root sentinel — treat it as no selection
     const last = breadcrumbItems.at(-1);
-    const isOrgSentinel = last?.id === "__org__";
-    nodeName = last && !isOrgSentinel ? sanitizeFilename(last.label, last.id) : view;
+    nodeName = last ? sanitizeFilename(last.label, last.id) : view;
   }
 
   return `${view}-${nodeName}.svg`;

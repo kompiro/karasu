@@ -171,7 +171,8 @@ function MemoryModeInner() {
       const orgs = parseResult.value.organizations;
       if (orgs.length === 0) return [];
 
-      const items: { id: string; label: string }[] = [{ id: "__org__", label: "Org" }];
+      const rootLabel = orgs[0].label ?? orgs[0].id;
+      const items: { id: string; label: string }[] = [{ id: "__org__", label: rootLabel }];
 
       let teams = orgs.flatMap((o) => o.teams);
       for (const segment of orgPath) {
