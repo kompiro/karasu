@@ -46,6 +46,7 @@ function makeProps(overrides: Partial<Parameters<typeof KarasuPreviewColumn>[0]>
     onDrillDown: vi.fn(),
     displayMode: "shape" as const,
     onDisplayModeChange: vi.fn(),
+    onExportSvg: vi.fn(),
     ...overrides,
   };
 }

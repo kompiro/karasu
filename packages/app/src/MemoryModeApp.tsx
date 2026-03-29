@@ -8,6 +8,7 @@ import {
 } from "@karasu/core";
 import { EditorPane } from "./components/EditorPane.js";
 import { KarasuPreviewColumn } from "./components/KarasuPreviewColumn.js";
+import { downloadSvg } from "./utils/download-svg.js";
 import { AppProvider } from "./state/app-context.js";
 import { useAppContext } from "./state/app-context.js";
 import { useSystemView } from "./hooks/useSystemView.js";
@@ -230,6 +231,7 @@ function MemoryModeInner() {
         onDisplayModeChange={(mode: DisplayMode) =>
           dispatch({ type: "SET_DISPLAY_MODE", displayMode: mode })
         }
+        onExportSvg={(svg, filename) => downloadSvg(svg, filename)}
       />
     </div>
   );
