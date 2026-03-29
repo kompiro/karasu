@@ -1,4 +1,4 @@
-import type { Project, DirEntry } from "@karasu/core";
+import type { Project, DirEntry, DisplayMode } from "@karasu/core";
 
 export type ActiveView = "system" | "deploy" | "org";
 
@@ -18,6 +18,7 @@ export interface AppState {
   // クロスナビゲーション
   highlightedNodeId: string | null;
   // UI
+  displayMode: DisplayMode;
   loading: boolean;
 }
 
@@ -32,6 +33,7 @@ export const initialState: AppState = {
   orgPath: [],
   selectedDeployBlockId: null,
   highlightedNodeId: null,
+  displayMode: "shape",
   loading: true,
 };
 
@@ -49,7 +51,8 @@ export type AppAction =
   | { type: "SET_SELECTED_DEPLOY_BLOCK"; id: string | null }
   | { type: "ADD_PROJECT"; project: Project }
   | { type: "REMOVE_PROJECT"; id: string }
-  | { type: "RENAME_PROJECT"; id: string; name: string };
+  | { type: "RENAME_PROJECT"; id: string; name: string }
+  | { type: "SET_DISPLAY_MODE"; displayMode: DisplayMode };
 
 export function appReducer(state: AppState, action: AppAction): AppState {
   switch (action.type) {
@@ -134,6 +137,9 @@ export function appReducer(state: AppState, action: AppAction): AppState {
             ? { ...state.currentProject, name: action.name }
             : state.currentProject,
       };
+
+    case "SET_DISPLAY_MODE":
+      return { ...state, displayMode: action.displayMode };
 
     default:
       return state;
