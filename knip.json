@@ -13,5 +13,6 @@
       "project": ["src/**/*.{ts,tsx}", "!src/**/*.test.{ts,tsx}"]
     }
   },
-  "ignoreBinaries": ["vitest"]
+  "ignoreBinaries": ["vitest", "lefthook", "oxfmt", "oxlint", "knip", "vite", "tsc"],
+  "ignoreDependencies": ["lefthook", "oxfmt", "oxlint"]
 }

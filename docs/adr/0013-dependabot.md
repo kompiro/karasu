@@ -1,0 +1,66 @@
+# ADR-0013: Dependency Update Automation with Dependabot
+
+## Status
+
+Accepted
+
+## Context
+
+Dependency updates (npm packages and GitHub Actions) were managed manually. This creates two risks:
+
+1. **Security exposure**: Vulnerabilities in outdated dependencies go unnoticed until a developer happens to check.
+2. **Supply chain risk**: GitHub Actions pinned to mutable tags (e.g., `actions/checkout@v4`) can be silently replaced by a compromised version. This was addressed in #127 by pinning all actions to commit SHAs — but SHA pins need to be updated as new versions are released, which is impractical to do by hand.
+
+Automating dependency updates closes both gaps: packages stay current, and SHA-pinned actions receive timely update PRs.
+
+### Tool Selection: Dependabot vs. Renovate
+
+Two tools were evaluated:
+
+| Criterion | Dependabot | Renovate |
+|-----------|-----------|---------|
+| GitHub integration | Native (zero setup) | Third-party GitHub App |
+| Trust model | Operated by GitHub | Operated by Mend (independent) |
+| Monorepo support | Manual directory enumeration | Auto-detects `workspaces` |
+| PR grouping | Limited | Highly configurable |
+| GitHub Actions SHA update | Supported | Supported |
+| Bun lockfile support | Partial (`bun.lock` only) | Full (`bun.lock` + `bun.lockb`) |
+| Operational overhead | Low | Medium (config tuning) |
+
+**Renovate** offers richer monorepo support and better Bun compatibility, but requires granting write access to a third-party service and involves more upfront configuration.
+
+**Dependabot** is operated directly by GitHub, requires no additional app installation or trust decisions, and is sufficient for the current repository structure (two packages under `packages/`).
+
+The project currently has no plans to migrate to Bun, and the monorepo structure is stable. Dependabot's manual directory enumeration is a minor friction that only matters when adding new packages.
+
+## Decision
+
+Adopt Dependabot for automated dependency updates.
+
+Configure four update targets in `.github/dependabot.yml`:
+
+- npm packages at `/` (root), `/packages/core`, and `/packages/app`
+- GitHub Actions at `/.github/workflows`
+
+All targets run on a weekly schedule (Monday), aligning with the regular review cadence.
+
+## Consequences
+
+**Positive:**
+
+- GitHub Actions SHA pins are kept current automatically, sustaining the supply chain security posture established in #127
+- npm vulnerabilities surface as PRs rather than being discovered reactively
+- No new external service dependency or trust boundary introduced
+
+**Negative:**
+
+- Three separate npm directories produce independent PRs; if the same package appears in multiple directories, multiple PRs will be opened. This may create noise as the dependency graph grows.
+- If the project migrates to Bun, `bun.lockb` (binary lockfile format) is not supported by Dependabot. Migration to Renovate should be considered at that point.
+
+## Alternatives Considered
+
+**Renovate:**
+More powerful and better suited for Bun-based or heavily customized monorepos. Rejected for now due to the third-party trust requirement and higher setup cost relative to current project scale. Re-evaluate if the project migrates to Bun or if Dependabot PR volume becomes unmanageable.
+
+**Manual updates:**
+Status quo. Rejected because it relies on developer vigilance and does not scale as the dependency count grows.
