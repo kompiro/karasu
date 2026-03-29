@@ -71,6 +71,8 @@ function MemoryModeInner() {
     recompile: recompileOrg,
   } = useOrgView(MEMORY_FILE_PATH, fs, orgPath as OrgViewPath);
 
+  const { fullViewSvg, recompile: recompileFullView } = useFullViewSvg(MEMORY_FILE_PATH, fs);
+
   const recompile = useCallback(() => {
     recompileSystem();
     recompileDeploy();
@@ -79,8 +81,6 @@ function MemoryModeInner() {
   }, [recompileSystem, recompileDeploy, recompileOrg, recompileFullView]);
 
   const nodeMetadata = activeView === "deploy" ? deployNodeMetadata : systemNodeMetadata;
-
-  const { fullViewSvg, recompile: recompileFullView } = useFullViewSvg(MEMORY_FILE_PATH, fs);
 
   const handleEditorChange = useCallback(
     async (value: string) => {
