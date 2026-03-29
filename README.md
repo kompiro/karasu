@@ -71,7 +71,7 @@ karasu-architecture/
 import は相対パスのみをサポートします。URL 参照はサプライチェーン攻撃のリスクがあるため、意図的に非対応です。
 
 ```
-# index.krs
+// index.krs
 import { Payment } from "./teams/payment/service.krs"
 import { ECommerce } from "./teams/ec/service.krs"
 import { Production } from "./deploy/production.krs"
@@ -86,7 +86,7 @@ system ECPlatform {
 `realizes` によって「このデプロイ単位がこのサービスを実現している」を明示します。
 
 ```
-# teams/ec/service.krs — 論理構造（チームが定義）
+// teams/ec/service.krs — 論理構造（チームが定義）
 service ECommerce {
   domain Order {
     usecase PlaceOrder  { label "注文を受け付ける" }
@@ -94,11 +94,11 @@ service ECommerce {
   }
 }
 
-# deploy/production.krs — 物理構造
+// deploy/production.krs — 物理構造
 deploy "本番環境" {
   oci "api-server" {
     runtime  "Node.js 20"
-    realizes ECommerce     # 論理サービスとの対応を明示
+    realizes ECommerce     // 論理サービスとの対応を明示
   }
   job "monthly-billing" {
     schedule "0 0 1 * *"
