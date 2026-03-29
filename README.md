@@ -1,18 +1,32 @@
-# karasu（鴉）
+# karasu 鴉
 
-テキストベースのアーキテクチャモデリングツール。
-C4 Model に触発されつつも独自の語彙を持ち、**論理構造と物理構造を分離**して表現します。
+チーム規模のシステムを、テキストで記述・俯瞰するアーキテクチャモデリングツール。
 
-## 命名の由来
+![TypeScript](https://img.shields.io/badge/TypeScript-blue) ![Vite](https://img.shields.io/badge/Vite%20%2B%20React-purple) ![Vitest](https://img.shields.io/badge/Vitest-green)
 
-北欧神話のオーディンの使い魔ヒギン・ムニン（思考と記憶の鴉）に由来します。
-世界を俯瞰して情報を集め、必要な場所へ降りていく鴉の姿が、ドリルダウン型アーキテクチャ把握のコンセプトと重なります。
+## なぜ karasu か
 
-## 概要
+複数のリポジトリに分散して開発が進むと、システム全体を俯瞰した図を誰も持たなくなります。Confluence や Notion に書かれたアーキテクチャ図は更新されず、新入社員のオンボーディングで誰かが口頭で説明するか、古い情報をもとに混乱するか、どちらかです。
 
-karasu は `.krs` ファイルにアーキテクチャを記述し、SVG 図として可視化するツールです。
+karasu はアーキテクチャの記述を **アーキテクチャ専用リポジトリに集約し、チームの境界に沿ってファイルを分割・結合できる** ようにすることで、この問題に取り組みます。
 
-```krs
+| 用途 | 使う人 | 求めていること |
+|------|--------|----------------|
+| システム設計・進化の議論 | アーキテクト | 全体構造の設計と選択肢の比較 |
+| オーナーシップの明示 | チームリード | どのチームが何を担当するかの公式な記述 |
+| オンボーディング | 新入社員 | 自チームのドメインと周辺サービスの把握 |
+
+## 設計上の前提
+
+> **karasu はアーキテクチャ専用リポジトリで使うことを前提としています。**
+>
+> 各サービスの実装リポジトリに .krs ファイルを分散させ、URL で結合する設計は採用していません。import は **相対パスのみ** をサポートします。これはサプライチェーン攻撃のリスクを避けるための意図的な決断です。
+>
+> 各チームはアーキテクチャリポジトリ内の自チームディレクトリを CODEOWNERS で管理し、そこに .krs ファイルを置いて更新していきます。
+
+## 基本的な使い方
+
+```
 system ECPlatform {
   label "ECプラットフォーム"
 
@@ -27,77 +41,76 @@ system ECPlatform {
 }
 ```
 
-## 主な特徴
+## リポジトリ構成パターン
 
-- **論理／物理の分離** — ビジネス構造（`system` / `service` / `domain` / `usecase`）と、デプロイ構造（`deploy` / `oci` / `war` / `job` ...）を別図で管理
-- **`realizes` による対応付け** — 「このデプロイ単位がこのサービスを実現している」をUMLのRealization関係で明示
-- **ドリルダウン** — ダブルクリックで `system` → `service` → `domain` → `usecase` の階層を深掘り。パンくずナビゲーションで上位に戻れる
-- **ドメイン分散の検出** — 同じドメイン名が複数の service に分散している場合に自動警告
-- **スタイル分離** — CSS ライクな `.krs.style` ファイルで見た目を制御
-- **組織図** — `organization` / `team` / `member` で組織構造と所有関係（`owns`）を可視化
-- **タグ・アノテーション** — `[external]`, `[async]`, `[human]`, `[ai]` などのタグと `@deprecated`, `@new`, `@experimental` などのアノテーション
-- **ノード詳細表示** — ホバー / クリックでノードの説明・リンク・タグを確認
+```
+karasu-architecture/
+  ├── index.krs                 ← アーキテクトが所有。全体構造を定義
+  ├── teams/
+  │   ├── payment/
+  │   │   └── service.krs       ← paymentチームが所有・更新
+  │   ├── ec/
+  │   │   └── service.krs       ← ecチームが所有・更新
+  │   └── inventory/
+  │       └── service.krs
+  └── deploy/
+      └── production.krs
+```
 
-## 図の種類
+各チームのディレクトリには CODEOWNERS を設定することで、レビュー権限を分散させながら全体の整合性を保てます。
 
-karasu は 3 種類の図を生成します。UI 上のタブ（System / Deploy / Org）で切り替えて確認できます。
+```
+# .github/CODEOWNERS
+/teams/payment/   @payment-team
+/teams/ec/        @ec-team
+/index.krs        @architect
+```
 
-### 論理図（System ビュー）
+## ファイルの結合（import）
 
-ビジネス構造をドリルダウンで把握する。
+import は相対パスのみをサポートします。URL 参照はサプライチェーン攻撃のリスクがあるため、意図的に非対応です。
 
-```krs
-// main.krs — system 全体像
+```
+// index.krs
+import { Payment } from "./teams/payment/service.krs"
+import { ECommerce } from "./teams/ec/service.krs"
+import { Production } from "./deploy/production.krs"
+
 system ECPlatform {
-  label "ECプラットフォーム"
-  user Customer [human]      { role "購入者" }
-  service ECommerce          { label "ECサイト" }
-  service Payment [external] { label "決済サービス" }
-  Customer  ->  ECommerce "商品を購入する"
-  ECommerce ->  Payment   "決済を処理する"
+  ECommerce -> Payment "決済を処理する"
 }
+```
 
-// ecommerce.krs — サービス内部をドリルダウン
+## 論理構造と物理構造
+
+`realizes` によって「このデプロイ単位がこのサービスを実現している」を明示します。
+
+```
+// teams/ec/service.krs — 論理構造（チームが定義）
 service ECommerce {
   domain Order {
-    label "受注"
     usecase PlaceOrder  { label "注文を受け付ける" }
     usecase CancelOrder { label "注文をキャンセルする" }
   }
 }
-```
 
-### 物理図（Deploy ビュー）
-
-デプロイ単位と実行環境を記述する。
-
-```krs
-// deploy.krs
+// deploy/production.krs — 物理構造
 deploy "本番環境" {
   oci "api-server" {
     runtime  "Node.js 20"
-    realizes ECommerce
-  }
-  lambda "notifier" {
-    runtime  "Python 3.12"
-    realizes Notification
+    realizes ECommerce     // 論理サービスとの対応を明示
   }
   job "monthly-billing" {
     schedule "0 0 1 * *"
-    runtime  "Java 21"
     realizes Billing
   }
 }
 ```
 
-### 組織図（Org ビュー）
+## 組織とオーナーシップ
 
-チーム構造とサービスの所有関係を記述する。
-
-```krs
-// org.krs
+```
 organization DevOrg {
-  label "開発組織"
   team Platform {
     label "プラットフォームチーム"
     owns ECommerce
@@ -106,15 +119,35 @@ organization DevOrg {
 }
 ```
 
+## 図の種類
+
+| タブ | 内容 |
+|------|------|
+| `System` | 論理図。ダブルクリックで system → service → domain → usecase へドリルダウン |
+| `Deploy` | 物理図。デプロイ単位と realizes による論理との対応 |
+| `Org` | 組織図。チームと所有サービスの関係 |
+
+## 主な機能
+
+- **論理／物理の分離** — ビジネス構造とデプロイ構造を別図で管理。`realizes` で対応付け
+- **ドリルダウン** — ダブルクリックで階層を深掘り。パンくずナビで上位に戻れる
+- **ドメイン分散の検出** — 同じドメイン名が複数サービスに分散していると自動警告
+- **タグ・アノテーション** — `[external]` `[human]` `[async]` と `@deprecated` `@new` などに対応
+- **スタイル分離** — CSS ライクな `.krs.style` ファイルで見た目を制御
+
+## 命名の由来
+
+北欧神話のオーディンの使い魔、ヒギン・ムニン（思考と記憶の鴉）に由来します。世界を俯瞰して情報を集め、必要な場所へ降りていく鴉の姿が、ドリルダウン型アーキテクチャ把握のコンセプトと重なります。
+
 ## ドキュメント
 
-| ドキュメント                        | 場所                                                           |
-| ----------------------------------- | -------------------------------------------------------------- |
-| .krs 構文リファレンス               | [docs/spec/syntax.md](docs/spec/syntax.md)                     |
-| .krs.style 構文リファレンス         | [docs/spec/style.md](docs/spec/style.md)                       |
-| タグ・アノテーション一覧            | [docs/spec/tags-annotations.md](docs/spec/tags-annotations.md) |
-| コアコンセプト（論理/物理分離など） | [docs/concepts.md](docs/concepts.md)                           |
-| 設計判断の経緯（ADR）               | [docs/adr/](docs/adr/)                                         |
+| 内容 | 場所 |
+|------|------|
+| .krs 構文リファレンス | `docs/spec/syntax.md` |
+| .krs.style 構文リファレンス | `docs/spec/style.md` |
+| タグ・アノテーション一覧 | `docs/spec/tags-annotations.md` |
+| コアコンセプト | `docs/concepts.md` |
+| 設計判断の経緯（ADR） | `docs/adr/` |
 
 ## リポジトリ構成
 
@@ -140,4 +173,4 @@ karasu/
 
 ## インスピレーション
 
-[C4 Model](https://c4model.com/) に触発されつつも、独自の語彙と論理／物理分離のコンセプトを採用しています。
+C4 Model に触発されつつも、独自の語彙と論理／物理分離のコンセプトを採用しています。

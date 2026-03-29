@@ -1,5 +1,21 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, beforeEach } from "vitest";
 import { compile } from "../index.js";
+import { analyze } from "./warnings.js";
+import { StyleParser } from "../parser/style-parser.js";
+import { Parser } from "../parser/parser.js";
+import { getBuiltinStyleSheet } from "../builtins/default-style.js";
+import { loadAndRegisterIcons } from "../renderer/svg-icon-loader.js";
+import { clearRegistry } from "../renderer/shape-registry.js";
+import { registerBuiltinShapes } from "../renderer/shapes.js";
+
+// Minimal icon SVG for test registration
+const MINIMAL_ICON_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 100">
+  <g class="krs-pictogram" transform="translate(6, 4)">
+    <rect width="20" height="20" fill="{{color}}"/>
+  </g>
+  <text class="krs-label" x="30" y="19" text-anchor="start"/>
+  <text class="krs-description" x="8" y="44" text-anchor="start"/>
+</svg>`;
 
 describe("deprecated-team-property warning", () => {
   it("warns when service has explicit team property covered by owns", () => {
@@ -94,5 +110,75 @@ organization Corp {
     const result = compile(krs);
     const ownsWarnings = result.warnings.filter((w) => w.kind === "invalid-owns");
     expect(ownsWarnings).toHaveLength(2);
+  });
+});
+
+describe("icon mode style-conflict suppression", () => {
+  // Register minimal icons so compile() can resolve the icon shapes used in ICON_THEME_STYLE_SOURCE.
+  // Keys are the icon names as referenced in style rules (e.g. shape: url("service")).
+  beforeEach(() => {
+    clearRegistry();
+    registerBuiltinShapes();
+    loadAndRegisterIcons(
+      {
+        service: MINIMAL_ICON_SVG,
+        "user-card": MINIMAL_ICON_SVG,
+        domain: MINIMAL_ICON_SVG,
+        resource: MINIMAL_ICON_SVG,
+        team: MINIMAL_ICON_SVG,
+        member: MINIMAL_ICON_SVG,
+        database: MINIMAL_ICON_SVG,
+        "queue-card": MINIMAL_ICON_SVG,
+        api: MINIMAL_ICON_SVG,
+        "cloud-card": MINIMAL_ICON_SVG,
+        oci: MINIMAL_ICON_SVG,
+        lambda: MINIMAL_ICON_SVG,
+        jar: MINIMAL_ICON_SVG,
+        war: MINIMAL_ICON_SVG,
+        function: MINIMAL_ICON_SVG,
+        assets: MINIMAL_ICON_SVG,
+        job: MINIMAL_ICON_SVG,
+        artifact: MINIMAL_ICON_SVG,
+      },
+      true,
+    );
+  });
+
+  it("does not produce style-conflict warning when icon mode overrides builtin shapes", () => {
+    // The icon theme defines service { shape: url("service"); }
+    // The builtin defines service { shape: box; }
+    // No user styles — should produce no style-conflict warnings
+    const krs = `
+system S {
+  service A "Service A" {}
+}
+`;
+    const result = compile(krs, undefined, [], "system", undefined, "icon");
+    expect(result.warnings.filter((w) => w.kind === "style-conflict")).toHaveLength(0);
+  });
+
+  it("does not produce style-conflict warning when user style and icon theme both define service", () => {
+    // Even if the user's style also targets service, no conflict should be raised
+    // between the icon theme (system sheet) and user sheet.
+    const krs = `
+system S {
+  service A "Service A" {}
+}
+`;
+    const userStyle = `service { color: #FF0000; }`;
+    const result = compile(krs, userStyle, [], "system", undefined, "icon");
+    expect(result.warnings.filter((w) => w.kind === "style-conflict")).toHaveLength(0);
+  });
+
+  it("still produces style-conflict warning when same selector appears in multiple user style sheets", () => {
+    // Without icon mode, conflicts among user sheets should still be detected.
+    const krs = `system S { service A {} }`;
+    const file = Parser.parse(krs).value;
+    const builtin = getBuiltinStyleSheet();
+    const sheet1 = StyleParser.parse("service { color: #AAA; }").value;
+    const sheet2 = StyleParser.parse("service { color: #BBB; }").value;
+
+    const warnings = analyze(file, [builtin, sheet1, sheet2]);
+    expect(warnings.some((w) => w.kind === "style-conflict")).toBe(true);
   });
 });

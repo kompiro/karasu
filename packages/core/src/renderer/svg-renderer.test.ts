@@ -386,6 +386,94 @@ system Test {
     expect(svg).not.toContain("{{color}}");
   });
 
+  it("renders a border rect before icon body in icon mode", () => {
+    const svg = renderFromSource(
+      `
+system Test {
+  service ECommerce {
+    label "ECサイト"
+  }
+}
+      `,
+      `service { shape: url("service-icon"); }`,
+      undefined,
+      "icon",
+    );
+    // A card frame rect must appear before the icon <g> element
+    const rectIdx = svg.indexOf("<rect");
+    const iconGIdx = svg.indexOf("<g transform=");
+    expect(rectIdx).toBeGreaterThan(-1);
+    expect(iconGIdx).toBeGreaterThan(-1);
+    expect(rectIdx).toBeLessThan(iconGIdx);
+  });
+
+  it("border rect uses node's border-color and background-color", () => {
+    const svg = renderFromSource(
+      `
+system Test {
+  service ECommerce {
+    label "ECサイト"
+  }
+}
+      `,
+      `service { shape: url("service-icon"); background-color: #123456; border-color: #ABCDEF; border-width: 3; }`,
+      undefined,
+      "icon",
+    );
+    expect(svg).toContain('fill="#123456"');
+    expect(svg).toContain('stroke="#ABCDEF"');
+    expect(svg).toContain('stroke-width="3"');
+  });
+
+  it("border rect uses border-radius from resolved style", () => {
+    const svg = renderFromSource(
+      `
+system Test {
+  service ECommerce {
+    label "ECサイト"
+  }
+}
+      `,
+      `service { shape: url("service-icon"); border-radius: 12; }`,
+      undefined,
+      "icon",
+    );
+    expect(svg).toContain('rx="12"');
+    expect(svg).toContain('ry="12"');
+  });
+
+  it("does not add extra border rect in shape mode", () => {
+    // In shape mode (no displayMode), the box shape renders its own rect.
+    // No additional card frame rect should be prepended.
+    // We verify by comparing rect count: icon mode should have more rects than shape mode
+    // for the same node (icon mode adds a card frame on top of the icon body).
+    const svgShape = renderFromSource(
+      `
+system Test {
+  service ECommerce {
+    label "ECサイト"
+  }
+}
+      `,
+    );
+    const svgIcon = renderFromSource(
+      `
+system Test {
+  service ECommerce {
+    label "ECサイト"
+  }
+}
+      `,
+      `service { shape: url("service-icon"); }`,
+      undefined,
+      "icon",
+    );
+    const shapeRectCount = (svgShape.match(/<rect\s/g) ?? []).length;
+    const iconRectCount = (svgIcon.match(/<rect\s/g) ?? []).length;
+    // Icon mode adds one extra card frame rect per icon node
+    expect(iconRectCount).toBeGreaterThan(shapeRectCount);
+  });
+
   it("shape mode rendering is unchanged when displayMode is undefined", () => {
     const svgDefault = renderFromSource(`
 system Test {

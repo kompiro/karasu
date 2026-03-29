@@ -10,7 +10,7 @@ import { useDeployView } from "./hooks/useDeployView.js";
 import { useOrgView } from "./hooks/useOrgView.js";
 import { useDrillViewSvg } from "./hooks/useDrillViewSvg.js";
 import { ProjectManager } from "./fs/project-manager.js";
-import type { Project, KrsNode, OrgViewPath } from "@karasu/core";
+import type { Project, KrsNode, OrgViewPath, DisplayMode } from "@karasu/core";
 import type { ActiveView } from "./state/app-reducer.js";
 
 const LAST_PROJECT_KEY = "karasu-last-project-id";
@@ -34,6 +34,7 @@ export function ProjectModeApp() {
     orgPath,
     selectedDeployBlockId,
     highlightedNodeId,
+    displayMode,
     loading,
   } = state;
 
@@ -47,7 +48,7 @@ export function ProjectModeApp() {
     nodeMetadata: systemNodeMetadata,
     hasDeployDiagram,
     recompile: recompileSystem,
-  } = useSystemView(entryPath, fs, viewPath);
+  } = useSystemView(entryPath, fs, viewPath, displayMode);
 
   const {
     svg: deploySvg,
@@ -173,6 +174,14 @@ export function ProjectModeApp() {
     (containerId: string) => {
       dispatch({ type: "SET_ACTIVE_VIEW", activeView: "system" });
       dispatch({ type: "SET_HIGHLIGHTED_NODE", nodeId: containerId });
+    },
+    [dispatch],
+  );
+
+  // Display mode toggle
+  const handleDisplayModeChange = useCallback(
+    (mode: DisplayMode) => {
+      dispatch({ type: "SET_DISPLAY_MODE", displayMode: mode });
     },
     [dispatch],
   );
@@ -382,6 +391,8 @@ export function ProjectModeApp() {
         deployBlocks={deployBlocks}
         selectedDeployBlockId={selectedDeployBlockId}
         onDeployBlockChange={handleDeployBlockChange}
+        displayMode={displayMode}
+        onDisplayModeChange={handleDisplayModeChange}
       />
     </div>
   );

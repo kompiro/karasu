@@ -1,5 +1,12 @@
 import { useState, useEffect } from "react";
-import type { Diagnostic, NodeMetadata, Warning, OrgViewPath, DeployBlockInfo } from "@karasu/core";
+import type {
+  Diagnostic,
+  NodeMetadata,
+  Warning,
+  OrgViewPath,
+  DeployBlockInfo,
+  DisplayMode,
+} from "@karasu/core";
 import type { ActiveView } from "../state/app-reducer.js";
 import { DiagramTabBar } from "./DiagramTabBar.js";
 import { BreadcrumbBar } from "./BreadcrumbBar.js";
@@ -60,6 +67,9 @@ interface KarasuPreviewColumnProps {
   deployBlocks?: DeployBlockInfo[];
   selectedDeployBlockId?: string | null;
   onDeployBlockChange?: (id: string) => void;
+
+  displayMode: DisplayMode;
+  onDisplayModeChange: (mode: DisplayMode) => void;
 }
 
 export function KarasuPreviewColumn({
@@ -75,6 +85,8 @@ export function KarasuPreviewColumn({
   deployBlocks,
   selectedDeployBlockId,
   onDeployBlockChange,
+  displayMode,
+  onDisplayModeChange,
 }: KarasuPreviewColumnProps) {
   const [refOpen, setRefOpen] = useState(false);
   const [isDrillView, setIsDrillView] = useState(false);
@@ -123,6 +135,15 @@ export function KarasuPreviewColumn({
         onDeployBlockChange={onDeployBlockChange}
       />
       <div className="preview-toolbar">
+        {activeView === "system" && (
+          <button
+            className={`toolbar-btn${displayMode === "icon" ? " active" : ""}`}
+            onClick={() => onDisplayModeChange(displayMode === "icon" ? "shape" : "icon")}
+            aria-label="Toggle icon mode"
+          >
+            ◇ Icon Mode
+          </button>
+        )}
         <button
           className={`toolbar-btn toolbar-btn--drilldown${isDrillView ? " toolbar-btn--active" : ""}`}
           onClick={() => setIsDrillView((v) => !v)}

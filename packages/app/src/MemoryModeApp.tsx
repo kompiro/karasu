@@ -15,6 +15,7 @@ import { useDeployView } from "./hooks/useDeployView.js";
 import { useOrgView } from "./hooks/useOrgView.js";
 import { useDrillViewSvg } from "./hooks/useDrillViewSvg.js";
 import type { ActiveView } from "./state/app-reducer.js";
+import type { DisplayMode } from "@karasu/core";
 
 const MEMORY_FILE_PATH = "/memory/index.krs";
 
@@ -34,7 +35,7 @@ export function MemoryModeApp() {
 
 function MemoryModeInner() {
   const { state, dispatch, fs } = useAppContext();
-  const { fileContent, viewPath, activeView, orgPath, highlightedNodeId } = state;
+  const { fileContent, viewPath, activeView, orgPath, highlightedNodeId, displayMode } = state;
 
   // Initialize: write sample KRS to in-memory FS and select the file
   useEffect(() => {
@@ -54,7 +55,7 @@ function MemoryModeInner() {
     nodeMetadata: systemNodeMetadata,
     hasDeployDiagram,
     recompile: recompileSystem,
-  } = useSystemView(MEMORY_FILE_PATH, fs, viewPath);
+  } = useSystemView(MEMORY_FILE_PATH, fs, viewPath, displayMode);
 
   const {
     svg: deploySvg,
@@ -228,6 +229,10 @@ function MemoryModeInner() {
         nodeMetadata={nodeMetadata}
         onDrillDown={handleDrillDown}
         drillViewSvg={drillViewSvg}
+        displayMode={displayMode}
+        onDisplayModeChange={(mode: DisplayMode) =>
+          dispatch({ type: "SET_DISPLAY_MODE", displayMode: mode })
+        }
       />
     </div>
   );
