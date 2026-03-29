@@ -50,6 +50,7 @@ export { Parser } from "./parser/parser.js";
 export { StyleParser } from "./parser/style-parser.js";
 export { resolveStyles } from "./resolver/style-resolver.js";
 export { getBuiltinStyleSheet, BUILTIN_STYLE_SOURCE } from "./builtins/default-style.js";
+export { getIconThemeStyleSheet, ICON_THEME_STYLE_SOURCE } from "./builtins/icon-theme.js";
 export {
   getReference,
   type KarasuReference,

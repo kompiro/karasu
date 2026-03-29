@@ -1,3 +1,22 @@
 {
-  "icons": [{ "name": "database", "file": "database.svg" }]
+  "icons": [
+    { "name": "service", "file": "service.svg" },
+    { "name": "user", "file": "user.svg" },
+    { "name": "domain", "file": "domain.svg" },
+    { "name": "resource", "file": "resource.svg" },
+    { "name": "team", "file": "team.svg" },
+    { "name": "member", "file": "member.svg" },
+    { "name": "database", "file": "database.svg" },
+    { "name": "queue", "file": "queue.svg" },
+    { "name": "api", "file": "api.svg" },
+    { "name": "cloud", "file": "cloud.svg" },
+    { "name": "oci", "file": "oci.svg" },
+    { "name": "lambda", "file": "lambda.svg" },
+    { "name": "jar", "file": "jar.svg" },
+    { "name": "war", "file": "war.svg" },
+    { "name": "function", "file": "function.svg" },
+    { "name": "assets", "file": "assets.svg" },
+    { "name": "job", "file": "job.svg" },
+    { "name": "artifact", "file": "artifact.svg" }
+  ]
 }
