@@ -941,6 +941,19 @@ body,
   border-color: rgba(77, 143, 255, 0.3);
 }
 
+/* Export button — always visible as an actionable button */
+.toolbar-btn--export {
+  background: var(--bg-raised);
+  color: var(--text-secondary);
+  border-color: var(--border-strong);
+}
+
+.toolbar-btn--export:hover {
+  background: var(--accent-dim);
+  color: var(--accent-hover);
+  border-color: rgba(77, 143, 255, 0.4);
+}
+
 /* Reference button — stands out as a persistent entry point */
 .toolbar-btn--reference {
   background: var(--bg-raised);
