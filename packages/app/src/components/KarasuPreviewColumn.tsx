@@ -99,7 +99,7 @@ export function KarasuPreviewColumn({
   const viewPath =
     activeView === "system" ? systemView.viewPath : activeView === "org" ? orgView.orgPath : [];
 
-  const exportFilename = (isFullView: boolean) =>
+  const exportFilename = (fullView: boolean) =>
     buildSvgExportFilename(activeView, {
       breadcrumbItems:
         activeView === "system"
@@ -109,7 +109,7 @@ export function KarasuPreviewColumn({
             : [],
       deployBlocks,
       selectedDeployBlockId,
-      isFullView,
+      isFullView: fullView,
     });
 
   return (
