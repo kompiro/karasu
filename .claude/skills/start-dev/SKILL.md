@@ -103,8 +103,22 @@ description: >
 
 1. `gh pr checks <pr-number> --watch` で CI の完了を待つ
 2. CI が失敗した場合は修正し、追加コミットをプッシュする
-3. CI が通過したらユーザーに手動検証を依頼する
-4. 動作確認用に worktree のパスと開発サーバーの起動方法を表示する:
+3. CI が通過したらステップ 8.5 のポストチェックへ進む
+
+### 8.5. ポストチェック
+
+CI 通過後、以下のチェックを順に実行する。
+
+1. **コンフリクト確認**: `gh pr view <pr-number> --json mergeable` で確認する
+   - `CONFLICTING` の場合はユーザーに通知し、コンフリクト解消を案内する
+   - `MERGEABLE` または `UNKNOWN` の場合は次へ進む
+2. **PR Description の言語確認**: `gh pr view <pr-number> --json title,body` で取得し、タイトルと本文が英語であることを確認する
+   - 日本語やその他の非英語テキストが含まれている場合は警告し、修正を提案する
+3. **コードレビュー**: `/review` を実行して PR の変更内容をレビューし、GitHub にレビューコメントを投稿する
+
+すべてのチェック完了後、ユーザーに手動検証を依頼する。
+動作確認用に worktree のパスと開発サーバーの起動方法を表示する:
+
    ```
    Worktree: .worktrees/<機能名>
    起動: cd .worktrees/<機能名> && npm run dev
