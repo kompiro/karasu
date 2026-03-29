@@ -13,7 +13,7 @@ import { useAppContext } from "./state/app-context.js";
 import { useSystemView } from "./hooks/useSystemView.js";
 import { useDeployView } from "./hooks/useDeployView.js";
 import { useOrgView } from "./hooks/useOrgView.js";
-import { useDrillViewSvg } from "./hooks/useDrillViewSvg.js";
+
 import type { ActiveView } from "./state/app-reducer.js";
 import type { DisplayMode } from "@karasu/core";
 
@@ -72,14 +72,11 @@ function MemoryModeInner() {
     recompile: recompileOrg,
   } = useOrgView(MEMORY_FILE_PATH, fs, orgPath as OrgViewPath);
 
-  const { drillViewSvg, recompile: recompileFullView } = useDrillViewSvg(MEMORY_FILE_PATH, fs);
-
   const recompile = useCallback(() => {
     recompileSystem();
     recompileDeploy();
     recompileOrg();
-    recompileFullView();
-  }, [recompileSystem, recompileDeploy, recompileOrg, recompileFullView]);
+  }, [recompileSystem, recompileDeploy, recompileOrg]);
 
   const nodeMetadata = activeView === "deploy" ? deployNodeMetadata : systemNodeMetadata;
 
@@ -228,7 +225,6 @@ function MemoryModeInner() {
         }}
         nodeMetadata={nodeMetadata}
         onDrillDown={handleDrillDown}
-        drillViewSvg={drillViewSvg}
         displayMode={displayMode}
         onDisplayModeChange={(mode: DisplayMode) =>
           dispatch({ type: "SET_DISPLAY_MODE", displayMode: mode })

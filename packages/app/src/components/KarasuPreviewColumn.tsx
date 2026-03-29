@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import type {
   Diagnostic,
   NodeMetadata,
@@ -15,6 +15,7 @@ import { WarningPanel } from "./WarningPanel.js";
 import { ReferencePanel } from "./ReferencePanel.js";
 import { downloadSvg } from "../utils/download-svg.js";
 import { buildSvgExportFilename } from "../utils/build-svg-export-filename.js";
+
 
 interface SystemViewProps {
   svg: string;
@@ -62,7 +63,6 @@ interface KarasuPreviewColumnProps {
 
   nodeMetadata: Map<string, NodeMetadata>;
   onDrillDown: (path: string[]) => void;
-  drillViewSvg: string;
 
   deployBlocks?: DeployBlockInfo[];
   selectedDeployBlockId?: string | null;
@@ -81,7 +81,6 @@ export function KarasuPreviewColumn({
   orgView,
   nodeMetadata,
   onDrillDown,
-  drillViewSvg,
   deployBlocks,
   selectedDeployBlockId,
   onDeployBlockChange,
@@ -89,12 +88,6 @@ export function KarasuPreviewColumn({
   onDisplayModeChange,
 }: KarasuPreviewColumnProps) {
   const [refOpen, setRefOpen] = useState(false);
-  const [isDrillView, setIsDrillView] = useState(false);
-
-  // Reset full view mode when switching away from system tab
-  useEffect(() => {
-    if (activeView !== "system") setIsDrillView(false);
-  }, [activeView]);
 
   const svg =
     activeView === "system"
@@ -111,18 +104,16 @@ export function KarasuPreviewColumn({
   const viewPath =
     activeView === "system" ? systemView.viewPath : activeView === "org" ? orgView.orgPath : [];
 
-  const exportFilename = (drillView: boolean) =>
-    buildSvgExportFilename(activeView, {
-      breadcrumbItems:
-        activeView === "system"
-          ? systemView.breadcrumbItems
-          : activeView === "org"
-            ? orgView.breadcrumbItems
-            : [],
-      deployBlocks,
-      selectedDeployBlockId,
-      isDrillView: drillView,
-    });
+  const exportFilename = buildSvgExportFilename(activeView, {
+    breadcrumbItems:
+      activeView === "system"
+        ? systemView.breadcrumbItems
+        : activeView === "org"
+          ? orgView.breadcrumbItems
+          : [],
+    deployBlocks,
+    selectedDeployBlockId,
+  });
 
   return (
     <div className="preview-column">
@@ -145,23 +136,10 @@ export function KarasuPreviewColumn({
           </button>
         )}
         <button
-          className={`toolbar-btn toolbar-btn--drilldown${isDrillView ? " toolbar-btn--active" : ""}`}
-          onClick={() => setIsDrillView((v) => !v)}
-          aria-label="Toggle drill-down view"
-          aria-pressed={isDrillView}
-          disabled={!drillViewSvg || activeView !== "system"}
-        >
-          ⊞ Drill-down View
-        </button>
-        <button
           className="toolbar-btn toolbar-btn--export"
-          onClick={() =>
-            isDrillView
-              ? downloadSvg(drillViewSvg, exportFilename(true))
-              : downloadSvg(svg, exportFilename(false))
-          }
+          onClick={() => downloadSvg(svg, exportFilename)}
           aria-label="Export SVG"
-          disabled={!(isDrillView ? drillViewSvg : svg)}
+          disabled={!svg}
         >
           ↓ Export SVG
         </button>
@@ -183,40 +161,31 @@ export function KarasuPreviewColumn({
       {activeView === "org" && (
         <BreadcrumbBar items={orgView.breadcrumbItems} onNavigate={orgView.onBreadcrumbNavigate} />
       )}
-      {isDrillView ? (
-        <iframe
-          srcDoc={drillViewSvg}
-          sandbox="allow-same-origin"
-          style={{ width: "100%", flex: 1, border: "none", minHeight: 0 }}
-          title="Drill-down diagram view"
-        />
-      ) : (
-        <PreviewPane
-          svg={svg}
-          diagnostics={diagnostics}
-          viewPath={viewPath}
-          nodeMetadata={nodeMetadata}
-          onDrillDown={activeView !== "deploy" ? onDrillDown : () => {}}
-          onContainerClick={activeView === "deploy" ? deployView.onContainerClick : undefined}
-          onDeployButtonClick={activeView === "system" ? systemView.onDeployButtonClick : undefined}
-          onTeamButtonClick={activeView === "system" ? systemView.onTeamButtonClick : undefined}
-          onOwnedServiceClick={activeView === "org" ? orgView.onOwnedServiceClick : undefined}
-          highlightedNodeId={
-            activeView === "deploy"
-              ? deployView.highlightedNodeId
-              : activeView === "org"
-                ? orgView.highlightedNodeId
-                : undefined
-          }
-          onClearHighlight={
-            activeView === "deploy"
-              ? deployView.onClearHighlight
-              : activeView === "org"
-                ? orgView.onClearHighlight
-                : undefined
-          }
-        />
-      )}
+      <PreviewPane
+        svg={svg}
+        diagnostics={diagnostics}
+        viewPath={viewPath}
+        nodeMetadata={nodeMetadata}
+        onDrillDown={activeView !== "deploy" ? onDrillDown : () => {}}
+        onContainerClick={activeView === "deploy" ? deployView.onContainerClick : undefined}
+        onDeployButtonClick={activeView === "system" ? systemView.onDeployButtonClick : undefined}
+        onTeamButtonClick={activeView === "system" ? systemView.onTeamButtonClick : undefined}
+        onOwnedServiceClick={activeView === "org" ? orgView.onOwnedServiceClick : undefined}
+        highlightedNodeId={
+          activeView === "deploy"
+            ? deployView.highlightedNodeId
+            : activeView === "org"
+              ? orgView.highlightedNodeId
+              : undefined
+        }
+        onClearHighlight={
+          activeView === "deploy"
+            ? deployView.onClearHighlight
+            : activeView === "org"
+              ? orgView.onClearHighlight
+              : undefined
+        }
+      />
       <WarningPanel
         warnings={
           activeView === "org"

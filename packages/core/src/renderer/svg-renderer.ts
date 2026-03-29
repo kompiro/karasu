@@ -27,7 +27,6 @@ export function render(
   styles: ResolvedStyles,
   serviceIdsWithDeploy?: Set<string>,
   ownerIndex?: Map<string, string>,
-  exportLinks?: Map<string, string>,
   displayMode?: DisplayMode,
 ): string {
   const layoutResult = layout(viewSlice, ownerIndex, displayMode);
@@ -35,14 +34,7 @@ export function render(
     layoutResult.containers.length === 0 && viewSlice.containerNode
       ? (viewSlice.containerNode.label ?? viewSlice.containerNode.id)
       : undefined;
-  return renderFromLayout(
-    layoutResult,
-    styles,
-    title,
-    serviceIdsWithDeploy,
-    exportLinks,
-    displayMode,
-  );
+  return renderFromLayout(layoutResult, styles, title, serviceIdsWithDeploy, displayMode);
 }
 
 export function renderFromLayout(
@@ -50,7 +42,6 @@ export function renderFromLayout(
   styles: ResolvedStyles,
   title?: string,
   serviceIdsWithDeploy?: Set<string>,
-  exportLinks?: Map<string, string>,
   displayMode?: DisplayMode,
 ): string {
   if (layoutResult.nodes.size === 0 && layoutResult.containers.length === 0) {
@@ -159,14 +150,7 @@ export function renderFromLayout(
   const normalNodeParts: string[] = [];
   for (const [nodeId, layoutNode] of layoutResult.nodes) {
     const nodeStyle = styles.nodes.get(nodeId) ?? styles.defaultNodeStyle;
-    const rendered = renderNode(
-      layoutNode,
-      nodeStyle,
-      nodeId,
-      serviceIdsWithDeploy,
-      exportLinks,
-      displayMode,
-    );
+    const rendered = renderNode(layoutNode, nodeStyle, nodeId, serviceIdsWithDeploy, displayMode);
     if (layoutNode.ghost) {
       ghostNodeParts.push(rendered);
     } else {
@@ -240,7 +224,6 @@ function renderNode(
   style: ResolvedNodeStyle,
   nodeId: string,
   serviceIdsWithDeploy?: Set<string>,
-  exportLinks?: Map<string, string>,
   displayMode?: DisplayMode,
 ): string {
   const children: string[] = [];
@@ -655,8 +638,7 @@ function renderNode(
     },
     ...children,
   );
-  const exportHref = exportLinks?.get(nodeId);
-  return exportHref ? el("a", { href: exportHref }, nodeEl) : nodeEl;
+  return nodeEl;
 }
 
 // ---------------------------------------------------------------------------

@@ -26,15 +26,6 @@ describe("buildSvgExportFilename", () => {
       expect(buildSvgExportFilename("system", { breadcrumbItems: [] })).toBe("system-system.svg");
     });
 
-    it("appends -drilldown suffix when isDrillView is true", () => {
-      expect(
-        buildSvgExportFilename("system", {
-          breadcrumbItems: [{ id: "MySystem", label: "MySystem" }],
-          isDrillView: true,
-        }),
-      ).toBe("system-MySystem-drilldown.svg");
-    });
-
     it("preserves Japanese node names", () => {
       expect(
         buildSvgExportFilename("system", {

@@ -8,7 +8,7 @@ interface DeployBlockItem {
 
 /**
  * Build the export filename for an SVG download based on the current view state.
- * Format: `{view}-{currentNodeName}.svg` or `{view}-{currentNodeName}-full.svg`
+ * Format: `{view}-{currentNodeName}.svg`
  *
  * - system: uses the last breadcrumb item as the node name
  * - deploy: uses the selected deploy block label (falls back to id, then view name)
@@ -20,10 +20,9 @@ export function buildSvgExportFilename(
     breadcrumbItems?: { id: string; label: string }[];
     deployBlocks?: DeployBlockItem[];
     selectedDeployBlockId?: string | null;
-    isDrillView?: boolean;
   } = {},
 ): string {
-  const { breadcrumbItems = [], deployBlocks = [], selectedDeployBlockId, isDrillView } = options;
+  const { breadcrumbItems = [], deployBlocks = [], selectedDeployBlockId } = options;
 
   let nodeName: string;
 
@@ -37,6 +36,5 @@ export function buildSvgExportFilename(
     nodeName = last && !isOrgSentinel ? sanitizeFilename(last.label, last.id) : view;
   }
 
-  const suffix = isDrillView ? "-drilldown" : "";
-  return `${view}-${nodeName}${suffix}.svg`;
+  return `${view}-${nodeName}.svg`;
 }
