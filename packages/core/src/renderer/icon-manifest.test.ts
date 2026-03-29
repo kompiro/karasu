@@ -30,6 +30,16 @@ describe("resolveIconManifest", () => {
     expect(getIconDef("missing")).toBeUndefined();
   });
 
+  it("passes builtIn flag through to icon definitions", () => {
+    const manifest: IconManifest = {
+      icons: [{ name: "db", file: "db.svg" }],
+    };
+    resolveIconManifest(manifest, { "db.svg": SAMPLE_SVG }, true);
+    const def = getIconDef("db");
+    expect(def).toBeDefined();
+    expect(def!.builtIn).toBe(true);
+  });
+
   it("registers multiple icons", () => {
     const manifest: IconManifest = {
       icons: [

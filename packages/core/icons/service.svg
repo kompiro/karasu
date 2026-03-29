@@ -1,6 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 100">
   <g class="krs-pictogram" transform="translate(6, 4)">
-    <path d="M10 1.5a2.2 2.2 0 1 0 0 4.4 2.2 2.2 0 0 0 0-4.4zm-4.8 5.3a8.5 8.5 0 0 0-3.7 3.2 1 1 0 0 0 .3 1.4l2.4 1.4.8-.8a5.5 5.5 0 0 1 0-3.2l-.8-.8-2.4 1.4a1 1 0 0 1-1.4-.3 8.5 8.5 0 0 1 0-4.6" fill="none" stroke="{{color}}" stroke-width="0"/>
     <path d="M10 6a4 4 0 1 1 0 8 4 4 0 0 1 0-8zm0 2a2 2 0 1 0 0 4 2 2 0 0 0 0-4z" fill="{{color}}" fill-rule="evenodd"/>
     <path d="M10 0a10 10 0 0 1 4.5 1.1l-.9 1.8A8 8 0 1 0 18 10h2A10 10 0 1 1 10 0z" fill="{{color}}"/>
   </g>
