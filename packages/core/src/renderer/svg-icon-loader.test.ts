@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import { parseSvgIcon, loadAndRegisterIcon, loadAndRegisterIcons } from "./svg-icon-loader.js";
-import { getShape, getIconDef, clearRegistry } from "./shape-registry.js";
+import { getShape, getIconDef, clearRegistry, renderPictogram } from "./shape-registry.js";
 import { registerBuiltinShapes } from "./shapes.js";
 
 const SAMPLE_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 80" width="160" height="80">
@@ -71,6 +71,31 @@ describe("parseSvgIcon", () => {
   it("leaves builtIn undefined when not provided", () => {
     const def = parseSvgIcon("db", SAMPLE_SVG);
     expect(def.builtIn).toBeUndefined();
+  });
+
+  it("extracts pictogramBody from krs-pictogram group", () => {
+    const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 100">
+      <g class="krs-pictogram" transform="translate(6, 4)">
+        <path d="M10 6a4 4 0 1 1 0 8" fill="{{color}}"/>
+        <circle cx="10" cy="10" r="5" fill="{{color}}"/>
+      </g>
+      <text class="krs-label" x="30" y="19" text-anchor="start"/>
+    </svg>`;
+    const def = parseSvgIcon("myicon", svg);
+    expect(def.pictogramBody).toBeDefined();
+    expect(def.pictogramBody).toContain('<path d="M10 6a4 4 0 1 1 0 8"');
+    expect(def.pictogramBody).toContain("<circle");
+    // The group wrapper and transform must NOT be included
+    expect(def.pictogramBody).not.toContain("krs-pictogram");
+    expect(def.pictogramBody).not.toContain("translate");
+  });
+
+  it("leaves pictogramBody undefined when krs-pictogram group is absent", () => {
+    const simple = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+      <circle cx="12" cy="12" r="10" fill="red"/>
+    </svg>`;
+    const def = parseSvgIcon("dot", simple);
+    expect(def.pictogramBody).toBeUndefined();
   });
 });
 
@@ -152,6 +177,61 @@ describe("builtIn placeholder injection", () => {
     });
     expect(result).toContain("{{color}}");
     expect(result).toContain("{{fill}}");
+  });
+});
+
+describe("renderPictogram", () => {
+  const PICTOGRAM_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 100">
+    <g class="krs-pictogram" transform="translate(6, 4)">
+      <rect width="20" height="20" fill="{{color}}"/>
+    </g>
+    <text class="krs-label" x="30" y="19" text-anchor="start"/>
+  </svg>`;
+
+  beforeEach(() => {
+    clearRegistry();
+    registerBuiltinShapes();
+  });
+
+  it("returns an SVG string with viewBox 0 0 20 20", () => {
+    loadAndRegisterIcon("myicon", PICTOGRAM_SVG, true);
+    const result = renderPictogram("myicon", "#FFFFFF");
+    expect(result).toBeDefined();
+    expect(result).toContain('viewBox="0 0 20 20"');
+  });
+
+  it("applies the given size to width and height", () => {
+    loadAndRegisterIcon("myicon", PICTOGRAM_SVG, true);
+    const result = renderPictogram("myicon", "#FFFFFF", 16);
+    expect(result).toContain('width="16"');
+    expect(result).toContain('height="16"');
+  });
+
+  it("replaces {{color}} placeholder with the given color for builtIn icons", () => {
+    loadAndRegisterIcon("myicon", PICTOGRAM_SVG, true);
+    const result = renderPictogram("myicon", "#FF0000");
+    expect(result).toContain('fill="#FF0000"');
+    expect(result).not.toContain("{{color}}");
+  });
+
+  it("does not replace {{color}} for non-builtIn icons", () => {
+    loadAndRegisterIcon("myicon", PICTOGRAM_SVG, false);
+    const result = renderPictogram("myicon", "#FF0000");
+    expect(result).toContain("{{color}}");
+  });
+
+  it("returns undefined for unknown icon name", () => {
+    const result = renderPictogram("no-such-icon", "#FFFFFF");
+    expect(result).toBeUndefined();
+  });
+
+  it("returns undefined when icon has no pictogramBody", () => {
+    const noGroup = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+      <circle cx="12" cy="12" r="10" fill="red"/>
+    </svg>`;
+    loadAndRegisterIcon("plain-icon", noGroup, true);
+    const result = renderPictogram("plain-icon", "#FFFFFF");
+    expect(result).toBeUndefined();
   });
 });
 
