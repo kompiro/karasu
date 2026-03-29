@@ -138,6 +138,7 @@ export function registerIcon(def: SvgIconDef): void {
 
 /**
  * Reset the registry (useful for testing).
+ * @internal Not intended for production use — exposed for test isolation only.
  */
 export function clearRegistry(): void {
   shapeRegistry.clear();

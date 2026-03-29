@@ -165,6 +165,21 @@ export interface CompileResult {
   deployBlocks: DeployBlockInfo[];
 }
 
+/**
+ * Compile a .krs source string to SVG.
+ *
+ * @param krsSource     - The raw .krs diagram source
+ * @param styleSource   - Optional .krs.style content provided by the caller.
+ *                        When `displayMode === "icon"`, the icon theme stylesheet is
+ *                        automatically injected as a system sheet. Callers must NOT
+ *                        pre-concatenate `ICON_THEME_STYLE_SOURCE` into `styleSource`
+ *                        when passing `displayMode === "icon"`, as this would apply
+ *                        the icon theme rules twice and produce duplicate style warnings.
+ * @param viewPath      - Optional path filter for drill-down views
+ * @param diagramType   - "deploy" renders the deployment diagram; default renders the system view
+ * @param selectedDeployId - Active deploy container ID (deploy diagram only)
+ * @param displayMode   - "icon" switches nodes to fixed-size icon card layout
+ */
 export function compile(
   krsSource: string,
   styleSource?: string,

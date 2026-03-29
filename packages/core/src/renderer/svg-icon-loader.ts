@@ -99,10 +99,17 @@ function extractTextSlot(svg: string, className: string): SvgIconTextSlot | unde
  * Extract the inner content of <g class="krs-pictogram"> (paths/circles, etc.).
  * The content is in 0–20px coordinate space (the translate on the group is excluded).
  * Returns undefined if no krs-pictogram group is found.
+ *
+ * **Known limitation**: uses a non-greedy regex that terminates at the first `</g>`.
+ * Any `<g>` elements nested inside the `krs-pictogram` group will cause the body to
+ * be truncated at the first inner `</g>`. All current built-in icons use only flat
+ * path/circle elements inside `krs-pictogram`, so this is safe for now. If you add
+ * a built-in icon whose pictogram contains nested groups, extract the body manually
+ * and supply it via `SvgIconDef.pictogramBody` instead of relying on auto-extraction.
  */
 function extractPictogramBody(svgString: string): string | undefined {
   // Match <g ... class="krs-pictogram" ...>CONTENT</g>
-  // Uses a non-greedy match; won't handle deeply nested <g> but sufficient for built-in icons.
+  // Non-greedy — see JSDoc limitation above.
   const match = svgString.match(/<g\s[^>]*class\s*=\s*"krs-pictogram"[^>]*>([\s\S]*?)<\/g>/i);
   if (!match) return undefined;
   return match[1].trim();
