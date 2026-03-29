@@ -228,6 +228,27 @@ function renderNode(
 ): string {
   const children: string[] = [];
 
+  // For icon-mode nodes, render card frame (background + border) before the icon body.
+  // Built-in shapes already include fill/stroke in their own rendering.
+  const isIconShape = typeof style.shape !== "string";
+  if (displayMode === "icon" && isIconShape) {
+    children.push(
+      el("rect", {
+        x: node.x,
+        y: node.y,
+        width: node.width,
+        height: node.height,
+        rx: style.borderRadius,
+        ry: style.borderRadius,
+        fill: style.backgroundColor,
+        stroke: style.borderColor,
+        "stroke-width": style.borderWidth,
+        "stroke-dasharray":
+          style.borderStyle === "dashed" ? "8 4" : style.borderStyle === "dotted" ? "2 2" : undefined,
+      }),
+    );
+  }
+
   // Shape
   children.push(renderShape(node.x, node.y, node.width, node.height, style));
 
