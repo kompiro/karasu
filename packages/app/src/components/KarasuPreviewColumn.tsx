@@ -121,7 +121,7 @@ export function KarasuPreviewColumn({
             : [],
       deployBlocks,
       selectedDeployBlockId,
-      isFullView: drillView,
+      isDrillView: drillView,
     });
 
   return (
