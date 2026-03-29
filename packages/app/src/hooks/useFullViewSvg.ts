@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { buildExportSvgFromProject, type FileSystemProvider } from "@karasu/core";
 
 const DEBOUNCE_MS = 300;
@@ -6,10 +6,16 @@ const DEBOUNCE_MS = 300;
 export function useFullViewSvg(
   entryPath: string | null,
   fs: FileSystemProvider | null,
-): { fullViewSvg: string } {
+): { fullViewSvg: string; recompile: () => void } {
   const [fullViewSvg, setFullViewSvg] = useState("");
   const lastValidSvg = useRef("");
   const timerRef = useRef<ReturnType<typeof setTimeout>>(undefined);
+  const recompileCounter = useRef(0);
+
+  const recompile = useCallback(() => {
+    recompileCounter.current++;
+    setFullViewSvg((prev) => prev); // trigger re-render to pick up counter change
+  }, []);
 
   useEffect(() => {
     if (!entryPath || !fs) return;
@@ -30,7 +36,8 @@ export function useFullViewSvg(
     return () => {
       if (timerRef.current) clearTimeout(timerRef.current);
     };
-  }, [entryPath, fs]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [entryPath, fs, recompileCounter.current]);
 
-  return { fullViewSvg };
+  return { fullViewSvg, recompile };
 }

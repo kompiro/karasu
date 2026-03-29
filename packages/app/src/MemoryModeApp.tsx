@@ -13,6 +13,7 @@ import { useAppContext } from "./state/app-context.js";
 import { useSystemView } from "./hooks/useSystemView.js";
 import { useDeployView } from "./hooks/useDeployView.js";
 import { useOrgView } from "./hooks/useOrgView.js";
+import { useFullViewSvg } from "./hooks/useFullViewSvg.js";
 import type { ActiveView } from "./state/app-reducer.js";
 
 const MEMORY_FILE_PATH = "/memory/index.krs";
@@ -74,9 +75,12 @@ function MemoryModeInner() {
     recompileSystem();
     recompileDeploy();
     recompileOrg();
-  }, [recompileSystem, recompileDeploy, recompileOrg]);
+    recompileFullView();
+  }, [recompileSystem, recompileDeploy, recompileOrg, recompileFullView]);
 
   const nodeMetadata = activeView === "deploy" ? deployNodeMetadata : systemNodeMetadata;
+
+  const { fullViewSvg, recompile: recompileFullView } = useFullViewSvg(MEMORY_FILE_PATH, fs);
 
   const handleEditorChange = useCallback(
     async (value: string) => {
@@ -223,7 +227,7 @@ function MemoryModeInner() {
         }}
         nodeMetadata={nodeMetadata}
         onDrillDown={handleDrillDown}
-        fullViewSvg=""
+        fullViewSvg={fullViewSvg}
       />
     </div>
   );

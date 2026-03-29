@@ -65,15 +65,16 @@ export function ProjectModeApp() {
     recompile: recompileOrg,
   } = useOrgView(entryPath, fs, orgPath as OrgViewPath);
 
+  const { fullViewSvg, recompile: recompileFullView } = useFullViewSvg(entryPath, fs);
+
   const recompile = useCallback(() => {
     recompileSystem();
     recompileDeploy();
     recompileOrg();
-  }, [recompileSystem, recompileDeploy, recompileOrg]);
+    recompileFullView();
+  }, [recompileSystem, recompileDeploy, recompileOrg, recompileFullView]);
 
   const nodeMetadata = activeView === "deploy" ? deployNodeMetadata : systemNodeMetadata;
-
-  const { fullViewSvg } = useFullViewSvg(entryPath, fs);
 
   // 初期化: プロジェクト一覧を読み込み
   useEffect(() => {
