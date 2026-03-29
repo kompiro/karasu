@@ -4,6 +4,9 @@ export function downloadSvg(svg: string, filename: string): void {
   const a = document.createElement("a");
   a.href = url;
   a.download = filename;
+  document.body.appendChild(a);
   a.click();
-  URL.revokeObjectURL(url);
+  document.body.removeChild(a);
+  // Defer revocation to allow the browser to initiate the download first
+  setTimeout(() => URL.revokeObjectURL(url), 0);
 }
