@@ -206,7 +206,7 @@ export function compile(
     nodeMetadata = buildDeployNodeMetadata(deploySlice);
   } else {
     const viewSlice = extractView(parseResult.value.systems, viewPath ?? []);
-    svg = render(viewSlice, styles, serviceIdsWithDeploy, ownerIndex, displayMode);
+    svg = render(viewSlice, styles, serviceIdsWithDeploy, ownerIndex, undefined, displayMode);
     nodeMetadata = buildNodeMetadata(viewSlice, serviceIdsWithDeploy, ownerIndex);
   }
 
@@ -256,7 +256,7 @@ export async function compileProject(
     nodeMetadata = buildDeployNodeMetadata(deploySlice);
   } else {
     const viewSlice = extractView(resolved.krsFile.systems, viewPath ?? []);
-    svg = render(viewSlice, styles, serviceIdsWithDeploy, ownerIndex, displayMode);
+    svg = render(viewSlice, styles, serviceIdsWithDeploy, ownerIndex, undefined, displayMode);
     nodeMetadata = buildNodeMetadata(viewSlice, serviceIdsWithDeploy, ownerIndex);
   }
 
