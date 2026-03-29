@@ -22,7 +22,14 @@ function renderFromSource(
     : [getBuiltinStyleSheet()];
   const styles = resolveStyles(parseResult.value.systems, sheets);
   const viewSlice = extractView(parseResult.value.systems, []);
-  return render(viewSlice, styles, serviceIdsWithDeploy, parseResult.value.ownerIndex, undefined, displayMode);
+  return render(
+    viewSlice,
+    styles,
+    serviceIdsWithDeploy,
+    parseResult.value.ownerIndex,
+    undefined,
+    displayMode,
+  );
 }
 
 describe("SVG Renderer", () => {

@@ -35,7 +35,14 @@ export function render(
     layoutResult.containers.length === 0 && viewSlice.containerNode
       ? (viewSlice.containerNode.label ?? viewSlice.containerNode.id)
       : undefined;
-  return renderFromLayout(layoutResult, styles, title, serviceIdsWithDeploy, exportLinks, displayMode);
+  return renderFromLayout(
+    layoutResult,
+    styles,
+    title,
+    serviceIdsWithDeploy,
+    exportLinks,
+    displayMode,
+  );
 }
 
 export function renderFromLayout(
@@ -152,7 +159,14 @@ export function renderFromLayout(
   const normalNodeParts: string[] = [];
   for (const [nodeId, layoutNode] of layoutResult.nodes) {
     const nodeStyle = styles.nodes.get(nodeId) ?? styles.defaultNodeStyle;
-    const rendered = renderNode(layoutNode, nodeStyle, nodeId, serviceIdsWithDeploy, exportLinks, displayMode);
+    const rendered = renderNode(
+      layoutNode,
+      nodeStyle,
+      nodeId,
+      serviceIdsWithDeploy,
+      exportLinks,
+      displayMode,
+    );
     if (layoutNode.ghost) {
       ghostNodeParts.push(rendered);
     } else {
