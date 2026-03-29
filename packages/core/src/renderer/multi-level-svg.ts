@@ -17,10 +17,12 @@ svg:not(:has(.krs-view:target)) #krs-view-root { display: block; }
 .krs-view:target { display: block; }
 `;
 
-/** Extract the content between the <svg ...> and </svg> tags */
+/** Extract the content between the <svg ...> and </svg> tags, excluding <defs> */
 function extractSvgBody(svg: string): string {
   const bodyMatch = svg.match(/<svg[^>]*>([\s\S]*)<\/svg>/);
-  return bodyMatch ? bodyMatch[1] : svg;
+  const body = bodyMatch ? bodyMatch[1] : svg;
+  // Strip <defs> block — shared defs are hoisted to the outer SVG's <defs>
+  return body.replace(/<defs(?:\s[^>]*)?\/?>(?:[\s\S]*?<\/defs>)?/, "");
 }
 
 /** Extract a single attribute value from the opening <svg> tag */
@@ -80,7 +82,8 @@ export function assembleMultiLevelSvg(levels: ExportLevel[]): string {
   const height = extractAttr(root.svg, "height") ?? "600";
 
   // Extract shared <defs> from root (arrow markers, etc.)
-  const defsMatch = root.svg.match(/<defs>([\s\S]*?)<\/defs>/);
+  // Handles both <defs>...</defs> and self-closing <defs/> / <defs></defs>
+  const defsMatch = root.svg.match(/<defs(?:\s[^>]*)?>([\s\S]*?)<\/defs>/);
   const sharedDefs = defsMatch ? defsMatch[1] : "";
 
   const viewGroups = levels.map((level) => {
