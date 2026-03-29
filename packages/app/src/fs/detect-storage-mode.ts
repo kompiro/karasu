@@ -28,7 +28,7 @@ export async function detectAppMode(): Promise<AppMode> {
     const res = await fetch("/api/files", {
       signal: AbortSignal.timeout(200),
     });
-    if (res.ok) return "serve";
+    if (res.ok && res.headers.get("content-type")?.includes("application/json")) return "serve";
   } catch {
     // fallthrough
   }
