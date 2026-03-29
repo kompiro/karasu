@@ -117,6 +117,7 @@ import { extractOrgView, type OrgViewPath } from "./view/org-view-extract.js";
 import { extractDeployView } from "./view/deploy-view-extract.js";
 import { ImportResolver } from "./fs/import-resolver.js";
 import { getBuiltinStyleSheet, BUILTIN_STYLE_SOURCE } from "./builtins/default-style.js";
+import { getIconThemeStyleSheet } from "./builtins/icon-theme.js";
 import "./renderer/shapes.js"; // ensure built-in shapes are registered
 import type {
   Diagnostic,
@@ -174,6 +175,9 @@ export function compile(
   const diagnostics = [...parseResult.diagnostics];
 
   const sheets: StyleSheet[] = [getBuiltinStyleSheet()];
+  if (displayMode === "icon") {
+    sheets.push(getIconThemeStyleSheet());
+  }
   if (styleSource) {
     const styleResult = StyleParser.parse(styleSource);
     diagnostics.push(...styleResult.diagnostics);
@@ -229,7 +233,10 @@ export async function compileProject(
   const resolved = await resolver.resolve(entryPath);
   const diagnostics = [...resolved.diagnostics];
 
-  const allSheets = [getBuiltinStyleSheet(), ...resolved.styleSheets];
+  const allSheets =
+    displayMode === "icon"
+      ? [getBuiltinStyleSheet(), getIconThemeStyleSheet(), ...resolved.styleSheets]
+      : [getBuiltinStyleSheet(), ...resolved.styleSheets];
   const deploySliceForStyle = extractDeployView(
     resolved.krsFile.deploys,
     resolved.krsFile.systems,
