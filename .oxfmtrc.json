@@ -5,5 +5,5 @@
   "tabWidth": 2,
   "printWidth": 100,
   "trailingComma": "all",
-  "ignorePatterns": ["dist", "node_modules"]
+  "ignorePatterns": ["dist", "node_modules", "**/coverage"]
 }
