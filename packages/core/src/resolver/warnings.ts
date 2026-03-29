@@ -2,11 +2,11 @@ import type { KrsNode, KrsFile, TeamNode } from "../types/ast.js";
 import type { StyleSheet } from "../types/style.js";
 import type { Warning } from "../types/warnings.js";
 
-export function analyze(file: KrsFile, sheets: StyleSheet[]): Warning[] {
+export function analyze(file: KrsFile, sheets: StyleSheet[], systemSheetCount = 1): Warning[] {
   const warnings: Warning[] = [];
 
   warnings.push(...detectDomainDispersal(file));
-  warnings.push(...detectStyleConflicts(sheets));
+  warnings.push(...detectStyleConflicts(sheets, systemSheetCount));
   warnings.push(...detectMissingProperties(file));
   warnings.push(...detectInvalidOwns(file));
   warnings.push(...detectDeprecatedTeamProperty(file));
@@ -57,10 +57,10 @@ function detectDomainDispersal(file: KrsFile): Warning[] {
   return warnings;
 }
 
-function detectStyleConflicts(sheets: StyleSheet[]): Warning[] {
-  // Skip the builtin sheet (index 0) — it is designed to be overridden.
-  // Only detect conflicts among user sheets (index 1+).
-  const userSheets = sheets.slice(1);
+function detectStyleConflicts(sheets: StyleSheet[], systemSheetCount = 1): Warning[] {
+  // Skip system sheets (built-in + any injected theme sheets) — they are designed to be overridden.
+  // Only detect conflicts among user sheets (index systemSheetCount+).
+  const userSheets = sheets.slice(systemSheetCount);
   if (userSheets.length <= 1) return [];
   const warnings: Warning[] = [];
 

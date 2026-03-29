@@ -363,6 +363,42 @@ describe("analyze", () => {
     const warnings = analyze(file, [builtin, userSheet]);
     expect(warnings.some((w) => w.kind === "style-conflict")).toBe(false);
   });
+
+  it("does not warn when icon theme sheet and user sheet define the same selector (systemSheetCount=2)", () => {
+    // When icon mode is active, the icon theme is a system sheet at index 1.
+    // A user sheet at index 2 may also set the same selector (e.g. service color).
+    // This must NOT produce a style-conflict warning.
+    const builtin = getBuiltinStyleSheet();
+    const iconThemeSheet: StyleSheet = {
+      rules: [
+        makeRule({ nodeType: "service", tags: [], annotations: [] }, { shape: 'url("service")' }, 0),
+      ],
+    };
+    const userSheet: StyleSheet = {
+      rules: [makeRule({ nodeType: "service", tags: [], annotations: [] }, { color: "#AAA" }, 1)],
+    };
+    const file = makeFile({});
+    const warnings = analyze(file, [builtin, iconThemeSheet, userSheet], 2);
+    expect(warnings.some((w) => w.kind === "style-conflict")).toBe(false);
+  });
+
+  it("still warns when two user sheets conflict even with icon theme present (systemSheetCount=2)", () => {
+    const builtin = getBuiltinStyleSheet();
+    const iconThemeSheet: StyleSheet = {
+      rules: [
+        makeRule({ nodeType: "service", tags: [], annotations: [] }, { shape: 'url("service")' }, 0),
+      ],
+    };
+    const userSheet1: StyleSheet = {
+      rules: [makeRule({ nodeType: "service", tags: [], annotations: [] }, { color: "#AAA" }, 1)],
+    };
+    const userSheet2: StyleSheet = {
+      rules: [makeRule({ nodeType: "service", tags: [], annotations: [] }, { color: "#BBB" }, 2)],
+    };
+    const file = makeFile({});
+    const warnings = analyze(file, [builtin, iconThemeSheet, userSheet1, userSheet2], 2);
+    expect(warnings.some((w) => w.kind === "style-conflict")).toBe(true);
+  });
 });
 
 describe("resolveStyles with deployNodes", () => {
