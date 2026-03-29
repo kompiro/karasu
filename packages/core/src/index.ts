@@ -75,6 +75,8 @@ export {
   getIconDef,
   hasShape,
   getRegisteredShapeNames,
+  renderPictogram,
+  clearRegistry,
   type ShapeContext,
   type ShapeRenderFn,
   type SvgIconDef,
@@ -163,6 +165,21 @@ export interface CompileResult {
   deployBlocks: DeployBlockInfo[];
 }
 
+/**
+ * Compile a .krs source string to SVG.
+ *
+ * @param krsSource     - The raw .krs diagram source
+ * @param styleSource   - Optional .krs.style content provided by the caller.
+ *                        When `displayMode === "icon"`, the icon theme stylesheet is
+ *                        automatically injected as a system sheet. Callers must NOT
+ *                        pre-concatenate `ICON_THEME_STYLE_SOURCE` into `styleSource`
+ *                        when passing `displayMode === "icon"`, as this would apply
+ *                        the icon theme rules twice and produce duplicate style warnings.
+ * @param viewPath      - Optional path filter for drill-down views
+ * @param diagramType   - "deploy" renders the deployment diagram; default renders the system view
+ * @param selectedDeployId - Active deploy container ID (deploy diagram only)
+ * @param displayMode   - "icon" switches nodes to fixed-size icon card layout
+ */
 export function compile(
   krsSource: string,
   styleSource?: string,
@@ -193,8 +210,9 @@ export function compile(
     ...deploySliceForStyle.containers.flatMap((c) => c.units),
     ...deploySliceForStyle.unclassifiedUnits,
   ];
+  const systemSheetCount = displayMode === "icon" ? 2 : 1;
   const styles = resolveStyles(parseResult.value.systems, sheets, deployUnits);
-  const warnings = analyze(parseResult.value, sheets);
+  const warnings = analyze(parseResult.value, sheets, systemSheetCount);
   const hasDeployDiagram = parseResult.value.deploys.length > 0;
   const deployBlocks = parseResult.value.deploys.map((d) => ({ id: d.id, label: d.label ?? d.id }));
   const serviceIdsWithDeploy = new Set(deploySliceForStyle.containers.map((c) => c.serviceId));
@@ -233,10 +251,11 @@ export async function compileProject(
   const resolved = await resolver.resolve(entryPath);
   const diagnostics = [...resolved.diagnostics];
 
-  const allSheets =
-    displayMode === "icon"
-      ? [getBuiltinStyleSheet(), getIconThemeStyleSheet(), ...resolved.styleSheets]
-      : [getBuiltinStyleSheet(), ...resolved.styleSheets];
+  const systemSheets: StyleSheet[] = [getBuiltinStyleSheet()];
+  if (displayMode === "icon") {
+    systemSheets.push(getIconThemeStyleSheet());
+  }
+  const allSheets = [...systemSheets, ...resolved.styleSheets];
   const deploySliceForStyle = extractDeployView(
     resolved.krsFile.deploys,
     resolved.krsFile.systems,
@@ -246,8 +265,9 @@ export async function compileProject(
     ...deploySliceForStyle.containers.flatMap((c) => c.units),
     ...deploySliceForStyle.unclassifiedUnits,
   ];
+  const systemSheetCount = systemSheets.length;
   const styles = resolveStyles(resolved.krsFile.systems, allSheets, deployUnits);
-  const warnings = analyze(resolved.krsFile, allSheets);
+  const warnings = analyze(resolved.krsFile, allSheets, systemSheetCount);
   const hasDeployDiagram = resolved.krsFile.deploys.length > 0;
   const deployBlocks = resolved.krsFile.deploys.map((d) => ({ id: d.id, label: d.label ?? d.id }));
   const serviceIdsWithDeploy = new Set(deploySliceForStyle.containers.map((c) => c.serviceId));
