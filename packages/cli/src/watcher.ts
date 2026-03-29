@@ -9,22 +9,25 @@ export class FileWatcher {
   constructor(private dir: string) {}
 
   start(): void {
-    const watcher = watch(`${this.dir}/**/*.krs`, {
+    const watcher = watch(this.dir, {
       ignoreInitial: true,
       persistent: true,
     });
 
     watcher.on("change", (filePath: string) => {
+      if (!filePath.endsWith(".krs")) return;
       const name = this.pathToName(filePath);
       this.broadcast({ file: name });
     });
 
     watcher.on("add", (filePath: string) => {
+      if (!filePath.endsWith(".krs")) return;
       const name = this.pathToName(filePath);
       this.broadcast({ file: name, event: "add" });
     });
 
     watcher.on("unlink", (filePath: string) => {
+      if (!filePath.endsWith(".krs")) return;
       const name = this.pathToName(filePath);
       this.broadcast({ file: name, event: "unlink" });
     });
