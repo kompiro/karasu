@@ -7,14 +7,13 @@ export function useDrillViewSvg(
   entryPath: string | null,
   fs: FileSystemProvider | null,
 ): { drillViewSvg: string; recompile: () => void } {
-  const [drillViewSvg, setFullViewSvg] = useState("");
+  const [drillViewSvg, setDrillViewSvg] = useState("");
   const lastValidSvg = useRef("");
   const timerRef = useRef<ReturnType<typeof setTimeout>>(undefined);
-  const recompileCounter = useRef(0);
+  const [recompileTick, setRecompileTick] = useState(0);
 
   const recompile = useCallback(() => {
-    recompileCounter.current++;
-    setFullViewSvg((prev) => prev); // trigger re-render to pick up counter change
+    setRecompileTick((n) => n + 1);
   }, []);
 
   useEffect(() => {
@@ -26,18 +25,17 @@ export function useDrillViewSvg(
       try {
         const svg = await buildExportSvgFromProject(entryPath, fs);
         lastValidSvg.current = svg;
-        setFullViewSvg(svg);
+        setDrillViewSvg(svg);
       } catch {
         // Retain last valid SVG on error
-        setFullViewSvg(lastValidSvg.current);
+        setDrillViewSvg(lastValidSvg.current);
       }
     }, DEBOUNCE_MS);
 
     return () => {
       if (timerRef.current) clearTimeout(timerRef.current);
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [entryPath, fs, recompileCounter.current]);
+  }, [entryPath, fs, recompileTick]);
 
   return { drillViewSvg, recompile };
 }
