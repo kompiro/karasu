@@ -112,6 +112,15 @@ body,
   width: 100%;
 }
 
+/* ── Serve Mode (preview-only, no editor) ───────────────────────── */
+.app.serve-mode {
+  grid-template-columns: 1fr;
+}
+
+.app.serve-mode .preview-column {
+  grid-column: 1;
+}
+
 /* ── Editor Pane ────────────────────────────────────────────────── */
 .editor-pane {
   grid-row: 1;
