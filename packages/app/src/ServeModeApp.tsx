@@ -73,17 +73,19 @@ function ServeModeInner() {
     recompile: recompileDeploy,
   } = useDeployView(SERVE_FILE_PATH, fs, viewPath);
 
-  const { orgSvg, orgDiagnostics, orgWarnings } = useOrgView(
-    SERVE_FILE_PATH,
-    fs,
-    orgPath as OrgViewPath,
-  );
+  const {
+    orgSvg,
+    orgDiagnostics,
+    orgWarnings,
+    recompile: recompileOrg,
+  } = useOrgView(SERVE_FILE_PATH, fs, orgPath as OrgViewPath);
 
   // hooks が確定した後に ref を更新する
   recompileRef.current = useCallback(() => {
     recompileSystem();
     recompileDeploy();
-  }, [recompileSystem, recompileDeploy]);
+    recompileOrg();
+  }, [recompileSystem, recompileDeploy, recompileOrg]);
 
   const loadFile = useCallback(
     async (name: string) => {
@@ -169,6 +171,14 @@ function ServeModeInner() {
     (teamId: string) => {
       dispatch({ type: "SET_ACTIVE_VIEW", activeView: "org" });
       dispatch({ type: "SET_HIGHLIGHTED_NODE", nodeId: teamId });
+    },
+    [dispatch],
+  );
+
+  const handleOwnedServiceClick = useCallback(
+    (serviceId: string) => {
+      dispatch({ type: "SET_ACTIVE_VIEW", activeView: "system" });
+      dispatch({ type: "SET_HIGHLIGHTED_NODE", nodeId: serviceId });
     },
     [dispatch],
   );
@@ -273,6 +283,7 @@ function ServeModeInner() {
           onBreadcrumbNavigate: (path) => dispatch({ type: "SET_ORG_PATH", path }),
           highlightedNodeId,
           onClearHighlight: () => dispatch({ type: "SET_HIGHLIGHTED_NODE", nodeId: null }),
+          onOwnedServiceClick: handleOwnedServiceClick,
         }}
         nodeMetadata={nodeMetadata}
         onDrillDown={handleDrillDown}
