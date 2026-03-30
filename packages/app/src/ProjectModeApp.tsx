@@ -1,6 +1,5 @@
 import { useEffect, useCallback, useMemo, useRef, useState } from "react";
 import { Parser, buildDrillDownSvg, buildFullViewSvg } from "@karasu/core";
-import type { ExportViewMode } from "./components/KarasuPreviewColumn.js";
 import { EditorPane } from "./components/EditorPane.js";
 import { ProjectSelector } from "./components/ProjectSelector.js";
 import { FileTree } from "./components/FileTree.js";
@@ -25,7 +24,7 @@ export function ProjectModeApp() {
   const { state, dispatch, fs } = useAppContext();
   const pmRef = useRef(new ProjectManager(fs));
   const pm = pmRef.current;
-  const [exportViewMode, setExportViewMode] = useState<ExportViewMode>("current");
+  const [isFullView, setIsFullView] = useState(false);
 
   const {
     currentProject,
@@ -404,8 +403,8 @@ export function ProjectModeApp() {
         displayMode={displayMode}
         onDisplayModeChange={handleDisplayModeChange}
         onExportSvg={(svg, filename) => downloadSvg(svg, filename)}
-        exportViewMode={exportViewMode}
-        onExportViewModeChange={setExportViewMode}
+        isFullView={isFullView}
+        onFullViewToggle={() => setIsFullView((v) => !v)}
         drillDownSvg={drillDownSvg}
         fullViewSvg={fullViewSvg}
       />

@@ -8,7 +8,6 @@ import {
   type OrgViewPath,
   type DisplayMode,
 } from "@karasu/core";
-import type { ExportViewMode } from "./components/KarasuPreviewColumn.js";
 import { KarasuPreviewColumn } from "./components/KarasuPreviewColumn.js";
 import { downloadSvg } from "./utils/download-svg.js";
 import { AppProvider, useAppContext } from "./state/app-context.js";
@@ -62,7 +61,7 @@ function ServeModeInner() {
   const { state, dispatch, fs } = useAppContext();
   const { fileContent, viewPath, activeView, orgPath, highlightedNodeId, displayMode } = state;
   const [loadError, setLoadError] = useState<string | null>(null);
-  const [exportViewMode, setExportViewMode] = useState<ExportViewMode>("current");
+  const [isFullView, setIsFullView] = useState(false);
 
   // ref に recompile を格納し loadFile から参照できるようにする
   const recompileRef = useRef<() => void>(() => {});
@@ -314,8 +313,8 @@ function ServeModeInner() {
         }}
         nodeMetadata={nodeMetadata}
         onExportSvg={(svg, filename) => downloadSvg(svg, filename)}
-        exportViewMode={exportViewMode}
-        onExportViewModeChange={setExportViewMode}
+        isFullView={isFullView}
+        onFullViewToggle={() => setIsFullView((v) => !v)}
         drillDownSvg={drillDownSvg}
         fullViewSvg={fullViewSvg}
       />

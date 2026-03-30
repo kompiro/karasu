@@ -8,7 +8,6 @@ import {
   type KrsNode,
   type OrgViewPath,
 } from "@karasu/core";
-import type { ExportViewMode } from "./components/KarasuPreviewColumn.js";
 import { EditorPane } from "./components/EditorPane.js";
 import { KarasuPreviewColumn } from "./components/KarasuPreviewColumn.js";
 import { downloadSvg } from "./utils/download-svg.js";
@@ -40,7 +39,7 @@ export function MemoryModeApp() {
 function MemoryModeInner() {
   const { state, dispatch, fs } = useAppContext();
   const { fileContent, viewPath, activeView, orgPath, highlightedNodeId, displayMode } = state;
-  const [exportViewMode, setExportViewMode] = useState<ExportViewMode>("current");
+  const [isFullView, setIsFullView] = useState(false);
 
   // Initialize: write sample KRS to in-memory FS and select the file
   useEffect(() => {
@@ -247,8 +246,8 @@ function MemoryModeInner() {
           dispatch({ type: "SET_DISPLAY_MODE", displayMode: mode })
         }
         onExportSvg={(svg, filename) => downloadSvg(svg, filename)}
-        exportViewMode={exportViewMode}
-        onExportViewModeChange={setExportViewMode}
+        isFullView={isFullView}
+        onFullViewToggle={() => setIsFullView((v) => !v)}
         drillDownSvg={drillDownSvg}
         fullViewSvg={fullViewSvg}
       />
