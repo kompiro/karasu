@@ -1,8 +1,12 @@
-import { useEffect, useCallback, useMemo, useRef } from "react";
+import { useEffect, useCallback, useMemo, useRef, useState } from "react";
 import {
   Parser,
   InMemoryFileSystemProvider,
   getReference,
+  buildDrillDownSvg,
+  buildFullViewSvg,
+  buildFullViewSvgOrg,
+  buildExportSvgOrg,
   type KrsNode,
   type OrgViewPath,
 } from "@karasu/core";
@@ -14,7 +18,6 @@ import { useAppContext } from "./state/app-context.js";
 import { useSystemView } from "./hooks/useSystemView.js";
 import { useDeployView } from "./hooks/useDeployView.js";
 import { useOrgView } from "./hooks/useOrgView.js";
-import { useFullViewSvg } from "./hooks/useFullViewSvg.js";
 
 import type { ActiveView } from "./state/app-reducer.js";
 import type { DisplayMode } from "@karasu/core";
@@ -37,8 +40,8 @@ export function MemoryModeApp() {
 
 function MemoryModeInner() {
   const { state, dispatch, fs } = useAppContext();
-  const { fileContent, viewPath, activeView, orgPath, highlightedNodeId, displayMode, isFullView } =
-    state;
+  const { fileContent, viewPath, activeView, orgPath, highlightedNodeId, displayMode } = state;
+  const [isFullView, setIsFullView] = useState(false);
 
   // Initialize: write sample KRS to in-memory FS and select the file
   useEffect(() => {
@@ -136,12 +139,6 @@ function MemoryModeInner() {
     [dispatch, nodePathIndex],
   );
 
-  const handleFullViewToggle = useCallback(() => {
-    dispatch({ type: "SET_FULL_VIEW", isFullView: !isFullView });
-  }, [dispatch, isFullView]);
-
-  const multiLevelSvg = useFullViewSvg(fileContent, "", isFullView, activeView);
-
   const breadcrumbItems = useMemo(() => {
     if (!fileContent) return [];
     try {
@@ -166,6 +163,42 @@ function MemoryModeInner() {
       return [];
     }
   }, [fileContent, viewPath]);
+
+  const drillDownSvg = useMemo(() => {
+    if (!fileContent) return undefined;
+    try {
+      return buildDrillDownSvg(fileContent, undefined, displayMode);
+    } catch {
+      return undefined;
+    }
+  }, [fileContent, displayMode]);
+
+  const fullViewSvg = useMemo(() => {
+    if (!fileContent) return undefined;
+    try {
+      return buildFullViewSvg(fileContent, undefined, displayMode);
+    } catch {
+      return undefined;
+    }
+  }, [fileContent, displayMode]);
+
+  const orgFullViewSvg = useMemo(() => {
+    if (!fileContent) return undefined;
+    try {
+      return buildFullViewSvgOrg(fileContent, undefined, displayMode);
+    } catch {
+      return undefined;
+    }
+  }, [fileContent, displayMode]);
+
+  const orgDrillDownSvg = useMemo(() => {
+    if (!fileContent) return undefined;
+    try {
+      return buildExportSvgOrg(fileContent);
+    } catch {
+      return undefined;
+    }
+  }, [fileContent]);
 
   const orgBreadcrumbItems = useMemo(() => {
     if (!fileContent) return [];
@@ -234,8 +267,11 @@ function MemoryModeInner() {
         }
         onExportSvg={(svg, filename) => downloadSvg(svg, filename)}
         isFullView={isFullView}
-        onFullViewToggle={handleFullViewToggle}
-        multiLevelSvg={multiLevelSvg}
+        onFullViewToggle={() => setIsFullView((v) => !v)}
+        drillDownSvg={drillDownSvg}
+        fullViewSvg={fullViewSvg}
+        orgFullViewSvg={orgFullViewSvg}
+        orgDrillDownSvg={orgDrillDownSvg}
       />
     </div>
   );
