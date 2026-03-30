@@ -1,6 +1,6 @@
 import { createServer, type IncomingMessage, type ServerResponse, type Server } from "node:http";
 import { readFile, readdir, stat } from "node:fs/promises";
-import { join, resolve, extname, relative } from "node:path";
+import { join, resolve, extname, relative, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 import { FileWatcher } from "./watcher.js";
 
@@ -38,7 +38,14 @@ export async function collectKrsFiles(dir: string): Promise<string[]> {
 }
 
 export async function resolveKrsFile(dir: string, name: string): Promise<string | null> {
-  const filePath = join(dir, `${name}.krs`);
+  // Normalise dir so a trailing sep never causes startsWith to fail.
+  // Note: this guard is a string-level check and does not resolve symlinks;
+  // a symlink inside dir that points outside would bypass it.
+  const safeDir = resolve(dir);
+  const filePath = join(safeDir, `${name}.krs`);
+  if (!filePath.startsWith(safeDir + sep)) {
+    return null;
+  }
   try {
     await stat(filePath);
     return filePath;
