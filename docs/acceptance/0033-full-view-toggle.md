@@ -56,7 +56,7 @@ Verify that the Full View toggle renders a multi-level SVG in an iframe, enablin
 | Step | Action | Expected Result |
 |------|--------|----------------|
 | 5.1 | Switch to the Deploy tab | Full View button is absent |
-| 5.2 | Switch back to System tab | Full View state resets to off (if it was on before switching) |
+| 5.2 | Switch back to System tab | Full View state is **preserved** — if it was on before switching, the iframe is shown again immediately |
 
 ### 6. Org view Full View
 

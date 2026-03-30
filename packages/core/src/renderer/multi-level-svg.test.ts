@@ -4,6 +4,7 @@ import {
   collectAllSystemPaths,
   assembleMultiLevelSvg,
   buildExportSvg,
+  buildExportSvgOrg,
 } from "./multi-level-svg.js";
 import type { ExportLevel } from "./multi-level-svg.js";
 import type { KrsNode } from "../types/ast.js";
@@ -233,5 +234,60 @@ system Simple {
     const svg = buildExportSvg(simpleKrs);
     // Order has children so should have an anchor link to its child level
     expect(svg).toContain('href="#krs-view-root__Order"');
+  });
+});
+
+describe("buildExportSvgOrg", () => {
+  const orgKrs = `
+system Placeholder {}
+
+organization Acme {
+  team Frontend "Frontend Team" {
+    team WebUI "Web UI Team" {}
+  }
+  team Backend "Backend Team" {}
+}
+`;
+
+  it("returns an SVG string", () => {
+    const svg = buildExportSvgOrg(orgKrs);
+    expect(svg).toMatch(/^<svg/);
+    expect(svg).toContain("</svg>");
+  });
+
+  it("contains krs-view-root group (org root level)", () => {
+    const svg = buildExportSvgOrg(orgKrs);
+    expect(svg).toContain('id="krs-view-root"');
+  });
+
+  it("contains a child level for teams with sub-teams", () => {
+    const svg = buildExportSvgOrg(orgKrs);
+    // Frontend has sub-team WebUI, so it gets a child level
+    expect(svg).toContain("krs-view-root__Frontend");
+  });
+
+  it("does not contain a level for leaf teams", () => {
+    const svg = buildExportSvgOrg(orgKrs);
+    // Backend is a leaf team (no sub-teams), so no child level
+    expect(svg).not.toContain("krs-view-root__Backend");
+  });
+
+  it("includes CSS :target navigation rules", () => {
+    const svg = buildExportSvgOrg(orgKrs);
+    expect(svg).toContain(":target");
+    expect(svg).toContain(".krs-view");
+  });
+
+  it("handles a flat org (no sub-teams) without error", () => {
+    const flat = `
+system Placeholder {}
+organization Corp {
+  team Alpha "Alpha" {}
+  team Beta "Beta" {}
+}
+`;
+    const svg = buildExportSvgOrg(flat);
+    expect(svg).toContain('id="krs-view-root"');
+    expect(svg).not.toContain("krs-view-root__Alpha");
   });
 });
