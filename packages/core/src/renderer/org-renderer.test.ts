@@ -227,4 +227,61 @@ describe("renderOrgView", () => {
       expect(svg).toContain('data-node-id="sre"');
     });
   });
+
+  describe("icon mode", () => {
+    it("renders 160px wide cards for teams", () => {
+      const teams = [makeTeam("backend", { label: "Backend" })];
+      const slice: OrgViewSlice = { teams, focusedTeam: null, ancestorChain: [] };
+      const svg = renderOrgView(slice, makeStyles(), "icon");
+      expect(svg).toContain('width="160"');
+      expect(svg).toContain("Backend");
+    });
+
+    it("renders team label in icon card", () => {
+      const teams = [makeTeam("alpha", { label: "Alpha Team" })];
+      const slice: OrgViewSlice = { teams, focusedTeam: null, ancestorChain: [] };
+      const svg = renderOrgView(slice, makeStyles(), "icon");
+      expect(svg).toContain('data-node-id="alpha"');
+      expect(svg).toContain("Alpha Team");
+    });
+
+    it("shows member count as description in team icon card", () => {
+      const team = makeTeam("ops", {
+        members: [{ id: "alice" }, { id: "bob" }],
+      });
+      const slice: OrgViewSlice = { teams: [team], focusedTeam: null, ancestorChain: [] };
+      const svg = renderOrgView(slice, makeStyles(), "icon");
+      expect(svg).toContain("2 members");
+    });
+
+    it("renders 56px card height when team has no members or sub-teams", () => {
+      const team = makeTeam("empty-team");
+      const slice: OrgViewSlice = { teams: [team], focusedTeam: null, ancestorChain: [] };
+      const svg = renderOrgView(slice, makeStyles(), "icon");
+      expect(svg).toContain('height="56"');
+    });
+
+    it("renders 100px card height when team has members", () => {
+      const team = makeTeam("ops", { members: [{ id: "alice" }] });
+      const slice: OrgViewSlice = { teams: [team], focusedTeam: null, ancestorChain: [] };
+      const svg = renderOrgView(slice, makeStyles(), "icon");
+      expect(svg).toContain('height="100"');
+    });
+
+    it("renders member icon cards in drill-down", () => {
+      const team = makeTeam("backend", {
+        members: [{ id: "alice", label: "Alice" }],
+      });
+      const slice: OrgViewSlice = { teams: [], focusedTeam: team, ancestorChain: [] };
+      const svg = renderOrgView(slice, makeStyles(), "icon");
+      expect(svg).toContain('data-node-id="alice"');
+      expect(svg).toContain("Alice");
+    });
+
+    it("renders empty state in icon mode", () => {
+      const slice: OrgViewSlice = { teams: [], focusedTeam: null, ancestorChain: [] };
+      const svg = renderOrgView(slice, makeStyles(), "icon");
+      expect(svg).toContain("No teams defined");
+    });
+  });
 });
