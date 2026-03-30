@@ -60,7 +60,6 @@ interface KarasuPreviewColumnProps {
   orgView: OrgViewProps;
 
   nodeMetadata: Map<string, NodeMetadata>;
-  onDrillDown: (path: string[]) => void;
 
   deployBlocks?: DeployBlockInfo[];
   selectedDeployBlockId?: string | null;
@@ -69,6 +68,10 @@ interface KarasuPreviewColumnProps {
   displayMode: DisplayMode;
   onDisplayModeChange: (mode: DisplayMode) => void;
   onExportSvg: (svg: string, filename: string) => void;
+
+  isFullView: boolean;
+  onFullViewToggle: () => void;
+  multiLevelSvg: string | null;
 }
 
 export function KarasuPreviewColumn({
@@ -79,13 +82,15 @@ export function KarasuPreviewColumn({
   deployView,
   orgView,
   nodeMetadata,
-  onDrillDown,
   deployBlocks,
   selectedDeployBlockId,
   onDeployBlockChange,
   displayMode,
   onDisplayModeChange,
   onExportSvg,
+  isFullView,
+  onFullViewToggle,
+  multiLevelSvg,
 }: KarasuPreviewColumnProps) {
   const [refOpen, setRefOpen] = useState(false);
 
@@ -103,6 +108,12 @@ export function KarasuPreviewColumn({
         : orgView.diagnostics;
   const viewPath =
     activeView === "system" ? systemView.viewPath : activeView === "org" ? orgView.orgPath : [];
+  const onDrillDown =
+    activeView === "system"
+      ? systemView.onBreadcrumbNavigate
+      : activeView === "org"
+        ? orgView.onBreadcrumbNavigate
+        : undefined;
 
   const exportFilename = buildSvgExportFilename(activeView, {
     breadcrumbItems:
@@ -133,6 +144,15 @@ export function KarasuPreviewColumn({
         >
           ◇ Icon Mode
         </button>
+        {activeView !== "deploy" && (
+          <button
+            className={`toolbar-btn toolbar-btn--full-view${isFullView ? " active" : ""}`}
+            onClick={onFullViewToggle}
+            aria-label="Toggle full view"
+          >
+            ⊞ Full View
+          </button>
+        )}
         <button
           className="toolbar-btn toolbar-btn--export"
           onClick={() => onExportSvg(svg, exportFilename)}
@@ -150,40 +170,49 @@ export function KarasuPreviewColumn({
         </button>
       </div>
       <ReferencePanel isOpen={refOpen} onClose={() => setRefOpen(false)} activeView={activeView} />
-      {activeView === "system" && (
+      {!isFullView && activeView === "system" && (
         <BreadcrumbBar
           items={systemView.breadcrumbItems}
           onNavigate={systemView.onBreadcrumbNavigate}
         />
       )}
-      {activeView === "org" && (
+      {!isFullView && activeView === "org" && (
         <BreadcrumbBar items={orgView.breadcrumbItems} onNavigate={orgView.onBreadcrumbNavigate} />
       )}
-      <PreviewPane
-        svg={svg}
-        diagnostics={diagnostics}
-        viewPath={viewPath}
-        nodeMetadata={nodeMetadata}
-        onDrillDown={activeView !== "deploy" ? onDrillDown : () => {}}
-        onContainerClick={activeView === "deploy" ? deployView.onContainerClick : undefined}
-        onDeployButtonClick={activeView === "system" ? systemView.onDeployButtonClick : undefined}
-        onTeamButtonClick={activeView === "system" ? systemView.onTeamButtonClick : undefined}
-        onOwnedServiceClick={activeView === "org" ? orgView.onOwnedServiceClick : undefined}
-        highlightedNodeId={
-          activeView === "deploy"
-            ? deployView.highlightedNodeId
-            : activeView === "org"
-              ? orgView.highlightedNodeId
-              : undefined
-        }
-        onClearHighlight={
-          activeView === "deploy"
-            ? deployView.onClearHighlight
-            : activeView === "org"
-              ? orgView.onClearHighlight
-              : undefined
-        }
-      />
+      {isFullView && multiLevelSvg ? (
+        <iframe
+          srcDoc={multiLevelSvg}
+          sandbox=""
+          style={{ width: "100%", flex: 1, border: "none" }}
+          title="Full diagram view"
+        />
+      ) : (
+        <PreviewPane
+          svg={svg}
+          diagnostics={diagnostics}
+          viewPath={viewPath}
+          nodeMetadata={nodeMetadata}
+          onDrillDown={activeView !== "deploy" ? onDrillDown : undefined}
+          onContainerClick={activeView === "deploy" ? deployView.onContainerClick : undefined}
+          onDeployButtonClick={activeView === "system" ? systemView.onDeployButtonClick : undefined}
+          onTeamButtonClick={activeView === "system" ? systemView.onTeamButtonClick : undefined}
+          onOwnedServiceClick={activeView === "org" ? orgView.onOwnedServiceClick : undefined}
+          highlightedNodeId={
+            activeView === "deploy"
+              ? deployView.highlightedNodeId
+              : activeView === "org"
+                ? orgView.highlightedNodeId
+                : undefined
+          }
+          onClearHighlight={
+            activeView === "deploy"
+              ? deployView.onClearHighlight
+              : activeView === "org"
+                ? orgView.onClearHighlight
+                : undefined
+          }
+        />
+      )}
       <WarningPanel
         warnings={
           activeView === "org"

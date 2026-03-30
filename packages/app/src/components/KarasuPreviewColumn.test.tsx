@@ -43,10 +43,12 @@ function makeProps(overrides: Partial<Parameters<typeof KarasuPreviewColumn>[0]>
       onBreadcrumbNavigate: noop,
     },
     nodeMetadata: new Map(),
-    onDrillDown: vi.fn(),
     displayMode: "shape" as const,
     onDisplayModeChange: vi.fn(),
     onExportSvg: vi.fn(),
+    isFullView: false,
+    onFullViewToggle: vi.fn(),
+    multiLevelSvg: null,
     ...overrides,
   };
 }
@@ -243,6 +245,65 @@ describe("KarasuPreviewColumn", () => {
       const props = makeProps({ hasDeployDiagram: false });
       const { getByRole } = render(<KarasuPreviewColumn {...props} />);
       expect(getByRole("tab", { name: /Deploy/ })).toHaveProperty("ariaDisabled", "true");
+    });
+  });
+
+  describe("Full View toggle", () => {
+    it("shows Full View button in system view", () => {
+      const props = makeProps({ activeView: "system" });
+      const { getByRole } = render(<KarasuPreviewColumn {...props} />);
+      expect(getByRole("button", { name: /Toggle full view/ })).toBeTruthy();
+    });
+
+    it("shows Full View button in org view", () => {
+      const props = makeProps({ activeView: "org" });
+      const { getByRole } = render(<KarasuPreviewColumn {...props} />);
+      expect(getByRole("button", { name: /Toggle full view/ })).toBeTruthy();
+    });
+
+    it("hides Full View button in deploy view", () => {
+      const props = makeProps({ activeView: "deploy" });
+      const { queryByRole } = render(<KarasuPreviewColumn {...props} />);
+      expect(queryByRole("button", { name: /Toggle full view/ })).toBeNull();
+    });
+
+    it("calls onFullViewToggle when Full View button is clicked", () => {
+      const onFullViewToggle = vi.fn();
+      const props = makeProps({ activeView: "system", onFullViewToggle });
+      const { getByRole } = render(<KarasuPreviewColumn {...props} />);
+      fireEvent.click(getByRole("button", { name: /Toggle full view/ }));
+      expect(onFullViewToggle).toHaveBeenCalledOnce();
+    });
+
+    it("renders iframe when isFullView=true and multiLevelSvg is provided", () => {
+      const multiLevelSvg = "<!DOCTYPE html><html><body><svg></svg></body></html>";
+      const props = makeProps({ activeView: "system", isFullView: true, multiLevelSvg });
+      const { container } = render(<KarasuPreviewColumn {...props} />);
+      expect(container.querySelector("iframe")).toBeTruthy();
+    });
+
+    it("renders PreviewPane (not iframe) when isFullView=false", () => {
+      const props = makeProps({ activeView: "system", isFullView: false });
+      const { container } = render(<KarasuPreviewColumn {...props} />);
+      expect(container.querySelector("iframe")).toBeNull();
+      expect(container.querySelector(".preview-container")).toBeTruthy();
+    });
+
+    it("renders PreviewPane (not iframe) when isFullView=true but multiLevelSvg is null", () => {
+      const props = makeProps({ activeView: "system", isFullView: true, multiLevelSvg: null });
+      const { container } = render(<KarasuPreviewColumn {...props} />);
+      expect(container.querySelector("iframe")).toBeNull();
+      expect(container.querySelector(".preview-container")).toBeTruthy();
+    });
+
+    it("hides BreadcrumbBar when isFullView=true", () => {
+      const props = makeProps({
+        activeView: "system",
+        isFullView: true,
+        multiLevelSvg: "<!DOCTYPE html><html><body></body></html>",
+      });
+      const { queryByText } = render(<KarasuPreviewColumn {...props} />);
+      expect(queryByText("Root")).toBeNull();
     });
   });
 });

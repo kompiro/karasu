@@ -19,6 +19,7 @@ export interface AppState {
   highlightedNodeId: string | null;
   // UI
   displayMode: DisplayMode;
+  isFullView: boolean;
   loading: boolean;
 }
 
@@ -34,6 +35,7 @@ export const initialState: AppState = {
   selectedDeployBlockId: null,
   highlightedNodeId: null,
   displayMode: "shape",
+  isFullView: false,
   loading: true,
 };
 
@@ -52,7 +54,8 @@ export type AppAction =
   | { type: "ADD_PROJECT"; project: Project }
   | { type: "REMOVE_PROJECT"; id: string }
   | { type: "RENAME_PROJECT"; id: string; name: string }
-  | { type: "SET_DISPLAY_MODE"; displayMode: DisplayMode };
+  | { type: "SET_DISPLAY_MODE"; displayMode: DisplayMode }
+  | { type: "SET_FULL_VIEW"; isFullView: boolean };
 
 export function appReducer(state: AppState, action: AppAction): AppState {
   switch (action.type) {
@@ -140,6 +143,9 @@ export function appReducer(state: AppState, action: AppAction): AppState {
 
     case "SET_DISPLAY_MODE":
       return { ...state, displayMode: action.displayMode };
+
+    case "SET_FULL_VIEW":
+      return { ...state, isFullView: action.isFullView };
 
     default:
       return state;

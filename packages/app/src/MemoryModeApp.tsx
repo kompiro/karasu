@@ -14,6 +14,7 @@ import { useAppContext } from "./state/app-context.js";
 import { useSystemView } from "./hooks/useSystemView.js";
 import { useDeployView } from "./hooks/useDeployView.js";
 import { useOrgView } from "./hooks/useOrgView.js";
+import { useFullViewSvg } from "./hooks/useFullViewSvg.js";
 
 import type { ActiveView } from "./state/app-reducer.js";
 import type { DisplayMode } from "@karasu/core";
@@ -36,7 +37,8 @@ export function MemoryModeApp() {
 
 function MemoryModeInner() {
   const { state, dispatch, fs } = useAppContext();
-  const { fileContent, viewPath, activeView, orgPath, highlightedNodeId, displayMode } = state;
+  const { fileContent, viewPath, activeView, orgPath, highlightedNodeId, displayMode, isFullView } =
+    state;
 
   // Initialize: write sample KRS to in-memory FS and select the file
   useEffect(() => {
@@ -91,17 +93,6 @@ function MemoryModeInner() {
     [dispatch, fs, recompile],
   );
 
-  const handleDrillDown = useCallback(
-    (newPath: string[]) => {
-      if (activeView === "org") {
-        dispatch({ type: "SET_ORG_PATH", path: newPath });
-      } else {
-        dispatch({ type: "SET_VIEW_PATH", path: newPath });
-      }
-    },
-    [dispatch, activeView],
-  );
-
   const handleActiveViewChange = useCallback(
     (view: ActiveView) => {
       dispatch({ type: "SET_ACTIVE_VIEW", activeView: view });
@@ -144,6 +135,12 @@ function MemoryModeInner() {
     },
     [dispatch, nodePathIndex],
   );
+
+  const handleFullViewToggle = useCallback(() => {
+    dispatch({ type: "SET_FULL_VIEW", isFullView: !isFullView });
+  }, [dispatch, isFullView]);
+
+  const multiLevelSvg = useFullViewSvg(fileContent, "", isFullView, activeView);
 
   const breadcrumbItems = useMemo(() => {
     if (!fileContent) return [];
@@ -231,12 +228,14 @@ function MemoryModeInner() {
           onOwnedServiceClick: handleOwnedServiceClick,
         }}
         nodeMetadata={nodeMetadata}
-        onDrillDown={handleDrillDown}
         displayMode={displayMode}
         onDisplayModeChange={(mode: DisplayMode) =>
           dispatch({ type: "SET_DISPLAY_MODE", displayMode: mode })
         }
         onExportSvg={(svg, filename) => downloadSvg(svg, filename)}
+        isFullView={isFullView}
+        onFullViewToggle={handleFullViewToggle}
+        multiLevelSvg={multiLevelSvg}
       />
     </div>
   );

@@ -9,6 +9,7 @@ import { useAppContext } from "./state/app-context.js";
 import { useSystemView } from "./hooks/useSystemView.js";
 import { useDeployView } from "./hooks/useDeployView.js";
 import { useOrgView } from "./hooks/useOrgView.js";
+import { useFullViewSvg } from "./hooks/useFullViewSvg.js";
 
 import { ProjectManager } from "./fs/project-manager.js";
 import type { Project, KrsNode, OrgViewPath, DisplayMode } from "@karasu/core";
@@ -36,6 +37,7 @@ export function ProjectModeApp() {
     selectedDeployBlockId,
     highlightedNodeId,
     displayMode,
+    isFullView,
     loading,
   } = state;
 
@@ -148,18 +150,6 @@ export function ProjectModeApp() {
     [currentFilePath, fs, dispatch, recompile],
   );
 
-  // ドリルダウン
-  const handleDrillDown = useCallback(
-    (newPath: string[]) => {
-      if (activeView === "org") {
-        dispatch({ type: "SET_ORG_PATH", path: newPath });
-      } else {
-        dispatch({ type: "SET_VIEW_PATH", path: newPath });
-      }
-    },
-    [dispatch, activeView],
-  );
-
   // ビュー切り替え
   const handleActiveViewChange = useCallback(
     (view: ActiveView) => {
@@ -184,6 +174,13 @@ export function ProjectModeApp() {
     },
     [dispatch],
   );
+
+  // Full View toggle
+  const handleFullViewToggle = useCallback(() => {
+    dispatch({ type: "SET_FULL_VIEW", isFullView: !isFullView });
+  }, [dispatch, isFullView]);
+
+  const multiLevelSvg = useFullViewSvg(fileContent, "", isFullView, activeView);
 
   // Deploy ブロックセレクタ変更
   const handleDeployBlockChange = useCallback(
@@ -390,13 +387,15 @@ export function ProjectModeApp() {
           onOwnedServiceClick: handleOwnedServiceClick,
         }}
         nodeMetadata={nodeMetadata}
-        onDrillDown={handleDrillDown}
         deployBlocks={deployBlocks}
         selectedDeployBlockId={selectedDeployBlockId}
         onDeployBlockChange={handleDeployBlockChange}
         displayMode={displayMode}
         onDisplayModeChange={handleDisplayModeChange}
         onExportSvg={(svg, filename) => downloadSvg(svg, filename)}
+        isFullView={isFullView}
+        onFullViewToggle={handleFullViewToggle}
+        multiLevelSvg={multiLevelSvg}
       />
     </div>
   );
