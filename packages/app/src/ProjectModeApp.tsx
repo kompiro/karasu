@@ -64,6 +64,7 @@ export function ProjectModeApp() {
     orgSvg,
     orgDiagnostics,
     orgWarnings,
+    nodePathIndex,
     recompile: recompileOrg,
   } = useOrgView(entryPath, fs, orgPath as OrgViewPath);
 
@@ -213,10 +214,14 @@ export function ProjectModeApp() {
   // Org チームノードの所有サービスクリック → System タブへクロスナビゲーション
   const handleOwnedServiceClick = useCallback(
     (serviceId: string) => {
+      const resolvedPath = nodePathIndex.get(serviceId);
       dispatch({ type: "SET_ACTIVE_VIEW", activeView: "system" });
+      if (resolvedPath !== undefined) {
+        dispatch({ type: "SET_VIEW_PATH", path: resolvedPath });
+      }
       dispatch({ type: "SET_HIGHLIGHTED_NODE", nodeId: serviceId });
     },
-    [dispatch],
+    [dispatch, nodePathIndex],
   );
 
   // プロジェクト操作

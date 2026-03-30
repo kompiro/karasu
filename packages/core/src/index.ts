@@ -357,6 +357,7 @@ export interface OrgCompileResult {
   svg: string;
   diagnostics: Diagnostic[];
   warnings: Warning[];
+  nodePathIndex: Map<string, string[]>;
 }
 
 export async function compileProjectOrgView(
@@ -379,7 +380,7 @@ export async function compileProjectOrgView(
   );
   const svg = _renderOrgView(slice, styles);
 
-  return { svg, diagnostics, warnings };
+  return { svg, diagnostics, warnings, nodePathIndex: resolved.krsFile.nodePathIndex };
 }
 
 export function compileOrgView(
@@ -407,5 +408,5 @@ export function compileOrgView(
   );
   const svg = _renderOrgView(slice, styles);
 
-  return { svg, diagnostics, warnings };
+  return { svg, diagnostics, warnings, nodePathIndex: parseResult.value.nodePathIndex };
 }

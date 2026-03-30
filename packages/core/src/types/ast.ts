@@ -162,6 +162,8 @@ export interface KrsFile {
   deploys: DeployBlock[];
   organizations: OrganizationBlock[];
   ownerIndex: Map<string, string>;
+  /** Maps each node id to its viewPath (e.g. "EC" → ["Payment", "EC"]). System nodes are excluded. */
+  nodePathIndex: Map<string, string[]>;
 }
 
 // ─── Diagnostics ───────────────────────────────────

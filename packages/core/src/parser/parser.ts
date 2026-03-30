@@ -13,6 +13,7 @@ import type {
   LogicalNodeKind,
   DeployNodeKind,
   ServiceNode,
+  SystemNode,
   CommonProperties,
   OrganizationBlock,
   TeamNode,
@@ -130,6 +131,7 @@ export class Parser {
       deploys: [],
       organizations: [],
       ownerIndex: new Map(),
+      nodePathIndex: new Map(),
     };
 
     while (this.peek().type !== TokenType.EOF) {
@@ -161,6 +163,10 @@ export class Parser {
     }
 
     file.ownerIndex = this.buildOwnerIndex(file.organizations);
+    file.nodePathIndex = this.buildNodePathIndex(file.systems);
+    if (file.systems.length > 0) {
+      this.validateOwnsReferences(file.organizations, file.nodePathIndex);
+    }
 
     return { value: file, diagnostics: this.diagnostics };
   }
@@ -806,6 +812,77 @@ export class Parser {
         seen.add(team.id);
       }
       this.collectTeamIds(team.teams, seen);
+    }
+  }
+
+  private buildNodePathIndex(systems: SystemNode[]): Map<string, string[]> {
+    const index = new Map<string, string[]>();
+    // Only service and domain nodes are indexed: these are the only kinds
+    // that can appear in `owns` declarations and need navigation support.
+    // resource / usecase / user nodes are intentionally excluded so that
+    // legitimate shared resources across usecases do not generate warnings.
+    const INDEXED_KINDS = new Set(["service", "domain"]);
+    const walk = (node: KrsNode, path: string[]): void => {
+      const currentPath = [...path, node.id];
+      if (INDEXED_KINDS.has(node.kind)) {
+        if (index.has(node.id)) {
+          this.diagnostics.push({
+            severity: "warning",
+            message: `Node id "${node.id}" appears in multiple locations; first path is used for navigation`,
+            loc: node.loc,
+          });
+        } else {
+          index.set(node.id, currentPath);
+        }
+      }
+      for (const child of node.children) {
+        walk(child, currentPath);
+      }
+    };
+    for (const system of systems) {
+      this.collectNodeIds(system.children, new Set<string>());
+      for (const child of system.children) {
+        walk(child, []);
+      }
+    }
+    return index;
+  }
+
+  private collectNodeIds(nodes: KrsNode[], seen: Set<string>): void {
+    for (const node of nodes) {
+      if (seen.has(node.id)) {
+        this.diagnostics.push({
+          severity: "error",
+          message: `Duplicate node id "${node.id}" under the same parent`,
+          loc: node.loc,
+        });
+      } else {
+        seen.add(node.id);
+      }
+      this.collectNodeIds(node.children, new Set<string>());
+    }
+  }
+
+  private validateOwnsReferences(
+    organizations: OrganizationBlock[],
+    nodePathIndex: Map<string, string[]>,
+  ): void {
+    const check = (teams: TeamNode[]): void => {
+      for (const team of teams) {
+        for (const ownedId of team.properties.owns) {
+          if (!nodePathIndex.has(ownedId)) {
+            this.diagnostics.push({
+              severity: "warning",
+              message: `"${ownedId}" referenced in "owns" was not found in the system hierarchy`,
+              loc: team.loc,
+            });
+          }
+        }
+        check(team.teams);
+      }
+    };
+    for (const org of organizations) {
+      check(org.teams);
     }
   }
 }
