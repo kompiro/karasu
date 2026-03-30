@@ -7,6 +7,11 @@ import type { ActiveView } from "../state/app-reducer.js";
  * All drill-down levels are stacked vertically and visible simultaneously.
  * Returns an HTML string suitable for use as <iframe srcdoc>.
  * Returns null when full view is disabled or for deploy view (no drill-down).
+ *
+ * Note: styleSource is currently passed as empty string by all callers because
+ * style files are resolved through the filesystem inside compileProject() and are
+ * not separately available as raw strings at this call site.
+ * Custom styles are therefore not applied in Full View mode. (#TODO follow-up)
  */
 export function useFullViewSvg(
   source: string,
