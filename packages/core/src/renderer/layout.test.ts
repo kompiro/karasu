@@ -34,7 +34,7 @@ system S {
       ["Empty"],
     );
     const result = layout(slice);
-    // containerNode is Service (not system) + ancestorChain has S → 2 containers
+    // containerNode is Service (not system) → 1 focused container (no ghost ancestors)
     expect(result.containers.length).toBeGreaterThan(0);
     expect(result.width).toBeGreaterThan(0);
     expect(result.height).toBeGreaterThan(0);
@@ -176,6 +176,49 @@ system S {
     const mainContainer = result.containers.find((c) => !c.ghost);
     expect(mainContainer).toBeDefined();
     expect(customerNode.x + customerNode.width).toBeLessThanOrEqual(mainContainer!.x);
+  });
+});
+
+describe("layout > no ghost ancestor containers at drill-down levels", () => {
+  it("produces only the focused container (no ghost ancestors) at service level", () => {
+    // Issue #182: ghost ancestor containers caused parent hierarchy to visually overlap
+    // the child level. Only the focused container should be rendered.
+    const slice = parseAndExtract(
+      `
+system S {
+  service Shop {
+    label "ショップ"
+    domain Order { label "注文" }
+    domain Cart { label "カート" }
+  }
+}
+    `,
+      ["Shop"],
+    );
+    const result = layout(slice);
+    expect(result.containers).toHaveLength(1);
+    expect(result.containers[0].ghost).toBe(false);
+    expect(result.containers[0].id).toBe("Shop");
+  });
+
+  it("produces only the focused container (no ghost ancestors) at domain level", () => {
+    const slice = parseAndExtract(
+      `
+system S {
+  service Shop {
+    domain Order {
+      usecase PlaceOrder { label "注文する" }
+      usecase CancelOrder { label "キャンセル" }
+    }
+  }
+}
+    `,
+      ["Shop", "Order"],
+    );
+    const result = layout(slice);
+    expect(result.containers).toHaveLength(1);
+    expect(result.containers[0].ghost).toBe(false);
+    expect(result.containers[0].id).toBe("Order");
   });
 });
 

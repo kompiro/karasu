@@ -186,16 +186,17 @@ export function layout(
     }
   }
 
-  // Build containers (innermost first: focused container, then ancestors)
-  const hasContainer =
-    viewSlice.ancestorChain.length > 0 || viewSlice.containerNode?.kind !== "system";
+  // Show a focused container for non-system nodes.
+  // Ancestor ghost containers are intentionally omitted — the breadcrumb bar provides
+  // hierarchy context, and rendering ghost ancestors causes visual overlap with the
+  // child level content (issue #182).
+  const hasContainer = viewSlice.containerNode?.kind !== "system";
 
-  // Calculate the offset needed for nesting
-  const containerCount = viewSlice.ancestorChain.length + (hasContainer ? 1 : 0);
-  const totalNestOffset =
-    containerCount * GHOST_MARGIN + (hasContainer ? CONTAINER_LABEL_HEIGHT : 0);
+  // totalNestOffset reserves space above child nodes for the focused container's label
+  // and a small top margin.
+  const totalNestOffset = hasContainer ? GHOST_MARGIN + CONTAINER_LABEL_HEIGHT : 0;
 
-  // Offset all child nodes for nesting
+  // Offset all child nodes to sit below the container header
   if (totalNestOffset > 0) {
     for (const [, node] of layoutNodes) {
       node.x += totalNestOffset;
@@ -225,40 +226,6 @@ export function layout(
       ghost: false,
     });
   }
-
-  // Ghost ancestor containers (inner to outer)
-  for (let i = viewSlice.ancestorChain.length - 1; i >= 0; i--) {
-    const ancestor = viewSlice.ancestorChain[i];
-    const depth = viewSlice.ancestorChain.length - i; // 1 for immediate parent
-    const margin = depth * GHOST_MARGIN;
-    const innerContainer = containers.length > 0 ? containers[containers.length - 1] : null;
-
-    let gx: number, gy: number, gw: number, gh: number;
-    if (innerContainer) {
-      gx = innerContainer.x - GHOST_MARGIN;
-      gy = innerContainer.y - GHOST_MARGIN;
-      gw = innerContainer.width + GHOST_MARGIN * 2;
-      gh = innerContainer.height + GHOST_MARGIN * 2;
-    } else {
-      gx = margin;
-      gy = margin;
-      gw = childMaxWidth + CONTAINER_PADDING;
-      gh = childMaxHeight + CONTAINER_PADDING;
-    }
-
-    containers.push({
-      id: ancestor.id,
-      label: ancestor.label ?? ancestor.id,
-      x: gx,
-      y: gy,
-      width: gw,
-      height: gh,
-      ghost: true,
-    });
-  }
-
-  // Reverse so outermost is first
-  containers.reverse();
 
   // Ghost users: position to the left of the main container
   const ghostUserNodes: LayoutNode[] = [];
@@ -293,20 +260,9 @@ export function layout(
     }
   }
 
-  // Expand outermost container to include ghost users
-  if (ghostUserNodes.length > 0 && containers.length > 0) {
-    const minX = Math.min(...ghostUserNodes.map((n) => n.x)) - GHOST_MARGIN;
-    const maxY = Math.max(...ghostUserNodes.map((n) => n.y + n.height)) + GHOST_MARGIN;
-    const outermost = containers[0];
-    if (minX < outermost.x) {
-      const dx = outermost.x - minX;
-      outermost.width += dx;
-      outermost.x = minX;
-    }
-    if (maxY > outermost.y + outermost.height) {
-      outermost.height = maxY - outermost.y;
-    }
-  }
+  // Ghost users float freely to the left of the focused container.
+  // No container expansion needed — the normalization step below ensures all
+  // coordinates are positive and SVG bounds include all content.
 
   // Compute edges
   const layoutEdges: LayoutEdge[] = [];
@@ -404,29 +360,14 @@ function buildContainersForEmpty(viewSlice: ViewSlice): ContainerRect[] {
     containers.push({
       id: viewSlice.containerNode.id,
       label: viewSlice.containerNode.label ?? viewSlice.containerNode.id,
-      x: viewSlice.ancestorChain.length * GHOST_MARGIN + GHOST_MARGIN,
-      y: viewSlice.ancestorChain.length * GHOST_MARGIN + GHOST_MARGIN,
+      x: GHOST_MARGIN,
+      y: GHOST_MARGIN,
       width: minW,
       height: minH,
       ghost: false,
     });
   }
 
-  for (let i = viewSlice.ancestorChain.length - 1; i >= 0; i--) {
-    const ancestor = viewSlice.ancestorChain[i];
-    const inner = containers.length > 0 ? containers[containers.length - 1] : null;
-    containers.push({
-      id: ancestor.id,
-      label: ancestor.label ?? ancestor.id,
-      x: inner ? inner.x - GHOST_MARGIN : GHOST_MARGIN,
-      y: inner ? inner.y - GHOST_MARGIN : GHOST_MARGIN,
-      width: inner ? inner.width + GHOST_MARGIN * 2 : minW + GHOST_MARGIN * 2,
-      height: inner ? inner.height + GHOST_MARGIN * 2 : minH + GHOST_MARGIN * 2,
-      ghost: true,
-    });
-  }
-
-  containers.reverse();
   return containers;
 }
 
