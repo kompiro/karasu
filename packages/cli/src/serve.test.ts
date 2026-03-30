@@ -100,6 +100,10 @@ describe("resolveKrsFile", () => {
   it("returns null when the file does not exist", async () => {
     expect(await resolveKrsFile(tmpDir, "nonexistent")).toBeNull();
   });
+
+  it("returns null for a path traversal attempt", async () => {
+    expect(await resolveKrsFile(tmpDir, "../../etc/passwd")).toBeNull();
+  });
 });
 
 // ── resolveDefaultFile ────────────────────────────────────────────────────────

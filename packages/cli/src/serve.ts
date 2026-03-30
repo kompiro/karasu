@@ -1,6 +1,6 @@
 import { createServer, type IncomingMessage, type ServerResponse, type Server } from "node:http";
 import { readFile, readdir, stat } from "node:fs/promises";
-import { join, resolve, extname, relative } from "node:path";
+import { join, resolve, extname, relative, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 import { FileWatcher } from "./watcher.js";
 
@@ -39,6 +39,9 @@ export async function collectKrsFiles(dir: string): Promise<string[]> {
 
 export async function resolveKrsFile(dir: string, name: string): Promise<string | null> {
   const filePath = join(dir, `${name}.krs`);
+  if (!filePath.startsWith(dir + sep)) {
+    return null;
+  }
   try {
     await stat(filePath);
     return filePath;
