@@ -2,7 +2,7 @@ import type { ResolvedNodeStyle, ResolvedStyles } from "../types/style.js";
 import type { OrgViewSlice } from "../view/org-view-extract.js";
 import type { TeamNode, MemberNode } from "../types/ast.js";
 import type { DisplayMode } from "./layout.js";
-import { el, escapeXml } from "./svg-builder.js";
+import { el, escapeXml, truncateToWidth } from "./svg-builder.js";
 import { getIconDef } from "./shape-registry.js";
 
 // Shape mode constants
@@ -19,8 +19,10 @@ const ICON_CARD_WIDTH = 160;
 const ICON_TITLE_HEIGHT = 28;
 const ICON_CARD_HEIGHT_SHORT = 56;
 const ICON_CARD_HEIGHT_LONG = 100;
-const ICON_LABEL_MAX_CHARS = 16; // ~122px / 7.5px per char
-const ICON_DESC_MAX_CHARS = 22; // ~144px / 6.5px per char
+const ICON_LABEL_MAX_WIDTH = 122;
+const ICON_LABEL_CHAR_WIDTH = 7.5;
+const ICON_DESC_MAX_WIDTH = 144;
+const ICON_DESC_CHAR_WIDTH = 6.5;
 
 function cardStyle(style: ResolvedNodeStyle): Record<string, unknown> {
   return {
@@ -49,11 +51,6 @@ function subLabelStyle(style: ResolvedNodeStyle): Record<string, unknown> {
     opacity: 0.75,
     "text-anchor": "middle",
   };
-}
-
-function truncateText(text: string, maxChars: number): string {
-  if (text.length <= maxChars) return text;
-  return text.slice(0, maxChars - 1) + "…";
 }
 
 function renderPictogramGroup(iconName: string, color: string): string {
@@ -273,7 +270,9 @@ function renderTeamIconCard(
   style: ResolvedNodeStyle,
 ): string {
   const id = escapeXml(team.id);
-  const label = escapeXml(truncateText(team.label ?? team.id, ICON_LABEL_MAX_CHARS));
+  const label = escapeXml(
+    truncateToWidth(team.label ?? team.id, ICON_LABEL_MAX_WIDTH, ICON_LABEL_CHAR_WIDTH),
+  );
   const hasChildren = team.members.length > 0 || team.teams.length > 0;
 
   const descParts = [
@@ -322,7 +321,7 @@ function renderTeamIconCard(
           opacity: 0.7,
           "text-anchor": "start",
         },
-        escapeXml(truncateText(descText, ICON_DESC_MAX_CHARS)),
+        escapeXml(truncateToWidth(descText, ICON_DESC_MAX_WIDTH, ICON_DESC_CHAR_WIDTH)),
       ),
     );
   }
@@ -346,11 +345,14 @@ function renderMemberIconCard(
   style: ResolvedNodeStyle,
 ): string {
   const id = escapeXml(member.id);
-  const label = escapeXml(truncateText(member.label ?? member.id, ICON_LABEL_MAX_CHARS));
+  const label = escapeXml(
+    truncateToWidth(member.label ?? member.id, ICON_LABEL_MAX_WIDTH, ICON_LABEL_CHAR_WIDTH),
+  );
 
   const details = [member.properties.slack, member.properties.github].filter(Boolean).join(" · ");
   const descText =
-    details || truncateText(member.properties.description ?? "", ICON_DESC_MAX_CHARS);
+    details ||
+    truncateToWidth(member.properties.description ?? "", ICON_DESC_MAX_WIDTH, ICON_DESC_CHAR_WIDTH);
   const cardHeight = iconCardHeight(descText.length > 0);
 
   const pictogram = renderPictogramGroup("member", style.color);
@@ -390,7 +392,7 @@ function renderMemberIconCard(
           opacity: 0.7,
           "text-anchor": "start",
         },
-        escapeXml(truncateText(descText, ICON_DESC_MAX_CHARS)),
+        escapeXml(truncateToWidth(descText, ICON_DESC_MAX_WIDTH, ICON_DESC_CHAR_WIDTH)),
       ),
     );
   }

@@ -34,3 +34,60 @@ export function el(tag: string, attrs: Attrs, ...children: string[]): string {
 }
 
 export { escapeXml };
+
+/**
+ * Truncate text to fit within a given pixel width, adding "…" if truncated.
+ * CJK characters (code point > U+2E80) are counted as 1.5× charWidth.
+ */
+export function truncateToWidth(text: string, maxWidth: number, charWidth: number): string {
+  const chars = [...text];
+  let width = 0;
+  for (let i = 0; i < chars.length; i++) {
+    const cw = chars[i].charCodeAt(0) > 0x2e80 ? charWidth * 1.5 : charWidth;
+    if (width + cw > maxWidth) {
+      return chars.slice(0, i).join("") + "…";
+    }
+    width += cw;
+  }
+  return text;
+}
+
+/**
+ * Wrap text into multiple lines that fit within a given pixel width.
+ * Returns up to `maxLines` lines; the last line is truncated with "…" if text remains.
+ * CJK characters (code point > U+2E80) are counted as 1.5× charWidth.
+ */
+export function wrapToWidth(
+  text: string,
+  maxWidth: number,
+  charWidth: number,
+  maxLines: number,
+): string[] {
+  const chars = [...text];
+  const lines: string[] = [];
+  let lineStart = 0;
+  let lineWidth = 0;
+  let lastFitIdx = 0;
+
+  for (let i = 0; i < chars.length; i++) {
+    const cw = chars[i].charCodeAt(0) > 0x2e80 ? charWidth * 1.5 : charWidth;
+    if (lineWidth + cw > maxWidth) {
+      if (lines.length === maxLines - 1) {
+        lines.push(chars.slice(lineStart, i).join("") + "…");
+        return lines;
+      }
+      lines.push(chars.slice(lineStart, i).join(""));
+      lineStart = i;
+      lineWidth = cw;
+    } else {
+      lineWidth += cw;
+    }
+    lastFitIdx = i;
+  }
+
+  if (lineStart <= lastFitIdx) {
+    lines.push(chars.slice(lineStart).join(""));
+  }
+
+  return lines;
+}

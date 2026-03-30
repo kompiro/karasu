@@ -283,5 +283,21 @@ describe("renderOrgView", () => {
       const svg = renderOrgView(slice, makeStyles(), "icon");
       expect(svg).toContain("No teams defined");
     });
+
+    it("truncates wide CJK team label that exceeds card width", () => {
+      // "プラットフォームチーム" = 11 katakana chars × ~11.25px = ~124px > 122px limit
+      const team = makeTeam("platform", { label: "プラットフォームチーム" });
+      const slice: OrgViewSlice = { teams: [team], focusedTeam: null, ancestorChain: [] };
+      const svg = renderOrgView(slice, makeStyles(), "icon");
+      expect(svg).not.toContain("プラットフォームチーム");
+      expect(svg).toContain("…");
+    });
+
+    it("does not truncate ASCII label within card width", () => {
+      const team = makeTeam("backend", { label: "Backend Team" });
+      const slice: OrgViewSlice = { teams: [team], focusedTeam: null, ancestorChain: [] };
+      const svg = renderOrgView(slice, makeStyles(), "icon");
+      expect(svg).toContain("Backend Team");
+    });
   });
 });
