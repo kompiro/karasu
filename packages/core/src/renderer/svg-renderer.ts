@@ -22,19 +22,28 @@ const ICON_DESC_CHAR_WIDTH = 6.5; // approximate for 11px font
 const ICON_DESC_MAX_LINES = 3;
 const ICON_DESC_LINE_HEIGHT = 14; // px
 
+/**
+ * Sanitizes a node ID for use in a CSS fragment identifier (e.g. href="#krs-view-X").
+ * Replaces characters that are not alphanumeric, hyphen, or underscore with underscores.
+ */
+export function sanitizeId(id: string): string {
+  return id.replace(/[^a-zA-Z0-9_-]/g, "_");
+}
+
 export function render(
   viewSlice: ViewSlice,
   styles: ResolvedStyles,
   serviceIdsWithDeploy?: Set<string>,
   ownerIndex?: Map<string, string>,
   displayMode?: DisplayMode,
+  linkedNodeIds?: Set<string>,
 ): string {
   const layoutResult = layout(viewSlice, ownerIndex, displayMode);
   const title =
     layoutResult.containers.length === 0 && viewSlice.containerNode
       ? (viewSlice.containerNode.label ?? viewSlice.containerNode.id)
       : undefined;
-  return renderFromLayout(layoutResult, styles, title, serviceIdsWithDeploy, displayMode);
+  return renderFromLayout(layoutResult, styles, title, serviceIdsWithDeploy, displayMode, linkedNodeIds);
 }
 
 export function renderFromLayout(
@@ -43,6 +52,7 @@ export function renderFromLayout(
   title?: string,
   serviceIdsWithDeploy?: Set<string>,
   displayMode?: DisplayMode,
+  linkedNodeIds?: Set<string>,
 ): string {
   if (layoutResult.nodes.size === 0 && layoutResult.containers.length === 0) {
     return el(
@@ -153,6 +163,10 @@ export function renderFromLayout(
     const rendered = renderNode(layoutNode, nodeStyle, nodeId, serviceIdsWithDeploy, displayMode);
     if (layoutNode.ghost) {
       ghostNodeParts.push(rendered);
+    } else if (linkedNodeIds?.has(nodeId)) {
+      normalNodeParts.push(
+        el("a", { href: `#krs-view-${sanitizeId(nodeId)}`, tabindex: "0" }, rendered),
+      );
     } else {
       normalNodeParts.push(rendered);
     }
