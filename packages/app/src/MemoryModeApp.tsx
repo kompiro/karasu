@@ -140,7 +140,7 @@ function MemoryModeInner() {
     dispatch({ type: "SET_FULL_VIEW", isFullView: !isFullView });
   }, [dispatch, isFullView]);
 
-  const multiLevelSvg = useFullViewSvg(fileContent, "", isFullView, activeView);
+  const multiLevelSvg = useFullViewSvg(fileContent, "", isFullView, activeView, displayMode);
 
   const breadcrumbItems = useMemo(() => {
     if (!fileContent) return [];

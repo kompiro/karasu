@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { buildExportSvg, buildExportSvgOrg } from "@karasu/core";
+import { buildExportSvg, buildExportSvgOrg, type DisplayMode } from "@karasu/core";
 import type { ActiveView } from "../state/app-reducer.js";
 
 /**
@@ -18,6 +18,7 @@ export function useFullViewSvg(
   styleSource: string,
   isFullView: boolean,
   activeView: ActiveView,
+  displayMode?: DisplayMode,
 ): string | null {
   return useMemo(() => {
     if (!isFullView || activeView === "deploy" || !source) return null;
@@ -25,13 +26,13 @@ export function useFullViewSvg(
     try {
       const svgContent =
         activeView === "org"
-          ? buildExportSvgOrg(source, styleSource || undefined)
-          : buildExportSvg(source, styleSource || undefined);
+          ? buildExportSvgOrg(source, styleSource || undefined, displayMode)
+          : buildExportSvg(source, styleSource || undefined, displayMode);
 
       // Wrap SVG in minimal HTML. All levels are visible simultaneously (no JS needed).
       return `<!DOCTYPE html><html><head><meta charset="utf-8"><style>html,body{margin:0;padding:0;overflow:auto;background:#0F172A;}svg{display:block;}</style></head><body>${svgContent}</body></html>`;
     } catch {
       return null;
     }
-  }, [source, styleSource, isFullView, activeView]);
+  }, [source, styleSource, isFullView, activeView, displayMode]);
 }

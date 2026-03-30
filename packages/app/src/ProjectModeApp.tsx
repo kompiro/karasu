@@ -180,7 +180,7 @@ export function ProjectModeApp() {
     dispatch({ type: "SET_FULL_VIEW", isFullView: !isFullView });
   }, [dispatch, isFullView]);
 
-  const multiLevelSvg = useFullViewSvg(fileContent, "", isFullView, activeView);
+  const multiLevelSvg = useFullViewSvg(fileContent, "", isFullView, activeView, displayMode);
 
   // Deploy ブロックセレクタ変更
   const handleDeployBlockChange = useCallback(
