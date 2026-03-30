@@ -3,6 +3,7 @@ import { describe, it, expect, vi, afterEach } from "vitest";
 import { render, fireEvent, cleanup } from "@testing-library/react";
 import type { Diagnostic, Warning, OrgViewPath } from "@karasu/core";
 import { KarasuPreviewColumn } from "./KarasuPreviewColumn.js";
+import type { ExportViewMode } from "./KarasuPreviewColumn.js";
 
 afterEach(cleanup);
 
@@ -47,9 +48,10 @@ function makeProps(overrides: Partial<Parameters<typeof KarasuPreviewColumn>[0]>
     displayMode: "shape" as const,
     onDisplayModeChange: vi.fn(),
     onExportSvg: vi.fn(),
-    multiLevelSvg: undefined,
-    fullView: false,
-    onFullViewChange: vi.fn(),
+    exportViewMode: "current" as ExportViewMode,
+    onExportViewModeChange: vi.fn(),
+    drillDownSvg: undefined,
+    fullViewSvg: undefined,
     ...overrides,
   };
 }
@@ -249,78 +251,127 @@ describe("KarasuPreviewColumn", () => {
     });
   });
 
-  describe("Full View", () => {
-    it("renders Full View button", () => {
+  describe("Export SVG split button", () => {
+    it("renders Export SVG main button and toggle button", () => {
       const props = makeProps({ activeView: "system" });
       const { getByRole } = render(<KarasuPreviewColumn {...props} />);
-      expect(getByRole("button", { name: /Toggle full view/ })).toBeTruthy();
+      expect(getByRole("button", { name: /Export SVG/ })).toBeTruthy();
+      expect(getByRole("button", { name: /SVG export options/ })).toBeTruthy();
     });
 
-    it("Full View button is disabled when multiLevelSvg is absent", () => {
-      const props = makeProps({ activeView: "system", multiLevelSvg: undefined });
-      const { getByRole } = render(<KarasuPreviewColumn {...props} />);
-      const btn = getByRole("button", { name: /Toggle full view/ });
-      expect(btn).toHaveProperty("disabled", true);
-    });
-
-    it("Full View button is disabled on deploy tab even when multiLevelSvg is set", () => {
-      const props = makeProps({
-        activeView: "deploy",
-        multiLevelSvg: "<svg/>",
-      });
-      const { getByRole } = render(<KarasuPreviewColumn {...props} />);
-      const btn = getByRole("button", { name: /Toggle full view/ });
-      expect(btn).toHaveProperty("disabled", true);
-    });
-
-    it("calls onFullViewChange when Full View button is clicked", () => {
-      const onFullViewChange = vi.fn();
-      const props = makeProps({
-        activeView: "system",
-        multiLevelSvg: "<svg/>",
-        fullView: false,
-        onFullViewChange,
-      });
-      const { getByRole } = render(<KarasuPreviewColumn {...props} />);
-      fireEvent.click(getByRole("button", { name: /Toggle full view/ }));
-      expect(onFullViewChange).toHaveBeenCalledWith(true);
-    });
-
-    it("renders iframe when fullView=true and multiLevelSvg is set", () => {
-      const multiLevelSvg = "<svg><style>.krs-view{display:none}</style></svg>";
-      const props = makeProps({
-        activeView: "system",
-        multiLevelSvg,
-        fullView: true,
-      });
-      const { container } = render(<KarasuPreviewColumn {...props} />);
-      const iframe = container.querySelector("iframe");
-      expect(iframe).toBeTruthy();
-      expect(iframe?.getAttribute("srcdoc") ?? iframe?.srcdoc).toBe(multiLevelSvg);
-    });
-
-    it("renders PreviewPane (not iframe) when fullView=false", () => {
-      const props = makeProps({
-        activeView: "system",
-        multiLevelSvg: "<svg/>",
-        fullView: false,
-      });
-      const { container } = render(<KarasuPreviewColumn {...props} />);
-      expect(container.querySelector("iframe")).toBeNull();
-    });
-
-    it("Export SVG uses multiLevelSvg when fullView=true", () => {
+    it("Export SVG exports current svg when exportViewMode=current", () => {
       const onExportSvg = vi.fn();
-      const multiLevelSvg = "<svg><style>.krs-view{display:none}</style></svg>";
       const props = makeProps({
         activeView: "system",
-        multiLevelSvg,
-        fullView: true,
+        exportViewMode: "current",
         onExportSvg,
       });
       const { getByRole } = render(<KarasuPreviewColumn {...props} />);
       fireEvent.click(getByRole("button", { name: /Export SVG/ }));
-      expect(onExportSvg).toHaveBeenCalledWith(multiLevelSvg, expect.stringContaining("fullview"));
+      expect(onExportSvg).toHaveBeenCalledWith(emptySvg, expect.any(String));
+    });
+
+    it("Export SVG exports fullViewSvg with -fullview suffix when exportViewMode=full", () => {
+      const onExportSvg = vi.fn();
+      const fullViewSvg = "<svg>full</svg>";
+      const props = makeProps({
+        activeView: "system",
+        exportViewMode: "full",
+        fullViewSvg,
+        onExportSvg,
+      });
+      const { getByRole } = render(<KarasuPreviewColumn {...props} />);
+      fireEvent.click(getByRole("button", { name: /Export SVG/ }));
+      expect(onExportSvg).toHaveBeenCalledWith(fullViewSvg, expect.stringContaining("fullview"));
+    });
+
+    it("Export SVG exports drillDownSvg with -drilldown suffix when exportViewMode=drilldown", () => {
+      const onExportSvg = vi.fn();
+      const drillDownSvg = "<svg>drilldown</svg>";
+      const props = makeProps({
+        activeView: "system",
+        exportViewMode: "drilldown",
+        drillDownSvg,
+        onExportSvg,
+      });
+      const { getByRole } = render(<KarasuPreviewColumn {...props} />);
+      fireEvent.click(getByRole("button", { name: /Export SVG/ }));
+      expect(onExportSvg).toHaveBeenCalledWith(
+        drillDownSvg,
+        expect.stringContaining("drilldown"),
+      );
+    });
+
+    it("clicking toggle button opens export mode menu", () => {
+      const props = makeProps({ activeView: "system" });
+      const { getByRole, getByText } = render(<KarasuPreviewColumn {...props} />);
+      fireEvent.click(getByRole("button", { name: /SVG export options/ }));
+      expect(getByText("Current view only")).toBeTruthy();
+      expect(getByText("Full view")).toBeTruthy();
+      expect(getByText("Drill-down view")).toBeTruthy();
+    });
+
+    it("selecting Full view from menu calls onExportViewModeChange", () => {
+      const onExportViewModeChange = vi.fn();
+      const props = makeProps({
+        activeView: "system",
+        fullViewSvg: "<svg>full</svg>",
+        onExportViewModeChange,
+      });
+      const { getByRole, getByText } = render(<KarasuPreviewColumn {...props} />);
+      fireEvent.click(getByRole("button", { name: /SVG export options/ }));
+      fireEvent.click(getByText("Full view"));
+      expect(onExportViewModeChange).toHaveBeenCalledWith("full");
+    });
+
+    it("selecting Drill-down view from menu calls onExportViewModeChange", () => {
+      const onExportViewModeChange = vi.fn();
+      const props = makeProps({
+        activeView: "system",
+        drillDownSvg: "<svg>drilldown</svg>",
+        onExportViewModeChange,
+      });
+      const { getByRole, getByText } = render(<KarasuPreviewColumn {...props} />);
+      fireEvent.click(getByRole("button", { name: /SVG export options/ }));
+      fireEvent.click(getByText("Drill-down view"));
+      expect(onExportViewModeChange).toHaveBeenCalledWith("drilldown");
+    });
+
+    it("Full view mode renders iframe with fullViewSvg", () => {
+      const fullViewSvg = "<svg>full</svg>";
+      const props = makeProps({
+        activeView: "system",
+        exportViewMode: "full",
+        fullViewSvg,
+      });
+      const { container } = render(<KarasuPreviewColumn {...props} />);
+      const iframe = container.querySelector("iframe");
+      expect(iframe).toBeTruthy();
+      expect(iframe?.title).toBe("Full diagram view");
+    });
+
+    it("Drill-down mode renders iframe with drillDownSvg", () => {
+      const drillDownSvg = "<svg>drilldown</svg>";
+      const props = makeProps({
+        activeView: "system",
+        exportViewMode: "drilldown",
+        drillDownSvg,
+      });
+      const { container } = render(<KarasuPreviewColumn {...props} />);
+      const iframe = container.querySelector("iframe");
+      expect(iframe).toBeTruthy();
+      expect(iframe?.title).toBe("Drill-down diagram view");
+    });
+
+    it("Full view is disabled on deploy tab", () => {
+      const props = makeProps({
+        activeView: "deploy",
+        fullViewSvg: "<svg>full</svg>",
+      });
+      const { getByRole, getByText } = render(<KarasuPreviewColumn {...props} />);
+      fireEvent.click(getByRole("button", { name: /SVG export options/ }));
+      const fullViewItem = getByText("Full view").closest("button");
+      expect(fullViewItem).toHaveProperty("disabled", true);
     });
   });
 });

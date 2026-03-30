@@ -4,9 +4,11 @@ import {
   InMemoryFileSystemProvider,
   getReference,
   buildDrillDownSvg,
+  buildFullViewSvg,
   type KrsNode,
   type OrgViewPath,
 } from "@karasu/core";
+import type { ExportViewMode } from "./components/KarasuPreviewColumn.js";
 import { EditorPane } from "./components/EditorPane.js";
 import { KarasuPreviewColumn } from "./components/KarasuPreviewColumn.js";
 import { downloadSvg } from "./utils/download-svg.js";
@@ -38,7 +40,7 @@ export function MemoryModeApp() {
 function MemoryModeInner() {
   const { state, dispatch, fs } = useAppContext();
   const { fileContent, viewPath, activeView, orgPath, highlightedNodeId, displayMode } = state;
-  const [fullView, setFullView] = useState(false);
+  const [exportViewMode, setExportViewMode] = useState<ExportViewMode>("current");
 
   // Initialize: write sample KRS to in-memory FS and select the file
   useEffect(() => {
@@ -172,10 +174,19 @@ function MemoryModeInner() {
     }
   }, [fileContent, viewPath]);
 
-  const multiLevelSvg = useMemo(() => {
+  const drillDownSvg = useMemo(() => {
     if (!fileContent) return undefined;
     try {
       return buildDrillDownSvg(fileContent, undefined, displayMode);
+    } catch {
+      return undefined;
+    }
+  }, [fileContent, displayMode]);
+
+  const fullViewSvg = useMemo(() => {
+    if (!fileContent) return undefined;
+    try {
+      return buildFullViewSvg(fileContent, undefined, displayMode);
     } catch {
       return undefined;
     }
@@ -248,9 +259,10 @@ function MemoryModeInner() {
           dispatch({ type: "SET_DISPLAY_MODE", displayMode: mode })
         }
         onExportSvg={(svg, filename) => downloadSvg(svg, filename)}
-        multiLevelSvg={multiLevelSvg}
-        fullView={fullView}
-        onFullViewChange={setFullView}
+        exportViewMode={exportViewMode}
+        onExportViewModeChange={setExportViewMode}
+        drillDownSvg={drillDownSvg}
+        fullViewSvg={fullViewSvg}
       />
     </div>
   );

@@ -3,10 +3,12 @@ import {
   Parser,
   InMemoryFileSystemProvider,
   buildDrillDownSvg,
+  buildFullViewSvg,
   type KrsNode,
   type OrgViewPath,
   type DisplayMode,
 } from "@karasu/core";
+import type { ExportViewMode } from "./components/KarasuPreviewColumn.js";
 import { KarasuPreviewColumn } from "./components/KarasuPreviewColumn.js";
 import { downloadSvg } from "./utils/download-svg.js";
 import { AppProvider, useAppContext } from "./state/app-context.js";
@@ -60,7 +62,7 @@ function ServeModeInner() {
   const { state, dispatch, fs } = useAppContext();
   const { fileContent, viewPath, activeView, orgPath, highlightedNodeId, displayMode } = state;
   const [loadError, setLoadError] = useState<string | null>(null);
-  const [fullView, setFullView] = useState(false);
+  const [exportViewMode, setExportViewMode] = useState<ExportViewMode>("current");
 
   // ref に recompile を格納し loadFile から参照できるようにする
   const recompileRef = useRef<() => void>(() => {});
@@ -222,10 +224,19 @@ function ServeModeInner() {
     }
   }, [fileContent, viewPath]);
 
-  const multiLevelSvg = useMemo(() => {
+  const drillDownSvg = useMemo(() => {
     if (!fileContent) return undefined;
     try {
       return buildDrillDownSvg(fileContent, undefined, displayMode);
+    } catch {
+      return undefined;
+    }
+  }, [fileContent, displayMode]);
+
+  const fullViewSvg = useMemo(() => {
+    if (!fileContent) return undefined;
+    try {
+      return buildFullViewSvg(fileContent, undefined, displayMode);
     } catch {
       return undefined;
     }
@@ -315,9 +326,10 @@ function ServeModeInner() {
         nodeMetadata={nodeMetadata}
         onDrillDown={handleDrillDown}
         onExportSvg={(svg, filename) => downloadSvg(svg, filename)}
-        multiLevelSvg={multiLevelSvg}
-        fullView={fullView}
-        onFullViewChange={setFullView}
+        exportViewMode={exportViewMode}
+        onExportViewModeChange={setExportViewMode}
+        drillDownSvg={drillDownSvg}
+        fullViewSvg={fullViewSvg}
       />
     </div>
   );
