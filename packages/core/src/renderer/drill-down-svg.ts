@@ -256,17 +256,14 @@ function collectOrgFullViewLevels(
   // At root (path=[]), focusedTeam is null but there are top-level teams to show.
   // At a team level, focusedTeam has sub-teams; stop if no sub-teams at current focus.
   const hasSubTeams =
-    slice.focusedTeam !== null
-      ? slice.focusedTeam.teams.length > 0
-      : slice.teams.length > 0;
+    slice.focusedTeam !== null ? slice.focusedTeam.teams.length > 0 : slice.teams.length > 0;
   if (!hasSubTeams) return;
 
   const svg = renderOrgView(slice, styles, displayMode);
   const { viewBox, innerContent, width, height } = extractSvgParts(svg);
   levels.push({ pathLabels, viewBox, width, height, innerContent });
 
-  const teams: TeamNode[] =
-    slice.focusedTeam !== null ? slice.focusedTeam.teams : slice.teams;
+  const teams: TeamNode[] = slice.focusedTeam !== null ? slice.focusedTeam.teams : slice.teams;
   for (const team of teams) {
     if (team.teams.length > 0) {
       collectOrgFullViewLevels(
