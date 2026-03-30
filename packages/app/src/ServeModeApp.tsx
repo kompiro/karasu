@@ -3,9 +3,9 @@ import {
   Parser,
   InMemoryFileSystemProvider,
   buildDrillDownSvg,
+  buildDrillDownSvgOrg,
   buildFullViewSvg,
   buildFullViewSvgOrg,
-  buildExportSvgOrg,
   type KrsNode,
   type OrgViewPath,
   type DisplayMode,
@@ -244,7 +244,7 @@ function ServeModeInner() {
   const orgDrillDownSvg = useMemo(() => {
     if (!fileContent) return undefined;
     try {
-      return buildExportSvgOrg(fileContent, undefined, displayMode);
+      return buildDrillDownSvgOrg(fileContent, undefined, displayMode);
     } catch {
       return undefined;
     }
