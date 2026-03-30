@@ -41,7 +41,8 @@ export class FileWatcher {
   }
 
   private broadcast(data: { file: string; event?: string }): void {
-    const payload = `event: change\ndata: ${JSON.stringify(data)}\n\n`;
+    const eventName = data.event ?? "change";
+    const payload = `event: ${eventName}\ndata: ${JSON.stringify(data)}\n\n`;
     for (const client of this.clients) {
       client.write(payload);
     }
