@@ -126,15 +126,13 @@ export function KarasuPreviewColumn({
         onDeployBlockChange={onDeployBlockChange}
       />
       <div className="preview-toolbar">
-        {activeView === "system" && (
-          <button
-            className={`toolbar-btn toolbar-btn--icon-mode${displayMode === "icon" ? " active" : ""}`}
-            onClick={() => onDisplayModeChange(displayMode === "icon" ? "shape" : "icon")}
-            aria-label="Toggle icon mode"
-          >
-            ◇ Icon Mode
-          </button>
-        )}
+        <button
+          className={`toolbar-btn toolbar-btn--icon-mode${displayMode === "icon" ? " active" : ""}`}
+          onClick={() => onDisplayModeChange(displayMode === "icon" ? "shape" : "icon")}
+          aria-label="Toggle icon mode"
+        >
+          ◇ Icon Mode
+        </button>
         <button
           className="toolbar-btn toolbar-btn--export"
           onClick={() => onExportSvg(svg, exportFilename)}

@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
-import { compile } from "./index.js";
+import { compile, compileProjectOrgView } from "./index.js";
+import { InMemoryFileSystemProvider } from "./fs/in-memory-provider.js";
 
 const DEPLOY_KRS = `
 system "EC" {
@@ -11,6 +12,22 @@ deploy "prod" {
   lambda "mailer" {}
 }
 `;
+
+const ORG_KRS = `
+organization "OrgA" {
+  team "TeamA" {}
+}
+`;
+
+describe("compileProjectOrgView — displayMode", () => {
+  it("accepts displayMode: icon and returns SVG", async () => {
+    const fs = new InMemoryFileSystemProvider();
+    await fs.writeFile("/index.krs", ORG_KRS);
+    const result = await compileProjectOrgView("/index.krs", fs, [], "icon");
+    expect(result.svg).toBeTruthy();
+    expect(result.diagnostics.filter((d) => d.severity === "error")).toHaveLength(0);
+  });
+});
 
 describe("compile — deploy diagram nodeMetadata", () => {
   it("populates nodeMetadata for deploy units", () => {

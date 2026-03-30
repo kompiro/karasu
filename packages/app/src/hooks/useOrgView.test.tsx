@@ -61,6 +61,14 @@ describe("useOrgView", () => {
     await waitFor(() => expect(result.current.orgSvg).not.toBe(initialSvg), { timeout: 1000 });
   });
 
+  it("accepts displayMode: icon and produces SVG without errors", async () => {
+    const fs = await makeFs(ORG_SOURCE_A);
+    const { result } = renderHook(() => useOrgView(ENTRY_PATH, fs, [], "icon"));
+
+    await waitFor(() => expect(result.current.orgSvg).toBeTruthy(), { timeout: 1000 });
+    expect(result.current.orgDiagnostics.filter((d) => d.severity === "error")).toHaveLength(0);
+  });
+
   it("retains previous valid orgSvg when updated source has errors", async () => {
     const fs = await makeFs(ORG_SOURCE_A);
     const { result } = renderHook(() => useOrgView(ENTRY_PATH, fs, []));

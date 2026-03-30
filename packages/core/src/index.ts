@@ -363,12 +363,17 @@ export async function compileProjectOrgView(
   entryPath: string,
   fs: FileSystemProvider,
   orgPath?: OrgViewPath,
+  displayMode?: DisplayMode,
 ): Promise<OrgCompileResult> {
   const resolver = new ImportResolver(fs);
   const resolved = await resolver.resolve(entryPath);
   const diagnostics = [...resolved.diagnostics];
 
-  const allSheets = [getBuiltinStyleSheet(), ...resolved.styleSheets];
+  const systemSheets: StyleSheet[] = [getBuiltinStyleSheet()];
+  if (displayMode === "icon") {
+    systemSheets.push(getIconThemeStyleSheet());
+  }
+  const allSheets = [...systemSheets, ...resolved.styleSheets];
   const warnings = analyze(resolved.krsFile, allSheets);
   const slice = extractOrgView(resolved.krsFile.organizations, orgPath ?? []);
   const styles = resolveStyles(
