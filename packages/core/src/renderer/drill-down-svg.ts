@@ -255,8 +255,7 @@ function collectOrgFullViewLevels(
   const slice = extractOrgView(organizations, path);
   // At root (path=[]), show if there are top-level teams.
   // At a team level (focusedTeam set), always render (even leaf teams show members).
-  const hasContent =
-    slice.focusedTeam !== null ? true : slice.teams.length > 0;
+  const hasContent = slice.focusedTeam !== null ? true : slice.teams.length > 0;
   if (!hasContent) return;
 
   const svg = renderOrgView(slice, styles, displayMode);

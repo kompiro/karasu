@@ -143,7 +143,8 @@ export function KarasuPreviewColumn({
   const fullViewAvailable = activeView !== "deploy" && !!activeFullViewSvg;
   const activedrillDownSvg =
     activeView === "system" ? drillDownSvg : activeView === "org" ? orgDrillDownSvg : undefined;
-  const drillDownAvailable = (activeView === "system" || activeView === "org") && !!activedrillDownSvg;
+  const drillDownAvailable =
+    (activeView === "system" || activeView === "org") && !!activedrillDownSvg;
   const showFullViewIframe = isFullView && fullViewAvailable;
 
   function handleExport() {

@@ -395,7 +395,10 @@ describe("KarasuPreviewColumn", () => {
       const { getByRole, getByText } = render(<KarasuPreviewColumn {...props} />);
       fireEvent.click(getByRole("button", { name: /SVG export options/ }));
       fireEvent.click(getByText("Export Drill-down SVG"));
-      expect(onExportSvg).toHaveBeenCalledWith(orgDrillDownSvg, expect.stringContaining("drilldown"));
+      expect(onExportSvg).toHaveBeenCalledWith(
+        orgDrillDownSvg,
+        expect.stringContaining("drilldown"),
+      );
     });
   });
 });

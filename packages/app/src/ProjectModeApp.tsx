@@ -1,5 +1,11 @@
 import { useEffect, useCallback, useMemo, useRef, useState } from "react";
-import { Parser, buildDrillDownSvg, buildFullViewSvg, buildFullViewSvgOrg, buildExportSvgOrg } from "@karasu/core";
+import {
+  Parser,
+  buildDrillDownSvg,
+  buildFullViewSvg,
+  buildFullViewSvgOrg,
+  buildExportSvgOrg,
+} from "@karasu/core";
 import { EditorPane } from "./components/EditorPane.js";
 import { ProjectSelector } from "./components/ProjectSelector.js";
 import { FileTree } from "./components/FileTree.js";
