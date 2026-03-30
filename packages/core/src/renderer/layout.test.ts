@@ -174,9 +174,8 @@ system S {
     expect(customerNode.ghost).toBe(true);
 
     const mainContainer = result.containers.find((c) => !c.ghost);
-    if (mainContainer) {
-      expect(customerNode.x + customerNode.width).toBeLessThanOrEqual(mainContainer.x);
-    }
+    expect(mainContainer).toBeDefined();
+    expect(customerNode.x + customerNode.width).toBeLessThanOrEqual(mainContainer!.x);
   });
 });
 
