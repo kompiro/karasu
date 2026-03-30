@@ -540,6 +540,7 @@ export function renderOrgView(
   slice: OrgViewSlice,
   styles: ResolvedStyles,
   displayMode?: DisplayMode,
+  childLevelLinks?: Map<string, string>,
 ): string {
   if (displayMode === "icon") {
     return renderOrgViewIconMode(slice, styles);
@@ -572,7 +573,9 @@ export function renderOrgView(
     const cards = teams.map((team, i) => {
       const style = styles.nodes.get(team.id) ?? styles.defaultNodeStyle;
       const { x, y } = cardPos(i);
-      return renderTeamCard(team, x, y, style);
+      const card = renderTeamCard(team, x, y, style);
+      const linkId = childLevelLinks?.get(team.id);
+      return linkId ? el("a", { href: `#${linkId}` }, card) : card;
     });
 
     return el(
@@ -598,8 +601,11 @@ export function renderOrgView(
     })),
     ...focused.teams.map((t) => ({
       id: t.id,
-      render: (x: number, y: number) =>
-        renderTeamCard(t, x, y, styles.nodes.get(t.id) ?? styles.defaultNodeStyle),
+      render: (x: number, y: number) => {
+        const card = renderTeamCard(t, x, y, styles.nodes.get(t.id) ?? styles.defaultNodeStyle);
+        const linkId = childLevelLinks?.get(t.id);
+        return linkId ? el("a", { href: `#${linkId}` }, card) : card;
+      },
     })),
   ];
 

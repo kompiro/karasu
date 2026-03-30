@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from "vitest";
-import { buildDrillDownSvg } from "./drill-down-svg.js";
+import { buildDrillDownSvg, buildDrillDownSvgOrg } from "./drill-down-svg.js";
 import { registerBuiltinShapes } from "./shapes.js";
 import { clearRegistry } from "./shape-registry.js";
 import { Parser } from "../parser/parser.js";
@@ -103,5 +103,95 @@ describe("buildDrillDownSvg", () => {
     const matches = [...svg.matchAll(/viewBox="[^"]+"/g)];
     // At least two viewBox values (root + OrderService level)
     expect(matches.length).toBeGreaterThanOrEqual(2);
+  });
+});
+
+const ORG_FLAT = `
+organization Acme {
+  team Frontend { label "Frontend" }
+  team Backend { label "Backend" }
+}
+`;
+
+const ORG_TWO_LEVEL = `
+organization Acme {
+  team Engineering {
+    label "Engineering"
+    team Frontend { label "Frontend" }
+    team Backend { label "Backend" }
+  }
+  team Design { label "Design" }
+}
+`;
+
+const ORG_THREE_LEVEL = `
+organization Acme {
+  team Engineering {
+    label "Engineering"
+    team Platform {
+      label "Platform"
+      team Infra { label "Infra" }
+    }
+  }
+}
+`;
+
+describe("buildDrillDownSvgOrg", () => {
+  it("returns placeholder for empty org", () => {
+    const krsFile = Parser.parse("system Empty {}").value;
+    const svg = buildDrillDownSvgOrg(krsFile);
+    expect(svg).toContain("No org diagram");
+  });
+
+  it("flat org: produces krs-view-root, no drill-down links", () => {
+    const krsFile = Parser.parse(ORG_FLAT).value;
+    const svg = buildDrillDownSvgOrg(krsFile);
+
+    expect(svg).toContain('id="krs-view-root"');
+    // No child levels — teams have no sub-teams
+    expect(svg).not.toContain('id="krs-view-Frontend"');
+    expect(svg).not.toContain('id="krs-view-Backend"');
+    // No back button
+    expect(svg).not.toContain('<g class="krs-back-button"');
+  });
+
+  it("two-level: root + child view, <a> links for drillable teams", () => {
+    const krsFile = Parser.parse(ORG_TWO_LEVEL).value;
+    const svg = buildDrillDownSvgOrg(krsFile);
+
+    expect(svg).toContain('id="krs-view-root"');
+    expect(svg).toContain('id="krs-view-Engineering"');
+    // Root links to Engineering (has sub-teams)
+    expect(svg).toContain('href="#krs-view-Engineering"');
+    // Design has no sub-teams — no level for it
+    expect(svg).not.toContain('id="krs-view-Design"');
+    // Engineering level has back button
+    const engIdx = svg.indexOf('id="krs-view-Engineering"');
+    const backIdx = svg.indexOf('<g class="krs-back-button"', engIdx);
+    expect(backIdx).toBeGreaterThan(engIdx);
+  });
+
+  it("three-level: recursively generates all levels", () => {
+    const krsFile = Parser.parse(ORG_THREE_LEVEL).value;
+    const svg = buildDrillDownSvgOrg(krsFile);
+
+    expect(svg).toContain('id="krs-view-root"');
+    expect(svg).toContain('id="krs-view-Engineering"');
+    expect(svg).toContain('id="krs-view-Platform"');
+    // Infra has no sub-teams — no level
+    expect(svg).not.toContain('id="krs-view-Infra"');
+    // Platform level back button links to Engineering
+    const platformIdx = svg.indexOf('id="krs-view-Platform"');
+    const backHref = svg.indexOf('href="#krs-view-Engineering"', platformIdx);
+    expect(backHref).toBeGreaterThan(platformIdx);
+  });
+
+  it("includes CSS :target rules", () => {
+    const krsFile = Parser.parse(ORG_TWO_LEVEL).value;
+    const svg = buildDrillDownSvgOrg(krsFile);
+
+    expect(svg).toContain(".krs-view { display: none; }");
+    expect(svg).toContain(".krs-view:target { display: block; }");
+    expect(svg).toContain("#krs-view-root { display: block; }");
   });
 });
