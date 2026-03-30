@@ -112,7 +112,10 @@ import { StyleParser } from "./parser/style-parser.js";
 import { resolveStyles } from "./resolver/style-resolver.js";
 import { analyze } from "./resolver/warnings.js";
 import { render } from "./renderer/svg-renderer.js";
-import { buildDrillDownSvg as _buildDrillDownSvg } from "./renderer/drill-down-svg.js";
+import {
+  buildDrillDownSvg as _buildDrillDownSvg,
+  buildFullViewSvg as _buildFullViewSvg,
+} from "./renderer/drill-down-svg.js";
 
 import type { DisplayMode } from "./renderer/layout.js";
 import { renderOrgView as _renderOrgView } from "./renderer/org-renderer.js";
@@ -433,4 +436,17 @@ export function buildDrillDownSvg(
 ): string {
   const parseResult: ParseResult<KrsFile> = Parser.parse(krsSource);
   return _buildDrillDownSvg(parseResult.value, styleSource, displayMode);
+}
+
+/**
+ * Builds a single SVG with all drill-down levels stacked vertically.
+ * All levels are visible simultaneously — no interaction required.
+ */
+export function buildFullViewSvg(
+  krsSource: string,
+  styleSource?: string,
+  displayMode?: DisplayMode,
+): string {
+  const parseResult: ParseResult<KrsFile> = Parser.parse(krsSource);
+  return _buildFullViewSvg(parseResult.value, styleSource, displayMode);
 }
