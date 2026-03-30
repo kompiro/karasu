@@ -95,17 +95,6 @@ function MemoryModeInner() {
     [dispatch, fs, recompile],
   );
 
-  const handleDrillDown = useCallback(
-    (newPath: string[]) => {
-      if (activeView === "org") {
-        dispatch({ type: "SET_ORG_PATH", path: newPath });
-      } else {
-        dispatch({ type: "SET_VIEW_PATH", path: newPath });
-      }
-    },
-    [dispatch, activeView],
-  );
-
   const handleActiveViewChange = useCallback(
     (view: ActiveView) => {
       dispatch({ type: "SET_ACTIVE_VIEW", activeView: view });
@@ -253,7 +242,6 @@ function MemoryModeInner() {
           onOwnedServiceClick: handleOwnedServiceClick,
         }}
         nodeMetadata={nodeMetadata}
-        onDrillDown={handleDrillDown}
         displayMode={displayMode}
         onDisplayModeChange={(mode: DisplayMode) =>
           dispatch({ type: "SET_DISPLAY_MODE", displayMode: mode })

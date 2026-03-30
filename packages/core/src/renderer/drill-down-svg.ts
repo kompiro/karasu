@@ -69,11 +69,13 @@ function collectDrillDownLevels(
   const viewSlice = extractView(systems, path);
   if (viewSlice.childNodes.length === 0 && viewSlice.containerNode === null) return;
 
-  const linkedNodeIds = new Set(
-    viewSlice.childNodes.filter((n) => n.children.length > 0).map((n) => n.id),
+  const childLevelLinks = new Map(
+    viewSlice.childNodes
+      .filter((n) => n.children.length > 0)
+      .map((n) => [n.id, `krs-view-${sanitizeId(n.id)}`]),
   );
 
-  const svg = render(viewSlice, styles, undefined, ownerIndex, displayMode, linkedNodeIds);
+  const svg = render(viewSlice, styles, undefined, ownerIndex, displayMode, childLevelLinks);
   const { viewBox, innerContent } = extractSvgParts(svg);
 
   const backButton = parentViewId !== null ? renderBackButton(parentViewId) : "";

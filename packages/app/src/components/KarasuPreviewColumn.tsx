@@ -62,7 +62,6 @@ interface KarasuPreviewColumnProps {
   orgView: OrgViewProps;
 
   nodeMetadata: Map<string, NodeMetadata>;
-  onDrillDown: (path: string[]) => void;
 
   deployBlocks?: DeployBlockInfo[];
   selectedDeployBlockId?: string | null;
@@ -89,7 +88,6 @@ export function KarasuPreviewColumn({
   deployView,
   orgView,
   nodeMetadata,
-  onDrillDown,
   deployBlocks,
   selectedDeployBlockId,
   onDeployBlockChange,
@@ -118,6 +116,12 @@ export function KarasuPreviewColumn({
         : orgView.diagnostics;
   const viewPath =
     activeView === "system" ? systemView.viewPath : activeView === "org" ? orgView.orgPath : [];
+  const onDrillDown =
+    activeView === "system"
+      ? systemView.onBreadcrumbNavigate
+      : activeView === "org"
+        ? orgView.onBreadcrumbNavigate
+        : undefined;
 
   const exportFilename = buildSvgExportFilename(activeView, {
     breadcrumbItems:
@@ -259,7 +263,7 @@ export function KarasuPreviewColumn({
           diagnostics={diagnostics}
           viewPath={viewPath}
           nodeMetadata={nodeMetadata}
-          onDrillDown={activeView !== "deploy" ? onDrillDown : () => {}}
+          onDrillDown={activeView !== "deploy" ? onDrillDown : undefined}
           onContainerClick={activeView === "deploy" ? deployView.onContainerClick : undefined}
           onDeployButtonClick={activeView === "system" ? systemView.onDeployButtonClick : undefined}
           onTeamButtonClick={activeView === "system" ? systemView.onTeamButtonClick : undefined}

@@ -65,6 +65,14 @@ export {
 export { analyze } from "./resolver/warnings.js";
 export type { DisplayMode } from "./renderer/layout.js";
 export { render, renderFromLayout, sanitizeId } from "./renderer/svg-renderer.js";
+export type { ExportLevel } from "./renderer/multi-level-svg.js";
+export {
+  buildLevelId,
+  collectAllSystemPaths,
+  assembleMultiLevelSvg,
+  buildExportSvg,
+  buildExportSvgOrg,
+} from "./renderer/multi-level-svg.js";
 
 export { renderOrgView } from "./renderer/org-renderer.js";
 export { renderDeploy } from "./renderer/deploy-renderer.js";

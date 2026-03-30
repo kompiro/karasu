@@ -104,4 +104,28 @@ describe("appReducer — activeView / highlightedNodeId", () => {
       expect(next.highlightedNodeId).toBeNull();
     });
   });
+
+  describe("SET_FULL_VIEW", () => {
+    it("sets isFullView to true", () => {
+      const next = appReducer(initialState, { type: "SET_FULL_VIEW", isFullView: true });
+      expect(next.isFullView).toBe(true);
+    });
+
+    it("sets isFullView to false", () => {
+      const state = stateWith({ isFullView: true });
+      const next = appReducer(state, { type: "SET_FULL_VIEW", isFullView: false });
+      expect(next.isFullView).toBe(false);
+    });
+
+    it("does not affect other state fields", () => {
+      const state = stateWith({ activeView: "org", viewPath: ["A"] });
+      const next = appReducer(state, { type: "SET_FULL_VIEW", isFullView: true });
+      expect(next.activeView).toBe("org");
+      expect(next.viewPath).toEqual(["A"]);
+    });
+
+    it("initialState has isFullView=false", () => {
+      expect(initialState.isFullView).toBe(false);
+    });
+  });
 });

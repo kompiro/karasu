@@ -36,7 +36,7 @@ export function render(
   serviceIdsWithDeploy?: Set<string>,
   ownerIndex?: Map<string, string>,
   displayMode?: DisplayMode,
-  linkedNodeIds?: Set<string>,
+  childLevelLinks?: Map<string, string>,
 ): string {
   const layoutResult = layout(viewSlice, ownerIndex, displayMode);
   const title =
@@ -49,7 +49,7 @@ export function render(
     title,
     serviceIdsWithDeploy,
     displayMode,
-    linkedNodeIds,
+    childLevelLinks,
   );
 }
 
@@ -59,7 +59,7 @@ export function renderFromLayout(
   title?: string,
   serviceIdsWithDeploy?: Set<string>,
   displayMode?: DisplayMode,
-  linkedNodeIds?: Set<string>,
+  childLevelLinks?: Map<string, string>,
 ): string {
   if (layoutResult.nodes.size === 0 && layoutResult.containers.length === 0) {
     return el(
@@ -167,13 +167,16 @@ export function renderFromLayout(
   const normalNodeParts: string[] = [];
   for (const [nodeId, layoutNode] of layoutResult.nodes) {
     const nodeStyle = styles.nodes.get(nodeId) ?? styles.defaultNodeStyle;
-    const rendered = renderNode(layoutNode, nodeStyle, nodeId, serviceIdsWithDeploy, displayMode);
+    const rendered = renderNode(
+      layoutNode,
+      nodeStyle,
+      nodeId,
+      serviceIdsWithDeploy,
+      displayMode,
+      childLevelLinks,
+    );
     if (layoutNode.ghost) {
       ghostNodeParts.push(rendered);
-    } else if (linkedNodeIds?.has(nodeId)) {
-      normalNodeParts.push(
-        el("a", { href: `#krs-view-${sanitizeId(nodeId)}`, tabindex: "0" }, rendered),
-      );
     } else {
       normalNodeParts.push(rendered);
     }
@@ -246,6 +249,7 @@ function renderNode(
   nodeId: string,
   serviceIdsWithDeploy?: Set<string>,
   displayMode?: DisplayMode,
+  childLevelLinks?: Map<string, string>,
 ): string {
   const children: string[] = [];
 
@@ -659,6 +663,11 @@ function renderNode(
     },
     ...children,
   );
+
+  const childLevelId = childLevelLinks?.get(nodeId);
+  if (childLevelId) {
+    return el("a", { href: `#${childLevelId}` }, nodeEl);
+  }
   return nodeEl;
 }
 

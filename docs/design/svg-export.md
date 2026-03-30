@@ -1,8 +1,45 @@
 # SVG エクスポート（ドリルダウン対応）
 
 - **日付**: 2026-03-28
-- **ステータス**: ドラフト
+- **更新**: 2026-03-30（Full View 定義追加・Phase 2 実装完了）
+- **ステータス**: 実装済み（Phase 1・Phase 2 完了）
 - **関連**: [Issue #22](https://github.com/kompiro/karasu/issues/22), [2レイヤレンダリング](two-layer-rendering.md), [インタラクティブ SVG レンダリング](interactive-svg-rendering.md)
+
+## Full View の定義
+
+**Full View（全体ビュー）** とは、ビュー種別ごとの全ドリルダウン層を一度に展開したビューである。
+
+### System ビューの層構造
+
+System ビューのノード階層は以下の5層からなる:
+
+```
+system
+└── service
+    └── domain
+        └── usecase
+            └── resource
+```
+
+通常のインタラクティブプレビューでは1層ずつドリルダウンするが、
+Full View では **すべての層（system 〜 resource）を含む全レベルを同時にレンダリング** し、
+ユーザーがレベル間をリンクで行き来できる。
+
+### Org ビューの層構造
+
+```
+organization
+└── team
+    └── team（サブチーム）
+        └── …（任意の深さ）
+```
+
+### Deploy ビュー
+
+Deploy ビューはフラットなコンテナビューであり、ドリルダウン構造を持たない。
+**Deploy タブでは Full View ボタンを表示しない。**
+
+---
 
 ## 背景・課題
 
@@ -96,68 +133,46 @@ function downloadSvg(svg: string, filename: string) {
 
 ---
 
-### 案C: 単一 SVG に全レイヤーを埋め込み（CSS `:target` ナビゲーション）
+### 案C: 単一 SVG に全レイヤーを埋め込み（ハッシュナビゲーション）
 
-全ドリルダウンレベルを1つの SVG ファイルに埋め込む。CSS の `:target` + `:has()` セレクタで
-アクティブなビューを切り替える。JavaScript 不要。
+> **実装メモ（2026-03-30）**: 設計段階では CSS `:target` + `:has()` による1レベル表示切替を想定していたが、
+> Full View の定義（全レベルを同時表示）に合わせて **全レベルを縦に積み上げてスクロール可能にする方式** に変更した。
+> 各レベルは `<g transform="translate(0, cumulativeY)">` で配置され、JavaScript 不要・`sandbox=""`（最大制限）で動作する。
+
+全ドリルダウンレベルを1つの SVG ファイルに埋め込む。全レベルが同時に表示され、縦スクロールで閲覧できる。
 
 #### SVG の構造
 
 ```xml
-<svg xmlns="http://www.w3.org/2000/svg" ...>
-  <defs>
-    <!-- 共有マーカー等 -->
-  </defs>
-
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {maxWidth} {totalHeight}" ...>
   <style>
-    /* デフォルト: root 以外は非表示 */
-    .krs-view { display: none; }
-    /* fragment 未指定時は root を表示 */
-    svg:not(:has(.krs-view:target)) #krs-view-root { display: block; }
-    /* fragment 指定時は対象を表示 */
-    .krs-view:target { display: block; }
+    a { cursor: pointer; }
   </style>
 
-  <!-- トップレベル -->
-  <g id="krs-view-root" class="krs-view">
-    <!-- 通常の SVG コンテンツ -->
-    <!-- 子を持つノードは <a href="#krs-view-ECommerce"> でラップ -->
-    <a href="#krs-view-ECommerce">
-      <g data-node-id="ECommerce" data-has-children="true">...</g>
-    </a>
+  <!-- トップレベル（y=0 から始まる） -->
+  <g id="krs-view-root" class="krs-level" transform="translate(0, 0)">
+    <!-- ブレッドクラムバー（SVG <text>/<a> 要素） -->
+    <g class="krs-breadcrumb">...</g>
+    <!-- ネストされた SVG（y=40 から始まる、<defs> 含む） -->
+    <svg x="0" y="40" viewBox="0 0 800 600" width="800" height="600">...</svg>
   </g>
 
-  <!-- ECommerce ドリルダウン -->
-  <g id="krs-view-ECommerce" class="krs-view">
-    <!-- 戻りボタン -->
-    <a href="#krs-view-root">
-      <g class="krs-back-button">
-        <rect .../>
-        <text>← 戻る</text>
-      </g>
-    </a>
-    <!-- ドリルダウンビューの SVG コンテンツ -->
+  <!-- ECommerce ドリルダウン（root の直下に積み上げ） -->
+  <g id="krs-view-root__ECommerce" class="krs-level" transform="translate(0, 640)">
+    <!-- ブレッドクラムバー: Root › ECommerce (現在位置) -->
+    <g class="krs-breadcrumb">...</g>
+    <svg x="0" y="40" ...>...</svg>
   </g>
 
-  <!-- ... 他のドリルダウンビュー ... -->
+  <!-- ... 他のレベルも同様に縦積み ... -->
 </svg>
 ```
 
-#### CSS メカニズム
+#### レイアウトメカニズム
 
-```css
-/* 全ビュー非表示 */
-.krs-view { display: none; }
-
-/* fragment なし → root を表示 */
-svg:not(:has(.krs-view:target)) #krs-view-root { display: block; }
-
-/* fragment あり → 対象ビューを表示 */
-.krs-view:target { display: block; }
-```
-
-`svg:has(.krs-view:target)` は「SVG 内に `:target` な `.krs-view` が存在するか」を問う。
-`:has()` が使えることで「他のビューが選択されたら root を隠す」が CSS だけで実現できる。
+各レベルは `BREADCRUMB_HEIGHT(40px) + level.height` の高さを占める。
+SVG 全体の高さはすべてのレベルの高さの合計となり、`<iframe>` の `overflow: auto` でスクロール可能。
+ブレッドクラムのリンク（`<a href="#krs-view-root__ECommerce">`）はハッシュ位置へスクロールする。
 
 #### core の変更
 
@@ -228,6 +243,8 @@ Phase 1 の後、全体ビュー機能と合わせて実装する。
 - `buildExportSvg(source: string): string` を追加
   - 全ドリルダウンレベルを埋め込んだ単一 SVG を返す
   - ブラウザ API に依存しない Pure TS 関数
+  - System ビューは最大 4 深度（system 直下から service / domain / usecase / resource まで）
+  - Org ビューは最大 10 深度（実用上の上限）
 
 #### app の変更
 
@@ -249,5 +266,5 @@ Phase 1 の後、全体ビュー機能と合わせて実装する。
 1. **ファイル名の決定ロジック**: diagram ラベルがない場合のフォールバック（`diagram.svg` 等）
 2. **大規模図のサイズ制限**: 全レベルを埋め込む際、ノード数が多い場合の SVG サイズをどう扱うか（警告表示など）
 3. **戻るボタンのデザイン**: SVG 内に描画する「← 戻る」ボタンのスタイルをどう統一するか
-4. **deploy / org タブの扱い**: deploy・org ビューはドリルダウン構造が浅いため、Phase 2 での対応範囲を明確にする（system のみ対応か全タブ対応か）
+4. ~~**deploy / org タブの扱い**~~ → **解決済み（2026-03-30）**: Deploy は Full View 非対応（ボタン非表示）。Org は Full View 対応（team の入れ子を全展開）。
 5. **iframe のアクセシビリティ**: `title` 属性以外に必要な対応はあるか

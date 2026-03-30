@@ -44,7 +44,6 @@ function makeProps(overrides: Partial<Parameters<typeof KarasuPreviewColumn>[0]>
       onBreadcrumbNavigate: noop,
     },
     nodeMetadata: new Map(),
-    onDrillDown: vi.fn(),
     displayMode: "shape" as const,
     onDisplayModeChange: vi.fn(),
     onExportSvg: vi.fn(),

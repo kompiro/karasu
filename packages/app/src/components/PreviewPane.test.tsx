@@ -15,9 +15,7 @@ function baseProps() {
   return {
     svg: "",
     diagnostics: [],
-    viewPath: [],
     nodeMetadata: new Map(),
-    onDrillDown: vi.fn(),
   };
 }
 
@@ -42,7 +40,7 @@ function click(container: HTMLElement, getTarget: () => Element) {
  */
 describe("PreviewPane", () => {
   describe("onClearHighlight", () => {
-    it("calls onClearHighlight when a node with children is clicked", () => {
+    it("calls onDrillDown and onClearHighlight when a node with children is clicked", () => {
       const onClearHighlight = vi.fn();
       const onDrillDown = vi.fn();
       const svg = `<div data-node-id="svc" data-has-children="true"></div>`;
@@ -51,6 +49,7 @@ describe("PreviewPane", () => {
         <PreviewPane
           {...baseProps()}
           svg={svg}
+          viewPath={[]}
           onDrillDown={onDrillDown}
           onClearHighlight={onClearHighlight}
         />,

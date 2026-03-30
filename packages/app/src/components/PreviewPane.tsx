@@ -5,9 +5,9 @@ import { NodeDetailPanel } from "./NodeDetailPanel.js";
 interface PreviewPaneProps {
   svg: string;
   diagnostics: Diagnostic[];
-  viewPath: string[];
+  viewPath?: string[];
   nodeMetadata: Map<string, NodeMetadata>;
-  onDrillDown: (newPath: string[]) => void;
+  onDrillDown?: (newPath: string[]) => void;
   /** Called when user clicks a deploy container to cross-navigate to system view */
   onContainerClick?: (containerId: string) => void;
   /** Called when user clicks the deploy button on a system node to cross-navigate to deploy view */
@@ -33,7 +33,7 @@ const CLICK_THRESHOLD = 3;
 export function PreviewPane({
   svg,
   diagnostics,
-  viewPath,
+  viewPath = [],
   nodeMetadata,
   onDrillDown,
   onContainerClick,
@@ -200,8 +200,8 @@ export function PreviewPane({
       const hasChildren = nodeGroup.getAttribute("data-has-children") === "true";
       const nodeId = nodeGroup.getAttribute("data-node-id");
 
-      if (hasChildren && nodeId) {
-        // Drill down
+      if (hasChildren && nodeId && onDrillDown) {
+        // Drill down into child level
         setDetailPanel(null);
         onClearHighlight?.();
         onDrillDown([...viewPath, nodeId]);
