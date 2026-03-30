@@ -101,8 +101,20 @@ describe("resolveKrsFile", () => {
     expect(await resolveKrsFile(tmpDir, "nonexistent")).toBeNull();
   });
 
-  it("returns null for a path traversal attempt", async () => {
+  it("returns null for a multi-step path traversal (../../)", async () => {
     expect(await resolveKrsFile(tmpDir, "../../etc/passwd")).toBeNull();
+  });
+
+  it("returns null for a single-step path traversal (../)", async () => {
+    expect(await resolveKrsFile(tmpDir, "../sibling")).toBeNull();
+  });
+
+  it("returns null for an absolute path input", async () => {
+    expect(await resolveKrsFile(tmpDir, "/etc/passwd")).toBeNull();
+  });
+
+  it("returns null for traversal through a subdirectory prefix", async () => {
+    expect(await resolveKrsFile(tmpDir, "sub/../../etc/passwd")).toBeNull();
   });
 });
 

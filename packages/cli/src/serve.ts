@@ -38,8 +38,12 @@ export async function collectKrsFiles(dir: string): Promise<string[]> {
 }
 
 export async function resolveKrsFile(dir: string, name: string): Promise<string | null> {
-  const filePath = join(dir, `${name}.krs`);
-  if (!filePath.startsWith(dir + sep)) {
+  // Normalise dir so a trailing sep never causes startsWith to fail.
+  // Note: this guard is a string-level check and does not resolve symlinks;
+  // a symlink inside dir that points outside would bypass it.
+  const safeDir = resolve(dir);
+  const filePath = join(safeDir, `${name}.krs`);
+  if (!filePath.startsWith(safeDir + sep)) {
     return null;
   }
   try {
