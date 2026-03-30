@@ -64,7 +64,7 @@ export {
 } from "./builtins/reference.js";
 export { analyze } from "./resolver/warnings.js";
 export type { DisplayMode } from "./renderer/layout.js";
-export { render, renderFromLayout } from "./renderer/svg-renderer.js";
+export { render, renderFromLayout, sanitizeId } from "./renderer/svg-renderer.js";
 export type { ExportLevel } from "./renderer/multi-level-svg.js";
 export {
   buildLevelId,
@@ -120,6 +120,11 @@ import { StyleParser } from "./parser/style-parser.js";
 import { resolveStyles } from "./resolver/style-resolver.js";
 import { analyze } from "./resolver/warnings.js";
 import { render } from "./renderer/svg-renderer.js";
+import {
+  buildDrillDownSvg as _buildDrillDownSvg,
+  buildFullViewSvg as _buildFullViewSvg,
+  buildFullViewSvgOrg as _buildFullViewSvgOrg,
+} from "./renderer/drill-down-svg.js";
 
 import type { DisplayMode } from "./renderer/layout.js";
 import { renderOrgView as _renderOrgView } from "./renderer/org-renderer.js";
@@ -423,4 +428,47 @@ export function compileOrgView(
   const svg = _renderOrgView(slice, styles);
 
   return { svg, diagnostics, warnings, nodePathIndex: parseResult.value.nodePathIndex };
+}
+
+/**
+ * Builds a single SVG string containing all drill-down levels of the system diagram.
+ * Each level is navigable via CSS :target + :has() without JavaScript.
+ *
+ * @param krsSource   - Raw .krs source
+ * @param styleSource - Optional .krs.style content
+ * @param displayMode - Layout display mode ("icon" | "shape")
+ */
+export function buildDrillDownSvg(
+  krsSource: string,
+  styleSource?: string,
+  displayMode?: DisplayMode,
+): string {
+  const parseResult: ParseResult<KrsFile> = Parser.parse(krsSource);
+  return _buildDrillDownSvg(parseResult.value, styleSource, displayMode);
+}
+
+/**
+ * Builds a single SVG with all drill-down levels stacked vertically.
+ * All levels are visible simultaneously — no interaction required.
+ */
+export function buildFullViewSvg(
+  krsSource: string,
+  styleSource?: string,
+  displayMode?: DisplayMode,
+): string {
+  const parseResult: ParseResult<KrsFile> = Parser.parse(krsSource);
+  return _buildFullViewSvg(parseResult.value, styleSource, displayMode);
+}
+
+/**
+ * Builds a single SVG with all org drill-down levels stacked vertically.
+ * All org levels (root teams, sub-teams) are visible simultaneously.
+ */
+export function buildFullViewSvgOrg(
+  krsSource: string,
+  styleSource?: string,
+  displayMode?: DisplayMode,
+): string {
+  const parseResult: ParseResult<KrsFile> = Parser.parse(krsSource);
+  return _buildFullViewSvgOrg(parseResult.value, styleSource, displayMode);
 }

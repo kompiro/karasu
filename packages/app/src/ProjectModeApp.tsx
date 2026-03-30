@@ -1,5 +1,11 @@
-import { useEffect, useCallback, useMemo, useRef } from "react";
-import { Parser } from "@karasu/core";
+import { useEffect, useCallback, useMemo, useRef, useState } from "react";
+import {
+  Parser,
+  buildDrillDownSvg,
+  buildFullViewSvg,
+  buildFullViewSvgOrg,
+  buildExportSvgOrg,
+} from "@karasu/core";
 import { EditorPane } from "./components/EditorPane.js";
 import { ProjectSelector } from "./components/ProjectSelector.js";
 import { FileTree } from "./components/FileTree.js";
@@ -9,7 +15,6 @@ import { useAppContext } from "./state/app-context.js";
 import { useSystemView } from "./hooks/useSystemView.js";
 import { useDeployView } from "./hooks/useDeployView.js";
 import { useOrgView } from "./hooks/useOrgView.js";
-import { useFullViewSvg } from "./hooks/useFullViewSvg.js";
 
 import { ProjectManager } from "./fs/project-manager.js";
 import type { Project, KrsNode, OrgViewPath, DisplayMode } from "@karasu/core";
@@ -25,6 +30,7 @@ export function ProjectModeApp() {
   const { state, dispatch, fs } = useAppContext();
   const pmRef = useRef(new ProjectManager(fs));
   const pm = pmRef.current;
+  const [isFullView, setIsFullView] = useState(false);
 
   const {
     currentProject,
@@ -37,7 +43,6 @@ export function ProjectModeApp() {
     selectedDeployBlockId,
     highlightedNodeId,
     displayMode,
-    isFullView,
     loading,
   } = state;
 
@@ -175,13 +180,6 @@ export function ProjectModeApp() {
     [dispatch],
   );
 
-  // Full View toggle
-  const handleFullViewToggle = useCallback(() => {
-    dispatch({ type: "SET_FULL_VIEW", isFullView: !isFullView });
-  }, [dispatch, isFullView]);
-
-  const multiLevelSvg = useFullViewSvg(fileContent, "", isFullView, activeView, displayMode);
-
   // Deploy ブロックセレクタ変更
   const handleDeployBlockChange = useCallback(
     (id: string) => {
@@ -304,6 +302,42 @@ export function ProjectModeApp() {
     }
   }, [fileContent, viewPath]);
 
+  const drillDownSvg = useMemo(() => {
+    if (!fileContent) return undefined;
+    try {
+      return buildDrillDownSvg(fileContent, undefined, displayMode);
+    } catch {
+      return undefined;
+    }
+  }, [fileContent, displayMode]);
+
+  const fullViewSvg = useMemo(() => {
+    if (!fileContent) return undefined;
+    try {
+      return buildFullViewSvg(fileContent, undefined, displayMode);
+    } catch {
+      return undefined;
+    }
+  }, [fileContent, displayMode]);
+
+  const orgFullViewSvg = useMemo(() => {
+    if (!fileContent) return undefined;
+    try {
+      return buildFullViewSvgOrg(fileContent, undefined, displayMode);
+    } catch {
+      return undefined;
+    }
+  }, [fileContent, displayMode]);
+
+  const orgDrillDownSvg = useMemo(() => {
+    if (!fileContent) return undefined;
+    try {
+      return buildExportSvgOrg(fileContent);
+    } catch {
+      return undefined;
+    }
+  }, [fileContent]);
+
   const orgBreadcrumbItems = useMemo(() => {
     if (!fileContent) return [];
     try {
@@ -394,8 +428,11 @@ export function ProjectModeApp() {
         onDisplayModeChange={handleDisplayModeChange}
         onExportSvg={(svg, filename) => downloadSvg(svg, filename)}
         isFullView={isFullView}
-        onFullViewToggle={handleFullViewToggle}
-        multiLevelSvg={multiLevelSvg}
+        onFullViewToggle={() => setIsFullView((v) => !v)}
+        drillDownSvg={drillDownSvg}
+        fullViewSvg={fullViewSvg}
+        orgFullViewSvg={orgFullViewSvg}
+        orgDrillDownSvg={orgDrillDownSvg}
       />
     </div>
   );

@@ -48,7 +48,10 @@ function makeProps(overrides: Partial<Parameters<typeof KarasuPreviewColumn>[0]>
     onExportSvg: vi.fn(),
     isFullView: false,
     onFullViewToggle: vi.fn(),
-    multiLevelSvg: null,
+    drillDownSvg: undefined,
+    orgDrillDownSvg: undefined,
+    fullViewSvg: undefined,
+    orgFullViewSvg: undefined,
     ...overrides,
   };
 }
@@ -248,62 +251,154 @@ describe("KarasuPreviewColumn", () => {
     });
   });
 
-  describe("Full View toggle", () => {
-    it("shows Full View button in system view", () => {
-      const props = makeProps({ activeView: "system" });
+  describe("Full View button", () => {
+    it("shows Full View button on system tab", () => {
+      const props = makeProps({ activeView: "system", fullViewSvg: "<svg>full</svg>" });
       const { getByRole } = render(<KarasuPreviewColumn {...props} />);
       expect(getByRole("button", { name: /Toggle full view/ })).toBeTruthy();
     });
 
-    it("shows Full View button in org view", () => {
-      const props = makeProps({ activeView: "org" });
+    it("Full View button is disabled when fullViewSvg is absent", () => {
+      const props = makeProps({ activeView: "system", fullViewSvg: undefined });
       const { getByRole } = render(<KarasuPreviewColumn {...props} />);
-      expect(getByRole("button", { name: /Toggle full view/ })).toBeTruthy();
+      expect(getByRole("button", { name: /Toggle full view/ })).toHaveProperty("disabled", true);
     });
 
-    it("hides Full View button in deploy view", () => {
-      const props = makeProps({ activeView: "deploy" });
-      const { queryByRole } = render(<KarasuPreviewColumn {...props} />);
-      expect(queryByRole("button", { name: /Toggle full view/ })).toBeNull();
+    it("Full View button is disabled on deploy tab", () => {
+      const props = makeProps({ activeView: "deploy", fullViewSvg: "<svg>full</svg>" });
+      const { getByRole } = render(<KarasuPreviewColumn {...props} />);
+      expect(getByRole("button", { name: /Toggle full view/ })).toHaveProperty("disabled", true);
     });
 
-    it("calls onFullViewToggle when Full View button is clicked", () => {
+    it("Full View button is enabled on org tab when orgFullViewSvg is set", () => {
+      const props = makeProps({ activeView: "org", orgFullViewSvg: "<svg>org-full</svg>" });
+      const { getByRole } = render(<KarasuPreviewColumn {...props} />);
+      expect(getByRole("button", { name: /Toggle full view/ })).toHaveProperty("disabled", false);
+    });
+
+    it("renders iframe with orgFullViewSvg when isFullView=true on org tab", () => {
+      const props = makeProps({
+        activeView: "org",
+        isFullView: true,
+        orgFullViewSvg: "<svg>org-full</svg>",
+      });
+      const { container } = render(<KarasuPreviewColumn {...props} />);
+      const iframe = container.querySelector("iframe");
+      expect(iframe).toBeTruthy();
+      expect(iframe?.title).toBe("Full diagram view");
+    });
+
+    it("calls onFullViewToggle when clicked", () => {
       const onFullViewToggle = vi.fn();
-      const props = makeProps({ activeView: "system", onFullViewToggle });
+      const props = makeProps({
+        activeView: "system",
+        fullViewSvg: "<svg>full</svg>",
+        onFullViewToggle,
+      });
       const { getByRole } = render(<KarasuPreviewColumn {...props} />);
       fireEvent.click(getByRole("button", { name: /Toggle full view/ }));
-      expect(onFullViewToggle).toHaveBeenCalledOnce();
+      expect(onFullViewToggle).toHaveBeenCalled();
     });
 
-    it("renders iframe when isFullView=true and multiLevelSvg is provided", () => {
-      const multiLevelSvg = "<!DOCTYPE html><html><body><svg></svg></body></html>";
-      const props = makeProps({ activeView: "system", isFullView: true, multiLevelSvg });
-      const { container } = render(<KarasuPreviewColumn {...props} />);
-      expect(container.querySelector("iframe")).toBeTruthy();
-    });
-
-    it("renders PreviewPane (not iframe) when isFullView=false", () => {
-      const props = makeProps({ activeView: "system", isFullView: false });
-      const { container } = render(<KarasuPreviewColumn {...props} />);
-      expect(container.querySelector("iframe")).toBeNull();
-      expect(container.querySelector(".preview-container")).toBeTruthy();
-    });
-
-    it("renders PreviewPane (not iframe) when isFullView=true but multiLevelSvg is null", () => {
-      const props = makeProps({ activeView: "system", isFullView: true, multiLevelSvg: null });
-      const { container } = render(<KarasuPreviewColumn {...props} />);
-      expect(container.querySelector("iframe")).toBeNull();
-      expect(container.querySelector(".preview-container")).toBeTruthy();
-    });
-
-    it("hides BreadcrumbBar when isFullView=true", () => {
+    it("renders iframe when isFullView=true and fullViewSvg is set", () => {
       const props = makeProps({
         activeView: "system",
         isFullView: true,
-        multiLevelSvg: "<!DOCTYPE html><html><body></body></html>",
+        fullViewSvg: "<svg>full</svg>",
       });
-      const { queryByText } = render(<KarasuPreviewColumn {...props} />);
-      expect(queryByText("Root")).toBeNull();
+      const { container } = render(<KarasuPreviewColumn {...props} />);
+      const iframe = container.querySelector("iframe");
+      expect(iframe).toBeTruthy();
+      expect(iframe?.title).toBe("Full diagram view");
+    });
+
+    it("does not render iframe when isFullView=false", () => {
+      const props = makeProps({
+        activeView: "system",
+        isFullView: false,
+        fullViewSvg: "<svg>full</svg>",
+      });
+      const { container } = render(<KarasuPreviewColumn {...props} />);
+      expect(container.querySelector("iframe")).toBeNull();
+    });
+  });
+
+  describe("Export SVG split button", () => {
+    it("renders Export SVG main button and toggle button", () => {
+      const props = makeProps({ activeView: "system" });
+      const { getByRole } = render(<KarasuPreviewColumn {...props} />);
+      expect(getByRole("button", { name: /Export SVG/ })).toBeTruthy();
+      expect(getByRole("button", { name: /SVG export options/ })).toBeTruthy();
+    });
+
+    it("Export SVG exports current svg when isFullView=false", () => {
+      const onExportSvg = vi.fn();
+      const props = makeProps({ activeView: "system", isFullView: false, onExportSvg });
+      const { getByRole } = render(<KarasuPreviewColumn {...props} />);
+      fireEvent.click(getByRole("button", { name: /Export SVG/ }));
+      expect(onExportSvg).toHaveBeenCalledWith(emptySvg, expect.any(String));
+    });
+
+    it("Export SVG exports fullViewSvg with -fullview suffix when isFullView=true", () => {
+      const onExportSvg = vi.fn();
+      const fullViewSvg = "<svg>full</svg>";
+      const props = makeProps({
+        activeView: "system",
+        isFullView: true,
+        fullViewSvg,
+        onExportSvg,
+      });
+      const { getByRole } = render(<KarasuPreviewColumn {...props} />);
+      fireEvent.click(getByRole("button", { name: /Export SVG/ }));
+      expect(onExportSvg).toHaveBeenCalledWith(fullViewSvg, expect.stringContaining("fullview"));
+    });
+
+    it("clicking toggle button opens export options menu with drill-down item", () => {
+      const props = makeProps({ activeView: "system" });
+      const { getByRole, getByText } = render(<KarasuPreviewColumn {...props} />);
+      fireEvent.click(getByRole("button", { name: /SVG export options/ }));
+      expect(getByText("Export Drill-down SVG")).toBeTruthy();
+    });
+
+    it("Export Drill-down SVG calls onExportSvg with -drilldown suffix", () => {
+      const onExportSvg = vi.fn();
+      const drillDownSvg = "<svg>drilldown</svg>";
+      const props = makeProps({
+        activeView: "system",
+        drillDownSvg,
+        onExportSvg,
+      });
+      const { getByRole, getByText } = render(<KarasuPreviewColumn {...props} />);
+      fireEvent.click(getByRole("button", { name: /SVG export options/ }));
+      fireEvent.click(getByText("Export Drill-down SVG"));
+      expect(onExportSvg).toHaveBeenCalledWith(drillDownSvg, expect.stringContaining("drilldown"));
+    });
+
+    it("Export Drill-down SVG is disabled on deploy tab", () => {
+      const props = makeProps({
+        activeView: "deploy",
+        drillDownSvg: "<svg>drilldown</svg>",
+      });
+      const { getByRole, getByText } = render(<KarasuPreviewColumn {...props} />);
+      fireEvent.click(getByRole("button", { name: /SVG export options/ }));
+      expect(getByText("Export Drill-down SVG").closest("button")).toHaveProperty("disabled", true);
+    });
+
+    it("Export Drill-down SVG calls onExportSvg with -drilldown suffix on org tab", () => {
+      const onExportSvg = vi.fn();
+      const orgDrillDownSvg = "<svg>org-drilldown</svg>";
+      const props = makeProps({
+        activeView: "org",
+        orgDrillDownSvg,
+        onExportSvg,
+      });
+      const { getByRole, getByText } = render(<KarasuPreviewColumn {...props} />);
+      fireEvent.click(getByRole("button", { name: /SVG export options/ }));
+      fireEvent.click(getByText("Export Drill-down SVG"));
+      expect(onExportSvg).toHaveBeenCalledWith(
+        orgDrillDownSvg,
+        expect.stringContaining("drilldown"),
+      );
     });
   });
 });

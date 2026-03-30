@@ -2,6 +2,10 @@ import { useEffect, useCallback, useMemo, useRef, useState } from "react";
 import {
   Parser,
   InMemoryFileSystemProvider,
+  buildDrillDownSvg,
+  buildFullViewSvg,
+  buildFullViewSvgOrg,
+  buildExportSvgOrg,
   type KrsNode,
   type OrgViewPath,
   type DisplayMode,
@@ -12,7 +16,6 @@ import { AppProvider, useAppContext } from "./state/app-context.js";
 import { useSystemView } from "./hooks/useSystemView.js";
 import { useDeployView } from "./hooks/useDeployView.js";
 import { useOrgView } from "./hooks/useOrgView.js";
-import { useFullViewSvg } from "./hooks/useFullViewSvg.js";
 import type { ActiveView } from "./state/app-reducer.js";
 
 const SERVE_FILE_PATH = "/serve/index.krs";
@@ -58,9 +61,9 @@ export function ServeModeApp() {
 
 function ServeModeInner() {
   const { state, dispatch, fs } = useAppContext();
-  const { fileContent, viewPath, activeView, orgPath, highlightedNodeId, displayMode, isFullView } =
-    state;
+  const { fileContent, viewPath, activeView, orgPath, highlightedNodeId, displayMode } = state;
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [isFullView, setIsFullView] = useState(false);
 
   // ref に recompile を格納し loadFile から参照できるようにする
   const recompileRef = useRef<() => void>(() => {});
@@ -186,12 +189,6 @@ function ServeModeInner() {
     [dispatch, nodePathIndex],
   );
 
-  const handleFullViewToggle = useCallback(() => {
-    dispatch({ type: "SET_FULL_VIEW", isFullView: !isFullView });
-  }, [dispatch, isFullView]);
-
-  const multiLevelSvg = useFullViewSvg(fileContent, "", isFullView, activeView, displayMode);
-
   const breadcrumbItems = useMemo(() => {
     if (!fileContent) return [];
     try {
@@ -216,6 +213,42 @@ function ServeModeInner() {
       return [];
     }
   }, [fileContent, viewPath]);
+
+  const drillDownSvg = useMemo(() => {
+    if (!fileContent) return undefined;
+    try {
+      return buildDrillDownSvg(fileContent, undefined, displayMode);
+    } catch {
+      return undefined;
+    }
+  }, [fileContent, displayMode]);
+
+  const fullViewSvg = useMemo(() => {
+    if (!fileContent) return undefined;
+    try {
+      return buildFullViewSvg(fileContent, undefined, displayMode);
+    } catch {
+      return undefined;
+    }
+  }, [fileContent, displayMode]);
+
+  const orgFullViewSvg = useMemo(() => {
+    if (!fileContent) return undefined;
+    try {
+      return buildFullViewSvgOrg(fileContent, undefined, displayMode);
+    } catch {
+      return undefined;
+    }
+  }, [fileContent, displayMode]);
+
+  const orgDrillDownSvg = useMemo(() => {
+    if (!fileContent) return undefined;
+    try {
+      return buildExportSvgOrg(fileContent);
+    } catch {
+      return undefined;
+    }
+  }, [fileContent]);
 
   const orgBreadcrumbItems = useMemo(() => {
     if (!fileContent) return [];
@@ -301,8 +334,11 @@ function ServeModeInner() {
         nodeMetadata={nodeMetadata}
         onExportSvg={(svg, filename) => downloadSvg(svg, filename)}
         isFullView={isFullView}
-        onFullViewToggle={handleFullViewToggle}
-        multiLevelSvg={multiLevelSvg}
+        onFullViewToggle={() => setIsFullView((v) => !v)}
+        drillDownSvg={drillDownSvg}
+        fullViewSvg={fullViewSvg}
+        orgFullViewSvg={orgFullViewSvg}
+        orgDrillDownSvg={orgDrillDownSvg}
       />
     </div>
   );
