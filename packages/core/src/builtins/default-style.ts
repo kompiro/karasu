@@ -187,6 +187,7 @@ let _cachedSheet: StyleSheet | null = null;
 export function getBuiltinStyleSheet(): StyleSheet {
   if (!_cachedSheet) {
     const result = StyleParser.parse(BUILTIN_STYLE_SOURCE);
+    /* c8 ignore next 4 */
     if (result.diagnostics.length > 0) {
       throw new Error(
         `Built-in stylesheet has parse errors: ${result.diagnostics.map((d) => d.message).join(", ")}`,
