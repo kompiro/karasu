@@ -66,3 +66,28 @@ describe("compile — deploy diagram nodeMetadata", () => {
     expect(result.nodeMetadata.has("mailer")).toBe(false);
   });
 });
+
+const ORG_KRS = `
+org "Eng" {
+  system "API" {}
+}
+`;
+
+const USER_STYLE = `service { color: #FF0000; }`;
+
+describe("compileProjectOrgView — style-conflict warnings", () => {
+  it("does not emit style-conflict when icon theme overrides builtin (icon mode)", async () => {
+    const fs = new InMemoryFileSystemProvider();
+    await fs.writeFile("/main.krs", ORG_KRS);
+    const result = await compileProjectOrgView("/main.krs", fs, undefined, "icon");
+    expect(result.warnings.filter((w) => w.kind === "style-conflict")).toHaveLength(0);
+  });
+
+  it("does not emit style-conflict between icon theme and user sheet (icon mode)", async () => {
+    const fs = new InMemoryFileSystemProvider();
+    await fs.writeFile("/main.krs", ORG_KRS);
+    await fs.writeFile("/main.krs.style", USER_STYLE);
+    const result = await compileProjectOrgView("/main.krs", fs, undefined, "icon");
+    expect(result.warnings.filter((w) => w.kind === "style-conflict")).toHaveLength(0);
+  });
+});

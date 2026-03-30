@@ -1,0 +1,78 @@
+# ADR-0014: Major Dependency Updates — March 2026
+
+## Status
+
+Accepted
+
+## Context
+
+Three major-version upgrades were applied on 2026-03-29 via Dependabot PRs (#141, #142, #145). All three are breaking-change releases that required explicit review before merging.
+
+| Package | From | To | PR |
+|---------|------|----|----|
+| `vite` | 6.4.1 | 8.0.3 | #141 |
+| `@vitejs/plugin-react` | 4.7.0 | 6.0.1 | #142 |
+| `typescript` | 5.9.3 | 6.0.2 | #145 |
+
+### Vite 8
+
+Vite 8 adopts **rolldown** (a Rust-based rewrite of Rollup) as the default bundler, replacing esbuild for production builds. Key changes:
+
+- Significantly faster build times due to Rollup's Rust implementation.
+- Oxc is now used for transforms in dev mode (also replacing esbuild).
+- The switch from esbuild to rolldown changes how some edge cases in module resolution and code splitting behave; no breakages were observed in this repo.
+
+### @vitejs/plugin-react 6
+
+Vite 8's Oxc integration means React Refresh Transform is handled natively, making Babel unnecessary for this plugin:
+
+- Babel dependency removed; plugin installation size reduced.
+- Projects that customised Babel transforms must switch to `@rolldown/plugin-babel` separately. This repo uses no custom Babel plugins.
+- The `reactCompilerPreset` helper is added for React Compiler users.
+
+No configuration changes were required for `packages/app`.
+
+### TypeScript 6
+
+TypeScript 6 changes several compiler defaults and removes deprecated options:
+
+| Option | Old Default | New Default |
+|--------|-------------|-------------|
+| `strict` | `false` | `true` |
+| `module` | `commonjs` | `esnext` |
+| `target` | `es2015` | `es2025` |
+| `types` | auto-include all `@types/*` | `[]` (empty) |
+
+**Removed features**: `--target es5`, `--moduleResolution node`/`node10`/`classic`, `--outFile`, `--module amd`/`umd`/`systemjs`.
+
+Migration steps taken:
+
+- `packages/app` and `packages/core` already use explicit `NodeNext` module resolution — no changes needed.
+- `"types": ["node"]` was added to `packages/cli/tsconfig.json` (#150) because `@types/node` is no longer auto-included.
+- No type errors were introduced.
+
+## Decision
+
+Accept all three updates and merge as reviewed Dependabot PRs.
+
+The ecosystem shift (Vite 7 skipped, rolldown adoption, Oxc transforms, TypeScript stricter defaults) represents the direction of the modern TypeScript/Vite toolchain. Staying current reduces the risk of large, painful upgrade gaps later.
+
+## Consequences
+
+**Positive:**
+
+- Build and dev-server performance improves with rolldown + Oxc.
+- TypeScript 6's stricter defaults (`strict: true`) catch more latent type errors at compile time.
+- Reduced plugin-react install size (no Babel dependency).
+- The project remains on the current major versions of its core toolchain.
+
+**Negative:**
+
+- rolldown is newer than esbuild and may have occasional edge-case regressions in future patch releases; Dependabot will surface those as further PRs.
+- TypeScript 6 removed several legacy module resolution options. Any future dependency that requires `--moduleResolution node` would be incompatible.
+
+## Alternatives Considered
+
+**Pin to previous major versions:** Deferred until a specific incompatibility arises. Rejected because no breakages were found after review and the toolchain direction is clear.
+
+**Upgrade incrementally (Vite 6→7→8):** Vite 7 was a short-lived intermediate; upgrading directly to 8 avoids a redundant step with no lasting benefit.

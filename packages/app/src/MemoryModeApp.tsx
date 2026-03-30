@@ -70,6 +70,7 @@ function MemoryModeInner() {
     orgSvg,
     orgDiagnostics,
     orgWarnings,
+    nodePathIndex,
     recompile: recompileOrg,
   } = useOrgView(MEMORY_FILE_PATH, fs, orgPath as OrgViewPath, displayMode);
 
@@ -134,10 +135,14 @@ function MemoryModeInner() {
 
   const handleOwnedServiceClick = useCallback(
     (serviceId: string) => {
+      const resolvedPath = nodePathIndex.get(serviceId);
       dispatch({ type: "SET_ACTIVE_VIEW", activeView: "system" });
+      if (resolvedPath !== undefined) {
+        dispatch({ type: "SET_VIEW_PATH", path: resolvedPath });
+      }
       dispatch({ type: "SET_HIGHLIGHTED_NODE", nodeId: serviceId });
     },
-    [dispatch],
+    [dispatch, nodePathIndex],
   );
 
   const breadcrumbItems = useMemo(() => {

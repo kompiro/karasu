@@ -12,6 +12,7 @@ interface OrgViewState {
   orgSvg: string;
   orgDiagnostics: Diagnostic[];
   orgWarnings: Warning[];
+  nodePathIndex: Map<string, string[]>;
 }
 
 const DEBOUNCE_MS = 300;
@@ -26,6 +27,7 @@ export function useOrgView(
     orgSvg: "",
     orgDiagnostics: [],
     orgWarnings: [],
+    nodePathIndex: new Map(),
   });
 
   const lastValidSvg = useRef("");
@@ -52,6 +54,7 @@ export function useOrgView(
               orgSvg: lastValidSvg.current,
               orgDiagnostics: result.diagnostics,
               orgWarnings: prev.orgWarnings,
+              nodePathIndex: prev.nodePathIndex,
             }));
           } else {
             lastValidSvg.current = result.svg;
@@ -59,6 +62,7 @@ export function useOrgView(
               orgSvg: result.svg,
               orgDiagnostics: result.diagnostics,
               orgWarnings: result.warnings,
+              nodePathIndex: result.nodePathIndex,
             });
           }
         })
