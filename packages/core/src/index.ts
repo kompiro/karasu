@@ -374,7 +374,8 @@ export async function compileProjectOrgView(
     systemSheets.push(getIconThemeStyleSheet());
   }
   const allSheets = [...systemSheets, ...resolved.styleSheets];
-  const warnings = analyze(resolved.krsFile, allSheets);
+  const systemSheetCount = systemSheets.length;
+  const warnings = analyze(resolved.krsFile, allSheets, systemSheetCount);
   const slice = extractOrgView(resolved.krsFile.organizations, orgPath ?? []);
   const styles = resolveStyles(
     resolved.krsFile.systems,
