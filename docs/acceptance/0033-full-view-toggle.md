@@ -2,7 +2,7 @@
 
 ## Summary
 
-Verify that the Full View toggle renders a multi-level SVG in an iframe, enabling CSS `:target`-based drill-down navigation across all levels simultaneously, without requiring interactive drill-down in the normal preview pane.
+Verify that the Full View toggle renders a multi-level SVG in an iframe, enabling hash-based drill-down navigation across all levels simultaneously, without requiring interactive drill-down in the normal preview pane.
 
 ---
 
@@ -79,7 +79,7 @@ Verify that the Full View toggle renders a multi-level SVG in an iframe, enablin
 |------|--------|----------------|
 | 8.1 | Enter Full View mode | Iframe is displayed |
 | 8.2 | Click "↓ Export SVG" in the toolbar | A file is downloaded |
-| 8.3 | Open the downloaded file | The multi-level SVG is correct; it contains all level groups with CSS `:target` rules |
+| 8.3 | Open the downloaded file | The multi-level SVG is correct; it contains all level groups (`.krs-view` class, `display: none` CSS), anchor links for drillable nodes, and SVG breadcrumbs |
 
 ---
 
