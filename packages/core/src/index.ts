@@ -225,7 +225,7 @@ export function compile(
 
   if (diagramType === "deploy") {
     const deploySlice = deploySliceForStyle;
-    svg = renderDeploy(deploySlice, styles);
+    svg = renderDeploy(deploySlice, styles, displayMode);
     nodeMetadata = buildDeployNodeMetadata(deploySlice);
   } else {
     const viewSlice = extractView(parseResult.value.systems, viewPath ?? []);
@@ -280,7 +280,7 @@ export async function compileProject(
 
   if (diagramType === "deploy") {
     const deploySlice = deploySliceForStyle;
-    svg = renderDeploy(deploySlice, styles);
+    svg = renderDeploy(deploySlice, styles, displayMode);
     nodeMetadata = buildDeployNodeMetadata(deploySlice);
   } else {
     const viewSlice = extractView(resolved.krsFile.systems, viewPath ?? []);
@@ -384,7 +384,7 @@ export async function compileProjectOrgView(
     undefined,
     resolved.krsFile.organizations,
   );
-  const svg = _renderOrgView(slice, styles);
+  const svg = _renderOrgView(slice, styles, displayMode);
 
   return { svg, diagnostics, warnings, nodePathIndex: resolved.krsFile.nodePathIndex };
 }

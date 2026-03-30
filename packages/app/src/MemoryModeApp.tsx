@@ -64,7 +64,7 @@ function MemoryModeInner() {
     diagnostics: deployDiagnostics,
     nodeMetadata: deployNodeMetadata,
     recompile: recompileDeploy,
-  } = useDeployView(MEMORY_FILE_PATH, fs, viewPath);
+  } = useDeployView(MEMORY_FILE_PATH, fs, viewPath, null, displayMode);
 
   const {
     orgSvg,
@@ -72,7 +72,7 @@ function MemoryModeInner() {
     orgWarnings,
     nodePathIndex,
     recompile: recompileOrg,
-  } = useOrgView(MEMORY_FILE_PATH, fs, orgPath as OrgViewPath);
+  } = useOrgView(MEMORY_FILE_PATH, fs, orgPath as OrgViewPath, displayMode);
 
   const recompile = useCallback(() => {
     recompileSystem();

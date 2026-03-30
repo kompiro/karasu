@@ -7,6 +7,7 @@ import {
   type FileSystemProvider,
   type NodeMetadata,
   type DeployBlockInfo,
+  type DisplayMode,
 } from "@karasu/core";
 
 interface DeployViewState {
@@ -24,6 +25,7 @@ export function useDeployView(
   fs: FileSystemProvider | null,
   viewPath: ViewPath = [],
   selectedDeployBlockId: string | null = null,
+  displayMode?: DisplayMode,
 ): DeployViewState & { recompile: () => void } {
   const [state, setState] = useState<DeployViewState>({
     svg: "",
@@ -58,6 +60,7 @@ export function useDeployView(
           viewPath,
           "deploy",
           selectedDeployBlockId ?? undefined,
+          displayMode,
         );
         const hasErrors = result.diagnostics.some((d) => d.severity === "error");
 
@@ -98,7 +101,7 @@ export function useDeployView(
       if (timerRef.current) clearTimeout(timerRef.current);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [entryPath, fs, viewPath, selectedDeployBlockId, recompileCounter.current]);
+  }, [entryPath, fs, viewPath, selectedDeployBlockId, displayMode, recompileCounter.current]);
 
   return { ...state, recompile };
 }

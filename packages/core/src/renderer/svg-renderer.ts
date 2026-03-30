@@ -9,7 +9,7 @@ import {
 } from "./layout.js";
 import { renderShape } from "./shapes.js";
 import { renderEdge, renderArrowMarker } from "./edge-routing.js";
-import { el, escapeXml } from "./svg-builder.js";
+import { el, escapeXml, truncateToWidth, wrapToWidth } from "./svg-builder.js";
 import { getIconDef } from "./shape-registry.js";
 
 const GHOST_OPACITY = 0.3;
@@ -278,7 +278,7 @@ function renderNode(
     // Icon-mode label truncation
     const iconMode = displayMode === "icon";
     const truncatedLabel = iconMode
-      ? truncateText(node.label, ICON_LABEL_MAX_WIDTH, ICON_LABEL_CHAR_WIDTH)
+      ? truncateToWidth(node.label, ICON_LABEL_MAX_WIDTH, ICON_LABEL_CHAR_WIDTH)
       : node.label;
     const labelFontSize = iconMode ? 13 : fontSize;
 
@@ -307,7 +307,7 @@ function renderNode(
 
       if (iconMode) {
         // Multi-line description: wrap text into up to 3 lines with tspan elements
-        const lines = wrapText(
+        const lines = wrapToWidth(
           displayDesc,
           ICON_DESC_MAX_WIDTH,
           ICON_DESC_CHAR_WIDTH,
@@ -644,56 +644,3 @@ function renderNode(
 // ---------------------------------------------------------------------------
 // Icon-mode text helpers
 // ---------------------------------------------------------------------------
-
-/**
- * Truncate text to fit within a given pixel width, adding "…" if truncated.
- * Uses a simple character width estimate (CJK characters counted as 1.5x).
- */
-function truncateText(text: string, maxWidth: number, charWidth: number): string {
-  const chars = [...text];
-  let width = 0;
-  for (let i = 0; i < chars.length; i++) {
-    const cw = chars[i].charCodeAt(0) > 0x2e80 ? charWidth * 1.5 : charWidth;
-    if (width + cw > maxWidth) {
-      return chars.slice(0, i).join("") + "…";
-    }
-    width += cw;
-  }
-  return text;
-}
-
-/**
- * Wrap text into multiple lines that fit within a given pixel width.
- * Returns up to `maxLines` lines; the last line is truncated with "…" if text remains.
- */
-function wrapText(text: string, maxWidth: number, charWidth: number, maxLines: number): string[] {
-  const chars = [...text];
-  const lines: string[] = [];
-  let lineStart = 0;
-  let lineWidth = 0;
-  let lastFitIdx = 0;
-
-  for (let i = 0; i < chars.length; i++) {
-    const cw = chars[i].charCodeAt(0) > 0x2e80 ? charWidth * 1.5 : charWidth;
-    if (lineWidth + cw > maxWidth) {
-      if (lines.length === maxLines - 1) {
-        // Last allowed line: truncate with ellipsis
-        lines.push(chars.slice(lineStart, i).join("") + "…");
-        return lines;
-      }
-      lines.push(chars.slice(lineStart, i).join(""));
-      lineStart = i;
-      lineWidth = cw;
-    } else {
-      lineWidth += cw;
-    }
-    lastFitIdx = i;
-  }
-
-  // Remaining text fits in a line
-  if (lineStart <= lastFitIdx) {
-    lines.push(chars.slice(lineStart).join(""));
-  }
-
-  return lines;
-}

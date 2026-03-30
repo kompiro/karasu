@@ -212,6 +212,32 @@ describe("KarasuPreviewColumn", () => {
     });
   });
 
+  describe("Icon Mode button", () => {
+    it("shows Icon Mode button for all active views", () => {
+      for (const activeView of ["system", "deploy", "org"] as const) {
+        const { getByRole, unmount } = render(
+          <KarasuPreviewColumn {...makeProps({ activeView })} />,
+        );
+        expect(getByRole("button", { name: /Toggle icon mode/ })).toBeTruthy();
+        unmount();
+      }
+    });
+
+    it("calls onDisplayModeChange when icon mode button is clicked in deploy view", () => {
+      const props = makeProps({ activeView: "deploy" });
+      const { getByRole } = render(<KarasuPreviewColumn {...props} />);
+      fireEvent.click(getByRole("button", { name: /Toggle icon mode/ }));
+      expect(props.onDisplayModeChange).toHaveBeenCalledWith("icon");
+    });
+
+    it("calls onDisplayModeChange when icon mode button is clicked in org view", () => {
+      const props = makeProps({ activeView: "org" });
+      const { getByRole } = render(<KarasuPreviewColumn {...props} />);
+      fireEvent.click(getByRole("button", { name: /Toggle icon mode/ }));
+      expect(props.onDisplayModeChange).toHaveBeenCalledWith("icon");
+    });
+  });
+
   describe("hasDeployDiagram=false", () => {
     it("renders Deploy tab as disabled", () => {
       const props = makeProps({ hasDeployDiagram: false });

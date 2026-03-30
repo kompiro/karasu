@@ -5,6 +5,7 @@ import {
   type Warning,
   type OrgViewPath,
   type FileSystemProvider,
+  type DisplayMode,
 } from "@karasu/core";
 
 interface OrgViewState {
@@ -20,6 +21,7 @@ export function useOrgView(
   entryPath: string | null,
   fs: FileSystemProvider | null,
   orgPath: OrgViewPath = [],
+  displayMode?: DisplayMode,
 ): OrgViewState & { recompile: () => void } {
   const [state, setState] = useState<OrgViewState>({
     orgSvg: "",
@@ -43,7 +45,7 @@ export function useOrgView(
     if (timerRef.current) clearTimeout(timerRef.current);
 
     timerRef.current = setTimeout(() => {
-      compileProjectOrgView(entryPath, fs, orgPath)
+      compileProjectOrgView(entryPath, fs, orgPath, displayMode)
         .then((result) => {
           const hasErrors = result.diagnostics.some((d) => d.severity === "error");
 
@@ -76,7 +78,7 @@ export function useOrgView(
       if (timerRef.current) clearTimeout(timerRef.current);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [entryPath, fs, orgPath, recompileCounter.current]);
+  }, [entryPath, fs, orgPath, displayMode, recompileCounter.current]);
 
   return { ...state, recompile };
 }

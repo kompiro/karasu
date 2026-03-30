@@ -58,7 +58,7 @@ export function ProjectModeApp() {
     nodeMetadata: deployNodeMetadata,
     deployBlocks,
     recompile: recompileDeploy,
-  } = useDeployView(entryPath, fs, viewPath, selectedDeployBlockId);
+  } = useDeployView(entryPath, fs, viewPath, selectedDeployBlockId, displayMode);
 
   const {
     orgSvg,
@@ -66,7 +66,7 @@ export function ProjectModeApp() {
     orgWarnings,
     nodePathIndex,
     recompile: recompileOrg,
-  } = useOrgView(entryPath, fs, orgPath as OrgViewPath);
+  } = useOrgView(entryPath, fs, orgPath as OrgViewPath, displayMode);
 
   const recompile = useCallback(() => {
     recompileSystem();

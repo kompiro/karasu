@@ -13,6 +13,22 @@ deploy "prod" {
 }
 `;
 
+const ORG_KRS_DISPLAY_MODE = `
+organization "OrgA" {
+  team "TeamA" {}
+}
+`;
+
+describe("compileProjectOrgView — displayMode", () => {
+  it("accepts displayMode: icon and returns SVG", async () => {
+    const fs = new InMemoryFileSystemProvider();
+    await fs.writeFile("/index.krs", ORG_KRS_DISPLAY_MODE);
+    const result = await compileProjectOrgView("/index.krs", fs, [], "icon");
+    expect(result.svg).toBeTruthy();
+    expect(result.diagnostics.filter((d) => d.severity === "error")).toHaveLength(0);
+  });
+});
+
 describe("compile — deploy diagram nodeMetadata", () => {
   it("populates nodeMetadata for deploy units", () => {
     const result = compile(DEPLOY_KRS, undefined, undefined, "deploy");

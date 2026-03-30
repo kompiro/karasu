@@ -104,4 +104,17 @@ describe("renderDeploy", () => {
     expect(svg).toContain("oci");
     expect(svg).toContain("lambda");
   });
+
+  describe("icon mode", () => {
+    it("renders frame rect with stroke when displayMode is icon", () => {
+      const svg = renderDeploy(makeSlice(), styles, "icon");
+      // renderFromLayout adds a frame rect with stroke in icon mode
+      expect(svg).toContain("stroke");
+    });
+
+    it("accepts displayMode without error", () => {
+      expect(() => renderDeploy(makeSlice(), styles, "icon")).not.toThrow();
+      expect(() => renderDeploy(makeSlice(), styles, "shape")).not.toThrow();
+    });
+  });
 });
