@@ -1,8 +1,10 @@
-import type { KrsNode, KrsFile } from "../types/ast.js";
+import type { KrsNode, KrsFile, TeamNode, OrganizationBlock } from "../types/ast.js";
 import type { ResolvedStyles, StyleSheet } from "../types/style.js";
 import type { DisplayMode } from "./layout.js";
 import { extractView } from "../view/view-extract.js";
+import { extractOrgView } from "../view/org-view-extract.js";
 import { render, sanitizeId } from "./svg-renderer.js";
+import { renderOrgView } from "./org-renderer.js";
 import { escapeXml } from "./svg-builder.js";
 import { resolveStyles } from "../resolver/style-resolver.js";
 import { getBuiltinStyleSheet } from "../builtins/default-style.js";
@@ -218,6 +220,102 @@ export function buildFullViewSvg(
 
     if (i > 0) {
       // Separator line before each non-root section
+      const sepY = yOffset - FULL_VIEW_GAP / 2;
+      parts.push(
+        `<line x1="0" y1="${sepY}" x2="${maxWidth}" y2="${sepY}" stroke="#1E293B" stroke-width="1"/>`,
+      );
+    }
+
+    parts.push(
+      `<text x="${FULL_VIEW_PADDING}" y="${yOffset + FULL_VIEW_LABEL_OFFSET}" fill="${FULL_VIEW_LABEL_COLOR}" font-family="sans-serif" font-size="11px" font-weight="600" letter-spacing="0.05em">${escapeXml(sectionLabel)}</text>`,
+    );
+    yOffset += FULL_VIEW_SECTION_HEADER_HEIGHT;
+
+    parts.push(
+      `<svg x="${FULL_VIEW_PADDING}" y="${yOffset}" width="${level.width}" height="${level.height}" viewBox="${level.viewBox}">${level.innerContent}</svg>`,
+    );
+    yOffset += level.height + FULL_VIEW_GAP;
+  }
+
+  yOffset += FULL_VIEW_PADDING;
+
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${maxWidth}" height="${yOffset}" style="background:${FULL_VIEW_BG}">${parts.join("")}</svg>`;
+}
+
+// ─── Org Full View SVG (all org levels stacked vertically) ──────────────────
+
+function collectOrgFullViewLevels(
+  organizations: OrganizationBlock[],
+  styles: ResolvedStyles,
+  displayMode: DisplayMode | undefined,
+  path: string[],
+  pathLabels: string[],
+  levels: FullViewLevel[],
+): void {
+  const slice = extractOrgView(organizations, path);
+  // At root (path=[]), focusedTeam is null but there are top-level teams to show.
+  // At a team level, focusedTeam has sub-teams; stop if no sub-teams at current focus.
+  const hasSubTeams =
+    slice.focusedTeam !== null
+      ? slice.focusedTeam.teams.length > 0
+      : slice.teams.length > 0;
+  if (!hasSubTeams) return;
+
+  const svg = renderOrgView(slice, styles, displayMode);
+  const { viewBox, innerContent, width, height } = extractSvgParts(svg);
+  levels.push({ pathLabels, viewBox, width, height, innerContent });
+
+  const teams: TeamNode[] =
+    slice.focusedTeam !== null ? slice.focusedTeam.teams : slice.teams;
+  for (const team of teams) {
+    if (team.teams.length > 0) {
+      collectOrgFullViewLevels(
+        organizations,
+        styles,
+        displayMode,
+        [...path, team.id],
+        [...pathLabels, team.label ?? team.id],
+        levels,
+      );
+    }
+  }
+}
+
+/**
+ * Builds a single SVG with all org drill-down levels stacked vertically.
+ * All levels are visible simultaneously — no interaction required.
+ */
+export function buildFullViewSvgOrg(
+  krsFile: KrsFile,
+  styleSource?: string,
+  displayMode?: DisplayMode,
+): string {
+  const organizations = krsFile.organizations;
+  const topLevelTeams = organizations.flatMap((o) => o.teams);
+  if (topLevelTeams.length === 0) {
+    return `<svg xmlns="http://www.w3.org/2000/svg" width="200" height="100" viewBox="0 0 200 100"><text x="100" y="50" text-anchor="middle" fill="#9CA3AF" font-family="sans-serif">No org diagram</text></svg>`;
+  }
+
+  const styles = resolveStyles(krsFile.systems, buildStyles(displayMode), []);
+  const rootLabel = organizations[0].label ?? organizations[0].id;
+
+  const levels: FullViewLevel[] = [];
+  collectOrgFullViewLevels(organizations, styles, displayMode, [], [rootLabel], levels);
+
+  if (levels.length === 0) {
+    return `<svg xmlns="http://www.w3.org/2000/svg" width="200" height="100" viewBox="0 0 200 100"><text x="100" y="50" text-anchor="middle" fill="#9CA3AF" font-family="sans-serif">No org diagram</text></svg>`;
+  }
+
+  const maxWidth = Math.max(...levels.map((l) => l.width)) + FULL_VIEW_PADDING * 2;
+
+  let yOffset = FULL_VIEW_PADDING;
+  const parts: string[] = [];
+
+  for (let i = 0; i < levels.length; i++) {
+    const level = levels[i];
+    const sectionLabel = level.pathLabels.join(" › ");
+
+    if (i > 0) {
       const sepY = yOffset - FULL_VIEW_GAP / 2;
       parts.push(
         `<line x1="0" y1="${sepY}" x2="${maxWidth}" y2="${sepY}" stroke="#1E293B" stroke-width="1"/>`,

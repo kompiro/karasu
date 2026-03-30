@@ -1,5 +1,5 @@
 import { useEffect, useCallback, useMemo, useRef, useState } from "react";
-import { Parser, buildDrillDownSvg, buildFullViewSvg } from "@karasu/core";
+import { Parser, buildDrillDownSvg, buildFullViewSvg, buildFullViewSvgOrg } from "@karasu/core";
 import { EditorPane } from "./components/EditorPane.js";
 import { ProjectSelector } from "./components/ProjectSelector.js";
 import { FileTree } from "./components/FileTree.js";
@@ -314,6 +314,15 @@ export function ProjectModeApp() {
     }
   }, [fileContent, displayMode]);
 
+  const orgFullViewSvg = useMemo(() => {
+    if (!fileContent) return undefined;
+    try {
+      return buildFullViewSvgOrg(fileContent, undefined, displayMode);
+    } catch {
+      return undefined;
+    }
+  }, [fileContent, displayMode]);
+
   const orgBreadcrumbItems = useMemo(() => {
     if (!fileContent) return [];
     try {
@@ -407,6 +416,7 @@ export function ProjectModeApp() {
         onFullViewToggle={() => setIsFullView((v) => !v)}
         drillDownSvg={drillDownSvg}
         fullViewSvg={fullViewSvg}
+        orgFullViewSvg={orgFullViewSvg}
       />
     </div>
   );

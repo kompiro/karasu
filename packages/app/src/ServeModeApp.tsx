@@ -4,6 +4,7 @@ import {
   InMemoryFileSystemProvider,
   buildDrillDownSvg,
   buildFullViewSvg,
+  buildFullViewSvgOrg,
   type KrsNode,
   type OrgViewPath,
   type DisplayMode,
@@ -230,6 +231,15 @@ function ServeModeInner() {
     }
   }, [fileContent, displayMode]);
 
+  const orgFullViewSvg = useMemo(() => {
+    if (!fileContent) return undefined;
+    try {
+      return buildFullViewSvgOrg(fileContent, undefined, displayMode);
+    } catch {
+      return undefined;
+    }
+  }, [fileContent, displayMode]);
+
   const orgBreadcrumbItems = useMemo(() => {
     if (!fileContent) return [];
     try {
@@ -317,6 +327,7 @@ function ServeModeInner() {
         onFullViewToggle={() => setIsFullView((v) => !v)}
         drillDownSvg={drillDownSvg}
         fullViewSvg={fullViewSvg}
+        orgFullViewSvg={orgFullViewSvg}
       />
     </div>
   );

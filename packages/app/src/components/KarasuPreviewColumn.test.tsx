@@ -50,6 +50,7 @@ function makeProps(overrides: Partial<Parameters<typeof KarasuPreviewColumn>[0]>
     onFullViewToggle: vi.fn(),
     drillDownSvg: undefined,
     fullViewSvg: undefined,
+    orgFullViewSvg: undefined,
     ...overrides,
   };
 }
@@ -266,6 +267,24 @@ describe("KarasuPreviewColumn", () => {
       const props = makeProps({ activeView: "deploy", fullViewSvg: "<svg>full</svg>" });
       const { getByRole } = render(<KarasuPreviewColumn {...props} />);
       expect(getByRole("button", { name: /Toggle full view/ })).toHaveProperty("disabled", true);
+    });
+
+    it("Full View button is enabled on org tab when orgFullViewSvg is set", () => {
+      const props = makeProps({ activeView: "org", orgFullViewSvg: "<svg>org-full</svg>" });
+      const { getByRole } = render(<KarasuPreviewColumn {...props} />);
+      expect(getByRole("button", { name: /Toggle full view/ })).toHaveProperty("disabled", false);
+    });
+
+    it("renders iframe with orgFullViewSvg when isFullView=true on org tab", () => {
+      const props = makeProps({
+        activeView: "org",
+        isFullView: true,
+        orgFullViewSvg: "<svg>org-full</svg>",
+      });
+      const { container } = render(<KarasuPreviewColumn {...props} />);
+      const iframe = container.querySelector("iframe");
+      expect(iframe).toBeTruthy();
+      expect(iframe?.title).toBe("Full diagram view");
     });
 
     it("calls onFullViewToggle when clicked", () => {

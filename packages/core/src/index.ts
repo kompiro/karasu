@@ -123,6 +123,7 @@ import { render } from "./renderer/svg-renderer.js";
 import {
   buildDrillDownSvg as _buildDrillDownSvg,
   buildFullViewSvg as _buildFullViewSvg,
+  buildFullViewSvgOrg as _buildFullViewSvgOrg,
 } from "./renderer/drill-down-svg.js";
 
 import type { DisplayMode } from "./renderer/layout.js";
@@ -457,4 +458,17 @@ export function buildFullViewSvg(
 ): string {
   const parseResult: ParseResult<KrsFile> = Parser.parse(krsSource);
   return _buildFullViewSvg(parseResult.value, styleSource, displayMode);
+}
+
+/**
+ * Builds a single SVG with all org drill-down levels stacked vertically.
+ * All org levels (root teams, sub-teams) are visible simultaneously.
+ */
+export function buildFullViewSvgOrg(
+  krsSource: string,
+  styleSource?: string,
+  displayMode?: DisplayMode,
+): string {
+  const parseResult: ParseResult<KrsFile> = Parser.parse(krsSource);
+  return _buildFullViewSvgOrg(parseResult.value, styleSource, displayMode);
 }

@@ -5,6 +5,7 @@ import {
   getReference,
   buildDrillDownSvg,
   buildFullViewSvg,
+  buildFullViewSvgOrg,
   type KrsNode,
   type OrgViewPath,
 } from "@karasu/core";
@@ -180,6 +181,15 @@ function MemoryModeInner() {
     }
   }, [fileContent, displayMode]);
 
+  const orgFullViewSvg = useMemo(() => {
+    if (!fileContent) return undefined;
+    try {
+      return buildFullViewSvgOrg(fileContent, undefined, displayMode);
+    } catch {
+      return undefined;
+    }
+  }, [fileContent, displayMode]);
+
   const orgBreadcrumbItems = useMemo(() => {
     if (!fileContent) return [];
     try {
@@ -250,6 +260,7 @@ function MemoryModeInner() {
         onFullViewToggle={() => setIsFullView((v) => !v)}
         drillDownSvg={drillDownSvg}
         fullViewSvg={fullViewSvg}
+        orgFullViewSvg={orgFullViewSvg}
       />
     </div>
   );

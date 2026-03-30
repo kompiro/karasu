@@ -72,8 +72,10 @@ interface KarasuPreviewColumnProps {
   /** Full View toggle: show all levels stacked in an iframe */
   isFullView: boolean;
   onFullViewToggle: () => void;
-  /** SVG with all levels stacked vertically (for Full View mode) */
+  /** SVG with all system levels stacked vertically (for Full View on system tab) */
   fullViewSvg?: string;
+  /** SVG with all org levels stacked vertically (for Full View on org tab) */
+  orgFullViewSvg?: string;
   /** SVG with CSS :target navigation (for drill-down export only) */
   drillDownSvg?: string;
 }
@@ -95,6 +97,7 @@ export function KarasuPreviewColumn({
   isFullView,
   onFullViewToggle,
   fullViewSvg,
+  orgFullViewSvg,
   drillDownSvg,
 }: KarasuPreviewColumnProps) {
   const [refOpen, setRefOpen] = useState(false);
@@ -132,13 +135,15 @@ export function KarasuPreviewColumn({
     selectedDeployBlockId,
   });
 
-  const fullViewAvailable = activeView === "system" && !!fullViewSvg;
+  const activeFullViewSvg =
+    activeView === "system" ? fullViewSvg : activeView === "org" ? orgFullViewSvg : undefined;
+  const fullViewAvailable = activeView !== "deploy" && !!activeFullViewSvg;
   const drillDownAvailable = activeView === "system" && !!drillDownSvg;
   const showFullViewIframe = isFullView && fullViewAvailable;
 
   function handleExport() {
-    if (showFullViewIframe && fullViewSvg) {
-      onExportSvg(fullViewSvg, exportFilename.replace(/\.svg$/, "-fullview.svg"));
+    if (showFullViewIframe && activeFullViewSvg) {
+      onExportSvg(activeFullViewSvg, exportFilename.replace(/\.svg$/, "-fullview.svg"));
     } else {
       onExportSvg(svg, exportFilename);
     }
@@ -232,7 +237,7 @@ export function KarasuPreviewColumn({
       )}
       {showFullViewIframe ? (
         <iframe
-          srcDoc={fullViewSvg}
+          srcDoc={activeFullViewSvg}
           sandbox="allow-same-origin"
           style={{ width: "100%", height: "100%", border: "none" }}
           title="Full diagram view"
