@@ -1,4 +1,4 @@
-import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
+import { createServer, type IncomingMessage, type ServerResponse, type Server } from "node:http";
 import { readFile, readdir, stat } from "node:fs/promises";
 import { join, resolve, extname, relative } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -19,7 +19,7 @@ function getAppDistDir(): string {
   return resolve(cliDir, "../../app/dist");
 }
 
-async function collectKrsFiles(dir: string): Promise<string[]> {
+export async function collectKrsFiles(dir: string): Promise<string[]> {
   const names: string[] = [];
   async function walk(current: string): Promise<void> {
     const entries = await readdir(current, { withFileTypes: true });
@@ -37,7 +37,7 @@ async function collectKrsFiles(dir: string): Promise<string[]> {
   return names.sort();
 }
 
-async function resolveKrsFile(dir: string, name: string): Promise<string | null> {
+export async function resolveKrsFile(dir: string, name: string): Promise<string | null> {
   const filePath = join(dir, `${name}.krs`);
   try {
     await stat(filePath);
@@ -47,7 +47,7 @@ async function resolveKrsFile(dir: string, name: string): Promise<string | null>
   }
 }
 
-async function resolveDefaultFile(dir: string): Promise<string | null> {
+export async function resolveDefaultFile(dir: string): Promise<string | null> {
   const indexPath = join(dir, "index.krs");
   try {
     await stat(indexPath);
@@ -59,7 +59,7 @@ async function resolveDefaultFile(dir: string): Promise<string | null> {
   }
 }
 
-async function serveStaticFile(filePath: string, res: ServerResponse): Promise<boolean> {
+export async function serveStaticFile(filePath: string, res: ServerResponse): Promise<boolean> {
   try {
     const content = await readFile(filePath);
     const ext = extname(filePath);
@@ -72,7 +72,7 @@ async function serveStaticFile(filePath: string, res: ServerResponse): Promise<b
   }
 }
 
-export function serve(dir: string, port: number): void {
+export function serve(dir: string, port: number): Server {
   const absDir = resolve(dir);
   const appDistDir = getAppDistDir();
   const watcher = new FileWatcher(absDir);
@@ -163,4 +163,5 @@ export function serve(dir: string, port: number): void {
     process.stdout.write(`  Preview   : http://localhost:${port}\n`);
     process.stdout.write(`\nWatching for .krs file changes...\n`);
   });
+  return server;
 }

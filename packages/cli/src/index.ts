@@ -14,4 +14,9 @@ program
     serve(targetDir, port);
   });
 
-program.parse();
+export { program };
+
+/* v8 ignore next 3 */
+if (!process.env.VITEST) {
+  program.parse();
+}
