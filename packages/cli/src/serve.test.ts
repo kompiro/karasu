@@ -30,9 +30,7 @@ async function get(
       res.on("data", (chunk: Buffer) => {
         body += chunk.toString();
       });
-      res.on("end", () =>
-        resolve({ status: res.statusCode ?? 0, body, headers: res.headers }),
-      );
+      res.on("end", () => resolve({ status: res.statusCode ?? 0, body, headers: res.headers }));
     });
     req.on("error", reject);
     req.end();
