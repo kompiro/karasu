@@ -43,7 +43,14 @@ export function render(
     layoutResult.containers.length === 0 && viewSlice.containerNode
       ? (viewSlice.containerNode.label ?? viewSlice.containerNode.id)
       : undefined;
-  return renderFromLayout(layoutResult, styles, title, serviceIdsWithDeploy, displayMode, linkedNodeIds);
+  return renderFromLayout(
+    layoutResult,
+    styles,
+    title,
+    serviceIdsWithDeploy,
+    displayMode,
+    linkedNodeIds,
+  );
 }
 
 export function renderFromLayout(
