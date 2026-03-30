@@ -13,7 +13,7 @@ deploy "prod" {
 }
 `;
 
-const ORG_KRS = `
+const ORG_KRS_DISPLAY_MODE = `
 organization "OrgA" {
   team "TeamA" {}
 }
@@ -22,7 +22,7 @@ organization "OrgA" {
 describe("compileProjectOrgView — displayMode", () => {
   it("accepts displayMode: icon and returns SVG", async () => {
     const fs = new InMemoryFileSystemProvider();
-    await fs.writeFile("/index.krs", ORG_KRS);
+    await fs.writeFile("/index.krs", ORG_KRS_DISPLAY_MODE);
     const result = await compileProjectOrgView("/index.krs", fs, [], "icon");
     expect(result.svg).toBeTruthy();
     expect(result.diagnostics.filter((d) => d.severity === "error")).toHaveLength(0);
