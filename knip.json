@@ -11,6 +11,10 @@
     },
     "packages/app": {
       "project": ["src/**/*.{ts,tsx}", "!src/**/*.test.{ts,tsx}"]
+    },
+    "packages/vscode": {
+      "entry": ["src/extension.ts"],
+      "project": ["src/**/*.ts"]
     }
   },
   "ignoreBinaries": ["vitest", "lefthook", "oxfmt", "oxlint", "knip", "vite", "tsc"],
