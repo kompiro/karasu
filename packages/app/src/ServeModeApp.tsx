@@ -12,6 +12,7 @@ import { AppProvider, useAppContext } from "./state/app-context.js";
 import { useSystemView } from "./hooks/useSystemView.js";
 import { useDeployView } from "./hooks/useDeployView.js";
 import { useOrgView } from "./hooks/useOrgView.js";
+import { useFullViewSvg } from "./hooks/useFullViewSvg.js";
 import type { ActiveView } from "./state/app-reducer.js";
 
 const SERVE_FILE_PATH = "/serve/index.krs";
@@ -57,7 +58,8 @@ export function ServeModeApp() {
 
 function ServeModeInner() {
   const { state, dispatch, fs } = useAppContext();
-  const { fileContent, viewPath, activeView, orgPath, highlightedNodeId, displayMode } = state;
+  const { fileContent, viewPath, activeView, orgPath, highlightedNodeId, displayMode, isFullView } =
+    state;
   const [loadError, setLoadError] = useState<string | null>(null);
 
   // ref に recompile を格納し loadFile から参照できるようにする
@@ -190,6 +192,12 @@ function ServeModeInner() {
     [dispatch],
   );
 
+  const handleFullViewToggle = useCallback(() => {
+    dispatch({ type: "SET_FULL_VIEW", isFullView: !isFullView });
+  }, [dispatch, isFullView]);
+
+  const multiLevelSvg = useFullViewSvg(fileContent, "", isFullView, activeView);
+
   const breadcrumbItems = useMemo(() => {
     if (!fileContent) return [];
     try {
@@ -299,6 +307,9 @@ function ServeModeInner() {
         nodeMetadata={nodeMetadata}
         onDrillDown={handleDrillDown}
         onExportSvg={(svg, filename) => downloadSvg(svg, filename)}
+        isFullView={isFullView}
+        onFullViewToggle={handleFullViewToggle}
+        multiLevelSvg={multiLevelSvg}
       />
     </div>
   );
