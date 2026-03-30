@@ -5,7 +5,9 @@ import { NodeDetailPanel } from "./NodeDetailPanel.js";
 interface PreviewPaneProps {
   svg: string;
   diagnostics: Diagnostic[];
+  viewPath?: string[];
   nodeMetadata: Map<string, NodeMetadata>;
+  onDrillDown?: (newPath: string[]) => void;
   /** Called when user clicks a deploy container to cross-navigate to system view */
   onContainerClick?: (containerId: string) => void;
   /** Called when user clicks the deploy button on a system node to cross-navigate to deploy view */
@@ -31,7 +33,9 @@ const CLICK_THRESHOLD = 3;
 export function PreviewPane({
   svg,
   diagnostics,
+  viewPath = [],
   nodeMetadata,
+  onDrillDown,
   onContainerClick,
   onDeployButtonClick,
   onTeamButtonClick,
@@ -185,7 +189,7 @@ export function PreviewPane({
         }
       }
 
-      // Check for node click — open NodeDetailPanel for any node
+      // Check for node click
       const nodeGroup = target.closest("[data-node-id]");
       if (!nodeGroup) {
         // Click outside any node — close detail panel
@@ -193,13 +197,23 @@ export function PreviewPane({
         return;
       }
 
+      const hasChildren = nodeGroup.getAttribute("data-has-children") === "true";
       const nodeId = nodeGroup.getAttribute("data-node-id");
-      if (nodeId) {
+
+      if (hasChildren && nodeId && onDrillDown) {
+        // Drill down into child level
+        setDetailPanel(null);
+        onClearHighlight?.();
+        onDrillDown([...viewPath, nodeId]);
+      } else if (nodeId) {
+        // Open detail panel for leaf nodes
         onClearHighlight?.();
         openDetailPanel(nodeId, nodeGroup);
       }
     },
     [
+      viewPath,
+      onDrillDown,
       openDetailPanel,
       onContainerClick,
       onDeployButtonClick,

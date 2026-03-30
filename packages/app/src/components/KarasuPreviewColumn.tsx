@@ -106,6 +106,15 @@ export function KarasuPreviewColumn({
       : activeView === "deploy"
         ? deployView.diagnostics
         : orgView.diagnostics;
+  const viewPath =
+    activeView === "system" ? systemView.viewPath : activeView === "org" ? orgView.orgPath : [];
+  const onDrillDown =
+    activeView === "system"
+      ? systemView.onBreadcrumbNavigate
+      : activeView === "org"
+        ? orgView.onBreadcrumbNavigate
+        : undefined;
+
   const exportFilename = buildSvgExportFilename(activeView, {
     breadcrumbItems:
       activeView === "system"
@@ -181,7 +190,9 @@ export function KarasuPreviewColumn({
         <PreviewPane
           svg={svg}
           diagnostics={diagnostics}
+          viewPath={viewPath}
           nodeMetadata={nodeMetadata}
+          onDrillDown={activeView !== "deploy" ? onDrillDown : undefined}
           onContainerClick={activeView === "deploy" ? deployView.onContainerClick : undefined}
           onDeployButtonClick={activeView === "system" ? systemView.onDeployButtonClick : undefined}
           onTeamButtonClick={activeView === "system" ? systemView.onTeamButtonClick : undefined}
