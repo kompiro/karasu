@@ -817,16 +817,23 @@ export class Parser {
 
   private buildNodePathIndex(systems: SystemNode[]): Map<string, string[]> {
     const index = new Map<string, string[]>();
+    // Only service and domain nodes are indexed: these are the only kinds
+    // that can appear in `owns` declarations and need navigation support.
+    // resource / usecase / user nodes are intentionally excluded so that
+    // legitimate shared resources across usecases do not generate warnings.
+    const INDEXED_KINDS = new Set(["service", "domain"]);
     const walk = (node: KrsNode, path: string[]): void => {
       const currentPath = [...path, node.id];
-      if (index.has(node.id)) {
-        this.diagnostics.push({
-          severity: "warning",
-          message: `Node id "${node.id}" appears in multiple locations; first path is used for navigation`,
-          loc: node.loc,
-        });
-      } else {
-        index.set(node.id, currentPath);
+      if (INDEXED_KINDS.has(node.kind)) {
+        if (index.has(node.id)) {
+          this.diagnostics.push({
+            severity: "warning",
+            message: `Node id "${node.id}" appears in multiple locations; first path is used for navigation`,
+            loc: node.loc,
+          });
+        } else {
+          index.set(node.id, currentPath);
+        }
       }
       for (const child of node.children) {
         walk(child, currentPath);
