@@ -930,4 +930,116 @@ system Test {
     expect(result.value.deploys).toHaveLength(1);
     expect(result.value.organizations).toHaveLength(1);
   });
+
+  describe("nodePathIndex", () => {
+    it("builds single-level paths for direct children of system", () => {
+      const result = Parser.parse(`
+system EC {
+  service Payment {}
+  service Order {}
+}
+      `);
+      expect(result.diagnostics).toHaveLength(0);
+      expect(result.value.nodePathIndex.get("Payment")).toEqual(["Payment"]);
+      expect(result.value.nodePathIndex.get("Order")).toEqual(["Order"]);
+    });
+
+    it("builds multi-level paths for nested nodes", () => {
+      const result = Parser.parse(`
+system EC {
+  service Payment {
+    domain Checkout {}
+  }
+}
+      `);
+      expect(result.diagnostics).toHaveLength(0);
+      expect(result.value.nodePathIndex.get("Payment")).toEqual(["Payment"]);
+      expect(result.value.nodePathIndex.get("Checkout")).toEqual(["Payment", "Checkout"]);
+    });
+
+    it("does not include the system node itself in the index", () => {
+      const result = Parser.parse(`
+system EC {
+  service Payment {}
+}
+      `);
+      expect(result.diagnostics).toHaveLength(0);
+      expect(result.value.nodePathIndex.has("EC")).toBe(false);
+    });
+
+    it("errors on duplicate node id under the same parent", () => {
+      const result = Parser.parse(`
+system EC {
+  service Payment {}
+  service Payment {}
+}
+      `);
+      const errors = result.diagnostics.filter((d) => d.severity === "error");
+      expect(errors.length).toBeGreaterThanOrEqual(1);
+      expect(errors[0].message).toContain("Payment");
+    });
+
+    it("warns on cross-scope duplicate node id and keeps first path", () => {
+      const result = Parser.parse(`
+system EC {
+  service Payment {
+    domain Checkout {}
+  }
+  service Order {
+    domain Checkout {}
+  }
+}
+      `);
+      const warnings = result.diagnostics.filter((d) => d.severity === "warning");
+      expect(warnings.length).toBeGreaterThanOrEqual(1);
+      expect(warnings[0].message).toContain("Checkout");
+      expect(result.value.nodePathIndex.get("Checkout")).toEqual(["Payment", "Checkout"]);
+    });
+
+    it("warns when owns references an id not found in the system hierarchy", () => {
+      const result = Parser.parse(`
+system EC {
+  service Payment {}
+}
+organization Corp {
+  team backend {
+    owns Ghost
+  }
+}
+      `);
+      const warnings = result.diagnostics.filter((d) => d.severity === "warning");
+      expect(warnings.length).toBeGreaterThanOrEqual(1);
+      expect(warnings[0].message).toContain("Ghost");
+    });
+
+    it("produces no warning when owns references a known node id", () => {
+      const result = Parser.parse(`
+system EC {
+  service Payment {}
+}
+organization Corp {
+  team backend {
+    owns Payment
+  }
+}
+      `);
+      expect(result.diagnostics).toHaveLength(0);
+    });
+
+    it("coexists correctly with ownerIndex", () => {
+      const result = Parser.parse(`
+system EC {
+  service Payment {}
+}
+organization Corp {
+  team backend {
+    owns Payment
+  }
+}
+      `);
+      expect(result.diagnostics).toHaveLength(0);
+      expect(result.value.ownerIndex.get("Payment")).toBe("backend");
+      expect(result.value.nodePathIndex.get("Payment")).toEqual(["Payment"]);
+    });
+  });
 });
