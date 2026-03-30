@@ -123,25 +123,13 @@ describe("assembleMultiLevelSvg", () => {
     expect(svg).toContain('id="krs-view-root"');
   });
 
-  it("includes CSS :target rule", () => {
+  it("includes CSS that hides all levels by default", () => {
     const level = makeLevel("krs-view-root", [{ id: "krs-view-root", label: "Root" }]);
     const svg = assembleMultiLevelSvg([level]);
-    expect(svg).toContain(":target");
-    expect(svg).toContain(".krs-view");
-  });
-
-  it("hides non-target levels by default via CSS", () => {
-    const level = makeLevel("krs-view-root", [{ id: "krs-view-root", label: "Root" }]);
-    const svg = assembleMultiLevelSvg([level]);
+    // Level visibility is controlled by JS in the HTML wrapper, not by :target CSS.
+    // The SVG CSS only hides all levels; JS shows the correct one on load/hashchange.
     expect(svg).toContain(".krs-view { display: none; }");
-  });
-
-  it("shows root level when no target is selected", () => {
-    const level = makeLevel("krs-view-root", [{ id: "krs-view-root", label: "Root" }]);
-    const svg = assembleMultiLevelSvg([level]);
-    expect(svg).toContain("krs-view-root");
-    // The CSS rule shows root when no target is active
-    expect(svg).toMatch(/svg:not\(:has\(\.krs-view:target\)\) #krs-view-root/);
+    expect(svg).not.toContain(":has(");
   });
 
   it("includes breadcrumb link back to parent for child levels", () => {
@@ -211,10 +199,11 @@ system ECommerce {
     expect(svg).not.toContain("krs-view-root__Payment");
   });
 
-  it("includes CSS :target navigation rules", () => {
+  it("includes CSS that hides all levels by default", () => {
     const svg = buildExportSvg(simpleKrs);
-    expect(svg).toContain(":target");
+    // Level visibility is managed by JS in the HTML wrapper, not :target CSS in the SVG.
     expect(svg).toContain(".krs-view");
+    expect(svg).toContain("display: none");
   });
 
   it("handles a flat system (no children) without error", () => {
@@ -272,10 +261,10 @@ organization Acme {
     expect(svg).not.toContain("krs-view-root__Backend");
   });
 
-  it("includes CSS :target navigation rules", () => {
+  it("includes CSS that hides all levels by default", () => {
     const svg = buildExportSvgOrg(orgKrs);
-    expect(svg).toContain(":target");
     expect(svg).toContain(".krs-view");
+    expect(svg).toContain("display: none");
   });
 
   it("handles a flat org (no sub-teams) without error", () => {

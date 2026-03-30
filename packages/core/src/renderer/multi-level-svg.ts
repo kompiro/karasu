@@ -287,14 +287,10 @@ export function assembleMultiLevelSvg(levels: ExportLevel[]): string {
 
   const maxWidth = Math.max(...levels.map((l) => l.width));
   const maxHeight = Math.max(...levels.map((l) => l.height)) + BREADCRUMB_HEIGHT;
-  const rootId = levels[0].id;
 
-  const cssContent = [
-    ".krs-view { display: none; }",
-    `svg:not(:has(.krs-view:target)) #${rootId} { display: block; }`,
-    ".krs-view:target { display: block; }",
-    "a { cursor: pointer; }",
-  ].join(" ");
+  // Navigation between levels is handled by JavaScript injected in the HTML wrapper.
+  // This CSS only hides all levels by default; JS shows the correct one on load/hashchange.
+  const cssContent = [".krs-view { display: none; }", "a { cursor: pointer; }"].join(" ");
 
   const levelGroups = levels.map((level) => {
     const breadcrumbSvg = assembleBreadcrumbSvg(

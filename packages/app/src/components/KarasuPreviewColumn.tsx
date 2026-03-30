@@ -60,7 +60,6 @@ interface KarasuPreviewColumnProps {
   orgView: OrgViewProps;
 
   nodeMetadata: Map<string, NodeMetadata>;
-  onDrillDown: (path: string[]) => void;
 
   deployBlocks?: DeployBlockInfo[];
   selectedDeployBlockId?: string | null;
@@ -83,7 +82,6 @@ export function KarasuPreviewColumn({
   deployView,
   orgView,
   nodeMetadata,
-  onDrillDown,
   deployBlocks,
   selectedDeployBlockId,
   onDeployBlockChange,
@@ -108,9 +106,6 @@ export function KarasuPreviewColumn({
       : activeView === "deploy"
         ? deployView.diagnostics
         : orgView.diagnostics;
-  const viewPath =
-    activeView === "system" ? systemView.viewPath : activeView === "org" ? orgView.orgPath : [];
-
   const exportFilename = buildSvgExportFilename(activeView, {
     breadcrumbItems:
       activeView === "system"
@@ -180,7 +175,7 @@ export function KarasuPreviewColumn({
       {isFullView && multiLevelSvg ? (
         <iframe
           srcDoc={multiLevelSvg}
-          sandbox=""
+          sandbox="allow-scripts"
           style={{ width: "100%", flex: 1, border: "none" }}
           title="Full diagram view"
         />
@@ -188,9 +183,7 @@ export function KarasuPreviewColumn({
         <PreviewPane
           svg={svg}
           diagnostics={diagnostics}
-          viewPath={viewPath}
           nodeMetadata={nodeMetadata}
-          onDrillDown={activeView !== "deploy" ? onDrillDown : () => {}}
           onContainerClick={activeView === "deploy" ? deployView.onContainerClick : undefined}
           onDeployButtonClick={activeView === "system" ? systemView.onDeployButtonClick : undefined}
           onTeamButtonClick={activeView === "system" ? systemView.onTeamButtonClick : undefined}
