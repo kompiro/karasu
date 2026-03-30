@@ -69,6 +69,11 @@ interface KarasuPreviewColumnProps {
   displayMode: DisplayMode;
   onDisplayModeChange: (mode: DisplayMode) => void;
   onExportSvg: (svg: string, filename: string) => void;
+
+  /** Multi-level drill-down SVG for Full View mode (system tab only) */
+  multiLevelSvg?: string;
+  fullView: boolean;
+  onFullViewChange: (v: boolean) => void;
 }
 
 export function KarasuPreviewColumn({
@@ -86,6 +91,9 @@ export function KarasuPreviewColumn({
   displayMode,
   onDisplayModeChange,
   onExportSvg,
+  multiLevelSvg,
+  fullView,
+  onFullViewChange,
 }: KarasuPreviewColumnProps) {
   const [refOpen, setRefOpen] = useState(false);
 
@@ -115,6 +123,18 @@ export function KarasuPreviewColumn({
     selectedDeployBlockId,
   });
 
+  // Full View is only available on the system tab
+  const fullViewAvailable = activeView === "system" && !!multiLevelSvg;
+
+  function handleExportSvg() {
+    if (fullView && multiLevelSvg) {
+      const fullViewFilename = exportFilename.replace(/\.svg$/, "-fullview.svg");
+      onExportSvg(multiLevelSvg, fullViewFilename);
+    } else {
+      onExportSvg(svg, exportFilename);
+    }
+  }
+
   return (
     <div className="preview-column">
       <DiagramTabBar
@@ -134,8 +154,16 @@ export function KarasuPreviewColumn({
           ◇ Icon Mode
         </button>
         <button
+          className={`toolbar-btn toolbar-btn--full-view${fullView ? " active" : ""}`}
+          onClick={() => onFullViewChange(!fullView)}
+          aria-label="Toggle full view"
+          disabled={!fullViewAvailable}
+        >
+          ⊞ Full View
+        </button>
+        <button
           className="toolbar-btn toolbar-btn--export"
-          onClick={() => onExportSvg(svg, exportFilename)}
+          onClick={handleExportSvg}
           aria-label="Export SVG"
           disabled={!svg}
         >
@@ -150,7 +178,7 @@ export function KarasuPreviewColumn({
         </button>
       </div>
       <ReferencePanel isOpen={refOpen} onClose={() => setRefOpen(false)} activeView={activeView} />
-      {activeView === "system" && (
+      {activeView === "system" && !fullView && (
         <BreadcrumbBar
           items={systemView.breadcrumbItems}
           onNavigate={systemView.onBreadcrumbNavigate}
@@ -159,31 +187,40 @@ export function KarasuPreviewColumn({
       {activeView === "org" && (
         <BreadcrumbBar items={orgView.breadcrumbItems} onNavigate={orgView.onBreadcrumbNavigate} />
       )}
-      <PreviewPane
-        svg={svg}
-        diagnostics={diagnostics}
-        viewPath={viewPath}
-        nodeMetadata={nodeMetadata}
-        onDrillDown={activeView !== "deploy" ? onDrillDown : () => {}}
-        onContainerClick={activeView === "deploy" ? deployView.onContainerClick : undefined}
-        onDeployButtonClick={activeView === "system" ? systemView.onDeployButtonClick : undefined}
-        onTeamButtonClick={activeView === "system" ? systemView.onTeamButtonClick : undefined}
-        onOwnedServiceClick={activeView === "org" ? orgView.onOwnedServiceClick : undefined}
-        highlightedNodeId={
-          activeView === "deploy"
-            ? deployView.highlightedNodeId
-            : activeView === "org"
-              ? orgView.highlightedNodeId
-              : undefined
-        }
-        onClearHighlight={
-          activeView === "deploy"
-            ? deployView.onClearHighlight
-            : activeView === "org"
-              ? orgView.onClearHighlight
-              : undefined
-        }
-      />
+      {fullView && multiLevelSvg ? (
+        <iframe
+          srcDoc={multiLevelSvg}
+          sandbox="allow-same-origin"
+          style={{ width: "100%", height: "100%", border: "none" }}
+          title="Full diagram view"
+        />
+      ) : (
+        <PreviewPane
+          svg={svg}
+          diagnostics={diagnostics}
+          viewPath={viewPath}
+          nodeMetadata={nodeMetadata}
+          onDrillDown={activeView !== "deploy" ? onDrillDown : () => {}}
+          onContainerClick={activeView === "deploy" ? deployView.onContainerClick : undefined}
+          onDeployButtonClick={activeView === "system" ? systemView.onDeployButtonClick : undefined}
+          onTeamButtonClick={activeView === "system" ? systemView.onTeamButtonClick : undefined}
+          onOwnedServiceClick={activeView === "org" ? orgView.onOwnedServiceClick : undefined}
+          highlightedNodeId={
+            activeView === "deploy"
+              ? deployView.highlightedNodeId
+              : activeView === "org"
+                ? orgView.highlightedNodeId
+                : undefined
+          }
+          onClearHighlight={
+            activeView === "deploy"
+              ? deployView.onClearHighlight
+              : activeView === "org"
+                ? orgView.onClearHighlight
+                : undefined
+          }
+        />
+      )}
       <WarningPanel
         warnings={
           activeView === "org"

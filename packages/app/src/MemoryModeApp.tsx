@@ -1,8 +1,9 @@
-import { useEffect, useCallback, useMemo, useRef } from "react";
+import { useEffect, useCallback, useMemo, useRef, useState } from "react";
 import {
   Parser,
   InMemoryFileSystemProvider,
   getReference,
+  buildDrillDownSvg,
   type KrsNode,
   type OrgViewPath,
 } from "@karasu/core";
@@ -37,6 +38,7 @@ export function MemoryModeApp() {
 function MemoryModeInner() {
   const { state, dispatch, fs } = useAppContext();
   const { fileContent, viewPath, activeView, orgPath, highlightedNodeId, displayMode } = state;
+  const [fullView, setFullView] = useState(false);
 
   // Initialize: write sample KRS to in-memory FS and select the file
   useEffect(() => {
@@ -170,6 +172,15 @@ function MemoryModeInner() {
     }
   }, [fileContent, viewPath]);
 
+  const multiLevelSvg = useMemo(() => {
+    if (!fileContent) return undefined;
+    try {
+      return buildDrillDownSvg(fileContent, undefined, displayMode);
+    } catch {
+      return undefined;
+    }
+  }, [fileContent, displayMode]);
+
   const orgBreadcrumbItems = useMemo(() => {
     if (!fileContent) return [];
     try {
@@ -237,6 +248,9 @@ function MemoryModeInner() {
           dispatch({ type: "SET_DISPLAY_MODE", displayMode: mode })
         }
         onExportSvg={(svg, filename) => downloadSvg(svg, filename)}
+        multiLevelSvg={multiLevelSvg}
+        fullView={fullView}
+        onFullViewChange={setFullView}
       />
     </div>
   );

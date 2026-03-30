@@ -2,6 +2,7 @@ import { useEffect, useCallback, useMemo, useRef, useState } from "react";
 import {
   Parser,
   InMemoryFileSystemProvider,
+  buildDrillDownSvg,
   type KrsNode,
   type OrgViewPath,
   type DisplayMode,
@@ -59,6 +60,7 @@ function ServeModeInner() {
   const { state, dispatch, fs } = useAppContext();
   const { fileContent, viewPath, activeView, orgPath, highlightedNodeId, displayMode } = state;
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [fullView, setFullView] = useState(false);
 
   // ref に recompile を格納し loadFile から参照できるようにする
   const recompileRef = useRef<() => void>(() => {});
@@ -220,6 +222,15 @@ function ServeModeInner() {
     }
   }, [fileContent, viewPath]);
 
+  const multiLevelSvg = useMemo(() => {
+    if (!fileContent) return undefined;
+    try {
+      return buildDrillDownSvg(fileContent, undefined, displayMode);
+    } catch {
+      return undefined;
+    }
+  }, [fileContent, displayMode]);
+
   const orgBreadcrumbItems = useMemo(() => {
     if (!fileContent) return [];
     try {
@@ -304,6 +315,9 @@ function ServeModeInner() {
         nodeMetadata={nodeMetadata}
         onDrillDown={handleDrillDown}
         onExportSvg={(svg, filename) => downloadSvg(svg, filename)}
+        multiLevelSvg={multiLevelSvg}
+        fullView={fullView}
+        onFullViewChange={setFullView}
       />
     </div>
   );

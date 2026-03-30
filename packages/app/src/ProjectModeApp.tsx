@@ -1,5 +1,5 @@
-import { useEffect, useCallback, useMemo, useRef } from "react";
-import { Parser } from "@karasu/core";
+import { useEffect, useCallback, useMemo, useRef, useState } from "react";
+import { Parser, buildDrillDownSvg } from "@karasu/core";
 import { EditorPane } from "./components/EditorPane.js";
 import { ProjectSelector } from "./components/ProjectSelector.js";
 import { FileTree } from "./components/FileTree.js";
@@ -24,6 +24,7 @@ export function ProjectModeApp() {
   const { state, dispatch, fs } = useAppContext();
   const pmRef = useRef(new ProjectManager(fs));
   const pm = pmRef.current;
+  const [fullView, setFullView] = useState(false);
 
   const {
     currentProject,
@@ -307,6 +308,15 @@ export function ProjectModeApp() {
     }
   }, [fileContent, viewPath]);
 
+  const multiLevelSvg = useMemo(() => {
+    if (!fileContent) return undefined;
+    try {
+      return buildDrillDownSvg(fileContent, undefined, displayMode);
+    } catch {
+      return undefined;
+    }
+  }, [fileContent, displayMode]);
+
   const orgBreadcrumbItems = useMemo(() => {
     if (!fileContent) return [];
     try {
@@ -397,6 +407,9 @@ export function ProjectModeApp() {
         displayMode={displayMode}
         onDisplayModeChange={handleDisplayModeChange}
         onExportSvg={(svg, filename) => downloadSvg(svg, filename)}
+        multiLevelSvg={multiLevelSvg}
+        fullView={fullView}
+        onFullViewChange={setFullView}
       />
     </div>
   );

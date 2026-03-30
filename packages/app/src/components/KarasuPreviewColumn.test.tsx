@@ -47,6 +47,9 @@ function makeProps(overrides: Partial<Parameters<typeof KarasuPreviewColumn>[0]>
     displayMode: "shape" as const,
     onDisplayModeChange: vi.fn(),
     onExportSvg: vi.fn(),
+    multiLevelSvg: undefined,
+    fullView: false,
+    onFullViewChange: vi.fn(),
     ...overrides,
   };
 }
@@ -243,6 +246,81 @@ describe("KarasuPreviewColumn", () => {
       const props = makeProps({ hasDeployDiagram: false });
       const { getByRole } = render(<KarasuPreviewColumn {...props} />);
       expect(getByRole("tab", { name: /Deploy/ })).toHaveProperty("ariaDisabled", "true");
+    });
+  });
+
+  describe("Full View", () => {
+    it("renders Full View button", () => {
+      const props = makeProps({ activeView: "system" });
+      const { getByRole } = render(<KarasuPreviewColumn {...props} />);
+      expect(getByRole("button", { name: /Toggle full view/ })).toBeTruthy();
+    });
+
+    it("Full View button is disabled when multiLevelSvg is absent", () => {
+      const props = makeProps({ activeView: "system", multiLevelSvg: undefined });
+      const { getByRole } = render(<KarasuPreviewColumn {...props} />);
+      const btn = getByRole("button", { name: /Toggle full view/ });
+      expect(btn).toHaveProperty("disabled", true);
+    });
+
+    it("Full View button is disabled on deploy tab even when multiLevelSvg is set", () => {
+      const props = makeProps({
+        activeView: "deploy",
+        multiLevelSvg: "<svg/>",
+      });
+      const { getByRole } = render(<KarasuPreviewColumn {...props} />);
+      const btn = getByRole("button", { name: /Toggle full view/ });
+      expect(btn).toHaveProperty("disabled", true);
+    });
+
+    it("calls onFullViewChange when Full View button is clicked", () => {
+      const onFullViewChange = vi.fn();
+      const props = makeProps({
+        activeView: "system",
+        multiLevelSvg: "<svg/>",
+        fullView: false,
+        onFullViewChange,
+      });
+      const { getByRole } = render(<KarasuPreviewColumn {...props} />);
+      fireEvent.click(getByRole("button", { name: /Toggle full view/ }));
+      expect(onFullViewChange).toHaveBeenCalledWith(true);
+    });
+
+    it("renders iframe when fullView=true and multiLevelSvg is set", () => {
+      const multiLevelSvg = "<svg><style>.krs-view{display:none}</style></svg>";
+      const props = makeProps({
+        activeView: "system",
+        multiLevelSvg,
+        fullView: true,
+      });
+      const { container } = render(<KarasuPreviewColumn {...props} />);
+      const iframe = container.querySelector("iframe");
+      expect(iframe).toBeTruthy();
+      expect(iframe?.getAttribute("srcdoc") ?? iframe?.srcdoc).toBe(multiLevelSvg);
+    });
+
+    it("renders PreviewPane (not iframe) when fullView=false", () => {
+      const props = makeProps({
+        activeView: "system",
+        multiLevelSvg: "<svg/>",
+        fullView: false,
+      });
+      const { container } = render(<KarasuPreviewColumn {...props} />);
+      expect(container.querySelector("iframe")).toBeNull();
+    });
+
+    it("Export SVG uses multiLevelSvg when fullView=true", () => {
+      const onExportSvg = vi.fn();
+      const multiLevelSvg = "<svg><style>.krs-view{display:none}</style></svg>";
+      const props = makeProps({
+        activeView: "system",
+        multiLevelSvg,
+        fullView: true,
+        onExportSvg,
+      });
+      const { getByRole } = render(<KarasuPreviewColumn {...props} />);
+      fireEvent.click(getByRole("button", { name: /Export SVG/ }));
+      expect(onExportSvg).toHaveBeenCalledWith(multiLevelSvg, expect.stringContaining("fullview"));
     });
   });
 });
