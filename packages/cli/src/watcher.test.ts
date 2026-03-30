@@ -97,6 +97,7 @@ describe("FileWatcher", () => {
       mockFsWatcher.emit("add", "/test/dir/new.krs");
 
       const payload = client.write.mock.calls[0][0] as string;
+      expect(payload).toContain("event: add");
       expect(payload).toContain('"event":"add"');
       expect(payload).toContain('"file":"new"');
     });
@@ -119,6 +120,7 @@ describe("FileWatcher", () => {
       mockFsWatcher.emit("unlink", "/test/dir/old.krs");
 
       const payload = client.write.mock.calls[0][0] as string;
+      expect(payload).toContain("event: unlink");
       expect(payload).toContain('"event":"unlink"');
       expect(payload).toContain('"file":"old"');
     });
