@@ -13,7 +13,6 @@ import { BreadcrumbBar } from "./BreadcrumbBar.js";
 import { PreviewPane } from "./PreviewPane.js";
 import { WarningPanel } from "./WarningPanel.js";
 import { ReferencePanel } from "./ReferencePanel.js";
-import { downloadSvg } from "../utils/download-svg.js";
 import { buildSvgExportFilename } from "../utils/build-svg-export-filename.js";
 
 interface SystemViewProps {
@@ -69,6 +68,7 @@ interface KarasuPreviewColumnProps {
 
   displayMode: DisplayMode;
   onDisplayModeChange: (mode: DisplayMode) => void;
+  onExportSvg: (svg: string, filename: string) => void;
 }
 
 export function KarasuPreviewColumn({
@@ -85,6 +85,7 @@ export function KarasuPreviewColumn({
   onDeployBlockChange,
   displayMode,
   onDisplayModeChange,
+  onExportSvg,
 }: KarasuPreviewColumnProps) {
   const [refOpen, setRefOpen] = useState(false);
 
@@ -136,7 +137,7 @@ export function KarasuPreviewColumn({
         )}
         <button
           className="toolbar-btn toolbar-btn--export"
-          onClick={() => downloadSvg(svg, exportFilename)}
+          onClick={() => onExportSvg(svg, exportFilename)}
           aria-label="Export SVG"
           disabled={!svg}
         >

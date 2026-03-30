@@ -7,6 +7,7 @@ import {
   type DisplayMode,
 } from "@karasu/core";
 import { KarasuPreviewColumn } from "./components/KarasuPreviewColumn.js";
+import { downloadSvg } from "./utils/download-svg.js";
 import { AppProvider, useAppContext } from "./state/app-context.js";
 import { useSystemView } from "./hooks/useSystemView.js";
 import { useDeployView } from "./hooks/useDeployView.js";
@@ -297,6 +298,7 @@ function ServeModeInner() {
         }}
         nodeMetadata={nodeMetadata}
         onDrillDown={handleDrillDown}
+        onExportSvg={(svg, filename) => downloadSvg(svg, filename)}
       />
     </div>
   );

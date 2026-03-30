@@ -4,6 +4,7 @@ import { EditorPane } from "./components/EditorPane.js";
 import { ProjectSelector } from "./components/ProjectSelector.js";
 import { FileTree } from "./components/FileTree.js";
 import { KarasuPreviewColumn } from "./components/KarasuPreviewColumn.js";
+import { downloadSvg } from "./utils/download-svg.js";
 import { useAppContext } from "./state/app-context.js";
 import { useSystemView } from "./hooks/useSystemView.js";
 import { useDeployView } from "./hooks/useDeployView.js";
@@ -390,6 +391,7 @@ export function ProjectModeApp() {
         onDeployBlockChange={handleDeployBlockChange}
         displayMode={displayMode}
         onDisplayModeChange={handleDisplayModeChange}
+        onExportSvg={(svg, filename) => downloadSvg(svg, filename)}
       />
     </div>
   );
