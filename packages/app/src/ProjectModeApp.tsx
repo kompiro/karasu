@@ -60,14 +60,15 @@ export function ProjectModeApp() {
     nodeMetadata: deployNodeMetadata,
     deployBlocks,
     recompile: recompileDeploy,
-  } = useDeployView(entryPath, fs, viewPath, selectedDeployBlockId);
+  } = useDeployView(entryPath, fs, viewPath, selectedDeployBlockId, displayMode);
 
   const {
     orgSvg,
     orgDiagnostics,
     orgWarnings,
+    nodePathIndex,
     recompile: recompileOrg,
-  } = useOrgView(entryPath, fs, orgPath as OrgViewPath);
+  } = useOrgView(entryPath, fs, orgPath as OrgViewPath, displayMode);
 
   const recompile = useCallback(() => {
     recompileSystem();
@@ -210,10 +211,14 @@ export function ProjectModeApp() {
   // Org チームノードの所有サービスクリック → System タブへクロスナビゲーション
   const handleOwnedServiceClick = useCallback(
     (serviceId: string) => {
+      const resolvedPath = nodePathIndex.get(serviceId);
       dispatch({ type: "SET_ACTIVE_VIEW", activeView: "system" });
+      if (resolvedPath !== undefined) {
+        dispatch({ type: "SET_VIEW_PATH", path: resolvedPath });
+      }
       dispatch({ type: "SET_HIGHLIGHTED_NODE", nodeId: serviceId });
     },
-    [dispatch],
+    [dispatch, nodePathIndex],
   );
 
   // プロジェクト操作

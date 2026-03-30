@@ -57,6 +57,7 @@ export class ImportResolver {
       deploys: [],
       organizations: [],
       ownerIndex: new Map(),
+      nodePathIndex: new Map(),
     };
 
     if (this.visitedKrs.has(filePath)) {
@@ -92,6 +93,11 @@ export class ImportResolver {
     mergedFile.organizations.push(...file.organizations);
     for (const [ownedId, teamId] of file.ownerIndex) {
       mergedFile.ownerIndex.set(ownedId, teamId);
+    }
+    for (const [nodeId, path] of file.nodePathIndex) {
+      if (!mergedFile.nodePathIndex.has(nodeId)) {
+        mergedFile.nodePathIndex.set(nodeId, path);
+      }
     }
 
     // import { X } from "other.krs" を解決

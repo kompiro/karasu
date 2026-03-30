@@ -5,12 +5,14 @@ import {
   type Warning,
   type OrgViewPath,
   type FileSystemProvider,
+  type DisplayMode,
 } from "@karasu/core";
 
 interface OrgViewState {
   orgSvg: string;
   orgDiagnostics: Diagnostic[];
   orgWarnings: Warning[];
+  nodePathIndex: Map<string, string[]>;
 }
 
 const DEBOUNCE_MS = 300;
@@ -19,11 +21,13 @@ export function useOrgView(
   entryPath: string | null,
   fs: FileSystemProvider | null,
   orgPath: OrgViewPath = [],
+  displayMode?: DisplayMode,
 ): OrgViewState & { recompile: () => void } {
   const [state, setState] = useState<OrgViewState>({
     orgSvg: "",
     orgDiagnostics: [],
     orgWarnings: [],
+    nodePathIndex: new Map(),
   });
 
   const lastValidSvg = useRef("");
@@ -41,7 +45,7 @@ export function useOrgView(
     if (timerRef.current) clearTimeout(timerRef.current);
 
     timerRef.current = setTimeout(() => {
-      compileProjectOrgView(entryPath, fs, orgPath)
+      compileProjectOrgView(entryPath, fs, orgPath, displayMode)
         .then((result) => {
           const hasErrors = result.diagnostics.some((d) => d.severity === "error");
 
@@ -50,6 +54,7 @@ export function useOrgView(
               orgSvg: lastValidSvg.current,
               orgDiagnostics: result.diagnostics,
               orgWarnings: prev.orgWarnings,
+              nodePathIndex: prev.nodePathIndex,
             }));
           } else {
             lastValidSvg.current = result.svg;
@@ -57,6 +62,7 @@ export function useOrgView(
               orgSvg: result.svg,
               orgDiagnostics: result.diagnostics,
               orgWarnings: result.warnings,
+              nodePathIndex: result.nodePathIndex,
             });
           }
         })
@@ -72,7 +78,7 @@ export function useOrgView(
       if (timerRef.current) clearTimeout(timerRef.current);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [entryPath, fs, orgPath, recompileCounter.current]);
+  }, [entryPath, fs, orgPath, displayMode, recompileCounter.current]);
 
   return { ...state, recompile };
 }

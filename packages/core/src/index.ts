@@ -233,7 +233,7 @@ export function compile(
 
   if (diagramType === "deploy") {
     const deploySlice = deploySliceForStyle;
-    svg = renderDeploy(deploySlice, styles);
+    svg = renderDeploy(deploySlice, styles, displayMode);
     nodeMetadata = buildDeployNodeMetadata(deploySlice);
   } else {
     const viewSlice = extractView(parseResult.value.systems, viewPath ?? []);
@@ -288,7 +288,7 @@ export async function compileProject(
 
   if (diagramType === "deploy") {
     const deploySlice = deploySliceForStyle;
-    svg = renderDeploy(deploySlice, styles);
+    svg = renderDeploy(deploySlice, styles, displayMode);
     nodeMetadata = buildDeployNodeMetadata(deploySlice);
   } else {
     const viewSlice = extractView(resolved.krsFile.systems, viewPath ?? []);
@@ -365,19 +365,26 @@ export interface OrgCompileResult {
   svg: string;
   diagnostics: Diagnostic[];
   warnings: Warning[];
+  nodePathIndex: Map<string, string[]>;
 }
 
 export async function compileProjectOrgView(
   entryPath: string,
   fs: FileSystemProvider,
   orgPath?: OrgViewPath,
+  displayMode?: DisplayMode,
 ): Promise<OrgCompileResult> {
   const resolver = new ImportResolver(fs);
   const resolved = await resolver.resolve(entryPath);
   const diagnostics = [...resolved.diagnostics];
 
-  const allSheets = [getBuiltinStyleSheet(), ...resolved.styleSheets];
-  const warnings = analyze(resolved.krsFile, allSheets);
+  const systemSheets: StyleSheet[] = [getBuiltinStyleSheet()];
+  if (displayMode === "icon") {
+    systemSheets.push(getIconThemeStyleSheet());
+  }
+  const allSheets = [...systemSheets, ...resolved.styleSheets];
+  const systemSheetCount = systemSheets.length;
+  const warnings = analyze(resolved.krsFile, allSheets, systemSheetCount);
   const slice = extractOrgView(resolved.krsFile.organizations, orgPath ?? []);
   const styles = resolveStyles(
     resolved.krsFile.systems,
@@ -385,9 +392,9 @@ export async function compileProjectOrgView(
     undefined,
     resolved.krsFile.organizations,
   );
-  const svg = _renderOrgView(slice, styles);
+  const svg = _renderOrgView(slice, styles, displayMode);
 
-  return { svg, diagnostics, warnings };
+  return { svg, diagnostics, warnings, nodePathIndex: resolved.krsFile.nodePathIndex };
 }
 
 export function compileOrgView(
@@ -415,5 +422,5 @@ export function compileOrgView(
   );
   const svg = _renderOrgView(slice, styles);
 
-  return { svg, diagnostics, warnings };
+  return { svg, diagnostics, warnings, nodePathIndex: parseResult.value.nodePathIndex };
 }

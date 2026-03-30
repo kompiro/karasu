@@ -1,5 +1,6 @@
 import type { ResolvedStyles } from "../types/style.js";
 import type { DeployViewSlice } from "../view/deploy-view-extract.js";
+import type { DisplayMode } from "./layout.js";
 import { layoutDeploy } from "./deploy-layout.js";
 import { renderFromLayout } from "./svg-renderer.js";
 
@@ -9,7 +10,17 @@ import { renderFromLayout } from "./svg-renderer.js";
  * System-level edges are shown as ghost edges between containers.
  * Per-unit styles are resolved via the style pipeline (styles.nodes) rather than hardcoded colors.
  */
-export function renderDeploy(slice: DeployViewSlice, styles: ResolvedStyles): string {
+export function renderDeploy(
+  slice: DeployViewSlice,
+  styles: ResolvedStyles,
+  displayMode?: DisplayMode,
+): string {
   const layoutResult = layoutDeploy(slice);
-  return renderFromLayout(layoutResult, styles, slice.deployLabel || undefined);
+  return renderFromLayout(
+    layoutResult,
+    styles,
+    slice.deployLabel || undefined,
+    undefined,
+    displayMode,
+  );
 }

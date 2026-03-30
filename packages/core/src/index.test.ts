@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
-import { compile } from "./index.js";
+import { compile, compileProjectOrgView } from "./index.js";
+import { InMemoryFileSystemProvider } from "./fs/in-memory-provider.js";
 
 const DEPLOY_KRS = `
 system "EC" {
@@ -11,6 +12,22 @@ deploy "prod" {
   lambda "mailer" {}
 }
 `;
+
+const ORG_KRS_DISPLAY_MODE = `
+organization "OrgA" {
+  team "TeamA" {}
+}
+`;
+
+describe("compileProjectOrgView — displayMode", () => {
+  it("accepts displayMode: icon and returns SVG", async () => {
+    const fs = new InMemoryFileSystemProvider();
+    await fs.writeFile("/index.krs", ORG_KRS_DISPLAY_MODE);
+    const result = await compileProjectOrgView("/index.krs", fs, [], "icon");
+    expect(result.svg).toBeTruthy();
+    expect(result.diagnostics.filter((d) => d.severity === "error")).toHaveLength(0);
+  });
+});
 
 describe("compile — deploy diagram nodeMetadata", () => {
   it("populates nodeMetadata for deploy units", () => {
@@ -47,5 +64,30 @@ describe("compile — deploy diagram nodeMetadata", () => {
     // deploy unit keys must not appear in system view
     expect(result.nodeMetadata.has("ec-app")).toBe(false);
     expect(result.nodeMetadata.has("mailer")).toBe(false);
+  });
+});
+
+const ORG_KRS = `
+org "Eng" {
+  system "API" {}
+}
+`;
+
+const USER_STYLE = `service { color: #FF0000; }`;
+
+describe("compileProjectOrgView — style-conflict warnings", () => {
+  it("does not emit style-conflict when icon theme overrides builtin (icon mode)", async () => {
+    const fs = new InMemoryFileSystemProvider();
+    await fs.writeFile("/main.krs", ORG_KRS);
+    const result = await compileProjectOrgView("/main.krs", fs, undefined, "icon");
+    expect(result.warnings.filter((w) => w.kind === "style-conflict")).toHaveLength(0);
+  });
+
+  it("does not emit style-conflict between icon theme and user sheet (icon mode)", async () => {
+    const fs = new InMemoryFileSystemProvider();
+    await fs.writeFile("/main.krs", ORG_KRS);
+    await fs.writeFile("/main.krs.style", USER_STYLE);
+    const result = await compileProjectOrgView("/main.krs", fs, undefined, "icon");
+    expect(result.warnings.filter((w) => w.kind === "style-conflict")).toHaveLength(0);
   });
 });
