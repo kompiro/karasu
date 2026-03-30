@@ -263,8 +263,8 @@ function assembleBreadcrumbSvg(
 
 /**
  * Assemble a list of ExportLevels into a single multi-level SVG.
- * CSS :target navigation shows one level at a time.
- * Breadcrumb links allow upward navigation; drillable nodes link downward.
+ * All levels are visible simultaneously, stacked vertically.
+ * Breadcrumb links and drillable-node links scroll to the target level (HTML anchor).
  */
 export function assembleMultiLevelSvg(levels: ExportLevel[]): string {
   if (levels.length === 0) {
@@ -286,22 +286,27 @@ export function assembleMultiLevelSvg(levels: ExportLevel[]): string {
   }
 
   const maxWidth = Math.max(...levels.map((l) => l.width));
-  const maxHeight = Math.max(...levels.map((l) => l.height)) + BREADCRUMB_HEIGHT;
 
-  // Navigation between levels is handled by JavaScript injected in the HTML wrapper.
-  // This CSS only hides all levels by default; JS shows the correct one on load/hashchange.
-  const cssContent = [".krs-view { display: none; }", "a { cursor: pointer; }"].join(" ");
+  // Each level occupies BREADCRUMB_HEIGHT (header) + level.height (content).
+  // Levels are stacked vertically; the SVG total height is the sum.
+  const levelHeights = levels.map((l) => BREADCRUMB_HEIGHT + l.height);
+  const totalHeight = levelHeights.reduce((sum, h) => sum + h, 0);
 
-  const levelGroups = levels.map((level) => {
+  const cssContent = "a { cursor: pointer; }";
+
+  let currentY = 0;
+  const levelGroups = levels.map((level, i) => {
+    const levelY = currentY;
+    currentY += levelHeights[i];
+
     const breadcrumbSvg = assembleBreadcrumbSvg(
       level.breadcrumb,
       level.breadcrumb.length - 1,
       maxWidth,
     );
 
-    // Re-embed as nested <svg> positioned below the breadcrumb bar.
-    // Strip the outer <svg ...> opening tag and replace with a positioned variant.
-    // Nested SVGs keep their own <defs> so marker IDs don't conflict.
+    // Re-embed as nested <svg> positioned below the breadcrumb bar within this level.
+    // Nested SVGs keep their own <defs> so marker IDs don't conflict across levels.
     const nestedSvgContent = level.svgContent
       .replace(
         /^<svg[^>]*>/,
@@ -309,16 +314,21 @@ export function assembleMultiLevelSvg(levels: ExportLevel[]): string {
       )
       .replace(/\s*<\/svg>\s*$/, "\n</svg>");
 
-    return el("g", { id: level.id, class: "krs-view" }, breadcrumbSvg, nestedSvgContent);
+    return el(
+      "g",
+      { id: level.id, class: "krs-level", transform: `translate(0, ${levelY})` },
+      breadcrumbSvg,
+      nestedSvgContent,
+    );
   });
 
   return el(
     "svg",
     {
       xmlns: "http://www.w3.org/2000/svg",
-      viewBox: `0 0 ${maxWidth} ${maxHeight}`,
+      viewBox: `0 0 ${maxWidth} ${totalHeight}`,
       width: maxWidth,
-      height: maxHeight,
+      height: totalHeight,
     },
     el("style", {}, cssContent),
     ...levelGroups,

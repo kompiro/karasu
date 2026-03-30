@@ -116,20 +116,33 @@ describe("assembleMultiLevelSvg", () => {
     expect(svg).toContain("No levels to display");
   });
 
-  it("produces SVG with .krs-view class on each level group", () => {
+  it("produces SVG with .krs-level class on each level group", () => {
     const level = makeLevel("krs-view-root", [{ id: "krs-view-root", label: "Root" }]);
     const svg = assembleMultiLevelSvg([level]);
-    expect(svg).toContain('class="krs-view"');
+    expect(svg).toContain('class="krs-level"');
     expect(svg).toContain('id="krs-view-root"');
   });
 
-  it("includes CSS that hides all levels by default", () => {
+  it("stacks all levels vertically — no display:none hiding", () => {
     const level = makeLevel("krs-view-root", [{ id: "krs-view-root", label: "Root" }]);
     const svg = assembleMultiLevelSvg([level]);
-    // Level visibility is controlled by JS in the HTML wrapper, not by :target CSS.
-    // The SVG CSS only hides all levels; JS shows the correct one on load/hashchange.
-    expect(svg).toContain(".krs-view { display: none; }");
+    // All levels are always visible (stacked vertically); no hide/show CSS needed.
+    expect(svg).not.toContain("display: none");
     expect(svg).not.toContain(":has(");
+    expect(svg).toContain("cursor: pointer");
+  });
+
+  it("positions each level with a vertical translate transform", () => {
+    const root = makeLevel("krs-view-root", [{ id: "krs-view-root", label: "Root" }]);
+    const child = makeLevel("krs-view-root__Child", [
+      { id: "krs-view-root", label: "Root" },
+      { id: "krs-view-root__Child", label: "Child" },
+    ]);
+    const svg = assembleMultiLevelSvg([root, child]);
+    // Root level starts at y=0
+    expect(svg).toContain("translate(0, 0)");
+    // Child level starts below root (BREADCRUMB_HEIGHT=40 + height=600 = 640)
+    expect(svg).toContain("translate(0, 640)");
   });
 
   it("includes breadcrumb link back to parent for child levels", () => {
@@ -199,11 +212,11 @@ system ECommerce {
     expect(svg).not.toContain("krs-view-root__Payment");
   });
 
-  it("includes CSS that hides all levels by default", () => {
+  it("uses krs-level class — all levels visible simultaneously", () => {
     const svg = buildExportSvg(simpleKrs);
-    // Level visibility is managed by JS in the HTML wrapper, not :target CSS in the SVG.
-    expect(svg).toContain(".krs-view");
-    expect(svg).toContain("display: none");
+    // All levels are stacked vertically; no hide/show needed.
+    expect(svg).toContain('class="krs-level"');
+    expect(svg).not.toContain("display: none");
   });
 
   it("handles a flat system (no children) without error", () => {
@@ -261,10 +274,11 @@ organization Acme {
     expect(svg).not.toContain("krs-view-root__Backend");
   });
 
-  it("includes CSS that hides all levels by default", () => {
+  it("uses krs-level class — all levels visible simultaneously", () => {
     const svg = buildExportSvgOrg(orgKrs);
-    expect(svg).toContain(".krs-view");
-    expect(svg).toContain("display: none");
+    // All levels are stacked vertically; no hide/show needed.
+    expect(svg).toContain('class="krs-level"');
+    expect(svg).not.toContain("display: none");
   });
 
   it("handles a flat org (no sub-teams) without error", () => {

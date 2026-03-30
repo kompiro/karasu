@@ -173,7 +173,7 @@ export function KarasuPreviewColumn({
       {isFullView && multiLevelSvg ? (
         <iframe
           srcDoc={multiLevelSvg}
-          sandbox="allow-scripts"
+          sandbox=""
           style={{ width: "100%", flex: 1, border: "none" }}
           title="Full diagram view"
         />
