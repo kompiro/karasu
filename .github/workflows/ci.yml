@@ -41,6 +41,9 @@ jobs:
       - name: Typecheck (app)
         run: npm run typecheck --workspace=packages/app
 
+      - name: Typecheck (cli)
+        run: npm run typecheck --workspace=packages/cli
+
       - name: Test
         run: npm run test:coverage
 
