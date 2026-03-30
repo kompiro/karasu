@@ -256,6 +256,36 @@ system Test {
     expect(svg).toContain("システム管理者");
     expect(svg).toContain('font-style="italic"');
   });
+
+  it("renders link button only when linkCount > 0 but no team (lines 482-489)", () => {
+    const svg = renderFromSource(`
+system Test {
+  service ECommerce {
+    label "ECサイト"
+    link "https://example.com" "Wiki"
+  }
+}
+    `);
+    expect(svg).toContain("data-link-button");
+    expect(svg).toContain("🔗");
+    expect(svg).not.toContain("data-team-button");
+  });
+
+  it("renders both link and team buttons when service has both", () => {
+    const svg = renderFromSource(`
+system Test {
+  service ECommerce {
+    label "ECサイト"
+    team "ec-team"
+    link "https://example.com" "Wiki"
+  }
+}
+    `);
+    expect(svg).toContain("data-link-button");
+    expect(svg).toContain("data-team-button");
+    expect(svg).toContain("🔗");
+    expect(svg).toContain("👥");
+  });
 });
 
 describe("Icon mode rendering", () => {
@@ -465,6 +495,48 @@ system Test {
     const iconRectCount = (svgIcon.match(/<rect\s/g) ?? []).length;
     // Icon mode adds one extra card frame rect per icon node
     expect(iconRectCount).toBeGreaterThan(shapeRectCount);
+  });
+
+  it("renders description as single-line text when icon template is used in shape mode (lines 343-359)", () => {
+    // Shape mode (no displayMode) with an icon template that has a description slot.
+    // → Falls into the else branch of `if (iconMode)` inside the description slot block.
+    const svg = renderFromSource(
+      `
+system Test {
+  service ECommerce {
+    label "ECサイト"
+    description "商品管理と注文処理"
+  }
+}
+      `,
+      `service { shape: url("service-icon"); }`,
+      // No displayMode → iconMode = false → single-line description via lines 343-359
+    );
+    expect(svg).toContain("商品管理");
+    // Should NOT have tspan elements (wrapText is not called in shape mode)
+    expect(svg).not.toContain("<tspan");
+  });
+
+  it("truncates description with wrapText when exactly 3 lines are exceeded using CJK text (lines 681-683)", () => {
+    // CJK chars are 1.5× wide. 144px / (6.5*1.5=9.75) ≈ 14 chars per line.
+    // A 60-char CJK description (summarized to 50+…=51 chars) fills 3 full lines,
+    // triggering the maxLines truncation path in wrapText at line 681.
+    const longCjkDesc = "ア".repeat(60);
+    const svg = renderFromSource(
+      `
+system Test {
+  service ECommerce {
+    description "${longCjkDesc}"
+  }
+}
+      `,
+      `service { shape: url("service-icon"); }`,
+      undefined,
+      "icon",
+    );
+    const tspanCount = (svg.match(/<tspan/g) ?? []).length;
+    expect(tspanCount).toBe(3);
+    expect(svg).toContain("…");
   });
 
   it("shape mode rendering is unchanged when displayMode is undefined", () => {

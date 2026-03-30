@@ -87,4 +87,10 @@ describe("getReference", () => {
     expect(ref.sampleKrs).toContain("deploy");
     expect(ref.sampleKrs).toContain("organization");
   });
+
+  it("returns the same cached instance on second call (cache hit branch)", () => {
+    const ref1 = getReference();
+    const ref2 = getReference();
+    expect(ref1).toBe(ref2);
+  });
 });
