@@ -285,12 +285,13 @@ describe("renderOrgView", () => {
     });
 
     it("truncates wide CJK team label that exceeds card width", () => {
-      // "プラットフォームチーム" = 11 katakana chars × ~11.25px = ~124px > 122px limit
+      // "プラットフォームチーム" = 11 katakana × 11.25px = ~124px > 116px label max
+      // effective text budget = 116 - 7.5 (ellipsis) = 108.5px → fits 9 chars (101.25px)
       const team = makeTeam("platform", { label: "プラットフォームチーム" });
       const slice: OrgViewSlice = { teams: [team], focusedTeam: null, ancestorChain: [] };
       const svg = renderOrgView(slice, makeStyles(), "icon");
+      expect(svg).toContain("プラットフォームチ…");
       expect(svg).not.toContain("プラットフォームチーム");
-      expect(svg).toContain("…");
     });
 
     it("does not truncate ASCII label within card width", () => {

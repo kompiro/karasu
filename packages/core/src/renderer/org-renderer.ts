@@ -19,7 +19,7 @@ const ICON_CARD_WIDTH = 160;
 const ICON_TITLE_HEIGHT = 28;
 const ICON_CARD_HEIGHT_SHORT = 56;
 const ICON_CARD_HEIGHT_LONG = 100;
-const ICON_LABEL_MAX_WIDTH = 122;
+const ICON_LABEL_MAX_WIDTH = 116; // effective text budget = 116 - 7.5(ellipsis) = 108.5px
 const ICON_LABEL_CHAR_WIDTH = 7.5;
 const ICON_DESC_MAX_WIDTH = 144;
 const ICON_DESC_CHAR_WIDTH = 6.5;

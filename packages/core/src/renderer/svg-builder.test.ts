@@ -6,19 +6,17 @@ describe("truncateToWidth", () => {
     expect(truncateToWidth("Hello", 100, 7.5)).toBe("Hello");
   });
 
-  it("truncates ASCII text that exceeds maxWidth", () => {
-    // 'ABCDEFGHIJ' = 10 chars × 7.5px = 75px; limit 50px → fits ~6 chars (45px)
+  it("truncates ASCII text that exceeds maxWidth, reserving room for ellipsis", () => {
+    // textBudget = 50 - 7.5 = 42.5px; 5 chars = 37.5px fit, 6th (F) → 45 > 42.5 → "ABCDE…"
     const result = truncateToWidth("ABCDEFGHIJ", 50, 7.5);
-    expect(result).toContain("…");
-    expect(result.length).toBeLessThan("ABCDEFGHIJ".length + 1);
+    expect(result).toBe("ABCDE…");
   });
 
-  it("truncates CJK text counted at 1.5x width", () => {
-    // "プラットフォームチーム" = 11 katakana × 7.5 × 1.5 = 11.25px each ≈ 123.75px total
-    // maxWidth = 122px → should truncate
+  it("truncates CJK text reserving ellipsis width", () => {
+    // textBudget = 122 - 7.5 = 114.5px; 10 katakana = 112.5px fit, 11th → 123.75 > 114.5
+    // → "プラットフォームチー…" (10 chars)
     const result = truncateToWidth("プラットフォームチーム", 122, 7.5);
-    expect(result).toContain("…");
-    expect(result).not.toBe("プラットフォームチーム");
+    expect(result).toBe("プラットフォームチー…");
   });
 
   it("returns empty string unchanged", () => {

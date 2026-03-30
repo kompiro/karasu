@@ -38,13 +38,16 @@ export { escapeXml };
 /**
  * Truncate text to fit within a given pixel width, adding "…" if truncated.
  * CJK characters (code point > U+2E80) are counted as 1.5× charWidth.
+ * The "…" glyph is reserved from maxWidth so the full output always fits.
  */
 export function truncateToWidth(text: string, maxWidth: number, charWidth: number): string {
+  // Reserve room for "…" so the truncated result always fits within maxWidth.
+  const textBudget = maxWidth - charWidth;
   const chars = [...text];
   let width = 0;
   for (let i = 0; i < chars.length; i++) {
     const cw = chars[i].charCodeAt(0) > 0x2e80 ? charWidth * 1.5 : charWidth;
-    if (width + cw > maxWidth) {
+    if (width + cw > textBudget) {
       return chars.slice(0, i).join("") + "…";
     }
     width += cw;
@@ -56,6 +59,7 @@ export function truncateToWidth(text: string, maxWidth: number, charWidth: numbe
  * Wrap text into multiple lines that fit within a given pixel width.
  * Returns up to `maxLines` lines; the last line is truncated with "…" if text remains.
  * CJK characters (code point > U+2E80) are counted as 1.5× charWidth.
+ * On the last line, "…" is reserved from maxWidth so the output always fits.
  */
 export function wrapToWidth(
   text: string,
@@ -73,7 +77,16 @@ export function wrapToWidth(
     const cw = chars[i].charCodeAt(0) > 0x2e80 ? charWidth * 1.5 : charWidth;
     if (lineWidth + cw > maxWidth) {
       if (lines.length === maxLines - 1) {
-        lines.push(chars.slice(lineStart, i).join("") + "…");
+        // Last allowed line: reserve room for "…" so the output fits within maxWidth.
+        const lastLineBudget = maxWidth - charWidth;
+        let j = i;
+        let lastLineWidth = lineWidth;
+        while (j > lineStart && lastLineWidth > lastLineBudget) {
+          j--;
+          const prevCw = chars[j].charCodeAt(0) > 0x2e80 ? charWidth * 1.5 : charWidth;
+          lastLineWidth -= prevCw;
+        }
+        lines.push(chars.slice(lineStart, j).join("") + "…");
         return lines;
       }
       lines.push(chars.slice(lineStart, i).join(""));
