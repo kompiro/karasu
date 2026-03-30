@@ -361,7 +361,7 @@ export function getReference(): KarasuReference {
       }
       usecase RegisterProduct {
         label "商品を登録する"
-        resource ProductTable { label "商品テーブル" }
+        resource ProductTableWrite { label "商品テーブル" }
         resource ImageStorage [external] { label "画像ストレージ" }
       }
     }
