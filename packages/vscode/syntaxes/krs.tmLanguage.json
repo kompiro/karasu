@@ -1,0 +1,94 @@
+{
+  "$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+  "name": "karasu",
+  "scopeName": "source.krs",
+  "fileTypes": [".krs"],
+  "patterns": [
+    { "include": "#comment-line" },
+    { "include": "#comment-block" },
+    { "include": "#import" },
+    { "include": "#annotation" },
+    { "include": "#tag" },
+    { "include": "#arrow" },
+    { "include": "#string-triple" },
+    { "include": "#string" },
+    { "include": "#keyword-structure" },
+    { "include": "#keyword-deploy-type" },
+    { "include": "#keyword-property" },
+    { "include": "#keyword-org" }
+  ],
+  "repository": {
+    "comment-line": {
+      "name": "comment.line.double-slash.krs",
+      "match": "//.*$"
+    },
+    "comment-block": {
+      "name": "comment.block.krs",
+      "begin": "/\\*",
+      "end": "\\*/"
+    },
+    "import": {
+      "patterns": [
+        {
+          "name": "keyword.control.import.krs",
+          "match": "\\b(from)\\b"
+        },
+        {
+          "match": "(@import)\\s+(\"[^\"]*\")",
+          "captures": {
+            "1": { "name": "keyword.control.import.krs" },
+            "2": { "name": "string.quoted.double.krs" }
+          }
+        }
+      ]
+    },
+    "annotation": {
+      "match": "(@)(\\w+)",
+      "captures": {
+        "1": { "name": "punctuation.definition.annotation.krs" },
+        "2": { "name": "storage.modifier.annotation.krs" }
+      }
+    },
+    "tag": {
+      "name": "entity.other.attribute-name.tag.krs",
+      "match": "\\[\\w+\\]"
+    },
+    "arrow": {
+      "name": "keyword.operator.arrow.krs",
+      "match": "-->|->",
+      "comment": "Edge arrows: -> (solid) and --> (dashed)"
+    },
+    "string-triple": {
+      "name": "string.quoted.triple.krs",
+      "begin": "\"\"\"",
+      "end": "\"\"\""
+    },
+    "string": {
+      "name": "string.quoted.double.krs",
+      "begin": "\"",
+      "end": "\"",
+      "patterns": [
+        {
+          "name": "constant.character.escape.krs",
+          "match": "\\\\."
+        }
+      ]
+    },
+    "keyword-structure": {
+      "name": "keyword.control.krs",
+      "match": "\\b(system|service|domain|usecase|resource|user|deploy|edge)\\b"
+    },
+    "keyword-deploy-type": {
+      "name": "storage.type.deploy.krs",
+      "match": "\\b(war|jar|oci|lambda|function|assets|job|artifact)\\b"
+    },
+    "keyword-property": {
+      "name": "keyword.other.property.krs",
+      "match": "\\b(label|role|description|team|link|runtime|realizes|schedule|image|type)\\b"
+    },
+    "keyword-org": {
+      "name": "keyword.other.org.krs",
+      "match": "\\b(organization|member|owns|slack|github)\\b"
+    }
+  }
+}

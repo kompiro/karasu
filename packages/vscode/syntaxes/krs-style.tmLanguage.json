@@ -1,0 +1,93 @@
+{
+  "$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+  "name": "karasu style",
+  "scopeName": "source.krs-style",
+  "fileTypes": [".krs.style"],
+  "patterns": [
+    { "include": "#comment-line" },
+    { "include": "#comment-block" },
+    { "include": "#rule-block" }
+  ],
+  "repository": {
+    "comment-line": {
+      "name": "comment.line.double-slash.krs-style",
+      "match": "//.*$"
+    },
+    "comment-block": {
+      "name": "comment.block.krs-style",
+      "begin": "/\\*",
+      "end": "\\*/"
+    },
+    "rule-block": {
+      "begin": "([^{]+)\\{",
+      "end": "\\}",
+      "beginCaptures": {
+        "1": { "patterns": [{ "include": "#selector" }] }
+      },
+      "endCaptures": {
+        "0": { "name": "punctuation.section.block.end.krs-style" }
+      },
+      "patterns": [
+        { "include": "#comment-line" },
+        { "include": "#comment-block" },
+        { "include": "#property-value" }
+      ]
+    },
+    "selector": {
+      "patterns": [
+        {
+          "name": "entity.other.attribute-name.id.krs-style",
+          "match": "#[\\w-]+"
+        },
+        {
+          "name": "storage.modifier.annotation.krs-style",
+          "match": "@\\w+"
+        },
+        {
+          "name": "entity.other.attribute-name.tag.krs-style",
+          "match": "\\[\\w+\\]"
+        },
+        {
+          "name": "entity.name.tag.krs-style",
+          "match": "\\b(system|service|domain|usecase|resource|user|deploy|war|jar|oci|lambda|function|assets|job|artifact|edge)\\b"
+        },
+        {
+          "name": "punctuation.separator.list.krs-style",
+          "match": ","
+        }
+      ]
+    },
+    "property-value": {
+      "match": "([\\w-]+)\\s*:\\s*(.+?)\\s*(?=;|$)",
+      "captures": {
+        "1": { "name": "support.type.property-name.krs-style" },
+        "2": { "patterns": [{ "include": "#value" }] }
+      }
+    },
+    "value": {
+      "patterns": [
+        {
+          "name": "constant.other.color.hex.krs-style",
+          "match": "#[0-9A-Fa-f]{3,8}\\b"
+        },
+        {
+          "name": "constant.numeric.krs-style",
+          "match": "-?\\d+(\\.\\d+)?(px|em|rem|%|)\\b"
+        },
+        {
+          "name": "string.quoted.double.krs-style",
+          "begin": "\"",
+          "end": "\""
+        },
+        {
+          "name": "support.constant.property-value.krs-style",
+          "match": "\\b(solid|dashed|dotted|bold|normal|box|user|cylinder|queue|hexagon|cloud|sans-serif|serif|monospace)\\b"
+        },
+        {
+          "name": "support.function.krs-style",
+          "match": "url\\([^)]*\\)"
+        }
+      ]
+    }
+  }
+}

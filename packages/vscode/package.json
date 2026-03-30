@@ -1,0 +1,50 @@
+{
+  "name": "karasu-vscode",
+  "displayName": "karasu",
+  "description": "Syntax highlighting and tooling for .krs architecture files",
+  "version": "0.1.0",
+  "private": true,
+  "publisher": "karasu",
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": ["Programming Languages"],
+  "activationEvents": [],
+  "main": "./out/extension.js",
+  "contributes": {
+    "languages": [
+      {
+        "id": "krs",
+        "aliases": ["karasu", "krs"],
+        "extensions": [".krs"],
+        "configuration": "./language-configuration.json"
+      },
+      {
+        "id": "krs-style",
+        "aliases": ["karasu style", "krs-style"],
+        "extensions": [".krs.style"],
+        "configuration": "./language-configuration.json"
+      }
+    ],
+    "grammars": [
+      {
+        "language": "krs",
+        "scopeName": "source.krs",
+        "path": "./syntaxes/krs.tmLanguage.json"
+      },
+      {
+        "language": "krs-style",
+        "scopeName": "source.krs-style",
+        "path": "./syntaxes/krs-style.tmLanguage.json"
+      }
+    ]
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@types/vscode": "^1.85.0",
+    "typescript": "^6.0.2"
+  }
+}
