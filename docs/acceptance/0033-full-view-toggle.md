@@ -2,7 +2,7 @@
 
 ## Summary
 
-Verify that the Full View toggle renders a multi-level SVG in an iframe, enabling hash-based drill-down navigation across all levels simultaneously, without requiring interactive drill-down in the normal preview pane.
+Verify that the Full View toggle renders a multi-level SVG in an iframe showing all drill-down levels simultaneously (vertically stacked and scrollable), without requiring interactive drill-down in the normal preview pane.
 
 ---
 
@@ -29,18 +29,18 @@ Verify that the Full View toggle renders a multi-level SVG in an iframe, enablin
 | Step | Action | Expected Result |
 |------|--------|----------------|
 | 2.1 | With System tab active, click "⊞ Full View" | The normal preview pane is replaced by an iframe |
-| 2.2 | Observe the iframe content | The multi-level SVG is displayed; the root level is visible |
+| 2.2 | Observe the iframe content | The multi-level SVG is displayed; **all levels are visible simultaneously**, stacked vertically and scrollable |
 | 2.3 | Observe the breadcrumb bar in the normal UI | The breadcrumb bar is hidden (not rendered outside the iframe) |
 | 2.4 | Observe the Full View button | Button appears highlighted/active (`.active` class applied) |
 
-### 3. Multi-level navigation in Full View iframe
+### 3. Multi-level layout in Full View iframe
 
 | Step | Action | Expected Result |
 |------|--------|----------------|
-| 3.1 | In Full View, click a node that has children | The view navigates to that node's child level within the iframe |
-| 3.2 | Observe the SVG breadcrumb inside the iframe | Breadcrumb updates to show ancestry (e.g., Root › ServiceName) |
-| 3.3 | Click a parent breadcrumb link inside the iframe | The view navigates back up to the parent level |
-| 3.4 | Verify the parent page URL does not change | The browser URL bar does not show a fragment — navigation is iframe-internal |
+| 3.1 | Observe the iframe content | All drill-down levels are rendered as separate sections stacked vertically |
+| 3.2 | Observe each level's breadcrumb bar | Each section has a breadcrumb bar showing its ancestry (e.g., Root › ServiceName) |
+| 3.3 | Click a breadcrumb link inside the iframe | The view scrolls to the linked ancestor level (hash navigation) |
+| 3.4 | Observe the browser URL bar | It does not change — hash navigation is iframe-internal |
 
 ### 4. Exiting Full View mode
 
@@ -79,7 +79,7 @@ Verify that the Full View toggle renders a multi-level SVG in an iframe, enablin
 |------|--------|----------------|
 | 8.1 | Enter Full View mode | Iframe is displayed |
 | 8.2 | Click "↓ Export SVG" in the toolbar | A file is downloaded |
-| 8.3 | Open the downloaded file | The multi-level SVG is correct; it contains all level groups (`.krs-view` class, `display: none` CSS), anchor links for drillable nodes, and SVG breadcrumbs |
+| 8.3 | Open the downloaded file | The multi-level SVG is correct; it contains all level groups (`.krs-level` class, vertically stacked), breadcrumb anchor links, and SVG breadcrumb bars for each level |
 
 ---
 
