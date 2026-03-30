@@ -49,6 +49,7 @@ function makeProps(overrides: Partial<Parameters<typeof KarasuPreviewColumn>[0]>
     isFullView: false,
     onFullViewToggle: vi.fn(),
     drillDownSvg: undefined,
+    orgDrillDownSvg: undefined,
     fullViewSvg: undefined,
     orgFullViewSvg: undefined,
     ...overrides,
@@ -381,6 +382,20 @@ describe("KarasuPreviewColumn", () => {
       const { getByRole, getByText } = render(<KarasuPreviewColumn {...props} />);
       fireEvent.click(getByRole("button", { name: /SVG export options/ }));
       expect(getByText("Export Drill-down SVG").closest("button")).toHaveProperty("disabled", true);
+    });
+
+    it("Export Drill-down SVG calls onExportSvg with -drilldown suffix on org tab", () => {
+      const onExportSvg = vi.fn();
+      const orgDrillDownSvg = "<svg>org-drilldown</svg>";
+      const props = makeProps({
+        activeView: "org",
+        orgDrillDownSvg,
+        onExportSvg,
+      });
+      const { getByRole, getByText } = render(<KarasuPreviewColumn {...props} />);
+      fireEvent.click(getByRole("button", { name: /SVG export options/ }));
+      fireEvent.click(getByText("Export Drill-down SVG"));
+      expect(onExportSvg).toHaveBeenCalledWith(orgDrillDownSvg, expect.stringContaining("drilldown"));
     });
   });
 });

@@ -6,6 +6,7 @@ import {
   buildDrillDownSvg,
   buildFullViewSvg,
   buildFullViewSvgOrg,
+  buildExportSvgOrg,
   type KrsNode,
   type OrgViewPath,
 } from "@karasu/core";
@@ -190,6 +191,15 @@ function MemoryModeInner() {
     }
   }, [fileContent, displayMode]);
 
+  const orgDrillDownSvg = useMemo(() => {
+    if (!fileContent) return undefined;
+    try {
+      return buildExportSvgOrg(fileContent);
+    } catch {
+      return undefined;
+    }
+  }, [fileContent]);
+
   const orgBreadcrumbItems = useMemo(() => {
     if (!fileContent) return [];
     try {
@@ -261,6 +271,7 @@ function MemoryModeInner() {
         drillDownSvg={drillDownSvg}
         fullViewSvg={fullViewSvg}
         orgFullViewSvg={orgFullViewSvg}
+        orgDrillDownSvg={orgDrillDownSvg}
       />
     </div>
   );

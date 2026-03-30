@@ -5,6 +5,7 @@ import {
   buildDrillDownSvg,
   buildFullViewSvg,
   buildFullViewSvgOrg,
+  buildExportSvgOrg,
   type KrsNode,
   type OrgViewPath,
   type DisplayMode,
@@ -240,6 +241,15 @@ function ServeModeInner() {
     }
   }, [fileContent, displayMode]);
 
+  const orgDrillDownSvg = useMemo(() => {
+    if (!fileContent) return undefined;
+    try {
+      return buildExportSvgOrg(fileContent);
+    } catch {
+      return undefined;
+    }
+  }, [fileContent]);
+
   const orgBreadcrumbItems = useMemo(() => {
     if (!fileContent) return [];
     try {
@@ -328,6 +338,7 @@ function ServeModeInner() {
         drillDownSvg={drillDownSvg}
         fullViewSvg={fullViewSvg}
         orgFullViewSvg={orgFullViewSvg}
+        orgDrillDownSvg={orgDrillDownSvg}
       />
     </div>
   );

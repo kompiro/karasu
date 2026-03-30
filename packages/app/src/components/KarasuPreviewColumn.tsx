@@ -76,8 +76,10 @@ interface KarasuPreviewColumnProps {
   fullViewSvg?: string;
   /** SVG with all org levels stacked vertically (for Full View on org tab) */
   orgFullViewSvg?: string;
-  /** SVG with CSS :target navigation (for drill-down export only) */
+  /** SVG with CSS :target navigation for system drill-down export */
   drillDownSvg?: string;
+  /** SVG with CSS :target navigation for org drill-down export */
+  orgDrillDownSvg?: string;
 }
 
 export function KarasuPreviewColumn({
@@ -99,6 +101,7 @@ export function KarasuPreviewColumn({
   fullViewSvg,
   orgFullViewSvg,
   drillDownSvg,
+  orgDrillDownSvg,
 }: KarasuPreviewColumnProps) {
   const [refOpen, setRefOpen] = useState(false);
   const [exportMenuOpen, setExportMenuOpen] = useState(false);
@@ -138,7 +141,9 @@ export function KarasuPreviewColumn({
   const activeFullViewSvg =
     activeView === "system" ? fullViewSvg : activeView === "org" ? orgFullViewSvg : undefined;
   const fullViewAvailable = activeView !== "deploy" && !!activeFullViewSvg;
-  const drillDownAvailable = activeView === "system" && !!drillDownSvg;
+  const activedrillDownSvg =
+    activeView === "system" ? drillDownSvg : activeView === "org" ? orgDrillDownSvg : undefined;
+  const drillDownAvailable = (activeView === "system" || activeView === "org") && !!activedrillDownSvg;
   const showFullViewIframe = isFullView && fullViewAvailable;
 
   function handleExport() {
@@ -150,8 +155,8 @@ export function KarasuPreviewColumn({
   }
 
   function handleExportDrillDown() {
-    if (drillDownSvg) {
-      onExportSvg(drillDownSvg, exportFilename.replace(/\.svg$/, "-drilldown.svg"));
+    if (activedrillDownSvg) {
+      onExportSvg(activedrillDownSvg, exportFilename.replace(/\.svg$/, "-drilldown.svg"));
     }
     setExportMenuOpen(false);
   }
