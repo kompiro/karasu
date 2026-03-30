@@ -1,6 +1,7 @@
 import type { KrsNode, TeamNode } from "../types/ast.js";
 import type { ViewPath } from "../view/view-extract.js";
 import type { OrgViewPath } from "../view/org-view-extract.js";
+import type { DisplayMode } from "./layout.js";
 import { Parser } from "../parser/parser.js";
 import { StyleParser } from "../parser/style-parser.js";
 import { resolveStyles } from "../resolver/style-resolver.js";
@@ -342,8 +343,13 @@ export function assembleMultiLevelSvg(levels: ExportLevel[]): string {
  *
  * @param source      - The raw .krs source
  * @param styleSource - Optional .krs.style source
+ * @param displayMode - Optional display mode ("shape" | "icon"); defaults to "shape"
  */
-export function buildExportSvg(source: string, styleSource?: string): string {
+export function buildExportSvg(
+  source: string,
+  styleSource?: string,
+  displayMode?: DisplayMode,
+): string {
   const parseResult = Parser.parse(source);
   const sheets = [getBuiltinStyleSheet()];
   if (styleSource) {
@@ -376,7 +382,7 @@ export function buildExportSvg(source: string, styleSource?: string): string {
       styles,
       serviceIdsWithDeploy,
       ownerIndex,
-      undefined,
+      displayMode,
       childLinks,
     );
     const { width, height } = parseSvgDimensions(svgContent);
@@ -398,7 +404,11 @@ export function buildExportSvg(source: string, styleSource?: string): string {
  * Build a multi-level SVG from a .krs source string for org view.
  * Recursively traverses the org hierarchy up to MAX_DEPTH_ORG levels deep.
  */
-export function buildExportSvgOrg(source: string, styleSource?: string): string {
+export function buildExportSvgOrg(
+  source: string,
+  styleSource?: string,
+  displayMode?: DisplayMode,
+): string {
   const parseResult = Parser.parse(source);
   const sheets = [getBuiltinStyleSheet()];
   if (styleSource) {
@@ -423,7 +433,7 @@ export function buildExportSvgOrg(source: string, styleSource?: string): string 
 
   const levels: ExportLevel[] = allPaths.map((path) => {
     const orgSlice = extractOrgView(organizations, path);
-    const svgContent = renderOrgView(orgSlice, styles);
+    const svgContent = renderOrgView(orgSlice, styles, displayMode);
     const { width, height } = parseSvgDimensions(svgContent);
     const breadcrumb = buildOrgBreadcrumb(path, allTopLevelTeams);
 

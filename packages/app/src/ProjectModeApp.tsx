@@ -332,11 +332,11 @@ export function ProjectModeApp() {
   const orgDrillDownSvg = useMemo(() => {
     if (!fileContent) return undefined;
     try {
-      return buildExportSvgOrg(fileContent);
+      return buildExportSvgOrg(fileContent, undefined, displayMode);
     } catch {
       return undefined;
     }
-  }, [fileContent]);
+  }, [fileContent, displayMode]);
 
   const orgBreadcrumbItems = useMemo(() => {
     if (!fileContent) return [];
