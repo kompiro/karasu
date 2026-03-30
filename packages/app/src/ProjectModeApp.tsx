@@ -149,18 +149,6 @@ export function ProjectModeApp() {
     [currentFilePath, fs, dispatch, recompile],
   );
 
-  // ドリルダウン
-  const handleDrillDown = useCallback(
-    (newPath: string[]) => {
-      if (activeView === "org") {
-        dispatch({ type: "SET_ORG_PATH", path: newPath });
-      } else {
-        dispatch({ type: "SET_VIEW_PATH", path: newPath });
-      }
-    },
-    [dispatch, activeView],
-  );
-
   // ビュー切り替え
   const handleActiveViewChange = useCallback(
     (view: ActiveView) => {
@@ -394,7 +382,6 @@ export function ProjectModeApp() {
           onOwnedServiceClick: handleOwnedServiceClick,
         }}
         nodeMetadata={nodeMetadata}
-        onDrillDown={handleDrillDown}
         deployBlocks={deployBlocks}
         selectedDeployBlockId={selectedDeployBlockId}
         onDeployBlockChange={handleDeployBlockChange}

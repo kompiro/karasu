@@ -15,9 +15,7 @@ function baseProps() {
   return {
     svg: "",
     diagnostics: [],
-    viewPath: [],
     nodeMetadata: new Map(),
-    onDrillDown: vi.fn(),
   };
 }
 
@@ -44,16 +42,10 @@ describe("PreviewPane", () => {
   describe("onClearHighlight", () => {
     it("calls onClearHighlight when a node with children is clicked", () => {
       const onClearHighlight = vi.fn();
-      const onDrillDown = vi.fn();
       const svg = `<div data-node-id="svc" data-has-children="true"></div>`;
 
       const { container } = render(
-        <PreviewPane
-          {...baseProps()}
-          svg={svg}
-          onDrillDown={onDrillDown}
-          onClearHighlight={onClearHighlight}
-        />,
+        <PreviewPane {...baseProps()} svg={svg} onClearHighlight={onClearHighlight} />,
       );
 
       const previewContainer = container.querySelector(".preview-container")!;
@@ -62,8 +54,9 @@ describe("PreviewPane", () => {
         () => container.querySelector("[data-node-id='svc']")!,
       );
 
+      // Node body click opens NodeDetailPanel instead of drilling down.
+      // onClearHighlight is still called on any node interaction.
       expect(onClearHighlight).toHaveBeenCalledOnce();
-      expect(onDrillDown).toHaveBeenCalledWith(["svc"]);
     });
 
     it("calls onClearHighlight when a leaf node is clicked", () => {

@@ -142,17 +142,6 @@ function ServeModeInner() {
 
   const nodeMetadata = activeView === "deploy" ? deployNodeMetadata : systemNodeMetadata;
 
-  const handleDrillDown = useCallback(
-    (newPath: string[]) => {
-      if (activeView === "org") {
-        dispatch({ type: "SET_ORG_PATH", path: newPath });
-      } else {
-        dispatch({ type: "SET_VIEW_PATH", path: newPath });
-      }
-    },
-    [dispatch, activeView],
-  );
-
   const handleActiveViewChange = useCallback(
     (view: ActiveView) => {
       dispatch({ type: "SET_ACTIVE_VIEW", activeView: view });
@@ -305,7 +294,6 @@ function ServeModeInner() {
           onOwnedServiceClick: handleOwnedServiceClick,
         }}
         nodeMetadata={nodeMetadata}
-        onDrillDown={handleDrillDown}
         onExportSvg={(svg, filename) => downloadSvg(svg, filename)}
         isFullView={isFullView}
         onFullViewToggle={handleFullViewToggle}
