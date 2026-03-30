@@ -205,8 +205,7 @@ export function buildFullViewSvg(
     levels,
   );
 
-  const maxWidth =
-    Math.max(...levels.map((l) => l.width)) + FULL_VIEW_PADDING * 2;
+  const maxWidth = Math.max(...levels.map((l) => l.width)) + FULL_VIEW_PADDING * 2;
 
   let yOffset = FULL_VIEW_PADDING;
   const parts: string[] = [];

@@ -149,8 +149,7 @@ export function KarasuPreviewColumn({
   }
 
   // Resolve the preview content
-  const showFullViewIframe =
-    multiLevelAvailable && exportViewMode === "full" && !!fullViewSvg;
+  const showFullViewIframe = multiLevelAvailable && exportViewMode === "full" && !!fullViewSvg;
   const showDrillDownIframe =
     multiLevelAvailable && exportViewMode === "drilldown" && !!drillDownSvg;
 
