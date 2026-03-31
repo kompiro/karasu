@@ -297,7 +297,7 @@ export function buildDrillDownSvgOrg(
     return `<svg xmlns="http://www.w3.org/2000/svg" width="100%" height="100%" viewBox="0 0 200 100"><text x="100" y="50" text-anchor="middle" fill="#9CA3AF" font-family="sans-serif">No org diagram</text></svg>`;
   }
 
-  const styles = resolveStyles(krsFile.systems, buildStyles(displayMode), []);
+  const styles = resolveStyles(krsFile.systems, buildStyles(displayMode), [], krsFile.organizations);
 
   const levels: string[] = [];
   collectDrillDownOrgLevels(krsFile.organizations, styles, displayMode, [], "root", null, levels);
@@ -352,7 +352,7 @@ export function buildFullViewSvgOrg(
     return `<svg xmlns="http://www.w3.org/2000/svg" width="200" height="100" viewBox="0 0 200 100"><text x="100" y="50" text-anchor="middle" fill="#9CA3AF" font-family="sans-serif">No org diagram</text></svg>`;
   }
 
-  const styles = resolveStyles(krsFile.systems, buildStyles(displayMode), []);
+  const styles = resolveStyles(krsFile.systems, buildStyles(displayMode), [], organizations);
   const rootLabel = organizations[0].label ?? organizations[0].id;
 
   const levels: FullViewLevel[] = [];
