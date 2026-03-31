@@ -22,6 +22,14 @@ const ICON_DESC_CHAR_WIDTH = 6.5; // approximate for 11px font
 const ICON_DESC_MAX_LINES = 3;
 const ICON_DESC_LINE_HEIGHT = 14; // px
 
+/**
+ * Sanitizes a node ID for use in a CSS fragment identifier (e.g. href="#krs-view-X").
+ * Replaces characters that are not alphanumeric, hyphen, or underscore with underscores.
+ */
+export function sanitizeId(id: string): string {
+  return id.replace(/[^a-zA-Z0-9_-]/g, "_");
+}
+
 export function render(
   viewSlice: ViewSlice,
   styles: ResolvedStyles,

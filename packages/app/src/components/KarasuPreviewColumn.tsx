@@ -69,9 +69,17 @@ interface KarasuPreviewColumnProps {
   onDisplayModeChange: (mode: DisplayMode) => void;
   onExportSvg: (svg: string, filename: string) => void;
 
+  /** Full View toggle: show all levels stacked in an iframe */
   isFullView: boolean;
   onFullViewToggle: () => void;
-  multiLevelSvg: string | null;
+  /** SVG with all system levels stacked vertically (for Full View on system tab) */
+  fullViewSvg?: string;
+  /** SVG with all org levels stacked vertically (for Full View on org tab) */
+  orgFullViewSvg?: string;
+  /** SVG with CSS :target navigation for system drill-down export */
+  drillDownSvg?: string;
+  /** SVG with CSS :target navigation for org drill-down export */
+  orgDrillDownSvg?: string;
 }
 
 export function KarasuPreviewColumn({
@@ -90,9 +98,13 @@ export function KarasuPreviewColumn({
   onExportSvg,
   isFullView,
   onFullViewToggle,
-  multiLevelSvg,
+  fullViewSvg,
+  orgFullViewSvg,
+  drillDownSvg,
+  orgDrillDownSvg,
 }: KarasuPreviewColumnProps) {
   const [refOpen, setRefOpen] = useState(false);
+  const [exportMenuOpen, setExportMenuOpen] = useState(false);
 
   const svg =
     activeView === "system"
@@ -126,6 +138,30 @@ export function KarasuPreviewColumn({
     selectedDeployBlockId,
   });
 
+  const activeFullViewSvg =
+    activeView === "system" ? fullViewSvg : activeView === "org" ? orgFullViewSvg : undefined;
+  const fullViewAvailable = activeView !== "deploy" && !!activeFullViewSvg;
+  const activedrillDownSvg =
+    activeView === "system" ? drillDownSvg : activeView === "org" ? orgDrillDownSvg : undefined;
+  const drillDownAvailable =
+    (activeView === "system" || activeView === "org") && !!activedrillDownSvg;
+  const showFullViewIframe = isFullView && fullViewAvailable;
+
+  function handleExport() {
+    if (showFullViewIframe && activeFullViewSvg) {
+      onExportSvg(activeFullViewSvg, exportFilename.replace(/\.svg$/, "-fullview.svg"));
+    } else {
+      onExportSvg(svg, exportFilename);
+    }
+  }
+
+  function handleExportDrillDown() {
+    if (activedrillDownSvg) {
+      onExportSvg(activedrillDownSvg, exportFilename.replace(/\.svg$/, "-drilldown.svg"));
+    }
+    setExportMenuOpen(false);
+  }
+
   return (
     <div className="preview-column">
       <DiagramTabBar
@@ -144,23 +180,49 @@ export function KarasuPreviewColumn({
         >
           ◇ Icon Mode
         </button>
-        {activeView !== "deploy" && (
-          <button
-            className={`toolbar-btn toolbar-btn--full-view${isFullView ? " active" : ""}`}
-            onClick={onFullViewToggle}
-            aria-label="Toggle full view"
-          >
-            ⊞ Full View
-          </button>
-        )}
         <button
-          className="toolbar-btn toolbar-btn--export"
-          onClick={() => onExportSvg(svg, exportFilename)}
-          aria-label="Export SVG"
-          disabled={!svg}
+          className={`toolbar-btn toolbar-btn--full-view${isFullView ? " active" : ""}`}
+          onClick={onFullViewToggle}
+          aria-label="Toggle full view"
+          disabled={!fullViewAvailable}
         >
-          ↓ Export SVG
+          ⊞ Full View
         </button>
+
+        {/* Split export button: left = export current/full, right = drill-down export */}
+        <div className="toolbar-btn-group">
+          <button
+            className="toolbar-btn toolbar-btn--export toolbar-btn--export-main"
+            onClick={handleExport}
+            aria-label="Export SVG"
+            disabled={!svg}
+          >
+            ↓ Export SVG
+          </button>
+          <button
+            className={`toolbar-btn toolbar-btn--export toolbar-btn--export-toggle${exportMenuOpen ? " active" : ""}`}
+            onClick={() => setExportMenuOpen((v) => !v)}
+            aria-label="SVG export options"
+            aria-haspopup="menu"
+            aria-expanded={exportMenuOpen}
+            disabled={!svg}
+          >
+            ▾
+          </button>
+          {exportMenuOpen && (
+            <div className="export-menu" role="menu" onMouseLeave={() => setExportMenuOpen(false)}>
+              <button
+                role="menuitem"
+                className="export-menu-item"
+                onClick={handleExportDrillDown}
+                disabled={!drillDownAvailable}
+              >
+                Export Drill-down SVG
+              </button>
+            </div>
+          )}
+        </div>
+
         <button
           className="toolbar-btn toolbar-btn--reference"
           onClick={() => setRefOpen(true)}
@@ -170,20 +232,20 @@ export function KarasuPreviewColumn({
         </button>
       </div>
       <ReferencePanel isOpen={refOpen} onClose={() => setRefOpen(false)} activeView={activeView} />
-      {!isFullView && activeView === "system" && (
+      {activeView === "system" && !showFullViewIframe && (
         <BreadcrumbBar
           items={systemView.breadcrumbItems}
           onNavigate={systemView.onBreadcrumbNavigate}
         />
       )}
-      {!isFullView && activeView === "org" && (
+      {activeView === "org" && (
         <BreadcrumbBar items={orgView.breadcrumbItems} onNavigate={orgView.onBreadcrumbNavigate} />
       )}
-      {isFullView && multiLevelSvg ? (
+      {showFullViewIframe ? (
         <iframe
-          srcDoc={multiLevelSvg}
-          sandbox=""
-          style={{ width: "100%", flex: 1, border: "none" }}
+          srcDoc={activeFullViewSvg}
+          sandbox="allow-same-origin"
+          style={{ width: "100%", height: "100%", border: "none" }}
           title="Full diagram view"
         />
       ) : (

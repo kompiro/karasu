@@ -978,6 +978,70 @@ body,
   border-color: rgba(77, 143, 255, 0.4);
 }
 
+/* Split export button group */
+.toolbar-btn-group {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.toolbar-btn--export-main {
+  border-radius: var(--radius-sm) 0 0 var(--radius-sm);
+  border-right: none;
+}
+
+.toolbar-btn--export-toggle {
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+  padding: 3px 6px;
+}
+
+/* Export mode dropdown menu */
+.export-menu {
+  position: absolute;
+  top: calc(100% + 4px);
+  right: 0;
+  background: var(--bg-raised);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+  z-index: 100;
+  min-width: 160px;
+  padding: 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.export-menu-item {
+  background: transparent;
+  border: none;
+  border-radius: calc(var(--radius-sm) - 2px);
+  color: var(--text-secondary);
+  font-family: var(--font-ui);
+  font-size: 11px;
+  font-weight: 500;
+  padding: 5px 10px;
+  text-align: left;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.1s;
+}
+
+.export-menu-item:hover:not(:disabled) {
+  background: var(--accent-dim);
+  color: var(--accent-hover);
+}
+
+.export-menu-item.active {
+  color: var(--accent-hover);
+}
+
+.export-menu-item:disabled {
+  color: var(--text-muted);
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
 /* Reference button — stands out as a persistent entry point */
 .toolbar-btn--reference {
   background: var(--bg-raised);
