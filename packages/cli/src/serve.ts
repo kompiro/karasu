@@ -79,9 +79,9 @@ export async function serveStaticFile(filePath: string, res: ServerResponse): Pr
   }
 }
 
-export function serve(dir: string, port: number): Server {
+export function serve(dir: string, port: number, appDistDir?: string): Server {
   const absDir = resolve(dir);
-  const appDistDir = getAppDistDir();
+  appDistDir ??= getAppDistDir();
   const watcher = new FileWatcher(absDir);
   watcher.start();
 
