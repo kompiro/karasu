@@ -258,7 +258,7 @@ function collectDrillDownOrgLevels(
   const currentTeams = slice.focusedTeam !== null ? slice.focusedTeam.teams : slice.teams;
   if (slice.focusedTeam === null && currentTeams.length === 0) return;
 
-  const drillableTeams = currentTeams.filter((t) => t.teams.length > 0);
+  const drillableTeams = currentTeams.filter((t) => t.teams.length > 0 || t.members.length > 0);
   const childLevelLinks = new Map(
     drillableTeams.map((t) => [t.id, `krs-view-${sanitizeId(t.id)}`]),
   );

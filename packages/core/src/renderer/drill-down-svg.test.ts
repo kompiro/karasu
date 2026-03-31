@@ -163,7 +163,7 @@ describe("buildDrillDownSvgOrg", () => {
     expect(svg).toContain('id="krs-view-Engineering"');
     // Root links to Engineering (has sub-teams)
     expect(svg).toContain('href="#krs-view-Engineering"');
-    // Design has no sub-teams — no level for it
+    // Design has no sub-teams and no members — no level for it
     expect(svg).not.toContain('id="krs-view-Design"');
     // Engineering level has back button
     const engIdx = svg.indexOf('id="krs-view-Engineering"');
@@ -178,12 +178,36 @@ describe("buildDrillDownSvgOrg", () => {
     expect(svg).toContain('id="krs-view-root"');
     expect(svg).toContain('id="krs-view-Engineering"');
     expect(svg).toContain('id="krs-view-Platform"');
-    // Infra has no sub-teams — no level
+    // Infra has no sub-teams and no members — no level
     expect(svg).not.toContain('id="krs-view-Infra"');
     // Platform level back button links to Engineering
     const platformIdx = svg.indexOf('id="krs-view-Platform"');
     const backHref = svg.indexOf('href="#krs-view-Engineering"', platformIdx);
     expect(backHref).toBeGreaterThan(platformIdx);
+  });
+
+  it("team with members is drillable even without sub-teams", () => {
+    const krsFile = Parser.parse(`
+organization Acme {
+  team Engineering {
+    label "Engineering"
+    member alice { label "Alice" }
+  }
+  team Design { label "Design" }
+}
+`).value;
+    const svg = buildDrillDownSvgOrg(krsFile);
+
+    expect(svg).toContain('id="krs-view-root"');
+    // Engineering has a member → drillable
+    expect(svg).toContain('id="krs-view-Engineering"');
+    expect(svg).toContain('href="#krs-view-Engineering"');
+    // Design has no members and no sub-teams → not drillable
+    expect(svg).not.toContain('id="krs-view-Design"');
+    // Engineering level has back button
+    const engIdx = svg.indexOf('id="krs-view-Engineering"');
+    const backIdx = svg.indexOf('<g class="krs-back-button"', engIdx);
+    expect(backIdx).toBeGreaterThan(engIdx);
   });
 
   it("includes CSS :target rules", () => {
