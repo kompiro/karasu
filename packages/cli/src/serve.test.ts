@@ -306,13 +306,26 @@ describe("HTTP server", () => {
   });
 
   describe("SPA fallback", () => {
+    let spaServer: Server;
+    let spaPort: number;
+
+    beforeEach(async () => {
+      spaServer = serve(tmpDir, 0, "/nonexistent-dist");
+      await new Promise<void>((resolve) => spaServer.once("listening", resolve));
+      spaPort = (spaServer.address() as AddressInfo).port;
+    });
+
+    afterEach(async () => {
+      await new Promise<void>((resolve) => spaServer.close(() => resolve()));
+    });
+
     it("returns 503 when the app has not been built", async () => {
-      const { status } = await get(port, "/");
+      const { status } = await get(spaPort, "/");
       expect(status).toBe(503);
     });
 
     it("returns 503 for unknown asset paths", async () => {
-      const { status } = await get(port, "/assets/unknown.js");
+      const { status } = await get(spaPort, "/assets/unknown.js");
       expect(status).toBe(503);
     });
   });
