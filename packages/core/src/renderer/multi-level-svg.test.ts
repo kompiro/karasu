@@ -8,6 +8,7 @@ import {
 } from "./multi-level-svg.js";
 import type { ExportLevel } from "./multi-level-svg.js";
 import type { KrsNode } from "../types/ast.js";
+import { Parser } from "../parser/parser.js";
 
 // Minimal KrsNode factory for testing collectAllSystemPaths
 function makeNode(id: string, children: KrsNode[] = []): KrsNode {
@@ -188,32 +189,33 @@ system ECommerce {
   }
 }
 `;
+  const simpleKrsFile = Parser.parse(simpleKrs).value;
 
   it("returns an SVG string", () => {
-    const svg = buildExportSvg(simpleKrs);
+    const svg = buildExportSvg(simpleKrsFile);
     expect(svg).toMatch(/^<svg/);
     expect(svg).toContain("</svg>");
   });
 
   it("contains krs-view-root group (root level)", () => {
-    const svg = buildExportSvg(simpleKrs);
+    const svg = buildExportSvg(simpleKrsFile);
     expect(svg).toContain('id="krs-view-root"');
   });
 
   it("contains child level group for nodes with children", () => {
-    const svg = buildExportSvg(simpleKrs);
+    const svg = buildExportSvg(simpleKrsFile);
     // Order has children (OrderDB), so it should generate a child level
     expect(svg).toContain("krs-view-root__Order");
   });
 
   it("does not contain level for leaf nodes", () => {
-    const svg = buildExportSvg(simpleKrs);
+    const svg = buildExportSvg(simpleKrsFile);
     // Payment is a leaf (no children), so there should be no level for it
     expect(svg).not.toContain("krs-view-root__Payment");
   });
 
   it("uses krs-level class — all levels visible simultaneously", () => {
-    const svg = buildExportSvg(simpleKrs);
+    const svg = buildExportSvg(simpleKrsFile);
     // All levels are stacked vertically; no hide/show needed.
     expect(svg).toContain('class="krs-level"');
     expect(svg).not.toContain("display: none");
@@ -226,14 +228,14 @@ system Simple {
   service B { label "B" }
 }
 `;
-    const svg = buildExportSvg(flat);
+    const svg = buildExportSvg(Parser.parse(flat).value);
     expect(svg).toContain('id="krs-view-root"');
     // No child levels since A and B are leaves
     expect(svg).not.toContain("krs-view-root__A");
   });
 
   it("wraps drillable nodes in anchor tags pointing to child levels", () => {
-    const svg = buildExportSvg(simpleKrs);
+    const svg = buildExportSvg(simpleKrsFile);
     // Order has children so should have an anchor link to its child level
     expect(svg).toContain('href="#krs-view-root__Order"');
   });
@@ -250,32 +252,33 @@ organization Acme {
   team Backend "Backend Team" {}
 }
 `;
+  const orgKrsFile = Parser.parse(orgKrs).value;
 
   it("returns an SVG string", () => {
-    const svg = buildExportSvgOrg(orgKrs);
+    const svg = buildExportSvgOrg(orgKrsFile);
     expect(svg).toMatch(/^<svg/);
     expect(svg).toContain("</svg>");
   });
 
   it("contains krs-view-root group (org root level)", () => {
-    const svg = buildExportSvgOrg(orgKrs);
+    const svg = buildExportSvgOrg(orgKrsFile);
     expect(svg).toContain('id="krs-view-root"');
   });
 
   it("contains a child level for teams with sub-teams", () => {
-    const svg = buildExportSvgOrg(orgKrs);
+    const svg = buildExportSvgOrg(orgKrsFile);
     // Frontend has sub-team WebUI, so it gets a child level
     expect(svg).toContain("krs-view-root__Frontend");
   });
 
   it("does not contain a level for leaf teams", () => {
-    const svg = buildExportSvgOrg(orgKrs);
+    const svg = buildExportSvgOrg(orgKrsFile);
     // Backend is a leaf team (no sub-teams), so no child level
     expect(svg).not.toContain("krs-view-root__Backend");
   });
 
   it("uses krs-level class — all levels visible simultaneously", () => {
-    const svg = buildExportSvgOrg(orgKrs);
+    const svg = buildExportSvgOrg(orgKrsFile);
     // All levels are stacked vertically; no hide/show needed.
     expect(svg).toContain('class="krs-level"');
     expect(svg).not.toContain("display: none");
@@ -289,7 +292,7 @@ organization Corp {
   team Beta "Beta" {}
 }
 `;
-    const svg = buildExportSvgOrg(flat);
+    const svg = buildExportSvgOrg(Parser.parse(flat).value);
     expect(svg).toContain('id="krs-view-root"');
     expect(svg).not.toContain("krs-view-root__Alpha");
   });

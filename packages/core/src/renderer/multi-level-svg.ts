@@ -1,8 +1,7 @@
-import type { KrsNode, TeamNode } from "../types/ast.js";
+import type { KrsNode, TeamNode, KrsFile } from "../types/ast.js";
 import type { ViewPath } from "../view/view-extract.js";
 import type { OrgViewPath } from "../view/org-view-extract.js";
 import type { DisplayMode } from "./layout.js";
-import { Parser } from "../parser/parser.js";
 import { StyleParser } from "../parser/style-parser.js";
 import { resolveStyles } from "../resolver/style-resolver.js";
 import { getBuiltinStyleSheet } from "../builtins/default-style.js";
@@ -346,31 +345,26 @@ export function assembleMultiLevelSvg(levels: ExportLevel[]): string {
  * @param displayMode - Optional display mode ("shape" | "icon"); defaults to "shape"
  */
 export function buildExportSvg(
-  source: string,
+  krsFile: KrsFile,
   styleSource?: string,
   displayMode?: DisplayMode,
 ): string {
-  const parseResult = Parser.parse(source);
   const sheets = [getBuiltinStyleSheet()];
   if (styleSource) {
     const styleResult = StyleParser.parse(styleSource);
     sheets.push(styleResult.value);
   }
 
-  const deploySlice = extractDeployView(
-    parseResult.value.deploys,
-    parseResult.value.systems,
-    undefined,
-  );
+  const deploySlice = extractDeployView(krsFile.deploys, krsFile.systems, undefined);
   const deployUnits = [
     ...deploySlice.containers.flatMap((c) => c.units),
     ...deploySlice.unclassifiedUnits,
   ];
   const serviceIdsWithDeploy = new Set(deploySlice.containers.map((c) => c.serviceId));
 
-  const styles = resolveStyles(parseResult.value.systems, sheets, deployUnits);
-  const ownerIndex = parseResult.value.ownerIndex;
-  const systems = parseResult.value.systems;
+  const styles = resolveStyles(krsFile.systems, sheets, deployUnits);
+  const ownerIndex = krsFile.ownerIndex;
+  const systems = krsFile.systems;
 
   const allPaths = collectAllSystemPaths(systems, MAX_DEPTH_SYSTEM);
 
@@ -405,29 +399,24 @@ export function buildExportSvg(
  * Recursively traverses the org hierarchy up to MAX_DEPTH_ORG levels deep.
  */
 export function buildExportSvgOrg(
-  source: string,
+  krsFile: KrsFile,
   styleSource?: string,
   displayMode?: DisplayMode,
 ): string {
-  const parseResult = Parser.parse(source);
   const sheets = [getBuiltinStyleSheet()];
   if (styleSource) {
     const styleResult = StyleParser.parse(styleSource);
     sheets.push(styleResult.value);
   }
 
-  const deploySlice = extractDeployView(
-    parseResult.value.deploys,
-    parseResult.value.systems,
-    undefined,
-  );
+  const deploySlice = extractDeployView(krsFile.deploys, krsFile.systems, undefined);
   const deployUnits = [
     ...deploySlice.containers.flatMap((c) => c.units),
     ...deploySlice.unclassifiedUnits,
   ];
 
-  const styles = resolveStyles(parseResult.value.systems, sheets, deployUnits);
-  const organizations = parseResult.value.organizations;
+  const styles = resolveStyles(krsFile.systems, sheets, deployUnits);
+  const organizations = krsFile.organizations;
   const allTopLevelTeams = organizations.flatMap((org) => org.teams);
   const allPaths = collectAllOrgPaths(allTopLevelTeams, MAX_DEPTH_ORG);
 
