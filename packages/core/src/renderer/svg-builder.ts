@@ -104,3 +104,97 @@ export function wrapToWidth(
 
   return lines;
 }
+
+/**
+ * Options for {@link renderIconCard}.
+ * All text values (titleText, descText) are pre-truncated by the caller;
+ * this function XML-escapes them internally.
+ */
+interface IconCardOptions {
+  /** Card position */
+  x: number;
+  y: number;
+  /** Node ID for `data-node-id` attribute — XML-escaped internally */
+  nodeId: string;
+  /** Extra attributes on the wrapper `<g>` (e.g. `data-has-children`, `style`) */
+  wrapperAttrs?: Attrs;
+  /** Background rect dimensions */
+  width: number;
+  height: number;
+  /** Background rect style */
+  rectFill?: string;
+  rectStroke?: string;
+  rectStrokeWidth?: number | string;
+  rectRx?: number;
+  /** Pre-rendered pictogram SVG string (inserted between rect and title) */
+  pictogram?: string;
+  /** Title text — pre-truncated, XML-escaped here */
+  titleText: string;
+  titleX: number;
+  titleY: number;
+  titleAttrs?: Attrs;
+  /** Description text — pre-truncated, XML-escaped here; omitted if falsy */
+  descText?: string;
+  descX?: number;
+  descY?: number;
+  descAttrs?: Attrs;
+}
+
+/**
+ * Renders an icon-mode card as an SVG group containing a background rect,
+ * an optional pictogram, a title text, and an optional description text.
+ *
+ * Used by org-renderer for team and member icon cards.
+ */
+export function renderIconCard(opts: IconCardOptions): string {
+  const {
+    x,
+    y,
+    nodeId,
+    wrapperAttrs,
+    width,
+    height,
+    rectFill,
+    rectStroke,
+    rectStrokeWidth,
+    rectRx,
+    pictogram,
+    titleText,
+    titleX,
+    titleY,
+    titleAttrs,
+    descText,
+    descX,
+    descY,
+    descAttrs,
+  } = opts;
+
+  const parts: string[] = [
+    el("rect", {
+      width,
+      height,
+      fill: rectFill,
+      stroke: rectStroke,
+      "stroke-width": rectStrokeWidth,
+      rx: rectRx,
+    }),
+  ];
+
+  if (pictogram) parts.push(pictogram);
+
+  parts.push(el("text", { x: titleX, y: titleY, ...titleAttrs }, escapeXml(titleText)));
+
+  if (descText) {
+    parts.push(el("text", { x: descX, y: descY, ...descAttrs }, escapeXml(descText)));
+  }
+
+  return el(
+    "g",
+    {
+      transform: `translate(${x},${y})`,
+      "data-node-id": escapeXml(nodeId),
+      ...wrapperAttrs,
+    },
+    ...parts,
+  );
+}

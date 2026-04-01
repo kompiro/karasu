@@ -2,8 +2,13 @@ import type { ResolvedNodeStyle, ResolvedStyles } from "../types/style.js";
 import type { OrgViewSlice } from "../view/org-view-extract.js";
 import type { TeamNode, MemberNode } from "../types/ast.js";
 import type { DisplayMode } from "./layout.js";
-import { el, escapeXml, truncateToWidth } from "./svg-builder.js";
+import { el, escapeXml, truncateToWidth, renderIconCard } from "./svg-builder.js";
 import { getIconDef } from "./shape-registry.js";
+import {
+  ICON_LABEL_CHAR_WIDTH,
+  ICON_DESC_CHAR_WIDTH,
+  ICON_DESC_MAX_WIDTH,
+} from "./rendering-constants.js";
 
 // Shape mode constants
 const CARD_WIDTH = 220;
@@ -20,9 +25,6 @@ const ICON_TITLE_HEIGHT = 28;
 const ICON_CARD_HEIGHT_SHORT = 56;
 const ICON_CARD_HEIGHT_LONG = 100;
 const ICON_LABEL_MAX_WIDTH = 116; // effective text budget = 116 - 7.5(ellipsis) = 108.5px
-const ICON_LABEL_CHAR_WIDTH = 7.5;
-const ICON_DESC_MAX_WIDTH = 144;
-const ICON_DESC_CHAR_WIDTH = 6.5;
 
 function cardStyle(style: ResolvedNodeStyle): Record<string, unknown> {
   return {
@@ -269,10 +271,6 @@ function renderTeamIconCard(
   y: number,
   style: ResolvedNodeStyle,
 ): string {
-  const id = escapeXml(team.id);
-  const label = escapeXml(
-    truncateToWidth(team.label ?? team.id, ICON_LABEL_MAX_WIDTH, ICON_LABEL_CHAR_WIDTH),
-  );
   const hasChildren = team.members.length > 0 || team.teams.length > 0;
 
   const descParts = [
@@ -284,58 +282,44 @@ function renderTeamIconCard(
   const descText = descParts.join(" · ");
   const cardHeight = iconCardHeight(descText.length > 0);
 
-  const pictogram = renderPictogramGroup("team", style.color);
-
-  const parts: string[] = [
-    el("rect", { width: ICON_CARD_WIDTH, height: cardHeight, ...cardStyle(style) }),
-  ];
-
-  if (pictogram) parts.push(pictogram);
-
-  parts.push(
-    el(
-      "text",
-      {
-        x: 30,
-        y: 19,
-        fill: style.color,
-        "font-family": style.fontFamily,
-        "font-size": 13,
-        "font-weight": style.fontWeight,
-        "text-anchor": "start",
-      },
-      label,
-    ),
-  );
-
-  if (descText) {
-    parts.push(
-      el(
-        "text",
-        {
-          x: 8,
-          y: ICON_TITLE_HEIGHT + 22,
-          fill: style.color,
-          "font-family": style.fontFamily,
-          "font-size": 11,
-          opacity: 0.7,
-          "text-anchor": "start",
-        },
-        escapeXml(truncateToWidth(descText, ICON_DESC_MAX_WIDTH, ICON_DESC_CHAR_WIDTH)),
-      ),
-    );
-  }
-
-  return el(
-    "g",
-    {
-      transform: `translate(${x},${y})`,
-      "data-node-id": id,
+  return renderIconCard({
+    x,
+    y,
+    nodeId: team.id,
+    wrapperAttrs: {
       ...(hasChildren ? { "data-has-children": "true" } : {}),
       style: "cursor: pointer",
     },
-    ...parts,
-  );
+    width: ICON_CARD_WIDTH,
+    height: cardHeight,
+    rectFill: style.backgroundColor,
+    rectStroke: style.borderColor,
+    rectStrokeWidth: style.borderWidth,
+    rectRx: 8,
+    pictogram: renderPictogramGroup("team", style.color) || undefined,
+    titleText: truncateToWidth(team.label ?? team.id, ICON_LABEL_MAX_WIDTH, ICON_LABEL_CHAR_WIDTH),
+    titleX: 30,
+    titleY: 19,
+    titleAttrs: {
+      fill: style.color,
+      "font-family": style.fontFamily,
+      "font-size": 13,
+      "font-weight": style.fontWeight,
+      "text-anchor": "start",
+    },
+    descText: descText
+      ? truncateToWidth(descText, ICON_DESC_MAX_WIDTH, ICON_DESC_CHAR_WIDTH)
+      : undefined,
+    descX: 8,
+    descY: ICON_TITLE_HEIGHT + 22,
+    descAttrs: {
+      fill: style.color,
+      "font-family": style.fontFamily,
+      "font-size": 11,
+      opacity: 0.7,
+      "text-anchor": "start",
+    },
+  });
 }
 
 function renderMemberIconCard(
@@ -344,60 +328,50 @@ function renderMemberIconCard(
   y: number,
   style: ResolvedNodeStyle,
 ): string {
-  const id = escapeXml(member.id);
-  const label = escapeXml(
-    truncateToWidth(member.label ?? member.id, ICON_LABEL_MAX_WIDTH, ICON_LABEL_CHAR_WIDTH),
-  );
-
   const details = [member.properties.slack, member.properties.github].filter(Boolean).join(" · ");
   const descText =
     details ||
     truncateToWidth(member.properties.description ?? "", ICON_DESC_MAX_WIDTH, ICON_DESC_CHAR_WIDTH);
   const cardHeight = iconCardHeight(descText.length > 0);
 
-  const pictogram = renderPictogramGroup("member", style.color);
-
-  const parts: string[] = [
-    el("rect", { width: ICON_CARD_WIDTH, height: cardHeight, ...cardStyle(style) }),
-  ];
-
-  if (pictogram) parts.push(pictogram);
-
-  parts.push(
-    el(
-      "text",
-      {
-        x: 30,
-        y: 19,
-        fill: style.color,
-        "font-family": style.fontFamily,
-        "font-size": 13,
-        "font-weight": style.fontWeight,
-        "text-anchor": "start",
-      },
-      label,
+  return renderIconCard({
+    x,
+    y,
+    nodeId: member.id,
+    width: ICON_CARD_WIDTH,
+    height: cardHeight,
+    rectFill: style.backgroundColor,
+    rectStroke: style.borderColor,
+    rectStrokeWidth: style.borderWidth,
+    rectRx: 8,
+    pictogram: renderPictogramGroup("member", style.color) || undefined,
+    titleText: truncateToWidth(
+      member.label ?? member.id,
+      ICON_LABEL_MAX_WIDTH,
+      ICON_LABEL_CHAR_WIDTH,
     ),
-  );
-
-  if (descText) {
-    parts.push(
-      el(
-        "text",
-        {
-          x: 8,
-          y: ICON_TITLE_HEIGHT + 22,
-          fill: style.color,
-          "font-family": style.fontFamily,
-          "font-size": 11,
-          opacity: 0.7,
-          "text-anchor": "start",
-        },
-        escapeXml(truncateToWidth(descText, ICON_DESC_MAX_WIDTH, ICON_DESC_CHAR_WIDTH)),
-      ),
-    );
-  }
-
-  return el("g", { transform: `translate(${x},${y})`, "data-node-id": id }, ...parts);
+    titleX: 30,
+    titleY: 19,
+    titleAttrs: {
+      fill: style.color,
+      "font-family": style.fontFamily,
+      "font-size": 13,
+      "font-weight": style.fontWeight,
+      "text-anchor": "start",
+    },
+    descText: descText
+      ? truncateToWidth(descText, ICON_DESC_MAX_WIDTH, ICON_DESC_CHAR_WIDTH)
+      : undefined,
+    descX: 8,
+    descY: ICON_TITLE_HEIGHT + 22,
+    descAttrs: {
+      fill: style.color,
+      "font-family": style.fontFamily,
+      "font-size": 11,
+      opacity: 0.7,
+      "text-anchor": "start",
+    },
+  });
 }
 
 function gridLayout(count: number): { totalWidth: number; totalHeight: number } {
