@@ -1,9 +1,5 @@
 import { describe, it, expect } from "vitest";
-import {
-  buildLevelId,
-  collectAllSystemPaths,
-  assembleMultiLevelSvg,
-} from "./multi-level-svg.js";
+import { buildLevelId, collectAllSystemPaths, assembleMultiLevelSvg } from "./multi-level-svg.js";
 import type { ExportLevel } from "./multi-level-svg.js";
 import type { KrsNode } from "../types/ast.js";
 
@@ -171,4 +167,3 @@ describe("assembleMultiLevelSvg", () => {
     expect(svg).toContain("1200");
   });
 });
-
