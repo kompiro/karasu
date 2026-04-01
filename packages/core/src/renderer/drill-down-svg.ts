@@ -242,6 +242,73 @@ export function buildFullViewSvg(
   return `<svg xmlns="http://www.w3.org/2000/svg" width="${maxWidth}" height="${yOffset}" style="background:${FULL_VIEW_BG}">${parts.join("")}</svg>`;
 }
 
+// ─── Org Drill-down SVG (CSS :target navigation) ─────────────────────────────
+
+function collectDrillDownOrgLevels(
+  organizations: OrganizationBlock[],
+  styles: ResolvedStyles,
+  displayMode: DisplayMode | undefined,
+  path: string[],
+  viewId: string,
+  parentViewId: string | null,
+  levels: string[],
+): void {
+  const slice = extractOrgView(organizations, path);
+
+  const currentTeams = slice.focusedTeam !== null ? slice.focusedTeam.teams : slice.teams;
+  if (slice.focusedTeam === null && currentTeams.length === 0) return;
+
+  const drillableTeams = currentTeams.filter((t) => t.teams.length > 0 || t.members.length > 0);
+  const childLevelLinks = new Map(
+    drillableTeams.map((t) => [t.id, `krs-view-${sanitizeId(t.id)}`]),
+  );
+
+  const svg = renderOrgView(slice, styles, displayMode, childLevelLinks);
+  const { viewBox, innerContent } = extractSvgParts(svg);
+
+  const backButton = parentViewId !== null ? renderBackButton(parentViewId) : "";
+  const innerSvg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${viewBox}" width="100%" height="100%">${backButton}${innerContent}</svg>`;
+  levels.push(`<g id="krs-view-${viewId}" class="krs-view">${innerSvg}</g>`);
+
+  for (const team of drillableTeams) {
+    collectDrillDownOrgLevels(
+      organizations,
+      styles,
+      displayMode,
+      [...path, team.id],
+      sanitizeId(team.id),
+      viewId,
+      levels,
+    );
+  }
+}
+
+/**
+ * Builds a single SVG with all org drill-down levels navigable via CSS :target + :has().
+ * No JavaScript required. Each level is hidden/shown by CSS based on the URL fragment.
+ */
+export function buildDrillDownSvgOrg(
+  krsFile: KrsFile,
+  styleSource?: string,
+  displayMode?: DisplayMode,
+): string {
+  const topLevelTeams = krsFile.organizations.flatMap((o) => o.teams);
+  if (topLevelTeams.length === 0) {
+    return `<svg xmlns="http://www.w3.org/2000/svg" width="100%" height="100%" viewBox="0 0 200 100"><text x="100" y="50" text-anchor="middle" fill="#9CA3AF" font-family="sans-serif">No org diagram</text></svg>`;
+  }
+
+  const styles = resolveStyles(
+    krsFile.systems,
+    buildStyles(displayMode),
+    [],
+    krsFile.organizations,
+  );
+
+  const levels: string[] = [];
+  collectDrillDownOrgLevels(krsFile.organizations, styles, displayMode, [], "root", null, levels);
+
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="100%" height="100%"><style>${DRILL_DOWN_CSS}</style>${levels.join("")}</svg>`;
+}
 // ─── Org Full View SVG (all org levels stacked vertically) ──────────────────
 
 function collectOrgFullViewLevels(
@@ -290,7 +357,7 @@ export function buildFullViewSvgOrg(
     return `<svg xmlns="http://www.w3.org/2000/svg" width="200" height="100" viewBox="0 0 200 100"><text x="100" y="50" text-anchor="middle" fill="#9CA3AF" font-family="sans-serif">No org diagram</text></svg>`;
   }
 
-  const styles = resolveStyles(krsFile.systems, buildStyles(displayMode), []);
+  const styles = resolveStyles(krsFile.systems, buildStyles(displayMode), [], organizations);
   const rootLabel = organizations[0].label ?? organizations[0].id;
 
   const levels: FullViewLevel[] = [];

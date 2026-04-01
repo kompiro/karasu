@@ -2,9 +2,9 @@ import { useEffect, useCallback, useMemo, useRef, useState } from "react";
 import {
   Parser,
   buildDrillDownSvg,
+  buildDrillDownSvgOrg,
   buildFullViewSvg,
   buildFullViewSvgOrg,
-  buildExportSvgOrg,
 } from "@karasu/core";
 import { EditorPane } from "./components/EditorPane.js";
 import { ProjectSelector } from "./components/ProjectSelector.js";
@@ -332,7 +332,7 @@ export function ProjectModeApp() {
   const orgDrillDownSvg = useMemo(() => {
     if (!fileContent) return undefined;
     try {
-      return buildExportSvgOrg(fileContent, undefined, displayMode);
+      return buildDrillDownSvgOrg(fileContent, undefined, displayMode);
     } catch {
       return undefined;
     }

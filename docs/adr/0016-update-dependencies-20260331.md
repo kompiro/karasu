@@ -1,0 +1,72 @@
+# ADR-0016: Dependency Updates — 2026-03-31
+
+## Status
+
+Accepted
+
+## Context
+
+Five Dependabot PRs were opened on 2026-03-30 and merged on 2026-03-31.
+One was a security fix; one was a major-version breaking change; the rest were minor dev-tooling updates.
+
+| Package | From | To | Type | PR |
+|---------|------|-----|------|----|
+| `marked` | 17.0.4 | 17.0.5 | runtime | #195 |
+| `oxfmt` | 0.41.0 | 0.42.0 | dev | #198 |
+| `oxlint` | 1.56.0 | 1.57.0 | dev | #194 |
+| `chokidar` | 4.0.3 | 5.0.0 | runtime | #196 |
+| `@types/node` | 22.19.15 | 25.5.0 | dev | #197 |
+
+### marked 17.0.5 — security fix
+
+This patch release fixes two ReDoS (Regular Expression Denial of Service) vulnerabilities:
+
+- Catastrophic backtracking in the link/reflink label regex (#3918)
+- Quadratic complexity in the `emStrongLDelim` regex (#3906)
+
+`marked` is used in `packages/app/src/components/NodeDetailPanel.tsx`. The fix required no code changes and was prioritized as the first merge.
+
+### oxfmt 0.42.0
+
+Added JSDoc comment formatting support and doc comments for `JsdocConfig`. Running `npm run format` after the update produced no diffs, confirming the new JSDoc formatting behaviour did not affect existing source files.
+
+### oxlint 1.57.0
+
+Added new lint rules and plugin API improvements. CI lint passed with 0 warnings and 0 errors, confirming no existing code was affected by the new rules. The `@dependabot rebase` command was used to resolve a `package.json` conflict caused by the concurrent oxfmt PR merging first.
+
+### chokidar 5.0.0 — ESM-only major version
+
+chokidar 5 drops CJS support and becomes ESM-only, and raises the minimum Node.js version to v20.19. This was compatible because:
+
+- `packages/cli/package.json` already declares `"type": "module"`
+- The existing import (`import { watch } from "chokidar"`) is ESM-style
+- CI uses Node.js 22, which satisfies the v20.19+ requirement
+
+The failing CLI tests discovered during verification (`serve.test.ts` SPA fallback) were unrelated to chokidar — they were pre-existing environment-dependent failures fixed separately in PR #201.
+
+### @types/node 22.19.15 → 25.5.0
+
+A three-major-version jump in type definitions. Running `npm run typecheck` across all packages produced no errors, confirming the updated Node.js 25 types were fully compatible with the existing codebase.
+
+## Decision
+
+Merge all five PRs in priority order: security fix first, then dev tooling, then runtime breaking changes, then type definitions.
+
+For PRs that conflicted after an earlier merge, use `@dependabot rebase` rather than manual conflict resolution to keep the process clean.
+
+## Consequences
+
+**Positive:**
+
+- ReDoS vulnerabilities in `marked` are resolved.
+- oxfmt gains JSDoc formatting support for future use.
+- chokidar 5's ESM-only package reduces install size (~150 KB → ~80 KB) and aligns with the repo's ESM-first stance.
+- `@types/node` is current with Node.js 25, reducing future upgrade friction.
+
+**Negative:**
+
+- chokidar 5 requires Node.js v20.19+. Any CI or deployment environment running an older Node version would break. The current CI configuration (Node 22) is unaffected.
+
+## Lessons Learned
+
+The SPA fallback tests in `packages/cli` only passed in CI because tests run before the build step — `app/dist/` does not exist at test time. Locally, where `app/dist/` persists from a previous build, the same tests fail. This environment dependency was identified during the chokidar upgrade verification and fixed in PR #201 (Issue #200).

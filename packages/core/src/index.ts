@@ -124,6 +124,7 @@ import {
   buildDrillDownSvg as _buildDrillDownSvg,
   buildFullViewSvg as _buildFullViewSvg,
   buildFullViewSvgOrg as _buildFullViewSvgOrg,
+  buildDrillDownSvgOrg as _buildDrillDownSvgOrg,
 } from "./renderer/drill-down-svg.js";
 
 import type { DisplayMode } from "./renderer/layout.js";
@@ -471,4 +472,17 @@ export function buildFullViewSvgOrg(
 ): string {
   const parseResult: ParseResult<KrsFile> = Parser.parse(krsSource);
   return _buildFullViewSvgOrg(parseResult.value, styleSource, displayMode);
+}
+
+/**
+ * Builds a single SVG with all org drill-down levels navigable via CSS :target + :has().
+ * No JavaScript required. Each level is hidden/shown by CSS based on the URL fragment.
+ */
+export function buildDrillDownSvgOrg(
+  krsSource: string,
+  styleSource?: string,
+  displayMode?: DisplayMode,
+): string {
+  const parseResult: ParseResult<KrsFile> = Parser.parse(krsSource);
+  return _buildDrillDownSvgOrg(parseResult.value, styleSource, displayMode);
 }
