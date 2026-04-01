@@ -11,9 +11,11 @@ export class PreviewPanel {
   private _currentDocument: vscode.TextDocument | undefined;
   private readonly _disposables: vscode.Disposable[] = [];
   private _disposed = false;
+  private readonly _onDispose: () => void;
 
-  private constructor(panel: vscode.WebviewPanel) {
+  private constructor(panel: vscode.WebviewPanel, onDispose: () => void) {
     this._panel = panel;
+    this._onDispose = onDispose;
     this._panel.onDidDispose(() => this.dispose(), null, this._disposables);
     this._panel.webview.onDidReceiveMessage(
       (message: { type: string; viewType?: ViewType }) => {
@@ -29,14 +31,14 @@ export class PreviewPanel {
     );
   }
 
-  static create(): PreviewPanel {
+  static create(onDispose: () => void): PreviewPanel {
     const panel = vscode.window.createWebviewPanel(
       PreviewPanel.viewType,
       "karasu Preview",
       vscode.ViewColumn.Beside,
       { enableScripts: true, retainContextWhenHidden: true },
     );
-    return new PreviewPanel(panel);
+    return new PreviewPanel(panel, onDispose);
   }
 
   update(document: vscode.TextDocument): void {
@@ -50,10 +52,6 @@ export class PreviewPanel {
 
   get isDisposed(): boolean {
     return this._disposed;
-  }
-
-  onDidDispose(callback: () => void): void {
-    this._panel.onDidDispose(callback, null, this._disposables);
   }
 
   private _render(krsSource: string): void {
@@ -74,6 +72,7 @@ export class PreviewPanel {
   }
 
   private _buildHtml(svg: string): string {
+    const nonce = _nonce();
     const activeStyle =
       "background:var(--vscode-button-background);color:var(--vscode-button-foreground);border-color:var(--vscode-button-background);";
     const btnStyle = (view: ViewType) => (view === this._viewType ? activeStyle : "");
@@ -83,7 +82,7 @@ export class PreviewPanel {
 <head>
   <meta charset="UTF-8">
   <meta http-equiv="Content-Security-Policy"
-    content="default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline';">
+    content="default-src 'none'; style-src 'unsafe-inline'; script-src 'nonce-${nonce}';">
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
@@ -127,7 +126,7 @@ export class PreviewPanel {
     <button data-view="org" style="${btnStyle("org")}">Org</button>
   </div>
   <div id="preview">${svg}</div>
-  <script>
+  <script nonce="${nonce}">
     const vscode = acquireVsCodeApi();
     document.querySelectorAll('[data-view]').forEach(function(btn) {
       btn.addEventListener('click', function() {
@@ -142,10 +141,20 @@ export class PreviewPanel {
   dispose(): void {
     if (this._disposed) return;
     this._disposed = true;
+    this._onDispose();
     this._panel.dispose();
     for (const d of this._disposables) d.dispose();
     this._disposables.length = 0;
   }
+}
+
+function _nonce(): string {
+  const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+  let result = "";
+  for (let i = 0; i < 32; i++) {
+    result += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return result;
 }
 
 function _escape(str: string): string {

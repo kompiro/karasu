@@ -8,8 +8,11 @@ import {
 } from "vscode-languageclient/node";
 import { PreviewPanel } from "./preview-panel.js";
 
+const PREVIEW_DEBOUNCE_MS = 300;
+
 let client: LanguageClient | undefined;
 let previewPanel: PreviewPanel | undefined;
+let debounceTimer: ReturnType<typeof setTimeout> | undefined;
 
 export function activate(context: vscode.ExtensionContext): void {
   // --- LSP ---
@@ -43,8 +46,7 @@ export function activate(context: vscode.ExtensionContext): void {
     }
 
     if (!previewPanel || previewPanel.isDisposed) {
-      previewPanel = PreviewPanel.create();
-      previewPanel.onDidDispose(() => {
+      previewPanel = PreviewPanel.create(() => {
         previewPanel = undefined;
       });
     }
@@ -55,7 +57,10 @@ export function activate(context: vscode.ExtensionContext): void {
 
   const changeWatcher = vscode.workspace.onDidChangeTextDocument((e) => {
     if (previewPanel && !previewPanel.isDisposed && e.document.languageId === "krs") {
-      previewPanel.update(e.document);
+      clearTimeout(debounceTimer);
+      debounceTimer = setTimeout(() => {
+        previewPanel?.update(e.document);
+      }, PREVIEW_DEBOUNCE_MS);
     }
   });
 
