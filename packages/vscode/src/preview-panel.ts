@@ -106,16 +106,25 @@ export class PreviewPanel {
         <text x="10" y="30" fill="#f44" font-family="monospace" font-size="13">Error: ${_escape(msg)}</text>
       </svg>`;
     }
-    this._panel.webview.html = this._buildHtml(svg);
+    this._panel.webview.html = this._buildHtml(svg, this._lastNodeMetadata);
   }
 
-  private _buildHtml(svg: string): string {
+  private _buildHtml(svg: string, nodeMetadata?: Map<string, NodeMetadata>): string {
     const nonce = _nonce();
     const activeStyle =
       "background:var(--vscode-button-background);color:var(--vscode-button-foreground);border-color:var(--vscode-button-background);";
     const btnStyle = (view: ViewType) => (view === this._viewType ? activeStyle : "");
 
     const breadcrumb = this._buildBreadcrumb();
+
+    // Serialize only the description field for each node to pass into the webview.
+    const descriptionMap: Record<string, string> = {};
+    if (nodeMetadata) {
+      for (const [id, meta] of nodeMetadata) {
+        if (meta.description) descriptionMap[id] = meta.description;
+      }
+    }
+    const descriptionJson = JSON.stringify(descriptionMap);
 
     return `<!DOCTYPE html>
 <html lang="en">
@@ -195,6 +204,21 @@ export class PreviewPanel {
     }
     [data-node-id] { cursor: pointer; }
     [data-has-children="true"] { cursor: zoom-in; }
+    #karasu-tooltip {
+      position: fixed;
+      display: none;
+      max-width: 320px;
+      padding: 6px 10px;
+      background: var(--vscode-editorHoverWidget-background, #252526);
+      color: var(--vscode-editorHoverWidget-foreground, #cccccc);
+      border: 1px solid var(--vscode-editorHoverWidget-border, #454545);
+      border-radius: 3px;
+      font-size: 12px;
+      line-height: 1.5;
+      white-space: pre-wrap;
+      pointer-events: none;
+      z-index: 1000;
+    }
   </style>
 </head>
 <body>
@@ -206,8 +230,11 @@ export class PreviewPanel {
     <div id="breadcrumb">${breadcrumb}</div>
   </div>
   <div id="preview">${svg}</div>
+  <div id="karasu-tooltip"></div>
   <script nonce="${nonce}">
     const vscode = acquireVsCodeApi();
+    const nodeDescriptions = ${descriptionJson};
+    const tooltip = document.getElementById('karasu-tooltip');
 
     // View switcher
     document.querySelectorAll('[data-view]').forEach(function(btn) {
@@ -236,6 +263,28 @@ export class PreviewPanel {
       } else {
         vscode.postMessage({ type: 'navigate', nodeId: nodeId });
       }
+    });
+
+    // Node hover: show description tooltip
+    document.querySelector('#preview').addEventListener('mousemove', function(e) {
+      var group = e.target.closest('[data-node-id]');
+      if (!group) { tooltip.style.display = 'none'; return; }
+      var nodeId = group.getAttribute('data-node-id');
+      var desc = nodeId && nodeDescriptions[nodeId];
+      if (!desc) { tooltip.style.display = 'none'; return; }
+      tooltip.textContent = desc;
+      tooltip.style.display = 'block';
+      var x = e.clientX + 14;
+      var y = e.clientY + 14;
+      // Keep tooltip inside viewport
+      if (x + tooltip.offsetWidth > window.innerWidth) x = e.clientX - tooltip.offsetWidth - 8;
+      if (y + tooltip.offsetHeight > window.innerHeight) y = e.clientY - tooltip.offsetHeight - 8;
+      tooltip.style.left = x + 'px';
+      tooltip.style.top = y + 'px';
+    });
+
+    document.querySelector('#preview').addEventListener('mouseleave', function() {
+      tooltip.style.display = 'none';
     });
 
     // Highlight message from extension
