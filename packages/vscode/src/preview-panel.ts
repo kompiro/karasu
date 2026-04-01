@@ -1,5 +1,5 @@
 import * as vscode from "vscode";
-import { compile } from "@karasu/core";
+import { compile, type NodeMetadata } from "@karasu/core";
 
 type ViewType = "system" | "deploy" | "org";
 
@@ -8,6 +8,9 @@ export class PreviewPanel {
 
   private readonly _panel: vscode.WebviewPanel;
   private _viewType: ViewType = "system";
+  private _viewPath: string[] = [];
+  private _viewLabels: string[] = [];
+  private _lastNodeMetadata: Map<string, NodeMetadata> | undefined;
   private _currentDocument: vscode.TextDocument | undefined;
   private readonly _disposables: vscode.Disposable[] = [];
   private _disposed = false;
@@ -24,9 +27,24 @@ export class PreviewPanel {
     this._onNavigate = onNavigate;
     this._panel.onDidDispose(() => this.dispose(), null, this._disposables);
     this._panel.webview.onDidReceiveMessage(
-      (message: { type: string; viewType?: ViewType; nodeId?: string }) => {
+      (message: { type: string; viewType?: ViewType; nodeId?: string; index?: number }) => {
         if (message.type === "switchView" && message.viewType) {
           this._viewType = message.viewType;
+          this._viewPath = [];
+          this._viewLabels = [];
+          if (this._currentDocument) {
+            this._render(this._currentDocument.getText());
+          }
+        } else if (message.type === "drillDown" && message.nodeId) {
+          const label = this._lastNodeMetadata?.get(message.nodeId)?.label ?? message.nodeId;
+          this._viewPath = [...this._viewPath, message.nodeId];
+          this._viewLabels = [...this._viewLabels, label];
+          if (this._currentDocument) {
+            this._render(this._currentDocument.getText());
+          }
+        } else if (message.type === "navigateTo" && message.index !== undefined) {
+          this._viewPath = this._viewPath.slice(0, message.index);
+          this._viewLabels = this._viewLabels.slice(0, message.index);
           if (this._currentDocument) {
             this._render(this._currentDocument.getText());
           }
@@ -69,7 +87,15 @@ export class PreviewPanel {
   private _render(krsSource: string): void {
     let svg: string;
     try {
-      svg = compile(krsSource, { diagramType: this._viewType }).svg;
+      const viewPathOpts =
+        this._viewType === "org"
+          ? { orgPath: this._viewPath }
+          : this._viewType === "system"
+            ? { viewPath: this._viewPath }
+            : {};
+      const result = compile(krsSource, { diagramType: this._viewType, ...viewPathOpts });
+      svg = result.svg;
+      this._lastNodeMetadata = result.diagramType !== "org" ? result.nodeMetadata : undefined;
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       svg = `<svg xmlns="http://www.w3.org/2000/svg" width="600" height="60">
@@ -84,6 +110,8 @@ export class PreviewPanel {
     const activeStyle =
       "background:var(--vscode-button-background);color:var(--vscode-button-foreground);border-color:var(--vscode-button-background);";
     const btnStyle = (view: ViewType) => (view === this._viewType ? activeStyle : "");
+
+    const breadcrumb = this._buildBreadcrumb();
 
     return `<!DOCTYPE html>
 <html lang="en">
@@ -108,7 +136,36 @@ export class PreviewPanel {
       padding: 6px 10px;
       border-bottom: 1px solid var(--vscode-panel-border);
       flex-shrink: 0;
+      align-items: center;
     }
+    .toolbar-sep {
+      width: 1px;
+      height: 16px;
+      background: var(--vscode-panel-border);
+      flex-shrink: 0;
+    }
+    #breadcrumb {
+      display: flex;
+      align-items: center;
+      gap: 2px;
+      font-size: 12px;
+      overflow: hidden;
+    }
+    #breadcrumb button {
+      padding: 2px 6px;
+      border: none;
+      background: none;
+      color: var(--vscode-textLink-foreground, #4daafc);
+      cursor: pointer;
+      font-size: 12px;
+      white-space: nowrap;
+    }
+    #breadcrumb button:last-child {
+      color: var(--vscode-editor-foreground);
+      cursor: default;
+      font-weight: bold;
+    }
+    #breadcrumb .sep { color: var(--vscode-descriptionForeground); padding: 0 2px; }
     button {
       padding: 3px 10px;
       border: 1px solid var(--vscode-button-secondaryBackground, #555);
@@ -133,6 +190,7 @@ export class PreviewPanel {
       stroke-width: 3;
     }
     [data-node-id] { cursor: pointer; }
+    [data-has-children="true"] { cursor: zoom-in; }
   </style>
 </head>
 <body>
@@ -140,6 +198,8 @@ export class PreviewPanel {
     <button data-view="system" style="${btnStyle("system")}">System</button>
     <button data-view="deploy" style="${btnStyle("deploy")}">Deploy</button>
     <button data-view="org" style="${btnStyle("org")}">Org</button>
+    <div class="toolbar-sep"></div>
+    <div id="breadcrumb">${breadcrumb}</div>
   </div>
   <div id="preview">${svg}</div>
   <script nonce="${nonce}">
@@ -152,12 +212,26 @@ export class PreviewPanel {
       });
     });
 
-    // Node click → navigate
-    document.querySelectorAll('[data-node-id]').forEach(function(el) {
-      el.addEventListener('click', function(e) {
-        e.stopPropagation();
-        vscode.postMessage({ type: 'navigate', nodeId: el.dataset.nodeId });
+    // Breadcrumb navigation
+    document.querySelectorAll('[data-nav-index]').forEach(function(btn) {
+      btn.addEventListener('click', function() {
+        vscode.postMessage({ type: 'navigateTo', index: Number(btn.dataset.navIndex) });
       });
+    });
+
+    // Node click: Cmd/Ctrl+click → navigate (editor jump); plain click on drillable node → drillDown
+    document.querySelector('#preview').addEventListener('click', function(e) {
+      var group = e.target.closest('[data-node-id]');
+      if (!group) return;
+      var nodeId = group.getAttribute('data-node-id');
+      if (!nodeId) return;
+      if (e.metaKey || e.ctrlKey) {
+        vscode.postMessage({ type: 'navigate', nodeId: nodeId });
+      } else if (group.getAttribute('data-has-children') === 'true') {
+        vscode.postMessage({ type: 'drillDown', nodeId: nodeId });
+      } else {
+        vscode.postMessage({ type: 'navigate', nodeId: nodeId });
+      }
     });
 
     // Highlight message from extension
@@ -179,6 +253,23 @@ export class PreviewPanel {
   </script>
 </body>
 </html>`;
+  }
+
+  private _buildBreadcrumb(): string {
+    // segments[0] = Root (navigateTo 0 → empty path)
+    // segments[i] = _viewLabels[i-1] (navigateTo i → path of length i)
+    // Last segment is current position — not clickable
+    const labels = ["Root", ...this._viewLabels];
+    return labels
+      .map((label, i) => {
+        const isLast = i === labels.length - 1;
+        const sep = i > 0 ? `<span class="sep">›</span>` : "";
+        if (isLast) {
+          return `${sep}<button style="cursor:default;color:var(--vscode-editor-foreground);font-weight:bold;">${_escape(label)}</button>`;
+        }
+        return `${sep}<button data-nav-index="${i}">${_escape(label)}</button>`;
+      })
+      .join("");
   }
 
   dispose(): void {
