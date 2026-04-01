@@ -98,14 +98,12 @@ export function useSystemView(
 
     timerRef.current = setTimeout(async () => {
       try {
-        const result = await compileProject(
-          entryPath,
-          fs,
+        const result = await compileProject(entryPath, fs, {
+          diagramType: "system",
           viewPath,
-          "system",
-          undefined,
           displayMode,
-        );
+        });
+        if (result.diagramType !== "system") return;
         const hasErrors = result.diagnostics.some((d) => d.severity === "error");
 
         if (hasErrors) {

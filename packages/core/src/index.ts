@@ -134,7 +134,7 @@ import { extractView, type ViewPath } from "./view/view-extract.js";
 import { extractOrgView, type OrgViewPath } from "./view/org-view-extract.js";
 import { extractDeployView } from "./view/deploy-view-extract.js";
 import { ImportResolver } from "./fs/import-resolver.js";
-import { getBuiltinStyleSheet, BUILTIN_STYLE_SOURCE } from "./builtins/default-style.js";
+import { getBuiltinStyleSheet } from "./builtins/default-style.js";
 import { getIconThemeStyleSheet } from "./builtins/icon-theme.js";
 import "./renderer/shapes.js"; // ensure built-in shapes are registered
 import type {
@@ -165,14 +165,31 @@ export interface NodeMetadata {
   hasDeployContainer?: boolean;
 }
 
-export type DiagramType = "system" | "deploy";
+export type DiagramType = "system" | "deploy" | "org";
 
 export interface DeployBlockInfo {
   id: string;
   label: string;
 }
 
-export interface CompileResult {
+/** Options for compile() and compileProject(). */
+export interface CompileOptions {
+  /** Which diagram to render. Defaults to "system". */
+  diagramType?: DiagramType;
+  /** Optional .krs.style content. Do NOT pre-concatenate icon theme when using displayMode "icon". */
+  styleSource?: string;
+  /** Drill-down path for system diagram. Ignored for deploy and org. */
+  viewPath?: ViewPath;
+  /** Drill-down path for org diagram. Ignored for system and deploy. */
+  orgPath?: OrgViewPath;
+  /** Active deploy container ID. Deploy diagram only. */
+  selectedDeployId?: string;
+  /** "icon" switches nodes to fixed-size icon card layout. */
+  displayMode?: DisplayMode;
+}
+
+export interface SystemCompileResult {
+  diagramType: "system";
   svg: string;
   warnings: Warning[];
   diagnostics: Diagnostic[];
@@ -181,42 +198,73 @@ export interface CompileResult {
   deployBlocks: DeployBlockInfo[];
 }
 
-/**
- * Compile a .krs source string to SVG.
- *
- * @param krsSource     - The raw .krs diagram source
- * @param styleSource   - Optional .krs.style content provided by the caller.
- *                        When `displayMode === "icon"`, the icon theme stylesheet is
- *                        automatically injected as a system sheet. Callers must NOT
- *                        pre-concatenate `ICON_THEME_STYLE_SOURCE` into `styleSource`
- *                        when passing `displayMode === "icon"`, as this would apply
- *                        the icon theme rules twice and produce duplicate style warnings.
- * @param viewPath      - Optional path filter for drill-down views
- * @param diagramType   - "deploy" renders the deployment diagram; default renders the system view
- * @param selectedDeployId - Active deploy container ID (deploy diagram only)
- * @param displayMode   - "icon" switches nodes to fixed-size icon card layout
- */
-export function compile(
-  krsSource: string,
-  styleSource?: string,
-  viewPath?: ViewPath,
-  diagramType?: DiagramType,
-  selectedDeployId?: string,
-  displayMode?: DisplayMode,
-): CompileResult {
+export interface DeployCompileResult {
+  diagramType: "deploy";
+  svg: string;
+  warnings: Warning[];
+  diagnostics: Diagnostic[];
+  nodeMetadata: Map<string, NodeMetadata>;
+  deployBlocks: DeployBlockInfo[];
+}
+
+export interface OrgCompileResult {
+  diagramType: "org";
+  svg: string;
+  diagnostics: Diagnostic[];
+  warnings: Warning[];
+  nodePathIndex: Map<string, string[]>;
+}
+
+/** Discriminated union of all compile result types. Narrow on `diagramType` to access type-specific fields. */
+export type CompileResult = SystemCompileResult | DeployCompileResult | OrgCompileResult;
+
+// ---------------------------------------------------------------------------
+// Internal helpers
+// ---------------------------------------------------------------------------
+
+function _compileCore(krsSource: string, opts: CompileOptions): CompileResult {
+  const {
+    diagramType = "system",
+    styleSource,
+    viewPath,
+    orgPath,
+    selectedDeployId,
+    displayMode,
+  } = opts;
+
   const parseResult: ParseResult<KrsFile> = Parser.parse(krsSource);
   const diagnostics = [...parseResult.diagnostics];
 
-  const sheets: StyleSheet[] = [getBuiltinStyleSheet()];
-  if (displayMode === "icon") {
-    sheets.push(getIconThemeStyleSheet());
-  }
+  const systemSheets: StyleSheet[] = [getBuiltinStyleSheet()];
+  if (displayMode === "icon") systemSheets.push(getIconThemeStyleSheet());
+  const sheets = [...systemSheets];
   if (styleSource) {
     const styleResult = StyleParser.parse(styleSource);
     diagnostics.push(...styleResult.diagnostics);
     sheets.push(styleResult.value);
   }
+  const systemSheetCount = systemSheets.length;
+  const warnings = analyze(parseResult.value, sheets, systemSheetCount);
 
+  if (diagramType === "org") {
+    const slice = extractOrgView(parseResult.value.organizations, orgPath ?? []);
+    const styles = resolveStyles(
+      parseResult.value.systems,
+      sheets,
+      undefined,
+      parseResult.value.organizations,
+    );
+    const svg = _renderOrgView(slice, styles, displayMode);
+    return {
+      diagramType: "org",
+      svg,
+      diagnostics,
+      warnings,
+      nodePathIndex: parseResult.value.nodePathIndex,
+    };
+  }
+
+  // system / deploy shared setup
   const deploySliceForStyle = extractDeployView(
     parseResult.value.deploys,
     parseResult.value.systems,
@@ -226,52 +274,69 @@ export function compile(
     ...deploySliceForStyle.containers.flatMap((c) => c.units),
     ...deploySliceForStyle.unclassifiedUnits,
   ];
-  const systemSheetCount = displayMode === "icon" ? 2 : 1;
   const styles = resolveStyles(parseResult.value.systems, sheets, deployUnits);
-  const warnings = analyze(parseResult.value, sheets, systemSheetCount);
   const hasDeployDiagram = parseResult.value.deploys.length > 0;
   const deployBlocks = parseResult.value.deploys.map((d) => ({ id: d.id, label: d.label ?? d.id }));
   const serviceIdsWithDeploy = new Set(deploySliceForStyle.containers.map((c) => c.serviceId));
   const ownerIndex = parseResult.value.ownerIndex;
 
-  let svg: string;
-  let nodeMetadata: Map<string, NodeMetadata>;
-
   if (diagramType === "deploy") {
-    const deploySlice = deploySliceForStyle;
-    svg = renderDeploy(deploySlice, styles, displayMode);
-    nodeMetadata = buildDeployNodeMetadata(deploySlice);
-  } else {
-    const viewSlice = extractView(parseResult.value.systems, viewPath ?? []);
-    svg = render(viewSlice, styles, serviceIdsWithDeploy, ownerIndex, displayMode);
-    nodeMetadata = buildNodeMetadata(viewSlice, serviceIdsWithDeploy, ownerIndex);
+    const svg = renderDeploy(deploySliceForStyle, styles, displayMode);
+    const nodeMetadata = buildDeployNodeMetadata(deploySliceForStyle);
+    return { diagramType: "deploy", svg, warnings, diagnostics, nodeMetadata, deployBlocks };
   }
 
-  return { svg, warnings, diagnostics, nodeMetadata, hasDeployDiagram, deployBlocks };
+  // system (default)
+  const viewSlice = extractView(parseResult.value.systems, viewPath ?? []);
+  const svg = render(viewSlice, styles, serviceIdsWithDeploy, ownerIndex, displayMode);
+  const nodeMetadata = buildNodeMetadata(viewSlice, serviceIdsWithDeploy, ownerIndex);
+  return {
+    diagramType: "system",
+    svg,
+    warnings,
+    diagnostics,
+    nodeMetadata,
+    hasDeployDiagram,
+    deployBlocks,
+  };
 }
 
-/**
- * FileSystemProvider 経由でプロジェクトをコンパイルする。
- * エントリ .krs ファイルから @import / import を再帰的に解決し、
- * マージ済みの AST をレンダリングする。
- */
-export async function compileProject(
+async function _compileProjectCore(
   entryPath: string,
   fs: FileSystemProvider,
-  viewPath?: ViewPath,
-  diagramType?: DiagramType,
-  selectedDeployId?: string,
-  displayMode?: DisplayMode,
+  opts: CompileOptions,
 ): Promise<CompileResult> {
+  const { diagramType = "system", orgPath, selectedDeployId, displayMode } = opts;
+
   const resolver = new ImportResolver(fs);
   const resolved = await resolver.resolve(entryPath);
   const diagnostics = [...resolved.diagnostics];
 
   const systemSheets: StyleSheet[] = [getBuiltinStyleSheet()];
-  if (displayMode === "icon") {
-    systemSheets.push(getIconThemeStyleSheet());
-  }
+  if (displayMode === "icon") systemSheets.push(getIconThemeStyleSheet());
   const allSheets = [...systemSheets, ...resolved.styleSheets];
+  const systemSheetCount = systemSheets.length;
+  const warnings = analyze(resolved.krsFile, allSheets, systemSheetCount);
+
+  if (diagramType === "org") {
+    const slice = extractOrgView(resolved.krsFile.organizations, orgPath ?? []);
+    const styles = resolveStyles(
+      resolved.krsFile.systems,
+      allSheets,
+      undefined,
+      resolved.krsFile.organizations,
+    );
+    const svg = _renderOrgView(slice, styles, displayMode);
+    return {
+      diagramType: "org",
+      svg,
+      diagnostics,
+      warnings,
+      nodePathIndex: resolved.krsFile.nodePathIndex,
+    };
+  }
+
+  // system / deploy shared setup
   const deploySliceForStyle = extractDeployView(
     resolved.krsFile.deploys,
     resolved.krsFile.systems,
@@ -281,29 +346,151 @@ export async function compileProject(
     ...deploySliceForStyle.containers.flatMap((c) => c.units),
     ...deploySliceForStyle.unclassifiedUnits,
   ];
-  const systemSheetCount = systemSheets.length;
   const styles = resolveStyles(resolved.krsFile.systems, allSheets, deployUnits);
-  const warnings = analyze(resolved.krsFile, allSheets, systemSheetCount);
   const hasDeployDiagram = resolved.krsFile.deploys.length > 0;
-  const deployBlocks = resolved.krsFile.deploys.map((d) => ({ id: d.id, label: d.label ?? d.id }));
+  const deployBlocks = resolved.krsFile.deploys.map((d) => ({
+    id: d.id,
+    label: d.label ?? d.id,
+  }));
   const serviceIdsWithDeploy = new Set(deploySliceForStyle.containers.map((c) => c.serviceId));
   const ownerIndex = resolved.krsFile.ownerIndex;
 
-  let svg: string;
-  let nodeMetadata: Map<string, NodeMetadata>;
-
   if (diagramType === "deploy") {
-    const deploySlice = deploySliceForStyle;
-    svg = renderDeploy(deploySlice, styles, displayMode);
-    nodeMetadata = buildDeployNodeMetadata(deploySlice);
-  } else {
-    const viewSlice = extractView(resolved.krsFile.systems, viewPath ?? []);
-    svg = render(viewSlice, styles, serviceIdsWithDeploy, ownerIndex, displayMode);
-    nodeMetadata = buildNodeMetadata(viewSlice, serviceIdsWithDeploy, ownerIndex);
+    const svg = renderDeploy(deploySliceForStyle, styles, displayMode);
+    const nodeMetadata = buildDeployNodeMetadata(deploySliceForStyle);
+    return { diagramType: "deploy", svg, warnings, diagnostics, nodeMetadata, deployBlocks };
   }
 
-  return { svg, warnings, diagnostics, nodeMetadata, hasDeployDiagram, deployBlocks };
+  // system (default)
+  const viewPath = opts.viewPath;
+  const viewSlice = extractView(resolved.krsFile.systems, viewPath ?? []);
+  const svg = render(viewSlice, styles, serviceIdsWithDeploy, ownerIndex, displayMode);
+  const nodeMetadata = buildNodeMetadata(viewSlice, serviceIdsWithDeploy, ownerIndex);
+  return {
+    diagramType: "system",
+    svg,
+    warnings,
+    diagnostics,
+    nodeMetadata,
+    hasDeployDiagram,
+    deployBlocks,
+  };
 }
+
+// ---------------------------------------------------------------------------
+// Public API
+// ---------------------------------------------------------------------------
+
+/**
+ * Compile a .krs source string to SVG.
+ *
+ * @param krsSource - The raw .krs diagram source
+ * @param options   - Compile options (diagramType, styleSource, viewPath, orgPath, etc.)
+ */
+export function compile(krsSource: string, options?: CompileOptions): CompileResult;
+/**
+ * @deprecated Use `compile(krsSource, options)` instead.
+ *
+ * When `displayMode === "icon"`, the icon theme stylesheet is automatically injected.
+ * Callers must NOT pre-concatenate `ICON_THEME_STYLE_SOURCE` into `styleSource`.
+ */
+export function compile(
+  krsSource: string,
+  styleSource?: string,
+  viewPath?: ViewPath,
+  diagramType?: "system" | "deploy",
+  selectedDeployId?: string,
+  displayMode?: DisplayMode,
+): SystemCompileResult | DeployCompileResult;
+export function compile(
+  krsSource: string,
+  optionsOrStyle?: CompileOptions | string,
+  viewPath?: ViewPath,
+  diagramType?: "system" | "deploy",
+  selectedDeployId?: string,
+  displayMode?: DisplayMode,
+): CompileResult {
+  const opts: CompileOptions =
+    typeof optionsOrStyle === "object" || optionsOrStyle === undefined
+      ? (optionsOrStyle ?? {})
+      : { styleSource: optionsOrStyle, viewPath, diagramType, selectedDeployId, displayMode };
+  return _compileCore(krsSource, opts);
+}
+
+/**
+ * Compile a .krs project from the filesystem.
+ * Recursively resolves @import / import declarations and merges all files.
+ *
+ * @param entryPath - Path to the entry .krs file
+ * @param fs        - FileSystemProvider implementation
+ * @param options   - Compile options (diagramType, viewPath, orgPath, etc.)
+ */
+export function compileProject(
+  entryPath: string,
+  fs: FileSystemProvider,
+  options?: CompileOptions,
+): Promise<CompileResult>;
+/**
+ * @deprecated Use `compileProject(entryPath, fs, options)` instead.
+ */
+export function compileProject(
+  entryPath: string,
+  fs: FileSystemProvider,
+  viewPath?: ViewPath,
+  diagramType?: "system" | "deploy",
+  selectedDeployId?: string,
+  displayMode?: DisplayMode,
+): Promise<SystemCompileResult | DeployCompileResult>;
+export async function compileProject(
+  entryPath: string,
+  fs: FileSystemProvider,
+  optionsOrViewPath?: CompileOptions | ViewPath,
+  diagramType?: "system" | "deploy",
+  selectedDeployId?: string,
+  displayMode?: DisplayMode,
+): Promise<CompileResult> {
+  const opts: CompileOptions =
+    Array.isArray(optionsOrViewPath) || optionsOrViewPath === undefined
+      ? {
+          viewPath: optionsOrViewPath as ViewPath | undefined,
+          diagramType,
+          selectedDeployId,
+          displayMode,
+        }
+      : optionsOrViewPath;
+  return _compileProjectCore(entryPath, fs, opts);
+}
+
+/**
+ * @deprecated Use `compile(krsSource, { diagramType: "org", styleSource, orgPath })` instead.
+ */
+export function compileOrgView(
+  krsSource: string,
+  styleSource?: string,
+  orgPath?: OrgViewPath,
+): OrgCompileResult {
+  return _compileCore(krsSource, { diagramType: "org", styleSource, orgPath }) as OrgCompileResult;
+}
+
+/**
+ * @deprecated Use `compileProject(entryPath, fs, { diagramType: "org", orgPath, displayMode })` instead.
+ */
+export async function compileProjectOrgView(
+  entryPath: string,
+  fs: FileSystemProvider,
+  orgPath?: OrgViewPath,
+  displayMode?: DisplayMode,
+): Promise<OrgCompileResult> {
+  return _compileProjectCore(entryPath, fs, {
+    diagramType: "org",
+    orgPath,
+    displayMode,
+  }) as Promise<OrgCompileResult>;
+}
+
+// ---------------------------------------------------------------------------
+// Node metadata builders (internal)
+// ---------------------------------------------------------------------------
 
 function buildNodeMetadata(
   viewSlice: import("./view/view-extract.js").ViewSlice,
@@ -367,69 +554,9 @@ function buildDeployNodeMetadata(deploySlice: DeployViewSlice): Map<string, Node
   return map;
 }
 
-export interface OrgCompileResult {
-  svg: string;
-  diagnostics: Diagnostic[];
-  warnings: Warning[];
-  nodePathIndex: Map<string, string[]>;
-}
-
-export async function compileProjectOrgView(
-  entryPath: string,
-  fs: FileSystemProvider,
-  orgPath?: OrgViewPath,
-  displayMode?: DisplayMode,
-): Promise<OrgCompileResult> {
-  const resolver = new ImportResolver(fs);
-  const resolved = await resolver.resolve(entryPath);
-  const diagnostics = [...resolved.diagnostics];
-
-  const systemSheets: StyleSheet[] = [getBuiltinStyleSheet()];
-  if (displayMode === "icon") {
-    systemSheets.push(getIconThemeStyleSheet());
-  }
-  const allSheets = [...systemSheets, ...resolved.styleSheets];
-  const systemSheetCount = systemSheets.length;
-  const warnings = analyze(resolved.krsFile, allSheets, systemSheetCount);
-  const slice = extractOrgView(resolved.krsFile.organizations, orgPath ?? []);
-  const styles = resolveStyles(
-    resolved.krsFile.systems,
-    allSheets,
-    undefined,
-    resolved.krsFile.organizations,
-  );
-  const svg = _renderOrgView(slice, styles, displayMode);
-
-  return { svg, diagnostics, warnings, nodePathIndex: resolved.krsFile.nodePathIndex };
-}
-
-export function compileOrgView(
-  krsSource: string,
-  styleSource?: string,
-  orgPath?: OrgViewPath,
-): OrgCompileResult {
-  const parseResult: ParseResult<KrsFile> = Parser.parse(krsSource);
-  const diagnostics = [...parseResult.diagnostics];
-
-  const sheets: StyleSheet[] = [getBuiltinStyleSheet()];
-  if (styleSource) {
-    const styleResult = StyleParser.parse(styleSource);
-    diagnostics.push(...styleResult.diagnostics);
-    sheets.push(styleResult.value);
-  }
-
-  const warnings = analyze(parseResult.value, sheets);
-  const slice = extractOrgView(parseResult.value.organizations, orgPath ?? []);
-  const styles = resolveStyles(
-    parseResult.value.systems,
-    sheets,
-    undefined,
-    parseResult.value.organizations,
-  );
-  const svg = _renderOrgView(slice, styles);
-
-  return { svg, diagnostics, warnings, nodePathIndex: parseResult.value.nodePathIndex };
-}
+// ---------------------------------------------------------------------------
+// Multi-level SVG builders
+// ---------------------------------------------------------------------------
 
 /**
  * Builds a single SVG string containing all drill-down levels of the system diagram.
