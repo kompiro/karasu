@@ -10,17 +10,34 @@
   "publisher": "karasu",
   "main": "./out/extension.js",
   "scripts": {
-    "build": "tsc -p tsconfig.json",
+    "build": "esbuild src/extension.ts --bundle --platform=node --format=cjs --outfile=out/extension.js --external:vscode --external:vscode-languageclient",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@karasu/core": "*",
     "vscode-languageclient": "^9.0.1"
   },
   "devDependencies": {
     "@types/vscode": "^1.85.0",
+    "esbuild": "^0.25.0",
     "typescript": "^6.0.2"
   },
   "contributes": {
+    "commands": [
+      {
+        "command": "karasu.openPreview",
+        "title": "karasu: Open Preview"
+      }
+    ],
+    "menus": {
+      "editor/title": [
+        {
+          "command": "karasu.openPreview",
+          "when": "resourceLangId == krs",
+          "group": "navigation"
+        }
+      ]
+    },
     "languages": [
       {
         "id": "krs",
