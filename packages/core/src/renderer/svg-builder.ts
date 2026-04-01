@@ -110,7 +110,7 @@ export function wrapToWidth(
  * All text values (titleText, descText) are pre-truncated by the caller;
  * this function XML-escapes them internally.
  */
-export interface IconCardOptions {
+interface IconCardOptions {
   /** Card position */
   x: number;
   y: number;
