@@ -5,14 +5,35 @@ import {
   type LanguageClientOptions,
   type ServerOptions,
   TransportKind,
+  RequestType,
 } from "vscode-languageclient/node";
 import { PreviewPanel } from "./preview-panel.js";
 
 const PREVIEW_DEBOUNCE_MS = 300;
+const CURSOR_DEBOUNCE_MS = 150;
+
+// Custom LSP request types (must mirror packages/lsp/src/server.ts)
+const NodeAtPositionRequest = new RequestType<
+  { uri: string; position: { line: number; character: number } },
+  { nodeId: string | null },
+  void
+>("karasu/nodeAtPosition");
+
+const PositionOfNodeRequest = new RequestType<
+  { uri: string; nodeId: string },
+  {
+    range: {
+      start: { line: number; character: number };
+      end: { line: number; character: number };
+    } | null;
+  },
+  void
+>("karasu/positionOfNode");
 
 let client: LanguageClient | undefined;
 let previewPanel: PreviewPanel | undefined;
 let debounceTimer: ReturnType<typeof setTimeout> | undefined;
+let cursorDebounceTimer: ReturnType<typeof setTimeout> | undefined;
 
 export function activate(context: vscode.ExtensionContext): void {
   // --- LSP ---
@@ -46,9 +67,14 @@ export function activate(context: vscode.ExtensionContext): void {
     }
 
     if (!previewPanel || previewPanel.isDisposed) {
-      previewPanel = PreviewPanel.create(() => {
-        previewPanel = undefined;
-      });
+      previewPanel = PreviewPanel.create(
+        () => {
+          previewPanel = undefined;
+        },
+        (nodeId) => {
+          void handleNavigate(nodeId, editor.document.uri.toString());
+        },
+      );
     }
 
     previewPanel.update(editor.document);
@@ -75,12 +101,56 @@ export function activate(context: vscode.ExtensionContext): void {
     }
   });
 
+  // --- Cursor tracking → preview highlight ---
+  const cursorWatcher = vscode.window.onDidChangeTextEditorSelection((e) => {
+    if (
+      !previewPanel ||
+      previewPanel.isDisposed ||
+      e.textEditor.document.languageId !== "krs" ||
+      !client
+    ) {
+      return;
+    }
+
+    clearTimeout(cursorDebounceTimer);
+    cursorDebounceTimer = setTimeout(() => {
+      const pos = e.textEditor.selection.active;
+      const uri = e.textEditor.document.uri.toString();
+      void client!
+        .sendRequest(NodeAtPositionRequest, {
+          uri,
+          position: { line: pos.line, character: pos.character },
+        })
+        .then(({ nodeId }) => {
+          previewPanel?.highlight(nodeId);
+        });
+    }, CURSOR_DEBOUNCE_MS);
+  });
+
   context.subscriptions.push(
     { dispose: () => client?.stop() },
     openPreviewCmd,
     changeWatcher,
     editorWatcher,
+    cursorWatcher,
   );
+}
+
+async function handleNavigate(nodeId: string, uri: string): Promise<void> {
+  if (!client) return;
+
+  const result = await client.sendRequest(PositionOfNodeRequest, { uri, nodeId });
+  if (!result.range) return;
+
+  const editor = vscode.window.visibleTextEditors.find((e) => e.document.uri.toString() === uri);
+  if (!editor) return;
+
+  const range = new vscode.Range(
+    new vscode.Position(result.range.start.line, result.range.start.character),
+    new vscode.Position(result.range.end.line, result.range.end.character),
+  );
+  editor.selection = new vscode.Selection(range.start, range.start);
+  editor.revealRange(range, vscode.TextEditorRevealType.InCenterIfOutsideViewport);
 }
 
 export function deactivate(): Thenable<void> | undefined {

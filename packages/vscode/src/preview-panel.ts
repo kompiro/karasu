@@ -12,18 +12,26 @@ export class PreviewPanel {
   private readonly _disposables: vscode.Disposable[] = [];
   private _disposed = false;
   private readonly _onDispose: () => void;
+  private readonly _onNavigate: (nodeId: string) => void;
 
-  private constructor(panel: vscode.WebviewPanel, onDispose: () => void) {
+  private constructor(
+    panel: vscode.WebviewPanel,
+    onDispose: () => void,
+    onNavigate: (nodeId: string) => void,
+  ) {
     this._panel = panel;
     this._onDispose = onDispose;
+    this._onNavigate = onNavigate;
     this._panel.onDidDispose(() => this.dispose(), null, this._disposables);
     this._panel.webview.onDidReceiveMessage(
-      (message: { type: string; viewType?: ViewType }) => {
+      (message: { type: string; viewType?: ViewType; nodeId?: string }) => {
         if (message.type === "switchView" && message.viewType) {
           this._viewType = message.viewType;
           if (this._currentDocument) {
             this._render(this._currentDocument.getText());
           }
+        } else if (message.type === "navigate" && message.nodeId) {
+          this._onNavigate(message.nodeId);
         }
       },
       null,
@@ -31,19 +39,23 @@ export class PreviewPanel {
     );
   }
 
-  static create(onDispose: () => void): PreviewPanel {
+  static create(onDispose: () => void, onNavigate: (nodeId: string) => void): PreviewPanel {
     const panel = vscode.window.createWebviewPanel(
       PreviewPanel.viewType,
       "karasu Preview",
       vscode.ViewColumn.Beside,
       { enableScripts: true, retainContextWhenHidden: true },
     );
-    return new PreviewPanel(panel, onDispose);
+    return new PreviewPanel(panel, onDispose, onNavigate);
   }
 
   update(document: vscode.TextDocument): void {
     this._currentDocument = document;
     this._render(document.getText());
+  }
+
+  highlight(nodeId: string | null): void {
+    void this._panel.webview.postMessage({ type: "highlight", nodeId });
   }
 
   reveal(): void {
@@ -117,6 +129,14 @@ export class PreviewPanel {
       padding: 12px;
     }
     #preview svg { max-width: 100%; height: auto; display: block; }
+    [data-node-id].karasu-highlighted > rect,
+    [data-node-id].karasu-highlighted > path,
+    [data-node-id].karasu-highlighted > circle,
+    [data-node-id].karasu-highlighted > ellipse {
+      stroke: var(--vscode-focusBorder, #007fd4);
+      stroke-width: 3;
+    }
+    [data-node-id] { cursor: pointer; }
   </style>
 </head>
 <body>
@@ -128,10 +148,37 @@ export class PreviewPanel {
   <div id="preview">${svg}</div>
   <script nonce="${nonce}">
     const vscode = acquireVsCodeApi();
+
+    // View switcher
     document.querySelectorAll('[data-view]').forEach(function(btn) {
       btn.addEventListener('click', function() {
         vscode.postMessage({ type: 'switchView', viewType: btn.dataset.view });
       });
+    });
+
+    // Node click → navigate
+    document.querySelectorAll('[data-node-id]').forEach(function(el) {
+      el.addEventListener('click', function(e) {
+        e.stopPropagation();
+        vscode.postMessage({ type: 'navigate', nodeId: el.dataset.nodeId });
+      });
+    });
+
+    // Highlight message from extension
+    window.addEventListener('message', function(event) {
+      var msg = event.data;
+      if (msg.type === 'highlight') {
+        document.querySelectorAll('[data-node-id].karasu-highlighted').forEach(function(el) {
+          el.classList.remove('karasu-highlighted');
+        });
+        if (msg.nodeId) {
+          var target = document.querySelector('[data-node-id="' + msg.nodeId + '"]');
+          if (target) {
+            target.classList.add('karasu-highlighted');
+            target.scrollIntoView({ block: 'nearest' });
+          }
+        }
+      }
     });
   </script>
 </body>
