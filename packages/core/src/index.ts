@@ -65,12 +65,6 @@ export {
 export { analyze } from "./resolver/warnings.js";
 export type { DisplayMode } from "./renderer/layout.js";
 export { render, renderFromLayout, sanitizeId } from "./renderer/svg-renderer.js";
-export type { ExportLevel } from "./renderer/multi-level-svg.js";
-export {
-  buildLevelId,
-  collectAllSystemPaths,
-  assembleMultiLevelSvg,
-} from "./renderer/multi-level-svg.js";
 
 export { renderOrgView } from "./renderer/org-renderer.js";
 export { renderDeploy } from "./renderer/deploy-renderer.js";
@@ -124,10 +118,6 @@ import {
   buildFullViewSvgOrg as _buildFullViewSvgOrg,
   buildDrillDownSvgOrg as _buildDrillDownSvgOrg,
 } from "./renderer/drill-down-svg.js";
-import {
-  buildExportSvg as _buildExportSvg,
-  buildExportSvgOrg as _buildExportSvgOrg,
-} from "./renderer/multi-level-svg.js";
 
 import type { DisplayMode } from "./renderer/layout.js";
 import { renderOrgView as _renderOrgView } from "./renderer/org-renderer.js";
@@ -614,31 +604,4 @@ export function buildDrillDownSvgOrg(
 ): string {
   const parseResult: ParseResult<KrsFile> = Parser.parse(krsSource);
   return _buildDrillDownSvgOrg(parseResult.value, styleSource, displayMode);
-}
-
-/**
- * Build a multi-level SVG from a .krs source string for system view.
- * Recursively traverses the diagram hierarchy up to 4 levels deep.
- * Each level is linked via CSS :target navigation and stacked vertically.
- */
-export function buildExportSvg(
-  krsSource: string,
-  styleSource?: string,
-  displayMode?: DisplayMode,
-): string {
-  const parseResult: ParseResult<KrsFile> = Parser.parse(krsSource);
-  return _buildExportSvg(parseResult.value, styleSource, displayMode);
-}
-
-/**
- * Build a multi-level SVG from a .krs source string for org view.
- * Recursively traverses the org hierarchy up to 10 levels deep.
- */
-export function buildExportSvgOrg(
-  krsSource: string,
-  styleSource?: string,
-  displayMode?: DisplayMode,
-): string {
-  const parseResult: ParseResult<KrsFile> = Parser.parse(krsSource);
-  return _buildExportSvgOrg(parseResult.value, styleSource, displayMode);
 }
