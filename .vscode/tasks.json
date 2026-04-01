@@ -2,6 +2,19 @@
   "version": "2.0.0",
   "tasks": [
     {
+      "label": "build:lsp",
+      "type": "shell",
+      "command": "npm run build",
+      "options": {
+        "cwd": "${workspaceFolder}/packages/lsp"
+      },
+      "group": "build",
+      "presentation": {
+        "reveal": "silent"
+      },
+      "problemMatcher": []
+    },
+    {
       "label": "build:vscode",
       "type": "shell",
       "command": "npm run build",
@@ -12,7 +25,8 @@
       "presentation": {
         "reveal": "silent"
       },
-      "problemMatcher": "$tsc"
+      "problemMatcher": "$tsc",
+      "dependsOn": "build:lsp"
     }
   ]
 }
