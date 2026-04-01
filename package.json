@@ -11,7 +11,7 @@
   "scripts": {
     "dev": "npm run dev --workspace=packages/app",
     "build": "npm run build --workspace=packages/core && npm run build --workspace=packages/lsp && npm run build --workspace=packages/app && npm run build --workspace=packages/cli",
-    "test": "npm run test --workspace=packages/core && npm run test --workspace=packages/app && npm run test --workspace=packages/cli",
+    "test": "npm run test --workspace=packages/core && npm run test --workspace=packages/app && npm run test --workspace=packages/cli && npm run test --workspace=packages/lsp",
     "test:coverage": "npm run test:coverage --workspace=packages/core && npm run test:coverage --workspace=packages/app && npm run test:coverage --workspace=packages/cli",
     "lint": "oxlint --deny-warnings packages/",
     "lint:fix": "oxlint --fix packages/",
