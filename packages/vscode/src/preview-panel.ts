@@ -1,5 +1,6 @@
 import * as vscode from "vscode";
-import { compile, type NodeMetadata } from "@karasu/core";
+import { compileProject, type NodeMetadata } from "@karasu/core";
+import { VsCodeFileSystemProvider } from "./vscode-fs-provider.js";
 
 type ViewType = "system" | "deploy" | "org";
 
@@ -33,20 +34,20 @@ export class PreviewPanel {
           this._viewPath = [];
           this._viewLabels = [];
           if (this._currentDocument) {
-            this._render(this._currentDocument.getText());
+            void this._render(this._currentDocument);
           }
         } else if (message.type === "drillDown" && message.nodeId) {
           const label = this._lastNodeMetadata?.get(message.nodeId)?.label ?? message.nodeId;
           this._viewPath = [...this._viewPath, message.nodeId];
           this._viewLabels = [...this._viewLabels, label];
           if (this._currentDocument) {
-            this._render(this._currentDocument.getText());
+            void this._render(this._currentDocument);
           }
         } else if (message.type === "navigateTo" && message.index !== undefined) {
           this._viewPath = this._viewPath.slice(0, message.index);
           this._viewLabels = this._viewLabels.slice(0, message.index);
           if (this._currentDocument) {
-            this._render(this._currentDocument.getText());
+            void this._render(this._currentDocument);
           }
         } else if (message.type === "navigate" && message.nodeId) {
           this._onNavigate(message.nodeId);
@@ -69,7 +70,7 @@ export class PreviewPanel {
 
   update(document: vscode.TextDocument): void {
     this._currentDocument = document;
-    this._render(document.getText());
+    void this._render(document);
   }
 
   highlight(nodeId: string | null): void {
@@ -84,7 +85,7 @@ export class PreviewPanel {
     return this._disposed;
   }
 
-  private _render(krsSource: string): void {
+  private async _render(document: vscode.TextDocument): Promise<void> {
     let svg: string;
     try {
       const viewPathOpts =
@@ -93,7 +94,10 @@ export class PreviewPanel {
           : this._viewType === "system"
             ? { viewPath: this._viewPath }
             : {};
-      const result = compile(krsSource, { diagramType: this._viewType, ...viewPathOpts });
+      const result = await compileProject(document.uri.fsPath, new VsCodeFileSystemProvider(), {
+        diagramType: this._viewType,
+        ...viewPathOpts,
+      });
       svg = result.svg;
       this._lastNodeMetadata = result.diagramType !== "org" ? result.nodeMetadata : undefined;
     } catch (err) {
