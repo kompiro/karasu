@@ -187,11 +187,14 @@ connection.onHover((params) => {
   const doc = documents.get(params.textDocument.uri);
   if (!doc) return null;
 
-  const parseResult = Parser.parse(doc.getText());
-  const nodeId = findNodeAtPosition(parseResult.value, params.position);
-  if (!nodeId) return null;
+  // Use the identifier under the cursor so that hovering over any reference
+  // to a node (e.g. in an edge declaration) shows THAT node's description,
+  // not the description of the enclosing (parent) node.
+  const word = getWordAtPosition(doc.getText(), params.position);
+  if (!word) return null;
 
-  const description = getNodeDescription(parseResult.value, nodeId);
+  const parseResult = Parser.parse(doc.getText());
+  const description = getNodeDescription(parseResult.value, word);
   if (!description) return null;
 
   return { contents: { kind: "markdown", value: description } } satisfies Hover;
