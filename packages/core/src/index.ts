@@ -223,8 +223,14 @@ export type CompileResult = SystemCompileResult | DeployCompileResult | OrgCompi
 // ---------------------------------------------------------------------------
 
 function _compileCore(krsSource: string, opts: CompileOptions): CompileResult {
-  const { diagramType = "system", styleSource, viewPath, orgPath, selectedDeployId, displayMode } =
-    opts;
+  const {
+    diagramType = "system",
+    styleSource,
+    viewPath,
+    orgPath,
+    selectedDeployId,
+    displayMode,
+  } = opts;
 
   const parseResult: ParseResult<KrsFile> = Parser.parse(krsSource);
   const diagnostics = [...parseResult.diagnostics];
@@ -443,14 +449,15 @@ export async function compileProject(
   selectedDeployId?: string,
   displayMode?: DisplayMode,
 ): Promise<CompileResult> {
-  const opts: CompileOptions = Array.isArray(optionsOrViewPath) || optionsOrViewPath === undefined
-    ? {
-        viewPath: optionsOrViewPath as ViewPath | undefined,
-        diagramType,
-        selectedDeployId,
-        displayMode,
-      }
-    : optionsOrViewPath;
+  const opts: CompileOptions =
+    Array.isArray(optionsOrViewPath) || optionsOrViewPath === undefined
+      ? {
+          viewPath: optionsOrViewPath as ViewPath | undefined,
+          diagramType,
+          selectedDeployId,
+          displayMode,
+        }
+      : optionsOrViewPath;
   return _compileProjectCore(entryPath, fs, opts);
 }
 
@@ -606,4 +613,3 @@ export function buildDrillDownSvgOrg(
   const parseResult: ParseResult<KrsFile> = Parser.parse(krsSource);
   return _buildDrillDownSvgOrg(parseResult.value, styleSource, displayMode);
 }
-

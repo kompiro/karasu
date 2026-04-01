@@ -23,7 +23,11 @@ describe("compileProject — diagramType org with displayMode", () => {
   it("accepts diagramType: org and displayMode: icon and returns SVG", async () => {
     const fs = new InMemoryFileSystemProvider();
     await fs.writeFile("/index.krs", ORG_KRS_DISPLAY_MODE);
-    const result = await compileProject("/index.krs", fs, { diagramType: "org", orgPath: [], displayMode: "icon" });
+    const result = await compileProject("/index.krs", fs, {
+      diagramType: "org",
+      orgPath: [],
+      displayMode: "icon",
+    });
     expect(result.svg).toBeTruthy();
     expect(result.diagnostics.filter((d) => d.severity === "error")).toHaveLength(0);
     expect(result.diagramType).toBe("org");
@@ -85,7 +89,10 @@ describe("compileProject — diagramType org style-conflict warnings", () => {
   it("does not emit style-conflict when icon theme overrides builtin (icon mode)", async () => {
     const fs = new InMemoryFileSystemProvider();
     await fs.writeFile("/main.krs", ORG_KRS);
-    const result = await compileProject("/main.krs", fs, { diagramType: "org", displayMode: "icon" });
+    const result = await compileProject("/main.krs", fs, {
+      diagramType: "org",
+      displayMode: "icon",
+    });
     expect(result.warnings.filter((w) => w.kind === "style-conflict")).toHaveLength(0);
   });
 
@@ -93,7 +100,10 @@ describe("compileProject — diagramType org style-conflict warnings", () => {
     const fs = new InMemoryFileSystemProvider();
     await fs.writeFile("/main.krs", ORG_KRS);
     await fs.writeFile("/main.krs.style", USER_STYLE);
-    const result = await compileProject("/main.krs", fs, { diagramType: "org", displayMode: "icon" });
+    const result = await compileProject("/main.krs", fs, {
+      diagramType: "org",
+      displayMode: "icon",
+    });
     expect(result.warnings.filter((w) => w.kind === "style-conflict")).toHaveLength(0);
   });
 });
