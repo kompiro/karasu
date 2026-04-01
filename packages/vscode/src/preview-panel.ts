@@ -1,5 +1,5 @@
 import * as vscode from "vscode";
-import { compile, compileOrgView } from "@karasu/core";
+import { compile } from "@karasu/core";
 
 type ViewType = "system" | "deploy" | "org";
 
@@ -69,11 +69,7 @@ export class PreviewPanel {
   private _render(krsSource: string): void {
     let svg: string;
     try {
-      if (this._viewType === "org") {
-        svg = compileOrgView(krsSource).svg;
-      } else {
-        svg = compile(krsSource, undefined, undefined, this._viewType).svg;
-      }
+      svg = compile(krsSource, { diagramType: this._viewType }).svg;
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       svg = `<svg xmlns="http://www.w3.org/2000/svg" width="600" height="60">

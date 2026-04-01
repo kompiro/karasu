@@ -3,10 +3,6 @@ import {
   Parser,
   InMemoryFileSystemProvider,
   getReference,
-  buildDrillDownSvg,
-  buildDrillDownSvgOrg,
-  buildFullViewSvg,
-  buildFullViewSvgOrg,
   type KrsNode,
   type OrgViewPath,
 } from "@karasu/core";
@@ -18,6 +14,7 @@ import { useAppContext } from "./state/app-context.js";
 import { useSystemView } from "./hooks/useSystemView.js";
 import { useDeployView } from "./hooks/useDeployView.js";
 import { useOrgView } from "./hooks/useOrgView.js";
+import { useViewSvg } from "./hooks/useViewSvg.js";
 
 import type { ActiveView } from "./state/app-reducer.js";
 import type { DisplayMode } from "@karasu/core";
@@ -69,7 +66,7 @@ function MemoryModeInner() {
     diagnostics: deployDiagnostics,
     nodeMetadata: deployNodeMetadata,
     recompile: recompileDeploy,
-  } = useDeployView(MEMORY_FILE_PATH, fs, viewPath, null, displayMode);
+  } = useDeployView(MEMORY_FILE_PATH, fs, null, displayMode);
 
   const {
     orgSvg,
@@ -164,41 +161,10 @@ function MemoryModeInner() {
     }
   }, [fileContent, viewPath]);
 
-  const drillDownSvg = useMemo(() => {
-    if (!fileContent) return undefined;
-    try {
-      return buildDrillDownSvg(fileContent, undefined, displayMode);
-    } catch {
-      return undefined;
-    }
-  }, [fileContent, displayMode]);
-
-  const fullViewSvg = useMemo(() => {
-    if (!fileContent) return undefined;
-    try {
-      return buildFullViewSvg(fileContent, undefined, displayMode);
-    } catch {
-      return undefined;
-    }
-  }, [fileContent, displayMode]);
-
-  const orgFullViewSvg = useMemo(() => {
-    if (!fileContent) return undefined;
-    try {
-      return buildFullViewSvgOrg(fileContent, undefined, displayMode);
-    } catch {
-      return undefined;
-    }
-  }, [fileContent, displayMode]);
-
-  const orgDrillDownSvg = useMemo(() => {
-    if (!fileContent) return undefined;
-    try {
-      return buildDrillDownSvgOrg(fileContent, undefined, displayMode);
-    } catch {
-      return undefined;
-    }
-  }, [fileContent, displayMode]);
+  const { drillDownSvg, fullViewSvg, orgFullViewSvg, orgDrillDownSvg } = useViewSvg(
+    fileContent,
+    displayMode,
+  );
 
   const orgBreadcrumbItems = useMemo(() => {
     if (!fileContent) return [];

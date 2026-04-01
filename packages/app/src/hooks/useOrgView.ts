@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import {
-  compileProjectOrgView,
+  compileProject,
   type Diagnostic,
   type Warning,
   type OrgViewPath,
@@ -45,8 +45,9 @@ export function useOrgView(
     if (timerRef.current) clearTimeout(timerRef.current);
 
     timerRef.current = setTimeout(() => {
-      compileProjectOrgView(entryPath, fs, orgPath, displayMode)
+      compileProject(entryPath, fs, { diagramType: "org", orgPath, displayMode })
         .then((result) => {
+          if (result.diagramType !== "org") return;
           const hasErrors = result.diagnostics.some((d) => d.severity === "error");
 
           if (hasErrors) {
