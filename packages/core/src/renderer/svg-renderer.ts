@@ -11,14 +11,17 @@ import { renderShape } from "./shapes.js";
 import { renderEdge, renderArrowMarker } from "./edge-routing.js";
 import { el, escapeXml, truncateToWidth, wrapToWidth } from "./svg-builder.js";
 import { getIconDef } from "./shape-registry.js";
+import {
+  CHAR_WIDTH,
+  ICON_LABEL_CHAR_WIDTH,
+  ICON_DESC_CHAR_WIDTH,
+  ICON_DESC_MAX_WIDTH,
+} from "./rendering-constants.js";
 
 const GHOST_OPACITY = 0.3;
 
 // Icon-mode text layout constants (from design doc)
 const ICON_LABEL_MAX_WIDTH = 122; // px available for title text
-const ICON_LABEL_CHAR_WIDTH = 7.5; // approximate for 13px font
-const ICON_DESC_MAX_WIDTH = 144; // px available for description text
-const ICON_DESC_CHAR_WIDTH = 6.5; // approximate for 11px font
 const ICON_DESC_MAX_LINES = 3;
 const ICON_DESC_LINE_HEIGHT = 14; // px
 
@@ -413,7 +416,7 @@ function renderNode(
       // Truncate description to fit within the node width
       const descFontSize = Math.round(fontSize * 0.8);
       const availableWidth = node.width - 40 * 2; // NODE_PADDING_X = 40
-      const descCharWidth = 9 * 0.8; // CHAR_WIDTH * DESCRIPTION_FONT_RATIO
+      const descCharWidth = CHAR_WIDTH * 0.8; // DESCRIPTION_FONT_RATIO
       const maxChars = Math.max(1, Math.floor(availableWidth / descCharWidth));
       const descChars = [...displayDesc];
       const truncatedDesc =
