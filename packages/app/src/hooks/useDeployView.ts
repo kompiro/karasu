@@ -3,7 +3,6 @@ import {
   compileProject,
   type Warning,
   type Diagnostic,
-  type ViewPath,
   type FileSystemProvider,
   type NodeMetadata,
   type DeployBlockInfo,
@@ -23,7 +22,6 @@ const DEBOUNCE_MS = 300;
 export function useDeployView(
   entryPath: string | null,
   fs: FileSystemProvider | null,
-  viewPath: ViewPath = [],
   selectedDeployBlockId: string | null = null,
   displayMode?: DisplayMode,
 ): DeployViewState & { recompile: () => void } {
@@ -54,14 +52,12 @@ export function useDeployView(
 
     timerRef.current = setTimeout(async () => {
       try {
-        const result = await compileProject(
-          entryPath,
-          fs,
-          viewPath,
-          "deploy",
-          selectedDeployBlockId ?? undefined,
+        const result = await compileProject(entryPath, fs, {
+          diagramType: "deploy",
+          selectedDeployId: selectedDeployBlockId ?? undefined,
           displayMode,
-        );
+        });
+        if (result.diagramType !== "deploy") return;
         const hasErrors = result.diagnostics.some((d) => d.severity === "error");
 
         if (hasErrors) {
@@ -101,7 +97,7 @@ export function useDeployView(
       if (timerRef.current) clearTimeout(timerRef.current);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [entryPath, fs, viewPath, selectedDeployBlockId, displayMode, recompileCounter.current]);
+  }, [entryPath, fs, selectedDeployBlockId, displayMode, recompileCounter.current]);
 
   return { ...state, recompile };
 }

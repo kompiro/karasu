@@ -69,7 +69,7 @@ function MemoryModeInner() {
     diagnostics: deployDiagnostics,
     nodeMetadata: deployNodeMetadata,
     recompile: recompileDeploy,
-  } = useDeployView(MEMORY_FILE_PATH, fs, viewPath, null, displayMode);
+  } = useDeployView(MEMORY_FILE_PATH, fs, null, displayMode);
 
   const {
     orgSvg,

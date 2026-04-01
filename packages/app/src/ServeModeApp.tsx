@@ -83,7 +83,7 @@ function ServeModeInner() {
     diagnostics: deployDiagnostics,
     nodeMetadata: deployNodeMetadata,
     recompile: recompileDeploy,
-  } = useDeployView(SERVE_FILE_PATH, fs, viewPath);
+  } = useDeployView(SERVE_FILE_PATH, fs);
 
   const {
     orgSvg,

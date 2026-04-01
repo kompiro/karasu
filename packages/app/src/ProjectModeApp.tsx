@@ -65,7 +65,7 @@ export function ProjectModeApp() {
     nodeMetadata: deployNodeMetadata,
     deployBlocks,
     recompile: recompileDeploy,
-  } = useDeployView(entryPath, fs, viewPath, selectedDeployBlockId, displayMode);
+  } = useDeployView(entryPath, fs, selectedDeployBlockId, displayMode);
 
   const {
     orgSvg,
