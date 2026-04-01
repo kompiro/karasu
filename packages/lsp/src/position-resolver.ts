@@ -52,6 +52,7 @@ export function collectNodes(krsFile: KrsFile): NodeEntry[] {
   }
 
   for (const sys of krsFile.systems) addKrsNode(sys);
+  for (const svc of krsFile.services) addKrsNode(svc);
   for (const block of krsFile.deploys) addDeployBlock(block);
   for (const org of krsFile.organizations) {
     for (const team of org.teams) addTeamNode(team);

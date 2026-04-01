@@ -41,6 +41,12 @@ describe("collectNodes", () => {
     const nodes = collectNodes(file);
     expect(nodes.some((n) => n.id === "Login")).toBe(true);
   });
+
+  it("collects top-level standalone service", () => {
+    const file = parse(KRS_STANDALONE_SERVICE);
+    const nodes = collectNodes(file);
+    expect(nodes.some((n) => n.id === "StandaloneAuth")).toBe(true);
+  });
 });
 
 describe("findNodeAtPosition", () => {
