@@ -359,7 +359,9 @@ function renderMemberIconCard(
       "font-weight": style.fontWeight,
       "text-anchor": "start",
     },
-    descText: descText || undefined,
+    descText: descText
+      ? truncateToWidth(descText, ICON_DESC_MAX_WIDTH, ICON_DESC_CHAR_WIDTH)
+      : undefined,
     descX: 8,
     descY: ICON_TITLE_HEIGHT + 22,
     descAttrs: {
