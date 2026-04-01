@@ -7,9 +7,32 @@ import {
   TextDocumentSyncKind,
   Diagnostic,
   DiagnosticSeverity,
+  RequestType,
 } from "vscode-languageserver/node";
 import { TextDocument } from "vscode-languageserver-textdocument";
 import { Parser, StyleParser } from "@karasu/core";
+import { findNodeAtPosition, findRangeOfNode } from "./position-resolver.js";
+
+// ─── Custom LSP request types ─────────────────────────────────────────────────
+
+export const NodeAtPositionRequest = new RequestType<
+  { uri: string; position: { line: number; character: number } },
+  { nodeId: string | null },
+  void
+>("karasu/nodeAtPosition");
+
+export const PositionOfNodeRequest = new RequestType<
+  { uri: string; nodeId: string },
+  {
+    range: {
+      start: { line: number; character: number };
+      end: { line: number; character: number };
+    } | null;
+  },
+  void
+>("karasu/positionOfNode");
+
+// ─── Server setup ─────────────────────────────────────────────────────────────
 
 const connection = createConnection(ProposedFeatures.all);
 const documents = new TextDocuments(TextDocument);
@@ -29,6 +52,26 @@ documents.onDidChangeContent((change) => {
 documents.onDidClose((event) => {
   connection.sendDiagnostics({ uri: event.document.uri, diagnostics: [] });
 });
+
+// ─── Custom request handlers ──────────────────────────────────────────────────
+
+connection.onRequest(NodeAtPositionRequest, ({ uri, position }) => {
+  const doc = documents.get(uri);
+  if (!doc) return { nodeId: null };
+
+  const parseResult = Parser.parse(doc.getText());
+  return { nodeId: findNodeAtPosition(parseResult.value, position) };
+});
+
+connection.onRequest(PositionOfNodeRequest, ({ uri, nodeId }) => {
+  const doc = documents.get(uri);
+  if (!doc) return { range: null };
+
+  const parseResult = Parser.parse(doc.getText());
+  return { range: findRangeOfNode(parseResult.value, nodeId) };
+});
+
+// ─── Diagnostics ─────────────────────────────────────────────────────────────
 
 function toLspPosition(line: number, column: number) {
   // Core positions are 1-based; LSP positions are 0-based.
