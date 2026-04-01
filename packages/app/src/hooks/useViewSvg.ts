@@ -7,10 +7,7 @@ import {
   type DisplayMode,
 } from "@karasu/core";
 
-export function useViewSvg(
-  fileContent: string | undefined,
-  displayMode: DisplayMode | undefined,
-) {
+export function useViewSvg(fileContent: string | undefined, displayMode: DisplayMode | undefined) {
   const drillDownSvg = useMemo(() => {
     if (!fileContent) return undefined;
     try {
