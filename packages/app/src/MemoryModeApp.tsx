@@ -14,7 +14,7 @@ import { useAppContext } from "./state/app-context.js";
 import { useSystemView } from "./hooks/useSystemView.js";
 import { useDeployView } from "./hooks/useDeployView.js";
 import { useOrgView } from "./hooks/useOrgView.js";
-import { useFullViewSvg } from "./hooks/useFullViewSvg.js";
+import { useViewSvg } from "./hooks/useViewSvg.js";
 
 import type { ActiveView } from "./state/app-reducer.js";
 import type { DisplayMode } from "@karasu/core";
@@ -161,7 +161,7 @@ function MemoryModeInner() {
     }
   }, [fileContent, viewPath]);
 
-  const { drillDownSvg, fullViewSvg, orgFullViewSvg, orgDrillDownSvg } = useFullViewSvg(
+  const { drillDownSvg, fullViewSvg, orgFullViewSvg, orgDrillDownSvg } = useViewSvg(
     fileContent,
     displayMode,
   );

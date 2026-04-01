@@ -7,7 +7,7 @@ import {
   type DisplayMode,
 } from "@karasu/core";
 
-export function useFullViewSvg(
+export function useViewSvg(
   fileContent: string | undefined,
   displayMode: DisplayMode | undefined,
 ) {

@@ -9,7 +9,7 @@ import { useAppContext } from "./state/app-context.js";
 import { useSystemView } from "./hooks/useSystemView.js";
 import { useDeployView } from "./hooks/useDeployView.js";
 import { useOrgView } from "./hooks/useOrgView.js";
-import { useFullViewSvg } from "./hooks/useFullViewSvg.js";
+import { useViewSvg } from "./hooks/useViewSvg.js";
 
 import { ProjectManager } from "./fs/project-manager.js";
 import type { Project, KrsNode, OrgViewPath, DisplayMode } from "@karasu/core";
@@ -297,7 +297,7 @@ export function ProjectModeApp() {
     }
   }, [fileContent, viewPath]);
 
-  const { drillDownSvg, fullViewSvg, orgFullViewSvg, orgDrillDownSvg } = useFullViewSvg(
+  const { drillDownSvg, fullViewSvg, orgFullViewSvg, orgDrillDownSvg } = useViewSvg(
     fileContent,
     displayMode,
   );
