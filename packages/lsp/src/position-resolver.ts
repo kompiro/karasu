@@ -1,4 +1,12 @@
-import type { KrsFile, KrsNode, DeployBlock, DeployNode, TeamNode, MemberNode } from "@karasu/core";
+import type {
+  KrsFile,
+  KrsNode,
+  DeployBlock,
+  DeployNode,
+  TeamNode,
+  MemberNode,
+  OrganizationBlock,
+} from "@karasu/core";
 import type { Range } from "vscode-languageserver/node";
 
 interface LspPosition {
@@ -106,4 +114,114 @@ function toLspPosition(line: number, column: number) {
     line: Math.max(0, line - 1),
     character: Math.max(0, column - 1),
   };
+}
+
+// ─── Phase 5 helpers ─────────────────────────────────────────────────────────
+
+/**
+ * Collect all defined node IDs from the KrsFile, including top-level services
+ * (which collectNodes omits because they appear in krsFile.services, not as
+ * children of systems).
+ */
+export function collectAllIdentifiers(krsFile: KrsFile): string[] {
+  const ids: string[] = [];
+
+  function addKrsNode(node: KrsNode): void {
+    ids.push(node.id);
+    for (const child of node.children) addKrsNode(child);
+  }
+
+  function addTeamNode(team: TeamNode): void {
+    ids.push(team.id);
+    for (const member of team.members) ids.push(member.id);
+    for (const sub of team.teams) addTeamNode(sub);
+  }
+
+  for (const sys of krsFile.systems) addKrsNode(sys);
+  for (const svc of krsFile.services) addKrsNode(svc);
+  for (const block of krsFile.deploys) {
+    ids.push(block.id);
+    for (const node of block.nodes) ids.push(node.id);
+  }
+  for (const org of krsFile.organizations) {
+    ids.push(org.id);
+    for (const team of org.teams) addTeamNode(team);
+  }
+
+  return ids;
+}
+
+/**
+ * Find the description of a node by its ID.
+ * Returns null if the node has no description or is not found.
+ */
+export function getNodeDescription(krsFile: KrsFile, nodeId: string): string | null {
+  function searchKrsNode(node: KrsNode): string | null {
+    if (node.id === nodeId) return node.properties.description ?? null;
+    for (const child of node.children) {
+      const found = searchKrsNode(child);
+      if (found !== null) return found;
+    }
+    return null;
+  }
+
+  function searchTeam(team: TeamNode): string | null {
+    if (team.id === nodeId) return team.properties.description ?? null;
+    for (const member of team.members) {
+      if (member.id === nodeId) return member.properties.description ?? null;
+    }
+    for (const sub of team.teams) {
+      const found = searchTeam(sub);
+      if (found !== null) return found;
+    }
+    return null;
+  }
+
+  function searchOrg(org: OrganizationBlock): string | null {
+    if (org.id === nodeId) return org.properties.description ?? null;
+    for (const team of org.teams) {
+      const found = searchTeam(team);
+      if (found !== null) return found;
+    }
+    return null;
+  }
+
+  for (const sys of krsFile.systems) {
+    const found = searchKrsNode(sys);
+    if (found !== null) return found;
+  }
+  for (const svc of krsFile.services) {
+    const found = searchKrsNode(svc);
+    if (found !== null) return found;
+  }
+  for (const org of krsFile.organizations) {
+    const found = searchOrg(org);
+    if (found !== null) return found;
+  }
+
+  return null;
+}
+
+/**
+ * Extract the identifier-like word ([\w] characters) around the given position.
+ */
+export function getWordAtPosition(
+  text: string,
+  position: { line: number; character: number },
+): string | null {
+  const lines = text.split("\n");
+  const line = lines[position.line];
+  if (!line) return null;
+
+  const char = position.character;
+  // Return null if cursor is not on a word character
+  if (char >= line.length || !/\w/.test(line[char])) return null;
+
+  let start = char;
+  let end = char;
+
+  while (start > 0 && /\w/.test(line[start - 1])) start--;
+  while (end < line.length && /\w/.test(line[end])) end++;
+
+  return start < end ? line.slice(start, end) : null;
 }

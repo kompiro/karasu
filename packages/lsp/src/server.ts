@@ -1,3 +1,6 @@
+import * as fs from "fs";
+import * as path from "path";
+import { fileURLToPath, pathToFileURL } from "url";
 import {
   createConnection,
   TextDocuments,
@@ -8,10 +11,21 @@ import {
   Diagnostic,
   DiagnosticSeverity,
   RequestType,
+  CompletionItem,
+  CompletionItemKind,
+  Location,
+  Hover,
 } from "vscode-languageserver/node";
 import { TextDocument } from "vscode-languageserver-textdocument";
 import { Parser, StyleParser } from "@karasu/core";
-import { findNodeAtPosition, findRangeOfNode } from "./position-resolver.js";
+import {
+  findNodeAtPosition,
+  findRangeOfNode,
+  collectAllIdentifiers,
+  getNodeDescription,
+  getWordAtPosition,
+} from "./position-resolver.js";
+import { buildDocumentSymbols } from "./document-symbols.js";
 
 // ─── Custom LSP request types ─────────────────────────────────────────────────
 
@@ -41,6 +55,10 @@ connection.onInitialize((_params: InitializeParams): InitializeResult => {
   return {
     capabilities: {
       textDocumentSync: TextDocumentSyncKind.Incremental,
+      completionProvider: { resolveProvider: false },
+      definitionProvider: true,
+      hoverProvider: true,
+      documentSymbolProvider: true,
     },
   };
 });
@@ -69,6 +87,124 @@ connection.onRequest(PositionOfNodeRequest, ({ uri, nodeId }) => {
 
   const parseResult = Parser.parse(doc.getText());
   return { range: findRangeOfNode(parseResult.value, nodeId) };
+});
+
+// ─── Completion ───────────────────────────────────────────────────────────────
+
+const KRS_KEYWORDS = [
+  "system",
+  "service",
+  "domain",
+  "usecase",
+  "resource",
+  "user",
+  "deploy",
+  "war",
+  "jar",
+  "oci",
+  "lambda",
+  "function",
+  "assets",
+  "job",
+  "artifact",
+  "organization",
+  "member",
+  "label",
+  "description",
+  "team",
+  "role",
+  "link",
+  "runtime",
+  "realizes",
+  "schedule",
+  "image",
+  "type",
+  "owns",
+  "slack",
+  "github",
+];
+
+connection.onCompletion((params) => {
+  const doc = documents.get(params.textDocument.uri);
+  if (!doc) return [];
+
+  const parseResult = Parser.parse(doc.getText());
+  const identifiers = collectAllIdentifiers(parseResult.value);
+
+  const keywordItems: CompletionItem[] = KRS_KEYWORDS.map((kw) => ({
+    label: kw,
+    kind: CompletionItemKind.Keyword,
+  }));
+
+  const seen = new Set<string>();
+  const identifierItems: CompletionItem[] = [];
+  for (const id of identifiers) {
+    if (!seen.has(id)) {
+      seen.add(id);
+      identifierItems.push({ label: id, kind: CompletionItemKind.Reference });
+    }
+  }
+
+  return [...keywordItems, ...identifierItems];
+});
+
+// ─── Definition ───────────────────────────────────────────────────────────────
+
+connection.onDefinition((params) => {
+  const doc = documents.get(params.textDocument.uri);
+  if (!doc) return null;
+
+  const word = getWordAtPosition(doc.getText(), params.position);
+  if (!word) return null;
+
+  const parseResult = Parser.parse(doc.getText());
+
+  // Same-file lookup
+  const range = findRangeOfNode(parseResult.value, word);
+  if (range) return Location.create(params.textDocument.uri, range);
+
+  // Cross-file lookup via @import declarations
+  for (const imp of parseResult.value.nodeImports) {
+    if (imp.ids.includes(word)) {
+      const importedUri = resolveImportUri(params.textDocument.uri, imp.path);
+      try {
+        const importedText = fs.readFileSync(fileURLToPath(importedUri), "utf-8");
+        const importedParse = Parser.parse(importedText);
+        const importedRange = findRangeOfNode(importedParse.value, word);
+        if (importedRange) return Location.create(importedUri, importedRange);
+      } catch {
+        // File unreadable — skip
+      }
+    }
+  }
+
+  return null;
+});
+
+// ─── Hover ────────────────────────────────────────────────────────────────────
+
+connection.onHover((params) => {
+  const doc = documents.get(params.textDocument.uri);
+  if (!doc) return null;
+
+  const parseResult = Parser.parse(doc.getText());
+  const nodeId = findNodeAtPosition(parseResult.value, params.position);
+  if (!nodeId) return null;
+
+  const description = getNodeDescription(parseResult.value, nodeId);
+  if (!description) return null;
+
+  return { contents: { kind: "markdown", value: description } } satisfies Hover;
+});
+
+// ─── Document Symbols ─────────────────────────────────────────────────────────
+
+connection.onDocumentSymbol((params) => {
+  const doc = documents.get(params.textDocument.uri);
+  if (!doc) return [];
+
+  const parseResult = Parser.parse(doc.getText());
+  return buildDocumentSymbols(parseResult.value);
 });
 
 // ─── Diagnostics ─────────────────────────────────────────────────────────────
@@ -102,6 +238,16 @@ function validateDocument(document: TextDocument): void {
   });
 
   connection.sendDiagnostics({ uri: document.uri, diagnostics });
+}
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
+/** Resolve a relative import path to a file:// URI. */
+function resolveImportUri(documentUri: string, importPath: string): string {
+  const documentFilePath = fileURLToPath(documentUri);
+  const dir = path.dirname(documentFilePath);
+  const resolved = path.resolve(dir, importPath);
+  return pathToFileURL(resolved).toString();
 }
 
 documents.listen(connection);
