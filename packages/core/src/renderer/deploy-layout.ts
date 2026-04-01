@@ -1,10 +1,7 @@
 import type { DeployNode } from "../types/ast.js";
 import type { LayoutResult, LayoutNode, ContainerRect, LayoutEdge } from "./layout.js";
 import type { DeployViewSlice } from "../view/deploy-view-extract.js";
-
-const CHAR_WIDTH = 9;
-const NODE_PADDING_X = 40;
-const NODE_PADDING_Y = 24;
+import { CHAR_WIDTH, NODE_PADDING_X, NODE_PADDING_Y } from "./rendering-constants.js";
 const LINE_HEIGHT = 18;
 const NODE_GAP = 16;
 const CONTAINER_GAP = 48;

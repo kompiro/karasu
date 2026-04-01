@@ -7,6 +7,7 @@ import type {
 } from "../types/ast.js";
 import type { ViewSlice } from "../view/view-extract.js";
 import { summarizeDescription } from "./description-summary.js";
+import { CHAR_WIDTH, NODE_PADDING_X, NODE_PADDING_Y } from "./rendering-constants.js";
 
 export type LayoutNodeProperties = CommonProperties & {
   role?: string;
@@ -56,9 +57,6 @@ export interface LayoutResult {
   height: number;
 }
 
-const NODE_PADDING_X = 40;
-const NODE_PADDING_Y = 24;
-const CHAR_WIDTH = 9;
 const LINE_HEIGHT = 18;
 const LAYER_GAP = 120;
 const NODE_GAP = 60;
