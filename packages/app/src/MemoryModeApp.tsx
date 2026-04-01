@@ -4,9 +4,9 @@ import {
   InMemoryFileSystemProvider,
   getReference,
   buildDrillDownSvg,
+  buildDrillDownSvgOrg,
   buildFullViewSvg,
   buildFullViewSvgOrg,
-  buildExportSvgOrg,
   type KrsNode,
   type OrgViewPath,
 } from "@karasu/core";
@@ -194,7 +194,7 @@ function MemoryModeInner() {
   const orgDrillDownSvg = useMemo(() => {
     if (!fileContent) return undefined;
     try {
-      return buildExportSvgOrg(fileContent, undefined, displayMode);
+      return buildDrillDownSvgOrg(fileContent, undefined, displayMode);
     } catch {
       return undefined;
     }

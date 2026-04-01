@@ -422,7 +422,11 @@ type OrgIconItem =
   | { type: "team"; node: TeamNode; style: ResolvedNodeStyle; height: number }
   | { type: "member"; node: MemberNode; style: ResolvedNodeStyle; height: number };
 
-function renderOrgViewIconMode(slice: OrgViewSlice, styles: ResolvedStyles): string {
+function renderOrgViewIconMode(
+  slice: OrgViewSlice,
+  styles: ResolvedStyles,
+  childLevelLinks?: Map<string, string>,
+): string {
   if (slice.focusedTeam === null) {
     const teams = slice.teams;
 
@@ -454,7 +458,9 @@ function renderOrgViewIconMode(slice: OrgViewSlice, styles: ResolvedStyles): str
     const { positions, totalWidth, totalHeight } = iconGridLayout(items.map((i) => i.height));
     const cards = items.map((item, i) => {
       if (item.type === "team") {
-        return renderTeamIconCard(item.node, positions[i].x, positions[i].y, item.style);
+        const card = renderTeamIconCard(item.node, positions[i].x, positions[i].y, item.style);
+        const linkId = childLevelLinks?.get(item.node.id);
+        return linkId ? el("a", { href: `#${linkId}` }, card) : card;
       }
       return renderMemberIconCard(item.node, positions[i].x, positions[i].y, item.style);
     });
@@ -520,7 +526,9 @@ function renderOrgViewIconMode(slice: OrgViewSlice, styles: ResolvedStyles): str
     if (item.type === "member") {
       return renderMemberIconCard(item.node, positions[i].x, positions[i].y, item.style);
     }
-    return renderTeamIconCard(item.node, positions[i].x, positions[i].y, item.style);
+    const card = renderTeamIconCard(item.node, positions[i].x, positions[i].y, item.style);
+    const linkId = childLevelLinks?.get(item.node.id);
+    return linkId ? el("a", { href: `#${linkId}` }, card) : card;
   });
 
   return el(
@@ -540,9 +548,10 @@ export function renderOrgView(
   slice: OrgViewSlice,
   styles: ResolvedStyles,
   displayMode?: DisplayMode,
+  childLevelLinks?: Map<string, string>,
 ): string {
   if (displayMode === "icon") {
-    return renderOrgViewIconMode(slice, styles);
+    return renderOrgViewIconMode(slice, styles, childLevelLinks);
   }
 
   if (slice.focusedTeam === null) {
@@ -572,7 +581,9 @@ export function renderOrgView(
     const cards = teams.map((team, i) => {
       const style = styles.nodes.get(team.id) ?? styles.defaultNodeStyle;
       const { x, y } = cardPos(i);
-      return renderTeamCard(team, x, y, style);
+      const card = renderTeamCard(team, x, y, style);
+      const linkId = childLevelLinks?.get(team.id);
+      return linkId ? el("a", { href: `#${linkId}` }, card) : card;
     });
 
     return el(
@@ -598,8 +609,11 @@ export function renderOrgView(
     })),
     ...focused.teams.map((t) => ({
       id: t.id,
-      render: (x: number, y: number) =>
-        renderTeamCard(t, x, y, styles.nodes.get(t.id) ?? styles.defaultNodeStyle),
+      render: (x: number, y: number) => {
+        const card = renderTeamCard(t, x, y, styles.nodes.get(t.id) ?? styles.defaultNodeStyle);
+        const linkId = childLevelLinks?.get(t.id);
+        return linkId ? el("a", { href: `#${linkId}` }, card) : card;
+      },
     })),
   ];
 
