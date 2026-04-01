@@ -17,5 +17,5 @@
       "version": "19"
     }
   },
-  "ignorePatterns": ["dist", "node_modules", "*.d.ts"]
+  "ignorePatterns": ["dist", "out", "node_modules", "*.d.ts"]
 }

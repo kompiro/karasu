@@ -12,6 +12,10 @@
     "packages/app": {
       "project": ["src/**/*.{ts,tsx}", "!src/**/*.test.{ts,tsx}"]
     },
+    "packages/lsp": {
+      "entry": ["src/server.ts"],
+      "project": ["src/**/*.ts"]
+    },
     "packages/vscode": {
       "entry": ["src/extension.ts"],
       "project": ["src/**/*.ts"]
