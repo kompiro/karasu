@@ -1,7 +1,10 @@
 import type { KrsFile, KrsNode, DeployBlock, OrganizationBlock, TeamNode } from "@karasu/core";
 import { DocumentSymbol, SymbolKind } from "vscode-languageserver/node";
 
-function toRange(loc: { start: { line: number; column: number }; end: { line: number; column: number } }) {
+function toRange(loc: {
+  start: { line: number; column: number };
+  end: { line: number; column: number };
+}) {
   return {
     start: {
       line: Math.max(0, loc.start.line - 1),
