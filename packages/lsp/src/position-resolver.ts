@@ -1,7 +1,7 @@
 import type { KrsFile, KrsNode, DeployBlock, DeployNode, TeamNode, MemberNode } from "@karasu/core";
 import type { Range } from "vscode-languageserver/node";
 
-export interface LspPosition {
+interface LspPosition {
   line: number;
   character: number;
 }
