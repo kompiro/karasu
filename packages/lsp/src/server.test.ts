@@ -1,6 +1,14 @@
 import { describe, it, expect } from "vitest";
 import { Parser } from "@karasu/core";
-import { collectNodes, findNodeAtPosition, findRangeOfNode } from "./position-resolver.js";
+import {
+  collectNodes,
+  findNodeAtPosition,
+  findRangeOfNode,
+  collectAllIdentifiers,
+  getNodeDescription,
+  getWordAtPosition,
+} from "./position-resolver.js";
+import { buildDocumentSymbols } from "./document-symbols.js";
 
 const KRS_SOURCE = `\
 system MySystem {
@@ -32,6 +40,12 @@ describe("collectNodes", () => {
     const file = parse(KRS_SOURCE);
     const nodes = collectNodes(file);
     expect(nodes.some((n) => n.id === "Login")).toBe(true);
+  });
+
+  it("collects top-level standalone service", () => {
+    const file = parse(KRS_STANDALONE_SERVICE);
+    const nodes = collectNodes(file);
+    expect(nodes.some((n) => n.id === "StandaloneAuth")).toBe(true);
   });
 });
 
@@ -95,5 +109,120 @@ describe("findRangeOfNode", () => {
     const serviceRange = findRangeOfNode(file, "AuthService")!;
     expect(serviceRange.start.line).toBeGreaterThanOrEqual(systemRange.start.line);
     expect(serviceRange.end.line).toBeLessThanOrEqual(systemRange.end.line);
+  });
+});
+
+// ─── Phase 5 tests ────────────────────────────────────────────────────────────
+
+const KRS_WITH_DESCRIPTION = `\
+system Platform {
+  description "Top-level platform"
+  service Auth {
+    description "Authentication service"
+    domain Login {
+      description "Login domain"
+    }
+  }
+}
+`;
+
+const KRS_STANDALONE_SERVICE = `\
+service StandaloneAuth {
+  label "Auth"
+}
+`;
+
+describe("collectAllIdentifiers", () => {
+  it("collects all IDs from a system hierarchy", () => {
+    const file = parse(KRS_SOURCE);
+    const ids = collectAllIdentifiers(file);
+    expect(ids).toContain("MySystem");
+    expect(ids).toContain("AuthService");
+    expect(ids).toContain("Login");
+    expect(ids).toContain("Core");
+  });
+
+  it("collects top-level standalone services", () => {
+    const file = parse(KRS_STANDALONE_SERVICE);
+    const ids = collectAllIdentifiers(file);
+    expect(ids).toContain("StandaloneAuth");
+  });
+});
+
+describe("getNodeDescription", () => {
+  it("returns description for a system node", () => {
+    const file = parse(KRS_WITH_DESCRIPTION);
+    expect(getNodeDescription(file, "Platform")).toBe("Top-level platform");
+  });
+
+  it("returns description for a nested service node", () => {
+    const file = parse(KRS_WITH_DESCRIPTION);
+    expect(getNodeDescription(file, "Auth")).toBe("Authentication service");
+  });
+
+  it("returns description for a deeply nested domain node", () => {
+    const file = parse(KRS_WITH_DESCRIPTION);
+    expect(getNodeDescription(file, "Login")).toBe("Login domain");
+  });
+
+  it("returns null for a node without description", () => {
+    const file = parse(KRS_SOURCE);
+    expect(getNodeDescription(file, "MySystem")).toBeNull();
+  });
+
+  it("returns null for an unknown node ID", () => {
+    const file = parse(KRS_SOURCE);
+    expect(getNodeDescription(file, "NonExistent")).toBeNull();
+  });
+});
+
+describe("getWordAtPosition", () => {
+  const text = "system MySystem {\n  service Auth {}\n}";
+
+  it("extracts identifier at cursor position", () => {
+    // "system" is at line 0, char 0-5
+    expect(getWordAtPosition(text, { line: 0, character: 2 })).toBe("system");
+  });
+
+  it("extracts identifier in the middle of a word", () => {
+    // "MySystem" starts at char 7 on line 0
+    expect(getWordAtPosition(text, { line: 0, character: 9 })).toBe("MySystem");
+  });
+
+  it("returns null when cursor is on a non-word character", () => {
+    // char 6 is the space between "system" and "MySystem"
+    expect(getWordAtPosition(text, { line: 0, character: 6 })).toBeNull();
+  });
+
+  it("returns null for out-of-bounds line", () => {
+    expect(getWordAtPosition(text, { line: 99, character: 0 })).toBeNull();
+  });
+});
+
+describe("buildDocumentSymbols", () => {
+  it("returns a symbol for each top-level system", () => {
+    const file = parse(KRS_SOURCE);
+    const symbols = buildDocumentSymbols(file);
+    expect(symbols.some((s) => s.name === "MySystem")).toBe(true);
+  });
+
+  it("returns nested children for service inside system", () => {
+    const file = parse(KRS_SOURCE);
+    const systemSymbol = buildDocumentSymbols(file).find((s) => s.name === "MySystem");
+    expect(systemSymbol).toBeDefined();
+    expect(systemSymbol!.children?.some((c) => c.name === "AuthService")).toBe(true);
+  });
+
+  it("uses label as symbol name when label is set", () => {
+    const src = `system Plat { label "My Platform" }`;
+    const file = parse(src);
+    const symbols = buildDocumentSymbols(file);
+    expect(symbols.some((s) => s.name === "My Platform")).toBe(true);
+  });
+
+  it("returns a symbol for a standalone service", () => {
+    const file = parse(KRS_STANDALONE_SERVICE);
+    const symbols = buildDocumentSymbols(file);
+    expect(symbols.some((s) => s.name === "Auth" || s.name === "StandaloneAuth")).toBe(true);
   });
 });

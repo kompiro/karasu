@@ -1,5 +1,6 @@
 import * as vscode from "vscode";
-import { compile } from "@karasu/core";
+import { compileProject, type NodeMetadata } from "@karasu/core";
+import { VsCodeFileSystemProvider } from "./vscode-fs-provider.js";
 
 type ViewType = "system" | "deploy" | "org";
 
@@ -8,6 +9,9 @@ export class PreviewPanel {
 
   private readonly _panel: vscode.WebviewPanel;
   private _viewType: ViewType = "system";
+  private _viewPath: string[] = [];
+  private _viewLabels: string[] = [];
+  private _lastNodeMetadata: Map<string, NodeMetadata> | undefined;
   private _currentDocument: vscode.TextDocument | undefined;
   private readonly _disposables: vscode.Disposable[] = [];
   private _disposed = false;
@@ -24,11 +28,26 @@ export class PreviewPanel {
     this._onNavigate = onNavigate;
     this._panel.onDidDispose(() => this.dispose(), null, this._disposables);
     this._panel.webview.onDidReceiveMessage(
-      (message: { type: string; viewType?: ViewType; nodeId?: string }) => {
+      (message: { type: string; viewType?: ViewType; nodeId?: string; index?: number }) => {
         if (message.type === "switchView" && message.viewType) {
           this._viewType = message.viewType;
+          this._viewPath = [];
+          this._viewLabels = [];
           if (this._currentDocument) {
-            this._render(this._currentDocument.getText());
+            void this._render(this._currentDocument);
+          }
+        } else if (message.type === "drillDown" && message.nodeId) {
+          const label = this._lastNodeMetadata?.get(message.nodeId)?.label ?? message.nodeId;
+          this._viewPath = [...this._viewPath, message.nodeId];
+          this._viewLabels = [...this._viewLabels, label];
+          if (this._currentDocument) {
+            void this._render(this._currentDocument);
+          }
+        } else if (message.type === "navigateTo" && message.index !== undefined) {
+          this._viewPath = this._viewPath.slice(0, message.index);
+          this._viewLabels = this._viewLabels.slice(0, message.index);
+          if (this._currentDocument) {
+            void this._render(this._currentDocument);
           }
         } else if (message.type === "navigate" && message.nodeId) {
           this._onNavigate(message.nodeId);
@@ -51,7 +70,7 @@ export class PreviewPanel {
 
   update(document: vscode.TextDocument): void {
     this._currentDocument = document;
-    this._render(document.getText());
+    void this._render(document);
   }
 
   highlight(nodeId: string | null): void {
@@ -66,24 +85,46 @@ export class PreviewPanel {
     return this._disposed;
   }
 
-  private _render(krsSource: string): void {
+  private async _render(document: vscode.TextDocument): Promise<void> {
     let svg: string;
     try {
-      svg = compile(krsSource, { diagramType: this._viewType }).svg;
+      const viewPathOpts =
+        this._viewType === "org"
+          ? { orgPath: this._viewPath }
+          : this._viewType === "system"
+            ? { viewPath: this._viewPath }
+            : {};
+      const result = await compileProject(document.uri.fsPath, new VsCodeFileSystemProvider(), {
+        diagramType: this._viewType,
+        ...viewPathOpts,
+      });
+      svg = result.svg;
+      this._lastNodeMetadata = result.diagramType !== "org" ? result.nodeMetadata : undefined;
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       svg = `<svg xmlns="http://www.w3.org/2000/svg" width="600" height="60">
         <text x="10" y="30" fill="#f44" font-family="monospace" font-size="13">Error: ${_escape(msg)}</text>
       </svg>`;
     }
-    this._panel.webview.html = this._buildHtml(svg);
+    this._panel.webview.html = this._buildHtml(svg, this._lastNodeMetadata);
   }
 
-  private _buildHtml(svg: string): string {
+  private _buildHtml(svg: string, nodeMetadata?: Map<string, NodeMetadata>): string {
     const nonce = _nonce();
     const activeStyle =
       "background:var(--vscode-button-background);color:var(--vscode-button-foreground);border-color:var(--vscode-button-background);";
     const btnStyle = (view: ViewType) => (view === this._viewType ? activeStyle : "");
+
+    const breadcrumb = this._buildBreadcrumb();
+
+    // Serialize only the description field for each node to pass into the webview.
+    const descriptionMap: Record<string, string> = {};
+    if (nodeMetadata) {
+      for (const [id, meta] of nodeMetadata) {
+        if (meta.description) descriptionMap[id] = meta.description;
+      }
+    }
+    const descriptionJson = JSON.stringify(descriptionMap);
 
     return `<!DOCTYPE html>
 <html lang="en">
@@ -108,7 +149,36 @@ export class PreviewPanel {
       padding: 6px 10px;
       border-bottom: 1px solid var(--vscode-panel-border);
       flex-shrink: 0;
+      align-items: center;
     }
+    .toolbar-sep {
+      width: 1px;
+      height: 16px;
+      background: var(--vscode-panel-border);
+      flex-shrink: 0;
+    }
+    #breadcrumb {
+      display: flex;
+      align-items: center;
+      gap: 2px;
+      font-size: 12px;
+      overflow: hidden;
+    }
+    #breadcrumb button {
+      padding: 2px 6px;
+      border: none;
+      background: none;
+      color: var(--vscode-textLink-foreground, #4daafc);
+      cursor: pointer;
+      font-size: 12px;
+      white-space: nowrap;
+    }
+    #breadcrumb button:last-child {
+      color: var(--vscode-editor-foreground);
+      cursor: default;
+      font-weight: bold;
+    }
+    #breadcrumb .sep { color: var(--vscode-descriptionForeground); padding: 0 2px; }
     button {
       padding: 3px 10px;
       border: 1px solid var(--vscode-button-secondaryBackground, #555);
@@ -133,6 +203,22 @@ export class PreviewPanel {
       stroke-width: 3;
     }
     [data-node-id] { cursor: pointer; }
+    [data-has-children="true"] { cursor: zoom-in; }
+    #karasu-tooltip {
+      position: fixed;
+      display: none;
+      max-width: 320px;
+      padding: 6px 10px;
+      background: var(--vscode-editorHoverWidget-background, #252526);
+      color: var(--vscode-editorHoverWidget-foreground, #cccccc);
+      border: 1px solid var(--vscode-editorHoverWidget-border, #454545);
+      border-radius: 3px;
+      font-size: 12px;
+      line-height: 1.5;
+      white-space: pre-wrap;
+      pointer-events: none;
+      z-index: 1000;
+    }
   </style>
 </head>
 <body>
@@ -140,10 +226,15 @@ export class PreviewPanel {
     <button data-view="system" style="${btnStyle("system")}">System</button>
     <button data-view="deploy" style="${btnStyle("deploy")}">Deploy</button>
     <button data-view="org" style="${btnStyle("org")}">Org</button>
+    <div class="toolbar-sep"></div>
+    <div id="breadcrumb">${breadcrumb}</div>
   </div>
   <div id="preview">${svg}</div>
+  <div id="karasu-tooltip"></div>
   <script nonce="${nonce}">
     const vscode = acquireVsCodeApi();
+    const nodeDescriptions = ${descriptionJson};
+    const tooltip = document.getElementById('karasu-tooltip');
 
     // View switcher
     document.querySelectorAll('[data-view]').forEach(function(btn) {
@@ -152,12 +243,48 @@ export class PreviewPanel {
       });
     });
 
-    // Node click → navigate
-    document.querySelectorAll('[data-node-id]').forEach(function(el) {
-      el.addEventListener('click', function(e) {
-        e.stopPropagation();
-        vscode.postMessage({ type: 'navigate', nodeId: el.dataset.nodeId });
+    // Breadcrumb navigation
+    document.querySelectorAll('[data-nav-index]').forEach(function(btn) {
+      btn.addEventListener('click', function() {
+        vscode.postMessage({ type: 'navigateTo', index: Number(btn.dataset.navIndex) });
       });
+    });
+
+    // Node click: Cmd/Ctrl+click → navigate (editor jump); plain click on drillable node → drillDown
+    document.querySelector('#preview').addEventListener('click', function(e) {
+      var group = e.target.closest('[data-node-id]');
+      if (!group) return;
+      var nodeId = group.getAttribute('data-node-id');
+      if (!nodeId) return;
+      if (e.metaKey || e.ctrlKey) {
+        vscode.postMessage({ type: 'navigate', nodeId: nodeId });
+      } else if (group.getAttribute('data-has-children') === 'true') {
+        vscode.postMessage({ type: 'drillDown', nodeId: nodeId });
+      } else {
+        vscode.postMessage({ type: 'navigate', nodeId: nodeId });
+      }
+    });
+
+    // Node hover: show description tooltip
+    document.querySelector('#preview').addEventListener('mousemove', function(e) {
+      var group = e.target.closest('[data-node-id]');
+      if (!group) { tooltip.style.display = 'none'; return; }
+      var nodeId = group.getAttribute('data-node-id');
+      var desc = nodeId && nodeDescriptions[nodeId];
+      if (!desc) { tooltip.style.display = 'none'; return; }
+      tooltip.textContent = desc;
+      tooltip.style.display = 'block';
+      var x = e.clientX + 14;
+      var y = e.clientY + 14;
+      // Keep tooltip inside viewport
+      if (x + tooltip.offsetWidth > window.innerWidth) x = e.clientX - tooltip.offsetWidth - 8;
+      if (y + tooltip.offsetHeight > window.innerHeight) y = e.clientY - tooltip.offsetHeight - 8;
+      tooltip.style.left = x + 'px';
+      tooltip.style.top = y + 'px';
+    });
+
+    document.querySelector('#preview').addEventListener('mouseleave', function() {
+      tooltip.style.display = 'none';
     });
 
     // Highlight message from extension
@@ -179,6 +306,23 @@ export class PreviewPanel {
   </script>
 </body>
 </html>`;
+  }
+
+  private _buildBreadcrumb(): string {
+    // segments[0] = Root (navigateTo 0 → empty path)
+    // segments[i] = _viewLabels[i-1] (navigateTo i → path of length i)
+    // Last segment is current position — not clickable
+    const labels = ["Root", ...this._viewLabels];
+    return labels
+      .map((label, i) => {
+        const isLast = i === labels.length - 1;
+        const sep = i > 0 ? `<span class="sep">›</span>` : "";
+        if (isLast) {
+          return `${sep}<button style="cursor:default;color:var(--vscode-editor-foreground);font-weight:bold;">${_escape(label)}</button>`;
+        }
+        return `${sep}<button data-nav-index="${i}">${_escape(label)}</button>`;
+      })
+      .join("");
   }
 
   dispose(): void {
