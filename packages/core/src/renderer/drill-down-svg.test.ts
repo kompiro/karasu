@@ -1,5 +1,10 @@
 import { describe, it, expect, beforeEach } from "vitest";
-import { buildDrillDownSvg, buildDrillDownSvgOrg } from "./drill-down-svg.js";
+import {
+  buildDrillDownSvg,
+  buildDrillDownSvgOrg,
+  buildFullViewSvg,
+  buildFullViewSvgOrg,
+} from "./drill-down-svg.js";
 import { registerBuiltinShapes } from "./shapes.js";
 import { clearRegistry } from "./shape-registry.js";
 import { Parser } from "../parser/parser.js";
@@ -217,5 +222,93 @@ organization Acme {
     expect(svg).toContain(".krs-view { display: none; }");
     expect(svg).toContain(".krs-view:target { display: block; }");
     expect(svg).toContain("#krs-view-root { display: block; }");
+  });
+});
+
+// Tests for assembleFullViewSvg (via buildFullViewSvg / buildFullViewSvgOrg)
+describe("buildFullViewSvg", () => {
+  it("returns placeholder for empty source", () => {
+    const krsFile = Parser.parse("system Empty {}").value;
+    const svg = buildFullViewSvg(krsFile);
+    expect(svg).toContain("No diagram");
+  });
+
+  it("single-level: one section, no separator line", () => {
+    const krsFile = Parser.parse(ONE_LEVEL).value;
+    const svg = buildFullViewSvg(krsFile);
+
+    // Section label for root
+    expect(svg).toContain("ECommerce");
+    // No separator line (only one level)
+    expect(svg).not.toContain('stroke="#1E293B"');
+    // Dark background
+    expect(svg).toContain("#0F172A");
+  });
+
+  it("two-level: two sections with separator line between them", () => {
+    const krsFile = Parser.parse(TWO_LEVEL).value;
+    const svg = buildFullViewSvg(krsFile);
+
+    // Both section labels present
+    expect(svg).toContain("ECommerce");
+    expect(svg).toContain("ECommerce › Order");
+    // Separator line appears between sections
+    expect(svg).toContain('stroke="#1E293B"');
+  });
+
+  it("three-level: three sections with path labels", () => {
+    const krsFile = Parser.parse(THREE_LEVEL).value;
+    const svg = buildFullViewSvg(krsFile);
+
+    expect(svg).toContain("ECommerce");
+    expect(svg).toContain("ECommerce › Order");
+    expect(svg).toContain("ECommerce › Order › Order Domain");
+  });
+
+  it("is a valid outer SVG with background style", () => {
+    const krsFile = Parser.parse(ONE_LEVEL).value;
+    const svg = buildFullViewSvg(krsFile);
+
+    expect(svg).toMatch(/^<svg /);
+    expect(svg).toContain('style="background:#0F172A"');
+  });
+});
+
+describe("buildFullViewSvgOrg", () => {
+  it("returns placeholder for empty org", () => {
+    const krsFile = Parser.parse("system Empty {}").value;
+    const svg = buildFullViewSvgOrg(krsFile);
+    expect(svg).toContain("No org diagram");
+  });
+
+  it("renders a section for each team including leaf teams", () => {
+    // ORG_FLAT has 2 leaf teams → root + Frontend + Backend = 3 sections with separators
+    const krsFile = Parser.parse(ORG_FLAT).value;
+    const svg = buildFullViewSvgOrg(krsFile);
+
+    expect(svg).toContain("Acme");
+    expect(svg).toContain("Frontend");
+    expect(svg).toContain("Backend");
+    // Multiple sections → separator lines present
+    expect(svg).toContain('stroke="#1E293B"');
+    expect(svg).toContain("#0F172A");
+  });
+
+  it("two-level: path labels include team name", () => {
+    const krsFile = Parser.parse(ORG_TWO_LEVEL).value;
+    const svg = buildFullViewSvgOrg(krsFile);
+
+    expect(svg).toContain("Acme");
+    expect(svg).toContain("Engineering");
+    expect(svg).toContain("Frontend");
+    expect(svg).toContain('stroke="#1E293B"');
+  });
+
+  it("is a valid outer SVG with background style", () => {
+    const krsFile = Parser.parse(ORG_FLAT).value;
+    const svg = buildFullViewSvgOrg(krsFile);
+
+    expect(svg).toMatch(/^<svg /);
+    expect(svg).toContain('style="background:#0F172A"');
   });
 });
