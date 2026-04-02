@@ -179,6 +179,13 @@ export class PreviewPanel {
       font-weight: bold;
     }
     #breadcrumb .sep { color: var(--vscode-descriptionForeground); padding: 0 2px; }
+    #jump-hint {
+      margin-left: auto;
+      font-size: 11px;
+      color: var(--vscode-descriptionForeground);
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
     button {
       padding: 3px 10px;
       border: 1px solid var(--vscode-button-secondaryBackground, #555);
@@ -228,6 +235,7 @@ export class PreviewPanel {
     <button data-view="org" style="${btnStyle("org")}">Org</button>
     <div class="toolbar-sep"></div>
     <div id="breadcrumb">${breadcrumb}</div>
+    <span id="jump-hint">Cmd/Ctrl+Click to jump to definition</span>
   </div>
   <div id="preview">${svg}</div>
   <div id="karasu-tooltip"></div>
