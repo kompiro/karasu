@@ -1,7 +1,7 @@
 # 全ビュー統合バンドル SVG（Export All Diagrams）
 
 - **日付**: 2026-04-01
-- **ステータス**: ドラフト
+- **ステータス**: 検討中
 - **関連**:
   - [SVG エクスポート（ドリルダウン対応）](svg-export.md)
   - [Issue #121: CLI render command](https://github.com/kompiro/karasu/issues/121)
@@ -199,23 +199,25 @@ export function buildAllViewsSvg(
 karasu render index.krs --all-views --output docs/architecture-all.svg
 ```
 
-## 未解決の問い
+## 決定事項
 
-1. **既存の drill-down ID との衝突**: 現在の `buildDrillDownSvg` が生成する ID（`krs-view-root` 等）と
-   新しい ID スキーム（`krs-system-root` 等）をどう整合させるか。
-   既存 ID スキームを廃止して新スキームに統一するか、互換レイヤーを持つか。
+1. **既存の drill-down ID スキームはリファクタリングで新スキームに統一する**:
+   現在の `buildDrillDownSvg` が生成する ID（`krs-view-root` 等）は廃止し、
+   新しい ID スキーム（`krs-system-root` 等）に統一する。
+   互換レイヤーは持たず、専用のリファクタリング Issue として切り出す。
 
-2. **`buildAllViewsSvg` と既存関数の関係**: `buildAllViewsSvg` は
-   既存の `buildDrillDownSvg` の内部実装を呼び出す形にするか、
-   それとも共通の内部関数を抽出してリファクタリングするか。
+2. **`buildAllViewsSvg` と既存関数の関係は #226 等の整理状況を踏まえて設計する**:
+   現在進行中の内部 API 整理（#226 等）の影響を受けるため、
+   それらの完了後に `buildAllViewsSvg` の実装方針（再利用 vs. リファクタリング）を確定する。
 
-3. **Deploy ビューのドリルダウン**: 現在の `svg-export.md` では
-   「Deploy ビューはフラットで ドリルダウン構造を持たない」とされている。
-   全ビュー統合 SVG の deploy タブ内でも同様にフラット表示のみとするか。
+3. **Deploy ビューは現在フラット表示のみ。階層化は将来のために設計上考慮する**:
+   現時点では `svg-export.md` の方針通りフラット表示のみとする。
+   ただし将来の階層化に備えて ID スキームや構造は拡張可能に設計する。
 
-4. **アプリ内プレビューでの利用**: 「Export All Diagrams SVG」として出力するだけでなく、
-   アプリ内でも `<iframe srcdoc>` によるプレビューとして提供するか（将来検討）。
+4. **アプリ内プレビューでの利用は別 Issue で検討する**:
+   `<iframe srcdoc>` によるプレビューとしての提供は本 Issue のスコープ外とし、
+   別途 Issue を立てて検討する。
 
-5. **`#122` との連携設計**: GitHub Actions テンプレートでは
-   `karasu render --all-views` + `karasu render --view system` など複数の出力パターンを
-   どのように使い分けるか。README への埋め込みパターンのドキュメント化が必要。
+5. **`#122` との連携設計は #122 側に追記する**:
+   GitHub Actions テンプレートにおける `--all-views` フラグの使い分けや
+   README 埋め込みパターンのドキュメント化は #122 に追記して管理する。
