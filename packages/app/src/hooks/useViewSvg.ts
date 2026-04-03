@@ -5,6 +5,7 @@ import {
   buildAllLayersSvg,
   buildAllLayersSvgOrg,
   type DisplayMode,
+  type Diagnostic,
 } from "@karasu/core";
 
 export function useViewSvg(
@@ -12,7 +13,7 @@ export function useViewSvg(
   displayMode: DisplayMode | undefined,
   styleSource?: string,
 ) {
-  const drillDownSvg = useMemo(() => {
+  const drillDownResult = useMemo(() => {
     if (!fileContent) return undefined;
     try {
       return buildDrillDownSvg(fileContent, styleSource, displayMode);
@@ -21,7 +22,7 @@ export function useViewSvg(
     }
   }, [fileContent, displayMode, styleSource]);
 
-  const allLayersSvg = useMemo(() => {
+  const allLayersResult = useMemo(() => {
     if (!fileContent) return undefined;
     try {
       return buildAllLayersSvg(fileContent, styleSource, displayMode);
@@ -30,7 +31,7 @@ export function useViewSvg(
     }
   }, [fileContent, displayMode, styleSource]);
 
-  const orgAllLayersSvg = useMemo(() => {
+  const orgAllLayersResult = useMemo(() => {
     if (!fileContent) return undefined;
     try {
       return buildAllLayersSvgOrg(fileContent, styleSource, displayMode);
@@ -39,7 +40,7 @@ export function useViewSvg(
     }
   }, [fileContent, displayMode, styleSource]);
 
-  const orgDrillDownSvg = useMemo(() => {
+  const orgDrillDownResult = useMemo(() => {
     if (!fileContent) return undefined;
     try {
       return buildDrillDownSvgOrg(fileContent, styleSource, displayMode);
@@ -48,5 +49,15 @@ export function useViewSvg(
     }
   }, [fileContent, displayMode, styleSource]);
 
-  return { drillDownSvg, allLayersSvg, orgAllLayersSvg, orgDrillDownSvg };
+  // All 4 functions parse the same styleSource, so diagnostics are identical.
+  // Take from the first available result to avoid duplication.
+  const styleDiagnostics: Diagnostic[] = drillDownResult?.diagnostics ?? [];
+
+  return {
+    drillDownSvg: drillDownResult?.svg,
+    allLayersSvg: allLayersResult?.svg,
+    orgAllLayersSvg: orgAllLayersResult?.svg,
+    orgDrillDownSvg: orgDrillDownResult?.svg,
+    styleDiagnostics,
+  };
 }

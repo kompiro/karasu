@@ -1,4 +1,4 @@
-import type { KrsNode, KrsFile, TeamNode, OrganizationBlock } from "../types/ast.js";
+import type { KrsNode, KrsFile, TeamNode, OrganizationBlock, Diagnostic } from "../types/ast.js";
 import type { ResolvedStyles, StyleSheet } from "../types/style.js";
 import type { DisplayMode } from "./layout.js";
 import { extractView, type ViewSlice } from "../view/view-extract.js";
@@ -51,14 +51,24 @@ function extractSvgParts(svg: string): SvgParts {
   return { viewBox, innerContent, width, height };
 }
 
-function buildStyles(displayMode: DisplayMode | undefined, styleSource?: string): StyleSheet[] {
+export interface SvgResult {
+  svg: string;
+  diagnostics: Diagnostic[];
+}
+
+function buildStyles(
+  displayMode: DisplayMode | undefined,
+  styleSource?: string,
+): { sheets: StyleSheet[]; diagnostics: Diagnostic[] } {
   const sheets: StyleSheet[] = [getBuiltinStyleSheet()];
+  const diagnostics: Diagnostic[] = [];
   if (displayMode === "icon") sheets.push(getIconThemeStyleSheet());
   if (styleSource) {
     const styleResult = StyleParser.parse(styleSource);
     sheets.push(styleResult.value);
+    diagnostics.push(...styleResult.diagnostics);
   }
-  return sheets;
+  return { sheets, diagnostics };
 }
 
 // ─── Adapter interface & generic collectors ───────────────────────────────
@@ -154,13 +164,17 @@ export function buildDrillDownSvg(
   krsFile: KrsFile,
   styleSource?: string,
   displayMode?: DisplayMode,
-): string {
+): SvgResult {
   const rootSlice = extractView(krsFile.systems, []);
   if (rootSlice.childNodes.length === 0) {
-    return `<svg xmlns="http://www.w3.org/2000/svg" width="100%" height="100%" viewBox="0 0 200 100"><text x="100" y="50" text-anchor="middle" fill="#9CA3AF" font-family="sans-serif">No diagram</text></svg>`;
+    return {
+      svg: `<svg xmlns="http://www.w3.org/2000/svg" width="100%" height="100%" viewBox="0 0 200 100"><text x="100" y="50" text-anchor="middle" fill="#9CA3AF" font-family="sans-serif">No diagram</text></svg>`,
+      diagnostics: [],
+    };
   }
 
-  const styles = resolveStyles(krsFile.systems, buildStyles(displayMode, styleSource), []);
+  const { sheets, diagnostics } = buildStyles(displayMode, styleSource);
+  const styles = resolveStyles(krsFile.systems, sheets, []);
   const adapter = createSystemAdapter(
     krsFile.systems,
     krsFile.ownerIndex ?? new Map(),
@@ -171,7 +185,10 @@ export function buildDrillDownSvg(
   const levels: string[] = [];
   collectDrillDownLevelsGeneric(adapter, krsFile.systems, [], "root", null, levels);
 
-  return `<svg xmlns="http://www.w3.org/2000/svg" width="100%" height="100%"><style>${DRILL_DOWN_CSS}</style>${levels.join("")}</svg>`;
+  return {
+    svg: `<svg xmlns="http://www.w3.org/2000/svg" width="100%" height="100%"><style>${DRILL_DOWN_CSS}</style>${levels.join("")}</svg>`,
+    diagnostics,
+  };
 }
 
 // ─── All Layers SVG (all levels stacked vertically) ──────────────────────────
@@ -259,13 +276,17 @@ export function buildAllLayersSvg(
   krsFile: KrsFile,
   styleSource?: string,
   displayMode?: DisplayMode,
-): string {
+): SvgResult {
   const rootSlice = extractView(krsFile.systems, []);
   if (rootSlice.childNodes.length === 0) {
-    return `<svg xmlns="http://www.w3.org/2000/svg" width="200" height="100" viewBox="0 0 200 100"><text x="100" y="50" text-anchor="middle" fill="#9CA3AF" font-family="sans-serif">No diagram</text></svg>`;
+    return {
+      svg: `<svg xmlns="http://www.w3.org/2000/svg" width="200" height="100" viewBox="0 0 200 100"><text x="100" y="50" text-anchor="middle" fill="#9CA3AF" font-family="sans-serif">No diagram</text></svg>`,
+      diagnostics: [],
+    };
   }
 
-  const styles = resolveStyles(krsFile.systems, buildStyles(displayMode, styleSource), []);
+  const { sheets, diagnostics } = buildStyles(displayMode, styleSource);
+  const styles = resolveStyles(krsFile.systems, sheets, []);
   const systemNode = krsFile.systems[0];
   const rootLabel = systemNode.label ?? systemNode.id;
 
@@ -279,7 +300,7 @@ export function buildAllLayersSvg(
   const levels: AllLayersLevel[] = [];
   collectAllLayersLevelsGeneric(adapter, krsFile.systems, [], [rootLabel], levels);
 
-  return assembleAllLayersSvg(levels);
+  return { svg: assembleAllLayersSvg(levels), diagnostics };
 }
 
 // ─── Org Drill-down SVG (CSS :target navigation) ─────────────────────────────
@@ -292,24 +313,26 @@ export function buildDrillDownSvgOrg(
   krsFile: KrsFile,
   styleSource?: string,
   displayMode?: DisplayMode,
-): string {
+): SvgResult {
   const topLevelTeams = krsFile.organizations.flatMap((o) => o.teams);
   if (topLevelTeams.length === 0) {
-    return `<svg xmlns="http://www.w3.org/2000/svg" width="100%" height="100%" viewBox="0 0 200 100"><text x="100" y="50" text-anchor="middle" fill="#9CA3AF" font-family="sans-serif">No org diagram</text></svg>`;
+    return {
+      svg: `<svg xmlns="http://www.w3.org/2000/svg" width="100%" height="100%" viewBox="0 0 200 100"><text x="100" y="50" text-anchor="middle" fill="#9CA3AF" font-family="sans-serif">No org diagram</text></svg>`,
+      diagnostics: [],
+    };
   }
 
-  const styles = resolveStyles(
-    krsFile.systems,
-    buildStyles(displayMode, styleSource),
-    [],
-    krsFile.organizations,
-  );
+  const { sheets, diagnostics } = buildStyles(displayMode, styleSource);
+  const styles = resolveStyles(krsFile.systems, sheets, [], krsFile.organizations);
   const adapter = createOrgAdapter(krsFile.organizations, styles, displayMode);
 
   const levels: string[] = [];
   collectDrillDownLevelsGeneric(adapter, krsFile.organizations, [], "root", null, levels);
 
-  return `<svg xmlns="http://www.w3.org/2000/svg" width="100%" height="100%"><style>${DRILL_DOWN_CSS}</style>${levels.join("")}</svg>`;
+  return {
+    svg: `<svg xmlns="http://www.w3.org/2000/svg" width="100%" height="100%"><style>${DRILL_DOWN_CSS}</style>${levels.join("")}</svg>`,
+    diagnostics,
+  };
 }
 
 // ─── Org All Layers SVG (all org levels stacked vertically) ──────────────────
@@ -322,19 +345,18 @@ export function buildAllLayersSvgOrg(
   krsFile: KrsFile,
   styleSource?: string,
   displayMode?: DisplayMode,
-): string {
+): SvgResult {
   const organizations = krsFile.organizations;
   const topLevelTeams = organizations.flatMap((o) => o.teams);
   if (topLevelTeams.length === 0) {
-    return `<svg xmlns="http://www.w3.org/2000/svg" width="200" height="100" viewBox="0 0 200 100"><text x="100" y="50" text-anchor="middle" fill="#9CA3AF" font-family="sans-serif">No org diagram</text></svg>`;
+    return {
+      svg: `<svg xmlns="http://www.w3.org/2000/svg" width="200" height="100" viewBox="0 0 200 100"><text x="100" y="50" text-anchor="middle" fill="#9CA3AF" font-family="sans-serif">No org diagram</text></svg>`,
+      diagnostics: [],
+    };
   }
 
-  const styles = resolveStyles(
-    krsFile.systems,
-    buildStyles(displayMode, styleSource),
-    [],
-    organizations,
-  );
+  const { sheets, diagnostics } = buildStyles(displayMode, styleSource);
+  const styles = resolveStyles(krsFile.systems, sheets, [], organizations);
   const rootLabel = organizations[0].label ?? organizations[0].id;
   const adapter = createOrgAdapter(organizations, styles, displayMode);
 
@@ -342,8 +364,11 @@ export function buildAllLayersSvgOrg(
   collectAllLayersLevelsGeneric(adapter, organizations, [], [rootLabel], levels);
 
   if (levels.length === 0) {
-    return `<svg xmlns="http://www.w3.org/2000/svg" width="200" height="100" viewBox="0 0 200 100"><text x="100" y="50" text-anchor="middle" fill="#9CA3AF" font-family="sans-serif">No org diagram</text></svg>`;
+    return {
+      svg: `<svg xmlns="http://www.w3.org/2000/svg" width="200" height="100" viewBox="0 0 200 100"><text x="100" y="50" text-anchor="middle" fill="#9CA3AF" font-family="sans-serif">No org diagram</text></svg>`,
+      diagnostics: [],
+    };
   }
 
-  return assembleAllLayersSvg(levels);
+  return { svg: assembleAllLayersSvg(levels), diagnostics };
 }
