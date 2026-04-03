@@ -38,16 +38,10 @@ describe("appReducer — activeView / highlightedNodeId", () => {
       expect(next.highlightedNodeId).toBeNull();
     });
 
-    it("resets orgPath when switching to org", () => {
-      const state = stateWith({ orgPath: ["TeamA"] });
+    it("resets viewPath when switching to org", () => {
+      const state = stateWith({ viewPath: ["TeamA"] });
       const next = appReducer(state, { type: "SET_ACTIVE_VIEW", activeView: "org" });
-      expect(next.orgPath).toEqual([]);
-    });
-
-    it("does not reset orgPath when switching to system", () => {
-      const state = stateWith({ orgPath: ["TeamA"] });
-      const next = appReducer(state, { type: "SET_ACTIVE_VIEW", activeView: "system" });
-      expect(next.orgPath).toEqual(["TeamA"]);
+      expect(next.viewPath).toEqual([]);
     });
   });
 

@@ -25,7 +25,7 @@ describe("compileProject — diagramType org with displayMode", () => {
     await fs.writeFile("/index.krs", ORG_KRS_DISPLAY_MODE);
     const result = await compileProject("/index.krs", fs, {
       diagramType: "org",
-      orgPath: [],
+      viewPath: [],
       displayMode: "icon",
     });
     expect(result.svg).toBeTruthy();
