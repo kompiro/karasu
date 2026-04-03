@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useMemo, useState, type RefObject } from "react";
 import { Parser } from "@karasu/core";
 import { EditorPane } from "./EditorPane.js";
 import { KarasuPreviewColumn } from "./KarasuPreviewColumn.js";
@@ -17,10 +17,12 @@ import type { ActiveView } from "../state/app-reducer.js";
 interface AppShellProps {
   entryPath: string | null;
   sidebarContent?: ReactNode;
+  hideEditor?: boolean;
+  recompileRef?: RefObject<(() => void) | null>;
 }
 
 /**
- * AppShell — shared layout and logic for MemoryModeApp and ProjectModeApp.
+ * AppShell — shared layout and logic for all app modes.
  *
  * Contains all view hooks, cross-navigation handlers, breadcrumb computation,
  * and the EditorPane + KarasuPreviewColumn assembly.
@@ -28,7 +30,7 @@ interface AppShellProps {
  * Mode-specific concerns (initialization, project management, sidebar content)
  * are handled by the parent wrapper components.
  */
-export function AppShell({ entryPath, sidebarContent }: AppShellProps) {
+export function AppShell({ entryPath, sidebarContent, hideEditor, recompileRef }: AppShellProps) {
   const { state, dispatch, fs } = useAppContext();
   const {
     fileContent,
@@ -76,6 +78,11 @@ export function AppShell({ entryPath, sidebarContent }: AppShellProps) {
     recompileDeploy();
     recompileOrg();
   }, [recompileSystem, recompileDeploy, recompileOrg]);
+
+  // Expose recompile to parent via ref (used by ServeModeApp for SSE-driven updates)
+  if (recompileRef) {
+    recompileRef.current = recompile;
+  }
 
   const nodeMetadata = activeView === "deploy" ? deployNodeMetadata : systemNodeMetadata;
 
@@ -213,12 +220,16 @@ export function AppShell({ entryPath, sidebarContent }: AppShellProps) {
 
   // ── Render ──────────────────────────────────────────────────────
 
-  const className = sidebarContent ? "app-shell has-sidebar" : "app-shell";
+  const className = sidebarContent
+    ? "app-shell has-sidebar"
+    : hideEditor
+      ? "app serve-mode"
+      : "app-shell";
 
   return (
     <div className={className}>
       {sidebarContent}
-      <EditorPane value={fileContent} onChange={handleEditorChange} />
+      {!hideEditor && <EditorPane value={fileContent} onChange={handleEditorChange} />}
       <KarasuPreviewColumn
         activeView={activeView}
         hasDeployDiagram={hasDeployDiagram}
