@@ -176,7 +176,7 @@ export function buildDrillDownSvg(
   }
 
   const { sheets, diagnostics } = buildStyles(displayMode, styleSource);
-  const styles = resolveStyles(krsFile.systems, sheets, []);
+  const styles = resolveStyles(krsFile.systems, sheets, [], undefined, unassignedDomains);
   const adapter = createSystemAdapter(
     krsFile.systems,
     krsFile.ownerIndex ?? new Map(),
@@ -290,7 +290,7 @@ export function buildAllLayersSvg(
   }
 
   const { sheets, diagnostics } = buildStyles(displayMode, styleSource);
-  const styles = resolveStyles(krsFile.systems, sheets, []);
+  const styles = resolveStyles(krsFile.systems, sheets, [], undefined, unassignedDomains);
   const systemNode = krsFile.systems[0];
   const rootLabel = systemNode.label ?? systemNode.id;
 

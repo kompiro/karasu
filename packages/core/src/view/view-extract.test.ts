@@ -198,6 +198,26 @@ system ECPlatform {
       expect(view.childNodes.map((n) => n.id)).toContain("ECommerce");
     });
 
+    it("drills into unassigned domain with children", () => {
+      const krs = `
+domain Payment {
+  label "決済"
+  usecase ProcessPayment { label "支払い処理" }
+}
+
+system ECPlatform {
+  service ECommerce {}
+}
+      `;
+      const result = Parser.parse(krs);
+      const view = extractView(result.value.systems, ["Payment"], result.value.domains);
+
+      expect(view.containerNode).not.toBeNull();
+      expect(view.containerNode?.id).toBe("Payment");
+      expect(view.childNodes).toHaveLength(1);
+      expect(view.childNodes[0].id).toBe("ProcessPayment");
+    });
+
     it("does not include unassigned domains in service view", () => {
       const krs = `
 domain Payment { label "決済" }

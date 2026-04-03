@@ -168,8 +168,8 @@ export class Parser {
     }
 
     file.ownerIndex = this.buildOwnerIndex(file.organizations);
-    file.nodePathIndex = this.buildNodePathIndex(file.systems);
-    if (file.systems.length > 0) {
+    file.nodePathIndex = this.buildNodePathIndex(file.systems, file.domains);
+    if (file.systems.length > 0 || file.domains.length > 0) {
       this.validateOwnsReferences(file.organizations, file.nodePathIndex);
     }
 
@@ -820,7 +820,10 @@ export class Parser {
     }
   }
 
-  private buildNodePathIndex(systems: SystemNode[]): Map<string, string[]> {
+  private buildNodePathIndex(
+    systems: SystemNode[],
+    domains: DomainNode[] = [],
+  ): Map<string, string[]> {
     const index = new Map<string, string[]>();
     // Only service and domain nodes are indexed: these are the only kinds
     // that can appear in `owns` declarations and need navigation support.
@@ -849,6 +852,10 @@ export class Parser {
       for (const child of system.children) {
         walk(child, []);
       }
+    }
+    // Index top-level domains (not nested in any system)
+    for (const domain of domains) {
+      walk(domain, []);
     }
     return index;
   }

@@ -56,8 +56,13 @@ export function extractView(
   const ancestorChain: KrsNode[] = [system];
   let current: KrsNode = system;
 
-  for (const segment of path) {
-    const child = current.children.find((c) => nodeId(c) === segment);
+  for (let i = 0; i < path.length; i++) {
+    const segment = path[i];
+    let child = current.children.find((c) => nodeId(c) === segment);
+    // At the first level, also search unassigned domains
+    if (!child && i === 0) {
+      child = unassignedDomains.find((c) => nodeId(c) === segment);
+    }
     if (!child) return empty;
     ancestorChain.push(child);
     current = child;
