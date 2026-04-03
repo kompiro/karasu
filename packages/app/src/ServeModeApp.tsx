@@ -1,11 +1,5 @@
 import { useEffect, useCallback, useMemo, useRef, useState } from "react";
-import {
-  Parser,
-  InMemoryFileSystemProvider,
-  type KrsNode,
-  type OrgViewPath,
-  type DisplayMode,
-} from "@karasu/core";
+import { Parser, InMemoryFileSystemProvider, type KrsNode, type DisplayMode } from "@karasu/core";
 import { KarasuPreviewColumn } from "./components/KarasuPreviewColumn.js";
 import { downloadSvg } from "./utils/download-svg.js";
 import { AppProvider, useAppContext } from "./state/app-context.js";
@@ -59,7 +53,7 @@ export function ServeModeApp() {
 
 function ServeModeInner() {
   const { state, dispatch, fs } = useAppContext();
-  const { fileContent, viewPath, activeView, orgPath, highlightedNodeId, displayMode } = state;
+  const { fileContent, viewPath, activeView, highlightedNodeId, displayMode } = state;
   const [loadError, setLoadError] = useState<string | null>(null);
   const [isAllLayersOpen, setIsAllLayersOpen] = useState(false);
 
@@ -89,7 +83,7 @@ function ServeModeInner() {
     orgWarnings,
     nodePathIndex,
     recompile: recompileOrg,
-  } = useOrgView(SERVE_FILE_PATH, fs, orgPath as OrgViewPath);
+  } = useOrgView(SERVE_FILE_PATH, fs, viewPath);
 
   // hooks が確定した後に ref を更新する
   recompileRef.current = useCallback(() => {
@@ -229,7 +223,7 @@ function ServeModeInner() {
       const items: { id: string; label: string }[] = [{ id: "__org__", label: "Org" }];
 
       let teams = orgs.flatMap((o) => o.teams);
-      for (const segment of orgPath) {
+      for (const segment of viewPath) {
         const team = teams.find((t) => t.id === segment);
         if (!team) break;
         items.push({ id: team.id, label: team.label ?? team.id });
@@ -240,7 +234,7 @@ function ServeModeInner() {
     } catch {
       return [];
     }
-  }, [fileContent, orgPath]);
+  }, [fileContent, viewPath]);
 
   if (loadError) {
     return (
@@ -292,10 +286,10 @@ function ServeModeInner() {
         orgView={{
           svg: orgSvg,
           diagnostics: orgDiagnostics,
-          orgPath: orgPath as OrgViewPath,
+          viewPath,
           breadcrumbItems: orgBreadcrumbItems,
           warnings: orgWarnings,
-          onBreadcrumbNavigate: (path) => dispatch({ type: "SET_ORG_PATH", path }),
+          onBreadcrumbNavigate: (path) => dispatch({ type: "SET_VIEW_PATH", path }),
           highlightedNodeId,
           onClearHighlight: () => dispatch({ type: "SET_HIGHLIGHTED_NODE", nodeId: null }),
           onOwnedServiceClick: handleOwnedServiceClick,

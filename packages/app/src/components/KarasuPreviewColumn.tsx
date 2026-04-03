@@ -1,12 +1,5 @@
 import { useState } from "react";
-import type {
-  Diagnostic,
-  NodeMetadata,
-  Warning,
-  OrgViewPath,
-  DeployBlockInfo,
-  DisplayMode,
-} from "@karasu/core";
+import type { Diagnostic, NodeMetadata, Warning, DeployBlockInfo, DisplayMode } from "@karasu/core";
 import type { ActiveView } from "../state/app-reducer.js";
 import { DiagramTabBar } from "./DiagramTabBar.js";
 import { BreadcrumbBar } from "./BreadcrumbBar.js";
@@ -40,7 +33,7 @@ interface DeployViewProps {
 interface OrgViewProps {
   svg: string;
   diagnostics: Diagnostic[];
-  orgPath: OrgViewPath;
+  viewPath: string[];
   breadcrumbItems: { id: string; label: string }[];
   warnings: Warning[];
   onBreadcrumbNavigate: (path: string[]) => void;
@@ -119,7 +112,7 @@ export function KarasuPreviewColumn({
         ? deployView.diagnostics
         : orgView.diagnostics;
   const viewPath =
-    activeView === "system" ? systemView.viewPath : activeView === "org" ? orgView.orgPath : [];
+    activeView === "system" ? systemView.viewPath : activeView === "org" ? orgView.viewPath : [];
   const onDrillDown =
     activeView === "system"
       ? systemView.onBreadcrumbNavigate

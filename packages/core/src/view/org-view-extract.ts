@@ -1,10 +1,8 @@
 import type { OrganizationBlock, TeamNode } from "../types/ast.js";
+import type { ViewPath } from "./view-extract.js";
 
-/**
- * OrgViewPath identifies the drill-down position in the org hierarchy.
- * [] = all teams (top-level), ["teamId"] = team view, ["teamId", "subTeamId"] = sub-team view
- */
-export type OrgViewPath = string[];
+/** @deprecated Use `ViewPath` instead. */
+export type OrgViewPath = ViewPath;
 
 export interface OrgViewSlice {
   teams: TeamNode[];
@@ -21,10 +19,7 @@ function findTeamById(teams: TeamNode[], id: string): TeamNode | null {
   return null;
 }
 
-export function extractOrgView(
-  organizations: OrganizationBlock[],
-  path: OrgViewPath,
-): OrgViewSlice {
+export function extractOrgView(organizations: OrganizationBlock[], path: ViewPath): OrgViewSlice {
   const allTopLevelTeams = organizations.flatMap((org) => org.teams);
 
   if (path.length === 0) {
