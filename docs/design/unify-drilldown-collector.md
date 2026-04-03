@@ -42,8 +42,9 @@ The full-view collector follows a similar pattern without steps 3, 6, 7 (no navi
 | 4 | Is drillable? | `child.children.length > 0` | `team.teams.length > 0 \|\| team.members.length > 0` |
 | 5 | Get child ID | `child.id` | `team.id` |
 | 6 | Get child label | `child.label ?? child.id` | `team.label ?? team.id` |
-| 7 | Render (drill-down) | `render(slice, styles, undefined, ownerIndex, displayMode, childLevelLinks)` | `renderOrgView(slice, styles, displayMode, childLevelLinks)` |
-| 8 | Render (full-view) | `render(slice, styles, undefined, ownerIndex, displayMode)` | `renderOrgView(slice, styles, displayMode)` |
+| 7 | Render | `render(slice, styles, undefined, ownerIndex, displayMode, childLevelLinks?)` | `renderOrgView(slice, styles, displayMode, childLevelLinks?)` |
+
+Note: Both `render()` and `renderOrgView()` accept `childLevelLinks` as an optional parameter. When provided, drillable nodes are wrapped in `<a href="#krs-view-...">` links. When omitted, nodes render without links. The same function serves both drill-down and full-view modes.
 
 ## Proposed Design: `DrillDownAdapter<TSource, TSlice, TChild>` Interface
 
@@ -67,11 +68,9 @@ interface DrillDownAdapter<TSource, TSlice, TChild> {
   /** Get the display label of a child (used for full-view section headers) */
   childLabel(child: TChild): string;
 
-  /** Render the slice as SVG (drill-down mode, with navigation links) */
-  renderDrillDown(slice: TSlice, childLevelLinks: Map<string, string>): string;
-
-  /** Render the slice as SVG (full-view mode, no navigation links) */
-  renderFullView(slice: TSlice): string;
+  /** Render the slice as SVG. When childLevelLinks is provided, drillable nodes
+   *  are wrapped in <a> tags for drill-down navigation. */
+  render(slice: TSlice, childLevelLinks?: Map<string, string>): string;
 }
 ```
 
@@ -116,8 +115,7 @@ function createSystemAdapter(
     isDrillable: (child) => child.children.length > 0,
     childId: (child) => child.id,
     childLabel: (child) => child.label ?? child.id,
-    renderDrillDown: (slice, links) => render(slice, styles, undefined, ownerIndex, displayMode, links),
-    renderFullView: (slice) => render(slice, styles, undefined, ownerIndex, displayMode),
+    render: (slice, links) => render(slice, styles, undefined, ownerIndex, displayMode, links),
   };
 }
 ```
@@ -137,8 +135,7 @@ function createOrgAdapter(
     isDrillable: (t) => t.teams.length > 0 || t.members.length > 0,
     childId: (t) => t.id,
     childLabel: (t) => t.label ?? t.id,
-    renderDrillDown: (slice, links) => renderOrgView(slice, styles, displayMode, links),
-    renderFullView: (slice) => renderOrgView(slice, styles, displayMode),
+    render: (slice, links) => renderOrgView(slice, styles, displayMode, links),
   };
 }
 ```
@@ -167,5 +164,5 @@ Pass individual callback functions instead of an adapter object. Viable but less
 
 ## Risks
 
-- **Over-abstraction**: The adapter interface has 8 methods. This is the minimum needed to cover all extension points. If it grows beyond this, reconsider.
+- **Over-abstraction**: The adapter interface has 7 methods. This is the minimum needed to cover all extension points. If it grows beyond this, reconsider.
 - **Debugging indirection**: Stack traces will show generic function names. Mitigate by keeping adapter factory functions named and simple.
