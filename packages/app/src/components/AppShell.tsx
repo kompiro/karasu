@@ -11,7 +11,7 @@ import { useViewSvg } from "../hooks/useViewSvg.js";
 import { useStyleSource } from "../hooks/useStyleSource.js";
 
 import type { ReactNode } from "react";
-import type { KrsNode, OrgViewPath, DisplayMode } from "@karasu/core";
+import type { KrsNode, DisplayMode } from "@karasu/core";
 import type { ActiveView } from "../state/app-reducer.js";
 
 interface AppShellProps {
@@ -36,7 +36,6 @@ export function AppShell({ entryPath, sidebarContent, hideEditor, recompileRef }
     fileContent,
     viewPath,
     activeView,
-    orgPath,
     selectedDeployBlockId,
     highlightedNodeId,
     displayMode,
@@ -71,7 +70,7 @@ export function AppShell({ entryPath, sidebarContent, hideEditor, recompileRef }
     orgWarnings,
     nodePathIndex,
     recompile: recompileOrg,
-  } = useOrgView(entryPath, fs, orgPath as OrgViewPath, displayMode);
+  } = useOrgView(entryPath, fs, viewPath, displayMode);
 
   const recompile = useCallback(() => {
     recompileSystem();
@@ -196,7 +195,7 @@ export function AppShell({ entryPath, sidebarContent, hideEditor, recompileRef }
       const items: { id: string; label: string }[] = [{ id: "__org__", label: rootLabel }];
 
       let teams = orgs.flatMap((o) => o.teams);
-      for (const segment of orgPath) {
+      for (const segment of viewPath) {
         const team = teams.find((t) => t.id === segment);
         if (!team) break;
         items.push({ id: team.id, label: team.label ?? team.id });
@@ -207,7 +206,7 @@ export function AppShell({ entryPath, sidebarContent, hideEditor, recompileRef }
     } catch {
       return [];
     }
-  }, [fileContent, orgPath]);
+  }, [fileContent, viewPath]);
 
   // ── All-layers SVGs ─────────────────────────────────────────────
 
@@ -255,10 +254,10 @@ export function AppShell({ entryPath, sidebarContent, hideEditor, recompileRef }
         orgView={{
           svg: orgSvg,
           diagnostics: orgDiagnostics,
-          orgPath: orgPath as OrgViewPath,
+          viewPath,
           breadcrumbItems: orgBreadcrumbItems,
           warnings: orgWarnings,
-          onBreadcrumbNavigate: (path) => dispatch({ type: "SET_ORG_PATH", path }),
+          onBreadcrumbNavigate: (path) => dispatch({ type: "SET_VIEW_PATH", path }),
           highlightedNodeId,
           onClearHighlight: () => dispatch({ type: "SET_HIGHLIGHTED_NODE", nodeId: null }),
           onOwnedServiceClick: handleOwnedServiceClick,

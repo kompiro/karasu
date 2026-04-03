@@ -113,11 +113,7 @@ export class PreviewPanel {
     let svg: string;
     try {
       const viewPathOpts =
-        this._viewType === "org"
-          ? { orgPath: this._viewPath }
-          : this._viewType === "system"
-            ? { viewPath: this._viewPath }
-            : {};
+        this._viewType === "org" || this._viewType === "system" ? { viewPath: this._viewPath } : {};
       const result = await compileProject(document.uri.fsPath, new VsCodeFileSystemProvider(), {
         diagramType: this._viewType,
         ...viewPathOpts,

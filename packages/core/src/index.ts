@@ -170,10 +170,8 @@ export interface CompileOptions {
   diagramType?: DiagramType;
   /** Optional .krs.style content. Do NOT pre-concatenate icon theme when using displayMode "icon". */
   styleSource?: string;
-  /** Drill-down path for system diagram. Ignored for deploy and org. */
+  /** Drill-down path for system and org diagrams. Ignored for deploy. */
   viewPath?: ViewPath;
-  /** Drill-down path for org diagram. Ignored for system and deploy. */
-  orgPath?: OrgViewPath;
   /** Active deploy container ID. Deploy diagram only. */
   selectedDeployId?: string;
   /** "icon" switches nodes to fixed-size icon card layout. */
@@ -215,14 +213,7 @@ export type CompileResult = SystemCompileResult | DeployCompileResult | OrgCompi
 // ---------------------------------------------------------------------------
 
 function _compileCore(krsSource: string, opts: CompileOptions): CompileResult {
-  const {
-    diagramType = "system",
-    styleSource,
-    viewPath,
-    orgPath,
-    selectedDeployId,
-    displayMode,
-  } = opts;
+  const { diagramType = "system", styleSource, viewPath, selectedDeployId, displayMode } = opts;
 
   const parseResult: ParseResult<KrsFile> = Parser.parse(krsSource);
   const diagnostics = [...parseResult.diagnostics];
@@ -239,7 +230,7 @@ function _compileCore(krsSource: string, opts: CompileOptions): CompileResult {
   const warnings = analyze(parseResult.value, sheets, systemSheetCount);
 
   if (diagramType === "org") {
-    const slice = extractOrgView(parseResult.value.organizations, orgPath ?? []);
+    const slice = extractOrgView(parseResult.value.organizations, viewPath ?? []);
     const styles = resolveStyles(
       parseResult.value.systems,
       sheets,
@@ -298,7 +289,7 @@ async function _compileProjectCore(
   fs: FileSystemProvider,
   opts: CompileOptions,
 ): Promise<CompileResult> {
-  const { diagramType = "system", orgPath, selectedDeployId, displayMode } = opts;
+  const { diagramType = "system", viewPath, selectedDeployId, displayMode } = opts;
 
   const resolver = new ImportResolver(fs);
   const resolved = await resolver.resolve(entryPath);
@@ -311,7 +302,7 @@ async function _compileProjectCore(
   const warnings = analyze(resolved.krsFile, allSheets, systemSheetCount);
 
   if (diagramType === "org") {
-    const slice = extractOrgView(resolved.krsFile.organizations, orgPath ?? []);
+    const slice = extractOrgView(resolved.krsFile.organizations, viewPath ?? []);
     const styles = resolveStyles(
       resolved.krsFile.systems,
       allSheets,
@@ -354,7 +345,6 @@ async function _compileProjectCore(
   }
 
   // system (default)
-  const viewPath = opts.viewPath;
   const viewSlice = extractView(resolved.krsFile.systems, viewPath ?? []);
   const svg = render(viewSlice, styles, serviceIdsWithDeploy, ownerIndex, displayMode);
   const nodeMetadata = buildNodeMetadata(viewSlice, serviceIdsWithDeploy, ownerIndex);
@@ -377,7 +367,7 @@ async function _compileProjectCore(
  * Compile a .krs source string to SVG.
  *
  * @param krsSource - The raw .krs diagram source
- * @param options   - Compile options (diagramType, styleSource, viewPath, orgPath, etc.)
+ * @param options   - Compile options (diagramType, styleSource, viewPath, etc.)
  */
 export function compile(krsSource: string, options?: CompileOptions): CompileResult;
 /**
@@ -415,7 +405,7 @@ export function compile(
  *
  * @param entryPath - Path to the entry .krs file
  * @param fs        - FileSystemProvider implementation
- * @param options   - Compile options (diagramType, viewPath, orgPath, etc.)
+ * @param options   - Compile options (diagramType, viewPath, etc.)
  */
 export function compileProject(
   entryPath: string,
@@ -454,18 +444,22 @@ export async function compileProject(
 }
 
 /**
- * @deprecated Use `compile(krsSource, { diagramType: "org", styleSource, orgPath })` instead.
+ * @deprecated Use `compile(krsSource, { diagramType: "org", styleSource, viewPath })` instead.
  */
 export function compileOrgView(
   krsSource: string,
   styleSource?: string,
   orgPath?: OrgViewPath,
 ): OrgCompileResult {
-  return _compileCore(krsSource, { diagramType: "org", styleSource, orgPath }) as OrgCompileResult;
+  return _compileCore(krsSource, {
+    diagramType: "org",
+    styleSource,
+    viewPath: orgPath,
+  }) as OrgCompileResult;
 }
 
 /**
- * @deprecated Use `compileProject(entryPath, fs, { diagramType: "org", orgPath, displayMode })` instead.
+ * @deprecated Use `compileProject(entryPath, fs, { diagramType: "org", viewPath, displayMode })` instead.
  */
 export async function compileProjectOrgView(
   entryPath: string,
@@ -475,7 +469,7 @@ export async function compileProjectOrgView(
 ): Promise<OrgCompileResult> {
   return _compileProjectCore(entryPath, fs, {
     diagramType: "org",
-    orgPath,
+    viewPath: orgPath,
     displayMode,
   }) as Promise<OrgCompileResult>;
 }

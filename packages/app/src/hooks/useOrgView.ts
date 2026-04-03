@@ -3,7 +3,7 @@ import {
   compileProject,
   type Diagnostic,
   type Warning,
-  type OrgViewPath,
+  type ViewPath,
   type FileSystemProvider,
   type DisplayMode,
 } from "@karasu/core";
@@ -20,7 +20,7 @@ const DEBOUNCE_MS = 300;
 export function useOrgView(
   entryPath: string | null,
   fs: FileSystemProvider | null,
-  orgPath: OrgViewPath = [],
+  viewPath: ViewPath = [],
   displayMode?: DisplayMode,
 ): OrgViewState & { recompile: () => void } {
   const [state, setState] = useState<OrgViewState>({
@@ -45,7 +45,7 @@ export function useOrgView(
     if (timerRef.current) clearTimeout(timerRef.current);
 
     timerRef.current = setTimeout(() => {
-      compileProject(entryPath, fs, { diagramType: "org", orgPath, displayMode })
+      compileProject(entryPath, fs, { diagramType: "org", viewPath, displayMode })
         .then((result) => {
           if (result.diagramType !== "org") return;
           const hasErrors = result.diagnostics.some((d) => d.severity === "error");
@@ -79,7 +79,7 @@ export function useOrgView(
       if (timerRef.current) clearTimeout(timerRef.current);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [entryPath, fs, orgPath, displayMode, recompileCounter.current]);
+  }, [entryPath, fs, viewPath, displayMode, recompileCounter.current]);
 
   return { ...state, recompile };
 }

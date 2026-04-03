@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { describe, it, expect, vi, afterEach } from "vitest";
 import { render, fireEvent, cleanup } from "@testing-library/react";
-import type { Diagnostic, Warning, OrgViewPath } from "@karasu/core";
+import type { Diagnostic, Warning } from "@karasu/core";
 import { KarasuPreviewColumn } from "./KarasuPreviewColumn.js";
 
 afterEach(cleanup);
@@ -37,7 +37,7 @@ function makeProps(overrides: Partial<Parameters<typeof KarasuPreviewColumn>[0]>
     orgView: {
       svg: emptySvg,
       diagnostics: emptyDiagnostics,
-      orgPath: [] as OrgViewPath,
+      viewPath: [] as string[],
       breadcrumbItems: [{ id: "__org__", label: "Org" }],
       warnings: emptyWarnings,
       onBreadcrumbNavigate: noop,
