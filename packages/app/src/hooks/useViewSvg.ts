@@ -2,8 +2,8 @@ import { useMemo } from "react";
 import {
   buildDrillDownSvg,
   buildDrillDownSvgOrg,
-  buildFullViewSvg,
-  buildFullViewSvgOrg,
+  buildAllLayersSvg,
+  buildAllLayersSvgOrg,
   type DisplayMode,
 } from "@karasu/core";
 
@@ -24,7 +24,7 @@ export function useViewSvg(
   const allLayersSvg = useMemo(() => {
     if (!fileContent) return undefined;
     try {
-      return buildFullViewSvg(fileContent, styleSource, displayMode);
+      return buildAllLayersSvg(fileContent, styleSource, displayMode);
     } catch {
       return undefined;
     }
@@ -33,7 +33,7 @@ export function useViewSvg(
   const orgAllLayersSvg = useMemo(() => {
     if (!fileContent) return undefined;
     try {
-      return buildFullViewSvgOrg(fileContent, styleSource, displayMode);
+      return buildAllLayersSvgOrg(fileContent, styleSource, displayMode);
     } catch {
       return undefined;
     }

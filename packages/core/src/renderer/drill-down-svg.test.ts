@@ -2,8 +2,8 @@ import { describe, it, expect, beforeEach } from "vitest";
 import {
   buildDrillDownSvg,
   buildDrillDownSvgOrg,
-  buildFullViewSvg,
-  buildFullViewSvgOrg,
+  buildAllLayersSvg,
+  buildAllLayersSvgOrg,
 } from "./drill-down-svg.js";
 import { registerBuiltinShapes } from "./shapes.js";
 import { clearRegistry } from "./shape-registry.js";
@@ -125,12 +125,12 @@ describe("buildDrillDownSvg with styleSource", () => {
   });
 });
 
-describe("buildFullViewSvg with styleSource", () => {
+describe("buildAllLayersSvg with styleSource", () => {
   it("applies styleSource to the rendered output", () => {
     const krsFile = Parser.parse(ONE_LEVEL).value;
     const styleSource = `service { color: #00FF00; }`;
-    const svgWithStyle = buildFullViewSvg(krsFile, styleSource);
-    const svgWithout = buildFullViewSvg(krsFile);
+    const svgWithStyle = buildAllLayersSvg(krsFile, styleSource);
+    const svgWithout = buildAllLayersSvg(krsFile);
 
     expect(svgWithStyle).not.toEqual(svgWithout);
     expect(svgWithStyle).toContain("#00FF00");
@@ -263,17 +263,17 @@ describe("buildDrillDownSvgOrg with styleSource", () => {
   });
 });
 
-// Tests for assembleFullViewSvg (via buildFullViewSvg / buildFullViewSvgOrg)
-describe("buildFullViewSvg", () => {
+// Tests for assembleAllLayersSvg (via buildAllLayersSvg / buildAllLayersSvgOrg)
+describe("buildAllLayersSvg", () => {
   it("returns placeholder for empty source", () => {
     const krsFile = Parser.parse("system Empty {}").value;
-    const svg = buildFullViewSvg(krsFile);
+    const svg = buildAllLayersSvg(krsFile);
     expect(svg).toContain("No diagram");
   });
 
   it("single-level: one section, no separator line", () => {
     const krsFile = Parser.parse(ONE_LEVEL).value;
-    const svg = buildFullViewSvg(krsFile);
+    const svg = buildAllLayersSvg(krsFile);
 
     // Section label for root
     expect(svg).toContain("ECommerce");
@@ -285,7 +285,7 @@ describe("buildFullViewSvg", () => {
 
   it("two-level: two sections with separator line between them", () => {
     const krsFile = Parser.parse(TWO_LEVEL).value;
-    const svg = buildFullViewSvg(krsFile);
+    const svg = buildAllLayersSvg(krsFile);
 
     // Both section labels present
     expect(svg).toContain("ECommerce");
@@ -296,7 +296,7 @@ describe("buildFullViewSvg", () => {
 
   it("three-level: three sections with path labels", () => {
     const krsFile = Parser.parse(THREE_LEVEL).value;
-    const svg = buildFullViewSvg(krsFile);
+    const svg = buildAllLayersSvg(krsFile);
 
     expect(svg).toContain("ECommerce");
     expect(svg).toContain("ECommerce › Order");
@@ -305,24 +305,24 @@ describe("buildFullViewSvg", () => {
 
   it("is a valid outer SVG with background style", () => {
     const krsFile = Parser.parse(ONE_LEVEL).value;
-    const svg = buildFullViewSvg(krsFile);
+    const svg = buildAllLayersSvg(krsFile);
 
     expect(svg).toMatch(/^<svg /);
     expect(svg).toContain('style="background:#0F172A"');
   });
 });
 
-describe("buildFullViewSvgOrg", () => {
+describe("buildAllLayersSvgOrg", () => {
   it("returns placeholder for empty org", () => {
     const krsFile = Parser.parse("system Empty {}").value;
-    const svg = buildFullViewSvgOrg(krsFile);
+    const svg = buildAllLayersSvgOrg(krsFile);
     expect(svg).toContain("No org diagram");
   });
 
   it("renders a section for each team including leaf teams", () => {
     // ORG_FLAT has 2 leaf teams → root + Frontend + Backend = 3 sections with separators
     const krsFile = Parser.parse(ORG_FLAT).value;
-    const svg = buildFullViewSvgOrg(krsFile);
+    const svg = buildAllLayersSvgOrg(krsFile);
 
     expect(svg).toContain("Acme");
     expect(svg).toContain("Frontend");
@@ -334,7 +334,7 @@ describe("buildFullViewSvgOrg", () => {
 
   it("two-level: path labels include team name", () => {
     const krsFile = Parser.parse(ORG_TWO_LEVEL).value;
-    const svg = buildFullViewSvgOrg(krsFile);
+    const svg = buildAllLayersSvgOrg(krsFile);
 
     expect(svg).toContain("Acme");
     expect(svg).toContain("Engineering");
@@ -344,7 +344,7 @@ describe("buildFullViewSvgOrg", () => {
 
   it("is a valid outer SVG with background style", () => {
     const krsFile = Parser.parse(ORG_FLAT).value;
-    const svg = buildFullViewSvgOrg(krsFile);
+    const svg = buildAllLayersSvgOrg(krsFile);
 
     expect(svg).toMatch(/^<svg /);
     expect(svg).toContain('style="background:#0F172A"');
@@ -353,8 +353,8 @@ describe("buildFullViewSvgOrg", () => {
   it("applies styleSource to the rendered output", () => {
     const krsFile = Parser.parse(ORG_FLAT).value;
     const styleSource = `team { color: #ABCDEF; }`;
-    const svgWithStyle = buildFullViewSvgOrg(krsFile, styleSource);
-    const svgWithout = buildFullViewSvgOrg(krsFile);
+    const svgWithStyle = buildAllLayersSvgOrg(krsFile, styleSource);
+    const svgWithout = buildAllLayersSvgOrg(krsFile);
 
     expect(svgWithStyle).not.toEqual(svgWithout);
     expect(svgWithStyle).toContain("#ABCDEF");
