@@ -64,6 +64,7 @@ export {
 } from "./builtins/reference.js";
 export { analyze } from "./resolver/warnings.js";
 export type { DisplayMode } from "./renderer/layout.js";
+export type { SvgResult } from "./renderer/drill-down-svg.js";
 export { render, renderFromLayout, sanitizeId } from "./renderer/svg-renderer.js";
 
 export { renderOrgView } from "./renderer/org-renderer.js";
@@ -117,6 +118,7 @@ import {
   buildAllLayersSvg as _buildAllLayersSvg,
   buildAllLayersSvgOrg as _buildAllLayersSvgOrg,
   buildDrillDownSvgOrg as _buildDrillDownSvgOrg,
+  type SvgResult,
 } from "./renderer/drill-down-svg.js";
 
 import type { DisplayMode } from "./renderer/layout.js";
@@ -556,9 +558,10 @@ export function buildDrillDownSvg(
   krsSource: string,
   styleSource?: string,
   displayMode?: DisplayMode,
-): string {
+): SvgResult {
   const parseResult: ParseResult<KrsFile> = Parser.parse(krsSource);
-  return _buildDrillDownSvg(parseResult.value, styleSource, displayMode);
+  const result = _buildDrillDownSvg(parseResult.value, styleSource, displayMode);
+  return { svg: result.svg, diagnostics: [...parseResult.diagnostics, ...result.diagnostics] };
 }
 
 /**
@@ -569,9 +572,10 @@ export function buildAllLayersSvg(
   krsSource: string,
   styleSource?: string,
   displayMode?: DisplayMode,
-): string {
+): SvgResult {
   const parseResult: ParseResult<KrsFile> = Parser.parse(krsSource);
-  return _buildAllLayersSvg(parseResult.value, styleSource, displayMode);
+  const result = _buildAllLayersSvg(parseResult.value, styleSource, displayMode);
+  return { svg: result.svg, diagnostics: [...parseResult.diagnostics, ...result.diagnostics] };
 }
 
 /**
@@ -582,9 +586,10 @@ export function buildAllLayersSvgOrg(
   krsSource: string,
   styleSource?: string,
   displayMode?: DisplayMode,
-): string {
+): SvgResult {
   const parseResult: ParseResult<KrsFile> = Parser.parse(krsSource);
-  return _buildAllLayersSvgOrg(parseResult.value, styleSource, displayMode);
+  const result = _buildAllLayersSvgOrg(parseResult.value, styleSource, displayMode);
+  return { svg: result.svg, diagnostics: [...parseResult.diagnostics, ...result.diagnostics] };
 }
 
 /**
@@ -595,7 +600,8 @@ export function buildDrillDownSvgOrg(
   krsSource: string,
   styleSource?: string,
   displayMode?: DisplayMode,
-): string {
+): SvgResult {
   const parseResult: ParseResult<KrsFile> = Parser.parse(krsSource);
-  return _buildDrillDownSvgOrg(parseResult.value, styleSource, displayMode);
+  const result = _buildDrillDownSvgOrg(parseResult.value, styleSource, displayMode);
+  return { svg: result.svg, diagnostics: [...parseResult.diagnostics, ...result.diagnostics] };
 }

@@ -47,13 +47,13 @@ system ECommerce {
 describe("buildDrillDownSvg", () => {
   it("returns placeholder for empty source", () => {
     const krsFile = Parser.parse("system Empty {}").value;
-    const svg = buildDrillDownSvg(krsFile);
+    const { svg } = buildDrillDownSvg(krsFile);
     expect(svg).toContain("No diagram");
   });
 
   it("single-level: produces krs-view-root, no back buttons", () => {
     const krsFile = Parser.parse(ONE_LEVEL).value;
-    const svg = buildDrillDownSvg(krsFile);
+    const { svg } = buildDrillDownSvg(krsFile);
 
     expect(svg).toContain('id="krs-view-root"');
     // No back button elements rendered (CSS class definitions are still present)
@@ -64,7 +64,7 @@ describe("buildDrillDownSvg", () => {
 
   it("two-level: root + child view, <a> links in root", () => {
     const krsFile = Parser.parse(TWO_LEVEL).value;
-    const svg = buildDrillDownSvg(krsFile);
+    const { svg } = buildDrillDownSvg(krsFile);
 
     expect(svg).toContain('id="krs-view-root"');
     expect(svg).toContain('id="krs-view-OrderService"');
@@ -80,7 +80,7 @@ describe("buildDrillDownSvg", () => {
 
   it("three-level: recursively generates all levels", () => {
     const krsFile = Parser.parse(THREE_LEVEL).value;
-    const svg = buildDrillDownSvg(krsFile);
+    const { svg } = buildDrillDownSvg(krsFile);
 
     expect(svg).toContain('id="krs-view-root"');
     expect(svg).toContain('id="krs-view-OrderService"');
@@ -93,7 +93,7 @@ describe("buildDrillDownSvg", () => {
 
   it("includes CSS :target rules", () => {
     const krsFile = Parser.parse(TWO_LEVEL).value;
-    const svg = buildDrillDownSvg(krsFile);
+    const { svg } = buildDrillDownSvg(krsFile);
 
     expect(svg).toContain(".krs-view { display: none; }");
     expect(svg).toContain(".krs-view:target { display: block; }");
@@ -102,7 +102,7 @@ describe("buildDrillDownSvg", () => {
 
   it("each level has its own viewBox nested svg", () => {
     const krsFile = Parser.parse(TWO_LEVEL).value;
-    const svg = buildDrillDownSvg(krsFile);
+    const { svg } = buildDrillDownSvg(krsFile);
 
     // Each level should have an inner <svg viewBox="...">
     const matches = [...svg.matchAll(/viewBox="[^"]+"/g)];
@@ -115,13 +115,33 @@ describe("buildDrillDownSvg with styleSource", () => {
   it("applies styleSource to the rendered output", () => {
     const krsFile = Parser.parse(ONE_LEVEL).value;
     const styleSource = `service { color: #FF0000; }`;
-    const svgWithStyle = buildDrillDownSvg(krsFile, styleSource);
-    const svgWithout = buildDrillDownSvg(krsFile);
+    const withStyle = buildDrillDownSvg(krsFile, styleSource);
+    const without = buildDrillDownSvg(krsFile);
 
     // The style should change the output
-    expect(svgWithStyle).not.toEqual(svgWithout);
+    expect(withStyle.svg).not.toEqual(without.svg);
     // Custom color should appear in the styled SVG
-    expect(svgWithStyle).toContain("#FF0000");
+    expect(withStyle.svg).toContain("#FF0000");
+    expect(withStyle.diagnostics).toEqual([]);
+  });
+});
+
+describe("buildDrillDownSvg diagnostics", () => {
+  it("returns diagnostics for malformed style source", () => {
+    const krsFile = Parser.parse(ONE_LEVEL).value;
+    // "service" selector without braces triggers expect(LeftBrace) diagnostic
+    const result = buildDrillDownSvg(krsFile, "service color: red;");
+
+    expect(result.diagnostics.length).toBeGreaterThan(0);
+    // SVG should still render (best-effort)
+    expect(result.svg).toContain("<svg");
+  });
+
+  it("returns empty diagnostics when no style source", () => {
+    const krsFile = Parser.parse(ONE_LEVEL).value;
+    const result = buildDrillDownSvg(krsFile);
+
+    expect(result.diagnostics).toEqual([]);
   });
 });
 
@@ -129,11 +149,12 @@ describe("buildAllLayersSvg with styleSource", () => {
   it("applies styleSource to the rendered output", () => {
     const krsFile = Parser.parse(ONE_LEVEL).value;
     const styleSource = `service { color: #00FF00; }`;
-    const svgWithStyle = buildAllLayersSvg(krsFile, styleSource);
-    const svgWithout = buildAllLayersSvg(krsFile);
+    const withStyle = buildAllLayersSvg(krsFile, styleSource);
+    const without = buildAllLayersSvg(krsFile);
 
-    expect(svgWithStyle).not.toEqual(svgWithout);
-    expect(svgWithStyle).toContain("#00FF00");
+    expect(withStyle.svg).not.toEqual(without.svg);
+    expect(withStyle.svg).toContain("#00FF00");
+    expect(withStyle.diagnostics).toEqual([]);
   });
 });
 
@@ -170,13 +191,13 @@ organization Acme {
 describe("buildDrillDownSvgOrg", () => {
   it("returns placeholder for empty org", () => {
     const krsFile = Parser.parse("system Empty {}").value;
-    const svg = buildDrillDownSvgOrg(krsFile);
+    const { svg } = buildDrillDownSvgOrg(krsFile);
     expect(svg).toContain("No org diagram");
   });
 
   it("flat org: produces krs-view-root, no drill-down links", () => {
     const krsFile = Parser.parse(ORG_FLAT).value;
-    const svg = buildDrillDownSvgOrg(krsFile);
+    const { svg } = buildDrillDownSvgOrg(krsFile);
 
     expect(svg).toContain('id="krs-view-root"');
     // No child levels — teams have no sub-teams
@@ -188,7 +209,7 @@ describe("buildDrillDownSvgOrg", () => {
 
   it("two-level: root + child view, <a> links for drillable teams", () => {
     const krsFile = Parser.parse(ORG_TWO_LEVEL).value;
-    const svg = buildDrillDownSvgOrg(krsFile);
+    const { svg } = buildDrillDownSvgOrg(krsFile);
 
     expect(svg).toContain('id="krs-view-root"');
     expect(svg).toContain('id="krs-view-Engineering"');
@@ -204,7 +225,7 @@ describe("buildDrillDownSvgOrg", () => {
 
   it("three-level: recursively generates all levels", () => {
     const krsFile = Parser.parse(ORG_THREE_LEVEL).value;
-    const svg = buildDrillDownSvgOrg(krsFile);
+    const { svg } = buildDrillDownSvgOrg(krsFile);
 
     expect(svg).toContain('id="krs-view-root"');
     expect(svg).toContain('id="krs-view-Engineering"');
@@ -227,7 +248,7 @@ organization Acme {
   team Design { label "Design" }
 }
 `).value;
-    const svg = buildDrillDownSvgOrg(krsFile);
+    const { svg } = buildDrillDownSvgOrg(krsFile);
 
     expect(svg).toContain('id="krs-view-root"');
     // Engineering has a member → drillable
@@ -243,7 +264,7 @@ organization Acme {
 
   it("includes CSS :target rules", () => {
     const krsFile = Parser.parse(ORG_TWO_LEVEL).value;
-    const svg = buildDrillDownSvgOrg(krsFile);
+    const { svg } = buildDrillDownSvgOrg(krsFile);
 
     expect(svg).toContain(".krs-view { display: none; }");
     expect(svg).toContain(".krs-view:target { display: block; }");
@@ -255,11 +276,12 @@ describe("buildDrillDownSvgOrg with styleSource", () => {
   it("applies styleSource to the rendered output", () => {
     const krsFile = Parser.parse(ORG_TWO_LEVEL).value;
     const styleSource = `team { color: #FF00FF; }`;
-    const svgWithStyle = buildDrillDownSvgOrg(krsFile, styleSource);
-    const svgWithout = buildDrillDownSvgOrg(krsFile);
+    const withStyle = buildDrillDownSvgOrg(krsFile, styleSource);
+    const without = buildDrillDownSvgOrg(krsFile);
 
-    expect(svgWithStyle).not.toEqual(svgWithout);
-    expect(svgWithStyle).toContain("#FF00FF");
+    expect(withStyle.svg).not.toEqual(without.svg);
+    expect(withStyle.svg).toContain("#FF00FF");
+    expect(withStyle.diagnostics).toEqual([]);
   });
 });
 
@@ -267,13 +289,13 @@ describe("buildDrillDownSvgOrg with styleSource", () => {
 describe("buildAllLayersSvg", () => {
   it("returns placeholder for empty source", () => {
     const krsFile = Parser.parse("system Empty {}").value;
-    const svg = buildAllLayersSvg(krsFile);
+    const { svg } = buildAllLayersSvg(krsFile);
     expect(svg).toContain("No diagram");
   });
 
   it("single-level: one section, no separator line", () => {
     const krsFile = Parser.parse(ONE_LEVEL).value;
-    const svg = buildAllLayersSvg(krsFile);
+    const { svg } = buildAllLayersSvg(krsFile);
 
     // Section label for root
     expect(svg).toContain("ECommerce");
@@ -285,7 +307,7 @@ describe("buildAllLayersSvg", () => {
 
   it("two-level: two sections with separator line between them", () => {
     const krsFile = Parser.parse(TWO_LEVEL).value;
-    const svg = buildAllLayersSvg(krsFile);
+    const { svg } = buildAllLayersSvg(krsFile);
 
     // Both section labels present
     expect(svg).toContain("ECommerce");
@@ -296,7 +318,7 @@ describe("buildAllLayersSvg", () => {
 
   it("three-level: three sections with path labels", () => {
     const krsFile = Parser.parse(THREE_LEVEL).value;
-    const svg = buildAllLayersSvg(krsFile);
+    const { svg } = buildAllLayersSvg(krsFile);
 
     expect(svg).toContain("ECommerce");
     expect(svg).toContain("ECommerce › Order");
@@ -305,7 +327,7 @@ describe("buildAllLayersSvg", () => {
 
   it("is a valid outer SVG with background style", () => {
     const krsFile = Parser.parse(ONE_LEVEL).value;
-    const svg = buildAllLayersSvg(krsFile);
+    const { svg } = buildAllLayersSvg(krsFile);
 
     expect(svg).toMatch(/^<svg /);
     expect(svg).toContain('style="background:#0F172A"');
@@ -315,14 +337,14 @@ describe("buildAllLayersSvg", () => {
 describe("buildAllLayersSvgOrg", () => {
   it("returns placeholder for empty org", () => {
     const krsFile = Parser.parse("system Empty {}").value;
-    const svg = buildAllLayersSvgOrg(krsFile);
+    const { svg } = buildAllLayersSvgOrg(krsFile);
     expect(svg).toContain("No org diagram");
   });
 
   it("renders a section for each team including leaf teams", () => {
     // ORG_FLAT has 2 leaf teams → root + Frontend + Backend = 3 sections with separators
     const krsFile = Parser.parse(ORG_FLAT).value;
-    const svg = buildAllLayersSvgOrg(krsFile);
+    const { svg } = buildAllLayersSvgOrg(krsFile);
 
     expect(svg).toContain("Acme");
     expect(svg).toContain("Frontend");
@@ -334,7 +356,7 @@ describe("buildAllLayersSvgOrg", () => {
 
   it("two-level: path labels include team name", () => {
     const krsFile = Parser.parse(ORG_TWO_LEVEL).value;
-    const svg = buildAllLayersSvgOrg(krsFile);
+    const { svg } = buildAllLayersSvgOrg(krsFile);
 
     expect(svg).toContain("Acme");
     expect(svg).toContain("Engineering");
@@ -344,7 +366,7 @@ describe("buildAllLayersSvgOrg", () => {
 
   it("is a valid outer SVG with background style", () => {
     const krsFile = Parser.parse(ORG_FLAT).value;
-    const svg = buildAllLayersSvgOrg(krsFile);
+    const { svg } = buildAllLayersSvgOrg(krsFile);
 
     expect(svg).toMatch(/^<svg /);
     expect(svg).toContain('style="background:#0F172A"');
@@ -353,10 +375,11 @@ describe("buildAllLayersSvgOrg", () => {
   it("applies styleSource to the rendered output", () => {
     const krsFile = Parser.parse(ORG_FLAT).value;
     const styleSource = `team { color: #ABCDEF; }`;
-    const svgWithStyle = buildAllLayersSvgOrg(krsFile, styleSource);
-    const svgWithout = buildAllLayersSvgOrg(krsFile);
+    const withStyle = buildAllLayersSvgOrg(krsFile, styleSource);
+    const without = buildAllLayersSvgOrg(krsFile);
 
-    expect(svgWithStyle).not.toEqual(svgWithout);
-    expect(svgWithStyle).toContain("#ABCDEF");
+    expect(withStyle.svg).not.toEqual(without.svg);
+    expect(withStyle.svg).toContain("#ABCDEF");
+    expect(withStyle.diagnostics).toEqual([]);
   });
 });
