@@ -66,6 +66,7 @@ function makeTeam(
           github: m.github,
           description: m.description,
         },
+        children: [],
         loc: mockLoc,
       }),
     ),
@@ -143,6 +144,7 @@ describe("renderOrgView", () => {
         id: "alice",
         label: "Alice",
         properties: { links: [] },
+        children: [],
         loc: mockLoc,
       });
       const slice: OrgViewSlice = { teams: [team], focusedTeam: null, ancestorChain: [] };

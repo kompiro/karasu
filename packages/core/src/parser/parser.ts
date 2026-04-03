@@ -772,6 +772,7 @@ export class Parser {
       id: idToken.value,
       label,
       properties,
+      children: [] as const,
       loc: this.range(start.loc, end.loc),
     };
   }

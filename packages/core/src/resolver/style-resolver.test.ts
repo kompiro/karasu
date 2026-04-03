@@ -477,6 +477,7 @@ describe("resolveStyles with organizations", () => {
             kind: "member",
             id: mid,
             properties: { links: [] },
+            children: [],
             loc: dummyLoc,
           }),
         ),

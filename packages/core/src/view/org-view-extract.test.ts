@@ -17,6 +17,7 @@ function makeTeam(
         kind: "member",
         id: m.id,
         properties: { links: [] },
+        children: [],
         loc: mockLoc,
       }),
     ),

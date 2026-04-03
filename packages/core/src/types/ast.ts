@@ -92,7 +92,7 @@ export interface KrsEdge {
 
 // ─── 階層型 ──────────────────────────────────────
 
-/** Structural interface satisfied by both KrsNode (via BaseNodeFields) and TeamNode. */
+/** Structural interface satisfied by KrsNode (via BaseNodeFields), TeamNode, and MemberNode. */
 export interface HierarchyNode {
   id: string;
   label?: string;
@@ -109,6 +109,7 @@ export interface MemberNode {
     slack?: string;
     github?: string;
   };
+  children: [];
   loc: SourceRange;
 }
 
