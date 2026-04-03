@@ -88,7 +88,10 @@ function collectDrillDownLevelsGeneric<TSource, TSlice, TChild>(
   const children = adapter.getChildren(slice);
   const drillable = children.filter((c) => adapter.isDrillable(c));
   const childLevelLinks = new Map(
-    drillable.map((c) => [adapter.childId(c), `krs-${viewPrefix}-${sanitizeId(adapter.childId(c))}`]),
+    drillable.map((c) => [
+      adapter.childId(c),
+      `krs-${viewPrefix}-${sanitizeId(adapter.childId(c))}`,
+    ]),
   );
 
   const svg = adapter.render(slice, childLevelLinks);
