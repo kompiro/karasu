@@ -146,8 +146,11 @@ function createOrgAdapter(
   return {
     extractSlice: (source, path) => extractOrgView(source, path),
     hasContent: (slice) => slice.focusedTeam !== null || slice.teams.length > 0,
-    getChildren: (slice) => (slice.focusedTeam !== null ? slice.focusedTeam.teams : slice.teams),
-    isDrillable: (t) => t.teams.length > 0 || t.members.length > 0,
+    getChildren: (slice) =>
+      slice.focusedTeam !== null
+        ? slice.focusedTeam.children.filter((c): c is TeamNode => c.kind === "team")
+        : slice.teams,
+    isDrillable: (t) => t.children.length > 0,
     childId: (t) => t.id,
     childLabel: (t) => t.label ?? t.id,
     render: (slice, links) => renderOrgView(slice, styles, displayMode, links),

@@ -566,21 +566,22 @@ organization ExampleCorp {
     expect(backend.id).toBe("backend");
     expect(backend.label).toBe("バックエンドチーム");
     expect(backend.properties.owns).toEqual(["ECommerce", "Order"]);
-    expect(backend.members).toHaveLength(2);
+    const members = backend.children.filter((c) => c.kind === "member");
+    expect(members).toHaveLength(2);
 
-    const alice = backend.members[0];
+    const alice = members[0];
     expect(alice.id).toBe("alice");
     expect(alice.label).toBe("Alice");
-    expect(alice.properties.slack).toBe("@alice");
-    expect(alice.properties.github).toBe("alice-dev");
+    expect(alice.kind === "member" && alice.properties.slack).toBe("@alice");
+    expect(alice.kind === "member" && alice.properties.github).toBe("alice-dev");
 
-    const bob = backend.members[1];
+    const bob = members[1];
     expect(bob.properties.description).toBe("SRE担当");
 
     const frontend = org.teams[1];
     expect(frontend.id).toBe("frontend");
     expect(frontend.properties.owns).toEqual(["WebApp"]);
-    expect(frontend.members).toHaveLength(1);
+    expect(frontend.children.filter((c) => c.kind === "member")).toHaveLength(1);
   });
 
   it("parses sub-team nesting", () => {
@@ -596,10 +597,13 @@ organization Corp {
     `);
     expect(result.diagnostics).toHaveLength(0);
     const platform = result.value.organizations[0].teams[0];
-    expect(platform.teams).toHaveLength(2);
-    expect(platform.teams[0].id).toBe("infra");
-    expect(platform.teams[0].members).toHaveLength(1);
-    expect(platform.teams[1].id).toBe("security");
+    const subTeams = platform.children.filter((c) => c.kind === "team");
+    expect(subTeams).toHaveLength(2);
+    expect(subTeams[0].id).toBe("infra");
+    expect(
+      subTeams[0].kind === "team" && subTeams[0].children.filter((c) => c.kind === "member"),
+    ).toHaveLength(1);
+    expect(subTeams[1].id).toBe("security");
   });
 
   it("builds ownerIndex at parse time", () => {
@@ -665,8 +669,8 @@ organization Corp {
     expect(org.label).toBe("Corp Label");
     const team = org.teams[0];
     expect(team.label).toBe("Backend Team");
-    const member = team.members[0];
-    expect(member.label).toBe("Alice Smith");
+    const member = team.children.find((c) => c.kind === "member");
+    expect(member?.label).toBe("Alice Smith");
   });
 
   it("label property overrides positional label", () => {
@@ -737,7 +741,7 @@ organization "dev-team" {
     expect(team.id).toBe("backend-team");
     expect(team.label).toBe("バックエンド");
     expect(team.properties.owns).toEqual(["order-service", "payment-gateway"]);
-    expect(team.members[0].id).toBe("alice-smith");
+    expect(team.children.find((c) => c.kind === "member")?.id).toBe("alice-smith");
   });
 
   // ─── Identifier forms: camelCase vs string literal ────────────────────────
@@ -838,7 +842,9 @@ organization "Corp社" {
 }
     `);
     expect(result.diagnostics).toHaveLength(0);
-    const member = result.value.organizations[0].teams[0].members[0];
+    const member = result.value.organizations[0].teams[0].children.find(
+      (c) => c.kind === "member",
+    )!;
     expect(member.id).toBe("山田太郎");
     expect(member.properties.slack).toBe("@yamada");
     expect(member.properties.github).toBe("yamada-taro");

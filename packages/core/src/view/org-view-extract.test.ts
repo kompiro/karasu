@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { extractOrgView } from "./org-view-extract.js";
-import type { OrganizationBlock, TeamNode } from "../types/ast.js";
+import type { OrganizationBlock, TeamNode, OrgNode } from "../types/ast.js";
 
 const mockLoc = {
   start: { line: 0, column: 0, offset: 0 },
@@ -11,15 +11,22 @@ function makeTeam(
   id: string,
   opts: { members?: { id: string }[]; teams?: TeamNode[]; owns?: string[] } = {},
 ): TeamNode {
+  const children: OrgNode[] = [
+    ...(opts.members ?? []).map(
+      (m): OrgNode => ({
+        kind: "member",
+        id: m.id,
+        properties: { links: [] },
+        loc: mockLoc,
+      }),
+    ),
+    ...(opts.teams ?? []),
+  ];
   return {
+    kind: "team",
     id,
     properties: { links: [], owns: opts.owns ?? [] },
-    members: (opts.members ?? []).map((m) => ({
-      id: m.id,
-      properties: { links: [] },
-      loc: mockLoc,
-    })),
-    teams: opts.teams ?? [],
+    children,
     loc: mockLoc,
   };
 }

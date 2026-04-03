@@ -90,9 +90,19 @@ export interface KrsEdge {
   loc: SourceRange;
 }
 
+// ─── 階層型 ──────────────────────────────────────
+
+/** Structural interface satisfied by both KrsNode (via BaseNodeFields) and TeamNode. */
+export interface HierarchyNode {
+  id: string;
+  label?: string;
+  children: HierarchyNode[];
+}
+
 // ─── 組織図 ────────────────────────────────────────
 
 export interface MemberNode {
+  kind: "member";
   id: string;
   label?: string;
   properties: CommonProperties & {
@@ -102,14 +112,16 @@ export interface MemberNode {
   loc: SourceRange;
 }
 
+export type OrgNode = TeamNode | MemberNode;
+
 export interface TeamNode {
+  kind: "team";
   id: string;
   label?: string;
   properties: CommonProperties & {
     owns: string[];
   };
-  members: MemberNode[];
-  teams: TeamNode[];
+  children: OrgNode[];
   loc: SourceRange;
 }
 

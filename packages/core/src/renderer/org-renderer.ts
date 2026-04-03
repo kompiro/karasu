@@ -99,13 +99,13 @@ function iconGridLayout(heights: number[]): {
 function renderTeamCard(team: TeamNode, x: number, y: number, style: ResolvedNodeStyle): string {
   const id = escapeXml(team.id);
   const label = escapeXml(team.label ?? team.id);
-  const hasChildren = team.members.length > 0 || team.teams.length > 0;
+  const memberCount = team.children.filter((c) => c.kind === "member").length;
+  const subTeamCount = team.children.filter((c) => c.kind === "team").length;
+  const hasChildren = team.children.length > 0;
 
   const countText = [
-    team.members.length > 0
-      ? `${team.members.length} member${team.members.length > 1 ? "s" : ""}`
-      : "",
-    team.teams.length > 0 ? `${team.teams.length} sub-team${team.teams.length > 1 ? "s" : ""}` : "",
+    memberCount > 0 ? `${memberCount} member${memberCount > 1 ? "s" : ""}` : "",
+    subTeamCount > 0 ? `${subTeamCount} sub-team${subTeamCount > 1 ? "s" : ""}` : "",
   ]
     .filter(Boolean)
     .join(" · ");
@@ -271,13 +271,13 @@ function renderTeamIconCard(
   y: number,
   style: ResolvedNodeStyle,
 ): string {
-  const hasChildren = team.members.length > 0 || team.teams.length > 0;
+  const memberCount = team.children.filter((c) => c.kind === "member").length;
+  const subTeamCount = team.children.filter((c) => c.kind === "team").length;
+  const hasChildren = team.children.length > 0;
 
   const descParts = [
-    team.members.length > 0
-      ? `${team.members.length} member${team.members.length > 1 ? "s" : ""}`
-      : "",
-    team.teams.length > 0 ? `${team.teams.length} sub-team${team.teams.length > 1 ? "s" : ""}` : "",
+    memberCount > 0 ? `${memberCount} member${memberCount > 1 ? "s" : ""}` : "",
+    subTeamCount > 0 ? `${subTeamCount} sub-team${subTeamCount > 1 ? "s" : ""}` : "",
   ].filter(Boolean);
   const descText = descParts.join(" · ");
   const cardHeight = iconCardHeight(descText.length > 0);
@@ -425,7 +425,7 @@ function renderOrgViewIconMode(
 
     const items: OrgIconItem[] = teams.map((team) => {
       const style = styles.nodes.get(team.id) ?? styles.defaultNodeStyle;
-      const hasDesc = team.members.length > 0 || team.teams.length > 0;
+      const hasDesc = team.children.length > 0;
       return { type: "team", node: team, style, height: iconCardHeight(hasDesc) };
     });
 
@@ -455,19 +455,17 @@ function renderOrgViewIconMode(
   // Drill-down: show members + sub-teams of focusedTeam
   const focused = slice.focusedTeam;
 
-  const items: OrgIconItem[] = [
-    ...focused.members.map((m): OrgIconItem => {
-      const style = styles.nodes.get(m.id) ?? styles.defaultNodeStyle;
-      const details = [m.properties.slack, m.properties.github].filter(Boolean).join(" · ");
-      const hasDesc = !!(details || m.properties.description);
-      return { type: "member", node: m, style, height: iconCardHeight(hasDesc) };
-    }),
-    ...focused.teams.map((t): OrgIconItem => {
-      const style = styles.nodes.get(t.id) ?? styles.defaultNodeStyle;
-      const hasDesc = t.members.length > 0 || t.teams.length > 0;
-      return { type: "team", node: t, style, height: iconCardHeight(hasDesc) };
-    }),
-  ];
+  const items: OrgIconItem[] = focused.children.map((child): OrgIconItem => {
+    if (child.kind === "member") {
+      const style = styles.nodes.get(child.id) ?? styles.defaultNodeStyle;
+      const details = [child.properties.slack, child.properties.github].filter(Boolean).join(" · ");
+      const hasDesc = !!(details || child.properties.description);
+      return { type: "member", node: child, style, height: iconCardHeight(hasDesc) };
+    }
+    const style = styles.nodes.get(child.id) ?? styles.defaultNodeStyle;
+    const hasDesc = child.children.length > 0;
+    return { type: "team", node: child, style, height: iconCardHeight(hasDesc) };
+  });
 
   if (items.length === 0) {
     const totalWidth = ICON_CARD_WIDTH + PADDING * 2;
@@ -575,21 +573,29 @@ export function renderOrgView(
 
   // Drill-down: show members + sub-teams of focusedTeam
   const focused = slice.focusedTeam;
-  const items: Array<{ id: string; render: (x: number, y: number) => string }> = [
-    ...focused.members.map((m) => ({
-      id: m.id,
-      render: (x: number, y: number) =>
-        renderMemberCard(m, x, y, styles.nodes.get(m.id) ?? styles.defaultNodeStyle),
-    })),
-    ...focused.teams.map((t) => ({
-      id: t.id,
-      render: (x: number, y: number) => {
-        const card = renderTeamCard(t, x, y, styles.nodes.get(t.id) ?? styles.defaultNodeStyle);
-        const linkId = childLevelLinks?.get(t.id);
-        return linkId ? el("a", { href: `#${linkId}` }, card) : card;
-      },
-    })),
-  ];
+  const items: Array<{ id: string; render: (x: number, y: number) => string }> =
+    focused.children.map((child) => {
+      if (child.kind === "member") {
+        return {
+          id: child.id,
+          render: (x: number, y: number) =>
+            renderMemberCard(child, x, y, styles.nodes.get(child.id) ?? styles.defaultNodeStyle),
+        };
+      }
+      return {
+        id: child.id,
+        render: (x: number, y: number) => {
+          const card = renderTeamCard(
+            child,
+            x,
+            y,
+            styles.nodes.get(child.id) ?? styles.defaultNodeStyle,
+          );
+          const linkId = childLevelLinks?.get(child.id);
+          return linkId ? el("a", { href: `#${linkId}` }, card) : card;
+        },
+      };
+    });
 
   if (items.length === 0) {
     const totalWidth = CARD_WIDTH + PADDING * 2;
