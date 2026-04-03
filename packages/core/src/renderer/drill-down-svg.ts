@@ -1,8 +1,8 @@
 import type { KrsNode, KrsFile, TeamNode, OrganizationBlock } from "../types/ast.js";
 import type { ResolvedStyles, StyleSheet } from "../types/style.js";
 import type { DisplayMode } from "./layout.js";
-import { extractView } from "../view/view-extract.js";
-import { extractOrgView } from "../view/org-view-extract.js";
+import { extractView, type ViewSlice } from "../view/view-extract.js";
+import { extractOrgView, type OrgViewSlice } from "../view/org-view-extract.js";
 import { render, sanitizeId } from "./svg-renderer.js";
 import { renderOrgView } from "./org-renderer.js";
 import { escapeXml } from "./svg-builder.js";
@@ -61,49 +61,90 @@ function buildStyles(displayMode: DisplayMode | undefined, styleSource?: string)
   return sheets;
 }
 
-// ─── Drill-down SVG (CSS :target navigation) ───────────────────────────────
+// ─── Adapter interface & generic collectors ───────────────────────────────
 
-function collectDrillDownLevels(
-  systems: KrsNode[],
-  ownerIndex: Map<string, string>,
-  styles: ResolvedStyles,
-  displayMode: DisplayMode | undefined,
+interface DrillDownAdapter<TSource, TSlice, TChild> {
+  extractSlice(source: TSource, path: string[]): TSlice;
+  hasContent(slice: TSlice): boolean;
+  getChildren(slice: TSlice): TChild[];
+  isDrillable(child: TChild): boolean;
+  childId(child: TChild): string;
+  childLabel(child: TChild): string;
+  render(slice: TSlice, childLevelLinks?: Map<string, string>): string;
+}
+
+function collectDrillDownLevelsGeneric<TSource, TSlice, TChild>(
+  adapter: DrillDownAdapter<TSource, TSlice, TChild>,
+  source: TSource,
   path: string[],
   viewId: string,
   parentViewId: string | null,
   levels: string[],
 ): void {
-  const viewSlice = extractView(systems, path);
-  if (viewSlice.childNodes.length === 0 && viewSlice.containerNode === null) return;
+  const slice = adapter.extractSlice(source, path);
+  if (!adapter.hasContent(slice)) return;
 
+  const children = adapter.getChildren(slice);
+  const drillable = children.filter((c) => adapter.isDrillable(c));
   const childLevelLinks = new Map(
-    viewSlice.childNodes
-      .filter((n) => n.children.length > 0)
-      .map((n) => [n.id, `krs-view-${sanitizeId(n.id)}`]),
+    drillable.map((c) => [adapter.childId(c), `krs-view-${sanitizeId(adapter.childId(c))}`]),
   );
 
-  const svg = render(viewSlice, styles, undefined, ownerIndex, displayMode, childLevelLinks);
+  const svg = adapter.render(slice, childLevelLinks);
   const { viewBox, innerContent } = extractSvgParts(svg);
 
   const backButton = parentViewId !== null ? renderBackButton(parentViewId) : "";
   const innerSvg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${viewBox}" width="100%" height="100%">${backButton}${innerContent}</svg>`;
   levels.push(`<g id="krs-view-${viewId}" class="krs-view">${innerSvg}</g>`);
 
-  for (const child of viewSlice.childNodes) {
-    if (child.children.length > 0) {
-      collectDrillDownLevels(
-        systems,
-        ownerIndex,
-        styles,
-        displayMode,
-        [...path, child.id],
-        sanitizeId(child.id),
-        viewId,
-        levels,
-      );
-    }
+  for (const child of drillable) {
+    collectDrillDownLevelsGeneric(
+      adapter,
+      source,
+      [...path, adapter.childId(child)],
+      sanitizeId(adapter.childId(child)),
+      viewId,
+      levels,
+    );
   }
 }
+
+// ─── Adapter factories ────────────────────────────────────────────────────
+
+function createSystemAdapter(
+  systems: KrsNode[],
+  ownerIndex: Map<string, string>,
+  styles: ResolvedStyles,
+  displayMode: DisplayMode | undefined,
+): DrillDownAdapter<KrsNode[], ViewSlice, KrsNode> {
+  return {
+    extractSlice: (source, path) => extractView(source, path),
+    hasContent: (slice) => slice.childNodes.length > 0,
+    getChildren: (slice) => slice.childNodes,
+    isDrillable: (child) => child.children.length > 0,
+    childId: (child) => child.id,
+    childLabel: (child) => child.label ?? child.id,
+    render: (slice, links) => render(slice, styles, undefined, ownerIndex, displayMode, links),
+  };
+}
+
+function createOrgAdapter(
+  organizations: OrganizationBlock[],
+  styles: ResolvedStyles,
+  displayMode: DisplayMode | undefined,
+): DrillDownAdapter<OrganizationBlock[], OrgViewSlice, TeamNode> {
+  return {
+    extractSlice: (source, path) => extractOrgView(source, path),
+    hasContent: (slice) => slice.focusedTeam !== null || slice.teams.length > 0,
+    getChildren: (slice) => (slice.focusedTeam !== null ? slice.focusedTeam.teams : slice.teams),
+    isDrillable: (t) => t.teams.length > 0 || t.members.length > 0,
+    childId: (t) => t.id,
+    childLabel: (t) => t.label ?? t.id,
+    render: (slice, links) => renderOrgView(slice, styles, displayMode, links),
+  };
+}
+
+// ─── Drill-down SVG (CSS :target navigation) ───────────────────────────────
 
 /**
  * Builds a single SVG with all drill-down levels navigable via CSS :target + :has().
@@ -120,32 +161,29 @@ export function buildDrillDownSvg(
   }
 
   const styles = resolveStyles(krsFile.systems, buildStyles(displayMode, styleSource), []);
-
-  const levels: string[] = [];
-  collectDrillDownLevels(
+  const adapter = createSystemAdapter(
     krsFile.systems,
     krsFile.ownerIndex ?? new Map(),
     styles,
     displayMode,
-    [],
-    "root",
-    null,
-    levels,
   );
+
+  const levels: string[] = [];
+  collectDrillDownLevelsGeneric(adapter, krsFile.systems, [], "root", null, levels);
 
   return `<svg xmlns="http://www.w3.org/2000/svg" width="100%" height="100%"><style>${DRILL_DOWN_CSS}</style>${levels.join("")}</svg>`;
 }
 
-// ─── Full View SVG (all levels stacked vertically) ──────────────────────────
+// ─── All Layers SVG (all levels stacked vertically) ──────────────────────────
 
-const FULL_VIEW_PADDING = 16;
-const FULL_VIEW_SECTION_HEADER_HEIGHT = 20;
-const FULL_VIEW_GAP = 24;
-const FULL_VIEW_LABEL_OFFSET = 14;
-const FULL_VIEW_BG = "#0F172A";
-const FULL_VIEW_LABEL_COLOR = "#64748B";
+const ALL_LAYERS_PADDING = 16;
+const ALL_LAYERS_SECTION_HEADER_HEIGHT = 20;
+const ALL_LAYERS_GAP = 24;
+const ALL_LAYERS_LABEL_OFFSET = 14;
+const ALL_LAYERS_BG = "#0F172A";
+const ALL_LAYERS_LABEL_COLOR = "#64748B";
 
-interface FullViewLevel {
+interface AllLayersLevel {
   pathLabels: string[];
   viewBox: string;
   width: number;
@@ -153,10 +191,10 @@ interface FullViewLevel {
   innerContent: string;
 }
 
-function assembleFullViewSvg(levels: FullViewLevel[]): string {
-  const maxWidth = Math.max(...levels.map((l) => l.width)) + FULL_VIEW_PADDING * 2;
+function assembleAllLayersSvg(levels: AllLayersLevel[]): string {
+  const maxWidth = Math.max(...levels.map((l) => l.width)) + ALL_LAYERS_PADDING * 2;
 
-  let yOffset = FULL_VIEW_PADDING;
+  let yOffset = ALL_LAYERS_PADDING;
   const parts: string[] = [];
 
   for (let i = 0; i < levels.length; i++) {
@@ -164,57 +202,52 @@ function assembleFullViewSvg(levels: FullViewLevel[]): string {
     const sectionLabel = level.pathLabels.join(" › ");
 
     if (i > 0) {
-      const sepY = yOffset - FULL_VIEW_GAP / 2;
+      const sepY = yOffset - ALL_LAYERS_GAP / 2;
       parts.push(
         `<line x1="0" y1="${sepY}" x2="${maxWidth}" y2="${sepY}" stroke="#1E293B" stroke-width="1"/>`,
       );
     }
 
     parts.push(
-      `<text x="${FULL_VIEW_PADDING}" y="${yOffset + FULL_VIEW_LABEL_OFFSET}" fill="${FULL_VIEW_LABEL_COLOR}" font-family="sans-serif" font-size="11px" font-weight="600" letter-spacing="0.05em">${escapeXml(sectionLabel)}</text>`,
+      `<text x="${ALL_LAYERS_PADDING}" y="${yOffset + ALL_LAYERS_LABEL_OFFSET}" fill="${ALL_LAYERS_LABEL_COLOR}" font-family="sans-serif" font-size="11px" font-weight="600" letter-spacing="0.05em">${escapeXml(sectionLabel)}</text>`,
     );
-    yOffset += FULL_VIEW_SECTION_HEADER_HEIGHT;
+    yOffset += ALL_LAYERS_SECTION_HEADER_HEIGHT;
 
     parts.push(
-      `<svg x="${FULL_VIEW_PADDING}" y="${yOffset}" width="${level.width}" height="${level.height}" viewBox="${level.viewBox}">${level.innerContent}</svg>`,
+      `<svg x="${ALL_LAYERS_PADDING}" y="${yOffset}" width="${level.width}" height="${level.height}" viewBox="${level.viewBox}">${level.innerContent}</svg>`,
     );
-    yOffset += level.height + FULL_VIEW_GAP;
+    yOffset += level.height + ALL_LAYERS_GAP;
   }
 
-  yOffset += FULL_VIEW_PADDING;
+  yOffset += ALL_LAYERS_PADDING;
 
-  return `<svg xmlns="http://www.w3.org/2000/svg" width="${maxWidth}" height="${yOffset}" style="background:${FULL_VIEW_BG}">${parts.join("")}</svg>`;
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${maxWidth}" height="${yOffset}" style="background:${ALL_LAYERS_BG}">${parts.join("")}</svg>`;
 }
 
-function collectFullViewLevels(
-  systems: KrsNode[],
-  ownerIndex: Map<string, string>,
-  styles: ResolvedStyles,
-  displayMode: DisplayMode | undefined,
+function collectAllLayersLevelsGeneric<TSource, TSlice, TChild>(
+  adapter: DrillDownAdapter<TSource, TSlice, TChild>,
+  source: TSource,
   path: string[],
   pathLabels: string[],
-  levels: FullViewLevel[],
+  levels: AllLayersLevel[],
 ): void {
-  const viewSlice = extractView(systems, path);
-  if (viewSlice.childNodes.length === 0 && viewSlice.containerNode === null) return;
+  const slice = adapter.extractSlice(source, path);
+  if (!adapter.hasContent(slice)) return;
 
-  const svg = render(viewSlice, styles, undefined, ownerIndex, displayMode);
+  const svg = adapter.render(slice);
   const { viewBox, innerContent, width, height } = extractSvgParts(svg);
 
   levels.push({ pathLabels, viewBox, width, height, innerContent });
 
-  for (const child of viewSlice.childNodes) {
-    if (child.children.length > 0) {
-      collectFullViewLevels(
-        systems,
-        ownerIndex,
-        styles,
-        displayMode,
-        [...path, child.id],
-        [...pathLabels, child.label ?? child.id],
-        levels,
-      );
-    }
+  const children = adapter.getChildren(slice);
+  for (const child of children) {
+    collectAllLayersLevelsGeneric(
+      adapter,
+      source,
+      [...path, adapter.childId(child)],
+      [...pathLabels, adapter.childLabel(child)],
+      levels,
+    );
   }
 }
 
@@ -222,7 +255,7 @@ function collectFullViewLevels(
  * Builds a single SVG with all drill-down levels stacked vertically.
  * All levels are visible simultaneously — no interaction required.
  */
-export function buildFullViewSvg(
+export function buildAllLayersSvg(
   krsFile: KrsFile,
   styleSource?: string,
   displayMode?: DisplayMode,
@@ -236,60 +269,20 @@ export function buildFullViewSvg(
   const systemNode = krsFile.systems[0];
   const rootLabel = systemNode.label ?? systemNode.id;
 
-  const levels: FullViewLevel[] = [];
-  collectFullViewLevels(
+  const adapter = createSystemAdapter(
     krsFile.systems,
     krsFile.ownerIndex ?? new Map(),
     styles,
     displayMode,
-    [],
-    [rootLabel],
-    levels,
   );
 
-  return assembleFullViewSvg(levels);
+  const levels: AllLayersLevel[] = [];
+  collectAllLayersLevelsGeneric(adapter, krsFile.systems, [], [rootLabel], levels);
+
+  return assembleAllLayersSvg(levels);
 }
 
 // ─── Org Drill-down SVG (CSS :target navigation) ─────────────────────────────
-
-function collectDrillDownOrgLevels(
-  organizations: OrganizationBlock[],
-  styles: ResolvedStyles,
-  displayMode: DisplayMode | undefined,
-  path: string[],
-  viewId: string,
-  parentViewId: string | null,
-  levels: string[],
-): void {
-  const slice = extractOrgView(organizations, path);
-
-  const currentTeams = slice.focusedTeam !== null ? slice.focusedTeam.teams : slice.teams;
-  if (slice.focusedTeam === null && currentTeams.length === 0) return;
-
-  const drillableTeams = currentTeams.filter((t) => t.teams.length > 0 || t.members.length > 0);
-  const childLevelLinks = new Map(
-    drillableTeams.map((t) => [t.id, `krs-view-${sanitizeId(t.id)}`]),
-  );
-
-  const svg = renderOrgView(slice, styles, displayMode, childLevelLinks);
-  const { viewBox, innerContent } = extractSvgParts(svg);
-
-  const backButton = parentViewId !== null ? renderBackButton(parentViewId) : "";
-  const innerSvg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${viewBox}" width="100%" height="100%">${backButton}${innerContent}</svg>`;
-  levels.push(`<g id="krs-view-${viewId}" class="krs-view">${innerSvg}</g>`);
-
-  for (const team of drillableTeams) {
-    collectDrillDownOrgLevels(
-      organizations,
-      styles,
-      displayMode,
-      [...path, team.id],
-      sanitizeId(team.id),
-      viewId,
-      levels,
-    );
-  }
-}
 
 /**
  * Builds a single SVG with all org drill-down levels navigable via CSS :target + :has().
@@ -311,50 +304,21 @@ export function buildDrillDownSvgOrg(
     [],
     krsFile.organizations,
   );
+  const adapter = createOrgAdapter(krsFile.organizations, styles, displayMode);
 
   const levels: string[] = [];
-  collectDrillDownOrgLevels(krsFile.organizations, styles, displayMode, [], "root", null, levels);
+  collectDrillDownLevelsGeneric(adapter, krsFile.organizations, [], "root", null, levels);
 
   return `<svg xmlns="http://www.w3.org/2000/svg" width="100%" height="100%"><style>${DRILL_DOWN_CSS}</style>${levels.join("")}</svg>`;
 }
-// ─── Org Full View SVG (all org levels stacked vertically) ──────────────────
 
-function collectOrgFullViewLevels(
-  organizations: OrganizationBlock[],
-  styles: ResolvedStyles,
-  displayMode: DisplayMode | undefined,
-  path: string[],
-  pathLabels: string[],
-  levels: FullViewLevel[],
-): void {
-  const slice = extractOrgView(organizations, path);
-  // At root (path=[]), show if there are top-level teams.
-  // At a team level (focusedTeam set), always render (even leaf teams show members).
-  const hasContent = slice.focusedTeam !== null ? true : slice.teams.length > 0;
-  if (!hasContent) return;
-
-  const svg = renderOrgView(slice, styles, displayMode);
-  const { viewBox, innerContent, width, height } = extractSvgParts(svg);
-  levels.push({ pathLabels, viewBox, width, height, innerContent });
-
-  const teams: TeamNode[] = slice.focusedTeam !== null ? slice.focusedTeam.teams : slice.teams;
-  for (const team of teams) {
-    collectOrgFullViewLevels(
-      organizations,
-      styles,
-      displayMode,
-      [...path, team.id],
-      [...pathLabels, team.label ?? team.id],
-      levels,
-    );
-  }
-}
+// ─── Org All Layers SVG (all org levels stacked vertically) ──────────────────
 
 /**
  * Builds a single SVG with all org drill-down levels stacked vertically.
  * All levels are visible simultaneously — no interaction required.
  */
-export function buildFullViewSvgOrg(
+export function buildAllLayersSvgOrg(
   krsFile: KrsFile,
   styleSource?: string,
   displayMode?: DisplayMode,
@@ -372,13 +336,14 @@ export function buildFullViewSvgOrg(
     organizations,
   );
   const rootLabel = organizations[0].label ?? organizations[0].id;
+  const adapter = createOrgAdapter(organizations, styles, displayMode);
 
-  const levels: FullViewLevel[] = [];
-  collectOrgFullViewLevels(organizations, styles, displayMode, [], [rootLabel], levels);
+  const levels: AllLayersLevel[] = [];
+  collectAllLayersLevelsGeneric(adapter, organizations, [], [rootLabel], levels);
 
   if (levels.length === 0) {
     return `<svg xmlns="http://www.w3.org/2000/svg" width="200" height="100" viewBox="0 0 200 100"><text x="100" y="50" text-anchor="middle" fill="#9CA3AF" font-family="sans-serif">No org diagram</text></svg>`;
   }
 
-  return assembleFullViewSvg(levels);
+  return assembleAllLayersSvg(levels);
 }
