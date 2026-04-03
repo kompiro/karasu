@@ -24,7 +24,8 @@
       "Bash(npx oxfmt:*)",
       "Bash(ls /workspaces/karasu/.claude/skills/*/)",
       "Bash(gh:*)",
-      "Bash(npm ci:*)"
+      "Bash(npm ci:*)",
+      "Bash(cd /workspaces/karasu* && git:*)"
     ],
     "additionalDirectories": [
       "/workspaces/karasu",

@@ -164,7 +164,7 @@ interface Project {
 
 ```
 /projects/{id}/
-├── index.krs          ← エントリポイント（@import で他ファイルを参照）
+├── index.krs          ← エントリポイント（import {} / @import で他ファイルを参照）
 ├── default.krs.style  ← デフォルトスタイル
 ├── services/
 │   ├── ecommerce.krs
@@ -197,16 +197,27 @@ interface Project {
 ]
 ```
 
-## @import の解決
+## import の解決
+
+### import 構文の種類
+
+`.krs` ファイルの import には2種類ある。構文が異なるため注意。
+
+| 目的 | 構文 | 例 |
+|------|------|----|
+| ノード定義の取り込み | `import { Id, ... } from "path.krs"` | `import { Payment, Inventory } from "./services.krs"` |
+| スタイルファイルの適用 | `@import "path.krs.style"` | `@import "default.krs.style"` |
 
 ### 解決フロー
 
 ```
-1. Parser が @import "path" を検出
-2. ImportResolver に (importPath, currentFilePath) を渡す
-3. ImportResolver が FileSystemProvider.readFile() で内容を取得
+1. Parser が import { X } from "path" を検出 → nodeImports に記録
+   Parser が @import "path" を検出         → styleImports に記録
+
+2. ImportResolver.resolve(entryPath) が呼ばれる
+3. ImportResolver が FileSystemProvider.readFile() で各ファイルを取得
 4. 取得した内容を再帰的にパース
-5. マージされた AST / StyleSheet を返す
+5. AST レベルでマージした KrsFile と StyleSheet[] を返す
 ```
 
 ```typescript
@@ -214,30 +225,27 @@ interface Project {
 class ImportResolver {
   constructor(private fs: FileSystemProvider) {}
 
-  async resolveKrs(entryPath: string): Promise<string> {
-    // @import を再帰的に解決し、結合した krs ソースを返す
-  }
-
-  async resolveStyle(entryPath: string): Promise<string> {
-    // @import を再帰的に解決し、結合した style ソースを返す
+  async resolve(entryPath: string): Promise<ResolvedProject> {
+    // nodeImports を再帰的に解決して AST をマージ
+    // styleImports を再帰的に解決して StyleSheet[] を返す
   }
 }
 ```
 
 ### compile() の拡張
 
-既存の `compile(krsSource, styleSource)` は変更しない。
+既存の `compile(krsSource, options?)` は変更しない。
 新たに `compileProject()` を追加する。
 
 ```typescript
-// 既存（変更なし）— 文字列を直接渡す
-function compile(krsSource: string, styleSource?: string, viewPath?: ViewPath): CompileResult;
+// 既存（変更なし）— 文字列を直接渡す（単一ファイルのみ、import は解決されない）
+function compile(krsSource: string, options?: CompileOptions): CompileResult;
 
-// 新規 — ファイルシステム経由でプロジェクトをコンパイル
+// 新規 — ファイルシステム経由でプロジェクトをコンパイル（import を再帰解決）
 async function compileProject(
   entryPath: string,
   fs: FileSystemProvider,
-  viewPath?: ViewPath
+  options?: CompileOptions,
 ): Promise<CompileResult>;
 ```
 

@@ -25,10 +25,15 @@ description: >
 - `gh issue view <N>` で内容を確認する
 - Issue 本文に Design Doc へのリンクがあれば読む
 - Issue 番号を控える（PR との紐付けに使用）
+- Issue のラベルを `status: in-progress` に更新する:
+  ```
+  gh issue edit <N> --remove-label "status: ready" --remove-label "status: blocked" --add-label "status: in-progress"
+  ```
 
 **B. Issue 番号が指定されていない場合**
 - `gh issue list --state open` を表示してユーザーに確認する
 - Issue なしで進む場合はそのまま次のステップへ
+- Issue を選択した場合は A と同様にラベルを `status: in-progress` に更新する
 
 > Issue がない場合もある。Design Doc だけを起点に開発を始めることも、
 > Issue も Design Doc もなく着手するケースもある。
@@ -146,5 +151,17 @@ CI 通過後、以下のチェックを順に実行する。
    git worktree remove .worktrees/<機能名>
    git branch -d <branch-name>
    ```
+3. main ブランチを最新化する:
+   ```
+   git checkout main
+   git pull origin main
+   ```
+4. Issue のラベルを更新する（Issue 紐付けがある場合）:
+   - PR で `Closes #N` した Issue は GitHub が自動で close するため、ラベル操作は不要
+   - 依存していた Issue（`status: blocked` のもの）があれば `status: ready` に更新する:
+     ```
+     gh issue edit <blocked-issue> --remove-label "status: blocked" --add-label "status: ready"
+     ```
+   - 依存関係の判断: Issue 本文や会話の文脈から判断する（例: #204 は #203 に依存）
 
 リモートブランチは GitHub 上で PR マージ時に自動削除される設定を推奨。

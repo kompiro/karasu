@@ -13,13 +13,12 @@ export interface AppState {
   // ビュー
   viewPath: string[];
   activeView: ActiveView;
-  orgPath: string[];
   selectedDeployBlockId: string | null;
   // クロスナビゲーション
   highlightedNodeId: string | null;
   // UI
   displayMode: DisplayMode;
-  isFullView: boolean;
+  isAllLayersOpen: boolean;
   loading: boolean;
 }
 
@@ -31,11 +30,10 @@ export const initialState: AppState = {
   fileTree: [],
   viewPath: [],
   activeView: "system",
-  orgPath: [],
   selectedDeployBlockId: null,
   highlightedNodeId: null,
   displayMode: "shape",
-  isFullView: false,
+  isAllLayersOpen: false,
   loading: true,
 };
 
@@ -49,13 +47,12 @@ export type AppAction =
   | { type: "SET_ACTIVE_VIEW"; activeView: ActiveView }
   | { type: "SET_HIGHLIGHTED_NODE"; nodeId: string | null }
   | { type: "SET_LOADING"; loading: boolean }
-  | { type: "SET_ORG_PATH"; path: string[] }
   | { type: "SET_SELECTED_DEPLOY_BLOCK"; id: string | null }
   | { type: "ADD_PROJECT"; project: Project }
   | { type: "REMOVE_PROJECT"; id: string }
   | { type: "RENAME_PROJECT"; id: string; name: string }
   | { type: "SET_DISPLAY_MODE"; displayMode: DisplayMode }
-  | { type: "SET_FULL_VIEW"; isFullView: boolean };
+  | { type: "SET_ALL_LAYERS_OPEN"; isAllLayersOpen: boolean };
 
 export function appReducer(state: AppState, action: AppAction): AppState {
   switch (action.type) {
@@ -71,7 +68,6 @@ export function appReducer(state: AppState, action: AppAction): AppState {
         fileTree: [],
         viewPath: [],
         activeView: "system",
-        orgPath: [],
         selectedDeployBlockId: null,
         highlightedNodeId: null,
       };
@@ -83,7 +79,6 @@ export function appReducer(state: AppState, action: AppAction): AppState {
         fileContent: action.content,
         viewPath: [],
         activeView: "system",
-        orgPath: [],
         selectedDeployBlockId: null,
         highlightedNodeId: null,
       };
@@ -103,7 +98,6 @@ export function appReducer(state: AppState, action: AppAction): AppState {
         activeView: action.activeView,
         viewPath: [],
         highlightedNodeId: null,
-        ...(action.activeView === "org" ? { orgPath: [] } : {}),
       };
 
     case "SET_HIGHLIGHTED_NODE":
@@ -111,9 +105,6 @@ export function appReducer(state: AppState, action: AppAction): AppState {
 
     case "SET_LOADING":
       return { ...state, loading: action.loading };
-
-    case "SET_ORG_PATH":
-      return { ...state, orgPath: action.path };
 
     case "SET_SELECTED_DEPLOY_BLOCK":
       return { ...state, selectedDeployBlockId: action.id };
@@ -144,8 +135,8 @@ export function appReducer(state: AppState, action: AppAction): AppState {
     case "SET_DISPLAY_MODE":
       return { ...state, displayMode: action.displayMode };
 
-    case "SET_FULL_VIEW":
-      return { ...state, isFullView: action.isFullView };
+    case "SET_ALL_LAYERS_OPEN":
+      return { ...state, isAllLayersOpen: action.isAllLayersOpen };
 
     default:
       return state;

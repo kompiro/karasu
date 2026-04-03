@@ -101,7 +101,26 @@ body,
 }
 
 /* ================================================================
-   MEMORY MODE LAYOUT — 2-pane (editor | preview)
+   APP SHELL — shared layout for MemoryMode and ProjectMode
+   ================================================================ */
+
+/* Base: 2-column (editor | preview), no sidebar */
+.app-shell {
+  display: grid;
+  grid-template-rows: 1fr auto;
+  grid-template-columns: 1fr 1fr;
+  height: 100%;
+  width: 100%;
+}
+
+/* With sidebar: topbar + 3-column (sidebar | editor | preview) */
+.app-shell.has-sidebar {
+  grid-template-rows: var(--topbar-h) 1fr auto;
+  grid-template-columns: var(--sidebar-w) 1fr 1fr;
+}
+
+/* ================================================================
+   SERVE MODE LAYOUT — preview-only, no editor
    ================================================================ */
 
 .app {
@@ -112,7 +131,6 @@ body,
   width: 100%;
 }
 
-/* ── Serve Mode (preview-only, no editor) ───────────────────────── */
 .app.serve-mode {
   grid-template-columns: 1fr;
 }
@@ -418,16 +436,8 @@ body,
 }
 
 /* ================================================================
-   PROJECT MODE LAYOUT — sidebar + editor + preview
+   SIDEBAR MODE — project selector + file tree + editor + preview
    ================================================================ */
-
-.app-project-mode {
-  display: grid;
-  grid-template-rows: var(--topbar-h) 1fr auto;
-  grid-template-columns: var(--sidebar-w) 1fr 1fr;
-  height: 100%;
-  width: 100%;
-}
 
 /* ── Project Selector (top bar) ─────────────────────────────────── */
 .project-selector {
@@ -700,8 +710,8 @@ body,
   margin: 4px 0;
 }
 
-/* ── Project Mode: editor & preview ─────────────────────────────── */
-.app-project-mode .editor-pane {
+/* ── Sidebar Mode: editor & preview grid overrides ─────────────── */
+.app-shell.has-sidebar .editor-pane {
   grid-row: 2;
   grid-column: 2;
   overflow: hidden;
@@ -709,7 +719,7 @@ body,
   position: relative;
 }
 
-.app-project-mode .editor-pane::after {
+.app-shell.has-sidebar .editor-pane::after {
   content: "";
   position: absolute;
   top: 0;
@@ -728,7 +738,7 @@ body,
   z-index: 1;
 }
 
-.app-project-mode .preview-column {
+.app-shell.has-sidebar .preview-column {
   grid-row: 2;
   grid-column: 3;
   display: flex;
@@ -736,7 +746,7 @@ body,
   overflow: hidden;
 }
 
-.app-project-mode .warning-panel {
+.app-shell.has-sidebar .warning-panel {
   grid-row: 3;
   grid-column: 1 / -1;
 }
@@ -950,14 +960,14 @@ body,
   border-color: rgba(77, 143, 255, 0.3);
 }
 
-/* Full View button — always visible as an actionable toggle */
-.toolbar-btn--full-view {
+/* All Layers button — always visible as an actionable toggle */
+.toolbar-btn--all-layers {
   background: var(--bg-raised);
   color: var(--text-secondary);
   border-color: var(--border-strong);
 }
 
-.toolbar-btn--full-view:hover {
+.toolbar-btn--all-layers:hover {
   background: var(--accent-dim);
   color: var(--accent-hover);
   border-color: rgba(77, 143, 255, 0.4);

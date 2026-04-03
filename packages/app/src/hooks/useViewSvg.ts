@@ -7,42 +7,46 @@ import {
   type DisplayMode,
 } from "@karasu/core";
 
-export function useViewSvg(fileContent: string | undefined, displayMode: DisplayMode | undefined) {
+export function useViewSvg(
+  fileContent: string | undefined,
+  displayMode: DisplayMode | undefined,
+  styleSource?: string,
+) {
   const drillDownSvg = useMemo(() => {
     if (!fileContent) return undefined;
     try {
-      return buildDrillDownSvg(fileContent, undefined, displayMode);
+      return buildDrillDownSvg(fileContent, styleSource, displayMode);
     } catch {
       return undefined;
     }
-  }, [fileContent, displayMode]);
+  }, [fileContent, displayMode, styleSource]);
 
-  const fullViewSvg = useMemo(() => {
+  const allLayersSvg = useMemo(() => {
     if (!fileContent) return undefined;
     try {
-      return buildFullViewSvg(fileContent, undefined, displayMode);
+      return buildFullViewSvg(fileContent, styleSource, displayMode);
     } catch {
       return undefined;
     }
-  }, [fileContent, displayMode]);
+  }, [fileContent, displayMode, styleSource]);
 
-  const orgFullViewSvg = useMemo(() => {
+  const orgAllLayersSvg = useMemo(() => {
     if (!fileContent) return undefined;
     try {
-      return buildFullViewSvgOrg(fileContent, undefined, displayMode);
+      return buildFullViewSvgOrg(fileContent, styleSource, displayMode);
     } catch {
       return undefined;
     }
-  }, [fileContent, displayMode]);
+  }, [fileContent, displayMode, styleSource]);
 
   const orgDrillDownSvg = useMemo(() => {
     if (!fileContent) return undefined;
     try {
-      return buildDrillDownSvgOrg(fileContent, undefined, displayMode);
+      return buildDrillDownSvgOrg(fileContent, styleSource, displayMode);
     } catch {
       return undefined;
     }
-  }, [fileContent, displayMode]);
+  }, [fileContent, displayMode, styleSource]);
 
-  return { drillDownSvg, fullViewSvg, orgFullViewSvg, orgDrillDownSvg };
+  return { drillDownSvg, allLayersSvg, orgAllLayersSvg, orgDrillDownSvg };
 }

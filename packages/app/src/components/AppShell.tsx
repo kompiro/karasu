@@ -1,64 +1,48 @@
-import { useEffect, useCallback, useMemo, useRef, useState } from "react";
-import { Parser, InMemoryFileSystemProvider, type KrsNode, type DisplayMode } from "@karasu/core";
-import { KarasuPreviewColumn } from "./components/KarasuPreviewColumn.js";
-import { downloadSvg } from "./utils/download-svg.js";
-import { AppProvider, useAppContext } from "./state/app-context.js";
-import { useSystemView } from "./hooks/useSystemView.js";
-import { useDeployView } from "./hooks/useDeployView.js";
-import { useOrgView } from "./hooks/useOrgView.js";
-import { useViewSvg } from "./hooks/useViewSvg.js";
-import { useStyleSource } from "./hooks/useStyleSource.js";
-import type { ActiveView } from "./state/app-reducer.js";
+import { useCallback, useMemo, useState } from "react";
+import { Parser } from "@karasu/core";
+import { EditorPane } from "./EditorPane.js";
+import { KarasuPreviewColumn } from "./KarasuPreviewColumn.js";
+import { downloadSvg } from "../utils/download-svg.js";
+import { useAppContext } from "../state/app-context.js";
+import { useSystemView } from "../hooks/useSystemView.js";
+import { useDeployView } from "../hooks/useDeployView.js";
+import { useOrgView } from "../hooks/useOrgView.js";
+import { useViewSvg } from "../hooks/useViewSvg.js";
+import { useStyleSource } from "../hooks/useStyleSource.js";
 
-const SERVE_FILE_PATH = "/serve/index.krs";
+import type { ReactNode } from "react";
+import type { KrsNode, DisplayMode } from "@karasu/core";
+import type { ActiveView } from "../state/app-reducer.js";
 
-function resolveFileNameFromUrl(): string {
-  const pathname = window.location.pathname;
-  const name = pathname === "/" || pathname === "" ? null : pathname.slice(1);
-  return name ?? "";
+interface AppShellProps {
+  entryPath: string | null;
+  sidebarContent?: ReactNode;
 }
 
-async function fetchDefaultFileName(): Promise<string> {
-  try {
-    const res = await fetch("/api/default");
-    if (res.ok) {
-      const data = (await res.json()) as { file: string | null };
-      return data.file ?? "index";
-    }
-  } catch {
-    // fallthrough
-  }
-  return "index";
-}
-
-async function fetchFileContent(name: string): Promise<string | null> {
-  try {
-    const res = await fetch(`/api/file/${encodeURIComponent(name)}`);
-    if (res.ok) return await res.text();
-  } catch {
-    // fallthrough
-  }
-  return null;
-}
-
-export function ServeModeApp() {
-  const inMemoryFs = useRef(new InMemoryFileSystemProvider()).current;
-
-  return (
-    <AppProvider fs={inMemoryFs}>
-      <ServeModeInner />
-    </AppProvider>
-  );
-}
-
-function ServeModeInner() {
+/**
+ * AppShell — shared layout and logic for MemoryModeApp and ProjectModeApp.
+ *
+ * Contains all view hooks, cross-navigation handlers, breadcrumb computation,
+ * and the EditorPane + KarasuPreviewColumn assembly.
+ *
+ * Mode-specific concerns (initialization, project management, sidebar content)
+ * are handled by the parent wrapper components.
+ */
+export function AppShell({ entryPath, sidebarContent }: AppShellProps) {
   const { state, dispatch, fs } = useAppContext();
-  const { fileContent, viewPath, activeView, highlightedNodeId, displayMode } = state;
-  const [loadError, setLoadError] = useState<string | null>(null);
+  const {
+    fileContent,
+    viewPath,
+    activeView,
+    selectedDeployBlockId,
+    highlightedNodeId,
+    displayMode,
+    currentFilePath,
+  } = state;
+
   const [isAllLayersOpen, setIsAllLayersOpen] = useState(false);
 
-  // ref に recompile を格納し loadFile から参照できるようにする
-  const recompileRef = useRef<() => void>(() => {});
+  // ── View hooks ──────────────────────────────────────────────────
 
   const {
     svg: systemSvg,
@@ -67,15 +51,16 @@ function ServeModeInner() {
     nodeMetadata: systemNodeMetadata,
     hasDeployDiagram,
     recompile: recompileSystem,
-  } = useSystemView(SERVE_FILE_PATH, fs, viewPath, displayMode);
+  } = useSystemView(entryPath, fs, viewPath, displayMode);
 
   const {
     svg: deploySvg,
     warnings: deployWarnings,
     diagnostics: deployDiagnostics,
     nodeMetadata: deployNodeMetadata,
+    deployBlocks,
     recompile: recompileDeploy,
-  } = useDeployView(SERVE_FILE_PATH, fs);
+  } = useDeployView(entryPath, fs, selectedDeployBlockId, displayMode);
 
   const {
     orgSvg,
@@ -83,60 +68,30 @@ function ServeModeInner() {
     orgWarnings,
     nodePathIndex,
     recompile: recompileOrg,
-  } = useOrgView(SERVE_FILE_PATH, fs, viewPath);
+  } = useOrgView(entryPath, fs, viewPath, displayMode);
 
-  // hooks が確定した後に ref を更新する
-  recompileRef.current = useCallback(() => {
+  const recompile = useCallback(() => {
     recompileSystem();
     recompileDeploy();
     recompileOrg();
   }, [recompileSystem, recompileDeploy, recompileOrg]);
 
-  const loadFile = useCallback(
-    async (name: string) => {
-      const content = await fetchFileContent(name);
-      if (content === null) {
-        setLoadError(`File not found: ${name}.krs`);
-        return;
+  const nodeMetadata = activeView === "deploy" ? deployNodeMetadata : systemNodeMetadata;
+
+  // ── Editor handler ──────────────────────────────────────────────
+
+  const handleEditorChange = useCallback(
+    async (value: string) => {
+      dispatch({ type: "UPDATE_FILE_CONTENT", content: value });
+      if (currentFilePath) {
+        await fs.writeFile(currentFilePath, value);
+        recompile();
       }
-      setLoadError(null);
-      await fs.writeFile(SERVE_FILE_PATH, content);
-      dispatch({ type: "SELECT_FILE", path: SERVE_FILE_PATH, content });
-      dispatch({ type: "SET_LOADING", loading: false });
-      recompileRef.current();
     },
-    [fs, dispatch],
+    [currentFilePath, fs, dispatch, recompile],
   );
 
-  // 初期ロード
-  useEffect(() => {
-    (async () => {
-      const urlName = resolveFileNameFromUrl();
-      const name = urlName || (await fetchDefaultFileName());
-      await loadFile(name);
-    })();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  // SSE によるリアルタイム更新
-  useEffect(() => {
-    const es = new EventSource("/api/watch");
-    es.addEventListener("change", (e: MessageEvent) => {
-      try {
-        const data = JSON.parse(e.data as string) as { file: string };
-        const urlName = resolveFileNameFromUrl();
-        const currentName = urlName || "index";
-        if (data.file === currentName) {
-          loadFile(data.file);
-        }
-      } catch {
-        // ignore malformed events
-      }
-    });
-    return () => es.close();
-  }, [loadFile]);
-
-  const nodeMetadata = activeView === "deploy" ? deployNodeMetadata : systemNodeMetadata;
+  // ── View & cross-navigation handlers ────────────────────────────
 
   const handleActiveViewChange = useCallback(
     (view: ActiveView) => {
@@ -181,6 +136,22 @@ function ServeModeInner() {
     [dispatch, nodePathIndex],
   );
 
+  const handleDisplayModeChange = useCallback(
+    (mode: DisplayMode) => {
+      dispatch({ type: "SET_DISPLAY_MODE", displayMode: mode });
+    },
+    [dispatch],
+  );
+
+  const handleDeployBlockChange = useCallback(
+    (id: string) => {
+      dispatch({ type: "SET_SELECTED_DEPLOY_BLOCK", id });
+    },
+    [dispatch],
+  );
+
+  // ── Breadcrumbs ─────────────────────────────────────────────────
+
   const breadcrumbItems = useMemo(() => {
     if (!fileContent) return [];
     try {
@@ -206,13 +177,6 @@ function ServeModeInner() {
     }
   }, [fileContent, viewPath]);
 
-  const styleSource = useStyleSource(fileContent, SERVE_FILE_PATH, fs);
-  const { drillDownSvg, allLayersSvg, orgAllLayersSvg, orgDrillDownSvg } = useViewSvg(
-    fileContent,
-    displayMode,
-    styleSource,
-  );
-
   const orgBreadcrumbItems = useMemo(() => {
     if (!fileContent) return [];
     try {
@@ -220,7 +184,8 @@ function ServeModeInner() {
       const orgs = parseResult.value.organizations;
       if (orgs.length === 0) return [];
 
-      const items: { id: string; label: string }[] = [{ id: "__org__", label: "Org" }];
+      const rootLabel = orgs[0].label ?? orgs[0].id;
+      const items: { id: string; label: string }[] = [{ id: "__org__", label: rootLabel }];
 
       let teams = orgs.flatMap((o) => o.teams);
       for (const segment of viewPath) {
@@ -236,35 +201,27 @@ function ServeModeInner() {
     }
   }, [fileContent, viewPath]);
 
-  if (loadError) {
-    return (
-      <div className="app">
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            height: "100%",
-            color: "#ef4444",
-            fontFamily: "monospace",
-          }}
-        >
-          {loadError}
-        </div>
-      </div>
-    );
-  }
+  // ── All-layers SVGs ─────────────────────────────────────────────
+
+  const styleSource = useStyleSource(fileContent, currentFilePath ?? undefined, fs);
+  const { drillDownSvg, allLayersSvg, orgAllLayersSvg, orgDrillDownSvg } = useViewSvg(
+    fileContent,
+    displayMode,
+    styleSource,
+  );
+
+  // ── Render ──────────────────────────────────────────────────────
+
+  const className = sidebarContent ? "app-shell has-sidebar" : "app-shell";
 
   return (
-    <div className="app serve-mode">
+    <div className={className}>
+      {sidebarContent}
+      <EditorPane value={fileContent} onChange={handleEditorChange} />
       <KarasuPreviewColumn
         activeView={activeView}
         hasDeployDiagram={hasDeployDiagram}
         onActiveViewChange={handleActiveViewChange}
-        displayMode={displayMode}
-        onDisplayModeChange={(mode: DisplayMode) =>
-          dispatch({ type: "SET_DISPLAY_MODE", displayMode: mode })
-        }
         systemView={{
           svg: systemSvg,
           diagnostics: systemDiagnostics,
@@ -295,6 +252,11 @@ function ServeModeInner() {
           onOwnedServiceClick: handleOwnedServiceClick,
         }}
         nodeMetadata={nodeMetadata}
+        deployBlocks={deployBlocks}
+        selectedDeployBlockId={selectedDeployBlockId}
+        onDeployBlockChange={handleDeployBlockChange}
+        displayMode={displayMode}
+        onDisplayModeChange={handleDisplayModeChange}
         onExportSvg={(svg, filename) => downloadSvg(svg, filename)}
         isAllLayersOpen={isAllLayersOpen}
         onAllLayersToggle={() => setIsAllLayersOpen((v) => !v)}
