@@ -15,6 +15,7 @@
   },
   "dependencies": {
     "@karasu/core": "*",
+    "marked": "^17.0.5",
     "vscode-languageclient": "^9.0.1"
   },
   "devDependencies": {

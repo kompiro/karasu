@@ -1,8 +1,24 @@
 import * as vscode from "vscode";
 import { compileProject, type NodeMetadata } from "@karasu/core";
+import { marked } from "marked";
 import { VsCodeFileSystemProvider } from "./vscode-fs-provider.js";
 
 type ViewType = "system" | "deploy" | "org";
+
+/** Subset of NodeMetadata serialized as JSON for the webview. */
+interface SerializedNodeMeta {
+  kind: string;
+  label: string;
+  descriptionHtml: string;
+  links: { url: string; label?: string }[];
+  team?: string;
+  role?: string;
+  runtime?: string;
+  realizes?: string;
+  tags: string[];
+  hasChildren: boolean;
+  hasDeployContainer?: boolean;
+}
 
 export class PreviewPanel {
   static readonly viewType = "karasu.preview";
@@ -28,7 +44,13 @@ export class PreviewPanel {
     this._onNavigate = onNavigate;
     this._panel.onDidDispose(() => this.dispose(), null, this._disposables);
     this._panel.webview.onDidReceiveMessage(
-      (message: { type: string; viewType?: ViewType; nodeId?: string; index?: number }) => {
+      (message: {
+        type: string;
+        viewType?: ViewType;
+        nodeId?: string;
+        index?: number;
+        url?: string;
+      }) => {
         if (message.type === "switchView" && message.viewType) {
           this._viewType = message.viewType;
           this._viewPath = [];
@@ -51,6 +73,8 @@ export class PreviewPanel {
           }
         } else if (message.type === "navigate" && message.nodeId) {
           this._onNavigate(message.nodeId);
+        } else if (message.type === "openExternal" && message.url) {
+          void vscode.env.openExternal(vscode.Uri.parse(message.url));
         }
       },
       null,
@@ -117,14 +141,28 @@ export class PreviewPanel {
 
     const breadcrumb = this._buildBreadcrumb();
 
-    // Serialize only the description field for each node to pass into the webview.
-    const descriptionMap: Record<string, string> = {};
+    // Serialize full node metadata for the webview, with pre-rendered description HTML.
+    const metadataMap: Record<string, SerializedNodeMeta> = {};
     if (nodeMetadata) {
       for (const [id, meta] of nodeMetadata) {
-        if (meta.description) descriptionMap[id] = meta.description;
+        metadataMap[id] = {
+          kind: meta.kind,
+          label: meta.label,
+          descriptionHtml: meta.description
+            ? (marked.parse(meta.description, { async: false }) as string)
+            : "",
+          links: meta.links,
+          team: meta.team,
+          role: meta.role,
+          runtime: meta.runtime,
+          realizes: meta.realizes,
+          tags: meta.tags,
+          hasChildren: meta.hasChildren,
+          hasDeployContainer: meta.hasDeployContainer,
+        };
       }
     }
-    const descriptionJson = JSON.stringify(descriptionMap);
+    const metadataJson = JSON.stringify(metadataMap);
 
     return `<!DOCTYPE html>
 <html lang="en">
@@ -196,9 +234,12 @@ export class PreviewPanel {
       font-size: 12px;
     }
     button:hover { opacity: 0.85; }
-    #preview {
+    #preview-wrapper {
       flex: 1;
       overflow: auto;
+      position: relative;
+    }
+    #preview {
       padding: 12px;
     }
     #preview svg { max-width: 100%; height: auto; display: block; }
@@ -226,6 +267,130 @@ export class PreviewPanel {
       pointer-events: none;
       z-index: 1000;
     }
+
+    /* ── Detail Panel ──────────────────────────────────────── */
+    #detail-panel {
+      display: none;
+      position: absolute;
+      max-width: 360px;
+      max-height: 400px;
+      z-index: 100;
+      background: var(--vscode-editorHoverWidget-background, #252526);
+      border: 1px solid var(--vscode-editorHoverWidget-border, #454545);
+      border-radius: 6px;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.5), 0 2px 8px rgba(0,0,0,0.3);
+      overflow: hidden;
+      display: none;
+      flex-direction: column;
+    }
+    #detail-panel.visible {
+      display: flex;
+    }
+    .dp-header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 12px;
+      border-bottom: 1px solid var(--vscode-panel-border);
+    }
+    .dp-icon { font-size: 15px; flex-shrink: 0; }
+    .dp-label {
+      font-weight: 600;
+      font-size: 13.5px;
+      color: var(--vscode-editor-foreground);
+      flex: 1;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .dp-close {
+      background: none !important;
+      border: none !important;
+      color: var(--vscode-descriptionForeground);
+      font-size: 16px;
+      cursor: pointer;
+      padding: 1px 5px !important;
+      line-height: 1;
+      border-radius: 3px;
+      flex-shrink: 0;
+    }
+    .dp-close:hover {
+      color: var(--vscode-editor-foreground);
+      background: var(--vscode-toolbar-hoverBackground, rgba(255,255,255,0.1)) !important;
+    }
+    .dp-body {
+      overflow-y: auto;
+      flex: 1;
+    }
+    .dp-description {
+      padding: 10px 12px;
+      font-size: 13px;
+      color: var(--vscode-editorHoverWidget-foreground, #ccc);
+      line-height: 1.65;
+    }
+    .dp-description p { margin-bottom: 8px; }
+    .dp-description h1,
+    .dp-description h2,
+    .dp-description h3 {
+      font-size: 13px;
+      color: var(--vscode-editor-foreground);
+      margin: 8px 0 4px;
+    }
+    .dp-description code {
+      background: var(--vscode-textCodeBlock-background, #1e1e1e);
+      padding: 1px 4px;
+      border-radius: 3px;
+      font-size: 11.5px;
+      font-family: var(--vscode-editor-fontFamily, monospace);
+    }
+    .dp-description ul,
+    .dp-description ol {
+      padding-left: 20px;
+      margin-bottom: 8px;
+    }
+    .dp-section {
+      padding: 8px 12px;
+      border-top: 1px solid var(--vscode-panel-border);
+    }
+    .dp-section-title {
+      font-size: 10.5px;
+      color: var(--vscode-descriptionForeground);
+      margin-bottom: 5px;
+      text-transform: uppercase;
+      letter-spacing: 0.09em;
+      font-weight: 700;
+    }
+    .dp-links { list-style: none; padding: 0; }
+    .dp-links li { margin: 2px 0; }
+    .dp-links a {
+      color: var(--vscode-textLink-foreground, #4daafc);
+      text-decoration: none;
+      font-size: 13px;
+      cursor: pointer;
+    }
+    .dp-links a:hover { text-decoration: underline; }
+    .dp-prop {
+      font-size: 11.5px;
+      color: var(--vscode-descriptionForeground);
+      margin: 2px 0;
+      font-family: var(--vscode-editor-fontFamily, monospace);
+    }
+    .dp-jump {
+      display: block;
+      width: 100%;
+      padding: 6px 8px !important;
+      background: var(--vscode-button-background) !important;
+      border: none !important;
+      border-radius: 3px;
+      color: var(--vscode-button-foreground) !important;
+      font-size: 12px;
+      text-align: center;
+      cursor: pointer;
+    }
+    .dp-jump:hover {
+      background: var(--vscode-button-hoverBackground, #1177bb) !important;
+      opacity: 1 !important;
+    }
   </style>
 </head>
 <body>
@@ -235,56 +400,237 @@ export class PreviewPanel {
     <button data-view="org" style="${btnStyle("org")}">Org</button>
     <div class="toolbar-sep"></div>
     <div id="breadcrumb">${breadcrumb}</div>
-    <span id="jump-hint">Cmd/Ctrl+Click to jump to definition</span>
+    <span id="jump-hint">\u24d8 for details \u00b7 Cmd/Ctrl+Click to jump</span>
   </div>
-  <div id="preview">${svg}</div>
+  <div id="preview-wrapper">
+    <div id="preview">${svg}</div>
+    <div id="detail-panel"></div>
+  </div>
   <div id="karasu-tooltip"></div>
   <script nonce="${nonce}">
-    const vscode = acquireVsCodeApi();
-    const nodeDescriptions = ${descriptionJson};
-    const tooltip = document.getElementById('karasu-tooltip');
+    var vscode = acquireVsCodeApi();
+    var nodeMetadataMap = ${metadataJson};
+    var tooltip = document.getElementById('karasu-tooltip');
+    var detailPanel = document.getElementById('detail-panel');
+    var currentDetailNodeId = null;
 
-    // View switcher
+    var KIND_ICONS = {
+      service: '\\u2699', user: '\\ud83d\\udc64', domain: '\\ud83d\\udce6',
+      resource: '\\ud83d\\udcbe', usecase: '\\ud83d\\udce6', team: '\\ud83d\\udc65',
+      member: '\\ud83d\\udc64', oci: '\\ud83d\\udc33', lambda: '\\u03bb',
+      jar: '\\u2615', war: '\\u2615', function: 'f\\u2099',
+      assets: '\\ud83d\\udcc1', job: '\\u23f0', artifact: '\\ud83d\\udce6',
+      system: '\\ud83c\\udfd7'
+    };
+
+    // ── View switcher ──
     document.querySelectorAll('[data-view]').forEach(function(btn) {
       btn.addEventListener('click', function() {
         vscode.postMessage({ type: 'switchView', viewType: btn.dataset.view });
       });
     });
 
-    // Breadcrumb navigation
+    // ── Breadcrumb navigation ──
     document.querySelectorAll('[data-nav-index]').forEach(function(btn) {
       btn.addEventListener('click', function() {
         vscode.postMessage({ type: 'navigateTo', index: Number(btn.dataset.navIndex) });
       });
     });
 
-    // Node click: Cmd/Ctrl+click → navigate (editor jump); plain click on drillable node → drillDown
-    document.querySelector('#preview').addEventListener('click', function(e) {
-      var group = e.target.closest('[data-node-id]');
-      if (!group) return;
-      var nodeId = group.getAttribute('data-node-id');
-      if (!nodeId) return;
-      if (e.metaKey || e.ctrlKey) {
-        vscode.postMessage({ type: 'navigate', nodeId: nodeId });
-      } else if (group.getAttribute('data-has-children') === 'true') {
-        vscode.postMessage({ type: 'drillDown', nodeId: nodeId });
-      } else {
-        vscode.postMessage({ type: 'navigate', nodeId: nodeId });
+    // ── Detail panel functions ──
+    function showDetailPanel(nodeId, targetEl) {
+      var meta = nodeMetadataMap[nodeId];
+      if (!meta) return;
+
+      currentDetailNodeId = nodeId;
+      var icon = KIND_ICONS[meta.kind] || '\\u25a0';
+
+      // Build panel HTML
+      var html = '<div class="dp-header">';
+      html += '<span class="dp-icon">' + icon + '</span>';
+      html += '<span class="dp-label">' + escapeHtml(meta.label) + '</span>';
+      html += '<button class="dp-close" id="dp-close-btn" aria-label="Close">\\u00d7</button>';
+      html += '</div>';
+      html += '<div class="dp-body">';
+
+      // Description (pre-rendered HTML from extension host)
+      if (meta.descriptionHtml) {
+        html += '<div class="dp-description">' + meta.descriptionHtml + '</div>';
+      }
+
+      // Links
+      if (meta.links && meta.links.length > 0) {
+        html += '<div class="dp-section">';
+        html += '<div class="dp-section-title">\\ud83d\\udd17 Links</div>';
+        html += '<ul class="dp-links">';
+        for (var i = 0; i < meta.links.length; i++) {
+          var link = meta.links[i];
+          html += '<li><a href="' + escapeAttr(link.url) + '">'
+            + escapeHtml(link.label || link.url) + ' \\u2197</a></li>';
+        }
+        html += '</ul></div>';
+      }
+
+      // Properties (runtime, realizes, team, role, tags)
+      var props = [];
+      if (meta.runtime) props.push('\\ud83d\\udda5 runtime: ' + escapeHtml(meta.runtime));
+      if (meta.realizes) props.push('\\ud83d\\udd17 realizes: ' + escapeHtml(meta.realizes));
+      if (meta.team) props.push('\\ud83d\\udc65 ' + escapeHtml(meta.team));
+      if (meta.role) props.push('\\ud83d\\udccc ' + escapeHtml(meta.role));
+      if (meta.tags && meta.tags.length > 0) {
+        props.push('\\ud83c\\udff7 ' + meta.tags.map(function(t) { return '[' + escapeHtml(t) + ']'; }).join(' '));
+      }
+      if (props.length > 0) {
+        html += '<div class="dp-section">';
+        for (var j = 0; j < props.length; j++) {
+          html += '<div class="dp-prop">' + props[j] + '</div>';
+        }
+        html += '</div>';
+      }
+
+      // Jump to editor button
+      html += '<div class="dp-section">';
+      html += '<button class="dp-jump" id="dp-jump-btn">Jump to editor</button>';
+      html += '</div>';
+
+      html += '</div>'; // .dp-body
+
+      detailPanel.innerHTML = html;
+
+      // Position near the clicked node
+      var wrapper = document.getElementById('preview-wrapper');
+      var wrapperRect = wrapper.getBoundingClientRect();
+      var targetRect = targetEl.getBoundingClientRect();
+
+      var anchorX = targetRect.right - wrapperRect.left + wrapper.scrollLeft + 8;
+      var anchorY = targetRect.top - wrapperRect.top + wrapper.scrollTop;
+
+      // If panel would overflow right edge, position to the left
+      if (anchorX + 360 > wrapper.scrollWidth && anchorX + 360 > wrapperRect.width) {
+        anchorX = targetRect.left - wrapperRect.left + wrapper.scrollLeft - 368;
+        if (anchorX < 0) anchorX = 8;
+      }
+
+      detailPanel.style.left = anchorX + 'px';
+      detailPanel.style.top = anchorY + 'px';
+      detailPanel.classList.add('visible');
+
+      // Close button
+      document.getElementById('dp-close-btn').addEventListener('click', function(e) {
+        e.stopPropagation();
+        hideDetailPanel();
+      });
+
+      // Jump button
+      document.getElementById('dp-jump-btn').addEventListener('click', function(e) {
+        e.stopPropagation();
+        vscode.postMessage({ type: 'navigate', nodeId: currentDetailNodeId });
+      });
+    }
+
+    function hideDetailPanel() {
+      detailPanel.classList.remove('visible');
+      detailPanel.innerHTML = '';
+      currentDetailNodeId = null;
+    }
+
+    function escapeHtml(str) {
+      return str.replace(/&/g, '&amp;').replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    }
+
+    function escapeAttr(str) {
+      return str.replace(/&/g, '&amp;').replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    }
+
+    // ── Intercept link clicks inside detail panel ──
+    detailPanel.addEventListener('click', function(e) {
+      var link = e.target.closest('a[href]');
+      if (link) {
+        e.preventDefault();
+        e.stopPropagation();
+        vscode.postMessage({ type: 'openExternal', url: link.getAttribute('href') });
       }
     });
 
-    // Node hover: show description tooltip
+    // Stop events on detail panel from propagating to preview
+    detailPanel.addEventListener('mousedown', function(e) { e.stopPropagation(); });
+    detailPanel.addEventListener('mouseup', function(e) { e.stopPropagation(); });
+    detailPanel.addEventListener('wheel', function(e) { e.stopPropagation(); });
+
+    // ── Node click ──
+    document.querySelector('#preview').addEventListener('click', function(e) {
+      // 1. Info button → detail panel
+      var infoBtn = e.target.closest('[data-info-button]');
+      if (infoBtn) {
+        var infoNodeId = infoBtn.getAttribute('data-info-button');
+        var infoGroup = infoBtn.closest('[data-node-id]');
+        if (infoNodeId && infoGroup) {
+          showDetailPanel(infoNodeId, infoGroup);
+        }
+        return;
+      }
+
+      // 2. Link button → detail panel
+      var linkBtn = e.target.closest('[data-link-button]');
+      if (linkBtn) {
+        var linkNodeId = linkBtn.getAttribute('data-link-button');
+        var linkGroup = linkBtn.closest('[data-node-id]');
+        if (linkNodeId && linkGroup) {
+          showDetailPanel(linkNodeId, linkGroup);
+        }
+        return;
+      }
+
+      // 3. Find the node group
+      var group = e.target.closest('[data-node-id]');
+      if (!group) {
+        // Click outside any node → close detail panel
+        hideDetailPanel();
+        return;
+      }
+
+      var nodeId = group.getAttribute('data-node-id');
+      if (!nodeId) return;
+
+      // 4. Cmd/Ctrl+Click → editor jump (any node)
+      if (e.metaKey || e.ctrlKey) {
+        vscode.postMessage({ type: 'navigate', nodeId: nodeId });
+        return;
+      }
+
+      // 5. Parent node → drill-down
+      if (group.getAttribute('data-has-children') === 'true') {
+        hideDetailPanel();
+        vscode.postMessage({ type: 'drillDown', nodeId: nodeId });
+        return;
+      }
+
+      // 6. Leaf node → detail panel
+      showDetailPanel(nodeId, group);
+    });
+
+    // ── Node hover: show description tooltip ──
     document.querySelector('#preview').addEventListener('mousemove', function(e) {
+      // Don't show tooltip when detail panel is open
+      if (currentDetailNodeId) { tooltip.style.display = 'none'; return; }
       var group = e.target.closest('[data-node-id]');
       if (!group) { tooltip.style.display = 'none'; return; }
       var nodeId = group.getAttribute('data-node-id');
-      var desc = nodeId && nodeDescriptions[nodeId];
-      if (!desc) { tooltip.style.display = 'none'; return; }
-      tooltip.textContent = desc;
+      var meta = nodeId && nodeMetadataMap[nodeId];
+      if (!meta || !meta.descriptionHtml) { tooltip.style.display = 'none'; return; }
+      // Show plain description summary in tooltip (strip HTML)
+      var tmp = document.createElement('div');
+      tmp.innerHTML = meta.descriptionHtml;
+      var plain = (tmp.textContent || '').trim();
+      if (!plain) { tooltip.style.display = 'none'; return; }
+      // Truncate for tooltip
+      if (plain.length > 200) plain = plain.substring(0, 200) + '\\u2026';
+      tooltip.textContent = plain;
       tooltip.style.display = 'block';
       var x = e.clientX + 14;
       var y = e.clientY + 14;
-      // Keep tooltip inside viewport
       if (x + tooltip.offsetWidth > window.innerWidth) x = e.clientX - tooltip.offsetWidth - 8;
       if (y + tooltip.offsetHeight > window.innerHeight) y = e.clientY - tooltip.offsetHeight - 8;
       tooltip.style.left = x + 'px';
@@ -295,7 +641,7 @@ export class PreviewPanel {
       tooltip.style.display = 'none';
     });
 
-    // Highlight message from extension
+    // ── Highlight message from extension ──
     window.addEventListener('message', function(event) {
       var msg = event.data;
       if (msg.type === 'highlight') {
