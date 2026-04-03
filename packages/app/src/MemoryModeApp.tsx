@@ -15,6 +15,7 @@ import { useSystemView } from "./hooks/useSystemView.js";
 import { useDeployView } from "./hooks/useDeployView.js";
 import { useOrgView } from "./hooks/useOrgView.js";
 import { useViewSvg } from "./hooks/useViewSvg.js";
+import { useStyleSource } from "./hooks/useStyleSource.js";
 
 import type { ActiveView } from "./state/app-reducer.js";
 import type { DisplayMode } from "@karasu/core";
@@ -161,9 +162,11 @@ function MemoryModeInner() {
     }
   }, [fileContent, viewPath]);
 
+  const styleSource = useStyleSource(fileContent, MEMORY_FILE_PATH, fs);
   const { drillDownSvg, allLayersSvg, orgAllLayersSvg, orgDrillDownSvg } = useViewSvg(
     fileContent,
     displayMode,
+    styleSource,
   );
 
   const orgBreadcrumbItems = useMemo(() => {

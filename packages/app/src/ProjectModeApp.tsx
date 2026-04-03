@@ -10,6 +10,7 @@ import { useSystemView } from "./hooks/useSystemView.js";
 import { useDeployView } from "./hooks/useDeployView.js";
 import { useOrgView } from "./hooks/useOrgView.js";
 import { useViewSvg } from "./hooks/useViewSvg.js";
+import { useStyleSource } from "./hooks/useStyleSource.js";
 
 import { ProjectManager } from "./fs/project-manager.js";
 import type { Project, KrsNode, OrgViewPath, DisplayMode } from "@karasu/core";
@@ -297,9 +298,11 @@ export function ProjectModeApp() {
     }
   }, [fileContent, viewPath]);
 
+  const styleSource = useStyleSource(fileContent, currentFilePath ?? undefined, fs);
   const { drillDownSvg, allLayersSvg, orgAllLayersSvg, orgDrillDownSvg } = useViewSvg(
     fileContent,
     displayMode,
+    styleSource,
   );
 
   const orgBreadcrumbItems = useMemo(() => {
