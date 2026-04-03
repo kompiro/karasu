@@ -12,6 +12,7 @@ import type {
   ParseResult,
   LogicalNodeKind,
   DeployNodeKind,
+  DomainNode,
   ServiceNode,
   SystemNode,
   CommonProperties,
@@ -128,6 +129,7 @@ export class Parser {
       nodeImports: [],
       systems: [],
       services: [],
+      domains: [],
       deploys: [],
       organizations: [],
       ownerIndex: new Map(),
@@ -149,6 +151,9 @@ export class Parser {
           break;
         case TokenType.Service:
           file.services.push(this.parseNodeDecl() as ServiceNode);
+          break;
+        case TokenType.Domain:
+          file.domains.push(this.parseNodeDecl() as DomainNode);
           break;
         case TokenType.Deploy:
           file.deploys.push(this.parseDeployBlock());

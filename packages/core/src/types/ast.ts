@@ -159,6 +159,7 @@ export interface KrsFile {
   nodeImports: ImportDeclaration[];
   systems: SystemNode[];
   services: ServiceNode[];
+  domains: DomainNode[];
   deploys: DeployBlock[];
   organizations: OrganizationBlock[];
   ownerIndex: Map<string, string>;

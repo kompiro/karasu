@@ -6,6 +6,7 @@ export function analyze(file: KrsFile, sheets: StyleSheet[], systemSheetCount = 
   const warnings: Warning[] = [];
 
   warnings.push(...detectDomainDispersal(file));
+  warnings.push(...detectUnassignedDomains(file));
   warnings.push(...detectStyleConflicts(sheets, systemSheetCount));
   warnings.push(...detectMissingProperties(file));
   warnings.push(...detectInvalidOwns(file));
@@ -55,6 +56,15 @@ function detectDomainDispersal(file: KrsFile): Warning[] {
   }
 
   return warnings;
+}
+
+function detectUnassignedDomains(file: KrsFile): Warning[] {
+  return file.domains.map((domain) => ({
+    kind: "unassigned-domain" as const,
+    message: `domain "${domain.label ?? domain.id}" is not assigned to any service`,
+    details: [],
+    loc: domain.loc,
+  }));
 }
 
 function detectStyleConflicts(sheets: StyleSheet[], systemSheetCount = 1): Warning[] {
@@ -137,6 +147,10 @@ function detectInvalidOwns(file: KrsFile): Warning[] {
     validIds.add(service.id);
     collectIds(service.children);
   }
+  for (const domain of file.domains) {
+    validIds.add(domain.id);
+    collectIds(domain.children);
+  }
 
   // Check each owns reference
   function checkTeams(teams: TeamNode[]): void {
@@ -194,6 +208,9 @@ function detectDeprecatedTeamProperty(file: KrsFile): Warning[] {
   }
   for (const service of file.services) {
     walk(service);
+  }
+  for (const domain of file.domains) {
+    walk(domain);
   }
 
   return warnings;

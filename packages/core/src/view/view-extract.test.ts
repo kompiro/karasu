@@ -177,4 +177,43 @@ describe("extractView", () => {
       expect(view.childEdges).toHaveLength(0);
     });
   });
+
+  describe("unassigned domains in system view", () => {
+    it("includes unassigned domains in system view childNodes", () => {
+      const krs = `
+domain Payment { label "決済" }
+domain Inventory { label "在庫" }
+
+system ECPlatform {
+  service ECommerce {}
+}
+      `;
+      const result = Parser.parse(krs);
+      const view = extractView(result.value.systems, [], result.value.domains);
+
+      // system has 1 child (ECommerce) + 2 unassigned domains
+      expect(view.childNodes).toHaveLength(3);
+      expect(view.childNodes.map((n) => n.id)).toContain("Payment");
+      expect(view.childNodes.map((n) => n.id)).toContain("Inventory");
+      expect(view.childNodes.map((n) => n.id)).toContain("ECommerce");
+    });
+
+    it("does not include unassigned domains in service view", () => {
+      const krs = `
+domain Payment { label "決済" }
+
+system ECPlatform {
+  service ECommerce {
+    domain Order {}
+  }
+}
+      `;
+      const result = Parser.parse(krs);
+      const view = extractView(result.value.systems, ["ECommerce"], result.value.domains);
+
+      // service view shows only ECommerce's children (Order), not unassigned Payment
+      expect(view.childNodes).toHaveLength(1);
+      expect(view.childNodes[0].id).toBe("Order");
+    });
+  });
 });

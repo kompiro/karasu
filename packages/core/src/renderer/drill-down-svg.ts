@@ -116,9 +116,10 @@ function createSystemAdapter(
   ownerIndex: Map<string, string>,
   styles: ResolvedStyles,
   displayMode: DisplayMode | undefined,
+  unassignedDomains: KrsNode[] = [],
 ): DrillDownAdapter<KrsNode[], ViewSlice, KrsNode> {
   return {
-    extractSlice: (source, path) => extractView(source, path),
+    extractSlice: (source, path) => extractView(source, path, unassignedDomains),
     hasContent: (slice) => slice.childNodes.length > 0,
     getChildren: (slice) => slice.childNodes,
     isDrillable: (child) => child.children.length > 0,
@@ -155,7 +156,8 @@ export function buildDrillDownSvg(
   styleSource?: string,
   displayMode?: DisplayMode,
 ): string {
-  const rootSlice = extractView(krsFile.systems, []);
+  const unassignedDomains = krsFile.domains ?? [];
+  const rootSlice = extractView(krsFile.systems, [], unassignedDomains);
   if (rootSlice.childNodes.length === 0) {
     return `<svg xmlns="http://www.w3.org/2000/svg" width="100%" height="100%" viewBox="0 0 200 100"><text x="100" y="50" text-anchor="middle" fill="#9CA3AF" font-family="sans-serif">No diagram</text></svg>`;
   }
@@ -166,6 +168,7 @@ export function buildDrillDownSvg(
     krsFile.ownerIndex ?? new Map(),
     styles,
     displayMode,
+    unassignedDomains,
   );
 
   const levels: string[] = [];
@@ -260,7 +263,8 @@ export function buildAllLayersSvg(
   styleSource?: string,
   displayMode?: DisplayMode,
 ): string {
-  const rootSlice = extractView(krsFile.systems, []);
+  const unassignedDomains = krsFile.domains ?? [];
+  const rootSlice = extractView(krsFile.systems, [], unassignedDomains);
   if (rootSlice.childNodes.length === 0) {
     return `<svg xmlns="http://www.w3.org/2000/svg" width="200" height="100" viewBox="0 0 200 100"><text x="100" y="50" text-anchor="middle" fill="#9CA3AF" font-family="sans-serif">No diagram</text></svg>`;
   }
@@ -274,6 +278,7 @@ export function buildAllLayersSvg(
     krsFile.ownerIndex ?? new Map(),
     styles,
     displayMode,
+    unassignedDomains,
   );
 
   const levels: AllLayersLevel[] = [];

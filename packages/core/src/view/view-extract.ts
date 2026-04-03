@@ -19,7 +19,11 @@ function nodeId(node: KrsNode): string {
   return node.id;
 }
 
-export function extractView(systems: KrsNode[], path: ViewPath): ViewSlice {
+export function extractView(
+  systems: KrsNode[],
+  path: ViewPath,
+  unassignedDomains: KrsNode[] = [],
+): ViewSlice {
   const empty: ViewSlice = {
     containerNode: null,
     childNodes: [],
@@ -35,11 +39,12 @@ export function extractView(systems: KrsNode[], path: ViewPath): ViewSlice {
 
   // System view (default)
   if (path.length === 0) {
-    const childIds = new Set(system.children.map(nodeId));
+    const allChildren = [...system.children, ...unassignedDomains];
+    const childIds = new Set(allChildren.map(nodeId));
     const childEdges = system.edges.filter((e) => childIds.has(e.from) && childIds.has(e.to));
     return {
       containerNode: system,
-      childNodes: system.children,
+      childNodes: allChildren,
       childEdges,
       ancestorChain: [],
       ghostUsers: [],

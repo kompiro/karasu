@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { Parser } from "./parser.js";
 import { getReference } from "../builtins/reference.js";
-import type { ServiceNode, UserNode } from "../types/ast.js";
+import type { DomainNode, ServiceNode, UserNode } from "../types/ast.js";
 
 describe("Parser", () => {
   it("parses empty input", () => {
@@ -1040,6 +1040,62 @@ organization Corp {
       expect(result.diagnostics).toHaveLength(0);
       expect(result.value.ownerIndex.get("Payment")).toBe("backend");
       expect(result.value.nodePathIndex.get("Payment")).toEqual(["Payment"]);
+    });
+  });
+
+  describe("top-level domain declarations", () => {
+    it("parses a single top-level domain", () => {
+      const result = Parser.parse(`
+domain Payment { label "決済" }
+      `);
+      expect(result.diagnostics).toHaveLength(0);
+      expect(result.value.domains).toHaveLength(1);
+      const domain = result.value.domains[0] as DomainNode;
+      expect(domain.kind).toBe("domain");
+      expect(domain.id).toBe("Payment");
+      expect(domain.label).toBe("決済");
+    });
+
+    it("parses multiple top-level domains", () => {
+      const result = Parser.parse(`
+domain Payment { label "決済" }
+domain Inventory { label "在庫" }
+      `);
+      expect(result.diagnostics).toHaveLength(0);
+      expect(result.value.domains).toHaveLength(2);
+      expect(result.value.domains[0].id).toBe("Payment");
+      expect(result.value.domains[1].id).toBe("Inventory");
+    });
+
+    it("parses top-level domains mixed with system blocks", () => {
+      const result = Parser.parse(`
+domain Payment { label "決済" }
+
+system ECPlatform {
+  service ECommerce {
+    domain Order { label "注文" }
+  }
+}
+      `);
+      expect(result.diagnostics).toHaveLength(0);
+      expect(result.value.domains).toHaveLength(1);
+      expect(result.value.domains[0].id).toBe("Payment");
+      expect(result.value.systems).toHaveLength(1);
+      const service = result.value.systems[0].children[0] as ServiceNode;
+      expect(service.children[0].id).toBe("Order");
+    });
+
+    it("parses top-level domain with children", () => {
+      const result = Parser.parse(`
+domain Payment {
+  label "決済"
+  usecase ProcessPayment { label "支払い処理" }
+}
+      `);
+      expect(result.diagnostics).toHaveLength(0);
+      expect(result.value.domains).toHaveLength(1);
+      expect(result.value.domains[0].children).toHaveLength(1);
+      expect(result.value.domains[0].children[0].id).toBe("ProcessPayment");
     });
   });
 });

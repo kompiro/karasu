@@ -182,3 +182,38 @@ system S {
     expect(warnings.some((w) => w.kind === "style-conflict")).toBe(true);
   });
 });
+
+describe("unassigned-domain warning", () => {
+  it("warns for each top-level domain", () => {
+    const krs = `
+domain Payment { label "決済" }
+domain Inventory { label "在庫" }
+
+system ECPlatform {
+  service ECommerce {}
+}
+    `;
+    const file = Parser.parse(krs).value;
+    const builtin = getBuiltinStyleSheet();
+    const warnings = analyze(file, [builtin]);
+    const unassigned = warnings.filter((w) => w.kind === "unassigned-domain");
+    expect(unassigned).toHaveLength(2);
+    expect(unassigned[0].message).toContain("決済");
+    expect(unassigned[1].message).toContain("在庫");
+  });
+
+  it("does not warn for domains nested inside services", () => {
+    const krs = `
+system ECPlatform {
+  service ECommerce {
+    domain Order { label "注文" }
+  }
+}
+    `;
+    const file = Parser.parse(krs).value;
+    const builtin = getBuiltinStyleSheet();
+    const warnings = analyze(file, [builtin]);
+    const unassigned = warnings.filter((w) => w.kind === "unassigned-domain");
+    expect(unassigned).toHaveLength(0);
+  });
+});

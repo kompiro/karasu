@@ -270,7 +270,11 @@ function _compileCore(krsSource: string, opts: CompileOptions): CompileResult {
   }
 
   // system (default)
-  const viewSlice = extractView(parseResult.value.systems, viewPath ?? []);
+  const viewSlice = extractView(
+    parseResult.value.systems,
+    viewPath ?? [],
+    parseResult.value.domains,
+  );
   const svg = render(viewSlice, styles, serviceIdsWithDeploy, ownerIndex, displayMode);
   const nodeMetadata = buildNodeMetadata(viewSlice, serviceIdsWithDeploy, ownerIndex);
   return {
@@ -345,7 +349,7 @@ async function _compileProjectCore(
   }
 
   // system (default)
-  const viewSlice = extractView(resolved.krsFile.systems, viewPath ?? []);
+  const viewSlice = extractView(resolved.krsFile.systems, viewPath ?? [], resolved.krsFile.domains);
   const svg = render(viewSlice, styles, serviceIdsWithDeploy, ownerIndex, displayMode);
   const nodeMetadata = buildNodeMetadata(viewSlice, serviceIdsWithDeploy, ownerIndex);
   return {
