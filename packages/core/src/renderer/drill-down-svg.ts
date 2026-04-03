@@ -366,7 +366,7 @@ export function buildAllLayersSvgOrg(
   if (levels.length === 0) {
     return {
       svg: `<svg xmlns="http://www.w3.org/2000/svg" width="200" height="100" viewBox="0 0 200 100"><text x="100" y="50" text-anchor="middle" fill="#9CA3AF" font-family="sans-serif">No org diagram</text></svg>`,
-      diagnostics: [],
+      diagnostics,
     };
   }
 
