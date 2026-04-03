@@ -111,6 +111,32 @@ describe("buildDrillDownSvg", () => {
   });
 });
 
+describe("buildDrillDownSvg with styleSource", () => {
+  it("applies styleSource to the rendered output", () => {
+    const krsFile = Parser.parse(ONE_LEVEL).value;
+    const styleSource = `service { color: #FF0000; }`;
+    const svgWithStyle = buildDrillDownSvg(krsFile, styleSource);
+    const svgWithout = buildDrillDownSvg(krsFile);
+
+    // The style should change the output
+    expect(svgWithStyle).not.toEqual(svgWithout);
+    // Custom color should appear in the styled SVG
+    expect(svgWithStyle).toContain("#FF0000");
+  });
+});
+
+describe("buildFullViewSvg with styleSource", () => {
+  it("applies styleSource to the rendered output", () => {
+    const krsFile = Parser.parse(ONE_LEVEL).value;
+    const styleSource = `service { color: #00FF00; }`;
+    const svgWithStyle = buildFullViewSvg(krsFile, styleSource);
+    const svgWithout = buildFullViewSvg(krsFile);
+
+    expect(svgWithStyle).not.toEqual(svgWithout);
+    expect(svgWithStyle).toContain("#00FF00");
+  });
+});
+
 const ORG_FLAT = `
 organization Acme {
   team Frontend { label "Frontend" }
@@ -225,6 +251,18 @@ organization Acme {
   });
 });
 
+describe("buildDrillDownSvgOrg with styleSource", () => {
+  it("applies styleSource to the rendered output", () => {
+    const krsFile = Parser.parse(ORG_TWO_LEVEL).value;
+    const styleSource = `team { color: #FF00FF; }`;
+    const svgWithStyle = buildDrillDownSvgOrg(krsFile, styleSource);
+    const svgWithout = buildDrillDownSvgOrg(krsFile);
+
+    expect(svgWithStyle).not.toEqual(svgWithout);
+    expect(svgWithStyle).toContain("#FF00FF");
+  });
+});
+
 // Tests for assembleFullViewSvg (via buildFullViewSvg / buildFullViewSvgOrg)
 describe("buildFullViewSvg", () => {
   it("returns placeholder for empty source", () => {
@@ -310,5 +348,15 @@ describe("buildFullViewSvgOrg", () => {
 
     expect(svg).toMatch(/^<svg /);
     expect(svg).toContain('style="background:#0F172A"');
+  });
+
+  it("applies styleSource to the rendered output", () => {
+    const krsFile = Parser.parse(ORG_FLAT).value;
+    const styleSource = `team { color: #ABCDEF; }`;
+    const svgWithStyle = buildFullViewSvgOrg(krsFile, styleSource);
+    const svgWithout = buildFullViewSvgOrg(krsFile);
+
+    expect(svgWithStyle).not.toEqual(svgWithout);
+    expect(svgWithStyle).toContain("#ABCDEF");
   });
 });

@@ -9,6 +9,7 @@ import { escapeXml } from "./svg-builder.js";
 import { resolveStyles } from "../resolver/style-resolver.js";
 import { getBuiltinStyleSheet } from "../builtins/default-style.js";
 import { getIconThemeStyleSheet } from "../builtins/icon-theme.js";
+import { StyleParser } from "../parser/style-parser.js";
 import "../renderer/shapes.js"; // ensure built-in shapes are registered
 
 const DRILL_DOWN_CSS = `
@@ -50,9 +51,13 @@ function extractSvgParts(svg: string): SvgParts {
   return { viewBox, innerContent, width, height };
 }
 
-function buildStyles(displayMode: DisplayMode | undefined): StyleSheet[] {
+function buildStyles(displayMode: DisplayMode | undefined, styleSource?: string): StyleSheet[] {
   const sheets: StyleSheet[] = [getBuiltinStyleSheet()];
   if (displayMode === "icon") sheets.push(getIconThemeStyleSheet());
+  if (styleSource) {
+    const styleResult = StyleParser.parse(styleSource);
+    sheets.push(styleResult.value);
+  }
   return sheets;
 }
 
@@ -114,7 +119,7 @@ export function buildDrillDownSvg(
     return `<svg xmlns="http://www.w3.org/2000/svg" width="100%" height="100%" viewBox="0 0 200 100"><text x="100" y="50" text-anchor="middle" fill="#9CA3AF" font-family="sans-serif">No diagram</text></svg>`;
   }
 
-  const styles = resolveStyles(krsFile.systems, buildStyles(displayMode), []);
+  const styles = resolveStyles(krsFile.systems, buildStyles(displayMode, styleSource), []);
 
   const levels: string[] = [];
   collectDrillDownLevels(
@@ -227,7 +232,7 @@ export function buildFullViewSvg(
     return `<svg xmlns="http://www.w3.org/2000/svg" width="200" height="100" viewBox="0 0 200 100"><text x="100" y="50" text-anchor="middle" fill="#9CA3AF" font-family="sans-serif">No diagram</text></svg>`;
   }
 
-  const styles = resolveStyles(krsFile.systems, buildStyles(displayMode), []);
+  const styles = resolveStyles(krsFile.systems, buildStyles(displayMode, styleSource), []);
   const systemNode = krsFile.systems[0];
   const rootLabel = systemNode.label ?? systemNode.id;
 
@@ -302,7 +307,7 @@ export function buildDrillDownSvgOrg(
 
   const styles = resolveStyles(
     krsFile.systems,
-    buildStyles(displayMode),
+    buildStyles(displayMode, styleSource),
     [],
     krsFile.organizations,
   );
@@ -360,7 +365,12 @@ export function buildFullViewSvgOrg(
     return `<svg xmlns="http://www.w3.org/2000/svg" width="200" height="100" viewBox="0 0 200 100"><text x="100" y="50" text-anchor="middle" fill="#9CA3AF" font-family="sans-serif">No org diagram</text></svg>`;
   }
 
-  const styles = resolveStyles(krsFile.systems, buildStyles(displayMode), [], organizations);
+  const styles = resolveStyles(
+    krsFile.systems,
+    buildStyles(displayMode, styleSource),
+    [],
+    organizations,
+  );
   const rootLabel = organizations[0].label ?? organizations[0].id;
 
   const levels: FullViewLevel[] = [];
