@@ -121,6 +121,19 @@ CI 通過後、以下のチェックを順に実行する。
    git branch -d <branch-name>
    ```
 
-4. クリーンアップ完了をユーザーに通知する
+4. main ブランチを最新化する（worktree の場合も実行）:
+   ```
+   cd /workspaces/karasu
+   git checkout main
+   git pull origin main
+   ```
+5. Issue のラベルを更新する（Issue 紐付けがある場合）:
+   - PR で `Closes #N` した Issue は GitHub が自動で close するため、ラベル操作は不要
+   - 依存していた Issue（`status: blocked` のもの）があれば `status: ready` に更新する:
+     ```
+     gh issue edit <blocked-issue> --remove-label "status: blocked" --add-label "status: ready"
+     ```
+   - 依存関係の判断: Issue 本文や会話の文脈から判断する
+6. クリーンアップ完了をユーザーに通知する
 
 リモートブランチは GitHub 上で PR マージ時に自動削除される設定を推奨。
