@@ -174,16 +174,16 @@ export function buildDrillDownSvg(
   return `<svg xmlns="http://www.w3.org/2000/svg" width="100%" height="100%"><style>${DRILL_DOWN_CSS}</style>${levels.join("")}</svg>`;
 }
 
-// ─── Full View SVG (all levels stacked vertically) ──────────────────────────
+// ─── All Layers SVG (all levels stacked vertically) ──────────────────────────
 
-const FULL_VIEW_PADDING = 16;
-const FULL_VIEW_SECTION_HEADER_HEIGHT = 20;
-const FULL_VIEW_GAP = 24;
-const FULL_VIEW_LABEL_OFFSET = 14;
-const FULL_VIEW_BG = "#0F172A";
-const FULL_VIEW_LABEL_COLOR = "#64748B";
+const ALL_LAYERS_PADDING = 16;
+const ALL_LAYERS_SECTION_HEADER_HEIGHT = 20;
+const ALL_LAYERS_GAP = 24;
+const ALL_LAYERS_LABEL_OFFSET = 14;
+const ALL_LAYERS_BG = "#0F172A";
+const ALL_LAYERS_LABEL_COLOR = "#64748B";
 
-interface FullViewLevel {
+interface AllLayersLevel {
   pathLabels: string[];
   viewBox: string;
   width: number;
@@ -191,10 +191,10 @@ interface FullViewLevel {
   innerContent: string;
 }
 
-function assembleFullViewSvg(levels: FullViewLevel[]): string {
-  const maxWidth = Math.max(...levels.map((l) => l.width)) + FULL_VIEW_PADDING * 2;
+function assembleAllLayersSvg(levels: AllLayersLevel[]): string {
+  const maxWidth = Math.max(...levels.map((l) => l.width)) + ALL_LAYERS_PADDING * 2;
 
-  let yOffset = FULL_VIEW_PADDING;
+  let yOffset = ALL_LAYERS_PADDING;
   const parts: string[] = [];
 
   for (let i = 0; i < levels.length; i++) {
@@ -202,34 +202,34 @@ function assembleFullViewSvg(levels: FullViewLevel[]): string {
     const sectionLabel = level.pathLabels.join(" › ");
 
     if (i > 0) {
-      const sepY = yOffset - FULL_VIEW_GAP / 2;
+      const sepY = yOffset - ALL_LAYERS_GAP / 2;
       parts.push(
         `<line x1="0" y1="${sepY}" x2="${maxWidth}" y2="${sepY}" stroke="#1E293B" stroke-width="1"/>`,
       );
     }
 
     parts.push(
-      `<text x="${FULL_VIEW_PADDING}" y="${yOffset + FULL_VIEW_LABEL_OFFSET}" fill="${FULL_VIEW_LABEL_COLOR}" font-family="sans-serif" font-size="11px" font-weight="600" letter-spacing="0.05em">${escapeXml(sectionLabel)}</text>`,
+      `<text x="${ALL_LAYERS_PADDING}" y="${yOffset + ALL_LAYERS_LABEL_OFFSET}" fill="${ALL_LAYERS_LABEL_COLOR}" font-family="sans-serif" font-size="11px" font-weight="600" letter-spacing="0.05em">${escapeXml(sectionLabel)}</text>`,
     );
-    yOffset += FULL_VIEW_SECTION_HEADER_HEIGHT;
+    yOffset += ALL_LAYERS_SECTION_HEADER_HEIGHT;
 
     parts.push(
-      `<svg x="${FULL_VIEW_PADDING}" y="${yOffset}" width="${level.width}" height="${level.height}" viewBox="${level.viewBox}">${level.innerContent}</svg>`,
+      `<svg x="${ALL_LAYERS_PADDING}" y="${yOffset}" width="${level.width}" height="${level.height}" viewBox="${level.viewBox}">${level.innerContent}</svg>`,
     );
-    yOffset += level.height + FULL_VIEW_GAP;
+    yOffset += level.height + ALL_LAYERS_GAP;
   }
 
-  yOffset += FULL_VIEW_PADDING;
+  yOffset += ALL_LAYERS_PADDING;
 
-  return `<svg xmlns="http://www.w3.org/2000/svg" width="${maxWidth}" height="${yOffset}" style="background:${FULL_VIEW_BG}">${parts.join("")}</svg>`;
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${maxWidth}" height="${yOffset}" style="background:${ALL_LAYERS_BG}">${parts.join("")}</svg>`;
 }
 
-function collectFullViewLevelsGeneric<TSource, TSlice, TChild>(
+function collectAllLayersLevelsGeneric<TSource, TSlice, TChild>(
   adapter: DrillDownAdapter<TSource, TSlice, TChild>,
   source: TSource,
   path: string[],
   pathLabels: string[],
-  levels: FullViewLevel[],
+  levels: AllLayersLevel[],
 ): void {
   const slice = adapter.extractSlice(source, path);
   if (!adapter.hasContent(slice)) return;
@@ -241,7 +241,7 @@ function collectFullViewLevelsGeneric<TSource, TSlice, TChild>(
 
   const children = adapter.getChildren(slice);
   for (const child of children) {
-    collectFullViewLevelsGeneric(
+    collectAllLayersLevelsGeneric(
       adapter,
       source,
       [...path, adapter.childId(child)],
@@ -255,7 +255,7 @@ function collectFullViewLevelsGeneric<TSource, TSlice, TChild>(
  * Builds a single SVG with all drill-down levels stacked vertically.
  * All levels are visible simultaneously — no interaction required.
  */
-export function buildFullViewSvg(
+export function buildAllLayersSvg(
   krsFile: KrsFile,
   styleSource?: string,
   displayMode?: DisplayMode,
@@ -276,10 +276,10 @@ export function buildFullViewSvg(
     displayMode,
   );
 
-  const levels: FullViewLevel[] = [];
-  collectFullViewLevelsGeneric(adapter, krsFile.systems, [], [rootLabel], levels);
+  const levels: AllLayersLevel[] = [];
+  collectAllLayersLevelsGeneric(adapter, krsFile.systems, [], [rootLabel], levels);
 
-  return assembleFullViewSvg(levels);
+  return assembleAllLayersSvg(levels);
 }
 
 // ─── Org Drill-down SVG (CSS :target navigation) ─────────────────────────────
@@ -312,13 +312,13 @@ export function buildDrillDownSvgOrg(
   return `<svg xmlns="http://www.w3.org/2000/svg" width="100%" height="100%"><style>${DRILL_DOWN_CSS}</style>${levels.join("")}</svg>`;
 }
 
-// ─── Org Full View SVG (all org levels stacked vertically) ──────────────────
+// ─── Org All Layers SVG (all org levels stacked vertically) ──────────────────
 
 /**
  * Builds a single SVG with all org drill-down levels stacked vertically.
  * All levels are visible simultaneously — no interaction required.
  */
-export function buildFullViewSvgOrg(
+export function buildAllLayersSvgOrg(
   krsFile: KrsFile,
   styleSource?: string,
   displayMode?: DisplayMode,
@@ -338,12 +338,12 @@ export function buildFullViewSvgOrg(
   const rootLabel = organizations[0].label ?? organizations[0].id;
   const adapter = createOrgAdapter(organizations, styles, displayMode);
 
-  const levels: FullViewLevel[] = [];
-  collectFullViewLevelsGeneric(adapter, organizations, [], [rootLabel], levels);
+  const levels: AllLayersLevel[] = [];
+  collectAllLayersLevelsGeneric(adapter, organizations, [], [rootLabel], levels);
 
   if (levels.length === 0) {
     return `<svg xmlns="http://www.w3.org/2000/svg" width="200" height="100" viewBox="0 0 200 100"><text x="100" y="50" text-anchor="middle" fill="#9CA3AF" font-family="sans-serif">No org diagram</text></svg>`;
   }
 
-  return assembleFullViewSvg(levels);
+  return assembleAllLayersSvg(levels);
 }
