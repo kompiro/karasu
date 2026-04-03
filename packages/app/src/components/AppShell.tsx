@@ -8,6 +8,7 @@ import { useSystemView } from "../hooks/useSystemView.js";
 import { useDeployView } from "../hooks/useDeployView.js";
 import { useOrgView } from "../hooks/useOrgView.js";
 import { useViewSvg } from "../hooks/useViewSvg.js";
+import { useStyleSource } from "../hooks/useStyleSource.js";
 
 import type { ReactNode } from "react";
 import type { KrsNode, OrgViewPath, DisplayMode } from "@karasu/core";
@@ -203,9 +204,11 @@ export function AppShell({ entryPath, sidebarContent }: AppShellProps) {
 
   // ── All-layers SVGs ─────────────────────────────────────────────
 
+  const styleSource = useStyleSource(fileContent, currentFilePath ?? undefined, fs);
   const { drillDownSvg, allLayersSvg, orgAllLayersSvg, orgDrillDownSvg } = useViewSvg(
     fileContent,
     displayMode,
+    styleSource,
   );
 
   // ── Render ──────────────────────────────────────────────────────
