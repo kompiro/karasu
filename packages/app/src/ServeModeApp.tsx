@@ -13,6 +13,7 @@ import { useSystemView } from "./hooks/useSystemView.js";
 import { useDeployView } from "./hooks/useDeployView.js";
 import { useOrgView } from "./hooks/useOrgView.js";
 import { useViewSvg } from "./hooks/useViewSvg.js";
+import { useStyleSource } from "./hooks/useStyleSource.js";
 import type { ActiveView } from "./state/app-reducer.js";
 
 const SERVE_FILE_PATH = "/serve/index.krs";
@@ -211,9 +212,11 @@ function ServeModeInner() {
     }
   }, [fileContent, viewPath]);
 
+  const styleSource = useStyleSource(fileContent, SERVE_FILE_PATH, fs);
   const { drillDownSvg, allLayersSvg, orgAllLayersSvg, orgDrillDownSvg } = useViewSvg(
     fileContent,
     displayMode,
+    styleSource,
   );
 
   const orgBreadcrumbItems = useMemo(() => {
