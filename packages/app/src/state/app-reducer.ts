@@ -19,7 +19,7 @@ export interface AppState {
   highlightedNodeId: string | null;
   // UI
   displayMode: DisplayMode;
-  isFullView: boolean;
+  isAllLayersOpen: boolean;
   loading: boolean;
 }
 
@@ -35,7 +35,7 @@ export const initialState: AppState = {
   selectedDeployBlockId: null,
   highlightedNodeId: null,
   displayMode: "shape",
-  isFullView: false,
+  isAllLayersOpen: false,
   loading: true,
 };
 
@@ -55,7 +55,7 @@ export type AppAction =
   | { type: "REMOVE_PROJECT"; id: string }
   | { type: "RENAME_PROJECT"; id: string; name: string }
   | { type: "SET_DISPLAY_MODE"; displayMode: DisplayMode }
-  | { type: "SET_FULL_VIEW"; isFullView: boolean };
+  | { type: "SET_ALL_LAYERS_OPEN"; isAllLayersOpen: boolean };
 
 export function appReducer(state: AppState, action: AppAction): AppState {
   switch (action.type) {
@@ -144,8 +144,8 @@ export function appReducer(state: AppState, action: AppAction): AppState {
     case "SET_DISPLAY_MODE":
       return { ...state, displayMode: action.displayMode };
 
-    case "SET_FULL_VIEW":
-      return { ...state, isFullView: action.isFullView };
+    case "SET_ALL_LAYERS_OPEN":
+      return { ...state, isAllLayersOpen: action.isAllLayersOpen };
 
     default:
       return state;

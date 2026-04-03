@@ -46,12 +46,12 @@ function makeProps(overrides: Partial<Parameters<typeof KarasuPreviewColumn>[0]>
     displayMode: "shape" as const,
     onDisplayModeChange: vi.fn(),
     onExportSvg: vi.fn(),
-    isFullView: false,
-    onFullViewToggle: vi.fn(),
+    isAllLayersOpen: false,
+    onAllLayersToggle: vi.fn(),
     drillDownSvg: undefined,
     orgDrillDownSvg: undefined,
-    fullViewSvg: undefined,
-    orgFullViewSvg: undefined,
+    allLayersSvg: undefined,
+    orgAllLayersSvg: undefined,
     ...overrides,
   };
 }
@@ -251,36 +251,36 @@ describe("KarasuPreviewColumn", () => {
     });
   });
 
-  describe("Full View button", () => {
-    it("shows Full View button on system tab", () => {
-      const props = makeProps({ activeView: "system", fullViewSvg: "<svg>full</svg>" });
+  describe("Show All Layers button", () => {
+    it("shows Show All Layers button on system tab", () => {
+      const props = makeProps({ activeView: "system", allLayersSvg: "<svg>full</svg>" });
       const { getByRole } = render(<KarasuPreviewColumn {...props} />);
-      expect(getByRole("button", { name: /Toggle full view/ })).toBeTruthy();
+      expect(getByRole("button", { name: /Toggle all layers/ })).toBeTruthy();
     });
 
-    it("Full View button is disabled when fullViewSvg is absent", () => {
-      const props = makeProps({ activeView: "system", fullViewSvg: undefined });
+    it("Show All Layers button is disabled when allLayersSvg is absent", () => {
+      const props = makeProps({ activeView: "system", allLayersSvg: undefined });
       const { getByRole } = render(<KarasuPreviewColumn {...props} />);
-      expect(getByRole("button", { name: /Toggle full view/ })).toHaveProperty("disabled", true);
+      expect(getByRole("button", { name: /Toggle all layers/ })).toHaveProperty("disabled", true);
     });
 
-    it("Full View button is disabled on deploy tab", () => {
-      const props = makeProps({ activeView: "deploy", fullViewSvg: "<svg>full</svg>" });
+    it("Show All Layers button is disabled on deploy tab", () => {
+      const props = makeProps({ activeView: "deploy", allLayersSvg: "<svg>full</svg>" });
       const { getByRole } = render(<KarasuPreviewColumn {...props} />);
-      expect(getByRole("button", { name: /Toggle full view/ })).toHaveProperty("disabled", true);
+      expect(getByRole("button", { name: /Toggle all layers/ })).toHaveProperty("disabled", true);
     });
 
-    it("Full View button is enabled on org tab when orgFullViewSvg is set", () => {
-      const props = makeProps({ activeView: "org", orgFullViewSvg: "<svg>org-full</svg>" });
+    it("Show All Layers button is enabled on org tab when orgAllLayersSvg is set", () => {
+      const props = makeProps({ activeView: "org", orgAllLayersSvg: "<svg>org-full</svg>" });
       const { getByRole } = render(<KarasuPreviewColumn {...props} />);
-      expect(getByRole("button", { name: /Toggle full view/ })).toHaveProperty("disabled", false);
+      expect(getByRole("button", { name: /Toggle all layers/ })).toHaveProperty("disabled", false);
     });
 
-    it("renders iframe with orgFullViewSvg when isFullView=true on org tab", () => {
+    it("renders iframe with orgAllLayersSvg when isAllLayersOpen=true on org tab", () => {
       const props = makeProps({
         activeView: "org",
-        isFullView: true,
-        orgFullViewSvg: "<svg>org-full</svg>",
+        isAllLayersOpen: true,
+        orgAllLayersSvg: "<svg>org-full</svg>",
       });
       const { container } = render(<KarasuPreviewColumn {...props} />);
       const iframe = container.querySelector("iframe");
@@ -288,23 +288,23 @@ describe("KarasuPreviewColumn", () => {
       expect(iframe?.title).toBe("Full diagram view");
     });
 
-    it("calls onFullViewToggle when clicked", () => {
-      const onFullViewToggle = vi.fn();
+    it("calls onAllLayersToggle when clicked", () => {
+      const onAllLayersToggle = vi.fn();
       const props = makeProps({
         activeView: "system",
-        fullViewSvg: "<svg>full</svg>",
-        onFullViewToggle,
+        allLayersSvg: "<svg>full</svg>",
+        onAllLayersToggle,
       });
       const { getByRole } = render(<KarasuPreviewColumn {...props} />);
-      fireEvent.click(getByRole("button", { name: /Toggle full view/ }));
-      expect(onFullViewToggle).toHaveBeenCalled();
+      fireEvent.click(getByRole("button", { name: /Toggle all layers/ }));
+      expect(onAllLayersToggle).toHaveBeenCalled();
     });
 
-    it("renders iframe when isFullView=true and fullViewSvg is set", () => {
+    it("renders iframe when isAllLayersOpen=true and allLayersSvg is set", () => {
       const props = makeProps({
         activeView: "system",
-        isFullView: true,
-        fullViewSvg: "<svg>full</svg>",
+        isAllLayersOpen: true,
+        allLayersSvg: "<svg>full</svg>",
       });
       const { container } = render(<KarasuPreviewColumn {...props} />);
       const iframe = container.querySelector("iframe");
@@ -312,11 +312,11 @@ describe("KarasuPreviewColumn", () => {
       expect(iframe?.title).toBe("Full diagram view");
     });
 
-    it("does not render iframe when isFullView=false", () => {
+    it("does not render iframe when isAllLayersOpen=false", () => {
       const props = makeProps({
         activeView: "system",
-        isFullView: false,
-        fullViewSvg: "<svg>full</svg>",
+        isAllLayersOpen: false,
+        allLayersSvg: "<svg>full</svg>",
       });
       const { container } = render(<KarasuPreviewColumn {...props} />);
       expect(container.querySelector("iframe")).toBeNull();
@@ -331,26 +331,26 @@ describe("KarasuPreviewColumn", () => {
       expect(getByRole("button", { name: /SVG export options/ })).toBeTruthy();
     });
 
-    it("Export SVG exports current svg when isFullView=false", () => {
+    it("Export SVG exports current svg when isAllLayersOpen=false", () => {
       const onExportSvg = vi.fn();
-      const props = makeProps({ activeView: "system", isFullView: false, onExportSvg });
+      const props = makeProps({ activeView: "system", isAllLayersOpen: false, onExportSvg });
       const { getByRole } = render(<KarasuPreviewColumn {...props} />);
       fireEvent.click(getByRole("button", { name: /Export SVG/ }));
       expect(onExportSvg).toHaveBeenCalledWith(emptySvg, expect.any(String));
     });
 
-    it("Export SVG exports fullViewSvg with -fullview suffix when isFullView=true", () => {
+    it("Export SVG exports allLayersSvg with -all-layers suffix when isAllLayersOpen=true", () => {
       const onExportSvg = vi.fn();
-      const fullViewSvg = "<svg>full</svg>";
+      const allLayersSvg = "<svg>full</svg>";
       const props = makeProps({
         activeView: "system",
-        isFullView: true,
-        fullViewSvg,
+        isAllLayersOpen: true,
+        allLayersSvg,
         onExportSvg,
       });
       const { getByRole } = render(<KarasuPreviewColumn {...props} />);
       fireEvent.click(getByRole("button", { name: /Export SVG/ }));
-      expect(onExportSvg).toHaveBeenCalledWith(fullViewSvg, expect.stringContaining("fullview"));
+      expect(onExportSvg).toHaveBeenCalledWith(allLayersSvg, expect.stringContaining("all-layers"));
     });
 
     it("clicking toggle button opens export options menu with drill-down item", () => {

@@ -69,13 +69,13 @@ interface KarasuPreviewColumnProps {
   onDisplayModeChange: (mode: DisplayMode) => void;
   onExportSvg: (svg: string, filename: string) => void;
 
-  /** Full View toggle: show all levels stacked in an iframe */
-  isFullView: boolean;
-  onFullViewToggle: () => void;
-  /** SVG with all system levels stacked vertically (for Full View on system tab) */
-  fullViewSvg?: string;
-  /** SVG with all org levels stacked vertically (for Full View on org tab) */
-  orgFullViewSvg?: string;
+  /** Show All Layers toggle: show all levels stacked in an iframe */
+  isAllLayersOpen: boolean;
+  onAllLayersToggle: () => void;
+  /** SVG with all system levels stacked vertically (for Show All Layers on system tab) */
+  allLayersSvg?: string;
+  /** SVG with all org levels stacked vertically (for Show All Layers on org tab) */
+  orgAllLayersSvg?: string;
   /** SVG with CSS :target navigation for system drill-down export */
   drillDownSvg?: string;
   /** SVG with CSS :target navigation for org drill-down export */
@@ -96,10 +96,10 @@ export function KarasuPreviewColumn({
   displayMode,
   onDisplayModeChange,
   onExportSvg,
-  isFullView,
-  onFullViewToggle,
-  fullViewSvg,
-  orgFullViewSvg,
+  isAllLayersOpen,
+  onAllLayersToggle,
+  allLayersSvg,
+  orgAllLayersSvg,
   drillDownSvg,
   orgDrillDownSvg,
 }: KarasuPreviewColumnProps) {
@@ -138,18 +138,18 @@ export function KarasuPreviewColumn({
     selectedDeployBlockId,
   });
 
-  const activeFullViewSvg =
-    activeView === "system" ? fullViewSvg : activeView === "org" ? orgFullViewSvg : undefined;
-  const fullViewAvailable = activeView !== "deploy" && !!activeFullViewSvg;
+  const activeAllLayersSvg =
+    activeView === "system" ? allLayersSvg : activeView === "org" ? orgAllLayersSvg : undefined;
+  const allLayersAvailable = activeView !== "deploy" && !!activeAllLayersSvg;
   const activedrillDownSvg =
     activeView === "system" ? drillDownSvg : activeView === "org" ? orgDrillDownSvg : undefined;
   const drillDownAvailable =
     (activeView === "system" || activeView === "org") && !!activedrillDownSvg;
-  const showFullViewIframe = isFullView && fullViewAvailable;
+  const showAllLayersIframe = isAllLayersOpen && allLayersAvailable;
 
   function handleExport() {
-    if (showFullViewIframe && activeFullViewSvg) {
-      onExportSvg(activeFullViewSvg, exportFilename.replace(/\.svg$/, "-fullview.svg"));
+    if (showAllLayersIframe && activeAllLayersSvg) {
+      onExportSvg(activeAllLayersSvg, exportFilename.replace(/\.svg$/, "-all-layers.svg"));
     } else {
       onExportSvg(svg, exportFilename);
     }
@@ -181,12 +181,12 @@ export function KarasuPreviewColumn({
           ◇ Icon Mode
         </button>
         <button
-          className={`toolbar-btn toolbar-btn--full-view${isFullView ? " active" : ""}`}
-          onClick={onFullViewToggle}
-          aria-label="Toggle full view"
-          disabled={!fullViewAvailable}
+          className={`toolbar-btn toolbar-btn--all-layers${isAllLayersOpen ? " active" : ""}`}
+          onClick={onAllLayersToggle}
+          aria-label="Toggle all layers"
+          disabled={!allLayersAvailable}
         >
-          ⊞ Full View
+          ⊞ Show All Layers
         </button>
 
         {/* Split export button: left = export current/full, right = drill-down export */}
@@ -232,7 +232,7 @@ export function KarasuPreviewColumn({
         </button>
       </div>
       <ReferencePanel isOpen={refOpen} onClose={() => setRefOpen(false)} activeView={activeView} />
-      {activeView === "system" && !showFullViewIframe && (
+      {activeView === "system" && !showAllLayersIframe && (
         <BreadcrumbBar
           items={systemView.breadcrumbItems}
           onNavigate={systemView.onBreadcrumbNavigate}
@@ -241,9 +241,9 @@ export function KarasuPreviewColumn({
       {activeView === "org" && (
         <BreadcrumbBar items={orgView.breadcrumbItems} onNavigate={orgView.onBreadcrumbNavigate} />
       )}
-      {showFullViewIframe ? (
+      {showAllLayersIframe ? (
         <iframe
-          srcDoc={activeFullViewSvg}
+          srcDoc={activeAllLayersSvg}
           sandbox="allow-same-origin"
           style={{ width: "100%", height: "100%", border: "none" }}
           title="Full diagram view"

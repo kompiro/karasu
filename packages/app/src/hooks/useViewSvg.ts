@@ -17,7 +17,7 @@ export function useViewSvg(fileContent: string | undefined, displayMode: Display
     }
   }, [fileContent, displayMode]);
 
-  const fullViewSvg = useMemo(() => {
+  const allLayersSvg = useMemo(() => {
     if (!fileContent) return undefined;
     try {
       return buildFullViewSvg(fileContent, undefined, displayMode);
@@ -26,7 +26,7 @@ export function useViewSvg(fileContent: string | undefined, displayMode: Display
     }
   }, [fileContent, displayMode]);
 
-  const orgFullViewSvg = useMemo(() => {
+  const orgAllLayersSvg = useMemo(() => {
     if (!fileContent) return undefined;
     try {
       return buildFullViewSvgOrg(fileContent, undefined, displayMode);
@@ -44,5 +44,5 @@ export function useViewSvg(fileContent: string | undefined, displayMode: Display
     }
   }, [fileContent, displayMode]);
 
-  return { drillDownSvg, fullViewSvg, orgFullViewSvg, orgDrillDownSvg };
+  return { drillDownSvg, allLayersSvg, orgAllLayersSvg, orgDrillDownSvg };
 }

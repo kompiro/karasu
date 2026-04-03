@@ -105,27 +105,27 @@ describe("appReducer — activeView / highlightedNodeId", () => {
     });
   });
 
-  describe("SET_FULL_VIEW", () => {
-    it("sets isFullView to true", () => {
-      const next = appReducer(initialState, { type: "SET_FULL_VIEW", isFullView: true });
-      expect(next.isFullView).toBe(true);
+  describe("SET_ALL_LAYERS_OPEN", () => {
+    it("sets isAllLayersOpen to true", () => {
+      const next = appReducer(initialState, { type: "SET_ALL_LAYERS_OPEN", isAllLayersOpen: true });
+      expect(next.isAllLayersOpen).toBe(true);
     });
 
-    it("sets isFullView to false", () => {
-      const state = stateWith({ isFullView: true });
-      const next = appReducer(state, { type: "SET_FULL_VIEW", isFullView: false });
-      expect(next.isFullView).toBe(false);
+    it("sets isAllLayersOpen to false", () => {
+      const state = stateWith({ isAllLayersOpen: true });
+      const next = appReducer(state, { type: "SET_ALL_LAYERS_OPEN", isAllLayersOpen: false });
+      expect(next.isAllLayersOpen).toBe(false);
     });
 
     it("does not affect other state fields", () => {
       const state = stateWith({ activeView: "org", viewPath: ["A"] });
-      const next = appReducer(state, { type: "SET_FULL_VIEW", isFullView: true });
+      const next = appReducer(state, { type: "SET_ALL_LAYERS_OPEN", isAllLayersOpen: true });
       expect(next.activeView).toBe("org");
       expect(next.viewPath).toEqual(["A"]);
     });
 
-    it("initialState has isFullView=false", () => {
-      expect(initialState.isFullView).toBe(false);
+    it("initialState has isAllLayersOpen=false", () => {
+      expect(initialState.isAllLayersOpen).toBe(false);
     });
   });
 });
