@@ -950,14 +950,14 @@ body,
   border-color: rgba(77, 143, 255, 0.3);
 }
 
-/* Full View button — always visible as an actionable toggle */
-.toolbar-btn--full-view {
+/* All Layers button — always visible as an actionable toggle */
+.toolbar-btn--all-layers {
   background: var(--bg-raised);
   color: var(--text-secondary);
   border-color: var(--border-strong);
 }
 
-.toolbar-btn--full-view:hover {
+.toolbar-btn--all-layers:hover {
   background: var(--accent-dim);
   color: var(--accent-hover);
   border-color: rgba(77, 143, 255, 0.4);

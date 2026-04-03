@@ -25,7 +25,7 @@ export function ProjectModeApp() {
   const { state, dispatch, fs } = useAppContext();
   const pmRef = useRef(new ProjectManager(fs));
   const pm = pmRef.current;
-  const [isFullView, setIsFullView] = useState(false);
+  const [isAllLayersOpen, setIsAllLayersOpen] = useState(false);
 
   const {
     currentProject,
@@ -297,7 +297,7 @@ export function ProjectModeApp() {
     }
   }, [fileContent, viewPath]);
 
-  const { drillDownSvg, fullViewSvg, orgFullViewSvg, orgDrillDownSvg } = useViewSvg(
+  const { drillDownSvg, allLayersSvg, orgAllLayersSvg, orgDrillDownSvg } = useViewSvg(
     fileContent,
     displayMode,
   );
@@ -391,11 +391,11 @@ export function ProjectModeApp() {
         displayMode={displayMode}
         onDisplayModeChange={handleDisplayModeChange}
         onExportSvg={(svg, filename) => downloadSvg(svg, filename)}
-        isFullView={isFullView}
-        onFullViewToggle={() => setIsFullView((v) => !v)}
+        isAllLayersOpen={isAllLayersOpen}
+        onAllLayersToggle={() => setIsAllLayersOpen((v) => !v)}
         drillDownSvg={drillDownSvg}
-        fullViewSvg={fullViewSvg}
-        orgFullViewSvg={orgFullViewSvg}
+        allLayersSvg={allLayersSvg}
+        orgAllLayersSvg={orgAllLayersSvg}
         orgDrillDownSvg={orgDrillDownSvg}
       />
     </div>

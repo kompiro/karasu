@@ -38,7 +38,7 @@ export function MemoryModeApp() {
 function MemoryModeInner() {
   const { state, dispatch, fs } = useAppContext();
   const { fileContent, viewPath, activeView, orgPath, highlightedNodeId, displayMode } = state;
-  const [isFullView, setIsFullView] = useState(false);
+  const [isAllLayersOpen, setIsAllLayersOpen] = useState(false);
 
   // Initialize: write sample KRS to in-memory FS and select the file
   useEffect(() => {
@@ -161,7 +161,7 @@ function MemoryModeInner() {
     }
   }, [fileContent, viewPath]);
 
-  const { drillDownSvg, fullViewSvg, orgFullViewSvg, orgDrillDownSvg } = useViewSvg(
+  const { drillDownSvg, allLayersSvg, orgAllLayersSvg, orgDrillDownSvg } = useViewSvg(
     fileContent,
     displayMode,
   );
@@ -232,11 +232,11 @@ function MemoryModeInner() {
           dispatch({ type: "SET_DISPLAY_MODE", displayMode: mode })
         }
         onExportSvg={(svg, filename) => downloadSvg(svg, filename)}
-        isFullView={isFullView}
-        onFullViewToggle={() => setIsFullView((v) => !v)}
+        isAllLayersOpen={isAllLayersOpen}
+        onAllLayersToggle={() => setIsAllLayersOpen((v) => !v)}
         drillDownSvg={drillDownSvg}
-        fullViewSvg={fullViewSvg}
-        orgFullViewSvg={orgFullViewSvg}
+        allLayersSvg={allLayersSvg}
+        orgAllLayersSvg={orgAllLayersSvg}
         orgDrillDownSvg={orgDrillDownSvg}
       />
     </div>

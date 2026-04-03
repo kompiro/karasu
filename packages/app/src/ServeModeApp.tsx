@@ -60,7 +60,7 @@ function ServeModeInner() {
   const { state, dispatch, fs } = useAppContext();
   const { fileContent, viewPath, activeView, orgPath, highlightedNodeId, displayMode } = state;
   const [loadError, setLoadError] = useState<string | null>(null);
-  const [isFullView, setIsFullView] = useState(false);
+  const [isAllLayersOpen, setIsAllLayersOpen] = useState(false);
 
   // ref に recompile を格納し loadFile から参照できるようにする
   const recompileRef = useRef<() => void>(() => {});
@@ -211,7 +211,7 @@ function ServeModeInner() {
     }
   }, [fileContent, viewPath]);
 
-  const { drillDownSvg, fullViewSvg, orgFullViewSvg, orgDrillDownSvg } = useViewSvg(
+  const { drillDownSvg, allLayersSvg, orgAllLayersSvg, orgDrillDownSvg } = useViewSvg(
     fileContent,
     displayMode,
   );
@@ -299,11 +299,11 @@ function ServeModeInner() {
         }}
         nodeMetadata={nodeMetadata}
         onExportSvg={(svg, filename) => downloadSvg(svg, filename)}
-        isFullView={isFullView}
-        onFullViewToggle={() => setIsFullView((v) => !v)}
+        isAllLayersOpen={isAllLayersOpen}
+        onAllLayersToggle={() => setIsAllLayersOpen((v) => !v)}
         drillDownSvg={drillDownSvg}
-        fullViewSvg={fullViewSvg}
-        orgFullViewSvg={orgFullViewSvg}
+        allLayersSvg={allLayersSvg}
+        orgAllLayersSvg={orgAllLayersSvg}
         orgDrillDownSvg={orgDrillDownSvg}
       />
     </div>
