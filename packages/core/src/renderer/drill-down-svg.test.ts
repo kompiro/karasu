@@ -51,29 +51,29 @@ describe("buildDrillDownSvg", () => {
     expect(svg).toContain("No diagram");
   });
 
-  it("single-level: produces krs-view-root, no back buttons", () => {
+  it("single-level: produces krs-system-root, no back buttons", () => {
     const krsFile = Parser.parse(ONE_LEVEL).value;
     const svg = buildDrillDownSvg(krsFile);
 
-    expect(svg).toContain('id="krs-view-root"');
+    expect(svg).toContain('id="krs-system-root"');
     // No back button elements rendered (CSS class definitions are still present)
     expect(svg).not.toContain('<g class="krs-back-button"');
     // No child levels — only root
-    expect(svg).not.toContain('id="krs-view-OrderService"');
+    expect(svg).not.toContain('id="krs-system-OrderService"');
   });
 
   it("two-level: root + child view, <a> links in root", () => {
     const krsFile = Parser.parse(TWO_LEVEL).value;
     const svg = buildDrillDownSvg(krsFile);
 
-    expect(svg).toContain('id="krs-view-root"');
-    expect(svg).toContain('id="krs-view-OrderService"');
+    expect(svg).toContain('id="krs-system-root"');
+    expect(svg).toContain('id="krs-system-OrderService"');
     // Root should link to OrderService
-    expect(svg).toContain('href="#krs-view-OrderService"');
+    expect(svg).toContain('href="#krs-system-OrderService"');
     // PaymentService has no children — no link to it
-    expect(svg).not.toContain('id="krs-view-PaymentService"');
+    expect(svg).not.toContain('id="krs-system-PaymentService"');
     // OrderService level should have a back button element
-    const orderIdx = svg.indexOf('id="krs-view-OrderService"');
+    const orderIdx = svg.indexOf('id="krs-system-OrderService"');
     const backIdx = svg.indexOf('<g class="krs-back-button"', orderIdx);
     expect(backIdx).toBeGreaterThan(orderIdx);
   });
@@ -82,12 +82,12 @@ describe("buildDrillDownSvg", () => {
     const krsFile = Parser.parse(THREE_LEVEL).value;
     const svg = buildDrillDownSvg(krsFile);
 
-    expect(svg).toContain('id="krs-view-root"');
-    expect(svg).toContain('id="krs-view-OrderService"');
-    expect(svg).toContain('id="krs-view-OrderDomain"');
+    expect(svg).toContain('id="krs-system-root"');
+    expect(svg).toContain('id="krs-system-OrderService"');
+    expect(svg).toContain('id="krs-system-OrderDomain"');
     // OrderDomain level links back to OrderService
-    const domainIdx = svg.indexOf('id="krs-view-OrderDomain"');
-    const backHref = svg.indexOf('href="#krs-view-OrderService"', domainIdx);
+    const domainIdx = svg.indexOf('id="krs-system-OrderDomain"');
+    const backHref = svg.indexOf('href="#krs-system-OrderService"', domainIdx);
     expect(backHref).toBeGreaterThan(domainIdx);
   });
 
@@ -97,7 +97,7 @@ describe("buildDrillDownSvg", () => {
 
     expect(svg).toContain(".krs-view { display: none; }");
     expect(svg).toContain(".krs-view:target { display: block; }");
-    expect(svg).toContain("#krs-view-root { display: block; }");
+    expect(svg).toContain(".krs-root-level { display: block; }");
   });
 
   it("each level has its own viewBox nested svg", () => {
@@ -174,14 +174,14 @@ describe("buildDrillDownSvgOrg", () => {
     expect(svg).toContain("No org diagram");
   });
 
-  it("flat org: produces krs-view-root, no drill-down links", () => {
+  it("flat org: produces krs-org-root, no drill-down links", () => {
     const krsFile = Parser.parse(ORG_FLAT).value;
     const svg = buildDrillDownSvgOrg(krsFile);
 
-    expect(svg).toContain('id="krs-view-root"');
+    expect(svg).toContain('id="krs-org-root"');
     // No child levels — teams have no sub-teams
-    expect(svg).not.toContain('id="krs-view-Frontend"');
-    expect(svg).not.toContain('id="krs-view-Backend"');
+    expect(svg).not.toContain('id="krs-org-Frontend"');
+    expect(svg).not.toContain('id="krs-org-Backend"');
     // No back button
     expect(svg).not.toContain('<g class="krs-back-button"');
   });
@@ -190,14 +190,14 @@ describe("buildDrillDownSvgOrg", () => {
     const krsFile = Parser.parse(ORG_TWO_LEVEL).value;
     const svg = buildDrillDownSvgOrg(krsFile);
 
-    expect(svg).toContain('id="krs-view-root"');
-    expect(svg).toContain('id="krs-view-Engineering"');
+    expect(svg).toContain('id="krs-org-root"');
+    expect(svg).toContain('id="krs-org-Engineering"');
     // Root links to Engineering (has sub-teams)
-    expect(svg).toContain('href="#krs-view-Engineering"');
+    expect(svg).toContain('href="#krs-org-Engineering"');
     // Design has no sub-teams and no members — no level for it
-    expect(svg).not.toContain('id="krs-view-Design"');
+    expect(svg).not.toContain('id="krs-org-Design"');
     // Engineering level has back button
-    const engIdx = svg.indexOf('id="krs-view-Engineering"');
+    const engIdx = svg.indexOf('id="krs-org-Engineering"');
     const backIdx = svg.indexOf('<g class="krs-back-button"', engIdx);
     expect(backIdx).toBeGreaterThan(engIdx);
   });
@@ -206,14 +206,14 @@ describe("buildDrillDownSvgOrg", () => {
     const krsFile = Parser.parse(ORG_THREE_LEVEL).value;
     const svg = buildDrillDownSvgOrg(krsFile);
 
-    expect(svg).toContain('id="krs-view-root"');
-    expect(svg).toContain('id="krs-view-Engineering"');
-    expect(svg).toContain('id="krs-view-Platform"');
+    expect(svg).toContain('id="krs-org-root"');
+    expect(svg).toContain('id="krs-org-Engineering"');
+    expect(svg).toContain('id="krs-org-Platform"');
     // Infra has no sub-teams and no members — no level
-    expect(svg).not.toContain('id="krs-view-Infra"');
+    expect(svg).not.toContain('id="krs-org-Infra"');
     // Platform level back button links to Engineering
-    const platformIdx = svg.indexOf('id="krs-view-Platform"');
-    const backHref = svg.indexOf('href="#krs-view-Engineering"', platformIdx);
+    const platformIdx = svg.indexOf('id="krs-org-Platform"');
+    const backHref = svg.indexOf('href="#krs-org-Engineering"', platformIdx);
     expect(backHref).toBeGreaterThan(platformIdx);
   });
 
@@ -229,14 +229,14 @@ organization Acme {
 `).value;
     const svg = buildDrillDownSvgOrg(krsFile);
 
-    expect(svg).toContain('id="krs-view-root"');
+    expect(svg).toContain('id="krs-org-root"');
     // Engineering has a member → drillable
-    expect(svg).toContain('id="krs-view-Engineering"');
-    expect(svg).toContain('href="#krs-view-Engineering"');
+    expect(svg).toContain('id="krs-org-Engineering"');
+    expect(svg).toContain('href="#krs-org-Engineering"');
     // Design has no members and no sub-teams → not drillable
-    expect(svg).not.toContain('id="krs-view-Design"');
+    expect(svg).not.toContain('id="krs-org-Design"');
     // Engineering level has back button
-    const engIdx = svg.indexOf('id="krs-view-Engineering"');
+    const engIdx = svg.indexOf('id="krs-org-Engineering"');
     const backIdx = svg.indexOf('<g class="krs-back-button"', engIdx);
     expect(backIdx).toBeGreaterThan(engIdx);
   });
@@ -247,7 +247,7 @@ organization Acme {
 
     expect(svg).toContain(".krs-view { display: none; }");
     expect(svg).toContain(".krs-view:target { display: block; }");
-    expect(svg).toContain("#krs-view-root { display: block; }");
+    expect(svg).toContain(".krs-root-level { display: block; }");
   });
 });
 

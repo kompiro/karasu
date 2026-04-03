@@ -19,24 +19,29 @@ function makeNode(id: string, children: KrsNode[] = []): KrsNode {
 }
 
 describe("buildLevelId", () => {
-  it("returns 'krs-view-root' for empty path", () => {
-    expect(buildLevelId([])).toBe("krs-view-root");
+  it("returns 'krs-system-root' for empty path with system prefix", () => {
+    expect(buildLevelId([], "system")).toBe("krs-system-root");
   });
 
-  it("returns 'krs-view-root__A' for path ['A']", () => {
-    expect(buildLevelId(["A"])).toBe("krs-view-root__A");
+  it("returns 'krs-system-root__A' for path ['A'] with system prefix", () => {
+    expect(buildLevelId(["A"], "system")).toBe("krs-system-root__A");
   });
 
-  it("returns 'krs-view-root__A__B' for path ['A', 'B']", () => {
-    expect(buildLevelId(["A", "B"])).toBe("krs-view-root__A__B");
+  it("returns 'krs-system-root__A__B' for path ['A', 'B'] with system prefix", () => {
+    expect(buildLevelId(["A", "B"], "system")).toBe("krs-system-root__A__B");
   });
 
   it("handles IDs with hyphens — preserves full ID without ambiguity", () => {
     // Using __ as separator means hyphenated IDs like "my-service" are unambiguous
-    const id = buildLevelId(["my-service", "sub-node"]);
-    expect(id).toBe("krs-view-root__my-service__sub-node");
-    // The level for ["my"] would be different: "krs-view-root__my"
-    expect(buildLevelId(["my"])).not.toBe(id);
+    const id = buildLevelId(["my-service", "sub-node"], "system");
+    expect(id).toBe("krs-system-root__my-service__sub-node");
+    // The level for ["my"] would be different: "krs-system-root__my"
+    expect(buildLevelId(["my"], "system")).not.toBe(id);
+  });
+
+  it("uses the given viewPrefix for other views", () => {
+    expect(buildLevelId([], "org")).toBe("krs-org-root");
+    expect(buildLevelId(["TeamA"], "org")).toBe("krs-org-root__TeamA");
   });
 });
 
@@ -111,14 +116,14 @@ describe("assembleMultiLevelSvg", () => {
   });
 
   it("produces SVG with .krs-level class on each level group", () => {
-    const level = makeLevel("krs-view-root", [{ id: "krs-view-root", label: "Root" }]);
+    const level = makeLevel("krs-system-root", [{ id: "krs-system-root", label: "Root" }]);
     const svg = assembleMultiLevelSvg([level]);
     expect(svg).toContain('class="krs-level"');
-    expect(svg).toContain('id="krs-view-root"');
+    expect(svg).toContain('id="krs-system-root"');
   });
 
   it("stacks all levels vertically — no display:none hiding", () => {
-    const level = makeLevel("krs-view-root", [{ id: "krs-view-root", label: "Root" }]);
+    const level = makeLevel("krs-system-root", [{ id: "krs-system-root", label: "Root" }]);
     const svg = assembleMultiLevelSvg([level]);
     // All levels are always visible (stacked vertically); no hide/show CSS needed.
     expect(svg).not.toContain("display: none");
@@ -127,10 +132,10 @@ describe("assembleMultiLevelSvg", () => {
   });
 
   it("positions each level with a vertical translate transform", () => {
-    const root = makeLevel("krs-view-root", [{ id: "krs-view-root", label: "Root" }]);
-    const child = makeLevel("krs-view-root__Child", [
-      { id: "krs-view-root", label: "Root" },
-      { id: "krs-view-root__Child", label: "Child" },
+    const root = makeLevel("krs-system-root", [{ id: "krs-system-root", label: "Root" }]);
+    const child = makeLevel("krs-system-root__Child", [
+      { id: "krs-system-root", label: "Root" },
+      { id: "krs-system-root__Child", label: "Child" },
     ]);
     const svg = assembleMultiLevelSvg([root, child]);
     // Root level starts at y=0
@@ -140,27 +145,27 @@ describe("assembleMultiLevelSvg", () => {
   });
 
   it("includes breadcrumb link back to parent for child levels", () => {
-    const root = makeLevel("krs-view-root", [{ id: "krs-view-root", label: "Root" }]);
-    const child = makeLevel("krs-view-root__Child", [
-      { id: "krs-view-root", label: "Root" },
-      { id: "krs-view-root__Child", label: "Child" },
+    const root = makeLevel("krs-system-root", [{ id: "krs-system-root", label: "Root" }]);
+    const child = makeLevel("krs-system-root__Child", [
+      { id: "krs-system-root", label: "Root" },
+      { id: "krs-system-root__Child", label: "Child" },
     ]);
     const svg = assembleMultiLevelSvg([root, child]);
     // The child level's breadcrumb should link back to root
-    expect(svg).toContain('href="#krs-view-root"');
-    expect(svg).toContain('id="krs-view-root__Child"');
+    expect(svg).toContain('href="#krs-system-root"');
+    expect(svg).toContain('id="krs-system-root__Child"');
   });
 
   it("uses viewBox dimensions based on max width/height across levels", () => {
-    const small = makeLevel("krs-view-root", [{ id: "krs-view-root", label: "Root" }]);
+    const small = makeLevel("krs-system-root", [{ id: "krs-system-root", label: "Root" }]);
     const large: ExportLevel = {
-      id: "krs-view-root__Big",
+      id: "krs-system-root__Big",
       width: 1200,
       height: 900,
       svgContent: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 900"></svg>`,
       breadcrumb: [
-        { id: "krs-view-root", label: "Root" },
-        { id: "krs-view-root__Big", label: "Big" },
+        { id: "krs-system-root", label: "Root" },
+        { id: "krs-system-root__Big", label: "Big" },
       ],
     };
     const svg = assembleMultiLevelSvg([small, large]);

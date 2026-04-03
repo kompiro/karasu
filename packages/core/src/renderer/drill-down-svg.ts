@@ -14,15 +14,15 @@ import "../renderer/shapes.js"; // ensure built-in shapes are registered
 
 const DRILL_DOWN_CSS = `
   .krs-view { display: none; }
-  svg:not(:has(.krs-view:target)) #krs-view-root { display: block; }
+  svg:not(:has(.krs-view:target)) .krs-root-level { display: block; }
   .krs-view:target { display: block; }
   .krs-back-button rect { fill: #334155; stroke: #64748B; stroke-width: 1; }
   .krs-back-button text { fill: #E2E8F0; font-family: sans-serif; font-size: 13px; }
   .krs-back-button { cursor: pointer; }
 `.trim();
 
-function renderBackButton(parentViewId: string): string {
-  return `<a href="#krs-view-${parentViewId}" tabindex="0"><g class="krs-back-button" transform="translate(20, 10)"><rect x="0" y="0" width="80" height="26" rx="4"/><text x="40" y="17" text-anchor="middle">&#x2190; Back</text></g></a>`;
+function renderBackButton(parentViewId: string, viewPrefix: string): string {
+  return `<a href="#krs-${viewPrefix}-${parentViewId}" tabindex="0"><g class="krs-back-button" transform="translate(20, 10)"><rect x="0" y="0" width="80" height="26" rx="4"/><text x="40" y="17" text-anchor="middle">&#x2190; Back</text></g></a>`;
 }
 
 interface SvgParts {
@@ -80,6 +80,7 @@ function collectDrillDownLevelsGeneric<TSource, TSlice, TChild>(
   viewId: string,
   parentViewId: string | null,
   levels: string[],
+  viewPrefix: string,
 ): void {
   const slice = adapter.extractSlice(source, path);
   if (!adapter.hasContent(slice)) return;
@@ -87,15 +88,16 @@ function collectDrillDownLevelsGeneric<TSource, TSlice, TChild>(
   const children = adapter.getChildren(slice);
   const drillable = children.filter((c) => adapter.isDrillable(c));
   const childLevelLinks = new Map(
-    drillable.map((c) => [adapter.childId(c), `krs-view-${sanitizeId(adapter.childId(c))}`]),
+    drillable.map((c) => [adapter.childId(c), `krs-${viewPrefix}-${sanitizeId(adapter.childId(c))}`]),
   );
 
   const svg = adapter.render(slice, childLevelLinks);
   const { viewBox, innerContent } = extractSvgParts(svg);
 
-  const backButton = parentViewId !== null ? renderBackButton(parentViewId) : "";
+  const backButton = parentViewId !== null ? renderBackButton(parentViewId, viewPrefix) : "";
   const innerSvg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${viewBox}" width="100%" height="100%">${backButton}${innerContent}</svg>`;
-  levels.push(`<g id="krs-view-${viewId}" class="krs-view">${innerSvg}</g>`);
+  const cssClass = parentViewId === null ? "krs-view krs-root-level" : "krs-view";
+  levels.push(`<g id="krs-${viewPrefix}-${viewId}" class="${cssClass}">${innerSvg}</g>`);
 
   for (const child of drillable) {
     collectDrillDownLevelsGeneric(
@@ -105,6 +107,7 @@ function collectDrillDownLevelsGeneric<TSource, TSlice, TChild>(
       sanitizeId(adapter.childId(child)),
       viewId,
       levels,
+      viewPrefix,
     );
   }
 }
@@ -169,7 +172,7 @@ export function buildDrillDownSvg(
   );
 
   const levels: string[] = [];
-  collectDrillDownLevelsGeneric(adapter, krsFile.systems, [], "root", null, levels);
+  collectDrillDownLevelsGeneric(adapter, krsFile.systems, [], "root", null, levels, "system");
 
   return `<svg xmlns="http://www.w3.org/2000/svg" width="100%" height="100%"><style>${DRILL_DOWN_CSS}</style>${levels.join("")}</svg>`;
 }
@@ -307,7 +310,7 @@ export function buildDrillDownSvgOrg(
   const adapter = createOrgAdapter(krsFile.organizations, styles, displayMode);
 
   const levels: string[] = [];
-  collectDrillDownLevelsGeneric(adapter, krsFile.organizations, [], "root", null, levels);
+  collectDrillDownLevelsGeneric(adapter, krsFile.organizations, [], "root", null, levels, "org");
 
   return `<svg xmlns="http://www.w3.org/2000/svg" width="100%" height="100%"><style>${DRILL_DOWN_CSS}</style>${levels.join("")}</svg>`;
 }
