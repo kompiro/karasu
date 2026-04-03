@@ -155,5 +155,5 @@ system ECommerce {
 
 1. Open the Webview
 2. Look at the right end of the toolbar
-3. **Expected**: The text reads `Click node for details · Cmd/Ctrl+Click to jump`
+3. **Expected**: The text reads `ⓘ for details · Cmd/Ctrl+Click to jump`
    (updated from the previous Phase 4.5 hint)

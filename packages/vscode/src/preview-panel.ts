@@ -400,7 +400,7 @@ export class PreviewPanel {
     <button data-view="org" style="${btnStyle("org")}">Org</button>
     <div class="toolbar-sep"></div>
     <div id="breadcrumb">${breadcrumb}</div>
-    <span id="jump-hint">Click node for details \u00b7 Cmd/Ctrl+Click to jump</span>
+    <span id="jump-hint">\u24d8 for details \u00b7 Cmd/Ctrl+Click to jump</span>
   </div>
   <div id="preview-wrapper">
     <div id="preview">${svg}</div>
