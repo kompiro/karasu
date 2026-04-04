@@ -213,7 +213,7 @@ export function AppShell({ entryPath, sidebarContent, hideEditor, recompileRef }
   // ── All-layers SVGs ─────────────────────────────────────────────
 
   const styleSource = useStyleSource(fileContent, currentFilePath ?? undefined, fs);
-  const { drillDownSvg, allLayersSvg, orgAllLayersSvg, orgDrillDownSvg } = useViewSvg(
+  const { drillDownSvg, allLayersSvg, orgAllLayersSvg, orgDrillDownSvg, allViewsSvg } = useViewSvg(
     fileContent,
     displayMode,
     styleSource,
@@ -291,6 +291,7 @@ export function AppShell({ entryPath, sidebarContent, hideEditor, recompileRef }
         allLayersSvg={allLayersSvg}
         orgAllLayersSvg={orgAllLayersSvg}
         orgDrillDownSvg={orgDrillDownSvg}
+        allViewsSvg={allViewsSvg}
         previewFocused={previewFocused}
         onPreviewFocusToggle={() => setPreviewFocused((v) => !v)}
       />

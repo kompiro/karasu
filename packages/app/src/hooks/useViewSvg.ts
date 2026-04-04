@@ -4,6 +4,7 @@ import {
   buildDrillDownSvgOrg,
   buildAllLayersSvg,
   buildAllLayersSvgOrg,
+  buildAllViewsSvg,
   type DisplayMode,
   type Diagnostic,
 } from "@karasu/core";
@@ -49,7 +50,16 @@ export function useViewSvg(
     }
   }, [fileContent, displayMode, styleSource]);
 
-  // All 4 functions parse the same styleSource, so diagnostics are identical.
+  const allViewsResult = useMemo(() => {
+    if (!fileContent) return undefined;
+    try {
+      return buildAllViewsSvg(fileContent, styleSource, displayMode);
+    } catch {
+      return undefined;
+    }
+  }, [fileContent, displayMode, styleSource]);
+
+  // All functions parse the same styleSource, so diagnostics are identical.
   // Take from the first available result to avoid duplication.
   const styleDiagnostics: Diagnostic[] = drillDownResult?.diagnostics ?? [];
 
@@ -58,6 +68,7 @@ export function useViewSvg(
     allLayersSvg: allLayersResult?.svg,
     orgAllLayersSvg: orgAllLayersResult?.svg,
     orgDrillDownSvg: orgDrillDownResult?.svg,
+    allViewsSvg: allViewsResult?.svg,
     styleDiagnostics,
   };
 }
