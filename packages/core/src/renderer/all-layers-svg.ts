@@ -49,15 +49,17 @@ export function buildStyles(
   displayMode: DisplayMode | undefined,
   styleSource?: string,
 ): { sheets: StyleSheet[]; diagnostics: Diagnostic[] } {
+  // Build sheets for conflict analysis: [builtin, ...userSheets]
+  // Icon theme is appended last in resolveSheets so it takes highest priority for `shape`.
   const sheets: StyleSheet[] = [getBuiltinStyleSheet()];
   const diagnostics: Diagnostic[] = [];
-  if (displayMode === "icon") sheets.push(getIconThemeStyleSheet());
   if (styleSource) {
     const styleResult = StyleParser.parse(styleSource);
     sheets.push(styleResult.value);
     diagnostics.push(...styleResult.diagnostics);
   }
-  return { sheets, diagnostics };
+  const resolveSheets = displayMode === "icon" ? [...sheets, getIconThemeStyleSheet()] : sheets;
+  return { sheets: resolveSheets, diagnostics };
 }
 
 export interface DrillDownCallbacks<S> {
