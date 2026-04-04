@@ -10,10 +10,14 @@ export interface OrgViewSlice {
   ancestorChain: TeamNode[];
 }
 
+function teamChildren(team: TeamNode): TeamNode[] {
+  return team.children.filter((c): c is TeamNode => c.kind === "team");
+}
+
 function findTeamById(teams: TeamNode[], id: string): TeamNode | null {
   for (const team of teams) {
     if (team.id === id) return team;
-    const found = findTeamById(team.teams, id);
+    const found = findTeamById(teamChildren(team), id);
     if (found) return found;
   }
   return null;
@@ -44,11 +48,11 @@ export function extractOrgView(organizations: OrganizationBlock[], path: ViewPat
       ancestorChain.push(focusedTeam);
     }
     focusedTeam = found;
-    currentTeams = found.teams;
+    currentTeams = teamChildren(found);
   }
 
   return {
-    teams: focusedTeam?.teams ?? [],
+    teams: focusedTeam ? teamChildren(focusedTeam) : [],
     focusedTeam,
     ancestorChain,
   };

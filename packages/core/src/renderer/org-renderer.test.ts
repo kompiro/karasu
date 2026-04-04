@@ -2,7 +2,7 @@ import { describe, it, expect } from "vitest";
 import { renderOrgView } from "./org-renderer.js";
 import type { OrgViewSlice } from "../view/org-view-extract.js";
 import type { ResolvedNodeStyle, ResolvedStyles } from "../types/style.js";
-import type { TeamNode, MemberNode } from "../types/ast.js";
+import type { TeamNode, MemberNode, OrgNode } from "../types/ast.js";
 
 const mockLoc = {
   start: { line: 0, column: 0, offset: 0 },
@@ -54,12 +54,10 @@ function makeTeam(
     owns?: string[];
   } = {},
 ): TeamNode {
-  return {
-    id,
-    label: opts.label,
-    properties: { links: [], owns: opts.owns ?? [] },
-    members: (opts.members ?? []).map(
+  const children: OrgNode[] = [
+    ...(opts.members ?? []).map(
       (m): MemberNode => ({
+        kind: "member",
         id: m.id,
         label: m.label,
         properties: {
@@ -68,10 +66,18 @@ function makeTeam(
           github: m.github,
           description: m.description,
         },
+        children: [],
         loc: mockLoc,
       }),
     ),
-    teams: opts.teams ?? [],
+    ...(opts.teams ?? []),
+  ];
+  return {
+    kind: "team",
+    id,
+    label: opts.label,
+    properties: { links: [], owns: opts.owns ?? [] },
+    children,
     loc: mockLoc,
   };
 }
@@ -133,7 +139,14 @@ describe("renderOrgView", () => {
 
     it("caps visible owns at 2 when overflow and countText both present to avoid overlap", () => {
       const team = makeTeam("backend", { owns: ["A", "B", "C", "D"] });
-      team.members.push({ kind: "member", id: "alice", label: "Alice", properties: {} } as never);
+      team.children.push({
+        kind: "member",
+        id: "alice",
+        label: "Alice",
+        properties: { links: [] },
+        children: [],
+        loc: mockLoc,
+      });
       const slice: OrgViewSlice = { teams: [team], focusedTeam: null, ancestorChain: [] };
       const svg = renderOrgView(slice, makeStyles());
       expect(svg).toContain('data-owned-service-button="A"');

@@ -38,8 +38,10 @@ export function collectNodes(krsFile: KrsFile): NodeEntry[] {
 
   function addTeamNode(team: TeamNode): void {
     entries.push({ id: team.id, start: team.loc.start, end: team.loc.end });
-    for (const member of team.members) addMemberNode(member);
-    for (const sub of team.teams) addTeamNode(sub);
+    for (const child of team.children) {
+      if (child.kind === "member") addMemberNode(child);
+      else addTeamNode(child);
+    }
   }
 
   function addMemberNode(member: MemberNode): void {
@@ -134,8 +136,10 @@ export function collectAllIdentifiers(krsFile: KrsFile): string[] {
 
   function addTeamNode(team: TeamNode): void {
     ids.push(team.id);
-    for (const member of team.members) ids.push(member.id);
-    for (const sub of team.teams) addTeamNode(sub);
+    for (const child of team.children) {
+      if (child.kind === "member") ids.push(child.id);
+      else addTeamNode(child);
+    }
   }
 
   for (const sys of krsFile.systems) addKrsNode(sys);
@@ -168,12 +172,13 @@ export function getNodeDescription(krsFile: KrsFile, nodeId: string): string | n
 
   function searchTeam(team: TeamNode): string | null {
     if (team.id === nodeId) return team.properties.description ?? null;
-    for (const member of team.members) {
-      if (member.id === nodeId) return member.properties.description ?? null;
-    }
-    for (const sub of team.teams) {
-      const found = searchTeam(sub);
-      if (found !== null) return found;
+    for (const child of team.children) {
+      if (child.kind === "member") {
+        if (child.id === nodeId) return child.properties.description ?? null;
+      } else {
+        const found = searchTeam(child);
+        if (found !== null) return found;
+      }
     }
     return null;
   }

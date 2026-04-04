@@ -21,6 +21,8 @@ export type {
   OrganizationBlock,
   TeamNode,
   MemberNode,
+  OrgNode,
+  HierarchyNode,
 } from "./types/ast.js";
 
 export type {

@@ -18,6 +18,7 @@ import type {
   OrganizationBlock,
   TeamNode,
   MemberNode,
+  OrgNode,
 } from "../types/ast.js";
 import { Lexer } from "../lexer/lexer.js";
 
@@ -669,8 +670,7 @@ export class Parser {
     this.expect(TokenType.LeftBrace);
 
     const properties: CommonProperties & { owns: string[] } = { links: [], owns: [] };
-    const members: MemberNode[] = [];
-    const teams: TeamNode[] = [];
+    const children: OrgNode[] = [];
 
     while (this.peek().type !== TokenType.RightBrace && this.peek().type !== TokenType.EOF) {
       const token = this.peek();
@@ -698,9 +698,9 @@ export class Parser {
           this.error('Expected identifier or string literal after "owns"');
         }
       } else if (token.type === TokenType.Member) {
-        members.push(this.parseMemberBlock());
+        children.push(this.parseMemberBlock());
       } else if (token.type === TokenType.Team) {
-        teams.push(this.parseTeamBlock());
+        children.push(this.parseTeamBlock());
       } else {
         this.error(`Unexpected token in team block: ${token.type} ("${token.value}")`);
         this.advance();
@@ -710,11 +710,11 @@ export class Parser {
     const end = this.expect(TokenType.RightBrace);
 
     return {
+      kind: "team" as const,
       id: idToken.value,
       label,
       properties,
-      members,
-      teams,
+      children,
       loc: this.range(start.loc, end.loc),
     };
   }
@@ -768,9 +768,11 @@ export class Parser {
     const end = this.expect(TokenType.RightBrace);
 
     return {
+      kind: "member" as const,
       id: idToken.value,
       label,
       properties,
+      children: [] as const,
       loc: this.range(start.loc, end.loc),
     };
   }
@@ -796,7 +798,10 @@ export class Parser {
           index.set(ownedId, team.id);
         }
       }
-      this.indexTeams(team.teams, index);
+      this.indexTeams(
+        team.children.filter((c): c is TeamNode => c.kind === "team"),
+        index,
+      );
     }
   }
 
@@ -811,7 +816,10 @@ export class Parser {
       } else {
         seen.add(team.id);
       }
-      this.collectTeamIds(team.teams, seen);
+      this.collectTeamIds(
+        team.children.filter((c): c is TeamNode => c.kind === "team"),
+        seen,
+      );
     }
   }
 
@@ -878,7 +886,7 @@ export class Parser {
             });
           }
         }
-        check(team.teams);
+        check(team.children.filter((c): c is TeamNode => c.kind === "team"));
       }
     };
     for (const org of organizations) {
