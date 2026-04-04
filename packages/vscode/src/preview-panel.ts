@@ -71,6 +71,20 @@ export class PreviewPanel {
           if (this._currentDocument) {
             void this._render(this._currentDocument);
           }
+        } else if (
+          message.type === "switchViewAndHighlight" &&
+          message.viewType &&
+          message.nodeId
+        ) {
+          this._viewType = message.viewType;
+          this._viewPath = [];
+          this._viewLabels = [];
+          const highlightId = message.nodeId;
+          if (this._currentDocument) {
+            void this._render(this._currentDocument).then(() => {
+              this.highlight(highlightId);
+            });
+          }
         } else if (message.type === "navigate" && message.nodeId) {
           this._onNavigate(message.nodeId);
         } else if (message.type === "openExternal" && message.url) {
@@ -387,6 +401,22 @@ export class PreviewPanel {
       background: var(--vscode-button-hoverBackground, #1177bb) !important;
       opacity: 1 !important;
     }
+    .dp-nav-btn {
+      display: block;
+      width: 100%;
+      padding: 5px 8px !important;
+      background: var(--vscode-button-secondaryBackground, #3a3d41) !important;
+      border: none !important;
+      border-radius: 3px;
+      color: var(--vscode-button-secondaryForeground, #cccccc) !important;
+      font-size: 12px;
+      text-align: left;
+      cursor: pointer;
+    }
+    .dp-nav-btn:hover {
+      background: var(--vscode-button-secondaryHoverBackground, #45494e) !important;
+      opacity: 1 !important;
+    }
   </style>
 </head>
 <body>
@@ -467,20 +497,37 @@ export class PreviewPanel {
         html += '</ul></div>';
       }
 
-      // Properties (runtime, realizes, team, role, tags)
-      var props = [];
-      if (meta.runtime) props.push('\\ud83d\\udda5 runtime: ' + escapeHtml(meta.runtime));
-      if (meta.realizes) props.push('\\ud83d\\udd17 realizes: ' + escapeHtml(meta.realizes));
-      if (meta.team) props.push('\\ud83d\\udc65 ' + escapeHtml(meta.team));
-      if (meta.role) props.push('\\ud83d\\udccc ' + escapeHtml(meta.role));
-      if (meta.tags && meta.tags.length > 0) {
-        props.push('\\ud83c\\udff7 ' + meta.tags.map(function(t) { return '[' + escapeHtml(t) + ']'; }).join(' '));
-      }
-      if (props.length > 0) {
+      // Runtime / realizes (own section, matching app layout)
+      if (meta.runtime || meta.realizes) {
         html += '<div class="dp-section">';
-        for (var j = 0; j < props.length; j++) {
-          html += '<div class="dp-prop">' + props[j] + '</div>';
+        if (meta.runtime) html += '<div class="dp-prop">\\ud83d\\udda5 runtime: ' + escapeHtml(meta.runtime) + '</div>';
+        if (meta.realizes) html += '<div class="dp-prop">\\ud83d\\udd17 realizes: ' + escapeHtml(meta.realizes) + '</div>';
+        html += '</div>';
+      }
+
+      // Team / role / tags
+      var teamRoleTagsProps = [];
+      if (meta.role) teamRoleTagsProps.push('\\ud83d\\udccc ' + escapeHtml(meta.role));
+      if (meta.tags && meta.tags.length > 0) {
+        teamRoleTagsProps.push('\\ud83c\\udff7 ' + meta.tags.map(function(t) { return '[' + escapeHtml(t) + ']'; }).join(' '));
+      }
+      if (meta.team || teamRoleTagsProps.length > 0) {
+        html += '<div class="dp-section">';
+        if (meta.team) {
+          html += '<button class="dp-nav-btn" data-nav-view="org" data-nav-node="' + escapeAttr(meta.team) + '">'
+            + '\\ud83d\\udc65 ' + escapeHtml(meta.team) + ' \\u2192</button>';
         }
+        for (var j = 0; j < teamRoleTagsProps.length; j++) {
+          html += '<div class="dp-prop">' + teamRoleTagsProps[j] + '</div>';
+        }
+        html += '</div>';
+      }
+
+      // Deploy navigation button
+      if (meta.hasDeployContainer) {
+        html += '<div class="dp-section">';
+        html += '<button class="dp-nav-btn" data-nav-view="deploy" data-nav-node="' + escapeAttr(nodeId) + '">'
+          + '\\ud83d\\ude80 Deploy \\u56f3\\u3067\\u78ba\\u8a8d \\u2192</button>';
         html += '</div>';
       }
 
@@ -521,6 +568,17 @@ export class PreviewPanel {
       document.getElementById('dp-jump-btn').addEventListener('click', function(e) {
         e.stopPropagation();
         vscode.postMessage({ type: 'navigate', nodeId: currentDetailNodeId });
+      });
+
+      // Cross-diagram navigation buttons (team → org, service → deploy)
+      detailPanel.querySelectorAll('[data-nav-view]').forEach(function(btn) {
+        btn.addEventListener('click', function(e) {
+          e.stopPropagation();
+          var viewType = btn.getAttribute('data-nav-view');
+          var navNodeId = btn.getAttribute('data-nav-node');
+          hideDetailPanel();
+          vscode.postMessage({ type: 'switchViewAndHighlight', viewType: viewType, nodeId: navNodeId });
+        });
       });
     }
 
