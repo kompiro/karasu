@@ -1,11 +1,6 @@
 import { describe, it, expect, beforeEach } from "vitest";
-import {
-  buildDrillDownSvg,
-  buildDrillDownSvgOrg,
-  buildAllLayersSvg,
-  buildAllLayersSvgOrg,
-  buildAllViewsSvg,
-} from "./drill-down-svg.js";
+import { buildDrillDownSvg, buildDrillDownSvgOrg, buildAllViewsSvg } from "./drill-down-svg.js";
+import { buildAllLayersSvg, buildAllLayersSvgOrg } from "./all-layers-svg.js";
 import { registerBuiltinShapes } from "./shapes.js";
 import { clearRegistry } from "./shape-registry.js";
 import { Parser } from "../parser/parser.js";
