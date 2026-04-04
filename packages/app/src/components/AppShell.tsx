@@ -367,6 +367,10 @@ function findNodeLine(krsFile: KrsFile, nodeId: string): number | null {
     const found = searchKrsNode(svc);
     if (found !== null) return found;
   }
+  for (const domain of krsFile.domains) {
+    const found = searchKrsNode(domain);
+    if (found !== null) return found;
+  }
   for (const block of krsFile.deploys) {
     if (block.id === nodeId) return block.loc.start.line - 1;
     for (const node of block.nodes) {
