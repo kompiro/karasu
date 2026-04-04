@@ -1,6 +1,6 @@
 // deploy/system.krs
-// Logical structure — referenced by deploy.krs via realizes
-// Minimal system view that serves as the basis for the deploy diagram.
+// Demonstrates: all artifact types — war, jar, oci, lambda, function, assets, job, artifact
+// Each type is suited to a different workload. See artifact comments for when to use each.
 
 system RetailPlatform {
   label "小売プラットフォーム"
@@ -40,4 +40,80 @@ system RetailPlatform {
   OrderAPI         ->  InventoryService "在庫を引き当てる"
   OrderAPI        --> ReportingService  "注文データを連携する"
   InventoryService --> LegacyERP        "在庫マスタを同期する"
+}
+
+deploy Production {
+  label "本番環境"
+
+  // assets: static files / SPA delivered via CDN
+  assets storefront {
+    label "ストアフロントSPA"
+    runtime "CloudFront / S3"
+    realizes Storefront
+  }
+
+  // oci: container image (most common for modern services)
+  oci "order-api" {
+    label "注文APIコンテナ"
+    image "order-api:4.1.2"
+    runtime "Node.js 22 / Fastify"
+    realizes OrderAPI
+  }
+
+  // jar: executable JAR (Spring Boot etc.)
+  jar "payment-service" {
+    label "決済サービスJAR"
+    runtime "Java 21 / Spring Boot 3"
+    realizes PaymentService
+  }
+
+  // war: WAR/EAR deployed to a servlet container
+  war "inventory-service" {
+    label "在庫サービスWAR"
+    runtime "Tomcat 10 / Jakarta EE"
+    realizes InventoryService
+  }
+
+  // lambda: AWS Lambda function
+  lambda "order-event-handler" {
+    label "注文イベントハンドラ"
+    runtime "Node.js 22"
+    realizes OrderAPI
+  }
+
+  // function: Azure Functions / Google Cloud Functions
+  function "payment-webhook" {
+    label "決済Webhookハンドラ"
+    runtime "Python 3.12"
+    realizes PaymentService
+  }
+
+  // job: one-off run (no schedule)
+  job "data-backfill" {
+    label "データバックフィルジョブ"
+    runtime "Python 3.12"
+  }
+
+  // job: scheduled batch (cron)
+  job "daily-sales-report" {
+    label "日次売上レポート"
+    schedule "0 2 * * *"
+    runtime "Java 21"
+    realizes ReportingService
+  }
+
+  job "monthly-inventory-snapshot" {
+    label "月次在庫スナップショット"
+    schedule "0 3 1 * *"
+    runtime "Python 3.12"
+    realizes ReportingService
+  }
+
+  // artifact: catch-all for types not covered above
+  artifact "legacy-erp-connector" {
+    label "レガシーERPコネクタ"
+    type "mainframe-batch"
+    runtime "COBOL / z/OS"
+    realizes LegacyERP
+  }
 }
