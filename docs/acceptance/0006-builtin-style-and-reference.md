@@ -76,7 +76,7 @@ npm run format:check  # フォーマット OK
 ### AC-3.4: Tags & Annotations タブ
 
 - [ ] タグ一覧テーブルが表示される（external, async, sync, human, ai, table, queue, api, storage）
-- [ ] アノテーション一覧テーブルが表示される（deprecated, new, experimental, migration-target）
+- [ ] アノテーション一覧テーブルが表示される（deprecated, new, experimental, migration_target）
 - [ ] 各アノテーションにバッジプレビューが表示される
 
 ### AC-3.5: Built-in Theme タブ
