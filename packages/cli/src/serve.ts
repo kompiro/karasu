@@ -3,6 +3,7 @@ import { readFile, readdir, stat } from "node:fs/promises";
 import { join, resolve, extname, relative, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 import { FileWatcher } from "./watcher.js";
+import { handleRender } from "./render-endpoint.js";
 
 const MIME_TYPES: Record<string, string> = {
   ".html": "text/html; charset=utf-8",
@@ -88,6 +89,12 @@ export function serve(dir: string, port: number, appDistDir?: string): Server {
   const server = createServer(async (req: IncomingMessage, res: ServerResponse) => {
     const url = new URL(req.url ?? "/", `http://localhost:${port}`);
     const pathname = url.pathname;
+
+    // SVG rendering endpoint (mermaid.ink pattern)
+    if (pathname === "/render") {
+      await handleRender(req, res, url.searchParams);
+      return;
+    }
 
     // SSE — ファイル変更通知
     if (pathname === "/api/watch") {
