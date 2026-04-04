@@ -25,7 +25,7 @@ A simple HR attendance tool. Demonstrates a shallow domain structure and side-by
 
 ### `payment-platform/system.krs`
 
-A payment processing platform with multiple `[external]` services and a deploy diagram covering all major artifact types (`jar`, `oci`, `lambda`, `job`, `assets`). Includes a `.krs.style` file showing team-based color theming (requires multi-file support to apply).
+A payment processing platform with multiple `[external]` services and a deploy diagram covering all major artifact types (`jar`, `oci`, `lambda`, `job`, `assets`). Includes a `.krs.style` file for team-based color theming, loaded via `@import` in `system.krs`.
 
 ### `migration/system.krs`
 

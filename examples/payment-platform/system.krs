@@ -2,6 +2,8 @@
 // Demonstrates: multiple [external] services, complex service topology, deploy diagram
 // A payment processing platform integrating with card networks and banks.
 
+@import "theme.krs.style"
+
 system PaymentPlatform {
   label "決済プラットフォーム"
 
