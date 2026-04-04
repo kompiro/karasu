@@ -66,7 +66,7 @@ export {
 } from "./builtins/reference.js";
 export { analyze } from "./resolver/warnings.js";
 export type { DisplayMode } from "./renderer/layout.js";
-export type { SvgResult } from "./renderer/drill-down-svg.js";
+export type { SvgResult } from "./renderer/all-layers-svg.js";
 export { render, renderFromLayout, sanitizeId } from "./renderer/svg-renderer.js";
 
 export { renderOrgView } from "./renderer/org-renderer.js";
@@ -117,11 +117,14 @@ import { analyze } from "./resolver/warnings.js";
 import { render } from "./renderer/svg-renderer.js";
 import {
   buildDrillDownSvg as _buildDrillDownSvg,
+  buildDrillDownSvgOrg as _buildDrillDownSvgOrg,
+  buildAllViewsSvg as _buildAllViewsSvg,
+} from "./renderer/drill-down-svg.js";
+import {
   buildAllLayersSvg as _buildAllLayersSvg,
   buildAllLayersSvgOrg as _buildAllLayersSvgOrg,
-  buildDrillDownSvgOrg as _buildDrillDownSvgOrg,
   type SvgResult,
-} from "./renderer/drill-down-svg.js";
+} from "./renderer/all-layers-svg.js";
 
 import type { DisplayMode } from "./renderer/layout.js";
 import { renderOrgView as _renderOrgView } from "./renderer/org-renderer.js";
@@ -630,5 +633,19 @@ export function buildDrillDownSvgOrg(
 ): SvgResult {
   const parseResult: ParseResult<KrsFile> = Parser.parse(krsSource);
   const result = _buildDrillDownSvgOrg(parseResult.value, styleSource, displayMode);
+  return { svg: result.svg, diagnostics: [...parseResult.diagnostics, ...result.diagnostics] };
+}
+
+/**
+ * Builds a single SVG bundling system, deploy, and org views with CSS-only tab navigation.
+ * Each view supports drill-down via CSS :target + :has(). No JavaScript required.
+ */
+export function buildAllViewsSvg(
+  krsSource: string,
+  styleSource?: string,
+  displayMode?: DisplayMode,
+): SvgResult {
+  const parseResult: ParseResult<KrsFile> = Parser.parse(krsSource);
+  const result = _buildAllViewsSvg(parseResult.value, styleSource, displayMode);
   return { svg: result.svg, diagnostics: [...parseResult.diagnostics, ...result.diagnostics] };
 }

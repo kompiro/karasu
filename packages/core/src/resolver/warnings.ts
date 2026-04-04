@@ -17,42 +17,48 @@ export function analyze(file: KrsFile, sheets: StyleSheet[], systemSheetCount = 
 
 function detectDomainDispersal(file: KrsFile): Warning[] {
   const warnings: Warning[] = [];
-  // Map: domain display name (label ?? id) -> set of parent service IDs
-  const domainToServices = new Map<string, Set<string>>();
 
-  function walk(node: KrsNode, parentServiceName?: string): void {
-    if (node.kind === "service") {
-      parentServiceName = node.id;
-    }
-    if (node.kind === "domain" && parentServiceName) {
-      const domainName = node.label ?? node.id;
-      if (!domainToServices.has(domainName)) {
-        domainToServices.set(domainName, new Set());
+  // Analyze one scope unit (a system's children, or all top-level services).
+  // Detection is keyed by domain id — label is a display name and must not affect identity.
+  // Each system is an organizational boundary; cross-system domains are intentional.
+  function detectInScope(nodes: KrsNode[]): void {
+    const domainToServices = new Map<string, Set<string>>();
+
+    function walk(node: KrsNode, parentServiceId?: string): void {
+      if (node.kind === "service") {
+        parentServiceId = node.id;
       }
-      domainToServices.get(domainName)!.add(parentServiceName);
+      if (node.kind === "domain" && parentServiceId) {
+        if (!domainToServices.has(node.id)) {
+          domainToServices.set(node.id, new Set());
+        }
+        domainToServices.get(node.id)!.add(parentServiceId);
+      }
+      for (const child of node.children) {
+        walk(child, parentServiceId);
+      }
     }
-    for (const child of node.children) {
-      walk(child, parentServiceName);
+
+    for (const node of nodes) {
+      walk(node);
+    }
+
+    for (const [domainId, services] of domainToServices) {
+      if (services.size > 1) {
+        warnings.push({
+          kind: "domain-dispersal",
+          message: `domain "${domainId}" が複数の service に分散しています`,
+          details: [...Array.from(services), "ドメインの凝集性を確認してください"],
+        });
+      }
     }
   }
 
   for (const system of file.systems) {
-    for (const child of system.children) {
-      walk(child);
-    }
+    detectInScope(system.children);
   }
-  for (const service of file.services) {
-    walk(service);
-  }
-
-  for (const [domainName, services] of domainToServices) {
-    if (services.size > 1) {
-      warnings.push({
-        kind: "domain-dispersal",
-        message: `domain "${domainName}" が複数の service に分散しています`,
-        details: [...Array.from(services), "ドメインの凝集性を確認してください"],
-      });
-    }
+  if (file.services.length > 0) {
+    detectInScope(file.services);
   }
 
   return warnings;

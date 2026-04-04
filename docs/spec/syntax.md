@@ -310,11 +310,17 @@ system ECPlatform {
 
 ## ドメイン分散の警告
 
-同じドメイン名が複数の service に登場した場合、ツールが警告を出す。
+同じ `domain id` が同一 `system` 内の複数の `service` に登場した場合、ツールが警告を出す。
 
 ```
-⚠ Warning: domain "受注" が複数の service に分散しています
+⚠ Warning: domain "Order" が複数の service に分散しています
   - ECommerce
   - Legacy
   ドメインの凝集性を確認してください
 ```
+
+**検出スコープ**（設計方針 — 実装は #237 でフォローアップ予定）: `system` ブロック単位。
+異なる `system` にまたがる同名 `domain` は組織的に独立した並行モデリングとして扱い、警告しない。
+
+**検出キー**（設計方針 — 実装は #237 でフォローアップ予定）: `domain` の `id`。
+`label`（表示名）は検出に使用しない。

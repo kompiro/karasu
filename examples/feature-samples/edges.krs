@@ -1,0 +1,19 @@
+// edges.krs
+// Demonstrates: sync (->) and async (-->) edges, with and without labels.
+
+system EdgeSample {
+  label "Edge Variants"
+
+  service A { label "Service A" }
+  service B { label "Service B" }
+  service C { label "Service C" }
+  service D { label "Service D" }
+
+  // Sync edges
+  A -> B "labelled sync call"
+  A -> C
+
+  // Async edges
+  B --> D "labelled async call"
+  C --> D
+}

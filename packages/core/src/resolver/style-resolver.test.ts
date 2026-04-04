@@ -295,7 +295,7 @@ describe("analyze", () => {
               kind: "service",
               id: "Legacy",
               label: "Legacy",
-              children: [makeNode({ kind: "domain", id: "Order2", label: "受注" })],
+              children: [makeNode({ kind: "domain", id: "Order", label: "受注（旧）" })],
             }),
           ],
         }),
@@ -303,7 +303,7 @@ describe("analyze", () => {
     });
     const warnings = analyze(file, []);
     expect(warnings.some((w) => w.kind === "domain-dispersal")).toBe(true);
-    expect(warnings[0].message).toContain("受注");
+    expect(warnings[0].message).toContain("Order");
   });
 
   it("detects missing runtime", () => {

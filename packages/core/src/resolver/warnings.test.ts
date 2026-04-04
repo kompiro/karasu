@@ -183,6 +183,76 @@ system S {
   });
 });
 
+describe("domain-dispersal warning", () => {
+  it("warns when the same domain id appears in multiple services within the same system", () => {
+    const krs = `
+system ECPlatform {
+  service ECommerce {
+    domain Order { label "注文" }
+  }
+  service Legacy {
+    domain Order { label "受注" }
+  }
+}
+`;
+    const result = compile(krs);
+    const w = result.warnings.find((warning) => warning.kind === "domain-dispersal");
+    expect(w).toBeDefined();
+    expect(w?.message).toContain("Order");
+    expect(w?.details).toContain("ECommerce");
+    expect(w?.details).toContain("Legacy");
+  });
+
+  it("warns when same domain id has different labels (id is the detection key, not label)", () => {
+    const krs = `
+system ECPlatform {
+  service ECommerce {
+    domain Payment { label "決済" }
+  }
+  service Checkout {
+    domain Payment { label "お支払い" }
+  }
+}
+`;
+    const result = compile(krs);
+    const w = result.warnings.find((warning) => warning.kind === "domain-dispersal");
+    expect(w).toBeDefined();
+    expect(w?.message).toContain("Payment");
+  });
+
+  it("does not warn when different domain ids share the same label", () => {
+    const krs = `
+system ECPlatform {
+  service ECommerce {
+    domain PaymentA { label "決済" }
+  }
+  service Checkout {
+    domain PaymentB { label "決済" }
+  }
+}
+`;
+    const result = compile(krs);
+    expect(result.warnings.filter((w) => w.kind === "domain-dispersal")).toHaveLength(0);
+  });
+
+  it("does not warn when the same domain id appears in different systems", () => {
+    const krs = `
+system LegacyPlatform {
+  service OldBilling {
+    domain Payment { label "決済（旧）" }
+  }
+}
+system NewPlatform {
+  service PaymentService {
+    domain Payment { label "決済（新）" }
+  }
+}
+`;
+    const result = compile(krs);
+    expect(result.warnings.filter((w) => w.kind === "domain-dispersal")).toHaveLength(0);
+  });
+});
+
 describe("unassigned-domain warning", () => {
   it("warns for each top-level domain", () => {
     const krs = `
