@@ -75,6 +75,9 @@ interface KarasuPreviewColumnProps {
   orgDrillDownSvg?: string;
   /** Bundled SVG with all views (system/deploy/org) and CSS-only tab navigation */
   allViewsSvg?: string;
+  /** Preview All Views toggle: show all-views bundled SVG in an iframe */
+  isAllViewsOpen: boolean;
+  onAllViewsToggle: () => void;
 
   /** Whether the preview is in fullscreen focus mode */
   previewFocused: boolean;
@@ -105,6 +108,8 @@ export function KarasuPreviewColumn({
   drillDownSvg,
   orgDrillDownSvg,
   allViewsSvg,
+  isAllViewsOpen,
+  onAllViewsToggle,
   previewFocused,
   onPreviewFocusToggle,
   onJumpToEditor,
@@ -152,6 +157,7 @@ export function KarasuPreviewColumn({
   const drillDownAvailable =
     (activeView === "system" || activeView === "org") && !!activedrillDownSvg;
   const showAllLayersIframe = isAllLayersOpen && allLayersAvailable;
+  const showAllViewsIframe = isAllViewsOpen && !!allViewsSvg;
 
   function handleExport() {
     if (showAllLayersIframe && activeAllLayersSvg) {
@@ -177,14 +183,16 @@ export function KarasuPreviewColumn({
 
   return (
     <div className="preview-column">
-      <DiagramTabBar
-        active={activeView}
-        hasDeployDiagram={hasDeployDiagram}
-        onChange={onActiveViewChange}
-        deployBlocks={deployBlocks}
-        selectedDeployBlockId={selectedDeployBlockId}
-        onDeployBlockChange={onDeployBlockChange}
-      />
+      {!showAllViewsIframe && (
+        <DiagramTabBar
+          active={activeView}
+          hasDeployDiagram={hasDeployDiagram}
+          onChange={onActiveViewChange}
+          deployBlocks={deployBlocks}
+          selectedDeployBlockId={selectedDeployBlockId}
+          onDeployBlockChange={onDeployBlockChange}
+        />
+      )}
       <div className="preview-toolbar">
         <button
           className={`toolbar-btn toolbar-btn--icon-mode${displayMode === "icon" ? " active" : ""}`}
@@ -200,6 +208,14 @@ export function KarasuPreviewColumn({
           disabled={!allLayersAvailable}
         >
           ⊞ Show All Layers
+        </button>
+        <button
+          className={`toolbar-btn toolbar-btn--all-views${isAllViewsOpen ? " active" : ""}`}
+          onClick={onAllViewsToggle}
+          aria-label="Toggle all views preview"
+          disabled={!allViewsSvg}
+        >
+          ⊟ Preview All Views
         </button>
 
         {/* Split export button: left = export current/full, right = drill-down export */}
@@ -261,16 +277,23 @@ export function KarasuPreviewColumn({
         </button>
       </div>
       <ReferencePanel isOpen={refOpen} onClose={() => setRefOpen(false)} activeView={activeView} />
-      {activeView === "system" && !showAllLayersIframe && (
+      {!showAllViewsIframe && activeView === "system" && !showAllLayersIframe && (
         <BreadcrumbBar
           items={systemView.breadcrumbItems}
           onNavigate={systemView.onBreadcrumbNavigate}
         />
       )}
-      {activeView === "org" && (
+      {!showAllViewsIframe && activeView === "org" && (
         <BreadcrumbBar items={orgView.breadcrumbItems} onNavigate={orgView.onBreadcrumbNavigate} />
       )}
-      {showAllLayersIframe ? (
+      {showAllViewsIframe ? (
+        <iframe
+          srcDoc={allViewsSvg}
+          sandbox="allow-same-origin"
+          style={{ width: "100%", height: "100%", border: "none" }}
+          title="All views preview"
+        />
+      ) : showAllLayersIframe ? (
         <iframe
           srcDoc={activeAllLayersSvg}
           sandbox="allow-same-origin"

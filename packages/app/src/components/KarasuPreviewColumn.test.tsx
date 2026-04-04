@@ -52,6 +52,8 @@ function makeProps(overrides: Partial<Parameters<typeof KarasuPreviewColumn>[0]>
     orgDrillDownSvg: undefined,
     allLayersSvg: undefined,
     orgAllLayersSvg: undefined,
+    isAllViewsOpen: false,
+    onAllViewsToggle: vi.fn(),
     previewFocused: false,
     onPreviewFocusToggle: vi.fn(),
     ...overrides,
@@ -452,6 +454,68 @@ describe("KarasuPreviewColumn", () => {
       fireEvent.click(getByRole("button", { name: /SVG export options/ }));
       fireEvent.click(getByText("Export All Diagrams SVG"));
       expect(onExportSvg).toHaveBeenCalledWith(allViewsSvg, "all-diagrams.svg");
+    });
+  });
+
+  describe("Preview All Views button", () => {
+    it("shows Preview All Views button", () => {
+      const props = makeProps();
+      const { getByRole } = render(<KarasuPreviewColumn {...props} />);
+      expect(getByRole("button", { name: /Toggle all views preview/ })).toBeTruthy();
+    });
+
+    it("is disabled when allViewsSvg is undefined", () => {
+      const props = makeProps({ allViewsSvg: undefined });
+      const { getByRole } = render(<KarasuPreviewColumn {...props} />);
+      expect(getByRole("button", { name: /Toggle all views preview/ })).toHaveProperty(
+        "disabled",
+        true,
+      );
+    });
+
+    it("is enabled when allViewsSvg is set", () => {
+      const props = makeProps({ allViewsSvg: "<svg>all-views</svg>" });
+      const { getByRole } = render(<KarasuPreviewColumn {...props} />);
+      expect(getByRole("button", { name: /Toggle all views preview/ })).toHaveProperty(
+        "disabled",
+        false,
+      );
+    });
+
+    it("calls onAllViewsToggle when clicked", () => {
+      const onAllViewsToggle = vi.fn();
+      const props = makeProps({ allViewsSvg: "<svg>all-views</svg>", onAllViewsToggle });
+      const { getByRole } = render(<KarasuPreviewColumn {...props} />);
+      fireEvent.click(getByRole("button", { name: /Toggle all views preview/ }));
+      expect(onAllViewsToggle).toHaveBeenCalled();
+    });
+
+    it("renders iframe with allViewsSvg when isAllViewsOpen=true", () => {
+      const allViewsSvg = "<svg>all-views</svg>";
+      const props = makeProps({ allViewsSvg, isAllViewsOpen: true });
+      const { container } = render(<KarasuPreviewColumn {...props} />);
+      const iframe = container.querySelector("iframe");
+      expect(iframe).toBeTruthy();
+      expect(iframe?.title).toBe("All views preview");
+    });
+
+    it("hides DiagramTabBar when isAllViewsOpen=true", () => {
+      const props = makeProps({ allViewsSvg: "<svg>all-views</svg>", isAllViewsOpen: true });
+      const { queryByRole } = render(<KarasuPreviewColumn {...props} />);
+      expect(queryByRole("tab", { name: /System/ })).toBeNull();
+    });
+
+    it("does not render iframe when isAllViewsOpen=false", () => {
+      const props = makeProps({ allViewsSvg: "<svg>all-views</svg>", isAllViewsOpen: false });
+      const { container } = render(<KarasuPreviewColumn {...props} />);
+      expect(container.querySelector("iframe")).toBeNull();
+    });
+
+    it("has active class when isAllViewsOpen=true", () => {
+      const props = makeProps({ allViewsSvg: "<svg>all-views</svg>", isAllViewsOpen: true });
+      const { getByRole } = render(<KarasuPreviewColumn {...props} />);
+      const btn = getByRole("button", { name: /Toggle all views preview/ });
+      expect(btn.className).toContain("active");
     });
   });
 });
