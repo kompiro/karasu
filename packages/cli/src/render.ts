@@ -1,5 +1,5 @@
 import { readFile, writeFile, readdir, stat } from "node:fs/promises";
-import { resolve, dirname } from "node:path";
+import { resolve } from "node:path";
 import { buildAllViewsSvgProject, compileProject } from "@karasu/core";
 import type { FileSystemProvider, DirEntry, DiagramType } from "@karasu/core";
 
@@ -70,8 +70,9 @@ export async function render(filePath: string, options: RenderOptions): Promise<
 
   if (diagnostics.length > 0) {
     for (const d of diagnostics) {
-      const loc =
-        d.loc ? `${filePath}:${d.loc.start.line + 1}:${d.loc.start.column + 1}` : filePath;
+      const loc = d.loc
+        ? `${filePath}:${d.loc.start.line + 1}:${d.loc.start.column + 1}`
+        : filePath;
       process.stderr.write(`Error: ${loc}: ${d.message}\n`);
     }
     process.exit(1);

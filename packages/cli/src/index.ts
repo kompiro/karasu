@@ -19,7 +19,10 @@ program
   .command("render <file>")
   .description("Render a .krs file to SVG")
   .option("-o, --output <path>", "Write SVG to file (default: stdout)")
-  .option("--view <type>", "Diagram view to render: system | deploy | org (default: all views bundled)")
+  .option(
+    "--view <type>",
+    "Diagram view to render: system | deploy | org (default: all views bundled)",
+  )
   .addHelpText(
     "after",
     `
@@ -38,7 +41,10 @@ Examples:
   $ karasu render index.krs --view org --output org.svg`,
   )
   .action((file: string, options: { output?: string; view?: string }) => {
-    render(file, { output: options.output, view: options.view as "system" | "deploy" | "org" | undefined });
+    render(file, {
+      output: options.output,
+      view: options.view as "system" | "deploy" | "org" | undefined,
+    });
   });
 
 export { program };

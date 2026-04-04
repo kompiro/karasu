@@ -73,7 +73,9 @@ describe("render — file not found", () => {
     await expect(render(join(tmpDir, "missing.krs"), {})).rejects.toThrow("process.exit");
 
     expect(exitSpy).toHaveBeenCalledWith(1);
-    expect(stderrSpy.mock.calls.some((args) => String(args[0]).includes("File not found"))).toBe(true);
+    expect(stderrSpy.mock.calls.some((args) => String(args[0]).includes("File not found"))).toBe(
+      true,
+    );
   });
 });
 
@@ -122,7 +124,9 @@ describe("render — all-views (no --view)", () => {
 
     await expect(render(filePath, {})).rejects.toThrow("process.exit");
     expect(exitSpy).toHaveBeenCalledWith(1);
-    expect(stderrSpy.mock.calls.some((args) => String(args[0]).includes("unexpected token"))).toBe(true);
+    expect(stderrSpy.mock.calls.some((args) => String(args[0]).includes("unexpected token"))).toBe(
+      true,
+    );
   });
 });
 
@@ -154,16 +158,18 @@ describe("render — --view system", () => {
     const filePath = join(tmpDir, "index.krs");
     await writeFile(filePath, "system { }", "utf-8");
 
-    mockCompileProject.mockResolvedValue({ svg: "<svg>deploy</svg>", diagnostics: [], warnings: [] });
+    mockCompileProject.mockResolvedValue({
+      svg: "<svg>deploy</svg>",
+      diagnostics: [],
+      warnings: [],
+    });
     vi.spyOn(process.stdout, "write").mockImplementation(() => true);
 
     await render(filePath, { view: "deploy" });
 
-    expect(mockCompileProject).toHaveBeenCalledWith(
-      expect.any(String),
-      expect.any(Object),
-      { diagramType: "deploy" },
-    );
+    expect(mockCompileProject).toHaveBeenCalledWith(expect.any(String), expect.any(Object), {
+      diagramType: "deploy",
+    });
   });
 
   it("calls compileProject with diagramType org", async () => {
@@ -175,11 +181,9 @@ describe("render — --view system", () => {
 
     await render(filePath, { view: "org" });
 
-    expect(mockCompileProject).toHaveBeenCalledWith(
-      expect.any(String),
-      expect.any(Object),
-      { diagramType: "org" },
-    );
+    expect(mockCompileProject).toHaveBeenCalledWith(expect.any(String), expect.any(Object), {
+      diagramType: "org",
+    });
   });
 
   it("prints warnings to stderr but exits with code 0", async () => {
