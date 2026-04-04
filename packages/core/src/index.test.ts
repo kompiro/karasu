@@ -5,7 +5,7 @@ import { resolveStyles } from "./resolver/style-resolver.js";
 import { StyleParser } from "./parser/style-parser.js";
 import { getBuiltinStyleSheet } from "./builtins/default-style.js";
 import { getIconThemeStyleSheet } from "./builtins/icon-theme.js";
-import type { KrsNode } from "./types/ast.js";
+import type { KrsNode, LinkEntry } from "./types/ast.js";
 
 const DEPLOY_KRS = `
 system "EC" {
@@ -90,27 +90,27 @@ org "Eng" {
 
 const USER_STYLE = `service { color: #FF0000; }`;
 
-const DOMAIN_NODE: KrsNode = {
+const DOMAIN_NODE = {
   id: "MyDomain",
   kind: "domain",
   label: "MyDomain",
-  tags: [],
-  annotations: [],
+  tags: [] as string[],
+  annotations: [] as string[],
   edges: [],
   children: [],
-  properties: { links: [] },
-};
+  properties: { links: [] as LinkEntry[] },
+} as unknown as KrsNode;
 
-const SERVICE_NODE: KrsNode = {
+const SERVICE_NODE = {
   id: "MyService",
   kind: "service",
   label: "MyService",
-  tags: [],
-  annotations: [],
+  tags: [] as string[],
+  annotations: [] as string[],
   edges: [],
   children: [],
-  properties: { links: [] },
-};
+  properties: { links: [] as LinkEntry[] },
+} as unknown as KrsNode;
 
 describe("Icon Mode — shape cascade priority (issue #279)", () => {
   it("icon theme last in cascade: url() shape wins over user box declaration", () => {
