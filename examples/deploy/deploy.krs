@@ -13,7 +13,7 @@ deploy Production {
   }
 
   // oci: container image (most common for modern services)
-  oci order-api {
+  oci "order-api" {
     label "注文APIコンテナ"
     image "order-api:4.1.2"
     runtime "Node.js 22 / Fastify"
@@ -21,48 +21,48 @@ deploy Production {
   }
 
   // jar: executable JAR (Spring Boot etc.)
-  jar payment-service {
+  jar "payment-service" {
     label "決済サービスJAR"
     runtime "Java 21 / Spring Boot 3"
     realizes PaymentService
   }
 
   // war: WAR/EAR deployed to a servlet container
-  war inventory-service {
+  war "inventory-service" {
     label "在庫サービスWAR"
     runtime "Tomcat 10 / Jakarta EE"
     realizes InventoryService
   }
 
   // lambda: AWS Lambda function
-  lambda order-event-handler {
+  lambda "order-event-handler" {
     label "注文イベントハンドラ"
     runtime "Node.js 22"
     realizes OrderAPI
   }
 
   // function: Azure Functions / Google Cloud Functions
-  function payment-webhook {
+  function "payment-webhook" {
     label "決済Webhookハンドラ"
     runtime "Python 3.12"
     realizes PaymentService
   }
 
   // job: one-off run (no schedule)
-  job data-backfill {
+  job "data-backfill" {
     label "データバックフィルジョブ"
     runtime "Python 3.12"
   }
 
   // job: scheduled batch (cron)
-  job daily-sales-report {
+  job "daily-sales-report" {
     label "日次売上レポート"
     schedule "0 2 * * *"
     runtime "Java 21"
     realizes ReportingService
   }
 
-  job monthly-inventory-snapshot {
+  job "monthly-inventory-snapshot" {
     label "月次在庫スナップショット"
     schedule "0 3 1 * *"
     runtime "Python 3.12"
@@ -70,7 +70,7 @@ deploy Production {
   }
 
   // artifact: catch-all for types not covered above
-  artifact legacy-erp-connector {
+  artifact "legacy-erp-connector" {
     label "レガシーERPコネクタ"
     type "mainframe-batch"
     runtime "COBOL / z/OS"

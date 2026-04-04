@@ -5,7 +5,7 @@
 organization TechCorp {
   label "TechCorp Engineering"
 
-  team ec-team {
+  team "ec-team" {
     label "ECチーム"
     description "ECサイトの開発・運用を担当するチーム"
 
@@ -34,7 +34,7 @@ organization TechCorp {
     }
   }
 
-  team payment-team {
+  team "payment-team" {
     label "決済チーム"
     description "決済サービスのセキュリティと安定稼働を担当"
 
@@ -56,7 +56,7 @@ organization TechCorp {
     }
   }
 
-  team inventory-team {
+  team "inventory-team" {
     label "在庫チーム"
     description "在庫管理サービスの開発・保守を担当"
 
@@ -71,7 +71,7 @@ organization TechCorp {
     }
   }
 
-  team platform-team {
+  team "platform-team" {
     label "プラットフォームチーム"
     description "全チームが利用する基盤を担当するイネーブリングチーム"
 

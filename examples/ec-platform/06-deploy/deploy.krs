@@ -13,7 +13,7 @@ deploy Production {
   }
 
   // Main application server as a container
-  oci ecommerce-app {
+  oci "ecommerce-app" {
     label "ECアプリケーション"
     image "ecommerce:3.2.1"
     runtime "Node.js 22"
@@ -21,14 +21,14 @@ deploy Production {
   }
 
   // Payment service as an executable JAR
-  jar payment-service {
+  jar "payment-service" {
     label "決済サービス"
     runtime "Java 21 / Spring Boot 3"
     realizes Payment
   }
 
   // Inventory as a container
-  oci inventory-service {
+  oci "inventory-service" {
     label "在庫サービス"
     image "inventory:1.4.0"
     runtime "Go 1.22"
@@ -36,13 +36,13 @@ deploy Production {
   }
 
   // One-off data migration (no schedule = single run)
-  job data-migration {
+  job "data-migration" {
     label "データ移行ジョブ"
     runtime "Python 3.12"
   }
 
   // Recurring billing report (cron schedule)
-  job monthly-billing-report {
+  job "monthly-billing-report" {
     label "月次売上集計"
     schedule "0 1 1 * *"
     runtime "Java 21"
