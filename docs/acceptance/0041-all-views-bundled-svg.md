@@ -10,9 +10,67 @@ status: draft
 
 Verify that `buildAllViewsSvg()` generates a single SVG file that bundles system, deploy, and org views with CSS-only tab navigation and per-view drill-down.
 
+## Current Status
+
+`buildAllViewsSvg()` is implemented in `packages/core` but is **not yet integrated into the app UI or CLI**.
+There is no export button or `--all-views` flag yet (depends on issue #121).
+
+Manual verification must be done by generating the SVG via a script and opening it in a browser directly.
+
+## How to Generate the SVG
+
+Run the following from the repository root:
+
+```bash
+npx tsx -e "
+import { buildAllViewsSvg } from './packages/core/src/index.ts';
+import { writeFileSync } from 'fs';
+
+const src = \`
+system ECommerce {
+  service OrderService {
+    label \"Order\"
+    domain OrderDomain { label \"Order Domain\" }
+  }
+  service PaymentService { label \"Payment\" }
+}
+
+deploy Production {
+  oci OrderApp { label \"Order App\" realizes OrderService }
+  oci PayApp { label \"Pay App\" realizes PaymentService }
+}
+
+organization Acme {
+  team Engineering {
+    label \"Engineering\"
+    team Backend { label \"Backend\" }
+  }
+}
+\`;
+
+const { svg, diagnostics } = buildAllViewsSvg(src);
+writeFileSync('/tmp/all-views.svg', svg);
+console.log('Generated: /tmp/all-views.svg');
+if (diagnostics.length > 0) console.warn('Diagnostics:', diagnostics);
+"
+```
+
+Then open the generated file in a browser:
+
+```bash
+# macOS
+open /tmp/all-views.svg
+
+# Linux
+xdg-open /tmp/all-views.svg
+```
+
+> **Note:** The SVG must be opened as a file URL (e.g., `file:///tmp/all-views.svg`) for CSS `:target`
+> navigation to work. Opening via a local HTTP server also works.
+
 ## Prerequisites
 
-- A `.krs` file with system, deploy, and org content (see fixture below)
+- Node.js with `tsx` available (`npm install` in the repo root is sufficient)
 - A browser that supports CSS `:has()` (Chrome 105+, Firefox 121+, Safari 15.4+)
 
 ## Test Fixture
