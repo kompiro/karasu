@@ -165,7 +165,7 @@ export function getReference(): KarasuReference {
         defaultBadge: { color: "#F59E0B", icon: "⚗", label: "実験的" },
       },
       {
-        name: "migration-target",
+        name: "migration_target",
         description: "移行先",
         defaultBadge: { color: "#3B82F6", icon: "→", label: "移行先" },
       },
