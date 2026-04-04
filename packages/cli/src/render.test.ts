@@ -108,7 +108,7 @@ describe("render — all-views (no --view)", () => {
     expect(await readFile(outputPath, "utf-8")).toBe("<svg>all</svg>");
   });
 
-  it("exits with code 1 when diagnostics are present", async () => {
+  it("exits with code 1 when error-severity diagnostics are present", async () => {
     const filePath = join(tmpDir, "index.krs");
     await writeFile(filePath, "system { }", "utf-8");
 
@@ -127,6 +127,25 @@ describe("render — all-views (no --view)", () => {
     expect(stderrSpy.mock.calls.some((args) => String(args[0]).includes("unexpected token"))).toBe(
       true,
     );
+  });
+
+  it("prints warning-severity diagnostics to stderr and exits with code 0", async () => {
+    const filePath = join(tmpDir, "index.krs");
+    await writeFile(filePath, "system { }", "utf-8");
+
+    mockBuildAllViewsSvgProject.mockResolvedValue({
+      svg: "<svg>all</svg>",
+      diagnostics: [{ severity: "warning", message: "circular import detected" }],
+    });
+
+    const stderrSpy = vi.spyOn(process.stderr, "write").mockImplementation(() => true);
+    vi.spyOn(process.stdout, "write").mockImplementation(() => true);
+
+    await render(filePath, {});
+
+    expect(
+      stderrSpy.mock.calls.some((args) => String(args[0]).includes("circular import detected")),
+    ).toBe(true);
   });
 });
 

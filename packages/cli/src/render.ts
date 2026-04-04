@@ -1,7 +1,7 @@
 import { readFile, writeFile, readdir, stat } from "node:fs/promises";
 import { resolve } from "node:path";
 import { buildAllViewsSvgProject, compileProject } from "@karasu/core";
-import type { FileSystemProvider, DirEntry, DiagramType } from "@karasu/core";
+import type { FileSystemProvider, DirEntry, DiagramType, Diagnostic, Warning } from "@karasu/core";
 
 class NodeFileSystemProvider implements FileSystemProvider {
   async readFile(path: string): Promise<string> {
@@ -53,8 +53,8 @@ export async function render(filePath: string, options: RenderOptions): Promise<
   }
 
   let svg: string;
-  let diagnostics: import("@karasu/core").Diagnostic[];
-  let warnings: import("@karasu/core").Warning[];
+  let diagnostics: Diagnostic[];
+  let warnings: Warning[];
 
   if (options.view) {
     const result = await compileProject(absolutePath, fs, { diagramType: options.view });
@@ -68,18 +68,23 @@ export async function render(filePath: string, options: RenderOptions): Promise<
     warnings = [];
   }
 
-  if (diagnostics.length > 0) {
-    for (const d of diagnostics) {
-      const loc = d.loc
-        ? `${filePath}:${d.loc.start.line + 1}:${d.loc.start.column + 1}`
-        : filePath;
-      process.stderr.write(`Error: ${loc}: ${d.message}\n`);
-    }
-    process.exit(1);
-  }
+  const errors = diagnostics.filter((d) => d.severity === "error");
+  const diagWarnings = diagnostics.filter((d) => d.severity === "warning");
 
+  for (const d of errors) {
+    const loc = d.loc ? `${filePath}:${d.loc.start.line + 1}:${d.loc.start.column + 1}` : filePath;
+    process.stderr.write(`Error: ${loc}: ${d.message}\n`);
+  }
+  for (const d of diagWarnings) {
+    const loc = d.loc ? `${filePath}:${d.loc.start.line + 1}:${d.loc.start.column + 1}` : filePath;
+    process.stderr.write(`Warning: ${loc}: ${d.message}\n`);
+  }
   for (const w of warnings) {
     process.stderr.write(`Warning: ${w.message}\n`);
+  }
+
+  if (errors.length > 0) {
+    process.exit(1);
   }
 
   if (options.output) {
