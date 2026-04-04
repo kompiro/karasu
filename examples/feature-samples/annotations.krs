@@ -1,0 +1,31 @@
+// annotations.krs
+// Demonstrates: all four lifecycle annotations — @deprecated, @new,
+// @experimental, @migration_target — individually and combined.
+
+system AnnotationSample {
+  label "Annotation Sample"
+
+  service LegacyAuth @deprecated {
+    label "Legacy Auth"
+    description "Scheduled for removal in Q3."
+  }
+
+  service NewAuth @new {
+    label "New Auth"
+    description "Introduced in the latest release."
+  }
+
+  service BetaSearch @experimental {
+    label "Beta Search"
+    description "Feature-flagged; not yet in general availability."
+  }
+
+  service MigrationBridge @deprecated @migration_target {
+    label "Migration Bridge"
+    description "Deprecated origin that is also the migration target stub."
+  }
+
+  LegacyAuth -> MigrationBridge "migrate traffic"
+  MigrationBridge -> NewAuth    "forward requests"
+  NewAuth -> BetaSearch         "delegate search"
+}

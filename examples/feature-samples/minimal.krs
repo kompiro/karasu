@@ -1,0 +1,18 @@
+// minimal.krs
+// Demonstrates: the smallest valid .krs input — system + 2 services + sync/async edges.
+// Use this as a baseline when isolating rendering bugs.
+
+system Minimal {
+  label "Minimal System"
+
+  service Frontend {
+    label "Frontend"
+  }
+
+  service Backend {
+    label "Backend"
+  }
+
+  Frontend ->  Backend "sync call"
+  Frontend --> Backend "async call"
+}
