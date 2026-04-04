@@ -388,6 +388,20 @@ describe("KarasuPreviewColumn", () => {
       expect(onExportSvg).toHaveBeenCalledWith(allLayersSvg, expect.stringContaining("all-layers"));
     });
 
+    it("Export SVG exports allViewsSvg with all-diagrams.svg filename when isAllViewsOpen=true", () => {
+      const onExportSvg = vi.fn();
+      const allViewsSvg = "<svg>all-views</svg>";
+      const props = makeProps({
+        activeView: "system",
+        allViewsSvg,
+        isAllViewsOpen: true,
+        onExportSvg,
+      });
+      const { getByRole } = render(<KarasuPreviewColumn {...props} />);
+      fireEvent.click(getByRole("button", { name: /Export SVG/ }));
+      expect(onExportSvg).toHaveBeenCalledWith(allViewsSvg, "all-diagrams.svg");
+    });
+
     it("clicking toggle button opens export options menu with drill-down item", () => {
       const props = makeProps({ activeView: "system" });
       const { getByRole, getByText } = render(<KarasuPreviewColumn {...props} />);

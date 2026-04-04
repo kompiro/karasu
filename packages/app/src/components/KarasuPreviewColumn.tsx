@@ -160,7 +160,9 @@ export function KarasuPreviewColumn({
   const showAllViewsIframe = isAllViewsOpen && !!allViewsSvg;
 
   function handleExport() {
-    if (showAllLayersIframe && activeAllLayersSvg) {
+    if (showAllViewsIframe && allViewsSvg) {
+      onExportSvg(allViewsSvg, "all-diagrams.svg");
+    } else if (showAllLayersIframe && activeAllLayersSvg) {
       onExportSvg(activeAllLayersSvg, exportFilename.replace(/\.svg$/, "-all-layers.svg"));
     } else {
       onExportSvg(svg, exportFilename);
