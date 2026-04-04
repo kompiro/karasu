@@ -44,7 +44,6 @@ export function AppShell({ entryPath, sidebarContent, hideEditor, recompileRef }
   } = state;
 
   const [isAllLayersOpen, setIsAllLayersOpen] = useState(false);
-  const [isAllViewsOpen, setIsAllViewsOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [previewFocused, setPreviewFocused] = useState(false);
 
@@ -323,15 +322,7 @@ export function AppShell({ entryPath, sidebarContent, hideEditor, recompileRef }
         onDisplayModeChange={handleDisplayModeChange}
         onExportSvg={(svg, filename) => downloadSvg(svg, filename)}
         isAllLayersOpen={isAllLayersOpen}
-        onAllLayersToggle={() => {
-          setIsAllLayersOpen((v) => !v);
-          setIsAllViewsOpen(false);
-        }}
-        isAllViewsOpen={isAllViewsOpen}
-        onAllViewsToggle={() => {
-          setIsAllViewsOpen((v) => !v);
-          setIsAllLayersOpen(false);
-        }}
+        onAllLayersToggle={() => setIsAllLayersOpen((v) => !v)}
         drillDownSvg={drillDownSvg}
         allLayersSvg={allLayersSvg}
         orgAllLayersSvg={orgAllLayersSvg}
