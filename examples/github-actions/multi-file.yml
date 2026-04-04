@@ -1,0 +1,51 @@
+# GitHub Actions workflow template: multiple .krs files → multiple SVGs
+#
+# Copy this file to .github/workflows/karasu.yml in your repository.
+# Uses a matrix strategy to render each diagram independently.
+# Each entry maps an entry .krs file to an output SVG path.
+#
+# Required repository setting:
+#   Settings > Actions > General > Workflow permissions
+#   → Select "Read and write permissions"
+
+name: Generate architecture diagrams
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "**.krs"
+      - "**.krs.style"
+
+jobs:
+  generate:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    strategy:
+      matrix:
+        diagram:
+          # Add entries here: one per .krs entry file you want to render.
+          - input: docs/system/index.krs
+            output: docs/system/architecture.svg
+          - input: docs/deploy/index.krs
+            output: docs/deploy/architecture.svg
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Render diagram (${{ matrix.diagram.input }})
+        run: npx --yes karasu@latest render "${{ matrix.diagram.input }}" --output "${{ matrix.diagram.output }}"
+
+      - name: Commit SVG (${{ matrix.diagram.output }})
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add "${{ matrix.diagram.output }}"
+          git diff --cached --quiet || git commit -m "chore: update ${{ matrix.diagram.output }} [skip ci]"
+          git push

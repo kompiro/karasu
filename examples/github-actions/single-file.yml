@@ -1,0 +1,45 @@
+# GitHub Actions workflow template: single .krs file → SVG
+#
+# Copy this file to .github/workflows/karasu.yml in your repository.
+# Adjust the paths and output location to match your project structure.
+#
+# Required repository setting:
+#   Settings > Actions > General > Workflow permissions
+#   → Select "Read and write permissions"
+
+name: Generate architecture diagram
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "**.krs"
+      - "**.krs.style"
+
+jobs:
+  generate:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      # Render the .krs file to SVG.
+      # Change `docs/architecture.krs` and `docs/architecture.svg` to match your paths.
+      - name: Render diagram
+        run: npx --yes karasu@latest render docs/architecture.krs --output docs/architecture.svg
+
+      # Commit the generated SVG back to the repository.
+      # The [skip ci] tag prevents an infinite workflow loop.
+      - name: Commit SVG
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add docs/architecture.svg
+          git diff --cached --quiet || git commit -m "chore: update architecture diagram [skip ci]"
+          git push
