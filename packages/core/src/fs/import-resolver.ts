@@ -54,6 +54,7 @@ export class ImportResolver {
       nodeImports: [],
       systems: [],
       services: [],
+      domains: [],
       deploys: [],
       organizations: [],
       ownerIndex: new Map(),
@@ -89,6 +90,7 @@ export class ImportResolver {
     mergedFile.styleImports.push(...file.styleImports);
     mergedFile.systems.push(...file.systems);
     mergedFile.services.push(...file.services);
+    mergedFile.domains.push(...file.domains);
     mergedFile.deploys.push(...file.deploys);
     mergedFile.organizations.push(...file.organizations);
     for (const [ownedId, teamId] of file.ownerIndex) {

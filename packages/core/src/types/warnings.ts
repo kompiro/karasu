@@ -6,7 +6,8 @@ export type WarningKind =
   | "missing-runtime"
   | "missing-realizes"
   | "invalid-owns"
-  | "deprecated-team-property";
+  | "deprecated-team-property"
+  | "unassigned-domain";
 
 export interface Warning {
   kind: WarningKind;

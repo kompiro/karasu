@@ -261,7 +261,13 @@ function _compileCore(krsSource: string, opts: CompileOptions): CompileResult {
     ...deploySliceForStyle.containers.flatMap((c) => c.units),
     ...deploySliceForStyle.unclassifiedUnits,
   ];
-  const styles = resolveStyles(parseResult.value.systems, sheets, deployUnits);
+  const styles = resolveStyles(
+    parseResult.value.systems,
+    sheets,
+    deployUnits,
+    undefined,
+    parseResult.value.domains,
+  );
   const hasDeployDiagram = parseResult.value.deploys.length > 0;
   const deployBlocks = parseResult.value.deploys.map((d) => ({ id: d.id, label: d.label ?? d.id }));
   const serviceIdsWithDeploy = new Set(deploySliceForStyle.containers.map((c) => c.serviceId));
@@ -274,7 +280,11 @@ function _compileCore(krsSource: string, opts: CompileOptions): CompileResult {
   }
 
   // system (default)
-  const viewSlice = extractView(parseResult.value.systems, viewPath ?? []);
+  const viewSlice = extractView(
+    parseResult.value.systems,
+    viewPath ?? [],
+    parseResult.value.domains,
+  );
   const svg = render(viewSlice, styles, serviceIdsWithDeploy, ownerIndex, displayMode);
   const nodeMetadata = buildNodeMetadata(viewSlice, serviceIdsWithDeploy, ownerIndex);
   return {
@@ -333,7 +343,13 @@ async function _compileProjectCore(
     ...deploySliceForStyle.containers.flatMap((c) => c.units),
     ...deploySliceForStyle.unclassifiedUnits,
   ];
-  const styles = resolveStyles(resolved.krsFile.systems, allSheets, deployUnits);
+  const styles = resolveStyles(
+    resolved.krsFile.systems,
+    allSheets,
+    deployUnits,
+    undefined,
+    resolved.krsFile.domains,
+  );
   const hasDeployDiagram = resolved.krsFile.deploys.length > 0;
   const deployBlocks = resolved.krsFile.deploys.map((d) => ({
     id: d.id,
@@ -349,7 +365,7 @@ async function _compileProjectCore(
   }
 
   // system (default)
-  const viewSlice = extractView(resolved.krsFile.systems, viewPath ?? []);
+  const viewSlice = extractView(resolved.krsFile.systems, viewPath ?? [], resolved.krsFile.domains);
   const svg = render(viewSlice, styles, serviceIdsWithDeploy, ownerIndex, displayMode);
   const nodeMetadata = buildNodeMetadata(viewSlice, serviceIdsWithDeploy, ownerIndex);
   return {

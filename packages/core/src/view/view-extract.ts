@@ -19,7 +19,11 @@ function nodeId(node: KrsNode): string {
   return node.id;
 }
 
-export function extractView(systems: KrsNode[], path: ViewPath): ViewSlice {
+export function extractView(
+  systems: KrsNode[],
+  path: ViewPath,
+  unassignedDomains: KrsNode[] = [],
+): ViewSlice {
   const empty: ViewSlice = {
     containerNode: null,
     childNodes: [],
@@ -35,11 +39,12 @@ export function extractView(systems: KrsNode[], path: ViewPath): ViewSlice {
 
   // System view (default)
   if (path.length === 0) {
-    const childIds = new Set(system.children.map(nodeId));
+    const allChildren = [...system.children, ...unassignedDomains];
+    const childIds = new Set(allChildren.map(nodeId));
     const childEdges = system.edges.filter((e) => childIds.has(e.from) && childIds.has(e.to));
     return {
       containerNode: system,
-      childNodes: system.children,
+      childNodes: allChildren,
       childEdges,
       ancestorChain: [],
       ghostUsers: [],
@@ -51,8 +56,13 @@ export function extractView(systems: KrsNode[], path: ViewPath): ViewSlice {
   const ancestorChain: KrsNode[] = [system];
   let current: KrsNode = system;
 
-  for (const segment of path) {
-    const child = current.children.find((c) => nodeId(c) === segment);
+  for (let i = 0; i < path.length; i++) {
+    const segment = path[i];
+    let child = current.children.find((c) => nodeId(c) === segment);
+    // At the first level, also search unassigned domains
+    if (!child && i === 0) {
+      child = unassignedDomains.find((c) => nodeId(c) === segment);
+    }
     if (!child) return empty;
     ancestorChain.push(child);
     current = child;
