@@ -1,5 +1,5 @@
-import type { FileSystemProvider, DirEntry } from "./types";
-import { normalizePath, dirname } from "./path-utils";
+import type { FileSystemProvider, DirEntry } from "./types.js";
+import { normalizePath, dirname } from "./path-utils.js";
 
 /**
  * InMemoryFileSystemProvider — メモリ上のファイルシステム実装。

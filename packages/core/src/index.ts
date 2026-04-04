@@ -649,3 +649,28 @@ export function buildAllViewsSvg(
   const result = _buildAllViewsSvg(parseResult.value, styleSource, displayMode);
   return { svg: result.svg, diagnostics: [...parseResult.diagnostics, ...result.diagnostics] };
 }
+
+/**
+ * Compile a .krs project from the filesystem and build a bundled all-views SVG.
+ * Recursively resolves @import / import declarations and merges all files.
+ * The resulting SVG bundles system, deploy, and org views with CSS-only tab navigation.
+ *
+ * @param entryPath - Path to the entry .krs file
+ * @param fs        - FileSystemProvider implementation
+ * @param styleSource - Optional .krs.style content
+ * @param displayMode - Layout display mode ("icon" | "shape")
+ */
+export async function buildAllViewsSvgProject(
+  entryPath: string,
+  fs: FileSystemProvider,
+  styleSource?: string,
+  displayMode?: DisplayMode,
+): Promise<SvgResult> {
+  const resolver = new ImportResolver(fs);
+  const resolved = await resolver.resolve(entryPath);
+  const result = _buildAllViewsSvg(resolved.krsFile, styleSource, displayMode);
+  return {
+    svg: result.svg,
+    diagnostics: [...resolved.diagnostics, ...result.diagnostics],
+  };
+}
