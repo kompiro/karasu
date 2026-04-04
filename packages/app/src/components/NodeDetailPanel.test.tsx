@@ -123,6 +123,41 @@ describe("NodeDetailPanel", () => {
     expect(onNavigateToOrg).toHaveBeenCalledWith("ec-team");
     expect(onClose).toHaveBeenCalled();
   });
+
+  it("link section title is '🔗 Links'", () => {
+    const dummyLoc = {
+      start: { line: 1, column: 1, offset: 0 },
+      end: { line: 1, column: 30, offset: 29 },
+    };
+    const { getByText } = render(
+      <NodeDetailPanel
+        {...baseProps({ links: [{ url: "https://example.com", loc: dummyLoc }] })}
+      />,
+    );
+    expect(getByText("🔗 Links")).not.toBeNull();
+  });
+
+  it("renders 'Jump to editor' button when onJumpToEditor is provided", () => {
+    const onJumpToEditor = vi.fn();
+    const { getByText } = render(
+      <NodeDetailPanel {...baseProps()} onJumpToEditor={onJumpToEditor} />,
+    );
+    expect(getByText(/Jump to editor/)).not.toBeNull();
+  });
+
+  it("does not render 'Jump to editor' button when onJumpToEditor is not provided", () => {
+    const { queryByText } = render(<NodeDetailPanel {...baseProps()} />);
+    expect(queryByText(/Jump to editor/)).toBeNull();
+  });
+
+  it("clicking 'Jump to editor' calls onJumpToEditor", () => {
+    const onJumpToEditor = vi.fn();
+    const { getByText } = render(
+      <NodeDetailPanel {...baseProps()} onJumpToEditor={onJumpToEditor} />,
+    );
+    fireEvent.click(getByText(/Jump to editor/));
+    expect(onJumpToEditor).toHaveBeenCalledOnce();
+  });
 });
 
 describe("NodeDetailPanel — pictogram icon", () => {

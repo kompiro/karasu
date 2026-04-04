@@ -1,9 +1,12 @@
 import KarasuEditor, { type Monaco } from "@monaco-editor/react";
+import type { editor } from "monaco-editor";
 import { useCallback, useRef } from "react";
 
 interface EditorPaneProps {
   value: string;
   onChange: (value: string) => void;
+  /** Called once when the Monaco editor instance is ready */
+  onEditorReady?: (editor: editor.IStandaloneCodeEditor) => void;
 }
 
 const KRS_LANGUAGE_ID = "krs";
@@ -98,13 +101,20 @@ function registerKrsLanguage(monaco: Monaco): void {
   });
 }
 
-export function EditorPane({ value, onChange }: EditorPaneProps) {
+export function EditorPane({ value, onChange, onEditorReady }: EditorPaneProps) {
   const monacoRef = useRef<Monaco | null>(null);
 
   const handleBeforeMount = useCallback((monaco: Monaco) => {
     monacoRef.current = monaco;
     registerKrsLanguage(monaco);
   }, []);
+
+  const handleMount = useCallback(
+    (editorInstance: editor.IStandaloneCodeEditor) => {
+      onEditorReady?.(editorInstance);
+    },
+    [onEditorReady],
+  );
 
   const handleChange = useCallback(
     (newValue: string | undefined) => {
@@ -122,6 +132,7 @@ export function EditorPane({ value, onChange }: EditorPaneProps) {
         value={value}
         onChange={handleChange}
         beforeMount={handleBeforeMount}
+        onMount={handleMount}
         options={{
           fontSize: 14,
           fontFamily: '"JetBrains Mono", "Fira Code", monospace',

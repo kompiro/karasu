@@ -1,7 +1,10 @@
 // @vitest-environment jsdom
-import { describe, it, expect, vi, beforeAll } from "vitest";
-import { render, fireEvent } from "@testing-library/react";
+import { describe, it, expect, vi, beforeAll, afterEach } from "vitest";
+import { render, fireEvent, cleanup } from "@testing-library/react";
 import { PreviewPane } from "./PreviewPane.js";
+import type { NodeMetadata } from "@karasu/core";
+
+afterEach(cleanup);
 
 // jsdom does not implement CSS.escape
 beforeAll(() => {
@@ -130,6 +133,44 @@ describe("PreviewPane", () => {
 
       const node = container.querySelector("[data-node-id='svc']");
       expect(node?.classList.contains("karasu-highlighted")).toBe(false);
+    });
+  });
+
+  describe("onJumpToEditor", () => {
+    it("calls onJumpToEditor with the clicked node's id when 'Jump to editor' is clicked", () => {
+      const onJumpToEditor = vi.fn();
+      const svg = `<div data-node-id="leaf-svc" data-has-children="false"></div>`;
+      const metadata: NodeMetadata = {
+        kind: "service",
+        label: "Leaf Service",
+        description: "",
+        links: [],
+        tags: [],
+        annotations: [],
+        hasChildren: false,
+      };
+      const nodeMetadata = new Map([["leaf-svc", metadata]]);
+
+      const { container, getByText } = render(
+        <PreviewPane
+          {...baseProps()}
+          svg={svg}
+          nodeMetadata={nodeMetadata}
+          onJumpToEditor={onJumpToEditor}
+        />,
+      );
+
+      const previewContainer = container.querySelector(".preview-container")!;
+      // Click the leaf node to open the detail panel
+      click(
+        previewContainer as HTMLElement,
+        () => container.querySelector("[data-node-id='leaf-svc']")!,
+      );
+
+      // Click "Jump to editor" in the detail panel
+      fireEvent.click(getByText(/Jump to editor/));
+
+      expect(onJumpToEditor).toHaveBeenCalledWith("leaf-svc");
     });
   });
 });
