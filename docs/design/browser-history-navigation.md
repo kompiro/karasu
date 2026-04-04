@@ -26,8 +26,10 @@ Issue #278 は当初「CSS `:target` ベースの drill-down SVG を app preview
 - `packages/app` は Vite + React SPA（シングルページ）
 - `packages/core` は Pure TS であり、ナビゲーション状態管理は `packages/app` の責務
 - ナビゲーション状態は `viewPath: string[]` + `activeView: "system" | "org" | "deploy"` の組
-- `permanent-link.md` は URL hash（`#system/ServiceA`）による永続リンクを Phase 2 として採用済み
+- `permanent-link.md` は URL hash による永続リンクを Phase 2 として採用済み
+- `permanent-link.md` Phase 1 は `KrsFile.nodePathIndex: Map<string, string[]>` の追加（nodeId → viewPath の解決）
 - アプリはブラウザ上（`localhost`）で動作し、VSCode extension Webview は対象外
+- `drill-down-svg.ts` は CSS `:target` ナビゲーション用に `krs-{viewPrefix}-{nodeId}` 形式の要素 ID を生成済み
 
 ## 解決すべき論点
 
@@ -66,26 +68,32 @@ window.addEventListener("popstate", (e) => {
 
 ### 案2: URL hash — `permanent-link.md` の Phase 2 を前倒し実装
 
-`location.hash` を `#system/Payment/EC` の形式で更新し、
-ページリロード時や URL 共有でも状態が復元できるようにする。
+`location.hash` を更新し、ページリロード時や URL 共有でも状態が復元できるようにする。
+
+hash 形式は `drill-down-svg.ts` が生成する CSS `:target` 用の要素 ID（`krs-system-root`、`krs-system-{nodeId}` など）をそのまま流用する。これにより：
+- エクスポートした drill-down SVG の fragment と URL hash の形式が一致する
+- `activeView` の判別はプレフィックス（`krs-system-` / `krs-org-` / `krs-deploy`）で行う
 
 ```
-#system              → activeView=system, viewPath=[]
-#system/Payment/EC   → activeView=system, viewPath=["Payment","EC"]
-#org/backend         → activeView=org, viewPath=["backend"]
-#deploy              → activeView=deploy
+#krs-system-root        → activeView=system, viewPath=[]
+#krs-system-Payment     → activeView=system, viewPath=["Payment"]
+#krs-org-root           → activeView=org, viewPath=[]
+#krs-org-backend        → activeView=org, viewPath=["backend"]
+#krs-deploy             → activeView=deploy
 ```
 
-ナビゲーション時:
+**viewPath の回復**: `#krs-system-Payment` から `viewPath: ["Payment"]` への変換は単純だが、
+深い階層（`#krs-system-EC` → `viewPath: ["Payment", "EC"]`）の回復には
+**`nodePathIndex`**（`permanent-link.md` Phase 1）が必要。
 
 ```typescript
-// ナビゲーション時
-const hash = encodeNavHash({ viewPath: ["Payment", "EC"], activeView: "system" });
-history.pushState(null, "", `#${hash}`);
-dispatch({ type: "SET_VIEW_PATH", path: ["Payment", "EC"] });
+// ナビゲーション時（drill-down svg と同じ nodeId を使う）
+const nodeId = sanitizeId(child.id);  // drill-down-svg.ts と同じ関数
+history.pushState(null, "", `#krs-system-${nodeId}`);
+dispatch({ type: "SET_VIEW_PATH", path: [...viewPath, child.id] });
 
-// アプリ起動時
-const initial = parseNavHash(location.hash);
+// アプリ起動時（hash から viewPath を解決）
+const initial = parseNavHash(location.hash, nodePathIndex);
 if (initial) {
   dispatch({ type: "SET_ACTIVE_VIEW", activeView: initial.activeView });
   dispatch({ type: "SET_VIEW_PATH", path: initial.viewPath });
@@ -93,7 +101,7 @@ if (initial) {
 
 // popstate ハンドラ
 window.addEventListener("popstate", () => {
-  const s = parseNavHash(location.hash);
+  const s = parseNavHash(location.hash, nodePathIndex);
   if (!s) return;
   ...
 });
@@ -103,10 +111,11 @@ window.addEventListener("popstate", () => {
 - URL を共有・ブックマークすると同じビューを開ける（永続リンク機能を兼ねる）
 - リロードしても状態が保持される
 - `permanent-link.md` の Phase 2 と一致し、将来の実装が不要になる
+- drill-down SVG のエクスポート ID と URL hash が統一され、命名の一貫性が生まれる
 
 **デメリット**:
-- hash エンコード・デコード関数の実装が必要
-- 特殊文字（日本語 ID など）のエンコードを考慮する必要がある
+- `nodePathIndex`（Phase 1）の実装が前提条件になる
+- hash → viewPath 変換ロジックが必要
 - ファイル切り替え時に hash を `replaceState` でリセットするロジックが必要
 
 ## 比較
@@ -118,7 +127,9 @@ window.addEventListener("popstate", () => {
 | リロード後の復元 | ✗ | ◎ |
 | 実装コスト | 低 | 中 |
 | `permanent-link.md` との整合 | △（将来の移行が必要） | ◎（Phase 2 を実現） |
-| ID に特殊文字が含まれる場合 | 不要 | エンコード必要 |
+| drill-down SVG ID との一致 | — | ◎（同じ形式） |
+| `nodePathIndex`（Phase 1）依存 | なし | あり |
+| ID に特殊文字が含まれる場合 | 不要 | `sanitizeId` で処理済み |
 
 ## 実装設計（案2 採用時）
 
@@ -182,17 +193,21 @@ export function useHistoryNavigation(
 
 ### hash 形式
 
+`drill-down-svg.ts` の要素 ID 形式をそのまま採用する。
+
 ```
-#system              → { activeView: "system", viewPath: [] }
-#system/ServiceA     → { activeView: "system", viewPath: ["ServiceA"] }
-#org                 → { activeView: "org", viewPath: [] }
-#org/backend/team1   → { activeView: "org", viewPath: ["backend", "team1"] }
-#deploy              → { activeView: "deploy", viewPath: [] }
+#krs-system-root        → { activeView: "system", viewPath: [] }
+#krs-system-Payment     → { activeView: "system", viewPath: ["Payment"] }
+#krs-system-EC          → { activeView: "system", viewPath: nodePathIndex.get("EC") }
+#krs-org-root           → { activeView: "org", viewPath: [] }
+#krs-org-backend        → { activeView: "org", viewPath: nodePathIndex.get("backend") }
+#krs-deploy             → { activeView: "deploy" }
 ```
 
-- セグメント区切りは `/`
-- 各セグメントは `encodeURIComponent` でエンコード
-- `#deploy` は viewPath を持たない
+- `krs-{viewPrefix}-` プレフィックスで `activeView` を判別
+- `root` は viewPath=[] に対応
+- それ以外の nodeId は `nodePathIndex` で viewPath に変換
+- `sanitizeId()` は `drill-down-svg.ts` と同じ関数を使用（`@karasu/core` からエクスポート）
 
 ### `AppShell` への統合箇所
 
@@ -220,11 +235,21 @@ export function useHistoryNavigation(
 1. `permanent-link.md` の Phase 2（URL hash による永続リンク）と一致しており、
    ここで実装しておけば将来的な統合作業が不要になる
 2. ブラウザの戻る/進むボタンに加えてリロード・URL 共有も同時に解決できる
-3. 案1 は将来 URL hash に移行する際に二重の変更コストが発生する
+3. drill-down SVG のエクスポート ID（`krs-system-Payment`）と URL hash が統一され、
+   「エクスポート SVG を開いて `#krs-system-Payment` を付けてブラウザで開く」操作と
+   アプリ内の URL が同じ形式になる
+4. 案1 は将来 URL hash に移行する際に二重の変更コストが発生する
+
+## 実装前提条件
+
+案2 の採用には `permanent-link.md` Phase 1 の実装が前提となる。
+
+| フェーズ | 内容 | 担当 Issue |
+|---|---|---|
+| Phase 1 | `KrsFile.nodePathIndex` 追加（nodeId → viewPath） | permanent-link.md § Phase 1 |
+| Phase 2 | URL hash ナビゲーション（本ドキュメント） | Issue #278 |
 
 ## 未解決の問い
 
-- **deploy ビューの hash**: deploy ビューは `selectedDeployBlockId` も状態として持つ。
-  `#deploy` だけで十分か、`#deploy/production` のように block ID を含めるべきか
-- **`activeView` の省略**: `#ServiceA` のようにビュータイプを省略して system と仮定する短縮形を
-  許容するか（共有リンクの見栄えの問題）
+なし。drill-down SVG の ID 形式（`krs-system-*` / `krs-org-*` / `krs-deploy`）を流用することで、
+activeView の表現と deploy の hash 形式がいずれも決定した。
