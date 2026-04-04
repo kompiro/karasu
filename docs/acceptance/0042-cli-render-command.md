@@ -15,11 +15,12 @@ Supports all-views bundled output (default) and individual view output (`--view`
 - [x] Missing file → stderr error message + exit code 1
 - [x] Default (no `--view`) → calls `buildAllViewsSvgProject`, SVG written to stdout
 - [x] `--output <path>` → SVG written to file instead of stdout
-- [x] Parse diagnostics → stderr + exit code 1
+- [x] Error-severity diagnostics → stderr + exit code 1
+- [x] Warning-severity diagnostics → stderr + exit code 0
 - [x] `--view system` → calls `compileProject` with `diagramType: "system"`
 - [x] `--view deploy` → calls `compileProject` with `diagramType: "deploy"`
 - [x] `--view org` → calls `compileProject` with `diagramType: "org"`
-- [x] Warnings → printed to stderr, exit code 0
+- [x] Analyzer warnings → printed to stderr, exit code 0
 - [x] CLI wiring: `render <file>`, `--output`, `-o`, `--view` all parsed correctly
 
 ## Manual verification checklist
@@ -30,24 +31,13 @@ Supports all-views bundled output (default) and individual view output (`--view`
 cd .worktrees/cli-render
 npm run build --workspace=packages/core
 npm run build --workspace=packages/cli
-```
-
-Prepare a test `.krs` file:
-
-```bash
-cat > /tmp/test.krs << 'EOF'
-system ECommerce "E-Commerce System" {
-  service Frontend "Frontend"
-  service Backend "Backend"
-  Frontend -> Backend
-}
-EOF
+alias karasu="node $(pwd)/packages/cli/dist/index.js"
 ```
 
 ### 1. Default all-views output to stdout
 
 ```bash
-node packages/cli/dist/index.js render /tmp/test.krs
+karasu render examples/ec-platform/01-system.krs
 ```
 
 - [ ] Output is a valid SVG (starts with `<svg`)
@@ -56,96 +46,78 @@ node packages/cli/dist/index.js render /tmp/test.krs
 ### 2. Write to file with --output
 
 ```bash
-node packages/cli/dist/index.js render /tmp/test.krs --output /tmp/arch.svg
-cat /tmp/arch.svg
+karasu render examples/ec-platform/01-system.krs --output /tmp/ec-platform.svg
 ```
 
-- [ ] File `/tmp/arch.svg` is created
+- [ ] File `/tmp/ec-platform.svg` is created
 - [ ] File contents is a valid SVG
 
 ### 3. --view system
 
 ```bash
-node packages/cli/dist/index.js render /tmp/test.krs --view system
+karasu render examples/ec-platform/01-system.krs --view system
 ```
 
-- [ ] Output is SVG containing system diagram nodes
+- [ ] Output is SVG containing system diagram nodes (Frontend, Backend など)
 - [ ] No tab bar (single-view output)
 
 ### 4. --view deploy
 
 ```bash
-node packages/cli/dist/index.js render /tmp/test.krs --view deploy
+karasu render examples/ec-platform/06-deploy/deploy.krs --view deploy
 ```
 
-- [ ] Output is a valid SVG (deploy diagram, may be empty if no deploy blocks defined)
+- [ ] Output is a valid SVG showing deploy containers and units
 
 ### 5. --view org
 
 ```bash
-node packages/cli/dist/index.js render /tmp/test.krs --view org
+karasu render examples/org/system.krs --view org
 ```
 
-- [ ] Output is a valid SVG (org diagram, may be empty if no org blocks defined)
+- [ ] Output is a valid SVG showing org structure
 
-### 6. File not found → exit code 1
+### 6. Import resolution (multi-file project)
 
 ```bash
-node packages/cli/dist/index.js render /tmp/nonexistent.krs
+karasu render examples/ec-platform/05-multifile/system.krs
+```
+
+- [ ] Output SVG contains nodes from all imported files
+- [ ] No "file not found" or import error on stderr
+
+### 7. Deploy diagram with all-views (default)
+
+```bash
+karasu render examples/ec-platform/06-deploy/deploy.krs
+```
+
+- [ ] SVG contains both system and deploy tabs
+- [ ] Deploy tab shows container and unit nodes
+
+### 8. File not found → exit code 1
+
+```bash
+karasu render examples/nonexistent.krs
 echo "exit code: $?"
 ```
 
 - [ ] Exit code is `1`
 - [ ] stderr contains "File not found"
 
-### 7. Parse error → exit code 1
-
-```bash
-echo "invalid {{ syntax" > /tmp/broken.krs
-node packages/cli/dist/index.js render /tmp/broken.krs
-echo "exit code: $?"
-```
-
-- [ ] Exit code is `1`
-- [ ] stderr contains error location and message
-
-### 8. Pipe to svgo (stdout use case)
+### 9. Pipe to svgo (stdout use case)
 
 ```bash
 # requires: npm install -g svgo
-node packages/cli/dist/index.js render /tmp/test.krs | svgo - -o /tmp/arch-optimized.svg
+karasu render examples/ec-platform/01-system.krs | svgo - -o /tmp/ec-optimized.svg
 ```
 
-- [ ] `/tmp/arch-optimized.svg` is created and is a smaller valid SVG
-
-### 9. Import resolution
-
-Prepare a multi-file project:
-
-```bash
-mkdir -p /tmp/arch-project
-cat > /tmp/arch-project/index.krs << 'EOF'
-import "services.krs"
-system ECommerce "E-Commerce" {
-  service Frontend "Frontend"
-  Frontend -> backend.Backend
-}
-EOF
-cat > /tmp/arch-project/services.krs << 'EOF'
-system backend "Backend Services" {
-  service Backend "Backend API"
-}
-EOF
-node packages/cli/dist/index.js render /tmp/arch-project/index.krs
-```
-
-- [ ] Output SVG contains nodes from both `index.krs` and `services.krs`
-- [ ] No "file not found" or import error
+- [ ] `/tmp/ec-optimized.svg` is created and is a smaller valid SVG
 
 ### 10. Help output shows Examples section
 
 ```bash
-node packages/cli/dist/index.js render --help
+karasu render --help
 ```
 
 - [ ] Help includes "Examples:" section
