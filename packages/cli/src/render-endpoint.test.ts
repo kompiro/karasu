@@ -72,13 +72,19 @@ describe("parseRenderParams", () => {
   });
 
   it("returns src params with view when provided", () => {
-    const result = parseRenderParams(params({ src: "https://example.com/system.krs", view: "system" }));
+    const result = parseRenderParams(
+      params({ src: "https://example.com/system.krs", view: "system" }),
+    );
     expect(result).toEqual({ kind: "src", src: "https://example.com/system.krs", view: "system" });
   });
 
   it("returns error for unsafe src URL", () => {
     const result = parseRenderParams(params({ src: "http://localhost/evil.krs" }));
-    expect(result).toEqual({ kind: "error", status: 400, message: expect.stringContaining("Invalid src URL") });
+    expect(result).toEqual({
+      kind: "error",
+      status: 400,
+      message: expect.stringContaining("Invalid src URL"),
+    });
   });
 
   it("returns code params for base64 code", () => {
@@ -93,12 +99,20 @@ describe("parseRenderParams", () => {
 
   it("returns error when neither src nor code is provided", () => {
     const result = parseRenderParams(params({}));
-    expect(result).toEqual({ kind: "error", status: 400, message: expect.stringContaining("src or code") });
+    expect(result).toEqual({
+      kind: "error",
+      status: 400,
+      message: expect.stringContaining("src or code"),
+    });
   });
 
   it("returns error for invalid view value", () => {
     const result = parseRenderParams(params({ code: "abc", view: "invalid" }));
-    expect(result).toEqual({ kind: "error", status: 400, message: expect.stringContaining("Invalid view") });
+    expect(result).toEqual({
+      kind: "error",
+      status: 400,
+      message: expect.stringContaining("Invalid view"),
+    });
   });
 
   it("accepts all valid view values", () => {
@@ -151,7 +165,10 @@ describe("handleRender", () => {
       res as unknown as ServerResponse,
       new URLSearchParams({ code, view: "system" }),
     );
-    expect(res.writeHead).toHaveBeenCalledWith(200, expect.objectContaining({ "Content-Type": "image/svg+xml; charset=utf-8" }));
+    expect(res.writeHead).toHaveBeenCalledWith(
+      200,
+      expect.objectContaining({ "Content-Type": "image/svg+xml; charset=utf-8" }),
+    );
     const svg: string = res.end.mock.calls[0][0];
     expect(svg).toContain("<svg");
   });
@@ -169,10 +186,7 @@ describe("handleRender", () => {
   });
 
   it("returns 502 when src fetch fails", async () => {
-    vi.stubGlobal(
-      "fetch",
-      vi.fn().mockRejectedValue(new Error("Network error")),
-    );
+    vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new Error("Network error")));
     const res = makeRes();
     await handleRender(
       makeReq(),
@@ -198,16 +212,16 @@ describe("handleRender", () => {
 
   it("returns 200 SVG when src fetch succeeds", async () => {
     const source = `system App { service Frontend { label "Web" } }`;
-    vi.stubGlobal(
-      "fetch",
-      vi.fn().mockResolvedValue({ ok: true, text: async () => source }),
-    );
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: true, text: async () => source }));
     const res = makeRes();
     await handleRender(
       makeReq(),
       res as unknown as ServerResponse,
       new URLSearchParams({ src: "https://example.com/system.krs", view: "system" }),
     );
-    expect(res.writeHead).toHaveBeenCalledWith(200, expect.objectContaining({ "Content-Type": "image/svg+xml; charset=utf-8" }));
+    expect(res.writeHead).toHaveBeenCalledWith(
+      200,
+      expect.objectContaining({ "Content-Type": "image/svg+xml; charset=utf-8" }),
+    );
   });
 });

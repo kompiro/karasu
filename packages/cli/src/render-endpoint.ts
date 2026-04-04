@@ -31,7 +31,7 @@ export function isSafeUrl(raw: string): boolean {
   // Dotted-decimal IPv4 checks
   const ipv4 = hostname.match(/^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/);
   if (ipv4) {
-    const [, a, b, c] = ipv4.map(Number);
+    const [, a, b, _c] = ipv4.map(Number);
     // 127.0.0.0/8 — loopback
     if (a === 127) return false;
     // 10.0.0.0/8 — private
@@ -65,12 +65,20 @@ export function parseRenderParams(searchParams: URLSearchParams): RenderParams {
 
   const view = parseView(viewRaw);
   if (viewRaw !== null && view === null) {
-    return { kind: "error", status: 400, message: `Invalid view: "${viewRaw}". Must be system, deploy, or org.` };
+    return {
+      kind: "error",
+      status: 400,
+      message: `Invalid view: "${viewRaw}". Must be system, deploy, or org.`,
+    };
   }
 
   if (src) {
     if (!isSafeUrl(src)) {
-      return { kind: "error", status: 400, message: "Invalid src URL. Only public http/https URLs are allowed." };
+      return {
+        kind: "error",
+        status: 400,
+        message: "Invalid src URL. Only public http/https URLs are allowed.",
+      };
     }
     return { kind: "src", src, view };
   }
@@ -128,7 +136,9 @@ export async function handleRender(
   } else {
     // base64 → string (support both standard and URL-safe base64)
     try {
-      source = Buffer.from(params.code.replace(/-/g, "+").replace(/_/g, "/"), "base64").toString("utf-8");
+      source = Buffer.from(params.code.replace(/-/g, "+").replace(/_/g, "/"), "base64").toString(
+        "utf-8",
+      );
     } catch {
       res.writeHead(400, { "Content-Type": "text/plain; charset=utf-8" });
       res.end("Invalid base64 encoding in code parameter.");
