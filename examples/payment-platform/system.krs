@@ -1,0 +1,91 @@
+// payment-platform/system.krs
+// Demonstrates: multiple [external] services, complex service topology
+// A payment processing platform integrating with card networks and banks.
+
+system PaymentPlatform {
+  label "決済プラットフォーム"
+
+  user Merchant {
+    label "加盟店"
+    role "決済APIを利用するオンラインショップ・実店舗"
+  }
+
+  user PlatformAdmin [human] {
+    label "プラットフォーム管理者"
+    role "加盟店管理・決済モニタリングを担当する運用者"
+  }
+
+  service Gateway {
+    label "決済ゲートウェイ"
+    description "加盟店からの決済リクエストを受け付け、処理フローを制御する"
+
+    domain Authorization {
+      label "オーソリ"
+      usecase Authorize { label "決済を承認する" }
+      usecase Capture { label "売上を確定する" }
+      usecase Void { label "オーソリを取り消す" }
+    }
+
+    domain Refund {
+      label "返金"
+      usecase RequestRefund { label "返金を申請する" }
+      usecase ProcessRefund { label "返金を実行する" }
+    }
+  }
+
+  service RiskEngine {
+    label "リスク判定エンジン"
+    description "不正検知・トランザクションスコアリング"
+
+    domain FraudDetection {
+      label "不正検知"
+      usecase ScoreTransaction { label "トランザクションをスコアリングする" }
+      usecase BlockSuspicious { label "疑わしい取引をブロックする" }
+    }
+  }
+
+  service Ledger {
+    label "台帳サービス"
+    description "売上・手数料・精算の記録管理"
+
+    domain Settlement {
+      label "精算"
+      usecase RecordTransaction { label "取引を記録する" }
+      usecase CalculateFee { label "手数料を計算する" }
+      usecase SettleToMerchant { label "加盟店へ振り込む" }
+    }
+  }
+
+  // External card networks
+  service VisaNet [external] {
+    label "Visa Net"
+    description "Visaカード決済ネットワーク"
+  }
+
+  service MasterNet [external] {
+    label "Mastercard Network"
+    description "Mastercardカード決済ネットワーク"
+  }
+
+  // External banking partner
+  service BankAPI [external] {
+    label "銀行API"
+    description "加盟店への精算振込を行うパートナー銀行"
+  }
+
+  // External compliance service
+  service ThreeDSecure [external] {
+    label "3-D Secure"
+    description "本人確認のための3Dセキュア認証サービス"
+  }
+
+  Merchant       ->  Gateway       "決済リクエストを送る"
+  PlatformAdmin  ->  Gateway       "決済状況をモニタリングする"
+  PlatformAdmin  ->  Ledger        "精算レポートを確認する"
+  Gateway        ->  RiskEngine    "不正スコアを取得する"
+  Gateway        ->  ThreeDSecure  "本人確認を行う"
+  Gateway        ->  VisaNet       "Visa決済を処理する"
+  Gateway        ->  MasterNet     "Mastercard決済を処理する"
+  Gateway       --> Ledger         "取引を記録する"
+  Ledger        --> BankAPI        "加盟店へ振り込む"
+}

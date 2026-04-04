@@ -1,0 +1,11 @@
+// ec-platform/06-deploy/payment.krs
+// Payment service definition — imported by system.krs
+
+service Payment {
+  label "決済サービス"
+  domain Billing {
+    label "請求"
+    usecase Charge { label "決済を実行する" }
+    usecase Refund { label "返金する" }
+  }
+}

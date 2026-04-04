@@ -1,0 +1,65 @@
+// payment-platform/deploy.krs
+// Demonstrates: all major artifact types — jar, oci, lambda, job (with/without schedule), assets
+// Each artifact type has distinct characteristics suited for different workloads.
+
+deploy Production {
+  label "本番環境 (AWS)"
+
+  // Gateway as an executable JAR (Spring Boot)
+  jar gateway-service {
+    label "決済ゲートウェイ"
+    runtime "Java 21 / Spring Boot 3"
+    realizes Gateway
+  }
+
+  // Risk engine as a container (GPU-enabled scoring)
+  oci risk-engine {
+    label "リスク判定エンジン"
+    image "risk-engine:2.0.4"
+    runtime "Python 3.12 / FastAPI"
+    realizes RiskEngine
+  }
+
+  // Lightweight fraud check as a serverless function
+  lambda fraud-check {
+    label "不正チェック関数"
+    runtime "Node.js 22"
+    realizes RiskEngine
+  }
+
+  // Ledger as a container
+  oci ledger-service {
+    label "台帳サービス"
+    image "ledger:1.8.2"
+    runtime "Go 1.22"
+    realizes Ledger
+  }
+
+  // Admin dashboard as a static SPA
+  assets admin-dashboard {
+    label "管理ダッシュボード"
+    runtime "CloudFront / S3"
+  }
+
+  // One-off migration job (no schedule = single run)
+  job ledger-migration {
+    label "台帳データ移行"
+    runtime "Python 3.12"
+  }
+
+  // Daily settlement batch (runs every night at 2am JST)
+  job daily-settlement {
+    label "日次精算バッチ"
+    schedule "0 17 * * *"
+    runtime "Java 21"
+    realizes Ledger
+  }
+
+  // Monthly fee report
+  job monthly-fee-report {
+    label "月次手数料レポート"
+    schedule "0 2 1 * *"
+    runtime "Python 3.12"
+    realizes Ledger
+  }
+}

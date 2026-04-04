@@ -1,0 +1,32 @@
+// ec-platform/01-system.krs
+// Demonstrates: system, service, sync edge (->), async edge (-->)
+// This is the minimal building block of a karasu diagram.
+
+system ECPlatform {
+  label "ECプラットフォーム"
+
+  service ECommerce {
+    label "ECサイト"
+    description "商品管理と注文処理"
+  }
+
+  service Payment {
+    label "決済サービス"
+    description "クレジットカード決済処理"
+  }
+
+  service Inventory {
+    label "在庫管理"
+    description "在庫データの管理"
+  }
+
+  service Notification {
+    label "通知サービス"
+    description "メール・プッシュ通知の送信"
+  }
+
+  ECommerce  ->  Payment      "決済を処理する"
+  ECommerce  ->  Inventory    "在庫を確認する"
+  ECommerce --> Notification  "注文確定メールを送る"
+  Inventory --> Notification  "在庫切れアラートを送る"
+}
