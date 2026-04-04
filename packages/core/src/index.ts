@@ -66,7 +66,7 @@ export {
 } from "./builtins/reference.js";
 export { analyze } from "./resolver/warnings.js";
 export type { DisplayMode } from "./renderer/layout.js";
-export type { SvgResult } from "./renderer/drill-down-svg.js";
+export type { SvgResult } from "./renderer/all-layers-svg.js";
 export { render, renderFromLayout, sanitizeId } from "./renderer/svg-renderer.js";
 
 export { renderOrgView } from "./renderer/org-renderer.js";
@@ -117,12 +117,14 @@ import { analyze } from "./resolver/warnings.js";
 import { render } from "./renderer/svg-renderer.js";
 import {
   buildDrillDownSvg as _buildDrillDownSvg,
-  buildAllLayersSvg as _buildAllLayersSvg,
-  buildAllLayersSvgOrg as _buildAllLayersSvgOrg,
   buildDrillDownSvgOrg as _buildDrillDownSvgOrg,
   buildAllViewsSvg as _buildAllViewsSvg,
-  type SvgResult,
 } from "./renderer/drill-down-svg.js";
+import {
+  buildAllLayersSvg as _buildAllLayersSvg,
+  buildAllLayersSvgOrg as _buildAllLayersSvgOrg,
+  type SvgResult,
+} from "./renderer/all-layers-svg.js";
 
 import type { DisplayMode } from "./renderer/layout.js";
 import { renderOrgView as _renderOrgView } from "./renderer/org-renderer.js";
