@@ -147,6 +147,38 @@ system Test {
         }),
       );
     });
+
+    it("merges deploy nodes into existing deploy block matched by id", async () => {
+      await fs.writeFile(
+        "/project/index.krs",
+        `import { PaymentService } from "payment.krs"
+deploy Production {
+  label "prod-env"
+  oci OrderService {
+    image "order:latest"
+  }
+}`,
+      );
+      await fs.writeFile(
+        "/project/payment.krs",
+        `deploy Production {
+  label "payment-infra"
+  oci PaymentService {
+    image "payment:latest"
+  }
+}`,
+      );
+
+      const result = await resolver.resolve("/project/index.krs");
+      expect(result.diagnostics.filter((d) => d.severity === "error")).toHaveLength(0);
+
+      // Deploy blocks should be merged by id ("Production"), not by label
+      // (labels differ: "prod-env" vs "payment-infra")
+      expect(result.krsFile.deploys).toHaveLength(1);
+      const nodeIds = result.krsFile.deploys[0].nodes.map((n) => n.id);
+      expect(nodeIds).toContain("OrderService");
+      expect(nodeIds).toContain("PaymentService");
+    });
   });
 
   describe("chained imports", () => {
