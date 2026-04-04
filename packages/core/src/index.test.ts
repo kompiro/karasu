@@ -98,7 +98,7 @@ const DOMAIN_NODE: KrsNode = {
   annotations: [],
   edges: [],
   children: [],
-  properties: {},
+  properties: { links: [] },
 };
 
 const SERVICE_NODE: KrsNode = {
@@ -109,7 +109,7 @@ const SERVICE_NODE: KrsNode = {
   annotations: [],
   edges: [],
   children: [],
-  properties: {},
+  properties: { links: [] },
 };
 
 describe("Icon Mode — shape cascade priority (issue #279)", () => {
