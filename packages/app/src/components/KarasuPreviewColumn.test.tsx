@@ -454,4 +454,51 @@ describe("KarasuPreviewColumn", () => {
       expect(onExportSvg).toHaveBeenCalledWith(allViewsSvg, "all-diagrams.svg");
     });
   });
+
+  describe("Open All Views button", () => {
+    it("shows Open All Views button", () => {
+      const props = makeProps();
+      const { getByRole } = render(<KarasuPreviewColumn {...props} />);
+      expect(getByRole("button", { name: /Open all views in new window/ })).toBeTruthy();
+    });
+
+    it("is disabled when allViewsSvg is undefined", () => {
+      const props = makeProps({ allViewsSvg: undefined });
+      const { getByRole } = render(<KarasuPreviewColumn {...props} />);
+      expect(getByRole("button", { name: /Open all views in new window/ })).toHaveProperty(
+        "disabled",
+        true,
+      );
+    });
+
+    it("is enabled when allViewsSvg is set", () => {
+      const props = makeProps({ allViewsSvg: "<svg>all-views</svg>" });
+      const { getByRole } = render(<KarasuPreviewColumn {...props} />);
+      expect(getByRole("button", { name: /Open all views in new window/ })).toHaveProperty(
+        "disabled",
+        false,
+      );
+    });
+
+    it("calls window.open with a blob URL when clicked", () => {
+      const openSpy = vi.spyOn(window, "open").mockReturnValue(null);
+      vi.spyOn(URL, "createObjectURL").mockReturnValue("blob:mock-url");
+      const props = makeProps({ allViewsSvg: "<svg>all-views</svg>" });
+      const { getByRole } = render(<KarasuPreviewColumn {...props} />);
+      fireEvent.click(getByRole("button", { name: /Open all views in new window/ }));
+      expect(URL.createObjectURL).toHaveBeenCalled();
+      expect(openSpy).toHaveBeenCalledWith("blob:mock-url", "_blank");
+      openSpy.mockRestore();
+    });
+
+    it("does not call window.open when allViewsSvg is undefined", () => {
+      const openSpy = vi.spyOn(window, "open").mockReturnValue(null);
+      const props = makeProps({ allViewsSvg: undefined });
+      const { getByRole } = render(<KarasuPreviewColumn {...props} />);
+      // button is disabled, but verify open is not called even if handler fires
+      getByRole("button", { name: /Open all views in new window/ });
+      expect(openSpy).not.toHaveBeenCalled();
+      openSpy.mockRestore();
+    });
+  });
 });

@@ -175,6 +175,13 @@ export function KarasuPreviewColumn({
     setExportMenuOpen(false);
   }
 
+  function handleOpenAllViews() {
+    if (!allViewsSvg) return;
+    const blob = new Blob([allViewsSvg], { type: "image/svg+xml" });
+    const url = URL.createObjectURL(blob);
+    window.open(url, "_blank");
+  }
+
   return (
     <div className="preview-column">
       <DiagramTabBar
@@ -200,6 +207,14 @@ export function KarasuPreviewColumn({
           disabled={!allLayersAvailable}
         >
           ⊞ Show All Layers
+        </button>
+        <button
+          className="toolbar-btn toolbar-btn--all-views"
+          onClick={handleOpenAllViews}
+          aria-label="Open all views in new window"
+          disabled={!allViewsSvg}
+        >
+          ⊟ Open All Views
         </button>
 
         {/* Split export button: left = export current/full, right = drill-down export */}

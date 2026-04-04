@@ -1071,6 +1071,19 @@ body,
   border-color: rgba(77, 143, 255, 0.4);
 }
 
+/* All Views button — opens bundled SVG in a new window */
+.toolbar-btn--all-views {
+  background: var(--bg-raised);
+  color: var(--text-secondary);
+  border-color: var(--border-strong);
+}
+
+.toolbar-btn--all-views:hover {
+  background: var(--accent-dim);
+  color: var(--accent-hover);
+  border-color: rgba(77, 143, 255, 0.4);
+}
+
 /* Icon Mode and Export buttons — always visible as actionable buttons */
 .toolbar-btn--icon-mode,
 .toolbar-btn--export {
