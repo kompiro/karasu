@@ -120,6 +120,7 @@ import {
   buildAllLayersSvg as _buildAllLayersSvg,
   buildAllLayersSvgOrg as _buildAllLayersSvgOrg,
   buildDrillDownSvgOrg as _buildDrillDownSvgOrg,
+  buildAllViewsSvg as _buildAllViewsSvg,
   type SvgResult,
 } from "./renderer/drill-down-svg.js";
 
@@ -621,5 +622,19 @@ export function buildDrillDownSvgOrg(
 ): SvgResult {
   const parseResult: ParseResult<KrsFile> = Parser.parse(krsSource);
   const result = _buildDrillDownSvgOrg(parseResult.value, styleSource, displayMode);
+  return { svg: result.svg, diagnostics: [...parseResult.diagnostics, ...result.diagnostics] };
+}
+
+/**
+ * Builds a single SVG bundling system, deploy, and org views with CSS-only tab navigation.
+ * Each view supports drill-down via CSS :target + :has(). No JavaScript required.
+ */
+export function buildAllViewsSvg(
+  krsSource: string,
+  styleSource?: string,
+  displayMode?: DisplayMode,
+): SvgResult {
+  const parseResult: ParseResult<KrsFile> = Parser.parse(krsSource);
+  const result = _buildAllViewsSvg(parseResult.value, styleSource, displayMode);
   return { svg: result.svg, diagnostics: [...parseResult.diagnostics, ...result.diagnostics] };
 }
