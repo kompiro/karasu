@@ -29,6 +29,23 @@ describe("Parser", () => {
     expect(result.value.nodeImports[0].path).toBe("ec.krs");
   });
 
+  it("parses wildcard import declaration", () => {
+    const result = Parser.parse('import "team-ec.krs"');
+    expect(result.value.nodeImports).toHaveLength(1);
+    expect(result.value.nodeImports[0].ids).toEqual([]);
+    expect(result.value.nodeImports[0].path).toBe("team-ec.krs");
+    expect(result.diagnostics.filter((d) => d.severity === "error")).toHaveLength(0);
+  });
+
+  it("parses multiple wildcard imports", () => {
+    const result = Parser.parse('import "team-ec.krs"\nimport "team-payment.krs"');
+    expect(result.value.nodeImports).toHaveLength(2);
+    expect(result.value.nodeImports[0].ids).toEqual([]);
+    expect(result.value.nodeImports[0].path).toBe("team-ec.krs");
+    expect(result.value.nodeImports[1].ids).toEqual([]);
+    expect(result.value.nodeImports[1].path).toBe("team-payment.krs");
+  });
+
   it("parses a minimal system", () => {
     const result = Parser.parse("system MySystem {}");
     expect(result.value.systems).toHaveLength(1);

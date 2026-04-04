@@ -289,4 +289,225 @@ system EC {
       );
     });
   });
+
+  describe("wildcard import", () => {
+    it("merges all system blocks from the imported file", async () => {
+      await fs.writeFile(
+        "/project/platform.krs",
+        `import "team-ec.krs"
+import "team-payment.krs"`,
+      );
+      await fs.writeFile(
+        "/project/team-ec.krs",
+        `system ECPlatform {
+  service OrderService
+}`,
+      );
+      await fs.writeFile(
+        "/project/team-payment.krs",
+        `system ECPlatform {
+  service PaymentService
+}`,
+      );
+
+      const result = await resolver.resolve("/project/platform.krs");
+      expect(result.diagnostics.filter((d) => d.severity === "error")).toHaveLength(0);
+
+      const ecSystem = result.krsFile.systems.find((s) => s.id === "ECPlatform");
+      expect(ecSystem).toBeDefined();
+      const childIds = ecSystem!.children.map((c) => c.id);
+      expect(childIds).toContain("OrderService");
+      expect(childIds).toContain("PaymentService");
+    });
+
+    it("merges edges from same-named system across files", async () => {
+      await fs.writeFile(
+        "/project/platform.krs",
+        `import "team-ec.krs"
+import "team-payment.krs"`,
+      );
+      await fs.writeFile(
+        "/project/team-ec.krs",
+        `system ECPlatform {
+  service OrderService
+  OrderService -> PaymentService
+}`,
+      );
+      await fs.writeFile(
+        "/project/team-payment.krs",
+        `system ECPlatform {
+  service PaymentService
+}`,
+      );
+
+      const result = await resolver.resolve("/project/platform.krs");
+      expect(result.diagnostics.filter((d) => d.severity === "error")).toHaveLength(0);
+
+      const ecSystem = result.krsFile.systems.find((s) => s.id === "ECPlatform");
+      expect(ecSystem).toBeDefined();
+      expect(ecSystem!.edges).toContainEqual(
+        expect.objectContaining({ from: "OrderService", to: "PaymentService" }),
+      );
+    });
+
+    it("merges different systems from the imported file", async () => {
+      await fs.writeFile(
+        "/project/index.krs",
+        `import "services.krs"`,
+      );
+      await fs.writeFile(
+        "/project/services.krs",
+        `system SystemA {
+  service SvcA
+}
+system SystemB {
+  service SvcB
+}`,
+      );
+
+      const result = await resolver.resolve("/project/index.krs");
+      expect(result.diagnostics.filter((d) => d.severity === "error")).toHaveLength(0);
+      expect(result.krsFile.systems).toHaveLength(2);
+      const ids = result.krsFile.systems.map((s) => s.id);
+      expect(ids).toContain("SystemA");
+      expect(ids).toContain("SystemB");
+    });
+
+    it("reports error for duplicate node ID in same-named system", async () => {
+      await fs.writeFile(
+        "/project/index.krs",
+        `import "a.krs"
+import "b.krs"`,
+      );
+      await fs.writeFile(
+        "/project/a.krs",
+        `system MySystem {
+  service Duplicate
+}`,
+      );
+      await fs.writeFile(
+        "/project/b.krs",
+        `system MySystem {
+  service Duplicate
+}`,
+      );
+
+      const result = await resolver.resolve("/project/index.krs");
+      expect(result.diagnostics).toContainEqual(
+        expect.objectContaining({
+          severity: "error",
+          message: expect.stringContaining('Duplicate node ID "Duplicate"'),
+        }),
+      );
+    });
+
+    it("warns for top-level service declared outside any system block (Case B)", async () => {
+      await fs.writeFile(
+        "/project/index.krs",
+        `import "services.krs"`,
+      );
+      await fs.writeFile(
+        "/project/services.krs",
+        `service StandaloneService
+
+system MySystem {
+  service OtherService
+}`,
+      );
+
+      const result = await resolver.resolve("/project/index.krs");
+      expect(result.diagnostics).toContainEqual(
+        expect.objectContaining({
+          severity: "warning",
+          message: expect.stringContaining(
+            '"StandaloneService" is declared outside any system block',
+          ),
+        }),
+      );
+      // OtherService should be merged without warning
+      const sys = result.krsFile.systems.find((s) => s.id === "MySystem");
+      expect(sys).toBeDefined();
+      expect(sys!.children.map((c) => c.id)).toContain("OtherService");
+    });
+
+    it("merges deploy blocks from wildcard import", async () => {
+      await fs.writeFile(
+        "/project/index.krs",
+        `import "infra.krs"`,
+      );
+      await fs.writeFile(
+        "/project/infra.krs",
+        `deploy Production {
+  oci OrderService {
+    image "order:latest"
+  }
+}`,
+      );
+
+      const result = await resolver.resolve("/project/index.krs");
+      expect(result.diagnostics.filter((d) => d.severity === "error")).toHaveLength(0);
+      expect(result.krsFile.deploys).toHaveLength(1);
+      expect(result.krsFile.deploys[0].id).toBe("Production");
+    });
+
+    it("merges same-named deploy blocks from wildcard import", async () => {
+      await fs.writeFile(
+        "/project/index.krs",
+        `import "ec.krs"
+import "payment.krs"`,
+      );
+      await fs.writeFile(
+        "/project/ec.krs",
+        `deploy Production {
+  oci OrderService {
+    image "order:latest"
+  }
+}`,
+      );
+      await fs.writeFile(
+        "/project/payment.krs",
+        `deploy Production {
+  oci PaymentService {
+    image "payment:latest"
+  }
+}`,
+      );
+
+      const result = await resolver.resolve("/project/index.krs");
+      expect(result.diagnostics.filter((d) => d.severity === "error")).toHaveLength(0);
+      expect(result.krsFile.deploys).toHaveLength(1);
+      expect(result.krsFile.deploys[0].nodes).toHaveLength(2);
+      const nodeIds = result.krsFile.deploys[0].nodes.map((n) => n.id);
+      expect(nodeIds).toContain("OrderService");
+      expect(nodeIds).toContain("PaymentService");
+    });
+
+    it("resolves two-pass edge: edge references service defined in later-loaded file", async () => {
+      await fs.writeFile(
+        "/project/platform.krs",
+        `import "team-ec.krs"
+import "team-payment.krs"`,
+      );
+      // OrderService references PaymentService which is in the second imported file
+      await fs.writeFile(
+        "/project/team-ec.krs",
+        `system ECPlatform {
+  service OrderService
+  OrderService -> PaymentService
+}`,
+      );
+      await fs.writeFile(
+        "/project/team-payment.krs",
+        `system ECPlatform {
+  service PaymentService
+}`,
+      );
+
+      const result = await resolver.resolve("/project/platform.krs");
+      // No "not found" error for PaymentService — two-pass ensures all files are loaded first
+      expect(result.diagnostics.filter((d) => d.severity === "error")).toHaveLength(0);
+      const ecSystem = result.krsFile.systems.find((s) => s.id === "ECPlatform");
+      expect(ecSystem!.children.map((c) => c.id)).toContain("PaymentService");
+    });
+  });
 });
