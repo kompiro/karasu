@@ -62,3 +62,8 @@ Open in the karasu web app or VSCode Extension — paste into the editor.
 
 **Multi-file** (05-multifile, 06-deploy):
 Use VSCode Extension with the folder open, or run `karasu serve <directory>` in server mode.
+
+## GitHub Actions
+
+`github-actions/` contains workflow templates for automatically generating SVG diagrams in CI.
+See [`github-actions/README.md`](github-actions/README.md) or the full guide at [`docs/github-actions.md`](../docs/github-actions.md).
