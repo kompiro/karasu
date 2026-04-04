@@ -27,12 +27,20 @@ A payment processing platform with multiple external services and a rich deploy 
 
 ### `migration/`
 
-A system mid-migration from a legacy monolith to microservices. Demonstrates `@deprecated`, `@migration-target`, and `@experimental` annotations, and intentionally triggers a **domain drift warning** (same domain id in two services within the same system).
+A system mid-migration from a legacy monolith to microservices. Demonstrates `@deprecated`, `@migration_target`, and `@experimental` annotations, and intentionally triggers a **domain drift warning** (same domain id in two services within the same system).
+
+### `deploy/`
+
+A retail platform focused on the **deploy diagram**. Shows all artifact types side by side: `war`, `jar`, `oci`, `lambda`, `function`, `assets`, `job` (with and without schedule), and `artifact` (catch-all). Useful as a syntax reference for the physical structure view.
+
+### `org/`
+
+An EC platform with a **full organization diagram**. Shows `organization`, nested `team`, `member`, `owns`, and contact properties (`slack`, `github`). Demonstrates sub-teams and team ownership of services and domains.
 
 ## How to use
 
-**Single file** (01–04, hr-tool, migration, payment-platform/system.krs):
+**Single file** (01–04, hr-tool, migration, payment-platform/system.krs, deploy/system.krs, org/system.krs):
 Open in the karasu web app or VSCode Extension — paste into the editor.
 
-**Multi-file** (05-multifile, 06-deploy, payment-platform):
+**Multi-file** (05-multifile, 06-deploy, payment-platform, deploy/, org/):
 Use VSCode Extension with the folder open, or run `karasu serve <directory>` in server mode.

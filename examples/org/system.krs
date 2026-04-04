@@ -1,0 +1,31 @@
+// org/system.krs
+// Logical structure — referenced by org.krs via team.owns
+// The system view that org.krs assigns team ownership to.
+
+system ECPlatform {
+  label "ECプラットフォーム"
+
+  service ECommerce {
+    label "ECサイト"
+    domain Order { label "受注" }
+    domain Catalog { label "商品カタログ" }
+  }
+
+  service Payment {
+    label "決済サービス"
+    domain Billing { label "請求" }
+  }
+
+  service Inventory {
+    label "在庫管理"
+    domain Stock { label "在庫" }
+  }
+
+  service Platform {
+    label "プラットフォーム基盤"
+    description "認証・ロギング・CI/CDなど横断的な基盤"
+  }
+
+  ECommerce -> Payment   "決済を処理する"
+  ECommerce -> Inventory "在庫を確認する"
+}

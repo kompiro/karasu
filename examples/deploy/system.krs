@@ -1,0 +1,43 @@
+// deploy/system.krs
+// Logical structure — referenced by deploy.krs via realizes
+// Minimal system view that serves as the basis for the deploy diagram.
+
+system RetailPlatform {
+  label "小売プラットフォーム"
+
+  service Storefront {
+    label "ストアフロント"
+    description "顧客向けショッピングUI（SPA）"
+  }
+
+  service OrderAPI {
+    label "注文API"
+    description "注文の受付・管理"
+  }
+
+  service PaymentService {
+    label "決済サービス"
+    description "決済処理・返金"
+  }
+
+  service InventoryService {
+    label "在庫サービス"
+    description "在庫の管理・引き当て"
+  }
+
+  service ReportingService {
+    label "レポーティングサービス"
+    description "売上・在庫レポートの集計"
+  }
+
+  service LegacyERP {
+    label "レガシーERPシステム"
+    description "旧来の基幹システム（メインフレーム）"
+  }
+
+  Storefront       ->  OrderAPI         "注文を送信する"
+  OrderAPI         ->  PaymentService   "決済を処理する"
+  OrderAPI         ->  InventoryService "在庫を引き当てる"
+  OrderAPI        --> ReportingService  "注文データを連携する"
+  InventoryService --> LegacyERP        "在庫マスタを同期する"
+}

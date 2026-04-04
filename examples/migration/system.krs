@@ -1,5 +1,5 @@
 // migration/system.krs
-// Demonstrates: @deprecated, @migration-target, @experimental annotations
+// Demonstrates: @deprecated, @migration_target, @experimental annotations
 // Also intentionally triggers a domain drift WARNING:
 //   domain "Order" appears in both LegacyMonolith and OrderService within the same system.
 //
@@ -31,8 +31,8 @@ system ECommercePlatform {
     }
   }
 
-  // @migration-target: the new service that will take over from LegacyMonolith
-  service OrderService @migration-target {
+  // @migration_target: the new service that will take over from LegacyMonolith
+  service OrderService @migration_target {
     label "注文サービス"
     description "受注ドメインを切り出したマイクロサービス"
 

@@ -23,6 +23,7 @@ C4 Modelに触発されつつも独自の語彙を持ち、論理構造と物理
 | 詳細技術設計 — どう作るか（制約・代替案・実装方針） | `docs/design/`                  |
 | 受け入れテスト基準                                  | `docs/acceptance/`              |
 | 開発プロセス（ドキュメントライフサイクル・PR フロー） | `docs/process.md`               |
+| サンプル `.krs` ファイル（チュートリアル・AT用）     | `examples/`                     |
 
 ---
 
@@ -34,6 +35,7 @@ C4 Modelに触発されつつも独自の語彙を持ち、論理構造と物理
 karasu/
 ├── CLAUDE.md
 ├── docs/
+├── examples/          ← サンプル .krs ファイル（Getting Started・テーマ別シナリオ）
 ├── packages/
 │   ├── core/          ← パーサー・スタイル解決・SVGレンダラー（Pure TS）
 │   └── app/           ← Vite + React のプレビューUI
