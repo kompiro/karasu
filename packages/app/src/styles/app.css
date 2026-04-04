@@ -751,6 +751,82 @@ body,
   grid-column: 1 / -1;
 }
 
+/* ── Sidebar Toggle Button ─────────────────────────────────────── */
+.sidebar-toggle {
+  grid-row: 2;
+  grid-column: 1;
+  align-self: start;
+  justify-self: end;
+  position: relative;
+  z-index: 10;
+  background: var(--bg-raised);
+  color: var(--text-muted);
+  border: 1px solid var(--border-default);
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+  padding: 6px 8px;
+  font-size: 11px;
+  font-weight: 500;
+  font-family: var(--font-ui);
+  cursor: pointer;
+  margin-top: 8px;
+  transition:
+    background 0.15s,
+    color 0.15s,
+    border-color 0.15s;
+  white-space: nowrap;
+}
+
+.sidebar-toggle:hover {
+  background: var(--bg-overlay);
+  color: var(--text-secondary);
+  border-color: var(--border-strong);
+}
+
+/* When sidebar is collapsed, the toggle sits at column 1 (now 0-width),
+   so we move it to column 2 and align to start */
+.app-shell.has-sidebar.sidebar-collapsed .sidebar-toggle {
+  grid-column: 2;
+  justify-self: start;
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+}
+
+/* ── Sidebar Collapsed ─────────────────────────────────────────── */
+.app-shell.has-sidebar.sidebar-collapsed {
+  grid-template-columns: 0 1fr 1fr;
+}
+
+.app-shell.has-sidebar.sidebar-collapsed .file-tree,
+.app-shell.has-sidebar.sidebar-collapsed .project-selector {
+  display: none;
+}
+
+/* ── Preview Focused (fullscreen preview) ──────────────────────── */
+.app-shell.preview-focused {
+  grid-template-columns: 1fr;
+  grid-template-rows: 1fr auto;
+}
+
+.app-shell.preview-focused .editor-pane {
+  display: none;
+}
+
+.app-shell.preview-focused .preview-column {
+  grid-row: 1;
+  grid-column: 1;
+}
+
+.app-shell.preview-focused .warning-panel {
+  grid-row: 2;
+  grid-column: 1;
+}
+
+/* With sidebar + preview focused: hide sidebar too, collapse to single column */
+.app-shell.has-sidebar.preview-focused .file-tree,
+.app-shell.has-sidebar.preview-focused .project-selector,
+.app-shell.has-sidebar.preview-focused .sidebar-toggle {
+  display: none;
+}
+
 /* ── OPFS Banner ────────────────────────────────────────────────── */
 .opfs-banner {
   grid-column: 1 / -1;
