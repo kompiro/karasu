@@ -20,6 +20,8 @@ interface PreviewPaneProps {
   highlightedNodeId?: string | null;
   /** Called when a node interaction clears the cross-navigation highlight */
   onClearHighlight?: () => void;
+  /** Called when user clicks "Jump to editor" in the detail panel */
+  onJumpToEditor?: (nodeId: string) => void;
 }
 
 interface DetailPanelState {
@@ -42,6 +44,7 @@ export function PreviewPane({
   onOwnedServiceClick,
   highlightedNodeId,
   onClearHighlight,
+  onJumpToEditor,
 }: PreviewPaneProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const svgRef = useRef<HTMLDivElement>(null);
@@ -278,6 +281,7 @@ export function PreviewPane({
             onClose={() => setDetailPanel(null)}
             onNavigateToDeploy={onDeployButtonClick}
             onNavigateToOrg={onTeamButtonClick}
+            onJumpToEditor={onJumpToEditor ? () => onJumpToEditor(detailPanel.nodeId) : undefined}
           />
         )}
       </div>

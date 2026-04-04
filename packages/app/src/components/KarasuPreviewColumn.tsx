@@ -78,6 +78,8 @@ interface KarasuPreviewColumnProps {
   previewFocused: boolean;
   /** Toggle preview focus mode */
   onPreviewFocusToggle: () => void;
+  /** Called when user clicks "Jump to editor" in the detail panel */
+  onJumpToEditor?: (nodeId: string) => void;
 }
 
 export function KarasuPreviewColumn({
@@ -102,6 +104,7 @@ export function KarasuPreviewColumn({
   orgDrillDownSvg,
   previewFocused,
   onPreviewFocusToggle,
+  onJumpToEditor,
 }: KarasuPreviewColumnProps) {
   const [refOpen, setRefOpen] = useState(false);
   const [exportMenuOpen, setExportMenuOpen] = useState(false);
@@ -281,6 +284,7 @@ export function KarasuPreviewColumn({
                 ? orgView.onClearHighlight
                 : undefined
           }
+          onJumpToEditor={onJumpToEditor}
         />
       )}
       <WarningPanel

@@ -14,6 +14,8 @@ interface NodeDetailPanelProps {
   onNavigateToDeploy?: (serviceId: string) => void;
   /** Called when user navigates to org view from this panel */
   onNavigateToOrg?: (teamId: string) => void;
+  /** Called when user clicks "Jump to editor" to navigate Monaco Editor to this node's source line */
+  onJumpToEditor?: () => void;
 }
 
 // Maps node kind to the registered icon name (mirrors ICON_THEME_STYLE_SOURCE).
@@ -49,6 +51,7 @@ export function NodeDetailPanel({
   onClose,
   onNavigateToDeploy,
   onNavigateToOrg,
+  onJumpToEditor,
 }: NodeDetailPanelProps) {
   const descriptionHtml = useMemo(() => {
     if (!metadata.description) return "";
@@ -99,7 +102,7 @@ export function NodeDetailPanel({
 
       {metadata.links.length > 0 && (
         <div className="node-detail-section">
-          <div className="node-detail-section-title">🔗 リンク</div>
+          <div className="node-detail-section-title">🔗 Links</div>
           <ul className="node-detail-links">
             {metadata.links.map((link) => (
               <li key={link.url}>
@@ -156,6 +159,14 @@ export function NodeDetailPanel({
             }}
           >
             🚀 Deploy 図で確認 →
+          </button>
+        </div>
+      )}
+
+      {onJumpToEditor && (
+        <div className="node-detail-section">
+          <button className="node-detail-nav-btn" onClick={onJumpToEditor}>
+            ↗ Jump to editor
           </button>
         </div>
       )}
