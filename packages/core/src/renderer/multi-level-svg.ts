@@ -21,13 +21,13 @@ export interface ExportLevel {
  * Convert a ViewPath to a CSS-safe fragment ID.
  * Uses "__" as separator to avoid collision with hyphens in quoted node IDs.
  *
- * [] → "krs-view-root"
- * ["ECommerce"] → "krs-view-root__ECommerce"
- * ["ECommerce", "Order"] → "krs-view-root__ECommerce__Order"
+ * ([], "system") → "krs-system-root"
+ * (["ECommerce"], "system") → "krs-system-root__ECommerce"
+ * (["ECommerce", "Order"], "system") → "krs-system-root__ECommerce__Order"
  */
-export function buildLevelId(path: ViewPath): string {
-  if (path.length === 0) return "krs-view-root";
-  return "krs-view-root__" + path.join("__");
+export function buildLevelId(path: ViewPath, viewPrefix: string): string {
+  if (path.length === 0) return `krs-${viewPrefix}-root`;
+  return `krs-${viewPrefix}-root__` + path.join("__");
 }
 
 /**

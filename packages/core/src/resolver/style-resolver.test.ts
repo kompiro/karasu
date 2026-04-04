@@ -2,7 +2,14 @@ import { describe, it, expect } from "vitest";
 import { resolveStyles } from "./style-resolver.js";
 import { analyze } from "./warnings.js";
 import { getBuiltinStyleSheet } from "../builtins/default-style.js";
-import type { KrsNode, KrsFile, DeployNode, OrganizationBlock, TeamNode } from "../types/ast.js";
+import type {
+  KrsNode,
+  KrsFile,
+  DeployNode,
+  OrganizationBlock,
+  TeamNode,
+  MemberNode,
+} from "../types/ast.js";
 import type { StyleSheet, StyleRule } from "../types/style.js";
 import type { SourceRange } from "../types/tokens.js";
 
@@ -462,10 +469,21 @@ describe("resolveStyles with deployNodes", () => {
 describe("resolveStyles with organizations", () => {
   function makeTeam(id: string, members: string[] = [], subTeams: TeamNode[] = []): TeamNode {
     return {
+      kind: "team",
       id,
       properties: { links: [], owns: [] },
-      members: members.map((mid) => ({ id: mid, properties: { links: [] }, loc: dummyLoc })),
-      teams: subTeams,
+      children: [
+        ...members.map(
+          (mid): MemberNode => ({
+            kind: "member",
+            id: mid,
+            properties: { links: [] },
+            children: [],
+            loc: dummyLoc,
+          }),
+        ),
+        ...subTeams,
+      ],
       loc: dummyLoc,
     };
   }

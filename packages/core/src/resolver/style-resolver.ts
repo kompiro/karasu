@@ -153,18 +153,21 @@ interface OrgNodeDescriptor {
 function collectOrgNodes(organizations: OrganizationBlock[]): OrgNodeDescriptor[] {
   const nodes: OrgNodeDescriptor[] = [];
 
-  function collectTeams(teams: TeamNode[]): void {
-    for (const team of teams) {
-      nodes.push({ id: team.id, kind: "team" });
-      for (const member of team.members) {
-        nodes.push({ id: member.id, kind: "member" });
+  function walk(team: TeamNode): void {
+    nodes.push({ id: team.id, kind: "team" });
+    for (const child of team.children) {
+      if (child.kind === "member") {
+        nodes.push({ id: child.id, kind: "member" });
+      } else {
+        walk(child);
       }
-      collectTeams(team.teams);
     }
   }
 
   for (const org of organizations) {
-    collectTeams(org.teams);
+    for (const team of org.teams) {
+      walk(team);
+    }
   }
 
   return nodes;

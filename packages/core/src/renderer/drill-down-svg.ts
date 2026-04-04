@@ -1,8 +1,8 @@
-import type { KrsNode, KrsFile, TeamNode, OrganizationBlock, Diagnostic } from "../types/ast.js";
-import type { ResolvedStyles, StyleSheet } from "../types/style.js";
+import type { KrsFile, TeamNode, HierarchyNode, Diagnostic } from "../types/ast.js";
+import type { StyleSheet } from "../types/style.js";
 import type { DisplayMode } from "./layout.js";
-import { extractView, type ViewSlice } from "../view/view-extract.js";
-import { extractOrgView, type OrgViewSlice } from "../view/org-view-extract.js";
+import { extractView } from "../view/view-extract.js";
+import { extractOrgView } from "../view/org-view-extract.js";
 import { render, sanitizeId } from "./svg-renderer.js";
 import { renderOrgView } from "./org-renderer.js";
 import { escapeXml } from "./svg-builder.js";
@@ -14,15 +14,15 @@ import "../renderer/shapes.js"; // ensure built-in shapes are registered
 
 const DRILL_DOWN_CSS = `
   .krs-view { display: none; }
-  svg:not(:has(.krs-view:target)) #krs-view-root { display: block; }
+  svg:not(:has(.krs-view:target)) .krs-root-level { display: block; }
   .krs-view:target { display: block; }
   .krs-back-button rect { fill: #334155; stroke: #64748B; stroke-width: 1; }
   .krs-back-button text { fill: #E2E8F0; font-family: sans-serif; font-size: 13px; }
   .krs-back-button { cursor: pointer; }
 `.trim();
 
-function renderBackButton(parentViewId: string): string {
-  return `<a href="#krs-view-${parentViewId}" tabindex="0"><g class="krs-back-button" transform="translate(20, 10)"><rect x="0" y="0" width="80" height="26" rx="4"/><text x="40" y="17" text-anchor="middle">&#x2190; Back</text></g></a>`;
+function renderBackButton(parentViewId: string, viewPrefix: string): string {
+  return `<a href="#krs-${viewPrefix}-${parentViewId}" tabindex="0"><g class="krs-back-button" transform="translate(20, 10)"><rect x="0" y="0" width="80" height="26" rx="4"/><text x="40" y="17" text-anchor="middle">&#x2190; Back</text></g></a>`;
 }
 
 interface SvgParts {
@@ -71,88 +71,50 @@ function buildStyles(
   return { sheets, diagnostics };
 }
 
-// ─── Adapter interface & generic collectors ───────────────────────────────
+// ─── Callbacks interface & generic collectors ─────────────────────────────
 
-interface DrillDownAdapter<TSource, TSlice, TChild> {
-  extractSlice(source: TSource, path: string[]): TSlice;
-  hasContent(slice: TSlice): boolean;
-  getChildren(slice: TSlice): TChild[];
-  isDrillable(child: TChild): boolean;
-  childId(child: TChild): string;
-  childLabel(child: TChild): string;
-  render(slice: TSlice, childLevelLinks?: Map<string, string>): string;
+interface DrillDownCallbacks<S> {
+  getSlice(path: string[]): S;
+  hasContent(slice: S): boolean;
+  getChildren(slice: S): HierarchyNode[];
+  render(slice: S, childLevelLinks?: Map<string, string>): string;
 }
 
-function collectDrillDownLevelsGeneric<TSource, TSlice, TChild>(
-  adapter: DrillDownAdapter<TSource, TSlice, TChild>,
-  source: TSource,
+function collectDrillDownLevelsGeneric<S>(
+  callbacks: DrillDownCallbacks<S>,
   path: string[],
   viewId: string,
   parentViewId: string | null,
   levels: string[],
+  viewPrefix: string,
 ): void {
-  const slice = adapter.extractSlice(source, path);
-  if (!adapter.hasContent(slice)) return;
+  const slice = callbacks.getSlice(path);
+  if (!callbacks.hasContent(slice)) return;
 
-  const children = adapter.getChildren(slice);
-  const drillable = children.filter((c) => adapter.isDrillable(c));
+  const children = callbacks.getChildren(slice);
+  const drillable = children.filter((c) => c.children.length > 0);
   const childLevelLinks = new Map(
-    drillable.map((c) => [adapter.childId(c), `krs-view-${sanitizeId(adapter.childId(c))}`]),
+    drillable.map((c) => [c.id, `krs-${viewPrefix}-${sanitizeId(c.id)}`]),
   );
 
-  const svg = adapter.render(slice, childLevelLinks);
+  const svg = callbacks.render(slice, childLevelLinks);
   const { viewBox, innerContent } = extractSvgParts(svg);
 
-  const backButton = parentViewId !== null ? renderBackButton(parentViewId) : "";
+  const backButton = parentViewId !== null ? renderBackButton(parentViewId, viewPrefix) : "";
   const innerSvg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${viewBox}" width="100%" height="100%">${backButton}${innerContent}</svg>`;
-  levels.push(`<g id="krs-view-${viewId}" class="krs-view">${innerSvg}</g>`);
+  const cssClass = parentViewId === null ? "krs-view krs-root-level" : "krs-view";
+  levels.push(`<g id="krs-${viewPrefix}-${viewId}" class="${cssClass}">${innerSvg}</g>`);
 
   for (const child of drillable) {
     collectDrillDownLevelsGeneric(
-      adapter,
-      source,
-      [...path, adapter.childId(child)],
-      sanitizeId(adapter.childId(child)),
+      callbacks,
+      [...path, child.id],
+      sanitizeId(child.id),
       viewId,
       levels,
+      viewPrefix,
     );
   }
-}
-
-// ─── Adapter factories ────────────────────────────────────────────────────
-
-function createSystemAdapter(
-  systems: KrsNode[],
-  ownerIndex: Map<string, string>,
-  styles: ResolvedStyles,
-  displayMode: DisplayMode | undefined,
-  unassignedDomains: KrsNode[] = [],
-): DrillDownAdapter<KrsNode[], ViewSlice, KrsNode> {
-  return {
-    extractSlice: (source, path) => extractView(source, path, unassignedDomains),
-    hasContent: (slice) => slice.childNodes.length > 0,
-    getChildren: (slice) => slice.childNodes,
-    isDrillable: (child) => child.children.length > 0,
-    childId: (child) => child.id,
-    childLabel: (child) => child.label ?? child.id,
-    render: (slice, links) => render(slice, styles, undefined, ownerIndex, displayMode, links),
-  };
-}
-
-function createOrgAdapter(
-  organizations: OrganizationBlock[],
-  styles: ResolvedStyles,
-  displayMode: DisplayMode | undefined,
-): DrillDownAdapter<OrganizationBlock[], OrgViewSlice, TeamNode> {
-  return {
-    extractSlice: (source, path) => extractOrgView(source, path),
-    hasContent: (slice) => slice.focusedTeam !== null || slice.teams.length > 0,
-    getChildren: (slice) => (slice.focusedTeam !== null ? slice.focusedTeam.teams : slice.teams),
-    isDrillable: (t) => t.teams.length > 0 || t.members.length > 0,
-    childId: (t) => t.id,
-    childLabel: (t) => t.label ?? t.id,
-    render: (slice, links) => renderOrgView(slice, styles, displayMode, links),
-  };
 }
 
 // ─── Drill-down SVG (CSS :target navigation) ───────────────────────────────
@@ -177,16 +139,22 @@ export function buildDrillDownSvg(
 
   const { sheets, diagnostics } = buildStyles(displayMode, styleSource);
   const styles = resolveStyles(krsFile.systems, sheets, [], undefined, unassignedDomains);
-  const adapter = createSystemAdapter(
-    krsFile.systems,
-    krsFile.ownerIndex ?? new Map(),
-    styles,
-    displayMode,
-    unassignedDomains,
-  );
+  const ownerIndex = krsFile.ownerIndex ?? new Map();
 
   const levels: string[] = [];
-  collectDrillDownLevelsGeneric(adapter, krsFile.systems, [], "root", null, levels);
+  collectDrillDownLevelsGeneric(
+    {
+      getSlice: (path) => extractView(krsFile.systems, path, unassignedDomains),
+      hasContent: (slice) => slice.childNodes.length > 0,
+      getChildren: (slice) => slice.childNodes,
+      render: (slice, links) => render(slice, styles, undefined, ownerIndex, displayMode, links),
+    },
+    [],
+    "root",
+    null,
+    levels,
+    "system",
+  );
 
   return {
     svg: `<svg xmlns="http://www.w3.org/2000/svg" width="100%" height="100%"><style>${DRILL_DOWN_CSS}</style>${levels.join("")}</svg>`,
@@ -244,28 +212,26 @@ function assembleAllLayersSvg(levels: AllLayersLevel[]): string {
   return `<svg xmlns="http://www.w3.org/2000/svg" width="${maxWidth}" height="${yOffset}" style="background:${ALL_LAYERS_BG}">${parts.join("")}</svg>`;
 }
 
-function collectAllLayersLevelsGeneric<TSource, TSlice, TChild>(
-  adapter: DrillDownAdapter<TSource, TSlice, TChild>,
-  source: TSource,
+function collectAllLayersLevelsGeneric<S>(
+  callbacks: DrillDownCallbacks<S>,
   path: string[],
   pathLabels: string[],
   levels: AllLayersLevel[],
 ): void {
-  const slice = adapter.extractSlice(source, path);
-  if (!adapter.hasContent(slice)) return;
+  const slice = callbacks.getSlice(path);
+  if (!callbacks.hasContent(slice)) return;
 
-  const svg = adapter.render(slice);
+  const svg = callbacks.render(slice);
   const { viewBox, innerContent, width, height } = extractSvgParts(svg);
 
   levels.push({ pathLabels, viewBox, width, height, innerContent });
 
-  const children = adapter.getChildren(slice);
+  const children = callbacks.getChildren(slice);
   for (const child of children) {
     collectAllLayersLevelsGeneric(
-      adapter,
-      source,
-      [...path, adapter.childId(child)],
-      [...pathLabels, adapter.childLabel(child)],
+      callbacks,
+      [...path, child.id],
+      [...pathLabels, child.label ?? child.id],
       levels,
     );
   }
@@ -293,17 +259,20 @@ export function buildAllLayersSvg(
   const styles = resolveStyles(krsFile.systems, sheets, [], undefined, unassignedDomains);
   const systemNode = krsFile.systems[0];
   const rootLabel = systemNode.label ?? systemNode.id;
-
-  const adapter = createSystemAdapter(
-    krsFile.systems,
-    krsFile.ownerIndex ?? new Map(),
-    styles,
-    displayMode,
-    unassignedDomains,
-  );
+  const ownerIndex = krsFile.ownerIndex ?? new Map();
 
   const levels: AllLayersLevel[] = [];
-  collectAllLayersLevelsGeneric(adapter, krsFile.systems, [], [rootLabel], levels);
+  collectAllLayersLevelsGeneric(
+    {
+      getSlice: (path) => extractView(krsFile.systems, path, unassignedDomains),
+      hasContent: (slice) => slice.childNodes.length > 0,
+      getChildren: (slice) => slice.childNodes,
+      render: (slice, links) => render(slice, styles, undefined, ownerIndex, displayMode, links),
+    },
+    [],
+    [rootLabel],
+    levels,
+  );
 
   return { svg: assembleAllLayersSvg(levels), diagnostics };
 }
@@ -329,10 +298,24 @@ export function buildDrillDownSvgOrg(
 
   const { sheets, diagnostics } = buildStyles(displayMode, styleSource);
   const styles = resolveStyles(krsFile.systems, sheets, [], krsFile.organizations);
-  const adapter = createOrgAdapter(krsFile.organizations, styles, displayMode);
 
   const levels: string[] = [];
-  collectDrillDownLevelsGeneric(adapter, krsFile.organizations, [], "root", null, levels);
+  collectDrillDownLevelsGeneric(
+    {
+      getSlice: (path) => extractOrgView(krsFile.organizations, path),
+      hasContent: (slice) => slice.focusedTeam !== null || slice.teams.length > 0,
+      getChildren: (slice) =>
+        slice.focusedTeam !== null
+          ? slice.focusedTeam.children.filter((c): c is TeamNode => c.kind === "team")
+          : slice.teams,
+      render: (slice, links) => renderOrgView(slice, styles, displayMode, links),
+    },
+    [],
+    "root",
+    null,
+    levels,
+    "org",
+  );
 
   return {
     svg: `<svg xmlns="http://www.w3.org/2000/svg" width="100%" height="100%"><style>${DRILL_DOWN_CSS}</style>${levels.join("")}</svg>`,
@@ -363,10 +346,22 @@ export function buildAllLayersSvgOrg(
   const { sheets, diagnostics } = buildStyles(displayMode, styleSource);
   const styles = resolveStyles(krsFile.systems, sheets, [], organizations);
   const rootLabel = organizations[0].label ?? organizations[0].id;
-  const adapter = createOrgAdapter(organizations, styles, displayMode);
 
   const levels: AllLayersLevel[] = [];
-  collectAllLayersLevelsGeneric(adapter, organizations, [], [rootLabel], levels);
+  collectAllLayersLevelsGeneric(
+    {
+      getSlice: (path) => extractOrgView(organizations, path),
+      hasContent: (slice) => slice.focusedTeam !== null || slice.teams.length > 0,
+      getChildren: (slice) =>
+        slice.focusedTeam !== null
+          ? slice.focusedTeam.children.filter((c): c is TeamNode => c.kind === "team")
+          : slice.teams,
+      render: (slice, links) => renderOrgView(slice, styles, displayMode, links),
+    },
+    [],
+    [rootLabel],
+    levels,
+  );
 
   if (levels.length === 0) {
     return {

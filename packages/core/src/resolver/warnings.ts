@@ -165,7 +165,7 @@ function detectInvalidOwns(file: KrsFile): Warning[] {
           });
         }
       }
-      checkTeams(team.teams);
+      checkTeams(team.children.filter((c): c is TeamNode => c.kind === "team"));
     }
   }
 

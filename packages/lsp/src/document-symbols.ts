@@ -65,16 +65,19 @@ function deployBlockToSymbol(block: DeployBlock): DocumentSymbol {
 function teamToSymbol(team: TeamNode): DocumentSymbol {
   const range = toRange(team.loc);
   const displayName = team.label ?? team.id;
-  const memberSymbols: DocumentSymbol[] = team.members.map((m) => {
-    const mRange = toRange(m.loc);
-    const mDisplay = m.label ?? m.id;
-    return DocumentSymbol.create(
-      mDisplay,
-      mDisplay !== m.id ? m.id : undefined,
-      SymbolKind.Field,
-      mRange,
-      mRange,
-    );
+  const childSymbols: DocumentSymbol[] = team.children.map((child) => {
+    if (child.kind === "member") {
+      const mRange = toRange(child.loc);
+      const mDisplay = child.label ?? child.id;
+      return DocumentSymbol.create(
+        mDisplay,
+        mDisplay !== child.id ? child.id : undefined,
+        SymbolKind.Field,
+        mRange,
+        mRange,
+      );
+    }
+    return teamToSymbol(child);
   });
   return DocumentSymbol.create(
     displayName,
@@ -82,7 +85,7 @@ function teamToSymbol(team: TeamNode): DocumentSymbol {
     SymbolKind.Class,
     range,
     range,
-    [...memberSymbols, ...team.teams.map(teamToSymbol)],
+    childSymbols,
   );
 }
 

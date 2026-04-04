@@ -11,7 +11,7 @@ import { useViewSvg } from "../hooks/useViewSvg.js";
 import { useStyleSource } from "../hooks/useStyleSource.js";
 
 import type { ReactNode } from "react";
-import type { KrsNode, DisplayMode } from "@karasu/core";
+import type { KrsNode, TeamNode, DisplayMode } from "@karasu/core";
 import type { ActiveView } from "../state/app-reducer.js";
 
 interface AppShellProps {
@@ -199,7 +199,7 @@ export function AppShell({ entryPath, sidebarContent, hideEditor, recompileRef }
         const team = teams.find((t) => t.id === segment);
         if (!team) break;
         items.push({ id: team.id, label: team.label ?? team.id });
-        teams = team.teams;
+        teams = team.children.filter((c): c is TeamNode => c.kind === "team");
       }
 
       return items;
