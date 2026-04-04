@@ -433,5 +433,25 @@ describe("KarasuPreviewColumn", () => {
         expect.stringContaining("drilldown"),
       );
     });
+
+    it("Export All Diagrams SVG is disabled when allViewsSvg is undefined", () => {
+      const props = makeProps({ activeView: "system", allViewsSvg: undefined });
+      const { getByRole, getByText } = render(<KarasuPreviewColumn {...props} />);
+      fireEvent.click(getByRole("button", { name: /SVG export options/ }));
+      expect(getByText("Export All Diagrams SVG").closest("button")).toHaveProperty(
+        "disabled",
+        true,
+      );
+    });
+
+    it("Export All Diagrams SVG calls onExportSvg with all-diagrams.svg filename", () => {
+      const onExportSvg = vi.fn();
+      const allViewsSvg = "<svg>all-views</svg>";
+      const props = makeProps({ activeView: "system", allViewsSvg, onExportSvg });
+      const { getByRole, getByText } = render(<KarasuPreviewColumn {...props} />);
+      fireEvent.click(getByRole("button", { name: /SVG export options/ }));
+      fireEvent.click(getByText("Export All Diagrams SVG"));
+      expect(onExportSvg).toHaveBeenCalledWith(allViewsSvg, "all-diagrams.svg");
+    });
   });
 });

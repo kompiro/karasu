@@ -73,6 +73,8 @@ interface KarasuPreviewColumnProps {
   drillDownSvg?: string;
   /** SVG with CSS :target navigation for org drill-down export */
   orgDrillDownSvg?: string;
+  /** Bundled SVG with all views (system/deploy/org) and CSS-only tab navigation */
+  allViewsSvg?: string;
 
   /** Whether the preview is in fullscreen focus mode */
   previewFocused: boolean;
@@ -100,6 +102,7 @@ export function KarasuPreviewColumn({
   orgAllLayersSvg,
   drillDownSvg,
   orgDrillDownSvg,
+  allViewsSvg,
   previewFocused,
   onPreviewFocusToggle,
 }: KarasuPreviewColumnProps) {
@@ -162,6 +165,13 @@ export function KarasuPreviewColumn({
     setExportMenuOpen(false);
   }
 
+  function handleExportAllDiagrams() {
+    if (allViewsSvg) {
+      onExportSvg(allViewsSvg, "all-diagrams.svg");
+    }
+    setExportMenuOpen(false);
+  }
+
   return (
     <div className="preview-column">
       <DiagramTabBar
@@ -218,6 +228,14 @@ export function KarasuPreviewColumn({
                 disabled={!drillDownAvailable}
               >
                 Export Drill-down SVG
+              </button>
+              <button
+                role="menuitem"
+                className="export-menu-item"
+                onClick={handleExportAllDiagrams}
+                disabled={!allViewsSvg}
+              >
+                Export All Diagrams SVG
               </button>
             </div>
           )}
