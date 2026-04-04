@@ -1,0 +1,35 @@
+// external-nodes.krs
+// Demonstrates: [external] tag on service and resource nodes.
+// External nodes represent components outside the system boundary.
+
+system ExternalSample {
+  label "External Nodes"
+
+  service OrderService {
+    label "Order Service"
+
+    domain OrderDomain {
+      label "Order Domain"
+
+      usecase PlaceOrder {
+        label "Place Order"
+
+        resource PaymentAPI [external] {
+          label "Payment API"
+          description "Third-party payment gateway outside our boundary."
+        }
+
+        resource InventoryDB {
+          label "Inventory DB"
+        }
+      }
+    }
+  }
+
+  service PaymentGateway [external] {
+    label "Payment Gateway"
+    description "External payment provider — not owned by this team."
+  }
+
+  OrderService -> PaymentGateway "charges card"
+}

@@ -1,0 +1,28 @@
+// domain-drift.krs
+// Demonstrates: domain drift warning — the same domain name appears under
+// two different services, which signals a potential cohesion problem.
+// Expected: 1 drift warning for "OrderDomain".
+
+system DriftSample {
+  label "Domain Drift Sample"
+
+  service OrderService {
+    label "Order Service"
+
+    domain OrderDomain {
+      label "Order Domain"
+      description "Drift: same domain name also appears in PaymentService."
+    }
+  }
+
+  service PaymentService {
+    label "Payment Service"
+
+    domain OrderDomain {
+      label "Order Domain"
+      description "Drift: same domain name also appears in OrderService."
+    }
+  }
+
+  OrderService -> PaymentService "process payment"
+}
