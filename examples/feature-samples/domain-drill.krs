@@ -1,0 +1,50 @@
+// domain-drill.krs
+// Demonstrates: full logical hierarchy — system → service → domain → usecase → resource.
+// Use this to verify drill-down rendering at every level.
+
+system ECommerce {
+  label "EC Platform"
+
+  service OrderService {
+    label "Order Service"
+    team "Order Team"
+
+    domain OrderDomain {
+      label "Order Domain"
+      team "Order Team"
+
+      usecase PlaceOrder {
+        label "Place Order"
+
+        resource OrderDB {
+          label "Order DB"
+          description "Primary database for order records."
+        }
+
+        resource PaymentAPI [external] {
+          label "Payment API"
+        }
+      }
+
+      usecase CancelOrder {
+        label "Cancel Order"
+
+        resource OrderDB {
+          label "Order DB"
+        }
+      }
+    }
+
+    domain ShippingDomain {
+      label "Shipping Domain"
+
+      usecase TrackShipment {
+        label "Track Shipment"
+
+        resource ShippingAPI [external] {
+          label "Shipping API"
+        }
+      }
+    }
+  }
+}

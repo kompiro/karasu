@@ -1,0 +1,35 @@
+// users.krs
+// Demonstrates: [human] and [ai] user nodes with role and description properties.
+
+system UserSample {
+  label "User Node Sample"
+
+  user Customer [human] {
+    label "Customer"
+    role "Places orders and tracks shipments"
+    description "A human user who interacts with the storefront."
+  }
+
+  user SupportAgent [human] {
+    label "Support Agent"
+    role "Handles customer inquiries"
+  }
+
+  user RecommendBot [ai] {
+    label "Recommendation Bot"
+    role "Generates personalised product recommendations"
+    description "An AI agent that analyses purchase history."
+  }
+
+  service Storefront {
+    label "Storefront"
+  }
+
+  service SupportPortal {
+    label "Support Portal"
+  }
+
+  Customer      -> Storefront     "browses and orders"
+  SupportAgent  -> SupportPortal  "resolves tickets"
+  RecommendBot  -> Storefront     "injects recommendations"
+}

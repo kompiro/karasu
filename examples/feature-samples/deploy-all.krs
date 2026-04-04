@@ -1,0 +1,67 @@
+// deploy-all.krs
+// Demonstrates: all deploy artifact types — war, jar, oci, lambda, function,
+// assets, job (one-shot and scheduled), artifact.
+
+system DeploySample {
+  label "Deploy Sample"
+
+  service LegacyApp    { label "Legacy App" }
+  service ApiServer    { label "API Server" }
+  service WorkerApp    { label "Worker App" }
+  service WebFrontend  { label "Web Frontend" }
+  service DataPipeline { label "Data Pipeline" }
+  service BillingJob   { label "Billing Job" }
+  service FnHandler    { label "Function Handler" }
+  service AzureFn      { label "Azure Function" }
+  service LegacyBatch  { label "Legacy Batch" }
+}
+
+deploy "Production" {
+  war "legacy-app" {
+    runtime "Tomcat 10"
+    realizes "LegacyApp"
+  }
+
+  jar "api-server" {
+    runtime "JVM 21"
+    realizes "ApiServer"
+  }
+
+  oci "worker" {
+    image "worker-app:latest"
+    runtime "Kubernetes"
+    realizes "WorkerApp"
+  }
+
+  lambda "fn-handler" {
+    runtime "Node.js 22"
+    realizes "FnHandler"
+  }
+
+  function "azure-fn" {
+    runtime "Node.js 20"
+    realizes "AzureFn"
+  }
+
+  assets "web-frontend" {
+    runtime "CloudFront"
+    realizes "WebFrontend"
+  }
+
+  job "data-pipeline" {
+    runtime "JVM 21"
+    realizes "DataPipeline"
+  }
+
+  job "monthly-billing" {
+    runtime "JVM 21"
+    schedule "0 0 1 * *"
+    realizes "BillingJob"
+  }
+
+  artifact "legacy-batch" {
+    type "COBOL batch"
+    runtime "Mainframe"
+    realizes "LegacyBatch"
+  }
+}
