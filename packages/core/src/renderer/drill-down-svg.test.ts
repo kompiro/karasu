@@ -4,6 +4,7 @@ import {
   buildDrillDownSvgOrg,
   buildAllLayersSvg,
   buildAllLayersSvgOrg,
+  buildAllViewsSvg,
 } from "./drill-down-svg.js";
 import { registerBuiltinShapes } from "./shapes.js";
 import { clearRegistry } from "./shape-registry.js";
@@ -381,5 +382,164 @@ describe("buildAllLayersSvgOrg", () => {
     expect(withStyle.svg).not.toEqual(without.svg);
     expect(withStyle.svg).toContain("#ABCDEF");
     expect(withStyle.diagnostics).toEqual([]);
+  });
+});
+
+// ─── buildAllViewsSvg ────────────────────────────────────────────────────────
+
+const SYSTEM_ONLY = `
+system ECommerce {
+  service OrderService { label "Order" }
+  service PaymentService { label "Payment" }
+}
+`;
+
+const SYSTEM_WITH_DEPLOY = `
+system ECommerce {
+  service OrderService { label "Order" }
+}
+
+deploy Production {
+  oci AppServer { label "App Server" }
+}
+`;
+
+const ALL_THREE_VIEWS = `
+system ECommerce {
+  service OrderService { label "Order" }
+}
+
+deploy Production {
+  oci AppServer { label "App Server" }
+}
+
+organization Acme {
+  team Engineering { label "Engineering" }
+}
+`;
+
+const SYSTEM_WITH_DRILLDOWN = `
+system ECommerce {
+  service OrderService {
+    label "Order"
+    domain OrderDomain { label "Order Domain" }
+  }
+}
+`;
+
+describe("buildAllViewsSvg", () => {
+  it("returns placeholder for empty file", () => {
+    const krsFile = Parser.parse("system Empty {}").value;
+    const { svg } = buildAllViewsSvg(krsFile);
+    expect(svg).toContain("No diagram");
+  });
+
+  it("system only: system tab enabled, deploy/org tabs disabled", () => {
+    const krsFile = Parser.parse(SYSTEM_ONLY).value;
+    const { svg } = buildAllViewsSvg(krsFile);
+
+    // System pane exists
+    expect(svg).toContain('id="krs-system-root"');
+    // System tab is enabled (has anchor link)
+    expect(svg).toContain('href="#krs-system-root"');
+    // Deploy and org tabs are disabled
+    expect(svg).toMatch(/class="krs-tab krs-tab--deploy krs-tab--disabled"/);
+    expect(svg).toMatch(/class="krs-tab krs-tab--org krs-tab--disabled"/);
+    // System tab is NOT disabled
+    expect(svg).not.toMatch(/class="krs-tab krs-tab--system krs-tab--disabled"/);
+  });
+
+  it("system + deploy: both enabled, org disabled", () => {
+    const krsFile = Parser.parse(SYSTEM_WITH_DEPLOY).value;
+    const { svg } = buildAllViewsSvg(krsFile);
+
+    expect(svg).toContain('id="krs-system-root"');
+    expect(svg).toContain('id="krs-deploy-root"');
+    expect(svg).not.toMatch(/class="krs-tab krs-tab--system krs-tab--disabled"/);
+    expect(svg).not.toMatch(/class="krs-tab krs-tab--deploy krs-tab--disabled"/);
+    expect(svg).toMatch(/class="krs-tab krs-tab--org krs-tab--disabled"/);
+  });
+
+  it("all three views: all tabs enabled", () => {
+    const krsFile = Parser.parse(ALL_THREE_VIEWS).value;
+    const { svg } = buildAllViewsSvg(krsFile);
+
+    expect(svg).toContain('id="krs-system-root"');
+    expect(svg).toContain('id="krs-deploy-root"');
+    expect(svg).toContain('id="krs-org-root"');
+    // No tab element should have the disabled class
+    expect(svg).not.toMatch(/class="krs-tab krs-tab--\w+ krs-tab--disabled"/);
+  });
+
+  it("tab bar always has three tabs", () => {
+    const krsFile = Parser.parse(SYSTEM_ONLY).value;
+    const { svg } = buildAllViewsSvg(krsFile);
+
+    // Match krs-tab--system/deploy/org but not krs-tab-bar
+    const matches = [...svg.matchAll(/class="krs-tab krs-tab--/g)];
+    expect(matches.length).toBe(3);
+  });
+
+  it("deploy is a single non-drillable level", () => {
+    const krsFile = Parser.parse(SYSTEM_WITH_DEPLOY).value;
+    const { svg } = buildAllViewsSvg(krsFile);
+
+    expect(svg).toContain('id="krs-deploy-root"');
+    // No sub-levels for deploy
+    expect(svg).not.toContain('id="krs-deploy-AppServer"');
+  });
+
+  it("system drill-down links use krs-system-* prefix", () => {
+    const krsFile = Parser.parse(SYSTEM_WITH_DRILLDOWN).value;
+    const { svg } = buildAllViewsSvg(krsFile);
+
+    expect(svg).toContain('id="krs-system-root"');
+    expect(svg).toContain('id="krs-system-OrderService"');
+    expect(svg).toContain('href="#krs-system-OrderService"');
+  });
+
+  it("includes pane switching CSS rules", () => {
+    const krsFile = Parser.parse(SYSTEM_ONLY).value;
+    const { svg } = buildAllViewsSvg(krsFile);
+
+    expect(svg).toContain(".krs-pane { display: none; }");
+    expect(svg).toContain(".krs-pane--system { display: block; }");
+    expect(svg).toContain(':has([id^="krs-deploy-"]:target) .krs-pane--deploy { display: block; }');
+    expect(svg).toContain(':has([id^="krs-org-"]:target) .krs-pane--org { display: block; }');
+  });
+
+  it("includes .krs-view drill-down CSS rules", () => {
+    const krsFile = Parser.parse(SYSTEM_ONLY).value;
+    const { svg } = buildAllViewsSvg(krsFile);
+
+    expect(svg).toContain(".krs-view { display: none; }");
+    expect(svg).toContain(".krs-view:target { display: block; }");
+    expect(svg).toContain(".krs-root-level { display: block; }");
+  });
+
+  it("outer SVG has numeric width and height attributes", () => {
+    const krsFile = Parser.parse(SYSTEM_ONLY).value;
+    const { svg } = buildAllViewsSvg(krsFile);
+
+    expect(svg).toMatch(/^<svg[^>]+width="\d+"/);
+    expect(svg).toMatch(/^<svg[^>]+height="\d+"/);
+  });
+
+  it("applies styleSource to the rendered output", () => {
+    const krsFile = Parser.parse(SYSTEM_ONLY).value;
+    const withStyle = buildAllViewsSvg(krsFile, `service { color: #FF1234; }`);
+    const without = buildAllViewsSvg(krsFile);
+
+    expect(withStyle.svg).not.toEqual(without.svg);
+    expect(withStyle.svg).toContain("#FF1234");
+    expect(withStyle.diagnostics).toEqual([]);
+  });
+
+  it("returns diagnostics for malformed style source", () => {
+    const krsFile = Parser.parse(SYSTEM_ONLY).value;
+    const result = buildAllViewsSvg(krsFile, "service color: red;");
+
+    expect(result.diagnostics.length).toBeGreaterThan(0);
+    expect(result.svg).toContain("<svg");
   });
 });
