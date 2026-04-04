@@ -317,7 +317,7 @@ export class ImportResolver {
         const matchingNodes = deploy.nodes.filter((n) => n.id === id);
         if (matchingNodes.length > 0) {
           found = true;
-          const existingDeploy = mergedFile.deploys.find((d) => d.label === deploy.label);
+          const existingDeploy = mergedFile.deploys.find((d) => d.id === deploy.id);
           if (existingDeploy) {
             existingDeploy.nodes.push(...matchingNodes);
           } else {
