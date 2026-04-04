@@ -1,0 +1,25 @@
+// ec-platform/05-multifile/ecommerce.krs
+// ECommerce service definition — imported by system.krs
+
+service ECommerce {
+  label "ECサイト"
+  description "商品管理と注文処理"
+
+  domain Order {
+    label "受注"
+    usecase PlaceOrder {
+      label "注文を受け付ける"
+      resource OrderTable { label "注文テーブル" }
+    }
+    usecase CancelOrder { label "注文をキャンセルする" }
+    usecase QueryOrder { label "注文状況を照会する" }
+  }
+
+  domain Catalog {
+    label "商品カタログ"
+    usecase SearchProducts {
+      label "商品を検索する"
+      resource ProductTable { label "商品テーブル" }
+    }
+  }
+}

@@ -1,0 +1,72 @@
+// hr-tool/system.krs
+// Demonstrates: shallow domain structure, [human] and [ai] users side by side
+// A simple internal HR attendance tool — contrasts with the deeper ec-platform hierarchy.
+
+system HRTool {
+  label "勤怠管理システム"
+
+  user Employee [human] {
+    label "従業員"
+    role "勤怠の申請・照会を行う一般社員"
+  }
+
+  user HRManager [human] {
+    label "人事担当者"
+    role "勤怠承認・給与計算の確認を行う担当者"
+  }
+
+  user AttendanceBot [ai] {
+    label "勤怠アシスタント"
+    role "打刻漏れを検知し従業員に通知するAIエージェント"
+  }
+
+  service Auth {
+    label "認証サービス"
+    description "SSO・セッション管理"
+
+    domain Identity {
+      label "本人確認"
+      usecase Login { label "ログインする" }
+      usecase Logout { label "ログアウトする" }
+    }
+  }
+
+  service Attendance {
+    label "勤怠管理"
+    description "出退勤の記録・申請・承認"
+
+    domain Timesheet {
+      label "勤務記録"
+      usecase ClockIn { label "出勤を打刻する" }
+      usecase ClockOut { label "退勤を打刻する" }
+      usecase ApplyLeave { label "休暇を申請する" }
+      usecase ApproveLeave { label "休暇を承認する" }
+    }
+  }
+
+  service Payroll {
+    label "給与計算"
+    description "勤務時間をもとに給与を算出する"
+
+    domain Calculation {
+      label "給与算出"
+      usecase CalculateSalary { label "月次給与を計算する" }
+      usecase GeneratePayslip { label "給与明細を発行する" }
+    }
+  }
+
+  service Notification {
+    label "通知サービス"
+    description "メール・Slack通知の送信"
+  }
+
+  Employee       ->  Auth         "ログインする"
+  HRManager      ->  Auth         "ログインする"
+  Employee       ->  Attendance   "勤怠を申請する"
+  HRManager      ->  Attendance   "勤怠を承認する"
+  HRManager      ->  Payroll      "給与明細を確認する"
+  AttendanceBot  ->  Attendance   "打刻状況を確認する"
+  AttendanceBot --> Notification  "打刻漏れを通知する"
+  Attendance    --> Payroll       "勤務データを連携する"
+  Payroll       --> Notification  "給与明細発行を通知する"
+}

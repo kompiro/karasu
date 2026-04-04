@@ -1,0 +1,118 @@
+// ec-platform/03-domains.krs
+// Demonstrates: domain, usecase, resource — full drill-down hierarchy
+// Drill into ECommerce to see its internal domain structure.
+
+system ECPlatform {
+  label "ECプラットフォーム"
+
+  user Customer [human] {
+    label "購入者"
+    role "商品を購入する一般ユーザー"
+  }
+
+  service ECommerce {
+    label "ECサイト"
+
+    domain Order {
+      label "受注"
+      description "注文の受付・管理・キャンセル"
+
+      usecase PlaceOrder {
+        label "注文を受け付ける"
+        resource OrderTable {
+          label "注文テーブル"
+        }
+        resource InventoryAPI {
+          label "在庫API"
+        }
+      }
+
+      usecase CancelOrder {
+        label "注文をキャンセルする"
+        resource OrderTable {
+          label "注文テーブル"
+        }
+      }
+
+      usecase QueryOrder {
+        label "注文状況を照会する"
+        resource OrderTable {
+          label "注文テーブル"
+        }
+      }
+    }
+
+    domain Catalog {
+      label "商品カタログ"
+      description "商品情報の管理と検索"
+
+      usecase SearchProducts {
+        label "商品を検索する"
+        resource ProductTable {
+          label "商品テーブル"
+        }
+      }
+
+      usecase UpdateProduct {
+        label "商品情報を更新する"
+        resource ProductTable {
+          label "商品テーブル"
+        }
+        resource ImageStorage {
+          label "画像ストレージ"
+        }
+      }
+    }
+  }
+
+  service Payment {
+    label "決済サービス"
+
+    domain Billing {
+      label "請求"
+
+      usecase Charge {
+        label "決済を実行する"
+        resource PaymentGateway {
+          label "決済ゲートウェイ"
+        }
+        resource TransactionLog {
+          label "取引ログ"
+        }
+      }
+
+      usecase Refund {
+        label "返金する"
+        resource PaymentGateway {
+          label "決済ゲートウェイ"
+        }
+      }
+    }
+  }
+
+  service Inventory {
+    label "在庫管理"
+
+    domain Stock {
+      label "在庫"
+
+      usecase CheckStock {
+        label "在庫を確認する"
+        resource StockTable {
+          label "在庫テーブル"
+        }
+      }
+
+      usecase ReserveStock {
+        label "在庫を引き当てる"
+        resource StockTable {
+          label "在庫テーブル"
+        }
+      }
+    }
+  }
+
+  Customer  ->  ECommerce "商品を購入する"
+  ECommerce ->  Payment   "決済を処理する"
+  ECommerce ->  Inventory "在庫を確認する"
+}

@@ -1,0 +1,54 @@
+// ec-platform/04-annotations.krs
+// Demonstrates: [external] tag, @deprecated, @new, @experimental annotations
+// Use annotations to communicate lifecycle state and ownership boundaries.
+
+system ECPlatform {
+  label "ECプラットフォーム"
+
+  user Customer [human] {
+    label "購入者"
+    role "商品を購入する一般ユーザー"
+  }
+
+  service ECommerce {
+    label "ECサイト"
+    description "商品管理と注文処理"
+  }
+
+  // @deprecated: this service is being replaced by NewPayment
+  service LegacyPayment @deprecated {
+    label "決済サービス（旧）"
+    description "旧決済サービス。NewPayment への移行中"
+  }
+
+  // @new: recently introduced replacement service
+  service NewPayment @new {
+    label "決済サービス（新）"
+    description "新しい決済サービス。PCI DSS準拠"
+  }
+
+  // @experimental: under active development, API may change
+  service RecommendationEngine @experimental {
+    label "レコメンドエンジン"
+    description "AI駆動の商品推薦サービス"
+  }
+
+  // [external]: owned by a third party, not this team
+  service StripeAPI [external] {
+    label "Stripe API"
+    description "クレジットカード決済の外部プロバイダ"
+  }
+
+  service AmazonSES [external] {
+    label "Amazon SES"
+    description "メール送信の外部サービス"
+  }
+
+  Customer           ->  ECommerce             "商品を購入する"
+  ECommerce          ->  LegacyPayment         "決済を処理する（移行中）"
+  ECommerce          ->  NewPayment            "決済を処理する（新）"
+  ECommerce          ->  RecommendationEngine  "おすすめ商品を取得する"
+  LegacyPayment      ->  StripeAPI             "カード決済"
+  NewPayment         ->  StripeAPI             "カード決済"
+  ECommerce         --> AmazonSES              "注文確定メールを送る"
+}

@@ -1,0 +1,119 @@
+// deploy/system.krs
+// Demonstrates: all artifact types — war, jar, oci, lambda, function, assets, job, artifact
+// Each type is suited to a different workload. See artifact comments for when to use each.
+
+system RetailPlatform {
+  label "小売プラットフォーム"
+
+  service Storefront {
+    label "ストアフロント"
+    description "顧客向けショッピングUI（SPA）"
+  }
+
+  service OrderAPI {
+    label "注文API"
+    description "注文の受付・管理"
+  }
+
+  service PaymentService {
+    label "決済サービス"
+    description "決済処理・返金"
+  }
+
+  service InventoryService {
+    label "在庫サービス"
+    description "在庫の管理・引き当て"
+  }
+
+  service ReportingService {
+    label "レポーティングサービス"
+    description "売上・在庫レポートの集計"
+  }
+
+  service LegacyERP {
+    label "レガシーERPシステム"
+    description "旧来の基幹システム（メインフレーム）"
+  }
+
+  Storefront       ->  OrderAPI         "注文を送信する"
+  OrderAPI         ->  PaymentService   "決済を処理する"
+  OrderAPI         ->  InventoryService "在庫を引き当てる"
+  OrderAPI        --> ReportingService  "注文データを連携する"
+  InventoryService --> LegacyERP        "在庫マスタを同期する"
+}
+
+deploy Production {
+  label "本番環境"
+
+  // assets: static files / SPA delivered via CDN
+  assets storefront {
+    label "ストアフロントSPA"
+    runtime "CloudFront / S3"
+    realizes Storefront
+  }
+
+  // oci: container image (most common for modern services)
+  oci "order-api" {
+    label "注文APIコンテナ"
+    image "order-api:4.1.2"
+    runtime "Node.js 22 / Fastify"
+    realizes OrderAPI
+  }
+
+  // jar: executable JAR (Spring Boot etc.)
+  jar "payment-service" {
+    label "決済サービスJAR"
+    runtime "Java 21 / Spring Boot 3"
+    realizes PaymentService
+  }
+
+  // war: WAR/EAR deployed to a servlet container
+  war "inventory-service" {
+    label "在庫サービスWAR"
+    runtime "Tomcat 10 / Jakarta EE"
+    realizes InventoryService
+  }
+
+  // lambda: AWS Lambda function
+  lambda "order-event-handler" {
+    label "注文イベントハンドラ"
+    runtime "Node.js 22"
+    realizes OrderAPI
+  }
+
+  // function: Azure Functions / Google Cloud Functions
+  function "payment-webhook" {
+    label "決済Webhookハンドラ"
+    runtime "Python 3.12"
+    realizes PaymentService
+  }
+
+  // job: one-off run (no schedule)
+  job "data-backfill" {
+    label "データバックフィルジョブ"
+    runtime "Python 3.12"
+  }
+
+  // job: scheduled batch (cron)
+  job "daily-sales-report" {
+    label "日次売上レポート"
+    schedule "0 2 * * *"
+    runtime "Java 21"
+    realizes ReportingService
+  }
+
+  job "monthly-inventory-snapshot" {
+    label "月次在庫スナップショット"
+    schedule "0 3 1 * *"
+    runtime "Python 3.12"
+    realizes ReportingService
+  }
+
+  // artifact: catch-all for types not covered above
+  artifact "legacy-erp-connector" {
+    label "レガシーERPコネクタ"
+    type "mainframe-batch"
+    runtime "COBOL / z/OS"
+    realizes LegacyERP
+  }
+}

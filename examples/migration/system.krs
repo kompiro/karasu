@@ -1,0 +1,70 @@
+// migration/system.krs
+// Demonstrates: @deprecated, @migration_target, @experimental annotations
+// Also intentionally triggers a domain drift WARNING:
+//   domain "Order" appears in both LegacyMonolith and OrderService within the same system.
+//
+// This pattern models a system mid-migration where the same business domain
+// is temporarily owned by two services. The warning signals that migration is incomplete.
+
+system ECommercePlatform {
+  label "ECプラットフォーム（移行中）"
+
+  user Customer [human] {
+    label "購入者"
+    role "商品を購入する一般ユーザー"
+  }
+
+  // @deprecated: scheduled for decommission after migration completes
+  service LegacyMonolith @deprecated {
+    label "レガシーモノリス"
+    description "旧来のモノリシックアプリケーション。2026年Q3廃止予定"
+
+    domain Order {
+      label "受注（旧）"
+      usecase PlaceOrder { label "注文を受け付ける" }
+      usecase QueryOrder { label "注文状況を照会する" }
+    }
+
+    domain Catalog {
+      label "商品カタログ（旧）"
+      usecase SearchProducts { label "商品を検索する" }
+    }
+  }
+
+  // @migration_target: the new service that will take over from LegacyMonolith
+  service OrderService @migration_target {
+    label "注文サービス"
+    description "受注ドメインを切り出したマイクロサービス"
+
+    // Same domain id "Order" as in LegacyMonolith → triggers domain drift warning
+    domain Order {
+      label "受注（新）"
+      usecase PlaceOrder { label "注文を受け付ける" }
+      usecase CancelOrder { label "注文をキャンセルする" }
+      usecase QueryOrder { label "注文状況を照会する" }
+    }
+  }
+
+  // @experimental: new service, API not yet stable
+  service CatalogService @experimental {
+    label "商品カタログサービス"
+    description "商品カタログを切り出したマイクロサービス。APIは変更される可能性あり"
+
+    domain Catalog {
+      label "商品カタログ（新）"
+      usecase SearchProducts { label "商品を検索する" }
+      usecase UpdateProduct { label "商品情報を更新する" }
+    }
+  }
+
+  service Payment {
+    label "決済サービス"
+    description "クレジットカード決済処理"
+  }
+
+  Customer        ->  LegacyMonolith  "購入する（旧フロー）"
+  Customer        ->  OrderService    "購入する（新フロー）"
+  LegacyMonolith  ->  Payment         "決済を処理する"
+  OrderService    ->  Payment         "決済を処理する"
+  OrderService    ->  CatalogService  "商品情報を取得する"
+}

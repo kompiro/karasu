@@ -1,0 +1,36 @@
+// ec-platform/06-deploy/system.krs
+// Logical structure — imported by deploy.krs via realizes
+// Open this directory in VSCode Extension or use `karasu serve` in server mode.
+
+import { ECommerce } from "./ecommerce.krs"
+import { Payment } from "./payment.krs"
+
+system ECPlatform {
+  label "ECプラットフォーム"
+
+  user Customer [human] {
+    label "購入者"
+    role "商品を購入する一般ユーザー"
+  }
+
+  service ECommerce
+  service Payment
+
+  service Inventory {
+    label "在庫管理"
+    domain Stock {
+      label "在庫"
+      usecase CheckStock { label "在庫を確認する" }
+    }
+  }
+
+  service Frontend {
+    label "フロントエンド"
+    description "SPAによる購入画面"
+  }
+
+  Customer  ->  Frontend  "ブラウザでアクセス"
+  Frontend  ->  ECommerce "APIを呼び出す"
+  ECommerce ->  Payment   "決済を処理する"
+  ECommerce ->  Inventory "在庫を確認する"
+}

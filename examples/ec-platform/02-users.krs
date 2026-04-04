@@ -1,0 +1,50 @@
+// ec-platform/02-users.krs
+// Demonstrates: user [human], user [ai], role property
+// Users can be human actors or AI agents interacting with the system.
+
+system ECPlatform {
+  label "ECプラットフォーム"
+
+  user Customer [human] {
+    label "購入者"
+    role "商品を購入する一般ユーザー"
+  }
+
+  user Admin [human] {
+    label "運用担当者"
+    role "在庫・注文・通知の管理を行う担当者"
+  }
+
+  user RecommendationAgent [ai] {
+    label "レコメンドエージェント"
+    role "購買履歴を分析して商品を推薦するAIエージェント"
+  }
+
+  service ECommerce {
+    label "ECサイト"
+    description "商品管理と注文処理"
+  }
+
+  service Payment {
+    label "決済サービス"
+    description "クレジットカード決済処理"
+  }
+
+  service Inventory {
+    label "在庫管理"
+    description "在庫データの管理"
+  }
+
+  service Notification {
+    label "通知サービス"
+    description "メール・プッシュ通知の送信"
+  }
+
+  Customer           ->  ECommerce    "商品を購入する"
+  Admin              ->  Inventory    "在庫を管理する"
+  Admin              ->  Notification "通知設定を変更する"
+  RecommendationAgent -> ECommerce    "おすすめ商品を提案する"
+  ECommerce          ->  Payment      "決済を処理する"
+  ECommerce          ->  Inventory    "在庫を確認する"
+  ECommerce         --> Notification  "注文確定メールを送る"
+}

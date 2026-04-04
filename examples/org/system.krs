@@ -1,0 +1,131 @@
+// org/system.krs
+// Demonstrates: organization, team, member, owns, slack, github
+// Shows team ownership of services/domains alongside the system structure.
+
+system ECPlatform {
+  label "ECプラットフォーム"
+
+  service ECommerce {
+    label "ECサイト"
+    domain Order { label "受注" }
+    domain Catalog { label "商品カタログ" }
+  }
+
+  service Payment {
+    label "決済サービス"
+    domain Billing { label "請求" }
+  }
+
+  service Inventory {
+    label "在庫管理"
+    domain Stock { label "在庫" }
+  }
+
+  service Platform {
+    label "プラットフォーム基盤"
+    description "認証・ロギング・CI/CDなど横断的な基盤"
+  }
+
+  ECommerce -> Payment   "決済を処理する"
+  ECommerce -> Inventory "在庫を確認する"
+}
+
+organization TechCorp {
+  label "TechCorp Engineering"
+
+  team "ec-team" {
+    label "ECチーム"
+    description "ECサイトの開発・運用を担当するチーム"
+
+    owns ECommerce
+    owns Order
+    owns Catalog
+
+    member alice {
+      label "Alice Yamamoto"
+      description "ECチームのテックリード"
+      slack "@alice"
+      github "alice-yamamoto"
+    }
+
+    member bob {
+      label "Bob Tanaka"
+      description "バックエンドエンジニア"
+      slack "@bob"
+      github "bob-tanaka"
+    }
+
+    member carol {
+      label "Carol Sato"
+      description "フロントエンドエンジニア"
+      github "carol-sato"
+    }
+  }
+
+  team "payment-team" {
+    label "決済チーム"
+    description "決済サービスのセキュリティと安定稼働を担当"
+
+    owns Payment
+    owns Billing
+
+    member dave {
+      label "Dave Suzuki"
+      description "決済チームのリード。PCI DSS担当"
+      slack "@dave"
+      github "dave-suzuki"
+    }
+
+    member eve {
+      label "Eve Nakamura"
+      description "SRE担当"
+      slack "@eve"
+      github "eve-nakamura"
+    }
+  }
+
+  team "inventory-team" {
+    label "在庫チーム"
+    description "在庫管理サービスの開発・保守を担当"
+
+    owns Inventory
+    owns Stock
+
+    member frank {
+      label "Frank Kobayashi"
+      description "在庫チームのエンジニアリングマネージャー"
+      slack "@frank"
+      github "frank-kobayashi"
+    }
+  }
+
+  team "platform-team" {
+    label "プラットフォームチーム"
+    description "全チームが利用する基盤を担当するイネーブリングチーム"
+
+    owns Platform
+
+    member grace {
+      label "Grace Ito"
+      description "インフラ・CI/CD担当"
+      slack "@grace"
+      github "grace-ito"
+    }
+
+    member henry {
+      label "Henry Watanabe"
+      description "セキュリティ・認証基盤担当"
+      slack "@henry"
+      github "henry-watanabe"
+    }
+
+    // Sub-team for on-call rotation management
+    team oncall {
+      label "オンコール当番"
+      description "24時間対応のオンコールローテーション"
+
+      member grace {}
+      member henry {}
+    }
+  }
+}
