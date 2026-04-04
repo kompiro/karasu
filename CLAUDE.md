@@ -38,20 +38,25 @@ karasu/
 ├── examples/          ← サンプル .krs ファイル（Getting Started・テーマ別シナリオ）
 ├── packages/
 │   ├── core/          ← パーサー・スタイル解決・SVGレンダラー（Pure TS）
-│   └── app/           ← Vite + React のプレビューUI
+│   ├── app/           ← Vite + React のプレビューUI
+│   ├── cli/           ← karasu serve / render コマンド
+│   ├── lsp/           ← Language Server Protocol 実装
+│   └── vscode/        ← VS Code 拡張
 ├── package.json       ← npm workspaces 設定
 └── tsconfig.json
 ```
 
 ### 技術スタック
 
-| 用途                   | 技術          |
-| ---------------------- | ------------- |
-| 言語                   | TypeScript    |
-| ビルド（app）          | Vite          |
-| UIフレームワーク       | React         |
-| エディタコンポーネント | Monaco Editor |
-| テスト                 | Vitest        |
+| 用途                   | 技術                        |
+| ---------------------- | --------------------------- |
+| 言語                   | TypeScript                  |
+| ビルド（app）          | Vite                        |
+| UIフレームワーク       | React                       |
+| エディタコンポーネント | Monaco Editor               |
+| テスト                 | Vitest                      |
+| CLI                    | commander                   |
+| 言語サーバー           | LSP（vscode-languageserver） |
 
 ### 実装の進め方
 
@@ -66,6 +71,16 @@ karasu/
 1. 左ペイン：Monaco Editor（`.krs` の編集）
 2. 右ペイン：SVGプレビュー（リアルタイム更新）
 3. 警告パネル（スタイル衝突・ドメイン分散などの表示）
+
+**フェーズ3：packages/cli**
+
+1. `karasu serve` — ローカルプレビューサーバー
+2. `karasu render` — SVG ファイル生成
+
+**フェーズ4：packages/lsp + packages/vscode**
+
+1. LSP 実装（診断・ホバー・定義ジャンプ）
+2. VS Code 拡張（シンタックスハイライト・SVG プレビュー Webview・双方向ジャンプ）
 
 ---
 
