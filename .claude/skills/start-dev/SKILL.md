@@ -38,45 +38,6 @@ description: >
 > Issue がない場合もある。Design Doc だけを起点に開発を始めることも、
 > Issue も Design Doc もなく着手するケースもある。
 
-**Issue が確定したら、現在の Claude セッション名を機能名に更新する:**
-
-Issue タイトルからスラッグ（例: `improve-toolbar-layout`）を生成し、JSONL の `slug` フィールドを書き換える。
-これにより `/resume` ピッカーでセッションが機能名で識別できるようになる。
-
-```bash
-# Issue タイトルからスラッグを生成
-FEATURE_SLUG=$(gh issue view <N> --json title -q .title \
-  | tr '[:upper:]' '[:lower:]' \
-  | sed 's/[^a-z0-9]/-/g; s/-\+/-/g; s/^-\|-$//g')
-
-# 現在のセッション ID と JSONL パスを取得
-PROJ_DIR="$CLAUDE_CONFIG_DIR/projects/$(pwd | tr '/' '-')"
-JSONL_FILE=$(ls -t "$PROJ_DIR"/*.jsonl 2>/dev/null | head -1)
-CURRENT_SESSION_ID=$(tail -1 "$JSONL_FILE" | python3 -c \
-  "import sys,json; print(json.loads(sys.stdin.read()).get('sessionId',''))")
-
-# 現在のセッションの全エントリのスラッグを更新
-python3 - <<EOF
-import json
-
-new_slug = '$FEATURE_SLUG'
-session_id = '$CURRENT_SESSION_ID'
-with open('$JSONL_FILE', 'r') as f:
-    lines = f.readlines()
-updated = []
-for line in lines:
-    try:
-        d = json.loads(line)
-        if d.get('sessionId') == session_id:
-            d['slug'] = new_slug
-        updated.append(json.dumps(d, ensure_ascii=False))
-    except Exception:
-        updated.append(line.rstrip('\n'))
-with open('$JSONL_FILE', 'w') as f:
-    f.write('\n'.join(updated) + '\n')
-EOF
-```
-
 ### 2. Design Doc の確認
 
 `docs/design/` に関連する設計ドキュメントがあれば読む。
