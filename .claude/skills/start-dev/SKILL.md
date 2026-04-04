@@ -52,18 +52,25 @@ description: >
 `git worktree` コマンドで隔離された作業環境を作成する。
 
 1. main を最新化する: `git fetch origin main`
-2. ブランチ命名規則に従って worktree を作成する:
+2. 現在のセッション名（slug）を取得する:
    ```
-   git worktree add .worktrees/<機能名> -b <branch-name> origin/main
+   SESSION_NAME=$(ls -t "$CLAUDE_CONFIG_DIR/projects/$(pwd | tr '/' '-')"/*.jsonl 2>/dev/null \
+     | head -1 | xargs tail -n 1 2>/dev/null \
+     | python3 -c "import sys,json; d=json.loads(sys.stdin.read()); print(d.get('slug',''))" 2>/dev/null)
+   ```
+   取得した `SESSION_NAME` を worktree のディレクトリ名に使用する。
+3. ブランチ命名規則に従って worktree を作成する:
+   ```
+   git worktree add .worktrees/$SESSION_NAME -b <branch-name> origin/main
    ```
    - `feat/<機能名>` — 新機能
    - `fix/<修正名>` — バグ修正
    - `docs/<ドキュメント名>` — ドキュメントのみ
    - `chore/<タスク名>` — ビルド、CI、ツール設定
    - `refactor/<対象名>` — リファクタリング
-3. worktree に移動し、依存関係をインストールする:
+4. worktree に移動し、依存関係をインストールする:
    ```
-   cd .worktrees/<機能名>
+   cd .worktrees/$SESSION_NAME
    npm ci
    ```
 
@@ -133,8 +140,8 @@ CI 通過後、以下のチェックを順に実行する。
 動作確認用に worktree のパスと開発サーバーの起動方法を表示する:
 
    ```
-   Worktree: .worktrees/<機能名>
-   起動: cd .worktrees/<機能名> && npm run dev
+   Worktree: .worktrees/<セッション名>
+   起動: cd .worktrees/<セッション名> && npm run dev
    ```
 
 > ここで Claude の作業は一旦完了。
@@ -148,7 +155,7 @@ CI 通過後、以下のチェックを順に実行する。
 2. マージ済みであることを確認してから worktree を削除する:
    ```
    cd /workspaces/karasu
-   git worktree remove .worktrees/<機能名>
+   git worktree remove .worktrees/<セッション名>
    git branch -d <branch-name>
    ```
 3. main ブランチを最新化する:
