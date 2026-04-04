@@ -330,14 +330,14 @@ describe("KarasuPreviewColumn", () => {
       const props = makeProps({ previewFocused: false });
       const { getByRole } = render(<KarasuPreviewColumn {...props} />);
       const btn = getByRole("button", { name: /Enter focus mode/ });
-      expect(btn.textContent).toContain("Focus");
+      expect(btn.textContent).toContain("↗ Focus");
     });
 
     it("shows Exit Focus button when in focus mode", () => {
       const props = makeProps({ previewFocused: true });
       const { getByRole } = render(<KarasuPreviewColumn {...props} />);
       const btn = getByRole("button", { name: /Exit focus mode/ });
-      expect(btn.textContent).toContain("Exit Focus");
+      expect(btn.textContent).toContain("↙ Exit Focus");
     });
 
     it("calls onPreviewFocusToggle when clicked", () => {

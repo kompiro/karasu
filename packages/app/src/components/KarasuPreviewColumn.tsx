@@ -236,7 +236,7 @@ export function KarasuPreviewColumn({
           onClick={onPreviewFocusToggle}
           aria-label={previewFocused ? "Exit focus mode" : "Enter focus mode"}
         >
-          {previewFocused ? "⛶ Exit Focus" : "⛶ Focus"}
+          {previewFocused ? "↙ Exit Focus" : "↗ Focus"}
         </button>
       </div>
       <ReferencePanel isOpen={refOpen} onClose={() => setRefOpen(false)} activeView={activeView} />
