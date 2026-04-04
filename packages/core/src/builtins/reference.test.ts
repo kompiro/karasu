@@ -34,7 +34,7 @@ describe("getReference", () => {
     expect(annotations).toContain("deprecated");
     expect(annotations).toContain("new");
     expect(annotations).toContain("experimental");
-    expect(annotations).toContain("migration-target");
+    expect(annotations).toContain("migration_target");
   });
 
   it("includes style properties for nodes and edges", () => {

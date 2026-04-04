@@ -33,14 +33,14 @@ user AIAgent "注文自動化エージェント" [ai]
 | `@deprecated` | 廃止予定 | ⚠バッジ、ノードを半透明に |
 | `@new` | 新規追加 | ✦バッジ |
 | `@experimental` | 実験的 | ⚗バッジ |
-| `@migration-target` | 移行先 | →バッジ |
+| `@migration_target` | 移行先 | →バッジ |
 
 ### 記述例
 
 複数付与可。タグとの併用も可。
 
 ```
-service Legacy "旧システム" [external] @deprecated @migration-target
+service Legacy "旧システム" [external] @deprecated @migration_target
 service NewAPI "新API"                 @new @experimental
 ```
 

@@ -163,7 +163,7 @@ artifact {
   badge-label: "実験的";
 }
 
-@migration-target {
+@migration_target {
   badge-color: #3B82F6;
   badge-icon: "→";
   badge-label: "移行先";
