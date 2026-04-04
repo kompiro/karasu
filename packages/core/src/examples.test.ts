@@ -8,17 +8,15 @@ import { fileURLToPath } from "url";
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const dir = resolve(__dirname, "../../../examples/feature-samples");
 
-const files = readdirSync(dir).filter((f) => f.endsWith(".krs"));
+const files = readdirSync(dir).filter((f: string) => f.endsWith(".krs"));
 
 describe("feature-samples: all files parse without errors", () => {
-  for (const file of files) {
-    it(file, () => {
-      const src = readFileSync(resolve(dir, file), "utf8");
-      const result = Parser.parse(src);
-      const errors = result.diagnostics.filter((d) => d.severity === "error");
-      expect(errors, `${file} should have no parse errors`).toHaveLength(0);
-    });
-  }
+  it.each(files)("%s", (file) => {
+    const src = readFileSync(resolve(dir, file), "utf8");
+    const result = Parser.parse(src);
+    const errors = result.diagnostics.filter((d) => d.severity === "error");
+    expect(errors).toHaveLength(0);
+  });
 });
 
 describe("feature-samples: domain-drift.krs triggers drift warning", () => {
