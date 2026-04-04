@@ -346,11 +346,7 @@ export class ImportResolver {
    * 同名の system が存在すればその children にマージし、
    * なければ新しい system は追加しない（ノード単独では意味をなさないため）。
    */
-  private mergeNodeIntoSystems(
-    systems: SystemNode[],
-    sourceSystem: KrsNode,
-    node: KrsNode,
-  ): void {
+  private mergeNodeIntoSystems(systems: SystemNode[], sourceSystem: KrsNode, node: KrsNode): void {
     const targetSystem = systems.find((s) => s.id === sourceSystem.id);
     if (targetSystem) {
       const alreadyExists = targetSystem.children.some(

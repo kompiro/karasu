@@ -193,7 +193,9 @@ export class Parser {
     }
 
     if (this.peek().type !== TokenType.LeftBrace) {
-      this.error(`Expected { or string literal but got ${this.peek().type} ("${this.peek().value}")`);
+      this.error(
+        `Expected { or string literal but got ${this.peek().type} ("${this.peek().value}")`,
+      );
       // LeftBrace がない場合は空の import 宣言を返す
       return { ids: [], path: "", loc: this.range(start.loc) };
     }

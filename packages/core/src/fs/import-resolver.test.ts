@@ -351,10 +351,7 @@ import "team-payment.krs"`,
     });
 
     it("merges different systems from the imported file", async () => {
-      await fs.writeFile(
-        "/project/index.krs",
-        `import "services.krs"`,
-      );
+      await fs.writeFile("/project/index.krs", `import "services.krs"`);
       await fs.writeFile(
         "/project/services.krs",
         `system SystemA {
@@ -402,10 +399,7 @@ import "b.krs"`,
     });
 
     it("warns for top-level service declared outside any system block (Case B)", async () => {
-      await fs.writeFile(
-        "/project/index.krs",
-        `import "services.krs"`,
-      );
+      await fs.writeFile("/project/index.krs", `import "services.krs"`);
       await fs.writeFile(
         "/project/services.krs",
         `service StandaloneService
@@ -431,10 +425,7 @@ system MySystem {
     });
 
     it("merges deploy blocks from wildcard import", async () => {
-      await fs.writeFile(
-        "/project/index.krs",
-        `import "infra.krs"`,
-      );
+      await fs.writeFile("/project/index.krs", `import "infra.krs"`);
       await fs.writeFile(
         "/project/infra.krs",
         `deploy Production {
