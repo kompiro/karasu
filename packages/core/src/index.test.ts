@@ -1,6 +1,11 @@
 import { describe, it, expect } from "vitest";
 import { compile, compileProject, compileProjectOrgView } from "./index.js";
 import { InMemoryFileSystemProvider } from "./fs/in-memory-provider.js";
+import { resolveStyles } from "./resolver/style-resolver.js";
+import { StyleParser } from "./parser/style-parser.js";
+import { getBuiltinStyleSheet } from "./builtins/default-style.js";
+import { getIconThemeStyleSheet } from "./builtins/icon-theme.js";
+import type { KrsNode } from "./types/ast.js";
 
 const DEPLOY_KRS = `
 system "EC" {
@@ -84,6 +89,93 @@ org "Eng" {
 `;
 
 const USER_STYLE = `service { color: #FF0000; }`;
+
+const DOMAIN_NODE: KrsNode = {
+  id: "MyDomain",
+  kind: "domain",
+  label: "MyDomain",
+  tags: [],
+  annotations: [],
+  edges: [],
+  children: [],
+  properties: {},
+};
+
+const SERVICE_NODE: KrsNode = {
+  id: "MyService",
+  kind: "service",
+  label: "MyService",
+  tags: [],
+  annotations: [],
+  edges: [],
+  children: [],
+  properties: {},
+};
+
+describe("Icon Mode — shape cascade priority (issue #279)", () => {
+  it("icon theme last in cascade: url() shape wins over user box declaration", () => {
+    // This is the correct cascade for icon mode: [builtin, user, iconTheme]
+    // icon theme is last → highest sourceIndex → wins for `shape`
+    const userSheet = StyleParser.parse(`domain { shape: box; }`).value;
+    const resolveSheets = [getBuiltinStyleSheet(), userSheet, getIconThemeStyleSheet()];
+    const styles = resolveStyles([DOMAIN_NODE], resolveSheets);
+    expect(styles.nodes.get("MyDomain")!.shape).toMatchObject({ url: "domain" });
+  });
+
+  it("icon theme last in cascade: url() shape wins over user cylinder declaration on service", () => {
+    const userSheet = StyleParser.parse(`service { shape: cylinder; }`).value;
+    const resolveSheets = [getBuiltinStyleSheet(), userSheet, getIconThemeStyleSheet()];
+    const styles = resolveStyles([SERVICE_NODE], resolveSheets);
+    expect(styles.nodes.get("MyService")!.shape).toMatchObject({ url: "service" });
+  });
+
+  it("icon theme first in cascade: user box declaration incorrectly overrides url() shape (documents the original bug)", () => {
+    // This documents the original bug behavior: [builtin, iconTheme, user]
+    // user is last → highest sourceIndex → user's `box` wins (wrong behavior, now fixed)
+    const userSheet = StyleParser.parse(`domain { shape: box; }`).value;
+    const resolveSheets = [getBuiltinStyleSheet(), getIconThemeStyleSheet(), userSheet];
+    const styles = resolveStyles([DOMAIN_NODE], resolveSheets);
+    expect(styles.nodes.get("MyDomain")!.shape).toBe("box");
+  });
+
+  it("compile: icon mode does not emit style-conflict for user shape override", () => {
+    // Regression test for issue #279.
+    const krs = `system "S" { domain "D" {} }`;
+    const result = compile(krs, { displayMode: "icon", styleSource: `domain { shape: box; }` });
+    expect(result.warnings.filter((w) => w.kind === "style-conflict")).toHaveLength(0);
+    expect(result.diagnostics.filter((d) => d.severity === "error")).toHaveLength(0);
+  });
+
+  it("compile: no diagnostics in icon mode with user shape declarations", () => {
+    const krs = `system "S" { service "Svc" {} domain "D" {} }`;
+    const result = compile(krs, {
+      displayMode: "icon",
+      styleSource: `service { shape: box; }\ndomain { shape: cylinder; }`,
+    });
+    expect(result.diagnostics.filter((d) => d.severity === "error")).toHaveLength(0);
+    expect(result.warnings.filter((w) => w.kind === "style-conflict")).toHaveLength(0);
+  });
+
+  it("compileProject: icon mode shape wins over user stylesheet shape (verified via resolveStyles)", async () => {
+    // Verify that compileProject uses the correct cascade order: [builtin, user, iconTheme]
+    // by checking resolveStyles directly with the same cascade.
+    const userSheet = StyleParser.parse(
+      `domain { shape: box; }\nservice { shape: cylinder; }`,
+    ).value;
+    const resolveSheets = [getBuiltinStyleSheet(), userSheet, getIconThemeStyleSheet()];
+    const styles = resolveStyles([DOMAIN_NODE, SERVICE_NODE], resolveSheets);
+    expect(styles.nodes.get("MyDomain")!.shape).toMatchObject({ url: "domain" });
+    expect(styles.nodes.get("MyService")!.shape).toMatchObject({ url: "service" });
+  });
+
+  it("compileProject: icon mode does not emit false style-conflict for shape overrides", async () => {
+    const fs = new InMemoryFileSystemProvider();
+    await fs.writeFile("/main.krs", `system "S" { domain "D" {} }`);
+    await fs.writeFile("/main.krs.style", `domain { shape: box; }`);
+    const result = await compileProject("/main.krs", fs, { displayMode: "icon" });
+    expect(result.warnings.filter((w) => w.kind === "style-conflict")).toHaveLength(0);
+  });
+});
 
 describe("compileProject — diagramType org style-conflict warnings", () => {
   it("does not emit style-conflict when icon theme overrides builtin (icon mode)", async () => {

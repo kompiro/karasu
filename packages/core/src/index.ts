@@ -222,22 +222,26 @@ function _compileCore(krsSource: string, opts: CompileOptions): CompileResult {
   const parseResult: ParseResult<KrsFile> = Parser.parse(krsSource);
   const diagnostics = [...parseResult.diagnostics];
 
-  const systemSheets: StyleSheet[] = [getBuiltinStyleSheet()];
-  if (displayMode === "icon") systemSheets.push(getIconThemeStyleSheet());
-  const sheets = [...systemSheets];
+  // Build sheets for conflict analysis: [builtin, ...userSheets]
+  // Icon theme is intentionally excluded from analysis to avoid false style-conflict warnings.
+  const sheets: StyleSheet[] = [getBuiltinStyleSheet()];
   if (styleSource) {
     const styleResult = StyleParser.parse(styleSource);
     diagnostics.push(...styleResult.diagnostics);
     sheets.push(styleResult.value);
   }
-  const systemSheetCount = systemSheets.length;
+  const systemSheetCount = 1; // only builtin counts as system for conflict detection
   const warnings = analyze(parseResult.value, sheets, systemSheetCount);
+
+  // For style resolution, icon theme is appended last so it takes highest priority for `shape`.
+  // This ensures Icon Mode is immune to `shape` overrides from user or builtin stylesheets.
+  const resolveSheets = displayMode === "icon" ? [...sheets, getIconThemeStyleSheet()] : sheets;
 
   if (diagramType === "org") {
     const slice = extractOrgView(parseResult.value.organizations, viewPath ?? []);
     const styles = resolveStyles(
       parseResult.value.systems,
-      sheets,
+      resolveSheets,
       undefined,
       parseResult.value.organizations,
     );
@@ -263,7 +267,7 @@ function _compileCore(krsSource: string, opts: CompileOptions): CompileResult {
   ];
   const styles = resolveStyles(
     parseResult.value.systems,
-    sheets,
+    resolveSheets,
     deployUnits,
     undefined,
     parseResult.value.domains,
@@ -309,17 +313,22 @@ async function _compileProjectCore(
   const resolved = await resolver.resolve(entryPath);
   const diagnostics = [...resolved.diagnostics];
 
-  const systemSheets: StyleSheet[] = [getBuiltinStyleSheet()];
-  if (displayMode === "icon") systemSheets.push(getIconThemeStyleSheet());
-  const allSheets = [...systemSheets, ...resolved.styleSheets];
-  const systemSheetCount = systemSheets.length;
+  // Build sheets for conflict analysis: [builtin, ...userSheets]
+  // Icon theme is intentionally excluded from analysis to avoid false style-conflict warnings.
+  const allSheets = [getBuiltinStyleSheet(), ...resolved.styleSheets];
+  const systemSheetCount = 1; // only builtin counts as system for conflict detection
   const warnings = analyze(resolved.krsFile, allSheets, systemSheetCount);
+
+  // For style resolution, icon theme is appended last so it takes highest priority for `shape`.
+  // This ensures Icon Mode is immune to `shape` overrides from user or builtin stylesheets.
+  const resolveSheets =
+    displayMode === "icon" ? [...allSheets, getIconThemeStyleSheet()] : allSheets;
 
   if (diagramType === "org") {
     const slice = extractOrgView(resolved.krsFile.organizations, viewPath ?? []);
     const styles = resolveStyles(
       resolved.krsFile.systems,
-      allSheets,
+      resolveSheets,
       undefined,
       resolved.krsFile.organizations,
     );
@@ -345,7 +354,7 @@ async function _compileProjectCore(
   ];
   const styles = resolveStyles(
     resolved.krsFile.systems,
-    allSheets,
+    resolveSheets,
     deployUnits,
     undefined,
     resolved.krsFile.domains,
