@@ -38,7 +38,7 @@ class NodeFileSystemProvider implements FileSystemProvider {
   }
 }
 
-export interface RenderOptions {
+interface RenderOptions {
   output?: string;
   view?: DiagramType;
 }
