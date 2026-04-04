@@ -71,10 +71,12 @@ karasu-architecture/
 import は相対パスのみをサポートします。URL 参照はサプライチェーン攻撃のリスクがあるため、意図的に非対応です。
 
 ```
-// index.krs
+// index.krs — 名前付き import（特定ブロックのみ取り込む）
 import { Payment } from "./teams/payment/service.krs"
 import { ECommerce } from "./teams/ec/service.krs"
-import { Production } from "./deploy/production.krs"
+
+// ワイルドカード import（ファイル内の全ブロックをマージ）
+import "./teams/inventory/service.krs"
 
 system ECPlatform {
   ECommerce -> Payment "決済を処理する"
@@ -130,10 +132,52 @@ organization DevOrg {
 ## 主な機能
 
 - **論理／物理の分離** — ビジネス構造とデプロイ構造を別図で管理。`realizes` で対応付け
-- **ドリルダウン** — ダブルクリックで階層を深掘り。パンくずナビで上位に戻れる
+- **ドリルダウン** — ダブルクリックで階層を深掘り。パンくずナビで上位に戻れる。Full View で全階層を一度に表示
+- **SVG エクスポート** — 全図を一括エクスポート。エクスポートした SVG はブラウザ単体でドリルダウンナビゲーション可能
+- **アイコンモード** — System・Deploy・Org 図をアイコン表示に切り替え
+- **パネルフォーカス** — サイドバーの折りたたみとプレビューの全画面表示
 - **ドメイン分散の検出** — 同じドメイン名が複数サービスに分散していると自動警告
 - **タグ・アノテーション** — `[external]` `[human]` `[async]` と `@deprecated` `@new` などに対応
 - **スタイル分離** — CSS ライクな `.krs.style` ファイルで見た目を制御
+- **VS Code 拡張** — シンタックスハイライト・LSP 診断・SVG プレビュー・双方向ジャンプ
+
+## CLI
+
+```bash
+# ローカルサーバーを起動してブラウザでプレビュー
+karasu serve ./architecture
+
+# SVG を標準出力へ（stdout → ファイルリダイレクト）
+karasu render index.krs > docs/arch.svg
+
+# 特定のビューのみ出力
+karasu render index.krs --view deploy --output deploy.svg
+
+# svgo でパイプ最適化
+karasu render index.krs | svgo - -o docs/arch.svg
+```
+
+## VS Code 拡張
+
+`packages/vscode/` に VS Code 拡張が含まれています。
+
+- `.krs` ファイルのシンタックスハイライト
+- LSP による診断（エラー・警告をエディタ内表示）
+- SVG プレビュー Webview（ドリルダウンナビゲーション対応）
+- エディタ ↔ プレビューの双方向ジャンプ（Cmd/Ctrl+Click）
+- ホバー・定義ジャンプなど標準 LSP 機能
+- ノード詳細パネル（クロスダイアグラムナビゲーション対応）
+
+## GitHub Actions
+
+CI で `.krs` ファイルから SVG を自動生成するワークフローテンプレートを用意しています。
+
+```yaml
+- name: Render architecture diagrams
+  run: karasu render index.krs --output docs/arch.svg
+```
+
+詳細は [`examples/github-actions/`](examples/github-actions/) および [`docs/github-actions.md`](docs/github-actions.md) を参照してください。
 
 ## 命名の由来
 
@@ -148,15 +192,21 @@ organization DevOrg {
 | タグ・アノテーション一覧 | `docs/spec/tags-annotations.md` |
 | コアコンセプト | `docs/concepts.md` |
 | 設計判断の経緯（ADR） | `docs/adr/` |
+| GitHub Actions 連携ガイド | `docs/github-actions.md` |
+| サンプル `.krs` ファイル | `examples/` |
 
 ## リポジトリ構成
 
 ```
 karasu/
 ├── docs/                  ← 仕様・設計ドキュメント
+├── examples/              ← サンプル .krs ファイル（チュートリアル・テーマ別シナリオ）
 ├── packages/
 │   ├── core/              ← パーサー・スタイル解決・SVGレンダラー（Pure TS）
-│   └── app/               ← Vite + React のプレビューUI
+│   ├── app/               ← Vite + React のプレビューUI
+│   ├── cli/               ← karasu serve / render コマンド
+│   ├── lsp/               ← Language Server Protocol 実装
+│   └── vscode/            ← VS Code 拡張
 ├── package.json           ← npm workspaces 設定
 └── tsconfig.json
 ```
@@ -170,6 +220,8 @@ karasu/
 | UIフレームワーク       | React         |
 | エディタコンポーネント | Monaco Editor |
 | テスト                 | Vitest        |
+| CLI                    | commander     |
+| 言語サーバー           | LSP（vscode-languageserver） |
 
 ## インスピレーション
 
