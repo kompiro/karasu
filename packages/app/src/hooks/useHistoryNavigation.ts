@@ -26,9 +26,7 @@ export function buildHash(activeView: ActiveView, viewPath: string[]): string {
  * nodeId is null for root views.
  * Returns null for unrecognized hashes.
  */
-export function parseHash(
-  hash: string,
-): { activeView: ActiveView; nodeId: string | null } | null {
+export function parseHash(hash: string): { activeView: ActiveView; nodeId: string | null } | null {
   if (hash === "#krs-deploy") return { activeView: "deploy", nodeId: null };
   const m = hash.match(/^#krs-(system|org)-(.+)$/);
   if (!m) return null;
@@ -130,9 +128,7 @@ export function useHistoryNavigation({
       }
 
       const path =
-        parsed.nodeId === null
-          ? []
-          : (nodePathIndex.get(parsed.nodeId) ?? [parsed.nodeId]);
+        parsed.nodeId === null ? [] : (nodePathIndex.get(parsed.nodeId) ?? [parsed.nodeId]);
       dispatch({ type: "SET_VIEW_PATH", path });
 
       queueMicrotask(() => {
