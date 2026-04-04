@@ -43,6 +43,8 @@ export function AppShell({ entryPath, sidebarContent, hideEditor, recompileRef }
   } = state;
 
   const [isAllLayersOpen, setIsAllLayersOpen] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [previewFocused, setPreviewFocused] = useState(false);
 
   // ── View hooks ──────────────────────────────────────────────────
 
@@ -219,14 +221,28 @@ export function AppShell({ entryPath, sidebarContent, hideEditor, recompileRef }
 
   // ── Render ──────────────────────────────────────────────────────
 
-  const className = sidebarContent
-    ? "app-shell has-sidebar"
-    : hideEditor
-      ? "app serve-mode"
-      : "app-shell";
+  const className = hideEditor
+    ? "app serve-mode"
+    : [
+        "app-shell",
+        sidebarContent ? "has-sidebar" : "",
+        sidebarCollapsed ? "sidebar-collapsed" : "",
+        previewFocused ? "preview-focused" : "",
+      ]
+        .filter(Boolean)
+        .join(" ");
 
   return (
     <div className={className}>
+      {sidebarContent && !previewFocused && (
+        <button
+          className="sidebar-toggle"
+          onClick={() => setSidebarCollapsed((v) => !v)}
+          aria-label={sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+        >
+          {sidebarCollapsed ? "» Expand" : "« Collapse"}
+        </button>
+      )}
       {sidebarContent}
       {!hideEditor && <EditorPane value={fileContent} onChange={handleEditorChange} />}
       <KarasuPreviewColumn
@@ -275,6 +291,8 @@ export function AppShell({ entryPath, sidebarContent, hideEditor, recompileRef }
         allLayersSvg={allLayersSvg}
         orgAllLayersSvg={orgAllLayersSvg}
         orgDrillDownSvg={orgDrillDownSvg}
+        previewFocused={previewFocused}
+        onPreviewFocusToggle={() => setPreviewFocused((v) => !v)}
       />
     </div>
   );

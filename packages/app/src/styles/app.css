@@ -115,6 +115,7 @@ body,
 
 /* With sidebar: topbar + 3-column (sidebar | editor | preview) */
 .app-shell.has-sidebar {
+  position: relative; /* anchor for sidebar-toggle absolute positioning */
   grid-template-rows: var(--topbar-h) 1fr auto;
   grid-template-columns: var(--sidebar-w) 1fr 1fr;
 }
@@ -751,6 +752,103 @@ body,
   grid-column: 1 / -1;
 }
 
+/* ── Sidebar Toggle Button ─────────────────────────────────────── */
+/* Absolutely positioned at the sidebar/editor boundary — does not
+   participate in grid flow so it never overlaps sidebar content. */
+.sidebar-toggle {
+  position: absolute;
+  left: var(--sidebar-w);
+  top: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 100;
+  background: var(--bg-raised);
+  color: var(--text-secondary);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  padding: 4px 8px;
+  font-size: 11px;
+  font-weight: 500;
+  font-family: var(--font-ui);
+  cursor: pointer;
+  white-space: nowrap;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
+  transition:
+    background 0.15s,
+    color 0.15s,
+    border-color 0.15s;
+}
+
+.sidebar-toggle:hover {
+  background: var(--bg-overlay);
+  color: var(--text-primary);
+  border-color: var(--accent);
+}
+
+/* When collapsed: anchor to left edge; button extends rightward */
+.app-shell.has-sidebar.sidebar-collapsed .sidebar-toggle {
+  left: 0;
+  transform: translate(0, -50%);
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+}
+
+/* ── Sidebar Collapsed ─────────────────────────────────────────── */
+.app-shell.has-sidebar.sidebar-collapsed {
+  grid-template-columns: 0 1fr 1fr;
+}
+
+.app-shell.has-sidebar.sidebar-collapsed .file-tree,
+.app-shell.has-sidebar.sidebar-collapsed .project-selector {
+  display: none;
+}
+
+/* ── Preview Focused (fullscreen preview) ──────────────────────── */
+/* NOTE: specificity (2 classes) is intentionally lower than .has-sidebar.preview-focused
+   (3 classes) below, which provides explicit overrides for the sidebar case. */
+.app-shell.preview-focused {
+  grid-template-columns: 1fr;
+  grid-template-rows: 1fr auto;
+}
+
+.app-shell.preview-focused .editor-pane {
+  display: none;
+}
+
+.app-shell.preview-focused .preview-column {
+  grid-row: 1;
+  grid-column: 1;
+}
+
+.app-shell.preview-focused .warning-panel {
+  grid-row: 2;
+  grid-column: 1;
+}
+
+/* ── Has-sidebar + Preview Focused ─────────────────────────────── */
+/* Higher specificity (3 classes) overrides both .has-sidebar (2 classes) and
+   .has-sidebar.sidebar-collapsed (3 classes, earlier in file) so this always
+   wins when preview-focused is active, regardless of sidebar-collapsed state. */
+.app-shell.has-sidebar.preview-focused {
+  grid-template-columns: 1fr;
+  grid-template-rows: 1fr auto;
+}
+
+/* 4-class specificity beats .app-shell.has-sidebar .preview-column (3 classes) */
+.app-shell.has-sidebar.preview-focused .preview-column {
+  grid-row: 1;
+  grid-column: 1;
+}
+
+.app-shell.has-sidebar.preview-focused .warning-panel {
+  grid-row: 2;
+  grid-column: 1;
+}
+
+.app-shell.has-sidebar.preview-focused .file-tree,
+.app-shell.has-sidebar.preview-focused .project-selector,
+.app-shell.has-sidebar.preview-focused .sidebar-toggle {
+  display: none;
+}
+
 /* ── OPFS Banner ────────────────────────────────────────────────── */
 .opfs-banner {
   grid-column: 1 / -1;
@@ -1061,6 +1159,19 @@ body,
 }
 
 .toolbar-btn--reference:hover {
+  background: var(--accent-dim);
+  color: var(--accent-hover);
+  border-color: rgba(77, 143, 255, 0.4);
+}
+
+/* Focus mode button — toggles preview fullscreen */
+.toolbar-btn--focus {
+  background: var(--bg-raised);
+  color: var(--text-secondary);
+  border-color: var(--border-strong);
+}
+
+.toolbar-btn--focus:hover {
   background: var(--accent-dim);
   color: var(--accent-hover);
   border-color: rgba(77, 143, 255, 0.4);

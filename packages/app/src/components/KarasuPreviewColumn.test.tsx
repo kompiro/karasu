@@ -52,6 +52,8 @@ function makeProps(overrides: Partial<Parameters<typeof KarasuPreviewColumn>[0]>
     orgDrillDownSvg: undefined,
     allLayersSvg: undefined,
     orgAllLayersSvg: undefined,
+    previewFocused: false,
+    onPreviewFocusToggle: vi.fn(),
     ...overrides,
   };
 }
@@ -320,6 +322,37 @@ describe("KarasuPreviewColumn", () => {
       });
       const { container } = render(<KarasuPreviewColumn {...props} />);
       expect(container.querySelector("iframe")).toBeNull();
+    });
+  });
+
+  describe("Focus mode button", () => {
+    it("shows Focus button when not in focus mode", () => {
+      const props = makeProps({ previewFocused: false });
+      const { getByRole } = render(<KarasuPreviewColumn {...props} />);
+      const btn = getByRole("button", { name: /Enter focus mode/ });
+      expect(btn.textContent).toContain("↗ Focus");
+    });
+
+    it("shows Exit Focus button when in focus mode", () => {
+      const props = makeProps({ previewFocused: true });
+      const { getByRole } = render(<KarasuPreviewColumn {...props} />);
+      const btn = getByRole("button", { name: /Exit focus mode/ });
+      expect(btn.textContent).toContain("↙ Exit Focus");
+    });
+
+    it("calls onPreviewFocusToggle when clicked", () => {
+      const onPreviewFocusToggle = vi.fn();
+      const props = makeProps({ onPreviewFocusToggle });
+      const { getByRole } = render(<KarasuPreviewColumn {...props} />);
+      fireEvent.click(getByRole("button", { name: /focus mode/ }));
+      expect(onPreviewFocusToggle).toHaveBeenCalled();
+    });
+
+    it("has active class when previewFocused is true", () => {
+      const props = makeProps({ previewFocused: true });
+      const { getByRole } = render(<KarasuPreviewColumn {...props} />);
+      const btn = getByRole("button", { name: /Exit focus mode/ });
+      expect(btn.className).toContain("active");
     });
   });
 

@@ -73,6 +73,11 @@ interface KarasuPreviewColumnProps {
   drillDownSvg?: string;
   /** SVG with CSS :target navigation for org drill-down export */
   orgDrillDownSvg?: string;
+
+  /** Whether the preview is in fullscreen focus mode */
+  previewFocused: boolean;
+  /** Toggle preview focus mode */
+  onPreviewFocusToggle: () => void;
 }
 
 export function KarasuPreviewColumn({
@@ -95,6 +100,8 @@ export function KarasuPreviewColumn({
   orgAllLayersSvg,
   drillDownSvg,
   orgDrillDownSvg,
+  previewFocused,
+  onPreviewFocusToggle,
 }: KarasuPreviewColumnProps) {
   const [refOpen, setRefOpen] = useState(false);
   const [exportMenuOpen, setExportMenuOpen] = useState(false);
@@ -222,6 +229,14 @@ export function KarasuPreviewColumn({
           aria-label="Open reference"
         >
           ? Reference
+        </button>
+
+        <button
+          className={`toolbar-btn toolbar-btn--focus${previewFocused ? " active" : ""}`}
+          onClick={onPreviewFocusToggle}
+          aria-label={previewFocused ? "Exit focus mode" : "Enter focus mode"}
+        >
+          {previewFocused ? "↙ Exit Focus" : "↗ Focus"}
         </button>
       </div>
       <ReferencePanel isOpen={refOpen} onClose={() => setRefOpen(false)} activeView={activeView} />
