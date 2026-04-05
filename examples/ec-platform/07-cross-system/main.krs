@@ -1,0 +1,7 @@
+// ec-platform/07-cross-system/main.krs
+// Demonstrates: cross-system service references with fully qualified names (System.Service)
+// ECPlatform references PaymentGateway.PaymentService across system boundaries.
+// The referenced service appears as an [external] ghost node in ECPlatform's system view.
+
+import "ec-platform.krs"
+import "payment-gateway.krs"
