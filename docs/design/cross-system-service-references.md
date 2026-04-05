@@ -238,4 +238,4 @@ system PaymentGateway {
 
 この実装には `ViewSlice` への `ghostSystems` / `ghostSystemEdges` フィールド追加と
 `layout.ts` のサブレイアウト対応が必要なため、今回の PR では **構文導入のみ** にとどめ、
-レンダリングは別 issue で対応する。
+レンダリングは別 issue で対応する。→ #328
