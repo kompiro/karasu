@@ -72,12 +72,28 @@ export function extractView(
     const allChildren = [...system.children, ...unassignedDomains];
     const childIds = new Set(allChildren.map(nodeId));
 
-    // Collect cross-system reference targets as ghost external nodes
+    // Build a map from bare service ID to explicit [external] child node.
+    // Used to suppress ghost node creation when an explicit declaration already exists.
+    const explicitExternalById = new Map<string, KrsNode>(
+      allChildren.filter((c) => c.tags.includes("external")).map((c) => [c.id, c]),
+    );
+
+    // Collect cross-system reference targets as ghost external nodes.
+    // If an explicit [external] child with the bare service ID exists, remap the edge to
+    // that child instead of creating a new ghost node with the qualified name.
     const ghostExternalNodes: KrsNode[] = [];
     const crossSystemEdges: KrsEdge[] = [];
 
     for (const edge of system.edges) {
-      if (isQualifiedRef(edge.to) && !childIds.has(edge.to)) {
+      if (!isQualifiedRef(edge.to) || childIds.has(edge.to)) continue;
+
+      const serviceId = edge.to.split(".")[1];
+      const explicitNode = explicitExternalById.get(serviceId);
+
+      if (explicitNode) {
+        // Remap edge to the explicit [external] node's ID to avoid a duplicate node
+        crossSystemEdges.push({ ...edge, to: serviceId });
+      } else {
         if (!ghostExternalNodes.some((n) => n.id === edge.to)) {
           ghostExternalNodes.push(createGhostExternalNode(edge.to, systems));
         }

@@ -293,6 +293,29 @@ system ECPlatform {
       expect(ghostNode?.tags).toContain("external");
     });
 
+    it("reuses explicit [external] child instead of creating ghost when bare id matches", () => {
+      const krs = `
+system ECPlatform {
+  service PaymentService [external] { label "外部決済" }
+  service OrderService {}
+  OrderService -> PaymentGateway.PaymentService
+}
+system PaymentGateway {
+  service PaymentService { label "決済サービス" }
+}
+`;
+      const result = Parser.parse(krs);
+      const view = extractView(result.value.systems, []);
+
+      // No ghost node with qualified ID should be created
+      expect(view.childNodes.find((n) => n.id === "PaymentGateway.PaymentService")).toBeUndefined();
+      // The explicit node should remain
+      expect(view.childNodes.find((n) => n.id === "PaymentService")).toBeDefined();
+      // The edge should be remapped to the bare ID
+      const edge = view.childEdges.find((e) => e.from === "OrderService");
+      expect(edge?.to).toBe("PaymentService");
+    });
+
     it("does not duplicate ghost node when multiple edges target the same qualified id", () => {
       const krs = `
 system ECPlatform {
