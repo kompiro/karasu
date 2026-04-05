@@ -14,7 +14,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@karasu/core": "*",
+    "@karasu/core": "workspace:*",
     "marked": "^17.0.5",
     "vscode-languageclient": "^9.0.1"
   },
