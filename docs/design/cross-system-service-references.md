@@ -217,8 +217,8 @@ system PaymentGateway {
 
 ## 未解決の問い
 
-1. **ghost node のラベル**: 修飾名全体（`PaymentGateway.PaymentService`）を表示するか、
-   サービス名のみ（`PaymentService`）とするか。実際のノードが見つかった場合はそのラベルを使う？
+1. **ghost node のラベル**: 実ノードが解決できた場合はそのノードの `label` を使用する。
+   解決できなかった場合は修飾名全体（`PaymentGateway.PaymentService`）をフォールバックとして表示する。
 2. **service view でのドリルダウン**: ghost external node をクリックした場合、
    対象システムの service view にナビゲートするか、無効（クリック不可）にするか。
    → 今回のスコープ外（別 issue）とする予定。
