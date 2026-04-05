@@ -1065,14 +1065,22 @@ body,
   border-color: var(--border-strong);
 }
 
-/* Org Tree View button — actionable toggle visible on org tab */
-.toolbar-btn--org-tree {
-}
-
 .toolbar-btn--actionable:hover {
   background: var(--accent-dim);
   color: var(--accent-hover);
   border-color: rgba(77, 143, 255, 0.4);
+}
+
+/* Per-button placeholders — add overrides here when a button needs to differ from --actionable */
+.toolbar-btn--icon-mode {
+}
+.toolbar-btn--org-tree {
+}
+.toolbar-btn--all-layers {
+}
+.toolbar-btn--all-views {
+}
+.toolbar-btn--focus {
 }
 
 /* Split export button group */
