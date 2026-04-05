@@ -186,8 +186,16 @@ export class Parser {
   private parseNodeImport(): ImportDeclaration {
     const start = this.advance(); // import
 
+    // Wildcard import: import "file.krs"
+    if (this.peek().type === TokenType.StringLiteral) {
+      const path = this.advance();
+      return { ids: [], path: path.value, loc: this.range(start.loc, path.loc) };
+    }
+
     if (this.peek().type !== TokenType.LeftBrace) {
-      this.error(`Expected { but got ${this.peek().type} ("${this.peek().value}")`);
+      this.error(
+        `Expected { or string literal but got ${this.peek().type} ("${this.peek().value}")`,
+      );
       // LeftBrace がない場合は空の import 宣言を返す
       return { ids: [], path: "", loc: this.range(start.loc) };
     }

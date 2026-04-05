@@ -64,7 +64,7 @@ description: >
 3. worktree に移動し、依存関係をインストールする:
    ```
    cd .worktrees/<機能名>
-   npm ci
+   pnpm install
    ```
 
 > 以降のすべての作業は worktree ディレクトリ内で行う。
@@ -94,8 +94,8 @@ description: >
 ### 5. 実装
 
 1. 承認された計画に基づいて実装を進める
-2. テストを書き、通過を確認する: `npm test`
-3. コード品質を確認する: `npm run lint` / `npm run format:check`
+2. テストを書き、通過を確認する: `pnpm test`
+3. コード品質を確認する: `pnpm run lint` / `pnpm run format:check`
 
 ### 6. コミット
 
@@ -134,7 +134,7 @@ CI 通過後、以下のチェックを順に実行する。
 
    ```
    Worktree: .worktrees/<機能名>
-   起動: cd .worktrees/<機能名> && npm run dev
+   起動: cd .worktrees/<機能名> && pnpm run dev
    ```
 
 > ここで Claude の作業は一旦完了。

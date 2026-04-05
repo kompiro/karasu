@@ -4,7 +4,7 @@
     {
       "label": "build:lsp",
       "type": "shell",
-      "command": "npm run build",
+      "command": "pnpm run build",
       "options": {
         "cwd": "${workspaceFolder}/packages/lsp"
       },
@@ -17,7 +17,7 @@
     {
       "label": "build:vscode",
       "type": "shell",
-      "command": "npm run build",
+      "command": "pnpm run build",
       "options": {
         "cwd": "${workspaceFolder}/packages/vscode"
       },

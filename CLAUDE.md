@@ -38,34 +38,25 @@ karasu/
 ├── examples/          ← サンプル .krs ファイル（Getting Started・テーマ別シナリオ）
 ├── packages/
 │   ├── core/          ← パーサー・スタイル解決・SVGレンダラー（Pure TS）
-│   └── app/           ← Vite + React のプレビューUI
+│   ├── app/           ← Vite + React のプレビューUI
+│   ├── cli/           ← karasu serve / render コマンド
+│   ├── lsp/           ← Language Server Protocol 実装
+│   └── vscode/        ← VS Code 拡張
 ├── package.json       ← npm workspaces 設定
 └── tsconfig.json
 ```
 
 ### 技術スタック
 
-| 用途                   | 技術          |
-| ---------------------- | ------------- |
-| 言語                   | TypeScript    |
-| ビルド（app）          | Vite          |
-| UIフレームワーク       | React         |
-| エディタコンポーネント | Monaco Editor |
-| テスト                 | Vitest        |
-
-### 実装の進め方
-
-**フェーズ1：packages/core**
-
-1. `.krs` パーサー（lexer + 再帰下降パーサー）
-2. `.krs.style` パーサーとカスケード解決（詳細度スコアによるマージ）
-3. SVGレンダラー
-
-**フェーズ2：packages/app**
-
-1. 左ペイン：Monaco Editor（`.krs` の編集）
-2. 右ペイン：SVGプレビュー（リアルタイム更新）
-3. 警告パネル（スタイル衝突・ドメイン分散などの表示）
+| 用途                   | 技術                        |
+| ---------------------- | --------------------------- |
+| 言語                   | TypeScript                  |
+| ビルド（app）          | Vite                        |
+| UIフレームワーク       | React                       |
+| エディタコンポーネント | Monaco Editor               |
+| テスト                 | Vitest                      |
+| CLI                    | commander                   |
+| 言語サーバー           | LSP（vscode-languageserver） |
 
 ---
 

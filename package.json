@@ -2,28 +2,28 @@
   "name": "karasu",
   "version": "0.0.0",
   "private": true,
-  "workspaces": [
-    "packages/*"
-  ],
   "overrides": {
     "dompurify": "^3.3.2"
   },
   "scripts": {
-    "dev": "npm run dev --workspace=packages/app",
-    "build": "npm run build --workspace=packages/core && npm run build --workspace=packages/lsp && npm run build --workspace=packages/app && npm run build --workspace=packages/cli",
-    "test": "npm run test --workspace=packages/core && npm run test --workspace=packages/app && npm run test --workspace=packages/cli && npm run test --workspace=packages/lsp",
-    "test:coverage": "npm run test:coverage --workspace=packages/core && npm run test:coverage --workspace=packages/app && npm run test:coverage --workspace=packages/cli",
+    "dev": "pnpm --filter @karasu/app run dev",
+    "build": "pnpm --filter @karasu/core run build && pnpm --filter @karasu/lsp run build && pnpm --filter @karasu/app run build && pnpm --filter @karasu/cli run build",
+    "test": "pnpm --filter @karasu/core run test && pnpm --filter @karasu/app run test && pnpm --filter @karasu/cli run test && pnpm --filter @karasu/lsp run test",
+    "test:coverage": "pnpm --filter @karasu/core run test:coverage && pnpm --filter @karasu/app run test:coverage && pnpm --filter @karasu/cli run test:coverage",
     "lint": "oxlint --deny-warnings packages/",
     "lint:fix": "oxlint --fix packages/",
     "format": "oxfmt --write packages/",
     "format:check": "oxfmt --check packages/",
-    "typecheck": "npm run typecheck --workspaces",
+    "typecheck": "pnpm -r run typecheck",
     "knip": "knip"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": ["esbuild", "lefthook"]
   },
   "devDependencies": {
     "knip": "^6.1.0",
     "lefthook": "^2.1.4",
     "oxfmt": "^0.42.0",
-    "oxlint": "^1.57.0"
+    "oxlint": "1.57.0"
   }
 }
