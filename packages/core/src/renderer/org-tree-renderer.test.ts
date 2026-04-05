@@ -6,14 +6,17 @@ import type { OrganizationBlock, TeamNode, MemberNode } from "../types/ast.js";
 // Helpers
 // ---------------------------------------------------------------------------
 
-const EMPTY_LOC = { start: { line: 0, column: 0 }, end: { line: 0, column: 0 } };
+const EMPTY_LOC = {
+  start: { line: 0, column: 0, offset: 0 },
+  end: { line: 0, column: 0, offset: 0 },
+};
 
 function member(id: string, label?: string): MemberNode {
   return {
     kind: "member",
     id,
     label,
-    properties: { owns: [], slack: undefined, github: undefined },
+    properties: { links: [], slack: undefined, github: undefined },
     children: [],
     loc: EMPTY_LOC,
   };
@@ -24,14 +27,14 @@ function team(id: string, label?: string, children: (TeamNode | MemberNode)[] = 
     kind: "team",
     id,
     label,
-    properties: { owns: [] },
+    properties: { links: [], owns: [] },
     children,
     loc: EMPTY_LOC,
   };
 }
 
 function org(id: string, teams: TeamNode[]): OrganizationBlock {
-  return { id, label: id, properties: { owns: [] }, teams, loc: EMPTY_LOC };
+  return { id, label: id, properties: { links: [] }, teams, loc: EMPTY_LOC };
 }
 
 // ---------------------------------------------------------------------------
@@ -49,14 +52,7 @@ describe("collectAllTeamIds", () => {
   });
 
   it("returns nested team ids recursively", () => {
-    const orgs = [
-      org("o1", [
-        team("eng", "Engineering", [
-          team("backend"),
-          team("frontend"),
-        ]),
-      ]),
-    ];
+    const orgs = [org("o1", [team("eng", "Engineering", [team("backend"), team("frontend")])])];
     const ids = collectAllTeamIds(orgs);
     expect(ids).toContain("eng");
     expect(ids).toContain("backend");
@@ -72,10 +68,7 @@ describe("collectAllTeamIds", () => {
   });
 
   it("collects ids across multiple organization blocks", () => {
-    const orgs = [
-      org("o1", [team("eng")]),
-      org("o2", [team("product")]),
-    ];
+    const orgs = [org("o1", [team("eng")]), org("o2", [team("product")])];
     expect(collectAllTeamIds(orgs)).toEqual(["eng", "product"]);
   });
 });
@@ -137,9 +130,7 @@ describe("renderOrgTreeView", () => {
   });
 
   it("renders members in 3-column grid (all in same row for ≤3 members)", () => {
-    const orgs = [
-      org("o1", [team("eng", "Eng", [member("a"), member("b"), member("c")])]),
-    ];
+    const orgs = [org("o1", [team("eng", "Eng", [member("a"), member("b"), member("c")])])];
     const svg = renderOrgTreeView(orgs, new Set(["eng"]));
     // All 3 member cards should be present
     expect(svg).toContain('data-node-id="a"');
@@ -150,10 +141,7 @@ describe("renderOrgTreeView", () => {
   it("renders sub-team nodes", () => {
     const orgs = [
       org("o1", [
-        team("eng", "Engineering", [
-          team("backend", "Backend"),
-          team("frontend", "Frontend"),
-        ]),
+        team("eng", "Engineering", [team("backend", "Backend"), team("frontend", "Frontend")]),
       ]),
     ];
     const svg = renderOrgTreeView(orgs, new Set());
@@ -162,20 +150,14 @@ describe("renderOrgTreeView", () => {
   });
 
   it("renders bezier connector paths between parent and child", () => {
-    const orgs = [
-      org("o1", [
-        team("eng", "Engineering", [team("backend", "Backend")]),
-      ]),
-    ];
+    const orgs = [org("o1", [team("eng", "Engineering", [team("backend", "Backend")])])];
     const svg = renderOrgTreeView(orgs, new Set());
     expect(svg).toContain("<path");
     expect(svg).toContain("C "); // bezier curve command
   });
 
   it("renders connector to member grid when expanded", () => {
-    const orgs = [
-      org("o1", [team("eng", "Eng", [member("alice")])]),
-    ];
+    const orgs = [org("o1", [team("eng", "Eng", [member("alice")])])];
     const svg = renderOrgTreeView(orgs, new Set(["eng"]));
     expect(svg).toContain("<path");
   });
@@ -192,19 +174,14 @@ describe("renderOrgTreeView", () => {
     });
 
     it("renders normally without forExport (members hidden when collapsed)", () => {
-      const orgs = [
-        org("o1", [team("eng", "Eng", [member("alice", "Alice")])]),
-      ];
+      const orgs = [org("o1", [team("eng", "Eng", [member("alice", "Alice")])])];
       const svg = renderOrgTreeView(orgs, new Set());
       expect(svg).not.toContain('data-node-id="alice"');
     });
   });
 
   it("handles multiple top-level teams stacked vertically", () => {
-    const orgs = [
-      org("o1", [team("eng", "Engineering")]),
-      org("o2", [team("product", "Product")]),
-    ];
+    const orgs = [org("o1", [team("eng", "Engineering")]), org("o2", [team("product", "Product")])];
     const svg = renderOrgTreeView(orgs, new Set());
     expect(svg).toContain('data-team-id="eng"');
     expect(svg).toContain('data-team-id="product"');

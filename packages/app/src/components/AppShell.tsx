@@ -74,7 +74,6 @@ export function AppShell({ entryPath, sidebarContent, hideEditor, recompileRef }
     orgWarnings,
     nodePathIndex,
     recompile: recompileOrg,
-    expandedTeamIds,
     toggleTeamExpand,
     orgTreeSvg,
     orgTreeExportSvg,

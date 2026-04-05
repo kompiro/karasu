@@ -109,9 +109,7 @@ export function useOrgView(
   }, [entryPath, fs, viewPath, displayMode, recompileCounter.current]);
 
   const orgTreeSvg =
-    state.organizations.length > 0
-      ? renderOrgTreeView(state.organizations, expandedTeamIds)
-      : "";
+    state.organizations.length > 0 ? renderOrgTreeView(state.organizations, expandedTeamIds) : "";
 
   const orgTreeExportSvg =
     state.organizations.length > 0

@@ -273,7 +273,11 @@ function renderTreeMemberCard(member: MemberNode, x: number, y: number): string 
     );
   }
 
-  return el("g", { transform: `translate(${x},${y})`, "data-node-id": escapeXml(member.id) }, ...parts);
+  return el(
+    "g",
+    { transform: `translate(${x},${y})`, "data-node-id": escapeXml(member.id) },
+    ...parts,
+  );
 }
 
 function renderMemberGrid(grid: MemberGridNode): string {
@@ -287,12 +291,7 @@ function renderMemberGrid(grid: MemberGridNode): string {
   return cards.join("");
 }
 
-function bezierConnector(
-  x1: number,
-  y1: number,
-  x2: number,
-  y2: number,
-): string {
+function bezierConnector(x1: number, y1: number, x2: number, y2: number): string {
   const midX = (x1 + x2) / 2;
   return el("path", {
     d: `M ${x1} ${y1} C ${midX} ${y1}, ${midX} ${y2}, ${x2} ${y2}`,
@@ -392,7 +391,14 @@ export function renderOrgTreeView(
       el("rect", { width: 200, height: 100, fill: BG_COLOR }),
       el(
         "text",
-        { x: 100, y: 50, "text-anchor": "middle", fill: "#9CA3AF", "font-family": FONT, "font-size": 13 },
+        {
+          x: 100,
+          y: 50,
+          "text-anchor": "middle",
+          fill: "#9CA3AF",
+          "font-family": FONT,
+          "font-size": 13,
+        },
         "No teams defined",
       ),
     );
