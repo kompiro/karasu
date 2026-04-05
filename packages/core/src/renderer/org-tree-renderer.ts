@@ -207,7 +207,7 @@ function renderTreeTeamCard(
   const textColor = s?.color ?? TEXT_COLOR;
   const fontFamily = s?.fontFamily ?? FONT;
   const fontSize = s?.fontSize ?? 13;
-  const fontWeight = s?.fontWeight ?? "600";
+  const fontWeight = s?.fontWeight ?? "bold";
 
   const parts: string[] = [
     el("rect", {
@@ -299,7 +299,7 @@ function renderTreeMemberCard(
         fill: textColor,
         "font-family": fontFamily,
         "font-size": fontSize,
-        "font-weight": s?.fontWeight ?? 500,
+        "font-weight": s?.fontWeight ?? "normal",
       },
       label,
     ),
