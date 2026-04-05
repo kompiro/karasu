@@ -1,5 +1,5 @@
 {
-  "name": "@karasu-tools/vscode",
+  "name": "karasu-vscode",
   "displayName": "karasu",
   "version": "0.1.0",
   "private": true,
