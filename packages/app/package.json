@@ -1,5 +1,5 @@
 {
-  "name": "@karasu/app",
+  "name": "@karasu-tools/app",
   "version": "0.0.0",
   "private": true,
   "type": "module",
@@ -12,7 +12,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@karasu/core": "workspace:*",
+    "@karasu-tools/core": "workspace:*",
     "@monaco-editor/react": "^4.7.0",
     "dompurify": "^3.3.3",
     "marked": "^17.0.5",

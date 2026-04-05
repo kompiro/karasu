@@ -1,5 +1,5 @@
 import { useState, useCallback } from "react";
-import type { Project } from "@karasu/core";
+import type { Project } from "@karasu-tools/core";
 
 interface ProjectSelectorProps {
   projects: Project[];

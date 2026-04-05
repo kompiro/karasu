@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef } from "react";
-import { sanitizeId } from "@karasu/core";
+import { sanitizeId } from "@karasu-tools/core";
 import type { Dispatch } from "react";
 import type { AppAction, ActiveView } from "../state/app-reducer.js";
 

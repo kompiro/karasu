@@ -1,7 +1,7 @@
 import { readFile, writeFile, readdir, stat } from "node:fs/promises";
 import { resolve } from "node:path";
-import { buildAllViewsSvgProject, compileProject } from "@karasu/core";
-import type { FileSystemProvider, DirEntry, DiagramType, Diagnostic, Warning } from "@karasu/core";
+import { buildAllViewsSvgProject, compileProject } from "@karasu-tools/core";
+import type { FileSystemProvider, DirEntry, DiagramType, Diagnostic, Warning } from "@karasu-tools/core";
 
 class NodeFileSystemProvider implements FileSystemProvider {
   async readFile(path: string): Promise<string> {

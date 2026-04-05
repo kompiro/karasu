@@ -6,7 +6,7 @@ import type {
   TeamNode,
   MemberNode,
   OrganizationBlock,
-} from "@karasu/core";
+} from "@karasu-tools/core";
 import type { Range } from "vscode-languageserver/node";
 
 interface LspPosition {

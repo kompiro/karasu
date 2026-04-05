@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { Parser } from "@karasu/core";
+import { Parser } from "@karasu-tools/core";
 import {
   collectNodes,
   findNodeAtPosition,

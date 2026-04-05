@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from "vitest";
-import { InMemoryFileSystemProvider } from "@karasu/core";
+import { InMemoryFileSystemProvider } from "@karasu-tools/core";
 import { ProjectManager } from "./project-manager";
 
 describe("ProjectManager", () => {

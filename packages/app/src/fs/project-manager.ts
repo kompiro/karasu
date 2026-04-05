@@ -1,4 +1,4 @@
-import type { FileSystemProvider, Project } from "@karasu/core";
+import type { FileSystemProvider, Project } from "@karasu-tools/core";
 
 const META_PATH = "/meta/projects.json";
 

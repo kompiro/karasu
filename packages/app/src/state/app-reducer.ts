@@ -1,4 +1,4 @@
-import type { Project, DirEntry, DisplayMode } from "@karasu/core";
+import type { Project, DirEntry, DisplayMode } from "@karasu-tools/core";
 
 export type ActiveView = "system" | "deploy" | "org";
 

@@ -1,6 +1,6 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
-import { compile, buildAllViewsSvg } from "@karasu/core";
-import type { DiagramType } from "@karasu/core";
+import { compile, buildAllViewsSvg } from "@karasu-tools/core";
+import type { DiagramType } from "@karasu-tools/core";
 
 // ---------------------------------------------------------------------------
 // SSRF protection

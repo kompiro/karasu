@@ -23,7 +23,7 @@ importers:
 
   packages/app:
     dependencies:
-      '@karasu/core':
+      '@karasu-tools/core':
         specifier: workspace:*
         version: link:../core
       '@monaco-editor/react':
@@ -75,7 +75,7 @@ importers:
 
   packages/cli:
     dependencies:
-      '@karasu/core':
+      '@karasu-tools/core':
         specifier: workspace:*
         version: link:../core
       chokidar:
@@ -115,7 +115,7 @@ importers:
 
   packages/lsp:
     dependencies:
-      '@karasu/core':
+      '@karasu-tools/core':
         specifier: workspace:*
         version: link:../core
       vscode-languageserver:
@@ -137,7 +137,7 @@ importers:
 
   packages/vscode:
     dependencies:
-      '@karasu/core':
+      '@karasu-tools/core':
         specifier: workspace:*
         version: link:../core
       marked:

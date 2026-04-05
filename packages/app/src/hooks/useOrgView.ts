@@ -6,7 +6,7 @@ import {
   type ViewPath,
   type FileSystemProvider,
   type DisplayMode,
-} from "@karasu/core";
+} from "@karasu-tools/core";
 
 interface OrgViewState {
   orgSvg: string;

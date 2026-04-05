@@ -1,5 +1,5 @@
 import { useCallback, useMemo, useRef, useState, type RefObject } from "react";
-import { Parser } from "@karasu/core";
+import { Parser } from "@karasu-tools/core";
 import { EditorPane } from "./EditorPane.js";
 import { KarasuPreviewColumn } from "./KarasuPreviewColumn.js";
 import { downloadSvg } from "../utils/download-svg.js";
@@ -12,7 +12,7 @@ import { useStyleSource } from "../hooks/useStyleSource.js";
 import { useHistoryNavigation } from "../hooks/useHistoryNavigation.js";
 
 import type { ReactNode } from "react";
-import type { KrsFile, KrsNode, TeamNode, OrgNode, DisplayMode } from "@karasu/core";
+import type { KrsFile, KrsNode, TeamNode, OrgNode, DisplayMode } from "@karasu-tools/core";
 import type { editor } from "monaco-editor";
 import type { ActiveView } from "../state/app-reducer.js";
 

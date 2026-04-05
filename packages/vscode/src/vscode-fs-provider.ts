@@ -1,5 +1,5 @@
 import * as vscode from "vscode";
-import type { DirEntry, FileSystemProvider } from "@karasu/core";
+import type { DirEntry, FileSystemProvider } from "@karasu-tools/core";
 
 /**
  * Bridges vscode.workspace.fs to the core FileSystemProvider interface,

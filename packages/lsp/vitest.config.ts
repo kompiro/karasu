@@ -5,7 +5,7 @@ export default defineConfig({
   resolve: {
     alias: [
       {
-        find: "@karasu/core",
+        find: "@karasu-tools/core",
         replacement: path.resolve(__dirname, "../core/src/index.ts"),
       },
     ],

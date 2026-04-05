@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { describe, it, expect, vi, afterEach } from "vitest";
 import { renderHook, act, cleanup } from "@testing-library/react";
-import { InMemoryFileSystemProvider } from "@karasu/core";
+import { InMemoryFileSystemProvider } from "@karasu-tools/core";
 import { useSystemView } from "./useSystemView.js";
 
 afterEach(cleanup);

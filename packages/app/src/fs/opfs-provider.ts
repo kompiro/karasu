@@ -1,4 +1,4 @@
-import type { FileSystemProvider, DirEntry } from "@karasu/core";
+import type { FileSystemProvider, DirEntry } from "@karasu-tools/core";
 
 /**
  * OpfsFileSystemProvider — Origin Private File System による実装。

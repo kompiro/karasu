@@ -1,5 +1,5 @@
 {
-  "name": "@karasu/cli",
+  "name": "karasu",
   "version": "0.0.0",
   "description": "karasu CLI — serve and build .krs architecture diagrams",
   "bin": {
@@ -14,7 +14,7 @@
     "test:coverage": "vitest run --coverage"
   },
   "dependencies": {
-    "@karasu/core": "workspace:*",
+    "@karasu-tools/core": "workspace:*",
     "chokidar": "^5.0.0",
     "commander": "^14.0.0"
   },

@@ -2,8 +2,8 @@
 import { describe, it, expect, vi, afterEach, beforeEach } from "vitest";
 import { render, fireEvent, cleanup } from "@testing-library/react";
 import { NodeDetailPanel } from "./NodeDetailPanel.js";
-import type { NodeMetadata } from "@karasu/core";
-import { clearRegistry, registerBuiltinShapes, loadAndRegisterIcon } from "@karasu/core";
+import type { NodeMetadata } from "@karasu-tools/core";
+import { clearRegistry, registerBuiltinShapes, loadAndRegisterIcon } from "@karasu-tools/core";
 
 // Minimal icon SVG with krs-pictogram for testing pictogram rendering
 const MINIMAL_ICON_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 100">
