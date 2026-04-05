@@ -1,5 +1,5 @@
 import { useRef, useState, useCallback, useEffect, type WheelEvent, type MouseEvent } from "react";
-import type { Diagnostic, NodeMetadata } from "@karasu/core";
+import type { Diagnostic, NodeMetadata } from "@karasu-tools/core";
 import { NodeDetailPanel } from "./NodeDetailPanel.js";
 
 interface PreviewPaneProps {

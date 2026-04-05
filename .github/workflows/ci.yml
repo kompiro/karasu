@@ -40,16 +40,16 @@ jobs:
         run: pnpm run knip
 
       - name: Typecheck (core)
-        run: pnpm --filter @karasu/core run typecheck
+        run: pnpm --filter @karasu-tools/core run typecheck
 
       - name: Typecheck (app)
-        run: pnpm --filter @karasu/app run typecheck
+        run: pnpm --filter @karasu-tools/app run typecheck
 
       - name: Typecheck (cli)
-        run: pnpm --filter @karasu/cli run typecheck
+        run: pnpm --filter ./packages/cli run typecheck
 
       - name: Build (core)
-        run: pnpm --filter @karasu/core run build
+        run: pnpm --filter @karasu-tools/core run build
 
       - name: Test
         run: pnpm run test:coverage

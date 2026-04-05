@@ -1,5 +1,5 @@
 import * as vscode from "vscode";
-import { compileProject, type NodeMetadata } from "@karasu/core";
+import { compileProject, type NodeMetadata } from "@karasu-tools/core";
 import { marked } from "marked";
 import { VsCodeFileSystemProvider } from "./vscode-fs-provider.js";
 

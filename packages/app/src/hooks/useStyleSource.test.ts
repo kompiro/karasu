@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { describe, it, expect, afterEach } from "vitest";
 import { renderHook, act, cleanup } from "@testing-library/react";
-import { InMemoryFileSystemProvider } from "@karasu/core";
+import { InMemoryFileSystemProvider } from "@karasu-tools/core";
 import { useStyleSource } from "./useStyleSource.js";
 
 afterEach(cleanup);

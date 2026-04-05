@@ -1,5 +1,11 @@
 import { useState } from "react";
-import type { Diagnostic, NodeMetadata, Warning, DeployBlockInfo, DisplayMode } from "@karasu/core";
+import type {
+  Diagnostic,
+  NodeMetadata,
+  Warning,
+  DeployBlockInfo,
+  DisplayMode,
+} from "@karasu-tools/core";
 import type { ActiveView } from "../state/app-reducer.js";
 import { DiagramTabBar } from "./DiagramTabBar.js";
 import { BreadcrumbBar } from "./BreadcrumbBar.js";

@@ -17,7 +17,7 @@ import {
   Hover,
 } from "vscode-languageserver/node";
 import { TextDocument } from "vscode-languageserver-textdocument";
-import { Parser, StyleParser } from "@karasu/core";
+import { Parser, StyleParser } from "@karasu-tools/core";
 import {
   findNodeAtPosition,
   findRangeOfNode,

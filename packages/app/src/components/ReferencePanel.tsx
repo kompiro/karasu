@@ -1,5 +1,5 @@
 import { useState, useCallback } from "react";
-import { getReference } from "@karasu/core";
+import { getReference } from "@karasu-tools/core";
 import type { ActiveView } from "../state/app-reducer.js";
 
 interface ReferencePanelProps {

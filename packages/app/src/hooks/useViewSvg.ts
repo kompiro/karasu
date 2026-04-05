@@ -7,7 +7,7 @@ import {
   buildAllViewsSvg,
   type DisplayMode,
   type Diagnostic,
-} from "@karasu/core";
+} from "@karasu-tools/core";
 
 export function useViewSvg(
   fileContent: string | undefined,

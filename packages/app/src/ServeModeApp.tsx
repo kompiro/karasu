@@ -1,5 +1,5 @@
 import { useEffect, useCallback, useRef, useState } from "react";
-import { InMemoryFileSystemProvider } from "@karasu/core";
+import { InMemoryFileSystemProvider } from "@karasu-tools/core";
 import { AppShell } from "./components/AppShell.js";
 import { AppProvider, useAppContext } from "./state/app-context.js";
 

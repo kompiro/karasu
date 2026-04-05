@@ -8,26 +8,26 @@ import {
   type FileSystemProvider,
   type NodeMetadata,
   type DisplayMode,
-} from "@karasu/core";
-import iconManifest from "@karasu/core/icons/icons.json";
-import serviceSvg from "@karasu/core/icons/service.svg?raw";
-import userSvg from "@karasu/core/icons/user.svg?raw";
-import domainSvg from "@karasu/core/icons/domain.svg?raw";
-import resourceSvg from "@karasu/core/icons/resource.svg?raw";
-import teamSvg from "@karasu/core/icons/team.svg?raw";
-import memberSvg from "@karasu/core/icons/member.svg?raw";
-import databaseSvg from "@karasu/core/icons/database.svg?raw";
-import queueSvg from "@karasu/core/icons/queue.svg?raw";
-import apiSvg from "@karasu/core/icons/api.svg?raw";
-import cloudSvg from "@karasu/core/icons/cloud.svg?raw";
-import ociSvg from "@karasu/core/icons/oci.svg?raw";
-import lambdaSvg from "@karasu/core/icons/lambda.svg?raw";
-import jarSvg from "@karasu/core/icons/jar.svg?raw";
-import warSvg from "@karasu/core/icons/war.svg?raw";
-import functionSvg from "@karasu/core/icons/function.svg?raw";
-import assetsSvg from "@karasu/core/icons/assets.svg?raw";
-import jobSvg from "@karasu/core/icons/job.svg?raw";
-import artifactSvg from "@karasu/core/icons/artifact.svg?raw";
+} from "@karasu-tools/core";
+import iconManifest from "@karasu-tools/core/icons/icons.json";
+import serviceSvg from "@karasu-tools/core/icons/service.svg?raw";
+import userSvg from "@karasu-tools/core/icons/user.svg?raw";
+import domainSvg from "@karasu-tools/core/icons/domain.svg?raw";
+import resourceSvg from "@karasu-tools/core/icons/resource.svg?raw";
+import teamSvg from "@karasu-tools/core/icons/team.svg?raw";
+import memberSvg from "@karasu-tools/core/icons/member.svg?raw";
+import databaseSvg from "@karasu-tools/core/icons/database.svg?raw";
+import queueSvg from "@karasu-tools/core/icons/queue.svg?raw";
+import apiSvg from "@karasu-tools/core/icons/api.svg?raw";
+import cloudSvg from "@karasu-tools/core/icons/cloud.svg?raw";
+import ociSvg from "@karasu-tools/core/icons/oci.svg?raw";
+import lambdaSvg from "@karasu-tools/core/icons/lambda.svg?raw";
+import jarSvg from "@karasu-tools/core/icons/jar.svg?raw";
+import warSvg from "@karasu-tools/core/icons/war.svg?raw";
+import functionSvg from "@karasu-tools/core/icons/function.svg?raw";
+import assetsSvg from "@karasu-tools/core/icons/assets.svg?raw";
+import jobSvg from "@karasu-tools/core/icons/job.svg?raw";
+import artifactSvg from "@karasu-tools/core/icons/artifact.svg?raw";
 
 interface SystemViewState {
   svg: string;

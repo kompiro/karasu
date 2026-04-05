@@ -6,10 +6,10 @@
     "dompurify": "^3.3.2"
   },
   "scripts": {
-    "dev": "pnpm --filter @karasu/app run dev",
-    "build": "pnpm --filter @karasu/core run build && pnpm --filter @karasu/lsp run build && pnpm --filter @karasu/app run build && pnpm --filter @karasu/cli run build",
-    "test": "pnpm --filter @karasu/core run test && pnpm --filter @karasu/app run test && pnpm --filter @karasu/cli run test && pnpm --filter @karasu/lsp run test",
-    "test:coverage": "pnpm --filter @karasu/core run test:coverage && pnpm --filter @karasu/app run test:coverage && pnpm --filter @karasu/cli run test:coverage",
+    "dev": "pnpm --filter @karasu-tools/app run dev",
+    "build": "pnpm --filter @karasu-tools/core run build && pnpm --filter @karasu-tools/lsp run build && pnpm --filter @karasu-tools/app run build && pnpm --filter ./packages/cli run build",
+    "test": "pnpm --filter @karasu-tools/core run test && pnpm --filter @karasu-tools/app run test && pnpm --filter ./packages/cli run test && pnpm --filter @karasu-tools/lsp run test",
+    "test:coverage": "pnpm --filter @karasu-tools/core run test:coverage && pnpm --filter @karasu-tools/app run test:coverage && pnpm --filter ./packages/cli run test:coverage",
     "lint": "oxlint --deny-warnings packages/",
     "lint:fix": "oxlint --fix packages/",
     "format": "oxfmt --write packages/",

@@ -9,7 +9,7 @@ const { mockBuildAllViewsSvgProject, mockCompileProject } = vi.hoisted(() => ({
   mockCompileProject: vi.fn(),
 }));
 
-vi.mock("@karasu/core", () => ({
+vi.mock("@karasu-tools/core", () => ({
   buildAllViewsSvgProject: mockBuildAllViewsSvgProject,
   compileProject: mockCompileProject,
 }));

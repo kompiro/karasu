@@ -1,5 +1,5 @@
 import { useState, useCallback } from "react";
-import type { Warning } from "@karasu/core";
+import type { Warning } from "@karasu-tools/core";
 
 interface WarningPanelProps {
   warnings: Warning[];

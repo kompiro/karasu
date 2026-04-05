@@ -2,7 +2,7 @@
 import { describe, it, expect, afterEach } from "vitest";
 import { renderHook, act, cleanup, waitFor } from "@testing-library/react";
 import { useOrgView } from "./useOrgView.js";
-import { InMemoryFileSystemProvider } from "@karasu/core";
+import { InMemoryFileSystemProvider } from "@karasu-tools/core";
 
 afterEach(cleanup);
 

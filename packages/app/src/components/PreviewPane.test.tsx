@@ -2,7 +2,7 @@
 import { describe, it, expect, vi, beforeAll, afterEach } from "vitest";
 import { render, fireEvent, cleanup } from "@testing-library/react";
 import { PreviewPane } from "./PreviewPane.js";
-import type { NodeMetadata } from "@karasu/core";
+import type { NodeMetadata } from "@karasu-tools/core";
 
 afterEach(cleanup);
 

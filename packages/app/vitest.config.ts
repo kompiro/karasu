@@ -5,11 +5,11 @@ export default defineConfig({
   resolve: {
     alias: [
       {
-        find: /^@karasu\/core\/icons\/(.*)/,
+        find: /^@karasu-tools\/core\/icons\/(.*)/,
         replacement: path.resolve(__dirname, "../core/icons/$1"),
       },
       {
-        find: "@karasu/core",
+        find: "@karasu-tools/core",
         replacement: path.resolve(__dirname, "../core/src/index.ts"),
       },
     ],

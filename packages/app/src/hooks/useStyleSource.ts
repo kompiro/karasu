@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Parser, resolvePath, type FileSystemProvider } from "@karasu/core";
+import { Parser, resolvePath, type FileSystemProvider } from "@karasu-tools/core";
 
 export function useStyleSource(
   fileContent: string | undefined,

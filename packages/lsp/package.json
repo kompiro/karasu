@@ -1,5 +1,5 @@
 {
-  "name": "@karasu/lsp",
+  "name": "@karasu-tools/lsp",
   "version": "0.1.0",
   "private": true,
   "description": "Language Server for .krs architecture files",
@@ -10,7 +10,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@karasu/core": "workspace:*",
+    "@karasu-tools/core": "workspace:*",
     "vscode-languageserver": "^9.0.1",
     "vscode-languageserver-textdocument": "^1.0.12"
   },

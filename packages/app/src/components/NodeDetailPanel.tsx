@@ -1,8 +1,8 @@
 import { useMemo } from "react";
 import { marked } from "marked";
 import DOMPurify from "dompurify";
-import { renderPictogram } from "@karasu/core";
-import type { NodeMetadata } from "@karasu/core";
+import { renderPictogram } from "@karasu-tools/core";
+import type { NodeMetadata } from "@karasu-tools/core";
 
 interface NodeDetailPanelProps {
   nodeId: string;

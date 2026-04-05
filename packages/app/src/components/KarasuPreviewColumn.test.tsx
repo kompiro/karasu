@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { describe, it, expect, vi, afterEach } from "vitest";
 import { render, fireEvent, cleanup } from "@testing-library/react";
-import type { Diagnostic, Warning } from "@karasu/core";
+import type { Diagnostic, Warning } from "@karasu-tools/core";
 import { KarasuPreviewColumn } from "./KarasuPreviewColumn.js";
 
 afterEach(cleanup);

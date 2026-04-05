@@ -7,7 +7,7 @@ import {
   type ReactNode,
 } from "react";
 import { appReducer, initialState, type AppState, type AppAction } from "./app-reducer";
-import type { FileSystemProvider } from "@karasu/core";
+import type { FileSystemProvider } from "@karasu-tools/core";
 
 interface AppContextValue {
   state: AppState;

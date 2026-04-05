@@ -9,7 +9,7 @@ import {
   type FileSystemProvider,
   type DisplayMode,
   type OrganizationBlock,
-} from "@karasu/core";
+} from "@karasu-tools/core";
 
 interface OrgViewState {
   orgSvg: string;

@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from "react";
-import type { FileSystemProvider, DirEntry } from "@karasu/core";
+import type { FileSystemProvider, DirEntry } from "@karasu-tools/core";
 
 interface FileTreeNode {
   name: string;

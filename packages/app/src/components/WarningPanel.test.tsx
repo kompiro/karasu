@@ -4,7 +4,7 @@ import { render, fireEvent, cleanup } from "@testing-library/react";
 
 afterEach(cleanup);
 import { WarningPanel } from "./WarningPanel.js";
-import type { Warning } from "@karasu/core";
+import type { Warning } from "@karasu-tools/core";
 
 function makeWarning(kind: Warning["kind"], message = "test warning"): Warning {
   return { kind, message, details: [] };

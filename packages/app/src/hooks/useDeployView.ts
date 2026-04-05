@@ -7,7 +7,7 @@ import {
   type NodeMetadata,
   type DeployBlockInfo,
   type DisplayMode,
-} from "@karasu/core";
+} from "@karasu-tools/core";
 
 interface DeployViewState {
   svg: string;

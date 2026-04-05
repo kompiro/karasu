@@ -4,7 +4,7 @@ import { FileTree } from "./components/FileTree.js";
 import { AppShell } from "./components/AppShell.js";
 import { useAppContext } from "./state/app-context.js";
 import { ProjectManager } from "./fs/project-manager.js";
-import type { Project } from "@karasu/core";
+import type { Project } from "@karasu-tools/core";
 
 const LAST_PROJECT_KEY = "karasu-last-project-id";
 

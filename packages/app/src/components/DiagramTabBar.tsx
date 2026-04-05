@@ -1,4 +1,4 @@
-import type { DeployBlockInfo } from "@karasu/core";
+import type { DeployBlockInfo } from "@karasu-tools/core";
 import type { ActiveView } from "../state/app-reducer.js";
 
 interface DiagramTabBarProps {
