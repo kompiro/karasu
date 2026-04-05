@@ -509,6 +509,16 @@ export class Parser {
     const arrowToken = this.advance(); // -> or -->
     const toToken = this.parseIdOrString("edge target");
 
+    // Support fully qualified cross-system references: SystemId.ServiceId
+    let toValue = toToken.value;
+    let toEnd = toToken.loc;
+    if (this.peek().type === TokenType.Dot) {
+      this.advance(); // consume '.'
+      const serviceToken = this.parseIdOrString("qualified edge target");
+      toValue = `${toToken.value}.${serviceToken.value}`;
+      toEnd = serviceToken.loc;
+    }
+
     let label: string | undefined;
     if (this.peek().type === TokenType.StringLiteral) {
       label = this.advance().value;
@@ -518,11 +528,11 @@ export class Parser {
 
     return {
       from: fromToken.value,
-      to: toToken.value,
+      to: toValue,
       label,
       kind: arrowToken.type === TokenType.DashedArrow ? "async" : "sync",
       tags,
-      loc: this.range(fromToken.loc, toToken.loc),
+      loc: this.range(fromToken.loc, toEnd),
     };
   }
 

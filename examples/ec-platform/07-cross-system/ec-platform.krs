@@ -1,0 +1,26 @@
+// ec-platform/07-cross-system/ec-platform.krs
+// ECPlatform system — references PaymentGateway.PaymentService using dot notation.
+// To suppress the implicit-external warning, add: service PaymentService [external]
+
+system ECPlatform {
+  label "ECプラットフォーム"
+
+  user Customer {
+    label "顧客"
+    role "商品を購入する一般ユーザー"
+  }
+
+  service OrderService {
+    label "注文サービス"
+    description "商品の注文処理と決済依頼を担当する"
+  }
+
+  service InventoryService {
+    label "在庫管理サービス"
+    description "在庫データの管理と在庫確認 API を提供する"
+  }
+
+  Customer      -> OrderService                   "注文する"
+  OrderService  -> InventoryService               "在庫を確認する"
+  OrderService  -> PaymentGateway.PaymentService  "決済を依頼する"
+}

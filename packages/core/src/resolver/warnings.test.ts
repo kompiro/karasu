@@ -287,3 +287,73 @@ system ECPlatform {
     expect(unassigned).toHaveLength(0);
   });
 });
+
+describe("cross-system-ref warnings", () => {
+  it("emits implicit-external warning for cross-system reference", () => {
+    const krs = `
+system ECPlatform {
+  service OrderService {}
+  OrderService -> PaymentGateway.PaymentService
+}
+system PaymentGateway {
+  service PaymentService {}
+}
+`;
+    const file = Parser.parse(krs).value;
+    const warnings = analyze(file, []);
+    const w = warnings.find((warning) => warning.kind === "cross-system-ref-implicit-external");
+    expect(w).toBeDefined();
+    expect(w?.message).toContain("PaymentGateway.PaymentService");
+    expect(w?.message).toContain("ECPlatform.OrderService");
+  });
+
+  it("emits unresolved warning when referenced system does not exist", () => {
+    const krs = `
+system ECPlatform {
+  service OrderService {}
+  OrderService -> UnknownSystem.UnknownService
+}
+`;
+    const file = Parser.parse(krs).value;
+    const warnings = analyze(file, []);
+    const w = warnings.find((warning) => warning.kind === "cross-system-ref-unresolved");
+    expect(w).toBeDefined();
+    expect(w?.message).toContain("UnknownSystem.UnknownService");
+  });
+
+  it("emits unresolved warning when referenced service does not exist in the system", () => {
+    const krs = `
+system ECPlatform {
+  service OrderService {}
+  OrderService -> PaymentGateway.NoSuchService
+}
+system PaymentGateway {
+  service PaymentService {}
+}
+`;
+    const file = Parser.parse(krs).value;
+    const warnings = analyze(file, []);
+    const w = warnings.find((warning) => warning.kind === "cross-system-ref-unresolved");
+    expect(w).toBeDefined();
+    expect(w?.message).toContain("PaymentGateway.NoSuchService");
+  });
+
+  it("suppresses implicit-external warning when system id is explicitly declared as [external]", () => {
+    const krs = `
+system ECPlatform {
+  service PaymentGateway [external]
+  service OrderService {}
+  OrderService -> PaymentGateway.PaymentService
+}
+system PaymentGateway {
+  service PaymentService {}
+}
+`;
+    const file = Parser.parse(krs).value;
+    const warnings = analyze(file, []);
+    const implicit = warnings.filter(
+      (warning) => warning.kind === "cross-system-ref-implicit-external",
+    );
+    expect(implicit).toHaveLength(0);
+  });
+});

@@ -236,4 +236,26 @@ system ECPlatform {
       expect(view.childNodes[0].id).toBe("Order");
     });
   });
+
+  describe("cross-system references", () => {
+    it("cross-system edge target is stored in AST but not rendered in system view", () => {
+      const krs = `
+system ECPlatform {
+  service OrderService {}
+  OrderService -> PaymentGateway.PaymentService "決済を依頼する"
+}
+system PaymentGateway {
+  service PaymentService {}
+}
+`;
+      const result = Parser.parse(krs);
+      // Edge is stored in AST with qualified target
+      const edge = result.value.systems[0].edges[0];
+      expect(edge.to).toBe("PaymentGateway.PaymentService");
+
+      // view-extract filters it out (ghost system rendering is deferred)
+      const view = extractView(result.value.systems, []);
+      expect(view.childEdges.find((e) => e.to === "PaymentGateway.PaymentService")).toBeUndefined();
+    });
+  });
 });

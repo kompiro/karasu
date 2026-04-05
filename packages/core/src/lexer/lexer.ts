@@ -159,6 +159,9 @@ export class Lexer {
         return this.readArrow(loc);
       case "@":
         return this.readAtToken(loc);
+      case ".":
+        this.advance();
+        return { type: TokenType.Dot, value: ".", loc };
       default:
         if (isIdentStart(ch)) {
           return this.readIdentifierOrKeyword(loc);

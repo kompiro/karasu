@@ -224,3 +224,18 @@ system PaymentGateway {
    → 今回のスコープ外（別 issue）とする予定。
 3. **ドット記法ノード ID**: エッジターゲット以外（例: ノード ID `service A.B`）でも
    ドット記法を許容するか。→ 今回は **エッジターゲットのみ** に限定。
+
+## ghost system のレンダリング（保留）
+
+クロスシステム参照のレンダリングについて設計段階で判明した要件：
+
+- 参照先システム（例: `PaymentGateway`）は参照元システム（ECPlatform）の **外側** に ghost として表示する
+  （ECPlatform のコンテナ内に表示するのは誤り）
+- ghost システムの中に参照先サービス（`PaymentService`）を子ノードとして表示する
+- エッジは ECPlatform 内のサービスから ghost システム内のサービスへ描画する
+- `service PaymentGateway [external]` を ECPlatform 内に明示することで
+  ghost システムの代わりに ECPlatform 内の単純な外部ノードとして描画できる
+
+この実装には `ViewSlice` への `ghostSystems` / `ghostSystemEdges` フィールド追加と
+`layout.ts` のサブレイアウト対応が必要なため、今回の PR では **構文導入のみ** にとどめ、
+レンダリングは別 issue で対応する。→ #328
