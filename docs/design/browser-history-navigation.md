@@ -201,13 +201,59 @@ export function useHistoryNavigation(
 #krs-system-EC          → { activeView: "system", viewPath: nodePathIndex.get("EC") }
 #krs-org-root           → { activeView: "org", viewPath: [] }
 #krs-org-backend        → { activeView: "org", viewPath: nodePathIndex.get("backend") }
+#krs-org-tree           → { activeView: "org", isOrgTreeView: true }  ← Tree View モード
 #krs-deploy             → { activeView: "deploy" }
 ```
 
 - `krs-{viewPrefix}-` プレフィックスで `activeView` を判別
 - `root` は viewPath=[] に対応
+- `tree` は Org Tree View モードを表す予約識別子
 - それ以外の nodeId は `nodePathIndex` で viewPath に変換
 - `sanitizeId()` は `drill-down-svg.ts` と同じ関数を使用（`@karasu/core` からエクスポート）
+
+### Org Tree View のパーマネントリンク対応
+
+Org Tree View モード（`isOrgTreeViewOpen: boolean`）を URL hash に反映する。
+
+**`buildHash` の拡張**:
+
+```typescript
+export function buildHash(activeView: ActiveView, viewPath: string[], isOrgTreeView = false): string {
+  if (activeView === "deploy") return "#krs-deploy";
+  if (activeView === "org" && isOrgTreeView) return "#krs-org-tree";
+  const prefix = activeView === "org" ? "org" : "system";
+  if (viewPath.length === 0) return `#krs-${prefix}-root`;
+  return `#krs-${prefix}-${sanitizeId(viewPath[viewPath.length - 1])}`;
+}
+```
+
+**`parseHash` の拡張**:
+
+```typescript
+export function parseHash(hash: string): {
+  activeView: ActiveView;
+  nodeId: string | null;
+  isOrgTreeView: boolean;
+} | null {
+  if (hash === "#krs-deploy") return { activeView: "deploy", nodeId: null, isOrgTreeView: false };
+  if (hash === "#krs-org-tree") return { activeView: "org", nodeId: null, isOrgTreeView: true };
+  const m = hash.match(/^#krs-(system|org)-(.+)$/);
+  if (!m) return null;
+  const activeView = m[1] as "system" | "org";
+  const nodeId = m[2] === "root" ? null : m[2];
+  return { activeView, nodeId, isOrgTreeView: false };
+}
+```
+
+**`useHistoryNavigation` フックの拡張**:
+
+- パラメータに `isOrgTreeView: boolean` と `setIsOrgTreeView: (v: boolean) => void` を追加
+- Effect ③（state → hash 同期）で `isOrgTreeView` を依存配列に追加し `buildHash` に渡す
+- Effect ①（初期 hash 解析）で `parsed.isOrgTreeView` を `setIsOrgTreeView` で反映
+- Effect ⑤（popstate）で `setIsOrgTreeView(parsed.isOrgTreeView)` を呼ぶ
+
+AppShell の `isOrgTreeViewOpen` state（`useState`）と `setIsOrgTreeViewOpen` をそのままフックに渡す。
+Toggle ボタンが押されると `setIsOrgTreeViewOpen` が更新され、Effect ③ が URL を自動的に同期する。
 
 ### `AppShell` への統合箇所
 

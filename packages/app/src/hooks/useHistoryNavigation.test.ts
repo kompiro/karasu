@@ -35,29 +35,65 @@ describe("buildHash", () => {
   it("sanitizes special characters in nodeId", () => {
     expect(buildHash("system", ["my service"])).toBe("#krs-system-my_service");
   });
+
+  it("returns #krs-org-tree when isOrgTreeView is true", () => {
+    expect(buildHash("org", [], true)).toBe("#krs-org-tree");
+  });
+
+  it("ignores isOrgTreeView when activeView is not org", () => {
+    expect(buildHash("system", [], true)).toBe("#krs-system-root");
+  });
 });
 
 // ─── parseHash ────────────────────────────────────────────────────────────────
 
 describe("parseHash", () => {
   it("parses #krs-deploy", () => {
-    expect(parseHash("#krs-deploy")).toEqual({ activeView: "deploy", nodeId: null });
+    expect(parseHash("#krs-deploy")).toEqual({
+      activeView: "deploy",
+      nodeId: null,
+      isOrgTreeView: false,
+    });
   });
 
   it("parses #krs-system-root", () => {
-    expect(parseHash("#krs-system-root")).toEqual({ activeView: "system", nodeId: null });
+    expect(parseHash("#krs-system-root")).toEqual({
+      activeView: "system",
+      nodeId: null,
+      isOrgTreeView: false,
+    });
   });
 
   it("parses #krs-org-root", () => {
-    expect(parseHash("#krs-org-root")).toEqual({ activeView: "org", nodeId: null });
+    expect(parseHash("#krs-org-root")).toEqual({
+      activeView: "org",
+      nodeId: null,
+      isOrgTreeView: false,
+    });
   });
 
   it("parses #krs-system-Payment", () => {
-    expect(parseHash("#krs-system-Payment")).toEqual({ activeView: "system", nodeId: "Payment" });
+    expect(parseHash("#krs-system-Payment")).toEqual({
+      activeView: "system",
+      nodeId: "Payment",
+      isOrgTreeView: false,
+    });
   });
 
   it("parses #krs-org-backend", () => {
-    expect(parseHash("#krs-org-backend")).toEqual({ activeView: "org", nodeId: "backend" });
+    expect(parseHash("#krs-org-backend")).toEqual({
+      activeView: "org",
+      nodeId: "backend",
+      isOrgTreeView: false,
+    });
+  });
+
+  it("parses #krs-org-tree as org Tree View mode", () => {
+    expect(parseHash("#krs-org-tree")).toEqual({
+      activeView: "org",
+      nodeId: null,
+      isOrgTreeView: true,
+    });
   });
 
   it("returns null for empty string", () => {
@@ -86,6 +122,8 @@ function makeOptions(overrides: Partial<Parameters<typeof useHistoryNavigation>[
     currentFilePath: "/test/index.krs",
     nodePathIndex: new Map<string, string[]>(),
     dispatch: makeDispatch(),
+    isOrgTreeView: false,
+    setIsOrgTreeView: vi.fn(),
     ...overrides,
   };
 }
@@ -306,6 +344,75 @@ describe("useHistoryNavigation", () => {
       });
 
       expect(dispatch).toHaveBeenCalledWith({ type: "SET_VIEW_PATH", path: ["Payment"] });
+    });
+  });
+
+  describe("org tree view — URL sync", () => {
+    it("updates hash to #krs-org-tree when isOrgTreeView becomes true on org tab", async () => {
+      const opts = makeOptions({ activeView: "org", viewPath: [], isOrgTreeView: false });
+      history.replaceState(null, "", "#krs-org-root");
+
+      const { rerender } = renderHook((p) => useHistoryNavigation(p), { initialProps: opts });
+
+      await act(async () => {
+        rerender({ ...opts, isOrgTreeView: true });
+      });
+
+      expect(location.hash).toBe("#krs-org-tree");
+    });
+
+    it("restores to #krs-org-root hash when tree view is disabled", async () => {
+      const opts = makeOptions({ activeView: "org", viewPath: [], isOrgTreeView: true });
+      history.replaceState(null, "", "#krs-org-tree");
+
+      const { rerender } = renderHook((p) => useHistoryNavigation(p), { initialProps: opts });
+
+      await act(async () => {
+        rerender({ ...opts, isOrgTreeView: false });
+      });
+
+      expect(location.hash).toBe("#krs-org-root");
+    });
+
+    it("calls setIsOrgTreeView(true) on initial mount when hash is #krs-org-tree", () => {
+      history.replaceState(null, "", "#krs-org-tree");
+      const setIsOrgTreeView = vi.fn();
+
+      renderHook(() =>
+        useHistoryNavigation(makeOptions({ activeView: "system", setIsOrgTreeView })),
+      );
+
+      expect(setIsOrgTreeView).toHaveBeenCalledWith(true);
+    });
+
+    it("calls setIsOrgTreeView(true) when popstate navigates to #krs-org-tree", async () => {
+      const setIsOrgTreeView = vi.fn();
+      renderHook(() => useHistoryNavigation(makeOptions({ setIsOrgTreeView })));
+      setIsOrgTreeView.mockClear();
+
+      history.replaceState(null, "", "#krs-org-tree");
+      await act(async () => {
+        window.dispatchEvent(new PopStateEvent("popstate"));
+      });
+
+      expect(setIsOrgTreeView).toHaveBeenCalledWith(true);
+    });
+
+    it("calls setIsOrgTreeView(false) when popstate navigates away from tree view", async () => {
+      const setIsOrgTreeView = vi.fn();
+      renderHook(() =>
+        useHistoryNavigation(
+          makeOptions({ activeView: "org", isOrgTreeView: true, setIsOrgTreeView }),
+        ),
+      );
+      setIsOrgTreeView.mockClear();
+
+      history.replaceState(null, "", "#krs-org-root");
+      await act(async () => {
+        window.dispatchEvent(new PopStateEvent("popstate"));
+      });
+
+      expect(setIsOrgTreeView).toHaveBeenCalledWith(false);
     });
   });
 });
