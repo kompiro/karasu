@@ -338,10 +338,10 @@ system PaymentGateway {
     expect(w?.message).toContain("PaymentGateway.NoSuchService");
   });
 
-  it("suppresses implicit-external warning when bare service id has [external] tag", () => {
+  it("suppresses implicit-external warning when system id is explicitly declared as [external]", () => {
     const krs = `
 system ECPlatform {
-  service PaymentService [external]
+  service PaymentGateway [external]
   service OrderService {}
   OrderService -> PaymentGateway.PaymentService
 }
@@ -351,7 +351,7 @@ system PaymentGateway {
 `;
     const file = Parser.parse(krs).value;
     const warnings = analyze(file, []);
-    const implicit = warnings.filter((w) => w.kind === "cross-system-ref-implicit-external");
+    const implicit = warnings.filter((warning) => warning.kind === "cross-system-ref-implicit-external");
     expect(implicit).toHaveLength(0);
   });
 });

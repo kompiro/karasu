@@ -227,7 +227,8 @@ function detectCrossSystemRefs(file: KrsFile): Warning[] {
   const warnings: Warning[] = [];
 
   for (const system of file.systems) {
-    // Build set of bare service IDs with [external] tag explicitly declared in this system
+    // Build set of system IDs with [external] tag explicitly declared as children of this system.
+    // A child node with the same ID as the referenced system suppresses the implicit-external warning.
     const explicitExternalIds = new Set(
       system.children.filter((c) => c.tags.includes("external")).map((c) => c.id),
     );
@@ -237,8 +238,8 @@ function detectCrossSystemRefs(file: KrsFile): Warning[] {
 
       const [systemId, serviceId] = edge.to.split(".");
 
-      // Suppressed if the bare service ID is explicitly declared as [external] in the source system
-      if (explicitExternalIds.has(serviceId)) continue;
+      // Suppressed if the referenced system ID is explicitly declared as [external] in the source system
+      if (explicitExternalIds.has(systemId)) continue;
 
       const referencedSystem = file.systems.find((s) => s.id === systemId);
       if (!referencedSystem || !referencedSystem.children.some((c) => c.id === serviceId)) {
@@ -253,7 +254,7 @@ function detectCrossSystemRefs(file: KrsFile): Warning[] {
           kind: "cross-system-ref-implicit-external",
           message: `"${edge.to}" is referenced from ${system.id}.${edge.from} but not explicitly annotated as @external`,
           details: [
-            `Add 'service ${serviceId} [external]' to system ${system.id} to suppress this warning`,
+            `Add 'service ${systemId} [external]' to system ${system.id} to suppress this warning`,
           ],
           loc: edge.loc,
         });
