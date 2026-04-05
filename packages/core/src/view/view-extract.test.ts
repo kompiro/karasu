@@ -238,116 +238,24 @@ system ECPlatform {
   });
 
   describe("cross-system references", () => {
-    const MULTI_SYSTEM_KRS = `
+    it("cross-system edge target is stored in AST but not rendered in system view", () => {
+      const krs = `
 system ECPlatform {
-  service OrderService { label "注文サービス" }
+  service OrderService {}
   OrderService -> PaymentGateway.PaymentService "決済を依頼する"
-}
-
-system PaymentGateway {
-  label "決済ゲートウェイ"
-  service PaymentService {
-    label "決済サービス"
-  }
-}
-`;
-
-    it("adds ghost external SystemNode for cross-system reference", () => {
-      const result = Parser.parse(MULTI_SYSTEM_KRS);
-      const view = extractView(result.value.systems, []);
-
-      const ghostNode = view.childNodes.find((n) => n.id === "PaymentGateway");
-      expect(ghostNode).toBeDefined();
-      expect(ghostNode?.kind).toBe("system");
-      expect(ghostNode?.tags).toContain("external");
-    });
-
-    it("uses actual system label when resolved", () => {
-      const result = Parser.parse(MULTI_SYSTEM_KRS);
-      const view = extractView(result.value.systems, []);
-
-      const ghostNode = view.childNodes.find((n) => n.id === "PaymentGateway");
-      expect(ghostNode?.label).toBe("決済ゲートウェイ");
-    });
-
-    it("includes referenced service as child of ghost system", () => {
-      const result = Parser.parse(MULTI_SYSTEM_KRS);
-      const view = extractView(result.value.systems, []);
-
-      const ghostSystem = view.childNodes.find((n) => n.id === "PaymentGateway");
-      expect(ghostSystem?.children.find((c) => c.id === "PaymentService")).toBeDefined();
-    });
-
-    it("remaps edge target to ghost system ID", () => {
-      const result = Parser.parse(MULTI_SYSTEM_KRS);
-      const view = extractView(result.value.systems, []);
-
-      const crossEdge = view.childEdges.find((e) => e.from === "OrderService");
-      expect(crossEdge).toBeDefined();
-      expect(crossEdge?.to).toBe("PaymentGateway");
-    });
-
-    it("falls back to system ID as label when unresolved", () => {
-      const krs = `
-system ECPlatform {
-  service OrderService {}
-  OrderService -> UnknownSystem.UnknownService
-}
-`;
-      const result = Parser.parse(krs);
-      const view = extractView(result.value.systems, []);
-
-      const ghostNode = view.childNodes.find((n) => n.id === "UnknownSystem");
-      expect(ghostNode).toBeDefined();
-      expect(ghostNode?.kind).toBe("system");
-      expect(ghostNode?.label).toBe("UnknownSystem");
-      expect(ghostNode?.tags).toContain("external");
-    });
-
-    it("reuses explicit [external] child instead of creating ghost when system id matches", () => {
-      const krs = `
-system ECPlatform {
-  service PaymentGateway [external] { label "外部決済GW" }
-  service OrderService {}
-  OrderService -> PaymentGateway.PaymentService
-}
-system PaymentGateway {
-  service PaymentService { label "決済サービス" }
-}
-`;
-      const result = Parser.parse(krs);
-      const view = extractView(result.value.systems, []);
-
-      // No ghost system node should be created — explicit node is reused
-      const nodes = view.childNodes.filter((n) => n.id === "PaymentGateway");
-      expect(nodes).toHaveLength(1);
-      expect(nodes[0].kind).toBe("service"); // the explicit one
-      // Edge remapped to the explicit node's ID
-      const edge = view.childEdges.find((e) => e.from === "OrderService");
-      expect(edge?.to).toBe("PaymentGateway");
-    });
-
-    it("does not duplicate ghost system when multiple services from the same system are referenced", () => {
-      const krs = `
-system ECPlatform {
-  service OrderService {}
-  service CartService {}
-  OrderService -> PaymentGateway.PaymentService
-  CartService -> PaymentGateway.FraudDetection
 }
 system PaymentGateway {
   service PaymentService {}
-  service FraudDetection {}
 }
 `;
       const result = Parser.parse(krs);
-      const view = extractView(result.value.systems, []);
+      // Edge is stored in AST with qualified target
+      const edge = result.value.systems[0].edges[0];
+      expect(edge.to).toBe("PaymentGateway.PaymentService");
 
-      const ghosts = view.childNodes.filter((n) => n.id === "PaymentGateway");
-      expect(ghosts).toHaveLength(1);
-      // Both edges should point to PaymentGateway
-      const edges = view.childEdges.filter((e) => e.to === "PaymentGateway");
-      expect(edges).toHaveLength(2);
+      // view-extract filters it out (ghost system rendering is deferred)
+      const view = extractView(result.value.systems, []);
+      expect(view.childEdges.find((e) => e.to === "PaymentGateway.PaymentService")).toBeUndefined();
     });
   });
 });
