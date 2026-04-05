@@ -25,6 +25,7 @@ export class PreviewPanel {
 
   private readonly _panel: vscode.WebviewPanel;
   private _viewType: ViewType = "system";
+  private _displayMode: "icon" | "shape" = "shape";
   private _viewPath: string[] = [];
   private _viewLabels: string[] = [];
   private _lastNodeMetadata: Map<string, NodeMetadata> | undefined;
@@ -85,6 +86,11 @@ export class PreviewPanel {
               this.highlight(highlightId);
             });
           }
+        } else if (message.type === "toggleIconMode") {
+          this._displayMode = this._displayMode === "icon" ? "shape" : "icon";
+          if (this._currentDocument) {
+            void this._render(this._currentDocument);
+          }
         } else if (message.type === "navigate" && message.nodeId) {
           this._onNavigate(message.nodeId);
         } else if (message.type === "openExternal" && message.url) {
@@ -130,6 +136,7 @@ export class PreviewPanel {
         this._viewType === "org" || this._viewType === "system" ? { viewPath: this._viewPath } : {};
       const result = await compileProject(document.uri.fsPath, new VsCodeFileSystemProvider(), {
         diagramType: this._viewType,
+        displayMode: this._displayMode,
         ...viewPathOpts,
       });
       svg = result.svg;
@@ -148,6 +155,7 @@ export class PreviewPanel {
     const activeStyle =
       "background:var(--vscode-button-background);color:var(--vscode-button-foreground);border-color:var(--vscode-button-background);";
     const btnStyle = (view: ViewType) => (view === this._viewType ? activeStyle : "");
+    const iconModeStyle = this._displayMode === "icon" ? activeStyle : "";
 
     const breadcrumb = this._buildBreadcrumb();
 
@@ -425,6 +433,8 @@ export class PreviewPanel {
     <button data-view="deploy" style="${btnStyle("deploy")}">Deploy</button>
     <button data-view="org" style="${btnStyle("org")}">Org</button>
     <div class="toolbar-sep"></div>
+    <button id="icon-mode-btn" style="${iconModeStyle}">\u25c7 Icon Mode</button>
+    <div class="toolbar-sep"></div>
     <div id="breadcrumb">${breadcrumb}</div>
     <span id="jump-hint">\u24d8 for details \u00b7 Cmd/Ctrl+Click to jump</span>
   </div>
@@ -454,6 +464,11 @@ export class PreviewPanel {
       btn.addEventListener('click', function() {
         vscode.postMessage({ type: 'switchView', viewType: btn.dataset.view });
       });
+    });
+
+    // ── Icon Mode toggle ──
+    document.getElementById('icon-mode-btn').addEventListener('click', function() {
+      vscode.postMessage({ type: 'toggleIconMode' });
     });
 
     // ── Breadcrumb navigation ──

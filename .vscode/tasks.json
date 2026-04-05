@@ -2,6 +2,19 @@
   "version": "2.0.0",
   "tasks": [
     {
+      "label": "build:core",
+      "type": "shell",
+      "command": "pnpm run build",
+      "options": {
+        "cwd": "${workspaceFolder}/packages/core"
+      },
+      "group": "build",
+      "presentation": {
+        "reveal": "silent"
+      },
+      "problemMatcher": []
+    },
+    {
       "label": "build:lsp",
       "type": "shell",
       "command": "pnpm run build",
@@ -12,7 +25,8 @@
       "presentation": {
         "reveal": "silent"
       },
-      "problemMatcher": []
+      "problemMatcher": [],
+      "dependsOn": "build:core"
     },
     {
       "label": "build:vscode",
