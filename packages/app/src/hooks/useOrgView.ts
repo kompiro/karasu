@@ -1,11 +1,14 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import {
   compileProject,
+  renderOrgTreeView,
+  collectAllTeamIds,
   type Diagnostic,
   type Warning,
   type ViewPath,
   type FileSystemProvider,
   type DisplayMode,
+  type OrganizationBlock,
 } from "@karasu-tools/core";
 
 interface OrgViewState {
@@ -13,6 +16,7 @@ interface OrgViewState {
   orgDiagnostics: Diagnostic[];
   orgWarnings: Warning[];
   nodePathIndex: Map<string, string[]>;
+  organizations: OrganizationBlock[];
 }
 
 const DEBOUNCE_MS = 300;
@@ -22,13 +26,34 @@ export function useOrgView(
   fs: FileSystemProvider | null,
   viewPath: ViewPath = [],
   displayMode?: DisplayMode,
-): OrgViewState & { recompile: () => void } {
+): OrgViewState & {
+  recompile: () => void;
+  expandedTeamIds: Set<string>;
+  toggleTeamExpand: (teamId: string) => void;
+  orgTreeSvg: string;
+  orgTreeExportSvg: string;
+} {
   const [state, setState] = useState<OrgViewState>({
     orgSvg: "",
     orgDiagnostics: [],
     orgWarnings: [],
     nodePathIndex: new Map(),
+    organizations: [],
   });
+
+  const [expandedTeamIds, setExpandedTeamIds] = useState<Set<string>>(new Set());
+
+  const toggleTeamExpand = useCallback((teamId: string) => {
+    setExpandedTeamIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(teamId)) {
+        next.delete(teamId);
+      } else {
+        next.add(teamId);
+      }
+      return next;
+    });
+  }, []);
 
   const lastValidSvg = useRef("");
   const timerRef = useRef<ReturnType<typeof setTimeout>>(undefined);
@@ -56,6 +81,7 @@ export function useOrgView(
               orgDiagnostics: result.diagnostics,
               orgWarnings: prev.orgWarnings,
               nodePathIndex: prev.nodePathIndex,
+              organizations: prev.organizations,
             }));
           } else {
             lastValidSvg.current = result.svg;
@@ -64,6 +90,7 @@ export function useOrgView(
               orgDiagnostics: result.diagnostics,
               orgWarnings: result.warnings,
               nodePathIndex: result.nodePathIndex,
+              organizations: result.organizations,
             });
           }
         })
@@ -81,5 +108,15 @@ export function useOrgView(
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [entryPath, fs, viewPath, displayMode, recompileCounter.current]);
 
-  return { ...state, recompile };
+  const orgTreeSvg =
+    state.organizations.length > 0 ? renderOrgTreeView(state.organizations, expandedTeamIds) : "";
+
+  const orgTreeExportSvg =
+    state.organizations.length > 0
+      ? renderOrgTreeView(state.organizations, new Set(collectAllTeamIds(state.organizations)), {
+          forExport: true,
+        })
+      : "";
+
+  return { ...state, recompile, expandedTeamIds, toggleTeamExpand, orgTreeSvg, orgTreeExportSvg };
 }

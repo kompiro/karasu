@@ -1,7 +1,7 @@
 # ADR 0015 — Toolbar Button Display Rules
 
 **Date:** 2026-03-30
-**Status:** Accepted
+**Status:** Partially superseded by [ADR 0022](0022-toolbar-btn-actionable.md) (Rule #2 amended)
 
 ---
 

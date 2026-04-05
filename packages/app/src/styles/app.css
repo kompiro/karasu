@@ -1058,45 +1058,29 @@ body,
   border-color: rgba(77, 143, 255, 0.3);
 }
 
-/* All Layers button — always visible as an actionable toggle */
+/* Tier 1 — Actionable buttons: always look interactive (see ADR 0022) */
+.toolbar-btn--actionable {
+  background: var(--bg-raised);
+  color: var(--text-secondary);
+  border-color: var(--border-strong);
+}
+
+.toolbar-btn--actionable:hover {
+  background: var(--accent-dim);
+  color: var(--accent-hover);
+  border-color: rgba(77, 143, 255, 0.4);
+}
+
+/* Per-button placeholders — add overrides here when a button needs to differ from --actionable */
+.toolbar-btn--icon-mode {
+}
+.toolbar-btn--org-tree {
+}
 .toolbar-btn--all-layers {
-  background: var(--bg-raised);
-  color: var(--text-secondary);
-  border-color: var(--border-strong);
 }
-
-.toolbar-btn--all-layers:hover {
-  background: var(--accent-dim);
-  color: var(--accent-hover);
-  border-color: rgba(77, 143, 255, 0.4);
-}
-
-/* All Views button — opens bundled SVG in a new window */
 .toolbar-btn--all-views {
-  background: var(--bg-raised);
-  color: var(--text-secondary);
-  border-color: var(--border-strong);
 }
-
-.toolbar-btn--all-views:hover {
-  background: var(--accent-dim);
-  color: var(--accent-hover);
-  border-color: rgba(77, 143, 255, 0.4);
-}
-
-/* Icon Mode and Export buttons — always visible as actionable buttons */
-.toolbar-btn--icon-mode,
-.toolbar-btn--export {
-  background: var(--bg-raised);
-  color: var(--text-secondary);
-  border-color: var(--border-strong);
-}
-
-.toolbar-btn--icon-mode:hover,
-.toolbar-btn--export:hover {
-  background: var(--accent-dim);
-  color: var(--accent-hover);
-  border-color: rgba(77, 143, 255, 0.4);
+.toolbar-btn--focus {
 }
 
 /* Split export button group */
@@ -1163,31 +1147,9 @@ body,
   opacity: 0.5;
 }
 
-/* Reference button — stands out as a persistent entry point */
+/* Reference button — bolder weight to stand out as a persistent entry point */
 .toolbar-btn--reference {
-  background: var(--bg-raised);
-  color: var(--text-secondary);
-  border-color: var(--border-strong);
   font-weight: 600;
-}
-
-.toolbar-btn--reference:hover {
-  background: var(--accent-dim);
-  color: var(--accent-hover);
-  border-color: rgba(77, 143, 255, 0.4);
-}
-
-/* Focus mode button — toggles preview fullscreen */
-.toolbar-btn--focus {
-  background: var(--bg-raised);
-  color: var(--text-secondary);
-  border-color: var(--border-strong);
-}
-
-.toolbar-btn--focus:hover {
-  background: var(--accent-dim);
-  color: var(--accent-hover);
-  border-color: rgba(77, 143, 255, 0.4);
 }
 
 .view-kind-toolbar {

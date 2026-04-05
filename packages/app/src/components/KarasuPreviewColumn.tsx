@@ -88,6 +88,17 @@ interface KarasuPreviewColumnProps {
   onPreviewFocusToggle: () => void;
   /** Called when user clicks "Jump to editor" in the detail panel */
   onJumpToEditor?: (nodeId: string) => void;
+
+  /** Org Tree View: whether tree view mode is active on the org tab */
+  isOrgTreeViewOpen: boolean;
+  /** Org Tree View: toggle tree view mode */
+  onOrgTreeViewToggle: () => void;
+  /** Org Tree View: rendered SVG for current expand state */
+  orgTreeSvg?: string;
+  /** Org Tree View: called when a team node is clicked to expand/collapse members */
+  onTeamToggle?: (teamId: string) => void;
+  /** Org Tree View: fully-expanded SVG for export */
+  orgTreeExportSvg?: string;
 }
 
 export function KarasuPreviewColumn({
@@ -114,6 +125,11 @@ export function KarasuPreviewColumn({
   previewFocused,
   onPreviewFocusToggle,
   onJumpToEditor,
+  isOrgTreeViewOpen,
+  onOrgTreeViewToggle,
+  orgTreeSvg,
+  onTeamToggle,
+  orgTreeExportSvg,
 }: KarasuPreviewColumnProps) {
   const [refOpen, setRefOpen] = useState(false);
   const [exportMenuOpen, setExportMenuOpen] = useState(false);
@@ -158,9 +174,12 @@ export function KarasuPreviewColumn({
   const drillDownAvailable =
     (activeView === "system" || activeView === "org") && !!activedrillDownSvg;
   const showAllLayersIframe = isAllLayersOpen && allLayersAvailable;
+  const showOrgTreeView = activeView === "org" && isOrgTreeViewOpen;
 
   function handleExport() {
-    if (showAllLayersIframe && activeAllLayersSvg) {
+    if (showOrgTreeView && orgTreeExportSvg) {
+      onExportSvg(orgTreeExportSvg, exportFilename.replace(/\.svg$/, "-tree.svg"));
+    } else if (showAllLayersIframe && activeAllLayersSvg) {
       onExportSvg(activeAllLayersSvg, exportFilename.replace(/\.svg$/, "-all-layers.svg"));
     } else {
       onExportSvg(svg, exportFilename);
@@ -200,14 +219,23 @@ export function KarasuPreviewColumn({
       />
       <div className="preview-toolbar">
         <button
-          className={`toolbar-btn toolbar-btn--icon-mode${displayMode === "icon" ? " active" : ""}`}
+          className={`toolbar-btn toolbar-btn--actionable toolbar-btn--icon-mode${displayMode === "icon" ? " active" : ""}`}
           onClick={() => onDisplayModeChange(displayMode === "icon" ? "shape" : "icon")}
           aria-label="Toggle icon mode"
         >
           ◇ Icon Mode
         </button>
+        {activeView === "org" && (
+          <button
+            className={`toolbar-btn toolbar-btn--actionable toolbar-btn--org-tree${isOrgTreeViewOpen ? " active" : ""}`}
+            onClick={onOrgTreeViewToggle}
+            aria-label="Toggle org tree view"
+          >
+            ⬡ Tree View
+          </button>
+        )}
         <button
-          className={`toolbar-btn toolbar-btn--all-layers${isAllLayersOpen ? " active" : ""}`}
+          className={`toolbar-btn toolbar-btn--actionable toolbar-btn--all-layers${isAllLayersOpen ? " active" : ""}`}
           onClick={onAllLayersToggle}
           aria-label="Toggle all layers"
           disabled={!allLayersAvailable}
@@ -215,7 +243,7 @@ export function KarasuPreviewColumn({
           ⊞ Show All Layers
         </button>
         <button
-          className="toolbar-btn toolbar-btn--all-views"
+          className="toolbar-btn toolbar-btn--actionable toolbar-btn--all-views"
           onClick={handleOpenAllViews}
           aria-label="Open all views in new window"
           disabled={!allViewsSvg}
@@ -226,7 +254,7 @@ export function KarasuPreviewColumn({
         {/* Split export button: left = export current/full, right = drill-down export */}
         <div className="toolbar-btn-group">
           <button
-            className="toolbar-btn toolbar-btn--export toolbar-btn--export-main"
+            className="toolbar-btn toolbar-btn--actionable toolbar-btn--export toolbar-btn--export-main"
             onClick={handleExport}
             aria-label="Export SVG"
             disabled={!svg}
@@ -234,7 +262,7 @@ export function KarasuPreviewColumn({
             ↓ Export SVG
           </button>
           <button
-            className={`toolbar-btn toolbar-btn--export toolbar-btn--export-toggle${exportMenuOpen ? " active" : ""}`}
+            className={`toolbar-btn toolbar-btn--actionable toolbar-btn--export toolbar-btn--export-toggle${exportMenuOpen ? " active" : ""}`}
             onClick={() => setExportMenuOpen((v) => !v)}
             aria-label="SVG export options"
             aria-haspopup="menu"
@@ -266,7 +294,7 @@ export function KarasuPreviewColumn({
         </div>
 
         <button
-          className="toolbar-btn toolbar-btn--reference"
+          className="toolbar-btn toolbar-btn--actionable toolbar-btn--reference"
           onClick={() => setRefOpen(true)}
           aria-label="Open reference"
         >
@@ -274,7 +302,7 @@ export function KarasuPreviewColumn({
         </button>
 
         <button
-          className={`toolbar-btn toolbar-btn--focus${previewFocused ? " active" : ""}`}
+          className={`toolbar-btn toolbar-btn--actionable toolbar-btn--focus${previewFocused ? " active" : ""}`}
           onClick={onPreviewFocusToggle}
           aria-label={previewFocused ? "Exit focus mode" : "Enter focus mode"}
         >
@@ -288,10 +316,21 @@ export function KarasuPreviewColumn({
           onNavigate={systemView.onBreadcrumbNavigate}
         />
       )}
-      {activeView === "org" && (
+      {activeView === "org" && !showOrgTreeView && (
         <BreadcrumbBar items={orgView.breadcrumbItems} onNavigate={orgView.onBreadcrumbNavigate} />
       )}
-      {showAllLayersIframe ? (
+      {showOrgTreeView ? (
+        <div
+          className="preview-pane preview-pane--org-tree"
+          style={{ overflow: "auto", flex: 1 }}
+          onClick={(e) => {
+            const target = (e.target as Element).closest("[data-team-id]");
+            const teamId = target?.getAttribute("data-team-id");
+            if (teamId && onTeamToggle) onTeamToggle(teamId);
+          }}
+          dangerouslySetInnerHTML={{ __html: orgTreeSvg ?? "" }}
+        />
+      ) : showAllLayersIframe ? (
         <iframe
           srcDoc={activeAllLayersSvg}
           sandbox="allow-same-origin"

@@ -74,7 +74,12 @@ export function AppShell({ entryPath, sidebarContent, hideEditor, recompileRef }
     orgWarnings,
     nodePathIndex,
     recompile: recompileOrg,
+    toggleTeamExpand,
+    orgTreeSvg,
+    orgTreeExportSvg,
   } = useOrgView(entryPath, fs, viewPath, displayMode);
+
+  const [isOrgTreeViewOpen, setIsOrgTreeViewOpen] = useState(false);
 
   const { navigateActiveView, navigateViewPath } = useHistoryNavigation({
     activeView,
@@ -82,6 +87,8 @@ export function AppShell({ entryPath, sidebarContent, hideEditor, recompileRef }
     currentFilePath,
     nodePathIndex,
     dispatch,
+    isOrgTreeView: isOrgTreeViewOpen,
+    setIsOrgTreeView: setIsOrgTreeViewOpen,
   });
 
   const recompile = useCallback(() => {
@@ -340,6 +347,11 @@ export function AppShell({ entryPath, sidebarContent, hideEditor, recompileRef }
         previewFocused={previewFocused}
         onPreviewFocusToggle={() => setPreviewFocused((v) => !v)}
         onJumpToEditor={!hideEditor ? handleJumpToEditor : undefined}
+        isOrgTreeViewOpen={isOrgTreeViewOpen}
+        onOrgTreeViewToggle={() => setIsOrgTreeViewOpen((v) => !v)}
+        orgTreeSvg={orgTreeSvg}
+        onTeamToggle={toggleTeamExpand}
+        orgTreeExportSvg={orgTreeExportSvg}
       />
     </div>
   );
