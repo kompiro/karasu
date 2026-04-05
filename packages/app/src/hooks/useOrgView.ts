@@ -9,6 +9,7 @@ import {
   type FileSystemProvider,
   type DisplayMode,
   type OrganizationBlock,
+  type ResolvedStyles,
 } from "@karasu-tools/core";
 
 interface OrgViewState {
@@ -17,6 +18,7 @@ interface OrgViewState {
   orgWarnings: Warning[];
   nodePathIndex: Map<string, string[]>;
   organizations: OrganizationBlock[];
+  styles: ResolvedStyles | undefined;
 }
 
 const DEBOUNCE_MS = 300;
@@ -39,6 +41,7 @@ export function useOrgView(
     orgWarnings: [],
     nodePathIndex: new Map(),
     organizations: [],
+    styles: undefined,
   });
 
   const [expandedTeamIds, setExpandedTeamIds] = useState<Set<string>>(new Set());
@@ -82,6 +85,7 @@ export function useOrgView(
               orgWarnings: prev.orgWarnings,
               nodePathIndex: prev.nodePathIndex,
               organizations: prev.organizations,
+              styles: prev.styles,
             }));
           } else {
             lastValidSvg.current = result.svg;
@@ -91,6 +95,7 @@ export function useOrgView(
               orgWarnings: result.warnings,
               nodePathIndex: result.nodePathIndex,
               organizations: result.organizations,
+              styles: result.styles,
             });
           }
         })
@@ -109,12 +114,15 @@ export function useOrgView(
   }, [entryPath, fs, viewPath, displayMode, recompileCounter.current]);
 
   const orgTreeSvg =
-    state.organizations.length > 0 ? renderOrgTreeView(state.organizations, expandedTeamIds) : "";
+    state.organizations.length > 0
+      ? renderOrgTreeView(state.organizations, expandedTeamIds, { styles: state.styles })
+      : "";
 
   const orgTreeExportSvg =
     state.organizations.length > 0
       ? renderOrgTreeView(state.organizations, new Set(collectAllTeamIds(state.organizations)), {
           forExport: true,
+          styles: state.styles,
         })
       : "";
 
