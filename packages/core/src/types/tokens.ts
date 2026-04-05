@@ -65,6 +65,9 @@ export enum TokenType {
   // Annotations
   At = "At", // @
 
+  // Edge target qualifier
+  Dot = "Dot", // .
+
   // Style-specific
   Hash = "Hash", // #
   Colon = "Colon",

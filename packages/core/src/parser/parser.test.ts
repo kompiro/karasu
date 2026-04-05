@@ -1122,3 +1122,46 @@ domain Payment {
     });
   });
 });
+
+describe("cross-system edge references", () => {
+  it("parses fully qualified edge target (System.Service) at system level", () => {
+    const result = Parser.parse(`
+system ECPlatform {
+  service OrderService {}
+  OrderService -> PaymentGateway.PaymentService "決済を依頼する"
+}
+    `);
+    expect(result.diagnostics).toHaveLength(0);
+    const edges = result.value.systems[0].edges;
+    expect(edges).toHaveLength(1);
+    expect(edges[0].from).toBe("OrderService");
+    expect(edges[0].to).toBe("PaymentGateway.PaymentService");
+    expect(edges[0].label).toBe("決済を依頼する");
+  });
+
+  it("parses qualified edge without label", () => {
+    const result = Parser.parse(`
+system ECPlatform {
+  service OrderService {}
+  OrderService -> PaymentGateway.PaymentService
+}
+    `);
+    expect(result.diagnostics).toHaveLength(0);
+    const edges = result.value.systems[0].edges;
+    expect(edges).toHaveLength(1);
+    expect(edges[0].to).toBe("PaymentGateway.PaymentService");
+  });
+
+  it("parses async qualified edge (-->)", () => {
+    const result = Parser.parse(`
+system ECPlatform {
+  service OrderService {}
+  OrderService --> PaymentGateway.NotifyService
+}
+    `);
+    expect(result.diagnostics).toHaveLength(0);
+    const edge = result.value.systems[0].edges[0];
+    expect(edge.to).toBe("PaymentGateway.NotifyService");
+    expect(edge.kind).toBe("async");
+  });
+});
