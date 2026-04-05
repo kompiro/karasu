@@ -4,6 +4,7 @@ dist/
 *.local
 .worktrees/
 coverage/
+.pnpm-store/
 
 # QA checklists (generated, not committed)
 docs/qa/

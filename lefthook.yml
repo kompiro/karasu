@@ -2,10 +2,10 @@ pre-push:
   parallel: true
   commands:
     format:
-      run: npm run format:check
+      run: pnpm run format:check
     lint:
-      run: npm run lint
+      run: pnpm run lint
     typecheck:
-      run: npm run typecheck
+      run: pnpm run typecheck
     knip:
-      run: npm run knip
+      run: pnpm run knip

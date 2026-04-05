@@ -14,7 +14,7 @@
     "test:coverage": "vitest run --coverage"
   },
   "dependencies": {
-    "@karasu/core": "*",
+    "@karasu/core": "workspace:*",
     "chokidar": "^5.0.0",
     "commander": "^14.0.0"
   },
