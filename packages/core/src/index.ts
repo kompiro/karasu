@@ -112,7 +112,7 @@ export { normalizePath, resolvePath, dirname, basename, extname } from "./fs/pat
 
 import type { ParseResult, OrganizationBlock } from "./types/ast.js";
 import type { KrsFile } from "./types/ast.js";
-import type { StyleSheet } from "./types/style.js";
+import type { StyleSheet, ResolvedStyles } from "./types/style.js";
 import type { Warning } from "./types/warnings.js";
 import type { FileSystemProvider } from "./fs/types.js";
 import { Parser } from "./parser/parser.js";
@@ -216,6 +216,8 @@ export interface OrgCompileResult {
   warnings: Warning[];
   nodePathIndex: Map<string, string[]>;
   organizations: OrganizationBlock[];
+  /** Resolved node/edge styles for use in tree view rendering. */
+  styles: ResolvedStyles;
 }
 
 /** Discriminated union of all compile result types. Narrow on `diagramType` to access type-specific fields. */
@@ -262,6 +264,7 @@ function _compileCore(krsSource: string, opts: CompileOptions): CompileResult {
       warnings,
       nodePathIndex: parseResult.value.nodePathIndex,
       organizations: parseResult.value.organizations,
+      styles,
     };
   }
 
@@ -350,6 +353,7 @@ async function _compileProjectCore(
       warnings,
       nodePathIndex: resolved.krsFile.nodePathIndex,
       organizations: resolved.krsFile.organizations,
+      styles,
     };
   }
 

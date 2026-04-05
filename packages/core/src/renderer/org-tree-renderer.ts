@@ -9,6 +9,7 @@
  */
 
 import type { OrganizationBlock, TeamNode, MemberNode } from "../types/ast.js";
+import type { ResolvedStyles, ResolvedNodeStyle, ResolvedEdgeStyle } from "../types/style.js";
 import { el, escapeXml } from "./svg-builder.js";
 
 // ---------------------------------------------------------------------------
@@ -162,17 +163,51 @@ const DEFAULT_MEMBER_STROKE = "#334155";
 const TEXT_COLOR = "#E2E8F0";
 const SUB_TEXT_COLOR = "#94A3B8";
 const FONT = "system-ui, sans-serif";
+const DEFAULT_EDGE_STROKE = DEFAULT_TEAM_STROKE;
+const DEFAULT_EDGE_WIDTH = 1.5;
 
-function renderTreeTeamCard(node: TreeNode, isExpanded: boolean): string {
+// ---------------------------------------------------------------------------
+// Style resolution helpers
+// ---------------------------------------------------------------------------
+
+function resolveTeamStyle(
+  teamId: string,
+  styles: ResolvedStyles | undefined,
+): ResolvedNodeStyle | null {
+  return styles ? (styles.nodes.get(teamId) ?? styles.defaultNodeStyle) : null;
+}
+
+function resolveMemberStyle(
+  memberId: string,
+  styles: ResolvedStyles | undefined,
+): ResolvedNodeStyle | null {
+  return styles ? (styles.nodes.get(memberId) ?? styles.defaultNodeStyle) : null;
+}
+
+function resolveEdgeStyle(styles: ResolvedStyles | undefined): ResolvedEdgeStyle | null {
+  return styles ? styles.defaultEdgeStyle : null;
+}
+
+function renderTreeTeamCard(
+  node: TreeNode,
+  isExpanded: boolean,
+  styles: ResolvedStyles | undefined,
+): string {
   const { team, x, y } = node;
   const label = escapeXml(team.label ?? team.id);
   const members = team.children.filter((c): c is MemberNode => c.kind === "member");
   const memberCount = members.length;
   const countLabel = memberCount > 0 ? `${memberCount} member${memberCount !== 1 ? "s" : ""}` : "";
 
-  const fill = DEFAULT_TEAM_FILL;
-  const stroke = DEFAULT_TEAM_STROKE;
-  const textColor = TEXT_COLOR;
+  const s = resolveTeamStyle(team.id, styles);
+  const fill = s?.backgroundColor ?? DEFAULT_TEAM_FILL;
+  const stroke = s?.borderColor ?? DEFAULT_TEAM_STROKE;
+  const strokeWidth = s?.borderWidth ?? 1.5;
+  const rx = s?.borderRadius ?? 8;
+  const textColor = s?.color ?? TEXT_COLOR;
+  const fontFamily = s?.fontFamily ?? FONT;
+  const fontSize = s?.fontSize ?? 13;
+  const fontWeight = s?.fontWeight ?? "600";
 
   const parts: string[] = [
     el("rect", {
@@ -180,8 +215,8 @@ function renderTreeTeamCard(node: TreeNode, isExpanded: boolean): string {
       height: TEAM_H,
       fill,
       stroke,
-      "stroke-width": 1.5,
-      rx: 8,
+      "stroke-width": strokeWidth,
+      rx,
     }),
     el(
       "text",
@@ -190,9 +225,9 @@ function renderTreeTeamCard(node: TreeNode, isExpanded: boolean): string {
         y: memberCount > 0 ? 24 : 36,
         "text-anchor": "middle",
         fill: textColor,
-        "font-family": FONT,
-        "font-size": 13,
-        "font-weight": 600,
+        "font-family": fontFamily,
+        "font-size": fontSize,
+        "font-weight": fontWeight,
       },
       label,
     ),
@@ -209,7 +244,7 @@ function renderTreeTeamCard(node: TreeNode, isExpanded: boolean): string {
           y: 44,
           "text-anchor": "middle",
           fill: SUB_TEXT_COLOR,
-          "font-family": FONT,
+          "font-family": fontFamily,
           "font-size": 11,
         },
         `${countLabel} ${indicator}`,
@@ -228,18 +263,32 @@ function renderTreeTeamCard(node: TreeNode, isExpanded: boolean): string {
   );
 }
 
-function renderTreeMemberCard(member: MemberNode, x: number, y: number): string {
+function renderTreeMemberCard(
+  member: MemberNode,
+  x: number,
+  y: number,
+  styles: ResolvedStyles | undefined,
+): string {
   const label = escapeXml(member.label ?? member.id);
   const details = [member.properties.slack, member.properties.github].filter(Boolean).join(" · ");
+
+  const s = resolveMemberStyle(member.id, styles);
+  const fill = s?.backgroundColor ?? DEFAULT_MEMBER_FILL;
+  const stroke = s?.borderColor ?? DEFAULT_MEMBER_STROKE;
+  const strokeWidth = s?.borderWidth ?? 1;
+  const rx = s?.borderRadius ?? 6;
+  const textColor = s?.color ?? TEXT_COLOR;
+  const fontFamily = s?.fontFamily ?? FONT;
+  const fontSize = s?.fontSize ?? 12;
 
   const parts: string[] = [
     el("rect", {
       width: MEMBER_W,
       height: MEMBER_H,
-      fill: DEFAULT_MEMBER_FILL,
-      stroke: DEFAULT_MEMBER_STROKE,
-      "stroke-width": 1,
-      rx: 6,
+      fill,
+      stroke,
+      "stroke-width": strokeWidth,
+      rx,
     }),
     el(
       "text",
@@ -247,10 +296,10 @@ function renderTreeMemberCard(member: MemberNode, x: number, y: number): string 
         x: MEMBER_W / 2,
         y: details ? 20 : 30,
         "text-anchor": "middle",
-        fill: TEXT_COLOR,
-        "font-family": FONT,
-        "font-size": 12,
-        "font-weight": 500,
+        fill: textColor,
+        "font-family": fontFamily,
+        "font-size": fontSize,
+        "font-weight": s?.fontWeight ?? 500,
       },
       label,
     ),
@@ -265,7 +314,7 @@ function renderTreeMemberCard(member: MemberNode, x: number, y: number): string 
           y: 38,
           "text-anchor": "middle",
           fill: SUB_TEXT_COLOR,
-          "font-family": FONT,
+          "font-family": fontFamily,
           "font-size": 10,
         },
         escapeXml(details),
@@ -280,24 +329,31 @@ function renderTreeMemberCard(member: MemberNode, x: number, y: number): string 
   );
 }
 
-function renderMemberGrid(grid: MemberGridNode): string {
+function renderMemberGrid(grid: MemberGridNode, styles: ResolvedStyles | undefined): string {
   const cards = grid.members.map((member, i) => {
     const col = i % MEMBERS_PER_ROW;
     const row = Math.floor(i / MEMBERS_PER_ROW);
     const mx = grid.x + col * (MEMBER_W + MEMBER_COL_GAP);
     const my = grid.y + row * (MEMBER_H + MEMBER_ROW_GAP);
-    return renderTreeMemberCard(member, mx, my);
+    return renderTreeMemberCard(member, mx, my, styles);
   });
   return cards.join("");
 }
 
-function bezierConnector(x1: number, y1: number, x2: number, y2: number): string {
+function bezierConnector(
+  x1: number,
+  y1: number,
+  x2: number,
+  y2: number,
+  styles: ResolvedStyles | undefined,
+): string {
+  const e = resolveEdgeStyle(styles);
   const midX = (x1 + x2) / 2;
   return el("path", {
     d: `M ${x1} ${y1} C ${midX} ${y1}, ${midX} ${y2}, ${x2} ${y2}`,
     fill: "none",
-    stroke: DEFAULT_TEAM_STROKE,
-    "stroke-width": 1.5,
+    stroke: e?.color ?? DEFAULT_EDGE_STROKE,
+    "stroke-width": e?.strokeWidth ?? DEFAULT_EDGE_WIDTH,
   });
 }
 
@@ -309,6 +365,7 @@ function renderTreeNode(
   node: TreeNode,
   expandedIds: ReadonlySet<string>,
   elements: string[],
+  styles: ResolvedStyles | undefined,
 ): void {
   const isExpanded = expandedIds.has(node.team.id);
 
@@ -318,7 +375,7 @@ function renderTreeNode(
     const y1 = node.y + TEAM_H / 2;
     const x2 = child.x;
     const y2 = child.y + TEAM_H / 2;
-    elements.push(bezierConnector(x1, y1, x2, y2));
+    elements.push(bezierConnector(x1, y1, x2, y2, styles));
   }
 
   // Connector to member grid
@@ -327,20 +384,20 @@ function renderTreeNode(
     const y1 = node.y + TEAM_H / 2;
     const x2 = node.memberGrid.x;
     const y2 = node.memberGrid.y + node.memberGrid.height / 2;
-    elements.push(bezierConnector(x1, y1, x2, y2));
+    elements.push(bezierConnector(x1, y1, x2, y2, styles));
   }
 
   // Team card
-  elements.push(renderTreeTeamCard(node, isExpanded));
+  elements.push(renderTreeTeamCard(node, isExpanded, styles));
 
   // Member grid
   if (node.memberGrid) {
-    elements.push(renderMemberGrid(node.memberGrid));
+    elements.push(renderMemberGrid(node.memberGrid, styles));
   }
 
   // Recurse into sub-teams
   for (const child of node.children) {
-    renderTreeNode(child, expandedIds, elements);
+    renderTreeNode(child, expandedIds, elements, styles);
   }
 }
 
@@ -366,6 +423,13 @@ export function collectAllTeamIds(organizations: OrganizationBlock[]): string[] 
 export interface RenderOrgTreeOptions {
   /** When true, strip interactive data attributes (for static SVG export). */
   forExport?: boolean;
+  /**
+   * Resolved styles from .krs.style files.
+   * When provided, team and member cards use the resolved node styles
+   * (background-color, color, border-color, etc.) instead of hardcoded defaults.
+   * The `team` and `member` selectors in .krs.style apply to tree view nodes.
+   */
+  styles?: ResolvedStyles;
 }
 
 /**
@@ -381,6 +445,7 @@ export function renderOrgTreeView(
   expandedTeamIds: ReadonlySet<string>,
   options: RenderOrgTreeOptions = {},
 ): string {
+  const { styles } = options;
   // Collect all top-level teams across all organization blocks
   const allTopTeams: TeamNode[] = organizations.flatMap((org) => org.teams);
 
@@ -443,7 +508,7 @@ export function renderOrgTreeView(
       el("rect", { width: exportWidth, height: exportHeight, fill: BG_COLOR }),
     ];
     for (const root of roots) {
-      renderTreeNode(root, effectiveExpandedIds, exportElements);
+      renderTreeNode(root, effectiveExpandedIds, exportElements, styles);
     }
 
     return el(
@@ -459,7 +524,7 @@ export function renderOrgTreeView(
   }
 
   for (const root of roots) {
-    renderTreeNode(root, expandedTeamIds, elements);
+    renderTreeNode(root, expandedTeamIds, elements, styles);
   }
 
   return el(
