@@ -9,6 +9,7 @@ import { useDeployView } from "../hooks/useDeployView.js";
 import { useOrgView } from "../hooks/useOrgView.js";
 import { useViewSvg } from "../hooks/useViewSvg.js";
 import { useStyleSource } from "../hooks/useStyleSource.js";
+import { useHistoryNavigation } from "../hooks/useHistoryNavigation.js";
 
 import type { ReactNode } from "react";
 import type { KrsFile, KrsNode, TeamNode, OrgNode, DisplayMode } from "@karasu/core";
@@ -75,6 +76,14 @@ export function AppShell({ entryPath, sidebarContent, hideEditor, recompileRef }
     recompile: recompileOrg,
   } = useOrgView(entryPath, fs, viewPath, displayMode);
 
+  const { navigateActiveView, navigateViewPath } = useHistoryNavigation({
+    activeView,
+    viewPath,
+    currentFilePath,
+    nodePathIndex,
+    dispatch,
+  });
+
   const recompile = useCallback(() => {
     recompileSystem();
     recompileDeploy();
@@ -134,45 +143,45 @@ export function AppShell({ entryPath, sidebarContent, hideEditor, recompileRef }
 
   const handleActiveViewChange = useCallback(
     (view: ActiveView) => {
-      dispatch({ type: "SET_ACTIVE_VIEW", activeView: view });
+      navigateActiveView(view);
     },
-    [dispatch],
+    [navigateActiveView],
   );
 
   const handleContainerClick = useCallback(
     (containerId: string) => {
-      dispatch({ type: "SET_ACTIVE_VIEW", activeView: "system" });
+      navigateActiveView("system");
       dispatch({ type: "SET_HIGHLIGHTED_NODE", nodeId: containerId });
     },
-    [dispatch],
+    [navigateActiveView, dispatch],
   );
 
   const handleDeployButtonClick = useCallback(
     (serviceId: string) => {
-      dispatch({ type: "SET_ACTIVE_VIEW", activeView: "deploy" });
+      navigateActiveView("deploy");
       dispatch({ type: "SET_HIGHLIGHTED_NODE", nodeId: serviceId });
     },
-    [dispatch],
+    [navigateActiveView, dispatch],
   );
 
   const handleTeamButtonClick = useCallback(
     (teamId: string) => {
-      dispatch({ type: "SET_ACTIVE_VIEW", activeView: "org" });
+      navigateActiveView("org");
       dispatch({ type: "SET_HIGHLIGHTED_NODE", nodeId: teamId });
     },
-    [dispatch],
+    [navigateActiveView, dispatch],
   );
 
   const handleOwnedServiceClick = useCallback(
     (serviceId: string) => {
       const resolvedPath = nodePathIndex.get(serviceId);
-      dispatch({ type: "SET_ACTIVE_VIEW", activeView: "system" });
+      navigateActiveView("system");
       if (resolvedPath !== undefined) {
-        dispatch({ type: "SET_VIEW_PATH", path: resolvedPath });
+        navigateViewPath(resolvedPath);
       }
       dispatch({ type: "SET_HIGHLIGHTED_NODE", nodeId: serviceId });
     },
-    [dispatch, nodePathIndex],
+    [navigateActiveView, navigateViewPath, nodePathIndex, dispatch],
   );
 
   const handleDisplayModeChange = useCallback(
@@ -291,7 +300,7 @@ export function AppShell({ entryPath, sidebarContent, hideEditor, recompileRef }
           viewPath,
           breadcrumbItems,
           warnings: systemWarnings,
-          onBreadcrumbNavigate: (path) => dispatch({ type: "SET_VIEW_PATH", path }),
+          onBreadcrumbNavigate: navigateViewPath,
           onDeployButtonClick: handleDeployButtonClick,
           onTeamButtonClick: handleTeamButtonClick,
         }}
@@ -309,7 +318,7 @@ export function AppShell({ entryPath, sidebarContent, hideEditor, recompileRef }
           viewPath,
           breadcrumbItems: orgBreadcrumbItems,
           warnings: orgWarnings,
-          onBreadcrumbNavigate: (path) => dispatch({ type: "SET_VIEW_PATH", path }),
+          onBreadcrumbNavigate: navigateViewPath,
           highlightedNodeId,
           onClearHighlight: () => dispatch({ type: "SET_HIGHLIGHTED_NODE", nodeId: null }),
           onOwnedServiceClick: handleOwnedServiceClick,
