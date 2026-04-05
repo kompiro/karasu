@@ -236,4 +236,77 @@ system ECPlatform {
       expect(view.childNodes[0].id).toBe("Order");
     });
   });
+
+  describe("cross-system references", () => {
+    const MULTI_SYSTEM_KRS = `
+system ECPlatform {
+  service OrderService { label "注文サービス" }
+  OrderService -> PaymentGateway.PaymentService "決済を依頼する"
+}
+
+system PaymentGateway {
+  service PaymentService {
+    label "決済サービス"
+  }
+}
+`;
+
+    it("adds ghost external node for cross-system reference", () => {
+      const result = Parser.parse(MULTI_SYSTEM_KRS);
+      const view = extractView(result.value.systems, []);
+
+      const ghostNode = view.childNodes.find((n) => n.id === "PaymentGateway.PaymentService");
+      expect(ghostNode).toBeDefined();
+      expect(ghostNode?.tags).toContain("external");
+    });
+
+    it("uses actual node label when resolved", () => {
+      const result = Parser.parse(MULTI_SYSTEM_KRS);
+      const view = extractView(result.value.systems, []);
+
+      const ghostNode = view.childNodes.find((n) => n.id === "PaymentGateway.PaymentService");
+      expect(ghostNode?.label).toBe("決済サービス");
+    });
+
+    it("includes edge to ghost external node in childEdges", () => {
+      const result = Parser.parse(MULTI_SYSTEM_KRS);
+      const view = extractView(result.value.systems, []);
+
+      const crossEdge = view.childEdges.find((e) => e.to === "PaymentGateway.PaymentService");
+      expect(crossEdge).toBeDefined();
+      expect(crossEdge?.from).toBe("OrderService");
+    });
+
+    it("falls back to qualified name as label when unresolved", () => {
+      const krs = `
+system ECPlatform {
+  service OrderService {}
+  OrderService -> UnknownSystem.UnknownService
+}
+`;
+      const result = Parser.parse(krs);
+      const view = extractView(result.value.systems, []);
+
+      const ghostNode = view.childNodes.find((n) => n.id === "UnknownSystem.UnknownService");
+      expect(ghostNode).toBeDefined();
+      expect(ghostNode?.label).toBe("UnknownSystem.UnknownService");
+      expect(ghostNode?.tags).toContain("external");
+    });
+
+    it("does not duplicate ghost node when multiple edges target the same qualified id", () => {
+      const krs = `
+system ECPlatform {
+  service OrderService {}
+  service CartService {}
+  OrderService -> PaymentGateway.PaymentService
+  CartService -> PaymentGateway.PaymentService
+}
+`;
+      const result = Parser.parse(krs);
+      const view = extractView(result.value.systems, []);
+
+      const ghosts = view.childNodes.filter((n) => n.id === "PaymentGateway.PaymentService");
+      expect(ghosts).toHaveLength(1);
+    });
+  });
 });

@@ -11,6 +11,7 @@ export function analyze(file: KrsFile, sheets: StyleSheet[], systemSheetCount = 
   warnings.push(...detectMissingProperties(file));
   warnings.push(...detectInvalidOwns(file));
   warnings.push(...detectDeprecatedTeamProperty(file));
+  warnings.push(...detectCrossSystemRefs(file));
 
   return warnings;
 }
@@ -217,6 +218,45 @@ function detectDeprecatedTeamProperty(file: KrsFile): Warning[] {
   }
   for (const domain of file.domains) {
     walk(domain);
+  }
+
+  return warnings;
+}
+
+function detectCrossSystemRefs(file: KrsFile): Warning[] {
+  const warnings: Warning[] = [];
+
+  for (const system of file.systems) {
+    // Build set of bare service IDs with [external] tag explicitly declared in this system
+    const explicitExternalIds = new Set(
+      system.children.filter((c) => c.tags.includes("external")).map((c) => c.id),
+    );
+
+    for (const edge of system.edges) {
+      if (!edge.to.includes(".")) continue;
+
+      const [systemId, serviceId] = edge.to.split(".");
+
+      // Suppressed if the bare service ID is explicitly declared as [external] in the source system
+      if (explicitExternalIds.has(serviceId)) continue;
+
+      const referencedSystem = file.systems.find((s) => s.id === systemId);
+      if (!referencedSystem || !referencedSystem.children.some((c) => c.id === serviceId)) {
+        warnings.push({
+          kind: "cross-system-ref-unresolved",
+          message: `"${edge.to}" could not be resolved — rendered as unresolved external node`,
+          details: [],
+          loc: edge.loc,
+        });
+      } else {
+        warnings.push({
+          kind: "cross-system-ref-implicit-external",
+          message: `"${edge.to}" is referenced from ${system.id}.${edge.from} but not explicitly annotated as @external`,
+          details: [`Add 'service ${serviceId} [external]' to system ${system.id} to suppress this warning`],
+          loc: edge.loc,
+        });
+      }
+    }
   }
 
   return warnings;

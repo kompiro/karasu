@@ -1,4 +1,4 @@
-import type { KrsNode, KrsEdge } from "../types/ast.js";
+import type { KrsNode, KrsEdge, ServiceNode } from "../types/ast.js";
 
 /**
  * ViewPath identifies the drill-down position in the hierarchy.
@@ -17,6 +17,36 @@ export interface ViewSlice {
 
 function nodeId(node: KrsNode): string {
   return node.id;
+}
+
+/**
+ * Returns true if the edge target is a fully qualified cross-system reference (e.g. "System.Service").
+ */
+function isQualifiedRef(id: string): boolean {
+  return id.includes(".");
+}
+
+/**
+ * Creates a ghost external ServiceNode for a cross-system reference target.
+ * If the referenced node is found in allSystems, its label is used; otherwise the qualified name is used.
+ */
+function createGhostExternalNode(qualifiedId: string, allSystems: KrsNode[]): ServiceNode {
+  const [systemId, serviceId] = qualifiedId.split(".");
+  const referencedSystem = allSystems.find((s) => s.id === systemId);
+  const referencedService = referencedSystem?.children.find((c) => c.id === serviceId);
+
+  const zeroLoc = { line: 0, column: 0, offset: 0 };
+  return {
+    kind: "service",
+    id: qualifiedId,
+    label: referencedService?.label ?? qualifiedId,
+    tags: ["external"],
+    annotations: [],
+    children: [],
+    edges: [],
+    properties: { links: [] },
+    loc: { start: zeroLoc, end: zeroLoc },
+  };
 }
 
 export function extractView(
@@ -41,11 +71,29 @@ export function extractView(
   if (path.length === 0) {
     const allChildren = [...system.children, ...unassignedDomains];
     const childIds = new Set(allChildren.map(nodeId));
-    const childEdges = system.edges.filter((e) => childIds.has(e.from) && childIds.has(e.to));
+
+    // Collect cross-system reference targets as ghost external nodes
+    const ghostExternalNodes: KrsNode[] = [];
+    const crossSystemEdges: KrsEdge[] = [];
+
+    for (const edge of system.edges) {
+      if (isQualifiedRef(edge.to) && !childIds.has(edge.to)) {
+        if (!ghostExternalNodes.some((n) => n.id === edge.to)) {
+          ghostExternalNodes.push(createGhostExternalNode(edge.to, systems));
+        }
+        crossSystemEdges.push(edge);
+      }
+    }
+
+    const extendedChildIds = new Set([...childIds, ...ghostExternalNodes.map(nodeId)]);
+    const internalEdges = system.edges.filter(
+      (e) => extendedChildIds.has(e.from) && extendedChildIds.has(e.to) && !isQualifiedRef(e.to),
+    );
+
     return {
       containerNode: system,
-      childNodes: allChildren,
-      childEdges,
+      childNodes: [...allChildren, ...ghostExternalNodes],
+      childEdges: [...internalEdges, ...crossSystemEdges],
       ancestorChain: [],
       ghostUsers: [],
       ghostUserEdges: [],

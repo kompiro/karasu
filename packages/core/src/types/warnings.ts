@@ -7,7 +7,9 @@ export type WarningKind =
   | "missing-realizes"
   | "invalid-owns"
   | "deprecated-team-property"
-  | "unassigned-domain";
+  | "unassigned-domain"
+  | "cross-system-ref-implicit-external"
+  | "cross-system-ref-unresolved";
 
 export interface Warning {
   kind: WarningKind;
