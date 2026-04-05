@@ -301,7 +301,7 @@ system PaymentGateway {
 `;
     const file = Parser.parse(krs).value;
     const warnings = analyze(file, []);
-    const w = warnings.find((w) => w.kind === "cross-system-ref-implicit-external");
+    const w = warnings.find((warning) => warning.kind === "cross-system-ref-implicit-external");
     expect(w).toBeDefined();
     expect(w?.message).toContain("PaymentGateway.PaymentService");
     expect(w?.message).toContain("ECPlatform.OrderService");
@@ -316,7 +316,7 @@ system ECPlatform {
 `;
     const file = Parser.parse(krs).value;
     const warnings = analyze(file, []);
-    const w = warnings.find((w) => w.kind === "cross-system-ref-unresolved");
+    const w = warnings.find((warning) => warning.kind === "cross-system-ref-unresolved");
     expect(w).toBeDefined();
     expect(w?.message).toContain("UnknownSystem.UnknownService");
   });
@@ -333,7 +333,7 @@ system PaymentGateway {
 `;
     const file = Parser.parse(krs).value;
     const warnings = analyze(file, []);
-    const w = warnings.find((w) => w.kind === "cross-system-ref-unresolved");
+    const w = warnings.find((warning) => warning.kind === "cross-system-ref-unresolved");
     expect(w).toBeDefined();
     expect(w?.message).toContain("PaymentGateway.NoSuchService");
   });

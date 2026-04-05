@@ -252,7 +252,9 @@ function detectCrossSystemRefs(file: KrsFile): Warning[] {
         warnings.push({
           kind: "cross-system-ref-implicit-external",
           message: `"${edge.to}" is referenced from ${system.id}.${edge.from} but not explicitly annotated as @external`,
-          details: [`Add 'service ${serviceId} [external]' to system ${system.id} to suppress this warning`],
+          details: [
+            `Add 'service ${serviceId} [external]' to system ${system.id} to suppress this warning`,
+          ],
           loc: edge.loc,
         });
       }
