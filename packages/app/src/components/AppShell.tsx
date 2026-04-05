@@ -79,15 +79,17 @@ export function AppShell({ entryPath, sidebarContent, hideEditor, recompileRef }
     orgTreeExportSvg,
   } = useOrgView(entryPath, fs, viewPath, displayMode);
 
+  const [isOrgTreeViewOpen, setIsOrgTreeViewOpen] = useState(false);
+
   const { navigateActiveView, navigateViewPath } = useHistoryNavigation({
     activeView,
     viewPath,
     currentFilePath,
     nodePathIndex,
     dispatch,
+    isOrgTreeView: isOrgTreeViewOpen,
+    setIsOrgTreeView: setIsOrgTreeViewOpen,
   });
-
-  const [isOrgTreeViewOpen, setIsOrgTreeViewOpen] = useState(false);
 
   const recompile = useCallback(() => {
     recompileSystem();
