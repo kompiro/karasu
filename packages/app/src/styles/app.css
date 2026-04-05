@@ -1058,6 +1058,19 @@ body,
   border-color: rgba(77, 143, 255, 0.3);
 }
 
+/* Org Tree View button — actionable toggle visible on org tab */
+.toolbar-btn--org-tree {
+  background: var(--bg-raised);
+  color: var(--text-secondary);
+  border-color: var(--border-strong);
+}
+
+.toolbar-btn--org-tree:hover {
+  background: var(--accent-dim);
+  color: var(--accent-hover);
+  border-color: rgba(77, 143, 255, 0.4);
+}
+
 /* All Layers button — always visible as an actionable toggle */
 .toolbar-btn--all-layers {
   background: var(--bg-raised);
