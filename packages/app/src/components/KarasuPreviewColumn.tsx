@@ -82,6 +82,17 @@ interface KarasuPreviewColumnProps {
   onPreviewFocusToggle: () => void;
   /** Called when user clicks "Jump to editor" in the detail panel */
   onJumpToEditor?: (nodeId: string) => void;
+
+  /** Org Tree View: whether tree view mode is active on the org tab */
+  isOrgTreeViewOpen: boolean;
+  /** Org Tree View: toggle tree view mode */
+  onOrgTreeViewToggle: () => void;
+  /** Org Tree View: rendered SVG for current expand state */
+  orgTreeSvg?: string;
+  /** Org Tree View: called when a team node is clicked to expand/collapse members */
+  onTeamToggle?: (teamId: string) => void;
+  /** Org Tree View: fully-expanded SVG for export */
+  orgTreeExportSvg?: string;
 }
 
 export function KarasuPreviewColumn({
@@ -108,6 +119,11 @@ export function KarasuPreviewColumn({
   previewFocused,
   onPreviewFocusToggle,
   onJumpToEditor,
+  isOrgTreeViewOpen,
+  onOrgTreeViewToggle,
+  orgTreeSvg,
+  onTeamToggle,
+  orgTreeExportSvg,
 }: KarasuPreviewColumnProps) {
   const [refOpen, setRefOpen] = useState(false);
   const [exportMenuOpen, setExportMenuOpen] = useState(false);
@@ -152,9 +168,12 @@ export function KarasuPreviewColumn({
   const drillDownAvailable =
     (activeView === "system" || activeView === "org") && !!activedrillDownSvg;
   const showAllLayersIframe = isAllLayersOpen && allLayersAvailable;
+  const showOrgTreeView = activeView === "org" && isOrgTreeViewOpen;
 
   function handleExport() {
-    if (showAllLayersIframe && activeAllLayersSvg) {
+    if (showOrgTreeView && orgTreeExportSvg) {
+      onExportSvg(orgTreeExportSvg, exportFilename.replace(/\.svg$/, "-tree.svg"));
+    } else if (showAllLayersIframe && activeAllLayersSvg) {
       onExportSvg(activeAllLayersSvg, exportFilename.replace(/\.svg$/, "-all-layers.svg"));
     } else {
       onExportSvg(svg, exportFilename);
@@ -200,6 +219,15 @@ export function KarasuPreviewColumn({
         >
           ◇ Icon Mode
         </button>
+        {activeView === "org" && (
+          <button
+            className={`toolbar-btn toolbar-btn--actionable toolbar-btn--org-tree${isOrgTreeViewOpen ? " active" : ""}`}
+            onClick={onOrgTreeViewToggle}
+            aria-label="Toggle org tree view"
+          >
+            ⬡ Tree View
+          </button>
+        )}
         <button
           className={`toolbar-btn toolbar-btn--actionable toolbar-btn--all-layers${isAllLayersOpen ? " active" : ""}`}
           onClick={onAllLayersToggle}
@@ -282,10 +310,21 @@ export function KarasuPreviewColumn({
           onNavigate={systemView.onBreadcrumbNavigate}
         />
       )}
-      {activeView === "org" && (
+      {activeView === "org" && !showOrgTreeView && (
         <BreadcrumbBar items={orgView.breadcrumbItems} onNavigate={orgView.onBreadcrumbNavigate} />
       )}
-      {showAllLayersIframe ? (
+      {showOrgTreeView ? (
+        <div
+          className="preview-pane preview-pane--org-tree"
+          style={{ overflow: "auto", flex: 1 }}
+          onClick={(e) => {
+            const target = (e.target as Element).closest("[data-team-id]");
+            const teamId = target?.getAttribute("data-team-id");
+            if (teamId && onTeamToggle) onTeamToggle(teamId);
+          }}
+          dangerouslySetInnerHTML={{ __html: orgTreeSvg ?? "" }}
+        />
+      ) : showAllLayersIframe ? (
         <iframe
           srcDoc={activeAllLayersSvg}
           sandbox="allow-same-origin"

@@ -1065,6 +1065,9 @@ body,
   border-color: var(--border-strong);
 }
 
+/* Org Tree View button — actionable toggle visible on org tab */
+.toolbar-btn--org-tree {}
+
 .toolbar-btn--actionable:hover {
   background: var(--accent-dim);
   color: var(--accent-hover);

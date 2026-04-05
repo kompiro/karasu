@@ -70,6 +70,11 @@ export type { SvgResult } from "./renderer/all-layers-svg.js";
 export { render, renderFromLayout, sanitizeId } from "./renderer/svg-renderer.js";
 
 export { renderOrgView } from "./renderer/org-renderer.js";
+export {
+  renderOrgTreeView,
+  collectAllTeamIds,
+  type RenderOrgTreeOptions,
+} from "./renderer/org-tree-renderer.js";
 export { renderDeploy } from "./renderer/deploy-renderer.js";
 export { el, escapeXml } from "./renderer/svg-builder.js";
 export {
@@ -105,7 +110,7 @@ export { ImportResolver, type ResolvedProject } from "./fs/import-resolver.js";
 export type { Project } from "./fs/project.js";
 export { normalizePath, resolvePath, dirname, basename, extname } from "./fs/path-utils.js";
 
-import type { ParseResult } from "./types/ast.js";
+import type { ParseResult, OrganizationBlock } from "./types/ast.js";
 import type { KrsFile } from "./types/ast.js";
 import type { StyleSheet } from "./types/style.js";
 import type { Warning } from "./types/warnings.js";
@@ -210,6 +215,7 @@ export interface OrgCompileResult {
   diagnostics: Diagnostic[];
   warnings: Warning[];
   nodePathIndex: Map<string, string[]>;
+  organizations: OrganizationBlock[];
 }
 
 /** Discriminated union of all compile result types. Narrow on `diagramType` to access type-specific fields. */
@@ -255,6 +261,7 @@ function _compileCore(krsSource: string, opts: CompileOptions): CompileResult {
       diagnostics,
       warnings,
       nodePathIndex: parseResult.value.nodePathIndex,
+      organizations: parseResult.value.organizations,
     };
   }
 
@@ -342,6 +349,7 @@ async function _compileProjectCore(
       diagnostics,
       warnings,
       nodePathIndex: resolved.krsFile.nodePathIndex,
+      organizations: resolved.krsFile.organizations,
     };
   }
 
