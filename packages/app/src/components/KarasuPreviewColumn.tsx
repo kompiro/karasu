@@ -194,14 +194,14 @@ export function KarasuPreviewColumn({
       />
       <div className="preview-toolbar">
         <button
-          className={`toolbar-btn toolbar-btn--icon-mode${displayMode === "icon" ? " active" : ""}`}
+          className={`toolbar-btn toolbar-btn--actionable toolbar-btn--icon-mode${displayMode === "icon" ? " active" : ""}`}
           onClick={() => onDisplayModeChange(displayMode === "icon" ? "shape" : "icon")}
           aria-label="Toggle icon mode"
         >
           ◇ Icon Mode
         </button>
         <button
-          className={`toolbar-btn toolbar-btn--all-layers${isAllLayersOpen ? " active" : ""}`}
+          className={`toolbar-btn toolbar-btn--actionable toolbar-btn--all-layers${isAllLayersOpen ? " active" : ""}`}
           onClick={onAllLayersToggle}
           aria-label="Toggle all layers"
           disabled={!allLayersAvailable}
@@ -209,7 +209,7 @@ export function KarasuPreviewColumn({
           ⊞ Show All Layers
         </button>
         <button
-          className="toolbar-btn toolbar-btn--all-views"
+          className="toolbar-btn toolbar-btn--actionable toolbar-btn--all-views"
           onClick={handleOpenAllViews}
           aria-label="Open all views in new window"
           disabled={!allViewsSvg}
@@ -220,7 +220,7 @@ export function KarasuPreviewColumn({
         {/* Split export button: left = export current/full, right = drill-down export */}
         <div className="toolbar-btn-group">
           <button
-            className="toolbar-btn toolbar-btn--export toolbar-btn--export-main"
+            className="toolbar-btn toolbar-btn--actionable toolbar-btn--export toolbar-btn--export-main"
             onClick={handleExport}
             aria-label="Export SVG"
             disabled={!svg}
@@ -228,7 +228,7 @@ export function KarasuPreviewColumn({
             ↓ Export SVG
           </button>
           <button
-            className={`toolbar-btn toolbar-btn--export toolbar-btn--export-toggle${exportMenuOpen ? " active" : ""}`}
+            className={`toolbar-btn toolbar-btn--actionable toolbar-btn--export toolbar-btn--export-toggle${exportMenuOpen ? " active" : ""}`}
             onClick={() => setExportMenuOpen((v) => !v)}
             aria-label="SVG export options"
             aria-haspopup="menu"
@@ -260,7 +260,7 @@ export function KarasuPreviewColumn({
         </div>
 
         <button
-          className="toolbar-btn toolbar-btn--reference"
+          className="toolbar-btn toolbar-btn--actionable toolbar-btn--reference"
           onClick={() => setRefOpen(true)}
           aria-label="Open reference"
         >
@@ -268,7 +268,7 @@ export function KarasuPreviewColumn({
         </button>
 
         <button
-          className={`toolbar-btn toolbar-btn--focus${previewFocused ? " active" : ""}`}
+          className={`toolbar-btn toolbar-btn--actionable toolbar-btn--focus${previewFocused ? " active" : ""}`}
           onClick={onPreviewFocusToggle}
           aria-label={previewFocused ? "Exit focus mode" : "Enter focus mode"}
         >
