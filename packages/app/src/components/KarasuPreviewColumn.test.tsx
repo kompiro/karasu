@@ -54,6 +54,11 @@ function makeProps(overrides: Partial<Parameters<typeof KarasuPreviewColumn>[0]>
     orgAllLayersSvg: undefined,
     previewFocused: false,
     onPreviewFocusToggle: vi.fn(),
+    isOrgTreeViewOpen: false,
+    onOrgTreeViewToggle: vi.fn(),
+    orgTreeSvg: undefined,
+    onTeamToggle: vi.fn(),
+    orgTreeExportSvg: undefined,
     ...overrides,
   };
 }
