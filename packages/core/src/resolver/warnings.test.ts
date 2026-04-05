@@ -351,7 +351,9 @@ system PaymentGateway {
 `;
     const file = Parser.parse(krs).value;
     const warnings = analyze(file, []);
-    const implicit = warnings.filter((warning) => warning.kind === "cross-system-ref-implicit-external");
+    const implicit = warnings.filter(
+      (warning) => warning.kind === "cross-system-ref-implicit-external",
+    );
     expect(implicit).toHaveLength(0);
   });
 });
