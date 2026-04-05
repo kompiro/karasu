@@ -1,4 +1,10 @@
-import type { KrsFile, KrsNode, DeployBlock, OrganizationBlock, TeamNode } from "@karasu-tools/core";
+import type {
+  KrsFile,
+  KrsNode,
+  DeployBlock,
+  OrganizationBlock,
+  TeamNode,
+} from "@karasu-tools/core";
 import { DocumentSymbol, SymbolKind } from "vscode-languageserver/node";
 
 function toRange(loc: {
