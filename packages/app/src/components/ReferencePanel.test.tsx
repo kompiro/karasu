@@ -5,16 +5,16 @@ import { ReferencePanel } from "./ReferencePanel.js";
 
 afterEach(cleanup);
 
-const defaultProps = { isOpen: true, onClose: vi.fn() };
+const defaultProps = { isOpen: true, onClose: vi.fn<() => void>() };
 
 beforeEach(() => {
   // Reset onClose mock between tests
-  defaultProps.onClose = vi.fn();
+  defaultProps.onClose = vi.fn<() => void>();
 });
 
 describe("ReferencePanel", () => {
   it("renders nothing when isOpen is false", () => {
-    const { container } = render(<ReferencePanel isOpen={false} onClose={vi.fn()} />);
+    const { container } = render(<ReferencePanel isOpen={false} onClose={vi.fn<() => void>()} />);
     expect(container.firstChild).toBeNull();
   });
 
@@ -143,7 +143,7 @@ describe("ReferencePanel", () => {
   it("Copy button shows 'Copied!' after click and reverts after 2 seconds", async () => {
     vi.useFakeTimers();
     // Mock clipboard API
-    const writeText = vi.fn().mockResolvedValue(undefined);
+    const writeText = vi.fn<() => void>().mockResolvedValue(undefined);
     Object.defineProperty(navigator, "clipboard", {
       value: { writeText },
       writable: true,

@@ -128,7 +128,7 @@ describe("parseRenderParams", () => {
 // ---------------------------------------------------------------------------
 
 function makeRes(): { writeHead: ReturnType<typeof vi.fn>; end: ReturnType<typeof vi.fn> } {
-  return { writeHead: vi.fn(), end: vi.fn() };
+  return { writeHead: vi.fn<() => void>(), end: vi.fn<() => void>() };
 }
 
 function makeReq(): IncomingMessage {
@@ -186,7 +186,7 @@ describe("handleRender", () => {
   });
 
   it("returns 502 when src fetch fails", async () => {
-    vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new Error("Network error")));
+    vi.stubGlobal("fetch", vi.fn<() => void>().mockRejectedValue(new Error("Network error")));
     const res = makeRes();
     await handleRender(
       makeReq(),
@@ -199,7 +199,7 @@ describe("handleRender", () => {
   it("returns 502 when src returns non-OK status", async () => {
     vi.stubGlobal(
       "fetch",
-      vi.fn().mockResolvedValue({ ok: false, status: 404, text: async () => "Not Found" }),
+      vi.fn<() => void>().mockResolvedValue({ ok: false, status: 404, text: async () => "Not Found" }),
     );
     const res = makeRes();
     await handleRender(
@@ -212,7 +212,7 @@ describe("handleRender", () => {
 
   it("returns 200 SVG when src fetch succeeds", async () => {
     const source = `system App { service Frontend { label "Web" } }`;
-    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: true, text: async () => source }));
+    vi.stubGlobal("fetch", vi.fn<() => void>().mockResolvedValue({ ok: true, text: async () => source }));
     const res = makeRes();
     await handleRender(
       makeReq(),

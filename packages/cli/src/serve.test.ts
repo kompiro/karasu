@@ -7,7 +7,7 @@ import type { ServerResponse, Server } from "node:http";
 import * as http from "node:http";
 
 vi.mock("chokidar", () => ({
-  watch: vi.fn(() => ({ on: vi.fn().mockReturnThis() })),
+  watch: vi.fn<() => object>(() => ({ on: vi.fn<() => void>().mockReturnThis() })),
 }));
 
 import {
@@ -166,7 +166,7 @@ describe("serveStaticFile", () => {
   });
 
   function makeRes(): { writeHead: ReturnType<typeof vi.fn>; end: ReturnType<typeof vi.fn> } {
-    return { writeHead: vi.fn(), end: vi.fn() };
+    return { writeHead: vi.fn<() => void>(), end: vi.fn<() => void>() };
   }
 
   it("serves a .js file with correct content type", async () => {
