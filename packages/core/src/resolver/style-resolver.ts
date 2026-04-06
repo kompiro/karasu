@@ -88,8 +88,20 @@ export function resolveStyles(
     nodes: nodeStyles,
     edges: edgeStyles,
     defaultNodeStyle: { ...DEFAULT_NODE_STYLE },
-    defaultEdgeStyle: { ...DEFAULT_EDGE_STYLE },
+    defaultEdgeStyle: resolveDefaultEdgeStyle(allRules),
   };
+}
+
+function resolveDefaultEdgeStyle(rules: StyleRule[]): ResolvedEdgeStyle {
+  const matching = rules.filter(
+    (rule) => rule.selector.nodeType === "edge" && rule.selector.tags.length === 0,
+  );
+  matching.sort((a, b) => a.specificity - b.specificity || a.sourceIndex - b.sourceIndex);
+  const merged: Record<string, string> = {};
+  for (const rule of matching) {
+    Object.assign(merged, rule.properties);
+  }
+  return toResolvedEdgeStyle(merged);
 }
 
 function collectEdges(node: KrsNode): KrsEdge[] {
