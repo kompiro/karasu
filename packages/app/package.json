@@ -15,7 +15,7 @@
     "@karasu-tools/core": "workspace:*",
     "@monaco-editor/react": "^4.7.0",
     "dompurify": "^3.3.3",
-    "marked": "^17.0.5",
+    "marked": "^17.0.6",
     "monaco-editor": "^0.55.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0"
