@@ -609,10 +609,7 @@ function layoutMultipleSystems(
     }
 
     const containerW = Math.max(childMaxWidth + CONTAINER_PADDING, 200);
-    const containerH = Math.max(
-      childMaxHeight + CONTAINER_LABEL_HEIGHT + CONTAINER_PADDING,
-      100,
-    );
+    const containerH = Math.max(childMaxHeight + CONTAINER_LABEL_HEIGHT + CONTAINER_PADDING, 100);
 
     const containerRect: ContainerRect = {
       id: sys.id,

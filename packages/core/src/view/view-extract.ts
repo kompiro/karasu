@@ -156,9 +156,7 @@ export function extractView(
     ghostUserEdges = connectedEdges;
 
     // Ghost systems: edges from this service to qualified targets in other known systems
-    const candidateEdges = system.edges.filter(
-      (e) => e.from === containerId && e.to.includes("."),
-    );
+    const candidateEdges = system.edges.filter((e) => e.from === containerId && e.to.includes("."));
     ghostSystems = buildGhostSystems(candidateEdges, systems);
     // Only include edges that resolved to a known ghost system
     const resolvedSysIds = new Set(ghostSystems.map((gs) => gs.systemNode.id));
