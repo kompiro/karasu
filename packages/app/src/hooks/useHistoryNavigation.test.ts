@@ -112,7 +112,7 @@ describe("parseHash", () => {
 // ─── useHistoryNavigation ─────────────────────────────────────────────────────
 
 function makeDispatch() {
-  return vi.fn();
+  return vi.fn<() => void>();
 }
 
 function makeOptions(overrides: Partial<Parameters<typeof useHistoryNavigation>[0]> = {}) {
@@ -123,7 +123,7 @@ function makeOptions(overrides: Partial<Parameters<typeof useHistoryNavigation>[
     nodePathIndex: new Map<string, string[]>(),
     dispatch: makeDispatch(),
     isOrgTreeView: false,
-    setIsOrgTreeView: vi.fn(),
+    setIsOrgTreeView: vi.fn<() => void>(),
     ...overrides,
   };
 }
@@ -376,7 +376,7 @@ describe("useHistoryNavigation", () => {
 
     it("calls setIsOrgTreeView(true) on initial mount when hash is #krs-org-tree", () => {
       history.replaceState(null, "", "#krs-org-tree");
-      const setIsOrgTreeView = vi.fn();
+      const setIsOrgTreeView = vi.fn<() => void>();
 
       renderHook(() =>
         useHistoryNavigation(makeOptions({ activeView: "system", setIsOrgTreeView })),
@@ -386,7 +386,7 @@ describe("useHistoryNavigation", () => {
     });
 
     it("calls setIsOrgTreeView(true) when popstate navigates to #krs-org-tree", async () => {
-      const setIsOrgTreeView = vi.fn();
+      const setIsOrgTreeView = vi.fn<() => void>();
       renderHook(() => useHistoryNavigation(makeOptions({ setIsOrgTreeView })));
       setIsOrgTreeView.mockClear();
 
@@ -399,7 +399,7 @@ describe("useHistoryNavigation", () => {
     });
 
     it("calls setIsOrgTreeView(false) when popstate navigates away from tree view", async () => {
-      const setIsOrgTreeView = vi.fn();
+      const setIsOrgTreeView = vi.fn<() => void>();
       renderHook(() =>
         useHistoryNavigation(
           makeOptions({ activeView: "org", isOrgTreeView: true, setIsOrgTreeView }),

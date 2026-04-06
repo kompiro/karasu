@@ -5,13 +5,13 @@ import type { ServerResponse } from "node:http";
 let mockFsWatcher: EventEmitter;
 
 vi.mock("chokidar", () => ({
-  watch: vi.fn(() => mockFsWatcher),
+  watch: vi.fn<() => EventEmitter>(() => mockFsWatcher),
 }));
 
 import { FileWatcher } from "./watcher.js";
 
 function makeMockClient(): { on: ReturnType<typeof vi.fn>; write: ReturnType<typeof vi.fn> } {
-  return { on: vi.fn(), write: vi.fn() };
+  return { on: vi.fn<() => void>(), write: vi.fn<() => void>() };
 }
 
 describe("FileWatcher", () => {

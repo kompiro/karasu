@@ -46,7 +46,7 @@ function baseProps(overrides: Partial<NodeMetadata> = {}) {
     metadata: baseMetadata(overrides),
     anchorX: 0,
     anchorY: 0,
-    onClose: vi.fn(),
+    onClose: vi.fn<() => void>(),
   };
 }
 
@@ -68,7 +68,7 @@ describe("NodeDetailPanel", () => {
   });
 
   it("click inside the panel does not propagate to parent", () => {
-    const outerClick = vi.fn();
+    const outerClick = vi.fn<() => void>();
     const { container } = render(
       <div onClick={outerClick}>
         <NodeDetailPanel {...baseProps()} />
@@ -86,8 +86,8 @@ describe("NodeDetailPanel", () => {
   });
 
   it("renders deploy navigation button when hasDeployContainer is true", () => {
-    const onNavigateToDeploy = vi.fn();
-    const onClose = vi.fn();
+    const onNavigateToDeploy = vi.fn<() => void>();
+    const onClose = vi.fn<() => void>();
     const { getByText } = render(
       <NodeDetailPanel
         {...baseProps({ hasDeployContainer: true })}
@@ -109,8 +109,8 @@ describe("NodeDetailPanel", () => {
   });
 
   it("renders org navigation button when team is set and onNavigateToOrg is provided", () => {
-    const onNavigateToOrg = vi.fn();
-    const onClose = vi.fn();
+    const onNavigateToOrg = vi.fn<() => void>();
+    const onClose = vi.fn<() => void>();
     const { getByText } = render(
       <NodeDetailPanel
         {...baseProps({ team: "ec-team" })}
@@ -138,7 +138,7 @@ describe("NodeDetailPanel", () => {
   });
 
   it("renders 'Jump to editor' button when onJumpToEditor is provided", () => {
-    const onJumpToEditor = vi.fn();
+    const onJumpToEditor = vi.fn<() => void>();
     const { getByText } = render(
       <NodeDetailPanel {...baseProps()} onJumpToEditor={onJumpToEditor} />,
     );
@@ -151,7 +151,7 @@ describe("NodeDetailPanel", () => {
   });
 
   it("clicking 'Jump to editor' calls onJumpToEditor", () => {
-    const onJumpToEditor = vi.fn();
+    const onJumpToEditor = vi.fn<() => void>();
     const { getByText } = render(
       <NodeDetailPanel {...baseProps()} onJumpToEditor={onJumpToEditor} />,
     );
