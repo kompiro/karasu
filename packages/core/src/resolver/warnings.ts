@@ -316,8 +316,8 @@ function detectCyclicDependencies(file: KrsFile): Warning[] {
           for (let i = 0; i < cyclePath.length - 1; i++) {
             const from = cyclePath[i];
             const to = cyclePath[i + 1];
-            for (const e of syncEdges.filter((e) => e.from === from && e.to === to)) {
-              e.cyclic = true;
+            for (const cycleEdge of syncEdges.filter((se) => se.from === from && se.to === to)) {
+              cycleEdge.cyclic = true;
             }
           }
 
