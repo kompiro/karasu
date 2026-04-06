@@ -229,4 +229,52 @@ edge[async] {
   border-style: dashed;
   color:        #6B7280;
 }
+
+/* ── 組織図（Org Tree View）── */
+team {
+  background-color: #1E3A5F;
+  color:            #E2E8F0;
+  border-color:     #3B82F6;
+}
+
+member {
+  background-color: #0F172A;
+  border-color:     #334155;
+}
+
+/* 特定チームのみ強調 */
+#BackendTeam {
+  border-color: #F59E0B;
+  border-width: 2px;
+}
 ```
+
+---
+
+## 組織図ノードセレクタ（Org Tree View）
+
+Org Tree View は `team` / `member` の種別セレクタと ID セレクタ（`#NodeId`）をサポートします。
+
+| セレクタ | 対象 |
+|---------|------|
+| `team` | すべてのチームカード |
+| `member` | すべてのメンバーカード |
+| `#TeamId` | 特定のチームカード |
+| `#MemberId` | 特定のメンバーカード |
+| `edge` | チーム間のベジェコネクタ |
+
+**対応プロパティ:**
+
+| プロパティ | 効果 |
+|---|---|
+| `background-color` | カード背景色 |
+| `color` | テキスト色 |
+| `border-color` | 枠線色 |
+| `border-width` | 枠線幅（px） |
+| `border-radius` | 角丸（px） |
+| `font-size` | フォントサイズ（px） |
+| `font-weight` | フォントウェイト（`normal` / `bold`） |
+| `font-family` | フォントファミリー |
+
+> **注意**: `opacity` / `shape` / `badge-*` は Org Tree View では無視されます。
+> タグ・アノテーション複合セレクタ（`team[external]` 等）は現時点では未サポートです。

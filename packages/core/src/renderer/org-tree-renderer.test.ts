@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { renderOrgTreeView, collectAllTeamIds } from "./org-tree-renderer.js";
 import type { OrganizationBlock, TeamNode, MemberNode } from "../types/ast.js";
+import type { ResolvedStyles, ResolvedNodeStyle, ResolvedEdgeStyle } from "../types/style.js";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -185,5 +186,94 @@ describe("renderOrgTreeView", () => {
     const svg = renderOrgTreeView(orgs, new Set());
     expect(svg).toContain('data-team-id="eng"');
     expect(svg).toContain('data-team-id="product"');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// renderOrgTreeView — styles option
+// ---------------------------------------------------------------------------
+
+function makeStyles(
+  nodeOverrides: Map<string, Partial<ResolvedNodeStyle>> = new Map(),
+  defaultOverrides: Partial<ResolvedNodeStyle> = {},
+  edgeOverrides: Partial<ResolvedEdgeStyle> = {},
+): ResolvedStyles {
+  const base: ResolvedNodeStyle = {
+    backgroundColor: "#374151",
+    color: "#F9FAFB",
+    borderColor: "#4B5563",
+    borderWidth: 2,
+    borderStyle: "solid",
+    borderRadius: 8,
+    fontSize: 13,
+    fontWeight: "bold",
+    fontFamily: "sans-serif",
+    opacity: 1,
+    shape: "box",
+    ...defaultOverrides,
+  };
+  const baseEdge: ResolvedEdgeStyle = {
+    color: "#94A3B8",
+    strokeWidth: 1.5,
+    fontSize: 11,
+    strokeStyle: "solid",
+    ...edgeOverrides,
+  };
+  const nodes = new Map<string, ResolvedNodeStyle>();
+  for (const [id, overrides] of nodeOverrides) {
+    nodes.set(id, { ...base, ...overrides });
+  }
+  return { nodes, edges: new Map(), defaultNodeStyle: base, defaultEdgeStyle: baseEdge };
+}
+
+describe("renderOrgTreeView — styles option", () => {
+  it("uses default node style background color when styles provided", () => {
+    const styles = makeStyles(new Map(), { backgroundColor: "#123456" });
+    const orgs = [org("o1", [team("eng", "Engineering")])];
+    const svg = renderOrgTreeView(orgs, new Set(), { styles });
+    expect(svg).toContain('fill="#123456"');
+  });
+
+  it("applies per-node style override for a specific team", () => {
+    const styles = makeStyles(new Map([["eng", { backgroundColor: "#ABCDEF" }]]));
+    const orgs = [org("o1", [team("eng", "Engineering")])];
+    const svg = renderOrgTreeView(orgs, new Set(), { styles });
+    expect(svg).toContain('fill="#ABCDEF"');
+  });
+
+  it("applies per-node style override for a specific member", () => {
+    const styles = makeStyles(new Map([["alice", { backgroundColor: "#FF0000" }]]));
+    const orgs = [org("o1", [team("eng", "Eng", [member("alice", "Alice")])])];
+    const svg = renderOrgTreeView(orgs, new Set(["eng"]), { styles });
+    expect(svg).toContain('fill="#FF0000"');
+  });
+
+  it("uses edge style color for bezier connectors", () => {
+    const styles = makeStyles(new Map(), {}, { color: "#FFCC00" });
+    const orgs = [org("o1", [team("eng", "Engineering", [team("backend", "Backend")])])];
+    const svg = renderOrgTreeView(orgs, new Set(), { styles });
+    expect(svg).toContain('stroke="#FFCC00"');
+  });
+
+  it("uses custom border-color for team card", () => {
+    const styles = makeStyles(new Map([["eng", { borderColor: "#FF6B6B" }]]));
+    const orgs = [org("o1", [team("eng", "Engineering")])];
+    const svg = renderOrgTreeView(orgs, new Set(), { styles });
+    expect(svg).toContain('stroke="#FF6B6B"');
+  });
+
+  it("falls back to hardcoded defaults when styles not provided", () => {
+    const orgs = [org("o1", [team("eng", "Engineering")])];
+    const svg = renderOrgTreeView(orgs, new Set());
+    // Hardcoded DEFAULT_TEAM_FILL
+    expect(svg).toContain('fill="#1E293B"');
+  });
+
+  it("applies styles in forExport mode", () => {
+    const styles = makeStyles(new Map(), { backgroundColor: "#654321" });
+    const orgs = [org("o1", [team("eng", "Eng", [member("alice", "Alice")])])];
+    const svg = renderOrgTreeView(orgs, new Set(), { forExport: true, styles });
+    expect(svg).toContain('fill="#654321"');
+    expect(svg).toContain('data-node-id="alice"');
   });
 });
