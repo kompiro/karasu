@@ -18,12 +18,15 @@
     "knip": "knip"
   },
   "pnpm": {
-    "onlyBuiltDependencies": ["esbuild", "lefthook"]
+    "onlyBuiltDependencies": [
+      "esbuild",
+      "lefthook"
+    ]
   },
   "devDependencies": {
     "knip": "^6.1.0",
     "lefthook": "^2.1.4",
     "oxfmt": "^0.42.0",
-    "oxlint": "1.57.0"
+    "oxlint": "1.58.0"
   }
 }
