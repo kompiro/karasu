@@ -1,7 +1,7 @@
 # resource と database の設計
 
 - **日付**: 2026-04-05
-- **ステータス**: 検討中
+- **ステータス**: 完了
 - **関連**: `docs/spec/syntax.md`, `docs/concepts.md`, Issue #316
 
 ## 背景・課題
@@ -174,24 +174,46 @@ system ECPlatform {
 [Usecase E] → [Table D]
 ```
 
-## 未解決の問い
+## インフラリソースの種別と二層構造
 
-1. **`queue` や `storage` も同じ二層構造にするか？**
-   - `queue EventBus { topic OrderCreated {} }` → `resource EventBus.OrderCreated`
-   - 一貫性のためには同じ構造が望ましい
+`database` と同じ設計パターンを `queue`・`storage` にも適用する。種別ごとのサブリソース名は以下の通り：
 
-2. **`table` 以外のサブリソースの命名**
-   - `database` → `table`
-   - `queue` → `topic`（Kafka）/ `queue`（SQS）
-   - `storage` → `bucket` / `object`
-   - それとも `resource` で統一するか
+| system 直下の種別 | サブリソース | 参照例 |
+|---|---|---|
+| `database` | `table` | `resource OrderDB.OrderTable` |
+| `queue` | `queue` | `resource EventBus.OrderCreated` |
+| `storage` | `bucket` | `resource MediaStorage.ImageBucket` |
 
-3. **未割り当て resource の System 図での表示方針**
-   - 孤立ノードとして表示する？非表示にする？
+```krs
+system ECPlatform {
+  database OrderDB {
+    table OrderTable { label "注文テーブル" }
+  }
+  queue EventBus {
+    queue OrderCreated { label "注文作成イベント" }
+  }
+  storage MediaStorage {
+    bucket ImageBucket { label "商品画像バケット" }
+  }
 
-4. **`database` ブロックが存在しない場合の `resource OrderDB.C` の扱い**
-   - 未解決参照として警告のみ？エラー？
+  service A {
+    domain X {
+      usecase PlaceOrder {
+        resource OrderDB.OrderTable
+        resource EventBus.OrderCreated
+        resource MediaStorage.ImageBucket
+      }
+    }
+  }
+}
+```
 
-5. **`service` 直下への `database` 配置は許容するか？**
-   - 「DB per service」パターンへの対応
-   - 現時点の方針では `system` 直下のみとする（service の担当 domain との概念コンフリクトを避けるため）
+## 方針の確定事項
+
+| 問い | 方針 |
+|---|---|
+| `queue`・`storage` も同じ二層構造か | **Yes** — `database` と同じパターンを適用 |
+| サブリソースの命名 | `database → table`、`queue → queue`、`storage → bucket` |
+| 未割り当て resource の System 図表示 | **孤立ノードとして表示**（`domain` の未割り当てと同じ扱い） |
+| `database` 未宣言時の `resource OrderDB.C` | **警告のみ**（未解決参照として扱う、エラーにしない） |
+| `service` 直下への `database` 配置 | **`system` 直下のみ**。DB per service の場合も system 図上で service と database の 1:1 対応として表現できる |
