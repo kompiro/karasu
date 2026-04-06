@@ -179,6 +179,11 @@ edge {
 edge[async] {
   border-style: dashed;
 }
+
+edge[cyclic] {
+  color: #EF4444;
+  stroke-width: 2.5;
+}
 `;
 
 // Reset cache whenever this module is reloaded or in tests

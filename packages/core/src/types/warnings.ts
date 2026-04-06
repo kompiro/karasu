@@ -9,7 +9,8 @@ export type WarningKind =
   | "deprecated-team-property"
   | "unassigned-domain"
   | "cross-system-ref-implicit-external"
-  | "cross-system-ref-unresolved";
+  | "cross-system-ref-unresolved"
+  | "cyclic-dependency";
 
 export interface Warning {
   kind: WarningKind;

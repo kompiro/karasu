@@ -5,6 +5,7 @@ import { extractView } from "../view/view-extract.js";
 import { Parser } from "../parser/parser.js";
 import { StyleParser } from "../parser/style-parser.js";
 import { getBuiltinStyleSheet } from "../builtins/default-style.js";
+import { analyze } from "../resolver/warnings.js";
 import { loadAndRegisterIcon } from "./svg-icon-loader.js";
 import { clearRegistry } from "./shape-registry.js";
 import { registerBuiltinShapes } from "./shapes.js";
@@ -563,5 +564,54 @@ system Test {
     );
     // Both should produce identical output (no icon mode behavior)
     expect(svgDefault).toBe(svgShape);
+  });
+});
+
+describe("cyclic edge rendering", () => {
+  function renderWithAnalysis(krs: string): string {
+    const parseResult = Parser.parse(krs);
+    const sheets = [getBuiltinStyleSheet()];
+    analyze(parseResult.value, sheets);
+    const styles = resolveStyles(parseResult.value.systems, sheets);
+    const viewSlice = extractView(parseResult.value.systems, []);
+    return render(viewSlice, styles);
+  }
+
+  it("renders cyclic edge with krs-edge--cyclic class", () => {
+    const krs = `
+system S {
+  service A {}
+  service B {}
+  A -> B
+  B -> A
+}
+`;
+    const svg = renderWithAnalysis(krs);
+    expect(svg).toContain('class="krs-edge--cyclic"');
+  });
+
+  it("does not add krs-edge--cyclic class to non-cyclic edges", () => {
+    const krs = `
+system S {
+  service A {}
+  service B {}
+  A -> B
+}
+`;
+    const svg = renderWithAnalysis(krs);
+    expect(svg).not.toContain('class="krs-edge--cyclic"');
+  });
+
+  it("renders cyclic edges with red color from builtin style", () => {
+    const krs = `
+system S {
+  service A {}
+  service B {}
+  A -> B
+  B -> A
+}
+`;
+    const svg = renderWithAnalysis(krs);
+    expect(svg).toContain("#EF4444");
   });
 });

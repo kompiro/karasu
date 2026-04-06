@@ -1,4 +1,4 @@
-import type { KrsNode, KrsFile, TeamNode } from "../types/ast.js";
+import type { KrsNode, KrsEdge, KrsFile, TeamNode } from "../types/ast.js";
 import type { StyleSheet } from "../types/style.js";
 import type { Warning } from "../types/warnings.js";
 
@@ -12,6 +12,7 @@ export function analyze(file: KrsFile, sheets: StyleSheet[], systemSheetCount = 
   warnings.push(...detectInvalidOwns(file));
   warnings.push(...detectDeprecatedTeamProperty(file));
   warnings.push(...detectCrossSystemRefs(file));
+  warnings.push(...detectCyclicDependencies(file));
 
   return warnings;
 }
@@ -260,6 +261,104 @@ function detectCrossSystemRefs(file: KrsFile): Warning[] {
         });
       }
     }
+  }
+
+  return warnings;
+}
+
+function detectCyclicDependencies(file: KrsFile): Warning[] {
+  const warnings: Warning[] = [];
+
+  function detectInEdges(edges: KrsEdge[]): void {
+    // Only inspect sync edges — async cycles are intentional (eventual consistency patterns)
+    const syncEdges = edges.filter((e) => e.kind === "sync");
+    if (syncEdges.length === 0) return;
+
+    // Build adjacency map: node -> outgoing sync edges
+    const adj = new Map<string, KrsEdge[]>();
+    for (const edge of syncEdges) {
+      if (!adj.has(edge.from)) adj.set(edge.from, []);
+      adj.get(edge.from)!.push(edge);
+    }
+
+    const WHITE = 0,
+      GRAY = 1,
+      BLACK = 2;
+    const color = new Map<string, number>();
+
+    function dfs(node: string, path: string[]): void {
+      color.set(node, GRAY);
+      const currentPath = [...path, node];
+
+      for (const edge of adj.get(node) ?? []) {
+        const neighbor = edge.to;
+
+        // Self-reference
+        if (neighbor === node) {
+          edge.cyclic = true;
+          warnings.push({
+            kind: "cyclic-dependency",
+            message: `Circular dependency detected: ${node} → ${node}`,
+            details: [],
+            loc: edge.loc,
+          });
+          continue;
+        }
+
+        const neighborColor = color.get(neighbor) ?? WHITE;
+        if (neighborColor === GRAY) {
+          // Back edge found — mark this edge and all edges in the cycle
+          edge.cyclic = true;
+          const cycleStartIdx = currentPath.indexOf(neighbor);
+          const cyclePath = [...currentPath.slice(cycleStartIdx), neighbor];
+
+          // Mark all edges that form the cycle
+          for (let i = 0; i < cyclePath.length - 1; i++) {
+            const from = cyclePath[i];
+            const to = cyclePath[i + 1];
+            for (const e of syncEdges.filter((e) => e.from === from && e.to === to)) {
+              e.cyclic = true;
+            }
+          }
+
+          warnings.push({
+            kind: "cyclic-dependency",
+            message: `Circular dependency detected: ${cyclePath.join(" → ")}`,
+            details: [],
+            loc: edge.loc,
+          });
+        } else if (neighborColor === WHITE) {
+          dfs(neighbor, currentPath);
+        }
+      }
+
+      color.set(node, BLACK);
+    }
+
+    // Collect all nodes that appear in sync edges
+    const nodes = new Set<string>();
+    for (const edge of syncEdges) {
+      nodes.add(edge.from);
+      nodes.add(edge.to);
+    }
+
+    for (const node of nodes) {
+      if ((color.get(node) ?? WHITE) === WHITE) {
+        dfs(node, []);
+      }
+    }
+  }
+
+  function walkNodes(nodes: KrsNode[]): void {
+    for (const node of nodes) {
+      detectInEdges(node.edges);
+      walkNodes(node.children);
+    }
+  }
+
+  for (const system of file.systems) {
+    detectInEdges(system.edges);
+    walkNodes(system.children);
   }
 
   return warnings;
