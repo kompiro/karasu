@@ -108,4 +108,28 @@ describe("getBuiltinStyleSheet", () => {
     expect(rule?.properties["border-color"]).toBe("#3B82F6");
     expect(rule?.properties["badge-label"]).toBe('"oci"');
   });
+
+  it("contains database node kind rule with cylinder shape", () => {
+    const sheet = getBuiltinStyleSheet();
+    const rule = sheet.rules.find(
+      (r) => r.selector.nodeType === "database" && r.properties["shape"] === "cylinder",
+    );
+    expect(rule).toBeDefined();
+  });
+
+  it("contains queue node kind rule with queue shape", () => {
+    const sheet = getBuiltinStyleSheet();
+    const rule = sheet.rules.find(
+      (r) => r.selector.nodeType === "queue" && r.properties["shape"] === "queue",
+    );
+    expect(rule).toBeDefined();
+  });
+
+  it("contains storage node kind rule with cloud shape", () => {
+    const sheet = getBuiltinStyleSheet();
+    const rule = sheet.rules.find(
+      (r) => r.selector.nodeType === "storage" && r.properties["shape"] === "cloud",
+    );
+    expect(rule).toBeDefined();
+  });
 });

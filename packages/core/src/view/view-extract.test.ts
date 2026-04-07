@@ -388,4 +388,145 @@ system ECPlatform {
       });
     });
   });
+
+  describe("infra nodes in system view", () => {
+    const INFRA_KRS = `
+system ECPlatform {
+  database OrderDB {
+    table OrderTable { label "注文テーブル" }
+    table InventoryTable { label "在庫テーブル" }
+  }
+  queue EventBus {
+    queue OrderCreated { label "注文作成イベント" }
+  }
+  storage MediaStorage {
+    bucket ImageBucket { label "商品画像バケット" }
+  }
+
+  service OrderService {
+    domain Order {
+      usecase PlaceOrder {
+        resource OrderDB.OrderTable
+        resource EventBus.OrderCreated
+      }
+    }
+  }
+  service MediaService {
+    domain Media {
+      usecase UploadImage {
+        resource MediaStorage.ImageBucket
+        resource OrderDB.InventoryTable
+      }
+    }
+  }
+}
+`;
+
+    it("includes database/queue/storage as childNodes in system view", () => {
+      const systems = parseSystem(INFRA_KRS);
+      const view = extractView(systems, []);
+
+      const kinds = view.childNodes.map((n) => n.kind);
+      expect(kinds).toContain("database");
+      expect(kinds).toContain("queue");
+      expect(kinds).toContain("storage");
+    });
+
+    it("derives service→database edge from resource dot-notation reference", () => {
+      const systems = parseSystem(INFRA_KRS);
+      const view = extractView(systems, []);
+
+      const edge = view.childEdges.find((e) => e.from === "OrderService" && e.to === "OrderDB");
+      expect(edge).toBeDefined();
+    });
+
+    it("derives service→queue edge", () => {
+      const systems = parseSystem(INFRA_KRS);
+      const view = extractView(systems, []);
+
+      const edge = view.childEdges.find((e) => e.from === "OrderService" && e.to === "EventBus");
+      expect(edge).toBeDefined();
+    });
+
+    it("derives service→storage edge", () => {
+      const systems = parseSystem(INFRA_KRS);
+      const view = extractView(systems, []);
+
+      const edge = view.childEdges.find((e) => e.from === "MediaService" && e.to === "MediaStorage");
+      expect(edge).toBeDefined();
+    });
+
+    it("deduplicates edges when multiple usecases reference the same infra node", () => {
+      const systems = parseSystem(INFRA_KRS);
+      const view = extractView(systems, []);
+
+      const dbEdges = view.childEdges.filter(
+        (e) => e.from === "MediaService" && e.to === "OrderDB",
+      );
+      expect(dbEdges).toHaveLength(1);
+    });
+
+    it("does not derive edges for resources without dot-notation ref", () => {
+      const krs = `
+system ECPlatform {
+  database OrderDB {
+    table OrderTable {}
+  }
+  service OrderService {
+    domain Order {
+      usecase PlaceOrder {
+        resource UnassignedResource
+      }
+    }
+  }
+}
+`;
+      const systems = parseSystem(krs);
+      const view = extractView(systems, []);
+
+      const edge = view.childEdges.find(
+        (e) => e.from === "OrderService" && e.to === "UnassignedResource",
+      );
+      expect(edge).toBeUndefined();
+    });
+
+    it("does not override explicitly declared edges with derived ones", () => {
+      const krs = `
+system ECPlatform {
+  database OrderDB {
+    table OrderTable {}
+  }
+  service OrderService {
+    domain Order {
+      usecase PlaceOrder {
+        resource OrderDB.OrderTable
+      }
+    }
+  }
+  OrderService -> OrderDB "明示的エッジ"
+}
+`;
+      const systems = parseSystem(krs);
+      const view = extractView(systems, []);
+
+      const edges = view.childEdges.filter(
+        (e) => e.from === "OrderService" && e.to === "OrderDB",
+      );
+      expect(edges).toHaveLength(1);
+    });
+
+    it("produces no derived edges when no infra nodes exist", () => {
+      const systems = parseSystem(FULL_KRS);
+      const view = extractView(systems, []);
+
+      // FULL_KRS has no database/queue/storage nodes
+      const infraEdges = view.childEdges.filter(
+        (e) =>
+          view.childNodes.some(
+            (n) => n.id === e.to && ["database", "queue", "storage"].includes(n.kind),
+          ),
+      );
+      expect(infraEdges).toHaveLength(0);
+    });
+  });
 });

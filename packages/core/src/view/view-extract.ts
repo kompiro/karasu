@@ -1,4 +1,55 @@
-import type { KrsNode, KrsEdge } from "../types/ast.js";
+import type { KrsNode, KrsEdge, ResourceNode } from "../types/ast.js";
+
+const INFRA_KINDS = new Set(["database", "queue", "storage"] as const);
+
+/** Walk service→domain→usecase→resource chain and return all resource nodes with ref. */
+function collectResourceRefs(node: KrsNode): ResourceNode[] {
+  const results: ResourceNode[] = [];
+  for (const child of node.children) {
+    if (child.kind === "resource" && child.ref) {
+      results.push(child as ResourceNode);
+    } else {
+      results.push(...collectResourceRefs(child));
+    }
+  }
+  return results;
+}
+
+/**
+ * Derive synthetic service→database/queue/storage edges from resource references.
+ * For each service, walks all descendant resource nodes with dot-notation refs and
+ * creates one edge per unique (service, infra) pair.
+ */
+function deriveInfraEdges(children: KrsNode[]): KrsEdge[] {
+  const infraIds = new Set(
+    children.filter((n) => INFRA_KINDS.has(n.kind as "database" | "queue" | "storage")).map((n) => n.id),
+  );
+  if (infraIds.size === 0) return [];
+
+  const syntheticEdges: KrsEdge[] = [];
+  const seen = new Set<string>();
+
+  for (const child of children) {
+    if (child.kind !== "service") continue;
+    const refs = collectResourceRefs(child);
+    for (const ref of refs) {
+      const parentId = ref.ref!.parent;
+      if (!infraIds.has(parentId)) continue;
+      const key = `${child.id}->${parentId}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      syntheticEdges.push({
+        from: child.id,
+        to: parentId,
+        kind: "sync",
+        tags: [],
+        loc: ref.loc,
+      });
+    }
+  }
+
+  return syntheticEdges;
+}
 
 /**
  * ViewPath identifies the drill-down position in the hierarchy.
@@ -84,7 +135,14 @@ export function extractView(
   if (path.length === 0) {
     const allChildren = [...system.children, ...unassignedDomains];
     const childIds = new Set(allChildren.map(nodeId));
-    const childEdges = system.edges.filter((e) => childIds.has(e.from) && childIds.has(e.to));
+    const explicitEdges = system.edges.filter((e) => childIds.has(e.from) && childIds.has(e.to));
+    const derivedEdges = deriveInfraEdges(allChildren);
+    // Merge derived edges, skipping any already covered by explicit edges
+    const explicitKeys = new Set(explicitEdges.map((e) => `${e.from}->${e.to}`));
+    const childEdges = [
+      ...explicitEdges,
+      ...derivedEdges.filter((e) => !explicitKeys.has(`${e.from}->${e.to}`)),
+    ];
 
     // Cross-system edges: collect from all systems where target is qualified
     const crossSystemEdges = systems.flatMap((sys) =>
