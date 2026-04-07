@@ -120,6 +120,14 @@ export function ProjectModeApp() {
     [pm, dispatch, navigateToProject],
   );
 
+  const handleRenameProject = useCallback(
+    async (id: string, newName: string) => {
+      const updated = await pm.renameProject(id, newName);
+      dispatch({ type: "RENAME_PROJECT", id, name: updated.name });
+    },
+    [pm, dispatch],
+  );
+
   const handleDeleteProject = useCallback(
     async (id: string) => {
       await pm.deleteProject(id);
@@ -145,6 +153,7 @@ export function ProjectModeApp() {
         currentProject={currentProject}
         onSelectProject={handleSelectProject}
         onCreateProject={handleCreateProject}
+        onRenameProject={handleRenameProject}
         onDeleteProject={handleDeleteProject}
       />
       {currentProject && (

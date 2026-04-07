@@ -6,6 +6,7 @@ interface ProjectSelectorProps {
   currentProject: Project | null;
   onSelectProject: (project: Project) => void;
   onCreateProject: (name: string) => void;
+  onRenameProject: (id: string, newName: string) => void;
   onDeleteProject: (id: string) => void;
 }
 
@@ -14,10 +15,13 @@ export function ProjectSelector({
   currentProject,
   onSelectProject,
   onCreateProject,
+  onRenameProject,
   onDeleteProject,
 }: ProjectSelectorProps) {
   const [isCreating, setIsCreating] = useState(false);
   const [newName, setNewName] = useState("");
+  const [isRenaming, setIsRenaming] = useState(false);
+  const [renameValue, setRenameValue] = useState("");
 
   const handleSelect = useCallback(
     (e: React.ChangeEvent<HTMLSelectElement>) => {
@@ -27,6 +31,8 @@ export function ProjectSelector({
     [projects, onSelectProject],
   );
 
+  // ── Create ────────────────────────────────────────────────────────
+
   const handleCreate = useCallback(() => {
     if (newName.trim()) {
       onCreateProject(newName.trim());
@@ -35,13 +41,45 @@ export function ProjectSelector({
     }
   }, [newName, onCreateProject]);
 
-  const handleKeyDown = useCallback(
+  const handleCreateKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
       if (e.key === "Enter") handleCreate();
-      if (e.key === "Escape") setIsCreating(false);
+      if (e.key === "Escape") {
+        setNewName("");
+        setIsCreating(false);
+      }
     },
     [handleCreate],
   );
+
+  // ── Rename ────────────────────────────────────────────────────────
+
+  const handleRenameStart = useCallback(() => {
+    setRenameValue(currentProject?.name ?? "");
+    setIsRenaming(true);
+  }, [currentProject]);
+
+  const handleRenameCommit = useCallback(() => {
+    if (!currentProject) return;
+    const trimmed = renameValue.trim();
+    if (trimmed && trimmed !== currentProject.name) {
+      onRenameProject(currentProject.id, trimmed);
+    }
+    setIsRenaming(false);
+  }, [currentProject, renameValue, onRenameProject]);
+
+  const handleRenameKeyDown = useCallback(
+    (e: React.KeyboardEvent) => {
+      if (e.key === "Enter") handleRenameCommit();
+      if (e.key === "Escape") setIsRenaming(false);
+    },
+    [handleRenameCommit],
+  );
+
+  const isRenameOkDisabled =
+    !renameValue.trim() || renameValue.trim() === currentProject?.name;
+
+  // ── Delete ────────────────────────────────────────────────────────
 
   const handleDelete = useCallback(() => {
     if (currentProject && confirm(`"${currentProject.name}" を削除しますか?`)) {
@@ -49,19 +87,25 @@ export function ProjectSelector({
     }
   }, [currentProject, onDeleteProject]);
 
+  // ── Render ────────────────────────────────────────────────────────
+
+  const showInlineInput = isCreating || isRenaming;
+
   return (
     <div className="project-selector">
-      <select
-        value={currentProject?.id ?? ""}
-        onChange={handleSelect}
-        className="project-selector-dropdown"
-      >
-        {projects.map((p) => (
-          <option key={p.id} value={p.id}>
-            {p.name}
-          </option>
-        ))}
-      </select>
+      {!showInlineInput && (
+        <select
+          value={currentProject?.id ?? ""}
+          onChange={handleSelect}
+          className="project-selector-dropdown"
+        >
+          {projects.map((p) => (
+            <option key={p.id} value={p.id}>
+              {p.name}
+            </option>
+          ))}
+        </select>
+      )}
 
       {isCreating ? (
         <div className="project-selector-create">
@@ -69,15 +113,47 @@ export function ProjectSelector({
             type="text"
             value={newName}
             onChange={(e) => setNewName(e.target.value)}
-            onKeyDown={handleKeyDown}
+            onKeyDown={handleCreateKeyDown}
             placeholder="プロジェクト名"
             autoFocus
             className="project-selector-input"
           />
-          <button onClick={handleCreate} className="project-selector-btn">
+          <button
+            onClick={handleCreate}
+            disabled={!newName.trim()}
+            className="project-selector-btn"
+          >
             OK
           </button>
-          <button onClick={() => setIsCreating(false)} className="project-selector-btn">
+          <button
+            onClick={() => {
+              setNewName("");
+              setIsCreating(false);
+            }}
+            className="project-selector-btn"
+          >
+            Cancel
+          </button>
+        </div>
+      ) : isRenaming ? (
+        <div className="project-selector-create">
+          <input
+            type="text"
+            value={renameValue}
+            onChange={(e) => setRenameValue(e.target.value)}
+            onKeyDown={handleRenameKeyDown}
+            placeholder="プロジェクト名"
+            autoFocus
+            className="project-selector-input"
+          />
+          <button
+            onClick={handleRenameCommit}
+            disabled={isRenameOkDisabled}
+            className="project-selector-btn"
+          >
+            OK
+          </button>
+          <button onClick={() => setIsRenaming(false)} className="project-selector-btn">
             Cancel
           </button>
         </div>
@@ -91,13 +167,22 @@ export function ProjectSelector({
             + New
           </button>
           {currentProject && (
-            <button
-              onClick={handleDelete}
-              className="project-selector-btn project-selector-btn-danger"
-              title="プロジェクトを削除"
-            >
-              Delete
-            </button>
+            <>
+              <button
+                onClick={handleRenameStart}
+                className="project-selector-btn"
+                title="プロジェクトをリネーム"
+              >
+                ✎ Rename
+              </button>
+              <button
+                onClick={handleDelete}
+                className="project-selector-btn project-selector-btn-danger"
+                title="プロジェクトを削除"
+              >
+                ✕ Delete
+              </button>
+            </>
           )}
         </div>
       )}
