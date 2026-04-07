@@ -4,9 +4,8 @@ import { FileTree } from "./components/FileTree.js";
 import { AppShell } from "./components/AppShell.js";
 import { useAppContext } from "./state/app-context.js";
 import { ProjectManager } from "./fs/project-manager.js";
+import { useProjectNavigation, LAST_PROJECT_KEY } from "./hooks/useProjectNavigation.js";
 import type { Project } from "@karasu-tools/core";
-
-const LAST_PROJECT_KEY = "karasu-last-project-id";
 
 /**
  * ProjectModeApp — OPFS モードのアプリケーションシェル。
@@ -22,6 +21,8 @@ export function ProjectModeApp() {
   // エントリパスを計算（現在のプロジェクトの index.krs）
   const entryPath = currentProject ? `${currentProject.rootPath}/index.krs` : null;
 
+  const { navigateToProject } = useProjectNavigation(projects, currentProject, dispatch);
+
   // 初期化: プロジェクト一覧を読み込み
   useEffect(() => {
     (async () => {
@@ -30,18 +31,11 @@ export function ProjectModeApp() {
       if (projectList.length === 0) {
         // 初回起動: Getting Started プロジェクトを自動作成
         const starter = await pm.createProject("Getting Started");
+        // useProjectNavigation の初期化 Effect が projects 確定後に SET_CURRENT_PROJECT を行う
         dispatch({ type: "SET_PROJECTS", projects: [starter] });
-        dispatch({ type: "SET_CURRENT_PROJECT", project: starter });
       } else {
         dispatch({ type: "SET_PROJECTS", projects: projectList });
-
-        // 最後に開いたプロジェクトを復元
-        const lastId = localStorage.getItem(LAST_PROJECT_KEY);
-        const lastProject = projectList.find((p) => p.id === lastId);
-        dispatch({
-          type: "SET_CURRENT_PROJECT",
-          project: lastProject ?? projectList[0],
-        });
+        // useProjectNavigation の初期化 Effect が URL/localStorage を参照して復元する
       }
 
       dispatch({ type: "SET_LOADING", loading: false });
@@ -112,18 +106,18 @@ export function ProjectModeApp() {
 
   const handleSelectProject = useCallback(
     (project: Project) => {
-      dispatch({ type: "SET_CURRENT_PROJECT", project });
+      navigateToProject(project);
     },
-    [dispatch],
+    [navigateToProject],
   );
 
   const handleCreateProject = useCallback(
     async (name: string) => {
       const project = await pm.createProject(name);
       dispatch({ type: "ADD_PROJECT", project });
-      dispatch({ type: "SET_CURRENT_PROJECT", project });
+      navigateToProject(project);
     },
-    [pm, dispatch],
+    [pm, dispatch, navigateToProject],
   );
 
   const handleDeleteProject = useCallback(
@@ -134,10 +128,10 @@ export function ProjectModeApp() {
       // 残りのプロジェクトがあれば先頭を選択
       const remaining = projects.filter((p) => p.id !== id);
       if (remaining.length > 0) {
-        dispatch({ type: "SET_CURRENT_PROJECT", project: remaining[0] });
+        navigateToProject(remaining[0]);
       }
     },
-    [pm, dispatch, projects],
+    [pm, dispatch, projects, navigateToProject],
   );
 
   if (loading) {
