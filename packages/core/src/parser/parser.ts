@@ -317,7 +317,15 @@ export class Parser {
       }
 
       // Check for logical node
+      // Infra block kinds (database/queue/storage) are only valid as direct children of system.
       if (this.isLogicalKeyword(token)) {
+        if (INFRA_BLOCK_KINDS.has(token.value) && kind !== "system") {
+          this.error(
+            `"${token.value}" is only valid as a direct child of system, not inside "${kind}"`,
+          );
+          this.advance();
+          continue;
+        }
         children.push(this.parseNodeDecl());
         continue;
       }
@@ -539,8 +547,10 @@ export class Parser {
       end = this.expect(TokenType.RightBrace);
     }
 
-    // Warn for inline resources (no dot-notation, no parent infra block)
-    if (!ref) {
+    // Warn for inline resources (no dot-notation, no parent infra block).
+    // Resources tagged [external] intentionally have no database parent (they represent
+    // external APIs, queues, or services) so the warning is suppressed for them.
+    if (!ref && !tags.includes("external")) {
       this.diagnostics.push({
         severity: "warning",
         message: `resource "${id}" is not assigned to any database`,
@@ -667,6 +677,58 @@ export class Parser {
     }
   }
 
+  /**
+   * Parse the body of a leaf sub-resource node (table, queue-item, bucket).
+   * Only properties (label, description, link) and edges are allowed.
+   * Child node declarations are intentionally excluded — sub-resources are leaf nodes
+   * and must not contain nested infra blocks or logical node declarations.
+   * Note: TokenType.Table and TokenType.Bucket are deliberately absent from
+   * LOGICAL_KEYWORDS and isNodeKeywordType for the same reason.
+   */
+  private parseLeafNodeContents(
+    edges: KrsEdge[],
+    properties: CommonProperties & { label?: string },
+  ): void {
+    while (this.peek().type !== TokenType.RightBrace && this.peek().type !== TokenType.EOF) {
+      const token = this.peek();
+
+      if (token.type === TokenType.Label) {
+        this.advance();
+        if (this.peek().type === TokenType.StringLiteral) {
+          properties.label = this.advance().value;
+        } else {
+          this.error('Expected string literal after "label"');
+        }
+        continue;
+      }
+
+      if (token.type === TokenType.Description) {
+        this.advance();
+        properties.description = this.parseDescriptionValue();
+        continue;
+      }
+
+      if (token.type === TokenType.Link) {
+        this.advance();
+        properties.links.push(this.parseLink());
+        continue;
+      }
+
+      if (
+        (token.type === TokenType.Identifier || token.type === TokenType.StringLiteral) &&
+        (this.peekAt(1).type === TokenType.Arrow || this.peekAt(1).type === TokenType.DashedArrow)
+      ) {
+        edges.push(this.parseEdge());
+        continue;
+      }
+
+      this.error(
+        `Unexpected token in sub-resource block: ${token.type} ("${token.value}"). Sub-resource nodes (table, queue-item, bucket) cannot contain child declarations.`,
+      );
+      this.advance();
+    }
+  }
+
   /** Try to parse a sub-resource node for the given parent infra kind. Returns null if not applicable. */
   private tryParseInfraSubNode(parentKind: "database" | "queue" | "storage"): KrsNode | null {
     const token = this.peek();
@@ -708,7 +770,10 @@ export class Parser {
 
     if (this.peek().type === TokenType.LeftBrace) {
       this.advance();
-      this.parseBlockContentsWithProperties(children, edges, kind as LogicalNodeKind, properties);
+      // Sub-resource nodes (table, queue-item, bucket) are leaf nodes: only properties and
+      // edges are allowed inside their bodies. Using a restricted parser avoids accidentally
+      // accepting infra keywords (database/queue/storage) as child nodes.
+      this.parseLeafNodeContents(edges, properties);
       end = this.expect(TokenType.RightBrace);
     }
 
