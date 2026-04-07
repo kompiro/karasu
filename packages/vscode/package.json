@@ -15,7 +15,7 @@
   },
   "dependencies": {
     "@karasu-tools/core": "workspace:*",
-    "marked": "^17.0.5",
+    "marked": "^17.0.6",
     "vscode-languageclient": "^9.0.1"
   },
   "devDependencies": {
