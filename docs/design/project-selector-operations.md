@@ -150,7 +150,7 @@ interface ProjectSelectorProps {
 
 ボタン配置:
 ```
-[ 鴉 ] [ Project A ▼ ] [ + New ] [ ✎ Rename ] [ 🗑 Delete ]
+[ 鴉 ] [ Project A ▼ ] [ + New ] [ ✎ Rename ] [ ✕ Delete ]
 ```
 
 インライン入力（リネーム中）:
@@ -174,11 +174,10 @@ const handleRenameProject = useCallback(
 );
 ```
 
-## 未解決の問い
+## 決定事項（議論済み）
 
-- ボタンラベルのアイコンは何が適切か？（`✎`・`✏`・`≡`・テキストのみ "Rename"）
-  - 現在の "+ New" / "Delete" はアイコンなしのテキストのみ。一貫性のためテキストのみが自然か
-- 横幅が狭いとき（サイドバーが折りたたまれている場合など）のボタン省略の扱いは？
-  - 現状 `sidebar-collapsed` 時は `.project-selector` ごと非表示になるため問題なし
-- 現在名と同じ名前で OK した場合は API を呼ばないべきか、呼んでも OK か？
-  - `updatedAt` が更新されるが副作用は小さいため、disabled 制御のみで十分
+- **ボタンラベルのアイコン**: 既存ツールバーと同じ幾何学的 Unicode 記号を使う
+  - `+ New`（変更なし）、`✎ Rename`（U+270E 鉛筆）、`✕ Delete`（U+2715 乗算記号 X）
+  - 絵文字は使わない（ツールバー全体の方針と統一）
+- **横幅が狭いときの扱い**: `sidebar-collapsed` 時は `.project-selector` ごと非表示になるため対応不要
+- **現在名と同じ名前で OK した場合**: OK ボタンを disabled にして API を呼ばない（案A採用）
