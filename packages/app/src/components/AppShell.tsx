@@ -15,6 +15,7 @@ import type { ReactNode } from "react";
 import type { KrsFile, KrsNode, TeamNode, OrgNode, DisplayMode } from "@karasu-tools/core";
 import type { editor } from "monaco-editor";
 import type { ActiveView } from "../state/app-reducer.js";
+import type { BreadcrumbItem } from "./Breadcrumb.js";
 
 interface AppShellProps {
   entryPath: string | null;
@@ -224,8 +225,7 @@ export function AppShell({ entryPath, sidebarContent, hideEditor, recompileRef }
       // Build breadcrumb items with explicit navigatePath so that clicking each item
       // navigates to the correct Phase 2 path (including system ID prefix).
       const activeSystem = systems.find((s) => s.id === viewPath[0]) ?? systems[0];
-      type BreadcrumbItemWithPath = { id: string; label: string; navigatePath: string[] };
-      const items: BreadcrumbItemWithPath[] = [
+      const items: BreadcrumbItem[] = [
         {
           id: activeSystem.id,
           label: activeSystem.label ?? activeSystem.id,
