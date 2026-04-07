@@ -357,3 +357,153 @@ system PaymentGateway {
     expect(implicit).toHaveLength(0);
   });
 });
+
+describe("cyclic-dependency warning", () => {
+  it("detects self-reference (A -> A)", () => {
+    const krs = `
+system S {
+  service A {}
+  A -> A
+}
+`;
+    const file = Parser.parse(krs).value;
+    const warnings = analyze(file, []);
+    const cyclic = warnings.filter((w) => w.kind === "cyclic-dependency");
+    expect(cyclic).toHaveLength(1);
+    expect(cyclic[0].message).toBe("Circular dependency detected: A → A");
+  });
+
+  it("marks self-reference edge as cyclic", () => {
+    const krs = `
+system S {
+  service A {}
+  A -> A
+}
+`;
+    const file = Parser.parse(krs).value;
+    analyze(file, []);
+    const edge = file.systems[0].edges[0];
+    expect(edge.cyclic).toBe(true);
+  });
+
+  it("detects direct cycle (A -> B -> A)", () => {
+    const krs = `
+system S {
+  service A {}
+  service B {}
+  A -> B
+  B -> A
+}
+`;
+    const file = Parser.parse(krs).value;
+    const warnings = analyze(file, []);
+    const cyclic = warnings.filter((w) => w.kind === "cyclic-dependency");
+    expect(cyclic).toHaveLength(1);
+    expect(cyclic[0].message).toContain("Circular dependency detected");
+    expect(cyclic[0].message).toContain("A");
+    expect(cyclic[0].message).toContain("B");
+  });
+
+  it("marks both edges in a direct cycle as cyclic", () => {
+    const krs = `
+system S {
+  service A {}
+  service B {}
+  A -> B
+  B -> A
+}
+`;
+    const file = Parser.parse(krs).value;
+    analyze(file, []);
+    const edges = file.systems[0].edges;
+    expect(edges.every((e) => e.cyclic)).toBe(true);
+  });
+
+  it("detects indirect cycle (A -> B -> C -> A)", () => {
+    const krs = `
+system S {
+  service A {}
+  service B {}
+  service C {}
+  A -> B
+  B -> C
+  C -> A
+}
+`;
+    const file = Parser.parse(krs).value;
+    const warnings = analyze(file, []);
+    const cyclic = warnings.filter((w) => w.kind === "cyclic-dependency");
+    expect(cyclic).toHaveLength(1);
+    expect(cyclic[0].message).toContain("Circular dependency detected");
+  });
+
+  it("marks all three edges in an indirect cycle as cyclic", () => {
+    const krs = `
+system S {
+  service A {}
+  service B {}
+  service C {}
+  A -> B
+  B -> C
+  C -> A
+}
+`;
+    const file = Parser.parse(krs).value;
+    analyze(file, []);
+    const edges = file.systems[0].edges;
+    expect(edges.every((e) => e.cyclic)).toBe(true);
+  });
+
+  it("does not flag acyclic edges (A -> B -> C)", () => {
+    const krs = `
+system S {
+  service A {}
+  service B {}
+  service C {}
+  A -> B
+  B -> C
+}
+`;
+    const file = Parser.parse(krs).value;
+    const warnings = analyze(file, []);
+    expect(warnings.filter((w) => w.kind === "cyclic-dependency")).toHaveLength(0);
+    const edges = file.systems[0].edges;
+    expect(edges.every((e) => !e.cyclic)).toBe(true);
+  });
+
+  it("does not flag async cycles (A --> B --> A)", () => {
+    const krs = `
+system S {
+  service A {}
+  service B {}
+  A --> B
+  B --> A
+}
+`;
+    const file = Parser.parse(krs).value;
+    const warnings = analyze(file, []);
+    expect(warnings.filter((w) => w.kind === "cyclic-dependency")).toHaveLength(0);
+  });
+
+  it("does not flag cyclic edges when cycle is non-cyclic side edge exists", () => {
+    const krs = `
+system S {
+  service A {}
+  service B {}
+  service D {}
+  A -> B
+  B -> A
+  D -> B
+}
+`;
+    const file = Parser.parse(krs).value;
+    analyze(file, []);
+    const edges = file.systems[0].edges;
+    const ab = edges.find((e) => e.from === "A" && e.to === "B");
+    const ba = edges.find((e) => e.from === "B" && e.to === "A");
+    const db = edges.find((e) => e.from === "D" && e.to === "B");
+    expect(ab?.cyclic).toBe(true);
+    expect(ba?.cyclic).toBe(true);
+    expect(db?.cyclic).toBeFalsy();
+  });
+});

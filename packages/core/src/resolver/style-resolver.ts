@@ -235,6 +235,7 @@ function edgeSelectorMatches(edge: KrsEdge, selector: StyleSelector): boolean {
     const edgeTags = [...edge.tags];
     if (edge.kind === "async") edgeTags.push("async");
     if (edge.kind === "sync") edgeTags.push("sync");
+    if (edge.cyclic) edgeTags.push("cyclic");
     if (!selector.tags.every((t) => edgeTags.includes(t))) return false;
   }
   return true;

@@ -37,6 +37,7 @@ export interface LayoutEdge {
   fromPoint: { x: number; y: number };
   toPoint: { x: number; y: number };
   ghost?: boolean;
+  cyclic?: boolean;
 }
 
 export interface ContainerRect {
@@ -471,6 +472,7 @@ function computeEdgePoints(
     label: edge.label,
     fromPoint,
     toPoint,
+    cyclic: edge.cyclic,
   };
 }
 

@@ -87,6 +87,7 @@ export interface KrsEdge {
   label?: string;
   kind: EdgeKind;
   tags: string[];
+  cyclic?: boolean;
   loc: SourceRange;
 }
 
