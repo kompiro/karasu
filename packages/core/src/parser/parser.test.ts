@@ -951,10 +951,12 @@ system Test {
   it("parses sampleKrs from getReference() without errors", () => {
     const { sampleKrs } = getReference();
     const result = Parser.parse(sampleKrs);
-    // sampleKrs uses inline resources (Phase 1 style), each emits an "unassigned-resource" warning
+    // sampleKrs has 4 non-external inline resources → 4 "unassigned-resource" warnings.
+    // The 4 [external]-tagged inline resources are suppressed and emit no warning.
     const errors = result.diagnostics.filter((d) => d.severity === "error");
     expect(errors).toHaveLength(0);
     const warnings = result.diagnostics.filter((d) => d.severity === "warning");
+    expect(warnings).toHaveLength(4);
     expect(warnings.every((w) => w.message.includes("is not assigned to any database"))).toBe(true);
     expect(result.value.systems).toHaveLength(1);
     expect(result.value.deploys).toHaveLength(1);
@@ -1393,6 +1395,110 @@ system ECPlatform {
       // No warning for dot-notation: unresolved reference check is deferred to a later phase
       const warnings = result.diagnostics.filter((d) => d.severity === "warning");
       expect(warnings).toHaveLength(0);
+    });
+
+    it("does not emit warning for [external]-tagged inline resource", () => {
+      const result = Parser.parse(`
+system ECPlatform {
+  service A {
+    domain X {
+      usecase B {
+        resource InventoryAPI [external] { label "在庫API" }
+        resource PaymentAPI [external] { label "決済API" }
+      }
+    }
+  }
+}
+      `);
+      // [external] resources intentionally have no database parent — no warning
+      const warnings = result.diagnostics.filter((d) => d.severity === "warning");
+      expect(warnings).toHaveLength(0);
+    });
+
+    it("emits warning for non-external inline resource but not for external sibling", () => {
+      const result = Parser.parse(`
+system ECPlatform {
+  service A {
+    domain X {
+      usecase B {
+        resource OrderTable { label "注文テーブル" }
+        resource ExternalAPI [external] { label "外部API" }
+      }
+    }
+  }
+}
+      `);
+      const warnings = result.diagnostics.filter((d) => d.severity === "warning");
+      expect(warnings).toHaveLength(1);
+      expect(warnings[0].message).toContain("OrderTable");
+    });
+  });
+
+  describe("infra block placement validation", () => {
+    it("emits error when database appears inside service block", () => {
+      const result = Parser.parse(`
+system ECPlatform {
+  service A {
+    database OrderDB {
+      table OrderTable { label "注文テーブル" }
+    }
+  }
+}
+      `);
+      const errors = result.diagnostics.filter((d) => d.severity === "error");
+      expect(errors.length).toBeGreaterThan(0);
+      expect(errors[0].message).toContain('"database" is only valid as a direct child of system');
+    });
+
+    it("emits error when queue appears inside domain block", () => {
+      const result = Parser.parse(`
+system ECPlatform {
+  service A {
+    domain X {
+      queue EventBus {
+        queue OrderCreated { label "注文イベント" }
+      }
+    }
+  }
+}
+      `);
+      const errors = result.diagnostics.filter((d) => d.severity === "error");
+      expect(errors.length).toBeGreaterThan(0);
+      expect(errors[0].message).toContain('"queue" is only valid as a direct child of system');
+    });
+
+    it("emits error when storage appears inside usecase block", () => {
+      const result = Parser.parse(`
+system ECPlatform {
+  service A {
+    domain X {
+      usecase B {
+        storage MediaStorage {
+          bucket ImageBucket { label "画像バケット" }
+        }
+      }
+    }
+  }
+}
+      `);
+      const errors = result.diagnostics.filter((d) => d.severity === "error");
+      expect(errors.length).toBeGreaterThan(0);
+      expect(errors[0].message).toContain('"storage" is only valid as a direct child of system');
+    });
+
+    it("emits error when infra block appears inside sub-resource body", () => {
+      const result = Parser.parse(`
+system ECPlatform {
+  database OrderDB {
+    table OrderTable {
+      database NestedDB { }
+    }
+  }
+}
+      `);
+      const errors = result.diagnostics.filter((d) => d.severity === "error");
+      expect(errors.length).toBeGreaterThan(0);
+      expect(errors.some((e) => e.message.includes("Sub-resource nodes"))).toBe(true);
     });
   });
 
