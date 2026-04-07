@@ -31,6 +31,12 @@ function krsNodeToSymbol(node: KrsNode): DocumentSymbol {
     usecase: SymbolKind.Function,
     resource: SymbolKind.Property,
     user: SymbolKind.Object,
+    database: SymbolKind.Module,
+    queue: SymbolKind.Module,
+    storage: SymbolKind.Module,
+    table: SymbolKind.Property,
+    "queue-item": SymbolKind.Property,
+    bucket: SymbolKind.Property,
   };
   const range = toRange(node.loc);
   const displayName = node.label ?? node.id;

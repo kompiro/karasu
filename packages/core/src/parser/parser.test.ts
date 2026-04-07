@@ -1,4 +1,4 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, assert } from "vitest";
 import { Parser } from "./parser.js";
 import { getReference } from "../builtins/reference.js";
 import type { DomainNode, ServiceNode, UserNode } from "../types/ast.js";
@@ -448,7 +448,10 @@ system Test {
   }
 }
     `);
-    expect(result.diagnostics).toHaveLength(0);
+    // Inline resource without dot-notation emits an "unassigned-resource" warning
+    expect(result.diagnostics).toHaveLength(1);
+    expect(result.diagnostics[0].severity).toBe("warning");
+    expect(result.diagnostics[0].message).toContain("is not assigned to any database");
     const resource = result.value.systems[0].children[0].children[0].children[0].children[0];
     expect(resource.kind).toBe("resource");
     expect(resource.properties.links).toHaveLength(1);
@@ -945,10 +948,14 @@ system Test {
     expect(edge.label).toBe("決済を呼び出す");
   });
 
-  it("parses sampleKrs from getReference() without diagnostics", () => {
+  it("parses sampleKrs from getReference() without errors", () => {
     const { sampleKrs } = getReference();
     const result = Parser.parse(sampleKrs);
-    expect(result.diagnostics).toHaveLength(0);
+    // sampleKrs uses inline resources (Phase 1 style), each emits an "unassigned-resource" warning
+    const errors = result.diagnostics.filter((d) => d.severity === "error");
+    expect(errors).toHaveLength(0);
+    const warnings = result.diagnostics.filter((d) => d.severity === "warning");
+    expect(warnings.every((w) => w.message.includes("is not assigned to any database"))).toBe(true);
     expect(result.value.systems).toHaveLength(1);
     expect(result.value.deploys).toHaveLength(1);
     expect(result.value.organizations).toHaveLength(1);
@@ -1163,5 +1170,267 @@ system ECPlatform {
     const edge = result.value.systems[0].edges[0];
     expect(edge.to).toBe("PaymentGateway.NotifyService");
     expect(edge.kind).toBe("async");
+  });
+
+  // ─── Infra resource blocks (database / queue / storage) ───────────────────
+
+  describe("database block", () => {
+    it("parses a database block with table sub-resources", () => {
+      const result = Parser.parse(`
+system ECPlatform {
+  database OrderDB {
+    table OrderTable { label "注文テーブル" }
+    table InventoryTable { label "在庫テーブル" }
+  }
+}
+      `);
+      expect(result.diagnostics).toHaveLength(0);
+      const system = result.value.systems[0];
+      expect(system.children).toHaveLength(1);
+      const db = system.children[0];
+      expect(db.kind).toBe("database");
+      expect(db.id).toBe("OrderDB");
+      expect(db.children).toHaveLength(2);
+      expect(db.children[0].kind).toBe("table");
+      expect(db.children[0].id).toBe("OrderTable");
+      expect(db.children[0].label).toBe("注文テーブル");
+      expect(db.children[1].kind).toBe("table");
+      expect(db.children[1].id).toBe("InventoryTable");
+    });
+
+    it("parses a database block with label property", () => {
+      const result = Parser.parse(`
+system ECPlatform {
+  database OrderDB {
+    label "注文DB"
+    table OrderTable { label "注文テーブル" }
+  }
+}
+      `);
+      expect(result.diagnostics).toHaveLength(0);
+      const db = result.value.systems[0].children[0];
+      expect(db.kind).toBe("database");
+      expect(db.label).toBe("注文DB");
+    });
+  });
+
+  describe("queue block", () => {
+    it("parses a queue block with queue sub-resources", () => {
+      const result = Parser.parse(`
+system ECPlatform {
+  queue EventBus {
+    queue OrderCreated { label "注文作成イベント" }
+    queue OrderShipped { label "注文発送イベント" }
+  }
+}
+      `);
+      expect(result.diagnostics).toHaveLength(0);
+      const system = result.value.systems[0];
+      const queueGroup = system.children[0];
+      expect(queueGroup.kind).toBe("queue");
+      expect(queueGroup.id).toBe("EventBus");
+      expect(queueGroup.children).toHaveLength(2);
+      expect(queueGroup.children[0].kind).toBe("queue-item");
+      expect(queueGroup.children[0].id).toBe("OrderCreated");
+      expect(queueGroup.children[0].label).toBe("注文作成イベント");
+    });
+  });
+
+  describe("storage block", () => {
+    it("parses a storage block with bucket sub-resources", () => {
+      const result = Parser.parse(`
+system ECPlatform {
+  storage MediaStorage {
+    bucket ImageBucket { label "商品画像バケット" }
+  }
+}
+      `);
+      expect(result.diagnostics).toHaveLength(0);
+      const storage = result.value.systems[0].children[0];
+      expect(storage.kind).toBe("storage");
+      expect(storage.id).toBe("MediaStorage");
+      expect(storage.children).toHaveLength(1);
+      expect(storage.children[0].kind).toBe("bucket");
+      expect(storage.children[0].id).toBe("ImageBucket");
+      expect(storage.children[0].label).toBe("商品画像バケット");
+    });
+  });
+
+  describe("resource dot-notation reference", () => {
+    it("parses resource with dot-notation and sets ref", () => {
+      const result = Parser.parse(`
+system ECPlatform {
+  database OrderDB {
+    table OrderTable { label "注文テーブル" }
+  }
+  service A {
+    domain X {
+      usecase PlaceOrder {
+        resource OrderDB.OrderTable
+      }
+    }
+  }
+}
+      `);
+      expect(result.diagnostics).toHaveLength(0);
+      const usecase = result.value.systems[0].children[1].children[0].children[0];
+      expect(usecase.kind).toBe("usecase");
+      const resourceNode = usecase.children[0];
+      expect(resourceNode.kind).toBe("resource");
+      expect(resourceNode.id).toBe("OrderDB.OrderTable");
+      assert(resourceNode.kind === "resource");
+      expect(resourceNode.ref).toEqual({ parent: "OrderDB", child: "OrderTable" });
+    });
+
+    it("parses multiple dot-notation references in one usecase", () => {
+      const result = Parser.parse(`
+system ECPlatform {
+  database OrderDB {
+    table OrderTable { label "注文テーブル" }
+    table InventoryTable { label "在庫テーブル" }
+  }
+  queue EventBus {
+    queue OrderCreated { label "注文作成イベント" }
+  }
+  storage MediaStorage {
+    bucket ImageBucket { label "商品画像バケット" }
+  }
+  service A {
+    domain X {
+      usecase PlaceOrder {
+        resource OrderDB.OrderTable
+        resource OrderDB.InventoryTable
+        resource EventBus.OrderCreated
+        resource MediaStorage.ImageBucket
+      }
+    }
+  }
+}
+      `);
+      expect(result.diagnostics).toHaveLength(0);
+      const usecase = result.value.systems[0].children[3].children[0].children[0];
+      expect(usecase.children).toHaveLength(4);
+      for (const child of usecase.children) {
+        expect(child.kind).toBe("resource");
+        assert(child.kind === "resource");
+        expect(child.ref).toBeDefined();
+      }
+    });
+
+    it("emits no warning for dot-notation resource references", () => {
+      const result = Parser.parse(`
+system ECPlatform {
+  database OrderDB {
+    table OrderTable { label "注文テーブル" }
+  }
+  service A {
+    domain X {
+      usecase B {
+        resource OrderDB.OrderTable
+      }
+    }
+  }
+}
+      `);
+      const warnings = result.diagnostics.filter((d) => d.severity === "warning");
+      expect(warnings).toHaveLength(0);
+    });
+  });
+
+  describe("unassigned-resource warning", () => {
+    it("emits warning for inline resource not assigned to a database", () => {
+      const result = Parser.parse(`
+system ECPlatform {
+  service A {
+    domain X {
+      usecase B {
+        resource OrderTable { label "注文テーブル" }
+      }
+    }
+  }
+}
+      `);
+      expect(result.diagnostics).toHaveLength(1);
+      expect(result.diagnostics[0].severity).toBe("warning");
+      expect(result.diagnostics[0].message).toBe(
+        `resource "OrderTable" is not assigned to any database`,
+      );
+    });
+
+    it("emits one warning per unassigned inline resource", () => {
+      const result = Parser.parse(`
+system ECPlatform {
+  service A {
+    domain X {
+      usecase B {
+        resource TableA { label "A" }
+        resource TableB { label "B" }
+        resource TableC { label "C" }
+      }
+    }
+  }
+}
+      `);
+      const warnings = result.diagnostics.filter((d) => d.severity === "warning");
+      expect(warnings).toHaveLength(3);
+    });
+
+    it("emits only a warning (not error) for unresolved dot-notation reference", () => {
+      // database OrderDB is not declared but resource OrderDB.C is referenced
+      const result = Parser.parse(`
+system ECPlatform {
+  service A {
+    domain X {
+      usecase B {
+        resource OrderDB.C
+      }
+    }
+  }
+}
+      `);
+      const errors = result.diagnostics.filter((d) => d.severity === "error");
+      expect(errors).toHaveLength(0);
+      // No warning for dot-notation: unresolved reference check is deferred to a later phase
+      const warnings = result.diagnostics.filter((d) => d.severity === "warning");
+      expect(warnings).toHaveLength(0);
+    });
+  });
+
+  describe("full database/queue/storage + usecase integration", () => {
+    it("parses the complete design doc example without diagnostics", () => {
+      const result = Parser.parse(`
+system ECPlatform {
+  database OrderDB {
+    table OrderTable { label "注文テーブル" }
+    table InventoryTable { label "在庫テーブル" }
+  }
+  queue EventBus {
+    queue OrderCreated { label "注文作成イベント" }
+  }
+  storage MediaStorage {
+    bucket ImageBucket { label "商品画像バケット" }
+  }
+
+  service OrderService {
+    domain Order {
+      usecase PlaceOrder {
+        resource OrderDB.OrderTable
+        resource OrderDB.InventoryTable
+        resource EventBus.OrderCreated
+        resource MediaStorage.ImageBucket
+      }
+    }
+  }
+}
+      `);
+      expect(result.diagnostics).toHaveLength(0);
+      const system = result.value.systems[0];
+      // 4 top-level children: database, queue, storage, service
+      expect(system.children).toHaveLength(4);
+      expect(system.children[0].kind).toBe("database");
+      expect(system.children[1].kind).toBe("queue");
+      expect(system.children[2].kind).toBe("storage");
+      expect(system.children[3].kind).toBe("service");
+    });
   });
 });

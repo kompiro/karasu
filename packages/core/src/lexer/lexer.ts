@@ -33,6 +33,11 @@ const KEYWORDS: Record<string, TokenType> = {
   github: TokenType.Github,
   import: TokenType.Import,
   from: TokenType.From,
+  database: TokenType.Database,
+  queue: TokenType.Queue,
+  storage: TokenType.Storage,
+  table: TokenType.Table,
+  bucket: TokenType.Bucket,
 };
 
 export class Lexer {

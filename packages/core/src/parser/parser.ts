@@ -20,6 +20,9 @@ import type {
   TeamNode,
   MemberNode,
   OrgNode,
+  TableNode,
+  QueueItemNode,
+  BucketNode,
 } from "../types/ast.js";
 import { Lexer } from "../lexer/lexer.js";
 
@@ -30,7 +33,13 @@ const LOGICAL_KEYWORDS = new Set<string>([
   "usecase",
   "resource",
   "user",
+  "database",
+  "queue",
+  "storage",
 ]);
+
+// Infra block kinds that can appear as system-level children
+const INFRA_BLOCK_KINDS = new Set<string>(["database", "queue", "storage"]);
 
 const DEPLOY_KEYWORDS = new Set<string>([
   "war",
@@ -353,7 +362,10 @@ export class Parser {
       type === TokenType.Domain ||
       type === TokenType.Usecase ||
       type === TokenType.Resource ||
-      type === TokenType.User
+      type === TokenType.User ||
+      type === TokenType.Database ||
+      type === TokenType.Queue ||
+      type === TokenType.Storage
     );
   }
 
@@ -369,6 +381,16 @@ export class Parser {
   private parseNodeDecl(): KrsNode {
     const start = this.advance(); // keyword
     const kind = start.value as LogicalNodeKind;
+
+    // Delegate infra block parsing to dedicated methods
+    if (INFRA_BLOCK_KINDS.has(kind)) {
+      return this.parseInfraBlock(start, kind as "database" | "queue" | "storage");
+    }
+
+    // Special handling for resource: support dot-notation reference (resource OrderDB.C)
+    if (kind === "resource") {
+      return this.parseResourceDecl(start);
+    }
 
     // id: accept identifier (e.g. ECommerce) or string literal (e.g. "e-commerce")
     let id: string;
@@ -462,16 +484,249 @@ export class Parser {
             links: properties.links,
           },
         };
-      case "resource":
-        return {
-          ...base,
-          kind,
-          properties: {
-            description: properties.description,
-            links: properties.links,
-          },
-        };
     }
+
+    // Unreachable: resource and infra blocks are handled above
+    this.error(`Unexpected logical node kind: "${kind}"`);
+    return {
+      ...base,
+      kind: "resource" as const,
+      properties: { links: [] },
+    };
+  }
+
+  /**
+   * Parse `resource` declaration.
+   * Supports two forms:
+   *   1. Dot-notation reference: `resource OrderDB.C`
+   *   2. Inline declaration:     `resource C { label "..." }`
+   *      (inline without a database assignment emits an "unassigned-resource" warning)
+   */
+  private parseResourceDecl(start: Token): KrsNode {
+    // id
+    let id: string;
+    let idToken: Token;
+    if (this.peek().type !== TokenType.Identifier && this.peek().type !== TokenType.StringLiteral) {
+      this.error(`Expected identifier or string literal (id) after "resource"`);
+      id = "__missing_id";
+      idToken = start;
+    } else {
+      idToken = this.advance();
+      id = idToken.value;
+    }
+
+    // Check for dot-notation: resource OrderDB.C
+    let ref: { parent: string; child: string } | undefined;
+    if (this.peek().type === TokenType.Dot) {
+      this.advance(); // consume '.'
+      const childToken = this.parseIdOrString("resource child id");
+      ref = { parent: id, child: childToken.value };
+      id = `${id}.${childToken.value}`;
+      idToken = childToken;
+    }
+
+    const tags = this.parseTags();
+    const annotations = this.parseAnnotations();
+
+    const properties: CommonProperties & { label?: string } = { links: [] };
+    const children: KrsNode[] = [];
+    const edges: KrsEdge[] = [];
+    let end = idToken;
+
+    if (this.peek().type === TokenType.LeftBrace) {
+      this.advance();
+      this.parseBlockContentsWithProperties(children, edges, "resource", properties);
+      end = this.expect(TokenType.RightBrace);
+    }
+
+    // Warn for inline resources (no dot-notation, no parent infra block)
+    if (!ref) {
+      this.diagnostics.push({
+        severity: "warning",
+        message: `resource "${id}" is not assigned to any database`,
+        loc: this.range(start.loc, end.loc),
+      });
+    }
+
+    return {
+      kind: "resource",
+      id,
+      label: properties.label,
+      tags,
+      annotations,
+      children,
+      edges,
+      loc: this.range(start.loc, end.loc),
+      properties: {
+        description: properties.description,
+        links: properties.links,
+      },
+      ref,
+    };
+  }
+
+  /**
+   * Parse a top-level infra block: `database`, `queue`, or `storage`.
+   * Each has a body of sub-resource declarations:
+   *   database → table
+   *   queue    → queue (parsed as queue-item internally)
+   *   storage  → bucket
+   */
+  private parseInfraBlock(start: Token, kind: "database" | "queue" | "storage"): KrsNode {
+    let id: string;
+    let idToken: Token;
+    if (this.peek().type !== TokenType.Identifier && this.peek().type !== TokenType.StringLiteral) {
+      this.error(`Expected identifier or string literal (id) after "${kind}"`);
+      id = "__missing_id";
+      idToken = start;
+    } else {
+      idToken = this.advance();
+      id = idToken.value;
+    }
+
+    const tags = this.parseTags();
+    const annotations = this.parseAnnotations();
+    const properties: CommonProperties & { label?: string } = { links: [] };
+    const children: KrsNode[] = [];
+    const edges: KrsEdge[] = [];
+    let end = idToken;
+
+    if (this.peek().type === TokenType.LeftBrace) {
+      this.advance();
+      this.parseInfraBlockContents(children, edges, kind, properties);
+      end = this.expect(TokenType.RightBrace);
+    }
+
+    const base = {
+      id,
+      label: properties.label,
+      tags,
+      annotations,
+      children,
+      edges,
+      loc: this.range(start.loc, end.loc),
+      properties: {
+        description: properties.description,
+        links: properties.links,
+      },
+    };
+
+    return { ...base, kind };
+  }
+
+  /** Parse the body of a database/queue/storage block. */
+  private parseInfraBlockContents(
+    children: KrsNode[],
+    edges: KrsEdge[],
+    parentKind: "database" | "queue" | "storage",
+    properties: CommonProperties & { label?: string },
+  ): void {
+    while (this.peek().type !== TokenType.RightBrace && this.peek().type !== TokenType.EOF) {
+      const token = this.peek();
+
+      if (token.type === TokenType.Label) {
+        this.advance();
+        if (this.peek().type === TokenType.StringLiteral) {
+          properties.label = this.advance().value;
+        } else {
+          this.error('Expected string literal after "label"');
+        }
+        continue;
+      }
+
+      if (token.type === TokenType.Description) {
+        this.advance();
+        properties.description = this.parseDescriptionValue();
+        continue;
+      }
+
+      if (token.type === TokenType.Link) {
+        this.advance();
+        properties.links.push(this.parseLink());
+        continue;
+      }
+
+      // Edge
+      if (
+        (token.type === TokenType.Identifier || token.type === TokenType.StringLiteral) &&
+        (this.peekAt(1).type === TokenType.Arrow || this.peekAt(1).type === TokenType.DashedArrow)
+      ) {
+        edges.push(this.parseEdge());
+        continue;
+      }
+
+      // Sub-resource declarations
+      const subNode = this.tryParseInfraSubNode(parentKind);
+      if (subNode) {
+        children.push(subNode);
+        continue;
+      }
+
+      this.error(`Unexpected token in ${parentKind} block: ${token.type} ("${token.value}")`);
+      this.advance();
+    }
+  }
+
+  /** Try to parse a sub-resource node for the given parent infra kind. Returns null if not applicable. */
+  private tryParseInfraSubNode(parentKind: "database" | "queue" | "storage"): KrsNode | null {
+    const token = this.peek();
+
+    if (parentKind === "database" && token.type === TokenType.Table) {
+      return this.parseInfraSubNode("table");
+    }
+    if (parentKind === "queue" && token.type === TokenType.Queue) {
+      return this.parseInfraSubNode("queue-item");
+    }
+    if (parentKind === "storage" && token.type === TokenType.Bucket) {
+      return this.parseInfraSubNode("bucket");
+    }
+
+    return null;
+  }
+
+  /** Parse a sub-resource node (table, queue-item, bucket). */
+  private parseInfraSubNode(kind: "table" | "queue-item" | "bucket"): KrsNode {
+    const start = this.advance(); // keyword token (table / queue / bucket)
+
+    let id: string;
+    let idToken: Token;
+    if (this.peek().type !== TokenType.Identifier && this.peek().type !== TokenType.StringLiteral) {
+      this.error(`Expected identifier or string literal (id) after "${start.value}"`);
+      id = "__missing_id";
+      idToken = start;
+    } else {
+      idToken = this.advance();
+      id = idToken.value;
+    }
+
+    const tags = this.parseTags();
+    const annotations = this.parseAnnotations();
+    const properties: CommonProperties & { label?: string } = { links: [] };
+    const children: KrsNode[] = [];
+    const edges: KrsEdge[] = [];
+    let end = idToken;
+
+    if (this.peek().type === TokenType.LeftBrace) {
+      this.advance();
+      this.parseBlockContentsWithProperties(children, edges, kind as LogicalNodeKind, properties);
+      end = this.expect(TokenType.RightBrace);
+    }
+
+    const base = {
+      id,
+      label: properties.label,
+      tags,
+      annotations,
+      children,
+      edges,
+      loc: this.range(start.loc, end.loc),
+      properties: {
+        description: properties.description,
+        links: properties.links,
+      },
+    };
+
+    return { ...base, kind } as TableNode | QueueItemNode | BucketNode;
   }
 
   private parseTags(): string[] {
