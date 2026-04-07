@@ -1196,7 +1196,7 @@ export class Parser {
     for (const system of systems) {
       this.collectNodeIds(system.children, new Set<string>());
       for (const child of system.children) {
-        walk(child, []);
+        walk(child, [system.id]);
       }
     }
     // Index top-level domains (not nested in any system)

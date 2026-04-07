@@ -167,6 +167,12 @@ export interface NodeMetadata {
   hasChildren: boolean;
   /** True when this service/domain node has a corresponding deploy container */
   hasDeployContainer?: boolean;
+  /**
+   * Full drill-down ViewPath for this node (includes system ID as first segment).
+   * Available for service and domain nodes. Use this for drill-down navigation
+   * instead of appending the nodeId to the current viewPath.
+   */
+  viewPath?: string[];
 }
 
 export type DiagramType = "system" | "deploy" | "org";
@@ -303,7 +309,12 @@ function _compileCore(krsSource: string, opts: CompileOptions): CompileResult {
     parseResult.value.domains,
   );
   const svg = render(viewSlice, styles, serviceIdsWithDeploy, ownerIndex, displayMode);
-  const nodeMetadata = buildNodeMetadata(viewSlice, serviceIdsWithDeploy, ownerIndex);
+  const nodeMetadata = buildNodeMetadata(
+    viewSlice,
+    serviceIdsWithDeploy,
+    ownerIndex,
+    parseResult.value.nodePathIndex,
+  );
   return {
     diagramType: "system",
     svg,
@@ -391,7 +402,12 @@ async function _compileProjectCore(
   // system (default)
   const viewSlice = extractView(resolved.krsFile.systems, viewPath ?? [], resolved.krsFile.domains);
   const svg = render(viewSlice, styles, serviceIdsWithDeploy, ownerIndex, displayMode);
-  const nodeMetadata = buildNodeMetadata(viewSlice, serviceIdsWithDeploy, ownerIndex);
+  const nodeMetadata = buildNodeMetadata(
+    viewSlice,
+    serviceIdsWithDeploy,
+    ownerIndex,
+    resolved.krsFile.nodePathIndex,
+  );
   return {
     diagramType: "system",
     svg,
@@ -526,6 +542,7 @@ function buildNodeMetadata(
   viewSlice: import("./view/view-extract.js").ViewSlice,
   serviceIdsWithDeploy?: Set<string>,
   ownerIndex?: Map<string, string>,
+  nodePathIndex?: Map<string, string[]>,
 ): Map<string, NodeMetadata> {
   const map = new Map<string, NodeMetadata>();
 
@@ -547,6 +564,7 @@ function buildNodeMetadata(
       annotations: [...node.annotations],
       hasChildren: node.children.length > 0,
       hasDeployContainer: isServiceOrDomain ? (serviceIdsWithDeploy?.has(id) ?? false) : undefined,
+      viewPath: nodePathIndex?.get(id),
     });
   }
 
