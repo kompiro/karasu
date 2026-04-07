@@ -153,11 +153,7 @@ describe("useProjectNavigation", () => {
 
       // SELECT_FILE が viewPath/activeView を system/root にリセットするため、
       // useHistoryNavigation Effect ③ との不一致を防ぐために #krs-system-root を含める
-      expect(history.pushState).toHaveBeenCalledWith(
-        null,
-        "",
-        "/projects/bbb#krs-system-root",
-      );
+      expect(history.pushState).toHaveBeenCalledWith(null, "", "/projects/bbb#krs-system-root");
       expect(dispatch).toHaveBeenCalledWith({ type: "SET_CURRENT_PROJECT", project: projectB });
     });
 
@@ -171,11 +167,7 @@ describe("useProjectNavigation", () => {
       });
 
       // ドリルダウン状態は引き継がれず、system root にリセットされる
-      expect(history.pushState).toHaveBeenCalledWith(
-        null,
-        "",
-        "/projects/bbb#krs-system-root",
-      );
+      expect(history.pushState).toHaveBeenCalledWith(null, "", "/projects/bbb#krs-system-root");
     });
   });
 
