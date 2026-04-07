@@ -2,6 +2,7 @@ import { useEffect, useCallback, useRef } from "react";
 import type { Dispatch } from "react";
 import type { Project } from "@karasu-tools/core";
 import type { AppAction } from "../state/app-reducer.js";
+import { buildHash } from "./useHistoryNavigation.js";
 
 export const LAST_PROJECT_KEY = "karasu-last-project-id";
 const PROJECT_PATH_RE = /^\/projects\/([^/]+)/;
@@ -43,10 +44,14 @@ export function useProjectNavigation(
     history.replaceState(null, "", buildProjectPath(target.id, location.hash));
   }, [projects, dispatch]);
 
-  // プロジェクト切り替え: pushState で URL を更新し、hash はリセットする
+  // プロジェクト切り替え: pushState で URL を更新する。
+  // SELECT_FILE が viewPath/activeView を system/root にリセットするため、
+  // その後 useHistoryNavigation Effect ③ が発火したときに hash の不一致で
+  // 余分な history エントリを生成しないよう、初期 hash を同時に push する。
   const navigateToProject = useCallback(
     (project: Project) => {
-      history.pushState(null, "", buildProjectPath(project.id));
+      const initialHash = buildHash("system", []);
+      history.pushState(null, "", buildProjectPath(project.id, initialHash));
       dispatch({ type: "SET_CURRENT_PROJECT", project });
     },
     [dispatch],
