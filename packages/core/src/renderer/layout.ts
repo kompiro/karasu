@@ -526,8 +526,11 @@ function layoutMultipleSystems(
     const sys = viewSlice.systems[si];
     const isGhost = si > 0;
 
-    // Layout this system's children independently
-    const nodeIds = sys.children.map((n) => n.id);
+    // Layout this system's children independently.
+    // For the primary system (si === 0), use viewSlice.childNodes which includes
+    // unassigned top-level domains merged in by extractView.
+    const rawNodes = si === 0 ? viewSlice.childNodes : sys.children;
+    const nodeIds = rawNodes.map((n) => n.id);
     const idSet = new Set(nodeIds);
     const adj = new Map<string, string[]>();
     const inDegree = new Map<string, number>();
@@ -550,7 +553,7 @@ function layoutMultipleSystems(
       nodesByLayer.get(layer)!.push(id);
     }
     const nodeMap = new Map<string, KrsNode>();
-    for (const node of sys.children) nodeMap.set(node.id, node);
+    for (const node of rawNodes) nodeMap.set(node.id, node);
 
     const sortedLayers = Array.from(nodesByLayer.keys()).sort((a, b) => a - b);
 
