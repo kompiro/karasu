@@ -80,14 +80,14 @@ window.addEventListener("popstate", () => {
 
 ---
 
-### 案2: パスネーム — `/project/<uuid>`
+### 案2: パスネーム — `/projects/<uuid>`
 
 手動の `history.pushState` でパスを変える。ルーティングライブラリは不要。
 
 ```
 /                         → プロジェクト未選択（フォールバック先）
-/project/abc123           → プロジェクト abc123
-/project/abc123#krs-system-Payment
+/projects/abc123          → プロジェクト abc123
+/projects/abc123#krs-system-Payment
 ```
 
 `karasu serve`（`packages/cli/src/serve.ts`）は既に SPA フォールバックを実装している:
@@ -103,7 +103,7 @@ if (pathname !== "/" && pathname !== "") {
 const indexPath = join(appDistDir, "index.html");
 ```
 
-`/project/<uuid>` は `app/dist` に実ファイルが存在しないため、自動的に `index.html` を返す。
+`/projects/<uuid>` は `app/dist` に実ファイルが存在しないため、自動的に `index.html` を返す。
 Vite dev server も同様に `historyApiFallback` を持つ。**サーバー側の変更は一切不要。**
 
 プロジェクト ID の取り出し:
@@ -112,7 +112,7 @@ const id = location.pathname.match(/^\/project\/([^/]+)/)?.[1] ?? null;
 ```
 
 **メリット**:
-- URL が意味的に明確（`/project/<id>` はリソースを表す標準的な形式）
+- URL が意味的に明確（`/projects/<id>` はリソースを表す標準的な形式）
 - UUID がパスに収まり、クエリ文字列が汚染されない
 - ルーティングライブラリ不要
 - サーバー設定変更不要（SPA フォールバック済み）
@@ -150,7 +150,7 @@ const id = location.pathname.match(/^\/project\/([^/]+)/)?.[1] ?? null;
 **案2（パスネーム）を採用**する。理由:
 
 1. `serve.ts` が既に SPA フォールバックを実装しており、サーバー変更が不要
-2. `/project/<uuid>` という形式はリソースを表す意味的に明確な URL
+2. `/projects/<uuid>` という形式はリソースを表す意味的に明確な URL
 3. クエリ文字列にプロジェクト ID が漏れず、`?mode=memory` などとの混在を避けられる
 4. 実装コストは案1と同等（`history.pushState` + `popstate` パターンを踏襲）
 
@@ -163,7 +163,7 @@ const id = location.pathname.match(/^\/project\/([^/]+)/)?.[1] ?? null;
 ```typescript
 // packages/app/src/hooks/useProjectNavigation.ts
 
-const PROJECT_PATH_RE = /^\/project\/([^/]+)/;
+const PROJECT_PATH_RE = /^\/projects\/([^/]+)/;
 
 function getProjectIdFromPath(): string | null {
   return location.pathname.match(PROJECT_PATH_RE)?.[1] ?? null;
@@ -174,7 +174,7 @@ export function useProjectNavigation(
   currentProject: Project | null,
   dispatch: Dispatch<AppAction>,
 ) {
-  // 初期化: URL の /project/<id> からプロジェクトを復元
+  // 初期化: URL の /projects/<id> からプロジェクトを復元
   // ※ projects が確定した後に呼ばれることを前提とする（useEffect の deps に projects）
   const initialized = useRef(false);
   useEffect(() => {
@@ -190,13 +190,13 @@ export function useProjectNavigation(
 
     dispatch({ type: "SET_CURRENT_PROJECT", project: target });
     // URL を正規化（hash は保持）
-    history.replaceState(null, "", `/project/${target.id}${location.hash}`);
+    history.replaceState(null, "", `/projects/${target.id}${location.hash}`);
   }, [projects, dispatch]);
 
   // プロジェクト切り替え時: URL を更新（hash はリセット）
   const navigateToProject = useCallback(
     (project: Project) => {
-      history.pushState(null, "", `/project/${project.id}`);
+      history.pushState(null, "", `/projects/${project.id}`);
       dispatch({ type: "SET_CURRENT_PROJECT", project });
     },
     [dispatch],
@@ -242,8 +242,8 @@ OPFS からの `listProjects()` は非同期で完了するため、
 1. ProjectModeApp マウント
 2. pm.listProjects() 完了 → dispatch SET_PROJECTS
 3. useProjectNavigation の Effect が projects を受け取る
-4. /project/<id> を解析して SET_CURRENT_PROJECT
-5. history.replaceState で URL 正規化（/project/<target.id> + hash）
+4. /projects/<id> を解析して SET_CURRENT_PROJECT
+5. history.replaceState で URL 正規化（/projects/<target.id> + hash）
 ```
 
 ### localStorage との共存
