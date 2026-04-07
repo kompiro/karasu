@@ -134,7 +134,7 @@ export function ProjectModeApp() {
     [pm, dispatch, projects, navigateToProject],
   );
 
-  if (loading) {
+  if (loading || !currentProject) {
     return <div className="app-loading">Loading...</div>;
   }
 
