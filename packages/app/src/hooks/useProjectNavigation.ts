@@ -36,9 +36,7 @@ export function useProjectNavigation(
     const urlId = getProjectIdFromPath();
     const lastId = localStorage.getItem(LAST_PROJECT_KEY);
     const target =
-      projects.find((p) => p.id === urlId) ??
-      projects.find((p) => p.id === lastId) ??
-      projects[0];
+      projects.find((p) => p.id === urlId) ?? projects.find((p) => p.id === lastId) ?? projects[0];
 
     dispatch({ type: "SET_CURRENT_PROJECT", project: target });
     // hash は保持しつつ URL を正規化する

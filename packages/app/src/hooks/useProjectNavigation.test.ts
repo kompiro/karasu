@@ -145,9 +145,7 @@ describe("useProjectNavigation", () => {
   describe("navigateToProject", () => {
     it("calls pushState with project path and dispatches SET_CURRENT_PROJECT", () => {
       const dispatch = vi.fn<() => void>();
-      const { result } = renderHook(() =>
-        useProjectNavigation(projects, projectA, dispatch),
-      );
+      const { result } = renderHook(() => useProjectNavigation(projects, projectA, dispatch));
 
       act(() => {
         result.current.navigateToProject(projectB);
@@ -160,9 +158,7 @@ describe("useProjectNavigation", () => {
     it("resets hash when navigating to a different project", () => {
       history.replaceState(null, "", "/projects/aaa#krs-system-Payment");
       const dispatch = vi.fn<() => void>();
-      const { result } = renderHook(() =>
-        useProjectNavigation(projects, projectA, dispatch),
-      );
+      const { result } = renderHook(() => useProjectNavigation(projects, projectA, dispatch));
 
       act(() => {
         result.current.navigateToProject(projectB);
