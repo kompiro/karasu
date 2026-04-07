@@ -208,7 +208,10 @@ system S {
 });
 
 describe("layout > multi-system root view", () => {
-  function parseAndExtractMulti(krs: string, unassignedDomains?: ReturnType<typeof Parser.parse>["value"]["domains"]) {
+  function parseAndExtractMulti(
+    krs: string,
+    unassignedDomains?: ReturnType<typeof Parser.parse>["value"]["domains"],
+  ) {
     const result = Parser.parse(krs);
     return extractView(result.value.systems, [], unassignedDomains ?? result.value.domains);
   }
