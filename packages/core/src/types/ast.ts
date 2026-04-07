@@ -1,6 +1,18 @@
 import type { SourceRange } from "./tokens.js";
 
-export type LogicalNodeKind = "system" | "service" | "domain" | "usecase" | "resource" | "user";
+export type LogicalNodeKind =
+  | "system"
+  | "service"
+  | "domain"
+  | "usecase"
+  | "resource"
+  | "user"
+  | "database"
+  | "queue"
+  | "storage"
+  | "table"
+  | "queue-item"
+  | "bucket";
 
 export type EdgeKind = "sync" | "async";
 
@@ -66,6 +78,44 @@ export interface UsecaseNode extends BaseNodeFields {
 export interface ResourceNode extends BaseNodeFields {
   kind: "resource";
   properties: CommonProperties;
+  /**
+   * Set when the resource uses dot-notation reference syntax (e.g. `resource OrderDB.C`).
+   * `parent` is the infra node id (e.g. "OrderDB"), `child` is the sub-resource id (e.g. "C").
+   * When undefined, the resource is an inline declaration (may trigger an "unassigned-resource" warning).
+   */
+  ref?: { parent: string; child: string };
+}
+
+// ─── インフラリソース（system 直下） ───────────────────
+
+export interface TableNode extends BaseNodeFields {
+  kind: "table";
+  properties: CommonProperties;
+}
+
+export interface QueueItemNode extends BaseNodeFields {
+  kind: "queue-item";
+  properties: CommonProperties;
+}
+
+export interface BucketNode extends BaseNodeFields {
+  kind: "bucket";
+  properties: CommonProperties;
+}
+
+export interface DatabaseNode extends BaseNodeFields {
+  kind: "database";
+  properties: CommonProperties;
+}
+
+export interface QueueGroupNode extends BaseNodeFields {
+  kind: "queue";
+  properties: CommonProperties;
+}
+
+export interface StorageNode extends BaseNodeFields {
+  kind: "storage";
+  properties: CommonProperties;
 }
 
 export interface UserNode extends BaseNodeFields {
@@ -77,7 +127,19 @@ export interface UserNode extends BaseNodeFields {
 
 // ─── Union ─────────────────────────────────────────
 
-export type KrsNode = SystemNode | ServiceNode | DomainNode | UsecaseNode | ResourceNode | UserNode;
+export type KrsNode =
+  | SystemNode
+  | ServiceNode
+  | DomainNode
+  | UsecaseNode
+  | ResourceNode
+  | UserNode
+  | DatabaseNode
+  | QueueGroupNode
+  | StorageNode
+  | TableNode
+  | QueueItemNode
+  | BucketNode;
 
 // ─── エッジ（変更なし） ────────────────────────────
 

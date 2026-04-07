@@ -16,6 +16,13 @@ export enum TokenType {
   Resource = "Resource",
   User = "User",
 
+  // Keywords (infra resources)
+  Database = "Database",
+  Queue = "Queue",
+  Storage = "Storage",
+  Table = "Table",
+  Bucket = "Bucket",
+
   // Keywords (physical)
   Deploy = "Deploy",
   War = "War",
