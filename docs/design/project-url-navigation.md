@@ -80,24 +80,46 @@ window.addEventListener("popstate", () => {
 
 ---
 
-### 案2: パスネーム — `/project/<uuid>/`
+### 案2: パスネーム — `/project/<uuid>`
 
-React Router または手動の `history.pushState` でパスを変える。
+手動の `history.pushState` でパスを変える。ルーティングライブラリは不要。
 
 ```
-/                         → プロジェクト未選択
-/project/abc123/          → プロジェクト abc123
-/project/abc123/#krs-system-Payment
+/                         → プロジェクト未選択（フォールバック先）
+/project/abc123           → プロジェクト abc123
+/project/abc123#krs-system-Payment
+```
+
+`karasu serve`（`packages/cli/src/serve.ts`）は既に SPA フォールバックを実装している:
+
+```typescript
+// serve.ts:159-170（抜粋）
+if (pathname !== "/" && pathname !== "") {
+  const assetPath = join(appDistDir, pathname);
+  const served = await serveStaticFile(assetPath, res);
+  if (served) return;
+}
+// SPA fallback — index.html
+const indexPath = join(appDistDir, "index.html");
+```
+
+`/project/<uuid>` は `app/dist` に実ファイルが存在しないため、自動的に `index.html` を返す。
+Vite dev server も同様に `historyApiFallback` を持つ。**サーバー側の変更は一切不要。**
+
+プロジェクト ID の取り出し:
+```typescript
+const id = location.pathname.match(/^\/project\/([^/]+)/)?.[1] ?? null;
 ```
 
 **メリット**:
-- URL が REST 的で意味が明確
+- URL が意味的に明確（`/project/<id>` はリソースを表す標準的な形式）
+- UUID がパスに収まり、クエリ文字列が汚染されない
+- ルーティングライブラリ不要
+- サーバー設定変更不要（SPA フォールバック済み）
 
 **デメリット**:
-- Vite SPA は `index.html` を返す設定が必要（`history` fallback）
-- `karasu serve` の静的サーバーに設定追加が必要
-- React Router の導入、またはすべてのリンク・ナビゲーションの書き換えが必要
-- 実装コストが大幅に増加し、既存の hash ナビゲーションとの統合が複雑になる
+- `?mode=memory`（MemoryMode）との棲み分けを明確にする必要がある（ProjectMode 専用のパス形式）
+- UUID が長いためパスは依然として長い（`?project=` と同程度）
 
 ---
 
@@ -116,21 +138,21 @@ React Router または手動の `history.pushState` でパスを変える。
 
 | 観点 | 案1（クエリパラメータ） | 案2（パスネーム） | 案3（hash 統合） |
 |---|---|---|---|
-| 実装コスト | 低 | 高 | 中 |
+| 実装コスト | 低 | 低 | 中 |
 | URL の可読性 | △（UUID が長い） | ◎ | △ |
 | 既存 hash ナビゲーションとの干渉 | なし | なし | あり（変更必要） |
-| ルーター不要 | ◎ | ✗ | ◎ |
-| 静的サーバー設定変更 | 不要 | 必要 | 不要 |
+| ルーター不要 | ◎ | ◎ | ◎ |
+| 静的サーバー設定変更 | 不要 | 不要（SPA fallback 済み） | 不要 |
 | ServeMode との分離 | 明確 | 明確 | 明確 |
 
 ## 現時点の方針
 
-**案1（クエリパラメータ）を採用**する。理由:
+**案2（パスネーム）を採用**する。理由:
 
-1. 既存の hash ナビゲーションに干渉せず、関心事が分離できる
-2. `?mode=memory` の既存パターンと一貫性がある
-3. ルーティングライブラリや静的サーバー設定の変更が不要
-4. `popstate` の責務を「hash → AppShell 内」と「query → ProjectModeApp」で分離できる
+1. `serve.ts` が既に SPA フォールバックを実装しており、サーバー変更が不要
+2. `/project/<uuid>` という形式はリソースを表す意味的に明確な URL
+3. クエリ文字列にプロジェクト ID が漏れず、`?mode=memory` などとの混在を避けられる
+4. 実装コストは案1と同等（`history.pushState` + `popstate` パターンを踏襲）
 
 ## 実装設計
 
@@ -141,19 +163,25 @@ React Router または手動の `history.pushState` でパスを変える。
 ```typescript
 // packages/app/src/hooks/useProjectNavigation.ts
 
+const PROJECT_PATH_RE = /^\/project\/([^/]+)/;
+
+function getProjectIdFromPath(): string | null {
+  return location.pathname.match(PROJECT_PATH_RE)?.[1] ?? null;
+}
+
 export function useProjectNavigation(
   projects: Project[],
   currentProject: Project | null,
   dispatch: Dispatch<AppAction>,
 ) {
-  // 初期化: URL の ?project= からプロジェクトを復元
+  // 初期化: URL の /project/<id> からプロジェクトを復元
   // ※ projects が確定した後に呼ばれることを前提とする（useEffect の deps に projects）
   const initialized = useRef(false);
   useEffect(() => {
     if (projects.length === 0 || initialized.current) return;
     initialized.current = true;
 
-    const urlId = new URLSearchParams(location.search).get("project");
+    const urlId = getProjectIdFromPath();
     const lastId = localStorage.getItem(LAST_PROJECT_KEY);
     const target =
       projects.find((p) => p.id === urlId) ??
@@ -162,13 +190,13 @@ export function useProjectNavigation(
 
     dispatch({ type: "SET_CURRENT_PROJECT", project: target });
     // URL を正規化（hash は保持）
-    history.replaceState(null, "", `?project=${target.id}${location.hash}`);
+    history.replaceState(null, "", `/project/${target.id}${location.hash}`);
   }, [projects, dispatch]);
 
-  // プロジェクト切り替え時: URL を更新
+  // プロジェクト切り替え時: URL を更新（hash はリセット）
   const navigateToProject = useCallback(
     (project: Project) => {
-      history.pushState(null, "", `?project=${project.id}${location.hash}`);
+      history.pushState(null, "", `/project/${project.id}`);
       dispatch({ type: "SET_CURRENT_PROJECT", project });
     },
     [dispatch],
@@ -177,7 +205,7 @@ export function useProjectNavigation(
   // popstate: URL が変わったら project を同期
   useEffect(() => {
     const handlePopState = () => {
-      const id = new URLSearchParams(location.search).get("project");
+      const id = getProjectIdFromPath();
       if (id && id !== currentProject?.id) {
         const project = projects.find((p) => p.id === id);
         if (project) dispatch({ type: "SET_CURRENT_PROJECT", project });
@@ -200,8 +228,9 @@ export function useProjectNavigation(
 | 新規プロジェクト作成後の `SET_CURRENT_PROJECT` | `navigateToProject` に変更 |
 
 `useHistoryNavigation`（AppShell 内）は変更不要。
-`popstate` 内で `currentProject` が変わると AppShell が再マウントされ、
-`useHistoryNavigation` の初期化 Effect が再実行されて hash が正規化される。
+プロジェクト切り替え時は `navigateToProject` が `pushState` でパスを変え hash をリセットする。
+`popstate` で `currentProject` が変わると AppShell が再マウントされ、
+`useHistoryNavigation` の初期化 Effect が URL の hash を読み取って状態を復元する。
 
 ### 初期化フロー（競合条件の回避）
 
@@ -213,14 +242,21 @@ OPFS からの `listProjects()` は非同期で完了するため、
 1. ProjectModeApp マウント
 2. pm.listProjects() 完了 → dispatch SET_PROJECTS
 3. useProjectNavigation の Effect が projects を受け取る
-4. ?project= を解析して SET_CURRENT_PROJECT
-5. history.replaceState で URL 正規化
+4. /project/<id> を解析して SET_CURRENT_PROJECT
+5. history.replaceState で URL 正規化（/project/<target.id> + hash）
 ```
 
 ### localStorage との共存
 
 `ProjectModeApp` の既存 Effect（`currentProject` 変化時に localStorage に保存）はそのまま維持する。
 `useProjectNavigation` 内の初期化では localStorage を「URL になければフォールバック」として参照する。
+
+### hash リセットのタイミング
+
+`navigateToProject` 呼び出し時（プロジェクト手動切り替え）は hash をリセット（`location.hash` を引き継がない）。
+理由: 別プロジェクトに同じ nodeId が存在する保証がなく、`#krs-system-Payment` を引き継ぐと
+`useHistoryNavigation` が存在しない nodeId を解決しようとしてルートにフォールバックするだけだが、
+意図が不明確なためリセットのほうが明示的。
 
 ## 未解決の問い
 
