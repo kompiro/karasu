@@ -9,7 +9,7 @@ function baseProps() {
   return {
     active: "system" as const,
     hasDeployDiagram: true,
-    onChange: vi.fn(),
+    onChange: vi.fn<() => void>(),
   };
 }
 
