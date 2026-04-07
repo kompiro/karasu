@@ -238,8 +238,7 @@ system ECPlatform {
   });
 
   describe("cross-system references", () => {
-    it("cross-system edge target is stored in AST but not rendered in system view", () => {
-      const krs = `
+    const CROSS_SYSTEM_KRS = `
 system ECPlatform {
   service OrderService {}
   OrderService -> PaymentGateway.PaymentService "決済を依頼する"
@@ -248,14 +247,145 @@ system PaymentGateway {
   service PaymentService {}
 }
 `;
-      const result = Parser.parse(krs);
-      // Edge is stored in AST with qualified target
+
+    it("cross-system edge target is stored in AST but not rendered in childEdges", () => {
+      const result = Parser.parse(CROSS_SYSTEM_KRS);
       const edge = result.value.systems[0].edges[0];
       expect(edge.to).toBe("PaymentGateway.PaymentService");
 
-      // view-extract filters it out (ghost system rendering is deferred)
       const view = extractView(result.value.systems, []);
       expect(view.childEdges.find((e) => e.to === "PaymentGateway.PaymentService")).toBeUndefined();
+    });
+
+    describe("root view (path = [])", () => {
+      it("populates systems with all systems", () => {
+        const result = Parser.parse(CROSS_SYSTEM_KRS);
+        const view = extractView(result.value.systems, []);
+
+        expect(view.systems).toHaveLength(2);
+        expect(view.systems.map((s) => s.id)).toEqual(["ECPlatform", "PaymentGateway"]);
+      });
+
+      it("populates crossSystemEdges with qualified-target edges", () => {
+        const result = Parser.parse(CROSS_SYSTEM_KRS);
+        const view = extractView(result.value.systems, []);
+
+        expect(view.crossSystemEdges).toHaveLength(1);
+        expect(view.crossSystemEdges[0].from).toBe("OrderService");
+        expect(view.crossSystemEdges[0].to).toBe("PaymentGateway.PaymentService");
+      });
+
+      it("excludes crossSystemEdges where target system is not found", () => {
+        const krs = `
+system ECPlatform {
+  service OrderService {}
+  OrderService -> UnknownSystem.SomeService "依頼する"
+}
+`;
+        const result = Parser.parse(krs);
+        const view = extractView(result.value.systems, []);
+
+        expect(view.crossSystemEdges).toHaveLength(0);
+      });
+
+      it("has empty ghostSystems and ghostSystemEdges", () => {
+        const result = Parser.parse(CROSS_SYSTEM_KRS);
+        const view = extractView(result.value.systems, []);
+
+        expect(view.ghostSystems).toHaveLength(0);
+        expect(view.ghostSystemEdges).toHaveLength(0);
+      });
+    });
+
+    describe("service view (path length 1)", () => {
+      it("populates ghostSystems for cross-system edges from the service", () => {
+        const result = Parser.parse(CROSS_SYSTEM_KRS);
+        const view = extractView(result.value.systems, ["OrderService"]);
+
+        expect(view.ghostSystems).toHaveLength(1);
+        expect(view.ghostSystems[0].systemNode.id).toBe("PaymentGateway");
+        expect(view.ghostSystems[0].visibleServices).toHaveLength(1);
+        expect(view.ghostSystems[0].visibleServices[0].id).toBe("PaymentService");
+      });
+
+      it("populates ghostSystemEdges", () => {
+        const result = Parser.parse(CROSS_SYSTEM_KRS);
+        const view = extractView(result.value.systems, ["OrderService"]);
+
+        expect(view.ghostSystemEdges).toHaveLength(1);
+        expect(view.ghostSystemEdges[0].from).toBe("OrderService");
+        expect(view.ghostSystemEdges[0].to).toBe("PaymentGateway.PaymentService");
+      });
+
+      it("deduplicates visibleServices when multiple edges target the same service", () => {
+        const krs = `
+system ECPlatform {
+  service OrderService {}
+  OrderService -> PaymentGateway.PaymentService "決済する"
+  OrderService -> PaymentGateway.PaymentService "再試行する"
+}
+system PaymentGateway {
+  service PaymentService {}
+}
+`;
+        const result = Parser.parse(krs);
+        const view = extractView(result.value.systems, ["OrderService"]);
+
+        expect(view.ghostSystems).toHaveLength(1);
+        expect(view.ghostSystems[0].visibleServices).toHaveLength(1);
+      });
+
+      it("collects multiple visibleServices from the same ghost system", () => {
+        const krs = `
+system ECPlatform {
+  service OrderService {}
+  OrderService -> PaymentGateway.PaymentService "決済する"
+  OrderService -> PaymentGateway.FraudService "不正検知する"
+}
+system PaymentGateway {
+  service PaymentService {}
+  service FraudService {}
+}
+`;
+        const result = Parser.parse(krs);
+        const view = extractView(result.value.systems, ["OrderService"]);
+
+        expect(view.ghostSystems).toHaveLength(1);
+        expect(view.ghostSystems[0].visibleServices.map((s) => s.id)).toEqual([
+          "PaymentService",
+          "FraudService",
+        ]);
+      });
+
+      it("ignores cross-system edges where target system is not in the systems list", () => {
+        const krs = `
+system ECPlatform {
+  service OrderService {}
+  OrderService -> UnknownSystem.SomeService "依頼する"
+}
+`;
+        const result = Parser.parse(krs);
+        const view = extractView(result.value.systems, ["OrderService"]);
+
+        expect(view.ghostSystems).toHaveLength(0);
+        expect(view.ghostSystemEdges).toHaveLength(0);
+      });
+
+      it("has empty systems and crossSystemEdges", () => {
+        const result = Parser.parse(CROSS_SYSTEM_KRS);
+        const view = extractView(result.value.systems, ["OrderService"]);
+
+        expect(view.systems).toHaveLength(0);
+        expect(view.crossSystemEdges).toHaveLength(0);
+      });
+
+      it("has no ghostSystems when service has no cross-system edges", () => {
+        const result = Parser.parse(CROSS_SYSTEM_KRS);
+        const view = extractView(result.value.systems, ["PaymentService"]);
+
+        expect(view.ghostSystems).toHaveLength(0);
+        expect(view.ghostSystemEdges).toHaveLength(0);
+      });
     });
   });
 });

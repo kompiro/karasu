@@ -206,3 +206,50 @@ system S {
     expect(nodeBoth.width).toBeGreaterThanOrEqual(nodeTeam.width);
   });
 });
+
+describe("layout > multi-system root view", () => {
+  function parseAndExtractMulti(
+    krs: string,
+    unassignedDomains?: ReturnType<typeof Parser.parse>["value"]["domains"],
+  ) {
+    const result = Parser.parse(krs);
+    return extractView(result.value.systems, [], unassignedDomains ?? result.value.domains);
+  }
+
+  it("lays out all systems side by side", () => {
+    const slice = parseAndExtractMulti(`
+system ECPlatform {
+  service OrderService {}
+}
+system PaymentGateway {
+  service PaymentService {}
+}
+`);
+    const result = layout(slice);
+    expect(result.nodes.has("OrderService")).toBe(true);
+    expect(result.nodes.has("PaymentService")).toBe(true);
+    expect(result.containers).toHaveLength(2);
+    const ec = result.containers.find((c) => c.id === "ECPlatform")!;
+    const pg = result.containers.find((c) => c.id === "PaymentGateway")!;
+    expect(ec).toBeDefined();
+    expect(pg).toBeDefined();
+    // Systems are placed side by side: PaymentGateway starts to the right of ECPlatform
+    expect(pg.x).toBeGreaterThan(ec.x + ec.width);
+  });
+
+  it("includes unassigned domains in the primary system container", () => {
+    const slice = parseAndExtractMulti(`
+domain Logistics { label "物流" }
+
+system ECPlatform {
+  service OrderService {}
+}
+system PaymentGateway {
+  service PaymentService {}
+}
+`);
+    const result = layout(slice);
+    // Unassigned domain should be laid out (not silently dropped)
+    expect(result.nodes.has("Logistics")).toBe(true);
+  });
+});

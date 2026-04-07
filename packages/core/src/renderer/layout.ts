@@ -5,7 +5,7 @@ import type {
   DeployNodeKind,
   CommonProperties,
 } from "../types/ast.js";
-import type { ViewSlice } from "../view/view-extract.js";
+import type { ViewSlice, GhostSystem } from "../view/view-extract.js";
 import { summarizeDescription } from "./description-summary.js";
 import { CHAR_WIDTH, NODE_PADDING_X, NODE_PADDING_Y } from "./rendering-constants.js";
 
@@ -78,6 +78,11 @@ export function layout(
   ownerIndex?: Map<string, string>,
   displayMode?: DisplayMode,
 ): LayoutResult {
+  // Multi-system root view: lay out all systems side by side
+  if (viewSlice.systems.length > 1) {
+    return layoutMultipleSystems(viewSlice, ownerIndex, displayMode);
+  }
+
   const allNodes = viewSlice.childNodes;
   const allEdges = viewSlice.childEdges;
 
@@ -307,11 +312,59 @@ export function layout(
     }
   }
 
+  // Ghost systems: position to the right of the outermost container
+  if (viewSlice.ghostSystems.length > 0 && containers.length > 0) {
+    const outermost = containers[0];
+    const GHOST_SYSTEM_GAP = 80;
+    let ghostX = outermost.x + outermost.width + GHOST_SYSTEM_GAP;
+    const ghostStartY = outermost.y;
+
+    for (const gs of viewSlice.ghostSystems) {
+      const { nodes: gsNodes, containerRect } = layoutGhostSystem(
+        gs,
+        ghostX,
+        ghostStartY,
+        ownerIndex,
+        displayMode,
+      );
+      containers.push(containerRect);
+      for (const [id, node] of gsNodes) {
+        layoutNodes.set(id, node);
+      }
+      ghostX += containerRect.width + GHOST_SYSTEM_GAP;
+    }
+  }
+
   // Compute edges
   const layoutEdges: LayoutEdge[] = [];
   for (const edge of allEdges) {
     const le = computeEdgePoints(edge, layoutNodes, layers);
     if (le) layoutEdges.push(le);
+  }
+
+  // Ghost system edges: from a primary node to a ghost service (qualified ID)
+  for (const edge of viewSlice.ghostSystemEdges) {
+    const fromNode = layoutNodes.get(edge.from);
+    // Target is qualified (SystemId.ServiceId); use the full qualified key
+    const toNode = layoutNodes.get(edge.to);
+    if (!fromNode || !toNode) continue;
+
+    const fromPoint = {
+      x: fromNode.x + fromNode.width,
+      y: fromNode.y + fromNode.height / 2,
+    };
+    const toPoint = {
+      x: toNode.x,
+      y: toNode.y + toNode.height / 2,
+    };
+    layoutEdges.push({
+      from: edge.from,
+      to: edge.to,
+      label: edge.label,
+      fromPoint,
+      toPoint,
+      ghost: true,
+    });
   }
 
   // Ghost user edges
@@ -389,6 +442,243 @@ export function layout(
     nodes: layoutNodes,
     edges: layoutEdges,
     containers,
+    width: totalWidth,
+    height: totalHeight,
+  };
+}
+
+/**
+ * Lay out the visible services inside a ghost system and produce a container rect.
+ * Nodes are keyed by the qualified ID "SystemId.ServiceId" to avoid collisions.
+ */
+function layoutGhostSystem(
+  gs: GhostSystem,
+  originX: number,
+  originY: number,
+  ownerIndex?: Map<string, string>,
+  displayMode?: DisplayMode,
+): { nodes: Map<string, LayoutNode>; containerRect: ContainerRect } {
+  const nodes = new Map<string, LayoutNode>();
+  let maxW = 0;
+  let maxH = 0;
+  let y = originY + CONTAINER_LABEL_HEIGHT + CONTAINER_PADDING;
+
+  for (const svc of gs.visibleServices) {
+    const svcTeam =
+      svc.kind === "service" || svc.kind === "domain" ? svc.properties.team : undefined;
+    const dims = measureNode(svc, ownerIndex?.get(svc.id) ?? svcTeam, displayMode);
+    const x = originX + CONTAINER_PADDING;
+    const qualifiedId = `${gs.systemNode.id}.${svc.id}`;
+    nodes.set(qualifiedId, {
+      kind: svc.kind,
+      id: qualifiedId,
+      label: svc.label ?? svc.id,
+      properties: extractLayoutProperties(svc, ownerIndex?.get(svc.id)),
+      descriptionSummary: svc.properties.description
+        ? summarizeDescription(svc.properties.description)
+        : undefined,
+      linkCount: svc.properties.links.length,
+      hasChildren: svc.children.length > 0,
+      hasDescription: !!svc.properties.description,
+      x,
+      y,
+      width: dims.width,
+      height: dims.height,
+      ghost: true,
+    });
+    maxW = Math.max(maxW, dims.width);
+    maxH = y + dims.height + CONTAINER_PADDING - originY;
+    y += dims.height + NODE_GAP / 2;
+  }
+
+  const containerW = Math.max(maxW + CONTAINER_PADDING * 2, 200);
+  const containerH = Math.max(maxH, 100);
+
+  const containerRect: ContainerRect = {
+    id: gs.systemNode.id,
+    label: gs.systemNode.label ?? gs.systemNode.id,
+    x: originX,
+    y: originY,
+    width: containerW,
+    height: containerH,
+    ghost: true,
+  };
+
+  return { nodes, containerRect };
+}
+
+/**
+ * Lay out multiple systems side by side for root view.
+ * systems[0] is the primary system; others are rendered as ghost systems.
+ */
+function layoutMultipleSystems(
+  viewSlice: ViewSlice,
+  ownerIndex?: Map<string, string>,
+  displayMode?: DisplayMode,
+): LayoutResult {
+  const allLayoutNodes = new Map<string, LayoutNode>();
+  const allContainers: ContainerRect[] = [];
+  const allEdges: LayoutEdge[] = [];
+
+  let offsetX = CONTAINER_PADDING;
+  const offsetY = CONTAINER_PADDING;
+
+  for (let si = 0; si < viewSlice.systems.length; si++) {
+    const sys = viewSlice.systems[si];
+    const isGhost = si > 0;
+
+    // Layout this system's children independently.
+    // For the primary system (si === 0), use viewSlice.childNodes which includes
+    // unassigned top-level domains merged in by extractView.
+    const rawNodes = si === 0 ? viewSlice.childNodes : sys.children;
+    const nodeIds = rawNodes.map((n) => n.id);
+    const idSet = new Set(nodeIds);
+    const adj = new Map<string, string[]>();
+    const inDegree = new Map<string, number>();
+    for (const id of nodeIds) {
+      adj.set(id, []);
+      inDegree.set(id, 0);
+    }
+    // Only include intra-system edges for layout ordering
+    for (const edge of sys.edges) {
+      if (idSet.has(edge.from) && idSet.has(edge.to)) {
+        adj.get(edge.from)!.push(edge.to);
+        inDegree.set(edge.to, (inDegree.get(edge.to) ?? 0) + 1);
+      }
+    }
+    const layers = assignLayers(nodeIds, adj, inDegree);
+
+    const nodesByLayer = new Map<number, string[]>();
+    for (const [id, layer] of layers) {
+      if (!nodesByLayer.has(layer)) nodesByLayer.set(layer, []);
+      nodesByLayer.get(layer)!.push(id);
+    }
+    const nodeMap = new Map<string, KrsNode>();
+    for (const node of rawNodes) nodeMap.set(node.id, node);
+
+    const sortedLayers = Array.from(nodesByLayer.keys()).sort((a, b) => a - b);
+
+    const localNodes = new Map<string, LayoutNode>();
+    let childMaxWidth = 0;
+    let childMaxHeight = 0;
+
+    for (const layerIdx of sortedLayers) {
+      const nodesInLayer = nodesByLayer.get(layerIdx)!;
+      let xOff = NODE_GAP;
+      for (const nid of nodesInLayer) {
+        const krsNode = nodeMap.get(nid)!;
+        const resolvedTeam =
+          krsNode.kind === "service" || krsNode.kind === "domain"
+            ? (ownerIndex?.get(nid) ?? krsNode.properties.team)
+            : undefined;
+        const dims = measureNode(krsNode, resolvedTeam, displayMode);
+        const y = layerIdx * (dims.height + LAYER_GAP) + NODE_GAP;
+        localNodes.set(nid, {
+          kind: krsNode.kind,
+          id: nid,
+          label: krsNode.label ?? krsNode.id,
+          properties: extractLayoutProperties(krsNode, resolvedTeam),
+          descriptionSummary: krsNode.properties.description
+            ? summarizeDescription(krsNode.properties.description)
+            : undefined,
+          linkCount: krsNode.properties.links.length,
+          hasChildren: krsNode.children.length > 0,
+          hasDescription: !!krsNode.properties.description,
+          x: xOff,
+          y,
+          width: dims.width,
+          height: dims.height,
+          ghost: isGhost,
+        });
+        xOff += dims.width + NODE_GAP;
+        childMaxWidth = Math.max(childMaxWidth, xOff);
+        childMaxHeight = Math.max(childMaxHeight, y + dims.height + NODE_GAP);
+      }
+    }
+
+    // Center each layer within the system
+    for (const layerIdx of sortedLayers) {
+      const nodesInLayer = nodesByLayer.get(layerIdx)!;
+      const layerWidth = nodesInLayer.reduce((sum, id) => {
+        const n = localNodes.get(id)!;
+        return sum + n.width + NODE_GAP;
+      }, -NODE_GAP);
+      const off = Math.max(0, (childMaxWidth - layerWidth) / 2);
+      let xOff = off;
+      for (const id of nodesInLayer) {
+        const n = localNodes.get(id)!;
+        n.x = xOff;
+        xOff += n.width + NODE_GAP;
+      }
+    }
+
+    const containerW = Math.max(childMaxWidth + CONTAINER_PADDING, 200);
+    const containerH = Math.max(childMaxHeight + CONTAINER_LABEL_HEIGHT + CONTAINER_PADDING, 100);
+
+    const containerRect: ContainerRect = {
+      id: sys.id,
+      label: sys.label ?? sys.id,
+      x: offsetX,
+      y: offsetY,
+      width: containerW,
+      height: containerH,
+      ghost: isGhost,
+    };
+    allContainers.push(containerRect);
+
+    // Offset local nodes into global coordinate space
+    for (const [id, node] of localNodes) {
+      node.x += offsetX + CONTAINER_PADDING / 2;
+      node.y += offsetY + CONTAINER_LABEL_HEIGHT;
+      allLayoutNodes.set(id, node);
+    }
+
+    // Intra-system edges
+    for (const edge of sys.edges) {
+      if (idSet.has(edge.from) && idSet.has(edge.to)) {
+        const le = computeEdgePoints(edge, allLayoutNodes, layers);
+        if (le) {
+          if (isGhost) le.ghost = true;
+          allEdges.push(le);
+        }
+      }
+    }
+
+    offsetX += containerW + GHOST_MARGIN * 3;
+  }
+
+  // Cross-system edges
+  for (const edge of viewSlice.crossSystemEdges) {
+    const fromNode = allLayoutNodes.get(edge.from);
+    const toNode = allLayoutNodes.get(edge.to.slice(edge.to.indexOf(".") + 1));
+    if (!fromNode || !toNode) continue;
+    allEdges.push({
+      from: edge.from,
+      to: edge.to,
+      label: edge.label,
+      fromPoint: {
+        x: fromNode.x + fromNode.width,
+        y: fromNode.y + fromNode.height / 2,
+      },
+      toPoint: {
+        x: toNode.x,
+        y: toNode.y + toNode.height / 2,
+      },
+    });
+  }
+
+  // Calculate total dimensions
+  let totalWidth = 0;
+  let totalHeight = 0;
+  for (const c of allContainers) {
+    totalWidth = Math.max(totalWidth, c.x + c.width + CONTAINER_PADDING);
+    totalHeight = Math.max(totalHeight, c.y + c.height + CONTAINER_PADDING);
+  }
+
+  return {
+    nodes: allLayoutNodes,
+    edges: allEdges,
+    containers: allContainers,
     width: totalWidth,
     height: totalHeight,
   };

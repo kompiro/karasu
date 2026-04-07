@@ -6,6 +6,15 @@ import type { KrsNode, KrsEdge } from "../types/ast.js";
  */
 export type ViewPath = string[];
 
+/**
+ * An external system referenced via a cross-system edge, along with the specific
+ * services inside it that are referenced.
+ */
+export interface GhostSystem {
+  systemNode: KrsNode;
+  visibleServices: KrsNode[];
+}
+
 export interface ViewSlice {
   containerNode: KrsNode | null;
   childNodes: KrsNode[];
@@ -13,10 +22,40 @@ export interface ViewSlice {
   ancestorChain: KrsNode[];
   ghostUsers: KrsNode[];
   ghostUserEdges: KrsEdge[];
+  /** Root view only: all systems for parallel display. Empty at other levels. */
+  systems: KrsNode[];
+  /** Root view only: edges with qualified targets (SystemId.ServiceId) between systems. */
+  crossSystemEdges: KrsEdge[];
+  /** Service view only: external systems referenced via cross-system edges. */
+  ghostSystems: GhostSystem[];
+  /** Service view only: the cross-system edges targeting ghost systems. */
+  ghostSystemEdges: KrsEdge[];
 }
 
 function nodeId(node: KrsNode): string {
   return node.id;
+}
+
+function buildGhostSystems(edges: KrsEdge[], allSystems: KrsNode[]): GhostSystem[] {
+  const map = new Map<string, GhostSystem>();
+  for (const edge of edges) {
+    const dotIdx = edge.to.indexOf(".");
+    if (dotIdx === -1) continue;
+    const sysId = edge.to.slice(0, dotIdx);
+    const svcId = edge.to.slice(dotIdx + 1);
+    const systemNode = allSystems.find((s) => s.id === sysId);
+    if (!systemNode) continue;
+    const serviceNode = systemNode.children.find((c) => c.id === svcId);
+    if (!serviceNode) continue;
+    if (!map.has(sysId)) {
+      map.set(sysId, { systemNode, visibleServices: [] });
+    }
+    const gs = map.get(sysId)!;
+    if (!gs.visibleServices.some((s) => s.id === svcId)) {
+      gs.visibleServices.push(serviceNode);
+    }
+  }
+  return Array.from(map.values());
 }
 
 export function extractView(
@@ -31,6 +70,10 @@ export function extractView(
     ancestorChain: [],
     ghostUsers: [],
     ghostUserEdges: [],
+    systems: [],
+    crossSystemEdges: [],
+    ghostSystems: [],
+    ghostSystemEdges: [],
   };
 
   if (systems.length === 0) return empty;
@@ -42,6 +85,16 @@ export function extractView(
     const allChildren = [...system.children, ...unassignedDomains];
     const childIds = new Set(allChildren.map(nodeId));
     const childEdges = system.edges.filter((e) => childIds.has(e.from) && childIds.has(e.to));
+
+    // Cross-system edges: collect from all systems where target is qualified
+    const crossSystemEdges = systems.flatMap((sys) =>
+      sys.edges.filter((e) => {
+        if (!e.to.includes(".")) return false;
+        const sysId = e.to.slice(0, e.to.indexOf("."));
+        return systems.some((s) => s.id === sysId);
+      }),
+    );
+
     return {
       containerNode: system,
       childNodes: allChildren,
@@ -49,6 +102,10 @@ export function extractView(
       ancestorChain: [],
       ghostUsers: [],
       ghostUserEdges: [],
+      systems,
+      crossSystemEdges,
+      ghostSystems: [],
+      ghostSystemEdges: [],
     };
   }
 
@@ -76,6 +133,8 @@ export function extractView(
   // Ghost users: only for service view (path.length === 1)
   let ghostUsers: KrsNode[] = [];
   let ghostUserEdges: KrsEdge[] = [];
+  let ghostSystems: GhostSystem[] = [];
+  let ghostSystemEdges: KrsEdge[] = [];
 
   if (path.length === 1) {
     const containerId = nodeId(containerNode);
@@ -95,6 +154,16 @@ export function extractView(
     );
     ghostUsers = users.filter((p) => connectedUserIds.has(nodeId(p)));
     ghostUserEdges = connectedEdges;
+
+    // Ghost systems: edges from this service to qualified targets in other known systems
+    const candidateEdges = system.edges.filter((e) => e.from === containerId && e.to.includes("."));
+    ghostSystems = buildGhostSystems(candidateEdges, systems);
+    // Only include edges that resolved to a known ghost system
+    const resolvedSysIds = new Set(ghostSystems.map((gs) => gs.systemNode.id));
+    ghostSystemEdges = candidateEdges.filter((e) => {
+      const sysId = e.to.slice(0, e.to.indexOf("."));
+      return resolvedSysIds.has(sysId);
+    });
   }
 
   return {
@@ -104,5 +173,9 @@ export function extractView(
     ancestorChain,
     ghostUsers,
     ghostUserEdges,
+    systems: [],
+    crossSystemEdges: [],
+    ghostSystems,
+    ghostSystemEdges,
   };
 }
