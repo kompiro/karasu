@@ -21,10 +21,10 @@ function baseProps(currentProject: Project | null = makeProject()) {
   return {
     projects: currentProject ? [currentProject] : [],
     currentProject,
-    onSelectProject: vi.fn(),
-    onCreateProject: vi.fn(),
-    onRenameProject: vi.fn(),
-    onDeleteProject: vi.fn(),
+    onSelectProject: vi.fn<() => void>(),
+    onCreateProject: vi.fn<() => void>(),
+    onRenameProject: vi.fn<() => void>(),
+    onDeleteProject: vi.fn<() => void>(),
   };
 }
 

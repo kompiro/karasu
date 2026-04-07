@@ -76,8 +76,7 @@ export function ProjectSelector({
     [handleRenameCommit],
   );
 
-  const isRenameOkDisabled =
-    !renameValue.trim() || renameValue.trim() === currentProject?.name;
+  const isRenameOkDisabled = !renameValue.trim() || renameValue.trim() === currentProject?.name;
 
   // ── Delete ────────────────────────────────────────────────────────
 
