@@ -452,7 +452,9 @@ system ECPlatform {
       const systems = parseSystem(INFRA_KRS);
       const view = extractView(systems, []);
 
-      const edge = view.childEdges.find((e) => e.from === "MediaService" && e.to === "MediaStorage");
+      const edge = view.childEdges.find(
+        (e) => e.from === "MediaService" && e.to === "MediaStorage",
+      );
       expect(edge).toBeDefined();
     });
 
@@ -509,9 +511,7 @@ system ECPlatform {
       const systems = parseSystem(krs);
       const view = extractView(systems, []);
 
-      const edges = view.childEdges.filter(
-        (e) => e.from === "OrderService" && e.to === "OrderDB",
-      );
+      const edges = view.childEdges.filter((e) => e.from === "OrderService" && e.to === "OrderDB");
       expect(edges).toHaveLength(1);
     });
 
@@ -520,11 +520,10 @@ system ECPlatform {
       const view = extractView(systems, []);
 
       // FULL_KRS has no database/queue/storage nodes
-      const infraEdges = view.childEdges.filter(
-        (e) =>
-          view.childNodes.some(
-            (n) => n.id === e.to && ["database", "queue", "storage"].includes(n.kind),
-          ),
+      const infraEdges = view.childEdges.filter((e) =>
+        view.childNodes.some(
+          (n) => n.id === e.to && ["database", "queue", "storage"].includes(n.kind),
+        ),
       );
       expect(infraEdges).toHaveLength(0);
     });

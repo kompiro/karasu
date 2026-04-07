@@ -22,7 +22,9 @@ function collectResourceRefs(node: KrsNode): ResourceNode[] {
  */
 function deriveInfraEdges(children: KrsNode[]): KrsEdge[] {
   const infraIds = new Set(
-    children.filter((n) => INFRA_KINDS.has(n.kind as "database" | "queue" | "storage")).map((n) => n.id),
+    children
+      .filter((n) => INFRA_KINDS.has(n.kind as "database" | "queue" | "storage"))
+      .map((n) => n.id),
   );
   if (infraIds.size === 0) return [];
 
