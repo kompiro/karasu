@@ -1,0 +1,92 @@
+# ADR-0025: Dependency Updates — 2026-04-07
+
+## Status
+
+Accepted
+
+## Context
+
+Eight Dependabot PRs were opened around 2026-04-06 and adopted on 2026-04-07.
+Two included security fixes; one was a major-version breaking change (GitHub Actions); the rest were patch or minor dev-tooling updates.
+
+| Package | From | To | Type | PR |
+|---------|------|----|------|----|
+| `vite` | 8.0.3 | 8.0.5 | dev | #347 / #342 |
+| `esbuild` | 0.25.12 | 0.28.0 | dev | #345 |
+| `marked` | 17.0.5 | 17.0.6 | runtime | #344 / #343 |
+| `pnpm/action-setup` | 4.3.0 | 5.0.0 | GitHub Actions | #341 |
+| `oxfmt` | 0.42.0 | 0.43.0 | dev | #346 |
+| `lefthook` | 2.1.4 | 2.1.5 | dev | #348 |
+
+> Note: `vite` and `marked` each appeared in two PRs targeting the same file (`packages/app/package.json`). For each, only the PR that also updated `pnpm-lock.yaml` (#347 for vite) was merged; the duplicate PR was closed.
+
+### vite 8.0.5 — security fixes
+
+8.0.4 and 8.0.5 together contain four `server.fs` security fixes:
+
+- Path traversal via optimize-deps sourcemap handler (#22161)
+- `server.fs` check not applied to `env transport` requests (#22159)
+- `server.fs` check bypassed when query string present (#22160)
+- Files outside the package reachable via sourcemap references (#22158)
+
+`vite` is used only in `packages/app`. Prioritized as the first merge.
+
+### esbuild 0.28.0
+
+A three-minor-version jump (0.26, 0.27, 0.28) with no breaking changes to karasu's usage:
+
+- Added `with { type: 'text' }` import support (TC39 stage 3)
+- Added integrity checks to the fallback binary download path (the reason for the major bump)
+- CSS `-webkit-mask` prefix auto-injection
+- Additional `switch` statement minification
+- Go 1.26 compiler update internally
+
+vite 8.0.4 explicitly allows `esbuild 0.28` as a peer dependency, so the two upgrades are complementary. The `pnpm.onlyBuiltDependencies` entry for `esbuild` in the root `package.json` remained unchanged.
+
+### marked 17.0.6
+
+Fixes a race condition in async parallel `parse` / `parseInline` when hooks are active. Also fixes two CLI-only issues (positional input file, config file URL import). `marked` is used in `packages/app/src/components/NodeDetailPanel.tsx`; the async hooks path is not exercised, so impact is low.
+
+### pnpm/action-setup 5.0.0 — Node.js 24 runtime
+
+The GitHub Actions action now runs on Node.js 24 (previously 20). This is a `MAJOR` bump per semver but carries no API or configuration changes. All CI workflows that use this action continue to work without modification.
+
+### oxfmt 0.43.0
+
+Added support for `bool` values in object-style formatter options. Running `pnpm run format:check` after the upgrade produced no diffs, confirming existing source files are unaffected.
+
+### lefthook 2.1.5
+
+Three bug fixes:
+
+- `lefthook run` no longer overwrites global hooks (#1371)
+- git repository merge-state detection fixed (#1372)
+- `pre-push` stdin used correctly for push-file detection in SHA-256 repos (#1368)
+
+karasu uses lefthook via Claude Code hooks (not git hooks directly), so the risk of regression is minimal.
+
+## Decision
+
+Adopt all eight PRs. Merge order:
+
+1. `vite` (#347) — security fixes, highest priority
+2. `esbuild` (#345) — vite 8.0.4 peer-dep requirement
+3. `marked` (#344) — runtime bug fix
+4. `pnpm/action-setup` (#341) — CI runtime update
+5. `oxfmt` (#346) — dev tooling, feature addition
+6. `lefthook` (#348) — dev tooling, bug fixes
+
+Duplicate PRs (#342 for vite, #343 for marked) closed without merging since #347 and #344 already include the `pnpm-lock.yaml` update.
+
+## Consequences
+
+**Positive:**
+
+- Four `server.fs` path-traversal vulnerabilities in vite's dev server are resolved.
+- esbuild gains integrity-checked binary installation, reducing supply-chain risk.
+- CI action runs on the current Node.js LTS (24), reducing future upgrade friction.
+- lefthook hook execution is more reliable in merge and pre-push scenarios.
+
+**Negative:**
+
+- None identified. All changes were backward-compatible with karasu's existing configuration.

@@ -15,12 +15,12 @@
   },
   "dependencies": {
     "@karasu-tools/core": "workspace:*",
-    "marked": "^17.0.5",
+    "marked": "^17.0.6",
     "vscode-languageclient": "^9.0.1"
   },
   "devDependencies": {
     "@types/vscode": "^1.85.0",
-    "esbuild": "^0.25.0",
+    "esbuild": "^0.28.0",
     "typescript": "^6.0.2"
   },
   "contributes": {

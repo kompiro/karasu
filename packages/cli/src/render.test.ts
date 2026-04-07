@@ -5,8 +5,8 @@ import { tmpdir } from "node:os";
 
 // Use vi.hoisted() so mock functions are initialized before vi.mock hoisting
 const { mockBuildAllViewsSvgProject, mockCompileProject } = vi.hoisted(() => ({
-  mockBuildAllViewsSvgProject: vi.fn(),
-  mockCompileProject: vi.fn(),
+  mockBuildAllViewsSvgProject: vi.fn<() => Promise<unknown>>(),
+  mockCompileProject: vi.fn<() => Promise<unknown>>(),
 }));
 
 vi.mock("@karasu-tools/core", () => ({

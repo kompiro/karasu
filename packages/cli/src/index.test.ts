@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
-const mockServe = vi.fn();
-const mockRender = vi.fn();
+const mockServe = vi.fn<() => void>();
+const mockRender = vi.fn<() => void>();
 vi.mock("./serve.js", () => ({ serve: mockServe }));
 vi.mock("./render.js", () => ({ render: mockRender }));
 

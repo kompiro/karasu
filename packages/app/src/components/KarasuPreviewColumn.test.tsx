@@ -17,7 +17,7 @@ function makeProps(overrides: Partial<Parameters<typeof KarasuPreviewColumn>[0]>
   return {
     activeView: "system" as const,
     hasDeployDiagram: true,
-    onActiveViewChange: vi.fn(),
+    onActiveViewChange: vi.fn<() => void>(),
     systemView: {
       svg: emptySvg,
       diagnostics: emptyDiagnostics,
@@ -32,7 +32,7 @@ function makeProps(overrides: Partial<Parameters<typeof KarasuPreviewColumn>[0]>
       warnings: emptyWarnings,
       highlightedNodeId: null,
       onClearHighlight: noop,
-      onContainerClick: vi.fn(),
+      onContainerClick: vi.fn<() => void>(),
     },
     orgView: {
       svg: emptySvg,
@@ -44,20 +44,20 @@ function makeProps(overrides: Partial<Parameters<typeof KarasuPreviewColumn>[0]>
     },
     nodeMetadata: new Map(),
     displayMode: "shape" as const,
-    onDisplayModeChange: vi.fn(),
-    onExportSvg: vi.fn(),
+    onDisplayModeChange: vi.fn<() => void>(),
+    onExportSvg: vi.fn<() => void>(),
     isAllLayersOpen: false,
-    onAllLayersToggle: vi.fn(),
+    onAllLayersToggle: vi.fn<() => void>(),
     drillDownSvg: undefined,
     orgDrillDownSvg: undefined,
     allLayersSvg: undefined,
     orgAllLayersSvg: undefined,
     previewFocused: false,
-    onPreviewFocusToggle: vi.fn(),
+    onPreviewFocusToggle: vi.fn<() => void>(),
     isOrgTreeViewOpen: false,
-    onOrgTreeViewToggle: vi.fn(),
+    onOrgTreeViewToggle: vi.fn<() => void>(),
     orgTreeSvg: undefined,
-    onTeamToggle: vi.fn(),
+    onTeamToggle: vi.fn<() => void>(),
     orgTreeExportSvg: undefined,
     ...overrides,
   };
@@ -296,7 +296,7 @@ describe("KarasuPreviewColumn", () => {
     });
 
     it("calls onAllLayersToggle when clicked", () => {
-      const onAllLayersToggle = vi.fn();
+      const onAllLayersToggle = vi.fn<() => void>();
       const props = makeProps({
         activeView: "system",
         allLayersSvg: "<svg>full</svg>",
@@ -346,7 +346,7 @@ describe("KarasuPreviewColumn", () => {
     });
 
     it("calls onPreviewFocusToggle when clicked", () => {
-      const onPreviewFocusToggle = vi.fn();
+      const onPreviewFocusToggle = vi.fn<() => void>();
       const props = makeProps({ onPreviewFocusToggle });
       const { getByRole } = render(<KarasuPreviewColumn {...props} />);
       fireEvent.click(getByRole("button", { name: /focus mode/ }));
@@ -370,7 +370,7 @@ describe("KarasuPreviewColumn", () => {
     });
 
     it("Export SVG exports current svg when isAllLayersOpen=false", () => {
-      const onExportSvg = vi.fn();
+      const onExportSvg = vi.fn<() => void>();
       const props = makeProps({ activeView: "system", isAllLayersOpen: false, onExportSvg });
       const { getByRole } = render(<KarasuPreviewColumn {...props} />);
       fireEvent.click(getByRole("button", { name: /Export SVG/ }));
@@ -378,7 +378,7 @@ describe("KarasuPreviewColumn", () => {
     });
 
     it("Export SVG exports allLayersSvg with -all-layers suffix when isAllLayersOpen=true", () => {
-      const onExportSvg = vi.fn();
+      const onExportSvg = vi.fn<() => void>();
       const allLayersSvg = "<svg>full</svg>";
       const props = makeProps({
         activeView: "system",
@@ -399,7 +399,7 @@ describe("KarasuPreviewColumn", () => {
     });
 
     it("Export Drill-down SVG calls onExportSvg with -drilldown suffix", () => {
-      const onExportSvg = vi.fn();
+      const onExportSvg = vi.fn<() => void>();
       const drillDownSvg = "<svg>drilldown</svg>";
       const props = makeProps({
         activeView: "system",
@@ -423,7 +423,7 @@ describe("KarasuPreviewColumn", () => {
     });
 
     it("Export Drill-down SVG calls onExportSvg with -drilldown suffix on org tab", () => {
-      const onExportSvg = vi.fn();
+      const onExportSvg = vi.fn<() => void>();
       const orgDrillDownSvg = "<svg>org-drilldown</svg>";
       const props = makeProps({
         activeView: "org",
@@ -450,7 +450,7 @@ describe("KarasuPreviewColumn", () => {
     });
 
     it("Export All Diagrams SVG calls onExportSvg with all-diagrams.svg filename", () => {
-      const onExportSvg = vi.fn();
+      const onExportSvg = vi.fn<() => void>();
       const allViewsSvg = "<svg>all-views</svg>";
       const props = makeProps({ activeView: "system", allViewsSvg, onExportSvg });
       const { getByRole, getByText } = render(<KarasuPreviewColumn {...props} />);

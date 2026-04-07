@@ -44,8 +44,8 @@ function click(container: HTMLElement, getTarget: () => Element) {
 describe("PreviewPane", () => {
   describe("onClearHighlight", () => {
     it("calls onDrillDown and onClearHighlight when a node with children is clicked", () => {
-      const onClearHighlight = vi.fn();
-      const onDrillDown = vi.fn();
+      const onClearHighlight = vi.fn<() => void>();
+      const onDrillDown = vi.fn<() => void>();
       const svg = `<div data-node-id="svc" data-has-children="true"></div>`;
 
       const { container } = render(
@@ -69,7 +69,7 @@ describe("PreviewPane", () => {
     });
 
     it("calls onClearHighlight when a leaf node is clicked", () => {
-      const onClearHighlight = vi.fn();
+      const onClearHighlight = vi.fn<() => void>();
       const svg = `<div data-node-id="leaf" data-has-children="false"></div>`;
 
       const { container } = render(
@@ -86,8 +86,8 @@ describe("PreviewPane", () => {
     });
 
     it("does not call onClearHighlight when a deploy container is clicked", () => {
-      const onClearHighlight = vi.fn();
-      const onContainerClick = vi.fn();
+      const onClearHighlight = vi.fn<() => void>();
+      const onContainerClick = vi.fn<() => void>();
       const svg = `<div data-container-id="zone-a"></div>`;
 
       const { container } = render(
@@ -138,7 +138,7 @@ describe("PreviewPane", () => {
 
   describe("onJumpToEditor", () => {
     it("calls onJumpToEditor with the clicked node's id when 'Jump to editor' is clicked", () => {
-      const onJumpToEditor = vi.fn();
+      const onJumpToEditor = vi.fn<() => void>();
       const svg = `<div data-node-id="leaf-svc" data-has-children="false"></div>`;
       const metadata: NodeMetadata = {
         kind: "service",
