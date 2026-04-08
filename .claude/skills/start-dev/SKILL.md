@@ -82,7 +82,15 @@ description: >
    3. PR 本文に Design Doc のサマリーと Purpose を記述して `gh pr create` で作成する（Issue がある場合は `Refs #N` で紐付け。`Closes #N` は実装完了 PR で使用する）
    4. ユーザーに PR URL を通知し、**マージを依頼する**
    5. ユーザーから「マージした」との確認を得てから次へ進む
-   6. マージ後、実装用の新しい worktree とブランチを作成し直す（ステップ3の手順に従う）
+   6. Issue がある場合はラベルを `status: designed` に更新する:
+      ```
+      gh issue edit <N> --remove-label "status: in-progress" --add-label "status: designed"
+      ```
+   7. 実装用の新しい worktree とブランチを作成し直す（ステップ3の手順に従う）
+   8. Issue がある場合はラベルを `status: in-progress` に戻す:
+      ```
+      gh issue edit <N> --remove-label "status: designed" --add-label "status: in-progress"
+      ```
 
 3. 収集した情報（Issue・Design Doc・`docs/spec/`・`docs/acceptance/`）をもとに実装計画を作成する
 4. 計画には以下を含める:
@@ -129,7 +137,13 @@ CI 通過後、以下のチェックを順に実行する。
    - 日本語やその他の非英語テキストが含まれている場合は警告し、修正を提案する
 3. **コードレビュー**: `/review` を実行して PR の変更内容をレビューし、GitHub にレビューコメントを投稿する
 
-すべてのチェック完了後、ユーザーに手動検証を依頼する。
+すべてのチェック完了後、Issue がある場合はラベルを `status: in-review` に更新する:
+
+   ```
+   gh issue edit <N> --remove-label "status: in-progress" --add-label "status: in-review"
+   ```
+
+ユーザーに手動検証を依頼する。
 動作確認用に Preview URL を表示する。`cloudflare/wrangler-action` は PR コメントではなく GitHub Deployment ステータスを作成するため、ブランチ名から URL を構築する。Cloudflare Pages はブランチ名の `/` を `-` に変換するので注意すること:
 
    ```
