@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 100">
+  <g class="krs-pictogram" transform="translate(6, 4)">
+    <!-- envelope body -->
+    <rect x="0" y="4" width="20" height="14" rx="1.5" fill="none" stroke="{{color}}" stroke-width="1.5"/>
+    <!-- envelope flap (V shape) -->
+    <polyline points="0,4 10,13 20,4" fill="none" stroke="{{color}}" stroke-width="1.5"/>
+  </g>
+  <text class="krs-label" x="30" y="19" text-anchor="start"/>
+  <text class="krs-description" x="8" y="44" text-anchor="start"/>
+</svg>

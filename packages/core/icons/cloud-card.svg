@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 100">
+  <g class="krs-pictogram" transform="translate(6, 4)">
+    <!-- file body with folded corner -->
+    <path d="M0 0 h12 l6 6 v14 H0 Z" fill="none" stroke="{{color}}" stroke-width="1.5"/>
+    <!-- folded corner crease -->
+    <path d="M12 0 v6 h6" fill="none" stroke="{{color}}" stroke-width="1.5"/>
+    <!-- content lines -->
+    <line x1="3" y1="10" x2="15" y2="10" stroke="{{color}}" stroke-width="1" opacity="0.6"/>
+    <line x1="3" y1="13" x2="15" y2="13" stroke="{{color}}" stroke-width="1" opacity="0.6"/>
+    <line x1="3" y1="16" x2="10" y2="16" stroke="{{color}}" stroke-width="1" opacity="0.6"/>
+  </g>
+  <text class="krs-label" x="30" y="19" text-anchor="start"/>
+  <text class="krs-description" x="8" y="44" text-anchor="start"/>
+</svg>
