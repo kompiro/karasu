@@ -3,14 +3,6 @@
 **karasu**（鴉）はテキストベースのアーキテクチャモデリングツールです。
 C4 Modelに触発されつつも独自の語彙を持ち、論理構造と物理構造を分離して表現します。
 
-## 命名の由来
-
-北欧神話のオーディンの使い魔ヒギン・ムニン（思考と記憶の鴉）に由来します。
-世界を俯瞰して情報を集め、必要な場所へ降りていく鴉の姿が、
-ドリルダウン型アーキテクチャ把握のコンセプトと重なります。
-
----
-
 ## ドキュメント
 
 | ドキュメント                                       | 場所                            |
@@ -68,6 +60,11 @@ karasu/
 - 機能開発はセッション内で `git worktree add` により worktree を作成して行う
 - worktree の作成先は必ず `.worktrees/<branch-name>` とする（例: `git worktree add .worktrees/feat/my-feature feat/my-feature`）
 - ブランチ命名規則: `feat/`, `fix/`, `docs/`, `chore/`, `refactor/` + kebab-case
+
+### PR 記述ルール
+
+- PR のタイトル・description（本文）は英語で書く
+- commit メッセージも英語（subject）
 
 ### PR ワークフロー
 
