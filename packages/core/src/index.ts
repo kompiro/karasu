@@ -574,6 +574,18 @@ function buildNodeMetadata(
   for (const node of viewSlice.ghostUsers) {
     addNode(node);
   }
+  // Root view (multi-system): add services from each system so drill-down has viewPath metadata
+  for (const sys of viewSlice.systems) {
+    for (const child of sys.children) {
+      addNode(child);
+    }
+  }
+  // Service view: add visible services from ghost systems
+  for (const gs of viewSlice.ghostSystems) {
+    for (const svc of gs.visibleServices) {
+      addNode(svc);
+    }
+  }
 
   return map;
 }
