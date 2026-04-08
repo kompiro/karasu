@@ -580,8 +580,14 @@ function buildNodeMetadata(
       addNode(child);
     }
   }
-  // Service view: add visible services from ghost systems
+  // Service view: add visible services from ghost systems (outgoing)
   for (const gs of viewSlice.ghostSystems) {
+    for (const svc of gs.visibleServices) {
+      addNode(svc);
+    }
+  }
+  // Service view: add visible services from caller ghost systems (incoming)
+  for (const gs of viewSlice.callerGhostSystems) {
     for (const svc of gs.visibleServices) {
       addNode(svc);
     }

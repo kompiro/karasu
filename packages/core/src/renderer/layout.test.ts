@@ -294,3 +294,39 @@ system PaymentGateway {
     expect(ghostEdge!.toPoint.x).toBeGreaterThan(ghostEdge!.fromPoint.x);
   });
 });
+
+describe("layout > caller ghost systems", () => {
+  const CROSS_SYSTEM_KRS = `
+system ECPlatform {
+  service OrderService {}
+  OrderService -> PaymentGateway.PaymentService "決済を依頼する"
+}
+system PaymentGateway {
+  service PaymentService {}
+}
+`;
+
+  it("lays out caller ghost system to the left of the main container", () => {
+    const result = Parser.parse(CROSS_SYSTEM_KRS);
+    const slice = extractView(result.value.systems, ["PaymentGateway", "PaymentService"]);
+    const layoutResult = layout(slice);
+    const mainContainer = layoutResult.containers.find((c) => !c.ghost)!;
+    const callerContainer = layoutResult.containers.find(
+      (c) => c.ghost && c.id === "ECPlatform",
+    )!;
+    expect(callerContainer).toBeDefined();
+    expect(callerContainer.x + callerContainer.width).toBeLessThan(mainContainer.x);
+  });
+
+  it("produces a ghost edge from the caller ghost service to the main container", () => {
+    const result = Parser.parse(CROSS_SYSTEM_KRS);
+    const slice = extractView(result.value.systems, ["PaymentGateway", "PaymentService"]);
+    const layoutResult = layout(slice);
+    const ghostEdges = layoutResult.edges.filter((e) => e.ghost);
+    expect(ghostEdges).toHaveLength(1);
+    expect(ghostEdges[0].from).toBe("ECPlatform.OrderService");
+    expect(ghostEdges[0].to).toBe("PaymentService");
+    // Caller is to the left, so toPoint.x > fromPoint.x
+    expect(ghostEdges[0].toPoint.x).toBeGreaterThan(ghostEdges[0].fromPoint.x);
+  });
+});
