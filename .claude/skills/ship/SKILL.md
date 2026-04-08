@@ -88,7 +88,7 @@ CI 通過後、以下のチェックを順に実行する。
 すべてのチェック完了後、Issue がある場合はラベルを `status: in-review` に更新する:
 
    ```
-   gh issue edit <N> --remove-label "status: in-progress" --add-label "status: in-review"
+   gh issue edit <N> --remove-label "status: implementing" --add-label "status: in-review"
    ```
 
 完了メッセージ:

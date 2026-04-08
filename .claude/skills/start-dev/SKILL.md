@@ -25,15 +25,15 @@ description: >
 - `gh issue view <N>` で内容を確認する
 - Issue 本文に Design Doc へのリンクがあれば読む
 - Issue 番号を控える（PR との紐付けに使用）
-- Issue のラベルを `status: in-progress` に更新する:
+- Issue のラベルを `status: implementing` に更新する:
   ```
-  gh issue edit <N> --remove-label "status: ready" --remove-label "status: blocked" --add-label "status: in-progress"
+  gh issue edit <N> --remove-label "status: ready" --remove-label "status: blocked" --add-label "status: implementing"
   ```
 
 **B. Issue 番号が指定されていない場合**
 - `gh issue list --state open` を表示してユーザーに確認する
 - Issue なしで進む場合はそのまま次のステップへ
-- Issue を選択した場合は A と同様にラベルを `status: in-progress` に更新する
+- Issue を選択した場合は A と同様にラベルを `status: implementing` に更新する
 
 > Issue がない場合もある。Design Doc だけを起点に開発を始めることも、
 > Issue も Design Doc もなく着手するケースもある。
@@ -75,6 +75,10 @@ description: >
    - **作成する**: アーキテクチャ上の選択肢があり、意思決定の根拠を残すべき場合
    - **スキップ**: バグ修正・軽微な変更・決定事項がすでに明確な場合
    - 作成する場合は `/design-doc` スキルを使用し、ユーザーのレビューを得てから次へ進む
+   - Issue がある場合はラベルを `status: designing` に更新する:
+     ```
+     gh issue edit <N> --remove-label "status: implementing" --add-label "status: designing"
+     ```
 
 2. Design Doc を作成した場合は、PR を作成して承認の証跡を残す:
    1. DesignDoc ファイルのみをコミットする（`/commit` スキルを使用）
@@ -84,12 +88,12 @@ description: >
    5. ユーザーから「マージした」との確認を得てから次へ進む
    6. Issue がある場合はラベルを `status: designed` に更新する:
       ```
-      gh issue edit <N> --remove-label "status: in-progress" --add-label "status: designed"
+      gh issue edit <N> --remove-label "status: designing" --add-label "status: designed"
       ```
    7. 実装用の新しい worktree とブランチを作成し直す（ステップ3の手順に従う）
-   8. Issue がある場合はラベルを `status: in-progress` に戻す:
+   8. Issue がある場合はラベルを `status: implementing` に更新する:
       ```
-      gh issue edit <N> --remove-label "status: designed" --add-label "status: in-progress"
+      gh issue edit <N> --remove-label "status: designed" --add-label "status: implementing"
       ```
 
 3. 収集した情報（Issue・Design Doc・`docs/spec/`・`docs/acceptance/`）をもとに実装計画を作成する
@@ -140,7 +144,7 @@ CI 通過後、以下のチェックを順に実行する。
 すべてのチェック完了後、Issue がある場合はラベルを `status: in-review` に更新する:
 
    ```
-   gh issue edit <N> --remove-label "status: in-progress" --add-label "status: in-review"
+   gh issue edit <N> --remove-label "status: implementing" --add-label "status: in-review"
    ```
 
 ユーザーに手動検証を依頼する。
