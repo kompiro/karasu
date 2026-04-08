@@ -61,8 +61,9 @@ karasu/
 - worktree の作成先は必ず `.worktrees/<branch-name>` とする（例: `git worktree add .worktrees/feat/my-feature feat/my-feature`）
 - ブランチ命名規則: `feat/`, `fix/`, `docs/`, `chore/`, `refactor/` + kebab-case
 
-### PR 記述ルール
+### Issue・PR 記述ルール
 
+- Issue のタイトル・本文・コメントは英語で書く
 - PR のタイトル・description（本文）は英語で書く
 - commit メッセージも英語（subject）
 
