@@ -74,6 +74,37 @@ member {
   font-size: 12;
 }
 
+/* ── インフラリソース種別 ── */
+database {
+  background-color: #1C3A2E;
+  color: #86EFAC;
+  border-color: #166534;
+  border-width: 2;
+  shape: cylinder;
+  font-weight: bold;
+  font-size: 13;
+}
+
+queue {
+  background-color: #2D2310;
+  color: #FCD34D;
+  border-color: #92400E;
+  border-width: 2;
+  shape: queue;
+  font-weight: bold;
+  font-size: 13;
+}
+
+storage {
+  background-color: #1E2A3B;
+  color: #93C5FD;
+  border-color: #1D4ED8;
+  border-width: 2;
+  shape: cloud;
+  font-weight: bold;
+  font-size: 13;
+}
+
 /* ── リソースタグ → シェイプ ── */
 resource[table]   { shape: cylinder; }
 resource[queue]   { shape: queue; }
