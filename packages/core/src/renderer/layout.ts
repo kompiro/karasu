@@ -86,7 +86,7 @@ export function layout(
   const allNodes = viewSlice.childNodes;
   const allEdges = viewSlice.childEdges;
 
-  if (allNodes.length === 0 && viewSlice.ghostUsers.length === 0) {
+  if (allNodes.length === 0 && viewSlice.ghostUsers.length === 0 && viewSlice.ghostSystems.length === 0) {
     // Empty container: still produce container rects
     const containers = buildContainersForEmpty(viewSlice);
     const outermost = containers.length > 0 ? containers[0] : null;
@@ -342,17 +342,29 @@ export function layout(
     if (le) layoutEdges.push(le);
   }
 
-  // Ghost system edges: from a primary node to a ghost service (qualified ID)
+  // Ghost system edges: from a primary node (or container) to a ghost service (qualified ID)
   for (const edge of viewSlice.ghostSystemEdges) {
-    const fromNode = layoutNodes.get(edge.from);
-    // Target is qualified (SystemId.ServiceId); use the full qualified key
     const toNode = layoutNodes.get(edge.to);
-    if (!fromNode || !toNode) continue;
+    if (!toNode) continue;
 
-    const fromPoint = {
-      x: fromNode.x + fromNode.width,
-      y: fromNode.y + fromNode.height / 2,
-    };
+    // edge.from may be a child node or the container itself (when drilling into a service
+    // that directly has a cross-system edge). Fall back to the main container rect.
+    let fromPoint: { x: number; y: number };
+    const fromNode = layoutNodes.get(edge.from);
+    if (fromNode) {
+      fromPoint = {
+        x: fromNode.x + fromNode.width,
+        y: fromNode.y + fromNode.height / 2,
+      };
+    } else {
+      const mainContainer = containers.find((c) => !c.ghost);
+      if (!mainContainer) continue;
+      fromPoint = {
+        x: mainContainer.x + mainContainer.width,
+        y: mainContainer.y + mainContainer.height / 2,
+      };
+    }
+
     const toPoint = {
       x: toNode.x,
       y: toNode.y + toNode.height / 2,
