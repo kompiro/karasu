@@ -85,7 +85,13 @@ CI 通過後、以下のチェックを順に実行する。
    - 日本語やその他の非英語テキストが含まれている場合は警告し、修正を提案する
 3. **コードレビュー**: `/review` を実行して PR の変更内容をレビューし、GitHub にレビューコメントを投稿する
 
-すべてのチェック完了後のメッセージ:
+すべてのチェック完了後、Issue がある場合はラベルを `status: in-review` に更新する:
+
+   ```
+   gh issue edit <N> --remove-label "status: implementing" --add-label "status: in-review"
+   ```
+
+完了メッセージ:
 
    ```
    CI・ポストチェックが完了しました。
