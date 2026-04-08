@@ -235,6 +235,9 @@ system PaymentGateway {
     expect(pg).toBeDefined();
     // Systems are placed side by side: PaymentGateway starts to the right of ECPlatform
     expect(pg.x).toBeGreaterThan(ec.x + ec.width);
+    // All systems in root view should be rendered as non-ghost (regression: was ghost for si > 0)
+    expect(result.nodes.get("OrderService")!.ghost).toBe(false);
+    expect(result.nodes.get("PaymentService")!.ghost).toBe(false);
   });
 
   it("includes unassigned domains in the primary system container", () => {
