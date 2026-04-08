@@ -256,3 +256,41 @@ system PaymentGateway {
     expect(result.nodes.has("Logistics")).toBe(true);
   });
 });
+
+describe("layout > ghost system edges", () => {
+  const CROSS_SYSTEM_KRS = `
+system ECPlatform {
+  service OrderService {}
+  OrderService -> PaymentGateway.PaymentService "決済を依頼する"
+}
+system PaymentGateway {
+  service PaymentService {}
+}
+`;
+
+  it("produces a ghost edge when drilling into a service with cross-system edges", () => {
+    const result = Parser.parse(CROSS_SYSTEM_KRS);
+    const slice = extractView(result.value.systems, ["ECPlatform", "OrderService"]);
+    const layoutResult = layout(slice);
+
+    const ghostEdges = layoutResult.edges.filter((e) => e.ghost);
+    expect(ghostEdges).toHaveLength(1);
+    expect(ghostEdges[0].from).toBe("OrderService");
+    expect(ghostEdges[0].to).toBe("PaymentGateway.PaymentService");
+  });
+
+  it("ghost edge has valid fromPoint and toPoint coordinates", () => {
+    const result = Parser.parse(CROSS_SYSTEM_KRS);
+    const slice = extractView(result.value.systems, ["ECPlatform", "OrderService"]);
+    const layoutResult = layout(slice);
+
+    const ghostEdge = layoutResult.edges.find((e) => e.ghost);
+    expect(ghostEdge).toBeDefined();
+    // fromPoint should come from the main container (OrderService has no child nodes)
+    // toPoint should be the left edge of PaymentService ghost node
+    expect(ghostEdge!.fromPoint.x).toBeGreaterThan(0);
+    // Ghost systems are always placed to the right of the source container
+    // by layoutGhostSystem(), so toPoint.x > fromPoint.x is always true here.
+    expect(ghostEdge!.toPoint.x).toBeGreaterThan(ghostEdge!.fromPoint.x);
+  });
+});
