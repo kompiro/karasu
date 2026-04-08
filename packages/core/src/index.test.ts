@@ -200,6 +200,53 @@ describe("compileProject — diagramType org style-conflict warnings", () => {
   });
 });
 
+describe("compile — nodeMetadata viewPath in multi-system root view", () => {
+  const MULTI_SYSTEM_KRS = `
+system SysA {
+  service ServiceA {}
+}
+system SysB {
+  service ServiceB {}
+}
+`;
+
+  it("includes viewPath for services in the first system", () => {
+    const result = compile(MULTI_SYSTEM_KRS, { diagramType: "system", viewPath: [] });
+    if (result.diagramType !== "system") throw new Error("expected system result");
+    expect(result.nodeMetadata.get("ServiceA")?.viewPath).toEqual(["SysA", "ServiceA"]);
+  });
+
+  it("includes viewPath for services in the second system (regression: was missing before fix)", () => {
+    const result = compile(MULTI_SYSTEM_KRS, { diagramType: "system", viewPath: [] });
+    if (result.diagramType !== "system") throw new Error("expected system result");
+    expect(result.nodeMetadata.get("ServiceB")?.viewPath).toEqual(["SysB", "ServiceB"]);
+  });
+});
+
+describe("compile — nodeMetadata viewPath for ghost system services", () => {
+  const CROSS_SYSTEM_KRS = `
+system ECPlatform {
+  service OrderService {}
+  OrderService -> PaymentGateway.PaymentService "決済を依頼する"
+}
+system PaymentGateway {
+  service PaymentService {}
+}
+`;
+
+  it("includes viewPath for ghost system services in service view", () => {
+    const result = compile(CROSS_SYSTEM_KRS, {
+      diagramType: "system",
+      viewPath: ["ECPlatform", "OrderService"],
+    });
+    if (result.diagramType !== "system") throw new Error("expected system result");
+    expect(result.nodeMetadata.get("PaymentService")?.viewPath).toEqual([
+      "PaymentGateway",
+      "PaymentService",
+    ]);
+  });
+});
+
 describe("deprecated compileProjectOrgView — backward compatibility", () => {
   it("still works and returns OrgCompileResult shape", async () => {
     const fs = new InMemoryFileSystemProvider();

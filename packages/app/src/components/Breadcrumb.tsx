@@ -1,8 +1,14 @@
 import { useCallback } from "react";
 
-interface BreadcrumbItem {
+export interface BreadcrumbItem {
   id: string;
   label: string;
+  /**
+   * Explicit ViewPath to navigate to when this item is clicked.
+   * When provided, used directly instead of the default slice-based computation.
+   * Default: items.slice(1, index + 1).map(item => item.id)
+   */
+  navigatePath?: string[];
 }
 
 interface BreadcrumbProps {
@@ -13,8 +19,13 @@ interface BreadcrumbProps {
 export function Breadcrumb({ items, onNavigate }: BreadcrumbProps) {
   const handleClick = useCallback(
     (index: number) => {
-      // Clicking system (index 0) goes to [], clicking service (index 1) goes to [items[1].id], etc.
-      const newPath = items.slice(1, index + 1).map((item) => item.id);
+      const item = items[index];
+      if (item.navigatePath !== undefined) {
+        onNavigate(item.navigatePath);
+        return;
+      }
+      // Default: clicking item at index 0 goes to [], index 1 goes to [items[1].id], etc.
+      const newPath = items.slice(1, index + 1).map((i) => i.id);
       onNavigate(newPath);
     },
     [items, onNavigate],

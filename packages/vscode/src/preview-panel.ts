@@ -60,9 +60,15 @@ export class PreviewPanel {
             void this._render(this._currentDocument);
           }
         } else if (message.type === "drillDown" && message.nodeId) {
-          const label = this._lastNodeMetadata?.get(message.nodeId)?.label ?? message.nodeId;
-          this._viewPath = [...this._viewPath, message.nodeId];
-          this._viewLabels = [...this._viewLabels, label];
+          const meta = this._lastNodeMetadata?.get(message.nodeId);
+          const lastLabel = meta?.label ?? message.nodeId;
+          // Use viewPath from metadata (includes system ID prefix) when available.
+          // Fall back to appending nodeId for nodes not in the index.
+          const newPath = meta?.viewPath ?? [...this._viewPath, message.nodeId];
+          // Build labels: use nodeId as label for intermediate path segments, resolved label for the last.
+          const newLabels = newPath.map((id, i) => (i === newPath.length - 1 ? lastLabel : id));
+          this._viewPath = newPath;
+          this._viewLabels = newLabels;
           if (this._currentDocument) {
             void this._render(this._currentDocument);
           }

@@ -204,10 +204,13 @@ export function PreviewPane({
       const nodeId = nodeGroup.getAttribute("data-node-id");
 
       if (hasChildren && nodeId && onDrillDown) {
-        // Drill down into child level
+        // Drill down into child level.
+        // Use viewPath from nodeMetadata when available (includes system ID prefix for Phase 2).
+        // Fall back to appending nodeId to the current viewPath for nodes not in the index.
+        const drillPath = nodeMetadata.get(nodeId)?.viewPath ?? [...viewPath, nodeId];
         setDetailPanel(null);
         onClearHighlight?.();
-        onDrillDown([...viewPath, nodeId]);
+        onDrillDown(drillPath);
       } else if (nodeId) {
         // Open detail panel for leaf nodes
         onClearHighlight?.();
@@ -215,6 +218,7 @@ export function PreviewPane({
       }
     },
     [
+      nodeMetadata,
       viewPath,
       onDrillDown,
       openDetailPanel,

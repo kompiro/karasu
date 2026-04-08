@@ -964,7 +964,7 @@ system Test {
   });
 
   describe("nodePathIndex", () => {
-    it("builds single-level paths for direct children of system", () => {
+    it("builds paths with system ID prefix for direct children of system", () => {
       const result = Parser.parse(`
 system EC {
   service Payment {}
@@ -972,11 +972,11 @@ system EC {
 }
       `);
       expect(result.diagnostics).toHaveLength(0);
-      expect(result.value.nodePathIndex.get("Payment")).toEqual(["Payment"]);
-      expect(result.value.nodePathIndex.get("Order")).toEqual(["Order"]);
+      expect(result.value.nodePathIndex.get("Payment")).toEqual(["EC", "Payment"]);
+      expect(result.value.nodePathIndex.get("Order")).toEqual(["EC", "Order"]);
     });
 
-    it("builds multi-level paths for nested nodes", () => {
+    it("builds multi-level paths including system ID for nested nodes", () => {
       const result = Parser.parse(`
 system EC {
   service Payment {
@@ -985,8 +985,8 @@ system EC {
 }
       `);
       expect(result.diagnostics).toHaveLength(0);
-      expect(result.value.nodePathIndex.get("Payment")).toEqual(["Payment"]);
-      expect(result.value.nodePathIndex.get("Checkout")).toEqual(["Payment", "Checkout"]);
+      expect(result.value.nodePathIndex.get("Payment")).toEqual(["EC", "Payment"]);
+      expect(result.value.nodePathIndex.get("Checkout")).toEqual(["EC", "Payment", "Checkout"]);
     });
 
     it("does not include the system node itself in the index", () => {
@@ -1025,7 +1025,7 @@ system EC {
       const warnings = result.diagnostics.filter((d) => d.severity === "warning");
       expect(warnings.length).toBeGreaterThanOrEqual(1);
       expect(warnings[0].message).toContain("Checkout");
-      expect(result.value.nodePathIndex.get("Checkout")).toEqual(["Payment", "Checkout"]);
+      expect(result.value.nodePathIndex.get("Checkout")).toEqual(["EC", "Payment", "Checkout"]);
     });
 
     it("warns when owns references an id not found in the system hierarchy", () => {
@@ -1071,7 +1071,7 @@ organization Corp {
       `);
       expect(result.diagnostics).toHaveLength(0);
       expect(result.value.ownerIndex.get("Payment")).toBe("backend");
-      expect(result.value.nodePathIndex.get("Payment")).toEqual(["Payment"]);
+      expect(result.value.nodePathIndex.get("Payment")).toEqual(["EC", "Payment"]);
     });
   });
 
