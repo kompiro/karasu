@@ -20,11 +20,16 @@ resource { shape: url("resource"); }
 team     { shape: url("team");     }
 member   { shape: url("member");   }
 
+/* ── Infra nodes ── */
+database { shape: url("database"); }
+queue    { shape: url("queue");    }
+storage  { shape: url("cloud");    }
+
 /* ── Resource tag variants ── */
-resource[table]   { shape: url("database"); }
-resource[queue]   { shape: url("queue-card");    }
-resource[api]     { shape: url("api");      }
-resource[storage] { shape: url("cloud-card");    }
+resource[table]   { shape: url("table");      }
+resource[queue]   { shape: url("queue-card"); }
+resource[api]     { shape: url("api");        }
+resource[storage] { shape: url("cloud-card"); }
 
 /* ── Deploy nodes ── */
 oci      { shape: url("oci");      }
