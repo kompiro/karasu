@@ -153,7 +153,7 @@ export function layout(
       layoutNodes.set(nid, {
         kind: krsNode.kind,
         id: nid,
-        label: krsNode.label ?? krsNode.id,
+        label: viewSlice.resourceLabelMap.get(nid) ?? krsNode.label ?? krsNode.id,
         properties: extractLayoutProperties(krsNode, resolvedTeam),
         descriptionSummary: krsNode.properties.description
           ? summarizeDescription(krsNode.properties.description)
@@ -576,7 +576,7 @@ function layoutMultipleSystems(
         localNodes.set(nid, {
           kind: krsNode.kind,
           id: nid,
-          label: krsNode.label ?? krsNode.id,
+          label: viewSlice.resourceLabelMap.get(nid) ?? krsNode.label ?? krsNode.id,
           properties: extractLayoutProperties(krsNode, resolvedTeam),
           descriptionSummary: krsNode.properties.description
             ? summarizeDescription(krsNode.properties.description)

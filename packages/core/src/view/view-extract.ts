@@ -88,10 +88,35 @@ export interface ViewSlice {
   ghostSystems: GhostSystem[];
   /** Service view only: the cross-system edges targeting ghost systems. */
   ghostSystemEdges: KrsEdge[];
+  /**
+   * Maps dot-notation resource node IDs (e.g. "OrderDB.OrderTable") to the
+   * resolved label of the referenced infra sub-resource (e.g. "注文テーブル").
+   * Used to display the infra-defined label instead of the raw ID.
+   */
+  resourceLabelMap: Map<string, string>;
 }
 
 function nodeId(node: KrsNode): string {
   return node.id;
+}
+
+/**
+ * Build a map from dot-notation resource IDs (e.g. "OrderDB.OrderTable") to the
+ * label of the referenced infra sub-resource (e.g. "注文テーブル").
+ * Covers database/queue/storage nodes and their children across all systems.
+ */
+function buildResourceLabelMap(systems: KrsNode[]): Map<string, string> {
+  const map = new Map<string, string>();
+  for (const system of systems) {
+    for (const node of system.children) {
+      if (!INFRA_KINDS.has(node.kind as "database" | "queue" | "storage")) continue;
+      for (const sub of node.children) {
+        const key = `${node.id}.${sub.id}`;
+        map.set(key, sub.label ?? sub.id);
+      }
+    }
+  }
+  return map;
 }
 
 function buildGhostSystems(edges: KrsEdge[], allSystems: KrsNode[]): GhostSystem[] {
@@ -121,6 +146,8 @@ export function extractView(
   path: ViewPath,
   unassignedDomains: KrsNode[] = [],
 ): ViewSlice {
+  const resourceLabelMap = buildResourceLabelMap(systems);
+
   const empty: ViewSlice = {
     containerNode: null,
     childNodes: [],
@@ -132,6 +159,7 @@ export function extractView(
     crossSystemEdges: [],
     ghostSystems: [],
     ghostSystemEdges: [],
+    resourceLabelMap,
   };
 
   if (systems.length === 0) return empty;
@@ -170,6 +198,7 @@ export function extractView(
       crossSystemEdges,
       ghostSystems: [],
       ghostSystemEdges: [],
+      resourceLabelMap,
     };
   }
 
@@ -252,5 +281,6 @@ export function extractView(
     crossSystemEdges: [],
     ghostSystems,
     ghostSystemEdges,
+    resourceLabelMap,
   };
 }

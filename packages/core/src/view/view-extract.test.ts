@@ -42,6 +42,38 @@ system ECPlatform {
 }
 `;
 
+const INFRA_KRS = `
+system ECPlatform {
+  database OrderDB {
+    table OrderTable { label "注文テーブル" }
+    table InventoryTable { label "在庫テーブル" }
+  }
+  queue EventBus {
+    queue OrderCreated { label "注文作成イベント" }
+  }
+  storage MediaStorage {
+    bucket ImageBucket { label "商品画像バケット" }
+  }
+
+  service OrderService {
+    domain Order {
+      usecase PlaceOrder {
+        resource OrderDB.OrderTable
+        resource EventBus.OrderCreated
+      }
+    }
+  }
+  service MediaService {
+    domain Media {
+      usecase UploadImage {
+        resource MediaStorage.ImageBucket
+        resource OrderDB.InventoryTable
+      }
+    }
+  }
+}
+`;
+
 describe("extractView", () => {
   describe("system view (empty path)", () => {
     it("returns system's direct children", () => {
@@ -411,38 +443,6 @@ system ECPlatform {
   });
 
   describe("infra nodes in system view", () => {
-    const INFRA_KRS = `
-system ECPlatform {
-  database OrderDB {
-    table OrderTable { label "注文テーブル" }
-    table InventoryTable { label "在庫テーブル" }
-  }
-  queue EventBus {
-    queue OrderCreated { label "注文作成イベント" }
-  }
-  storage MediaStorage {
-    bucket ImageBucket { label "商品画像バケット" }
-  }
-
-  service OrderService {
-    domain Order {
-      usecase PlaceOrder {
-        resource OrderDB.OrderTable
-        resource EventBus.OrderCreated
-      }
-    }
-  }
-  service MediaService {
-    domain Media {
-      usecase UploadImage {
-        resource MediaStorage.ImageBucket
-        resource OrderDB.InventoryTable
-      }
-    }
-  }
-}
-`;
-
     it("includes database/queue/storage as childNodes in system view", () => {
       const systems = parseSystem(INFRA_KRS);
       const view = extractView(systems, []);
@@ -547,6 +547,46 @@ system ECPlatform {
         ),
       );
       expect(infraEdges).toHaveLength(0);
+    });
+  });
+
+  describe("resourceLabelMap", () => {
+    it("maps dot-notation resource IDs to infra sub-resource labels", () => {
+      const systems = parseSystem(INFRA_KRS);
+      const view = extractView(systems, []);
+
+      expect(view.resourceLabelMap.get("OrderDB.OrderTable")).toBe("注文テーブル");
+      expect(view.resourceLabelMap.get("OrderDB.InventoryTable")).toBe("在庫テーブル");
+      expect(view.resourceLabelMap.get("EventBus.OrderCreated")).toBe("注文作成イベント");
+      expect(view.resourceLabelMap.get("MediaStorage.ImageBucket")).toBe("商品画像バケット");
+    });
+
+    it("falls back to sub-resource ID when no label is set", () => {
+      const krs = `
+system ECPlatform {
+  database OrderDB {
+    table OrderTable
+  }
+  service OrderService {
+    domain Order {
+      usecase PlaceOrder {
+        resource OrderDB.OrderTable
+      }
+    }
+  }
+}
+`;
+      const systems = parseSystem(krs);
+      const view = extractView(systems, []);
+
+      expect(view.resourceLabelMap.get("OrderDB.OrderTable")).toBe("OrderTable");
+    });
+
+    it("is empty when no infra nodes exist", () => {
+      const systems = parseSystem(FULL_KRS);
+      const view = extractView(systems, []);
+
+      expect(view.resourceLabelMap.size).toBe(0);
     });
   });
 });
