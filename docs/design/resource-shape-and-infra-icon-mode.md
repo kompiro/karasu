@@ -122,8 +122,17 @@ storage  { shape: url("cloud");    }
 | `queue-card.svg` | queue サブリソース（メッセージキュー内の個別キュー） | `queue.svg` をベースにピクトグラム調整 |
 | `cloud-card.svg` | bucket（ストレージ内の個別バケット） | `cloud.svg` をベースにピクトグラム調整 |
 
-なお `database` の resource[table] は既存の `url("database")` で代替可能か検討が必要。
-テーブルは DB の中の概念であり、DB アイコンそのものより「テーブル」を示すピクトグラムが望ましい可能性がある。
+加えて、`resource[table]` 向けの `table.svg` も新規作成する。
+テーブルは将来 PK などプロパティを持つ概念に発展する可能性があり、
+DB（コンテナ）とテーブル（要素）を視覚的に区別する必要がある。
+
+作成が必要な SVG ファイル一覧：
+
+| ファイル名 | 用途 | ピクトグラムの方向性 |
+|---|---|---|
+| `table.svg` | `resource[table]` (Icon Mode) | 行・列のグリッドまたは表形式を示す |
+| `queue-card.svg` | `resource[queue]` (Icon Mode) | メッセージ1通を示す封筒・封書風 |
+| `cloud-card.svg` | `resource[bucket]` (Icon Mode) | ファイル/オブジェクトを示すファイル風 |
 
 ## 現時点の方針
 
@@ -132,9 +141,8 @@ storage  { shape: url("cloud");    }
 | resource shape 自動推論 | **案 B**: ビュー抽出層でコピーノード生成 + `resourceInferredTagsMap` |
 | `database`/`queue`/`storage` Icon Mode | `icon-theme.ts` に 3 エントリ追加 |
 | `queue-card`/`cloud-card` SVG | 新規作成（160×100 Card 形式） |
-| `resource[table]` の Icon Mode アイコン | `url("database")` 流用 or 専用 SVG（別途判断） |
+| `resource[table]` の Icon Mode アイコン | **専用 `table.svg` を新規作成**（DB と区別するため） |
 
 ## 未解決の問い
 
-- `resource[table]` → `url("database")` 流用で視覚的に許容できるか（DB アイコンとテーブルアイコンの区別が必要か）
-- `queue-card` / `cloud-card` のピクトグラムデザインをどう決めるか
+- `queue-card` / `cloud-card` / `table` のピクトグラムデザインの詳細（`/svg-icon` スキルで詰める）
