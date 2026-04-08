@@ -143,7 +143,7 @@ describe("useProjectNavigation", () => {
   });
 
   describe("navigateToProject", () => {
-    it("calls pushState with project path and dispatches SET_CURRENT_PROJECT", () => {
+    it("calls pushState with project path + initial hash and dispatches SET_CURRENT_PROJECT", () => {
       const dispatch = vi.fn<() => void>();
       const { result } = renderHook(() => useProjectNavigation(projects, projectA, dispatch));
 
@@ -151,11 +151,13 @@ describe("useProjectNavigation", () => {
         result.current.navigateToProject(projectB);
       });
 
-      expect(history.pushState).toHaveBeenCalledWith(null, "", "/projects/bbb");
+      // SELECT_FILE が viewPath/activeView を system/root にリセットするため、
+      // useHistoryNavigation Effect ③ との不一致を防ぐために #krs-system-root を含める
+      expect(history.pushState).toHaveBeenCalledWith(null, "", "/projects/bbb#krs-system-root");
       expect(dispatch).toHaveBeenCalledWith({ type: "SET_CURRENT_PROJECT", project: projectB });
     });
 
-    it("resets hash when navigating to a different project", () => {
+    it("always navigates to system root when switching project", () => {
       history.replaceState(null, "", "/projects/aaa#krs-system-Payment");
       const dispatch = vi.fn<() => void>();
       const { result } = renderHook(() => useProjectNavigation(projects, projectA, dispatch));
@@ -164,8 +166,8 @@ describe("useProjectNavigation", () => {
         result.current.navigateToProject(projectB);
       });
 
-      // hash なしのパスが pushState される
-      expect(history.pushState).toHaveBeenCalledWith(null, "", "/projects/bbb");
+      // ドリルダウン状態は引き継がれず、system root にリセットされる
+      expect(history.pushState).toHaveBeenCalledWith(null, "", "/projects/bbb#krs-system-root");
     });
   });
 
