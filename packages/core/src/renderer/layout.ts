@@ -86,7 +86,11 @@ export function layout(
   const allNodes = viewSlice.childNodes;
   const allEdges = viewSlice.childEdges;
 
-  if (allNodes.length === 0 && viewSlice.ghostUsers.length === 0 && viewSlice.ghostSystems.length === 0) {
+  if (
+    allNodes.length === 0 &&
+    viewSlice.ghostUsers.length === 0 &&
+    viewSlice.ghostSystems.length === 0
+  ) {
     // Empty container: still produce container rects
     const containers = buildContainersForEmpty(viewSlice);
     const outermost = containers.length > 0 ? containers[0] : null;
