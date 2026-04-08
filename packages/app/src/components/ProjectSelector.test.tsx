@@ -21,10 +21,10 @@ function baseProps(currentProject: Project | null = makeProject()) {
   return {
     projects: currentProject ? [currentProject] : [],
     currentProject,
-    onSelectProject: vi.fn<() => void>(),
-    onCreateProject: vi.fn<() => void>(),
-    onRenameProject: vi.fn<() => void>(),
-    onDeleteProject: vi.fn<() => void>(),
+    onSelectProject: vi.fn<(project: Project) => void>(),
+    onCreateProject: vi.fn<(name: string) => void>(),
+    onRenameProject: vi.fn<(id: string, newName: string) => void>(),
+    onDeleteProject: vi.fn<(id: string) => void>(),
   };
 }
 
@@ -113,6 +113,30 @@ describe("ProjectSelector — Rename", () => {
     fireEvent.click(getByRole("button", { name: "Cancel" }));
     expect(props.onRenameProject).not.toHaveBeenCalled();
     expect(queryByRole("textbox")).toBeNull();
+  });
+
+  it("pressing Enter with unchanged name does not close the rename UI", () => {
+    const project = makeProject({ name: "My Project" });
+    const props = baseProps(project);
+    const { getByRole } = render(<ProjectSelector {...props} />);
+    fireEvent.click(getByRole("button", { name: /Rename/ }));
+    const input = getByRole("textbox");
+    // name is unchanged — Enter should be a no-op
+    fireEvent.keyDown(input, { key: "Enter" });
+    expect(props.onRenameProject).not.toHaveBeenCalled();
+    expect(getByRole("textbox")).toBeTruthy();
+  });
+
+  it("pressing Enter with empty input does not close the rename UI", () => {
+    const project = makeProject({ name: "My Project" });
+    const props = baseProps(project);
+    const { getByRole } = render(<ProjectSelector {...props} />);
+    fireEvent.click(getByRole("button", { name: /Rename/ }));
+    const input = getByRole("textbox");
+    fireEvent.change(input, { target: { value: "" } });
+    fireEvent.keyDown(input, { key: "Enter" });
+    expect(props.onRenameProject).not.toHaveBeenCalled();
+    expect(getByRole("textbox")).toBeTruthy();
   });
 });
 

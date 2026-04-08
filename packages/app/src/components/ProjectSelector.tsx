@@ -64,8 +64,8 @@ export function ProjectSelector({
     const trimmed = renameValue.trim();
     if (trimmed && trimmed !== currentProject.name) {
       onRenameProject(currentProject.id, trimmed);
+      setIsRenaming(false);
     }
-    setIsRenaming(false);
   }, [currentProject, renameValue, onRenameProject]);
 
   const handleRenameKeyDown = useCallback(
