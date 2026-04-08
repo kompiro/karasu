@@ -130,17 +130,19 @@ CI 通過後、以下のチェックを順に実行する。
 3. **コードレビュー**: `/review` を実行して PR の変更内容をレビューし、GitHub にレビューコメントを投稿する
 
 すべてのチェック完了後、ユーザーに手動検証を依頼する。
-動作確認用に Preview URL を表示する。Cloudflare Pages が PR にコメントとして投稿するので、以下で取得する:
+動作確認用に Preview URL を表示する。`cloudflare/wrangler-action` は PR コメントではなく GitHub Deployment ステータスを作成するため、ブランチ名から URL を構築する。Cloudflare Pages はブランチ名の `/` を `-` に変換するので注意すること:
 
    ```
-   gh pr view <pr-number> --comments --json comments \
-     --jq '.comments[].body | select(contains("pages.dev"))'
+   # ブランチ名の / を - に変換して URL を構築する
+   # 例: feat/my-feature → https://feat-my-feature.karasu.pages.dev
+   BRANCH=$(git rev-parse --abbrev-ref HEAD | sed 's/\//-/g')
+   echo "Preview URL: https://${BRANCH}.karasu.pages.dev"
    ```
 
    取得した URL をユーザーに表示する:
 
    ```
-   Preview URL: https://<branch>.karasu.pages.dev
+   Preview URL: https://<sanitized-branch>.karasu.pages.dev
    ```
 
 > ここで Claude の作業は一旦完了。
