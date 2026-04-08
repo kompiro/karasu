@@ -89,7 +89,8 @@ export function layout(
   if (
     allNodes.length === 0 &&
     viewSlice.ghostUsers.length === 0 &&
-    viewSlice.ghostSystems.length === 0
+    viewSlice.ghostSystems.length === 0 &&
+    viewSlice.callerGhostSystems.length === 0
   ) {
     // Empty container: still produce container rects
     const containers = buildContainersForEmpty(viewSlice);
@@ -316,10 +317,55 @@ export function layout(
     }
   }
 
-  // Ghost systems: position to the right of the outermost container
+  const GHOST_SYSTEM_GAP = 80;
+
+  // Caller ghost systems: position to the LEFT of the outermost container
+  // Layout first (with a temporary x=0) so we know their widths, then shift right.
+  if (viewSlice.callerGhostSystems.length > 0 && containers.length > 0) {
+    const outermost = containers[0];
+    const ghostStartY = outermost.y;
+
+    // Lay out left-to-right starting from x=0 (will be shifted after measuring)
+    const callerContainers: ContainerRect[] = [];
+    let tempX = 0;
+    for (const gs of viewSlice.callerGhostSystems) {
+      const { nodes: gsNodes, containerRect } = layoutGhostSystem(
+        gs,
+        tempX,
+        ghostStartY,
+        ownerIndex,
+        displayMode,
+      );
+      callerContainers.push(containerRect);
+      for (const [id, node] of gsNodes) {
+        layoutNodes.set(id, node);
+      }
+      tempX += containerRect.width + GHOST_SYSTEM_GAP;
+    }
+
+    // Total width of all caller ghost systems
+    const totalCallerWidth = tempX - GHOST_SYSTEM_GAP;
+    // Place them to the left of the outermost container
+    const callerStartX = outermost.x - GHOST_SYSTEM_GAP - totalCallerWidth;
+    const shiftX = callerStartX;
+
+    // Shift all caller ghost nodes and containers
+    for (const gs of viewSlice.callerGhostSystems) {
+      for (const svc of gs.visibleServices) {
+        const qualifiedId = `${gs.systemNode.id}.${svc.id}`;
+        const node = layoutNodes.get(qualifiedId);
+        if (node) node.x += shiftX;
+      }
+    }
+    for (const c of callerContainers) {
+      c.x += shiftX;
+      containers.push(c);
+    }
+  }
+
+  // Ghost systems (outgoing): position to the right of the outermost container
   if (viewSlice.ghostSystems.length > 0 && containers.length > 0) {
     const outermost = containers[0];
-    const GHOST_SYSTEM_GAP = 80;
     let ghostX = outermost.x + outermost.width + GHOST_SYSTEM_GAP;
     const ghostStartY = outermost.y;
 
@@ -378,6 +424,38 @@ export function layout(
       to: edge.to,
       label: edge.label,
       fromPoint,
+      toPoint,
+      ghost: true,
+    });
+  }
+
+  // Caller ghost system edges: from a caller ghost service (left) to the main container (right)
+  for (const edge of viewSlice.callerGhostSystemEdges) {
+    const fromNode = layoutNodes.get(edge.from); // qualified: "SysA.ServiceA"
+    if (!fromNode) continue;
+
+    // edge.to is the container service ID — fall back to the main container rect
+    const toNode = layoutNodes.get(edge.to);
+    let toPoint: { x: number; y: number };
+    if (toNode) {
+      toPoint = { x: toNode.x, y: toNode.y + toNode.height / 2 };
+    } else {
+      const mainContainer = containers.find((c) => !c.ghost);
+      if (!mainContainer) continue;
+      toPoint = {
+        x: mainContainer.x,
+        y: mainContainer.y + mainContainer.height / 2,
+      };
+    }
+
+    layoutEdges.push({
+      from: edge.from,
+      to: edge.to,
+      label: edge.label,
+      fromPoint: {
+        x: fromNode.x + fromNode.width,
+        y: fromNode.y + fromNode.height / 2,
+      },
       toPoint,
       ghost: true,
     });

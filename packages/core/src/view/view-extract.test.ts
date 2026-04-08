@@ -439,6 +439,53 @@ system ECPlatform {
         expect(view.ghostSystems).toHaveLength(0);
         expect(view.ghostSystemEdges).toHaveLength(0);
       });
+
+      it("populates callerGhostSystems when another service calls into this service", () => {
+        const result = Parser.parse(CROSS_SYSTEM_KRS);
+        // PaymentService is called by OrderService in ECPlatform
+        const view = extractView(result.value.systems, ["PaymentGateway", "PaymentService"]);
+
+        expect(view.callerGhostSystems).toHaveLength(1);
+        expect(view.callerGhostSystems[0].systemNode.id).toBe("ECPlatform");
+        expect(view.callerGhostSystems[0].visibleServices).toHaveLength(1);
+        expect(view.callerGhostSystems[0].visibleServices[0].id).toBe("OrderService");
+      });
+
+      it("populates callerGhostSystemEdges with qualified from-ID", () => {
+        const result = Parser.parse(CROSS_SYSTEM_KRS);
+        const view = extractView(result.value.systems, ["PaymentGateway", "PaymentService"]);
+
+        expect(view.callerGhostSystemEdges).toHaveLength(1);
+        expect(view.callerGhostSystemEdges[0].from).toBe("ECPlatform.OrderService");
+        expect(view.callerGhostSystemEdges[0].to).toBe("PaymentService");
+      });
+
+      it("has empty callerGhostSystems when no other service calls into this service", () => {
+        const result = Parser.parse(CROSS_SYSTEM_KRS);
+        // OrderService calls others but is not called by any cross-system edge
+        const view = extractView(result.value.systems, ["ECPlatform", "OrderService"]);
+
+        expect(view.callerGhostSystems).toHaveLength(0);
+        expect(view.callerGhostSystemEdges).toHaveLength(0);
+      });
+
+      it("deduplicates callerGhostSystems visibleServices for multiple edges from same caller", () => {
+        const krs = `
+system ECPlatform {
+  service OrderService {}
+  OrderService -> PaymentGateway.PaymentService "決済する"
+  OrderService -> PaymentGateway.PaymentService "再試行する"
+}
+system PaymentGateway {
+  service PaymentService {}
+}
+`;
+        const result = Parser.parse(krs);
+        const view = extractView(result.value.systems, ["PaymentGateway", "PaymentService"]);
+
+        expect(view.callerGhostSystems).toHaveLength(1);
+        expect(view.callerGhostSystems[0].visibleServices).toHaveLength(1);
+      });
     });
   });
 

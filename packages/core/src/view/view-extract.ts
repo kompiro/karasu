@@ -84,10 +84,17 @@ export interface ViewSlice {
   systems: KrsNode[];
   /** Root view only: edges with qualified targets (SystemId.ServiceId) between systems. */
   crossSystemEdges: KrsEdge[];
-  /** Service view only: external systems referenced via cross-system edges. */
+  /** Service view only: external systems referenced via cross-system edges (outgoing). */
   ghostSystems: GhostSystem[];
-  /** Service view only: the cross-system edges targeting ghost systems. */
+  /** Service view only: the cross-system edges targeting ghost systems (outgoing). */
   ghostSystemEdges: KrsEdge[];
+  /** Service view only: external systems that call into this service (incoming). */
+  callerGhostSystems: GhostSystem[];
+  /**
+   * Service view only: incoming cross-system edges from caller ghost systems.
+   * Edge format: from = "CallerSystemId.CallerServiceId", to = containerId.
+   */
+  callerGhostSystemEdges: KrsEdge[];
   /**
    * Maps dot-notation resource node IDs (e.g. "OrderDB.OrderTable") to the
    * resolved label of the referenced infra sub-resource (e.g. "注文テーブル").
@@ -117,6 +124,44 @@ function buildResourceLabelMap(systems: KrsNode[]): Map<string, string> {
     }
   }
   return map;
+}
+
+/**
+ * Find all services in other systems that have a cross-system edge targeting
+ * `containerSystemId.containerId`. Returns caller ghost systems (rendered to the
+ * left of the container) and synthetic edges in the form:
+ *   from = "CallerSystemId.CallerServiceId", to = containerId
+ */
+function buildCallerGhostSystems(
+  containerId: string,
+  containerSystemId: string,
+  allSystems: KrsNode[],
+): { callerGhostSystems: GhostSystem[]; callerGhostSystemEdges: KrsEdge[] } {
+  const qualifiedTarget = `${containerSystemId}.${containerId}`;
+  const map = new Map<string, GhostSystem>();
+  const edges: KrsEdge[] = [];
+
+  for (const sys of allSystems) {
+    if (sys.id === containerSystemId) continue;
+    for (const edge of sys.edges) {
+      if (edge.to !== qualifiedTarget) continue;
+      const callerService = sys.children.find((c) => c.id === edge.from);
+      if (!callerService) continue;
+      if (!map.has(sys.id)) {
+        map.set(sys.id, { systemNode: sys, visibleServices: [] });
+      }
+      const gs = map.get(sys.id)!;
+      if (!gs.visibleServices.some((s) => s.id === callerService.id)) {
+        gs.visibleServices.push(callerService);
+      }
+      // Qualify the from-ID so layout can find it in layoutNodes by qualified key
+      edges.push({ ...edge, from: `${sys.id}.${edge.from}`, to: containerId });
+    }
+  }
+  return {
+    callerGhostSystems: Array.from(map.values()),
+    callerGhostSystemEdges: edges,
+  };
 }
 
 function buildGhostSystems(edges: KrsEdge[], allSystems: KrsNode[]): GhostSystem[] {
@@ -159,6 +204,8 @@ export function extractView(
     crossSystemEdges: [],
     ghostSystems: [],
     ghostSystemEdges: [],
+    callerGhostSystems: [],
+    callerGhostSystemEdges: [],
     resourceLabelMap,
   };
 
@@ -198,6 +245,8 @@ export function extractView(
       crossSystemEdges,
       ghostSystems: [],
       ghostSystemEdges: [],
+      callerGhostSystems: [],
+      callerGhostSystemEdges: [],
       resourceLabelMap,
     };
   }
@@ -238,6 +287,8 @@ export function extractView(
   let ghostUserEdges: KrsEdge[] = [];
   let ghostSystems: GhostSystem[] = [];
   let ghostSystemEdges: KrsEdge[] = [];
+  let callerGhostSystems: GhostSystem[] = [];
+  let callerGhostSystemEdges: KrsEdge[] = [];
 
   const isServiceView = path.length - startIndex === 1;
   if (isServiceView) {
@@ -268,6 +319,13 @@ export function extractView(
       const sysId = e.to.slice(0, e.to.indexOf("."));
       return resolvedSysIds.has(sysId);
     });
+
+    // Caller ghost systems: other systems that have edges pointing into this service
+    ({ callerGhostSystems, callerGhostSystemEdges } = buildCallerGhostSystems(
+      containerId,
+      system.id,
+      systems,
+    ));
   }
 
   return {
@@ -281,6 +339,8 @@ export function extractView(
     crossSystemEdges: [],
     ghostSystems,
     ghostSystemEdges,
+    callerGhostSystems,
+    callerGhostSystemEdges,
     resourceLabelMap,
   };
 }
