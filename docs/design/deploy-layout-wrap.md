@@ -1,4 +1,4 @@
-# Deploy 図レイアウト改善 — 横展開を抑えるラップレイアウト
+# Deploy 図レイアウト改善 — 階層 DAG レイアウト（Tree レイアウト）
 
 - **日付**: 2026-04-08
 - **ステータス**: 検討中
@@ -31,6 +31,7 @@ for (const group of groups) {
 - SVG レンダラー（`svg-renderer.ts`）はレイアウト座標をそのまま使うため、
   レンダラー側の変更なしで完結させる
 - プレビューUI は SVG の `viewBox` をそのまま使うため、`width` / `height` が正しければ自動スケール
+- `DeployViewSlice.ghostEdges` がサービス間の依存グラフを提供している（`extractDeployView` で構築済み）
 
 ## 検討した選択肢
 
@@ -39,29 +40,13 @@ for (const group of groups) {
 `MAX_DIAGRAM_WIDTH`（例：1200px）を超えた場合に次の行へ折り返す。
 CSS `flex-wrap` に近い挙動。
 
-```
-┌─ Storefront ──┐  ┌─ OrderAPI ────┐  ┌─ Payment ────┐
-│  storefront   │  │  order-api    │  │  payment-svc │
-└───────────────┘  └───────────────┘  └──────────────┘
-
-┌─ Inventory ───┐  ┌─ Reporting ───┐  ┌─ LegacyERP ─┐
-│  inventory    │  │  daily-report │  │  legacy-erp  │
-└───────────────┘  └───────────────┘  └──────────────┘
-
-┌─ 未分類 ──────┐
-│  data-backfill│
-└───────────────┘
-```
-
 **メリット**
 - 実装がシンプル（ループに「折り返し判定」を追加するだけ）
 - 既存テストへの影響が最小（座標の絶対値が変わるだけ）
-- コンテナ数に依存して自動調整される
 
 **デメリット**
-- コンテナの意味的な関係（realizes の階層）を反映しない
+- コンテナの意味的な関係（service の依存関係）を反映しない
 - 行の詰め方が幅基準なので、視覚的なバランスが崩れることがある
-  （例：最後の行にコンテナ1つだけが残る）
 
 ---
 
@@ -69,101 +54,176 @@ CSS `flex-wrap` に近い挙動。
 
 コンテナ数から列数を √N 近似で決め、均等に配置する。
 
-```
-n=6 → 3列 × 2行
-n=7 → 3列 × 3行（最終行は2つ）
-```
-
 **メリット**
 - 視覚的なバランスが取りやすい
 
 **デメリット**
-- コンテナ幅がばらつく場合（ラベル長）に均等割が機能しない
-- 実装が案1より複雑（列幅の最大値揃えが必要）
+- コンテナ幅がばらつく場合に均等割が機能しない
+- 依存関係を反映しない
 
 ---
 
-### 案3: 階層レイアウト（realizes の親子ツリー）
+### 案3: 階層レイアウト（DAG を使った Sugiyama 風レイアウト）
 
-`realizes` が指す service の依存関係グラフを使い、
-system 図と対応したトポロジーで配置する。
+`ghostEdges` が表すサービス間依存グラフをもとに、
+上流のコンテナを上、下流のコンテナを下に配置する「レイヤー分け + 横並べ」のレイアウト。
+
+`examples/deploy/system.krs` の依存グラフ
+（`Storefront → OrderAPI → {Payment, Inventory, Reporting}`, `Inventory → LegacyERP`）
+に対して次のような配置が得られる：
 
 ```
-OrderAPI の上流 → OrderAPI → 下流（Payment, Inventory）
+Layer 0:  ┌─ ストアフロント ──┐
+          │  storefront SPA   │
+          └───────────────────┘
+                    │
+Layer 1:  ┌─ 注文API ─────────────────────────┐
+          │  order-api  order-event-handler    │
+          └───────────────────────────────────┘
+           │               │              │
+Layer 2:  ┌─ 決済 ─┐  ┌─ 在庫 ─┐  ┌─ レポーティング ─┐
+          │payment │  │inventory│  │ daily / monthly  │
+          └────────┘  └────────┘  └──────────────────┘
+                           │
+Layer 3:           ┌─ レガシーERP ─┐
+                   │  legacy-erp   │
+                   └───────────────┘
+
+（孤立・未分類は最下段に独立配置）
+┌─ 未分類 ──────┐
+│  data-backfill │
+└────────────────┘
 ```
 
 **メリット**
-- 論理構造と物理構造の対応が一目でわかる
+- service 間の依存関係が視覚的に明確になる（上流→下流の流れが見える）
+- 横展開を根本的に解消する
+- 将来的にドリルダウンやハイライト連携との親和性が高い
 
 **デメリット**
-- 実装コストが高い（DAG レイアウトアルゴリズムが必要）
-- `realizes` が持つ情報は「service ID」だけで service 間エッジは ghost エッジ経由 —
-  deploy 図だけでは依存グラフを完全に復元できない場合がある
-- 今回の Issue の主目的（「横展開を抑える」）からスコープが大きく広がる
+- 実装コストが案1・2より高い（DAG レイヤリングアルゴリズムが必要）
+- ghost エッジが存在しない孤立コンテナの扱いを別途定義する必要がある
+- 循環依存（サイクル）が存在する場合の扱いが必要
 
 ---
 
 ## 比較
 
-| 観点 | 案1 Wrap | 案2 Grid | 案3 Tree |
+| 観点 | 案1 Wrap | 案2 Grid | 案3 Tree (DAG) |
 |---|---|---|---|
-| 実装コスト | 小 | 中 | 大 |
+| 実装コスト | 小 | 中 | 中〜大 |
 | 横展開の解消 | ○ | ○ | ○ |
-| 意味的な配置 | △ | △ | ○ |
-| 既存テストへの影響 | 小（座標変更のみ） | 中 | 大 |
-| 将来の拡張性 | 案3への移行が可能 | 案3への移行が可能 | − |
+| 依存関係の可視化 | × | × | ◎ |
+| 既存テストへの影響 | 小 | 中 | 中（座標変更） |
+| 孤立コンテナの扱い | 自然 | 自然 | 要定義 |
 
 ## 現時点の方針
 
-**案1（Wrap レイアウト）を採用する。**
+**案3（階層 DAG レイアウト）を採用する。**
 
-最小の変更で「横展開を抑える」という目標を達成でき、
-将来的に案3（階層レイアウト）へ発展させる際にも
-`layoutDeploy` の入出力型を変えずに内部アルゴリズムを差し替えられる。
+deploy 図の主目的は「どのサービスがどこで動いているか・関係サービスは何か」を伝えることであり、
+service 間の依存関係を視覚的に反映したレイアウトが最も目的に適合する。
 
-### 実装方針の詳細
+### アルゴリズム設計
 
-#### 定数
+#### 1. レイヤー割り当て（Longest Path Layering）
 
-```ts
-const MAX_DIAGRAM_WIDTH = 1200;  // 折り返しの基準幅（px）
-const ROW_GAP = 48;              // 行間の余白
+```
+function assignLayers(containerIds, ghostEdges):
+  layer = Map<id, number>
+  inDegree = Map<id, number>（初期値 0）
+  successors = Map<id, id[]>
+
+  for each edge (from → to):
+    inDegree[to]++
+    successors[from].push(to)
+
+  // BFS — キューに in-degree = 0 のノードを積む
+  queue = [id | inDegree[id] === 0]
+  while queue not empty:
+    node = queue.shift()
+    for each successor of node:
+      layer[successor] = max(layer[successor], layer[node] + 1)
+      inDegree[successor]--
+      if inDegree[successor] === 0: queue.push(successor)
+
+  return layer
 ```
 
-#### アルゴリズム
+- 孤立コンテナ（どの edge にも登場しない）は layer 0 に入る
+- 未分類コンテナは「最大 layer + 1」の専用行に置く
 
-1. 全コンテナの幅を事前計算する
-2. 左から順にコンテナを並べ、`currentX + containerW > MAX_DIAGRAM_WIDTH - OUTER_PADDING` になったら改行
-3. 各行の最大高さを記録し、次の行の `startY` を `startY += maxRowHeight + ROW_GAP` で更新
+#### 2. 同レイヤー内の水平配置
 
-#### Ghost エッジのルーティング
+- 同レイヤーのコンテナをそのまま左から右に並べる（初期実装）
+- `MAX_LAYER_WIDTH = 1200` を超える場合は複数行に折り返す（将来拡張）
 
-- **同行（`fromRow === toRow`）**: 従来通り左右エッジを接続
-- **異なる行**: `from` の下辺中央 → `to` の上辺中央 で接続
-  （`from` が上の行にある場合）、または逆向き
+#### 3. 各レイヤーの Y 座標
+
+```
+rowY[0] = OUTER_PADDING
+rowY[i] = rowY[i-1] + maxHeightOfLayer[i-1] + ROW_GAP
+```
+
+`ROW_GAP = 64`（エッジを引く空間を確保するため、`CONTAINER_GAP` より大きく取る）
+
+#### 4. Ghost エッジのルーティング
+
+- **同レイヤー（異常ケース or サイクル由来）**: 左右接続（従来通り）
+- **隣接レイヤー（from.layer < to.layer）**: `from` の下辺中央 → `to` の上辺中央
+- **レイヤーをまたぐ長距離エッジ（from.layer + 1 < to.layer）**: 同上（直線で接続）
 
 ```ts
 function ghostEdgePoints(from: ContainerRect, to: ContainerRect) {
-  if (from.y === to.y) {
-    // 同行: 左右接続（従来ロジック）
-  } else if (from.y < to.y) {
-    // from が上の行: from 下辺中央 → to 上辺中央
-    fromPoint = { x: from.x + from.width / 2, y: from.y + from.height };
-    toPoint   = { x: to.x   + to.width   / 2, y: to.y };
+  if (from.y < to.y) {
+    // from が上のレイヤー → 下辺中央から上辺中央へ
+    return {
+      fromPoint: { x: from.x + from.width / 2, y: from.y + from.height },
+      toPoint:   { x: to.x   + to.width   / 2, y: to.y },
+    };
+  } else if (from.y > to.y) {
+    // from が下のレイヤー（逆向きエッジ）→ 上辺中央から下辺中央へ
+    return {
+      fromPoint: { x: from.x + from.width / 2, y: from.y },
+      toPoint:   { x: to.x   + to.width   / 2, y: to.y + to.height },
+    };
   } else {
-    // from が下の行: from 上辺中央 → to 下辺中央
-    fromPoint = { x: from.x + from.width / 2, y: from.y };
-    toPoint   = { x: to.x   + to.width   / 2, y: to.y + to.height };
+    // 同レイヤー → 左右接続（従来ロジック）
+    if (from.x < to.x) {
+      return {
+        fromPoint: { x: from.x + from.width, y: from.y + from.height / 2 },
+        toPoint:   { x: to.x,                y: to.y   + to.height   / 2 },
+      };
+    } else {
+      return {
+        fromPoint: { x: from.x,              y: from.y + from.height / 2 },
+        toPoint:   { x: to.x + to.width,     y: to.y   + to.height   / 2 },
+      };
+    }
   }
 }
 ```
 
+#### 5. サイクルの扱い
+
+実運用の deploy 定義でサイクルが発生するケースは稀だが、無限ループを防ぐため、
+BFS 中に「既に layer が確定したノードへの後退エッジ（back edge）」を検出した場合は
+その edge を ghost エッジとして描画するが、レイヤー割り当てには使用しない。
+
+#### 6. 定数追加
+
+```ts
+const ROW_GAP = 64;       // レイヤー間の縦余白
+const MAX_LAYER_WIDTH = 1200;  // 将来の同レイヤー折り返し用（今回は参考定義のみ）
+```
+
 ## 未解決の問い
 
-- `MAX_DIAGRAM_WIDTH = 1200` はハードコードでよいか？
-  将来的にユーザーが `.krs.style` や CLI オプションで変更したいケースがあるか？
-  → 今回はハードコードとし、設定化は別 Issue で検討する。
+- 同レイヤー内のコンテナ順序（エッジ交差最小化）は今回スコープ外でよいか？
+  → 初期実装は挿入順とし、将来の改善 Issue に委ねる。
 
-- 行内でコンテナ高さが異なる場合（例：units が多いコンテナと少ないコンテナが同行にある）、
-  短いコンテナをどう扱うか？
-  → 今回は特に揃えず、各コンテナを自然な高さで配置する（CSS `align-items: flex-start` 相当）。
+- 孤立コンテナが多数ある場合の layer 0 の横展開はどう扱うか？
+  → `MAX_LAYER_WIDTH` による折り返しは将来拡張とし、今回は直線配置のみ。
+
+- 未分類コンテナを最下段に置く代わりに layer 0 に混在させるか？
+  → 「realizes なし = 依存グラフに属さない」ため、最下段の独立行に置く方が意味的に正確。
