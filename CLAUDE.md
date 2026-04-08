@@ -50,10 +50,12 @@ karasu/
 
 ## 開発ワークフロー
 
-### ブランチ戦略
+> **作業開始時は必ず `docs/process.md` を読んでから着手すること。**
+> 以下は必ず守る制約のみ記載する。詳細手順は `docs/process.md` および `/start-dev` スキルを参照。
 
-- `main` ブランチへの直接コミットは避け、PR 経由でマージする
-- 機能開発はセッション内で `git worktree add` により worktree を作成して行う
+### ブランチ・worktree ルール
+
+- `main` への直接コミット・push は禁止 — 必ずブランチ + PR 経由でマージする
 - worktree の作成先は必ず `.worktrees/<branch-name>` とする（例: `git worktree add .worktrees/feat/my-feature feat/my-feature`）
 - ブランチ命名規則: `feat/`, `fix/`, `docs/`, `chore/`, `refactor/` + kebab-case
 
@@ -62,15 +64,3 @@ karasu/
 - Issue のタイトル・本文・コメントは英語で書く
 - PR のタイトル・description（本文）は英語で書く
 - commit メッセージも英語（subject）
-
-### PR ワークフロー
-
-1. GitHub Issue を作成する（`gh issue create`）
-2. `git worktree add .worktrees/<branch> <branch>` で worktree を作成し、その中で開発する
-3. Plan モードで実装計画を作成し、レビューを受ける
-4. 実装 → `/commit` → PR 作成（`Closes #N` で Issue 紐付け）
-5. CI（test, lint, format, typecheck, build）が通過することを確認する
-6. 手動検証チェックリストを実施する
-7. レビュー → マージ → `git worktree remove .worktrees/<branch>` でクリーンアップ
-
-詳細な手順は `docs/process.md` および `/start-dev` スキルを参照。
