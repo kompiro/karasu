@@ -66,6 +66,7 @@ karasu/
 
 - `main` ブランチへの直接コミットは避け、PR 経由でマージする
 - 機能開発はセッション内で `git worktree add` により worktree を作成して行う
+- worktree の作成先は必ず `.worktrees/<branch-name>` とする（例: `git worktree add .worktrees/feat/my-feature feat/my-feature`）
 - ブランチ命名規則: `feat/`, `fix/`, `docs/`, `chore/`, `refactor/` + kebab-case
 
 ### PR ワークフロー
