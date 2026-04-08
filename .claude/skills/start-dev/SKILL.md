@@ -130,11 +130,17 @@ CI 通過後、以下のチェックを順に実行する。
 3. **コードレビュー**: `/review` を実行して PR の変更内容をレビューし、GitHub にレビューコメントを投稿する
 
 すべてのチェック完了後、ユーザーに手動検証を依頼する。
-動作確認用に worktree のパスと開発サーバーの起動方法を表示する:
+動作確認用に Preview URL を表示する。Cloudflare Pages が PR にコメントとして投稿するので、以下で取得する:
 
    ```
-   Worktree: .worktrees/<機能名>
-   起動: cd .worktrees/<機能名> && pnpm run dev
+   gh pr view <pr-number> --comments --json comments \
+     --jq '.comments[].body | select(contains("pages.dev"))'
+   ```
+
+   取得した URL をユーザーに表示する:
+
+   ```
+   Preview URL: https://<branch>.karasu.pages.dev
    ```
 
 > ここで Claude の作業は一旦完了。
