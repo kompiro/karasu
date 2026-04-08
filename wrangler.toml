@@ -1,0 +1,3 @@
+name = "karasu"
+pages_build_output_dir = "packages/app/dist"
+compatibility_date = "2025-01-01"
