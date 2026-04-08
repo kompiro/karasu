@@ -72,10 +72,10 @@ describe("extractView", () => {
     });
   });
 
-  describe("service view (path length 1)", () => {
+  describe("service view (path length 2: [systemId, serviceId])", () => {
     it("returns service's domain children", () => {
       const systems = parseSystem(FULL_KRS);
-      const view = extractView(systems, ["ECommerce"]);
+      const view = extractView(systems, ["ECPlatform", "ECommerce"]);
 
       expect(view.containerNode?.kind).toBe("service");
       expect(view.containerNode?.id).toBe("ECommerce");
@@ -84,7 +84,7 @@ describe("extractView", () => {
 
     it("builds ancestor chain with system", () => {
       const systems = parseSystem(FULL_KRS);
-      const view = extractView(systems, ["ECommerce"]);
+      const view = extractView(systems, ["ECPlatform", "ECommerce"]);
 
       expect(view.ancestorChain).toHaveLength(1);
       expect(view.ancestorChain[0].kind).toBe("system");
@@ -92,7 +92,7 @@ describe("extractView", () => {
 
     it("includes ghost users connected to the service", () => {
       const systems = parseSystem(FULL_KRS);
-      const view = extractView(systems, ["ECommerce"]);
+      const view = extractView(systems, ["ECPlatform", "ECommerce"]);
 
       expect(view.ghostUsers.map((n) => n.id)).toEqual(["Customer", "Admin"]);
       expect(view.ghostUserEdges).toHaveLength(2);
@@ -100,18 +100,35 @@ describe("extractView", () => {
 
     it("excludes unconnected users", () => {
       const systems = parseSystem(FULL_KRS);
-      const view = extractView(systems, ["Payment"]);
+      const view = extractView(systems, ["ECPlatform", "Payment"]);
 
       // Payment has no user connections
       expect(view.ghostUsers).toHaveLength(0);
       expect(view.childNodes).toHaveLength(0); // Payment has no children
     });
+
+    it("selects the correct system when multiple systems exist", () => {
+      const krs = `
+system SysA {
+  service ServiceA {}
+}
+system SysB {
+  service ServiceB {}
+}
+`;
+      const systems = parseSystem(krs);
+      const viewA = extractView(systems, ["SysA", "ServiceA"]);
+      expect(viewA.containerNode?.id).toBe("ServiceA");
+
+      const viewB = extractView(systems, ["SysB", "ServiceB"]);
+      expect(viewB.containerNode?.id).toBe("ServiceB");
+    });
   });
 
-  describe("domain view (path length 2)", () => {
+  describe("domain view (path length 3: [systemId, serviceId, domainId])", () => {
     it("returns domain's usecase children", () => {
       const systems = parseSystem(FULL_KRS);
-      const view = extractView(systems, ["ECommerce", "Order"]);
+      const view = extractView(systems, ["ECPlatform", "ECommerce", "Order"]);
 
       expect(view.containerNode?.kind).toBe("domain");
       expect(view.childNodes.map((n) => n.id)).toEqual(["PlaceOrder", "CancelOrder"]);
@@ -119,7 +136,7 @@ describe("extractView", () => {
 
     it("builds ancestor chain with system and service", () => {
       const systems = parseSystem(FULL_KRS);
-      const view = extractView(systems, ["ECommerce", "Order"]);
+      const view = extractView(systems, ["ECPlatform", "ECommerce", "Order"]);
 
       expect(view.ancestorChain).toHaveLength(2);
       expect(view.ancestorChain[0].kind).toBe("system");
@@ -128,16 +145,16 @@ describe("extractView", () => {
 
     it("does not include ghost users at domain level", () => {
       const systems = parseSystem(FULL_KRS);
-      const view = extractView(systems, ["ECommerce", "Order"]);
+      const view = extractView(systems, ["ECPlatform", "ECommerce", "Order"]);
 
       expect(view.ghostUsers).toHaveLength(0);
     });
   });
 
-  describe("usecase view (path length 3)", () => {
+  describe("usecase view (path length 4: [systemId, serviceId, domainId, usecaseId])", () => {
     it("returns usecase's resource children", () => {
       const systems = parseSystem(FULL_KRS);
-      const view = extractView(systems, ["ECommerce", "Order", "PlaceOrder"]);
+      const view = extractView(systems, ["ECPlatform", "ECommerce", "Order", "PlaceOrder"]);
 
       expect(view.containerNode?.kind).toBe("usecase");
       expect(view.childNodes.map((n) => n.id)).toEqual(["OrderTable", "InventoryAPI"]);
@@ -145,7 +162,7 @@ describe("extractView", () => {
 
     it("builds full ancestor chain", () => {
       const systems = parseSystem(FULL_KRS);
-      const view = extractView(systems, ["ECommerce", "Order", "PlaceOrder"]);
+      const view = extractView(systems, ["ECPlatform", "ECommerce", "Order", "PlaceOrder"]);
 
       expect(view.ancestorChain).toHaveLength(3);
       expect(view.ancestorChain.map((n) => n.kind)).toEqual(["system", "service", "domain"]);
@@ -153,9 +170,9 @@ describe("extractView", () => {
   });
 
   describe("edge cases", () => {
-    it("returns empty for invalid path", () => {
+    it("returns empty for invalid service in valid system", () => {
       const systems = parseSystem(FULL_KRS);
-      const view = extractView(systems, ["NonExistent"]);
+      const view = extractView(systems, ["ECPlatform", "NonExistent"]);
 
       expect(view.containerNode).toBeNull();
       expect(view.childNodes).toHaveLength(0);
@@ -170,7 +187,7 @@ describe("extractView", () => {
 
     it("handles empty container (no children)", () => {
       const systems = parseSystem(FULL_KRS);
-      const view = extractView(systems, ["ECommerce", "Order", "CancelOrder"]);
+      const view = extractView(systems, ["ECPlatform", "ECommerce", "Order", "CancelOrder"]);
 
       expect(view.containerNode?.kind).toBe("usecase");
       expect(view.childNodes).toHaveLength(0);
@@ -229,7 +246,11 @@ system ECPlatform {
 }
       `;
       const result = Parser.parse(krs);
-      const view = extractView(result.value.systems, ["ECommerce"], result.value.domains);
+      const view = extractView(
+        result.value.systems,
+        ["ECPlatform", "ECommerce"],
+        result.value.domains,
+      );
 
       // service view shows only ECommerce's children (Order), not unassigned Payment
       expect(view.childNodes).toHaveLength(1);
@@ -297,10 +318,10 @@ system ECPlatform {
       });
     });
 
-    describe("service view (path length 1)", () => {
+    describe("service view (path length 2: [systemId, serviceId])", () => {
       it("populates ghostSystems for cross-system edges from the service", () => {
         const result = Parser.parse(CROSS_SYSTEM_KRS);
-        const view = extractView(result.value.systems, ["OrderService"]);
+        const view = extractView(result.value.systems, ["ECPlatform", "OrderService"]);
 
         expect(view.ghostSystems).toHaveLength(1);
         expect(view.ghostSystems[0].systemNode.id).toBe("PaymentGateway");
@@ -310,7 +331,7 @@ system ECPlatform {
 
       it("populates ghostSystemEdges", () => {
         const result = Parser.parse(CROSS_SYSTEM_KRS);
-        const view = extractView(result.value.systems, ["OrderService"]);
+        const view = extractView(result.value.systems, ["ECPlatform", "OrderService"]);
 
         expect(view.ghostSystemEdges).toHaveLength(1);
         expect(view.ghostSystemEdges[0].from).toBe("OrderService");
@@ -329,7 +350,7 @@ system PaymentGateway {
 }
 `;
         const result = Parser.parse(krs);
-        const view = extractView(result.value.systems, ["OrderService"]);
+        const view = extractView(result.value.systems, ["ECPlatform", "OrderService"]);
 
         expect(view.ghostSystems).toHaveLength(1);
         expect(view.ghostSystems[0].visibleServices).toHaveLength(1);
@@ -348,7 +369,7 @@ system PaymentGateway {
 }
 `;
         const result = Parser.parse(krs);
-        const view = extractView(result.value.systems, ["OrderService"]);
+        const view = extractView(result.value.systems, ["ECPlatform", "OrderService"]);
 
         expect(view.ghostSystems).toHaveLength(1);
         expect(view.ghostSystems[0].visibleServices.map((s) => s.id)).toEqual([
@@ -365,7 +386,7 @@ system ECPlatform {
 }
 `;
         const result = Parser.parse(krs);
-        const view = extractView(result.value.systems, ["OrderService"]);
+        const view = extractView(result.value.systems, ["ECPlatform", "OrderService"]);
 
         expect(view.ghostSystems).toHaveLength(0);
         expect(view.ghostSystemEdges).toHaveLength(0);
@@ -373,7 +394,7 @@ system ECPlatform {
 
       it("has empty systems and crossSystemEdges", () => {
         const result = Parser.parse(CROSS_SYSTEM_KRS);
-        const view = extractView(result.value.systems, ["OrderService"]);
+        const view = extractView(result.value.systems, ["ECPlatform", "OrderService"]);
 
         expect(view.systems).toHaveLength(0);
         expect(view.crossSystemEdges).toHaveLength(0);
@@ -381,7 +402,7 @@ system ECPlatform {
 
       it("has no ghostSystems when service has no cross-system edges", () => {
         const result = Parser.parse(CROSS_SYSTEM_KRS);
-        const view = extractView(result.value.systems, ["PaymentService"]);
+        const view = extractView(result.value.systems, ["PaymentGateway", "PaymentService"]);
 
         expect(view.ghostSystems).toHaveLength(0);
         expect(view.ghostSystemEdges).toHaveLength(0);

@@ -509,7 +509,7 @@ function layoutGhostSystem(
 
 /**
  * Lay out multiple systems side by side for root view.
- * systems[0] is the primary system; others are rendered as ghost systems.
+ * All systems are rendered as full (non-ghost) nodes.
  */
 function layoutMultipleSystems(
   viewSlice: ViewSlice,
@@ -525,7 +525,7 @@ function layoutMultipleSystems(
 
   for (let si = 0; si < viewSlice.systems.length; si++) {
     const sys = viewSlice.systems[si];
-    const isGhost = si > 0;
+    const isGhost = false;
 
     // Layout this system's children independently.
     // For the primary system (si === 0), use viewSlice.childNodes which includes

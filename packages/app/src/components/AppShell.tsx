@@ -15,6 +15,7 @@ import type { ReactNode } from "react";
 import type { KrsFile, KrsNode, TeamNode, OrgNode, DisplayMode } from "@karasu-tools/core";
 import type { editor } from "monaco-editor";
 import type { ActiveView } from "../state/app-reducer.js";
+import type { BreadcrumbItem } from "./Breadcrumb.js";
 
 interface AppShellProps {
   entryPath: string | null;
@@ -214,15 +215,33 @@ export function AppShell({ entryPath, sidebarContent, hideEditor, recompileRef }
       const systems = parseResult.value.systems;
       if (systems.length === 0) return [];
 
-      const items: { id: string; label: string }[] = [];
-      const system = systems[0];
-      items.push({ id: system.id, label: system.label ?? system.id });
+      if (viewPath.length === 0) {
+        // Root view: show only the active system label (not clickable)
+        const system = systems[0];
+        return [{ id: system.id, label: system.label ?? system.id }];
+      }
 
-      let current: KrsNode = system;
-      for (const segment of viewPath) {
-        const child: KrsNode | undefined = current.children.find((c) => c.id === segment);
+      // Phase 2: viewPath[0] is the system ID, viewPath[1:] is the navigation within it.
+      // Build breadcrumb items with explicit navigatePath so that clicking each item
+      // navigates to the correct Phase 2 path (including system ID prefix).
+      const activeSystem = systems.find((s) => s.id === viewPath[0]) ?? systems[0];
+      const items: BreadcrumbItem[] = [
+        {
+          id: activeSystem.id,
+          label: activeSystem.label ?? activeSystem.id,
+          navigatePath: [], // Clicking the system root goes back to root view
+        },
+      ];
+
+      let current: KrsNode = activeSystem;
+      for (let i = 1; i < viewPath.length; i++) {
+        const child: KrsNode | undefined = current.children.find((c) => c.id === viewPath[i]);
         if (!child) break;
-        items.push({ id: child.id, label: child.label ?? child.id });
+        items.push({
+          id: child.id,
+          label: child.label ?? child.id,
+          navigatePath: viewPath.slice(0, i + 1),
+        });
         current = child;
       }
 

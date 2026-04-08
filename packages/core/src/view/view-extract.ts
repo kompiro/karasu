@@ -55,7 +55,12 @@ function deriveInfraEdges(children: KrsNode[]): KrsEdge[] {
 
 /**
  * ViewPath identifies the drill-down position in the hierarchy.
- * [] = system view, ["ECommerce"] = service view, ["ECommerce", "Order"] = domain view
+ * [] = root system view (shows systems[0])
+ * ["ECPlatform", "ECommerce"] = ECommerce service inside ECPlatform system
+ * ["ECPlatform", "ECommerce", "Order"] = Order domain inside ECommerce
+ *
+ * path[0] is the system ID when it matches a known system.
+ * Unassigned top-level domains retain single-segment paths (e.g. ["Payment"]).
  */
 export type ViewPath = string[];
 
@@ -131,10 +136,9 @@ export function extractView(
 
   if (systems.length === 0) return empty;
 
-  const system = systems[0];
-
-  // System view (default)
+  // Root system view (path = [])
   if (path.length === 0) {
+    const system = systems[0];
     const allChildren = [...system.children, ...unassignedDomains];
     const childIds = new Set(allChildren.map(nodeId));
     const explicitEdges = system.edges.filter((e) => childIds.has(e.from) && childIds.has(e.to));
@@ -169,15 +173,23 @@ export function extractView(
     };
   }
 
+  // Determine the active system.
+  // path[0] is the system ID when it matches a known system.
+  // For unassigned top-level domains (no system prefix), path[0] is the domain ID
+  // and does not match any system — fall back to systems[0] and walk from index 0.
+  const systemNode = systems.find((s) => s.id === path[0]);
+  const system = systemNode ?? systems[0];
+  const startIndex = systemNode ? 1 : 0;
+
   // Walk the path to find the container
   const ancestorChain: KrsNode[] = [system];
   let current: KrsNode = system;
 
-  for (let i = 0; i < path.length; i++) {
+  for (let i = startIndex; i < path.length; i++) {
     const segment = path[i];
     let child = current.children.find((c) => nodeId(c) === segment);
-    // At the first level, also search unassigned domains
-    if (!child && i === 0) {
+    // At the first level within the system, also search unassigned domains
+    if (!child && i === startIndex) {
       child = unassignedDomains.find((c) => nodeId(c) === segment);
     }
     if (!child) return empty;
@@ -190,13 +202,16 @@ export function extractView(
   const childIds = new Set(containerNode.children.map(nodeId));
   const childEdges = containerNode.edges.filter((e) => childIds.has(e.from) && childIds.has(e.to));
 
-  // Ghost users: only for service view (path.length === 1)
+  // Ghost users: only for service view.
+  // With system ID in path: path.length - startIndex === 1 (e.g. ["ECPlatform", "ECommerce"]).
+  // Without system ID (unassigned domain fallback): path.length === 1.
   let ghostUsers: KrsNode[] = [];
   let ghostUserEdges: KrsEdge[] = [];
   let ghostSystems: GhostSystem[] = [];
   let ghostSystemEdges: KrsEdge[] = [];
 
-  if (path.length === 1) {
+  const isServiceView = path.length - startIndex === 1;
+  if (isServiceView) {
     const containerId = nodeId(containerNode);
     const users = system.children.filter((c) => c.kind === "user");
     const connectedEdges = system.edges.filter(

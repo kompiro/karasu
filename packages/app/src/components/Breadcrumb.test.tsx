@@ -42,4 +42,46 @@ describe("Breadcrumb", () => {
     fireEvent.click(lastSpan);
     expect(onNavigate).not.toHaveBeenCalled();
   });
+
+  describe("navigatePath override (Phase 2 ViewPath)", () => {
+    it("uses navigatePath when set, ignoring the slice-based computation", () => {
+      const onNavigate = vi.fn<() => void>();
+      const items = [
+        { id: "ECPlatform", label: "ECPlatform", navigatePath: [] },
+        { id: "ECommerce", label: "ECommerce", navigatePath: ["ECPlatform", "ECommerce"] },
+        { id: "Order", label: "Order" }, // last item — not clickable
+      ];
+      const { container } = render(<Breadcrumb items={items} onNavigate={onNavigate} />);
+      const buttons = container.querySelectorAll<HTMLButtonElement>("button.breadcrumb-link");
+
+      // Clicking "ECPlatform" (index 0) uses its navigatePath: []
+      fireEvent.click(buttons[0]);
+      expect(onNavigate).toHaveBeenCalledWith([]);
+
+      onNavigate.mockClear();
+
+      // Clicking "ECommerce" (index 1) uses its navigatePath: ["ECPlatform", "ECommerce"]
+      fireEvent.click(buttons[1]);
+      expect(onNavigate).toHaveBeenCalledWith(["ECPlatform", "ECommerce"]);
+    });
+
+    it("falls back to slice-based computation when navigatePath is absent", () => {
+      const onNavigate = vi.fn<() => void>();
+      const items = [
+        { id: "__org__", label: "Org" }, // no navigatePath — fallback: []
+        { id: "TeamA", label: "TeamA" }, // no navigatePath — fallback: ["TeamA"]
+        { id: "TeamB", label: "TeamB" }, // last item — not clickable
+      ];
+      const { container } = render(<Breadcrumb items={items} onNavigate={onNavigate} />);
+      const buttons = container.querySelectorAll<HTMLButtonElement>("button.breadcrumb-link");
+
+      fireEvent.click(buttons[0]);
+      expect(onNavigate).toHaveBeenCalledWith([]);
+
+      onNavigate.mockClear();
+
+      fireEvent.click(buttons[1]);
+      expect(onNavigate).toHaveBeenCalledWith(["TeamA"]);
+    });
+  });
 });

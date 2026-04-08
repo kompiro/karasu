@@ -34,15 +34,22 @@
 
 ### ブランチ戦略
 
-- `main` への直接コミットは行わない — PR 経由でマージする
+- `main` への直接コミット・push は禁止 — PR 経由でマージする
 - 機能開発は `git worktree add` により worktree を作成して行う
+- worktree の作成先は必ず `.worktrees/<branch-name>` とする（例: `git worktree add .worktrees/feat/my-feature feat/my-feature`）
 - ブランチ命名規則: `feat/`, `fix/`, `docs/`, `chore/`, `refactor/` + kebab-case
+
+### Issue・PR 記述ルール
+
+- Issue のタイトル・本文・コメントは英語で書く
+- PR のタイトル・description（本文）は英語で書く
+- commit メッセージも英語（subject）
 
 ### PR ワークフロー
 
 ```
 1. GitHub Issue を作成する（gh issue create）
-2. git worktree add で作業ブランチ・worktree を作成する
+2. git worktree add .worktrees/<branch> <branch> で作業ブランチ・worktree を作成する
 3. Plan モードで実装計画を作成し、レビューを受ける
    - 必要に応じて docs/design/ に設計ドキュメントを作成する
    - 受け入れテスト（docs/acceptance/）を計画に含める
@@ -51,7 +58,7 @@
 6. PR を作成する（Closes #N で Issue と紐付ける）
 7. CI（test / lint / format / typecheck / build）が通過することを確認する
 8. 手動検証チェックリストを実施する
-9. レビュー → マージ → git worktree remove でクリーンアップ
+9. レビュー → マージ → git worktree remove .worktrees/<branch> でクリーンアップ
 ```
 
 詳細な手順は `/start-dev` スキルを参照。
