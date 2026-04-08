@@ -13,6 +13,11 @@
 
 -
 
+## Preview URL
+
+<!-- Cloudflare Pages preview URL (generated automatically by the Preview workflow) -->
+<!-- e.g. https://<branch-name>.karasu.pages.dev -->
+
 ## Manual Verification Checklist
 
 <!-- List items that cannot be verified by CI -->
