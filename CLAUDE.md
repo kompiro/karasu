@@ -17,8 +17,6 @@ C4 Modelに触発されつつも独自の語彙を持ち、論理構造と物理
 | 開発プロセス（ドキュメントライフサイクル・PR フロー） | `docs/process.md`               |
 | サンプル `.krs` ファイル（チュートリアル・AT用）     | `examples/`                     |
 
----
-
 ## 実装方針
 
 ### リポジトリ構成
@@ -50,8 +48,6 @@ karasu/
 | CLI                    | commander                   |
 | 言語サーバー           | LSP（vscode-languageserver） |
 
----
-
 ## 開発ワークフロー
 
 ### ブランチ戦略
@@ -70,11 +66,11 @@ karasu/
 ### PR ワークフロー
 
 1. GitHub Issue を作成する（`gh issue create`）
-2. `git worktree add` で worktree を作成し、その中で開発する
+2. `git worktree add .worktrees/<branch> <branch>` で worktree を作成し、その中で開発する
 3. Plan モードで実装計画を作成し、レビューを受ける
 4. 実装 → `/commit` → PR 作成（`Closes #N` で Issue 紐付け）
 5. CI（test, lint, format, typecheck, build）が通過することを確認する
 6. 手動検証チェックリストを実施する
-7. レビュー → マージ → `git worktree remove` でクリーンアップ
+7. レビュー → マージ → `git worktree remove .worktrees/<branch>` でクリーンアップ
 
 詳細な手順は `docs/process.md` および `/start-dev` スキルを参照。
