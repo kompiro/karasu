@@ -311,9 +311,7 @@ system PaymentGateway {
     const slice = extractView(result.value.systems, ["PaymentGateway", "PaymentService"]);
     const layoutResult = layout(slice);
     const mainContainer = layoutResult.containers.find((c) => !c.ghost)!;
-    const callerContainer = layoutResult.containers.find(
-      (c) => c.ghost && c.id === "ECPlatform",
-    )!;
+    const callerContainer = layoutResult.containers.find((c) => c.ghost && c.id === "ECPlatform")!;
     expect(callerContainer).toBeDefined();
     expect(callerContainer.x + callerContainer.width).toBeLessThan(mainContainer.x);
   });
