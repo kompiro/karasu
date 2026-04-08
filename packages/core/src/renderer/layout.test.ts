@@ -289,6 +289,8 @@ system PaymentGateway {
     // fromPoint should come from the main container (OrderService has no child nodes)
     // toPoint should be the left edge of PaymentService ghost node
     expect(ghostEdge!.fromPoint.x).toBeGreaterThan(0);
+    // Ghost systems are always placed to the right of the source container
+    // by layoutGhostSystem(), so toPoint.x > fromPoint.x is always true here.
     expect(ghostEdge!.toPoint.x).toBeGreaterThan(ghostEdge!.fromPoint.x);
   });
 });
