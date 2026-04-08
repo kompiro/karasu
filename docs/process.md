@@ -45,20 +45,48 @@
 - PR のタイトル・description（本文）は英語で書く
 - commit メッセージも英語（subject）
 
+### Issue ステータスラベル
+
+Issue の進捗は以下のラベルで管理する。
+
+| ラベル | 意味 |
+|--------|------|
+| `status: ready` | 着手可能（依存関係が解消済み） |
+| `status: designing` | Design Doc 作成中 |
+| `status: designed` | Design Doc 承認済み・実装着手可能 |
+| `status: implementing` | 実装中 |
+| `status: in-review` | PR オープン・人間の確認待ち |
+| `status: blocked` | 別 Issue の完了待ちでブロック中 |
+
+**Design Doc あり のフロー:**
+```
+ready → implementing → designing → designed → implementing → in-review → (close)
+```
+
+**Design Doc なし のフロー:**
+```
+ready → implementing → in-review → (close)
+```
+
+> `close` は PR に `Closes #N` を記載することで GitHub が自動で行う。
+
 ### PR ワークフロー
 
 ```
 1. GitHub Issue を作成する（gh issue create）
 2. git worktree add .worktrees/<branch> <branch> で作業ブランチ・worktree を作成する
-3. Plan モードで実装計画を作成し、レビューを受ける
-   - 必要に応じて docs/design/ に設計ドキュメントを作成する
+3. Issue ラベルを status: implementing に更新する
+4. Plan モードで実装計画を作成し、レビューを受ける
+   - 必要に応じて docs/design/ に設計ドキュメントを作成する（Issue を status: designing に更新）
+   - Design Doc PR がマージされたら status: designed → 実装開始時に status: implementing に戻す
    - 受け入れテスト（docs/acceptance/）を計画に含める
-4. 実装する
-5. /commit でコミットする（Conventional Commits 形式）
-6. PR を作成する（Closes #N で Issue と紐付ける）
-7. CI（test / lint / format / typecheck / build）が通過することを確認する
-8. 手動検証チェックリストを実施する
-9. レビュー → マージ → git worktree remove .worktrees/<branch> でクリーンアップ
+5. 実装する
+6. /commit でコミットする（Conventional Commits 形式）
+7. PR を作成する（Closes #N で Issue と紐付ける）
+8. CI（test / lint / format / typecheck / build）が通過することを確認する
+9. Issue ラベルを status: in-review に更新する
+10. 手動検証チェックリストを実施する
+11. レビュー → マージ → git worktree remove .worktrees/<branch> でクリーンアップ
 ```
 
 詳細な手順は `/start-dev` スキルを参照。
