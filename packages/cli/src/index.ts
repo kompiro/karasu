@@ -2,6 +2,7 @@
 import { program } from "commander";
 import { serve } from "./serve.js";
 import { render } from "./render.js";
+import { translate } from "./translate/index.js";
 
 program.name("karasu").description("karasu — architecture diagram tool").version("0.0.0");
 
@@ -45,6 +46,36 @@ Examples:
       output: options.output,
       view: options.view as "system" | "deploy" | "org" | undefined,
     });
+  });
+
+program
+  .command("translate <file>")
+  .description("Translate an infra config file (docker-compose, k8s) to a deploy.krs scaffold")
+  .requiredOption("--from <format>", "Input format: compose | k8s")
+  .option("--map <path>", "Path to karasu.map.yaml (default: same directory as input file)")
+  .option("-o, --output <path>", "Write .krs to file (default: stdout)")
+  .addHelpText(
+    "after",
+    `
+Examples:
+  # Translate docker-compose to deploy.krs
+  $ karasu translate --from compose docker-compose.yml > deploy.krs
+
+  # Translate a k8s manifest
+  $ karasu translate --from k8s manifests/deployment.yaml > deploy.krs
+
+  # Translate multiple k8s files
+  $ for f in manifests/*.yaml; do karasu translate --from k8s "$f"; done > deploy.krs
+
+  # Use a shared karasu.map.yaml
+  $ karasu translate --from compose docker-compose.yml --map karasu.map.yaml`,
+  )
+  .action((file: string, options: { from: string; map?: string; output?: string }) => {
+    if (options.from !== "compose" && options.from !== "k8s") {
+      process.stderr.write(`Error: --from must be "compose" or "k8s"\n`);
+      process.exit(1);
+    }
+    translate(file, { from: options.from, map: options.map, output: options.output });
   });
 
 export { program };
