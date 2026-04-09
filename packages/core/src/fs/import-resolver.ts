@@ -365,9 +365,7 @@ export class ImportResolver {
           // スタブ側のタグ・アノテーションを保持し、定義側の children/edges 等で補完する。
           let mergedIntoSystem = false;
           for (const system of mergedFile.systems) {
-            const stubIndex = system.children.findIndex(
-              (c) => c.id === id && c.kind === "service",
-            );
+            const stubIndex = system.children.findIndex((c) => c.id === id && c.kind === "service");
             if (stubIndex >= 0) {
               const stub = system.children[stubIndex] as ServiceNode;
               system.children[stubIndex] = {
