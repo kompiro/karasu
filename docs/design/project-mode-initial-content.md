@@ -92,14 +92,25 @@ export const EC_PLATFORM_PROJECTS: ExampleProject[] = [
 
 案A + 案Y で実装を進める。
 
-実装ステップ:
+### `ProjectManager.createProject()` の拡張
+
+オプション引数 `files` を追加し、渡された場合はそのファイル群を書き込む。省略時は従来の `DEFAULT_KRS` を使う。
+
+```ts
+createProject(name: string, files?: { path: string; content: string }[]): Promise<Project>
+```
+
+これにより将来の「テンプレートから新規プロジェクト作成」UI にも同じ API を流用できる。テンプレート UI の実装自体は今回のスコープ外とする。
+
+### `examples.ts` の同期方針
+
+`examples/ec-platform/` の編集は必ず `/update-examples` スキル経由で行う。スキルが `examples.ts` の同期まで含めてコミットするため、自動化スクリプトや git hook は不要。ユーザーによる examples の直接編集は行わない前提とする。
+
+`.claude/rules/examples-sync.md` はスキルが参照するルールとして機能し、同期すべきファイルのマッピングを記載する。
+
+### 実装ステップ
+
 1. `packages/core/src/builtins/examples.ts` を新設し、ec-platform 全ファイルを文字列として格納
-2. `.claude/rules/examples-sync.md` を追加（examples 変更時の同期ルール）
-3. `packages/app/src/ProjectModeApp.tsx` の初期化処理を修正し、`EC_PLATFORM_PROJECTS` を使って 7 プロジェクトを作成
-4. `ProjectManager.createProject()` にファイル群を受け取るオプションを追加（または初期化専用ユーティリティを新設）
-
-## 未解決の問い
-
-- `ProjectManager.createProject()` を拡張するか、初期化専用の関数を別途用意するか
-- 将来的に「テンプレートから新規プロジェクト作成」機能に発展させるか（今回はスコープ外）
-- `examples.ts` の更新を自動化（ビルドスクリプト化）するか、手動管理 + rules で担保するか
+2. `ProjectManager.createProject()` にオプション引数 `files` を追加
+3. `packages/app/src/ProjectModeApp.tsx` の初期化処理を修正し、`EC_PLATFORM_PROJECTS` から 7 プロジェクトを作成
+4. `/update-examples` スキルを新設（examples 編集 + examples.ts 同期 + コミットまで）

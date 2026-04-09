@@ -6,6 +6,9 @@ paths:
 
 # examples 変更時の同期ルール
 
+> **`examples/ec-platform/` の編集は必ず `/update-examples` スキル経由で行うこと。**
+> スキルが `examples.ts` の同期とコミットまで担う。ユーザーによる直接編集は行わない前提。
+
 `examples/` 配下のファイルを追加・変更・削除した場合は、必ず `packages/core/src/builtins/examples.ts` も合わせて更新すること。
 
 ## 対象ファイル
