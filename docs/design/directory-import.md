@@ -137,7 +137,7 @@ nodeImport.path が "/" で終わる?
 
 - パーサー・AST 型の変更なし
 - `ImportResolver` の Pass 1/2 に分岐を追加するだけで実装可能
-- `FileSystemProvider.readDir` は既に全実装に存在する
+- `FileSystemProvider.readDir` は `InMemoryFileSystemProvider`（テスト用）・`OPFSProvider`（ブラウザ用）ともに実装済みで環境差異の懸念なし
 - サブディレクトリは再帰しない（フラット展開のみ）で初期実装を行い、必要に応じて拡張する
 
 ## 未解決の問い
@@ -147,8 +147,3 @@ nodeImport.path が "/" で終わる?
 `import "teams/"` で `teams/payment/` のようなネストされたディレクトリも対象にするか。
 初期実装ではフラット展開のみとし、再帰展開は別 Issue で検討する。
 
-### ブラウザ（OPFS）環境での動作
-
-OPFS ベースの `FileSystemProvider` 実装が `readDir` をどう実装するかは実装依存。
-現状の `InMemoryFileSystemProvider` は `readDir` 対応済み。
-アプリ側の OPFS 実装（`packages/app/`）でも `readDir` が正しく機能するか別途確認が必要。
