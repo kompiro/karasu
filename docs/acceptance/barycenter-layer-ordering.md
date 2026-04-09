@@ -35,7 +35,7 @@ These are verified by unit tests in `deploy-layout.test.ts`.
 - Layer 2 (`PaymentService`, `InventoryService`, `ReportingService`) is ordered such that edges from `OrderAPI` do not cross each other (left-to-right order matches the visual flow from `OrderAPI`)
 - The overall diagram is readable with no unnecessary edge crossings
 
-**How to check**: Compare with the screenshot below (expected: no crossing edges between OrderAPI and its downstream containers).
+**How to check**: Visually confirm that edges between `OrderAPI` and its downstream containers do not cross each other.
 
 Expected layer order for `examples/deploy/system.krs`:
 ```
