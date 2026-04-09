@@ -53,7 +53,7 @@ system ECPlatform {
 
 ## 検討した選択肢
 
-### 案1: スタブを imported 定義で置換（採用候補）
+### 案1: スタブを imported 定義で置換
 
 `mergedFile.systems[*].children` に同 ID のスタブが存在する場合、そのスタブを imported service の完全定義で置換する。スタブが見つからない場合は従来通り `mergedFile.services` に追加する。
 
@@ -87,7 +87,7 @@ for (const service of importedFile.services) {
 - スタブ側のタグ（例: `service ECommerce [external]`）が上書きされる
 - スタブのタグを保持したい場合、追加ロジックが必要になる
 
-### 案2: スタブのタグを保持してマージ
+### 案2: スタブのタグを保持してマージ（採用）
 
 スタブを置換するのではなく、imported service のフィールドをスタブにマージし、スタブ側のタグ・アノテーションを優先する。
 
@@ -96,18 +96,20 @@ for (const service of importedFile.services) {
 const stub = system.children[stubIndex];
 system.children[stubIndex] = {
   ...service,           // imported 定義を基底に
-  tags: stub.tags,      // スタブのタグを上書き
+  tags: stub.tags,      // スタブのタグを優先
   annotations: stub.annotations,
 };
 ```
 
 **メリット**:
 - `service ECommerce [external]` のようなスタブ側のタグが保持される
-- より柔軟な構成（「外部サービスとして参照するが定義は別ファイル」）が可能
+- `[external]` はレンダリング上「システム境界の外に配置する」という意味を持つため、利用側（system.krs）で指定するのが自然
+- `[deprecated]` など他のタグも同様に、利用側の意図が SVG に反映される
+- ワークフロー的に「スタブ（タグ付き）→ 定義ファイル作成 → import」という段階的な開発に対応できる
 
 **デメリット**:
-- どのフィールドを優先するかの仕様決定が必要（label? description? links?）
-- 複雑さが増す
+- 案1より実装がやや複雑（フィールドごとの優先ルールが必要）
+- どのフィールドを優先するかの仕様決定が必要（`tags`・`annotations` はスタブ優先、`children`・`edges`・`label`・`description` は定義側優先）
 
 ### 案3: スタブなしの named import を service 追加ではなくエラーにする
 
@@ -142,13 +144,51 @@ system.children[stubIndex] = {
 
 ## 現時点の方針
 
-**案1（スタブ置換）** を採用する。
+**案2（タグ保持マージ）** を採用する。
 
-現時点でスタブにタグを付けるユースケース（例: `service ECommerce [external]`）は `05-multifile` の例には存在せず、複雑さを増す理由がない。タグ保持が必要になった時点で案2への拡張は容易。
+### タグ・アノテーションの優先ルール
 
-置換ロジックは `mergeNamedImport` 内で完結し、責務が明確で既存テストへの影響も最小。
+スタブ側（利用ファイル）のタグ・アノテーションを優先し、その他のフィールドは imported 定義で補完する:
 
-## 未解決の問い
+| フィールド | 優先 |
+|-----------|------|
+| `tags` | スタブ側（`[external]`・`[deprecated]` 等は利用側の意図） |
+| `annotations` | スタブ側 |
+| `children`（domain 等） | 定義側 |
+| `edges` | 定義側 |
+| `label` | 定義側（スタブは通常ラベルを持たない） |
+| `description` | 定義側 |
+| `properties` | 定義側 |
 
-- スタブ側に `[external]` などのタグを付けたい場合、将来的に案2へ移行する必要が出るか？
-- 複数の system ブロックに同一 ID のスタブがある場合、すべて置換してよいか（現状は `for` ループで全て置換する）？
+### 複数 system に同一 ID のスタブがある場合
+
+`ECPlatform.ECommerce` と `Legacy.ECommerce` は完全修飾名で別エンティティとして識別される。したがって、`for` ループで全 system のスタブを置換するのは正しい動作であり、各 system が独立して同一サービスを参照できる。
+
+### 実装方針
+
+```ts
+for (const service of importedFile.services) {
+  if (service.id === id) {
+    let mergedIntoSystem = false;
+    for (const system of mergedFile.systems) {
+      const stubIndex = system.children.findIndex(
+        (c) => c.id === id && c.kind === "service",
+      );
+      if (stubIndex >= 0) {
+        const stub = system.children[stubIndex] as ServiceNode;
+        // スタブのタグ・アノテーションを保持し、定義側の内容で補完する
+        system.children[stubIndex] = {
+          ...service,
+          tags: stub.tags.length > 0 ? stub.tags : service.tags,
+          annotations: stub.annotations.length > 0 ? stub.annotations : service.annotations,
+        };
+        mergedIntoSystem = true;
+      }
+    }
+    if (!mergedIntoSystem) {
+      mergedFile.services.push(service);
+    }
+    found = true;
+  }
+}
+```
