@@ -19,12 +19,38 @@ describe("ChatPane", () => {
     expect(getByText(/📍 ECPlatform > ECommerce/)).toBeTruthy();
   });
 
-  it("submitting a message adds it to the list", () => {
+  it("submitting via form submit adds message to the list", () => {
     const { getByLabelText, getByText } = render(<ChatPane viewPath={[]} sessionResetKey={null} />);
     const input = getByLabelText("Chat message input");
     fireEvent.change(input, { target: { value: "Hello" } });
     fireEvent.submit(input.closest("form")!);
     expect(getByText("Hello")).toBeTruthy();
+  });
+
+  it("Cmd+Enter submits the message", () => {
+    const { getByLabelText, getByText } = render(<ChatPane viewPath={[]} sessionResetKey={null} />);
+    const input = getByLabelText("Chat message input");
+    fireEvent.change(input, { target: { value: "Hello" } });
+    fireEvent.keyDown(input, { key: "Enter", metaKey: true });
+    expect(getByText("Hello")).toBeTruthy();
+  });
+
+  it("Ctrl+Enter submits the message", () => {
+    const { getByLabelText, getByText } = render(<ChatPane viewPath={[]} sessionResetKey={null} />);
+    const input = getByLabelText("Chat message input");
+    fireEvent.change(input, { target: { value: "Hello" } });
+    fireEvent.keyDown(input, { key: "Enter", ctrlKey: true });
+    expect(getByText("Hello")).toBeTruthy();
+  });
+
+  it("plain Enter does not submit the message", () => {
+    const { getByLabelText, queryByText } = render(
+      <ChatPane viewPath={[]} sessionResetKey={null} />,
+    );
+    const input = getByLabelText("Chat message input");
+    fireEvent.change(input, { target: { value: "Hello" } });
+    fireEvent.keyDown(input, { key: "Enter" });
+    expect(queryByText("Hello", { selector: ".chat-message-content" })).toBeNull();
   });
 
   it("Send button is disabled when input is empty", () => {

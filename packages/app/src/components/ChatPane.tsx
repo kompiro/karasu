@@ -44,7 +44,7 @@ export function ChatPane({ viewPath, sessionResetKey }: ChatPaneProps) {
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    if (e.key === "Enter" && !e.shiftKey) {
+    if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
       e.preventDefault();
       handleSubmit(e);
     }
@@ -74,7 +74,7 @@ export function ChatPane({ viewPath, sessionResetKey }: ChatPaneProps) {
           value={input}
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={handleKeyDown}
-          placeholder="Type a message… (Enter to send, Shift+Enter for newline)"
+          placeholder="Type a message… (Cmd+Enter or Ctrl+Enter to send)"
           rows={3}
           aria-label="Chat message input"
         />
