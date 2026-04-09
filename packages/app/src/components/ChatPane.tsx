@@ -7,11 +7,11 @@ interface ChatMessage {
 }
 
 interface ChatPaneProps {
-  viewPath: string[];
+  scopeLabel: string;
   sessionResetKey: string | null;
 }
 
-export function ChatPane({ viewPath, sessionResetKey }: ChatPaneProps) {
+export function ChatPane({ scopeLabel, sessionResetKey }: ChatPaneProps) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -26,8 +26,6 @@ export function ChatPane({ viewPath, sessionResetKey }: ChatPaneProps) {
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView?.({ behavior: "smooth" });
   }, [messages]);
-
-  const scopeLabel = viewPath.length === 0 ? "Root" : viewPath.join(" > ");
 
   const handleNewSession = () => {
     setMessages([]);

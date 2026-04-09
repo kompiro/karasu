@@ -7,20 +7,22 @@ afterEach(cleanup);
 import { ChatPane } from "./ChatPane.js";
 
 describe("ChatPane", () => {
-  it("shows root scope when viewPath is empty", () => {
-    const { getByText } = render(<ChatPane viewPath={[]} sessionResetKey={null} />);
+  it("shows the given scopeLabel in the scope indicator", () => {
+    const { getByText } = render(<ChatPane scopeLabel="Root" sessionResetKey={null} />);
     expect(getByText(/📍 Root/)).toBeTruthy();
   });
 
-  it("shows joined viewPath as scope indicator", () => {
+  it("shows label-based scope indicator", () => {
     const { getByText } = render(
-      <ChatPane viewPath={["ECPlatform", "ECommerce"]} sessionResetKey={null} />,
+      <ChatPane scopeLabel="EC Platform > EC サイト" sessionResetKey={null} />,
     );
-    expect(getByText(/📍 ECPlatform > ECommerce/)).toBeTruthy();
+    expect(getByText(/📍 EC Platform > EC サイト/)).toBeTruthy();
   });
 
   it("submitting via form submit adds message to the list", () => {
-    const { getByLabelText, getByText } = render(<ChatPane viewPath={[]} sessionResetKey={null} />);
+    const { getByLabelText, getByText } = render(
+      <ChatPane scopeLabel="Root" sessionResetKey={null} />,
+    );
     const input = getByLabelText("Chat message input");
     fireEvent.change(input, { target: { value: "Hello" } });
     fireEvent.submit(input.closest("form")!);
@@ -28,7 +30,9 @@ describe("ChatPane", () => {
   });
 
   it("Cmd+Enter submits the message", () => {
-    const { getByLabelText, getByText } = render(<ChatPane viewPath={[]} sessionResetKey={null} />);
+    const { getByLabelText, getByText } = render(
+      <ChatPane scopeLabel="Root" sessionResetKey={null} />,
+    );
     const input = getByLabelText("Chat message input");
     fireEvent.change(input, { target: { value: "Hello" } });
     fireEvent.keyDown(input, { key: "Enter", metaKey: true });
@@ -36,7 +40,9 @@ describe("ChatPane", () => {
   });
 
   it("Ctrl+Enter submits the message", () => {
-    const { getByLabelText, getByText } = render(<ChatPane viewPath={[]} sessionResetKey={null} />);
+    const { getByLabelText, getByText } = render(
+      <ChatPane scopeLabel="Root" sessionResetKey={null} />,
+    );
     const input = getByLabelText("Chat message input");
     fireEvent.change(input, { target: { value: "Hello" } });
     fireEvent.keyDown(input, { key: "Enter", ctrlKey: true });
@@ -45,7 +51,7 @@ describe("ChatPane", () => {
 
   it("plain Enter does not submit the message", () => {
     const { getByLabelText, queryByText } = render(
-      <ChatPane viewPath={[]} sessionResetKey={null} />,
+      <ChatPane scopeLabel="Root" sessionResetKey={null} />,
     );
     const input = getByLabelText("Chat message input");
     fireEvent.change(input, { target: { value: "Hello" } });
@@ -54,20 +60,21 @@ describe("ChatPane", () => {
   });
 
   it("Send button is disabled when input is empty", () => {
-    const { getByRole } = render(<ChatPane viewPath={[]} sessionResetKey={null} />);
-    const sendBtn = getByRole("button", { name: /Send/ });
-    expect(sendBtn).toHaveProperty("disabled", true);
+    const { getByRole } = render(<ChatPane scopeLabel="Root" sessionResetKey={null} />);
+    expect(getByRole("button", { name: /Send/ })).toHaveProperty("disabled", true);
   });
 
   it("Send button is enabled when input has text", () => {
-    const { getByLabelText, getByRole } = render(<ChatPane viewPath={[]} sessionResetKey={null} />);
+    const { getByLabelText, getByRole } = render(
+      <ChatPane scopeLabel="Root" sessionResetKey={null} />,
+    );
     fireEvent.change(getByLabelText("Chat message input"), { target: { value: "Hi" } });
     expect(getByRole("button", { name: /Send/ })).toHaveProperty("disabled", false);
   });
 
   it("New Session button clears messages", () => {
     const { getByLabelText, getByText, queryByText } = render(
-      <ChatPane viewPath={[]} sessionResetKey={null} />,
+      <ChatPane scopeLabel="Root" sessionResetKey={null} />,
     );
     const input = getByLabelText("Chat message input");
     fireEvent.change(input, { target: { value: "Hello" } });
@@ -80,24 +87,24 @@ describe("ChatPane", () => {
 
   it("session resets when sessionResetKey changes", () => {
     const { getByLabelText, getByText, queryByText, rerender } = render(
-      <ChatPane viewPath={[]} sessionResetKey="project-a" />,
+      <ChatPane scopeLabel="Root" sessionResetKey="project-a" />,
     );
     const input = getByLabelText("Chat message input");
     fireEvent.change(input, { target: { value: "Hello" } });
     fireEvent.submit(input.closest("form")!);
     expect(getByText("Hello")).toBeTruthy();
 
-    rerender(<ChatPane viewPath={[]} sessionResetKey="project-b" />);
+    rerender(<ChatPane scopeLabel="Root" sessionResetKey="project-b" />);
     expect(queryByText("Hello")).toBeNull();
   });
 
-  it("scope indicator updates when viewPath prop changes", () => {
+  it("scope indicator updates when scopeLabel prop changes", () => {
     const { getByText, rerender } = render(
-      <ChatPane viewPath={["SystemA"]} sessionResetKey={null} />,
+      <ChatPane scopeLabel="システム A" sessionResetKey={null} />,
     );
-    expect(getByText(/📍 SystemA/)).toBeTruthy();
+    expect(getByText(/📍 システム A/)).toBeTruthy();
 
-    rerender(<ChatPane viewPath={["SystemA", "ServiceB"]} sessionResetKey={null} />);
-    expect(getByText(/📍 SystemA > ServiceB/)).toBeTruthy();
+    rerender(<ChatPane scopeLabel="システム A > サービス B" sessionResetKey={null} />);
+    expect(getByText(/📍 システム A > サービス B/)).toBeTruthy();
   });
 });

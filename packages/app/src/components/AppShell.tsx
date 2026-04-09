@@ -315,7 +315,11 @@ export function AppShell({ entryPath, sidebarContent, hideEditor, recompileRef }
           value={fileContent}
           onChange={handleEditorChange}
           onEditorReady={handleEditorReady}
-          viewPath={viewPath}
+          scopeLabel={
+            breadcrumbItems.length > 0
+              ? breadcrumbItems.map((item) => item.label).join(" > ")
+              : "Root"
+          }
           currentProjectId={currentProject?.id ?? null}
         />
       )}

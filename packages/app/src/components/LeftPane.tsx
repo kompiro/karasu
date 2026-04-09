@@ -8,7 +8,7 @@ interface LeftPaneProps {
   value: string;
   onChange: (value: string) => void;
   onEditorReady?: (editor: editor.IStandaloneCodeEditor) => void;
-  viewPath: string[];
+  scopeLabel: string;
   currentProjectId: string | null;
 }
 
@@ -16,7 +16,7 @@ export function LeftPane({
   value,
   onChange,
   onEditorReady,
-  viewPath,
+  scopeLabel,
   currentProjectId,
 }: LeftPaneProps) {
   const [activeTab, setActiveTab] = useState<LeftTab>("editor");
@@ -27,7 +27,7 @@ export function LeftPane({
       {activeTab === "editor" ? (
         <EditorPane value={value} onChange={onChange} onEditorReady={onEditorReady} />
       ) : (
-        <ChatPane viewPath={viewPath} sessionResetKey={currentProjectId} />
+        <ChatPane scopeLabel={scopeLabel} sessionResetKey={currentProjectId} />
       )}
     </div>
   );
