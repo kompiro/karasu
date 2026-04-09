@@ -149,29 +149,34 @@ export function ProjectModeApp() {
     return <div className="app-loading">Loading...</div>;
   }
 
-  const sidebar = (
-    <>
-      <ProjectSelector
-        projects={projects}
-        currentProject={currentProject}
-        onSelectProject={handleSelectProject}
-        onCreateProject={handleCreateProject}
-        onRenameProject={handleRenameProject}
-        onDeleteProject={handleDeleteProject}
-      />
-      {currentProject && (
-        <FileTree
-          rootPath={currentProject.rootPath}
-          fs={fs}
-          currentFilePath={currentFilePath}
-          onSelectFile={handleSelectFile}
-          onFileCreated={handleFileCreated}
-          onFileDeleted={handleFileDeleted}
-          onFileRenamed={handleFileRenamed}
-        />
-      )}
-    </>
+  const sidebarHeader = (
+    <ProjectSelector
+      projects={projects}
+      currentProject={currentProject}
+      onSelectProject={handleSelectProject}
+      onCreateProject={handleCreateProject}
+      onRenameProject={handleRenameProject}
+      onDeleteProject={handleDeleteProject}
+    />
   );
 
-  return <AppShell entryPath={entryPath} sidebarContent={sidebar} />;
+  const sidebarContent = currentProject ? (
+    <FileTree
+      rootPath={currentProject.rootPath}
+      fs={fs}
+      currentFilePath={currentFilePath}
+      onSelectFile={handleSelectFile}
+      onFileCreated={handleFileCreated}
+      onFileDeleted={handleFileDeleted}
+      onFileRenamed={handleFileRenamed}
+    />
+  ) : undefined;
+
+  return (
+    <AppShell
+      entryPath={entryPath}
+      sidebarHeaderContent={sidebarHeader}
+      sidebarContent={sidebarContent}
+    />
+  );
 }

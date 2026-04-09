@@ -991,8 +991,7 @@ body,
   grid-template-columns: 0 1fr 1fr;
 }
 
-.app-shell.has-sidebar.sidebar-collapsed .file-tree,
-.app-shell.has-sidebar.sidebar-collapsed .project-selector {
+.app-shell.has-sidebar.sidebar-collapsed .file-tree {
   display: none;
 }
 
