@@ -101,10 +101,78 @@ export interface ViewSlice {
    * Used to display the infra-defined label instead of the raw ID.
    */
   resourceLabelMap: Map<string, string>;
+  /**
+   * Maps dot-notation resource node IDs (e.g. "OrderDB.OrderTable") to the
+   * inferred style tag (e.g. "table", "queue", "storage").
+   * Used to automatically apply resource[table]/resource[queue]/resource[storage]
+   * style rules to dot-notation resource nodes that have no explicit tags.
+   */
+  resourceInferredTagsMap: Map<string, string>;
 }
 
 function nodeId(node: KrsNode): string {
   return node.id;
+}
+
+/** Maps infra sub-resource kind to the style tag used in resource[tag] rules. */
+const KIND_TO_INFERRED_TAG: Partial<Record<string, string>> = {
+  table: "table",
+  "queue-item": "queue",
+  bucket: "storage",
+};
+
+/**
+ * Build a map from dot-notation resource IDs (e.g. "OrderDB.OrderTable") to the
+ * inferred style tag (e.g. "table") derived from the referenced sub-resource kind.
+ */
+function buildResourceInferredTagsMap(systems: KrsNode[]): Map<string, string> {
+  const map = new Map<string, string>();
+  for (const system of systems) {
+    for (const node of system.children) {
+      if (!INFRA_KINDS.has(node.kind as "database" | "queue" | "storage")) continue;
+      for (const sub of node.children) {
+        const tag = KIND_TO_INFERRED_TAG[sub.kind];
+        if (tag) map.set(`${node.id}.${sub.id}`, tag);
+      }
+    }
+  }
+  return map;
+}
+
+/**
+ * Recursively apply inferred tags to all resource nodes in a subtree that have a
+ * dot-notation ref but no explicit tags. Explicit tags always take precedence.
+ * Non-resource interior nodes are shallow-copied only when their children changed.
+ */
+function applyInferredTagsDeep(node: KrsNode, tagMap: Map<string, string>): KrsNode {
+  const patchedChildren =
+    node.children.length > 0
+      ? node.children.map((c) => applyInferredTagsDeep(c, tagMap))
+      : node.children;
+  const childrenChanged = patchedChildren.some((c, i) => c !== node.children[i]);
+
+  if (node.kind === "resource" && node.tags.length === 0 && node.ref) {
+    const inferredTag = tagMap.get(node.id);
+    if (inferredTag) {
+      return {
+        ...node,
+        children: childrenChanged ? patchedChildren : node.children,
+        tags: [inferredTag],
+      };
+    }
+  }
+
+  if (childrenChanged) return { ...node, children: patchedChildren };
+  return node;
+}
+
+/**
+ * Apply inferred tags to all resource nodes (at any depth) that have a dot-notation ref
+ * but no explicit tags. Nodes with explicit tags are returned unchanged.
+ */
+function applyInferredTags(nodes: KrsNode[], tagMap: Map<string, string>): KrsNode[] {
+  if (tagMap.size === 0) return nodes;
+  return nodes.map((node) => applyInferredTagsDeep(node, tagMap));
 }
 
 /**
@@ -192,6 +260,7 @@ export function extractView(
   unassignedDomains: KrsNode[] = [],
 ): ViewSlice {
   const resourceLabelMap = buildResourceLabelMap(systems);
+  const resourceInferredTagsMap = buildResourceInferredTagsMap(systems);
 
   const empty: ViewSlice = {
     containerNode: null,
@@ -207,6 +276,7 @@ export function extractView(
     callerGhostSystems: [],
     callerGhostSystemEdges: [],
     resourceLabelMap,
+    resourceInferredTagsMap,
   };
 
   if (systems.length === 0) return empty;
@@ -248,6 +318,7 @@ export function extractView(
       callerGhostSystems: [],
       callerGhostSystemEdges: [],
       resourceLabelMap,
+      resourceInferredTagsMap,
     };
   }
 
@@ -330,7 +401,7 @@ export function extractView(
 
   return {
     containerNode,
-    childNodes: containerNode.children,
+    childNodes: applyInferredTags(containerNode.children, resourceInferredTagsMap),
     childEdges,
     ancestorChain,
     ghostUsers,
@@ -342,5 +413,6 @@ export function extractView(
     callerGhostSystems,
     callerGhostSystemEdges,
     resourceLabelMap,
+    resourceInferredTagsMap,
   };
 }

@@ -636,4 +636,68 @@ system ECPlatform {
       expect(view.resourceLabelMap.size).toBe(0);
     });
   });
+
+  describe("resourceInferredTagsMap", () => {
+    it("maps dot-notation IDs to inferred tags for table/queue-item/bucket sub-resources", () => {
+      const systems = parseSystem(INFRA_KRS);
+      const view = extractView(systems, []);
+
+      expect(view.resourceInferredTagsMap.get("OrderDB.OrderTable")).toBe("table");
+      expect(view.resourceInferredTagsMap.get("OrderDB.InventoryTable")).toBe("table");
+      expect(view.resourceInferredTagsMap.get("EventBus.OrderCreated")).toBe("queue");
+      expect(view.resourceInferredTagsMap.get("MediaStorage.ImageBucket")).toBe("storage");
+    });
+
+    it("is empty when no infra nodes exist", () => {
+      const systems = parseSystem(FULL_KRS);
+      const view = extractView(systems, []);
+
+      expect(view.resourceInferredTagsMap.size).toBe(0);
+    });
+  });
+
+  describe("applyInferredTags via childNodes", () => {
+    it("injects inferred tag into resource nodes with dot-notation ref and no explicit tags", () => {
+      const systems = parseSystem(INFRA_KRS);
+      const view = extractView(systems, ["ECPlatform", "OrderService"]);
+
+      const domainNode = view.childNodes.find((n) => n.id === "Order");
+      expect(domainNode).toBeDefined();
+      const usecaseNode = domainNode!.children.find((n) => n.id === "PlaceOrder");
+      expect(usecaseNode).toBeDefined();
+      const tableResource = usecaseNode!.children.find((n) => n.id === "OrderDB.OrderTable");
+      expect(tableResource).toBeDefined();
+      expect(tableResource!.tags).toContain("table");
+
+      const queueResource = usecaseNode!.children.find((n) => n.id === "EventBus.OrderCreated");
+      expect(queueResource).toBeDefined();
+      expect(queueResource!.tags).toContain("queue");
+    });
+
+    it("does not override explicit tags on resource nodes", () => {
+      const krs = `
+system ECPlatform {
+  database OrderDB {
+    table OrderTable { label "注文テーブル" }
+  }
+  service OrderService {
+    domain Order {
+      usecase PlaceOrder {
+        resource OrderDB.OrderTable [custom]
+      }
+    }
+  }
+}
+`;
+      const systems = parseSystem(krs);
+      const view = extractView(systems, ["ECPlatform", "OrderService"]);
+
+      const domainNode = view.childNodes.find((n) => n.id === "Order");
+      const usecaseNode = domainNode!.children.find((n) => n.id === "PlaceOrder");
+      const tableResource = usecaseNode!.children.find((n) => n.id === "OrderDB.OrderTable");
+      expect(tableResource).toBeDefined();
+      // explicit tag "custom" must be preserved, not replaced
+      expect(tableResource!.tags).toEqual(["custom"]);
+    });
+  });
 });

@@ -579,3 +579,133 @@ describe("resolveStyles with organizations", () => {
     expect(result.nodes.get("backend")!.backgroundColor).toBe("#222222");
   });
 });
+
+describe("resource tag auto-inference in resolveStyles", () => {
+  function makeSystem(infraChildren: KrsNode[], serviceChildren: KrsNode[]): KrsNode {
+    return makeNode({
+      kind: "system",
+      id: "ECPlatform",
+      children: [...infraChildren, ...serviceChildren],
+    });
+  }
+
+  function makeInfraNode(
+    kind: "database" | "queue" | "storage",
+    id: string,
+    subKind: string,
+    subId: string,
+  ): KrsNode {
+    const sub = makeNode({ kind: subKind as KrsNode["kind"], id: subId });
+    return makeNode({ kind, id, children: [sub] });
+  }
+
+  function makeResourceNode(id: string, ref?: { parent: string; child: string }): KrsNode {
+    return makeNode({ kind: "resource", id, ref } as Partial<KrsNode> & {
+      kind: KrsNode["kind"];
+      id: string;
+    });
+  }
+
+  it("infers table tag for resource referencing a database table", () => {
+    const db = makeInfraNode("database", "OrderDB", "table", "OrderTable");
+    const resource = makeResourceNode("OrderDB.OrderTable", {
+      parent: "OrderDB",
+      child: "OrderTable",
+    });
+    const system = makeSystem(
+      [db],
+      [
+        makeNode({
+          kind: "service",
+          id: "Svc",
+          children: [
+            makeNode({
+              kind: "domain",
+              id: "D",
+              children: [makeNode({ kind: "usecase", id: "UC", children: [resource] })],
+            }),
+          ],
+        }),
+      ],
+    );
+    const sheet: StyleSheet = {
+      rules: [
+        makeRule(
+          { nodeType: "resource", tags: ["table"], annotations: [] },
+          { "background-color": "#TABLE" },
+          1,
+        ),
+        makeRule(
+          { nodeType: "resource", tags: [], annotations: [] },
+          { "background-color": "#RESOURCE" },
+          0,
+        ),
+      ],
+    };
+    const result = resolveStyles([system], [sheet]);
+    // The resource should match resource[table], not the generic resource rule
+    expect(result.nodes.get("OrderDB.OrderTable")!.backgroundColor).toBe("#TABLE");
+  });
+
+  it("infers queue tag for resource referencing a queue item", () => {
+    const q = makeInfraNode("queue", "EventBus", "queue-item", "OrderCreated");
+    const resource = makeResourceNode("EventBus.OrderCreated", {
+      parent: "EventBus",
+      child: "OrderCreated",
+    });
+    const system = makeSystem(
+      [q],
+      [
+        makeNode({
+          kind: "service",
+          id: "Svc",
+          children: [makeNode({ kind: "usecase", id: "UC", children: [resource] })],
+        }),
+      ],
+    );
+    const sheet: StyleSheet = {
+      rules: [
+        makeRule(
+          { nodeType: "resource", tags: ["queue"], annotations: [] },
+          { "background-color": "#QUEUE" },
+          1,
+        ),
+        makeRule(
+          { nodeType: "resource", tags: [], annotations: [] },
+          { "background-color": "#RESOURCE" },
+          0,
+        ),
+      ],
+    };
+    const result = resolveStyles([system], [sheet]);
+    expect(result.nodes.get("EventBus.OrderCreated")!.backgroundColor).toBe("#QUEUE");
+  });
+
+  it("does not override explicit tags on resource nodes", () => {
+    const db = makeInfraNode("database", "OrderDB", "table", "OrderTable");
+    const resource = {
+      ...makeResourceNode("OrderDB.OrderTable", { parent: "OrderDB", child: "OrderTable" }),
+      tags: ["custom"],
+    };
+    const system = makeSystem(
+      [db],
+      [makeNode({ kind: "service", id: "Svc", children: [resource] })],
+    );
+    const sheet: StyleSheet = {
+      rules: [
+        makeRule(
+          { nodeType: "resource", tags: ["table"], annotations: [] },
+          { "background-color": "#TABLE" },
+          1,
+        ),
+        makeRule(
+          { nodeType: "resource", tags: ["custom"], annotations: [] },
+          { "background-color": "#CUSTOM" },
+          1,
+        ),
+      ],
+    };
+    const result = resolveStyles([system], [sheet]);
+    expect(result.nodes.get("OrderDB.OrderTable")!.backgroundColor).toBe("#CUSTOM");
+  });
+});

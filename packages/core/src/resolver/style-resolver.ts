@@ -33,6 +33,34 @@ const DEFAULT_EDGE_STYLE: ResolvedEdgeStyle = {
 
 const SHAPE_KEYWORDS = new Set<string>(["box", "user", "cylinder", "queue", "hexagon", "cloud"]);
 
+/** Infra block kinds whose sub-resources can have a tag inferred from their kind. */
+const INFRA_KINDS = new Set(["database", "queue", "storage"]);
+/** Maps infra sub-resource AST kind → the style tag used in resource[tag] selectors. */
+const INFRA_SUB_KIND_TO_TAG: Record<string, string> = {
+  table: "table",
+  "queue-item": "queue",
+  bucket: "storage",
+};
+
+/**
+ * Build a map from dot-notation resource IDs (e.g. "OrderDB.OrderTable") to the inferred
+ * style tag derived from the referenced infra sub-resource kind. Only covers sub-resources
+ * that are direct children of a system-level infra node.
+ */
+function buildInferredTagMap(systems: KrsNode[]): Map<string, string> {
+  const map = new Map<string, string>();
+  for (const system of systems) {
+    for (const node of system.children) {
+      if (!INFRA_KINDS.has(node.kind)) continue;
+      for (const sub of node.children) {
+        const tag = INFRA_SUB_KIND_TO_TAG[sub.kind];
+        if (tag) map.set(`${node.id}.${sub.id}`, tag);
+      }
+    }
+  }
+  return map;
+}
+
 export function resolveStyles(
   systems: KrsNode[],
   sheets: StyleSheet[],
@@ -52,11 +80,26 @@ export function resolveStyles(
   const nodeStyles = new Map<string, ResolvedNodeStyle>();
   const edgeStyles = new Map<string, ResolvedEdgeStyle>();
 
+  // Build inferred tag map so that dot-notation resource nodes (e.g. "OrderDB.OrderTable")
+  // automatically match resource[table] / resource[queue] / resource[storage] selectors
+  // even when no explicit tags are declared in the .krs source.
+  const inferredTagMap = buildInferredTagMap(systems);
+
   function processNodes(nodes: KrsNode[]): void {
     for (const node of nodes) {
       const key = node.id;
-      nodeStyles.set(key, resolveNodeStyle(node, allRules));
-      processNodes(node.children);
+      // Inject inferred tag for dot-notation resource nodes with no explicit tags.
+      let resolvedNode = node;
+      if (
+        node.kind === "resource" &&
+        node.tags.length === 0 &&
+        node.ref &&
+        inferredTagMap.has(node.id)
+      ) {
+        resolvedNode = { ...node, tags: [inferredTagMap.get(node.id)!] };
+      }
+      nodeStyles.set(key, resolveNodeStyle(resolvedNode, allRules));
+      processNodes(resolvedNode.children);
     }
   }
 
