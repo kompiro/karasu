@@ -4,6 +4,7 @@ import type {
   KrsFile,
   SystemNode,
   KrsNode,
+  ServiceNode,
   DeployBlock,
   OrganizationBlock,
   ImportDeclaration,
@@ -360,7 +361,33 @@ export class ImportResolver {
 
       for (const service of importedFile.services) {
         if (service.id === id) {
-          mergedFile.services.push(service);
+          // トップレベル service を system の child として組み込む。
+          // 優先順位:
+          //   1. スタブ（body なし宣言）があれば: タグ・アノテーションを保持して定義で補完する
+          //   2. スタブはないが system の edges で参照されていれば: child として追加する
+          //   3. どちらでもなければ: トップレベル service としてそのままマージする
+          let mergedIntoSystem = false;
+          for (const system of mergedFile.systems) {
+            const stubIndex = system.children.findIndex((c) => c.id === id && c.kind === "service");
+            if (stubIndex >= 0) {
+              // 1. スタブあり: タグ・アノテーションを保持して定義で補完する
+              const stub = system.children[stubIndex] as ServiceNode;
+              system.children[stubIndex] = {
+                ...service,
+                tags: stub.tags.length > 0 ? stub.tags : service.tags,
+                annotations: stub.annotations.length > 0 ? stub.annotations : service.annotations,
+              };
+              mergedIntoSystem = true;
+            } else if (system.edges.some((e) => e.from === id || e.to === id)) {
+              // 2. スタブなし・edges で参照あり: child として追加する
+              system.children.push(service);
+              mergedIntoSystem = true;
+            }
+          }
+          if (!mergedIntoSystem) {
+            // 3. どの system にも属さない場合はトップレベル service としてそのままマージする
+            mergedFile.services.push(service);
+          }
           found = true;
         }
       }
