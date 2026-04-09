@@ -82,6 +82,38 @@ describe("compile — deploy diagram nodeMetadata", () => {
   });
 });
 
+const MULTI_REALIZES_KRS = `
+system ECPlatform {
+  service OrderService {}
+  service InventoryService {}
+}
+
+deploy Production {
+  oci monolith {
+    realizes OrderService
+    realizes InventoryService
+  }
+}
+`;
+
+describe("compile — multi-realizes deploy unit", () => {
+  it("renders monolith in both OrderService and InventoryService containers", () => {
+    const result = compile(MULTI_REALIZES_KRS, { diagramType: "deploy" });
+    if (result.diagramType !== "deploy") throw new Error("expected deploy result");
+    expect(result.svg).toContain('data-container-id="OrderService"');
+    expect(result.svg).toContain('data-container-id="InventoryService"');
+    expect(result.svg).toContain('data-node-id="OrderService::monolith"');
+    expect(result.svg).toContain('data-node-id="InventoryService::monolith"');
+  });
+
+  it("creates nodeMetadata entries for both compound keys", () => {
+    const result = compile(MULTI_REALIZES_KRS, { diagramType: "deploy" });
+    if (result.diagramType !== "deploy") throw new Error("expected deploy result");
+    expect(result.nodeMetadata.has("OrderService::monolith")).toBe(true);
+    expect(result.nodeMetadata.has("InventoryService::monolith")).toBe(true);
+  });
+});
+
 const ORG_KRS = `
 org "Eng" {
   system "API" {}
