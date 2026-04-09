@@ -1,7 +1,7 @@
 # CLI translate コマンド
 
 - **日付**: 2026-04-09
-- **ステータス**: 検討中
+- **ステータス**: 完了
 - **関連**:
   - [CLI render コマンド](cli-render-command.md)
   - [Issue #355: feat(cli): add `karasu translate` command](https://github.com/kompiro/karasu/issues/355)
@@ -9,16 +9,19 @@
 
 ## `karasu.map.yaml` とは
 
-命名規則ヒューリスティック（kebab-case → PascalCase）では解決できないレガシー名のための明示的マッピングファイル。
-入力ファイルと同ディレクトリに置くことで、`karasu translate` が参照する。
+デプロイ単位名から論理サービス名へのマッピングを記述するファイル。主に以下の2つの用途で使う：
 
-```yaml
-# karasu.map.yaml
-app.jar: ECommerce          # "app" では何のサービスか判断できない
-legacy-batch: Settlement    # 命名規則に従っていないレガシー名
-```
+1. **レガシー名の救済** — kebab-case → PascalCase 変換では解決できない名前
+   ```yaml
+   app.jar: ECommerce          # "app" では何のサービスか判断できない
+   legacy-batch: Settlement    # 命名規則に従っていないレガシー名
+   ```
 
-マッピングが存在すれば heuristic より優先して使用する。ファイルがない場合はスキップする。
+2. **インフラファイルへの karasu 記述を避ける** — `karasu/realizes` ラベルを docker-compose.yml や k8s マニフェストに追加したくない場合
+   - k8s ラベルは本番クラスタの Pod に付与されてしまう
+   - 共有リポジトリのファイルを変更したくない
+
+`karasu.map.yaml` はインフラファイルをノータッチのまま `realizes` マッピングを管理するための**分離レイヤー**として機能する。
 
 ---
 
@@ -52,6 +55,7 @@ Arguments:
 
 Options:
   --from <format>       Input format: compose | k8s
+  --map <path>          Path to karasu.map.yaml (default: same directory as input file)
   -o, --output <path>   Write .krs to file (default: stdout)
   -h, --help            Display help for command
 
@@ -59,13 +63,17 @@ Examples:
   karasu translate --from compose docker-compose.yml > deploy.krs
   karasu translate --from k8s manifests/deployment.yaml > deploy.krs
 
-  # 複数 k8s ファイルを個別に変換してまとめる
-  for f in manifests/*.yaml; do karasu translate --from k8s "$f"; done > deploy.krs
+  # karasu.map.yaml を明示的に指定（リポジトリルートに1つ置いて共有するケース）
+  for f in manifests/*.yaml; do
+    karasu translate --from k8s "$f" --map karasu.map.yaml
+  done > deploy.krs
 ```
 
 k8s マニフェストは1ファイル1コマンドで変換する。
 ディレクトリ一括処理はサポートせず、シェルのファイルグロブに委ねる。
 各ファイルが独立した `deploy` ブロックを出力するため、シェルで連結しやすい。
+
+`--map` 未指定時は入力ファイルと同ディレクトリの `karasu.map.yaml` を自動参照する。ファイルが存在しない場合はスキップする（エラーにしない）。
 
 ## 検討した選択肢
 
@@ -307,10 +315,11 @@ packages/cli/src/
 
 ## 未解決の問い
 
-- `karasu.map.yaml` の探索パスを「入力ファイルと同ディレクトリ」固定でよいか、CLIオプション（`--map`）も提供すべきか
+なし
 
 ## 決定事項
 
+- `--map` オプションは省略可。未指定時は入力ファイルと同ディレクトリの `karasu.map.yaml` を自動参照する。`karasu.map.yaml` はインフラファイルを変更せずに realizes マッピングを管理するための分離レイヤーとして機能する
 - docker-compose の `labels` で複数 `realizes` を指定する場合はカンマ区切り文字列を使う
   ```yaml
   labels:
