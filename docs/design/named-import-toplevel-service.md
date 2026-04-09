@@ -144,11 +144,17 @@ system.children[stubIndex] = {
 
 ## 現時点の方針
 
-**案2（タグ保持マージ）** を採用する。
+**エッジ参照による自動メンバーシップ** を主方式として採用する。スタブは後方互換として残すが、将来的に廃止を検討する。
 
-### タグ・アノテーションの優先ルール
+### 優先順位
 
-スタブ側（利用ファイル）のタグ・アノテーションを優先し、その他のフィールドは imported 定義で補完する:
+トップレベル service の named import に対して、以下の優先順位で system への組み込みを試みる:
+
+1. **スタブあり（後方互換）**: `system.children` に同 ID のスタブ（body なし宣言）があれば、タグ・アノテーションを保持してその定義で補完する
+2. **エッジ参照あり（主方式）**: スタブはないが、system の edges で参照されていれば、child として追加する
+3. **どちらでもない**: トップレベル service としてそのままマージする
+
+### タグ・アノテーションの優先ルール（スタブあり時）
 
 | フィールド | 優先 |
 |-----------|------|
@@ -160,9 +166,13 @@ system.children[stubIndex] = {
 | `description` | 定義側 |
 | `properties` | 定義側 |
 
-### 複数 system に同一 ID のスタブがある場合
+### 複数 system に同一 ID のスタブ / エッジ参照がある場合
 
-`ECPlatform.ECommerce` と `Legacy.ECommerce` は完全修飾名で別エンティティとして識別される。したがって、`for` ループで全 system のスタブを置換するのは正しい動作であり、各 system が独立して同一サービスを参照できる。
+`ECPlatform.ECommerce` と `Legacy.ECommerce` は完全修飾名で別エンティティとして識別される。したがって、`for` ループで全 system を走査してスタブ置換またはエッジ参照による追加を行うのは正しい動作であり、各 system が独立して同一サービスを参照できる。
+
+### スタブの廃止方針
+
+スタブ（`service ECommerce` 単体の body なし宣言）は後方互換として動作するが、主方式はエッジ参照による自動メンバーシップとする。将来的にはスタブに対して deprecation warning を出し、最終的に除去することを検討する。
 
 ### 実装方針
 
@@ -175,17 +185,22 @@ for (const service of importedFile.services) {
         (c) => c.id === id && c.kind === "service",
       );
       if (stubIndex >= 0) {
+        // 1. スタブあり: タグ・アノテーションを保持して定義で補完する
         const stub = system.children[stubIndex] as ServiceNode;
-        // スタブのタグ・アノテーションを保持し、定義側の内容で補完する
         system.children[stubIndex] = {
           ...service,
           tags: stub.tags.length > 0 ? stub.tags : service.tags,
           annotations: stub.annotations.length > 0 ? stub.annotations : service.annotations,
         };
         mergedIntoSystem = true;
+      } else if (system.edges.some((e) => e.from === id || e.to === id)) {
+        // 2. スタブなし・edges で参照あり: child として追加する
+        system.children.push(service);
+        mergedIntoSystem = true;
       }
     }
     if (!mergedIntoSystem) {
+      // 3. どの system にも属さない場合はトップレベル service としてそのままマージする
       mergedFile.services.push(service);
     }
     found = true;

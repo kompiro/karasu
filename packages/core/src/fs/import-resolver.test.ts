@@ -196,6 +196,78 @@ system Legacy {
       }
     });
 
+    it("adds top-level service as system child when referenced only in edges (no stub)", async () => {
+      await fs.writeFile(
+        "/project/system.krs",
+        `import { ECommerce } from "./ecommerce.krs"
+import { Payment } from "./payment.krs"
+system ECPlatform {
+  service Inventory { domain Stock { usecase CheckStock {} } }
+  ECommerce -> Payment "決済を処理する"
+  ECommerce -> Inventory "在庫を確認する"
+}`,
+      );
+      await fs.writeFile(
+        "/project/ecommerce.krs",
+        `service ECommerce {
+  label "ECサイト"
+  domain Order { usecase PlaceOrder {} }
+}`,
+      );
+      await fs.writeFile(
+        "/project/payment.krs",
+        `service Payment {
+  label "決済サービス"
+  domain Billing { usecase Charge {} }
+}`,
+      );
+
+      const result = await resolver.resolve("/project/system.krs");
+      expect(result.diagnostics.filter((d) => d.severity === "error")).toHaveLength(0);
+
+      const system = result.krsFile.systems.find((s) => s.id === "ECPlatform");
+      expect(system).toBeDefined();
+      const childIds = system!.children.map((c) => c.id);
+
+      // ECommerce and Payment are referenced in edges → added as children with full definitions
+      expect(childIds).toContain("ECommerce");
+      expect(childIds).toContain("Payment");
+
+      const ecommerce = system!.children.find((c) => c.id === "ECommerce");
+      expect(ecommerce!.children.map((c) => c.id)).toContain("Order");
+
+      const payment = system!.children.find((c) => c.id === "Payment");
+      expect(payment!.children.map((c) => c.id)).toContain("Billing");
+
+      // Should not appear at top level
+      expect(result.krsFile.services.map((s) => s.id)).not.toContain("ECommerce");
+      expect(result.krsFile.services.map((s) => s.id)).not.toContain("Payment");
+    });
+
+    it("keeps top-level service in services when not referenced in any system edges", async () => {
+      await fs.writeFile(
+        "/project/system.krs",
+        `import { SharedLib } from "./shared.krs"
+system ECPlatform {
+  service Inventory {}
+}`,
+      );
+      await fs.writeFile(
+        "/project/shared.krs",
+        `service SharedLib {
+  domain Core { usecase DoSomething {} }
+}`,
+      );
+
+      const result = await resolver.resolve("/project/system.krs");
+      expect(result.diagnostics.filter((d) => d.severity === "error")).toHaveLength(0);
+
+      // SharedLib has no edges in ECPlatform → stays at top level
+      const system = result.krsFile.systems.find((s) => s.id === "ECPlatform");
+      expect(system!.children.map((c) => c.id)).not.toContain("SharedLib");
+      expect(result.krsFile.services.map((s) => s.id)).toContain("SharedLib");
+    });
+
     it("reports error for non-existent identifier", async () => {
       await fs.writeFile(
         "/project/index.krs",
