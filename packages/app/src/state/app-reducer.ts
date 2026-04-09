@@ -44,7 +44,7 @@ export type AppAction =
   | { type: "UPDATE_FILE_CONTENT"; content: string }
   | { type: "SET_FILE_TREE"; tree: DirEntry[] }
   | { type: "SET_VIEW_PATH"; path: string[] }
-  | { type: "SET_ACTIVE_VIEW"; activeView: ActiveView }
+  | { type: "SET_ACTIVE_VIEW"; activeView: ActiveView; highlightNodeId?: string | null }
   | { type: "SET_HIGHLIGHTED_NODE"; nodeId: string | null }
   | { type: "SET_LOADING"; loading: boolean }
   | { type: "SET_SELECTED_DEPLOY_BLOCK"; id: string | null }
@@ -97,7 +97,7 @@ export function appReducer(state: AppState, action: AppAction): AppState {
         ...state,
         activeView: action.activeView,
         viewPath: [],
-        highlightedNodeId: null,
+        highlightedNodeId: action.highlightNodeId ?? null,
       };
 
     case "SET_HIGHLIGHTED_NODE":

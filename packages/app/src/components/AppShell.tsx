@@ -158,38 +158,34 @@ export function AppShell({ entryPath, sidebarContent, hideEditor, recompileRef }
 
   const handleContainerClick = useCallback(
     (containerId: string) => {
-      navigateActiveView("system");
-      dispatch({ type: "SET_HIGHLIGHTED_NODE", nodeId: containerId });
+      dispatch({ type: "SET_ACTIVE_VIEW", activeView: "system", highlightNodeId: containerId });
     },
-    [navigateActiveView, dispatch],
+    [dispatch],
   );
 
   const handleDeployButtonClick = useCallback(
     (serviceId: string) => {
-      navigateActiveView("deploy");
-      dispatch({ type: "SET_HIGHLIGHTED_NODE", nodeId: serviceId });
+      dispatch({ type: "SET_ACTIVE_VIEW", activeView: "deploy", highlightNodeId: serviceId });
     },
-    [navigateActiveView, dispatch],
+    [dispatch],
   );
 
   const handleTeamButtonClick = useCallback(
     (teamId: string) => {
-      navigateActiveView("org");
-      dispatch({ type: "SET_HIGHLIGHTED_NODE", nodeId: teamId });
+      dispatch({ type: "SET_ACTIVE_VIEW", activeView: "org", highlightNodeId: teamId });
     },
-    [navigateActiveView, dispatch],
+    [dispatch],
   );
 
   const handleOwnedServiceClick = useCallback(
     (serviceId: string) => {
       const resolvedPath = nodePathIndex.get(serviceId);
-      navigateActiveView("system");
+      dispatch({ type: "SET_ACTIVE_VIEW", activeView: "system", highlightNodeId: serviceId });
       if (resolvedPath !== undefined) {
         navigateViewPath(resolvedPath);
       }
-      dispatch({ type: "SET_HIGHLIGHTED_NODE", nodeId: serviceId });
     },
-    [navigateActiveView, navigateViewPath, nodePathIndex, dispatch],
+    [navigateViewPath, nodePathIndex, dispatch],
   );
 
   const handleDisplayModeChange = useCallback(
