@@ -353,4 +353,93 @@ describe("layoutDeploy", () => {
     // B has predecessor A; C has none → B should be placed before C
     expect(cB.x).toBeLessThan(cC.x);
   });
+
+  it("wraps containers to a new sub-row when layer width exceeds MAX_LAYER_WIDTH", () => {
+    // Single-char label container width = max(max(9,80)+80, 9+40+24) = 200px.
+    // After 5 containers: currentX = 40 + 5*200 + 4*48 = 1232; placing the 6th would reach 1432 > 1240 → wraps.
+    // Sub-row 1: A-E (5 containers); sub-row 2: F-H (3 containers).
+    const ids = ["A", "B", "C", "D", "E", "F", "G", "H"];
+    const slice = makeSlice(
+      ids.map((id) => ({ serviceId: id, serviceLabel: id, unitIds: [id.toLowerCase()] })),
+      [],
+      [], // no edges → all in layer 0
+    );
+    const result = layoutDeploy(slice);
+
+    const first = result.containers.find((c) => c.id === "A")!;
+    const last = result.containers.find((c) => c.id === "H")!;
+
+    // Last container should have been wrapped to a new sub-row (higher Y than first)
+    expect(last.y).toBeGreaterThan(first.y);
+  });
+
+  it("resets X to OUTER_PADDING at the start of each sub-row", () => {
+    const ids = ["A", "B", "C", "D", "E", "F", "G", "H"];
+    const slice = makeSlice(
+      ids.map((id) => ({ serviceId: id, serviceLabel: id, unitIds: [id.toLowerCase()] })),
+      [],
+      [],
+    );
+    const result = layoutDeploy(slice);
+
+    const OUTER_PADDING = 40;
+    const firstY = result.containers[0].y;
+    const wrapped = result.containers.filter((c) => c.y > firstY);
+
+    // There must be at least one wrapped container
+    expect(wrapped.length).toBeGreaterThan(0);
+
+    // The first wrapped container restarts from OUTER_PADDING exactly
+    expect(wrapped[0].x).toBe(OUTER_PADDING);
+
+    // All wrapped containers should be at or beyond OUTER_PADDING
+    for (const c of wrapped) {
+      expect(c.x).toBeGreaterThanOrEqual(OUTER_PADDING);
+    }
+  });
+
+  it("total height increases when containers wrap to sub-rows", () => {
+    const idsNoWrap = ["A", "B"];
+    const idsWithWrap = ["A", "B", "C", "D", "E", "F", "G", "H"];
+
+    const sliceNoWrap = makeSlice(
+      idsNoWrap.map((id) => ({ serviceId: id, serviceLabel: id, unitIds: [id.toLowerCase()] })),
+    );
+    const sliceWithWrap = makeSlice(
+      idsWithWrap.map((id) => ({ serviceId: id, serviceLabel: id, unitIds: [id.toLowerCase()] })),
+    );
+
+    const resultNoWrap = layoutDeploy(sliceNoWrap);
+    const resultWithWrap = layoutDeploy(sliceWithWrap);
+
+    // The wrapped layout must be taller due to the extra sub-row
+    expect(resultWithWrap.height).toBeGreaterThan(resultNoWrap.height);
+  });
+
+  it("ghost edge from last sub-row container routes to top of next layer", () => {
+    // H wraps to sub-row 2; I is in layer 1 (below layer 0).
+    // The ghost edge H→I should connect bottom-center of H to top-center of I.
+    const ids = ["A", "B", "C", "D", "E", "F", "G", "H"];
+    const slice = makeSlice(
+      [
+        ...ids.map((id) => ({ serviceId: id, serviceLabel: id, unitIds: [id.toLowerCase()] })),
+        { serviceId: "I", serviceLabel: "I", unitIds: ["i"] },
+      ],
+      [],
+      [{ from: "H", to: "I" }],
+    );
+    const result = layoutDeploy(slice);
+
+    const cH = result.containers.find((c) => c.id === "H")!;
+    const cI = result.containers.find((c) => c.id === "I")!;
+    const edge = result.edges.find((e) => e.from === "H" && e.to === "I")!;
+
+    // H is in sub-row 2, I should be in layer 1 (below)
+    expect(cI.y).toBeGreaterThan(cH.y);
+
+    // fromPoint should originate from bottom of H
+    expect(edge.fromPoint.y).toBe(cH.y + cH.height);
+    // toPoint should hit top of I
+    expect(edge.toPoint.y).toBe(cI.y);
+  });
 });

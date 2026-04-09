@@ -10,6 +10,7 @@ const CONTAINER_PADDING_TOP = 36; // room for container label
 const CONTAINER_PADDING_BOTTOM = 20;
 const OUTER_PADDING = 40;
 const ROW_GAP = 64; // vertical gap between layers (larger than CONTAINER_GAP to leave room for edges)
+const MAX_LAYER_WIDTH = 1200; // wrap containers to a new sub-row when a layer exceeds this width
 const UNCLASSIFIED_LABEL = "Unclassified";
 
 function estimateTextWidth(text: string): number {
@@ -222,24 +223,34 @@ export function layoutDeploy(slice: DeployViewSlice): LayoutResult {
       layerOrder === 0
         ? layerBuckets.get(layerIdx)!
         : sortLayerByBarycenter(layerBuckets.get(layerIdx)!, predecessorsMap, containerCenterX);
+
+    // Place containers with sub-row wrapping when layer width exceeds MAX_LAYER_WIDTH
     let currentX = OUTER_PADDING;
-    let maxLayerHeight = 0;
+    let subRowY = currentY;
+    let subRowMaxHeight = 0;
 
     for (const group of layerGroups) {
       const containerW = measureContainerWidth(group.units, group.label);
       const containerH = measureContainerHeight(group.units);
 
+      // Wrap to a new sub-row when the container would exceed MAX_LAYER_WIDTH
+      if (currentX > OUTER_PADDING && currentX + containerW > OUTER_PADDING + MAX_LAYER_WIDTH) {
+        subRowY += subRowMaxHeight + CONTAINER_GAP;
+        currentX = OUTER_PADDING;
+        subRowMaxHeight = 0;
+      }
+
       containers.push({
         id: group.id,
         label: group.label,
         x: currentX,
-        y: currentY,
+        y: subRowY,
         width: containerW,
         height: containerH,
         ghost: false,
       });
 
-      let unitY = currentY + CONTAINER_PADDING_TOP;
+      let unitY = subRowY + CONTAINER_PADDING_TOP;
       for (const unit of group.units) {
         const dims = measureDeployUnit(unit);
         layoutNodes.set(unit.id, {
@@ -263,12 +274,12 @@ export function layoutDeploy(slice: DeployViewSlice): LayoutResult {
       }
 
       containerCenterX.set(group.id, currentX + containerW / 2);
-      maxLayerHeight = Math.max(maxLayerHeight, containerH);
+      subRowMaxHeight = Math.max(subRowMaxHeight, containerH);
       currentX += containerW + CONTAINER_GAP;
+      totalWidth = Math.max(totalWidth, currentX - CONTAINER_GAP + OUTER_PADDING);
     }
 
-    totalWidth = Math.max(totalWidth, currentX - CONTAINER_GAP + OUTER_PADDING);
-    currentY += maxLayerHeight + ROW_GAP;
+    currentY = subRowY + subRowMaxHeight + ROW_GAP;
   }
 
   // --- Unclassified units: bottom row ---
