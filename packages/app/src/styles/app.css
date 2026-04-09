@@ -358,7 +358,7 @@ body,
 
 /* ── Cross-navigation highlight ─────────────────────────────────── */
 .karasu-highlighted {
-  filter: drop-shadow(0 0 6px var(--accent-glow)) drop-shadow(0 0 16px var(--accent-dim));
+  filter: drop-shadow(0 0 4px var(--accent)) drop-shadow(0 0 12px var(--accent-glow));
 }
 
 /* ── Breadcrumb ─────────────────────────────────────────────────── */
