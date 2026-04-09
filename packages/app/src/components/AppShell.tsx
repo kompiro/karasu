@@ -40,7 +40,13 @@ interface AppShellProps {
  * Mode-specific concerns (initialization, project management, sidebar content)
  * are handled by the parent wrapper components.
  */
-export function AppShell({ entryPath, sidebarHeaderContent, sidebarContent, hideEditor, recompileRef }: AppShellProps) {
+export function AppShell({
+  entryPath,
+  sidebarHeaderContent,
+  sidebarContent,
+  hideEditor,
+  recompileRef,
+}: AppShellProps) {
   const { state, dispatch, fs } = useAppContext();
   const {
     fileContent,
