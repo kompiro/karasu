@@ -60,7 +60,7 @@ describe("compile — deploy diagram nodeMetadata", () => {
     if (result.diagramType !== "deploy") throw new Error("expected deploy result");
     const meta = result.nodeMetadata.get("ec-app");
     expect(meta!.runtime).toBe("node:20");
-    expect(meta!.realizes).toBe("ECommerce");
+    expect(meta!.realizes).toEqual(["ECommerce"]);
   });
 
   it("sets undefined for missing runtime and realizes", () => {

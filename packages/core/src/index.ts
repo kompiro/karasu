@@ -162,7 +162,7 @@ export interface NodeMetadata {
   team?: string;
   role?: string;
   runtime?: string;
-  realizes?: string;
+  realizes?: string[];
   tags: string[];
   annotations: string[];
   hasChildren: boolean;

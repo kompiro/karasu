@@ -201,7 +201,7 @@ export interface OrganizationBlock {
 
 export interface DeployNodeProperties {
   runtime?: string;
-  realizes?: string;
+  realizes?: string[];
   schedule?: string;
   image?: string;
   type?: string;

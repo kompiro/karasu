@@ -927,10 +927,14 @@ export class Parser {
         const propToken = this.advance();
         const propName = propToken.value as keyof DeployNodeProperties;
         // Value can be string literal or identifier
-        if (this.peek().type === TokenType.StringLiteral) {
-          properties[propName] = this.advance().value;
-        } else if (this.peek().type === TokenType.Identifier) {
-          properties[propName] = this.advance().value;
+        if (this.peek().type === TokenType.StringLiteral || this.peek().type === TokenType.Identifier) {
+          const value = this.advance().value;
+          if (propName === "realizes") {
+            if (!properties.realizes) properties.realizes = [];
+            properties.realizes.push(value);
+          } else {
+            (properties as Record<string, string>)[propName] = value;
+          }
         } else {
           this.error(`Expected value for property "${propName}"`);
         }
