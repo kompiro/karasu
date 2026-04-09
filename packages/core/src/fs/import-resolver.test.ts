@@ -622,5 +622,30 @@ import "teams/"`,
       // ECommerce should appear exactly once
       expect(ec!.children.filter((c) => c.id === "ECommerce")).toHaveLength(1);
     });
+
+    it("does not warn about circular import when entry file is in the imported directory", async () => {
+      // system.krs lives in the same directory it imports — self-reference must be silently skipped
+      await fs.writeFile(
+        "/project/teams/system.krs",
+        `import "./"
+
+system ECPlatform {
+  user Customer [human]
+  Customer -> ECommerce "商品を購入する"
+}`,
+      );
+      await fs.writeFile(
+        "/project/teams/ec.krs",
+        `system ECPlatform {
+          service ECommerce
+        }`,
+      );
+
+      const result = await resolver.resolve("/project/teams/system.krs");
+      expect(result.diagnostics.filter((d) => d.severity === "warning")).toHaveLength(0);
+      expect(result.diagnostics.filter((d) => d.severity === "error")).toHaveLength(0);
+      const sys = result.krsFile.systems.find((s) => s.id === "ECPlatform");
+      expect(sys!.children.map((c) => c.id)).toContain("ECommerce");
+    });
   });
 });

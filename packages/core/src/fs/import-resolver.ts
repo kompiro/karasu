@@ -103,8 +103,10 @@ export class ImportResolver {
       if (nodeImport.path === "") continue;
       if (nodeImport.path.endsWith("/")) {
         // ディレクトリ import: 配下の .krs ファイルを展開してそれぞれロード
+        // import 元ファイル自身は除外（同一ディレクトリから import した場合の自己参照を防ぐ）
         const dirPath = resolvePath(filePath, nodeImport.path);
-        const expanded = await this.expandDirectoryKrsFiles(dirPath, nodeImport);
+        const allExpanded = await this.expandDirectoryKrsFiles(dirPath, nodeImport);
+        const expanded = allExpanded.filter((p) => p !== filePath);
         this.dirExpansions.set(dirPath, expanded);
         for (const krsFilePath of expanded) {
           await this.loadFileRecursive(krsFilePath, fileMap);
