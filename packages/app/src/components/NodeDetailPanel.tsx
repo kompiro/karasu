@@ -115,13 +115,13 @@ export function NodeDetailPanel({
         </div>
       )}
 
-      {(metadata.runtime || metadata.realizes) && (
+      {(metadata.runtime || metadata.realizes?.length) && (
         <div className="node-detail-section">
           {metadata.runtime && (
             <div className="node-detail-prop">🖥 runtime: {metadata.runtime}</div>
           )}
-          {metadata.realizes && (
-            <div className="node-detail-prop">🔗 realizes: {metadata.realizes}</div>
+          {metadata.realizes?.length && (
+            <div className="node-detail-prop">🔗 realizes: {metadata.realizes.join(", ")}</div>
           )}
         </div>
       )}

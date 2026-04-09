@@ -316,7 +316,7 @@ describe("analyze", () => {
             {
               kind: "oci" as const,
               id: "my-service",
-              properties: { realizes: "Svc" },
+              properties: { realizes: ["Svc"] },
               loc: dummyLoc,
             },
           ],

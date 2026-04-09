@@ -58,11 +58,13 @@ export function extractDeployView(
 
   for (const unit of deployBlock.nodes) {
     const realizes = unit.properties.realizes;
-    if (realizes) {
-      if (!groupedByRealizes.has(realizes)) {
-        groupedByRealizes.set(realizes, []);
+    if (realizes && realizes.length > 0) {
+      for (const serviceId of realizes) {
+        if (!groupedByRealizes.has(serviceId)) {
+          groupedByRealizes.set(serviceId, []);
+        }
+        groupedByRealizes.get(serviceId)!.push(unit);
       }
-      groupedByRealizes.get(realizes)!.push(unit);
     } else {
       unclassifiedUnits.push(unit);
     }

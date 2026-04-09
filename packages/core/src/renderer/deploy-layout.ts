@@ -253,7 +253,9 @@ export function layoutDeploy(slice: DeployViewSlice): LayoutResult {
       let unitY = subRowY + CONTAINER_PADDING_TOP;
       for (const unit of group.units) {
         const dims = measureDeployUnit(unit);
-        layoutNodes.set(unit.id, {
+        // Key is "${containerId}::${unit.id}" so the same unit can appear in multiple
+        // containers at different positions without overwriting its layout entry.
+        layoutNodes.set(`${group.id}::${unit.id}`, {
           kind: unit.kind,
           id: unit.id,
           label: unit.label ?? unit.id,

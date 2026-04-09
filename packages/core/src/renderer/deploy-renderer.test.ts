@@ -79,7 +79,7 @@ describe("renderDeploy", () => {
 
   it("includes data-node-id attributes for units", () => {
     const svg = renderDeploy(makeSlice(), styles);
-    expect(svg).toContain('data-node-id="order-api"');
+    expect(svg).toContain('data-node-id="ECommerce::order-api"');
   });
 
   it("renders empty state SVG for empty slice", () => {

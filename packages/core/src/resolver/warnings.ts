@@ -121,7 +121,7 @@ function detectMissingProperties(file: KrsFile): Warning[] {
           loc: node.loc,
         });
       }
-      if (!node.properties.realizes) {
+      if (!node.properties.realizes?.length) {
         warnings.push({
           kind: "missing-realizes",
           message: `デプロイノード "${node.id}" に realizes が指定されていません`,

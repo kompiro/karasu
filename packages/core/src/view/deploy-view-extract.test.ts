@@ -53,7 +53,7 @@ function makeDeployBlock(
     kind: "oci" | "jar" | "war" | "lambda" | "function" | "assets" | "job" | "artifact";
     id: string;
     label?: string;
-    realizes?: string;
+    realizes?: string | string[];
     runtime?: string;
   }>,
   opts: { id?: string; label?: string } = {},
@@ -65,7 +65,15 @@ function makeDeployBlock(
       kind: n.kind,
       id: n.id,
       label: n.label,
-      properties: { realizes: n.realizes, runtime: n.runtime },
+      properties: {
+        realizes:
+          n.realizes === undefined
+            ? undefined
+            : Array.isArray(n.realizes)
+              ? n.realizes
+              : [n.realizes],
+        runtime: n.runtime,
+      },
       loc: LOC,
     })),
     loc: LOC,
@@ -134,6 +142,24 @@ describe("extractDeployView", () => {
     const result = extractDeployView([deploy], [system]);
 
     expect(result.ghostEdges).toHaveLength(0);
+  });
+
+  it("places a unit in multiple containers when it realizes multiple services", () => {
+    const deploy = makeDeployBlock([
+      { kind: "oci", id: "monolith", realizes: ["ECommerce", "Payment"] },
+      { kind: "oci", id: "payment-svc", realizes: "Payment" },
+    ]);
+    const result = extractDeployView([deploy], [makeSystem()]);
+
+    expect(result.containers).toHaveLength(2);
+    const ecommerce = result.containers.find((c) => c.serviceId === "ECommerce")!;
+    expect(ecommerce.units).toHaveLength(1);
+    expect(ecommerce.units[0].id).toBe("monolith");
+
+    const payment = result.containers.find((c) => c.serviceId === "Payment")!;
+    expect(payment.units).toHaveLength(2);
+    expect(payment.units.map((u) => u.id)).toContain("monolith");
+    expect(payment.units.map((u) => u.id)).toContain("payment-svc");
   });
 
   it("falls back to serviceId as label when service is not in system", () => {

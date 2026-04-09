@@ -49,7 +49,7 @@ describe("compile — deploy diagram nodeMetadata", () => {
   it("sets kind and label from unit id", () => {
     const result = compile(DEPLOY_KRS, { diagramType: "deploy" });
     if (result.diagramType !== "deploy") throw new Error("expected deploy result");
-    const meta = result.nodeMetadata.get("ec-app");
+    const meta = result.nodeMetadata.get("ECommerce::ec-app");
     expect(meta).toBeDefined();
     expect(meta!.kind).toBe("oci");
     expect(meta!.label).toBe("ec-app");
@@ -58,9 +58,9 @@ describe("compile — deploy diagram nodeMetadata", () => {
   it("sets runtime and realizes from unit properties", () => {
     const result = compile(DEPLOY_KRS, { diagramType: "deploy" });
     if (result.diagramType !== "deploy") throw new Error("expected deploy result");
-    const meta = result.nodeMetadata.get("ec-app");
+    const meta = result.nodeMetadata.get("ECommerce::ec-app");
     expect(meta!.runtime).toBe("node:20");
-    expect(meta!.realizes).toBe("ECommerce");
+    expect(meta!.realizes).toEqual(["ECommerce"]);
   });
 
   it("sets undefined for missing runtime and realizes", () => {
@@ -79,6 +79,38 @@ describe("compile — deploy diagram nodeMetadata", () => {
     // deploy unit keys must not appear in system view
     expect(result.nodeMetadata.has("ec-app")).toBe(false);
     expect(result.nodeMetadata.has("mailer")).toBe(false);
+  });
+});
+
+const MULTI_REALIZES_KRS = `
+system ECPlatform {
+  service OrderService {}
+  service InventoryService {}
+}
+
+deploy Production {
+  oci monolith {
+    realizes OrderService
+    realizes InventoryService
+  }
+}
+`;
+
+describe("compile — multi-realizes deploy unit", () => {
+  it("renders monolith in both OrderService and InventoryService containers", () => {
+    const result = compile(MULTI_REALIZES_KRS, { diagramType: "deploy" });
+    if (result.diagramType !== "deploy") throw new Error("expected deploy result");
+    expect(result.svg).toContain('data-container-id="OrderService"');
+    expect(result.svg).toContain('data-container-id="InventoryService"');
+    expect(result.svg).toContain('data-node-id="OrderService::monolith"');
+    expect(result.svg).toContain('data-node-id="InventoryService::monolith"');
+  });
+
+  it("creates nodeMetadata entries for both compound keys", () => {
+    const result = compile(MULTI_REALIZES_KRS, { diagramType: "deploy" });
+    if (result.diagramType !== "deploy") throw new Error("expected deploy result");
+    expect(result.nodeMetadata.has("OrderService::monolith")).toBe(true);
+    expect(result.nodeMetadata.has("InventoryService::monolith")).toBe(true);
   });
 });
 

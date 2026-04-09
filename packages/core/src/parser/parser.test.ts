@@ -231,12 +231,12 @@ deploy "本番環境" {
     expect(oci.label).toBeUndefined();
     expect(oci.properties.image).toBe("order:2.1.0");
     expect(oci.properties.runtime).toBe("Node.js 20");
-    expect(oci.properties.realizes).toBe("ECommerce");
+    expect(oci.properties.realizes).toEqual(["ECommerce"]);
 
     const job = deploy.nodes[1];
     expect(job.kind).toBe("job");
     expect(job.properties.schedule).toBe("0 0 1 * *");
-    expect(job.properties.realizes).toBe("Billing");
+    expect(job.properties.realizes).toEqual(["Billing"]);
   });
 
   it("parses deploy block with identifier id and label properties", () => {
@@ -265,14 +265,27 @@ deploy Production {
     expect(oci.id).toBe("ecommerceApp");
     expect(oci.label).toBe("EC Application");
     expect(oci.properties.runtime).toBe("Node.js 20");
-    expect(oci.properties.realizes).toBe("ECommerce");
+    expect(oci.properties.realizes).toEqual(["ECommerce"]);
 
     const job = deploy.nodes[1];
     expect(job.kind).toBe("job");
     expect(job.id).toBe("billingJob");
     expect(job.label).toBeUndefined();
     expect(job.properties.schedule).toBe("0 0 1 * *");
-    expect(job.properties.realizes).toBe("Billing");
+    expect(job.properties.realizes).toEqual(["Billing"]);
+  });
+
+  it("parses deploy node with multiple realizes lines into an array", () => {
+    const result = Parser.parse(`
+deploy Production {
+  oci monolith {
+    realizes OrderService
+    realizes InventoryService
+  }
+}
+    `);
+    const node = result.value.deploys[0].nodes[0];
+    expect(node.properties.realizes).toEqual(["OrderService", "InventoryService"]);
   });
 
   it("parses a complete file with imports, system, and deploy", () => {

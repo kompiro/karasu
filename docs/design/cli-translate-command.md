@@ -254,10 +254,30 @@ oci "app" {
 |---|---|
 | `packages/core/src/types/ast.ts` | `realizes?: string` → `realizes?: string[]` |
 | `packages/core/src/parser/parser.ts` | `realizes` を配列として accumulate |
-| `packages/core/src/renderer/deploy-renderer.ts` | 配列を反復してエッジを生成 |
-| `packages/core/src/renderer/deploy-layout.ts` | unclassified 判定を `realizes.length === 0` に変更 |
+| `packages/core/src/view/deploy-view-extract.ts` | 配列の各要素でグループ化（後述） |
+| `packages/core/src/resolver/warnings.ts` | `!realizes` → `!realizes?.length` |
+| `packages/vscode/src/preview-panel.ts` | `realizes?: string[]` に変更、表示をカンマ結合に |
 
 既存の `realizes` 単数指定は構文上そのまま動作する（配列の要素1件として扱う）。
+
+#### `deploy-view-extract.ts` の設計
+
+複数 `realizes` を持つデプロイ単位は、realize した**すべてのサービスのコンテナに描画する**。
+
+```
+oci "app" { realizes OrderService; realizes InventoryService }
+```
+
+↓ deploy view では：
+
+```
+┌── OrderService ──┐    ┌── InventoryService ──┐
+│  [app]           │    │  [app]               │
+└──────────────────┘    └─────────────────────-┘
+```
+
+実装上は `groupedByRealizes` の各サービスに同じ `DeployNode` を push する（参照の共有）。
+`unclassifiedUnits` は `realizes` が空配列またはundefinedのユニットのみ。
 
 ---
 
