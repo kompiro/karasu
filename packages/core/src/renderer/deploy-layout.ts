@@ -132,10 +132,37 @@ function ghostEdgePoints(
 }
 
 /**
+ * Sort containers within a layer by barycenter heuristic to minimize edge crossings.
+ *
+ * For each container, the barycenter is the average X-center of its predecessors
+ * in the previous layer (containers that already have a recorded center X position).
+ * Containers with no predecessors in the previous layer get Infinity and are placed last,
+ * preserving their relative insertion order (stable sort).
+ */
+function sortLayerByBarycenter<T extends { id: string }>(
+  layerGroups: T[],
+  predecessorsMap: Map<string, string[]>,
+  containerCenterX: Map<string, number>,
+): T[] {
+  const barycenter = new Map<string, number>();
+  for (const group of layerGroups) {
+    const preds = (predecessorsMap.get(group.id) ?? []).filter((p) => containerCenterX.has(p));
+    if (preds.length === 0) {
+      barycenter.set(group.id, Infinity);
+    } else {
+      const avg = preds.reduce((sum, p) => sum + containerCenterX.get(p)!, 0) / preds.length;
+      barycenter.set(group.id, avg);
+    }
+  }
+  return [...layerGroups].sort((a, b) => barycenter.get(a.id)! - barycenter.get(b.id)!);
+}
+
+/**
  * Layout a deploy diagram using a layered DAG layout (Longest Path Layering).
  *
  * Containers are grouped into layers based on service dependency edges (ghost edges).
  * Within each layer containers are arranged horizontally; layers are stacked vertically.
+ * Containers within each layer are sorted by the barycenter heuristic to minimize edge crossings.
  * Unclassified units (no realizes) are placed in a separate row at the bottom.
  */
 export function layoutDeploy(slice: DeployViewSlice): LayoutResult {
@@ -169,12 +196,32 @@ export function layoutDeploy(slice: DeployViewSlice): LayoutResult {
 
   const sortedLayerNums = [...layerBuckets.keys()].sort((a, b) => a - b);
 
+  // Build predecessors map for barycenter heuristic:
+  // predecessorsMap[containerId] = list of container ids that point TO this container
+  const predecessorsMap = new Map<string, string[]>();
+  for (const id of classifiedIds) {
+    predecessorsMap.set(id, []);
+  }
+  for (const edge of slice.ghostEdges) {
+    if (predecessorsMap.has(edge.to) && predecessorsMap.has(edge.from)) {
+      predecessorsMap.get(edge.to)!.push(edge.from);
+    }
+  }
+
+  // Tracks the X-center of each placed container (used by barycenter sort for subsequent layers)
+  const containerCenterX = new Map<string, number>();
+
   // --- Place containers layer by layer ---
   let currentY = OUTER_PADDING;
   let totalWidth = 0;
 
-  for (const layerIdx of sortedLayerNums) {
-    const layerGroups = layerBuckets.get(layerIdx)!;
+  for (let layerOrder = 0; layerOrder < sortedLayerNums.length; layerOrder++) {
+    const layerIdx = sortedLayerNums[layerOrder];
+    // Sort by barycenter for all layers after the first
+    const layerGroups =
+      layerOrder === 0
+        ? layerBuckets.get(layerIdx)!
+        : sortLayerByBarycenter(layerBuckets.get(layerIdx)!, predecessorsMap, containerCenterX);
     let currentX = OUTER_PADDING;
     let maxLayerHeight = 0;
 
@@ -215,6 +262,7 @@ export function layoutDeploy(slice: DeployViewSlice): LayoutResult {
         unitY += dims.height + NODE_GAP;
       }
 
+      containerCenterX.set(group.id, currentX + containerW / 2);
       maxLayerHeight = Math.max(maxLayerHeight, containerH);
       currentX += containerW + CONTAINER_GAP;
     }

@@ -294,4 +294,63 @@ describe("layoutDeploy", () => {
 
     expect(unclassified.y).toBeGreaterThan(classified.y + classified.height);
   });
+
+  it("sorts layer 2 by barycenter to eliminate crossings (A→Z, B→Y, C→X)", () => {
+    // Layer 1: [A, B, C] (insertion order, left to right)
+    // Layer 2: [X, Y, Z] (insertion order)
+    // Edges: A→Z, B→Y, C→X
+    // Without barycenter: X is leftmost but connected to C (rightmost) → 3 crossings
+    // With barycenter: Z (connected to A=leftmost) → Y → X, so Z,Y,X order
+    const slice = makeSlice(
+      [
+        { serviceId: "A", serviceLabel: "A", unitIds: ["a"] },
+        { serviceId: "B", serviceLabel: "B", unitIds: ["b"] },
+        { serviceId: "C", serviceLabel: "C", unitIds: ["c"] },
+        { serviceId: "X", serviceLabel: "X", unitIds: ["x"] },
+        { serviceId: "Y", serviceLabel: "Y", unitIds: ["y"] },
+        { serviceId: "Z", serviceLabel: "Z", unitIds: ["z"] },
+      ],
+      [],
+      [
+        { from: "A", to: "Z" },
+        { from: "B", to: "Y" },
+        { from: "C", to: "X" },
+      ],
+    );
+    const result = layoutDeploy(slice);
+
+    const cZ = result.containers.find((c) => c.id === "Z")!;
+    const cY = result.containers.find((c) => c.id === "Y")!;
+    const cX = result.containers.find((c) => c.id === "X")!;
+
+    // All in same layer (layer 1)
+    expect(cZ.y).toBe(cY.y);
+    expect(cY.y).toBe(cX.y);
+
+    // Barycenter order: Z (connected to A=left) < Y (connected to B=center) < X (connected to C=right)
+    expect(cZ.x).toBeLessThan(cY.x);
+    expect(cY.x).toBeLessThan(cX.x);
+  });
+
+  it("places containers with no predecessors in previous layer at the end of the layer", () => {
+    // Layer 0: [A]
+    // Layer 1: [B (connected to A), C (no predecessors)]
+    // B should come before C (C has Infinity barycenter → last)
+    const slice = makeSlice(
+      [
+        { serviceId: "A", serviceLabel: "A", unitIds: ["a"] },
+        { serviceId: "C", serviceLabel: "C", unitIds: ["c"] }, // insertion order: C before B
+        { serviceId: "B", serviceLabel: "B", unitIds: ["b"] },
+      ],
+      [],
+      [{ from: "A", to: "B" }],
+    );
+    const result = layoutDeploy(slice);
+
+    const cB = result.containers.find((c) => c.id === "B")!;
+    const cC = result.containers.find((c) => c.id === "C")!;
+
+    // B has predecessor A; C has none → B should be placed before C
+    expect(cB.x).toBeLessThan(cC.x);
+  });
 });
