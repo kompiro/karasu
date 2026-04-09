@@ -95,14 +95,16 @@ describe("layoutDeploy", () => {
     expect(unclassified).toBeUndefined();
   });
 
-  it("containers do not overlap horizontally", () => {
+  it("containers do not overlap horizontally when in the same layer", () => {
     const slice = makeSlice([
       { serviceId: "ECommerce", serviceLabel: "ECサイト", unitIds: ["order-api"] },
       { serviceId: "Payment", serviceLabel: "決済サービス", unitIds: ["payment-svc"] },
     ]);
     const result = layoutDeploy(slice);
 
+    // No edges → both containers at layer 0, placed side by side
     const [c1, c2] = result.containers;
+    expect(c1.y).toBe(c2.y);
     expect(c2.x).toBeGreaterThan(c1.x + c1.width);
   });
 
@@ -200,5 +202,96 @@ describe("layoutDeploy", () => {
     const result = layoutDeploy(slice);
     expect(result.width).toBeGreaterThan(0);
     expect(result.height).toBeGreaterThan(0);
+  });
+
+  it("places downstream container in a lower layer than upstream when connected by a ghost edge", () => {
+    const slice = makeSlice(
+      [
+        { serviceId: "ECommerce", serviceLabel: "ECサイト", unitIds: ["order-api"] },
+        { serviceId: "Payment", serviceLabel: "決済サービス", unitIds: ["payment-svc"] },
+      ],
+      [],
+      [{ from: "ECommerce", to: "Payment" }],
+    );
+    const result = layoutDeploy(slice);
+
+    const ecommerce = result.containers.find((c) => c.id === "ECommerce")!;
+    const payment = result.containers.find((c) => c.id === "Payment")!;
+
+    // Payment is downstream → should be below ECommerce
+    expect(payment.y).toBeGreaterThan(ecommerce.y);
+  });
+
+  it("places multi-hop chain in correct layer order", () => {
+    const slice = makeSlice(
+      [
+        { serviceId: "A", serviceLabel: "A", unitIds: ["a"] },
+        { serviceId: "B", serviceLabel: "B", unitIds: ["b"] },
+        { serviceId: "C", serviceLabel: "C", unitIds: ["c"] },
+      ],
+      [],
+      [
+        { from: "A", to: "B" },
+        { from: "B", to: "C" },
+      ],
+    );
+    const result = layoutDeploy(slice);
+
+    const cA = result.containers.find((c) => c.id === "A")!;
+    const cB = result.containers.find((c) => c.id === "B")!;
+    const cC = result.containers.find((c) => c.id === "C")!;
+
+    expect(cB.y).toBeGreaterThan(cA.y);
+    expect(cC.y).toBeGreaterThan(cB.y);
+  });
+
+  it("ghost edge fromPoint originates from bottom of from-container when from is above to", () => {
+    const slice = makeSlice(
+      [
+        { serviceId: "ECommerce", serviceLabel: "ECサイト", unitIds: ["order-api"] },
+        { serviceId: "Payment", serviceLabel: "決済サービス", unitIds: ["payment-svc"] },
+      ],
+      [],
+      [{ from: "ECommerce", to: "Payment" }],
+    );
+    const result = layoutDeploy(slice);
+
+    const edge = result.edges[0];
+    const ecommerce = result.containers.find((c) => c.id === "ECommerce")!;
+    const payment = result.containers.find((c) => c.id === "Payment")!;
+
+    expect(edge.fromPoint.y).toBe(ecommerce.y + ecommerce.height);
+    expect(edge.toPoint.y).toBe(payment.y);
+  });
+
+  it("handles cycles in ghost edges without infinite loop", () => {
+    const slice = makeSlice(
+      [
+        { serviceId: "A", serviceLabel: "A", unitIds: ["a"] },
+        { serviceId: "B", serviceLabel: "B", unitIds: ["b"] },
+      ],
+      [],
+      [
+        { from: "A", to: "B" },
+        { from: "B", to: "A" }, // cycle
+      ],
+    );
+    // Should complete without hanging and return valid layout
+    const result = layoutDeploy(slice);
+    expect(result.containers).toHaveLength(2);
+    expect(result.edges).toHaveLength(2);
+  });
+
+  it("places unclassified container below all classified containers", () => {
+    const slice = makeSlice(
+      [{ serviceId: "ECommerce", serviceLabel: "ECサイト", unitIds: ["order-api"] }],
+      ["migration"],
+    );
+    const result = layoutDeploy(slice);
+
+    const classified = result.containers.find((c) => c.id === "ECommerce")!;
+    const unclassified = result.containers.find((c) => c.id === "__unclassified__")!;
+
+    expect(unclassified.y).toBeGreaterThan(classified.y + classified.height);
   });
 });
