@@ -536,10 +536,7 @@ import "team-payment.krs"`,
 
   describe("directory import", () => {
     it("merges all .krs files in the directory", async () => {
-      await fs.writeFile(
-        "/project/index.krs",
-        `import "teams/"`,
-      );
+      await fs.writeFile("/project/index.krs", `import "teams/"`);
       await fs.writeFile(
         "/project/teams/ec.krs",
         `system ECPlatform {
@@ -562,10 +559,7 @@ import "team-payment.krs"`,
     });
 
     it("loads files in alphabetical order", async () => {
-      await fs.writeFile(
-        "/project/index.krs",
-        `import "teams/"`,
-      );
+      await fs.writeFile("/project/index.krs", `import "teams/"`);
       // b.krs declares duplicate ID that would error only if processed after a.krs
       await fs.writeFile(
         "/project/teams/a.krs",
@@ -589,14 +583,8 @@ import "team-payment.krs"`,
 
     it("excludes non-.krs files", async () => {
       await fs.writeFile("/project/index.krs", `import "assets/"`);
-      await fs.writeFile(
-        "/project/assets/styles.krs.style",
-        `user { background-color: #fff; }`,
-      );
-      await fs.writeFile(
-        "/project/assets/system.krs",
-        `system S { service Svc }`,
-      );
+      await fs.writeFile("/project/assets/styles.krs.style", `user { background-color: #fff; }`);
+      await fs.writeFile("/project/assets/system.krs", `system S { service Svc }`);
 
       const result = await resolver.resolve("/project/index.krs");
       expect(result.diagnostics.filter((d) => d.severity === "error")).toHaveLength(0);
