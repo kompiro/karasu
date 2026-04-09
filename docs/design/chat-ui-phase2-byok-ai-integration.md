@@ -1,7 +1,7 @@
 # Chat UI Phase 2 — BYOK + AI Integration 実装設計
 
 - **日付**: 2026-04-09
-- **ステータス**: 検討中
+- **ステータス**: 完了
 - **関連**:
   - [#419 feat(app): Chat UI panel — Phase 2: BYOK + AI integration](https://github.com/kompiro/karasu/issues/419)
   - [chat-ui-panel.md](./chat-ui-panel.md) — レイアウト・状態管理・ツール設計の上位設計
@@ -16,6 +16,7 @@
 2. **`useChatSession` フックの API 設計** — パラメーター・戻り値・内部の型定義
 3. **Phase 2 のシステムプロンプト** — Phase 3（構造化インタビュー）の前段として、Phase 2 では何をシステムプロンプトに含めるか
 4. **ApiKeySetup → Settings のナビゲーションフロー** — キー未設定時の UI 遷移
+5. **`apply_krs_patch` の `tool_result` 送信タイミング** — ユーザー確認後に送るか、送らずに割り切るか
 
 ---
 
@@ -249,6 +250,56 @@ packages/app/src/
 └── utils/
     └── api-key-storage.ts    (新設: sessionStorage/localStorage 管理)
 ```
+
+---
+
+---
+
+## 論点5: `apply_krs_patch` の `tool_result` 送信タイミング
+
+`navigate_view` と `apply_krs_patch` はどちらも Anthropic API の `tool_use`（クライアントサイド定義）として実装する。
+`navigate_view` は即時実行のため `tool_result` をすぐに送れるが、`apply_krs_patch` はユーザー確認を挟む。
+
+### 案A: 確認後に `tool_result` を送る（**採用**）
+
+Apply または Reject 後に `{ type: "tool_result", tool_use_id, content }` を送り、AI のフォローアップを得る。
+
+```
+AI → tool_use (apply_krs_patch)
+     ↓ ユーザーに確認 UI を表示
+User → Apply: tool_result { content: "Applied." }
+User → Reject: tool_result { content: "User declined." }
+     ↓
+AI → フォローアップメッセージ（「適用しました。次は〜しましょうか？」等）
+```
+
+`useChatSession` の内部状態に `pendingToolResult` を追加する：
+
+```ts
+type SessionPhase =
+  | { kind: "idle" }
+  | { kind: "loading" }
+  | { kind: "pending_confirmation"; toolUseId: string; patch: PatchProposal }
+  | { kind: "awaiting_followup" };
+```
+
+`pending_confirmation` フェーズ中は新規メッセージ送信・New Session 以外の操作を無効にする。
+
+**メリット**: API の想定通りの使い方。AI がフォローアップできる。
+
+---
+
+### 案B: `tool_result` を送らず会話を終了する
+
+Apply/Reject 後に会話を「終了」扱いにし、次のメッセージ送信時に history から `tool_use` を除外する。
+
+**問題点**: Anthropic API は `tool_use` のあとに `tool_result` のない履歴を送るとエラーを返す。
+これを回避するには履歴から `tool_use` を除外するか、強制セッションリセットが必要になり、
+「送らない方がシンプル」という前提が崩れる。→ 採用しない。
+
+---
+
+**結論**: 案A（確認後に `tool_result` を送る）を採用する。
 
 ---
 
