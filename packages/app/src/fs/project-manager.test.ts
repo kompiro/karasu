@@ -28,6 +28,22 @@ describe("ProjectManager", () => {
       expect(await fs.exists(`${project.rootPath}/default.krs.style`)).toBe(false);
     });
 
+    it("creates a project with custom files", async () => {
+      const files = [
+        { path: "index.krs", content: "system Foo {}" },
+        { path: "bar.krs", content: "service Bar {}" },
+      ];
+      const project = await pm.createProject("Custom Project", files);
+
+      expect(project.name).toBe("Custom Project");
+
+      const indexKrs = await fs.readFile(`${project.rootPath}/index.krs`);
+      expect(indexKrs).toBe("system Foo {}");
+
+      const barKrs = await fs.readFile(`${project.rootPath}/bar.krs`);
+      expect(barKrs).toBe("service Bar {}");
+    });
+
     it("adds project to metadata", async () => {
       await pm.createProject("Project A");
       await pm.createProject("Project B");
