@@ -36,20 +36,24 @@ deploy "Production" {
 
 ## Acceptance Criteria
 
+With the example above, each container renders at ~200px wide (unit width 160px + 2×20px padding dominates the label).
+After 5 containers, `currentX ≈ 1232px`; placing the 6th would reach `1432px > OUTER_PADDING + MAX_LAYER_WIDTH (1240px)`,
+so the 6th container wraps.
+
 | # | Check | Expected |
 |---|-------|----------|
 | 1 | Open the deploy diagram in the preview UI | Diagram renders without horizontal scrollbar beyond 1200px |
-| 2 | First 7 containers | Arranged in a single horizontal row |
-| 3 | 8th container | Wrapped to a second sub-row below the first |
-| 4 | Wrapped container X position | Starts from the left margin (aligned with first container) |
+| 2 | First 5 containers (S1–S5) | Arranged in a single horizontal row |
+| 3 | 6th–8th containers (S6–S8) | Wrapped to a second sub-row below the first |
+| 4 | Wrapped container X position | Starts from the left margin (aligned with S1) |
 | 5 | Diagram total width | Does not exceed ~1240px |
-| 6 | Diagram total height | Taller than a 7-container diagram (extra sub-row space) |
+| 6 | Diagram total height | Taller than a 5-container diagram (extra sub-row space) |
 
 ## Automated Coverage
 
 The following scenarios are covered by unit tests in `deploy-layout.test.ts`:
 
-- 8 isolated containers in layer 0 → last container wraps to a new sub-row (different Y)
+- 8 isolated containers in layer 0 → 6th container wraps to a new sub-row (different Y); last container also on sub-row 2
 - Wrapped container restarts from `OUTER_PADDING` (x = 40)
 - Total height is greater when wrapping occurs
 - Ghost edge from a wrapped container routes correctly (bottom-center → top-center of next-layer container)

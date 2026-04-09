@@ -355,8 +355,9 @@ describe("layoutDeploy", () => {
   });
 
   it("wraps containers to a new sub-row when layer width exceeds MAX_LAYER_WIDTH", () => {
-    // 8 containers with single-char labels fit 7 in the first sub-row (≈1231px) but the 8th wraps.
-    // Single-char label container width ≈ 129px; 7 containers ≈ 1231px total x; 8th would reach 1360px > 1240.
+    // Single-char label container width = max(max(9,80)+80, 9+40+24) = 200px.
+    // After 5 containers: currentX = 40 + 5*200 + 4*48 = 1232; placing the 6th would reach 1432 > 1240 → wraps.
+    // Sub-row 1: A-E (5 containers); sub-row 2: F-H (3 containers).
     const ids = ["A", "B", "C", "D", "E", "F", "G", "H"];
     const slice = makeSlice(
       ids.map((id) => ({ serviceId: id, serviceLabel: id, unitIds: [id.toLowerCase()] })),
