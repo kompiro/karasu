@@ -1,9 +1,9 @@
 // ec-platform/05-multifile/system.krs
-// Demonstrates: import "dir/" — auto-loading all .krs files in a directory.
-// Each team owns their service file; this file defines the entry point and wiring.
+// Demonstrates: import { } from — splitting a large file into focused modules
 // Open this directory in VSCode Extension or use `karasu serve` in server mode.
 
-import "./"
+import { ECommerce } from "./ecommerce.krs"
+import { Payment } from "./payment.krs"
 
 system ECPlatform {
   label "ECプラットフォーム"
@@ -12,6 +12,9 @@ system ECPlatform {
     label "購入者"
     role "商品を購入する一般ユーザー"
   }
+
+  service ECommerce
+  service Payment
 
   service Inventory {
     label "在庫管理"

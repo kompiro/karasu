@@ -310,11 +310,11 @@ system ECPlatform {
       {
         path: "index.krs",
         content: `// ec-platform/05-multifile/system.krs
-// Demonstrates: import "dir/" — auto-loading all .krs files in a directory.
-// Each team owns their service file; this file defines the entry point and wiring.
+// Demonstrates: import { } from — splitting a large file into focused modules
 // Open this directory in VSCode Extension or use \`karasu serve\` in server mode.
 
-import "./"
+import { ECommerce } from "./ecommerce.krs"
+import { Payment } from "./payment.krs"
 
 system ECPlatform {
   label "ECプラットフォーム"
@@ -323,6 +323,9 @@ system ECPlatform {
     label "購入者"
     role "商品を購入する一般ユーザー"
   }
+
+  service ECommerce
+  service Payment
 
   service Inventory {
     label "在庫管理"
@@ -343,29 +346,27 @@ system ECPlatform {
       {
         path: "ecommerce.krs",
         content: `// ec-platform/05-multifile/ecommerce.krs
-// ECommerce service definition — merged into ECPlatform via directory import
+// ECommerce service definition — imported by system.krs
 
-system ECPlatform {
-  service ECommerce {
-    label "ECサイト"
-    description "商品管理と注文処理"
+service ECommerce {
+  label "ECサイト"
+  description "商品管理と注文処理"
 
-    domain Order {
-      label "受注"
-      usecase PlaceOrder {
-        label "注文を受け付ける"
-        resource OrderTable { label "注文テーブル" }
-      }
-      usecase CancelOrder { label "注文をキャンセルする" }
-      usecase QueryOrder { label "注文状況を照会する" }
+  domain Order {
+    label "受注"
+    usecase PlaceOrder {
+      label "注文を受け付ける"
+      resource OrderTable { label "注文テーブル" }
     }
+    usecase CancelOrder { label "注文をキャンセルする" }
+    usecase QueryOrder { label "注文状況を照会する" }
+  }
 
-    domain Catalog {
-      label "商品カタログ"
-      usecase SearchProducts {
-        label "商品を検索する"
-        resource ProductTable { label "商品テーブル" }
-      }
+  domain Catalog {
+    label "商品カタログ"
+    usecase SearchProducts {
+      label "商品を検索する"
+      resource ProductTable { label "商品テーブル" }
     }
   }
 }
@@ -374,24 +375,22 @@ system ECPlatform {
       {
         path: "payment.krs",
         content: `// ec-platform/05-multifile/payment.krs
-// Payment service definition — merged into ECPlatform via directory import
+// Payment service definition — imported by system.krs
 
-system ECPlatform {
-  service Payment {
-    label "決済サービス"
-    description "クレジットカード決済処理"
+service Payment {
+  label "決済サービス"
+  description "クレジットカード決済処理"
 
-    domain Billing {
-      label "請求"
-      usecase Charge {
-        label "決済を実行する"
-        resource PaymentGateway { label "決済ゲートウェイ" }
-        resource TransactionLog { label "取引ログ" }
-      }
-      usecase Refund {
-        label "返金する"
-        resource PaymentGateway { label "決済ゲートウェイ" }
-      }
+  domain Billing {
+    label "請求"
+    usecase Charge {
+      label "決済を実行する"
+      resource PaymentGateway { label "決済ゲートウェイ" }
+      resource TransactionLog { label "取引ログ" }
+    }
+    usecase Refund {
+      label "返金する"
+      resource PaymentGateway { label "決済ゲートウェイ" }
     }
   }
 }

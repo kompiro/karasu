@@ -1,22 +1,20 @@
 // ec-platform/05-multifile/payment.krs
-// Payment service definition — merged into ECPlatform via directory import
+// Payment service definition — imported by system.krs
 
-system ECPlatform {
-  service Payment {
-    label "決済サービス"
-    description "クレジットカード決済処理"
+service Payment {
+  label "決済サービス"
+  description "クレジットカード決済処理"
 
-    domain Billing {
-      label "請求"
-      usecase Charge {
-        label "決済を実行する"
-        resource PaymentGateway { label "決済ゲートウェイ" }
-        resource TransactionLog { label "取引ログ" }
-      }
-      usecase Refund {
-        label "返金する"
-        resource PaymentGateway { label "決済ゲートウェイ" }
-      }
+  domain Billing {
+    label "請求"
+    usecase Charge {
+      label "決済を実行する"
+      resource PaymentGateway { label "決済ゲートウェイ" }
+      resource TransactionLog { label "取引ログ" }
+    }
+    usecase Refund {
+      label "返金する"
+      resource PaymentGateway { label "決済ゲートウェイ" }
     }
   }
 }
