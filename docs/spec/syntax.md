@@ -254,6 +254,17 @@ deploy "本番環境" {
 
 `realizes` はUMLのRealization（実現）関係。矢印は物理（具象）→ 論理（抽象）の向き。
 
+複数の `realizes` を並べることで、1つのデプロイ単位が複数のサービスを実現することを表せる。
+その場合、デプロイダイアグラム上では各サービスのコンテナに同じノードが描画される。
+
+```
+oci "monolith" {
+  image    "monolith:1.0.0"
+  realizes OrderService
+  realizes InventoryService
+}
+```
+
 ---
 
 ## ドリルダウンと外部ファイル参照
