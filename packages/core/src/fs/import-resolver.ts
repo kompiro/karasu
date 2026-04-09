@@ -1,4 +1,4 @@
-import type { FileSystemProvider } from "./types.js";
+import type { FileSystemProvider, DirEntry } from "./types.js";
 import type {
   Diagnostic,
   KrsFile,
@@ -35,6 +35,8 @@ export class ImportResolver {
   private visitedKrs = new Set<string>();
   private visitedStyles = new Set<string>();
   private diagnostics: Diagnostic[] = [];
+  /** ディレクトリ import の展開結果キャッシュ（Pass 1 で構築、Pass 2 で参照） */
+  private dirExpansions = new Map<string, string[]>();
 
   constructor(private fs: FileSystemProvider) {}
 
@@ -46,6 +48,7 @@ export class ImportResolver {
     this.visitedKrs.clear();
     this.visitedStyles.clear();
     this.diagnostics = [];
+    this.dirExpansions.clear();
 
     // Pass 1: 全ファイルをロード（循環検出・ファイル不在の報告）
     const fileMap = await this.loadFileMap(entryPath);
@@ -98,9 +101,46 @@ export class ImportResolver {
 
     for (const nodeImport of parseResult.value.nodeImports) {
       if (nodeImport.path === "") continue;
-      const importPath = resolvePath(filePath, nodeImport.path);
-      await this.loadFileRecursive(importPath, fileMap);
+      if (nodeImport.path.endsWith("/")) {
+        // ディレクトリ import: 配下の .krs ファイルを展開してそれぞれロード
+        // import 元ファイル自身は除外（同一ディレクトリから import した場合の自己参照を防ぐ）
+        const dirPath = resolvePath(filePath, nodeImport.path);
+        const allExpanded = await this.expandDirectoryKrsFiles(dirPath, nodeImport);
+        const expanded = allExpanded.filter((p) => p !== filePath);
+        this.dirExpansions.set(dirPath, expanded);
+        for (const krsFilePath of expanded) {
+          await this.loadFileRecursive(krsFilePath, fileMap);
+        }
+      } else {
+        const importPath = resolvePath(filePath, nodeImport.path);
+        await this.loadFileRecursive(importPath, fileMap);
+      }
     }
+  }
+
+  /**
+   * ディレクトリ内の .krs ファイルをアルファベット順で列挙する。
+   * サブディレクトリは対象外（フラット展開のみ）。
+   */
+  private async expandDirectoryKrsFiles(
+    dirPath: string,
+    nodeImport: ImportDeclaration,
+  ): Promise<string[]> {
+    let entries: DirEntry[];
+    try {
+      entries = await this.fs.readDir(dirPath);
+    } catch {
+      this.diagnostics.push({
+        severity: "error",
+        message: `Directory not found: ${dirPath}`,
+        loc: nodeImport.loc,
+      });
+      return [];
+    }
+    return entries
+      .filter((e) => e.kind === "file" && e.name.endsWith(".krs"))
+      .sort((a, b) => a.name.localeCompare(b.name))
+      .map((e) => `${dirPath}/${e.name}`);
   }
 
   // ─── Pass 2: 再帰マージ ───────────────────────────────────────────────────
@@ -151,6 +191,18 @@ export class ImportResolver {
     // import を処理
     for (const nodeImport of file.nodeImports) {
       if (nodeImport.path === "") continue;
+
+      if (nodeImport.path.endsWith("/")) {
+        // ディレクトリ import: Pass 1 で展開済みのファイルを順番にマージ
+        const dirPath = resolvePath(filePath, nodeImport.path);
+        const expandedFiles = this.dirExpansions.get(dirPath) ?? [];
+        for (const krsFilePath of expandedFiles) {
+          const resolvedImported = this.resolveKrsFromMap(fileMap, krsFilePath, visited);
+          this.mergeWildcardResolved(mergedFile, resolvedImported);
+        }
+        continue;
+      }
+
       const importPath = resolvePath(filePath, nodeImport.path);
       const rawImported = fileMap.get(importPath);
       if (!rawImported) continue;
