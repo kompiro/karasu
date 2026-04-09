@@ -81,7 +81,7 @@ description: >
      ```
 
 2. Design Doc を作成した場合は、PR を作成して承認の証跡を残す:
-   1. DesignDoc ファイルのみをコミットする（`/commit` スキルを使用）
+   1. DesignDoc ファイルのみをコミットする（`/commit` スキルを使用）。**コミット完了後はユーザーの返答を待たず即座に次へ進む。**
    2. `git push -u origin <branch-name>` でリモートにプッシュする
    3. PR 本文に Design Doc のサマリーと Purpose を記述して `gh pr create` で作成する（Issue がある場合は `Refs #N` で紐付け。`Closes #N` は実装完了 PR で使用する）
    4. ユーザーに PR URL を通知し、**マージを依頼する**
@@ -112,6 +112,7 @@ description: >
 ### 6. コミット
 
 `/commit` スキルを使用して、関心事ごとに Conventional Commits 形式でコミットする。
+**コミット完了後はユーザーの返答を待たず、即座にステップ7（PR作成）へ進む。**
 
 ### 7. PR 作成
 
