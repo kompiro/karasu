@@ -1,6 +1,6 @@
 import { useCallback, useMemo, useRef, useState, type RefObject } from "react";
 import { Parser } from "@karasu-tools/core";
-import { EditorPane } from "./EditorPane.js";
+import { LeftPane } from "./LeftPane.js";
 import { KarasuPreviewColumn } from "./KarasuPreviewColumn.js";
 import { downloadSvg } from "../utils/download-svg.js";
 import { useAppContext } from "../state/app-context.js";
@@ -43,6 +43,7 @@ export function AppShell({ entryPath, sidebarContent, hideEditor, recompileRef }
     highlightedNodeId,
     displayMode,
     currentFilePath,
+    currentProject,
   } = state;
 
   const [isAllLayersOpen, setIsAllLayersOpen] = useState(false);
@@ -275,6 +276,24 @@ export function AppShell({ entryPath, sidebarContent, hideEditor, recompileRef }
     }
   }, [fileContent, viewPath]);
 
+  // ── Chat scope label ────────────────────────────────────────────
+
+  const scopeLabel = useMemo(() => {
+    if (activeView === "system") {
+      return breadcrumbItems.length > 0
+        ? breadcrumbItems.map((item) => item.label).join(" > ")
+        : "Root";
+    }
+    if (activeView === "org") {
+      return orgBreadcrumbItems.length > 0
+        ? orgBreadcrumbItems.map((item) => item.label).join(" > ")
+        : "Root";
+    }
+    // deploy: show selected block label
+    const block = deployBlocks.find((b) => b.id === selectedDeployBlockId) ?? deployBlocks[0];
+    return block?.label ?? "Deploy";
+  }, [activeView, breadcrumbItems, orgBreadcrumbItems, deployBlocks, selectedDeployBlockId]);
+
   // ── All-layers SVGs ─────────────────────────────────────────────
 
   const styleSource = useStyleSource(fileContent, currentFilePath ?? undefined, fs);
@@ -310,10 +329,12 @@ export function AppShell({ entryPath, sidebarContent, hideEditor, recompileRef }
       )}
       {sidebarContent}
       {!hideEditor && (
-        <EditorPane
+        <LeftPane
           value={fileContent}
           onChange={handleEditorChange}
           onEditorReady={handleEditorReady}
+          scopeLabel={scopeLabel}
+          currentProjectId={currentProject?.id ?? null}
         />
       )}
       <KarasuPreviewColumn
