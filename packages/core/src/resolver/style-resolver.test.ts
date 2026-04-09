@@ -581,8 +581,6 @@ describe("resolveStyles with organizations", () => {
 });
 
 describe("resource tag auto-inference in resolveStyles", () => {
-  const dummyRef = { parent: "OrderDB", child: "OrderTable" };
-
   function makeSystem(infraChildren: KrsNode[], serviceChildren: KrsNode[]): KrsNode {
     return makeNode({
       kind: "system",
