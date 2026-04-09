@@ -21,16 +21,14 @@ service S7 { label = "Service 7" }
 service S8 { label = "Service 8" }
 
 deploy "Production" {
-  env "prod-vm" {
-    oci s1 { realizes = S1 }
-    oci s2 { realizes = S2 }
-    oci s3 { realizes = S3 }
-    oci s4 { realizes = S4 }
-    oci s5 { realizes = S5 }
-    oci s6 { realizes = S6 }
-    oci s7 { realizes = S7 }
-    oci s8 { realizes = S8 }
-  }
+  oci s1 { realizes = S1 }
+  oci s2 { realizes = S2 }
+  oci s3 { realizes = S3 }
+  oci s4 { realizes = S4 }
+  oci s5 { realizes = S5 }
+  oci s6 { realizes = S6 }
+  oci s7 { realizes = S7 }
+  oci s8 { realizes = S8 }
 }
 ```
 
