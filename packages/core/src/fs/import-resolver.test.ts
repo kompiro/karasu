@@ -533,4 +533,106 @@ import "team-payment.krs"`,
       expect(ecSystem!.children.map((c) => c.id)).toContain("PaymentService");
     });
   });
+
+  describe("directory import", () => {
+    it("merges all .krs files in the directory", async () => {
+      await fs.writeFile(
+        "/project/index.krs",
+        `import "teams/"`,
+      );
+      await fs.writeFile(
+        "/project/teams/ec.krs",
+        `system ECPlatform {
+          service ECommerce
+        }`,
+      );
+      await fs.writeFile(
+        "/project/teams/payment.krs",
+        `system ECPlatform {
+          service Payment
+        }`,
+      );
+
+      const result = await resolver.resolve("/project/index.krs");
+      expect(result.diagnostics.filter((d) => d.severity === "error")).toHaveLength(0);
+      const ec = result.krsFile.systems.find((s) => s.id === "ECPlatform");
+      expect(ec).toBeDefined();
+      expect(ec!.children.map((c) => c.id)).toContain("ECommerce");
+      expect(ec!.children.map((c) => c.id)).toContain("Payment");
+    });
+
+    it("loads files in alphabetical order", async () => {
+      await fs.writeFile(
+        "/project/index.krs",
+        `import "teams/"`,
+      );
+      // b.krs declares duplicate ID that would error only if processed after a.krs
+      await fs.writeFile(
+        "/project/teams/a.krs",
+        `system S {
+          service Alpha
+        }`,
+      );
+      await fs.writeFile(
+        "/project/teams/b.krs",
+        `system S {
+          service Beta
+        }`,
+      );
+
+      const result = await resolver.resolve("/project/index.krs");
+      // Alpha and Beta merged into same system S — no duplicate error
+      expect(result.diagnostics.filter((d) => d.severity === "error")).toHaveLength(0);
+      const s = result.krsFile.systems.find((sys) => sys.id === "S");
+      expect(s!.children.map((c) => c.id)).toEqual(["Alpha", "Beta"]);
+    });
+
+    it("excludes non-.krs files", async () => {
+      await fs.writeFile("/project/index.krs", `import "assets/"`);
+      await fs.writeFile(
+        "/project/assets/styles.krs.style",
+        `user { background-color: #fff; }`,
+      );
+      await fs.writeFile(
+        "/project/assets/system.krs",
+        `system S { service Svc }`,
+      );
+
+      const result = await resolver.resolve("/project/index.krs");
+      expect(result.diagnostics.filter((d) => d.severity === "error")).toHaveLength(0);
+      expect(result.krsFile.systems).toHaveLength(1);
+    });
+
+    it("returns error diagnostic for missing directory", async () => {
+      await fs.writeFile("/project/index.krs", `import "missing/"`);
+
+      const result = await resolver.resolve("/project/index.krs");
+      expect(result.diagnostics).toContainEqual(
+        expect.objectContaining({
+          severity: "error",
+          message: expect.stringContaining("Directory not found"),
+        }),
+      );
+    });
+
+    it("does not double-merge a file imported both directly and via directory", async () => {
+      await fs.writeFile(
+        "/project/index.krs",
+        `import "teams/ec.krs"
+import "teams/"`,
+      );
+      await fs.writeFile(
+        "/project/teams/ec.krs",
+        `system ECPlatform {
+          service ECommerce
+        }`,
+      );
+
+      const result = await resolver.resolve("/project/index.krs");
+      expect(result.diagnostics.filter((d) => d.severity === "error")).toHaveLength(0);
+      const ec = result.krsFile.systems.find((s) => s.id === "ECPlatform");
+      // ECommerce should appear exactly once
+      expect(ec!.children.filter((c) => c.id === "ECommerce")).toHaveLength(1);
+    });
+  });
 });
