@@ -276,6 +276,24 @@ export function AppShell({ entryPath, sidebarContent, hideEditor, recompileRef }
     }
   }, [fileContent, viewPath]);
 
+  // ── Chat scope label ────────────────────────────────────────────
+
+  const scopeLabel = useMemo(() => {
+    if (activeView === "system") {
+      return breadcrumbItems.length > 0
+        ? breadcrumbItems.map((item) => item.label).join(" > ")
+        : "Root";
+    }
+    if (activeView === "org") {
+      return orgBreadcrumbItems.length > 0
+        ? orgBreadcrumbItems.map((item) => item.label).join(" > ")
+        : "Root";
+    }
+    // deploy: show selected block label
+    const block = deployBlocks.find((b) => b.id === selectedDeployBlockId) ?? deployBlocks[0];
+    return block?.label ?? "Deploy";
+  }, [activeView, breadcrumbItems, orgBreadcrumbItems, deployBlocks, selectedDeployBlockId]);
+
   // ── All-layers SVGs ─────────────────────────────────────────────
 
   const styleSource = useStyleSource(fileContent, currentFilePath ?? undefined, fs);
@@ -315,11 +333,7 @@ export function AppShell({ entryPath, sidebarContent, hideEditor, recompileRef }
           value={fileContent}
           onChange={handleEditorChange}
           onEditorReady={handleEditorReady}
-          scopeLabel={
-            breadcrumbItems.length > 0
-              ? breadcrumbItems.map((item) => item.label).join(" > ")
-              : "Root"
-          }
+          scopeLabel={scopeLabel}
           currentProjectId={currentProject?.id ?? null}
         />
       )}
