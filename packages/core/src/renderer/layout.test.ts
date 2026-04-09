@@ -327,4 +327,40 @@ system PaymentGateway {
     // Caller is to the left, so toPoint.x > fromPoint.x
     expect(ghostEdges[0].toPoint.x).toBeGreaterThan(ghostEdges[0].fromPoint.x);
   });
+
+  it("does not produce negative x coordinates when multiple wide caller ghost systems are present", () => {
+    // Many caller systems or long labels cause totalCallerWidth > outermost.x - GHOST_SYSTEM_GAP,
+    // which would push callerStartX negative without normalization.
+    const WIDE_CALLERS_KRS = `
+system CallerA {
+  service VeryLongServiceNameThatMakesContainerWide {}
+  VeryLongServiceNameThatMakesContainerWide -> Target.TargetService "calls"
+}
+system CallerB {
+  service AnotherVeryLongServiceNameHere {}
+  AnotherVeryLongServiceNameHere -> Target.TargetService "calls too"
+}
+system CallerC {
+  service YetAnotherLongServiceNameForTesting {}
+  YetAnotherLongServiceNameForTesting -> Target.TargetService "also calls"
+}
+system Target {
+  service TargetService {}
+}
+`;
+    const result = Parser.parse(WIDE_CALLERS_KRS);
+    const slice = extractView(result.value.systems, ["Target", "TargetService"]);
+    const layoutResult = layout(slice);
+
+    for (const container of layoutResult.containers) {
+      expect(container.x).toBeGreaterThanOrEqual(0);
+    }
+    for (const [, node] of layoutResult.nodes) {
+      expect(node.x).toBeGreaterThanOrEqual(0);
+    }
+    for (const edge of layoutResult.edges) {
+      expect(edge.fromPoint.x).toBeGreaterThanOrEqual(0);
+      expect(edge.toPoint.x).toBeGreaterThanOrEqual(0);
+    }
+  });
 });
