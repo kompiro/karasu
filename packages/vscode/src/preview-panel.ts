@@ -14,7 +14,7 @@ interface SerializedNodeMeta {
   team?: string;
   role?: string;
   runtime?: string;
-  realizes?: string;
+  realizes?: string[];
   tags: string[];
   hasChildren: boolean;
   hasDeployContainer?: boolean;
@@ -519,10 +519,10 @@ export class PreviewPanel {
       }
 
       // Runtime / realizes (own section, matching app layout)
-      if (meta.runtime || meta.realizes) {
+      if (meta.runtime || meta.realizes?.length) {
         html += '<div class="dp-section">';
         if (meta.runtime) html += '<div class="dp-prop">\\ud83d\\udda5 runtime: ' + escapeHtml(meta.runtime) + '</div>';
-        if (meta.realizes) html += '<div class="dp-prop">\\ud83d\\udd17 realizes: ' + escapeHtml(meta.realizes) + '</div>';
+        if (meta.realizes?.length) html += '<div class="dp-prop">\\ud83d\\udd17 realizes: ' + escapeHtml(meta.realizes.join(', ')) + '</div>';
         html += '</div>';
       }
 
