@@ -13,13 +13,24 @@ paths:
 
 ## 対象ファイル
 
-`packages/core/src/builtins/examples.ts` は `examples/ec-platform/` の内容を文字列として保持しており、ProjectMode の初回起動時に使用される。
+`packages/core/src/builtins/examples.ts` は `examples/` 配下のうち **`examples.ts` に登録済みのファイル**の内容を文字列として保持しており、ProjectMode の初回起動時に使用される。
+
+現在 `examples.ts` に登録されているのは `examples/ec-platform/` のみ。他のディレクトリ（`hr-tool/` など）は登録されていないため、それらを変更しても `examples.ts` の更新は不要。
 
 ## 更新手順
 
-1. `examples/ec-platform/` 配下のファイルを変更する
-2. `packages/core/src/builtins/examples.ts` の対応する `content` フィールドを同内容に更新する
+### 登録済みファイルを変更する場合
+
+1. 対象の `examples/` ファイルを変更する
+2. `packages/core/src/builtins/examples.ts` の対応する `content` フィールドを同内容に更新する（下記マッピング表を参照）
 3. 両ファイルを同一コミットに含める
+
+### 新しい examples ディレクトリを `examples.ts` に追加する場合
+
+1. `examples/` にファイルを追加する
+2. `packages/core/src/builtins/examples.ts` に新しい `ExampleProject` エントリを追加する
+3. このルールのマッピング表にも新しいエントリを追記する
+4. すべてを同一コミットに含める
 
 ## ファイルマッピング
 
