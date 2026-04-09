@@ -324,9 +324,6 @@ system ECPlatform {
     role "商品を購入する一般ユーザー"
   }
 
-  service ECommerce
-  service Payment
-
   service Inventory {
     label "在庫管理"
 
