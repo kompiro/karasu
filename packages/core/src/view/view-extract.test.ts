@@ -718,6 +718,31 @@ system ECPlatform {
       expect(edgeKeys).toContain("UpdateOrder->OrderDB.OrderTable");
     });
 
+    it("deduplicates edges when same resource is declared twice in one usecase", () => {
+      const krs = `
+system ECPlatform {
+  database OrderDB {
+    table OrderTable { label "注文テーブル" }
+  }
+  service OrderService {
+    domain Order {
+      usecase PlaceOrder {
+        resource OrderDB.OrderTable
+        resource OrderDB.OrderTable
+      }
+    }
+  }
+}
+`;
+      const systems = parseSystem(krs);
+      const view = extractView(systems, ["ECPlatform", "OrderService", "Order"]);
+
+      const edges = view.childEdges.filter(
+        (e) => e.from === "PlaceOrder" && e.to === "OrderDB.OrderTable",
+      );
+      expect(edges).toHaveLength(1);
+    });
+
     it("does not promote inline resources without dot-notation ref", () => {
       const systems = parseSystem(FULL_KRS);
       const view = extractView(systems, ["ECPlatform", "ECommerce", "Order"]);

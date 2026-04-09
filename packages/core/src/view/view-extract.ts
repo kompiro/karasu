@@ -26,6 +26,7 @@ function deriveUsecaseResourceNodes(
 ): { resourceNodes: KrsNode[]; edges: KrsEdge[] } {
   const resourceMap = new Map<string, KrsNode>();
   const edges: KrsEdge[] = [];
+  const seen = new Set<string>();
 
   for (const usecase of usecases) {
     if (usecase.kind !== "usecase") continue;
@@ -37,6 +38,9 @@ function deriveUsecaseResourceNodes(
       if (!resourceMap.has(resource.id)) {
         resourceMap.set(resource.id, applyInferredTagsDeep(resource, tagMap));
       }
+      const key = `${usecase.id}->${resource.id}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
       edges.push({
         from: usecase.id,
         to: resource.id,
