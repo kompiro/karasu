@@ -520,6 +520,20 @@ export function layout(
     }
   }
 
+  // Assert non-negative coordinates after normalization (dev/test only)
+  if (process.env.NODE_ENV !== "production") {
+    for (const c of containers) {
+      if (c.x < 0) {
+        throw new Error(`[layout] container "${c.id}" has negative x=${c.x} after normalization`);
+      }
+    }
+    for (const [id, node] of layoutNodes) {
+      if (node.x < 0) {
+        throw new Error(`[layout] node "${id}" has negative x=${node.x} after normalization`);
+      }
+    }
+  }
+
   // Calculate total dimensions
   let totalWidth = 0;
   let totalHeight = 0;
