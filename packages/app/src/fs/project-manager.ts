@@ -60,7 +60,10 @@ export class ProjectManager {
   }
 
   /** 新規プロジェクトを作成する */
-  async createProject(name: string): Promise<Project> {
+  async createProject(
+    name: string,
+    files?: { path: string; content: string }[],
+  ): Promise<Project> {
     const id = crypto.randomUUID();
     const now = new Date().toISOString();
     const project: Project = {
@@ -71,9 +74,14 @@ export class ProjectManager {
       updatedAt: now,
     };
 
-    // プロジェクトディレクトリとデフォルトファイルを作成
+    // プロジェクトディレクトリを作成
     await this.fs.mkdir(project.rootPath);
-    await this.fs.writeFile(`${project.rootPath}/index.krs`, DEFAULT_KRS);
+
+    // ファイルを書き込む（指定がなければデフォルト）
+    const filesToWrite = files ?? [{ path: "index.krs", content: DEFAULT_KRS }];
+    for (const file of filesToWrite) {
+      await this.fs.writeFile(`${project.rootPath}/${file.path}`, file.content);
+    }
 
     // メタデータ更新
     const projects = await this.listProjects();

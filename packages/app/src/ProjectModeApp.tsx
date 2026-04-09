@@ -5,7 +5,7 @@ import { AppShell } from "./components/AppShell.js";
 import { useAppContext } from "./state/app-context.js";
 import { ProjectManager } from "./fs/project-manager.js";
 import { useProjectNavigation, LAST_PROJECT_KEY } from "./hooks/useProjectNavigation.js";
-import type { Project } from "@karasu-tools/core";
+import { type Project, EC_PLATFORM_PROJECTS } from "@karasu-tools/core";
 
 /**
  * ProjectModeApp — OPFS モードのアプリケーションシェル。
@@ -29,10 +29,13 @@ export function ProjectModeApp() {
       const projectList = await pm.listProjects();
 
       if (projectList.length === 0) {
-        // 初回起動: Getting Started プロジェクトを自動作成
-        const starter = await pm.createProject("Getting Started");
-        // useProjectNavigation の初期化 Effect が projects 確定後に SET_CURRENT_PROJECT を行う
-        dispatch({ type: "SET_PROJECTS", projects: [starter] });
+        // 初回起動: ec-platform の各ステップをプロジェクトとして作成
+        const initialProjects: Project[] = [];
+        for (const example of EC_PLATFORM_PROJECTS) {
+          const project = await pm.createProject(example.name, example.files);
+          initialProjects.push(project);
+        }
+        dispatch({ type: "SET_PROJECTS", projects: initialProjects });
       } else {
         dispatch({ type: "SET_PROJECTS", projects: projectList });
         // useProjectNavigation の初期化 Effect が URL/localStorage を参照して復元する
