@@ -16,10 +16,14 @@ import domainSvg from "@karasu-tools/core/icons/domain.svg?raw";
 import resourceSvg from "@karasu-tools/core/icons/resource.svg?raw";
 import teamSvg from "@karasu-tools/core/icons/team.svg?raw";
 import memberSvg from "@karasu-tools/core/icons/member.svg?raw";
+import usecaseSvg from "@karasu-tools/core/icons/usecase.svg?raw";
 import databaseSvg from "@karasu-tools/core/icons/database.svg?raw";
 import queueSvg from "@karasu-tools/core/icons/queue.svg?raw";
+import queueCardSvg from "@karasu-tools/core/icons/queue-card.svg?raw";
+import tableSvg from "@karasu-tools/core/icons/table.svg?raw";
 import apiSvg from "@karasu-tools/core/icons/api.svg?raw";
 import cloudSvg from "@karasu-tools/core/icons/cloud.svg?raw";
+import cloudCardSvg from "@karasu-tools/core/icons/cloud-card.svg?raw";
 import ociSvg from "@karasu-tools/core/icons/oci.svg?raw";
 import lambdaSvg from "@karasu-tools/core/icons/lambda.svg?raw";
 import jarSvg from "@karasu-tools/core/icons/jar.svg?raw";
@@ -47,10 +51,14 @@ resolveIconManifest(
     "resource.svg": resourceSvg,
     "team.svg": teamSvg,
     "member.svg": memberSvg,
+    "usecase.svg": usecaseSvg,
     "database.svg": databaseSvg,
     "queue.svg": queueSvg,
+    "queue-card.svg": queueCardSvg,
+    "table.svg": tableSvg,
     "api.svg": apiSvg,
     "cloud.svg": cloudSvg,
+    "cloud-card.svg": cloudCardSvg,
     "oci.svg": ociSvg,
     "lambda.svg": lambdaSvg,
     "jar.svg": jarSvg,
