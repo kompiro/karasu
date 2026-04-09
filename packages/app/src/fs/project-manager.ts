@@ -60,10 +60,7 @@ export class ProjectManager {
   }
 
   /** 新規プロジェクトを作成する */
-  async createProject(
-    name: string,
-    files?: { path: string; content: string }[],
-  ): Promise<Project> {
+  async createProject(name: string, files?: { path: string; content: string }[]): Promise<Project> {
     const id = crypto.randomUUID();
     const now = new Date().toISOString();
     const project: Project = {
