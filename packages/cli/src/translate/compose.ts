@@ -38,7 +38,7 @@ export class ComposeTranslator implements Translator {
       doc = parsed;
     } catch (err) {
       const reason = err instanceof Error ? err.message : String(err);
-      throw new Error(`Failed to parse docker-compose file: ${reason}`);
+      throw new Error(`Failed to parse docker-compose file: ${reason}`, { cause: err });
     }
 
     const services = doc.services ?? {};
