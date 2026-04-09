@@ -4,9 +4,9 @@ import { ComposeTranslator } from "./compose.js";
 import { K8sTranslator } from "./k8s.js";
 import type { TranslatorContext } from "./translator.js";
 
-export type TranslateFormat = "compose" | "k8s";
+type TranslateFormat = "compose" | "k8s";
 
-export interface TranslateOptions {
+interface TranslateOptions {
   from: TranslateFormat;
   map?: string;
   output?: string;

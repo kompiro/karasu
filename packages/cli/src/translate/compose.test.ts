@@ -22,7 +22,7 @@ services:
     expect(result).toContain('deploy "production" {');
     expect(result).toContain('  oci "order-service" {');
     expect(result).toContain('    image "order-service:1.0.0"');
-    expect(result).toContain('    realizes OrderService');
+    expect(result).toContain("    realizes OrderService");
     expect(result).toContain('  oci "payment-svc" {');
   });
 
@@ -88,6 +88,8 @@ services:
   });
 
   it("throws on invalid YAML", async () => {
-    await expect(translator.translate("{ invalid yaml: [", ctx)).rejects.toThrow();
+    await expect(translator.translate("{ invalid yaml: [", ctx)).rejects.toThrow(
+      "Failed to parse docker-compose file",
+    );
   });
 });

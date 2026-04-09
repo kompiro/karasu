@@ -83,7 +83,10 @@ describe("resolveRealizes", () => {
 
 describe("realizesLines", () => {
   it("emits realizes lines for resolved result", () => {
-    const lines = realizesLines("app", { resolved: true, services: ["OrderService", "InventoryService"] });
+    const lines = realizesLines("app", {
+      resolved: true,
+      services: ["OrderService", "InventoryService"],
+    });
     expect(lines).toEqual(["    realizes OrderService", "    realizes InventoryService"]);
   });
 

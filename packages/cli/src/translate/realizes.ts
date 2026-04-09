@@ -60,9 +60,7 @@ export function kebabToPascal(name: string): string {
     .join("");
 }
 
-export type RealizesResult =
-  | { resolved: true; services: string[] }
-  | { resolved: false };
+type RealizesResult = { resolved: true; services: string[] } | { resolved: false };
 
 /**
  * Resolves realizes for a deploy unit using the 3-stage strategy:
@@ -103,9 +101,7 @@ export function realizesLines(unitName: string, result: RealizesResult): string[
   if (result.resolved) {
     return result.services.map((s) => `    realizes ${s}`);
   }
-  process.stderr.write(
-    `Warning: Could not resolve realizes for "${unitName}"\n`,
-  );
+  process.stderr.write(`Warning: Could not resolve realizes for "${unitName}"\n`);
   return [
     `    // TODO: realizes ? — could not resolve from naming convention`,
     `    // Add karasu/realizes label or karasu.map.yaml entry`,

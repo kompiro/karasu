@@ -12,7 +12,9 @@ interface ComposeFile {
   services?: Record<string, ComposeService>;
 }
 
-function parseLabels(labels: Record<string, string> | string[] | undefined): Record<string, string> {
+function parseLabels(
+  labels: Record<string, string> | string[] | undefined,
+): Record<string, string> {
   if (!labels) return {};
   if (Array.isArray(labels)) {
     const result: Record<string, string> = {};
@@ -27,9 +29,16 @@ function parseLabels(labels: Record<string, string> | string[] | undefined): Rec
 
 export class ComposeTranslator implements Translator {
   async translate(input: string, context: TranslatorContext): Promise<string> {
-    const doc = parseYaml(input) as ComposeFile;
-    if (!doc || typeof doc !== "object") {
-      throw new Error("Failed to parse docker-compose file: invalid YAML structure");
+    let doc: ComposeFile;
+    try {
+      const parsed = parseYaml(input) as ComposeFile;
+      if (!parsed || typeof parsed !== "object") {
+        throw new Error("invalid YAML structure");
+      }
+      doc = parsed;
+    } catch (err) {
+      const reason = err instanceof Error ? err.message : String(err);
+      throw new Error(`Failed to parse docker-compose file: ${reason}`);
     }
 
     const services = doc.services ?? {};

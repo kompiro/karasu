@@ -1,4 +1,4 @@
-import { parse as parseYaml, parseAllDocuments } from "yaml";
+import { parseAllDocuments } from "yaml";
 import { loadMapFile, resolveMapPath, resolveRealizes, realizesLines } from "./realizes.js";
 import type { Translator, TranslatorContext } from "./translator.js";
 
@@ -45,8 +45,7 @@ function getPrimaryImage(resource: K8sResource): string | undefined {
 
   // CronJob wraps template in jobTemplate
   const containers =
-    spec.jobTemplate?.spec?.template?.spec?.containers ??
-    spec.template?.spec?.containers;
+    spec.jobTemplate?.spec?.template?.spec?.containers ?? spec.template?.spec?.containers;
 
   return containers?.[0]?.image;
 }
