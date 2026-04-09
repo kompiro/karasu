@@ -4,6 +4,7 @@ import type {
   KrsFile,
   SystemNode,
   KrsNode,
+  ServiceNode,
   DeployBlock,
   OrganizationBlock,
   ImportDeclaration,
@@ -360,7 +361,26 @@ export class ImportResolver {
 
       for (const service of importedFile.services) {
         if (service.id === id) {
-          mergedFile.services.push(service);
+          // スタブ（system 内に body なしで宣言された service）を探して定義で補完する。
+          // スタブ側のタグ・アノテーションを保持し、定義側の children/edges 等で補完する。
+          let mergedIntoSystem = false;
+          for (const system of mergedFile.systems) {
+            const stubIndex = system.children.findIndex(
+              (c) => c.id === id && c.kind === "service",
+            );
+            if (stubIndex >= 0) {
+              const stub = system.children[stubIndex] as ServiceNode;
+              system.children[stubIndex] = {
+                ...service,
+                tags: stub.tags.length > 0 ? stub.tags : service.tags,
+                annotations: stub.annotations.length > 0 ? stub.annotations : service.annotations,
+              };
+              mergedIntoSystem = true;
+            }
+          }
+          if (!mergedIntoSystem) {
+            mergedFile.services.push(service);
+          }
           found = true;
         }
       }
