@@ -16,6 +16,45 @@ function collectResourceRefs(node: KrsNode): ResourceNode[] {
 }
 
 /**
+ * At domain level: collect resource nodes with dot-notation refs from each usecase child,
+ * deduplicate by ID, and produce synthetic usecase→resource edges.
+ * Used to promote sub-resources to sibling level in the UseCase diagram.
+ */
+function deriveUsecaseResourceNodes(
+  usecases: KrsNode[],
+  tagMap: Map<string, string>,
+): { resourceNodes: KrsNode[]; edges: KrsEdge[] } {
+  const resourceMap = new Map<string, KrsNode>();
+  const edges: KrsEdge[] = [];
+  const seen = new Set<string>();
+
+  for (const usecase of usecases) {
+    if (usecase.kind !== "usecase") continue;
+    for (const resource of usecase.children) {
+      if (resource.kind !== "resource") continue;
+      const resNode = resource as ResourceNode;
+      if (!resNode.ref) continue;
+
+      if (!resourceMap.has(resource.id)) {
+        resourceMap.set(resource.id, applyInferredTagsDeep(resource, tagMap));
+      }
+      const key = `${usecase.id}->${resource.id}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      edges.push({
+        from: usecase.id,
+        to: resource.id,
+        kind: "sync",
+        tags: [],
+        loc: resource.loc,
+      });
+    }
+  }
+
+  return { resourceNodes: Array.from(resourceMap.values()), edges };
+}
+
+/**
  * Derive synthetic service→database/queue/storage edges from resource references.
  * For each service, walks all descendant resource nodes with dot-notation refs and
  * creates one edge per unique (service, infra) pair.
@@ -399,10 +438,26 @@ export function extractView(
     ));
   }
 
+  // At domain level: promote resource nodes with dot-notation refs to sibling level
+  // so they appear as connected nodes in the UseCase diagram.
+  let promotedChildNodes = applyInferredTags(containerNode.children, resourceInferredTagsMap);
+  let finalChildEdges = childEdges;
+
+  if (containerNode.kind === "domain") {
+    const { resourceNodes, edges: resourceEdges } = deriveUsecaseResourceNodes(
+      containerNode.children,
+      resourceInferredTagsMap,
+    );
+    if (resourceNodes.length > 0) {
+      promotedChildNodes = [...promotedChildNodes, ...resourceNodes];
+      finalChildEdges = [...childEdges, ...resourceEdges];
+    }
+  }
+
   return {
     containerNode,
-    childNodes: applyInferredTags(containerNode.children, resourceInferredTagsMap),
-    childEdges,
+    childNodes: promotedChildNodes,
+    childEdges: finalChildEdges,
     ancestorChain,
     ghostUsers,
     ghostUserEdges,

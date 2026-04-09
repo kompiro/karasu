@@ -656,6 +656,111 @@ system ECPlatform {
     });
   });
 
+  describe("domain view with infra resources (UseCase diagram)", () => {
+    it("promotes dot-notation resource nodes to domain-level childNodes", () => {
+      const systems = parseSystem(INFRA_KRS);
+      const view = extractView(systems, ["ECPlatform", "OrderService", "Order"]);
+
+      const ids = view.childNodes.map((n) => n.id);
+      expect(ids).toContain("PlaceOrder");
+      expect(ids).toContain("OrderDB.OrderTable");
+      expect(ids).toContain("EventBus.OrderCreated");
+    });
+
+    it("applies inferred tags to promoted resource nodes", () => {
+      const systems = parseSystem(INFRA_KRS);
+      const view = extractView(systems, ["ECPlatform", "OrderService", "Order"]);
+
+      const tableNode = view.childNodes.find((n) => n.id === "OrderDB.OrderTable");
+      expect(tableNode).toBeDefined();
+      expect(tableNode!.tags).toContain("table");
+
+      const queueNode = view.childNodes.find((n) => n.id === "EventBus.OrderCreated");
+      expect(queueNode).toBeDefined();
+      expect(queueNode!.tags).toContain("queue");
+    });
+
+    it("adds synthetic usecase→resource edges", () => {
+      const systems = parseSystem(INFRA_KRS);
+      const view = extractView(systems, ["ECPlatform", "OrderService", "Order"]);
+
+      const edgeKeys = view.childEdges.map((e) => `${e.from}->${e.to}`);
+      expect(edgeKeys).toContain("PlaceOrder->OrderDB.OrderTable");
+      expect(edgeKeys).toContain("PlaceOrder->EventBus.OrderCreated");
+    });
+
+    it("deduplicates resource nodes referenced by multiple usecases", () => {
+      const krs = `
+system ECPlatform {
+  database OrderDB {
+    table OrderTable { label "注文テーブル" }
+  }
+  service OrderService {
+    domain Order {
+      usecase PlaceOrder {
+        resource OrderDB.OrderTable
+      }
+      usecase UpdateOrder {
+        resource OrderDB.OrderTable
+      }
+    }
+  }
+}
+`;
+      const systems = parseSystem(krs);
+      const view = extractView(systems, ["ECPlatform", "OrderService", "Order"]);
+
+      const tableNodes = view.childNodes.filter((n) => n.id === "OrderDB.OrderTable");
+      expect(tableNodes).toHaveLength(1);
+
+      const edgeKeys = view.childEdges.map((e) => `${e.from}->${e.to}`);
+      expect(edgeKeys).toContain("PlaceOrder->OrderDB.OrderTable");
+      expect(edgeKeys).toContain("UpdateOrder->OrderDB.OrderTable");
+    });
+
+    it("deduplicates edges when same resource is declared twice in one usecase", () => {
+      const krs = `
+system ECPlatform {
+  database OrderDB {
+    table OrderTable { label "注文テーブル" }
+  }
+  service OrderService {
+    domain Order {
+      usecase PlaceOrder {
+        resource OrderDB.OrderTable
+        resource OrderDB.OrderTable
+      }
+    }
+  }
+}
+`;
+      const systems = parseSystem(krs);
+      const view = extractView(systems, ["ECPlatform", "OrderService", "Order"]);
+
+      const edges = view.childEdges.filter(
+        (e) => e.from === "PlaceOrder" && e.to === "OrderDB.OrderTable",
+      );
+      expect(edges).toHaveLength(1);
+    });
+
+    it("does not promote inline resources without dot-notation ref", () => {
+      const systems = parseSystem(FULL_KRS);
+      const view = extractView(systems, ["ECPlatform", "ECommerce", "Order"]);
+
+      // FULL_KRS uses inline resources (no dot-notation), so childNodes should be usecases only
+      const ids = view.childNodes.map((n) => n.id);
+      expect(ids).toEqual(["PlaceOrder", "CancelOrder"]);
+    });
+
+    it("does not affect non-domain views", () => {
+      const systems = parseSystem(INFRA_KRS);
+      // Service view — no resource promotion
+      const serviceView = extractView(systems, ["ECPlatform", "OrderService"]);
+      const ids = serviceView.childNodes.map((n) => n.id);
+      expect(ids).not.toContain("OrderDB.OrderTable");
+    });
+  });
+
   describe("applyInferredTags via childNodes", () => {
     it("injects inferred tag into resource nodes with dot-notation ref and no explicit tags", () => {
       const systems = parseSystem(INFRA_KRS);
