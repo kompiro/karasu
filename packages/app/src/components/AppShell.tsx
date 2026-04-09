@@ -19,6 +19,13 @@ import type { BreadcrumbItem } from "./Breadcrumb.js";
 
 interface AppShellProps {
   entryPath: string | null;
+  /**
+   * Sidebar content that is always visible — not affected by the collapse toggle.
+   * Use for persistent controls like project selectors that should remain accessible
+   * even when the sidebar is collapsed.
+   */
+  sidebarHeaderContent?: ReactNode;
+  /** Sidebar content that collapses when the user clicks the Collapse button. */
   sidebarContent?: ReactNode;
   hideEditor?: boolean;
   recompileRef?: RefObject<(() => void) | null>;
@@ -33,7 +40,7 @@ interface AppShellProps {
  * Mode-specific concerns (initialization, project management, sidebar content)
  * are handled by the parent wrapper components.
  */
-export function AppShell({ entryPath, sidebarContent, hideEditor, recompileRef }: AppShellProps) {
+export function AppShell({ entryPath, sidebarHeaderContent, sidebarContent, hideEditor, recompileRef }: AppShellProps) {
   const { state, dispatch, fs } = useAppContext();
   const {
     fileContent,
@@ -286,11 +293,12 @@ export function AppShell({ entryPath, sidebarContent, hideEditor, recompileRef }
 
   // ── Render ──────────────────────────────────────────────────────
 
+  const hasSidebar = !!(sidebarHeaderContent || sidebarContent);
   const className = hideEditor
     ? "app serve-mode"
     : [
         "app-shell",
-        sidebarContent ? "has-sidebar" : "",
+        hasSidebar ? "has-sidebar" : "",
         sidebarCollapsed ? "sidebar-collapsed" : "",
         previewFocused ? "preview-focused" : "",
       ]
@@ -308,6 +316,7 @@ export function AppShell({ entryPath, sidebarContent, hideEditor, recompileRef }
           {sidebarCollapsed ? "» Expand" : "« Collapse"}
         </button>
       )}
+      {sidebarHeaderContent}
       {sidebarContent}
       {!hideEditor && (
         <EditorPane
