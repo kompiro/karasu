@@ -521,9 +521,12 @@ export function layout(
   }
 
   // Assert non-negative coordinates after normalization (dev/test only).
-  // Uses globalThis to avoid a compile error in browser-targeted tsconfigs that lack @types/node.
+  // Read NODE_ENV via globalThis to avoid TS2591 in browser-targeted tsconfigs lacking @types/node.
+  // When process is undefined (browser), nodeEnv is undefined and the check is skipped, so
+  // production builds degrade gracefully (incomplete diagram) rather than crashing.
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  if ((globalThis as any).process?.env?.NODE_ENV !== "production") {
+  const nodeEnv = (globalThis as any).process?.env?.NODE_ENV;
+  if (typeof nodeEnv === "string" && nodeEnv !== "production") {
     for (const c of containers) {
       if (c.x < 0) {
         throw new Error(`[layout] container "${c.id}" has negative x=${c.x} after normalization`);
