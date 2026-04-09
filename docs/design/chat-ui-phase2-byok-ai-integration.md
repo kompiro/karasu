@@ -283,7 +283,9 @@ type SessionPhase =
   | { kind: "awaiting_followup" };
 ```
 
-`pending_confirmation` フェーズ中は新規メッセージ送信・New Session 以外の操作を無効にする。
+`pending_confirmation` フェーズ中に新規メッセージ送信または New Session が実行された場合は、
+`tool_result: { content: "User declined." }` を自動送信してフェーズを閉じてから次の操作に移る。
+これにより会話履歴が常に整合した状態を保てる。
 
 **メリット**: API の想定通りの使い方。AI がフォローアップできる。
 
