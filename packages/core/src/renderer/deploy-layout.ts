@@ -9,6 +9,7 @@ const CONTAINER_PADDING_X = 20;
 const CONTAINER_PADDING_TOP = 36; // room for container label
 const CONTAINER_PADDING_BOTTOM = 20;
 const OUTER_PADDING = 40;
+const ROW_GAP = 64; // vertical gap between layers (larger than CONTAINER_GAP to leave room for edges)
 const UNCLASSIFIED_LABEL = "Unclassified";
 
 function estimateTextWidth(text: string): number {
@@ -44,55 +45,202 @@ function measureContainerHeight(units: DeployNode[]): number {
 }
 
 /**
- * Layout a deploy diagram.
- * Containers are arranged horizontally; units within each container are stacked vertically.
- * Ghost edges connect container centers based on system-level edges.
+ * Assigns a layer number to each container using Longest Path Layering (BFS).
+ * Containers with no incoming edges are placed at layer 0.
+ * Back edges (cycles) are detected and skipped to prevent infinite loops.
+ * Returns a map from container id to layer number.
+ */
+function assignLayers(
+  containerIds: string[],
+  edges: Array<{ from: string; to: string }>,
+): Map<string, number> {
+  const layer = new Map<string, number>();
+  const inDegree = new Map<string, number>();
+  const successors = new Map<string, string[]>();
+  const containerSet = new Set(containerIds);
+
+  for (const id of containerIds) {
+    layer.set(id, 0);
+    inDegree.set(id, 0);
+    successors.set(id, []);
+  }
+
+  for (const edge of edges) {
+    if (!containerSet.has(edge.from) || !containerSet.has(edge.to)) continue;
+    inDegree.set(edge.to, (inDegree.get(edge.to) ?? 0) + 1);
+    successors.get(edge.from)!.push(edge.to);
+  }
+
+  // BFS from roots (in-degree = 0), updating layer to max(current, predecessor+1)
+  const queue: string[] = [];
+  for (const id of containerIds) {
+    if ((inDegree.get(id) ?? 0) === 0) queue.push(id);
+  }
+
+  const processed = new Set<string>();
+  while (queue.length > 0) {
+    const node = queue.shift()!;
+    if (processed.has(node)) continue;
+    processed.add(node);
+
+    for (const successor of successors.get(node) ?? []) {
+      const newLayer = (layer.get(node) ?? 0) + 1;
+      if (newLayer > (layer.get(successor) ?? 0)) {
+        layer.set(successor, newLayer);
+      }
+      const deg = (inDegree.get(successor) ?? 1) - 1;
+      inDegree.set(successor, deg);
+      if (deg === 0) queue.push(successor);
+    }
+  }
+
+  return layer;
+}
+
+/**
+ * Compute ghost edge connection points between two containers.
+ * - Different layers (different Y): connect bottom-center → top-center (or top → bottom for reverse)
+ * - Same layer (same Y): connect right/left edges at mid-height
+ */
+function ghostEdgePoints(
+  from: ContainerRect,
+  to: ContainerRect,
+): { fromPoint: { x: number; y: number }; toPoint: { x: number; y: number } } {
+  if (from.y < to.y) {
+    return {
+      fromPoint: { x: from.x + from.width / 2, y: from.y + from.height },
+      toPoint: { x: to.x + to.width / 2, y: to.y },
+    };
+  } else if (from.y > to.y) {
+    return {
+      fromPoint: { x: from.x + from.width / 2, y: from.y },
+      toPoint: { x: to.x + to.width / 2, y: to.y + to.height },
+    };
+  } else {
+    if (from.x < to.x) {
+      return {
+        fromPoint: { x: from.x + from.width, y: from.y + from.height / 2 },
+        toPoint: { x: to.x, y: to.y + to.height / 2 },
+      };
+    } else {
+      return {
+        fromPoint: { x: from.x, y: from.y + from.height / 2 },
+        toPoint: { x: to.x + to.width, y: to.y + to.height / 2 },
+      };
+    }
+  }
+}
+
+/**
+ * Layout a deploy diagram using a layered DAG layout (Longest Path Layering).
+ *
+ * Containers are grouped into layers based on service dependency edges (ghost edges).
+ * Within each layer containers are arranged horizontally; layers are stacked vertically.
+ * Unclassified units (no realizes) are placed in a separate row at the bottom.
  */
 export function layoutDeploy(slice: DeployViewSlice): LayoutResult {
   const layoutNodes = new Map<string, LayoutNode>();
   const containers: ContainerRect[] = [];
 
-  // Build a list of all groups (classified + unclassified)
   type Group = { id: string; label: string; units: DeployNode[] };
-  const groups: Group[] = [
-    ...slice.containers.map((c) => ({ id: c.serviceId, label: c.serviceLabel, units: c.units })),
-  ];
-  if (slice.unclassifiedUnits.length > 0) {
-    groups.push({
-      id: "__unclassified__",
-      label: UNCLASSIFIED_LABEL,
-      units: slice.unclassifiedUnits,
-    });
-  }
+  const classifiedGroups: Group[] = slice.containers.map((c) => ({
+    id: c.serviceId,
+    label: c.serviceLabel,
+    units: c.units,
+  }));
 
-  if (groups.length === 0) {
+  const hasUnclassified = slice.unclassifiedUnits.length > 0;
+
+  if (classifiedGroups.length === 0 && !hasUnclassified) {
     return { nodes: new Map(), edges: [], containers: [], width: 0, height: 0 };
   }
 
-  let currentX = OUTER_PADDING;
-  let maxHeight = 0;
+  // --- Layer assignment ---
+  const classifiedIds = classifiedGroups.map((g) => g.id);
+  const layerMap = assignLayers(classifiedIds, slice.ghostEdges);
 
-  for (const group of groups) {
-    const containerW = measureContainerWidth(group.units, group.label);
-    const containerH = measureContainerHeight(group.units);
-    const containerY = OUTER_PADDING;
+  // Group containers by layer number
+  const layerBuckets = new Map<number, Group[]>();
+  for (const group of classifiedGroups) {
+    const l = layerMap.get(group.id) ?? 0;
+    if (!layerBuckets.has(l)) layerBuckets.set(l, []);
+    layerBuckets.get(l)!.push(group);
+  }
+
+  const sortedLayerNums = [...layerBuckets.keys()].sort((a, b) => a - b);
+
+  // --- Place containers layer by layer ---
+  let currentY = OUTER_PADDING;
+  let totalWidth = 0;
+
+  for (const layerIdx of sortedLayerNums) {
+    const layerGroups = layerBuckets.get(layerIdx)!;
+    let currentX = OUTER_PADDING;
+    let maxLayerHeight = 0;
+
+    for (const group of layerGroups) {
+      const containerW = measureContainerWidth(group.units, group.label);
+      const containerH = measureContainerHeight(group.units);
+
+      containers.push({
+        id: group.id,
+        label: group.label,
+        x: currentX,
+        y: currentY,
+        width: containerW,
+        height: containerH,
+        ghost: false,
+      });
+
+      let unitY = currentY + CONTAINER_PADDING_TOP;
+      for (const unit of group.units) {
+        const dims = measureDeployUnit(unit);
+        layoutNodes.set(unit.id, {
+          kind: unit.kind,
+          id: unit.id,
+          label: unit.label ?? unit.id,
+          properties: {
+            description: unit.properties.runtime,
+            links: [],
+          },
+          descriptionSummary: undefined,
+          linkCount: 0,
+          hasChildren: false,
+          hasDescription: !!unit.properties.runtime,
+          x: currentX + CONTAINER_PADDING_X,
+          y: unitY,
+          width: dims.width,
+          height: dims.height,
+        });
+        unitY += dims.height + NODE_GAP;
+      }
+
+      maxLayerHeight = Math.max(maxLayerHeight, containerH);
+      currentX += containerW + CONTAINER_GAP;
+    }
+
+    totalWidth = Math.max(totalWidth, currentX - CONTAINER_GAP + OUTER_PADDING);
+    currentY += maxLayerHeight + ROW_GAP;
+  }
+
+  // --- Unclassified units: bottom row ---
+  if (hasUnclassified) {
+    const containerW = measureContainerWidth(slice.unclassifiedUnits, UNCLASSIFIED_LABEL);
+    const containerH = measureContainerHeight(slice.unclassifiedUnits);
 
     containers.push({
-      id: group.id,
-      label: group.label,
-      x: currentX,
-      y: containerY,
+      id: "__unclassified__",
+      label: UNCLASSIFIED_LABEL,
+      x: OUTER_PADDING,
+      y: currentY,
       width: containerW,
       height: containerH,
       ghost: false,
     });
 
-    // Stack units vertically inside the container
-    let unitY = containerY + CONTAINER_PADDING_TOP;
-    for (const unit of group.units) {
+    let unitY = currentY + CONTAINER_PADDING_TOP;
+    for (const unit of slice.unclassifiedUnits) {
       const dims = measureDeployUnit(unit);
-      const unitX = currentX + CONTAINER_PADDING_X;
-
       layoutNodes.set(unit.id, {
         kind: unit.kind,
         id: unit.id,
@@ -105,42 +253,31 @@ export function layoutDeploy(slice: DeployViewSlice): LayoutResult {
         linkCount: 0,
         hasChildren: false,
         hasDescription: !!unit.properties.runtime,
-        x: unitX,
+        x: OUTER_PADDING + CONTAINER_PADDING_X,
         y: unitY,
         width: dims.width,
         height: dims.height,
       });
-
       unitY += dims.height + NODE_GAP;
     }
 
-    maxHeight = Math.max(maxHeight, containerH);
-    currentX += containerW + CONTAINER_GAP;
+    totalWidth = Math.max(totalWidth, OUTER_PADDING + containerW + OUTER_PADDING);
+    currentY += containerH + OUTER_PADDING;
+  } else {
+    // Replace last ROW_GAP with OUTER_PADDING
+    currentY = currentY - ROW_GAP + OUTER_PADDING;
   }
 
-  // Ghost edges between service containers
+  // --- Ghost edges ---
   const containerById = new Map(containers.map((c) => [c.id, c]));
   const layoutEdges: LayoutEdge[] = [];
+
   for (const edge of slice.ghostEdges) {
     const fromContainer = containerById.get(edge.from);
     const toContainer = containerById.get(edge.to);
     if (!fromContainer || !toContainer) continue;
 
-    // Connect right edge of from-container to left edge of to-container
-    // (or vice versa depending on horizontal order)
-    let fromPoint: { x: number; y: number };
-    let toPoint: { x: number; y: number };
-    const fromCenterY = fromContainer.y + fromContainer.height / 2;
-    const toCenterY = toContainer.y + toContainer.height / 2;
-
-    if (fromContainer.x < toContainer.x) {
-      fromPoint = { x: fromContainer.x + fromContainer.width, y: fromCenterY };
-      toPoint = { x: toContainer.x, y: toCenterY };
-    } else {
-      fromPoint = { x: fromContainer.x, y: fromCenterY };
-      toPoint = { x: toContainer.x + toContainer.width, y: toCenterY };
-    }
-
+    const { fromPoint, toPoint } = ghostEdgePoints(fromContainer, toContainer);
     layoutEdges.push({
       from: edge.from,
       to: edge.to,
@@ -151,14 +288,11 @@ export function layoutDeploy(slice: DeployViewSlice): LayoutResult {
     });
   }
 
-  const totalWidth = currentX - CONTAINER_GAP + OUTER_PADDING;
-  const totalHeight = OUTER_PADDING + maxHeight + OUTER_PADDING;
-
   return {
     nodes: layoutNodes,
     edges: layoutEdges,
     containers,
     width: totalWidth,
-    height: totalHeight,
+    height: currentY,
   };
 }
