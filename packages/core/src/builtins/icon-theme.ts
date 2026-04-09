@@ -15,15 +15,15 @@ export const ICON_THEME_STYLE_SOURCE: string = `/* karasu icon theme */
 service  { shape: url("service");  }
 user     { shape: url("user-card");     }
 domain   { shape: url("domain");   }
-usecase  { shape: url("domain");   }
+usecase  { shape: url("usecase");  }
 resource { shape: url("resource"); }
 team     { shape: url("team");     }
 member   { shape: url("member");   }
 
 /* ── Infra nodes ── */
 database { shape: url("database"); }
-queue    { shape: url("queue");    }
-storage  { shape: url("cloud");    }
+queue    { shape: url("queue-node"); }
+storage  { shape: url("cloud-node"); }
 
 /* ── Resource tag variants ── */
 resource[table]   { shape: url("table");      }

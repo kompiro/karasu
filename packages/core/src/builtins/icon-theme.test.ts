@@ -42,6 +42,19 @@ describe("ICON_THEME_STYLE_SOURCE", () => {
     expect(ICON_THEME_STYLE_SOURCE).toContain(`resource[storage] { shape: url("cloud-card");`);
   });
 
+  it("queue infra node uses url(queue-node) to avoid overwriting geometric queue shape", () => {
+    expect(ICON_THEME_STYLE_SOURCE).toContain(`queue    { shape: url("queue-node"); }`);
+  });
+
+  it("storage infra node uses url(cloud-node) to avoid overwriting geometric cloud shape", () => {
+    expect(ICON_THEME_STYLE_SOURCE).toContain(`storage  { shape: url("cloud-node"); }`);
+  });
+
+  it("usecase uses distinct url(usecase) not url(domain)", () => {
+    expect(ICON_THEME_STYLE_SOURCE).toContain(`usecase  { shape: url("usecase");  }`);
+    expect(ICON_THEME_STYLE_SOURCE).not.toContain(`usecase  { shape: url("domain")`);
+  });
+
   it("contains rules for all deploy node types", () => {
     for (const deployType of [
       "oci",
