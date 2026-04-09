@@ -49,7 +49,7 @@ describe("compile — deploy diagram nodeMetadata", () => {
   it("sets kind and label from unit id", () => {
     const result = compile(DEPLOY_KRS, { diagramType: "deploy" });
     if (result.diagramType !== "deploy") throw new Error("expected deploy result");
-    const meta = result.nodeMetadata.get("ec-app");
+    const meta = result.nodeMetadata.get("ECommerce::ec-app");
     expect(meta).toBeDefined();
     expect(meta!.kind).toBe("oci");
     expect(meta!.label).toBe("ec-app");
@@ -58,7 +58,7 @@ describe("compile — deploy diagram nodeMetadata", () => {
   it("sets runtime and realizes from unit properties", () => {
     const result = compile(DEPLOY_KRS, { diagramType: "deploy" });
     if (result.diagramType !== "deploy") throw new Error("expected deploy result");
-    const meta = result.nodeMetadata.get("ec-app");
+    const meta = result.nodeMetadata.get("ECommerce::ec-app");
     expect(meta!.runtime).toBe("node:20");
     expect(meta!.realizes).toEqual(["ECommerce"]);
   });

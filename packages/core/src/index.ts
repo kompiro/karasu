@@ -600,8 +600,8 @@ function buildNodeMetadata(
 function buildDeployNodeMetadata(deploySlice: DeployViewSlice): Map<string, NodeMetadata> {
   const map = new Map<string, NodeMetadata>();
 
-  function addUnit(unit: DeployNode): void {
-    map.set(unit.id, {
+  function makeEntry(unit: DeployNode): NodeMetadata {
+    return {
       kind: unit.kind,
       label: unit.id,
       links: [],
@@ -610,13 +610,20 @@ function buildDeployNodeMetadata(deploySlice: DeployViewSlice): Map<string, Node
       hasChildren: false,
       runtime: unit.properties.runtime,
       realizes: unit.properties.realizes,
-    });
+    };
   }
 
+  // Classified units: key is "${serviceId}::${unit.id}" to match the layout node key,
+  // allowing the same unit to appear in multiple containers with distinct keys.
   for (const container of deploySlice.containers) {
-    for (const unit of container.units) addUnit(unit);
+    for (const unit of container.units) {
+      map.set(`${container.serviceId}::${unit.id}`, makeEntry(unit));
+    }
   }
-  for (const unit of deploySlice.unclassifiedUnits) addUnit(unit);
+  // Unclassified units appear exactly once: key is unit.id.
+  for (const unit of deploySlice.unclassifiedUnits) {
+    map.set(unit.id, makeEntry(unit));
+  }
 
   return map;
 }

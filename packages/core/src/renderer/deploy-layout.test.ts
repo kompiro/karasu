@@ -68,8 +68,8 @@ describe("layoutDeploy", () => {
     const result = layoutDeploy(slice);
 
     expect(result.nodes.size).toBe(2);
-    expect(result.nodes.has("order-api")).toBe(true);
-    expect(result.nodes.has("order-worker")).toBe(true);
+    expect(result.nodes.has("ECommerce::order-api")).toBe(true);
+    expect(result.nodes.has("ECommerce::order-worker")).toBe(true);
   });
 
   it("places unclassified units in an __unclassified__ container", () => {
@@ -115,7 +115,7 @@ describe("layoutDeploy", () => {
     const result = layoutDeploy(slice);
 
     const container = result.containers[0];
-    const node = result.nodes.get("order-api")!;
+    const node = result.nodes.get("ECommerce::order-api")!;
 
     expect(node.x).toBeGreaterThanOrEqual(container.x);
     expect(node.y).toBeGreaterThanOrEqual(container.y);
@@ -155,7 +155,7 @@ describe("layoutDeploy", () => {
       { serviceId: "ECommerce", serviceLabel: "ECサイト", unitIds: ["order-api"] },
     ]);
     const result = layoutDeploy(slice);
-    const node = result.nodes.get("order-api")!;
+    const node = result.nodes.get("ECommerce::order-api")!;
     expect(node.properties.description).toBe("Node.js 20");
     expect(node.hasDescription).toBe(true);
   });
@@ -182,7 +182,7 @@ describe("layoutDeploy", () => {
       ghostEdges: [],
     };
     const result = layoutDeploy(slice);
-    const node = result.nodes.get("ecommerceApp")!;
+    const node = result.nodes.get("ECommerce::ecommerceApp")!;
     expect(node.label).toBe("EC Application");
   });
 
@@ -191,7 +191,7 @@ describe("layoutDeploy", () => {
       { serviceId: "ECommerce", serviceLabel: "ECサイト", unitIds: ["order-api"] },
     ]);
     const result = layoutDeploy(slice);
-    const node = result.nodes.get("order-api")!;
+    const node = result.nodes.get("ECommerce::order-api")!;
     expect(node.label).toBe("order-api");
   });
 
