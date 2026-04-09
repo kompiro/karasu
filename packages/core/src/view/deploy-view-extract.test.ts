@@ -66,7 +66,12 @@ function makeDeployBlock(
       id: n.id,
       label: n.label,
       properties: {
-        realizes: n.realizes === undefined ? undefined : Array.isArray(n.realizes) ? n.realizes : [n.realizes],
+        realizes:
+          n.realizes === undefined
+            ? undefined
+            : Array.isArray(n.realizes)
+              ? n.realizes
+              : [n.realizes],
         runtime: n.runtime,
       },
       loc: LOC,
