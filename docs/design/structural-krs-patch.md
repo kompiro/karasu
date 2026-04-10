@@ -171,21 +171,71 @@ packages/app/src/
 ```ts
 type PatchOperation = "append" | "replace" | "remove";
 
+type PatchResult =
+  | { ok: true; source: string }
+  | { ok: false; error: string };
+
 function applyKrsPatch(
   source: string,
   operation: PatchOperation,
   targetNodeId?: string,
   content?: string,
-): string
+): PatchResult
 ```
 
 内部ロジック:
-1. `operation === "append"` → `source + "\n" + content`
-2. `operation === "replace" | "remove"`:
-   - `Parser.parse(source)` で AST を生成
-   - `systems`, `services`, `domains`, `organizations` を再帰的に探索し `id === targetNodeId` のノードを発見
-   - `replace`: `source.slice(0, node.loc.start.offset) + content + source.slice(node.loc.end.offset)`
-   - `remove`: `source.slice(0, node.loc.start.offset) + source.slice(node.loc.end.offset)`（前後の余分な改行も除去）
+
+**1. `append`**
+```ts
+return { ok: true, source: source + "\n" + content };
+```
+
+**2. `replace` / `remove`**
+```
+Parser.parse(source) で KrsFile を生成
+→ systems, services, domains (KrsNode) を再帰的に探索し id === targetNodeId のノードを発見
+→ 見つからない場合: { ok: false, error: `Node "${targetNodeId}" not found` }
+```
+
+`replace`:
+```ts
+const start = node.loc.start.offset;
+const end = node.loc.end.offset + 1;  // end.offset は } の位置（包含）なので +1
+return { ok: true, source: source.slice(0, start) + content + source.slice(end) };
+```
+
+`remove`:
+```ts
+const start = node.loc.start.offset;
+const end = node.loc.end.offset + 1;
+const before = source.slice(0, start).replace(/[ \t]*\n?$/, '');
+const raw = source.slice(end);
+// 先頭ノード（before が空）: 先頭の全空白を除去。中間/末尾: 改行1つ除去
+const after = before.trim() === '' ? raw.replace(/^\s+/, '') : raw.replace(/^\n/, '');
+return { ok: true, source: before + after };
+```
+
+**探索対象**: `KrsFile.systems`, `.services`, `.domains` を再帰的にたどる（`deploy`・`organization` は対象外）。
+
+**`loc.end.offset` の境界**: `}` トークンの文字位置（包含）。スライス境界は `end.offset + 1`。
+実験結果（例）:
+```
+"service Bar {}"  → loc = { start.offset: 15, end.offset: 28 }
+src.slice(15, 29) → "service Bar {}"  // 28+1=29
+```
+
+**`remove` 後の空白行**: 6パターンのテストで全ケース parse 成功を確認済み（see git history）。
+
+### エラーハンドリング
+
+| ケース | 挙動 |
+|---|---|
+| `targetNodeId` のノードが見つからない | `{ ok: false, error: "Node \"X\" not found" }` → UI に警告表示 |
+| `replace` / `remove` で `targetNodeId` が未指定 | `{ ok: false, error: "targetNodeId is required for replace/remove" }` |
+| `append` / `replace` で `content` が未指定 | `{ ok: false, error: "content is required for append/replace" }` |
+
+UI での表示: `applyPatch` 失敗時は ChatPane に `⚠ パッチの適用に失敗しました: {error}` を表示し、
+`patch.contentHashAtProposal` チェック同様にパッチ確認ボタンを無効化する。
 
 ### システムプロンプトの更新
 
@@ -198,17 +248,10 @@ function applyKrsPatch(
 ```
 - 変更を提案する場合は apply_krs_patch ツールを使用する
   - 新しいトップレベルブロックを追加する場合: operation="append", content=ブロック全体
-  - 既存ノードを変更する場合（child追加含む）: operation="replace", targetNodeId=対象ノードID, content=置換後のブロック全体
-  - ノードを削除する場合: operation="remove", targetNodeId=対象ノードID
+  - 既存ノードを変更する場合（child 追加含む）: operation="replace", targetNodeId=対象ノード ID, content=置換後のブロック全体
+  - ノードを削除する場合: operation="remove", targetNodeId=対象ノード ID
 ```
 
 ## 未解決の問い
 
-1. **`loc.end.offset` はブロックの閉じ `}` の次の文字か、`}` 自身か**
-   → パーサーの実装を確認して実装時に決定する
-
-2. **`remove` 時の空白行処理**: 削除後に余分な空行が残る可能性がある
-   → `source.slice(0, start).trimEnd() + "\n" + source.slice(end).trimStart()` などの正規化が必要か検討
-
-3. **ノードが見つからない場合のフォールバック**: `targetNodeId` が存在しないノード ID だった場合の挙動
-   → エラーとして UI に表示する、または `append` にフォールバックするか
+（なし — 実験によりすべて解消済み）
