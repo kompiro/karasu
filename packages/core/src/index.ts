@@ -111,7 +111,7 @@ export { ImportResolver, type ResolvedProject } from "./fs/import-resolver.js";
 export type { Project } from "./fs/project.js";
 export { normalizePath, resolvePath, dirname, basename, extname } from "./fs/path-utils.js";
 
-import type { ParseResult, OrganizationBlock } from "./types/ast.js";
+import type { ParseResult, OrganizationBlock, SystemNode } from "./types/ast.js";
 import type { KrsFile } from "./types/ast.js";
 import type { StyleSheet, ResolvedStyles } from "./types/style.js";
 import type { Warning } from "./types/warnings.js";
@@ -205,6 +205,10 @@ export interface SystemCompileResult {
   nodeMetadata: Map<string, NodeMetadata>;
   hasDeployDiagram: boolean;
   deployBlocks: DeployBlockInfo[];
+  /** Fully resolved system tree (all imports merged). Use for breadcrumb traversal. */
+  systems: SystemNode[];
+  /** Maps each node id to the file path where it is defined. */
+  nodeFileIndex: Map<string, string>;
 }
 
 export interface DeployCompileResult {
@@ -324,6 +328,8 @@ function _compileCore(krsSource: string, opts: CompileOptions): CompileResult {
     nodeMetadata,
     hasDeployDiagram,
     deployBlocks,
+    systems: parseResult.value.systems,
+    nodeFileIndex: new Map<string, string>(),
   };
 }
 
@@ -417,6 +423,8 @@ async function _compileProjectCore(
     nodeMetadata,
     hasDeployDiagram,
     deployBlocks,
+    systems: resolved.krsFile.systems,
+    nodeFileIndex: resolved.krsFile.nodeFileIndex,
   };
 }
 
