@@ -8,6 +8,7 @@ export type WarningKind =
   | "invalid-owns"
   | "deprecated-team-property"
   | "unassigned-domain"
+  | "unassigned-usecase"
   | "cross-system-ref-implicit-external"
   | "cross-system-ref-unresolved"
   | "cyclic-dependency";
