@@ -78,10 +78,7 @@ function buildDomainServiceMap(services: KrsNode[]): Map<string, string> {
  * Multiple domain edges between the same service pair are aggregated into a single edge
  * with label "N domain edges" (or the single label if there is only one).
  */
-function deriveImplicitServiceEdges(
-  services: KrsNode[],
-  explicitKeys: Set<string>,
-): KrsEdge[] {
+function deriveImplicitServiceEdges(services: KrsNode[], explicitKeys: Set<string>): KrsEdge[] {
   const domainServiceMap = buildDomainServiceMap(services);
 
   // Collect all cross-service domain edges grouped by service pair
