@@ -326,22 +326,14 @@ export function AppShell({ entryPath, sidebarContent, hideEditor, recompileRef }
           onDeployButtonClick: handleDeployButtonClick,
           onTeamButtonClick: handleTeamButtonClick,
           highlightedNodeId,
-          onClearHighlight: () => {
-            // eslint-disable-next-line no-console
-            console.debug("[karasu/highlight] clearHighlight called (system)", new Error().stack);
-            dispatch({ type: "SET_HIGHLIGHTED_NODE", nodeId: null });
-          },
+          onClearHighlight: () => dispatch({ type: "SET_HIGHLIGHTED_NODE", nodeId: null }),
         }}
         deployView={{
           svg: deploySvg,
           diagnostics: deployDiagnostics,
           warnings: deployWarnings,
           highlightedNodeId,
-          onClearHighlight: () => {
-            // eslint-disable-next-line no-console
-            console.debug("[karasu/highlight] clearHighlight called (deploy)", new Error().stack);
-            dispatch({ type: "SET_HIGHLIGHTED_NODE", nodeId: null });
-          },
+          onClearHighlight: () => dispatch({ type: "SET_HIGHLIGHTED_NODE", nodeId: null }),
           onContainerClick: handleContainerClick,
         }}
         orgView={{
