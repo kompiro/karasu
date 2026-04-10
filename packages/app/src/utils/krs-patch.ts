@@ -3,7 +3,7 @@ import type { KrsNode } from "@karasu/core";
 
 export type PatchOperation = "append" | "replace" | "remove";
 
-export type PatchResult = { ok: true; source: string } | { ok: false; error: string };
+type PatchResult = { ok: true; source: string } | { ok: false; error: string };
 
 /**
  * Apply a structural patch to a .krs source string.
@@ -37,7 +37,12 @@ export function applyKrsPatch(
   }
 
   const parseResult = Parser.parse(source);
-  const node = findNodeById(parseResult.value.systems, parseResult.value.services, parseResult.value.domains, targetNodeId);
+  const node = findNodeById(
+    parseResult.value.systems,
+    parseResult.value.services,
+    parseResult.value.domains,
+    targetNodeId,
+  );
 
   if (node === null) {
     return { ok: false, error: `Node "${targetNodeId}" not found` };

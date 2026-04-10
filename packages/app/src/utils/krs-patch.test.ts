@@ -21,7 +21,7 @@ describe("applyKrsPatch", () => {
 
   describe("replace", () => {
     it("replaces a top-level node", () => {
-      const src = 'system Foo {}\n\nsystem Bar {}';
+      const src = "system Foo {}\n\nsystem Bar {}";
       const result = applyKrsPatch(src, "replace", "Foo", 'system Foo {\n  label: "Updated"\n}');
       expect(result).toEqual({
         ok: true,
