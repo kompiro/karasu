@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect, useRef } from "react";
-import Anthropic from "@anthropic-ai/sdk";
+import Anthropic, { APIError } from "@anthropic-ai/sdk";
 
 const MODEL = "claude-sonnet-4-6";
 
@@ -125,7 +125,7 @@ ${fileContent}
 }
 
 function classifyError(err: unknown): ErrorChatMessage["errorType"] {
-  if (err instanceof Anthropic.APIError) {
+  if (err instanceof APIError) {
     if (err.status === 401) return "auth";
     if (err.status === 429) return "rate_limit";
     return "server";

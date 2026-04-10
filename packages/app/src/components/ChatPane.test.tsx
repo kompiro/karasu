@@ -12,9 +12,9 @@ const defaultProps = {
   sessionResetKey: null,
   fileContent: "",
   apiKey: "sk-test-key",
-  onNavigateViewPath: vi.fn(),
-  onEditorChange: vi.fn(),
-  onNavigateToSettings: vi.fn(),
+  onNavigateViewPath: vi.fn<(path: string[]) => void>(),
+  onEditorChange: vi.fn<(value: string) => void>(),
+  onNavigateToSettings: vi.fn<() => void>(),
 };
 
 describe("ChatPane — with API key", () => {
@@ -52,7 +52,7 @@ describe("ChatPane — with API key", () => {
 
 describe("ChatPane — without API key", () => {
   it("shows ApiKeySetup when apiKey is null", () => {
-    const onNavigateToSettings = vi.fn();
+    const onNavigateToSettings = vi.fn<() => void>();
     const { getByRole } = render(
       <ChatPane {...defaultProps} apiKey={null} onNavigateToSettings={onNavigateToSettings} />,
     );
@@ -60,7 +60,7 @@ describe("ChatPane — without API key", () => {
   });
 
   it("clicking Settings button calls onNavigateToSettings", () => {
-    const onNavigateToSettings = vi.fn();
+    const onNavigateToSettings = vi.fn<() => void>();
     const { getByRole } = render(
       <ChatPane {...defaultProps} apiKey={null} onNavigateToSettings={onNavigateToSettings} />,
     );
