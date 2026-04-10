@@ -1,5 +1,9 @@
 # karasu 鴉
 
+<p align="center">
+  <img src="packages/app/public/karasu-logo-1200w.png" alt="karasu logo" width="640" />
+</p>
+
 チーム規模のシステムを、テキストで記述・俯瞰するアーキテクチャモデリングツール。
 
 ![TypeScript](https://img.shields.io/badge/TypeScript-blue) ![Vite](https://img.shields.io/badge/Vite%20%2B%20React-purple) ![Vitest](https://img.shields.io/badge/Vitest-green)
