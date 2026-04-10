@@ -1,5 +1,6 @@
 import { useState, useCallback, useEffect, useRef } from "react";
 import Anthropic, { APIError } from "@anthropic-ai/sdk";
+import { applyKrsPatch, type PatchOperation } from "../utils/krs-patch.js";
 
 const MODEL = "claude-sonnet-4-6";
 
@@ -7,7 +8,9 @@ const MODEL = "claude-sonnet-4-6";
 
 export interface PatchProposal {
   toolUseId: string;
-  patch: string;
+  operation: PatchOperation;
+  targetNodeId?: string;
+  content?: string;
   description: string;
   contentHashAtProposal: string;
 }
@@ -85,16 +88,26 @@ const TOOLS: Anthropic.Messages.Tool[] = [
     input_schema: {
       type: "object" as const,
       properties: {
-        patch: {
+        operation: {
           type: "string",
-          description: "追加・変更する .krs スニペット（ブロック単位）",
+          enum: ["append", "replace", "remove"],
+          description:
+            "変更の種類: append=新しいトップレベルブロックを末尾に追加, replace=既存ノードをブロックごと置換, remove=既存ノードを削除",
+        },
+        targetNodeId: {
+          type: "string",
+          description: "replace/remove 時: 対象ノードの ID（PascalCase）",
+        },
+        content: {
+          type: "string",
+          description: "append/replace 時: 追加・置換するブロック全体の .krs テキスト",
         },
         description: {
           type: "string",
           description: "変更内容の説明（ユーザーへの確認メッセージ）",
         },
       },
-      required: ["patch", "description"],
+      required: ["operation", "description"],
     },
   },
 ];
@@ -119,7 +132,10 @@ ${fileSection}
 ## ルール
 - .krs が source of truth。チャット履歴ではなく常に最新の内容を参照する
 - id は英語 PascalCase で提案する。label はユーザーの言語（日本語可）で出力する
-- 変更を提案する場合は apply_krs_patch ツールを使用する。パッチは編集対象ファイルの末尾に追記される
+- 変更を提案する場合は apply_krs_patch ツールを使用する
+  - 新しいトップレベルブロックを追加する場合: operation="append", content=ブロック全体
+  - 既存ノードを変更する場合（child 追加含む）: operation="replace", targetNodeId=対象ノード ID, content=置換後のブロック全体
+  - ノードを削除する場合: operation="remove", targetNodeId=対象ノード ID
 - 編集対象ファイルが import 文のみの場合は、ファイルツリーで対象ファイルを選択するようユーザーに案内する
 - ダイアグラムのナビゲーションを提案する場合は navigate_view ツールを使用する
 - 一度に多くを変更せず、1-2 個の提案に絞る`;
@@ -247,11 +263,18 @@ export function useChatSession({
                 if (fb.type === "text") textContent += fb.text;
               }
             } else if (block.name === "apply_krs_patch") {
-              const input = block.input as { patch: string; description: string };
+              const input = block.input as {
+                operation: PatchOperation;
+                targetNodeId?: string;
+                content?: string;
+                description: string;
+              };
               const hash = await hashContent(fileContentRef.current);
               patchProposal = {
                 toolUseId: block.id,
-                patch: input.patch,
+                operation: input.operation,
+                targetNodeId: input.targetNodeId,
+                content: input.content,
                 description: input.description,
                 contentHashAtProposal: hash,
               };
@@ -362,13 +385,42 @@ export function useChatSession({
         console.warn("[useChatSession] applyPatch: hash mismatch — patch is stale, skipping");
         return;
       }
-      const newContent = fileContentRef.current + "\n" + proposal.patch;
+      const patchResult = applyKrsPatch(
+        fileContentRef.current,
+        proposal.operation,
+        proposal.targetNodeId,
+        proposal.content,
+      );
+      if (!patchResult.ok) {
+        // eslint-disable-next-line no-console
+        console.error("[useChatSession] applyPatch: patch failed —", patchResult.error);
+        // Mark patchResult on the assistant message so buildApiMessages can emit a valid
+        // tool_result in subsequent requests (Anthropic API requires tool_use → tool_result).
+        setMessages((prev) => {
+          const resolved = prev.map((m) =>
+            m.role === "assistant" && m.patch?.toolUseId === proposal.toolUseId
+              ? { ...m, patchResult: `Error: ${patchResult.error}` }
+              : m,
+          );
+          return [
+            ...resolved,
+            {
+              id: crypto.randomUUID(),
+              role: "error" as const,
+              errorType: "server" as const,
+              content: `⚠ パッチの適用に失敗しました: ${patchResult.error}`,
+            },
+          ];
+        });
+        setPhase({ kind: "idle" });
+        return;
+      }
       // eslint-disable-next-line no-console
       console.log(
         "[useChatSession] applyPatch: calling onEditorChange, newContent length =",
-        newContent.length,
+        patchResult.source.length,
       );
-      onEditorChange(newContent);
+      onEditorChange(patchResult.source);
       setPhase({ kind: "awaiting_followup" });
 
       const key = apiKeyRef.current;
@@ -532,7 +584,12 @@ function buildApiMessages(history: ChatMessage[]): Anthropic.Messages.MessagePar
           type: "tool_use",
           id: msg.patch.toolUseId,
           name: "apply_krs_patch",
-          input: { patch: msg.patch.patch, description: msg.patch.description },
+          input: {
+            operation: msg.patch.operation,
+            targetNodeId: msg.patch.targetNodeId,
+            content: msg.patch.content,
+            description: msg.patch.description,
+          },
         });
       }
       if (content.length > 0) result.push({ role: "assistant", content });

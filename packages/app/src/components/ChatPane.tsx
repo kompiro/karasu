@@ -182,7 +182,7 @@ function PatchConfirmation({ patch, isActive, onApply, onReject }: PatchConfirma
   return (
     <div className="chat-patch-proposal">
       <p className="chat-patch-proposal__description">📝 {patch.description}</p>
-      <pre className="chat-patch-proposal__code">{patch.patch}</pre>
+      {patch.content && <pre className="chat-patch-proposal__code">{patch.content}</pre>}
       {isActive && (
         <div className="chat-patch-proposal__actions">
           <button
