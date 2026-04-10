@@ -1,7 +1,7 @@
 import { useState, useCallback, useEffect, useRef } from "react";
 import Anthropic, { APIError } from "@anthropic-ai/sdk";
 import { applyKrsPatch, type PatchOperation } from "../utils/krs-patch.js";
-import type { SystemNode, KrsNode, KrsEdge } from "@karasu-tools/core";
+import type { SystemNode, KrsNode, KrsEdge, LinkEntry } from "@karasu-tools/core";
 
 const MODEL = "claude-sonnet-4-6";
 
@@ -58,8 +58,6 @@ interface UseChatSessionParams {
   sessionResetKey: string | null;
 }
 
-// ── Helpers ──────────────────────────────────────────────────────────────────
-
 // ── Model graph serialisation ─────────────────────────────────────────────────
 
 interface SerializedEdge {
@@ -96,12 +94,9 @@ function serializeNode(node: KrsNode): SerializedNode {
     kind: node.kind,
     ...(node.label ? { label: node.label } : {}),
   };
-  const props = node.properties as {
-    team?: string;
-    links?: Array<{ url: string; label?: string }>;
-  };
+  const props = node.properties as { links: LinkEntry[]; team?: string };
   if (props.team) out.team = props.team;
-  if (props.links?.length) {
+  if (props.links.length) {
     out.links = props.links.map((l) => ({ url: l.url, ...(l.label ? { label: l.label } : {}) }));
   }
   if (node.children.length) out.children = node.children.map(serializeNode);
@@ -216,7 +211,7 @@ ${modelSection}
 
 ### インパクト分析（グラフトラバーサル）
 上記の「アーキテクチャモデル全体」の JSON を使って依存関係を解析する：
-- 「X を変更したとき影響するサービスは？」→ X に依存するノードを edges から逆引きして列挙する
+- 「X を変更したとき影響するサービスは？」→ すべてのノードの edges を走査して edge.to === X.id を持つノードを列挙する（X 自身の edges ではなく全ノードのエッジを逆引きする）
 - 「X が依存している外部サービスは？」→ X の edges で to が [external] のノードを列挙する
 - 「X のユースケースをすべて教えて」→ X 配下の usecase ノードを children から再帰的に収集する
 - 回答には node の id と label を含め、ダイアグラムで見たい場合は navigate_view ツールを使う
@@ -761,7 +756,9 @@ async function autoRejectPatch(
       .filter((b): b is Anthropic.Messages.TextBlock => b.type === "text")
       .map((b) => b.text)
       .join("");
-    // Mark the patch as resolved so future history builds include the tool_result
+    // Mark the patch as resolved so future history builds include the tool_result.
+    // navigate_view tool_use is intentionally not stored in chat history — it is
+    // handled as a pure side effect and never needs a tool_result in stored state.
     const resolved = messages.map((m) =>
       m.role === "assistant" && m.patch?.toolUseId === proposal.toolUseId
         ? { ...m, patchResult: "User declined." }
