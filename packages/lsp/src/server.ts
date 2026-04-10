@@ -163,23 +163,51 @@ connection.onDefinition((params) => {
   const range = findRangeOfNode(parseResult.value, word);
   if (range) return Location.create(params.textDocument.uri, range);
 
-  // Cross-file lookup via @import declarations
-  for (const imp of parseResult.value.nodeImports) {
-    if (imp.ids.includes(word)) {
-      const importedUri = resolveImportUri(params.textDocument.uri, imp.path);
-      try {
-        const importedText = fs.readFileSync(fileURLToPath(importedUri), "utf-8");
-        const importedParse = Parser.parse(importedText);
-        const importedRange = findRangeOfNode(importedParse.value, word);
-        if (importedRange) return Location.create(importedUri, importedRange);
-      } catch {
-        // File unreadable — skip
-      }
-    }
-  }
-
-  return null;
+  // Cross-file lookup: recursively search all imports (named, wildcard, transitive)
+  const visited = new Set<string>([fileURLToPath(params.textDocument.uri)]);
+  const result = findDefinitionInImports(parseResult.value.nodeImports, word, params.textDocument.uri, visited);
+  return result;
 });
+
+/**
+ * Recursively search imported files for a node definition.
+ * Handles named imports, wildcard imports, and transitive imports.
+ */
+function findDefinitionInImports(
+  nodeImports: ReturnType<typeof Parser.parse>["value"]["nodeImports"],
+  word: string,
+  baseUri: string,
+  visited: Set<string>,
+): Location | null {
+  for (const imp of nodeImports) {
+    if (imp.path === "" || imp.path.endsWith("/")) continue;
+
+    const isNamed = imp.ids.length > 0;
+    // For named imports, only search files that declare the target id
+    if (isNamed && !imp.ids.includes(word)) continue;
+
+    const importedUri = resolveImportUri(baseUri, imp.path);
+    const importedFilePath = fileURLToPath(importedUri);
+    if (visited.has(importedFilePath)) continue;
+    visited.add(importedFilePath);
+
+    let importedText: string;
+    try {
+      importedText = fs.readFileSync(importedFilePath, "utf-8");
+    } catch {
+      continue;
+    }
+
+    const importedParse = Parser.parse(importedText);
+    const importedRange = findRangeOfNode(importedParse.value, word);
+    if (importedRange) return Location.create(importedUri, importedRange);
+
+    // Recurse into this file's imports (transitive)
+    const nested = findDefinitionInImports(importedParse.value.nodeImports, word, importedUri, visited);
+    if (nested) return nested;
+  }
+  return null;
+}
 
 // ─── Hover ────────────────────────────────────────────────────────────────────
 
