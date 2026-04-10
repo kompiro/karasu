@@ -110,13 +110,19 @@ function serializeNode(node: KrsNode): SerializedNode {
 }
 
 function serializeModelGraph(systems: SystemNode[]): string {
-  const serialized = systems.map((sys) => ({
-    id: sys.id,
-    kind: "system",
-    ...(sys.label ? { label: sys.label } : {}),
-    children: sys.children.map(serializeNode),
-    edges: serializeEdges(sys.edges),
-  }));
+  const serialized = systems.map((sys) => {
+    const links = sys.properties.links;
+    return {
+      id: sys.id,
+      kind: "system",
+      ...(sys.label ? { label: sys.label } : {}),
+      ...(links.length
+        ? { links: links.map((l) => ({ url: l.url, ...(l.label ? { label: l.label } : {}) })) }
+        : {}),
+      children: sys.children.map(serializeNode),
+      edges: serializeEdges(sys.edges),
+    };
+  });
   return JSON.stringify({ systems: serialized }, null, 2);
 }
 
