@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type RefObject } from "react";
-import { Parser } from "@karasu-tools/core";
+import { Parser, format, FormatError } from "@karasu-tools/core";
 import { LeftPane } from "./LeftPane.js";
 import { KarasuPreviewColumn } from "./KarasuPreviewColumn.js";
 import { downloadSvg } from "../utils/download-svg.js";
@@ -163,6 +163,24 @@ export function AppShell({
     },
     [currentFilePath, fs, dispatch, recompile],
   );
+
+  // ── Format handler ──────────────────────────────────────────────
+
+  const hasParseErrors = systemDiagnostics.some((d) => d.severity === "error");
+
+  const handleFormat = useCallback(() => {
+    if (!fileContent) return;
+    let formatted: string;
+    try {
+      formatted = format(fileContent);
+    } catch (e) {
+      if (e instanceof FormatError) return;
+      throw e;
+    }
+    if (formatted !== fileContent) {
+      handleEditorChange(formatted);
+    }
+  }, [fileContent, handleEditorChange]);
 
   const handleJumpToEditor = useCallback(
     async (nodeId: string) => {
@@ -393,6 +411,8 @@ export function AppShell({
           scopeLabel={scopeLabel}
           currentProjectId={currentProject?.id ?? null}
           onNavigateViewPath={navigateViewPath}
+          onFormat={handleFormat}
+          hasParseErrors={hasParseErrors}
         />
       )}
       <KarasuPreviewColumn

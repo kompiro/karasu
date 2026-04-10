@@ -15,9 +15,11 @@ import {
   CompletionItemKind,
   Location,
   Hover,
+  TextEdit,
+  Range,
 } from "vscode-languageserver/node";
 import { TextDocument } from "vscode-languageserver-textdocument";
-import { Parser, StyleParser } from "@karasu-tools/core";
+import { Parser, StyleParser, format, FormatError } from "@karasu-tools/core";
 import {
   findNodeAtPosition,
   findRangeOfNode,
@@ -59,12 +61,37 @@ connection.onInitialize((_params: InitializeParams): InitializeResult => {
       definitionProvider: true,
       hoverProvider: true,
       documentSymbolProvider: true,
+      documentFormattingProvider: true,
     },
   };
 });
 
 documents.onDidChangeContent((change) => {
   validateDocument(change.document);
+});
+
+// ─── Formatting ───────────────────────────────────────────────────────────────
+
+connection.onDocumentFormatting((params) => {
+  const doc = documents.get(params.textDocument.uri);
+  if (!doc) return [];
+  const src = doc.getText();
+  let formatted: string;
+  try {
+    formatted = format(src);
+  } catch (e) {
+    if (e instanceof FormatError) return [];
+    throw e;
+  }
+  if (formatted === src) return [];
+  // Replace the entire document with a single TextEdit
+  const lastLine = doc.lineCount - 1;
+  const lastChar = doc.getText().split("\n").at(-1)?.length ?? 0;
+  const fullRange: Range = {
+    start: { line: 0, character: 0 },
+    end: { line: lastLine, character: lastChar },
+  };
+  return [TextEdit.replace(fullRange, formatted)];
 });
 
 documents.onDidClose((event) => {

@@ -53,8 +53,33 @@ export class Lexer {
   tokenize(): Token[] {
     const tokens: Token[] = [];
     while (this.pos < this.source.length) {
-      this.skipWhitespaceAndComments();
+      this.skipWhitespace();
+      this.skipComment();
       if (this.pos >= this.source.length) break;
+
+      const token = this.readToken();
+      if (token) tokens.push(token);
+    }
+    tokens.push(this.makeToken(TokenType.EOF, ""));
+    return tokens;
+  }
+
+  /**
+   * Tokenize including comment tokens (LineComment / BlockComment).
+   * Used by the formatter to preserve comments.
+   * The parser always uses tokenize() which discards comments.
+   */
+  tokenizeWithComments(): Token[] {
+    const tokens: Token[] = [];
+    while (this.pos < this.source.length) {
+      this.skipWhitespace();
+      if (this.pos >= this.source.length) break;
+
+      const comment = this.readComment();
+      if (comment) {
+        tokens.push(comment);
+        continue;
+      }
 
       const token = this.readToken();
       if (token) tokens.push(token);
@@ -91,42 +116,83 @@ export class Lexer {
     return ch;
   }
 
-  private skipWhitespaceAndComments(): void {
+  private skipWhitespace(): void {
     while (this.pos < this.source.length) {
       const ch = this.peek();
-
       if (ch === " " || ch === "\t" || ch === "\r" || ch === "\n") {
         this.advance();
-        continue;
+      } else {
+        break;
       }
-
-      // Line comment
-      if (ch === "/" && this.peekAt(1) === "/") {
-        this.advance();
-        this.advance();
-        while (this.pos < this.source.length && this.peek() !== "\n") {
-          this.advance();
-        }
-        continue;
-      }
-
-      // Block comment
-      if (ch === "/" && this.peekAt(1) === "*") {
-        this.advance();
-        this.advance();
-        while (this.pos < this.source.length) {
-          if (this.peek() === "*" && this.peekAt(1) === "/") {
-            this.advance();
-            this.advance();
-            break;
-          }
-          this.advance();
-        }
-        continue;
-      }
-
-      break;
     }
+  }
+
+  /** Discard a single comment (line or block) if the cursor is at one. */
+  private skipComment(): void {
+    const ch = this.peek();
+
+    if (ch === "/" && this.peekAt(1) === "/") {
+      this.advance();
+      this.advance();
+      while (this.pos < this.source.length && this.peek() !== "\n") {
+        this.advance();
+      }
+      this.skipWhitespace();
+      this.skipComment();
+      return;
+    }
+
+    if (ch === "/" && this.peekAt(1) === "*") {
+      this.advance();
+      this.advance();
+      while (this.pos < this.source.length) {
+        if (this.peek() === "*" && this.peekAt(1) === "/") {
+          this.advance();
+          this.advance();
+          break;
+        }
+        this.advance();
+      }
+      this.skipWhitespace();
+      this.skipComment();
+    }
+  }
+
+  /**
+   * If the cursor is at a comment, read and return a comment Token.
+   * Returns null if the cursor is not at a comment.
+   */
+  private readComment(): Token | null {
+    const ch = this.peek();
+
+    if (ch === "/" && this.peekAt(1) === "/") {
+      const loc = this.loc();
+      this.advance(); // /
+      this.advance(); // /
+      let value = "";
+      while (this.pos < this.source.length && this.peek() !== "\n") {
+        value += this.advance();
+      }
+      return { type: TokenType.LineComment, value: value.trim(), loc };
+    }
+
+    if (ch === "/" && this.peekAt(1) === "*") {
+      const loc = this.loc();
+      this.advance(); // /
+      this.advance(); // *
+      let value = "";
+      while (this.pos < this.source.length) {
+        if (this.peek() === "*" && this.peekAt(1) === "/") {
+          this.advance();
+          this.advance();
+          break;
+        }
+        value += this.advance();
+      }
+      return { type: TokenType.BlockComment, value: value.trim(), loc };
+    }
+
+    return null;
   }
 
   private readToken(): Token | null {

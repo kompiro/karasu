@@ -7,6 +7,8 @@ interface EditorPaneProps {
   onChange: (value: string) => void;
   /** Called once when the Monaco editor instance is ready */
   onEditorReady?: (editor: editor.IStandaloneCodeEditor) => void;
+  /** Called when the user triggers the Format action (Shift+Alt+F) */
+  onFormat?: () => void;
 }
 
 const KRS_LANGUAGE_ID = "krs";
@@ -101,7 +103,7 @@ function registerKrsLanguage(monaco: Monaco): void {
   });
 }
 
-export function EditorPane({ value, onChange, onEditorReady }: EditorPaneProps) {
+export function EditorPane({ value, onChange, onEditorReady, onFormat }: EditorPaneProps) {
   const monacoRef = useRef<Monaco | null>(null);
 
   const handleBeforeMount = useCallback((monaco: Monaco) => {
@@ -112,8 +114,18 @@ export function EditorPane({ value, onChange, onEditorReady }: EditorPaneProps) 
   const handleMount = useCallback(
     (editorInstance: editor.IStandaloneCodeEditor) => {
       onEditorReady?.(editorInstance);
+      if (onFormat) {
+        const monaco = monacoRef.current;
+        if (monaco) {
+          // Shift+Alt+F — matches VS Code "Format Document" default binding
+          editorInstance.addCommand(
+            monaco.KeyMod.Shift | monaco.KeyMod.Alt | monaco.KeyCode.KeyF,
+            onFormat,
+          );
+        }
+      }
     },
-    [onEditorReady],
+    [onEditorReady, onFormat],
   );
 
   const handleChange = useCallback(
