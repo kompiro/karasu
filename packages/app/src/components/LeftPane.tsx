@@ -51,9 +51,7 @@ export function LeftPane({
           onNavigateToSettings={handleNavigateToSettings}
         />
       )}
-      {activeTab === "settings" && (
-        <SettingsPane onApiKeyChange={handleApiKeyChange} />
-      )}
+      {activeTab === "settings" && <SettingsPane onApiKeyChange={handleApiKeyChange} />}
     </div>
   );
 }

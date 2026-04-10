@@ -34,7 +34,6 @@ export function ChatPane({
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const [inputValue, setInputValue] = useState("");
 
-
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView?.({ behavior: "smooth" });
   }, [messages]);
@@ -83,9 +82,7 @@ export function ChatPane({
       </div>
 
       <div className="chat-messages" role="log" aria-live="polite">
-        {messages.length === 0 && (
-          <p className="chat-empty">メッセージを入力してください。</p>
-        )}
+        {messages.length === 0 && <p className="chat-empty">メッセージを入力してください。</p>}
         {messages.map((msg) => {
           if (msg.role === "user") {
             return (
@@ -191,10 +188,7 @@ function PatchConfirmation({ patch, isActive, onApply, onReject }: PatchConfirma
           >
             ✓ Apply
           </button>
-          <button
-            className="toolbar-btn toolbar-btn--reject-patch"
-            onClick={() => onReject(patch)}
-          >
+          <button className="toolbar-btn toolbar-btn--reject-patch" onClick={() => onReject(patch)}>
             ✕ Reject
           </button>
         </div>

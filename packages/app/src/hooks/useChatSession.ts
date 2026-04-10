@@ -12,20 +12,20 @@ export interface PatchProposal {
   contentHashAtProposal: string;
 }
 
-export interface UserChatMessage {
+interface UserChatMessage {
   id: string;
   role: "user";
   content: string;
 }
 
-export interface AssistantChatMessage {
+interface AssistantChatMessage {
   id: string;
   role: "assistant";
   content: string;
   patch?: PatchProposal;
 }
 
-export interface ErrorChatMessage {
+interface ErrorChatMessage {
   id: string;
   role: "error";
   errorType: "auth" | "rate_limit" | "server";
@@ -33,31 +33,21 @@ export interface ErrorChatMessage {
   retryMessageId?: string;
 }
 
-export type ChatMessage = UserChatMessage | AssistantChatMessage | ErrorChatMessage;
+type ChatMessage = UserChatMessage | AssistantChatMessage | ErrorChatMessage;
 
-export type SessionPhase =
+type SessionPhase =
   | { kind: "idle" }
   | { kind: "loading" }
   | { kind: "pending_confirmation"; proposal: PatchProposal }
   | { kind: "awaiting_followup" };
 
-export interface UseChatSessionParams {
+interface UseChatSessionParams {
   fileContent: string;
   scopeLabel: string;
   apiKey: string | null;
   onNavigateViewPath: (path: string[]) => void;
   onEditorChange: (value: string) => void;
   sessionResetKey: string | null;
-}
-
-export interface UseChatSessionReturn {
-  messages: ChatMessage[];
-  phase: SessionPhase;
-  sendMessage: (text: string) => Promise<void>;
-  retryMessage: (userMessageId: string) => Promise<void>;
-  applyPatch: (proposal: PatchProposal) => Promise<void>;
-  rejectPatch: (proposal: PatchProposal) => Promise<void>;
-  resetSession: () => void;
 }
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
@@ -153,7 +143,7 @@ export function useChatSession({
   onNavigateViewPath,
   onEditorChange,
   sessionResetKey,
-}: UseChatSessionParams): UseChatSessionReturn {
+}: UseChatSessionParams) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [phase, setPhase] = useState<SessionPhase>({ kind: "idle" });
 
@@ -181,10 +171,7 @@ export function useChatSession({
   // ── Core API call ──────────────────────────────────────────────────────────
 
   const callApi = useCallback(
-    async (
-      history: ChatMessage[],
-      retryUserMsgId?: string,
-    ): Promise<void> => {
+    async (history: ChatMessage[], retryUserMsgId?: string): Promise<void> => {
       const key = apiKeyRef.current;
       if (!key) return;
 
@@ -311,7 +298,14 @@ export function useChatSession({
       let baseMessages = messages;
 
       if (currentPhase.kind === "pending_confirmation") {
-        baseMessages = await autoRejectPatch(currentPhase.proposal, messages, apiKeyRef, scopeLabelRef, fileContentRef, onNavigateViewPath);
+        baseMessages = await autoRejectPatch(
+          currentPhase.proposal,
+          messages,
+          apiKeyRef,
+          scopeLabelRef,
+          fileContentRef,
+          onNavigateViewPath,
+        );
         setMessages(baseMessages);
         setPhase({ kind: "idle" });
       }
@@ -543,10 +537,7 @@ async function autoRejectPatch(
       .map((b) => b.text)
       .join("");
     if (text) {
-      return [
-        ...messages,
-        { id: crypto.randomUUID(), role: "assistant" as const, content: text },
-      ];
+      return [...messages, { id: crypto.randomUUID(), role: "assistant" as const, content: text }];
     }
   } catch {
     // Silently ignore auto-reject errors — user's new message will proceed regardless

@@ -7,7 +7,7 @@ export function getPersistSetting(): PersistSetting {
   return localStorage.getItem(KEY_PERSIST) === "local" ? "local" : "session";
 }
 
-export function setPersistSetting(setting: PersistSetting): void {
+function setPersistSetting(setting: PersistSetting): void {
   localStorage.setItem(KEY_PERSIST, setting);
 }
 

@@ -39,12 +39,12 @@ export function SettingsPane({ onApiKeyChange }: SettingsPaneProps) {
         <div className="settings-security-notice">
           <p className="settings-security-notice__heading">⚠ セキュリティについて</p>
           <p>
-            このツールは Claude API キーをブラウザ上で直接使用します。
-            API キーはこのブラウザ内にのみ保存され、外部サーバーには送信されません。
+            このツールは Claude API キーをブラウザ上で直接使用します。 API
+            キーはこのブラウザ内にのみ保存され、外部サーバーには送信されません。
           </p>
           <p>
-            ただし、XSS 攻撃を受けた場合にキーが漏洩するリスクがあります。
-            Anthropic コンソールで karasu 専用の制限付きキーを発行することを推奨します。
+            ただし、XSS 攻撃を受けた場合にキーが漏洩するリスクがあります。 Anthropic コンソールで
+            karasu 専用の制限付きキーを発行することを推奨します。
           </p>
           <a
             className="settings-security-notice__link"
