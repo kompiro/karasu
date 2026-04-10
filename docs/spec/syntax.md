@@ -209,6 +209,37 @@ system ECPlatform {
 <from_id> --> <to_id> "<ラベル>"   // 非同期（破線矢印）
 ```
 
+エッジは `system`・`service`・`domain` ブロックの内部に記述できる。
+
+#### domain ブロック内のエッジ
+
+`domain` ブロック内にエッジを宣言することで、ドメイン間の依存関係を表現できる。
+`from_id` には宣言元ドメインの ID、`to_id` には依存先ドメインの ID を記述する。
+
+```
+service ECommerce {
+  domain Contract { label "契約" }
+}
+
+service BillingService {
+  domain Billing {
+    label "請求"
+    Billing -> Contract "契約から作成される"       // 同期依存
+    Billing --> AuditLog "監査ログを記録する"      // 非同期依存
+  }
+}
+```
+
+**同一サービス内のドメインエッジ**: サービスビュー（service をドリルダウンした図）で描画される。
+
+**クロスサービスのドメインエッジ**: システムビューで「暗黙のサービス間エッジ」として自動的に派生・描画される。  
+複数のドメインエッジが同じサービスペアに集約される場合、エッジのラベルは `"N domain edges"` と表示される。
+
+暗黙エッジには `[implicit]` タグが自動付与される。デフォルトはアンバー色の破線で描画される。
+明示的なサービス間エッジが同じ方向に存在する場合、暗黙エッジは派生されない。
+
+使用できるタグ・スタイルの詳細は [`docs/spec/tags-annotations.md`](tags-annotations.md) を参照。
+
 ---
 
 ## 物理図の記述
@@ -319,19 +350,18 @@ system ECPlatform {
 
 ---
 
-## ドメイン分散の警告
+## ドメイン ID の一意性
 
-同じ `domain id` が同一 `system` 内の複数の `service` に登場した場合、ツールが警告を出す。
+同じ `domain id` が同一 `system` 内の複数の `service` に登場した場合、ツールがエラーを出す。
 
 ```
-⚠ Warning: domain "Order" が複数の service に分散しています
-  - ECommerce
-  - Legacy
-  ドメインの凝集性を確認してください
+✖ Error: Domain id "Order" must be unique within a system; found in multiple services
 ```
 
-**検出スコープ**（設計方針 — 実装は #237 でフォローアップ予定）: `system` ブロック単位。
-異なる `system` にまたがる同名 `domain` は組織的に独立した並行モデリングとして扱い、警告しない。
+ドメインエッジ（`Billing -> Contract`）の解決は domain ID で行われるため、ID が一意でなければ参照先が曖昧になる。  
+この制約により、同一 system 内では domain ID を重複させることはできない。
 
-**検出キー**（設計方針 — 実装は #237 でフォローアップ予定）: `domain` の `id`。
-`label`（表示名）は検出に使用しない。
+**検出スコープ**: `system` ブロック単位。
+異なる `system` にまたがる同名 `domain` は組織的に独立した並行モデリングとして扱い、エラーにしない。
+
+**検出キー**: `domain` の `id`。`label`（表示名）は検出に使用しない。
