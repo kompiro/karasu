@@ -23,6 +23,8 @@ interface AssistantChatMessage {
   role: "assistant";
   content: string;
   patch?: PatchProposal;
+  /** Set after the patch is resolved (applied or rejected) to keep history valid */
+  patchResult?: string;
 }
 
 interface ErrorChatMessage {
@@ -178,29 +180,7 @@ export function useChatSession({
       const client = new Anthropic({ apiKey: key, dangerouslyAllowBrowser: true });
 
       // Build Anthropic messages from our chat history (exclude error messages)
-      const apiMessages: Anthropic.Messages.MessageParam[] = [];
-      for (const msg of history) {
-        if (msg.role === "user") {
-          apiMessages.push({ role: "user", content: msg.content });
-        } else if (msg.role === "assistant") {
-          const content: Anthropic.Messages.ContentBlockParam[] = [];
-          if (msg.content) {
-            content.push({ type: "text", text: msg.content });
-          }
-          if (msg.patch) {
-            content.push({
-              type: "tool_use",
-              id: msg.patch.toolUseId,
-              name: "apply_krs_patch",
-              input: { patch: msg.patch.patch, description: msg.patch.description },
-            });
-          }
-          if (content.length > 0) {
-            apiMessages.push({ role: "assistant", content });
-          }
-        }
-        // error messages are not sent to the API
-      }
+      const apiMessages = buildApiMessages(history);
 
       try {
         const response = await client.messages.create({
@@ -274,6 +254,8 @@ export function useChatSession({
           setPhase({ kind: "idle" });
         }
       } catch (err) {
+        // eslint-disable-next-line no-console
+        console.error("[useChatSession] API error:", err instanceof APIError ? { status: err.status, message: err.message, error: err.error } : err);
         const errorType = classifyError(err);
         const errorMsg: ErrorChatMessage = {
           id: crypto.randomUUID(),
@@ -343,16 +325,19 @@ export function useChatSession({
   const applyPatch = useCallback(
     async (proposal: PatchProposal): Promise<void> => {
       const currentHash = await hashContent(fileContentRef.current);
+      // eslint-disable-next-line no-console
       console.log("[useChatSession] applyPatch", {
         currentHash,
         contentHashAtProposal: proposal.contentHashAtProposal,
         hashMatch: currentHash === proposal.contentHashAtProposal,
       });
       if (currentHash !== proposal.contentHashAtProposal) {
+        // eslint-disable-next-line no-console
         console.warn("[useChatSession] applyPatch: hash mismatch — patch is stale, skipping");
         return;
       }
       const newContent = fileContentRef.current + "\n" + proposal.patch;
+      // eslint-disable-next-line no-console
       console.log(
         "[useChatSession] applyPatch: calling onEditorChange, newContent length =",
         newContent.length,
@@ -391,12 +376,18 @@ export function useChatSession({
           .filter((b): b is Anthropic.Messages.TextBlock => b.type === "text")
           .map((b) => b.text)
           .join("");
-        if (text) {
-          setMessages((prev) => [
-            ...prev,
-            { id: crypto.randomUUID(), role: "assistant", content: text },
-          ]);
-        }
+        // Mark the patch as resolved so future history builds include the tool_result
+        setMessages((prev) => {
+          const resolved = prev.map((m) =>
+            m.role === "assistant" && m.patch?.toolUseId === proposal.toolUseId
+              ? { ...m, patchResult: "Applied." }
+              : m,
+          );
+          if (text) {
+            return [...resolved, { id: crypto.randomUUID(), role: "assistant" as const, content: text }];
+          }
+          return resolved;
+        });
         setPhase({ kind: "idle" });
       } catch (err) {
         const errorType = classifyError(err);
@@ -453,12 +444,18 @@ export function useChatSession({
           .filter((b): b is Anthropic.Messages.TextBlock => b.type === "text")
           .map((b) => b.text)
           .join("");
-        if (text) {
-          setMessages((prev) => [
-            ...prev,
-            { id: crypto.randomUUID(), role: "assistant", content: text },
-          ]);
-        }
+        // Mark the patch as resolved so future history builds include the tool_result
+        setMessages((prev) => {
+          const resolved = prev.map((m) =>
+            m.role === "assistant" && m.patch?.toolUseId === proposal.toolUseId
+              ? { ...m, patchResult: "User declined." }
+              : m,
+          );
+          if (text) {
+            return [...resolved, { id: crypto.randomUUID(), role: "assistant" as const, content: text }];
+          }
+          return resolved;
+        });
         setPhase({ kind: "idle" });
       } catch (err) {
         const errorType = classifyError(err);
@@ -499,6 +496,16 @@ function buildApiMessages(history: ChatMessage[]): Anthropic.Messages.MessagePar
         });
       }
       if (content.length > 0) result.push({ role: "assistant", content });
+      // If the tool_use was resolved, inject the tool_result as a user message so the
+      // history remains valid (tool_use must always be followed by tool_result).
+      if (msg.patch && msg.patchResult !== undefined) {
+        result.push({
+          role: "user",
+          content: [
+            { type: "tool_result", tool_use_id: msg.patch.toolUseId, content: msg.patchResult },
+          ],
+        });
+      }
     }
   }
   return result;
@@ -545,9 +552,16 @@ async function autoRejectPatch(
       .filter((b): b is Anthropic.Messages.TextBlock => b.type === "text")
       .map((b) => b.text)
       .join("");
+    // Mark the patch as resolved so future history builds include the tool_result
+    const resolved = messages.map((m) =>
+      m.role === "assistant" && m.patch?.toolUseId === proposal.toolUseId
+        ? { ...m, patchResult: "User declined." }
+        : m,
+    );
     if (text) {
-      return [...messages, { id: crypto.randomUUID(), role: "assistant" as const, content: text }];
+      return [...resolved, { id: crypto.randomUUID(), role: "assistant" as const, content: text }];
     }
+    return resolved;
   } catch {
     // Silently ignore auto-reject errors — user's new message will proceed regardless
   }
