@@ -357,6 +357,13 @@ body,
   height: 36px;
 }
 
+.left-tab-bar__right {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
 .left-tab {
   display: inline-flex;
   align-items: center;
@@ -1505,6 +1512,13 @@ body,
 .toolbar-btn--all-views {
 }
 .toolbar-btn--focus {
+}
+.toolbar-btn--format {
+}
+.toolbar-btn--format:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  pointer-events: none;
 }
 
 /* Split export button group */

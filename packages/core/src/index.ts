@@ -48,6 +48,7 @@ export type {
 } from "./view/deploy-view-extract.js";
 export { extractDeployView } from "./view/deploy-view-extract.js";
 
+export { format, FormatError } from "./formatter/formatter.js";
 export { Parser } from "./parser/parser.js";
 export { StyleParser } from "./parser/style-parser.js";
 export { resolveStyles } from "./resolver/style-resolver.js";

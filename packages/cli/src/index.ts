@@ -3,6 +3,7 @@ import { program } from "commander";
 import { serve } from "./serve.js";
 import { render } from "./render.js";
 import { translate } from "./translate/index.js";
+import { fmt } from "./fmt.js";
 
 program.name("karasu").description("karasu — architecture diagram tool").version("0.0.0");
 
@@ -76,6 +77,31 @@ Examples:
       process.exit(1);
     }
     translate(file, { from: options.from, map: options.map, output: options.output });
+  });
+
+program
+  .command("fmt [files...]")
+  .description("Format .krs files in-place")
+  .option("--check", "Exit 1 if any file would be reformatted (no files are changed)")
+  .option("--stdin", "Read from stdin, write formatted output to stdout")
+  .addHelpText(
+    "after",
+    `
+Examples:
+  # Format all .krs files under the current directory
+  $ karasu fmt
+
+  # Format specific files
+  $ karasu fmt index.krs deploy.krs
+
+  # CI check (exit 1 if any file would change)
+  $ karasu fmt --check
+
+  # Pipe via stdin
+  $ cat index.krs | karasu fmt --stdin`,
+  )
+  .action((files: string[], options: { check?: boolean; stdin?: boolean }) => {
+    fmt(files, { check: options.check, stdin: options.stdin });
   });
 
 export { program };

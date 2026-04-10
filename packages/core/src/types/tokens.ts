@@ -80,6 +80,10 @@ export enum TokenType {
   Colon = "Colon",
   Semicolon = "Semicolon",
 
+  // Comments (only in tokenizeWithComments())
+  LineComment = "LineComment", // // ...
+  BlockComment = "BlockComment", // /* ... */
+
   // Common
   EOF = "EOF",
 }

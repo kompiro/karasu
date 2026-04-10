@@ -14,6 +14,10 @@ interface LeftPaneProps {
   scopeLabel: string;
   currentProjectId: string | null;
   onNavigateViewPath: (path: string[]) => void;
+  /** Called when the user clicks Format or presses Shift+Alt+F */
+  onFormat?: () => void;
+  /** When true, the Format button is disabled (source has parse errors) */
+  hasParseErrors?: boolean;
 }
 
 export function LeftPane({
@@ -24,6 +28,8 @@ export function LeftPane({
   scopeLabel,
   currentProjectId,
   onNavigateViewPath,
+  onFormat,
+  hasParseErrors,
 }: LeftPaneProps) {
   const [activeTab, setActiveTab] = useState<LeftTab>("editor");
   const [apiKey, setApiKey] = useState<string | null>(() => getStoredApiKey());
@@ -36,11 +42,32 @@ export function LeftPane({
     setActiveTab("settings");
   }, []);
 
+  const formatButton =
+    activeTab === "editor" && onFormat ? (
+      <button
+        className="toolbar-btn toolbar-btn--actionable toolbar-btn--format"
+        onClick={onFormat}
+        disabled={hasParseErrors}
+        title={
+          hasParseErrors
+            ? "Cannot format: source has parse errors"
+            : "Format document (Shift+Alt+F)"
+        }
+      >
+        ⌥ Format
+      </button>
+    ) : null;
+
   return (
     <div className="left-pane">
-      <LeftTabBar activeTab={activeTab} onTabChange={setActiveTab} />
+      <LeftTabBar activeTab={activeTab} onTabChange={setActiveTab} rightContent={formatButton} />
       {activeTab === "editor" && (
-        <EditorPane value={value} onChange={onChange} onEditorReady={onEditorReady} />
+        <EditorPane
+          value={value}
+          onChange={onChange}
+          onEditorReady={onEditorReady}
+          onFormat={onFormat}
+        />
       )}
       {activeTab === "chat" && (
         <ChatPane
