@@ -1024,7 +1024,7 @@ system EC {
       expect(errors[0].message).toContain("Payment");
     });
 
-    it("warns on cross-scope duplicate node id and keeps first path", () => {
+    it("errors on cross-scope duplicate domain id and keeps first path", () => {
       const result = Parser.parse(`
 system EC {
   service Payment {
@@ -1035,9 +1035,9 @@ system EC {
   }
 }
       `);
-      const warnings = result.diagnostics.filter((d) => d.severity === "warning");
-      expect(warnings.length).toBeGreaterThanOrEqual(1);
-      expect(warnings[0].message).toContain("Checkout");
+      const errors = result.diagnostics.filter((d) => d.severity === "error");
+      expect(errors.length).toBeGreaterThanOrEqual(1);
+      expect(errors[0].message).toContain("Checkout");
       expect(result.value.nodePathIndex.get("Checkout")).toEqual(["EC", "Payment", "Checkout"]);
     });
 

@@ -55,6 +55,69 @@ function deriveUsecaseResourceNodes(
 }
 
 /**
+ * Build a map from domain ID → owning service ID, for all services in the given list.
+ */
+function buildDomainServiceMap(services: KrsNode[]): Map<string, string> {
+  const map = new Map<string, string>();
+  for (const service of services) {
+    if (service.kind !== "service") continue;
+    for (const child of service.children) {
+      if (child.kind === "domain") {
+        map.set(child.id, service.id);
+      }
+    }
+  }
+  return map;
+}
+
+/**
+ * Derive implicit service→service edges from domain-level edges that cross service boundaries.
+ * When a domain in serviceA has `-> domainInServiceB`, and no explicit serviceA→serviceB edge
+ * exists in the system, synthesize one with tags: ["implicit"].
+ *
+ * Multiple domain edges between the same service pair are aggregated into a single edge
+ * with label "N domain edges" (or the single label if there is only one).
+ */
+function deriveImplicitServiceEdges(
+  services: KrsNode[],
+  explicitKeys: Set<string>,
+): KrsEdge[] {
+  const domainServiceMap = buildDomainServiceMap(services);
+
+  // Collect all cross-service domain edges grouped by service pair
+  const grouped = new Map<string, { edge: KrsEdge; count: number; label: string | undefined }>();
+
+  for (const service of services) {
+    if (service.kind !== "service") continue;
+    for (const domain of service.children) {
+      if (domain.kind !== "domain") continue;
+      for (const edge of domain.edges) {
+        const targetServiceId = domainServiceMap.get(edge.to);
+        if (!targetServiceId || targetServiceId === service.id) continue;
+        const key = `${service.id}->${targetServiceId}`;
+        if (explicitKeys.has(key)) continue;
+        const existing = grouped.get(key);
+        if (existing) {
+          existing.count += 1;
+          existing.label = undefined; // multiple: will use count label
+        } else {
+          grouped.set(key, {
+            edge: { ...edge, from: service.id, to: targetServiceId, tags: ["implicit"] },
+            count: 1,
+            label: edge.label,
+          });
+        }
+      }
+    }
+  }
+
+  return Array.from(grouped.entries()).map(([, { edge, count, label }]) => ({
+    ...edge,
+    label: count === 1 ? label : `${count} domain edges`,
+  }));
+}
+
+/**
  * Derive synthetic service→database/queue/storage edges from resource references.
  * For each service, walks all descendant resource nodes with dot-notation refs and
  * creates one edge per unique (service, infra) pair.
@@ -329,9 +392,14 @@ export function extractView(
     const derivedEdges = deriveInfraEdges(allChildren);
     // Merge derived edges, skipping any already covered by explicit edges
     const explicitKeys = new Set(explicitEdges.map((e) => `${e.from}->${e.to}`));
+    const implicitServiceEdges = deriveImplicitServiceEdges(
+      allChildren.filter((c) => c.kind === "service"),
+      explicitKeys,
+    );
     const childEdges = [
       ...explicitEdges,
       ...derivedEdges.filter((e) => !explicitKeys.has(`${e.from}->${e.to}`)),
+      ...implicitServiceEdges,
     ];
 
     // Cross-system edges: collect from all systems where target is qualified
@@ -388,7 +456,30 @@ export function extractView(
   // The last node in ancestorChain is the container; ancestors are everything before it
   const containerNode = ancestorChain.pop()!;
   const childIds = new Set(containerNode.children.map(nodeId));
-  const childEdges = containerNode.edges.filter((e) => childIds.has(e.from) && childIds.has(e.to));
+  let childEdges = containerNode.edges.filter((e) => childIds.has(e.from) && childIds.has(e.to));
+
+  // Service view: collect intra-service domain-to-domain edges from domain children.
+  // Domain edges where both endpoints are direct domain children of this service are
+  // surfaced here so they appear in the service drill-down diagram.
+  if (containerNode.kind === "service") {
+    const domainIds = new Set(
+      containerNode.children.filter((c) => c.kind === "domain").map((c) => c.id),
+    );
+    const intraDomainEdges: KrsEdge[] = [];
+    const existingEdgeKeys = new Set(childEdges.map((e) => `${e.from}->${e.to}`));
+    for (const domain of containerNode.children) {
+      if (domain.kind !== "domain") continue;
+      for (const edge of domain.edges) {
+        if (!domainIds.has(edge.to)) continue;
+        const key = `${edge.from}->${edge.to}`;
+        if (!existingEdgeKeys.has(key)) {
+          intraDomainEdges.push(edge);
+          existingEdgeKeys.add(key);
+        }
+      }
+    }
+    childEdges = [...childEdges, ...intraDomainEdges];
+  }
 
   // Ghost users: only for service view.
   // With system ID in path: path.length - startIndex === 1 (e.g. ["ECPlatform", "ECommerce"]).

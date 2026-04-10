@@ -805,4 +805,98 @@ system ECPlatform {
       expect(tableResource!.tags).toEqual(["custom"]);
     });
   });
+
+  describe("domain-to-domain edges", () => {
+    const INTRA_SERVICE_KRS = `
+system ECPlatform {
+  service ECommerce {
+    domain Order {
+      usecase PlaceOrder
+    }
+    domain Billing {
+      Order -> Billing "generate invoice"
+    }
+  }
+}
+`;
+
+    const CROSS_SERVICE_KRS = `
+system ECPlatform {
+  service ECommerce {
+    domain Contract { label "契約" }
+  }
+  service BillingService {
+    domain Billing {
+      Billing -> Contract "creates from contract"
+    }
+  }
+}
+`;
+
+    const CROSS_SERVICE_WITH_EXPLICIT_KRS = `
+system ECPlatform {
+  service ECommerce {
+    domain Contract { label "契約" }
+  }
+  service BillingService {
+    domain Billing {
+      Billing -> Contract "creates from contract"
+    }
+  }
+  BillingService -> ECommerce "explicit"
+}
+`;
+
+    it("surfaces intra-service domain edges in service view", () => {
+      const systems = parseSystem(INTRA_SERVICE_KRS);
+      const view = extractView(systems, ["ECPlatform", "ECommerce"]);
+      const edge = view.childEdges.find((e) => e.from === "Order" && e.to === "Billing");
+      expect(edge).toBeDefined();
+      expect(edge!.label).toBe("generate invoice");
+    });
+
+    it("derives implicit service edge from cross-service domain edge in system view", () => {
+      const systems = parseSystem(CROSS_SERVICE_KRS);
+      const view = extractView(systems, []);
+      const implicit = view.childEdges.find(
+        (e) => e.from === "BillingService" && e.to === "ECommerce",
+      );
+      expect(implicit).toBeDefined();
+      expect(implicit!.tags).toContain("implicit");
+      expect(implicit!.label).toBe("creates from contract");
+    });
+
+    it("does not derive implicit service edge when explicit edge in same direction already exists", () => {
+      const systems = parseSystem(CROSS_SERVICE_WITH_EXPLICIT_KRS);
+      const view = extractView(systems, []);
+      const implicitEdges = view.childEdges.filter(
+        (e) => e.from === "BillingService" && e.to === "ECommerce" && e.tags.includes("implicit"),
+      );
+      expect(implicitEdges).toHaveLength(0);
+    });
+
+    it("aggregates multiple cross-service domain edges into one implicit edge with count label", () => {
+      const krs = `
+system ECPlatform {
+  service ECommerce {
+    domain Contract {}
+    domain Order {}
+  }
+  service BillingService {
+    domain Billing {
+      Billing -> Contract "from contract"
+      Billing -> Order "from order"
+    }
+  }
+}
+`;
+      const systems = parseSystem(krs);
+      const view = extractView(systems, []);
+      const implicit = view.childEdges.filter(
+        (e) => e.from === "BillingService" && e.to === "ECommerce" && e.tags.includes("implicit"),
+      );
+      expect(implicit).toHaveLength(1);
+      expect(implicit[0].label).toBe("2 domain edges");
+    });
+  });
 });

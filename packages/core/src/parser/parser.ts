@@ -1189,8 +1189,11 @@ export class Parser {
       if (INDEXED_KINDS.has(node.kind)) {
         if (index.has(node.id)) {
           this.diagnostics.push({
-            severity: "warning",
-            message: `Node id "${node.id}" appears in multiple locations; first path is used for navigation`,
+            severity: node.kind === "domain" ? "error" : "warning",
+            message:
+              node.kind === "domain"
+                ? `Domain id "${node.id}" must be unique within a system; found in multiple services`
+                : `Node id "${node.id}" appears in multiple locations; first path is used for navigation`,
             loc: node.loc,
           });
         } else {
