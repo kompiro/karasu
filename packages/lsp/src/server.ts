@@ -176,7 +176,7 @@ connection.onDefinition((params) => {
 
 /**
  * Recursively search imported files for a node definition.
- * Handles named imports, wildcard imports, and transitive imports.
+ * Handles named imports, wildcard imports (file and directory), and transitive imports.
  */
 function findDefinitionInImports(
   nodeImports: ReturnType<typeof Parser.parse>["value"]["nodeImports"],
@@ -185,7 +185,45 @@ function findDefinitionInImports(
   visited: Set<string>,
 ): Location | null {
   for (const imp of nodeImports) {
-    if (imp.path === "" || imp.path.endsWith("/")) continue;
+    if (imp.path === "") continue;
+
+    // Directory import: expand to individual .krs files and search each
+    if (imp.path.endsWith("/")) {
+      const dirUri = resolveImportUri(baseUri, imp.path);
+      const dirPath = fileURLToPath(dirUri);
+      let entries: string[];
+      try {
+        entries = fs
+          .readdirSync(dirPath)
+          .filter((name) => name.endsWith(".krs"))
+          .sort()
+          .map((name) => path.join(dirPath, name));
+      } catch {
+        continue;
+      }
+      for (const filePath of entries) {
+        if (visited.has(filePath)) continue;
+        visited.add(filePath);
+        let text: string;
+        try {
+          text = fs.readFileSync(filePath, "utf-8");
+        } catch {
+          continue;
+        }
+        let parsed;
+        try {
+          parsed = Parser.parse(text);
+        } catch {
+          continue;
+        }
+        const fileUri = pathToFileURL(filePath).toString();
+        const range = findRangeOfNode(parsed.value, word);
+        if (range) return Location.create(fileUri, range);
+        const nested = findDefinitionInImports(parsed.value.nodeImports, word, fileUri, visited);
+        if (nested) return nested;
+      }
+      continue;
+    }
 
     const isNamed = imp.ids.length > 0;
     // For named imports, only search files that declare the target id
@@ -203,7 +241,12 @@ function findDefinitionInImports(
       continue;
     }
 
-    const importedParse = Parser.parse(importedText);
+    let importedParse;
+    try {
+      importedParse = Parser.parse(importedText);
+    } catch {
+      continue;
+    }
     const importedRange = findRangeOfNode(importedParse.value, word);
     if (importedRange) return Location.create(importedUri, importedRange);
 
