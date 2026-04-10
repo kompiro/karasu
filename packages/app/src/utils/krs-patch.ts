@@ -1,5 +1,5 @@
-import { Parser } from "@karasu/core";
-import type { KrsNode } from "@karasu/core";
+import { Parser } from "@karasu-tools/core";
+import type { KrsNode } from "@karasu-tools/core";
 
 export type PatchOperation = "append" | "replace" | "remove";
 
