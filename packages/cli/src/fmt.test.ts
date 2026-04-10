@@ -86,10 +86,12 @@ describe("fmt() with explicit files", () => {
 
   it("--check mode exits 0 when file is already formatted", async () => {
     const file = await writeKrs("d.krs", `system S {}\n`);
-    captureStdout();
+    const stdout = captureStdout();
 
-    // Should not throw (no exit called)
     await fmt([file], { check: true });
+
+    // No reformatting message and no exit — stdout should be empty
+    expect(stdout.filter((s) => s.includes("would be reformatted"))).toHaveLength(0);
   });
 
   it("reports parse error to stderr and exits 2", async () => {
@@ -154,11 +156,13 @@ describe("fmt() --stdin mode", () => {
 
     // Mock stdin to emit data then end
     const fakeStdin = {
-      setEncoding: vi.fn(),
-      on: vi.fn((event: string, handler: (...args: unknown[]) => void) => {
-        if (event === "data") handler(src);
-        if (event === "end") handler();
-      }),
+      setEncoding: vi.fn<(encoding: string) => void>(),
+      on: vi.fn<(event: string, handler: (...args: unknown[]) => void) => void>(
+        (event, handler) => {
+          if (event === "data") handler(src);
+          if (event === "end") handler();
+        },
+      ),
     };
     vi.spyOn(process, "stdin", "get").mockReturnValue(fakeStdin as unknown as typeof process.stdin);
 
@@ -174,11 +178,13 @@ describe("fmt() --stdin mode", () => {
     const exitSpy = mockExit();
 
     const fakeStdin = {
-      setEncoding: vi.fn(),
-      on: vi.fn((event: string, handler: (...args: unknown[]) => void) => {
-        if (event === "data") handler(`system {`);
-        if (event === "end") handler();
-      }),
+      setEncoding: vi.fn<(encoding: string) => void>(),
+      on: vi.fn<(event: string, handler: (...args: unknown[]) => void) => void>(
+        (event, handler) => {
+          if (event === "data") handler(`system {`);
+          if (event === "end") handler();
+        },
+      ),
     };
     vi.spyOn(process, "stdin", "get").mockReturnValue(fakeStdin as unknown as typeof process.stdin);
 
