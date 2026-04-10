@@ -165,6 +165,7 @@ export class ImportResolver {
       organizations: [],
       ownerIndex: new Map(),
       nodePathIndex: new Map(),
+      nodeFileIndex: new Map(),
     };
 
     if (visited.has(filePath)) return mergedFile;
@@ -186,6 +187,22 @@ export class ImportResolver {
     for (const [nodeId, path] of file.nodePathIndex) {
       if (!mergedFile.nodePathIndex.has(nodeId)) {
         mergedFile.nodePathIndex.set(nodeId, path);
+      }
+    }
+    // Record definition file for all nodes defined in this file
+    for (const system of file.systems) {
+      if (!mergedFile.nodeFileIndex.has(system.id)) {
+        mergedFile.nodeFileIndex.set(system.id, filePath);
+      }
+      for (const child of system.children) {
+        if (!mergedFile.nodeFileIndex.has(child.id)) {
+          mergedFile.nodeFileIndex.set(child.id, filePath);
+        }
+      }
+    }
+    for (const service of file.services) {
+      if (!mergedFile.nodeFileIndex.has(service.id)) {
+        mergedFile.nodeFileIndex.set(service.id, filePath);
       }
     }
 
@@ -281,6 +298,11 @@ export class ImportResolver {
     for (const [nodeId, path] of resolved.nodePathIndex) {
       if (!mergedFile.nodePathIndex.has(nodeId)) {
         mergedFile.nodePathIndex.set(nodeId, path);
+      }
+    }
+    for (const [nodeId, filePath] of resolved.nodeFileIndex) {
+      if (!mergedFile.nodeFileIndex.has(nodeId)) {
+        mergedFile.nodeFileIndex.set(nodeId, filePath);
       }
     }
     mergedFile.styleImports.push(...resolved.styleImports);
@@ -418,6 +440,11 @@ export class ImportResolver {
     }
 
     mergedFile.styleImports.push(...importedFile.styleImports);
+    for (const [nodeId, filePath] of importedFile.nodeFileIndex) {
+      if (!mergedFile.nodeFileIndex.has(nodeId)) {
+        mergedFile.nodeFileIndex.set(nodeId, filePath);
+      }
+    }
   }
 
   /**

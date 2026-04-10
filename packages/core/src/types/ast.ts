@@ -241,6 +241,8 @@ export interface KrsFile {
   ownerIndex: Map<string, string>;
   /** Maps each node id to its viewPath (e.g. "EC" → ["Payment", "EC"]). System nodes are excluded. */
   nodePathIndex: Map<string, string[]>;
+  /** Maps each node id to the absolute file path where it is defined. */
+  nodeFileIndex: Map<string, string>;
 }
 
 // ─── Diagnostics ───────────────────────────────────

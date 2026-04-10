@@ -41,6 +41,7 @@ function makeFile(overrides: Partial<KrsFile>): KrsFile {
     organizations: [],
     ownerIndex: new Map(),
     nodePathIndex: new Map(),
+    nodeFileIndex: new Map(),
     ...overrides,
   };
 }
