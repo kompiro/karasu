@@ -27,7 +27,11 @@
     "commands": [
       {
         "command": "karasu.openPreview",
-        "title": "karasu: Open Preview"
+        "title": "karasu: Open Preview",
+        "icon": {
+          "light": "./images/karasu-light.svg",
+          "dark": "./images/karasu-dark.svg"
+        }
       }
     ],
     "menus": {
