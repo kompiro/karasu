@@ -8,6 +8,7 @@ import {
   type FileSystemProvider,
   type NodeMetadata,
   type DisplayMode,
+  type SystemNode,
 } from "@karasu-tools/core";
 import iconManifest from "@karasu-tools/core/icons/icons.json";
 import serviceSvg from "@karasu-tools/core/icons/service.svg?raw";
@@ -39,6 +40,8 @@ interface SystemViewState {
   diagnostics: Diagnostic[];
   nodeMetadata: Map<string, NodeMetadata>;
   hasDeployDiagram: boolean;
+  systems: SystemNode[];
+  nodeFileIndex: Map<string, string>;
 }
 
 // Register icons from manifest on module load (builtIn: true for placeholder injection)
@@ -85,6 +88,8 @@ export function useSystemView(
     diagnostics: [],
     nodeMetadata: new Map(),
     hasDeployDiagram: false,
+    systems: [],
+    nodeFileIndex: new Map(),
   });
 
   const lastValidSvg = useRef("");
@@ -122,6 +127,8 @@ export function useSystemView(
             diagnostics: result.diagnostics,
             nodeMetadata: result.nodeMetadata,
             hasDeployDiagram: result.hasDeployDiagram,
+            systems: result.systems,
+            nodeFileIndex: result.nodeFileIndex,
           });
         } else {
           lastValidSvg.current = result.svg;
@@ -132,6 +139,8 @@ export function useSystemView(
             diagnostics: result.diagnostics,
             nodeMetadata: result.nodeMetadata,
             hasDeployDiagram: result.hasDeployDiagram,
+            systems: result.systems,
+            nodeFileIndex: result.nodeFileIndex,
           });
         }
       } catch {

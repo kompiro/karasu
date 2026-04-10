@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useRef, useState, type RefObject } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type RefObject } from "react";
 import { Parser } from "@karasu-tools/core";
 import { LeftPane } from "./LeftPane.js";
 import { KarasuPreviewColumn } from "./KarasuPreviewColumn.js";
@@ -72,6 +72,8 @@ export function AppShell({
     nodeMetadata: systemNodeMetadata,
     hasDeployDiagram,
     recompile: recompileSystem,
+    systems: resolvedSystems,
+    nodeFileIndex,
   } = useSystemView(entryPath, fs, viewPath, displayMode);
 
   const {
@@ -88,6 +90,7 @@ export function AppShell({
     orgDiagnostics,
     orgWarnings,
     nodePathIndex,
+    organizations,
     recompile: recompileOrg,
     toggleTeamExpand,
     orgTreeSvg,
@@ -122,10 +125,24 @@ export function AppShell({
   // ── Editor instance ref ─────────────────────────────────────────
 
   const editorRef = useRef<editor.IStandaloneCodeEditor | null>(null);
+  // Pending line to jump to after a cross-file SELECT_FILE dispatch
+  const pendingJumpLineRef = useRef<number | null>(null);
 
   const handleEditorReady = useCallback((editorInstance: editor.IStandaloneCodeEditor) => {
     editorRef.current = editorInstance;
   }, []);
+
+  // Apply pending cross-file jump when fileContent changes
+  useEffect(() => {
+    const line = pendingJumpLineRef.current;
+    if (line === null) return;
+    pendingJumpLineRef.current = null;
+    const ed = editorRef.current;
+    if (!ed) return;
+    ed.setPosition({ lineNumber: line, column: 1 });
+    ed.revealLineInCenter(line);
+    ed.focus();
+  }, [fileContent]);
 
   // ── Editor handler ──────────────────────────────────────────────
 
@@ -141,24 +158,55 @@ export function AppShell({
   );
 
   const handleJumpToEditor = useCallback(
-    (nodeId: string) => {
+    async (nodeId: string) => {
       const ed = editorRef.current;
-      if (!ed || !fileContent) return;
+      if (!ed) return;
+
+      const definitionFilePath = nodeFileIndex.get(nodeId);
+      const targetFilePath = definitionFilePath ?? currentFilePath;
+      if (!targetFilePath) return;
+
+      // Determine the content to parse for line lookup
+      let contentToParse: string;
+      if (definitionFilePath && definitionFilePath !== currentFilePath) {
+        // Cross-file jump: read the definition file and switch the editor to it
+        let definitionContent: string;
+        try {
+          definitionContent = await fs.readFile(targetFilePath);
+        } catch {
+          return;
+        }
+        let parseResult;
+        try {
+          parseResult = Parser.parse(definitionContent);
+        } catch {
+          return;
+        }
+        const line = findNodeLine(parseResult.value, nodeId);
+        if (line === null) return;
+        const monacoLine = line + 1;
+        pendingJumpLineRef.current = monacoLine;
+        dispatch({ type: "SELECT_FILE", path: targetFilePath, content: definitionContent });
+        return;
+      }
+
+      // Same-file jump
+      contentToParse = fileContent ?? "";
+      if (!contentToParse) return;
       let parseResult;
       try {
-        parseResult = Parser.parse(fileContent);
+        parseResult = Parser.parse(contentToParse);
       } catch {
         return;
       }
       const line = findNodeLine(parseResult.value, nodeId);
       if (line === null) return;
-      // line is 0-based (LSP convention); Monaco is 1-based
       const monacoLine = line + 1;
       ed.setPosition({ lineNumber: monacoLine, column: 1 });
       ed.revealLineInCenter(monacoLine);
       ed.focus();
     },
-    [fileContent],
+    [nodeFileIndex, currentFilePath, fileContent, fs, dispatch],
   );
 
   // ── View & cross-navigation handlers ────────────────────────────
@@ -223,71 +271,57 @@ export function AppShell({
   // ── Breadcrumbs ─────────────────────────────────────────────────
 
   const breadcrumbItems = useMemo(() => {
-    if (!fileContent) return [];
-    try {
-      const parseResult = Parser.parse(fileContent);
-      const systems = parseResult.value.systems;
-      if (systems.length === 0) return [];
+    if (resolvedSystems.length === 0) return [];
 
-      if (viewPath.length === 0) {
-        // Root view: show only the active system label (not clickable)
-        const system = systems[0];
-        return [{ id: system.id, label: system.label ?? system.id }];
-      }
-
-      // Phase 2: viewPath[0] is the system ID, viewPath[1:] is the navigation within it.
-      // Build breadcrumb items with explicit navigatePath so that clicking each item
-      // navigates to the correct Phase 2 path (including system ID prefix).
-      const activeSystem = systems.find((s) => s.id === viewPath[0]) ?? systems[0];
-      const items: BreadcrumbItem[] = [
-        {
-          id: activeSystem.id,
-          label: activeSystem.label ?? activeSystem.id,
-          navigatePath: [], // Clicking the system root goes back to root view
-        },
-      ];
-
-      let current: KrsNode = activeSystem;
-      for (let i = 1; i < viewPath.length; i++) {
-        const child: KrsNode | undefined = current.children.find((c) => c.id === viewPath[i]);
-        if (!child) break;
-        items.push({
-          id: child.id,
-          label: child.label ?? child.id,
-          navigatePath: viewPath.slice(0, i + 1),
-        });
-        current = child;
-      }
-
-      return items;
-    } catch {
-      return [];
+    if (viewPath.length === 0) {
+      // Root view: show only the active system label (not clickable)
+      const system = resolvedSystems[0];
+      return [{ id: system.id, label: system.label ?? system.id }];
     }
-  }, [fileContent, viewPath]);
+
+    // Phase 2: viewPath[0] is the system ID, viewPath[1:] is the navigation within it.
+    // Build breadcrumb items with explicit navigatePath so that clicking each item
+    // navigates to the correct Phase 2 path (including system ID prefix).
+    const activeSystem = resolvedSystems.find((s) => s.id === viewPath[0]) ?? resolvedSystems[0];
+    const items: BreadcrumbItem[] = [
+      {
+        id: activeSystem.id,
+        label: activeSystem.label ?? activeSystem.id,
+        navigatePath: [], // Clicking the system root goes back to root view
+      },
+    ];
+
+    let current: KrsNode = activeSystem;
+    for (let i = 1; i < viewPath.length; i++) {
+      const child: KrsNode | undefined = current.children.find((c) => c.id === viewPath[i]);
+      if (!child) break;
+      items.push({
+        id: child.id,
+        label: child.label ?? child.id,
+        navigatePath: viewPath.slice(0, i + 1),
+      });
+      current = child;
+    }
+
+    return items;
+  }, [resolvedSystems, viewPath]);
 
   const orgBreadcrumbItems = useMemo(() => {
-    if (!fileContent) return [];
-    try {
-      const parseResult = Parser.parse(fileContent);
-      const orgs = parseResult.value.organizations;
-      if (orgs.length === 0) return [];
+    if (organizations.length === 0) return [];
 
-      const rootLabel = orgs[0].label ?? orgs[0].id;
-      const items: { id: string; label: string }[] = [{ id: "__org__", label: rootLabel }];
+    const rootLabel = organizations[0].label ?? organizations[0].id;
+    const items: { id: string; label: string }[] = [{ id: "__org__", label: rootLabel }];
 
-      let teams = orgs.flatMap((o) => o.teams);
-      for (const segment of viewPath) {
-        const team = teams.find((t) => t.id === segment);
-        if (!team) break;
-        items.push({ id: team.id, label: team.label ?? team.id });
-        teams = team.children.filter((c): c is TeamNode => c.kind === "team");
-      }
-
-      return items;
-    } catch {
-      return [];
+    let teams = organizations.flatMap((o) => o.teams);
+    for (const segment of viewPath) {
+      const team = teams.find((t) => t.id === segment);
+      if (!team) break;
+      items.push({ id: team.id, label: team.label ?? team.id });
+      teams = team.children.filter((c): c is TeamNode => c.kind === "team");
     }
-  }, [fileContent, viewPath]);
+
+    return items;
+  }, [organizations, viewPath]);
 
   // ── Chat scope label ────────────────────────────────────────────
 
