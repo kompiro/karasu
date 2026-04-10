@@ -87,8 +87,6 @@ program
   .addHelpText(
     "after",
     `
-Note: formatting removes comments. Use with caution on files with meaningful comments.
-
 Examples:
   # Format all .krs files under the current directory
   $ karasu fmt
