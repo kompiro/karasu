@@ -144,6 +144,7 @@ export class Parser {
       organizations: [],
       ownerIndex: new Map(),
       nodePathIndex: new Map(),
+      nodeFileIndex: new Map(),
     };
 
     while (this.peek().type !== TokenType.EOF) {
