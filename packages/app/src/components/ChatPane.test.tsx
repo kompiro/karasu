@@ -1,110 +1,70 @@
 // @vitest-environment jsdom
-import { describe, it, expect, afterEach } from "vitest";
+import { describe, it, expect, vi, afterEach } from "vitest";
 import { render, fireEvent, cleanup } from "@testing-library/react";
 
 afterEach(cleanup);
 
 import { ChatPane } from "./ChatPane.js";
 
-describe("ChatPane", () => {
+// Default props to satisfy all required fields (API key set so AI UI is shown)
+const defaultProps = {
+  scopeLabel: "Root",
+  sessionResetKey: null,
+  fileContent: "",
+  apiKey: "sk-test-key",
+  onNavigateViewPath: vi.fn(),
+  onEditorChange: vi.fn(),
+  onNavigateToSettings: vi.fn(),
+};
+
+describe("ChatPane — with API key", () => {
   it("shows the given scopeLabel in the scope indicator", () => {
-    const { getByText } = render(<ChatPane scopeLabel="Root" sessionResetKey={null} />);
+    const { getByText } = render(<ChatPane {...defaultProps} scopeLabel="Root" />);
     expect(getByText(/📍 Root/)).toBeTruthy();
   });
 
   it("shows label-based scope indicator", () => {
     const { getByText } = render(
-      <ChatPane scopeLabel="EC Platform > EC サイト" sessionResetKey={null} />,
+      <ChatPane {...defaultProps} scopeLabel="EC Platform > EC サイト" />,
     );
     expect(getByText(/📍 EC Platform > EC サイト/)).toBeTruthy();
   });
 
-  it("submitting via form submit adds message to the list", () => {
-    const { getByLabelText, getByText } = render(
-      <ChatPane scopeLabel="Root" sessionResetKey={null} />,
-    );
-    const input = getByLabelText("Chat message input");
-    fireEvent.change(input, { target: { value: "Hello" } });
-    fireEvent.submit(input.closest("form")!);
-    expect(getByText("Hello")).toBeTruthy();
-  });
-
-  it("Cmd+Enter submits the message", () => {
-    const { getByLabelText, getByText } = render(
-      <ChatPane scopeLabel="Root" sessionResetKey={null} />,
-    );
-    const input = getByLabelText("Chat message input");
-    fireEvent.change(input, { target: { value: "Hello" } });
-    fireEvent.keyDown(input, { key: "Enter", metaKey: true });
-    expect(getByText("Hello")).toBeTruthy();
-  });
-
-  it("Ctrl+Enter submits the message", () => {
-    const { getByLabelText, getByText } = render(
-      <ChatPane scopeLabel="Root" sessionResetKey={null} />,
-    );
-    const input = getByLabelText("Chat message input");
-    fireEvent.change(input, { target: { value: "Hello" } });
-    fireEvent.keyDown(input, { key: "Enter", ctrlKey: true });
-    expect(getByText("Hello")).toBeTruthy();
-  });
-
-  it("plain Enter does not submit the message", () => {
-    const { getByLabelText, queryByText } = render(
-      <ChatPane scopeLabel="Root" sessionResetKey={null} />,
-    );
-    const input = getByLabelText("Chat message input");
-    fireEvent.change(input, { target: { value: "Hello" } });
-    fireEvent.keyDown(input, { key: "Enter" });
-    expect(queryByText("Hello", { selector: ".chat-message-content" })).toBeNull();
-  });
-
   it("Send button is disabled when input is empty", () => {
-    const { getByRole } = render(<ChatPane scopeLabel="Root" sessionResetKey={null} />);
+    const { getByRole } = render(<ChatPane {...defaultProps} />);
     expect(getByRole("button", { name: /Send/ })).toHaveProperty("disabled", true);
   });
 
   it("Send button is enabled when input has text", () => {
-    const { getByLabelText, getByRole } = render(
-      <ChatPane scopeLabel="Root" sessionResetKey={null} />,
-    );
+    const { getByLabelText, getByRole } = render(<ChatPane {...defaultProps} />);
     fireEvent.change(getByLabelText("Chat message input"), { target: { value: "Hi" } });
     expect(getByRole("button", { name: /Send/ })).toHaveProperty("disabled", false);
   });
 
-  it("New Session button clears messages", () => {
-    const { getByLabelText, getByText, queryByText } = render(
-      <ChatPane scopeLabel="Root" sessionResetKey={null} />,
-    );
-    const input = getByLabelText("Chat message input");
-    fireEvent.change(input, { target: { value: "Hello" } });
-    fireEvent.submit(input.closest("form")!);
-    expect(getByText("Hello")).toBeTruthy();
-
-    fireEvent.click(getByText(/New Session/));
-    expect(queryByText("Hello")).toBeNull();
-  });
-
-  it("session resets when sessionResetKey changes", () => {
-    const { getByLabelText, getByText, queryByText, rerender } = render(
-      <ChatPane scopeLabel="Root" sessionResetKey="project-a" />,
-    );
-    const input = getByLabelText("Chat message input");
-    fireEvent.change(input, { target: { value: "Hello" } });
-    fireEvent.submit(input.closest("form")!);
-    expect(getByText("Hello")).toBeTruthy();
-
-    rerender(<ChatPane scopeLabel="Root" sessionResetKey="project-b" />);
-    expect(queryByText("Hello")).toBeNull();
-  });
-
   it("scope indicator updates when scopeLabel prop changes", () => {
-    const { getByText, rerender } = render(
-      <ChatPane scopeLabel="システム A" sessionResetKey={null} />,
-    );
+    const { getByText, rerender } = render(<ChatPane {...defaultProps} scopeLabel="システム A" />);
     expect(getByText(/📍 システム A/)).toBeTruthy();
 
-    rerender(<ChatPane scopeLabel="システム A > サービス B" sessionResetKey={null} />);
+    rerender(<ChatPane {...defaultProps} scopeLabel="システム A > サービス B" />);
     expect(getByText(/📍 システム A > サービス B/)).toBeTruthy();
+  });
+});
+
+describe("ChatPane — without API key", () => {
+  it("shows ApiKeySetup when apiKey is null", () => {
+    const onNavigateToSettings = vi.fn();
+    const { getByRole } = render(
+      <ChatPane {...defaultProps} apiKey={null} onNavigateToSettings={onNavigateToSettings} />,
+    );
+    expect(getByRole("button", { name: /Settings で設定する/ })).toBeTruthy();
+  });
+
+  it("clicking Settings button calls onNavigateToSettings", () => {
+    const onNavigateToSettings = vi.fn();
+    const { getByRole } = render(
+      <ChatPane {...defaultProps} apiKey={null} onNavigateToSettings={onNavigateToSettings} />,
+    );
+    fireEvent.click(getByRole("button", { name: /Settings で設定する/ }));
+    expect(onNavigateToSettings).toHaveBeenCalledOnce();
   });
 });

@@ -532,6 +532,228 @@ body,
   align-self: flex-end;
 }
 
+/* ── Chat Phase 2: loading / error / patch ──────────────────────── */
+
+.chat-message--loading {
+  padding: 8px 12px;
+  color: var(--text-muted);
+  font-size: 12.5px;
+  font-style: italic;
+}
+
+.chat-loading-indicator::after {
+  content: "";
+  animation: loading-dots 1.2s steps(3, end) infinite;
+}
+
+@keyframes loading-dots {
+  0%   { content: ""; }
+  33%  { content: "."; }
+  66%  { content: ".."; }
+  100% { content: "..."; }
+}
+
+.chat-message--error {
+  border-left: 2px solid var(--warning, #f59e0b);
+  padding: 8px 12px;
+  background: rgba(245, 158, 11, 0.06);
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+  margin-bottom: 8px;
+}
+
+.chat-message--error .chat-message-content {
+  color: var(--warning, #f59e0b);
+  font-size: 13px;
+  margin: 0 0 8px;
+}
+
+.toolbar-btn--retry,
+.toolbar-btn--go-to-settings {
+  font-size: 12px;
+  padding: 3px 10px;
+}
+
+/* Patch proposal */
+
+.chat-patch-proposal {
+  margin-top: 8px;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+}
+
+.chat-patch-proposal__description {
+  padding: 8px 12px;
+  font-size: 13px;
+  color: var(--text-secondary);
+  background: var(--bg-raised);
+  margin: 0;
+  border-bottom: 1px solid var(--border-faint);
+}
+
+.chat-patch-proposal__code {
+  padding: 10px 12px;
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--text-primary);
+  background: var(--bg-void);
+  overflow-x: auto;
+  white-space: pre;
+}
+
+.chat-patch-proposal__actions {
+  display: flex;
+  gap: 6px;
+  padding: 8px 12px;
+  background: var(--bg-raised);
+  border-top: 1px solid var(--border-faint);
+}
+
+.toolbar-btn--apply-patch {
+  color: var(--accent);
+}
+
+.toolbar-btn--reject-patch {
+  color: var(--text-muted);
+}
+
+/* ApiKeySetup */
+
+.api-key-setup {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  height: 100%;
+  padding: 32px 20px;
+  text-align: center;
+}
+
+.api-key-setup__message {
+  color: var(--text-secondary);
+  font-size: 13.5px;
+  margin: 0;
+  line-height: 1.6;
+}
+
+.toolbar-btn--go-to-settings {
+  font-size: 13px;
+}
+
+/* ── Settings Pane ───────────────────────────────────────────────── */
+
+.settings-pane {
+  overflow-y: auto;
+  padding: 16px;
+  height: 100%;
+}
+
+.settings-section__title {
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin: 0 0 16px;
+}
+
+.settings-security-notice {
+  background: rgba(245, 158, 11, 0.06);
+  border: 1px solid rgba(245, 158, 11, 0.25);
+  border-radius: var(--radius-sm);
+  padding: 12px 14px;
+  margin-bottom: 20px;
+  font-size: 12.5px;
+  color: var(--text-secondary);
+  line-height: 1.65;
+}
+
+.settings-security-notice__heading {
+  font-weight: 600;
+  color: var(--warning, #f59e0b);
+  margin: 0 0 8px;
+}
+
+.settings-security-notice p {
+  margin: 0 0 8px;
+}
+
+.settings-security-notice p:last-of-type {
+  margin-bottom: 8px;
+}
+
+.settings-security-notice__link {
+  color: var(--accent);
+  font-size: 12px;
+  text-decoration: none;
+  display: block;
+  margin-top: 4px;
+}
+
+.settings-security-notice__link:hover {
+  text-decoration: underline;
+}
+
+.settings-field {
+  margin-bottom: 14px;
+}
+
+.settings-field__label {
+  display: block;
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-bottom: 6px;
+  font-weight: 500;
+}
+
+.settings-field__input {
+  width: 100%;
+  box-sizing: border-box;
+  background: var(--bg-void);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-sm);
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  padding: 7px 10px;
+  outline: none;
+  transition: border-color 0.12s;
+}
+
+.settings-field__input:focus {
+  border-color: var(--accent);
+}
+
+.settings-field--checkbox .settings-field__label--checkbox {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+
+.settings-field__hint {
+  margin: 4px 0 0 22px;
+  font-size: 11.5px;
+  color: var(--text-muted);
+  line-height: 1.5;
+}
+
+.settings-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 20px;
+}
+
+.toolbar-btn--save-key {
+  font-size: 13px;
+}
+
+.toolbar-btn--clear-key {
+  font-size: 13px;
+}
+
 .deploy-block-selector {
   align-self: center;
   margin-left: 4px;

@@ -350,6 +350,7 @@ export function AppShell({
           onEditorReady={handleEditorReady}
           scopeLabel={scopeLabel}
           currentProjectId={currentProject?.id ?? null}
+          onNavigateViewPath={navigateViewPath}
         />
       )}
       <KarasuPreviewColumn
