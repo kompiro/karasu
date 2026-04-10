@@ -325,6 +325,8 @@ export function AppShell({ entryPath, sidebarContent, hideEditor, recompileRef }
           onBreadcrumbNavigate: navigateViewPath,
           onDeployButtonClick: handleDeployButtonClick,
           onTeamButtonClick: handleTeamButtonClick,
+          highlightedNodeId,
+          onClearHighlight: () => dispatch({ type: "SET_HIGHLIGHTED_NODE", nodeId: null }),
         }}
         deployView={{
           svg: deploySvg,
