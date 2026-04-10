@@ -255,7 +255,12 @@ export function useChatSession({
         }
       } catch (err) {
         // eslint-disable-next-line no-console
-        console.error("[useChatSession] API error:", err instanceof APIError ? { status: err.status, message: err.message, error: err.error } : err);
+        console.error(
+          "[useChatSession] API error:",
+          err instanceof APIError
+            ? { status: err.status, message: err.message, error: err.error }
+            : err,
+        );
         const errorType = classifyError(err);
         const errorMsg: ErrorChatMessage = {
           id: crypto.randomUUID(),
@@ -384,7 +389,10 @@ export function useChatSession({
               : m,
           );
           if (text) {
-            return [...resolved, { id: crypto.randomUUID(), role: "assistant" as const, content: text }];
+            return [
+              ...resolved,
+              { id: crypto.randomUUID(), role: "assistant" as const, content: text },
+            ];
           }
           return resolved;
         });
@@ -452,7 +460,10 @@ export function useChatSession({
               : m,
           );
           if (text) {
-            return [...resolved, { id: crypto.randomUUID(), role: "assistant" as const, content: text }];
+            return [
+              ...resolved,
+              { id: crypto.randomUUID(), role: "assistant" as const, content: text },
+            ];
           }
           return resolved;
         });
