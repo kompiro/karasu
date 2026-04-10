@@ -165,7 +165,12 @@ connection.onDefinition((params) => {
 
   // Cross-file lookup: recursively search all imports (named, wildcard, transitive)
   const visited = new Set<string>([fileURLToPath(params.textDocument.uri)]);
-  const result = findDefinitionInImports(parseResult.value.nodeImports, word, params.textDocument.uri, visited);
+  const result = findDefinitionInImports(
+    parseResult.value.nodeImports,
+    word,
+    params.textDocument.uri,
+    visited,
+  );
   return result;
 });
 
@@ -203,7 +208,12 @@ function findDefinitionInImports(
     if (importedRange) return Location.create(importedUri, importedRange);
 
     // Recurse into this file's imports (transitive)
-    const nested = findDefinitionInImports(importedParse.value.nodeImports, word, importedUri, visited);
+    const nested = findDefinitionInImports(
+      importedParse.value.nodeImports,
+      word,
+      importedUri,
+      visited,
+    );
     if (nested) return nested;
   }
   return null;
