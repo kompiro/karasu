@@ -1,7 +1,7 @@
 # karasu 鴉
 
 <p align="center">
-  <img src="packages/app/public/karasu-logo-1200w.png" alt="karasu logo" width="400" />
+  <img src="packages/app/public/karasu-logo-cutout.png" alt="karasu logo" width="400" />
 </p>
 
 チーム規模のシステムを、テキストで記述・俯瞰するアーキテクチャモデリングツール。
