@@ -10,7 +10,7 @@ export interface PatchProposal {
   toolUseId: string;
   operation: PatchOperation;
   targetNodeId?: string;
-  content: string;
+  content?: string;
   description: string;
   contentHashAtProposal: string;
 }
@@ -274,7 +274,7 @@ export function useChatSession({
                 toolUseId: block.id,
                 operation: input.operation,
                 targetNodeId: input.targetNodeId,
-                content: input.content ?? "",
+                content: input.content,
                 description: input.description,
                 contentHashAtProposal: hash,
               };
@@ -394,15 +394,24 @@ export function useChatSession({
       if (!patchResult.ok) {
         // eslint-disable-next-line no-console
         console.error("[useChatSession] applyPatch: patch failed —", patchResult.error);
-        setMessages((prev) => [
-          ...prev,
-          {
-            id: crypto.randomUUID(),
-            role: "error" as const,
-            errorType: "server" as const,
-            content: `⚠ パッチの適用に失敗しました: ${patchResult.error}`,
-          },
-        ]);
+        // Mark patchResult on the assistant message so buildApiMessages can emit a valid
+        // tool_result in subsequent requests (Anthropic API requires tool_use → tool_result).
+        setMessages((prev) => {
+          const resolved = prev.map((m) =>
+            m.role === "assistant" && m.patch?.toolUseId === proposal.toolUseId
+              ? { ...m, patchResult: `Error: ${patchResult.error}` }
+              : m,
+          );
+          return [
+            ...resolved,
+            {
+              id: crypto.randomUUID(),
+              role: "error" as const,
+              errorType: "server" as const,
+              content: `⚠ パッチの適用に失敗しました: ${patchResult.error}`,
+            },
+          ];
+        });
         setPhase({ kind: "idle" });
         return;
       }

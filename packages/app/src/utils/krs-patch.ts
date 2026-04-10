@@ -22,17 +22,18 @@ export function applyKrsPatch(
   content?: string,
 ): PatchResult {
   if (operation === "append") {
-    if (content === undefined) {
+    if (!content) {
       return { ok: false, error: "content is required for append" };
     }
-    return { ok: true, source: source + "\n" + content };
+    // When source is empty (new file), do not prepend a newline separator.
+    return { ok: true, source: source ? source + "\n" + content : content };
   }
 
   if (targetNodeId === undefined) {
     return { ok: false, error: `targetNodeId is required for ${operation}` };
   }
 
-  if (operation === "replace" && content === undefined) {
+  if (operation === "replace" && !content) {
     return { ok: false, error: "content is required for replace" };
   }
 

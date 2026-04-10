@@ -11,8 +11,18 @@ describe("applyKrsPatch", () => {
       expect(result).toEqual({ ok: true, source: "system Foo {}\nsystem Bar {}" });
     });
 
+    it("appends to an empty source without leading newline", () => {
+      const result = applyKrsPatch("", "append", undefined, "system Foo {}");
+      expect(result).toEqual({ ok: true, source: "system Foo {}" });
+    });
+
     it("returns error when content is missing", () => {
       const result = applyKrsPatch("system Foo {}", "append", undefined, undefined);
+      expect(result).toEqual({ ok: false, error: "content is required for append" });
+    });
+
+    it("returns error when content is empty string", () => {
+      const result = applyKrsPatch("system Foo {}", "append", undefined, "");
       expect(result).toEqual({ ok: false, error: "content is required for append" });
     });
   });
@@ -59,6 +69,11 @@ describe("applyKrsPatch", () => {
 
     it("returns error when content is missing", () => {
       const result = applyKrsPatch("system Foo {}", "replace", "Foo", undefined);
+      expect(result).toEqual({ ok: false, error: "content is required for replace" });
+    });
+
+    it("returns error when content is empty string", () => {
+      const result = applyKrsPatch("system Foo {}", "replace", "Foo", "");
       expect(result).toEqual({ ok: false, error: "content is required for replace" });
     });
 
