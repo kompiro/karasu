@@ -343,11 +343,20 @@ export function useChatSession({
   const applyPatch = useCallback(
     async (proposal: PatchProposal): Promise<void> => {
       const currentHash = await hashContent(fileContentRef.current);
+      console.log("[useChatSession] applyPatch", {
+        currentHash,
+        contentHashAtProposal: proposal.contentHashAtProposal,
+        hashMatch: currentHash === proposal.contentHashAtProposal,
+      });
       if (currentHash !== proposal.contentHashAtProposal) {
-        // File changed — patch is stale, cannot apply
+        console.warn("[useChatSession] applyPatch: hash mismatch — patch is stale, skipping");
         return;
       }
       const newContent = fileContentRef.current + "\n" + proposal.patch;
+      console.log(
+        "[useChatSession] applyPatch: calling onEditorChange, newContent length =",
+        newContent.length,
+      );
       onEditorChange(newContent);
       setPhase({ kind: "awaiting_followup" });
 

@@ -131,10 +131,15 @@ export function AppShell({
 
   const handleEditorChange = useCallback(
     async (value: string) => {
+      console.log("[AppShell] handleEditorChange", { currentFilePath, valueLength: value.length });
       dispatch({ type: "UPDATE_FILE_CONTENT", content: value });
       if (currentFilePath) {
         await fs.writeFile(currentFilePath, value);
         recompile();
+      } else {
+        console.warn(
+          "[AppShell] handleEditorChange: currentFilePath is null — skipping writeFile and recompile",
+        );
       }
     },
     [currentFilePath, fs, dispatch, recompile],
