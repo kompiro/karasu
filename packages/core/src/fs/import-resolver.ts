@@ -189,15 +189,21 @@ export class ImportResolver {
         mergedFile.nodePathIndex.set(nodeId, path);
       }
     }
-    // Record definition file for all nodes defined in this file
+    // Record definition file for all nodes defined in this file (full recursive walk)
+    const indexNode = (node: KrsNode): void => {
+      if (!mergedFile.nodeFileIndex.has(node.id)) {
+        mergedFile.nodeFileIndex.set(node.id, filePath);
+      }
+      for (const child of node.children) {
+        indexNode(child);
+      }
+    };
     for (const system of file.systems) {
       if (!mergedFile.nodeFileIndex.has(system.id)) {
         mergedFile.nodeFileIndex.set(system.id, filePath);
       }
       for (const child of system.children) {
-        if (!mergedFile.nodeFileIndex.has(child.id)) {
-          mergedFile.nodeFileIndex.set(child.id, filePath);
-        }
+        indexNode(child);
       }
     }
     for (const service of file.services) {
