@@ -1,4 +1,4 @@
-export type LeftTab = "editor" | "chat";
+export type LeftTab = "editor" | "chat" | "settings";
 
 interface LeftTabBarProps {
   activeTab: LeftTab;
@@ -25,6 +25,15 @@ export function LeftTabBar({ activeTab, onTabChange }: LeftTabBarProps) {
       >
         <span className="left-tab-icon">💬</span>
         Chat
+      </button>
+      <button
+        className={`left-tab ${activeTab === "settings" ? "left-tab--active" : ""}`}
+        role="tab"
+        aria-selected={activeTab === "settings"}
+        onClick={() => onTabChange("settings")}
+      >
+        <span className="left-tab-icon">⚙</span>
+        Settings
       </button>
     </div>
   );
