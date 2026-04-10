@@ -1,6 +1,6 @@
 import KarasuEditor, { type Monaco } from "@monaco-editor/react";
 import type { editor } from "monaco-editor";
-import { useCallback, useRef } from "react";
+import { useCallback, useEffect, useRef } from "react";
 
 interface EditorPaneProps {
   value: string;
@@ -105,6 +105,12 @@ function registerKrsLanguage(monaco: Monaco): void {
 
 export function EditorPane({ value, onChange, onEditorReady, onFormat }: EditorPaneProps) {
   const monacoRef = useRef<Monaco | null>(null);
+  // Keep a ref so the Shift+Alt+F keybinding always calls the latest onFormat,
+  // even after re-renders update the prop (addCommand is only called once at mount).
+  const onFormatRef = useRef(onFormat);
+  useEffect(() => {
+    onFormatRef.current = onFormat;
+  }, [onFormat]);
 
   const handleBeforeMount = useCallback((monaco: Monaco) => {
     monacoRef.current = monaco;
@@ -114,18 +120,16 @@ export function EditorPane({ value, onChange, onEditorReady, onFormat }: EditorP
   const handleMount = useCallback(
     (editorInstance: editor.IStandaloneCodeEditor) => {
       onEditorReady?.(editorInstance);
-      if (onFormat) {
-        const monaco = monacoRef.current;
-        if (monaco) {
-          // Shift+Alt+F — matches VS Code "Format Document" default binding
-          editorInstance.addCommand(
-            monaco.KeyMod.Shift | monaco.KeyMod.Alt | monaco.KeyCode.KeyF,
-            onFormat,
-          );
-        }
+      const monaco = monacoRef.current;
+      if (monaco) {
+        // Shift+Alt+F — matches VS Code "Format Document" default binding
+        editorInstance.addCommand(
+          monaco.KeyMod.Shift | monaco.KeyMod.Alt | monaco.KeyCode.KeyF,
+          () => onFormatRef.current?.(),
+        );
       }
     },
-    [onEditorReady, onFormat],
+    [onEditorReady],
   );
 
   const handleChange = useCallback(

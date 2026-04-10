@@ -130,9 +130,21 @@ describe("format()", () => {
     expectIdempotent(fmt(src));
   });
 
-  it("formats link property", () => {
+  it("formats link property with label", () => {
     const src = `system S { link "https://example.com" "Docs" }`;
     expect(fmt(src)).toContain(`  link "https://example.com" "Docs"`);
+    expectIdempotent(fmt(src));
+  });
+
+  it("formats link property without label", () => {
+    const src = `system S { link "https://example.com" }`;
+    expect(fmt(src)).toContain(`  link "https://example.com"`);
+    expectIdempotent(fmt(src));
+  });
+
+  it("formats service node with team property", () => {
+    const src = `system S { service A { team "Backend" } }`;
+    expect(fmt(src)).toContain(`    team "Backend"`);
     expectIdempotent(fmt(src));
   });
 
@@ -194,6 +206,13 @@ describe("format()", () => {
     expectIdempotent(result);
   });
 
+  it("formats deploy node with schedule property", () => {
+    const src = `deploy Prod {\n  job Cron {\n    schedule "0 * * * *"\n  }\n}`;
+    const result = fmt(src);
+    expect(result).toContain(`    schedule "0 * * * *"`);
+    expectIdempotent(result);
+  });
+
   // ── Organization block ────────────────────────────────────────────────────
 
   it("formats organization block", () => {
@@ -205,6 +224,21 @@ describe("format()", () => {
     expectIdempotent(result);
   });
 
+  it("formats organization with description and link", () => {
+    const src = `organization Org {\n  description "Our org"\n  link "https://example.com" "Site"\n  team Backend {\n    owns ECommerce\n  }\n}`;
+    const result = fmt(src);
+    expect(result).toContain(`  description "Our org"`);
+    expect(result).toContain(`  link "https://example.com" "Site"`);
+    expectIdempotent(result);
+  });
+
+  it("formats team with description", () => {
+    const src = `organization Org {\n  team Backend {\n    description "Backend team"\n    owns ECommerce\n  }\n}`;
+    const result = fmt(src);
+    expect(result).toContain(`    description "Backend team"`);
+    expectIdempotent(result);
+  });
+
   it("formats member block", () => {
     const src = `organization Org {\n  team Backend {\n    member Alice {\n      github "alice"\n    }\n  }\n}`;
     const result = fmt(src);
@@ -213,7 +247,39 @@ describe("format()", () => {
     expectIdempotent(result);
   });
 
+  it("formats team with link property", () => {
+    const src = `organization Org {\n  team Backend {\n    link "https://slack.com/backend" "Slack"\n    owns ECommerce\n  }\n}`;
+    const result = fmt(src);
+    expect(result).toContain(`    link "https://slack.com/backend" "Slack"`);
+    expectIdempotent(result);
+  });
+
+  it("formats nested team inside team", () => {
+    const src = `organization Org {\n  team Engineering {\n    team Backend {\n      owns ECommerce\n    }\n  }\n}`;
+    const result = fmt(src);
+    expect(result).toContain(`  team Engineering {`);
+    expect(result).toContain(`    team Backend {`);
+    expect(result).toContain(`      owns ECommerce`);
+    expectIdempotent(result);
+  });
+
+  it("formats member with description and slack", () => {
+    const src = `organization Org {\n  team Backend {\n    member Alice {\n      description "Lead"\n      slack "@alice"\n      github "alice"\n    }\n  }\n}`;
+    const result = fmt(src);
+    expect(result).toContain(`      description "Lead"`);
+    expect(result).toContain(`      slack "@alice"`);
+    expect(result).toContain(`      github "alice"`);
+    expectIdempotent(result);
+  });
+
   // ── Comment preservation ─────────────────────────────────────────────────
+
+  it("preserves trailing comment at end of file (footer comment)", () => {
+    const src = `system S {}\n// footer`;
+    const result = fmt(src);
+    expect(result).toContain(`system S {}\n\n// footer`);
+    expectIdempotent(result);
+  });
 
   it("preserves leading line comment before top-level block", () => {
     const src = `// This is the system\nsystem S {}`;
