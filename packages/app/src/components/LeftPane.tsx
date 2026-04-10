@@ -1,5 +1,6 @@
 import { useState, useCallback } from "react";
 import type { editor } from "monaco-editor";
+import type { SystemNode } from "@karasu/core";
 import { EditorPane } from "./EditorPane.js";
 import { LeftTabBar, type LeftTab } from "./LeftTabBar.js";
 import { ChatPane } from "./ChatPane.js";
@@ -13,6 +14,7 @@ interface LeftPaneProps {
   onEditorReady?: (editor: editor.IStandaloneCodeEditor) => void;
   scopeLabel: string;
   currentProjectId: string | null;
+  resolvedSystems: SystemNode[];
   onNavigateViewPath: (path: string[]) => void;
   /** Called when the user clicks Format or presses Shift+Alt+F */
   onFormat?: () => void;
@@ -27,6 +29,7 @@ export function LeftPane({
   onEditorReady,
   scopeLabel,
   currentProjectId,
+  resolvedSystems,
   onNavigateViewPath,
   onFormat,
   hasParseErrors,
@@ -75,6 +78,7 @@ export function LeftPane({
           sessionResetKey={currentProjectId}
           fileContent={value}
           currentFilePath={currentFilePath}
+          resolvedSystems={resolvedSystems}
           apiKey={apiKey}
           onNavigateViewPath={onNavigateViewPath}
           onEditorChange={onChange}
