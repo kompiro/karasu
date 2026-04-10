@@ -6,6 +6,7 @@ interface ChatPaneProps {
   scopeLabel: string;
   sessionResetKey: string | null;
   fileContent: string;
+  currentFilePath: string | null;
   apiKey: string | null;
   onNavigateViewPath: (path: string[]) => void;
   onEditorChange: (value: string) => void;
@@ -16,6 +17,7 @@ export function ChatPane({
   scopeLabel,
   sessionResetKey,
   fileContent,
+  currentFilePath,
   apiKey,
   onNavigateViewPath,
   onEditorChange,
@@ -24,6 +26,7 @@ export function ChatPane({
   const { messages, phase, sendMessage, retryMessage, applyPatch, rejectPatch, resetSession } =
     useChatSession({
       fileContent,
+      currentFilePath,
       scopeLabel,
       apiKey,
       onNavigateViewPath,

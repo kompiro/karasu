@@ -353,6 +353,7 @@ export function AppShell({
       {!hideEditor && (
         <LeftPane
           value={fileContent}
+          currentFilePath={currentFilePath}
           onChange={handleEditorChange}
           onEditorReady={handleEditorReady}
           scopeLabel={scopeLabel}

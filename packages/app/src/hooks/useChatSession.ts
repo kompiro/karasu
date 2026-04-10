@@ -45,6 +45,7 @@ type SessionPhase =
 
 interface UseChatSessionParams {
   fileContent: string;
+  currentFilePath: string | null;
   scopeLabel: string;
   apiKey: string | null;
   onNavigateViewPath: (path: string[]) => void;
@@ -98,20 +99,28 @@ const TOOLS: Anthropic.Messages.Tool[] = [
   },
 ];
 
-function buildSystemPrompt(scopeLabel: string, fileContent: string): string {
+function buildSystemPrompt(
+  scopeLabel: string,
+  fileContent: string,
+  currentFilePath: string | null,
+): string {
+  const fileSection = currentFilePath
+    ? `## 編集対象ファイル\n${currentFilePath}\n\n## ファイルの内容\n${fileContent}`
+    : `## ファイルの内容\n${fileContent}`;
+
   return `あなたは karasu アーキテクチャモデリングツールのアシスタントです。
 ユーザーが .krs ファイルを育てるのを支援します。
 
 ## 現在のスコープ
 ${scopeLabel}
 
-## 現在の .krs コンテンツ
-${fileContent}
+${fileSection}
 
 ## ルール
 - .krs が source of truth。チャット履歴ではなく常に最新の内容を参照する
 - id は英語 PascalCase で提案する。label はユーザーの言語（日本語可）で出力する
-- 変更を提案する場合は apply_krs_patch ツールを使用する
+- 変更を提案する場合は apply_krs_patch ツールを使用する。パッチは編集対象ファイルの末尾に追記される
+- 編集対象ファイルが import 文のみの場合は、ファイルツリーで対象ファイルを選択するようユーザーに案内する
 - ダイアグラムのナビゲーションを提案する場合は navigate_view ツールを使用する
 - 一度に多くを変更せず、1-2 個の提案に絞る`;
 }
@@ -140,6 +149,7 @@ function errorMessage(errorType: ErrorChatMessage["errorType"]): string {
 
 export function useChatSession({
   fileContent,
+  currentFilePath,
   scopeLabel,
   apiKey,
   onNavigateViewPath,
@@ -153,9 +163,11 @@ export function useChatSession({
   const phaseRef = useRef<SessionPhase>(phase);
   phaseRef.current = phase;
 
-  // Keep a ref to the latest apiKey / fileContent / scopeLabel for use in callbacks
+  // Keep a ref to the latest apiKey / fileContent / currentFilePath / scopeLabel for use in callbacks
   const fileContentRef = useRef(fileContent);
   fileContentRef.current = fileContent;
+  const currentFilePathRef = useRef(currentFilePath);
+  currentFilePathRef.current = currentFilePath;
   const scopeLabelRef = useRef(scopeLabel);
   scopeLabelRef.current = scopeLabel;
   const apiKeyRef = useRef(apiKey);
@@ -186,7 +198,11 @@ export function useChatSession({
         const response = await client.messages.create({
           model: MODEL,
           max_tokens: 4096,
-          system: buildSystemPrompt(scopeLabelRef.current, fileContentRef.current),
+          system: buildSystemPrompt(
+            scopeLabelRef.current,
+            fileContentRef.current,
+            currentFilePathRef.current,
+          ),
           tools: TOOLS,
           messages: apiMessages,
         });
@@ -219,7 +235,11 @@ export function useChatSession({
               const followup = await client.messages.create({
                 model: MODEL,
                 max_tokens: 4096,
-                system: buildSystemPrompt(scopeLabelRef.current, fileContentRef.current),
+                system: buildSystemPrompt(
+                  scopeLabelRef.current,
+                  fileContentRef.current,
+                  currentFilePathRef.current,
+                ),
                 tools: TOOLS,
                 messages: followupMessages,
               });
@@ -291,6 +311,7 @@ export function useChatSession({
           apiKeyRef,
           scopeLabelRef,
           fileContentRef,
+          currentFilePathRef,
           onNavigateViewPath,
         );
         setMessages(baseMessages);
@@ -373,7 +394,11 @@ export function useChatSession({
         const response = await client.messages.create({
           model: MODEL,
           max_tokens: 4096,
-          system: buildSystemPrompt(scopeLabelRef.current, fileContentRef.current),
+          system: buildSystemPrompt(
+            scopeLabelRef.current,
+            fileContentRef.current,
+            currentFilePathRef.current,
+          ),
           tools: TOOLS,
           messages: followupMessages,
         });
@@ -444,7 +469,11 @@ export function useChatSession({
         const response = await client.messages.create({
           model: MODEL,
           max_tokens: 4096,
-          system: buildSystemPrompt(scopeLabelRef.current, fileContentRef.current),
+          system: buildSystemPrompt(
+            scopeLabelRef.current,
+            fileContentRef.current,
+            currentFilePathRef.current,
+          ),
           tools: TOOLS,
           messages: followupMessages,
         });
@@ -528,6 +557,7 @@ async function autoRejectPatch(
   apiKeyRef: React.MutableRefObject<string | null>,
   scopeLabelRef: React.MutableRefObject<string>,
   fileContentRef: React.MutableRefObject<string>,
+  currentFilePathRef: React.MutableRefObject<string | null>,
   onNavigateViewPath: (path: string[]) => void,
 ): Promise<ChatMessage[]> {
   const key = apiKeyRef.current;
@@ -549,7 +579,11 @@ async function autoRejectPatch(
     const response = await client.messages.create({
       model: MODEL,
       max_tokens: 4096,
-      system: buildSystemPrompt(scopeLabelRef.current, fileContentRef.current),
+      system: buildSystemPrompt(
+        scopeLabelRef.current,
+        fileContentRef.current,
+        currentFilePathRef.current,
+      ),
       tools: TOOLS,
       messages: followupMessages,
     });

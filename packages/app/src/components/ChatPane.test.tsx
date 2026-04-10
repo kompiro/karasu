@@ -11,6 +11,7 @@ const defaultProps = {
   scopeLabel: "Root",
   sessionResetKey: null,
   fileContent: "",
+  currentFilePath: null,
   apiKey: "sk-test-key",
   onNavigateViewPath: vi.fn<(path: string[]) => void>(),
   onEditorChange: vi.fn<(value: string) => void>(),

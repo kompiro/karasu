@@ -8,6 +8,7 @@ import { getStoredApiKey } from "../utils/api-key-storage.js";
 
 interface LeftPaneProps {
   value: string;
+  currentFilePath: string | null;
   onChange: (value: string) => void;
   onEditorReady?: (editor: editor.IStandaloneCodeEditor) => void;
   scopeLabel: string;
@@ -17,6 +18,7 @@ interface LeftPaneProps {
 
 export function LeftPane({
   value,
+  currentFilePath,
   onChange,
   onEditorReady,
   scopeLabel,
@@ -45,6 +47,7 @@ export function LeftPane({
           scopeLabel={scopeLabel}
           sessionResetKey={currentProjectId}
           fileContent={value}
+          currentFilePath={currentFilePath}
           apiKey={apiKey}
           onNavigateViewPath={onNavigateViewPath}
           onEditorChange={onChange}
