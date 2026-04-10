@@ -48,6 +48,8 @@ export function PreviewPane({
 }: PreviewPaneProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const svgRef = useRef<HTMLDivElement>(null);
+  const highlightedNodeIdRef = useRef(highlightedNodeId);
+  highlightedNodeIdRef.current = highlightedNodeId;
   const [transform, setTransform] = useState({ scale: 1, x: 0, y: 0 });
   const [isDragging, setIsDragging] = useState(false);
   const isDraggingRef = useRef(false);
@@ -235,6 +237,27 @@ export function PreviewPane({
     setIsDragging(false);
   }, []);
 
+  // MutationObserver: re-apply highlight after dangerouslySetInnerHTML replaces the SVG DOM.
+  // React's useEffect dep comparison may not re-run when the SVG string is unchanged between
+  // renders (e.g. rapid recompile cycles), so we use a MutationObserver to catch DOM replacements.
+  useEffect(() => {
+    const el = svgRef.current;
+    if (!el) return;
+    const observer = new MutationObserver(() => {
+      const nodeId = highlightedNodeIdRef.current;
+      el.querySelectorAll(".karasu-highlighted").forEach((e) =>
+        e.classList.remove("karasu-highlighted"),
+      );
+      if (!nodeId) return;
+      const target =
+        el.querySelector(`[data-node-id="${CSS.escape(nodeId)}"]`) ??
+        el.querySelector(`[data-container-id="${CSS.escape(nodeId)}"]`);
+      if (target) target.classList.add("karasu-highlighted");
+    });
+    observer.observe(el, { childList: true });
+    return () => observer.disconnect();
+  }, []);
+
   // Apply highlight to the target node or container after SVG injection
   useEffect(() => {
     if (!svgRef.current) return;
@@ -249,9 +272,7 @@ export function PreviewPane({
     const target =
       svgRef.current.querySelector(`[data-node-id="${CSS.escape(highlightedNodeId)}"]`) ??
       svgRef.current.querySelector(`[data-container-id="${CSS.escape(highlightedNodeId)}"]`);
-    if (target) {
-      target.classList.add("karasu-highlighted");
-    }
+    if (target) target.classList.add("karasu-highlighted");
   }, [highlightedNodeId, svg]);
 
   const panelMetadata = detailPanel ? nodeMetadata.get(detailPanel.nodeId) : undefined;
