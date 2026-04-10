@@ -235,6 +235,28 @@ export function PreviewPane({
     setIsDragging(false);
   }, []);
 
+  // MutationObserver: detect when SVG content is replaced (innerHTML re-injection)
+  useEffect(() => {
+    const el = svgRef.current;
+    if (!el) return;
+    const observer = new MutationObserver((mutations) => {
+      for (const mutation of mutations) {
+        if (mutation.target === el && mutation.type === "childList") {
+          // eslint-disable-next-line no-console
+          console.debug(
+            "[karasu/highlight] SVG DOM replaced (dangerouslySetInnerHTML re-applied)",
+            "added:",
+            mutation.addedNodes.length,
+            "removed:",
+            mutation.removedNodes.length,
+          );
+        }
+      }
+    });
+    observer.observe(el, { childList: true });
+    return () => observer.disconnect();
+  }, []);
+
   // Apply highlight to the target node or container after SVG injection
   useEffect(() => {
     if (!svgRef.current) return;
@@ -243,7 +265,11 @@ export function PreviewPane({
     const prev = svgRef.current.querySelectorAll(".karasu-highlighted");
     prev.forEach((el) => el.classList.remove("karasu-highlighted"));
 
-    if (!highlightedNodeId) return;
+    if (!highlightedNodeId) {
+      // eslint-disable-next-line no-console
+      console.debug("[karasu/highlight] cleared (highlightedNodeId is null/undefined)");
+      return;
+    }
 
     // Try node first, then container
     const target =
@@ -251,6 +277,16 @@ export function PreviewPane({
       svgRef.current.querySelector(`[data-container-id="${CSS.escape(highlightedNodeId)}"]`);
     if (target) {
       target.classList.add("karasu-highlighted");
+      // eslint-disable-next-line no-console
+      console.debug("[karasu/highlight] applied to", target.tagName, highlightedNodeId);
+    } else {
+      // eslint-disable-next-line no-console
+      console.debug(
+        "[karasu/highlight] target not found for",
+        highlightedNodeId,
+        "svgLength:",
+        svg.length,
+      );
     }
   }, [highlightedNodeId, svg]);
 
