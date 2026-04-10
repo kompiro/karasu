@@ -51,9 +51,13 @@ Examples:
 
 program
   .command("translate <file>")
-  .description("Translate an infra config file (docker-compose, k8s) to a deploy.krs scaffold")
-  .requiredOption("--from <format>", "Input format: compose | k8s")
+  .description(
+    "Translate an infra config or API spec file to a .krs scaffold (deploy, service, or database block)",
+  )
+  .requiredOption("--from <format>", "Input format: compose | k8s | openapi | db")
   .option("--map <path>", "Path to karasu.map.yaml (default: same directory as input file)")
+  .option("--service <name>", "Service name for openapi format (default: derived from info.title)")
+  .option("--database <name>", "Database name for db format (default: derived from file name)")
   .option("-o, --output <path>", "Write .krs to file (default: stdout)")
   .addHelpText(
     "after",
@@ -69,15 +73,37 @@ Examples:
   $ for f in manifests/*.yaml; do karasu translate --from k8s "$f"; done > deploy.krs
 
   # Use a shared karasu.map.yaml
-  $ karasu translate --from compose docker-compose.yml --map karasu.map.yaml`,
+  $ karasu translate --from compose docker-compose.yml --map karasu.map.yaml
+
+  # Translate OpenAPI spec to unclassified usecases
+  $ karasu translate --from openapi api.yaml --service ECommerce >> ecommerce.krs
+
+  # Translate DB schema to database block
+  $ karasu translate --from db schema.sql --database OrderDB >> resources.krs`,
   )
-  .action((file: string, options: { from: string; map?: string; output?: string }) => {
-    if (options.from !== "compose" && options.from !== "k8s") {
-      process.stderr.write(`Error: --from must be "compose" or "k8s"\n`);
-      process.exit(1);
-    }
-    translate(file, { from: options.from, map: options.map, output: options.output });
-  });
+  .action(
+    (
+      file: string,
+      options: { from: string; map?: string; output?: string; service?: string; database?: string },
+    ) => {
+      if (
+        options.from !== "compose" &&
+        options.from !== "k8s" &&
+        options.from !== "openapi" &&
+        options.from !== "db"
+      ) {
+        process.stderr.write(`Error: --from must be "compose", "k8s", "openapi", or "db"\n`);
+        process.exit(1);
+      }
+      translate(file, {
+        from: options.from,
+        map: options.map,
+        output: options.output,
+        service: options.service,
+        database: options.database,
+      });
+    },
+  );
 
 program
   .command("fmt [files...]")
