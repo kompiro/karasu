@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import type { SystemNode } from "@karasu/core";
+import type { SystemNode } from "@karasu-tools/core";
 import { ApiKeySetup } from "./ApiKeySetup.js";
 import { useChatSession, type PatchProposal } from "../hooks/useChatSession.js";
 

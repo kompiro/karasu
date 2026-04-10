@@ -1,7 +1,7 @@
 import { useState, useCallback, useEffect, useRef } from "react";
 import Anthropic, { APIError } from "@anthropic-ai/sdk";
 import { applyKrsPatch, type PatchOperation } from "../utils/krs-patch.js";
-import type { SystemNode, KrsNode, KrsEdge } from "@karasu/core";
+import type { SystemNode, KrsNode, KrsEdge } from "@karasu-tools/core";
 
 const MODEL = "claude-sonnet-4-6";
 

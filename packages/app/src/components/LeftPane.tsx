@@ -1,6 +1,6 @@
 import { useState, useCallback } from "react";
 import type { editor } from "monaco-editor";
-import type { SystemNode } from "@karasu/core";
+import type { SystemNode } from "@karasu-tools/core";
 import { EditorPane } from "./EditorPane.js";
 import { LeftTabBar, type LeftTab } from "./LeftTabBar.js";
 import { ChatPane } from "./ChatPane.js";
