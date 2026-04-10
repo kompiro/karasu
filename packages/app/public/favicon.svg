@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="32" height="32">
+  <!-- karasu favicon: 鴉 kanji in rounded square, legible at 16px -->
+  <rect width="32" height="32" rx="6" fill="#07090f"/>
+  <text x="16" y="24" text-anchor="middle" font-family="serif" font-size="22" fill="#dce8ff">鴉</text>
+</svg>

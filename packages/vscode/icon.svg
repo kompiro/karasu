@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="128" height="128">
+  <!-- karasu VS Code extension icon: professional square with 鴉 kanji -->
+  <!-- Background with subtle gradient effect via layered rects -->
+  <rect width="128" height="128" rx="12" fill="#07090f"/>
+  <rect width="128" height="128" rx="12" fill="url(#grad)" opacity="0.4"/>
+  <defs>
+    <radialGradient id="grad" cx="50%" cy="40%" r="60%">
+      <stop offset="0%" stop-color="#3d5a8a"/>
+      <stop offset="100%" stop-color="#07090f"/>
+    </radialGradient>
+  </defs>
+  <!-- Border accent -->
+  <rect x="1" y="1" width="126" height="126" rx="11" fill="none" stroke="#3d5a8a" stroke-width="1.5"/>
+  <!-- 鴉 kanji — centered, large -->
+  <text x="64" y="88" text-anchor="middle" font-family="serif" font-size="76" fill="#dce8ff">鴉</text>
+  <!-- Accent underline -->
+  <rect x="32" y="97" width="64" height="2" rx="1" fill="#4d8fff" opacity="0.8"/>
+</svg>
