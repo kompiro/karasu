@@ -8,7 +8,6 @@
     "Programming Languages"
   ],
   "publisher": "karasu",
-  "icon": "icon.svg",
   "main": "./out/extension.js",
   "scripts": {
     "build": "esbuild src/extension.ts --bundle --platform=node --format=cjs --outfile=out/extension.js --external:vscode",
@@ -78,6 +77,7 @@
     ]
   },
   "activationEvents": [],
+  "icon": "icon.svg",
   "engines": {
     "vscode": "^1.85.0"
   }
