@@ -847,6 +847,27 @@ system ECPlatform {
 }
 `;
 
+    it("excludes domain edges where edge.from is not a domain child of the service", () => {
+      const krs = `
+system ECPlatform {
+  service ECommerce {
+    domain Order {
+      usecase PlaceOrder
+    }
+    domain Billing {
+      ExternalDomain -> Billing "should be excluded"
+    }
+  }
+}
+`;
+      const systems = parseSystem(krs);
+      const view = extractView(systems, ["ECPlatform", "ECommerce"]);
+      const spurious = view.childEdges.find(
+        (e) => e.from === "ExternalDomain" && e.to === "Billing",
+      );
+      expect(spurious).toBeUndefined();
+    });
+
     it("surfaces intra-service domain edges in service view", () => {
       const systems = parseSystem(INTRA_SERVICE_KRS);
       const view = extractView(systems, ["ECPlatform", "ECommerce"]);

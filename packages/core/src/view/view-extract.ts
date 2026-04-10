@@ -467,7 +467,7 @@ export function extractView(
     for (const domain of containerNode.children) {
       if (domain.kind !== "domain") continue;
       for (const edge of domain.edges) {
-        if (!domainIds.has(edge.to)) continue;
+        if (!domainIds.has(edge.from) || !domainIds.has(edge.to)) continue;
         const key = `${edge.from}->${edge.to}`;
         if (!existingEdgeKeys.has(key)) {
           intraDomainEdges.push(edge);

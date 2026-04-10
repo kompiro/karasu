@@ -1041,6 +1041,25 @@ system EC {
       expect(result.value.nodePathIndex.get("Checkout")).toEqual(["EC", "Payment", "Checkout"]);
     });
 
+    it("does not error when the same domain id appears in different systems", () => {
+      const result = Parser.parse(`
+system A {
+  service S1 {
+    domain Order {}
+  }
+}
+system B {
+  service S2 {
+    domain Order {}
+  }
+}
+      `);
+      const errors = result.diagnostics.filter(
+        (d) => d.severity === "error" && d.message.includes("Order"),
+      );
+      expect(errors).toHaveLength(0);
+    });
+
     it("warns when owns references an id not found in the system hierarchy", () => {
       const result = Parser.parse(`
 system EC {
