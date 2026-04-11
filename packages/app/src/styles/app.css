@@ -358,11 +358,14 @@ body,
   height: 36px;
 }
 
-.left-tab-bar__right {
-  margin-left: auto;
+.left-pane-toolbar {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 3px;
+  padding: 3px 10px;
+  background: var(--bg-surface);
+  border-bottom: 1px solid var(--border-default);
+  flex-shrink: 0;
 }
 
 .left-tab {
