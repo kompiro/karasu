@@ -7,6 +7,7 @@ export function analyze(file: KrsFile, sheets: StyleSheet[], systemSheetCount = 
 
   warnings.push(...detectDomainDispersal(file));
   warnings.push(...detectUnassignedDomains(file));
+  warnings.push(...detectUnassignedUsecases(file));
   warnings.push(...detectStyleConflicts(sheets, systemSheetCount));
   warnings.push(...detectMissingProperties(file));
   warnings.push(...detectInvalidOwns(file));
@@ -73,6 +74,36 @@ function detectUnassignedDomains(file: KrsFile): Warning[] {
     details: [],
     loc: domain.loc,
   }));
+}
+
+function detectUnassignedUsecases(file: KrsFile): Warning[] {
+  const warnings: Warning[] = [];
+
+  function walkServiceChildren(nodes: KrsNode[]): void {
+    for (const node of nodes) {
+      if (node.kind === "service") {
+        for (const child of node.children) {
+          if (child.kind === "usecase") {
+            warnings.push({
+              kind: "unassigned-usecase",
+              message: `usecase "${child.id}" is not assigned to any domain`,
+              details: [],
+              loc: child.loc,
+            });
+          }
+        }
+        // recurse into domains to find nested services (not expected, but safe)
+        walkServiceChildren(node.children.filter((c) => c.kind !== "usecase"));
+      }
+    }
+  }
+
+  for (const system of file.systems) {
+    walkServiceChildren(system.children);
+  }
+  walkServiceChildren(file.services);
+
+  return warnings;
 }
 
 function detectStyleConflicts(sheets: StyleSheet[], systemSheetCount = 1): Warning[] {

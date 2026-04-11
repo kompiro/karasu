@@ -8,6 +8,10 @@ export interface TranslatorContext {
   inputPath: string;
   /** Explicit path to karasu.map.yaml; if undefined, look beside the input file. */
   mapPath?: string;
+  /** Service name for openapi format. Falls back to info.title when omitted. */
+  service?: string;
+  /** Database name for db format. Falls back to input file name when omitted. */
+  database?: string;
 }
 
 export interface Translator {

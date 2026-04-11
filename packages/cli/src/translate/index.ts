@@ -1,15 +1,19 @@
 import { readFileSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { ComposeTranslator } from "./compose.js";
+import { DbTranslator } from "./db.js";
 import { K8sTranslator } from "./k8s.js";
+import { OpenApiTranslator } from "./openapi.js";
 import type { TranslatorContext } from "./translator.js";
 
-type TranslateFormat = "compose" | "k8s";
+type TranslateFormat = "compose" | "k8s" | "openapi" | "db";
 
 interface TranslateOptions {
   from: TranslateFormat;
   map?: string;
   output?: string;
+  service?: string;
+  database?: string;
 }
 
 export async function translate(inputFile: string, options: TranslateOptions): Promise<void> {
@@ -25,9 +29,25 @@ export async function translate(inputFile: string, options: TranslateOptions): P
   const context: TranslatorContext = {
     inputPath,
     mapPath: options.map,
+    service: options.service,
+    database: options.database,
   };
 
-  const translator = options.from === "compose" ? new ComposeTranslator() : new K8sTranslator();
+  let translator;
+  switch (options.from) {
+    case "compose":
+      translator = new ComposeTranslator();
+      break;
+    case "k8s":
+      translator = new K8sTranslator();
+      break;
+    case "openapi":
+      translator = new OpenApiTranslator();
+      break;
+    case "db":
+      translator = new DbTranslator();
+      break;
+  }
 
   let result: string;
   try {
