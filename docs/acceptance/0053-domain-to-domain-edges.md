@@ -100,6 +100,9 @@ domain OrderDomain {
 
 - [ ] The system-view implicit edge label changes to `"2 domain edges"`
 
+> **Note**: clicking the `"N domain edges"` label to show a detail list of each domain edge
+> (from → to, label) is tracked separately in #463 and is not yet implemented.
+
 ---
 
 ### Case 4: Duplicate domain ID error within a system
