@@ -131,6 +131,7 @@ export function useSystemView(
             nodeFileIndex: result.nodeFileIndex,
           });
         } else {
+          if (result.svg === lastValidSvg.current) return;
           lastValidSvg.current = result.svg;
           lastValidSvgKey.current = currentKey;
           setState({

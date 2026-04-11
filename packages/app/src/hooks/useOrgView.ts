@@ -88,6 +88,7 @@ export function useOrgView(
               styles: prev.styles,
             }));
           } else {
+            if (result.svg === lastValidSvg.current) return;
             lastValidSvg.current = result.svg;
             setState({
               orgSvg: result.svg,
