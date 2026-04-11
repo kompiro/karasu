@@ -8,7 +8,7 @@ vi.mock("fflate", async (importOriginal) => {
   const actual = await importOriginal<typeof import("fflate")>();
   return {
     ...actual,
-    zipSync: vi.fn(() => new Uint8Array([0x50, 0x4b, 0x05, 0x06, ...new Array(18).fill(0)])),
+    zipSync: vi.fn<() => Uint8Array>(() => new Uint8Array([0x50, 0x4b, 0x05, 0x06, ...new Array(18).fill(0)])),
   };
 });
 
@@ -49,13 +49,13 @@ describe("exportProjectAsZip", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     capturedFilename = null;
-    clickSpy = vi.fn();
+    clickSpy = vi.fn<() => void>();
 
     vi.stubGlobal(
       "URL",
       Object.assign(URL, {
-        createObjectURL: vi.fn(() => "blob:mock"),
-        revokeObjectURL: vi.fn(),
+        createObjectURL: vi.fn<(blob: Blob) => string>(() => "blob:mock"),
+        revokeObjectURL: vi.fn<(url: string) => void>(),
       }),
     );
 
