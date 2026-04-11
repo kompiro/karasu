@@ -398,11 +398,7 @@ export function AppShell({
   const hasSidebar = !!(sidebarHeaderContent || sidebarContent);
   const className = hideEditor
     ? "app serve-mode"
-    : [
-        "app-shell",
-        hasSidebar ? "has-sidebar" : "",
-        previewFocused ? "preview-focused" : "",
-      ]
+    : ["app-shell", hasSidebar ? "has-sidebar" : "", previewFocused ? "preview-focused" : ""]
         .filter(Boolean)
         .join(" ");
 
