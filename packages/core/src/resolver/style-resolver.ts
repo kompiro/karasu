@@ -67,6 +67,7 @@ export function resolveStyles(
   deployNodes?: DeployNode[],
   organizations?: OrganizationBlock[],
   extraNodes?: KrsNode[],
+  extraEdges?: KrsEdge[],
 ): ResolvedStyles {
   // Clone rules with globally renumbered sourceIndex to preserve cascade order across sheets.
   // This avoids mutating cached sheets (e.g. the builtin singleton).
@@ -113,6 +114,15 @@ export function resolveStyles(
 
   if (extraNodes) {
     processNodes(extraNodes);
+  }
+
+  if (extraEdges) {
+    for (const edge of extraEdges) {
+      const key = `${edge.from}->${edge.to}`;
+      if (!edgeStyles.has(key)) {
+        edgeStyles.set(key, resolveEdgeStyle(edge, allRules));
+      }
+    }
   }
 
   if (deployNodes) {

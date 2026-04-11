@@ -290,29 +290,40 @@ function _compileCore(krsSource: string, opts: CompileOptions): CompileResult {
     ...deploySliceForStyle.containers.flatMap((c) => c.units),
     ...deploySliceForStyle.unclassifiedUnits,
   ];
-  const styles = resolveStyles(
-    parseResult.value.systems,
-    resolveSheets,
-    deployUnits,
-    undefined,
-    parseResult.value.domains,
-  );
   const hasDeployDiagram = parseResult.value.deploys.length > 0;
   const deployBlocks = parseResult.value.deploys.map((d) => ({ id: d.id, label: d.label ?? d.id }));
   const serviceIdsWithDeploy = new Set(deploySliceForStyle.containers.map((c) => c.serviceId));
   const ownerIndex = parseResult.value.ownerIndex;
 
   if (diagramType === "deploy") {
+    const styles = resolveStyles(
+      parseResult.value.systems,
+      resolveSheets,
+      deployUnits,
+      undefined,
+      parseResult.value.domains,
+    );
     const svg = renderDeploy(deploySliceForStyle, styles, displayMode);
     const nodeMetadata = buildDeployNodeMetadata(deploySliceForStyle);
     return { diagramType: "deploy", svg, warnings, diagnostics, nodeMetadata, deployBlocks };
   }
 
   // system (default)
+  // extractView must be called before resolveStyles so that derived edges (e.g. implicit
+  // service edges synthesized from cross-service domain edges) can be included in the
+  // edgeStyles cache. Without this, derived edges fall back to defaultEdgeStyle.
   const viewSlice = extractView(
     parseResult.value.systems,
     viewPath ?? [],
     parseResult.value.domains,
+  );
+  const styles = resolveStyles(
+    parseResult.value.systems,
+    resolveSheets,
+    deployUnits,
+    undefined,
+    parseResult.value.domains,
+    viewSlice.childEdges,
   );
   const svg = render(viewSlice, styles, serviceIdsWithDeploy, ownerIndex, displayMode);
   const nodeMetadata = buildNodeMetadata(
@@ -386,13 +397,6 @@ async function _compileProjectCore(
     ...deploySliceForStyle.containers.flatMap((c) => c.units),
     ...deploySliceForStyle.unclassifiedUnits,
   ];
-  const styles = resolveStyles(
-    resolved.krsFile.systems,
-    resolveSheets,
-    deployUnits,
-    undefined,
-    resolved.krsFile.domains,
-  );
   const hasDeployDiagram = resolved.krsFile.deploys.length > 0;
   const deployBlocks = resolved.krsFile.deploys.map((d) => ({
     id: d.id,
@@ -402,13 +406,31 @@ async function _compileProjectCore(
   const ownerIndex = resolved.krsFile.ownerIndex;
 
   if (diagramType === "deploy") {
+    const styles = resolveStyles(
+      resolved.krsFile.systems,
+      resolveSheets,
+      deployUnits,
+      undefined,
+      resolved.krsFile.domains,
+    );
     const svg = renderDeploy(deploySliceForStyle, styles, displayMode);
     const nodeMetadata = buildDeployNodeMetadata(deploySliceForStyle);
     return { diagramType: "deploy", svg, warnings, diagnostics, nodeMetadata, deployBlocks };
   }
 
   // system (default)
+  // extractView must be called before resolveStyles so that derived edges (e.g. implicit
+  // service edges synthesized from cross-service domain edges) can be included in the
+  // edgeStyles cache. Without this, derived edges fall back to defaultEdgeStyle.
   const viewSlice = extractView(resolved.krsFile.systems, viewPath ?? [], resolved.krsFile.domains);
+  const styles = resolveStyles(
+    resolved.krsFile.systems,
+    resolveSheets,
+    deployUnits,
+    undefined,
+    resolved.krsFile.domains,
+    viewSlice.childEdges,
+  );
   const svg = render(viewSlice, styles, serviceIdsWithDeploy, ownerIndex, displayMode);
   const nodeMetadata = buildNodeMetadata(
     viewSlice,

@@ -1,7 +1,6 @@
 /// <reference types="node" />
 import { describe, it, expect } from "vitest";
 import { Parser } from "./parser/parser.js";
-import { analyze } from "./resolver/warnings.js";
 import { readFileSync, readdirSync } from "fs";
 import { resolve, dirname } from "path";
 import { fileURLToPath } from "url";
@@ -20,12 +19,16 @@ describe("feature-samples: all files parse without errors", () => {
   });
 });
 
-describe("feature-samples: domain-drift.krs triggers drift warning", () => {
-  it("emits exactly 1 domain-dispersal warning", () => {
+describe("feature-samples: domain-drift.krs demonstrates domain-to-domain edges", () => {
+  it("parses without errors and has a domain edge", () => {
     const src = readFileSync(resolve(dir, "domain-drift.krs"), "utf8");
     const result = Parser.parse(src);
-    const warnings = analyze(result.value, []);
-    const drift = warnings.filter((w) => w.kind === "domain-dispersal");
-    expect(drift).toHaveLength(1);
+    const errors = result.diagnostics.filter((d) => d.severity === "error");
+    expect(errors).toHaveLength(0);
+    // OrderDomain should have an outgoing edge to PaymentDomain
+    const system = result.value.systems[0];
+    const orderService = system.children.find((c) => c.id === "OrderService");
+    const orderDomain = orderService?.children.find((c) => c.id === "OrderDomain");
+    expect(orderDomain?.edges.some((e) => e.to === "PaymentDomain")).toBe(true);
   });
 });

@@ -1,7 +1,13 @@
 // domain-drift.krs
-// Demonstrates: domain drift warning — the same domain name appears under
-// two different services, which signals a potential cohesion problem.
-// Expected: 1 drift warning for "OrderDomain".
+// Demonstrates: domain-to-domain edges across and within services.
+//
+// Cross-service edge (OrderDomain -> PaymentDomain):
+//   No explicit service edge exists, so an implicit service edge is derived
+//   and rendered in amber dashed style in the system view.
+//
+// Intra-service edge (OrderDomain -> ShippingDomain within OrderService):
+//   Both domains belong to OrderService, so the edge is rendered directly
+//   in the service drill-down view.
 
 system DriftSample {
   label "Domain Drift Sample"
@@ -11,18 +17,23 @@ system DriftSample {
 
     domain OrderDomain {
       label "Order Domain"
-      description "Drift: same domain name also appears in PaymentService."
+      description "Depends on PaymentDomain to process payments and ShippingDomain to ship orders."
+      OrderDomain -> PaymentDomain "decides payment"
+      OrderDomain -> ShippingDomain "triggers shipment"
+    }
+
+    domain ShippingDomain {
+      label "Shipping Domain"
+      description "Handles order shipment."
     }
   }
 
   service PaymentService {
     label "Payment Service"
 
-    domain OrderDomain {
-      label "Order Domain"
-      description "Drift: same domain name also appears in OrderService."
+    domain PaymentDomain {
+      label "Payment Domain"
+      description "Handles payment processing for orders."
     }
   }
-
-  OrderService -> PaymentService "process payment"
 }

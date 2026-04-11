@@ -1024,7 +1024,7 @@ system EC {
       expect(errors[0].message).toContain("Payment");
     });
 
-    it("warns on cross-scope duplicate node id and keeps first path", () => {
+    it("errors on cross-scope duplicate domain id and keeps first path", () => {
       const result = Parser.parse(`
 system EC {
   service Payment {
@@ -1035,10 +1035,29 @@ system EC {
   }
 }
       `);
-      const warnings = result.diagnostics.filter((d) => d.severity === "warning");
-      expect(warnings.length).toBeGreaterThanOrEqual(1);
-      expect(warnings[0].message).toContain("Checkout");
+      const errors = result.diagnostics.filter((d) => d.severity === "error");
+      expect(errors.length).toBeGreaterThanOrEqual(1);
+      expect(errors[0].message).toContain("Checkout");
       expect(result.value.nodePathIndex.get("Checkout")).toEqual(["EC", "Payment", "Checkout"]);
+    });
+
+    it("does not error when the same domain id appears in different systems", () => {
+      const result = Parser.parse(`
+system A {
+  service S1 {
+    domain Order {}
+  }
+}
+system B {
+  service S2 {
+    domain Order {}
+  }
+}
+      `);
+      const errors = result.diagnostics.filter(
+        (d) => d.severity === "error" && d.message.includes("Order"),
+      );
+      expect(errors).toHaveLength(0);
     });
 
     it("warns when owns references an id not found in the system hierarchy", () => {

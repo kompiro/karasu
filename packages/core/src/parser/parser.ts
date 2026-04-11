@@ -1184,32 +1184,49 @@ export class Parser {
     // resource / usecase / user nodes are intentionally excluded so that
     // legitimate shared resources across usecases do not generate warnings.
     const INDEXED_KINDS = new Set(["service", "domain"]);
-    const walk = (node: KrsNode, path: string[]): void => {
+    // seenDomainIds is reset per system so that the same domain ID in different
+    // systems does not trigger an error (cross-system parallel modelling is allowed).
+    const walk = (node: KrsNode, path: string[], seenDomainIds: Set<string>): void => {
       const currentPath = [...path, node.id];
       if (INDEXED_KINDS.has(node.kind)) {
-        if (index.has(node.id)) {
-          this.diagnostics.push({
-            severity: "warning",
-            message: `Node id "${node.id}" appears in multiple locations; first path is used for navigation`,
-            loc: node.loc,
-          });
+        if (node.kind === "domain") {
+          if (seenDomainIds.has(node.id)) {
+            this.diagnostics.push({
+              severity: "error",
+              message: `Domain id "${node.id}" must be unique within a system; found in multiple services`,
+              loc: node.loc,
+            });
+          } else {
+            seenDomainIds.add(node.id);
+            if (!index.has(node.id)) index.set(node.id, currentPath);
+          }
         } else {
-          index.set(node.id, currentPath);
+          if (index.has(node.id)) {
+            this.diagnostics.push({
+              severity: "warning",
+              message: `Node id "${node.id}" appears in multiple locations; first path is used for navigation`,
+              loc: node.loc,
+            });
+          } else {
+            index.set(node.id, currentPath);
+          }
         }
       }
       for (const child of node.children) {
-        walk(child, currentPath);
+        walk(child, currentPath, seenDomainIds);
       }
     };
     for (const system of systems) {
       this.collectNodeIds(system.children, new Set<string>());
+      const seenDomainIds = new Set<string>();
       for (const child of system.children) {
-        walk(child, [system.id]);
+        walk(child, [system.id], seenDomainIds);
       }
     }
     // Index top-level domains (not nested in any system)
+    // Each top-level domain is its own scope; no cross-domain uniqueness check needed here.
     for (const domain of domains) {
-      walk(domain, []);
+      walk(domain, [], new Set<string>());
     }
     return index;
   }
