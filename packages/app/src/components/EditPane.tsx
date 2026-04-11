@@ -2,13 +2,13 @@ import { useState, useCallback } from "react";
 import type { editor } from "monaco-editor";
 import type { SystemNode } from "@karasu-tools/core";
 import { EditorPane } from "./EditorPane.js";
-import { LeftTabBar, type LeftTab } from "./LeftTabBar.js";
-import { LeftPaneToolbar } from "./LeftPaneToolbar.js";
+import { EditTabBar, type EditTab } from "./EditTabBar.js";
+import { EditPaneToolbar } from "./EditPaneToolbar.js";
 import { ChatPane } from "./ChatPane.js";
 import { SettingsPane } from "./SettingsPane.js";
 import { getStoredApiKey } from "../utils/api-key-storage.js";
 
-interface LeftPaneProps {
+interface EditPaneProps {
   value: string;
   currentFilePath: string | null;
   onChange: (value: string) => void;
@@ -23,7 +23,7 @@ interface LeftPaneProps {
   hasParseErrors?: boolean;
 }
 
-export function LeftPane({
+export function EditPane({
   value,
   currentFilePath,
   onChange,
@@ -34,8 +34,8 @@ export function LeftPane({
   onNavigateViewPath,
   onFormat,
   hasParseErrors,
-}: LeftPaneProps) {
-  const [activeTab, setActiveTab] = useState<LeftTab>("editor");
+}: EditPaneProps) {
+  const [activeTab, setActiveTab] = useState<EditTab>("editor");
   const [apiKey, setApiKey] = useState<string | null>(() => getStoredApiKey());
 
   const handleApiKeyChange = useCallback(() => {
@@ -47,9 +47,9 @@ export function LeftPane({
   }, []);
 
   return (
-    <div className="left-pane">
-      <LeftTabBar activeTab={activeTab} onTabChange={setActiveTab} />
-      <LeftPaneToolbar activeTab={activeTab} onFormat={onFormat} hasParseErrors={hasParseErrors} />
+    <div className="edit-pane">
+      <EditTabBar activeTab={activeTab} onTabChange={setActiveTab} />
+      <EditPaneToolbar activeTab={activeTab} onFormat={onFormat} hasParseErrors={hasParseErrors} />
       {activeTab === "editor" && (
         <EditorPane
           value={value}
