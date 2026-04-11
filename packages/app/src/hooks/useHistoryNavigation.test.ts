@@ -53,7 +53,9 @@ describe("buildHash", () => {
   });
 
   it("appends :highlightNodeId to system hash when provided", () => {
-    expect(buildHash("system", ["Payment"], false, "SomeNode")).toBe("#krs-system-Payment:SomeNode");
+    expect(buildHash("system", ["Payment"], false, "SomeNode")).toBe(
+      "#krs-system-Payment:SomeNode",
+    );
   });
 
   it("omits colon when highlightNodeId is null", () => {
@@ -208,7 +210,11 @@ describe("useHistoryNavigation", () => {
       history.replaceState(null, "", "#krs-org-root");
       const dispatch = makeDispatch();
       renderHook(() => useHistoryNavigation(makeOptions({ dispatch, activeView: "system" })));
-      expect(dispatch).toHaveBeenCalledWith({ type: "SET_ACTIVE_VIEW", activeView: "org", highlightNodeId: null });
+      expect(dispatch).toHaveBeenCalledWith({
+        type: "SET_ACTIVE_VIEW",
+        activeView: "org",
+        highlightNodeId: null,
+      });
     });
   });
 
@@ -333,7 +339,11 @@ describe("useHistoryNavigation", () => {
         window.dispatchEvent(new PopStateEvent("popstate"));
       });
 
-      expect(dispatch).toHaveBeenCalledWith({ type: "SET_ACTIVE_VIEW", activeView: "deploy", highlightNodeId: null });
+      expect(dispatch).toHaveBeenCalledWith({
+        type: "SET_ACTIVE_VIEW",
+        activeView: "deploy",
+        highlightNodeId: null,
+      });
     });
 
     it("passes highlightNodeId to SET_ACTIVE_VIEW when popstate hash has colon suffix", async () => {
@@ -346,7 +356,11 @@ describe("useHistoryNavigation", () => {
         window.dispatchEvent(new PopStateEvent("popstate"));
       });
 
-      expect(dispatch).toHaveBeenCalledWith({ type: "SET_ACTIVE_VIEW", activeView: "deploy", highlightNodeId: "ECommerce" });
+      expect(dispatch).toHaveBeenCalledWith({
+        type: "SET_ACTIVE_VIEW",
+        activeView: "deploy",
+        highlightNodeId: "ECommerce",
+      });
     });
 
     it("dispatches SET_HIGHLIGHTED_NODE when popstate stays on same view with highlight", async () => {
@@ -365,7 +379,9 @@ describe("useHistoryNavigation", () => {
     it("dispatches SET_HIGHLIGHTED_NODE with null when popstate stays on same view without highlight", async () => {
       const dispatch = makeDispatch();
       renderHook(() =>
-        useHistoryNavigation(makeOptions({ dispatch, activeView: "deploy", highlightedNodeId: "ECommerce" })),
+        useHistoryNavigation(
+          makeOptions({ dispatch, activeView: "deploy", highlightedNodeId: "ECommerce" }),
+        ),
       );
       dispatch.mockClear();
 

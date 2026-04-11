@@ -57,8 +57,10 @@ export function parseHash(hash: string): {
     base = hash.slice(0, colonIdx);
   }
 
-  if (base === "#krs-deploy") return { activeView: "deploy", nodeId: null, isOrgTreeView: false, highlightNodeId };
-  if (base === "#krs-org-tree") return { activeView: "org", nodeId: null, isOrgTreeView: true, highlightNodeId };
+  if (base === "#krs-deploy")
+    return { activeView: "deploy", nodeId: null, isOrgTreeView: false, highlightNodeId };
+  if (base === "#krs-org-tree")
+    return { activeView: "org", nodeId: null, isOrgTreeView: true, highlightNodeId };
   const m = base.match(/^#krs-(system|org)-(.+)$/);
   if (!m) return null;
   const activeView = m[1] as "system" | "org";
@@ -116,7 +118,11 @@ export function useHistoryNavigation({
     }
     // Restore activeView from hash if different (include highlightNodeId in the transition)
     if (parsed.activeView !== activeViewRef.current) {
-      dispatch({ type: "SET_ACTIVE_VIEW", activeView: parsed.activeView, highlightNodeId: parsed.highlightNodeId });
+      dispatch({
+        type: "SET_ACTIVE_VIEW",
+        activeView: parsed.activeView,
+        highlightNodeId: parsed.highlightNodeId,
+      });
     } else if (parsed.highlightNodeId !== null) {
       dispatch({ type: "SET_HIGHLIGHTED_NODE", nodeId: parsed.highlightNodeId });
     }
@@ -171,7 +177,11 @@ export function useHistoryNavigation({
       isProgrammaticNavRef.current = true;
 
       if (parsed.activeView !== activeViewRef.current) {
-        dispatch({ type: "SET_ACTIVE_VIEW", activeView: parsed.activeView, highlightNodeId: parsed.highlightNodeId });
+        dispatch({
+          type: "SET_ACTIVE_VIEW",
+          activeView: parsed.activeView,
+          highlightNodeId: parsed.highlightNodeId,
+        });
       } else {
         dispatch({ type: "SET_HIGHLIGHTED_NODE", nodeId: parsed.highlightNodeId });
       }
