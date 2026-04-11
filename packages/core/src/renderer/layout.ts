@@ -350,15 +350,19 @@ export function layout(
       ghostX += dims.width + NODE_GAP;
     }
 
-    // Expand outermost container to include ghost domains
+    // Expand outermost container to include ghost domains (both height and width)
     const ghostDomainNodes = viewSlice.ghostDomains
       .map((gd) => layoutNodes.get(gd.node.id))
       .filter((n): n is LayoutNode => n !== undefined);
     if (ghostDomainNodes.length > 0) {
       const maxGhostY = Math.max(...ghostDomainNodes.map((n) => n.y + n.height)) + GHOST_MARGIN;
+      const maxGhostX = Math.max(...ghostDomainNodes.map((n) => n.x + n.width)) + GHOST_MARGIN;
       const outermost = containers[0];
       if (maxGhostY > outermost.y + outermost.height) {
         outermost.height = maxGhostY - outermost.y;
+      }
+      if (maxGhostX > outermost.x + outermost.width) {
+        outermost.width = maxGhostX - outermost.x;
       }
     }
   }

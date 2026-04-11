@@ -590,7 +590,6 @@ function renderNode(
           fill: textColor,
           "font-size": `${subLabelFontSize}px`,
           "font-family": style.fontFamily,
-          opacity: 0.6,
         },
         escapeXml(`(${node.subLabel})`),
       ),
