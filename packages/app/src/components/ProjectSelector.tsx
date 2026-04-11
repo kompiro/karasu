@@ -170,13 +170,6 @@ export function ProjectSelector({
           {currentProject && (
             <>
               <button
-                onClick={onExportProject}
-                className="project-selector-btn"
-                title="ZIPとしてエクスポート"
-              >
-                ↓ Export
-              </button>
-              <button
                 onClick={handleRenameStart}
                 className="project-selector-btn"
                 title="プロジェクトをリネーム"
@@ -189,6 +182,13 @@ export function ProjectSelector({
                 title="プロジェクトを削除"
               >
                 ✕ Delete
+              </button>
+              <button
+                onClick={onExportProject}
+                className="project-selector-btn project-selector-btn--export"
+                title="ZIPとしてエクスポート"
+              >
+                ↓ Export
               </button>
             </>
           )}
