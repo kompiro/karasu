@@ -12,11 +12,6 @@
 | `[sync]` | 同期通信（エッジ用） | 実線矢印（デフォルト） |
 | `[human]` | 人間の利用者 | user ノードにのみ使用。デフォルトスタイルへの影響なし |
 | `[ai]` | AIエージェント | user ノードにのみ使用。デフォルトスタイルへの影響なし |
-| `[deprecated]` | 移行中の廃止予定ドメイン（domain のみ） | ⚠バッジ、半透明 |
-
-> `[deprecated]` は `domain` ノードにのみ使用できる。同一システム内で同じ ID を持つドメインが存在する場合、
-> 一方に `[deprecated]` を付与することでエラーを抑制できる（移行期の共存を許容）。
-> エッジは廃止予定ドメインにも有効で、両ドメインのエッジが描画される。
 
 ### 記述例
 
@@ -25,23 +20,6 @@ service Payment "決済サービス" [external]
 ECommerce --> Inventory "在庫を同期する" [async]
 user Customer "顧客" [human]
 user AIAgent "注文自動化エージェント" [ai]
-```
-
-#### 移行期の共存例
-
-```
-system OrderSystem {
-  service LegacyService {
-    domain Contract [deprecated] {
-      -> Billing
-    }
-  }
-  service NewService {
-    domain Contract {
-      -> Billing
-    }
-  }
-}
 ```
 
 ---
@@ -65,6 +43,30 @@ system OrderSystem {
 service Legacy "旧システム" [external] @deprecated @migration_target
 service NewAPI "新API"                 @new @experimental
 ```
+
+#### domain の移行期共存
+
+`@deprecated` または `@migration_target` を `domain` に付与すると、
+同一システム内で同じ ID を持つ `domain` の共存が許容される（移行期のモデリング）。
+`@migration_target` が付いている方がナビゲーションの優先先になる。
+
+```krs
+system OrderSystem {
+  service LegacyService {
+    domain Contract @deprecated {   // 移行元 — 廃止予定
+      -> Billing
+    }
+  }
+  service NewService {
+    domain Contract @migration_target {  // 移行先 — ナビゲーション優先
+      -> Billing
+    }
+  }
+}
+```
+
+> `@deprecated` 単独、または `@migration_target` 単独、どちらか一方が付いていれば重複を許容する。
+> どちらにも付いていない場合はエラーのまま。
 
 ---
 

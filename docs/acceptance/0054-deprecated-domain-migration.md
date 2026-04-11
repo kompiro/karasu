@@ -1,8 +1,8 @@
-# AT-0054: [deprecated] tag on domain — migration co-existence
+# AT-0054: migration annotations on domain — co-existence during migration
 
 ## Purpose
 
-Verify that `domain [deprecated]` allows two domains with the same ID to co-exist within the same system during a migration period, without producing an error diagnostic. Edges on the deprecated domain must still be rendered, and deprecated domains must be visually distinguished.
+Verify that `@deprecated` or `@migration_target` on a `domain` node allows two domains with the same ID to co-exist within the same system during a migration period, without producing an error diagnostic. Edges on the deprecated domain must still be rendered, deprecated domains must be visually distinguished, and the `@migration_target` domain takes navigation priority.
 
 ## Setup
 
@@ -12,14 +12,14 @@ Use the following `.krs` source:
 system OrderSystem {
   service LegacyService {
     label "Legacy Service"
-    domain Contract [deprecated] {
+    domain Contract @deprecated {
       label "Contract (deprecated)"
       -> Billing
     }
   }
   service NewService {
     label "New Service"
-    domain Contract {
+    domain Contract @migration_target {
       label "Contract"
       -> Billing
     }
@@ -37,7 +37,7 @@ system OrderSystem {
 
 ## Test Cases
 
-### Case 1: No error diagnostic for deprecated duplicate
+### Case 1: No error diagnostic for annotated duplicate
 
 **Steps:**
 1. Open the `.krs` source above in the editor.
@@ -48,15 +48,15 @@ system OrderSystem {
 
 ---
 
-### Case 2: Deprecated domain's edges are resolved and rendered
+### Case 2: Both domains' edges are resolved and rendered
 
 **Steps:**
 1. Open the `.krs` source above.
 2. View the system-level diagram for `OrderSystem`.
 
 **Expected:**
-- An edge from `LegacyService` toward `BillingService` is visible (implicit service edge derived from `Contract [deprecated] -> Billing`).
-- An edge from `NewService` toward `BillingService` is visible (implicit service edge derived from `Contract -> Billing`).
+- An edge from `LegacyService` toward `BillingService` is visible (implicit service edge derived from `Contract @deprecated -> Billing`).
+- An edge from `NewService` toward `BillingService` is visible (implicit service edge derived from `Contract @migration_target -> Billing`).
 
 ---
 
@@ -67,13 +67,14 @@ system OrderSystem {
 2. Drill down into `LegacyService`.
 
 **Expected:**
-- The `Contract [deprecated]` domain node renders with:
+- The `Contract @deprecated` domain node renders with:
   - A red ⚠ badge (or "非推奨" label).
-  - Reduced opacity (appears semi-transparent) compared to non-deprecated domains.
+  - Reduced opacity (appears semi-transparent) compared to the `@migration_target` domain.
+- The `Contract @migration_target` domain in `NewService` renders with a → badge.
 
 ---
 
-### Case 4: Non-deprecated duplicates still produce an error
+### Case 4: Non-annotated duplicates still produce an error
 
 **Steps:**
 1. Open the following `.krs` source:
@@ -97,17 +98,17 @@ system OrderSystem {
 ### Case 5: Order of appearance does not matter
 
 **Steps:**
-1. Swap the order so `NewService` (non-deprecated) comes **before** `LegacyService` (deprecated):
+1. Swap the order so `NewService` (`@migration_target`) comes **before** `LegacyService` (`@deprecated`):
 
 ```krs
 system OrderSystem {
   service NewService {
-    domain Contract {
+    domain Contract @migration_target {
       -> Billing
     }
   }
   service LegacyService {
-    domain Contract [deprecated] {
+    domain Contract @deprecated {
       -> Billing
     }
   }
@@ -120,4 +121,48 @@ system OrderSystem {
 **Expected:**
 - Same as Case 1: no error diagnostic.
 - Same as Case 2: edges from both services toward `BillingService` are rendered.
-- Same as Case 3: the `Contract [deprecated]` domain appears visually distinct.
+- Same as Case 3: visual distinction is preserved.
+
+---
+
+### Case 6: @deprecated alone (without @migration_target) is sufficient
+
+**Steps:**
+1. Open the following `.krs` source:
+
+```krs
+system OrderSystem {
+  service LegacyService {
+    domain Contract @deprecated {}
+  }
+  service NewService {
+    domain Contract {}
+  }
+}
+```
+
+**Expected:**
+- No error diagnostic.
+- Navigation (`-> Contract`) resolves to `NewService.Contract` (non-annotated domain takes priority over `@deprecated`).
+
+---
+
+### Case 7: @migration_target alone (without @deprecated) is sufficient
+
+**Steps:**
+1. Open the following `.krs` source:
+
+```krs
+system OrderSystem {
+  service OldService {
+    domain Contract {}
+  }
+  service NewService {
+    domain Contract @migration_target {}
+  }
+}
+```
+
+**Expected:**
+- No error diagnostic.
+- Navigation resolves to `NewService.Contract` (`@migration_target` takes highest priority).
