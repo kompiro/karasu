@@ -125,6 +125,7 @@ export function AppShell({
     dispatch,
     isOrgTreeView: isOrgTreeViewOpen,
     setIsOrgTreeView: setIsOrgTreeViewOpen,
+    highlightedNodeId,
   });
 
   const recompile = useCallback(() => {

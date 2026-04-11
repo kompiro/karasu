@@ -9,39 +9,61 @@ import type { AppAction, ActiveView } from "../state/app-reducer.js";
  * Encodes activeView + viewPath into a URL hash string.
  *
  * Examples:
- *   ("deploy", [])                   → "#krs-deploy"
- *   ("system", [])                   → "#krs-system-root"
- *   ("system", ["Payment"])          → "#krs-system-Payment"
- *   ("org", ["a", "b"])              → "#krs-org-b"  (last segment only)
- *   ("org", [], true)                → "#krs-org-tree"  (Tree View mode)
+ *   ("deploy", [])                          → "#krs-deploy"
+ *   ("deploy", [], false, "ECommerce")      → "#krs-deploy:ECommerce"
+ *   ("system", [])                          → "#krs-system-root"
+ *   ("system", ["Payment"])                 → "#krs-system-Payment"
+ *   ("org", ["a", "b"])                     → "#krs-org-b"  (last segment only)
+ *   ("org", [], true)                       → "#krs-org-tree"  (Tree View mode)
+ *   ("org", [], false, "ecTeam")            → "#krs-org-root:ecTeam"
  */
 export function buildHash(
   activeView: ActiveView,
   viewPath: string[],
   isOrgTreeView = false,
+  highlightNodeId?: string | null,
 ): string {
-  if (activeView === "deploy") return "#krs-deploy";
-  if (activeView === "org" && isOrgTreeView) return "#krs-org-tree";
-  const prefix = activeView === "org" ? "org" : "system";
-  if (viewPath.length === 0) return `#krs-${prefix}-root`;
-  return `#krs-${prefix}-${sanitizeId(viewPath[viewPath.length - 1])}`;
+  let base: string;
+  if (activeView === "deploy") base = "#krs-deploy";
+  else if (activeView === "org" && isOrgTreeView) base = "#krs-org-tree";
+  else {
+    const prefix = activeView === "org" ? "org" : "system";
+    base =
+      viewPath.length === 0
+        ? `#krs-${prefix}-root`
+        : `#krs-${prefix}-${sanitizeId(viewPath[viewPath.length - 1])}`;
+  }
+  return highlightNodeId ? `${base}:${highlightNodeId}` : base;
 }
 
 /**
- * Decodes a URL hash string into { activeView, nodeId, isOrgTreeView }.
+ * Decodes a URL hash string into { activeView, nodeId, isOrgTreeView, highlightNodeId }.
  * nodeId is null for root and tree-view hashes.
+ * highlightNodeId is extracted from the optional colon-suffixed segment (e.g. "#krs-deploy:ECommerce").
  * Returns null for unrecognized hashes.
  */
-export function parseHash(
-  hash: string,
-): { activeView: ActiveView; nodeId: string | null; isOrgTreeView: boolean } | null {
-  if (hash === "#krs-deploy") return { activeView: "deploy", nodeId: null, isOrgTreeView: false };
-  if (hash === "#krs-org-tree") return { activeView: "org", nodeId: null, isOrgTreeView: true };
-  const m = hash.match(/^#krs-(system|org)-(.+)$/);
+export function parseHash(hash: string): {
+  activeView: ActiveView;
+  nodeId: string | null;
+  isOrgTreeView: boolean;
+  highlightNodeId: string | null;
+} | null {
+  // Extract optional highlight suffix: "#krs-deploy:ECommerce" → base="#krs-deploy", highlight="ECommerce"
+  const colonIdx = hash.indexOf(":", 1);
+  let highlightNodeId: string | null = null;
+  let base = hash;
+  if (colonIdx !== -1) {
+    highlightNodeId = hash.slice(colonIdx + 1) || null;
+    base = hash.slice(0, colonIdx);
+  }
+
+  if (base === "#krs-deploy") return { activeView: "deploy", nodeId: null, isOrgTreeView: false, highlightNodeId };
+  if (base === "#krs-org-tree") return { activeView: "org", nodeId: null, isOrgTreeView: true, highlightNodeId };
+  const m = base.match(/^#krs-(system|org)-(.+)$/);
   if (!m) return null;
   const activeView = m[1] as "system" | "org";
   const nodeId = m[2] === "root" ? null : m[2];
-  return { activeView, nodeId, isOrgTreeView: false };
+  return { activeView, nodeId, isOrgTreeView: false, highlightNodeId };
 }
 
 // ─── Hook ────────────────────────────────────────────────────────────────────
@@ -54,6 +76,7 @@ export function useHistoryNavigation({
   dispatch,
   isOrgTreeView,
   setIsOrgTreeView,
+  highlightedNodeId,
 }: {
   activeView: ActiveView;
   viewPath: string[];
@@ -62,6 +85,7 @@ export function useHistoryNavigation({
   dispatch: Dispatch<AppAction>;
   isOrgTreeView: boolean;
   setIsOrgTreeView: (v: boolean) => void;
+  highlightedNodeId: string | null;
 }): {
   navigateActiveView: (view: ActiveView) => void;
   navigateViewPath: (path: string[]) => void;
@@ -90,9 +114,11 @@ export function useHistoryNavigation({
       history.replaceState(null, "", buildHash(activeView, viewPath, isOrgTreeView));
       return;
     }
-    // Restore activeView from hash if different
+    // Restore activeView from hash if different (include highlightNodeId in the transition)
     if (parsed.activeView !== activeViewRef.current) {
-      dispatch({ type: "SET_ACTIVE_VIEW", activeView: parsed.activeView });
+      dispatch({ type: "SET_ACTIVE_VIEW", activeView: parsed.activeView, highlightNodeId: parsed.highlightNodeId });
+    } else if (parsed.highlightNodeId !== null) {
+      dispatch({ type: "SET_HIGHLIGHTED_NODE", nodeId: parsed.highlightNodeId });
     }
     // Restore org tree view mode
     if (parsed.isOrgTreeView) {
@@ -121,11 +147,11 @@ export function useHistoryNavigation({
   // ③ Sync state changes → hash (push new history entry)
   useEffect(() => {
     if (isProgrammaticNavRef.current) return;
-    const newHash = buildHash(activeView, viewPath, isOrgTreeView);
+    const newHash = buildHash(activeView, viewPath, isOrgTreeView, highlightedNodeId);
     if (location.hash !== newHash) {
       history.pushState(null, "", newHash);
     }
-  }, [activeView, viewPath, isOrgTreeView]);
+  }, [activeView, viewPath, isOrgTreeView, highlightedNodeId]);
 
   // ④ Reset hash on file switch (skip initial mount)
   useEffect(() => {
@@ -145,7 +171,9 @@ export function useHistoryNavigation({
       isProgrammaticNavRef.current = true;
 
       if (parsed.activeView !== activeViewRef.current) {
-        dispatch({ type: "SET_ACTIVE_VIEW", activeView: parsed.activeView });
+        dispatch({ type: "SET_ACTIVE_VIEW", activeView: parsed.activeView, highlightNodeId: parsed.highlightNodeId });
+      } else {
+        dispatch({ type: "SET_HIGHLIGHTED_NODE", nodeId: parsed.highlightNodeId });
       }
       setIsOrgTreeViewRef.current(parsed.isOrgTreeView);
 
