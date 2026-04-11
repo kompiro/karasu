@@ -364,3 +364,130 @@ system Target {
     }
   });
 });
+
+describe("layout > barycenter ordering", () => {
+  it("places successor closer to its predecessor (barycenter heuristic)", () => {
+    // Layer 0: A (left), B (right)
+    // Layer 1: X connected to A only, Z connected to B only
+    // After barycenter: X should be left (near A), Z should be right (near B)
+    const slice = parseAndExtract(`
+system S {
+  service A { label "A" }
+  service B { label "B" }
+  service X { label "X" }
+  service Z { label "Z" }
+  A -> X "uses"
+  B -> Z "uses"
+}
+    `);
+    const result = layout(slice);
+    const nodeA = result.nodes.get("A")!;
+    const nodeB = result.nodes.get("B")!;
+    const nodeX = result.nodes.get("X")!;
+    const nodeZ = result.nodes.get("Z")!;
+
+    // A and B are in layer 0 (no incoming edges from each other)
+    // X and Z are in layer 1
+    expect(nodeA.y).toBe(nodeB.y); // same layer
+    expect(nodeX.y).toBe(nodeZ.y); // same layer
+
+    // X follows A (left), Z follows B (right)
+    // Center of X should be closer to center of A than to center of B
+    const xCenter = nodeX.x + nodeX.width / 2;
+    const aCenter = nodeA.x + nodeA.width / 2;
+    const bCenter = nodeB.x + nodeB.width / 2;
+    expect(Math.abs(xCenter - aCenter)).toBeLessThan(Math.abs(xCenter - bCenter));
+
+    // Center of Z should be closer to center of B
+    const zCenter = nodeZ.x + nodeZ.width / 2;
+    expect(Math.abs(zCenter - bCenter)).toBeLessThan(Math.abs(zCenter - aCenter));
+  });
+});
+
+describe("layout > sub-row wrapping", () => {
+  it("wraps nodes to a new sub-row when layer width exceeds MAX_LAYER_WIDTH", () => {
+    // Create enough wide nodes in a single layer to trigger wrapping (> 1200px)
+    // Each node ~200px wide, with NODE_GAP=60 between them: 7 nodes ≈ 1610px
+    const krs = `
+system S {
+  service N1 { label "Node One Long Label" }
+  service N2 { label "Node Two Long Label" }
+  service N3 { label "Node Three Long Label" }
+  service N4 { label "Node Four Long Label" }
+  service N5 { label "Node Five Long Label" }
+  service N6 { label "Node Six Long Label" }
+  service N7 { label "Node Seven Long Label" }
+}
+    `;
+    const slice = parseAndExtract(krs);
+    const result = layout(slice);
+
+    const ys = new Set([...result.nodes.values()].map((n) => n.y));
+    // With wrapping, nodes must span at least 2 distinct y values
+    expect(ys.size).toBeGreaterThan(1);
+
+    // All x coordinates must be non-negative
+    for (const [, node] of result.nodes) {
+      expect(node.x).toBeGreaterThanOrEqual(0);
+    }
+  });
+
+  it("nodes in the same sub-row share the same y coordinate", () => {
+    // Just 2 nodes — fits in one row, should share same y
+    const slice = parseAndExtract(`
+system S {
+  service A { label "A" }
+  service B { label "B" }
+}
+    `);
+    const result = layout(slice);
+    const nodeA = result.nodes.get("A")!;
+    const nodeB = result.nodes.get("B")!;
+    expect(nodeA.y).toBe(nodeB.y);
+  });
+});
+
+describe("layout > computeEdgePoints direction (y-based)", () => {
+  it("routes edge horizontally when both nodes share the same y (cyclic → same layer)", () => {
+    // A→B and B→A form a cycle: both fall back to layer 0, same y.
+    // The edge between them should be routed horizontally.
+    const slice = parseAndExtract(`
+system S {
+  service A { label "A" }
+  service B { label "B" }
+  A -> B "forward"
+  B -> A "backward"
+}
+    `);
+    const result = layout(slice);
+    const nodeA = result.nodes.get("A")!;
+    const nodeB = result.nodes.get("B")!;
+    expect(nodeA.y).toBe(nodeB.y); // same layer due to cycle fallback
+
+    const edge = result.edges.find((e) => e.from === "A" && e.to === "B")!;
+    expect(edge).toBeDefined();
+    // Horizontal routing: fromPoint.y and toPoint.y are both at mid-height
+    expect(edge.fromPoint.y).toBe(edge.toPoint.y);
+  });
+
+  it("routes edge top-to-bottom when from is in an earlier layer", () => {
+    const slice = parseAndExtract(`
+system S {
+  service A { label "A" }
+  service B { label "B" }
+  A -> B "calls"
+  service C { label "C" }
+  B -> C "calls"
+}
+    `);
+    const result = layout(slice);
+    const nodeA = result.nodes.get("A")!;
+    const nodeB = result.nodes.get("B")!;
+    expect(nodeA.y).toBeLessThan(nodeB.y);
+
+    const edge = result.edges.find((e) => e.from === "A" && e.to === "B")!;
+    expect(edge).toBeDefined();
+    // Top-to-bottom: fromPoint.y < toPoint.y
+    expect(edge.fromPoint.y).toBeLessThan(edge.toPoint.y);
+  });
+});
