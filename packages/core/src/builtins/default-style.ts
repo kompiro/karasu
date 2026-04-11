@@ -174,6 +174,13 @@ artifact {
   border-style: dashed;
 }
 
+domain[deprecated] {
+  badge-color: #EF4444;
+  badge-icon: "⚠";
+  badge-label: "非推奨";
+  opacity: 0.6;
+}
+
 /* ── アノテーション ── */
 @deprecated {
   badge-color: #EF4444;

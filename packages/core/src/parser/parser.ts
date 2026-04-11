@@ -1186,19 +1186,32 @@ export class Parser {
     const INDEXED_KINDS = new Set(["service", "domain"]);
     // seenDomainIds is reset per system so that the same domain ID in different
     // systems does not trigger an error (cross-system parallel modelling is allowed).
-    const walk = (node: KrsNode, path: string[], seenDomainIds: Set<string>): void => {
+    // The map value records whether the already-seen domain is deprecated, so that
+    // a [deprecated] duplicate can be allowed while keeping the active path in the index.
+    const walk = (node: KrsNode, path: string[], seenDomainIds: Map<string, boolean>): void => {
       const currentPath = [...path, node.id];
       if (INDEXED_KINDS.has(node.kind)) {
         if (node.kind === "domain") {
+          const isCurrentDeprecated = node.tags.includes("deprecated");
           if (seenDomainIds.has(node.id)) {
-            this.diagnostics.push({
-              severity: "error",
-              message: `Domain id "${node.id}" must be unique within a system; found in multiple services`,
-              loc: node.loc,
-            });
+            const existingIsDeprecated = seenDomainIds.get(node.id)!;
+            if (!isCurrentDeprecated && !existingIsDeprecated) {
+              // Neither duplicate is deprecated → error (existing behaviour)
+              this.diagnostics.push({
+                severity: "error",
+                message: `Domain id "${node.id}" must be unique within a system; found in multiple services`,
+                loc: node.loc,
+              });
+            }
+            // Current is non-deprecated but existing was deprecated → promote index to active domain
+            if (!isCurrentDeprecated && existingIsDeprecated) {
+              index.set(node.id, currentPath);
+              seenDomainIds.set(node.id, false);
+            }
+            // Current is deprecated → keep existing path; no error, no index update
           } else {
-            seenDomainIds.add(node.id);
-            if (!index.has(node.id)) index.set(node.id, currentPath);
+            seenDomainIds.set(node.id, isCurrentDeprecated);
+            index.set(node.id, currentPath);
           }
         } else {
           if (index.has(node.id)) {
@@ -1218,7 +1231,7 @@ export class Parser {
     };
     for (const system of systems) {
       this.collectNodeIds(system.children, new Set<string>());
-      const seenDomainIds = new Set<string>();
+      const seenDomainIds = new Map<string, boolean>();
       for (const child of system.children) {
         walk(child, [system.id], seenDomainIds);
       }
@@ -1226,7 +1239,7 @@ export class Parser {
     // Index top-level domains (not nested in any system)
     // Each top-level domain is its own scope; no cross-domain uniqueness check needed here.
     for (const domain of domains) {
-      walk(domain, [], new Set<string>());
+      walk(domain, [], new Map<string, boolean>());
     }
     return index;
   }

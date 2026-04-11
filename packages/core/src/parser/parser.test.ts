@@ -1060,6 +1060,54 @@ system B {
       expect(errors).toHaveLength(0);
     });
 
+    it("allows duplicate domain id when one has [deprecated] tag, indexes non-deprecated path", () => {
+      const result = Parser.parse(`
+system EC {
+  service Legacy {
+    domain Contract [deprecated] {}
+  }
+  service New {
+    domain Contract {}
+  }
+}
+      `);
+      const errors = result.diagnostics.filter((d) => d.severity === "error");
+      expect(errors).toHaveLength(0);
+      expect(result.value.nodePathIndex.get("Contract")).toEqual(["EC", "New", "Contract"]);
+    });
+
+    it("allows duplicate domain id when deprecated appears second, index still points to non-deprecated", () => {
+      const result = Parser.parse(`
+system EC {
+  service New {
+    domain Contract {}
+  }
+  service Legacy {
+    domain Contract [deprecated] {}
+  }
+}
+      `);
+      const errors = result.diagnostics.filter((d) => d.severity === "error");
+      expect(errors).toHaveLength(0);
+      expect(result.value.nodePathIndex.get("Contract")).toEqual(["EC", "New", "Contract"]);
+    });
+
+    it("still errors when both duplicate domain ids have no [deprecated] tag", () => {
+      const result = Parser.parse(`
+system EC {
+  service A {
+    domain Checkout {}
+  }
+  service B {
+    domain Checkout {}
+  }
+}
+      `);
+      const errors = result.diagnostics.filter((d) => d.severity === "error");
+      expect(errors.length).toBeGreaterThanOrEqual(1);
+      expect(errors[0].message).toContain("Checkout");
+    });
+
     it("warns when owns references an id not found in the system hierarchy", () => {
       const result = Parser.parse(`
 system EC {
