@@ -1186,31 +1186,38 @@ export class Parser {
     const INDEXED_KINDS = new Set(["service", "domain"]);
     // seenDomainIds is reset per system so that the same domain ID in different
     // systems does not trigger an error (cross-system parallel modelling is allowed).
-    // The map value records whether the already-seen domain is deprecated, so that
-    // a [deprecated] duplicate can be allowed while keeping the active path in the index.
-    const walk = (node: KrsNode, path: string[], seenDomainIds: Map<string, boolean>): void => {
+    // The map value is the index priority of the already-stored domain:
+    //   2 = @migration_target (active destination, highest priority)
+    //   1 = no migration annotation
+    //   0 = @deprecated (migration source, lowest priority)
+    // A duplicate is allowed when at least one side carries a migration annotation.
+    // The higher-priority domain wins the nodePathIndex entry.
+    const walk = (node: KrsNode, path: string[], seenDomainIds: Map<string, number>): void => {
       const currentPath = [...path, node.id];
       if (INDEXED_KINDS.has(node.kind)) {
         if (node.kind === "domain") {
-          const isCurrentDeprecated = node.tags.includes("deprecated");
+          const priority = node.annotations.includes("migration_target")
+            ? 2
+            : node.annotations.includes("deprecated")
+              ? 0
+              : 1;
           if (seenDomainIds.has(node.id)) {
-            const existingIsDeprecated = seenDomainIds.get(node.id)!;
-            if (!isCurrentDeprecated && !existingIsDeprecated) {
-              // Neither duplicate is deprecated → error (existing behaviour)
+            const existingPriority = seenDomainIds.get(node.id)!;
+            if (priority === 1 && existingPriority === 1) {
+              // Neither duplicate carries a migration annotation → error (existing behaviour)
               this.diagnostics.push({
                 severity: "error",
                 message: `Domain id "${node.id}" must be unique within a system; found in multiple services`,
                 loc: node.loc,
               });
             }
-            // Current is non-deprecated but existing was deprecated → promote index to active domain
-            if (!isCurrentDeprecated && existingIsDeprecated) {
+            // Higher priority wins the index
+            if (priority > existingPriority) {
               index.set(node.id, currentPath);
-              seenDomainIds.set(node.id, false);
+              seenDomainIds.set(node.id, priority);
             }
-            // Current is deprecated → keep existing path; no error, no index update
           } else {
-            seenDomainIds.set(node.id, isCurrentDeprecated);
+            seenDomainIds.set(node.id, priority);
             index.set(node.id, currentPath);
           }
         } else {
@@ -1231,7 +1238,7 @@ export class Parser {
     };
     for (const system of systems) {
       this.collectNodeIds(system.children, new Set<string>());
-      const seenDomainIds = new Map<string, boolean>();
+      const seenDomainIds = new Map<string, number>();
       for (const child of system.children) {
         walk(child, [system.id], seenDomainIds);
       }
@@ -1239,7 +1246,7 @@ export class Parser {
     // Index top-level domains (not nested in any system)
     // Each top-level domain is its own scope; no cross-domain uniqueness check needed here.
     for (const domain of domains) {
-      walk(domain, [], new Map<string, boolean>());
+      walk(domain, [], new Map<string, number>());
     }
     return index;
   }

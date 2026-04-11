@@ -147,11 +147,6 @@ export function getReference(): KarasuReference {
         appliesTo: ["resource"],
         description: "ストレージ系リソース（シェイプ: cloud）",
       },
-      {
-        name: "deprecated",
-        appliesTo: ["domain"],
-        description: "移行中の廃止予定ドメイン。同一システム内で同一IDの重複を許容する",
-      },
     ],
     annotations: [
       {
