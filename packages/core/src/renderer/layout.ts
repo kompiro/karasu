@@ -538,23 +538,26 @@ export function layout(
     });
   }
 
-  // Ghost domain edges: connect domain nodes inside the container to/from ghost domains below
+  // Ghost domain edges: connect domain nodes inside the container to/from ghost domains below.
+  // Use the facing sides based on vertical position: if fromNode is above toNode, connect
+  // bottom-to-top; if fromNode is below toNode (incoming case), connect top-to-bottom.
   for (const edge of viewSlice.ghostDomainEdges) {
     const fromNode = layoutNodes.get(edge.from);
     const toNode = layoutNodes.get(edge.to);
     if (!fromNode || !toNode) continue;
 
+    const fromIsAbove = fromNode.y + fromNode.height / 2 < toNode.y + toNode.height / 2;
     layoutEdges.push({
       from: edge.from,
       to: edge.to,
       label: edge.label,
       fromPoint: {
         x: fromNode.x + fromNode.width / 2,
-        y: fromNode.y + fromNode.height,
+        y: fromIsAbove ? fromNode.y + fromNode.height : fromNode.y,
       },
       toPoint: {
         x: toNode.x + toNode.width / 2,
-        y: toNode.y,
+        y: fromIsAbove ? toNode.y : toNode.y + toNode.height,
       },
       ghost: true,
     });
