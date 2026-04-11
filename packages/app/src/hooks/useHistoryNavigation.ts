@@ -149,8 +149,7 @@ export function useHistoryNavigation({
       }
       setIsOrgTreeViewRef.current(parsed.isOrgTreeView);
 
-      const path =
-        parsed.nodeId === null ? [] : (nodePathIndex.get(parsed.nodeId) ?? []);
+      const path = parsed.nodeId === null ? [] : (nodePathIndex.get(parsed.nodeId) ?? []);
       dispatch({ type: "SET_VIEW_PATH", path });
 
       queueMicrotask(() => {
