@@ -868,10 +868,7 @@ function buildContainersForEmpty(viewSlice: ViewSlice): ContainerRect[] {
  * - from.y > to.y (from is below to): reverse edge — connect from top-center to to bottom-center
  * - from.y < to.y (normal top→bottom): connect from bottom-center to to top-center
  */
-function computeEdgePoints(
-  edge: KrsEdge,
-  layoutNodes: Map<string, LayoutNode>,
-): LayoutEdge | null {
+function computeEdgePoints(edge: KrsEdge, layoutNodes: Map<string, LayoutNode>): LayoutEdge | null {
   const fromNode = layoutNodes.get(edge.from);
   const toNode = layoutNodes.get(edge.to);
   if (!fromNode || !toNode) return null;
