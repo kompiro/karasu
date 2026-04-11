@@ -219,6 +219,7 @@ body,
   max-width: 100%;
   max-height: 100%;
   filter: drop-shadow(0 2px 20px rgba(0, 0, 0, 0.5));
+  overflow: visible;
 }
 
 /* ── Warning Panel ──────────────────────────────────────────────── */
@@ -790,7 +791,7 @@ body,
 
 /* ── Cross-navigation highlight ─────────────────────────────────── */
 .karasu-highlighted {
-  filter: drop-shadow(0 0 6px var(--accent-glow)) drop-shadow(0 0 16px var(--accent-dim));
+  filter: drop-shadow(0 0 4px var(--accent)) drop-shadow(0 0 12px var(--accent-glow));
 }
 
 /* ── Breadcrumb ─────────────────────────────────────────────────── */

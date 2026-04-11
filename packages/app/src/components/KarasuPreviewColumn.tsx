@@ -25,6 +25,8 @@ interface SystemViewProps {
   onDeployButtonClick?: (serviceId: string) => void;
   /** Called when user clicks the team label on a service/domain node */
   onTeamButtonClick?: (teamId: string) => void;
+  highlightedNodeId?: string | null;
+  onClearHighlight?: () => void;
 }
 
 interface DeployViewProps {
@@ -353,14 +355,14 @@ export function KarasuPreviewColumn({
               ? deployView.highlightedNodeId
               : activeView === "org"
                 ? orgView.highlightedNodeId
-                : undefined
+                : systemView.highlightedNodeId
           }
           onClearHighlight={
             activeView === "deploy"
               ? deployView.onClearHighlight
               : activeView === "org"
                 ? orgView.onClearHighlight
-                : undefined
+                : systemView.onClearHighlight
           }
           onJumpToEditor={onJumpToEditor}
         />

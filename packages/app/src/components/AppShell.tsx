@@ -99,6 +99,25 @@ export function AppShell({
 
   const [isOrgTreeViewOpen, setIsOrgTreeViewOpen] = useState(false);
 
+  // Maps each team ID to the viewPath needed to see it as a node in the org SVG.
+  // Top-level teams map to [] (visible at root); sub-teams map to their parent's path.
+  const teamPathIndex = useMemo(() => {
+    const index = new Map<string, string[]>();
+    function traverse(team: TeamNode, parentPath: string[]) {
+      index.set(team.id, parentPath);
+      const subTeams = team.children.filter((c): c is TeamNode => c.kind === "team");
+      for (const sub of subTeams) {
+        traverse(sub, [...parentPath, team.id]);
+      }
+    }
+    for (const org of organizations) {
+      for (const team of org.teams) {
+        traverse(team, []);
+      }
+    }
+    return index;
+  }, [organizations]);
+
   const { navigateActiveView, navigateViewPath } = useHistoryNavigation({
     activeView,
     viewPath,
@@ -245,38 +264,38 @@ export function AppShell({
 
   const handleContainerClick = useCallback(
     (containerId: string) => {
-      navigateActiveView("system");
-      dispatch({ type: "SET_HIGHLIGHTED_NODE", nodeId: containerId });
+      dispatch({ type: "SET_ACTIVE_VIEW", activeView: "system", highlightNodeId: containerId });
     },
-    [navigateActiveView, dispatch],
+    [dispatch],
   );
 
   const handleDeployButtonClick = useCallback(
     (serviceId: string) => {
-      navigateActiveView("deploy");
-      dispatch({ type: "SET_HIGHLIGHTED_NODE", nodeId: serviceId });
+      dispatch({ type: "SET_ACTIVE_VIEW", activeView: "deploy", highlightNodeId: serviceId });
     },
-    [navigateActiveView, dispatch],
+    [dispatch],
   );
 
   const handleTeamButtonClick = useCallback(
     (teamId: string) => {
-      navigateActiveView("org");
-      dispatch({ type: "SET_HIGHLIGHTED_NODE", nodeId: teamId });
+      const parentPath = teamPathIndex.get(teamId) ?? [];
+      dispatch({ type: "SET_ACTIVE_VIEW", activeView: "org", highlightNodeId: teamId });
+      if (parentPath.length > 0) {
+        navigateViewPath(parentPath);
+      }
     },
-    [navigateActiveView, dispatch],
+    [navigateViewPath, teamPathIndex, dispatch],
   );
 
   const handleOwnedServiceClick = useCallback(
     (serviceId: string) => {
       const resolvedPath = nodePathIndex.get(serviceId);
-      navigateActiveView("system");
+      dispatch({ type: "SET_ACTIVE_VIEW", activeView: "system", highlightNodeId: serviceId });
       if (resolvedPath !== undefined) {
         navigateViewPath(resolvedPath);
       }
-      dispatch({ type: "SET_HIGHLIGHTED_NODE", nodeId: serviceId });
     },
-    [navigateActiveView, navigateViewPath, nodePathIndex, dispatch],
+    [navigateViewPath, nodePathIndex, dispatch],
   );
 
   const handleDisplayModeChange = useCallback(
@@ -410,6 +429,7 @@ export function AppShell({
           onEditorReady={handleEditorReady}
           scopeLabel={scopeLabel}
           currentProjectId={currentProject?.id ?? null}
+          resolvedSystems={resolvedSystems}
           onNavigateViewPath={navigateViewPath}
           onFormat={handleFormat}
           hasParseErrors={hasParseErrors}
@@ -428,6 +448,8 @@ export function AppShell({
           onBreadcrumbNavigate: navigateViewPath,
           onDeployButtonClick: handleDeployButtonClick,
           onTeamButtonClick: handleTeamButtonClick,
+          highlightedNodeId,
+          onClearHighlight: () => dispatch({ type: "SET_HIGHLIGHTED_NODE", nodeId: null }),
         }}
         deployView={{
           svg: deploySvg,

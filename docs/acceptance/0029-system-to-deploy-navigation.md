@@ -174,3 +174,36 @@ organization Corp {
 - 自動的に「System」タブに切り替わる
 - `ECサイト`（ECommerce）ノードがハイライトされる
 - 別の操作をするまでハイライトが維持される
+
+---
+
+## AT-0029-12: Sub-team へのチームラベルクリックで Org 図にジャンプしてハイライト
+
+以下の内容を `index.krs` に追記または差し替えて使用する:
+
+```
+system ECPlatform {
+  domain ECommerceDomain {
+    label "ECドメイン"
+    team checkoutTeam
+  }
+}
+
+organization Corp {
+  team ecTeam {
+    label "EC本部"
+    team checkoutTeam {
+      label "チェックアウトチーム"
+    }
+  }
+}
+```
+
+**手順**
+1. 「System」タブで `ECドメイン` ノードの「👥チェックアウトチーム」ラベルをクリックする
+
+**期待結果**
+- 自動的に「Org」タブに切り替わる
+- `EC本部` チームの子ビューに遷移する（`viewPath = ["ecTeam"]`）
+- `チェックアウトチーム`（checkoutTeam）ノードがハイライトされる
+- 別の操作をするまでハイライトが維持される

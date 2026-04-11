@@ -12,6 +12,7 @@ const defaultProps = {
   sessionResetKey: null,
   fileContent: "",
   currentFilePath: null,
+  resolvedSystems: [],
   apiKey: "sk-test-key",
   onNavigateViewPath: vi.fn<(path: string[]) => void>(),
   onEditorChange: vi.fn<(value: string) => void>(),

@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import type { SystemNode } from "@karasu-tools/core";
 import { ApiKeySetup } from "./ApiKeySetup.js";
 import { useChatSession, type PatchProposal } from "../hooks/useChatSession.js";
 
@@ -7,6 +8,7 @@ interface ChatPaneProps {
   sessionResetKey: string | null;
   fileContent: string;
   currentFilePath: string | null;
+  resolvedSystems: SystemNode[];
   apiKey: string | null;
   onNavigateViewPath: (path: string[]) => void;
   onEditorChange: (value: string) => void;
@@ -18,6 +20,7 @@ export function ChatPane({
   sessionResetKey,
   fileContent,
   currentFilePath,
+  resolvedSystems,
   apiKey,
   onNavigateViewPath,
   onEditorChange,
@@ -28,6 +31,7 @@ export function ChatPane({
       fileContent,
       currentFilePath,
       scopeLabel,
+      resolvedSystems,
       apiKey,
       onNavigateViewPath,
       onEditorChange,
@@ -182,7 +186,7 @@ function PatchConfirmation({ patch, isActive, onApply, onReject }: PatchConfirma
   return (
     <div className="chat-patch-proposal">
       <p className="chat-patch-proposal__description">📝 {patch.description}</p>
-      <pre className="chat-patch-proposal__code">{patch.patch}</pre>
+      {patch.content && <pre className="chat-patch-proposal__code">{patch.content}</pre>}
       {isActive && (
         <div className="chat-patch-proposal__actions">
           <button

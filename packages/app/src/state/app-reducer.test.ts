@@ -32,9 +32,29 @@ describe("appReducer — activeView / highlightedNodeId", () => {
       expect(next.viewPath).toEqual([]);
     });
 
-    it("clears highlightedNodeId", () => {
+    it("clears highlightedNodeId when highlightNodeId is omitted", () => {
       const state = stateWith({ highlightedNodeId: "Payment" });
       const next = appReducer(state, { type: "SET_ACTIVE_VIEW", activeView: "system" });
+      expect(next.highlightedNodeId).toBeNull();
+    });
+
+    it("sets highlightedNodeId atomically when highlightNodeId is provided", () => {
+      const next = appReducer(initialState, {
+        type: "SET_ACTIVE_VIEW",
+        activeView: "deploy",
+        highlightNodeId: "ECommerce",
+      });
+      expect(next.activeView).toBe("deploy");
+      expect(next.highlightedNodeId).toBe("ECommerce");
+    });
+
+    it("clears highlightedNodeId when highlightNodeId is explicitly null", () => {
+      const state = stateWith({ highlightedNodeId: "Payment" });
+      const next = appReducer(state, {
+        type: "SET_ACTIVE_VIEW",
+        activeView: "deploy",
+        highlightNodeId: null,
+      });
       expect(next.highlightedNodeId).toBeNull();
     });
 

@@ -79,3 +79,56 @@ edge[implicit] {
 }
 ```
 
+---
+
+## チーム連絡先コンベンション（`team` + `link`）
+
+組織クエリ（「このサービスのオーナーチームは？」「影響するチームに連絡したい」）を AI チャットで利用するには、
+`service` や `domain` ノードに `team` プロパティと `link` プロパティを追加する。
+
+```krs
+service ECommerce {
+  label "ECサイト"
+  team "ECチーム"
+  link "https://slack.com/archives/C..." "ECチーム Slack"
+  link "https://notion.so/..."          "チームページ"
+}
+```
+
+### `team` プロパティ
+
+チーム名を文字列で記述する。AI はこの値を組織クエリの回答で使用する。
+
+```krs
+service Payment {
+  team "Fintechチーム"
+}
+```
+
+### `link` プロパティ（チーム連絡先）
+
+`link "<url>" "<label>"` の形式で連絡先 URL を追加する。
+ラベルに以下のキーワードが含まれる場合、AI はチーム連絡先として認識する：
+
+| キーワード例 | 用途 |
+|---|---|
+| `Slack` | Slack チャンネル |
+| `Teams` | Microsoft Teams チャンネル |
+| `チームページ` | Notion や Confluence などのチームページ |
+| `Runbook` | オンコール・運用手順書 |
+
+### 使用例（AI チャットでのクエリ）
+
+モデルに上記の情報を記述しておくと、Chat タブで以下のようなクエリが可能になる：
+
+```
+Q: "Order サービスに依存しているチームを教えて"
+A: - Fintechチーム（Payment サービス）
+     → https://slack.com/... (Fintechチーム Slack)
+   - Platformチーム（Notification サービス）
+     → https://slack.com/... (Platformチーム Slack)
+
+Q: "オンボーディングで最初に会うべき人は？"
+A: ECommerce（最もエッジが多い）: ECチーム
+     → https://notion.so/... (チームページ)
+```
