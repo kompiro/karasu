@@ -8,7 +8,9 @@ vi.mock("fflate", async (importOriginal) => {
   const actual = await importOriginal<typeof import("fflate")>();
   return {
     ...actual,
-    zipSync: vi.fn<() => Uint8Array>(() => new Uint8Array([0x50, 0x4b, 0x05, 0x06, ...new Array(18).fill(0)])),
+    zipSync: vi.fn<() => Uint8Array>(
+      () => new Uint8Array([0x50, 0x4b, 0x05, 0x06, ...new Array(18).fill(0)]),
+    ),
   };
 });
 
