@@ -48,19 +48,15 @@ export function EditArea({
 
   return (
     <div className={className}>
-      {hasSidebar && (
-        <div className="sidebar-area">
-          {!previewFocused && (
-            <button
-              className="toolbar-btn toolbar-btn--sidebar-toggle"
-              onClick={() => setSidebarCollapsed((v) => !v)}
-              aria-label={sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
-            >
-              {sidebarCollapsed ? "» Expand" : "« Collapse"}
-            </button>
-          )}
-          {sidebarContent}
-        </div>
+      {hasSidebar && <div className="sidebar-area">{sidebarContent}</div>}
+      {hasSidebar && !previewFocused && (
+        <button
+          className="toolbar-btn toolbar-btn--sidebar-toggle"
+          onClick={() => setSidebarCollapsed((v) => !v)}
+          aria-label={sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+        >
+          {sidebarCollapsed ? "» Expand" : "« Collapse"}
+        </button>
       )}
       <EditPane
         value={value}

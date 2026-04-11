@@ -1171,7 +1171,8 @@ body,
 
 /* ── EditArea internal layout ──────────────────────────────────── */
 /* Explicit placement keeps no-sidebar case independent of source order and
-   auto-placement assumptions. has-sidebar overrides grid-row to 2 below. */
+   auto-placement assumptions. has-sidebar overrides grid-row to 2 below.
+   position: relative is the containing block for .toolbar-btn--sidebar-toggle. */
 .edit-area {
   grid-row: 1;
   grid-column: 1;
@@ -1179,6 +1180,7 @@ body,
   flex-direction: row;
   overflow: hidden;
   height: 100%;
+  position: relative;
 }
 
 .edit-area.has-sidebar .sidebar-area {
@@ -1187,10 +1189,8 @@ body,
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  position: relative;
   background: var(--bg-void);
   border-right: 1px solid var(--border-subtle);
-  transition: width 0.15s ease;
 }
 
 /* Applies in both sidebar and non-sidebar contexts; overflow/border/position
@@ -1221,12 +1221,14 @@ body,
 }
 
 /* ── Sidebar Toggle Button ─────────────────────────────────────── */
-/* Positioned at the bottom of the sidebar area */
+/* Absolutely positioned relative to .edit-area (its containing block).
+   Placed at left: var(--sidebar-w) so it straddles the sidebar/editor boundary
+   without being clipped by .sidebar-area { overflow: hidden }. */
 .toolbar-btn--sidebar-toggle {
   position: absolute;
-  right: 0;
+  left: var(--sidebar-w);
   top: 50%;
-  transform: translate(50%, -50%);
+  transform: translate(-50%, -50%);
   z-index: 100;
   background: var(--bg-raised);
   color: var(--text-secondary);
@@ -1251,21 +1253,16 @@ body,
   border-color: var(--accent);
 }
 
-/* When collapsed: sidebar area hidden, toggle anchored to left edge of edit-area */
+/* When collapsed: sidebar area shrinks to 0 (content clipped by overflow: hidden);
+   toggle anchored to left edge of edit-area. */
 .edit-area.has-sidebar.sidebar-collapsed .sidebar-area {
   width: 0;
   border-right: none;
-  overflow: visible;
-}
-
-/* Hide all sidebar content except the toggle button — targets any sidebarContent,
-   not just .file-tree, so future panels (e.g. OutlineView) are also hidden. */
-.edit-area.has-sidebar.sidebar-collapsed .sidebar-area > :not(.toolbar-btn--sidebar-toggle) {
-  display: none;
 }
 
 .edit-area.has-sidebar.sidebar-collapsed .toolbar-btn--sidebar-toggle {
-  transform: translate(100%, -50%);
+  left: 0;
+  transform: translate(0, -50%);
   border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
 }
 
