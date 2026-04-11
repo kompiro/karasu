@@ -137,6 +137,39 @@ describe("applyIncoming", () => {
     expect(result).toContain("system Foo {}");
     expect(result).toContain("// just a comment");
   });
+
+  // AT-0060-19
+  it("replaces a database child of an existing system when all incoming children exist in target", () => {
+    const existing =
+      'system ShopSystem {\n  database OrderDB {\n    table OrdersTable { label "orders" }\n  }\n}';
+    const incoming =
+      'system ShopSystem {\n  database OrderDB {\n    table OrdersTable { label "orders" }\n    table OrderItemsTable { label "order_items" }\n  }\n}';
+    const result = applyIncoming(existing, incoming);
+    expect(result).toContain('table OrderItemsTable { label "order_items" }');
+    expect(result.match(/database OrderDB \{/g)?.length).toBe(1);
+  });
+
+  // AT-0060-20
+  it("preserves sibling nodes in the existing system when all incoming children already exist", () => {
+    const existing =
+      'system ShopSystem {\n  service OrderService {}\n  database OrderDB {\n    table OrdersTable { label "orders" }\n  }\n}';
+    const incoming =
+      'system ShopSystem {\n  database OrderDB {\n    table OrdersTable { label "orders" }\n    table OrderItemsTable { label "order_items" }\n  }\n}';
+    const result = applyIncoming(existing, incoming);
+    expect(result).toContain("service OrderService {}");
+    expect(result).toContain('table OrderItemsTable { label "order_items" }');
+    expect(result.match(/database OrderDB \{/g)?.length).toBe(1);
+  });
+
+  // AT-0060-21
+  it("does not duplicate a system-wrapped database block when applied twice", () => {
+    const incoming =
+      'system ShopSystem {\n  database OrderDB {\n    table OrdersTable { label "orders" }\n  }\n}';
+    const afterFirst = applyIncoming("", incoming);
+    const afterSecond = applyIncoming(afterFirst, incoming);
+    expect(afterSecond.match(/database OrderDB \{/g)?.length).toBe(1);
+    expect(afterSecond.match(/system ShopSystem \{/g)?.length).toBe(1);
+  });
 });
 
 // ── apply() integration tests (stdin + file I/O) ──────────────────────────────
