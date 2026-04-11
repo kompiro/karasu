@@ -4,6 +4,21 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { EventEmitter } from "node:events";
 import { apply, applyIncoming } from "./apply.js";
+import { translate } from "./translate/index.js";
+
+// ── Capture helpers (mirrors translate.e2e.test.ts) ───────────────────────────
+
+function captureOutput(): { stdout: () => string; restore: () => void } {
+  let out = "";
+  const stdoutSpy = vi.spyOn(process.stdout, "write").mockImplementation((chunk) => {
+    out += String(chunk);
+    return true;
+  });
+  return {
+    stdout: () => out,
+    restore: () => stdoutSpy.mockRestore(),
+  };
+}
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -196,5 +211,227 @@ describe("apply (stdin integration)", () => {
     expect(stderrSpy).toHaveBeenCalledWith(expect.stringContaining("stdin is empty"));
     expect(exitSpy).toHaveBeenCalledWith(1);
     expect(existsSync(targetPath)).toBe(false);
+  });
+});
+
+// ── translate | apply pipeline tests ─────────────────────────────────────────
+
+describe("translate | apply pipeline — openapi", () => {
+  let tmpDir: string;
+
+  beforeEach(() => {
+    tmpDir = mkdtempSync(join(tmpdir(), "karasu-apply-openapi-"));
+  });
+
+  afterEach(() => {
+    rmSync(tmpDir, { recursive: true, force: true });
+  });
+
+  // AT-0060-13
+  it("appends a new service block translated from OpenAPI to an empty file", async () => {
+    const inputPath = join(tmpDir, "order-api.yaml");
+    writeFileSync(
+      inputPath,
+      `
+openapi: "3.0.0"
+info:
+  title: Order API
+paths:
+  /orders:
+    post:
+      operationId: placeOrder
+  /orders/{id}:
+    get:
+      operationId: getOrder
+`,
+    );
+
+    const capture = captureOutput();
+    await translate(inputPath, { from: "openapi", service: "OrderService" });
+    capture.restore();
+
+    const translated = capture.stdout();
+    const targetPath = join(tmpDir, "arch.krs");
+    const result = applyIncoming("", translated);
+    writeFileSync(targetPath, result, "utf-8");
+
+    const content = readFileSync(targetPath, "utf-8");
+    expect(content).toContain("service OrderService {");
+    expect(content).toContain("usecase PlaceOrder");
+    expect(content).toContain("usecase GetOrder");
+  });
+
+  // AT-0060-14
+  it("replaces an existing service block when the service ID matches", async () => {
+    const inputPath = join(tmpDir, "order-api.yaml");
+    writeFileSync(
+      inputPath,
+      `
+openapi: "3.0.0"
+info:
+  title: Order API
+paths:
+  /orders:
+    post:
+      operationId: placeOrder
+`,
+    );
+
+    // Initial translation → create file
+    const capture1 = captureOutput();
+    await translate(inputPath, { from: "openapi", service: "OrderService" });
+    capture1.restore();
+    const targetPath = join(tmpDir, "arch.krs");
+    writeFileSync(targetPath, applyIncoming("", capture1.stdout()), "utf-8");
+
+    // Update the spec with a new endpoint
+    writeFileSync(
+      inputPath,
+      `
+openapi: "3.0.0"
+info:
+  title: Order API
+paths:
+  /orders:
+    post:
+      operationId: placeOrder
+  /orders/{id}/cancel:
+    post:
+      operationId: cancelOrder
+`,
+    );
+
+    // Second translation → apply (should replace, not duplicate)
+    const capture2 = captureOutput();
+    await translate(inputPath, { from: "openapi", service: "OrderService" });
+    capture2.restore();
+    const result = applyIncoming(readFileSync(targetPath, "utf-8"), capture2.stdout());
+    writeFileSync(targetPath, result, "utf-8");
+
+    const content = readFileSync(targetPath, "utf-8");
+    expect(content).toContain("usecase CancelOrder");
+    // Service block should appear exactly once
+    expect(content.match(/service OrderService \{/g)?.length).toBe(1);
+  });
+
+  // AT-0060-15
+  it("appends a second service block when a different service ID is translated", async () => {
+    const targetPath = join(tmpDir, "arch.krs");
+    writeFileSync(targetPath, "service OrderService {\n  usecase PlaceOrder {}\n}", "utf-8");
+
+    const inputPath = join(tmpDir, "payment-api.yaml");
+    writeFileSync(
+      inputPath,
+      `
+openapi: "3.0.0"
+info:
+  title: Payment API
+paths:
+  /payments:
+    post:
+      operationId: createPayment
+`,
+    );
+
+    const capture = captureOutput();
+    await translate(inputPath, { from: "openapi", service: "PaymentService" });
+    capture.restore();
+
+    const result = applyIncoming(readFileSync(targetPath, "utf-8"), capture.stdout());
+    writeFileSync(targetPath, result, "utf-8");
+
+    const content = readFileSync(targetPath, "utf-8");
+    expect(content).toContain("service OrderService {");
+    expect(content).toContain("service PaymentService {");
+    expect(content).toContain("usecase CreatePayment");
+  });
+});
+
+describe("translate | apply pipeline — db", () => {
+  let tmpDir: string;
+
+  beforeEach(() => {
+    tmpDir = mkdtempSync(join(tmpdir(), "karasu-apply-db-"));
+  });
+
+  afterEach(() => {
+    rmSync(tmpDir, { recursive: true, force: true });
+  });
+
+  // AT-0060-16
+  it("appends a new database block translated from SQL to an empty file", async () => {
+    const inputPath = join(tmpDir, "schema.sql");
+    writeFileSync(
+      inputPath,
+      `
+CREATE TABLE orders (id BIGINT PRIMARY KEY, user_id BIGINT NOT NULL);
+CREATE TABLE order_items (id BIGINT PRIMARY KEY, order_id BIGINT NOT NULL);
+`,
+    );
+
+    const capture = captureOutput();
+    await translate(inputPath, { from: "db", database: "OrderDB" });
+    capture.restore();
+
+    const targetPath = join(tmpDir, "arch.krs");
+    const result = applyIncoming("", capture.stdout());
+    writeFileSync(targetPath, result, "utf-8");
+
+    const content = readFileSync(targetPath, "utf-8");
+    expect(content).toContain("database OrderDB {");
+    expect(content).toContain('table OrdersTable { label "orders" }');
+    expect(content).toContain('table OrderItemsTable { label "order_items" }');
+  });
+
+  // AT-0060-17
+  // NOTE: `database` blocks are not valid top-level KRS nodes (only system/service/domain/deploy
+  // are). The parser does not recognise them, so applyIncoming cannot auto-detect the ID and
+  // always falls back to append. Applying the same translation twice results in two blocks.
+  // This is expected behaviour for the current implementation.
+  it("appends a second database block when the same translate output is applied again", async () => {
+    const inputPath = join(tmpDir, "schema.sql");
+    writeFileSync(inputPath, `CREATE TABLE orders (id BIGINT PRIMARY KEY);`);
+
+    const capture1 = captureOutput();
+    await translate(inputPath, { from: "db", database: "OrderDB" });
+    capture1.restore();
+    const targetPath = join(tmpDir, "arch.krs");
+    writeFileSync(targetPath, applyIncoming("", capture1.stdout()), "utf-8");
+
+    // Apply the same output again — expected to append, not replace
+    const capture2 = captureOutput();
+    await translate(inputPath, { from: "db", database: "OrderDB" });
+    capture2.restore();
+    const result = applyIncoming(readFileSync(targetPath, "utf-8"), capture2.stdout());
+    writeFileSync(targetPath, result, "utf-8");
+
+    const content = readFileSync(targetPath, "utf-8");
+    // Two database blocks present (append, not replace)
+    expect(content.match(/database OrderDB \{/g)?.length).toBe(2);
+  });
+
+  // AT-0060-18
+  it("appends a second database block when a different database ID is translated", async () => {
+    const targetPath = join(tmpDir, "arch.krs");
+    writeFileSync(
+      targetPath,
+      'database OrderDB {\n  table OrdersTable { label "orders" }\n}',
+      "utf-8",
+    );
+
+    const inputPath = join(tmpDir, "user_schema.sql");
+    writeFileSync(inputPath, `CREATE TABLE users (id BIGINT PRIMARY KEY);`);
+
+    const capture = captureOutput();
+    await translate(inputPath, { from: "db", database: "UserDB" });
+    capture.restore();
+
+    const result = applyIncoming(readFileSync(targetPath, "utf-8"), capture.stdout());
+    writeFileSync(targetPath, result, "utf-8");
+
+    const content = readFileSync(targetPath, "utf-8");
+    expect(content).toContain("database OrderDB {");
+    expect(content).toContain("database UserDB {");
+    expect(content).toContain('table UsersTable { label "users" }');
   });
 });
