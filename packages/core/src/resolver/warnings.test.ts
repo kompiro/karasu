@@ -507,3 +507,55 @@ system S {
     expect(db?.cyclic).toBeFalsy();
   });
 });
+
+describe("unassigned-usecase warning", () => {
+  it("warns when a usecase is a direct child of a service (not inside a domain)", () => {
+    const krs = `
+system ECPlatform {
+  service ECommerce {
+    usecase PlaceOrder { label "POST /orders" }
+    usecase CancelOrder { label "POST /orders/{id}/cancel" }
+  }
+}
+    `;
+    const file = Parser.parse(krs).value;
+    const builtin = getBuiltinStyleSheet();
+    const warnings = analyze(file, [builtin]);
+    const unassigned = warnings.filter((w) => w.kind === "unassigned-usecase");
+    expect(unassigned).toHaveLength(2);
+    expect(unassigned[0].message).toBe('usecase "PlaceOrder" is not assigned to any domain');
+    expect(unassigned[1].message).toBe('usecase "CancelOrder" is not assigned to any domain');
+  });
+
+  it("uses usecase id (not label) in the warning message", () => {
+    const krs = `
+service OrderService {
+  usecase PlaceOrder { label "POST /orders" }
+}
+    `;
+    const file = Parser.parse(krs).value;
+    const builtin = getBuiltinStyleSheet();
+    const warnings = analyze(file, [builtin]);
+    const unassigned = warnings.filter((w) => w.kind === "unassigned-usecase");
+    expect(unassigned).toHaveLength(1);
+    expect(unassigned[0].message).toBe('usecase "PlaceOrder" is not assigned to any domain');
+    expect(unassigned[0].message).not.toContain("POST /orders");
+  });
+
+  it("does not warn when a usecase is properly nested inside a domain", () => {
+    const krs = `
+system ECPlatform {
+  service ECommerce {
+    domain Order {
+      usecase PlaceOrder { label "POST /orders" }
+    }
+  }
+}
+    `;
+    const file = Parser.parse(krs).value;
+    const builtin = getBuiltinStyleSheet();
+    const warnings = analyze(file, [builtin]);
+    const unassigned = warnings.filter((w) => w.kind === "unassigned-usecase");
+    expect(unassigned).toHaveLength(0);
+  });
+});
