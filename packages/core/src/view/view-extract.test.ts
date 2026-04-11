@@ -919,5 +919,89 @@ system ECPlatform {
       expect(implicit).toHaveLength(1);
       expect(implicit[0].label).toBe("2 domain edges");
     });
+
+    describe("ghost domains in service drill-down view", () => {
+      it("includes outgoing ghost domain when drilling into source service", () => {
+        const systems = parseSystem(CROSS_SERVICE_KRS);
+        const view = extractView(systems, ["ECPlatform", "BillingService"]);
+        expect(view.ghostDomains).toHaveLength(1);
+        expect(view.ghostDomains[0].node.id).toBe("Contract");
+        expect(view.ghostDomains[0].parentServiceLabel).toBe("ECommerce");
+      });
+
+      it("includes incoming ghost domain when drilling into target service", () => {
+        const systems = parseSystem(CROSS_SERVICE_KRS);
+        const view = extractView(systems, ["ECPlatform", "ECommerce"]);
+        expect(view.ghostDomains).toHaveLength(1);
+        expect(view.ghostDomains[0].node.id).toBe("Billing");
+        expect(view.ghostDomains[0].parentServiceLabel).toBe("BillingService");
+      });
+
+      it("includes the cross-service edge in ghostDomainEdges", () => {
+        const systems = parseSystem(CROSS_SERVICE_KRS);
+        const view = extractView(systems, ["ECPlatform", "BillingService"]);
+        expect(view.ghostDomainEdges).toHaveLength(1);
+        expect(view.ghostDomainEdges[0].from).toBe("Billing");
+        expect(view.ghostDomainEdges[0].to).toBe("Contract");
+      });
+
+      it("does not include ghost domains at system view level", () => {
+        const systems = parseSystem(CROSS_SERVICE_KRS);
+        const view = extractView(systems, []);
+        expect(view.ghostDomains).toHaveLength(0);
+        expect(view.ghostDomainEdges).toHaveLength(0);
+      });
+
+      it("does not include ghost domains at domain view level", () => {
+        const systems = parseSystem(CROSS_SERVICE_KRS);
+        const view = extractView(systems, ["ECPlatform", "BillingService", "Billing"]);
+        expect(view.ghostDomains).toHaveLength(0);
+        expect(view.ghostDomainEdges).toHaveLength(0);
+      });
+
+      it("deduplicates ghost domains when multiple edges point to same foreign domain", () => {
+        const krs = `
+system ECPlatform {
+  service ECommerce {
+    domain Contract { label "契約" }
+  }
+  service BillingService {
+    domain Billing {
+      Billing -> Contract "creates from"
+    }
+    domain Invoice {
+      Invoice -> Contract "references"
+    }
+  }
+}
+`;
+        const systems = parseSystem(krs);
+        const view = extractView(systems, ["ECPlatform", "BillingService"]);
+        // Contract appears only once even though two domains reference it
+        const contractGhosts = view.ghostDomains.filter((gd) => gd.node.id === "Contract");
+        expect(contractGhosts).toHaveLength(1);
+        // But both edges should be present
+        expect(view.ghostDomainEdges).toHaveLength(2);
+      });
+
+      it("uses parent service label when available", () => {
+        const krs = `
+system ECPlatform {
+  service ECommerce {
+    label "EC Commerce"
+    domain Contract {}
+  }
+  service BillingService {
+    domain Billing {
+      Billing -> Contract "creates from"
+    }
+  }
+}
+`;
+        const systems = parseSystem(krs);
+        const view = extractView(systems, ["ECPlatform", "BillingService"]);
+        expect(view.ghostDomains[0].parentServiceLabel).toBe("EC Commerce");
+      });
+    });
   });
 });

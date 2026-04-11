@@ -28,6 +28,8 @@ export interface LayoutNode {
   width: number;
   height: number;
   ghost?: boolean;
+  /** Optional sub-label rendered below the main label (e.g., parent service name for ghost domains). */
+  subLabel?: string;
 }
 
 export interface LayoutEdge {
@@ -317,6 +319,54 @@ export function layout(
     }
   }
 
+  const GHOST_DOMAIN_GAP = 60;
+
+  // Ghost domains: position below the main container, side by side
+  if (viewSlice.ghostDomains.length > 0 && containers.length > 0) {
+    const mainContainer = containers.find((c) => !c.ghost) ?? containers[0];
+    const ghostY = mainContainer.y + mainContainer.height + GHOST_DOMAIN_GAP;
+    let ghostX = mainContainer.x + CONTAINER_PADDING;
+
+    for (const gd of viewSlice.ghostDomains) {
+      const dims = measureNode(gd.node, undefined, displayMode);
+      layoutNodes.set(gd.node.id, {
+        kind: gd.node.kind,
+        id: gd.node.id,
+        label: gd.node.label ?? gd.node.id,
+        subLabel: gd.parentServiceLabel,
+        properties: extractLayoutProperties(gd.node, undefined),
+        descriptionSummary: gd.node.properties.description
+          ? summarizeDescription(gd.node.properties.description)
+          : undefined,
+        linkCount: gd.node.properties.links.length,
+        hasChildren: gd.node.children.length > 0,
+        hasDescription: !!gd.node.properties.description,
+        x: ghostX,
+        y: ghostY,
+        width: dims.width,
+        height: dims.height,
+        ghost: true,
+      });
+      ghostX += dims.width + NODE_GAP;
+    }
+
+    // Expand outermost container to include ghost domains (both height and width)
+    const ghostDomainNodes = viewSlice.ghostDomains
+      .map((gd) => layoutNodes.get(gd.node.id))
+      .filter((n): n is LayoutNode => n !== undefined);
+    if (ghostDomainNodes.length > 0) {
+      const maxGhostY = Math.max(...ghostDomainNodes.map((n) => n.y + n.height)) + GHOST_MARGIN;
+      const maxGhostX = Math.max(...ghostDomainNodes.map((n) => n.x + n.width)) + GHOST_MARGIN;
+      const outermost = containers[0];
+      if (maxGhostY > outermost.y + outermost.height) {
+        outermost.height = maxGhostY - outermost.y;
+      }
+      if (maxGhostX > outermost.x + outermost.width) {
+        outermost.width = maxGhostX - outermost.x;
+      }
+    }
+  }
+
   const GHOST_SYSTEM_GAP = 80;
 
   // Caller ghost systems: position to the LEFT of the outermost container
@@ -484,6 +534,31 @@ export function layout(
       label: edge.label,
       fromPoint,
       toPoint,
+      ghost: true,
+    });
+  }
+
+  // Ghost domain edges: connect domain nodes inside the container to/from ghost domains below.
+  // Use the facing sides based on vertical position: if fromNode is above toNode, connect
+  // bottom-to-top; if fromNode is below toNode (incoming case), connect top-to-bottom.
+  for (const edge of viewSlice.ghostDomainEdges) {
+    const fromNode = layoutNodes.get(edge.from);
+    const toNode = layoutNodes.get(edge.to);
+    if (!fromNode || !toNode) continue;
+
+    const fromIsAbove = fromNode.y + fromNode.height / 2 < toNode.y + toNode.height / 2;
+    layoutEdges.push({
+      from: edge.from,
+      to: edge.to,
+      label: edge.label,
+      fromPoint: {
+        x: fromNode.x + fromNode.width / 2,
+        y: fromIsAbove ? fromNode.y + fromNode.height : fromNode.y,
+      },
+      toPoint: {
+        x: toNode.x + toNode.width / 2,
+        y: fromIsAbove ? toNode.y : toNode.y + toNode.height,
+      },
       ghost: true,
     });
   }

@@ -576,6 +576,26 @@ function renderNode(
     }
   }
 
+  // Sub-label: shown below the node for ghost domains to indicate the parent service
+  if (node.subLabel) {
+    const subLabelFontSize = Math.round(fontSize * 0.75);
+    children.push(
+      el(
+        "text",
+        {
+          x: node.x + node.width / 2,
+          y: node.y + node.height + subLabelFontSize + 4,
+          "text-anchor": "middle",
+          "dominant-baseline": "central",
+          fill: textColor,
+          "font-size": `${subLabelFontSize}px`,
+          "font-family": style.fontFamily,
+        },
+        escapeXml(`(${node.subLabel})`),
+      ),
+    );
+  }
+
   // Top-right icon buttons: deploy button and info button
   // Buttons are 16px diameter (r=8), spaced 20px apart from right edge
   const isServiceOrDomain = node.kind === "service" || node.kind === "domain";
