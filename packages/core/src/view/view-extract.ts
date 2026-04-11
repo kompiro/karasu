@@ -172,6 +172,12 @@ export interface GhostSystem {
   visibleServices: KrsNode[];
 }
 
+export interface GhostDomain {
+  node: KrsNode;
+  /** Label of the service that owns this domain — shown as sub-label on the ghost node. */
+  parentServiceLabel: string;
+}
+
 export interface ViewSlice {
   containerNode: KrsNode | null;
   childNodes: KrsNode[];
@@ -194,6 +200,16 @@ export interface ViewSlice {
    * Edge format: from = "CallerSystemId.CallerServiceId", to = containerId.
    */
   callerGhostSystemEdges: KrsEdge[];
+  /**
+   * Service view only: domains in other services connected via cross-service domain edges.
+   * Each entry pairs the foreign domain node with its parent service label for display.
+   */
+  ghostDomains: GhostDomain[];
+  /**
+   * Service view only: cross-service domain edges connecting this service's domains
+   * to ghost domains in other services (both outgoing and incoming).
+   */
+  ghostDomainEdges: KrsEdge[];
   /**
    * Maps dot-notation resource node IDs (e.g. "OrderDB.OrderTable") to the
    * resolved label of the referenced infra sub-resource (e.g. "注文テーブル").
@@ -353,6 +369,80 @@ function buildGhostSystems(edges: KrsEdge[], allSystems: KrsNode[]): GhostSystem
   return Array.from(map.values());
 }
 
+/**
+ * Collect ghost domain nodes for the service drill-down view.
+ * A ghost domain is a domain node in another service that is connected to
+ * this service's domains via a cross-service domain edge (outgoing or incoming).
+ *
+ * Returns:
+ *   ghostDomains — unique foreign GhostDomain entries (node + parentServiceLabel)
+ *   ghostDomainEdges — the cross-service edges (original from/to domain IDs preserved)
+ */
+function buildGhostDomains(
+  containerId: string,
+  system: KrsNode,
+): { ghostDomains: GhostDomain[]; ghostDomainEdges: KrsEdge[] } {
+  const allServices = system.children.filter((c) => c.kind === "service");
+  const domainServiceMap = buildDomainServiceMap(allServices);
+  const localDomainIds = new Set(
+    allServices
+      .find((s) => s.id === containerId)
+      ?.children.filter((c) => c.kind === "domain")
+      .map((c) => c.id) ?? [],
+  );
+
+  const ghostDomainMap = new Map<string, GhostDomain>();
+  const ghostDomainEdges: KrsEdge[] = [];
+
+  // Outgoing: edges from this service's domains to domains in other services
+  const containerService = allServices.find((s) => s.id === containerId);
+  if (containerService) {
+    for (const domain of containerService.children) {
+      if (domain.kind !== "domain") continue;
+      for (const edge of domain.edges) {
+        const targetServiceId = domainServiceMap.get(edge.to);
+        if (!targetServiceId || targetServiceId === containerId) continue;
+        if (!ghostDomainMap.has(edge.to)) {
+          const targetService = allServices.find((s) => s.id === targetServiceId);
+          const foreignDomain = targetService?.children.find(
+            (c) => c.kind === "domain" && c.id === edge.to,
+          );
+          if (foreignDomain) {
+            ghostDomainMap.set(edge.to, {
+              node: foreignDomain,
+              parentServiceLabel: targetService?.label ?? targetServiceId,
+            });
+          }
+        }
+        ghostDomainEdges.push(edge);
+      }
+    }
+  }
+
+  // Incoming: edges from domains in other services into this service's domains
+  for (const service of allServices) {
+    if (service.id === containerId) continue;
+    for (const domain of service.children) {
+      if (domain.kind !== "domain") continue;
+      for (const edge of domain.edges) {
+        if (!localDomainIds.has(edge.to)) continue;
+        if (!ghostDomainMap.has(domain.id)) {
+          ghostDomainMap.set(domain.id, {
+            node: domain,
+            parentServiceLabel: service.label ?? service.id,
+          });
+        }
+        ghostDomainEdges.push(edge);
+      }
+    }
+  }
+
+  return {
+    ghostDomains: Array.from(ghostDomainMap.values()),
+    ghostDomainEdges,
+  };
+}
+
 export function extractView(
   systems: KrsNode[],
   path: ViewPath,
@@ -374,6 +464,8 @@ export function extractView(
     ghostSystemEdges: [],
     callerGhostSystems: [],
     callerGhostSystemEdges: [],
+    ghostDomains: [],
+    ghostDomainEdges: [],
     resourceLabelMap,
     resourceInferredTagsMap,
   };
@@ -421,6 +513,8 @@ export function extractView(
       ghostSystemEdges: [],
       callerGhostSystems: [],
       callerGhostSystemEdges: [],
+      ghostDomains: [],
+      ghostDomainEdges: [],
       resourceLabelMap,
       resourceInferredTagsMap,
     };
@@ -487,6 +581,8 @@ export function extractView(
   let ghostSystemEdges: KrsEdge[] = [];
   let callerGhostSystems: GhostSystem[] = [];
   let callerGhostSystemEdges: KrsEdge[] = [];
+  let ghostDomains: GhostDomain[] = [];
+  let ghostDomainEdges: KrsEdge[] = [];
 
   const isServiceView = path.length - startIndex === 1;
   if (isServiceView) {
@@ -524,6 +620,9 @@ export function extractView(
       system.id,
       systems,
     ));
+
+    // Ghost domains: cross-service domain edges (both outgoing and incoming)
+    ({ ghostDomains, ghostDomainEdges } = buildGhostDomains(containerId, system));
   }
 
   // At domain level: promote resource nodes with dot-notation refs to sibling level
@@ -555,6 +654,8 @@ export function extractView(
     ghostSystemEdges,
     callerGhostSystems,
     callerGhostSystemEdges,
+    ghostDomains,
+    ghostDomainEdges,
     resourceLabelMap,
     resourceInferredTagsMap,
   };
