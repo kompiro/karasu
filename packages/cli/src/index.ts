@@ -4,6 +4,7 @@ import { serve } from "./serve.js";
 import { render } from "./render.js";
 import { translate } from "./translate/index.js";
 import { apply } from "./apply.js";
+import { remove } from "./remove.js";
 import { fmt } from "./fmt.js";
 
 program.name("karasu").description("karasu — architecture diagram tool").version("0.0.0");
@@ -127,6 +128,23 @@ Examples:
   )
   .action((file: string) => {
     apply(file);
+  });
+
+program
+  .command("remove <node-id> <file>")
+  .description("Remove a node with the given ID from a .krs file in-place")
+  .addHelpText(
+    "after",
+    `
+Examples:
+  # Remove the DeployFoo node from deploy.krs
+  $ karasu remove DeployFoo deploy.krs
+
+  # Remove a service from arch.krs
+  $ karasu remove PaymentService arch.krs`,
+  )
+  .action((nodeId: string, file: string) => {
+    remove(nodeId, file);
   });
 
 program
