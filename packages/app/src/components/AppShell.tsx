@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type RefObject } from "react";
 import { Parser, format, FormatError } from "@karasu-tools/core";
-import { EditPane } from "./EditPane.js";
+import { EditArea } from "./EditArea.js";
 import { KarasuPreviewColumn } from "./KarasuPreviewColumn.js";
 import { downloadSvg } from "../utils/download-svg.js";
 import { useAppContext } from "../state/app-context.js";
@@ -60,7 +60,6 @@ export function AppShell({
   } = state;
 
   const [isAllLayersOpen, setIsAllLayersOpen] = useState(false);
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [previewFocused, setPreviewFocused] = useState(false);
 
   // ── View hooks ──────────────────────────────────────────────────
@@ -402,7 +401,6 @@ export function AppShell({
     : [
         "app-shell",
         hasSidebar ? "has-sidebar" : "",
-        sidebarCollapsed ? "sidebar-collapsed" : "",
         previewFocused ? "preview-focused" : "",
       ]
         .filter(Boolean)
@@ -410,19 +408,11 @@ export function AppShell({
 
   return (
     <div className={className}>
-      {sidebarContent && !previewFocused && (
-        <button
-          className="sidebar-toggle"
-          onClick={() => setSidebarCollapsed((v) => !v)}
-          aria-label={sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
-        >
-          {sidebarCollapsed ? "» Expand" : "« Collapse"}
-        </button>
-      )}
       {sidebarHeaderContent}
-      {sidebarContent}
       {!hideEditor && (
-        <EditPane
+        <EditArea
+          sidebarContent={sidebarContent}
+          previewFocused={previewFocused}
           value={fileContent}
           currentFilePath={currentFilePath}
           onChange={handleEditorChange}
