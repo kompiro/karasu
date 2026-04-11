@@ -12,6 +12,11 @@
 | `[sync]` | 同期通信（エッジ用） | 実線矢印（デフォルト） |
 | `[human]` | 人間の利用者 | user ノードにのみ使用。デフォルトスタイルへの影響なし |
 | `[ai]` | AIエージェント | user ノードにのみ使用。デフォルトスタイルへの影響なし |
+| `[deprecated]` | 移行中の廃止予定ドメイン（domain のみ） | ⚠バッジ、半透明 |
+
+> `[deprecated]` は `domain` ノードにのみ使用できる。同一システム内で同じ ID を持つドメインが存在する場合、
+> 一方に `[deprecated]` を付与することでエラーを抑制できる（移行期の共存を許容）。
+> エッジは廃止予定ドメインにも有効で、両ドメインのエッジが描画される。
 
 ### 記述例
 
@@ -20,6 +25,23 @@ service Payment "決済サービス" [external]
 ECommerce --> Inventory "在庫を同期する" [async]
 user Customer "顧客" [human]
 user AIAgent "注文自動化エージェント" [ai]
+```
+
+#### 移行期の共存例
+
+```
+system OrderSystem {
+  service LegacyService {
+    domain Contract [deprecated] {
+      -> Billing
+    }
+  }
+  service NewService {
+    domain Contract {
+      -> Billing
+    }
+  }
+}
 ```
 
 ---
