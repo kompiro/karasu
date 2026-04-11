@@ -70,6 +70,7 @@ export function useDeployView(
             deployBlocks: result.deployBlocks,
           });
         } else {
+          if (result.svg === lastValidSvg.current) return;
           lastValidSvg.current = result.svg;
           lastValidSvgKey.current = currentKey;
           setState({

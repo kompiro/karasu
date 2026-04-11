@@ -96,6 +96,34 @@ describe("useSystemView", () => {
     vi.useRealTimers();
   });
 
+  it("skips setState when recompile produces the same SVG", async () => {
+    vi.useFakeTimers();
+    const fs = makeFs(SOURCE_A);
+
+    let renderCount = 0;
+    const { result } = renderHook(() => {
+      renderCount++;
+      return useSystemView(ENTRY, fs, []);
+    });
+    await act(() => vi.advanceTimersByTimeAsync(300));
+
+    const svgAfterFirstCompile = result.current.svg;
+    expect(svgAfterFirstCompile).not.toBe("");
+
+    // Recompile without changing the source — SVG should be identical
+    const renderCountBefore = renderCount;
+    await act(async () => {
+      result.current.recompile();
+    });
+    await act(() => vi.advanceTimersByTimeAsync(300));
+
+    // SVG is still the same — no unnecessary re-render from compile result
+    expect(result.current.svg).toBe(svgAfterFirstCompile);
+    // Only 1 re-render from recompile()'s setState, not 2 (compile result setState is skipped)
+    expect(renderCount - renderCountBefore).toBe(1);
+    vi.useRealTimers();
+  });
+
   it("restores diagram after transitioning from semantic error (duplicate domain) back to valid", async () => {
     vi.useFakeTimers();
     const fs = makeFs(SOURCE_A);
