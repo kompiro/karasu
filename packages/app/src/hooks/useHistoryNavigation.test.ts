@@ -272,6 +272,20 @@ describe("useHistoryNavigation", () => {
         path: ["Payment", "EC"],
       });
     });
+
+    it("falls back to root view on popstate when nodeId is not in nodePathIndex", async () => {
+      const nodePathIndex = new Map([["Known", ["Known"]]]);
+      const dispatch = makeDispatch();
+      renderHook(() => useHistoryNavigation(makeOptions({ dispatch, nodePathIndex })));
+      dispatch.mockClear();
+
+      history.replaceState(null, "", "#krs-system-Unknown");
+      await act(async () => {
+        window.dispatchEvent(new PopStateEvent("popstate"));
+      });
+
+      expect(dispatch).toHaveBeenCalledWith({ type: "SET_VIEW_PATH", path: [] });
+    });
   });
 
   describe("file switch — hash reset", () => {
