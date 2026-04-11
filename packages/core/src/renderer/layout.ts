@@ -213,7 +213,7 @@ export function layout(
       nodeCenterX.set(nid, currentX + dims.width / 2);
       subRowMaxHeight = Math.max(subRowMaxHeight, dims.height);
       currentX += dims.width + NODE_GAP;
-      childMaxWidth = Math.max(childMaxWidth, currentX);
+      childMaxWidth = Math.max(childMaxWidth, currentX - NODE_GAP);
       childMaxHeight = Math.max(childMaxHeight, subRowY + dims.height + NODE_GAP);
     }
 
