@@ -3,6 +3,7 @@ import { program } from "commander";
 import { serve } from "./serve.js";
 import { render } from "./render.js";
 import { translate } from "./translate/index.js";
+import { apply } from "./apply.js";
 import { fmt } from "./fmt.js";
 
 program.name("karasu").description("karasu — architecture diagram tool").version("0.0.0");
@@ -104,6 +105,29 @@ Examples:
       });
     },
   );
+
+program
+  .command("apply <file>")
+  .description(
+    "Apply piped .krs content from stdin to an existing .krs file. " +
+      "Replaces a node if its ID already exists in the file, otherwise appends it.",
+  )
+  .addHelpText(
+    "after",
+    `
+Examples:
+  # Translate and apply to an existing file (replace if node exists, append otherwise)
+  $ karasu translate --from compose docker-compose.yml | karasu apply deploy.krs
+
+  # Apply a hand-written snippet
+  $ echo 'service NewService { label: "New" }' | karasu apply arch.krs
+
+  # Create a new file from translate output
+  $ karasu translate --from k8s manifests/deployment.yaml | karasu apply deploy.krs`,
+  )
+  .action((file: string) => {
+    apply(file);
+  });
 
 program
   .command("fmt [files...]")
