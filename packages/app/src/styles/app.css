@@ -141,7 +141,7 @@ body,
 }
 
 /* ── Left Pane (Editor/Chat tab container) ──────────────────────── */
-.left-pane {
+.edit-pane {
   grid-row: 1;
   grid-column: 1;
   display: flex;
@@ -151,8 +151,8 @@ body,
   position: relative;
 }
 
-/* Iridescent seam along left-pane/preview boundary */
-.left-pane::after {
+/* Iridescent seam along edit-pane/preview boundary */
+.edit-pane::after {
   content: "";
   position: absolute;
   top: 0;
@@ -348,7 +348,7 @@ body,
 }
 
 /* ── Left Tab Bar (Editor / Chat) ───────────────────────────────── */
-.left-tab-bar {
+.edit-tab-bar {
   display: flex;
   align-items: stretch;
   padding: 0 10px;
@@ -358,7 +358,7 @@ body,
   height: 36px;
 }
 
-.left-pane-toolbar {
+.edit-pane-toolbar {
   display: flex;
   align-items: center;
   gap: 3px;
@@ -368,7 +368,7 @@ body,
   flex-shrink: 0;
 }
 
-.left-tab {
+.edit-tab {
   display: inline-flex;
   align-items: center;
   gap: 5px;
@@ -390,16 +390,16 @@ body,
   white-space: nowrap;
 }
 
-.left-tab:hover {
+.edit-tab:hover {
   color: var(--text-secondary);
 }
 
-.left-tab--active {
+.edit-tab--active {
   color: var(--text-primary);
   border-bottom-color: var(--accent);
 }
 
-.left-tab-icon {
+.edit-tab-icon {
   font-size: 11px;
   opacity: 0.7;
 }
@@ -1152,8 +1152,8 @@ body,
   margin: 4px 0;
 }
 
-/* ── Sidebar Mode: left-pane & preview grid overrides ───────────── */
-.app-shell.has-sidebar .left-pane {
+/* ── Sidebar Mode: edit-pane & preview grid overrides ───────────── */
+.app-shell.has-sidebar .edit-pane {
   grid-row: 2;
   grid-column: 2;
   overflow: hidden;
@@ -1161,7 +1161,7 @@ body,
   position: relative;
 }
 
-.app-shell.has-sidebar .left-pane::after {
+.app-shell.has-sidebar .edit-pane::after {
   content: "";
   position: absolute;
   top: 0;
@@ -1249,7 +1249,7 @@ body,
   grid-template-rows: 1fr auto;
 }
 
-.app-shell.preview-focused .left-pane {
+.app-shell.preview-focused .edit-pane {
   display: none;
 }
 

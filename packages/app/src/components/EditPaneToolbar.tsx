@@ -1,16 +1,16 @@
-import type { LeftTab } from "./LeftTabBar.js";
+import type { EditTab } from "./EditTabBar.js";
 
-interface LeftPaneToolbarProps {
-  activeTab: LeftTab;
+interface EditPaneToolbarProps {
+  activeTab: EditTab;
   onFormat?: () => void;
   hasParseErrors?: boolean;
 }
 
-export function LeftPaneToolbar({ activeTab, onFormat, hasParseErrors }: LeftPaneToolbarProps) {
+export function EditPaneToolbar({ activeTab, onFormat, hasParseErrors }: EditPaneToolbarProps) {
   if (activeTab !== "editor" || !onFormat) return null;
 
   return (
-    <div className="left-pane-toolbar">
+    <div className="edit-pane-toolbar">
       <button
         className="toolbar-btn toolbar-btn--actionable toolbar-btn--format"
         onClick={onFormat}

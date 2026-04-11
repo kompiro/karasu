@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type RefObject } from "react";
 import { Parser, format, FormatError } from "@karasu-tools/core";
-import { LeftPane } from "./LeftPane.js";
+import { EditPane } from "./EditPane.js";
 import { KarasuPreviewColumn } from "./KarasuPreviewColumn.js";
 import { downloadSvg } from "../utils/download-svg.js";
 import { useAppContext } from "../state/app-context.js";
@@ -422,7 +422,7 @@ export function AppShell({
       {sidebarHeaderContent}
       {sidebarContent}
       {!hideEditor && (
-        <LeftPane
+        <EditPane
           value={fileContent}
           currentFilePath={currentFilePath}
           onChange={handleEditorChange}
