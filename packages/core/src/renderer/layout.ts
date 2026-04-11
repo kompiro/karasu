@@ -8,7 +8,6 @@ import type {
 import type { ViewSlice, GhostSystem } from "../view/view-extract.js";
 import { summarizeDescription } from "./description-summary.js";
 import { CHAR_WIDTH, NODE_PADDING_X, NODE_PADDING_Y } from "./rendering-constants.js";
-import { sortByBarycenter } from "./layer-layout-logics.js";
 
 export type LayoutNodeProperties = CommonProperties & {
   role?: string;
@@ -62,8 +61,6 @@ export interface LayoutResult {
 const LINE_HEIGHT = 18;
 const LAYER_GAP = 120;
 const NODE_GAP = 60;
-const MAX_LAYER_WIDTH = 1200; // wrap nodes to a new sub-row when layer width exceeds this
-const SUB_ROW_GAP = NODE_GAP; // vertical gap between sub-rows within the same layer
 const DESCRIPTION_FONT_RATIO = 0.85;
 const CONTAINER_PADDING = 40;
 const CONTAINER_LABEL_HEIGHT = 30;
@@ -126,15 +123,6 @@ export function layout(
 
   const layers = assignLayers(nodeIds, adj, inDegree);
 
-  // Build predecessors map for barycenter heuristic: predecessorsMap[id] = [ids that point TO id]
-  const predecessorsMap = new Map<string, string[]>();
-  for (const id of nodeIds) predecessorsMap.set(id, []);
-  for (const edge of allEdges) {
-    if (idSet.has(edge.from) && idSet.has(edge.to)) {
-      predecessorsMap.get(edge.to)!.push(edge.from);
-    }
-  }
-
   // Position nodes inside the container area
   const layoutNodes = new Map<string, LayoutNode>();
   let childMaxWidth = 0;
@@ -153,45 +141,19 @@ export function layout(
 
   const sortedLayers = Array.from(nodesByLayer.keys()).sort((a, b) => a - b);
 
-  // Tracks X-center of each placed node for barycenter calculation of subsequent layers
-  const nodeCenterX = new Map<string, number>();
+  // Compute initial positions (will be offset later for container nesting)
+  for (const layerIdx of sortedLayers) {
+    const nodesInLayer = nodesByLayer.get(layerIdx)!;
+    let xOffset = NODE_GAP;
 
-  // Place nodes layer by layer with barycenter ordering and sub-row wrapping.
-  // Left-aligned (no centering), consistent with deploy diagram layout.
-  let currentY = NODE_GAP;
-
-  for (let layerOrder = 0; layerOrder < sortedLayers.length; layerOrder++) {
-    const layerIdx = sortedLayers[layerOrder];
-    const rawIds = nodesByLayer.get(layerIdx)!;
-
-    // Sort by barycenter for all layers after the first to minimize edge crossings
-    const orderedIds =
-      layerOrder === 0
-        ? rawIds
-        : sortByBarycenter(
-            rawIds.map((id) => ({ id })),
-            predecessorsMap,
-            nodeCenterX,
-          ).map((item) => item.id);
-
-    let currentX = NODE_GAP;
-    let subRowY = currentY;
-    let subRowMaxHeight = 0;
-
-    for (const nid of orderedIds) {
+    for (const nid of nodesInLayer) {
       const krsNode = nodeMap.get(nid)!;
       const resolvedTeam =
         krsNode.kind === "service" || krsNode.kind === "domain"
           ? (ownerIndex?.get(nid) ?? krsNode.properties.team)
           : undefined;
       const dims = measureNode(krsNode, resolvedTeam, displayMode);
-
-      // Wrap to a new sub-row when this node would exceed MAX_LAYER_WIDTH
-      if (currentX > NODE_GAP && currentX + dims.width > NODE_GAP + MAX_LAYER_WIDTH) {
-        subRowY += subRowMaxHeight + SUB_ROW_GAP;
-        currentX = NODE_GAP;
-        subRowMaxHeight = 0;
-      }
+      const y = layerIdx * (dims.height + LAYER_GAP) + NODE_GAP;
 
       layoutNodes.set(nid, {
         kind: krsNode.kind,
@@ -204,20 +166,33 @@ export function layout(
         linkCount: krsNode.properties.links.length,
         hasChildren: krsNode.children.length > 0,
         hasDescription: !!krsNode.properties.description,
-        x: currentX,
-        y: subRowY,
+        x: xOffset,
+        y,
         width: dims.width,
         height: dims.height,
       });
 
-      nodeCenterX.set(nid, currentX + dims.width / 2);
-      subRowMaxHeight = Math.max(subRowMaxHeight, dims.height);
-      currentX += dims.width + NODE_GAP;
-      childMaxWidth = Math.max(childMaxWidth, currentX - NODE_GAP);
-      childMaxHeight = Math.max(childMaxHeight, subRowY + dims.height + NODE_GAP);
+      xOffset += dims.width + NODE_GAP;
+      childMaxWidth = Math.max(childMaxWidth, xOffset);
+      childMaxHeight = Math.max(childMaxHeight, y + dims.height + NODE_GAP);
     }
+  }
 
-    currentY = subRowY + subRowMaxHeight + LAYER_GAP;
+  // Center each layer
+  for (const layerIdx of sortedLayers) {
+    const nodesInLayer = nodesByLayer.get(layerIdx)!;
+    const layerWidth = nodesInLayer.reduce((sum, id) => {
+      const n = layoutNodes.get(id)!;
+      return sum + n.width + NODE_GAP;
+    }, -NODE_GAP);
+    const offset = Math.max(0, (childMaxWidth - layerWidth) / 2);
+
+    let xOffset = offset;
+    for (const id of nodesInLayer) {
+      const n = layoutNodes.get(id)!;
+      n.x = xOffset;
+      xOffset += n.width + NODE_GAP;
+    }
   }
 
   // Build containers (innermost first: focused container, then ancestors)
@@ -413,7 +388,7 @@ export function layout(
   // Compute edges
   const layoutEdges: LayoutEdge[] = [];
   for (const edge of allEdges) {
-    const le = computeEdgePoints(edge, layoutNodes);
+    const le = computeEdgePoints(edge, layoutNodes, layers);
     if (le) layoutEdges.push(le);
   }
 
@@ -774,7 +749,7 @@ function layoutMultipleSystems(
     // Intra-system edges
     for (const edge of sys.edges) {
       if (idSet.has(edge.from) && idSet.has(edge.to)) {
-        const le = computeEdgePoints(edge, allLayoutNodes);
+        const le = computeEdgePoints(edge, allLayoutNodes, layers);
         if (le) {
           if (isGhost) le.ghost = true;
           allEdges.push(le);
@@ -857,18 +832,11 @@ function buildContainersForEmpty(viewSlice: ViewSlice): ContainerRect[] {
   return containers;
 }
 
-/**
- * Compute edge connection points between two laid-out nodes.
- *
- * Direction is determined by comparing y-coordinates (visual row position),
- * not layer indices. This correctly handles sub-row wrapping where two nodes
- * may share a logical layer but occupy different visual rows.
- *
- * - Same y (same row): horizontal edge — connect right/left sides at mid-height
- * - from.y > to.y (from is below to): reverse edge — connect from top-center to to bottom-center
- * - from.y < to.y (normal top→bottom): connect from bottom-center to to top-center
- */
-function computeEdgePoints(edge: KrsEdge, layoutNodes: Map<string, LayoutNode>): LayoutEdge | null {
+function computeEdgePoints(
+  edge: KrsEdge,
+  layoutNodes: Map<string, LayoutNode>,
+  layers: Map<string, number>,
+): LayoutEdge | null {
   const fromNode = layoutNodes.get(edge.from);
   const toNode = layoutNodes.get(edge.to);
   if (!fromNode || !toNode) return null;
@@ -882,8 +850,10 @@ function computeEdgePoints(edge: KrsEdge, layoutNodes: Map<string, LayoutNode>):
     y: toNode.y,
   };
 
-  if (fromNode.y === toNode.y) {
-    // Same row: horizontal edge
+  const fromLayer = layers.get(edge.from) ?? 0;
+  const toLayer = layers.get(edge.to) ?? 0;
+  if (fromLayer === toLayer) {
+    // Same layer: horizontal edge
     if (fromNode.x < toNode.x) {
       fromPoint.x = fromNode.x + fromNode.width;
       fromPoint.y = fromNode.y + fromNode.height / 2;
@@ -895,12 +865,11 @@ function computeEdgePoints(edge: KrsEdge, layoutNodes: Map<string, LayoutNode>):
       toPoint.x = toNode.x + toNode.width;
       toPoint.y = toNode.y + toNode.height / 2;
     }
-  } else if (fromNode.y > toNode.y) {
-    // Reverse edge (from is below to): connect from top-center to to bottom-center
+  } else if (fromLayer > toLayer) {
+    // Reverse edge
     fromPoint.y = fromNode.y;
     toPoint.y = toNode.y + toNode.height;
   }
-  // else: normal top→bottom edge; default fromPoint (bottom-center) and toPoint (top-center) are correct
 
   return {
     from: edge.from,
