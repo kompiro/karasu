@@ -25,6 +25,7 @@ function baseProps(currentProject: Project | null = makeProject()) {
     onCreateProject: vi.fn<(name: string) => void>(),
     onRenameProject: vi.fn<(id: string, newName: string) => void>(),
     onDeleteProject: vi.fn<(id: string) => void>(),
+    onExportProject: vi.fn<() => void>(),
   };
 }
 
@@ -145,5 +146,24 @@ describe("ProjectSelector — Delete button label", () => {
     const { getByRole } = render(<ProjectSelector {...baseProps()} />);
     const btn = getByRole("button", { name: /Delete/ });
     expect(btn.textContent).toContain("✕");
+  });
+});
+
+describe("ProjectSelector — Export button", () => {
+  it("shows Export button when a project is selected", () => {
+    const { getByRole } = render(<ProjectSelector {...baseProps()} />);
+    expect(getByRole("button", { name: /Export/ })).toBeTruthy();
+  });
+
+  it("does not show Export button when no project is selected", () => {
+    const { queryByRole } = render(<ProjectSelector {...baseProps(null)} />);
+    expect(queryByRole("button", { name: /Export/ })).toBeNull();
+  });
+
+  it("calls onExportProject when Export button is clicked", () => {
+    const props = baseProps();
+    const { getByRole } = render(<ProjectSelector {...props} />);
+    fireEvent.click(getByRole("button", { name: /Export/ }));
+    expect(props.onExportProject).toHaveBeenCalledOnce();
   });
 });
