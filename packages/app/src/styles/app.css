@@ -961,6 +961,11 @@ body,
   color: var(--error);
 }
 
+/* Export/Import group — visually separated from the edit actions */
+.project-selector-btn--export {
+  margin-left: 8px;
+}
+
 .project-selector-input {
   background: var(--bg-void);
   color: var(--text-primary);

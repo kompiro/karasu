@@ -8,6 +8,7 @@ interface ProjectSelectorProps {
   onCreateProject: (name: string) => void;
   onRenameProject: (id: string, newName: string) => void;
   onDeleteProject: (id: string) => void;
+  onExportProject: () => void;
 }
 
 export function ProjectSelector({
@@ -17,6 +18,7 @@ export function ProjectSelector({
   onCreateProject,
   onRenameProject,
   onDeleteProject,
+  onExportProject,
 }: ProjectSelectorProps) {
   const [isCreating, setIsCreating] = useState(false);
   const [newName, setNewName] = useState("");
@@ -180,6 +182,13 @@ export function ProjectSelector({
                 title="プロジェクトを削除"
               >
                 ✕ Delete
+              </button>
+              <button
+                onClick={onExportProject}
+                className="project-selector-btn project-selector-btn--export"
+                title="ZIPとしてエクスポート"
+              >
+                ↓ Export
               </button>
             </>
           )}

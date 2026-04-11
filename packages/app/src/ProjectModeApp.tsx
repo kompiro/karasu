@@ -6,6 +6,7 @@ import { useAppContext } from "./state/app-context.js";
 import { ProjectManager } from "./fs/project-manager.js";
 import { useProjectNavigation, LAST_PROJECT_KEY } from "./hooks/useProjectNavigation.js";
 import { type Project, EC_PLATFORM_PROJECTS } from "@karasu-tools/core";
+import { exportProjectAsZip } from "./utils/export-project-zip.js";
 
 /**
  * ProjectModeApp — OPFS モードのアプリケーションシェル。
@@ -145,6 +146,11 @@ export function ProjectModeApp() {
     [pm, dispatch, projects, navigateToProject],
   );
 
+  const handleExportProject = useCallback(() => {
+    if (!currentProject) return;
+    void exportProjectAsZip(fs, currentProject.rootPath, currentProject.name);
+  }, [fs, currentProject]);
+
   if (loading || !currentProject) {
     return <div className="app-loading">Loading...</div>;
   }
@@ -157,6 +163,7 @@ export function ProjectModeApp() {
       onCreateProject={handleCreateProject}
       onRenameProject={handleRenameProject}
       onDeleteProject={handleDeleteProject}
+      onExportProject={handleExportProject}
     />
   );
 
