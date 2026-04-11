@@ -86,7 +86,7 @@ function detectUnassignedUsecases(file: KrsFile): Warning[] {
           if (child.kind === "usecase") {
             warnings.push({
               kind: "unassigned-usecase",
-              message: `usecase "${child.label ?? child.id}" is not assigned to any domain`,
+              message: `usecase "${child.id}" is not assigned to any domain`,
               details: [],
               loc: child.loc,
             });
