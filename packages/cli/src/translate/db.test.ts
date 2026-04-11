@@ -64,4 +64,22 @@ CREATE TABLE payments (
     });
     expect(result).toContain("database InventoryDB {");
   });
+
+  it("handles schema-qualified table names (schema.table)", async () => {
+    const input = `
+CREATE TABLE public.orders (id BIGINT PRIMARY KEY);
+CREATE TABLE app.order_items (id BIGINT PRIMARY KEY);
+`;
+    const result = await translator.translate(input, { ...ctx, database: "AppDB" });
+    expect(result).toContain('  table OrdersTable { label "orders" }');
+    expect(result).toContain('  table OrderItemsTable { label "order_items" }');
+    expect(result).not.toContain("PublicTable");
+    expect(result).not.toContain("AppTable");
+  });
+
+  it("handles quoted schema-qualified table names", async () => {
+    const input = `CREATE TABLE "public"."user_profiles" (id BIGINT PRIMARY KEY);`;
+    const result = await translator.translate(input, { ...ctx, database: "AppDB" });
+    expect(result).toContain('  table UserProfilesTable { label "user_profiles" }');
+  });
 });

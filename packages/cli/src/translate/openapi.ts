@@ -36,6 +36,7 @@ type HttpMethod = (typeof HTTP_METHODS)[number];
 /** Convert a string to PascalCase identifier. */
 function toPascalCase(str: string): string {
   return str
+    .trim()
     .replace(/[^a-zA-Z0-9]+(.)/g, (_, ch) => ch.toUpperCase())
     .replace(/^(.)/, (ch) => ch.toUpperCase());
 }

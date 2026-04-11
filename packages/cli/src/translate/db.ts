@@ -6,6 +6,7 @@ import type { Translator, TranslatorContext } from "./translator.js";
 /** Convert snake_case or any identifier to PascalCase. */
 function toPascalCase(str: string): string {
   return str
+    .trim()
     .replace(/[^a-zA-Z0-9]+(.)/g, (_, ch: string) => ch.toUpperCase())
     .replace(/^(.)/, (ch: string) => ch.toUpperCase());
 }
@@ -28,11 +29,15 @@ function deriveDbName(inputPath: string): string {
  *   CREATE TABLE IF NOT EXISTS tablename (...)
  *   CREATE TABLE "tablename" (...)
  *   CREATE TABLE `tablename` (...)
+ *   CREATE TABLE schema.tablename (...)
+ *   CREATE TABLE "schema"."tablename" (...)
  */
 function extractTableNames(sql: string): string[] {
   const tableNames: string[] = [];
-  // Match CREATE TABLE [IF NOT EXISTS] <name>
-  const pattern = /CREATE\s+TABLE\s+(?:IF\s+NOT\s+EXISTS\s+)?["'`]?(\w+)["'`]?\s*\(/gi;
+  // Match CREATE TABLE [IF NOT EXISTS] [schema.]<name>
+  // The optional schema prefix (["'`]?\w+["'`]?\.) is consumed but not captured.
+  const pattern =
+    /CREATE\s+TABLE\s+(?:IF\s+NOT\s+EXISTS\s+)?(?:["'`]?\w+["'`]?\.)?["'`]?(\w+)["'`]?\s*\(/gi;
   let match: RegExpExecArray | null;
   while ((match = pattern.exec(sql)) !== null) {
     tableNames.push(match[1]);
