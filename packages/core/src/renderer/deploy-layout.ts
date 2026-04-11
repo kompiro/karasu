@@ -133,8 +133,6 @@ function ghostEdgePoints(
   }
 }
 
-// sortByBarycenter is imported from layer-layout-logics.ts (shared with layout.ts)
-
 /**
  * Layout a deploy diagram using a layered DAG layout (Longest Path Layering).
  *
