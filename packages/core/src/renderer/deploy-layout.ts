@@ -2,6 +2,7 @@ import type { DeployNode } from "../types/ast.js";
 import type { LayoutResult, LayoutNode, ContainerRect, LayoutEdge } from "./layout.js";
 import type { DeployViewSlice } from "../view/deploy-view-extract.js";
 import { CHAR_WIDTH, NODE_PADDING_X, NODE_PADDING_Y } from "./rendering-constants.js";
+import { sortByBarycenter } from "./layer-layout-logics.js";
 const LINE_HEIGHT = 18;
 const NODE_GAP = 16;
 const CONTAINER_GAP = 48;
@@ -133,32 +134,6 @@ function ghostEdgePoints(
 }
 
 /**
- * Sort containers within a layer by barycenter heuristic to minimize edge crossings.
- *
- * For each container, the barycenter is the average X-center of its predecessors
- * in the previous layer (containers that already have a recorded center X position).
- * Containers with no predecessors in the previous layer get Infinity and are placed last,
- * preserving their relative insertion order (stable sort).
- */
-function sortLayerByBarycenter<T extends { id: string }>(
-  layerGroups: T[],
-  predecessorsMap: Map<string, string[]>,
-  containerCenterX: Map<string, number>,
-): T[] {
-  const barycenter = new Map<string, number>();
-  for (const group of layerGroups) {
-    const preds = (predecessorsMap.get(group.id) ?? []).filter((p) => containerCenterX.has(p));
-    if (preds.length === 0) {
-      barycenter.set(group.id, Infinity);
-    } else {
-      const avg = preds.reduce((sum, p) => sum + containerCenterX.get(p)!, 0) / preds.length;
-      barycenter.set(group.id, avg);
-    }
-  }
-  return [...layerGroups].sort((a, b) => barycenter.get(a.id)! - barycenter.get(b.id)!);
-}
-
-/**
  * Layout a deploy diagram using a layered DAG layout (Longest Path Layering).
  *
  * Containers are grouped into layers based on service dependency edges (ghost edges).
@@ -222,7 +197,7 @@ export function layoutDeploy(slice: DeployViewSlice): LayoutResult {
     const layerGroups =
       layerOrder === 0
         ? layerBuckets.get(layerIdx)!
-        : sortLayerByBarycenter(layerBuckets.get(layerIdx)!, predecessorsMap, containerCenterX);
+        : sortByBarycenter(layerBuckets.get(layerIdx)!, predecessorsMap, containerCenterX);
 
     // Place containers with sub-row wrapping when layer width exceeds MAX_LAYER_WIDTH
     let currentX = OUTER_PADDING;

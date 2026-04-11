@@ -1,7 +1,7 @@
 # Architecture Diagram レイアウト — Barycenter + Sub-row wrap の適用
 
 - **日付**: 2026-04-11
-- **ステータス**: 完了
+- **ステータス**: 完了（スコープ縮小）
 - **関連**:
   - [`docs/design/deploy-layout-wrap.md`](deploy-layout-wrap.md) — deploy 図への Longest Path Layering 導入（前提知識）
   - [`docs/design/barycenter-layer-ordering.md`](barycenter-layer-ordering.md) — deploy 図への Barycenter 導入（前提知識）
@@ -237,72 +237,49 @@ main `layout()` のみ対応し、`layoutMultipleSystems` は後続 Issue とす
 | 共通ユーティリティ | C-1（抽出）vs C-2（独立実装） | **C-1** — `layer-layout-logics.ts` に抽出し DRY にする |
 | layoutMultipleSystems | D-1（対応）vs D-2（除外） | **D-2** — 今回は main `layout()` のみ、後続 Issue に委ねる |
 
-## 現時点の方針
+## 実装後の判断（スコープ縮小）
 
-上記の比較から、以下の方針を採用する：
+設計時は `layout.ts` の全ビューに barycenter + sub-row wrap を適用する方針（A-2）を採用した。
+しかし実装・動作確認の結果、`layout.ts` が扱う全ビューがツリー構造であることが判明した：
 
-- **センタリング廃止（A-2）**: deploy 図と同様に左揃え (`OUTER_PADDING` 起点)
-- **y 座標比較（B-1）**: `computeEdgePoints` から `layers` パラメータを削除し y 座標で方向判定
-- **共通モジュール抽出（C-1）**: `layer-layout-logics.ts` に `sortByBarycenter` を切り出し、`deploy-layout.ts` と `layout.ts` で共有
-- **スコープ限定（D-2）**: `layoutMultipleSystems` は今回対象外、後続 Issue に委ねる
+| ビューレベル | 表示内容 | 構造 |
+|---|---|---|
+| system | user + service | ツリー（依存グラフ） |
+| service | domain | ツリー（ドメイン分解） |
+| domain | usecase + resource | 呼び出し関係のツリー |
 
-### アルゴリズム設計
+これらは deploy 図のような「横に並ぶコンテナ群」とは異なる。
+センタリングによってツリー構造が視覚的に読みやすくなっており、
+左揃えに変更すると見た目が著しく悪化する。
 
-```
-// 前提: assignLayers() は既存のままで OK（Longest Path Layering 相当）
+### 結論
 
-predecessorsMap = { nodeId → [predecessor nodeIds] }
-nodeCenterX = Map<nodeId, number>  // 配置後の X 中心座標（barycenter 計算に使用）
+**`layout.ts` への barycenter + sub-row wrap 適用は行わない。**
+センタリングレイアウトを維持する。
 
-for layerOrder = 0 to sortedLayers.length - 1:
-  layerIds = nodesByLayer[sortedLayers[layerOrder]]
+#### 実施したこと
 
-  if layerOrder > 0:
-    layerIds = sortNodesByBarycenter(layerIds, predecessorsMap, nodeCenterX)
+- **C-1 のみ実施**: `sortByBarycenter` を `layer-layout-logics.ts` に抽出し、`deploy-layout.ts` で利用
+  - `deploy-layout.ts` 内の重複コード（`sortLayerByBarycenter`）を削除
+  - 将来 `layout.ts` 以外のレイアウトエンジンでも再利用可能な状態にした
 
-  currentX = NODE_GAP
-  subRowY = currentY
-  subRowMaxH = 0
-  subRowIds = []
+#### 実施しなかったこと
 
-  for each nodeId in layerIds:
-    dims = measureNode(...)
-
-    if currentX > NODE_GAP && currentX + dims.width > NODE_GAP + MAX_LAYER_WIDTH:
-      // 折り返し
-      record sub-row (subRowY, subRowIds)
-      subRowY += subRowMaxH + SUB_ROW_GAP
-      currentX = NODE_GAP; subRowMaxH = 0; subRowIds = []
-
-    place node at (currentX, subRowY)
-    nodeCenterX[nodeId] = currentX + dims.width / 2
-    subRowIds.push(nodeId)
-    subRowMaxH = max(subRowMaxH, dims.height)
-    currentX += dims.width + NODE_GAP
-
-  record sub-row (subRowY, subRowIds)
-  currentY = subRowY + subRowMaxH + LAYER_GAP
-
-// センタリングなし（A-2 採用）
-// deploy 図と同様に OUTER_PADDING からの左揃えのみ。
-```
-
-### 定数
-
-```ts
-const MAX_LAYER_WIDTH = 1200; // deploy-layout.ts と同値
-const SUB_ROW_GAP = NODE_GAP; // 同レイヤー内 sub-row 間の縦余白（= 60px）
-```
+- A-2（左揃え統一）: 採用せず。architecture diagram はセンタリングを維持
+- B-1（y 座標比較）: 採用せず。`computeEdgePoints` は `layers` パラメータを維持
+- layout.ts への barycenter 順序付けおよび sub-row wrap: 採用せず
 
 ## 決定事項まとめ
 
-| # | 論点 | 決定 |
-|---|---|---|
-| A | センタリング | **A-2** — 廃止して左揃え。deploy 図と統一 |
-| B | `computeEdgePoints` 方向検出 | **B-1** — `layers` パラメータを削除し y 座標比較に置き換え |
-| C | 共通ユーティリティ | **C-1** — `layer-layout-logics.ts` に `sortByBarycenter` を抽出 |
-| D | `layoutMultipleSystems` スコープ | **D-2** — 今回対象外、後続 Issue に委ねる |
+| # | 論点 | 当初の方針 | 最終決定 | 理由 |
+|---|---|---|---|---|
+| A | センタリング | **A-2** — 左揃え | **A-1 相当（維持）** | layout.ts の全ビューがツリー構造のため |
+| B | `computeEdgePoints` 方向検出 | **B-1** — y 座標比較 | **採用せず** | layout.ts に sub-row wrap を入れないため不要 |
+| C | 共通ユーティリティ | **C-1** — 抽出 | **C-1（実施）** | deploy-layout.ts の重複コードを削除 |
+| D | `layoutMultipleSystems` スコープ | **D-2** — 除外 | **D-2（維持）** | そもそも layout.ts 本体も変更しないため |
 
 ## 将来の課題
 
-- `layoutMultipleSystems` への barycenter + sub-row wrap 適用（D-2 により今回対象外）
+- `layout.ts` のツリービューで横方向に要素が多くなった場合の対策は別途検討が必要
+  （現状のセンタリングは維持しつつ、wrap だけを導入する案なども考えられる）
+- `layoutMultipleSystems` への barycenter + sub-row wrap 適用は Issue #467 で追跡

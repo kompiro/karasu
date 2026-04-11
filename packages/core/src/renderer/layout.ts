@@ -853,6 +853,7 @@ function computeEdgePoints(
   const fromLayer = layers.get(edge.from) ?? 0;
   const toLayer = layers.get(edge.to) ?? 0;
   if (fromLayer === toLayer) {
+    // Same layer: horizontal edge
     if (fromNode.x < toNode.x) {
       fromPoint.x = fromNode.x + fromNode.width;
       fromPoint.y = fromNode.y + fromNode.height / 2;
@@ -865,6 +866,7 @@ function computeEdgePoints(
       toPoint.y = toNode.y + toNode.height / 2;
     }
   } else if (fromLayer > toLayer) {
+    // Reverse edge
     fromPoint.y = fromNode.y;
     toPoint.y = toNode.y + toNode.height;
   }
