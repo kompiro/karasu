@@ -405,6 +405,52 @@ system S {
 });
 
 describe("layout > sub-row wrapping", () => {
+  it("wraps nodes in layer 1 when that layer also exceeds MAX_LAYER_WIDTH", () => {
+    // Layer 0: single root node R
+    // Layer 1: 7 wide nodes all depending on R → triggers wrapping in layer 1
+    // This tests the barycenter + sub-row wrap interaction in a non-first layer.
+    const krs = `
+system S {
+  service R { label "Root" }
+  service N1 { label "Node One Long Label" }
+  service N2 { label "Node Two Long Label" }
+  service N3 { label "Node Three Long Label" }
+  service N4 { label "Node Four Long Label" }
+  service N5 { label "Node Five Long Label" }
+  service N6 { label "Node Six Long Label" }
+  service N7 { label "Node Seven Long Label" }
+  R -> N1 "uses"
+  R -> N2 "uses"
+  R -> N3 "uses"
+  R -> N4 "uses"
+  R -> N5 "uses"
+  R -> N6 "uses"
+  R -> N7 "uses"
+}
+    `;
+    const slice = parseAndExtract(krs);
+    const result = layout(slice);
+
+    const nodeR = result.nodes.get("R")!;
+
+    // Layer 1 nodes should all be below R
+    for (const id of ["N1", "N2", "N3", "N4", "N5", "N6", "N7"]) {
+      const n = result.nodes.get(id)!;
+      expect(n.y).toBeGreaterThan(nodeR.y);
+    }
+
+    // Layer 1 spans at least 2 distinct y values (wrapping occurred)
+    const layer1Ys = new Set(
+      ["N1", "N2", "N3", "N4", "N5", "N6", "N7"].map((id) => result.nodes.get(id)!.y),
+    );
+    expect(layer1Ys.size).toBeGreaterThan(1);
+
+    // All x coordinates must be non-negative
+    for (const [, node] of result.nodes) {
+      expect(node.x).toBeGreaterThanOrEqual(0);
+    }
+  });
+
   it("wraps nodes to a new sub-row when layer width exceeds MAX_LAYER_WIDTH", () => {
     // Create enough wide nodes in a single layer to trigger wrapping (> 1200px)
     // Each node ~200px wide, with NODE_GAP=60 between them: 7 nodes ≈ 1610px
