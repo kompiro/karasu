@@ -96,9 +96,6 @@ export function useSystemView(
   const lastValidSvgKey = useRef("");
   const timerRef = useRef<ReturnType<typeof setTimeout>>(undefined);
   const recompileCounter = useRef(0);
-  // Monotonically-increasing request ID used to discard stale async compile results.
-  // Incremented each time a new compile is initiated; compared after await to detect races.
-  const compileRequestId = useRef(0);
 
   const recompile = useCallback(() => {
     recompileCounter.current++;
@@ -113,15 +110,12 @@ export function useSystemView(
     const currentKey = `${entryPath}:system`;
 
     timerRef.current = setTimeout(async () => {
-      const requestId = ++compileRequestId.current;
       try {
         const result = await compileProject(entryPath, fs, {
           diagramType: "system",
           viewPath,
           displayMode,
         });
-        // Discard result if a newer compile has already started (race condition guard).
-        if (requestId !== compileRequestId.current) return;
         if (result.diagramType !== "system") return;
         const hasErrors = result.diagnostics.some((d) => d.severity === "error");
 
