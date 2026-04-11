@@ -1,15 +1,11 @@
-import type { ReactNode } from "react";
-
 export type LeftTab = "editor" | "chat" | "settings";
 
 interface LeftTabBarProps {
   activeTab: LeftTab;
   onTabChange: (tab: LeftTab) => void;
-  /** Optional content rendered on the right side of the tab bar */
-  rightContent?: ReactNode;
 }
 
-export function LeftTabBar({ activeTab, onTabChange, rightContent }: LeftTabBarProps) {
+export function LeftTabBar({ activeTab, onTabChange }: LeftTabBarProps) {
   return (
     <div className="left-tab-bar" role="tablist">
       <button
@@ -39,7 +35,6 @@ export function LeftTabBar({ activeTab, onTabChange, rightContent }: LeftTabBarP
         <span className="left-tab-icon">⚙</span>
         Settings
       </button>
-      {rightContent && <div className="left-tab-bar__right">{rightContent}</div>}
     </div>
   );
 }

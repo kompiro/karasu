@@ -2,6 +2,7 @@ import { useState, useCallback } from "react";
 import type { editor } from "monaco-editor";
 import { EditorPane } from "./EditorPane.js";
 import { LeftTabBar, type LeftTab } from "./LeftTabBar.js";
+import { LeftPaneToolbar } from "./LeftPaneToolbar.js";
 import { ChatPane } from "./ChatPane.js";
 import { SettingsPane } from "./SettingsPane.js";
 import { getStoredApiKey } from "../utils/api-key-storage.js";
@@ -42,25 +43,10 @@ export function LeftPane({
     setActiveTab("settings");
   }, []);
 
-  const formatButton =
-    activeTab === "editor" && onFormat ? (
-      <button
-        className="toolbar-btn toolbar-btn--actionable toolbar-btn--format"
-        onClick={onFormat}
-        disabled={hasParseErrors}
-        title={
-          hasParseErrors
-            ? "Cannot format: source has parse errors"
-            : "Format document (Shift+Alt+F)"
-        }
-      >
-        ⌥ Format
-      </button>
-    ) : null;
-
   return (
     <div className="left-pane">
-      <LeftTabBar activeTab={activeTab} onTabChange={setActiveTab} rightContent={formatButton} />
+      <LeftTabBar activeTab={activeTab} onTabChange={setActiveTab} />
+      <LeftPaneToolbar activeTab={activeTab} onFormat={onFormat} hasParseErrors={hasParseErrors} />
       {activeTab === "editor" && (
         <EditorPane
           value={value}
