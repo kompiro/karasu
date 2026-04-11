@@ -105,12 +105,12 @@ describe("exportProjectAsZip", () => {
     expect(zipSync).toHaveBeenCalledOnce();
     const arg = vi.mocked(zipSync).mock.calls[0][0] as Record<string, Uint8Array>;
     expect(Object.keys(arg).sort()).toEqual([
-      "default.krs.style",
-      "index.krs",
-      "services/ecommerce.krs",
+      "my-project/default.krs.style",
+      "my-project/index.krs",
+      "my-project/services/ecommerce.krs",
     ]);
-    expect(arg["index.krs"]).toEqual(strToU8("workspace {}"));
-    expect(arg["services/ecommerce.krs"]).toEqual(strToU8("system Ecommerce {}"));
+    expect(arg["my-project/index.krs"]).toEqual(strToU8("workspace {}"));
+    expect(arg["my-project/services/ecommerce.krs"]).toEqual(strToU8("system Ecommerce {}"));
   });
 
   it("passes an empty object to zipSync when project has no files", async () => {

@@ -12,8 +12,8 @@ async function collectFiles(
     const fullPath = `${dir}/${entry.name}`;
     if (entry.kind === "file") {
       const content = await fs.readFile(fullPath);
-      const zipPath = fullPath.slice(rootPath.length + 1);
-      files[zipPath] = strToU8(content);
+      const relativePath = fullPath.slice(rootPath.length + 1);
+      files[relativePath] = strToU8(content);
     } else {
       await collectFiles(fs, fullPath, rootPath, files);
     }
@@ -25,8 +25,13 @@ export async function exportProjectAsZip(
   rootPath: string,
   projectName: string,
 ): Promise<void> {
+  const collected: Record<string, Uint8Array> = {};
+  await collectFiles(fs, rootPath, rootPath, collected);
+
   const files: Record<string, Uint8Array> = {};
-  await collectFiles(fs, rootPath, rootPath, files);
+  for (const [relativePath, data] of Object.entries(collected)) {
+    files[`${projectName}/${relativePath}`] = data;
+  }
 
   const zipped = zipSync(files);
   const blob = new Blob([new Uint8Array(zipped)], { type: "application/zip" });
