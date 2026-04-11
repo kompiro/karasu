@@ -183,7 +183,7 @@ describe("useHistoryNavigation", () => {
       });
     });
 
-    it("falls back to [nodeId] when nodePathIndex does not contain the key", async () => {
+    it("falls back to root view when nodePathIndex does not contain the key", async () => {
       history.replaceState(null, "", "#krs-system-Unknown");
       const dispatch = makeDispatch();
       let nodePathIndex = new Map<string, string[]>();
@@ -199,7 +199,7 @@ describe("useHistoryNavigation", () => {
         rerender();
       });
 
-      expect(dispatch).toHaveBeenCalledWith({ type: "SET_VIEW_PATH", path: ["Unknown"] });
+      expect(dispatch).toHaveBeenCalledWith({ type: "SET_VIEW_PATH", path: [] });
     });
   });
 

@@ -113,7 +113,7 @@ export function useHistoryNavigation({
     if (nodeId === null) return;
     if (nodePathIndex.size === 0) return;
 
-    const resolvedPath = nodePathIndex.get(nodeId) ?? [nodeId];
+    const resolvedPath = nodePathIndex.get(nodeId) ?? [];
     pendingNodeIdRef.current = null;
     dispatch({ type: "SET_VIEW_PATH", path: resolvedPath });
   }, [nodePathIndex, dispatch]);
@@ -150,7 +150,7 @@ export function useHistoryNavigation({
       setIsOrgTreeViewRef.current(parsed.isOrgTreeView);
 
       const path =
-        parsed.nodeId === null ? [] : (nodePathIndex.get(parsed.nodeId) ?? [parsed.nodeId]);
+        parsed.nodeId === null ? [] : (nodePathIndex.get(parsed.nodeId) ?? []);
       dispatch({ type: "SET_VIEW_PATH", path });
 
       queueMicrotask(() => {
