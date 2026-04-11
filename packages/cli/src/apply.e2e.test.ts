@@ -1,12 +1,31 @@
-import { describe, it, expect, beforeEach, afterEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { mkdtempSync, writeFileSync, readFileSync, existsSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { applyIncoming } from "./apply.js";
+import { EventEmitter } from "node:events";
+import { apply, applyIncoming } from "./apply.js";
 
-// Note: apply() itself reads from process.stdin and calls process.exit(), so we test
-// the pure applyIncoming() function directly for unit/integration coverage.
-// stdin piping is verified by the E2E acceptance test descriptions below.
+// ── Helpers ───────────────────────────────────────────────────────────────────
+
+function mockStdin(content: string): () => void {
+  const emitter = new EventEmitter() as NodeJS.ReadableStream & EventEmitter;
+  emitter.setEncoding = vi.fn();
+
+  const original = process.stdin;
+  Object.defineProperty(process, "stdin", { value: emitter, writable: true });
+
+  // Emit data asynchronously to simulate real stdin piping
+  setTimeout(() => {
+    if (content) emitter.emit("data", content);
+    emitter.emit("end");
+  }, 0);
+
+  return () => {
+    Object.defineProperty(process, "stdin", { value: original, writable: true });
+  };
+}
+
+// ── applyIncoming unit tests ───────────────────────────────────────────────────
 
 describe("applyIncoming", () => {
   let tmpDir: string;
@@ -102,5 +121,82 @@ describe("applyIncoming", () => {
     const result = applyIncoming(existing, incoming);
     expect(result).toContain("system Foo {}");
     expect(result).toContain("// just a comment");
+  });
+});
+
+// ── apply() integration tests (stdin + file I/O) ──────────────────────────────
+
+describe("apply (stdin integration)", () => {
+  let tmpDir: string;
+  let restoreStdin: () => void;
+  let exitSpy: ReturnType<typeof vi.spyOn>;
+  let stderrSpy: ReturnType<typeof vi.spyOn>;
+
+  beforeEach(() => {
+    tmpDir = mkdtempSync(join(tmpdir(), "karasu-apply-stdin-"));
+    exitSpy = vi.spyOn(process, "exit").mockImplementation((() => {}) as never);
+    stderrSpy = vi.spyOn(process.stderr, "write").mockImplementation(() => true);
+  });
+
+  afterEach(() => {
+    restoreStdin?.();
+    exitSpy.mockRestore();
+    stderrSpy.mockRestore();
+    rmSync(tmpDir, { recursive: true, force: true });
+  });
+
+  // AT-0060-09
+  it("creates a new file when target does not exist", async () => {
+    const targetPath = join(tmpDir, "deploy.krs");
+    const content = 'deploy "production" {\n  oci "api" {}\n}';
+    restoreStdin = mockStdin(content);
+
+    await apply(targetPath);
+
+    expect(existsSync(targetPath)).toBe(true);
+    expect(readFileSync(targetPath, "utf-8")).toBe(content);
+    expect(exitSpy).not.toHaveBeenCalled();
+  });
+
+  // AT-0060-10
+  it("appends to an existing file when node ID differs", async () => {
+    const targetPath = join(tmpDir, "deploy.krs");
+    writeFileSync(targetPath, 'deploy "prod" {\n  oci "api" {}\n}', "utf-8");
+
+    restoreStdin = mockStdin('deploy "staging" {\n  oci "api" {}\n}');
+    await apply(targetPath);
+
+    const content = readFileSync(targetPath, "utf-8");
+    expect(content).toContain('deploy "prod"');
+    expect(content).toContain('deploy "staging"');
+    expect(exitSpy).not.toHaveBeenCalled();
+  });
+
+  // AT-0060-11
+  it("replaces an existing node when node ID matches", async () => {
+    const targetPath = join(tmpDir, "deploy.krs");
+    writeFileSync(targetPath, 'deploy "prod" {\n  oci "api-v1" {}\n}', "utf-8");
+
+    restoreStdin = mockStdin('deploy "prod" {\n  oci "api-v2" {}\n}');
+    await apply(targetPath);
+
+    const content = readFileSync(targetPath, "utf-8");
+    expect(content).toContain("api-v2");
+    expect(content).not.toContain("api-v1");
+    expect(exitSpy).not.toHaveBeenCalled();
+  });
+
+  // AT-0060-12
+  it("exits with code 1 and prints error when stdin is empty", async () => {
+    const targetPath = join(tmpDir, "deploy.krs");
+    restoreStdin = mockStdin("");
+
+    await apply(targetPath);
+
+    expect(stderrSpy).toHaveBeenCalledWith(
+      expect.stringContaining("stdin is empty"),
+    );
+    expect(exitSpy).toHaveBeenCalledWith(1);
+    expect(existsSync(targetPath)).toBe(false);
   });
 });

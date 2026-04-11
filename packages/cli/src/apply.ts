@@ -17,6 +17,7 @@ export async function apply(targetFile: string): Promise<void> {
   if (!incoming.trim()) {
     process.stderr.write("Error: stdin is empty — pipe translated .krs content to apply\n");
     process.exit(1);
+    return; // unreachable in production; allows process.exit to be mocked in tests
   }
 
   const targetPath = resolve(targetFile);
