@@ -9,7 +9,7 @@ import { apply, applyIncoming } from "./apply.js";
 
 function mockStdin(content: string): () => void {
   const emitter = new EventEmitter() as NodeJS.ReadableStream & EventEmitter;
-  emitter.setEncoding = vi.fn();
+  emitter.setEncoding = vi.fn<typeof emitter.setEncoding>();
 
   const original = process.stdin;
   Object.defineProperty(process, "stdin", { value: emitter, writable: true });
@@ -193,9 +193,7 @@ describe("apply (stdin integration)", () => {
 
     await apply(targetPath);
 
-    expect(stderrSpy).toHaveBeenCalledWith(
-      expect.stringContaining("stdin is empty"),
-    );
+    expect(stderrSpy).toHaveBeenCalledWith(expect.stringContaining("stdin is empty"));
     expect(exitSpy).toHaveBeenCalledWith(1);
     expect(existsSync(targetPath)).toBe(false);
   });
