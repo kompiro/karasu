@@ -28,7 +28,7 @@ describe("applyIncoming", () => {
 
   // AT-0060-02
   it("appends a new block when the node ID does not exist in the file", () => {
-    const existing = 'system ECommerce {}';
+    const existing = "system ECommerce {}";
     const incoming = 'deploy "production" {\n  oci "api" {}\n}';
     const result = applyIncoming(existing, incoming);
     expect(result).toBe(existing + "\n" + incoming);
@@ -46,8 +46,9 @@ describe("applyIncoming", () => {
 
   // AT-0060-04
   it("replaces an existing logical node (system) when the ID already exists", () => {
-    const existing = 'system ECommerce {\n  service OrderService {}\n}';
-    const incoming = 'system ECommerce {\n  service OrderService {}\n  service PaymentService {}\n}';
+    const existing = "system ECommerce {\n  service OrderService {}\n}";
+    const incoming =
+      "system ECommerce {\n  service OrderService {}\n  service PaymentService {}\n}";
     const result = applyIncoming(existing, incoming);
     expect(result).toBe(incoming);
     expect(result).toContain("PaymentService");
@@ -61,7 +62,7 @@ describe("applyIncoming", () => {
     const result = applyIncoming(existing, incoming);
     expect(result).toContain("system ECommerce {}");
     expect(result).toContain("api-v2");
-    expect(result).not.toContain("oci \"api\" {}");
+    expect(result).not.toContain('oci "api" {}');
     expect(result).toContain("system Payments {}");
   });
 
@@ -70,7 +71,7 @@ describe("applyIncoming", () => {
     const targetPath = join(tmpDir, "new.krs");
     expect(existsSync(targetPath)).toBe(false);
 
-    const incoming = 'system Foo {}';
+    const incoming = "system Foo {}";
     const result = applyIncoming("", incoming);
     writeFileSync(targetPath, result, "utf-8");
 
@@ -81,9 +82,9 @@ describe("applyIncoming", () => {
   // AT-0060-07
   it("writes the result to the target file when appending", () => {
     const targetPath = join(tmpDir, "arch.krs");
-    writeFileSync(targetPath, 'system ECommerce {}', "utf-8");
+    writeFileSync(targetPath, "system ECommerce {}", "utf-8");
 
-    const incoming = 'system Payments {}';
+    const incoming = "system Payments {}";
     const existing = readFileSync(targetPath, "utf-8");
     const result = applyIncoming(existing, incoming);
     writeFileSync(targetPath, result, "utf-8");
@@ -95,9 +96,9 @@ describe("applyIncoming", () => {
 
   // AT-0060-08
   it("handles incoming content with no recognizable top-level nodes by appending as-is", () => {
-    const existing = 'system Foo {}';
+    const existing = "system Foo {}";
     // Plain text that doesn't parse as any known node
-    const incoming = '// just a comment';
+    const incoming = "// just a comment";
     const result = applyIncoming(existing, incoming);
     expect(result).toContain("system Foo {}");
     expect(result).toContain("// just a comment");

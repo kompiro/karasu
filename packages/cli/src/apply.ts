@@ -15,9 +15,7 @@ export async function apply(targetFile: string): Promise<void> {
   const incoming = await readStdin();
 
   if (!incoming.trim()) {
-    process.stderr.write(
-      "Error: stdin is empty — pipe translated .krs content to apply\n",
-    );
+    process.stderr.write("Error: stdin is empty — pipe translated .krs content to apply\n");
     process.exit(1);
   }
 
@@ -62,9 +60,7 @@ export function applyIncoming(existing: string, incoming: string): string {
   let current = existing;
 
   for (const node of incomingTopLevel) {
-    const blockContent = incoming
-      .slice(node.loc.start.offset, node.loc.end.offset + 1)
-      .trim();
+    const blockContent = incoming.slice(node.loc.start.offset, node.loc.end.offset + 1).trim();
 
     if (existingIds.has(node.id)) {
       // Replace the existing node
@@ -93,14 +89,14 @@ export function applyIncoming(existing: string, incoming: string): string {
 // ── Internal helpers ──────────────────────────────────────────────────────────
 
 function readStdin(): Promise<string> {
-  return new Promise((resolve) => {
+  return new Promise((done) => {
     let data = "";
     process.stdin.setEncoding("utf-8");
     process.stdin.on("data", (chunk) => {
       data += chunk;
     });
     process.stdin.on("end", () => {
-      resolve(data);
+      done(data);
     });
   });
 }
