@@ -429,6 +429,7 @@ export function AppShell({
           onEditorReady={handleEditorReady}
           scopeLabel={scopeLabel}
           currentProjectId={currentProject?.id ?? null}
+          resolvedSystems={resolvedSystems}
           onNavigateViewPath={navigateViewPath}
           onFormat={handleFormat}
           hasParseErrors={hasParseErrors}
