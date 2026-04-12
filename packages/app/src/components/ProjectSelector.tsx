@@ -208,22 +208,24 @@ export function ProjectSelector({
               >
                 ✕ Delete
               </button>
-              <button
-                onClick={onExportProject}
-                className="project-selector-btn project-selector-btn--export"
-                title="ZIPとしてエクスポート"
-              >
-                ↓ Export
-              </button>
-              <button
-                onClick={handleImportClick}
-                className="project-selector-btn project-selector-btn--import"
-                title="ZIPからインポート"
-              >
-                ↑ Import
-              </button>
             </>
           )}
+          <button
+            onClick={onExportProject}
+            disabled={!currentProject}
+            className="project-selector-btn project-selector-btn--export"
+            title="ZIPとしてエクスポート"
+          >
+            ↓ Export
+          </button>
+          <button
+            onClick={handleImportClick}
+            disabled={!currentProject}
+            className="project-selector-btn project-selector-btn--import"
+            title="ZIPからインポート"
+          >
+            ↑ Import
+          </button>
         </div>
       )}
     </div>

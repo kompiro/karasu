@@ -156,9 +156,9 @@ describe("ProjectSelector — Export button", () => {
     expect(getByRole("button", { name: /Export/ })).toBeTruthy();
   });
 
-  it("does not show Export button when no project is selected", () => {
-    const { queryByRole } = render(<ProjectSelector {...baseProps(null)} />);
-    expect(queryByRole("button", { name: /Export/ })).toBeNull();
+  it("is disabled when no project is selected", () => {
+    const { getByRole } = render(<ProjectSelector {...baseProps(null)} />);
+    expect(getByRole("button", { name: /Export/ })).toHaveProperty("disabled", true);
   });
 
   it("calls onExportProject when Export button is clicked", () => {
@@ -175,9 +175,9 @@ describe("ProjectSelector — Import button", () => {
     expect(getByRole("button", { name: /Import/ })).toBeTruthy();
   });
 
-  it("does not show Import button when no project is selected", () => {
-    const { queryByRole } = render(<ProjectSelector {...baseProps(null)} />);
-    expect(queryByRole("button", { name: /Import/ })).toBeNull();
+  it("is disabled when no project is selected", () => {
+    const { getByRole } = render(<ProjectSelector {...baseProps(null)} />);
+    expect(getByRole("button", { name: /Import/ })).toHaveProperty("disabled", true);
   });
 
   it("calls onImportProject with the selected File when a file is chosen", () => {
