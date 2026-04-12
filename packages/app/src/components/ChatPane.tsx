@@ -52,17 +52,6 @@ export function ChatPane({
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const [inputValue, setInputValue] = useState("");
 
-  // Auto-start the structured interview when Chat opens with an empty session and a valid API key.
-  useEffect(() => {
-    if (apiKey && messages.length === 0 && phase.kind === "idle") {
-      void startInterview();
-    }
-    // Only fire when the component mounts or when a session reset clears messages.
-    // We intentionally exclude `messages` and `phase` from deps to avoid re-firing
-    // after the interview response populates messages.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [apiKey, sessionResetKey, startInterview]);
-
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView?.({ behavior: "smooth" });
   }, [messages]);
@@ -70,6 +59,7 @@ export function ChatPane({
   const isPending = phase.kind === "pending_confirmation";
   const isLoading = phase.kind === "loading" || phase.kind === "awaiting_followup";
   const inputDisabled = isLoading || isPending;
+  const isEmpty = messages.length === 0 && !isLoading;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -111,8 +101,19 @@ export function ChatPane({
       </div>
 
       <div className="chat-messages" role="log" aria-live="polite">
-        {messages.length === 0 && !isLoading && (
-          <p className="chat-empty">メッセージを入力してください。</p>
+        {isEmpty && (
+          <div className="chat-empty-state">
+            <button
+              className="toolbar-btn toolbar-btn--actionable toolbar-btn--start-interview"
+              onClick={() => void startInterview()}
+            >
+              ▶ Start Interview
+            </button>
+            <p className="chat-empty-state__hint">
+              現在のスコープについて AI がインタビュー形式で質問します
+            </p>
+            <p className="chat-empty-state__or">または自由に入力してください</p>
+          </div>
         )}
         {messages.map((msg) => {
           if (msg.role === "user") {

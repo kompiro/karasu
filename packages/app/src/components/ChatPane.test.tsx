@@ -94,11 +94,35 @@ describe("ChatPane — with API key", () => {
     expect(getByLabelText("Chat message input")).toHaveProperty("disabled", true);
   });
 
-  it("calls startInterview on mount when session has no messages", () => {
+  it("shows Start Interview button when session is empty", () => {
+    mockUseChatSession.mockReturnValue(makeDefaultSession());
+    const { getByRole } = render(<ChatPane {...defaultProps} />);
+    expect(getByRole("button", { name: /Start Interview/ })).toBeTruthy();
+  });
+
+  it("clicking Start Interview calls startInterview", () => {
+    const startInterview = vi.fn<() => Promise<void>>().mockResolvedValue(undefined);
+    mockUseChatSession.mockReturnValue(makeDefaultSession({ startInterview }));
+    const { getByRole } = render(<ChatPane {...defaultProps} />);
+    fireEvent.click(getByRole("button", { name: /Start Interview/ }));
+    expect(startInterview).toHaveBeenCalledOnce();
+  });
+
+  it("does not auto-call startInterview on mount", () => {
     const startInterview = vi.fn<() => Promise<void>>().mockResolvedValue(undefined);
     mockUseChatSession.mockReturnValue(makeDefaultSession({ startInterview }));
     render(<ChatPane {...defaultProps} />);
-    expect(startInterview).toHaveBeenCalledOnce();
+    expect(startInterview).not.toHaveBeenCalled();
+  });
+
+  it("hides Start Interview button when messages exist", () => {
+    mockUseChatSession.mockReturnValue(
+      makeDefaultSession({
+        messages: [{ id: "1", role: "assistant" as const, content: "Hello" }],
+      }),
+    );
+    const { queryByRole } = render(<ChatPane {...defaultProps} />);
+    expect(queryByRole("button", { name: /Start Interview/ })).toBeNull();
   });
 });
 
