@@ -961,6 +961,10 @@ body,
 }
 
 /* Export/Import group — visually separated from the edit actions */
+.project-selector-btn--import {
+  /* placeholder — add overrides here as needed */
+}
+
 .project-selector-btn--export {
   margin-left: 8px;
 }
