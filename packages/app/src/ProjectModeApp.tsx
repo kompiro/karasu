@@ -157,7 +157,10 @@ export function ProjectModeApp() {
       const buffer = await file.arrayBuffer();
       const { files, detectedName } = parseZipForImport(new Uint8Array(buffer));
       const baseName = detectedName ?? file.name.replace(/\.zip$/i, "");
-      const finalName = disambiguateName(baseName, projects.map((p) => p.name));
+      const finalName = disambiguateName(
+        baseName,
+        projects.map((p) => p.name),
+      );
       const project = await pm.createProject(finalName, files);
       dispatch({ type: "ADD_PROJECT", project });
       navigateToProject(project);

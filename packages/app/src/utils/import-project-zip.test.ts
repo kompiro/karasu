@@ -109,9 +109,9 @@ describe("disambiguateName", () => {
   });
 
   it("increments the counter until a unique name is found", () => {
-    expect(
-      disambiguateName("my-project", ["my-project", "my-project (2)", "my-project (3)"]),
-    ).toBe("my-project (4)");
+    expect(disambiguateName("my-project", ["my-project", "my-project (2)", "my-project (3)"])).toBe(
+      "my-project (4)",
+    );
   });
 
   it("returns the name unchanged when the list is empty", () => {

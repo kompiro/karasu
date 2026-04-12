@@ -23,7 +23,7 @@ function detectTopLevelDir(unzipped: Record<string, Uint8Array>): string | null 
   return topDirs.every((d) => d === first) ? first : null;
 }
 
-export interface ParsedZip {
+interface ParsedZip {
   /** Extracted .krs / .krs.style files relative to the project root. */
   files: { path: string; content: string }[];
   /**
