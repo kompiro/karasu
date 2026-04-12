@@ -1,59 +1,67 @@
 // @vitest-environment jsdom
 import { describe, it, expect } from "vitest";
 import { detectDrillDownLevel } from "./useChatSession.js";
-import type { SystemNode } from "@karasu-tools/core";
+import type { SystemNode, KrsNode } from "@karasu-tools/core";
 
-// Minimal SystemNode/KrsNode factory helpers
-function makeUsecase(id: string): import("@karasu-tools/core").KrsNode {
+const EMPTY_LOC = {
+  start: { line: 0, column: 0, offset: 0 },
+  end: { line: 0, column: 0, offset: 0 },
+};
+
+function makeUsecase(id: string): KrsNode {
   return {
     id,
     kind: "usecase",
     label: id,
+    tags: [],
+    annotations: [],
     children: [],
     edges: [],
+    loc: EMPTY_LOC,
     properties: { links: [] },
-    _start: 0,
-    _end: 0,
-  };
+  } as unknown as KrsNode;
 }
 
-function makeDomain(id: string, children: import("@karasu-tools/core").KrsNode[] = []): import("@karasu-tools/core").KrsNode {
+function makeDomain(id: string, children: KrsNode[] = []): KrsNode {
   return {
     id,
     kind: "domain",
     label: id,
+    tags: [],
+    annotations: [],
     children,
     edges: [],
+    loc: EMPTY_LOC,
     properties: { links: [], team: undefined },
-    _start: 0,
-    _end: 0,
-  };
+  } as unknown as KrsNode;
 }
 
-function makeService(id: string, children: import("@karasu-tools/core").KrsNode[] = []): import("@karasu-tools/core").KrsNode {
+function makeService(id: string, children: KrsNode[] = []): KrsNode {
   return {
     id,
     kind: "service",
     label: id,
+    tags: [],
+    annotations: [],
     children,
     edges: [],
+    loc: EMPTY_LOC,
     properties: { links: [], team: undefined },
-    _start: 0,
-    _end: 0,
-  };
+  } as unknown as KrsNode;
 }
 
-function makeSystem(id: string, children: import("@karasu-tools/core").KrsNode[] = []): SystemNode {
+function makeSystem(id: string, children: KrsNode[] = []): SystemNode {
   return {
     id,
     kind: "system",
     label: id,
+    tags: [],
+    annotations: [],
     children,
     edges: [],
+    loc: EMPTY_LOC,
     properties: { links: [] },
-    _start: 0,
-    _end: 0,
-  };
+  } as unknown as SystemNode;
 }
 
 describe("detectDrillDownLevel", () => {

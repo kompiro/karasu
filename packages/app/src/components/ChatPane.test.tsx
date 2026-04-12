@@ -87,7 +87,7 @@ describe("ChatPane — with API key", () => {
 
   it("Send button and textarea are disabled while loading", () => {
     mockUseChatSession.mockReturnValue(
-      makeDefaultSession({ phase: { kind: "loading" } }),
+      makeDefaultSession({ phase: { kind: "loading" } as unknown as { kind: "idle" } }),
     );
     const { getByRole, getByLabelText } = render(<ChatPane {...defaultProps} />);
     expect(getByRole("button", { name: /Send/ })).toHaveProperty("disabled", true);

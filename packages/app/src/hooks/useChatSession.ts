@@ -61,7 +61,7 @@ interface UseChatSessionParams {
 
 // ── Drill-down level detection ────────────────────────────────────────────────
 
-export type DrillDownLevel = "system" | "service" | "domain" | "usecase";
+type DrillDownLevel = "system" | "service" | "domain" | "usecase";
 
 export function detectDrillDownLevel(
   viewPath: string[],
@@ -74,7 +74,7 @@ export function detectDrillDownLevel(
 
   let current: KrsNode = system;
   for (let i = 1; i < viewPath.length; i++) {
-    const child = current.children.find((c) => c.id === viewPath[i]);
+    const child: KrsNode | undefined = current.children.find((c) => c.id === viewPath[i]);
     if (!child) return "system";
     current = child;
   }
@@ -413,6 +413,7 @@ export function useChatSession({
                 max_tokens: 4096,
                 system: buildSystemPrompt(
                   scopeLabelRef.current,
+                  viewPathRef.current,
                   fileContentRef.current,
                   currentFilePathRef.current,
                   resolvedSystemsRef.current,

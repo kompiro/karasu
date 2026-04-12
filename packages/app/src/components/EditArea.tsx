@@ -14,6 +14,7 @@ interface EditAreaProps {
   onChange: (value: string) => void;
   onEditorReady?: (editor: editor.IStandaloneCodeEditor) => void;
   scopeLabel: string;
+  viewPath: string[];
   currentProjectId: string | null;
   resolvedSystems: SystemNode[];
   onNavigateViewPath: (path: string[]) => void;
@@ -29,6 +30,7 @@ export function EditArea({
   onChange,
   onEditorReady,
   scopeLabel,
+  viewPath,
   currentProjectId,
   resolvedSystems,
   onNavigateViewPath,
@@ -64,6 +66,7 @@ export function EditArea({
         onChange={onChange}
         onEditorReady={onEditorReady}
         scopeLabel={scopeLabel}
+        viewPath={viewPath}
         currentProjectId={currentProjectId}
         resolvedSystems={resolvedSystems}
         onNavigateViewPath={onNavigateViewPath}

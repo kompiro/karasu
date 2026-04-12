@@ -17,6 +17,7 @@ const defaultProps = {
   currentFilePath: null,
   onChange: vi.fn<(value: string) => void>(),
   scopeLabel: "Root",
+  viewPath: [] as string[],
   currentProjectId: null,
   resolvedSystems: [],
   onNavigateViewPath: vi.fn<(path: string[]) => void>(),
