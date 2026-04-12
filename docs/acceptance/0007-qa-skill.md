@@ -5,7 +5,7 @@ type: tool
 # AT-0007: QA チェックリスト生成スキル
 
 - **日付**: 2026-03-24
-- **関連ADR**: ADR-20260324-01
+- **関連ADR**: [ADR-20260324-01](../adr/20260324-01-manual-qa-over-e2e.md)
 - **対象**: `.claude/skills/qa/SKILL.md`
 
 ## 概要
