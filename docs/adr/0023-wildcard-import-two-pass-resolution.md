@@ -2,7 +2,7 @@
 
 - **日付**: 2026-04-05
 - **ステータス**: 決定済み
-- **関連**: [docs/design/multi-file-wildcard-import.md](../design/multi-file-wildcard-import.md), Issue #281
+- **関連**: Issue #281
 
 ## 背景
 
