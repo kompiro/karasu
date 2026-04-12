@@ -14,6 +14,7 @@ interface EditPaneProps {
   onChange: (value: string) => void;
   onEditorReady?: (editor: editor.IStandaloneCodeEditor) => void;
   scopeLabel: string;
+  viewPath: string[];
   currentProjectId: string | null;
   resolvedSystems: SystemNode[];
   onNavigateViewPath: (path: string[]) => void;
@@ -29,6 +30,7 @@ export function EditPane({
   onChange,
   onEditorReady,
   scopeLabel,
+  viewPath,
   currentProjectId,
   resolvedSystems,
   onNavigateViewPath,
@@ -61,6 +63,7 @@ export function EditPane({
       {activeTab === "chat" && (
         <ChatPane
           scopeLabel={scopeLabel}
+          viewPath={viewPath}
           sessionResetKey={currentProjectId}
           fileContent={value}
           currentFilePath={currentFilePath}

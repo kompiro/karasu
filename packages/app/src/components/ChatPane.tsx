@@ -5,6 +5,7 @@ import { useChatSession, type PatchProposal } from "../hooks/useChatSession.js";
 
 interface ChatPaneProps {
   scopeLabel: string;
+  viewPath: string[];
   sessionResetKey: string | null;
   fileContent: string;
   currentFilePath: string | null;
@@ -17,6 +18,7 @@ interface ChatPaneProps {
 
 export function ChatPane({
   scopeLabel,
+  viewPath,
   sessionResetKey,
   fileContent,
   currentFilePath,
@@ -26,20 +28,40 @@ export function ChatPane({
   onEditorChange,
   onNavigateToSettings,
 }: ChatPaneProps) {
-  const { messages, phase, sendMessage, retryMessage, applyPatch, rejectPatch, resetSession } =
-    useChatSession({
-      fileContent,
-      currentFilePath,
-      scopeLabel,
-      resolvedSystems,
-      apiKey,
-      onNavigateViewPath,
-      onEditorChange,
-      sessionResetKey,
-    });
+  const {
+    messages,
+    phase,
+    sendMessage,
+    retryMessage,
+    applyPatch,
+    rejectPatch,
+    resetSession,
+    startInterview,
+  } = useChatSession({
+    fileContent,
+    currentFilePath,
+    scopeLabel,
+    viewPath,
+    resolvedSystems,
+    apiKey,
+    onNavigateViewPath,
+    onEditorChange,
+    sessionResetKey,
+  });
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const [inputValue, setInputValue] = useState("");
+
+  // Auto-start the structured interview when Chat opens with an empty session and a valid API key.
+  useEffect(() => {
+    if (apiKey && messages.length === 0 && phase.kind === "idle") {
+      void startInterview();
+    }
+    // Only fire when the component mounts or when a session reset clears messages.
+    // We intentionally exclude `messages` and `phase` from deps to avoid re-firing
+    // after the interview response populates messages.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [apiKey, sessionResetKey, startInterview]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView?.({ behavior: "smooth" });
@@ -89,7 +111,9 @@ export function ChatPane({
       </div>
 
       <div className="chat-messages" role="log" aria-live="polite">
-        {messages.length === 0 && <p className="chat-empty">メッセージを入力してください。</p>}
+        {messages.length === 0 && !isLoading && (
+          <p className="chat-empty">メッセージを入力してください。</p>
+        )}
         {messages.map((msg) => {
           if (msg.role === "user") {
             return (

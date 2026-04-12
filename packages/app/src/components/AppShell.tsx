@@ -414,6 +414,7 @@ export function AppShell({
           onChange={handleEditorChange}
           onEditorReady={handleEditorReady}
           scopeLabel={scopeLabel}
+          viewPath={viewPath}
           currentProjectId={currentProject?.id ?? null}
           resolvedSystems={resolvedSystems}
           onNavigateViewPath={navigateViewPath}
