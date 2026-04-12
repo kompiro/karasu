@@ -88,4 +88,3 @@ function findKrsFiles(dir: string): string[] {
   }
   return results;
 }
-
