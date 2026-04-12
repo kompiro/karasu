@@ -207,4 +207,117 @@ describe("applyKrsPatch", () => {
       expect(result).toEqual({ ok: false, error: 'Node "Unknown" not found' });
     });
   });
+
+  // ── org nodes (organization / team / member) ──────────────────────────────
+
+  describe("org nodes", () => {
+    const orgSrc = `organization ExampleOrg "Example Org" {
+  team BackendTeam "バックエンドチーム" {
+    member AliceUser "Alice" {}
+  }
+  team FrontendTeam "フロントエンドチーム" {}
+}`;
+
+    it("replaces an organization block", () => {
+      const replacement = `organization ExampleOrg "Example Org (updated)" {
+  team BackendTeam "バックエンドチーム" {}
+}`;
+      const result = applyKrsPatch(orgSrc, "replace", "ExampleOrg", replacement);
+      expect(result).toEqual({ ok: true, source: replacement });
+    });
+
+    it("replaces a team block to add a sub-team", () => {
+      const replacement = `team BackendTeam "バックエンドチーム" {
+    member AliceUser "Alice" {}
+    team CoreSubTeam "コアサブチーム" {}
+  }`;
+      const result = applyKrsPatch(orgSrc, "replace", "BackendTeam", replacement);
+      expect(result).toMatchObject({ ok: true, source: expect.stringContaining("CoreSubTeam") });
+      expect(result).toMatchObject({ ok: true, source: expect.stringContaining("FrontendTeam") });
+    });
+
+    it("removes a team block", () => {
+      const result = applyKrsPatch(orgSrc, "remove", "FrontendTeam");
+      expect(result).toMatchObject({
+        ok: true,
+        source: expect.not.stringContaining("FrontendTeam"),
+      });
+      expect(result).toMatchObject({ ok: true, source: expect.stringContaining("BackendTeam") });
+    });
+
+    it("replaces a member node inside a team", () => {
+      const replacement = `member AliceUser "Alice Updated" {}`;
+      const result = applyKrsPatch(orgSrc, "replace", "AliceUser", replacement);
+      expect(result).toMatchObject({ ok: true, source: expect.stringContaining("Alice Updated") });
+    });
+
+    it("insert-child adds a sub-team to a team block", () => {
+      const result = applyKrsPatch(
+        orgSrc,
+        "insert-child",
+        "BackendTeam",
+        'team CoreSubTeam "コア" {}',
+      );
+      expect(result).toMatchObject({ ok: true, source: expect.stringContaining("CoreSubTeam") });
+      expect(result).toMatchObject({ ok: true, source: expect.stringContaining("FrontendTeam") });
+    });
+  });
+
+  // ── deploy nodes ──────────────────────────────────────────────────────────
+
+  describe("deploy nodes", () => {
+    const deploySrc = `deploy Production {
+  oci AppServer {
+    image: "app:1.0"
+  }
+  oci DbServer {
+    image: "db:5.7"
+  }
+}`;
+
+    it("replaces a deploy block by id", () => {
+      const replacement = `deploy Production {\n  oci AppServer {}\n}`;
+      const result = applyKrsPatch(deploySrc, "replace", "Production", replacement);
+      expect(result).toEqual({ ok: true, source: replacement });
+    });
+
+    it("replaces a DeployNode inside a deploy block", () => {
+      const result = applyKrsPatch(
+        deploySrc,
+        "replace",
+        "AppServer",
+        'oci AppServer {\n    image: "app:2.0"\n  }',
+      );
+      expect(result).toMatchObject({ ok: true, source: expect.stringContaining("app:2.0") });
+      expect(result).toMatchObject({ ok: true, source: expect.stringContaining("DbServer") });
+    });
+
+    it("removes a DeployNode inside a deploy block", () => {
+      const result = applyKrsPatch(deploySrc, "remove", "AppServer");
+      expect(result).toMatchObject({ ok: true, source: expect.not.stringContaining("AppServer") });
+      expect(result).toMatchObject({ ok: true, source: expect.stringContaining("DbServer") });
+    });
+  });
+
+  // ── ambiguous ID (same id across diagram types) ───────────────────────────
+
+  describe("ambiguous ID", () => {
+    it("returns error when the same id exists in both a logical node and an org team", () => {
+      const src = `system SharedId {}\n\norganization Org {\n  team SharedId "Shared Team" {}\n}`;
+      const result = applyKrsPatch(src, "replace", "SharedId", "system SharedId {}");
+      expect(result).toEqual({
+        ok: false,
+        error: 'Ambiguous targetNodeId "SharedId": id matches nodes in multiple diagram types',
+      });
+    });
+
+    it("returns error when the same id exists in both a deploy node and an org team", () => {
+      const src = `deploy Env {\n  oci SharedId {}\n}\n\norganization Org {\n  team SharedId "Shared Team" {}\n}`;
+      const result = applyKrsPatch(src, "replace", "SharedId", "oci SharedId {}");
+      expect(result).toEqual({
+        ok: false,
+        error: 'Ambiguous targetNodeId "SharedId": id matches nodes in multiple diagram types',
+      });
+    });
+  });
 });
