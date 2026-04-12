@@ -86,14 +86,37 @@ ZIP内パス: my-project/services/ecommerce.krs
 
 ### プロジェクト名の導出
 
-ZIP ファイル名から拡張子を除いた文字列をプロジェクト名とする。
+以下の優先順位でプロジェクト名を決定する：
+
+1. **ZIP 内にトップレベルディレクトリが1つあり、全ファイルがその配下にある場合**  
+   → そのディレクトリ名をプロジェクト名とする  
+   （Export が `{projectName}/file.krs` 構造で ZIP を生成するため、バックアップからの復元時に元のプロジェクト名を自動復元できる）
+
+2. **フラット構造など、共通トップレベルがない場合**  
+   → ZIP ファイル名から拡張子を除いた文字列をフォールバックとする
 
 ```
-my-arch.zip → "my-arch"
+# ケース1: Export が生成した ZIP（バックアップ復元）
+my-project.zip
+  my-project/index.krs
+  my-project/services/ecommerce.krs
+→ プロジェクト名: "my-project"（ディレクトリ名から導出）
+
+# ケース2: ファイル名が変わっていても元のプロジェクト名を復元できる
+backup-2026-04-12.zip
+  my-project/index.krs
+  my-project/services/ecommerce.krs
+→ プロジェクト名: "my-project"（ディレクトリ名から導出）
+
+# ケース3: フラット構造の ZIP
+archive.zip
+  index.krs
+  services/ecommerce.krs
+→ プロジェクト名: "archive"（ファイル名フォールバック）
 ```
 
-ZIP 内のディレクトリ名ではなく **ファイル名** から導出することで、
-他者から受け取った任意の ZIP でも名前が一意に決まる。
+この導出ロジックは `parseZipForImport` 内で行い、戻り値に `detectedName` を含める。
+呼び出し側は `detectedName ?? deriveFromFileName(file.name)` の順で名前を決定する。
 
 ### 名前の衝突解消
 
@@ -135,18 +158,20 @@ const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
 ```
 handleImportProject(file: File)
   ├─ file.arrayBuffer() → Uint8Array
-  ├─ parseZipForImport(bytes)         // utils/import-project-zip.ts
+  ├─ parseZipForImport(bytes)              // utils/import-project-zip.ts
   │    ├─ unzipSync(bytes)
-  │    ├─ stripTopLevelDir(unzipped)
-  │    └─ filter .krs / .krs.style
-  ├─ deriveProjectName(file.name)
+  │    ├─ detectTopLevelDir(unzipped)      // 共通トップレベルを検出
+  │    ├─ stripTopLevelDir(unzipped)       // プレフィックス除去
+  │    ├─ filter .krs / .krs.style
+  │    └─ returns { files, detectedName? }
+  ├─ name = detectedName ?? stripExtension(file.name)
   ├─ disambiguateName(name, projects.map(p => p.name))
-  ├─ pm.createProject(finalName, files)   // ProjectManager 既存 API を再利用
+  ├─ pm.createProject(finalName, files)    // ProjectManager 既存 API を再利用
   ├─ dispatch({ type: "ADD_PROJECT", project })
   └─ navigateToProject(project)
 ```
 
-`parseZipForImport` / `deriveProjectName` / `disambiguateName` は
+`parseZipForImport` / `disambiguateName` は
 `packages/app/src/utils/import-project-zip.ts` に独立したユーティリティ関数として配置する。
 
 ### UI 配置
@@ -164,13 +189,15 @@ Import は常に（プロジェクト未選択時も）操作可能なため、`
 ProjectModeApp
   └─ handleImportProject(file: File)
        ├─ file.arrayBuffer() → Uint8Array
-       ├─ parseZipForImport(bytes)      ← utils/import-project-zip.ts
-       │    ├─ unzipSync(bytes)         ← fflate
-       │    ├─ stripTopLevelDir()
-       │    └─ filter allowed extensions
-       ├─ deriveProjectName(file.name)  ← utils/import-project-zip.ts
-       ├─ disambiguateName(name, existingNames)  ← utils/import-project-zip.ts
-       └─ pm.createProject(finalName, files)     ← fs/project-manager.ts
+       ├─ parseZipForImport(bytes)              ← utils/import-project-zip.ts
+       │    ├─ unzipSync(bytes)                 ← fflate
+       │    ├─ detectTopLevelDir()              ← 共通トップレベルを検出
+       │    ├─ stripTopLevelDir()               ← プレフィックス除去
+       │    ├─ filter allowed extensions
+       │    └─ returns { files, detectedName? }
+       ├─ name = detectedName ?? stripExt(file.name)
+       ├─ disambiguateName(name, existingNames) ← utils/import-project-zip.ts
+       └─ pm.createProject(finalName, files)    ← fs/project-manager.ts
 
 ProjectSelector
   ├─ props: onImportProject: (file: File) => void
