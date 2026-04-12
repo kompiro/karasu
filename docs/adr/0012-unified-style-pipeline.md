@@ -46,5 +46,5 @@
 
 - [ADR-0004](0004-css-inspired-styling.md) — CSS インスパイアのスタイリングシステム（カスケードの方針）
 - [ADR-0011](0011-deployment-diagram-design.md) — deploy ノードへの同パターン先行適用（#30）
-- `docs/design/builtin-style-and-reference.md` — ビルトインスタイル一元化の設計
+- [ADR-0063](0063-builtin-style-and-reference.md) — ビルトインスタイル一元化の設計
 - [#81](https://github.com/kompiro/karasu/issues/81) — org ノードの unified style pipeline 統合

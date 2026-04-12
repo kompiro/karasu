@@ -4,7 +4,7 @@
 - **ステータス**: 完了
 
 > **実装メモ**: `ReferencePanel` が `useAppContext()` を直接参照する設計だったが、実際には `KarasuPreviewColumn` から props 経由で `activeView` を渡す実装になった。機能的には同等。
-- **関連**: [builtin-style-and-reference.md](./builtin-style-and-reference.md)
+- **関連**: [ADR-0063](../adr/0063-builtin-style-and-reference.md)
 
 ## 背景・課題
 
