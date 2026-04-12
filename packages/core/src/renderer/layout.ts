@@ -18,6 +18,7 @@ export interface LayoutNode {
   kind: LogicalNodeKind | DeployNodeKind;
   id: string;
   label: string;
+  annotations?: string[];
   properties: LayoutNodeProperties;
   descriptionSummary?: string;
   linkCount: number;
@@ -161,6 +162,7 @@ export function layout(
         kind: krsNode.kind,
         id: nid,
         label: viewSlice.resourceLabelMap.get(nid) ?? krsNode.label ?? krsNode.id,
+        annotations: krsNode.annotations,
         properties: extractLayoutProperties(krsNode, resolvedTeam),
         descriptionSummary: krsNode.properties.description
           ? summarizeDescription(krsNode.properties.description)
@@ -285,6 +287,7 @@ export function layout(
         kind: userNode.kind,
         id: uid,
         label: userNode.label ?? userNode.id,
+        annotations: userNode.annotations,
         properties: extractLayoutProperties(userNode, undefined),
         descriptionSummary: userNode.properties.description
           ? summarizeDescription(userNode.properties.description)
@@ -333,6 +336,7 @@ export function layout(
         kind: gd.node.kind,
         id: gd.node.id,
         label: gd.node.label ?? gd.node.id,
+        annotations: gd.node.annotations,
         subLabel: gd.parentServiceLabel,
         properties: extractLayoutProperties(gd.node, undefined),
         descriptionSummary: gd.node.properties.description
@@ -661,6 +665,7 @@ function layoutGhostSystem(
       kind: svc.kind,
       id: qualifiedId,
       label: svc.label ?? svc.id,
+      annotations: svc.annotations,
       properties: extractLayoutProperties(svc, ownerIndex?.get(svc.id)),
       descriptionSummary: svc.properties.description
         ? summarizeDescription(svc.properties.description)
@@ -765,6 +770,7 @@ function layoutMultipleSystems(
           kind: krsNode.kind,
           id: nid,
           label: viewSlice.resourceLabelMap.get(nid) ?? krsNode.label ?? krsNode.id,
+          annotations: krsNode.annotations,
           properties: extractLayoutProperties(krsNode, resolvedTeam),
           descriptionSummary: krsNode.properties.description
             ? summarizeDescription(krsNode.properties.description)

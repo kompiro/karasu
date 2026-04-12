@@ -17,6 +17,7 @@ import {
   ICON_DESC_CHAR_WIDTH,
   ICON_DESC_MAX_WIDTH,
 } from "./rendering-constants.js";
+import { nodeStyleKey } from "../resolver/style-resolver.js";
 
 const GHOST_OPACITY = 0.3;
 
@@ -169,7 +170,9 @@ export function renderFromLayout(
   const ghostNodeParts: string[] = [];
   const normalNodeParts: string[] = [];
   for (const [nodeId, layoutNode] of layoutResult.nodes) {
-    const nodeStyle = styles.nodes.get(nodeId) ?? styles.defaultNodeStyle;
+    const styleKey = nodeStyleKey(nodeId, layoutNode.annotations);
+    const nodeStyle =
+      styles.nodes.get(styleKey) ?? styles.nodes.get(nodeId) ?? styles.defaultNodeStyle;
     const rendered = renderNode(
       layoutNode,
       nodeStyle,

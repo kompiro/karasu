@@ -88,7 +88,6 @@ export function resolveStyles(
 
   function processNodes(nodes: KrsNode[]): void {
     for (const node of nodes) {
-      const key = node.id;
       // Inject inferred tag for dot-notation resource nodes with no explicit tags.
       let resolvedNode = node;
       if (
@@ -99,7 +98,18 @@ export function resolveStyles(
       ) {
         resolvedNode = { ...node, tags: [inferredTagMap.get(node.id)!] };
       }
-      nodeStyles.set(key, resolveNodeStyle(resolvedNode, allRules));
+      const style = resolveNodeStyle(resolvedNode, allRules);
+      // Always store under the simple ID key for backward-compat lookups (e.g., container
+      // rendering uses container.id directly).
+      nodeStyles.set(node.id, style);
+      // Also store under the annotation-qualified key so that two nodes sharing the same
+      // ID but carrying different annotations (migration coexistence) each get their own
+      // distinct style entry.  The renderer prefers the qualified key and falls back to
+      // the simple key, so both single-annotated and collision scenarios are handled.
+      const qualifiedKey = nodeStyleKey(node.id, node.annotations);
+      if (qualifiedKey !== node.id) {
+        nodeStyles.set(qualifiedKey, style);
+      }
       processNodes(resolvedNode.children);
     }
   }
@@ -340,4 +350,20 @@ function toResolvedEdgeStyle(props: Record<string, string>): ResolvedEdgeStyle {
 function stripQuotes(s: string): string {
   if (s.startsWith('"') && s.endsWith('"')) return s.slice(1, -1);
   return s;
+}
+
+/**
+ * Build the style-map key for a node.
+ * When the node has annotations, append them (sorted) to the ID so that
+ * nodes with the same ID but different annotations (migration coexistence)
+ * each get their own style entry and do not clobber one another.
+ *
+ * Examples:
+ *   nodeStyleKey("Contract", [])                    → "Contract"
+ *   nodeStyleKey("Contract", ["deprecated"])         → "Contract@deprecated"
+ *   nodeStyleKey("Contract", ["migration_target"])   → "Contract@migration_target"
+ */
+export function nodeStyleKey(id: string, annotations: string[] | undefined): string {
+  if (!annotations || annotations.length === 0) return id;
+  return `${id}@${[...annotations].sort().join(",")}`;
 }
