@@ -57,7 +57,7 @@ export { StyleParser } from "./parser/style-parser.js";
 export { resolveStyles } from "./resolver/style-resolver.js";
 export { getBuiltinStyleSheet, BUILTIN_STYLE_SOURCE } from "./builtins/default-style.js";
 export { getIconThemeStyleSheet, ICON_THEME_STYLE_SOURCE } from "./builtins/icon-theme.js";
-export { type ExampleProject, EC_PLATFORM_PROJECTS } from "./builtins/examples.js";
+export { type ExampleProject, EC_PLATFORM_PROJECTS, GETTING_STARTED_PROJECT } from "./builtins/examples.js";
 export {
   getReference,
   type KarasuReference,

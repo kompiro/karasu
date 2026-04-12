@@ -1,0 +1,25 @@
+// getting-started/default.krs.style
+// Customize diagram appearance with CSS-like selectors.
+// Uncomment and edit any rule below to try it out.
+
+// Style by node type
+// service {
+//   color: #1e40af;
+//   background: #dbeafe;
+// }
+
+// service[external] {
+//   color: #374151;
+//   background: #f3f4f6;
+// }
+
+// Style by ID
+// #ECommerce {
+//   color: #065f46;
+//   background: #d1fae5;
+// }
+
+// #Notification {
+//   color: #92400e;
+//   background: #fef3c7;
+// }
