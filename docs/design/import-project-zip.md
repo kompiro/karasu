@@ -2,7 +2,7 @@
 
 - **日付**: 2026-04-12
 - **ステータス**: 検討中
-- **関連**: [Export Project as ZIP](./export-project-zip.md), [ProjectSelector UI 操作設計](./project-selector-operations.md), [Issue #462](https://github.com/kompiro/karasu/issues/462)
+- **関連**: [Export Project as ZIP](./export-project-zip.md), [ADR-0051](../adr/0051-project-selector-operations.md), [Issue #462](https://github.com/kompiro/karasu/issues/462)
 
 ## 背景・課題
 

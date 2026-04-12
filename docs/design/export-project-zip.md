@@ -2,7 +2,7 @@
 
 - **日付**: 2026-04-11
 - **ステータス**: 検討中
-- **関連**: [プロジェクトとファイルシステム抽象化](./project-and-filesystem.md), [ProjectSelector UI 操作設計](./project-selector-operations.md), [Issue #461](https://github.com/kompiro/karasu/issues/461)
+- **関連**: [ADR-0053](../adr/0053-project-and-filesystem.md), [ADR-0051](../adr/0051-project-selector-operations.md), [Issue #461](https://github.com/kompiro/karasu/issues/461)
 
 ## 背景・課題
 
