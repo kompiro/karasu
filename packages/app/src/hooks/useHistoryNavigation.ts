@@ -212,7 +212,7 @@ export function useHistoryNavigation({
 
     window.addEventListener("popstate", handlePopState);
     return () => window.removeEventListener("popstate", handlePopState);
-  }, [dispatch, nodePathIndex]);
+  }, [dispatch, nodePathIndex, orgPathIndex]);
 
   // ─── Public API ─────────────────────────────────────────────────────────────
   // Hash updates are handled by effect ③ watching state changes.
