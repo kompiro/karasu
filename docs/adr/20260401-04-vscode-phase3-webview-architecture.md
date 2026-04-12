@@ -1,12 +1,12 @@
-# ADR-0084: VSCode Phase 3 — 独立 HTML Webview アーキテクチャ
+# ADR-20260401-04: VSCode Phase 3 — 独立 HTML Webview アーキテクチャ
 
 - **日付**: 2026-04-01
 - **ステータス**: 決定済み
-- **関連**: Issue #176, [ADR-0070](20260330-05-vscode-extension-lsp-first.md)
+- **関連**: Issue #176, [ADR-20260330-05](20260330-05-vscode-extension-lsp-first.md)
 
 ## 背景
 
-VSCode 拡張の Phase 3（ADR-0070）で `.krs` ファイルの SVG プレビューを Webview Panel に表示する必要があった。`packages/app` にはすでに React ベースの `PreviewPane` が存在しており、この資産を VSCode Webview でも共用すべきか、独立した軽量 HTML Webview を実装すべきかを判断する必要があった。
+VSCode 拡張の Phase 3（ADR-20260330-05）で `.krs` ファイルの SVG プレビューを Webview Panel に表示する必要があった。`packages/app` にはすでに React ベースの `PreviewPane` が存在しており、この資産を VSCode Webview でも共用すべきか、独立した軽量 HTML Webview を実装すべきかを判断する必要があった。
 
 ## 決定
 

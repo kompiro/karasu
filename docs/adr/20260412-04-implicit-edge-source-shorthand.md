@@ -1,8 +1,8 @@
-# ADR-0083: ブロック内エッジの暗黙 source 簡略記法
+# ADR-20260412-04: ブロック内エッジの暗黙 source 簡略記法
 
 - **日付**: 2026-04-12
 - **ステータス**: 決定済み
-- **関連**: Issue #496, Issue #477, [ADR-0032](20260411-02-deprecated-domain-migration-coexistence.md), [ADR-0074](20260410-02-krs-formatter.md)
+- **関連**: Issue #496, Issue #477, [ADR-20260411-02](20260411-02-deprecated-domain-migration-coexistence.md), [ADR-20260410-02](20260410-02-krs-formatter.md)
 
 ## 背景
 
@@ -24,7 +24,7 @@ domain Contract {
 }
 ```
 
-この課題は ADR-0032（#477: 移行期のドメイン共存）の受け入れテスト作成時に発見された。
+この課題は ADR-20260411-02（#477: 移行期のドメイン共存）の受け入れテスト作成時に発見された。
 
 ## 決定
 

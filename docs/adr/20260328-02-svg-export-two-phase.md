@@ -1,8 +1,8 @@
-# ADR-0037: SVG エクスポートの 2 フェーズ実装（現在ビュー + Full View 単一ファイル）
+# ADR-20260328-02: SVG エクスポートの 2 フェーズ実装（現在ビュー + Full View 単一ファイル）
 
 - **日付**: 2026-03-28（2026-03-30 更新）
 - **ステータス**: 決定済み
-- **関連**: Issue #22, [ADR-0045](20260317-01-two-layer-rendering.md), [ADR-0047](20260320-01-interactive-svg-rendering.md)
+- **関連**: Issue #22, [ADR-20260317-01](20260317-01-two-layer-rendering.md), [ADR-20260320-01](20260320-01-interactive-svg-rendering.md)
 
 ## 背景
 
@@ -16,7 +16,7 @@ karasu のプレビューは React + DOM イベント委譲でドリルダウン
 
 ### Phase 1: 現在ビュー Export（案A）
 
-- ツールバーに「Export SVG」ボタンを追加（アイコン + テキストラベル、ADR-0007 準拠）
+- ツールバーに「Export SVG」ボタンを追加（アイコン + テキストラベル、ADR-20260323-02 準拠）
 - 現在の `svg` 文字列を `image/svg+xml` の Blob としてダウンロード
 - ファイル名: `{diagram-label}-{activeView}.svg`
 - `core` への変更なし

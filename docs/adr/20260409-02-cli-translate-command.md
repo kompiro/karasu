@@ -1,8 +1,8 @@
-# ADR-0030: CLI `karasu translate` コマンドと複数 realizes 対応
+# ADR-20260409-02: CLI `karasu translate` コマンドと複数 realizes 対応
 
 - **日付**: 2026-04-09
 - **ステータス**: 決定済み
-- **関連**: Issue #355, Issue #356, [ADR-0072](20260404-08-cli-render-command.md)
+- **関連**: Issue #355, Issue #356, [ADR-20260404-08](20260404-08-cli-render-command.md)
 
 ## 背景
 

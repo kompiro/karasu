@@ -1,4 +1,4 @@
-# ADR-0060: AST 再構成 — Discriminated Union とプロパティブロック
+# ADR-20260320-02: AST 再構成 — Discriminated Union とプロパティブロック
 
 - **日付**: 2026-03-20
 - **ステータス**: 決定済み

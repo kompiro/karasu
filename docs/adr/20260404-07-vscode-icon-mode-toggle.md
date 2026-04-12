@@ -1,12 +1,12 @@
-# ADR-0071: VSCode プレビュー Icon Mode トグル — Extension Host 管理 + postMessage
+# ADR-20260404-07: VSCode プレビュー Icon Mode トグル — Extension Host 管理 + postMessage
 
 - **日付**: 2026-04-04
 - **ステータス**: 決定済み
-- **関連**: Issue #299, Issue #173, [ADR-0041](20260328-03-icon-mode.md), [ADR-0070](20260330-05-vscode-extension-lsp-first.md)
+- **関連**: Issue #299, Issue #173, [ADR-20260328-03](20260328-03-icon-mode.md), [ADR-20260330-05](20260330-05-vscode-extension-lsp-first.md)
 
 ## 背景
 
-`packages/app` のプレビューツールバーには「◇ Icon Mode」トグルが実装済みで、`ICON_THEME_STYLE_SOURCE` を注入して SVG アイコンによるノード描画に切り替えられる（ADR-0041）。しかし `packages/vscode` の Webview プレビューにはこのトグルが存在せず、VSCode 拡張から Icon Mode 表示を利用できない状態だった。
+`packages/app` のプレビューツールバーには「◇ Icon Mode」トグルが実装済みで、`ICON_THEME_STYLE_SOURCE` を注入して SVG アイコンによるノード描画に切り替えられる（ADR-20260328-03）。しかし `packages/vscode` の Webview プレビューにはこのトグルが存在せず、VSCode 拡張から Icon Mode 表示を利用できない状態だった。
 
 ## 決定
 

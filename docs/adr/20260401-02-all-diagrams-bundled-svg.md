@@ -1,8 +1,8 @@
-# ADR-0048: 全ビュー統合バンドル SVG（buildAllViewsSvg）
+# ADR-20260401-02: 全ビュー統合バンドル SVG（buildAllViewsSvg）
 
 - **日付**: 2026-04-01
 - **ステータス**: 決定済み
-- **関連**: Issue #121, Issue #122, Issue #123, [ADR-0037](20260328-02-svg-export-two-phase.md)
+- **関連**: Issue #121, Issue #122, Issue #123, [ADR-20260328-02](20260328-02-svg-export-two-phase.md)
 
 ## 背景
 

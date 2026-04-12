@@ -1,12 +1,12 @@
-# ADR-0080: Org Tree View — 組織階層の左→右ツリー俯瞰図
+# ADR-20260404-10: Org Tree View — 組織階層の左→右ツリー俯瞰図
 
 - **日付**: 2026-04-04（更新: 2026-04-05）
 - **ステータス**: 決定済み
-- **関連**: Issue #309, Issue #320, [ADR-0059](20260323-03-organization-diagram.md)
+- **関連**: Issue #309, Issue #320, [ADR-20260323-03](20260323-03-organization-diagram.md)
 
 ## 背景
 
-Org タブのドリルダウン（グリッド）方式では一画面で組織全体を俯瞰できず、CTO → Engineering → Backend → メンバー といった階層を追うたびに画面遷移が必要だった。`organization` / `team` / `member` ブロック自体は ADR-0059 で実装済みで、これを左→右のツリー図として 1 画面に展開できる Tree View モードが求められた。
+Org タブのドリルダウン（グリッド）方式では一画面で組織全体を俯瞰できず、CTO → Engineering → Backend → メンバー といった階層を追うたびに画面遷移が必要だった。`organization` / `team` / `member` ブロック自体は ADR-20260323-03 で実装済みで、これを左→右のツリー図として 1 画面に展開できる Tree View モードが求められた。
 
 ## 決定
 

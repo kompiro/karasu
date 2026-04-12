@@ -1,4 +1,4 @@
-# ADR-0018: Do not migrate to Bun
+# ADR-20260404-01: Do not migrate to Bun
 
 ## Status
 

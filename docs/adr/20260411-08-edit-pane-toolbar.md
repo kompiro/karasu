@@ -1,8 +1,8 @@
-# ADR-0077: EditPaneToolbar — LeftPane アクションボタンの専用ツールバーへの集約
+# ADR-20260411-08: EditPaneToolbar — LeftPane アクションボタンの専用ツールバーへの集約
 
 - **日付**: 2026-04-11
 - **ステータス**: 決定済み
-- **関連**: Issue #455, [ADR-0036](20260411-04-edit-area-and-sidebar-toggle-relocation.md), [ADR-0007](20260323-02-toolbar-icon-label.md)
+- **関連**: Issue #455, [ADR-20260411-04](20260411-04-edit-area-and-sidebar-toggle-relocation.md), [ADR-20260323-02](20260323-02-toolbar-icon-label.md)
 
 ## 背景
 
@@ -55,7 +55,7 @@ export function EditPaneToolbar({ activeTab, onFormat, hasParseErrors }: EditPan
 
 ### コンポーネント名について（設計時からのリネーム）
 
-設計時の案1 では `LeftPaneToolbar` として検討していたが、実装時に `LeftPane` 全体の責務整理（ADR-0036 の `EditArea` 導入）に合わせて **`EditPaneToolbar`** にリネームした。`EditArea > EditPane > EditPaneToolbar` という階層が名前から読み取れるようになり、`Edit*` ファミリーとして命名体系が統一された。
+設計時の案1 では `LeftPaneToolbar` として検討していたが、実装時に `LeftPane` 全体の責務整理（ADR-20260411-04 の `EditArea` 導入）に合わせて **`EditPaneToolbar`** にリネームした。`EditArea > EditPane > EditPaneToolbar` という階層が名前から読み取れるようになり、`Edit*` ファミリーとして命名体系が統一された。
 
 ### 空ツールバーの振る舞い
 
@@ -85,7 +85,7 @@ export function EditPaneToolbar({ activeTab, onFormat, hasParseErrors }: EditPan
 - **関心の分離**: タブバーとアクションボタンの責務が明確に分かれ、`LeftTabBar` がタブナビゲーションのみの責務を持てる
 - **一元管理**: 「どのタブにどのアクションが対応するか」を `EditPaneToolbar` が一箇所で管理する
 - **将来の拡張性**: タブが増えても `EditPaneToolbar` に分岐を追加するだけで拡張できる（Chat / Settings / ファイルツリー等）
-- **ADR-0036 との命名一貫性**: `EditArea` / `EditPane` / `EditPaneToolbar` の `Edit*` ファミリーで階層関係が名前から読み取れる
+- **ADR-20260411-04 との命名一貫性**: `EditArea` / `EditPane` / `EditPaneToolbar` の `Edit*` ファミリーで階層関係が名前から読み取れる
 - **テスト容易性**: 独立コンポーネントとして切り出すことでユニットテストが書きやすくなる
 
 ## 却下した案

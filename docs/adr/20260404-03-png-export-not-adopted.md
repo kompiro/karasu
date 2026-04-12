@@ -1,4 +1,4 @@
-# ADR-0020: Do not implement PNG export
+# ADR-20260404-03: Do not implement PNG export
 
 ## Status
 

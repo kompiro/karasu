@@ -1,4 +1,4 @@
-# ADR-0015: vitest Placement in Monorepo — Workspace Delegation over Root Install
+# ADR-20260330-03: vitest Placement in Monorepo — Workspace Delegation over Root Install
 
 ## Status
 

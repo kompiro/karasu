@@ -1,4 +1,4 @@
-# ADR-0012: スタイル解決パイプラインの一元化
+# ADR-20260328-01: スタイル解決パイプラインの一元化
 
 - **日付**: 2026-03-28
 - **ステータス**: 決定済み
@@ -15,7 +15,7 @@
 
 また、`org-styles.ts` の `resolveOrgStyles()` は `resolveStyles()` と独立したパイプラインで動作していたため、
 `team` / `member` ノードに builtin stylesheet のカスケードが届いていなかった。
-これはユーザーが `.krs.style` でスタイルをオーバーライドできないことを意味し、ADR-0004 の方針（CSS カスケードで制御）と矛盾していた。
+これはユーザーが `.krs.style` でスタイルをオーバーライドできないことを意味し、ADR-20260312-04 の方針（CSS カスケードで制御）と矛盾していた。
 
 ## 決定
 
@@ -44,7 +44,7 @@
 
 ## 関連
 
-- [ADR-0004](20260312-04-css-inspired-styling.md) — CSS インスパイアのスタイリングシステム（カスケードの方針）
-- [ADR-0011](20260327-01-deployment-diagram-design.md) — deploy ノードへの同パターン先行適用（#30）
-- [ADR-0063](20260322-01-builtin-style-and-reference.md) — ビルトインスタイル一元化の設計
+- [ADR-20260312-04](20260312-04-css-inspired-styling.md) — CSS インスパイアのスタイリングシステム（カスケードの方針）
+- [ADR-20260327-01](20260327-01-deployment-diagram-design.md) — deploy ノードへの同パターン先行適用（#30）
+- [ADR-20260322-01](20260322-01-builtin-style-and-reference.md) — ビルトインスタイル一元化の設計
 - [#81](https://github.com/kompiro/karasu/issues/81) — org ノードの unified style pipeline 統合

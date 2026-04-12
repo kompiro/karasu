@@ -1,8 +1,8 @@
-# ADR-0029: Chat UI Phase 3 — 構造化インタビュープロンプトの実装方針
+# ADR-20260412-01: Chat UI Phase 3 — 構造化インタビュープロンプトの実装方針
 
 - **日付**: 2026-04-12
 - **ステータス**: 決定済み
-- **関連**: Issue #420, [ADR-0028](20260409-01-chat-ui-phase2-byok-ai-integration.md), [ADR-0078](20260409-08-chat-ui-panel.md)
+- **関連**: Issue #420, [ADR-20260409-01](20260409-01-chat-ui-phase2-byok-ai-integration.md), [ADR-20260409-08](20260409-08-chat-ui-panel.md)
 
 ## 背景
 

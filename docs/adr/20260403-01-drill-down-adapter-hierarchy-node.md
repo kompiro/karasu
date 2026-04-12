@@ -1,4 +1,4 @@
-# ADR-0046: Drill-down 収集ロジック統一 — `HierarchyNode` 型 + 高階関数
+# ADR-20260403-01: Drill-down 収集ロジック統一 — `HierarchyNode` 型 + 高階関数
 
 - **日付**: 2026-04-03
 - **ステータス**: 決定済み

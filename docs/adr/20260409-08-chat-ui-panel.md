@@ -1,8 +1,8 @@
-# ADR-0078: Chat UI Panel — 全体アーキテクチャと Phase 1 レイアウト
+# ADR-20260409-08: Chat UI Panel — 全体アーキテクチャと Phase 1 レイアウト
 
 - **日付**: 2026-04-09
 - **ステータス**: 決定済み
-- **関連**: Issue #362, Issue #418, [ADR-0028](20260409-01-chat-ui-phase2-byok-ai-integration.md), [ADR-0029](20260412-01-chat-ui-phase3-structured-interview.md), [ADR-0036](20260411-04-edit-area-and-sidebar-toggle-relocation.md), [ADR-0067](20260407-04-cloudflare-deployment-and-byok-ai.md)
+- **関連**: Issue #362, Issue #418, [ADR-20260409-01](20260409-01-chat-ui-phase2-byok-ai-integration.md), [ADR-20260412-01](20260412-01-chat-ui-phase3-structured-interview.md), [ADR-20260411-04](20260411-04-edit-area-and-sidebar-toggle-relocation.md), [ADR-20260407-04](20260407-04-cloudflare-deployment-and-byok-ai.md)
 
 ## 背景
 
@@ -29,7 +29,7 @@ AppShell
 └── KarasuPreviewColumn
 ```
 
-> **リネームに関する注記**: 実装後、ADR-0036 の `EditArea` 導入に合わせて `LeftPane` → `EditPane`、`LeftTabBar` → `EditTabBar` にリネームした。本 ADR では元のレイアウト設計を記録するため `LeftPane` の名称を残している。
+> **リネームに関する注記**: 実装後、ADR-20260411-04 の `EditArea` 導入に合わせて `LeftPane` → `EditPane`、`LeftTabBar` → `EditTabBar` にリネームした。本 ADR では元のレイアウト設計を記録するため `LeftPane` の名称を残している。
 
 ### 2. 状態管理
 
@@ -42,7 +42,7 @@ AppShell
 - **Diagram → Chat**: `viewPath` props が変化したらチャットのスコープインジケーターを更新
 - **Chat → Diagram**: AI の応答から navigation intent を `tool_use`（`navigate_view`）で検出し `onNavigateViewPath` を呼ぶ
 
-### 4. BYOK API キー管理（ADR-0067 を踏襲）
+### 4. BYOK API キー管理（ADR-20260407-04 を踏襲）
 
 | ストレージ | 用途 |
 |---|---|
@@ -86,9 +86,9 @@ packages/app/src/
 
 - **API キーのセキュリティ説明**: Settings ペインに C レベル説明を集約し、Chat ペインは未設定時に Settings への誘導リンクのみ表示する
 - **チャット履歴のリセットタイミング**: プロジェクト切替時・手動 "New Session" 時はリセット、ファイル切替・ViewPath 変化は継続
-- **差分適用の競合処理**: パッチ提案時点の `fileContent` の SHA-256 先頭 8 文字を保持し、Apply 時に現在値と比較して変更を検知したら Apply ボタンを無効化（ADR-0028 で詳細化）
+- **差分適用の競合処理**: パッチ提案時点の `fileContent` の SHA-256 先頭 8 文字を保持し、Apply 時に現在値と比較して変更を検知したら Apply ボタンを無効化（ADR-20260409-01 で詳細化）
 - **ストリーミング**: なし（一括表示）。`tool_use` との複雑な組み合わせを避けるため。将来の改善余地として残す
-- **エラーハンドリング**: 401 / 429 / 500 を種別ごとにインライン表示（詳細は ADR-0028）
+- **エラーハンドリング**: 401 / 429 / 500 を種別ごとにインライン表示（詳細は ADR-20260409-01）
 
 ### 9. Issue 分割と Phase 別設計の所在
 
@@ -97,8 +97,8 @@ packages/app/src/
 | Phase | Issue | ADR |
 |---|---|---|
 | Phase 1（LeftPane タブ化 + Chat UI shell、AI なし） | #418 | 本 ADR |
-| Phase 2（BYOK + AI 統合、Anthropic SDK + tool_use） | #419 | [ADR-0028](20260409-01-chat-ui-phase2-byok-ai-integration.md) |
-| Phase 3（構造化インタビュー、ドリルダウンレベル別プロンプト） | #420 | [ADR-0029](20260412-01-chat-ui-phase3-structured-interview.md) |
+| Phase 2（BYOK + AI 統合、Anthropic SDK + tool_use） | #419 | [ADR-20260409-01](20260409-01-chat-ui-phase2-byok-ai-integration.md) |
+| Phase 3（構造化インタビュー、ドリルダウンレベル別プロンプト） | #420 | [ADR-20260412-01](20260412-01-chat-ui-phase3-structured-interview.md) |
 
 ## 理由
 

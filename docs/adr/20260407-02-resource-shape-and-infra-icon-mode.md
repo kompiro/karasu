@@ -1,12 +1,12 @@
-# ADR-0042: resource shape 自動推論とインフラノード Icon Mode 対応
+# ADR-20260407-02: resource shape 自動推論とインフラノード Icon Mode 対応
 
 - **日付**: 2026-04-07
 - **ステータス**: 決定済み
-- **関連**: Issue #351, [ADR-0035](20260405-05-database-as-first-class-node.md), [ADR-0041](20260328-03-icon-mode.md)
+- **関連**: Issue #351, [ADR-20260405-05](20260405-05-database-as-first-class-node.md), [ADR-20260328-03](20260328-03-icon-mode.md)
 
 ## 背景
 
-ADR-0035 (#351) で `database` / `queue` / `storage` が System 図にファーストクラスノードとして登場し、`resource OrderDB.OrderTable` のようなドット記法参照が UseCase 図等に現れるようになった。これに伴い 2 つの課題が残っていた：
+ADR-20260405-05 (#351) で `database` / `queue` / `storage` が System 図にファーストクラスノードとして登場し、`resource OrderDB.OrderTable` のようなドット記法参照が UseCase 図等に現れるようになった。これに伴い 2 つの課題が残っていた：
 
 1. **ドット記法 resource の shape が参照先種別を反映しない** — パーサーが `ref` を付与するがタグは空のままで、`resource[table]` / `resource[queue]` / `resource[storage]` スタイルルールが適用されない
 2. **`database` / `queue` / `storage` が Icon Mode で Card 表示されない** — `icon-theme.ts` にエントリがなく、Card 形式の SVG（`queue-card`, `cloud-card`）も存在しない

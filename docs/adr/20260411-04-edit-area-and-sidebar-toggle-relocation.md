@@ -1,8 +1,8 @@
-# ADR-0036: `EditArea` コンポーネント新設と sidebar-toggle のサイドバーエリアへの移動
+# ADR-20260411-04: `EditArea` コンポーネント新設と sidebar-toggle のサイドバーエリアへの移動
 
 - **日付**: 2026-04-11
 - **ステータス**: 決定済み
-- **関連**: Issue #465, Issue #455, [ADR-0077](20260411-08-edit-pane-toolbar.md)
+- **関連**: Issue #465, Issue #455, [ADR-20260411-08](20260411-08-edit-pane-toolbar.md)
 
 ## 背景
 

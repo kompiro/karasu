@@ -1,4 +1,4 @@
-# ADR-0069: GitHub Markdown レンダリングサービス — `serve.ts` の `/render` エンドポイント
+# ADR-20260404-06: GitHub Markdown レンダリングサービス — `serve.ts` の `/render` エンドポイント
 
 - **日付**: 2026-04-04
 - **ステータス**: 決定済み

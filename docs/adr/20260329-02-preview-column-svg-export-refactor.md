@@ -1,8 +1,8 @@
-# ADR-0049: KarasuPreviewColumn からの SVG エクスポート責務分離
+# ADR-20260329-02: KarasuPreviewColumn からの SVG エクスポート責務分離
 
 - **日付**: 2026-03-29
 - **ステータス**: 決定済み
-- **関連**: Issue #131, [ADR-0037](20260328-02-svg-export-two-phase.md)
+- **関連**: Issue #131, [ADR-20260328-02](20260328-02-svg-export-two-phase.md)
 
 ## 背景
 

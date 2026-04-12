@@ -8,7 +8,7 @@ type: tool
 
 ## Background
 
-Medium-priority tests identified in [ADR-0058](../adr/20260326-04-app-testing-strategy.md).
+Medium-priority tests identified in [ADR-20260326-04](../adr/20260326-04-app-testing-strategy.md).
 Covers security (DOMPurify sanitization), UI interaction (tab switching, copy feedback),
 and hook behavior (debounce, error resilience).
 

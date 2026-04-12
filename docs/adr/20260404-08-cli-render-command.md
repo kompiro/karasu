@@ -1,8 +1,8 @@
-# ADR-0072: CLI `karasu render` コマンド
+# ADR-20260404-08: CLI `karasu render` コマンド
 
 - **日付**: 2026-04-04
 - **ステータス**: 決定済み
-- **関連**: Issue #121, Issue #122, [ADR-0048](20260401-02-all-diagrams-bundled-svg.md)
+- **関連**: Issue #121, Issue #122, [ADR-20260401-02](20260401-02-all-diagrams-bundled-svg.md)
 
 ## 背景
 
@@ -27,7 +27,7 @@ Options:
                         (default: all views bundled with CSS tab navigation)
 ```
 
-- `--view` 未指定時は `buildAllViewsSvgProject()`（全ビューバンドル、ADR-0048）
+- `--view` 未指定時は `buildAllViewsSvgProject()`（全ビューバンドル、ADR-20260401-02）
 - `--view system|deploy|org` 指定時は `compileProject()`
 
 ### 2. `buildAllViewsSvgProject` を `core` に追加
