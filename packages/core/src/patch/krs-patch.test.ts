@@ -207,4 +207,59 @@ describe("applyKrsPatch", () => {
       expect(result).toEqual({ ok: false, error: 'Node "Unknown" not found' });
     });
   });
+
+  // ── org nodes (organization / team / member) ──────────────────────────────
+
+  describe("org nodes", () => {
+    const orgSrc = `organization ExampleOrg "Example Org" {
+  team BackendTeam "バックエンドチーム" {
+    member AliceUser "Alice" {}
+  }
+  team FrontendTeam "フロントエンドチーム" {}
+}`;
+
+    it("replaces an organization block", () => {
+      const replacement = `organization ExampleOrg "Example Org (updated)" {
+  team BackendTeam "バックエンドチーム" {}
+}`;
+      const result = applyKrsPatch(orgSrc, "replace", "ExampleOrg", replacement);
+      expect(result).toEqual({ ok: true, source: replacement });
+    });
+
+    it("replaces a team block to add a sub-team", () => {
+      const replacement = `team BackendTeam "バックエンドチーム" {
+    member AliceUser "Alice" {}
+    team CoreSubTeam "コアサブチーム" {}
+  }`;
+      const result = applyKrsPatch(orgSrc, "replace", "BackendTeam", replacement);
+      expect(result).toMatchObject({ ok: true, source: expect.stringContaining("CoreSubTeam") });
+      expect(result).toMatchObject({ ok: true, source: expect.stringContaining("FrontendTeam") });
+    });
+
+    it("removes a team block", () => {
+      const result = applyKrsPatch(orgSrc, "remove", "FrontendTeam");
+      expect(result).toMatchObject({
+        ok: true,
+        source: expect.not.stringContaining("FrontendTeam"),
+      });
+      expect(result).toMatchObject({ ok: true, source: expect.stringContaining("BackendTeam") });
+    });
+
+    it("replaces a member node inside a team", () => {
+      const replacement = `member AliceUser "Alice Updated" {}`;
+      const result = applyKrsPatch(orgSrc, "replace", "AliceUser", replacement);
+      expect(result).toMatchObject({ ok: true, source: expect.stringContaining("Alice Updated") });
+    });
+
+    it("insert-child adds a sub-team to a team block", () => {
+      const result = applyKrsPatch(
+        orgSrc,
+        "insert-child",
+        "BackendTeam",
+        'team CoreSubTeam "コア" {}',
+      );
+      expect(result).toMatchObject({ ok: true, source: expect.stringContaining("CoreSubTeam") });
+      expect(result).toMatchObject({ ok: true, source: expect.stringContaining("FrontendTeam") });
+    });
+  });
 });

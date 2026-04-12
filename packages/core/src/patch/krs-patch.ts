@@ -1,5 +1,5 @@
 import { Parser } from "../parser/parser.js";
-import type { KrsNode, DeployBlock } from "../types/ast.js";
+import type { KrsNode, DeployBlock, OrganizationBlock, OrgNode } from "../types/ast.js";
 import type { SourceRange } from "../types/tokens.js";
 
 export type PatchOperation = "append" | "replace" | "remove" | "insert-child";
@@ -21,7 +21,8 @@ interface LocatedNode {
  * - insert-child: inserts `content` as the last child of the node with `targetNodeId`,
  *                 automatically indenting relative to the parent's closing `}`
  *
- * Searches logical nodes (systems, services, domains) and deploy blocks.
+ * Searches logical nodes (systems, services, domains), deploy blocks, and org nodes
+ * (organizations, teams, members).
  *
  * The `loc.end.offset` from the parser points to the `}` character (inclusive),
  * so all slice operations use `end.offset + 1` as the exclusive end boundary.
@@ -54,6 +55,7 @@ export function applyKrsPatch(
     parseResult.value.services,
     parseResult.value.domains,
     parseResult.value.deploys,
+    parseResult.value.organizations,
     targetNodeId,
   );
 
@@ -131,6 +133,7 @@ function findNodeById(
   services: KrsNode[],
   domains: KrsNode[],
   deploys: DeployBlock[],
+  organizations: OrganizationBlock[],
   id: string,
 ): LocatedNode | null {
   // Search logical nodes recursively
@@ -142,6 +145,14 @@ function findNodeById(
   for (const deploy of deploys) {
     if (deploy.id === id) return deploy;
   }
+  // Search org blocks and their nested team/member trees
+  for (const org of organizations) {
+    if (org.id === id) return org;
+    for (const team of org.teams) {
+      const found = searchOrgNode(team, id);
+      if (found !== null) return found;
+    }
+  }
   return null;
 }
 
@@ -149,6 +160,15 @@ function searchNode(node: KrsNode, id: string): KrsNode | null {
   if (node.id === id) return node;
   for (const child of node.children) {
     const found = searchNode(child, id);
+    if (found !== null) return found;
+  }
+  return null;
+}
+
+function searchOrgNode(node: OrgNode, id: string): LocatedNode | null {
+  if (node.id === id) return node;
+  for (const child of node.children) {
+    const found = searchOrgNode(child, id);
     if (found !== null) return found;
   }
   return null;
