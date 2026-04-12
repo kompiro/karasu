@@ -2,7 +2,7 @@
 
 - **日付**: 2026-04-09
 - **ステータス**: 決定済み
-- **関連**: Issue #355, Issue #356, [cli-render-command.md](../design/cli-render-command.md)
+- **関連**: Issue #355, Issue #356, [ADR-0072](0072-cli-render-command.md)
 
 ## 背景
 
