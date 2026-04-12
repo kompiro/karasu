@@ -1,8 +1,8 @@
-# ADR-0086: Domain Drift Detection — Scope and Detection Key
+# ADR-20260401-06: Domain Drift Detection — Scope and Detection Key
 
 - **日付**: 2026-04-01
 - **ステータス**: 決定済み
-- **関連**: Issue #237, [ADR-0003](20260312-03-logical-physical-separation.md)
+- **関連**: Issue #237, [ADR-20260312-03](20260312-03-logical-physical-separation.md)
 
 ## 背景
 

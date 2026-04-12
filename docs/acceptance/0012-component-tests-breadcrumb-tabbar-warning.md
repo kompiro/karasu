@@ -9,7 +9,7 @@ type: tool
 ## Background
 
 Following the introduction of `@testing-library/react` in #40, this AT covers
-the high-priority components identified in [ADR-0058](../adr/20260326-04-app-testing-strategy.md).
+the high-priority components identified in [ADR-20260326-04](../adr/20260326-04-app-testing-strategy.md).
 
 ## Acceptance Criteria
 

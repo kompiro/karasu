@@ -1,8 +1,8 @@
-# ADR-0047: インタラクティブ SVG レンダリングと NodeDetailPanel
+# ADR-20260320-01: インタラクティブ SVG レンダリングと NodeDetailPanel
 
 - **日付**: 2026-03-20
 - **ステータス**: 決定済み
-- **関連**: [ADR-0060](20260320-02-ast-restructure-discriminated-union.md), [ADR-0045](20260317-01-two-layer-rendering.md)
+- **関連**: [ADR-20260320-02](20260320-02-ast-restructure-discriminated-union.md), [ADR-20260317-01](20260317-01-two-layer-rendering.md)
 
 ## 背景
 

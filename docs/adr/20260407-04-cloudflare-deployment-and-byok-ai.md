@@ -1,4 +1,4 @@
-# ADR-0067: Cloudflare Pages デプロイ基盤と BYOK AI 連携
+# ADR-20260407-04: Cloudflare Pages デプロイ基盤と BYOK AI 連携
 
 - **日付**: 2026-04-07
 - **ステータス**: 決定済み

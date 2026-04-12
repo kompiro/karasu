@@ -1,8 +1,8 @@
-# ADR-0079: クロスシステムサービス参照 — ドット記法（`SystemId.ServiceId`）
+# ADR-20260404-09: クロスシステムサービス参照 — ドット記法（`SystemId.ServiceId`）
 
 - **日付**: 2026-04-04
 - **ステータス**: 決定済み
-- **関連**: Issue #285, [ADR-0023](20260405-03-wildcard-import-two-pass-resolution.md), [ADR-0039](20260405-07-ghost-system-rendering.md)
+- **関連**: Issue #285, [ADR-20260405-03](20260405-03-wildcard-import-two-pass-resolution.md), [ADR-20260405-07](20260405-07-ghost-system-rendering.md)
 
 ## 背景
 
@@ -25,7 +25,7 @@ system PaymentGateway {
 
 ### レンダリング方針
 
-本 ADR のスコープは**構文導入のみ**。クロスシステム参照のレンダリング（ghost system ボックス、`ViewSlice.ghostSystems` / `ghostSystemEdges` フィールド追加、サブレイアウト対応）は [ADR-0039](20260405-07-ghost-system-rendering.md)（Issue #328）で扱う。
+本 ADR のスコープは**構文導入のみ**。クロスシステム参照のレンダリング（ghost system ボックス、`ViewSlice.ghostSystems` / `ghostSystemEdges` フィールド追加、サブレイアウト対応）は [ADR-20260405-07](20260405-07-ghost-system-rendering.md)（Issue #328）で扱う。
 
 ### 警告抑制
 

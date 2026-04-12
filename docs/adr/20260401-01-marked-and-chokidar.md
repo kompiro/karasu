@@ -1,4 +1,4 @@
-# ADR-0017: Adopt marked for Markdown rendering and chokidar for file watching
+# ADR-20260401-01: Adopt marked for Markdown rendering and chokidar for file watching
 
 ## Status
 
@@ -36,7 +36,7 @@ Adopt `marked` as the Markdown-to-HTML renderer for `packages/app`.
 2. **Small browser bundle** — `packages/app` targets the browser. marked's ~30 KB footprint is roughly half that of markdown-it and significantly smaller than the full remark/unified pipeline.
 3. **Clear XSS boundary** — marked outputs unsanitized HTML by design. Sanitization is delegated explicitly to `DOMPurify`, keeping the security responsibility visible at the call site rather than hidden inside a library option.
 4. **Feature fit** — node descriptions are expected to contain headings, bullet lists, and code blocks. The extended Markdown features offered by remark plugins are not required.
-5. **Active maintenance** — marked publishes frequent releases and addressed two ReDoS vulnerabilities promptly (see ADR-0016).
+5. **Active maintenance** — marked publishes frequent releases and addressed two ReDoS vulnerabilities promptly (see ADR-20260331-01).
 
 ---
 
@@ -58,7 +58,7 @@ Adopt `chokidar` as the file watcher for `packages/cli`.
 1. **Cross-platform consistency** — Node.js's built-in `fs.watch` has well-documented reliability gaps: on Linux it can miss rapid successive writes; on macOS it sometimes reports incorrect paths. chokidar normalises these differences across platforms.
 2. **Familiar event-emitter API** — `watcher.on("change" | "add" | "unlink", handler)` maps naturally onto the three SSE notification types the CLI needs to emit. No adapter layer is required.
 3. **No native compilation** — Unlike nsfw, chokidar is pure JavaScript/TypeScript, eliminating the need for platform-specific build steps in CI or user environments.
-4. **ESM-first from v5** — chokidar 5 (currently in use) is ESM-only and requires Node.js ≥ 20.19, both of which align with the CLI package's existing `"type": "module"` declaration and the CI Node.js 22 baseline (see ADR-0016).
+4. **ESM-first from v5** — chokidar 5 (currently in use) is ESM-only and requires Node.js ≥ 20.19, both of which align with the CLI package's existing `"type": "module"` declaration and the CI Node.js 22 baseline (see ADR-20260331-01).
 5. **Battle-tested** — chokidar is a dependency of Vite, esbuild, and other major build tools, providing high confidence in correctness and long-term maintenance.
 
 ---

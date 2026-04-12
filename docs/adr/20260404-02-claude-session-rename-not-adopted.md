@@ -1,4 +1,4 @@
-# ADR-0019: Do not rename Claude session to feature name in start-dev skill
+# ADR-20260404-02: Do not rename Claude session to feature name in start-dev skill
 
 ## Status
 

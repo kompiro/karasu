@@ -1,8 +1,8 @@
-# ADR-0057: Editor 診断表示 — Monaco マーカー + Preview エラーオーバーレイ
+# ADR-20260326-03: Editor 診断表示 — Monaco マーカー + Preview エラーオーバーレイ
 
 - **日付**: 2026-03-26
 - **ステータス**: 決定済み
-- **関連**: [ADR-0047](20260320-01-interactive-svg-rendering.md)
+- **関連**: [ADR-20260320-01](20260320-01-interactive-svg-rendering.md)
 
 ## 背景
 

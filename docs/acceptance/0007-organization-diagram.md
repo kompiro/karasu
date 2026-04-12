@@ -5,7 +5,7 @@ type: product
 # AT-0007: Organization Diagram
 
 - **Date**: 2026-03-24
-- **Related**: [Issue #14](https://github.com/kompiro/karasu/issues/14), [ADR-0059](../adr/20260323-03-organization-diagram.md)
+- **Related**: [Issue #14](https://github.com/kompiro/karasu/issues/14), [ADR-20260323-03](../adr/20260323-03-organization-diagram.md)
 
 ## Overview
 

@@ -1,4 +1,4 @@
-# ADR 0022 — Toolbar Button Actionable Modifier Class
+# ADR-20260405-02 — Toolbar Button Actionable Modifier Class
 
 **Date:** 2026-04-05
 **Status:** Accepted

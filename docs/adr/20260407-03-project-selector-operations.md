@@ -1,8 +1,8 @@
-# ADR-0051: ProjectSelector の Rename 操作 — インライン入力欄パターン
+# ADR-20260407-03: ProjectSelector の Rename 操作 — インライン入力欄パターン
 
 - **日付**: 2026-04-07
 - **ステータス**: 決定済み
-- **関連**: Issue #357, [ADR-0053](20260317-02-project-and-filesystem.md)
+- **関連**: Issue #357, [ADR-20260317-02](20260317-02-project-and-filesystem.md)
 
 ## 背景
 

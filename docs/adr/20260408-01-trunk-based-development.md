@@ -1,4 +1,4 @@
-# ADR-0026: Trunk-Based Development with Release Toggles
+# ADR-20260408-01: Trunk-Based Development with Release Toggles
 
 ## Status
 

@@ -1,12 +1,12 @@
-# ADR-0076: CLI 変更系サブコマンド — `karasu remove` / `append` / `insert`
+# ADR-20260412-02: CLI 変更系サブコマンド — `karasu remove` / `append` / `insert`
 
 - **日付**: 2026-04-12
 - **ステータス**: 決定済み
-- **関連**: Issue #469, Issue #470, Issue #471, [ADR-0075](20260411-07-translate-apply-option.md)
+- **関連**: Issue #469, Issue #470, Issue #471, [ADR-20260411-07](20260411-07-translate-apply-option.md)
 
 ## 背景
 
-ADR-0075 では `karasu apply` の設計を確定させ、`karasu remove` と `karasu append` は「別途検討する操作系コマンド」として先送りした。`applyKrsPatch`（`@karasu-tools/core`）はすでに `append` / `replace` / `remove` の 3 オペレーションを実装済みで、CLI から直接呼び出せる状態にあった。加えて、既存の `append` はトップレベル追記のみで、親ノードの子として挿入するニーズ（`karasu insert`）に対応するには新しい `insert-child` オペレーションが必要だった。
+ADR-20260411-07 では `karasu apply` の設計を確定させ、`karasu remove` と `karasu append` は「別途検討する操作系コマンド」として先送りした。`applyKrsPatch`（`@karasu-tools/core`）はすでに `append` / `replace` / `remove` の 3 オペレーションを実装済みで、CLI から直接呼び出せる状態にあった。加えて、既存の `append` はトップレベル追記のみで、親ノードの子として挿入するニーズ（`karasu insert`）に対応するには新しい `insert-child` オペレーションが必要だった。
 
 ## 決定
 

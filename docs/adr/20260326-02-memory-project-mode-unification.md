@@ -1,8 +1,8 @@
-# ADR-0056: MemoryMode と ProjectMode の統一 — Reducer + `KarasuPreviewColumn`
+# ADR-20260326-02: MemoryMode と ProjectMode の統一 — Reducer + `KarasuPreviewColumn`
 
 - **日付**: 2026-03-26
 - **ステータス**: 決定済み
-- **関連**: [ADR-0008](20260324-01-manual-qa-over-e2e.md), [ADR-0009](20260325-01-testing-library-react.md)
+- **関連**: [ADR-20260324-01](20260324-01-manual-qa-over-e2e.md), [ADR-20260325-01](20260325-01-testing-library-react.md)
 
 ## 背景
 

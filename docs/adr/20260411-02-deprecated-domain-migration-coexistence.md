@@ -1,4 +1,4 @@
-# ADR-0032: 移行期における重複ドメイン ID の共存を `@deprecated` + `@migration_target` で許容する
+# ADR-20260411-02: 移行期における重複ドメイン ID の共存を `@deprecated` + `@migration_target` で許容する
 
 - **日付**: 2026-04-11
 - **ステータス**: 決定済み

@@ -1,8 +1,8 @@
-# ADR-0066: マルチファイルプロジェクトでのクロスファイルナビゲーション
+# ADR-20260409-07: マルチファイルプロジェクトでのクロスファイルナビゲーション
 
 - **日付**: 2026-04-09
 - **ステータス**: 決定済み
-- **関連**: Issue #429, [ADR-0065](20260409-06-named-import-toplevel-service.md), [ADR-0062](20260401-03-compile-api-unification.md)
+- **関連**: Issue #429, [ADR-20260409-06](20260409-06-named-import-toplevel-service.md), [ADR-20260401-03](20260401-03-compile-api-unification.md)
 
 ## 背景
 

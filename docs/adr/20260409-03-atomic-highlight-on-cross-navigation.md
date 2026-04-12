@@ -1,8 +1,8 @@
-# ADR-0031: クロスナビゲーション時のアトミックなハイライト適用
+# ADR-20260409-03: クロスナビゲーション時のアトミックなハイライト適用
 
 - **日付**: 2026-04-09
 - **ステータス**: 決定済み
-- **関連**: Issue #422, [ADR-0047](20260320-01-interactive-svg-rendering.md), [node-click-ux.md](../design/node-click-ux.md)
+- **関連**: Issue #422, [ADR-20260320-01](20260320-01-interactive-svg-rendering.md), [node-click-ux.md](../design/node-click-ux.md)
 
 ## 背景
 
@@ -43,4 +43,4 @@ case "SET_ACTIVE_VIEW":
 
 ## 関連 Issue
 
-- ブラウザバック/フォワード時のハイライト復元（Issue #425 → ADR-0034）は本決定の後続で別途対応
+- ブラウザバック/フォワード時のハイライト復元（Issue #425 → ADR-20260411-03）は本決定の後続で別途対応

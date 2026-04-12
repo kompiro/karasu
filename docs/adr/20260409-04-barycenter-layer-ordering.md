@@ -1,12 +1,12 @@
-# ADR-0044: 同レイヤー内コンテナ順序の Barycenter ヒューリスティックによる最適化
+# ADR-20260409-04: 同レイヤー内コンテナ順序の Barycenter ヒューリスティックによる最適化
 
 - **日付**: 2026-04-09
 - **ステータス**: 決定済み
-- **関連**: Issue #395, [ADR-0043](20260408-02-deploy-layout-hierarchical-dag.md)
+- **関連**: Issue #395, [ADR-20260408-02](20260408-02-deploy-layout-hierarchical-dag.md)
 
 ## 背景
 
-ADR-0043 で採用した階層 DAG レイアウトは、各レイヤー内のコンテナを挿入順に左から右へ並べていた。挿入順が悪いとレイヤー間のエッジが交差し、視認性が低下する。例えば `Layer 1: [A, B, C]`, `Layer 2: [X, Y, Z]` で `A→Z, B→Y, C→X` のとき、Layer 2 を `[Z, Y, X]` に並べ替えれば交差をゼロにできる。
+ADR-20260408-02 で採用した階層 DAG レイアウトは、各レイヤー内のコンテナを挿入順に左から右へ並べていた。挿入順が悪いとレイヤー間のエッジが交差し、視認性が低下する。例えば `Layer 1: [A, B, C]`, `Layer 2: [X, Y, Z]` で `A→Z, B→Y, C→X` のとき、Layer 2 を `[Z, Y, X]` に並べ替えれば交差をゼロにできる。
 
 ## 決定
 
@@ -16,7 +16,7 @@ Barycenter ヒューリスティック（重心法）を採用し、各レイヤ
 barycenter(C) = mean(centerX[p] for p in predecessors(C) ∩ previousLayer)
 ```
 
-実装後に Architecture diagram でも再利用できるよう、共通ユーティリティ `sortByBarycenter` を `layer-layout-logics.ts` に抽出する（ADR-0027 参照）。
+実装後に Architecture diagram でも再利用できるよう、共通ユーティリティ `sortByBarycenter` を `layer-layout-logics.ts` に抽出する（ADR-20260411-01 参照）。
 
 ## 理由
 

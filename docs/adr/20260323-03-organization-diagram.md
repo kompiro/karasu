@@ -1,8 +1,8 @@
-# ADR-0059: Organization 図（organization / team / member）の追加
+# ADR-20260323-03: Organization 図（organization / team / member）の追加
 
 - **日付**: 2026-03-23
 - **ステータス**: 決定済み
-- **関連**: Issue #14, [docs/spec/syntax.md](../spec/syntax.md), [ADR-0007](20260323-02-toolbar-icon-label.md)
+- **関連**: Issue #14, [docs/spec/syntax.md](../spec/syntax.md), [ADR-20260323-02](20260323-02-toolbar-icon-label.md)
 
 ## 背景
 
@@ -61,7 +61,7 @@ interface KrsFile {
 
 ### 5. App の 3 ビューモデル
 
-`viewKind: "logical" | "physical" | "org"` で切り替え、ツールバーボタン（ADR-0007 に従いアイコン + ラベル）を追加。`useOrgView` フックを `useKarasu` と並列に呼び出す。
+`viewKind: "logical" | "physical" | "org"` で切り替え、ツールバーボタン（ADR-20260323-02 に従いアイコン + ラベル）を追加。`useOrgView` フックを `useKarasu` と並列に呼び出す。
 
 ### 6. バリデーション
 
@@ -101,4 +101,4 @@ interface KrsFile {
 
 - org 図のエッジ宣言（`->`）は初期スコープ外
 - スタイル適用は初期スコープではノード色のみ
-- エッジクリックによる System 図ドリルダウン（ADR-0055 で Phase 1 として対応）
+- エッジクリックによる System 図ドリルダウン（ADR-20260330-04 で Phase 1 として対応）

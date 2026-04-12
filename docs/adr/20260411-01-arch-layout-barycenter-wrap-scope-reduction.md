@@ -1,8 +1,8 @@
-# ADR-0027: Architecture レイアウトへの Barycenter + Sub-row wrap は適用せず共通ユーティリティのみ抽出
+# ADR-20260411-01: Architecture レイアウトへの Barycenter + Sub-row wrap は適用せず共通ユーティリティのみ抽出
 
 - **日付**: 2026-04-11
 - **ステータス**: 決定済み
-- **関連**: Issue #458, [ADR-0043](20260408-02-deploy-layout-hierarchical-dag.md), [ADR-0044](20260409-04-barycenter-layer-ordering.md)
+- **関連**: Issue #458, [ADR-20260408-02](20260408-02-deploy-layout-hierarchical-dag.md), [ADR-20260409-04](20260409-04-barycenter-layer-ordering.md)
 
 ## 背景
 

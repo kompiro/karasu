@@ -1,8 +1,8 @@
-# ADR-0065: トップレベル service の Named Import — スタブ補完 + エッジ参照による自動メンバーシップ
+# ADR-20260409-06: トップレベル service の Named Import — スタブ補完 + エッジ参照による自動メンバーシップ
 
 - **日付**: 2026-04-09
 - **ステータス**: 決定済み
-- **関連**: Issue #412, [ADR-0064](20260409-05-directory-import.md), [ADR-0023](20260405-03-wildcard-import-two-pass-resolution.md)
+- **関連**: Issue #412, [ADR-20260409-05](20260409-05-directory-import.md), [ADR-20260405-03](20260405-03-wildcard-import-two-pass-resolution.md)
 
 ## 背景
 

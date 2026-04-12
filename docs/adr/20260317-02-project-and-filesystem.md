@@ -1,4 +1,4 @@
-# ADR-0053: プロジェクトとファイルシステム抽象化 — `FileSystemProvider` + OPFS
+# ADR-20260317-02: プロジェクトとファイルシステム抽象化 — `FileSystemProvider` + OPFS
 
 - **日付**: 2026-03-17
 - **ステータス**: 決定済み

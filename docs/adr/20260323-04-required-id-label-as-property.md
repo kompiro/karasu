@@ -1,8 +1,8 @@
-# ADR-0061: ID 必須化と `label` のプロパティ化
+# ADR-20260323-04: ID 必須化と `label` のプロパティ化
 
 - **日付**: 2026-03-23
 - **ステータス**: 決定済み
-- **関連**: Issue #19, [docs/spec/syntax.md](../spec/syntax.md), [ADR-0060](20260320-02-ast-restructure-discriminated-union.md)
+- **関連**: Issue #19, [docs/spec/syntax.md](../spec/syntax.md), [ADR-20260320-02](20260320-02-ast-restructure-discriminated-union.md)
 
 ## 背景
 

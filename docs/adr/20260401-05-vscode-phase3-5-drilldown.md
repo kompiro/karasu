@@ -1,12 +1,12 @@
-# ADR-0085: VSCode Phase 3.5 — Webview ドリルダウンナビゲーション
+# ADR-20260401-05: VSCode Phase 3.5 — Webview ドリルダウンナビゲーション
 
 - **日付**: 2026-04-01
 - **ステータス**: 決定済み
-- **関連**: Issue #218, [ADR-0084](20260401-04-vscode-phase3-webview-architecture.md), [ADR-0047](20260320-01-interactive-svg-rendering.md)
+- **関連**: Issue #218, [ADR-20260401-04](20260401-04-vscode-phase3-webview-architecture.md), [ADR-20260320-01](20260320-01-interactive-svg-rendering.md)
 
 ## 背景
 
-Phase 3 (ADR-0084) では `compile()` に `viewPath` を渡さないため全階層が一画面に表示されていた。`packages/app` の `PreviewPane` はドリルダウン（`viewPath` 更新 → 再レンダリング）を既に実現していたが、VSCode Webview 側には同等の仕組みがなかった。Phase 3.5 では Webview 内でノードをクリックして階層を掘り下げるドリルダウンナビゲーションを実現する。Phase 4（エディタジャンプ）とは独立して開発できる。
+Phase 3 (ADR-20260401-04) では `compile()` に `viewPath` を渡さないため全階層が一画面に表示されていた。`packages/app` の `PreviewPane` はドリルダウン（`viewPath` 更新 → 再レンダリング）を既に実現していたが、VSCode Webview 側には同等の仕組みがなかった。Phase 3.5 では Webview 内でノードをクリックして階層を掘り下げるドリルダウンナビゲーションを実現する。Phase 4（エディタジャンプ）とは独立して開発できる。
 
 ## 決定
 
@@ -77,7 +77,7 @@ document.querySelector('#preview').addEventListener('click', function(e) {
 - **Acceptance Criteria との整合**: Issue #218 の「View switching resets the viewPath to root」を案2 が自然に満たす。案1（ビュータイプ別独立状態）は前の位置から再開できる利点があるが AC に反する
 - **状態管理の簡潔さ**: 単一 `_viewPath` のほうが理解・デバッグしやすい
 - **`_lastNodeMetadata` キャッシュ戦略**: ドリルダウン時のラベルは直前の compile 結果から取得できるため、祖先ノードの追加 compile 呼び出しが不要。履歴管理がシンプルになる
-- **既存の `data-*` 属性活用**: ADR-0047 の `data-node-id` / `data-has-children` を Webview 側で `closest()` で拾うだけで済み、追加の SVG 変更が不要
+- **既存の `data-*` 属性活用**: ADR-20260320-01 の `data-node-id` / `data-has-children` を Webview 側で `closest()` で拾うだけで済み、追加の SVG 変更が不要
 - **Phase 4 との独立性**: 双方向ジャンプ（エディタ ↔ プレビュー）とは別機能として独立開発でき、Phase 4 を待たずにリリースできる
 
 ## 却下した案

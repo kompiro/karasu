@@ -1,12 +1,12 @@
-# ADR-0082: Import Project from ZIP — `fflate` 再利用 + トップレベル除去
+# ADR-20260412-03: Import Project from ZIP — `fflate` 再利用 + トップレベル除去
 
 - **日付**: 2026-04-12
 - **ステータス**: 決定済み
-- **関連**: Issue #462, [ADR-0068](20260411-06-export-project-zip.md), [ADR-0051](20260407-03-project-selector-operations.md)
+- **関連**: Issue #462, [ADR-20260411-06](20260411-06-export-project-zip.md), [ADR-20260407-03](20260407-03-project-selector-operations.md)
 
 ## 背景
 
-ADR-0068（#461）により OPFS プロジェクトを `.zip` ファイルとしてダウンロードできるようになったが、エクスポートした ZIP を再度 ProjectMode に読み込む手段がなかった。Import を追加することで以下が実現する：
+ADR-20260411-06（#461）により OPFS プロジェクトを `.zip` ファイルとしてダウンロードできるようになったが、エクスポートした ZIP を再度 ProjectMode に読み込む手段がなかった。Import を追加することで以下が実現する：
 
 - **バックアップ復元**: エクスポートした ZIP から再ロード
 - **プロジェクト共有**: 他者から受け取った ZIP を自分の ProjectMode に取り込む
@@ -90,7 +90,7 @@ handleImportProject(file)
 - **ディレクトリ名からの名前復元**: ユーザーが ZIP ファイル名を変更していても元のプロジェクト名が保持される（例: `backup-2026-04-12.zip` 内の `my-project/` → プロジェクト名 `my-project`）
 - **衝突時の別名付与**: 上書きすると誤ってユーザーデータを破壊する可能性がある。`name (2)` 形式で安全に併存させる
 - **サイレント無視**: `.krs` / `.krs.style` 以外は Import スコープ外として扱うことでエラー処理が単純になり、将来のファイル種別追加にも柔軟
-- **`ProjectManager.createProject` 既存 API の再利用**: ADR-0050 で `files?` オプション引数を追加済みなので、新規 API を増やさずに既存フローに乗せられる
+- **`ProjectManager.createProject` 既存 API の再利用**: ADR-20260408-03 で `files?` オプション引数を追加済みなので、新規 API を増やさずに既存フローに乗せられる
 
 ## 却下した案
 

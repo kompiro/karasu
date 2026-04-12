@@ -1,4 +1,4 @@
-# ADR-0035: `database` / `queue` / `storage` を system 直下のファーストクラスノードに昇格
+# ADR-20260405-05: `database` / `queue` / `storage` を system 直下のファーストクラスノードに昇格
 
 - **日付**: 2026-04-05
 - **ステータス**: 決定済み

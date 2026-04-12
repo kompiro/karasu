@@ -1,8 +1,8 @@
-# ADR-0064: Directory Import — `import "dir/"` 構文
+# ADR-20260409-05: Directory Import — `import "dir/"` 構文
 
 - **日付**: 2026-04-09
 - **ステータス**: 決定済み
-- **関連**: Issue #292, [ADR-0023](20260405-03-wildcard-import-two-pass-resolution.md)
+- **関連**: Issue #292, [ADR-20260405-03](20260405-03-wildcard-import-two-pass-resolution.md)
 
 ## 背景
 

@@ -1,8 +1,8 @@
-# ADR-0055: Permanent Link — `nodePathIndex` と URL hash の 2 フェーズ実装
+# ADR-20260330-04: Permanent Link — `nodePathIndex` と URL hash の 2 フェーズ実装
 
 - **日付**: 2026-03-30
 - **ステータス**: 決定済み
-- **関連**: Issue #110, Issue #92, [ADR-0054](20260404-05-browser-history-navigation.md)
+- **関連**: Issue #110, Issue #92, [ADR-20260404-05](20260404-05-browser-history-navigation.md)
 
 ## 背景
 
@@ -33,7 +33,7 @@ function buildNodePathIndex(systems: SystemNode[]): Map<string, string[]> {
 
 `owns: EC` クリック時に `nodePathIndex.get("EC")` でパスを解決し、`SET_ACTIVE_VIEW + SET_VIEW_PATH` を dispatch する。
 
-**Phase 2 (B-1)**: URL hash による永続リンク（ADR-0054 で実装）。
+**Phase 2 (B-1)**: URL hash による永続リンク（ADR-20260404-05 で実装）。
 
 ### ID 一意性・存在確認の 3 段階バリデーション
 

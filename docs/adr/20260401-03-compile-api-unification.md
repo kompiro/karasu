@@ -1,4 +1,4 @@
-# ADR-0062: `compile()` API 統一 — Discriminated Union による戻り値型
+# ADR-20260401-03: `compile()` API 統一 — Discriminated Union による戻り値型
 
 - **日付**: 2026-04-01
 - **ステータス**: 決定済み

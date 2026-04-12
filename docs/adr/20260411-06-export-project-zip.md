@@ -1,8 +1,8 @@
-# ADR-0068: Export Project as ZIP — `fflate` による OPFS エクスポート
+# ADR-20260411-06: Export Project as ZIP — `fflate` による OPFS エクスポート
 
 - **日付**: 2026-04-11
 - **ステータス**: 決定済み
-- **関連**: Issue #461, [ADR-0053](20260317-02-project-and-filesystem.md), [ADR-0051](20260407-03-project-selector-operations.md)
+- **関連**: Issue #461, [ADR-20260317-02](20260317-02-project-and-filesystem.md), [ADR-20260407-03](20260407-03-project-selector-operations.md)
 
 ## 背景
 

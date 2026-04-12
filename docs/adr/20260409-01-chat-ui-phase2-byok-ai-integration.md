@@ -1,8 +1,8 @@
-# ADR-0028: Chat UI Phase 2 — BYOK + AI 統合の実装方針
+# ADR-20260409-01: Chat UI Phase 2 — BYOK + AI 統合の実装方針
 
 - **日付**: 2026-04-09
 - **ステータス**: 決定済み
-- **関連**: Issue #419, [ADR-0078](20260409-08-chat-ui-panel.md), [ADR-0067](20260407-04-cloudflare-deployment-and-byok-ai.md)
+- **関連**: Issue #419, [ADR-20260409-08](20260409-08-chat-ui-panel.md), [ADR-20260407-04](20260407-04-cloudflare-deployment-and-byok-ai.md)
 
 ## 背景
 
