@@ -151,23 +151,23 @@ organization ECOrg {
 // Style by node type
 // service {
 //   color: #1e40af;
-//   background: #dbeafe;
+//   background-color: #dbeafe;
 // }
 
 // service[external] {
 //   color: #374151;
-//   background: #f3f4f6;
+//   background-color: #f3f4f6;
 // }
 
 // Style by ID
 // #ECommerce {
 //   color: #065f46;
-//   background: #d1fae5;
+//   background-color: #d1fae5;
 // }
 
 // #Notification {
 //   color: #92400e;
-//   background: #fef3c7;
+//   background-color: #fef3c7;
 // }
 `,
     },
