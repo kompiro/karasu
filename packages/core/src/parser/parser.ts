@@ -1186,19 +1186,39 @@ export class Parser {
     const INDEXED_KINDS = new Set(["service", "domain"]);
     // seenDomainIds is reset per system so that the same domain ID in different
     // systems does not trigger an error (cross-system parallel modelling is allowed).
-    const walk = (node: KrsNode, path: string[], seenDomainIds: Set<string>): void => {
+    // The map value is the index priority of the already-stored domain:
+    //   2 = @migration_target (active destination, highest priority)
+    //   1 = no migration annotation
+    //   0 = @deprecated (migration source, lowest priority)
+    // A duplicate is allowed when at least one side carries a migration annotation.
+    // The higher-priority domain wins the nodePathIndex entry.
+    const walk = (node: KrsNode, path: string[], seenDomainIds: Map<string, number>): void => {
       const currentPath = [...path, node.id];
       if (INDEXED_KINDS.has(node.kind)) {
         if (node.kind === "domain") {
+          const priority = node.annotations.includes("migration_target")
+            ? 2
+            : node.annotations.includes("deprecated")
+              ? 0
+              : 1;
           if (seenDomainIds.has(node.id)) {
-            this.diagnostics.push({
-              severity: "error",
-              message: `Domain id "${node.id}" must be unique within a system; found in multiple services`,
-              loc: node.loc,
-            });
+            const existingPriority = seenDomainIds.get(node.id)!;
+            if (priority === 1 && existingPriority === 1) {
+              // Neither duplicate carries a migration annotation → error (existing behaviour)
+              this.diagnostics.push({
+                severity: "error",
+                message: `Domain id "${node.id}" must be unique within a system; found in multiple services`,
+                loc: node.loc,
+              });
+            }
+            // Higher priority wins the index
+            if (priority > existingPriority) {
+              index.set(node.id, currentPath);
+              seenDomainIds.set(node.id, priority);
+            }
           } else {
-            seenDomainIds.add(node.id);
-            if (!index.has(node.id)) index.set(node.id, currentPath);
+            seenDomainIds.set(node.id, priority);
+            index.set(node.id, currentPath);
           }
         } else {
           if (index.has(node.id)) {
@@ -1218,7 +1238,7 @@ export class Parser {
     };
     for (const system of systems) {
       this.collectNodeIds(system.children, new Set<string>());
-      const seenDomainIds = new Set<string>();
+      const seenDomainIds = new Map<string, number>();
       for (const child of system.children) {
         walk(child, [system.id], seenDomainIds);
       }
@@ -1226,7 +1246,7 @@ export class Parser {
     // Index top-level domains (not nested in any system)
     // Each top-level domain is its own scope; no cross-domain uniqueness check needed here.
     for (const domain of domains) {
-      walk(domain, [], new Set<string>());
+      walk(domain, [], new Map<string, number>());
     }
     return index;
   }

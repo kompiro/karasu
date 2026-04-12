@@ -1060,6 +1060,103 @@ system B {
       expect(errors).toHaveLength(0);
     });
 
+    it("allows duplicate domain id when one has @deprecated annotation, indexes non-deprecated path", () => {
+      const result = Parser.parse(`
+system EC {
+  service Legacy {
+    domain Contract @deprecated {}
+  }
+  service New {
+    domain Contract {}
+  }
+}
+      `);
+      const errors = result.diagnostics.filter((d) => d.severity === "error");
+      expect(errors).toHaveLength(0);
+      // Non-annotated domain (priority 1) wins over @deprecated (priority 0)
+      expect(result.value.nodePathIndex.get("Contract")).toEqual(["EC", "New", "Contract"]);
+    });
+
+    it("allows duplicate domain id when @deprecated appears second, index still points to non-deprecated", () => {
+      const result = Parser.parse(`
+system EC {
+  service New {
+    domain Contract {}
+  }
+  service Legacy {
+    domain Contract @deprecated {}
+  }
+}
+      `);
+      const errors = result.diagnostics.filter((d) => d.severity === "error");
+      expect(errors).toHaveLength(0);
+      expect(result.value.nodePathIndex.get("Contract")).toEqual(["EC", "New", "Contract"]);
+    });
+
+    it("allows duplicate domain id when one has @migration_target, indexes migration_target path", () => {
+      const result = Parser.parse(`
+system EC {
+  service Legacy {
+    domain Contract @deprecated {}
+  }
+  service New {
+    domain Contract @migration_target {}
+  }
+}
+      `);
+      const errors = result.diagnostics.filter((d) => d.severity === "error");
+      expect(errors).toHaveLength(0);
+      // @migration_target (priority 2) wins over @deprecated (priority 0)
+      expect(result.value.nodePathIndex.get("Contract")).toEqual(["EC", "New", "Contract"]);
+    });
+
+    it("@migration_target wins the index even when it appears first", () => {
+      const result = Parser.parse(`
+system EC {
+  service New {
+    domain Contract @migration_target {}
+  }
+  service Legacy {
+    domain Contract @deprecated {}
+  }
+}
+      `);
+      const errors = result.diagnostics.filter((d) => d.severity === "error");
+      expect(errors).toHaveLength(0);
+      expect(result.value.nodePathIndex.get("Contract")).toEqual(["EC", "New", "Contract"]);
+    });
+
+    it("allows duplicate domain id when only @migration_target is present (no @deprecated)", () => {
+      const result = Parser.parse(`
+system EC {
+  service New {
+    domain Contract @migration_target {}
+  }
+  service Other {
+    domain Contract {}
+  }
+}
+      `);
+      const errors = result.diagnostics.filter((d) => d.severity === "error");
+      expect(errors).toHaveLength(0);
+    });
+
+    it("still errors when both duplicate domain ids have no migration annotation", () => {
+      const result = Parser.parse(`
+system EC {
+  service A {
+    domain Checkout {}
+  }
+  service B {
+    domain Checkout {}
+  }
+}
+      `);
+      const errors = result.diagnostics.filter((d) => d.severity === "error");
+      expect(errors.length).toBeGreaterThanOrEqual(1);
+      expect(errors[0].message).toContain("Checkout");
+    });
+
     it("warns when owns references an id not found in the system hierarchy", () => {
       const result = Parser.parse(`
 system EC {

@@ -44,6 +44,30 @@ service Legacy "旧システム" [external] @deprecated @migration_target
 service NewAPI "新API"                 @new @experimental
 ```
 
+#### domain の移行期共存
+
+`@deprecated` または `@migration_target` を `domain` に付与すると、
+同一システム内で同じ ID を持つ `domain` の共存が許容される（移行期のモデリング）。
+`@migration_target` が付いている方がナビゲーションの優先先になる。
+
+```krs
+system OrderSystem {
+  service LegacyService {
+    domain Contract @deprecated {   // 移行元 — 廃止予定
+      -> Billing
+    }
+  }
+  service NewService {
+    domain Contract @migration_target {  // 移行先 — ナビゲーション優先
+      -> Billing
+    }
+  }
+}
+```
+
+> `@deprecated` 単独、または `@migration_target` 単独、どちらか一方が付いていれば重複を許容する。
+> どちらにも付いていない場合はエラーのまま。
+
 ---
 
 ## タグとアノテーションの違い
