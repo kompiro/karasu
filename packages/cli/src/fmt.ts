@@ -1,6 +1,7 @@
 import * as fs from "fs";
 import * as path from "path";
 import { format, FormatError } from "@karasu-tools/core";
+import { readStdin } from "./stdin.js";
 
 interface FmtOptions {
   check?: boolean;
@@ -86,14 +87,4 @@ function findKrsFiles(dir: string): string[] {
     }
   }
   return results;
-}
-
-function readStdin(): Promise<string> {
-  return new Promise((resolve, reject) => {
-    let data = "";
-    process.stdin.setEncoding("utf8");
-    process.stdin.on("data", (chunk) => (data += chunk));
-    process.stdin.on("end", () => resolve(data));
-    process.stdin.on("error", reject);
-  });
 }
