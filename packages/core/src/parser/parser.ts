@@ -1,4 +1,4 @@
-import { TokenType, type Token, type SourceRange } from "../types/tokens.js";
+import { TokenType, type Token, type SourceRange, type SourceLocation } from "../types/tokens.js";
 import type {
   KrsFile,
   KrsNode,
@@ -846,7 +846,7 @@ export class Parser {
 
   private parseEdge(implicitFrom?: string): KrsEdge {
     let fromValue: string;
-    let startLoc: SourceRange;
+    let startLoc: SourceLocation;
     if (implicitFrom) {
       // Implicit source: arrow token is first, source ID comes from parent block
       fromValue = implicitFrom;
