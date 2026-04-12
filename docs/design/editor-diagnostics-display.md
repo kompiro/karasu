@@ -2,7 +2,7 @@
 
 - **日付**: 2026-03-26
 - **ステータス**: 検討中
-- **関連**: `docs/design/interactive-svg-rendering.md`
+- **関連**: [ADR-0047](../adr/0047-interactive-svg-rendering.md) — インタラクティブ SVG レンダリング
 
 ## 背景・課題
 

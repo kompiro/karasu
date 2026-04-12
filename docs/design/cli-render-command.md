@@ -4,7 +4,7 @@
 - **ステータス**: 検討中
 - **関連**:
   - [CLI serve モード](cli-serve-mode.md)
-  - [全ビュー統合バンドル SVG](all-diagrams-bundled-svg.md)
+  - [ADR-0048](../adr/0048-all-diagrams-bundled-svg.md) — 全ビュー統合バンドル SVG
   - [Issue #121: CLI render command](https://github.com/kompiro/karasu/issues/121)
   - [Issue #122: GitHub Actions workflow template](https://github.com/kompiro/karasu/issues/122)
 

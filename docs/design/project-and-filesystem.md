@@ -2,7 +2,7 @@
 
 - **日付**: 2026-03-17
 - **ステータス**: ドラフト
-- **関連**: [コアコンセプト](../concepts.md), [.krs 構文リファレンス](../spec/syntax.md), [2レイヤレンダリング](two-layer-rendering.md)
+- **関連**: [コアコンセプト](../concepts.md), [.krs 構文リファレンス](../spec/syntax.md), [ADR-0045](../adr/0045-two-layer-rendering.md) — 2 レイヤレンダリング
 
 ## 背景・課題
 

@@ -2,7 +2,7 @@
 
 - **日付**: 2026-03-28（2026-03-30 更新）
 - **ステータス**: 決定済み
-- **関連**: Issue #22, [two-layer-rendering.md](../design/two-layer-rendering.md), [interactive-svg-rendering.md](../design/interactive-svg-rendering.md)
+- **関連**: Issue #22, [ADR-0045](0045-two-layer-rendering.md), [ADR-0047](0047-interactive-svg-rendering.md)
 
 ## 背景
 
