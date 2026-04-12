@@ -178,7 +178,7 @@ artifact {
 @deprecated {
   badge-color: #EF4444;
   badge-icon: "⚠";
-  badge-label: "非推奨";
+  badge-label: "廃止予定";
   opacity: 0.6;
 }
 

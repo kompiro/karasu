@@ -5,8 +5,9 @@ import { AppShell } from "./components/AppShell.js";
 import { useAppContext } from "./state/app-context.js";
 import { ProjectManager } from "./fs/project-manager.js";
 import { useProjectNavigation, LAST_PROJECT_KEY } from "./hooks/useProjectNavigation.js";
-import { type Project, EC_PLATFORM_PROJECTS } from "@karasu-tools/core";
+import { type Project, EC_PLATFORM_PROJECTS, GETTING_STARTED_PROJECT } from "@karasu-tools/core";
 import { exportProjectAsZip } from "./utils/export-project-zip.js";
+import { parseZipForImport, disambiguateName } from "./utils/import-project-zip.js";
 
 /**
  * ProjectModeApp — OPFS モードのアプリケーションシェル。
@@ -30,8 +31,13 @@ export function ProjectModeApp() {
       const projectList = await pm.listProjects();
 
       if (projectList.length === 0) {
-        // 初回起動: ec-platform の各ステップをプロジェクトとして作成
+        // 初回起動: Getting Started を先頭に、続いて ec-platform の各ステップを作成
         const initialProjects: Project[] = [];
+        const gsProject = await pm.createProject(
+          GETTING_STARTED_PROJECT.name,
+          GETTING_STARTED_PROJECT.files,
+        );
+        initialProjects.push(gsProject);
         for (const example of EC_PLATFORM_PROJECTS) {
           const project = await pm.createProject(example.name, example.files);
           initialProjects.push(project);
@@ -151,6 +157,22 @@ export function ProjectModeApp() {
     void exportProjectAsZip(fs, currentProject.rootPath, currentProject.name);
   }, [fs, currentProject]);
 
+  const handleImportProject = useCallback(
+    async (file: File) => {
+      const buffer = await file.arrayBuffer();
+      const { files, detectedName } = parseZipForImport(new Uint8Array(buffer));
+      const baseName = detectedName ?? file.name.replace(/\.zip$/i, "");
+      const finalName = disambiguateName(
+        baseName,
+        projects.map((p) => p.name),
+      );
+      const project = await pm.createProject(finalName, files);
+      dispatch({ type: "ADD_PROJECT", project });
+      navigateToProject(project);
+    },
+    [pm, dispatch, projects, navigateToProject],
+  );
+
   if (loading || !currentProject) {
     return <div className="app-loading">Loading...</div>;
   }
@@ -164,6 +186,7 @@ export function ProjectModeApp() {
       onRenameProject={handleRenameProject}
       onDeleteProject={handleDeleteProject}
       onExportProject={handleExportProject}
+      onImportProject={handleImportProject}
     />
   );
 

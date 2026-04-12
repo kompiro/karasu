@@ -26,6 +26,7 @@ function baseProps(currentProject: Project | null = makeProject()) {
     onRenameProject: vi.fn<(id: string, newName: string) => void>(),
     onDeleteProject: vi.fn<(id: string) => void>(),
     onExportProject: vi.fn<() => void>(),
+    onImportProject: vi.fn<(file: File) => void>(),
   };
 }
 
@@ -155,9 +156,9 @@ describe("ProjectSelector — Export button", () => {
     expect(getByRole("button", { name: /Export/ })).toBeTruthy();
   });
 
-  it("does not show Export button when no project is selected", () => {
-    const { queryByRole } = render(<ProjectSelector {...baseProps(null)} />);
-    expect(queryByRole("button", { name: /Export/ })).toBeNull();
+  it("is disabled when no project is selected", () => {
+    const { getByRole } = render(<ProjectSelector {...baseProps(null)} />);
+    expect(getByRole("button", { name: /Export/ })).toHaveProperty("disabled", true);
   });
 
   it("calls onExportProject when Export button is clicked", () => {
@@ -165,5 +166,31 @@ describe("ProjectSelector — Export button", () => {
     const { getByRole } = render(<ProjectSelector {...props} />);
     fireEvent.click(getByRole("button", { name: /Export/ }));
     expect(props.onExportProject).toHaveBeenCalledOnce();
+  });
+});
+
+describe("ProjectSelector — Import button", () => {
+  it("shows Import button when a project is selected", () => {
+    const { getByRole } = render(<ProjectSelector {...baseProps()} />);
+    expect(getByRole("button", { name: /Import/ })).toBeTruthy();
+  });
+
+  it("is disabled when no project is selected", () => {
+    const { getByRole } = render(<ProjectSelector {...baseProps(null)} />);
+    expect(getByRole("button", { name: /Import/ })).toHaveProperty("disabled", true);
+  });
+
+  it("calls onImportProject with the selected File when a file is chosen", () => {
+    const props = baseProps();
+    const { container } = render(<ProjectSelector {...props} />);
+    const input = container.querySelector<HTMLInputElement>("input[type='file']")!;
+    const file = new File(["content"], "my-arch.zip", { type: "application/zip" });
+    fireEvent.change(input, { target: { files: [file] } });
+    expect(props.onImportProject).toHaveBeenCalledWith(file);
+  });
+
+  it("Import button label contains ↑", () => {
+    const { getByRole } = render(<ProjectSelector {...baseProps()} />);
+    expect(getByRole("button", { name: /Import/ }).textContent).toContain("↑");
   });
 });

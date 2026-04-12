@@ -14,14 +14,14 @@ system OrderSystem {
     label "Legacy Service"
     domain Contract @deprecated {
       label "Contract (deprecated)"
-      Contract -> Billing
+      -> Billing
     }
   }
   service NewService {
     label "New Service"
     domain Contract @migration_target {
       label "Contract"
-      Contract -> Billing
+      -> Billing
     }
   }
   service BillingService {
@@ -68,7 +68,7 @@ system OrderSystem {
 
 **Expected:**
 - The `Contract @deprecated` domain node renders with:
-  - A red ⚠ badge (or "非推奨" label).
+  - A red ⚠ badge (or "廃止予定" label).
   - Reduced opacity (appears semi-transparent) compared to the `@migration_target` domain.
 - The `Contract @migration_target` domain in `NewService` renders with a → badge.
 
@@ -104,12 +104,12 @@ system OrderSystem {
 system OrderSystem {
   service NewService {
     domain Contract @migration_target {
-      Contract -> Billing
+      -> Billing
     }
   }
   service LegacyService {
     domain Contract @deprecated {
-      Contract -> Billing
+      -> Billing
     }
   }
   service BillingService {

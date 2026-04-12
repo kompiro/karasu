@@ -1,8 +1,7 @@
 /**
- * Built-in example projects derived from examples/ec-platform/.
- * Used to populate ProjectMode on first launch.
+ * Built-in example projects used to populate ProjectMode on first launch.
  *
- * SYNC RULE: When modifying examples/ec-platform/ files, update this file
+ * SYNC RULE: When modifying files under examples/, update this file
  * accordingly. See .claude/rules/examples-sync.md for the mapping table.
  */
 
@@ -11,6 +10,168 @@ export type ExampleProject = {
   name: string;
   /** Files to write into the project root. Paths are relative to rootPath. */
   files: { path: string; content: string }[];
+};
+
+export const GETTING_STARTED_PROJECT: ExampleProject = {
+  name: "getting-started",
+  files: [
+    {
+      path: "index.krs",
+      content: `@import "default.krs.style"
+
+system ECPlatform {
+  label "ECプラットフォーム"
+
+  user Customer [human] {
+    label "顧客"
+    description "商品を購入する一般ユーザー"
+  }
+  user Seller [human] {
+    label "出品者"
+    description "商品を出品するショップオーナー"
+  }
+  user Admin [human] {
+    label "管理者"
+    description "システムを運用する担当者"
+  }
+
+  service ECommerce {
+    label "ECサイト"
+    description "商品の閲覧・購入・出品を提供する"
+
+    domain Catalog {
+      label "商品カタログ"
+      usecase SearchProducts {
+        label "商品を検索する"
+        resource ProductTable { label "商品テーブル" }
+        resource SearchIndex [external] { label "検索インデックス" }
+      }
+      usecase RegisterProduct {
+        label "商品を登録する"
+        resource ProductTable { label "商品テーブル" }
+        resource ImageStorage [storage] { label "画像ストレージ" }
+      }
+    }
+    domain Order {
+      label "受注"
+      usecase PlaceOrder {
+        label "注文を確定する"
+        resource OrderTable { label "注文テーブル" }
+        resource InventoryAPI [external] { label "在庫API" }
+        resource PaymentAPI [external] { label "決済API" }
+      }
+      usecase ShowOrderHistory { label "注文履歴を照会する" }
+    }
+    domain Member {
+      label "会員"
+      usecase Register {
+        label "会員登録する"
+        resource MemberTable { label "会員テーブル" }
+      }
+      usecase EditProfile { label "プロフィールを編集する" }
+    }
+  }
+  service Payment [external] {
+    label "決済"
+    description "クレジットカード・電子マネー決済"
+  }
+  service Inventory [external] {
+    label "在庫管理"
+    description "在庫データの一元管理"
+  }
+  service Notification {
+    label "通知"
+    description "メール・プッシュ通知の送信"
+  }
+
+  Customer -> ECommerce "商品を購入する"
+  Seller -> ECommerce "商品を出品する"
+  Admin -> ECommerce "システムを管理する"
+  ECommerce -> Payment "決済を処理する"
+  ECommerce -> Inventory "在庫を照会する"
+  ECommerce --> Notification "注文確認を送信する"
+}
+
+deploy Production {
+  label "本番環境"
+  oci ecommerceApp {
+    label "ecommerce-app"
+    runtime "Kubernetes (GKE)"
+    realizes ECommerce
+  }
+  oci notificationWorker {
+    label "notification-worker"
+    runtime "Cloud Run"
+    realizes Notification
+  }
+}
+
+organization ECOrg {
+  label "EC開発組織"
+  team platform {
+    label "プラットフォームチーム"
+    owns ECommerce
+
+    team commerce {
+      label "コマースチーム"
+      owns Catalog
+      owns Order
+
+      owns Member
+    owns Notification
+      member alice {
+        label "Alice"
+        github "alice-dev"
+      }
+    }
+    team "member-team" {
+      label "会員チーム"
+      member bob {
+        label "Bob"
+        description "会員基盤担当"
+      }
+    }
+  }
+  team notification {
+    label "通知チーム"
+    member carol {
+      label "Carol"
+      slack "@carol"
+    }
+  }
+}
+`,
+    },
+    {
+      path: "default.krs.style",
+      content: `// getting-started/default.krs.style
+// Customize diagram appearance with CSS-like selectors.
+// Uncomment and edit any rule below to try it out.
+
+// Style by node type
+// service {
+//   color: #1e40af;
+//   background-color: #dbeafe;
+// }
+
+// service[external] {
+//   color: #374151;
+//   background-color: #f3f4f6;
+// }
+
+// Style by ID
+// #ECommerce {
+//   color: #065f46;
+//   background-color: #d1fae5;
+// }
+
+// #Notification {
+//   color: #92400e;
+//   background-color: #fef3c7;
+// }
+`,
+    },
+  ],
 };
 
 export const EC_PLATFORM_PROJECTS: ExampleProject[] = [

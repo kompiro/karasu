@@ -51,11 +51,60 @@ interface UseChatSessionParams {
   fileContent: string;
   currentFilePath: string | null;
   scopeLabel: string;
+  viewPath: string[];
   resolvedSystems: SystemNode[];
   apiKey: string | null;
   onNavigateViewPath: (path: string[]) => void;
   onEditorChange: (value: string) => void;
   sessionResetKey: string | null;
+}
+
+// ── Drill-down level detection ────────────────────────────────────────────────
+
+type DrillDownLevel = "system" | "service" | "domain" | "usecase";
+
+export function detectDrillDownLevel(
+  viewPath: string[],
+  resolvedSystems: SystemNode[],
+): DrillDownLevel {
+  if (viewPath.length === 0 || resolvedSystems.length === 0) return "system";
+
+  const system = resolvedSystems.find((s) => s.id === viewPath[0]);
+  if (!system || viewPath.length === 1) return "system";
+
+  let current: KrsNode = system;
+  for (let i = 1; i < viewPath.length; i++) {
+    const child: KrsNode | undefined = current.children.find((c) => c.id === viewPath[i]);
+    if (!child) return "system";
+    current = child;
+  }
+
+  const kind = current.kind;
+  if (kind === "service") return "service";
+  if (kind === "domain") return "domain";
+  if (kind === "usecase") return "usecase";
+  return "system";
+}
+
+function interviewGuideForLevel(level: DrillDownLevel): string {
+  switch (level) {
+    case "system":
+      return `このスコープ（システムレベル）では以下の要素の追加を検討してください：
+- **service**: システムを構成するサービス
+- **user**: システムを利用するユーザー種別
+- **external**: 外部システム・外部サービス
+- **rel**: サービス・ユーザー・外部システム間の依存関係`;
+    case "service":
+      return `このスコープ（サービスレベル）では以下の要素の追加を検討してください：
+- **domain**: サービスを構成するドメイン（境界コンテキスト）
+- **team**: ドメインのオーナーチームと連絡先（Slack / Teams など）`;
+    case "domain":
+      return `このスコープ（ドメインレベル）では以下の要素の追加を検討してください：
+- **usecase**: ドメインが提供するユースケース（ユーザーアクションや業務ロジック）`;
+    case "usecase":
+      return `このスコープ（ユースケースレベル）では以下の要素の追加を検討してください：
+- **resource**: ユースケースが参照・操作するリソース（ドット記法: ServiceId.TableId など）`;
+  }
 }
 
 // ── Model graph serialisation ─────────────────────────────────────────────────
@@ -179,6 +228,7 @@ const TOOLS: Anthropic.Messages.Tool[] = [
 
 function buildSystemPrompt(
   scopeLabel: string,
+  viewPath: string[],
   fileContent: string,
   currentFilePath: string | null,
   resolvedSystems: SystemNode[],
@@ -193,6 +243,9 @@ function buildSystemPrompt(
       ? `## アーキテクチャモデル全体（全ファイルを統合したグラフ）\n\`\`\`json\n${modelGraph}\n\`\`\``
       : "";
 
+  const level = detectDrillDownLevel(viewPath, resolvedSystems);
+  const interviewGuide = interviewGuideForLevel(level);
+
   return `あなたは karasu アーキテクチャモデリングツールのアシスタントです。
 ユーザーが .krs ファイルを育てる支援と、アーキテクチャモデルへの自然言語クエリに答えます。
 
@@ -202,6 +255,13 @@ ${scopeLabel}
 ${fileSection}
 
 ${modelSection}
+
+## 構造化インタビュー — 現在スコープで追加すべき要素
+${interviewGuide}
+
+インタビュー開始時は、上記のガイドと現在の .krs 内容を踏まえ、**1〜2 個の具体的な質問**で会話を始めてください。
+既に定義済みの要素は省略し、まだ定義されていないものに絞って質問してください。
+id の候補が曖昧な場合は英語 PascalCase で提案し、ユーザーに確認してください。
 
 ## 対応するクエリの種類
 
@@ -220,6 +280,24 @@ ${modelSection}
 team プロパティと links（Slack / Teams / チームページ等）を使って組織情報を返す：
 - 「X に依存しているチームは？」→ X に依存するサービスの team と links を収集する
 - 「オンボーディングで最初に会うべき人は？」→ エッジ数が多いサービスの team と links を返す
+
+## org 図（organization ブロック）の構文
+
+    organization "会社名" {
+      team BackendTeam "バックエンドチーム" {
+        owns: ECommerceService
+        member AliceUser "Alice" {
+          slack: "@alice"
+        }
+        team CoreSubTeam "コアサブチーム" {   // サブチームはこのようにネストする
+          owns: PaymentService
+        }
+      }
+    }
+
+- team ブロックは organization の直下、または別の team ブロックの内側にネストできる（サブチーム）
+- サブチームを追加する場合は **親チームごと replace** する: operation="replace", targetNodeId=親チームの ID, content=サブチームを含む親チームブロック全体
+- organization ブロック自体を replace することもできる
 
 ## ルール
 - .krs が source of truth。チャット履歴ではなく常に最新の内容を参照する
@@ -259,6 +337,7 @@ export function useChatSession({
   fileContent,
   currentFilePath,
   scopeLabel,
+  viewPath,
   resolvedSystems,
   apiKey,
   onNavigateViewPath,
@@ -279,6 +358,8 @@ export function useChatSession({
   currentFilePathRef.current = currentFilePath;
   const scopeLabelRef = useRef(scopeLabel);
   scopeLabelRef.current = scopeLabel;
+  const viewPathRef = useRef(viewPath);
+  viewPathRef.current = viewPath;
   const resolvedSystemsRef = useRef(resolvedSystems);
   resolvedSystemsRef.current = resolvedSystems;
   const apiKeyRef = useRef(apiKey);
@@ -311,6 +392,7 @@ export function useChatSession({
           max_tokens: 4096,
           system: buildSystemPrompt(
             scopeLabelRef.current,
+            viewPathRef.current,
             fileContentRef.current,
             currentFilePathRef.current,
             resolvedSystemsRef.current,
@@ -349,6 +431,7 @@ export function useChatSession({
                 max_tokens: 4096,
                 system: buildSystemPrompt(
                   scopeLabelRef.current,
+                  viewPathRef.current,
                   fileContentRef.current,
                   currentFilePathRef.current,
                   resolvedSystemsRef.current,
@@ -430,6 +513,7 @@ export function useChatSession({
           messages,
           apiKeyRef,
           scopeLabelRef,
+          viewPathRef,
           fileContentRef,
           currentFilePathRef,
           resolvedSystemsRef,
@@ -546,6 +630,7 @@ export function useChatSession({
           max_tokens: 4096,
           system: buildSystemPrompt(
             scopeLabelRef.current,
+            viewPathRef.current,
             fileContentRef.current,
             currentFilePathRef.current,
             resolvedSystemsRef.current,
@@ -622,6 +707,7 @@ export function useChatSession({
           max_tokens: 4096,
           system: buildSystemPrompt(
             scopeLabelRef.current,
+            viewPathRef.current,
             fileContentRef.current,
             currentFilePathRef.current,
             resolvedSystemsRef.current,
@@ -666,7 +752,75 @@ export function useChatSession({
     [messages],
   );
 
-  return { messages, phase, sendMessage, retryMessage, applyPatch, rejectPatch, resetSession };
+  // ── startInterview ─────────────────────────────────────────────────────────
+
+  const startInterview = useCallback(async (): Promise<void> => {
+    const key = apiKeyRef.current;
+    if (!key) return;
+
+    setPhase({ kind: "loading" });
+
+    const client = new Anthropic({ apiKey: key, dangerouslyAllowBrowser: true });
+
+    // Send a hidden trigger message to kick off the structured interview.
+    // The trigger is NOT stored in the messages state — only the AI's opening response is shown.
+    const triggerMessages: Anthropic.Messages.MessageParam[] = [
+      { role: "user", content: "インタビューを開始してください。" },
+    ];
+
+    try {
+      const response = await client.messages.create({
+        model: MODEL,
+        max_tokens: 4096,
+        system: buildSystemPrompt(
+          scopeLabelRef.current,
+          viewPathRef.current,
+          fileContentRef.current,
+          currentFilePathRef.current,
+          resolvedSystemsRef.current,
+        ),
+        tools: TOOLS,
+        messages: triggerMessages,
+      });
+
+      let textContent = "";
+      for (const block of response.content) {
+        if (block.type === "text") {
+          textContent += block.text;
+        } else if (block.type === "tool_use" && block.name === "navigate_view") {
+          const input = block.input as { path: string[] };
+          onNavigateViewPath(input.path);
+        }
+      }
+
+      if (textContent) {
+        setMessages([{ id: crypto.randomUUID(), role: "assistant", content: textContent }]);
+      }
+      setPhase({ kind: "idle" });
+    } catch (err) {
+      const errorType = classifyError(err);
+      setMessages([
+        {
+          id: crypto.randomUUID(),
+          role: "error",
+          errorType,
+          content: errorMessage(errorType),
+        },
+      ]);
+      setPhase({ kind: "idle" });
+    }
+  }, [onNavigateViewPath]);
+
+  return {
+    messages,
+    phase,
+    sendMessage,
+    retryMessage,
+    applyPatch,
+    rejectPatch,
+    resetSession,
+    startInterview,
+  };
 }
 
 // ── Utilities ─────────────────────────────────────────────────────────────────
@@ -713,6 +867,7 @@ async function autoRejectPatch(
   messages: ChatMessage[],
   apiKeyRef: React.MutableRefObject<string | null>,
   scopeLabelRef: React.MutableRefObject<string>,
+  viewPathRef: React.MutableRefObject<string[]>,
   fileContentRef: React.MutableRefObject<string>,
   currentFilePathRef: React.MutableRefObject<string | null>,
   resolvedSystemsRef: React.MutableRefObject<SystemNode[]>,
@@ -739,6 +894,7 @@ async function autoRejectPatch(
       max_tokens: 4096,
       system: buildSystemPrompt(
         scopeLabelRef.current,
+        viewPathRef.current,
         fileContentRef.current,
         currentFilePathRef.current,
         resolvedSystemsRef.current,

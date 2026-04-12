@@ -165,6 +165,117 @@ system Test {
     expect(edges[0].kind).toBe("async");
   });
 
+  it("parses implicit-source edge in domain block", () => {
+    const result = Parser.parse(`
+system Test {
+  service S {
+    domain Contract {
+      -> Billing
+    }
+  }
+}
+    `);
+    const domain = result.value.systems[0].children[0].children[0];
+    expect(domain.edges).toHaveLength(1);
+    expect(domain.edges[0].from).toBe("Contract");
+    expect(domain.edges[0].to).toBe("Billing");
+    expect(domain.edges[0].kind).toBe("sync");
+  });
+
+  it("parses implicit-source async edge in domain block", () => {
+    const result = Parser.parse(`
+system Test {
+  service S {
+    domain Contract {
+      --> Notification "notify"
+    }
+  }
+}
+    `);
+    const domain = result.value.systems[0].children[0].children[0];
+    expect(domain.edges).toHaveLength(1);
+    expect(domain.edges[0].from).toBe("Contract");
+    expect(domain.edges[0].to).toBe("Notification");
+    expect(domain.edges[0].label).toBe("notify");
+    expect(domain.edges[0].kind).toBe("async");
+  });
+
+  it("parses implicit-source edge with label and tags", () => {
+    const result = Parser.parse(`
+system Test {
+  service S {
+    domain Order {
+      -> Payment "decides payment" [async]
+    }
+  }
+}
+    `);
+    const domain = result.value.systems[0].children[0].children[0];
+    expect(domain.edges[0].from).toBe("Order");
+    expect(domain.edges[0].to).toBe("Payment");
+    expect(domain.edges[0].label).toBe("decides payment");
+    expect(domain.edges[0].tags).toEqual(["async"]);
+  });
+
+  it("parses implicit-source edge in service block", () => {
+    const result = Parser.parse(`
+system Test {
+  service ECommerce {
+    -> Payment "delegates"
+  }
+}
+    `);
+    const service = result.value.systems[0].children[0];
+    expect(service.edges).toHaveLength(1);
+    expect(service.edges[0].from).toBe("ECommerce");
+    expect(service.edges[0].to).toBe("Payment");
+  });
+
+  it("errors when explicit edge source does not match parent in service/domain block", () => {
+    const result = Parser.parse(`
+system Test {
+  service S {
+    domain Contract {
+      OtherDomain -> Billing
+    }
+  }
+}
+    `);
+    const errors = result.diagnostics.filter((d) => d.severity === "error");
+    expect(errors.length).toBeGreaterThanOrEqual(1);
+    expect(errors[0].message).toContain("OtherDomain");
+    expect(errors[0].message).toContain("Contract");
+  });
+
+  it("allows explicit edge with matching source in service/domain block", () => {
+    const result = Parser.parse(`
+system Test {
+  service S {
+    domain Contract {
+      Contract -> Billing
+    }
+  }
+}
+    `);
+    const errors = result.diagnostics.filter((d) => d.severity === "error");
+    expect(errors).toHaveLength(0);
+    const domain = result.value.systems[0].children[0].children[0];
+    expect(domain.edges[0].from).toBe("Contract");
+  });
+
+  it("allows arbitrary edge source in system block", () => {
+    const result = Parser.parse(`
+system Test {
+  service A
+  service B
+  A -> B "delegates"
+}
+    `);
+    const errors = result.diagnostics.filter((d) => d.severity === "error");
+    expect(errors).toHaveLength(0);
+    expect(result.value.systems[0].edges[0].from).toBe("A");
+  });
+
   it("parses nested nodes with full hierarchy", () => {
     const result = Parser.parse(`
 system Test {

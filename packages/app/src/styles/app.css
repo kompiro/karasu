@@ -454,6 +454,34 @@ body,
   font-family: var(--font-ui);
 }
 
+.chat-empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  margin-top: 32px;
+  font-family: var(--font-ui);
+}
+
+.chat-empty-state__hint {
+  font-size: 11px;
+  color: var(--text-muted);
+  text-align: center;
+  margin: 0;
+}
+
+.chat-empty-state__or {
+  font-size: 11px;
+  color: var(--text-muted);
+  text-align: center;
+  margin: 8px 0 0;
+}
+
+.toolbar-btn--start-interview {
+  font-size: 12px;
+  padding: 6px 14px;
+}
+
 .chat-message {
   display: flex;
   flex-direction: column;
@@ -961,6 +989,10 @@ body,
 }
 
 /* Export/Import group — visually separated from the edit actions */
+.project-selector-btn--import {
+  /* placeholder — add overrides here as needed */
+}
+
 .project-selector-btn--export {
   margin-left: 8px;
 }

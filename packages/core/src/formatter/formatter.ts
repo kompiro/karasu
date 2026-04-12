@@ -256,7 +256,7 @@ class Printer {
         lines.push(...this.renderNode(item.node, depth + 1));
       } else {
         const edgeTrail = this.extractTrailing(item.edge.loc.start.line);
-        lines.push(`${indent}  ${this.renderEdge(item.edge)}${edgeTrail}`);
+        lines.push(`${indent}  ${this.renderEdge(item.edge, node.kind)}${edgeTrail}`);
       }
 
       prevEndLine = item.endLine;
@@ -299,11 +299,13 @@ class Printer {
     return `${indent}link "${link.url}"`;
   }
 
-  private renderEdge(edge: KrsEdge): string {
+  private renderEdge(edge: KrsEdge, parentKind?: string): string {
     const arrow = edge.kind === "async" ? "-->" : "->";
     const label = edge.label !== undefined ? ` "${edge.label}"` : "";
     const tags = edge.tags.length > 0 ? ` [${edge.tags.join(", ")}]` : "";
-    return `${edge.from} ${arrow} ${edge.to}${label}${tags}`;
+    // Use implicit-source shorthand for service/domain blocks (from is always parentId)
+    const from = parentKind === "service" || parentKind === "domain" ? "" : `${edge.from} `;
+    return `${from}${arrow} ${edge.to}${label}${tags}`;
   }
 
   // ── DeployBlock ───────────────────────────────────────────────────────────

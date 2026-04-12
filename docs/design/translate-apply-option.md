@@ -6,7 +6,7 @@
   - [#464 feat(core/cli): extract applyKrsPatch to core and add --apply option to translate command](https://github.com/kompiro/karasu/issues/464)
   - [#447 structural krs editing via Chat](https://github.com/kompiro/karasu/issues/447)
   - [structural-krs-patch.md](./structural-krs-patch.md) — `applyKrsPatch` の設計と `append` / `replace` / `remove` の仕様
-  - [cli-translate-command.md](./cli-translate-command.md) — translate コマンドの設計
+  - [ADR-0030](../adr/0030-cli-translate-command.md) — translate コマンドの設計
 
 ## 背景・課題
 
