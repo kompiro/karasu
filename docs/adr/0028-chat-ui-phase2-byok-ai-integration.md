@@ -2,7 +2,7 @@
 
 - **日付**: 2026-04-09
 - **ステータス**: 決定済み
-- **関連**: Issue #419, [chat-ui-panel.md](../design/chat-ui-panel.md), [ADR-0067](0067-cloudflare-deployment-and-byok-ai.md)
+- **関連**: Issue #419, [ADR-0078](0078-chat-ui-panel.md), [ADR-0067](0067-cloudflare-deployment-and-byok-ai.md)
 
 ## 背景
 

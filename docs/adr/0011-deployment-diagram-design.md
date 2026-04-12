@@ -6,7 +6,7 @@ Accepted
 
 ## Context
 
-When implementing the deployment diagram feature (see `docs/design/deployment-diagram.md`), several design decisions with non-obvious trade-offs were made. This ADR records the rationale so future contributors understand why things are the way they are.
+When implementing the deployment diagram feature, several design decisions with non-obvious trade-offs were made. This ADR records the rationale so future contributors understand why things are the way they are.
 
 ## Decisions
 
@@ -42,6 +42,5 @@ Each deploy node kind (`oci`, `lambda`, `jar`, etc.) has a fixed background and 
 
 ## Related
 
-- `docs/design/deployment-diagram.md`
 - [#29](https://github.com/kompiro/karasu/issues/29) — System → Deploy click navigation
 - [#30](https://github.com/kompiro/karasu/issues/30) — Deploy node kind style system integration

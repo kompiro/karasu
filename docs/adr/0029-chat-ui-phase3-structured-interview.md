@@ -2,7 +2,7 @@
 
 - **日付**: 2026-04-12
 - **ステータス**: 決定済み
-- **関連**: Issue #420, [ADR-0028](0028-chat-ui-phase2-byok-ai-integration.md), [chat-ui-panel.md](../design/chat-ui-panel.md)
+- **関連**: Issue #420, [ADR-0028](0028-chat-ui-phase2-byok-ai-integration.md), [ADR-0078](0078-chat-ui-panel.md)
 
 ## 背景
 
