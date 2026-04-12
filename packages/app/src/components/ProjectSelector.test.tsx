@@ -175,9 +175,9 @@ describe("ProjectSelector — Import button", () => {
     expect(getByRole("button", { name: /Import/ })).toBeTruthy();
   });
 
-  it("shows Import button even when no project is selected", () => {
-    const { getByRole } = render(<ProjectSelector {...baseProps(null)} />);
-    expect(getByRole("button", { name: /Import/ })).toBeTruthy();
+  it("does not show Import button when no project is selected", () => {
+    const { queryByRole } = render(<ProjectSelector {...baseProps(null)} />);
+    expect(queryByRole("button", { name: /Import/ })).toBeNull();
   });
 
   it("calls onImportProject with the selected File when a file is chosen", () => {

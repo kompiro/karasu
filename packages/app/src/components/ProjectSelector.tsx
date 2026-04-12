@@ -192,13 +192,6 @@ export function ProjectSelector({
           >
             + New
           </button>
-          <button
-            onClick={handleImportClick}
-            className="project-selector-btn project-selector-btn--import"
-            title="ZIPからインポート"
-          >
-            ↑ Import
-          </button>
           {currentProject && (
             <>
               <button
@@ -221,6 +214,13 @@ export function ProjectSelector({
                 title="ZIPとしてエクスポート"
               >
                 ↓ Export
+              </button>
+              <button
+                onClick={handleImportClick}
+                className="project-selector-btn project-selector-btn--import"
+                title="ZIPからインポート"
+              >
+                ↑ Import
               </button>
             </>
           )}
