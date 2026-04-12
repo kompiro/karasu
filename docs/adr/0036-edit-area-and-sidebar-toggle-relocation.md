@@ -2,7 +2,7 @@
 
 - **日付**: 2026-04-11
 - **ステータス**: 決定済み
-- **関連**: Issue #465, Issue #455, [left-pane-toolbar.md](../design/left-pane-toolbar.md)
+- **関連**: Issue #465, Issue #455, [ADR-0077](0077-edit-pane-toolbar.md)
 
 ## 背景
 
