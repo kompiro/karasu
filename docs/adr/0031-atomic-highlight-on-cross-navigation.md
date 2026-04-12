@@ -2,7 +2,7 @@
 
 - **日付**: 2026-04-09
 - **ステータス**: 決定済み
-- **関連**: Issue #422, [interactive-svg-rendering.md](../design/interactive-svg-rendering.md), [node-click-ux.md](../design/node-click-ux.md)
+- **関連**: Issue #422, [ADR-0047](0047-interactive-svg-rendering.md), [node-click-ux.md](../design/node-click-ux.md)
 
 ## 背景
 

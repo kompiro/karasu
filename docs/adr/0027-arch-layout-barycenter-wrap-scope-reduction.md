@@ -2,7 +2,7 @@
 
 - **日付**: 2026-04-11
 - **ステータス**: 決定済み
-- **関連**: Issue #458, [deploy-layout-wrap.md](../design/deploy-layout-wrap.md), [barycenter-layer-ordering.md](../design/barycenter-layer-ordering.md)
+- **関連**: Issue #458, [ADR-0043](0043-deploy-layout-hierarchical-dag.md), [ADR-0044](0044-barycenter-layer-ordering.md)
 
 ## 背景
 
