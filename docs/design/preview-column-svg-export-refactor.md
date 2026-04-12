@@ -2,7 +2,7 @@
 
 - **日付**: 2026-03-29
 - **ステータス**: ドラフト
-- **関連**: [Issue #131](https://github.com/kompiro/karasu/issues/131), [SVGエクスポート設計](svg-export.md)
+- **関連**: [Issue #131](https://github.com/kompiro/karasu/issues/131), [ADR-0037](../adr/0037-svg-export-two-phase.md) — SVG エクスポート方針
 
 ## 背景・課題
 

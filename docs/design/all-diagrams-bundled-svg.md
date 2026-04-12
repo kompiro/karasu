@@ -3,7 +3,7 @@
 - **日付**: 2026-04-01
 - **ステータス**: 検討中
 - **関連**:
-  - [SVG エクスポート（ドリルダウン対応）](svg-export.md)
+  - [ADR-0037](../adr/0037-svg-export-two-phase.md) — SVG エクスポートの 2 フェーズ実装
   - [Issue #121: CLI render command](https://github.com/kompiro/karasu/issues/121)
   - [Issue #122: GitHub Actions workflow template](https://github.com/kompiro/karasu/issues/122)
   - [Issue #123: GitHub Markdown rendering support](https://github.com/kompiro/karasu/issues/123)
@@ -211,7 +211,7 @@ karasu render index.krs --all-views --output docs/architecture-all.svg
    それらの完了後に `buildAllViewsSvg` の実装方針（再利用 vs. リファクタリング）を確定する。
 
 3. **Deploy ビューは現在フラット表示のみ。階層化は将来のために設計上考慮する**:
-   現時点では `svg-export.md` の方針通りフラット表示のみとする。
+   現時点では ADR-0037 の方針通りフラット表示のみとする。
    ただし将来の階層化に備えて ID スキームや構造は拡張可能に設計する。
 
 4. **アプリ内プレビューでの利用は別 Issue で検討する**:

@@ -3,7 +3,7 @@
 - **日付**: 2026-04-07
 - **ステータス**: 検討中
 - **関連**:
-  - [resource と database の設計](resource-and-database.md) — `database`/`queue`/`storage` の語彙設計
+  - [ADR-0035](../adr/0035-database-as-first-class-node.md) — `database`/`queue`/`storage` の語彙設計
   - [アイコンモード](icon-mode.md) — Icon Mode の基本設計
   - Issue #351 (実装済み): System 図インフラノード表示・自動エッジ導出
 

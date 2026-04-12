@@ -2,7 +2,7 @@
 
 - **日付**: 2026-04-11
 - **ステータス**: 提案
-- **関連**: Issue #460, Design Doc `domain-to-domain-edges.md`
+- **関連**: Issue #460, [ADR-0033](../adr/0033-domain-to-domain-edges-implicit-tag.md) — Domain 間エッジと `[implicit]` 自動タグ
 
 ## 背景・課題
 
