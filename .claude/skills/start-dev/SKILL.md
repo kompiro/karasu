@@ -193,7 +193,7 @@ CI 通過後、以下のチェックを順に実行する。
 5. 関連する Design Doc を ADR に昇格させる:
    - 今回の実装に対応する `docs/design/` のファイルを確認する
    - ステータスが「検討中」または「承認済み」のままになっている Design Doc があれば、`/design-doc` スキルまたは手動で ADR として `docs/adr/` に移動・昇格させる
-   - ADR のファイル名は `docs/adr/` 内の最大連番 + 1 を使用する（例: 現在の最大が `0071-xxx.md` なら `0072-xxx.md`）
+   - ADR のファイル名は `YYYYMMDD-XX-description.md` 形式とする（例: `20260412-05-getting-started-project.md`）。`YYYYMMDD` は作成日、`XX` は同日内の連番（`docs/adr/` 内の同日ファイルを確認して決める）
    - Design Doc のステータスを「決定済み」に更新し、対応する ADR へのリンクを追記する
 
 リモートブランチは GitHub 上で PR マージ時に自動削除される設定を推奨。
