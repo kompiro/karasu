@@ -1,6 +1,7 @@
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { applyKrsPatch } from "@karasu-tools/core";
+import { readStdin } from "./stdin.js";
 
 /**
  * Insert stdin .krs content as the last child of the node with `parentId`
@@ -38,17 +39,4 @@ export async function insert(parentId: string, targetFile: string): Promise<void
   }
 
   writeFileSync(targetPath, result.source, "utf-8");
-}
-
-function readStdin(): Promise<string> {
-  return new Promise((done) => {
-    let data = "";
-    process.stdin.setEncoding("utf-8");
-    process.stdin.on("data", (chunk) => {
-      data += chunk;
-    });
-    process.stdin.on("end", () => {
-      done(data);
-    });
-  });
 }

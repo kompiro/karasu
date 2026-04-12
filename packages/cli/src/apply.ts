@@ -2,6 +2,7 @@ import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { Parser, applyKrsPatch } from "@karasu-tools/core";
 import type { KrsNode } from "@karasu-tools/core";
+import { readStdin } from "./stdin.js";
 
 /**
  * Apply stdin .krs content to an existing .krs file.
@@ -126,17 +127,4 @@ function collectDescendantIds(nodes: KrsNode[], ids: Set<string>): void {
 /** Returns true when every child ID in the incoming list already exists in the target. */
 function allChildrenExistIn(children: KrsNode[], existingIds: Set<string>): boolean {
   return children.every((child) => existingIds.has(child.id));
-}
-
-function readStdin(): Promise<string> {
-  return new Promise((done) => {
-    let data = "";
-    process.stdin.setEncoding("utf-8");
-    process.stdin.on("data", (chunk) => {
-      data += chunk;
-    });
-    process.stdin.on("end", () => {
-      done(data);
-    });
-  });
 }
