@@ -125,6 +125,55 @@ system Test {
     expect(svg).toContain('opacity="0.6"');
   });
 
+  it("default @deprecated badge label is 廃止予定", () => {
+    const svg = renderFromSource(`
+system Test {
+  service Legacy @deprecated {
+    label "旧"
+  }
+}
+    `);
+    expect(svg).toContain("廃止予定");
+    expect(svg).not.toContain("非推奨");
+  });
+
+  it("migration coexistence: @deprecated and @migration_target domains have independent badges", () => {
+    // Reproduces the bug from issue #505: when two domains share the same ID but carry
+    // different annotations (migration coexistence), each must render its own badge label.
+    const krs = `
+system OrderSystem {
+  service LegacyService {
+    label "Legacy Service"
+    domain Contract @deprecated {
+      label "Contract (deprecated)"
+    }
+  }
+  service NewService {
+    label "New Service"
+    domain Contract @migration_target {
+      label "Contract"
+    }
+  }
+}
+    `;
+
+    // Render LegacyService view: should show @deprecated badge
+    const parseResult = Parser.parse(krs);
+    const sheets = [getBuiltinStyleSheet()];
+    const legacyStyles = resolveStyles(parseResult.value.systems, sheets);
+    const legacySlice = extractView(parseResult.value.systems, ["OrderSystem", "LegacyService"]);
+    const legacySvg = render(legacySlice, legacyStyles);
+    expect(legacySvg).toContain("廃止予定");
+    expect(legacySvg).not.toContain("移行先");
+
+    // Render NewService view: should show @migration_target badge
+    const newStyles = resolveStyles(parseResult.value.systems, sheets);
+    const newSlice = extractView(parseResult.value.systems, ["OrderSystem", "NewService"]);
+    const newSvg = render(newSlice, newStyles);
+    expect(newSvg).toContain("移行先");
+    expect(newSvg).not.toContain("廃止予定");
+  });
+
   it("renders async edges as dashed", () => {
     const svg = renderFromSource(`
 system Test {

@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { resolveStyles } from "./style-resolver.js";
+import { resolveStyles, nodeStyleKey } from "./style-resolver.js";
 import { analyze } from "./warnings.js";
 import { getBuiltinStyleSheet } from "../builtins/default-style.js";
 import type {
@@ -682,6 +682,54 @@ describe("resource tag auto-inference in resolveStyles", () => {
     expect(result.nodes.get("EventBus.OrderCreated")!.backgroundColor).toBe("#QUEUE");
   });
 
+  it("migration coexistence: same domain ID with different annotations resolves independent styles", () => {
+    // Reproduces the style-map collision in issue #505:
+    // Contract @deprecated and Contract @migration_target share the same ID but must each
+    // get their own style entry so the wrong badge does not bleed across nodes.
+    const deprecatedDomain = makeNode({
+      kind: "domain",
+      id: "Contract",
+      annotations: ["deprecated"],
+    });
+    const migrationTargetDomain = makeNode({
+      kind: "domain",
+      id: "Contract",
+      annotations: ["migration_target"],
+    });
+    const legacyService = makeNode({
+      kind: "service",
+      id: "LegacyService",
+      children: [deprecatedDomain],
+    });
+    const newService = makeNode({
+      kind: "service",
+      id: "NewService",
+      children: [migrationTargetDomain],
+    });
+    const system = makeNode({
+      kind: "system",
+      id: "OrderSystem",
+      children: [legacyService, newService],
+    });
+    const sheet: StyleSheet = {
+      rules: [
+        makeRule({ tags: [], annotations: ["deprecated"] }, { "badge-label": '"廃止予定"' }, 10, 0),
+        makeRule(
+          { tags: [], annotations: ["migration_target"] },
+          { "badge-label": '"移行先"' },
+          10,
+          1,
+        ),
+      ],
+    };
+    const result = resolveStyles([system], [sheet]);
+    // Each domain must retain its own annotation-qualified style
+    const deprecatedStyle = result.nodes.get(nodeStyleKey("Contract", ["deprecated"]));
+    const migrationStyle = result.nodes.get(nodeStyleKey("Contract", ["migration_target"]));
+    expect(deprecatedStyle?.badgeLabel).toBe("廃止予定");
+    expect(migrationStyle?.badgeLabel).toBe("移行先");
+  });
+
   it("does not override explicit tags on resource nodes", () => {
     const db = makeInfraNode("database", "OrderDB", "table", "OrderTable");
     const resource = {
@@ -708,5 +756,25 @@ describe("resource tag auto-inference in resolveStyles", () => {
     };
     const result = resolveStyles([system], [sheet]);
     expect(result.nodes.get("OrderDB.OrderTable")!.backgroundColor).toBe("#CUSTOM");
+  });
+});
+
+describe("nodeStyleKey", () => {
+  it("returns plain id when annotations is empty", () => {
+    expect(nodeStyleKey("Contract", [])).toBe("Contract");
+  });
+
+  it("returns plain id when annotations is undefined", () => {
+    expect(nodeStyleKey("Contract", undefined)).toBe("Contract");
+  });
+
+  it("appends sorted annotations separated by comma", () => {
+    expect(nodeStyleKey("Contract", ["deprecated"])).toBe("Contract@deprecated");
+    expect(nodeStyleKey("Contract", ["migration_target"])).toBe("Contract@migration_target");
+  });
+
+  it("sorts multiple annotations for stable keys", () => {
+    expect(nodeStyleKey("X", ["b", "a"])).toBe("X@a,b");
+    expect(nodeStyleKey("X", ["a", "b"])).toBe("X@a,b");
   });
 });
