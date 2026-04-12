@@ -135,4 +135,76 @@ describe("applyKrsPatch", () => {
       expect(result).toEqual({ ok: false, error: 'Node "Unknown" not found' });
     });
   });
+
+  // ── insert-child ──────────────────────────────────────────────────────────
+
+  describe("insert-child", () => {
+    it("inserts a child into a block that already has children", () => {
+      const src = "system Foo {\n  service Bar {}\n}";
+      const result = applyKrsPatch(src, "insert-child", "Foo", "service Baz {}");
+      expect(result).toEqual({
+        ok: true,
+        source: "system Foo {\n  service Bar {}\n  service Baz {}\n}",
+      });
+    });
+
+    it("inserts a child into an empty block (inline `{}`)", () => {
+      const src = "system Foo {}";
+      const result = applyKrsPatch(src, "insert-child", "Foo", "service Bar {}");
+      expect(result).toEqual({
+        ok: true,
+        source: "system Foo {\n  service Bar {}\n}",
+      });
+    });
+
+    it("inserts a multi-line child, preserving relative indentation", () => {
+      const src = "system Foo {\n  service Existing {}\n}";
+      const content = "service New {\n  usecase DoThing {}\n}";
+      const result = applyKrsPatch(src, "insert-child", "Foo", content);
+      expect(result).toEqual({
+        ok: true,
+        source:
+          "system Foo {\n  service Existing {}\n  service New {\n    usecase DoThing {}\n  }\n}",
+      });
+    });
+
+    it("inserts into a nested block at the correct indentation level", () => {
+      const src = "system Outer {\n  system Inner {\n    service Foo {}\n  }\n}";
+      const result = applyKrsPatch(src, "insert-child", "Inner", "service Bar {}");
+      expect(result).toEqual({
+        ok: true,
+        source: "system Outer {\n  system Inner {\n    service Foo {}\n    service Bar {}\n  }\n}",
+      });
+    });
+
+    it("normalizes content that arrives with extra leading indentation", () => {
+      const src = "system Foo {}";
+      // content indented by 4 spaces — should be normalised to childIndent (2 spaces)
+      const result = applyKrsPatch(src, "insert-child", "Foo", "    service Bar {}");
+      expect(result).toEqual({
+        ok: true,
+        source: "system Foo {\n  service Bar {}\n}",
+      });
+    });
+
+    it("returns error when targetNodeId is missing", () => {
+      const result = applyKrsPatch("system Foo {}", "insert-child", undefined, "service Bar {}");
+      expect(result).toEqual({ ok: false, error: "targetNodeId is required for insert-child" });
+    });
+
+    it("returns error when content is missing", () => {
+      const result = applyKrsPatch("system Foo {}", "insert-child", "Foo", undefined);
+      expect(result).toEqual({ ok: false, error: "content is required for insert-child" });
+    });
+
+    it("returns error when content is empty string", () => {
+      const result = applyKrsPatch("system Foo {}", "insert-child", "Foo", "");
+      expect(result).toEqual({ ok: false, error: "content is required for insert-child" });
+    });
+
+    it("returns error when targetNodeId is not found", () => {
+      const result = applyKrsPatch("system Foo {}", "insert-child", "Unknown", "service Bar {}");
+      expect(result).toEqual({ ok: false, error: 'Node "Unknown" not found' });
+    });
+  });
 });

@@ -4,7 +4,9 @@ import { serve } from "./serve.js";
 import { render } from "./render.js";
 import { translate } from "./translate/index.js";
 import { apply } from "./apply.js";
+import { append } from "./append.js";
 import { remove } from "./remove.js";
+import { insert } from "./insert.js";
 import { fmt } from "./fmt.js";
 
 program.name("karasu").description("karasu — architecture diagram tool").version("0.0.0");
@@ -108,6 +110,33 @@ Examples:
   );
 
 program
+  .command("append <file>")
+  .description(
+    "Append piped .krs content from stdin as a new top-level block at the end of a .krs file. " +
+      "Creates the file if it does not exist.",
+  )
+  .addHelpText(
+    "after",
+    `
+Examples:
+  # Append a new service block
+  $ echo 'service NewService { label: "New Service" }' | karasu append arch.krs
+
+  # Append a multi-line block via HEREDOC
+  $ cat <<'EOF' | karasu append arch.krs
+  service NewService {
+    usecase Foo {}
+  }
+  EOF
+
+  # Create a new file from a hand-written snippet
+  $ echo 'system ECommerce {}' | karasu append arch.krs`,
+  )
+  .action((file: string) => {
+    append(file);
+  });
+
+program
   .command("apply <file>")
   .description(
     "Apply piped .krs content from stdin to an existing .krs file. " +
@@ -145,6 +174,30 @@ Examples:
   )
   .action((nodeId: string, file: string) => {
     remove(nodeId, file);
+  });
+
+program
+  .command("insert <parent-id> <file>")
+  .description(
+    "Insert piped .krs content from stdin as the last child of a node in a .krs file. " +
+      "Indentation is applied automatically based on the parent node's depth.",
+  )
+  .addHelpText(
+    "after",
+    `
+Examples:
+  # Add a service as a child of system ECommerce
+  $ echo 'service NewService { label: "New" }' | karasu insert ECommerce arch.krs
+
+  # Insert a multi-line block via HEREDOC
+  $ cat <<'EOF' | karasu insert ECommerce arch.krs
+  service NewService {
+    usecase Foo {}
+  }
+  EOF`,
+  )
+  .action((parentId: string, file: string) => {
+    insert(parentId, file);
   });
 
 program

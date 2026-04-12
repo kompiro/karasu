@@ -2,7 +2,7 @@ import { Parser } from "../parser/parser.js";
 import type { KrsNode, DeployBlock } from "../types/ast.js";
 import type { SourceRange } from "../types/tokens.js";
 
-export type PatchOperation = "append" | "replace" | "remove";
+export type PatchOperation = "append" | "replace" | "remove" | "insert-child";
 
 type PatchResult = { ok: true; source: string } | { ok: false; error: string };
 
@@ -15,9 +15,11 @@ interface LocatedNode {
 /**
  * Apply a structural patch to a .krs source string.
  *
- * - append: appends `content` as a new top-level block at the end of the file
- * - replace: finds the node with `targetNodeId` in the AST and replaces its source range
- * - remove: finds the node with `targetNodeId` in the AST and removes its source range
+ * - append:       appends `content` as a new top-level block at the end of the file
+ * - replace:      finds the node with `targetNodeId` in the AST and replaces its source range
+ * - remove:       finds the node with `targetNodeId` in the AST and removes its source range
+ * - insert-child: inserts `content` as the last child of the node with `targetNodeId`,
+ *                 automatically indenting relative to the parent's closing `}`
  *
  * Searches logical nodes (systems, services, domains) and deploy blocks.
  *
@@ -42,8 +44,8 @@ export function applyKrsPatch(
     return { ok: false, error: `targetNodeId is required for ${operation}` };
   }
 
-  if (operation === "replace" && !content) {
-    return { ok: false, error: "content is required for replace" };
+  if ((operation === "replace" || operation === "insert-child") && !content) {
+    return { ok: false, error: `content is required for ${operation}` };
   }
 
   const parseResult = Parser.parse(source);
@@ -66,6 +68,37 @@ export function applyKrsPatch(
     return { ok: true, source: source.slice(0, start) + content + source.slice(end) };
   }
 
+  if (operation === "insert-child") {
+    // loc.end.offset points to the closing `}` of the parent node (inclusive).
+    const closingBrace = node.loc.end.offset;
+    const beforeClose = source.slice(0, closingBrace);
+    const afterClose = source.slice(closingBrace); // starts with `}`
+
+    // Determine the indentation of the closing `}` from the last line before it.
+    const lastNewlineIdx = beforeClose.lastIndexOf("\n");
+    const lineAfterLastNewline = lastNewlineIdx >= 0 ? beforeClose.slice(lastNewlineIdx + 1) : "";
+    const closingIndent = lineAfterLastNewline.match(/^(\s*)/)?.[1] ?? "";
+    const childIndent = closingIndent + "  ";
+
+    const indentedContent = applyChildIndent(content!.trim(), childIndent);
+
+    // Strip trailing horizontal whitespace (the indentation of the closing `}`)
+    // so we don't leave a whitespace-only line before the inserted child.
+    const trimmedBeforeClose = beforeClose.replace(/[ \t]+$/, "");
+    // Empty blocks (`system Foo {}`) have no newline before `}` — add one.
+    const needsNewline = !trimmedBeforeClose.endsWith("\n");
+    return {
+      ok: true,
+      source:
+        trimmedBeforeClose +
+        (needsNewline ? "\n" : "") +
+        indentedContent +
+        "\n" +
+        closingIndent +
+        afterClose,
+    };
+  }
+
   // operation === "remove"
   const before = source.slice(0, start).replace(/[ \t]*\n?$/, "");
   const raw = source.slice(end);
@@ -76,6 +109,22 @@ export function applyKrsPatch(
 }
 
 // ── Internal helpers ──────────────────────────────────────────────────────────
+
+/**
+ * Normalize `content` indentation and prepend `childIndent` to every line.
+ * The minimum indentation among non-empty lines is stripped first so that
+ * content pasted with arbitrary leading whitespace is handled correctly.
+ */
+function applyChildIndent(content: string, childIndent: string): string {
+  const lines = content.split("\n");
+  const nonEmptyLines = lines.filter((l) => l.trim());
+  if (nonEmptyLines.length === 0) return content;
+
+  const minIndentLen = Math.min(...nonEmptyLines.map((l) => (l.match(/^(\s*)/)?.[1] ?? "").length));
+  return lines
+    .map((line) => (line.trim() ? childIndent + line.slice(minIndentLen) : ""))
+    .join("\n");
+}
 
 function findNodeById(
   systems: KrsNode[],
