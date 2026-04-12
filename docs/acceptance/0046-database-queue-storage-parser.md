@@ -12,7 +12,7 @@ status: active
 `database`, `queue`, `storage` を system 直下のファーストクラスノードとして導入し、
 `usecase` 内の `resource` でドット記法による参照をサポートするパーサーの受け入れテスト。
 
-設計: `docs/adr/0035-database-as-first-class-node.md`
+設計: `docs/adr/20260405-05-database-as-first-class-node.md`
 
 ## 対象バージョン
 

@@ -6,7 +6,7 @@ type: product
 
 - **日付**: 2026-03-23
 - **関連 Issue**: #8
-- **関連設計**: [ADR-0063](../adr/0063-builtin-style-and-reference.md)
+- **関連設計**: [ADR-0063](../adr/20260322-01-builtin-style-and-reference.md)
 
 ## 検証コマンド
 
