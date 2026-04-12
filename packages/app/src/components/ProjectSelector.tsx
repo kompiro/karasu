@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useRef } from "react";
 import type { Project } from "@karasu-tools/core";
 
 interface ProjectSelectorProps {
@@ -9,6 +9,7 @@ interface ProjectSelectorProps {
   onRenameProject: (id: string, newName: string) => void;
   onDeleteProject: (id: string) => void;
   onExportProject: () => void;
+  onImportProject: (file: File) => void;
 }
 
 export function ProjectSelector({
@@ -19,11 +20,13 @@ export function ProjectSelector({
   onRenameProject,
   onDeleteProject,
   onExportProject,
+  onImportProject,
 }: ProjectSelectorProps) {
   const [isCreating, setIsCreating] = useState(false);
   const [newName, setNewName] = useState("");
   const [isRenaming, setIsRenaming] = useState(false);
   const [renameValue, setRenameValue] = useState("");
+  const importInputRef = useRef<HTMLInputElement>(null);
 
   const handleSelect = useCallback(
     (e: React.ChangeEvent<HTMLSelectElement>) => {
@@ -79,6 +82,21 @@ export function ProjectSelector({
   );
 
   const isRenameOkDisabled = !renameValue.trim() || renameValue.trim() === currentProject?.name;
+
+  // ── Import ────────────────────────────────────────────────────────
+
+  const handleImportClick = useCallback(() => {
+    importInputRef.current?.click();
+  }, []);
+
+  const handleImportFileChange = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      const file = e.target.files?.[0];
+      if (file) onImportProject(file);
+      e.target.value = "";
+    },
+    [onImportProject],
+  );
 
   // ── Delete ────────────────────────────────────────────────────────
 
@@ -160,12 +178,26 @@ export function ProjectSelector({
         </div>
       ) : (
         <div className="project-selector-actions">
+          <input
+            ref={importInputRef}
+            type="file"
+            accept=".zip"
+            style={{ display: "none" }}
+            onChange={handleImportFileChange}
+          />
           <button
             onClick={() => setIsCreating(true)}
             className="project-selector-btn"
             title="新規プロジェクト"
           >
             + New
+          </button>
+          <button
+            onClick={handleImportClick}
+            className="project-selector-btn project-selector-btn--import"
+            title="ZIPからインポート"
+          >
+            ↑ Import
           </button>
           {currentProject && (
             <>
