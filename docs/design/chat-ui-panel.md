@@ -4,7 +4,7 @@
 - **ステータス**: 検討中
 - **関連**:
   - [#362 feat(app): add Chat UI panel](https://github.com/kompiro/karasu/issues/362)
-  - [Cloudflare Pages デプロイ基盤と BYOK AI 連携](./cloudflare-deployment-and-byok-ai.md)
+  - [ADR-0067](../adr/0067-cloudflare-deployment-and-byok-ai.md) — Cloudflare Pages デプロイ基盤と BYOK AI 連携
 
 ## 背景・課題
 
@@ -150,7 +150,7 @@ Navigation intent の検出は `tool_use` を利用する（後述）。
 
 ## BYOK API キー管理
 
-[cloudflare-deployment-and-byok-ai.md](./cloudflare-deployment-and-byok-ai.md) の設計をそのまま踏襲する。
+ADR-0067 の設計をそのまま踏襲する。
 
 | ストレージ | 用途 |
 |---|---|
