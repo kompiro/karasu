@@ -2,7 +2,7 @@
 
 - **日付**: 2026-03-28
 - **ステータス**: ドラフト
-- **関連**: [プロジェクトとファイルシステム抽象化](project-and-filesystem.md), [.krs 構文リファレンス](../spec/syntax.md)
+- **関連**: [ADR-0053](../adr/0053-project-and-filesystem.md), [.krs 構文リファレンス](../spec/syntax.md)
 
 ## 背景・課題
 

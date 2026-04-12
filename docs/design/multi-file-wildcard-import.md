@@ -2,7 +2,7 @@
 
 - **日付**: 2026-04-04
 - **ステータス**: 完了
-- **関連**: [project-and-filesystem.md](project-and-filesystem.md), Issue #281
+- **関連**: [ADR-0053](../adr/0053-project-and-filesystem.md), Issue #281
 
 ## 背景・課題
 
