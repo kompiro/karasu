@@ -1,4 +1,4 @@
-import { TokenType, type Token, type SourceRange } from "../types/tokens.js";
+import { TokenType, type Token, type SourceRange, type SourceLocation } from "../types/tokens.js";
 import type {
   KrsFile,
   KrsNode,
@@ -242,6 +242,7 @@ export class Parser {
     edges: KrsEdge[],
     kind: LogicalNodeKind,
     properties: CommonProperties & { role?: string; team?: string; label?: string },
+    parentId?: string,
   ): void {
     while (this.peek().type !== TokenType.RightBrace && this.peek().type !== TokenType.EOF) {
       const token = this.peek();
@@ -308,12 +309,26 @@ export class Parser {
         continue;
       }
 
+      // Implicit-source edge: -> or --> (source = parent node ID)
+      if ((token.type === TokenType.Arrow || token.type === TokenType.DashedArrow) && parentId) {
+        edges.push(this.parseEdge(parentId));
+        continue;
+      }
+
       // Check for edge: Identifier/StringLiteral -> or -->
       if (
         (token.type === TokenType.Identifier || token.type === TokenType.StringLiteral) &&
         (this.peekAt(1).type === TokenType.Arrow || this.peekAt(1).type === TokenType.DashedArrow)
       ) {
-        edges.push(this.parseEdge());
+        const edge = this.parseEdge();
+        if (parentId && edge.from !== parentId) {
+          this.diagnostics.push({
+            severity: "error",
+            message: `Edge source "${edge.from}" must match the enclosing block id "${parentId}"`,
+            loc: edge.loc,
+          });
+        }
+        edges.push(edge);
         continue;
       }
 
@@ -431,7 +446,8 @@ export class Parser {
 
     if (this.peek().type === TokenType.LeftBrace) {
       this.advance();
-      this.parseBlockContentsWithProperties(children, edges, kind, properties);
+      const parentId = kind === "service" || kind === "domain" ? id : undefined;
+      this.parseBlockContentsWithProperties(children, edges, kind, properties, parentId);
       end = this.expect(TokenType.RightBrace);
     }
 
@@ -825,8 +841,18 @@ export class Parser {
     return annotations;
   }
 
-  private parseEdge(): KrsEdge {
-    const fromToken = this.advance(); // from identifier or string literal
+  private parseEdge(implicitFrom?: string): KrsEdge {
+    let fromValue: string;
+    let startLoc: SourceLocation;
+    if (implicitFrom) {
+      // Implicit source: arrow token is first, source ID comes from parent block
+      fromValue = implicitFrom;
+      startLoc = this.peek().loc;
+    } else {
+      const fromToken = this.advance(); // from identifier or string literal
+      fromValue = fromToken.value;
+      startLoc = fromToken.loc;
+    }
     const arrowToken = this.advance(); // -> or -->
     const toToken = this.parseIdOrString("edge target");
 
@@ -848,12 +874,12 @@ export class Parser {
     const tags = this.parseTags();
 
     return {
-      from: fromToken.value,
+      from: fromValue,
       to: toValue,
       label,
       kind: arrowToken.type === TokenType.DashedArrow ? "async" : "sync",
       tags,
-      loc: this.range(fromToken.loc, toEnd),
+      loc: this.range(startLoc, toEnd),
     };
   }
 

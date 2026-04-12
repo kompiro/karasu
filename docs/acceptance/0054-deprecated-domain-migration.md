@@ -14,14 +14,14 @@ system OrderSystem {
     label "Legacy Service"
     domain Contract @deprecated {
       label "Contract (deprecated)"
-      Contract -> Billing
+      -> Billing
     }
   }
   service NewService {
     label "New Service"
     domain Contract @migration_target {
       label "Contract"
-      Contract -> Billing
+      -> Billing
     }
   }
   service BillingService {
@@ -104,12 +104,12 @@ system OrderSystem {
 system OrderSystem {
   service NewService {
     domain Contract @migration_target {
-      Contract -> Billing
+      -> Billing
     }
   }
   service LegacyService {
     domain Contract @deprecated {
-      Contract -> Billing
+      -> Billing
     }
   }
   service BillingService {
