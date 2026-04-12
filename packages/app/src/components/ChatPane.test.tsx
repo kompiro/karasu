@@ -21,7 +21,7 @@ function makeDefaultSession(overrides?: Partial<ReturnType<typeof makeMockSessio
 
 function makeMockSession(overrides?: object) {
   return {
-    messages: [],
+    messages: [] as unknown[],
     phase: { kind: "idle" } as const,
     sendMessage: vi.fn<(text: string) => Promise<void>>(),
     retryMessage: vi.fn<(id: string) => Promise<void>>(),
