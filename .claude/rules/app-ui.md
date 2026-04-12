@@ -54,4 +54,4 @@ Every toolbar button requires an **icon + text label**. Icon-only buttons are no
 1. **Choose a tier**: Persistent action? → Tier 1 (`toolbar-btn--actionable`). Contextual/secondary? → Tier 2.
 2. **Add a modifier class**: Always create a `toolbar-btn--<name>` class in `app.css`, even if it has no extra properties beyond `--actionable`. This keeps per-button overrides easy to find.
 3. **Include icon + text label** in the button content.
-4. **Update ADR 0022** (`docs/adr/0022-toolbar-btn-actionable.md`) if the tier classification is non-obvious.
+4. **Update ADR 0022** (`docs/adr/20260405-02-toolbar-btn-actionable.md`) if the tier classification is non-obvious.
