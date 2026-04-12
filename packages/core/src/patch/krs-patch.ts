@@ -21,8 +21,9 @@ interface LocatedNode {
  * - insert-child: inserts `content` as the last child of the node with `targetNodeId`,
  *                 automatically indenting relative to the parent's closing `}`
  *
- * Searches logical nodes (systems, services, domains), deploy blocks, and org nodes
- * (organizations, teams, members).
+ * Searches all diagram types: logical nodes (systems, services, domains), deploy blocks and
+ * their child nodes, and org nodes (organizations, teams, members).
+ * Returns an error if the same ID is found in more than one diagram type.
  *
  * The `loc.end.offset` from the parser points to the `}` character (inclusive),
  * so all slice operations use `end.offset + 1` as the exclusive end boundary.
@@ -50,7 +51,7 @@ export function applyKrsPatch(
   }
 
   const parseResult = Parser.parse(source);
-  const node = findNodeById(
+  const result = findNodeById(
     parseResult.value.systems,
     parseResult.value.services,
     parseResult.value.domains,
@@ -59,9 +60,16 @@ export function applyKrsPatch(
     targetNodeId,
   );
 
-  if (node === null) {
+  if (result === null) {
     return { ok: false, error: `Node "${targetNodeId}" not found` };
   }
+  if (result === "ambiguous") {
+    return {
+      ok: false,
+      error: `Ambiguous targetNodeId "${targetNodeId}": id matches nodes in multiple diagram types`,
+    };
+  }
+  const node = result;
 
   const start = node.loc.start.offset;
   const end = node.loc.end.offset + 1; // end.offset is the position of `}` (inclusive)
@@ -128,6 +136,10 @@ function applyChildIndent(content: string, childIndent: string): string {
     .join("\n");
 }
 
+/**
+ * Search across all diagram types. Returns "ambiguous" if the same ID is found in more
+ * than one diagram type (logical / deploy / org), null if not found at all.
+ */
 function findNodeById(
   systems: KrsNode[],
   services: KrsNode[],
@@ -135,17 +147,36 @@ function findNodeById(
   deploys: DeployBlock[],
   organizations: OrganizationBlock[],
   id: string,
-): LocatedNode | null {
-  // Search logical nodes recursively
-  for (const root of [...systems, ...services, ...domains]) {
+): LocatedNode | null | "ambiguous" {
+  const logicalMatch = findInLogical([...systems, ...services, ...domains], id);
+  const deployMatch = findInDeploys(deploys, id);
+  const orgMatch = findInOrgs(organizations, id);
+
+  const matches = [logicalMatch, deployMatch, orgMatch].filter((m): m is LocatedNode => m !== null);
+  if (matches.length === 0) return null;
+  if (matches.length > 1) return "ambiguous";
+  return matches[0];
+}
+
+function findInLogical(roots: KrsNode[], id: string): LocatedNode | null {
+  for (const root of roots) {
     const found = searchNode(root, id);
     if (found !== null) return found;
   }
-  // Search deploy blocks (top-level only; deploy units are not patchable)
+  return null;
+}
+
+function findInDeploys(deploys: DeployBlock[], id: string): LocatedNode | null {
   for (const deploy of deploys) {
     if (deploy.id === id) return deploy;
+    for (const node of deploy.nodes) {
+      if (node.id === id) return node;
+    }
   }
-  // Search org blocks and their nested team/member trees
+  return null;
+}
+
+function findInOrgs(organizations: OrganizationBlock[], id: string): LocatedNode | null {
   for (const org of organizations) {
     if (org.id === id) return org;
     for (const team of org.teams) {
