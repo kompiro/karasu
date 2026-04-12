@@ -5,7 +5,7 @@
 - **関連**:
   - [#442 feat(app): support structural krs editing via Chat](https://github.com/kompiro/karasu/issues/442)
   - [ADR-0028](../adr/0028-chat-ui-phase2-byok-ai-integration.md) — Phase 2 実装設計
-  - [chat-ui-panel.md](./chat-ui-panel.md) — レイアウト・状態管理・ツール設計の上位設計
+  - [ADR-0078](../adr/0078-chat-ui-panel.md) — レイアウト・状態管理・ツール設計の上位設計
 
 ## 背景・課題
 

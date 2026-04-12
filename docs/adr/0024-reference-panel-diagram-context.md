@@ -2,7 +2,7 @@
 
 - **日付**: 2026-04-05
 - **ステータス**: 決定済み
-- **関連**: [docs/design/reference-panel-diagram-context.md](../design/reference-panel-diagram-context.md)
+- **関連**: （設計ドキュメントは本 ADR に統合済み）
 
 ## 背景
 
