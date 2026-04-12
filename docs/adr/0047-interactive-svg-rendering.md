@@ -2,7 +2,7 @@
 
 - **日付**: 2026-03-20
 - **ステータス**: 決定済み
-- **関連**: [ast-restructure (ADR-0060 予定)](../design/ast-restructure.md), [ADR-0045](0045-two-layer-rendering.md)
+- **関連**: [ADR-0060](0060-ast-restructure-discriminated-union.md), [ADR-0045](0045-two-layer-rendering.md)
 
 ## 背景
 
