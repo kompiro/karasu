@@ -3,7 +3,7 @@
 - **日付**: 2026-04-04
 - **ステータス**: 検討中
 - **関連**:
-  - [アイコンモード設計](icon-mode.md)
+  - [ADR-0041](../adr/0041-icon-mode.md) — アイコンモード設計
   - [VSCode 拡張設計](vscode-extension.md)
   - [Issue #299](https://github.com/kompiro/karasu/issues/299)
   - [Issue #173](https://github.com/kompiro/karasu/issues/173)

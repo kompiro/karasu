@@ -4,7 +4,7 @@
 - **ステータス**: 決定済み
 - **関連**:
   - [vscode-phase3-webview-architecture.md](vscode-phase3-webview-architecture.md) — Phase 3 Webview 設計
-  - [interactive-svg-rendering.md](interactive-svg-rendering.md) — data-node-id / data-has-children 仕様
+  - [ADR-0047](../adr/0047-interactive-svg-rendering.md) — data-node-id / data-has-children 仕様
   - [node-click-ux.md](node-click-ux.md) — クリック UX（ドリルダウン vs エディタジャンプ）
   - Issue #218
 

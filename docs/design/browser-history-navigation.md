@@ -5,7 +5,7 @@
 - **関連**:
   - [Issue #278](https://github.com/kompiro/karasu/issues/278) — URL fragment navigation for drill-down SVG
   - [permanent-link.md](permanent-link.md) — URL hash による永続リンク設計（Phase 2 で URL hash 採用を決定済み）
-  - [interactive-svg-rendering.md](interactive-svg-rendering.md) — viewPath / data-node-id 仕様
+  - [ADR-0047](../adr/0047-interactive-svg-rendering.md) — viewPath / data-node-id 仕様
 
 ## 背景・課題
 
