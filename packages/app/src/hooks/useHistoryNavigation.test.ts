@@ -243,6 +243,29 @@ describe("useHistoryNavigation", () => {
       });
     });
 
+    it("resolves pending org team nodeId via orgPathIndex on initial mount", async () => {
+      history.replaceState(null, "", "#krs-org-platform-team");
+      const dispatch = makeDispatch();
+      let orgPathIndex = new Map<string, string[]>();
+
+      const { rerender } = renderHook(() =>
+        useHistoryNavigation(makeOptions({ dispatch, activeView: "org", orgPathIndex })),
+      );
+
+      dispatch.mockClear();
+
+      // orgPathIndex now has data
+      orgPathIndex = new Map([["platform-team", ["platform-team"]]]);
+      await act(async () => {
+        rerender();
+      });
+
+      expect(dispatch).toHaveBeenCalledWith({
+        type: "SET_VIEW_PATH",
+        path: ["platform-team"],
+      });
+    });
+
     it("falls back to root view when nodePathIndex does not contain the key", async () => {
       history.replaceState(null, "", "#krs-system-Unknown");
       const dispatch = makeDispatch();
@@ -422,6 +445,78 @@ describe("useHistoryNavigation", () => {
       });
 
       expect(dispatch).toHaveBeenCalledWith({ type: "SET_VIEW_PATH", path: [] });
+    });
+
+    it("resolves org team nodeId via orgPathIndex on popstate", async () => {
+      // "platform-team" is a top-level org team; its path is ["platform-team"]
+      const orgPathIndex = new Map([
+        ["ec-team", ["ec-team"]],
+        ["platform-team", ["platform-team"]],
+        ["oncall", ["platform-team", "oncall"]],
+      ]);
+      const dispatch = makeDispatch();
+      renderHook(() =>
+        useHistoryNavigation(makeOptions({ dispatch, activeView: "org", orgPathIndex })),
+      );
+      dispatch.mockClear();
+
+      history.replaceState(null, "", "#krs-org-platform-team:oncall");
+      await act(async () => {
+        window.dispatchEvent(new PopStateEvent("popstate"));
+      });
+
+      expect(dispatch).toHaveBeenCalledWith({
+        type: "SET_VIEW_PATH",
+        path: ["platform-team"],
+      });
+      expect(dispatch).toHaveBeenCalledWith({
+        type: "SET_HIGHLIGHTED_NODE",
+        nodeId: "oncall",
+      });
+    });
+
+    it("resolves sub-team nodeId via orgPathIndex on popstate (nested team)", async () => {
+      // "oncall" is a sub-team under "platform-team"; viewPath = ["platform-team", "oncall"]
+      const orgPathIndex = new Map([
+        ["platform-team", ["platform-team"]],
+        ["oncall", ["platform-team", "oncall"]],
+      ]);
+      const dispatch = makeDispatch();
+      renderHook(() =>
+        useHistoryNavigation(makeOptions({ dispatch, activeView: "org", orgPathIndex })),
+      );
+      dispatch.mockClear();
+
+      history.replaceState(null, "", "#krs-org-oncall");
+      await act(async () => {
+        window.dispatchEvent(new PopStateEvent("popstate"));
+      });
+
+      expect(dispatch).toHaveBeenCalledWith({
+        type: "SET_VIEW_PATH",
+        path: ["platform-team", "oncall"],
+      });
+    });
+
+    it("does not use orgPathIndex for system hashes on popstate", async () => {
+      // System nodeId should still use nodePathIndex, not orgPathIndex
+      const nodePathIndex = new Map([["EC", ["Payment", "EC"]]]);
+      const orgPathIndex = new Map([["EC", ["wrong-path"]]]);
+      const dispatch = makeDispatch();
+      renderHook(() =>
+        useHistoryNavigation(makeOptions({ dispatch, nodePathIndex, orgPathIndex })),
+      );
+      dispatch.mockClear();
+
+      history.replaceState(null, "", "#krs-system-EC");
+      await act(async () => {
+        window.dispatchEvent(new PopStateEvent("popstate"));
+      });
+
+      expect(dispatch).toHaveBeenCalledWith({
+        type: "SET_VIEW_PATH",
+        path: ["Payment", "EC"],
+      });
     });
   });
 

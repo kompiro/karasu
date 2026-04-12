@@ -75,6 +75,7 @@ export function useHistoryNavigation({
   viewPath,
   currentFilePath,
   nodePathIndex,
+  orgPathIndex,
   dispatch,
   isOrgTreeView,
   setIsOrgTreeView,
@@ -83,7 +84,10 @@ export function useHistoryNavigation({
   activeView: ActiveView;
   viewPath: string[];
   currentFilePath: string | null;
+  /** Maps system service/domain IDs to their viewPath in the system/deploy view. */
   nodePathIndex: Map<string, string[]>;
+  /** Maps org team IDs to the viewPath needed to show that team's children. Optional. */
+  orgPathIndex?: Map<string, string[]>;
   dispatch: Dispatch<AppAction>;
   isOrgTreeView: boolean;
   setIsOrgTreeView: (v: boolean) => void;
@@ -103,8 +107,10 @@ export function useHistoryNavigation({
   // When true, state changes are caused by popstate — skip pushing another history entry
   const isProgrammaticNavRef = useRef(false);
 
-  // nodeId extracted from the initial hash, resolved once nodePathIndex is ready
+  // nodeId extracted from the initial hash, resolved once the relevant path index is ready
   const pendingNodeIdRef = useRef<string | null>(null);
+  // activeView associated with the pending nodeId (determines which index to use)
+  const pendingActiveViewRef = useRef<ActiveView>("system");
 
   // Skip the file-reset effect on initial mount
   const isFirstMountRef = useRef(true);
@@ -134,21 +140,25 @@ export function useHistoryNavigation({
       dispatch({ type: "SET_VIEW_PATH", path: [] });
     } else {
       pendingNodeIdRef.current = parsed.nodeId;
-      // Resolution is deferred to effect ② once nodePathIndex is populated
+      pendingActiveViewRef.current = parsed.activeView;
+      // Resolution is deferred to effect ② once the relevant path index is populated
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // ② Resolve pendingNodeId once nodePathIndex is available
+  // ② Resolve pendingNodeId once the relevant path index is available
   useEffect(() => {
     const nodeId = pendingNodeIdRef.current;
     if (nodeId === null) return;
-    if (nodePathIndex.size === 0) return;
 
-    const resolvedPath = nodePathIndex.get(nodeId) ?? [];
+    const isOrgPending = pendingActiveViewRef.current === "org";
+    const index = isOrgPending ? orgPathIndex : nodePathIndex;
+    if (!index || index.size === 0) return;
+
+    const resolvedPath = index.get(nodeId) ?? [];
     pendingNodeIdRef.current = null;
     dispatch({ type: "SET_VIEW_PATH", path: resolvedPath });
-  }, [nodePathIndex, dispatch]);
+  }, [nodePathIndex, orgPathIndex, dispatch]);
 
   // ③ Sync state changes → hash (push new history entry)
   useEffect(() => {
@@ -187,7 +197,12 @@ export function useHistoryNavigation({
       }
       setIsOrgTreeViewRef.current(parsed.isOrgTreeView);
 
-      const path = parsed.nodeId === null ? [] : (nodePathIndex.get(parsed.nodeId) ?? []);
+      const path =
+        parsed.nodeId === null
+          ? []
+          : parsed.activeView === "org"
+            ? (orgPathIndex?.get(parsed.nodeId) ?? [])
+            : (nodePathIndex.get(parsed.nodeId) ?? []);
       dispatch({ type: "SET_VIEW_PATH", path });
 
       queueMicrotask(() => {

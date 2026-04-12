@@ -117,11 +117,32 @@ export function AppShell({
     return index;
   }, [organizations]);
 
+  // Maps each team ID to the full org viewPath needed to show that team's children.
+  // e.g., top-level "ec-team" → ["ec-team"], sub-team "oncall" under "platform-team" → ["platform-team", "oncall"]
+  const orgPathIndex = useMemo(() => {
+    const index = new Map<string, string[]>();
+    function traverse(team: TeamNode, ancestorPath: string[]) {
+      const myPath = [...ancestorPath, team.id];
+      index.set(team.id, myPath);
+      const subTeams = team.children.filter((c): c is TeamNode => c.kind === "team");
+      for (const sub of subTeams) {
+        traverse(sub, myPath);
+      }
+    }
+    for (const org of organizations) {
+      for (const team of org.teams) {
+        traverse(team, []);
+      }
+    }
+    return index;
+  }, [organizations]);
+
   const { navigateActiveView, navigateViewPath } = useHistoryNavigation({
     activeView,
     viewPath,
     currentFilePath,
     nodePathIndex,
+    orgPathIndex,
     dispatch,
     isOrgTreeView: isOrgTreeViewOpen,
     setIsOrgTreeView: setIsOrgTreeViewOpen,
