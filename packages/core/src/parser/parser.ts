@@ -310,10 +310,7 @@ export class Parser {
       }
 
       // Implicit-source edge: -> or --> (source = parent node ID)
-      if (
-        (token.type === TokenType.Arrow || token.type === TokenType.DashedArrow) &&
-        parentId
-      ) {
+      if ((token.type === TokenType.Arrow || token.type === TokenType.DashedArrow) && parentId) {
         edges.push(this.parseEdge(parentId));
         continue;
       }

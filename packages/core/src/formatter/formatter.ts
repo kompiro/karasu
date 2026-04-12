@@ -304,8 +304,7 @@ class Printer {
     const label = edge.label !== undefined ? ` "${edge.label}"` : "";
     const tags = edge.tags.length > 0 ? ` [${edge.tags.join(", ")}]` : "";
     // Use implicit-source shorthand for service/domain blocks (from is always parentId)
-    const from =
-      parentKind === "service" || parentKind === "domain" ? "" : `${edge.from} `;
+    const from = parentKind === "service" || parentKind === "domain" ? "" : `${edge.from} `;
     return `${from}${arrow} ${edge.to}${label}${tags}`;
   }
 
