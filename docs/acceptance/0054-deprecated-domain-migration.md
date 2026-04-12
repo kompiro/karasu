@@ -14,14 +14,14 @@ system OrderSystem {
     label "Legacy Service"
     domain Contract @deprecated {
       label "Contract (deprecated)"
-      -> Billing
+      Contract -> Billing
     }
   }
   service NewService {
     label "New Service"
     domain Contract @migration_target {
       label "Contract"
-      -> Billing
+      Contract -> Billing
     }
   }
   service BillingService {
@@ -55,8 +55,8 @@ system OrderSystem {
 2. View the system-level diagram for `OrderSystem`.
 
 **Expected:**
-- An edge from `LegacyService` toward `BillingService` is visible (implicit service edge derived from `Contract @deprecated -> Billing`).
-- An edge from `NewService` toward `BillingService` is visible (implicit service edge derived from `Contract @migration_target -> Billing`).
+- An edge from `LegacyService` toward `BillingService` is visible (implicit service edge derived from `Contract @deprecated { Contract -> Billing }`).
+- An edge from `NewService` toward `BillingService` is visible (implicit service edge derived from `Contract @migration_target { Contract -> Billing }`).
 
 ---
 
@@ -104,12 +104,12 @@ system OrderSystem {
 system OrderSystem {
   service NewService {
     domain Contract @migration_target {
-      -> Billing
+      Contract -> Billing
     }
   }
   service LegacyService {
     domain Contract @deprecated {
-      -> Billing
+      Contract -> Billing
     }
   }
   service BillingService {
