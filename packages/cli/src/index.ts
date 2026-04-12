@@ -227,7 +227,10 @@ Examples:
 
 export { program };
 
-/* v8 ignore next 3 */
+/* v8 ignore next 5 */
 if (!process.env.VITEST) {
-  program.parse();
+  program.parseAsync().catch((err: unknown) => {
+    process.stderr.write(`Error: ${err instanceof Error ? err.message : String(err)}\n`);
+    process.exit(1);
+  });
 }
