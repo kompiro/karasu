@@ -43,6 +43,28 @@ describe("buildHash", () => {
   it("ignores isOrgTreeView when activeView is not org", () => {
     expect(buildHash("system", [], true)).toBe("#krs-system-root");
   });
+
+  it("appends :highlightNodeId to deploy hash when provided", () => {
+    expect(buildHash("deploy", [], false, "ECommerce")).toBe("#krs-deploy:ECommerce");
+  });
+
+  it("appends :highlightNodeId to org root hash when provided", () => {
+    expect(buildHash("org", [], false, "ecTeam")).toBe("#krs-org-root:ecTeam");
+  });
+
+  it("appends :highlightNodeId to system hash when provided", () => {
+    expect(buildHash("system", ["Payment"], false, "SomeNode")).toBe(
+      "#krs-system-Payment:SomeNode",
+    );
+  });
+
+  it("omits colon when highlightNodeId is null", () => {
+    expect(buildHash("deploy", [], false, null)).toBe("#krs-deploy");
+  });
+
+  it("omits colon when highlightNodeId is undefined", () => {
+    expect(buildHash("deploy", [], false, undefined)).toBe("#krs-deploy");
+  });
 });
 
 // ─── parseHash ────────────────────────────────────────────────────────────────
@@ -53,6 +75,7 @@ describe("parseHash", () => {
       activeView: "deploy",
       nodeId: null,
       isOrgTreeView: false,
+      highlightNodeId: null,
     });
   });
 
@@ -61,6 +84,7 @@ describe("parseHash", () => {
       activeView: "system",
       nodeId: null,
       isOrgTreeView: false,
+      highlightNodeId: null,
     });
   });
 
@@ -69,6 +93,7 @@ describe("parseHash", () => {
       activeView: "org",
       nodeId: null,
       isOrgTreeView: false,
+      highlightNodeId: null,
     });
   });
 
@@ -77,6 +102,7 @@ describe("parseHash", () => {
       activeView: "system",
       nodeId: "Payment",
       isOrgTreeView: false,
+      highlightNodeId: null,
     });
   });
 
@@ -85,6 +111,7 @@ describe("parseHash", () => {
       activeView: "org",
       nodeId: "backend",
       isOrgTreeView: false,
+      highlightNodeId: null,
     });
   });
 
@@ -93,6 +120,34 @@ describe("parseHash", () => {
       activeView: "org",
       nodeId: null,
       isOrgTreeView: true,
+      highlightNodeId: null,
+    });
+  });
+
+  it("parses #krs-deploy:ECommerce and extracts highlightNodeId", () => {
+    expect(parseHash("#krs-deploy:ECommerce")).toEqual({
+      activeView: "deploy",
+      nodeId: null,
+      isOrgTreeView: false,
+      highlightNodeId: "ECommerce",
+    });
+  });
+
+  it("parses #krs-org-root:ecTeam and extracts highlightNodeId", () => {
+    expect(parseHash("#krs-org-root:ecTeam")).toEqual({
+      activeView: "org",
+      nodeId: null,
+      isOrgTreeView: false,
+      highlightNodeId: "ecTeam",
+    });
+  });
+
+  it("parses #krs-system-Payment:SomeNode and extracts both nodeId and highlightNodeId", () => {
+    expect(parseHash("#krs-system-Payment:SomeNode")).toEqual({
+      activeView: "system",
+      nodeId: "Payment",
+      isOrgTreeView: false,
+      highlightNodeId: "SomeNode",
     });
   });
 
@@ -124,6 +179,7 @@ function makeOptions(overrides: Partial<Parameters<typeof useHistoryNavigation>[
     dispatch: makeDispatch(),
     isOrgTreeView: false,
     setIsOrgTreeView: vi.fn<() => void>(),
+    highlightedNodeId: null as string | null,
     ...overrides,
   };
 }
@@ -154,7 +210,11 @@ describe("useHistoryNavigation", () => {
       history.replaceState(null, "", "#krs-org-root");
       const dispatch = makeDispatch();
       renderHook(() => useHistoryNavigation(makeOptions({ dispatch, activeView: "system" })));
-      expect(dispatch).toHaveBeenCalledWith({ type: "SET_ACTIVE_VIEW", activeView: "org" });
+      expect(dispatch).toHaveBeenCalledWith({
+        type: "SET_ACTIVE_VIEW",
+        activeView: "org",
+        highlightNodeId: null,
+      });
     });
   });
 
@@ -180,6 +240,29 @@ describe("useHistoryNavigation", () => {
       expect(dispatch).toHaveBeenCalledWith({
         type: "SET_VIEW_PATH",
         path: ["Payment", "EC"],
+      });
+    });
+
+    it("resolves pending org team nodeId via orgPathIndex on initial mount", async () => {
+      history.replaceState(null, "", "#krs-org-platform-team");
+      const dispatch = makeDispatch();
+      let orgPathIndex = new Map<string, string[]>();
+
+      const { rerender } = renderHook(() =>
+        useHistoryNavigation(makeOptions({ dispatch, activeView: "org", orgPathIndex })),
+      );
+
+      dispatch.mockClear();
+
+      // orgPathIndex now has data
+      orgPathIndex = new Map([["platform-team", ["platform-team"]]]);
+      await act(async () => {
+        rerender();
+      });
+
+      expect(dispatch).toHaveBeenCalledWith({
+        type: "SET_VIEW_PATH",
+        path: ["platform-team"],
       });
     });
 
@@ -227,6 +310,32 @@ describe("useHistoryNavigation", () => {
 
       expect(location.hash).toBe("#krs-deploy");
     });
+
+    it("appends :highlightNodeId to hash when highlightedNodeId is set", async () => {
+      const opts = makeOptions({ activeView: "deploy" });
+      history.replaceState(null, "", "#krs-deploy");
+
+      const { rerender } = renderHook((p) => useHistoryNavigation(p), { initialProps: opts });
+
+      await act(async () => {
+        rerender({ ...opts, highlightedNodeId: "ECommerce" });
+      });
+
+      expect(location.hash).toBe("#krs-deploy:ECommerce");
+    });
+
+    it("removes :highlightNodeId from hash when highlightedNodeId becomes null", async () => {
+      const opts = makeOptions({ activeView: "deploy", highlightedNodeId: "ECommerce" });
+      history.replaceState(null, "", "#krs-deploy:ECommerce");
+
+      const { rerender } = renderHook((p) => useHistoryNavigation(p), { initialProps: opts });
+
+      await act(async () => {
+        rerender({ ...opts, highlightedNodeId: null });
+      });
+
+      expect(location.hash).toBe("#krs-deploy");
+    });
   });
 
   describe("popstate — browser back/forward", () => {
@@ -253,7 +362,58 @@ describe("useHistoryNavigation", () => {
         window.dispatchEvent(new PopStateEvent("popstate"));
       });
 
-      expect(dispatch).toHaveBeenCalledWith({ type: "SET_ACTIVE_VIEW", activeView: "deploy" });
+      expect(dispatch).toHaveBeenCalledWith({
+        type: "SET_ACTIVE_VIEW",
+        activeView: "deploy",
+        highlightNodeId: null,
+      });
+    });
+
+    it("passes highlightNodeId to SET_ACTIVE_VIEW when popstate hash has colon suffix", async () => {
+      const dispatch = makeDispatch();
+      renderHook(() => useHistoryNavigation(makeOptions({ dispatch, activeView: "system" })));
+      dispatch.mockClear();
+
+      history.replaceState(null, "", "#krs-deploy:ECommerce");
+      await act(async () => {
+        window.dispatchEvent(new PopStateEvent("popstate"));
+      });
+
+      expect(dispatch).toHaveBeenCalledWith({
+        type: "SET_ACTIVE_VIEW",
+        activeView: "deploy",
+        highlightNodeId: "ECommerce",
+      });
+    });
+
+    it("dispatches SET_HIGHLIGHTED_NODE when popstate stays on same view with highlight", async () => {
+      const dispatch = makeDispatch();
+      renderHook(() => useHistoryNavigation(makeOptions({ dispatch, activeView: "deploy" })));
+      dispatch.mockClear();
+
+      history.replaceState(null, "", "#krs-deploy:ECommerce");
+      await act(async () => {
+        window.dispatchEvent(new PopStateEvent("popstate"));
+      });
+
+      expect(dispatch).toHaveBeenCalledWith({ type: "SET_HIGHLIGHTED_NODE", nodeId: "ECommerce" });
+    });
+
+    it("dispatches SET_HIGHLIGHTED_NODE with null when popstate stays on same view without highlight", async () => {
+      const dispatch = makeDispatch();
+      renderHook(() =>
+        useHistoryNavigation(
+          makeOptions({ dispatch, activeView: "deploy", highlightedNodeId: "ECommerce" }),
+        ),
+      );
+      dispatch.mockClear();
+
+      history.replaceState(null, "", "#krs-deploy");
+      await act(async () => {
+        window.dispatchEvent(new PopStateEvent("popstate"));
+      });
+
+      expect(dispatch).toHaveBeenCalledWith({ type: "SET_HIGHLIGHTED_NODE", nodeId: null });
     });
 
     it("resolves nodeId via nodePathIndex in popstate", async () => {
@@ -285,6 +445,78 @@ describe("useHistoryNavigation", () => {
       });
 
       expect(dispatch).toHaveBeenCalledWith({ type: "SET_VIEW_PATH", path: [] });
+    });
+
+    it("resolves org team nodeId via orgPathIndex on popstate", async () => {
+      // "platform-team" is a top-level org team; its path is ["platform-team"]
+      const orgPathIndex = new Map([
+        ["ec-team", ["ec-team"]],
+        ["platform-team", ["platform-team"]],
+        ["oncall", ["platform-team", "oncall"]],
+      ]);
+      const dispatch = makeDispatch();
+      renderHook(() =>
+        useHistoryNavigation(makeOptions({ dispatch, activeView: "org", orgPathIndex })),
+      );
+      dispatch.mockClear();
+
+      history.replaceState(null, "", "#krs-org-platform-team:oncall");
+      await act(async () => {
+        window.dispatchEvent(new PopStateEvent("popstate"));
+      });
+
+      expect(dispatch).toHaveBeenCalledWith({
+        type: "SET_VIEW_PATH",
+        path: ["platform-team"],
+      });
+      expect(dispatch).toHaveBeenCalledWith({
+        type: "SET_HIGHLIGHTED_NODE",
+        nodeId: "oncall",
+      });
+    });
+
+    it("resolves sub-team nodeId via orgPathIndex on popstate (nested team)", async () => {
+      // "oncall" is a sub-team under "platform-team"; viewPath = ["platform-team", "oncall"]
+      const orgPathIndex = new Map([
+        ["platform-team", ["platform-team"]],
+        ["oncall", ["platform-team", "oncall"]],
+      ]);
+      const dispatch = makeDispatch();
+      renderHook(() =>
+        useHistoryNavigation(makeOptions({ dispatch, activeView: "org", orgPathIndex })),
+      );
+      dispatch.mockClear();
+
+      history.replaceState(null, "", "#krs-org-oncall");
+      await act(async () => {
+        window.dispatchEvent(new PopStateEvent("popstate"));
+      });
+
+      expect(dispatch).toHaveBeenCalledWith({
+        type: "SET_VIEW_PATH",
+        path: ["platform-team", "oncall"],
+      });
+    });
+
+    it("does not use orgPathIndex for system hashes on popstate", async () => {
+      // System nodeId should still use nodePathIndex, not orgPathIndex
+      const nodePathIndex = new Map([["EC", ["Payment", "EC"]]]);
+      const orgPathIndex = new Map([["EC", ["wrong-path"]]]);
+      const dispatch = makeDispatch();
+      renderHook(() =>
+        useHistoryNavigation(makeOptions({ dispatch, nodePathIndex, orgPathIndex })),
+      );
+      dispatch.mockClear();
+
+      history.replaceState(null, "", "#krs-system-EC");
+      await act(async () => {
+        window.dispatchEvent(new PopStateEvent("popstate"));
+      });
+
+      expect(dispatch).toHaveBeenCalledWith({
+        type: "SET_VIEW_PATH",
+        path: ["Payment", "EC"],
+      });
     });
   });
 
