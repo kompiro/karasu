@@ -19,6 +19,10 @@
     "packages/vscode": {
       "entry": ["src/extension.ts"],
       "project": ["src/**/*.ts"]
+    },
+    "packages/e2e": {
+      "entry": ["tests/**/*.spec.ts"],
+      "project": ["tests/**/*.ts"]
     }
   },
   "ignoreBinaries": ["vitest", "lefthook", "oxfmt", "oxlint", "knip", "vite", "tsc"],
