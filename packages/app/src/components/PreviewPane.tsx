@@ -25,17 +25,9 @@ interface PreviewPaneProps {
   onJumpToEditor?: (nodeId: string) => void;
 }
 
-interface DetailPanelState {
-  nodeId: string;
-  anchorX: number;
-  anchorY: number;
-}
-
-interface EdgeDetailPanelState {
-  domainEdges: DomainEdgeDetail[];
-  anchorX: number;
-  anchorY: number;
-}
+type DetailPanelState =
+  | { kind: "node"; nodeId: string; anchorX: number; anchorY: number }
+  | { kind: "edge"; domainEdges: DomainEdgeDetail[]; anchorX: number; anchorY: number };
 
 const CLICK_THRESHOLD = 3;
 
@@ -59,7 +51,6 @@ export function PreviewPane({
   const [isDragging, setIsDragging] = useState(false);
   const isDraggingRef = useRef(false);
   const [detailPanel, setDetailPanel] = useState<DetailPanelState | null>(null);
-  const [edgeDetailPanel, setEdgeDetailPanel] = useState<EdgeDetailPanelState | null>(null);
   const dragStart = useRef({ x: 0, y: 0 });
   const mouseDownPos = useRef({ x: 0, y: 0 });
 
@@ -102,12 +93,12 @@ export function PreviewPane({
     [isDragging],
   );
 
-  const openDetailPanel = useCallback((nodeId: string, target: Element) => {
+  const calcAnchor = useCallback((target: Element) => {
     const rect = target.getBoundingClientRect();
     const containerRect = containerRef.current?.getBoundingClientRect();
-    if (!containerRect) return;
+    if (!containerRect) return null;
 
-    // Position panel to the right of the node
+    // Position panel to the right of the target
     let anchorX = rect.right - containerRect.left + 8;
     const anchorY = rect.top - containerRect.top;
 
@@ -117,8 +108,17 @@ export function PreviewPane({
       if (anchorX < 0) anchorX = 8;
     }
 
-    setDetailPanel({ nodeId, anchorX, anchorY });
+    return { anchorX, anchorY };
   }, []);
+
+  const openDetailPanel = useCallback(
+    (nodeId: string, target: Element) => {
+      const anchor = calcAnchor(target);
+      if (!anchor) return;
+      setDetailPanel({ kind: "node", nodeId, ...anchor });
+    },
+    [calcAnchor],
+  );
 
   const handleMouseUp = useCallback(
     (e: MouseEvent) => {
@@ -142,17 +142,9 @@ export function PreviewPane({
         if (raw) {
           try {
             const domainEdges = JSON.parse(raw) as DomainEdgeDetail[];
-            const rect = edgeGroup.getBoundingClientRect();
-            const containerRect = containerRef.current?.getBoundingClientRect();
-            if (containerRect) {
-              let anchorX = rect.right - containerRect.left + 8;
-              const anchorY = rect.top - containerRect.top;
-              if (anchorX + 360 > containerRect.width) {
-                anchorX = rect.left - containerRect.left - 368;
-                if (anchorX < 0) anchorX = 8;
-              }
-              setDetailPanel(null);
-              setEdgeDetailPanel({ domainEdges, anchorX, anchorY });
+            const anchor = calcAnchor(edgeGroup);
+            if (anchor) {
+              setDetailPanel({ kind: "edge", domainEdges, ...anchor });
             }
           } catch {
             // malformed JSON — ignore
@@ -229,9 +221,8 @@ export function PreviewPane({
       // Check for node click
       const nodeGroup = target.closest("[data-node-id]");
       if (!nodeGroup) {
-        // Click outside any node — close detail panels
+        // Click outside any node — close detail panel
         setDetailPanel(null);
-        setEdgeDetailPanel(null);
         return;
       }
 
@@ -256,6 +247,7 @@ export function PreviewPane({
       nodeMetadata,
       viewPath,
       onDrillDown,
+      calcAnchor,
       openDetailPanel,
       onContainerClick,
       onDeployButtonClick,
@@ -287,7 +279,8 @@ export function PreviewPane({
     if (target) target.classList.add("karasu-highlighted");
   }, [highlightedNodeId, svg]);
 
-  const panelMetadata = detailPanel ? nodeMetadata.get(detailPanel.nodeId) : undefined;
+  const nodePanelMetadata =
+    detailPanel?.kind === "node" ? nodeMetadata.get(detailPanel.nodeId) : undefined;
 
   return (
     <div className="preview-pane">
@@ -309,10 +302,10 @@ export function PreviewPane({
           ref={svgRef}
           dangerouslySetInnerHTML={{ __html: svg }}
         />
-        {detailPanel && panelMetadata && (
+        {detailPanel?.kind === "node" && nodePanelMetadata && (
           <NodeDetailPanel
             nodeId={detailPanel.nodeId}
-            metadata={panelMetadata}
+            metadata={nodePanelMetadata}
             anchorX={detailPanel.anchorX}
             anchorY={detailPanel.anchorY}
             onClose={() => setDetailPanel(null)}
@@ -321,12 +314,12 @@ export function PreviewPane({
             onJumpToEditor={onJumpToEditor ? () => onJumpToEditor(detailPanel.nodeId) : undefined}
           />
         )}
-        {edgeDetailPanel && (
+        {detailPanel?.kind === "edge" && (
           <EdgeDetailPanel
-            domainEdges={edgeDetailPanel.domainEdges}
-            anchorX={edgeDetailPanel.anchorX}
-            anchorY={edgeDetailPanel.anchorY}
-            onClose={() => setEdgeDetailPanel(null)}
+            domainEdges={detailPanel.domainEdges}
+            anchorX={detailPanel.anchorX}
+            anchorY={detailPanel.anchorY}
+            onClose={() => setDetailPanel(null)}
           />
         )}
       </div>
