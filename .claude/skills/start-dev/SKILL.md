@@ -84,14 +84,18 @@ description: >
    1. DesignDoc ファイルのみをコミットする（`/commit` スキルを使用）。**コミット完了後はユーザーの返答を待たず即座に次へ進む。**
    2. `git push -u origin <branch-name>` でリモートにプッシュする
    3. PR 本文に Design Doc のサマリーと Purpose を記述して `gh pr create` で作成する（Issue がある場合は `Refs #N` で紐付け。`Closes #N` は実装完了 PR で使用する）
-   4. ユーザーに PR URL を通知し、**マージを依頼する**
-   5. ユーザーから「マージした」との確認を得てから次へ進む
-   6. Issue がある場合はラベルを `status: designed` に更新する:
+   4. Design Doc PR はプレビュー確認が不要なため、作成直後に `skip-preview` ラベルを付与する:
+      ```
+      gh pr edit <pr-number> --add-label skip-preview
+      ```
+   5. ユーザーに PR URL を通知し、**マージを依頼する**
+   6. ユーザーから「マージした」との確認を得てから次へ進む
+   7. Issue がある場合はラベルを `status: designed` に更新する:
       ```
       gh issue edit <N> --remove-label "status: designing" --add-label "status: designed"
       ```
-   7. 実装用の新しい worktree とブランチを作成し直す（ステップ3の手順に従う）
-   8. Issue がある場合はラベルを `status: implementing` に更新する:
+   8. 実装用の新しい worktree とブランチを作成し直す（ステップ3の手順に従う）
+   9. Issue がある場合はラベルを `status: implementing` に更新する:
       ```
       gh issue edit <N> --remove-label "status: designed" --add-label "status: implementing"
       ```
@@ -124,6 +128,14 @@ description: >
    - **Manual Verification Checklist**: CI では検証できない項目。なければ `N/A — all covered by automated tests`
    - **Related Docs**: 更新した docs/ 内のファイル。なければ `N/A`
 3. `gh pr create` で PR を作成し、URL をユーザーに通知する
+4. **`skip-preview` ラベルの判定**: 以下のいずれかに該当する場合は Preview デプロイが不要なため、`skip-preview` ラベルを付与する:
+   - ブランチ名が `docs/` で始まる
+   - 変更ファイルがすべて `docs/**` または `**/*.md` に収まる（`git diff --name-only origin/main` で確認）
+   - Design Doc・ADR・受け入れテスト・スキル定義など、UI の動作確認を必要としないドキュメント類のみの変更
+   ```
+   gh pr edit <pr-number> --add-label skip-preview
+   ```
+   コード変更を含む PR（`feat/`, `fix/`, `refactor/`, `chore/` など）は付与しない。
 
 ### 8. CI 確認
 
