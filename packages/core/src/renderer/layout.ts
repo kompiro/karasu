@@ -5,7 +5,7 @@ import type {
   DeployNodeKind,
   CommonProperties,
 } from "../types/ast.js";
-import type { ViewSlice, GhostSystem } from "../view/view-extract.js";
+import type { ViewSlice, GhostSystem, DomainEdgeDetail } from "../view/view-extract.js";
 import { summarizeDescription } from "./description-summary.js";
 import { CHAR_WIDTH, NODE_PADDING_X, NODE_PADDING_Y } from "./rendering-constants.js";
 
@@ -41,6 +41,8 @@ export interface LayoutEdge {
   toPoint: { x: number; y: number };
   ghost?: boolean;
   cyclic?: boolean;
+  /** Constituent domain edges for aggregated "N domain edges" implicit service edges. */
+  domainEdges?: DomainEdgeDetail[];
 }
 
 export interface ContainerRect {
@@ -443,7 +445,13 @@ export function layout(
   const layoutEdges: LayoutEdge[] = [];
   for (const edge of allEdges) {
     const le = computeEdgePoints(edge, layoutNodes, layers);
-    if (le) layoutEdges.push(le);
+    if (!le) continue;
+    const edgeKey = `${edge.from}->${edge.to}`;
+    const domainEdges = viewSlice.implicitEdgeDetails.get(edgeKey);
+    if (domainEdges) {
+      le.domainEdges = domainEdges;
+    }
+    layoutEdges.push(le);
   }
 
   // Ghost system edges: from a primary node (or container) to a ghost service (qualified ID)

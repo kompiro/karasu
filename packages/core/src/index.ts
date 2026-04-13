@@ -37,7 +37,7 @@ export type {
 
 export type { Warning, WarningKind } from "./types/warnings.js";
 
-export type { ViewPath, ViewSlice } from "./view/view-extract.js";
+export type { ViewPath, ViewSlice, DomainEdgeDetail } from "./view/view-extract.js";
 export { extractView } from "./view/view-extract.js";
 export type { OrgViewPath, OrgViewSlice } from "./view/org-view-extract.js";
 export { extractOrgView } from "./view/org-view-extract.js";
