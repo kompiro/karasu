@@ -1,7 +1,8 @@
-# Implicit エッジにおける sync/async の視覚的区別
+# ADR-20260413-02: Implicit エッジにおける sync/async の視覚的区別
 
 - **日付**: 2026-04-13
-- **ステータス**: 検討中
+- **ステータス**: 決定済み
+- **実装**: PR #606（`fix(core): preserve sync/async for implicit service edges`）
 - **関連**:
   - Issue #510
   - ADR-20260410-01: Domain 間エッジと `[implicit]` 自動タグによる暗黙サービスエッジ
