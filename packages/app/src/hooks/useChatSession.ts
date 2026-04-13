@@ -799,6 +799,8 @@ export function useChatSession({
 
     const client = new Anthropic({ apiKey: key, dangerouslyAllowBrowser: true });
 
+    // Send a hidden trigger message to kick off the design review.
+    // The trigger is NOT stored in the messages state — only the AI's response is shown.
     const triggerMessages: Anthropic.Messages.MessageParam[] = [
       { role: "user", content: "設計レビューを開始してください。" },
     ];
@@ -819,19 +821,74 @@ export function useChatSession({
       });
 
       let textContent = "";
+      let patchProposal: PatchProposal | undefined;
+
       for (const block of response.content) {
         if (block.type === "text") {
           textContent += block.text;
         } else if (block.type === "tool_use" && block.name === "navigate_view") {
           const input = block.input as { path: string[] };
           onNavigateViewPath(input.path);
+          // Send tool_result to get follow-up text from the AI
+          const followupMessages: Anthropic.Messages.MessageParam[] = [
+            ...triggerMessages,
+            { role: "assistant", content: response.content },
+            {
+              role: "user",
+              content: [{ type: "tool_result", tool_use_id: block.id, content: "Navigated." }],
+            },
+          ];
+          const followup = await client.messages.create({
+            model: MODEL,
+            max_tokens: 4096,
+            system: buildSystemPrompt(
+              scopeLabelRef.current,
+              viewPathRef.current,
+              fileContentRef.current,
+              currentFilePathRef.current,
+              resolvedSystemsRef.current,
+            ),
+            tools: TOOLS,
+            messages: followupMessages,
+          });
+          for (const fb of followup.content) {
+            if (fb.type === "text") textContent += fb.text;
+          }
+        } else if (block.type === "tool_use" && block.name === "apply_krs_patch") {
+          const input = block.input as {
+            operation: PatchOperation;
+            targetNodeId?: string;
+            content?: string;
+            description: string;
+          };
+          const hash = await hashContent(fileContentRef.current);
+          patchProposal = {
+            toolUseId: block.id,
+            operation: input.operation,
+            targetNodeId: input.targetNodeId,
+            content: input.content,
+            description: input.description,
+            contentHashAtProposal: hash,
+          };
         }
       }
 
-      if (textContent) {
-        setMessages([{ id: crypto.randomUUID(), role: "assistant", content: textContent }]);
+      const assistantMsg: AssistantChatMessage = {
+        id: crypto.randomUUID(),
+        role: "assistant",
+        content: textContent,
+        patch: patchProposal,
+      };
+
+      if (textContent || patchProposal) {
+        setMessages([assistantMsg]);
       }
-      setPhase({ kind: "idle" });
+
+      if (patchProposal) {
+        setPhase({ kind: "pending_confirmation", proposal: patchProposal });
+      } else {
+        setPhase({ kind: "idle" });
+      }
     } catch (err) {
       const errorType = classifyError(err);
       setMessages([
@@ -884,6 +941,31 @@ export function useChatSession({
         } else if (block.type === "tool_use" && block.name === "navigate_view") {
           const input = block.input as { path: string[] };
           onNavigateViewPath(input.path);
+          // Send tool_result to get follow-up text from the AI
+          const followupMessages: Anthropic.Messages.MessageParam[] = [
+            ...triggerMessages,
+            { role: "assistant", content: response.content },
+            {
+              role: "user",
+              content: [{ type: "tool_result", tool_use_id: block.id, content: "Navigated." }],
+            },
+          ];
+          const followup = await client.messages.create({
+            model: MODEL,
+            max_tokens: 4096,
+            system: buildSystemPrompt(
+              scopeLabelRef.current,
+              viewPathRef.current,
+              fileContentRef.current,
+              currentFilePathRef.current,
+              resolvedSystemsRef.current,
+            ),
+            tools: TOOLS,
+            messages: followupMessages,
+          });
+          for (const fb of followup.content) {
+            if (fb.type === "text") textContent += fb.text;
+          }
         }
       }
 
