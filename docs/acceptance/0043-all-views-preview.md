@@ -1,16 +1,22 @@
 ---
 id: 0043-all-views-preview
-title: In-App Preview All Views
-status: draft
+title: Open All Views (bundled SVG in a new window)
+status: active
 ---
 
-# Acceptance Test: In-App Preview All Views
+# Acceptance Test: Open All Views
 
 ## Purpose
 
-Verify that the "Preview All Views" button in the app toolbar renders the bundled all-views SVG
-in an `<iframe srcdoc>`, enabling tab navigation across system/deploy/org views without affecting
-the parent page URL fragment.
+Verify that the "Open All Views" button in the preview toolbar opens
+the bundled all-views SVG in a new browser tab/window, so the user can
+navigate System / Deploy / Org tabs side-by-side with the main editor.
+
+> **History**: an earlier draft of this AT described an in-app iframe
+> variant that replaces the PreviewPane. That feature was not pursued;
+> the shipped implementation (#301) opens the bundled SVG in a new
+> window via `window.open()` with a Blob URL. This AT now describes the
+> shipped behavior.
 
 ## Prerequisites
 
@@ -47,40 +53,38 @@ organization Acme {
 
 ### Button Availability
 
-- [ ] "Preview All Views" button is visible in the preview toolbar
-- [ ] Button is disabled when the editor content is empty or parse-only (no views defined)
+- [ ] "⊟ Open All Views" button is visible in the preview toolbar
+- [ ] Button is disabled when the editor content has no views defined
+      (e.g. a syntactically empty document)
 - [ ] Button is enabled when at least one view is defined
 
-### Activating All Views Preview
+### Opening the Bundled SVG
 
-- [ ] Clicking "Preview All Views" shows an iframe that replaces the current PreviewPane
-- [ ] The DiagramTabBar (System / Deploy / Org tabs) is hidden while the iframe is shown
-- [ ] The BreadcrumbBar is hidden while the iframe is shown
-- [ ] The button has a visually active/highlighted state while the mode is on
-- [ ] Clicking the button again exits the mode and restores the normal per-view preview
+- [ ] Clicking the button triggers a new browser tab/window (popup)
+- [ ] The popup loads a `blob:` URL that serves the bundled SVG with
+      MIME type `image/svg+xml`
+- [ ] The rendered SVG inside the popup contains three tabs
+      (System / Deploy / Org) and defaults to the System pane
+- [ ] Closing the popup leaves the main editor and PreviewPane
+      untouched — the main window URL fragment is unchanged
 
-### Tab Navigation Inside the iframe
+### Tab Navigation Inside the Popup
 
-- [ ] The SVG inside the iframe shows three tabs: **System**, **Deploy**, **Org**
-- [ ] By default, the System pane is visible
 - [ ] Clicking the Deploy tab switches to the deploy pane
 - [ ] Clicking the Org tab switches to the org pane
 - [ ] Clicking the System tab returns to the system pane
 - [ ] The active tab is visually distinct
 
-### Drill-Down Inside the iframe
+### Drill-Down Inside the Popup
 
 - [ ] Clicking a node with children navigates to its drill-down level
 - [ ] A Back button is shown on drill-down levels
 - [ ] Clicking Back returns to the parent level
-- [ ] Navigating between drill-down levels does not affect the outer page URL
-
-### Mutual Exclusion with Show All Layers
-
-- [ ] Activating "Preview All Views" while "Show All Layers" is active turns off "Show All Layers"
-- [ ] Activating "Show All Layers" while "Preview All Views" is active turns off "Preview All Views"
+- [ ] Navigating between drill-down levels does not affect the outer
+      page URL
 
 ### Disabled Tabs
 
-- [ ] A view not defined in the `.krs` file shows a disabled (dimmed) tab in the iframe
+- [ ] A view not defined in the `.krs` file shows a disabled (dimmed)
+      tab in the popup
 - [ ] Disabled tabs cannot be clicked
