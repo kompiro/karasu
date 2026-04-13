@@ -3,6 +3,10 @@ import { defineConfig, devices } from "@playwright/test";
 const PORT = Number(process.env.PLAYWRIGHT_PORT ?? 5173);
 const BASE_URL = `http://localhost:${PORT}`;
 
+const webServerCommand = process.env.CI
+  ? `pnpm --filter @karasu-tools/app exec vite build && pnpm --filter @karasu-tools/app exec vite preview --port ${PORT} --strictPort`
+  : `pnpm --filter @karasu-tools/app dev -- --port ${PORT} --strictPort`;
+
 export default defineConfig({
   testDir: "./tests",
   globalSetup: "./global-setup.ts",
@@ -25,10 +29,10 @@ export default defineConfig({
     },
   ],
   webServer: {
-    command: `pnpm --filter @karasu-tools/app dev -- --port ${PORT} --strictPort`,
+    command: webServerCommand,
     url: BASE_URL,
     reuseExistingServer: !process.env.CI,
-    timeout: 120_000,
+    timeout: 180_000,
     stdout: "pipe",
     stderr: "pipe",
   },
