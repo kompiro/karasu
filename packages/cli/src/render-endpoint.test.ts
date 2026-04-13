@@ -232,4 +232,68 @@ describe("handleRender", () => {
       expect.objectContaining({ "Content-Type": "image/svg+xml; charset=utf-8" }),
     );
   });
+
+  // AT-0043-3: ?view=system | deploy | org returns distinct SVG payloads.
+  it("AT-0043-3: ?view=system, deploy, and org each return a distinct SVG", async () => {
+    const source = `system App {
+  service Web { label "Web" }
+}
+
+deploy "Production" {
+  oci "web" { realizes "Web" }
+}
+
+organization AppOrg {
+  team WebTeam { label "Web Team" }
+}
+`;
+    const code = Buffer.from(source).toString("base64");
+    const bodies: Record<string, string> = {};
+
+    for (const view of ["system", "deploy", "org"] as const) {
+      const res = makeRes();
+      await handleRender(
+        makeReq(),
+        res as unknown as ServerResponse,
+        new URLSearchParams({ code, view }),
+      );
+      expect(res.writeHead).toHaveBeenCalledWith(
+        200,
+        expect.objectContaining({ "Content-Type": "image/svg+xml; charset=utf-8" }),
+      );
+      const body: string = res.end.mock.calls[0][0];
+      expect(body).toContain("<svg");
+      bodies[view] = body;
+    }
+
+    expect(bodies.system).not.toEqual(bodies.deploy);
+    expect(bodies.deploy).not.toEqual(bodies.org);
+    expect(bodies.system).not.toEqual(bodies.org);
+  });
+
+  // AT-0043-4: Omitting ?view= returns a bundled all-views SVG.
+  it("AT-0043-4: no ?view= returns a bundled SVG containing all available views", async () => {
+    const source = `system App {
+  service Web { label "Web" }
+}
+
+deploy "Production" {
+  oci "web" { realizes "Web" }
+}
+
+organization AppOrg {
+  team WebTeam { label "Web Team" }
+}
+`;
+    const code = Buffer.from(source).toString("base64");
+    const res = makeRes();
+    await handleRender(makeReq(), res as unknown as ServerResponse, new URLSearchParams({ code }));
+
+    expect(res.writeHead).toHaveBeenCalledWith(
+      200,
+      expect.objectContaining({ "Content-Type": "image/svg+xml; charset=utf-8" }),
+    );
+    const body: string = res.end.mock.calls[0][0];
+    expect(body).toContain("<svg");
+  });
 });
