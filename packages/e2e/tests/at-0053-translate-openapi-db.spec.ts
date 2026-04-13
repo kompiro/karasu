@@ -1,4 +1,4 @@
-import { execFileSync, spawnSync } from "node:child_process";
+import { spawnSync } from "node:child_process";
 import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
@@ -44,16 +44,6 @@ function runCli(
 }
 
 let tmpDir: string;
-
-test.beforeAll(() => {
-  // Ensure the CLI and its workspace dependencies are built before exercising
-  // the binary. `--filter karasu...` builds karasu plus every package it
-  // depends on (notably @karasu-tools/core).
-  execFileSync("pnpm", ["--filter", "karasu...", "build"], {
-    cwd: resolve(__dirname, "../../.."),
-    stdio: "ignore",
-  });
-});
 
 test.beforeEach(() => {
   tmpDir = mkdtempSync(join(tmpdir(), "karasu-at0053-"));
