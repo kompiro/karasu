@@ -36,7 +36,9 @@ deploy staging {
 `;
 
 async function replaceEditorContent(page: Page, content: string) {
-  const editorTextarea = page.locator(".monaco-editor textarea").first();
+  // Monaco renders multiple textareas. `textarea.inputarea` is the real
+  // input target; `textarea.ime-text-area` is read-only / aria-hidden.
+  const editorTextarea = page.locator(".monaco-editor textarea.inputarea").first();
   await editorTextarea.click();
   await page.keyboard.press("Control+A");
   await page.keyboard.press("Delete");
