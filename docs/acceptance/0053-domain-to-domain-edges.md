@@ -27,7 +27,8 @@ The following are covered by automated tests (`pnpm test`):
 - Cross-service domain edges (target domain in another service) do NOT appear in the service view's `childEdges`
 - Duplicate domain ID within the same system emits an `error` diagnostic
 - Duplicate domain ID across different systems does NOT emit an error
-- `edge[implicit]` style in the built-in stylesheet sets color `#F59E0B` (amber) and `border-style: dashed`
+- `edge[implicit]` style in the built-in stylesheet sets color `#F59E0B` (amber); the line style is left to `[async]` / `[sync]` so sync and async derived edges remain visually distinguishable
+- A service pair that has both sync and async cross-service domain edges produces two separate implicit service edges (one per `kind`)
 - `domain-drift.krs` parses without errors and `OrderDomain` has an outgoing edge to `PaymentDomain`
 
 ## Manual Verification
@@ -74,7 +75,8 @@ system DriftSample {
 > ✅ Automated — `packages/e2e/tests/at-0053-domain-to-domain-edges.spec.ts` › `cross-service domain edge becomes an amber dashed implicit service edge (Case 1)`
 
 - [ ] The system view shows `OrderService` and `PaymentService` as nodes
-- [ ] An edge from `OrderService` to `PaymentService` is rendered in **amber** (`#F59E0B`) with a **dashed** line
+- [ ] An edge from `OrderService` to `PaymentService` is rendered in **amber** (`#F59E0B`)
+- [ ] Because the source domain edge is `->` (sync), the line is **solid** (not dashed). If the source were `-->`, it would be dashed.
 - [ ] The edge label reads `"decides payment"` (single domain edge — original label preserved)
 
 ---
@@ -171,3 +173,46 @@ edge[implicit] {
 
 - [ ] The implicit service edge now renders in **purple** (`#A855F7`) with a **dotted** line
 - [ ] Explicit (non-implicit) edges are unaffected
+
+---
+
+### Case 7: Sync and async implicit edges are visually distinguishable (#510)
+
+Use the following source:
+
+```krs
+system OrderSystem {
+  service LegacyService {
+    domain LegacyContract {
+      LegacyContract -> Billing "sync call"
+    }
+  }
+  service NewService {
+    domain NewContract {
+      NewContract --> Notification "async event"
+    }
+  }
+  service BillingService { domain Billing {} }
+  service NotificationService { domain Notification {} }
+}
+```
+
+- [ ] In the system view, `LegacyService → BillingService` is rendered as an amber **solid** line (sync implicit edge)
+- [ ] `NewService → NotificationService` is rendered as an amber **dashed** line (async implicit edge)
+- [ ] The two edges are visually distinguishable at a glance
+
+Then add a service pair with both kinds in a single source:
+
+```krs
+system MixedSystem {
+  service ServiceA {
+    domain DomainA {
+      DomainA -> DomainB "sync"
+      DomainA --> DomainB "async"
+    }
+  }
+  service ServiceB { domain DomainB {} }
+}
+```
+
+- [ ] `ServiceA → ServiceB` is rendered as **two** implicit edges — one solid amber, one dashed amber

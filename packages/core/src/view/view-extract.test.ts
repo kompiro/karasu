@@ -920,6 +920,67 @@ system ECPlatform {
       expect(implicit[0].label).toBe("2 domain edges");
     });
 
+    it("derives separate implicit edges for sync and async cross-service domain edges", () => {
+      const krs = `
+system OrderSystem {
+  service LegacyService {
+    domain LegacyContract {
+      LegacyContract -> Billing "sync call"
+    }
+  }
+  service NewService {
+    domain NewContract {
+      NewContract --> Notification "async event"
+    }
+  }
+  service BillingService {
+    domain Billing {}
+  }
+  service NotificationService {
+    domain Notification {}
+  }
+}
+`;
+      const systems = parseSystem(krs);
+      const view = extractView(systems, []);
+      const syncEdge = view.childEdges.find(
+        (e) =>
+          e.from === "LegacyService" && e.to === "BillingService" && e.tags.includes("implicit"),
+      );
+      const asyncEdge = view.childEdges.find(
+        (e) =>
+          e.from === "NewService" && e.to === "NotificationService" && e.tags.includes("implicit"),
+      );
+      expect(syncEdge).toBeDefined();
+      expect(syncEdge!.kind).toBe("sync");
+      expect(asyncEdge).toBeDefined();
+      expect(asyncEdge!.kind).toBe("async");
+    });
+
+    it("splits implicit edges by kind when both sync and async exist between the same service pair", () => {
+      const krs = `
+system MixedSystem {
+  service ServiceA {
+    domain DomainA {
+      DomainA -> DomainB "sync"
+      DomainA --> DomainB "async"
+    }
+  }
+  service ServiceB {
+    domain DomainB {}
+  }
+}
+`;
+      const systems = parseSystem(krs);
+      const view = extractView(systems, []);
+      const implicit = view.childEdges.filter(
+        (e) => e.from === "ServiceA" && e.to === "ServiceB" && e.tags.includes("implicit"),
+      );
+      expect(implicit).toHaveLength(2);
+      const kinds = implicit.map((e) => e.kind).sort();
+      expect(kinds).toEqual(["async", "sync"]);
+    });
+
     describe("ghost domains in service drill-down view", () => {
       it("includes outgoing ghost domain when drilling into source service", () => {
         const systems = parseSystem(CROSS_SERVICE_KRS);
