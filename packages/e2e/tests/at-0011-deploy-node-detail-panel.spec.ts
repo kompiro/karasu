@@ -70,10 +70,9 @@ test.describe("AT-0011 Deploy node detail panel", () => {
     await replaceEditorContent(page, KRS);
     await openDeployTab(page);
 
-    // `mailer` is unassigned so it lands under the Unclassified container.
-    // The renderer prefixes with the owning service id, or falls back to
-    // a sentinel when unassigned — use a flexible matcher.
-    await page.locator('svg [data-node-id$="::mailer"]').first().click();
+    // `mailer` is unassigned (no `realizes`), so the deploy layout keys
+    // it by the bare unit id instead of the `<service>::<unit>` form.
+    await page.locator('svg [data-node-id="mailer"]').first().click();
 
     const panel = page.locator(".node-detail-panel");
     await expect(panel).toBeVisible();
