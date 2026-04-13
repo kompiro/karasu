@@ -105,9 +105,10 @@ domain OrderDomain {
 ```
 
 - [ ] The system-view implicit edge label changes to `"2 domain edges"`
-
-> **Note**: clicking the `"N domain edges"` label to show a detail list of each domain edge
-> (from → to, label) is tracked separately in #463 and is not yet implemented.
+- [ ] Clicking the `"2 domain edges"` label opens a detail panel listing each constituent domain edge
+- [ ] The panel shows two rows: `OrderDomain → PaymentDomain "decides payment"` and `OrderDomain → ExternalDomain "external call"` (or equivalent)
+- [ ] Closing the panel (× button) dismisses it
+- [ ] Clicking anywhere outside the panel also dismisses it
 
 ---
 
