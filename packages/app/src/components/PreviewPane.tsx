@@ -1,6 +1,7 @@
 import { useRef, useState, useCallback, useEffect, type WheelEvent, type MouseEvent } from "react";
-import type { Diagnostic, NodeMetadata } from "@karasu-tools/core";
+import type { Diagnostic, NodeMetadata, DomainEdgeDetail } from "@karasu-tools/core";
 import { NodeDetailPanel } from "./NodeDetailPanel.js";
+import { EdgeDetailPanel } from "./EdgeDetailPanel.js";
 
 interface PreviewPaneProps {
   svg: string;
@@ -30,6 +31,12 @@ interface DetailPanelState {
   anchorY: number;
 }
 
+interface EdgeDetailPanelState {
+  domainEdges: DomainEdgeDetail[];
+  anchorX: number;
+  anchorY: number;
+}
+
 const CLICK_THRESHOLD = 3;
 
 export function PreviewPane({
@@ -52,6 +59,7 @@ export function PreviewPane({
   const [isDragging, setIsDragging] = useState(false);
   const isDraggingRef = useRef(false);
   const [detailPanel, setDetailPanel] = useState<DetailPanelState | null>(null);
+  const [edgeDetailPanel, setEdgeDetailPanel] = useState<EdgeDetailPanelState | null>(null);
   const dragStart = useRef({ x: 0, y: 0 });
   const mouseDownPos = useRef({ x: 0, y: 0 });
 
@@ -127,6 +135,32 @@ export function PreviewPane({
 
       const target = e.target as Element;
 
+      // Check for domain-edge detail click (implicit aggregated edges)
+      const edgeGroup = target.closest("[data-domain-edges]");
+      if (edgeGroup) {
+        const raw = edgeGroup.getAttribute("data-domain-edges");
+        if (raw) {
+          try {
+            const domainEdges = JSON.parse(raw) as DomainEdgeDetail[];
+            const rect = edgeGroup.getBoundingClientRect();
+            const containerRect = containerRef.current?.getBoundingClientRect();
+            if (containerRect) {
+              let anchorX = rect.right - containerRect.left + 8;
+              const anchorY = rect.top - containerRect.top;
+              if (anchorX + 360 > containerRect.width) {
+                anchorX = rect.left - containerRect.left - 368;
+                if (anchorX < 0) anchorX = 8;
+              }
+              setDetailPanel(null);
+              setEdgeDetailPanel({ domainEdges, anchorX, anchorY });
+            }
+          } catch {
+            // malformed JSON — ignore
+          }
+        }
+        return;
+      }
+
       // Check for info button click
       const infoButton = target.closest("[data-info-button]");
       if (infoButton) {
@@ -195,8 +229,9 @@ export function PreviewPane({
       // Check for node click
       const nodeGroup = target.closest("[data-node-id]");
       if (!nodeGroup) {
-        // Click outside any node — close detail panel
+        // Click outside any node — close detail panels
         setDetailPanel(null);
+        setEdgeDetailPanel(null);
         return;
       }
 
@@ -284,6 +319,14 @@ export function PreviewPane({
             onNavigateToDeploy={onDeployButtonClick}
             onNavigateToOrg={onTeamButtonClick}
             onJumpToEditor={onJumpToEditor ? () => onJumpToEditor(detailPanel.nodeId) : undefined}
+          />
+        )}
+        {edgeDetailPanel && (
+          <EdgeDetailPanel
+            domainEdges={edgeDetailPanel.domainEdges}
+            anchorX={edgeDetailPanel.anchorX}
+            anchorY={edgeDetailPanel.anchorY}
+            onClose={() => setEdgeDetailPanel(null)}
           />
         )}
       </div>
