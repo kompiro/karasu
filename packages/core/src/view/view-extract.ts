@@ -75,13 +75,17 @@ function buildDomainServiceMap(services: KrsNode[]): Map<string, string> {
  * When a domain in serviceA has `-> domainInServiceB`, and no explicit serviceA→serviceB edge
  * exists in the system, synthesize one with tags: ["implicit"].
  *
- * Multiple domain edges between the same service pair are aggregated into a single edge
+ * Edges are grouped by (from, to, kind) so sync and async cross-service domain edges between
+ * the same service pair produce two distinct implicit edges. This preserves the visual
+ * sync/async distinction at the system level (color = derived, dash style = async).
+ *
+ * Multiple domain edges sharing the same (from, to, kind) are aggregated into a single edge
  * with label "N domain edges" (or the single label if there is only one).
  */
 function deriveImplicitServiceEdges(services: KrsNode[], explicitKeys: Set<string>): KrsEdge[] {
   const domainServiceMap = buildDomainServiceMap(services);
 
-  // Collect all cross-service domain edges grouped by service pair
+  // Collect all cross-service domain edges grouped by (service pair, kind)
   const grouped = new Map<string, { edge: KrsEdge; count: number; label: string | undefined }>();
 
   for (const service of services) {
@@ -91,14 +95,15 @@ function deriveImplicitServiceEdges(services: KrsNode[], explicitKeys: Set<strin
       for (const edge of domain.edges) {
         const targetServiceId = domainServiceMap.get(edge.to);
         if (!targetServiceId || targetServiceId === service.id) continue;
-        const key = `${service.id}->${targetServiceId}`;
-        if (explicitKeys.has(key)) continue;
-        const existing = grouped.get(key);
+        const pairKey = `${service.id}->${targetServiceId}`;
+        if (explicitKeys.has(pairKey)) continue;
+        const groupKey = `${pairKey}#${edge.kind}`;
+        const existing = grouped.get(groupKey);
         if (existing) {
           existing.count += 1;
           existing.label = undefined; // multiple: will use count label
         } else {
-          grouped.set(key, {
+          grouped.set(groupKey, {
             edge: { ...edge, from: service.id, to: targetServiceId, tags: ["implicit"] },
             count: 1,
             label: edge.label,

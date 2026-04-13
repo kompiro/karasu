@@ -3,10 +3,12 @@ import { type Page, expect, test } from "@playwright/test";
 /**
  * AT-0053: Domain-to-domain dependency edges.
  *
- * Covers Case 1 (implicit service edge derivation + amber dashed style),
- * Case 2 (intra-service domain edge in drill-down), Case 3 (aggregated
- * "N domain edges" label), Case 4 (duplicate domain ID error), and
- * Case 5 (same ID across different systems is legal).
+ * Covers Case 1 (implicit service edge derivation + amber color, solid for
+ * sync source), Case 2 (intra-service domain edge in drill-down), Case 3
+ * (aggregated "N domain edges" label), Case 4 (duplicate domain ID error),
+ * Case 5 (same ID across different systems is legal), and Case 7 (sync vs
+ * async implicit edges are visually distinguishable — amber solid vs amber
+ * dashed; see #510).
  *
  * Out of scope:
  *  - Case 6: style override via .krs.style file — requires editing a second
@@ -55,6 +57,26 @@ const AGGREGATED_KRS = `system DriftSample {
 }
 `;
 
+const SYNC_ASYNC_MIX_KRS = `system OrderSystem {
+  service LegacyService {
+    domain LegacyContract {
+      LegacyContract -> Billing "sync call"
+    }
+  }
+  service NewService {
+    domain NewContract {
+      NewContract --> Notification "async event"
+    }
+  }
+  service BillingService {
+    domain Billing {}
+  }
+  service NotificationService {
+    domain Notification {}
+  }
+}
+`;
+
 const DUPLICATE_IN_SYSTEM_KRS = `system DriftSample {
   service OrderService {
     domain SharedDomain {}
@@ -92,7 +114,7 @@ async function goToSystemTab(page: Page) {
 }
 
 test.describe("AT-0053 Domain-to-domain dependency edges", () => {
-  test("cross-service domain edge becomes an amber dashed implicit service edge (Case 1)", async ({
+  test("cross-service domain edge becomes an amber implicit service edge (Case 1)", async ({
     page,
   }) => {
     await page.goto("/");
@@ -103,18 +125,46 @@ test.describe("AT-0053 Domain-to-domain dependency edges", () => {
     await expect(page.locator('[data-node-id="PaymentService"]')).toBeVisible();
 
     // The implicit edge exists: at least one line inside g.edges has the
-    // amber stroke and dashed stroke-dasharray defined by the built-in
-    // `edge[implicit]` style. SVG <line> elements don't get a visibility
-    // bounding box, so assert presence via count.
-    const implicitEdge = page.locator(
+    // amber stroke defined by the built-in `edge[implicit]` style. The
+    // source domain edge is `->` (sync), so the line is solid (no
+    // stroke-dasharray attribute). See #510.
+    const implicitEdge = page.locator(`g.edges line[stroke="${IMPLICIT_COLOR}"]`);
+    expect(await implicitEdge.count()).toBeGreaterThanOrEqual(1);
+    const dashedSync = page.locator(
       `g.edges line[stroke="${IMPLICIT_COLOR}"][stroke-dasharray="${DASHED_PATTERN}"]`,
     );
-    expect(await implicitEdge.count()).toBeGreaterThanOrEqual(1);
+    expect(await dashedSync.count()).toBe(0);
 
     // Label of the single domain edge is preserved.
     expect(
       await page.locator("g.edges text", { hasText: "decides payment" }).count(),
     ).toBeGreaterThanOrEqual(1);
+  });
+
+  test("sync and async implicit edges are visually distinguishable (Case 7, #510)", async ({
+    page,
+  }) => {
+    await page.goto("/");
+    await replaceEditorContent(page, SYNC_ASYNC_MIX_KRS);
+    await goToSystemTab(page);
+
+    await expect(page.locator('[data-node-id="LegacyService"]')).toBeVisible();
+    await expect(page.locator('[data-node-id="NewService"]')).toBeVisible();
+
+    // Sync implicit edge: amber, no stroke-dasharray.
+    const ambers = page.locator(`g.edges line[stroke="${IMPLICIT_COLOR}"]`);
+    expect(await ambers.count()).toBeGreaterThanOrEqual(2);
+
+    // At least one amber line is dashed (the async one) and at least one is
+    // not (the sync one).
+    const amberDashed = page.locator(
+      `g.edges line[stroke="${IMPLICIT_COLOR}"][stroke-dasharray="${DASHED_PATTERN}"]`,
+    );
+    expect(await amberDashed.count()).toBeGreaterThanOrEqual(1);
+    const amberSolid = page.locator(
+      `g.edges line[stroke="${IMPLICIT_COLOR}"]:not([stroke-dasharray])`,
+    );
+    expect(await amberSolid.count()).toBeGreaterThanOrEqual(1);
   });
 
   test("intra-service domain edge renders in the service drill-down view (Case 2)", async ({
