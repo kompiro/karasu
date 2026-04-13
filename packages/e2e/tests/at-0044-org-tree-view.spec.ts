@@ -80,7 +80,7 @@ test.describe("AT-0044 Org Tree View", () => {
     await replaceEditorContent(page, ORG_KRS);
     await openOrgTab(page);
 
-    const breadcrumb = page.locator(".breadcrumb-bar");
+    const breadcrumb = page.locator(".breadcrumb");
     await expect(breadcrumb).toBeVisible();
 
     await activateTreeView(page);
@@ -160,12 +160,12 @@ test.describe("AT-0044 Org Tree View", () => {
     await openOrgTab(page);
     await activateTreeView(page);
 
-    await expect(page.locator(".breadcrumb-bar")).toHaveCount(0);
+    await expect(page.locator(".breadcrumb")).toHaveCount(0);
     await expect(page.locator(".preview-pane--org-tree")).toBeVisible();
 
     await activateTreeView(page);
 
-    await expect(page.locator(".breadcrumb-bar")).toBeVisible();
+    await expect(page.locator(".breadcrumb")).toBeVisible();
     await expect(page.locator(".preview-pane--org-tree")).toHaveCount(0);
   });
 
