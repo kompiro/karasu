@@ -107,7 +107,7 @@ export function useSystemView(
 
     if (timerRef.current) clearTimeout(timerRef.current);
 
-    const currentKey = `${entryPath}:system`;
+    const currentKey = `${entryPath}:system:${viewPath.join("/")}`;
 
     timerRef.current = setTimeout(async () => {
       try {

@@ -58,6 +58,7 @@ export function PreviewPane({
   const visibleDiagnostics = diagnostics.filter(
     (d) => d.severity === "error" || d.severity === "warning",
   );
+  const hasErrors = diagnostics.some((d) => d.severity === "error");
 
   const handleWheel = useCallback((e: WheelEvent) => {
     e.preventDefault();
@@ -255,7 +256,7 @@ export function PreviewPane({
   const panelMetadata = detailPanel ? nodeMetadata.get(detailPanel.nodeId) : undefined;
 
   return (
-    <div className="preview-pane">
+    <div className={`preview-pane${hasErrors ? " preview-pane--has-errors" : ""}`}>
       <div
         ref={containerRef}
         className="preview-container"
@@ -274,6 +275,11 @@ export function PreviewPane({
           ref={svgRef}
           dangerouslySetInnerHTML={{ __html: svg }}
         />
+        {hasErrors && svg && (
+          <div className="error-state-overlay" aria-hidden="true">
+            <span className="error-state-badge">⚠ Diagram is outdated — fix errors to update</span>
+          </div>
+        )}
         {detailPanel && panelMetadata && (
           <NodeDetailPanel
             nodeId={detailPanel.nodeId}
