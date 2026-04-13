@@ -3,7 +3,10 @@ name: Preview
 on:
   pull_request:
     branches: [main]
-    types: [opened, synchronize, reopened, closed]
+    types: [opened, synchronize, reopened, closed, labeled, unlabeled]
+    paths-ignore:
+      - "docs/**"
+      - "**/*.md"
 
 concurrency:
   group: preview-${{ github.ref }}
@@ -12,7 +15,7 @@ concurrency:
 jobs:
   preview:
     name: Deploy Preview to Cloudflare Pages
-    if: github.event.action != 'closed'
+    if: github.event.action != 'closed' && !contains(github.event.pull_request.labels.*.name, 'skip-preview')
     runs-on: ubuntu-latest
     permissions:
       contents: read
