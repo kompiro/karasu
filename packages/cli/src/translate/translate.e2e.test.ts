@@ -271,4 +271,163 @@ describe("translate E2E — error handling", () => {
     capture.restore();
     exitSpy.mockRestore();
   });
+
+  it("AT-0053-08: exits with code 1 and error message for missing openapi file", async () => {
+    const exitSpy = vi.spyOn(process, "exit").mockImplementation(() => {
+      throw new Error("process.exit called");
+    });
+    const capture = captureOutput();
+
+    await expect(
+      translate("/nonexistent/path/api.yaml", { from: "openapi", service: "Foo" }),
+    ).rejects.toThrow("process.exit called");
+
+    expect(exitSpy).toHaveBeenCalledWith(1);
+    expect(capture.stderr()).toContain("Error: File not found");
+
+    capture.restore();
+    exitSpy.mockRestore();
+  });
+});
+
+describe("translate E2E — openapi", () => {
+  let tmpDir: string;
+
+  beforeEach(() => {
+    tmpDir = mkdtempSync(join(tmpdir(), "karasu-e2e-openapi-"));
+  });
+
+  afterEach(() => {
+    rmSync(tmpDir, { recursive: true, force: true });
+  });
+
+  it("AT-0053-01: translates OpenAPI with operationId to PascalCase usecases", async () => {
+    const inputPath = join(tmpDir, "api.yaml");
+    writeFileSync(
+      inputPath,
+      `openapi: "3.0.0"
+info:
+  title: ECommerce API
+paths:
+  /orders:
+    post:
+      operationId: placeOrder
+      tags: [Order]
+  /orders/{id}/cancel:
+    post:
+      operationId: cancelOrder
+      tags: [Order]
+`,
+    );
+
+    const capture = captureOutput();
+    await translate(inputPath, { from: "openapi", service: "ECommerce" });
+    capture.restore();
+
+    const out = capture.stdout();
+    expect(out).toContain("service ECommerce {");
+    expect(out).toContain('usecase PlaceOrder { label "POST /orders" }');
+    expect(out).toContain('usecase CancelOrder { label "POST /orders/{id}/cancel" }');
+  });
+
+  it("AT-0053-02: falls back to method+path identifiers when operationId is absent", async () => {
+    const inputPath = join(tmpDir, "api.yaml");
+    writeFileSync(
+      inputPath,
+      `openapi: "3.0.0"
+info:
+  title: Simple API
+paths:
+  /items:
+    get: {}
+    post: {}
+`,
+    );
+
+    const capture = captureOutput();
+    await translate(inputPath, { from: "openapi", service: "ItemService" });
+    capture.restore();
+
+    const out = capture.stdout();
+    expect(out).toContain("service ItemService {");
+    expect(out).toContain('usecase GetItems { label "GET /items" }');
+    expect(out).toContain('usecase PostItems { label "POST /items" }');
+  });
+
+  it("AT-0053-03: derives service name from info.title when --service is omitted", async () => {
+    const inputPath = join(tmpDir, "api.yaml");
+    writeFileSync(
+      inputPath,
+      `openapi: "3.0.0"
+info:
+  title: Order Service
+paths:
+  /orders:
+    get:
+      operationId: listOrders
+`,
+    );
+
+    const capture = captureOutput();
+    await translate(inputPath, { from: "openapi" });
+    capture.restore();
+
+    const out = capture.stdout();
+    expect(out).toContain("service OrderService {");
+    expect(out).toContain('usecase ListOrders { label "GET /orders" }');
+  });
+});
+
+describe("translate E2E — db", () => {
+  let tmpDir: string;
+
+  beforeEach(() => {
+    tmpDir = mkdtempSync(join(tmpdir(), "karasu-e2e-db-"));
+  });
+
+  afterEach(() => {
+    rmSync(tmpDir, { recursive: true, force: true });
+  });
+
+  it("AT-0053-04: translates SQL schema to database block with table entries", async () => {
+    const inputPath = join(tmpDir, "schema.sql");
+    writeFileSync(
+      inputPath,
+      `CREATE TABLE orders (
+  id BIGINT PRIMARY KEY,
+  user_id BIGINT NOT NULL
+);
+CREATE TABLE order_items (
+  id BIGINT PRIMARY KEY,
+  order_id BIGINT NOT NULL
+);
+CREATE TABLE payments (
+  id BIGINT PRIMARY KEY
+);
+`,
+    );
+
+    const capture = captureOutput();
+    await translate(inputPath, { from: "db", database: "OrderDB" });
+    capture.restore();
+
+    const out = capture.stdout();
+    expect(out).toContain("database OrderDB {");
+    expect(out).toContain('table OrdersTable { label "orders" }');
+    expect(out).toContain('table OrderItemsTable { label "order_items" }');
+    expect(out).toContain('table PaymentsTable { label "payments" }');
+  });
+
+  it("AT-0053-05: derives database name from file name when --database is omitted", async () => {
+    const inputPath = join(tmpDir, "order_db.sql");
+    writeFileSync(inputPath, "CREATE TABLE orders ( id BIGINT PRIMARY KEY );\n");
+
+    const capture = captureOutput();
+    await translate(inputPath, { from: "db" });
+    capture.restore();
+
+    const out = capture.stdout();
+    expect(out).toContain("database OrderDb {");
+    expect(out).toContain('table OrdersTable { label "orders" }');
+  });
 });
