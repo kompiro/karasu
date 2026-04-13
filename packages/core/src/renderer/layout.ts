@@ -8,6 +8,7 @@ import type {
 import type { ViewSlice, GhostSystem } from "../view/view-extract.js";
 import { summarizeDescription } from "./description-summary.js";
 import { CHAR_WIDTH, NODE_PADDING_X, NODE_PADDING_Y } from "./rendering-constants.js";
+import { sortByBarycenter } from "./layer-layout-logics.js";
 
 export type LayoutNodeProperties = CommonProperties & {
   role?: string;
@@ -70,6 +71,7 @@ const CONTAINER_LABEL_HEIGHT = 30;
 const GHOST_MARGIN = 30;
 
 // Icon-mode card dimensions (from design doc)
+const MAX_LAYER_WIDTH = 1200; // wrap nodes to a new sub-row when a layer exceeds this width
 const ICON_CARD_WIDTH = 160;
 const ICON_CARD_HEIGHT_WITH_DESC = 100;
 const ICON_CARD_HEIGHT_NO_DESC = 56;
@@ -751,21 +753,62 @@ function layoutMultipleSystems(
 
     const sortedLayers = Array.from(nodesByLayer.keys()).sort((a, b) => a - b);
 
+    // Build predecessors map for barycenter heuristic
+    const predecessorsMap = new Map<string, string[]>();
+    for (const id of nodeIds) predecessorsMap.set(id, []);
+    for (const edge of sys.edges) {
+      if (idSet.has(edge.from) && idSet.has(edge.to)) {
+        predecessorsMap.get(edge.to)!.push(edge.from);
+      }
+    }
+
+    // Tracks the X-center of each placed node (used by barycenter sort for subsequent layers)
+    const nodeCenterX = new Map<string, number>();
+
     const localNodes = new Map<string, LayoutNode>();
     let childMaxWidth = 0;
     let childMaxHeight = 0;
 
-    for (const layerIdx of sortedLayers) {
-      const nodesInLayer = nodesByLayer.get(layerIdx)!;
-      let xOff = NODE_GAP;
-      for (const nid of nodesInLayer) {
+    for (let layerOrder = 0; layerOrder < sortedLayers.length; layerOrder++) {
+      const layerIdx = sortedLayers[layerOrder];
+      const rawLayer = nodesByLayer.get(layerIdx)!.map((id) => ({ id }));
+      // Sort by barycenter for all layers after the first to minimize edge crossings
+      const sortedLayer =
+        layerOrder === 0 ? rawLayer : sortByBarycenter(rawLayer, predecessorsMap, nodeCenterX);
+
+      // Place nodes with sub-row wrapping when layer width exceeds MAX_LAYER_WIDTH
+      let currentX = NODE_GAP;
+      let subRowY = layerOrder === 0 ? NODE_GAP : 0; // will be computed below
+      let subRowMaxHeight = 0;
+
+      // Compute the Y start for this layer based on the previous layer's bottom
+      if (layerOrder > 0) {
+        // Find the max Y + height among all nodes placed in earlier layers
+        let prevBottom = 0;
+        for (const [, n] of localNodes) {
+          prevBottom = Math.max(prevBottom, n.y + n.height + LAYER_GAP);
+        }
+        subRowY = prevBottom;
+      } else {
+        subRowY = NODE_GAP;
+      }
+
+      for (const item of sortedLayer) {
+        const nid = item.id;
         const krsNode = nodeMap.get(nid)!;
         const resolvedTeam =
           krsNode.kind === "service" || krsNode.kind === "domain"
             ? (ownerIndex?.get(nid) ?? krsNode.properties.team)
             : undefined;
         const dims = measureNode(krsNode, resolvedTeam, displayMode);
-        const y = layerIdx * (dims.height + LAYER_GAP) + NODE_GAP;
+
+        // Wrap to a new sub-row when the node would exceed MAX_LAYER_WIDTH
+        if (currentX > NODE_GAP && currentX + dims.width > MAX_LAYER_WIDTH) {
+          subRowY += subRowMaxHeight + NODE_GAP;
+          currentX = NODE_GAP;
+          subRowMaxHeight = 0;
+        }
+
         localNodes.set(nid, {
           kind: krsNode.kind,
           id: nid,
@@ -778,28 +821,38 @@ function layoutMultipleSystems(
           linkCount: krsNode.properties.links.length,
           hasChildren: krsNode.children.length > 0,
           hasDescription: !!krsNode.properties.description,
-          x: xOff,
-          y,
+          x: currentX,
+          y: subRowY,
           width: dims.width,
           height: dims.height,
           ghost: isGhost,
         });
-        xOff += dims.width + NODE_GAP;
-        childMaxWidth = Math.max(childMaxWidth, xOff);
-        childMaxHeight = Math.max(childMaxHeight, y + dims.height + NODE_GAP);
+
+        nodeCenterX.set(nid, currentX + dims.width / 2);
+        subRowMaxHeight = Math.max(subRowMaxHeight, dims.height);
+        currentX += dims.width + NODE_GAP;
+        childMaxWidth = Math.max(childMaxWidth, currentX);
+        childMaxHeight = Math.max(childMaxHeight, subRowY + dims.height + NODE_GAP);
       }
     }
 
-    // Center each layer within the system
-    for (const layerIdx of sortedLayers) {
-      const nodesInLayer = nodesByLayer.get(layerIdx)!;
-      const layerWidth = nodesInLayer.reduce((sum, id) => {
+    // Center each sub-row within the system
+    // Group nodes by their Y coordinate (sub-row), then center each row
+    const rowGroups = new Map<number, string[]>();
+    for (const [id, node] of localNodes) {
+      if (!rowGroups.has(node.y)) rowGroups.set(node.y, []);
+      rowGroups.get(node.y)!.push(id);
+    }
+    for (const ids of rowGroups.values()) {
+      const rowWidth = ids.reduce((sum, id) => {
         const n = localNodes.get(id)!;
         return sum + n.width + NODE_GAP;
       }, -NODE_GAP);
-      const off = Math.max(0, (childMaxWidth - layerWidth) / 2);
+      const off = Math.max(0, (childMaxWidth - rowWidth) / 2);
       let xOff = off;
-      for (const id of nodesInLayer) {
+      // Sort by current x to maintain order when centering
+      ids.sort((a, b) => localNodes.get(a)!.x - localNodes.get(b)!.x);
+      for (const id of ids) {
         const n = localNodes.get(id)!;
         n.x = xOff;
         xOff += n.width + NODE_GAP;
