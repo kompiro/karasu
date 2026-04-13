@@ -47,9 +47,7 @@ test.describe("AT-0043 Open All Views (bundled SVG popup)", () => {
     await popup.close();
   });
 
-  test("button is disabled when no views can be built from the editor source", async ({
-    page,
-  }) => {
+  test("button is disabled when no views can be built from the editor source", async ({ page }) => {
     await page.goto("/");
 
     // An empty document has no views, so the bundled SVG cannot be
