@@ -3,10 +3,13 @@ name: Preview
 on:
   pull_request:
     branches: [main]
-    types: [opened, synchronize, reopened, closed, labeled, unlabeled]
-    paths-ignore:
-      - "docs/**"
-      - "**/*.md"
+    types: [opened, synchronize, reopened, closed]
+    paths:
+      - "packages/app/**"
+      - "packages/core/**"
+      - "pnpm-lock.yaml"
+      - "package.json"
+      - ".github/workflows/preview.yml"
 
 concurrency:
   group: preview-${{ github.ref }}
@@ -15,7 +18,7 @@ concurrency:
 jobs:
   preview:
     name: Deploy Preview to Cloudflare Pages
-    if: github.event.action != 'closed' && !contains(github.event.pull_request.labels.*.name, 'skip-preview')
+    if: github.event.action != 'closed'
     runs-on: ubuntu-latest
     permissions:
       contents: read
