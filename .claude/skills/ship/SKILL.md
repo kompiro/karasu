@@ -41,12 +41,15 @@ description: >
 
 ### 1. PR 作成
 
-1. リモートにプッシュする:
+1. `pnpm install` を実行して依存関係を同期する
+   - 新しい worktree や main から切り替えた直後は `node_modules` が古くなっており、pre-push hook の typecheck が依存不足で失敗するため
+   - ロックファイルが最新なら即座に完了する
+2. リモートにプッシュする:
    ```
    git push -u origin <branch-name>
    ```
-2. `git log --oneline origin/main..HEAD` と `git diff origin/main...HEAD --stat` で変更内容を分析する
-3. PR 本文を生成する。`.github/PULL_REQUEST_TEMPLATE.md` のセクション構成に従い、コメントを実際の内容で埋める:
+3. `git log --oneline origin/main..HEAD` と `git diff origin/main...HEAD --stat` で変更内容を分析する
+4. PR 本文を生成する。`.github/PULL_REQUEST_TEMPLATE.md` のセクション構成に従い、コメントを実際の内容で埋める:
 
    - **Purpose**: `Closes #N` で Issue と紐付け。Issue がない場合は変更の目的を1行で記述
    - **Summary**: コミット履歴と差分から1-3行で要約
@@ -54,16 +57,16 @@ description: >
    - **Manual Verification Checklist**: CI では検証できない項目。なければ `N/A — all covered by automated tests`
    - **Related Docs**: 更新した docs/ 内のファイル。なければ `N/A`
 
-4. PR タイトルを生成する:
+5. PR タイトルを生成する:
    - Conventional Commits 形式に準拠する（例: `feat(core): add team property parsing`）
    - ブランチのコミット群の主要な変更を反映する
    - 70文字以内に収める
-5. 生成した PR タイトルと本文をユーザーに提示し、確認を得る
-6. 承認後、`gh pr create` で PR を作成する:
+6. 生成した PR タイトルと本文をユーザーに提示し、確認を得る
+7. 承認後、`gh pr create` で PR を作成する:
    ```
    gh pr create --title "<title>" --body "<body>"
    ```
-7. PR の URL をユーザーに通知する
+8. PR の URL をユーザーに通知する
 
 ### 2. CI 確認
 
