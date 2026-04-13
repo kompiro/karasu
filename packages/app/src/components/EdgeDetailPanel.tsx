@@ -33,8 +33,8 @@ export function EdgeDetailPanel({ domainEdges, anchorX, anchorY, onClose }: Edge
       </div>
       <div className="node-detail-section">
         <ul className="edge-detail-list">
-          {domainEdges.map((e, i) => (
-            <li key={i} className="edge-detail-item">
+          {domainEdges.map((e) => (
+            <li key={`${e.fromDomainId}->${e.toDomainId}`} className="edge-detail-item">
               <span className="edge-detail-route">
                 {e.fromDomainLabel} → {e.toDomainLabel}
               </span>
