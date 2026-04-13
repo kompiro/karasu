@@ -124,6 +124,37 @@ describe("useSystemView", () => {
     vi.useRealTimers();
   });
 
+  it("shows empty svg when navigating to a different viewPath while errors exist", async () => {
+    vi.useFakeTimers();
+    const fs = makeFs(SOURCE_A);
+    // Compile at root viewPath first to establish a lastValidSvg
+    const { result, rerender } = renderHook(
+      ({ vp }: { vp: string[] }) => useSystemView(ENTRY, fs, vp),
+      { initialProps: { vp: [] as string[] } },
+    );
+    await act(() => vi.advanceTimersByTimeAsync(300));
+    expect(result.current.svg).toContain("FrontendA");
+
+    // Introduce an error while still at viewPath=[]
+    await act(async () => {
+      await fs.writeFile(ENTRY, INVALID_SOURCE);
+      result.current.recompile();
+    });
+    await act(() => vi.advanceTimersByTimeAsync(300));
+    // Still at viewPath=[] — last valid SVG for this path is shown
+    expect(result.current.svg).not.toBe("");
+    expect(result.current.diagnostics.some((d) => d.severity === "error")).toBe(true);
+
+    // Navigate to a different viewPath (simulate drilling down) while errors remain
+    rerender({ vp: ["SomeService"] });
+    await act(() => vi.advanceTimersByTimeAsync(300));
+
+    // No valid SVG has ever been compiled for viewPath=["SomeService"], so svg should be ""
+    expect(result.current.svg).toBe("");
+    expect(result.current.diagnostics.some((d) => d.severity === "error")).toBe(true);
+    vi.useRealTimers();
+  });
+
   it("restores diagram after transitioning from semantic error (duplicate domain) back to valid", async () => {
     vi.useFakeTimers();
     const fs = makeFs(SOURCE_A);
