@@ -60,6 +60,7 @@ export function useOrgView(
 
   const lastValidSvg = useRef("");
   const lastValidSvgKey = useRef("");
+  const hadErrors = useRef(false);
   const timerRef = useRef<ReturnType<typeof setTimeout>>(undefined);
   const recompileCounter = useRef(0);
 
@@ -82,6 +83,7 @@ export function useOrgView(
           const hasErrors = result.diagnostics.some((d) => d.severity === "error");
 
           if (hasErrors) {
+            hadErrors.current = true;
             const svgToShow = lastValidSvgKey.current === currentKey ? lastValidSvg.current : "";
             setState((prev) => ({
               orgSvg: svgToShow,
@@ -92,7 +94,8 @@ export function useOrgView(
               styles: prev.styles,
             }));
           } else {
-            if (result.svg === lastValidSvg.current) return;
+            if (result.svg === lastValidSvg.current && !hadErrors.current) return;
+            hadErrors.current = false;
             lastValidSvg.current = result.svg;
             lastValidSvgKey.current = currentKey;
             setState({

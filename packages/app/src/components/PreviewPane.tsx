@@ -275,11 +275,6 @@ export function PreviewPane({
           ref={svgRef}
           dangerouslySetInnerHTML={{ __html: svg }}
         />
-        {hasErrors && svg && (
-          <div className="error-state-overlay" aria-hidden="true">
-            <span className="error-state-badge">⚠ Diagram is outdated — fix errors to update</span>
-          </div>
-        )}
         {detailPanel && panelMetadata && (
           <NodeDetailPanel
             nodeId={detailPanel.nodeId}
@@ -293,6 +288,11 @@ export function PreviewPane({
           />
         )}
       </div>
+      {hasErrors && svg && (
+        <div className="error-state-overlay" aria-hidden="true">
+          <span className="error-state-badge">⚠ Diagram is outdated — fix errors to update</span>
+        </div>
+      )}
       {visibleDiagnostics.length > 0 && (
         <div className="diagnostic-banner">
           {visibleDiagnostics.map((d) => (
