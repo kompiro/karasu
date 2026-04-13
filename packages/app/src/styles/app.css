@@ -899,6 +899,34 @@ body,
   color: var(--warning);
 }
 
+/* ── Error State Overlay ────────────────────────────────────────── */
+.preview-pane--has-errors .preview-container svg {
+  opacity: 0.45;
+}
+
+.error-state-overlay {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding-top: 14px;
+  background: var(--error-dim);
+}
+
+.error-state-badge {
+  padding: 4px 12px;
+  background: var(--error);
+  color: #0f0f0f;
+  border-radius: var(--radius-sm);
+  font-size: 12px;
+  font-weight: 600;
+  font-family: var(--font-mono);
+  letter-spacing: 0.02em;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.45);
+}
+
 /* ================================================================
    SIDEBAR MODE — project selector + file tree + editor + preview
    ================================================================ */

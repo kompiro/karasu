@@ -96,6 +96,35 @@ describe("useSystemView", () => {
     vi.useRealTimers();
   });
 
+  it("clears diagnostics when errors are fixed and SVG reverts to same last-valid content", async () => {
+    vi.useFakeTimers();
+    const fs = makeFs(SOURCE_A);
+    const { result } = renderHook(() => useSystemView(ENTRY, fs, []));
+    await act(() => vi.advanceTimersByTimeAsync(300));
+    expect(result.current.svg).toContain("FrontendA");
+    expect(result.current.diagnostics.some((d) => d.severity === "error")).toBe(false);
+
+    // Introduce an error
+    await act(async () => {
+      await fs.writeFile(ENTRY, INVALID_SOURCE);
+      result.current.recompile();
+    });
+    await act(() => vi.advanceTimersByTimeAsync(300));
+    expect(result.current.diagnostics.some((d) => d.severity === "error")).toBe(true);
+
+    // Fix the error by reverting to the exact same source — SVG will be identical to lastValidSvg
+    await act(async () => {
+      await fs.writeFile(ENTRY, SOURCE_A);
+      result.current.recompile();
+    });
+    await act(() => vi.advanceTimersByTimeAsync(300));
+
+    // Diagnostics must be cleared even though SVG bytes didn't change
+    expect(result.current.diagnostics.some((d) => d.severity === "error")).toBe(false);
+    expect(result.current.svg).toContain("FrontendA");
+    vi.useRealTimers();
+  });
+
   it("skips setState when recompile produces the same SVG", async () => {
     vi.useFakeTimers();
     const fs = makeFs(SOURCE_A);
@@ -121,6 +150,37 @@ describe("useSystemView", () => {
     expect(result.current.svg).toBe(svgAfterFirstCompile);
     // Only 1 re-render from recompile()'s setState, not 2 (compile result setState is skipped)
     expect(renderCount - renderCountBefore).toBe(1);
+    vi.useRealTimers();
+  });
+
+  it("shows empty svg when navigating to a different viewPath while errors exist", async () => {
+    vi.useFakeTimers();
+    const fs = makeFs(SOURCE_A);
+    // Compile at root viewPath first to establish a lastValidSvg
+    const { result, rerender } = renderHook(
+      ({ vp }: { vp: string[] }) => useSystemView(ENTRY, fs, vp),
+      { initialProps: { vp: [] as string[] } },
+    );
+    await act(() => vi.advanceTimersByTimeAsync(300));
+    expect(result.current.svg).toContain("FrontendA");
+
+    // Introduce an error while still at viewPath=[]
+    await act(async () => {
+      await fs.writeFile(ENTRY, INVALID_SOURCE);
+      result.current.recompile();
+    });
+    await act(() => vi.advanceTimersByTimeAsync(300));
+    // Still at viewPath=[] — last valid SVG for this path is shown
+    expect(result.current.svg).not.toBe("");
+    expect(result.current.diagnostics.some((d) => d.severity === "error")).toBe(true);
+
+    // Navigate to a different viewPath (simulate drilling down) while errors remain
+    rerender({ vp: ["SomeService"] });
+    await act(() => vi.advanceTimersByTimeAsync(300));
+
+    // No valid SVG has ever been compiled for viewPath=["SomeService"], so svg should be ""
+    expect(result.current.svg).toBe("");
+    expect(result.current.diagnostics.some((d) => d.severity === "error")).toBe(true);
     vi.useRealTimers();
   });
 
