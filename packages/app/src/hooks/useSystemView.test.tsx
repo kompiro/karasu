@@ -96,6 +96,35 @@ describe("useSystemView", () => {
     vi.useRealTimers();
   });
 
+  it("clears diagnostics when errors are fixed and SVG reverts to same last-valid content", async () => {
+    vi.useFakeTimers();
+    const fs = makeFs(SOURCE_A);
+    const { result } = renderHook(() => useSystemView(ENTRY, fs, []));
+    await act(() => vi.advanceTimersByTimeAsync(300));
+    expect(result.current.svg).toContain("FrontendA");
+    expect(result.current.diagnostics.some((d) => d.severity === "error")).toBe(false);
+
+    // Introduce an error
+    await act(async () => {
+      await fs.writeFile(ENTRY, INVALID_SOURCE);
+      result.current.recompile();
+    });
+    await act(() => vi.advanceTimersByTimeAsync(300));
+    expect(result.current.diagnostics.some((d) => d.severity === "error")).toBe(true);
+
+    // Fix the error by reverting to the exact same source — SVG will be identical to lastValidSvg
+    await act(async () => {
+      await fs.writeFile(ENTRY, SOURCE_A);
+      result.current.recompile();
+    });
+    await act(() => vi.advanceTimersByTimeAsync(300));
+
+    // Diagnostics must be cleared even though SVG bytes didn't change
+    expect(result.current.diagnostics.some((d) => d.severity === "error")).toBe(false);
+    expect(result.current.svg).toContain("FrontendA");
+    vi.useRealTimers();
+  });
+
   it("skips setState when recompile produces the same SVG", async () => {
     vi.useFakeTimers();
     const fs = makeFs(SOURCE_A);
