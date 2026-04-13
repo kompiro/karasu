@@ -1,4 +1,4 @@
-import { expect, test, type Page } from "@playwright/test";
+import { type Page, expect, test } from "@playwright/test";
 
 /**
  * AT-0031: Multiple deploy blocks.
@@ -36,10 +36,9 @@ deploy staging {
 `;
 
 async function replaceEditorContent(page: Page, content: string) {
-  // Monaco renders multiple textareas. `textarea.inputarea` is the real
-  // input target; `textarea.ime-text-area` is read-only / aria-hidden.
-  const editorTextarea = page.locator(".monaco-editor textarea.inputarea").first();
-  await editorTextarea.click();
+  // Click the visible code area to focus the editor — Monaco's `inputarea`
+  // textarea sits behind the view layer and is not directly clickable.
+  await page.locator(".monaco-editor .view-lines").first().click();
   await page.keyboard.press("Control+A");
   await page.keyboard.press("Delete");
   await page.keyboard.insertText(content);
