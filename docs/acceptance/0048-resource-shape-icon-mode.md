@@ -66,6 +66,8 @@ resource OrderDB.OrderTable [custom]
 
 ### TC-3: Infra nodes in Icon Mode
 
+> ✅ Automated — `packages/e2e/tests/at-0048-resource-shape-icon-mode.spec.ts` › `Icon Mode toggle changes active state and embeds icon-card markup for infra nodes (TC-3)`
+
 1. Switch display mode to "Icon Mode".
 2. In the system view, verify:
    - `OrderDB` renders as a `database` icon card.
@@ -82,6 +84,8 @@ resource OrderDB.OrderTable [custom]
 6. Verify that `MediaStorage.ImageBucket` renders as a `cloud-card` (document) icon card.
 
 ### TC-5: Resource label resolution (regression)
+
+> ✅ Automated — `packages/e2e/tests/at-0048-resource-shape-icon-mode.spec.ts` › `resource labels resolve from infra declarations in both display modes (TC-5)`
 
 1. Navigate to `OrderService → Order → PlaceOrder` in any display mode.
 2. Verify that `OrderDB.OrderTable` displays the label "注文テーブル" (not "OrderTable" or the raw dot-notation ID).

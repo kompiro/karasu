@@ -68,3 +68,16 @@ type: product  # または tool
 - ファイル名: `docs/acceptance/NNNN-kebab-case-title.md`
 - 連番は既存ファイルの最大番号 + 1
 - タイトルは機能・変更を端的に表す英語のkebab-case
+
+## 自動化アノテーション（Playwright/Vitest）
+
+新規またはケースを自動化した際は以下のルールを守る：
+
+1. Playwright/Vitest テスト名にケースラベルを含める（例: `(Case 1)`, `(TC-2)`, `(AT-0031-02)`）。これにより AT markdown とテストの対応付けが機械的に追跡できる
+2. ケースが自動化された PR では、対応する AT markdown のケース見出し直下に以下のアノテーションを追加する：
+
+   ```
+   > ✅ Automated — `packages/e2e/tests/<file>.spec.ts` › `<test name>`
+   ```
+
+   一部のみ自動化（視覚確認は手動など）の場合は `> 🟡 Partially automated — ...（〜は手動）` を使う

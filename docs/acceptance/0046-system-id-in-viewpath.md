@@ -15,6 +15,8 @@ drill-down navigation when multiple systems exist.
 
 ### AC1: Single-system drill-down preserves behavior
 
+> ✅ Automated — `packages/e2e/tests/at-0046-system-id-in-viewpath.spec.ts` › `single-system breadcrumb includes the system label and restores root on click (AC1)`
+
 **Setup**: Open `examples/getting-started.krs` (single system).
 
 **Steps**:
@@ -31,6 +33,8 @@ drill-down navigation when multiple systems exist.
 - Ghost users appear correctly in service view.
 
 ### AC2: Multi-system drill-down selects the correct system
+
+> ✅ Automated — `packages/e2e/tests/at-0046-system-id-in-viewpath.spec.ts` › `multi-system drill-down keeps the correct system in the breadcrumb (AC2)`
 
 **Setup**: A `.krs` file with two systems:
 

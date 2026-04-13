@@ -53,12 +53,16 @@ organization Acme {
 
 ### Button Availability
 
+> ✅ Automated — `packages/e2e/tests/at-0043-all-views-preview.spec.ts` › `button is visible and enabled with a project that has views`
+
 - [ ] "⊟ Open All Views" button is visible in the preview toolbar
 - [ ] Button is disabled when the editor content has no views defined
       (e.g. a syntactically empty document)
 - [ ] Button is enabled when at least one view is defined
 
 ### Opening the Bundled SVG
+
+> 🟡 Partially automated — `packages/e2e/tests/at-0043-all-views-preview.spec.ts` › `clicking the button opens a blob: popup carrying the bundled SVG`（タブ構成と main URL の不変は手動）
 
 - [ ] Clicking the button triggers a new browser tab/window (popup)
 - [ ] The popup loads a `blob:` URL that serves the bundled SVG with

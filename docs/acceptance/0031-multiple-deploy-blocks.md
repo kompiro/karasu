@@ -12,6 +12,8 @@
 
 ### AT-0031-01: Single deploy block — no selector shown
 
+> ✅ Automated — `packages/e2e/tests/at-0031-multiple-deploy-blocks.spec.ts` › `no selector is shown when only one deploy block exists (AT-0031-01)`
+
 **Precondition**: `.krs` ファイルに `deploy` ブロックが1つのみ存在する
 
 **Steps**:
@@ -24,6 +26,8 @@
 ---
 
 ### AT-0031-02: Multiple deploy blocks — selector appears
+
+> ✅ Automated — `packages/e2e/tests/at-0031-multiple-deploy-blocks.spec.ts` › `selector appears, switches diagram, and persists across tab switch (AT-0031-02/03/05)`
 
 **Precondition**: `.krs` ファイルに `deploy prod "本番環境" { ... }` と `deploy staging "ステージング" { ... }` の2ブロックが存在する
 
@@ -38,6 +42,8 @@
 ---
 
 ### AT-0031-03: Switching deploy block updates the diagram
+
+> ✅ Automated — `packages/e2e/tests/at-0031-multiple-deploy-blocks.spec.ts` › `selector appears, switches diagram, and persists across tab switch (AT-0031-02/03/05)`
 
 **Precondition**: AT-0031-02 と同じ、Deploy タブが表示済み
 
@@ -64,6 +70,8 @@
 ---
 
 ### AT-0031-05: Selection persists when switching tabs
+
+> ✅ Automated — `packages/e2e/tests/at-0031-multiple-deploy-blocks.spec.ts` › `selector appears, switches diagram, and persists across tab switch (AT-0031-02/03/05)`
 
 **Precondition**: Deploy タブで「ステージング」を選択済み
 

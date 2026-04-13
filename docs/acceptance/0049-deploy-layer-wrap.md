@@ -34,6 +34,8 @@ deploy "Production" {
 
 ## Acceptance Criteria
 
+> ✅ Automated — `packages/e2e/tests/at-0049-deploy-layer-wrap.spec.ts` › `8 isolated containers in a single layer wrap into two sub-rows`
+
 With the example above, each container renders at ~200px wide (unit width 160px + 2×20px padding dominates the label).
 After 5 containers, `currentX ≈ 1232px`; placing the 6th would reach `1432px > OUTER_PADDING + MAX_LAYER_WIDTH (1240px)`,
 so the 6th container wraps.

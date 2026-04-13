@@ -17,6 +17,8 @@ Verify that the SVG export feature works correctly for the current-view export.
 
 ### AT-0030-1: Export SVG button is visible in toolbar
 
+> 🟡 Partially automated — `packages/e2e/tests/at-0030-svg-export.spec.ts` › `exports the current view as a valid SVG file`（ボタンの表示・ラベル詳細は手動）
+
 **Steps:**
 1. Open the app.
 2. Navigate to any diagram tab (System / Deploy / Org).

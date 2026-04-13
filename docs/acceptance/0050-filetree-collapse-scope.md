@@ -18,6 +18,8 @@ Verify that in ProjectMode, the sidebar Collapse/Expand button only hides the Fi
 
 ### After collapsing
 
+> ✅ Automated — `packages/e2e/tests/at-0050-filetree-collapse-scope.spec.ts` › `collapse hides the FileTree while keeping the ProjectSelector toolbar accessible`
+
 - [ ] The FileTree disappears
 - [ ] The **ProjectSelector toolbar remains visible** — project name dropdown and action buttons are accessible
 - [ ] The **» Expand** button appears at the left edge
@@ -30,10 +32,14 @@ Verify that in ProjectMode, the sidebar Collapse/Expand button only hides the Fi
 
 ### Expanding again
 
+> ✅ Automated — `packages/e2e/tests/at-0050-filetree-collapse-scope.spec.ts` › `expand restores the FileTree and preserves the ProjectSelector toolbar`
+
 - [ ] Clicking **» Expand** restores the FileTree
 - [ ] The ProjectSelector toolbar remains visible throughout (never disappears on expand/collapse cycles)
 
 ### Preview-focused mode (regression)
+
+> ✅ Automated — `packages/e2e/tests/at-0050-filetree-collapse-scope.spec.ts` › `preview focus mode hides both FileTree and ProjectSelector toolbar (regression)`
 
 - [ ] Entering Preview-focused mode (↗ Focus button) hides both the FileTree AND the ProjectSelector toolbar (existing behavior preserved)
 - [ ] Exiting Preview-focused mode restores both

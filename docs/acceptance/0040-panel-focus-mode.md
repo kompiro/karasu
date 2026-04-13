@@ -18,6 +18,8 @@ to fullscreen focus mode, and that toggling back restores the previous layout.
 
 ### TC-1: Sidebar collapse toggle (ProjectMode)
 
+> ✅ Automated — `packages/e2e/tests/at-0040-panel-focus-mode.spec.ts` › `collapses and expands the sidebar in ProjectMode (TC-1)`
+
 | # | Action | Expected |
 |---|--------|----------|
 | 1 | Open app in ProjectMode (OPFS-supported browser) | Sidebar (ProjectSelector + FileTree) is visible on the left |
@@ -25,6 +27,8 @@ to fullscreen focus mode, and that toggling back restores the previous layout.
 | 3 | Click the "Expand" button | Sidebar reappears with previous width |
 
 ### TC-2: Preview fullscreen (Focus mode)
+
+> ✅ Automated — `packages/e2e/tests/at-0040-panel-focus-mode.spec.ts` › `enters and exits preview focus mode (TC-2)`
 
 | # | Action | Expected |
 |---|--------|----------|
@@ -47,6 +51,8 @@ to fullscreen focus mode, and that toggling back restores the previous layout.
 | 2 | Focus mode button is still available in the toolbar | Clicking it hides the editor and expands preview |
 
 ### TC-5: Sidebar collapse + Focus mode interaction
+
+> ✅ Automated — `packages/e2e/tests/at-0040-panel-focus-mode.spec.ts` › `preserves sidebar-collapsed state across focus toggle (TC-5)`
 
 | # | Action | Expected |
 |---|--------|----------|

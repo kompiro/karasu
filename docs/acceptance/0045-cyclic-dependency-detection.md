@@ -44,6 +44,8 @@ system ECommerce {
 
 ### Checklist
 
+> 🟡 Partially automated — `packages/e2e/tests/at-0045-cyclic-dependency-detection.spec.ts` › `sync cycle emits warning and marks edges with krs-edge--cyclic`（赤色・太さの視覚確認は手動）
+
 - [ ] The warning panel shows a `cyclic-dependency` warning with message  
       `Circular dependency detected: OrderService → PaymentService → OrderService`
 - [ ] The edge `OrderService → PaymentService` is rendered in **red** and visually thicker than normal edges
@@ -52,6 +54,8 @@ system ECommerce {
 - [ ] The diagram still renders completely — cyclic edges are never suppressed
 
 ### Async Cycle (should NOT be flagged)
+
+> ✅ Automated — `packages/e2e/tests/at-0045-cyclic-dependency-detection.spec.ts` › `async-only cycle does not emit a cyclic-dependency warning`
 
 Replace the source with:
 

@@ -36,6 +36,8 @@ alias karasu="node $(pwd)/packages/cli/dist/index.js"
 
 ### 1. Default all-views output to stdout
 
+> ✅ Automated — `packages/cli/src/render.e2e.test.ts` › `default (no --view) writes a bundled all-views SVG to stdout`
+
 ```bash
 karasu render examples/ec-platform/01-system.krs
 ```
@@ -44,6 +46,8 @@ karasu render examples/ec-platform/01-system.krs
 - [ ] SVG contains tab bar elements (`krs-tab`, `krs-pane`)
 
 ### 2. Write to file with --output
+
+> ✅ Automated — `packages/cli/src/render.e2e.test.ts` › `--output writes the SVG to disk and leaves stdout empty`
 
 ```bash
 karasu render examples/ec-platform/01-system.krs --output /tmp/ec-platform.svg
@@ -54,6 +58,8 @@ karasu render examples/ec-platform/01-system.krs --output /tmp/ec-platform.svg
 
 ### 3. --view system
 
+> ✅ Automated — `packages/cli/src/render.e2e.test.ts` › `--view system produces a single-view system SVG without tab markers`
+
 ```bash
 karasu render examples/ec-platform/01-system.krs --view system
 ```
@@ -63,6 +69,8 @@ karasu render examples/ec-platform/01-system.krs --view system
 
 ### 4. --view deploy
 
+> ✅ Automated — `packages/cli/src/render.e2e.test.ts` › `--view deploy produces a single-view deploy SVG`
+
 ```bash
 karasu render examples/ec-platform/06-deploy/deploy.krs --view deploy
 ```
@@ -71,6 +79,8 @@ karasu render examples/ec-platform/06-deploy/deploy.krs --view deploy
 
 ### 5. --view org
 
+> ✅ Automated — `packages/cli/src/render.e2e.test.ts` › `--view org produces a single-view org SVG`
+
 ```bash
 karasu render examples/org/system.krs --view org
 ```
@@ -78,6 +88,8 @@ karasu render examples/org/system.krs --view org
 - [ ] Output is a valid SVG showing org structure
 
 ### 6. Import resolution (multi-file project)
+
+> ✅ Automated — `packages/cli/src/render.e2e.test.ts` › `multi-file project resolves imports without error`
 
 ```bash
 karasu render examples/ec-platform/05-multifile/system.krs
@@ -96,6 +108,8 @@ karasu render examples/ec-platform/06-deploy/deploy.krs
 - [ ] Deploy tab shows container and unit nodes
 
 ### 8. File not found → exit code 1
+
+> ✅ Automated — `packages/cli/src/render.e2e.test.ts` › `nonexistent file writes a File not found error and exits with code 1`
 
 ```bash
 karasu render examples/nonexistent.krs

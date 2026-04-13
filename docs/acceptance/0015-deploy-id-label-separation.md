@@ -14,6 +14,8 @@ consistent with logical nodes. The renderer shows the label when set, falling ba
 
 ### AT-0015-1: Deploy node label renders as display text
 
+> ✅ Automated — `packages/e2e/tests/at-0015-deploy-id-label-separation.spec.ts` › `renders label text when both id and label are set (AT-0015-1)`
+
 **Input `.krs`:**
 ```
 deploy Production {
@@ -38,6 +40,8 @@ deploy Production {
 
 ### AT-0015-2: Fallback to id when label is absent
 
+> ✅ Automated — `packages/e2e/tests/at-0015-deploy-id-label-separation.spec.ts` › `falls back to id when label is absent (AT-0015-2)`
+
 **Input `.krs`:**
 ```
 deploy Production {
@@ -59,6 +63,8 @@ deploy Production {
 ---
 
 ### AT-0015-3: Legacy string literal syntax continues to work
+
+> ✅ Automated — `packages/e2e/tests/at-0015-deploy-id-label-separation.spec.ts` › `legacy string literal deploy syntax still works (AT-0015-3)`
 
 **Input `.krs`:**
 ```

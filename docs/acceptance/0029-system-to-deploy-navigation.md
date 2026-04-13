@@ -56,6 +56,8 @@ organization Corp {
 
 ## AT-0029-01: Deploy ボタンがサービスノードに表示される
 
+> ✅ Automated — `packages/e2e/tests/at-0029-system-to-deploy-navigation.spec.ts` › `deploy button exists on services with deploy containers and not others (AT-0029-01, AT-0029-08)`
+
 **手順**
 1. 「System」タブを表示する
 
@@ -67,6 +69,8 @@ organization Corp {
 ---
 
 ## AT-0029-02: D ボタンクリックで Deploy 図にジャンプしてハイライト
+
+> ✅ Automated — `packages/e2e/tests/at-0029-system-to-deploy-navigation.spec.ts` › `clicking the deploy button switches to the Deploy tab (AT-0029-02)`
 
 **手順**
 1. 「System」タブで `ECサイト` ノードの「D」ボタンをクリックする
@@ -89,6 +93,8 @@ organization Corp {
 ---
 
 ## AT-0029-04: チームラベルクリックで Org 図にジャンプしてハイライト
+
+> ✅ Automated — `packages/e2e/tests/at-0029-system-to-deploy-navigation.spec.ts` › `clicking the team button switches to the Org tab (AT-0029-04)`
 
 **手順**
 1. 「System」タブで `ECサイト` ノードの「👥EC開発チーム」をクリックする
@@ -135,6 +141,8 @@ organization Corp {
 
 ## AT-0029-08: deploy コンテナのないサービスには Deploy ボタン/リンクが表示されない
 
+> ✅ Automated — `packages/e2e/tests/at-0029-system-to-deploy-navigation.spec.ts` › `deploy button exists on services with deploy containers and not others (AT-0029-01, AT-0029-08)`
+
 **手順**
 1. `旧システム` ノードの info ボタンをクリックする
 
@@ -166,6 +174,8 @@ organization Corp {
 ---
 
 ## AT-0029-11: 所有サービスリンクをクリックすると System 図にジャンプしてハイライト
+
+> ✅ Automated — `packages/e2e/tests/at-0029-system-to-deploy-navigation.spec.ts` › `clicking an owned-service link on the Org tab jumps back to System (AT-0029-11)`
 
 **手順**
 1. 「Org」タブで `EC開発チーム` カードの「→ ECommerce」をクリックする
