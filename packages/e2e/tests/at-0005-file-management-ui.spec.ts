@@ -20,7 +20,7 @@ test.describe("AT-0005 File management UI", () => {
   test("header +File button creates a new .krs file (AC-1)", async ({ page }) => {
     await page.goto("/");
 
-    await page.getByRole("button", { name: "New File" }).click();
+    await page.getByRole("button", { name: "+File" }).click();
 
     const input = page.locator(".file-tree-inline-input");
     await expect(input).toBeVisible();
@@ -38,7 +38,7 @@ test.describe("AT-0005 File management UI", () => {
   test("header +Dir button creates a new directory (AC-1)", async ({ page }) => {
     await page.goto("/");
 
-    await page.getByRole("button", { name: "New Folder" }).click();
+    await page.getByRole("button", { name: "+Dir" }).click();
 
     const input = page.locator(".file-tree-inline-input");
     await expect(input).toBeVisible();
@@ -54,7 +54,7 @@ test.describe("AT-0005 File management UI", () => {
   test("Esc cancels the inline input without creating an entry (AC-1)", async ({ page }) => {
     await page.goto("/");
 
-    await page.getByRole("button", { name: "New File" }).click();
+    await page.getByRole("button", { name: "+File" }).click();
     const input = page.locator(".file-tree-inline-input");
     await expect(input).toBeVisible();
     await input.fill("never-created");
