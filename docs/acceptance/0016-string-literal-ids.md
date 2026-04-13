@@ -16,6 +16,8 @@ accept string literals as IDs, allowing hyphenated or otherwise non-identifier n
 
 ### AT-0016-1: Logical nodes with hyphenated string literal IDs render correctly
 
+> ✅ Automated — `packages/e2e/tests/at-0016-string-literal-ids.spec.ts` › `logical nodes with hyphenated string literal IDs parse and render labels (AT-0016-1)`
+
 **Input `.krs`:**
 ```
 system "e-commerce" {
@@ -40,6 +42,8 @@ system "e-commerce" {
 
 ### AT-0016-2: Organization/team/member with string literal IDs
 
+> ✅ Automated — `packages/e2e/tests/at-0016-string-literal-ids.spec.ts` › `organization/team/member with string literal IDs parse cleanly (AT-0016-2)`
+
 **Input `.krs`:**
 ```
 organization "dev-team" {
@@ -62,6 +66,8 @@ organization "dev-team" {
 ---
 
 ### AT-0016-3: Deploy `realizes` with string literal ID cross-reference
+
+> ✅ Automated — `packages/e2e/tests/at-0016-string-literal-ids.spec.ts` › `deploy realizes with string literal cross-reference parses cleanly (AT-0016-3)`
 
 **Input `.krs`:**
 ```

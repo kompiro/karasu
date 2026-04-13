@@ -52,6 +52,8 @@ deploy "本番環境" {
 
 ## AT-0007-01: Deploy タブが有効になる
 
+> ✅ Automated — `packages/e2e/tests/at-0007-deployment-diagram.spec.ts` › `Deploy tab is enabled and renders deploy diagram (AT-0007-01, AT-0007-02)`
+
 **手順**
 1. 上記の `index.krs` を持つプロジェクトを開く
 
@@ -62,6 +64,8 @@ deploy "本番環境" {
 ---
 
 ## AT-0007-02: Deploy 図のコンテナグループ化
+
+> ✅ Automated — `packages/e2e/tests/at-0007-deployment-diagram.spec.ts` › `Deploy tab is enabled and renders deploy diagram (AT-0007-01, AT-0007-02)`
 
 **手順**
 1. 「Deploy」タブをクリックする
@@ -101,6 +105,8 @@ deploy "本番環境" {
 
 ## AT-0007-05: Deploy タブなし（deploy ブロックなし）
 
+> ✅ Automated — `packages/e2e/tests/at-0007-deployment-diagram.spec.ts` › `Deploy tab is disabled when no deploy block exists (AT-0007-05)`
+
 **手順**
 1. 以下の `deploy` ブロックを含まない `index.krs` を開く:
 
@@ -139,6 +145,8 @@ system ECPlatform {
 ---
 
 ## AT-0007-07: タブボタンのラベル
+
+> ✅ Automated — `packages/e2e/tests/at-0007-deployment-diagram.spec.ts` › `both tabs display icon + text labels (AT-0007-07)`
 
 **期待結果**
 - System タブ・Deploy タブの両方にアイコン＋テキストラベルが表示される

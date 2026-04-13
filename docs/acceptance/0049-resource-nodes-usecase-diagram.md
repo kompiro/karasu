@@ -51,6 +51,8 @@ system ECPlatform {
 
 ### Domain-level node visibility
 
+> ✅ Automated — `packages/e2e/tests/at-0049-resource-nodes-usecase-diagram.spec.ts` › `table, queue, and bucket resources render as sibling nodes with infra labels`
+
 Drill down to `OrderService → Order` (domain view):
 
 - [ ] `PlaceOrder` and `CancelOrder` appear as usecase nodes
@@ -71,6 +73,8 @@ Drill down to `OrderService → Order` (domain view):
 
 ### Shared resource deduplication
 
+> ✅ Automated — `packages/e2e/tests/at-0049-resource-nodes-usecase-diagram.spec.ts` › `shared resource across usecases deduplicates to one node with two incoming edges`
+
 Add a second usecase referencing the same resource:
 
 ```krs
@@ -86,6 +90,8 @@ usecase UpdateOrder {
 - [ ] Two edges appear: `PlaceOrder → OrderDB.OrderTable` and `UpdateOrder → OrderDB.OrderTable`
 
 ### Inline (unassigned) resources are not promoted
+
+> ✅ Automated — `packages/e2e/tests/at-0049-resource-nodes-usecase-diagram.spec.ts` › `inline (unassigned) resources without dot-notation refs are not promoted to siblings`
 
 ```krs
 usecase PlaceOrder {

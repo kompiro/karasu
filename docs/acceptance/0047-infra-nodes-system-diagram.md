@@ -51,6 +51,8 @@ system ECPlatform {
 
 ### System diagram nodes
 
+> 🟡 Partially automated — `packages/e2e/tests/at-0047-infra-nodes-system-diagram.spec.ts` › `database, queue and storage blocks render as System-level nodes` / `drilling into OrderService hides System-level infra nodes`（形状・色の視覚確認は手動）
+
 - [ ] `OrderDB` appears as a distinct node with cylinder shape (green tones)
 - [ ] `EventBus` appears as a distinct node with queue shape (yellow tones)
 - [ ] `MediaStorage` appears as a distinct node with cloud shape (blue tones)

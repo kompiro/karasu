@@ -24,6 +24,8 @@ Open the app with a project that has at least one service node containing child 
 
 ### AT-0033-1: Full View button appears in toolbar on System tab
 
+> ✅ Automated — `packages/e2e/tests/at-0033-drilldown-export.spec.ts` › `toggle is visible on System and disabled on Deploy (AT-0033-1, AT-0033-3)`
+
 **Steps:**
 1. Open the app on the System tab.
 
@@ -41,6 +43,8 @@ Open the app with a project that has at least one service node containing child 
 
 ### AT-0033-3: Full View button is disabled on Deploy and Org tabs
 
+> ✅ Automated — `packages/e2e/tests/at-0033-drilldown-export.spec.ts` › `toggle is visible on System and disabled on Deploy (AT-0033-1, AT-0033-3)`
+
 **Steps:**
 1. Switch to the Deploy tab. Observe the Full View button.
 2. Switch to the Org tab. Observe the Full View button.
@@ -53,6 +57,8 @@ Open the app with a project that has at least one service node containing child 
 ## Phase 2 — Full View Mode
 
 ### AT-0033-4: Clicking Full View replaces PreviewPane with iframe
+
+> ✅ Automated — `packages/e2e/tests/at-0033-drilldown-export.spec.ts` › `toggling activates and deactivates the all-layers iframe (AT-0033-4, AT-0033-8)`
 
 **Steps:**
 1. Ensure the System diagram has at least one service with child nodes.
@@ -97,6 +103,8 @@ Open the app with a project that has at least one service node containing child 
 
 ### AT-0033-8: Clicking Full View again disables it
 
+> ✅ Automated — `packages/e2e/tests/at-0033-drilldown-export.spec.ts` › `toggling activates and deactivates the all-layers iframe (AT-0033-4, AT-0033-8)`
+
 **Steps:**
 1. Enable Full View (active state).
 2. Click "⊞ Full View" again.
@@ -110,6 +118,8 @@ Open the app with a project that has at least one service node containing child 
 ## Phase 3 — Export
 
 ### AT-0033-9: Export SVG in Full View mode downloads the multi-level SVG
+
+> ✅ Automated — `packages/e2e/tests/at-0033-drilldown-export.spec.ts` › `Export SVG produces the all-layers file when the toggle is active (AT-0033-9)`
 
 **Steps:**
 1. Enable Full View.
@@ -133,6 +143,8 @@ Open the app with a project that has at least one service node containing child 
 - No JavaScript errors occur.
 
 ### AT-0033-11: Export SVG outside Full View still downloads single-level SVG
+
+> ✅ Automated — `packages/e2e/tests/at-0033-drilldown-export.spec.ts` › `Export SVG produces a single-level file when the toggle is inactive (AT-0033-11)`
 
 **Steps:**
 1. With Full View OFF, click "↓ Export SVG" on the System tab.

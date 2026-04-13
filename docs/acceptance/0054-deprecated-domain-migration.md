@@ -39,6 +39,8 @@ system OrderSystem {
 
 ### Case 1: No error diagnostic for annotated duplicate
 
+> ✅ Automated — `packages/e2e/tests/at-0054-deprecated-domain-migration.spec.ts` › `annotated duplicate produces no uniqueness error and both edges resolve (Case 1/2)`
+
 **Steps:**
 1. Open the `.krs` source above in the editor.
 
@@ -49,6 +51,8 @@ system OrderSystem {
 ---
 
 ### Case 2: Both domains' edges are resolved and rendered
+
+> ✅ Automated — `packages/e2e/tests/at-0054-deprecated-domain-migration.spec.ts` › `annotated duplicate produces no uniqueness error and both edges resolve (Case 1/2)`
 
 **Steps:**
 1. Open the `.krs` source above.
@@ -76,6 +80,8 @@ system OrderSystem {
 
 ### Case 4: Non-annotated duplicates still produce an error
 
+> ✅ Automated — `packages/e2e/tests/at-0054-deprecated-domain-migration.spec.ts` › `unannotated duplicate still emits uniqueness error (Case 4)`
+
 **Steps:**
 1. Open the following `.krs` source:
 
@@ -96,6 +102,8 @@ system OrderSystem {
 ---
 
 ### Case 5: Order of appearance does not matter
+
+> ✅ Automated — `packages/e2e/tests/at-0054-deprecated-domain-migration.spec.ts` › `swapping migration_target before deprecated keeps the duplicate legal (Case 5)`
 
 **Steps:**
 1. Swap the order so `NewService` (`@migration_target`) comes **before** `LegacyService` (`@deprecated`):

@@ -71,6 +71,8 @@ system DriftSample {
 
 ### Case 1: Implicit service edge in system view
 
+> ✅ Automated — `packages/e2e/tests/at-0053-domain-to-domain-edges.spec.ts` › `cross-service domain edge becomes an amber dashed implicit service edge (Case 1)`
+
 - [ ] The system view shows `OrderService` and `PaymentService` as nodes
 - [ ] An edge from `OrderService` to `PaymentService` is rendered in **amber** (`#F59E0B`) with a **dashed** line
 - [ ] The edge label reads `"decides payment"` (single domain edge — original label preserved)
@@ -78,6 +80,8 @@ system DriftSample {
 ---
 
 ### Case 2: Intra-service domain edge in service drill-down
+
+> ✅ Automated — `packages/e2e/tests/at-0053-domain-to-domain-edges.spec.ts` › `intra-service domain edge renders in the service drill-down view (Case 2)`
 
 - [ ] Click `OrderService` to drill down into the service view
 - [ ] `OrderDomain` and `ShippingDomain` are shown as child nodes
@@ -88,6 +92,8 @@ system DriftSample {
 ---
 
 ### Case 3: Aggregated label for multiple cross-service domain edges
+
+> ✅ Automated — `packages/e2e/tests/at-0053-domain-to-domain-edges.spec.ts` › `multiple cross-service domain edges aggregate into a "N domain edges" label (Case 3)`
 
 Add a second cross-service domain edge to `OrderDomain`:
 
@@ -106,6 +112,8 @@ domain OrderDomain {
 ---
 
 ### Case 4: Duplicate domain ID error within a system
+
+> ✅ Automated — `packages/e2e/tests/at-0053-domain-to-domain-edges.spec.ts` › `duplicate domain ID within a system surfaces a uniqueness error (Case 4)`
 
 Enter the following source:
 
@@ -126,6 +134,8 @@ system DriftSample {
 ---
 
 ### Case 5: Same domain ID in different systems (no error)
+
+> ✅ Automated — `packages/e2e/tests/at-0053-domain-to-domain-edges.spec.ts` › `same domain ID in different systems does not error (Case 5)`
 
 Enter the following source:
 

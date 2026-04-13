@@ -65,6 +65,8 @@ system DriftSample {
 
 ### Case 1: Ghost domain in drill-down of source service
 
+> 🟡 Partially automated — `packages/e2e/tests/at-0054-ghost-domain-edges.spec.ts` › `drilling into the source service renders ghost groups (Case 1)`（opacity と sub-label の視覚確認は手動）
+
 - [ ] Click `OrderService` to drill down into the service view
 - [ ] `OrderDomain` and `ShippingDomain` are shown as normal child nodes
 - [ ] `PaymentDomain` appears as a **ghost node** (semi-transparent, opacity 0.3) below the main container
@@ -75,6 +77,8 @@ system DriftSample {
 ---
 
 ### Case 2: Ghost domain in drill-down of target service
+
+> 🟡 Partially automated — `packages/e2e/tests/at-0054-ghost-domain-edges.spec.ts` › `drilling into the target service also renders ghost groups (Case 2)`（opacity と sub-label の視覚確認は手動）
 
 - [ ] Navigate back to the system view
 - [ ] Click `PaymentService` to drill down into that service view
@@ -94,6 +98,8 @@ system DriftSample {
 ---
 
 ### Case 4: System view is unaffected
+
+> ✅ Automated — `packages/e2e/tests/at-0054-ghost-domain-edges.spec.ts` › `system view has no ghost groups (Case 4)`
 
 - [ ] Navigate to the system view (root)
 - [ ] `OrderService` and `PaymentService` are shown normally

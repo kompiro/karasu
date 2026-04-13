@@ -38,6 +38,8 @@ deploy "本番環境" {
 
 ### 1. deploy unit のパネル表示（runtime・realizes あり）
 
+> ✅ Automated — `packages/e2e/tests/at-0011-deploy-node-detail-panel.spec.ts` › `clicking a deploy unit with runtime + realizes opens the detail panel`
+
 1. アプリを開き、上記 `.krs` を入力する
 2. Deploy タブをクリックしてデプロイビューに切り替える
 3. `order-api` ノードをクリックする
@@ -50,6 +52,8 @@ deploy "本番環境" {
 
 ### 2. deploy unit のパネル表示（runtime・realizes なし）
 
+> ✅ Automated — `packages/e2e/tests/at-0011-deploy-node-detail-panel.spec.ts` › `clicking a deploy unit without runtime/realizes omits those sections`
+
 1. `mailer` ノードをクリックする
 2. NodeDetailPanel が表示されること
 3. パネルに以下が表示されること:
@@ -58,6 +62,8 @@ deploy "本番環境" {
    - runtime・realizes セクションが表示されないこと
 
 ### 3. system ビューへの影響がないこと
+
+> ✅ Automated — `packages/e2e/tests/at-0011-deploy-node-detail-panel.spec.ts` › `system view click still opens the detail panel for a service`
 
 1. System タブをクリックしてシステムビューに切り替える
 2. `ECサイト`（ECommerce）ノードをクリックする

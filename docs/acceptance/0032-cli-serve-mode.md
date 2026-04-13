@@ -14,6 +14,8 @@
 
 ### TC-01: サーバー起動
 
+> ✅ Automated — `packages/cli/src/serve.e2e.test.ts` › `writes the karasu serve banner with the resolved directory and preview URL`
+
 **手順**:
 1. テスト用ディレクトリを作成し `index.krs` を置く
 2. `node packages/cli/dist/index.js serve <dir>` を実行する
@@ -25,6 +27,8 @@
 ---
 
 ### TC-02: index.krs のプレビュー
+
+> 🟡 Partially automated — `packages/cli/src/serve.e2e.test.ts` › `serves the seeded index.krs through /api/file/index (TC-02)`（API レベルで確認、ブラウザ表示は手動）
 
 **手順**:
 1. TC-01 の状態でブラウザを開く
@@ -48,6 +52,8 @@
 
 ### TC-04: リアルタイム更新
 
+> 🟡 Partially automated — `packages/cli/src/serve.e2e.test.ts` › `emits an SSE event when a watched file is rewritten (TC-04)`（SSE イベント発火を確認、ブラウザ自動更新は手動）
+
 **手順**:
 1. ブラウザで `http://localhost:3000` を開く
 2. 外部エディタで `index.krs` を編集・保存する
@@ -59,6 +65,8 @@
 ---
 
 ### TC-05: index.krs が存在しない場合のフォールバック
+
+> ✅ Automated — `packages/cli/src/serve.e2e.test.ts` › `returns the lone .krs file name when index.krs is absent` / `returns null when multiple .krs files exist with no index.krs`
 
 **手順**:
 1. `index.krs` を含まず `system.krs` 1 ファイルのみのディレクトリでサーバーを起動する

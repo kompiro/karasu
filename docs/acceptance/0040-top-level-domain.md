@@ -18,6 +18,8 @@ domains, and that they appear in the system view SVG.
 
 ### TC-1: Top-level domain appears in system view
 
+> ✅ Automated — `packages/e2e/tests/at-0040-top-level-domain.spec.ts` › `top-level domains render and emit unassigned warnings (TC-1, TC-2)`
+
 1. Enter the following in the editor:
    ```krs
    domain Payment { label "決済" }
@@ -35,6 +37,8 @@ domains, and that they appear in the system view SVG.
 **Expected**: All three nodes are visible in the system view.
 
 ### TC-2: Unassigned domain warning displayed
+
+> ✅ Automated — `packages/e2e/tests/at-0040-top-level-domain.spec.ts` › `top-level domains render and emit unassigned warnings (TC-1, TC-2)`
 
 1. Use the same `.krs` input as TC-1
 2. Check the warnings panel
@@ -61,6 +65,8 @@ domains, and that they appear in the system view SVG.
 **Expected**: Drill-down into the Payment domain shows the ProcessPayment usecase.
 
 ### TC-4: No warning for domains inside services
+
+> ✅ Automated — `packages/e2e/tests/at-0040-top-level-domain.spec.ts` › `domains nested inside services do not emit unassigned warnings (TC-4)`
 
 1. Enter the following in the editor:
    ```krs
