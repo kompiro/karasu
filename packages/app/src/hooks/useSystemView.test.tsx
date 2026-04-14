@@ -2,6 +2,7 @@
 import { describe, it, expect, vi, afterEach } from "vitest";
 import { renderHook, act, cleanup } from "@testing-library/react";
 import { InMemoryFileSystemProvider } from "@karasu-tools/core";
+import * as core from "@karasu-tools/core";
 import { useSystemView } from "./useSystemView.js";
 
 afterEach(cleanup);
@@ -213,6 +214,33 @@ describe("useSystemView", () => {
     expect(result.current.diagnostics.some((d) => d.severity === "error")).toBe(false);
     expect(result.current.svg).not.toBe("");
     expect(result.current.svg).toContain("BackendB");
+    vi.useRealTimers();
+  });
+
+  it("clears diagnostics when compile exception is resolved", async () => {
+    vi.useFakeTimers();
+    const fs = makeFs(SOURCE_A);
+    const { result } = renderHook(() => useSystemView(ENTRY, fs, []));
+    await act(() => vi.advanceTimersByTimeAsync(300));
+    expect(result.current.svg).toContain("FrontendA");
+
+    // Simulate a compile-time exception via the catch block
+    const spy = vi.spyOn(core, "compileProject").mockRejectedValueOnce(new Error("render crash"));
+    await act(async () => {
+      result.current.recompile();
+    });
+    await act(() => vi.advanceTimersByTimeAsync(300));
+    expect(result.current.diagnostics.some((d) => d.severity === "error")).toBe(true);
+    spy.mockRestore();
+
+    // Fix: next compile succeeds — diagnostics must clear even though SVG is identical to lastValidSvg
+    await act(async () => {
+      result.current.recompile();
+    });
+    await act(() => vi.advanceTimersByTimeAsync(300));
+
+    expect(result.current.diagnostics.some((d) => d.severity === "error")).toBe(false);
+    expect(result.current.svg).toContain("FrontendA");
     vi.useRealTimers();
   });
 });

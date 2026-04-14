@@ -148,6 +148,7 @@ export function useSystemView(
           });
         }
       } catch {
+        hadErrors.current = true;
         setState((prev) => ({
           ...prev,
           diagnostics: [
