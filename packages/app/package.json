@@ -12,25 +12,25 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@anthropic-ai/sdk": "^0.86.1",
+    "@anthropic-ai/sdk": "^0.88.0",
     "@karasu-tools/core": "workspace:*",
     "@monaco-editor/react": "^4.7.0",
     "dompurify": "^3.3.3",
     "fflate": "^0.8.2",
     "marked": "^17.0.6",
     "monaco-editor": "^0.55.0",
-    "react": "^19.0.0",
-    "react-dom": "^19.0.0"
+    "react": "^19.2.5",
+    "react-dom": "^19.2.5"
   },
   "devDependencies": {
     "@testing-library/react": "^16.3.2",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
     "@vitejs/plugin-react": "^6.0.1",
-    "@vitest/coverage-v8": "^4.1.2",
-    "jsdom": "^29.0.1",
+    "@vitest/coverage-v8": "^4.1.4",
+    "jsdom": "^29.0.2",
     "typescript": "^6.0.2",
     "vite": "^8.0.5",
-    "vitest": "^4.1.2"
+    "vitest": "^4.1.4"
   }
 }

@@ -328,6 +328,77 @@ system PaymentGateway {
     expect(ghostEdges[0].toPoint.x).toBeGreaterThan(ghostEdges[0].fromPoint.x);
   });
 
+  it("applies barycenter ordering within each system's layers to minimize edge crossings", () => {
+    // Layer 0: [A, B, C] (left to right). Layer 1 inserted as [X, Y, Z].
+    // Edges: A→Z, B→Y, C→X → barycenter reorders layer 1 to [Z, Y, X]
+    const krs = `
+system SysA {
+  domain A {}
+  domain B {}
+  domain C {}
+  domain X {}
+  domain Y {}
+  domain Z {}
+  A -> Z
+  B -> Y
+  C -> X
+}
+system SysB {
+  domain D {}
+}
+`;
+    const result = Parser.parse(krs);
+    const slice = extractView(result.value.systems, []);
+    const layoutResult = layout(slice);
+
+    const zA = layoutResult.nodes.get("Z");
+    const yA = layoutResult.nodes.get("Y");
+    const xA = layoutResult.nodes.get("X");
+    expect(zA).toBeDefined();
+    expect(yA).toBeDefined();
+    expect(xA).toBeDefined();
+    // Barycenter sort: Z has predecessor A (leftmost), Y has B (middle), X has C (rightmost)
+    // So order should be Z < Y < X in X coordinate
+    expect(zA!.x).toBeLessThan(yA!.x);
+    expect(yA!.x).toBeLessThan(xA!.x);
+  });
+
+  it("wraps nodes to a new sub-row when a layer exceeds MAX_LAYER_WIDTH", () => {
+    // 6 nodes with ~12-char labels in one layer (no edges → all layer 0).
+    // Total width exceeds MAX_LAYER_WIDTH (1200), so wrapping should occur.
+    const krs = `
+system SysA {
+  domain ServiceAAAAA {}
+  domain ServiceBBBBB {}
+  domain ServiceCCCCC {}
+  domain ServiceDDDDD {}
+  domain ServiceEEEEE {}
+  domain ServiceFFFFF {}
+}
+system SysB {
+  domain D {}
+}
+`;
+    const result = Parser.parse(krs);
+    const slice = extractView(result.value.systems, []);
+    const layoutResult = layout(slice);
+
+    const yCoords = new Set(
+      [
+        "ServiceAAAAA",
+        "ServiceBBBBB",
+        "ServiceCCCCC",
+        "ServiceDDDDD",
+        "ServiceEEEEE",
+        "ServiceFFFFF",
+      ]
+        .map((id) => layoutResult.nodes.get(id)?.y)
+        .filter((y): y is number => y !== undefined),
+    );
+    // At least two distinct Y values means wrapping occurred
+    expect(yCoords.size).toBeGreaterThan(1);
+  });
+
   it("does not produce negative x coordinates when multiple wide caller ghost systems are present", () => {
     // Many caller systems or long labels cause totalCallerWidth > outermost.x - GHOST_SYSTEM_GAP,
     // which would push callerStartX negative without normalization.

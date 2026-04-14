@@ -173,4 +173,46 @@ describe("PreviewPane", () => {
       expect(onJumpToEditor).toHaveBeenCalledWith("leaf-svc");
     });
   });
+
+  describe("error state overlay", () => {
+    it("shows overlay and has-errors class when errors are present and svg is non-empty", () => {
+      const { container } = render(
+        <PreviewPane
+          {...baseProps()}
+          svg="<svg><text>stale diagram</text></svg>"
+          diagnostics={[{ severity: "error", message: "Syntax error" }]}
+        />,
+      );
+
+      expect(container.querySelector(".preview-pane--has-errors")).not.toBeNull();
+      expect(container.querySelector(".error-state-overlay")).not.toBeNull();
+      expect(container.querySelector(".error-state-badge")).not.toBeNull();
+    });
+
+    it("does not show overlay when errors are present but svg is empty", () => {
+      const { container } = render(
+        <PreviewPane
+          {...baseProps()}
+          svg=""
+          diagnostics={[{ severity: "error", message: "Syntax error" }]}
+        />,
+      );
+
+      expect(container.querySelector(".preview-pane--has-errors")).not.toBeNull();
+      expect(container.querySelector(".error-state-overlay")).toBeNull();
+    });
+
+    it("does not show overlay when no errors are present", () => {
+      const { container } = render(
+        <PreviewPane
+          {...baseProps()}
+          svg="<svg><text>valid diagram</text></svg>"
+          diagnostics={[{ severity: "warning", message: "Some warning" }]}
+        />,
+      );
+
+      expect(container.querySelector(".preview-pane--has-errors")).toBeNull();
+      expect(container.querySelector(".error-state-overlay")).toBeNull();
+    });
+  });
 });

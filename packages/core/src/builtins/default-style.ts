@@ -218,7 +218,6 @@ edge[cyclic] {
 
 edge[implicit] {
   color: #F59E0B;
-  border-style: dashed;
 }
 `;
 
