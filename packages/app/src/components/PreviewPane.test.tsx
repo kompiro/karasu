@@ -174,6 +174,89 @@ describe("PreviewPane", () => {
     });
   });
 
+  describe("edge detail panel", () => {
+    it("opens EdgeDetailPanel when a [data-domain-edges] element is clicked", () => {
+      const edges = [
+        {
+          fromDomainId: "OrderDomain",
+          fromDomainLabel: "Order Domain",
+          toDomainId: "PaymentDomain",
+          toDomainLabel: "Payment Domain",
+          label: "decides payment",
+        },
+        {
+          fromDomainId: "InvoiceDomain",
+          fromDomainLabel: "Invoice Domain",
+          toDomainId: "LedgerDomain",
+          toDomainLabel: "Ledger Domain",
+          label: "posts invoice",
+        },
+      ];
+      const svg = `<div data-domain-edges='${JSON.stringify(edges)}'></div>`;
+
+      const { container, getByText } = render(<PreviewPane {...baseProps()} svg={svg} />);
+
+      const previewContainer = container.querySelector(".preview-container")!;
+      click(previewContainer as HTMLElement, () => container.querySelector("[data-domain-edges]")!);
+
+      // Panel header shows the count
+      expect(getByText("2 domain edges")).toBeTruthy();
+      // Panel lists the constituent edges
+      expect(getByText("Order Domain → Payment Domain")).toBeTruthy();
+      expect(getByText('"decides payment"')).toBeTruthy();
+    });
+
+    it("closes EdgeDetailPanel when the × button is clicked", () => {
+      const edges = [
+        {
+          fromDomainId: "A",
+          fromDomainLabel: "Domain A",
+          toDomainId: "B",
+          toDomainLabel: "Domain B",
+          label: "calls",
+        },
+        {
+          fromDomainId: "C",
+          fromDomainLabel: "Domain C",
+          toDomainId: "D",
+          toDomainLabel: "Domain D",
+        },
+      ];
+      const svg = `<div data-domain-edges='${JSON.stringify(edges)}'></div>`;
+
+      const { container, getByText, queryByText } = render(
+        <PreviewPane {...baseProps()} svg={svg} />,
+      );
+
+      const previewContainer = container.querySelector(".preview-container")!;
+      click(previewContainer as HTMLElement, () => container.querySelector("[data-domain-edges]")!);
+      expect(getByText("2 domain edges")).toBeTruthy();
+
+      // Click the close button
+      const closeBtn = container.querySelector(".node-detail-close")!;
+      fireEvent.click(closeBtn);
+      expect(queryByText("2 domain edges")).toBeNull();
+    });
+
+    it("closes EdgeDetailPanel when clicking outside any node", () => {
+      const edges = [
+        { fromDomainId: "A", fromDomainLabel: "A", toDomainId: "B", toDomainLabel: "B" },
+        { fromDomainId: "C", fromDomainLabel: "C", toDomainId: "D", toDomainLabel: "D" },
+      ];
+      const svg = `<div data-domain-edges='${JSON.stringify(edges)}'></div>`;
+
+      const { container, queryByText } = render(<PreviewPane {...baseProps()} svg={svg} />);
+
+      const previewContainer = container.querySelector(".preview-container")!;
+      // Open panel
+      click(previewContainer as HTMLElement, () => container.querySelector("[data-domain-edges]")!);
+
+      // Click on the container itself (no node or domain-edges target)
+      click(previewContainer as HTMLElement, () => previewContainer);
+      expect(queryByText("2 domain edges")).toBeNull();
+    });
+  });
+
   describe("error state overlay", () => {
     it("shows overlay and has-errors class when errors are present and svg is non-empty", () => {
       const { container } = render(

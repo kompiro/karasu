@@ -36,6 +36,7 @@ export function ChatPane({
     applyPatch,
     rejectPatch,
     resetSession,
+    startReview,
     startInterview,
   } = useChatSession({
     fileContent,
@@ -103,16 +104,23 @@ export function ChatPane({
       <div className="chat-messages" role="log" aria-live="polite">
         {isEmpty && (
           <div className="chat-empty-state">
-            <button
-              className="toolbar-btn toolbar-btn--actionable toolbar-btn--start-interview"
-              onClick={() => void startInterview()}
-            >
-              ▶ Start Interview
-            </button>
+            <div className="chat-empty-state__actions">
+              <button
+                className="toolbar-btn toolbar-btn--actionable toolbar-btn--start-interview"
+                onClick={() => void startInterview()}
+              >
+                ▶ Start Interview
+              </button>
+              <button
+                className="toolbar-btn toolbar-btn--actionable toolbar-btn--start-review"
+                onClick={() => void startReview()}
+              >
+                🔍 Start Review
+              </button>
+            </div>
             <p className="chat-empty-state__hint">
-              現在のスコープについて AI がインタビュー形式で質問します
+              または自由に入力してください（例: "このモデルをレビューして"）
             </p>
-            <p className="chat-empty-state__or">または自由に入力してください</p>
           </div>
         )}
         {messages.map((msg) => {
