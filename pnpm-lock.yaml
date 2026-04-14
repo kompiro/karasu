@@ -24,8 +24,8 @@ importers:
   packages/app:
     dependencies:
       '@anthropic-ai/sdk':
-        specifier: ^0.86.1
-        version: 0.86.1(zod@4.3.6)
+        specifier: ^0.88.0
+        version: 0.88.0(zod@4.3.6)
       '@karasu-tools/core':
         specifier: workspace:*
         version: link:../core
@@ -174,8 +174,8 @@ importers:
 
 packages:
 
-  '@anthropic-ai/sdk@0.86.1':
-    resolution: {integrity: sha512-Q32GUFCVMmTJrVQC4bQOG2mA8rGNuYWJP8ODufxl3g5Awy1VjY5wy0Xm+mC++i5rBkZMvxhzOR9MNTW7IvIAmw==}
+  '@anthropic-ai/sdk@0.88.0':
+    resolution: {integrity: sha512-QQOtB5U9ZBJQj6y1ICmDZl14LWa4JCiJRoihI+0yuZ4OjbONrakP0yLwPv4DJFb3VYCtQM31bTOpCBMs2zghPw==}
     hasBin: true
     peerDependencies:
       zod: ^3.25.0 || ^4.0.0
@@ -1873,7 +1873,7 @@ packages:
 
 snapshots:
 
-  '@anthropic-ai/sdk@0.86.1(zod@4.3.6)':
+  '@anthropic-ai/sdk@0.88.0(zod@4.3.6)':
     dependencies:
       json-schema-to-ts: 3.1.1
     optionalDependencies:
