@@ -23,6 +23,9 @@ The following are covered by automated tests (`pnpm test`):
 - Cross-service domain edges produce implicit service edges with `tags: ["implicit"]`
 - Implicit service edges are suppressed when an explicit service edge already exists in the same direction
 - Multiple cross-service domain edges between the same service pair are aggregated: label shows `"N domain edges"`
+- Clicking the `"N domain edges"` label opens an `EdgeDetailPanel` listing each constituent domain edge (from/to labels and edge label)
+- The `EdgeDetailPanel` can be dismissed via the × button
+- `ViewSlice.implicitEdgeDetails` contains `DomainEdgeDetail` objects for each constituent edge of an aggregated implicit edge
 - Intra-service domain edges (both endpoints in the same service) appear in the service view's `childEdges`
 - Cross-service domain edges (target domain in another service) do NOT appear in the service view's `childEdges`
 - Duplicate domain ID within the same system emits an `error` diagnostic
@@ -96,6 +99,8 @@ system DriftSample {
 ### Case 3: Aggregated label for multiple cross-service domain edges
 
 > ✅ Automated — `packages/e2e/tests/at-0053-domain-to-domain-edges.spec.ts` › `multiple cross-service domain edges aggregate into a "N domain edges" label (Case 3)`
+>
+> ✅ Automated — `packages/e2e/tests/at-0053-domain-to-domain-edges.spec.ts` › `clicking aggregated edge label opens detail panel listing constituent domain edges (Case 3)`
 
 Add a second cross-service domain edge to `OrderDomain`:
 
@@ -106,10 +111,10 @@ domain OrderDomain {
 }
 ```
 
-- [ ] The system-view implicit edge label changes to `"2 domain edges"`
-- [ ] Clicking the `"2 domain edges"` label opens a detail panel listing each constituent domain edge
-- [ ] The panel shows two rows: `OrderDomain → PaymentDomain "decides payment"` and `OrderDomain → ExternalDomain "external call"` (or equivalent)
-- [ ] Closing the panel (× button) dismisses it
+- [x] The system-view implicit edge label changes to `"2 domain edges"`
+- [x] Clicking the `"2 domain edges"` label opens a detail panel listing each constituent domain edge
+- [x] The panel shows two rows: `OrderDomain → PaymentDomain "decides payment"` and `OrderDomain → ExternalDomain "external call"` (or equivalent)
+- [x] Closing the panel (× button) dismisses it
 - [ ] Clicking anywhere outside the panel also dismisses it
 
 ---
