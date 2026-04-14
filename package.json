@@ -2,6 +2,7 @@
   "name": "karasu",
   "version": "0.0.0",
   "private": true,
+  "packageManager": "pnpm@10.33.0",
   "overrides": {
     "dompurify": "^3.3.2"
   },
@@ -16,12 +17,6 @@
     "format:check": "oxfmt --check packages/",
     "typecheck": "pnpm -r run typecheck",
     "knip": "knip"
-  },
-  "pnpm": {
-    "onlyBuiltDependencies": [
-      "esbuild",
-      "lefthook"
-    ]
   },
   "devDependencies": {
     "knip": "^6.1.0",
