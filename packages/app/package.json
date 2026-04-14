@@ -19,7 +19,7 @@
     "fflate": "^0.8.2",
     "marked": "^17.0.6",
     "monaco-editor": "^0.55.0",
-    "react": "^19.0.0",
+    "react": "^19.2.5",
     "react-dom": "^19.0.0"
   },
   "devDependencies": {
