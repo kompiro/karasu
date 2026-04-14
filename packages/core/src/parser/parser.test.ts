@@ -1252,6 +1252,61 @@ system EC {
       expect(errors).toHaveLength(0);
     });
 
+    it("allows duplicate domain id when parent services carry migration annotations (inherited)", () => {
+      // Domains have no annotations of their own; the migration annotations
+      // live on the parent services. The duplicate-id check must honour this
+      // inheritance so the user is not forced to re-annotate every domain.
+      const result = Parser.parse(`
+system EC {
+  service Legacy @deprecated {
+    domain Contract {}
+  }
+  service New @migration_target {
+    domain Contract {}
+  }
+}
+      `);
+      const errors = result.diagnostics.filter((d) => d.severity === "error");
+      expect(errors).toHaveLength(0);
+      // @migration_target (priority 2, inherited) wins over @deprecated (priority 0, inherited)
+      expect(result.value.nodePathIndex.get("Contract")).toEqual(["EC", "New", "Contract"]);
+    });
+
+    it("inherited @deprecated + explicit non-annotated is legal, non-annotated wins", () => {
+      const result = Parser.parse(`
+system EC {
+  service Legacy @deprecated {
+    domain Contract {}
+  }
+  service New {
+    domain Contract {}
+  }
+}
+      `);
+      const errors = result.diagnostics.filter((d) => d.severity === "error");
+      expect(errors).toHaveLength(0);
+      expect(result.value.nodePathIndex.get("Contract")).toEqual(["EC", "New", "Contract"]);
+    });
+
+    it("explicit domain annotation overrides parent service annotation in priority", () => {
+      // Service is @migration_target, but the domain explicitly overrides with
+      // @deprecated — the explicit domain annotation wins (replace, not merge).
+      const result = Parser.parse(`
+system EC {
+  service Svc @migration_target {
+    domain Contract @deprecated {}
+  }
+  service Other {
+    domain Contract {}
+  }
+}
+      `);
+      const errors = result.diagnostics.filter((d) => d.severity === "error");
+      expect(errors).toHaveLength(0);
+      // Non-annotated domain in Other (priority 1) wins over @deprecated (priority 0)
+      expect(result.value.nodePathIndex.get("Contract")).toEqual(["EC", "Other", "Contract"]);
+    });
+
     it("still errors when both duplicate domain ids have no migration annotation", () => {
       const result = Parser.parse(`
 system EC {

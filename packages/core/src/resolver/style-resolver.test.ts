@@ -134,6 +134,102 @@ describe("resolveStyles", () => {
     expect(result.nodes.get("Legacy")!.badgeIcon).toBe("⚠");
   });
 
+  it("inherits parent service annotations into child domain styles", () => {
+    const system = makeNode({
+      kind: "system",
+      id: "Test",
+      children: [
+        makeNode({
+          kind: "service",
+          id: "Legacy",
+          annotations: ["deprecated"],
+          children: [makeNode({ kind: "domain", id: "Order" })],
+        }),
+      ],
+    });
+    const sheet: StyleSheet = {
+      rules: [
+        makeRule(
+          { tags: [], annotations: ["deprecated"] },
+          { opacity: "0.6", "badge-icon": '"⚠"' },
+          10,
+        ),
+      ],
+    };
+    const result = resolveStyles([system], [sheet]);
+    expect(result.nodes.get("Order")!.opacity).toBe(0.6);
+    expect(result.nodes.get("Order")!.badgeIcon).toBe("⚠");
+    // Qualified key under inherited annotations is also stored, so the renderer
+    // can disambiguate same-id domains in different annotated services.
+    expect(result.nodes.get(nodeStyleKey("Order", ["deprecated"]))!.opacity).toBe(0.6);
+  });
+
+  it("explicit child annotations override inherited ones", () => {
+    const system = makeNode({
+      kind: "system",
+      id: "Test",
+      children: [
+        makeNode({
+          kind: "service",
+          id: "Legacy",
+          annotations: ["deprecated"],
+          children: [
+            makeNode({
+              kind: "domain",
+              id: "Order",
+              annotations: ["migration_target"],
+            }),
+          ],
+        }),
+      ],
+    });
+    const sheet: StyleSheet = {
+      rules: [
+        makeRule({ tags: [], annotations: ["deprecated"] }, { opacity: "0.5" }, 10, 0),
+        makeRule(
+          { tags: [], annotations: ["migration_target"] },
+          { opacity: "0.8", "badge-icon": '"→"' },
+          10,
+          1,
+        ),
+      ],
+    };
+    const result = resolveStyles([system], [sheet]);
+    expect(result.nodes.get("Order")!.opacity).toBe(0.8);
+    expect(result.nodes.get("Order")!.badgeIcon).toBe("→");
+  });
+
+  it("disambiguates same-id domains in differently annotated services", () => {
+    const system = makeNode({
+      kind: "system",
+      id: "Test",
+      children: [
+        makeNode({
+          kind: "service",
+          id: "Legacy",
+          annotations: ["deprecated"],
+          children: [makeNode({ kind: "domain", id: "Order" })],
+        }),
+        makeNode({
+          kind: "service",
+          id: "NewSvc",
+          annotations: ["migration_target"],
+          children: [makeNode({ kind: "domain", id: "Order" })],
+        }),
+      ],
+    });
+    const sheet: StyleSheet = {
+      rules: [
+        makeRule({ tags: [], annotations: ["deprecated"] }, { opacity: "0.5" }, 10, 0),
+        makeRule({ tags: [], annotations: ["migration_target"] }, { opacity: "0.8" }, 10, 1),
+      ],
+    };
+    const result = resolveStyles([system], [sheet]);
+    // Both qualified keys must exist with their distinct styles.
+    expect(result.nodes.get(nodeStyleKey("Order", ["deprecated"]))!.opacity).toBe(0.5);
+    expect(result.nodes.get(nodeStyleKey("Order", ["migration_target"]))!.opacity).toBe(0.8);
+  });
+
   it("higher specificity overrides lower", () => {
     const system = makeNode({
       kind: "system",
