@@ -126,6 +126,53 @@ describe("ChatPane — with API key", () => {
   });
 });
 
+describe("ChatPane — Markdown rendering in assistant messages", () => {
+  it("renders bold text in assistant messages", () => {
+    mockUseChatSession.mockReturnValue(
+      makeDefaultSession({
+        messages: [{ id: "1", role: "assistant" as const, content: "**bold text**" }],
+      }),
+    );
+    const { container } = render(<ChatPane {...defaultProps} />);
+    expect(container.querySelector("strong")).toBeTruthy();
+    expect(container.querySelector("strong")?.textContent).toBe("bold text");
+  });
+
+  it("renders code blocks in assistant messages", () => {
+    mockUseChatSession.mockReturnValue(
+      makeDefaultSession({
+        messages: [{ id: "1", role: "assistant" as const, content: "```\nconst x = 1;\n```" }],
+      }),
+    );
+    const { container } = render(<ChatPane {...defaultProps} />);
+    expect(container.querySelector("pre")).toBeTruthy();
+    expect(container.querySelector("code")).toBeTruthy();
+  });
+
+  it("sanitizes XSS in assistant messages", () => {
+    mockUseChatSession.mockReturnValue(
+      makeDefaultSession({
+        messages: [
+          { id: "1", role: "assistant" as const, content: '<script>alert("xss")</script>' },
+        ],
+      }),
+    );
+    const { container } = render(<ChatPane {...defaultProps} />);
+    expect(container.querySelector("script")).toBeNull();
+  });
+
+  it("renders user messages as plain text without Markdown processing", () => {
+    mockUseChatSession.mockReturnValue(
+      makeDefaultSession({
+        messages: [{ id: "1", role: "user" as const, content: "**not bold**" }],
+      }),
+    );
+    const { container } = render(<ChatPane {...defaultProps} />);
+    expect(container.querySelector("strong")).toBeNull();
+    expect(container.textContent).toContain("**not bold**");
+  });
+});
+
 describe("ChatPane — without API key", () => {
   it("shows ApiKeySetup when apiKey is null", () => {
     // No useChatSession call needed — apiKey guard renders before the hook result is used

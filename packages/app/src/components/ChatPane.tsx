@@ -1,4 +1,6 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { marked } from "marked";
+import DOMPurify from "dompurify";
 import type { SystemNode } from "@karasu-tools/core";
 import { ApiKeySetup } from "./ApiKeySetup.js";
 import { useChatSession, type PatchProposal } from "../hooks/useChatSession.js";
@@ -136,7 +138,7 @@ export function ChatPane({
             return (
               <div key={msg.id} className="chat-message chat-message--assistant">
                 <span className="chat-message-role">AI</span>
-                {msg.content && <p className="chat-message-content">{msg.content}</p>}
+                {msg.content && <MarkdownContent content={msg.content} />}
                 {msg.patch && (
                   <PatchConfirmation
                     patch={msg.patch}
@@ -203,6 +205,21 @@ export function ChatPane({
         </button>
       </form>
     </div>
+  );
+}
+
+// ── MarkdownContent ──────────────────────────────────────────────────────────
+
+function MarkdownContent({ content }: { content: string }) {
+  const html = useMemo(() => {
+    const raw = marked.parse(content, { async: false }) as string;
+    return DOMPurify.sanitize(raw);
+  }, [content]);
+  return (
+    <div
+      className="chat-message-content chat-message-content--markdown"
+      dangerouslySetInnerHTML={{ __html: html }}
+    />
   );
 }
 
