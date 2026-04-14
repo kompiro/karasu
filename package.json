@@ -2,6 +2,7 @@
   "name": "karasu",
   "version": "0.0.0",
   "private": true,
+  "packageManager": "pnpm@10.33.0",
   "overrides": {
     "dompurify": "^3.3.2"
   },
