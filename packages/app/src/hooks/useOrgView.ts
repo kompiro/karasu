@@ -109,6 +109,7 @@ export function useOrgView(
           }
         })
         .catch(() => {
+          hadErrors.current = true;
           setState((prev) => ({
             ...prev,
             orgDiagnostics: [{ severity: "error", message: "パース中にエラーが発生しました" }],
