@@ -86,7 +86,13 @@ export function resolveStyles(
   // even when no explicit tags are declared in the .krs source.
   const inferredTagMap = buildInferredTagMap(systems);
 
-  function processNodes(nodes: KrsNode[]): void {
+  // Recursively process nodes carrying down the nearest annotated ancestor's
+  // annotations (`parentAnnotations`). When a node has no annotations of its
+  // own, it renders as if it carried the parent's — see
+  // docs/design/inherit-service-annotations.md. Explicit annotations always
+  // win, and a child with its own annotations becomes the new propagation
+  // root for its own subtree.
+  function processNodes(nodes: KrsNode[], parentAnnotations: string[]): void {
     for (const node of nodes) {
       // Inject inferred tag for dot-notation resource nodes with no explicit tags.
       let resolvedNode = node;
@@ -98,6 +104,10 @@ export function resolveStyles(
       ) {
         resolvedNode = { ...node, tags: [inferredTagMap.get(node.id)!] };
       }
+      // Apply annotation inheritance: empty own annotations fall back to the parent's.
+      if (resolvedNode.annotations.length === 0 && parentAnnotations.length > 0) {
+        resolvedNode = { ...resolvedNode, annotations: parentAnnotations };
+      }
       const style = resolveNodeStyle(resolvedNode, allRules);
       // Always store under the simple ID key for backward-compat lookups (e.g., container
       // rendering uses container.id directly).
@@ -106,16 +116,24 @@ export function resolveStyles(
       // ID but carrying different annotations (migration coexistence) each get their own
       // distinct style entry.  The renderer prefers the qualified key and falls back to
       // the simple key, so both single-annotated and collision scenarios are handled.
-      const qualifiedKey = nodeStyleKey(node.id, node.annotations);
+      const qualifiedKey = nodeStyleKey(node.id, resolvedNode.annotations);
       if (qualifiedKey !== node.id) {
         nodeStyles.set(qualifiedKey, style);
       }
-      processNodes(resolvedNode.children);
+      // Inheritance only starts at `service`. A `system` carrying annotations
+      // does not propagate them to its services (YAGNI).
+      const downAnnotations =
+        node.kind === "system"
+          ? []
+          : node.kind === "service"
+            ? node.annotations
+            : resolvedNode.annotations;
+      processNodes(node.children, downAnnotations);
     }
   }
 
   for (const system of systems) {
-    processNodes([system]);
+    processNodes([system], []);
     for (const edge of collectEdges(system)) {
       const key = `${edge.from}->${edge.to}`;
       edgeStyles.set(key, resolveEdgeStyle(edge, allRules));
@@ -123,7 +141,7 @@ export function resolveStyles(
   }
 
   if (extraNodes) {
-    processNodes(extraNodes);
+    processNodes(extraNodes, []);
   }
 
   if (extraEdges) {

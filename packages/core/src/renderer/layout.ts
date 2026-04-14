@@ -6,6 +6,7 @@ import type {
   CommonProperties,
 } from "../types/ast.js";
 import type { ViewSlice, GhostSystem } from "../view/view-extract.js";
+import { buildInheritedAnnotations } from "../resolver/inherited-annotations.js";
 import { summarizeDescription } from "./description-summary.js";
 import { CHAR_WIDTH, NODE_PADDING_X, NODE_PADDING_Y } from "./rendering-constants.js";
 import { sortByBarycenter } from "./layer-layout-logics.js";
@@ -83,6 +84,17 @@ export function layout(
   ownerIndex?: Map<string, string>,
   displayMode?: DisplayMode,
 ): LayoutResult {
+  // Build the inherited-annotations map from the focused container's subtree
+  // (or all systems for the root view). Within a single drill-down view, IDs
+  // are unique by construction, so this map can be safely keyed by id and
+  // disambiguates the migration-coexistence scenario where the same `domain
+  // Order` appears under multiple annotated services across the project.
+  const inheritedAnnotations = buildInheritedAnnotations(
+    viewSlice.containerNode ? [viewSlice.containerNode] : viewSlice.systems,
+  );
+  const effectiveAnnotations = (n: KrsNode): string[] =>
+    n.annotations.length > 0 ? n.annotations : (inheritedAnnotations.get(n.id) ?? n.annotations);
+
   // Multi-system root view: lay out all systems side by side
   if (viewSlice.systems.length > 1) {
     return layoutMultipleSystems(viewSlice, ownerIndex, displayMode);
@@ -164,7 +176,7 @@ export function layout(
         kind: krsNode.kind,
         id: nid,
         label: viewSlice.resourceLabelMap.get(nid) ?? krsNode.label ?? krsNode.id,
-        annotations: krsNode.annotations,
+        annotations: effectiveAnnotations(krsNode),
         properties: extractLayoutProperties(krsNode, resolvedTeam),
         descriptionSummary: krsNode.properties.description
           ? summarizeDescription(krsNode.properties.description)
@@ -289,7 +301,7 @@ export function layout(
         kind: userNode.kind,
         id: uid,
         label: userNode.label ?? userNode.id,
-        annotations: userNode.annotations,
+        annotations: effectiveAnnotations(userNode),
         properties: extractLayoutProperties(userNode, undefined),
         descriptionSummary: userNode.properties.description
           ? summarizeDescription(userNode.properties.description)
@@ -338,7 +350,7 @@ export function layout(
         kind: gd.node.kind,
         id: gd.node.id,
         label: gd.node.label ?? gd.node.id,
-        annotations: gd.node.annotations,
+        annotations: effectiveAnnotations(gd.node),
         subLabel: gd.parentServiceLabel,
         properties: extractLayoutProperties(gd.node, undefined),
         descriptionSummary: gd.node.properties.description
@@ -711,6 +723,9 @@ function layoutMultipleSystems(
   ownerIndex?: Map<string, string>,
   displayMode?: DisplayMode,
 ): LayoutResult {
+  // Multi-system view places only services (one nesting level), and a system's
+  // annotations do not propagate to its services, so no inheritance is needed.
+  const effectiveAnnotations = (n: KrsNode): string[] => n.annotations;
   const allLayoutNodes = new Map<string, LayoutNode>();
   const allContainers: ContainerRect[] = [];
   const allEdges: LayoutEdge[] = [];
@@ -813,7 +828,7 @@ function layoutMultipleSystems(
           kind: krsNode.kind,
           id: nid,
           label: viewSlice.resourceLabelMap.get(nid) ?? krsNode.label ?? krsNode.id,
-          annotations: krsNode.annotations,
+          annotations: effectiveAnnotations(krsNode),
           properties: extractLayoutProperties(krsNode, resolvedTeam),
           descriptionSummary: krsNode.properties.description
             ? summarizeDescription(krsNode.properties.description)
