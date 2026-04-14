@@ -204,6 +204,30 @@ test.describe("AT-0053 Domain-to-domain dependency edges", () => {
     ).toBeGreaterThanOrEqual(1);
   });
 
+  test("clicking aggregated edge label opens detail panel listing constituent domain edges (Case 3)", async ({
+    page,
+  }) => {
+    await page.goto("/");
+    await replaceEditorContent(page, AGGREGATED_KRS);
+    await goToSystemTab(page);
+
+    // Click the "2 domain edges" label group
+    const edgeLabelGroup = page.locator("[data-domain-edges]").first();
+    await expect(edgeLabelGroup).toBeVisible();
+    await edgeLabelGroup.click();
+
+    // Panel header shows the count
+    await expect(page.locator(".node-detail-panel")).toBeVisible();
+    await expect(page.locator(".node-detail-label")).toContainText("2 domain edges");
+
+    // Panel lists both constituent domain edges
+    await expect(page.locator(".edge-detail-item")).toHaveCount(2);
+
+    // Close via × button
+    await page.locator(".node-detail-close").click();
+    await expect(page.locator(".node-detail-panel")).not.toBeVisible();
+  });
+
   test("duplicate domain ID within a system surfaces a uniqueness error (Case 4)", async ({
     page,
   }) => {

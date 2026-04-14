@@ -1,6 +1,7 @@
 import { useRef, useState, useCallback, useEffect, type WheelEvent, type MouseEvent } from "react";
-import type { Diagnostic, NodeMetadata } from "@karasu-tools/core";
+import type { Diagnostic, NodeMetadata, DomainEdgeDetail } from "@karasu-tools/core";
 import { NodeDetailPanel } from "./NodeDetailPanel.js";
+import { EdgeDetailPanel } from "./EdgeDetailPanel.js";
 
 interface PreviewPaneProps {
   svg: string;
@@ -24,11 +25,9 @@ interface PreviewPaneProps {
   onJumpToEditor?: (nodeId: string) => void;
 }
 
-interface DetailPanelState {
-  nodeId: string;
-  anchorX: number;
-  anchorY: number;
-}
+type DetailPanelState =
+  | { kind: "node"; nodeId: string; anchorX: number; anchorY: number }
+  | { kind: "edge"; domainEdges: DomainEdgeDetail[]; anchorX: number; anchorY: number };
 
 const CLICK_THRESHOLD = 3;
 
@@ -95,12 +94,12 @@ export function PreviewPane({
     [isDragging],
   );
 
-  const openDetailPanel = useCallback((nodeId: string, target: Element) => {
+  const calcAnchor = useCallback((target: Element) => {
     const rect = target.getBoundingClientRect();
     const containerRect = containerRef.current?.getBoundingClientRect();
-    if (!containerRect) return;
+    if (!containerRect) return null;
 
-    // Position panel to the right of the node
+    // Position panel to the right of the target
     let anchorX = rect.right - containerRect.left + 8;
     const anchorY = rect.top - containerRect.top;
 
@@ -110,8 +109,17 @@ export function PreviewPane({
       if (anchorX < 0) anchorX = 8;
     }
 
-    setDetailPanel({ nodeId, anchorX, anchorY });
+    return { anchorX, anchorY };
   }, []);
+
+  const openDetailPanel = useCallback(
+    (nodeId: string, target: Element) => {
+      const anchor = calcAnchor(target);
+      if (!anchor) return;
+      setDetailPanel({ kind: "node", nodeId, ...anchor });
+    },
+    [calcAnchor],
+  );
 
   const handleMouseUp = useCallback(
     (e: MouseEvent) => {
@@ -127,6 +135,24 @@ export function PreviewPane({
       if (dx > CLICK_THRESHOLD || dy > CLICK_THRESHOLD) return;
 
       const target = e.target as Element;
+
+      // Check for domain-edge detail click (implicit aggregated edges)
+      const edgeGroup = target.closest("[data-domain-edges]");
+      if (edgeGroup) {
+        const raw = edgeGroup.getAttribute("data-domain-edges");
+        if (raw) {
+          try {
+            const domainEdges = JSON.parse(raw) as DomainEdgeDetail[];
+            const anchor = calcAnchor(edgeGroup);
+            if (anchor) {
+              setDetailPanel({ kind: "edge", domainEdges, ...anchor });
+            }
+          } catch {
+            // malformed JSON — ignore
+          }
+        }
+        return;
+      }
 
       // Check for info button click
       const infoButton = target.closest("[data-info-button]");
@@ -222,6 +248,7 @@ export function PreviewPane({
       nodeMetadata,
       viewPath,
       onDrillDown,
+      calcAnchor,
       openDetailPanel,
       onContainerClick,
       onDeployButtonClick,
@@ -253,7 +280,8 @@ export function PreviewPane({
     if (target) target.classList.add("karasu-highlighted");
   }, [highlightedNodeId, svg]);
 
-  const panelMetadata = detailPanel ? nodeMetadata.get(detailPanel.nodeId) : undefined;
+  const nodePanelMetadata =
+    detailPanel?.kind === "node" ? nodeMetadata.get(detailPanel.nodeId) : undefined;
 
   return (
     <div className={`preview-pane${hasErrors ? " preview-pane--has-errors" : ""}`}>
@@ -275,16 +303,24 @@ export function PreviewPane({
           ref={svgRef}
           dangerouslySetInnerHTML={{ __html: svg }}
         />
-        {detailPanel && panelMetadata && (
+        {detailPanel?.kind === "node" && nodePanelMetadata && (
           <NodeDetailPanel
             nodeId={detailPanel.nodeId}
-            metadata={panelMetadata}
+            metadata={nodePanelMetadata}
             anchorX={detailPanel.anchorX}
             anchorY={detailPanel.anchorY}
             onClose={() => setDetailPanel(null)}
             onNavigateToDeploy={onDeployButtonClick}
             onNavigateToOrg={onTeamButtonClick}
             onJumpToEditor={onJumpToEditor ? () => onJumpToEditor(detailPanel.nodeId) : undefined}
+          />
+        )}
+        {detailPanel?.kind === "edge" && (
+          <EdgeDetailPanel
+            domainEdges={detailPanel.domainEdges}
+            anchorX={detailPanel.anchorX}
+            anchorY={detailPanel.anchorY}
+            onClose={() => setDetailPanel(null)}
           />
         )}
       </div>

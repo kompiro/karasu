@@ -2,6 +2,18 @@ import type { KrsNode, KrsEdge, ResourceNode } from "../types/ast.js";
 
 const INFRA_KINDS = new Set(["database", "queue", "storage"] as const);
 
+/**
+ * A single constituent domain edge that was aggregated into an implicit service edge.
+ * Used to populate the detail panel when the user clicks "N domain edges".
+ */
+export interface DomainEdgeDetail {
+  fromDomainId: string;
+  fromDomainLabel: string;
+  toDomainId: string;
+  toDomainLabel: string;
+  label?: string;
+}
+
 /** Walk service→domain→usecase→resource chain and return all resource nodes with ref. */
 function collectResourceRefs(node: KrsNode): ResourceNode[] {
   const results: ResourceNode[] = [];
@@ -81,12 +93,32 @@ function buildDomainServiceMap(services: KrsNode[]): Map<string, string> {
  *
  * Multiple domain edges sharing the same (from, to, kind) are aggregated into a single edge
  * with label "N domain edges" (or the single label if there is only one).
+ *
+ * Returns both the synthesized edges and a detail map keyed by "fromServiceId->toServiceId"
+ * containing the constituent domain edges for each aggregated pair.
  */
-function deriveImplicitServiceEdges(services: KrsNode[], explicitKeys: Set<string>): KrsEdge[] {
+function deriveImplicitServiceEdges(
+  services: KrsNode[],
+  explicitKeys: Set<string>,
+): { edges: KrsEdge[]; details: Map<string, DomainEdgeDetail[]> } {
   const domainServiceMap = buildDomainServiceMap(services);
 
+  // Build a map from domain ID → domain label for display in the detail panel
+  const domainLabelMap = new Map<string, string>();
+  for (const service of services) {
+    if (service.kind !== "service") continue;
+    for (const domain of service.children) {
+      if (domain.kind === "domain") {
+        domainLabelMap.set(domain.id, domain.label ?? domain.id);
+      }
+    }
+  }
+
   // Collect all cross-service domain edges grouped by (service pair, kind)
-  const grouped = new Map<string, { edge: KrsEdge; count: number; label: string | undefined }>();
+  const grouped = new Map<
+    string,
+    { edge: KrsEdge; count: number; label: string | undefined; details: DomainEdgeDetail[] }
+  >();
 
   for (const service of services) {
     if (service.kind !== "service") continue;
@@ -98,25 +130,44 @@ function deriveImplicitServiceEdges(services: KrsNode[], explicitKeys: Set<strin
         const pairKey = `${service.id}->${targetServiceId}`;
         if (explicitKeys.has(pairKey)) continue;
         const groupKey = `${pairKey}#${edge.kind}`;
+        const detail: DomainEdgeDetail = {
+          fromDomainId: domain.id,
+          fromDomainLabel: domainLabelMap.get(domain.id) ?? domain.id,
+          toDomainId: edge.to,
+          toDomainLabel: domainLabelMap.get(edge.to) ?? edge.to,
+          label: edge.label,
+        };
         const existing = grouped.get(groupKey);
         if (existing) {
           existing.count += 1;
           existing.label = undefined; // multiple: will use count label
+          existing.details.push(detail);
         } else {
           grouped.set(groupKey, {
             edge: { ...edge, from: service.id, to: targetServiceId, tags: ["implicit"] },
             count: 1,
             label: edge.label,
+            details: [detail],
           });
         }
       }
     }
   }
 
-  return Array.from(grouped.entries()).map(([, { edge, count, label }]) => ({
+  const edges = Array.from(grouped.entries()).map(([, { edge, count, label }]) => ({
     ...edge,
     label: count === 1 ? label : `${count} domain edges`,
   }));
+
+  // Only include detail map entries for aggregated (multi-edge) pairs
+  const details = new Map<string, DomainEdgeDetail[]>();
+  for (const [key, { count, details: d }] of grouped) {
+    if (count > 1) {
+      details.set(key, d);
+    }
+  }
+
+  return { edges, details };
 }
 
 /**
@@ -228,6 +279,12 @@ export interface ViewSlice {
    * style rules to dot-notation resource nodes that have no explicit tags.
    */
   resourceInferredTagsMap: Map<string, string>;
+  /**
+   * Maps "fromServiceId->toServiceId" to the list of constituent domain edges
+   * that were aggregated into a single "N domain edges" implicit service edge.
+   * Only populated for pairs with 2 or more domain edges.
+   */
+  implicitEdgeDetails: Map<string, DomainEdgeDetail[]>;
 }
 
 function nodeId(node: KrsNode): string {
@@ -473,6 +530,7 @@ export function extractView(
     ghostDomainEdges: [],
     resourceLabelMap,
     resourceInferredTagsMap,
+    implicitEdgeDetails: new Map(),
   };
 
   if (systems.length === 0) return empty;
@@ -486,10 +544,11 @@ export function extractView(
     const derivedEdges = deriveInfraEdges(allChildren);
     // Merge derived edges, skipping any already covered by explicit edges
     const explicitKeys = new Set(explicitEdges.map((e) => `${e.from}->${e.to}`));
-    const implicitServiceEdges = deriveImplicitServiceEdges(
-      allChildren.filter((c) => c.kind === "service"),
-      explicitKeys,
-    );
+    const { edges: implicitServiceEdges, details: implicitEdgeDetails } =
+      deriveImplicitServiceEdges(
+        allChildren.filter((c) => c.kind === "service"),
+        explicitKeys,
+      );
     const childEdges = [
       ...explicitEdges,
       ...derivedEdges.filter((e) => !explicitKeys.has(`${e.from}->${e.to}`)),
@@ -522,6 +581,7 @@ export function extractView(
       ghostDomainEdges: [],
       resourceLabelMap,
       resourceInferredTagsMap,
+      implicitEdgeDetails,
     };
   }
 
@@ -663,5 +723,6 @@ export function extractView(
     ghostDomainEdges,
     resourceLabelMap,
     resourceInferredTagsMap,
+    implicitEdgeDetails: new Map(),
   };
 }

@@ -920,6 +920,37 @@ system ECPlatform {
       expect(implicit[0].label).toBe("2 domain edges");
     });
 
+    it("populates implicitEdgeDetails with DomainEdgeDetail for aggregated edges", () => {
+      const krs = `
+system ECPlatform {
+  service ECommerce {
+    domain Contract { label "The Contract" }
+    domain Order { label "Order Domain" }
+  }
+  service BillingService {
+    domain Billing {
+      label "Billing Domain"
+      Billing -> Contract "from contract"
+      Billing -> Order "from order"
+    }
+  }
+}
+`;
+      const systems = parseSystem(krs);
+      const view = extractView(systems, []);
+      // Two sync edges → grouped under BillingService->ECommerce#sync
+      const key = "BillingService->ECommerce#sync";
+      expect(view.implicitEdgeDetails.has(key)).toBe(true);
+      const details = view.implicitEdgeDetails.get(key)!;
+      expect(details).toHaveLength(2);
+      const detail0 = details[0];
+      expect(detail0.fromDomainId).toBe("Billing");
+      expect(detail0.fromDomainLabel).toBe("Billing Domain");
+      expect(detail0.toDomainId).toBe("Contract");
+      expect(detail0.toDomainLabel).toBe("The Contract");
+      expect(detail0.label).toBe("from contract");
+    });
+
     it("derives separate implicit edges for sync and async cross-service domain edges", () => {
       const krs = `
 system OrderSystem {

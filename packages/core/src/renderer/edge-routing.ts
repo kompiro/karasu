@@ -23,20 +23,43 @@ export function renderEdge(edge: LayoutEdge, style: ResolvedEdgeStyle, markerId:
   if (edge.label) {
     const midX = (fromPoint.x + toPoint.x) / 2;
     const midY = (fromPoint.y + toPoint.y) / 2;
-    parts.push(
-      el(
-        "text",
-        {
-          x: midX,
-          y: midY - 6,
-          "text-anchor": "middle",
-          fill: style.color,
-          "font-size": `${style.fontSize}px`,
-          "font-family": "sans-serif",
-        },
-        escapeXml(edge.label),
-      ),
+    const labelText = el(
+      "text",
+      {
+        x: midX,
+        y: midY - 6,
+        "text-anchor": "middle",
+        fill: style.color,
+        "font-size": `${style.fontSize}px`,
+        "font-family": "sans-serif",
+      },
+      escapeXml(edge.label),
     );
+
+    if (edge.domainEdges && edge.domainEdges.length > 0) {
+      // Wrap in a clickable group so PreviewPane can open a detail panel on click.
+      // A transparent hit rect widens the click target beyond the text bounding box.
+      const hitRect = el("rect", {
+        x: midX - 60,
+        y: midY - 20,
+        width: 120,
+        height: 18,
+        fill: "transparent",
+        "pointer-events": "all",
+      });
+      parts.push(
+        el(
+          "g",
+          {
+            "data-domain-edges": JSON.stringify(edge.domainEdges),
+            style: "cursor:pointer",
+          },
+          hitRect + "\n" + labelText,
+        ),
+      );
+    } else {
+      parts.push(labelText);
+    }
   }
 
   return parts.join("\n");
