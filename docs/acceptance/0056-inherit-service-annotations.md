@@ -87,7 +87,7 @@ service LegacyMonolith @deprecated {
 - The `Order` domain renders with the `@experimental` visual treatment, **not** the `@deprecated` one — explicit child annotations always replace inherited ones (no merging).
 - Sibling domains inside `LegacyMonolith` that have no annotation of their own continue to render as `@deprecated`.
 
-### Case 6: parser duplicate-domain-id check still uses source-level annotations only
+### Case 6: duplicate-domain-id check also honours inherited annotations
 
 **Setup:** Use the following `.krs` source (no explicit annotations on either `Order`):
 
@@ -106,5 +106,6 @@ system Test {
 1. Open the source in the editor.
 
 **Expected:**
-- An error diagnostic appears: `Domain id "Order" must be unique within a system; found in multiple services`.
-- This confirms that ADR-20260411-02's duplicate-domain-id rule continues to look at each `domain` node's own annotations and is **not** influenced by the new inheritance behaviour. To legalize duplicate domain IDs, the explicit annotations on the domains themselves are still required.
+- **No** error diagnostic. The duplicate-id check reads the effective annotation of each domain (inherited from the parent service when the domain itself has none), so this migration-coexistence pair is legal without repeating the annotations on the domains themselves.
+- Navigation (`-> Order`) resolves to `OrderService.Order` because inherited `@migration_target` has higher priority than inherited `@deprecated`.
+- Replacing one of the services' annotations with nothing (e.g. `service OrderService { domain Order {} }`) still legalizes the pair — the remaining `@deprecated` side is a valid migration source even when the non-annotated side has no inheritance. Only when **both** services are un-annotated does the duplicate-id check emit an error.

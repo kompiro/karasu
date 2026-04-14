@@ -1218,13 +1218,27 @@ export class Parser {
     //   0 = @deprecated (migration source, lowest priority)
     // A duplicate is allowed when at least one side carries a migration annotation.
     // The higher-priority domain wins the nodePathIndex entry.
-    const walk = (node: KrsNode, path: string[], seenDomainIds: Map<string, number>): void => {
+    //
+    // A domain with no annotations of its own inherits its parent service's
+    // annotations for the priority computation (consistent with the rendering
+    // inheritance — see docs/design/inherit-service-annotations.md). This
+    // makes `service Legacy @deprecated { domain Order {} }` and
+    // `service NewSvc @migration_target { domain Order {} }` a legal
+    // migration-coexistence pair even without annotations on the domains.
+    const walk = (
+      node: KrsNode,
+      path: string[],
+      seenDomainIds: Map<string, number>,
+      parentServiceAnnotations: string[],
+    ): void => {
       const currentPath = [...path, node.id];
       if (INDEXED_KINDS.has(node.kind)) {
         if (node.kind === "domain") {
-          const priority = node.annotations.includes("migration_target")
+          const effective =
+            node.annotations.length > 0 ? node.annotations : parentServiceAnnotations;
+          const priority = effective.includes("migration_target")
             ? 2
-            : node.annotations.includes("deprecated")
+            : effective.includes("deprecated")
               ? 0
               : 1;
           if (seenDomainIds.has(node.id)) {
@@ -1258,21 +1272,23 @@ export class Parser {
           }
         }
       }
+      const nextServiceAnnotations =
+        node.kind === "service" ? node.annotations : parentServiceAnnotations;
       for (const child of node.children) {
-        walk(child, currentPath, seenDomainIds);
+        walk(child, currentPath, seenDomainIds, nextServiceAnnotations);
       }
     };
     for (const system of systems) {
       this.collectNodeIds(system.children, new Set<string>());
       const seenDomainIds = new Map<string, number>();
       for (const child of system.children) {
-        walk(child, [system.id], seenDomainIds);
+        walk(child, [system.id], seenDomainIds, []);
       }
     }
     // Index top-level domains (not nested in any system)
     // Each top-level domain is its own scope; no cross-domain uniqueness check needed here.
     for (const domain of domains) {
-      walk(domain, [], new Map<string, number>());
+      walk(domain, [], new Map<string, number>(), []);
     }
     return index;
   }
