@@ -52,7 +52,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "cd /workspaces/karasu && if git status --short | grep -qE '^[ MADRCU?][MADRCU?]|^[MADRCU][MADRCU ]'; then echo '{\"decision\": \"block\", \"reason\": \"Uncommitted changes detected. Run /commit to commit changes.\"}'; else echo '{}'; fi"
+            "command": "CWD=$(cat | jq -r '.cwd'); if cd \"$CWD\" 2>/dev/null && git status --short | grep -qE '^[ MADRCU?][MADRCU?]|^[MADRCU][MADRCU ]'; then echo '{\"decision\": \"block\", \"reason\": \"Uncommitted changes detected. Run /commit to commit changes.\"}'; else echo '{}'; fi"
           }
         ]
       }
