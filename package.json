@@ -17,12 +17,6 @@
     "typecheck": "pnpm -r run typecheck",
     "knip": "knip"
   },
-  "pnpm": {
-    "onlyBuiltDependencies": [
-      "esbuild",
-      "lefthook"
-    ]
-  },
   "devDependencies": {
     "knip": "^6.1.0",
     "lefthook": "^2.1.5",
