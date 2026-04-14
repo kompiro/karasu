@@ -197,10 +197,7 @@ describe("PreviewPane", () => {
       const { container, getByText } = render(<PreviewPane {...baseProps()} svg={svg} />);
 
       const previewContainer = container.querySelector(".preview-container")!;
-      click(
-        previewContainer as HTMLElement,
-        () => container.querySelector("[data-domain-edges]")!,
-      );
+      click(previewContainer as HTMLElement, () => container.querySelector("[data-domain-edges]")!);
 
       // Panel header shows the count
       expect(getByText("2 domain edges")).toBeTruthy();
@@ -232,10 +229,7 @@ describe("PreviewPane", () => {
       );
 
       const previewContainer = container.querySelector(".preview-container")!;
-      click(
-        previewContainer as HTMLElement,
-        () => container.querySelector("[data-domain-edges]")!,
-      );
+      click(previewContainer as HTMLElement, () => container.querySelector("[data-domain-edges]")!);
       expect(getByText("2 domain edges")).toBeTruthy();
 
       // Click the close button
@@ -255,10 +249,7 @@ describe("PreviewPane", () => {
 
       const previewContainer = container.querySelector(".preview-container")!;
       // Open panel
-      click(
-        previewContainer as HTMLElement,
-        () => container.querySelector("[data-domain-edges]")!,
-      );
+      click(previewContainer as HTMLElement, () => container.querySelector("[data-domain-edges]")!);
 
       // Click on the container itself (no node or domain-edges target)
       click(previewContainer as HTMLElement, () => previewContainer);
