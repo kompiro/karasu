@@ -1,7 +1,7 @@
 # 親サービスのアノテーションを子ノードの描画に継承する
 
 - **日付**: 2026-04-13
-- **ステータス**: レビュー待ち
+- **ステータス**: ADR 化（[ADR-20260415-01](../adr/20260415-01-inherit-service-annotations.md)）
 - **関連**:
   - Issue #517
   - ADR-20260411-02 (`docs/adr/20260411-02-deprecated-domain-migration-coexistence.md`) — `@deprecated` / `@migration_target` による重複ドメインID共存
