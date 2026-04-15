@@ -30,6 +30,18 @@ system → service → domain → usecase → resource
 deploy → war / oci / job / ...
 ```
 
+### realizes による論理と物理の対応付け
+
+物理と論理の対応は `realizes` で明示する。
+
+```
+oci "order-service" {
+  realizes ECommerce   // 物理（具象）→ 論理（抽象）
+}
+```
+
+UMLのRealization関係に対応。「このデプロイ単位がこのサービスを実現している」という宣言。
+
 ### 組織構造（Who）
 
 **誰が所有するか** を記述する。
@@ -43,18 +55,24 @@ organization → team → member
 組織図を karasu の語彙に含めている理由は、それがアーキテクチャ設計に直結するからである。
 詳しくは後述の三面構造の目標を参照。
 
-### realizes による対応付け
+### owns による組織と論理/物理の対応付け
 
-物理と論理の対応は `realizes` で明示する。
+どのチームがどのサービスやドメインを所有するかは、`team` の中で `owns` により明示する。
 
 ```
-oci "order-service" {
-  realizes ECommerce   // 物理（具象）→ 論理（抽象）
+organization "ec-org" {
+  team "ec-team" {
+    owns ECommerce
+    owns Order
+    owns Catalog
+  }
 }
 ```
 
-UMLのRealization関係に対応。「このデプロイ単位がこのサービスを実現している」という宣言。
-組織と論理/物理の対応は `team` によるオーナーシップの明示で行う。
+`realizes` が物理と論理を結ぶのと対称に、`owns` は組織と論理/物理を結ぶ。
+同じノード id を複数の team が `owns` することはできず、
+オーナーシップが重複すると warning として検出される。
+これにより、三つの面は独立に書けながらも、対応関係は常に図の中に現れる。
 
 ### `.krs` テキストの生成経路
 
