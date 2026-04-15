@@ -4,88 +4,84 @@
   <img src="packages/app/public/karasu-logo-1200w.png" alt="karasu logo" width="640" />
 </p>
 
-**システムの論理・物理・組織を一つの言語で描き、
-チームとアーキテクチャを一緒に設計するためのテキストベース DSL。**
+> **English** (this file) · [日本語](README.ja.md)
 
-## 何が違うのか
+**A text-based DSL for describing the logical, physical, and organizational dimensions of a system in one language — built to co-design teams and architecture together.**
 
-- **論理・物理・組織の三面構造** —
-  サービスとドメインの論理関係、デプロイされる物理アーティファクト、
-  チームが所有する範囲を一つの `.krs` 言語で記述できる。
-  Conway の法則と逆コンウェイ戦略を同じテーブルで議論するための設計
-- **scoped glance + drill-down** —
-  一度に見せる情報量を限定し、必要な詳細があればその場所へ降りる。
-  全体を 1 枚に押し込む "at a glance" な鳥瞰図ではなく、
-  認知負荷を抑えるための意図的な設計選択
-- **人間と AI が共同編集できる DSL** —
-  `.krs` は AI のために設計されたのではなく、人間が読み書きする独立した道具。
-  その独立性が双方向性を生む — AI が生成した `.krs` を人間が手で編集でき、
-  逆に手書きしたモデルを AI に洗練させられる
+## What makes karasu different
 
-C4 Model / Structurizr / Mermaid からインスピレーションを受けつつも、
-drill-down の連続性・組織の第三軸・AI との協働という点で異なる立ち位置を取っています。
-設計思想の詳細は [`docs/concepts.md`](docs/concepts.md) を参照。
+- **Three-dimensional structure (logical / physical / organizational)** —
+  Express the logical relationships between services and domains, the physical artifacts that get deployed, and the teams that own them in a single `.krs` language.
+  Designed so that Conway's Law and the inverse Conway maneuver can be debated at the same table as the architecture itself.
+- **Scoped glance + drill-down** —
+  Limit how much is shown at once; descend into any node when detail is needed.
+  Rather than cramming an entire system into one "at a glance" bird's-eye diagram, karasu takes an intentional design choice to manage cognitive load.
+- **A DSL humans and AI can co-author** —
+  `.krs` was not designed for AI. It stands on its own as a tool humans read and write, and that independence is precisely what makes it bidirectional — AI can generate `.krs` a human can then hand-edit, and a hand-written model can be handed back to AI for refinement.
 
-## 試す
+karasu takes inspiration from C4 Model, Structurizr, and Mermaid but stakes out a different position through its continuous drill-down, its third axis for organizational structure, and its affinity with AI co-authorship.
+See [`docs/concepts.md`](docs/concepts.md) for the full design rationale.
 
-ブラウザですぐに試せます: **<https://karasu.pages.dev/>**
+## Try it
 
-Getting Started を含む `ec-platform` の段階別チュートリアルが初回起動時に自動ロードされ、`.krs` の編集・プレビュー・ドリルダウン・SVG エクスポートがその場で体験できます。AI チャット機能を使う場合は Settings タブから Claude API キー (BYOK) を入力してください — キーはブラウザの `sessionStorage` に保存され、外部サーバーには送信されません。
+Run it in your browser: **<https://karasu.pages.dev/>**
 
-## なぜ karasu か
+A staged `ec-platform` tutorial (including Getting Started) loads automatically on first launch, so you can edit `.krs`, preview, drill down, and export SVG right away. To use the AI chat feature, enter a Claude API key (BYOK) under the Settings tab — the key is stored in the browser's `sessionStorage` and is never sent to any external server.
 
-複数のリポジトリに分散して開発が進むと、システム全体を俯瞰した図を誰も持たなくなります。Confluence や Notion に書かれたアーキテクチャ図は更新されず、新入社員のオンボーディングで誰かが口頭で説明するか、古い情報をもとに混乱するか、どちらかです。
+## Why karasu
 
-karasu はアーキテクチャの記述を **アーキテクチャ専用リポジトリに集約し、チームの境界に沿ってファイルを分割・結合できる** ようにすることで、この問題に取り組みます。
+When development is spread across many repositories, nobody ends up owning the big picture. Architecture diagrams in Confluence or Notion stop getting updated, and new hires either get an oral walkthrough from whoever is available or get confused by stale material.
 
-| 用途 | 使う人 | 求めていること |
-|------|--------|----------------|
-| システム設計・進化の議論 | アーキテクト | 全体構造の設計と選択肢の比較 |
-| オーナーシップの明示 | チームリード | どのチームが何を担当するかの公式な記述 |
-| オンボーディング | 新入社員 | 自チームのドメインと周辺サービスの把握 |
+karasu addresses this by **concentrating the architecture description in a dedicated repository and letting teams split and compose files along their own boundaries**.
 
-## 設計上の前提
+| Use case | Who uses it | What they need |
+|----------|-------------|----------------|
+| Discussing system design and evolution | Architects | Design the whole and compare alternatives |
+| Making ownership explicit | Team leads | A formal record of who owns what |
+| Onboarding | New hires | Understanding their team's domain and neighboring services |
 
-> **karasu はアーキテクチャ専用リポジトリで使うことを前提としています。**
+## Design assumption
+
+> **karasu is designed to be used in a dedicated architecture repository.**
 >
-> 各サービスの実装リポジトリに .krs ファイルを分散させ、URL で結合する設計は採用していません。import は **相対パスのみ** をサポートします。
+> We deliberately do not support a model where `.krs` files are scattered across each service's implementation repository and stitched together over URLs. `import` supports **relative paths only**.
 >
-> 各チームはアーキテクチャリポジトリ内の自チームディレクトリを CODEOWNERS で管理し、そこに .krs ファイルを置いて更新していきます。
+> Each team manages its own subdirectory within the architecture repository via CODEOWNERS and updates its `.krs` files there.
 
-## 基本的な使い方
+## Basic usage
 
 ```
 system ECPlatform {
-  label "ECプラットフォーム"
+  label "EC Platform"
 
-  user Customer [human]              { role "購入者" }
-  service ECommerce                  { label "ECサイト" }
-  service Payment [external]         { label "決済サービス" }
-  service Inventory [external] @deprecated { label "在庫管理（旧）" }
+  user Customer [human]              { role "Buyer" }
+  service ECommerce                  { label "EC Site" }
+  service Payment [external]         { label "Payment Service" }
+  service Inventory [external] @deprecated { label "Inventory (legacy)" }
 
-  Customer  ->  ECommerce "商品を購入する"
-  ECommerce ->  Payment   "決済を処理する"
-  ECommerce --> Inventory "在庫を同期する"
+  Customer  ->  ECommerce "Place an order"
+  ECommerce ->  Payment   "Process payment"
+  ECommerce --> Inventory "Sync inventory"
 }
 ```
 
-## リポジトリ構成パターン
+## Repository layout pattern
 
 ```
 karasu-architecture/
-  ├── index.krs                 ← アーキテクトが所有。全体構造を定義
+  ├── index.krs                 ← Owned by an architect. Defines the whole structure
   ├── teams/
   │   ├── payment/
-  │   │   └── service.krs       ← paymentチームが所有・更新
+  │   │   └── service.krs       ← Owned and updated by the payment team
   │   ├── ec/
-  │   │   └── service.krs       ← ecチームが所有・更新
+  │   │   └── service.krs       ← Owned and updated by the ec team
   │   └── inventory/
   │       └── service.krs
   └── deploy/
       └── production.krs
 ```
 
-各チームのディレクトリには CODEOWNERS を設定することで、レビュー権限を分散させながら全体の整合性を保てます。
+Setting CODEOWNERS on each team's directory distributes review responsibility while keeping the whole coherent.
 
 ```
 # .github/CODEOWNERS
@@ -94,41 +90,41 @@ karasu-architecture/
 /index.krs        @architect
 ```
 
-## ファイルの結合（import）
+## Composing files with `import`
 
-import は相対パスのみをサポートします。
+`import` supports relative paths only.
 
 ```
-// index.krs — 名前付き import（特定ブロックのみ取り込む）
+// index.krs — named import (pull in specific blocks)
 import { Payment } from "./teams/payment/service.krs"
 import { ECommerce } from "./teams/ec/service.krs"
 
-// ワイルドカード import（ファイル内の全ブロックをマージ）
+// wildcard import (merge all blocks in the file)
 import "./teams/inventory/service.krs"
 
 system ECPlatform {
-  ECommerce -> Payment "決済を処理する"
+  ECommerce -> Payment "Process payment"
 }
 ```
 
-## 論理構造と物理構造
+## Logical and physical structure
 
-`realizes` によって「このデプロイ単位がこのサービスを実現している」を明示します。
+`realizes` makes explicit that "this deployment unit realizes this service".
 
 ```
-// teams/ec/service.krs — 論理構造（チームが定義）
+// teams/ec/service.krs — logical structure (owned by the team)
 service ECommerce {
   domain Order {
-    usecase PlaceOrder  { label "注文を受け付ける" }
-    usecase CancelOrder { label "注文をキャンセルする" }
+    usecase PlaceOrder  { label "Accept an order" }
+    usecase CancelOrder { label "Cancel an order" }
   }
 }
 
-// deploy/production.krs — 物理構造
-deploy "本番環境" {
+// deploy/production.krs — physical structure
+deploy "production" {
   oci "api-server" {
     runtime  "Node.js 20"
-    realizes ECommerce     // 論理サービスとの対応を明示
+    realizes ECommerce     // make the link to the logical service explicit
   }
   job "monthly-billing" {
     schedule "0 0 1 * *"
@@ -137,200 +133,200 @@ deploy "本番環境" {
 }
 ```
 
-## 組織とオーナーシップ
+## Organization and ownership
 
 ```
 organization DevOrg {
   team Platform {
-    label "プラットフォームチーム"
+    label "Platform Team"
     owns ECommerce
     member Alice { slack "@alice" }
   }
 }
 ```
 
-## 図の種類
+## Diagram types
 
-| タブ | 内容 |
-|------|------|
-| `System` | 論理図。ダブルクリックで system → service → domain → usecase へドリルダウン |
-| `Deploy` | 物理図。デプロイ単位と realizes による論理との対応 |
-| `Org` | 組織図。チームと所有サービスの関係。Tree View モードで全体俯瞰も可能 |
+| Tab | Content |
+|-----|---------|
+| `System` | Logical diagram. Double-click to drill down system → service → domain → usecase |
+| `Deploy` | Physical diagram. Deployment units and their correspondence to logical services via `realizes` |
+| `Org` | Organization diagram. Team-to-service ownership. A Tree View mode gives the full overview |
 
-## Chat UI と AI アシスタント
+## Chat UI and the AI assistant
 
-`Chat` タブで Claude API を使った対話型モデリングが行えます。API キーはユーザーが用意する **BYOK 方式**（Bring Your Own Key）で、ブラウザ内で完結しサーバーには送信されません。
+The `Chat` tab enables interactive modeling against the Claude API. It uses **BYOK (Bring Your Own Key)** — the key lives entirely in your browser and is never sent to any server.
 
 ```
-1. Settings タブで Claude API キーを入力
-2. Chat タブを開くと、現在の ViewPath に合わせた構造化インタビューが開始
-3. AI が提案する .krs パッチは Apply / Reject を選んでから適用
+1. Enter your Claude API key under the Settings tab
+2. Open the Chat tab — a structured interview scoped to the current ViewPath begins
+3. Review the `.krs` patches the AI proposes and choose Apply / Reject before they take effect
 ```
 
-- **スコープ連動**: ドリルダウン位置が変わると AI の質問スコープも追随する
-- **tool_use**: AI は自然言語ではなく `navigate_view` / `apply_krs_patch` で意図を返す
-- **競合検知**: パッチ提案後にユーザーが編集すると Apply ボタンが自動無効化される
-- **セキュリティ**: キーはデフォルトで `sessionStorage` に保存。オプトインで `localStorage` に永続化できる
+- **Scope-aware**: when you drill down, the AI's question scope follows you
+- **tool_use**: the AI returns intent as `navigate_view` / `apply_krs_patch` calls, not as free-form text
+- **Conflict detection**: if you edit after a patch proposal, the Apply button is disabled automatically
+- **Security**: keys default to `sessionStorage`; opt in to `localStorage` if you want them to persist
 
-## 主な機能
+## Feature highlights
 
-- **論理／物理の分離** — ビジネス構造とデプロイ構造を別図で管理。`realizes` で対応付け
-- **ドリルダウン** — ダブルクリックで階層を深掘り。パンくずナビで上位に戻れる。Show All Layers で全階層を一度に表示、Open All Views で全ビューを新ウィンドウで開ける
-- **SVG エクスポート** — 全図を一括エクスポート。エクスポートした SVG はブラウザ単体でドリルダウンナビゲーション可能
-- **アイコンモード** — System・Deploy・Org 図をアイコン表示に切り替え
-- **パネルフォーカス** — サイドバーの折りたたみとプレビューの全画面表示
-- **ドメイン分散の検出** — 同じドメイン名が複数サービスに分散していると自動警告
-- **移行期のドメイン共存** — `@deprecated` / `@migration_target` で旧新ドメインを同時に描画
-- **タグ・アノテーション** — `[external]` `[human]` `[async]` と `@deprecated` `@new` などに対応
-- **スタイル分離** — CSS ライクな `.krs.style` ファイルで見た目を制御
-- **マルチファイルプロジェクト** — `import` と `import "dir/"` による相対パス結合、クロスファイル navigation/ジャンプ対応
-- **クロスシステム参照** — `PaymentGateway.PaymentService` のドット記法で別システムのサービスを参照
-- **ドメイン間依存** — `domain` ブロック内で `-> TargetDomain` を宣言し、サービス間エッジとして自動派生
-- **ProjectMode の ZIP 入出力** — ブラウザ内で保持するプロジェクトを ZIP として書き出し／取り込み可能
-- **Chat UI + BYOK AI アシスタント** — Claude API キー (BYOK) を入力し、`.krs` を対話的に育てる構造化インタビュー
-- **`.krs` フォーマッター** — `karasu fmt` / LSP / エディタの Format ボタン (Shift+Alt+F) でコメントを保持しつつ整形
-- **VS Code 拡張** — シンタックスハイライト・LSP 診断・SVG プレビュー・双方向ジャンプ・アイコンモードトグル
+- **Logical / physical separation** — Business structure and deployment structure live in separate diagrams, linked by `realizes`
+- **Drill-down** — Double-click to descend the hierarchy; breadcrumbs to go back up. "Show All Layers" flattens the hierarchy into one view; "Open All Views" opens every view in new windows
+- **SVG export** — Bulk export all diagrams. The exported SVG supports drill-down navigation in the browser on its own
+- **Icon mode** — Toggle System / Deploy / Org diagrams into icon display
+- **Panel focus** — Collapse the sidebar and expand the preview to fill the screen
+- **Domain drift detection** — Warns automatically when the same domain name is dispersed across multiple services
+- **Deprecated-domain coexistence during migrations** — Render old and new domains side by side with `@deprecated` / `@migration_target`
+- **Tags and annotations** — Supports `[external]` `[human]` `[async]` as tags and `@deprecated` `@new` as annotations
+- **Style separation** — A CSS-like `.krs.style` file controls appearance
+- **Multi-file projects** — Compose files with relative-path `import` and `import "dir/"`, with cross-file navigation and jump support
+- **Cross-system references** — Reference a service in another system with the dotted `PaymentGateway.PaymentService` notation
+- **Domain-to-domain edges** — Declare `-> TargetDomain` inside a `domain` block; karasu derives the corresponding service-level edge automatically
+- **ProjectMode ZIP import/export** — Write out or load back the browser-held project as a ZIP archive
+- **Chat UI + BYOK AI assistant** — Bring your own Claude API key and grow `.krs` interactively via a structured interview
+- **`.krs` formatter** — `karasu fmt` / LSP / the editor's Format button (Shift+Alt+F) reformats while preserving comments
+- **VS Code extension** — Syntax highlighting, LSP diagnostics, SVG preview, bidirectional jump, icon-mode toggle
 
 ## CLI
 
-### プレビュー・レンダリング
+### Preview and rendering
 
 ```bash
-# ローカルサーバーを起動してブラウザでプレビュー
+# Start a local server and preview in the browser
 karasu serve ./architecture
 
-# SVG を標準出力へ（stdout → ファイルリダイレクト）
+# Write SVG to stdout (redirect to a file)
 karasu render index.krs > docs/arch.svg
 
-# 特定のビューのみ出力
+# Render a specific view only
 karasu render index.krs --view deploy --output deploy.svg
 
-# svgo でパイプ最適化
+# Pipe through svgo for optimization
 karasu render index.krs | svgo - -o docs/arch.svg
 ```
 
-### フォーマット
+### Formatting
 
 ```bash
-# in-place で整形
+# Format in place
 karasu fmt **/*.krs
 
-# CI 用（差分があれば exit 1）
+# CI usage (exit 1 if there is a diff)
 karasu fmt --check **/*.krs
 
-# パイプで受け取って stdout に出力
+# Accept input on a pipe and write to stdout
 cat service.krs | karasu fmt --stdin
 ```
 
-### 既存システムの再アーキテクチャリング
+### Re-architecting an existing system
 
-`karasu translate` は、**既存システムの構造を karasu の語彙に引き上げて俯瞰する** ためのコマンドです。対象の 4 つのフォーマットはそれぞれ、既存システムを別の角度から捉える入力として選んでいます:
+`karasu translate` is a command for **lifting the structure of an existing system into karasu's vocabulary so you can survey it from above**. The four supported input formats were each chosen to capture an existing system from a different angle:
 
-| 入力                 | 何を得られるか                                 |
-| -------------------- | ---------------------------------------------- |
-| Docker Compose       | サービスの実行トポロジとリソース境界           |
-| Kubernetes マニフェスト | コンテナ化された実行単位と間の依存関係       |
-| OpenAPI スキーマ     | サービスが公開する API の境界と責務           |
-| SQL DDL              | データ所有関係とドメインの候補                 |
+| Input | What you get |
+|-------|--------------|
+| Docker Compose | Service execution topology and resource boundaries |
+| Kubernetes manifests | Containerized runtime units and their inter-dependencies |
+| OpenAPI schema | API boundaries and service responsibilities |
+| SQL DDL | Data ownership and domain candidates |
 
-これらを `.krs` スキャフォールドに変換することで、現行システムを karasu の三面構造で描き、ドメイン境界の再整理やサービス分割の候補を検討しやすくなります。Unix パイプで `karasu apply` と組み合わせれば、インフラ側の更新を既存 `.krs` に差分反映できます。
+Converting any of these into a `.krs` scaffold lets you model the current system in karasu's three-dimensional structure and then explore options for re-aligning domain boundaries or splitting services. Combined with `karasu apply` on a Unix pipe, you can also fold changes from the infrastructure side back into an existing `.krs`.
 
 ```bash
-# docker-compose から deploy.krs を生成
+# Generate deploy.krs from docker-compose
 karasu translate --from compose docker-compose.yml > deploy.krs
 
-# translate 結果を既存ファイルにマージ（存在するノードは replace、なければ append）
+# Merge the translate output into an existing file (existing nodes are replaced, missing nodes appended)
 karasu translate --from k8s manifests/deployment.yaml | karasu apply deploy.krs
 ```
 
-### `.krs` の構造編集
+### Structural editing of `.krs`
 
-Chat UI / CI から `.krs` ファイルをプログラム的に編集するためのコマンド群です。
+A set of commands for programmatically editing `.krs` files from the Chat UI or CI.
 
 ```bash
-# ノード削除
+# Remove a node
 karasu remove PaymentService arch.krs
 
-# トップレベルブロックを末尾追記
+# Append a top-level block
 echo 'service NewService {}' | karasu append arch.krs
 
-# 指定親ノードの子として挿入（インデント自動）
+# Insert as a child of a given parent node (indent handled automatically)
 echo 'service NewService {}' | karasu insert ECommerce arch.krs
 ```
 
-## VS Code 拡張
+## VS Code extension
 
-> **ステータス: experimental（実験的）**
+> **Status: experimental**
 >
-> コア機能（パーサー・レンダラー・Web プレビュー）に比べて優先度は低く、VS Code ユーザーが `.krs` を手元で編集するための補助ツールとして提供しています。補完・コードアクション・リネームなど、モダンなエディタ拡張としての完成度はまだ低く、基本的な記述体験に集中したい場合は Web プレビュー（`karasu serve` またはブラウザ版）の利用を推奨します。
+> The VS Code extension is intentionally a lower priority than the core parser, renderer, and web preview. It is offered as a convenience for VS Code users who want to edit `.krs` locally; features such as completion, code actions, and rename are still minimal. If you want a polished basic authoring experience, the web preview (`karasu serve` or the hosted browser version) is recommended.
 
-`packages/vscode/` に含まれています。現時点で動作する機能:
+Located under `packages/vscode/`. What currently works:
 
-- `.krs` ファイルのシンタックスハイライト
-- LSP による診断（エラー・警告をエディタ内表示）
-- SVG プレビュー Webview（ドリルダウンナビゲーション対応）
-- エディタ ↔ プレビューの双方向ジャンプ（Cmd/Ctrl+Click）
-- ホバー・定義ジャンプなど標準 LSP 機能
-- ノード詳細パネル（クロスダイアグラムナビゲーション対応）
+- Syntax highlighting for `.krs` files
+- LSP diagnostics (errors and warnings shown inline in the editor)
+- SVG preview webview (with drill-down navigation)
+- Bidirectional editor ↔ preview jump (Cmd/Ctrl+Click)
+- Standard LSP features: hover, go-to-definition
+- Node detail panel (with cross-diagram navigation)
 
 ## GitHub Actions
 
-CI で `.krs` ファイルから SVG を自動生成するワークフローテンプレートを用意しています。
+A workflow template is provided for automatically rendering `.krs` files into SVG in CI.
 
 ```yaml
 - name: Render architecture diagrams
   run: npx --yes karasu@latest render docs/architecture.krs --output docs/architecture.svg
 ```
 
-詳細は [`examples/github-actions/`](examples/github-actions/) および [`docs/github-actions.md`](docs/github-actions.md) を参照してください。
+See [`examples/github-actions/`](examples/github-actions/) and [`docs/github-actions.md`](docs/github-actions.md) for details.
 
-## 命名の由来
+## Naming
 
-北欧神話のオーディンの使い魔、ヒギン・ムニン（思考と記憶の鴉）に由来します。世界を俯瞰して情報を集め、必要な場所へ降りていく鴉の姿が、ドリルダウン型アーキテクチャ把握のコンセプトと重なります。
+The name comes from Huginn and Muninn — the ravens of Odin in Norse mythology, whose names mean *thought* and *memory*. The image of a raven that surveys the world from above and descends where it needs to gather information matches karasu's drill-down model of understanding architecture.
 
-## ドキュメント
+## Documentation
 
-| 内容 | 場所 |
-|------|------|
-| .krs 構文リファレンス | `docs/spec/syntax.md` |
-| .krs.style 構文リファレンス | `docs/spec/style.md` |
-| タグ・アノテーション一覧 | `docs/spec/tags-annotations.md` |
-| コアコンセプト（論理／物理分離など） | `docs/concepts.md` |
-| 設計判断の経緯（ADR） | `docs/adr/` — `ADR-YYYYMMDD-NN-*.md` 形式で日付順 |
-| 詳細技術設計（検討中のもの）| `docs/design/` |
-| 受け入れテスト基準 | `docs/acceptance/` |
-| 開発プロセス（ライフサイクル・PR フロー）| `docs/process.md` |
-| GitHub Actions 連携ガイド | `docs/github-actions.md` |
-| サンプル `.krs` ファイル | `examples/` |
+| Topic | Location |
+|-------|----------|
+| `.krs` syntax reference | `docs/spec/syntax.md` |
+| `.krs.style` syntax reference | `docs/spec/style.md` |
+| Tags and annotations catalog | `docs/spec/tags-annotations.md` |
+| Core concepts (logical/physical/organizational separation, etc.) | `docs/concepts.md` |
+| Decision history (ADR) | `docs/adr/` — `ADR-YYYYMMDD-NN-*.md` in date order |
+| Design documents (in progress) | `docs/design/` |
+| Acceptance test criteria | `docs/acceptance/` |
+| Development process (lifecycle / PR flow) | `docs/process.md` |
+| GitHub Actions integration guide | `docs/github-actions.md` |
+| Sample `.krs` files | `examples/` |
 
-## リポジトリ構成
+## Repository layout
 
 ```
 karasu/
-├── docs/                  ← 仕様・設計ドキュメント
-├── examples/              ← サンプル .krs ファイル（チュートリアル・テーマ別シナリオ）
+├── docs/                  ← Specs and design docs
+├── examples/              ← Sample .krs files (tutorials and themed scenarios)
 ├── packages/
-│   ├── core/              ← パーサー・スタイル解決・SVGレンダラー（Pure TS）
-│   ├── app/               ← Vite + React のプレビューUI
-│   ├── cli/               ← karasu serve / render コマンド
-│   ├── lsp/               ← Language Server Protocol 実装
-│   └── vscode/            ← VS Code 拡張
-├── package.json           ← npm workspaces 設定
+│   ├── core/              ← Parser, style resolution, SVG renderer (pure TS)
+│   ├── app/               ← Vite + React preview UI
+│   ├── cli/               ← karasu serve / render commands
+│   ├── lsp/               ← Language Server Protocol implementation
+│   └── vscode/            ← VS Code extension
+├── package.json           ← npm workspaces configuration
 └── tsconfig.json
 ```
 
-## 技術スタック
+## Technology stack
 
-| 用途                   | 技術          |
-| ---------------------- | ------------- |
-| 言語                   | TypeScript    |
-| ビルド（app）          | Vite          |
-| UIフレームワーク       | React         |
-| エディタコンポーネント | Monaco Editor |
-| テスト                 | Vitest        |
-| CLI                    | commander     |
-| 言語サーバー           | LSP（vscode-languageserver） |
+| Area | Technology |
+|------|------------|
+| Language | TypeScript |
+| App build | Vite |
+| UI framework | React |
+| Editor component | Monaco Editor |
+| Testing | Vitest |
+| CLI | commander |
+| Language server | LSP (vscode-languageserver) |
 
-## インスピレーション
+## Inspiration
 
-C4 Model に触発されつつも、独自の語彙と論理／物理分離のコンセプトを採用しています。
+Inspired by C4 Model, but with its own vocabulary and an explicit separation between logical and physical structure.
