@@ -4,11 +4,29 @@
   <img src="packages/app/public/karasu-logo-1200w.png" alt="karasu logo" width="640" />
 </p>
 
-チーム規模のシステムを、テキストで記述・俯瞰するアーキテクチャモデリングツール。
+**システムの論理・物理・組織を一つの言語で描き、
+チームとアーキテクチャを一緒に設計するためのテキストベース DSL。**
 
-![TypeScript](https://img.shields.io/badge/TypeScript-blue) ![Vite](https://img.shields.io/badge/Vite%20%2B%20React-purple) ![Vitest](https://img.shields.io/badge/Vitest-green)
+## 何が違うのか
 
-## デモ
+- **論理・物理・組織の三面構造** —
+  サービスとドメインの論理関係、デプロイされる物理アーティファクト、
+  チームが所有する範囲を一つの `.krs` 言語で記述できる。
+  Conway の法則と逆コンウェイ戦略を同じテーブルで議論するための設計
+- **scoped glance + drill-down** —
+  一度に見せる情報量を限定し、必要な詳細があればその場所へ降りる。
+  全体を 1 枚に押し込む "at a glance" な鳥瞰図ではなく、
+  認知負荷を抑えるための意図的な設計選択
+- **人間と AI が共同編集できる DSL** —
+  `.krs` は AI のために設計されたのではなく、人間が読み書きする独立した道具。
+  その独立性が双方向性を生む — AI が生成した `.krs` を人間が手で編集でき、
+  逆に手書きしたモデルを AI に洗練させられる
+
+C4 Model / Structurizr / Mermaid からインスピレーションを受けつつも、
+drill-down の連続性・組織の第三軸・AI との協働という点で異なる立ち位置を取っています。
+設計思想の詳細は [`docs/concepts.md`](docs/concepts.md) を参照。
+
+## 試す
 
 ブラウザですぐに試せます: **<https://karasu.pages.dev/>**
 
@@ -204,9 +222,18 @@ karasu fmt --check **/*.krs
 cat service.krs | karasu fmt --stdin
 ```
 
-### 既存インフラ定義から `.krs` を生成
+### 既存システムの再アーキテクチャリング
 
-`karasu translate` は docker-compose / k8s / OpenAPI / SQL DDL を `.krs` のスキャフォールドに変換します。Unix パイプで `karasu apply` と組み合わせると、インフラ側の更新を既存 `.krs` に差分反映できます。
+`karasu translate` は、**既存システムの構造を karasu の語彙に引き上げて俯瞰する** ためのコマンドです。対象の 4 つのフォーマットはそれぞれ、既存システムを別の角度から捉える入力として選んでいます:
+
+| 入力                 | 何を得られるか                                 |
+| -------------------- | ---------------------------------------------- |
+| Docker Compose       | サービスの実行トポロジとリソース境界           |
+| Kubernetes マニフェスト | コンテナ化された実行単位と間の依存関係       |
+| OpenAPI スキーマ     | サービスが公開する API の境界と責務           |
+| SQL DDL              | データ所有関係とドメインの候補                 |
+
+これらを `.krs` スキャフォールドに変換することで、現行システムを karasu の三面構造で描き、ドメイン境界の再整理やサービス分割の候補を検討しやすくなります。Unix パイプで `karasu apply` と組み合わせれば、インフラ側の更新を既存 `.krs` に差分反映できます。
 
 ```bash
 # docker-compose から deploy.krs を生成
@@ -233,7 +260,11 @@ echo 'service NewService {}' | karasu insert ECommerce arch.krs
 
 ## VS Code 拡張
 
-`packages/vscode/` に VS Code 拡張が含まれています。
+> **ステータス: experimental（実験的）**
+>
+> コア機能（パーサー・レンダラー・Web プレビュー）に比べて優先度は低く、VS Code ユーザーが `.krs` を手元で編集するための補助ツールとして提供しています。補完・コードアクション・リネームなど、モダンなエディタ拡張としての完成度はまだ低く、基本的な記述体験に集中したい場合は Web プレビュー（`karasu serve` またはブラウザ版）の利用を推奨します。
+
+`packages/vscode/` に含まれています。現時点で動作する機能:
 
 - `.krs` ファイルのシンタックスハイライト
 - LSP による診断（エラー・警告をエディタ内表示）
