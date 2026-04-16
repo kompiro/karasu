@@ -15,7 +15,7 @@
     "@anthropic-ai/sdk": "^0.88.0",
     "@karasu-tools/core": "workspace:*",
     "@monaco-editor/react": "^4.7.0",
-    "dompurify": "^3.3.3",
+    "dompurify": "^3.4.0",
     "fflate": "^0.8.2",
     "marked": "^18.0.0",
     "monaco-editor": "^0.55.0",
