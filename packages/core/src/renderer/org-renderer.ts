@@ -120,7 +120,7 @@ function renderOrgIconCardCommon(
   opts: {
     iconName: string;
     descText: string;
-    wrapperAttrs?: Record<string, unknown>;
+    wrapperAttrs?: Record<string, string | number | undefined | null | false>;
   },
 ): string {
   const cardHeight = iconCardHeight(opts.descText.length > 0);
