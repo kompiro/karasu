@@ -81,6 +81,427 @@ const ICON_CARD_HEIGHT_NO_DESC = 56;
 
 export type DisplayMode = "shape" | "icon";
 
+// ---------------------------------------------------------------------------
+// Extracted helpers for layout decomposition
+// ---------------------------------------------------------------------------
+
+function buildGraph(
+  nodeIds: string[],
+  edges: KrsEdge[],
+): { adj: Map<string, string[]>; inDegree: Map<string, number> } {
+  const idSet = new Set(nodeIds);
+  const adj = new Map<string, string[]>();
+  const inDegree = new Map<string, number>();
+  for (const id of nodeIds) {
+    adj.set(id, []);
+    inDegree.set(id, 0);
+  }
+  for (const edge of edges) {
+    if (idSet.has(edge.from) && idSet.has(edge.to)) {
+      adj.get(edge.from)!.push(edge.to);
+      inDegree.set(edge.to, (inDegree.get(edge.to) ?? 0) + 1);
+    }
+  }
+  return { adj, inDegree };
+}
+
+function placeGhostUsers(
+  viewSlice: ViewSlice,
+  layoutNodes: Map<string, LayoutNode>,
+  containers: ContainerRect[],
+  effectiveAnnotations: (n: KrsNode) => string[],
+  displayMode?: DisplayMode,
+): void {
+  if (viewSlice.ghostUsers.length === 0) return;
+
+  const mainContainer = containers.find((c) => !c.ghost) ?? containers[0];
+  const userX = (mainContainer?.x ?? 0) - 20;
+  let userY = (mainContainer?.y ?? 0) + CONTAINER_LABEL_HEIGHT + NODE_GAP;
+  const ghostUserNodes: LayoutNode[] = [];
+
+  for (const userNode of viewSlice.ghostUsers) {
+    const dims = measureNode(userNode, undefined, displayMode);
+    const uid = userNode.id;
+    const gNode: LayoutNode = {
+      kind: userNode.kind,
+      id: uid,
+      label: userNode.label ?? userNode.id,
+      annotations: effectiveAnnotations(userNode),
+      properties: extractLayoutProperties(userNode, undefined),
+      descriptionSummary: userNode.properties.description
+        ? summarizeDescription(userNode.properties.description)
+        : undefined,
+      linkCount: userNode.properties.links.length,
+      hasChildren: userNode.children.length > 0,
+      hasDescription: !!userNode.properties.description,
+      x: userX - dims.width,
+      y: userY,
+      width: dims.width,
+      height: dims.height,
+      ghost: true,
+    };
+    layoutNodes.set(uid, gNode);
+    ghostUserNodes.push(gNode);
+    userY += dims.height + NODE_GAP / 2;
+  }
+
+  // Expand outermost container to include ghost users
+  if (ghostUserNodes.length > 0 && containers.length > 0) {
+    const minX = Math.min(...ghostUserNodes.map((n) => n.x)) - GHOST_MARGIN;
+    const maxY = Math.max(...ghostUserNodes.map((n) => n.y + n.height)) + GHOST_MARGIN;
+    const outermost = containers[0];
+    if (minX < outermost.x) {
+      const dx = outermost.x - minX;
+      outermost.width += dx;
+      outermost.x = minX;
+    }
+    if (maxY > outermost.y + outermost.height) {
+      outermost.height = maxY - outermost.y;
+    }
+  }
+}
+
+function placeGhostDomains(
+  viewSlice: ViewSlice,
+  layoutNodes: Map<string, LayoutNode>,
+  containers: ContainerRect[],
+  effectiveAnnotations: (n: KrsNode) => string[],
+  displayMode?: DisplayMode,
+): void {
+  const GHOST_DOMAIN_GAP = 60;
+  if (viewSlice.ghostDomains.length === 0 || containers.length === 0) return;
+
+  const mainContainer = containers.find((c) => !c.ghost) ?? containers[0];
+  const ghostY = mainContainer.y + mainContainer.height + GHOST_DOMAIN_GAP;
+  let ghostX = mainContainer.x + CONTAINER_PADDING;
+
+  for (const gd of viewSlice.ghostDomains) {
+    const dims = measureNode(gd.node, undefined, displayMode);
+    layoutNodes.set(gd.node.id, {
+      kind: gd.node.kind,
+      id: gd.node.id,
+      label: gd.node.label ?? gd.node.id,
+      annotations: effectiveAnnotations(gd.node),
+      subLabel: gd.parentServiceLabel,
+      properties: extractLayoutProperties(gd.node, undefined),
+      descriptionSummary: gd.node.properties.description
+        ? summarizeDescription(gd.node.properties.description)
+        : undefined,
+      linkCount: gd.node.properties.links.length,
+      hasChildren: gd.node.children.length > 0,
+      hasDescription: !!gd.node.properties.description,
+      x: ghostX,
+      y: ghostY,
+      width: dims.width,
+      height: dims.height,
+      ghost: true,
+    });
+    ghostX += dims.width + NODE_GAP;
+  }
+
+  // Expand outermost container to include ghost domains (both height and width)
+  const ghostDomainNodes = viewSlice.ghostDomains
+    .map((gd) => layoutNodes.get(gd.node.id))
+    .filter((n): n is LayoutNode => n !== undefined);
+  if (ghostDomainNodes.length > 0) {
+    const maxGhostY = Math.max(...ghostDomainNodes.map((n) => n.y + n.height)) + GHOST_MARGIN;
+    const maxGhostX = Math.max(...ghostDomainNodes.map((n) => n.x + n.width)) + GHOST_MARGIN;
+    const outermost = containers[0];
+    if (maxGhostY > outermost.y + outermost.height) {
+      outermost.height = maxGhostY - outermost.y;
+    }
+    if (maxGhostX > outermost.x + outermost.width) {
+      outermost.width = maxGhostX - outermost.x;
+    }
+  }
+}
+
+function placeCallerGhostSystems(
+  viewSlice: ViewSlice,
+  layoutNodes: Map<string, LayoutNode>,
+  containers: ContainerRect[],
+  ownerIndex?: Map<string, string>,
+  displayMode?: DisplayMode,
+): void {
+  const GHOST_SYSTEM_GAP = 80;
+  if (viewSlice.callerGhostSystems.length === 0 || containers.length === 0) return;
+
+  const outermost = containers[0];
+  const ghostStartY = outermost.y;
+
+  const callerContainers: ContainerRect[] = [];
+  let tempX = 0;
+  for (const gs of viewSlice.callerGhostSystems) {
+    const { nodes: gsNodes, containerRect } = layoutGhostSystem(
+      gs,
+      tempX,
+      ghostStartY,
+      ownerIndex,
+      displayMode,
+    );
+    callerContainers.push(containerRect);
+    for (const [id, node] of gsNodes) {
+      layoutNodes.set(id, node);
+    }
+    tempX += containerRect.width + GHOST_SYSTEM_GAP;
+  }
+
+  const totalCallerWidth = tempX - GHOST_SYSTEM_GAP;
+  const callerStartX = outermost.x - GHOST_SYSTEM_GAP - totalCallerWidth;
+  const shiftX = callerStartX;
+
+  for (const gs of viewSlice.callerGhostSystems) {
+    for (const svc of gs.visibleServices) {
+      const qualifiedId = `${gs.systemNode.id}.${svc.id}`;
+      const node = layoutNodes.get(qualifiedId);
+      if (node) node.x += shiftX;
+    }
+  }
+  for (const c of callerContainers) {
+    c.x += shiftX;
+    containers.push(c);
+  }
+}
+
+function placeOutgoingGhostSystems(
+  viewSlice: ViewSlice,
+  layoutNodes: Map<string, LayoutNode>,
+  containers: ContainerRect[],
+  ownerIndex?: Map<string, string>,
+  displayMode?: DisplayMode,
+): void {
+  const GHOST_SYSTEM_GAP = 80;
+  if (viewSlice.ghostSystems.length === 0 || containers.length === 0) return;
+
+  const outermost = containers[0];
+  let ghostX = outermost.x + outermost.width + GHOST_SYSTEM_GAP;
+  const ghostStartY = outermost.y;
+
+  for (const gs of viewSlice.ghostSystems) {
+    const { nodes: gsNodes, containerRect } = layoutGhostSystem(
+      gs,
+      ghostX,
+      ghostStartY,
+      ownerIndex,
+      displayMode,
+    );
+    containers.push(containerRect);
+    for (const [id, node] of gsNodes) {
+      layoutNodes.set(id, node);
+    }
+    ghostX += containerRect.width + GHOST_SYSTEM_GAP;
+  }
+}
+
+function computeLayoutEdges(
+  viewSlice: ViewSlice,
+  layoutNodes: Map<string, LayoutNode>,
+  layers: Map<string, number>,
+  containers: ContainerRect[],
+  allEdges: KrsEdge[],
+): LayoutEdge[] {
+  const layoutEdges: LayoutEdge[] = [];
+
+  // Regular edges
+  for (const edge of allEdges) {
+    const le = computeEdgePoints(edge, layoutNodes, layers);
+    if (!le) continue;
+    const edgeKey = `${edge.from}->${edge.to}#${edge.kind}`;
+    const domainEdges = viewSlice.implicitEdgeDetails.get(edgeKey);
+    if (domainEdges) {
+      le.domainEdges = domainEdges;
+    }
+    layoutEdges.push(le);
+  }
+
+  // Ghost system edges (outgoing)
+  for (const edge of viewSlice.ghostSystemEdges) {
+    const toNode = layoutNodes.get(edge.to);
+    if (!toNode) continue;
+
+    let fromPoint: { x: number; y: number };
+    const fromNode = layoutNodes.get(edge.from);
+    if (fromNode) {
+      fromPoint = {
+        x: fromNode.x + fromNode.width,
+        y: fromNode.y + fromNode.height / 2,
+      };
+    } else {
+      const mainContainer = containers.find((c) => !c.ghost);
+      if (!mainContainer) continue;
+      fromPoint = {
+        x: mainContainer.x + mainContainer.width,
+        y: mainContainer.y + mainContainer.height / 2,
+      };
+    }
+
+    const toPoint = {
+      x: toNode.x,
+      y: toNode.y + toNode.height / 2,
+    };
+    layoutEdges.push({
+      from: edge.from,
+      to: edge.to,
+      label: edge.label,
+      fromPoint,
+      toPoint,
+      ghost: true,
+    });
+  }
+
+  // Caller ghost system edges (incoming)
+  for (const edge of viewSlice.callerGhostSystemEdges) {
+    const fromNode = layoutNodes.get(edge.from);
+    if (!fromNode) continue;
+
+    const toNode = layoutNodes.get(edge.to);
+    let toPoint: { x: number; y: number };
+    if (toNode) {
+      toPoint = { x: toNode.x, y: toNode.y + toNode.height / 2 };
+    } else {
+      const mainContainer = containers.find((c) => !c.ghost);
+      if (!mainContainer) continue;
+      toPoint = {
+        x: mainContainer.x,
+        y: mainContainer.y + mainContainer.height / 2,
+      };
+    }
+
+    layoutEdges.push({
+      from: edge.from,
+      to: edge.to,
+      label: edge.label,
+      fromPoint: {
+        x: fromNode.x + fromNode.width,
+        y: fromNode.y + fromNode.height / 2,
+      },
+      toPoint,
+      ghost: true,
+    });
+  }
+
+  // Ghost user edges
+  for (const edge of viewSlice.ghostUserEdges) {
+    const containerId = viewSlice.containerNode ? viewSlice.containerNode.id : "";
+    const mainContainer = containers.find((c) => !c.ghost);
+    const ghostNode = layoutNodes.get(edge.from === containerId ? edge.to : edge.from);
+    if (!ghostNode || !mainContainer) continue;
+
+    const fromPoint = {
+      x: ghostNode.x + ghostNode.width,
+      y: ghostNode.y + ghostNode.height / 2,
+    };
+    const toPoint = {
+      x: mainContainer.x,
+      y: ghostNode.y + ghostNode.height / 2,
+    };
+
+    layoutEdges.push({
+      from: edge.from,
+      to: edge.to,
+      label: edge.label,
+      fromPoint,
+      toPoint,
+      ghost: true,
+    });
+  }
+
+  // Ghost domain edges
+  for (const edge of viewSlice.ghostDomainEdges) {
+    const fromNode = layoutNodes.get(edge.from);
+    const toNode = layoutNodes.get(edge.to);
+    if (!fromNode || !toNode) continue;
+
+    const fromIsAbove = fromNode.y + fromNode.height / 2 < toNode.y + toNode.height / 2;
+    layoutEdges.push({
+      from: edge.from,
+      to: edge.to,
+      label: edge.label,
+      fromPoint: {
+        x: fromNode.x + fromNode.width / 2,
+        y: fromIsAbove ? fromNode.y + fromNode.height : fromNode.y,
+      },
+      toPoint: {
+        x: toNode.x + toNode.width / 2,
+        y: fromIsAbove ? toNode.y : toNode.y + toNode.height,
+      },
+      ghost: true,
+    });
+  }
+
+  return layoutEdges;
+}
+
+function normalizeCoordinates(
+  containers: ContainerRect[],
+  layoutNodes: Map<string, LayoutNode>,
+  layoutEdges: LayoutEdge[],
+): void {
+  let minX = Infinity;
+  let minY = Infinity;
+  for (const c of containers) {
+    minX = Math.min(minX, c.x);
+    minY = Math.min(minY, c.y);
+  }
+  for (const [, node] of layoutNodes) {
+    minX = Math.min(minX, node.x);
+    minY = Math.min(minY, node.y);
+  }
+
+  const shiftX = minX < CONTAINER_PADDING ? CONTAINER_PADDING - minX : 0;
+  const shiftY = minY < CONTAINER_PADDING ? CONTAINER_PADDING - minY : 0;
+
+  if (shiftX > 0 || shiftY > 0) {
+    for (const c of containers) {
+      c.x += shiftX;
+      c.y += shiftY;
+    }
+    for (const [, node] of layoutNodes) {
+      node.x += shiftX;
+      node.y += shiftY;
+    }
+    for (const edge of layoutEdges) {
+      edge.fromPoint.x += shiftX;
+      edge.fromPoint.y += shiftY;
+      edge.toPoint.x += shiftX;
+      edge.toPoint.y += shiftY;
+    }
+  }
+
+  // Assert non-negative coordinates after normalization (dev/test only).
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const nodeEnv = (globalThis as any).process?.env?.NODE_ENV;
+  if (typeof nodeEnv === "string" && nodeEnv !== "production") {
+    for (const c of containers) {
+      if (c.x < 0) {
+        throw new Error(`[layout] container "${c.id}" has negative x=${c.x} after normalization`);
+      }
+    }
+    for (const [id, node] of layoutNodes) {
+      if (node.x < 0) {
+        throw new Error(`[layout] node "${id}" has negative x=${node.x} after normalization`);
+      }
+    }
+  }
+}
+
+function computeTotalDimensions(
+  containers: ContainerRect[],
+  layoutNodes: Map<string, LayoutNode>,
+): { width: number; height: number } {
+  let totalWidth = 0;
+  let totalHeight = 0;
+  for (const c of containers) {
+    totalWidth = Math.max(totalWidth, c.x + c.width + CONTAINER_PADDING);
+    totalHeight = Math.max(totalHeight, c.y + c.height + CONTAINER_PADDING);
+  }
+  for (const [, node] of layoutNodes) {
+    totalWidth = Math.max(totalWidth, node.x + node.width + NODE_GAP);
+    totalHeight = Math.max(totalHeight, node.y + node.height + NODE_GAP);
+  }
+  return { width: totalWidth, height: totalHeight };
+}
+
 export function layout(
   viewSlice: ViewSlice,
   ownerIndex?: Map<string, string>,
@@ -125,21 +546,7 @@ export function layout(
 
   // Layout child nodes using topological sort
   const nodeIds = allNodes.map((n) => n.id);
-  const idSet = new Set(nodeIds);
-  const adj = new Map<string, string[]>();
-  const inDegree = new Map<string, number>();
-  for (const id of nodeIds) {
-    adj.set(id, []);
-    inDegree.set(id, 0);
-  }
-
-  for (const edge of allEdges) {
-    if (idSet.has(edge.from) && idSet.has(edge.to)) {
-      adj.get(edge.from)!.push(edge.to);
-      inDegree.set(edge.to, (inDegree.get(edge.to) ?? 0) + 1);
-    }
-  }
-
+  const { adj, inDegree } = buildGraph(nodeIds, allEdges);
   const layers = assignLayers(nodeIds, adj, inDegree);
 
   // Position nodes inside the container area
@@ -289,368 +696,18 @@ export function layout(
   // Reverse so outermost is first
   containers.reverse();
 
-  // Ghost users: position to the left of the main container
-  const ghostUserNodes: LayoutNode[] = [];
-  if (viewSlice.ghostUsers.length > 0) {
-    const mainContainer = containers.find((c) => !c.ghost) ?? containers[0];
-    const userX = (mainContainer?.x ?? 0) - 20;
-    let userY = (mainContainer?.y ?? 0) + CONTAINER_LABEL_HEIGHT + NODE_GAP;
+  // Place ghost nodes
+  placeGhostUsers(viewSlice, layoutNodes, containers, effectiveAnnotations, displayMode);
+  placeGhostDomains(viewSlice, layoutNodes, containers, effectiveAnnotations, displayMode);
+  placeCallerGhostSystems(viewSlice, layoutNodes, containers, ownerIndex, displayMode);
+  placeOutgoingGhostSystems(viewSlice, layoutNodes, containers, ownerIndex, displayMode);
 
-    for (const userNode of viewSlice.ghostUsers) {
-      const dims = measureNode(userNode, undefined, displayMode);
-      const uid = userNode.id;
-      const gNode: LayoutNode = {
-        kind: userNode.kind,
-        id: uid,
-        label: userNode.label ?? userNode.id,
-        annotations: effectiveAnnotations(userNode),
-        properties: extractLayoutProperties(userNode, undefined),
-        descriptionSummary: userNode.properties.description
-          ? summarizeDescription(userNode.properties.description)
-          : undefined,
-        linkCount: userNode.properties.links.length,
-        hasChildren: userNode.children.length > 0,
-        hasDescription: !!userNode.properties.description,
-        x: userX - dims.width,
-        y: userY,
-        width: dims.width,
-        height: dims.height,
-        ghost: true,
-      };
-      layoutNodes.set(uid, gNode);
-      ghostUserNodes.push(gNode);
-      userY += dims.height + NODE_GAP / 2;
-    }
-  }
+  // Compute all edges (regular + ghost)
+  const layoutEdges = computeLayoutEdges(viewSlice, layoutNodes, layers, containers, allEdges);
 
-  // Expand outermost container to include ghost users
-  if (ghostUserNodes.length > 0 && containers.length > 0) {
-    const minX = Math.min(...ghostUserNodes.map((n) => n.x)) - GHOST_MARGIN;
-    const maxY = Math.max(...ghostUserNodes.map((n) => n.y + n.height)) + GHOST_MARGIN;
-    const outermost = containers[0];
-    if (minX < outermost.x) {
-      const dx = outermost.x - minX;
-      outermost.width += dx;
-      outermost.x = minX;
-    }
-    if (maxY > outermost.y + outermost.height) {
-      outermost.height = maxY - outermost.y;
-    }
-  }
-
-  const GHOST_DOMAIN_GAP = 60;
-
-  // Ghost domains: position below the main container, side by side
-  if (viewSlice.ghostDomains.length > 0 && containers.length > 0) {
-    const mainContainer = containers.find((c) => !c.ghost) ?? containers[0];
-    const ghostY = mainContainer.y + mainContainer.height + GHOST_DOMAIN_GAP;
-    let ghostX = mainContainer.x + CONTAINER_PADDING;
-
-    for (const gd of viewSlice.ghostDomains) {
-      const dims = measureNode(gd.node, undefined, displayMode);
-      layoutNodes.set(gd.node.id, {
-        kind: gd.node.kind,
-        id: gd.node.id,
-        label: gd.node.label ?? gd.node.id,
-        annotations: effectiveAnnotations(gd.node),
-        subLabel: gd.parentServiceLabel,
-        properties: extractLayoutProperties(gd.node, undefined),
-        descriptionSummary: gd.node.properties.description
-          ? summarizeDescription(gd.node.properties.description)
-          : undefined,
-        linkCount: gd.node.properties.links.length,
-        hasChildren: gd.node.children.length > 0,
-        hasDescription: !!gd.node.properties.description,
-        x: ghostX,
-        y: ghostY,
-        width: dims.width,
-        height: dims.height,
-        ghost: true,
-      });
-      ghostX += dims.width + NODE_GAP;
-    }
-
-    // Expand outermost container to include ghost domains (both height and width)
-    const ghostDomainNodes = viewSlice.ghostDomains
-      .map((gd) => layoutNodes.get(gd.node.id))
-      .filter((n): n is LayoutNode => n !== undefined);
-    if (ghostDomainNodes.length > 0) {
-      const maxGhostY = Math.max(...ghostDomainNodes.map((n) => n.y + n.height)) + GHOST_MARGIN;
-      const maxGhostX = Math.max(...ghostDomainNodes.map((n) => n.x + n.width)) + GHOST_MARGIN;
-      const outermost = containers[0];
-      if (maxGhostY > outermost.y + outermost.height) {
-        outermost.height = maxGhostY - outermost.y;
-      }
-      if (maxGhostX > outermost.x + outermost.width) {
-        outermost.width = maxGhostX - outermost.x;
-      }
-    }
-  }
-
-  const GHOST_SYSTEM_GAP = 80;
-
-  // Caller ghost systems: position to the LEFT of the outermost container
-  // Layout first (with a temporary x=0) so we know their widths, then shift right.
-  if (viewSlice.callerGhostSystems.length > 0 && containers.length > 0) {
-    const outermost = containers[0];
-    const ghostStartY = outermost.y;
-
-    // Lay out left-to-right starting from x=0 (will be shifted after measuring)
-    const callerContainers: ContainerRect[] = [];
-    let tempX = 0;
-    for (const gs of viewSlice.callerGhostSystems) {
-      const { nodes: gsNodes, containerRect } = layoutGhostSystem(
-        gs,
-        tempX,
-        ghostStartY,
-        ownerIndex,
-        displayMode,
-      );
-      callerContainers.push(containerRect);
-      for (const [id, node] of gsNodes) {
-        layoutNodes.set(id, node);
-      }
-      tempX += containerRect.width + GHOST_SYSTEM_GAP;
-    }
-
-    // Total width of all caller ghost systems
-    const totalCallerWidth = tempX - GHOST_SYSTEM_GAP;
-    // Place them to the left of the outermost container
-    const callerStartX = outermost.x - GHOST_SYSTEM_GAP - totalCallerWidth;
-    const shiftX = callerStartX;
-
-    // Shift all caller ghost nodes and containers
-    for (const gs of viewSlice.callerGhostSystems) {
-      for (const svc of gs.visibleServices) {
-        const qualifiedId = `${gs.systemNode.id}.${svc.id}`;
-        const node = layoutNodes.get(qualifiedId);
-        if (node) node.x += shiftX;
-      }
-    }
-    for (const c of callerContainers) {
-      c.x += shiftX;
-      containers.push(c);
-    }
-  }
-
-  // Ghost systems (outgoing): position to the right of the outermost container
-  if (viewSlice.ghostSystems.length > 0 && containers.length > 0) {
-    const outermost = containers[0];
-    let ghostX = outermost.x + outermost.width + GHOST_SYSTEM_GAP;
-    const ghostStartY = outermost.y;
-
-    for (const gs of viewSlice.ghostSystems) {
-      const { nodes: gsNodes, containerRect } = layoutGhostSystem(
-        gs,
-        ghostX,
-        ghostStartY,
-        ownerIndex,
-        displayMode,
-      );
-      containers.push(containerRect);
-      for (const [id, node] of gsNodes) {
-        layoutNodes.set(id, node);
-      }
-      ghostX += containerRect.width + GHOST_SYSTEM_GAP;
-    }
-  }
-
-  // Compute edges
-  const layoutEdges: LayoutEdge[] = [];
-  for (const edge of allEdges) {
-    const le = computeEdgePoints(edge, layoutNodes, layers);
-    if (!le) continue;
-    const edgeKey = `${edge.from}->${edge.to}#${edge.kind}`;
-    const domainEdges = viewSlice.implicitEdgeDetails.get(edgeKey);
-    if (domainEdges) {
-      le.domainEdges = domainEdges;
-    }
-    layoutEdges.push(le);
-  }
-
-  // Ghost system edges: from a primary node (or container) to a ghost service (qualified ID)
-  for (const edge of viewSlice.ghostSystemEdges) {
-    const toNode = layoutNodes.get(edge.to);
-    if (!toNode) continue;
-
-    // edge.from may be a child node or the container itself (when drilling into a service
-    // that directly has a cross-system edge). Fall back to the main container rect.
-    let fromPoint: { x: number; y: number };
-    const fromNode = layoutNodes.get(edge.from);
-    if (fromNode) {
-      fromPoint = {
-        x: fromNode.x + fromNode.width,
-        y: fromNode.y + fromNode.height / 2,
-      };
-    } else {
-      const mainContainer = containers.find((c) => !c.ghost);
-      if (!mainContainer) continue;
-      fromPoint = {
-        x: mainContainer.x + mainContainer.width,
-        y: mainContainer.y + mainContainer.height / 2,
-      };
-    }
-
-    const toPoint = {
-      x: toNode.x,
-      y: toNode.y + toNode.height / 2,
-    };
-    layoutEdges.push({
-      from: edge.from,
-      to: edge.to,
-      label: edge.label,
-      fromPoint,
-      toPoint,
-      ghost: true,
-    });
-  }
-
-  // Caller ghost system edges: from a caller ghost service (left) to the main container (right)
-  for (const edge of viewSlice.callerGhostSystemEdges) {
-    const fromNode = layoutNodes.get(edge.from); // qualified: "SysA.ServiceA"
-    if (!fromNode) continue;
-
-    // edge.to is the container service ID — fall back to the main container rect
-    const toNode = layoutNodes.get(edge.to);
-    let toPoint: { x: number; y: number };
-    if (toNode) {
-      toPoint = { x: toNode.x, y: toNode.y + toNode.height / 2 };
-    } else {
-      const mainContainer = containers.find((c) => !c.ghost);
-      if (!mainContainer) continue;
-      toPoint = {
-        x: mainContainer.x,
-        y: mainContainer.y + mainContainer.height / 2,
-      };
-    }
-
-    layoutEdges.push({
-      from: edge.from,
-      to: edge.to,
-      label: edge.label,
-      fromPoint: {
-        x: fromNode.x + fromNode.width,
-        y: fromNode.y + fromNode.height / 2,
-      },
-      toPoint,
-      ghost: true,
-    });
-  }
-
-  // Ghost user edges
-  for (const edge of viewSlice.ghostUserEdges) {
-    const containerId = viewSlice.containerNode ? viewSlice.containerNode.id : "";
-    // Ghost user edges connect to the container box, not a laid-out node
-    const mainContainer = containers.find((c) => !c.ghost);
-    const ghostNode = layoutNodes.get(edge.from === containerId ? edge.to : edge.from);
-    if (!ghostNode || !mainContainer) continue;
-
-    const fromPoint = {
-      x: ghostNode.x + ghostNode.width,
-      y: ghostNode.y + ghostNode.height / 2,
-    };
-    const toPoint = {
-      x: mainContainer.x,
-      y: ghostNode.y + ghostNode.height / 2,
-    };
-
-    layoutEdges.push({
-      from: edge.from,
-      to: edge.to,
-      label: edge.label,
-      fromPoint,
-      toPoint,
-      ghost: true,
-    });
-  }
-
-  // Ghost domain edges: connect domain nodes inside the container to/from ghost domains below.
-  // Use the facing sides based on vertical position: if fromNode is above toNode, connect
-  // bottom-to-top; if fromNode is below toNode (incoming case), connect top-to-bottom.
-  for (const edge of viewSlice.ghostDomainEdges) {
-    const fromNode = layoutNodes.get(edge.from);
-    const toNode = layoutNodes.get(edge.to);
-    if (!fromNode || !toNode) continue;
-
-    const fromIsAbove = fromNode.y + fromNode.height / 2 < toNode.y + toNode.height / 2;
-    layoutEdges.push({
-      from: edge.from,
-      to: edge.to,
-      label: edge.label,
-      fromPoint: {
-        x: fromNode.x + fromNode.width / 2,
-        y: fromIsAbove ? fromNode.y + fromNode.height : fromNode.y,
-      },
-      toPoint: {
-        x: toNode.x + toNode.width / 2,
-        y: fromIsAbove ? toNode.y : toNode.y + toNode.height,
-      },
-      ghost: true,
-    });
-  }
-
-  // Normalize: shift everything so all coordinates are positive
-  let minX = Infinity;
-  let minY = Infinity;
-  for (const c of containers) {
-    minX = Math.min(minX, c.x);
-    minY = Math.min(minY, c.y);
-  }
-  for (const [, node] of layoutNodes) {
-    minX = Math.min(minX, node.x);
-    minY = Math.min(minY, node.y);
-  }
-
-  const shiftX = minX < CONTAINER_PADDING ? CONTAINER_PADDING - minX : 0;
-  const shiftY = minY < CONTAINER_PADDING ? CONTAINER_PADDING - minY : 0;
-
-  if (shiftX > 0 || shiftY > 0) {
-    for (const c of containers) {
-      c.x += shiftX;
-      c.y += shiftY;
-    }
-    for (const [, node] of layoutNodes) {
-      node.x += shiftX;
-      node.y += shiftY;
-    }
-    for (const edge of layoutEdges) {
-      edge.fromPoint.x += shiftX;
-      edge.fromPoint.y += shiftY;
-      edge.toPoint.x += shiftX;
-      edge.toPoint.y += shiftY;
-    }
-  }
-
-  // Assert non-negative coordinates after normalization (dev/test only).
-  // Read NODE_ENV via globalThis to avoid TS2591 in browser-targeted tsconfigs lacking @types/node.
-  // When process is undefined (browser), nodeEnv is undefined and the check is skipped, so
-  // production builds degrade gracefully (incomplete diagram) rather than crashing.
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const nodeEnv = (globalThis as any).process?.env?.NODE_ENV;
-  if (typeof nodeEnv === "string" && nodeEnv !== "production") {
-    for (const c of containers) {
-      if (c.x < 0) {
-        throw new Error(`[layout] container "${c.id}" has negative x=${c.x} after normalization`);
-      }
-    }
-    for (const [id, node] of layoutNodes) {
-      if (node.x < 0) {
-        throw new Error(`[layout] node "${id}" has negative x=${node.x} after normalization`);
-      }
-    }
-  }
-
-  // Calculate total dimensions
-  let totalWidth = 0;
-  let totalHeight = 0;
-  for (const c of containers) {
-    totalWidth = Math.max(totalWidth, c.x + c.width + CONTAINER_PADDING);
-    totalHeight = Math.max(totalHeight, c.y + c.height + CONTAINER_PADDING);
-  }
-  for (const [, node] of layoutNodes) {
-    totalWidth = Math.max(totalWidth, node.x + node.width + NODE_GAP);
-    totalHeight = Math.max(totalHeight, node.y + node.height + NODE_GAP);
-  }
+  // Normalize coordinates and compute dimensions
+  normalizeCoordinates(containers, layoutNodes, layoutEdges);
+  const { width: totalWidth, height: totalHeight } = computeTotalDimensions(containers, layoutNodes);
 
   return {
     nodes: layoutNodes,
@@ -751,19 +808,8 @@ function layoutMultipleSystems(
     const rawNodes = si === 0 ? viewSlice.childNodes : sys.children;
     const nodeIds = rawNodes.map((n) => n.id);
     const idSet = new Set(nodeIds);
-    const adj = new Map<string, string[]>();
-    const inDegree = new Map<string, number>();
-    for (const id of nodeIds) {
-      adj.set(id, []);
-      inDegree.set(id, 0);
-    }
     // Only include intra-system edges for layout ordering
-    for (const edge of sys.edges) {
-      if (idSet.has(edge.from) && idSet.has(edge.to)) {
-        adj.get(edge.from)!.push(edge.to);
-        inDegree.set(edge.to, (inDegree.get(edge.to) ?? 0) + 1);
-      }
-    }
+    const { adj, inDegree } = buildGraph(nodeIds, sys.edges);
     const layers = assignLayers(nodeIds, adj, inDegree);
 
     const nodesByLayer = new Map<number, string[]>();
