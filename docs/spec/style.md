@@ -1,44 +1,46 @@
-# .krs.style 構文リファレンス
+# .krs.style Syntax Reference
 
-## セレクタの種類
+> **English** (this file) · [日本語](style.ja.md)
 
-| セレクタ | 例 | 対象 |
-|---------|-----|------|
-| 種別 | `service` | 指定した種別の全ノード |
-| 複数種別 | `service, domain` | いずれかの種別の全ノード |
-| タグ | `[external]` | 指定タグを持つ全ノード |
-| アノテーション | `@deprecated` | 指定アノテーションを持つ全ノード |
-| 複合（種別+タグ） | `service[external]` | 種別とタグの両方に一致 |
-| 複合（タグ+アノテーション） | `[external]@deprecated` | タグとアノテーションの両方に一致 |
-| 複合（種別+タグ+アノテーション） | `service[external]@deprecated` | すべてに一致 |
-| ID | `#ECommerce` | 特定ノードのみ |
-| エッジ | `edge` | 全エッジ |
-| エッジ+タグ | `edge[async]` | 指定タグのエッジ |
+## Selector types
 
----
-
-## 詳細度ルール（カスケード）
-
-| セレクタ | スコア |
-|---------|-------|
-| 種別（`service`） | 1 |
-| タグ（`[external]`） | 10 |
-| アノテーション（`@deprecated`） | 10 |
-| 種別+タグ（`service[external]`） | 11 |
-| タグ+アノテーション（`[external]@deprecated`） | 20 |
-| 種別+タグ+アノテーション | 21 |
-| ID（`#ECommerce`） | 100 |
-
-同スコアなら後に書いた方が優先（CSS同様）。
+| Selector | Example | Target |
+|----------|---------|--------|
+| Kind | `service` | All nodes of the given kind |
+| Multiple kinds | `service, domain` | All nodes of any listed kind |
+| Tag | `[external]` | All nodes with the given tag |
+| Annotation | `@deprecated` | All nodes with the given annotation |
+| Compound (kind + tag) | `service[external]` | Matches both kind and tag |
+| Compound (tag + annotation) | `[external]@deprecated` | Matches both tag and annotation |
+| Compound (kind + tag + annotation) | `service[external]@deprecated` | Matches all three |
+| ID | `#ECommerce` | A specific node only |
+| Edge | `edge` | All edges |
+| Edge + tag | `edge[async]` | Edges with the given tag |
 
 ---
 
-## プロパティ一覧
+## Specificity rules (cascade)
+
+| Selector | Score |
+|----------|-------|
+| Kind (`service`) | 1 |
+| Tag (`[external]`) | 10 |
+| Annotation (`@deprecated`) | 10 |
+| Kind + tag (`service[external]`) | 11 |
+| Tag + annotation (`[external]@deprecated`) | 20 |
+| Kind + tag + annotation | 21 |
+| ID (`#ECommerce`) | 100 |
+
+When scores are equal, the later declaration wins (same as CSS).
+
+---
+
+## Property list
 
 ```css
-/* ノード用プロパティ */
+/* Node properties */
 background-color: #1D4ED8;
-color:            #DBEAFE;       /* テキスト色 */
+color:            #DBEAFE;       /* text color */
 border-color:     #1E40AF;
 border-width:     2px;
 border-style:     solid;         /* solid | dashed | dotted */
@@ -48,34 +50,34 @@ font-weight:      bold;          /* normal | bold */
 font-family:      "Noto Sans JP", sans-serif;
 opacity:          0.6;
 
-/* エッジ用プロパティ */
+/* Edge properties */
 color:            #94A3B8;
 stroke-width:     1.5px;
 font-size:        11px;
 
-/* karasu固有プロパティ（CSS非対応のため例外） */
+/* karasu-specific properties (not standard CSS) */
 shape:            box;           /* box | user | cylinder | queue | hexagon | cloud | url("...") */
 
-/* アノテーション用プロパティ（バッジ表示） */
+/* Annotation properties (badge display) */
 badge-color:      #EF4444;
 badge-icon:       "⚠";
-badge-label:      "非推奨";
+badge-label:      "Deprecated";
 ```
 
 ---
 
-## shape プロパティ
+## shape property
 
-| キーワード | 形状 | 主な用途 |
-|-----------|------|---------|
-| `box` | 角丸長方形 | service, domain（デフォルト） |
-| `user` | 人型（頭+体） | user |
-| `cylinder` | 円柱 | db系 |
-| `queue` | 横向き円柱 | queue系 |
-| `hexagon` | 六角形 | マイクロサービス |
-| `cloud` | 雲形 | 外部クラウド |
+| Keyword | Shape | Typical use |
+|---------|-------|-------------|
+| `box` | Rounded rectangle | service, domain (default) |
+| `user` | Person (head + body) | user |
+| `cylinder` | Cylinder | databases |
+| `queue` | Horizontal cylinder | queues |
+| `hexagon` | Hexagon | microservices |
+| `cloud` | Cloud | external cloud services |
 
-カスタム形状（SVGファイル参照）：
+Custom shapes (SVG file reference):
 
 ```css
 service[external] {
@@ -85,22 +87,22 @@ service[external] {
 
 ---
 
-## @import のスコープと衝突
+## @import scope and conflicts
 
-- グローバルスコープ（ファイル全体に適用）
-- 同じセレクタが複数ファイルで定義された場合は後勝ち
-- 衝突時は警告を出力（エラーにはしない）
+- Global scope (applies to the entire file).
+- When the same selector is defined in multiple files, the last one wins.
+- A warning is emitted on conflict (not an error).
 
 ```
-⚠ Warning: セレクタ "service" が複数ファイルで定義されています
+⚠ Warning: Selector "service" is defined in multiple files
   - default.krs.style:3
   - my-theme.krs.style:2
-  my-theme.krs.style の定義が適用されます（後勝ち）
+  The definition in my-theme.krs.style is applied (last wins)
 ```
 
 ---
 
-## スタイル解決の擬似コード
+## Style resolution pseudo-code
 
 ```javascript
 function resolveStyle(node, rules) {
@@ -122,10 +124,10 @@ function specificity(selector) {
 
 ---
 
-## 完全サンプル（default.krs.style）
+## Full example (default.krs.style)
 
 ```css
-/* ── 種別セレクタ ── */
+/* ── Kind selectors ── */
 user {
   background-color: #1D4ED8;
   color:            #DBEAFE;
@@ -170,7 +172,7 @@ impl {
   shape:            box;
 }
 
-/* ── タグセレクタ ── */
+/* ── Tag selectors ── */
 [external] {
   background-color: #1F2937;
   color:            #D1D5DB;
@@ -178,11 +180,11 @@ impl {
   border-style:     dashed;
 }
 
-/* ── アノテーションセレクタ ── */
+/* ── Annotation selectors ── */
 @deprecated {
   badge-color:  #EF4444;
   badge-icon:   "⚠";
-  badge-label:  "非推奨";
+  badge-label:  "Deprecated";
   opacity:      0.6;
 }
 
@@ -195,16 +197,16 @@ impl {
 @experimental {
   badge-color:  #F59E0B;
   badge-icon:   "⚗";
-  badge-label:  "実験的";
+  badge-label:  "Experimental";
 }
 
 @migration_target {
   badge-color:  #3B82F6;
   badge-icon:   "→";
-  badge-label:  "移行先";
+  badge-label:  "Migration target";
 }
 
-/* ── 複合セレクタ ── */
+/* ── Compound selectors ── */
 user[external] {
   color: #9CA3AF;
 }
@@ -213,12 +215,12 @@ user[external] {
   border-color: #EF4444;
 }
 
-/* ── IDセレクタ ── */
+/* ── ID selectors ── */
 #ECommerce {
   background-color: #7C3AED;
 }
 
-/* ── エッジ ── */
+/* ── Edges ── */
 edge {
   color:        #94A3B8;
   stroke-width: 1.5px;
@@ -230,7 +232,7 @@ edge[async] {
   color:        #6B7280;
 }
 
-/* ── 組織図（Org Tree View）── */
+/* ── Organization diagram (Org Tree View) ── */
 team {
   background-color: #1E3A5F;
   color:            #E2E8F0;
@@ -242,7 +244,7 @@ member {
   border-color:     #334155;
 }
 
-/* 特定チームのみ強調 */
+/* Highlight a specific team */
 #BackendTeam {
   border-color: #F59E0B;
   border-width: 2px;
@@ -251,30 +253,30 @@ member {
 
 ---
 
-## 組織図ノードセレクタ（Org Tree View）
+## Organization diagram node selectors (Org Tree View)
 
-Org Tree View は `team` / `member` の種別セレクタと ID セレクタ（`#NodeId`）をサポートします。
+The Org Tree View supports `team` / `member` kind selectors and ID selectors (`#NodeId`).
 
-| セレクタ | 対象 |
-|---------|------|
-| `team` | すべてのチームカード |
-| `member` | すべてのメンバーカード |
-| `#TeamId` | 特定のチームカード |
-| `#MemberId` | 特定のメンバーカード |
-| `edge` | チーム間のベジェコネクタ |
+| Selector | Target |
+|----------|--------|
+| `team` | All team cards |
+| `member` | All member cards |
+| `#TeamId` | A specific team card |
+| `#MemberId` | A specific member card |
+| `edge` | Bézier connectors between teams |
 
-**対応プロパティ:**
+**Supported properties:**
 
-| プロパティ | 効果 |
-|---|---|
-| `background-color` | カード背景色 |
-| `color` | テキスト色 |
-| `border-color` | 枠線色 |
-| `border-width` | 枠線幅（px） |
-| `border-radius` | 角丸（px） |
-| `font-size` | フォントサイズ（px） |
-| `font-weight` | フォントウェイト（`normal` / `bold`） |
-| `font-family` | フォントファミリー |
+| Property | Effect |
+|----------|--------|
+| `background-color` | Card background color |
+| `color` | Text color |
+| `border-color` | Border color |
+| `border-width` | Border width (px) |
+| `border-radius` | Border radius (px) |
+| `font-size` | Font size (px) |
+| `font-weight` | Font weight (`normal` / `bold`) |
+| `font-family` | Font family |
 
-> **注意**: `opacity` / `shape` / `badge-*` は Org Tree View では無視されます。
-> タグ・アノテーション複合セレクタ（`team[external]` 等）は現時点では未サポートです。
+> **Note**: `opacity` / `shape` / `badge-*` are ignored in the Org Tree View.
+> Tag/annotation compound selectors (`team[external]`, etc.) are not supported at this time.
