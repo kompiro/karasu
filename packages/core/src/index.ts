@@ -246,8 +246,116 @@ export type CompileResult = SystemCompileResult | DeployCompileResult | OrgCompi
 // Internal helpers
 // ---------------------------------------------------------------------------
 
+/** Common inputs for the shared compile pipeline, prepared by each entry point. */
+interface PreparedCompileInput {
+  krsFile: KrsFile;
+  diagnostics: Diagnostic[];
+  sheets: StyleSheet[];
+  nodeFileIndex: Map<string, string>;
+}
+
+/**
+ * Shared compile pipeline. Both _compileCore and _compileProjectCore delegate
+ * here after preparing their inputs (parsing source vs resolving imports).
+ */
+function _compileFromPreparedInput(input: PreparedCompileInput, opts: CompileOptions): CompileResult {
+  const { krsFile, diagnostics, sheets, nodeFileIndex } = input;
+  const { diagramType = "system", viewPath, selectedDeployId, displayMode } = opts;
+
+  const systemSheetCount = 1; // only builtin counts as system for conflict detection
+  const warnings = analyze(krsFile, sheets, systemSheetCount);
+
+  // For style resolution, icon theme is appended last so it takes highest priority for `shape`.
+  // This ensures Icon Mode is immune to `shape` overrides from user or builtin stylesheets.
+  const resolveSheets = displayMode === "icon" ? [...sheets, getIconThemeStyleSheet()] : sheets;
+
+  if (diagramType === "org") {
+    const slice = extractOrgView(krsFile.organizations, viewPath ?? []);
+    const styles = resolveStyles(
+      krsFile.systems,
+      resolveSheets,
+      undefined,
+      krsFile.organizations,
+    );
+    const svg = _renderOrgView(slice, styles, displayMode);
+    return {
+      diagramType: "org",
+      svg,
+      diagnostics,
+      warnings,
+      nodePathIndex: krsFile.nodePathIndex,
+      organizations: krsFile.organizations,
+      styles,
+    };
+  }
+
+  // system / deploy shared setup
+  const deploySliceForStyle = extractDeployView(
+    krsFile.deploys,
+    krsFile.systems,
+    selectedDeployId,
+  );
+  const deployUnits = [
+    ...deploySliceForStyle.containers.flatMap((c) => c.units),
+    ...deploySliceForStyle.unclassifiedUnits,
+  ];
+  const hasDeployDiagram = krsFile.deploys.length > 0;
+  const deployBlocks = krsFile.deploys.map((d) => ({ id: d.id, label: d.label ?? d.id }));
+  const serviceIdsWithDeploy = new Set(deploySliceForStyle.containers.map((c) => c.serviceId));
+  const ownerIndex = krsFile.ownerIndex;
+
+  if (diagramType === "deploy") {
+    const styles = resolveStyles(
+      krsFile.systems,
+      resolveSheets,
+      deployUnits,
+      undefined,
+      krsFile.domains,
+    );
+    const svg = renderDeploy(deploySliceForStyle, styles, displayMode);
+    const nodeMetadata = buildDeployNodeMetadata(deploySliceForStyle);
+    return { diagramType: "deploy", svg, warnings, diagnostics, nodeMetadata, deployBlocks };
+  }
+
+  // system (default)
+  // extractView must be called before resolveStyles so that derived edges (e.g. implicit
+  // service edges synthesized from cross-service domain edges) can be included in the
+  // edgeStyles cache. Without this, derived edges fall back to defaultEdgeStyle.
+  const viewSlice = extractView(
+    krsFile.systems,
+    viewPath ?? [],
+    krsFile.domains,
+  );
+  const styles = resolveStyles(
+    krsFile.systems,
+    resolveSheets,
+    deployUnits,
+    undefined,
+    krsFile.domains,
+    viewSlice.childEdges,
+  );
+  const svg = render(viewSlice, styles, serviceIdsWithDeploy, ownerIndex, displayMode);
+  const nodeMetadata = buildNodeMetadata(
+    viewSlice,
+    serviceIdsWithDeploy,
+    ownerIndex,
+    krsFile.nodePathIndex,
+  );
+  return {
+    diagramType: "system",
+    svg,
+    warnings,
+    diagnostics,
+    nodeMetadata,
+    hasDeployDiagram,
+    deployBlocks,
+    systems: krsFile.systems,
+    nodeFileIndex,
+  };
+}
+
 function _compileCore(krsSource: string, opts: CompileOptions): CompileResult {
-  const { diagramType = "system", styleSource, viewPath, selectedDeployId, displayMode } = opts;
+  const { styleSource } = opts;
 
   const parseResult: ParseResult<KrsFile> = Parser.parse(krsSource);
   const diagnostics = [...parseResult.diagnostics];
@@ -260,96 +368,11 @@ function _compileCore(krsSource: string, opts: CompileOptions): CompileResult {
     diagnostics.push(...styleResult.diagnostics);
     sheets.push(styleResult.value);
   }
-  const systemSheetCount = 1; // only builtin counts as system for conflict detection
-  const warnings = analyze(parseResult.value, sheets, systemSheetCount);
 
-  // For style resolution, icon theme is appended last so it takes highest priority for `shape`.
-  // This ensures Icon Mode is immune to `shape` overrides from user or builtin stylesheets.
-  const resolveSheets = displayMode === "icon" ? [...sheets, getIconThemeStyleSheet()] : sheets;
-
-  if (diagramType === "org") {
-    const slice = extractOrgView(parseResult.value.organizations, viewPath ?? []);
-    const styles = resolveStyles(
-      parseResult.value.systems,
-      resolveSheets,
-      undefined,
-      parseResult.value.organizations,
-    );
-    const svg = _renderOrgView(slice, styles, displayMode);
-    return {
-      diagramType: "org",
-      svg,
-      diagnostics,
-      warnings,
-      nodePathIndex: parseResult.value.nodePathIndex,
-      organizations: parseResult.value.organizations,
-      styles,
-    };
-  }
-
-  // system / deploy shared setup
-  const deploySliceForStyle = extractDeployView(
-    parseResult.value.deploys,
-    parseResult.value.systems,
-    selectedDeployId,
+  return _compileFromPreparedInput(
+    { krsFile: parseResult.value, diagnostics, sheets, nodeFileIndex: new Map<string, string>() },
+    opts,
   );
-  const deployUnits = [
-    ...deploySliceForStyle.containers.flatMap((c) => c.units),
-    ...deploySliceForStyle.unclassifiedUnits,
-  ];
-  const hasDeployDiagram = parseResult.value.deploys.length > 0;
-  const deployBlocks = parseResult.value.deploys.map((d) => ({ id: d.id, label: d.label ?? d.id }));
-  const serviceIdsWithDeploy = new Set(deploySliceForStyle.containers.map((c) => c.serviceId));
-  const ownerIndex = parseResult.value.ownerIndex;
-
-  if (diagramType === "deploy") {
-    const styles = resolveStyles(
-      parseResult.value.systems,
-      resolveSheets,
-      deployUnits,
-      undefined,
-      parseResult.value.domains,
-    );
-    const svg = renderDeploy(deploySliceForStyle, styles, displayMode);
-    const nodeMetadata = buildDeployNodeMetadata(deploySliceForStyle);
-    return { diagramType: "deploy", svg, warnings, diagnostics, nodeMetadata, deployBlocks };
-  }
-
-  // system (default)
-  // extractView must be called before resolveStyles so that derived edges (e.g. implicit
-  // service edges synthesized from cross-service domain edges) can be included in the
-  // edgeStyles cache. Without this, derived edges fall back to defaultEdgeStyle.
-  const viewSlice = extractView(
-    parseResult.value.systems,
-    viewPath ?? [],
-    parseResult.value.domains,
-  );
-  const styles = resolveStyles(
-    parseResult.value.systems,
-    resolveSheets,
-    deployUnits,
-    undefined,
-    parseResult.value.domains,
-    viewSlice.childEdges,
-  );
-  const svg = render(viewSlice, styles, serviceIdsWithDeploy, ownerIndex, displayMode);
-  const nodeMetadata = buildNodeMetadata(
-    viewSlice,
-    serviceIdsWithDeploy,
-    ownerIndex,
-    parseResult.value.nodePathIndex,
-  );
-  return {
-    diagramType: "system",
-    svg,
-    warnings,
-    diagnostics,
-    nodeMetadata,
-    hasDeployDiagram,
-    deployBlocks,
-    systems: parseResult.value.systems,
-    nodeFileIndex: new Map<string, string>(),
-  };
 }
 
 async function _compileProjectCore(
@@ -357,105 +380,18 @@ async function _compileProjectCore(
   fs: FileSystemProvider,
   opts: CompileOptions,
 ): Promise<CompileResult> {
-  const { diagramType = "system", viewPath, selectedDeployId, displayMode } = opts;
-
   const resolver = new ImportResolver(fs);
   const resolved = await resolver.resolve(entryPath);
   const diagnostics = [...resolved.diagnostics];
 
   // Build sheets for conflict analysis: [builtin, ...userSheets]
   // Icon theme is intentionally excluded from analysis to avoid false style-conflict warnings.
-  const allSheets = [getBuiltinStyleSheet(), ...resolved.styleSheets];
-  const systemSheetCount = 1; // only builtin counts as system for conflict detection
-  const warnings = analyze(resolved.krsFile, allSheets, systemSheetCount);
+  const sheets = [getBuiltinStyleSheet(), ...resolved.styleSheets];
 
-  // For style resolution, icon theme is appended last so it takes highest priority for `shape`.
-  // This ensures Icon Mode is immune to `shape` overrides from user or builtin stylesheets.
-  const resolveSheets =
-    displayMode === "icon" ? [...allSheets, getIconThemeStyleSheet()] : allSheets;
-
-  if (diagramType === "org") {
-    const slice = extractOrgView(resolved.krsFile.organizations, viewPath ?? []);
-    const styles = resolveStyles(
-      resolved.krsFile.systems,
-      resolveSheets,
-      undefined,
-      resolved.krsFile.organizations,
-    );
-    const svg = _renderOrgView(slice, styles, displayMode);
-    return {
-      diagramType: "org",
-      svg,
-      diagnostics,
-      warnings,
-      nodePathIndex: resolved.krsFile.nodePathIndex,
-      organizations: resolved.krsFile.organizations,
-      styles,
-    };
-  }
-
-  // system / deploy shared setup
-  const deploySliceForStyle = extractDeployView(
-    resolved.krsFile.deploys,
-    resolved.krsFile.systems,
-    selectedDeployId,
+  return _compileFromPreparedInput(
+    { krsFile: resolved.krsFile, diagnostics, sheets, nodeFileIndex: resolved.krsFile.nodeFileIndex },
+    opts,
   );
-  const deployUnits = [
-    ...deploySliceForStyle.containers.flatMap((c) => c.units),
-    ...deploySliceForStyle.unclassifiedUnits,
-  ];
-  const hasDeployDiagram = resolved.krsFile.deploys.length > 0;
-  const deployBlocks = resolved.krsFile.deploys.map((d) => ({
-    id: d.id,
-    label: d.label ?? d.id,
-  }));
-  const serviceIdsWithDeploy = new Set(deploySliceForStyle.containers.map((c) => c.serviceId));
-  const ownerIndex = resolved.krsFile.ownerIndex;
-
-  if (diagramType === "deploy") {
-    const styles = resolveStyles(
-      resolved.krsFile.systems,
-      resolveSheets,
-      deployUnits,
-      undefined,
-      resolved.krsFile.domains,
-    );
-    const svg = renderDeploy(deploySliceForStyle, styles, displayMode);
-    const nodeMetadata = buildDeployNodeMetadata(deploySliceForStyle);
-    return { diagramType: "deploy", svg, warnings, diagnostics, nodeMetadata, deployBlocks };
-  }
-
-  // system (default)
-  // extractView must be called before resolveStyles so that derived edges (e.g. implicit
-  // service edges synthesized from cross-service domain edges) can be included in the
-  // edgeStyles cache. Without this, derived edges fall back to defaultEdgeStyle.
-  const viewSlice = extractView(resolved.krsFile.systems, viewPath ?? [], resolved.krsFile.domains);
-  const styles = resolveStyles(
-    resolved.krsFile.systems,
-    resolveSheets,
-    deployUnits,
-    undefined,
-    resolved.krsFile.domains,
-    viewSlice.childEdges,
-  );
-  const svg = render(viewSlice, styles, serviceIdsWithDeploy, ownerIndex, displayMode);
-  const nodeMetadata = buildNodeMetadata(
-    viewSlice,
-    serviceIdsWithDeploy,
-    ownerIndex,
-    resolved.krsFile.nodePathIndex,
-  );
-  return {
-    diagramType: "system",
-    svg,
-    warnings,
-    diagnostics,
-    nodeMetadata,
-    hasDeployDiagram,
-    deployBlocks,
-    systems: resolved.krsFile.systems,
-    nodeFileIndex: resolved.krsFile.nodeFileIndex,
-  };
 }
 
 // ---------------------------------------------------------------------------
