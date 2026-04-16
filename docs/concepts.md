@@ -1,63 +1,63 @@
-# コアコンセプト
+# Core Concepts
 
-## 論理・物理・組織の三面構造
+> **English** (this file) · [日本語](concepts.ja.md)
 
-karasu はシステムのアーキテクチャを **論理・物理・組織** の三つの面で記述する。
-これが karasu の設計の根幹である。
-それぞれの面は独立したファイルに分離して書けるが、同じ drill-down の中でまとめて扱える。
-なぜこの三つを同じ言語で扱うのかという動機 — Conway の法則と逆コンウェイ戦略 —
-は後述の「目標と非目標」節で詳しく論じる。
+## Three-dimensional structure: logical, physical, organizational
 
-### 論理構造（What / Why）
+karasu describes a system's architecture across three dimensions — **logical, physical, and organizational**.
+This is the foundation of karasu's design.
+Each dimension can be written in a separate file, but all three are navigated together through the same drill-down.
+The motivation for treating these three as a single language — Conway's Law (the observation that software structure tends to mirror organizational structure) and the inverse Conway maneuver (deliberately reshaping team structure to achieve a desired architecture) — is discussed in detail in the "Goals and non-goals" section below.
 
-**何を・なぜ** の観点でシステムを記述する。
+### Logical structure (What / Why)
+
+Describes the system from a **"what and why"** perspective.
 
 ```
 system → service → domain → usecase → resource
 ```
 
-- `system`：owned/external なサービスの関係を示す器
-- `service`：独立したビジネス機能の単位
-- `domain`：サービス内のビジネス上の関心事の境界（DDD の Bounded Context に近い）
-- `usecase`：ドメイン内の業務・操作
-- `resource`：usecase が操作する対象（テーブル、外部API、ファイル等）
+- `system`: a container showing relationships between owned/external services
+- `service`: an independent unit of business functionality
+- `domain`: a business-concern boundary inside a service (close to DDD's Bounded Context)
+- `usecase`: a business operation inside a domain
+- `resource`: what a usecase operates on (tables, external APIs, files, etc.)
 
-### 物理構造（How）
+### Physical structure (How)
 
-**どのように** 動いているかを記述する。論理構造とは別の `.krs` ファイルに分離する。
+Describes **how** the system actually runs. Written in `.krs` files separate from the logical structure.
 
 ```
 deploy → war / oci / job / ...
 ```
 
-### realizes による論理と物理の対応付け
+### Binding logical to physical with `realizes`
 
-物理と論理の対応は `realizes` で明示する。
+`realizes` makes the correspondence between physical and logical explicit.
 
 ```
 oci "order-service" {
-  realizes ECommerce   // 物理（具象）→ 論理（抽象）
+  realizes ECommerce   // physical (concrete) → logical (abstract)
 }
 ```
 
-UMLのRealization関係に対応。「このデプロイ単位がこのサービスを実現している」という宣言。
+This corresponds to UML's Realization relationship. It is a declaration: "this deployment unit realizes this service."
 
-### 組織構造（Who）
+### Organizational structure (Who)
 
-**誰が所有するか** を記述する。
-サービスとドメインごとのオーナーシップをチーム単位で明示することで、
-アーキテクチャ議論とチーム構成の議論を同じテーブルで扱えるようにする。
+Describes **who owns what**.
+By making the ownership of each service and domain explicit at the team level, karasu puts the architecture discussion and the team-structure discussion on the same table.
 
 ```
 organization → team → member
 ```
 
-組織図を karasu の語彙に含めている理由は、それがアーキテクチャ設計に直結するからである。
-詳しくは後述の三面構造の目標を参照。
+The reason karasu includes the organizational diagram as part of its vocabulary is that it is directly tied to architectural design.
+See the three-dimensional goal in the "Goals" section below for details.
 
-### owns による組織と論理/物理の対応付け
+### Binding organization to logical/physical with `owns`
 
-どのチームがどのサービスやドメインを所有するかは、`team` の中で `owns` により明示する。
+Which team owns which service or domain is made explicit inside a `team` using `owns`.
 
 ```
 organization "ec-org" {
@@ -69,162 +69,141 @@ organization "ec-org" {
 }
 ```
 
-`realizes` が物理と論理を結ぶのと対称に、`owns` は組織と論理/物理を結ぶ。
-同じノード id を複数の team が `owns` することはできず、
-オーナーシップが重複すると warning として検出される。
-これにより、三つの面は独立に書けながらも、対応関係は常に図の中に現れる。
+Symmetrically to how `realizes` binds physical to logical, `owns` binds organization to logical and physical.
+The same node id cannot be `owns`-ed by more than one team, and overlapping ownership is detected as a warning.
+As a result, while the three dimensions can be written independently, their correspondences are always visible in the diagram.
 
-### `.krs` テキストの生成経路
+### How `.krs` text is produced
 
-`.krs` テキストを生成する経路は複数ある —
-ユーザーがエディタで手書きする、`karasu translate` コマンドで既存のコード資産
-（Docker Compose、Kubernetes マニフェスト、OpenAPI スキーマ、SQL スキーマ）から抽出する、
-Chat パネルで対話的に生成する。
-どの経路であっても最終的な成果物は `.krs` テキストであり、図はそこから生成される。
-この「テキスト = single source of truth」の原則は後述の「目標」節で詳しく扱う。
+There are several ways to produce `.krs` text —
+a user writes it by hand in an editor, `karasu translate` extracts it from an existing code artifact (Docker Compose, Kubernetes manifests, OpenAPI schema, SQL schema), or the Chat panel generates it interactively.
+Whichever path you take, the final product is `.krs` text, and diagrams are rendered from there.
+This "text as single source of truth" principle is explored in detail in the "Goals" section below.
 
 ---
 
-## ドリルダウン型アーキテクチャ把握
+## Drill-down as the way to understand architecture
 
-ツール名「karasu（鴉）」の由来でもあるコンセプト。
-世界を俯瞰して情報を集め、必要な場所へ降りていく鴉のように、
-図をドリルダウンしながらアーキテクチャを把握していく。
+This concept is also the origin of the tool's name "karasu" (鴉, raven).
+Like a raven that surveys the world from above to gather information and descends where needed, you understand the architecture by drilling down.
 
 ```
-system（全体俯瞰）
-  └─ service（ビジネス機能）
-       └─ domain（関心事の境界）
-            └─ usecase（業務）
-                 └─ resource（操作対象）
+system         (full overview)
+  └─ service   (business functionality)
+       └─ domain    (concern boundary)
+            └─ usecase    (business operation)
+                 └─ resource   (operation target)
 ```
 
-任意のノードからドリルダウンして詳細図へ遷移できる。
-インラインネストで記述し、育ったら外部ファイルに extract する。
+You can drill down from any node to a more detailed view.
+You write using inline nesting, and once something grows, you `extract` it into a separate file.
 
-この仕組みは単なるナビゲーションの便宜ではなく、
-**一度に見せる情報量を限定する** ための認知設計上の選択である。
-全体を 1 枚に押し込む "at a glance" な鳥瞰図ではなく、
-限定された範囲を見てから必要に応じて降りていく **scoped glance** を first class とする。
-なぜこの方針を採るのかは後述の「目標と非目標」節で詳しく論じる。
-本ドキュメント内で以降 "scoped glance" と呼ぶ時は、この原則を指している。
+This mechanism is not merely a navigation convenience;
+it is a deliberate cognitive design choice — **limit how much is shown at once**.
+Rather than a single-page "at a glance" diagram that tries to show everything, karasu takes **scoped glance** — look at a bounded region, then descend as needed — as a first-class approach.
+Why this direction is chosen is discussed in detail in the "Goals and non-goals" section below.
+When this document refers to "scoped glance" from here on, it means this principle.
 
 ---
 
-## エッジ — 関係の表現と集約
+## Edges — Expressing relationships and aggregating them
 
-ノード間の関係を表すのが **エッジ** である。
-karasu のエッジモデルは 4 つの仕組みが組み合わさって成立しており、
-それぞれが **scoped glance と drill-down の原則** をエッジ層で具現化している:
+Relationships between nodes are expressed as **edges**.
+karasu's edge model is made up of four mechanisms that work together, each an embodiment of the **scoped-glance + drill-down principle** at the edge layer:
 
-1. **explicit と implicit** — 書き手は詳細に書き、読み手は俯瞰で受け取る非対称性
-2. **集約** — 俯瞰時に情報量を絞るための畳み込み
-3. **ghost** — 視野が狭まっても外との境界を失わない仕組み
-4. **自動検査** — 構造の健全性を静的に保証する
+1. **Explicit and implicit** — an asymmetry where the writer records details and the reader receives the overview
+2. **Aggregation** — collapsing information when viewed from above
+3. **Ghost** — preserving the existence of boundaries even when the visual field narrows
+4. **Automatic checks** — statically guaranteeing structural soundness
 
-それぞれを動機の観点から説明する。
+Each is explained below from the motivation angle.
 
-### explicit と implicit — 書き手と読み手の非対称性
+### Explicit and implicit — the asymmetry between writer and reader
 
-ユーザーが直接書くエッジ（sync は `->`、async は `-->`）を **explicit edge** と呼ぶ。
-一方、ユーザーが異なるサービスに属するドメイン間にエッジを書くと、
-karasu は上位の service 間のエッジを **自動的に合成** する。
-これが **implicit edge** で、合成されたエッジには `[implicit]` タグが付与され、
-俯瞰図で琥珀色で描画される。
+An edge the user writes directly (`->` for sync, `-->` for async) is an **explicit edge**.
+On the other hand, when the user writes an edge between domains that belong to different services, karasu **automatically synthesizes** an edge between the containing services.
+This is an **implicit edge**. The synthesized edge is tagged with `[implicit]` and rendered in amber on the overview diagram.
 
-この仕組みの動機は drill-down と対になる非対称性にある:
-**書き手はドメインモデリングの結果として細部にエッジを書くだけでよく、
-読み手は service レベルの俯瞰図にそれが自動反映される**。
-ドメインモデリングの成果物がそのままサービス境界の対話に接続され、
-ドメインを書くことと俯瞰を読むことの間に手作業の翻訳が挟まらない。
+The motivation for this mechanism is an asymmetry paired with drill-down:
+**the writer only has to record edges at the detailed level as they do domain modeling, and the reader sees them automatically reflected in the service-level overview**.
+The result of domain modeling feeds directly into service-boundary discussions, with no manual translation step in between.
 
-sync と async の区別は視覚的装飾ではなく構造の意味論を扱う情報である —
-後述の循環検出が非同期を「意図された疎結合」として扱う根拠になっている。
+The distinction between sync and async is not visual decoration but information that captures structural semantics —
+the cyclic-dependency detection described below treats async edges as "intentional loose coupling" precisely because of this distinction.
 
-参照: ADR-20260410-01、ADR-20260413-02。詳細構文は `docs/spec/syntax.md`。
+References: ADR-20260410-01, ADR-20260413-02. See `docs/spec/syntax.md` for the detailed syntax.
 
-### 集約 — 俯瞰時の情報量を絞る
+### Aggregation — reducing information when seen from above
 
-同じ service ペアに複数の domain エッジがあると、
-俯瞰図には N 本の線が重ねて描かれることになり、図が読めなくなる。
-karasu はこれを sync/async 種別ごとに **1 本の implicit エッジへ畳み込み**、
-集約ラベルをクリックすると内訳を詳細パネルで確認できる。
+If the same service pair has multiple domain-level edges between them, the overview would show several overlapping lines and become unreadable.
+karasu collapses these into **a single implicit edge per sync/async kind**, and clicking on the aggregated label opens a detail panel that shows the breakdown.
 
-これは「目標と非目標」節の **一度に見せる情報量を絞る** 原則の直接的な具現化である:
-俯瞰時は畳み、必要な詳細は drill-down と詳細パネルに委ねる。
-集約は sync / async を別々に扱うため、同じペアに両方の依存があれば 2 本描かれる。
+This is a direct embodiment of the **"limit how much is shown at once"** principle from the "Goals and non-goals" section:
+aggregate when viewed from above; delegate the details to drill-down and the detail panel.
+Aggregation is done separately for sync and async, so if a pair has both kinds of dependencies, two edges are drawn.
 
-参照: ADR-20260410-01、ADR-20260413-02、PR #607。
+References: ADR-20260410-01, ADR-20260413-02, PR #607.
 
-### ghost — drill-down で視野が狭まっても境界を失わない
+### Ghost — keep boundaries visible even as the field narrows under drill-down
 
-drill-down で service や domain の内部に降りると、外の世界は視野の外に出る。
-しかし完全に消してしまうと「このドメインは何と依存しているのか」という
-**境界の文脈** が失われる。
-karasu はこれを **ghost domain / ghost system** で解決する:
-視点の外にあるが依存関係を持つノードは、半透明のプレースホルダとして描画される。
-境界の存在だけは見え、詳細は見えない — これも scoped glance の具現化である。
+When you drill down into a service or domain, the outside world drops out of view.
+But erasing it entirely loses the **boundary context** — "what does this domain depend on?"
+karasu addresses this with **ghost domains and ghost systems**:
+nodes that sit outside the current viewpoint but still participate in dependencies are rendered as semi-transparent placeholders.
+The existence of the boundary is visible; the details are not — another embodiment of scoped glance.
 
-加えて、`SystemId.ServiceId` のドット記法で異なるシステムへ明示的にエッジを引くこともでき、
-参照先のシステムは ghost system として描画される。
-マイクロサービスや複数組織にまたがるアーキテクチャを描く際の標準的な仕組み。
+You can also explicitly draw an edge to a different system using the `SystemId.ServiceId` dot notation, and the referenced system renders as a ghost system.
+This is the standard mechanism for describing architectures that span microservices or multiple organizations.
 
-参照: ADR-20260404-09、ADR-20260405-07、ADR-20260411-05。
+References: ADR-20260404-09, ADR-20260405-07, ADR-20260411-05.
 
-### アノテーションの継承 — drill-down で文脈を保つ
+### Annotation inheritance — keeping context across drill-down
 
-エッジ自体ではなくエッジの端点となるノードのスタイルに関わる仕組みとして、
-**親 service のアノテーションが子ノード（domain / usecase / resource）に継承される**。
-service に `@deprecated` が付いていれば、配下のノードも描画時に deprecated として扱われる
-（子が自分自身のアノテーションを持てばそこで止まる）。
+A mechanism related not to edges themselves but to the styling of edge endpoints:
+**annotations on a parent service are inherited by child nodes (domain / usecase / resource)**.
+If a service has `@deprecated`, its descendant nodes are also rendered as deprecated (inheritance stops if a child carries its own annotation).
 
-これは drill-down の任意のレベルで「この service は廃止予定である」という文脈を
-保ちながら描画できるようにするための仕組みで、エッジの描画スタイルにも影響する。
-深い drill-down 先で急にアノテーションが無視されてしまうことを防ぐ。
+This exists so that the context "this service is on its way out" is preserved at any drill-down level, and it affects the way edges are drawn as well.
+It prevents annotations from being ignored suddenly at deeper drill-down levels.
 
-参照: ADR-20260415-01。
+Reference: ADR-20260415-01.
 
-### 自動検査 — 循環依存
+### Automatic checks — cyclic dependencies
 
-karasu は **sync edge のみを対象に循環依存を自動検出** する。
-async を検査対象から外しているのは、非同期依存が「意図された疎結合」を表しており、
-循環的な通信があっても起動順序や呼び出しチェーンの問題には直結しないためである。
-Sync の循環は実際の障害に繋がるため、静的に検出して警告する価値が高い。
+karasu **automatically detects cyclic dependencies, considering only sync edges**.
+Async edges are excluded because an async dependency represents "intentional loose coupling" — a relationship where a cyclic communication does not directly cause startup-ordering or call-chain problems.
+Sync cycles, on the other hand, lead to real failures, so they are worth catching statically and warning about.
 
-検出された循環エッジには `[cyclic]` タグが付与されて赤色で描画される。
-「ゆっくり変化する構造的な文脈」に留まる karasu だからこそ、
-こうした静的検査の結果が意味を持つ — 実装が変わるたびに警告が揺れ動く性質の検査ではない。
+Detected cyclic edges receive a `[cyclic]` tag and are rendered in red.
+Precisely because karasu stays in a **slowly-changing structural context**, the results of such static checks are meaningful — this is not the kind of check whose warnings wobble every time the implementation changes.
 
-参照: ADR-20260405-06。
+Reference: ADR-20260405-06.
 
-### まとめ
+### Summary
 
-4 つの仕組み（explicit/implicit、集約、ghost、循環検査）は独立した機能ではなく、
-**scoped glance + drill-down** という同じ原則をエッジ層で言い換えたものである。
-書き手は詳細に書き、読み手は限定された視野で受け取り、
-境界は ghost で残り、静的検査が構造の健全性を守る。
+The four mechanisms (explicit/implicit, aggregation, ghost, cyclic checks) are not independent features; they are different restatements of the same **scoped-glance + drill-down** principle at the edge layer.
+The writer records details; the reader receives a bounded field of view; boundaries survive as ghosts; and static checks keep the structural soundness.
 
 ---
 
-## ドメイン分散の検出
+## Domain dispersal detection
 
-DDD の観点から、同じドメインが複数のサービスにまたがることは設計上の問題シグナル。
-karasu はこれを自動検出して警告を出す。
+From a DDD standpoint, the same domain appearing across multiple services is a design warning sign.
+karasu detects this automatically and surfaces a warning.
 
 ```
-⚠ Warning: domain "Order" が複数の service に分散しています
+⚠ Warning: domain "Order" is dispersed across multiple services
   - ECommerce
   - Legacy
-  ドメインの凝集性を確認してください
+  Check the cohesion of the domain.
 ```
 
-### 検出スコープ（設計方針 — 実装は #237 でフォローアップ予定）
+### Detection scope (design direction — implementation tracked in #237)
 
-検出は **`system` ブロック単位** で行われる。`system` は組織的なオーナーシップ境界を表すため、
-異なる `system` にまたがる同名ドメインは**意図的な並行モデリング**として扱い、警告しない。
+Detection is performed **within a `system` block**. Because `system` represents an organizational ownership boundary, the same domain name appearing across different `system` blocks is treated as **intentional parallel modeling** and is not warned about.
 
 ```krs
-// 警告なし — 異なる system は独立した組織境界
+// No warning — different systems are independent organizational boundaries
 system LegacyPlatform {
   service OldBilling { domain Payment { ... } }
 }
@@ -232,373 +211,306 @@ system NewPlatform {
   service PaymentService { domain Payment { ... } }
 }
 
-// 警告あり — 同じ system 内で domain id が重複
+// Warning — the same system has duplicate domain ids
 system ECPlatform {
   service ECommerce { domain Order { ... } }
-  service Legacy    { domain Order { ... } }  // ← 警告
+  service Legacy    { domain Order { ... } }  // ← warning
 }
 ```
 
-### 検出キー（設計方針 — 実装は #237 でフォローアップ予定）
+### Detection key (design direction — implementation tracked in #237)
 
-ドメインの同一性は **`id`** で判定する。`label`（表示名）は翻訳・略称変更が起こりうるため、
-検出キーには使用しない。
-
----
-
-## C4 Model との違い
-
-karasu は C4 Model に触発されつつも独自の語彙を採用している。
-
-| C4 Model        | karasu                | 変更理由                           |
-| --------------- | --------------------- | ---------------------------------- |
-| Context Diagram | `system`              | "context" は意味が曖昧             |
-| Container       | `service`             | ビジネス機能の単位であることを明示 |
-| Component       | `domain`              | ドメイン境界であることを明示       |
-| Code            | `usecase`             | 業務・操作の単位を表現             |
-| （なし）        | `resource`            | usecase が操作する対象を明示       |
-| （なし）        | `deploy` / `realizes` | 物理構造を論理構造と分離して表現   |
-
-C4 互換性の追求自体は目標ではない。詳細は後述の「目標と非目標」節を参照。
+Domain identity is determined by **`id`**. The `label` (display name) can be translated or abbreviated over time, so it is not used as the detection key.
 
 ---
 
-## 目標と非目標
+## How karasu differs from C4 Model
 
-karasu が何を目指し、何を目指さないかを明示する。
-このリストの価値は個々のルールそのものよりも **理由** にある。
-将来「X を追加すべきか」を判断する際に、原理から再導出することなく、
-ここに書かれた理由を再利用できることが狙い。
+karasu is inspired by C4 Model but adopts its own vocabulary.
 
-### 目標
+| C4 Model        | karasu                | Why the change                                       |
+| --------------- | --------------------- | ---------------------------------------------------- |
+| Context Diagram | `system`              | "context" is ambiguous                               |
+| Container       | `service`             | Emphasizes its role as a business-function unit      |
+| Component       | `domain`              | Emphasizes its role as a domain boundary             |
+| Code            | `usecase`             | Expresses a business operation                       |
+| (none)          | `resource`            | Makes the operation target of a usecase explicit     |
+| (none)          | `deploy` / `realizes` | Separates physical structure from logical structure  |
 
-#### karasu はアーキテクチャをテキストで記述する
-
-karasu のモデルは `.krs` テキストとして記述され、図はそこから生成される。
-すべての入力経路 — 手書き、`translate` による既存コードからの抽出、
-Chat による対話的生成 — は最終的に `.krs` テキストに収束する。
-テキストを迂回する経路は存在しない。
-
-では **なぜテキストを選んだのか**。
-karasu は論理アーキテクチャ・物理アーキテクチャ・組織アーキテクチャを表現するのに
-十分な表現力を持った DSL として設計されているが、この表現手段としてテキストを選んだ理由は
-次の 4 つの性質に集約される。
-これらは「テキストを選んだ理由」であると同時に、「テキストを採用した結果得られる性質」でもある。
-
-**1. 過不足のない表現力を持つ single source of truth になれる**
-
-karasu DSL はアーキテクチャを語るのに必要な語彙
-（system / service / domain / usecase / resource / deploy / realizes / organization / team）を
-提供し、それ以上の実装詳細は表現できない設計になっている。
-この「ちょうど良さ」があるからこそ、`.krs` テキストはモデルの唯一の source of truth として機能できる。
-あらゆる入力経路が合成可能になり — Chat の出力を人間が手で編集でき、
-逆に手書きしたモデルを Chat で洗練できる — 一貫したメンタルモデルが成立する。
-
-**2. エディタによる記述支援を受けられる**
-
-テキスト形式であることで LSP のエコシステムに乗れる:
-補完、バリデーション、jump-to-definition、hover、リネーム等。
-グラフィカルエディタでこれらの支援を同等に提供するのは極めてコストが高いが、
-テキスト + LSP では標準化された基盤の上に乗るだけで手に入る。
-
-**3. AI との相性が良い**
-
-汎用 LLM にアーキテクチャ図を描かせると、出力の形式も抽象度も不安定になる。
-karasu の DSL を中間言語として挟むと、AI の出力は karasu の表現力の範囲に制約され、
-構造と抽象度が安定する。
-karasu の DSL は AI のために設計されたのではなく、人間の記述道具として独立した価値を持つため、
-AI と人間の双方向の協働言語として機能する。
-詳しくは後述の「karasu と AI — 制約付き中間言語としての DSL」節を参照。
-
-**4. diff が計算しやすく、変更が見える**
-
-テキスト形式・決定論的な出力・局所的な変更という性質は、
-git・ブラウザデモの OPFS・将来の履歴機構のいずれにおいても
-「何が変わったか」をユーザーに還元できることを意味する。
-PR レビューで「このアーキテクチャ変更は何をした」が一目で分かり、
-履歴を遡って「いつこの境界が生まれたか」を辿れる。
-UX 上の帰結として「2 つの `.krs` をグラフィカルに diff 表示する」機能が考えられる（#650 参照）。
-
-具体的には次の性質がこれを支える:
-
-- テキスト形式であること（バイナリでも自動生成 XML でもない）
-- 出力が決定論的であること — 同じ `.krs` は常に同じ SVG をレンダリングし、順序が安定している
-- 変更が局所的であること — ノードを 1 つ追加しただけで無関係な領域が diff に現れない
-
-#### 一度に見せる範囲を限定し、ドリルダウンで詳細へ降りる（scoped glance）
-
-人間が一度に把握できる情報量には限界がある。
-アーキテクチャ全体を 1 枚の図に押し込む "at a glance" な鳥瞰図は、
-システムが育つにつれて急速に読めなくなる —
-線が交錯し、ノードが小さくなり、読者は図の中から知りたい情報を探すことに
-認知リソースを使うことになる。これは図の失敗ではなく、
-一度に伝えようとする情報量と人間の認知帯域のミスマッチである。
-
-karasu はこの問題に対して
-**一度に見せる情報量を常に絞り、必要な詳細があればその場所へ drill-down して降りる**
-というアプローチを first class として採用する。
-階層（system → service → domain → usecase → resource）はこの設計を具現化したもので、
-単なるナビゲーションの便宜ではなく、**認知設計上の選択** である。
-
-karasu は C4 Model からドリルダウンの発想にインスピレーションを受けているが、
-C4 が 4 つの固定的な diagram type（Context / Container / Component / Code）として定義するのに対し、
-karasu はユーザーが任意のノードから下位へ掘り下げ、インラインネストで書き育て、
-成長したら外部ファイルへ extract するという、より連続的・段階的なドリルダウンを採用している。
-この連続性は、モデルが育つ過程をそのまま表現できるという利点を持つ —
-最初は小さなインラインのネストから始め、育ってから extract すればよい。
-
-**補足**: この目標は「鳥瞰図には価値がない」と主張するものではない。
-システム全体にどのような構造が存在するかを **示唆する** 補助的な俯瞰ビュー
-（構造は見せるが詳細は省く "hint view" のようなもの）は、
-drill-down を置き換えるのではなく **補完する** 方向で将来の検討対象となりうる。
-ただし first class なのはあくまで「限定された範囲 + drill-down」であり、
-hint view があるとすればそれはその前提の上に乗るものである。
-
-#### karasu はシステムの構造を「論理・物理・組織」の三つの面で捉える
-
-アーキテクチャを語るとき、多くのツールは「コンポーネントがどう組まれているか」（論理構造）か、
-「どこで動いているか」（物理構造）の片方、あるいは両方に焦点を当てる。
-karasu はここに **組織構造** — どのチームがどのサービスを所有し、誰がメンバーであるか — を
-第三の次元として加える。
-
-背景には **Conway の法則** がある:
-ソフトウェアの構造と組織の構造は切り離せず、
-チームの境界がサービスの境界を作り、逆にサービスの境界がチームの責任範囲を作る。
-片方だけを語ると、もう片方に潜む力学を見逃すことになる。
-
-ただし karasu が組織構造を first class として扱う動機は、もう一歩踏み込んだところにある。
-マイクロサービスアーキテクチャの文脈で語られる
-**逆コンウェイ戦略 (inverse Conway maneuver)** —
-望ましいソフトウェアアーキテクチャを実現するために、意図的にチーム構造を設計しなおすアプローチ — を
-アーキテクチャ議論と同じテーブルで扱えるようにすることが狙いである。
-サービスとドメインごとのオーナーシップを図の中に明示することで、
-「このサービスを分割したい。どのチームが新しい境界を所有すべきか」
-「このドメインの責任範囲を誰に預けるか」「チームを作り替えるとして、どこから手を付けるか」
-といった問いを、論理構造・物理構造と同じ文脈で議論できるようになる。
-karasu にとって組織図はドキュメントではなく、**設計判断の対象** である。
-
-karasu はこの三つの面を同じ `.krs` / `.krs.style` の語彙で、同じ drill-down の中で扱えるようにしている:
-
-- **論理**: `system` / `service` / `domain` / `usecase` / `resource`
-- **物理**: `deploy` / `realizes`
-- **組織**: `organization` / `team` / `member`
-
-これらは別々のツールで描くこともできるが、別々に描くと
-対応関係（どのチームがどのサービスを、どの環境で運用しているか）が図の外に出てしまい、
-アーキテクチャとチーム構成をセットで動かす議論ができなくなる。
-karasu の狙いは、**三つの面の交点** — Conway の法則と逆コンウェイ戦略の力学が発生する場所 — を
-一つの言語で語れるようにすることである。
-
-### 非目標
-
-非目標を読む前に、ほとんどすべての非目標が従っている **共通のフィルタ** を意識してほしい。
-
-karasu が何を扱わないかの判断は、個別の機能ごとにゼロから考えるのではなく、
-一つの原則に照らして導ける。その原則はこうである:
-
-> karasu が扱うのは **ゆっくり変化する構造的な文脈** — 何が存在し、どう関係し、
-> 誰が所有するかであり、実装の詳細も運用の現況もその外側にある。
-
-「X もできるようにしては？」という多くの提案は、表面的には魅力的に見えるが、
-共通してひとつの副作用を持つ: **実装や運用の詳細をモデル側に引き込む圧力** である。
-コード生成は実装の細部をモデルに書かせる、ランタイムメトリクスは個々の pod をモデルに追わせる、
-DB スキーマ設計はテーブル定義をモデルに持たせる、シーケンス図は時間軸をモデルに引き込む。
-いずれも karasu が立つべき抽象度の外側へモデルを引っ張る力として働く。
-
-以下の非目標はこの同じ原則の個別の現れである。
-読者は各項目を独立したルールとしてではなく、
-**「またあのフィルタが働いている」** という目で読むと、それぞれの判断がなぜ一貫するのかが見える。
-
-#### 完全に自動化されたレイアウト最適化は追求しない
-
-テキストソースの可読性が最優先である。
-ユーザーがスライドや外部ドキュメント向けにピクセル単位で整った図を必要とする場合、
-答えは karasu のレイアウトエンジンをその方向に育てることではなく、
-**レイアウト調整に特化したツールへ出力を逃がすこと** である。
-この escape hatch として draw.io エクスポートを予定している（#649 参照）。
-この非目標と escape hatch は対として機能するため、セットで理解してほしい。
-
-#### キャンバス上で図を直接描いてモデルを作るモードは提供しない
-
-キャンバス上でノードをドラッグしてモデルを作成するモードは目標に含まれない。
-モデルは常にテキストとして生成・編集され、図はそのテキストから派生する。
-この原則は Chat パネルの位置づけも明確にする:
-**Chat はテキストを生成するのであって、図を編集するのではない**。
-この非目標が無いと、「キャンバスエディタを追加して」という要望を毎回原理から再評価することになる。
-
-#### ランタイムメトリクスや稼働中のシステム状態は可視化しない
-
-karasu が表現するのは **意図された** アーキテクチャであり、観測された挙動ではない。
-稼働中のレイテンシ、エラー率、インスタンス数といった情報を図に重ねることは、
-抽象度のミスマッチを生む:
-karasu の `service` はビジネス機能の論理単位だが、ランタイムメトリクスは個々のプロセスや pod インスタンスという、
-一段細かい粒度を対象とする。両者を混ぜると次のことが起きる:
-
-- モデルが本番トポロジ（どの pod か、どのリージョンか）を追う必要が生まれ、ダッシュボード寄りに引っ張られる
-- 図が live telemetry に接続されていないと意味を持たなくなる
-- karasu の重心が「アーキテクチャを語る道具」から「運用を見る道具」へ移動する
-
-観測ビュー用の道具は Datadog / Grafana / Backstage など既に存在しており、そちらが担当すべき領域である。
-
-#### 物理インフラのトポロジ（リージョン・AZ・クラスタ・ノード）はモデリングしない
-
-「本番は us-east-1 の 3 AZ にまたがる K8s クラスタで、staging は単一 AZ」といった
-インフラトポロジそのものの記述は karasu の対象外とする。
-一見すると物理構造として `deploy` の延長に置けそうに見えるが、実際には抽象度がさらに一段下がる:
-`deploy` が扱うのは「どのコード成果物がどのランタイム形態（OCI / Lambda / Job 等）で動くか」という
-**ランタイム契約** であり、それが具体的にどのリージョンのどのクラスタの何番目のノードに載るかは
-クラウドプロバイダ・IaC・オーケストレータの責務である。
-
-これをモデルに引き込むと次の副作用が生じる:
-
-- モデルが Terraform / Kubernetes マニフェストの重複物になり、真実の源と二重管理になる
-- 環境ごと（prod / staging / dev）にモデルを分岐させる圧力が生まれ、構造の記述が運用構成の記述に飲み込まれる
-- karasu の重心が「アーキテクチャを語る道具」から「インフラ構成を語る道具」へ移動する
-
-インフラトポロジの可視化は Terraform graph、Backstage、クラウドコンソール、専用の構成図ツールが
-既に担当している領域であり、karasu は `deploy` のランタイム契約層で止める。
-この非目標は Issue #28 を通じて検討した結果、採用せずスコープアウトと判断した。
-
-#### 振る舞い・シーケンス・時系列のモデリングは行わない
-
-karasu が表現するのは **構造** である — 何が存在し、どう関係し、誰が所有しているか。
-「A が B を呼び、B が C を呼び、応答が戻る」といった時間軸上のフローは対象外とする。
-シーケンス図は Mermaid や PlantUML が別の関心事として適切に扱える領域であり、
-karasu の図とシーケンス図は異なる問いに答える道具である。
-1 つのファイル内で両方を表現しようとすると、どちらの表現力も薄まる。
-シーケンス図をドリルダウン対象として追加する案は Issue #23 で検討したが、
-同じ理由でスコープアウトとした。
-
-#### データベーススキーマのモデリングはしない
-
-テーブル、カラム、インデックス、外部キー、ER レベルの関係は対象外である。
-ここで `translate --from db` との **非対称性** に注意してほしい:
-既存のスキーマを取り込んで domain として **抽象化する** ことは目標に含まれる
-（情報は抽象度が上がる方向 — 詳細が落ちる方向に流れる）が、
-karasu モデルの中でスキーマを **設計する** ことは反対方向の情報の流れを要求する —
-実装詳細をモデルに引き込む圧力を生む。
-ER モデリング専用のツールが存在するため、そちらを使うべきである。
-
-#### C4 互換は目標ではない
-
-karasu は C4 Model に触発されているが、独自の語彙（system / service / domain / usecase / resource）と
-独自の drill-down セマンティクスを定義している。
-厳密な C4 互換は最初から目標ではない — 視覚的な類似から
-誤って互換を期待されないよう、非目標として明記する。
-互換を追求すると、karasu の差別化要素である論理/物理分離と drill-down モデルに対して
-妥協を強いることになる。
-
-#### モデルからアプリケーションコードは生成しない
-
-これは正しく押さえるべき最重要の非目標である。
-なぜなら、理由付けが `translate` CLI（逆方向に働く）と **非対称** だからである。
-
-- **`translate`（code → model）** は既存システムを **抽象化して俯瞰する** ための入力補助である。
-  情報は抽象度が上がる方向に流れる: 実装詳細が落ちて、アーキテクチャが読めるようになる。
-- **コード生成（model → code）** は逆に情報が詳細化する方向に流れる: モデルがコードを駆動できるだけの実装詳細を
-  持つ必要が生じ、結果として **ユーザーに過度に詳細なモデルを書かせることになる**。
-  モデルはコードの重複物と化し、karasu は「アーキテクチャを語る道具」から
-  「実装を駆動する道具」へと軸を外す。
-
-karasu は明示的に **アーキテクチャを語る道具** であり、**実装を駆動する道具ではない**。
-この枠組みは隣接する誘惑（「domain から TypeScript の型定義だけ生成して」
-「usecase から OpenAPI スケルトンだけ生成して」）にも一貫した答えを与える —
-どれもモデルに実装詳細を押し込む圧力を生むため、すべて対象外となる。
+C4 compatibility is not a goal in itself. See the "Goals and non-goals" section below for details.
 
 ---
 
-これらの目標と非目標は固定されたものではなく、実利用から学んで更新されることを想定している。
-ただし更新する際には、個別のルールではなく **理由の層** を議論すべきである —
-新しいルールを追加する時、既存の理由と矛盾しないか、共通テーマ（抽象度を保つ、テキストを唯一の情報源とする）に
-整合するかを確認することで、karasu の一貫性が保たれる。
+## Goals and non-goals
+
+What karasu aims for and what it does not.
+The value of this list is in the **rationale** behind individual rules more than in the rules themselves.
+The aim is that when a future "should we add X?" question arises, the reasoning written here can be reused directly instead of being re-derived from first principles.
+
+### Goals
+
+#### karasu describes architecture as text
+
+karasu's model is written as `.krs` text, and diagrams are rendered from it.
+All input paths — hand-writing, extracting from existing code via `translate`, interactive generation through Chat — converge on the same `.krs` text.
+There is no path that bypasses the text.
+
+So **why was text chosen?**
+karasu is designed as a DSL with enough expressive power to describe logical, physical, and organizational architecture, and the reasons for choosing text as the medium come down to the following four properties.
+These four properties are both the motivation for choosing text and the benefits that follow from it.
+
+**1. Just-enough expressiveness lets it be a true single source of truth**
+
+The karasu DSL provides exactly the vocabulary needed to describe architecture (system / service / domain / usecase / resource / deploy / realizes / organization / team) and is deliberately designed so that nothing below that level can be expressed.
+It is this "just-right-ness" that lets `.krs` text function as the model's single source of truth.
+Every input path becomes composable — the output of Chat can be hand-edited, and in turn, a hand-written model can be refined by Chat — and a single, consistent mental model holds throughout.
+
+**2. Editor support via the LSP ecosystem**
+
+Because it is text-based, it sits on the LSP ecosystem:
+completion, validation, jump-to-definition, hover, rename, and so on.
+Providing these affordances at the same level inside a graphical editor would be extraordinarily expensive, but with text + LSP they come for free as a natural consequence of sitting on a standardized foundation.
+
+**3. Natural affinity with AI**
+
+When you ask a general-purpose LLM to draw an architecture, both the format and the level of abstraction in its output are unstable.
+Inserting karasu's DSL as an intermediate language constrains the AI's output to the range of what karasu can express, stabilizing both structure and abstraction.
+Because karasu's DSL was not designed for AI but as a standalone human-oriented tool, it ends up functioning as a bidirectional collaboration language between humans and AI.
+See the "karasu and AI — the DSL as a constrained intermediate language" section below for the full discussion.
+
+**4. Diffs are easy to compute, and changes are visible**
+
+Being text-based, producing deterministic output, and keeping changes local — these properties mean that git, the browser demo's OPFS, or any future history mechanism can all show users "what changed."
+Code review can answer "what did this architecture change do?" at a glance, and history can be walked backward to find "when this boundary appeared."
+One UX consequence of this is the possibility of "graphical diff between two `.krs` files" as a feature (see #650).
+
+Concretely, the following properties support this:
+
+- It is text (not binary, not auto-generated XML)
+- Output is deterministic — the same `.krs` always renders the same SVG with stable ordering
+- Changes are local — adding a single node does not cause unrelated regions to show up in the diff
+
+#### Limit what is shown at once; drill down for detail (scoped glance)
+
+There is a limit to how much information a human can take in at once.
+Any "at a glance" diagram that stuffs an entire architecture into one page rapidly becomes unreadable as the system grows —
+lines cross, nodes shrink, and readers end up spending their cognitive budget on searching for what they want.
+This is not a diagram failure; it is a mismatch between how much information you are trying to convey at once and the human cognitive bandwidth.
+
+karasu addresses this by adopting, as a first-class approach,
+**always limit how much is shown at once, and drill down to where the detail lives when you need it.**
+The hierarchy (system → service → domain → usecase → resource) is an embodiment of this design — not a mere navigation convenience but **a cognitive design choice**.
+
+karasu takes inspiration from C4 Model for its drill-down, but where C4 defines four fixed diagram types (Context / Container / Component / Code), karasu adopts a more continuous, stepwise drill-down in which the user descends from any node, writes inline nested blocks as the model grows, and extracts into separate files only once things get large enough.
+This continuity has the advantage of letting the model express its own growth — you start with small inline nesting and extract later, once it outgrows that form.
+
+**Note**: this goal is not a claim that bird's-eye views have no value.
+A complementary overview that *hints* at what structures exist across the whole system — something like a "hint view" that shows structure but suppresses detail — could become a future consideration, as long as it **complements** drill-down rather than replacing it.
+What is first class, however, is "limited scope + drill-down"; any hint view would exist on top of that premise.
+
+#### karasu captures structure across three dimensions: logical, physical, organizational
+
+When talking about architecture, many tools focus on "how the components are put together" (logical structure), or "where they run" (physical structure), or both.
+karasu adds a third dimension: **organizational structure** — which team owns which service, and who the members are.
+
+The background is **Conway's Law**:
+the structure of software and the structure of the organization are inseparable, with team boundaries shaping service boundaries and service boundaries shaping team responsibilities.
+Talking about only one side means missing the forces hiding in the other.
+
+But the motivation for treating organizational structure as first-class goes one step further.
+The central aim is to make the **inverse Conway maneuver** — the microservices-era practice of *deliberately reshaping team structure* to realize the desired software architecture — something that can be discussed at the same table as the architecture itself.
+By writing ownership on a per-service, per-domain basis directly in the diagram, questions like
+"we want to split this service — which team should own the new boundary?",
+"who should we entrust the responsibility of this domain to?",
+and "if we're going to reshape teams, where do we start?"
+can be argued in the same context as logical and physical structure.
+In karasu, the org diagram is not documentation; it is **the target of a design decision**.
+
+karasu keeps all three dimensions in the same `.krs` / `.krs.style` vocabulary, navigated through the same drill-down:
+
+- **Logical**: `system` / `service` / `domain` / `usecase` / `resource`
+- **Physical**: `deploy` / `realizes`
+- **Organizational**: `organization` / `team` / `member`
+
+You could draw each of these in a separate tool, but drawing them separately means the *correspondences* (which team owns which service running in which environment) fall outside the diagram, and you lose the ability to move architecture and team structure together.
+karasu's aim is to let you talk about the **intersection of the three dimensions** — the place where the forces of Conway's Law and the inverse Conway maneuver play out — in a single language.
+
+### Non-goals
+
+Before reading the individual non-goals, it helps to notice the **shared filter** that nearly all of them follow.
+
+The decision about what karasu does *not* handle can be derived from a single principle rather than re-derived for every feature:
+
+> karasu handles a **slowly-changing structural context** — what exists, how things relate, and who owns them — and everything about implementation details or runtime state sits outside that.
+
+Many "could we also support X?" proposals look attractive on the surface, but they share a single side-effect:
+**pressure to pull implementation or operational detail into the model**.
+Code generation forces implementation specifics into the model; runtime metrics force individual pods into the model; DB schema design forces table definitions into the model; sequence diagrams force the time axis into the model.
+All of them pull the model away from the level of abstraction where karasu is supposed to stand.
+
+The non-goals below are individual manifestations of the same principle.
+Rather than reading each one as a standalone rule, read them with "ah, the same filter again" in mind, and the consistency across judgments comes into view.
+
+#### No fully-automatic layout optimization
+
+Readability of the text source — not pixel-perfect visual output — is the top priority.
+When a user needs pixel-perfect diagrams for a slide deck or external documentation, the answer is **not** to grow karasu's layout engine in that direction; it is to **let the output escape into a tool specialized for layout polishing**.
+A draw.io export is planned as the escape hatch for this purpose (see #649).
+This non-goal and its escape hatch are a pair and should be understood together.
+
+#### No direct drawing mode for building the model on a canvas
+
+There is no mode for building the model by dragging nodes on a canvas.
+The model is always generated and edited as text, and diagrams are derived from that text.
+This principle also clarifies the position of the Chat panel:
+**Chat produces text; it does not edit the diagram.**
+Without this non-goal, every "please add a canvas editor" request would have to be re-evaluated from first principles.
+
+#### No runtime metrics or live system-state visualization
+
+What karasu expresses is the **intended** architecture, not observed behavior.
+Overlaying live latency, error rates, or instance counts onto the diagram produces an abstraction mismatch:
+karasu's `service` is a logical business-functionality unit, whereas runtime metrics target individual processes or pod instances — a step finer in granularity. Mixing the two leads to:
+
+- The model having to track production topology (which pod, which region), dragging it toward a dashboard.
+- Diagrams becoming meaningless unless they are connected to live telemetry.
+- karasu's center of gravity shifting from "a tool for talking about architecture" to "a tool for watching operations."
+
+The observability-view role is already covered by Datadog, Grafana, Backstage, and the like; that is their territory.
+
+#### No modeling of physical infrastructure topology (regions, AZs, clusters, nodes)
+
+Descriptions of infrastructure topology itself — "production is a K8s cluster spanning three AZs in us-east-1, staging is a single AZ" — are out of scope for karasu.
+At first glance this might look like something that could extend `deploy` as a form of physical structure, but in practice the abstraction drops another level:
+`deploy` describes a **runtime contract** — "which code artifact runs as which runtime form (OCI / Lambda / Job / ...)" — and *where* that concretely lands (which region, which cluster, which node) is the responsibility of the cloud provider, IaC, and the orchestrator.
+
+Pulling this into the model causes the following side effects:
+
+- The model becomes a duplicate of Terraform / Kubernetes manifests, creating a dual source of truth.
+- Pressure emerges to fork the model per environment (prod / staging / dev), and structural description gets swallowed by operational configuration.
+- karasu's center of gravity shifts from "a tool for talking about architecture" to "a tool for talking about infrastructure configuration."
+
+Visualizing infrastructure topology is already handled by Terraform graph, Backstage, cloud consoles, and dedicated configuration-diagram tools.
+karasu stops at the runtime-contract layer of `deploy`.
+This non-goal was considered through Issue #28 and explicitly ruled out.
+
+#### No modeling of behavior, sequence, or temporal flow
+
+What karasu expresses is **structure** — what exists, how it relates, and who owns it.
+Flows along a time axis like "A calls B, B calls C, and the response comes back" are out of scope.
+Sequence diagrams are a different concern well handled by Mermaid and PlantUML,
+and a karasu diagram and a sequence diagram answer different questions.
+Trying to express both in one file dilutes both of them.
+Adding sequence diagrams as a drill-down target was considered in Issue #23 and ruled out for the same reason.
+
+#### No database schema modeling
+
+Tables, columns, indexes, foreign keys, and ER-level relationships are out of scope.
+Note the **asymmetry** with `translate --from db` here:
+taking in an existing schema and **abstracting** it into a domain *is* a goal
+(information flows toward a higher level of abstraction — details fall away),
+but **designing** a schema *inside* a karasu model demands the opposite direction of information flow —
+it creates pressure to pull implementation details into the model.
+Dedicated ER modeling tools exist, and those are what you should use.
+
+#### C4 compatibility is not a goal
+
+karasu is inspired by C4 Model but defines its own vocabulary (system / service / domain / usecase / resource) and its own drill-down semantics.
+Strict C4 compatibility was never a goal in the first place — this is stated explicitly as a non-goal so that readers do not mistakenly expect compatibility based on the visual resemblance.
+Pursuing compatibility would force compromises on the logical/physical separation and the drill-down model, which are karasu's distinctive features.
+
+#### No application code generation from the model
+
+This is the most important non-goal to get right, because its rationale is **asymmetric** with that of the `translate` CLI (which goes in the opposite direction).
+
+- **`translate` (code → model)** is an input aid for **abstracting and surveying** an existing system.
+  Information flows toward higher abstraction: implementation details are discarded and the architecture becomes readable.
+- **Code generation (model → code)** flows information in the opposite direction, toward lower abstraction: the model would need to carry enough implementation detail to drive the code, which ultimately **forces users to write overly detailed models**.
+  The model turns into a duplicate of the code, and karasu slides away from "a tool for talking about architecture" into "a tool for driving the implementation."
+
+karasu is explicitly **a tool for talking about architecture**, not **a tool for driving the implementation**.
+This framing gives a consistent answer to neighboring temptations ("just generate the TypeScript type definitions from the domains", "just generate an OpenAPI skeleton from the usecases"):
+all of them create pressure to push implementation details into the model, and all of them are out of scope.
 
 ---
 
-## karasu と AI — 制約付き中間言語としての DSL
+These goals and non-goals are not fixed; they are expected to be updated as real usage teaches us things.
+However, updates should happen at the **rationale layer**, not as isolated rules —
+when adding a new rule, verify that it does not contradict the existing reasons and that it aligns with the shared themes (stay at the right abstraction level, keep text as the single source of truth). Doing so is how karasu's consistency is maintained.
 
-目標セクションで触れた「AI との相性が良い」という性質は、karasu の立ち位置を
-一段引き上げる洞察につながる。この節ではそれを展開する。
+---
 
-### 問題: 汎用 LLM にアーキテクチャを描かせると出力が安定しない
+## karasu and AI — the DSL as a constrained intermediate language
 
-汎用 LLM に「このシステムのアーキテクチャ図を描いて」と頼むと、出力は二つの軸で不安定になる。
+The property "natural affinity with AI" mentioned in the goals section leads to an insight that elevates karasu's positioning. This section expands on it.
 
-- **形式の不安定さ**: ある時は Mermaid、次は draw.io の XML、さらに次は箇条書きの自然言語
-- **抽象度の不安定さ**: ある時はクラス図、次はシーケンス図、さらに次はデプロイ図
+### Problem: general-purpose LLMs produce unstable architecture output
 
-形式が違えば再利用が効かず、抽象度が違えば同じシステムを語っているのか判断できない。
-結果として、AI の出力は**レビューも継続的な編集もできない一回性の成果物**になりがちで、
-人間とのコラボレーションの基盤として機能しない。
+When you ask a general-purpose LLM "draw the architecture of this system," the output is unstable along two axes:
 
-### 解決: DSL を中間言語として挟む
+- **Format instability**: sometimes Mermaid, sometimes draw.io XML, sometimes bullet-list natural language
+- **Abstraction instability**: sometimes a class diagram, sometimes a sequence diagram, sometimes a deployment diagram
 
-karasu の DSL を AI との間に挟むと、出力は karasu の表現力の範囲に制約される。
-具体的には:
+Different formats are not reusable; different abstractions make it impossible to tell whether the model is even describing the same system.
+As a result, AI output tends to be **a one-shot artifact you can neither review nor continuously edit**, and it does not function as a foundation for collaboration with humans.
 
-- **形式が固定される** — 出力は常に `.krs` テキストである
-- **抽象度が固定される** — 使える語彙は system / service / domain / usecase / resource /
-  deploy / realizes / organization / team に限定される
-- **評価可能になる** — 出力は `karasu compile` でパースでき、論理的な妥当性を機械的に検査できる
+### Solution: insert a DSL as an intermediate language
 
-AI の自由度が奪われるのではなく、**適切な粒度に揃えられる**。
-ドメインモデリングに不要な詳細は表現できず、逆にアーキテクチャを語るのに必要な要素は
-すべて語彙として用意されている。DSL が「ちょうどいい制約」として機能する。
+When you place karasu's DSL between yourself and the AI, the output is constrained to the range of what karasu can express. Concretely:
 
-### 構造化出力との構造的類似
+- **The format is fixed** — the output is always `.krs` text
+- **The abstraction level is fixed** — the available vocabulary is limited to system / service / domain / usecase / resource / deploy / realizes / organization / team
+- **The output becomes evaluable** — it can be parsed with `karasu compile`, and its logical validity can be checked mechanically
 
-この枠組みは、AI 領域で既に確立された手法と同じパターンに属する。
-近年の LLM API は「自由形式のテキストを返す」モードに加えて、
-**事前に決めたスキーマに合わせて出力させる** モードを提供するようになっている。
-以下はその代表例で、どれも「生成する内容」ではなく「生成する形」を先に固定するアプローチである。
+This does not strip the AI of freedom; it **aligns it to the right granularity**.
+Details unnecessary to domain modeling cannot be expressed, and conversely the elements needed to talk about architecture are all present in the vocabulary. The DSL functions as a "just-right constraint."
 
-- **OpenAI の structured outputs**: 事前に JSON schema を渡しておき、LLM の出力が必ずその schema に従うことを保証する機能
-- **Claude の tool use**: 呼び出し可能な関数のシグネチャと引数型を LLM に渡し、LLM はその型に従った引数を生成する機能
-- **karasu の DSL**: アーキテクチャ記述専用の語彙（system / service / domain / ...）で LLM の出力を制約する
+### Structural analogy with structured outputs
 
-いずれも「汎用 LLM に固定のスキーマを与えて出力を予測可能にする」という共通構造を持つ。
-karasu の場合、そのスキーマが **アーキテクチャを語るために人間が設計した言語そのもの** である、
-という点が本質的に異なる。
+This framing belongs to the same pattern as established techniques in the AI ecosystem.
+Recent LLM APIs offer, in addition to "return free-form text" modes, modes that **force output to match a pre-declared schema**.
+The representative examples below all take the approach of fixing "the shape of what is generated" rather than "the content of what is generated":
 
-### 核心: karasu の DSL は AI のために設計されていない
+- **OpenAI structured outputs**: a feature that takes a JSON schema up front and guarantees that the LLM's output always conforms to it
+- **Claude tool use**: a feature that gives the LLM the signatures and argument types of the functions it can call, so the LLM produces arguments that conform to those types
+- **karasu's DSL**: constrains the LLM's output using a vocabulary dedicated to describing architecture (system / service / domain / ...)
 
-ここが karasu のポジショニングの中心である。
+All of these share the common structure of "give a general-purpose LLM a fixed schema to make its output predictable."
+What is fundamentally different about karasu is that the schema in question is **a language humans designed for talking about architecture in the first place**.
 
-karasu の DSL は、AI アシスト機能を追加するために後から設計された DSL ではない。
-人間がテキストエディタで読み書きし、git で diff を取り、コードレビューで議論するための
-**独立した人間向けの道具** として設計された。目標セクションで述べた 4 つの性質
-（表現力・エディタ支援・AI との相性・diff に優しい）のうち、AI との相性は副次効果の一つに過ぎない。
+### The core point: karasu's DSL was not designed for AI
 
-ところが、この **独立性こそが双方向性を生む**。
+This is the heart of karasu's positioning.
 
-- AI が生成した `.krs` を、人間は普通のテキストとして読み、手で編集できる
-- 人間が手書きした `.krs` を、AI に渡して改善や拡張を依頼できる
-- 生成物も手書きも**同じファイル**に共存し、どちらが書いたかの区別が残らない
-- 人間と AI は同じモデルに対して**交互に貢献する**ことができる
+karasu's DSL was not designed after the fact in order to add AI-assist features.
+It was designed as **a standalone human-oriented tool** — to be read and written in a text editor, diffed in git, and discussed in code review.
+Of the four properties listed in the goals section (expressiveness, editor support, affinity with AI, diff-friendliness), the AI affinity is a *consequence* of the design, not one of its original goals — it emerged because the language happened to be a good fit, not because it was shaped for that purpose.
 
-これは「AI 用の入力インターフェース」と「人間用の編集画面」を別々に持つアプローチとは
-根本的に異なる。karasu では**唯一の source of truth である `.krs` テキストを、
-人間と AI が同じ言語で共同編集する**。
+And yet, **it is precisely this independence that generates bidirectionality.**
 
-### Chat パネルは便利機能ではなく自然な帰結
+- A human can read `.krs` produced by an AI just as they would any other text, and hand-edit it
+- A human can hand a hand-written `.krs` to an AI and ask for improvements or extensions
+- Generated and hand-written content live in **the same file**, with no distinction based on who wrote which part
+- Humans and AI can **take turns contributing** to the same model
 
-karasu の Chat パネルは、アーキテクチャモデリングツールに後付けで AI 機能を生やしたものではなく、
-**上記の双方向性から導かれる自然な帰結** として存在している。
-DSL が人間にも AI にも読める言語であれば、対話的に `.krs` を育てるインターフェースは
-自ずと成立する。
+This is fundamentally different from an approach that keeps an "AI input interface" and a "human editing screen" as separate things. In karasu, **the single source of truth — `.krs` text — is co-edited by humans and AI in the same language**.
 
-この位置づけは、karasu の Chat 機能に対する未検証の仮説を含んでいる:
-**karasu の syntax を知らない開発者でも、Chat と対話するだけでアーキテクチャを描ける**
-のではないか、という仮説である。この仮説は Issue #638 で外部ユーザーによる検証を計画しており、
-結果によっては karasu の入口設計が大きく変わる可能性がある。
+### The Chat panel is a natural consequence, not a convenience feature
 
-### karasu の語り方の変化
+karasu's Chat panel is not a bolt-on AI feature on top of an architecture modeling tool;
+it exists as **the natural consequence derived from the bidirectionality above**.
+If the DSL is a language both humans and AI can read, an interactive interface for growing `.krs` a piece at a time falls out on its own.
 
-この枠組みを踏まえると、karasu を外部に説明する際の語り口が一段引き上げられる。
+This positioning contains an unverified hypothesis about karasu's Chat feature:
+**that even developers who do not know karasu's syntax should be able to draw an architecture just by having a conversation with Chat.**
+Validation of this hypothesis with external users is planned in Issue #638, and the result may materially reshape how karasu presents itself to new users.
 
-- **以前**: 「論理・物理・組織の三面構造、drill-down、マルチファイル合成を持つテキストベース・アーキテクチャモデリングツール」
-- **以後**: 「人間と AI が同じ言語でアーキテクチャを語り合うための DSL —
-  言語そのものがアーキテクチャ記述に必要十分な抽象度で設計されているから成り立つ」
+### A shift in how karasu is talked about
 
-後者の表現は AI を付加機能として紹介するのではなく、
-**DSL の設計そのものから AI 協働が導かれる** ことを前面に出している。
-AI の話は karasu の機能リストの 1 項目ではなく、核となる設計判断の帰結である。
+Adopting this framing elevates how karasu is presented to the outside world.
+
+- **Before**: "A text-based architecture modeling tool with three-dimensional structure (logical / physical / organizational), drill-down, and multi-file composition"
+- **After**: "A DSL for humans and AI to discuss architecture in the same language — made possible because the language itself was designed with exactly the right abstraction level for describing architecture"
+
+The latter does not present AI as an add-on feature; it puts the claim that **AI collaboration falls out of the DSL design itself** front and center.
+The AI story is not one item on karasu's feature list; it is a consequence of the core design decision.
