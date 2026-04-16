@@ -7,7 +7,7 @@
 karasu describes a system's architecture across three dimensions — **logical, physical, and organizational**.
 This is the foundation of karasu's design.
 Each dimension can be written in a separate file, but all three are navigated together through the same drill-down.
-The motivation for treating these three as a single language — Conway's Law and the inverse Conway maneuver — is discussed in detail in the "Goals and non-goals" section below.
+The motivation for treating these three as a single language — Conway's Law (the observation that software structure tends to mirror organizational structure) and the inverse Conway maneuver (deliberately reshaping team structure to achieve a desired architecture) — is discussed in detail in the "Goals and non-goals" section below.
 
 ### Logical structure (What / Why)
 
@@ -109,7 +109,7 @@ When this document refers to "scoped glance" from here on, it means this princip
 ## Edges — Expressing relationships and aggregating them
 
 Relationships between nodes are expressed as **edges**.
-karasu's edge model is made up of four mechanisms that work together, each one an embodiment of the **scoped-glance + drill-down principle** at the edge layer:
+karasu's edge model is made up of four mechanisms that work together, each an embodiment of the **scoped-glance + drill-down principle** at the edge layer:
 
 1. **Explicit and implicit** — an asymmetry where the writer records details and the reader receives the overview
 2. **Aggregation** — collapsing information when viewed from above
@@ -231,8 +231,8 @@ karasu is inspired by C4 Model but adopts its own vocabulary.
 | C4 Model        | karasu                | Why the change                                       |
 | --------------- | --------------------- | ---------------------------------------------------- |
 | Context Diagram | `system`              | "context" is ambiguous                               |
-| Container       | `service`             | Makes it explicit that this is a business-function unit |
-| Component       | `domain`              | Makes it explicit that this is a domain boundary     |
+| Container       | `service`             | Emphasizes its role as a business-function unit      |
+| Component       | `domain`              | Emphasizes its role as a domain boundary             |
 | Code            | `usecase`             | Expresses a business operation                       |
 | (none)          | `resource`            | Makes the operation target of a usecase explicit     |
 | (none)          | `deploy` / `realizes` | Separates physical structure from logical structure  |
@@ -245,7 +245,7 @@ C4 compatibility is not a goal in itself. See the "Goals and non-goals" section 
 
 What karasu aims for and what it does not.
 The value of this list is in the **rationale** behind individual rules more than in the rules themselves.
-The aim is that when a future "should we add X?" decision comes up, the reasoning written here can be reused directly instead of being re-derived from first principles.
+The aim is that when a future "should we add X?" question arises, the reasoning written here can be reused directly instead of being re-derived from first principles.
 
 ### Goals
 
@@ -257,13 +257,13 @@ There is no path that bypasses the text.
 
 So **why was text chosen?**
 karasu is designed as a DSL with enough expressive power to describe logical, physical, and organizational architecture, and the reasons for choosing text as the medium come down to the following four properties.
-These are simultaneously "the reasons for choosing text" and "the properties you get as a result of choosing text."
+These four properties are both the motivation for choosing text and the benefits that follow from it.
 
 **1. Just-enough expressiveness lets it be a true single source of truth**
 
 The karasu DSL provides exactly the vocabulary needed to describe architecture (system / service / domain / usecase / resource / deploy / realizes / organization / team) and is deliberately designed so that nothing below that level can be expressed.
 It is this "just-right-ness" that lets `.krs` text function as the model's single source of truth.
-Every input path becomes composable — the output of Chat can be hand-edited, and a hand-written model can in turn be refined by Chat — and a single, consistent mental model holds throughout.
+Every input path becomes composable — the output of Chat can be hand-edited, and in turn, a hand-written model can be refined by Chat — and a single, consistent mental model holds throughout.
 
 **2. Editor support via the LSP ecosystem**
 
@@ -294,14 +294,14 @@ Concretely, the following properties support this:
 
 There is a limit to how much information a human can take in at once.
 Any "at a glance" diagram that stuffs an entire architecture into one page rapidly becomes unreadable as the system grows —
-lines cross, nodes shrink, and readers end up spending their cognitive budget on hunting for what they want.
+lines cross, nodes shrink, and readers end up spending their cognitive budget on searching for what they want.
 This is not a diagram failure; it is a mismatch between how much information you are trying to convey at once and the human cognitive bandwidth.
 
 karasu addresses this by adopting, as a first-class approach,
 **always limit how much is shown at once, and drill down to where the detail lives when you need it.**
 The hierarchy (system → service → domain → usecase → resource) is an embodiment of this design — not a mere navigation convenience but **a cognitive design choice**.
 
-karasu takes inspiration for drill-down from C4 Model, but where C4 defines four fixed diagram types (Context / Container / Component / Code), karasu adopts a more continuous, stepwise drill-down in which the user descends from any node, writes inline nested blocks as the model grows, and extracts into separate files only once things get large enough.
+karasu takes inspiration from C4 Model for its drill-down, but where C4 defines four fixed diagram types (Context / Container / Component / Code), karasu adopts a more continuous, stepwise drill-down in which the user descends from any node, writes inline nested blocks as the model grows, and extracts into separate files only once things get large enough.
 This continuity has the advantage of letting the model express its own growth — you start with small inline nesting and extract later, once it outgrows that form.
 
 **Note**: this goal is not a claim that bird's-eye views have no value.
@@ -353,7 +353,7 @@ Rather than reading each one as a standalone rule, read them with "ah, the same 
 
 #### No fully-automatic layout optimization
 
-Readability of the text source is the top priority.
+Readability of the text source — not pixel-perfect visual output — is the top priority.
 When a user needs pixel-perfect diagrams for a slide deck or external documentation, the answer is **not** to grow karasu's layout engine in that direction; it is to **let the output escape into a tool specialized for layout polishing**.
 A draw.io export is planned as the escape hatch for this purpose (see #649).
 This non-goal and its escape hatch are a pair and should be understood together.
@@ -372,9 +372,9 @@ What karasu expresses is the **intended** architecture, not observed behavior.
 Overlaying live latency, error rates, or instance counts onto the diagram produces an abstraction mismatch:
 karasu's `service` is a logical business-functionality unit, whereas runtime metrics target individual processes or pod instances — a step finer in granularity. Mixing the two leads to:
 
-- The model having to track production topology (which pod, which region), dragging it toward a dashboard
-- Diagrams becoming meaningless unless they are connected to live telemetry
-- karasu's center of gravity shifting from "a tool for talking about architecture" to "a tool for watching operations"
+- The model having to track production topology (which pod, which region), dragging it toward a dashboard.
+- Diagrams becoming meaningless unless they are connected to live telemetry.
+- karasu's center of gravity shifting from "a tool for talking about architecture" to "a tool for watching operations."
 
 The observability-view role is already covered by Datadog, Grafana, Backstage, and the like; that is their territory.
 
@@ -386,13 +386,13 @@ At first glance this might look like something that could extend `deploy` as a f
 
 Pulling this into the model causes the following side effects:
 
-- The model becomes a duplicate of Terraform / Kubernetes manifests, creating a dual source of truth
-- Pressure emerges to fork the model per environment (prod / staging / dev), and structural description gets swallowed by operational configuration
-- karasu's center of gravity shifts from "a tool for talking about architecture" to "a tool for talking about infrastructure configuration"
+- The model becomes a duplicate of Terraform / Kubernetes manifests, creating a dual source of truth.
+- Pressure emerges to fork the model per environment (prod / staging / dev), and structural description gets swallowed by operational configuration.
+- karasu's center of gravity shifts from "a tool for talking about architecture" to "a tool for talking about infrastructure configuration."
 
 Visualizing infrastructure topology is already handled by Terraform graph, Backstage, cloud consoles, and dedicated configuration-diagram tools.
 karasu stops at the runtime-contract layer of `deploy`.
-This non-goal was considered through Issue #28 and explicitly scoped out.
+This non-goal was considered through Issue #28 and explicitly ruled out.
 
 #### No modeling of behavior, sequence, or temporal flow
 
@@ -401,7 +401,7 @@ Flows along a time axis like "A calls B, B calls C, and the response comes back"
 Sequence diagrams are a different concern well handled by Mermaid and PlantUML,
 and a karasu diagram and a sequence diagram answer different questions.
 Trying to express both in one file dilutes both of them.
-Adding sequence diagrams as a drill-down target was considered in Issue #23 and scoped out for the same reason.
+Adding sequence diagrams as a drill-down target was considered in Issue #23 and ruled out for the same reason.
 
 #### No database schema modeling
 
@@ -416,7 +416,7 @@ Dedicated ER modeling tools exist, and those are what you should use.
 #### C4 compatibility is not a goal
 
 karasu is inspired by C4 Model but defines its own vocabulary (system / service / domain / usecase / resource) and its own drill-down semantics.
-Strict C4 compatibility was never a goal in the first place — this is stated explicitly as a non-goal so that readers don't mistakenly expect compatibility based on the visual resemblance.
+Strict C4 compatibility was never a goal in the first place — this is stated explicitly as a non-goal so that readers do not mistakenly expect compatibility based on the visual resemblance.
 Pursuing compatibility would force compromises on the logical/physical separation and the drill-down model, which are karasu's distinctive features.
 
 #### No application code generation from the model
@@ -442,7 +442,7 @@ when adding a new rule, verify that it does not contradict the existing reasons 
 
 ## karasu and AI — the DSL as a constrained intermediate language
 
-The property "natural affinity with AI" mentioned in the goals section leads to an insight that raises karasu's positioning by one step. This section expands on it.
+The property "natural affinity with AI" mentioned in the goals section leads to an insight that elevates karasu's positioning. This section expands on it.
 
 ### Problem: general-purpose LLMs produce unstable architecture output
 
@@ -454,7 +454,7 @@ When you ask a general-purpose LLM "draw the architecture of this system," the o
 Different formats are not reusable; different abstractions make it impossible to tell whether the model is even describing the same system.
 As a result, AI output tends to be **a one-shot artifact you can neither review nor continuously edit**, and it does not function as a foundation for collaboration with humans.
 
-### Solution: slot a DSL in as an intermediate language
+### Solution: insert a DSL as an intermediate language
 
 When you place karasu's DSL between yourself and the AI, the output is constrained to the range of what karasu can express. Concretely:
 
@@ -484,7 +484,7 @@ This is the heart of karasu's positioning.
 
 karasu's DSL was not designed after the fact in order to add AI-assist features.
 It was designed as **a standalone human-oriented tool** — to be read and written in a text editor, diffed in git, and discussed in code review.
-Of the four properties listed in the goals section (expressiveness, editor support, affinity with AI, diff-friendliness), the AI affinity is only one of the side effects.
+Of the four properties listed in the goals section (expressiveness, editor support, affinity with AI, diff-friendliness), the AI affinity is a *consequence* of the design, not one of its original goals — it emerged because the language happened to be a good fit, not because it was shaped for that purpose.
 
 And yet, **it is precisely this independence that generates bidirectionality.**
 
@@ -507,7 +507,7 @@ Validation of this hypothesis with external users is planned in Issue #638, and 
 
 ### A shift in how karasu is talked about
 
-Taking this framing on board raises how karasu is described to the outside world by one step.
+Adopting this framing elevates how karasu is presented to the outside world.
 
 - **Before**: "A text-based architecture modeling tool with three-dimensional structure (logical / physical / organizational), drill-down, and multi-file composition"
 - **After**: "A DSL for humans and AI to discuss architecture in the same language — made possible because the language itself was designed with exactly the right abstraction level for describing architecture"
