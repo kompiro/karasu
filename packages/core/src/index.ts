@@ -258,7 +258,10 @@ interface PreparedCompileInput {
  * Shared compile pipeline. Both _compileCore and _compileProjectCore delegate
  * here after preparing their inputs (parsing source vs resolving imports).
  */
-function _compileFromPreparedInput(input: PreparedCompileInput, opts: CompileOptions): CompileResult {
+function _compileFromPreparedInput(
+  input: PreparedCompileInput,
+  opts: CompileOptions,
+): CompileResult {
   const { krsFile, diagnostics, sheets, nodeFileIndex } = input;
   const { diagramType = "system", viewPath, selectedDeployId, displayMode } = opts;
 
@@ -271,12 +274,7 @@ function _compileFromPreparedInput(input: PreparedCompileInput, opts: CompileOpt
 
   if (diagramType === "org") {
     const slice = extractOrgView(krsFile.organizations, viewPath ?? []);
-    const styles = resolveStyles(
-      krsFile.systems,
-      resolveSheets,
-      undefined,
-      krsFile.organizations,
-    );
+    const styles = resolveStyles(krsFile.systems, resolveSheets, undefined, krsFile.organizations);
     const svg = _renderOrgView(slice, styles, displayMode);
     return {
       diagramType: "org",
@@ -290,11 +288,7 @@ function _compileFromPreparedInput(input: PreparedCompileInput, opts: CompileOpt
   }
 
   // system / deploy shared setup
-  const deploySliceForStyle = extractDeployView(
-    krsFile.deploys,
-    krsFile.systems,
-    selectedDeployId,
-  );
+  const deploySliceForStyle = extractDeployView(krsFile.deploys, krsFile.systems, selectedDeployId);
   const deployUnits = [
     ...deploySliceForStyle.containers.flatMap((c) => c.units),
     ...deploySliceForStyle.unclassifiedUnits,
@@ -321,11 +315,7 @@ function _compileFromPreparedInput(input: PreparedCompileInput, opts: CompileOpt
   // extractView must be called before resolveStyles so that derived edges (e.g. implicit
   // service edges synthesized from cross-service domain edges) can be included in the
   // edgeStyles cache. Without this, derived edges fall back to defaultEdgeStyle.
-  const viewSlice = extractView(
-    krsFile.systems,
-    viewPath ?? [],
-    krsFile.domains,
-  );
+  const viewSlice = extractView(krsFile.systems, viewPath ?? [], krsFile.domains);
   const styles = resolveStyles(
     krsFile.systems,
     resolveSheets,
@@ -389,7 +379,12 @@ async function _compileProjectCore(
   const sheets = [getBuiltinStyleSheet(), ...resolved.styleSheets];
 
   return _compileFromPreparedInput(
-    { krsFile: resolved.krsFile, diagnostics, sheets, nodeFileIndex: resolved.krsFile.nodeFileIndex },
+    {
+      krsFile: resolved.krsFile,
+      diagnostics,
+      sheets,
+      nodeFileIndex: resolved.krsFile.nodeFileIndex,
+    },
     opts,
   );
 }
