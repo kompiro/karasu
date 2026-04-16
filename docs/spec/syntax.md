@@ -1,117 +1,119 @@
-# .krs 構文リファレンス
+# .krs Syntax Reference
 
-## ファイル構造
+> **English** (this file) · [日本語](syntax.ja.md)
+
+## File structure
 
 ```
 @import "default.krs.style"
-@import "theme/dark.krs.style"   // 複数可。後に書いたものが優先
+@import "theme/dark.krs.style"   // multiple allowed; later ones take precedence
 
-// サービス未割り当てのドメイン（トップレベル）
-domain Payment { label "決済" }
+// Domains not yet assigned to a service (top-level)
+domain Payment { label "Payment" }
 
 system ECPlatform {
-  label "ECプラットフォーム"
-  // service・user・エッジの定義
+  label "EC Platform"
+  // service, user, and edge declarations
 }
 ```
 
 ---
 
-## 概念の全体像
+## Overview of concepts
 
-karasu は**論理構造**と**物理構造**を明確に分離して表現する。
+karasu explicitly separates **logical structure** and **physical structure**.
 
-### 論理構造（何を・なぜ）
+### Logical structure (what / why)
 
-| キーワード | 意味 | 含むことができるもの |
-|-----------|------|-------------------|
-| `system` | owned/externalなサービスの関係を示す器 | `service`, `user` |
-| `service` | 独立したビジネス機能の単位 | `domain` |
-| `domain` | ビジネス上の関心事の境界（トップレベルまたはサービス内） | `usecase` |
-| `usecase` | ドメイン内の業務・操作 | `resource` |
-| `resource` | usecase が操作する対象（テーブル、外部API、ファイル等） | — |
-| `user` | システムの利用者（人間またはAIエージェント） | — |
+| Keyword | Meaning | May contain |
+|---------|---------|-------------|
+| `system` | A container showing relationships between owned/external services | `service`, `user` |
+| `service` | An independent unit of business functionality | `domain` |
+| `domain` | A business-concern boundary (top-level or inside a service) | `usecase` |
+| `usecase` | A business operation inside a domain | `resource` |
+| `resource` | What a usecase operates on (tables, external APIs, files, etc.) | — |
+| `user` | A user of the system (human or AI agent) | — |
 
-### 組織構造（誰が所有するか）— 別図で表現
+### Organizational structure (who owns what) — rendered as a separate diagram
 
-論理・物理とは独立した軸として、サービス・ドメインの **オーナーシップ** を記述する。
-`organization` をルートとし、`team` を入れ子で宣言する。各 team は `owns` で所有するノード（service / domain 等）を列挙し、`member` で所属メンバーを持てる。
+An independent axis from logical/physical, describing the **ownership** of services and domains.
+`organization` is the root, with nested `team` declarations. Each team lists the nodes it owns via `owns` and may contain `member` entries.
 
-| キーワード | 意味 | 含むことができるもの |
-|-----------|------|-------------------|
-| `organization` | 組織のルート。複数宣言可 | `team` |
-| `team` | 責任を持つチーム。ネスト可 | `team`, `member`, `owns` |
-| `member` | チームに所属する個人 | — |
+| Keyword | Meaning | May contain |
+|---------|---------|-------------|
+| `organization` | Root of an organization. Multiple declarations allowed | `team` |
+| `team` | A team with responsibility. May be nested | `team`, `member`, `owns` |
+| `member` | An individual belonging to a team | — |
 
-### 物理構造（どのように）— 別図で表現
+### Physical structure (how) — rendered as a separate diagram
 
-`deploy` ブロックの中にデプロイ単位を種別キーワードで記述する。
-すべてのプロパティは省略可。未指定の場合は警告を出すにとどめ、エラーにはしない。
+Deployment units are declared inside a `deploy` block using a kind keyword.
+All properties are optional. When omitted, a warning is emitted rather than an error.
 
-| キーワード | 説明 | プロパティ |
-|-----------|------|-----------|
-| `war` | WAR / EAR（Servlet・EJBコンテナ） | `runtime`, `realizes` |
-| `jar` | 実行可能 JAR（Spring Boot など） | `runtime`, `realizes` |
-| `oci` | コンテナイメージ | `image`（省略可）, `runtime`, `realizes` |
+| Keyword | Description | Properties |
+|---------|-------------|------------|
+| `war` | WAR / EAR (Servlet / EJB container) | `runtime`, `realizes` |
+| `jar` | Executable JAR (Spring Boot, etc.) | `runtime`, `realizes` |
+| `oci` | Container image | `image` (optional), `runtime`, `realizes` |
 | `lambda` | AWS Lambda | `runtime`, `realizes` |
 | `function` | Azure Functions / Google Cloud Functions | `runtime`, `realizes` |
-| `assets` | 静的ファイル・SPA（CDN配信） | `runtime`, `realizes` |
-| `job` | バッチ処理。`schedule` 省略で単発実行、指定で定期実行 | `runtime`, `schedule`（省略可）, `realizes` |
-| `artifact` | 上記に該当しない任意種別（逃げ弁） | `type`（省略可）, `runtime`, `realizes` |
+| `assets` | Static files / SPA (CDN distribution) | `runtime`, `realizes` |
+| `job` | Batch processing. Omit `schedule` for one-shot, specify for recurring | `runtime`, `schedule` (optional), `realizes` |
+| `artifact` | Any kind not covered above (escape hatch) | `type` (optional), `runtime`, `realizes` |
 
 ---
 
-## ノード宣言
+## Node declaration
 
 ```
-<種別> <id> [<タグ>] @<アノテーション> [{ <プロパティ> <子ノード> }]
+<kind> <id> [<tags>] @<annotation> [{ <properties> <child-nodes> }]
 ```
 
-`id` は必須。タグ・アノテーション・ボディブロックは省略可。
+`id` is required. Tags, annotations, and the body block are optional.
 
 ---
 
-## プロパティブロック
+## Property block
 
-ボディブロック `{ }` 内にプロパティを記述できる。プロパティは子ノードやエッジの前に記述する。
+Properties are written inside the body block `{ }`. Properties come before child nodes and edges.
 
-| プロパティ | 構文 | 使用可能な種別 | 説明 |
-|-----------|------|--------------|------|
-| `label` | `label "<表示名>"` | 全種別 | 図上の表示名。省略時は id をそのまま表示する |
-| `description` | `description "<説明>"` | 全種別 | ノードの説明文（複数行は `"""..."""` 形式） |
-| `role` | `role "<ロール名>"` | user | 業務上の役割 |
-| `team` | `team "<チーム名>"` | service, domain | オーナーチーム |
-| `link` | `link "<URL>" "<ラベル>"` | 全種別 | 関連ドキュメントへのリンク（複数可）。ラベルは省略可 |
+| Property | Syntax | Applicable kinds | Description |
+|----------|--------|-----------------|-------------|
+| `label` | `label "<display-name>"` | All | Display name on the diagram. Defaults to the id when omitted |
+| `description` | `description "<text>"` | All | Description text (use `"""..."""` for multi-line) |
+| `role` | `role "<role-name>"` | user | Business role |
+| `team` | `team "<team-name>"` | service, domain | Owner team |
+| `link` | `link "<URL>" "<label>"` | All | Link to related documentation (multiple allowed). Label is optional |
 
-すべてのプロパティは省略可。`link` は同一ノード内に複数記述できる。
-使用可能な種別以外で記述した場合はエラーを出す。
+All properties are optional. `link` may appear multiple times within the same node.
+Using a property on a kind that does not support it produces an error.
 
-### user ノードの例
+### user node example
 
 ```
 user <id> [<human|ai>] {
-  label "<表示名>"
-  role "<ロール名>"
-  link "<URL>" "<ラベル>"
+  label "<display-name>"
+  role "<role-name>"
+  link "<URL>" "<label>"
 }
 ```
 
-- タグ `[human]` / `[ai]` で人間の利用者とAIエージェントを区別する
-- `role` はシステムにおける業務上の役割を記述する
-- プロパティおよびボディブロック `{ }` は省略可
+- The tag `[human]` / `[ai]` distinguishes human users from AI agents.
+- `role` describes the business role within the system.
+- Properties and the body block `{ }` are optional.
 
-### service / domain ノードの例
+### service / domain node example
 
 ```
 service <id> {
-  label "<表示名>"
-  team "<チーム名>"
-  link "<URL>" "<ラベル>"
-  link "<URL>" "<ラベル>"
+  label "<display-name>"
+  team "<team-name>"
+  link "<URL>" "<label>"
+  link "<URL>" "<label>"
 
   domain <domainId> {
-    label "<ドメイン名>"
-    team "<チーム名>"
+    label "<domain-name>"
+    team "<team-name>"
     ...
   }
 }
@@ -119,145 +121,145 @@ service <id> {
 
 ---
 
-## 論理図の記述
+## Writing logical diagrams
 
-### system ブロック
+### system block
 
 ```
 system ECPlatform {
-  label "ECプラットフォーム"
+  label "EC Platform"
 
   user Customer [human] {
-    description "商品を購入する一般ユーザー"
+    description "A general user who purchases products"
   }
   user Admin [human] {
-    description "システムを運用する担当者"
+    description "An operator who manages the system"
   }
 
   service ECommerce {
-    label "ECサイト"
-    description "商品管理と注文処理"
+    label "EC Site"
+    description "Product management and order processing"
   }
   service Payment [external] {
-    label "決済サービス"
-    description "クレジットカード決済処理"
+    label "Payment Service"
+    description "Credit card payment processing"
   }
   service Inventory [external] {
-    label "在庫管理"
-    description "在庫データの管理"
+    label "Inventory"
+    description "Inventory data management"
   }
 
-  Customer  ->  ECommerce "商品を購入する"
-  ECommerce ->  Payment   "決済を処理する"
-  ECommerce --> Inventory "在庫を同期する"
+  Customer  ->  ECommerce "Place an order"
+  ECommerce ->  Payment   "Process payment"
+  ECommerce --> Inventory "Sync inventory"
 }
 ```
 
-### service ブロック
+### service block
 
-service の内部を domain に分解して記述する。
-1つのドメインが複数の service にまたがる場合はツールが警告を出す（設計上の問題シグナル）。
+The internals of a service are decomposed into domains.
+If the same domain spans multiple services, the tool emits a warning (a design-problem signal).
 
 ```
 service ECommerce {
-  label "ECサイト"
+  label "EC Site"
   domain Order {
-    label "受注"
+    label "Orders"
     usecase PlaceOrder {
-      label "注文を受け付ける"
+      label "Accept an order"
       resource OrderTable {
-        label "注文テーブル"
+        label "Order table"
       }
       resource InventoryAPI [external] {
-        label "在庫API"
+        label "Inventory API"
       }
     }
     usecase CancelOrder {
-      label "注文をキャンセルする"
+      label "Cancel an order"
     }
     usecase QueryOrder {
-      label "注文状況を照会する"
+      label "Query order status"
     }
   }
   domain Purchasing {
-    label "発注"
+    label "Purchasing"
     usecase OrderFromSupplier {
-      label "仕入先に発注する"
+      label "Place an order with a supplier"
     }
     usecase CheckPurchaseStatus {
-      label "発注状況を確認する"
+      label "Check purchase status"
     }
   }
 }
 ```
 
-### トップレベル domain 宣言
+### Top-level domain declaration
 
-`domain` は `service` の内部だけでなく、ファイルのトップレベルにも記述できる。
-どのサービスにも属さないドメインは「未割り当て」として扱われ、システムビューに表示される。
-コンパイラは未割り当てドメインに対して警告を出す。
+A `domain` can be declared at the top level of a file, not only inside a `service`.
+Domains that do not belong to any service are treated as "unassigned" and displayed on the system view.
+The compiler emits a warning for unassigned domains.
 
 ```
-// まだどのサービスに属するか決まっていないドメイン
-domain Payment { label "決済" }
-domain Inventory { label "在庫" }
+// Domains whose service assignment has not been decided yet
+domain Payment { label "Payment" }
+domain Inventory { label "Inventory" }
 
 system ECPlatform {
   service ECommerce {
-    // ドメインの割り当ては後で決定
+    // Domain assignment to be decided later
   }
 }
 ```
 
-用途:
-- 設計初期段階でドメイン概念を先に列挙する
-- サービス再編中にドメインを一時的に「仮置き」する
+Use cases:
+- Listing domain concepts early in the design phase.
+- Temporarily "parking" domains during a service reorganization.
 
-### エッジ宣言
+### Edge declaration
 
 ```
-<from_id> ->  <to_id> "<ラベル>"   // 同期（実線矢印）
-<from_id> --> <to_id> "<ラベル>"   // 非同期（破線矢印）
+<from_id> ->  <to_id> "<label>"   // sync (solid-line arrow)
+<from_id> --> <to_id> "<label>"   // async (dashed-line arrow)
 ```
 
-エッジは `system`・`service`・`domain` ブロックの内部に記述できる。
+Edges can be written inside `system`, `service`, and `domain` blocks.
 
-#### domain ブロック内のエッジ
+#### Edges inside a domain block
 
-`domain` ブロック内にエッジを宣言することで、ドメイン間の依存関係を表現できる。
-`from_id` には宣言元ドメインの ID、`to_id` には依存先ドメインの ID を記述する。
+Declaring an edge inside a `domain` block expresses a dependency between domains.
+`from_id` is the id of the declaring domain; `to_id` is the id of the dependency target.
 
 ```
 service ECommerce {
-  domain Contract { label "契約" }
+  domain Contract { label "Contract" }
 }
 
 service BillingService {
   domain Billing {
-    label "請求"
-    Billing -> Contract "契約から作成される"       // 同期依存
-    Billing --> AuditLog "監査ログを記録する"      // 非同期依存
+    label "Billing"
+    Billing -> Contract "Created from a contract"       // sync dependency
+    Billing --> AuditLog "Record an audit log entry"    // async dependency
   }
 }
 ```
 
-**同一サービス内のドメインエッジ**: サービスビュー（service をドリルダウンした図）で描画される。
+**Intra-service domain edges**: rendered in the service view (drill-down into the service).
 
-**クロスサービスのドメインエッジ**: システムビューで「暗黙のサービス間エッジ」として自動的に派生・描画される。  
-複数のドメインエッジが同じサービスペアに集約される場合、エッジのラベルは `"N domain edges"` と表示される。
+**Cross-service domain edges**: automatically derived and rendered as "implicit service-level edges" on the system view.
+When multiple domain edges aggregate to the same service pair, the edge label reads `"N domain edges"`.
 
-暗黙エッジには `[implicit]` タグが自動付与される。デフォルトはアンバー色の破線で描画される。
-明示的なサービス間エッジが同じ方向に存在する場合、暗黙エッジは派生されない。
+Implicit edges are automatically tagged with `[implicit]`. By default they are rendered as an amber dashed line.
+If an explicit service-level edge already exists in the same direction, the implicit edge is not derived.
 
-使用できるタグ・スタイルの詳細は [`docs/spec/tags-annotations.md`](tags-annotations.md) を参照。
+See [`docs/spec/tags-annotations.md`](tags-annotations.md) for the full list of available tags and styles.
 
 ---
 
-## 物理図の記述
+## Writing physical diagrams
 
 ```
 // deploy.krs
-deploy "本番環境" {
+deploy "production" {
 
   war "order.war" {
     runtime  "Tomcat 9"
@@ -275,18 +277,18 @@ deploy "本番環境" {
     realizes Frontend
   }
 
-  job "data-migration" {          // scheduleなし → 単発実行
+  job "data-migration" {          // no schedule → one-shot execution
     runtime  "Python 3.12"
     realizes Migration
   }
 
-  job "monthly-billing" {         // scheduleあり → 定期実行
+  job "monthly-billing" {         // with schedule → recurring execution
     schedule "0 0 1 * *"
     runtime  "Java 21"
     realizes Billing
   }
 
-  artifact "legacy-settlement" {  // ビルトイン種別に該当しない場合
+  artifact "legacy-settlement" {  // when no built-in kind fits
     type     "mainframe-batch"
     runtime  "COBOL / z/OS"
     realizes Settlement
@@ -294,10 +296,10 @@ deploy "本番環境" {
 }
 ```
 
-`realizes` はUMLのRealization（実現）関係。矢印は物理（具象）→ 論理（抽象）の向き。
+`realizes` corresponds to UML's Realization relationship. The arrow points from physical (concrete) to logical (abstract).
 
-複数の `realizes` を並べることで、1つのデプロイ単位が複数のサービスを実現することを表せる。
-その場合、デプロイダイアグラム上では各サービスのコンテナに同じノードが描画される。
+Multiple `realizes` entries can be listed to express that a single deployment unit realizes more than one service.
+In that case, the same node is drawn inside each service's container on the deploy diagram.
 
 ```
 oci "monolith" {
@@ -309,18 +311,18 @@ oci "monolith" {
 
 ---
 
-## 組織図の記述
+## Writing organization diagrams
 
-`organization` ブロックで組織・チーム・メンバーの階層を宣言する。
-論理図・物理図とは独立した「組織ビュー」としてレンダリングされる。
+An `organization` block declares the hierarchy of organizations, teams, and members.
+It is rendered as a separate "Org view," independent of the logical and physical diagrams.
 
 ```
 organization TechCorp {
   label "TechCorp Engineering"
 
   team "ec-team" {
-    label "ECチーム"
-    description "ECサイトの開発・運用を担当するチーム"
+    label "EC Team"
+    description "Team responsible for developing and operating the EC site"
 
     owns ECommerce
     owns Order
@@ -328,7 +330,7 @@ organization TechCorp {
 
     member alice {
       label "Alice Yamamoto"
-      description "ECチームのテックリード"
+      description "Tech lead of the EC team"
       slack "@alice"
       github "alice-yamamoto"
     }
@@ -340,112 +342,111 @@ organization TechCorp {
   }
 
   team "platform-team" {
-    label "プラットフォームチーム"
+    label "Platform Team"
 
     team "infra" {
-      label "インフラ"
+      label "Infrastructure"
       owns Kubernetes
       member dave { label "Dave Suzuki" }
     }
     team "security" {
-      label "セキュリティ"
+      label "Security"
     }
   }
 }
 ```
 
-### team ノード
+### team node
 
-- `owns <id>` は team が所有する論理ノード（service / domain 等）を宣言する。同じ `id` を複数の team が `owns` することはできず、重複するとエラーになる。
-- team は入れ子にでき、親 team の下に子 team を並べると組織階層を表現できる。
-- team ID は同一 organization 内で一意。重複するとエラーになる。
-- パース時に `ownerIndex`（`node id → team id`）が構築され、論理図のノードから所有チームを逆引きできる。
+- `owns <id>` declares a logical node (service / domain, etc.) that the team owns. The same `id` cannot be `owns`-ed by multiple teams; duplicates produce an error.
+- Teams can be nested — placing child teams under a parent team expresses organizational hierarchy.
+- Team IDs must be unique within the same organization. Duplicates produce an error.
+- During parsing, an `ownerIndex` (`node id → team id`) is built so that a logical-diagram node can look up its owner team.
 
-### member ノード
+### member node
 
-team の直下に `member` を宣言して個人を記述する。
+`member` is declared directly under a `team` to describe an individual.
 
-| プロパティ | 構文 | 説明 |
-|-----------|------|------|
-| `label` | `label "<表示名>"` | 図上の表示名 |
-| `description` | `description "<説明>"` | メンバーの説明文 |
-| `slack` | `slack "<ハンドル>"` | Slack ハンドル |
-| `github` | `github "<ユーザー名>"` | GitHub ユーザー名 |
+| Property | Syntax | Description |
+|----------|--------|-------------|
+| `label` | `label "<display-name>"` | Display name on the diagram |
+| `description` | `description "<text>"` | Description of the member |
+| `slack` | `slack "<handle>"` | Slack handle |
+| `github` | `github "<username>"` | GitHub username |
 
-すべて省略可。`member` はネストできない。
+All properties are optional. `member` cannot be nested.
 
-### label の指定方法
+### How to specify a label
 
-`organization` / `team` / `member` はいずれも位置引数（`team backend "バックエンドチーム"`）と
-プロパティ形式（`team backend { label "バックエンドチーム" }`）の両方で label を指定できる。
-両方が同時に指定された場合はプロパティ形式が優先される。
+`organization`, `team`, and `member` all support both a positional argument (`team backend "Backend Team"`) and the property form (`team backend { label "Backend Team" }`).
+When both are specified, the property form takes precedence.
 
 ---
 
-## ドリルダウンと外部ファイル参照
+## Drill-down and external file references
 
-インラインネストで記述し、育ってきたら外部ファイルに extract できる。
+Write with inline nesting first, then extract into separate files as things grow.
 
 ```
-// インラインネスト（基本形）
+// Inline nesting (basic form)
 system ECPlatform {
-  label "ECプラットフォーム"
+  label "EC Platform"
   service ECommerce {
-    label "ECサイト"
-    domain Order { label "受注" }
+    label "EC Site"
+    domain Order { label "Orders" }
   }
 }
 
-// 外部ファイルへ extract した後
+// After extracting to an external file
 import { ECommerce } from "ecommerce.krs"
 
 system ECPlatform {
-  label "ECプラットフォーム"
+  label "EC Platform"
   service ECommerce
   service Payment [external] {
-    label "決済サービス"
+    label "Payment Service"
   }
-  ECommerce -> Payment "決済を処理する"
+  ECommerce -> Payment "Process payment"
 }
 ```
 
 ---
 
-## @import のスコープ
+## @import scope
 
-- ファイル全体に適用される（グローバルスコープ）
-- ファイル先頭に記述する
-- 同じセレクタが複数ファイルで定義された場合は後勝ち（警告を出力）
-
----
-
-## プロパティの必須・省略ルール
-
-プロパティはすべて省略可。未指定の場合は警告を出すにとどめ、エラーにはしない。
-図を描きながら設計を詰めていく途中で「まだ決まっていない」状態を許容するためのポリシー。
-
-| プロパティ | 省略時の挙動 |
-|-----------|------------|
-| `runtime` | `⚠ runtime が指定されていません` と警告 |
-| `realizes` | `⚠ realizes が指定されていません` と警告（物理図の存在意義に直結するため） |
-| `schedule` | 省略時は単発実行として扱う（警告なし） |
-| `image`（ociのみ） | 省略可。指定すると図に表示される |
-| `type`（artifactのみ） | 省略可。指定すると図に表示される |
+- Applies to the entire file (global scope).
+- Must be written at the top of the file.
+- When the same selector is defined in multiple files, the last one wins (a warning is emitted).
 
 ---
 
-## ドメイン ID の一意性
+## Property requirement and omission rules
 
-同じ `domain id` が同一 `system` 内の複数の `service` に登場した場合、ツールがエラーを出す。
+All properties are optional. When omitted, a warning is emitted rather than an error.
+This policy exists to tolerate a "not yet decided" state while iterating on the design.
+
+| Property | Behavior when omitted |
+|----------|----------------------|
+| `runtime` | `⚠ runtime is not specified` warning |
+| `realizes` | `⚠ realizes is not specified` warning (directly tied to the raison d'être of the physical diagram) |
+| `schedule` | Treated as one-shot execution (no warning) |
+| `image` (oci only) | Optional. Displayed on the diagram when specified |
+| `type` (artifact only) | Optional. Displayed on the diagram when specified |
+
+---
+
+## Domain ID uniqueness
+
+If the same `domain id` appears in multiple `service` blocks within the same `system`, the tool emits an error.
 
 ```
 ✖ Error: Domain id "Order" must be unique within a system; found in multiple services
 ```
 
-ドメインエッジ（`Billing -> Contract`）の解決は domain ID で行われるため、ID が一意でなければ参照先が曖昧になる。  
-この制約により、同一 system 内では domain ID を重複させることはできない。
+Domain edges (`Billing -> Contract`) are resolved by domain ID, so the reference target becomes ambiguous if the ID is not unique.
+This constraint prevents duplicate domain IDs within the same system.
 
-**検出スコープ**: `system` ブロック単位。
-異なる `system` にまたがる同名 `domain` は組織的に独立した並行モデリングとして扱い、エラーにしない。
+**Detection scope**: per `system` block.
+The same `domain` name across different `system` blocks is treated as intentionally independent parallel modeling and does not produce an error.
 
-**検出キー**: `domain` の `id`。`label`（表示名）は検出に使用しない。
+**Detection key**: the `id` of the `domain`. The `label` (display name) is not used for detection.
