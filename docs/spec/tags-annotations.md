@@ -1,103 +1,104 @@
-# タグ・アノテーション リファレンス
+# Tags and Annotations Reference
 
-## タグ（`[...]`）
+> **English** (this file) · [日本語](tags-annotations.ja.md)
 
-タグは**アーキテクチャ上の意味**を宣言する。スタイルはタグを受けて変わる。
-タグは意味の宣言であり、見た目の直接指定ではない。見た目の制御は `.krs.style` で行う。
+## Tags (`[...]`)
 
-| タグ | 意味 | デフォルト描画への影響 |
-|------|------|----------------------|
-| `[external]` | システム境界の外側 | 枠線を破線、色をグレー系に |
-| `[async]` | 非同期通信（エッジ用） | 破線矢印 |
-| `[sync]` | 同期通信（エッジ用） | 実線矢印（デフォルト） |
-| `[human]` | 人間の利用者 | user ノードにのみ使用。デフォルトスタイルへの影響なし |
-| `[ai]` | AIエージェント | user ノードにのみ使用。デフォルトスタイルへの影響なし |
+Tags declare **architectural meaning**. Styles change in response to tags.
+A tag is a semantic declaration, not a direct appearance override. Visual control is handled in `.krs.style`.
 
-### 記述例
+| Tag | Meaning | Effect on default rendering |
+|-----|---------|---------------------------|
+| `[external]` | Outside the system boundary | Dashed border, gray-toned color |
+| `[async]` | Asynchronous communication (for edges) | Dashed arrow |
+| `[sync]` | Synchronous communication (for edges) | Solid arrow (default) |
+| `[human]` | A human user | Used only on user nodes. No effect on default style |
+| `[ai]` | An AI agent | Used only on user nodes. No effect on default style |
+
+### Example
 
 ```
-service Payment "決済サービス" [external]
-ECommerce --> Inventory "在庫を同期する" [async]
-user Customer "顧客" [human]
-user AIAgent "注文自動化エージェント" [ai]
+service Payment "Payment Service" [external]
+ECommerce --> Inventory "Sync inventory" [async]
+user Customer "Customer" [human]
+user AIAgent "Order Automation Agent" [ai]
 ```
 
 ---
 
-## アノテーション（`@...`）
+## Annotations (`@...`)
 
-アノテーションは**ライフサイクル・状態**を表すメタ情報。タグとは別の概念。
+Annotations are metadata expressing **lifecycle and state**. They are a separate concept from tags.
 
-| アノテーション | 意味 | デフォルト描画 |
-|--------------|------|--------------|
-| `@deprecated` | 廃止予定 | ⚠バッジ、ノードを半透明に |
-| `@new` | 新規追加 | ✦バッジ |
-| `@experimental` | 実験的 | ⚗バッジ |
-| `@migration_target` | 移行先 | →バッジ |
+| Annotation | Meaning | Default rendering |
+|------------|---------|-------------------|
+| `@deprecated` | Scheduled for removal | ⚠ badge, node rendered semi-transparent |
+| `@new` | Newly added | ✦ badge |
+| `@experimental` | Experimental | ⚗ badge |
+| `@migration_target` | Migration target | → badge |
 
-### 記述例
+### Example
 
-複数付与可。タグとの併用も可。
+Multiple annotations can be applied. Tags and annotations can be combined.
 
 ```
-service Legacy "旧システム" [external] @deprecated @migration_target
-service NewAPI "新API"                 @new @experimental
+service Legacy "Legacy System" [external] @deprecated @migration_target
+service NewAPI "New API"                  @new @experimental
 ```
 
-#### domain の移行期共存
+#### Domain coexistence during migration
 
-`@deprecated` または `@migration_target` を `domain` に付与すると、
-同一システム内で同じ ID を持つ `domain` の共存が許容される（移行期のモデリング）。
-`@migration_target` が付いている方がナビゲーションの優先先になる。
+When `@deprecated` or `@migration_target` is applied to a `domain`, duplicate `domain` IDs within the same system are tolerated (modeling a migration period).
+The domain carrying `@migration_target` becomes the preferred navigation target.
 
 ```krs
 system OrderSystem {
   service LegacyService {
-    domain Contract @deprecated {   // 移行元 — 廃止予定
+    domain Contract @deprecated {   // migration source — scheduled for removal
       -> Billing
     }
   }
   service NewService {
-    domain Contract @migration_target {  // 移行先 — ナビゲーション優先
+    domain Contract @migration_target {  // migration target — preferred navigation
       -> Billing
     }
   }
 }
 ```
 
-> `@deprecated` 単独、または `@migration_target` 単独、どちらか一方が付いていれば重複を許容する。
-> どちらにも付いていない場合はエラーのまま。
+> Duplication is tolerated as long as at least one side carries `@deprecated` alone, or `@migration_target` alone.
+> If neither annotation is present, the duplicate remains an error.
 
 ---
 
-## タグとアノテーションの違い
+## Difference between tags and annotations
 
-| | タグ | アノテーション |
-|---|------|--------------|
-| 表す内容 | アーキテクチャ上の位置・役割 | ライフサイクル・開発状態 |
-| 例 | `[external]`（境界の外） | `@deprecated`（廃止予定） |
-| スタイルへの影響 | `.krs.style` のタグセレクタで制御 | `.krs.style` のアノテーションセレクタで制御 |
+| | Tag | Annotation |
+|---|-----|-----------|
+| What it expresses | Architectural position / role | Lifecycle / development state |
+| Example | `[external]` (outside the boundary) | `@deprecated` (scheduled for removal) |
+| Style impact | Controlled by tag selectors in `.krs.style` | Controlled by annotation selectors in `.krs.style` |
 
 ---
 
-## システム自動付与タグ（System-assigned tags）
+## System-assigned tags
 
-以下のタグはユーザーが `.krs` ファイルに記述するものではなく、ツールが自動的に付与する。
-`.krs.style` のタグセレクタで参照・上書きできる。
+The following tags are not written by users in `.krs` files; they are automatically assigned by the tool.
+They can be referenced and overridden via tag selectors in `.krs.style`.
 
-### エッジへの自動タグ
+### Automatic tags on edges
 
-| タグ | 付与条件 | デフォルトスタイル |
-|-----|---------|-----------------|
-| `[implicit]` | domain エッジから派生した暗黙のサービス間エッジ | アンバー（`#F59E0B`）。線種は元のドメインエッジの `kind` に従う（`[async]` で破線、`[sync]` で実線） |
-| `[async]` | `-->` で宣言されたエッジ | 破線 |
-| `[sync]` | `->` で宣言されたエッジ | 実線 |
-| `[cyclic]` | 循環依存検出時 | 赤（`#EF4444`）実線 |
+| Tag | Assignment condition | Default style |
+|-----|---------------------|---------------|
+| `[implicit]` | An implicit service-level edge derived from domain edges | Amber (`#F59E0B`). Line style follows the `kind` of the source domain edge (`[async]` = dashed, `[sync]` = solid) |
+| `[async]` | An edge declared with `-->` | Dashed |
+| `[sync]` | An edge declared with `->` | Solid |
+| `[cyclic]` | Detected as part of a cyclic dependency | Red (`#EF4444`) solid |
 
-> `[implicit]` は色（アンバー）で「派生」を表し、線種は同期/非同期の区別に使う。
-> 同一サービスペア間に sync と async の両方のドメインエッジがある場合は、kind ごとに別の暗黙エッジとして派生される。
+> `[implicit]` uses color (amber) to signal "derived," while the line style distinguishes sync from async.
+> When both sync and async domain edges exist between the same service pair, they are derived as separate implicit edges, one per kind.
 
-### カスタマイズ例
+### Customization example
 
 ```krs.style
 edge[implicit] {
@@ -108,54 +109,53 @@ edge[implicit] {
 
 ---
 
-## チーム連絡先コンベンション（`team` + `link`）
+## Team contact convention (`team` + `link`)
 
-組織クエリ（「このサービスのオーナーチームは？」「影響するチームに連絡したい」）を AI チャットで利用するには、
-`service` や `domain` ノードに `team` プロパティと `link` プロパティを追加する。
+To support organizational queries in the AI chat ("who is the owner team of this service?", "I want to contact the affected teams"), add `team` and `link` properties to `service` or `domain` nodes.
 
 ```krs
 service ECommerce {
-  label "ECサイト"
-  team "ECチーム"
-  link "https://slack.com/archives/C..." "ECチーム Slack"
-  link "https://notion.so/..."          "チームページ"
+  label "EC Site"
+  team "EC Team"
+  link "https://slack.com/archives/C..." "EC Team Slack"
+  link "https://notion.so/..."          "Team page"
 }
 ```
 
-### `team` プロパティ
+### `team` property
 
-チーム名を文字列で記述する。AI はこの値を組織クエリの回答で使用する。
+Specify the team name as a string. The AI uses this value when answering organizational queries.
 
 ```krs
 service Payment {
-  team "Fintechチーム"
+  team "Fintech Team"
 }
 ```
 
-### `link` プロパティ（チーム連絡先）
+### `link` property (team contact)
 
-`link "<url>" "<label>"` の形式で連絡先 URL を追加する。
-ラベルに以下のキーワードが含まれる場合、AI はチーム連絡先として認識する：
+Add contact URLs in the form `link "<url>" "<label>"`.
+When the label contains any of the following keywords, the AI recognizes the link as a team contact:
 
-| キーワード例 | 用途 |
-|---|---|
-| `Slack` | Slack チャンネル |
-| `Teams` | Microsoft Teams チャンネル |
-| `チームページ` | Notion や Confluence などのチームページ |
-| `Runbook` | オンコール・運用手順書 |
+| Keyword examples | Purpose |
+|-----------------|---------|
+| `Slack` | Slack channel |
+| `Teams` | Microsoft Teams channel |
+| `Team page` | Team page on Notion, Confluence, etc. |
+| `Runbook` | On-call / operations runbook |
 
-### 使用例（AI チャットでのクエリ）
+### Usage example (AI chat queries)
 
-モデルに上記の情報を記述しておくと、Chat タブで以下のようなクエリが可能になる：
+When the model contains the information above, queries like the following become possible in the Chat tab:
 
 ```
-Q: "Order サービスに依存しているチームを教えて"
-A: - Fintechチーム（Payment サービス）
-     → https://slack.com/... (Fintechチーム Slack)
-   - Platformチーム（Notification サービス）
-     → https://slack.com/... (Platformチーム Slack)
+Q: "Which teams depend on the Order service?"
+A: - Fintech Team (Payment service)
+     → https://slack.com/... (Fintech Team Slack)
+   - Platform Team (Notification service)
+     → https://slack.com/... (Platform Team Slack)
 
-Q: "オンボーディングで最初に会うべき人は？"
-A: ECommerce（最もエッジが多い）: ECチーム
-     → https://notion.so/... (チームページ)
+Q: "Who should I meet first during onboarding?"
+A: ECommerce (most edges): EC Team
+     → https://notion.so/... (Team page)
 ```
