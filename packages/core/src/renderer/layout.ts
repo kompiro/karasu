@@ -707,7 +707,10 @@ export function layout(
 
   // Normalize coordinates and compute dimensions
   normalizeCoordinates(containers, layoutNodes, layoutEdges);
-  const { width: totalWidth, height: totalHeight } = computeTotalDimensions(containers, layoutNodes);
+  const { width: totalWidth, height: totalHeight } = computeTotalDimensions(
+    containers,
+    layoutNodes,
+  );
 
   return {
     nodes: layoutNodes,
