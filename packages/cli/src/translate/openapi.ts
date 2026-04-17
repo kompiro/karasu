@@ -114,8 +114,22 @@ function emitOperationUsecase(op: CollectedOperation): string {
   return `  usecase ${usecaseId} { label "${label}" }`;
 }
 
+interface ResourceGroup {
+  /** First-seen casing of the resource segment, used for the label. */
+  displayName: string;
+  ops: CollectedOperation[];
+}
+
+/** Format the resource segment for the label, replacing separators with spaces. */
+function formatResourceLabel(resource: string): string {
+  return resource.replace(/[-_]+/g, " ");
+}
+
 function emitResourceUsecases(operations: CollectedOperation[]): string[] {
-  const groups = new Map<string, CollectedOperation[]>();
+  // Map key is lowercased so that paths differing only in case (`/Orders` vs
+  // `/orders`) collapse into one group — toPascalCase would otherwise produce
+  // duplicate `ManageOrders` ids in the same service block.
+  const groups = new Map<string, ResourceGroup>();
   const ungrouped: CollectedOperation[] = [];
 
   for (const op of operations) {
@@ -124,20 +138,30 @@ function emitResourceUsecases(operations: CollectedOperation[]): string[] {
       ungrouped.push(op);
       continue;
     }
-    const existing = groups.get(resource);
+    const key = resource.toLowerCase();
+    const existing = groups.get(key);
     if (existing) {
-      existing.push(op);
+      existing.ops.push(op);
     } else {
-      groups.set(resource, [op]);
+      groups.set(key, { displayName: resource, ops: [op] });
     }
   }
 
   const lines: string[] = [];
-  for (const [resource, ops] of groups) {
-    const id = `Manage${toPascalCase(resource)}`;
-    const opsList = ops.map((op) => `${op.method.toUpperCase()} ${op.path}`).join(", ");
-    lines.push(`  // Operations: ${opsList}`);
-    lines.push(`  usecase ${id} { label "manage ${resource}" }`);
+  for (const { displayName, ops } of groups.values()) {
+    const id = `Manage${toPascalCase(displayName)}`;
+    const labelText = `manage ${formatResourceLabel(displayName)}`;
+    lines.push(`  usecase ${id} {`);
+    lines.push(`    label "${labelText}"`);
+    lines.push(`    description """`);
+    lines.push(`      Operations:`);
+    for (const op of ops) {
+      const summary = op.operation.summary?.trim();
+      const head = `${op.method.toUpperCase()} ${op.path}`;
+      lines.push(`      - ${summary ? `${head} — ${summary}` : head}`);
+    }
+    lines.push(`      """`);
+    lines.push(`  }`);
   }
   for (const op of ungrouped) {
     lines.push(emitOperationUsecase(op));

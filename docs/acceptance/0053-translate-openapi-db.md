@@ -24,8 +24,10 @@ paths:
   /orders:
     get:
       operationId: listOrders
+      summary: List all orders
     post:
       operationId: placeOrder
+      summary: Place a new order
   /orders/{id}:
     get:
       operationId: getOrder
@@ -34,6 +36,7 @@ paths:
   /orders/{id}/cancel:
     post:
       operationId: cancelOrder
+      summary: Cancel an order
 ```
 
 **Command:**
@@ -44,14 +47,24 @@ karasu translate --from openapi api.yaml --service ECommerce
 **Expected output** (stdout):
 ```krs
 service ECommerce {
-  // Operations: GET /orders, POST /orders, GET /orders/{id}, DELETE /orders/{id}, POST /orders/{id}/cancel
-  usecase ManageOrders { label "manage orders" }
+  usecase ManageOrders {
+    label "manage orders"
+    description """
+      Operations:
+      - GET /orders — List all orders
+      - POST /orders — Place a new order
+      - GET /orders/{id}
+      - DELETE /orders/{id}
+      - POST /orders/{id}/cancel — Cancel an order
+      """
+  }
 }
 ```
 
 > All operations sharing the same top-level resource segment fold into a single
-> `manage <resource>` usecase. The original operations are preserved in the
-> `// Operations:` comment for traceability.
+> `manage <resource>` usecase. The original operations are preserved as a
+> structured `description` block (with OpenAPI `summary` text when available),
+> so they survive parsing and are surfaced in the karasu detail panel.
 
 ---
 
@@ -76,8 +89,14 @@ karasu translate --from openapi api.yaml --service ItemService
 **Expected output**:
 ```krs
 service ItemService {
-  // Operations: GET /items, POST /items
-  usecase ManageItems { label "manage items" }
+  usecase ManageItems {
+    label "manage items"
+    description """
+      Operations:
+      - GET /items
+      - POST /items
+      """
+  }
 }
 ```
 
@@ -104,8 +123,13 @@ karasu translate --from openapi api.yaml
 **Expected output**:
 ```krs
 service OrderService {
-  // Operations: GET /orders
-  usecase ManageOrders { label "manage orders" }
+  usecase ManageOrders {
+    label "manage orders"
+    description """
+      Operations:
+      - GET /orders
+      """
+  }
 }
 ```
 

@@ -113,11 +113,12 @@ Examples:
         process.stderr.write(`Error: --from must be "compose", "k8s", "openapi", or "db"\n`);
         process.exit(1);
       }
-      if (
-        options.granularity !== undefined &&
-        options.granularity !== "resource" &&
-        options.granularity !== "operation"
-      ) {
+      let granularity: "resource" | "operation" | undefined;
+      if (options.granularity === undefined) {
+        granularity = undefined;
+      } else if (options.granularity === "resource" || options.granularity === "operation") {
+        granularity = options.granularity;
+      } else {
         process.stderr.write(`Error: --granularity must be "resource" or "operation"\n`);
         process.exit(1);
       }
@@ -127,7 +128,7 @@ Examples:
         output: options.output,
         service: options.service,
         database: options.database,
-        granularity: options.granularity as "resource" | "operation" | undefined,
+        granularity,
       });
     },
   );

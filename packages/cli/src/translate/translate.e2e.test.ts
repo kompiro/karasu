@@ -331,9 +331,10 @@ paths:
 
     const out = capture.stdout();
     expect(out).toContain("service ECommerce {");
-    expect(out).toContain('usecase ManageOrders { label "manage orders" }');
-    expect(out).toContain("// Operations: ");
-    expect(out).toContain("POST /orders/{id}/cancel");
+    expect(out).toContain("usecase ManageOrders {");
+    expect(out).toContain('    label "manage orders"');
+    expect(out).toContain('    description """');
+    expect(out).toContain("      - POST /orders/{id}/cancel");
     expect(out).not.toContain("usecase PlaceOrder");
   });
 
@@ -357,7 +358,8 @@ paths:
 
     const out = capture.stdout();
     expect(out).toContain("service ItemService {");
-    expect(out).toContain('usecase ManageItems { label "manage items" }');
+    expect(out).toContain("usecase ManageItems {");
+    expect(out).toContain('    label "manage items"');
   });
 
   it("AT-0053-03: derives service name from info.title when --service is omitted", async () => {
@@ -380,7 +382,8 @@ paths:
 
     const out = capture.stdout();
     expect(out).toContain("service OrderService {");
-    expect(out).toContain('usecase ManageOrders { label "manage orders" }');
+    expect(out).toContain("usecase ManageOrders {");
+    expect(out).toContain('    label "manage orders"');
   });
 
   it("AT-0053-09: --granularity operation emits one usecase per HTTP operation", async () => {
@@ -412,7 +415,7 @@ paths:
     expect(out).toContain('usecase PlaceOrder { label "POST /orders" }');
     expect(out).toContain('usecase CancelOrder { label "POST /orders/{id}/cancel" }');
     expect(out).not.toContain("ManageOrders");
-    expect(out).not.toContain("// Operations:");
+    expect(out).not.toContain("description");
   });
 });
 

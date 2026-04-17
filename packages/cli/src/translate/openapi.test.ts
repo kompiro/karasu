@@ -33,11 +33,61 @@ paths:
 `;
     const result = await translator.translate(input, { ...ctx, service: "ECommerce" });
     expect(result).toContain("service ECommerce {");
-    expect(result).toContain('  usecase ManageOrders { label "manage orders" }');
+    expect(result).toContain("  usecase ManageOrders {");
+    expect(result).toContain('    label "manage orders"');
     expect(result).not.toContain("ManageCancel");
-    expect(result).toContain("  // Operations: ");
-    expect(result).toContain("GET /orders");
-    expect(result).toContain("POST /orders/{id}/cancel");
+    // Operations are preserved in a structured description block.
+    expect(result).toContain('    description """');
+    expect(result).toContain("      Operations:");
+    expect(result).toContain("      - GET /orders");
+    expect(result).toContain("      - POST /orders/{id}/cancel");
+  });
+
+  it("includes OpenAPI summary in the description when present", async () => {
+    const input = `
+openapi: "3.0.0"
+info:
+  title: ECommerce API
+paths:
+  /orders:
+    post:
+      summary: Place a new order
+    get:
+      summary: List all orders
+`;
+    const result = await translator.translate(input, { ...ctx, service: "ECommerce" });
+    expect(result).toContain("      - POST /orders — Place a new order");
+    expect(result).toContain("      - GET /orders — List all orders");
+  });
+
+  it("groups paths that differ only in case under a single usecase", async () => {
+    const input = `
+openapi: "3.0.0"
+info:
+  title: Mixed API
+paths:
+  /orders:
+    get: {}
+  /Orders:
+    post: {}
+`;
+    const result = await translator.translate(input, { ...ctx, service: "Mixed" });
+    // Both paths share resource "orders" (case-insensitive). Only one ManageOrders should be emitted.
+    expect(result.match(/usecase ManageOrders \{/g)?.length).toBe(1);
+  });
+
+  it("formats hyphenated resource segments with spaces in the label", async () => {
+    const input = `
+openapi: "3.0.0"
+info:
+  title: Catalog API
+paths:
+  /order-items:
+    get: {}
+`;
+    const result = await translator.translate(input, { ...ctx, service: "Catalog" });
+    expect(result).toContain("  usecase ManageOrderItems {");
+    expect(result).toContain('    label "manage order items"');
   });
 
   it("emits one usecase per resource when multiple resources are present", async () => {
@@ -56,8 +106,10 @@ paths:
     delete: {}
 `;
     const result = await translator.translate(input, { ...ctx, service: "Shop" });
-    expect(result).toContain('  usecase ManageOrders { label "manage orders" }');
-    expect(result).toContain('  usecase ManageProducts { label "manage products" }');
+    expect(result).toContain("  usecase ManageOrders {");
+    expect(result).toContain("  usecase ManageProducts {");
+    expect(result).toContain('    label "manage orders"');
+    expect(result).toContain('    label "manage products"');
   });
 
   it("skips api/version prefixes when inferring the resource", async () => {
@@ -72,7 +124,8 @@ paths:
     get: {}
 `;
     const result = await translator.translate(input, { ...ctx, service: "Versioned" });
-    expect(result).toContain('  usecase ManageOrders { label "manage orders" }');
+    expect(result).toContain("  usecase ManageOrders {");
+    expect(result).toContain('    label "manage orders"');
     expect(result).not.toContain("ManageApi");
     expect(result).not.toContain("ManageV1");
     expect(result).not.toContain("ManageV2");
@@ -105,7 +158,8 @@ paths:
 `;
     const result = await translator.translate(input, ctx);
     expect(result).toContain("service OrderService {");
-    expect(result).toContain('  usecase ManageOrders { label "manage orders" }');
+    expect(result).toContain("  usecase ManageOrders {");
+    expect(result).toContain('    label "manage orders"');
   });
 
   it("derives service name from file path when info.title is also absent", async () => {
@@ -179,7 +233,7 @@ paths:
     expect(result).toContain('  usecase PlaceOrder { label "POST /orders" }');
     expect(result).toContain('  usecase CancelOrder { label "POST /orders/{id}/cancel" }');
     expect(result).not.toContain("ManageOrders");
-    expect(result).not.toContain("// Operations:");
+    expect(result).not.toContain("description");
   });
 
   it("falls back to method+path when operationId is absent (operation mode)", async () => {

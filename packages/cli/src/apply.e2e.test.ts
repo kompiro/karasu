@@ -341,7 +341,7 @@ paths:
     writeFileSync(targetPath, result, "utf-8");
 
     const content = readFileSync(targetPath, "utf-8");
-    // The new operation should be reflected in the regenerated grouped usecase comment
+    // The new operation should be reflected in the regenerated grouped usecase description
     expect(content).toContain("POST /orders/{id}/cancel");
     // Service block should appear exactly once
     expect(content.match(/service OrderService \{/g)?.length).toBe(1);
