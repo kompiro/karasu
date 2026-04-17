@@ -15,6 +15,8 @@ type: manual
 
 ### AT-0053-01: Translate OpenAPI spec — operations grouped per resource (default)
 
+> ✅ Automated — `packages/cli/src/translate/translate.e2e.test.ts` › `AT-0053-01: groups RESTful operations on the same resource into one usecase by default`
+
 **Input** `api.yaml`:
 ```yaml
 openapi: "3.0.0"
@@ -70,6 +72,8 @@ service ECommerce {
 
 ### AT-0053-02: Resource grouping works even without operationId
 
+> ✅ Automated — `packages/cli/src/translate/translate.e2e.test.ts` › `AT-0053-02: groups operations even when operationId is absent`
+
 **Input** `api.yaml`:
 ```yaml
 openapi: "3.0.0"
@@ -104,6 +108,8 @@ service ItemService {
 
 ### AT-0053-03: OpenAPI with default service name (derived from info.title)
 
+> ✅ Automated — `packages/cli/src/translate/translate.e2e.test.ts` › `AT-0053-03: derives service name from info.title when --service is omitted`
+
 **Input** `api.yaml`:
 ```yaml
 openapi: "3.0.0"
@@ -136,6 +142,8 @@ service OrderService {
 ---
 
 ### AT-0053-04: Translate SQL schema to database block
+
+> ✅ Automated — `packages/cli/src/translate/translate.e2e.test.ts` › `AT-0053-04: translates SQL schema to database block with table entries`
 
 **Input** `schema.sql`:
 ```sql
@@ -170,6 +178,8 @@ database OrderDB {
 
 ### AT-0053-05: DB schema without --database flag uses file name
 
+> ✅ Automated — `packages/cli/src/translate/translate.e2e.test.ts` › `AT-0053-05: derives database name from file name when --database is omitted`
+
 **Input** `order_db.sql` (same content as above)
 
 **Command (no --database flag):**
@@ -190,6 +200,8 @@ database OrderDb {
 
 ### AT-0053-06: Generated krs with unclassified usecase shows warning in preview
 
+> ⏸ Manual — preview rendering and diagnostics panel are verified visually.
+
 **Setup**: Paste the output of AT-0053-01 into the karasu preview or a `.krs` file.
 
 **Expected**: The preview renders the `service` block with the grouped `usecase` node directly under it, and the diagnostics panel shows:
@@ -200,6 +212,8 @@ database OrderDb {
 ---
 
 ### AT-0053-07: Error on missing --from flag
+
+> ⏸ Manual — Commander built-in `requiredOption` behavior; not exercised by the library-level `translate()` e2e.
 
 **Command:**
 ```bash
@@ -213,6 +227,8 @@ karasu translate api.yaml
 
 ### AT-0053-08: Error on missing file
 
+> ✅ Automated — `packages/cli/src/translate/translate.e2e.test.ts` › `AT-0053-08: exits with code 1 and error message for missing openapi file`
+
 **Command:**
 ```bash
 karasu translate --from openapi nonexistent.yaml --service Foo
@@ -224,6 +240,8 @@ karasu translate --from openapi nonexistent.yaml --service Foo
 ---
 
 ### AT-0053-09: `--granularity operation` opts back into per-operation usecases
+
+> ✅ Automated — `packages/cli/src/translate/translate.e2e.test.ts` › `AT-0053-09: --granularity operation emits one usecase per HTTP operation`
 
 **Input** `api.yaml`:
 ```yaml
@@ -258,6 +276,8 @@ service ECommerce {
 ---
 
 ### AT-0053-10: Invalid `--granularity` value is rejected
+
+> ⏸ Manual — validated at the Commander action layer (`packages/cli/src/index.ts`); not exercised by the library-level `translate()` e2e.
 
 **Command:**
 ```bash
