@@ -90,13 +90,13 @@ export function useChatSession({
         const response = await client.messages.create({
           model: MODEL,
           max_tokens: 4096,
-          system: buildSystemPrompt(
-            scopeLabelRef.current,
-            viewPathRef.current,
-            fileContentRef.current,
-            currentFilePathRef.current,
-            resolvedSystemsRef.current,
-          ),
+          system: buildSystemPrompt({
+            scopeLabel: scopeLabelRef.current,
+            viewPath: viewPathRef.current,
+            fileContent: fileContentRef.current,
+            currentFilePath: currentFilePathRef.current,
+            resolvedSystems: resolvedSystemsRef.current,
+          }),
           tools: TOOLS,
           messages: apiMessages,
         });
@@ -129,13 +129,13 @@ export function useChatSession({
               const followup = await client.messages.create({
                 model: MODEL,
                 max_tokens: 4096,
-                system: buildSystemPrompt(
-                  scopeLabelRef.current,
-                  viewPathRef.current,
-                  fileContentRef.current,
-                  currentFilePathRef.current,
-                  resolvedSystemsRef.current,
-                ),
+                system: buildSystemPrompt({
+                  scopeLabel: scopeLabelRef.current,
+                  viewPath: viewPathRef.current,
+                  fileContent: fileContentRef.current,
+                  currentFilePath: currentFilePathRef.current,
+                  resolvedSystems: resolvedSystemsRef.current,
+                }),
                 tools: TOOLS,
                 messages: followupMessages,
               });
@@ -328,13 +328,13 @@ export function useChatSession({
         const response = await client.messages.create({
           model: MODEL,
           max_tokens: 4096,
-          system: buildSystemPrompt(
-            scopeLabelRef.current,
-            viewPathRef.current,
-            fileContentRef.current,
-            currentFilePathRef.current,
-            resolvedSystemsRef.current,
-          ),
+          system: buildSystemPrompt({
+            scopeLabel: scopeLabelRef.current,
+            viewPath: viewPathRef.current,
+            fileContent: fileContentRef.current,
+            currentFilePath: currentFilePathRef.current,
+            resolvedSystems: resolvedSystemsRef.current,
+          }),
           tools: TOOLS,
           messages: followupMessages,
         });
@@ -405,13 +405,13 @@ export function useChatSession({
         const response = await client.messages.create({
           model: MODEL,
           max_tokens: 4096,
-          system: buildSystemPrompt(
-            scopeLabelRef.current,
-            viewPathRef.current,
-            fileContentRef.current,
-            currentFilePathRef.current,
-            resolvedSystemsRef.current,
-          ),
+          system: buildSystemPrompt({
+            scopeLabel: scopeLabelRef.current,
+            viewPath: viewPathRef.current,
+            fileContent: fileContentRef.current,
+            currentFilePath: currentFilePathRef.current,
+            resolvedSystems: resolvedSystemsRef.current,
+          }),
           tools: TOOLS,
           messages: followupMessages,
         });
@@ -472,13 +472,13 @@ export function useChatSession({
       const response = await client.messages.create({
         model: MODEL,
         max_tokens: 4096,
-        system: buildSystemPrompt(
-          scopeLabelRef.current,
-          viewPathRef.current,
-          fileContentRef.current,
-          currentFilePathRef.current,
-          resolvedSystemsRef.current,
-        ),
+        system: buildSystemPrompt({
+          scopeLabel: scopeLabelRef.current,
+          viewPath: viewPathRef.current,
+          fileContent: fileContentRef.current,
+          currentFilePath: currentFilePathRef.current,
+          resolvedSystems: resolvedSystemsRef.current,
+        }),
         tools: TOOLS,
         messages: triggerMessages,
       });
@@ -504,13 +504,13 @@ export function useChatSession({
           const followup = await client.messages.create({
             model: MODEL,
             max_tokens: 4096,
-            system: buildSystemPrompt(
-              scopeLabelRef.current,
-              viewPathRef.current,
-              fileContentRef.current,
-              currentFilePathRef.current,
-              resolvedSystemsRef.current,
-            ),
+            system: buildSystemPrompt({
+              scopeLabel: scopeLabelRef.current,
+              viewPath: viewPathRef.current,
+              fileContent: fileContentRef.current,
+              currentFilePath: currentFilePathRef.current,
+              resolvedSystems: resolvedSystemsRef.current,
+            }),
             tools: TOOLS,
             messages: followupMessages,
           });
@@ -586,13 +586,13 @@ export function useChatSession({
       const response = await client.messages.create({
         model: MODEL,
         max_tokens: 4096,
-        system: buildSystemPrompt(
-          scopeLabelRef.current,
-          viewPathRef.current,
-          fileContentRef.current,
-          currentFilePathRef.current,
-          resolvedSystemsRef.current,
-        ),
+        system: buildSystemPrompt({
+          scopeLabel: scopeLabelRef.current,
+          viewPath: viewPathRef.current,
+          fileContent: fileContentRef.current,
+          currentFilePath: currentFilePathRef.current,
+          resolvedSystems: resolvedSystemsRef.current,
+        }),
         tools: TOOLS,
         messages: triggerMessages,
       });
@@ -616,13 +616,13 @@ export function useChatSession({
           const followup = await client.messages.create({
             model: MODEL,
             max_tokens: 4096,
-            system: buildSystemPrompt(
-              scopeLabelRef.current,
-              viewPathRef.current,
-              fileContentRef.current,
-              currentFilePathRef.current,
-              resolvedSystemsRef.current,
-            ),
+            system: buildSystemPrompt({
+              scopeLabel: scopeLabelRef.current,
+              viewPath: viewPathRef.current,
+              fileContent: fileContentRef.current,
+              currentFilePath: currentFilePathRef.current,
+              resolvedSystems: resolvedSystemsRef.current,
+            }),
             tools: TOOLS,
             messages: followupMessages,
           });
@@ -695,13 +695,13 @@ async function autoRejectPatch(
     const response = await client.messages.create({
       model: MODEL,
       max_tokens: 4096,
-      system: buildSystemPrompt(
-        scopeLabelRef.current,
-        viewPathRef.current,
-        fileContentRef.current,
-        currentFilePathRef.current,
-        resolvedSystemsRef.current,
-      ),
+      system: buildSystemPrompt({
+        scopeLabel: scopeLabelRef.current,
+        viewPath: viewPathRef.current,
+        fileContent: fileContentRef.current,
+        currentFilePath: currentFilePathRef.current,
+        resolvedSystems: resolvedSystemsRef.current,
+      }),
       tools: TOOLS,
       messages: followupMessages,
     });
