@@ -143,7 +143,7 @@ paths:
 
     const content = readFileSync(targetPath, "utf-8");
     expect(content).toContain("service OrderService {");
-    expect(content).toContain("usecase PlaceOrder");
+    expect(content).toContain("usecase ManageOrders");
     expect(exitSpy).not.toHaveBeenCalled();
   });
 
@@ -178,7 +178,7 @@ paths:
     const content = readFileSync(targetPath, "utf-8");
     expect(content).toContain("service OrderService {");
     expect(content).toContain("service PaymentService {");
-    expect(content).toContain("usecase CreatePayment");
+    expect(content).toContain("usecase ManagePayments");
     expect(exitSpy).not.toHaveBeenCalled();
   });
 

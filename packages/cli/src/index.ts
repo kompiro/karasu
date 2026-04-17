@@ -62,6 +62,10 @@ program
   .option("--map <path>", "Path to karasu.map.yaml (default: same directory as input file)")
   .option("--service <name>", "Service name for openapi format (default: derived from info.title)")
   .option("--database <name>", "Database name for db format (default: derived from file name)")
+  .option(
+    "--granularity <mode>",
+    "Usecase granularity for openapi format: resource | operation (default: resource)",
+  )
   .option("-o, --output <path>", "Write .krs to file (default: stdout)")
   .addHelpText(
     "after",
@@ -79,8 +83,11 @@ Examples:
   # Use a shared karasu.map.yaml
   $ karasu translate --from compose docker-compose.yml --map karasu.map.yaml
 
-  # Translate OpenAPI spec to unclassified usecases
+  # Translate OpenAPI spec — operations grouped per resource (default)
   $ karasu translate --from openapi api.yaml --service ECommerce >> ecommerce.krs
+
+  # Emit one usecase per HTTP operation instead of grouping
+  $ karasu translate --from openapi api.yaml --granularity operation >> api.krs
 
   # Translate DB schema to database block
   $ karasu translate --from db schema.sql --database OrderDB >> resources.krs`,
@@ -88,7 +95,14 @@ Examples:
   .action(
     (
       file: string,
-      options: { from: string; map?: string; output?: string; service?: string; database?: string },
+      options: {
+        from: string;
+        map?: string;
+        output?: string;
+        service?: string;
+        database?: string;
+        granularity?: string;
+      },
     ) => {
       if (
         options.from !== "compose" &&
@@ -99,12 +113,21 @@ Examples:
         process.stderr.write(`Error: --from must be "compose", "k8s", "openapi", or "db"\n`);
         process.exit(1);
       }
+      if (
+        options.granularity !== undefined &&
+        options.granularity !== "resource" &&
+        options.granularity !== "operation"
+      ) {
+        process.stderr.write(`Error: --granularity must be "resource" or "operation"\n`);
+        process.exit(1);
+      }
       translate(file, {
         from: options.from,
         map: options.map,
         output: options.output,
         service: options.service,
         database: options.database,
+        granularity: options.granularity as "resource" | "operation" | undefined,
       });
     },
   );

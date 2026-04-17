@@ -13,7 +13,7 @@ type: manual
 
 ## Test cases
 
-### AT-0053-01: Translate OpenAPI spec to service usecases
+### AT-0053-01: Translate OpenAPI spec — operations grouped per resource (default)
 
 **Input** `api.yaml`:
 ```yaml
@@ -22,13 +22,18 @@ info:
   title: ECommerce API
 paths:
   /orders:
+    get:
+      operationId: listOrders
     post:
       operationId: placeOrder
-      tags: [Order]
+  /orders/{id}:
+    get:
+      operationId: getOrder
+    delete:
+      operationId: deleteOrder
   /orders/{id}/cancel:
     post:
       operationId: cancelOrder
-      tags: [Order]
 ```
 
 **Command:**
@@ -39,14 +44,18 @@ karasu translate --from openapi api.yaml --service ECommerce
 **Expected output** (stdout):
 ```krs
 service ECommerce {
-  usecase PlaceOrder { label "POST /orders" }
-  usecase CancelOrder { label "POST /orders/{id}/cancel" }
+  // Operations: GET /orders, POST /orders, GET /orders/{id}, DELETE /orders/{id}, POST /orders/{id}/cancel
+  usecase ManageOrders { label "manage orders" }
 }
 ```
 
+> All operations sharing the same top-level resource segment fold into a single
+> `manage <resource>` usecase. The original operations are preserved in the
+> `// Operations:` comment for traceability.
+
 ---
 
-### AT-0053-02: OpenAPI without operationId falls back to method+path
+### AT-0053-02: Resource grouping works even without operationId
 
 **Input** `api.yaml`:
 ```yaml
@@ -67,8 +76,8 @@ karasu translate --from openapi api.yaml --service ItemService
 **Expected output**:
 ```krs
 service ItemService {
-  usecase GetItems { label "GET /items" }
-  usecase PostItems { label "POST /items" }
+  // Operations: GET /items, POST /items
+  usecase ManageItems { label "manage items" }
 }
 ```
 
@@ -95,7 +104,8 @@ karasu translate --from openapi api.yaml
 **Expected output**:
 ```krs
 service OrderService {
-  usecase ListOrders { label "GET /orders" }
+  // Operations: GET /orders
+  usecase ManageOrders { label "manage orders" }
 }
 ```
 
@@ -158,10 +168,9 @@ database OrderDb {
 
 **Setup**: Paste the output of AT-0053-01 into the karasu preview or a `.krs` file.
 
-**Expected**: The preview renders the `service` block with `usecase` nodes directly under it, and the diagnostics panel shows:
+**Expected**: The preview renders the `service` block with the grouped `usecase` node directly under it, and the diagnostics panel shows:
 ```
-⚠ usecase "PlaceOrder" is not assigned to any domain
-⚠ usecase "CancelOrder" is not assigned to any domain
+⚠ usecase "ManageOrders" is not assigned to any domain
 ```
 
 ---
@@ -186,4 +195,50 @@ karasu translate --from openapi nonexistent.yaml --service Foo
 ```
 
 **Expected stderr**: `Error: File not found: nonexistent.yaml`  
+**Expected exit code**: `1`
+
+---
+
+### AT-0053-09: `--granularity operation` opts back into per-operation usecases
+
+**Input** `api.yaml`:
+```yaml
+openapi: "3.0.0"
+info:
+  title: ECommerce API
+paths:
+  /orders:
+    post:
+      operationId: placeOrder
+  /orders/{id}/cancel:
+    post:
+      operationId: cancelOrder
+```
+
+**Command:**
+```bash
+karasu translate --from openapi api.yaml --service ECommerce --granularity operation
+```
+
+**Expected output**:
+```krs
+service ECommerce {
+  usecase PlaceOrder { label "POST /orders" }
+  usecase CancelOrder { label "POST /orders/{id}/cancel" }
+}
+```
+
+> Use this when you want the full HTTP-operation surface — for example, when
+> mapping each endpoint to its own implementation slice.
+
+---
+
+### AT-0053-10: Invalid `--granularity` value is rejected
+
+**Command:**
+```bash
+karasu translate --from openapi api.yaml --granularity invalid
+```
+
+**Expected stderr**: `Error: --granularity must be "resource" or "operation"`
 **Expected exit code**: `1`

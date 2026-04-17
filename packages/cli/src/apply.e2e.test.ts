@@ -290,8 +290,7 @@ paths:
 
     const content = readFileSync(targetPath, "utf-8");
     expect(content).toContain("service OrderService {");
-    expect(content).toContain("usecase PlaceOrder");
-    expect(content).toContain("usecase GetOrder");
+    expect(content).toContain("usecase ManageOrders");
   });
 
   // AT-0060-14
@@ -342,7 +341,8 @@ paths:
     writeFileSync(targetPath, result, "utf-8");
 
     const content = readFileSync(targetPath, "utf-8");
-    expect(content).toContain("usecase CancelOrder");
+    // The new operation should be reflected in the regenerated grouped usecase comment
+    expect(content).toContain("POST /orders/{id}/cancel");
     // Service block should appear exactly once
     expect(content.match(/service OrderService \{/g)?.length).toBe(1);
   });
@@ -376,7 +376,7 @@ paths:
     const content = readFileSync(targetPath, "utf-8");
     expect(content).toContain("service OrderService {");
     expect(content).toContain("service PaymentService {");
-    expect(content).toContain("usecase CreatePayment");
+    expect(content).toContain("usecase ManagePayments");
   });
 });
 

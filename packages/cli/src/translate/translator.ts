@@ -12,6 +12,13 @@ export interface TranslatorContext {
   service?: string;
   /** Database name for db format. Falls back to input file name when omitted. */
   database?: string;
+  /**
+   * Usecase emission granularity for openapi format.
+   * - "resource" (default): one usecase per resource — operations on the same
+   *   resource are folded into a single `manage <resource>` usecase.
+   * - "operation": one usecase per HTTP operation (legacy behavior).
+   */
+  granularity?: "resource" | "operation";
 }
 
 export interface Translator {
