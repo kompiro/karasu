@@ -14,6 +14,7 @@ interface TranslateOptions {
   output?: string;
   service?: string;
   database?: string;
+  granularity?: "resource" | "operation";
 }
 
 export async function translate(inputFile: string, options: TranslateOptions): Promise<void> {
@@ -31,6 +32,7 @@ export async function translate(inputFile: string, options: TranslateOptions): P
     mapPath: options.map,
     service: options.service,
     database: options.database,
+    granularity: options.granularity,
   };
 
   let translator;

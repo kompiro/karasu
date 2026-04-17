@@ -209,7 +209,7 @@ paths:
     const final = readFileSync(targetPath, "utf-8");
     expect(final).not.toContain("OrderService");
     expect(final).toContain("service PaymentService {");
-    expect(final).toContain("usecase CreatePayment");
+    expect(final).toContain("usecase ManagePayments");
     expect(exitSpy).not.toHaveBeenCalled();
   });
 });

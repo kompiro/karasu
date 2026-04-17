@@ -173,7 +173,7 @@ paths:
     const content = readFileSync(targetPath, "utf-8");
     expect(content).toMatch(/system ECommerce \{/);
     expect(content).toContain("service OrderService {");
-    expect(content).toContain("usecase PlaceOrder");
+    expect(content).toContain("usecase ManageOrders");
     // The service should be inside the system block (before the outer closing `}`)
     const systemEnd = content.indexOf("\n}");
     const serviceStart = content.indexOf("service OrderService");

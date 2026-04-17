@@ -301,7 +301,7 @@ describe("translate E2E — openapi", () => {
     rmSync(tmpDir, { recursive: true, force: true });
   });
 
-  it("AT-0053-01: translates OpenAPI with operationId to PascalCase usecases", async () => {
+  it("AT-0053-01: groups RESTful operations on the same resource into one usecase by default", async () => {
     const inputPath = join(tmpDir, "api.yaml");
     writeFileSync(
       inputPath,
@@ -310,13 +310,18 @@ info:
   title: ECommerce API
 paths:
   /orders:
+    get:
+      operationId: listOrders
     post:
       operationId: placeOrder
-      tags: [Order]
+  /orders/{id}:
+    get:
+      operationId: getOrder
+    delete:
+      operationId: deleteOrder
   /orders/{id}/cancel:
     post:
       operationId: cancelOrder
-      tags: [Order]
 `,
     );
 
@@ -326,11 +331,14 @@ paths:
 
     const out = capture.stdout();
     expect(out).toContain("service ECommerce {");
-    expect(out).toContain('usecase PlaceOrder { label "POST /orders" }');
-    expect(out).toContain('usecase CancelOrder { label "POST /orders/{id}/cancel" }');
+    expect(out).toContain("usecase ManageOrders {");
+    expect(out).toContain('    label "manage orders"');
+    expect(out).toContain('    description """');
+    expect(out).toContain("      - POST /orders/{id}/cancel");
+    expect(out).not.toContain("usecase PlaceOrder");
   });
 
-  it("AT-0053-02: falls back to method+path identifiers when operationId is absent", async () => {
+  it("AT-0053-02: groups operations even when operationId is absent", async () => {
     const inputPath = join(tmpDir, "api.yaml");
     writeFileSync(
       inputPath,
@@ -350,8 +358,8 @@ paths:
 
     const out = capture.stdout();
     expect(out).toContain("service ItemService {");
-    expect(out).toContain('usecase GetItems { label "GET /items" }');
-    expect(out).toContain('usecase PostItems { label "POST /items" }');
+    expect(out).toContain("usecase ManageItems {");
+    expect(out).toContain('    label "manage items"');
   });
 
   it("AT-0053-03: derives service name from info.title when --service is omitted", async () => {
@@ -374,7 +382,40 @@ paths:
 
     const out = capture.stdout();
     expect(out).toContain("service OrderService {");
-    expect(out).toContain('usecase ListOrders { label "GET /orders" }');
+    expect(out).toContain("usecase ManageOrders {");
+    expect(out).toContain('    label "manage orders"');
+  });
+
+  it("AT-0053-09: --granularity operation emits one usecase per HTTP operation", async () => {
+    const inputPath = join(tmpDir, "api.yaml");
+    writeFileSync(
+      inputPath,
+      `openapi: "3.0.0"
+info:
+  title: ECommerce API
+paths:
+  /orders:
+    post:
+      operationId: placeOrder
+  /orders/{id}/cancel:
+    post:
+      operationId: cancelOrder
+`,
+    );
+
+    const capture = captureOutput();
+    await translate(inputPath, {
+      from: "openapi",
+      service: "ECommerce",
+      granularity: "operation",
+    });
+    capture.restore();
+
+    const out = capture.stdout();
+    expect(out).toContain('usecase PlaceOrder { label "POST /orders" }');
+    expect(out).toContain('usecase CancelOrder { label "POST /orders/{id}/cancel" }');
+    expect(out).not.toContain("ManageOrders");
+    expect(out).not.toContain("description");
   });
 });
 
