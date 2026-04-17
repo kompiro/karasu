@@ -2,6 +2,7 @@ import path from "path";
 import { defineConfig } from "vitest/config";
 
 export default defineConfig({
+  root: __dirname,
   resolve: {
     alias: [
       {
@@ -16,6 +17,7 @@ export default defineConfig({
   },
   test: {
     include: ["src/**/*.test.ts", "src/**/*.test.tsx"],
+    exclude: ["**/node_modules/**", "**/.worktrees/**", "**/dist/**"],
     coverage: {
       provider: "v8",
       include: ["src/**/*.ts", "src/**/*.tsx"],
