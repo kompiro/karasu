@@ -96,19 +96,79 @@ function iconGridLayout(heights: number[]): {
   };
 }
 
-function renderTeamCard(team: TeamNode, x: number, y: number, style: ResolvedNodeStyle): string {
-  const id = escapeXml(team.id);
-  const label = escapeXml(team.label ?? team.id);
-  const memberCount = team.children.filter((c) => c.kind === "member").length;
-  const subTeamCount = team.children.filter((c) => c.kind === "team").length;
-  const hasChildren = team.children.length > 0;
+function extractTeamCounts(team: TeamNode): { memberCount: number; subTeamCount: number } {
+  return {
+    memberCount: team.children.filter((c) => c.kind === "member").length,
+    subTeamCount: team.children.filter((c) => c.kind === "team").length,
+  };
+}
 
-  const countText = [
+function formatTeamCountText(memberCount: number, subTeamCount: number): string {
+  return [
     memberCount > 0 ? `${memberCount} member${memberCount > 1 ? "s" : ""}` : "",
     subTeamCount > 0 ? `${subTeamCount} sub-team${subTeamCount > 1 ? "s" : ""}` : "",
   ]
     .filter(Boolean)
     .join(" · ");
+}
+
+function renderOrgIconCardCommon(
+  node: TeamNode | MemberNode,
+  x: number,
+  y: number,
+  style: ResolvedNodeStyle,
+  opts: {
+    iconName: string;
+    descText: string;
+    wrapperAttrs?: Record<string, string | number | undefined | null | false>;
+  },
+): string {
+  const cardHeight = iconCardHeight(opts.descText.length > 0);
+
+  return renderIconCard({
+    x,
+    y,
+    nodeId: node.id,
+    wrapperAttrs: opts.wrapperAttrs,
+    width: ICON_CARD_WIDTH,
+    height: cardHeight,
+    rectFill: style.backgroundColor,
+    rectStroke: style.borderColor,
+    rectStrokeWidth: style.borderWidth,
+    rectRx: 8,
+    pictogram: renderPictogramGroup(opts.iconName, style.color) || undefined,
+    titleText: truncateToWidth(node.label ?? node.id, ICON_LABEL_MAX_WIDTH, ICON_LABEL_CHAR_WIDTH),
+    titleX: 30,
+    titleY: 19,
+    titleAttrs: {
+      fill: style.color,
+      "font-family": style.fontFamily,
+      "font-size": 13,
+      "font-weight": style.fontWeight,
+      "text-anchor": "start",
+    },
+    descText: opts.descText
+      ? truncateToWidth(opts.descText, ICON_DESC_MAX_WIDTH, ICON_DESC_CHAR_WIDTH)
+      : undefined,
+    descX: 8,
+    descY: ICON_TITLE_HEIGHT + 22,
+    descAttrs: {
+      fill: style.color,
+      "font-family": style.fontFamily,
+      "font-size": 11,
+      opacity: 0.7,
+      "text-anchor": "start",
+    },
+  });
+}
+
+function renderTeamCard(team: TeamNode, x: number, y: number, style: ResolvedNodeStyle): string {
+  const id = escapeXml(team.id);
+  const label = escapeXml(team.label ?? team.id);
+  const { memberCount, subTeamCount } = extractTeamCounts(team);
+  const hasChildren = team.children.length > 0;
+
+  const countText = formatTeamCountText(memberCount, subTeamCount);
 
   // When overflow label (+N more) and countText both appear, cap visible owns at 2
   // so that overflow sits at y=90 and countText at y=106 with no overlap.
@@ -271,53 +331,16 @@ function renderTeamIconCard(
   y: number,
   style: ResolvedNodeStyle,
 ): string {
-  const memberCount = team.children.filter((c) => c.kind === "member").length;
-  const subTeamCount = team.children.filter((c) => c.kind === "team").length;
+  const { memberCount, subTeamCount } = extractTeamCounts(team);
   const hasChildren = team.children.length > 0;
+  const descText = formatTeamCountText(memberCount, subTeamCount);
 
-  const descParts = [
-    memberCount > 0 ? `${memberCount} member${memberCount > 1 ? "s" : ""}` : "",
-    subTeamCount > 0 ? `${subTeamCount} sub-team${subTeamCount > 1 ? "s" : ""}` : "",
-  ].filter(Boolean);
-  const descText = descParts.join(" · ");
-  const cardHeight = iconCardHeight(descText.length > 0);
-
-  return renderIconCard({
-    x,
-    y,
-    nodeId: team.id,
+  return renderOrgIconCardCommon(team, x, y, style, {
+    iconName: "team",
+    descText,
     wrapperAttrs: {
       ...(hasChildren ? { "data-has-children": "true" } : {}),
       style: "cursor: pointer",
-    },
-    width: ICON_CARD_WIDTH,
-    height: cardHeight,
-    rectFill: style.backgroundColor,
-    rectStroke: style.borderColor,
-    rectStrokeWidth: style.borderWidth,
-    rectRx: 8,
-    pictogram: renderPictogramGroup("team", style.color) || undefined,
-    titleText: truncateToWidth(team.label ?? team.id, ICON_LABEL_MAX_WIDTH, ICON_LABEL_CHAR_WIDTH),
-    titleX: 30,
-    titleY: 19,
-    titleAttrs: {
-      fill: style.color,
-      "font-family": style.fontFamily,
-      "font-size": 13,
-      "font-weight": style.fontWeight,
-      "text-anchor": "start",
-    },
-    descText: descText
-      ? truncateToWidth(descText, ICON_DESC_MAX_WIDTH, ICON_DESC_CHAR_WIDTH)
-      : undefined,
-    descX: 8,
-    descY: ICON_TITLE_HEIGHT + 22,
-    descAttrs: {
-      fill: style.color,
-      "font-family": style.fontFamily,
-      "font-size": 11,
-      opacity: 0.7,
-      "text-anchor": "start",
     },
   });
 }
@@ -332,45 +355,10 @@ function renderMemberIconCard(
   const descText =
     details ||
     truncateToWidth(member.properties.description ?? "", ICON_DESC_MAX_WIDTH, ICON_DESC_CHAR_WIDTH);
-  const cardHeight = iconCardHeight(descText.length > 0);
 
-  return renderIconCard({
-    x,
-    y,
-    nodeId: member.id,
-    width: ICON_CARD_WIDTH,
-    height: cardHeight,
-    rectFill: style.backgroundColor,
-    rectStroke: style.borderColor,
-    rectStrokeWidth: style.borderWidth,
-    rectRx: 8,
-    pictogram: renderPictogramGroup("member", style.color) || undefined,
-    titleText: truncateToWidth(
-      member.label ?? member.id,
-      ICON_LABEL_MAX_WIDTH,
-      ICON_LABEL_CHAR_WIDTH,
-    ),
-    titleX: 30,
-    titleY: 19,
-    titleAttrs: {
-      fill: style.color,
-      "font-family": style.fontFamily,
-      "font-size": 13,
-      "font-weight": style.fontWeight,
-      "text-anchor": "start",
-    },
-    descText: descText
-      ? truncateToWidth(descText, ICON_DESC_MAX_WIDTH, ICON_DESC_CHAR_WIDTH)
-      : undefined,
-    descX: 8,
-    descY: ICON_TITLE_HEIGHT + 22,
-    descAttrs: {
-      fill: style.color,
-      "font-family": style.fontFamily,
-      "font-size": 11,
-      opacity: 0.7,
-      "text-anchor": "start",
-    },
+  return renderOrgIconCardCommon(member, x, y, style, {
+    iconName: "member",
+    descText,
   });
 }
 
