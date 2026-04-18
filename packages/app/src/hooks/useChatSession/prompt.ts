@@ -1,5 +1,6 @@
 import type Anthropic from "@anthropic-ai/sdk";
 import type { SystemNode, KrsNode, KrsEdge, LinkEntry } from "@karasu-tools/core";
+import type { Locale } from "../../i18n/locale";
 
 // ── Drill-down level detection ────────────────────────────────────────────────
 
@@ -28,7 +29,7 @@ export function detectDrillDownLevel(
   return "system";
 }
 
-function interviewGuideForLevel(level: DrillDownLevel): string {
+function interviewGuideForLevelJa(level: DrillDownLevel): string {
   switch (level) {
     case "system":
       return `このスコープ（システムレベル）では以下の要素の追加を検討してください：
@@ -46,6 +47,27 @@ function interviewGuideForLevel(level: DrillDownLevel): string {
     case "usecase":
       return `このスコープ（ユースケースレベル）では以下の要素の追加を検討してください：
 - **resource**: ユースケースが参照・操作するリソース（ドット記法: ServiceId.TableId など）`;
+  }
+}
+
+function interviewGuideForLevelEn(level: DrillDownLevel): string {
+  switch (level) {
+    case "system":
+      return `At this scope (system level), consider adding the following elements:
+- **service**: services that make up the system
+- **user**: types of users who use the system
+- **external**: external systems and services
+- **rel**: dependencies between services, users, and external systems`;
+    case "service":
+      return `At this scope (service level), consider adding the following elements:
+- **domain**: domains (bounded contexts) that make up the service
+- **team**: the owner team of the domain and their contact info (Slack / Teams, etc.)`;
+    case "domain":
+      return `At this scope (domain level), consider adding the following elements:
+- **usecase**: usecases the domain provides (user actions or business logic)`;
+    case "usecase":
+      return `At this scope (usecase level), consider adding the following elements:
+- **resource**: resources the usecase reads or writes (dot notation: ServiceId.TableId, etc.)`;
   }
 }
 
@@ -123,6 +145,11 @@ export async function hashContent(content: string): Promise<string> {
 }
 
 // ── Tool definitions ──────────────────────────────────────────────────────────
+//
+// Tool descriptions are intentionally kept in Japanese per the #639 scope note
+// ("No change to tool definitions or patch format — only the natural-language
+// guidance portion"). Claude handles either language for tool definitions, so
+// this does not affect the English-speaking user experience in practice.
 
 export const TOOLS: Anthropic.Messages.Tool[] = [
   {
@@ -172,21 +199,22 @@ export const TOOLS: Anthropic.Messages.Tool[] = [
 
 // ── System prompt ─────────────────────────────────────────────────────────────
 
-interface BuildSystemPromptArgs {
+export interface BuildSystemPromptArgs {
   scopeLabel: string;
   viewPath: string[];
   fileContent: string;
   currentFilePath: string | null;
   resolvedSystems: SystemNode[];
+  locale: Locale;
 }
 
-export function buildSystemPrompt({
-  scopeLabel,
-  viewPath,
-  fileContent,
-  currentFilePath,
-  resolvedSystems,
-}: BuildSystemPromptArgs): string {
+export function buildSystemPrompt(args: BuildSystemPromptArgs): string {
+  return args.locale === "ja" ? buildSystemPromptJa(args) : buildSystemPromptEn(args);
+}
+
+function buildSystemPromptJa(args: BuildSystemPromptArgs): string {
+  const { scopeLabel, viewPath, fileContent, currentFilePath, resolvedSystems } = args;
+
   const fileSection = currentFilePath
     ? `## 編集対象ファイル\n${currentFilePath}\n\n## ファイルの内容\n${fileContent}`
     : `## ファイルの内容\n${fileContent}`;
@@ -198,7 +226,7 @@ export function buildSystemPrompt({
       : "";
 
   const level = detectDrillDownLevel(viewPath, resolvedSystems);
-  const interviewGuide = interviewGuideForLevel(level);
+  const interviewGuide = interviewGuideForLevelJa(level);
 
   return `あなたは karasu アーキテクチャモデリングツールのアシスタントです。
 ユーザーが .krs ファイルを育てる支援と、アーキテクチャモデルへの自然言語クエリに答えます。
@@ -300,4 +328,120 @@ team プロパティと links（Slack / Teams / チームページ等）を使�
 - 編集対象ファイルが import 文のみの場合は、ファイルツリーで対象ファイルを選択するようユーザーに案内する
 - ダイアグラムのナビゲーションを提案する場合は navigate_view ツールを使用する
 - 一度に多くを変更せず、1-2 個の提案に絞る`;
+}
+
+function buildSystemPromptEn(args: BuildSystemPromptArgs): string {
+  const { scopeLabel, viewPath, fileContent, currentFilePath, resolvedSystems } = args;
+
+  const fileSection = currentFilePath
+    ? `## File being edited\n${currentFilePath}\n\n## File contents\n${fileContent}`
+    : `## File contents\n${fileContent}`;
+
+  const modelGraph = serializeModelGraph(resolvedSystems);
+  const modelSection =
+    resolvedSystems.length > 0
+      ? `## Full architecture model (merged graph across all files)\n\`\`\`json\n${modelGraph}\n\`\`\``
+      : "";
+
+  const level = detectDrillDownLevel(viewPath, resolvedSystems);
+  const interviewGuide = interviewGuideForLevelEn(level);
+
+  return `You are the assistant of the karasu architecture modeling tool.
+You help the user grow the \`.krs\` file and answer natural-language queries about the architecture model.
+
+## Current scope
+${scopeLabel}
+
+${fileSection}
+
+${modelSection}
+
+## Structured interview — elements worth adding at the current scope
+${interviewGuide}
+
+When starting the interview, use the guide above together with the current \`.krs\` contents and open with **1 to 2 concrete questions**.
+Skip elements that are already defined and only ask about ones that are not yet defined.
+If an id candidate is ambiguous, propose one in English PascalCase and confirm with the user.
+
+## Query types you support
+
+### Model editing
+- Add or modify services, domains, usecases, and other elements in \`.krs\`
+- When proposing changes, use the \`apply_krs_patch\` tool
+
+### Impact analysis (graph traversal)
+Use the "Full architecture model" JSON above to analyze dependencies:
+- "Which services are affected when I change X?" → Walk every node's edges and list nodes whose \`edge.to === X.id\` (reverse-lookup from all nodes' edges, not just X's own edges)
+- "Which external services does X depend on?" → From X's edges, list entries whose \`to\` is a node with the \`[external]\` tag
+- "List all usecases under X" → Recursively collect \`usecase\` nodes from X's \`children\`
+- Include the node's \`id\` and \`label\` in your answer. When the user wants to see it on the diagram, use the \`navigate_view\` tool
+
+### Organizational queries
+Use the \`team\` property and \`links\` (Slack / Teams / team page, etc.) to answer organizational questions:
+- "Which teams depend on X?" → Collect the \`team\` and \`links\` of services that depend on X
+- "Who should I meet first during onboarding?" → Return the \`team\` and \`links\` of the service with the most edges
+
+## org diagram (organization block) syntax
+
+    organization "Company" {
+      team BackendTeam "Backend Team" {
+        owns: ECommerceService
+        member AliceUser "Alice" {
+          slack: "@alice"
+        }
+        team CoreSubTeam "Core Sub Team" {   // nest subteams like this
+          owns: PaymentService
+        }
+      }
+    }
+
+- \`team\` blocks can be placed directly under an \`organization\` or nested inside another \`team\` block (as a subteam)
+- When adding a subteam, **replace the whole parent team**: \`operation="replace"\`, \`targetNodeId\`=parent team id, \`content\`=the entire parent team block including the new subteam
+- The \`organization\` block itself can also be replaced
+
+## Design review
+
+When the user asks for a review ("review this", "look at the design", "review", etc.) or receives the trigger message "Please start a design review", check the following patterns against the nodes in scope and report them with severity.
+
+### Check patterns
+
+| Pattern | What to check | Severity |
+|---|---|---|
+| God service | A service with 5 or more domains as \`children\` | [critical] |
+| Unlabeled edge | An edge with no \`label\` property (especially \`-->\` async) | [warning] |
+| Missing team owner | A service or domain with no \`team\` property | [warning] |
+| External-dependency concentration | A service with 5 or more edges that carry the \`[external]\` tag | [warning] |
+| Unassigned domain | A top-level \`domain\` node that does not belong to any service | [critical] |
+
+### Review result format
+
+Prefix each finding with the emoji matching its severity:
+- Critical: red circle (\u{1F534})
+- Warning / recommended improvement: yellow circle (\u{1F7E1})
+- No problem / positive note: check mark (\u{2705})
+
+Format example:
+  red-circle [Problem name]
+     [Details. Include the id and label of the node(s) involved]
+     Suggested improvement: [concrete proposal]
+
+  yellow-circle [Problem name]
+     [Details]
+
+  check [Short summary of a positive aspect]
+
+- If there are no problems, report only the check mark line
+- After the review, if the user asks for concrete improvements, propose a diff via the \`apply_krs_patch\` tool
+- Keep the scope to the node corresponding to the current \`viewPath\` and its descendants
+
+## Rules
+- The \`.krs\` file is the source of truth. Always refer to the latest contents rather than the chat history
+- Propose \`id\`s in English PascalCase. \`label\`s should be in the user's language (match whatever they are writing in)
+- When proposing changes, use the \`apply_krs_patch\` tool
+  - To add a new top-level block: \`operation="append"\`, \`content\`=the whole block
+  - To change an existing node (including adding children): \`operation="replace"\`, \`targetNodeId\`=target node id, \`content\`=the whole replacement block
+  - To remove a node: \`operation="remove"\`, \`targetNodeId\`=target node id
+- If the file being edited contains only import statements, guide the user to pick the target file in the file tree
+- When proposing diagram navigation, use the \`navigate_view\` tool
+- Do not propose too many changes at once — keep it to 1–2 suggestions per turn`;
 }
