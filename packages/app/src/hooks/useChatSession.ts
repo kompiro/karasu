@@ -31,6 +31,39 @@ interface UseChatSessionParams {
   sessionResetKey: string | null;
 }
 
+// Controls how each call site handles tool_use blocks in the response, so that
+// runTurn can preserve the (intentionally) different behaviors of the original
+// five call sites without duplicating the client.messages.create plumbing.
+interface RunTurnOptions {
+  /**
+   * - "followup"   : call onNavigateViewPath and issue one extra request so the
+   *                  AI can produce the text that accompanies the navigation.
+   * - "side_effect": call onNavigateViewPath but do not issue a follow-up.
+   * - "ignore"     : silently drop navigate_view blocks (no side effect, no follow-up).
+   */
+  navigateMode?: "followup" | "side_effect" | "ignore";
+  /** When false, apply_krs_patch blocks are silently dropped. */
+  extractPatch?: boolean;
+}
+
+// Marks the assistant message that carried the tool_use as resolved (so the
+// next buildApiMessages emits a matching tool_result) and optionally appends a
+// follow-up assistant message with any text returned by the AI.
+function markPatchResolved(
+  prev: ChatMessage[],
+  proposal: PatchProposal,
+  patchResult: string,
+  text: string,
+): ChatMessage[] {
+  const resolved = prev.map((m) =>
+    m.role === "assistant" && m.patch?.toolUseId === proposal.toolUseId ? { ...m, patchResult } : m,
+  );
+  if (text) {
+    return [...resolved, { id: crypto.randomUUID(), role: "assistant" as const, content: text }];
+  }
+  return resolved;
+}
+
 // ── Hook ─────────────────────────────────────────────────────────────────────
 
 export function useChatSession({
@@ -74,16 +107,20 @@ export function useChatSession({
     resetSession();
   }, [sessionResetKey, resetSession]);
 
-  // ── Core API call ──────────────────────────────────────────────────────────
+  // ── Core turn ──────────────────────────────────────────────────────────────
 
   // Single turn of the Anthropic conversation: sends apiMessages, then collects
-  // text, handles navigate_view (side effect + one follow-up to get text), and
-  // extracts apply_krs_patch into a PatchProposal. Throws on API errors — the
-  // caller is responsible for translating exceptions into ErrorChatMessages.
+  // text, handles navigate_view / apply_krs_patch blocks per options, and
+  // optionally issues a follow-up request for navigate_view text. Throws on
+  // API errors — callers are responsible for translating exceptions into
+  // ErrorChatMessages.
   const runTurn = useCallback(
     async (
       apiMessages: Anthropic.Messages.MessageParam[],
+      options: RunTurnOptions = {},
     ): Promise<{ text: string; patchProposal?: PatchProposal }> => {
+      const { navigateMode = "followup", extractPatch = true } = options;
+
       const key = apiKeyRef.current;
       if (!key) return { text: "" };
 
@@ -112,11 +149,11 @@ export function useChatSession({
         if (block.type === "text") {
           text += block.text;
         } else if (block.type === "tool_use") {
-          if (block.name === "navigate_view") {
+          if (block.name === "navigate_view" && navigateMode !== "ignore") {
             const input = block.input as { path: string[] };
             onNavigateViewPath(input.path);
-            navigateToolUseId = block.id;
-          } else if (block.name === "apply_krs_patch") {
+            if (navigateMode === "followup") navigateToolUseId = block.id;
+          } else if (block.name === "apply_krs_patch" && extractPatch) {
             const input = block.input as {
               operation: PatchOperation;
               targetNodeId?: string;
@@ -136,8 +173,6 @@ export function useChatSession({
         }
       }
 
-      // navigate_view requires a follow-up request with tool_result so the AI
-      // can produce the user-visible text that accompanies the navigation.
       if (navigateToolUseId) {
         const followupMessages: Anthropic.Messages.MessageParam[] = [
           ...apiMessages,
@@ -165,6 +200,8 @@ export function useChatSession({
     },
     [onNavigateViewPath],
   );
+
+  // ── callApi ────────────────────────────────────────────────────────────────
 
   const callApi = useCallback(
     async (history: ChatMessage[], retryUserMsgId?: string): Promise<void> => {
@@ -214,22 +251,36 @@ export function useChatSession({
 
   const sendMessage = useCallback(
     async (text: string): Promise<void> => {
-      // If pending_confirmation, auto-reject before sending
       const currentPhase = phaseRef.current;
       let baseMessages = messages;
 
+      // If a patch is pending confirmation, auto-reject it before sending the
+      // new user message. Navigation is applied as a side effect only (no
+      // follow-up request) to match the original behavior.
       if (currentPhase.kind === "pending_confirmation") {
-        baseMessages = await autoRejectPatch(
-          currentPhase.proposal,
-          messages,
-          apiKeyRef,
-          scopeLabelRef,
-          viewPathRef,
-          fileContentRef,
-          currentFilePathRef,
-          resolvedSystemsRef,
-          onNavigateViewPath,
-        );
+        const proposal = currentPhase.proposal;
+        try {
+          const followupMessages: Anthropic.Messages.MessageParam[] = [
+            ...buildApiMessages(messages),
+            {
+              role: "user",
+              content: [
+                {
+                  type: "tool_result",
+                  tool_use_id: proposal.toolUseId,
+                  content: "User declined.",
+                },
+              ],
+            },
+          ];
+          const { text: autoText } = await runTurn(followupMessages, {
+            navigateMode: "side_effect",
+            extractPatch: false,
+          });
+          baseMessages = markPatchResolved(messages, proposal, "User declined.", autoText);
+        } catch {
+          // Silently ignore auto-reject errors — user's new message will proceed regardless
+        }
         setMessages(baseMessages);
         setPhase({ kind: "idle" });
       }
@@ -244,14 +295,13 @@ export function useChatSession({
       setPhase({ kind: "loading" });
       await callApi(nextMessages, userMsg.id);
     },
-    [messages, callApi, onNavigateViewPath],
+    [messages, callApi, runTurn],
   );
 
   // ── retryMessage ───────────────────────────────────────────────────────────
 
   const retryMessage = useCallback(
     async (userMessageId: string): Promise<void> => {
-      // Drop messages from the failed user message onward and retry
       const idx = messages.findIndex((m) => m.id === userMessageId);
       if (idx === -1) return;
       const trimmed = messages.slice(0, idx + 1);
@@ -287,24 +337,15 @@ export function useChatSession({
       if (!patchResult.ok) {
         // eslint-disable-next-line no-console
         console.error("[useChatSession] applyPatch: patch failed —", patchResult.error);
-        // Mark patchResult on the assistant message so buildApiMessages can emit a valid
-        // tool_result in subsequent requests (Anthropic API requires tool_use → tool_result).
-        setMessages((prev) => {
-          const resolved = prev.map((m) =>
-            m.role === "assistant" && m.patch?.toolUseId === proposal.toolUseId
-              ? { ...m, patchResult: `Error: ${patchResult.error}` }
-              : m,
-          );
-          return [
-            ...resolved,
-            {
-              id: crypto.randomUUID(),
-              role: "error" as const,
-              errorType: "server" as const,
-              content: `⚠ パッチの適用に失敗しました: ${patchResult.error}`,
-            },
-          ];
-        });
+        setMessages((prev) => [
+          ...markPatchResolved(prev, proposal, `Error: ${patchResult.error}`, ""),
+          {
+            id: crypto.randomUUID(),
+            role: "error" as const,
+            errorType: "server" as const,
+            content: `⚠ パッチの適用に失敗しました: ${patchResult.error}`,
+          },
+        ]);
         setPhase({ kind: "idle" });
         return;
       }
@@ -316,58 +357,22 @@ export function useChatSession({
       onEditorChange(patchResult.source);
       setPhase({ kind: "awaiting_followup" });
 
-      const key = apiKeyRef.current;
-      if (!key) return;
-      const client = new Anthropic({ apiKey: key, dangerouslyAllowBrowser: true });
+      if (!apiKeyRef.current) return;
 
-      const apiMessages = buildApiMessages(messages);
       const followupMessages: Anthropic.Messages.MessageParam[] = [
-        ...apiMessages,
+        ...buildApiMessages(messages),
         {
           role: "user",
-          content: [
-            {
-              type: "tool_result",
-              tool_use_id: proposal.toolUseId,
-              content: "Applied.",
-            },
-          ],
+          content: [{ type: "tool_result", tool_use_id: proposal.toolUseId, content: "Applied." }],
         },
       ];
 
       try {
-        const response = await client.messages.create({
-          model: MODEL,
-          max_tokens: 4096,
-          system: buildSystemPrompt({
-            scopeLabel: scopeLabelRef.current,
-            viewPath: viewPathRef.current,
-            fileContent: fileContentRef.current,
-            currentFilePath: currentFilePathRef.current,
-            resolvedSystems: resolvedSystemsRef.current,
-          }),
-          tools: TOOLS,
-          messages: followupMessages,
+        const { text } = await runTurn(followupMessages, {
+          navigateMode: "ignore",
+          extractPatch: false,
         });
-        const text = response.content
-          .filter((b): b is Anthropic.Messages.TextBlock => b.type === "text")
-          .map((b) => b.text)
-          .join("");
-        // Mark the patch as resolved so future history builds include the tool_result
-        setMessages((prev) => {
-          const resolved = prev.map((m) =>
-            m.role === "assistant" && m.patch?.toolUseId === proposal.toolUseId
-              ? { ...m, patchResult: "Applied." }
-              : m,
-          );
-          if (text) {
-            return [
-              ...resolved,
-              { id: crypto.randomUUID(), role: "assistant" as const, content: text },
-            ];
-          }
-          return resolved;
-        });
+        setMessages((prev) => markPatchResolved(prev, proposal, "Applied.", text));
         setPhase({ kind: "idle" });
       } catch (err) {
         const errorType = classifyError(err);
@@ -383,7 +388,7 @@ export function useChatSession({
         setPhase({ kind: "idle" });
       }
     },
-    [messages, onEditorChange],
+    [messages, onEditorChange, runTurn],
   );
 
   // ── rejectPatch ────────────────────────────────────────────────────────────
@@ -391,60 +396,26 @@ export function useChatSession({
   const rejectPatch = useCallback(
     async (proposal: PatchProposal): Promise<void> => {
       setPhase({ kind: "awaiting_followup" });
-      const key = apiKeyRef.current;
-      if (!key) {
+      if (!apiKeyRef.current) {
         setPhase({ kind: "idle" });
         return;
       }
-      const client = new Anthropic({ apiKey: key, dangerouslyAllowBrowser: true });
-      const apiMessages = buildApiMessages(messages);
       const followupMessages: Anthropic.Messages.MessageParam[] = [
-        ...apiMessages,
+        ...buildApiMessages(messages),
         {
           role: "user",
           content: [
-            {
-              type: "tool_result",
-              tool_use_id: proposal.toolUseId,
-              content: "User declined.",
-            },
+            { type: "tool_result", tool_use_id: proposal.toolUseId, content: "User declined." },
           ],
         },
       ];
 
       try {
-        const response = await client.messages.create({
-          model: MODEL,
-          max_tokens: 4096,
-          system: buildSystemPrompt({
-            scopeLabel: scopeLabelRef.current,
-            viewPath: viewPathRef.current,
-            fileContent: fileContentRef.current,
-            currentFilePath: currentFilePathRef.current,
-            resolvedSystems: resolvedSystemsRef.current,
-          }),
-          tools: TOOLS,
-          messages: followupMessages,
+        const { text } = await runTurn(followupMessages, {
+          navigateMode: "ignore",
+          extractPatch: false,
         });
-        const text = response.content
-          .filter((b): b is Anthropic.Messages.TextBlock => b.type === "text")
-          .map((b) => b.text)
-          .join("");
-        // Mark the patch as resolved so future history builds include the tool_result
-        setMessages((prev) => {
-          const resolved = prev.map((m) =>
-            m.role === "assistant" && m.patch?.toolUseId === proposal.toolUseId
-              ? { ...m, patchResult: "User declined." }
-              : m,
-          );
-          if (text) {
-            return [
-              ...resolved,
-              { id: crypto.randomUUID(), role: "assistant" as const, content: text },
-            ];
-          }
-          return resolved;
-        });
+        setMessages((prev) => markPatchResolved(prev, proposal, "User declined.", text));
         setPhase({ kind: "idle" });
       } catch (err) {
         const errorType = classifyError(err);
@@ -460,104 +431,33 @@ export function useChatSession({
         setPhase({ kind: "idle" });
       }
     },
-    [messages],
+    [messages, runTurn],
   );
 
   // ── startReview ────────────────────────────────────────────────────────────
 
   const startReview = useCallback(async (): Promise<void> => {
-    const key = apiKeyRef.current;
-    if (!key) return;
-
+    if (!apiKeyRef.current) return;
     setPhase({ kind: "loading" });
 
-    const client = new Anthropic({ apiKey: key, dangerouslyAllowBrowser: true });
-
-    // Send a hidden trigger message to kick off the design review.
-    // The trigger is NOT stored in the messages state — only the AI's response is shown.
+    // Trigger message is NOT stored in the messages state — only the AI's response is shown.
     const triggerMessages: Anthropic.Messages.MessageParam[] = [
       { role: "user", content: "設計レビューを開始してください。" },
     ];
 
     try {
-      const response = await client.messages.create({
-        model: MODEL,
-        max_tokens: 4096,
-        system: buildSystemPrompt({
-          scopeLabel: scopeLabelRef.current,
-          viewPath: viewPathRef.current,
-          fileContent: fileContentRef.current,
-          currentFilePath: currentFilePathRef.current,
-          resolvedSystems: resolvedSystemsRef.current,
-        }),
-        tools: TOOLS,
-        messages: triggerMessages,
-      });
+      const { text, patchProposal } = await runTurn(triggerMessages);
 
-      let textContent = "";
-      let patchProposal: PatchProposal | undefined;
-
-      for (const block of response.content) {
-        if (block.type === "text") {
-          textContent += block.text;
-        } else if (block.type === "tool_use" && block.name === "navigate_view") {
-          const input = block.input as { path: string[] };
-          onNavigateViewPath(input.path);
-          // Send tool_result to get follow-up text from the AI
-          const followupMessages: Anthropic.Messages.MessageParam[] = [
-            ...triggerMessages,
-            { role: "assistant", content: response.content },
-            {
-              role: "user",
-              content: [{ type: "tool_result", tool_use_id: block.id, content: "Navigated." }],
-            },
-          ];
-          const followup = await client.messages.create({
-            model: MODEL,
-            max_tokens: 4096,
-            system: buildSystemPrompt({
-              scopeLabel: scopeLabelRef.current,
-              viewPath: viewPathRef.current,
-              fileContent: fileContentRef.current,
-              currentFilePath: currentFilePathRef.current,
-              resolvedSystems: resolvedSystemsRef.current,
-            }),
-            tools: TOOLS,
-            messages: followupMessages,
-          });
-          for (const fb of followup.content) {
-            if (fb.type === "text") textContent += fb.text;
-          }
-        } else if (block.type === "tool_use" && block.name === "apply_krs_patch") {
-          const input = block.input as {
-            operation: PatchOperation;
-            targetNodeId?: string;
-            content?: string;
-            description: string;
-          };
-          const hash = await hashContent(fileContentRef.current);
-          patchProposal = {
-            toolUseId: block.id,
-            operation: input.operation,
-            targetNodeId: input.targetNodeId,
-            content: input.content,
-            description: input.description,
-            contentHashAtProposal: hash,
-          };
-        }
+      if (text || patchProposal) {
+        setMessages([
+          {
+            id: crypto.randomUUID(),
+            role: "assistant",
+            content: text,
+            patch: patchProposal,
+          },
+        ]);
       }
-
-      const assistantMsg: AssistantChatMessage = {
-        id: crypto.randomUUID(),
-        role: "assistant",
-        content: textContent,
-        patch: patchProposal,
-      };
-
-      if (textContent || patchProposal) {
-        setMessages([assistantMsg]);
-      }
-
       if (patchProposal) {
         setPhase({ kind: "pending_confirmation", proposal: patchProposal });
       } else {
@@ -575,76 +475,23 @@ export function useChatSession({
       ]);
       setPhase({ kind: "idle" });
     }
-  }, [onNavigateViewPath]);
+  }, [runTurn]);
 
   // ── startInterview ─────────────────────────────────────────────────────────
 
   const startInterview = useCallback(async (): Promise<void> => {
-    const key = apiKeyRef.current;
-    if (!key) return;
-
+    if (!apiKeyRef.current) return;
     setPhase({ kind: "loading" });
 
-    const client = new Anthropic({ apiKey: key, dangerouslyAllowBrowser: true });
-
-    // Send a hidden trigger message to kick off the structured interview.
-    // The trigger is NOT stored in the messages state — only the AI's opening response is shown.
+    // Trigger message is NOT stored in the messages state — only the AI's opening response is shown.
     const triggerMessages: Anthropic.Messages.MessageParam[] = [
       { role: "user", content: "インタビューを開始してください。" },
     ];
 
     try {
-      const response = await client.messages.create({
-        model: MODEL,
-        max_tokens: 4096,
-        system: buildSystemPrompt({
-          scopeLabel: scopeLabelRef.current,
-          viewPath: viewPathRef.current,
-          fileContent: fileContentRef.current,
-          currentFilePath: currentFilePathRef.current,
-          resolvedSystems: resolvedSystemsRef.current,
-        }),
-        tools: TOOLS,
-        messages: triggerMessages,
-      });
-
-      let textContent = "";
-      for (const block of response.content) {
-        if (block.type === "text") {
-          textContent += block.text;
-        } else if (block.type === "tool_use" && block.name === "navigate_view") {
-          const input = block.input as { path: string[] };
-          onNavigateViewPath(input.path);
-          // Send tool_result to get follow-up text from the AI
-          const followupMessages: Anthropic.Messages.MessageParam[] = [
-            ...triggerMessages,
-            { role: "assistant", content: response.content },
-            {
-              role: "user",
-              content: [{ type: "tool_result", tool_use_id: block.id, content: "Navigated." }],
-            },
-          ];
-          const followup = await client.messages.create({
-            model: MODEL,
-            max_tokens: 4096,
-            system: buildSystemPrompt({
-              scopeLabel: scopeLabelRef.current,
-              viewPath: viewPathRef.current,
-              fileContent: fileContentRef.current,
-              currentFilePath: currentFilePathRef.current,
-              resolvedSystems: resolvedSystemsRef.current,
-            }),
-            tools: TOOLS,
-            messages: followupMessages,
-          });
-          for (const fb of followup.content) {
-            if (fb.type === "text") textContent += fb.text;
-          }
-        }
-      }
-
-      if (textContent) {
-        setMessages([{ id: crypto.randomUUID(), role: "assistant", content: textContent }]);
+      const { text } = await runTurn(triggerMessages, { extractPatch: false });
+      if (text) {
+        setMessages([{ id: crypto.randomUUID(), role: "assistant", content: text }]);
       }
       setPhase({ kind: "idle" });
     } catch (err) {
@@ -659,7 +506,7 @@ export function useChatSession({
       ]);
       setPhase({ kind: "idle" });
     }
-  }, [onNavigateViewPath]);
+  }, [runTurn]);
 
   return {
     messages,
@@ -672,74 +519,4 @@ export function useChatSession({
     startReview,
     startInterview,
   };
-}
-
-// ── Utilities ─────────────────────────────────────────────────────────────────
-
-async function autoRejectPatch(
-  proposal: PatchProposal,
-  messages: ChatMessage[],
-  apiKeyRef: React.MutableRefObject<string | null>,
-  scopeLabelRef: React.MutableRefObject<string>,
-  viewPathRef: React.MutableRefObject<string[]>,
-  fileContentRef: React.MutableRefObject<string>,
-  currentFilePathRef: React.MutableRefObject<string | null>,
-  resolvedSystemsRef: React.MutableRefObject<SystemNode[]>,
-  onNavigateViewPath: (path: string[]) => void,
-): Promise<ChatMessage[]> {
-  const key = apiKeyRef.current;
-  if (!key) return messages;
-
-  const client = new Anthropic({ apiKey: key, dangerouslyAllowBrowser: true });
-  const apiMessages = buildApiMessages(messages);
-  const followupMessages: Anthropic.Messages.MessageParam[] = [
-    ...apiMessages,
-    {
-      role: "user",
-      content: [
-        { type: "tool_result", tool_use_id: proposal.toolUseId, content: "User declined." },
-      ],
-    },
-  ];
-
-  try {
-    const response = await client.messages.create({
-      model: MODEL,
-      max_tokens: 4096,
-      system: buildSystemPrompt({
-        scopeLabel: scopeLabelRef.current,
-        viewPath: viewPathRef.current,
-        fileContent: fileContentRef.current,
-        currentFilePath: currentFilePathRef.current,
-        resolvedSystems: resolvedSystemsRef.current,
-      }),
-      tools: TOOLS,
-      messages: followupMessages,
-    });
-    for (const block of response.content) {
-      if (block.type === "tool_use" && block.name === "navigate_view") {
-        const input = block.input as { path: string[] };
-        onNavigateViewPath(input.path);
-      }
-    }
-    const text = response.content
-      .filter((b): b is Anthropic.Messages.TextBlock => b.type === "text")
-      .map((b) => b.text)
-      .join("");
-    // Mark the patch as resolved so future history builds include the tool_result.
-    // navigate_view tool_use is intentionally not stored in chat history — it is
-    // handled as a pure side effect and never needs a tool_result in stored state.
-    const resolved = messages.map((m) =>
-      m.role === "assistant" && m.patch?.toolUseId === proposal.toolUseId
-        ? { ...m, patchResult: "User declined." }
-        : m,
-    );
-    if (text) {
-      return [...resolved, { id: crypto.randomUUID(), role: "assistant" as const, content: text }];
-    }
-    return resolved;
-  } catch {
-    // Silently ignore auto-reject errors — user's new message will proceed regardless
-  }
-  return messages;
 }
