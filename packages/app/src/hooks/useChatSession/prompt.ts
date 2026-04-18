@@ -172,13 +172,21 @@ export const TOOLS: Anthropic.Messages.Tool[] = [
 
 // ── System prompt ─────────────────────────────────────────────────────────────
 
-export function buildSystemPrompt(
-  scopeLabel: string,
-  viewPath: string[],
-  fileContent: string,
-  currentFilePath: string | null,
-  resolvedSystems: SystemNode[],
-): string {
+interface BuildSystemPromptArgs {
+  scopeLabel: string;
+  viewPath: string[];
+  fileContent: string;
+  currentFilePath: string | null;
+  resolvedSystems: SystemNode[];
+}
+
+export function buildSystemPrompt({
+  scopeLabel,
+  viewPath,
+  fileContent,
+  currentFilePath,
+  resolvedSystems,
+}: BuildSystemPromptArgs): string {
   const fileSection = currentFilePath
     ? `## 編集対象ファイル\n${currentFilePath}\n\n## ファイルの内容\n${fileContent}`
     : `## ファイルの内容\n${fileContent}`;
