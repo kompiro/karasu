@@ -1,8 +1,9 @@
 # Chat システムプロンプトの i18n
 
 - **日付**: 2026-04-17
-- **ステータス**: ドラフト
+- **ステータス**: 決定済み（[ADR-20260418-01](../adr/20260418-01-chat-prompt-i18n.md) として昇格）
 - **関連**:
+  - [ADR-20260418-01](../adr/20260418-01-chat-prompt-i18n.md) — 本 Design Doc を昇格した ADR
   - [Issue #639](https://github.com/kompiro/karasu/issues/639) — Chat: switch system prompt to English for non-Japanese users
   - [Issue #34](https://github.com/kompiro/karasu/issues/34) — Add i18n support for English and Japanese（アプリ全体の i18n）
   - [docs/design/i18n-support.md](./i18n-support.md) — アプリ全体の i18n 設計（locale 解決ロジックの決定済み）
