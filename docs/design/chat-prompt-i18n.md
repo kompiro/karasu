@@ -10,11 +10,41 @@
 
 ## 背景・課題
 
-`packages/app/src/hooks/useChatSession.ts` の `buildSystemPrompt()` 関数（~120 行）は日本語でハードコードされている。その結果:
+`packages/app/src/hooks/useChatSession/prompt.ts` の `buildSystemPrompt()` 関数（~120 行）は日本語でハードコードされている。その結果:
 
 - **英語ユーザーにとって Chat が使い物にならない**: AI の応答の質が日本語プロンプトの影響で揺れ、英語圏ユーザーが karasu の onboarding 経路として Chat を使えない
 - **#638 の仮説検証がブロックされる**: 「syntax を知らないユーザーが Chat だけでアーキテクチャを描ける」という仮説の検証は、非日本語話者の被験者なしには成立しない
 - **karasu の positioning と矛盾**: `docs/concepts.md` の "karasu と AI" 節は karasu を「人間と AI が同じ言語で語り合う DSL」と位置づけているが、現実には対話言語が日本語に固定されている
+
+### リファクタリング (#678) 後の前提
+
+本設計ドキュメント作成時点で、`useChatSession` は #678 のリファクタリングにより既にモジュール分割済みである:
+
+```
+packages/app/src/hooks/
+├── useChatSession.ts              ← hook 本体
+└── useChatSession/
+    ├── prompt.ts                  ← buildSystemPrompt, TOOLS, detectDrillDownLevel, hashContent 等
+    ├── errors.ts                  ← classifyError, errorMessage
+    ├── apiMessages.ts             ← buildApiMessages
+    └── types.ts                   ← PatchProposal, ChatMessage, SessionPhase
+```
+
+`buildSystemPrompt` は既に **オブジェクト引数** を取る形に変更されている:
+
+```typescript
+export interface BuildSystemPromptArgs {
+  scopeLabel: string;
+  viewPath: string[];
+  fileContent: string;
+  currentFilePath: string | null;
+  resolvedSystems: SystemNode[];
+}
+
+export function buildSystemPrompt(args: BuildSystemPromptArgs): string;
+```
+
+したがって #639 の実装は、既存の `prompt.ts` に英語版を追加して分岐させる作業が中心となる。
 
 ## 制約・前提
 
@@ -105,32 +135,45 @@ export function setLocale(locale: Locale): void {
 
 #### 2. system prompt は `Translations` マップに乗せない
 
-system prompt は純粋な「文字列 → 文字列」ではなく、`buildSystemPrompt(state)` が動的に組み立てる長文の指示群である。これを `Translations` の key/value に収めようとすると、動的部分を無数のキーに分解するか、テンプレート補間を自前で実装するかになる。いずれも破綻しやすい。
+system prompt は純粋な「文字列 → 文字列」ではなく、`buildSystemPrompt(args)` が動的に組み立てる長文の指示群である。これを `Translations` の key/value に収めようとすると、動的部分を無数のキーに分解するか、テンプレート補間を自前で実装するかになる。いずれも破綻しやすい。
 
-代わりに、**locale ごとの `buildSystemPrompt` 実装を並列に持つ**:
+代わりに、**locale ごとの builder 関数を並列に持つ**:
 
 ```typescript
-// packages/app/src/hooks/useChatSession.ts
-function buildSystemPromptJa(state: ChatState): string { /* 既存 */ }
-function buildSystemPromptEn(state: ChatState): string { /* 新規 */ }
+// packages/app/src/hooks/useChatSession/prompt.ts（既存ファイル）
+function buildSystemPromptJa(args: BuildSystemPromptArgs): string { /* 既存 */ }
+function buildSystemPromptEn(args: BuildSystemPromptArgs): string { /* 新規 */ }
 
-function buildSystemPrompt(locale: Locale, state: ChatState): string {
-  return locale === 'ja' ? buildSystemPromptJa(state) : buildSystemPromptEn(state);
+export function buildSystemPrompt(args: BuildSystemPromptArgs): string {
+  return args.locale === 'ja'
+    ? buildSystemPromptJa(args)
+    : buildSystemPromptEn(args);
 }
 ```
 
-動的な差し込み箇所（scope ラベル、ファイル内容、モデルグラフ、インタビューガイド）は、
-両言語で同じ変数を受け取って同じ位置に埋め込む。差異は純粋に指示の言語のみ。
+動的な差し込み箇所（scope ラベル、ファイル内容、モデルグラフ、インタビューガイド）は、両言語で同じ変数を受け取って同じ位置に埋め込む。差異は純粋に指示の言語のみ。
 
-#### 3. system prompt の抽出
+インタビューガイド（`interviewGuideForLevel`）も日本語でハードコードされているため、同様に `interviewGuideForLevelJa` / `interviewGuideForLevelEn` に分岐する。
 
-useChatSession.ts は既に 1100 行を超えており、両言語のプロンプトを追加するとさらに ~240 行増える。
-可読性のため、system prompt のビルダー関数のみを別ファイルに抽出する:
+#### 3. 既存ファイルへの追記（新規ファイル作成は不要）
 
-```
-packages/app/src/hooks/
-  useChatSession.ts              ← 既存（buildSystemPrompt の中身を外出し）
-  useChatSession.prompt.ts       ← 新規: buildSystemPromptJa / buildSystemPromptEn
+#678 のリファクタリングにより `useChatSession/prompt.ts` は既に独立ファイルとして存在する。
+英語版の追加はこの既存ファイルへの追記で十分で、新規ファイル作成は不要。
+
+`BuildSystemPromptArgs` に `locale: Locale` フィールドを追加し、呼び出し側（`useChatSession.ts` 内の `runTurn` 等）がセッション開始時に解決した locale を渡す。
+
+```typescript
+// packages/app/src/hooks/useChatSession/prompt.ts
+import type { Locale } from '../../i18n/locale';
+
+export interface BuildSystemPromptArgs {
+  scopeLabel: string;
+  viewPath: string[];
+  fileContent: string;
+  currentFilePath: string | null;
+  resolvedSystems: SystemNode[];
+  locale: Locale;   // 新規
+}
 ```
 
 `Translations` 型との統合は後続（#34 の着地時）で検討する。
@@ -140,7 +183,9 @@ packages/app/src/hooks/
 
 **chat セッションごとに 1 回解決する**。turn ごとに解決すると、セッション途中で localStorage が書き換わった場合に AI の振る舞いが不安定になる。
 
-セッションの start 時（最初のユーザーメッセージ送信時）に `resolveLocale()` を呼び、以降の全 turn で同じ locale を使う。ユーザーが切り替えたい場合は chat をリセットする。
+`useChatSession` hook の初期化時（初回レンダリング時）に `resolveLocale()` を呼び、`useState` で保持する。この値を `runTurn` / `callApi` / `startReview` / `startInterview` 等すべての呼び出しから `buildSystemPrompt` に渡す。
+
+ユーザーが言語を切り替えたい場合は chat をリセットする（または UI セレクタが #34 で追加された後にリセットを促す）。
 
 #### 5. テスト戦略
 
@@ -153,8 +198,9 @@ packages/app/src/hooks/
 #34 が着地する時点で以下を行う:
 
 1. `packages/app/src/i18n/locale.ts` を `packages/i18n/` に移動（#34 がそれを想定している）
-2. system prompt のビルダー関数も `packages/i18n/` に移すか、`packages/app` に残すかを判断
+2. system prompt のビルダー関数（`prompt.ts`）を `packages/i18n/` に移すか、`packages/app` に残すかを判断
 3. UI の言語セレクタから `setLocale()` が呼ばれるようになるので、localStorage の書き込み経路は変わらず自然に統合される
+4. locale が変更された時に chat をリセットするかどうかの UX を決める
 
 これらは今回のスコープ外。
 
