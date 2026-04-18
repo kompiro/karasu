@@ -2,6 +2,7 @@ import { useState, useCallback, useEffect, useRef } from "react";
 import Anthropic, { APIError } from "@anthropic-ai/sdk";
 import { applyKrsPatch, type PatchOperation } from "../utils/krs-patch.js";
 import type { SystemNode } from "@karasu-tools/core";
+import { resolveLocale } from "../i18n/locale.js";
 import { TOOLS, buildSystemPrompt, hashContent } from "./useChatSession/prompt.js";
 import { classifyError, errorMessage } from "./useChatSession/errors.js";
 import { buildApiMessages } from "./useChatSession/apiMessages.js";
@@ -80,6 +81,12 @@ export function useChatSession({
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [phase, setPhase] = useState<SessionPhase>({ kind: "idle" });
 
+  // Resolve locale once when the hook initializes. Keeping it fixed for the
+  // session's lifetime avoids the assistant's behavior drifting mid-conversation
+  // if the user changes the stored locale in another tab. The UI selector
+  // introduced by #34 will prompt a session reset when it changes the locale.
+  const [locale] = useState(() => resolveLocale());
+
   // Keep a ref to the current phase so async callbacks can read the latest value
   const phaseRef = useRef<SessionPhase>(phase);
   phaseRef.current = phase;
@@ -131,6 +138,7 @@ export function useChatSession({
         fileContent: fileContentRef.current,
         currentFilePath: currentFilePathRef.current,
         resolvedSystems: resolvedSystemsRef.current,
+        locale,
       });
 
       const response = await client.messages.create({
@@ -198,7 +206,7 @@ export function useChatSession({
 
       return { text, patchProposal };
     },
-    [onNavigateViewPath],
+    [onNavigateViewPath, locale],
   );
 
   // ── callApi ────────────────────────────────────────────────────────────────
