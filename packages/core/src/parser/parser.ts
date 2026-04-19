@@ -9,6 +9,8 @@ import type {
   DeployNodeProperties,
   ImportDeclaration,
   Diagnostic,
+  DiagnosticCode,
+  DiagnosticParamsByCode,
   ParseResult,
   LogicalNodeKind,
   DeployNodeKind,
@@ -104,7 +106,11 @@ export class Parser {
   private expect(type: TokenType): Token {
     const token = this.peek();
     if (token.type !== type) {
-      this.error(`Expected ${type} but got ${token.type} ("${token.value}")`);
+      this.error("token-type-mismatch", {
+        expected: String(type),
+        got: String(token.type),
+        value: token.value,
+      });
       return token;
     }
     return this.advance();
@@ -118,12 +124,13 @@ export class Parser {
     return false;
   }
 
-  private error(message: string): void {
+  private error<K extends DiagnosticCode>(code: K, params: DiagnosticParamsByCode[K]): void {
     this.diagnostics.push({
       severity: "error",
-      message,
+      code,
+      params,
       loc: this.range(this.peek().loc),
-    });
+    } as Diagnostic);
   }
 
   private range(start: Token["loc"], end?: Token["loc"]): SourceRange {
@@ -173,7 +180,10 @@ export class Parser {
           file.organizations.push(this.parseOrganizationBlock());
           break;
         default:
-          this.error(`Unexpected token: ${token.type} ("${token.value}")`);
+          this.error("unexpected-token-root", {
+            tokenType: String(token.type),
+            value: token.value,
+          });
           this.advance();
       }
     }
@@ -203,9 +213,10 @@ export class Parser {
     }
 
     if (this.peek().type !== TokenType.LeftBrace) {
-      this.error(
-        `Expected { or string literal but got ${this.peek().type} ("${this.peek().value}")`,
-      );
+      this.error("expected-brace-or-string", {
+        got: String(this.peek().type),
+        value: this.peek().value,
+      });
       // LeftBrace がない場合は空の import 宣言を返す
       return { ids: [], path: "", loc: this.range(start.loc) };
     }
@@ -218,7 +229,10 @@ export class Parser {
         this.match(TokenType.Comma);
       } else {
         // 予期しないトークン: エラーを記録してスキップ
-        this.error(`Expected identifier but got ${this.peek().type} ("${this.peek().value}")`);
+        this.error("expected-identifier", {
+          got: String(this.peek().type),
+          value: this.peek().value,
+        });
         this.advance();
       }
     }
@@ -253,7 +267,7 @@ export class Parser {
         if (this.peek().type === TokenType.StringLiteral) {
           properties.label = this.advance().value;
         } else {
-          this.error('Expected string literal after "label"');
+          this.error("expected-string-after", { property: "label" });
         }
         continue;
       }
@@ -279,10 +293,10 @@ export class Parser {
           if (this.peek().type === TokenType.StringLiteral) {
             properties.role = this.advance().value;
           } else {
-            this.error('Expected string literal after "role"');
+            this.error("expected-string-after", { property: "role" });
           }
         } else {
-          this.error(`"role" property is only valid for user nodes`);
+          this.error("property-not-for-node-kind", { property: "role", nodeKind: kind });
           this.advance();
         }
         continue;
@@ -293,17 +307,18 @@ export class Parser {
         if (kind === "service" || kind === "domain") {
           this.diagnostics.push({
             severity: "warning",
-            message: `"team" property is deprecated; use an organization block with "owns" instead`,
+            code: "team-property-deprecated",
+            params: {},
             loc: this.range(token.loc),
           });
           this.advance();
           if (this.peek().type === TokenType.StringLiteral) {
             properties.team = this.advance().value;
           } else {
-            this.error('Expected string literal after "team"');
+            this.error("expected-string-after", { property: "team" });
           }
         } else {
-          this.error(`"team" property is only valid for service and domain nodes`);
+          this.error("property-not-for-node-kind", { property: "team", nodeKind: kind });
           this.advance();
         }
         continue;
@@ -324,7 +339,8 @@ export class Parser {
         if (parentId && edge.from !== parentId) {
           this.diagnostics.push({
             severity: "error",
-            message: `Edge source "${edge.from}" must match the enclosing block id "${parentId}"`,
+            code: "edge-source-mismatch",
+            params: { from: edge.from, parentId },
             loc: edge.loc,
           });
         }
@@ -336,9 +352,10 @@ export class Parser {
       // Infra block kinds (database/queue/storage) are only valid as direct children of system.
       if (this.isLogicalKeyword(token)) {
         if (INFRA_BLOCK_KINDS.has(token.value) && kind !== "system") {
-          this.error(
-            `"${token.value}" is only valid as a direct child of system, not inside "${kind}"`,
-          );
+          this.error("infra-not-in-context", {
+            infraKind: token.value,
+            parentKind: kind,
+          });
           this.advance();
           continue;
         }
@@ -346,7 +363,11 @@ export class Parser {
         continue;
       }
 
-      this.error(`Unexpected token in block: ${token.type} ("${token.value}")`);
+      this.error("unexpected-token-in-block", {
+        blockKind: "",
+        tokenType: String(token.type),
+        value: token.value,
+      });
       this.advance();
     }
   }
@@ -358,7 +379,7 @@ export class Parser {
     if (this.peek().type === TokenType.StringLiteral) {
       return this.advance().value;
     }
-    this.error('Expected string literal or triple-quoted string after "description"');
+    this.error("expected-string-after", { property: "description" });
     return "";
   }
 
@@ -398,7 +419,7 @@ export class Parser {
     if (this.peek().type === TokenType.Identifier || this.peek().type === TokenType.StringLiteral) {
       return this.advance();
     }
-    this.error(`Expected identifier or string literal after "${context}"`);
+    this.error("expected-id-or-string", { context });
     return this.peek();
   }
 
@@ -420,7 +441,7 @@ export class Parser {
     let id: string;
     let idToken: Token;
     if (this.peek().type !== TokenType.Identifier && this.peek().type !== TokenType.StringLiteral) {
-      this.error(`Expected identifier or string literal (id) after "${kind}"`);
+      this.error("expected-node-id", { kind });
       id = "__missing_id";
       idToken = start; // fallback location
     } else {
@@ -512,7 +533,7 @@ export class Parser {
     }
 
     // Unreachable: resource and infra blocks are handled above
-    this.error(`Unexpected logical node kind: "${kind}"`);
+    this.error("invalid-node-kind", { kind });
     return {
       ...base,
       kind: "resource" as const,
@@ -532,7 +553,7 @@ export class Parser {
     let id: string;
     let idToken: Token;
     if (this.peek().type !== TokenType.Identifier && this.peek().type !== TokenType.StringLiteral) {
-      this.error(`Expected identifier or string literal (id) after "resource"`);
+      this.error("expected-node-id", { kind: "resource" });
       id = "__missing_id";
       idToken = start;
     } else {
@@ -570,7 +591,8 @@ export class Parser {
     if (!ref && !tags.includes("external")) {
       this.diagnostics.push({
         severity: "warning",
-        message: `resource "${id}" is not assigned to any database`,
+        code: "unassigned-resource",
+        params: { resourceId: id },
         loc: this.range(start.loc, end.loc),
       });
     }
@@ -603,7 +625,7 @@ export class Parser {
     let id: string;
     let idToken: Token;
     if (this.peek().type !== TokenType.Identifier && this.peek().type !== TokenType.StringLiteral) {
-      this.error(`Expected identifier or string literal (id) after "${kind}"`);
+      this.error("expected-node-id", { kind });
       id = "__missing_id";
       idToken = start;
     } else {
@@ -656,7 +678,7 @@ export class Parser {
         if (this.peek().type === TokenType.StringLiteral) {
           properties.label = this.advance().value;
         } else {
-          this.error('Expected string literal after "label"');
+          this.error("expected-string-after", { property: "label" });
         }
         continue;
       }
@@ -689,7 +711,11 @@ export class Parser {
         continue;
       }
 
-      this.error(`Unexpected token in ${parentKind} block: ${token.type} ("${token.value}")`);
+      this.error("unexpected-token-in-block", {
+        blockKind: parentKind,
+        tokenType: String(token.type),
+        value: token.value,
+      });
       this.advance();
     }
   }
@@ -714,7 +740,7 @@ export class Parser {
         if (this.peek().type === TokenType.StringLiteral) {
           properties.label = this.advance().value;
         } else {
-          this.error('Expected string literal after "label"');
+          this.error("expected-string-after", { property: "label" });
         }
         continue;
       }
@@ -739,9 +765,11 @@ export class Parser {
         continue;
       }
 
-      this.error(
-        `Unexpected token in sub-resource block: ${token.type} ("${token.value}"). Sub-resource nodes (table, queue-item, bucket) cannot contain child declarations.`,
-      );
+      this.error("unexpected-token-in-block", {
+        blockKind: "sub-resource",
+        tokenType: String(token.type),
+        value: token.value,
+      });
       this.advance();
     }
   }
@@ -770,7 +798,7 @@ export class Parser {
     let id: string;
     let idToken: Token;
     if (this.peek().type !== TokenType.Identifier && this.peek().type !== TokenType.StringLiteral) {
-      this.error(`Expected identifier or string literal (id) after "${start.value}"`);
+      this.error("expected-node-id", { kind: start.value });
       id = "__missing_id";
       idToken = start;
     } else {
@@ -904,14 +932,16 @@ export class Parser {
         ) {
           label = this.advance().value;
         } else {
-          this.error(`Expected value for property "label"`);
+          this.error("expected-property-value", { propName: "label" });
         }
       } else if (DEPLOY_KEYWORDS.has(this.peek().value)) {
         nodes.push(this.parseDeployNode());
       } else {
-        this.error(
-          `Unexpected token in deploy block: ${this.peek().type} ("${this.peek().value}")`,
-        );
+        this.error("unexpected-token-in-block", {
+          blockKind: "deploy",
+          tokenType: String(this.peek().type),
+          value: this.peek().value,
+        });
         this.advance();
       }
     }
@@ -948,7 +978,7 @@ export class Parser {
         ) {
           label = this.advance().value;
         } else {
-          this.error(`Expected value for property "label"`);
+          this.error("expected-property-value", { propName: "label" });
         }
       } else if (DEPLOY_PROPERTY_KEYWORDS.has(this.peek().value)) {
         const propToken = this.advance();
@@ -966,10 +996,14 @@ export class Parser {
             (properties as Record<string, string>)[propName] = value;
           }
         } else {
-          this.error(`Expected value for property "${propName}"`);
+          this.error("expected-property-value", { propName });
         }
       } else {
-        this.error(`Unexpected token in deploy node: ${this.peek().type} ("${this.peek().value}")`);
+        this.error("unexpected-token-in-block", {
+          blockKind: "deploy node",
+          tokenType: String(this.peek().type),
+          value: this.peek().value,
+        });
         this.advance();
       }
     }
@@ -1006,7 +1040,7 @@ export class Parser {
         if (this.peek().type === TokenType.StringLiteral) {
           label = this.advance().value;
         } else {
-          this.error('Expected string literal after "label"');
+          this.error("expected-string-after", { property: "label" });
         }
       } else if (token.type === TokenType.Description) {
         this.advance();
@@ -1017,7 +1051,11 @@ export class Parser {
       } else if (token.type === TokenType.Team) {
         teams.push(this.parseTeamBlock());
       } else {
-        this.error(`Unexpected token in organization block: ${token.type} ("${token.value}")`);
+        this.error("unexpected-token-in-block", {
+          blockKind: "organization",
+          tokenType: String(token.type),
+          value: token.value,
+        });
         this.advance();
       }
     }
@@ -1056,7 +1094,7 @@ export class Parser {
         if (this.peek().type === TokenType.StringLiteral) {
           label = this.advance().value;
         } else {
-          this.error('Expected string literal after "label"');
+          this.error("expected-string-after", { property: "label" });
         }
       } else if (token.type === TokenType.Description) {
         this.advance();
@@ -1072,14 +1110,18 @@ export class Parser {
         ) {
           properties.owns.push(this.advance().value);
         } else {
-          this.error('Expected identifier or string literal after "owns"');
+          this.error("expected-id-after", { property: "owns" });
         }
       } else if (token.type === TokenType.Member) {
         children.push(this.parseMemberBlock());
       } else if (token.type === TokenType.Team) {
         children.push(this.parseTeamBlock());
       } else {
-        this.error(`Unexpected token in team block: ${token.type} ("${token.value}")`);
+        this.error("unexpected-token-in-block", {
+          blockKind: "team",
+          tokenType: String(token.type),
+          value: token.value,
+        });
         this.advance();
       }
     }
@@ -1114,7 +1156,7 @@ export class Parser {
         if (this.peek().type === TokenType.StringLiteral) {
           label = this.advance().value;
         } else {
-          this.error('Expected string literal after "label"');
+          this.error("expected-string-after", { property: "label" });
         }
       } else if (token.type === TokenType.Description) {
         this.advance();
@@ -1127,17 +1169,21 @@ export class Parser {
         if (this.peek().type === TokenType.StringLiteral) {
           properties.slack = this.advance().value;
         } else {
-          this.error('Expected string literal after "slack"');
+          this.error("expected-string-after", { property: "slack" });
         }
       } else if (token.type === TokenType.Github) {
         this.advance();
         if (this.peek().type === TokenType.StringLiteral) {
           properties.github = this.advance().value;
         } else {
-          this.error('Expected string literal after "github"');
+          this.error("expected-string-after", { property: "github" });
         }
       } else {
-        this.error(`Unexpected token in member block: ${token.type} ("${token.value}")`);
+        this.error("unexpected-token-in-block", {
+          blockKind: "member",
+          tokenType: String(token.type),
+          value: token.value,
+        });
         this.advance();
       }
     }
@@ -1168,7 +1214,8 @@ export class Parser {
         if (index.has(ownedId)) {
           this.diagnostics.push({
             severity: "error",
-            message: `"${ownedId}" is already owned by team "${index.get(ownedId)}"; multiple teams cannot own the same service or domain`,
+            code: "duplicate-owner-assignment",
+            params: { nodeId: ownedId, existingTeam: index.get(ownedId)! },
             loc: team.loc,
           });
         } else {
@@ -1187,7 +1234,8 @@ export class Parser {
       if (seen.has(team.id)) {
         this.diagnostics.push({
           severity: "error",
-          message: `Duplicate team id "${team.id}"`,
+          code: "duplicate-team-id",
+          params: { teamId: team.id },
           loc: team.loc,
         });
       } else {
@@ -1247,7 +1295,8 @@ export class Parser {
               // Neither duplicate carries a migration annotation → error (existing behaviour)
               this.diagnostics.push({
                 severity: "error",
-                message: `Domain id "${node.id}" must be unique within a system; found in multiple services`,
+                code: "domain-id-not-unique",
+                params: { domainId: node.id },
                 loc: node.loc,
               });
             }
@@ -1264,7 +1313,8 @@ export class Parser {
           if (index.has(node.id)) {
             this.diagnostics.push({
               severity: "warning",
-              message: `Node id "${node.id}" appears in multiple locations; first path is used for navigation`,
+              code: "node-id-multiple-locations",
+              params: { nodeId: node.id },
               loc: node.loc,
             });
           } else {
@@ -1298,7 +1348,8 @@ export class Parser {
       if (seen.has(node.id)) {
         this.diagnostics.push({
           severity: "error",
-          message: `Duplicate node id "${node.id}" under the same parent`,
+          code: "duplicate-node-id-parent",
+          params: { nodeId: node.id },
           loc: node.loc,
         });
       } else {
@@ -1318,7 +1369,8 @@ export class Parser {
           if (!nodePathIndex.has(ownedId)) {
             this.diagnostics.push({
               severity: "warning",
-              message: `"${ownedId}" referenced in "owns" was not found in the system hierarchy`,
+              code: "owns-target-not-found",
+              params: { ownedId },
               loc: team.loc,
             });
           }

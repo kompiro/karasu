@@ -7,6 +7,9 @@ export type {
   DeployNode,
   ImportDeclaration,
   Diagnostic,
+  DiagnosticCode,
+  DiagnosticParamsByCode,
+  DiagnosticSeverity,
   ParseResult,
   LogicalNodeKind,
   DeployNodeKind,
@@ -37,6 +40,7 @@ export type {
 
 export type { Warning, WarningKind, WarningParamsByKind } from "./types/warnings.js";
 export { formatWarning, type FormattedWarning } from "./resolver/warning-legacy-format.js";
+export { formatDiagnostic } from "./parser/diagnostic-legacy-format.js";
 
 export type { ViewPath, ViewSlice, DomainEdgeDetail } from "./view/view-extract.js";
 export { extractView } from "./view/view-extract.js";

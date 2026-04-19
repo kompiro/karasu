@@ -1,6 +1,11 @@
 import { readFile, writeFile, readdir, stat } from "node:fs/promises";
 import { resolve } from "node:path";
-import { buildAllViewsSvgProject, compileProject, formatWarning } from "@karasu-tools/core";
+import {
+  buildAllViewsSvgProject,
+  compileProject,
+  formatDiagnostic,
+  formatWarning,
+} from "@karasu-tools/core";
 import type {
   FileSystemProvider,
   DirEntry,
@@ -79,11 +84,11 @@ export async function render(filePath: string, options: RenderOptions): Promise<
 
   for (const d of errors) {
     const loc = d.loc ? `${filePath}:${d.loc.start.line + 1}:${d.loc.start.column + 1}` : filePath;
-    process.stderr.write(`Error: ${loc}: ${d.message}\n`);
+    process.stderr.write(`Error: ${loc}: ${formatDiagnostic(d)}\n`);
   }
   for (const d of diagWarnings) {
     const loc = d.loc ? `${filePath}:${d.loc.start.line + 1}:${d.loc.start.column + 1}` : filePath;
-    process.stderr.write(`Warning: ${loc}: ${d.message}\n`);
+    process.stderr.write(`Warning: ${loc}: ${formatDiagnostic(d)}\n`);
   }
   for (const w of warnings) {
     process.stderr.write(`Warning: ${formatWarning(w).message}\n`);

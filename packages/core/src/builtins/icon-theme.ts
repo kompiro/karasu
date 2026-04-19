@@ -1,5 +1,6 @@
 import type { StyleSheet } from "../types/style.js";
 import { StyleParser } from "../parser/style-parser.js";
+import { formatDiagnostic } from "../parser/diagnostic-legacy-format.js";
 
 /**
  * Icon theme style source for icon display mode.
@@ -50,7 +51,7 @@ export function getIconThemeStyleSheet(): StyleSheet {
     /* c8 ignore next 4 */
     if (result.diagnostics.length > 0) {
       throw new Error(
-        `Icon theme stylesheet has parse errors: ${result.diagnostics.map((d) => d.message).join(", ")}`,
+        `Icon theme stylesheet has parse errors: ${result.diagnostics.map((d) => formatDiagnostic(d)).join(", ")}`,
       );
     }
     _cachedSheet = result.value;

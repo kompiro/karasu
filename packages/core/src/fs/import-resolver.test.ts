@@ -29,10 +29,7 @@ describe("ImportResolver", () => {
     it("returns error diagnostic for missing file", async () => {
       const result = await resolver.resolve("/missing.krs");
       expect(result.diagnostics).toContainEqual(
-        expect.objectContaining({
-          severity: "error",
-          message: expect.stringContaining("File not found"),
-        }),
+        expect.objectContaining({ severity: "error", code: "file-not-found" }),
       );
     });
   });
@@ -71,10 +68,7 @@ system Test {
 
       const result = await resolver.resolve("/project/index.krs");
       expect(result.diagnostics).toContainEqual(
-        expect.objectContaining({
-          severity: "warning",
-          message: expect.stringContaining("Style file not found"),
-        }),
+        expect.objectContaining({ severity: "warning", code: "style-file-not-found" }),
       );
     });
   });
@@ -287,7 +281,8 @@ system Test {
       expect(result.diagnostics).toContainEqual(
         expect.objectContaining({
           severity: "error",
-          message: expect.stringContaining('"NonExistent" not found'),
+          code: "import-id-not-found",
+          params: expect.objectContaining({ id: "NonExistent" }),
         }),
       );
     });
@@ -303,10 +298,7 @@ system Test {
 
       const result = await resolver.resolve("/project/index.krs");
       expect(result.diagnostics).toContainEqual(
-        expect.objectContaining({
-          severity: "error",
-          message: expect.stringContaining("File not found"),
-        }),
+        expect.objectContaining({ severity: "error", code: "file-not-found" }),
       );
     });
 
@@ -399,7 +391,7 @@ system Circular {
       expect(result.diagnostics).toContainEqual(
         expect.objectContaining({
           severity: "warning",
-          message: expect.stringContaining("Circular import"),
+          code: "circular-import",
         }),
       );
     });
@@ -422,7 +414,7 @@ system Test {
       expect(result.diagnostics).toContainEqual(
         expect.objectContaining({
           severity: "warning",
-          message: expect.stringContaining("Circular style import"),
+          code: "circular-style-import",
         }),
       );
     });
@@ -587,7 +579,8 @@ import "b.krs"`,
       expect(result.diagnostics).toContainEqual(
         expect.objectContaining({
           severity: "error",
-          message: expect.stringContaining('Duplicate node ID "Duplicate"'),
+          code: "duplicate-node-in-system",
+          params: expect.objectContaining({ nodeId: "Duplicate" }),
         }),
       );
     });
@@ -607,9 +600,8 @@ system MySystem {
       expect(result.diagnostics).toContainEqual(
         expect.objectContaining({
           severity: "warning",
-          message: expect.stringContaining(
-            '"StandaloneService" is declared outside any system block',
-          ),
+          code: "service-outside-system",
+          params: expect.objectContaining({ serviceId: "StandaloneService" }),
         }),
       );
       // OtherService should be merged without warning
@@ -760,7 +752,7 @@ import "team-payment.krs"`,
       expect(result.diagnostics).toContainEqual(
         expect.objectContaining({
           severity: "error",
-          message: expect.stringContaining("Directory not found"),
+          code: "directory-not-found",
         }),
       );
     });
