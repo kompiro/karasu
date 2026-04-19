@@ -54,31 +54,25 @@ export function SettingsPane({ onApiKeyChange }: SettingsPaneProps) {
       </section>
 
       <section className="settings-section">
-        <h2 className="settings-section__title">⚙ AI 設定</h2>
+        <h2 className="settings-section__title">{t("settings.ai.title")}</h2>
 
         <div className="settings-security-notice">
-          <p className="settings-security-notice__heading">⚠ セキュリティについて</p>
-          <p>
-            このツールは Claude API キーをブラウザ上で直接使用します。 API
-            キーはこのブラウザ内にのみ保存され、外部サーバーには送信されません。
-          </p>
-          <p>
-            ただし、XSS 攻撃を受けた場合にキーが漏洩するリスクがあります。 Anthropic コンソールで
-            karasu 専用の制限付きキーを発行することを推奨します。
-          </p>
+          <p className="settings-security-notice__heading">{t("settings.security.heading")}</p>
+          <p>{t("settings.security.bodyBrowser")}</p>
+          <p>{t("settings.security.bodyXss")}</p>
           <a
             className="settings-security-notice__link"
             href="https://console.anthropic.com"
             target="_blank"
             rel="noopener noreferrer"
           >
-            → console.anthropic.com でキーを管理
+            {t("settings.security.linkLabel")}
           </a>
         </div>
 
         <div className="settings-field">
           <label className="settings-field__label" htmlFor="settings-api-key">
-            Claude API キー
+            {t("settings.apiKey.label")}
           </label>
           <input
             id="settings-api-key"
@@ -87,7 +81,7 @@ export function SettingsPane({ onApiKeyChange }: SettingsPaneProps) {
             value={apiKey}
             onChange={(e) => setApiKey(e.target.value)}
             placeholder="sk-ant-..."
-            aria-label="Claude API key"
+            aria-label={t("settings.apiKey.label")}
           />
         </div>
 
@@ -97,13 +91,11 @@ export function SettingsPane({ onApiKeyChange }: SettingsPaneProps) {
               type="checkbox"
               checked={persist === "local"}
               onChange={(e) => setPersist(e.target.checked ? "local" : "session")}
-              aria-label="Persist API key across sessions"
+              aria-label={t("settings.persist.label")}
             />
-            セッションをまたいで保存する（localStorage に保存）
+            {t("settings.persist.label")}
           </label>
-          <p className="settings-field__hint">
-            オフの場合、タブを閉じると API キーは削除されます（推奨）。
-          </p>
+          <p className="settings-field__hint">{t("settings.persist.hint")}</p>
         </div>
 
         <div className="settings-actions">
@@ -112,11 +104,11 @@ export function SettingsPane({ onApiKeyChange }: SettingsPaneProps) {
             onClick={handleSave}
             disabled={!apiKey.trim()}
           >
-            {saved ? "✓ 保存しました" : "💾 保存する"}
+            {saved ? t("settings.save.saved") : t("settings.save.label")}
           </button>
           {getStoredApiKey() && (
             <button className="toolbar-btn toolbar-btn--clear-key" onClick={handleClear}>
-              🗑 削除する
+              {t("settings.clear.label")}
             </button>
           )}
         </div>

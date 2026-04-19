@@ -22,6 +22,19 @@ export type Translations = {
   "languageSelector.label": string;
   "languageSelector.english": string;
   "languageSelector.japanese": string;
+
+  // Settings pane (Phase C2)
+  "settings.ai.title": string;
+  "settings.security.heading": string;
+  "settings.security.bodyBrowser": string;
+  "settings.security.bodyXss": string;
+  "settings.security.linkLabel": string;
+  "settings.apiKey.label": string;
+  "settings.persist.label": string;
+  "settings.persist.hint": string;
+  "settings.save.saved": string;
+  "settings.save.label": string;
+  "settings.clear.label": string;
 };
 
 /**
