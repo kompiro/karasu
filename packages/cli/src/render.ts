@@ -15,7 +15,7 @@ import type {
   Warning,
 } from "@karasu-tools/core";
 
-export type RenderFormat = "svg" | "drawio";
+type RenderFormat = "svg" | "drawio";
 
 const DRAWIO_VIEW_SELECTIONS: Record<DiagramType, DrawioViewSelection | "unsupported"> = {
   system: "system",

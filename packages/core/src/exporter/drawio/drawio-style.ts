@@ -60,12 +60,12 @@ const ANNOTATION_OVERRIDES: Record<string, DrawioStyle> = {
   },
 };
 
-export interface NodeStyleInput {
+interface NodeStyleInput {
   annotations?: string[];
   ghost?: boolean;
 }
 
-export interface EdgeStyleInput {
+interface EdgeStyleInput {
   ghost?: boolean;
   cyclic?: boolean;
 }
