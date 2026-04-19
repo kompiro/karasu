@@ -399,8 +399,11 @@ describe("analyze", () => {
       ] as KrsFile["systems"],
     });
     const warnings = analyze(file, []);
-    expect(warnings.some((w) => w.kind === "domain-dispersal")).toBe(true);
-    expect(warnings[0].message).toContain("Order");
+    const dispersal = warnings.find((w) => w.kind === "domain-dispersal");
+    expect(dispersal).toBeDefined();
+    if (dispersal?.kind === "domain-dispersal") {
+      expect(dispersal.params.domainId).toBe("Order");
+    }
   });
 
   it("detects missing runtime", () => {
