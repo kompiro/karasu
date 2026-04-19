@@ -145,6 +145,7 @@ import type { DisplayMode } from "./renderer/layout.js";
 import { renderOrgView as _renderOrgView } from "./renderer/org-renderer.js";
 import { renderDeploy } from "./renderer/deploy-renderer.js";
 import { extractView, type ViewPath } from "./view/view-extract.js";
+import { withUnassignedSystem } from "./view/unassigned-system.js";
 import { extractOrgView, type OrgViewPath } from "./view/org-view-extract.js";
 import { extractDeployView } from "./view/deploy-view-extract.js";
 import { ImportResolver } from "./fs/import-resolver.js";
@@ -300,13 +301,10 @@ function _compileFromPreparedInput(
   const ownerIndex = krsFile.ownerIndex;
 
   if (diagramType === "deploy") {
-    const styles = resolveStyles(
-      krsFile.systems,
-      resolveSheets,
-      deployUnits,
-      undefined,
-      krsFile.domains,
-    );
+    const styles = resolveStyles(krsFile.systems, resolveSheets, deployUnits, undefined, [
+      ...krsFile.services,
+      ...krsFile.domains,
+    ]);
     const svg = renderDeploy(deploySliceForStyle, styles, displayMode);
     const nodeMetadata = buildDeployNodeMetadata(deploySliceForStyle);
     return { diagramType: "deploy", svg, warnings, diagnostics, nodeMetadata, deployBlocks };
@@ -316,13 +314,19 @@ function _compileFromPreparedInput(
   // extractView must be called before resolveStyles so that derived edges (e.g. implicit
   // service edges synthesized from cross-service domain edges) can be included in the
   // edgeStyles cache. Without this, derived edges fall back to defaultEdgeStyle.
-  const viewSlice = extractView(krsFile.systems, viewPath ?? [], krsFile.domains);
+  //
+  // Top-level (unassigned) services/domains are wrapped in a synthesized
+  // "Unassigned" pseudo-system so they render in their own labeled frame
+  // rather than being merged into systems[0]. extractView only needs the
+  // systems list; the legacy unassigned* params are left empty for that reason.
+  const effectiveSystems = withUnassignedSystem(krsFile);
+  const viewSlice = extractView(effectiveSystems, viewPath ?? []);
   const styles = resolveStyles(
-    krsFile.systems,
+    effectiveSystems,
     resolveSheets,
     deployUnits,
     undefined,
-    krsFile.domains,
+    undefined,
     viewSlice.childEdges,
   );
   const svg = render(viewSlice, styles, serviceIdsWithDeploy, ownerIndex, displayMode);

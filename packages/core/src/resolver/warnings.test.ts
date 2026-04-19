@@ -288,6 +288,41 @@ system ECPlatform {
   });
 });
 
+describe("unassigned-service warning", () => {
+  it("warns for each top-level service not wrapped in a system", () => {
+    const krs = `
+service AuthStandalone { label "認証" }
+service BillingStandalone { label "課金" }
+
+system ECPlatform {
+  service ECommerce {}
+}
+    `;
+    const file = Parser.parse(krs).value;
+    const builtin = getBuiltinStyleSheet();
+    const warnings = analyze(file, [builtin]);
+    const unassigned = warnings.filter((w) => w.kind === "unassigned-service");
+    expect(unassigned).toHaveLength(2);
+    if (unassigned[0].kind !== "unassigned-service") throw new Error("kind mismatch");
+    if (unassigned[1].kind !== "unassigned-service") throw new Error("kind mismatch");
+    expect(unassigned[0].params).toEqual({ serviceId: "AuthStandalone", label: "認証" });
+    expect(unassigned[1].params).toEqual({ serviceId: "BillingStandalone", label: "課金" });
+  });
+
+  it("does not warn for services nested inside a system", () => {
+    const krs = `
+system ECPlatform {
+  service ECommerce { label "ECサイト" }
+}
+    `;
+    const file = Parser.parse(krs).value;
+    const builtin = getBuiltinStyleSheet();
+    const warnings = analyze(file, [builtin]);
+    const unassigned = warnings.filter((w) => w.kind === "unassigned-service");
+    expect(unassigned).toHaveLength(0);
+  });
+});
+
 describe("cross-system-ref warnings", () => {
   it("emits implicit-external warning for cross-system reference", () => {
     const krs = `

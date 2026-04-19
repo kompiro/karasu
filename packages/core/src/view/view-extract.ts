@@ -509,6 +509,7 @@ export function extractView(
   systems: KrsNode[],
   path: ViewPath,
   unassignedDomains: KrsNode[] = [],
+  unassignedServices: KrsNode[] = [],
 ): ViewSlice {
   const resourceLabelMap = buildResourceLabelMap(systems);
   const resourceInferredTagsMap = buildResourceInferredTagsMap(systems);
@@ -533,12 +534,86 @@ export function extractView(
     implicitEdgeDetails: new Map(),
   };
 
-  if (systems.length === 0) return empty;
+  const orphans = [...unassignedServices, ...unassignedDomains];
+
+  // No-system file: render orphan services/domains as peer nodes with no container.
+  // Drill-down walks from the orphan as path root.
+  if (systems.length === 0) {
+    if (orphans.length === 0) return empty;
+
+    if (path.length === 0) {
+      const { edges: implicitServiceEdges, details: implicitEdgeDetails } =
+        deriveImplicitServiceEdges(
+          orphans.filter((c) => c.kind === "service"),
+          new Set(),
+        );
+      const derivedEdges = deriveInfraEdges(orphans);
+      return {
+        ...empty,
+        childNodes: orphans,
+        childEdges: [...derivedEdges, ...implicitServiceEdges],
+        implicitEdgeDetails,
+      };
+    }
+
+    // Drill-down under orphan root
+    const root = orphans.find((c) => nodeId(c) === path[0]);
+    if (!root) return empty;
+    const chain: KrsNode[] = [root];
+    let cursor: KrsNode = root;
+    for (let i = 1; i < path.length; i++) {
+      const child = cursor.children.find((c) => nodeId(c) === path[i]);
+      if (!child) return empty;
+      chain.push(child);
+      cursor = child;
+    }
+    const container = chain.pop()!;
+    const containerChildIds = new Set(container.children.map(nodeId));
+    let edges = container.edges.filter(
+      (e) => containerChildIds.has(e.from) && containerChildIds.has(e.to),
+    );
+    if (container.kind === "service") {
+      const domainIds = new Set(
+        container.children.filter((c) => c.kind === "domain").map((c) => c.id),
+      );
+      const existing = new Set(edges.map((e) => `${e.from}->${e.to}`));
+      for (const domain of container.children) {
+        if (domain.kind !== "domain") continue;
+        for (const edge of domain.edges) {
+          if (!domainIds.has(edge.from) || !domainIds.has(edge.to)) continue;
+          const key = `${edge.from}->${edge.to}`;
+          if (!existing.has(key)) {
+            edges = [...edges, edge];
+            existing.add(key);
+          }
+        }
+      }
+    }
+    let promoted = applyInferredTags(container.children, resourceInferredTagsMap);
+    let finalEdges = edges;
+    if (container.kind === "domain") {
+      const { resourceNodes, edges: resourceEdges } = deriveUsecaseResourceNodes(
+        container.children,
+        resourceInferredTagsMap,
+      );
+      if (resourceNodes.length > 0) {
+        promoted = [...promoted, ...resourceNodes];
+        finalEdges = [...edges, ...resourceEdges];
+      }
+    }
+    return {
+      ...empty,
+      containerNode: container,
+      childNodes: promoted,
+      childEdges: finalEdges,
+      ancestorChain: chain,
+    };
+  }
 
   // Root system view (path = [])
   if (path.length === 0) {
     const system = systems[0];
-    const allChildren = [...system.children, ...unassignedDomains];
+    const allChildren = [...system.children, ...unassignedServices, ...unassignedDomains];
     const childIds = new Set(allChildren.map(nodeId));
     const explicitEdges = system.edges.filter((e) => childIds.has(e.from) && childIds.has(e.to));
     const derivedEdges = deriveInfraEdges(allChildren);
@@ -586,12 +661,22 @@ export function extractView(
   }
 
   // Determine the active system.
-  // path[0] is the system ID when it matches a known system.
-  // For unassigned top-level domains (no system prefix), path[0] is the domain ID
-  // and does not match any system — fall back to systems[0] and walk from index 0.
+  // path[0] is the system ID when it matches a known system. Otherwise the
+  // caller omitted the system prefix (e.g. drilling into a child shown at the
+  // multi-system root, including the "Unassigned" pseudo-system) — search
+  // every system for a direct child whose id matches so the correct owning
+  // system becomes the drill-down root.
   const systemNode = systems.find((s) => s.id === path[0]);
-  const system = systemNode ?? systems[0];
-  const startIndex = systemNode ? 1 : 0;
+  let system: KrsNode;
+  let startIndex: number;
+  if (systemNode) {
+    system = systemNode;
+    startIndex = 1;
+  } else {
+    const owningSystem = systems.find((s) => s.children.some((c) => c.id === path[0]));
+    system = owningSystem ?? systems[0];
+    startIndex = 0;
+  }
 
   // Walk the path to find the container
   const ancestorChain: KrsNode[] = [system];
@@ -600,9 +685,11 @@ export function extractView(
   for (let i = startIndex; i < path.length; i++) {
     const segment = path[i];
     let child = current.children.find((c) => nodeId(c) === segment);
-    // At the first level within the system, also search unassigned domains
+    // At the first level within the system, also search unassigned services/domains
     if (!child && i === startIndex) {
-      child = unassignedDomains.find((c) => nodeId(c) === segment);
+      child =
+        unassignedServices.find((c) => nodeId(c) === segment) ??
+        unassignedDomains.find((c) => nodeId(c) === segment);
     }
     if (!child) return empty;
     ancestorChain.push(child);

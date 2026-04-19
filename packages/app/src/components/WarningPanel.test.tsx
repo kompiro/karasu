@@ -28,6 +28,8 @@ function makeWarning(kind: Warning["kind"]): Warning {
       return { kind, params: { nodeId: "test-node", ownerTeamId: "test-team" } };
     case "unassigned-domain":
       return { kind, params: { domainId: "test-domain" } };
+    case "unassigned-service":
+      return { kind, params: { serviceId: "test-service" } };
     case "unassigned-usecase":
       return { kind, params: { usecaseId: "test-usecase" } };
     case "cross-system-ref-implicit-external":

@@ -2,6 +2,7 @@ import type { KrsFile, TeamNode } from "../types/ast.js";
 import type { StyleSheet } from "../types/style.js";
 import type { DisplayMode } from "./layout.js";
 import { extractView } from "../view/view-extract.js";
+import { withUnassignedSystem } from "../view/unassigned-system.js";
 import { extractOrgView } from "../view/org-view-extract.js";
 import { extractDeployView } from "../view/deploy-view-extract.js";
 import { render, sanitizeId } from "./svg-renderer.js";
@@ -78,8 +79,8 @@ export function buildDrillDownSvg(
   styleSource?: string,
   displayMode?: DisplayMode,
 ): SvgResult {
-  const unassignedDomains = krsFile.domains ?? [];
-  const rootSlice = extractView(krsFile.systems, [], unassignedDomains);
+  const effectiveSystems = withUnassignedSystem(krsFile);
+  const rootSlice = extractView(effectiveSystems, []);
   if (rootSlice.childNodes.length === 0) {
     return {
       svg: `<svg xmlns="http://www.w3.org/2000/svg" width="100%" height="100%" viewBox="0 0 200 100"><text x="100" y="50" text-anchor="middle" fill="#9CA3AF" font-family="sans-serif">No diagram</text></svg>`,
@@ -88,15 +89,20 @@ export function buildDrillDownSvg(
   }
 
   const { sheets, diagnostics } = buildStyles(displayMode, styleSource);
-  const styles = resolveStyles(krsFile.systems, sheets, [], undefined, unassignedDomains);
+  const styles = resolveStyles(effectiveSystems, sheets, []);
   const ownerIndex = krsFile.ownerIndex ?? new Map();
 
   const levels: string[] = [];
   collectDrillDownLevelsGeneric(
     {
-      getSlice: (path) => extractView(krsFile.systems, path, unassignedDomains),
-      hasContent: (slice) => slice.childNodes.length > 0,
-      getChildren: (slice) => slice.childNodes,
+      getSlice: (path) => extractView(effectiveSystems, path),
+      hasContent: (slice) => slice.childNodes.length > 0 || slice.systems.length > 0,
+      // At the multi-system root view we need every owning system's children
+      // (real + synthesized "Unassigned" pseudo-system) so drill-down pages
+      // are produced for each. For deeper levels slice.systems is empty and
+      // we fall back to the container's direct children.
+      getChildren: (slice) =>
+        slice.systems.length > 0 ? slice.systems.flatMap((s) => s.children) : slice.childNodes,
       render: (slice, links) => render(slice, styles, undefined, ownerIndex, displayMode, links),
     },
     [],
@@ -289,19 +295,20 @@ export function buildAllViewsSvg(
   displayMode?: DisplayMode,
 ): SvgResult {
   const { sheets, diagnostics } = buildStyles(displayMode, styleSource);
-  const unassignedDomains = krsFile.domains ?? [];
+  const effectiveSystems = withUnassignedSystem(krsFile);
 
   // Collect system levels
   const systemLevels: BundledLevel[] = [];
-  const systemRootSlice = extractView(krsFile.systems, [], unassignedDomains);
+  const systemRootSlice = extractView(effectiveSystems, []);
   if (systemRootSlice.childNodes.length > 0) {
-    const styles = resolveStyles(krsFile.systems, sheets, [], undefined, unassignedDomains);
+    const styles = resolveStyles(effectiveSystems, sheets, []);
     const ownerIndex = krsFile.ownerIndex ?? new Map();
     collectDrillDownLevelsWithDimensions(
       {
-        getSlice: (path) => extractView(krsFile.systems, path, unassignedDomains),
-        hasContent: (slice) => slice.childNodes.length > 0,
-        getChildren: (slice) => slice.childNodes,
+        getSlice: (path) => extractView(effectiveSystems, path),
+        hasContent: (slice) => slice.childNodes.length > 0 || slice.systems.length > 0,
+        getChildren: (slice) =>
+          slice.systems.length > 0 ? slice.systems.flatMap((s) => s.children) : slice.childNodes,
         render: (slice, links) => render(slice, styles, undefined, ownerIndex, displayMode, links),
       },
       [],
