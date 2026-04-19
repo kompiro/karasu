@@ -299,13 +299,10 @@ function _compileFromPreparedInput(
   const ownerIndex = krsFile.ownerIndex;
 
   if (diagramType === "deploy") {
-    const styles = resolveStyles(
-      krsFile.systems,
-      resolveSheets,
-      deployUnits,
-      undefined,
-      krsFile.domains,
-    );
+    const styles = resolveStyles(krsFile.systems, resolveSheets, deployUnits, undefined, [
+      ...krsFile.services,
+      ...krsFile.domains,
+    ]);
     const svg = renderDeploy(deploySliceForStyle, styles, displayMode);
     const nodeMetadata = buildDeployNodeMetadata(deploySliceForStyle);
     return { diagramType: "deploy", svg, warnings, diagnostics, nodeMetadata, deployBlocks };
@@ -315,13 +312,13 @@ function _compileFromPreparedInput(
   // extractView must be called before resolveStyles so that derived edges (e.g. implicit
   // service edges synthesized from cross-service domain edges) can be included in the
   // edgeStyles cache. Without this, derived edges fall back to defaultEdgeStyle.
-  const viewSlice = extractView(krsFile.systems, viewPath ?? [], krsFile.domains);
+  const viewSlice = extractView(krsFile.systems, viewPath ?? [], krsFile.domains, krsFile.services);
   const styles = resolveStyles(
     krsFile.systems,
     resolveSheets,
     deployUnits,
     undefined,
-    krsFile.domains,
+    [...krsFile.services, ...krsFile.domains],
     viewSlice.childEdges,
   );
   const svg = render(viewSlice, styles, serviceIdsWithDeploy, ownerIndex, displayMode);

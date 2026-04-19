@@ -279,6 +279,33 @@ system PaymentGateway {
   });
 });
 
+describe("compile — top-level (unassigned) services and domains", () => {
+  it("includes top-level services in the system svg alongside system children", () => {
+    const src = `service AuthStandalone { label "認証" }
+domain Payment { label "決済" }
+
+system ECPlatform {
+  service ECommerce { label "ECサイト" }
+}`;
+    const result = compile(src);
+    if (result.diagramType !== "system") throw new Error("expected system result");
+    expect(result.svg).toContain("認証");
+    expect(result.svg).toContain("決済");
+    expect(result.svg).toContain("ECサイト");
+  });
+
+  it("renders orphan service alone when no system is present", () => {
+    const src = `service ECommerce {
+  usecase ManageOrders { label "注文管理" }
+}`;
+    const result = compile(src);
+    if (result.diagramType !== "system") throw new Error("expected system result");
+    expect(result.svg).not.toContain("No diagram");
+    expect(result.svg).not.toContain("No nodes to render");
+    expect(result.svg).toContain("ECommerce");
+  });
+});
+
 describe("deprecated compileProjectOrgView — backward compatibility", () => {
   it("still works and returns OrgCompileResult shape", async () => {
     const fs = new InMemoryFileSystemProvider();
