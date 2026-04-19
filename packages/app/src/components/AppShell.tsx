@@ -1,7 +1,7 @@
 import { useCallback, useState, type ReactNode, type RefObject } from "react";
 import { format, FormatError } from "@karasu-tools/core";
 import { EditArea } from "./EditArea.js";
-import { KarasuPreviewColumn } from "./KarasuPreviewColumn.js";
+import { PreviewColumn } from "./PreviewColumn.js";
 import { downloadSvg } from "../utils/download-svg.js";
 import { useAppContext } from "../state/app-context.js";
 import { useAppViews } from "../hooks/useAppViews.js";
@@ -31,7 +31,7 @@ interface AppShellProps {
  * View compilation, navigation, breadcrumbs, editor-jump, and cross-view
  * navigation live in dedicated hooks (`useAppViews`, `useBreadcrumbs`,
  * `useJumpToEditor`, `useCrossNavigation`). AppShell is a thin orchestrator
- * that wires them to `KarasuPreviewColumn` and `EditArea`.
+ * that wires them to `PreviewColumn` and `EditArea`.
  *
  * Mode-specific concerns (initialization, project management, sidebar content)
  * are handled by the parent wrapper components.
@@ -208,7 +208,7 @@ export function AppShell({
           hasParseErrors={hasParseErrors}
         />
       )}
-      <KarasuPreviewColumn
+      <PreviewColumn
         activeView={activeView}
         hasDeployDiagram={views.system.hasDeployDiagram}
         onActiveViewChange={navigateActiveView}

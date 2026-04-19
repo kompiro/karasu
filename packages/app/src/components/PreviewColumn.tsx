@@ -51,7 +51,7 @@ interface OrgViewProps {
   onOwnedServiceClick?: (serviceId: string) => void;
 }
 
-interface KarasuPreviewColumnProps {
+interface PreviewColumnProps {
   activeView: ActiveView;
   hasDeployDiagram: boolean;
   onActiveViewChange: (view: ActiveView) => void;
@@ -103,7 +103,7 @@ interface KarasuPreviewColumnProps {
   orgTreeExportSvg?: string;
 }
 
-export function KarasuPreviewColumn({
+export function PreviewColumn({
   activeView,
   hasDeployDiagram,
   onActiveViewChange,
@@ -132,7 +132,7 @@ export function KarasuPreviewColumn({
   orgTreeSvg,
   onTeamToggle,
   orgTreeExportSvg,
-}: KarasuPreviewColumnProps) {
+}: PreviewColumnProps) {
   const [refOpen, setRefOpen] = useState(false);
   const [exportMenuOpen, setExportMenuOpen] = useState(false);
 
