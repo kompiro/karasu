@@ -14,7 +14,7 @@ interface TranslateOptions {
   output?: string;
   service?: string;
   database?: string;
-  granularity?: "resource" | "operation";
+  granularity?: "resource" | "operation" | "aggregate" | "table";
 }
 
 export async function translate(inputFile: string, options: TranslateOptions): Promise<void> {

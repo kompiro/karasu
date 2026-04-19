@@ -471,4 +471,87 @@ CREATE TABLE payments (
     expect(out).toContain("database OrderDb {");
     expect(out).toContain('table OrdersTable { label "orders" }');
   });
+
+  it("AT-0053-11: folds child tables into the aggregate root by default", async () => {
+    const inputPath = join(tmpDir, "schema.sql");
+    writeFileSync(
+      inputPath,
+      `CREATE TABLE contracts (
+  id BIGINT PRIMARY KEY
+);
+CREATE TABLE contract_line_items (
+  contract_id BIGINT NOT NULL REFERENCES contracts(id),
+  line_no INT NOT NULL,
+  amount DECIMAL,
+  PRIMARY KEY (contract_id, line_no)
+);
+CREATE TABLE payments (
+  id BIGINT PRIMARY KEY
+);
+`,
+    );
+
+    const capture = captureOutput();
+    await translate(inputPath, { from: "db", database: "BizDB" });
+    capture.restore();
+
+    const out = capture.stdout();
+    expect(out).toContain("database BizDB {");
+    expect(out).toContain("  table ContractsTable {");
+    expect(out).toContain('    label "contracts"');
+    expect(out).toContain("      - contracts (root)");
+    expect(out).toContain("      - contract_line_items — composite PK with FK to contracts");
+    expect(out).toContain('  table PaymentsTable { label "payments" }');
+    expect(out).not.toContain("table ContractLineItemsTable");
+  });
+
+  it("AT-0053-12: --granularity table emits one unit per SQL table", async () => {
+    const inputPath = join(tmpDir, "schema.sql");
+    writeFileSync(
+      inputPath,
+      `CREATE TABLE contracts (
+  id BIGINT PRIMARY KEY
+);
+CREATE TABLE contract_line_items (
+  contract_id BIGINT NOT NULL REFERENCES contracts(id),
+  line_no INT NOT NULL,
+  PRIMARY KEY (contract_id, line_no)
+);
+`,
+    );
+
+    const capture = captureOutput();
+    await translate(inputPath, { from: "db", database: "BizDB", granularity: "table" });
+    capture.restore();
+
+    const out = capture.stdout();
+    expect(out).toContain('  table ContractsTable { label "contracts" }');
+    expect(out).toContain('  table ContractLineItemsTable { label "contract_line_items" }');
+    expect(out).not.toContain("description");
+  });
+
+  it("AT-0053-13: junction tables are not folded into either parent", async () => {
+    const inputPath = join(tmpDir, "schema.sql");
+    writeFileSync(
+      inputPath,
+      `CREATE TABLE users (id BIGINT PRIMARY KEY);
+CREATE TABLE roles (id BIGINT PRIMARY KEY);
+CREATE TABLE user_roles (
+  user_id BIGINT NOT NULL REFERENCES users(id),
+  role_id BIGINT NOT NULL REFERENCES roles(id),
+  PRIMARY KEY (user_id, role_id)
+);
+`,
+    );
+
+    const capture = captureOutput();
+    await translate(inputPath, { from: "db", database: "AuthDB" });
+    capture.restore();
+
+    const out = capture.stdout();
+    expect(out).toContain('table UsersTable { label "users" }');
+    expect(out).toContain('table RolesTable { label "roles" }');
+    expect(out).toContain('table UserRolesTable { label "user_roles" }');
+    expect(out).not.toContain("description");
+  });
 });
