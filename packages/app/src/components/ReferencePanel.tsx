@@ -1,5 +1,6 @@
 import { useState, useCallback } from "react";
 import { getReference } from "@karasu-tools/core";
+import { useClipboardCopy } from "../hooks/useClipboardCopy.js";
 import type { ActiveView } from "../state/app-reducer.js";
 
 interface ReferencePanelProps {
@@ -20,34 +21,18 @@ const TAB_LABELS: Record<Tab, string> = {
 
 export function ReferencePanel({ isOpen, onClose, activeView = "system" }: ReferencePanelProps) {
   const [activeTab, setActiveTab] = useState<Tab>("syntax");
-  const [copied, setCopied] = useState(false);
-  const [sampleCopied, setSampleCopied] = useState(false);
+  const { copy: copyBuiltin, copied } = useClipboardCopy();
+  const { copy: copySample, copied: sampleCopied } = useClipboardCopy();
 
   const ref = getReference();
 
   const handleCopy = useCallback(() => {
-    navigator.clipboard.writeText(ref.builtinStyleSource).then(
-      () => {
-        setCopied(true);
-        setTimeout(() => setCopied(false), 2000);
-      },
-      () => {
-        /* clipboard access denied — silently ignore */
-      },
-    );
-  }, [ref.builtinStyleSource]);
+    copyBuiltin(ref.builtinStyleSource);
+  }, [copyBuiltin, ref.builtinStyleSource]);
 
   const handleSampleCopy = useCallback(() => {
-    navigator.clipboard.writeText(ref.sampleKrs).then(
-      () => {
-        setSampleCopied(true);
-        setTimeout(() => setSampleCopied(false), 2000);
-      },
-      () => {
-        /* clipboard access denied — silently ignore */
-      },
-    );
-  }, [ref.sampleKrs]);
+    copySample(ref.sampleKrs);
+  }, [copySample, ref.sampleKrs]);
 
   if (!isOpen) return null;
 
