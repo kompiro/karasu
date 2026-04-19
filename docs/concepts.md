@@ -355,7 +355,7 @@ Rather than reading each one as a standalone rule, read them with "ah, the same 
 
 Readability of the text source — not pixel-perfect visual output — is the top priority.
 When a user needs pixel-perfect diagrams for a slide deck or external documentation, the answer is **not** to grow karasu's layout engine in that direction; it is to **let the output escape into a tool specialized for layout polishing**.
-A draw.io export is planned as the escape hatch for this purpose (see #649).
+A draw.io (mxGraph XML) export is available as the escape hatch for this purpose: `karasu render <file> --format drawio` writes a one-way `.drawio` file that can be polished in diagrams.net and re-exported. The `.krs` text remains the single source of truth — edits made inside draw.io are not read back (see #649).
 This non-goal and its escape hatch are a pair and should be understood together.
 
 #### No direct drawing mode for building the model on a canvas

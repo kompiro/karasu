@@ -1,8 +1,12 @@
 # draw.io (mxGraph XML) Export — a Layout Escape Hatch
 
 - **日付**: 2026-04-19
-- **ステータス**: 検討中
+- **ステータス**: 実装済み (system / deploy のみ。org view は follow-up に分離)
 - **関連**: #649, #645 (non-goals), `docs/concepts.md`
+
+> **実装時の調整**: 初版 PR では `system` / `deploy` の 2 view のみを drawio ページとして出力する。
+> `org` view は独自のレンダリングパイプラインで `LayoutResult` を介さないため、そのまま流用できない。
+> org 対応は別 Issue に分離し、org-renderer から座標抽出ステップを切り出す形で追加する想定。
 
 ## 背景・課題
 

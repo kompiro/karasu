@@ -203,6 +203,9 @@ karasu render index.krs --view deploy --output deploy.svg
 
 # Pipe through svgo for optimization
 karasu render index.krs | svgo - -o docs/arch.svg
+
+# Export to draw.io (mxGraph XML) as a layout escape hatch for pixel-perfect polishing
+karasu render index.krs --format drawio --output arch.drawio
 ```
 
 ### Formatting
