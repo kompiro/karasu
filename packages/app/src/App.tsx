@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
+import { InMemoryFileSystemProvider } from "@karasu-tools/core";
 import { MemoryModeApp } from "./MemoryModeApp.js";
 import { ProjectModeApp } from "./ProjectModeApp.js";
 import { ServeModeApp } from "./ServeModeApp.js";
@@ -14,17 +15,22 @@ export function App() {
   }, []);
 
   if (mode === null) return null;
-  if (mode === "serve") return <ServeModeApp />;
-  if (mode === "memory") return <MemoryModeApp />;
-  return <OpfsApp />;
+  if (mode === "serve") return <ModeWrapper mode="serve" />;
+  if (mode === "memory") return <ModeWrapper mode="memory" />;
+  return <ModeWrapper mode="opfs" />;
 }
 
-function OpfsApp() {
-  const fs = useMemo(() => new OpfsFileSystemProvider(), []);
+function ModeWrapper({ mode }: { mode: AppMode }) {
+  const fs = useMemo(() => {
+    if (mode === "opfs") return new OpfsFileSystemProvider();
+    return new InMemoryFileSystemProvider();
+  }, [mode]);
 
   return (
     <AppProvider fs={fs}>
-      <ProjectModeApp />
+      {mode === "serve" && <ServeModeApp />}
+      {mode === "memory" && <MemoryModeApp />}
+      {mode === "opfs" && <ProjectModeApp />}
     </AppProvider>
   );
 }

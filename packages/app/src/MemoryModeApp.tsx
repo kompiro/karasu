@@ -1,33 +1,24 @@
-import { useEffect, useRef } from "react";
-import { InMemoryFileSystemProvider, getReference } from "@karasu-tools/core";
+import { useEffect } from "react";
+import { getReference } from "@karasu-tools/core";
 import { AppShell } from "./components/AppShell.js";
-import { AppProvider, useAppContext } from "./state/app-context.js";
+import { useAppContext } from "./state/app-context.js";
+import { useFileSelection } from "./hooks/useFileSelection.js";
 
 const MEMORY_FILE_PATH = "/memory/index.krs";
 
 /**
  * MemoryModeApp — OPFS 非対応ブラウザ向けの単一ファイル編集モード。
- * AppProvider + InMemoryFileSystemProvider で ProjectModeApp と同等の機能を提供する。
+ * AppProvider は App.tsx で注入される。
  */
 export function MemoryModeApp() {
-  const inMemoryFs = useRef(new InMemoryFileSystemProvider()).current;
-
-  return (
-    <AppProvider fs={inMemoryFs}>
-      <MemoryModeInner />
-    </AppProvider>
-  );
-}
-
-function MemoryModeInner() {
   const { dispatch, fs } = useAppContext();
+  const { selectFileWithContent } = useFileSelection(fs, dispatch);
 
-  // Initialize: write sample KRS to in-memory FS and select the file
   useEffect(() => {
     (async () => {
       const sampleKrs = getReference().sampleKrs;
       await fs.writeFile(MEMORY_FILE_PATH, sampleKrs);
-      dispatch({ type: "SELECT_FILE", path: MEMORY_FILE_PATH, content: sampleKrs });
+      selectFileWithContent(MEMORY_FILE_PATH, sampleKrs);
       dispatch({ type: "SET_LOADING", loading: false });
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
