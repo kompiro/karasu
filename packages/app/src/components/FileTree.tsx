@@ -69,7 +69,7 @@ export function FileTree({
     [fs],
   );
 
-  const ops = useFileTreeOps({
+  const { createFile, createDir, renameItem, deleteItem } = useFileTreeOps({
     fs,
     reload,
     onFileCreated,
@@ -103,16 +103,16 @@ export function FileTree({
       }
       if (inlineInput.mode === "create") {
         if (inlineInput.kind === "file") {
-          await ops.createFile(inlineInput.parentPath, value);
+          await createFile(inlineInput.parentPath, value);
         } else {
-          await ops.createDir(inlineInput.parentPath, value);
+          await createDir(inlineInput.parentPath, value);
         }
       } else if (inlineInput.mode === "rename" && inlineInput.targetPath) {
-        await ops.renameItem(inlineInput.targetPath, value, inlineInput.kind);
+        await renameItem(inlineInput.targetPath, value, inlineInput.kind);
       }
       setInlineInput(null);
     },
-    [inlineInput, ops],
+    [inlineInput, createFile, createDir, renameItem],
   );
 
   const handleMenuAction = useCallback(
@@ -138,11 +138,11 @@ export function FileTree({
           });
           break;
         case "delete":
-          void ops.deleteItem(node.path);
+          void deleteItem(node.path);
           break;
       }
     },
-    [contextMenu, ops],
+    [contextMenu, deleteItem],
   );
 
   const handleNewFile = useCallback(() => {
