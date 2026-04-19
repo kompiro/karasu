@@ -107,6 +107,29 @@ describe("buildDrillDownSvg", () => {
   });
 });
 
+describe("buildDrillDownSvg with top-level services", () => {
+  it("renders an orphan service when no system wraps it", () => {
+    const krsFile = Parser.parse(
+      `service ECommerce { usecase ManageOrders { label "注文管理" } }`,
+    ).value;
+    const { svg } = buildDrillDownSvg(krsFile);
+    expect(svg).not.toContain("No diagram");
+    expect(svg).toContain('data-node-id="ECommerce"');
+    expect(svg).toContain('id="krs-system-ECommerce"');
+    expect(svg).toContain('data-node-id="ManageOrders"');
+  });
+
+  it("renders orphan service alongside an existing system", () => {
+    const krsFile = Parser.parse(`
+service Standalone { label "単独" }
+system ECPlatform { service ECommerce {} }
+    `).value;
+    const { svg } = buildDrillDownSvg(krsFile);
+    expect(svg).toContain('data-node-id="Standalone"');
+    expect(svg).toContain('data-node-id="ECommerce"');
+  });
+});
+
 describe("buildDrillDownSvg with styleSource", () => {
   it("applies styleSource to the rendered output", () => {
     const krsFile = Parser.parse(ONE_LEVEL).value;

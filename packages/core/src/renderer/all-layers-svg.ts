@@ -154,7 +154,8 @@ export function buildAllLayersSvg(
   displayMode?: DisplayMode,
 ): SvgResult {
   const unassignedDomains = krsFile.domains ?? [];
-  const rootSlice = extractView(krsFile.systems, [], unassignedDomains);
+  const unassignedServices = krsFile.services ?? [];
+  const rootSlice = extractView(krsFile.systems, [], unassignedDomains, unassignedServices);
   if (rootSlice.childNodes.length === 0) {
     return {
       svg: `<svg xmlns="http://www.w3.org/2000/svg" width="200" height="100" viewBox="0 0 200 100"><text x="100" y="50" text-anchor="middle" fill="#9CA3AF" font-family="sans-serif">No diagram</text></svg>`,
@@ -163,15 +164,18 @@ export function buildAllLayersSvg(
   }
 
   const { sheets, diagnostics } = buildStyles(displayMode, styleSource);
-  const styles = resolveStyles(krsFile.systems, sheets, [], undefined, unassignedDomains);
+  const styles = resolveStyles(krsFile.systems, sheets, [], undefined, [
+    ...unassignedServices,
+    ...unassignedDomains,
+  ]);
   const systemNode = krsFile.systems[0];
-  const rootLabel = systemNode.label ?? systemNode.id;
+  const rootLabel = systemNode ? (systemNode.label ?? systemNode.id) : "(Unassigned)";
   const ownerIndex = krsFile.ownerIndex ?? new Map();
 
   const levels: AllLayersLevel[] = [];
   collectAllLayersLevelsGeneric(
     {
-      getSlice: (path) => extractView(krsFile.systems, path, unassignedDomains),
+      getSlice: (path) => extractView(krsFile.systems, path, unassignedDomains, unassignedServices),
       hasContent: (slice) => slice.childNodes.length > 0,
       getChildren: (slice) => slice.childNodes,
       render: (slice, links) => render(slice, styles, undefined, ownerIndex, displayMode, links),

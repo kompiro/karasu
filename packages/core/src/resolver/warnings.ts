@@ -7,6 +7,7 @@ export function analyze(file: KrsFile, sheets: StyleSheet[], systemSheetCount = 
 
   warnings.push(...detectDomainDispersal(file));
   warnings.push(...detectUnassignedDomains(file));
+  warnings.push(...detectUnassignedServices(file));
   warnings.push(...detectUnassignedUsecases(file));
   warnings.push(...detectStyleConflicts(sheets, systemSheetCount));
   warnings.push(...detectMissingProperties(file));
@@ -73,6 +74,15 @@ function detectUnassignedDomains(file: KrsFile): Warning[] {
     message: `domain "${domain.label ?? domain.id}" is not assigned to any service`,
     details: [],
     loc: domain.loc,
+  }));
+}
+
+function detectUnassignedServices(file: KrsFile): Warning[] {
+  return file.services.map((service) => ({
+    kind: "unassigned-service" as const,
+    message: `service "${service.label ?? service.id}" is not assigned to any system`,
+    details: [],
+    loc: service.loc,
   }));
 }
 
