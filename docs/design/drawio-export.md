@@ -8,6 +8,102 @@
 > `org` view は独自のレンダリングパイプラインで `LayoutResult` を介さないため、そのまま流用できない。
 > org 対応は別 Issue に分離し、org-renderer から座標抽出ステップを切り出す形で追加する想定。
 
+## mxGraph XML とは（調査メモ）
+
+`.drawio` ファイルの中身は **mxGraph XML** フォーマット。`mxGraph` は
+JGraph Ltd（draw.io / diagrams.net の作者）が作った JavaScript ダイアグラム
+ライブラリ起源のスキーマで、本体ライブラリは 2020 年にアーカイブ済み、
+fork の [maxGraph](https://github.com/maxGraph/maxGraph) に引き継がれている。
+XML スキーマはほぼ互換。
+
+**実用上の消費者はほぼ draw.io 一強**:
+
+- draw.io Desktop、diagrams.net Web
+- VS Code `Draw.io Integration` 拡張
+- Confluence / Jira の draw.io プラグイン
+- Notion / GitBook などの draw.io 埋め込み
+- IntelliJ の Diagrams.net plugin
+
+他ツール互換性:
+
+- Lucidchart は mxGraph/drawio インポートを一応サポート（レイアウト再計算あり、スタイル劣化）
+- Visio は直接読めないが draw.io 経由で `.vsdx` に書き出し可能
+- Mermaid / PlantUML 系は非対応
+
+つまり **「mxGraph XML ≈ draw.io のファイル形式」** と考えてよい。
+karasu の「レイアウト調整の逃げ道」としての位置付けは draw.io エコシステム全体に届く。
+他ツール（Graphviz DOT、PlantUML 等）への出力が必要になった場合は、
+mxGraph を経由せず別エクスポーターを追加する方が筋が良い。
+
+### 変換方式（SVG 経由ではない）
+
+SVG → mxGraph の変換ではなく、karasu 内部の `LayoutResult` から **直接**
+mxGraph XML を生成する。SVG と draw.io は同じ `LayoutResult` を消費する姉妹パス:
+
+```
+.krs → Parser → KrsFile (AST)
+  └─ extractView / extractDeployView → ViewSlice
+       └─ layout() / layoutDeploy() → LayoutResult { nodes, containers, edges }
+            ├── SVG path: svg-renderer → <svg>
+            └── drawio path: drawio-exporter → <mxfile>
+```
+
+SVG 経由にしない理由:
+
+- SVG は視覚表現に最適化された形式で、意味的情報（どのノードがどのサービスに属するか等）が失われている
+- draw.io の `mxCell` は `parent` 属性でネスト構造を表現するため、karasu の container/node ツリーを直接マッピングできる
+- SVG パーサを通すと二重変換になりロスが増える
+
+### mxGraph XML の構造（実装で使う部分）
+
+```xml
+<mxfile host="karasu" type="export">
+  <diagram id="system" name="System">
+    <mxGraphModel dx="..." dy="..." grid="1" ...>
+      <root>
+        <mxCell id="0" />                             <!-- root（mxGraph 固定） -->
+        <mxCell id="1" parent="0" />                  <!-- default layer（固定） -->
+
+        <!-- コンテナ（group cell） -->
+        <mxCell id="svc-checkout" value="Checkout"
+                style="rounded=0;container=1;collapsible=0;..."
+                parent="1" vertex="1"
+                data-karasu-id="checkout" data-karasu-kind="container">
+          <mxGeometry x="..." y="..." width="..." height="..." as="geometry" />
+        </mxCell>
+
+        <!-- ノード（vertex cell、親が container の場合 geometry は親相対） -->
+        <mxCell id="order" value="Order"
+                style="rounded=1;fillColor=#ffffff;..."
+                parent="svc-checkout" vertex="1"
+                data-karasu-id="order" data-karasu-kind="domain">
+          <mxGeometry x="..." y="..." width="..." height="..." as="geometry" />
+        </mxCell>
+
+        <!-- エッジ -->
+        <mxCell id="edge-0" value="creates"
+                style="edgeStyle=orthogonalEdgeStyle;endArrow=classic;..."
+                parent="1" edge="1" source="order" target="payment"
+                data-karasu-edge-from="order" data-karasu-edge-to="payment">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+  <!-- 別ページ（deploy view 等）は <diagram> を追加 -->
+</mxfile>
+```
+
+押さえどころ:
+
+- `mxCell id="0"` / `id="1"` は mxGraph 固定の root / default-layer。全 cell は最終的に `parent="0"` に辿り着く
+- `vertex="1"` / `edge="1"` で種別を区別
+- `style` は `key=value;key=value` のフラット文字列（CSS 風）。先頭にベア token を置くと shape 名になる（例: `ellipse;fillColor=...`）
+- コンテナは `style` に `container=1` を入れるだけで group 扱いになり、中の cell は `parent` 属性で参照する
+- container 内の cell の `mxGeometry x/y` は **親相対** になる点に注意（実装では container 原点を引いて格納）
+- カスタム属性（`data-karasu-*`）は mxCell 要素に任意の XML 属性として付けてよい。draw.io は保持して読み書きしてくれる
+- マルチページは `<diagram>` を並べるだけ（ネイティブ機能）
+
 ## 背景・課題
 
 karasu は「テキストファースト」を貫くため、自動レイアウト最適化を非目標 (#645) に置いている。
