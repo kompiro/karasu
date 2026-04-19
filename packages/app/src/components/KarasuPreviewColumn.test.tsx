@@ -10,8 +10,14 @@ const noop = () => {};
 const emptySvg = '<svg xmlns="http://www.w3.org/2000/svg"></svg>';
 const emptyDiagnostics: Diagnostic[] = [];
 const emptyWarnings: Warning[] = [];
-const sysWarning: Warning = { kind: "domain-dispersal", message: "sys warning", details: [] };
-const orgWarning: Warning = { kind: "domain-dispersal", message: "org warning", details: [] };
+const sysWarning: Warning = {
+  kind: "domain-dispersal",
+  params: { domainId: "sys-domain", services: ["sys-a", "sys-b"] },
+};
+const orgWarning: Warning = {
+  kind: "domain-dispersal",
+  params: { domainId: "org-domain", services: ["org-a", "org-b"] },
+};
 
 function makeProps(overrides: Partial<Parameters<typeof KarasuPreviewColumn>[0]> = {}) {
   return {
@@ -106,9 +112,11 @@ describe("KarasuPreviewColumn", () => {
           warnings: [orgWarning],
         },
       });
-      const { getByText, queryByText } = render(<KarasuPreviewColumn {...props} />);
-      expect(getByText("sys warning")).toBeTruthy();
-      expect(queryByText("org warning")).toBeNull();
+      const { container } = render(<KarasuPreviewColumn {...props} />);
+      // sysWarning is a domain-dispersal warning with domainId "sys-domain";
+      // formatWarning renders that id into the message.
+      expect(container.textContent).toContain("sys-domain");
+      expect(container.textContent).not.toContain("org-domain");
     });
   });
 
@@ -121,7 +129,7 @@ describe("KarasuPreviewColumn", () => {
     });
 
     it("shows deploy warnings in WarningPanel when deploy is active", () => {
-      const depWarning: Warning = { kind: "missing-runtime", message: "dep warning", details: [] };
+      const depWarning: Warning = { kind: "missing-runtime", params: { nodeId: "dep-node" } };
       const props = makeProps({
         activeView: "deploy",
         systemView: {
@@ -133,9 +141,10 @@ describe("KarasuPreviewColumn", () => {
           warnings: [depWarning],
         },
       });
-      const { getByText, queryByText } = render(<KarasuPreviewColumn {...props} />);
-      expect(getByText("dep warning")).toBeTruthy();
-      expect(queryByText("sys warning")).toBeNull();
+      const { container } = render(<KarasuPreviewColumn {...props} />);
+      // depWarning is a missing-runtime warning with nodeId "dep-node".
+      expect(container.textContent).toContain("dep-node");
+      expect(container.textContent).not.toContain("sys-domain");
     });
   });
 
@@ -165,9 +174,10 @@ describe("KarasuPreviewColumn", () => {
           warnings: [orgWarning],
         },
       });
-      const { getByText, queryByText } = render(<KarasuPreviewColumn {...props} />);
-      expect(getByText("org warning")).toBeTruthy();
-      expect(queryByText("sys warning")).toBeNull();
+      const { container } = render(<KarasuPreviewColumn {...props} />);
+      // orgWarning is a domain-dispersal warning with domainId "org-domain".
+      expect(container.textContent).toContain("org-domain");
+      expect(container.textContent).not.toContain("sys-domain");
     });
   });
 

@@ -34,8 +34,8 @@ organization Corp {
     const result = compile(krs);
     const w = result.warnings.find((warning) => warning.kind === "deprecated-team-property");
     expect(w).toBeDefined();
-    expect(w?.message).toContain("MyService");
-    expect(w?.message).toContain("owns");
+    expect(w?.params.nodeId).toBe("MyService");
+    expect(w?.params.ownerTeamId).toBe("backend");
   });
 
   it("does not warn when service has team property but no owns coverage", () => {
@@ -78,9 +78,7 @@ organization Corp {
     const result = compile(krs);
     const w = result.warnings.find((warning) => warning.kind === "invalid-owns");
     expect(w).toBeDefined();
-    expect(w?.message).toBe(
-      'team "backend" owns "NonExistentService" but no service or domain with that id exists',
-    );
+    expect(w?.params).toEqual({ teamId: "backend", ownedId: "NonExistentService" });
   });
 
   it("does not warn when owns references a valid service ID", () => {
@@ -198,9 +196,9 @@ system ECPlatform {
     const result = compile(krs);
     const w = result.warnings.find((warning) => warning.kind === "domain-dispersal");
     expect(w).toBeDefined();
-    expect(w?.message).toContain("Order");
-    expect(w?.details).toContain("ECommerce");
-    expect(w?.details).toContain("Legacy");
+    expect(w?.params.domainId).toBe("Order");
+    expect(w?.params.services).toContain("ECommerce");
+    expect(w?.params.services).toContain("Legacy");
   });
 
   it("warns when same domain id has different labels (id is the detection key, not label)", () => {
@@ -217,7 +215,7 @@ system ECPlatform {
     const result = compile(krs);
     const w = result.warnings.find((warning) => warning.kind === "domain-dispersal");
     expect(w).toBeDefined();
-    expect(w?.message).toContain("Payment");
+    expect(w?.params.domainId).toBe("Payment");
   });
 
   it("does not warn when different domain ids share the same label", () => {
@@ -268,8 +266,10 @@ system ECPlatform {
     const warnings = analyze(file, [builtin]);
     const unassigned = warnings.filter((w) => w.kind === "unassigned-domain");
     expect(unassigned).toHaveLength(2);
-    expect(unassigned[0].message).toContain("決済");
-    expect(unassigned[1].message).toContain("在庫");
+    expect(unassigned[0].params.label).toBe("決済");
+    expect(unassigned[1].params.label).toBe("在庫");
+    expect(unassigned[0].params.domainId).toBe("Payment");
+    expect(unassigned[1].params.domainId).toBe("Inventory");
   });
 
   it("does not warn for domains nested inside services", () => {
@@ -303,8 +303,10 @@ system PaymentGateway {
     const warnings = analyze(file, []);
     const w = warnings.find((warning) => warning.kind === "cross-system-ref-implicit-external");
     expect(w).toBeDefined();
-    expect(w?.message).toContain("PaymentGateway.PaymentService");
-    expect(w?.message).toContain("ECPlatform.OrderService");
+    expect(w?.params.ref).toBe("PaymentGateway.PaymentService");
+    expect(w?.params.sourceSystemId).toBe("ECPlatform");
+    expect(w?.params.sourceNodeId).toBe("OrderService");
+    expect(w?.params.targetSystemId).toBe("PaymentGateway");
   });
 
   it("emits unresolved warning when referenced system does not exist", () => {
@@ -318,7 +320,7 @@ system ECPlatform {
     const warnings = analyze(file, []);
     const w = warnings.find((warning) => warning.kind === "cross-system-ref-unresolved");
     expect(w).toBeDefined();
-    expect(w?.message).toContain("UnknownSystem.UnknownService");
+    expect(w?.params.ref).toBe("UnknownSystem.UnknownService");
   });
 
   it("emits unresolved warning when referenced service does not exist in the system", () => {
@@ -335,7 +337,7 @@ system PaymentGateway {
     const warnings = analyze(file, []);
     const w = warnings.find((warning) => warning.kind === "cross-system-ref-unresolved");
     expect(w).toBeDefined();
-    expect(w?.message).toContain("PaymentGateway.NoSuchService");
+    expect(w?.params.ref).toBe("PaymentGateway.NoSuchService");
   });
 
   it("suppresses implicit-external warning when system id is explicitly declared as [external]", () => {
@@ -370,7 +372,9 @@ system S {
     const warnings = analyze(file, []);
     const cyclic = warnings.filter((w) => w.kind === "cyclic-dependency");
     expect(cyclic).toHaveLength(1);
-    expect(cyclic[0].message).toBe("Circular dependency detected: A → A");
+    const w = cyclic[0];
+    if (w.kind !== "cyclic-dependency") throw new Error("expected cyclic-dependency");
+    expect(w.params.cyclePath).toEqual(["A", "A"]);
   });
 
   it("marks self-reference edge as cyclic", () => {
@@ -399,9 +403,10 @@ system S {
     const warnings = analyze(file, []);
     const cyclic = warnings.filter((w) => w.kind === "cyclic-dependency");
     expect(cyclic).toHaveLength(1);
-    expect(cyclic[0].message).toContain("Circular dependency detected");
-    expect(cyclic[0].message).toContain("A");
-    expect(cyclic[0].message).toContain("B");
+    const w = cyclic[0];
+    if (w.kind !== "cyclic-dependency") throw new Error("expected cyclic-dependency");
+    expect(w.params.cyclePath).toContain("A");
+    expect(w.params.cyclePath).toContain("B");
   });
 
   it("marks both edges in a direct cycle as cyclic", () => {
@@ -434,7 +439,11 @@ system S {
     const warnings = analyze(file, []);
     const cyclic = warnings.filter((w) => w.kind === "cyclic-dependency");
     expect(cyclic).toHaveLength(1);
-    expect(cyclic[0].message).toContain("Circular dependency detected");
+    const w = cyclic[0];
+    if (w.kind !== "cyclic-dependency") throw new Error("expected cyclic-dependency");
+    expect(w.params.cyclePath).toContain("A");
+    expect(w.params.cyclePath).toContain("B");
+    expect(w.params.cyclePath).toContain("C");
   });
 
   it("marks all three edges in an indirect cycle as cyclic", () => {
@@ -523,8 +532,8 @@ system ECPlatform {
     const warnings = analyze(file, [builtin]);
     const unassigned = warnings.filter((w) => w.kind === "unassigned-usecase");
     expect(unassigned).toHaveLength(2);
-    expect(unassigned[0].message).toBe('usecase "PlaceOrder" is not assigned to any domain');
-    expect(unassigned[1].message).toBe('usecase "CancelOrder" is not assigned to any domain');
+    expect(unassigned[0].params.usecaseId).toBe("PlaceOrder");
+    expect(unassigned[1].params.usecaseId).toBe("CancelOrder");
   });
 
   it("uses usecase id (not label) in the warning message", () => {
@@ -538,8 +547,10 @@ service OrderService {
     const warnings = analyze(file, [builtin]);
     const unassigned = warnings.filter((w) => w.kind === "unassigned-usecase");
     expect(unassigned).toHaveLength(1);
-    expect(unassigned[0].message).toBe('usecase "PlaceOrder" is not assigned to any domain');
-    expect(unassigned[0].message).not.toContain("POST /orders");
+    // The detection keys on the id, not the label — params carry the id,
+    // and the label is not part of the structured payload.
+    expect(unassigned[0].params.usecaseId).toBe("PlaceOrder");
+    expect(unassigned[0].params).not.toHaveProperty("label");
   });
 
   it("does not warn when a usecase is properly nested inside a domain", () => {

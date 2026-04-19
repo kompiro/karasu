@@ -1,5 +1,5 @@
 import { useState, useCallback } from "react";
-import type { Warning } from "@karasu-tools/core";
+import { formatWarning, type Warning } from "@karasu-tools/core";
 
 interface WarningPanelProps {
   warnings: Warning[];
@@ -28,19 +28,23 @@ export function WarningPanel({ warnings }: WarningPanelProps) {
       </div>
       {!collapsed && (
         <ul className="warning-list">
-          {warnings.map((w) => (
-            <li key={`${w.kind}:${w.message}`} className="warning-item">
-              <span className="warning-icon warning">{WARNING_ICONS[w.kind] ?? "\u26A0"}</span>
-              {w.loc ? `Line ${w.loc.start.line}: ${w.message}` : w.message}
-              {w.details.length > 0 && (
-                <div className="warning-details">
-                  {w.details.map((d) => (
-                    <div key={d}>{d}</div>
-                  ))}
-                </div>
-              )}
-            </li>
-          ))}
+          {warnings.map((w) => {
+            const { message, details } = formatWarning(w);
+            const locKey = w.loc ? `:${w.loc.start.offset}` : "";
+            return (
+              <li key={`${w.kind}:${message}${locKey}`} className="warning-item">
+                <span className="warning-icon warning">{WARNING_ICONS[w.kind] ?? "\u26A0"}</span>
+                {w.loc ? `Line ${w.loc.start.line}: ${message}` : message}
+                {details.length > 0 && (
+                  <div className="warning-details">
+                    {details.map((d) => (
+                      <div key={d}>{d}</div>
+                    ))}
+                  </div>
+                )}
+              </li>
+            );
+          })}
         </ul>
       )}
     </div>

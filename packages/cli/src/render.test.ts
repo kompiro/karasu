@@ -9,10 +9,14 @@ const { mockBuildAllViewsSvgProject, mockCompileProject } = vi.hoisted(() => ({
   mockCompileProject: vi.fn<() => Promise<unknown>>(),
 }));
 
-vi.mock("@karasu-tools/core", () => ({
-  buildAllViewsSvgProject: mockBuildAllViewsSvgProject,
-  compileProject: mockCompileProject,
-}));
+vi.mock("@karasu-tools/core", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@karasu-tools/core")>();
+  return {
+    ...actual,
+    buildAllViewsSvgProject: mockBuildAllViewsSvgProject,
+    compileProject: mockCompileProject,
+  };
+});
 
 import { render, NodeFileSystemProvider } from "./render.js";
 
@@ -212,7 +216,7 @@ describe("render — --view system", () => {
     mockCompileProject.mockResolvedValue({
       svg: "<svg>system</svg>",
       diagnostics: [],
-      warnings: [{ message: "unused node", kind: "unusedNode" }],
+      warnings: [{ kind: "unassigned-domain", params: { domainId: "UnusedNode" } }],
     });
     const stderrSpy = vi.spyOn(process.stderr, "write").mockImplementation(() => true);
     vi.spyOn(process.stdout, "write").mockImplementation(() => true);

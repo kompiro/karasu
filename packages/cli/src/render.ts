@@ -1,6 +1,6 @@
 import { readFile, writeFile, readdir, stat } from "node:fs/promises";
 import { resolve } from "node:path";
-import { buildAllViewsSvgProject, compileProject } from "@karasu-tools/core";
+import { buildAllViewsSvgProject, compileProject, formatWarning } from "@karasu-tools/core";
 import type {
   FileSystemProvider,
   DirEntry,
@@ -86,7 +86,7 @@ export async function render(filePath: string, options: RenderOptions): Promise<
     process.stderr.write(`Warning: ${loc}: ${d.message}\n`);
   }
   for (const w of warnings) {
-    process.stderr.write(`Warning: ${w.message}\n`);
+    process.stderr.write(`Warning: ${formatWarning(w).message}\n`);
   }
 
   if (errors.length > 0) {
