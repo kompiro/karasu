@@ -412,8 +412,8 @@ CREATE TABLE order_items (id BIGINT PRIMARY KEY, order_id BIGINT NOT NULL);
 
     const content = readFileSync(targetPath, "utf-8");
     expect(content).toContain("database OrderDB {");
-    expect(content).toContain('table OrdersTable { label "orders" }');
-    expect(content).toContain('table OrderItemsTable { label "order_items" }');
+    expect(content).toContain("  table OrdersTable {");
+    expect(content).toContain("      - order_items — name suffix + inferred FK column to orders");
   });
 
   // AT-0060-17

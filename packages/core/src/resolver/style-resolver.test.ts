@@ -399,8 +399,11 @@ describe("analyze", () => {
       ] as KrsFile["systems"],
     });
     const warnings = analyze(file, []);
-    expect(warnings.some((w) => w.kind === "domain-dispersal")).toBe(true);
-    expect(warnings[0].message).toContain("Order");
+    const dispersal = warnings.find((w) => w.kind === "domain-dispersal");
+    if (!dispersal || dispersal.kind !== "domain-dispersal") {
+      throw new Error("expected a domain-dispersal warning");
+    }
+    expect(dispersal.params.domainId).toBe("Order");
   });
 
   it("detects missing runtime", () => {

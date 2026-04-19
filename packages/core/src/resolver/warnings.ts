@@ -51,8 +51,7 @@ function detectDomainDispersal(file: KrsFile): Warning[] {
       if (services.size > 1) {
         warnings.push({
           kind: "domain-dispersal",
-          message: `domain "${domainId}" が複数の service に分散しています`,
-          details: [...Array.from(services), "ドメインの凝集性を確認してください"],
+          params: { domainId, services: Array.from(services) },
         });
       }
     }
@@ -71,8 +70,10 @@ function detectDomainDispersal(file: KrsFile): Warning[] {
 function detectUnassignedDomains(file: KrsFile): Warning[] {
   return file.domains.map((domain) => ({
     kind: "unassigned-domain" as const,
-    message: `domain "${domain.label ?? domain.id}" is not assigned to any service`,
-    details: [],
+    params: {
+      domainId: domain.id,
+      ...(domain.label ? { label: domain.label } : {}),
+    },
     loc: domain.loc,
   }));
 }
@@ -96,8 +97,7 @@ function detectUnassignedUsecases(file: KrsFile): Warning[] {
           if (child.kind === "usecase") {
             warnings.push({
               kind: "unassigned-usecase",
-              message: `usecase "${child.id}" is not assigned to any domain`,
-              details: [],
+              params: { usecaseId: child.id },
               loc: child.loc,
             });
           }
@@ -140,8 +140,7 @@ function detectStyleConflicts(sheets: StyleSheet[], systemSheetCount = 1): Warni
     if (sheetIndices.size > 1) {
       warnings.push({
         kind: "style-conflict",
-        message: `セレクタ "${selector}" が複数のスタイルファイルで定義されています`,
-        details: Array.from(sheetIndices).map((i) => `スタイルファイル ${i + 1}`),
+        params: { selector, sheetIndices: Array.from(sheetIndices) },
       });
     }
   }
@@ -157,16 +156,14 @@ function detectMissingProperties(file: KrsFile): Warning[] {
       if (!node.properties.runtime) {
         warnings.push({
           kind: "missing-runtime",
-          message: `デプロイノード "${node.id}" に runtime が指定されていません`,
-          details: [],
+          params: { nodeId: node.id },
           loc: node.loc,
         });
       }
       if (!node.properties.realizes?.length) {
         warnings.push({
           kind: "missing-realizes",
-          message: `デプロイノード "${node.id}" に realizes が指定されていません`,
-          details: [],
+          params: { nodeId: node.id },
           loc: node.loc,
         });
       }
@@ -208,8 +205,7 @@ function detectInvalidOwns(file: KrsFile): Warning[] {
         if (!validIds.has(ownedId)) {
           warnings.push({
             kind: "invalid-owns",
-            message: `team "${team.id}" owns "${ownedId}" but no service or domain with that id exists`,
-            details: [],
+            params: { teamId: team.id, ownedId },
             loc: team.loc,
           });
         }
@@ -237,11 +233,10 @@ function detectDeprecatedTeamProperty(file: KrsFile): Warning[] {
     ) {
       warnings.push({
         kind: "deprecated-team-property",
-        message: `"${node.id}" has explicit team property but team is already assigned via org.team.owns`,
-        details: [
-          `team assigned by owns: "${ownerIndex.get(node.id)}"`,
-          'Remove the "team" property and use org { team { owns } } instead',
-        ],
+        params: {
+          nodeId: node.id,
+          ownerTeamId: ownerIndex.get(node.id)!,
+        },
         loc: node.loc,
       });
     }
@@ -287,17 +282,18 @@ function detectCrossSystemRefs(file: KrsFile): Warning[] {
       if (!referencedSystem || !referencedSystem.children.some((c) => c.id === serviceId)) {
         warnings.push({
           kind: "cross-system-ref-unresolved",
-          message: `"${edge.to}" could not be resolved — rendered as unresolved external node`,
-          details: [],
+          params: { ref: edge.to },
           loc: edge.loc,
         });
       } else {
         warnings.push({
           kind: "cross-system-ref-implicit-external",
-          message: `"${edge.to}" is referenced from ${system.id}.${edge.from} but not explicitly annotated as @external`,
-          details: [
-            `Add 'service ${systemId} [external]' to system ${system.id} to suppress this warning`,
-          ],
+          params: {
+            ref: edge.to,
+            sourceSystemId: system.id,
+            sourceNodeId: edge.from,
+            targetSystemId: systemId,
+          },
           loc: edge.loc,
         });
       }
@@ -339,8 +335,7 @@ function detectCyclicDependencies(file: KrsFile): Warning[] {
           edge.cyclic = true;
           warnings.push({
             kind: "cyclic-dependency",
-            message: `Circular dependency detected: ${node} → ${node}`,
-            details: [],
+            params: { cyclePath: [node, node] },
             loc: edge.loc,
           });
           continue;
@@ -364,8 +359,7 @@ function detectCyclicDependencies(file: KrsFile): Warning[] {
 
           warnings.push({
             kind: "cyclic-dependency",
-            message: `Circular dependency detected: ${cyclePath.join(" → ")}`,
-            details: [],
+            params: { cyclePath },
             loc: edge.loc,
           });
         } else if (neighborColor === WHITE) {

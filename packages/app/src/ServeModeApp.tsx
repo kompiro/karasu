@@ -1,7 +1,7 @@
 import { useEffect, useCallback, useRef, useState } from "react";
-import { InMemoryFileSystemProvider } from "@karasu-tools/core";
 import { AppShell } from "./components/AppShell.js";
-import { AppProvider, useAppContext } from "./state/app-context.js";
+import { useAppContext } from "./state/app-context.js";
+import { useFileSelection } from "./hooks/useFileSelection.js";
 
 const SERVE_FILE_PATH = "/serve/index.krs";
 
@@ -35,17 +35,8 @@ async function fetchFileContent(name: string): Promise<string | null> {
 }
 
 export function ServeModeApp() {
-  const inMemoryFs = useRef(new InMemoryFileSystemProvider()).current;
-
-  return (
-    <AppProvider fs={inMemoryFs}>
-      <ServeModeInner />
-    </AppProvider>
-  );
-}
-
-function ServeModeInner() {
   const { dispatch, fs } = useAppContext();
+  const { selectFileWithContent } = useFileSelection(fs, dispatch);
   const [loadError, setLoadError] = useState<string | null>(null);
   const recompileRef = useRef<(() => void) | null>(null);
 
@@ -58,11 +49,11 @@ function ServeModeInner() {
       }
       setLoadError(null);
       await fs.writeFile(SERVE_FILE_PATH, content);
-      dispatch({ type: "SELECT_FILE", path: SERVE_FILE_PATH, content });
+      selectFileWithContent(SERVE_FILE_PATH, content);
       dispatch({ type: "SET_LOADING", loading: false });
       recompileRef.current?.();
     },
-    [fs, dispatch],
+    [fs, dispatch, selectFileWithContent],
   );
 
   // 初期ロード

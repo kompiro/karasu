@@ -35,7 +35,8 @@ export type {
   ShapeKind,
 } from "./types/style.js";
 
-export type { Warning, WarningKind } from "./types/warnings.js";
+export type { Warning, WarningKind, WarningParamsByKind } from "./types/warnings.js";
+export { formatWarning, type FormattedWarning } from "./resolver/warning-legacy-format.js";
 
 export type { ViewPath, ViewSlice, DomainEdgeDetail } from "./view/view-extract.js";
 export { extractView } from "./view/view-extract.js";

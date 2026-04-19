@@ -64,7 +64,7 @@ program
   .option("--database <name>", "Database name for db format (default: derived from file name)")
   .option(
     "--granularity <mode>",
-    "Usecase granularity for openapi format: resource | operation (default: resource)",
+    "Emission granularity. openapi: resource | operation (default: resource). db: aggregate | table (default: aggregate).",
   )
   .option("-o, --output <path>", "Write .krs to file (default: stdout)")
   .addHelpText(
@@ -89,8 +89,11 @@ Examples:
   # Emit one usecase per HTTP operation instead of grouping
   $ karasu translate --from openapi api.yaml --granularity operation >> api.krs
 
-  # Translate DB schema to database block
-  $ karasu translate --from db schema.sql --database OrderDB >> resources.krs`,
+  # Translate DB schema — related tables folded into their aggregate root (default)
+  $ karasu translate --from db schema.sql --database OrderDB >> resources.krs
+
+  # Emit one table entry per SQL table instead of folding
+  $ karasu translate --from db schema.sql --granularity table >> resources.krs`,
   )
   .action(
     (
@@ -113,13 +116,31 @@ Examples:
         process.stderr.write(`Error: --from must be "compose", "k8s", "openapi", or "db"\n`);
         process.exit(1);
       }
-      let granularity: "resource" | "operation" | undefined;
+      let granularity: "resource" | "operation" | "aggregate" | "table" | undefined;
       if (options.granularity === undefined) {
         granularity = undefined;
-      } else if (options.granularity === "resource" || options.granularity === "operation") {
-        granularity = options.granularity;
+      } else if (options.from === "openapi") {
+        if (options.granularity === "resource" || options.granularity === "operation") {
+          granularity = options.granularity;
+        } else {
+          process.stderr.write(
+            `Error: --granularity for --from openapi must be "resource" or "operation"\n`,
+          );
+          process.exit(1);
+        }
+      } else if (options.from === "db") {
+        if (options.granularity === "aggregate" || options.granularity === "table") {
+          granularity = options.granularity;
+        } else {
+          process.stderr.write(
+            `Error: --granularity for --from db must be "aggregate" or "table"\n`,
+          );
+          process.exit(1);
+        }
       } else {
-        process.stderr.write(`Error: --granularity must be "resource" or "operation"\n`);
+        process.stderr.write(
+          `Error: --granularity is only valid with --from openapi or --from db\n`,
+        );
         process.exit(1);
       }
       translate(file, {
