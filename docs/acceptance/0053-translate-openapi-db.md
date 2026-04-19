@@ -141,9 +141,9 @@ service OrderService {
 
 ---
 
-### AT-0053-04: Translate SQL schema to database block (default, no FK → flat)
+### AT-0053-04: Translate SQL schema to database block (default, soft FK grouping)
 
-> ✅ Automated — `packages/cli/src/translate/translate.e2e.test.ts` › `AT-0053-04: translates SQL schema to database block with table entries`
+> ✅ Automated — `packages/cli/src/translate/translate.e2e.test.ts` › `AT-0053-04: translates SQL schema to database block with aggregate grouping`
 
 **Input** `schema.sql`:
 ```sql
@@ -168,15 +168,23 @@ karasu translate --from db schema.sql --database OrderDB
 **Expected output** (stdout):
 ```krs
 database OrderDB {
-  table OrdersTable { label "orders" }
-  table OrderItemsTable { label "order_items" }
+  table OrdersTable {
+    label "orders"
+    description """
+      Tables:
+      - orders (root)
+      - order_items — name suffix + inferred FK column to orders
+      """
+  }
   table PaymentsTable { label "payments" }
 }
 ```
 
-> Default granularity is `aggregate`, but this input has no declared foreign
-> keys, so no table qualifies to be folded. Aggregate grouping is intentionally
-> conservative: it requires an FK link to a parent (see AT-0053-11).
+> Even though this schema declares no `FOREIGN KEY` / `REFERENCES`, the
+> `order_items.order_id` column matches the `<parent>_id` soft-FK convention
+> and `order_items` matches the `_items` name suffix, so it folds into the
+> Orders aggregate. `payments` has neither signal and stays independent. See
+> AT-0053-14 for a schema with explicit FKs.
 
 ---
 
@@ -184,7 +192,10 @@ database OrderDB {
 
 > ✅ Automated — `packages/cli/src/translate/translate.e2e.test.ts` › `AT-0053-05: derives database name from file name when --database is omitted`
 
-**Input** `order_db.sql` (same content as above)
+**Input** `order_db.sql`:
+```sql
+CREATE TABLE orders ( id BIGINT PRIMARY KEY );
+```
 
 **Command (no --database flag):**
 ```bash
@@ -195,8 +206,6 @@ karasu translate --from db order_db.sql
 ```krs
 database OrderDb {
   table OrdersTable { label "orders" }
-  table OrderItemsTable { label "order_items" }
-  table PaymentsTable { label "payments" }
 }
 ```
 
@@ -419,3 +428,41 @@ database AuthDB {
 > represents an M:N relationship rather than internal structure. Folding it
 > into either parent would misrepresent the model, so it stays as an
 > independent `table` entry.
+
+---
+
+### AT-0053-14: Soft FK via `<parent>_code` column convention
+
+> ⏸ Manual — exercised by unit tests (`db.test.ts` › `folds via soft FK using <parent>_code column`); no separate e2e.
+
+**Input** `schema.sql`:
+```sql
+CREATE TABLE products (id BIGINT PRIMARY KEY);
+CREATE TABLE product_details (
+  id BIGINT PRIMARY KEY,
+  product_code VARCHAR(32) NOT NULL
+);
+```
+
+**Command:**
+```bash
+karasu translate --from db schema.sql --database CatalogDB
+```
+
+**Expected output**:
+```krs
+database CatalogDB {
+  table ProductsTable {
+    label "products"
+    description """
+      Tables:
+      - products (root)
+      - product_details — name suffix + inferred FK column to products
+      """
+  }
+}
+```
+
+> Soft FKs support both `_id` and `_code` column suffixes. This lets schemas
+> that use domain-readable keys (product SKUs, currency codes, etc.) still
+> benefit from aggregate grouping without declaring explicit foreign keys.

@@ -152,15 +152,63 @@ CREATE TABLE invoice_lines (
       expect(result).not.toContain("table InvoiceLinesTable");
     });
 
-    it("keeps tables flat when no FK relationship is declared (name alone is not enough)", async () => {
+    it("keeps tables flat when no FK link exists (neither explicit nor by column convention)", async () => {
       const input = `
 CREATE TABLE orders (id BIGINT PRIMARY KEY);
-CREATE TABLE order_items (id BIGINT PRIMARY KEY, order_id BIGINT);
+CREATE TABLE audit_log (id BIGINT PRIMARY KEY, event VARCHAR(64));
 `;
       const result = await translator.translate(input, { ...ctx, database: "ShopDB" });
       expect(result).toContain('  table OrdersTable { label "orders" }');
-      expect(result).toContain('  table OrderItemsTable { label "order_items" }');
+      expect(result).toContain('  table AuditLogTable { label "audit_log" }');
       expect(result).not.toContain("description");
+    });
+
+    it("folds via soft FK (column named <parent>_id) when no explicit FK is declared", async () => {
+      const input = `
+CREATE TABLE orders (id BIGINT PRIMARY KEY);
+CREATE TABLE order_items (
+  id BIGINT PRIMARY KEY,
+  order_id BIGINT NOT NULL
+);
+`;
+      const result = await translator.translate(input, { ...ctx, database: "ShopDB" });
+      expect(result).toContain("  table OrdersTable {");
+      expect(result).toContain("      - order_items — name suffix + inferred FK column to orders");
+      expect(result).not.toContain("table OrderItemsTable");
+    });
+
+    it("folds via soft FK using <parent>_code column", async () => {
+      const input = `
+CREATE TABLE products (id BIGINT PRIMARY KEY);
+CREATE TABLE product_details (
+  id BIGINT PRIMARY KEY,
+  product_code VARCHAR(32) NOT NULL
+);
+`;
+      const result = await translator.translate(input, { ...ctx, database: "CatalogDB" });
+      expect(result).toContain("  table ProductsTable {");
+      expect(result).toContain(
+        "      - product_details — name suffix + inferred FK column to products",
+      );
+      expect(result).not.toContain("table ProductDetailsTable");
+    });
+
+    it("folds FK-less schema with composite PK via soft FK columns", async () => {
+      const input = `
+CREATE TABLE contracts (id BIGINT PRIMARY KEY);
+CREATE TABLE contract_line_items (
+  contract_id BIGINT NOT NULL,
+  line_no INT NOT NULL,
+  amount DECIMAL,
+  PRIMARY KEY (contract_id, line_no)
+);
+`;
+      const result = await translator.translate(input, { ...ctx, database: "BizDB" });
+      expect(result).toContain("  table ContractsTable {");
+      expect(result).toContain(
+        "      - contract_line_items — composite PK with inferred FK column to contracts",
+      );
+      expect(result).not.toContain("table ContractLineItemsTable");
     });
 
     it("does NOT fold junction tables (all PK columns are FKs)", async () => {

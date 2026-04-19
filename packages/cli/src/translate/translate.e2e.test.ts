@@ -430,7 +430,7 @@ describe("translate E2E — db", () => {
     rmSync(tmpDir, { recursive: true, force: true });
   });
 
-  it("AT-0053-04: translates SQL schema to database block with table entries", async () => {
+  it("AT-0053-04: translates SQL schema to database block with aggregate grouping", async () => {
     const inputPath = join(tmpDir, "schema.sql");
     writeFileSync(
       inputPath,
@@ -454,9 +454,10 @@ CREATE TABLE payments (
 
     const out = capture.stdout();
     expect(out).toContain("database OrderDB {");
-    expect(out).toContain('table OrdersTable { label "orders" }');
-    expect(out).toContain('table OrderItemsTable { label "order_items" }');
-    expect(out).toContain('table PaymentsTable { label "payments" }');
+    expect(out).toContain("  table OrdersTable {");
+    expect(out).toContain("      - order_items — name suffix + inferred FK column to orders");
+    expect(out).toContain('  table PaymentsTable { label "payments" }');
+    expect(out).not.toContain("table OrderItemsTable");
   });
 
   it("AT-0053-05: derives database name from file name when --database is omitted", async () => {

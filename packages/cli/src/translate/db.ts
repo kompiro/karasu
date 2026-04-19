@@ -28,6 +28,11 @@ function stripIdentQuotes(s: string): string {
 interface ForeignKey {
   column: string;
   refTable: string;
+  /**
+   * "explicit" = declared via `REFERENCES` / `FOREIGN KEY`.
+   * "soft"     = inferred by column-name convention (`<stem>_id`, `<stem>_code`).
+   */
+  kind: "explicit" | "soft";
 }
 
 interface Table {
@@ -100,7 +105,7 @@ function parseTable(name: string, body: string): Table {
     if (fkMatch) {
       const cols = parseColumnList(fkMatch[1]);
       const refTable = stripIdentQuotes(fkMatch[2]);
-      for (const col of cols) foreignKeys.push({ column: col, refTable });
+      for (const col of cols) foreignKeys.push({ column: col, refTable, kind: "explicit" });
       continue;
     }
 
@@ -126,11 +131,57 @@ function parseTable(name: string, body: string): Table {
 
     const inlineRef = part.match(/\bREFERENCES\s+(?:["'`]?\w+["'`]?\.)?["'`]?(\w+)["'`]?/i);
     if (inlineRef) {
-      foreignKeys.push({ column: colName, refTable: stripIdentQuotes(inlineRef[1]) });
+      foreignKeys.push({
+        column: colName,
+        refTable: stripIdentQuotes(inlineRef[1]),
+        kind: "explicit",
+      });
     }
   }
 
   return { name, columns, primaryKey, foreignKeys };
+}
+
+/**
+ * Match a column name that looks like a reference-by-convention to another
+ * table, e.g. `order_id`, `contract_code`. Returns the candidate stems to
+ * test against known table names (with simple `s`/`es` plural fallback).
+ */
+const SOFT_FK_SUFFIXES = ["id", "code"];
+
+function softFkCandidates(columnName: string): string[] {
+  const lower = columnName.toLowerCase();
+  for (const suffix of SOFT_FK_SUFFIXES) {
+    const needle = `_${suffix}`;
+    if (!lower.endsWith(needle)) continue;
+    const stem = lower.slice(0, -needle.length);
+    if (stem.length === 0) continue;
+    return [stem, `${stem}s`, `${stem}es`];
+  }
+  return [];
+}
+
+/**
+ * Add convention-based foreign keys to each table when no explicit
+ * `REFERENCES` / `FOREIGN KEY` declaration exists for the column. A column
+ * named `<stem>_id` or `<stem>_code` that matches an existing table name is
+ * treated as a soft FK. This lets schemas that enforce referential integrity
+ * at the application layer (MySQL/MyISAM legacy, analytics tables, etc.) still
+ * benefit from aggregate grouping.
+ */
+function augmentWithSoftForeignKeys(tables: Table[]): void {
+  const known = new Set(tables.map((t) => t.name.toLowerCase()));
+  for (const t of tables) {
+    const explicit = new Set(t.foreignKeys.map((fk) => fk.column));
+    for (const col of t.columns) {
+      if (explicit.has(col)) continue;
+      for (const cand of softFkCandidates(col)) {
+        if (!known.has(cand) || cand === t.name.toLowerCase()) continue;
+        t.foreignKeys.push({ column: col, refTable: cand, kind: "soft" });
+        break;
+      }
+    }
+  }
 }
 
 function parseTables(sql: string): Table[] {
@@ -193,11 +244,13 @@ function inferAggregates(tables: Table[]): GroupDecision {
       const pkFks = t.foreignKeys.filter((fk) => t.primaryKey.includes(fk.column));
       const isJunction = pkFks.length === t.primaryKey.length;
       if (pkFks.length > 0 && !isJunction) {
-        const parentName = pkFks[0].refTable;
+        const pick = pkFks[0];
+        const parentName = pick.refTable;
         const parentLower = parentName.toLowerCase();
         if (known.has(parentLower) && parentLower !== t.name.toLowerCase()) {
           parentOf.set(t.name, parentName);
-          reasonOf.set(t.name, `composite PK with FK to ${parentName}`);
+          const kind = pick.kind === "soft" ? "inferred FK column" : "FK";
+          reasonOf.set(t.name, `composite PK with ${kind} to ${parentName}`);
           continue;
         }
       }
@@ -205,10 +258,11 @@ function inferAggregates(tables: Table[]): GroupDecision {
 
     const parentByName = nameSuggestsParent(t.name, known);
     if (parentByName) {
-      const hasFk = t.foreignKeys.some((fk) => fk.refTable.toLowerCase() === parentByName);
-      if (hasFk) {
+      const fk = t.foreignKeys.find((f) => f.refTable.toLowerCase() === parentByName);
+      if (fk) {
         parentOf.set(t.name, parentByName);
-        reasonOf.set(t.name, `name suffix + FK to ${parentByName}`);
+        const kind = fk.kind === "soft" ? "inferred FK column" : "FK";
+        reasonOf.set(t.name, `name suffix + ${kind} to ${parentByName}`);
       }
     }
   }
@@ -262,6 +316,7 @@ export class DbTranslator implements Translator {
     if (granularity === "table" || tables.length === 0) {
       for (const t of tables) bodyLines.push(emitFlatTable(t));
     } else {
+      augmentWithSoftForeignKeys(tables);
       const { parentOf, reasonOf } = inferAggregates(tables);
       const byName = new Map(tables.map((t) => [t.name, t]));
       const childrenOf = new Map<string, { table: Table; reason: string }[]>();
