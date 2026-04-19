@@ -72,10 +72,11 @@ export function AppShell({
     isOrgTreeViewOpen,
     setIsOrgTreeViewOpen,
   });
+  const { recompile, navigateViewPath, navigateActiveView } = views;
 
   // Expose recompile to parent via ref (used by ServeModeApp for SSE-driven updates)
   if (recompileRef) {
-    recompileRef.current = views.recompile;
+    recompileRef.current = recompile;
   }
 
   const { breadcrumbItems, orgBreadcrumbItems, scopeLabel } = useBreadcrumbs({
@@ -99,7 +100,7 @@ export function AppShell({
     dispatch,
     teamPathIndex: views.teamPathIndex,
     orgNodePathIndex: views.org.nodePathIndex,
-    navigateViewPath: views.navigateViewPath,
+    navigateViewPath,
   });
 
   const nodeMetadata =
@@ -112,7 +113,7 @@ export function AppShell({
       dispatch({ type: "UPDATE_FILE_CONTENT", content: value });
       if (currentFilePath) {
         await fs.writeFile(currentFilePath, value);
-        views.recompile();
+        recompile();
       } else {
         // eslint-disable-next-line no-console
         console.warn(
@@ -120,7 +121,7 @@ export function AppShell({
         );
       }
     },
-    [currentFilePath, fs, dispatch, views],
+    [currentFilePath, fs, dispatch, recompile],
   );
 
   const hasParseErrors = views.system.diagnostics.some((d) => d.severity === "error");
@@ -159,7 +160,7 @@ export function AppShell({
     viewPath,
     breadcrumbItems,
     warnings: views.system.warnings,
-    onBreadcrumbNavigate: views.navigateViewPath,
+    onBreadcrumbNavigate: navigateViewPath,
     onDeployButtonClick: nav.handleDeployButtonClick,
     onTeamButtonClick: nav.handleTeamButtonClick,
     highlightedNodeId,
@@ -181,7 +182,7 @@ export function AppShell({
     viewPath,
     breadcrumbItems: orgBreadcrumbItems,
     warnings: views.org.warnings,
-    onBreadcrumbNavigate: views.navigateViewPath,
+    onBreadcrumbNavigate: navigateViewPath,
     highlightedNodeId,
     onClearHighlight: nav.clearHighlight,
     onOwnedServiceClick: nav.handleOwnedServiceClick,
@@ -202,7 +203,7 @@ export function AppShell({
           viewPath={viewPath}
           currentProjectId={currentProject?.id ?? null}
           resolvedSystems={views.system.resolvedSystems}
-          onNavigateViewPath={views.navigateViewPath}
+          onNavigateViewPath={navigateViewPath}
           onFormat={handleFormat}
           hasParseErrors={hasParseErrors}
         />
@@ -210,7 +211,7 @@ export function AppShell({
       <KarasuPreviewColumn
         activeView={activeView}
         hasDeployDiagram={views.system.hasDeployDiagram}
-        onActiveViewChange={views.navigateActiveView}
+        onActiveViewChange={navigateActiveView}
         systemView={systemViewProps}
         deployView={deployViewProps}
         orgView={orgViewProps}
