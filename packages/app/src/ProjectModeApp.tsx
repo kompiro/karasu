@@ -1,12 +1,13 @@
-import { useEffect, useCallback, useRef } from "react";
+import { useCallback, useRef } from "react";
 import { ProjectSelector } from "./components/ProjectSelector.js";
 import { FileTree } from "./components/FileTree.js";
 import { AppShell } from "./components/AppShell.js";
 import { useAppContext } from "./state/app-context.js";
 import { ProjectManager } from "./fs/project-manager.js";
-import { useProjectNavigation, LAST_PROJECT_KEY } from "./hooks/useProjectNavigation.js";
+import { useProjectNavigation } from "./hooks/useProjectNavigation.js";
 import { useFileSelection } from "./hooks/useFileSelection.js";
-import { type Project, EC_PLATFORM_PROJECTS, GETTING_STARTED_PROJECT } from "@karasu-tools/core";
+import { useProjectInitialization } from "./hooks/useProjectInitialization.js";
+import { type Project } from "@karasu-tools/core";
 import { exportProjectAsZip } from "./utils/export-project-zip.js";
 import { parseZipForImport, disambiguateName } from "./utils/import-project-zip.js";
 
@@ -27,45 +28,7 @@ export function ProjectModeApp() {
   const { navigateToProject } = useProjectNavigation(projects, currentProject, dispatch);
   const { selectFile } = useFileSelection(fs, dispatch);
 
-  // 初期化: プロジェクト一覧を読み込み
-  useEffect(() => {
-    (async () => {
-      const projectList = await pm.listProjects();
-
-      if (projectList.length === 0) {
-        // 初回起動: Getting Started を先頭に、続いて ec-platform の各ステップを作成
-        const initialProjects: Project[] = [];
-        const gsProject = await pm.createProject(
-          GETTING_STARTED_PROJECT.name,
-          GETTING_STARTED_PROJECT.files,
-        );
-        initialProjects.push(gsProject);
-        for (const example of EC_PLATFORM_PROJECTS) {
-          const project = await pm.createProject(example.name, example.files);
-          initialProjects.push(project);
-        }
-        dispatch({ type: "SET_PROJECTS", projects: initialProjects });
-      } else {
-        dispatch({ type: "SET_PROJECTS", projects: projectList });
-        // useProjectNavigation の初期化 Effect が URL/localStorage を参照して復元する
-      }
-
-      dispatch({ type: "SET_LOADING", loading: false });
-    })();
-  }, [pm, dispatch]);
-
-  // プロジェクト切り替え時に localStorage に保存
-  useEffect(() => {
-    if (currentProject) {
-      localStorage.setItem(LAST_PROJECT_KEY, currentProject.id);
-    }
-  }, [currentProject]);
-
-  // プロジェクト切り替え時に index.krs を自動選択
-  useEffect(() => {
-    if (!currentProject) return;
-    void selectFile(`${currentProject.rootPath}/index.krs`);
-  }, [currentProject, selectFile]);
+  useProjectInitialization({ pm, dispatch, currentProject, selectFile });
 
   // ── ファイル選択 ────────────────────────────────────────────────
 
