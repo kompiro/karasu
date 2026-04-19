@@ -79,6 +79,19 @@ export type { DisplayMode } from "./renderer/layout.js";
 export type { SvgResult } from "./renderer/all-layers-svg.js";
 export { render, renderFromLayout, sanitizeId } from "./renderer/svg-renderer.js";
 
+export {
+  exportDrawio,
+  type DrawioExportInput,
+  type DrawioPage,
+} from "./exporter/drawio/drawio-exporter.js";
+export {
+  buildDrawio,
+  buildDrawioProject,
+  type BuildDrawioOptions,
+  type DrawioBuildResult,
+  type DrawioViewSelection,
+} from "./exporter/drawio/build-drawio-project.js";
+
 export { renderOrgView } from "./renderer/org-renderer.js";
 export {
   renderOrgTreeView,
