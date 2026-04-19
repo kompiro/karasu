@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { Parser } from "./parser.js";
+import { formatDiagnostic } from "./diagnostic-legacy-format.js";
 import { compile, compileProject, InMemoryFileSystemProvider } from "../index.js";
 
 describe("Missing id - Parser", () => {
@@ -7,7 +8,7 @@ describe("Missing id - Parser", () => {
     const result = Parser.parse("system { }");
     expect(() => Parser.parse("system { }")).not.toThrow();
     expect(result.diagnostics.length).toBeGreaterThan(0);
-    expect(result.diagnostics[0].message).toContain("Expected identifier");
+    expect(formatDiagnostic(result.diagnostics[0])).toContain("Expected identifier");
   });
 
   it("should not crash on 'service { }'", () => {

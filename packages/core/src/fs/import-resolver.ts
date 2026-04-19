@@ -79,7 +79,8 @@ export class ImportResolver {
     if (this.visitedKrs.has(filePath)) {
       this.diagnostics.push({
         severity: "warning",
-        message: `Circular import detected: ${filePath}`,
+        code: "circular-import",
+        params: { filePath },
       });
       return;
     }
@@ -91,7 +92,8 @@ export class ImportResolver {
     } catch {
       this.diagnostics.push({
         severity: "error",
-        message: `File not found: ${filePath}`,
+        code: "file-not-found",
+        params: { filePath },
       });
       return;
     }
@@ -133,7 +135,8 @@ export class ImportResolver {
     } catch {
       this.diagnostics.push({
         severity: "error",
-        message: `Directory not found: ${dirPath}`,
+        code: "directory-not-found",
+        params: { dirPath },
         loc: nodeImport.loc,
       });
       return [];
@@ -237,7 +240,8 @@ export class ImportResolver {
         for (const service of rawImported.services) {
           this.diagnostics.push({
             severity: "warning",
-            message: `"${service.id}" is declared outside any system block — system membership is ambiguous`,
+            code: "service-outside-system",
+            params: { serviceId: service.id },
             loc: nodeImport.loc,
           });
         }
@@ -320,7 +324,8 @@ export class ImportResolver {
       if (alreadyExists) {
         this.diagnostics.push({
           severity: "error",
-          message: `Duplicate node ID "${child.id}" in system "${target.id}"`,
+          code: "duplicate-node-in-system",
+          params: { nodeId: child.id, systemId: target.id },
         });
       } else {
         target.children.push(child);
@@ -340,7 +345,8 @@ export class ImportResolver {
       if (alreadyExists) {
         this.diagnostics.push({
           severity: "error",
-          message: `Duplicate node ID "${node.id}" in deploy block "${target.id}"`,
+          code: "duplicate-node-in-deploy",
+          params: { nodeId: node.id, deployId: target.id },
         });
       } else {
         target.nodes.push(node);
@@ -354,7 +360,8 @@ export class ImportResolver {
       if (alreadyExists) {
         this.diagnostics.push({
           severity: "error",
-          message: `Duplicate team ID "${team.id}" in organization "${target.id}"`,
+          code: "duplicate-team-in-organization",
+          params: { teamId: team.id, orgId: target.id },
         });
       } else {
         target.teams.push(team);
@@ -439,7 +446,8 @@ export class ImportResolver {
       if (!found) {
         this.diagnostics.push({
           severity: "error",
-          message: `Imported identifier "${id}" not found in ${nodeImport.path}`,
+          code: "import-id-not-found",
+          params: { id, path: nodeImport.path },
           loc: nodeImport.loc,
         });
       }
@@ -500,7 +508,8 @@ export class ImportResolver {
     if (this.visitedStyles.has(filePath)) {
       this.diagnostics.push({
         severity: "warning",
-        message: `Circular style import detected: ${filePath}`,
+        code: "circular-style-import",
+        params: { filePath },
       });
       return null;
     }
@@ -512,7 +521,8 @@ export class ImportResolver {
     } catch {
       this.diagnostics.push({
         severity: "warning",
-        message: `Style file not found: ${filePath}`,
+        code: "style-file-not-found",
+        params: { filePath },
       });
       return null;
     }

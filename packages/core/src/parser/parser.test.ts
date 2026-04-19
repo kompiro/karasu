@@ -1,5 +1,6 @@
 import { describe, it, expect, assert } from "vitest";
 import { Parser } from "./parser.js";
+import { formatDiagnostic } from "./diagnostic-legacy-format.js";
 import { getReference } from "../builtins/reference.js";
 import type { DomainNode, ServiceNode, UserNode } from "../types/ast.js";
 
@@ -243,8 +244,8 @@ system Test {
     `);
     const errors = result.diagnostics.filter((d) => d.severity === "error");
     expect(errors.length).toBeGreaterThanOrEqual(1);
-    expect(errors[0].message).toContain("OtherDomain");
-    expect(errors[0].message).toContain("Contract");
+    expect(formatDiagnostic(errors[0])).toContain("OtherDomain");
+    expect(formatDiagnostic(errors[0])).toContain("Contract");
   });
 
   it("allows explicit edge with matching source in service/domain block", () => {
@@ -489,7 +490,7 @@ system Test {
     `);
     expect(result.diagnostics).toHaveLength(1);
     expect(result.diagnostics[0].severity).toBe("warning");
-    expect(result.diagnostics[0].message).toContain("deprecated");
+    expect(formatDiagnostic(result.diagnostics[0])).toContain("deprecated");
     const service = result.value.systems[0].children[0] as ServiceNode;
     expect(service.kind).toBe("service");
     expect(service.properties.team).toBe("EC開発チーム");
@@ -575,7 +576,7 @@ system Test {
     // Inline resource without dot-notation emits an "unassigned-resource" warning
     expect(result.diagnostics).toHaveLength(1);
     expect(result.diagnostics[0].severity).toBe("warning");
-    expect(result.diagnostics[0].message).toContain("is not assigned to any database");
+    expect(formatDiagnostic(result.diagnostics[0])).toContain("is not assigned to any database");
     const resource = result.value.systems[0].children[0].children[0].children[0].children[0];
     expect(resource.kind).toBe("resource");
     expect(resource.properties.links).toHaveLength(1);
@@ -601,7 +602,7 @@ system Test {
 }
     `);
     expect(result.diagnostics.length).toBeGreaterThanOrEqual(1);
-    expect(result.diagnostics[0].message).toContain("team");
+    expect(formatDiagnostic(result.diagnostics[0])).toContain("team");
   });
 
   it("parses triple-quoted description", () => {
@@ -633,7 +634,7 @@ service Monitoring {
     `);
     expect(result.diagnostics).toHaveLength(1);
     expect(result.diagnostics[0].severity).toBe("warning");
-    expect(result.diagnostics[0].message).toContain("deprecated");
+    expect(formatDiagnostic(result.diagnostics[0])).toContain("deprecated");
     expect(result.value.services).toHaveLength(1);
     const service = result.value.services[0];
     expect(service.kind).toBe("service");
@@ -781,7 +782,7 @@ organization Corp {
     `);
     const errors = result.diagnostics.filter((d) => d.severity === "error");
     expect(errors.length).toBeGreaterThanOrEqual(1);
-    expect(errors[0].message).toContain("ECommerce");
+    expect(formatDiagnostic(errors[0])).toContain("ECommerce");
   });
 
   it("errors on duplicate team IDs", () => {
@@ -793,7 +794,7 @@ organization Corp {
     `);
     const errors = result.diagnostics.filter((d) => d.severity === "error");
     expect(errors.length).toBeGreaterThanOrEqual(1);
-    expect(errors[0].message).toContain("alpha");
+    expect(formatDiagnostic(errors[0])).toContain("alpha");
   });
 
   it("parses label property inside organization, team, and member blocks", () => {
@@ -1081,7 +1082,9 @@ system Test {
     expect(errors).toHaveLength(0);
     const warnings = result.diagnostics.filter((d) => d.severity === "warning");
     expect(warnings).toHaveLength(4);
-    expect(warnings.every((w) => w.message.includes("is not assigned to any database"))).toBe(true);
+    expect(
+      warnings.every((w) => formatDiagnostic(w).includes("is not assigned to any database")),
+    ).toBe(true);
     expect(result.value.systems).toHaveLength(1);
     expect(result.value.deploys).toHaveLength(1);
     expect(result.value.organizations).toHaveLength(1);
@@ -1132,7 +1135,7 @@ system EC {
       `);
       const errors = result.diagnostics.filter((d) => d.severity === "error");
       expect(errors.length).toBeGreaterThanOrEqual(1);
-      expect(errors[0].message).toContain("Payment");
+      expect(formatDiagnostic(errors[0])).toContain("Payment");
     });
 
     it("errors on cross-scope duplicate domain id and keeps first path", () => {
@@ -1148,7 +1151,7 @@ system EC {
       `);
       const errors = result.diagnostics.filter((d) => d.severity === "error");
       expect(errors.length).toBeGreaterThanOrEqual(1);
-      expect(errors[0].message).toContain("Checkout");
+      expect(formatDiagnostic(errors[0])).toContain("Checkout");
       expect(result.value.nodePathIndex.get("Checkout")).toEqual(["EC", "Payment", "Checkout"]);
     });
 
@@ -1166,7 +1169,7 @@ system B {
 }
       `);
       const errors = result.diagnostics.filter(
-        (d) => d.severity === "error" && d.message.includes("Order"),
+        (d) => d.severity === "error" && formatDiagnostic(d).includes("Order"),
       );
       expect(errors).toHaveLength(0);
     });
@@ -1320,7 +1323,7 @@ system EC {
       `);
       const errors = result.diagnostics.filter((d) => d.severity === "error");
       expect(errors.length).toBeGreaterThanOrEqual(1);
-      expect(errors[0].message).toContain("Checkout");
+      expect(formatDiagnostic(errors[0])).toContain("Checkout");
     });
 
     it("warns when owns references an id not found in the system hierarchy", () => {
@@ -1336,7 +1339,7 @@ organization Corp {
       `);
       const warnings = result.diagnostics.filter((d) => d.severity === "warning");
       expect(warnings.length).toBeGreaterThanOrEqual(1);
-      expect(warnings[0].message).toContain("Ghost");
+      expect(formatDiagnostic(warnings[0])).toContain("Ghost");
     });
 
     it("produces no warning when owns references a known node id", () => {
@@ -1649,7 +1652,7 @@ system ECPlatform {
       `);
       expect(result.diagnostics).toHaveLength(1);
       expect(result.diagnostics[0].severity).toBe("warning");
-      expect(result.diagnostics[0].message).toBe(
+      expect(formatDiagnostic(result.diagnostics[0])).toBe(
         `resource "OrderTable" is not assigned to any database`,
       );
     });
@@ -1725,7 +1728,7 @@ system ECPlatform {
       `);
       const warnings = result.diagnostics.filter((d) => d.severity === "warning");
       expect(warnings).toHaveLength(1);
-      expect(warnings[0].message).toContain("OrderTable");
+      expect(formatDiagnostic(warnings[0])).toContain("OrderTable");
     });
   });
 
@@ -1742,7 +1745,9 @@ system ECPlatform {
       `);
       const errors = result.diagnostics.filter((d) => d.severity === "error");
       expect(errors.length).toBeGreaterThan(0);
-      expect(errors[0].message).toContain('"database" is only valid as a direct child of system');
+      expect(formatDiagnostic(errors[0])).toContain(
+        '"database" is only valid as a direct child of system',
+      );
     });
 
     it("emits error when queue appears inside domain block", () => {
@@ -1759,7 +1764,9 @@ system ECPlatform {
       `);
       const errors = result.diagnostics.filter((d) => d.severity === "error");
       expect(errors.length).toBeGreaterThan(0);
-      expect(errors[0].message).toContain('"queue" is only valid as a direct child of system');
+      expect(formatDiagnostic(errors[0])).toContain(
+        '"queue" is only valid as a direct child of system',
+      );
     });
 
     it("emits error when storage appears inside usecase block", () => {
@@ -1778,7 +1785,9 @@ system ECPlatform {
       `);
       const errors = result.diagnostics.filter((d) => d.severity === "error");
       expect(errors.length).toBeGreaterThan(0);
-      expect(errors[0].message).toContain('"storage" is only valid as a direct child of system');
+      expect(formatDiagnostic(errors[0])).toContain(
+        '"storage" is only valid as a direct child of system',
+      );
     });
 
     it("emits error when infra block appears inside sub-resource body", () => {
@@ -1793,7 +1802,7 @@ system ECPlatform {
       `);
       const errors = result.diagnostics.filter((d) => d.severity === "error");
       expect(errors.length).toBeGreaterThan(0);
-      expect(errors.some((e) => e.message.includes("Sub-resource nodes"))).toBe(true);
+      expect(errors.some((e) => formatDiagnostic(e).includes("Sub-resource nodes"))).toBe(true);
     });
   });
 

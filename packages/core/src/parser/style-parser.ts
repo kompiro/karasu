@@ -40,7 +40,8 @@ export class StyleParser {
     if (token.type !== type) {
       this.diagnostics.push({
         severity: "error",
-        message: `Expected ${type} but got ${token.type} ("${token.value}")`,
+        code: "style-token-type-mismatch",
+        params: { expected: String(type), got: String(token.type), value: token.value },
       });
       return token;
     }
@@ -153,7 +154,8 @@ export class StyleParser {
     if (this.peek().type !== TokenType.Identifier) {
       this.diagnostics.push({
         severity: "error",
-        message: `Expected property name but got ${this.peek().type}`,
+        code: "expected-style-property-name",
+        params: { got: String(this.peek().type) },
       });
       this.advance();
       return;
