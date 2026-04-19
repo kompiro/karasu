@@ -5,6 +5,7 @@ import { AppShell } from "./components/AppShell.js";
 import { useAppContext } from "./state/app-context.js";
 import { ProjectManager } from "./fs/project-manager.js";
 import { useProjectNavigation, LAST_PROJECT_KEY } from "./hooks/useProjectNavigation.js";
+import { useFileSelection } from "./hooks/useFileSelection.js";
 import { type Project, EC_PLATFORM_PROJECTS, GETTING_STARTED_PROJECT } from "@karasu-tools/core";
 import { exportProjectAsZip } from "./utils/export-project-zip.js";
 import { parseZipForImport, disambiguateName } from "./utils/import-project-zip.js";
@@ -24,6 +25,7 @@ export function ProjectModeApp() {
   const entryPath = currentProject ? `${currentProject.rootPath}/index.krs` : null;
 
   const { navigateToProject } = useProjectNavigation(projects, currentProject, dispatch);
+  const { selectFile } = useFileSelection(fs, dispatch);
 
   // 初期化: プロジェクト一覧を読み込み
   useEffect(() => {
@@ -62,36 +64,16 @@ export function ProjectModeApp() {
   // プロジェクト切り替え時に index.krs を自動選択
   useEffect(() => {
     if (!currentProject) return;
-    (async () => {
-      const indexPath = `${currentProject.rootPath}/index.krs`;
-      try {
-        const content = await fs.readFile(indexPath);
-        dispatch({ type: "SELECT_FILE", path: indexPath, content });
-      } catch {
-        dispatch({ type: "SELECT_FILE", path: indexPath, content: "" });
-      }
-    })();
-  }, [currentProject, fs, dispatch]);
+    void selectFile(`${currentProject.rootPath}/index.krs`);
+  }, [currentProject, selectFile]);
 
   // ── ファイル選択 ────────────────────────────────────────────────
 
-  const handleSelectFile = useCallback(
-    async (path: string) => {
-      try {
-        const content = await fs.readFile(path);
-        dispatch({ type: "SELECT_FILE", path, content });
-      } catch {
-        dispatch({ type: "SELECT_FILE", path, content: "" });
-      }
-    },
-    [fs, dispatch],
-  );
-
   const handleFileCreated = useCallback(
     (path: string) => {
-      handleSelectFile(path);
+      void selectFile(path);
     },
-    [handleSelectFile],
+    [selectFile],
   );
 
   const handleFileDeleted = useCallback(
@@ -106,10 +88,10 @@ export function ProjectModeApp() {
   const handleFileRenamed = useCallback(
     (oldPath: string, newPath: string) => {
       if (currentFilePath === oldPath) {
-        handleSelectFile(newPath);
+        void selectFile(newPath);
       }
     },
-    [currentFilePath, handleSelectFile],
+    [currentFilePath, selectFile],
   );
 
   // ── プロジェクト操作 ────────────────────────────────────────────
@@ -195,7 +177,7 @@ export function ProjectModeApp() {
       rootPath={currentProject.rootPath}
       fs={fs}
       currentFilePath={currentFilePath}
-      onSelectFile={handleSelectFile}
+      onSelectFile={selectFile}
       onFileCreated={handleFileCreated}
       onFileDeleted={handleFileDeleted}
       onFileRenamed={handleFileRenamed}
