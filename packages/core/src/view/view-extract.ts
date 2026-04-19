@@ -661,13 +661,22 @@ export function extractView(
   }
 
   // Determine the active system.
-  // path[0] is the system ID when it matches a known system.
-  // For unassigned top-level services/domains (no system prefix), path[0] is the
-  // orphan node ID and does not match any system — fall back to systems[0] and
-  // walk from index 0.
+  // path[0] is the system ID when it matches a known system. Otherwise the
+  // caller omitted the system prefix (e.g. drilling into a child shown at the
+  // multi-system root, including the "(Unassigned)" pseudo-system) — search
+  // every system for a direct child whose id matches so the correct owning
+  // system becomes the drill-down root.
   const systemNode = systems.find((s) => s.id === path[0]);
-  const system = systemNode ?? systems[0];
-  const startIndex = systemNode ? 1 : 0;
+  let system: KrsNode;
+  let startIndex: number;
+  if (systemNode) {
+    system = systemNode;
+    startIndex = 1;
+  } else {
+    const owningSystem = systems.find((s) => s.children.some((c) => c.id === path[0]));
+    system = owningSystem ?? systems[0];
+    startIndex = 0;
+  }
 
   // Walk the path to find the container
   const ancestorChain: KrsNode[] = [system];

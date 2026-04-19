@@ -2,6 +2,7 @@ import type { KrsFile, TeamNode, HierarchyNode, Diagnostic } from "../types/ast.
 import type { StyleSheet } from "../types/style.js";
 import type { DisplayMode } from "./layout.js";
 import { extractView } from "../view/view-extract.js";
+import { withUnassignedSystem } from "../view/unassigned-system.js";
 import { extractOrgView } from "../view/org-view-extract.js";
 import { render } from "./svg-renderer.js";
 import { renderOrgView } from "./org-renderer.js";
@@ -153,9 +154,8 @@ export function buildAllLayersSvg(
   styleSource?: string,
   displayMode?: DisplayMode,
 ): SvgResult {
-  const unassignedDomains = krsFile.domains ?? [];
-  const unassignedServices = krsFile.services ?? [];
-  const rootSlice = extractView(krsFile.systems, [], unassignedDomains, unassignedServices);
+  const effectiveSystems = withUnassignedSystem(krsFile);
+  const rootSlice = extractView(effectiveSystems, []);
   if (rootSlice.childNodes.length === 0) {
     return {
       svg: `<svg xmlns="http://www.w3.org/2000/svg" width="200" height="100" viewBox="0 0 200 100"><text x="100" y="50" text-anchor="middle" fill="#9CA3AF" font-family="sans-serif">No diagram</text></svg>`,
@@ -164,20 +164,18 @@ export function buildAllLayersSvg(
   }
 
   const { sheets, diagnostics } = buildStyles(displayMode, styleSource);
-  const styles = resolveStyles(krsFile.systems, sheets, [], undefined, [
-    ...unassignedServices,
-    ...unassignedDomains,
-  ]);
-  const systemNode = krsFile.systems[0];
-  const rootLabel = systemNode ? (systemNode.label ?? systemNode.id) : "(Unassigned)";
+  const styles = resolveStyles(effectiveSystems, sheets, []);
+  const rootNode = effectiveSystems[0];
+  const rootLabel = rootNode.label ?? rootNode.id;
   const ownerIndex = krsFile.ownerIndex ?? new Map();
 
   const levels: AllLayersLevel[] = [];
   collectAllLayersLevelsGeneric(
     {
-      getSlice: (path) => extractView(krsFile.systems, path, unassignedDomains, unassignedServices),
-      hasContent: (slice) => slice.childNodes.length > 0,
-      getChildren: (slice) => slice.childNodes,
+      getSlice: (path) => extractView(effectiveSystems, path),
+      hasContent: (slice) => slice.childNodes.length > 0 || slice.systems.length > 0,
+      getChildren: (slice) =>
+        slice.systems.length > 0 ? slice.systems.flatMap((s) => s.children) : slice.childNodes,
       render: (slice, links) => render(slice, styles, undefined, ownerIndex, displayMode, links),
     },
     [],
