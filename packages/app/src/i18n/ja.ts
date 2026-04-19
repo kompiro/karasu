@@ -27,4 +27,20 @@ export const ja: Partial<Translations> = {
   "settings.save.saved": "✓ 保存しました",
   "settings.save.label": "💾 保存する",
   "settings.clear.label": "🗑 削除する",
+
+  // Project selector
+  "projectSelector.namePlaceholder": "プロジェクト名",
+  "projectSelector.new.title": "新規プロジェクト",
+  "projectSelector.new.button": "+ 新規",
+  "projectSelector.rename.title": "プロジェクトをリネーム",
+  "projectSelector.rename.button": "✎ リネーム",
+  "projectSelector.delete.title": "プロジェクトを削除",
+  "projectSelector.delete.button": "✕ 削除",
+  "projectSelector.delete.confirm": ({ name }) => `"${name}" を削除しますか?`,
+  "projectSelector.export.title": "ZIPとしてエクスポート",
+  "projectSelector.export.button": "↓ エクスポート",
+  "projectSelector.import.title": "ZIPからインポート",
+  "projectSelector.import.button": "↑ インポート",
+  "projectSelector.ok": "OK",
+  "projectSelector.cancel": "キャンセル",
 };

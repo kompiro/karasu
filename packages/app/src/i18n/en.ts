@@ -27,4 +27,20 @@ export const en: Translations = {
   "settings.save.saved": "✓ Saved",
   "settings.save.label": "💾 Save",
   "settings.clear.label": "🗑 Clear",
+
+  // Project selector
+  "projectSelector.namePlaceholder": "Project name",
+  "projectSelector.new.title": "New project",
+  "projectSelector.new.button": "+ New",
+  "projectSelector.rename.title": "Rename project",
+  "projectSelector.rename.button": "✎ Rename",
+  "projectSelector.delete.title": "Delete project",
+  "projectSelector.delete.button": "✕ Delete",
+  "projectSelector.delete.confirm": ({ name }) => `Delete "${name}"?`,
+  "projectSelector.export.title": "Export as ZIP",
+  "projectSelector.export.button": "↓ Export",
+  "projectSelector.import.title": "Import from ZIP",
+  "projectSelector.import.button": "↑ Import",
+  "projectSelector.ok": "OK",
+  "projectSelector.cancel": "Cancel",
 };

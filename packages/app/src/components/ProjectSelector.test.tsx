@@ -1,10 +1,19 @@
 // @vitest-environment jsdom
 import { describe, it, expect, vi, afterEach } from "vitest";
-import { render, fireEvent, cleanup } from "@testing-library/react";
+import { render as rtlRender, fireEvent, cleanup } from "@testing-library/react";
+import type { ReactElement } from "react";
 
 afterEach(cleanup);
 import { ProjectSelector } from "./ProjectSelector.js";
+import { LocaleProvider } from "../i18n/index.js";
 import type { Project } from "@karasu-tools/core";
+
+// Wrap every render in a LocaleProvider so ProjectSelector can call
+// useTranslation. Default to English — tests that need Japanese pass the
+// locale explicitly.
+function render(ui: ReactElement, initialLocale: "en" | "ja" = "en") {
+  return rtlRender(<LocaleProvider initialLocale={initialLocale}>{ui}</LocaleProvider>);
+}
 
 function makeProject(overrides?: Partial<Project>): Project {
   return {
@@ -192,5 +201,79 @@ describe("ProjectSelector — Import button", () => {
   it("Import button label contains ↑", () => {
     const { getByRole } = render(<ProjectSelector {...baseProps()} />);
     expect(getByRole("button", { name: /Import/ }).textContent).toContain("↑");
+  });
+});
+
+describe("ProjectSelector — localization (Phase C3)", () => {
+  it("renders English labels and tooltips when locale is 'en'", () => {
+    const { getByRole, getByTitle } = render(<ProjectSelector {...baseProps()} />, "en");
+
+    expect(getByRole("button", { name: /\+ New/ })).toBeTruthy();
+    expect(getByRole("button", { name: /✎ Rename/ })).toBeTruthy();
+    expect(getByRole("button", { name: /✕ Delete/ })).toBeTruthy();
+    expect(getByRole("button", { name: /↓ Export/ })).toBeTruthy();
+    expect(getByRole("button", { name: /↑ Import/ })).toBeTruthy();
+
+    expect(getByTitle("New project")).toBeTruthy();
+    expect(getByTitle("Rename project")).toBeTruthy();
+    expect(getByTitle("Delete project")).toBeTruthy();
+    expect(getByTitle("Export as ZIP")).toBeTruthy();
+    expect(getByTitle("Import from ZIP")).toBeTruthy();
+  });
+
+  it("renders Japanese labels and tooltips when locale is 'ja'", () => {
+    const { getByRole, getByTitle } = render(<ProjectSelector {...baseProps()} />, "ja");
+
+    expect(getByRole("button", { name: /\+ 新規/ })).toBeTruthy();
+    expect(getByRole("button", { name: /✎ リネーム/ })).toBeTruthy();
+    expect(getByRole("button", { name: /✕ 削除/ })).toBeTruthy();
+    expect(getByRole("button", { name: /↓ エクスポート/ })).toBeTruthy();
+    expect(getByRole("button", { name: /↑ インポート/ })).toBeTruthy();
+
+    expect(getByTitle("新規プロジェクト")).toBeTruthy();
+    expect(getByTitle("プロジェクトをリネーム")).toBeTruthy();
+    expect(getByTitle("プロジェクトを削除")).toBeTruthy();
+    expect(getByTitle("ZIPとしてエクスポート")).toBeTruthy();
+    expect(getByTitle("ZIPからインポート")).toBeTruthy();
+  });
+
+  it("uses the English delete confirmation when locale is 'en'", () => {
+    const confirmSpy = vi.spyOn(globalThis, "confirm").mockReturnValue(false);
+    try {
+      const props = baseProps();
+      const { getByRole } = render(<ProjectSelector {...props} />, "en");
+      fireEvent.click(getByRole("button", { name: /✕ Delete/ }));
+      expect(confirmSpy).toHaveBeenCalledWith('Delete "My Project"?');
+    } finally {
+      confirmSpy.mockRestore();
+    }
+  });
+
+  it("uses the Japanese delete confirmation when locale is 'ja'", () => {
+    const confirmSpy = vi.spyOn(globalThis, "confirm").mockReturnValue(false);
+    try {
+      const props = baseProps();
+      const { getByRole } = render(<ProjectSelector {...props} />, "ja");
+      fireEvent.click(getByRole("button", { name: /✕ 削除/ }));
+      expect(confirmSpy).toHaveBeenCalledWith('"My Project" を削除しますか?');
+    } finally {
+      confirmSpy.mockRestore();
+    }
+  });
+
+  it("uses OK/Cancel labels in English when creating a project", () => {
+    const props = baseProps();
+    const { getByRole } = render(<ProjectSelector {...props} />, "en");
+    fireEvent.click(getByRole("button", { name: /\+ New/ }));
+    expect(getByRole("button", { name: /^OK$/ })).toBeTruthy();
+    expect(getByRole("button", { name: /^Cancel$/ })).toBeTruthy();
+  });
+
+  it("uses OK/キャンセル labels in Japanese when creating a project", () => {
+    const props = baseProps();
+    const { getByRole } = render(<ProjectSelector {...props} />, "ja");
+    fireEvent.click(getByRole("button", { name: /\+ 新規/ }));
+    expect(getByRole("button", { name: /^OK$/ })).toBeTruthy();
+    expect(getByRole("button", { name: /^キャンセル$/ })).toBeTruthy();
   });
 });
