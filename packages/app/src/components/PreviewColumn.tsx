@@ -1,138 +1,44 @@
 import { useState } from "react";
-import type {
-  Diagnostic,
-  NodeMetadata,
-  Warning,
-  DeployBlockInfo,
-  DisplayMode,
-} from "@karasu-tools/core";
-import type { ActiveView } from "../state/app-reducer.js";
 import { DiagramTabBar } from "./DiagramTabBar.js";
 import { BreadcrumbBar } from "./BreadcrumbBar.js";
 import { PreviewPane } from "./PreviewPane.js";
 import { WarningPanel } from "./WarningPanel.js";
 import { ReferencePanel } from "./ReferencePanel.js";
 import { buildSvgExportFilename } from "../utils/build-svg-export-filename.js";
+import { usePreview } from "../state/preview-context.js";
 
-interface SystemViewProps {
-  svg: string;
-  diagnostics: Diagnostic[];
-  viewPath: string[];
-  breadcrumbItems: { id: string; label: string }[];
-  warnings: Warning[];
-  onBreadcrumbNavigate: (path: string[]) => void;
-  /** Called when user clicks the deploy button on a service node */
-  onDeployButtonClick?: (serviceId: string) => void;
-  /** Called when user clicks the team label on a service/domain node */
-  onTeamButtonClick?: (teamId: string) => void;
-  highlightedNodeId?: string | null;
-  onClearHighlight?: () => void;
-}
+export function PreviewColumn() {
+  const {
+    activeView,
+    hasDeployDiagram,
+    onActiveViewChange,
+    systemView,
+    deployView,
+    orgView,
+    nodeMetadata,
+    deployBlocks,
+    selectedDeployBlockId,
+    onDeployBlockChange,
+    displayMode,
+    onDisplayModeChange,
+    onExportSvg,
+    isAllLayersOpen,
+    onAllLayersToggle,
+    allLayersSvg,
+    orgAllLayersSvg,
+    drillDownSvg,
+    orgDrillDownSvg,
+    allViewsSvg,
+    previewFocused,
+    onPreviewFocusToggle,
+    onJumpToEditor,
+    isOrgTreeViewOpen,
+    onOrgTreeViewToggle,
+    orgTreeSvg,
+    onTeamToggle,
+    orgTreeExportSvg,
+  } = usePreview();
 
-interface DeployViewProps {
-  svg: string;
-  diagnostics: Diagnostic[];
-  warnings: Warning[];
-  highlightedNodeId?: string | null;
-  onClearHighlight?: () => void;
-  onContainerClick?: (containerId: string) => void;
-}
-
-interface OrgViewProps {
-  svg: string;
-  diagnostics: Diagnostic[];
-  viewPath: string[];
-  breadcrumbItems: { id: string; label: string }[];
-  warnings: Warning[];
-  onBreadcrumbNavigate: (path: string[]) => void;
-  highlightedNodeId?: string | null;
-  onClearHighlight?: () => void;
-  /** Called when user clicks an owned service link on a team node to cross-navigate to system view */
-  onOwnedServiceClick?: (serviceId: string) => void;
-}
-
-interface PreviewColumnProps {
-  activeView: ActiveView;
-  hasDeployDiagram: boolean;
-  onActiveViewChange: (view: ActiveView) => void;
-
-  systemView: SystemViewProps;
-  deployView: DeployViewProps;
-  orgView: OrgViewProps;
-
-  nodeMetadata: Map<string, NodeMetadata>;
-
-  deployBlocks?: DeployBlockInfo[];
-  selectedDeployBlockId?: string | null;
-  onDeployBlockChange?: (id: string) => void;
-
-  displayMode: DisplayMode;
-  onDisplayModeChange: (mode: DisplayMode) => void;
-  onExportSvg: (svg: string, filename: string) => void;
-
-  /** Show All Layers toggle: show all levels stacked in an iframe */
-  isAllLayersOpen: boolean;
-  onAllLayersToggle: () => void;
-  /** SVG with all system levels stacked vertically (for Show All Layers on system tab) */
-  allLayersSvg?: string;
-  /** SVG with all org levels stacked vertically (for Show All Layers on org tab) */
-  orgAllLayersSvg?: string;
-  /** SVG with CSS :target navigation for system drill-down export */
-  drillDownSvg?: string;
-  /** SVG with CSS :target navigation for org drill-down export */
-  orgDrillDownSvg?: string;
-  /** Bundled SVG with all views (system/deploy/org) and CSS-only tab navigation */
-  allViewsSvg?: string;
-
-  /** Whether the preview is in fullscreen focus mode */
-  previewFocused: boolean;
-  /** Toggle preview focus mode */
-  onPreviewFocusToggle: () => void;
-  /** Called when user clicks "Jump to editor" in the detail panel */
-  onJumpToEditor?: (nodeId: string) => void;
-
-  /** Org Tree View: whether tree view mode is active on the org tab */
-  isOrgTreeViewOpen: boolean;
-  /** Org Tree View: toggle tree view mode */
-  onOrgTreeViewToggle: () => void;
-  /** Org Tree View: rendered SVG for current expand state */
-  orgTreeSvg?: string;
-  /** Org Tree View: called when a team node is clicked to expand/collapse members */
-  onTeamToggle?: (teamId: string) => void;
-  /** Org Tree View: fully-expanded SVG for export */
-  orgTreeExportSvg?: string;
-}
-
-export function PreviewColumn({
-  activeView,
-  hasDeployDiagram,
-  onActiveViewChange,
-  systemView,
-  deployView,
-  orgView,
-  nodeMetadata,
-  deployBlocks,
-  selectedDeployBlockId,
-  onDeployBlockChange,
-  displayMode,
-  onDisplayModeChange,
-  onExportSvg,
-  isAllLayersOpen,
-  onAllLayersToggle,
-  allLayersSvg,
-  orgAllLayersSvg,
-  drillDownSvg,
-  orgDrillDownSvg,
-  allViewsSvg,
-  previewFocused,
-  onPreviewFocusToggle,
-  onJumpToEditor,
-  isOrgTreeViewOpen,
-  onOrgTreeViewToggle,
-  orgTreeSvg,
-  onTeamToggle,
-  orgTreeExportSvg,
-}: PreviewColumnProps) {
   const [refOpen, setRefOpen] = useState(false);
   const [exportMenuOpen, setExportMenuOpen] = useState(false);
 
