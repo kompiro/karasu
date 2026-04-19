@@ -118,7 +118,9 @@ describe("render — all-views (no --view)", () => {
 
     mockBuildAllViewsSvgProject.mockResolvedValue({
       svg: "",
-      diagnostics: [{ severity: "error", message: "unexpected token" }],
+      diagnostics: [
+        { severity: "error", code: "generic-text", params: { text: "unexpected token" } },
+      ],
     });
 
     const stderrSpy = vi.spyOn(process.stderr, "write").mockImplementation(() => true);
@@ -139,7 +141,9 @@ describe("render — all-views (no --view)", () => {
 
     mockBuildAllViewsSvgProject.mockResolvedValue({
       svg: "<svg>all</svg>",
-      diagnostics: [{ severity: "warning", message: "circular import detected" }],
+      diagnostics: [
+        { severity: "warning", code: "generic-text", params: { text: "circular import detected" } },
+      ],
     });
 
     const stderrSpy = vi.spyOn(process.stderr, "write").mockImplementation(() => true);

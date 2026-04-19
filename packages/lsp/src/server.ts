@@ -19,7 +19,7 @@ import {
   Range,
 } from "vscode-languageserver/node";
 import { TextDocument } from "vscode-languageserver-textdocument";
-import { Parser, StyleParser, format, FormatError } from "@karasu-tools/core";
+import { Parser, StyleParser, format, FormatError, formatDiagnostic } from "@karasu-tools/core";
 import {
   findNodeAtPosition,
   findRangeOfNode,
@@ -343,7 +343,7 @@ function validateDocument(document: TextDocument): void {
     return {
       severity: d.severity === "error" ? DiagnosticSeverity.Error : DiagnosticSeverity.Warning,
       range: { start, end },
-      message: d.message,
+      message: formatDiagnostic(d),
       source: "karasu",
     };
   });
