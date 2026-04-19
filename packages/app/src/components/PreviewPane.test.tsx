@@ -263,7 +263,7 @@ describe("PreviewPane", () => {
         <PreviewPane
           {...baseProps()}
           svg="<svg><text>stale diagram</text></svg>"
-          diagnostics={[{ severity: "error", message: "Syntax error" }]}
+          diagnostics={[{ severity: "error", code: "generic-text", params: { text: "Syntax error" } }]}
         />,
       );
 
@@ -277,7 +277,7 @@ describe("PreviewPane", () => {
         <PreviewPane
           {...baseProps()}
           svg=""
-          diagnostics={[{ severity: "error", message: "Syntax error" }]}
+          diagnostics={[{ severity: "error", code: "generic-text", params: { text: "Syntax error" } }]}
         />,
       );
 
@@ -290,7 +290,7 @@ describe("PreviewPane", () => {
         <PreviewPane
           {...baseProps()}
           svg="<svg><text>valid diagram</text></svg>"
-          diagnostics={[{ severity: "warning", message: "Some warning" }]}
+          diagnostics={[{ severity: "warning", code: "generic-text", params: { text: "Some warning" } }]}
         />,
       );
 

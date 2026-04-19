@@ -112,7 +112,7 @@ export function useOrgView(
           hadErrors.current = true;
           setState((prev) => ({
             ...prev,
-            orgDiagnostics: [{ severity: "error", message: "パース中にエラーが発生しました" }],
+            orgDiagnostics: [{ severity: "error", code: "app-org-parse-error", params: {} }],
           }));
         });
     }, DEBOUNCE_MS);
