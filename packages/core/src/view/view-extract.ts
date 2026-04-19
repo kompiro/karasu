@@ -663,7 +663,7 @@ export function extractView(
   // Determine the active system.
   // path[0] is the system ID when it matches a known system. Otherwise the
   // caller omitted the system prefix (e.g. drilling into a child shown at the
-  // multi-system root, including the "(Unassigned)" pseudo-system) — search
+  // multi-system root, including the "Unassigned" pseudo-system) — search
   // every system for a direct child whose id matches so the correct owning
   // system becomes the drill-down root.
   const systemNode = systems.find((s) => s.id === path[0]);

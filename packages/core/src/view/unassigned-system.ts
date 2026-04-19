@@ -4,7 +4,7 @@ import type { KrsFile, KrsNode, SystemNode } from "../types/ast.js";
 const UNASSIGNED_SYSTEM_ID = "__unassigned__";
 
 /** Label rendered in the SVG for the pseudo-system container. */
-const UNASSIGNED_SYSTEM_LABEL = "(Unassigned)";
+const UNASSIGNED_SYSTEM_LABEL = "Unassigned";
 
 /**
  * Build a synthetic `system` node that wraps every top-level `service` / `domain`
@@ -13,7 +13,7 @@ const UNASSIGNED_SYSTEM_LABEL = "(Unassigned)";
  * original systems list untouched.
  *
  * The synthetic node is what makes the renderer draw a dedicated frame labeled
- * "(Unassigned)" instead of merging orphans into a real system's area.
+ * "Unassigned" instead of merging orphans into a real system's area.
  */
 export function synthesizeUnassignedSystem(krsFile: KrsFile): SystemNode | null {
   const services = krsFile.services ?? [];

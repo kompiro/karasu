@@ -316,7 +316,7 @@ function _compileFromPreparedInput(
   // edgeStyles cache. Without this, derived edges fall back to defaultEdgeStyle.
   //
   // Top-level (unassigned) services/domains are wrapped in a synthesized
-  // "(Unassigned)" pseudo-system so they render in their own labeled frame
+  // "Unassigned" pseudo-system so they render in their own labeled frame
   // rather than being merged into systems[0]. extractView only needs the
   // systems list; the legacy unassigned* params are left empty for that reason.
   const effectiveSystems = withUnassignedSystem(krsFile);

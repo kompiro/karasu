@@ -520,7 +520,7 @@ export function layout(
 
   // Multi-system root view: lay out all systems side by side. The same path
   // also handles the single-system case when that system is the synthesized
-  // "(Unassigned)" pseudo-system, so it still gets its own labeled frame
+  // "Unassigned" pseudo-system, so it still gets its own labeled frame
   // instead of rendering as a frameless peer list.
   const isUnassignedOnly =
     viewSlice.systems.length === 1 && viewSlice.systems[0].id === "__unassigned__";
@@ -813,7 +813,7 @@ function layoutMultipleSystems(
     // Layout this system's children independently.
     // For the primary system (si === 0), use viewSlice.childNodes which includes
     // unassigned top-level domains merged in by extractView (legacy back-compat
-    // for direct callers that pre-date the "(Unassigned)" pseudo-system).
+    // for direct callers that pre-date the "Unassigned" pseudo-system).
     const rawNodes = si === 0 ? viewSlice.childNodes : sys.children;
     const nodeIds = rawNodes.map((n) => n.id);
     const idSet = new Set(nodeIds);

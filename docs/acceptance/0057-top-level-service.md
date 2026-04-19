@@ -38,9 +38,9 @@ Mirrors AT-0040 (top-level domain). See design doc
    ```
 2. Verify the SVG preview renders **two labeled frames side by side**:
    - `ECPlatform` frame containing `ECommerce`
-   - `(Unassigned)` frame containing `AuthStandalone` and `Payment`
+   - `Unassigned` frame containing `AuthStandalone` and `Payment`
 
-**Expected**: Orphan service and domain live in a shared `(Unassigned)` frame, clearly separated from `ECPlatform` so the viewer sees they are not members of that system.
+**Expected**: Orphan service and domain live in a shared `Unassigned` frame, clearly separated from `ECPlatform` so the viewer sees they are not members of that system.
 
 ### TC-2: Unassigned service warning displayed
 
@@ -64,11 +64,11 @@ Mirrors AT-0040 (top-level domain). See design doc
      usecase ManageOrders { label "注文管理" }
    }
    ```
-2. Verify the preview is not the "No diagram" placeholder and renders a single `(Unassigned)` frame containing `ECommerce`
+2. Verify the preview is not the "No diagram" placeholder and renders a single `Unassigned` frame containing `ECommerce`
 3. Click the `ECommerce` node to drill down
 
 **Expected**:
-- Root view shows the `ECommerce` service node inside the `(Unassigned)` frame
+- Root view shows the `ECommerce` service node inside the `Unassigned` frame
 - Drill-down into `ECommerce` shows the `ManageOrders` usecase
 
 ### TC-4: Services nested in a system do not emit unassigned-service warning

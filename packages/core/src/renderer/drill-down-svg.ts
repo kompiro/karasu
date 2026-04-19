@@ -98,7 +98,7 @@ export function buildDrillDownSvg(
       getSlice: (path) => extractView(effectiveSystems, path),
       hasContent: (slice) => slice.childNodes.length > 0 || slice.systems.length > 0,
       // At the multi-system root view we need every owning system's children
-      // (real + synthesized "(Unassigned)" pseudo-system) so drill-down pages
+      // (real + synthesized "Unassigned" pseudo-system) so drill-down pages
       // are produced for each. For deeper levels slice.systems is empty and
       // we fall back to the container's direct children.
       getChildren: (slice) =>

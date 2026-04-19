@@ -20,7 +20,7 @@ system ECPlatform {
     const pseudo = synthesizeUnassignedSystem(file);
     expect(pseudo).not.toBeNull();
     expect(pseudo!.id).toBe("__unassigned__");
-    expect(pseudo!.label).toBe("(Unassigned)");
+    expect(pseudo!.label).toBe("Unassigned");
     expect(pseudo!.kind).toBe("system");
     expect(pseudo!.children.map((c) => c.id)).toEqual(["Auth", "Billing"]);
   });
