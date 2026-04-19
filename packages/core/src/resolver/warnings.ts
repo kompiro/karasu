@@ -81,8 +81,10 @@ function detectUnassignedDomains(file: KrsFile): Warning[] {
 function detectUnassignedServices(file: KrsFile): Warning[] {
   return file.services.map((service) => ({
     kind: "unassigned-service" as const,
-    message: `service "${service.label ?? service.id}" is not assigned to any system`,
-    details: [],
+    params: {
+      serviceId: service.id,
+      ...(service.label ? { label: service.label } : {}),
+    },
     loc: service.loc,
   }));
 }

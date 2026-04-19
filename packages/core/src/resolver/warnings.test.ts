@@ -303,8 +303,10 @@ system ECPlatform {
     const warnings = analyze(file, [builtin]);
     const unassigned = warnings.filter((w) => w.kind === "unassigned-service");
     expect(unassigned).toHaveLength(2);
-    expect(unassigned[0].message).toBe('service "認証" is not assigned to any system');
-    expect(unassigned[1].message).toBe('service "課金" is not assigned to any system');
+    if (unassigned[0].kind !== "unassigned-service") throw new Error("kind mismatch");
+    if (unassigned[1].kind !== "unassigned-service") throw new Error("kind mismatch");
+    expect(unassigned[0].params).toEqual({ serviceId: "AuthStandalone", label: "認証" });
+    expect(unassigned[1].params).toEqual({ serviceId: "BillingStandalone", label: "課金" });
   });
 
   it("does not warn for services nested inside a system", () => {
