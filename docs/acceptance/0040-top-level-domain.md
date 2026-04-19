@@ -31,10 +31,12 @@ domains, and that they appear in the system view SVG.
      }
    }
    ```
-2. Verify the SVG preview shows **3 nodes**: ECommerce, Payment, Inventory
-3. Verify Payment and Inventory are rendered as domain-shaped nodes
+2. Verify the SVG preview renders **two labeled frames side by side**:
+   - `ECPlatform` frame containing `ECommerce`
+   - `(Unassigned)` frame containing `Payment` and `Inventory`
+3. Verify Payment and Inventory are rendered as domain-shaped nodes inside the `(Unassigned)` frame
 
-**Expected**: All three nodes are visible in the system view.
+**Expected**: Orphan domains live in their own `(Unassigned)` frame rather than being mixed into the real system's peer list, preserving the semantic that they are not part of `ECPlatform`.
 
 ### TC-2: Unassigned domain warning displayed
 
