@@ -28,10 +28,11 @@ export function WarningPanel({ warnings }: WarningPanelProps) {
       </div>
       {!collapsed && (
         <ul className="warning-list">
-          {warnings.map((w, idx) => {
+          {warnings.map((w) => {
             const { message, details } = formatWarning(w);
+            const locKey = w.loc ? `:${w.loc.start.offset}` : "";
             return (
-              <li key={`${w.kind}:${idx}:${message}`} className="warning-item">
+              <li key={`${w.kind}:${message}${locKey}`} className="warning-item">
                 <span className="warning-icon warning">{WARNING_ICONS[w.kind] ?? "\u26A0"}</span>
                 {w.loc ? `Line ${w.loc.start.line}: ${message}` : message}
                 {details.length > 0 && (

@@ -372,10 +372,9 @@ system S {
     const warnings = analyze(file, []);
     const cyclic = warnings.filter((w) => w.kind === "cyclic-dependency");
     expect(cyclic).toHaveLength(1);
-    expect(cyclic[0].kind).toBe("cyclic-dependency");
-    if (cyclic[0].kind === "cyclic-dependency") {
-      expect(cyclic[0].params.cyclePath).toEqual(["A", "A"]);
-    }
+    const w = cyclic[0];
+    if (w.kind !== "cyclic-dependency") throw new Error("expected cyclic-dependency");
+    expect(w.params.cyclePath).toEqual(["A", "A"]);
   });
 
   it("marks self-reference edge as cyclic", () => {
@@ -404,10 +403,10 @@ system S {
     const warnings = analyze(file, []);
     const cyclic = warnings.filter((w) => w.kind === "cyclic-dependency");
     expect(cyclic).toHaveLength(1);
-    if (cyclic[0].kind === "cyclic-dependency") {
-      expect(cyclic[0].params.cyclePath).toContain("A");
-      expect(cyclic[0].params.cyclePath).toContain("B");
-    }
+    const w = cyclic[0];
+    if (w.kind !== "cyclic-dependency") throw new Error("expected cyclic-dependency");
+    expect(w.params.cyclePath).toContain("A");
+    expect(w.params.cyclePath).toContain("B");
   });
 
   it("marks both edges in a direct cycle as cyclic", () => {
@@ -440,11 +439,11 @@ system S {
     const warnings = analyze(file, []);
     const cyclic = warnings.filter((w) => w.kind === "cyclic-dependency");
     expect(cyclic).toHaveLength(1);
-    if (cyclic[0].kind === "cyclic-dependency") {
-      expect(cyclic[0].params.cyclePath).toContain("A");
-      expect(cyclic[0].params.cyclePath).toContain("B");
-      expect(cyclic[0].params.cyclePath).toContain("C");
-    }
+    const w = cyclic[0];
+    if (w.kind !== "cyclic-dependency") throw new Error("expected cyclic-dependency");
+    expect(w.params.cyclePath).toContain("A");
+    expect(w.params.cyclePath).toContain("B");
+    expect(w.params.cyclePath).toContain("C");
   });
 
   it("marks all three edges in an indirect cycle as cyclic", () => {

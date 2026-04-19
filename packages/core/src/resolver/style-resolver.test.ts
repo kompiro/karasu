@@ -400,10 +400,10 @@ describe("analyze", () => {
     });
     const warnings = analyze(file, []);
     const dispersal = warnings.find((w) => w.kind === "domain-dispersal");
-    expect(dispersal).toBeDefined();
-    if (dispersal?.kind === "domain-dispersal") {
-      expect(dispersal.params.domainId).toBe("Order");
+    if (!dispersal || dispersal.kind !== "domain-dispersal") {
+      throw new Error("expected a domain-dispersal warning");
     }
+    expect(dispersal.params.domainId).toBe("Order");
   });
 
   it("detects missing runtime", () => {
