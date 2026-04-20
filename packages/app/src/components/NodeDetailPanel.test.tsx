@@ -1,9 +1,15 @@
 // @vitest-environment jsdom
 import { describe, it, expect, vi, afterEach, beforeEach } from "vitest";
-import { render, fireEvent, cleanup } from "@testing-library/react";
+import { render as rtlRender, fireEvent, cleanup } from "@testing-library/react";
+import type { ReactElement } from "react";
 import { NodeDetailPanel } from "./NodeDetailPanel.js";
+import { LocaleProvider } from "../i18n/index.js";
 import type { NodeMetadata } from "@karasu-tools/core";
 import { clearRegistry, registerBuiltinShapes, loadAndRegisterIcon } from "@karasu-tools/core";
+
+function render(ui: ReactElement, initialLocale: "en" | "ja" = "en") {
+  return rtlRender(<LocaleProvider initialLocale={initialLocale}>{ui}</LocaleProvider>);
+}
 
 // Minimal icon SVG with krs-pictogram for testing pictogram rendering
 const MINIMAL_ICON_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 100">
@@ -95,7 +101,7 @@ describe("NodeDetailPanel", () => {
         onNavigateToDeploy={onNavigateToDeploy}
       />,
     );
-    const btn = getByText(/Deploy 図で確認/);
+    const btn = getByText(/View in Deploy diagram/);
     fireEvent.click(btn);
     expect(onNavigateToDeploy).toHaveBeenCalledWith("test-node");
     expect(onClose).toHaveBeenCalled();
@@ -105,7 +111,7 @@ describe("NodeDetailPanel", () => {
     const { queryByText } = render(
       <NodeDetailPanel {...baseProps({ hasDeployContainer: false })} />,
     );
-    expect(queryByText(/Deploy 図で確認/)).toBeNull();
+    expect(queryByText(/View in Deploy diagram/)).toBeNull();
   });
 
   it("renders org navigation button when team is set and onNavigateToOrg is provided", () => {

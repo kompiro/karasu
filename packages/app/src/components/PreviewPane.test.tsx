@@ -1,10 +1,17 @@
 // @vitest-environment jsdom
 import { describe, it, expect, vi, beforeAll, afterEach } from "vitest";
-import { render, fireEvent, cleanup } from "@testing-library/react";
+import { render as rtlRender, fireEvent, cleanup } from "@testing-library/react";
+import type { ReactElement } from "react";
 import { PreviewPane } from "./PreviewPane.js";
+import { LocaleProvider } from "../i18n/index.js";
 import type { NodeMetadata } from "@karasu-tools/core";
 
 afterEach(cleanup);
+
+// PreviewPane's NodeDetailPanel sub-component calls useTranslation, so wrap.
+function render(ui: ReactElement, initialLocale: "en" | "ja" = "en") {
+  return rtlRender(<LocaleProvider initialLocale={initialLocale}>{ui}</LocaleProvider>);
+}
 
 // jsdom does not implement CSS.escape
 beforeAll(() => {

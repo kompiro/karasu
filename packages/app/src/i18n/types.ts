@@ -69,6 +69,24 @@ export type Translations = {
   "chat.patch.reject.button": string;
   "chat.apiKeySetup.message": string;
   "chat.apiKeySetup.goToSettings": string;
+
+  // Chat error messages (Phase C5) — surfaced in the chat log when an
+  // Anthropic API call fails
+  "chat.error.auth": string;
+  "chat.error.rateLimit": string;
+  "chat.error.server": string;
+
+  // NodeDetailPanel (Phase C5)
+  "nodeDetail.close": string;
+  "nodeDetail.links.title": string;
+  "nodeDetail.openDeployView": string;
+  "nodeDetail.jumpToEditor": string;
+
+  // DiagramTabBar (Phase C5)
+  "diagramTabBar.deploy.unavailableTitle": string;
+
+  // ReferencePanel (Phase C5)
+  "referencePanel.unsupportedMessage": string;
 };
 
 /**
