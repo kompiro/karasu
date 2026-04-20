@@ -45,16 +45,42 @@ const KIND_OVERRIDES: Partial<Record<NodeKind, DrawioStyle>> = {
   artifact: { fillColor: "#ede7f6", strokeColor: "#4527a0" },
 };
 
+export interface CellValueInput {
+  label: string;
+  kind?: NodeKind;
+  annotations?: string[];
+  tags?: string[];
+}
+
 /**
- * Prefix the cell value with a UML-style stereotype so the kind is visible
- * in the rendered diagram, not just as a custom attribute. Uses html=1 so
- * the stereotype line can be styled smaller and grayer than the label.
+ * Build the HTML cell value shown in draw.io. Layers (top to bottom):
+ *   1. `«kind»` stereotype — small gray text
+ *   2. `@annotation` list — small orange text (annotations describe lifecycle:
+ *      deprecated / external / migration_target / ...)
+ *   3. `#tag` list — small blue text (tags are free-form classification)
+ *   4. the node label itself, at normal size
+ *
+ * Values are later XML-escaped by renderAttrs; the HTML here is decoded back
+ * by draw.io and rendered because html=1 is set in the cell style.
  */
-export function formatCellValue(label: string, kind?: NodeKind): string {
-  if (!kind) return label;
-  // Values are later XML-escaped by renderAttrs; we emit HTML that draw.io
-  // renders when html=1 is set in the style.
-  return `<span style="font-size:10px;color:#888">«${kind}»</span><br/>${label}`;
+export function formatCellValue(input: CellValueInput | string, kind?: NodeKind): string {
+  // Back-compat string signature (tests and simple callers): formatCellValue("Label", "service")
+  const normalized: CellValueInput = typeof input === "string" ? { label: input, kind } : input;
+
+  const lines: string[] = [];
+  if (normalized.kind) {
+    lines.push(`<span style="font-size:10px;color:#888">«${normalized.kind}»</span>`);
+  }
+  if (normalized.annotations && normalized.annotations.length > 0) {
+    const joined = normalized.annotations.map((a) => `@${a}`).join(" ");
+    lines.push(`<span style="font-size:10px;color:#e65100">${joined}</span>`);
+  }
+  if (normalized.tags && normalized.tags.length > 0) {
+    const joined = normalized.tags.map((t) => `#${t}`).join(" ");
+    lines.push(`<span style="font-size:10px;color:#1565c0">${joined}</span>`);
+  }
+  lines.push(normalized.label);
+  return lines.join("<br/>");
 }
 
 const DEFAULT_NODE_STYLE: DrawioStyle = {

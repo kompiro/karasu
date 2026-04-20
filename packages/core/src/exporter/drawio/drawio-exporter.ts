@@ -10,6 +10,12 @@ import {
   type NodeKind,
 } from "./drawio-style.js";
 
+/** Extra per-id metadata that is not carried by LayoutResult itself. */
+export interface DrawioNodeMeta {
+  tags?: string[];
+  annotations?: string[];
+}
+
 /**
  * A page (tab) in the exported .drawio file. Each page is a single rendered view.
  */
@@ -19,6 +25,12 @@ export interface DrawioPage {
   /** Human-readable tab label (e.g. "System", "Deploy", "Service: checkout"). */
   name: string;
   layout: LayoutResult;
+  /**
+   * Optional lookup keyed by node or container id, providing tags and
+   * annotations for cells whose LayoutNode/ContainerRect does not carry them.
+   * Tags drive the label badges; annotations supplement LayoutNode.annotations.
+   */
+  metadata?: Map<string, DrawioNodeMeta>;
 }
 
 export interface DrawioExportInput {
@@ -99,17 +111,22 @@ function buildCellsForPage(page: DrawioPage): Cell[] {
     (a, b) => b.width * b.height - a.width * a.height,
   );
 
-  const containerParentIds = new Map<string, string>();
+  const metadata = page.metadata ?? new Map<string, DrawioNodeMeta>();
+
   for (const container of sortedContainers) {
     const parentContainer = findEnclosingContainer(container, sortedContainers);
     const parentId = parentContainer ? cellId(parentContainer.id) : rootParent;
-    containerParentIds.set(container.id, parentId);
 
+    const meta = metadata.get(container.id);
     const style = buildContainerStyle({ ghost: container.ghost });
     cells.push({
       id: cellId(container.id),
       parent: parentId,
-      value: container.label,
+      value: formatCellValue({
+        label: container.label,
+        annotations: meta?.annotations,
+        tags: meta?.tags,
+      }),
       style,
       vertex: true,
       geometry: {
@@ -118,10 +135,7 @@ function buildCellsForPage(page: DrawioPage): Cell[] {
         width: container.width,
         height: container.height,
       },
-      customAttrs: {
-        "data-karasu-id": container.id,
-        "data-karasu-kind": "container",
-      },
+      customAttrs: buildContainerCustomAttrs(container.id, meta),
     });
   }
 
@@ -144,18 +158,21 @@ function buildCellsForPage(page: DrawioPage): Cell[] {
         : { x: node.x, y: node.y, width: node.width, height: node.height };
 
     const nodeKind = node.kind as NodeKind;
+    const meta = metadata.get(node.id);
+    const annotations = node.annotations ?? meta?.annotations;
+    const tags = meta?.tags;
     cells.push({
       id: cellId(node.id),
       parent: parentContainerId,
-      value: formatCellValue(node.label, nodeKind),
+      value: formatCellValue({ label: node.label, kind: nodeKind, annotations, tags }),
       style: buildNodeStyle({
         kind: nodeKind,
-        annotations: node.annotations,
+        annotations,
         ghost: node.ghost,
       }),
       vertex: true,
       geometry: geom,
-      customAttrs: buildNodeCustomAttrs(node),
+      customAttrs: buildNodeCustomAttrs(node, tags),
     });
   }
 
@@ -178,7 +195,7 @@ function buildCellsForPage(page: DrawioPage): Cell[] {
   return cells;
 }
 
-function buildNodeCustomAttrs(node: LayoutNode): Record<string, AttrValue> {
+function buildNodeCustomAttrs(node: LayoutNode, tags?: string[]): Record<string, AttrValue> {
   const attrs: Record<string, AttrValue> = {
     "data-karasu-id": node.id,
     "data-karasu-kind": node.kind,
@@ -186,8 +203,28 @@ function buildNodeCustomAttrs(node: LayoutNode): Record<string, AttrValue> {
   if (node.annotations && node.annotations.length > 0) {
     attrs["data-karasu-annotations"] = node.annotations.join(",");
   }
+  if (tags && tags.length > 0) {
+    attrs["data-karasu-tags"] = tags.join(",");
+  }
   if (node.ghost) {
     attrs["data-karasu-ghost"] = "1";
+  }
+  return attrs;
+}
+
+function buildContainerCustomAttrs(
+  id: string,
+  meta: DrawioNodeMeta | undefined,
+): Record<string, AttrValue> {
+  const attrs: Record<string, AttrValue> = {
+    "data-karasu-id": id,
+    "data-karasu-kind": "container",
+  };
+  if (meta?.annotations && meta.annotations.length > 0) {
+    attrs["data-karasu-annotations"] = meta.annotations.join(",");
+  }
+  if (meta?.tags && meta.tags.length > 0) {
+    attrs["data-karasu-tags"] = meta.tags.join(",");
   }
   return attrs;
 }

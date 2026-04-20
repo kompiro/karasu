@@ -2,14 +2,31 @@ import type { FileSystemProvider } from "../../fs/types.js";
 import { ImportResolver } from "../../fs/import-resolver.js";
 import type { Diagnostic } from "../../types/ast.js";
 import type { Warning } from "../../types/warnings.js";
-import type { KrsFile } from "../../types/ast.js";
+import type { KrsFile, KrsNode } from "../../types/ast.js";
 import { extractView } from "../../view/view-extract.js";
 import { extractDeployView } from "../../view/deploy-view-extract.js";
 import { layout } from "../../renderer/layout.js";
 import { layoutDeploy } from "../../renderer/deploy-layout.js";
 import { analyze } from "../../resolver/warnings.js";
 import { getBuiltinStyleSheet } from "../../builtins/default-style.js";
-import { exportDrawio, type DrawioPage } from "./drawio-exporter.js";
+import { exportDrawio, type DrawioNodeMeta, type DrawioPage } from "./drawio-exporter.js";
+
+/**
+ * Walk the logical node tree and collect tags/annotations for every node id.
+ * Used so the draw.io exporter can show badges on both leaf nodes (LayoutNode)
+ * and containers (ContainerRect) that do not carry these fields directly.
+ */
+function collectLogicalMeta(nodes: KrsNode[], into: Map<string, DrawioNodeMeta>): void {
+  for (const node of nodes) {
+    into.set(node.id, {
+      tags: node.tags.length > 0 ? [...node.tags] : undefined,
+      annotations: node.annotations.length > 0 ? [...node.annotations] : undefined,
+    });
+    if (node.children.length > 0) {
+      collectLogicalMeta(node.children, into);
+    }
+  }
+}
 
 /** Which karasu views to emit as draw.io pages. Defaults to all supported views. */
 export type DrawioViewSelection = "all" | "system" | "deploy";
@@ -64,12 +81,18 @@ function buildSystemPage(krsFile: KrsFile): DrawioPage | null {
   if (krsFile.systems.length === 0) return null;
   const slice = extractView(krsFile.systems, [], krsFile.domains);
   const layoutResult = layout(slice, krsFile.ownerIndex);
-  return { id: "system", name: "System", layout: layoutResult };
+  const metadata = new Map<string, DrawioNodeMeta>();
+  collectLogicalMeta(krsFile.systems, metadata);
+  return { id: "system", name: "System", layout: layoutResult, metadata };
 }
 
 function buildDeployPage(krsFile: KrsFile): DrawioPage | null {
   if (krsFile.deploys.length === 0) return null;
   const slice = extractDeployView(krsFile.deploys, krsFile.systems);
   const layoutResult = layoutDeploy(slice);
-  return { id: "deploy", name: "Deploy", layout: layoutResult };
+  const metadata = new Map<string, DrawioNodeMeta>();
+  // Deploy containers are keyed by the realized service id, so the logical
+  // tree provides their tags/annotations.
+  collectLogicalMeta(krsFile.systems, metadata);
+  return { id: "deploy", name: "Deploy", layout: layoutResult, metadata };
 }

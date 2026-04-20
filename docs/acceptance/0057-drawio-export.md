@@ -55,6 +55,10 @@ node packages/cli/dist/index.js render examples/ec-platform/05-multifile/system.
 - [ ] `@external` が付いたノードは灰色・破線で描画される
 - [ ] `@deprecated` が付いたノードは赤系ストロークと斜体ラベルで描画される
 - [ ] `@migration_target` が付いたノードはオレンジ系の強調スタイルになる
+- [ ] 付与された全ての annotation が `@name` の小さなオレンジ文字として
+      ラベル上に表示される（スタイル未定義のカスタム annotation も含む）
+- [ ] tag が付いているノードで、`#name` の小さな青文字ラベルが表示される
+      （例: `examples/migration/` の `#human` タグ）
 
 ### 5. 単一 view の指定
 

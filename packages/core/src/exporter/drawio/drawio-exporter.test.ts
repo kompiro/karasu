@@ -195,6 +195,57 @@ describe("exportDrawio", () => {
     expect(xml).toContain("A &amp; B &lt;c&gt;");
   });
 
+  it("includes tags and annotations from metadata in label and data attrs", () => {
+    const layout = makeLayout({
+      nodes: new Map([
+        [
+          "o",
+          {
+            kind: "service",
+            id: "o",
+            label: "Orders",
+            annotations: ["deprecated"],
+            properties: { description: undefined, tags: [], links: [] },
+            linkCount: 0,
+            hasChildren: false,
+            hasDescription: false,
+            x: 0,
+            y: 0,
+            width: 100,
+            height: 50,
+          },
+        ],
+      ]),
+    });
+    const metadata = new Map([["o", { tags: ["payment", "pii"], annotations: ["deprecated"] }]]);
+    const xml = exportDrawio({
+      pages: [{ id: "p", name: "P", layout, metadata }],
+    });
+    // Stereotype, annotation badge, and tag badge all appear in the label (xml-escaped).
+    expect(xml).toContain("«service»");
+    expect(xml).toContain("@deprecated");
+    expect(xml).toContain("#payment");
+    expect(xml).toContain("#pii");
+    // And preserved on the cell for tooling round-trip.
+    expect(xml).toContain(`data-karasu-tags="payment,pii"`);
+    expect(xml).toContain(`data-karasu-annotations="deprecated"`);
+  });
+
+  it("surfaces container tags/annotations supplied via metadata", () => {
+    const layout = makeLayout({
+      containers: [
+        { id: "svc", label: "Checkout", x: 0, y: 0, width: 200, height: 200, ghost: false },
+      ],
+    });
+    const metadata = new Map([["svc", { tags: ["core"], annotations: ["migration_target"] }]]);
+    const xml = exportDrawio({
+      pages: [{ id: "p", name: "P", layout, metadata }],
+    });
+    expect(xml).toContain("#core");
+    expect(xml).toContain("@migration_target");
+    expect(xml).toContain(`data-karasu-tags="core"`);
+  });
+
   it("applies kind-specific shape overrides (user → umlActor, database → cylinder3)", () => {
     const layout = makeLayout({
       nodes: new Map([
