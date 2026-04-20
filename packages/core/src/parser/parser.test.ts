@@ -1843,4 +1843,41 @@ system ECPlatform {
       expect(system.children[3].kind).toBe("service");
     });
   });
+
+  describe("validateOwnsReferences with infra-only files", () => {
+    it("emits owns-target-not-found when only top-level database exists and owns references a missing id", () => {
+      const result = Parser.parse(`
+database OrderDB {}
+
+organization Corp {
+  team backend {
+    owns OrderDB
+    owns NonExistentDB
+  }
+}
+      `);
+      const warnings = result.diagnostics.filter(
+        (d) => d.severity === "warning" && d.code === "owns-target-not-found",
+      );
+      expect(warnings).toHaveLength(1);
+      if (warnings[0].code !== "owns-target-not-found") throw new Error("code mismatch");
+      expect(warnings[0].params.ownedId).toBe("NonExistentDB");
+    });
+
+    it("does not emit owns-target-not-found when owns correctly references a top-level database", () => {
+      const result = Parser.parse(`
+database OrderDB {}
+
+organization Corp {
+  team backend {
+    owns OrderDB
+  }
+}
+      `);
+      const warnings = result.diagnostics.filter(
+        (d) => d.severity === "warning" && d.code === "owns-target-not-found",
+      );
+      expect(warnings).toHaveLength(0);
+    });
+  });
 });
