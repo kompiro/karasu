@@ -49,21 +49,46 @@ describe("CLI program", () => {
 
   it("render passes file to render()", async () => {
     await program.parseAsync(["node", "karasu", "render", "index.krs"]);
-    expect(mockRender).toHaveBeenCalledWith("index.krs", { output: undefined, view: undefined });
+    expect(mockRender).toHaveBeenCalledWith("index.krs", {
+      output: undefined,
+      view: undefined,
+      format: "svg",
+    });
   });
 
   it("render passes --output option", async () => {
     await program.parseAsync(["node", "karasu", "render", "index.krs", "--output", "out.svg"]);
-    expect(mockRender).toHaveBeenCalledWith("index.krs", { output: "out.svg", view: undefined });
+    expect(mockRender).toHaveBeenCalledWith("index.krs", {
+      output: "out.svg",
+      view: undefined,
+      format: "svg",
+    });
   });
 
   it("render passes -o shorthand", async () => {
     await program.parseAsync(["node", "karasu", "render", "index.krs", "-o", "out.svg"]);
-    expect(mockRender).toHaveBeenCalledWith("index.krs", { output: "out.svg", view: undefined });
+    expect(mockRender).toHaveBeenCalledWith("index.krs", {
+      output: "out.svg",
+      view: undefined,
+      format: "svg",
+    });
   });
 
   it("render passes --view option", async () => {
     await program.parseAsync(["node", "karasu", "render", "index.krs", "--view", "deploy"]);
-    expect(mockRender).toHaveBeenCalledWith("index.krs", { output: undefined, view: "deploy" });
+    expect(mockRender).toHaveBeenCalledWith("index.krs", {
+      output: undefined,
+      view: "deploy",
+      format: "svg",
+    });
+  });
+
+  it("render passes --format drawio option", async () => {
+    await program.parseAsync(["node", "karasu", "render", "index.krs", "--format", "drawio"]);
+    expect(mockRender).toHaveBeenCalledWith("index.krs", {
+      output: undefined,
+      view: undefined,
+      format: "drawio",
+    });
   });
 });

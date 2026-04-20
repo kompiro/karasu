@@ -11,3 +11,6 @@ docs/qa/
 
 # Docs review reports (generated, not committed)
 docs/review/
+
+# Draw.io export output (generated via `karasu render --format drawio`)
+*.drawio

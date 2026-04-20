@@ -1,8 +1,116 @@
 # draw.io (mxGraph XML) Export — a Layout Escape Hatch
 
 - **日付**: 2026-04-19
-- **ステータス**: 検討中
+- **ステータス**: 実装済み (system drill-down 各レイヤ / deploy / org すべてのページ対応)
 - **関連**: #649, #645 (non-goals), `docs/concepts.md`
+
+> **ページ展開**: draw.io ファイルには以下のページが含まれる。
+>
+> - `system` — 全 system をトップレベルで束ねた view
+> - `system:<path>` — 各 system / service / domain / usecase のドリルダウン view
+>   （子を持つコンテナ種のみ。例: `system:ECPlatform.Checkout.Order`）
+> - `deploy` — 物理配置 view
+> - `org` — 組織 view。`organization` が複数あれば `org:<id>` で分割
+>
+> org 用の `LayoutResult` は主 SVG パイプラインと共有せず、drawio 専用の簡易
+> ツリーレイアウト（`exporter/drawio/org-layout.ts`）で生成する。理由は
+> org-renderer が座標を内部にしか保持せず、切り出すよりコピーした方が小さいため。
+
+## mxGraph XML とは（調査メモ）
+
+`.drawio` ファイルの中身は **mxGraph XML** フォーマット。`mxGraph` は
+JGraph Ltd（draw.io / diagrams.net の作者）が作った JavaScript ダイアグラム
+ライブラリ起源のスキーマで、本体ライブラリは 2020 年にアーカイブ済み、
+fork の [maxGraph](https://github.com/maxGraph/maxGraph) に引き継がれている。
+XML スキーマはほぼ互換。
+
+**実用上の消費者はほぼ draw.io 一強**:
+
+- draw.io Desktop、diagrams.net Web
+- VS Code `Draw.io Integration` 拡張
+- Confluence / Jira の draw.io プラグイン
+- Notion / GitBook などの draw.io 埋め込み
+- IntelliJ の Diagrams.net plugin
+
+他ツール互換性:
+
+- Lucidchart は mxGraph/drawio インポートを一応サポート（レイアウト再計算あり、スタイル劣化）
+- Visio は直接読めないが draw.io 経由で `.vsdx` に書き出し可能
+- Mermaid / PlantUML 系は非対応
+
+つまり **「mxGraph XML ≈ draw.io のファイル形式」** と考えてよい。
+karasu の「レイアウト調整の逃げ道」としての位置付けは draw.io エコシステム全体に届く。
+他ツール（Graphviz DOT、PlantUML 等）への出力が必要になった場合は、
+mxGraph を経由せず別エクスポーターを追加する方が筋が良い。
+
+### 変換方式（SVG 経由ではない）
+
+SVG → mxGraph の変換ではなく、karasu 内部の `LayoutResult` から **直接**
+mxGraph XML を生成する。SVG と draw.io は同じ `LayoutResult` を消費する姉妹パス:
+
+```
+.krs → Parser → KrsFile (AST)
+  └─ extractView / extractDeployView → ViewSlice
+       └─ layout() / layoutDeploy() → LayoutResult { nodes, containers, edges }
+            ├── SVG path: svg-renderer → <svg>
+            └── drawio path: drawio-exporter → <mxfile>
+```
+
+SVG 経由にしない理由:
+
+- SVG は視覚表現に最適化された形式で、意味的情報（どのノードがどのサービスに属するか等）が失われている
+- draw.io の `mxCell` は `parent` 属性でネスト構造を表現するため、karasu の container/node ツリーを直接マッピングできる
+- SVG パーサを通すと二重変換になりロスが増える
+
+### mxGraph XML の構造（実装で使う部分）
+
+```xml
+<mxfile host="karasu" type="export">
+  <diagram id="system" name="System">
+    <mxGraphModel dx="..." dy="..." grid="1" ...>
+      <root>
+        <mxCell id="0" />                             <!-- root（mxGraph 固定） -->
+        <mxCell id="1" parent="0" />                  <!-- default layer（固定） -->
+
+        <!-- コンテナ（group cell） -->
+        <mxCell id="svc-checkout" value="Checkout"
+                style="rounded=0;container=1;collapsible=0;..."
+                parent="1" vertex="1"
+                data-karasu-id="checkout" data-karasu-kind="container">
+          <mxGeometry x="..." y="..." width="..." height="..." as="geometry" />
+        </mxCell>
+
+        <!-- ノード（vertex cell、親が container の場合 geometry は親相対） -->
+        <mxCell id="order" value="Order"
+                style="rounded=1;fillColor=#ffffff;..."
+                parent="svc-checkout" vertex="1"
+                data-karasu-id="order" data-karasu-kind="domain">
+          <mxGeometry x="..." y="..." width="..." height="..." as="geometry" />
+        </mxCell>
+
+        <!-- エッジ -->
+        <mxCell id="edge-0" value="creates"
+                style="edgeStyle=orthogonalEdgeStyle;endArrow=classic;..."
+                parent="1" edge="1" source="order" target="payment"
+                data-karasu-edge-from="order" data-karasu-edge-to="payment">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+  <!-- 別ページ（deploy view 等）は <diagram> を追加 -->
+</mxfile>
+```
+
+押さえどころ:
+
+- `mxCell id="0"` / `id="1"` は mxGraph 固定の root / default-layer。全 cell は最終的に `parent="0"` に辿り着く
+- `vertex="1"` / `edge="1"` で種別を区別
+- `style` は `key=value;key=value` のフラット文字列（CSS 風）。先頭にベア token を置くと shape 名になる（例: `ellipse;fillColor=...`）
+- コンテナは `style` に `container=1` を入れるだけで group 扱いになり、中の cell は `parent` 属性で参照する
+- container 内の cell の `mxGeometry x/y` は **親相対** になる点に注意（実装では container 原点を引いて格納）
+- カスタム属性（`data-karasu-*`）は mxCell 要素に任意の XML 属性として付けてよい。draw.io は保持して読み書きしてくれる
+- マルチページは `<diagram>` を並べるだけ（ネイティブ機能）
 
 ## 背景・課題
 
@@ -113,6 +221,33 @@ karasu render <file> [--format svg|drawio] [--view system|deploy|org] [-o <out>]
 | ghost ノード | スタイルで破線・薄色 | `dashed=1;opacity=60` 等 |
 | annotation (external, deprecated, migration_target) | style 属性 | 初期セットのみ対応 |
 | karasu ID, annotations | `mxCell` のカスタム属性 (`data-karasu-id`, `data-karasu-annotations`) | 将来の round-trip 検討余地 |
+
+### kind の可視化（ステレオタイプ + shape/色）
+
+ノードの種類（`service` / `domain` / `user` / `database` / `lambda` ...）が
+draw.io 上でぱっと見て判別できるように、2 系統の可視化を併用する:
+
+1. **ラベルに UML 風ステレオタイプを前置**: `«service»` のような小さな灰文字を
+   ラベル上に追加する。value は HTML として埋め込む（`html=1` が style に入っている）。
+2. **kind に応じた shape / fillColor**:
+   - 論理: `user` → `umlActor`、`usecase` → `ellipse`、`resource` → `document`、
+     `database` / `table` / `bucket` / `storage` → `cylinder3`、`queue` → `flowchart.delay`
+   - 残りの論理ノード（`system` / `service` / `domain` / `queue-item`）は rounded rect のまま fillColor で差別化
+   - デプロイ: 全て rounded rect。`oci` / `war` / `jar` / `artifact` / `lambda` / `function` / `assets` / `job` を色で区別
+
+annotation による上書き（`deprecated` → 赤枠 等）は kind スタイルよりあとに適用する。
+fill を設定しない annotation（`deprecated` など）では kind 由来の fill が維持される。
+
+さらに、ノードとコンテナのラベルには **全ての annotation と tag を小さなバッジ**として
+表示する（stereotype の下に、kind スタイルとは独立して）:
+
+- `@annotation` 群（オレンジ）: `@deprecated` `@external` `@migration_target` など全て
+  — スタイル未定義のカスタム annotation も含めてテキスト表示される
+- `#tag` 群（青）: `#human` `#pii` `#core` など全て
+
+tag は karasu 側にスタイル意味を持たせていないためテキスト表示のみ、
+annotation は「ラベル」と「スタイル」の両方に効くという役割分担。
+`data-karasu-tags` / `data-karasu-annotations` 属性はどちらもセルに残る。
 
 ### アノテーション → スタイル（初期セット）
 

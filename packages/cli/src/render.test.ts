@@ -4,10 +4,13 @@ import { join } from "node:path";
 import { tmpdir } from "node:os";
 
 // Use vi.hoisted() so mock functions are initialized before vi.mock hoisting
-const { mockBuildAllViewsSvgProject, mockCompileProject } = vi.hoisted(() => ({
-  mockBuildAllViewsSvgProject: vi.fn<() => Promise<unknown>>(),
-  mockCompileProject: vi.fn<() => Promise<unknown>>(),
-}));
+const { mockBuildAllViewsSvgProject, mockCompileProject, mockBuildDrawioProject } = vi.hoisted(
+  () => ({
+    mockBuildAllViewsSvgProject: vi.fn<() => Promise<unknown>>(),
+    mockCompileProject: vi.fn<() => Promise<unknown>>(),
+    mockBuildDrawioProject: vi.fn<() => Promise<unknown>>(),
+  }),
+);
 
 vi.mock("@karasu-tools/core", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@karasu-tools/core")>();
@@ -15,6 +18,7 @@ vi.mock("@karasu-tools/core", async (importOriginal) => {
     ...actual,
     buildAllViewsSvgProject: mockBuildAllViewsSvgProject,
     compileProject: mockCompileProject,
+    buildDrawioProject: mockBuildDrawioProject,
   };
 });
 
@@ -28,6 +32,7 @@ beforeEach(async () => {
   tmpDir = await mkdtemp(join(tmpdir(), "karasu-render-test-"));
   mockBuildAllViewsSvgProject.mockReset();
   mockCompileProject.mockReset();
+  mockBuildDrawioProject.mockReset();
 });
 
 afterEach(async () => {
@@ -228,5 +233,83 @@ describe("render — --view system", () => {
     await render(filePath, { view: "system" });
 
     expect(stderrSpy.mock.calls.some((args) => String(args[0]).includes("Warning"))).toBe(true);
+  });
+});
+
+// ── render: --format drawio ───────────────────────────────────────────────────
+
+describe("render — --format drawio", () => {
+  it("calls buildDrawioProject with view:all when --view is omitted", async () => {
+    const filePath = join(tmpDir, "index.krs");
+    await writeFile(filePath, "system { }", "utf-8");
+
+    mockBuildDrawioProject.mockResolvedValue({
+      xml: "<mxfile></mxfile>",
+      diagnostics: [],
+      warnings: [],
+    });
+    const stdoutSpy = vi.spyOn(process.stdout, "write").mockImplementation(() => true);
+
+    await render(filePath, { format: "drawio" });
+
+    expect(mockBuildDrawioProject).toHaveBeenCalledWith(
+      expect.stringContaining("index.krs"),
+      expect.any(Object),
+      { view: "all" },
+    );
+    expect(stdoutSpy).toHaveBeenCalledWith("<mxfile></mxfile>");
+  });
+
+  it("passes system/deploy view narrowing through to buildDrawioProject", async () => {
+    const filePath = join(tmpDir, "index.krs");
+    await writeFile(filePath, "system { }", "utf-8");
+
+    mockBuildDrawioProject.mockResolvedValue({
+      xml: "<mxfile></mxfile>",
+      diagnostics: [],
+      warnings: [],
+    });
+    vi.spyOn(process.stdout, "write").mockImplementation(() => true);
+
+    await render(filePath, { format: "drawio", view: "deploy" });
+
+    expect(mockBuildDrawioProject).toHaveBeenCalledWith(expect.any(String), expect.any(Object), {
+      view: "deploy",
+    });
+  });
+
+  it("passes --view org through to buildDrawioProject", async () => {
+    const filePath = join(tmpDir, "index.krs");
+    await writeFile(filePath, "system { }", "utf-8");
+
+    mockBuildDrawioProject.mockResolvedValue({
+      xml: "<mxfile></mxfile>",
+      diagnostics: [],
+      warnings: [],
+    });
+    vi.spyOn(process.stdout, "write").mockImplementation(() => true);
+
+    await render(filePath, { format: "drawio", view: "org" });
+
+    expect(mockBuildDrawioProject).toHaveBeenCalledWith(expect.any(String), expect.any(Object), {
+      view: "org",
+    });
+  });
+
+  it("writes drawio XML to --output file when specified", async () => {
+    const filePath = join(tmpDir, "index.krs");
+    const outputPath = join(tmpDir, "out.drawio");
+    await writeFile(filePath, "system { }", "utf-8");
+
+    mockBuildDrawioProject.mockResolvedValue({
+      xml: "<mxfile>content</mxfile>",
+      diagnostics: [],
+      warnings: [],
+    });
+
+    await render(filePath, { format: "drawio", output: outputPath });
+
+    const { readFile } = await import("node:fs/promises");
+    expect(await readFile(outputPath, "utf-8")).toBe("<mxfile>content</mxfile>");
   });
 });

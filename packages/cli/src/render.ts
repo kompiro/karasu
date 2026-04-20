@@ -2,6 +2,7 @@ import { readFile, writeFile, readdir, stat } from "node:fs/promises";
 import { resolve } from "node:path";
 import {
   buildAllViewsSvgProject,
+  buildDrawioProject,
   compileProject,
   formatDiagnostic,
   formatWarning,
@@ -11,8 +12,17 @@ import type {
   DirEntry,
   DiagramType,
   Diagnostic,
+  DrawioViewSelection,
   Warning,
 } from "@karasu-tools/core";
+
+type RenderFormat = "svg" | "drawio";
+
+const DRAWIO_VIEW_SELECTIONS: Record<DiagramType, DrawioViewSelection> = {
+  system: "system",
+  deploy: "deploy",
+  org: "org",
+};
 
 class NodeFileSystemProvider implements FileSystemProvider {
   async readFile(path: string): Promise<string> {
@@ -52,6 +62,7 @@ class NodeFileSystemProvider implements FileSystemProvider {
 interface RenderOptions {
   output?: string;
   view?: DiagramType;
+  format?: RenderFormat;
 }
 
 export async function render(filePath: string, options: RenderOptions): Promise<void> {
@@ -63,18 +74,27 @@ export async function render(filePath: string, options: RenderOptions): Promise<
     process.exit(1);
   }
 
-  let svg: string;
+  const format: RenderFormat = options.format ?? "svg";
+  let output: string;
   let diagnostics: Diagnostic[];
   let warnings: Warning[];
 
-  if (options.view) {
+  if (format === "drawio") {
+    const selection: DrawioViewSelection = options.view
+      ? DRAWIO_VIEW_SELECTIONS[options.view]
+      : "all";
+    const result = await buildDrawioProject(absolutePath, fs, { view: selection });
+    output = result.xml;
+    diagnostics = result.diagnostics;
+    warnings = result.warnings;
+  } else if (options.view) {
     const result = await compileProject(absolutePath, fs, { diagramType: options.view });
-    svg = result.svg;
+    output = result.svg;
     diagnostics = result.diagnostics;
     warnings = result.warnings;
   } else {
     const result = await buildAllViewsSvgProject(absolutePath, fs);
-    svg = result.svg;
+    output = result.svg;
     diagnostics = result.diagnostics;
     warnings = [];
   }
@@ -99,9 +119,9 @@ export async function render(filePath: string, options: RenderOptions): Promise<
   }
 
   if (options.output) {
-    await writeFile(resolve(options.output), svg, "utf-8");
+    await writeFile(resolve(options.output), output, "utf-8");
   } else {
-    process.stdout.write(svg);
+    process.stdout.write(output);
   }
 }
 

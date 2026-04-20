@@ -23,11 +23,16 @@ program
 
 program
   .command("render <file>")
-  .description("Render a .krs file to SVG")
-  .option("-o, --output <path>", "Write SVG to file (default: stdout)")
+  .description("Render a .krs file to SVG or draw.io (mxGraph XML)")
+  .option("-o, --output <path>", "Write output to file (default: stdout)")
   .option(
     "--view <type>",
     "Diagram view to render: system | deploy | org (default: all views bundled)",
+  )
+  .option(
+    "--format <format>",
+    "Output format: svg | drawio (default: svg). drawio emits one page per view and per system drill-down level.",
+    "svg",
   )
   .addHelpText(
     "after",
@@ -44,12 +49,21 @@ Examples:
 
   # Render a specific view
   $ karasu render index.krs --view deploy --output deploy.svg
-  $ karasu render index.krs --view org --output org.svg`,
+  $ karasu render index.krs --view org --output org.svg
+
+  # Export to draw.io (mxGraph XML) as a layout escape hatch
+  $ karasu render index.krs --format drawio --output arch.drawio
+  $ karasu render index.krs --format drawio --view system --output system.drawio`,
   )
-  .action((file: string, options: { output?: string; view?: string }) => {
+  .action((file: string, options: { output?: string; view?: string; format?: string }) => {
+    if (options.format && options.format !== "svg" && options.format !== "drawio") {
+      process.stderr.write(`Error: unknown --format "${options.format}" (expected svg | drawio)\n`);
+      process.exit(1);
+    }
     render(file, {
       output: options.output,
       view: options.view as "system" | "deploy" | "org" | undefined,
+      format: options.format as "svg" | "drawio" | undefined,
     });
   });
 
