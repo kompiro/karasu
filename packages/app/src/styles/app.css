@@ -2088,6 +2088,16 @@ body,
   opacity: 0.55;
 }
 
+/* Belt-and-suspenders: diff-tagged elements should never inherit a dimming
+   ancestor's opacity. The renderer promotes diff-tagged ghost nodes/edges out
+   of the ghost wrappers, but this rule keeps them visible even if a future
+   refactor reintroduces a dimming ancestor. */
+.preview-pane svg [data-diff-state="added"],
+.preview-pane svg [data-diff-state="removed"],
+.preview-pane svg [data-diff-state="changed"] {
+  opacity: 1 !important;
+}
+
 .preview-pane svg [data-diff-state="added"] rect,
 .preview-pane svg [data-diff-state="added"] path,
 .preview-pane svg [data-diff-state="added"] circle,
