@@ -84,6 +84,15 @@ export function PreviewColumn() {
   const showAllLayersIframe = isAllLayersOpen && allLayersAvailable;
   const showOrgTreeView = activeView === "org" && isOrgTreeViewOpen;
 
+  // `handleExport` picks the tree-view SVG or the all-layers SVG over `svg`
+  // when those modes are active; keep the button's disabled state aligned
+  // with what the click handler would actually export.
+  const exportAvailable = showOrgTreeView
+    ? !!orgTreeExportSvg
+    : showAllLayersIframe
+      ? !!activeAllLayersSvg
+      : !!svg;
+
   function handleExport() {
     if (showOrgTreeView && orgTreeExportSvg) {
       onExportSvg(orgTreeExportSvg, exportFilename.replace(/\.svg$/, "-tree.svg"));
@@ -165,7 +174,7 @@ export function PreviewColumn() {
             className="toolbar-btn toolbar-btn--actionable toolbar-btn--export toolbar-btn--export-main"
             onClick={handleExport}
             aria-label="Export SVG"
-            disabled={!svg}
+            disabled={!exportAvailable}
           >
             ↓ Export SVG
           </button>
@@ -175,7 +184,7 @@ export function PreviewColumn() {
             aria-label="SVG export options"
             aria-haspopup="menu"
             aria-expanded={exportMenuOpen}
-            disabled={!svg}
+            disabled={!exportAvailable}
           >
             ▾
           </button>
