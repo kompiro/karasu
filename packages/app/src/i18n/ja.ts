@@ -66,6 +66,7 @@ export const ja: Partial<Translations> = {
   "chat.error.auth": "⚠ APIキーが無効です。Settings で正しいキーを設定してください。",
   "chat.error.rateLimit": "⚠ リクエスト制限に達しました。しばらく待ってから再試行してください。",
   "chat.error.server": "⚠ Anthropic サーバーエラーです。しばらく待ってから再試行してください。",
+  "chat.error.patchFailed": ({ detail }) => `⚠ パッチの適用に失敗しました: ${detail}`,
 
   // NodeDetailPanel
   "nodeDetail.close": "閉じる",

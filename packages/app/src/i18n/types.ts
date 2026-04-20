@@ -70,11 +70,12 @@ export type Translations = {
   "chat.apiKeySetup.message": string;
   "chat.apiKeySetup.goToSettings": string;
 
-  // Chat error messages (Phase C5) — surfaced in the chat log when an
-  // Anthropic API call fails
+  // Chat error messages (Phase C5/C6) — surfaced in the chat log when an
+  // Anthropic API call or patch application fails
   "chat.error.auth": string;
   "chat.error.rateLimit": string;
   "chat.error.server": string;
+  "chat.error.patchFailed": (params: { detail: string }) => string;
 
   // NodeDetailPanel (Phase C5)
   "nodeDetail.close": string;
