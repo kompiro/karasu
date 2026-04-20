@@ -1,10 +1,16 @@
-import { useState, useCallback, useEffect, useRef } from "react";
+import { useState, useCallback, useEffect, useMemo, useRef } from "react";
 import Anthropic, { APIError } from "@anthropic-ai/sdk";
 import { applyKrsPatch, type PatchOperation } from "../utils/krs-patch.js";
 import type { SystemNode } from "@karasu-tools/core";
 import { resolveLocale } from "../i18n/locale.js";
 import { useTranslation } from "../i18n/index.js";
-import { TOOLS, buildSystemPrompt, hashContent } from "./useChatSession/prompt.js";
+import {
+  buildTools,
+  buildSystemPrompt,
+  hashContent,
+  reviewTriggerMessage,
+  interviewTriggerMessage,
+} from "./useChatSession/prompt.js";
 import { classifyError, errorMessage } from "./useChatSession/errors.js";
 import { buildApiMessages } from "./useChatSession/apiMessages.js";
 import type {
@@ -87,6 +93,7 @@ export function useChatSession({
   // if the user changes the stored locale in another tab. The UI selector
   // introduced by #34 will prompt a session reset when it changes the locale.
   const [locale] = useState(() => resolveLocale());
+  const tools = useMemo(() => buildTools(locale), [locale]);
 
   // `t` is used to localize error messages surfaced in the chat log.
   // Keep the latest value in a ref so async callbacks pick up the current
@@ -153,7 +160,7 @@ export function useChatSession({
         model: MODEL,
         max_tokens: 4096,
         system,
-        tools: TOOLS,
+        tools,
         messages: apiMessages,
       });
 
@@ -204,7 +211,7 @@ export function useChatSession({
           model: MODEL,
           max_tokens: 4096,
           system,
-          tools: TOOLS,
+          tools,
           messages: followupMessages,
         });
         for (const fb of followup.content) {
@@ -214,7 +221,7 @@ export function useChatSession({
 
       return { text, patchProposal };
     },
-    [onNavigateViewPath, locale],
+    [onNavigateViewPath, locale, tools],
   );
 
   // ── callApi ────────────────────────────────────────────────────────────────
@@ -458,7 +465,7 @@ export function useChatSession({
 
     // Trigger message is NOT stored in the messages state — only the AI's response is shown.
     const triggerMessages: Anthropic.Messages.MessageParam[] = [
-      { role: "user", content: "設計レビューを開始してください。" },
+      { role: "user", content: reviewTriggerMessage(locale) },
     ];
 
     try {
@@ -491,7 +498,7 @@ export function useChatSession({
       ]);
       setPhase({ kind: "idle" });
     }
-  }, [runTurn]);
+  }, [runTurn, locale]);
 
   // ── startInterview ─────────────────────────────────────────────────────────
 
@@ -501,7 +508,7 @@ export function useChatSession({
 
     // Trigger message is NOT stored in the messages state — only the AI's opening response is shown.
     const triggerMessages: Anthropic.Messages.MessageParam[] = [
-      { role: "user", content: "インタビューを開始してください。" },
+      { role: "user", content: interviewTriggerMessage(locale) },
     ];
 
     try {
@@ -522,7 +529,7 @@ export function useChatSession({
       ]);
       setPhase({ kind: "idle" });
     }
-  }, [runTurn]);
+  }, [runTurn, locale]);
 
   return {
     messages,

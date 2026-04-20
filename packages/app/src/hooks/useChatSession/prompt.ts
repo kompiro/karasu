@@ -146,56 +146,105 @@ export async function hashContent(content: string): Promise<string> {
 
 // ── Tool definitions ──────────────────────────────────────────────────────────
 //
-// Tool descriptions are intentionally kept in Japanese per the #639 scope note
-// ("No change to tool definitions or patch format — only the natural-language
-// guidance portion"). Claude handles either language for tool definitions, so
-// this does not affect the English-speaking user experience in practice.
+// Tool descriptions are localized per the active session locale (Phase E).
+// Claude routes tool selection by name/shape, not description language, so
+// localizing here is purely to keep the system prompt and tool descriptions
+// in the same language for coherence when the user inspects a transcript.
 
-export const TOOLS: Anthropic.Messages.Tool[] = [
-  {
-    name: "navigate_view",
-    description: "ダイアグラムのドリルダウン位置を変更する",
-    input_schema: {
-      type: "object" as const,
-      properties: {
-        path: {
-          type: "array",
-          items: { type: "string" },
-          description: "遷移先の ViewPath（例: ['ECPlatform', 'ECommerce']）",
+interface ToolStrings {
+  navigateView: string;
+  navigateViewPath: string;
+  applyKrsPatch: string;
+  operation: string;
+  targetNodeId: string;
+  content: string;
+  description: string;
+}
+
+const TOOL_STRINGS_JA: ToolStrings = {
+  navigateView: "ダイアグラムのドリルダウン位置を変更する",
+  navigateViewPath: "遷移先の ViewPath（例: ['ECPlatform', 'ECommerce']）",
+  applyKrsPatch: ".krs ファイルに変更を適用する",
+  operation:
+    "変更の種類: append=新しいトップレベルブロックを末尾に追加, replace=既存ノードをブロックごと置換, remove=既存ノードを削除",
+  targetNodeId: "replace/remove 時: 対象ノードの ID（PascalCase）",
+  content: "append/replace 時: 追加・置換するブロック全体の .krs テキスト",
+  description: "変更内容の説明（ユーザーへの確認メッセージ）",
+};
+
+const TOOL_STRINGS_EN: ToolStrings = {
+  navigateView: "Change the drill-down position in the diagram",
+  navigateViewPath: "Destination ViewPath (e.g. ['ECPlatform', 'ECommerce'])",
+  applyKrsPatch: "Apply a change to the .krs file",
+  operation:
+    "Change kind: append=add a new top-level block at the end, replace=replace an existing node with a whole block, remove=delete an existing node",
+  targetNodeId: "For replace/remove: the id of the target node (PascalCase)",
+  content: "For append/replace: the full .krs text of the block being added or used as replacement",
+  description: "Description of the change (confirmation message shown to the user)",
+};
+
+export function buildTools(locale: Locale): Anthropic.Messages.Tool[] {
+  const s = locale === "ja" ? TOOL_STRINGS_JA : TOOL_STRINGS_EN;
+  return [
+    {
+      name: "navigate_view",
+      description: s.navigateView,
+      input_schema: {
+        type: "object" as const,
+        properties: {
+          path: {
+            type: "array",
+            items: { type: "string" },
+            description: s.navigateViewPath,
+          },
         },
+        required: ["path"],
       },
-      required: ["path"],
     },
-  },
-  {
-    name: "apply_krs_patch",
-    description: ".krs ファイルに変更を適用する",
-    input_schema: {
-      type: "object" as const,
-      properties: {
-        operation: {
-          type: "string",
-          enum: ["append", "replace", "remove"],
-          description:
-            "変更の種類: append=新しいトップレベルブロックを末尾に追加, replace=既存ノードをブロックごと置換, remove=既存ノードを削除",
+    {
+      name: "apply_krs_patch",
+      description: s.applyKrsPatch,
+      input_schema: {
+        type: "object" as const,
+        properties: {
+          operation: {
+            type: "string",
+            enum: ["append", "replace", "remove"],
+            description: s.operation,
+          },
+          targetNodeId: {
+            type: "string",
+            description: s.targetNodeId,
+          },
+          content: {
+            type: "string",
+            description: s.content,
+          },
+          description: {
+            type: "string",
+            description: s.description,
+          },
         },
-        targetNodeId: {
-          type: "string",
-          description: "replace/remove 時: 対象ノードの ID（PascalCase）",
-        },
-        content: {
-          type: "string",
-          description: "append/replace 時: 追加・置換するブロック全体の .krs テキスト",
-        },
-        description: {
-          type: "string",
-          description: "変更内容の説明（ユーザーへの確認メッセージ）",
-        },
+        required: ["operation", "description"],
       },
-      required: ["operation", "description"],
     },
-  },
-];
+  ];
+}
+
+// ── Trigger messages ──────────────────────────────────────────────────────────
+//
+// Synthetic first-turn user messages sent by startReview / startInterview.
+// These are not shown in the chat log — they only prime the assistant to
+// follow the "design review" / "structured interview" branches of the
+// system prompt. Must match the trigger phrases the system prompt expects.
+
+export function reviewTriggerMessage(locale: Locale): string {
+  return locale === "ja" ? "設計レビューを開始してください。" : "Please start a design review.";
+}
+
+export function interviewTriggerMessage(locale: Locale): string {
+  return locale === "ja" ? "インタビューを開始してください。" : "Please start the interview.";
+}
 
 // ── System prompt ─────────────────────────────────────────────────────────────
 
