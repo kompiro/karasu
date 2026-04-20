@@ -1,5 +1,5 @@
 import type { KrsEdge, KrsNode } from "../types/ast.js";
-import type { ViewSlice } from "../view/view-extract.js";
+import type { DomainEdgeDetail, ViewSlice } from "../view/view-extract.js";
 
 export type DiffState = "unchanged" | "added" | "removed" | "changed";
 
@@ -14,6 +14,16 @@ export interface NodeDiffMeta {
 
 export interface EdgeDiffMeta {
   state: DiffState;
+  changes?: {
+    /**
+     * Set when both sides had an aggregated implicit edge between the same
+     * service pair but the underlying constituent domain edges differ.
+     */
+    domainEdges?: {
+      added: DomainEdgeDetail[];
+      removed: DomainEdgeDetail[];
+    };
+  };
 }
 
 export interface DiffedView {
@@ -108,6 +118,86 @@ function diffEdgeArray(
   return merged;
 }
 
+function detailKey(d: DomainEdgeDetail): string {
+  return `${d.fromDomainId}->${d.toDomainId}#${d.label ?? ""}`;
+}
+
+/**
+ * For each aggregated implicit edge present in both slices, set-diff the
+ * constituent domain edges. Produces a union detail map annotated with
+ * per-row diffState and, when the set differs, updates the owning edge's
+ * diff meta to `changed` with a `changes.domainEdges` payload.
+ */
+function diffImplicitEdgeDetails(
+  before: ViewSlice,
+  after: ViewSlice,
+  edgeDiff: Map<string, EdgeDiffMeta>,
+): Map<string, DomainEdgeDetail[]> {
+  const merged = new Map<string, DomainEdgeDetail[]>();
+  const keys = new Set<string>([
+    ...before.implicitEdgeDetails.keys(),
+    ...after.implicitEdgeDetails.keys(),
+  ]);
+
+  for (const key of keys) {
+    const b = before.implicitEdgeDetails.get(key);
+    const a = after.implicitEdgeDetails.get(key);
+    // Derive the view-diff edge key (strip `#kind`) for looking up EdgeDiffMeta.
+    const hashIdx = key.indexOf("#");
+    const edgeDiffKey = hashIdx === -1 ? key : key.slice(0, hashIdx);
+
+    if (b === undefined || a === undefined) {
+      // Only one side has details. Leave the underlying edge's state as-is
+      // (diffEdgeArray already classified it as added/removed). The detail
+      // rows are preserved with the parent state so the panel can still list
+      // them.
+      const parentState = a === undefined ? "removed" : "added";
+      const source = a ?? b!;
+      merged.set(
+        key,
+        source.map((d) => ({ ...d, diffState: parentState })),
+      );
+      continue;
+    }
+
+    const beforeKeys = new Map(b.map((d) => [detailKey(d), d]));
+    const afterKeys = new Map(a.map((d) => [detailKey(d), d]));
+    const added: DomainEdgeDetail[] = [];
+    const removed: DomainEdgeDetail[] = [];
+    const rows: DomainEdgeDetail[] = [];
+
+    for (const d of a) {
+      if (beforeKeys.has(detailKey(d))) {
+        rows.push({ ...d, diffState: "unchanged" });
+      } else {
+        const withState: DomainEdgeDetail = { ...d, diffState: "added" };
+        rows.push(withState);
+        added.push(d);
+      }
+    }
+    for (const d of b) {
+      if (!afterKeys.has(detailKey(d))) {
+        const withState: DomainEdgeDetail = { ...d, diffState: "removed" };
+        rows.push(withState);
+        removed.push(d);
+      }
+    }
+    merged.set(key, rows);
+
+    if (added.length > 0 || removed.length > 0) {
+      const meta = edgeDiff.get(edgeDiffKey);
+      if (meta && meta.state === "unchanged") {
+        edgeDiff.set(edgeDiffKey, {
+          state: "changed",
+          changes: { domainEdges: { added, removed } },
+        });
+      }
+    }
+  }
+
+  return merged;
+}
+
 /**
  * Produce a union ViewSlice of two system view slices plus per-element diff state.
  *
@@ -148,7 +238,7 @@ export function diffSystemViewSlices(before: ViewSlice, after: ViewSlice): Diffe
     ghostDomainEdges: after.ghostDomainEdges,
     resourceLabelMap: after.resourceLabelMap,
     resourceInferredTagsMap: after.resourceInferredTagsMap,
-    implicitEdgeDetails: after.implicitEdgeDetails,
+    implicitEdgeDetails: diffImplicitEdgeDetails(before, after, edgeDiff),
   };
 
   return { slice, nodes: nodeDiff, edges: edgeDiff };

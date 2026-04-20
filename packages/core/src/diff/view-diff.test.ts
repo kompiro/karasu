@@ -101,6 +101,75 @@ describe("diffSystemViewSlices", () => {
     expect(meta?.changes?.annotations?.removed).toEqual([]);
   });
 
+  describe("aggregated implicit edge constituent-set diff", () => {
+    const BEFORE_AGG = `
+system Shop {
+  service Catalog {
+    domain CatalogA { CatalogA -> OrdersA "reads" }
+    domain CatalogB { CatalogB -> OrdersA "reads" }
+  }
+  service Orders {
+    domain OrdersA
+  }
+}
+`;
+    const AFTER_AGG_ADDED = `
+system Shop {
+  service Catalog {
+    domain CatalogA { CatalogA -> OrdersA "reads" }
+    domain CatalogB { CatalogB -> OrdersA "reads" }
+    domain CatalogC { CatalogC -> OrdersA "reads" }
+  }
+  service Orders {
+    domain OrdersA
+  }
+}
+`;
+    const AFTER_AGG_SAME = BEFORE_AGG;
+
+    it("marks aggregated implicit edge as unchanged when constituent set is identical", () => {
+      const before = viewOf(BEFORE_AGG, []);
+      const after = viewOf(AFTER_AGG_SAME, []);
+      const diff = diffSystemViewSlices(before, after);
+      const meta = diff.edges.get(edgeKey({ from: "Catalog", to: "Orders" }));
+      expect(meta?.state).toBe("unchanged");
+    });
+
+    it("marks aggregated implicit edge as changed and records added constituents", () => {
+      const before = viewOf(BEFORE_AGG, []);
+      const after = viewOf(AFTER_AGG_ADDED, []);
+      const diff = diffSystemViewSlices(before, after);
+      const meta = diff.edges.get(edgeKey({ from: "Catalog", to: "Orders" }));
+      expect(meta?.state).toBe("changed");
+      expect(meta?.changes?.domainEdges?.added.map((d) => d.fromDomainId)).toEqual(["CatalogC"]);
+      expect(meta?.changes?.domainEdges?.removed).toEqual([]);
+    });
+
+    it("annotates union implicitEdgeDetails with per-row diffState", () => {
+      const before = viewOf(BEFORE_AGG, []);
+      const after = viewOf(AFTER_AGG_ADDED, []);
+      const diff = diffSystemViewSlices(before, after);
+      const detailKey = [...diff.slice.implicitEdgeDetails.keys()].find((k) =>
+        k.startsWith("Catalog->Orders"),
+      );
+      expect(detailKey).toBeDefined();
+      const details = diff.slice.implicitEdgeDetails.get(detailKey!)!;
+      const byFrom = Object.fromEntries(details.map((d) => [d.fromDomainId, d.diffState]));
+      expect(byFrom.CatalogA).toBe("unchanged");
+      expect(byFrom.CatalogB).toBe("unchanged");
+      expect(byFrom.CatalogC).toBe("added");
+    });
+
+    it("captures removed constituents when the after side loses a domain edge", () => {
+      const before = viewOf(AFTER_AGG_ADDED, []);
+      const after = viewOf(BEFORE_AGG, []);
+      const diff = diffSystemViewSlices(before, after);
+      const meta = diff.edges.get(edgeKey({ from: "Catalog", to: "Orders" }));
+      expect(meta?.state).toBe("changed");
+      expect(meta?.changes?.domainEdges?.removed.map((d) => d.fromDomainId)).toEqual(["CatalogC"]);
+    });
+  });
+
   it("union slice contains the merged node sets", () => {
     const before = viewOf(BEFORE, ["Shop"]);
     const after = viewOf(AFTER_ADDED_SERVICE, ["Shop"]);
