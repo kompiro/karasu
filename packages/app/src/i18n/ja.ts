@@ -118,4 +118,78 @@ export const ja: Partial<Translations> = {
   "warning.crossSystemRefImplicitExternal.suppressHint": ({ targetSystemId, sourceSystemId }) =>
     `system ${sourceSystemId} に 'service ${targetSystemId} [external]' を追加するとこの警告を抑制できます`,
   "warning.cyclicDependency.message": ({ path }) => `循環依存を検出しました: ${path}`,
+
+  // Diagnostics (rendered in PreviewPane's diagnostic banner)
+  "diagnostic.tokenTypeMismatch.message": ({ expected, got, value }) =>
+    `${expected} を期待しましたが ${got} ("${value}") が見つかりました`,
+  "diagnostic.unexpectedTokenRoot.message": ({ tokenType, value }) =>
+    `予期しないトークン: ${tokenType} ("${value}")`,
+  "diagnostic.unexpectedTokenInBlock.subResource": ({ tokenType, value }) =>
+    `sub-resource ブロック内で予期しないトークン: ${tokenType} ("${value}")。sub-resource ノード（table, queue-item, bucket）は子宣言を含められません。`,
+  "diagnostic.unexpectedTokenInBlock.generic": ({ tokenType, value }) =>
+    `ブロック内で予期しないトークン: ${tokenType} ("${value}")`,
+  "diagnostic.unexpectedTokenInBlock.deployNode": ({ tokenType, value }) =>
+    `deploy ノード内で予期しないトークン: ${tokenType} ("${value}")`,
+  "diagnostic.unexpectedTokenInBlock.named": ({ blockKind, tokenType, value }) =>
+    `${blockKind} ブロック内で予期しないトークン: ${tokenType} ("${value}")`,
+  "diagnostic.expectedBraceOrString.message": ({ got, value }) =>
+    `{ または文字列リテラルを期待しましたが ${got} ("${value}") が見つかりました`,
+  "diagnostic.expectedIdentifier.message": ({ got, value }) =>
+    `識別子を期待しましたが ${got} ("${value}") が見つかりました`,
+  "diagnostic.expectedStringAfter.message": ({ property }) =>
+    `"${property}" の後に文字列リテラルを期待しました`,
+  "diagnostic.propertyNotForNodeKind.role": `"role" プロパティは user ノードでのみ有効です`,
+  "diagnostic.propertyNotForNodeKind.team": `"team" プロパティは service / domain ノードでのみ有効です`,
+  "diagnostic.infraNotInContext.message": ({ infraKind, parentKind }) =>
+    `"${infraKind}" は system の直接の子としてのみ有効です。"${parentKind}" の内側には配置できません`,
+  "diagnostic.expectedIdOrString.message": ({ context }) =>
+    `"${context}" の後に識別子または文字列リテラルを期待しました`,
+  "diagnostic.expectedNodeId.message": ({ kind }) =>
+    `"${kind}" の後に識別子または文字列リテラル (id) を期待しました`,
+  "diagnostic.invalidNodeKind.message": ({ kind }) => `未知の論理ノード種別: "${kind}"`,
+  "diagnostic.expectedPropertyValue.message": ({ propName }) =>
+    `プロパティ "${propName}" の値を期待しました`,
+  "diagnostic.expectedIdAfter.message": ({ property }) =>
+    `"${property}" の後に識別子または文字列リテラルを期待しました`,
+  "diagnostic.teamPropertyDeprecated.message": `"team" プロパティは非推奨です。organization ブロックで "owns" を使ってください`,
+  "diagnostic.edgeSourceMismatch.message": ({ from, parentId }) =>
+    `エッジ source "${from}" は所属するブロック id "${parentId}" と一致する必要があります`,
+  "diagnostic.unassignedResource.message": ({ resourceId }) =>
+    `resource "${resourceId}" はどの database にも割り当てられていません`,
+  "diagnostic.duplicateOwnerAssignment.message": ({ nodeId, existingTeam }) =>
+    `"${nodeId}" はすでに team "${existingTeam}" によって所有されています。複数の team が同じ service / domain を所有することはできません`,
+  "diagnostic.duplicateTeamId.message": ({ teamId }) => `team id "${teamId}" が重複しています`,
+  "diagnostic.domainIdNotUnique.message": ({ domainId }) =>
+    `domain id "${domainId}" は system 内で一意である必要がありますが、複数の service で検出されました`,
+  "diagnostic.nodeIdMultipleLocations.message": ({ nodeId }) =>
+    `ノード id "${nodeId}" が複数箇所に出現しています。ナビゲーションには最初のパスが使われます`,
+  "diagnostic.duplicateNodeIdParent.message": ({ nodeId }) =>
+    `同じ親の下でノード id "${nodeId}" が重複しています`,
+  "diagnostic.ownsTargetNotFound.message": ({ ownedId }) =>
+    `"owns" で参照されている "${ownedId}" が system 階層内に見つかりません`,
+  "diagnostic.styleTokenTypeMismatch.message": ({ expected, got, value }) =>
+    `${expected} を期待しましたが ${got} ("${value}") が見つかりました`,
+  "diagnostic.expectedStylePropertyName.message": ({ got }) =>
+    `プロパティ名を期待しましたが ${got} が見つかりました`,
+  "diagnostic.circularImport.message": ({ filePath }) =>
+    `循環インポートを検出しました: ${filePath}`,
+  "diagnostic.fileNotFound.message": ({ filePath }) => `ファイルが見つかりません: ${filePath}`,
+  "diagnostic.directoryNotFound.message": ({ dirPath }) =>
+    `ディレクトリが見つかりません: ${dirPath}`,
+  "diagnostic.serviceOutsideSystem.message": ({ serviceId }) =>
+    `"${serviceId}" は system ブロックの外で宣言されています — system への所属が曖昧です`,
+  "diagnostic.duplicateNodeInSystem.message": ({ nodeId, systemId }) =>
+    `system "${systemId}" 内でノード ID "${nodeId}" が重複しています`,
+  "diagnostic.duplicateNodeInDeploy.message": ({ nodeId, deployId }) =>
+    `deploy ブロック "${deployId}" 内でノード ID "${nodeId}" が重複しています`,
+  "diagnostic.duplicateTeamInOrganization.message": ({ teamId, orgId }) =>
+    `organization "${orgId}" 内で team ID "${teamId}" が重複しています`,
+  "diagnostic.importIdNotFound.message": ({ id, path }) =>
+    `インポートされた識別子 "${id}" が ${path} に見つかりません`,
+  "diagnostic.circularStyleImport.message": ({ filePath }) =>
+    `循環スタイルインポートを検出しました: ${filePath}`,
+  "diagnostic.styleFileNotFound.message": ({ filePath }) =>
+    `スタイルファイルが見つかりません: ${filePath}`,
+  "diagnostic.appProjectCompileError.message": "プロジェクトのコンパイル中にエラーが発生しました",
+  "diagnostic.appOrgParseError.message": "パース中にエラーが発生しました",
 };

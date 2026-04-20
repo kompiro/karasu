@@ -1,8 +1,8 @@
 import { useRef, useState, useCallback, useEffect, type WheelEvent, type MouseEvent } from "react";
-import { formatDiagnostic } from "@karasu-tools/core";
 import type { Diagnostic, NodeMetadata, DomainEdgeDetail } from "@karasu-tools/core";
 import { NodeDetailPanel } from "./NodeDetailPanel.js";
 import { EdgeDetailPanel } from "./EdgeDetailPanel.js";
+import { useFormattedDiagnostic } from "../i18n/format-diagnostic.js";
 
 interface PreviewPaneProps {
   svg: string;
@@ -46,6 +46,7 @@ export function PreviewPane({
   onClearHighlight,
   onJumpToEditor,
 }: PreviewPaneProps) {
+  const formatDiagnostic = useFormattedDiagnostic();
   const containerRef = useRef<HTMLDivElement>(null);
   const svgRef = useRef<HTMLDivElement>(null);
   const [transform, setTransform] = useState({ scale: 1, x: 0, y: 0 });
