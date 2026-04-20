@@ -1,9 +1,10 @@
-import { useCallback, useState, type ReactNode, type RefObject } from "react";
+import { useCallback, useMemo, useState, type ReactNode, type RefObject } from "react";
 import { format, FormatError } from "@karasu-tools/core";
 import { EditArea } from "./EditArea.js";
-import { KarasuPreviewColumn } from "./KarasuPreviewColumn.js";
+import { PreviewColumn } from "./PreviewColumn.js";
 import { downloadSvg } from "../utils/download-svg.js";
 import { useAppContext } from "../state/app-context.js";
+import { PreviewProvider, type PreviewContextValue } from "../state/preview-context.js";
 import { useAppViews } from "../hooks/useAppViews.js";
 import { useBreadcrumbs } from "../hooks/useBreadcrumbs.js";
 import { useJumpToEditor } from "../hooks/useJumpToEditor.js";
@@ -31,7 +32,7 @@ interface AppShellProps {
  * View compilation, navigation, breadcrumbs, editor-jump, and cross-view
  * navigation live in dedicated hooks (`useAppViews`, `useBreadcrumbs`,
  * `useJumpToEditor`, `useCrossNavigation`). AppShell is a thin orchestrator
- * that wires them to `KarasuPreviewColumn` and `EditArea`.
+ * that wires them to `PreviewColumn` and `EditArea`.
  *
  * Mode-specific concerns (initialization, project management, sidebar content)
  * are handled by the parent wrapper components.
@@ -154,39 +155,110 @@ export function AppShell({
         .filter(Boolean)
         .join(" ");
 
-  const systemViewProps = {
-    svg: views.system.svg,
-    diagnostics: views.system.diagnostics,
-    viewPath,
-    breadcrumbItems,
-    warnings: views.system.warnings,
-    onBreadcrumbNavigate: navigateViewPath,
-    onDeployButtonClick: nav.handleDeployButtonClick,
-    onTeamButtonClick: nav.handleTeamButtonClick,
-    highlightedNodeId,
-    onClearHighlight: nav.clearHighlight,
-  };
+  const toggleAllLayers = useCallback(() => setIsAllLayersOpen((v) => !v), []);
+  const togglePreviewFocus = useCallback(() => setPreviewFocused((v) => !v), []);
+  const toggleOrgTreeView = useCallback(() => setIsOrgTreeViewOpen((v) => !v), []);
 
-  const deployViewProps = {
-    svg: views.deploy.svg,
-    diagnostics: views.deploy.diagnostics,
-    warnings: views.deploy.warnings,
-    highlightedNodeId,
-    onClearHighlight: nav.clearHighlight,
-    onContainerClick: nav.handleContainerClick,
-  };
-
-  const orgViewProps = {
-    svg: views.org.svg,
-    diagnostics: views.org.diagnostics,
-    viewPath,
-    breadcrumbItems: orgBreadcrumbItems,
-    warnings: views.org.warnings,
-    onBreadcrumbNavigate: navigateViewPath,
-    highlightedNodeId,
-    onClearHighlight: nav.clearHighlight,
-    onOwnedServiceClick: nav.handleOwnedServiceClick,
-  };
+  const previewContextValue = useMemo<PreviewContextValue>(
+    () => ({
+      activeView,
+      hasDeployDiagram: views.system.hasDeployDiagram,
+      onActiveViewChange: navigateActiveView,
+      systemView: {
+        svg: views.system.svg,
+        diagnostics: views.system.diagnostics,
+        viewPath,
+        breadcrumbItems,
+        warnings: views.system.warnings,
+        onBreadcrumbNavigate: navigateViewPath,
+        onDeployButtonClick: nav.handleDeployButtonClick,
+        onTeamButtonClick: nav.handleTeamButtonClick,
+        highlightedNodeId,
+        onClearHighlight: nav.clearHighlight,
+      },
+      deployView: {
+        svg: views.deploy.svg,
+        diagnostics: views.deploy.diagnostics,
+        warnings: views.deploy.warnings,
+        highlightedNodeId,
+        onClearHighlight: nav.clearHighlight,
+        onContainerClick: nav.handleContainerClick,
+      },
+      orgView: {
+        svg: views.org.svg,
+        diagnostics: views.org.diagnostics,
+        viewPath,
+        breadcrumbItems: orgBreadcrumbItems,
+        warnings: views.org.warnings,
+        onBreadcrumbNavigate: navigateViewPath,
+        highlightedNodeId,
+        onClearHighlight: nav.clearHighlight,
+        onOwnedServiceClick: nav.handleOwnedServiceClick,
+      },
+      nodeMetadata,
+      deployBlocks: views.deploy.deployBlocks,
+      selectedDeployBlockId,
+      onDeployBlockChange: nav.handleDeployBlockChange,
+      displayMode,
+      onDisplayModeChange: nav.handleDisplayModeChange,
+      onExportSvg: downloadSvg,
+      isAllLayersOpen,
+      onAllLayersToggle: toggleAllLayers,
+      drillDownSvg,
+      allLayersSvg,
+      orgAllLayersSvg,
+      orgDrillDownSvg,
+      allViewsSvg,
+      previewFocused,
+      onPreviewFocusToggle: togglePreviewFocus,
+      onJumpToEditor: !hideEditor ? handleJumpToEditor : undefined,
+      isOrgTreeViewOpen,
+      onOrgTreeViewToggle: toggleOrgTreeView,
+      orgTreeSvg: views.org.orgTreeSvg,
+      onTeamToggle: views.org.toggleTeamExpand,
+      orgTreeExportSvg: views.org.orgTreeExportSvg,
+    }),
+    [
+      activeView,
+      navigateActiveView,
+      navigateViewPath,
+      views.system.hasDeployDiagram,
+      views.system.svg,
+      views.system.diagnostics,
+      views.system.warnings,
+      views.deploy.svg,
+      views.deploy.diagnostics,
+      views.deploy.warnings,
+      views.deploy.deployBlocks,
+      views.org.svg,
+      views.org.diagnostics,
+      views.org.warnings,
+      views.org.orgTreeSvg,
+      views.org.toggleTeamExpand,
+      views.org.orgTreeExportSvg,
+      viewPath,
+      breadcrumbItems,
+      orgBreadcrumbItems,
+      highlightedNodeId,
+      nodeMetadata,
+      selectedDeployBlockId,
+      displayMode,
+      nav,
+      isAllLayersOpen,
+      toggleAllLayers,
+      drillDownSvg,
+      allLayersSvg,
+      orgAllLayersSvg,
+      orgDrillDownSvg,
+      allViewsSvg,
+      previewFocused,
+      togglePreviewFocus,
+      hideEditor,
+      handleJumpToEditor,
+      isOrgTreeViewOpen,
+      toggleOrgTreeView,
+    ],
+  );
 
   return (
     <div className={className}>
@@ -208,36 +280,9 @@ export function AppShell({
           hasParseErrors={hasParseErrors}
         />
       )}
-      <KarasuPreviewColumn
-        activeView={activeView}
-        hasDeployDiagram={views.system.hasDeployDiagram}
-        onActiveViewChange={navigateActiveView}
-        systemView={systemViewProps}
-        deployView={deployViewProps}
-        orgView={orgViewProps}
-        nodeMetadata={nodeMetadata}
-        deployBlocks={views.deploy.deployBlocks}
-        selectedDeployBlockId={selectedDeployBlockId}
-        onDeployBlockChange={nav.handleDeployBlockChange}
-        displayMode={displayMode}
-        onDisplayModeChange={nav.handleDisplayModeChange}
-        onExportSvg={(svg, filename) => downloadSvg(svg, filename)}
-        isAllLayersOpen={isAllLayersOpen}
-        onAllLayersToggle={() => setIsAllLayersOpen((v) => !v)}
-        drillDownSvg={drillDownSvg}
-        allLayersSvg={allLayersSvg}
-        orgAllLayersSvg={orgAllLayersSvg}
-        orgDrillDownSvg={orgDrillDownSvg}
-        allViewsSvg={allViewsSvg}
-        previewFocused={previewFocused}
-        onPreviewFocusToggle={() => setPreviewFocused((v) => !v)}
-        onJumpToEditor={!hideEditor ? handleJumpToEditor : undefined}
-        isOrgTreeViewOpen={isOrgTreeViewOpen}
-        onOrgTreeViewToggle={() => setIsOrgTreeViewOpen((v) => !v)}
-        orgTreeSvg={views.org.orgTreeSvg}
-        onTeamToggle={views.org.toggleTeamExpand}
-        orgTreeExportSvg={views.org.orgTreeExportSvg}
-      />
+      <PreviewProvider value={previewContextValue}>
+        <PreviewColumn />
+      </PreviewProvider>
     </div>
   );
 }

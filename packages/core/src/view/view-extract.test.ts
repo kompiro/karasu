@@ -290,6 +290,95 @@ system ECPlatform {
     });
   });
 
+  describe("unassigned services", () => {
+    it("includes unassigned services in system view childNodes alongside unassigned domains", () => {
+      const krs = `
+service AuthStandalone { label "認証" }
+domain Payment { label "決済" }
+
+system ECPlatform {
+  service ECommerce {}
+}
+      `;
+      const result = Parser.parse(krs);
+      const view = extractView(
+        result.value.systems,
+        [],
+        result.value.domains,
+        result.value.services,
+      );
+      expect(view.childNodes.map((n) => n.id).sort()).toEqual([
+        "AuthStandalone",
+        "ECommerce",
+        "Payment",
+      ]);
+    });
+
+    it("drills into unassigned service with usecase child", () => {
+      const krs = `
+service ECommerce {
+  usecase ManageOrders { label "注文管理" }
+}
+
+system ECPlatform {
+  service Other {}
+}
+      `;
+      const result = Parser.parse(krs);
+      const view = extractView(
+        result.value.systems,
+        ["ECommerce"],
+        result.value.domains,
+        result.value.services,
+      );
+      expect(view.containerNode?.id).toBe("ECommerce");
+      expect(view.childNodes).toHaveLength(1);
+      expect(view.childNodes[0].id).toBe("ManageOrders");
+    });
+
+    it("renders orphan services with no system as a container-less peer view", () => {
+      const krs = `
+service ECommerce {
+  usecase ManageOrders { label "注文管理" }
+}
+domain Audit { label "監査" }
+      `;
+      const result = Parser.parse(krs);
+      const view = extractView(
+        result.value.systems,
+        [],
+        result.value.domains,
+        result.value.services,
+      );
+      expect(view.containerNode).toBeNull();
+      expect(view.childNodes.map((n) => n.id).sort()).toEqual(["Audit", "ECommerce"]);
+    });
+
+    it("drills into orphan service when there is no system", () => {
+      const krs = `
+service ECommerce {
+  usecase ManageOrders { label "注文管理" }
+}
+      `;
+      const result = Parser.parse(krs);
+      const view = extractView(
+        result.value.systems,
+        ["ECommerce"],
+        result.value.domains,
+        result.value.services,
+      );
+      expect(view.containerNode?.id).toBe("ECommerce");
+      expect(view.childNodes).toHaveLength(1);
+      expect(view.childNodes[0].id).toBe("ManageOrders");
+    });
+
+    it("returns empty when no systems and no unassigned nodes exist", () => {
+      const view = extractView([], [], [], []);
+      expect(view.containerNode).toBeNull();
+      expect(view.childNodes).toHaveLength(0);
+    });
+  });
+
   describe("cross-system references", () => {
     const CROSS_SYSTEM_KRS = `
 system ECPlatform {

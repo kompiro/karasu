@@ -279,6 +279,40 @@ system PaymentGateway {
   });
 });
 
+describe("compile — top-level (unassigned) services and domains", () => {
+  it("renders orphan services/domains inside a labeled Unassigned frame alongside real systems", () => {
+    const src = `service AuthStandalone { label "認証" }
+domain Payment { label "決済" }
+
+system ECPlatform {
+  service ECommerce { label "ECサイト" }
+}`;
+    const result = compile(src);
+    if (result.diagramType !== "system") throw new Error("expected system result");
+    // Both frames are drawn with their own label
+    expect(result.svg).toContain("ECPlatform");
+    expect(result.svg).toContain("Unassigned");
+    // Orphan nodes land inside the Unassigned frame, not inside ECPlatform
+    expect(result.svg).toContain("認証");
+    expect(result.svg).toContain("決済");
+    expect(result.svg).toContain("ECサイト");
+    // The ECPlatform frame is rendered before the Unassigned frame
+    expect(result.svg.indexOf("ECPlatform")).toBeLessThan(result.svg.indexOf("Unassigned"));
+  });
+
+  it("wraps orphans in an Unassigned frame even when no real system is present", () => {
+    const src = `service ECommerce {
+  usecase ManageOrders { label "注文管理" }
+}`;
+    const result = compile(src);
+    if (result.diagramType !== "system") throw new Error("expected system result");
+    expect(result.svg).not.toContain("No diagram");
+    expect(result.svg).not.toContain("No nodes to render");
+    expect(result.svg).toContain("Unassigned");
+    expect(result.svg).toContain("ECommerce");
+  });
+});
+
 describe("deprecated compileProjectOrgView — backward compatibility", () => {
   it("still works and returns OrgCompileResult shape", async () => {
     const fs = new InMemoryFileSystemProvider();

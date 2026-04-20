@@ -33,6 +33,13 @@ export function formatWarning(w: Warning): FormattedWarning {
         details: [],
       };
     }
+    case "unassigned-service": {
+      const display = w.params.label ?? w.params.serviceId;
+      return {
+        message: `service "${display}" is not assigned to any system`,
+        details: [],
+      };
+    }
     case "unassigned-usecase":
       return {
         message: `usecase "${w.params.usecaseId}" is not assigned to any domain`,

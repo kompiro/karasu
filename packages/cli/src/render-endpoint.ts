@@ -1,5 +1,5 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
-import { compile, buildAllViewsSvg } from "@karasu-tools/core";
+import { compile, buildAllViewsSvg, formatDiagnostic } from "@karasu-tools/core";
 import type { DiagramType } from "@karasu-tools/core";
 
 // ---------------------------------------------------------------------------
@@ -154,7 +154,7 @@ export async function handleRender(
       const errors = result.diagnostics.filter((d) => d.severity === "error");
       if (errors.length > 0) {
         res.writeHead(422, { "Content-Type": "text/plain; charset=utf-8" });
-        res.end(errors.map((d) => d.message).join("\n"));
+        res.end(errors.map((d) => formatDiagnostic(d)).join("\n"));
         return;
       }
       svg = result.svg;
@@ -163,7 +163,7 @@ export async function handleRender(
       const errors = result.diagnostics.filter((d) => d.severity === "error");
       if (errors.length > 0) {
         res.writeHead(422, { "Content-Type": "text/plain; charset=utf-8" });
-        res.end(errors.map((d) => d.message).join("\n"));
+        res.end(errors.map((d) => formatDiagnostic(d)).join("\n"));
         return;
       }
       svg = result.svg;

@@ -1,4 +1,5 @@
 import { useRef, useState, useCallback, useEffect, type WheelEvent, type MouseEvent } from "react";
+import { formatDiagnostic } from "@karasu-tools/core";
 import type { Diagnostic, NodeMetadata, DomainEdgeDetail } from "@karasu-tools/core";
 import { NodeDetailPanel } from "./NodeDetailPanel.js";
 import { EdgeDetailPanel } from "./EdgeDetailPanel.js";
@@ -331,14 +332,17 @@ export function PreviewPane({
       )}
       {visibleDiagnostics.length > 0 && (
         <div className="diagnostic-banner">
-          {visibleDiagnostics.map((d) => (
-            <div
-              key={d.loc ? `${d.loc.start.line}:${d.message}` : d.message}
-              className={`diagnostic-banner__item diagnostic-banner__item--${d.severity}`}
-            >
-              {d.loc ? `Line ${d.loc.start.line}: ${d.message}` : d.message}
-            </div>
-          ))}
+          {visibleDiagnostics.map((d) => {
+            const message = formatDiagnostic(d);
+            return (
+              <div
+                key={d.loc ? `${d.loc.start.line}:${message}` : message}
+                className={`diagnostic-banner__item diagnostic-banner__item--${d.severity}`}
+              >
+                {d.loc ? `Line ${d.loc.start.line}: ${message}` : message}
+              </div>
+            );
+          })}
         </div>
       )}
     </div>

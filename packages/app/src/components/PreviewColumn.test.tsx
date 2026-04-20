@@ -2,9 +2,18 @@
 import { describe, it, expect, vi, afterEach } from "vitest";
 import { render, fireEvent, cleanup } from "@testing-library/react";
 import type { Diagnostic, Warning } from "@karasu-tools/core";
-import { KarasuPreviewColumn } from "./KarasuPreviewColumn.js";
+import { PreviewColumn } from "./PreviewColumn.js";
+import { PreviewProvider, type PreviewContextValue } from "../state/preview-context.js";
 
 afterEach(cleanup);
+
+function renderPreview(value: PreviewContextValue) {
+  return render(
+    <PreviewProvider value={value}>
+      <PreviewColumn />
+    </PreviewProvider>,
+  );
+}
 
 const noop = () => {};
 const emptySvg = '<svg xmlns="http://www.w3.org/2000/svg"></svg>';
@@ -19,7 +28,7 @@ const orgWarning: Warning = {
   params: { domainId: "org-domain", services: ["org-a", "org-b"] },
 };
 
-function makeProps(overrides: Partial<Parameters<typeof KarasuPreviewColumn>[0]> = {}) {
+function makeProps(overrides: Partial<PreviewContextValue> = {}): PreviewContextValue {
   return {
     activeView: "system" as const,
     hasDeployDiagram: true,
@@ -69,25 +78,25 @@ function makeProps(overrides: Partial<Parameters<typeof KarasuPreviewColumn>[0]>
   };
 }
 
-describe("KarasuPreviewColumn", () => {
+describe("PreviewColumn", () => {
   describe("tab switching", () => {
     it("calls onActiveViewChange when System tab is clicked", () => {
       const props = makeProps({ activeView: "org" });
-      const { getByRole } = render(<KarasuPreviewColumn {...props} />);
+      const { getByRole } = renderPreview(props);
       fireEvent.click(getByRole("tab", { name: /System/ }));
       expect(props.onActiveViewChange).toHaveBeenCalledWith("system");
     });
 
     it("calls onActiveViewChange when Deploy tab is clicked", () => {
       const props = makeProps({ activeView: "system" });
-      const { getByRole } = render(<KarasuPreviewColumn {...props} />);
+      const { getByRole } = renderPreview(props);
       fireEvent.click(getByRole("tab", { name: /Deploy/ }));
       expect(props.onActiveViewChange).toHaveBeenCalledWith("deploy");
     });
 
     it("calls onActiveViewChange when Org tab is clicked", () => {
       const props = makeProps({ activeView: "system" });
-      const { getByRole } = render(<KarasuPreviewColumn {...props} />);
+      const { getByRole } = renderPreview(props);
       fireEvent.click(getByRole("tab", { name: /Org/ }));
       expect(props.onActiveViewChange).toHaveBeenCalledWith("org");
     });
@@ -96,7 +105,7 @@ describe("KarasuPreviewColumn", () => {
   describe("system view", () => {
     it("shows system BreadcrumbBar when activeView=system", () => {
       const props = makeProps({ activeView: "system" });
-      const { getByText } = render(<KarasuPreviewColumn {...props} />);
+      const { getByText } = renderPreview(props);
       expect(getByText("Root")).toBeTruthy();
     });
 
@@ -112,7 +121,7 @@ describe("KarasuPreviewColumn", () => {
           warnings: [orgWarning],
         },
       });
-      const { container } = render(<KarasuPreviewColumn {...props} />);
+      const { container } = renderPreview(props);
       // sysWarning is a domain-dispersal warning with domainId "sys-domain";
       // formatWarning renders that id into the message.
       expect(container.textContent).toContain("sys-domain");
@@ -123,7 +132,7 @@ describe("KarasuPreviewColumn", () => {
   describe("deploy view", () => {
     it("hides BreadcrumbBar when activeView=deploy", () => {
       const props = makeProps({ activeView: "deploy" });
-      const { queryByText } = render(<KarasuPreviewColumn {...props} />);
+      const { queryByText } = renderPreview(props);
       // System breadcrumb items should not be visible (distinct from tab labels)
       expect(queryByText("Root")).toBeNull();
     });
@@ -141,7 +150,7 @@ describe("KarasuPreviewColumn", () => {
           warnings: [depWarning],
         },
       });
-      const { container } = render(<KarasuPreviewColumn {...props} />);
+      const { container } = renderPreview(props);
       // depWarning is a missing-runtime warning with nodeId "dep-node".
       expect(container.textContent).toContain("dep-node");
       expect(container.textContent).not.toContain("sys-domain");
@@ -158,7 +167,7 @@ describe("KarasuPreviewColumn", () => {
           breadcrumbItems: [{ id: "__org__", label: "OrgRoot" }],
         },
       });
-      const { getByText } = render(<KarasuPreviewColumn {...props} />);
+      const { getByText } = renderPreview(props);
       expect(getByText("OrgRoot")).toBeTruthy();
     });
 
@@ -174,7 +183,7 @@ describe("KarasuPreviewColumn", () => {
           warnings: [orgWarning],
         },
       });
-      const { container } = render(<KarasuPreviewColumn {...props} />);
+      const { container } = renderPreview(props);
       // orgWarning is a domain-dispersal warning with domainId "org-domain".
       expect(container.textContent).toContain("org-domain");
       expect(container.textContent).not.toContain("sys-domain");
@@ -190,7 +199,7 @@ describe("KarasuPreviewColumn", () => {
         systemView: { ...makeProps().systemView, svg: sysSvg },
         deployView: { ...makeProps().deployView, svg: depSvg },
       });
-      const { container } = render(<KarasuPreviewColumn {...props} />);
+      const { container } = renderPreview(props);
       expect(container.querySelector('[data-testid="sys"]')).toBeTruthy();
       expect(container.querySelector('[data-testid="dep"]')).toBeNull();
     });
@@ -203,7 +212,7 @@ describe("KarasuPreviewColumn", () => {
         systemView: { ...makeProps().systemView, svg: sysSvg },
         deployView: { ...makeProps().deployView, svg: depSvg },
       });
-      const { container } = render(<KarasuPreviewColumn {...props} />);
+      const { container } = renderPreview(props);
       expect(container.querySelector('[data-testid="dep"]')).toBeTruthy();
       expect(container.querySelector('[data-testid="sys"]')).toBeNull();
     });
@@ -216,7 +225,7 @@ describe("KarasuPreviewColumn", () => {
         systemView: { ...makeProps().systemView, svg: sysSvg },
         orgView: { ...makeProps().orgView, svg: orgSvg },
       });
-      const { container } = render(<KarasuPreviewColumn {...props} />);
+      const { container } = renderPreview(props);
       expect(container.querySelector('[data-testid="org"]')).toBeTruthy();
       expect(container.querySelector('[data-testid="sys"]')).toBeNull();
     });
@@ -225,9 +234,7 @@ describe("KarasuPreviewColumn", () => {
   describe("Reference button", () => {
     it("shows Reference button for all active views", () => {
       for (const activeView of ["system", "deploy", "org"] as const) {
-        const { getByRole, unmount } = render(
-          <KarasuPreviewColumn {...makeProps({ activeView })} />,
-        );
+        const { getByRole, unmount } = renderPreview(makeProps({ activeView }));
         expect(getByRole("button", { name: /Open reference/ })).toBeTruthy();
         unmount();
       }
@@ -237,9 +244,7 @@ describe("KarasuPreviewColumn", () => {
   describe("Icon Mode button", () => {
     it("shows Icon Mode button for all active views", () => {
       for (const activeView of ["system", "deploy", "org"] as const) {
-        const { getByRole, unmount } = render(
-          <KarasuPreviewColumn {...makeProps({ activeView })} />,
-        );
+        const { getByRole, unmount } = renderPreview(makeProps({ activeView }));
         expect(getByRole("button", { name: /Toggle icon mode/ })).toBeTruthy();
         unmount();
       }
@@ -247,14 +252,14 @@ describe("KarasuPreviewColumn", () => {
 
     it("calls onDisplayModeChange when icon mode button is clicked in deploy view", () => {
       const props = makeProps({ activeView: "deploy" });
-      const { getByRole } = render(<KarasuPreviewColumn {...props} />);
+      const { getByRole } = renderPreview(props);
       fireEvent.click(getByRole("button", { name: /Toggle icon mode/ }));
       expect(props.onDisplayModeChange).toHaveBeenCalledWith("icon");
     });
 
     it("calls onDisplayModeChange when icon mode button is clicked in org view", () => {
       const props = makeProps({ activeView: "org" });
-      const { getByRole } = render(<KarasuPreviewColumn {...props} />);
+      const { getByRole } = renderPreview(props);
       fireEvent.click(getByRole("button", { name: /Toggle icon mode/ }));
       expect(props.onDisplayModeChange).toHaveBeenCalledWith("icon");
     });
@@ -263,7 +268,7 @@ describe("KarasuPreviewColumn", () => {
   describe("hasDeployDiagram=false", () => {
     it("renders Deploy tab as disabled", () => {
       const props = makeProps({ hasDeployDiagram: false });
-      const { getByRole } = render(<KarasuPreviewColumn {...props} />);
+      const { getByRole } = renderPreview(props);
       expect(getByRole("tab", { name: /Deploy/ })).toHaveProperty("ariaDisabled", "true");
     });
   });
@@ -271,25 +276,25 @@ describe("KarasuPreviewColumn", () => {
   describe("Show All Layers button", () => {
     it("shows Show All Layers button on system tab", () => {
       const props = makeProps({ activeView: "system", allLayersSvg: "<svg>full</svg>" });
-      const { getByRole } = render(<KarasuPreviewColumn {...props} />);
+      const { getByRole } = renderPreview(props);
       expect(getByRole("button", { name: /Toggle all layers/ })).toBeTruthy();
     });
 
     it("Show All Layers button is disabled when allLayersSvg is absent", () => {
       const props = makeProps({ activeView: "system", allLayersSvg: undefined });
-      const { getByRole } = render(<KarasuPreviewColumn {...props} />);
+      const { getByRole } = renderPreview(props);
       expect(getByRole("button", { name: /Toggle all layers/ })).toHaveProperty("disabled", true);
     });
 
     it("Show All Layers button is disabled on deploy tab", () => {
       const props = makeProps({ activeView: "deploy", allLayersSvg: "<svg>full</svg>" });
-      const { getByRole } = render(<KarasuPreviewColumn {...props} />);
+      const { getByRole } = renderPreview(props);
       expect(getByRole("button", { name: /Toggle all layers/ })).toHaveProperty("disabled", true);
     });
 
     it("Show All Layers button is enabled on org tab when orgAllLayersSvg is set", () => {
       const props = makeProps({ activeView: "org", orgAllLayersSvg: "<svg>org-full</svg>" });
-      const { getByRole } = render(<KarasuPreviewColumn {...props} />);
+      const { getByRole } = renderPreview(props);
       expect(getByRole("button", { name: /Toggle all layers/ })).toHaveProperty("disabled", false);
     });
 
@@ -299,7 +304,7 @@ describe("KarasuPreviewColumn", () => {
         isAllLayersOpen: true,
         orgAllLayersSvg: "<svg>org-full</svg>",
       });
-      const { container } = render(<KarasuPreviewColumn {...props} />);
+      const { container } = renderPreview(props);
       const iframe = container.querySelector("iframe");
       expect(iframe).toBeTruthy();
       expect(iframe?.title).toBe("Full diagram view");
@@ -312,7 +317,7 @@ describe("KarasuPreviewColumn", () => {
         allLayersSvg: "<svg>full</svg>",
         onAllLayersToggle,
       });
-      const { getByRole } = render(<KarasuPreviewColumn {...props} />);
+      const { getByRole } = renderPreview(props);
       fireEvent.click(getByRole("button", { name: /Toggle all layers/ }));
       expect(onAllLayersToggle).toHaveBeenCalled();
     });
@@ -323,7 +328,7 @@ describe("KarasuPreviewColumn", () => {
         isAllLayersOpen: true,
         allLayersSvg: "<svg>full</svg>",
       });
-      const { container } = render(<KarasuPreviewColumn {...props} />);
+      const { container } = renderPreview(props);
       const iframe = container.querySelector("iframe");
       expect(iframe).toBeTruthy();
       expect(iframe?.title).toBe("Full diagram view");
@@ -335,7 +340,7 @@ describe("KarasuPreviewColumn", () => {
         isAllLayersOpen: false,
         allLayersSvg: "<svg>full</svg>",
       });
-      const { container } = render(<KarasuPreviewColumn {...props} />);
+      const { container } = renderPreview(props);
       expect(container.querySelector("iframe")).toBeNull();
     });
   });
@@ -343,14 +348,14 @@ describe("KarasuPreviewColumn", () => {
   describe("Focus mode button", () => {
     it("shows Focus button when not in focus mode", () => {
       const props = makeProps({ previewFocused: false });
-      const { getByRole } = render(<KarasuPreviewColumn {...props} />);
+      const { getByRole } = renderPreview(props);
       const btn = getByRole("button", { name: /Enter focus mode/ });
       expect(btn.textContent).toContain("↗ Focus");
     });
 
     it("shows Exit Focus button when in focus mode", () => {
       const props = makeProps({ previewFocused: true });
-      const { getByRole } = render(<KarasuPreviewColumn {...props} />);
+      const { getByRole } = renderPreview(props);
       const btn = getByRole("button", { name: /Exit focus mode/ });
       expect(btn.textContent).toContain("↙ Exit Focus");
     });
@@ -358,14 +363,14 @@ describe("KarasuPreviewColumn", () => {
     it("calls onPreviewFocusToggle when clicked", () => {
       const onPreviewFocusToggle = vi.fn<() => void>();
       const props = makeProps({ onPreviewFocusToggle });
-      const { getByRole } = render(<KarasuPreviewColumn {...props} />);
+      const { getByRole } = renderPreview(props);
       fireEvent.click(getByRole("button", { name: /focus mode/ }));
       expect(onPreviewFocusToggle).toHaveBeenCalled();
     });
 
     it("has active class when previewFocused is true", () => {
       const props = makeProps({ previewFocused: true });
-      const { getByRole } = render(<KarasuPreviewColumn {...props} />);
+      const { getByRole } = renderPreview(props);
       const btn = getByRole("button", { name: /Exit focus mode/ });
       expect(btn.className).toContain("active");
     });
@@ -374,7 +379,7 @@ describe("KarasuPreviewColumn", () => {
   describe("Export SVG split button", () => {
     it("renders Export SVG main button and toggle button", () => {
       const props = makeProps({ activeView: "system" });
-      const { getByRole } = render(<KarasuPreviewColumn {...props} />);
+      const { getByRole } = renderPreview(props);
       expect(getByRole("button", { name: /Export SVG/ })).toBeTruthy();
       expect(getByRole("button", { name: /SVG export options/ })).toBeTruthy();
     });
@@ -382,7 +387,7 @@ describe("KarasuPreviewColumn", () => {
     it("Export SVG exports current svg when isAllLayersOpen=false", () => {
       const onExportSvg = vi.fn<() => void>();
       const props = makeProps({ activeView: "system", isAllLayersOpen: false, onExportSvg });
-      const { getByRole } = render(<KarasuPreviewColumn {...props} />);
+      const { getByRole } = renderPreview(props);
       fireEvent.click(getByRole("button", { name: /Export SVG/ }));
       expect(onExportSvg).toHaveBeenCalledWith(emptySvg, expect.any(String));
     });
@@ -396,14 +401,14 @@ describe("KarasuPreviewColumn", () => {
         allLayersSvg,
         onExportSvg,
       });
-      const { getByRole } = render(<KarasuPreviewColumn {...props} />);
+      const { getByRole } = renderPreview(props);
       fireEvent.click(getByRole("button", { name: /Export SVG/ }));
       expect(onExportSvg).toHaveBeenCalledWith(allLayersSvg, expect.stringContaining("all-layers"));
     });
 
     it("clicking toggle button opens export options menu with drill-down item", () => {
       const props = makeProps({ activeView: "system" });
-      const { getByRole, getByText } = render(<KarasuPreviewColumn {...props} />);
+      const { getByRole, getByText } = renderPreview(props);
       fireEvent.click(getByRole("button", { name: /SVG export options/ }));
       expect(getByText("Export Drill-down SVG")).toBeTruthy();
     });
@@ -416,7 +421,7 @@ describe("KarasuPreviewColumn", () => {
         drillDownSvg,
         onExportSvg,
       });
-      const { getByRole, getByText } = render(<KarasuPreviewColumn {...props} />);
+      const { getByRole, getByText } = renderPreview(props);
       fireEvent.click(getByRole("button", { name: /SVG export options/ }));
       fireEvent.click(getByText("Export Drill-down SVG"));
       expect(onExportSvg).toHaveBeenCalledWith(drillDownSvg, expect.stringContaining("drilldown"));
@@ -427,7 +432,7 @@ describe("KarasuPreviewColumn", () => {
         activeView: "deploy",
         drillDownSvg: "<svg>drilldown</svg>",
       });
-      const { getByRole, getByText } = render(<KarasuPreviewColumn {...props} />);
+      const { getByRole, getByText } = renderPreview(props);
       fireEvent.click(getByRole("button", { name: /SVG export options/ }));
       expect(getByText("Export Drill-down SVG").closest("button")).toHaveProperty("disabled", true);
     });
@@ -440,7 +445,7 @@ describe("KarasuPreviewColumn", () => {
         orgDrillDownSvg,
         onExportSvg,
       });
-      const { getByRole, getByText } = render(<KarasuPreviewColumn {...props} />);
+      const { getByRole, getByText } = renderPreview(props);
       fireEvent.click(getByRole("button", { name: /SVG export options/ }));
       fireEvent.click(getByText("Export Drill-down SVG"));
       expect(onExportSvg).toHaveBeenCalledWith(
@@ -451,7 +456,7 @@ describe("KarasuPreviewColumn", () => {
 
     it("Export All Diagrams SVG is disabled when allViewsSvg is undefined", () => {
       const props = makeProps({ activeView: "system", allViewsSvg: undefined });
-      const { getByRole, getByText } = render(<KarasuPreviewColumn {...props} />);
+      const { getByRole, getByText } = renderPreview(props);
       fireEvent.click(getByRole("button", { name: /SVG export options/ }));
       expect(getByText("Export All Diagrams SVG").closest("button")).toHaveProperty(
         "disabled",
@@ -463,7 +468,7 @@ describe("KarasuPreviewColumn", () => {
       const onExportSvg = vi.fn<() => void>();
       const allViewsSvg = "<svg>all-views</svg>";
       const props = makeProps({ activeView: "system", allViewsSvg, onExportSvg });
-      const { getByRole, getByText } = render(<KarasuPreviewColumn {...props} />);
+      const { getByRole, getByText } = renderPreview(props);
       fireEvent.click(getByRole("button", { name: /SVG export options/ }));
       fireEvent.click(getByText("Export All Diagrams SVG"));
       expect(onExportSvg).toHaveBeenCalledWith(allViewsSvg, "all-diagrams.svg");
@@ -473,13 +478,13 @@ describe("KarasuPreviewColumn", () => {
   describe("Open All Views button", () => {
     it("shows Open All Views button", () => {
       const props = makeProps();
-      const { getByRole } = render(<KarasuPreviewColumn {...props} />);
+      const { getByRole } = renderPreview(props);
       expect(getByRole("button", { name: /Open all views in new window/ })).toBeTruthy();
     });
 
     it("is disabled when allViewsSvg is undefined", () => {
       const props = makeProps({ allViewsSvg: undefined });
-      const { getByRole } = render(<KarasuPreviewColumn {...props} />);
+      const { getByRole } = renderPreview(props);
       expect(getByRole("button", { name: /Open all views in new window/ })).toHaveProperty(
         "disabled",
         true,
@@ -488,7 +493,7 @@ describe("KarasuPreviewColumn", () => {
 
     it("is enabled when allViewsSvg is set", () => {
       const props = makeProps({ allViewsSvg: "<svg>all-views</svg>" });
-      const { getByRole } = render(<KarasuPreviewColumn {...props} />);
+      const { getByRole } = renderPreview(props);
       expect(getByRole("button", { name: /Open all views in new window/ })).toHaveProperty(
         "disabled",
         false,
@@ -499,7 +504,7 @@ describe("KarasuPreviewColumn", () => {
       const openSpy = vi.spyOn(window, "open").mockReturnValue(null);
       vi.spyOn(URL, "createObjectURL").mockReturnValue("blob:mock-url");
       const props = makeProps({ allViewsSvg: "<svg>all-views</svg>" });
-      const { getByRole } = render(<KarasuPreviewColumn {...props} />);
+      const { getByRole } = renderPreview(props);
       fireEvent.click(getByRole("button", { name: /Open all views in new window/ }));
       expect(URL.createObjectURL).toHaveBeenCalled();
       expect(openSpy).toHaveBeenCalledWith("blob:mock-url", "_blank");
@@ -509,7 +514,7 @@ describe("KarasuPreviewColumn", () => {
     it("does not call window.open when allViewsSvg is undefined", () => {
       const openSpy = vi.spyOn(window, "open").mockReturnValue(null);
       const props = makeProps({ allViewsSvg: undefined });
-      const { getByRole } = render(<KarasuPreviewColumn {...props} />);
+      const { getByRole } = renderPreview(props);
       // button is disabled, but verify open is not called even if handler fires
       getByRole("button", { name: /Open all views in new window/ });
       expect(openSpy).not.toHaveBeenCalled();

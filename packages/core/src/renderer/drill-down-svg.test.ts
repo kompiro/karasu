@@ -107,6 +107,33 @@ describe("buildDrillDownSvg", () => {
   });
 });
 
+describe("buildDrillDownSvg with top-level services", () => {
+  it("renders an orphan service inside an Unassigned frame when no system wraps it", () => {
+    const krsFile = Parser.parse(
+      `service ECommerce { usecase ManageOrders { label "注文管理" } }`,
+    ).value;
+    const { svg } = buildDrillDownSvg(krsFile);
+    expect(svg).not.toContain("No diagram");
+    expect(svg).toContain("Unassigned");
+    expect(svg).toContain('data-node-id="ECommerce"');
+    // Drill-down page for the orphan service is produced so clicking it works
+    expect(svg).toContain('id="krs-system-ECommerce"');
+    expect(svg).toContain('data-node-id="ManageOrders"');
+  });
+
+  it("renders orphan service in Unassigned frame alongside an existing system frame", () => {
+    const krsFile = Parser.parse(`
+service Standalone { label "単独" }
+system ECPlatform { service ECommerce {} }
+    `).value;
+    const { svg } = buildDrillDownSvg(krsFile);
+    expect(svg).toContain("ECPlatform");
+    expect(svg).toContain("Unassigned");
+    expect(svg).toContain('data-node-id="Standalone"');
+    expect(svg).toContain('data-node-id="ECommerce"');
+  });
+});
+
 describe("buildDrillDownSvg with styleSource", () => {
   it("applies styleSource to the rendered output", () => {
     const krsFile = Parser.parse(ONE_LEVEL).value;

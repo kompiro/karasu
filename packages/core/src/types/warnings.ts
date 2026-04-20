@@ -8,6 +8,7 @@ export type WarningKind =
   | "invalid-owns"
   | "deprecated-team-property"
   | "unassigned-domain"
+  | "unassigned-service"
   | "unassigned-usecase"
   | "cross-system-ref-implicit-external"
   | "cross-system-ref-unresolved"
@@ -30,6 +31,7 @@ export interface WarningParamsByKind {
   "invalid-owns": { teamId: string; ownedId: string };
   "deprecated-team-property": { nodeId: string; ownerTeamId: string };
   "unassigned-domain": { domainId: string; label?: string };
+  "unassigned-service": { serviceId: string; label?: string };
   "unassigned-usecase": { usecaseId: string };
   "cross-system-ref-implicit-external": {
     ref: string;

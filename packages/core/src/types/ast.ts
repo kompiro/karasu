@@ -249,11 +249,91 @@ export interface KrsFile {
 
 export type DiagnosticSeverity = "error" | "warning";
 
-export interface Diagnostic {
-  severity: DiagnosticSeverity;
-  message: string;
-  loc?: SourceRange;
+/**
+ * Per-code params shape. Each entry carries only the structured data needed
+ * to re-render the diagnostic message in any language; producers never build
+ * user-visible strings.
+ *
+ * Consumers that need a localized string should call `formatDiagnostic(d)`
+ * (the temporary compat bridge) or `t(\`diagnostic.\${d.code}\`, d.params)`
+ * once the app's `useTranslation` infrastructure covers diagnostic keys
+ * (Phase D).
+ *
+ * See `docs/design/i18n-support.md`.
+ */
+export interface DiagnosticParamsByCode {
+  // ── Token / parse structure ─────────────────────────────────────────────
+  "token-type-mismatch": { expected: string; got: string; value: string };
+  "unexpected-token-root": { tokenType: string; value: string };
+  "unexpected-token-in-block": { blockKind: string; tokenType: string; value: string };
+  "expected-brace-or-string": { got: string; value: string };
+  "expected-identifier": { got: string; value: string };
+  "expected-string-after": {
+    property: "label" | "role" | "team" | "description" | "slack" | "github";
+  };
+  "property-not-for-node-kind": { property: "role" | "team"; nodeKind: string };
+  "infra-not-in-context": { infraKind: string; parentKind: string };
+  "expected-id-or-string": { context: string };
+  "expected-node-id": { kind: string };
+  "invalid-node-kind": { kind: string };
+  "expected-property-value": { propName: string };
+  "expected-id-after": { property: string };
+
+  // ── Parser semantic diagnostics ─────────────────────────────────────────
+  "team-property-deprecated": Record<string, never>;
+  "edge-source-mismatch": { from: string; parentId: string };
+  "unassigned-resource": { resourceId: string };
+  "duplicate-owner-assignment": { nodeId: string; existingTeam: string };
+  "duplicate-team-id": { teamId: string };
+  "domain-id-not-unique": { domainId: string };
+  "node-id-multiple-locations": { nodeId: string };
+  "duplicate-node-id-parent": { nodeId: string };
+  "owns-target-not-found": { ownedId: string };
+
+  // ── Style parser ────────────────────────────────────────────────────────
+  "style-token-type-mismatch": { expected: string; got: string; value: string };
+  "expected-style-property-name": { got: string };
+
+  // ── Import resolver ─────────────────────────────────────────────────────
+  "circular-import": { filePath: string };
+  "file-not-found": { filePath: string };
+  "directory-not-found": { dirPath: string };
+  "service-outside-system": { serviceId: string };
+  "duplicate-node-in-system": { nodeId: string; systemId: string };
+  "duplicate-node-in-deploy": { nodeId: string; deployId: string };
+  "duplicate-team-in-organization": { teamId: string; orgId: string };
+  "import-id-not-found": { id: string; path: string };
+  "circular-style-import": { filePath: string };
+  "style-file-not-found": { filePath: string };
+
+  // ── App-level synthetic diagnostics ─────────────────────────────────────
+  // Constructed by the app when compile() throws, to surface a generic
+  // error in the diagnostic banner without pulling in exception details.
+  "app-project-compile-error": Record<string, never>;
+  "app-org-parse-error": Record<string, never>;
+  // Generic fallback for tests and ad-hoc callers that need a Diagnostic
+  // without a specific structural shape — the `text` param carries a
+  // pre-built string that formatDiagnostic returns verbatim.
+  "generic-text": { text: string };
 }
+
+export type DiagnosticCode = keyof DiagnosticParamsByCode;
+
+/**
+ * Discriminated union over `code`. Destructuring by `code` narrows `params`
+ * to the right shape automatically.
+ *
+ * Prior shape carried `message: string` — removed in Phase B.2 of the i18n
+ * rollout (see `docs/design/i18n-support.md`).
+ */
+export type Diagnostic = {
+  [K in DiagnosticCode]: {
+    severity: DiagnosticSeverity;
+    code: K;
+    params: DiagnosticParamsByCode[K];
+    loc?: SourceRange;
+  };
+}[DiagnosticCode];
 
 export interface ParseResult<T> {
   value: T;

@@ -154,7 +154,8 @@ export function useSystemView(
           diagnostics: [
             {
               severity: "error",
-              message: "プロジェクトのコンパイル中にエラーが発生しました",
+              code: "app-project-compile-error",
+              params: {},
             },
           ],
         }));
