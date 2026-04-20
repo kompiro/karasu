@@ -17,6 +17,13 @@ interface NodeDetailPanelProps {
   onNavigateToOrg?: (teamId: string) => void;
   /** Called when user clicks "Jump to editor" to navigate Monaco Editor to this node's source line */
   onJumpToEditor?: () => void;
+  /**
+   * When rendering inside the diff viewer, the added/removed annotation
+   * sets for this node. Surfaced as `+ @deprecated` / `- @experimental`
+   * lines so viewers can read annotation churn at a glance
+   * (Issue #738 / design doc D-2).
+   */
+  annotationDiff?: { added: string[]; removed: string[] };
 }
 
 // Maps node kind to the registered icon name (mirrors ICON_THEME_STYLE_SOURCE).
@@ -53,6 +60,7 @@ export function NodeDetailPanel({
   onNavigateToDeploy,
   onNavigateToOrg,
   onJumpToEditor,
+  annotationDiff,
 }: NodeDetailPanelProps) {
   const { t } = useTranslation();
   const descriptionHtml = useMemo(() => {
@@ -125,6 +133,24 @@ export function NodeDetailPanel({
           {metadata.realizes?.length && (
             <div className="node-detail-prop">🔗 realizes: {metadata.realizes.join(", ")}</div>
           )}
+        </div>
+      )}
+
+      {annotationDiff && (annotationDiff.added.length > 0 || annotationDiff.removed.length > 0) && (
+        <div className="node-detail-section node-detail-annotation-diff">
+          <div className="node-detail-section-title">{t("nodeDetail.annotationDiff.title")}</div>
+          <ul className="node-detail-annotation-diff-list">
+            {annotationDiff.added.map((ann) => (
+              <li key={`add-${ann}`} data-diff-state="added">
+                <span className="node-detail-annotation-diff-marker">+</span>@{ann}
+              </li>
+            ))}
+            {annotationDiff.removed.map((ann) => (
+              <li key={`rem-${ann}`} data-diff-state="removed">
+                <span className="node-detail-annotation-diff-marker">−</span>@{ann}
+              </li>
+            ))}
+          </ul>
         </div>
       )}
 

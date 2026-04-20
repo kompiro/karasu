@@ -73,6 +73,7 @@ export const ja: Partial<Translations> = {
   "nodeDetail.links.title": "🔗 リンク",
   "nodeDetail.openDeployView": "🚀 Deploy 図で確認 →",
   "nodeDetail.jumpToEditor": "↗ エディタへジャンプ",
+  "nodeDetail.annotationDiff.title": "⇄ アノテーション差分",
 
   // DiagramTabBar
   "diagramTabBar.deploy.unavailableTitle": "deploy ブロックがありません",

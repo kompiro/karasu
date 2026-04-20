@@ -814,7 +814,11 @@ export async function compileSystemDiff(
     afterResolved.krsFile.ownerIndex,
     displayMode,
     undefined,
-    { nodeDiffState: nodeDiffStateMap, edgeDiffState: edgeDiffStateMap },
+    {
+      nodeDiffState: nodeDiffStateMap,
+      edgeDiffState: edgeDiffStateMap,
+      nodeDiffMeta: diffed.nodes,
+    },
   );
 
   return {
