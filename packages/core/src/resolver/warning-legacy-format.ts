@@ -40,6 +40,27 @@ export function formatWarning(w: Warning): FormattedWarning {
         details: [],
       };
     }
+    case "unassigned-database": {
+      const display = w.params.label ?? w.params.databaseId;
+      return {
+        message: `database "${display}" is not assigned to any system`,
+        details: [],
+      };
+    }
+    case "unassigned-queue": {
+      const display = w.params.label ?? w.params.queueId;
+      return {
+        message: `queue "${display}" is not assigned to any system`,
+        details: [],
+      };
+    }
+    case "unassigned-storage": {
+      const display = w.params.label ?? w.params.storageId;
+      return {
+        message: `storage "${display}" is not assigned to any system`,
+        details: [],
+      };
+    }
     case "unassigned-usecase":
       return {
         message: `usecase "${w.params.usecaseId}" is not assigned to any domain`,

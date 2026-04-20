@@ -605,3 +605,76 @@ system ECPlatform {
     expect(unassigned).toHaveLength(0);
   });
 });
+
+describe("unassigned-database warning", () => {
+  it("warns for each top-level database not wrapped in a system", () => {
+    const krs = `
+database OrderDB { label "注文DB" }
+database InventoryDB {}
+
+system ECPlatform {
+  database ProductDB {}
+}
+    `;
+    const file = Parser.parse(krs).value;
+    const builtin = getBuiltinStyleSheet();
+    const warnings = analyze(file, [builtin]);
+    const unassigned = warnings.filter((w) => w.kind === "unassigned-database");
+    expect(unassigned).toHaveLength(2);
+    if (unassigned[0].kind !== "unassigned-database") throw new Error("kind mismatch");
+    if (unassigned[1].kind !== "unassigned-database") throw new Error("kind mismatch");
+    expect(unassigned[0].params).toEqual({ databaseId: "OrderDB", label: "注文DB" });
+    expect(unassigned[1].params).toEqual({ databaseId: "InventoryDB" });
+  });
+
+  it("does not warn for databases nested inside a system", () => {
+    const krs = `
+system ECPlatform {
+  database OrderDB {}
+}
+    `;
+    const file = Parser.parse(krs).value;
+    const builtin = getBuiltinStyleSheet();
+    const warnings = analyze(file, [builtin]);
+    const unassigned = warnings.filter((w) => w.kind === "unassigned-database");
+    expect(unassigned).toHaveLength(0);
+  });
+});
+
+describe("unassigned-queue warning", () => {
+  it("warns for each top-level queue not wrapped in a system", () => {
+    const krs = `
+queue EventQueue { label "イベントキュー" }
+
+system ECPlatform {
+  queue InternalQueue {}
+}
+    `;
+    const file = Parser.parse(krs).value;
+    const builtin = getBuiltinStyleSheet();
+    const warnings = analyze(file, [builtin]);
+    const unassigned = warnings.filter((w) => w.kind === "unassigned-queue");
+    expect(unassigned).toHaveLength(1);
+    if (unassigned[0].kind !== "unassigned-queue") throw new Error("kind mismatch");
+    expect(unassigned[0].params).toEqual({ queueId: "EventQueue", label: "イベントキュー" });
+  });
+});
+
+describe("unassigned-storage warning", () => {
+  it("warns for each top-level storage not wrapped in a system", () => {
+    const krs = `
+storage FileStore { label "ファイル" }
+
+system ECPlatform {
+  storage InternalStore {}
+}
+    `;
+    const file = Parser.parse(krs).value;
+    const builtin = getBuiltinStyleSheet();
+    const warnings = analyze(file, [builtin]);
+    const unassigned = warnings.filter((w) => w.kind === "unassigned-storage");
+    expect(unassigned).toHaveLength(1);
+    if (unassigned[0].kind !== "unassigned-storage") throw new Error("kind mismatch");
+    expect(unassigned[0].params).toEqual({ storageId: "FileStore", label: "ファイル" });
+  });
+});

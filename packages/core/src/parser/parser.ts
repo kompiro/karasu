@@ -25,6 +25,9 @@ import type {
   TableNode,
   QueueItemNode,
   BucketNode,
+  DatabaseNode,
+  QueueGroupNode,
+  StorageNode,
 } from "../types/ast.js";
 import { Lexer } from "../lexer/lexer.js";
 
@@ -147,6 +150,9 @@ export class Parser {
       systems: [],
       services: [],
       domains: [],
+      databases: [],
+      queues: [],
+      storages: [],
       deploys: [],
       organizations: [],
       ownerIndex: new Map(),
@@ -173,6 +179,15 @@ export class Parser {
         case TokenType.Domain:
           file.domains.push(this.parseNodeDecl() as DomainNode);
           break;
+        case TokenType.Database:
+          file.databases.push(this.parseInfraBlock(this.advance(), "database") as DatabaseNode);
+          break;
+        case TokenType.Queue:
+          file.queues.push(this.parseInfraBlock(this.advance(), "queue") as QueueGroupNode);
+          break;
+        case TokenType.Storage:
+          file.storages.push(this.parseInfraBlock(this.advance(), "storage") as StorageNode);
+          break;
         case TokenType.Deploy:
           file.deploys.push(this.parseDeployBlock());
           break;
@@ -189,7 +204,11 @@ export class Parser {
     }
 
     file.ownerIndex = this.buildOwnerIndex(file.organizations);
-    file.nodePathIndex = this.buildNodePathIndex(file.systems, file.domains);
+    file.nodePathIndex = this.buildNodePathIndex(file.systems, file.domains, [
+      ...file.databases,
+      ...file.queues,
+      ...file.storages,
+    ]);
     if (file.systems.length > 0 || file.domains.length > 0) {
       this.validateOwnsReferences(file.organizations, file.nodePathIndex);
     }
@@ -1251,6 +1270,7 @@ export class Parser {
   private buildNodePathIndex(
     systems: SystemNode[],
     domains: DomainNode[] = [],
+    topLevelInfra: KrsNode[] = [],
   ): Map<string, string[]> {
     const index = new Map<string, string[]>();
     // Only service and domain nodes are indexed: these are the only kinds
@@ -1339,6 +1359,13 @@ export class Parser {
     // Each top-level domain is its own scope; no cross-domain uniqueness check needed here.
     for (const domain of domains) {
       walk(domain, [], new Map<string, number>(), []);
+    }
+    // Index top-level infra nodes (database/queue/storage) and their sub-resources.
+    for (const infra of topLevelInfra) {
+      index.set(infra.id, [infra.id]);
+      for (const child of infra.children) {
+        index.set(child.id, [infra.id, child.id]);
+      }
     }
     return index;
   }

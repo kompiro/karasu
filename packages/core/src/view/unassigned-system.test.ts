@@ -35,6 +35,36 @@ service Second { label "S" }
     // matching the visual ordering users already see for system children.
     expect(pseudo.children.map((c) => c.id)).toEqual(["Second", "First"]);
   });
+
+  it("includes top-level database, queue, and storage nodes", () => {
+    const file = Parser.parse(`
+database OrderDB { label "注文DB" }
+queue EventQueue {}
+storage FileStore {}
+    `).value;
+    const pseudo = synthesizeUnassignedSystem(file);
+    expect(pseudo).not.toBeNull();
+    expect(pseudo!.children.map((c) => c.id)).toEqual(["OrderDB", "EventQueue", "FileStore"]);
+  });
+
+  it("orders infra nodes between services and domains", () => {
+    const file = Parser.parse(`
+domain D { label "Domain" }
+database DB {}
+service S {}
+    `).value;
+    const pseudo = synthesizeUnassignedSystem(file)!;
+    expect(pseudo.children.map((c) => c.id)).toEqual(["S", "DB", "D"]);
+  });
+
+  it("returns null when file has only system-assigned infra (no top-level infra)", () => {
+    const file = Parser.parse(`
+system ECPlatform {
+  database OrderDB {}
+}
+    `).value;
+    expect(synthesizeUnassignedSystem(file)).toBeNull();
+  });
 });
 
 describe("withUnassignedSystem", () => {

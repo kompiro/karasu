@@ -134,6 +134,44 @@ system ECPlatform { service ECommerce {} }
   });
 });
 
+describe("buildDrillDownSvg with top-level infra blocks", () => {
+  it("renders an orphan database inside an Unassigned frame when no system wraps it", () => {
+    const krsFile = Parser.parse(
+      `database OrderDB { label "注文DB" table OrdersTable { label "orders" } }`,
+    ).value;
+    const { svg } = buildDrillDownSvg(krsFile);
+    expect(svg).not.toContain("No diagram");
+    expect(svg).toContain("Unassigned");
+    expect(svg).toContain('data-node-id="OrderDB"');
+  });
+
+  it("renders orphan database alongside an existing system frame", () => {
+    const krsFile = Parser.parse(`
+database OrderDB {}
+system ECPlatform { service ECommerce {} }
+    `).value;
+    const { svg } = buildDrillDownSvg(krsFile);
+    expect(svg).toContain("ECPlatform");
+    expect(svg).toContain("Unassigned");
+    expect(svg).toContain('data-node-id="OrderDB"');
+    expect(svg).toContain('data-node-id="ECommerce"');
+  });
+
+  it("renders a zero-system file with only database/queue/storage", () => {
+    const krsFile = Parser.parse(`
+database OrderDB {}
+queue EventQueue {}
+storage FileStore {}
+    `).value;
+    const { svg } = buildDrillDownSvg(krsFile);
+    expect(svg).not.toContain("No diagram");
+    expect(svg).toContain("Unassigned");
+    expect(svg).toContain('data-node-id="OrderDB"');
+    expect(svg).toContain('data-node-id="EventQueue"');
+    expect(svg).toContain('data-node-id="FileStore"');
+  });
+});
+
 describe("buildDrillDownSvg with styleSource", () => {
   it("applies styleSource to the rendered output", () => {
     const krsFile = Parser.parse(ONE_LEVEL).value;
