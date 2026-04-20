@@ -24,8 +24,9 @@ export function ReferencePanel({ isOpen, onClose, activeView = "system" }: Refer
   const [activeTab, setActiveTab] = useState<Tab>("syntax");
   const { copy: copyBuiltin, copied } = useClipboardCopy();
   const { copy: copySample, copied: sampleCopied } = useClipboardCopy();
+  const { locale } = useTranslation();
 
-  const ref = getReference();
+  const ref = getReference(locale);
 
   const handleCopy = useCallback(() => {
     copyBuiltin(ref.builtinStyleSource);
@@ -76,7 +77,8 @@ export function ReferencePanel({ isOpen, onClose, activeView = "system" }: Refer
 }
 
 function SyntaxTab({ activeView }: { activeView: ActiveView }) {
-  const ref = getReference();
+  const { locale } = useTranslation();
+  const ref = getReference(locale);
 
   if (activeView === "deploy") {
     return (
@@ -281,7 +283,8 @@ A --> B "label"   // async (dashed arrow)`}
 }
 
 function StylesTab({ activeView }: { activeView: ActiveView }) {
-  const ref = getReference();
+  const { locale } = useTranslation();
+  const ref = getReference(locale);
 
   const selectorExamples =
     activeView === "deploy"
@@ -421,8 +424,8 @@ edge[async] { border-style: dashed; }
 }
 
 function TagsTab({ activeView }: { activeView: ActiveView }) {
-  const { t } = useTranslation();
-  const ref = getReference();
+  const { t, locale } = useTranslation();
+  const ref = getReference(locale);
 
   if (activeView !== "system") {
     return (

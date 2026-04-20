@@ -70,6 +70,7 @@ export {
 } from "./builtins/examples.js";
 export {
   getReference,
+  type ReferenceLocale,
   type KarasuReference,
   type NodeKindInfo,
   type TagInfo,
