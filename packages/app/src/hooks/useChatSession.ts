@@ -359,7 +359,7 @@ export function useChatSession({
             id: crypto.randomUUID(),
             role: "error" as const,
             errorType: "server" as const,
-            content: `⚠ パッチの適用に失敗しました: ${patchResult.error}`,
+            content: tRef.current("chat.error.patchFailed", { detail: patchResult.error }),
           },
         ]);
         setPhase({ kind: "idle" });

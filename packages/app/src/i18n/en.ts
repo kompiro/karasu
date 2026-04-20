@@ -66,6 +66,7 @@ export const en: Translations = {
   "chat.error.auth": "⚠ The API key is invalid. Please set a valid key in Settings.",
   "chat.error.rateLimit": "⚠ Rate limit reached. Please wait a moment and retry.",
   "chat.error.server": "⚠ Anthropic server error. Please wait a moment and retry.",
+  "chat.error.patchFailed": ({ detail }) => `⚠ Failed to apply patch: ${detail}`,
 
   // NodeDetailPanel
   "nodeDetail.close": "Close",
