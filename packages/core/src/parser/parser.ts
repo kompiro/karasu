@@ -209,7 +209,7 @@ export class Parser {
       ...file.queues,
       ...file.storages,
     ]);
-    if (file.systems.length > 0 || file.domains.length > 0) {
+    if (file.nodePathIndex.size > 0 && file.organizations.length > 0) {
       this.validateOwnsReferences(file.organizations, file.nodePathIndex);
     }
 
