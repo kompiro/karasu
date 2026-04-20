@@ -144,13 +144,14 @@ export function useDeployView(
     return () => {
       if (timerRef.current) clearTimeout(timerRef.current);
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // recompileCounter.current is intentionally read on each render to bump on demand
   }, [
     entryPath,
     fs,
     selectedDeployBlockId,
     displayMode,
     compareEntryPath,
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     recompileCounter.current,
   ]);
 
