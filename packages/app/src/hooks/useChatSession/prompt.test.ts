@@ -1,7 +1,13 @@
 // @vitest-environment jsdom
 import type { SystemNode } from "@karasu-tools/core";
 import { describe, expect, it } from "vitest";
-import { buildSystemPrompt, type BuildSystemPromptArgs } from "./prompt";
+import {
+  buildSystemPrompt,
+  buildTools,
+  reviewTriggerMessage,
+  interviewTriggerMessage,
+  type BuildSystemPromptArgs,
+} from "./prompt";
 
 const baseArgs: Omit<BuildSystemPromptArgs, "locale"> = {
   scopeLabel: "ECPlatform",
@@ -82,5 +88,46 @@ describe("buildSystemPrompt", () => {
 
     expect(ja).toContain("このスコープ（システムレベル）");
     expect(en).toContain("At this scope (system level)");
+  });
+});
+
+describe("buildTools", () => {
+  it("returns the same tool names and schema shape in both locales", () => {
+    const ja = buildTools("ja");
+    const en = buildTools("en");
+    expect(ja.map((t) => t.name)).toEqual(["navigate_view", "apply_krs_patch"]);
+    expect(en.map((t) => t.name)).toEqual(["navigate_view", "apply_krs_patch"]);
+    // Descriptions are localized (translated). Verify the property names and
+    // `required` arrays match so tool-call parsing stays locale-independent.
+    for (let i = 0; i < ja.length; i++) {
+      expect(Object.keys(ja[i].input_schema.properties ?? {}).sort()).toEqual(
+        Object.keys(en[i].input_schema.properties ?? {}).sort(),
+      );
+      expect(ja[i].input_schema.required).toEqual(en[i].input_schema.required);
+    }
+  });
+
+  it("uses Japanese tool descriptions for 'ja'", () => {
+    const [navigateView, applyPatch] = buildTools("ja");
+    expect(navigateView.description).toContain("ダイアグラム");
+    expect(applyPatch.description).toContain(".krs");
+  });
+
+  it("uses English tool descriptions for 'en'", () => {
+    const [navigateView, applyPatch] = buildTools("en");
+    expect(navigateView.description).toContain("drill-down");
+    expect(applyPatch.description).toContain(".krs");
+  });
+});
+
+describe("trigger messages", () => {
+  it("reviewTriggerMessage matches the locale", () => {
+    expect(reviewTriggerMessage("ja")).toContain("設計レビュー");
+    expect(reviewTriggerMessage("en")).toContain("design review");
+  });
+
+  it("interviewTriggerMessage matches the locale", () => {
+    expect(interviewTriggerMessage("ja")).toContain("インタビュー");
+    expect(interviewTriggerMessage("en")).toContain("interview");
   });
 });
