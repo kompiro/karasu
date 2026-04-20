@@ -90,6 +90,12 @@ export const ja: Partial<Translations> = {
     `usecase "${usecaseId}" はどの domain にも割り当てられていません`,
   "warning.unassignedService.message": ({ display }) =>
     `service "${display}" はどの system にも割り当てられていません`,
+  "warning.unassignedDatabase.message": ({ display }) =>
+    `database "${display}" はどの system にも割り当てられていません`,
+  "warning.unassignedQueue.message": ({ display }) =>
+    `queue "${display}" はどの system にも割り当てられていません`,
+  "warning.unassignedStorage.message": ({ display }) =>
+    `storage "${display}" はどの system にも割り当てられていません`,
   "warning.styleConflict.message": ({ selector }) =>
     `セレクタ "${selector}" が複数のスタイルファイルで定義されています`,
   "warning.styleConflict.sheetLabel": ({ index }) => `スタイルファイル ${index + 1}`,

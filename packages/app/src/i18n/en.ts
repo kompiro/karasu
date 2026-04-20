@@ -90,6 +90,12 @@ export const en: Translations = {
     `Usecase "${usecaseId}" is not assigned to any domain`,
   "warning.unassignedService.message": ({ display }) =>
     `Service "${display}" is not assigned to any system`,
+  "warning.unassignedDatabase.message": ({ display }) =>
+    `Database "${display}" is not assigned to any system`,
+  "warning.unassignedQueue.message": ({ display }) =>
+    `Queue "${display}" is not assigned to any system`,
+  "warning.unassignedStorage.message": ({ display }) =>
+    `Storage "${display}" is not assigned to any system`,
   "warning.styleConflict.message": ({ selector }) =>
     `Selector "${selector}" is defined in multiple style files`,
   "warning.styleConflict.sheetLabel": ({ index }) => `Style file ${index + 1}`,

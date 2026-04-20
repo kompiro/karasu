@@ -41,6 +41,27 @@ export function useFormattedWarning(): (w: Warning) => FormattedWarning {
             details: [],
           };
         }
+        case "unassigned-database": {
+          const display = w.params.label ?? w.params.databaseId;
+          return {
+            message: t("warning.unassignedDatabase.message", { display }),
+            details: [],
+          };
+        }
+        case "unassigned-queue": {
+          const display = w.params.label ?? w.params.queueId;
+          return {
+            message: t("warning.unassignedQueue.message", { display }),
+            details: [],
+          };
+        }
+        case "unassigned-storage": {
+          const display = w.params.label ?? w.params.storageId;
+          return {
+            message: t("warning.unassignedStorage.message", { display }),
+            details: [],
+          };
+        }
         case "style-conflict":
           return {
             message: t("warning.styleConflict.message", { selector: w.params.selector }),
