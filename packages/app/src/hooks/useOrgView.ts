@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import {
   compileProject,
+  compileOrgDiff,
   renderOrgTreeView,
   collectAllTeamIds,
   type Diagnostic,
@@ -28,6 +29,7 @@ export function useOrgView(
   fs: FileSystemProvider | null,
   viewPath: ViewPath = [],
   displayMode?: DisplayMode,
+  compareEntryPath: string | null = null,
 ): OrgViewState & {
   recompile: () => void;
   expandedTeamIds: Set<string>;
@@ -74,10 +76,26 @@ export function useOrgView(
 
     if (timerRef.current) clearTimeout(timerRef.current);
 
-    const currentKey = `${entryPath}:org:${viewPath.join("/")}`;
+    const currentKey = `${entryPath}:org:${viewPath.join("/")}:cmp=${compareEntryPath ?? ""}`;
 
     timerRef.current = setTimeout(() => {
-      compileProject(entryPath, fs, { diagramType: "org", viewPath, displayMode })
+      const baseTask = compileProject(entryPath, fs, { diagramType: "org", viewPath, displayMode });
+      const task = compareEntryPath
+        ? Promise.all([
+            baseTask,
+            compileOrgDiff({
+              beforeEntryPath: compareEntryPath,
+              afterEntryPath: entryPath,
+              fs,
+              viewPath,
+              displayMode,
+            }),
+          ]).then(([base, diff]) => {
+            if (base.diagramType !== "org") return base;
+            return { ...base, svg: diff.svg, diagnostics: diff.diagnostics };
+          })
+        : baseTask;
+      task
         .then((result) => {
           if (result.diagramType !== "org") return;
           const hasErrors = result.diagnostics.some((d) => d.severity === "error");
@@ -121,7 +139,7 @@ export function useOrgView(
       if (timerRef.current) clearTimeout(timerRef.current);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [entryPath, fs, viewPath, displayMode, recompileCounter.current]);
+  }, [entryPath, fs, viewPath, displayMode, compareEntryPath, recompileCounter.current]);
 
   const orgTreeSvg =
     state.organizations.length > 0
