@@ -3,6 +3,7 @@ import { format, FormatError } from "@karasu-tools/core";
 import { EditArea } from "./EditArea.js";
 import { PreviewColumn } from "./PreviewColumn.js";
 import { downloadSvg } from "../utils/download-svg.js";
+import { downloadDrawio } from "../utils/download-drawio.js";
 import { useAppContext } from "../state/app-context.js";
 import { PreviewProvider, type PreviewContextValue } from "../state/preview-context.js";
 import { useAppViews } from "../hooks/useAppViews.js";
@@ -202,6 +203,9 @@ export function AppShell({
       displayMode,
       onDisplayModeChange: nav.handleDisplayModeChange,
       onExportSvg: downloadSvg,
+      onExportDrawio: entryPath
+        ? (filename: string) => downloadDrawio(entryPath, fs, filename)
+        : undefined,
       isAllLayersOpen,
       onAllLayersToggle: toggleAllLayers,
       drillDownSvg,
@@ -257,6 +261,8 @@ export function AppShell({
       handleJumpToEditor,
       isOrgTreeViewOpen,
       toggleOrgTreeView,
+      entryPath,
+      fs,
     ],
   );
 

@@ -80,6 +80,17 @@ export const en: Translations = {
   // ReferencePanel
   "referencePanel.unsupportedMessage": "Tags & Annotations are not available for this diagram.",
 
+  // Preview toolbar — export controls
+  "preview.export.svg.label": "↓ Export SVG",
+  "preview.export.svg.ariaLabel": "Export SVG",
+  "preview.export.options.ariaLabel": "Export options",
+  "preview.export.drillDown.label": "Export Drill-down SVG",
+  "preview.export.allDiagrams.label": "Export All Diagrams SVG",
+  "preview.export.drawio.label": "Export draw.io (mxGraph XML)",
+  "preview.export.drawio.title":
+    "Export to draw.io (mxGraph XML) — a layout escape hatch you can polish in diagrams.net",
+  "preview.export.drawio.failed": ({ detail }) => `⚠ draw.io export failed: ${detail}`,
+
   // Warnings (rendered in the WarningPanel)
   "warning.domainDispersal.message": ({ domainId }) =>
     `Domain "${domainId}" is dispersed across multiple services`,

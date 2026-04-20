@@ -89,6 +89,16 @@ export type Translations = {
   // ReferencePanel (Phase C5)
   "referencePanel.unsupportedMessage": string;
 
+  // Preview toolbar — export controls
+  "preview.export.svg.label": string;
+  "preview.export.svg.ariaLabel": string;
+  "preview.export.options.ariaLabel": string;
+  "preview.export.drillDown.label": string;
+  "preview.export.allDiagrams.label": string;
+  "preview.export.drawio.label": string;
+  "preview.export.drawio.title": string;
+  "preview.export.drawio.failed": (params: { detail: string }) => string;
+
   // Warning messages (Phase D.1) — rendered in the WarningPanel.
   // One `message` key per WarningKind, plus optional `details` keys for
   // kinds that carry multi-line or repeated detail rows.
