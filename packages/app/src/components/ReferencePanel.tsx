@@ -500,12 +500,13 @@ function BuiltinTab({
   onCopy: () => void;
   copied: boolean;
 }) {
+  const { t } = useTranslation();
   return (
     <div className="reference-tab-body">
       <div className="reference-builtin-header">
-        <span>Built-in default theme — applies to all diagram types (lowest cascade priority)</span>
+        <span>{t("referencePanel.builtin.description")}</span>
         <button className="reference-copy-btn" onClick={onCopy}>
-          {copied ? "Copied!" : "Copy"}
+          {copied ? t("referencePanel.copy.copied") : t("referencePanel.copy.label")}
         </button>
       </div>
       <div className="reference-code-block">
@@ -524,12 +525,13 @@ function SamplesTab({
   onCopy: () => void;
   copied: boolean;
 }) {
+  const { t } = useTranslation();
   return (
     <div className="reference-tab-body">
       <div className="reference-builtin-header">
-        <span>Complete example — system + deploy + org</span>
+        <span>{t("referencePanel.samples.description")}</span>
         <button className="reference-copy-btn" onClick={onCopy}>
-          {copied ? "Copied!" : "Copy"}
+          {copied ? t("referencePanel.copy.copied") : t("referencePanel.copy.label")}
         </button>
       </div>
       <div className="reference-code-block">
