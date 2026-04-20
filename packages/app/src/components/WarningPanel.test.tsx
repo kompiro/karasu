@@ -153,7 +153,10 @@ describe("WarningPanel", () => {
 
 describe("WarningPanel — localization (Phase D.1)", () => {
   it("renders domain-dispersal in English when locale is 'en'", () => {
-    const { container } = render(<WarningPanel warnings={[makeWarning("domain-dispersal")]} />, "en");
+    const { container } = render(
+      <WarningPanel warnings={[makeWarning("domain-dispersal")]} />,
+      "en",
+    );
     const item = container.querySelector(".warning-item");
     expect(item?.textContent).toContain("Domain");
     expect(item?.textContent).toContain("is dispersed");
@@ -161,7 +164,10 @@ describe("WarningPanel — localization (Phase D.1)", () => {
   });
 
   it("renders domain-dispersal in Japanese when locale is 'ja'", () => {
-    const { container } = render(<WarningPanel warnings={[makeWarning("domain-dispersal")]} />, "ja");
+    const { container } = render(
+      <WarningPanel warnings={[makeWarning("domain-dispersal")]} />,
+      "ja",
+    );
     const item = container.querySelector(".warning-item");
     expect(item?.textContent).toContain("複数の service に分散しています");
     expect(item?.textContent).toContain("ドメインの凝集性を確認してください");
