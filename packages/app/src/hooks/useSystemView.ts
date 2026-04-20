@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import {
   compileProject,
+  compileSystemDiff,
   resolveIconManifest,
   type Warning,
   type Diagnostic,
@@ -81,6 +82,7 @@ export function useSystemView(
   fs: FileSystemProvider | null,
   viewPath: ViewPath = [],
   displayMode: DisplayMode = "shape",
+  compareEntryPath: string | null = null,
 ): SystemViewState & { recompile: () => void } {
   const [state, setState] = useState<SystemViewState>({
     svg: "",
@@ -108,10 +110,56 @@ export function useSystemView(
 
     if (timerRef.current) clearTimeout(timerRef.current);
 
-    const currentKey = `${entryPath}:system:${viewPath.join("/")}`;
+    const currentKey = `${entryPath}:system:${viewPath.join("/")}:cmp=${compareEntryPath ?? ""}`;
 
     timerRef.current = setTimeout(async () => {
       try {
+        if (compareEntryPath) {
+          // Diff-mode: render the union of `compareEntryPath` (before) vs `entryPath` (after).
+          // We still need a baseline compileProject result for nodeMetadata / systems used by
+          // surrounding UI (breadcrumbs, NodeDetailPanel). The diff SVG replaces only `svg`.
+          const [base, diff] = await Promise.all([
+            compileProject(entryPath, fs, { diagramType: "system", viewPath, displayMode }),
+            compileSystemDiff({
+              beforeEntryPath: compareEntryPath,
+              afterEntryPath: entryPath,
+              fs,
+              viewPath,
+              displayMode,
+            }),
+          ]);
+          if (base.diagramType !== "system") return;
+          const hasErrors = diff.diagnostics.some((d) => d.severity === "error");
+          if (hasErrors) {
+            hadErrors.current = true;
+            const svgToShow = lastValidSvgKey.current === currentKey ? lastValidSvg.current : "";
+            setState({
+              svg: svgToShow,
+              warnings: base.warnings,
+              diagnostics: diff.diagnostics,
+              nodeMetadata: base.nodeMetadata,
+              hasDeployDiagram: base.hasDeployDiagram,
+              systems: base.systems,
+              nodeFileIndex: base.nodeFileIndex,
+            });
+          } else {
+            if (diff.svg === lastValidSvg.current && !hadErrors.current) return;
+            hadErrors.current = false;
+            lastValidSvg.current = diff.svg;
+            lastValidSvgKey.current = currentKey;
+            setState({
+              svg: diff.svg,
+              warnings: base.warnings,
+              diagnostics: diff.diagnostics,
+              nodeMetadata: base.nodeMetadata,
+              hasDeployDiagram: base.hasDeployDiagram,
+              systems: base.systems,
+              nodeFileIndex: base.nodeFileIndex,
+            });
+          }
+          return;
+        }
+
         const result = await compileProject(entryPath, fs, {
           diagramType: "system",
           viewPath,
@@ -166,7 +214,7 @@ export function useSystemView(
       if (timerRef.current) clearTimeout(timerRef.current);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [entryPath, fs, viewPath, displayMode, recompileCounter.current]);
+  }, [entryPath, fs, viewPath, displayMode, compareEntryPath, recompileCounter.current]);
 
   return { ...state, recompile };
 }

@@ -663,4 +663,74 @@ system S {
     const svg = renderWithAnalysis(krs);
     expect(svg).toContain("#EF4444");
   });
+
+  describe("diff state attributes", () => {
+    function renderWithDiff(
+      krs: string,
+      nodeDiff: Map<string, string>,
+      edgeDiff: Map<string, string>,
+    ): string {
+      const parseResult = Parser.parse(krs);
+      const styles = resolveStyles(parseResult.value.systems, [getBuiltinStyleSheet()]);
+      const viewSlice = extractView(parseResult.value.systems, ["S"]);
+      return render(
+        viewSlice,
+        styles,
+        undefined,
+        parseResult.value.ownerIndex,
+        undefined,
+        undefined,
+        {
+          nodeDiffState: nodeDiff,
+          edgeDiffState: edgeDiff,
+        },
+      );
+    }
+
+    it("emits data-diff-state on nodes that have a diff entry", () => {
+      const krs = `
+system S {
+  service A {}
+  service B {}
+}
+`;
+      const svg = renderWithDiff(
+        krs,
+        new Map([
+          ["A", "added"],
+          ["B", "removed"],
+        ]),
+        new Map(),
+      );
+      expect(svg).toContain('data-node-id="A"');
+      expect(svg).toContain('data-diff-state="added"');
+      expect(svg).toContain('data-diff-state="removed"');
+    });
+
+    it("emits data-diff-state on edges that have a diff entry", () => {
+      const krs = `
+system S {
+  service A {}
+  service B {}
+  A -> B
+}
+`;
+      const svg = renderWithDiff(krs, new Map(), new Map([["A->B", "added"]]));
+      expect(svg).toContain('data-edge-from="A"');
+      expect(svg).toContain('data-edge-to="B"');
+      expect(svg).toContain('data-diff-state="added"');
+    });
+
+    it("omits data-diff-state when no diff entry is provided", () => {
+      const krs = `
+system S {
+  service A {}
+}
+`;
+      const svg = renderWithDiff(krs, new Map(), new Map());
+      // The node group still renders, but without the diff attribute
+      expect(svg).toContain('data-node-id="A"');
+      expect(svg).not.toContain("data-diff-state");
+    });
+  });
 });

@@ -10,6 +10,7 @@ import { useProjectInitialization } from "./hooks/useProjectInitialization.js";
 import { type Project } from "@karasu-tools/core";
 import { exportProjectAsZip } from "./utils/export-project-zip.js";
 import { parseZipForImport, disambiguateName } from "./utils/import-project-zip.js";
+import { ENABLE_DIFF_VIEWER } from "./utils/feature-flags.js";
 
 /**
  * ProjectModeApp — OPFS モードのアプリケーションシェル。
@@ -118,6 +119,13 @@ export function ProjectModeApp() {
     [pm, dispatch, projects, navigateToProject],
   );
 
+  const handleCompareWithCurrent = useCallback(
+    (path: string) => {
+      dispatch({ type: "SET_COMPARE_ENTRY_PATH", path });
+    },
+    [dispatch],
+  );
+
   if (loading || !currentProject) {
     return <div className="app-loading">Loading...</div>;
   }
@@ -144,6 +152,7 @@ export function ProjectModeApp() {
       onFileCreated={handleFileCreated}
       onFileDeleted={handleFileDeleted}
       onFileRenamed={handleFileRenamed}
+      onCompareWithCurrent={ENABLE_DIFF_VIEWER ? handleCompareWithCurrent : undefined}
     />
   ) : undefined;
 

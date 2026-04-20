@@ -28,6 +28,8 @@ interface UseAppViewsArgs {
   dispatch: Dispatch<AppAction>;
   isOrgTreeViewOpen: boolean;
   setIsOrgTreeViewOpen: Dispatch<SetStateAction<boolean>>;
+  /** When set, system view renders a graphical diff of `entryPath` vs this path. */
+  compareEntryPath?: string | null;
 }
 
 interface SystemViewBundle {
@@ -99,6 +101,7 @@ export function useAppViews(args: UseAppViewsArgs): UseAppViewsResult {
     dispatch,
     isOrgTreeViewOpen,
     setIsOrgTreeViewOpen,
+    compareEntryPath = null,
   } = args;
 
   const {
@@ -110,7 +113,7 @@ export function useAppViews(args: UseAppViewsArgs): UseAppViewsResult {
     recompile: recompileSystem,
     systems: resolvedSystems,
     nodeFileIndex,
-  } = useSystemView(entryPath, fs, viewPath, displayMode);
+  } = useSystemView(entryPath, fs, viewPath, displayMode, compareEntryPath);
 
   const {
     svg: deploySvg,

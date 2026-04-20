@@ -20,6 +20,12 @@ export interface AppState {
   displayMode: DisplayMode;
   isAllLayersOpen: boolean;
   loading: boolean;
+  /**
+   * Path of the file to compare the current file against in diff mode (Issue #650).
+   * When non-null, the system view renders a graphical diff between the current
+   * entry path and this path.
+   */
+  compareEntryPath: string | null;
 }
 
 export const initialState: AppState = {
@@ -35,6 +41,7 @@ export const initialState: AppState = {
   displayMode: "shape",
   isAllLayersOpen: false,
   loading: true,
+  compareEntryPath: null,
 };
 
 export type AppAction =
@@ -52,7 +59,8 @@ export type AppAction =
   | { type: "REMOVE_PROJECT"; id: string }
   | { type: "RENAME_PROJECT"; id: string; name: string }
   | { type: "SET_DISPLAY_MODE"; displayMode: DisplayMode }
-  | { type: "SET_ALL_LAYERS_OPEN"; isAllLayersOpen: boolean };
+  | { type: "SET_ALL_LAYERS_OPEN"; isAllLayersOpen: boolean }
+  | { type: "SET_COMPARE_ENTRY_PATH"; path: string | null };
 
 export function appReducer(state: AppState, action: AppAction): AppState {
   switch (action.type) {
@@ -137,6 +145,9 @@ export function appReducer(state: AppState, action: AppAction): AppState {
 
     case "SET_ALL_LAYERS_OPEN":
       return { ...state, isAllLayersOpen: action.isAllLayersOpen };
+
+    case "SET_COMPARE_ENTRY_PATH":
+      return { ...state, compareEntryPath: action.path };
 
     default:
       return state;

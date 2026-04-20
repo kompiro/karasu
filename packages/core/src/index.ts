@@ -722,3 +722,105 @@ export async function buildAllViewsSvgProject(
     diagnostics: [...resolved.diagnostics, ...result.diagnostics],
   };
 }
+
+// ---------------------------------------------------------------------------
+// Diff API (Issue #650)
+// ---------------------------------------------------------------------------
+
+export type { DiffState, NodeDiffMeta, EdgeDiffMeta, DiffedView } from "./diff/view-diff.js";
+export { diffSystemViewSlices, edgeKey } from "./diff/view-diff.js";
+
+import { diffSystemViewSlices } from "./diff/view-diff.js";
+import type { NodeDiffMeta, EdgeDiffMeta } from "./diff/view-diff.js";
+
+export interface SystemDiffCompileResult {
+  diagramType: "system";
+  svg: string;
+  diagnostics: Diagnostic[];
+  /** Diff metadata per node id (for UI hover / detail panel). */
+  nodeDiff: Map<string, NodeDiffMeta>;
+  /** Diff metadata per edge key (`from->to`). */
+  edgeDiff: Map<string, EdgeDiffMeta>;
+}
+
+export interface CompileSystemDiffOptions {
+  beforeEntryPath: string;
+  afterEntryPath: string;
+  fs: FileSystemProvider;
+  viewPath?: ViewPath;
+  displayMode?: DisplayMode;
+}
+
+/**
+ * Compile two `.krs` project entries and produce a system-view SVG annotated
+ * with semantic diff state (`data-diff-state="added|removed|changed|unchanged"`).
+ *
+ * Currently supports the system view only (Issue #650 phase 1).
+ * Both entries are loaded from the same FileSystemProvider; supporting
+ * cross-FS or in-memory snapshot inputs is tracked as follow-up work.
+ */
+export async function compileSystemDiff(
+  options: CompileSystemDiffOptions,
+): Promise<SystemDiffCompileResult> {
+  const { beforeEntryPath, afterEntryPath, fs, viewPath, displayMode } = options;
+
+  const resolver = new ImportResolver(fs);
+  const [beforeResolved, afterResolved] = await Promise.all([
+    resolver.resolve(beforeEntryPath),
+    resolver.resolve(afterEntryPath),
+  ]);
+  const diagnostics = [...beforeResolved.diagnostics, ...afterResolved.diagnostics];
+
+  const beforeSystems = withUnassignedSystem(beforeResolved.krsFile);
+  const afterSystems = withUnassignedSystem(afterResolved.krsFile);
+
+  const beforeSlice = extractView(beforeSystems, viewPath ?? []);
+  const afterSlice = extractView(afterSystems, viewPath ?? []);
+
+  const diffed = diffSystemViewSlices(beforeSlice, afterSlice);
+
+  // Resolve styles against the union (after-side systems augmented with
+  // any removed nodes — the union slice's childNodes will be styled via
+  // the same fallback path used for ghost nodes).
+  const sheets = [
+    getBuiltinStyleSheet(),
+    ...beforeResolved.styleSheets,
+    ...afterResolved.styleSheets,
+  ];
+  const resolveSheets = displayMode === "icon" ? [...sheets, getIconThemeStyleSheet()] : sheets;
+  const styles = resolveStyles(
+    afterSystems,
+    resolveSheets,
+    undefined,
+    undefined,
+    undefined,
+    diffed.slice.childEdges,
+  );
+
+  const nodeDiffStateMap = new Map<string, string>();
+  for (const [id, meta] of diffed.nodes) {
+    nodeDiffStateMap.set(id, meta.state);
+  }
+  const edgeDiffStateMap = new Map<string, string>();
+  for (const [key, meta] of diffed.edges) {
+    edgeDiffStateMap.set(key, meta.state);
+  }
+
+  const svg = render(
+    diffed.slice,
+    styles,
+    undefined,
+    afterResolved.krsFile.ownerIndex,
+    displayMode,
+    undefined,
+    { nodeDiffState: nodeDiffStateMap, edgeDiffState: edgeDiffStateMap },
+  );
+
+  return {
+    diagramType: "system",
+    svg,
+    diagnostics,
+    nodeDiff: diffed.nodes,
+    edgeDiff: diffed.edges,
+  };
+}

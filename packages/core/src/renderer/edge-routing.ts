@@ -2,7 +2,12 @@ import type { ResolvedEdgeStyle } from "../types/style.js";
 import type { LayoutEdge } from "./layout.js";
 import { el, escapeXml } from "./svg-builder.js";
 
-export function renderEdge(edge: LayoutEdge, style: ResolvedEdgeStyle, markerId: string): string {
+export function renderEdge(
+  edge: LayoutEdge,
+  style: ResolvedEdgeStyle,
+  markerId: string,
+  diffState?: string,
+): string {
   const { fromPoint, toPoint } = edge;
   const parts: string[] = [];
 
@@ -62,7 +67,15 @@ export function renderEdge(edge: LayoutEdge, style: ResolvedEdgeStyle, markerId:
     }
   }
 
-  return parts.join("\n");
+  return el(
+    "g",
+    {
+      "data-edge-from": edge.from,
+      "data-edge-to": edge.to,
+      "data-diff-state": diffState,
+    },
+    parts.join("\n"),
+  );
 }
 
 export function renderArrowMarker(id: string, color: string): string {
