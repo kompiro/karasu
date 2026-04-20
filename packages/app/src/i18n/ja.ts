@@ -80,6 +80,17 @@ export const ja: Partial<Translations> = {
   // ReferencePanel
   "referencePanel.unsupportedMessage": "Tags & Annotations はこのダイアグラムでは未対応です。",
 
+  // Preview toolbar — export controls
+  "preview.export.svg.label": "↓ SVG をエクスポート",
+  "preview.export.svg.ariaLabel": "SVG をエクスポート",
+  "preview.export.options.ariaLabel": "エクスポートのオプション",
+  "preview.export.drillDown.label": "ドリルダウン SVG をエクスポート",
+  "preview.export.allDiagrams.label": "全図面 SVG をエクスポート",
+  "preview.export.drawio.label": "draw.io (mxGraph XML) をエクスポート",
+  "preview.export.drawio.title":
+    "draw.io (mxGraph XML) にエクスポート — diagrams.net でレイアウトを仕上げるための逃げ道です",
+  "preview.export.drawio.failed": ({ detail }) => `⚠ draw.io エクスポートに失敗しました: ${detail}`,
+
   // Warnings (rendered in the WarningPanel)
   "warning.domainDispersal.message": ({ domainId }) =>
     `domain "${domainId}" が複数の service に分散しています`,

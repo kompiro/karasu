@@ -1740,6 +1740,37 @@ body,
   opacity: 0.5;
 }
 
+/* Inline banner surfaced below the preview toolbar when an export action
+   fails. Auto-dismisses after a few seconds; the X button dismisses
+   immediately. */
+.export-error {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 12px;
+  background: #fdecea;
+  border-bottom: 1px solid #f5c2c0;
+  color: #8a1f18;
+  font-size: 13px;
+}
+
+.export-error-message {
+  flex: 1;
+}
+
+.export-error-dismiss {
+  background: transparent;
+  border: none;
+  color: inherit;
+  cursor: pointer;
+  font-size: 14px;
+  padding: 2px 6px;
+}
+
+.export-error-dismiss:hover {
+  color: #5a110c;
+}
+
 /* Reference button — bolder weight to stand out as a persistent entry point */
 .toolbar-btn--reference {
   font-weight: 600;

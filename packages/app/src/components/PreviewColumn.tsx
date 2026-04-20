@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { DiagramTabBar } from "./DiagramTabBar.js";
 import { BreadcrumbBar } from "./BreadcrumbBar.js";
 import { PreviewPane } from "./PreviewPane.js";
@@ -6,6 +6,9 @@ import { WarningPanel } from "./WarningPanel.js";
 import { ReferencePanel } from "./ReferencePanel.js";
 import { buildSvgExportFilename } from "../utils/build-svg-export-filename.js";
 import { usePreview } from "../state/preview-context.js";
+import { useTranslation } from "../i18n/index.js";
+
+const EXPORT_ERROR_AUTO_DISMISS_MS = 6000;
 
 export function PreviewColumn() {
   const {
@@ -40,8 +43,16 @@ export function PreviewColumn() {
     onExportDrawio,
   } = usePreview();
 
+  const { t } = useTranslation();
   const [refOpen, setRefOpen] = useState(false);
   const [exportMenuOpen, setExportMenuOpen] = useState(false);
+  const [exportError, setExportError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!exportError) return undefined;
+    const id = window.setTimeout(() => setExportError(null), EXPORT_ERROR_AUTO_DISMISS_MS);
+    return () => window.clearTimeout(id);
+  }, [exportError]);
 
   const svg =
     activeView === "system"
@@ -123,7 +134,11 @@ export function PreviewColumn() {
     // Drawio export bundles every karasu view, so a single project-wide name
     // is clearer than the per-view SVG filename.
     const base = exportFilename.replace(/\.svg$/, "").replace(/^(system|deploy|org)-/, "");
-    void onExportDrawio(`${base || "project"}.drawio`);
+    setExportError(null);
+    onExportDrawio(`${base || "project"}.drawio`).catch((err: unknown) => {
+      const detail = err instanceof Error ? err.message : String(err);
+      setExportError(t("preview.export.drawio.failed", { detail }));
+    });
     setExportMenuOpen(false);
   }
 
@@ -183,15 +198,15 @@ export function PreviewColumn() {
           <button
             className="toolbar-btn toolbar-btn--actionable toolbar-btn--export toolbar-btn--export-main"
             onClick={handleExport}
-            aria-label="Export SVG"
+            aria-label={t("preview.export.svg.ariaLabel")}
             disabled={!exportAvailable}
           >
-            ↓ Export SVG
+            {t("preview.export.svg.label")}
           </button>
           <button
             className={`toolbar-btn toolbar-btn--actionable toolbar-btn--export toolbar-btn--export-toggle${exportMenuOpen ? " active" : ""}`}
             onClick={() => setExportMenuOpen((v) => !v)}
-            aria-label="SVG export options"
+            aria-label={t("preview.export.options.ariaLabel")}
             aria-haspopup="menu"
             aria-expanded={exportMenuOpen}
             disabled={!exportAvailable}
@@ -206,7 +221,7 @@ export function PreviewColumn() {
                 onClick={handleExportDrillDown}
                 disabled={!drillDownAvailable}
               >
-                Export Drill-down SVG
+                {t("preview.export.drillDown.label")}
               </button>
               <button
                 role="menuitem"
@@ -214,16 +229,16 @@ export function PreviewColumn() {
                 onClick={handleExportAllDiagrams}
                 disabled={!allViewsSvg}
               >
-                Export All Diagrams SVG
+                {t("preview.export.allDiagrams.label")}
               </button>
               <button
                 role="menuitem"
                 className="export-menu-item"
                 onClick={handleExportDrawio}
                 disabled={!onExportDrawio}
-                title="Export to draw.io (mxGraph XML) — a layout escape hatch you can polish in diagrams.net"
+                title={t("preview.export.drawio.title")}
               >
-                Export draw.io (mxGraph XML)
+                {t("preview.export.drawio.label")}
               </button>
             </div>
           )}
@@ -245,6 +260,19 @@ export function PreviewColumn() {
           {previewFocused ? "↙ Exit Focus" : "↗ Focus"}
         </button>
       </div>
+      {exportError && (
+        <div className="export-error" role="alert">
+          <span className="export-error-message">{exportError}</span>
+          <button
+            type="button"
+            className="export-error-dismiss"
+            onClick={() => setExportError(null)}
+            aria-label="Dismiss"
+          >
+            ✕
+          </button>
+        </div>
+      )}
       <ReferencePanel isOpen={refOpen} onClose={() => setRefOpen(false)} activeView={activeView} />
       {activeView === "system" && !showAllLayersIframe && (
         <BreadcrumbBar
