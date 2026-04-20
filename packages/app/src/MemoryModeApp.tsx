@@ -3,6 +3,7 @@ import { getReference } from "@karasu-tools/core";
 import { AppShell } from "./components/AppShell.js";
 import { useAppContext } from "./state/app-context.js";
 import { useFileSelection } from "./hooks/useFileSelection.js";
+import { useTranslation } from "./i18n/index.js";
 
 const MEMORY_FILE_PATH = "/memory/index.krs";
 
@@ -13,10 +14,11 @@ const MEMORY_FILE_PATH = "/memory/index.krs";
 export function MemoryModeApp() {
   const { dispatch, fs } = useAppContext();
   const { selectFileWithContent } = useFileSelection(fs, dispatch);
+  const { locale } = useTranslation();
 
   useEffect(() => {
     (async () => {
-      const sampleKrs = getReference().sampleKrs;
+      const sampleKrs = getReference(locale).sampleKrs;
       await fs.writeFile(MEMORY_FILE_PATH, sampleKrs);
       selectFileWithContent(MEMORY_FILE_PATH, sampleKrs);
       dispatch({ type: "SET_LOADING", loading: false });

@@ -79,6 +79,11 @@ export const ja: Partial<Translations> = {
 
   // ReferencePanel
   "referencePanel.unsupportedMessage": "Tags & Annotations はこのダイアグラムでは未対応です。",
+  "referencePanel.builtin.description":
+    "組み込みのデフォルトテーマ — すべてのダイアグラム種別に適用される（カスケード優先度は最低）",
+  "referencePanel.samples.description": "system + deploy + organization をまとめたサンプル",
+  "referencePanel.copy.label": "コピー",
+  "referencePanel.copy.copied": "コピーしました！",
 
   // Preview toolbar — export controls
   "preview.export.svg.label": "↓ SVG をエクスポート",

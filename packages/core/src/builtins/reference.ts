@@ -58,281 +58,50 @@ export interface KarasuReference {
   sampleKrs: string;
 }
 
-let _cachedReference: KarasuReference | null = null;
+/**
+ * Locale accepted by `getReference`. Kept as a local alias so the core
+ * package has no cross-package dependency on the app-layer `Locale` type.
+ */
+export type ReferenceLocale = "en" | "ja";
 
-export function getReference(): KarasuReference {
-  if (_cachedReference) return _cachedReference;
-  _cachedReference = {
-    nodeKinds: [
-      {
-        kind: "system",
-        description: "owned/externalなサービスの関係を示す器",
-        canContain: ["service", "user"],
-        properties: ["label", "description", "link"],
-      },
-      {
-        kind: "service",
-        description: "独立したビジネス機能の単位",
-        canContain: ["domain"],
-        properties: ["label", "description", "team", "link"],
-      },
-      {
-        kind: "domain",
-        description: "サービス内のビジネス上の関心事の境界",
-        canContain: ["usecase"],
-        properties: ["label", "description", "team", "link"],
-      },
-      {
-        kind: "usecase",
-        description: "ドメイン内の業務・操作",
-        canContain: ["resource"],
-        properties: ["label", "description", "link"],
-      },
-      {
-        kind: "resource",
-        description: "usecaseが操作する対象（テーブル、外部API、ファイル等）",
-        canContain: [],
-        properties: ["label", "description", "link"],
-      },
-      {
-        kind: "user",
-        description: "システムの利用者（人間またはAIエージェント）",
-        canContain: [],
-        properties: ["label", "description", "role", "link"],
-      },
-    ],
-    tags: [
-      {
-        name: "external",
-        appliesTo: ["service", "resource"],
-        description: "システム境界の外側",
-      },
-      {
-        name: "async",
-        appliesTo: ["edge"],
-        description: "非同期通信（エッジ用）",
-      },
-      {
-        name: "sync",
-        appliesTo: ["edge"],
-        description: "同期通信（エッジ用、デフォルト）",
-      },
-      {
-        name: "human",
-        appliesTo: ["user"],
-        description: "人間の利用者",
-      },
-      {
-        name: "ai",
-        appliesTo: ["user"],
-        description: "AIエージェント",
-      },
-      {
-        name: "table",
-        appliesTo: ["resource"],
-        description: "テーブル系リソース（シェイプ: cylinder）",
-      },
-      {
-        name: "queue",
-        appliesTo: ["resource"],
-        description: "キュー系リソース（シェイプ: queue）",
-      },
-      {
-        name: "api",
-        appliesTo: ["resource"],
-        description: "API系リソース（シェイプ: hexagon）",
-      },
-      {
-        name: "storage",
-        appliesTo: ["resource"],
-        description: "ストレージ系リソース（シェイプ: cloud）",
-      },
-    ],
-    annotations: [
-      {
-        name: "deprecated",
-        description: "廃止予定",
-        defaultBadge: { color: "#EF4444", icon: "⚠", label: "非推奨" },
-      },
-      {
-        name: "new",
-        description: "新規追加",
-        defaultBadge: { color: "#10B981", icon: "✦", label: "NEW" },
-      },
-      {
-        name: "experimental",
-        description: "実験的",
-        defaultBadge: { color: "#F59E0B", icon: "⚗", label: "実験的" },
-      },
-      {
-        name: "migration_target",
-        description: "移行先",
-        defaultBadge: { color: "#3B82F6", icon: "→", label: "移行先" },
-      },
-    ],
-    styleProperties: [
-      {
-        name: "background-color",
-        appliesTo: "node",
-        valueType: "color",
-        description: "ノードの背景色",
-      },
-      {
-        name: "color",
-        appliesTo: "both",
-        valueType: "color",
-        description: "テキスト色（ノード）/ 線色（エッジ）",
-      },
-      {
-        name: "border-color",
-        appliesTo: "node",
-        valueType: "color",
-        description: "枠線の色",
-      },
-      {
-        name: "border-width",
-        appliesTo: "node",
-        valueType: "number",
-        description: "枠線の太さ",
-      },
-      {
-        name: "border-style",
-        appliesTo: "both",
-        valueType: "keyword",
-        keywords: ["solid", "dashed", "dotted"],
-        description: "枠線のスタイル（ノード）/ 線のスタイル（エッジ）",
-      },
-      {
-        name: "border-radius",
-        appliesTo: "node",
-        valueType: "number",
-        description: "角丸の半径",
-      },
-      {
-        name: "font-size",
-        appliesTo: "both",
-        valueType: "number",
-        description: "フォントサイズ",
-      },
-      {
-        name: "font-weight",
-        appliesTo: "node",
-        valueType: "keyword",
-        keywords: ["normal", "bold"],
-        description: "フォントの太さ",
-      },
-      {
-        name: "font-family",
-        appliesTo: "node",
-        valueType: "string",
-        description: "フォントファミリー",
-      },
-      {
-        name: "opacity",
-        appliesTo: "node",
-        valueType: "number",
-        description: "不透明度（0.0〜1.0）",
-      },
-      {
-        name: "shape",
-        appliesTo: "node",
-        valueType: "keyword",
-        keywords: ["box", "user", "cylinder", "queue", "hexagon", "cloud"],
-        description: 'ノードの形状。url("...") でカスタムSVGも指定可',
-      },
-      {
-        name: "stroke-width",
-        appliesTo: "edge",
-        valueType: "number",
-        description: "エッジ線の太さ",
-      },
-      {
-        name: "badge-color",
-        appliesTo: "node",
-        valueType: "color",
-        description: "アノテーションバッジの背景色",
-      },
-      {
-        name: "badge-icon",
-        appliesTo: "node",
-        valueType: "string",
-        description: "アノテーションバッジのアイコン文字",
-      },
-      {
-        name: "badge-label",
-        appliesTo: "node",
-        valueType: "string",
-        description: "アノテーションバッジのラベルテキスト",
-      },
-    ],
-    deployUnitKinds: [
-      {
-        kind: "war",
-        description: "WAR / EAR（Servlet・EJBコンテナ）",
-        properties: ["label", "runtime", "realizes"],
-      },
-      {
-        kind: "jar",
-        description: "実行可能 JAR（Spring Boot など）",
-        properties: ["label", "runtime", "realizes"],
-      },
-      {
-        kind: "oci",
-        description: "コンテナイメージ",
-        properties: ["label", "image", "runtime", "realizes"],
-      },
-      { kind: "lambda", description: "AWS Lambda", properties: ["label", "runtime", "realizes"] },
-      {
-        kind: "function",
-        description: "Azure Functions / Google Cloud Functions",
-        properties: ["label", "runtime", "realizes"],
-      },
-      {
-        kind: "assets",
-        description: "静的ファイル・SPA（CDN配信）",
-        properties: ["label", "runtime", "realizes"],
-      },
-      {
-        kind: "job",
-        description: "バッチ処理。schedule 省略で単発実行、指定で定期実行",
-        properties: ["label", "runtime", "schedule", "realizes"],
-      },
-      {
-        kind: "artifact",
-        description: "上記に該当しない任意種別",
-        properties: ["label", "type", "runtime", "realizes"],
-      },
-    ],
-    orgKinds: [
-      {
-        kind: "organization",
-        description: "組織ブロック（トップレベル）",
-        canContain: ["team"],
-        properties: ["label", "description", "link"],
-      },
-      {
-        kind: "team",
-        description: "チーム。owns でサービス・ドメインとの対応を宣言",
-        canContain: ["team", "member"],
-        properties: ["label", "description", "owns", "link"],
-      },
-      {
-        kind: "member",
-        description: "チームメンバー",
-        canContain: [],
-        properties: ["label", "description", "slack", "github", "link"],
-      },
-    ],
-    shapes: [
-      { name: "box", description: "角丸長方形", defaultFor: "service, domain, usecase" },
-      { name: "user", description: "人型（頭+体）", defaultFor: "user" },
-      { name: "cylinder", description: "円柱", defaultFor: "resource[table]" },
-      { name: "queue", description: "横向き円柱", defaultFor: "resource[queue]" },
-      { name: "hexagon", description: "六角形", defaultFor: "resource[api]" },
-      { name: "cloud", description: "雲形", defaultFor: "resource[storage]" },
-    ],
-    builtinStyleSource: BUILTIN_STYLE_SOURCE,
-    sampleKrs: `system ECPlatform {
+interface ReferenceStrings {
+  nodeKind: Record<"system" | "service" | "domain" | "usecase" | "resource" | "user", string>;
+  tag: Record<
+    "external" | "async" | "sync" | "human" | "ai" | "table" | "queue" | "api" | "storage",
+    string
+  >;
+  annotation: Record<
+    "deprecated" | "new" | "experimental" | "migration_target",
+    { description: string; label: string }
+  >;
+  styleProperty: Record<
+    | "background-color"
+    | "color"
+    | "border-color"
+    | "border-width"
+    | "border-style"
+    | "border-radius"
+    | "font-size"
+    | "font-weight"
+    | "font-family"
+    | "opacity"
+    | "shape"
+    | "stroke-width"
+    | "badge-color"
+    | "badge-icon"
+    | "badge-label",
+    string
+  >;
+  deployUnitKind: Record<
+    "war" | "jar" | "oci" | "lambda" | "function" | "assets" | "job" | "artifact",
+    string
+  >;
+  orgKind: Record<"organization" | "team" | "member", string>;
+  shape: Record<"box" | "user" | "cylinder" | "queue" | "hexagon" | "cloud", string>;
+  sampleKrs: string;
+}
+
+const SAMPLE_KRS_JA = `system ECPlatform {
   label "ECプラットフォーム"
 
   user Customer [human] {
@@ -452,7 +221,516 @@ organization ECOrg {
     }
   }
 }
-`,
+`;
+
+const SAMPLE_KRS_EN = `system ECPlatform {
+  label "EC Platform"
+
+  user Customer [human] {
+    label "Customer"
+    description "End users who purchase products"
+  }
+  user Seller [human] {
+    label "Seller"
+    description "Shop owners who list products for sale"
+  }
+  user Admin [human] {
+    label "Admin"
+    description "Staff who operate the platform"
+  }
+
+  service ECommerce {
+    label "EC Site"
+    description "Browsing, purchasing, and listing products"
+
+    domain Catalog {
+      label "Product Catalog"
+      usecase SearchProducts {
+        label "Search products"
+        resource ProductTable { label "Product table" }
+        resource SearchIndex [external] { label "Search index" }
+      }
+      usecase RegisterProduct {
+        label "Register a product"
+        resource ProductTable { label "Product table" }
+        resource ImageStorage [external] { label "Image storage" }
+      }
+    }
+    domain Order {
+      label "Orders"
+      usecase PlaceOrder {
+        label "Place an order"
+        resource OrderTable { label "Order table" }
+        resource InventoryAPI [external] { label "Inventory API" }
+        resource PaymentAPI [external] { label "Payment API" }
+      }
+      usecase ShowOrderHistory { label "View order history" }
+    }
+    domain Member {
+      label "Members"
+      usecase Register {
+        label "Sign up as a member"
+        resource MemberTable { label "Member table" }
+      }
+      usecase EditProfile { label "Edit profile" }
+    }
+  }
+  service Payment [external] {
+    label "Payment"
+    description "Credit card and e-money payment processing"
+  }
+  service Inventory [external] {
+    label "Inventory"
+    description "Centralized inventory management"
+  }
+  service Notification {
+    label "Notification"
+    description "Email and push notification delivery"
+  }
+
+  Customer -> ECommerce "Buy a product"
+  Seller -> ECommerce "List a product"
+  Admin -> ECommerce "Administer the platform"
+  ECommerce -> Payment "Process payments"
+  ECommerce -> Inventory "Check inventory"
+  ECommerce --> Notification "Send order confirmation"
+}
+
+deploy Production {
+  label "Production environment"
+  oci ecommerceApp {
+    label "ecommerce-app"
+    runtime "Kubernetes (GKE)"
+    realizes ECommerce
+  }
+  oci notificationWorker {
+    label "notification-worker"
+    runtime "Cloud Run"
+    realizes Notification
+  }
+}
+
+organization ECOrg {
+  label "EC development org"
+  team platform {
+    label "Platform team"
+    owns ECommerce
+
+    team commerce {
+      label "Commerce team"
+      owns Catalog
+      owns Order
+      member alice {
+        label "Alice"
+        github "alice-dev"
+      }
+    }
+    team "member-team" {
+      label "Member team"
+      owns Member
+      member bob {
+        label "Bob"
+        description "Owner of the member platform"
+      }
+    }
+  }
+  team notification {
+    label "Notification team"
+    owns Notification
+    member carol {
+      label "Carol"
+      slack "@carol"
+    }
+  }
+}
+`;
+
+const STRINGS_JA: ReferenceStrings = {
+  nodeKind: {
+    system: "owned/externalなサービスの関係を示す器",
+    service: "独立したビジネス機能の単位",
+    domain: "サービス内のビジネス上の関心事の境界",
+    usecase: "ドメイン内の業務・操作",
+    resource: "usecaseが操作する対象（テーブル、外部API、ファイル等）",
+    user: "システムの利用者（人間またはAIエージェント）",
+  },
+  tag: {
+    external: "システム境界の外側",
+    async: "非同期通信（エッジ用）",
+    sync: "同期通信（エッジ用、デフォルト）",
+    human: "人間の利用者",
+    ai: "AIエージェント",
+    table: "テーブル系リソース（シェイプ: cylinder）",
+    queue: "キュー系リソース（シェイプ: queue）",
+    api: "API系リソース（シェイプ: hexagon）",
+    storage: "ストレージ系リソース（シェイプ: cloud）",
+  },
+  annotation: {
+    deprecated: { description: "廃止予定", label: "非推奨" },
+    new: { description: "新規追加", label: "NEW" },
+    experimental: { description: "実験的", label: "実験的" },
+    migration_target: { description: "移行先", label: "移行先" },
+  },
+  styleProperty: {
+    "background-color": "ノードの背景色",
+    color: "テキスト色（ノード）/ 線色（エッジ）",
+    "border-color": "枠線の色",
+    "border-width": "枠線の太さ",
+    "border-style": "枠線のスタイル（ノード）/ 線のスタイル（エッジ）",
+    "border-radius": "角丸の半径",
+    "font-size": "フォントサイズ",
+    "font-weight": "フォントの太さ",
+    "font-family": "フォントファミリー",
+    opacity: "不透明度（0.0〜1.0）",
+    shape: 'ノードの形状。url("...") でカスタムSVGも指定可',
+    "stroke-width": "エッジ線の太さ",
+    "badge-color": "アノテーションバッジの背景色",
+    "badge-icon": "アノテーションバッジのアイコン文字",
+    "badge-label": "アノテーションバッジのラベルテキスト",
+  },
+  deployUnitKind: {
+    war: "WAR / EAR（Servlet・EJBコンテナ）",
+    jar: "実行可能 JAR（Spring Boot など）",
+    oci: "コンテナイメージ",
+    lambda: "AWS Lambda",
+    function: "Azure Functions / Google Cloud Functions",
+    assets: "静的ファイル・SPA（CDN配信）",
+    job: "バッチ処理。schedule 省略で単発実行、指定で定期実行",
+    artifact: "上記に該当しない任意種別",
+  },
+  orgKind: {
+    organization: "組織ブロック（トップレベル）",
+    team: "チーム。owns でサービス・ドメインとの対応を宣言",
+    member: "チームメンバー",
+  },
+  shape: {
+    box: "角丸長方形",
+    user: "人型（頭+体）",
+    cylinder: "円柱",
+    queue: "横向き円柱",
+    hexagon: "六角形",
+    cloud: "雲形",
+  },
+  sampleKrs: SAMPLE_KRS_JA,
+};
+
+const STRINGS_EN: ReferenceStrings = {
+  nodeKind: {
+    system: "Container showing the relationships between owned and external services",
+    service: "An independent unit of business capability",
+    domain: "A business-concern boundary within a service",
+    usecase: "A business task or operation within a domain",
+    resource: "A target that a usecase reads or writes (table, external API, file, etc.)",
+    user: "A user of the system (human or AI agent)",
+  },
+  tag: {
+    external: "Outside the system boundary",
+    async: "Asynchronous communication (for edges)",
+    sync: "Synchronous communication (for edges, default)",
+    human: "A human user",
+    ai: "An AI agent",
+    table: "Table-like resource (shape: cylinder)",
+    queue: "Queue-like resource (shape: queue)",
+    api: "API-like resource (shape: hexagon)",
+    storage: "Storage-like resource (shape: cloud)",
+  },
+  annotation: {
+    deprecated: { description: "Slated for removal", label: "Deprecated" },
+    new: { description: "Newly added", label: "NEW" },
+    experimental: { description: "Experimental", label: "Experimental" },
+    migration_target: { description: "Migration target", label: "Migration target" },
+  },
+  styleProperty: {
+    "background-color": "Node background color",
+    color: "Text color (node) / line color (edge)",
+    "border-color": "Border color",
+    "border-width": "Border width",
+    "border-style": "Border style (node) / line style (edge)",
+    "border-radius": "Corner radius",
+    "font-size": "Font size",
+    "font-weight": "Font weight",
+    "font-family": "Font family",
+    opacity: "Opacity (0.0 to 1.0)",
+    shape: 'Node shape. Also accepts url("...") for a custom SVG',
+    "stroke-width": "Edge line width",
+    "badge-color": "Annotation badge background color",
+    "badge-icon": "Annotation badge icon character",
+    "badge-label": "Annotation badge label text",
+  },
+  deployUnitKind: {
+    war: "WAR / EAR (Servlet / EJB container)",
+    jar: "Executable JAR (e.g. Spring Boot)",
+    oci: "Container image",
+    lambda: "AWS Lambda",
+    function: "Azure Functions / Google Cloud Functions",
+    assets: "Static files / SPA (served via CDN)",
+    job: "Batch job. Without schedule: one-shot; with schedule: recurring",
+    artifact: "Any kind not covered above",
+  },
+  orgKind: {
+    organization: "Organization block (top level)",
+    team: "Team. Declares correspondence to services or domains via owns",
+    member: "Team member",
+  },
+  shape: {
+    box: "Rounded rectangle",
+    user: "Person icon (head + body)",
+    cylinder: "Cylinder",
+    queue: "Horizontal cylinder",
+    hexagon: "Hexagon",
+    cloud: "Cloud",
+  },
+  sampleKrs: SAMPLE_KRS_EN,
+};
+
+const STRINGS: Record<ReferenceLocale, ReferenceStrings> = {
+  en: STRINGS_EN,
+  ja: STRINGS_JA,
+};
+
+const _cache = new Map<ReferenceLocale, KarasuReference>();
+
+export function getReference(locale: ReferenceLocale = "en"): KarasuReference {
+  const cached = _cache.get(locale);
+  if (cached) return cached;
+
+  const s = STRINGS[locale];
+  const ref: KarasuReference = {
+    nodeKinds: [
+      {
+        kind: "system",
+        description: s.nodeKind.system,
+        canContain: ["service", "user"],
+        properties: ["label", "description", "link"],
+      },
+      {
+        kind: "service",
+        description: s.nodeKind.service,
+        canContain: ["domain"],
+        properties: ["label", "description", "team", "link"],
+      },
+      {
+        kind: "domain",
+        description: s.nodeKind.domain,
+        canContain: ["usecase"],
+        properties: ["label", "description", "team", "link"],
+      },
+      {
+        kind: "usecase",
+        description: s.nodeKind.usecase,
+        canContain: ["resource"],
+        properties: ["label", "description", "link"],
+      },
+      {
+        kind: "resource",
+        description: s.nodeKind.resource,
+        canContain: [],
+        properties: ["label", "description", "link"],
+      },
+      {
+        kind: "user",
+        description: s.nodeKind.user,
+        canContain: [],
+        properties: ["label", "description", "role", "link"],
+      },
+    ],
+    tags: [
+      { name: "external", appliesTo: ["service", "resource"], description: s.tag.external },
+      { name: "async", appliesTo: ["edge"], description: s.tag.async },
+      { name: "sync", appliesTo: ["edge"], description: s.tag.sync },
+      { name: "human", appliesTo: ["user"], description: s.tag.human },
+      { name: "ai", appliesTo: ["user"], description: s.tag.ai },
+      { name: "table", appliesTo: ["resource"], description: s.tag.table },
+      { name: "queue", appliesTo: ["resource"], description: s.tag.queue },
+      { name: "api", appliesTo: ["resource"], description: s.tag.api },
+      { name: "storage", appliesTo: ["resource"], description: s.tag.storage },
+    ],
+    annotations: [
+      {
+        name: "deprecated",
+        description: s.annotation.deprecated.description,
+        defaultBadge: { color: "#EF4444", icon: "⚠", label: s.annotation.deprecated.label },
+      },
+      {
+        name: "new",
+        description: s.annotation.new.description,
+        defaultBadge: { color: "#10B981", icon: "✦", label: s.annotation.new.label },
+      },
+      {
+        name: "experimental",
+        description: s.annotation.experimental.description,
+        defaultBadge: { color: "#F59E0B", icon: "⚗", label: s.annotation.experimental.label },
+      },
+      {
+        name: "migration_target",
+        description: s.annotation.migration_target.description,
+        defaultBadge: { color: "#3B82F6", icon: "→", label: s.annotation.migration_target.label },
+      },
+    ],
+    styleProperties: [
+      {
+        name: "background-color",
+        appliesTo: "node",
+        valueType: "color",
+        description: s.styleProperty["background-color"],
+      },
+      { name: "color", appliesTo: "both", valueType: "color", description: s.styleProperty.color },
+      {
+        name: "border-color",
+        appliesTo: "node",
+        valueType: "color",
+        description: s.styleProperty["border-color"],
+      },
+      {
+        name: "border-width",
+        appliesTo: "node",
+        valueType: "number",
+        description: s.styleProperty["border-width"],
+      },
+      {
+        name: "border-style",
+        appliesTo: "both",
+        valueType: "keyword",
+        keywords: ["solid", "dashed", "dotted"],
+        description: s.styleProperty["border-style"],
+      },
+      {
+        name: "border-radius",
+        appliesTo: "node",
+        valueType: "number",
+        description: s.styleProperty["border-radius"],
+      },
+      {
+        name: "font-size",
+        appliesTo: "both",
+        valueType: "number",
+        description: s.styleProperty["font-size"],
+      },
+      {
+        name: "font-weight",
+        appliesTo: "node",
+        valueType: "keyword",
+        keywords: ["normal", "bold"],
+        description: s.styleProperty["font-weight"],
+      },
+      {
+        name: "font-family",
+        appliesTo: "node",
+        valueType: "string",
+        description: s.styleProperty["font-family"],
+      },
+      {
+        name: "opacity",
+        appliesTo: "node",
+        valueType: "number",
+        description: s.styleProperty.opacity,
+      },
+      {
+        name: "shape",
+        appliesTo: "node",
+        valueType: "keyword",
+        keywords: ["box", "user", "cylinder", "queue", "hexagon", "cloud"],
+        description: s.styleProperty.shape,
+      },
+      {
+        name: "stroke-width",
+        appliesTo: "edge",
+        valueType: "number",
+        description: s.styleProperty["stroke-width"],
+      },
+      {
+        name: "badge-color",
+        appliesTo: "node",
+        valueType: "color",
+        description: s.styleProperty["badge-color"],
+      },
+      {
+        name: "badge-icon",
+        appliesTo: "node",
+        valueType: "string",
+        description: s.styleProperty["badge-icon"],
+      },
+      {
+        name: "badge-label",
+        appliesTo: "node",
+        valueType: "string",
+        description: s.styleProperty["badge-label"],
+      },
+    ],
+    deployUnitKinds: [
+      {
+        kind: "war",
+        description: s.deployUnitKind.war,
+        properties: ["label", "runtime", "realizes"],
+      },
+      {
+        kind: "jar",
+        description: s.deployUnitKind.jar,
+        properties: ["label", "runtime", "realizes"],
+      },
+      {
+        kind: "oci",
+        description: s.deployUnitKind.oci,
+        properties: ["label", "image", "runtime", "realizes"],
+      },
+      {
+        kind: "lambda",
+        description: s.deployUnitKind.lambda,
+        properties: ["label", "runtime", "realizes"],
+      },
+      {
+        kind: "function",
+        description: s.deployUnitKind.function,
+        properties: ["label", "runtime", "realizes"],
+      },
+      {
+        kind: "assets",
+        description: s.deployUnitKind.assets,
+        properties: ["label", "runtime", "realizes"],
+      },
+      {
+        kind: "job",
+        description: s.deployUnitKind.job,
+        properties: ["label", "runtime", "schedule", "realizes"],
+      },
+      {
+        kind: "artifact",
+        description: s.deployUnitKind.artifact,
+        properties: ["label", "type", "runtime", "realizes"],
+      },
+    ],
+    orgKinds: [
+      {
+        kind: "organization",
+        description: s.orgKind.organization,
+        canContain: ["team"],
+        properties: ["label", "description", "link"],
+      },
+      {
+        kind: "team",
+        description: s.orgKind.team,
+        canContain: ["team", "member"],
+        properties: ["label", "description", "owns", "link"],
+      },
+      {
+        kind: "member",
+        description: s.orgKind.member,
+        canContain: [],
+        properties: ["label", "description", "slack", "github", "link"],
+      },
+    ],
+    shapes: [
+      { name: "box", description: s.shape.box, defaultFor: "service, domain, usecase" },
+      { name: "user", description: s.shape.user, defaultFor: "user" },
+      { name: "cylinder", description: s.shape.cylinder, defaultFor: "resource[table]" },
+      { name: "queue", description: s.shape.queue, defaultFor: "resource[queue]" },
+      { name: "hexagon", description: s.shape.hexagon, defaultFor: "resource[api]" },
+      { name: "cloud", description: s.shape.cloud, defaultFor: "resource[storage]" },
+    ],
+    builtinStyleSource: BUILTIN_STYLE_SOURCE,
+    sampleKrs: s.sampleKrs,
   };
-  return _cachedReference;
+
+  _cache.set(locale, ref);
+  return ref;
 }

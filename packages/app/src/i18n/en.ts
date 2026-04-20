@@ -79,6 +79,11 @@ export const en: Translations = {
 
   // ReferencePanel
   "referencePanel.unsupportedMessage": "Tags & Annotations are not available for this diagram.",
+  "referencePanel.builtin.description":
+    "Built-in default theme — applies to all diagram types (lowest cascade priority)",
+  "referencePanel.samples.description": "Complete example — system + deploy + org",
+  "referencePanel.copy.label": "Copy",
+  "referencePanel.copy.copied": "Copied!",
 
   // Preview toolbar — export controls
   "preview.export.svg.label": "↓ Export SVG",
