@@ -5,6 +5,7 @@ import type {
   Warning,
   DeployBlockInfo,
   DisplayMode,
+  NodeDiffMeta,
 } from "@karasu-tools/core";
 import type { ActiveView } from "./app-reducer.js";
 
@@ -21,6 +22,12 @@ export interface SystemViewData {
   onTeamButtonClick?: (teamId: string) => void;
   highlightedNodeId?: string | null;
   onClearHighlight?: () => void;
+  /**
+   * Per-node diff metadata when diff mode is active. Undefined outside
+   * diff mode. Used by the detail panel to surface annotation diffs
+   * (Issue #738 / design doc D-2).
+   */
+  nodeDiff?: Map<string, NodeDiffMeta>;
 }
 
 export interface DeployViewData {

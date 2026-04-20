@@ -9,6 +9,7 @@ import type {
   DeployBlockInfo,
   Warning,
   Diagnostic,
+  NodeDiffMeta,
 } from "@karasu-tools/core";
 import type { AppAction, ActiveView } from "../state/app-reducer.js";
 import { useSystemView } from "./useSystemView.js";
@@ -40,6 +41,8 @@ interface SystemViewBundle {
   hasDeployDiagram: boolean;
   resolvedSystems: SystemNode[];
   nodeFileIndex: Map<string, string>;
+  /** Per-node diff metadata when diff mode is active. */
+  nodeDiff?: Map<string, NodeDiffMeta>;
 }
 
 interface DeployViewBundle {
@@ -113,6 +116,7 @@ export function useAppViews(args: UseAppViewsArgs): UseAppViewsResult {
     recompile: recompileSystem,
     systems: resolvedSystems,
     nodeFileIndex,
+    nodeDiff: systemNodeDiff,
   } = useSystemView(entryPath, fs, viewPath, displayMode, compareEntryPath);
 
   const {
@@ -198,6 +202,7 @@ export function useAppViews(args: UseAppViewsArgs): UseAppViewsResult {
       hasDeployDiagram,
       resolvedSystems,
       nodeFileIndex,
+      nodeDiff: systemNodeDiff,
     },
     deploy: {
       svg: deploySvg,
