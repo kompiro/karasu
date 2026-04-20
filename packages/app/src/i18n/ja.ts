@@ -79,4 +79,43 @@ export const ja: Partial<Translations> = {
 
   // ReferencePanel
   "referencePanel.unsupportedMessage": "Tags & Annotations はこのダイアグラムでは未対応です。",
+
+  // Warnings (rendered in the WarningPanel)
+  "warning.domainDispersal.message": ({ domainId }) =>
+    `domain "${domainId}" が複数の service に分散しています`,
+  "warning.domainDispersal.checkCohesion": "ドメインの凝集性を確認してください",
+  "warning.unassignedDomain.message": ({ display }) =>
+    `domain "${display}" はどの service にも割り当てられていません`,
+  "warning.unassignedUsecase.message": ({ usecaseId }) =>
+    `usecase "${usecaseId}" はどの domain にも割り当てられていません`,
+  "warning.unassignedService.message": ({ display }) =>
+    `service "${display}" はどの system にも割り当てられていません`,
+  "warning.unassignedDatabase.message": ({ display }) =>
+    `database "${display}" はどの system にも割り当てられていません`,
+  "warning.unassignedQueue.message": ({ display }) =>
+    `queue "${display}" はどの system にも割り当てられていません`,
+  "warning.unassignedStorage.message": ({ display }) =>
+    `storage "${display}" はどの system にも割り当てられていません`,
+  "warning.styleConflict.message": ({ selector }) =>
+    `セレクタ "${selector}" が複数のスタイルファイルで定義されています`,
+  "warning.styleConflict.sheetLabel": ({ index }) => `スタイルファイル ${index + 1}`,
+  "warning.missingRuntime.message": ({ nodeId }) =>
+    `デプロイノード "${nodeId}" に runtime が指定されていません`,
+  "warning.missingRealizes.message": ({ nodeId }) =>
+    `デプロイノード "${nodeId}" に realizes が指定されていません`,
+  "warning.invalidOwns.message": ({ teamId, ownedId }) =>
+    `team "${teamId}" が "${ownedId}" を owns していますが、その id を持つ service または domain が存在しません`,
+  "warning.deprecatedTeamProperty.message": ({ nodeId }) =>
+    `"${nodeId}" に team プロパティが直接指定されていますが、org.team.owns 経由で既に割り当て済みです`,
+  "warning.deprecatedTeamProperty.assignedBy": ({ ownerTeamId }) =>
+    `owns による team 割り当て: "${ownerTeamId}"`,
+  "warning.deprecatedTeamProperty.recommendation":
+    '"team" プロパティを削除し、org { team { owns } } 側に寄せてください',
+  "warning.crossSystemRefUnresolved.message": ({ ref }) =>
+    `"${ref}" を解決できませんでした — 未解決の外部ノードとして描画されます`,
+  "warning.crossSystemRefImplicitExternal.message": ({ ref, sourceSystemId, sourceNodeId }) =>
+    `"${ref}" は ${sourceSystemId}.${sourceNodeId} から参照されていますが、@external として明示されていません`,
+  "warning.crossSystemRefImplicitExternal.suppressHint": ({ targetSystemId, sourceSystemId }) =>
+    `system ${sourceSystemId} に 'service ${targetSystemId} [external]' を追加するとこの警告を抑制できます`,
+  "warning.cyclicDependency.message": ({ path }) => `循環依存を検出しました: ${path}`,
 };

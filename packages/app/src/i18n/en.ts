@@ -79,4 +79,43 @@ export const en: Translations = {
 
   // ReferencePanel
   "referencePanel.unsupportedMessage": "Tags & Annotations are not available for this diagram.",
+
+  // Warnings (rendered in the WarningPanel)
+  "warning.domainDispersal.message": ({ domainId }) =>
+    `Domain "${domainId}" is dispersed across multiple services`,
+  "warning.domainDispersal.checkCohesion": "Review the domain's cohesion",
+  "warning.unassignedDomain.message": ({ display }) =>
+    `Domain "${display}" is not assigned to any service`,
+  "warning.unassignedUsecase.message": ({ usecaseId }) =>
+    `Usecase "${usecaseId}" is not assigned to any domain`,
+  "warning.unassignedService.message": ({ display }) =>
+    `Service "${display}" is not assigned to any system`,
+  "warning.unassignedDatabase.message": ({ display }) =>
+    `Database "${display}" is not assigned to any system`,
+  "warning.unassignedQueue.message": ({ display }) =>
+    `Queue "${display}" is not assigned to any system`,
+  "warning.unassignedStorage.message": ({ display }) =>
+    `Storage "${display}" is not assigned to any system`,
+  "warning.styleConflict.message": ({ selector }) =>
+    `Selector "${selector}" is defined in multiple style files`,
+  "warning.styleConflict.sheetLabel": ({ index }) => `Style file ${index + 1}`,
+  "warning.missingRuntime.message": ({ nodeId }) =>
+    `Deploy node "${nodeId}" has no runtime specified`,
+  "warning.missingRealizes.message": ({ nodeId }) =>
+    `Deploy node "${nodeId}" has no realizes specified`,
+  "warning.invalidOwns.message": ({ teamId, ownedId }) =>
+    `Team "${teamId}" owns "${ownedId}" but no service or domain with that id exists`,
+  "warning.deprecatedTeamProperty.message": ({ nodeId }) =>
+    `"${nodeId}" has an explicit team property but team is already assigned via org.team.owns`,
+  "warning.deprecatedTeamProperty.assignedBy": ({ ownerTeamId }) =>
+    `Team assigned by owns: "${ownerTeamId}"`,
+  "warning.deprecatedTeamProperty.recommendation":
+    'Remove the "team" property and use org { team { owns } } instead',
+  "warning.crossSystemRefUnresolved.message": ({ ref }) =>
+    `"${ref}" could not be resolved — rendered as an unresolved external node`,
+  "warning.crossSystemRefImplicitExternal.message": ({ ref, sourceSystemId, sourceNodeId }) =>
+    `"${ref}" is referenced from ${sourceSystemId}.${sourceNodeId} but is not explicitly annotated as @external`,
+  "warning.crossSystemRefImplicitExternal.suppressHint": ({ targetSystemId, sourceSystemId }) =>
+    `Add 'service ${targetSystemId} [external]' to system ${sourceSystemId} to suppress this warning`,
+  "warning.cyclicDependency.message": ({ path }) => `Circular dependency detected: ${path}`,
 };

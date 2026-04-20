@@ -1,10 +1,26 @@
 // @vitest-environment jsdom
 import { describe, it, expect, afterEach } from "vitest";
-import { render, fireEvent, cleanup } from "@testing-library/react";
+import { render as rtlRender, fireEvent, cleanup } from "@testing-library/react";
+import type { ReactElement } from "react";
 
 afterEach(cleanup);
 import { WarningPanel } from "./WarningPanel.js";
+import { LocaleProvider } from "../i18n/index.js";
 import type { Warning } from "@karasu-tools/core";
+
+// WarningPanel now calls useFormattedWarning (Phase D.1), so tests wrap
+// the render in LocaleProvider. Default to English; override per-test.
+// Also wrap rerender so re-renders keep the provider in place.
+function render(ui: ReactElement, initialLocale: "en" | "ja" = "en") {
+  const wrap = (node: ReactElement) => (
+    <LocaleProvider initialLocale={initialLocale}>{node}</LocaleProvider>
+  );
+  const result = rtlRender(wrap(ui));
+  return {
+    ...result,
+    rerender: (next: ReactElement) => result.rerender(wrap(next)),
+  };
+}
 
 // Minimal well-formed Warning instances keyed by kind. The params shapes
 // intentionally carry the minimum data formatWarning needs to produce a
@@ -121,7 +137,8 @@ describe("WarningPanel", () => {
     };
     const { container } = render(<WarningPanel warnings={[warning]} />);
     const item = container.querySelector(".warning-item")!;
-    expect(item.textContent).toContain('Line 12: domain "payments"');
+    // English translation capitalizes "Domain"; verify the Line-prefix path.
+    expect(item.textContent).toContain('Line 12: Domain "payments"');
   });
 
   it("renders details from the compat bridge when the warning kind has them", () => {
@@ -131,5 +148,42 @@ describe("WarningPanel", () => {
     );
     const details = container.querySelectorAll(".warning-details > div");
     expect(details.length).toBeGreaterThan(0);
+  });
+});
+
+describe("WarningPanel — localization (Phase D.1)", () => {
+  it("renders domain-dispersal in English when locale is 'en'", () => {
+    const { container } = render(
+      <WarningPanel warnings={[makeWarning("domain-dispersal")]} />,
+      "en",
+    );
+    const item = container.querySelector(".warning-item");
+    expect(item?.textContent).toContain("Domain");
+    expect(item?.textContent).toContain("is dispersed");
+    expect(item?.textContent).toContain("Review the domain's cohesion");
+  });
+
+  it("renders domain-dispersal in Japanese when locale is 'ja'", () => {
+    const { container } = render(
+      <WarningPanel warnings={[makeWarning("domain-dispersal")]} />,
+      "ja",
+    );
+    const item = container.querySelector(".warning-item");
+    expect(item?.textContent).toContain("複数の service に分散しています");
+    expect(item?.textContent).toContain("ドメインの凝集性を確認してください");
+  });
+
+  it("renders missing-runtime in the active locale", () => {
+    const { container: enContainer } = render(
+      <WarningPanel warnings={[makeWarning("missing-runtime")]} />,
+      "en",
+    );
+    expect(enContainer.textContent).toContain("has no runtime specified");
+
+    const { container: jaContainer } = render(
+      <WarningPanel warnings={[makeWarning("missing-runtime")]} />,
+      "ja",
+    );
+    expect(jaContainer.textContent).toContain("runtime が指定されていません");
   });
 });

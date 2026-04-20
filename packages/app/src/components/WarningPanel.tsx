@@ -1,5 +1,6 @@
 import { useState, useCallback } from "react";
-import { formatWarning, type Warning } from "@karasu-tools/core";
+import type { Warning } from "@karasu-tools/core";
+import { useFormattedWarning } from "../i18n/format-warning.js";
 
 interface WarningPanelProps {
   warnings: Warning[];
@@ -14,6 +15,7 @@ const WARNING_ICONS: Record<string, string> = {
 
 export function WarningPanel({ warnings }: WarningPanelProps) {
   const [collapsed, setCollapsed] = useState(false);
+  const formatWarning = useFormattedWarning();
 
   const toggle = useCallback(() => setCollapsed((c) => !c), []);
 
