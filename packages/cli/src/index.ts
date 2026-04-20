@@ -31,7 +31,7 @@ program
   )
   .option(
     "--format <format>",
-    "Output format: svg | drawio (default: svg). drawio supports system and deploy views only.",
+    "Output format: svg | drawio (default: svg). drawio emits one page per view and per system drill-down level.",
     "svg",
   )
   .addHelpText(

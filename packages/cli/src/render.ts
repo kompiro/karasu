@@ -17,10 +17,10 @@ import type {
 
 type RenderFormat = "svg" | "drawio";
 
-const DRAWIO_VIEW_SELECTIONS: Record<DiagramType, DrawioViewSelection | "unsupported"> = {
+const DRAWIO_VIEW_SELECTIONS: Record<DiagramType, DrawioViewSelection> = {
   system: "system",
   deploy: "deploy",
-  org: "unsupported",
+  org: "org",
 };
 
 class NodeFileSystemProvider implements FileSystemProvider {
@@ -79,13 +79,9 @@ export async function render(filePath: string, options: RenderOptions): Promise<
   let warnings: Warning[];
 
   if (format === "drawio") {
-    const selection = options.view ? DRAWIO_VIEW_SELECTIONS[options.view] : "all";
-    if (selection === "unsupported") {
-      process.stderr.write(
-        `Error: --format drawio does not support --view ${options.view} yet. Use system or deploy.\n`,
-      );
-      process.exit(1);
-    }
+    const selection: DrawioViewSelection = options.view
+      ? DRAWIO_VIEW_SELECTIONS[options.view]
+      : "all";
     const result = await buildDrawioProject(absolutePath, fs, { view: selection });
     output = result.xml;
     diagnostics = result.diagnostics;

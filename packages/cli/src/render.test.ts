@@ -274,24 +274,22 @@ describe("render — --format drawio", () => {
     });
   });
 
-  it("rejects --view org when --format is drawio", async () => {
+  it("passes --view org through to buildDrawioProject", async () => {
     const filePath = join(tmpDir, "index.krs");
     await writeFile(filePath, "system { }", "utf-8");
 
-    const stderrSpy = vi.spyOn(process.stderr, "write").mockImplementation(() => true);
-    const exitSpy = vi.spyOn(process, "exit").mockImplementation((_code) => {
-      throw new Error("process.exit");
+    mockBuildDrawioProject.mockResolvedValue({
+      xml: "<mxfile></mxfile>",
+      diagnostics: [],
+      warnings: [],
     });
+    vi.spyOn(process.stdout, "write").mockImplementation(() => true);
 
-    await expect(render(filePath, { format: "drawio", view: "org" })).rejects.toThrow(
-      "process.exit",
-    );
+    await render(filePath, { format: "drawio", view: "org" });
 
-    expect(exitSpy).toHaveBeenCalledWith(1);
-    expect(
-      stderrSpy.mock.calls.some((args) => String(args[0]).includes("drawio does not support")),
-    ).toBe(true);
-    expect(mockBuildDrawioProject).not.toHaveBeenCalled();
+    expect(mockBuildDrawioProject).toHaveBeenCalledWith(expect.any(String), expect.any(Object), {
+      view: "org",
+    });
   });
 
   it("writes drawio XML to --output file when specified", async () => {

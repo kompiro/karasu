@@ -28,13 +28,19 @@ node packages/cli/dist/index.js render examples/ec-platform/05-multifile/system.
 - [ ] コマンドが終了コード 0 で完了する
 - [ ] `/tmp/ecplatform.drawio` が生成される
 - [ ] ファイル冒頭が `<?xml version="1.0" encoding="UTF-8"?>` で始まり、`<mxfile host="karasu" ...>` が続く
-- [ ] `<diagram id="system" name="System">` と `<diagram id="deploy" name="Deploy">` の 2 ページが含まれる（`system.krs` に deploy ブロックが無い場合は system ページのみでも可）
+- [ ] 少なくとも以下のページが含まれる:
+  - `<diagram id="system" name="System">` — トップレベル
+  - `<diagram id="system_..." name="System ▸ ..."` — system / service / domain / usecase の各ドリルダウン
+  - `<diagram id="deploy" name="Deploy">` — deploy ブロックがあるとき
+  - `<diagram id="org" name="Organization">` — organization ブロックがあるとき
 
 ### 2. draw.io で開く
 
 - [ ] `/tmp/ecplatform.drawio` を draw.io (desktop または diagrams.net Web) で開ける
 - [ ] パース / ロードエラーが表示されない
-- [ ] System / Deploy タブが切り替えられる（マルチページ出力の場合）
+- [ ] System / 各 drill-down / Deploy / Organization のタブが切り替えられる（マルチページ出力の場合）
+- [ ] 各 drill-down ページが「System ▸ ECPlatform ▸ Checkout」のようにパンくず状の名前になっている
+- [ ] Organization ページで、team が入れ子のコンテナ、member が中のノードとして描画される
 - [ ] 各ノードが karasu の SVG 描画と似た位置関係で配置されている（厳密なピクセル一致は不要）
 - [ ] コンテナ（system / service）が入れ子の枠として描画され、中のノードが一緒に動く
 
@@ -69,15 +75,15 @@ node packages/cli/dist/index.js render examples/ec-platform/05-multifile/system.
 
 - [ ] 出力された `.drawio` ファイルに含まれる `<diagram>` は 1 つだけ
 
-### 6. org view は未対応
+### 6. org view 単独指定
 
 ```
-node packages/cli/dist/index.js render examples/org/index.krs \
-  --format drawio --view org
+node packages/cli/dist/index.js render examples/org/system.krs \
+  --format drawio --view org --output /tmp/org-only.drawio
 ```
 
-- [ ] コマンドが終了コード 1 で終了する
-- [ ] stderr に `--format drawio does not support --view org` 旨のメッセージが出る
+- [ ] コマンドが終了コード 0 で完了する
+- [ ] 出力された `.drawio` に `<diagram id="org" ...>` のみが含まれる（system / deploy は出ない）
 
 ### 7. 未知フォーマットのリジェクト
 

@@ -1,12 +1,20 @@
 # draw.io (mxGraph XML) Export — a Layout Escape Hatch
 
 - **日付**: 2026-04-19
-- **ステータス**: 実装済み (system / deploy のみ。org view は follow-up に分離)
+- **ステータス**: 実装済み (system drill-down 各レイヤ / deploy / org すべてのページ対応)
 - **関連**: #649, #645 (non-goals), `docs/concepts.md`
 
-> **実装時の調整**: 初版 PR では `system` / `deploy` の 2 view のみを drawio ページとして出力する。
-> `org` view は独自のレンダリングパイプラインで `LayoutResult` を介さないため、そのまま流用できない。
-> org 対応は別 Issue に分離し、org-renderer から座標抽出ステップを切り出す形で追加する想定。
+> **ページ展開**: draw.io ファイルには以下のページが含まれる。
+>
+> - `system` — 全 system をトップレベルで束ねた view
+> - `system:<path>` — 各 system / service / domain / usecase のドリルダウン view
+>   （子を持つコンテナ種のみ。例: `system:ECPlatform.Checkout.Order`）
+> - `deploy` — 物理配置 view
+> - `org` — 組織 view。`organization` が複数あれば `org:<id>` で分割
+>
+> org 用の `LayoutResult` は主 SVG パイプラインと共有せず、drawio 専用の簡易
+> ツリーレイアウト（`exporter/drawio/org-layout.ts`）で生成する。理由は
+> org-renderer が座標を内部にしか保持せず、切り出すよりコピーした方が小さいため。
 
 ## mxGraph XML とは（調査メモ）
 
