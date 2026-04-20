@@ -37,6 +37,7 @@ export function PreviewColumn() {
     orgTreeSvg,
     onTeamToggle,
     orgTreeExportSvg,
+    onExportDrawio,
   } = usePreview();
 
   const [refOpen, setRefOpen] = useState(false);
@@ -114,6 +115,15 @@ export function PreviewColumn() {
     if (allViewsSvg) {
       onExportSvg(allViewsSvg, "all-diagrams.svg");
     }
+    setExportMenuOpen(false);
+  }
+
+  function handleExportDrawio() {
+    if (!onExportDrawio) return;
+    // Drawio export bundles every karasu view, so a single project-wide name
+    // is clearer than the per-view SVG filename.
+    const base = exportFilename.replace(/\.svg$/, "").replace(/^(system|deploy|org)-/, "");
+    void onExportDrawio(`${base || "project"}.drawio`);
     setExportMenuOpen(false);
   }
 
@@ -205,6 +215,15 @@ export function PreviewColumn() {
                 disabled={!allViewsSvg}
               >
                 Export All Diagrams SVG
+              </button>
+              <button
+                role="menuitem"
+                className="export-menu-item"
+                onClick={handleExportDrawio}
+                disabled={!onExportDrawio}
+                title="Export to draw.io (mxGraph XML) — a layout escape hatch you can polish in diagrams.net"
+              >
+                Export draw.io (mxGraph XML)
               </button>
             </div>
           )}

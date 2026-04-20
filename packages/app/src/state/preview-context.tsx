@@ -63,6 +63,11 @@ export interface PreviewContextValue {
   displayMode: DisplayMode;
   onDisplayModeChange: (mode: DisplayMode) => void;
   onExportSvg: (svg: string, filename: string) => void;
+  /**
+   * Export the current project as a draw.io (mxGraph XML) file. Absent when
+   * the active shell has no project available (e.g. editor-only modes).
+   */
+  onExportDrawio?: (filename: string) => Promise<void>;
 
   isAllLayersOpen: boolean;
   onAllLayersToggle: () => void;

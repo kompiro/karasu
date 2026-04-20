@@ -479,6 +479,27 @@ describe("PreviewColumn", () => {
       fireEvent.click(getByText("Export All Diagrams SVG"));
       expect(onExportSvg).toHaveBeenCalledWith(allViewsSvg, "all-diagrams.svg");
     });
+
+    it("Export draw.io menu item is disabled when no onExportDrawio is wired", () => {
+      const props = makeProps({ activeView: "system", onExportDrawio: undefined });
+      const { getByRole, getByText } = renderPreview(props);
+      fireEvent.click(getByRole("button", { name: /SVG export options/ }));
+      expect(getByText("Export draw.io (mxGraph XML)").closest("button")).toHaveProperty(
+        "disabled",
+        true,
+      );
+    });
+
+    it("Export draw.io menu item calls onExportDrawio with a .drawio filename", () => {
+      const onExportDrawio = vi
+        .fn<(filename: string) => Promise<void>>()
+        .mockResolvedValue(undefined);
+      const props = makeProps({ activeView: "system", onExportDrawio });
+      const { getByRole, getByText } = renderPreview(props);
+      fireEvent.click(getByRole("button", { name: /SVG export options/ }));
+      fireEvent.click(getByText("Export draw.io (mxGraph XML)"));
+      expect(onExportDrawio).toHaveBeenCalledWith(expect.stringMatching(/\.drawio$/));
+    });
   });
 
   describe("Open All Views button", () => {
