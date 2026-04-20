@@ -214,6 +214,22 @@ karasu render <file> [--format svg|drawio] [--view system|deploy|org] [-o <out>]
 | annotation (external, deprecated, migration_target) | style 属性 | 初期セットのみ対応 |
 | karasu ID, annotations | `mxCell` のカスタム属性 (`data-karasu-id`, `data-karasu-annotations`) | 将来の round-trip 検討余地 |
 
+### kind の可視化（ステレオタイプ + shape/色）
+
+ノードの種類（`service` / `domain` / `user` / `database` / `lambda` ...）が
+draw.io 上でぱっと見て判別できるように、2 系統の可視化を併用する:
+
+1. **ラベルに UML 風ステレオタイプを前置**: `«service»` のような小さな灰文字を
+   ラベル上に追加する。value は HTML として埋め込む（`html=1` が style に入っている）。
+2. **kind に応じた shape / fillColor**:
+   - 論理: `user` → `umlActor`、`usecase` → `ellipse`、`resource` → `document`、
+     `database` / `table` / `bucket` / `storage` → `cylinder3`、`queue` → `flowchart.delay`
+   - 残りの論理ノード（`system` / `service` / `domain` / `queue-item`）は rounded rect のまま fillColor で差別化
+   - デプロイ: 全て rounded rect。`oci` / `war` / `jar` / `artifact` / `lambda` / `function` / `assets` / `job` を色で区別
+
+annotation による上書き（`deprecated` → 赤枠 等）は kind スタイルよりあとに適用する。
+fill を設定しない annotation（`deprecated` など）では kind 由来の fill が維持される。
+
 ### アノテーション → スタイル（初期セット）
 
 - `external` → `fillColor=#f5f5f5;strokeColor=#999;dashed=1`

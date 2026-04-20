@@ -5,7 +5,9 @@ import {
   buildContainerStyle,
   buildEdgeStyle,
   buildNodeStyle,
+  formatCellValue,
   type DrawioStyle,
+  type NodeKind,
 } from "./drawio-style.js";
 
 /**
@@ -141,11 +143,16 @@ function buildCellsForPage(page: DrawioPage): Cell[] {
           }
         : { x: node.x, y: node.y, width: node.width, height: node.height };
 
+    const nodeKind = node.kind as NodeKind;
     cells.push({
       id: cellId(node.id),
       parent: parentContainerId,
-      value: node.label,
-      style: buildNodeStyle({ annotations: node.annotations, ghost: node.ghost }),
+      value: formatCellValue(node.label, nodeKind),
+      style: buildNodeStyle({
+        kind: nodeKind,
+        annotations: node.annotations,
+        ghost: node.ghost,
+      }),
       vertex: true,
       geometry: geom,
       customAttrs: buildNodeCustomAttrs(node),

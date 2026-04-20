@@ -1,5 +1,10 @@
 import { describe, it, expect } from "vitest";
-import { buildContainerStyle, buildEdgeStyle, buildNodeStyle } from "./drawio-style.js";
+import {
+  buildContainerStyle,
+  buildEdgeStyle,
+  buildNodeStyle,
+  formatCellValue,
+} from "./drawio-style.js";
 import { renderStyle } from "./mxgraph-builder.js";
 
 describe("buildNodeStyle", () => {
@@ -24,6 +29,36 @@ describe("buildNodeStyle", () => {
   it("ignores unknown annotations without erroring", () => {
     const rendered = renderStyle(buildNodeStyle({ annotations: ["unknown-tag"] }));
     expect(rendered).toContain("rounded=1");
+  });
+
+  it("applies kind-specific fill color (service)", () => {
+    const rendered = renderStyle(buildNodeStyle({ kind: "service" }));
+    expect(rendered).toContain("fillColor=#e8f5e9");
+  });
+
+  it("applies kind-specific shape (user → umlActor)", () => {
+    const rendered = renderStyle(buildNodeStyle({ kind: "user" }));
+    expect(rendered).toContain("shape=umlActor");
+  });
+
+  it("lets annotation overrides win over kind overrides (deprecated wins on stroke)", () => {
+    const rendered = renderStyle(buildNodeStyle({ kind: "service", annotations: ["deprecated"] }));
+    expect(rendered).toContain("strokeColor=#cc0000");
+    // service fillColor is retained because deprecated does not set fillColor
+    expect(rendered).toContain("fillColor=#e8f5e9");
+  });
+});
+
+describe("formatCellValue", () => {
+  it("returns the label unchanged when no kind is given", () => {
+    expect(formatCellValue("Checkout")).toBe("Checkout");
+  });
+
+  it("prefixes the kind as a UML-style stereotype above the label", () => {
+    const value = formatCellValue("Checkout", "service");
+    expect(value).toContain("«service»");
+    expect(value).toContain("Checkout");
+    expect(value).toContain("<br");
   });
 });
 

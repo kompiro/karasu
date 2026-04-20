@@ -1,6 +1,61 @@
+import type { DeployNodeKind, LogicalNodeKind } from "../../types/ast.js";
 import type { AttrValue } from "./mxgraph-builder.js";
 
 export type DrawioStyle = Record<string, AttrValue>;
+
+export type NodeKind = LogicalNodeKind | DeployNodeKind;
+
+/**
+ * Kind-specific style overrides so viewers can tell at a glance whether a cell
+ * is a user / domain / database / lambda / etc. without inspecting attributes.
+ * Applied on top of DEFAULT_NODE_STYLE, before annotation overrides.
+ */
+const KIND_OVERRIDES: Partial<Record<NodeKind, DrawioStyle>> = {
+  // Logical
+  system: { fillColor: "#e3f2fd", strokeColor: "#1565c0" },
+  service: { fillColor: "#e8f5e9", strokeColor: "#2e7d32" },
+  domain: { fillColor: "#fff8e1", strokeColor: "#f57c00" },
+  usecase: { _shape: "ellipse", fillColor: "#f3e5f5", strokeColor: "#6a1b9a" },
+  resource: { _shape: "shape=document", fillColor: "#fafafa", strokeColor: "#616161" },
+  user: {
+    _shape: "shape=umlActor",
+    fillColor: "#ffffff",
+    strokeColor: "#333333",
+    verticalLabelPosition: "bottom",
+    verticalAlign: "top",
+  },
+  database: {
+    _shape: "shape=cylinder3;boundedLbl=1",
+    fillColor: "#e1f5fe",
+    strokeColor: "#0277bd",
+  },
+  table: { _shape: "shape=cylinder3;boundedLbl=1", fillColor: "#e1f5fe", strokeColor: "#0277bd" },
+  bucket: { _shape: "shape=cylinder3;boundedLbl=1", fillColor: "#e0f2f1", strokeColor: "#00695c" },
+  queue: { _shape: "shape=mxgraph.flowchart.delay", fillColor: "#fff3e0", strokeColor: "#e65100" },
+  "queue-item": { fillColor: "#fff3e0", strokeColor: "#e65100" },
+  storage: { _shape: "shape=cylinder3;boundedLbl=1", fillColor: "#e0f2f1", strokeColor: "#00695c" },
+  // Deploy
+  oci: { fillColor: "#e8eaf6", strokeColor: "#283593" },
+  war: { fillColor: "#ede7f6", strokeColor: "#4527a0" },
+  jar: { fillColor: "#ede7f6", strokeColor: "#4527a0" },
+  lambda: { fillColor: "#fffde7", strokeColor: "#f9a825" },
+  function: { fillColor: "#fffde7", strokeColor: "#f9a825" },
+  assets: { fillColor: "#e1f5fe", strokeColor: "#01579b" },
+  job: { fillColor: "#eceff1", strokeColor: "#455a64" },
+  artifact: { fillColor: "#ede7f6", strokeColor: "#4527a0" },
+};
+
+/**
+ * Prefix the cell value with a UML-style stereotype so the kind is visible
+ * in the rendered diagram, not just as a custom attribute. Uses html=1 so
+ * the stereotype line can be styled smaller and grayer than the label.
+ */
+export function formatCellValue(label: string, kind?: NodeKind): string {
+  if (!kind) return label;
+  // Values are later XML-escaped by renderAttrs; we emit HTML that draw.io
+  // renders when html=1 is set in the style.
+  return `<span style="font-size:10px;color:#888">«${kind}»</span><br/>${label}`;
+}
 
 const DEFAULT_NODE_STYLE: DrawioStyle = {
   _shape: "rounded=1",
@@ -61,6 +116,7 @@ const ANNOTATION_OVERRIDES: Record<string, DrawioStyle> = {
 };
 
 interface NodeStyleInput {
+  kind?: NodeKind;
   annotations?: string[];
   ghost?: boolean;
 }
@@ -72,6 +128,10 @@ interface EdgeStyleInput {
 
 export function buildNodeStyle(input: NodeStyleInput): DrawioStyle {
   const style: DrawioStyle = { ...DEFAULT_NODE_STYLE };
+  if (input.kind) {
+    const kindOverrides = KIND_OVERRIDES[input.kind];
+    if (kindOverrides) Object.assign(style, kindOverrides);
+  }
   for (const annotation of input.annotations ?? []) {
     const overrides = ANNOTATION_OVERRIDES[annotation];
     if (overrides) Object.assign(style, overrides);

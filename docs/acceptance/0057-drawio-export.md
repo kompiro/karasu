@@ -38,7 +38,17 @@ node packages/cli/dist/index.js render examples/ec-platform/05-multifile/system.
 - [ ] 各ノードが karasu の SVG 描画と似た位置関係で配置されている（厳密なピクセル一致は不要）
 - [ ] コンテナ（system / service）が入れ子の枠として描画され、中のノードが一緒に動く
 
-### 3. アノテーション→スタイル
+### 3. kind の可視化
+
+- [ ] 各ノードのラベル上部に `«service»` / `«domain»` / `«user»` のような
+      UML 風ステレオタイプが小さな灰文字で表示される
+- [ ] `user` ノードが UML アクター形（棒人間）で描画される
+- [ ] `database` / `table` / `bucket` / `storage` ノードがシリンダー形で描画される
+- [ ] `usecase` ノードが楕円で描画される
+- [ ] `service` / `domain` / deploy kind（oci / lambda / jar ...）が
+      それぞれ異なる淡い背景色で塗り分けられている
+
+### 4. アノテーション→スタイル
 
 `examples/migration/` のように `@external` / `@deprecated` / `@migration_target` を含むサンプルで確認する:
 
@@ -46,7 +56,7 @@ node packages/cli/dist/index.js render examples/ec-platform/05-multifile/system.
 - [ ] `@deprecated` が付いたノードは赤系ストロークと斜体ラベルで描画される
 - [ ] `@migration_target` が付いたノードはオレンジ系の強調スタイルになる
 
-### 4. 単一 view の指定
+### 5. 単一 view の指定
 
 ```
 node packages/cli/dist/index.js render examples/ec-platform/05-multifile/system.krs \
@@ -55,7 +65,7 @@ node packages/cli/dist/index.js render examples/ec-platform/05-multifile/system.
 
 - [ ] 出力された `.drawio` ファイルに含まれる `<diagram>` は 1 つだけ
 
-### 5. org view は未対応
+### 6. org view は未対応
 
 ```
 node packages/cli/dist/index.js render examples/org/index.krs \
@@ -65,7 +75,7 @@ node packages/cli/dist/index.js render examples/org/index.krs \
 - [ ] コマンドが終了コード 1 で終了する
 - [ ] stderr に `--format drawio does not support --view org` 旨のメッセージが出る
 
-### 6. 未知フォーマットのリジェクト
+### 7. 未知フォーマットのリジェクト
 
 ```
 node packages/cli/dist/index.js render examples/ec-platform/05-multifile/system.krs \
@@ -75,7 +85,7 @@ node packages/cli/dist/index.js render examples/ec-platform/05-multifile/system.
 - [ ] コマンドが終了コード 1 で終了する
 - [ ] stderr に `unknown --format "xyz"` が含まれる
 
-### 7. karasu 固有メタデータの保持
+### 8. karasu 固有メタデータの保持
 
 draw.io で任意のセルを右クリック → Edit Geometry / Edit Style ではなく、左サイドバー「Arrange」タブまたは XML 直接閲覧で:
 

@@ -163,7 +163,7 @@ describe("exportDrawio", () => {
     expect(xml).toContain(`data-karasu-aggregated="a.x-&gt;b.y,a.p-&gt;b.q"`);
   });
 
-  it("escapes special characters in labels", () => {
+  it("escapes special characters in labels while prefixing the kind stereotype", () => {
     const layout = makeLayout({
       nodes: new Map([
         [
@@ -187,7 +187,56 @@ describe("exportDrawio", () => {
     const xml = exportDrawio({
       pages: [{ id: "p", name: "P", layout }],
     });
-    expect(xml).toContain(`value="A &amp; B &lt;c&gt;"`);
+    // stereotype prefix (html tags are xml-escaped for the attribute so draw.io
+    // decodes and renders them as HTML when html=1 is set in the style)
+    expect(xml).toContain("&lt;span");
+    expect(xml).toContain("«domain»");
+    // label content is escaped
+    expect(xml).toContain("A &amp; B &lt;c&gt;");
+  });
+
+  it("applies kind-specific shape overrides (user → umlActor, database → cylinder3)", () => {
+    const layout = makeLayout({
+      nodes: new Map([
+        [
+          "u",
+          {
+            kind: "user",
+            id: "u",
+            label: "Customer",
+            properties: { description: undefined, tags: [], links: [] },
+            linkCount: 0,
+            hasChildren: false,
+            hasDescription: false,
+            x: 0,
+            y: 0,
+            width: 80,
+            height: 80,
+          },
+        ],
+        [
+          "db",
+          {
+            kind: "database",
+            id: "db",
+            label: "Orders",
+            properties: { description: undefined, tags: [], links: [] },
+            linkCount: 0,
+            hasChildren: false,
+            hasDescription: false,
+            x: 100,
+            y: 0,
+            width: 80,
+            height: 80,
+          },
+        ],
+      ]),
+    });
+    const xml = exportDrawio({
+      pages: [{ id: "p", name: "P", layout }],
+    });
+    expect(xml).toMatch(/id="p-u"[^>]*style="[^"]*shape=umlActor/);
+    expect(xml).toMatch(/id="p-db"[^>]*style="[^"]*shape=cylinder3/);
   });
 
   it("skips edges whose endpoints are not rendered on the page", () => {
