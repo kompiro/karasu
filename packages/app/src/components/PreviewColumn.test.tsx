@@ -1,11 +1,17 @@
 // @vitest-environment jsdom
 import { describe, it, expect, vi, afterEach } from "vitest";
-import { render, fireEvent, cleanup } from "@testing-library/react";
+import { render as rtlRender, fireEvent, cleanup } from "@testing-library/react";
+import type { ReactElement } from "react";
 import type { Diagnostic, Warning } from "@karasu-tools/core";
 import { PreviewColumn } from "./PreviewColumn.js";
 import { PreviewProvider, type PreviewContextValue } from "../state/preview-context.js";
+import { LocaleProvider } from "../i18n/index.js";
 
 afterEach(cleanup);
+
+function render(ui: ReactElement, initialLocale: "en" | "ja" = "en") {
+  return rtlRender(<LocaleProvider initialLocale={initialLocale}>{ui}</LocaleProvider>);
+}
 
 function renderPreview(value: PreviewContextValue) {
   return render(

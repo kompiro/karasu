@@ -3,6 +3,7 @@ import Anthropic, { APIError } from "@anthropic-ai/sdk";
 import { applyKrsPatch, type PatchOperation } from "../utils/krs-patch.js";
 import type { SystemNode } from "@karasu-tools/core";
 import { resolveLocale } from "../i18n/locale.js";
+import { useTranslation } from "../i18n/index.js";
 import { TOOLS, buildSystemPrompt, hashContent } from "./useChatSession/prompt.js";
 import { classifyError, errorMessage } from "./useChatSession/errors.js";
 import { buildApiMessages } from "./useChatSession/apiMessages.js";
@@ -86,6 +87,13 @@ export function useChatSession({
   // if the user changes the stored locale in another tab. The UI selector
   // introduced by #34 will prompt a session reset when it changes the locale.
   const [locale] = useState(() => resolveLocale());
+
+  // `t` is used to localize error messages surfaced in the chat log.
+  // Keep the latest value in a ref so async callbacks pick up the current
+  // locale's messages without extra re-subscribes.
+  const { t } = useTranslation();
+  const tRef = useRef(t);
+  tRef.current = t;
 
   // Keep a ref to the current phase so async callbacks can read the latest value
   const phaseRef = useRef<SessionPhase>(phase);
@@ -245,7 +253,7 @@ export function useChatSession({
           id: crypto.randomUUID(),
           role: "error",
           errorType,
-          content: errorMessage(errorType),
+          content: errorMessage(errorType, tRef.current),
           retryMessageId: retryUserMsgId,
         };
         setMessages((prev) => [...prev, errorMsg]);
@@ -390,7 +398,7 @@ export function useChatSession({
             id: crypto.randomUUID(),
             role: "error",
             errorType,
-            content: errorMessage(errorType),
+            content: errorMessage(errorType, tRef.current),
           },
         ]);
         setPhase({ kind: "idle" });
@@ -433,7 +441,7 @@ export function useChatSession({
             id: crypto.randomUUID(),
             role: "error",
             errorType,
-            content: errorMessage(errorType),
+            content: errorMessage(errorType, tRef.current),
           },
         ]);
         setPhase({ kind: "idle" });
@@ -478,7 +486,7 @@ export function useChatSession({
           id: crypto.randomUUID(),
           role: "error",
           errorType,
-          content: errorMessage(errorType),
+          content: errorMessage(errorType, tRef.current),
         },
       ]);
       setPhase({ kind: "idle" });
@@ -509,7 +517,7 @@ export function useChatSession({
           id: crypto.randomUUID(),
           role: "error",
           errorType,
-          content: errorMessage(errorType),
+          content: errorMessage(errorType, tRef.current),
         },
       ]);
       setPhase({ kind: "idle" });

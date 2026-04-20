@@ -61,4 +61,21 @@ export const ja: Partial<Translations> = {
   "chat.patch.reject.button": "✕ 却下",
   "chat.apiKeySetup.message": "AI 機能を使うには Claude API キーが必要です。",
   "chat.apiKeySetup.goToSettings": "⚙ Settings で設定する",
+
+  // Chat error messages
+  "chat.error.auth": "⚠ APIキーが無効です。Settings で正しいキーを設定してください。",
+  "chat.error.rateLimit": "⚠ リクエスト制限に達しました。しばらく待ってから再試行してください。",
+  "chat.error.server": "⚠ Anthropic サーバーエラーです。しばらく待ってから再試行してください。",
+
+  // NodeDetailPanel
+  "nodeDetail.close": "閉じる",
+  "nodeDetail.links.title": "🔗 リンク",
+  "nodeDetail.openDeployView": "🚀 Deploy 図で確認 →",
+  "nodeDetail.jumpToEditor": "↗ エディタへジャンプ",
+
+  // DiagramTabBar
+  "diagramTabBar.deploy.unavailableTitle": "deploy ブロックがありません",
+
+  // ReferencePanel
+  "referencePanel.unsupportedMessage": "Tags & Annotations はこのダイアグラムでは未対応です。",
 };

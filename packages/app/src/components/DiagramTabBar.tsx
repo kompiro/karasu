@@ -1,5 +1,6 @@
 import type { DeployBlockInfo } from "@karasu-tools/core";
 import type { ActiveView } from "../state/app-reducer.js";
+import { useTranslation } from "../i18n/index.js";
 
 interface DiagramTabBarProps {
   active: ActiveView;
@@ -18,6 +19,7 @@ export function DiagramTabBar({
   selectedDeployBlockId,
   onDeployBlockChange,
 }: DiagramTabBarProps) {
+  const { t } = useTranslation();
   return (
     <div className="diagram-tab-bar" role="tablist">
       <button
@@ -45,7 +47,7 @@ export function DiagramTabBar({
           role="tab"
           aria-selected={false}
           aria-disabled={true}
-          title="deploy ブロックがありません"
+          title={t("diagramTabBar.deploy.unavailableTitle")}
         >
           <span className="diagram-tab-icon">⬢</span>
           Deploy

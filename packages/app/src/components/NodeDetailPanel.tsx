@@ -3,6 +3,7 @@ import { marked } from "marked";
 import DOMPurify from "dompurify";
 import { renderPictogram } from "@karasu-tools/core";
 import type { NodeMetadata } from "@karasu-tools/core";
+import { useTranslation } from "../i18n/index.js";
 
 interface NodeDetailPanelProps {
   nodeId: string;
@@ -53,6 +54,7 @@ export function NodeDetailPanel({
   onNavigateToOrg,
   onJumpToEditor,
 }: NodeDetailPanelProps) {
+  const { t } = useTranslation();
   const descriptionHtml = useMemo(() => {
     if (!metadata.description) return "";
     const raw = marked.parse(metadata.description, { async: false }) as string;
@@ -88,7 +90,7 @@ export function NodeDetailPanel({
           <span className="node-detail-icon">{fallbackIcon}</span>
         )}
         <span className="node-detail-label">{metadata.label}</span>
-        <button className="node-detail-close" onClick={onClose} aria-label="Close">
+        <button className="node-detail-close" onClick={onClose} aria-label={t("nodeDetail.close")}>
           ×
         </button>
       </div>
@@ -102,7 +104,7 @@ export function NodeDetailPanel({
 
       {metadata.links.length > 0 && (
         <div className="node-detail-section">
-          <div className="node-detail-section-title">🔗 Links</div>
+          <div className="node-detail-section-title">{t("nodeDetail.links.title")}</div>
           <ul className="node-detail-links">
             {metadata.links.map((link) => (
               <li key={link.url}>
@@ -144,7 +146,9 @@ export function NodeDetailPanel({
             ))}
           {metadata.role && <div className="node-detail-prop">📌 {metadata.role}</div>}
           {metadata.tags.length > 0 && (
-            <div className="node-detail-prop">🏷 {metadata.tags.map((t) => `[${t}]`).join(" ")}</div>
+            <div className="node-detail-prop">
+              🏷 {metadata.tags.map((tag) => `[${tag}]`).join(" ")}
+            </div>
           )}
         </div>
       )}
@@ -158,7 +162,7 @@ export function NodeDetailPanel({
               onClose();
             }}
           >
-            🚀 Deploy 図で確認 →
+            {t("nodeDetail.openDeployView")}
           </button>
         </div>
       )}
@@ -166,7 +170,7 @@ export function NodeDetailPanel({
       {onJumpToEditor && (
         <div className="node-detail-section">
           <button className="node-detail-nav-btn" onClick={onJumpToEditor}>
-            ↗ Jump to editor
+            {t("nodeDetail.jumpToEditor")}
           </button>
         </div>
       )}

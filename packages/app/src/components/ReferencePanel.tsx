@@ -2,6 +2,7 @@ import { useState, useCallback } from "react";
 import { getReference } from "@karasu-tools/core";
 import { useClipboardCopy } from "../hooks/useClipboardCopy.js";
 import type { ActiveView } from "../state/app-reducer.js";
+import { useTranslation } from "../i18n/index.js";
 
 interface ReferencePanelProps {
   isOpen: boolean;
@@ -420,14 +421,13 @@ edge[async] { border-style: dashed; }
 }
 
 function TagsTab({ activeView }: { activeView: ActiveView }) {
+  const { t } = useTranslation();
   const ref = getReference();
 
   if (activeView !== "system") {
     return (
       <div className="reference-tab-body">
-        <p className="reference-unsupported">
-          Tags &amp; Annotations はこのダイアグラムでは未対応です。
-        </p>
+        <p className="reference-unsupported">{t("referencePanel.unsupportedMessage")}</p>
       </div>
     );
   }
@@ -444,13 +444,13 @@ function TagsTab({ activeView }: { activeView: ActiveView }) {
           </tr>
         </thead>
         <tbody>
-          {ref.tags.map((t) => (
-            <tr key={t.name}>
+          {ref.tags.map((tag) => (
+            <tr key={tag.name}>
               <td>
-                <code>[{t.name}]</code>
+                <code>[{tag.name}]</code>
               </td>
-              <td>{t.appliesTo.join(", ")}</td>
-              <td>{t.description}</td>
+              <td>{tag.appliesTo.join(", ")}</td>
+              <td>{tag.description}</td>
             </tr>
           ))}
         </tbody>

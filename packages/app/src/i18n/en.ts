@@ -61,4 +61,21 @@ export const en: Translations = {
   "chat.patch.reject.button": "✕ Reject",
   "chat.apiKeySetup.message": "A Claude API key is required to use AI features.",
   "chat.apiKeySetup.goToSettings": "⚙ Configure in Settings",
+
+  // Chat error messages
+  "chat.error.auth": "⚠ The API key is invalid. Please set a valid key in Settings.",
+  "chat.error.rateLimit": "⚠ Rate limit reached. Please wait a moment and retry.",
+  "chat.error.server": "⚠ Anthropic server error. Please wait a moment and retry.",
+
+  // NodeDetailPanel
+  "nodeDetail.close": "Close",
+  "nodeDetail.links.title": "🔗 Links",
+  "nodeDetail.openDeployView": "🚀 View in Deploy diagram →",
+  "nodeDetail.jumpToEditor": "↗ Jump to editor",
+
+  // DiagramTabBar
+  "diagramTabBar.deploy.unavailableTitle": "No deploy block defined",
+
+  // ReferencePanel
+  "referencePanel.unsupportedMessage": "Tags & Annotations are not available for this diagram.",
 };
