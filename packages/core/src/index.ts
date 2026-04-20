@@ -66,6 +66,7 @@ export {
   type ExampleProject,
   EC_PLATFORM_PROJECTS,
   GETTING_STARTED_PROJECT,
+  GETTING_STARTED_PROJECT_EN,
 } from "./builtins/examples.js";
 export {
   getReference,
