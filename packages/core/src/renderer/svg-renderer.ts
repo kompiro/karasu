@@ -190,7 +190,10 @@ export function renderFromLayout(
       serviceIdsWithDeploy,
       displayMode,
       childLevelLinks,
-      options?.nodeDiffState?.get(nodeId),
+      // Use layoutNode.id (the original AST id) rather than the map key — the
+      // deploy layout encodes per-container instances as `containerId::unitId`,
+      // and diff metadata is keyed by the bare unit id.
+      options?.nodeDiffState?.get(layoutNode.id) ?? options?.nodeDiffState?.get(nodeId),
     );
     if (layoutNode.ghost) {
       ghostNodeParts.push(rendered);
