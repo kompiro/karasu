@@ -45,7 +45,7 @@ const KIND_OVERRIDES: Partial<Record<NodeKind, DrawioStyle>> = {
   artifact: { fillColor: "#ede7f6", strokeColor: "#4527a0" },
 };
 
-export interface CellValueInput {
+interface CellValueInput {
   label: string;
   kind?: NodeKind;
   annotations?: string[];
