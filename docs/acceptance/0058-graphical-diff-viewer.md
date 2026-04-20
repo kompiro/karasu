@@ -111,13 +111,40 @@ Open `index.krs` so it is the current file.
 - [ ] All nodes render with `data-diff-state="unchanged"` (uniformly dimmed)
 - [ ] No green/red/amber appears anywhere
 
+### TC-9: Deploy view diff (Issue #735)
+
+Add deploy blocks to both files, e.g. add to `before.krs`:
+
+```krs
+deploy Production {
+  oci "catalog-svc" { realizes Catalog }
+  oci "orders-svc" { realizes Orders }
+}
+```
+
+And to `index.krs`:
+
+```krs
+deploy Production {
+  oci "catalog-svc" { realizes Catalog }
+  oci "orders-svc" { realizes Orders }
+  oci "payments-svc" { realizes Payments }
+}
+```
+
+- [ ] Enter diff mode (Compare with current), then switch to the **Deploy** view tab
+- [ ] `payments-svc` deploy unit appears with a **green** border
+- [ ] The new ghost edge from `Orders` container to `Payments` container is **green**
+- [ ] Diff banner remains visible while the deploy view is active
+- [ ] Reverse the comparison: `payments-svc` is rendered with **red dashed** border, ghost edge is **red dashed**
+
 ---
 
 ## Out of scope (tracked separately)
 
-- Deploy view diff
-- Org view diff
-- Aggregated implicit edge constituent-set diff in `EdgeDetailPanel`
-- Annotation-only changes rendered as a badge diff (D-2 in the design doc)
-- Paste-blob input source
-- OPFS snapshot input source
+- ~~Deploy view diff~~ — landed in #735
+- Org view diff (#736)
+- Aggregated implicit edge constituent-set diff in `EdgeDetailPanel` (#737)
+- Annotation-only changes rendered as a badge diff (D-2 in the design doc) (#738)
+- Paste-blob input source (#739)
+- OPFS snapshot input source (#740)
