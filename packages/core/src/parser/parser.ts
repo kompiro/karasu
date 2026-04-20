@@ -1273,10 +1273,13 @@ export class Parser {
     topLevelInfra: KrsNode[] = [],
   ): Map<string, string[]> {
     const index = new Map<string, string[]>();
-    // Only service and domain nodes are indexed: these are the only kinds
-    // that can appear in `owns` declarations and need navigation support.
-    // resource / usecase / user nodes are intentionally excluded so that
-    // legitimate shared resources across usecases do not generate warnings.
+    // INDEXED_KINDS governs the recursive walk() pass: service and domain are
+    // the only kinds tracked here because they appear in `owns` declarations,
+    // require migration-annotation priority logic, and need cross-system
+    // duplicate detection. resource / usecase / user are intentionally
+    // excluded so shared resources across usecases don't generate warnings.
+    // Top-level infra nodes (database/queue/storage) are indexed separately
+    // via the topLevelInfra loop below, which does not apply these filters.
     const INDEXED_KINDS = new Set(["service", "domain"]);
     // seenDomainIds is reset per system so that the same domain ID in different
     // systems does not trigger an error (cross-system parallel modelling is allowed).
