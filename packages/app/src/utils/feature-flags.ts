@@ -13,5 +13,10 @@
 /**
  * Graphical diff viewer (#650). Hides the "Compare with current" file-tree
  * action while follow-ups (#735–#740) close the gaps.
+ *
+ * Off by default. Enable for a single session by visiting the app with
+ * `?diff=1` in the URL — useful for poking at the feature on the Preview
+ * build without rebuilding.
  */
-export const ENABLE_DIFF_VIEWER = false;
+export const ENABLE_DIFF_VIEWER =
+  typeof window !== "undefined" && new URLSearchParams(window.location.search).has("diff");
