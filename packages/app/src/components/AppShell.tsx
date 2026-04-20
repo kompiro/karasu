@@ -54,6 +54,7 @@ export function AppShell({
     displayMode,
     currentFilePath,
     currentProject,
+    compareEntryPath,
   } = state;
 
   const [isAllLayersOpen, setIsAllLayersOpen] = useState(false);
@@ -72,6 +73,7 @@ export function AppShell({
     dispatch,
     isOrgTreeViewOpen,
     setIsOrgTreeViewOpen,
+    compareEntryPath,
   });
   const { recompile, navigateViewPath, navigateActiveView } = views;
 
@@ -281,8 +283,47 @@ export function AppShell({
         />
       )}
       <PreviewProvider value={previewContextValue}>
+        {compareEntryPath && (
+          <DiffModeBanner
+            comparePath={compareEntryPath}
+            currentPath={currentFilePath}
+            onExit={() => dispatch({ type: "SET_COMPARE_ENTRY_PATH", path: null })}
+          />
+        )}
         <PreviewColumn />
       </PreviewProvider>
+    </div>
+  );
+}
+
+function DiffModeBanner({
+  comparePath,
+  currentPath,
+  onExit,
+}: {
+  comparePath: string;
+  currentPath: string | null;
+  onExit: () => void;
+}) {
+  const baseName = (p: string) => p.split("/").pop() ?? p;
+  return (
+    <div className="diff-mode-banner" role="status" aria-label="Diff mode active">
+      <span className="diff-mode-banner__label">
+        ⇄ Diff:&nbsp;
+        <span className="diff-mode-banner__before">{baseName(comparePath)}</span>
+        &nbsp;→&nbsp;
+        <span className="diff-mode-banner__after">
+          {currentPath ? baseName(currentPath) : "(current)"}
+        </span>
+      </span>
+      <button
+        type="button"
+        className="toolbar-btn toolbar-btn--diff-exit"
+        onClick={onExit}
+        aria-label="Exit diff mode"
+      >
+        ✕ Exit diff
+      </button>
     </div>
   );
 }

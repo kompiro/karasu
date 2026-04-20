@@ -15,6 +15,11 @@ interface FileTreeProps {
   onFileCreated?: (path: string) => void;
   onFileDeleted?: (path: string) => void;
   onFileRenamed?: (oldPath: string, newPath: string) => void;
+  /**
+   * Triggered when the user picks "Compare with current" on a `.krs` file (Issue #650).
+   * The path is the file to compare against the currently open file.
+   */
+  onCompareWithCurrent?: (path: string) => void;
   refreshKey?: number;
 }
 
@@ -26,6 +31,7 @@ export function FileTree({
   onFileCreated,
   onFileDeleted,
   onFileRenamed,
+  onCompareWithCurrent,
   refreshKey,
 }: FileTreeProps) {
   const [tree, setTree] = useState<FileTreeNode[]>([]);
@@ -140,9 +146,21 @@ export function FileTree({
         case "delete":
           void deleteItem(node.path);
           break;
+        case "compare-with-current":
+          if (onCompareWithCurrent) onCompareWithCurrent(node.path);
+          break;
       }
     },
-    [contextMenu, deleteItem],
+    [contextMenu, deleteItem, onCompareWithCurrent],
+  );
+
+  const canCompareContextNode = !!(
+    contextMenu &&
+    onCompareWithCurrent &&
+    currentFilePath &&
+    contextMenu.node.kind === "file" &&
+    contextMenu.node.name.endsWith(".krs") &&
+    contextMenu.node.path !== currentFilePath
   );
 
   const handleNewFile = useCallback(() => {
@@ -169,6 +187,7 @@ export function FileTree({
       onInlineCancel={() => setInlineInput(null)}
       onNewFile={handleNewFile}
       onNewDir={handleNewDir}
+      canCompareContextNode={canCompareContextNode}
     />
   );
 }

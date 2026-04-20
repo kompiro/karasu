@@ -135,6 +135,13 @@ export function ProjectModeApp() {
     />
   );
 
+  const handleCompareWithCurrent = useCallback(
+    (path: string) => {
+      dispatch({ type: "SET_COMPARE_ENTRY_PATH", path });
+    },
+    [dispatch],
+  );
+
   const sidebarContent = currentProject ? (
     <FileTree
       rootPath={currentProject.rootPath}
@@ -144,6 +151,7 @@ export function ProjectModeApp() {
       onFileCreated={handleFileCreated}
       onFileDeleted={handleFileDeleted}
       onFileRenamed={handleFileRenamed}
+      onCompareWithCurrent={handleCompareWithCurrent}
     />
   ) : undefined;
 

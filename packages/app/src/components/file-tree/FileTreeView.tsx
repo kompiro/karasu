@@ -18,6 +18,8 @@ interface FileTreeViewProps {
   onInlineCancel: () => void;
   onNewFile: () => void;
   onNewDir: () => void;
+  /** When true, the context menu shows a "Compare with current" entry for files (Issue #650). */
+  canCompareContextNode?: boolean;
 }
 
 /**
@@ -40,6 +42,7 @@ export function FileTreeView({
   onInlineCancel,
   onNewFile,
   onNewDir,
+  canCompareContextNode,
 }: FileTreeViewProps) {
   return (
     <div className="file-tree">
@@ -84,6 +87,7 @@ export function FileTreeView({
           x={contextMenu.x}
           y={contextMenu.y}
           node={contextMenu.node}
+          canCompareWithCurrent={canCompareContextNode}
           onAction={onMenuAction}
         />
       )}
