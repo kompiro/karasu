@@ -51,6 +51,24 @@ export type Translations = {
   "projectSelector.import.button": string;
   "projectSelector.ok": string;
   "projectSelector.cancel": string;
+
+  // Chat pane (Phase C4)
+  "chat.newSession.button": string;
+  "chat.startInterview.button": string;
+  "chat.startReview.button": string;
+  "chat.emptyState.hint": string;
+  "chat.message.userRole": string;
+  "chat.retry.button": string;
+  "chat.openSettings.button": string;
+  "chat.loading": string;
+  "chat.input.placeholderPending": string;
+  "chat.input.placeholderDefault": string;
+  "chat.input.ariaLabel": string;
+  "chat.send.button": string;
+  "chat.patch.apply.button": string;
+  "chat.patch.reject.button": string;
+  "chat.apiKeySetup.message": string;
+  "chat.apiKeySetup.goToSettings": string;
 };
 
 /**

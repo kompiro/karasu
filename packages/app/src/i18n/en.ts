@@ -43,4 +43,22 @@ export const en: Translations = {
   "projectSelector.import.button": "↑ Import",
   "projectSelector.ok": "OK",
   "projectSelector.cancel": "Cancel",
+
+  // Chat pane
+  "chat.newSession.button": "↺ New Session",
+  "chat.startInterview.button": "▶ Start Interview",
+  "chat.startReview.button": "🔍 Start Review",
+  "chat.emptyState.hint": 'Or type freely (e.g. "Review this model")',
+  "chat.message.userRole": "You",
+  "chat.retry.button": "↺ Retry",
+  "chat.openSettings.button": "⚙ Open Settings",
+  "chat.loading": "AI is thinking…",
+  "chat.input.placeholderPending": "Please review the patch before sending",
+  "chat.input.placeholderDefault": "Type a message… (Cmd+Enter or Ctrl+Enter to send)",
+  "chat.input.ariaLabel": "Chat message input",
+  "chat.send.button": "↑ Send",
+  "chat.patch.apply.button": "✓ Apply",
+  "chat.patch.reject.button": "✕ Reject",
+  "chat.apiKeySetup.message": "A Claude API key is required to use AI features.",
+  "chat.apiKeySetup.goToSettings": "⚙ Configure in Settings",
 };

@@ -1,8 +1,25 @@
 // @vitest-environment jsdom
 import { describe, it, expect, vi, afterEach } from "vitest";
-import { render, fireEvent, cleanup } from "@testing-library/react";
+import { render as rtlRender, fireEvent, cleanup } from "@testing-library/react";
+import type { ReactElement } from "react";
+import { LocaleProvider } from "../i18n/index.js";
 
 afterEach(cleanup);
+
+// Wrap every render in a LocaleProvider so ChatPane + ApiKeySetup can
+// call useTranslation. Default to English; tests that need Japanese pass
+// the locale explicitly. Also wraps rerender so subsequent renders keep
+// the provider.
+function render(ui: ReactElement, initialLocale: "en" | "ja" = "en") {
+  const wrap = (node: ReactElement) => (
+    <LocaleProvider initialLocale={initialLocale}>{node}</LocaleProvider>
+  );
+  const result = rtlRender(wrap(ui));
+  return {
+    ...result,
+    rerender: (next: ReactElement) => result.rerender(wrap(next)),
+  };
+}
 
 // Mock useChatSession so ChatPane tests focus on UI behavior without real API calls.
 // startInterview is a no-op by default (returns an already-resolved promise).
@@ -181,7 +198,7 @@ describe("ChatPane — without API key", () => {
     const { getByRole } = render(
       <ChatPane {...defaultProps} apiKey={null} onNavigateToSettings={onNavigateToSettings} />,
     );
-    expect(getByRole("button", { name: /Settings で設定する/ })).toBeTruthy();
+    expect(getByRole("button", { name: /Configure in Settings/ })).toBeTruthy();
   });
 
   it("clicking Settings button calls onNavigateToSettings", () => {
@@ -190,7 +207,41 @@ describe("ChatPane — without API key", () => {
     const { getByRole } = render(
       <ChatPane {...defaultProps} apiKey={null} onNavigateToSettings={onNavigateToSettings} />,
     );
-    fireEvent.click(getByRole("button", { name: /Settings で設定する/ }));
+    fireEvent.click(getByRole("button", { name: /Configure in Settings/ }));
     expect(onNavigateToSettings).toHaveBeenCalledOnce();
+  });
+});
+
+describe("ChatPane — localization (Phase C4)", () => {
+  it("renders the empty-state hint and buttons in English", () => {
+    mockUseChatSession.mockReturnValue(makeDefaultSession());
+    const { getByRole, container } = render(<ChatPane {...defaultProps} />, "en");
+    expect(getByRole("button", { name: /▶ Start Interview/ })).toBeTruthy();
+    expect(getByRole("button", { name: /🔍 Start Review/ })).toBeTruthy();
+    expect(getByRole("button", { name: /↺ New Session/ })).toBeTruthy();
+    expect(getByRole("button", { name: /↑ Send/ })).toBeTruthy();
+    expect(container.textContent).toContain("Or type freely");
+  });
+
+  it("renders the empty-state hint and buttons in Japanese", () => {
+    mockUseChatSession.mockReturnValue(makeDefaultSession());
+    const { getByRole, container } = render(<ChatPane {...defaultProps} />, "ja");
+    expect(getByRole("button", { name: /▶ インタビュー開始/ })).toBeTruthy();
+    expect(getByRole("button", { name: /🔍 レビュー開始/ })).toBeTruthy();
+    expect(getByRole("button", { name: /↺ 新しい会話/ })).toBeTruthy();
+    expect(getByRole("button", { name: /↑ 送信/ })).toBeTruthy();
+    expect(container.textContent).toContain("または自由に入力してください");
+  });
+
+  it("uses the English ApiKeySetup copy when apiKey is null", () => {
+    mockUseChatSession.mockReturnValue(makeDefaultSession());
+    const { container } = render(<ChatPane {...defaultProps} apiKey={null} />, "en");
+    expect(container.textContent).toContain("A Claude API key is required");
+  });
+
+  it("uses the Japanese ApiKeySetup copy when apiKey is null", () => {
+    mockUseChatSession.mockReturnValue(makeDefaultSession());
+    const { container } = render(<ChatPane {...defaultProps} apiKey={null} />, "ja");
+    expect(container.textContent).toContain("AI 機能を使うには Claude API キーが必要です");
   });
 });
