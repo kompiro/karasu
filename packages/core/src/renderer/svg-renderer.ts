@@ -34,8 +34,8 @@ export function sanitizeId(id: string): string {
   return id.replace(/[^a-zA-Z0-9_-]/g, "_");
 }
 
-interface RenderOptions {
-  /** Diff state per node id (and per edge key `from->to#kind`) for diff-mode rendering. */
+export interface RenderOptions {
+  /** Diff state per node id (and per edge key `from->to`) for diff-mode rendering. */
   nodeDiffState?: Map<string, string>;
   edgeDiffState?: Map<string, string>;
 }
