@@ -174,6 +174,168 @@ organization ECOrg {
   ],
 };
 
+export const GETTING_STARTED_PROJECT_EN: ExampleProject = {
+  name: "getting-started",
+  files: [
+    {
+      path: "index.krs",
+      content: `@import "default.krs.style"
+
+system ECPlatform {
+  label "EC Platform"
+
+  user Customer [human] {
+    label "Customer"
+    description "End users who purchase products"
+  }
+  user Seller [human] {
+    label "Seller"
+    description "Shop owners who list products for sale"
+  }
+  user Admin [human] {
+    label "Admin"
+    description "Staff who operate the platform"
+  }
+
+  service ECommerce {
+    label "EC Site"
+    description "Browsing, purchasing, and listing products"
+
+    domain Catalog {
+      label "Product Catalog"
+      usecase SearchProducts {
+        label "Search products"
+        resource ProductTable { label "Product table" }
+        resource SearchIndex [external] { label "Search index" }
+      }
+      usecase RegisterProduct {
+        label "Register a product"
+        resource ProductTable { label "Product table" }
+        resource ImageStorage [storage] { label "Image storage" }
+      }
+    }
+    domain Order {
+      label "Orders"
+      usecase PlaceOrder {
+        label "Place an order"
+        resource OrderTable { label "Order table" }
+        resource InventoryAPI [external] { label "Inventory API" }
+        resource PaymentAPI [external] { label "Payment API" }
+      }
+      usecase ShowOrderHistory { label "View order history" }
+    }
+    domain Member {
+      label "Members"
+      usecase Register {
+        label "Sign up as a member"
+        resource MemberTable { label "Member table" }
+      }
+      usecase EditProfile { label "Edit profile" }
+    }
+  }
+  service Payment [external] {
+    label "Payment"
+    description "Credit card and e-money payment processing"
+  }
+  service Inventory [external] {
+    label "Inventory"
+    description "Centralized inventory management"
+  }
+  service Notification {
+    label "Notification"
+    description "Email and push notification delivery"
+  }
+
+  Customer -> ECommerce "Buy a product"
+  Seller -> ECommerce "List a product"
+  Admin -> ECommerce "Administer the platform"
+  ECommerce -> Payment "Process payments"
+  ECommerce -> Inventory "Check inventory"
+  ECommerce --> Notification "Send order confirmation"
+}
+
+deploy Production {
+  label "Production environment"
+  oci ecommerceApp {
+    label "ecommerce-app"
+    runtime "Kubernetes (GKE)"
+    realizes ECommerce
+  }
+  oci notificationWorker {
+    label "notification-worker"
+    runtime "Cloud Run"
+    realizes Notification
+  }
+}
+
+organization ECOrg {
+  label "EC development org"
+  team platform {
+    label "Platform team"
+    owns ECommerce
+
+    team commerce {
+      label "Commerce team"
+      owns Catalog
+      owns Order
+
+      owns Member
+    owns Notification
+      member alice {
+        label "Alice"
+        github "alice-dev"
+      }
+    }
+    team "member-team" {
+      label "Member team"
+      member bob {
+        label "Bob"
+        description "Owner of the member platform"
+      }
+    }
+  }
+  team notification {
+    label "Notification team"
+    member carol {
+      label "Carol"
+      slack "@carol"
+    }
+  }
+}
+`,
+    },
+    {
+      path: "default.krs.style",
+      content: `// getting-started/default.krs.style
+// Customize diagram appearance with CSS-like selectors.
+// Uncomment and edit any rule below to try it out.
+
+// Style by node type
+// service {
+//   color: #1e40af;
+//   background-color: #dbeafe;
+// }
+
+// service[external] {
+//   color: #374151;
+//   background-color: #f3f4f6;
+// }
+
+// Style by ID
+// #ECommerce {
+//   color: #065f46;
+//   background-color: #d1fae5;
+// }
+
+// #Notification {
+//   color: #92400e;
+//   background-color: #fef3c7;
+// }
+`,
+    },
+  ],
+};
+
 export const EC_PLATFORM_PROJECTS: ExampleProject[] = [
   {
     name: "01-system",

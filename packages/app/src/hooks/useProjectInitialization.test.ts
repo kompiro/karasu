@@ -1,7 +1,12 @@
 // @vitest-environment jsdom
 import { describe, it, expect, vi, afterEach, beforeEach } from "vitest";
 import { renderHook, cleanup, waitFor } from "@testing-library/react";
-import { EC_PLATFORM_PROJECTS, GETTING_STARTED_PROJECT, type Project } from "@karasu-tools/core";
+import {
+  EC_PLATFORM_PROJECTS,
+  GETTING_STARTED_PROJECT,
+  GETTING_STARTED_PROJECT_EN,
+  type Project,
+} from "@karasu-tools/core";
 import { useProjectInitialization } from "./useProjectInitialization.js";
 import { LAST_PROJECT_KEY } from "./useProjectNavigation.js";
 import type { ProjectManager } from "../fs/project-manager.js";
@@ -35,7 +40,8 @@ function makePm(listResult: Project[] = []): ProjectManager {
 }
 
 describe("useProjectInitialization — bootstrap", () => {
-  it("seeds Getting Started + ec-platform when the project list is empty", async () => {
+  it("seeds the Japanese Getting Started + ec-platform when locale is 'ja'", async () => {
+    localStorage.setItem("karasu-locale", "ja");
     const pm = makePm([]);
     const dispatch = vi.fn<(action: unknown) => void>();
     const selectFile = vi.fn<(path: string) => Promise<void>>(async () => {});
@@ -64,6 +70,25 @@ describe("useProjectInitialization — bootstrap", () => {
     expect(projects[0].name).toBe(GETTING_STARTED_PROJECT.name);
 
     expect(dispatch).toHaveBeenCalledWith({ type: "SET_LOADING", loading: false });
+  });
+
+  it("seeds the English Getting Started when locale is 'en'", async () => {
+    localStorage.setItem("karasu-locale", "en");
+    const pm = makePm([]);
+    const dispatch = vi.fn<(action: unknown) => void>();
+    const selectFile = vi.fn<(path: string) => Promise<void>>(async () => {});
+
+    renderHook(() => useProjectInitialization({ pm, dispatch, currentProject: null, selectFile }));
+
+    await waitFor(() =>
+      expect(dispatch).toHaveBeenCalledWith(expect.objectContaining({ type: "SET_PROJECTS" })),
+    );
+
+    expect(pm.createProject).toHaveBeenNthCalledWith(
+      1,
+      GETTING_STARTED_PROJECT_EN.name,
+      GETTING_STARTED_PROJECT_EN.files,
+    );
   });
 
   it("uses the existing project list without seeding when it is non-empty", async () => {

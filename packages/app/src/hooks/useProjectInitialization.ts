@@ -1,6 +1,12 @@
 import { useEffect, type Dispatch } from "react";
-import { EC_PLATFORM_PROJECTS, GETTING_STARTED_PROJECT, type Project } from "@karasu-tools/core";
+import {
+  EC_PLATFORM_PROJECTS,
+  GETTING_STARTED_PROJECT,
+  GETTING_STARTED_PROJECT_EN,
+  type Project,
+} from "@karasu-tools/core";
 import type { ProjectManager } from "../fs/project-manager.js";
+import { resolveLocale } from "../i18n/locale.js";
 import type { AppAction } from "../state/app-reducer.js";
 import { LAST_PROJECT_KEY } from "./useProjectNavigation.js";
 
@@ -39,10 +45,13 @@ export function useProjectInitialization({
 
       if (projectList.length === 0) {
         const initialProjects: Project[] = [];
-        const gsProject = await pm.createProject(
-          GETTING_STARTED_PROJECT.name,
-          GETTING_STARTED_PROJECT.files,
-        );
+        // Pick the locale-matching Getting Started content at seed time.
+        // Once seeded it is user content — we do not re-seed when the
+        // locale changes later. Users whose browser is Japanese get the
+        // Japanese tutorial; everyone else gets English.
+        const gsTemplate =
+          resolveLocale() === "ja" ? GETTING_STARTED_PROJECT : GETTING_STARTED_PROJECT_EN;
+        const gsProject = await pm.createProject(gsTemplate.name, gsTemplate.files);
         initialProjects.push(gsProject);
         for (const example of EC_PLATFORM_PROJECTS) {
           const project = await pm.createProject(example.name, example.files);
