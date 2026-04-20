@@ -34,6 +34,12 @@ export function sanitizeId(id: string): string {
   return id.replace(/[^a-zA-Z0-9_-]/g, "_");
 }
 
+export interface RenderOptions {
+  /** Diff state per node id (and per edge key `from->to#kind`) for diff-mode rendering. */
+  nodeDiffState?: Map<string, string>;
+  edgeDiffState?: Map<string, string>;
+}
+
 export function render(
   viewSlice: ViewSlice,
   styles: ResolvedStyles,
@@ -41,6 +47,7 @@ export function render(
   ownerIndex?: Map<string, string>,
   displayMode?: DisplayMode,
   childLevelLinks?: Map<string, string>,
+  options?: RenderOptions,
 ): string {
   const layoutResult = layout(viewSlice, ownerIndex, displayMode);
   const title =
@@ -54,6 +61,7 @@ export function render(
     serviceIdsWithDeploy,
     displayMode,
     childLevelLinks,
+    options,
   );
 }
 
@@ -64,6 +72,7 @@ export function renderFromLayout(
   serviceIdsWithDeploy?: Set<string>,
   displayMode?: DisplayMode,
   childLevelLinks?: Map<string, string>,
+  options?: RenderOptions,
 ): string {
   if (layoutResult.nodes.size === 0 && layoutResult.containers.length === 0) {
     return el(
@@ -154,7 +163,8 @@ export function renderFromLayout(
     const edgeKey = `${edgeLayout.from}->${edgeLayout.to}`;
     const edgeStyle = styles.edges.get(edgeKey) ?? styles.defaultEdgeStyle;
     const markerId = colorToMarkerId.get(edgeStyle.color) ?? "arrow-default";
-    const rendered = renderEdge(edgeLayout, edgeStyle, markerId);
+    const diffState = options?.edgeDiffState?.get(`${edgeLayout.from}->${edgeLayout.to}`);
+    const rendered = renderEdge(edgeLayout, edgeStyle, markerId, diffState);
     if (edgeLayout.ghost) {
       ghostEdgeParts.push(rendered);
     } else {
@@ -180,6 +190,7 @@ export function renderFromLayout(
       serviceIdsWithDeploy,
       displayMode,
       childLevelLinks,
+      options?.nodeDiffState?.get(nodeId),
     );
     if (layoutNode.ghost) {
       ghostNodeParts.push(rendered);
@@ -256,6 +267,7 @@ function renderNode(
   serviceIdsWithDeploy?: Set<string>,
   displayMode?: DisplayMode,
   childLevelLinks?: Map<string, string>,
+  diffState?: string,
 ): string {
   const children: string[] = [];
 
@@ -684,6 +696,7 @@ function renderNode(
       "data-has-children": node.hasChildren ? "true" : "false",
       "data-has-description": node.hasDescription ? "true" : "false",
       "data-link-count": node.linkCount > 0 ? String(node.linkCount) : undefined,
+      "data-diff-state": diffState,
       style: node.hasChildren ? "cursor: pointer" : undefined,
       opacity: style.opacity < 1 ? style.opacity : undefined,
     },
