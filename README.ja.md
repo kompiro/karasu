@@ -32,7 +32,7 @@ drill-down の連続性・組織の第三軸・AI との協働という点で異
 
 ブラウザですぐに試せます: **<https://karasu.pages.dev/>**
 
-Getting Started を含む `ec-platform` の段階別チュートリアルが初回起動時に自動ロードされ、`.krs` の編集・プレビュー・ドリルダウン・SVG エクスポートがその場で体験できます。AI チャット機能を使う場合は Settings タブから Claude API キー (BYOK) を入力してください — キーはブラウザの `sessionStorage` に保存され、外部サーバーには送信されません。
+Getting Started を含む `ec-platform` の段階別チュートリアルが初回起動時に自動ロードされます。ブラウザのロケールに合わせて日本語版と英語版のシードが自動選択されるため、違和感なく読み進められます。`.krs` の編集・プレビュー・ドリルダウン・SVG エクスポートをその場で体験できます。AI チャット機能を使う場合は Settings タブから Claude API キー (BYOK) を入力してください — キーはブラウザの `sessionStorage` に保存され、外部サーバーには送信されません。
 
 ## なぜ karasu か
 
@@ -178,7 +178,8 @@ organization DevOrg {
 
 - **論理／物理の分離** — ビジネス構造とデプロイ構造を別図で管理。`realizes` で対応付け
 - **ドリルダウン** — ダブルクリックで階層を深掘り。パンくずナビで上位に戻れる。Show All Layers で全階層を一度に表示、Open All Views で全ビューを新ウィンドウで開ける
-- **SVG エクスポート** — 全図を一括エクスポート。エクスポートした SVG はブラウザ単体でドリルダウンナビゲーション可能
+- **SVG / draw.io エクスポート** — 全図を一括 SVG エクスポート（エクスポート SVG はブラウザ単体でドリルダウン可能）、または draw.io (mxGraph XML) 形式に書き出してレイアウトを細部まで調整できる
+- **トップレベル インフラブロック** — `service` / `database` / `queue` / `storage` を `system` で囲わずファイル直下に書ける。デプロイ中心のファイルが単体で描画可能
 - **アイコンモード** — System・Deploy・Org 図をアイコン表示に切り替え
 - **パネルフォーカス** — サイドバーの折りたたみとプレビューの全画面表示
 - **ドメイン分散の検出** — 同じドメイン名が複数サービスに分散していると自動警告
@@ -192,6 +193,7 @@ organization DevOrg {
 - **Chat UI + BYOK AI アシスタント** — Claude API キー (BYOK) を入力し、`.krs` を対話的に育てる構造化インタビュー
 - **`.krs` フォーマッター** — `karasu fmt` / LSP / エディタの Format ボタン (Shift+Alt+F) でコメントを保持しつつ整形
 - **VS Code 拡張** — シンタックスハイライト・LSP 診断・SVG プレビュー・双方向ジャンプ・アイコンモードトグル
+- **多言語対応（日本語 / 英語）** — UI 文言・診断メッセージ・警告・Chat のツール説明・Chat システムプロンプトは Settings のロケール選択に追随する
 
 ## CLI
 
@@ -209,6 +211,9 @@ karasu render index.krs --view deploy --output deploy.svg
 
 # svgo でパイプ最適化
 karasu render index.krs | svgo - -o docs/arch.svg
+
+# draw.io (mxGraph XML) に書き出して細部までレイアウト調整する
+karasu render index.krs --format drawio --output arch.drawio
 ```
 
 ### フォーマット
@@ -232,8 +237,8 @@ cat service.krs | karasu fmt --stdin
 | -------------------- | ---------------------------------------------- |
 | Docker Compose       | サービスの実行トポロジとリソース境界           |
 | Kubernetes マニフェスト | コンテナ化された実行単位と間の依存関係       |
-| OpenAPI スキーマ     | サービスが公開する API の境界と責務           |
-| SQL DDL              | データ所有関係とドメインの候補                 |
+| OpenAPI スキーマ     | サービスが公開する API の境界と責務（RESTful な操作は 1 つのリソース `usecase` にまとめられる） |
+| SQL DDL              | データ所有関係とドメインの候補（関連するテーブルは集約ルートの下にグルーピングされる） |
 
 これらを `.krs` スキャフォールドに変換することで、現行システムを karasu の三面構造で描き、ドメイン境界の再整理やサービス分割の候補を検討しやすくなります。Unix パイプで `karasu apply` と組み合わせれば、インフラ側の更新を既存 `.krs` に差分反映できます。
 

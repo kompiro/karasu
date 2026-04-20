@@ -26,7 +26,7 @@ See [`docs/concepts.md`](docs/concepts.md) for the full design rationale.
 
 Run it in your browser: **<https://karasu.pages.dev/>**
 
-A staged `ec-platform` tutorial (including Getting Started) loads automatically on first launch, so you can edit `.krs`, preview, drill down, and export SVG right away. To use the AI chat feature, enter a Claude API key (BYOK) under the Settings tab — the key is stored in the browser's `sessionStorage` and is never sent to any external server.
+A staged `ec-platform` tutorial (including Getting Started) loads automatically on first launch — a locale-matched seed (English or Japanese) is picked so the tutorial reads naturally in your language. You can edit `.krs`, preview, drill down, and export SVG right away. To use the AI chat feature, enter a Claude API key (BYOK) under the Settings tab — the key is stored in the browser's `sessionStorage` and is never sent to any external server.
 
 ## Why karasu
 
@@ -172,7 +172,8 @@ The `Chat` tab enables interactive modeling against the Claude API. It uses **BY
 
 - **Logical / physical separation** — Business structure and deployment structure live in separate diagrams, linked by `realizes`
 - **Drill-down** — Double-click to descend the hierarchy; breadcrumbs to go back up. "Show All Layers" flattens the hierarchy into one view; "Open All Views" opens every view in new windows
-- **SVG export** — Bulk export all diagrams. The exported SVG supports drill-down navigation in the browser on its own
+- **SVG / draw.io export** — Bulk export all diagrams as SVG (the exported SVG supports drill-down navigation in the browser on its own), or export to draw.io (mxGraph XML) as a layout escape hatch for pixel-perfect polishing
+- **Top-level infra blocks** — `service`, `database`, `queue`, `storage` can be written at the file root without an enclosing `system`, so a deployment-centric file renders on its own
 - **Icon mode** — Toggle System / Deploy / Org diagrams into icon display
 - **Panel focus** — Collapse the sidebar and expand the preview to fill the screen
 - **Domain drift detection** — Warns automatically when the same domain name is dispersed across multiple services
@@ -186,6 +187,7 @@ The `Chat` tab enables interactive modeling against the Claude API. It uses **BY
 - **Chat UI + BYOK AI assistant** — Bring your own Claude API key and grow `.krs` interactively via a structured interview
 - **`.krs` formatter** — `karasu fmt` / LSP / the editor's Format button (Shift+Alt+F) reformats while preserving comments
 - **VS Code extension** — Syntax highlighting, LSP diagnostics, SVG preview, bidirectional jump, icon-mode toggle
+- **Internationalization (English / Japanese)** — UI strings, diagnostic and warning messages, chat tool descriptions, and the chat system prompt all follow a locale selector in Settings
 
 ## CLI
 
@@ -229,8 +231,8 @@ cat service.krs | karasu fmt --stdin
 |-------|--------------|
 | Docker Compose | Service execution topology and resource boundaries |
 | Kubernetes manifests | Containerized runtime units and their inter-dependencies |
-| OpenAPI schema | API boundaries and service responsibilities |
-| SQL DDL | Data ownership and domain candidates |
+| OpenAPI schema | API boundaries and service responsibilities (RESTful operations are grouped into a single resource `usecase`) |
+| SQL DDL | Data ownership and domain candidates (related tables are grouped under their aggregate root) |
 
 Converting any of these into a `.krs` scaffold lets you model the current system in karasu's three-dimensional structure and then explore options for re-aligning domain boundaries or splitting services. Combined with `karasu apply` on a Unix pipe, you can also fold changes from the infrastructure side back into an existing `.krs`.
 
