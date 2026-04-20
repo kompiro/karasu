@@ -4,6 +4,7 @@ import DOMPurify from "dompurify";
 import type { SystemNode } from "@karasu-tools/core";
 import { ApiKeySetup } from "./ApiKeySetup.js";
 import { useChatSession, type PatchProposal } from "../hooks/useChatSession.js";
+import { useTranslation } from "../i18n/index.js";
 
 interface ChatPaneProps {
   scopeLabel: string;
@@ -30,6 +31,7 @@ export function ChatPane({
   onEditorChange,
   onNavigateToSettings,
 }: ChatPaneProps) {
+  const { t } = useTranslation();
   const {
     messages,
     phase,
@@ -99,7 +101,7 @@ export function ChatPane({
           onClick={resetSession}
           disabled={isLoading}
         >
-          ↺ New Session
+          {t("chat.newSession.button")}
         </button>
       </div>
 
@@ -111,25 +113,23 @@ export function ChatPane({
                 className="toolbar-btn toolbar-btn--actionable toolbar-btn--start-interview"
                 onClick={() => void startInterview()}
               >
-                ▶ Start Interview
+                {t("chat.startInterview.button")}
               </button>
               <button
                 className="toolbar-btn toolbar-btn--actionable toolbar-btn--start-review"
                 onClick={() => void startReview()}
               >
-                🔍 Start Review
+                {t("chat.startReview.button")}
               </button>
             </div>
-            <p className="chat-empty-state__hint">
-              または自由に入力してください（例: "このモデルをレビューして"）
-            </p>
+            <p className="chat-empty-state__hint">{t("chat.emptyState.hint")}</p>
           </div>
         )}
         {messages.map((msg) => {
           if (msg.role === "user") {
             return (
               <div key={msg.id} className="chat-message chat-message--user">
-                <span className="chat-message-role">You</span>
+                <span className="chat-message-role">{t("chat.message.userRole")}</span>
                 <p className="chat-message-content">{msg.content}</p>
               </div>
             );
@@ -159,7 +159,7 @@ export function ChatPane({
                   className="toolbar-btn toolbar-btn--actionable toolbar-btn--retry"
                   onClick={() => retryMessage(msg.retryMessageId!)}
                 >
-                  ↺ 再試行
+                  {t("chat.retry.button")}
                 </button>
               )}
               {msg.errorType === "auth" && (
@@ -167,7 +167,7 @@ export function ChatPane({
                   className="toolbar-btn toolbar-btn--go-to-settings"
                   onClick={onNavigateToSettings}
                 >
-                  ⚙ Settings を開く
+                  {t("chat.openSettings.button")}
                 </button>
               )}
             </div>
@@ -175,7 +175,7 @@ export function ChatPane({
         })}
         {isLoading && (
           <div className="chat-message chat-message--loading" aria-live="polite">
-            <span className="chat-loading-indicator">AI が考えています…</span>
+            <span className="chat-loading-indicator">{t("chat.loading")}</span>
           </div>
         )}
         <div ref={messagesEndRef} />
@@ -188,12 +188,10 @@ export function ChatPane({
           onChange={(e) => setInputValue(e.target.value)}
           onKeyDown={handleKeyDown}
           placeholder={
-            isPending
-              ? "パッチを確認してから送信してください"
-              : "Type a message… (Cmd+Enter or Ctrl+Enter to send)"
+            isPending ? t("chat.input.placeholderPending") : t("chat.input.placeholderDefault")
           }
           rows={3}
-          aria-label="Chat message input"
+          aria-label={t("chat.input.ariaLabel")}
           disabled={inputDisabled}
         />
         <button
@@ -201,7 +199,7 @@ export function ChatPane({
           className="toolbar-btn toolbar-btn--actionable toolbar-btn--send"
           disabled={inputDisabled || !inputValue.trim()}
         >
-          ↑ Send
+          {t("chat.send.button")}
         </button>
       </form>
     </div>
@@ -233,6 +231,7 @@ interface PatchConfirmationProps {
 }
 
 function PatchConfirmation({ patch, isActive, onApply, onReject }: PatchConfirmationProps) {
+  const { t } = useTranslation();
   return (
     <div className="chat-patch-proposal">
       <p className="chat-patch-proposal__description">📝 {patch.description}</p>
@@ -243,10 +242,10 @@ function PatchConfirmation({ patch, isActive, onApply, onReject }: PatchConfirma
             className="toolbar-btn toolbar-btn--actionable toolbar-btn--apply-patch"
             onClick={() => onApply(patch)}
           >
-            ✓ Apply
+            {t("chat.patch.apply.button")}
           </button>
           <button className="toolbar-btn toolbar-btn--reject-patch" onClick={() => onReject(patch)}>
-            ✕ Reject
+            {t("chat.patch.reject.button")}
           </button>
         </div>
       )}

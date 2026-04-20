@@ -43,4 +43,22 @@ export const ja: Partial<Translations> = {
   "projectSelector.import.button": "↑ インポート",
   "projectSelector.ok": "OK",
   "projectSelector.cancel": "キャンセル",
+
+  // Chat pane
+  "chat.newSession.button": "↺ 新しい会話",
+  "chat.startInterview.button": "▶ インタビュー開始",
+  "chat.startReview.button": "🔍 レビュー開始",
+  "chat.emptyState.hint": "または自由に入力してください（例: 「このモデルをレビューして」）",
+  "chat.message.userRole": "あなた",
+  "chat.retry.button": "↺ 再試行",
+  "chat.openSettings.button": "⚙ Settings を開く",
+  "chat.loading": "AI が考えています…",
+  "chat.input.placeholderPending": "パッチを確認してから送信してください",
+  "chat.input.placeholderDefault": "メッセージを入力…（Cmd+Enter または Ctrl+Enter で送信）",
+  "chat.input.ariaLabel": "チャットメッセージ入力",
+  "chat.send.button": "↑ 送信",
+  "chat.patch.apply.button": "✓ 適用",
+  "chat.patch.reject.button": "✕ 却下",
+  "chat.apiKeySetup.message": "AI 機能を使うには Claude API キーが必要です。",
+  "chat.apiKeySetup.goToSettings": "⚙ Settings で設定する",
 };
