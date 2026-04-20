@@ -7,18 +7,21 @@ const UNASSIGNED_SYSTEM_ID = "__unassigned__";
 const UNASSIGNED_SYSTEM_LABEL = "Unassigned";
 
 /**
- * Build a synthetic `system` node that wraps every top-level `service` / `domain`
- * declaration (those that live outside any real `system` block). Returns null
- * when the file has no orphans — in that case callers should continue with the
- * original systems list untouched.
+ * Build a synthetic `system` node that wraps every top-level `service` / `domain` /
+ * `database` / `queue` / `storage` declaration (those that live outside any real
+ * `system` block). Returns null when the file has no orphans — in that case callers
+ * should continue with the original systems list untouched.
  *
  * The synthetic node is what makes the renderer draw a dedicated frame labeled
  * "Unassigned" instead of merging orphans into a real system's area.
  */
 export function synthesizeUnassignedSystem(krsFile: KrsFile): SystemNode | null {
   const services = krsFile.services ?? [];
+  const databases = krsFile.databases ?? [];
+  const queues = krsFile.queues ?? [];
+  const storages = krsFile.storages ?? [];
   const domains = krsFile.domains ?? [];
-  const children: KrsNode[] = [...services, ...domains];
+  const children: KrsNode[] = [...services, ...databases, ...queues, ...storages, ...domains];
   if (children.length === 0) return null;
 
   const zeroLoc = {

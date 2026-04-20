@@ -8,6 +8,9 @@ export function analyze(file: KrsFile, sheets: StyleSheet[], systemSheetCount = 
   warnings.push(...detectDomainDispersal(file));
   warnings.push(...detectUnassignedDomains(file));
   warnings.push(...detectUnassignedServices(file));
+  warnings.push(...detectUnassignedDatabases(file));
+  warnings.push(...detectUnassignedQueues(file));
+  warnings.push(...detectUnassignedStorages(file));
   warnings.push(...detectUnassignedUsecases(file));
   warnings.push(...detectStyleConflicts(sheets, systemSheetCount));
   warnings.push(...detectMissingProperties(file));
@@ -86,6 +89,39 @@ function detectUnassignedServices(file: KrsFile): Warning[] {
       ...(service.label ? { label: service.label } : {}),
     },
     loc: service.loc,
+  }));
+}
+
+function detectUnassignedDatabases(file: KrsFile): Warning[] {
+  return (file.databases ?? []).map((db) => ({
+    kind: "unassigned-database" as const,
+    params: {
+      databaseId: db.id,
+      ...(db.label ? { label: db.label } : {}),
+    },
+    loc: db.loc,
+  }));
+}
+
+function detectUnassignedQueues(file: KrsFile): Warning[] {
+  return (file.queues ?? []).map((q) => ({
+    kind: "unassigned-queue" as const,
+    params: {
+      queueId: q.id,
+      ...(q.label ? { label: q.label } : {}),
+    },
+    loc: q.loc,
+  }));
+}
+
+function detectUnassignedStorages(file: KrsFile): Warning[] {
+  return (file.storages ?? []).map((s) => ({
+    kind: "unassigned-storage" as const,
+    params: {
+      storageId: s.id,
+      ...(s.label ? { label: s.label } : {}),
+    },
+    loc: s.loc,
   }));
 }
 

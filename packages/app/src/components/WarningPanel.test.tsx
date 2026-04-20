@@ -30,6 +30,12 @@ function makeWarning(kind: Warning["kind"]): Warning {
       return { kind, params: { domainId: "test-domain" } };
     case "unassigned-service":
       return { kind, params: { serviceId: "test-service" } };
+    case "unassigned-database":
+      return { kind, params: { databaseId: "test-database" } };
+    case "unassigned-queue":
+      return { kind, params: { queueId: "test-queue" } };
+    case "unassigned-storage":
+      return { kind, params: { storageId: "test-storage" } };
     case "unassigned-usecase":
       return { kind, params: { usecaseId: "test-usecase" } };
     case "cross-system-ref-implicit-external":

@@ -164,6 +164,9 @@ export class ImportResolver {
       systems: [],
       services: [],
       domains: [],
+      databases: [],
+      queues: [],
+      storages: [],
       deploys: [],
       organizations: [],
       ownerIndex: new Map(),
@@ -182,6 +185,9 @@ export class ImportResolver {
     mergedFile.systems.push(...file.systems);
     mergedFile.services.push(...file.services);
     mergedFile.domains.push(...file.domains);
+    mergedFile.databases.push(...(file.databases ?? []));
+    mergedFile.queues.push(...(file.queues ?? []));
+    mergedFile.storages.push(...(file.storages ?? []));
     mergedFile.deploys.push(...file.deploys);
     mergedFile.organizations.push(...file.organizations);
     for (const [ownedId, teamId] of file.ownerIndex) {

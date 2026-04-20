@@ -9,6 +9,9 @@ export type WarningKind =
   | "deprecated-team-property"
   | "unassigned-domain"
   | "unassigned-service"
+  | "unassigned-database"
+  | "unassigned-queue"
+  | "unassigned-storage"
   | "unassigned-usecase"
   | "cross-system-ref-implicit-external"
   | "cross-system-ref-unresolved"
@@ -32,6 +35,9 @@ export interface WarningParamsByKind {
   "deprecated-team-property": { nodeId: string; ownerTeamId: string };
   "unassigned-domain": { domainId: string; label?: string };
   "unassigned-service": { serviceId: string; label?: string };
+  "unassigned-database": { databaseId: string; label?: string };
+  "unassigned-queue": { queueId: string; label?: string };
+  "unassigned-storage": { storageId: string; label?: string };
   "unassigned-usecase": { usecaseId: string };
   "cross-system-ref-implicit-external": {
     ref: string;
