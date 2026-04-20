@@ -1,9 +1,10 @@
 # グラフィカル diff ビューア（2 つの .krs ファイル）
 
 - **日付**: 2026-04-20
-- **ステータス**: 検討中
+- **ステータス**: ADR 化（[ADR-20260420-02](../adr/20260420-02-graphical-diff-viewer.md)）
 - **関連**:
-  - Issue #650
+  - Issue #650 (Closed), PR #725 (Phase 1 実装)
+  - フォローアップ Issue: #735, #736, #737, #738, #739, #740
   - Issue #645 — "Diff-friendly text source" positive goal
   - Issue #648（Closed） — エッジモデルの整理
   - ADR-20260317-01 (`docs/adr/20260317-01-two-layer-rendering.md`) — 2 層レンダリング（layout → renderer）
