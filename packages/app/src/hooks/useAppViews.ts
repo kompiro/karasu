@@ -122,7 +122,7 @@ export function useAppViews(args: UseAppViewsArgs): UseAppViewsResult {
     nodeMetadata: deployNodeMetadata,
     deployBlocks,
     recompile: recompileDeploy,
-  } = useDeployView(entryPath, fs, selectedDeployBlockId, displayMode);
+  } = useDeployView(entryPath, fs, selectedDeployBlockId, displayMode, compareEntryPath);
 
   const {
     orgSvg,

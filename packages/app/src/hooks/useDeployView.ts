@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import {
   compileProject,
+  compileDeployDiff,
   type Warning,
   type Diagnostic,
   type FileSystemProvider,
@@ -24,6 +25,7 @@ export function useDeployView(
   fs: FileSystemProvider | null,
   selectedDeployBlockId: string | null = null,
   displayMode?: DisplayMode,
+  compareEntryPath: string | null = null,
 ): DeployViewState & { recompile: () => void } {
   const [state, setState] = useState<DeployViewState>({
     svg: "",
@@ -48,10 +50,54 @@ export function useDeployView(
 
     if (timerRef.current) clearTimeout(timerRef.current);
 
-    const currentKey = `${entryPath}:deploy:${selectedDeployBlockId ?? ""}`;
+    const currentKey = `${entryPath}:deploy:${selectedDeployBlockId ?? ""}:cmp=${compareEntryPath ?? ""}`;
 
     timerRef.current = setTimeout(async () => {
       try {
+        if (compareEntryPath) {
+          // Diff-mode: render compareEntryPath (before) → entryPath (after).
+          // Need a baseline compileProject result for nodeMetadata / deployBlocks
+          // used by surrounding UI (block selector, NodeDetailPanel).
+          const [base, diff] = await Promise.all([
+            compileProject(entryPath, fs, {
+              diagramType: "deploy",
+              selectedDeployId: selectedDeployBlockId ?? undefined,
+              displayMode,
+            }),
+            compileDeployDiff({
+              beforeEntryPath: compareEntryPath,
+              afterEntryPath: entryPath,
+              fs,
+              selectedDeployId: selectedDeployBlockId ?? undefined,
+              displayMode,
+            }),
+          ]);
+          if (base.diagramType !== "deploy") return;
+          const hasErrors = diff.diagnostics.some((d) => d.severity === "error");
+          if (hasErrors) {
+            const svgToShow = lastValidSvgKey.current === currentKey ? lastValidSvg.current : "";
+            setState({
+              svg: svgToShow,
+              warnings: base.warnings,
+              diagnostics: diff.diagnostics,
+              nodeMetadata: base.nodeMetadata,
+              deployBlocks: base.deployBlocks,
+            });
+          } else {
+            if (diff.svg === lastValidSvg.current) return;
+            lastValidSvg.current = diff.svg;
+            lastValidSvgKey.current = currentKey;
+            setState({
+              svg: diff.svg,
+              warnings: base.warnings,
+              diagnostics: diff.diagnostics,
+              nodeMetadata: base.nodeMetadata,
+              deployBlocks: base.deployBlocks,
+            });
+          }
+          return;
+        }
+
         const result = await compileProject(entryPath, fs, {
           diagramType: "deploy",
           selectedDeployId: selectedDeployBlockId ?? undefined,
@@ -99,7 +145,14 @@ export function useDeployView(
       if (timerRef.current) clearTimeout(timerRef.current);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [entryPath, fs, selectedDeployBlockId, displayMode, recompileCounter.current]);
+  }, [
+    entryPath,
+    fs,
+    selectedDeployBlockId,
+    displayMode,
+    compareEntryPath,
+    recompileCounter.current,
+  ]);
 
   return { ...state, recompile };
 }
