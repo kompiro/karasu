@@ -35,6 +35,22 @@ export type Translations = {
   "settings.save.saved": string;
   "settings.save.label": string;
   "settings.clear.label": string;
+
+  // Project selector (Phase C3)
+  "projectSelector.namePlaceholder": string;
+  "projectSelector.new.title": string;
+  "projectSelector.new.button": string;
+  "projectSelector.rename.title": string;
+  "projectSelector.rename.button": string;
+  "projectSelector.delete.title": string;
+  "projectSelector.delete.button": string;
+  "projectSelector.delete.confirm": (params: { name: string }) => string;
+  "projectSelector.export.title": string;
+  "projectSelector.export.button": string;
+  "projectSelector.import.title": string;
+  "projectSelector.import.button": string;
+  "projectSelector.ok": string;
+  "projectSelector.cancel": string;
 };
 
 /**

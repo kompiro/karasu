@@ -1,5 +1,6 @@
 import { useState, useCallback, useRef } from "react";
 import type { Project } from "@karasu-tools/core";
+import { useTranslation } from "../i18n/index.js";
 
 interface ProjectSelectorProps {
   projects: Project[];
@@ -22,6 +23,7 @@ export function ProjectSelector({
   onExportProject,
   onImportProject,
 }: ProjectSelectorProps) {
+  const { t } = useTranslation();
   const [isCreating, setIsCreating] = useState(false);
   const [newName, setNewName] = useState("");
   const [isRenaming, setIsRenaming] = useState(false);
@@ -101,10 +103,13 @@ export function ProjectSelector({
   // ── Delete ────────────────────────────────────────────────────────
 
   const handleDelete = useCallback(() => {
-    if (currentProject && confirm(`"${currentProject.name}" を削除しますか?`)) {
+    if (
+      currentProject &&
+      confirm(t("projectSelector.delete.confirm", { name: currentProject.name }))
+    ) {
       onDeleteProject(currentProject.id);
     }
-  }, [currentProject, onDeleteProject]);
+  }, [currentProject, onDeleteProject, t]);
 
   // ── Render ────────────────────────────────────────────────────────
 
@@ -133,7 +138,7 @@ export function ProjectSelector({
             value={newName}
             onChange={(e) => setNewName(e.target.value)}
             onKeyDown={handleCreateKeyDown}
-            placeholder="プロジェクト名"
+            placeholder={t("projectSelector.namePlaceholder")}
             autoFocus
             className="project-selector-input"
           />
@@ -142,7 +147,7 @@ export function ProjectSelector({
             disabled={!newName.trim()}
             className="project-selector-btn"
           >
-            OK
+            {t("projectSelector.ok")}
           </button>
           <button
             onClick={() => {
@@ -151,7 +156,7 @@ export function ProjectSelector({
             }}
             className="project-selector-btn"
           >
-            Cancel
+            {t("projectSelector.cancel")}
           </button>
         </div>
       ) : isRenaming ? (
@@ -161,7 +166,7 @@ export function ProjectSelector({
             value={renameValue}
             onChange={(e) => setRenameValue(e.target.value)}
             onKeyDown={handleRenameKeyDown}
-            placeholder="プロジェクト名"
+            placeholder={t("projectSelector.namePlaceholder")}
             autoFocus
             className="project-selector-input"
           />
@@ -170,10 +175,10 @@ export function ProjectSelector({
             disabled={isRenameOkDisabled}
             className="project-selector-btn"
           >
-            OK
+            {t("projectSelector.ok")}
           </button>
           <button onClick={() => setIsRenaming(false)} className="project-selector-btn">
-            Cancel
+            {t("projectSelector.cancel")}
           </button>
         </div>
       ) : (
@@ -188,25 +193,25 @@ export function ProjectSelector({
           <button
             onClick={() => setIsCreating(true)}
             className="project-selector-btn"
-            title="新規プロジェクト"
+            title={t("projectSelector.new.title")}
           >
-            + New
+            {t("projectSelector.new.button")}
           </button>
           {currentProject && (
             <>
               <button
                 onClick={handleRenameStart}
                 className="project-selector-btn"
-                title="プロジェクトをリネーム"
+                title={t("projectSelector.rename.title")}
               >
-                ✎ Rename
+                {t("projectSelector.rename.button")}
               </button>
               <button
                 onClick={handleDelete}
                 className="project-selector-btn project-selector-btn-danger"
-                title="プロジェクトを削除"
+                title={t("projectSelector.delete.title")}
               >
-                ✕ Delete
+                {t("projectSelector.delete.button")}
               </button>
             </>
           )}
@@ -214,17 +219,17 @@ export function ProjectSelector({
             onClick={onExportProject}
             disabled={!currentProject}
             className="project-selector-btn project-selector-btn--export"
-            title="ZIPとしてエクスポート"
+            title={t("projectSelector.export.title")}
           >
-            ↓ Export
+            {t("projectSelector.export.button")}
           </button>
           <button
             onClick={handleImportClick}
             disabled={!currentProject}
             className="project-selector-btn project-selector-btn--import"
-            title="ZIPからインポート"
+            title={t("projectSelector.import.title")}
           >
-            ↑ Import
+            {t("projectSelector.import.button")}
           </button>
         </div>
       )}
