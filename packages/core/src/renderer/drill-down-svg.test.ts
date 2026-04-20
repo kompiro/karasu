@@ -170,6 +170,18 @@ storage FileStore {}
     expect(svg).toContain('data-node-id="EventQueue"');
     expect(svg).toContain('data-node-id="FileStore"');
   });
+
+  it("produces a drill-down page for a top-level database so its table children are reachable", () => {
+    const krsFile = Parser.parse(
+      `database OrderDB { table OrdersTable { label "orders" } table PaymentsTable { label "payments" } }`,
+    ).value;
+    const { svg } = buildDrillDownSvg(krsFile);
+    // The drill-down page for OrderDB must exist so clicking the node navigates into it
+    expect(svg).toContain('id="krs-system-OrderDB"');
+    // Both table children must be visible inside that drill-down level
+    expect(svg).toContain('data-node-id="OrdersTable"');
+    expect(svg).toContain('data-node-id="PaymentsTable"');
+  });
 });
 
 describe("buildDrillDownSvg with styleSource", () => {

@@ -98,3 +98,19 @@ Mirrors AT-0057 (top-level service). See design doc
 3. Verify the preview shows the generated `database` block (inside an `Unassigned` frame) rather than a blank page or "No diagram".
 
 **Expected**: The translated `.krs` renders correctly without manual edits.
+
+### TC-6: Drill-down into a top-level database shows its table children
+
+> ✅ Automated — `packages/core/src/renderer/drill-down-svg.test.ts` › `buildDrillDownSvg with top-level infra blocks` › `produces a drill-down page for a top-level database so its table children are reachable`
+
+1. Enter the following in the editor (no `system` block):
+   ```krs
+   database OrderDB {
+     table OrdersTable { label "orders" }
+     table PaymentsTable { label "payments" }
+   }
+   ```
+2. Verify the preview shows the `Unassigned` frame with the `OrderDB` node.
+3. Click the `OrderDB` node to drill down.
+
+**Expected**: The drill-down view shows `OrdersTable` and `PaymentsTable` as child nodes of `OrderDB`.
