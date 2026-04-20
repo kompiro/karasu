@@ -118,6 +118,13 @@ export function ProjectModeApp() {
     [pm, dispatch, projects, navigateToProject],
   );
 
+  const handleCompareWithCurrent = useCallback(
+    (path: string) => {
+      dispatch({ type: "SET_COMPARE_ENTRY_PATH", path });
+    },
+    [dispatch],
+  );
+
   if (loading || !currentProject) {
     return <div className="app-loading">Loading...</div>;
   }
@@ -133,13 +140,6 @@ export function ProjectModeApp() {
       onExportProject={handleExportProject}
       onImportProject={handleImportProject}
     />
-  );
-
-  const handleCompareWithCurrent = useCallback(
-    (path: string) => {
-      dispatch({ type: "SET_COMPARE_ENTRY_PATH", path });
-    },
-    [dispatch],
   );
 
   const sidebarContent = currentProject ? (
