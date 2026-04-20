@@ -152,7 +152,6 @@ organization DevOrg {
 | `System` | Logical diagram. Double-click to drill down system → service → domain → usecase |
 | `Deploy` | Physical diagram. Deployment units and their correspondence to logical services via `realizes` |
 | `Org` | Organization diagram. Team-to-service ownership. A Tree View mode gives the full overview |
-| `Diff` | Graphical diff between two `.krs` files. Pick a base and a compare file; added/removed/changed nodes are highlighted on the system view (Phase 1) |
 
 ## Chat UI and the AI assistant
 
@@ -173,7 +172,6 @@ The `Chat` tab enables interactive modeling against the Claude API. It uses **BY
 
 - **Logical / physical separation** — Business structure and deployment structure live in separate diagrams, linked by `realizes`
 - **Drill-down** — Double-click to descend the hierarchy; breadcrumbs to go back up. "Show All Layers" flattens the hierarchy into one view; "Open All Views" opens every view in new windows
-- **Graphical diff viewer** — Compare two `.krs` files side by side and see added / removed / changed nodes highlighted on the system view
 - **SVG / draw.io export** — Bulk export all diagrams as SVG (the exported SVG supports drill-down navigation in the browser on its own), or export to draw.io (mxGraph XML) as a layout escape hatch for pixel-perfect polishing
 - **Top-level infra blocks** — `service`, `database`, `queue`, `storage` can be written at the file root without an enclosing `system`, so a deployment-centric file renders on its own
 - **Icon mode** — Toggle System / Deploy / Org diagrams into icon display

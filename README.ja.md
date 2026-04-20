@@ -158,7 +158,6 @@ organization DevOrg {
 | `System` | 論理図。ダブルクリックで system → service → domain → usecase へドリルダウン |
 | `Deploy` | 物理図。デプロイ単位と realizes による論理との対応 |
 | `Org` | 組織図。チームと所有サービスの関係。Tree View モードで全体俯瞰も可能 |
-| `Diff` | 2 つの `.krs` ファイルを比較するグラフィカル差分表示。基準ファイルと比較ファイルを選ぶと、追加／削除／変更されたノードが System 図上でハイライト表示される（Phase 1） |
 
 ## Chat UI と AI アシスタント
 
@@ -179,7 +178,6 @@ organization DevOrg {
 
 - **論理／物理の分離** — ビジネス構造とデプロイ構造を別図で管理。`realizes` で対応付け
 - **ドリルダウン** — ダブルクリックで階層を深掘り。パンくずナビで上位に戻れる。Show All Layers で全階層を一度に表示、Open All Views で全ビューを新ウィンドウで開ける
-- **グラフィカル差分ビューア** — 2 つの `.krs` ファイルを並べて比較し、追加／削除／変更されたノードを System 図上でハイライト表示
 - **SVG / draw.io エクスポート** — 全図を一括 SVG エクスポート（エクスポート SVG はブラウザ単体でドリルダウン可能）、または draw.io (mxGraph XML) 形式に書き出してレイアウトを細部まで調整できる
 - **トップレベル インフラブロック** — `service` / `database` / `queue` / `storage` を `system` で囲わずファイル直下に書ける。デプロイ中心のファイルが単体で描画可能
 - **アイコンモード** — System・Deploy・Org 図をアイコン表示に切り替え
