@@ -118,4 +118,75 @@ export const en: Translations = {
   "warning.crossSystemRefImplicitExternal.suppressHint": ({ targetSystemId, sourceSystemId }) =>
     `Add 'service ${targetSystemId} [external]' to system ${sourceSystemId} to suppress this warning`,
   "warning.cyclicDependency.message": ({ path }) => `Circular dependency detected: ${path}`,
+
+  // Diagnostics (rendered in PreviewPane's diagnostic banner)
+  "diagnostic.tokenTypeMismatch.message": ({ expected, got, value }) =>
+    `Expected ${expected} but got ${got} ("${value}")`,
+  "diagnostic.unexpectedTokenRoot.message": ({ tokenType, value }) =>
+    `Unexpected token: ${tokenType} ("${value}")`,
+  "diagnostic.unexpectedTokenInBlock.subResource": ({ tokenType, value }) =>
+    `Unexpected token in sub-resource block: ${tokenType} ("${value}"). Sub-resource nodes (table, queue-item, bucket) cannot contain child declarations.`,
+  "diagnostic.unexpectedTokenInBlock.generic": ({ tokenType, value }) =>
+    `Unexpected token in block: ${tokenType} ("${value}")`,
+  "diagnostic.unexpectedTokenInBlock.deployNode": ({ tokenType, value }) =>
+    `Unexpected token in deploy node: ${tokenType} ("${value}")`,
+  "diagnostic.unexpectedTokenInBlock.named": ({ blockKind, tokenType, value }) =>
+    `Unexpected token in ${blockKind} block: ${tokenType} ("${value}")`,
+  "diagnostic.expectedBraceOrString.message": ({ got, value }) =>
+    `Expected { or string literal but got ${got} ("${value}")`,
+  "diagnostic.expectedIdentifier.message": ({ got, value }) =>
+    `Expected identifier but got ${got} ("${value}")`,
+  "diagnostic.expectedStringAfter.message": ({ property }) =>
+    `Expected string literal after "${property}"`,
+  "diagnostic.propertyNotForNodeKind.role": `"role" property is only valid for user nodes`,
+  "diagnostic.propertyNotForNodeKind.team": `"team" property is only valid for service and domain nodes`,
+  "diagnostic.infraNotInContext.message": ({ infraKind, parentKind }) =>
+    `"${infraKind}" is only valid as a direct child of system, not inside "${parentKind}"`,
+  "diagnostic.expectedIdOrString.message": ({ context }) =>
+    `Expected identifier or string literal after "${context}"`,
+  "diagnostic.expectedNodeId.message": ({ kind }) =>
+    `Expected identifier or string literal (id) after "${kind}"`,
+  "diagnostic.invalidNodeKind.message": ({ kind }) => `Unexpected logical node kind: "${kind}"`,
+  "diagnostic.expectedPropertyValue.message": ({ propName }) =>
+    `Expected value for property "${propName}"`,
+  "diagnostic.expectedIdAfter.message": ({ property }) =>
+    `Expected identifier or string literal after "${property}"`,
+  "diagnostic.teamPropertyDeprecated.message": `"team" property is deprecated; use an organization block with "owns" instead`,
+  "diagnostic.edgeSourceMismatch.message": ({ from, parentId }) =>
+    `Edge source "${from}" must match the enclosing block id "${parentId}"`,
+  "diagnostic.unassignedResource.message": ({ resourceId }) =>
+    `resource "${resourceId}" is not assigned to any database`,
+  "diagnostic.duplicateOwnerAssignment.message": ({ nodeId, existingTeam }) =>
+    `"${nodeId}" is already owned by team "${existingTeam}"; multiple teams cannot own the same service or domain`,
+  "diagnostic.duplicateTeamId.message": ({ teamId }) => `Duplicate team id "${teamId}"`,
+  "diagnostic.domainIdNotUnique.message": ({ domainId }) =>
+    `Domain id "${domainId}" must be unique within a system; found in multiple services`,
+  "diagnostic.nodeIdMultipleLocations.message": ({ nodeId }) =>
+    `Node id "${nodeId}" appears in multiple locations; first path is used for navigation`,
+  "diagnostic.duplicateNodeIdParent.message": ({ nodeId }) =>
+    `Duplicate node id "${nodeId}" under the same parent`,
+  "diagnostic.ownsTargetNotFound.message": ({ ownedId }) =>
+    `"${ownedId}" referenced in "owns" was not found in the system hierarchy`,
+  "diagnostic.styleTokenTypeMismatch.message": ({ expected, got, value }) =>
+    `Expected ${expected} but got ${got} ("${value}")`,
+  "diagnostic.expectedStylePropertyName.message": ({ got }) =>
+    `Expected property name but got ${got}`,
+  "diagnostic.circularImport.message": ({ filePath }) => `Circular import detected: ${filePath}`,
+  "diagnostic.fileNotFound.message": ({ filePath }) => `File not found: ${filePath}`,
+  "diagnostic.directoryNotFound.message": ({ dirPath }) => `Directory not found: ${dirPath}`,
+  "diagnostic.serviceOutsideSystem.message": ({ serviceId }) =>
+    `"${serviceId}" is declared outside any system block — system membership is ambiguous`,
+  "diagnostic.duplicateNodeInSystem.message": ({ nodeId, systemId }) =>
+    `Duplicate node ID "${nodeId}" in system "${systemId}"`,
+  "diagnostic.duplicateNodeInDeploy.message": ({ nodeId, deployId }) =>
+    `Duplicate node ID "${nodeId}" in deploy block "${deployId}"`,
+  "diagnostic.duplicateTeamInOrganization.message": ({ teamId, orgId }) =>
+    `Duplicate team ID "${teamId}" in organization "${orgId}"`,
+  "diagnostic.importIdNotFound.message": ({ id, path }) =>
+    `Imported identifier "${id}" not found in ${path}`,
+  "diagnostic.circularStyleImport.message": ({ filePath }) =>
+    `Circular style import detected: ${filePath}`,
+  "diagnostic.styleFileNotFound.message": ({ filePath }) => `Style file not found: ${filePath}`,
+  "diagnostic.appProjectCompileError.message": "An error occurred while compiling the project",
+  "diagnostic.appOrgParseError.message": "An error occurred during parsing",
 };

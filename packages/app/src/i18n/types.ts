@@ -119,6 +119,91 @@ export type Translations = {
     sourceSystemId: string;
   }) => string;
   "warning.cyclicDependency.message": (params: { path: string }) => string;
+
+  // Diagnostic messages (Phase D.2) — rendered in PreviewPane's diagnostic
+  // banner. One entry per DiagnosticCode; codes with branching messages
+  // (unexpected-token-in-block, property-not-for-node-kind) split into
+  // sub-keys that the hook selects based on params. The `generic-text`
+  // code is a passthrough and has no key.
+  "diagnostic.tokenTypeMismatch.message": (params: {
+    expected: string;
+    got: string;
+    value: string;
+  }) => string;
+  "diagnostic.unexpectedTokenRoot.message": (params: {
+    tokenType: string;
+    value: string;
+  }) => string;
+  "diagnostic.unexpectedTokenInBlock.subResource": (params: {
+    tokenType: string;
+    value: string;
+  }) => string;
+  "diagnostic.unexpectedTokenInBlock.generic": (params: {
+    tokenType: string;
+    value: string;
+  }) => string;
+  "diagnostic.unexpectedTokenInBlock.deployNode": (params: {
+    tokenType: string;
+    value: string;
+  }) => string;
+  "diagnostic.unexpectedTokenInBlock.named": (params: {
+    blockKind: string;
+    tokenType: string;
+    value: string;
+  }) => string;
+  "diagnostic.expectedBraceOrString.message": (params: { got: string; value: string }) => string;
+  "diagnostic.expectedIdentifier.message": (params: { got: string; value: string }) => string;
+  "diagnostic.expectedStringAfter.message": (params: { property: string }) => string;
+  "diagnostic.propertyNotForNodeKind.role": string;
+  "diagnostic.propertyNotForNodeKind.team": string;
+  "diagnostic.infraNotInContext.message": (params: {
+    infraKind: string;
+    parentKind: string;
+  }) => string;
+  "diagnostic.expectedIdOrString.message": (params: { context: string }) => string;
+  "diagnostic.expectedNodeId.message": (params: { kind: string }) => string;
+  "diagnostic.invalidNodeKind.message": (params: { kind: string }) => string;
+  "diagnostic.expectedPropertyValue.message": (params: { propName: string }) => string;
+  "diagnostic.expectedIdAfter.message": (params: { property: string }) => string;
+  "diagnostic.teamPropertyDeprecated.message": string;
+  "diagnostic.edgeSourceMismatch.message": (params: { from: string; parentId: string }) => string;
+  "diagnostic.unassignedResource.message": (params: { resourceId: string }) => string;
+  "diagnostic.duplicateOwnerAssignment.message": (params: {
+    nodeId: string;
+    existingTeam: string;
+  }) => string;
+  "diagnostic.duplicateTeamId.message": (params: { teamId: string }) => string;
+  "diagnostic.domainIdNotUnique.message": (params: { domainId: string }) => string;
+  "diagnostic.nodeIdMultipleLocations.message": (params: { nodeId: string }) => string;
+  "diagnostic.duplicateNodeIdParent.message": (params: { nodeId: string }) => string;
+  "diagnostic.ownsTargetNotFound.message": (params: { ownedId: string }) => string;
+  "diagnostic.styleTokenTypeMismatch.message": (params: {
+    expected: string;
+    got: string;
+    value: string;
+  }) => string;
+  "diagnostic.expectedStylePropertyName.message": (params: { got: string }) => string;
+  "diagnostic.circularImport.message": (params: { filePath: string }) => string;
+  "diagnostic.fileNotFound.message": (params: { filePath: string }) => string;
+  "diagnostic.directoryNotFound.message": (params: { dirPath: string }) => string;
+  "diagnostic.serviceOutsideSystem.message": (params: { serviceId: string }) => string;
+  "diagnostic.duplicateNodeInSystem.message": (params: {
+    nodeId: string;
+    systemId: string;
+  }) => string;
+  "diagnostic.duplicateNodeInDeploy.message": (params: {
+    nodeId: string;
+    deployId: string;
+  }) => string;
+  "diagnostic.duplicateTeamInOrganization.message": (params: {
+    teamId: string;
+    orgId: string;
+  }) => string;
+  "diagnostic.importIdNotFound.message": (params: { id: string; path: string }) => string;
+  "diagnostic.circularStyleImport.message": (params: { filePath: string }) => string;
+  "diagnostic.styleFileNotFound.message": (params: { filePath: string }) => string;
+  "diagnostic.appProjectCompileError.message": string;
+  "diagnostic.appOrgParseError.message": string;
 };
 
 /**

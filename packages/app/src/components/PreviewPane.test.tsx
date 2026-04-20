@@ -9,8 +9,16 @@ import type { NodeMetadata } from "@karasu-tools/core";
 afterEach(cleanup);
 
 // PreviewPane's NodeDetailPanel sub-component calls useTranslation, so wrap.
+// Also wrap rerender so re-renders keep the provider.
 function render(ui: ReactElement, initialLocale: "en" | "ja" = "en") {
-  return rtlRender(<LocaleProvider initialLocale={initialLocale}>{ui}</LocaleProvider>);
+  const wrap = (node: ReactElement) => (
+    <LocaleProvider initialLocale={initialLocale}>{node}</LocaleProvider>
+  );
+  const result = rtlRender(wrap(ui));
+  return {
+    ...result,
+    rerender: (next: ReactElement) => result.rerender(wrap(next)),
+  };
 }
 
 // jsdom does not implement CSS.escape
@@ -309,6 +317,56 @@ describe("PreviewPane", () => {
 
       expect(container.querySelector(".preview-pane--has-errors")).toBeNull();
       expect(container.querySelector(".error-state-overlay")).toBeNull();
+    });
+  });
+
+  describe("diagnostic banner localization (Phase D.2)", () => {
+    it("renders file-not-found in English when locale is 'en'", () => {
+      const { container } = render(
+        <PreviewPane
+          {...baseProps()}
+          diagnostics={[
+            {
+              severity: "error",
+              code: "file-not-found",
+              params: { filePath: "./missing.krs" },
+            },
+          ]}
+        />,
+        "en",
+      );
+      const banner = container.querySelector(".diagnostic-banner");
+      expect(banner?.textContent).toContain("File not found: ./missing.krs");
+    });
+
+    it("renders file-not-found in Japanese when locale is 'ja'", () => {
+      const { container } = render(
+        <PreviewPane
+          {...baseProps()}
+          diagnostics={[
+            {
+              severity: "error",
+              code: "file-not-found",
+              params: { filePath: "./missing.krs" },
+            },
+          ]}
+        />,
+        "ja",
+      );
+      const banner = container.querySelector(".diagnostic-banner");
+      expect(banner?.textContent).toContain("ファイルが見つかりません: ./missing.krs");
+    });
+
+    it("renders generic-text verbatim regardless of locale", () => {
+      const { container } = render(
+        <PreviewPane
+          {...baseProps()}
+          diagnostics={[{ severity: "error", code: "generic-text", params: { text: "boom" } }]}
+        />,
+        "ja",
+      );
+      const banner = container.querySelector(".diagnostic-banner");
+      expect(banner?.textContent).toContain("boom");
     });
   });
 });
