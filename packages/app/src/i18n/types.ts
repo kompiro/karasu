@@ -88,6 +88,34 @@ export type Translations = {
 
   // ReferencePanel (Phase C5)
   "referencePanel.unsupportedMessage": string;
+
+  // Warning messages (Phase D.1) — rendered in the WarningPanel.
+  // One `message` key per WarningKind, plus optional `details` keys for
+  // kinds that carry multi-line or repeated detail rows.
+  "warning.domainDispersal.message": (params: { domainId: string }) => string;
+  "warning.domainDispersal.checkCohesion": string;
+  "warning.unassignedDomain.message": (params: { display: string }) => string;
+  "warning.unassignedUsecase.message": (params: { usecaseId: string }) => string;
+  "warning.unassignedService.message": (params: { display: string }) => string;
+  "warning.styleConflict.message": (params: { selector: string }) => string;
+  "warning.styleConflict.sheetLabel": (params: { index: number }) => string;
+  "warning.missingRuntime.message": (params: { nodeId: string }) => string;
+  "warning.missingRealizes.message": (params: { nodeId: string }) => string;
+  "warning.invalidOwns.message": (params: { teamId: string; ownedId: string }) => string;
+  "warning.deprecatedTeamProperty.message": (params: { nodeId: string }) => string;
+  "warning.deprecatedTeamProperty.assignedBy": (params: { ownerTeamId: string }) => string;
+  "warning.deprecatedTeamProperty.recommendation": string;
+  "warning.crossSystemRefUnresolved.message": (params: { ref: string }) => string;
+  "warning.crossSystemRefImplicitExternal.message": (params: {
+    ref: string;
+    sourceSystemId: string;
+    sourceNodeId: string;
+  }) => string;
+  "warning.crossSystemRefImplicitExternal.suppressHint": (params: {
+    targetSystemId: string;
+    sourceSystemId: string;
+  }) => string;
+  "warning.cyclicDependency.message": (params: { path: string }) => string;
 };
 
 /**
