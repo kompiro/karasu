@@ -135,4 +135,49 @@ describe("diffOrgViewSlices", () => {
     const diff = diffOrgViewSlices(before, after);
     expect(diff.edges.get(ownsEdgeKey("teamA", "Catalog"))?.state).toBe("removed");
   });
+
+  it("drill-down: focused team missing on before side is marked added", () => {
+    // AFTER_ADDED_TEAM has teamC; BEFORE does not.
+    // The drill path resolves on one side only; extract will return a null-focus
+    // slice on the side where the team is absent (ancestorChain stays []).
+    const beforeSlice = orgViewOf(BEFORE, ["teamC"]);
+    const afterSlice = orgViewOf(AFTER_ADDED_TEAM, ["teamC"]);
+    // Sanity: only after has the focus; before falls back to root (focusedTeam === null).
+    expect(beforeSlice.focusedTeam).toBeNull();
+    expect(afterSlice.focusedTeam?.id).toBe("teamC");
+    const diff = diffOrgViewSlices(beforeSlice, afterSlice);
+    expect(diff.slice.focusedTeam?.id).toBe("teamC");
+    expect(diff.nodes.get("teamC")?.state).toBe("added");
+    expect(diff.nodes.get("carol")?.state).toBe("added");
+    expect(diff.edges.get(ownsEdgeKey("teamC", "Payments"))?.state).toBe("added");
+  });
+
+  it("kind flip (member↔team) keeps a single node without id collision", () => {
+    const withMember = `
+organization Acme {
+  team teamA {
+    member node1 {}
+  }
+}
+`;
+    const withTeam = `
+organization Acme {
+  team teamA {
+    team node1 {
+      member inner {}
+    }
+  }
+}
+`;
+    const before = orgViewOf(withMember);
+    const after = orgViewOf(withTeam);
+    const diff = diffOrgViewSlices(before, after);
+    // Only one node1 entry survives in the merged children to avoid
+    // duplicate data-node-id in the rendered SVG.
+    const teamA = diff.slice.teams.find((t) => t.id === "teamA");
+    const node1Occurrences = teamA?.children.filter((c) => c.id === "node1") ?? [];
+    expect(node1Occurrences).toHaveLength(1);
+    expect(node1Occurrences[0].kind).toBe("team"); // after-side wins
+    expect(diff.nodes.get("node1")?.state).toBe("changed");
+  });
 });
