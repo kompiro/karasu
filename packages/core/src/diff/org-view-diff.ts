@@ -35,20 +35,10 @@ function setDescriptiveStateForTeam(
   }
 }
 
-function memberChanges(before: MemberNode, after: MemberNode): NodeDiffMeta["changes"] | undefined {
-  const out: NonNullable<NodeDiffMeta["changes"]> = {};
-  if ((before.label ?? "") !== (after.label ?? "")) {
-    out.label = { before: before.label, after: after.label };
-  }
-  const beforeDesc = before.properties.description;
-  const afterDesc = after.properties.description;
-  if ((beforeDesc ?? "") !== (afterDesc ?? "")) {
-    out.description = { before: beforeDesc, after: afterDesc };
-  }
-  return Object.keys(out).length > 0 ? out : undefined;
-}
-
-function teamScalarChanges(before: TeamNode, after: TeamNode): NodeDiffMeta["changes"] | undefined {
+function commonChanges(
+  before: TeamNode | MemberNode,
+  after: TeamNode | MemberNode,
+): NodeDiffMeta["changes"] | undefined {
   const out: NonNullable<NodeDiffMeta["changes"]> = {};
   if ((before.label ?? "") !== (after.label ?? "")) {
     out.label = { before: before.label, after: after.label };
@@ -68,8 +58,7 @@ function diffOwns(
   edges: Map<string, EdgeDiffMeta>,
 ): { merged: string[]; anyChanged: boolean } {
   const beforeSet = new Set(beforeOwns);
-  const afterSet = new Set(afterOwns);
-  const merged: string[] = [];
+  const merged: string[] = [...afterOwns];
   const seen = new Set<string>();
   let anyChanged = false;
 
@@ -77,7 +66,6 @@ function diffOwns(
     const state: DiffState = beforeSet.has(serviceId) ? "unchanged" : "added";
     if (state === "added") anyChanged = true;
     edges.set(ownsEdgeKey(teamId, serviceId), { state });
-    merged.push(serviceId);
     seen.add(serviceId);
   }
   for (const serviceId of beforeOwns) {
@@ -86,11 +74,7 @@ function diffOwns(
     anyChanged = true;
     merged.push(serviceId);
   }
-  // Preserve original ordering when nothing changed.
-  if (!anyChanged && afterOwns.length === beforeOwns.length) {
-    return { merged: [...afterOwns], anyChanged: false };
-  }
-  return { merged, anyChanged: afterSet.size !== beforeSet.size || anyChanged };
+  return { merged, anyChanged };
 }
 
 function mergeChildren(
@@ -115,22 +99,26 @@ function mergeChildren(
     } else if (child.kind === "team" && prev.kind === "team") {
       merged.push(mergeTeam(prev, child, nodes, edges));
     } else if (child.kind === "member" && prev.kind === "member") {
-      const changes = memberChanges(prev, child);
+      const changes = commonChanges(prev, child);
       nodes.set(child.id, { state: changes ? "changed" : "unchanged", changes });
       merged.push(child);
     } else {
-      // Kind flipped (team ↔ member) — treat as remove + add.
+      // Kind flipped (team ↔ member) with the same id. Keep only the
+      // after-side shape in the merged tree so the SVG stays well-formed
+      // (no duplicate data-node-id="X"); mark the node as `changed` and
+      // record the kind change for detail panels to surface.
       if (prev.kind === "team") {
-        setDescriptiveStateForTeam(prev, "removed", nodes, edges);
-      } else {
-        nodes.set(prev.id, { state: "removed" });
+        // Clear any owns edges the removed team carried; the merged node is a member.
+        for (const serviceId of prev.properties.owns) {
+          edges.set(ownsEdgeKey(prev.id, serviceId), { state: "removed" });
+        }
       }
       if (child.kind === "team") {
-        setDescriptiveStateForTeam(child, "added", nodes, edges);
-      } else {
-        nodes.set(child.id, { state: "added" });
+        for (const serviceId of child.properties.owns) {
+          edges.set(ownsEdgeKey(child.id, serviceId), { state: "added" });
+        }
       }
-      merged.push(prev);
+      nodes.set(child.id, { state: "changed" });
       merged.push(child);
     }
     seen.add(child.id);
@@ -155,7 +143,7 @@ function mergeTeam(
 ): TeamNode {
   const owns = diffOwns(after.id, before.properties.owns, after.properties.owns, edges);
   const mergedChildren = mergeChildren(before.children, after.children, nodes, edges);
-  const scalarChanges = teamScalarChanges(before, after);
+  const scalarChanges = commonChanges(before, after);
 
   const changes: NodeDiffMeta["changes"] = { ...(scalarChanges ?? {}) };
   const changed = owns.anyChanged || Boolean(scalarChanges);
