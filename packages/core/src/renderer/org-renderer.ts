@@ -2,9 +2,14 @@ import type { ResolvedNodeStyle, ResolvedStyles } from "../types/style.js";
 import type { OrgViewSlice } from "../view/org-view-extract.js";
 import type { TeamNode, MemberNode } from "../types/ast.js";
 import type { DisplayMode } from "./layout.js";
-import { el, escapeXml, truncateToWidth, renderIconCard } from "./svg-builder.js";
+import { el, escapeXml, truncateToWidth, renderIconCard, diffStateAttr } from "./svg-builder.js";
 import { getIconDef } from "./shape-registry.js";
 import { ownsEdgeKey } from "../diff/org-view-diff.js";
+import {
+  ICON_LABEL_CHAR_WIDTH,
+  ICON_DESC_CHAR_WIDTH,
+  ICON_DESC_MAX_WIDTH,
+} from "./rendering-constants.js";
 
 interface RenderOrgOptions {
   /** Diff state per team / member id. */
@@ -12,15 +17,6 @@ interface RenderOrgOptions {
   /** Diff state per `ownsEdgeKey(teamId, serviceId)`. */
   edgeDiffState?: Map<string, string>;
 }
-
-function diffAttr(state: string | undefined): Record<string, string> {
-  return state ? { "data-diff-state": state } : {};
-}
-import {
-  ICON_LABEL_CHAR_WIDTH,
-  ICON_DESC_CHAR_WIDTH,
-  ICON_DESC_MAX_WIDTH,
-} from "./rendering-constants.js";
 
 // Shape mode constants
 const CARD_WIDTH = 220;
@@ -221,7 +217,7 @@ function renderTeamCard(
           "data-owned-service-button": serviceId,
           style: "cursor: pointer",
           "pointer-events": "all",
-          ...diffAttr(ownsDiff),
+          ...diffStateAttr(ownsDiff),
         },
         el(
           "text",
@@ -284,7 +280,7 @@ function renderTeamCard(
       transform: `translate(${x},${y})`,
       "data-node-id": id,
       ...(hasChildren ? { "data-has-children": "true" } : {}),
-      ...diffAttr(teamDiff),
+      ...diffStateAttr(teamDiff),
       style: "cursor: pointer",
     },
     ...parts,
@@ -348,7 +344,7 @@ function renderMemberCard(
   const memberDiff = options?.nodeDiffState?.get(member.id);
   return el(
     "g",
-    { transform: `translate(${x},${y})`, "data-node-id": id, ...diffAttr(memberDiff) },
+    { transform: `translate(${x},${y})`, "data-node-id": id, ...diffStateAttr(memberDiff) },
     ...parts,
   );
 }
@@ -370,7 +366,7 @@ function renderTeamIconCard(
     descText,
     wrapperAttrs: {
       ...(hasChildren ? { "data-has-children": "true" } : {}),
-      ...diffAttr(teamDiff),
+      ...diffStateAttr(teamDiff),
       style: "cursor: pointer",
     },
   });
@@ -392,7 +388,7 @@ function renderMemberIconCard(
   return renderOrgIconCardCommon(member, x, y, style, {
     iconName: "member",
     descText,
-    wrapperAttrs: diffAttr(memberDiff),
+    wrapperAttrs: diffStateAttr(memberDiff),
   });
 }
 

@@ -36,6 +36,15 @@ export function el(tag: string, attrs: Attrs, ...children: string[]): string {
 export { escapeXml };
 
 /**
+ * Return `{ "data-diff-state": state }` when `state` is set, or an empty
+ * object. Used by renderers to stamp per-element diff state on wrapper
+ * groups without branching at each call site.
+ */
+export function diffStateAttr(state: string | undefined): Record<string, string> {
+  return state ? { "data-diff-state": state } : {};
+}
+
+/**
  * Truncate text to fit within a given pixel width, adding "…" if truncated.
  * CJK characters (code point > U+2E80) are counted as 1.5× charWidth.
  * The "…" glyph is reserved from maxWidth so the full output always fits.

@@ -10,12 +10,8 @@
 
 import type { OrganizationBlock, TeamNode, MemberNode } from "../types/ast.js";
 import type { ResolvedStyles, ResolvedNodeStyle, ResolvedEdgeStyle } from "../types/style.js";
-import { el, escapeXml } from "./svg-builder.js";
+import { el, escapeXml, diffStateAttr } from "./svg-builder.js";
 import { ownsEdgeKey } from "../diff/org-view-diff.js";
-
-function diffAttr(state: string | undefined): Record<string, string> {
-  return state ? { "data-diff-state": state } : {};
-}
 
 // ---------------------------------------------------------------------------
 // Layout constants
@@ -264,7 +260,7 @@ function renderTreeTeamCard(
       transform: `translate(${x},${y})`,
       "data-team-id": escapeXml(team.id),
       "data-node-id": escapeXml(team.id),
-      ...diffAttr(diffState),
+      ...diffStateAttr(diffState),
       style: memberCount > 0 ? "cursor: pointer" : undefined,
     },
     ...parts,
@@ -336,7 +332,7 @@ function renderTreeMemberCard(
     {
       transform: `translate(${x},${y})`,
       "data-node-id": escapeXml(member.id),
-      ...diffAttr(diffState),
+      ...diffStateAttr(diffState),
     },
     ...parts,
   );
