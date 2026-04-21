@@ -52,7 +52,7 @@ system Shop {
 }
 ```
 
-`after.krs` (adds a third constituent edge from a new domain):
+`index.krs` (adds a third constituent edge from a new domain — the app only supports `index.krs` as the active file):
 
 ```krs
 system Shop {
@@ -69,7 +69,7 @@ system Shop {
 
 ### Steps
 
-1. Open the diff viewer and choose `before.krs` as before and `after.krs` as after.
+1. Open the diff viewer and choose `before.krs` as before and `index.krs` as after.
 2. Confirm that the aggregated `Catalog -> Orders` edge label shows `3 domain edges` (after-side count).
 3. Confirm the edge is rendered in the `changed` visual state (not unchanged).
 4. Click the edge label to open the `EdgeDetailPanel`.
@@ -81,6 +81,6 @@ system Shop {
 
 ### Regression check (non-diff mode)
 
-1. Open the same `after.krs` file in the regular preview (not diff mode).
+1. Open `index.krs` in the regular preview (not diff mode).
 2. Click the `3 domain edges` label.
 3. Confirm the panel lists the three domain edges **without** any markers, tinted backgrounds, or diff classes — i.e. non-diff rendering is unchanged.
