@@ -73,12 +73,18 @@ export const en: Translations = {
   "nodeDetail.links.title": "🔗 Links",
   "nodeDetail.openDeployView": "🚀 View in Deploy diagram →",
   "nodeDetail.jumpToEditor": "↗ Jump to editor",
+  "nodeDetail.annotationDiff.title": "⇄ Annotation diff",
 
   // DiagramTabBar
   "diagramTabBar.deploy.unavailableTitle": "No deploy block defined",
 
   // ReferencePanel
   "referencePanel.unsupportedMessage": "Tags & Annotations are not available for this diagram.",
+  "referencePanel.builtin.description":
+    "Built-in default theme — applies to all diagram types (lowest cascade priority)",
+  "referencePanel.samples.description": "Complete example — system + deploy + org",
+  "referencePanel.copy.label": "Copy",
+  "referencePanel.copy.copied": "Copied!",
 
   // Preview toolbar — export controls
   "preview.export.svg.label": "↓ Export SVG",

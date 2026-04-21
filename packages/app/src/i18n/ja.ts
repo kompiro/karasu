@@ -73,12 +73,18 @@ export const ja: Partial<Translations> = {
   "nodeDetail.links.title": "🔗 リンク",
   "nodeDetail.openDeployView": "🚀 Deploy 図で確認 →",
   "nodeDetail.jumpToEditor": "↗ エディタへジャンプ",
+  "nodeDetail.annotationDiff.title": "⇄ アノテーション差分",
 
   // DiagramTabBar
   "diagramTabBar.deploy.unavailableTitle": "deploy ブロックがありません",
 
   // ReferencePanel
   "referencePanel.unsupportedMessage": "Tags & Annotations はこのダイアグラムでは未対応です。",
+  "referencePanel.builtin.description":
+    "組み込みのデフォルトテーマ — すべてのダイアグラム種別に適用される（カスケード優先度は最低）",
+  "referencePanel.samples.description": "system + deploy + organization をまとめたサンプル",
+  "referencePanel.copy.label": "コピー",
+  "referencePanel.copy.copied": "コピーしました！",
 
   // Preview toolbar — export controls
   "preview.export.svg.label": "↓ SVG をエクスポート",

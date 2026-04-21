@@ -6,7 +6,7 @@
   - [ADR-20260418-01](../adr/20260418-01-chat-prompt-i18n.md) — 本 Design Doc を昇格した ADR
   - [Issue #639](https://github.com/kompiro/karasu/issues/639) — Chat: switch system prompt to English for non-Japanese users
   - [Issue #34](https://github.com/kompiro/karasu/issues/34) — Add i18n support for English and Japanese（アプリ全体の i18n）
-  - [docs/design/i18n-support.md](./i18n-support.md) — アプリ全体の i18n 設計（locale 解決ロジックの決定済み）
+  - [ADR-20260420-03](../adr/20260420-03-i18n-rollout.md) — アプリ全体の i18n 設計（locale 解決ロジックの決定済み）
   - [Issue #638](https://github.com/kompiro/karasu/issues/638) — Chat を syntax 未習得ユーザーの入口として検証するユーザーテスト計画
 
 ## 背景・課題
@@ -49,7 +49,7 @@ export function buildSystemPrompt(args: BuildSystemPromptArgs): string;
 
 ## 制約・前提
 
-- **#34 の設計を前提に乗る**: `docs/design/i18n-support.md` で既に `Locale` 型、`resolveLocale()`、`localStorage['karasu-locale']` などが決定している。これを逸脱する独自機構は作らない
+- **#34 の設計を前提に乗る**: ADR-20260420-03 で既に `Locale` 型、`resolveLocale()`、`localStorage['karasu-locale']` などが決定している。これを逸脱する独自機構は作らない
 - **#34 全体はまだ未実装**: 翻訳マップ、`useTranslation` hook、UI 全体の翻訳対応はまだ入っていない。#639 は #34 の完全な着地を待つと、#638 のユーザーテストが長く止まる
 - **system prompt は単純な UI 文字列ではない**: 動的に scope ラベル・ファイル内容・モデルグラフ・インタビューガイドを織り込む。翻訳マップ（`Translations` 型）の key/value モデルに収まらない
 - **`.krs` 構文（DSL）は言語非依存**: プロンプト内で使われる system / service / domain 等の語彙は翻訳対象外
@@ -114,7 +114,7 @@ export function buildSystemPrompt(args: BuildSystemPromptArgs): string;
 
 #### 1. locale 解決は #34 の決定に準拠
 
-`docs/design/i18n-support.md` の決定どおり、以下を先行実装する:
+ADR-20260420-03 の決定どおり、以下を先行実装する:
 
 ```typescript
 // packages/app/src/i18n/locale.ts

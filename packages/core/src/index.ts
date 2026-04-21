@@ -70,6 +70,7 @@ export {
 } from "./builtins/examples.js";
 export {
   getReference,
+  type ReferenceLocale,
   type KarasuReference,
   type NodeKindInfo,
   type TagInfo,
@@ -816,7 +817,11 @@ export async function compileSystemDiff(
     afterResolved.krsFile.ownerIndex,
     displayMode,
     undefined,
-    { nodeDiffState: nodeDiffStateMap, edgeDiffState: edgeDiffStateMap },
+    {
+      nodeDiffState: nodeDiffStateMap,
+      edgeDiffState: edgeDiffStateMap,
+      nodeDiffMeta: diffed.nodes,
+    },
   );
 
   return {

@@ -237,4 +237,33 @@ describe("NodeDetailPanel — pictogram icon", () => {
     const iconEl = container.querySelector(".node-detail-icon");
     expect(iconEl?.querySelector("svg")).not.toBeNull();
   });
+
+  describe("annotation diff section (Issue #738)", () => {
+    it("renders +/- rows when annotationDiff is provided", () => {
+      const { container } = render(
+        <NodeDetailPanel
+          {...baseProps()}
+          annotationDiff={{ added: ["deprecated"], removed: ["experimental"] }}
+        />,
+      );
+      const items = container.querySelectorAll(".node-detail-annotation-diff-list li");
+      expect(items).toHaveLength(2);
+      expect(items[0].getAttribute("data-diff-state")).toBe("added");
+      expect(items[0].textContent).toContain("@deprecated");
+      expect(items[1].getAttribute("data-diff-state")).toBe("removed");
+      expect(items[1].textContent).toContain("@experimental");
+    });
+
+    it("omits the annotation diff section when both lists are empty", () => {
+      const { container } = render(
+        <NodeDetailPanel {...baseProps()} annotationDiff={{ added: [], removed: [] }} />,
+      );
+      expect(container.querySelector(".node-detail-annotation-diff")).toBeNull();
+    });
+
+    it("does not render the annotation diff section outside diff mode", () => {
+      const { container } = render(<NodeDetailPanel {...baseProps()} />);
+      expect(container.querySelector(".node-detail-annotation-diff")).toBeNull();
+    });
+  });
 });

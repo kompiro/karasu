@@ -82,12 +82,17 @@ export type Translations = {
   "nodeDetail.links.title": string;
   "nodeDetail.openDeployView": string;
   "nodeDetail.jumpToEditor": string;
+  "nodeDetail.annotationDiff.title": string;
 
   // DiagramTabBar (Phase C5)
   "diagramTabBar.deploy.unavailableTitle": string;
 
   // ReferencePanel (Phase C5)
   "referencePanel.unsupportedMessage": string;
+  "referencePanel.builtin.description": string;
+  "referencePanel.samples.description": string;
+  "referencePanel.copy.label": string;
+  "referencePanel.copy.copied": string;
 
   // Preview toolbar — export controls
   "preview.export.svg.label": string;

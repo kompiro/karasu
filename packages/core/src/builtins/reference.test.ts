@@ -94,3 +94,40 @@ describe("getReference", () => {
     expect(ref1).toBe(ref2);
   });
 });
+
+describe("getReference — locale", () => {
+  it("defaults to English", () => {
+    const en = getReference();
+    expect(en.nodeKinds.find((k) => k.kind === "system")?.description).toMatch(
+      /Container|service/i,
+    );
+    expect(en.sampleKrs).toContain('label "EC Platform"');
+  });
+
+  it("returns Japanese strings when locale is 'ja'", () => {
+    const ja = getReference("ja");
+    expect(ja.nodeKinds.find((k) => k.kind === "system")?.description).toContain("サービス");
+    expect(ja.sampleKrs).toContain('label "ECプラットフォーム"');
+  });
+
+  it("caches per locale independently", () => {
+    const en1 = getReference("en");
+    const ja1 = getReference("ja");
+    const en2 = getReference("en");
+    const ja2 = getReference("ja");
+    expect(en1).toBe(en2);
+    expect(ja1).toBe(ja2);
+    expect(en1).not.toBe(ja1);
+  });
+
+  it("preserves non-translatable identifiers in both locales", () => {
+    const en = getReference("en");
+    const ja = getReference("ja");
+    expect(en.nodeKinds.map((k) => k.kind)).toEqual(ja.nodeKinds.map((k) => k.kind));
+    expect(en.tags.map((t) => t.name)).toEqual(ja.tags.map((t) => t.name));
+    expect(en.shapes.map((s) => s.name)).toEqual(ja.shapes.map((s) => s.name));
+    expect(en.annotations.map((a) => a.defaultBadge.color)).toEqual(
+      ja.annotations.map((a) => a.defaultBadge.color),
+    );
+  });
+});
