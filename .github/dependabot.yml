@@ -18,6 +18,3 @@ updates:
       day: "monday"
     cooldown:
       default-days: 7
-      semver-major-days: 7
-      semver-minor-days: 7
-      semver-patch-days: 7
