@@ -10,6 +10,7 @@ import {
   type NodeMetadata,
   type DisplayMode,
   type SystemNode,
+  type NodeDiffMeta,
 } from "@karasu-tools/core";
 import iconManifest from "@karasu-tools/core/icons/icons.json";
 import serviceSvg from "@karasu-tools/core/icons/service.svg?raw";
@@ -43,6 +44,11 @@ interface SystemViewState {
   hasDeployDiagram: boolean;
   systems: SystemNode[];
   nodeFileIndex: Map<string, string>;
+  /**
+   * Per-node diff metadata when diff mode is active. `undefined` outside
+   * diff mode, so consumers can treat presence as the diff-mode flag.
+   */
+  nodeDiff?: Map<string, NodeDiffMeta>;
 }
 
 // Register icons from manifest on module load (builtIn: true for placeholder injection)
@@ -141,6 +147,7 @@ export function useSystemView(
               hasDeployDiagram: base.hasDeployDiagram,
               systems: base.systems,
               nodeFileIndex: base.nodeFileIndex,
+              nodeDiff: diff.nodeDiff,
             });
           } else {
             if (diff.svg === lastValidSvg.current && !hadErrors.current) return;
@@ -155,6 +162,7 @@ export function useSystemView(
               hasDeployDiagram: base.hasDeployDiagram,
               systems: base.systems,
               nodeFileIndex: base.nodeFileIndex,
+              nodeDiff: diff.nodeDiff,
             });
           }
           return;

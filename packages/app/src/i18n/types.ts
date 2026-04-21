@@ -82,6 +82,7 @@ export type Translations = {
   "nodeDetail.links.title": string;
   "nodeDetail.openDeployView": string;
   "nodeDetail.jumpToEditor": string;
+  "nodeDetail.annotationDiff.title": string;
 
   // DiagramTabBar (Phase C5)
   "diagramTabBar.deploy.unavailableTitle": string;

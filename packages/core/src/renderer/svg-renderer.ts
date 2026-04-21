@@ -18,6 +18,7 @@ import {
   ICON_DESC_MAX_WIDTH,
 } from "./rendering-constants.js";
 import { nodeStyleKey } from "../resolver/style-resolver.js";
+import type { NodeDiffMeta } from "../diff/view-diff.js";
 
 const GHOST_OPACITY = 0.3;
 
@@ -38,6 +39,13 @@ interface RenderOptions {
   /** Diff state per node id (and per edge key `from->to#kind`) for diff-mode rendering. */
   nodeDiffState?: Map<string, string>;
   edgeDiffState?: Map<string, string>;
+  /**
+   * Full node diff metadata. When provided, the renderer derives the node's
+   * `data-diff-state` from `meta.state` (preferred over `nodeDiffState`) and
+   * decorates annotation badges with their own per-badge diff state
+   * (Issue #738 / design doc D-2).
+   */
+  nodeDiffMeta?: Map<string, NodeDiffMeta>;
 }
 
 export function render(
@@ -183,6 +191,8 @@ export function renderFromLayout(
     const styleKey = nodeStyleKey(nodeId, layoutNode.annotations);
     const nodeStyle =
       styles.nodes.get(styleKey) ?? styles.nodes.get(nodeId) ?? styles.defaultNodeStyle;
+    const diffMeta = options?.nodeDiffMeta?.get(nodeId);
+    const diffState = diffMeta?.state ?? options?.nodeDiffState?.get(nodeId);
     const rendered = renderNode(
       layoutNode,
       nodeStyle,
@@ -190,7 +200,8 @@ export function renderFromLayout(
       serviceIdsWithDeploy,
       displayMode,
       childLevelLinks,
-      options?.nodeDiffState?.get(nodeId),
+      diffState,
+      diffMeta,
     );
     if (layoutNode.ghost) {
       ghostNodeParts.push(rendered);
@@ -268,6 +279,7 @@ function renderNode(
   displayMode?: DisplayMode,
   childLevelLinks?: Map<string, string>,
   diffState?: string,
+  diffMeta?: NodeDiffMeta,
 ): string {
   const children: string[] = [];
 
@@ -549,15 +561,27 @@ function renderNode(
     }
   }
 
-  // Badge
-  if (style.badgeIcon || style.badgeLabel) {
-    const badgeX = node.x + node.width - 10;
-    const badgeY = node.y - 6;
-    const badgeColor = style.badgeColor ?? "#EF4444";
+  // Badge (single merged badge driven by the node's current annotations).
+  // When diff metadata reports an annotation-only change, the badge is
+  // wrapped in `<g data-node-badge data-diff-state="added|removed|unchanged">`
+  // so UI can highlight badge churn without painting the whole node amber
+  // (Issue #738 / design doc D-2). If the node's badge disappeared because
+  // the last annotation was removed, we still emit a ghost badge so the
+  // viewer can see *what* was removed.
+  const annotationsAdded = diffMeta?.changes?.annotations?.added ?? [];
+  const annotationsRemoved = diffMeta?.changes?.annotations?.removed ?? [];
+  const hasAnnotationDiff = annotationsAdded.length > 0 || annotationsRemoved.length > 0;
 
-    children.push(el("circle", { cx: badgeX, cy: badgeY, r: 10, fill: badgeColor }));
+  const badgeX = node.x + node.width - 10;
+  const badgeY = node.y - 6;
+  const hasCurrentBadge = !!(style.badgeIcon || style.badgeLabel);
+
+  if (hasCurrentBadge) {
+    const badgeChildren: string[] = [];
+    const badgeColor = style.badgeColor ?? "#EF4444";
+    badgeChildren.push(el("circle", { cx: badgeX, cy: badgeY, r: 10, fill: badgeColor }));
     if (style.badgeIcon) {
-      children.push(
+      badgeChildren.push(
         el(
           "text",
           {
@@ -573,7 +597,7 @@ function renderNode(
       );
     }
     if (style.badgeLabel) {
-      children.push(
+      badgeChildren.push(
         el(
           "text",
           {
@@ -589,7 +613,55 @@ function renderNode(
         ),
       );
     }
+    // Classify badge diff state. With a single merged badge, direction is:
+    //   added.length > 0 → "added" (new annotation produced the current badge)
+    //   removed.length > 0 (and none added) → "changed" (swap/rewrite)
+    //   no diff or diff doesn't touch annotations → undefined (no attr)
+    let badgeDiffState: string | undefined;
+    if (annotationsAdded.length > 0) badgeDiffState = "added";
+    else if (annotationsRemoved.length > 0) badgeDiffState = "changed";
+    children.push(
+      el("g", { "data-node-badge": nodeId, "data-diff-state": badgeDiffState }, ...badgeChildren),
+    );
+  } else if (annotationsRemoved.length > 0) {
+    // Ghost "removed" badge — all annotations were removed, so there is no
+    // current style badge. Render a neutral placeholder with a strike so the
+    // user still sees *something was removed*.
+    const ghostColor = "#94A3B8";
+    children.push(
+      el(
+        "g",
+        { "data-node-badge": nodeId, "data-diff-state": "removed" },
+        el("circle", {
+          cx: badgeX,
+          cy: badgeY,
+          r: 10,
+          fill: "transparent",
+          stroke: ghostColor,
+          "stroke-width": 1.5,
+          "stroke-dasharray": "3 2",
+        }),
+        el(
+          "text",
+          {
+            x: badgeX,
+            y: badgeY,
+            "text-anchor": "middle",
+            "dominant-baseline": "central",
+            fill: ghostColor,
+            "font-size": "10px",
+          },
+          "−",
+        ),
+      ),
+    );
   }
+  // Record annotation delta as data-attrs on the node group below so CSS / UI
+  // can query the full before/after sets (badge diff is only a hint).
+  const annotationAddedAttr =
+    hasAnnotationDiff && annotationsAdded.length > 0 ? annotationsAdded.join(",") : undefined;
+  const annotationRemovedAttr =
+    hasAnnotationDiff && annotationsRemoved.length > 0 ? annotationsRemoved.join(",") : undefined;
 
   // Sub-label: shown below the node for ghost domains to indicate the parent service
   if (node.subLabel) {
@@ -697,6 +769,8 @@ function renderNode(
       "data-has-description": node.hasDescription ? "true" : "false",
       "data-link-count": node.linkCount > 0 ? String(node.linkCount) : undefined,
       "data-diff-state": diffState,
+      "data-annotation-added": annotationAddedAttr,
+      "data-annotation-removed": annotationRemovedAttr,
       style: node.hasChildren ? "cursor: pointer" : undefined,
       opacity: style.opacity < 1 ? style.opacity : undefined,
     },

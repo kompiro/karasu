@@ -2168,3 +2168,61 @@ body,
 .preview-pane svg [data-diff-state="changed"] line {
   stroke: var(--diff-color-changed) !important;
 }
+
+/* Annotation badge diff (Issue #738 / design doc D-2).
+   A node whose only change is its annotation set keeps data-diff-state="unchanged"
+   on the main group so the body stays readable; the merged badge itself carries
+   data-diff-state="added|removed|changed" and gets a per-state ring. The rules
+   below override the ancestor-unchanged opacity so the badge still pops. */
+.preview-pane svg [data-node-badge] {
+  opacity: 1;
+}
+
+.preview-pane svg [data-node-badge][data-diff-state="added"] circle {
+  stroke: var(--diff-color-added) !important;
+  stroke-width: 2 !important;
+}
+
+.preview-pane svg [data-node-badge][data-diff-state="removed"] circle {
+  stroke: var(--diff-color-removed) !important;
+  stroke-width: 2 !important;
+  stroke-dasharray: 3 2;
+}
+
+.preview-pane svg [data-node-badge][data-diff-state="changed"] circle {
+  stroke: var(--diff-color-changed) !important;
+  stroke-width: 2 !important;
+}
+
+/* Annotation diff list inside NodeDetailPanel — render `+ @deprecated` /
+   `- @experimental` rows with the same palette as the SVG badges. */
+.node-detail-annotation-diff-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  font-family: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+  font-size: 12px;
+}
+
+.node-detail-annotation-diff-list li {
+  display: flex;
+  gap: 6px;
+  padding: 2px 0;
+}
+
+.node-detail-annotation-diff-list li[data-diff-state="added"] {
+  color: var(--diff-color-added);
+}
+
+.node-detail-annotation-diff-list li[data-diff-state="removed"] {
+  color: var(--diff-color-removed);
+  text-decoration: line-through;
+  text-decoration-thickness: 1px;
+}
+
+.node-detail-annotation-diff-marker {
+  display: inline-block;
+  width: 12px;
+  font-weight: bold;
+  text-align: center;
+}

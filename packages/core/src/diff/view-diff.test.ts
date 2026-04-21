@@ -91,14 +91,33 @@ describe("diffSystemViewSlices", () => {
     expect(meta?.changes?.label?.after).toBe("商品カタログ");
   });
 
-  it("marks an annotation-only change as `changed` with delta", () => {
+  it("marks an annotation-only change as `unchanged` (badge diff) with delta", () => {
     const before = viewOf(BEFORE, ["Shop"]);
     const after = viewOf(AFTER_ANNOTATION_CHANGED, ["Shop"]);
     const diff = diffSystemViewSlices(before, after);
     const meta = diff.nodes.get("Orders");
-    expect(meta?.state).toBe("changed");
+    // Body state is unchanged — annotation churn shouldn't paint the whole
+    // node amber (see Issue #738 / design doc D-2).
+    expect(meta?.state).toBe("unchanged");
     expect(meta?.changes?.annotations?.added).toContain("deprecated");
     expect(meta?.changes?.annotations?.removed).toEqual([]);
+  });
+
+  it("still marks label+annotation change as `changed`", () => {
+    const before = viewOf(BEFORE, ["Shop"]);
+    const after = viewOf(
+      `
+system Shop {
+  service Catalog { label "商品カタログ" }
+  service Orders @deprecated
+  Catalog -> Orders "queries"
+}
+`,
+      ["Shop"],
+    );
+    const diff = diffSystemViewSlices(before, after);
+    expect(diff.nodes.get("Catalog")?.state).toBe("changed");
+    expect(diff.nodes.get("Orders")?.state).toBe("unchanged");
   });
 
   describe("aggregated implicit edge constituent-set diff", () => {

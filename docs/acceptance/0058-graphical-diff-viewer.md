@@ -24,6 +24,8 @@ are tracked as follow-ups.
 
 - `packages/core/src/diff/view-diff.test.ts` — semantic diff: added / removed /
   unchanged / changed nodes and edges, label diff, annotation diff
+- `packages/core/src/diff/org-view-diff.test.ts` — org-view diff: added /
+  removed / changed teams and members, owns edge reshuffle, drill-down
 - `packages/core/src/renderer/svg-renderer.test.ts` — `data-diff-state` is
   emitted on nodes and edges; absent when no diff is provided
 
@@ -79,14 +81,17 @@ Open `index.krs` so it is the current file.
 - [ ] In the original orientation (before → index), `Catalog` is rendered with
       an **amber** border (label changed from default to "商品カタログ")
 
-### TC-4: Annotation-only change
+### TC-4: Annotation-only change renders as a badge diff
 
-- [ ] `Orders` is rendered with an **amber** border because it has gained
-      `@deprecated` (annotation diff)
-
-> Note: full badge-only diff (Phase D in the design doc) is not in this MVP.
-> The whole node is currently highlighted; a finer-grained badge diff is a
-> follow-up.
+- [ ] `Orders` body is **not** amber — the main rect carries
+      `data-diff-state="unchanged"` so churn on `@deprecated` alone doesn't
+      repaint the whole node
+- [ ] The `⚠ 廃止予定` badge on `Orders` is decorated with a **green ring**
+      (`<g data-node-badge data-diff-state="added">`)
+- [ ] Clicking `Orders` opens the detail panel; the "⇄ Annotation diff"
+      section lists `+ @deprecated`
+- [ ] Reversing the comparison renders a **ghost removed badge** (dashed red
+      circle with `−`) and the panel shows `- @deprecated`
 
 ### TC-5: Unchanged elements are dimmed
 
@@ -104,6 +109,64 @@ Open `index.krs` so it is the current file.
 - [ ] In diff mode, clicking a node still opens the existing detail panel
 - [ ] Drilling down into a service still works
 
+### TC-8a: Org view — added / removed teams and owns reshuffle
+
+Switch to the org view (if the project has an `organization` block) and repeat
+the diff.
+
+Suggested `before.krs`:
+
+```krs
+system Shop {
+  service Orders
+  service Catalog
+}
+organization Acme {
+  team teamA {
+    owns Orders
+    member alice {}
+  }
+  team teamB {
+    owns Catalog
+    member bob {}
+  }
+}
+```
+
+`index.krs`:
+
+```krs
+system Shop {
+  service Orders
+  service Catalog
+  service Payments
+}
+organization Acme {
+  team teamA {
+    owns Orders
+    owns Catalog
+    member alice {}
+  }
+  team teamB {
+    member bob {}
+  }
+  team teamC {
+    owns Payments
+    member carol {}
+  }
+}
+```
+
+- [ ] `teamC` card is rendered with `data-diff-state="added"` (green accent)
+- [ ] `carol` member appears with the added style inside `teamC`
+- [ ] On `teamA`, the `→ Catalog` owns button carries
+      `data-diff-state="added"` (owns moved in)
+- [ ] On `teamB`, the `→ Catalog` owns button carries
+      `data-diff-state="removed"` (owns moved out); `teamB` itself is marked
+      `changed`
+- [ ] Drilling into `teamA` preserves the `added` state on the `→ Catalog`
+      owned-service button in the drill-down view
+
 ### TC-8: Identical files
 
 - [ ] Make a copy of `index.krs` as `same.krs` (identical content)
@@ -116,8 +179,6 @@ Open `index.krs` so it is the current file.
 ## Out of scope (tracked separately)
 
 - Deploy view diff
-- Org view diff
 - Aggregated implicit edge constituent-set diff in `EdgeDetailPanel`
-- Annotation-only changes rendered as a badge diff (D-2 in the design doc)
 - Paste-blob input source
 - OPFS snapshot input source

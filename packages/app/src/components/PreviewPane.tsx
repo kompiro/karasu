@@ -1,5 +1,5 @@
 import { useRef, useState, useCallback, useEffect, type WheelEvent, type MouseEvent } from "react";
-import type { Diagnostic, NodeMetadata, DomainEdgeDetail } from "@karasu-tools/core";
+import type { Diagnostic, NodeMetadata, DomainEdgeDetail, NodeDiffMeta } from "@karasu-tools/core";
 import { NodeDetailPanel } from "./NodeDetailPanel.js";
 import { EdgeDetailPanel } from "./EdgeDetailPanel.js";
 import { useFormattedDiagnostic } from "../i18n/format-diagnostic.js";
@@ -24,6 +24,12 @@ interface PreviewPaneProps {
   onClearHighlight?: () => void;
   /** Called when user clicks "Jump to editor" in the detail panel */
   onJumpToEditor?: (nodeId: string) => void;
+  /**
+   * Per-node diff metadata from `compileSystemDiff`. When provided, the
+   * detail panel surfaces the before/after annotation list as +/- lines
+   * (Issue #738 / design doc D-2).
+   */
+  nodeDiff?: Map<string, NodeDiffMeta>;
 }
 
 type DetailPanelState =
@@ -45,6 +51,7 @@ export function PreviewPane({
   highlightedNodeId,
   onClearHighlight,
   onJumpToEditor,
+  nodeDiff,
 }: PreviewPaneProps) {
   const formatDiagnostic = useFormattedDiagnostic();
   const containerRef = useRef<HTMLDivElement>(null);
@@ -315,6 +322,7 @@ export function PreviewPane({
             onNavigateToDeploy={onDeployButtonClick}
             onNavigateToOrg={onTeamButtonClick}
             onJumpToEditor={onJumpToEditor ? () => onJumpToEditor(detailPanel.nodeId) : undefined}
+            annotationDiff={nodeDiff?.get(detailPanel.nodeId)?.changes?.annotations}
           />
         )}
         {detailPanel?.kind === "edge" && (

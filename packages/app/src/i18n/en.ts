@@ -73,6 +73,7 @@ export const en: Translations = {
   "nodeDetail.links.title": "🔗 Links",
   "nodeDetail.openDeployView": "🚀 View in Deploy diagram →",
   "nodeDetail.jumpToEditor": "↗ Jump to editor",
+  "nodeDetail.annotationDiff.title": "⇄ Annotation diff",
 
   // DiagramTabBar
   "diagramTabBar.deploy.unavailableTitle": "No deploy block defined",
