@@ -1,7 +1,8 @@
-import { useCallback, useRef } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { ProjectSelector } from "./components/ProjectSelector.js";
 import { FileTree } from "./components/FileTree.js";
 import { AppShell } from "./components/AppShell.js";
+import { PasteCompareDialog } from "./components/PasteCompareDialog.js";
 import { useAppContext } from "./state/app-context.js";
 import { ProjectManager } from "./fs/project-manager.js";
 import { useProjectNavigation } from "./hooks/useProjectNavigation.js";
@@ -21,7 +22,28 @@ export function ProjectModeApp() {
   const pmRef = useRef(new ProjectManager(fs));
   const pm = pmRef.current;
 
-  const { currentProject, projects, currentFilePath, loading } = state;
+  const { currentProject, projects, currentFilePath, loading, compareEntryPath, compareSource } =
+    state;
+  const [pasteDialog, setPasteDialog] = useState<
+    { mode: "edit"; initial: string } | { mode: "view"; content: string } | null
+  >(null);
+
+  // Hidden file path within the project used to hold a pasted .krs blob while
+  // diff mode is active (Issue #739). The file-tree loader filters `.karasu-*`
+  // so it does not surface to the user.
+  const pastedPath = currentProject ? `${currentProject.rootPath}/.karasu-paste-compare.krs` : null;
+
+  // Clean up the temp pasted file whenever diff mode exits (or the source is
+  // no longer "pasted"). Keeps the OPFS clean across project switches.
+  useEffect(() => {
+    if (!pastedPath) return;
+    if (compareSource === "pasted" && compareEntryPath === pastedPath) return;
+    void (async () => {
+      if (await fs.exists(pastedPath)) {
+        await fs.delete(pastedPath);
+      }
+    })();
+  }, [fs, pastedPath, compareSource, compareEntryPath]);
 
   // エントリパスを計算（現在のプロジェクトの index.krs）
   const entryPath = currentProject ? `${currentProject.rootPath}/index.krs` : null;
@@ -121,9 +143,29 @@ export function ProjectModeApp() {
 
   const handleCompareWithCurrent = useCallback(
     (path: string) => {
-      dispatch({ type: "SET_COMPARE_ENTRY_PATH", path });
+      dispatch({ type: "SET_COMPARE_ENTRY_PATH", path, source: "file" });
     },
     [dispatch],
+  );
+
+  const handleOpenPasteDialog = useCallback(() => {
+    setPasteDialog({ mode: "edit", initial: "" });
+  }, []);
+
+  const handleViewPasted = useCallback(async () => {
+    if (!pastedPath) return;
+    const content = await fs.readFile(pastedPath);
+    setPasteDialog({ mode: "view", content });
+  }, [fs, pastedPath]);
+
+  const handlePasteConfirm = useCallback(
+    async (content: string) => {
+      if (!pastedPath) return;
+      await fs.writeFile(pastedPath, content);
+      dispatch({ type: "SET_COMPARE_ENTRY_PATH", path: pastedPath, source: "pasted" });
+      setPasteDialog(null);
+    },
+    [fs, pastedPath, dispatch],
   );
 
   if (loading || !currentProject) {
@@ -153,14 +195,33 @@ export function ProjectModeApp() {
       onFileDeleted={handleFileDeleted}
       onFileRenamed={handleFileRenamed}
       onCompareWithCurrent={ENABLE_DIFF_VIEWER ? handleCompareWithCurrent : undefined}
+      onCompareWithPaste={ENABLE_DIFF_VIEWER ? handleOpenPasteDialog : undefined}
     />
   ) : undefined;
 
   return (
-    <AppShell
-      entryPath={entryPath}
-      sidebarHeaderContent={sidebarHeader}
-      sidebarContent={sidebarContent}
-    />
+    <>
+      <AppShell
+        entryPath={entryPath}
+        sidebarHeaderContent={sidebarHeader}
+        sidebarContent={sidebarContent}
+        onViewPasted={compareSource === "pasted" ? handleViewPasted : undefined}
+      />
+      {pasteDialog?.mode === "edit" && (
+        <PasteCompareDialog
+          initialValue={pasteDialog.initial}
+          onConfirm={handlePasteConfirm}
+          onCancel={() => setPasteDialog(null)}
+        />
+      )}
+      {pasteDialog?.mode === "view" && (
+        <PasteCompareDialog
+          initialValue={pasteDialog.content}
+          readOnly
+          onConfirm={() => setPasteDialog(null)}
+          onCancel={() => setPasteDialog(null)}
+        />
+      )}
+    </>
   );
 }

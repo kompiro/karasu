@@ -25,6 +25,11 @@ interface AppShellProps {
   sidebarContent?: ReactNode;
   hideEditor?: boolean;
   recompileRef?: RefObject<(() => void) | null>;
+  /**
+   * When set, the diff banner renders a "View pasted" button that invokes
+   * this callback to re-display the pasted blob (Issue #739).
+   */
+  onViewPasted?: () => void;
 }
 
 /**
@@ -44,6 +49,7 @@ export function AppShell({
   sidebarContent,
   hideEditor,
   recompileRef,
+  onViewPasted,
 }: AppShellProps) {
   const { state, dispatch, fs } = useAppContext();
   const {
@@ -56,6 +62,7 @@ export function AppShell({
     currentFilePath,
     currentProject,
     compareEntryPath,
+    compareSource,
   } = state;
 
   const [isAllLayersOpen, setIsAllLayersOpen] = useState(false);
@@ -294,8 +301,10 @@ export function AppShell({
         {compareEntryPath && (
           <DiffModeBanner
             comparePath={compareEntryPath}
+            compareSource={compareSource}
             currentPath={currentFilePath}
             onExit={() => dispatch({ type: "SET_COMPARE_ENTRY_PATH", path: null })}
+            onViewPasted={onViewPasted}
           />
         )}
         <PreviewColumn />
@@ -306,32 +315,53 @@ export function AppShell({
 
 function DiffModeBanner({
   comparePath,
+  compareSource,
   currentPath,
   onExit,
+  onViewPasted,
 }: {
   comparePath: string;
+  compareSource: "file" | "pasted" | null;
   currentPath: string | null;
   onExit: () => void;
+  onViewPasted?: () => void;
 }) {
   const baseName = (p: string) => p.split("/").pop() ?? p;
+  const isPasted = compareSource === "pasted";
   return (
     <div className="diff-mode-banner" role="status" aria-label="Diff mode active">
       <span className="diff-mode-banner__label">
         ⇄ Diff:&nbsp;
-        <span className="diff-mode-banner__before">{baseName(comparePath)}</span>
+        {isPasted ? (
+          <span className="diff-mode-banner__pasted">pasted</span>
+        ) : (
+          <span className="diff-mode-banner__before">{baseName(comparePath)}</span>
+        )}
         &nbsp;→&nbsp;
         <span className="diff-mode-banner__after">
           {currentPath ? baseName(currentPath) : "(current)"}
         </span>
       </span>
-      <button
-        type="button"
-        className="toolbar-btn toolbar-btn--diff-exit"
-        onClick={onExit}
-        aria-label="Exit diff mode"
-      >
-        ✕ Exit diff
-      </button>
+      <span>
+        {isPasted && onViewPasted && (
+          <button
+            type="button"
+            className="toolbar-btn toolbar-btn--diff-view-pasted"
+            onClick={onViewPasted}
+            aria-label="View pasted .krs"
+          >
+            👁 View pasted
+          </button>
+        )}
+        <button
+          type="button"
+          className="toolbar-btn toolbar-btn--diff-exit"
+          onClick={onExit}
+          aria-label="Exit diff mode"
+        >
+          ✕ Exit diff
+        </button>
+      </span>
     </div>
   );
 }

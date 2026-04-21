@@ -20,6 +20,12 @@ interface FileTreeProps {
    * The path is the file to compare against the currently open file.
    */
   onCompareWithCurrent?: (path: string) => void;
+  /**
+   * Triggered when the user clicks the "⇄ Paste" header button (Issue #739).
+   * The parent is responsible for showing a paste dialog and wiring the result
+   * back to the diff viewer.
+   */
+  onCompareWithPaste?: () => void;
   refreshKey?: number;
 }
 
@@ -32,6 +38,7 @@ export function FileTree({
   onFileDeleted,
   onFileRenamed,
   onCompareWithCurrent,
+  onCompareWithPaste,
   refreshKey,
 }: FileTreeProps) {
   const [tree, setTree] = useState<FileTreeNode[]>([]);
@@ -188,6 +195,7 @@ export function FileTree({
       onNewFile={handleNewFile}
       onNewDir={handleNewDir}
       canCompareContextNode={canCompareContextNode}
+      onCompareWithPaste={onCompareWithPaste}
     />
   );
 }
