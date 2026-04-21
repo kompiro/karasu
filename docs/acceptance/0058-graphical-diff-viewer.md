@@ -24,6 +24,8 @@ are tracked as follow-ups.
 
 - `packages/core/src/diff/view-diff.test.ts` — semantic diff: added / removed /
   unchanged / changed nodes and edges, label diff, annotation diff
+- `packages/core/src/diff/org-view-diff.test.ts` — org-view diff: added /
+  removed / changed teams and members, owns edge reshuffle, drill-down
 - `packages/core/src/renderer/svg-renderer.test.ts` — `data-diff-state` is
   emitted on nodes and edges; absent when no diff is provided
 
@@ -107,6 +109,64 @@ Open `index.krs` so it is the current file.
 - [ ] In diff mode, clicking a node still opens the existing detail panel
 - [ ] Drilling down into a service still works
 
+### TC-8a: Org view — added / removed teams and owns reshuffle
+
+Switch to the org view (if the project has an `organization` block) and repeat
+the diff.
+
+Suggested `before.krs`:
+
+```krs
+system Shop {
+  service Orders
+  service Catalog
+}
+organization Acme {
+  team teamA {
+    owns Orders
+    member alice {}
+  }
+  team teamB {
+    owns Catalog
+    member bob {}
+  }
+}
+```
+
+`index.krs`:
+
+```krs
+system Shop {
+  service Orders
+  service Catalog
+  service Payments
+}
+organization Acme {
+  team teamA {
+    owns Orders
+    owns Catalog
+    member alice {}
+  }
+  team teamB {
+    member bob {}
+  }
+  team teamC {
+    owns Payments
+    member carol {}
+  }
+}
+```
+
+- [ ] `teamC` card is rendered with `data-diff-state="added"` (green accent)
+- [ ] `carol` member appears with the added style inside `teamC`
+- [ ] On `teamA`, the `→ Catalog` owns button carries
+      `data-diff-state="added"` (owns moved in)
+- [ ] On `teamB`, the `→ Catalog` owns button carries
+      `data-diff-state="removed"` (owns moved out); `teamB` itself is marked
+      `changed`
+- [ ] Drilling into `teamA` preserves the `added` state on the `→ Catalog`
+      owned-service button in the drill-down view
+
 ### TC-8: Identical files
 
 - [ ] Make a copy of `index.krs` as `same.krs` (identical content)
@@ -161,8 +221,8 @@ deploy Production {
 ## Out of scope (tracked separately)
 
 - ~~Deploy view diff~~ — landed in #735
+- ~~Org view diff~~ — landed in #736
 - ~~Annotation-only changes rendered as a badge diff (D-2)~~ — landed in #749
-- Org view diff (#736)
 - Aggregated implicit edge constituent-set diff in `EdgeDetailPanel` (#737)
 - Paste-blob input source (#739)
 - OPFS snapshot input source (#740)

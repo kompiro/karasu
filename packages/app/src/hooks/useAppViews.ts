@@ -138,7 +138,7 @@ export function useAppViews(args: UseAppViewsArgs): UseAppViewsResult {
     toggleTeamExpand,
     orgTreeSvg,
     orgTreeExportSvg,
-  } = useOrgView(entryPath, fs, viewPath, displayMode);
+  } = useOrgView(entryPath, fs, viewPath, displayMode, compareEntryPath);
 
   const teamPathIndex = useMemo(() => {
     const index = new Map<string, string[]>();

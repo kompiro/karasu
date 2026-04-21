@@ -10,7 +10,8 @@
 
 import type { OrganizationBlock, TeamNode, MemberNode } from "../types/ast.js";
 import type { ResolvedStyles, ResolvedNodeStyle, ResolvedEdgeStyle } from "../types/style.js";
-import { el, escapeXml } from "./svg-builder.js";
+import { el, escapeXml, diffStateAttr } from "./svg-builder.js";
+import { ownsEdgeKey } from "../diff/org-view-diff.js";
 
 // ---------------------------------------------------------------------------
 // Layout constants
@@ -192,6 +193,7 @@ function renderTreeTeamCard(
   node: TreeNode,
   isExpanded: boolean,
   styles: ResolvedStyles | undefined,
+  diffState: string | undefined,
 ): string {
   const { team, x, y } = node;
   const label = escapeXml(team.label ?? team.id);
@@ -257,6 +259,8 @@ function renderTreeTeamCard(
     {
       transform: `translate(${x},${y})`,
       "data-team-id": escapeXml(team.id),
+      "data-node-id": escapeXml(team.id),
+      ...diffStateAttr(diffState),
       style: memberCount > 0 ? "cursor: pointer" : undefined,
     },
     ...parts,
@@ -268,6 +272,7 @@ function renderTreeMemberCard(
   x: number,
   y: number,
   styles: ResolvedStyles | undefined,
+  diffState: string | undefined,
 ): string {
   const label = escapeXml(member.label ?? member.id);
   const details = [member.properties.slack, member.properties.github].filter(Boolean).join(" · ");
@@ -324,18 +329,26 @@ function renderTreeMemberCard(
 
   return el(
     "g",
-    { transform: `translate(${x},${y})`, "data-node-id": escapeXml(member.id) },
+    {
+      transform: `translate(${x},${y})`,
+      "data-node-id": escapeXml(member.id),
+      ...diffStateAttr(diffState),
+    },
     ...parts,
   );
 }
 
-function renderMemberGrid(grid: MemberGridNode, styles: ResolvedStyles | undefined): string {
+function renderMemberGrid(
+  grid: MemberGridNode,
+  styles: ResolvedStyles | undefined,
+  options: RenderOrgTreeOptions,
+): string {
   const cards = grid.members.map((member, i) => {
     const col = i % MEMBERS_PER_ROW;
     const row = Math.floor(i / MEMBERS_PER_ROW);
     const mx = grid.x + col * (MEMBER_W + MEMBER_COL_GAP);
     const my = grid.y + row * (MEMBER_H + MEMBER_ROW_GAP);
-    return renderTreeMemberCard(member, mx, my, styles);
+    return renderTreeMemberCard(member, mx, my, styles, options.nodeDiffState?.get(member.id));
   });
   return cards.join("");
 }
@@ -366,6 +379,7 @@ function renderTreeNode(
   expandedIds: ReadonlySet<string>,
   elements: string[],
   styles: ResolvedStyles | undefined,
+  options: RenderOrgTreeOptions,
 ): void {
   const isExpanded = expandedIds.has(node.team.id);
 
@@ -388,16 +402,35 @@ function renderTreeNode(
   }
 
   // Team card
-  elements.push(renderTreeTeamCard(node, isExpanded, styles));
+  elements.push(
+    renderTreeTeamCard(node, isExpanded, styles, options.nodeDiffState?.get(node.team.id)),
+  );
+
+  // Owns-edge badges (invisible but carrying data-diff-state for diff mode).
+  const ownsEdges = options.edgeDiffState;
+  if (ownsEdges) {
+    for (const serviceId of node.team.properties.owns) {
+      const state = ownsEdges.get(ownsEdgeKey(node.team.id, serviceId));
+      if (state) {
+        elements.push(
+          el("g", {
+            "data-owned-service": serviceId,
+            "data-team-id": escapeXml(node.team.id),
+            "data-diff-state": state,
+          }),
+        );
+      }
+    }
+  }
 
   // Member grid
   if (node.memberGrid) {
-    elements.push(renderMemberGrid(node.memberGrid, styles));
+    elements.push(renderMemberGrid(node.memberGrid, styles, options));
   }
 
   // Recurse into sub-teams
   for (const child of node.children) {
-    renderTreeNode(child, expandedIds, elements, styles);
+    renderTreeNode(child, expandedIds, elements, styles, options);
   }
 }
 
@@ -430,6 +463,10 @@ export interface RenderOrgTreeOptions {
    * The `team` and `member` selectors in .krs.style apply to tree view nodes.
    */
   styles?: ResolvedStyles;
+  /** Diff state per team / member id — rendered as `data-diff-state` attributes. */
+  nodeDiffState?: Map<string, string>;
+  /** Diff state per `ownsEdgeKey(teamId, serviceId)` — rendered as invisible marker `<g>` elements. */
+  edgeDiffState?: Map<string, string>;
 }
 
 /**
@@ -508,7 +545,7 @@ export function renderOrgTreeView(
       el("rect", { width: exportWidth, height: exportHeight, fill: BG_COLOR }),
     ];
     for (const root of roots) {
-      renderTreeNode(root, effectiveExpandedIds, exportElements, styles);
+      renderTreeNode(root, effectiveExpandedIds, exportElements, styles, options);
     }
 
     return el(
@@ -524,7 +561,7 @@ export function renderOrgTreeView(
   }
 
   for (const root of roots) {
-    renderTreeNode(root, expandedTeamIds, elements, styles);
+    renderTreeNode(root, expandedTeamIds, elements, styles, options);
   }
 
   return el(

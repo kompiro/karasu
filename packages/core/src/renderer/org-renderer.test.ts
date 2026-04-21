@@ -314,4 +314,49 @@ describe("renderOrgView", () => {
       expect(svg).toContain("Backend Team");
     });
   });
+
+  describe("diff annotations", () => {
+    it("stamps data-diff-state on team / member / owns-button wrappers", () => {
+      const team = makeTeam("backend", {
+        owns: ["Orders", "Catalog"],
+        members: [{ id: "alice" }],
+      });
+      const slice: OrgViewSlice = { teams: [team], focusedTeam: null, ancestorChain: [] };
+      const nodeDiffState = new Map([["backend", "changed"]]);
+      const edgeDiffState = new Map([
+        ["backend#owns#Orders", "unchanged"],
+        ["backend#owns#Catalog", "added"],
+      ]);
+      const svg = renderOrgView(slice, makeStyles(), undefined, undefined, {
+        nodeDiffState,
+        edgeDiffState,
+      });
+      // Team card wrapper carries its diff state.
+      expect(svg).toMatch(/data-node-id="backend"[^>]*data-diff-state="changed"/);
+      // Owns buttons carry per-edge diff state.
+      expect(svg).toMatch(/data-owned-service-button="Catalog"[^>]*data-diff-state="added"/);
+      expect(svg).toMatch(/data-owned-service-button="Orders"[^>]*data-diff-state="unchanged"/);
+    });
+
+    it("stamps data-diff-state on member cards in drill-down", () => {
+      const team = makeTeam("backend", { members: [{ id: "alice" }, { id: "bob" }] });
+      const slice: OrgViewSlice = { teams: [], focusedTeam: team, ancestorChain: [] };
+      const nodeDiffState = new Map([
+        ["alice", "removed"],
+        ["bob", "unchanged"],
+      ]);
+      const svg = renderOrgView(slice, makeStyles(), undefined, undefined, {
+        nodeDiffState,
+      });
+      expect(svg).toMatch(/data-node-id="alice"[^>]*data-diff-state="removed"/);
+      expect(svg).toMatch(/data-node-id="bob"[^>]*data-diff-state="unchanged"/);
+    });
+
+    it("omits data-diff-state when no options are passed (baseline)", () => {
+      const team = makeTeam("backend", { owns: ["Orders"] });
+      const slice: OrgViewSlice = { teams: [team], focusedTeam: null, ancestorChain: [] };
+      const svg = renderOrgView(slice, makeStyles());
+      expect(svg).not.toContain("data-diff-state");
+    });
+  });
 });
