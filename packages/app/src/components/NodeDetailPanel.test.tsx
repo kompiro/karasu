@@ -65,6 +65,33 @@ describe("NodeDetailPanel", () => {
     expect(container.querySelector("strong")?.textContent).toBe("bold text");
   });
 
+  // Regression guards for marked v18 parser changes (trailing-blank trim on
+  // block tokens, GFM table newline handling, heading/definition newline
+  // handling, indented code block blank-line handling). See ADR #773.
+  it("renders GFM tables without swallowing trailing newlines", () => {
+    const md = "| a | b |\n|---|---|\n| 1 | 2 |\n\nafter";
+    const { container } = render(<NodeDetailPanel {...baseProps({ description: md })} />);
+    expect(container.querySelector("table")).not.toBeNull();
+    expect(container.querySelector("td")?.textContent).toBe("1");
+    expect(container.querySelector(".node-detail-description")?.textContent).toContain("after");
+  });
+
+  it("renders headings followed by blank lines", () => {
+    const md = "# heading\n\n\nbody paragraph";
+    const { container } = render(<NodeDetailPanel {...baseProps({ description: md })} />);
+    expect(container.querySelector("h1")?.textContent).toBe("heading");
+    expect(container.querySelector("p")?.textContent).toBe("body paragraph");
+  });
+
+  it("renders indented code blocks with embedded blank lines", () => {
+    const md = "    line one\n\n    line three\n";
+    const { container } = render(<NodeDetailPanel {...baseProps({ description: md })} />);
+    const code = container.querySelector("pre code");
+    expect(code).not.toBeNull();
+    expect(code?.textContent).toContain("line one");
+    expect(code?.textContent).toContain("line three");
+  });
+
   it("sanitizes XSS in description — <script> tag is removed", () => {
     const { container } = render(
       <NodeDetailPanel {...baseProps({ description: "<script>alert(1)</script>safe text" })} />,
