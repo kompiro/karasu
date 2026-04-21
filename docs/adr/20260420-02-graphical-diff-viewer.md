@@ -3,8 +3,8 @@
 - **日付**: 2026-04-20
 - **ステータス**: 決定済み（フェーズ実装中）
 - **関連**:
-  - Issue #650 (Closed), PR #719 (Design Doc), PR #725 (Phase 1 実装)
-  - フォローアップ Issue: #735 (deploy view), #736 (org view), #737 (集約暗黙エッジ), #738 (アノテーションバッジ), #739 (ペースト入力), #740 (OPFS スナップショット)
+  - Issue #650 (Closed), PR #719 (Design Doc), PR #725 (Phase 1 実装), PR #749 (#738 アノテーションバッジ diff)
+  - フォローアップ Issue: #735 (deploy view), #736 (org view), #737 (集約暗黙エッジ), #738 (アノテーションバッジ, Closed), #739 (ペースト入力), #740 (OPFS スナップショット)
   - Design Doc: `docs/design/graphical-diff-viewer.md`
   - Acceptance Test: `docs/acceptance/0058-graphical-diff-viewer.md`
   - ADR-20260317-01 — 2 層レンダリング（layout → renderer）
@@ -40,7 +40,9 @@ Phase 1（PR #725, この ADR の対象）でコア + 描画 + system view + フ
 
 1. ✅ Phase 1: system view + file-picker source
 2. Phase 2 (#735, #736): deploy view, org view への展開
-3. Phase 3 (#737, #738): 集約エッジ・アノテーションバッジの精緻化
+3. Phase 3: 集約エッジ・アノテーションバッジの精緻化
+   - #737: 集約暗黙エッジの構成集合 diff
+   - ✅ #738 (PR #749): アノテーションバッジ diff（D-2） — 本体は `unchanged` のまま `<g data-node-badge data-diff-state>` で per-badge 表示、`NodeDetailPanel` に `+/-` 行を追加
 4. Phase 4 (#739, #740): ペースト入力・OPFS スナップショット
 
 Phase 1 はコンパイル時フラグ `ENABLE_DIFF_VIEWER` の背後にゲートしてマージ済み。プレビューでは `?diff=1` クエリで有効化、本番では完成まで非表示。
