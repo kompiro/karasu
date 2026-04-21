@@ -35,8 +35,8 @@ export function sanitizeId(id: string): string {
   return id.replace(/[^a-zA-Z0-9_-]/g, "_");
 }
 
-interface RenderOptions {
-  /** Diff state per node id (and per edge key `from->to#kind`) for diff-mode rendering. */
+export interface RenderOptions {
+  /** Diff state per node id (and per edge key `from->to`) for diff-mode rendering. */
   nodeDiffState?: Map<string, string>;
   edgeDiffState?: Map<string, string>;
   /**
@@ -164,16 +164,21 @@ export function renderFromLayout(
     }
   }
 
-  // Ghost edges
+  // Ghost edges — ghost wrapper dims children to GHOST_OPACITY so they read
+  // as peripheral. When diff mode is active and a ghost edge has a non-
+  // "unchanged" state, move it to the normal-edges group so the diff colors
+  // are not washed out by the wrapper opacity.
   const ghostEdgeParts: string[] = [];
   const normalEdgeParts: string[] = [];
   for (const edgeLayout of layoutResult.edges) {
     const edgeKey = `${edgeLayout.from}->${edgeLayout.to}`;
     const edgeStyle = styles.edges.get(edgeKey) ?? styles.defaultEdgeStyle;
     const markerId = colorToMarkerId.get(edgeStyle.color) ?? "arrow-default";
-    const diffState = options?.edgeDiffState?.get(`${edgeLayout.from}->${edgeLayout.to}`);
+    const diffState = options?.edgeDiffState?.get(edgeKey);
     const rendered = renderEdge(edgeLayout, edgeStyle, markerId, diffState);
-    if (edgeLayout.ghost) {
+    const isDimmedGhost =
+      edgeLayout.ghost && (diffState === undefined || diffState === "unchanged");
+    if (isDimmedGhost) {
       ghostEdgeParts.push(rendered);
     } else {
       normalEdgeParts.push(rendered);
@@ -184,15 +189,25 @@ export function renderFromLayout(
   }
   parts.push(el("g", { class: "edges" }, ...normalEdgeParts));
 
-  // Nodes (ghost users first, then normal children)
+  // Nodes (ghost users first, then normal children). As with edges, a ghost
+  // node that is diff-tagged (added / removed / changed) gets promoted to the
+  // normal group so the diff colors are not flattened by the wrapper opacity.
   const ghostNodeParts: string[] = [];
   const normalNodeParts: string[] = [];
   for (const [nodeId, layoutNode] of layoutResult.nodes) {
     const styleKey = nodeStyleKey(nodeId, layoutNode.annotations);
     const nodeStyle =
       styles.nodes.get(styleKey) ?? styles.nodes.get(nodeId) ?? styles.defaultNodeStyle;
-    const diffMeta = options?.nodeDiffMeta?.get(nodeId);
-    const diffState = diffMeta?.state ?? options?.nodeDiffState?.get(nodeId);
+    // Use layoutNode.id (the original AST id) as the primary lookup key. The
+    // deploy layout encodes per-container instances as `containerId::unitId`,
+    // and diff metadata is keyed by the bare unit id (Issue #735). Fall back
+    // to the map key for system-view nodes where they coincide.
+    const diffMeta =
+      options?.nodeDiffMeta?.get(layoutNode.id) ?? options?.nodeDiffMeta?.get(nodeId);
+    const diffState =
+      diffMeta?.state ??
+      options?.nodeDiffState?.get(layoutNode.id) ??
+      options?.nodeDiffState?.get(nodeId);
     const rendered = renderNode(
       layoutNode,
       nodeStyle,
@@ -203,7 +218,9 @@ export function renderFromLayout(
       diffState,
       diffMeta,
     );
-    if (layoutNode.ghost) {
+    const isDimmedGhost =
+      layoutNode.ghost && (diffState === undefined || diffState === "unchanged");
+    if (isDimmedGhost) {
       ghostNodeParts.push(rendered);
     } else {
       normalNodeParts.push(rendered);

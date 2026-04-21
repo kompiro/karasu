@@ -730,10 +730,13 @@ export async function buildAllViewsSvgProject(
 
 export type { DiffState, NodeDiffMeta, EdgeDiffMeta, DiffedView } from "./diff/view-diff.js";
 export { diffSystemViewSlices, edgeKey } from "./diff/view-diff.js";
+export type { DiffedDeployView } from "./diff/deploy-view-diff.js";
+export { diffDeployViewSlices } from "./diff/deploy-view-diff.js";
 export type { DiffedOrgView } from "./diff/org-view-diff.js";
 export { diffOrgViewSlices, ownsEdgeKey } from "./diff/org-view-diff.js";
 
 import { diffSystemViewSlices } from "./diff/view-diff.js";
+import { diffDeployViewSlices } from "./diff/deploy-view-diff.js";
 import { diffOrgViewSlices } from "./diff/org-view-diff.js";
 import type { NodeDiffMeta, EdgeDiffMeta } from "./diff/view-diff.js";
 
@@ -826,6 +829,97 @@ export async function compileSystemDiff(
 
   return {
     diagramType: "system",
+    svg,
+    diagnostics,
+    nodeDiff: diffed.nodes,
+    edgeDiff: diffed.edges,
+  };
+}
+
+export interface DeployDiffCompileResult {
+  diagramType: "deploy";
+  svg: string;
+  diagnostics: Diagnostic[];
+  nodeDiff: Map<string, NodeDiffMeta>;
+  edgeDiff: Map<string, EdgeDiffMeta>;
+}
+
+export interface CompileDeployDiffOptions {
+  beforeEntryPath: string;
+  afterEntryPath: string;
+  fs: FileSystemProvider;
+  /** Deploy block id to compare. Falls back to the first block on each side. */
+  selectedDeployId?: string;
+  displayMode?: DisplayMode;
+}
+
+/**
+ * Compile two `.krs` project entries and produce a deploy-view SVG annotated
+ * with semantic diff state on container groups, deploy units, and ghost edges.
+ *
+ * Each side picks the deploy block by `selectedDeployId` (or the first block
+ * if unset). Mixing different block ids between the two sides is intentional
+ * and the diff is computed on whichever blocks resolve.
+ */
+export async function compileDeployDiff(
+  options: CompileDeployDiffOptions,
+): Promise<DeployDiffCompileResult> {
+  const { beforeEntryPath, afterEntryPath, fs, selectedDeployId, displayMode } = options;
+
+  const resolver = new ImportResolver(fs);
+  const [beforeResolved, afterResolved] = await Promise.all([
+    resolver.resolve(beforeEntryPath),
+    resolver.resolve(afterEntryPath),
+  ]);
+  const diagnostics = [...beforeResolved.diagnostics, ...afterResolved.diagnostics];
+
+  const beforeSlice = extractDeployView(
+    beforeResolved.krsFile.deploys,
+    beforeResolved.krsFile.systems,
+    selectedDeployId,
+  );
+  const afterSlice = extractDeployView(
+    afterResolved.krsFile.deploys,
+    afterResolved.krsFile.systems,
+    selectedDeployId,
+  );
+
+  const diffed = diffDeployViewSlices(beforeSlice, afterSlice);
+
+  const sheets = [
+    getBuiltinStyleSheet(),
+    ...beforeResolved.styleSheets,
+    ...afterResolved.styleSheets,
+  ];
+  const resolveSheets = displayMode === "icon" ? [...sheets, getIconThemeStyleSheet()] : sheets;
+  const deployUnits = [
+    ...diffed.slice.containers.flatMap((c) => c.units),
+    ...diffed.slice.unclassifiedUnits,
+  ];
+  const styles = resolveStyles(
+    afterResolved.krsFile.systems,
+    resolveSheets,
+    deployUnits,
+    undefined,
+    [...afterResolved.krsFile.services, ...afterResolved.krsFile.domains],
+  );
+
+  const nodeDiffStateMap = new Map<string, string>();
+  for (const [id, meta] of diffed.nodes) {
+    nodeDiffStateMap.set(id, meta.state);
+  }
+  const edgeDiffStateMap = new Map<string, string>();
+  for (const [key, meta] of diffed.edges) {
+    edgeDiffStateMap.set(key, meta.state);
+  }
+
+  const svg = renderDeploy(diffed.slice, styles, displayMode, {
+    nodeDiffState: nodeDiffStateMap,
+    edgeDiffState: edgeDiffStateMap,
+  });
+
+  return {
+    diagramType: "deploy",
     svg,
     diagnostics,
     nodeDiff: diffed.nodes,
