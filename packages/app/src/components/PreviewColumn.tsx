@@ -327,6 +327,7 @@ export function PreviewColumn() {
                 : systemView.onClearHighlight
           }
           onJumpToEditor={onJumpToEditor}
+          nodeDiff={activeView === "system" ? systemView.nodeDiff : undefined}
         />
       )}
       <WarningPanel

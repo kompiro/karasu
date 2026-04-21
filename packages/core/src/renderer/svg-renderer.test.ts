@@ -733,4 +733,92 @@ system S {
       expect(svg).not.toContain("data-diff-state");
     });
   });
+
+  describe("annotation badge diff (Issue #738 / design doc D-2)", () => {
+    function renderWithDiffMeta(
+      krs: string,
+      nodeDiffMeta: Map<string, import("../diff/view-diff.js").NodeDiffMeta>,
+    ): string {
+      const parseResult = Parser.parse(krs);
+      const styles = resolveStyles(parseResult.value.systems, [getBuiltinStyleSheet()]);
+      const viewSlice = extractView(parseResult.value.systems, ["S"]);
+      return render(
+        viewSlice,
+        styles,
+        undefined,
+        parseResult.value.ownerIndex,
+        undefined,
+        undefined,
+        { nodeDiffMeta },
+      );
+    }
+
+    it("marks the merged badge as added when an annotation was added", () => {
+      const krs = `
+system S {
+  service A @deprecated {}
+}
+`;
+      const svg = renderWithDiffMeta(
+        krs,
+        new Map([
+          [
+            "A",
+            {
+              state: "unchanged",
+              changes: { annotations: { added: ["deprecated"], removed: [] } },
+            },
+          ],
+        ]),
+      );
+      expect(svg).toContain('data-node-badge="A"');
+      expect(svg).toMatch(/data-node-badge="A"[^>]*data-diff-state="added"/);
+      expect(svg).toContain('data-annotation-added="deprecated"');
+    });
+
+    it("renders a ghost removed badge when the node has no current badge", () => {
+      const krs = `
+system S {
+  service A {}
+}
+`;
+      const svg = renderWithDiffMeta(
+        krs,
+        new Map([
+          [
+            "A",
+            {
+              state: "unchanged",
+              changes: { annotations: { added: [], removed: ["deprecated"] } },
+            },
+          ],
+        ]),
+      );
+      expect(svg).toMatch(/data-node-badge="A"[^>]*data-diff-state="removed"/);
+      expect(svg).toContain('data-annotation-removed="deprecated"');
+    });
+
+    it("keeps annotation-only nodes at state=unchanged on the main group", () => {
+      const krs = `
+system S {
+  service A @deprecated {}
+}
+`;
+      const svg = renderWithDiffMeta(
+        krs,
+        new Map([
+          [
+            "A",
+            {
+              state: "unchanged",
+              changes: { annotations: { added: ["deprecated"], removed: [] } },
+            },
+          ],
+        ]),
+      );
+      // The node <g> itself must stay "unchanged" (no amber border) even
+      // though the badge carries its own added state.
+      expect(svg).toMatch(/data-node-id="A"[^>]*data-diff-state="unchanged"/);
+    });
+  });
 });

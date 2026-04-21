@@ -70,7 +70,12 @@ function diffNodeArray(
       merged.push(node);
     } else {
       const changes = nodeChanges(prev, node);
-      diff.set(node.id, { state: changes ? "changed" : "unchanged", changes });
+      // Annotation-only changes are rendered as a badge diff (D-2 in the design
+      // doc / Issue #738): the node body stays `unchanged` so figures with
+      // frequent annotation churn remain readable, while `changes.annotations`
+      // is still carried forward for the renderer and detail panel.
+      const bodyChanged = changes !== undefined && (changes.label || changes.description);
+      diff.set(node.id, { state: bodyChanged ? "changed" : "unchanged", changes });
       merged.push(node);
     }
     seen.add(node.id);

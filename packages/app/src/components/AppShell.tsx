@@ -178,6 +178,7 @@ export function AppShell({
         onTeamButtonClick: nav.handleTeamButtonClick,
         highlightedNodeId,
         onClearHighlight: nav.clearHighlight,
+        nodeDiff: views.system.nodeDiff,
       },
       deployView: {
         svg: views.deploy.svg,
@@ -232,6 +233,7 @@ export function AppShell({
       views.system.svg,
       views.system.diagnostics,
       views.system.warnings,
+      views.system.nodeDiff,
       views.deploy.svg,
       views.deploy.diagnostics,
       views.deploy.warnings,

@@ -79,14 +79,17 @@ Open `index.krs` so it is the current file.
 - [ ] In the original orientation (before → index), `Catalog` is rendered with
       an **amber** border (label changed from default to "商品カタログ")
 
-### TC-4: Annotation-only change
+### TC-4: Annotation-only change renders as a badge diff
 
-- [ ] `Orders` is rendered with an **amber** border because it has gained
-      `@deprecated` (annotation diff)
-
-> Note: full badge-only diff (Phase D in the design doc) is not in this MVP.
-> The whole node is currently highlighted; a finer-grained badge diff is a
-> follow-up.
+- [ ] `Orders` body is **not** amber — the main rect carries
+      `data-diff-state="unchanged"` so churn on `@deprecated` alone doesn't
+      repaint the whole node
+- [ ] The `⚠ 廃止予定` badge on `Orders` is decorated with a **green ring**
+      (`<g data-node-badge data-diff-state="added">`)
+- [ ] Clicking `Orders` opens the detail panel; the "⇄ Annotation diff"
+      section lists `+ @deprecated`
+- [ ] Reversing the comparison renders a **ghost removed badge** (dashed red
+      circle with `−`) and the panel shows `- @deprecated`
 
 ### TC-5: Unchanged elements are dimmed
 
@@ -118,6 +121,5 @@ Open `index.krs` so it is the current file.
 - Deploy view diff
 - Org view diff
 - Aggregated implicit edge constituent-set diff in `EdgeDetailPanel`
-- Annotation-only changes rendered as a badge diff (D-2 in the design doc)
 - Paste-blob input source
 - OPFS snapshot input source
