@@ -1601,6 +1601,48 @@ body,
   font-style: italic;
 }
 
+.edge-detail-item--added,
+.edge-detail-item--removed,
+.edge-detail-item--unchanged {
+  flex-direction: row;
+  align-items: baseline;
+  gap: 6px;
+  flex-wrap: wrap;
+  padding-left: 4px;
+  padding-right: 4px;
+}
+
+.edge-detail-marker {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  width: 10px;
+  text-align: center;
+  flex-shrink: 0;
+}
+
+.edge-detail-item--added {
+  background: var(--diff-bg-added);
+}
+
+.edge-detail-item--added .edge-detail-marker {
+  color: var(--diff-color-added);
+}
+
+.edge-detail-item--removed {
+  background: var(--diff-bg-removed);
+}
+
+.edge-detail-item--removed .edge-detail-marker {
+  color: var(--diff-color-removed);
+  text-decoration: line-through;
+}
+
+.edge-detail-item--removed .edge-detail-route,
+.edge-detail-item--removed .edge-detail-label-text {
+  text-decoration: line-through;
+  opacity: 0.75;
+}
+
 /* ── Preview Toolbar ────────────────────────────────────────────── */
 .preview-toolbar {
   display: flex;

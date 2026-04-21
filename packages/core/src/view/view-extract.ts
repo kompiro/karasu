@@ -12,6 +12,12 @@ export interface DomainEdgeDetail {
   toDomainId: string;
   toDomainLabel: string;
   label?: string;
+  /**
+   * Set only in diff mode: indicates whether this constituent edge was
+   * added, removed, or unchanged between before/after. Consumed by
+   * EdgeDetailPanel to render +/- markers.
+   */
+  diffState?: "unchanged" | "added" | "removed";
 }
 
 /** Walk service→domain→usecase→resource chain and return all resource nodes with ref. */

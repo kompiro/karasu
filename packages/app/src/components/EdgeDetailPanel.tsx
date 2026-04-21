@@ -33,14 +33,33 @@ export function EdgeDetailPanel({ domainEdges, anchorX, anchorY, onClose }: Edge
       </div>
       <div className="node-detail-section">
         <ul className="edge-detail-list">
-          {domainEdges.map((e) => (
-            <li key={`${e.fromDomainId}->${e.toDomainId}`} className="edge-detail-item">
-              <span className="edge-detail-route">
-                {e.fromDomainLabel} → {e.toDomainLabel}
-              </span>
-              {e.label && <span className="edge-detail-label-text">"{e.label}"</span>}
-            </li>
-          ))}
+          {domainEdges.map((e) => {
+            const marker =
+              e.diffState === "added"
+                ? "+"
+                : e.diffState === "removed"
+                  ? "-"
+                  : e.diffState
+                    ? " "
+                    : null;
+            const stateClass = e.diffState ? `edge-detail-item--${e.diffState}` : "";
+            return (
+              <li
+                key={`${e.fromDomainId}->${e.toDomainId}#${e.label ?? ""}`}
+                className={`edge-detail-item ${stateClass}`.trim()}
+              >
+                {marker !== null && (
+                  <span className="edge-detail-marker" aria-hidden="true">
+                    {marker}
+                  </span>
+                )}
+                <span className="edge-detail-route">
+                  {e.fromDomainLabel} → {e.toDomainLabel}
+                </span>
+                {e.label && <span className="edge-detail-label-text">"{e.label}"</span>}
+              </li>
+            );
+          })}
         </ul>
       </div>
     </div>
