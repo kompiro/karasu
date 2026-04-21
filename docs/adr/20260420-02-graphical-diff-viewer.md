@@ -3,8 +3,8 @@
 - **日付**: 2026-04-20
 - **ステータス**: 決定済み（フェーズ実装中）
 - **関連**:
-  - Issue #650 (Closed), PR #719 (Design Doc), PR #725 (Phase 1 実装), PR #749 (#738 アノテーションバッジ diff)
-  - フォローアップ Issue: #735 (deploy view), #736 (org view), #737 (集約暗黙エッジ), #738 (アノテーションバッジ, Closed), #739 (ペースト入力), #740 (OPFS スナップショット)
+  - Issue #650 (Closed), PR #719 (Design Doc), PR #725 (Phase 1 実装), PR #749 (#738 アノテーションバッジ diff), PR #751 (#736 org view diff)
+  - フォローアップ Issue: #735 (deploy view), #736 (org view, Closed), #737 (集約暗黙エッジ), #738 (アノテーションバッジ, Closed), #739 (ペースト入力), #740 (OPFS スナップショット)
   - Design Doc: `docs/design/graphical-diff-viewer.md`
   - Acceptance Test: `docs/acceptance/0058-graphical-diff-viewer.md`
   - ADR-20260317-01 — 2 層レンダリング（layout → renderer）
@@ -39,7 +39,9 @@
 Phase 1（PR #725, この ADR の対象）でコア + 描画 + system view + ファイルピッカー入力を実装。残りは独立 Issue として切り出し:
 
 1. ✅ Phase 1: system view + file-picker source
-2. Phase 2 (#735, #736): deploy view, org view への展開
+2. Phase 2: deploy view, org view への展開
+   - #735: deploy view diff
+   - ✅ #736 (PR #751): org view diff — チーム/メンバー wrapper と owns ボタンに `data-diff-state` を付与、`ownsEdgeKey(teamId, serviceId)` で owns の追加/削除を独立フラグ化
 3. Phase 3: 集約エッジ・アノテーションバッジの精緻化
    - #737: 集約暗黙エッジの構成集合 diff
    - ✅ #738 (PR #749): アノテーションバッジ diff（D-2） — 本体は `unchanged` のまま `<g data-node-badge data-diff-state>` で per-badge 表示、`NodeDetailPanel` に `+/-` 行を追加
