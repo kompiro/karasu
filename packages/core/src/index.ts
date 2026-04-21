@@ -730,8 +730,11 @@ export async function buildAllViewsSvgProject(
 
 export type { DiffState, NodeDiffMeta, EdgeDiffMeta, DiffedView } from "./diff/view-diff.js";
 export { diffSystemViewSlices, edgeKey } from "./diff/view-diff.js";
+export type { DiffedOrgView } from "./diff/org-view-diff.js";
+export { diffOrgViewSlices, ownsEdgeKey } from "./diff/org-view-diff.js";
 
 import { diffSystemViewSlices } from "./diff/view-diff.js";
+import { diffOrgViewSlices } from "./diff/org-view-diff.js";
 import type { NodeDiffMeta, EdgeDiffMeta } from "./diff/view-diff.js";
 
 export interface SystemDiffCompileResult {
@@ -823,6 +826,81 @@ export async function compileSystemDiff(
 
   return {
     diagramType: "system",
+    svg,
+    diagnostics,
+    nodeDiff: diffed.nodes,
+    edgeDiff: diffed.edges,
+  };
+}
+
+export interface OrgDiffCompileResult {
+  diagramType: "org";
+  svg: string;
+  diagnostics: Diagnostic[];
+  /** Diff metadata per team / member id. */
+  nodeDiff: Map<string, NodeDiffMeta>;
+  /** Diff metadata per `ownsEdgeKey(teamId, serviceId)`. */
+  edgeDiff: Map<string, EdgeDiffMeta>;
+}
+
+export interface CompileOrgDiffOptions {
+  beforeEntryPath: string;
+  afterEntryPath: string;
+  fs: FileSystemProvider;
+  viewPath?: ViewPath;
+  displayMode?: DisplayMode;
+}
+
+/**
+ * Compile two `.krs` project entries and produce an org-view SVG annotated
+ * with semantic diff state (`data-diff-state="added|removed|changed|unchanged"`).
+ *
+ * Team and member cards carry `data-diff-state`; owned-service buttons carry
+ * `data-diff-state` to reflect changes in the `owns` relationship even when
+ * the team itself is otherwise unchanged.
+ */
+export async function compileOrgDiff(
+  options: CompileOrgDiffOptions,
+): Promise<OrgDiffCompileResult> {
+  const { beforeEntryPath, afterEntryPath, fs, viewPath, displayMode } = options;
+
+  const resolver = new ImportResolver(fs);
+  const [beforeResolved, afterResolved] = await Promise.all([
+    resolver.resolve(beforeEntryPath),
+    resolver.resolve(afterEntryPath),
+  ]);
+  const diagnostics = [...beforeResolved.diagnostics, ...afterResolved.diagnostics];
+
+  const beforeSlice = extractOrgView(beforeResolved.krsFile.organizations, viewPath ?? []);
+  const afterSlice = extractOrgView(afterResolved.krsFile.organizations, viewPath ?? []);
+
+  const diffed = diffOrgViewSlices(beforeSlice, afterSlice);
+
+  const sheets = [
+    getBuiltinStyleSheet(),
+    ...beforeResolved.styleSheets,
+    ...afterResolved.styleSheets,
+  ];
+  const resolveSheets = displayMode === "icon" ? [...sheets, getIconThemeStyleSheet()] : sheets;
+  const styles = resolveStyles(
+    afterResolved.krsFile.systems,
+    resolveSheets,
+    undefined,
+    afterResolved.krsFile.organizations,
+  );
+
+  const nodeDiffStateMap = new Map<string, string>();
+  for (const [id, meta] of diffed.nodes) nodeDiffStateMap.set(id, meta.state);
+  const edgeDiffStateMap = new Map<string, string>();
+  for (const [key, meta] of diffed.edges) edgeDiffStateMap.set(key, meta.state);
+
+  const svg = _renderOrgView(diffed.slice, styles, displayMode, undefined, {
+    nodeDiffState: nodeDiffStateMap,
+    edgeDiffState: edgeDiffStateMap,
+  });
+
+  return {
+    diagramType: "org",
     svg,
     diagnostics,
     nodeDiff: diffed.nodes,

@@ -2,13 +2,21 @@ import type { ResolvedNodeStyle, ResolvedStyles } from "../types/style.js";
 import type { OrgViewSlice } from "../view/org-view-extract.js";
 import type { TeamNode, MemberNode } from "../types/ast.js";
 import type { DisplayMode } from "./layout.js";
-import { el, escapeXml, truncateToWidth, renderIconCard } from "./svg-builder.js";
+import { el, escapeXml, truncateToWidth, renderIconCard, diffStateAttr } from "./svg-builder.js";
 import { getIconDef } from "./shape-registry.js";
+import { ownsEdgeKey } from "../diff/org-view-diff.js";
 import {
   ICON_LABEL_CHAR_WIDTH,
   ICON_DESC_CHAR_WIDTH,
   ICON_DESC_MAX_WIDTH,
 } from "./rendering-constants.js";
+
+interface RenderOrgOptions {
+  /** Diff state per team / member id. */
+  nodeDiffState?: Map<string, string>;
+  /** Diff state per `ownsEdgeKey(teamId, serviceId)`. */
+  edgeDiffState?: Map<string, string>;
+}
 
 // Shape mode constants
 const CARD_WIDTH = 220;
@@ -162,9 +170,16 @@ function renderOrgIconCardCommon(
   });
 }
 
-function renderTeamCard(team: TeamNode, x: number, y: number, style: ResolvedNodeStyle): string {
+function renderTeamCard(
+  team: TeamNode,
+  x: number,
+  y: number,
+  style: ResolvedNodeStyle,
+  options?: RenderOrgOptions,
+): string {
   const id = escapeXml(team.id);
   const label = escapeXml(team.label ?? team.id);
+  const teamDiff = options?.nodeDiffState?.get(team.id);
   const { memberCount, subTeamCount } = extractTeamCounts(team);
   const hasChildren = team.children.length > 0;
 
@@ -194,6 +209,7 @@ function renderTeamCard(team: TeamNode, x: number, y: number, style: ResolvedNod
   ];
 
   visibleOwns.forEach((serviceId, i) => {
+    const ownsDiff = options?.edgeDiffState?.get(ownsEdgeKey(team.id, serviceId));
     parts.push(
       el(
         "g",
@@ -201,6 +217,7 @@ function renderTeamCard(team: TeamNode, x: number, y: number, style: ResolvedNod
           "data-owned-service-button": serviceId,
           style: "cursor: pointer",
           "pointer-events": "all",
+          ...diffStateAttr(ownsDiff),
         },
         el(
           "text",
@@ -263,6 +280,7 @@ function renderTeamCard(team: TeamNode, x: number, y: number, style: ResolvedNod
       transform: `translate(${x},${y})`,
       "data-node-id": id,
       ...(hasChildren ? { "data-has-children": "true" } : {}),
+      ...diffStateAttr(teamDiff),
       style: "cursor: pointer",
     },
     ...parts,
@@ -274,6 +292,7 @@ function renderMemberCard(
   x: number,
   y: number,
   style: ResolvedNodeStyle,
+  options?: RenderOrgOptions,
 ): string {
   const id = escapeXml(member.id);
   const label = escapeXml(member.label ?? member.id);
@@ -322,7 +341,12 @@ function renderMemberCard(
     );
   }
 
-  return el("g", { transform: `translate(${x},${y})`, "data-node-id": id }, ...parts);
+  const memberDiff = options?.nodeDiffState?.get(member.id);
+  return el(
+    "g",
+    { transform: `translate(${x},${y})`, "data-node-id": id, ...diffStateAttr(memberDiff) },
+    ...parts,
+  );
 }
 
 function renderTeamIconCard(
@@ -330,16 +354,19 @@ function renderTeamIconCard(
   x: number,
   y: number,
   style: ResolvedNodeStyle,
+  options?: RenderOrgOptions,
 ): string {
   const { memberCount, subTeamCount } = extractTeamCounts(team);
   const hasChildren = team.children.length > 0;
   const descText = formatTeamCountText(memberCount, subTeamCount);
 
+  const teamDiff = options?.nodeDiffState?.get(team.id);
   return renderOrgIconCardCommon(team, x, y, style, {
     iconName: "team",
     descText,
     wrapperAttrs: {
       ...(hasChildren ? { "data-has-children": "true" } : {}),
+      ...diffStateAttr(teamDiff),
       style: "cursor: pointer",
     },
   });
@@ -350,15 +377,18 @@ function renderMemberIconCard(
   x: number,
   y: number,
   style: ResolvedNodeStyle,
+  options?: RenderOrgOptions,
 ): string {
   const details = [member.properties.slack, member.properties.github].filter(Boolean).join(" · ");
   const descText =
     details ||
     truncateToWidth(member.properties.description ?? "", ICON_DESC_MAX_WIDTH, ICON_DESC_CHAR_WIDTH);
 
+  const memberDiff = options?.nodeDiffState?.get(member.id);
   return renderOrgIconCardCommon(member, x, y, style, {
     iconName: "member",
     descText,
+    wrapperAttrs: diffStateAttr(memberDiff),
   });
 }
 
@@ -388,6 +418,7 @@ function renderOrgViewIconMode(
   slice: OrgViewSlice,
   styles: ResolvedStyles,
   childLevelLinks?: Map<string, string>,
+  options?: RenderOrgOptions,
 ): string {
   if (slice.focusedTeam === null) {
     const teams = slice.teams;
@@ -420,11 +451,17 @@ function renderOrgViewIconMode(
     const { positions, totalWidth, totalHeight } = iconGridLayout(items.map((i) => i.height));
     const cards = items.map((item, i) => {
       if (item.type === "team") {
-        const card = renderTeamIconCard(item.node, positions[i].x, positions[i].y, item.style);
+        const card = renderTeamIconCard(
+          item.node,
+          positions[i].x,
+          positions[i].y,
+          item.style,
+          options,
+        );
         const linkId = childLevelLinks?.get(item.node.id);
         return linkId ? el("a", { href: `#${linkId}` }, card) : card;
       }
-      return renderMemberIconCard(item.node, positions[i].x, positions[i].y, item.style);
+      return renderMemberIconCard(item.node, positions[i].x, positions[i].y, item.style, options);
     });
 
     return el(
@@ -484,9 +521,9 @@ function renderOrgViewIconMode(
   const { positions, totalWidth, totalHeight } = iconGridLayout(items.map((i) => i.height));
   const cards = items.map((item, i) => {
     if (item.type === "member") {
-      return renderMemberIconCard(item.node, positions[i].x, positions[i].y, item.style);
+      return renderMemberIconCard(item.node, positions[i].x, positions[i].y, item.style, options);
     }
-    const card = renderTeamIconCard(item.node, positions[i].x, positions[i].y, item.style);
+    const card = renderTeamIconCard(item.node, positions[i].x, positions[i].y, item.style, options);
     const linkId = childLevelLinks?.get(item.node.id);
     return linkId ? el("a", { href: `#${linkId}` }, card) : card;
   });
@@ -509,9 +546,10 @@ export function renderOrgView(
   styles: ResolvedStyles,
   displayMode?: DisplayMode,
   childLevelLinks?: Map<string, string>,
+  options?: RenderOrgOptions,
 ): string {
   if (displayMode === "icon") {
-    return renderOrgViewIconMode(slice, styles, childLevelLinks);
+    return renderOrgViewIconMode(slice, styles, childLevelLinks, options);
   }
 
   if (slice.focusedTeam === null) {
@@ -541,7 +579,7 @@ export function renderOrgView(
     const cards = teams.map((team, i) => {
       const style = styles.nodes.get(team.id) ?? styles.defaultNodeStyle;
       const { x, y } = cardPos(i);
-      const card = renderTeamCard(team, x, y, style);
+      const card = renderTeamCard(team, x, y, style, options);
       const linkId = childLevelLinks?.get(team.id);
       return linkId ? el("a", { href: `#${linkId}` }, card) : card;
     });
@@ -567,7 +605,13 @@ export function renderOrgView(
         return {
           id: child.id,
           render: (x: number, y: number) =>
-            renderMemberCard(child, x, y, styles.nodes.get(child.id) ?? styles.defaultNodeStyle),
+            renderMemberCard(
+              child,
+              x,
+              y,
+              styles.nodes.get(child.id) ?? styles.defaultNodeStyle,
+              options,
+            ),
         };
       }
       return {
@@ -578,6 +622,7 @@ export function renderOrgView(
             x,
             y,
             styles.nodes.get(child.id) ?? styles.defaultNodeStyle,
+            options,
           );
           const linkId = childLevelLinks?.get(child.id);
           return linkId ? el("a", { href: `#${linkId}` }, card) : card;
