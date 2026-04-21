@@ -132,13 +132,28 @@ deploy Production {
 }
 ```
 
-- [ ] Enter diff mode (Compare with current), then switch to the **Deploy** view tab
+**Forward direction (added unit):** `index.krs` is the project entry, so it is always the "after" side. Make sure `index.krs` is the file *with* `payments-svc` and `before.krs` is the file *without*.
+
+- [ ] Enter diff mode by right-clicking `before.krs` → **⇄ Compare with current**
+- [ ] Switch to the **Deploy** view tab
 - [ ] `payments-svc` deploy unit appears with a **green** border
 - [ ] The new ghost edge from `Orders` container to `Payments` container is **green**
 - [ ] Diff banner remains visible while the deploy view is active
-- [ ] Reverse the comparison: `payments-svc` is rendered with **red dashed** border, ghost edge is **red dashed**
+
+**Removed unit:** swap which file holds `payments-svc` — put it in `before.krs` only, with `index.krs` *not* containing it. Then run the same Compare action.
+
+- [ ] `payments-svc` deploy unit is rendered with a **red dashed** border
+- [ ] The `Orders → Payments` ghost edge is rendered in **red dashed**
+
+> Why the file swap instead of a "reverse" toggle: the project entry (`index.krs`) is hard-coded as the after-side in the current implementation. Picking which side is the base / swapping in-place is tracked in #765.
 
 ---
+
+## Known limitations (tracked separately)
+
+- Diff direction is fixed to "selected file = before, project entry = after" (#765)
+- A `.krs` file with only a `deploy` block (no `system`) does not render a deploy diagram (#766)
+- When no `deploy` block exists, the deploy tab is disabled rather than showing a "no content" message (#767)
 
 ## Out of scope (tracked separately)
 
@@ -148,3 +163,4 @@ deploy Production {
 - Annotation-only changes rendered as a badge diff (D-2 in the design doc) (#738)
 - Paste-blob input source (#739)
 - OPFS snapshot input source (#740)
+- Container rectangle (service group) diff decoration (#750)
