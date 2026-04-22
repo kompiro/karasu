@@ -1,20 +1,18 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
-interface PasteCompareDialogProps {
+type PasteCompareDialogProps = {
   /** Initial value in the textarea (e.g. when "View pasted" is used to re-open). */
   initialValue?: string;
-  /** Read-only preview mode — hides confirm, relabels cancel to "Close". */
-  readOnly?: boolean;
-  onConfirm: (content: string) => void;
   onCancel: () => void;
-}
+} & (
+  | { readOnly?: false; onConfirm: (content: string) => void }
+  | { readOnly: true; onConfirm?: never }
+);
 
-export function PasteCompareDialog({
-  initialValue = "",
-  readOnly = false,
-  onConfirm,
-  onCancel,
-}: PasteCompareDialogProps) {
+export function PasteCompareDialog(props: PasteCompareDialogProps) {
+  const { initialValue = "", onCancel } = props;
+  const readOnly = props.readOnly === true;
+  const onConfirm = readOnly ? undefined : props.onConfirm;
   const [value, setValue] = useState(initialValue);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -31,7 +29,7 @@ export function PasteCompareDialog({
   }, [onCancel]);
 
   const handleConfirm = useCallback(() => {
-    if (!value.trim()) return;
+    if (!value.trim() || !onConfirm) return;
     onConfirm(value);
   }, [value, onConfirm]);
 

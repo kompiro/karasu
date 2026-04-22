@@ -12,6 +12,7 @@ import { useJumpToEditor } from "../hooks/useJumpToEditor.js";
 import { useCrossNavigation } from "../hooks/useCrossNavigation.js";
 import { useViewSvg } from "../hooks/useViewSvg.js";
 import { useStyleSource } from "../hooks/useStyleSource.js";
+import { DiffModeBanner } from "./DiffModeBanner.js";
 
 interface AppShellProps {
   entryPath: string | null;
@@ -309,59 +310,6 @@ export function AppShell({
         )}
         <PreviewColumn />
       </PreviewProvider>
-    </div>
-  );
-}
-
-function DiffModeBanner({
-  comparePath,
-  compareSource,
-  currentPath,
-  onExit,
-  onViewPasted,
-}: {
-  comparePath: string;
-  compareSource: "file" | "pasted" | null;
-  currentPath: string | null;
-  onExit: () => void;
-  onViewPasted?: () => void;
-}) {
-  const baseName = (p: string) => p.split("/").pop() ?? p;
-  const isPasted = compareSource === "pasted";
-  return (
-    <div className="diff-mode-banner" role="status" aria-label="Diff mode active">
-      <span className="diff-mode-banner__label">
-        ⇄ Diff:&nbsp;
-        {isPasted ? (
-          <span className="diff-mode-banner__pasted">pasted</span>
-        ) : (
-          <span className="diff-mode-banner__before">{baseName(comparePath)}</span>
-        )}
-        &nbsp;→&nbsp;
-        <span className="diff-mode-banner__after">
-          {currentPath ? baseName(currentPath) : "(current)"}
-        </span>
-      </span>
-      <span>
-        {isPasted && onViewPasted && (
-          <button
-            type="button"
-            className="toolbar-btn toolbar-btn--diff-view-pasted"
-            onClick={onViewPasted}
-            aria-label="View pasted .krs"
-          >
-            👁 View pasted
-          </button>
-        )}
-        <button
-          type="button"
-          className="toolbar-btn toolbar-btn--diff-exit"
-          onClick={onExit}
-          aria-label="Exit diff mode"
-        >
-          ✕ Exit diff
-        </button>
-      </span>
     </div>
   );
 }

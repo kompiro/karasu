@@ -86,6 +86,8 @@ export function appReducer(state: AppState, action: AppAction): AppState {
         activeView: "system",
         selectedDeployBlockId: null,
         highlightedNodeId: null,
+        compareEntryPath: null,
+        compareSource: null,
       };
 
     case "SELECT_FILE":

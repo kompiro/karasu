@@ -52,12 +52,7 @@ describe("PasteCompareDialog", () => {
 
   it("renders read-only mode with Close label and no Compare button", () => {
     const { getByLabelText, queryByLabelText } = render(
-      <PasteCompareDialog
-        readOnly
-        initialValue="system Y {}"
-        onConfirm={() => {}}
-        onCancel={() => {}}
-      />,
+      <PasteCompareDialog readOnly initialValue="system Y {}" onCancel={() => {}} />,
     );
     expect(getByLabelText("Close")).toBeDefined();
     expect(queryByLabelText("Compare with pasted .krs")).toBeNull();

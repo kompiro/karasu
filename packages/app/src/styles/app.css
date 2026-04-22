@@ -2124,6 +2124,11 @@ body,
   background: rgba(245, 158, 11, 0.15);
 }
 
+.diff-mode-banner__actions {
+  display: flex;
+  gap: 8px;
+}
+
 .toolbar-btn--diff-view-pasted {
   background: transparent;
   border: 1px solid rgba(245, 158, 11, 0.4);
@@ -2132,7 +2137,6 @@ body,
   padding: 2px 10px;
   border-radius: 4px;
   cursor: pointer;
-  margin-right: 8px;
 }
 
 .toolbar-btn--diff-view-pasted:hover {

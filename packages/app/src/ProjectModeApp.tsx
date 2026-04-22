@@ -51,7 +51,7 @@ export function ProjectModeApp() {
   const { navigateToProject } = useProjectNavigation(projects, currentProject, dispatch);
   const { selectFile } = useFileSelection(fs, dispatch);
 
-  useProjectInitialization({ pm, dispatch, currentProject, selectFile });
+  useProjectInitialization({ pm, fs, dispatch, currentProject, selectFile });
 
   // ── ファイル選択 ────────────────────────────────────────────────
 
@@ -218,7 +218,6 @@ export function ProjectModeApp() {
         <PasteCompareDialog
           initialValue={pasteDialog.content}
           readOnly
-          onConfirm={() => setPasteDialog(null)}
           onCancel={() => setPasteDialog(null)}
         />
       )}

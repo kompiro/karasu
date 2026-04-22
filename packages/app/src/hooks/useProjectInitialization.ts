@@ -3,6 +3,7 @@ import {
   EC_PLATFORM_PROJECTS,
   GETTING_STARTED_PROJECT,
   GETTING_STARTED_PROJECT_EN,
+  type FileSystemProvider,
   type Project,
 } from "@karasu-tools/core";
 import type { ProjectManager } from "../fs/project-manager.js";
@@ -12,10 +13,36 @@ import { LAST_PROJECT_KEY } from "./useProjectNavigation.js";
 
 interface UseProjectInitializationArgs {
   pm: ProjectManager;
+  fs: FileSystemProvider;
   dispatch: Dispatch<AppAction>;
   currentProject: Project | null;
   /** `selectFile` from `useFileSelection` — invoked with the project's `index.krs` on switch. */
   selectFile: (path: string) => Promise<void>;
+}
+
+const PASTE_COMPARE_FILE = ".karasu-paste-compare.krs";
+
+/**
+ * Best-effort cleanup of stale paste-compare temp files (Issue #739).
+ *
+ * The runtime normally deletes the temp file when diff mode exits, but a tab
+ * crash or a force-close with diff mode active leaves the file behind in
+ * OPFS. Sweep on startup to keep the workspace tidy.
+ */
+async function cleanupPasteCompareTempFiles(
+  fs: FileSystemProvider,
+  projects: Project[],
+): Promise<void> {
+  for (const project of projects) {
+    const path = `${project.rootPath}/${PASTE_COMPARE_FILE}`;
+    try {
+      if (await fs.exists(path)) {
+        await fs.delete(path);
+      }
+    } catch {
+      // Non-fatal; diff mode will overwrite on next use.
+    }
+  }
 }
 
 /**
@@ -34,6 +61,7 @@ interface UseProjectInitializationArgs {
  */
 export function useProjectInitialization({
   pm,
+  fs,
   dispatch,
   currentProject,
   selectFile,
@@ -61,11 +89,12 @@ export function useProjectInitialization({
       } else {
         dispatch({ type: "SET_PROJECTS", projects: projectList });
         // `useProjectNavigation` initialization reads URL / localStorage to restore the selection.
+        await cleanupPasteCompareTempFiles(fs, projectList);
       }
 
       dispatch({ type: "SET_LOADING", loading: false });
     })();
-  }, [pm, dispatch]);
+  }, [pm, fs, dispatch]);
 
   // On project switch: persist to localStorage + auto-select index.krs.
   useEffect(() => {
