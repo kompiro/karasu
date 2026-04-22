@@ -1,9 +1,9 @@
 # OPFS 履歴スナップショットを diff 比較ソースにする
 
 - **日付**: 2026-04-21
-- **ステータス**: 検討中
+- **ステータス**: ADR 化（[ADR-20260422-07](../adr/20260422-07-opfs-snapshot-diff-source.md)）
 - **関連**:
-  - Issue #740（本 Issue）
+  - Issue #740 (Closed), PR #786 (実装)
   - Issue #650 (Closed), PR #725 — Phase 1 system-view diff
   - Issue #739 — diff viewer: paste .krs blob as comparison source
   - Issue #645 — "Diff-friendly text source" positive goal
