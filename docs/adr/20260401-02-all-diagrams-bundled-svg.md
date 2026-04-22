@@ -1,3 +1,18 @@
+---
+id: ADR-20260401-02
+title: 全ビュー統合バンドル SVG（buildAllViewsSvg）
+status: accepted
+date: 2026-04-01
+depends_on:
+  - ADR-20260328-02
+scope:
+  packages:
+    - core
+  domains:
+    - rendering
+    - export
+---
+
 # ADR-20260401-02: 全ビュー統合バンドル SVG（buildAllViewsSvg）
 
 - **日付**: 2026-04-01

@@ -1,3 +1,20 @@
+---
+id: ADR-20260320-01
+title: インタラクティブ SVG レンダリングと NodeDetailPanel
+status: accepted
+date: 2026-03-20
+depends_on:
+  - ADR-20260320-02
+  - ADR-20260317-01
+scope:
+  packages:
+    - core
+    - app
+  domains:
+    - rendering
+    - ui
+---
+
 # ADR-20260320-01: インタラクティブ SVG レンダリングと NodeDetailPanel
 
 - **日付**: 2026-03-20

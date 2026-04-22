@@ -1,3 +1,16 @@
+---
+id: ADR-20260405-07
+title: クロスシステム参照の Ghost System レンダリング
+status: accepted
+date: 2026-04-05
+scope:
+  packages:
+    - core
+  domains:
+    - rendering
+    - edges
+---
+
 # ADR-20260405-07: クロスシステム参照の Ghost System レンダリング
 
 - **日付**: 2026-04-05

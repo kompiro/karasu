@@ -1,3 +1,19 @@
+---
+id: ADR-20260408-02
+title: "Deploy 図レイアウト — 階層 DAG レイアウト（Longest Path Layering）"
+status: accepted
+date: 2026-04-08
+depends_on:
+  - ADR-20260327-01
+scope:
+  packages:
+    - core
+  domains:
+    - rendering
+    - layout
+    - deployment
+---
+
 # ADR-20260408-02: Deploy 図レイアウト — 階層 DAG レイアウト（Longest Path Layering）
 
 - **日付**: 2026-04-08

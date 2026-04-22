@@ -1,3 +1,16 @@
+---
+id: ADR-20260317-01
+title: 2 レイヤレンダリングとドリルダウンナビゲーション
+status: accepted
+date: 2026-03-17
+scope:
+  packages:
+    - core
+  domains:
+    - rendering
+    - navigation
+---
+
 # ADR-20260317-01: 2 レイヤレンダリングとドリルダウンナビゲーション
 
 - **日付**: 2026-03-17
