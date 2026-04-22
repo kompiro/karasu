@@ -27,6 +27,13 @@ describe("loadDir", () => {
     const nodes = await loadDir("/nope", fs);
     expect(nodes).toEqual([]);
   });
+
+  it("filters hidden .karasu-* entries (Issue #739 paste-compare temp file)", async () => {
+    const fs = await setupFs();
+    await fs.writeFile("/project/.karasu-paste-compare.krs", "system P {}");
+    const nodes = await loadDir("/project", fs);
+    expect(nodes.map((n) => n.name).sort()).toEqual(["index.krs", "sub"]);
+  });
 });
 
 describe("copyDirRecursive", () => {

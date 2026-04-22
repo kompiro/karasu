@@ -26,6 +26,13 @@ export interface AppState {
    * entry path and this path.
    */
   compareEntryPath: string | null;
+  /**
+   * Source of the compare entry (Issue #739).
+   * - "file":   user picked a workspace file
+   * - "pasted": user pasted a .krs blob, which was written to a hidden temp file
+   * Null when diff mode is inactive.
+   */
+  compareSource: "file" | "pasted" | null;
 }
 
 export const initialState: AppState = {
@@ -42,6 +49,7 @@ export const initialState: AppState = {
   isAllLayersOpen: false,
   loading: true,
   compareEntryPath: null,
+  compareSource: null,
 };
 
 export type AppAction =
@@ -60,7 +68,7 @@ export type AppAction =
   | { type: "RENAME_PROJECT"; id: string; name: string }
   | { type: "SET_DISPLAY_MODE"; displayMode: DisplayMode }
   | { type: "SET_ALL_LAYERS_OPEN"; isAllLayersOpen: boolean }
-  | { type: "SET_COMPARE_ENTRY_PATH"; path: string | null };
+  | { type: "SET_COMPARE_ENTRY_PATH"; path: string | null; source?: "file" | "pasted" };
 
 export function appReducer(state: AppState, action: AppAction): AppState {
   switch (action.type) {
@@ -78,6 +86,8 @@ export function appReducer(state: AppState, action: AppAction): AppState {
         activeView: "system",
         selectedDeployBlockId: null,
         highlightedNodeId: null,
+        compareEntryPath: null,
+        compareSource: null,
       };
 
     case "SELECT_FILE":
@@ -147,7 +157,11 @@ export function appReducer(state: AppState, action: AppAction): AppState {
       return { ...state, isAllLayersOpen: action.isAllLayersOpen };
 
     case "SET_COMPARE_ENTRY_PATH":
-      return { ...state, compareEntryPath: action.path };
+      return {
+        ...state,
+        compareEntryPath: action.path,
+        compareSource: action.path ? (action.source ?? "file") : null,
+      };
 
     default:
       return state;

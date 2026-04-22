@@ -20,6 +20,11 @@ interface FileTreeViewProps {
   onNewDir: () => void;
   /** When true, the context menu shows a "Compare with current" entry for files (Issue #650). */
   canCompareContextNode?: boolean;
+  /**
+   * When provided, renders a header button that opens the paste-compare
+   * dialog (Issue #739). Called with no args.
+   */
+  onCompareWithPaste?: () => void;
 }
 
 /**
@@ -43,12 +48,22 @@ export function FileTreeView({
   onNewFile,
   onNewDir,
   canCompareContextNode,
+  onCompareWithPaste,
 }: FileTreeViewProps) {
   return (
     <div className="file-tree">
       <div className="file-tree-header">
         <span>Files</span>
         <div className="file-tree-header-actions">
+          {onCompareWithPaste && (
+            <button
+              className="file-tree-header-btn"
+              onClick={onCompareWithPaste}
+              title="Compare with pasted .krs"
+            >
+              ⇄ Paste
+            </button>
+          )}
           <button className="file-tree-header-btn" onClick={onNewFile} title="New File">
             +File
           </button>

@@ -12,6 +12,7 @@ import { useJumpToEditor } from "../hooks/useJumpToEditor.js";
 import { useCrossNavigation } from "../hooks/useCrossNavigation.js";
 import { useViewSvg } from "../hooks/useViewSvg.js";
 import { useStyleSource } from "../hooks/useStyleSource.js";
+import { DiffModeBanner } from "./DiffModeBanner.js";
 
 interface AppShellProps {
   entryPath: string | null;
@@ -25,6 +26,11 @@ interface AppShellProps {
   sidebarContent?: ReactNode;
   hideEditor?: boolean;
   recompileRef?: RefObject<(() => void) | null>;
+  /**
+   * When set, the diff banner renders a "View pasted" button that invokes
+   * this callback to re-display the pasted blob (Issue #739).
+   */
+  onViewPasted?: () => void;
 }
 
 /**
@@ -44,6 +50,7 @@ export function AppShell({
   sidebarContent,
   hideEditor,
   recompileRef,
+  onViewPasted,
 }: AppShellProps) {
   const { state, dispatch, fs } = useAppContext();
   const {
@@ -56,6 +63,7 @@ export function AppShell({
     currentFilePath,
     currentProject,
     compareEntryPath,
+    compareSource,
   } = state;
 
   const [isAllLayersOpen, setIsAllLayersOpen] = useState(false);
@@ -294,44 +302,14 @@ export function AppShell({
         {compareEntryPath && (
           <DiffModeBanner
             comparePath={compareEntryPath}
+            compareSource={compareSource}
             currentPath={currentFilePath}
             onExit={() => dispatch({ type: "SET_COMPARE_ENTRY_PATH", path: null })}
+            onViewPasted={onViewPasted}
           />
         )}
         <PreviewColumn />
       </PreviewProvider>
-    </div>
-  );
-}
-
-function DiffModeBanner({
-  comparePath,
-  currentPath,
-  onExit,
-}: {
-  comparePath: string;
-  currentPath: string | null;
-  onExit: () => void;
-}) {
-  const baseName = (p: string) => p.split("/").pop() ?? p;
-  return (
-    <div className="diff-mode-banner" role="status" aria-label="Diff mode active">
-      <span className="diff-mode-banner__label">
-        ⇄ Diff:&nbsp;
-        <span className="diff-mode-banner__before">{baseName(comparePath)}</span>
-        &nbsp;→&nbsp;
-        <span className="diff-mode-banner__after">
-          {currentPath ? baseName(currentPath) : "(current)"}
-        </span>
-      </span>
-      <button
-        type="button"
-        className="toolbar-btn toolbar-btn--diff-exit"
-        onClick={onExit}
-        aria-label="Exit diff mode"
-      >
-        ✕ Exit diff
-      </button>
     </div>
   );
 }
