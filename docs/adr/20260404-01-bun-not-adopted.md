@@ -1,3 +1,14 @@
+---
+id: ADR-20260404-01
+title: Do not migrate to Bun
+status: not_adopted
+date: 2026-04-04
+scope:
+  domains:
+    - tooling
+    - build
+---
+
 # ADR-20260404-01: Do not migrate to Bun
 
 ## Status
