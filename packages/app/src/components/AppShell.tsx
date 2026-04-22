@@ -1,5 +1,7 @@
-import { useCallback, useMemo, useState, type ReactNode, type RefObject } from "react";
+import { useCallback, useEffect, useMemo, useState, type ReactNode, type RefObject } from "react";
 import { format, FormatError } from "@karasu-tools/core";
+import { SnapshotManager, type SnapshotRecord } from "../fs/snapshot-manager.js";
+import type { CompareSource } from "../fs/compare-source.js";
 import { EditArea } from "./EditArea.js";
 import { PreviewColumn } from "./PreviewColumn.js";
 import { downloadSvg } from "../utils/download-svg.js";
@@ -7,6 +9,7 @@ import { downloadDrawio } from "../utils/download-drawio.js";
 import { useAppContext } from "../state/app-context.js";
 import { PreviewProvider, type PreviewContextValue } from "../state/preview-context.js";
 import { useAppViews } from "../hooks/useAppViews.js";
+import { useSnapshotAutoCapture } from "../hooks/useSnapshotAutoCapture.js";
 import { useBreadcrumbs } from "../hooks/useBreadcrumbs.js";
 import { useJumpToEditor } from "../hooks/useJumpToEditor.js";
 import { useCrossNavigation } from "../hooks/useCrossNavigation.js";
@@ -55,8 +58,14 @@ export function AppShell({
     displayMode,
     currentFilePath,
     currentProject,
-    compareEntryPath,
+    compareSource,
   } = state;
+
+  const projectRoot = currentProject?.rootPath ?? null;
+  const snapshotManager = useMemo(
+    () => (projectRoot ? new SnapshotManager(fs, projectRoot) : null),
+    [fs, projectRoot],
+  );
 
   const [isAllLayersOpen, setIsAllLayersOpen] = useState(false);
   const [previewFocused, setPreviewFocused] = useState(false);
@@ -74,9 +83,13 @@ export function AppShell({
     dispatch,
     isOrgTreeViewOpen,
     setIsOrgTreeViewOpen,
-    compareEntryPath,
+    compareSource,
+    snapshotManager,
+    projectRoot,
   });
   const { recompile, navigateViewPath, navigateActiveView } = views;
+
+  useSnapshotAutoCapture(snapshotManager, projectRoot, currentFilePath, fileContent);
 
   // Expose recompile to parent via ref (used by ServeModeApp for SSE-driven updates)
   if (recompileRef) {
@@ -291,11 +304,12 @@ export function AppShell({
         />
       )}
       <PreviewProvider value={previewContextValue}>
-        {compareEntryPath && (
+        {compareSource && (
           <DiffModeBanner
-            comparePath={compareEntryPath}
+            source={compareSource}
+            snapshotManager={snapshotManager}
             currentPath={currentFilePath}
-            onExit={() => dispatch({ type: "SET_COMPARE_ENTRY_PATH", path: null })}
+            onExit={() => dispatch({ type: "SET_COMPARE_SOURCE", source: null })}
           />
         )}
         <PreviewColumn />
@@ -305,20 +319,46 @@ export function AppShell({
 }
 
 function DiffModeBanner({
-  comparePath,
+  source,
+  snapshotManager,
   currentPath,
   onExit,
 }: {
-  comparePath: string;
+  source: CompareSource;
+  snapshotManager: SnapshotManager | null;
   currentPath: string | null;
   onExit: () => void;
 }) {
   const baseName = (p: string) => p.split("/").pop() ?? p;
+  const [snapshotRecord, setSnapshotRecord] = useState<SnapshotRecord | null>(null);
+
+  useEffect(() => {
+    if (source.kind !== "snapshot" || !snapshotManager) {
+      setSnapshotRecord(null);
+      return;
+    }
+    let cancelled = false;
+    snapshotManager.list(source.filePath).then((records) => {
+      if (cancelled) return;
+      setSnapshotRecord(records.find((r) => r.id === source.snapshotId) ?? null);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [source, snapshotManager]);
+
+  const beforeLabel =
+    source.kind === "file"
+      ? baseName(source.path)
+      : snapshotRecord
+        ? formatSnapshotLabel(snapshotRecord)
+        : `${baseName(source.filePath)} @ ...`;
+
   return (
     <div className="diff-mode-banner" role="status" aria-label="Diff mode active">
       <span className="diff-mode-banner__label">
         ⇄ Diff:&nbsp;
-        <span className="diff-mode-banner__before">{baseName(comparePath)}</span>
+        <span className="diff-mode-banner__before">{beforeLabel}</span>
         &nbsp;→&nbsp;
         <span className="diff-mode-banner__after">
           {currentPath ? baseName(currentPath) : "(current)"}
@@ -334,4 +374,11 @@ function DiffModeBanner({
       </button>
     </div>
   );
+}
+
+function formatSnapshotLabel(record: SnapshotRecord): string {
+  const base = record.filePath.split("/").pop() ?? record.filePath;
+  const when = new Date(record.createdAt).toLocaleString();
+  const tag = record.label ? ` "${record.label}"` : record.trigger === "auto" ? " (auto)" : "";
+  return `${base} @ ${when}${tag}`;
 }
