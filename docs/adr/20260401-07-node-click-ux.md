@@ -3,6 +3,7 @@ id: ADR-20260401-07
 title: ノードクリック UX — ドリルダウンと Cmd/Ctrl+Click エディタジャンプ
 status: accepted
 date: 2026-04-01
+topic: navigation
 depends_on:
   - ADR-20260320-01
 related_to:

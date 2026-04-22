@@ -3,6 +3,7 @@ id: ADR-20260419-01
 title: "`translate --from db` のデフォルトを集約ルート単位のテーブル集約に変更する"
 status: accepted
 date: 2026-04-19
+topic: cli
 depends_on:
   - ADR-20260409-02
 related_to:

@@ -3,6 +3,7 @@ id: ADR-20260325-01
 title: コンポーネントテストに @testing-library/react を採用する
 status: accepted
 date: 2026-03-25
+topic: testing
 related_to:
   - ADR-20260324-01
 scope:

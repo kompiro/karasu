@@ -3,6 +3,7 @@ id: ADR-20260420-02
 title: グラフィカル diff ビューア
 status: accepted
 date: 2026-04-20
+topic: app-ui
 scope:
   packages:
     - app

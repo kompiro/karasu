@@ -35,6 +35,7 @@ describe("validateDirectory", () => {
         `id: ADR-20260101-01
 title: Sample
 status: accepted
+topic: core-concepts
 date: 2026-01-01`,
         "ADR-20260101-01: Sample",
       ),
@@ -57,10 +58,36 @@ date: 2026-01-01`,
       adr(`id: ADR-20260101-01
 title: Sample
 status: wip
+topic: core-concepts
 date: 2026-01-01`),
     );
     const result = validateDirectory(tmp);
     expect(result.errors.some((e) => e.includes("status"))).toBe(true);
+  });
+
+  it("rejects invalid topic", () => {
+    write(
+      "20260101-01-sample.md",
+      adr(`id: ADR-20260101-01
+title: Sample
+status: accepted
+topic: nonexistent
+date: 2026-01-01`),
+    );
+    const result = validateDirectory(tmp);
+    expect(result.errors.some((e) => e.includes("topic"))).toBe(true);
+  });
+
+  it("rejects missing topic", () => {
+    write(
+      "20260101-01-sample.md",
+      adr(`id: ADR-20260101-01
+title: Sample
+status: accepted
+date: 2026-01-01`),
+    );
+    const result = validateDirectory(tmp);
+    expect(result.errors.some((e) => e.includes("topic"))).toBe(true);
   });
 
   it("rejects id mismatch with filename", () => {
@@ -69,6 +96,7 @@ date: 2026-01-01`),
       adr(`id: ADR-20260101-99
 title: Sample
 status: accepted
+topic: core-concepts
 date: 2026-01-01`),
     );
     const result = validateDirectory(tmp);
@@ -81,6 +109,7 @@ date: 2026-01-01`),
       adr(`id: ADR-20260101-01
 title: Sample
 status: superseded
+topic: core-concepts
 date: 2026-01-01`),
     );
     const result = validateDirectory(tmp);
@@ -93,6 +122,7 @@ date: 2026-01-01`),
       adr(`id: ADR-20260101-01
 title: Sample
 status: accepted
+topic: core-concepts
 date: 2026-01-01
 superseded_by: ADR-20260102-01`),
     );
@@ -106,6 +136,7 @@ superseded_by: ADR-20260102-01`),
       adr(`id: ADR-20260101-01
 title: Old
 status: superseded
+topic: core-concepts
 date: 2026-01-01
 superseded_by: ADR-20260102-01`),
     );
@@ -114,6 +145,7 @@ superseded_by: ADR-20260102-01`),
       adr(`id: ADR-20260102-01
 title: New
 status: accepted
+topic: core-concepts
 date: 2026-01-02`),
     );
     const result = validateDirectory(tmp);
@@ -128,6 +160,7 @@ date: 2026-01-02`),
       adr(`id: ADR-20260101-01
 title: Old
 status: superseded
+topic: core-concepts
 date: 2026-01-01
 superseded_by: ADR-20260102-01`),
     );
@@ -136,6 +169,7 @@ superseded_by: ADR-20260102-01`),
       adr(`id: ADR-20260102-01
 title: New
 status: accepted
+topic: core-concepts
 date: 2026-01-02
 supersedes:
   - ADR-20260101-01`),
@@ -150,6 +184,7 @@ supersedes:
       adr(`id: ADR-20260101-01
 title: Sample
 status: accepted
+topic: core-concepts
 date: 2026-01-01
 depends_on:
   - ADR-99999999-01`),
@@ -165,6 +200,7 @@ depends_on:
       adr(`id: ADR-20260101-01
 title: A
 status: accepted
+topic: core-concepts
 date: 2026-01-01
 depends_on:
   - ADR-20260101-02`),
@@ -174,6 +210,7 @@ depends_on:
       adr(`id: ADR-20260101-02
 title: B
 status: accepted
+topic: core-concepts
 date: 2026-01-01
 depends_on:
   - ADR-20260101-01`),
@@ -188,6 +225,7 @@ depends_on:
       adr(`id: ADR-20260101-01
 title: A
 status: accepted
+topic: core-concepts
 date: 2026-01-01
 refines:
   - ADR-20260101-02`),
@@ -197,6 +235,7 @@ refines:
       adr(`id: ADR-20260101-02
 title: B
 status: accepted
+topic: core-concepts
 date: 2026-01-01
 refines:
   - ADR-20260101-01`),
@@ -211,6 +250,7 @@ refines:
       adr(`id: ADR-20260101-01
 title: Old
 status: superseded
+topic: core-concepts
 date: 2026-01-01
 superseded_by: ADR-20260101-02`),
     );
@@ -219,6 +259,7 @@ superseded_by: ADR-20260101-02`),
       adr(`id: ADR-20260101-02
 title: New
 status: accepted
+topic: core-concepts
 date: 2026-01-01
 supersedes:
   - ADR-20260101-01`),
@@ -228,6 +269,7 @@ supersedes:
       adr(`id: ADR-20260102-01
 title: User
 status: accepted
+topic: core-concepts
 date: 2026-01-02
 depends_on:
   - ADR-20260101-01`),
@@ -245,6 +287,7 @@ depends_on:
         `id: ADR-20260101-01
 title: Sample
 status: accepted
+topic: core-concepts
 date: 2026-01-01`,
         "ADR-20260101-01: Something else",
       ),

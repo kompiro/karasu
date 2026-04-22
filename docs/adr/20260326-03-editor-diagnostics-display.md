@@ -3,6 +3,7 @@ id: ADR-20260326-03
 title: "Editor 診断表示 — Monaco マーカー + Preview エラーオーバーレイ"
 status: accepted
 date: 2026-03-26
+topic: app-ui
 depends_on:
   - ADR-20260320-01
 scope:

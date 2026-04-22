@@ -3,6 +3,7 @@ id: ADR-20260422-04
 title: トップレベル service / domain を `(Unassigned)` 擬似システムで描画する
 status: accepted
 date: 2026-04-22
+topic: renderer
 depends_on:
   - ADR-20260409-06
 scope:

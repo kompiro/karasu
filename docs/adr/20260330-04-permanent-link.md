@@ -3,6 +3,7 @@ id: ADR-20260330-04
 title: "Permanent Link — `nodePathIndex` と URL hash の 2 フェーズ実装"
 status: accepted
 date: 2026-03-30
+topic: navigation
 related_to:
   - ADR-20260404-05
 scope:

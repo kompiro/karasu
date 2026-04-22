@@ -3,6 +3,7 @@ id: ADR-20260320-02
 title: AST 再構成 — Discriminated Union とプロパティブロック
 status: accepted
 date: 2026-03-20
+topic: parser
 scope:
   packages:
     - core

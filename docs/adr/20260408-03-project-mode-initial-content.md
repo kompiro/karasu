@@ -3,6 +3,7 @@ id: ADR-20260408-03
 title: "ProjectMode 初期コンテンツ — `examples/ec-platform` からの自動生成"
 status: accepted
 date: 2026-04-08
+topic: app-ui
 scope:
   packages:
     - app

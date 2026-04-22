@@ -3,6 +3,7 @@ id: ADR-20260326-02
 title: "MemoryMode と ProjectMode の統一 — Reducer + `KarasuPreviewColumn`"
 status: accepted
 date: 2026-03-26
+topic: app-ui
 related_to:
   - ADR-20260324-01
   - ADR-20260325-01

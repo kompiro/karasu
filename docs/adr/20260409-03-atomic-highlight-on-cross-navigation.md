@@ -3,6 +3,7 @@ id: ADR-20260409-03
 title: クロスナビゲーション時のアトミックなハイライト適用
 status: accepted
 date: 2026-04-09
+topic: navigation
 depends_on:
   - ADR-20260320-01
 scope:

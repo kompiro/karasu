@@ -3,6 +3,7 @@ id: ADR-20260413-03
 title: DetailPanel は常に1つだけ表示する
 status: accepted
 date: 2026-04-13
+topic: app-ui
 related_to:
   - ADR-20260422-03
 scope:

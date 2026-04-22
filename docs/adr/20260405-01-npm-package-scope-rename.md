@@ -3,6 +3,7 @@ id: ADR-20260405-01
 title: "npm パッケージスコープを @karasu-tools/* に変更"
 status: accepted
 date: 2026-04-05
+topic: build
 scope:
   domains:
     - build

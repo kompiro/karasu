@@ -3,6 +3,7 @@ id: ADR-20260320-01
 title: インタラクティブ SVG レンダリングと NodeDetailPanel
 status: accepted
 date: 2026-03-20
+topic: renderer
 depends_on:
   - ADR-20260320-02
   - ADR-20260317-01

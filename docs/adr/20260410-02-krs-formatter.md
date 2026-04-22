@@ -3,6 +3,7 @@ id: ADR-20260410-02
 title: "`.krs` フォーマッター — トークン列ベースでコメント保持"
 status: accepted
 date: 2026-04-10
+topic: parser
 scope:
   packages:
     - core

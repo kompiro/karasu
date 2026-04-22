@@ -3,6 +3,7 @@ id: ADR-20260329-02
 title: "KarasuPreviewColumn からの SVG エクスポート責務分離"
 status: accepted
 date: 2026-03-29
+topic: renderer
 depends_on:
   - ADR-20260328-02
 scope:

@@ -3,6 +3,7 @@ id: ADR-20260401-03
 title: "`compile()` API 統一 — Discriminated Union による戻り値型"
 status: accepted
 date: 2026-04-01
+topic: parser
 scope:
   packages:
     - core

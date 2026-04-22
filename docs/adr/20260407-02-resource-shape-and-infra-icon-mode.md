@@ -3,6 +3,7 @@ id: ADR-20260407-02
 title: resource shape 自動推論とインフラノード Icon Mode 対応
 status: accepted
 date: 2026-04-07
+topic: renderer
 depends_on:
   - ADR-20260405-05
   - ADR-20260328-03

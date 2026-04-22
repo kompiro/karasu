@@ -3,6 +3,7 @@ id: ADR-20260401-05
 title: VSCode Phase 3.5 — Webview ドリルダウンナビゲーション
 status: accepted
 date: 2026-04-01
+topic: vscode
 depends_on:
   - ADR-20260401-04
   - ADR-20260320-01

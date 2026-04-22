@@ -3,6 +3,7 @@ id: ADR-20260323-03
 title: Organization 図（organization / team / member）の追加
 status: accepted
 date: 2026-03-23
+topic: core-concepts
 depends_on:
   - ADR-20260312-03
 scope:

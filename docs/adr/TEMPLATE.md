@@ -3,6 +3,10 @@ id: ADR-YYYYMMDD-NN
 title: Short human-readable title (matches body H1 after the `:`)
 status: accepted
 date: YYYY-MM-DD
+# topic must match one of the section headings in docs/adr/README.md:
+# core-concepts | parser | resolver | renderer | edges | styling |
+# navigation | app-ui | project | chat-ai | cli | vscode | testing | build
+topic: core-concepts
 # authors: [your-handle]
 
 # --- Relationships (all optional; leave as empty arrays if unused) ---
@@ -52,6 +56,7 @@ Alternatives considered and rejected (only when useful for posterity).
 ## Frontmatter reference
 
 - `status` must be one of: `proposed` | `accepted` | `deprecated` | `superseded` | `not_adopted`.
+- `topic` is required and must be one of the controlled values listed above (matches `docs/adr/README.md` section headings).
 - `id` must equal `ADR-<YYYYMMDD>-<NN>` derived from the filename.
 - The body H1 heading must match `ADR-<id>: <title>` from frontmatter.
 - When `status: superseded`, `superseded_by` is required **and** the new ADR must list this ID in its `supersedes`. The validator enforces bidirectional consistency.

@@ -3,6 +3,7 @@ id: ADR-20260408-01
 title: Trunk-Based Development with Release Toggles
 status: accepted
 date: 2026-04-08
+topic: build
 related_to:
   - ADR-20260326-01
 scope:

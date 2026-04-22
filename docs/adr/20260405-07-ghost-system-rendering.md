@@ -3,6 +3,7 @@ id: ADR-20260405-07
 title: クロスシステム参照の Ghost System レンダリング
 status: accepted
 date: 2026-04-05
+topic: renderer
 scope:
   packages:
     - core

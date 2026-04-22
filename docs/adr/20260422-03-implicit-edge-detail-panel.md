@@ -3,6 +3,7 @@ id: ADR-20260422-03
 title: 集約された暗黙エッジの詳細パネル — SVG 属性埋め込み方式
 status: accepted
 date: 2026-04-22
+topic: edges
 depends_on:
   - ADR-20260410-01
 scope:

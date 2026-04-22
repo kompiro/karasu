@@ -3,6 +3,7 @@ id: ADR-20260404-08
 title: "CLI `karasu render` コマンド"
 status: accepted
 date: 2026-04-04
+topic: cli
 depends_on:
   - ADR-20260401-02
 scope:

@@ -3,6 +3,7 @@ id: ADR-20260317-02
 title: "プロジェクトとファイルシステム抽象化 — `FileSystemProvider` + OPFS"
 status: accepted
 date: 2026-03-17
+topic: project
 scope:
   packages:
     - app

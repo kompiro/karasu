@@ -3,6 +3,7 @@ id: ADR-20260330-05
 title: VSCode 拡張 — LSP-first アーキテクチャと段階的フェーズ計画
 status: accepted
 date: 2026-03-30
+topic: vscode
 scope:
   packages:
     - lsp

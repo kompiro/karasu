@@ -3,6 +3,7 @@ id: ADR-20260411-05
 title: サービスドリルダウンビューでの Ghost Domain エッジ表示
 status: accepted
 date: 2026-04-11
+topic: edges
 depends_on:
   - ADR-20260410-01
 scope:

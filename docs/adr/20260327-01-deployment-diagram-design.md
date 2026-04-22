@@ -3,6 +3,7 @@ id: ADR-20260327-01
 title: Deployment Diagram Design Decisions
 status: accepted
 date: 2026-03-27
+topic: renderer
 scope:
   packages:
     - core

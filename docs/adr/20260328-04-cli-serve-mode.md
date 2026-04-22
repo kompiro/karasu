@@ -3,6 +3,7 @@ id: ADR-20260328-04
 title: "CLI `karasu serve` モード — ローカル `.krs` のリアルタイムプレビュー"
 status: accepted
 date: 2026-03-28
+topic: cli
 depends_on:
   - ADR-20260317-02
 scope:

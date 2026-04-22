@@ -3,6 +3,7 @@ id: ADR-20260317-01
 title: 2 レイヤレンダリングとドリルダウンナビゲーション
 status: accepted
 date: 2026-03-17
+topic: renderer
 scope:
   packages:
     - core

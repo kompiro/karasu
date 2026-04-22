@@ -3,6 +3,7 @@ id: ADR-20260409-08
 title: Chat UI Panel — 全体アーキテクチャと Phase 1 レイアウト
 status: accepted
 date: 2026-04-09
+topic: chat-ai
 depends_on:
   - ADR-20260407-04
 related_to:

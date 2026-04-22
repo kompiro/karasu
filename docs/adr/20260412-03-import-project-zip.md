@@ -3,6 +3,7 @@ id: ADR-20260412-03
 title: "Import Project from ZIP — `fflate` 再利用 + トップレベル除去"
 status: accepted
 date: 2026-04-12
+topic: project
 depends_on:
   - ADR-20260411-06
   - ADR-20260407-03

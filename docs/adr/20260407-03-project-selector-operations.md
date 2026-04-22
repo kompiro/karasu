@@ -3,6 +3,7 @@ id: ADR-20260407-03
 title: "ProjectSelector の Rename 操作 — インライン入力欄パターン"
 status: accepted
 date: 2026-04-07
+topic: app-ui
 depends_on:
   - ADR-20260317-02
 scope:

@@ -3,6 +3,7 @@ id: ADR-20260407-04
 title: Cloudflare Pages デプロイ基盤と BYOK AI 連携
 status: accepted
 date: 2026-04-07
+topic: chat-ai
 scope:
   packages:
     - app

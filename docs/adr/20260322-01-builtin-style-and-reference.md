@@ -3,6 +3,7 @@ id: ADR-20260322-01
 title: ビルトインスタイルの一元化と構造化リファレンス
 status: accepted
 date: 2026-03-22
+topic: styling
 scope:
   packages:
     - core

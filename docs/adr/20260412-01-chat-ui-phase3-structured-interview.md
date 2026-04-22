@@ -3,6 +3,7 @@ id: ADR-20260412-01
 title: Chat UI Phase 3 — 構造化インタビュープロンプトの実装方針
 status: accepted
 date: 2026-04-12
+topic: chat-ai
 depends_on:
   - ADR-20260409-01
   - ADR-20260409-08
