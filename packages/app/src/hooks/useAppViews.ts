@@ -16,6 +16,9 @@ import { useSystemView } from "./useSystemView.js";
 import { useDeployView } from "./useDeployView.js";
 import { useOrgView } from "./useOrgView.js";
 import { useHistoryNavigation } from "./useHistoryNavigation.js";
+import { useResolvedCompareSource } from "./useResolvedCompareSource.js";
+import type { CompareSource } from "../fs/compare-source.js";
+import type { SnapshotManager } from "../fs/snapshot-manager.js";
 
 interface UseAppViewsArgs {
   entryPath: string | null;
@@ -29,8 +32,21 @@ interface UseAppViewsArgs {
   dispatch: Dispatch<AppAction>;
   isOrgTreeViewOpen: boolean;
   setIsOrgTreeViewOpen: Dispatch<SetStateAction<boolean>>;
-  /** When set, system view renders a graphical diff of `entryPath` vs this path. */
-  compareEntryPath?: string | null;
+  /**
+   * Source to compare `entryPath` against in diff mode. Supports workspace files
+   * and OPFS history snapshots.
+   */
+  compareSource?: CompareSource | null;
+  /** Required when `compareSource.kind === "snapshot"`. */
+  snapshotManager?: SnapshotManager | null;
+  /** Required when `compareSource.kind === "snapshot"`. */
+  projectRoot?: string | null;
+  /**
+   * When true, the diff direction is flipped: the compare source becomes the
+   * after-side and the project entry becomes the before-side (Issue #765 A).
+   * Ignored while the compare source has not resolved yet.
+   */
+  swapped?: boolean;
 }
 
 interface SystemViewBundle {
@@ -104,8 +120,26 @@ export function useAppViews(args: UseAppViewsArgs): UseAppViewsResult {
     dispatch,
     isOrgTreeViewOpen,
     setIsOrgTreeViewOpen,
-    compareEntryPath = null,
+    compareSource = null,
+    snapshotManager = null,
+    projectRoot = null,
+    swapped = false,
   } = args;
+
+  const { compareEntryPath, compareFs } = useResolvedCompareSource(
+    compareSource,
+    fs,
+    snapshotManager,
+    projectRoot,
+  );
+
+  // Apply swap only once the compare source has resolved. While resolving,
+  // fall through to the un-swapped pair so the after-side keeps rendering.
+  const canSwap = swapped && compareEntryPath !== null && compareFs !== null;
+  const effEntryPath = canSwap ? compareEntryPath : entryPath;
+  const effFs = canSwap ? (compareFs as FileSystemProvider) : fs;
+  const effCompareEntryPath = canSwap ? entryPath : compareEntryPath;
+  const effCompareFs = canSwap ? fs : compareFs;
 
   const {
     svg: systemSvg,
@@ -117,7 +151,7 @@ export function useAppViews(args: UseAppViewsArgs): UseAppViewsResult {
     systems: resolvedSystems,
     nodeFileIndex,
     nodeDiff: systemNodeDiff,
-  } = useSystemView(entryPath, fs, viewPath, displayMode, compareEntryPath);
+  } = useSystemView(effEntryPath, effFs, viewPath, displayMode, effCompareEntryPath, effCompareFs);
 
   const {
     svg: deploySvg,
@@ -126,7 +160,14 @@ export function useAppViews(args: UseAppViewsArgs): UseAppViewsResult {
     nodeMetadata: deployNodeMetadata,
     deployBlocks,
     recompile: recompileDeploy,
-  } = useDeployView(entryPath, fs, selectedDeployBlockId, displayMode, compareEntryPath);
+  } = useDeployView(
+    effEntryPath,
+    effFs,
+    selectedDeployBlockId,
+    displayMode,
+    effCompareEntryPath,
+    effCompareFs,
+  );
 
   const {
     orgSvg,
@@ -138,7 +179,7 @@ export function useAppViews(args: UseAppViewsArgs): UseAppViewsResult {
     toggleTeamExpand,
     orgTreeSvg,
     orgTreeExportSvg,
-  } = useOrgView(entryPath, fs, viewPath, displayMode, compareEntryPath);
+  } = useOrgView(effEntryPath, effFs, viewPath, displayMode, effCompareEntryPath, effCompareFs);
 
   const teamPathIndex = useMemo(() => {
     const index = new Map<string, string[]>();

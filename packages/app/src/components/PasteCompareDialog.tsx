@@ -35,19 +35,19 @@ export function PasteCompareDialog(props: PasteCompareDialogProps) {
 
   return (
     <div
-      className="paste-compare-dialog-overlay"
+      className="dialog-overlay"
       role="dialog"
       aria-modal="true"
       aria-labelledby="paste-compare-dialog-title"
       onClick={onCancel}
     >
-      <div className="paste-compare-dialog" onClick={(e) => e.stopPropagation()}>
-        <header className="paste-compare-dialog__header">
-          <h2 id="paste-compare-dialog-title" className="paste-compare-dialog__title">
+      <div className="dialog dialog--paste-compare" onClick={(e) => e.stopPropagation()}>
+        <header>
+          <h2 id="paste-compare-dialog-title" className="dialog__title">
             {readOnly ? "⇄ Pasted .krs (preview)" : "⇄ Compare with pasted .krs"}
           </h2>
         </header>
-        <p className="paste-compare-dialog__hint">
+        <p className="dialog__subtitle">
           {readOnly
             ? "The .krs text used as the before-side of the current diff."
             : "Paste a .krs snippet to use as the before-side of the diff."}
@@ -62,7 +62,7 @@ export function PasteCompareDialog(props: PasteCompareDialogProps) {
           readOnly={readOnly}
           aria-label="Pasted .krs content"
         />
-        <footer className="paste-compare-dialog__footer">
+        <footer className="dialog__footer">
           <button
             type="button"
             className="toolbar-btn"

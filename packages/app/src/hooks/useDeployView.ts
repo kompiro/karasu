@@ -26,6 +26,7 @@ export function useDeployView(
   selectedDeployBlockId: string | null = null,
   displayMode?: DisplayMode,
   compareEntryPath: string | null = null,
+  compareFs: FileSystemProvider | null = null,
 ): DeployViewState & { recompile: () => void } {
   const [state, setState] = useState<DeployViewState>({
     svg: "",
@@ -67,7 +68,7 @@ export function useDeployView(
             compileDeployDiff({
               beforeEntryPath: compareEntryPath,
               afterEntryPath: entryPath,
-              fs,
+              fs: compareFs ?? fs,
               selectedDeployId: selectedDeployBlockId ?? undefined,
               displayMode,
             }),
@@ -151,6 +152,7 @@ export function useDeployView(
     selectedDeployBlockId,
     displayMode,
     compareEntryPath,
+    compareFs,
     // eslint-disable-next-line react-hooks/exhaustive-deps
     recompileCounter.current,
   ]);

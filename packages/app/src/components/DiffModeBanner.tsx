@@ -1,19 +1,26 @@
+import { useEffect, useState, type ReactNode } from "react";
+import type { CompareSource } from "../fs/compare-source.js";
+import type { SnapshotManager, SnapshotRecord } from "../fs/snapshot-manager.js";
+
 interface DiffModeBannerProps {
-  comparePath: string;
-  compareSource: "file" | "pasted" | null;
+  source: CompareSource;
+  snapshotManager: SnapshotManager | null;
   currentPath: string | null;
   /** When true, the compare side is rendered as the after-side (Issue #765). */
   swapped?: boolean;
   onExit: () => void;
   /** Fires when the user clicks "⇄ Swap" to flip the diff direction (Issue #765). */
   onSwap?: () => void;
-  /** Invoked when the user clicks "View pasted" — only rendered for pasted source (Issue #739). */
+  /**
+   * Invoked when the user clicks "View pasted" — only rendered for the pasted
+   * source (Issue #739).
+   */
   onViewPasted?: () => void;
 }
 
 export function DiffModeBanner({
-  comparePath,
-  compareSource,
+  source,
+  snapshotManager,
   currentPath,
   swapped = false,
   onExit,
@@ -21,17 +28,36 @@ export function DiffModeBanner({
   onViewPasted,
 }: DiffModeBannerProps) {
   const baseName = (p: string) => p.split("/").pop() ?? p;
-  const isPasted = compareSource === "pasted";
+  const [snapshotRecord, setSnapshotRecord] = useState<SnapshotRecord | null>(null);
 
-  const compareLabel = isPasted ? (
+  useEffect(() => {
+    if (source.kind !== "snapshot" || !snapshotManager) {
+      setSnapshotRecord(null);
+      return;
+    }
+    let cancelled = false;
+    snapshotManager.list(source.filePath).then((records) => {
+      if (cancelled) return;
+      setSnapshotRecord(records.find((r) => r.id === source.snapshotId) ?? null);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [source, snapshotManager]);
+
+  const isPasted = source.kind === "pasted";
+
+  const compareLabel: ReactNode = isPasted ? (
     <span className="diff-mode-banner__pasted">pasted</span>
+  ) : source.kind === "snapshot" ? (
+    <span>
+      {snapshotRecord ? formatSnapshotLabel(snapshotRecord) : `${baseName(source.filePath)} @ ...`}
+    </span>
   ) : (
-    <span>{baseName(comparePath)}</span>
+    <span>{baseName(source.path)}</span>
   );
-  const currentLabel = <span>{currentPath ? baseName(currentPath) : "(current)"}</span>;
+  const currentLabel: ReactNode = <span>{currentPath ? baseName(currentPath) : "(current)"}</span>;
 
-  const beforeClass = "diff-mode-banner__before";
-  const afterClass = "diff-mode-banner__after";
   const before = swapped ? currentLabel : compareLabel;
   const after = swapped ? compareLabel : currentLabel;
 
@@ -39,9 +65,9 @@ export function DiffModeBanner({
     <div className="diff-mode-banner" role="status" aria-label="Diff mode active">
       <span className="diff-mode-banner__label">
         ⇄ Diff:&nbsp;
-        <span className={beforeClass}>{before}</span>
+        <span className="diff-mode-banner__before">{before}</span>
         &nbsp;→&nbsp;
-        <span className={afterClass}>{after}</span>
+        <span className="diff-mode-banner__after">{after}</span>
       </span>
       <div className="diff-mode-banner__actions">
         {onSwap && (
@@ -76,4 +102,11 @@ export function DiffModeBanner({
       </div>
     </div>
   );
+}
+
+function formatSnapshotLabel(record: SnapshotRecord): string {
+  const base = record.filePath.split("/").pop() ?? record.filePath;
+  const when = new Date(record.createdAt).toLocaleString();
+  const tag = record.label ? ` "${record.label}"` : record.trigger === "auto" ? " (auto)" : "";
+  return `${base} @ ${when}${tag}`;
 }

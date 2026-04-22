@@ -1,3 +1,19 @@
+---
+id: ADR-20260411-06
+title: "Export Project as ZIP — `fflate` による OPFS エクスポート"
+status: accepted
+date: 2026-04-11
+depends_on:
+  - ADR-20260317-02
+  - ADR-20260407-03
+scope:
+  packages:
+    - app
+  domains:
+    - project
+    - export
+---
+
 # ADR-20260411-06: Export Project as ZIP — `fflate` による OPFS エクスポート
 
 - **日付**: 2026-04-11

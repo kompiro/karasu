@@ -1,3 +1,16 @@
+---
+id: ADR-20260401-01
+title: Adopt marked for Markdown rendering and chokidar for file watching
+status: accepted
+date: 2026-04-01
+scope:
+  packages:
+    - core
+    - cli
+  domains:
+    - dependencies
+---
+
 # ADR-20260401-01: Adopt marked for Markdown rendering and chokidar for file watching
 
 ## Status

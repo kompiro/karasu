@@ -4,12 +4,15 @@ import type { FileTreeNode } from "../components/file-tree/types.js";
 /**
  * Reads a single directory level and returns collapsed (unexpanded) nodes.
  * Returns [] on read failure (path missing, permission error, etc.).
+ *
+ * Hides dot-prefixed entries: `.snapshots/` (Issue #740), `.karasu-paste-compare.krs`
+ * (Issue #739), and any other hidden state the app may put inside a project tree.
  */
 export async function loadDir(dirPath: string, fs: FileSystemProvider): Promise<FileTreeNode[]> {
   try {
     const entries = await fs.readDir(dirPath);
     return entries
-      .filter((entry: DirEntry) => !entry.name.startsWith(".karasu-"))
+      .filter((entry: DirEntry) => !entry.name.startsWith("."))
       .map((entry: DirEntry) => ({
         name: entry.name,
         path: `${dirPath}/${entry.name}`,

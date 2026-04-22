@@ -44,11 +44,10 @@ date: 2026-01-01`,
     expect(result.parsed).toHaveLength(1);
   });
 
-  it("skips files without frontmatter", () => {
+  it("rejects files without frontmatter", () => {
     write("20260101-01-legacy.md", "# legacy\n\nno frontmatter\n");
     const result = validateDirectory(tmp);
-    expect(result.errors).toEqual([]);
-    expect(result.skipped).toHaveLength(1);
+    expect(result.errors.some((e) => e.includes("missing YAML frontmatter"))).toBe(true);
     expect(result.parsed).toHaveLength(0);
   });
 
@@ -206,7 +205,7 @@ refines:
     expect(result.errors.some((e) => e.includes("refines cycle"))).toBe(true);
   });
 
-  it("warns when accepted depends_on superseded", () => {
+  it("errors when accepted depends_on superseded", () => {
     write(
       "20260101-01-old.md",
       adr(`id: ADR-20260101-01
@@ -235,7 +234,7 @@ depends_on:
     );
     const result = validateDirectory(tmp);
     expect(
-      result.warnings.some((w) => w.includes("depends_on") && w.includes("status=superseded")),
+      result.errors.some((e) => e.includes("depends_on") && e.includes("status=superseded")),
     ).toBe(true);
   });
 

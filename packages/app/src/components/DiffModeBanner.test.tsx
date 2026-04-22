@@ -6,11 +6,11 @@ import { DiffModeBanner } from "./DiffModeBanner.js";
 afterEach(cleanup);
 
 describe("DiffModeBanner", () => {
-  it("renders the compare file basename when source is 'file'", () => {
+  it("renders the compare file basename when source kind is 'file'", () => {
     const { getByText, queryByText, queryByLabelText } = render(
       <DiffModeBanner
-        comparePath="/projects/abc/before.krs"
-        compareSource="file"
+        source={{ kind: "file", path: "/projects/abc/before.krs" }}
+        snapshotManager={null}
         currentPath="/projects/abc/index.krs"
         onExit={() => {}}
       />,
@@ -21,18 +21,17 @@ describe("DiffModeBanner", () => {
     expect(queryByLabelText("View pasted .krs")).toBeNull();
   });
 
-  it("renders 'pasted' label and View pasted button when source is 'pasted'", () => {
+  it("renders 'pasted' label and View pasted button when source kind is 'pasted'", () => {
     const onViewPasted = vi.fn<() => void>();
     const { getByText, getByLabelText, queryByText } = render(
       <DiffModeBanner
-        comparePath="/projects/abc/.karasu-paste-compare.krs"
-        compareSource="pasted"
+        source={{ kind: "pasted", path: "/projects/abc/.karasu-paste-compare.krs" }}
+        snapshotManager={null}
         currentPath="/projects/abc/index.krs"
         onExit={() => {}}
         onViewPasted={onViewPasted}
       />,
     );
-    // The pasted label replaces the file basename on the before-side.
     expect(getByText("pasted")).toBeDefined();
     expect(queryByText(".karasu-paste-compare.krs")).toBeNull();
 
@@ -43,8 +42,8 @@ describe("DiffModeBanner", () => {
   it("omits the View pasted button when source is 'pasted' but onViewPasted is not supplied", () => {
     const { queryByLabelText } = render(
       <DiffModeBanner
-        comparePath="/projects/abc/.karasu-paste-compare.krs"
-        compareSource="pasted"
+        source={{ kind: "pasted", path: "/projects/abc/.karasu-paste-compare.krs" }}
+        snapshotManager={null}
         currentPath="/projects/abc/index.krs"
         onExit={() => {}}
       />,
@@ -56,8 +55,8 @@ describe("DiffModeBanner", () => {
     const onSwap = vi.fn<() => void>();
     const { getByLabelText } = render(
       <DiffModeBanner
-        comparePath="/a/before.krs"
-        compareSource="file"
+        source={{ kind: "file", path: "/a/before.krs" }}
+        snapshotManager={null}
         currentPath="/a/index.krs"
         onExit={() => {}}
         onSwap={onSwap}
@@ -72,8 +71,8 @@ describe("DiffModeBanner", () => {
   it("omits the Swap button when onSwap is not supplied", () => {
     const { queryByLabelText } = render(
       <DiffModeBanner
-        comparePath="/a/before.krs"
-        compareSource="file"
+        source={{ kind: "file", path: "/a/before.krs" }}
+        snapshotManager={null}
         currentPath="/a/index.krs"
         onExit={() => {}}
       />,
@@ -84,8 +83,8 @@ describe("DiffModeBanner", () => {
   it("flips the before/after label order when swapped=true", () => {
     const { container, getByLabelText } = render(
       <DiffModeBanner
-        comparePath="/a/before.krs"
-        compareSource="file"
+        source={{ kind: "file", path: "/a/before.krs" }}
+        snapshotManager={null}
         currentPath="/a/index.krs"
         swapped
         onExit={() => {}}
@@ -103,8 +102,8 @@ describe("DiffModeBanner", () => {
     const onExit = vi.fn<() => void>();
     const { getByLabelText } = render(
       <DiffModeBanner
-        comparePath="/a/before.krs"
-        compareSource="file"
+        source={{ kind: "file", path: "/a/before.krs" }}
+        snapshotManager={null}
         currentPath="/a/index.krs"
         onExit={onExit}
       />,

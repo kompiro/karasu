@@ -1,3 +1,13 @@
+---
+id: ADR-20260404-02
+title: Do not rename Claude session to feature name in start-dev skill
+status: not_adopted
+date: 2026-04-04
+scope:
+  domains:
+    - tooling
+---
+
 # ADR-20260404-02: Do not rename Claude session to feature name in start-dev skill
 
 ## Status

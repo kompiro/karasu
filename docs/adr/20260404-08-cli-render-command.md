@@ -1,3 +1,18 @@
+---
+id: ADR-20260404-08
+title: "CLI `karasu render` コマンド"
+status: accepted
+date: 2026-04-04
+depends_on:
+  - ADR-20260401-02
+scope:
+  packages:
+    - cli
+  domains:
+    - cli
+    - export
+---
+
 # ADR-20260404-08: CLI `karasu render` コマンド
 
 - **日付**: 2026-04-04

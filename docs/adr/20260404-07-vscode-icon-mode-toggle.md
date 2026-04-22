@@ -1,3 +1,19 @@
+---
+id: ADR-20260404-07
+title: VSCode プレビュー Icon Mode トグル — Extension Host 管理 + postMessage
+status: accepted
+date: 2026-04-04
+depends_on:
+  - ADR-20260328-03
+  - ADR-20260330-05
+scope:
+  packages:
+    - vscode
+  domains:
+    - vscode
+    - icons
+---
+
 # ADR-20260404-07: VSCode プレビュー Icon Mode トグル — Extension Host 管理 + postMessage
 
 - **日付**: 2026-04-04

@@ -1,3 +1,19 @@
+---
+id: ADR-20260326-04
+title: "`packages/app` のテスト戦略 — `@testing-library/react` + renderHook + ARIA"
+status: accepted
+date: 2026-03-26
+depends_on:
+  - ADR-20260325-01
+related_to:
+  - ADR-20260324-01
+scope:
+  packages:
+    - app
+  domains:
+    - testing
+---
+
 # ADR-20260326-04: `packages/app` のテスト戦略 — `@testing-library/react` + renderHook + ARIA
 
 - **日付**: 2026-03-26

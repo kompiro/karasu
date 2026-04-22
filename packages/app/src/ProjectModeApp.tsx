@@ -1,10 +1,12 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ProjectSelector } from "./components/ProjectSelector.js";
 import { FileTree } from "./components/FileTree.js";
 import { AppShell } from "./components/AppShell.js";
 import { PasteCompareDialog } from "./components/PasteCompareDialog.js";
+import { SnapshotPickerModal } from "./components/SnapshotPickerModal.js";
 import { useAppContext } from "./state/app-context.js";
 import { ProjectManager } from "./fs/project-manager.js";
+import { SnapshotManager } from "./fs/snapshot-manager.js";
 import { useProjectNavigation } from "./hooks/useProjectNavigation.js";
 import { useFileSelection } from "./hooks/useFileSelection.js";
 import { useProjectInitialization } from "./hooks/useProjectInitialization.js";
@@ -22,28 +24,35 @@ export function ProjectModeApp() {
   const pmRef = useRef(new ProjectManager(fs));
   const pm = pmRef.current;
 
-  const { currentProject, projects, currentFilePath, loading, compareEntryPath, compareSource } =
-    state;
+  const { currentProject, projects, currentFilePath, fileContent, loading, compareSource } = state;
+
+  const projectRoot = currentProject?.rootPath ?? null;
+  const snapshotManager = useMemo(
+    () => (projectRoot ? new SnapshotManager(fs, projectRoot) : null),
+    [fs, projectRoot],
+  );
+
   const [pasteDialog, setPasteDialog] = useState<
     { mode: "edit"; initial: string } | { mode: "view"; content: string } | null
   >(null);
+  const [pickerFilePath, setPickerFilePath] = useState<string | null>(null);
 
   // Hidden file path within the project used to hold a pasted .krs blob while
-  // diff mode is active (Issue #739). The file-tree loader filters `.karasu-*`
-  // so it does not surface to the user.
-  const pastedPath = currentProject ? `${currentProject.rootPath}/.karasu-paste-compare.krs` : null;
+  // diff mode is active (Issue #739). The file-tree loader hides dot-prefixed
+  // entries so it does not surface to the user.
+  const pastedPath = projectRoot ? `${projectRoot}/.karasu-paste-compare.krs` : null;
 
   // Clean up the temp pasted file whenever diff mode exits (or the source is
   // no longer "pasted"). Keeps the OPFS clean across project switches.
   useEffect(() => {
     if (!pastedPath) return;
-    if (compareSource === "pasted" && compareEntryPath === pastedPath) return;
+    if (compareSource?.kind === "pasted" && compareSource.path === pastedPath) return;
     void (async () => {
       if (await fs.exists(pastedPath)) {
         await fs.delete(pastedPath);
       }
     })();
-  }, [fs, pastedPath, compareSource, compareEntryPath]);
+  }, [fs, pastedPath, compareSource]);
 
   // エントリパスを計算（現在のプロジェクトの index.krs）
   const entryPath = currentProject ? `${currentProject.rootPath}/index.krs` : null;
@@ -143,7 +152,7 @@ export function ProjectModeApp() {
 
   const handleCompareWithCurrent = useCallback(
     (path: string) => {
-      dispatch({ type: "SET_COMPARE_ENTRY_PATH", path, source: "file" });
+      dispatch({ type: "SET_COMPARE_SOURCE", source: { kind: "file", path } });
     },
     [dispatch],
   );
@@ -162,11 +171,33 @@ export function ProjectModeApp() {
     async (content: string) => {
       if (!pastedPath) return;
       await fs.writeFile(pastedPath, content);
-      dispatch({ type: "SET_COMPARE_ENTRY_PATH", path: pastedPath, source: "pasted" });
+      dispatch({
+        type: "SET_COMPARE_SOURCE",
+        source: { kind: "pasted", path: pastedPath },
+      });
       setPasteDialog(null);
     },
     [fs, pastedPath, dispatch],
   );
+
+  const handleSnapshotNow = useCallback(
+    async (path: string) => {
+      if (!snapshotManager || !projectRoot || !path.startsWith(`${projectRoot}/`)) return;
+      const relPath = path.slice(projectRoot.length + 1);
+      const label = window.prompt("Label this snapshot (optional):") ?? undefined;
+      const content =
+        path === currentFilePath ? fileContent : await fs.readFile(path).catch(() => "");
+      await snapshotManager.capture(relPath, content, {
+        trigger: "manual",
+        label: label || undefined,
+      });
+    },
+    [snapshotManager, projectRoot, currentFilePath, fileContent, fs],
+  );
+
+  const handleCompareWithSnapshot = useCallback((path: string) => {
+    setPickerFilePath(path);
+  }, []);
 
   if (loading || !currentProject) {
     return <div className="app-loading">Loading...</div>;
@@ -196,8 +227,15 @@ export function ProjectModeApp() {
       onFileRenamed={handleFileRenamed}
       onCompareWithCurrent={ENABLE_DIFF_VIEWER ? handleCompareWithCurrent : undefined}
       onCompareWithPaste={ENABLE_DIFF_VIEWER ? handleOpenPasteDialog : undefined}
+      onSnapshotNow={ENABLE_DIFF_VIEWER ? handleSnapshotNow : undefined}
+      onCompareWithSnapshot={ENABLE_DIFF_VIEWER ? handleCompareWithSnapshot : undefined}
     />
   ) : undefined;
+
+  const pickerRelPath =
+    pickerFilePath && projectRoot && pickerFilePath.startsWith(`${projectRoot}/`)
+      ? pickerFilePath.slice(projectRoot.length + 1)
+      : null;
 
   return (
     <>
@@ -205,7 +243,7 @@ export function ProjectModeApp() {
         entryPath={entryPath}
         sidebarHeaderContent={sidebarHeader}
         sidebarContent={sidebarContent}
-        onViewPasted={compareSource === "pasted" ? handleViewPasted : undefined}
+        onViewPasted={compareSource?.kind === "pasted" ? handleViewPasted : undefined}
       />
       {pasteDialog?.mode === "edit" && (
         <PasteCompareDialog
@@ -219,6 +257,21 @@ export function ProjectModeApp() {
           initialValue={pasteDialog.content}
           readOnly
           onCancel={() => setPasteDialog(null)}
+        />
+      )}
+      {pickerFilePath && pickerRelPath && snapshotManager && (
+        <SnapshotPickerModal
+          snapshots={snapshotManager}
+          filePath={pickerRelPath}
+          fileBasename={pickerRelPath.split("/").pop() ?? pickerRelPath}
+          onSelect={(record) => {
+            dispatch({
+              type: "SET_COMPARE_SOURCE",
+              source: { kind: "snapshot", filePath: pickerRelPath, snapshotId: record.id },
+            });
+            setPickerFilePath(null);
+          }}
+          onClose={() => setPickerFilePath(null)}
         />
       )}
     </>

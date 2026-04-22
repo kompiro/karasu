@@ -1,3 +1,18 @@
+---
+id: ADR-20260409-02
+title: "CLI `karasu translate` コマンドと複数 realizes 対応"
+status: accepted
+date: 2026-04-09
+depends_on:
+  - ADR-20260404-08
+scope:
+  packages:
+    - cli
+  domains:
+    - cli
+    - translate
+---
+
 # ADR-20260409-02: CLI `karasu translate` コマンドと複数 realizes 対応
 
 - **日付**: 2026-04-09

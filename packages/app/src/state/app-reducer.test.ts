@@ -149,40 +149,39 @@ describe("appReducer — diff swap (Issue #765)", () => {
     expect(initialState.diffSwapped).toBe(false);
   });
 
-  it("TOGGLE_DIFF_SWAPPED flips the flag when a compare path is set", () => {
-    const state = stateWith({ compareEntryPath: "/p/before.krs", compareSource: "file" });
+  it("TOGGLE_DIFF_SWAPPED flips the flag when a compare source is set", () => {
+    const state = stateWith({
+      compareSource: { kind: "file", path: "/p/before.krs" },
+    });
     const next = appReducer(state, { type: "TOGGLE_DIFF_SWAPPED" });
     expect(next.diffSwapped).toBe(true);
     const back = appReducer(next, { type: "TOGGLE_DIFF_SWAPPED" });
     expect(back.diffSwapped).toBe(false);
   });
 
-  it("TOGGLE_DIFF_SWAPPED is a no-op when no compare path is set", () => {
+  it("TOGGLE_DIFF_SWAPPED is a no-op when no compare source is set", () => {
     const next = appReducer(initialState, { type: "TOGGLE_DIFF_SWAPPED" });
     expect(next.diffSwapped).toBe(false);
     expect(next).toBe(initialState);
   });
 
-  it("SET_COMPARE_ENTRY_PATH resets diffSwapped to false", () => {
+  it("SET_COMPARE_SOURCE resets diffSwapped to false", () => {
     const state = stateWith({
-      compareEntryPath: "/p/a.krs",
-      compareSource: "file",
+      compareSource: { kind: "file", path: "/p/a.krs" },
       diffSwapped: true,
     });
-    const exited = appReducer(state, { type: "SET_COMPARE_ENTRY_PATH", path: null });
+    const exited = appReducer(state, { type: "SET_COMPARE_SOURCE", source: null });
     expect(exited.diffSwapped).toBe(false);
     const switched = appReducer(state, {
-      type: "SET_COMPARE_ENTRY_PATH",
-      path: "/p/b.krs",
-      source: "file",
+      type: "SET_COMPARE_SOURCE",
+      source: { kind: "file", path: "/p/b.krs" },
     });
     expect(switched.diffSwapped).toBe(false);
   });
 
   it("SET_CURRENT_PROJECT resets diffSwapped to false", () => {
     const state = stateWith({
-      compareEntryPath: "/p/a.krs",
-      compareSource: "file",
+      compareSource: { kind: "file", path: "/p/a.krs" },
       diffSwapped: true,
     });
     const next = appReducer(state, { type: "SET_CURRENT_PROJECT", project: PROJECT });
