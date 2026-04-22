@@ -227,21 +227,28 @@ function crossValidate(parsed: ParsedAdr[], errors: string[], warnings: string[]
       );
     }
 
+    // Bidirectional supersede consistency. We only check from the superseded side
+    // (the ADR whose superseded_by is set) to avoid emitting the same broken-edge
+    // error from both files. The new ADR's `supersedes` list is validated transitively:
+    // if it omits the old ID, the old ADR's superseded_by check catches it.
+    if (p.fm.superseded_by) {
+      const target = byId.get(p.fm.superseded_by);
+      if (target && !(target.fm.supersedes ?? []).includes(p.id)) {
+        errors.push(
+          `${p.file}: superseded_by "${p.fm.superseded_by}" but that ADR does not list "${p.id}" in its supersedes`,
+        );
+      }
+    }
+
+    // Also catch the reverse: a `supersedes` entry whose target is not marked as superseded
+    // (either status differs or points somewhere else). This covers the case where the old
+    // ADR simply has no superseded_by at all.
     for (const supersededId of p.fm.supersedes ?? []) {
       const target = byId.get(supersededId);
       if (!target) continue;
       if (target.fm.superseded_by !== p.id) {
         errors.push(
           `${p.file}: supersedes "${supersededId}" but that ADR's superseded_by is ${JSON.stringify(target.fm.superseded_by)} (expected "${p.id}")`,
-        );
-      }
-    }
-
-    if (p.fm.superseded_by) {
-      const target = byId.get(p.fm.superseded_by);
-      if (target && !(target.fm.supersedes ?? []).includes(p.id)) {
-        errors.push(
-          `${p.file}: superseded_by "${p.fm.superseded_by}" but that ADR does not list "${p.id}" in its supersedes`,
         );
       }
     }
@@ -286,6 +293,8 @@ function detectCycle(
   byId: Map<string, ParsedAdr>,
   errors: string[],
 ): void {
+  // Tri-color DFS. WHITE=unvisited, GRAY=on current path (back-edge to GRAY means cycle),
+  // BLACK=fully explored. BLACK nodes are skipped by the explicit WHITE/GRAY checks below.
   const WHITE = 0;
   const GRAY = 1;
   const BLACK = 2;
