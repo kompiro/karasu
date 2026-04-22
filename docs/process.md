@@ -112,6 +112,7 @@ ready → implementing → in-review → (close)
 設計ドキュメントのステータスが「採用」または「取りやめ」に確定したら ADR を作成する。
 
 ADR の内容:
+- **Frontmatter**: `id` / `title` / `status` / `date` と、該当する関係性（`supersedes` / `depends_on` 等）を YAML frontmatter に記述する。雛形は `docs/adr/TEMPLATE.md` を参照。ローカル検証は `pnpm adr:validate`。
 - **背景**: なぜ検討することになったか
 - **決定**: 何を決めたか（一文で）
 - **理由**: 採用・見送りの根拠（箇条書き）
@@ -120,6 +121,8 @@ ADR の内容:
 設計ドキュメントに詳細な分析が残っている場合は、ADR 作成後に設計ドキュメントを削除する。
 （詳細は GitHub Issue のディスカッションや PR コメントで追えるため）
 
+Frontmatter スキーマ・関係性セマンティクス・バリデータの詳細は `docs/design/adr-knowledge-graph.md` を参照。
+
 ### 既存 ADR を見直すとき
 
 既に決定済みの ADR を覆す・方針変更する場合は、**旧 ADR を書き換えず新 ADR で supersede する**。
@@ -127,6 +130,7 @@ ADR の内容:
 - 旧 ADR はそのまま歴史的記録として残す
 - 新 ADR を作成し、背景に「何が変わったためこの再評価に至ったか」を明記する
 - 旧 ADR のステータス行を `決定済み` から `Superseded by ADR-YYYYMMDD-NN` に更新する
+- Frontmatter では旧 ADR を `status: superseded` + `superseded_by: ADR-YYYYMMDD-NN`、新 ADR を `supersedes: [旧 ADR ID]` とする。`pnpm adr:validate` が双方向整合をチェックする
 - 新 ADR の「関連」に旧 ADR へのリンクを記載する
 
 理由: ADR は時点の意思決定と根拠を保存するログであり、過去の判断が「当時は正しかった」
