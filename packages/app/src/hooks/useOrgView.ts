@@ -30,6 +30,7 @@ export function useOrgView(
   viewPath: ViewPath = [],
   displayMode?: DisplayMode,
   compareEntryPath: string | null = null,
+  compareFs: FileSystemProvider | null = null,
 ): OrgViewState & {
   recompile: () => void;
   expandedTeamIds: Set<string>;
@@ -86,7 +87,7 @@ export function useOrgView(
             compileOrgDiff({
               beforeEntryPath: compareEntryPath,
               afterEntryPath: entryPath,
-              fs,
+              fs: compareFs ?? fs,
               viewPath,
               displayMode,
             }),
@@ -139,7 +140,7 @@ export function useOrgView(
       if (timerRef.current) clearTimeout(timerRef.current);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [entryPath, fs, viewPath, displayMode, compareEntryPath, recompileCounter.current]);
+  }, [entryPath, fs, viewPath, displayMode, compareEntryPath, compareFs, recompileCounter.current]);
 
   const orgTreeSvg =
     state.organizations.length > 0

@@ -16,6 +16,9 @@ import { useSystemView } from "./useSystemView.js";
 import { useDeployView } from "./useDeployView.js";
 import { useOrgView } from "./useOrgView.js";
 import { useHistoryNavigation } from "./useHistoryNavigation.js";
+import { useResolvedCompareSource } from "./useResolvedCompareSource.js";
+import type { CompareSource } from "../fs/compare-source.js";
+import type { SnapshotManager } from "../fs/snapshot-manager.js";
 
 interface UseAppViewsArgs {
   entryPath: string | null;
@@ -29,8 +32,15 @@ interface UseAppViewsArgs {
   dispatch: Dispatch<AppAction>;
   isOrgTreeViewOpen: boolean;
   setIsOrgTreeViewOpen: Dispatch<SetStateAction<boolean>>;
-  /** When set, system view renders a graphical diff of `entryPath` vs this path. */
-  compareEntryPath?: string | null;
+  /**
+   * Source to compare `entryPath` against in diff mode. Supports workspace files
+   * and OPFS history snapshots.
+   */
+  compareSource?: CompareSource | null;
+  /** Required when `compareSource.kind === "snapshot"`. */
+  snapshotManager?: SnapshotManager | null;
+  /** Required when `compareSource.kind === "snapshot"`. */
+  projectRoot?: string | null;
 }
 
 interface SystemViewBundle {
@@ -104,8 +114,17 @@ export function useAppViews(args: UseAppViewsArgs): UseAppViewsResult {
     dispatch,
     isOrgTreeViewOpen,
     setIsOrgTreeViewOpen,
-    compareEntryPath = null,
+    compareSource = null,
+    snapshotManager = null,
+    projectRoot = null,
   } = args;
+
+  const { compareEntryPath, compareFs } = useResolvedCompareSource(
+    compareSource,
+    fs,
+    snapshotManager,
+    projectRoot,
+  );
 
   const {
     svg: systemSvg,
@@ -117,7 +136,7 @@ export function useAppViews(args: UseAppViewsArgs): UseAppViewsResult {
     systems: resolvedSystems,
     nodeFileIndex,
     nodeDiff: systemNodeDiff,
-  } = useSystemView(entryPath, fs, viewPath, displayMode, compareEntryPath);
+  } = useSystemView(entryPath, fs, viewPath, displayMode, compareEntryPath, compareFs);
 
   const {
     svg: deploySvg,
@@ -126,7 +145,7 @@ export function useAppViews(args: UseAppViewsArgs): UseAppViewsResult {
     nodeMetadata: deployNodeMetadata,
     deployBlocks,
     recompile: recompileDeploy,
-  } = useDeployView(entryPath, fs, selectedDeployBlockId, displayMode, compareEntryPath);
+  } = useDeployView(entryPath, fs, selectedDeployBlockId, displayMode, compareEntryPath, compareFs);
 
   const {
     orgSvg,
@@ -138,7 +157,7 @@ export function useAppViews(args: UseAppViewsArgs): UseAppViewsResult {
     toggleTeamExpand,
     orgTreeSvg,
     orgTreeExportSvg,
-  } = useOrgView(entryPath, fs, viewPath, displayMode, compareEntryPath);
+  } = useOrgView(entryPath, fs, viewPath, displayMode, compareEntryPath, compareFs);
 
   const teamPathIndex = useMemo(() => {
     const index = new Map<string, string[]>();

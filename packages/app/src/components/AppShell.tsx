@@ -1,5 +1,6 @@
 import { useCallback, useMemo, useState, type ReactNode, type RefObject } from "react";
 import { format, FormatError } from "@karasu-tools/core";
+import { SnapshotManager } from "../fs/snapshot-manager.js";
 import { EditArea } from "./EditArea.js";
 import { PreviewColumn } from "./PreviewColumn.js";
 import { downloadSvg } from "../utils/download-svg.js";
@@ -7,6 +8,7 @@ import { downloadDrawio } from "../utils/download-drawio.js";
 import { useAppContext } from "../state/app-context.js";
 import { PreviewProvider, type PreviewContextValue } from "../state/preview-context.js";
 import { useAppViews } from "../hooks/useAppViews.js";
+import { useSnapshotAutoCapture } from "../hooks/useSnapshotAutoCapture.js";
 import { useBreadcrumbs } from "../hooks/useBreadcrumbs.js";
 import { useJumpToEditor } from "../hooks/useJumpToEditor.js";
 import { useCrossNavigation } from "../hooks/useCrossNavigation.js";
@@ -62,9 +64,14 @@ export function AppShell({
     displayMode,
     currentFilePath,
     currentProject,
-    compareEntryPath,
     compareSource,
   } = state;
+
+  const projectRoot = currentProject?.rootPath ?? null;
+  const snapshotManager = useMemo(
+    () => (projectRoot ? new SnapshotManager(fs, projectRoot) : null),
+    [fs, projectRoot],
+  );
 
   const [isAllLayersOpen, setIsAllLayersOpen] = useState(false);
   const [previewFocused, setPreviewFocused] = useState(false);
@@ -82,9 +89,13 @@ export function AppShell({
     dispatch,
     isOrgTreeViewOpen,
     setIsOrgTreeViewOpen,
-    compareEntryPath,
+    compareSource,
+    snapshotManager,
+    projectRoot,
   });
   const { recompile, navigateViewPath, navigateActiveView } = views;
+
+  useSnapshotAutoCapture(snapshotManager, projectRoot, currentFilePath, fileContent);
 
   // Expose recompile to parent via ref (used by ServeModeApp for SSE-driven updates)
   if (recompileRef) {
@@ -299,12 +310,12 @@ export function AppShell({
         />
       )}
       <PreviewProvider value={previewContextValue}>
-        {compareEntryPath && (
+        {compareSource && (
           <DiffModeBanner
-            comparePath={compareEntryPath}
-            compareSource={compareSource}
+            source={compareSource}
+            snapshotManager={snapshotManager}
             currentPath={currentFilePath}
-            onExit={() => dispatch({ type: "SET_COMPARE_ENTRY_PATH", path: null })}
+            onExit={() => dispatch({ type: "SET_COMPARE_SOURCE", source: null })}
             onViewPasted={onViewPasted}
           />
         )}

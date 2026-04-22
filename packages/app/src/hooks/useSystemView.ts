@@ -89,6 +89,7 @@ export function useSystemView(
   viewPath: ViewPath = [],
   displayMode: DisplayMode = "shape",
   compareEntryPath: string | null = null,
+  compareFs: FileSystemProvider | null = null,
 ): SystemViewState & { recompile: () => void } {
   const [state, setState] = useState<SystemViewState>({
     svg: "",
@@ -129,7 +130,7 @@ export function useSystemView(
             compileSystemDiff({
               beforeEntryPath: compareEntryPath,
               afterEntryPath: entryPath,
-              fs,
+              fs: compareFs ?? fs,
               viewPath,
               displayMode,
             }),
@@ -222,7 +223,7 @@ export function useSystemView(
       if (timerRef.current) clearTimeout(timerRef.current);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [entryPath, fs, viewPath, displayMode, compareEntryPath, recompileCounter.current]);
+  }, [entryPath, fs, viewPath, displayMode, compareEntryPath, compareFs, recompileCounter.current]);
 
   return { ...state, recompile };
 }

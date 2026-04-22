@@ -1,4 +1,5 @@
 import type { Project, DirEntry, DisplayMode } from "@karasu-tools/core";
+import type { CompareSource } from "../fs/compare-source";
 
 export type ActiveView = "system" | "deploy" | "org";
 
@@ -21,18 +22,12 @@ export interface AppState {
   isAllLayersOpen: boolean;
   loading: boolean;
   /**
-   * Path of the file to compare the current file against in diff mode (Issue #650).
-   * When non-null, the system view renders a graphical diff between the current
-   * entry path and this path.
+   * Source to compare the current file against in diff mode
+   * (Issue #650 file source, #739 pasted source, #740 snapshot source).
+   * When non-null, diff views render a graphical diff between the current entry
+   * path and the resolved content of this source.
    */
-  compareEntryPath: string | null;
-  /**
-   * Source of the compare entry (Issue #739).
-   * - "file":   user picked a workspace file
-   * - "pasted": user pasted a .krs blob, which was written to a hidden temp file
-   * Null when diff mode is inactive.
-   */
-  compareSource: "file" | "pasted" | null;
+  compareSource: CompareSource | null;
 }
 
 export const initialState: AppState = {
@@ -48,7 +43,6 @@ export const initialState: AppState = {
   displayMode: "shape",
   isAllLayersOpen: false,
   loading: true,
-  compareEntryPath: null,
   compareSource: null,
 };
 
@@ -68,7 +62,7 @@ export type AppAction =
   | { type: "RENAME_PROJECT"; id: string; name: string }
   | { type: "SET_DISPLAY_MODE"; displayMode: DisplayMode }
   | { type: "SET_ALL_LAYERS_OPEN"; isAllLayersOpen: boolean }
-  | { type: "SET_COMPARE_ENTRY_PATH"; path: string | null; source?: "file" | "pasted" };
+  | { type: "SET_COMPARE_SOURCE"; source: CompareSource | null };
 
 export function appReducer(state: AppState, action: AppAction): AppState {
   switch (action.type) {
@@ -86,7 +80,6 @@ export function appReducer(state: AppState, action: AppAction): AppState {
         activeView: "system",
         selectedDeployBlockId: null,
         highlightedNodeId: null,
-        compareEntryPath: null,
         compareSource: null,
       };
 
@@ -156,12 +149,8 @@ export function appReducer(state: AppState, action: AppAction): AppState {
     case "SET_ALL_LAYERS_OPEN":
       return { ...state, isAllLayersOpen: action.isAllLayersOpen };
 
-    case "SET_COMPARE_ENTRY_PATH":
-      return {
-        ...state,
-        compareEntryPath: action.path,
-        compareSource: action.path ? (action.source ?? "file") : null,
-      };
+    case "SET_COMPARE_SOURCE":
+      return { ...state, compareSource: action.source };
 
     default:
       return state;
