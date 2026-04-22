@@ -1,4 +1,19 @@
-# ADR-20260330-02 — Toolbar Button Display Rules
+---
+id: ADR-20260330-02
+title: Toolbar Button Display Rules
+status: accepted
+date: 2026-03-30
+related_to:
+  - ADR-20260405-02
+scope:
+  packages:
+    - app
+  domains:
+    - ui
+    - toolbar
+---
+
+# ADR-20260330-02: Toolbar Button Display Rules
 
 **Date:** 2026-03-30
 **Status:** Partially superseded by [ADR 0022](20260405-02-toolbar-btn-actionable.md) (Rule #2 amended)

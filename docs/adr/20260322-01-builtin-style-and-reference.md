@@ -1,3 +1,15 @@
+---
+id: ADR-20260322-01
+title: ビルトインスタイルの一元化と構造化リファレンス
+status: accepted
+date: 2026-03-22
+scope:
+  packages:
+    - core
+  domains:
+    - styling
+---
+
 # ADR-20260322-01: ビルトインスタイルの一元化と構造化リファレンス
 
 - **日付**: 2026-03-22

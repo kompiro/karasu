@@ -1,3 +1,20 @@
+---
+id: ADR-20260401-07
+title: ノードクリック UX — ドリルダウンと Cmd/Ctrl+Click エディタジャンプ
+status: accepted
+date: 2026-04-01
+depends_on:
+  - ADR-20260320-01
+related_to:
+  - ADR-20260330-05
+scope:
+  packages:
+    - app
+  domains:
+    - navigation
+    - ui
+---
+
 # ADR-20260401-07: ノードクリック UX — ドリルダウンと Cmd/Ctrl+Click エディタジャンプ
 
 - **日付**: 2026-04-01

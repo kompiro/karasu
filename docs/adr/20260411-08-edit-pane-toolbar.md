@@ -1,3 +1,20 @@
+---
+id: ADR-20260411-08
+title: EditPaneToolbar — LeftPane アクションボタンの専用ツールバーへの集約
+status: accepted
+date: 2026-04-11
+depends_on:
+  - ADR-20260323-02
+related_to:
+  - ADR-20260411-04
+scope:
+  packages:
+    - app
+  domains:
+    - ui
+    - toolbar
+---
+
 # ADR-20260411-08: EditPaneToolbar — LeftPane アクションボタンの専用ツールバーへの集約
 
 - **日付**: 2026-04-11

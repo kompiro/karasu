@@ -1,4 +1,19 @@
-# ADR-20260405-02 — Toolbar Button Actionable Modifier Class
+---
+id: ADR-20260405-02
+title: Toolbar Button Actionable Modifier Class
+status: accepted
+date: 2026-04-05
+related_to:
+  - ADR-20260330-02
+scope:
+  packages:
+    - app
+  domains:
+    - ui
+    - toolbar
+---
+
+# ADR-20260405-02: Toolbar Button Actionable Modifier Class
 
 **Date:** 2026-04-05
 **Status:** Accepted

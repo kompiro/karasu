@@ -1,3 +1,15 @@
+---
+id: ADR-20260403-01
+title: "Drill-down 収集ロジック統一 — `HierarchyNode` 型 + 高階関数"
+status: accepted
+date: 2026-04-03
+scope:
+  packages:
+    - core
+  domains:
+    - navigation
+---
+
 # ADR-20260403-01: Drill-down 収集ロジック統一 — `HierarchyNode` 型 + 高階関数
 
 - **日付**: 2026-04-03

@@ -1,3 +1,16 @@
+---
+id: ADR-20260408-03
+title: "ProjectMode 初期コンテンツ — `examples/ec-platform` からの自動生成"
+status: accepted
+date: 2026-04-08
+scope:
+  packages:
+    - app
+  domains:
+    - ui
+    - project
+---
+
 # ADR-20260408-03: ProjectMode 初期コンテンツ — `examples/ec-platform` からの自動生成
 
 - **日付**: 2026-04-08
