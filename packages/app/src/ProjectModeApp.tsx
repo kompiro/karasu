@@ -1,9 +1,11 @@
-import { useCallback, useRef } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import { ProjectSelector } from "./components/ProjectSelector.js";
 import { FileTree } from "./components/FileTree.js";
 import { AppShell } from "./components/AppShell.js";
+import { SnapshotPickerModal } from "./components/SnapshotPickerModal.js";
 import { useAppContext } from "./state/app-context.js";
 import { ProjectManager } from "./fs/project-manager.js";
+import { SnapshotManager } from "./fs/snapshot-manager.js";
 import { useProjectNavigation } from "./hooks/useProjectNavigation.js";
 import { useFileSelection } from "./hooks/useFileSelection.js";
 import { useProjectInitialization } from "./hooks/useProjectInitialization.js";
@@ -21,7 +23,14 @@ export function ProjectModeApp() {
   const pmRef = useRef(new ProjectManager(fs));
   const pm = pmRef.current;
 
-  const { currentProject, projects, currentFilePath, loading } = state;
+  const { currentProject, projects, currentFilePath, fileContent, loading } = state;
+
+  const projectRoot = currentProject?.rootPath ?? null;
+  const snapshotManager = useMemo(
+    () => (projectRoot ? new SnapshotManager(fs, projectRoot) : null),
+    [fs, projectRoot],
+  );
+  const [pickerFilePath, setPickerFilePath] = useState<string | null>(null);
 
   // エントリパスを計算（現在のプロジェクトの index.krs）
   const entryPath = currentProject ? `${currentProject.rootPath}/index.krs` : null;
@@ -121,10 +130,29 @@ export function ProjectModeApp() {
 
   const handleCompareWithCurrent = useCallback(
     (path: string) => {
-      dispatch({ type: "SET_COMPARE_ENTRY_PATH", path });
+      dispatch({ type: "SET_COMPARE_SOURCE", source: { kind: "file", path } });
     },
     [dispatch],
   );
+
+  const handleSnapshotNow = useCallback(
+    async (path: string) => {
+      if (!snapshotManager || !projectRoot || !path.startsWith(`${projectRoot}/`)) return;
+      const relPath = path.slice(projectRoot.length + 1);
+      const label = window.prompt("Label this snapshot (optional):") ?? undefined;
+      const content =
+        path === currentFilePath ? fileContent : await fs.readFile(path).catch(() => "");
+      await snapshotManager.capture(relPath, content, {
+        trigger: "manual",
+        label: label || undefined,
+      });
+    },
+    [snapshotManager, projectRoot, currentFilePath, fileContent, fs],
+  );
+
+  const handleCompareWithSnapshot = useCallback((path: string) => {
+    setPickerFilePath(path);
+  }, []);
 
   if (loading || !currentProject) {
     return <div className="app-loading">Loading...</div>;
@@ -153,14 +181,38 @@ export function ProjectModeApp() {
       onFileDeleted={handleFileDeleted}
       onFileRenamed={handleFileRenamed}
       onCompareWithCurrent={ENABLE_DIFF_VIEWER ? handleCompareWithCurrent : undefined}
+      onSnapshotNow={ENABLE_DIFF_VIEWER ? handleSnapshotNow : undefined}
+      onCompareWithSnapshot={ENABLE_DIFF_VIEWER ? handleCompareWithSnapshot : undefined}
     />
   ) : undefined;
 
+  const pickerRelPath =
+    pickerFilePath && projectRoot && pickerFilePath.startsWith(`${projectRoot}/`)
+      ? pickerFilePath.slice(projectRoot.length + 1)
+      : null;
+
   return (
-    <AppShell
-      entryPath={entryPath}
-      sidebarHeaderContent={sidebarHeader}
-      sidebarContent={sidebarContent}
-    />
+    <>
+      <AppShell
+        entryPath={entryPath}
+        sidebarHeaderContent={sidebarHeader}
+        sidebarContent={sidebarContent}
+      />
+      {pickerFilePath && pickerRelPath && snapshotManager && (
+        <SnapshotPickerModal
+          snapshots={snapshotManager}
+          filePath={pickerRelPath}
+          fileBasename={pickerRelPath.split("/").pop() ?? pickerRelPath}
+          onSelect={(record) => {
+            dispatch({
+              type: "SET_COMPARE_SOURCE",
+              source: { kind: "snapshot", filePath: pickerRelPath, snapshotId: record.id },
+            });
+            setPickerFilePath(null);
+          }}
+          onClose={() => setPickerFilePath(null)}
+        />
+      )}
+    </>
   );
 }
