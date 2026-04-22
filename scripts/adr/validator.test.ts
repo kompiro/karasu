@@ -180,7 +180,30 @@ depends_on:
   - ADR-20260101-01`),
     );
     const result = validateDirectory(tmp);
-    expect(result.errors.some((e) => e.includes("cycle"))).toBe(true);
+    expect(result.errors.some((e) => e.includes("depends_on cycle"))).toBe(true);
+  });
+
+  it("detects refines cycles", () => {
+    write(
+      "20260101-01-a.md",
+      adr(`id: ADR-20260101-01
+title: A
+status: accepted
+date: 2026-01-01
+refines:
+  - ADR-20260101-02`),
+    );
+    write(
+      "20260101-02-b.md",
+      adr(`id: ADR-20260101-02
+title: B
+status: accepted
+date: 2026-01-01
+refines:
+  - ADR-20260101-01`),
+    );
+    const result = validateDirectory(tmp);
+    expect(result.errors.some((e) => e.includes("refines cycle"))).toBe(true);
   });
 
   it("warns when accepted depends_on superseded", () => {
