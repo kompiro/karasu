@@ -1,3 +1,13 @@
+---
+id: ADR-20260312-02
+title: ツール名「karasu」の採用
+status: accepted
+date: 2026-03-12
+scope:
+  domains:
+    - naming
+---
+
 # ADR-20260312-02: ツール名「karasu」の採用
 
 - **日付**: 2026-03-12
