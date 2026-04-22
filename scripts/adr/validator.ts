@@ -14,7 +14,7 @@ const RELATIONSHIP_FIELDS = [
 ] as const;
 type RelationshipField = (typeof RELATIONSHIP_FIELDS)[number];
 
-interface Frontmatter {
+export interface Frontmatter {
   id: string;
   title: string;
   status: Status;
@@ -30,7 +30,7 @@ interface Frontmatter {
   assumptions?: string[];
 }
 
-interface ParsedAdr {
+export interface ParsedAdr {
   file: string;
   id: string;
   fm: Frontmatter;
@@ -120,6 +120,27 @@ function parseFrontmatter(raw: string, file: string, errors: string[]): Frontmat
     errors.push(`${file}: "superseded_by" must be a string or null`);
   }
 
+  let scope: Frontmatter["scope"] | undefined;
+  if (fm.scope !== undefined && fm.scope !== null) {
+    if (typeof fm.scope !== "object" || Array.isArray(fm.scope)) {
+      errors.push(`${file}: "scope" must be a mapping`);
+    } else {
+      const s = fm.scope as Record<string, unknown>;
+      const pkgs = s.packages;
+      const doms = s.domains;
+      const pkgsOk =
+        pkgs === undefined || (Array.isArray(pkgs) && pkgs.every((x) => typeof x === "string"));
+      const domsOk =
+        doms === undefined || (Array.isArray(doms) && doms.every((x) => typeof x === "string"));
+      if (!pkgsOk) errors.push(`${file}: "scope.packages" must be an array of strings`);
+      if (!domsOk) errors.push(`${file}: "scope.domains" must be an array of strings`);
+      scope = {
+        packages: pkgsOk && Array.isArray(pkgs) ? (pkgs as string[]) : undefined,
+        domains: domsOk && Array.isArray(doms) ? (doms as string[]) : undefined,
+      };
+    }
+  }
+
   return {
     id,
     title,
@@ -132,6 +153,7 @@ function parseFrontmatter(raw: string, file: string, errors: string[]): Frontmat
     related_to: stringArray("related_to"),
     conflicts_with: stringArray("conflicts_with"),
     refines: stringArray("refines"),
+    scope,
     assumptions: stringArray("assumptions"),
   };
 }
