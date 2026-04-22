@@ -1,3 +1,18 @@
+---
+id: ADR-20260409-03
+title: クロスナビゲーション時のアトミックなハイライト適用
+status: accepted
+date: 2026-04-09
+depends_on:
+  - ADR-20260320-01
+scope:
+  packages:
+    - app
+  domains:
+    - navigation
+    - rendering
+---
+
 # ADR-20260409-03: クロスナビゲーション時のアトミックなハイライト適用
 
 - **日付**: 2026-04-09

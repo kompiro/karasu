@@ -1,3 +1,18 @@
+---
+id: ADR-20260415-01
+title: 親サービスのアノテーションを子ノードに継承する
+status: accepted
+date: 2026-04-15
+depends_on:
+  - ADR-20260411-02
+scope:
+  packages:
+    - core
+  domains:
+    - styling
+    - annotations
+---
+
 # ADR-20260415-01: 親サービスのアノテーションを子ノードに継承する
 
 - **日付**: 2026-04-15

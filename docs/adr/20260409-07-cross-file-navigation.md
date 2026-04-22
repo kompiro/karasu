@@ -1,3 +1,19 @@
+---
+id: ADR-20260409-07
+title: マルチファイルプロジェクトでのクロスファイルナビゲーション
+status: accepted
+date: 2026-04-09
+depends_on:
+  - ADR-20260409-06
+  - ADR-20260401-03
+scope:
+  packages:
+    - app
+    - core
+  domains:
+    - navigation
+---
+
 # ADR-20260409-07: マルチファイルプロジェクトでのクロスファイルナビゲーション
 
 - **日付**: 2026-04-09

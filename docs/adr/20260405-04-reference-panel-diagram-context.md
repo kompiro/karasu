@@ -1,3 +1,15 @@
+---
+id: ADR-20260405-04
+title: Reference パネルの図種別コンテキスト対応
+status: accepted
+date: 2026-04-05
+scope:
+  packages:
+    - app
+  domains:
+    - ui
+---
+
 # ADR-20260405-04: Reference パネルの図種別コンテキスト対応
 
 - **日付**: 2026-04-05

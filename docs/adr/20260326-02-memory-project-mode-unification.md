@@ -1,3 +1,19 @@
+---
+id: ADR-20260326-02
+title: "MemoryMode と ProjectMode の統一 — Reducer + `KarasuPreviewColumn`"
+status: accepted
+date: 2026-03-26
+related_to:
+  - ADR-20260324-01
+  - ADR-20260325-01
+scope:
+  packages:
+    - app
+  domains:
+    - ui
+    - architecture
+---
+
 # ADR-20260326-02: MemoryMode と ProjectMode の統一 — Reducer + `KarasuPreviewColumn`
 
 - **日付**: 2026-03-26

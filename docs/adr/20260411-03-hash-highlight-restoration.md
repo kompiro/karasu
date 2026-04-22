@@ -1,3 +1,18 @@
+---
+id: ADR-20260411-03
+title: ブラウザ履歴でのハイライト復元 — hash コロン拡張
+status: accepted
+date: 2026-04-11
+depends_on:
+  - ADR-20260409-03
+  - ADR-20260404-05
+scope:
+  packages:
+    - app
+  domains:
+    - navigation
+---
+
 # ADR-20260411-03: ブラウザ履歴でのハイライト復元 — hash コロン拡張
 
 - **日付**: 2026-04-11

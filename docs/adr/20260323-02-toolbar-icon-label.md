@@ -1,3 +1,16 @@
+---
+id: ADR-20260323-02
+title: ツールバーボタンはアイコン+テキストラベル必須
+status: accepted
+date: 2026-03-23
+scope:
+  packages:
+    - app
+  domains:
+    - ui
+    - toolbar
+---
+
 # ADR-20260323-02: ツールバーボタンはアイコン+テキストラベル必須
 
 - **日付**: 2026-03-23

@@ -1,3 +1,18 @@
+---
+id: ADR-20260405-08
+title: "プロジェクト URL ナビゲーション — `/projects/<uuid>` パスネーム方式"
+status: accepted
+date: 2026-04-05
+depends_on:
+  - ADR-20260404-05
+  - ADR-20260330-04
+scope:
+  packages:
+    - app
+  domains:
+    - navigation
+---
+
 # ADR-20260405-08: プロジェクト URL ナビゲーション — `/projects/<uuid>` パスネーム方式
 
 - **日付**: 2026-04-05

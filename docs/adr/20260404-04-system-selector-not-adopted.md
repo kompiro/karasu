@@ -1,3 +1,16 @@
+---
+id: ADR-20260404-04
+title: system セレクタUIを採用しない
+status: not_adopted
+date: 2026-04-04
+scope:
+  packages:
+    - app
+  domains:
+    - ui
+    - navigation
+---
+
 # ADR-20260404-04: system セレクタUIを採用しない
 
 ## ステータス

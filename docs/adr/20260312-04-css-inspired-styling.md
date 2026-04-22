@@ -1,3 +1,15 @@
+---
+id: ADR-20260312-04
+title: CSSインスパイアのスタイリングシステム
+status: accepted
+date: 2026-03-12
+scope:
+  packages:
+    - core
+  domains:
+    - styling
+---
+
 # ADR-20260312-04: CSSインスパイアのスタイリングシステム
 
 - **日付**: 2026-03-12

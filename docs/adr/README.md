@@ -116,7 +116,7 @@ URL hash・ブラウザ履歴・マルチファイル間のナビゲーション
 - [ADR-20260408-03](20260408-03-project-mode-initial-content.md) — ProjectMode 初期コンテンツ — `examples/ec-platform` からの自動生成
 - [ADR-20260411-04](20260411-04-edit-area-and-sidebar-toggle-relocation.md) — `EditArea` コンポーネント新設と sidebar-toggle のサイドバーエリアへの移動
 - [ADR-20260411-08](20260411-08-edit-pane-toolbar.md) — EditPaneToolbar — LeftPane アクションボタンの専用ツールバーへの集約
-- [ADR-20260413-02](20260413-02-single-detail-panel-at-a-time.md) — DetailPanel は常に 1 つだけ表示する
+- [ADR-20260413-03](20260413-03-single-detail-panel-at-a-time.md) — DetailPanel は常に 1 つだけ表示する
 - [ADR-20260419-02](20260419-02-rename-preview-column.md) — `KarasuPreviewColumn` を `PreviewColumn` にリネーム
 
 ### プロジェクト / マルチファイル / Import-Export

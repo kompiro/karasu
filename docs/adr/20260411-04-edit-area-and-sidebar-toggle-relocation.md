@@ -1,3 +1,17 @@
+---
+id: ADR-20260411-04
+title: "`EditArea` コンポーネント新設と sidebar-toggle のサイドバーエリアへの移動"
+status: accepted
+date: 2026-04-11
+related_to:
+  - ADR-20260411-08
+scope:
+  packages:
+    - app
+  domains:
+    - ui
+---
+
 # ADR-20260411-04: `EditArea` コンポーネント新設と sidebar-toggle のサイドバーエリアへの移動
 
 - **日付**: 2026-04-11

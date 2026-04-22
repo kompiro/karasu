@@ -1,3 +1,18 @@
+---
+id: ADR-20260326-03
+title: "Editor 診断表示 — Monaco マーカー + Preview エラーオーバーレイ"
+status: accepted
+date: 2026-03-26
+depends_on:
+  - ADR-20260320-01
+scope:
+  packages:
+    - app
+  domains:
+    - ui
+    - diagnostics
+---
+
 # ADR-20260326-03: Editor 診断表示 — Monaco マーカー + Preview エラーオーバーレイ
 
 - **日付**: 2026-03-26

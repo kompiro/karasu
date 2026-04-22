@@ -1,3 +1,17 @@
+---
+id: ADR-20260404-05
+title: ブラウザ履歴ナビゲーション — URL hash による drill-down 同期
+status: accepted
+date: 2026-04-04
+depends_on:
+  - ADR-20260330-04
+scope:
+  packages:
+    - app
+  domains:
+    - navigation
+---
+
 # ADR-20260404-05: ブラウザ履歴ナビゲーション — URL hash による drill-down 同期
 
 - **日付**: 2026-04-04

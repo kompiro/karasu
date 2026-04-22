@@ -1,3 +1,20 @@
+---
+id: ADR-20260419-02
+title: "`KarasuPreviewColumn` を `PreviewColumn` にリネーム"
+status: accepted
+date: 2026-04-19
+related_to:
+  - ADR-20260326-02
+  - ADR-20260329-02
+  - ADR-20260405-04
+scope:
+  packages:
+    - app
+  domains:
+    - ui
+    - refactor
+---
+
 # ADR-20260419-02: `KarasuPreviewColumn` を `PreviewColumn` にリネーム
 
 - **日付**: 2026-04-19

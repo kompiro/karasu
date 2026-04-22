@@ -1,4 +1,18 @@
-# ADR-20260413-02: DetailPanel は常に1つだけ表示する
+---
+id: ADR-20260413-03
+title: DetailPanel は常に1つだけ表示する
+status: accepted
+date: 2026-04-13
+related_to:
+  - ADR-20260422-03
+scope:
+  packages:
+    - app
+  domains:
+    - ui
+---
+
+# ADR-20260413-03: DetailPanel は常に1つだけ表示する
 
 - **日付**: 2026-04-13
 - **ステータス**: 決定済み
