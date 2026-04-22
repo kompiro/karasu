@@ -1,3 +1,20 @@
+---
+id: ADR-20260410-03
+title: "構造的 `.krs` パッチ — ノード ID ベースの `append` / `replace` / `remove`"
+status: accepted
+date: 2026-04-10
+related_to:
+  - ADR-20260409-01
+  - ADR-20260409-08
+  - ADR-20260412-02
+scope:
+  packages:
+    - core
+  domains:
+    - patch
+    - ast
+---
+
 # ADR-20260410-03: 構造的 `.krs` パッチ — ノード ID ベースの `append` / `replace` / `remove`
 
 - **日付**: 2026-04-10

@@ -1,3 +1,20 @@
+---
+id: ADR-20260412-04
+title: ブロック内エッジの暗黙 source 簡略記法
+status: accepted
+date: 2026-04-12
+depends_on:
+  - ADR-20260411-02
+related_to:
+  - ADR-20260410-02
+scope:
+  packages:
+    - core
+  domains:
+    - parser
+    - syntax
+---
+
 # ADR-20260412-04: ブロック内エッジの暗黙 source 簡略記法
 
 - **日付**: 2026-04-12

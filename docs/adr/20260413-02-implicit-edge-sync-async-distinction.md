@@ -1,3 +1,20 @@
+---
+id: ADR-20260413-02
+title: Implicit エッジにおける sync/async の視覚的区別
+status: accepted
+date: 2026-04-13
+depends_on:
+  - ADR-20260410-01
+related_to:
+  - ADR-20260412-04
+scope:
+  packages:
+    - core
+  domains:
+    - rendering
+    - edges
+---
+
 # ADR-20260413-02: Implicit エッジにおける sync/async の視覚的区別
 
 - **日付**: 2026-04-13

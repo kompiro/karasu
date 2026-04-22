@@ -1,3 +1,17 @@
+---
+id: ADR-20260401-06
+title: Domain Drift Detection — Scope and Detection Key
+status: accepted
+date: 2026-04-01
+depends_on:
+  - ADR-20260312-03
+scope:
+  packages:
+    - core
+  domains:
+    - resolver
+---
+
 # ADR-20260401-06: Domain Drift Detection — Scope and Detection Key
 
 - **日付**: 2026-04-01
