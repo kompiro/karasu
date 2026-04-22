@@ -912,10 +912,12 @@ export async function compileDeployDiff(
   for (const [key, meta] of diffed.edges) {
     edgeDiffStateMap.set(key, meta.state);
   }
+  const containerDiffStateMap = new Map<string, string>(diffed.containers);
 
   const svg = renderDeploy(diffed.slice, styles, displayMode, {
     nodeDiffState: nodeDiffStateMap,
     edgeDiffState: edgeDiffStateMap,
+    containerDiffState: containerDiffStateMap,
   });
 
   return {

@@ -4,7 +4,7 @@ import type {
   DeployGhostEdge,
   DeployViewSlice,
 } from "../view/deploy-view-extract.js";
-import type { EdgeDiffMeta, NodeDiffMeta } from "./view-diff.js";
+import type { DiffState, EdgeDiffMeta, NodeDiffMeta } from "./view-diff.js";
 
 export interface DiffedDeployView {
   /** Union DeployViewSlice — passed to the existing layout/render pipeline. */
@@ -16,6 +16,8 @@ export interface DiffedDeployView {
   nodes: Map<string, NodeDiffMeta>;
   /** Diff state per ghost edge keyed `${from}->${to}`. */
   edges: Map<string, EdgeDiffMeta>;
+  /** Diff state per container keyed by `serviceId` (Issue #750). */
+  containers: Map<string, DiffState>;
 }
 
 function deployNodeChanges(
@@ -61,6 +63,7 @@ function diffContainers(
   before: readonly DeployContainer[],
   after: readonly DeployContainer[],
   diff: Map<string, NodeDiffMeta>,
+  containerDiff: Map<string, DiffState>,
 ): DeployContainer[] {
   const beforeByService = new Map(before.map((c) => [c.serviceId, c]));
   const merged: DeployContainer[] = [];
@@ -73,9 +76,17 @@ function diffContainers(
       for (const unit of container.units) {
         diff.set(unit.id, { state: "added" });
       }
+      containerDiff.set(container.serviceId, "added");
       merged.push(container);
     } else {
-      const mergedUnits = diffDeployUnits(prev.units, container.units, diff);
+      const unitDiffs = new Map<string, NodeDiffMeta>();
+      const mergedUnits = diffDeployUnits(prev.units, container.units, unitDiffs);
+      let anyChanged = false;
+      for (const [id, meta] of unitDiffs) {
+        diff.set(id, meta);
+        if (meta.state !== "unchanged") anyChanged = true;
+      }
+      containerDiff.set(container.serviceId, anyChanged ? "changed" : "unchanged");
       merged.push({ ...container, units: mergedUnits });
     }
     seen.add(container.serviceId);
@@ -85,6 +96,7 @@ function diffContainers(
     for (const unit of container.units) {
       diff.set(unit.id, { state: "removed" });
     }
+    containerDiff.set(container.serviceId, "removed");
     merged.push(container);
   }
   return merged;
@@ -132,8 +144,9 @@ export function diffDeployViewSlices(
 ): DiffedDeployView {
   const nodeDiff = new Map<string, NodeDiffMeta>();
   const edgeDiff = new Map<string, EdgeDiffMeta>();
+  const containerDiff = new Map<string, DiffState>();
 
-  const containers = diffContainers(before.containers, after.containers, nodeDiff);
+  const containers = diffContainers(before.containers, after.containers, nodeDiff, containerDiff);
   const unclassifiedUnits = diffDeployUnits(
     before.unclassifiedUnits,
     after.unclassifiedUnits,
@@ -148,5 +161,5 @@ export function diffDeployViewSlices(
     ghostEdges,
   };
 
-  return { slice, nodes: nodeDiff, edges: edgeDiff };
+  return { slice, nodes: nodeDiff, edges: edgeDiff, containers: containerDiff };
 }

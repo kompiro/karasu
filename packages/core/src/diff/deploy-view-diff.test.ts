@@ -45,6 +45,22 @@ deploy Production {
 }
 `;
 
+const AFTER_ADDED_CONTAINER = `
+system Shop {
+  service Catalog
+  service Orders
+  service Payments
+  Catalog -> Orders "queries"
+  Orders -> Payments "charges"
+}
+deploy Production {
+  oci "catalog-svc" { realizes Catalog }
+  oci "orders-svc" { realizes Orders }
+  oci "payments-api" { realizes Payments }
+  oci "payments-worker" { realizes Payments }
+}
+`;
+
 const AFTER_LABEL_CHANGED = `
 system Shop {
   service Catalog
@@ -96,6 +112,31 @@ describe("diffDeployViewSlices", () => {
     const meta = diff.nodes.get("catalog-svc");
     expect(meta?.state).toBe("changed");
     expect(meta?.changes?.label?.after).toBe("商品サービス");
+  });
+
+  it("marks whole-container additions/removals on diff.containers", () => {
+    const before = deployView(BEFORE);
+    const after = deployView(AFTER_ADDED_CONTAINER);
+    const diff = diffDeployViewSlices(before, after);
+    expect(diff.containers.get("Payments")).toBe("added");
+    expect(diff.containers.get("Catalog")).toBe("unchanged");
+    expect(diff.containers.get("Orders")).toBe("unchanged");
+  });
+
+  it("marks a removed container on diff.containers", () => {
+    const before = deployView(BEFORE);
+    const after = deployView(AFTER_REMOVED_UNIT);
+    const diff = diffDeployViewSlices(before, after);
+    expect(diff.containers.get("Orders")).toBe("removed");
+    expect(diff.containers.get("Catalog")).toBe("unchanged");
+  });
+
+  it("marks a container with differing units as changed", () => {
+    const before = deployView(BEFORE);
+    const after = deployView(AFTER_LABEL_CHANGED);
+    const diff = diffDeployViewSlices(before, after);
+    expect(diff.containers.get("Catalog")).toBe("changed");
+    expect(diff.containers.get("Orders")).toBe("unchanged");
   });
 
   it("union slice contains the merged containers and units", () => {

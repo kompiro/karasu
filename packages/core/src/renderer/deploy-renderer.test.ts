@@ -105,6 +105,23 @@ describe("renderDeploy", () => {
     expect(svg).toContain("lambda");
   });
 
+  describe("containerDiffState", () => {
+    it("emits data-diff-state on the container group when provided", () => {
+      const containerDiffState = new Map<string, string>([
+        ["ECommerce", "added"],
+        ["Payment", "unchanged"],
+      ]);
+      const svg = renderDeploy(makeSlice(), styles, undefined, { containerDiffState });
+      expect(svg).toContain('data-container-id="ECommerce" data-diff-state="added"');
+      expect(svg).toContain('data-container-id="Payment" data-diff-state="unchanged"');
+    });
+
+    it("omits data-diff-state when no state is supplied", () => {
+      const svg = renderDeploy(makeSlice(), styles);
+      expect(svg).not.toContain("data-diff-state");
+    });
+  });
+
   describe("icon mode", () => {
     it("renders frame rect with stroke when displayMode is icon", () => {
       const svg = renderDeploy(makeSlice(), styles, "icon");
