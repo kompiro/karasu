@@ -1,3 +1,19 @@
+---
+id: ADR-20260404-10
+title: Org Tree View — 組織階層の左→右ツリー俯瞰図
+status: accepted
+date: 2026-04-04
+depends_on:
+  - ADR-20260323-03
+scope:
+  packages:
+    - app
+    - core
+  domains:
+    - rendering
+    - navigation
+---
+
 # ADR-20260404-10: Org Tree View — 組織階層の左→右ツリー俯瞰図
 
 - **日付**: 2026-04-04（更新: 2026-04-05）
