@@ -5,7 +5,7 @@ export type CompareSource =
   | { kind: "file"; path: string }
   | { kind: "snapshot"; filePath: string; snapshotId: string };
 
-export interface ResolvedCompareSource {
+interface ResolvedCompareSource {
   /** The `beforeEntryPath` to hand to `compile{System,Deploy,Org}Diff`. */
   entryPath: string;
   /** The FS to use — may be an overlay when the source is a snapshot. */

@@ -3,7 +3,7 @@ import type { FileSystemProvider } from "@karasu-tools/core";
 import { resolveCompareSource, compareSourceKey, type CompareSource } from "../fs/compare-source";
 import type { SnapshotManager } from "../fs/snapshot-manager";
 
-export interface ResolvedCompare {
+interface ResolvedCompare {
   /** Path to pass as `beforeEntryPath` to compile*Diff. `null` disables diff mode. */
   compareEntryPath: string | null;
   /** Effective FS — an overlay when the source is a snapshot, the base otherwise. */
