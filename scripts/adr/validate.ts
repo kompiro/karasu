@@ -4,7 +4,7 @@ import { validateDirectory } from "./validator.ts";
 
 function main(argv: string[]): number {
   const dir = argv[2] ?? "docs/adr";
-  const { errors, warnings, parsed, skipped } = validateDirectory(dir);
+  const { errors, warnings, parsed } = validateDirectory(dir);
 
   if (warnings.length > 0) {
     console.warn(`${warnings.length} warning(s):`);
@@ -14,9 +14,7 @@ function main(argv: string[]): number {
     console.error(`${errors.length} error(s):`);
     for (const e of errors) console.error(`  ✗ ${e}`);
   }
-  console.log(
-    `Validated ${parsed.length} ADR(s); skipped ${skipped.length} file(s) without frontmatter.`,
-  );
+  console.log(`Validated ${parsed.length} ADR(s).`);
   return errors.length > 0 ? 1 : 0;
 }
 
