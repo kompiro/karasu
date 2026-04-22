@@ -18,7 +18,8 @@
     "format:check": "oxfmt --check packages/ scripts/",
     "typecheck": "pnpm -r run typecheck && tsc --noEmit -p scripts/tsconfig.json",
     "knip": "knip",
-    "adr:validate": "tsx scripts/adr/validate.ts"
+    "adr:validate": "tsx scripts/adr/validate.ts",
+    "adr:extract": "tsx scripts/adr/extract.ts"
   },
   "devDependencies": {
     "@types/js-yaml": "^4.0.9",
