@@ -41,7 +41,6 @@ interface ValidationResult {
   errors: string[];
   warnings: string[];
   parsed: ParsedAdr[];
-  skipped: string[];
 }
 
 const FRONTMATTER_RE = /^---\r?\n([\s\S]*?)\r?\n---\r?\n?/;
@@ -152,11 +151,10 @@ function validateFile(
   content: string,
   errors: string[],
   warnings: string[],
-  skipped: string[],
 ): ParsedAdr | null {
   const { raw, body } = extractFrontmatter(content);
   if (raw === null) {
-    skipped.push(filePath);
+    errors.push(`${filePath}: missing YAML frontmatter (see docs/adr/TEMPLATE.md)`);
     return null;
   }
   const fm = parseFrontmatter(raw, filePath, errors);
@@ -262,7 +260,7 @@ function crossValidate(parsed: ParsedAdr[], errors: string[], warnings: string[]
           dep.fm.status === "deprecated" ||
           dep.fm.status === "not_adopted"
         ) {
-          warnings.push(
+          errors.push(
             `${p.file}: status=accepted depends_on "${depId}" which has status=${dep.fm.status}`,
           );
         }
@@ -332,7 +330,6 @@ function detectCycle(
 export function validateDirectory(dir: string): ValidationResult {
   const errors: string[] = [];
   const warnings: string[] = [];
-  const skipped: string[] = [];
   const parsed: ParsedAdr[] = [];
 
   const files = readdirSync(dir)
@@ -343,10 +340,10 @@ export function validateDirectory(dir: string): ValidationResult {
   for (const f of files) {
     const full = join(dir, f);
     const content = readFileSync(full, "utf8");
-    const result = validateFile(full, content, errors, warnings, skipped);
+    const result = validateFile(full, content, errors, warnings);
     if (result) parsed.push(result);
   }
 
   crossValidate(parsed, errors, warnings);
-  return { errors, warnings, parsed, skipped };
+  return { errors, warnings, parsed };
 }
