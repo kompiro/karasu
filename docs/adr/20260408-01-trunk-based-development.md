@@ -1,3 +1,16 @@
+---
+id: ADR-20260408-01
+title: Trunk-Based Development with Release Toggles
+status: accepted
+date: 2026-04-08
+related_to:
+  - ADR-20260326-01
+scope:
+  domains:
+    - process
+    - ci
+---
+
 # ADR-20260408-01: Trunk-Based Development with Release Toggles
 
 ## Status

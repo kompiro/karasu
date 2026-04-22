@@ -1,3 +1,18 @@
+---
+id: ADR-20260412-02
+title: "CLI 変更系サブコマンド — `karasu remove` / `append` / `insert`"
+status: accepted
+date: 2026-04-12
+depends_on:
+  - ADR-20260411-07
+scope:
+  packages:
+    - cli
+  domains:
+    - cli
+    - patch
+---
+
 # ADR-20260412-02: CLI 変更系サブコマンド — `karasu remove` / `append` / `insert`
 
 - **日付**: 2026-04-12

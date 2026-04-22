@@ -1,3 +1,17 @@
+---
+id: ADR-20260420-02
+title: グラフィカル diff ビューア
+status: accepted
+date: 2026-04-20
+scope:
+  packages:
+    - app
+    - core
+  domains:
+    - rendering
+    - ui
+---
+
 # ADR-20260420-02: グラフィカル diff ビューア
 
 - **日付**: 2026-04-20

@@ -1,3 +1,16 @@
+---
+id: ADR-20260323-01
+title: YAML スタイル構文移行の見送り
+status: not_adopted
+date: 2026-03-23
+scope:
+  packages:
+    - core
+  domains:
+    - parser
+    - syntax
+---
+
 # ADR-20260323-01: YAML スタイル構文移行の見送り
 
 - **日付**: 2026-03-23

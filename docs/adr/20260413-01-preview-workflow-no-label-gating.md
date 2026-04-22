@@ -1,3 +1,14 @@
+---
+id: ADR-20260413-01
+title: Preview workflow はラベル駆動をやめ path filter で制御する
+status: accepted
+date: 2026-04-13
+scope:
+  domains:
+    - ci
+    - deployment
+---
+
 # ADR-20260413-01: Preview workflow はラベル駆動をやめ path filter で制御する
 
 - **日付**: 2026-04-13

@@ -1,3 +1,16 @@
+---
+id: ADR-20260407-04
+title: Cloudflare Pages デプロイ基盤と BYOK AI 連携
+status: accepted
+date: 2026-04-07
+scope:
+  packages:
+    - app
+  domains:
+    - deployment
+    - ai
+---
+
 # ADR-20260407-04: Cloudflare Pages デプロイ基盤と BYOK AI 連携
 
 - **日付**: 2026-04-07

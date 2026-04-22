@@ -1,3 +1,17 @@
+---
+id: ADR-20260401-04
+title: VSCode Phase 3 — 独立 HTML Webview アーキテクチャ
+status: accepted
+date: 2026-04-01
+depends_on:
+  - ADR-20260330-05
+scope:
+  packages:
+    - vscode
+  domains:
+    - vscode
+---
+
 # ADR-20260401-04: VSCode Phase 3 — 独立 HTML Webview アーキテクチャ
 
 - **日付**: 2026-04-01
