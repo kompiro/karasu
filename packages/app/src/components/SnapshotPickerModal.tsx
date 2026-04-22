@@ -40,18 +40,20 @@ export function SnapshotPickerModal({
 
   return (
     <div
-      className="snapshot-picker-backdrop"
+      className="dialog-overlay"
       onClick={onClose}
       role="dialog"
       aria-modal="true"
-      aria-label="Choose a snapshot to compare"
+      aria-labelledby="snapshot-picker-dialog-title"
     >
-      <div className="snapshot-picker-modal" onClick={(e) => e.stopPropagation()}>
-        <header className="snapshot-picker-header">
-          <h2>Compare with snapshot</h2>
-          <p className="snapshot-picker-subtitle">{fileBasename}</p>
+      <div className="dialog dialog--snapshot-picker" onClick={(e) => e.stopPropagation()}>
+        <header>
+          <h2 id="snapshot-picker-dialog-title" className="dialog__title">
+            ⇄ Compare with snapshot
+          </h2>
+          <p className="dialog__subtitle">{fileBasename}</p>
         </header>
-        <div className="snapshot-picker-list" role="list">
+        <div className="dialog__body" role="list">
           {records === null && <p className="snapshot-picker-empty">Loading…</p>}
           {records !== null && records.length === 0 && (
             <p className="snapshot-picker-empty">No snapshots yet for this file.</p>
@@ -76,13 +78,9 @@ export function SnapshotPickerModal({
             </button>
           ))}
         </div>
-        <footer className="snapshot-picker-footer">
-          <button
-            type="button"
-            className="toolbar-btn toolbar-btn--snapshot-cancel"
-            onClick={onClose}
-          >
-            Cancel
+        <footer className="dialog__footer">
+          <button type="button" className="toolbar-btn" onClick={onClose} aria-label="Close">
+            Close
           </button>
         </footer>
       </div>
