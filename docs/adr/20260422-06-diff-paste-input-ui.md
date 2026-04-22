@@ -1,3 +1,20 @@
+---
+id: ADR-20260422-06
+title: Diff ペースト入力の UI 配置とストレージ方式
+status: accepted
+date: 2026-04-22
+depends_on:
+  - ADR-20260420-02
+related_to:
+  - ADR-20260317-02
+scope:
+  packages:
+    - app
+  domains:
+    - rendering
+    - testing
+---
+
 # ADR-20260422-06: Diff ペースト入力の UI 配置とストレージ方式
 
 - **日付**: 2026-04-22
