@@ -64,14 +64,22 @@ export function AppShell({
     currentProject,
     compareEntryPath,
     compareSource,
+    diffSwapped,
   } = state;
+
+  // Effective diff direction. When swapped, the compare path becomes the
+  // after-side entry and the project entry becomes the before-side. Null
+  // compareEntryPath disables diff mode regardless of the swap flag.
+  const swapActive = !!compareEntryPath && diffSwapped;
+  const effectiveEntryPath = swapActive ? compareEntryPath : entryPath;
+  const effectiveComparePath = swapActive ? entryPath : compareEntryPath;
 
   const [isAllLayersOpen, setIsAllLayersOpen] = useState(false);
   const [previewFocused, setPreviewFocused] = useState(false);
   const [isOrgTreeViewOpen, setIsOrgTreeViewOpen] = useState(false);
 
   const views = useAppViews({
-    entryPath,
+    entryPath: effectiveEntryPath,
     fs,
     viewPath,
     activeView,
@@ -82,7 +90,7 @@ export function AppShell({
     dispatch,
     isOrgTreeViewOpen,
     setIsOrgTreeViewOpen,
-    compareEntryPath,
+    compareEntryPath: effectiveComparePath,
   });
   const { recompile, navigateViewPath, navigateActiveView } = views;
 
@@ -304,7 +312,9 @@ export function AppShell({
             comparePath={compareEntryPath}
             compareSource={compareSource}
             currentPath={currentFilePath}
+            swapped={diffSwapped}
             onExit={() => dispatch({ type: "SET_COMPARE_ENTRY_PATH", path: null })}
+            onSwap={() => dispatch({ type: "TOGGLE_DIFF_SWAPPED" })}
             onViewPasted={onViewPasted}
           />
         )}

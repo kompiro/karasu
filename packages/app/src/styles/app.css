@@ -2143,6 +2143,25 @@ body,
   background: rgba(245, 158, 11, 0.15);
 }
 
+.toolbar-btn--diff-swap {
+  background: transparent;
+  border: 1px solid rgba(245, 158, 11, 0.4);
+  color: var(--text-primary);
+  font-size: 12px;
+  padding: 2px 10px;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.toolbar-btn--diff-swap:hover {
+  background: rgba(245, 158, 11, 0.15);
+}
+
+.toolbar-btn--diff-swap[aria-pressed="true"] {
+  background: rgba(245, 158, 11, 0.25);
+  border-color: rgba(245, 158, 11, 0.7);
+}
+
 .diff-mode-banner__pasted {
   color: var(--diff-color-removed);
   font-style: italic;

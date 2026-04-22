@@ -143,3 +143,49 @@ describe("appReducer — activeView / highlightedNodeId", () => {
     });
   });
 });
+
+describe("appReducer — diff swap (Issue #765)", () => {
+  it("initial state has diffSwapped=false", () => {
+    expect(initialState.diffSwapped).toBe(false);
+  });
+
+  it("TOGGLE_DIFF_SWAPPED flips the flag when a compare path is set", () => {
+    const state = stateWith({ compareEntryPath: "/p/before.krs", compareSource: "file" });
+    const next = appReducer(state, { type: "TOGGLE_DIFF_SWAPPED" });
+    expect(next.diffSwapped).toBe(true);
+    const back = appReducer(next, { type: "TOGGLE_DIFF_SWAPPED" });
+    expect(back.diffSwapped).toBe(false);
+  });
+
+  it("TOGGLE_DIFF_SWAPPED is a no-op when no compare path is set", () => {
+    const next = appReducer(initialState, { type: "TOGGLE_DIFF_SWAPPED" });
+    expect(next.diffSwapped).toBe(false);
+    expect(next).toBe(initialState);
+  });
+
+  it("SET_COMPARE_ENTRY_PATH resets diffSwapped to false", () => {
+    const state = stateWith({
+      compareEntryPath: "/p/a.krs",
+      compareSource: "file",
+      diffSwapped: true,
+    });
+    const exited = appReducer(state, { type: "SET_COMPARE_ENTRY_PATH", path: null });
+    expect(exited.diffSwapped).toBe(false);
+    const switched = appReducer(state, {
+      type: "SET_COMPARE_ENTRY_PATH",
+      path: "/p/b.krs",
+      source: "file",
+    });
+    expect(switched.diffSwapped).toBe(false);
+  });
+
+  it("SET_CURRENT_PROJECT resets diffSwapped to false", () => {
+    const state = stateWith({
+      compareEntryPath: "/p/a.krs",
+      compareSource: "file",
+      diffSwapped: true,
+    });
+    const next = appReducer(state, { type: "SET_CURRENT_PROJECT", project: PROJECT });
+    expect(next.diffSwapped).toBe(false);
+  });
+});

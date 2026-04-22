@@ -33,6 +33,12 @@ export interface AppState {
    * Null when diff mode is inactive.
    */
   compareSource: "file" | "pasted" | null;
+  /**
+   * When true, the diff direction is flipped (Issue #765 part A): the compare
+   * path acts as the after-side and the project entry as the before-side.
+   * Auto-resets to `false` whenever the compare path or project changes.
+   */
+  diffSwapped: boolean;
 }
 
 export const initialState: AppState = {
@@ -50,6 +56,7 @@ export const initialState: AppState = {
   loading: true,
   compareEntryPath: null,
   compareSource: null,
+  diffSwapped: false,
 };
 
 export type AppAction =
@@ -68,7 +75,8 @@ export type AppAction =
   | { type: "RENAME_PROJECT"; id: string; name: string }
   | { type: "SET_DISPLAY_MODE"; displayMode: DisplayMode }
   | { type: "SET_ALL_LAYERS_OPEN"; isAllLayersOpen: boolean }
-  | { type: "SET_COMPARE_ENTRY_PATH"; path: string | null; source?: "file" | "pasted" };
+  | { type: "SET_COMPARE_ENTRY_PATH"; path: string | null; source?: "file" | "pasted" }
+  | { type: "TOGGLE_DIFF_SWAPPED" };
 
 export function appReducer(state: AppState, action: AppAction): AppState {
   switch (action.type) {
@@ -88,6 +96,7 @@ export function appReducer(state: AppState, action: AppAction): AppState {
         highlightedNodeId: null,
         compareEntryPath: null,
         compareSource: null,
+        diffSwapped: false,
       };
 
     case "SELECT_FILE":
@@ -161,7 +170,11 @@ export function appReducer(state: AppState, action: AppAction): AppState {
         ...state,
         compareEntryPath: action.path,
         compareSource: action.path ? (action.source ?? "file") : null,
+        diffSwapped: false,
       };
+
+    case "TOGGLE_DIFF_SWAPPED":
+      return state.compareEntryPath ? { ...state, diffSwapped: !state.diffSwapped } : state;
 
     default:
       return state;

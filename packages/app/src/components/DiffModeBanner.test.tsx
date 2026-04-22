@@ -52,6 +52,53 @@ describe("DiffModeBanner", () => {
     expect(queryByLabelText("View pasted .krs")).toBeNull();
   });
 
+  it("renders Swap button and calls onSwap when clicked", () => {
+    const onSwap = vi.fn<() => void>();
+    const { getByLabelText } = render(
+      <DiffModeBanner
+        comparePath="/a/before.krs"
+        compareSource="file"
+        currentPath="/a/index.krs"
+        onExit={() => {}}
+        onSwap={onSwap}
+      />,
+    );
+    const swapBtn = getByLabelText("Swap diff direction");
+    expect(swapBtn.getAttribute("aria-pressed")).toBe("false");
+    fireEvent.click(swapBtn);
+    expect(onSwap).toHaveBeenCalledTimes(1);
+  });
+
+  it("omits the Swap button when onSwap is not supplied", () => {
+    const { queryByLabelText } = render(
+      <DiffModeBanner
+        comparePath="/a/before.krs"
+        compareSource="file"
+        currentPath="/a/index.krs"
+        onExit={() => {}}
+      />,
+    );
+    expect(queryByLabelText("Swap diff direction")).toBeNull();
+  });
+
+  it("flips the before/after label order when swapped=true", () => {
+    const { container, getByLabelText } = render(
+      <DiffModeBanner
+        comparePath="/a/before.krs"
+        compareSource="file"
+        currentPath="/a/index.krs"
+        swapped
+        onExit={() => {}}
+        onSwap={() => {}}
+      />,
+    );
+    const before = container.querySelector(".diff-mode-banner__before")?.textContent ?? "";
+    const after = container.querySelector(".diff-mode-banner__after")?.textContent ?? "";
+    expect(before).toContain("index.krs");
+    expect(after).toContain("before.krs");
+    expect(getByLabelText("Swap diff direction").getAttribute("aria-pressed")).toBe("true");
+  });
+
   it("calls onExit when the Exit diff button is clicked", () => {
     const onExit = vi.fn<() => void>();
     const { getByLabelText } = render(
