@@ -2160,8 +2160,8 @@ body,
 }
 
 .paste-compare-dialog {
-  background: var(--bg-primary, #fff);
-  border: 1px solid var(--border-primary, #ddd);
+  background: var(--bg-overlay);
+  border: 1px solid var(--border-strong);
   border-radius: 8px;
   padding: 20px;
   width: min(640px, 90vw);
@@ -2169,19 +2169,21 @@ body,
   display: flex;
   flex-direction: column;
   gap: 12px;
-  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.25);
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+  color: var(--text-primary);
 }
 
 .paste-compare-dialog__title {
   margin: 0;
   font-size: 16px;
   font-weight: 600;
+  color: var(--text-primary);
 }
 
 .paste-compare-dialog__hint {
   margin: 0;
   font-size: 13px;
-  color: var(--text-secondary, #666);
+  color: var(--text-secondary);
 }
 
 .paste-compare-dialog__textarea {
@@ -2190,9 +2192,20 @@ body,
   padding: 10px;
   font-family: ui-monospace, Menlo, Monaco, Consolas, monospace;
   font-size: 13px;
-  border: 1px solid var(--border-primary, #ccc);
+  background: var(--bg-base);
+  color: var(--text-primary);
+  border: 1px solid var(--border-default);
   border-radius: 4px;
   resize: vertical;
+}
+
+.paste-compare-dialog__textarea:focus {
+  outline: none;
+  border-color: var(--border-active);
+}
+
+.paste-compare-dialog__textarea::placeholder {
+  color: var(--text-muted);
 }
 
 .paste-compare-dialog__footer {
