@@ -1,3 +1,16 @@
+---
+id: ADR-20260316-01
+title: SVGアイコンファイルの外部インポート方式
+status: accepted
+date: 2026-03-16
+scope:
+  packages:
+    - core
+  domains:
+    - rendering
+    - icons
+---
+
 # ADR-20260316-01: SVGアイコンファイルの外部インポート方式
 
 - **日付**: 2026-03-16
