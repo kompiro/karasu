@@ -1,3 +1,18 @@
+---
+id: ADR-20260409-05
+title: "Directory Import — `import \"dir/\"` 構文"
+status: accepted
+date: 2026-04-09
+depends_on:
+  - ADR-20260405-03
+scope:
+  packages:
+    - core
+  domains:
+    - parser
+    - import
+---
+
 # ADR-20260409-05: Directory Import — `import "dir/"` 構文
 
 - **日付**: 2026-04-09

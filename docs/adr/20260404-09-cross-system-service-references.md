@@ -1,3 +1,21 @@
+---
+id: ADR-20260404-09
+title: "クロスシステムサービス参照 — ドット記法（`SystemId.ServiceId`）"
+status: accepted
+date: 2026-04-04
+depends_on:
+  - ADR-20260405-03
+related_to:
+  - ADR-20260405-07
+scope:
+  packages:
+    - core
+  domains:
+    - parser
+    - rendering
+    - edges
+---
+
 # ADR-20260404-09: クロスシステムサービス参照 — ドット記法（`SystemId.ServiceId`）
 
 - **日付**: 2026-04-04

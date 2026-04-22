@@ -1,3 +1,17 @@
+---
+id: ADR-20260320-02
+title: AST 再構成 — Discriminated Union とプロパティブロック
+status: accepted
+date: 2026-03-20
+scope:
+  packages:
+    - core
+  domains:
+    - parser
+    - syntax
+    - ast
+---
+
 # ADR-20260320-02: AST 再構成 — Discriminated Union とプロパティブロック
 
 - **日付**: 2026-03-20

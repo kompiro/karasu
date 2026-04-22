@@ -1,3 +1,20 @@
+---
+id: ADR-20260409-06
+title: トップレベル service の Named Import — スタブ補完 + エッジ参照による自動メンバーシップ
+status: accepted
+date: 2026-04-09
+depends_on:
+  - ADR-20260409-05
+  - ADR-20260405-03
+scope:
+  packages:
+    - core
+  domains:
+    - parser
+    - import
+    - resolver
+---
+
 # ADR-20260409-06: トップレベル service の Named Import — スタブ補完 + エッジ参照による自動メンバーシップ
 
 - **日付**: 2026-04-09

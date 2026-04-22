@@ -1,3 +1,19 @@
+---
+id: ADR-20260422-03
+title: 集約された暗黙エッジの詳細パネル — SVG 属性埋め込み方式
+status: accepted
+date: 2026-04-22
+depends_on:
+  - ADR-20260410-01
+scope:
+  packages:
+    - core
+  domains:
+    - rendering
+    - edges
+    - ui
+---
+
 # ADR-20260422-03: 集約された暗黙エッジの詳細パネル — SVG 属性埋め込み方式
 
 - **日付**: 2026-04-22
