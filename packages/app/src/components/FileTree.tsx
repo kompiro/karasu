@@ -24,6 +24,12 @@ interface FileTreeProps {
   onSnapshotNow?: (path: string) => void;
   /** Triggered when the user picks "Compare with snapshot…" on a `.krs` file (Issue #740). */
   onCompareWithSnapshot?: (path: string) => void;
+  /**
+   * Triggered when the user clicks the "⇄ Paste" header button (Issue #739).
+   * The parent is responsible for showing a paste dialog and wiring the result
+   * back to the diff viewer.
+   */
+  onCompareWithPaste?: () => void;
   refreshKey?: number;
 }
 
@@ -38,6 +44,7 @@ export function FileTree({
   onCompareWithCurrent,
   onSnapshotNow,
   onCompareWithSnapshot,
+  onCompareWithPaste,
   refreshKey,
 }: FileTreeProps) {
   const [tree, setTree] = useState<FileTreeNode[]>([]);
@@ -208,6 +215,7 @@ export function FileTree({
       onNewDir={handleNewDir}
       canCompareContextNode={canCompareContextNode}
       canSnapshotContextNode={canSnapshotContextNode}
+      onCompareWithPaste={onCompareWithPaste}
     />
   );
 }

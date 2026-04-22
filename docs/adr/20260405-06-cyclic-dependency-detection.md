@@ -1,3 +1,16 @@
+---
+id: ADR-20260405-06
+title: "循環依存の検出と `KrsEdge.cyclic` フラグによる視覚化"
+status: accepted
+date: 2026-04-05
+scope:
+  packages:
+    - core
+  domains:
+    - resolver
+    - rendering
+---
+
 # ADR-20260405-06: 循環依存の検出と `KrsEdge.cyclic` フラグによる視覚化
 
 - **日付**: 2026-04-05

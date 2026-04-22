@@ -46,6 +46,12 @@ export interface RenderOptions {
    * (Issue #738 / design doc D-2).
    */
   nodeDiffMeta?: Map<string, NodeDiffMeta>;
+  /**
+   * Diff state per container keyed by container id (deploy: `serviceId`). When
+   * present, the matching `<g data-container-id>` emits `data-diff-state` so
+   * CSS can highlight whole-container additions/removals (Issue #750).
+   */
+  containerDiffState?: Map<string, string>;
 }
 
 export function render(
@@ -160,7 +166,8 @@ export function renderFromLayout(
   for (const container of layoutResult.containers) {
     if (!container.ghost) {
       const containerStyle = styles.nodes.get(container.id) ?? styles.defaultNodeStyle;
-      parts.push(renderContainer(container, containerStyle, false));
+      const diffState = options?.containerDiffState?.get(container.id);
+      parts.push(renderContainer(container, containerStyle, false, diffState));
     }
   }
 
@@ -247,6 +254,7 @@ function renderContainer(
   container: ContainerRect,
   style: ResolvedNodeStyle,
   ghost: boolean,
+  diffState?: string,
 ): string {
   const children: string[] = [];
   children.push(
@@ -282,6 +290,7 @@ function renderContainer(
     "g",
     {
       "data-container-id": container.id,
+      "data-diff-state": diffState,
       opacity: ghost ? GHOST_OPACITY : undefined,
     },
     ...children,

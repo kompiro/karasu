@@ -3,6 +3,7 @@ import type { SnapshotManager } from "./snapshot-manager";
 
 export type CompareSource =
   | { kind: "file"; path: string }
+  | { kind: "pasted"; path: string }
   | { kind: "snapshot"; filePath: string; snapshotId: string };
 
 interface ResolvedCompareSource {
@@ -17,9 +18,14 @@ interface ResolvedCompareSource {
  */
 export function compareSourceKey(source: CompareSource | null): string {
   if (!source) return "";
-  return source.kind === "file"
-    ? `file:${source.path}`
-    : `snap:${source.filePath}:${source.snapshotId}`;
+  switch (source.kind) {
+    case "file":
+      return `file:${source.path}`;
+    case "pasted":
+      return `paste:${source.path}`;
+    case "snapshot":
+      return `snap:${source.filePath}:${source.snapshotId}`;
+  }
 }
 
 /**
@@ -38,7 +44,7 @@ export async function resolveCompareSource(
   snapshots: SnapshotManager,
   projectRoot: string,
 ): Promise<ResolvedCompareSource> {
-  if (source.kind === "file") {
+  if (source.kind === "file" || source.kind === "pasted") {
     return { entryPath: source.path, fs };
   }
 

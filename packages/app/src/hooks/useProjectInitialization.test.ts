@@ -5,6 +5,7 @@ import {
   EC_PLATFORM_PROJECTS,
   GETTING_STARTED_PROJECT,
   GETTING_STARTED_PROJECT_EN,
+  InMemoryFileSystemProvider,
   type Project,
 } from "@karasu-tools/core";
 import { useProjectInitialization } from "./useProjectInitialization.js";
@@ -46,7 +47,15 @@ describe("useProjectInitialization — bootstrap", () => {
     const dispatch = vi.fn<(action: unknown) => void>();
     const selectFile = vi.fn<(path: string) => Promise<void>>(async () => {});
 
-    renderHook(() => useProjectInitialization({ pm, dispatch, currentProject: null, selectFile }));
+    renderHook(() =>
+      useProjectInitialization({
+        pm,
+        fs: new InMemoryFileSystemProvider(),
+        dispatch,
+        currentProject: null,
+        selectFile,
+      }),
+    );
 
     await waitFor(() =>
       expect(dispatch).toHaveBeenCalledWith(expect.objectContaining({ type: "SET_PROJECTS" })),
@@ -78,7 +87,15 @@ describe("useProjectInitialization — bootstrap", () => {
     const dispatch = vi.fn<(action: unknown) => void>();
     const selectFile = vi.fn<(path: string) => Promise<void>>(async () => {});
 
-    renderHook(() => useProjectInitialization({ pm, dispatch, currentProject: null, selectFile }));
+    renderHook(() =>
+      useProjectInitialization({
+        pm,
+        fs: new InMemoryFileSystemProvider(),
+        dispatch,
+        currentProject: null,
+        selectFile,
+      }),
+    );
 
     await waitFor(() =>
       expect(dispatch).toHaveBeenCalledWith(expect.objectContaining({ type: "SET_PROJECTS" })),
@@ -97,13 +114,47 @@ describe("useProjectInitialization — bootstrap", () => {
     const dispatch = vi.fn<(action: unknown) => void>();
     const selectFile = vi.fn<(path: string) => Promise<void>>(async () => {});
 
-    renderHook(() => useProjectInitialization({ pm, dispatch, currentProject: null, selectFile }));
+    renderHook(() =>
+      useProjectInitialization({
+        pm,
+        fs: new InMemoryFileSystemProvider(),
+        dispatch,
+        currentProject: null,
+        selectFile,
+      }),
+    );
 
     await waitFor(() =>
       expect(dispatch).toHaveBeenCalledWith({ type: "SET_PROJECTS", projects: existing }),
     );
     expect(pm.createProject).not.toHaveBeenCalled();
     expect(dispatch).toHaveBeenCalledWith({ type: "SET_LOADING", loading: false });
+  });
+
+  it("sweeps stale .karasu-paste-compare.krs files from every project on startup (Issue #739)", async () => {
+    const existing = [makeProject("abc"), makeProject("xyz")];
+    const fs = new InMemoryFileSystemProvider();
+    await fs.mkdir("/projects");
+    await fs.mkdir("/projects/abc");
+    await fs.mkdir("/projects/xyz");
+    await fs.writeFile("/projects/abc/index.krs", "system A {}");
+    await fs.writeFile("/projects/abc/.karasu-paste-compare.krs", "stale");
+    await fs.writeFile("/projects/xyz/.karasu-paste-compare.krs", "stale");
+    const pm = makePm(existing);
+    const dispatch = vi.fn<(action: unknown) => void>();
+    const selectFile = vi.fn<(path: string) => Promise<void>>(async () => {});
+
+    renderHook(() =>
+      useProjectInitialization({ pm, fs, dispatch, currentProject: null, selectFile }),
+    );
+
+    await waitFor(() =>
+      expect(dispatch).toHaveBeenCalledWith({ type: "SET_LOADING", loading: false }),
+    );
+    expect(await fs.exists("/projects/abc/.karasu-paste-compare.krs")).toBe(false);
+    expect(await fs.exists("/projects/xyz/.karasu-paste-compare.krs")).toBe(false);
+    // Untouched: non-paste files in the project remain.
+    expect(await fs.exists("/projects/abc/index.krs")).toBe(true);
   });
 });
 
@@ -119,7 +170,13 @@ describe("useProjectInitialization — project switch", () => {
     const project = makeProject("abc");
 
     renderHook(() =>
-      useProjectInitialization({ pm, dispatch, currentProject: project, selectFile }),
+      useProjectInitialization({
+        pm,
+        fs: new InMemoryFileSystemProvider(),
+        dispatch,
+        currentProject: project,
+        selectFile,
+      }),
     );
 
     await waitFor(() => expect(selectFile).toHaveBeenCalled());
@@ -132,7 +189,15 @@ describe("useProjectInitialization — project switch", () => {
     const dispatch = vi.fn<(action: unknown) => void>();
     const selectFile = vi.fn<(path: string) => Promise<void>>(async () => {});
 
-    renderHook(() => useProjectInitialization({ pm, dispatch, currentProject: null, selectFile }));
+    renderHook(() =>
+      useProjectInitialization({
+        pm,
+        fs: new InMemoryFileSystemProvider(),
+        dispatch,
+        currentProject: null,
+        selectFile,
+      }),
+    );
 
     // Wait for bootstrap to settle so we can assert the switch-effect did not fire.
     await waitFor(() =>

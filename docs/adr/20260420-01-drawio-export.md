@@ -1,3 +1,16 @@
+---
+id: ADR-20260420-01
+title: "draw.io (mxGraph XML) Export — a Layout Escape Hatch"
+status: accepted
+date: 2026-04-20
+scope:
+  packages:
+    - core
+  domains:
+    - rendering
+    - export
+---
+
 # ADR-20260420-01: draw.io (mxGraph XML) Export — a Layout Escape Hatch
 
 - **日付**: 2026-04-20

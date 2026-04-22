@@ -1,3 +1,15 @@
+---
+id: ADR-20260412-05
+title: Playwright with AI-assisted visual review
+status: accepted
+date: 2026-04-12
+supersedes:
+  - ADR-20260324-01
+scope:
+  domains:
+    - testing
+---
+
 # ADR-20260412-05: Playwright with AI-assisted visual review
 
 - **日付**: 2026-04-12

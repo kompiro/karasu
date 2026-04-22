@@ -2247,6 +2247,96 @@ body,
   background: var(--hover-bg, rgba(0, 0, 0, 0.05));
 }
 
+.diff-mode-banner__actions {
+  display: flex;
+  gap: 8px;
+}
+
+.toolbar-btn--diff-view-pasted {
+  background: transparent;
+  border: 1px solid rgba(245, 158, 11, 0.4);
+  color: var(--text-primary);
+  font-size: 12px;
+  padding: 2px 10px;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.toolbar-btn--diff-view-pasted:hover {
+  background: rgba(245, 158, 11, 0.15);
+}
+
+.diff-mode-banner__pasted {
+  color: var(--diff-color-removed);
+  font-style: italic;
+}
+
+/* Paste-compare dialog (Issue #739) */
+.paste-compare-dialog-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.paste-compare-dialog {
+  background: var(--bg-overlay);
+  border: 1px solid var(--border-strong);
+  border-radius: 8px;
+  padding: 20px;
+  width: min(640px, 90vw);
+  max-height: 80vh;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+  color: var(--text-primary);
+}
+
+.paste-compare-dialog__title {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.paste-compare-dialog__hint {
+  margin: 0;
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.paste-compare-dialog__textarea {
+  flex: 1;
+  min-height: 260px;
+  padding: 10px;
+  font-family: ui-monospace, Menlo, Monaco, Consolas, monospace;
+  font-size: 13px;
+  background: var(--bg-base);
+  color: var(--text-primary);
+  border: 1px solid var(--border-default);
+  border-radius: 4px;
+  resize: vertical;
+}
+
+.paste-compare-dialog__textarea:focus {
+  outline: none;
+  border-color: var(--border-active);
+}
+
+.paste-compare-dialog__textarea::placeholder {
+  color: var(--text-muted);
+}
+
+.paste-compare-dialog__footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
 /* When diff state is set on any group, dim everything else slightly so changes
    stand out. Selectors target only nodes/edges inside the rendered SVG. */
 .preview-pane svg [data-diff-state="unchanged"] {

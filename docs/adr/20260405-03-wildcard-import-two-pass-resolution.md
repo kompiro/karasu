@@ -1,3 +1,17 @@
+---
+id: ADR-20260405-03
+title: ワイルドカードインポートと2パス解決の採用
+status: accepted
+date: 2026-04-05
+scope:
+  packages:
+    - core
+  domains:
+    - parser
+    - import
+    - resolver
+---
+
 # ADR-20260405-03: ワイルドカードインポートと2パス解決の採用
 
 - **日付**: 2026-04-05

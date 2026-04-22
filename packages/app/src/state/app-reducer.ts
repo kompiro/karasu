@@ -22,10 +22,10 @@ export interface AppState {
   isAllLayersOpen: boolean;
   loading: boolean;
   /**
-   * Source to compare the current file against in diff mode (Issue #650, #740).
+   * Source to compare the current file against in diff mode
+   * (Issue #650 file source, #739 pasted source, #740 snapshot source).
    * When non-null, diff views render a graphical diff between the current entry
-   * path and the resolved content of this source. Supports plain workspace files
-   * and OPFS history snapshots.
+   * path and the resolved content of this source.
    */
   compareSource: CompareSource | null;
 }
@@ -80,6 +80,7 @@ export function appReducer(state: AppState, action: AppAction): AppState {
         activeView: "system",
         selectedDeployBlockId: null,
         highlightedNodeId: null,
+        compareSource: null,
       };
 
     case "SELECT_FILE":

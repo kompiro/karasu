@@ -1,3 +1,17 @@
+---
+id: ADR-20260323-03
+title: Organization 図（organization / team / member）の追加
+status: accepted
+date: 2026-03-23
+depends_on:
+  - ADR-20260312-03
+scope:
+  domains:
+    - concepts
+    - syntax
+    - rendering
+---
+
 # ADR-20260323-03: Organization 図（organization / team / member）の追加
 
 - **日付**: 2026-03-23

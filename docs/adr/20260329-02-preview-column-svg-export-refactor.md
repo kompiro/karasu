@@ -1,3 +1,18 @@
+---
+id: ADR-20260329-02
+title: "KarasuPreviewColumn からの SVG エクスポート責務分離"
+status: accepted
+date: 2026-03-29
+depends_on:
+  - ADR-20260328-02
+scope:
+  packages:
+    - app
+  domains:
+    - ui
+    - export
+---
+
 # ADR-20260329-02: KarasuPreviewColumn からの SVG エクスポート責務分離
 
 - **日付**: 2026-03-29

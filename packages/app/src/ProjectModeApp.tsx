@@ -1,7 +1,8 @@
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ProjectSelector } from "./components/ProjectSelector.js";
 import { FileTree } from "./components/FileTree.js";
 import { AppShell } from "./components/AppShell.js";
+import { PasteCompareDialog } from "./components/PasteCompareDialog.js";
 import { SnapshotPickerModal } from "./components/SnapshotPickerModal.js";
 import { useAppContext } from "./state/app-context.js";
 import { ProjectManager } from "./fs/project-manager.js";
@@ -23,14 +24,35 @@ export function ProjectModeApp() {
   const pmRef = useRef(new ProjectManager(fs));
   const pm = pmRef.current;
 
-  const { currentProject, projects, currentFilePath, fileContent, loading } = state;
+  const { currentProject, projects, currentFilePath, fileContent, loading, compareSource } = state;
 
   const projectRoot = currentProject?.rootPath ?? null;
   const snapshotManager = useMemo(
     () => (projectRoot ? new SnapshotManager(fs, projectRoot) : null),
     [fs, projectRoot],
   );
+
+  const [pasteDialog, setPasteDialog] = useState<
+    { mode: "edit"; initial: string } | { mode: "view"; content: string } | null
+  >(null);
   const [pickerFilePath, setPickerFilePath] = useState<string | null>(null);
+
+  // Hidden file path within the project used to hold a pasted .krs blob while
+  // diff mode is active (Issue #739). The file-tree loader hides dot-prefixed
+  // entries so it does not surface to the user.
+  const pastedPath = projectRoot ? `${projectRoot}/.karasu-paste-compare.krs` : null;
+
+  // Clean up the temp pasted file whenever diff mode exits (or the source is
+  // no longer "pasted"). Keeps the OPFS clean across project switches.
+  useEffect(() => {
+    if (!pastedPath) return;
+    if (compareSource?.kind === "pasted" && compareSource.path === pastedPath) return;
+    void (async () => {
+      if (await fs.exists(pastedPath)) {
+        await fs.delete(pastedPath);
+      }
+    })();
+  }, [fs, pastedPath, compareSource]);
 
   // エントリパスを計算（現在のプロジェクトの index.krs）
   const entryPath = currentProject ? `${currentProject.rootPath}/index.krs` : null;
@@ -38,7 +60,7 @@ export function ProjectModeApp() {
   const { navigateToProject } = useProjectNavigation(projects, currentProject, dispatch);
   const { selectFile } = useFileSelection(fs, dispatch);
 
-  useProjectInitialization({ pm, dispatch, currentProject, selectFile });
+  useProjectInitialization({ pm, fs, dispatch, currentProject, selectFile });
 
   // ── ファイル選択 ────────────────────────────────────────────────
 
@@ -135,6 +157,29 @@ export function ProjectModeApp() {
     [dispatch],
   );
 
+  const handleOpenPasteDialog = useCallback(() => {
+    setPasteDialog({ mode: "edit", initial: "" });
+  }, []);
+
+  const handleViewPasted = useCallback(async () => {
+    if (!pastedPath) return;
+    const content = await fs.readFile(pastedPath);
+    setPasteDialog({ mode: "view", content });
+  }, [fs, pastedPath]);
+
+  const handlePasteConfirm = useCallback(
+    async (content: string) => {
+      if (!pastedPath) return;
+      await fs.writeFile(pastedPath, content);
+      dispatch({
+        type: "SET_COMPARE_SOURCE",
+        source: { kind: "pasted", path: pastedPath },
+      });
+      setPasteDialog(null);
+    },
+    [fs, pastedPath, dispatch],
+  );
+
   const handleSnapshotNow = useCallback(
     async (path: string) => {
       if (!snapshotManager || !projectRoot || !path.startsWith(`${projectRoot}/`)) return;
@@ -181,6 +226,7 @@ export function ProjectModeApp() {
       onFileDeleted={handleFileDeleted}
       onFileRenamed={handleFileRenamed}
       onCompareWithCurrent={ENABLE_DIFF_VIEWER ? handleCompareWithCurrent : undefined}
+      onCompareWithPaste={ENABLE_DIFF_VIEWER ? handleOpenPasteDialog : undefined}
       onSnapshotNow={ENABLE_DIFF_VIEWER ? handleSnapshotNow : undefined}
       onCompareWithSnapshot={ENABLE_DIFF_VIEWER ? handleCompareWithSnapshot : undefined}
     />
@@ -197,7 +243,22 @@ export function ProjectModeApp() {
         entryPath={entryPath}
         sidebarHeaderContent={sidebarHeader}
         sidebarContent={sidebarContent}
+        onViewPasted={compareSource?.kind === "pasted" ? handleViewPasted : undefined}
       />
+      {pasteDialog?.mode === "edit" && (
+        <PasteCompareDialog
+          initialValue={pasteDialog.initial}
+          onConfirm={handlePasteConfirm}
+          onCancel={() => setPasteDialog(null)}
+        />
+      )}
+      {pasteDialog?.mode === "view" && (
+        <PasteCompareDialog
+          initialValue={pasteDialog.content}
+          readOnly
+          onCancel={() => setPasteDialog(null)}
+        />
+      )}
       {pickerFilePath && pickerRelPath && snapshotManager && (
         <SnapshotPickerModal
           snapshots={snapshotManager}

@@ -1,7 +1,6 @@
-import { useCallback, useEffect, useMemo, useState, type ReactNode, type RefObject } from "react";
+import { useCallback, useMemo, useState, type ReactNode, type RefObject } from "react";
 import { format, FormatError } from "@karasu-tools/core";
-import { SnapshotManager, type SnapshotRecord } from "../fs/snapshot-manager.js";
-import type { CompareSource } from "../fs/compare-source.js";
+import { SnapshotManager } from "../fs/snapshot-manager.js";
 import { EditArea } from "./EditArea.js";
 import { PreviewColumn } from "./PreviewColumn.js";
 import { downloadSvg } from "../utils/download-svg.js";
@@ -15,6 +14,7 @@ import { useJumpToEditor } from "../hooks/useJumpToEditor.js";
 import { useCrossNavigation } from "../hooks/useCrossNavigation.js";
 import { useViewSvg } from "../hooks/useViewSvg.js";
 import { useStyleSource } from "../hooks/useStyleSource.js";
+import { DiffModeBanner } from "./DiffModeBanner.js";
 
 interface AppShellProps {
   entryPath: string | null;
@@ -28,6 +28,11 @@ interface AppShellProps {
   sidebarContent?: ReactNode;
   hideEditor?: boolean;
   recompileRef?: RefObject<(() => void) | null>;
+  /**
+   * When set, the diff banner renders a "View pasted" button that invokes
+   * this callback to re-display the pasted blob (Issue #739).
+   */
+  onViewPasted?: () => void;
 }
 
 /**
@@ -47,6 +52,7 @@ export function AppShell({
   sidebarContent,
   hideEditor,
   recompileRef,
+  onViewPasted,
 }: AppShellProps) {
   const { state, dispatch, fs } = useAppContext();
   const {
@@ -310,75 +316,11 @@ export function AppShell({
             snapshotManager={snapshotManager}
             currentPath={currentFilePath}
             onExit={() => dispatch({ type: "SET_COMPARE_SOURCE", source: null })}
+            onViewPasted={onViewPasted}
           />
         )}
         <PreviewColumn />
       </PreviewProvider>
     </div>
   );
-}
-
-function DiffModeBanner({
-  source,
-  snapshotManager,
-  currentPath,
-  onExit,
-}: {
-  source: CompareSource;
-  snapshotManager: SnapshotManager | null;
-  currentPath: string | null;
-  onExit: () => void;
-}) {
-  const baseName = (p: string) => p.split("/").pop() ?? p;
-  const [snapshotRecord, setSnapshotRecord] = useState<SnapshotRecord | null>(null);
-
-  useEffect(() => {
-    if (source.kind !== "snapshot" || !snapshotManager) {
-      setSnapshotRecord(null);
-      return;
-    }
-    let cancelled = false;
-    snapshotManager.list(source.filePath).then((records) => {
-      if (cancelled) return;
-      setSnapshotRecord(records.find((r) => r.id === source.snapshotId) ?? null);
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, [source, snapshotManager]);
-
-  const beforeLabel =
-    source.kind === "file"
-      ? baseName(source.path)
-      : snapshotRecord
-        ? formatSnapshotLabel(snapshotRecord)
-        : `${baseName(source.filePath)} @ ...`;
-
-  return (
-    <div className="diff-mode-banner" role="status" aria-label="Diff mode active">
-      <span className="diff-mode-banner__label">
-        ⇄ Diff:&nbsp;
-        <span className="diff-mode-banner__before">{beforeLabel}</span>
-        &nbsp;→&nbsp;
-        <span className="diff-mode-banner__after">
-          {currentPath ? baseName(currentPath) : "(current)"}
-        </span>
-      </span>
-      <button
-        type="button"
-        className="toolbar-btn toolbar-btn--diff-exit"
-        onClick={onExit}
-        aria-label="Exit diff mode"
-      >
-        ✕ Exit diff
-      </button>
-    </div>
-  );
-}
-
-function formatSnapshotLabel(record: SnapshotRecord): string {
-  const base = record.filePath.split("/").pop() ?? record.filePath;
-  const when = new Date(record.createdAt).toLocaleString();
-  const tag = record.label ? ` "${record.label}"` : record.trigger === "auto" ? " (auto)" : "";
-  return `${base} @ ${when}${tag}`;
 }

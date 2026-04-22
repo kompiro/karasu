@@ -1,3 +1,16 @@
+---
+id: ADR-20260410-01
+title: "Domain 間エッジと `[implicit]` 自動タグによる暗黙サービスエッジ"
+status: accepted
+date: 2026-04-10
+scope:
+  packages:
+    - core
+  domains:
+    - rendering
+    - edges
+---
+
 # ADR-20260410-01: Domain 間エッジと `[implicit]` 自動タグによる暗黙サービスエッジ
 
 - **日付**: 2026-04-10

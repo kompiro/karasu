@@ -1,3 +1,16 @@
+---
+id: ADR-20260327-01
+title: Deployment Diagram Design Decisions
+status: accepted
+date: 2026-03-27
+scope:
+  packages:
+    - core
+  domains:
+    - rendering
+    - deployment
+---
+
 # ADR-20260327-01: Deployment Diagram Design Decisions
 
 ## Status
