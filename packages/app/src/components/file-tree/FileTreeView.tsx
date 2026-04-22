@@ -20,6 +20,8 @@ interface FileTreeViewProps {
   onNewDir: () => void;
   /** When true, the context menu shows a "Compare with current" entry for files (Issue #650). */
   canCompareContextNode?: boolean;
+  /** When true, the context menu shows snapshot entries for `.krs` files (Issue #740). */
+  canSnapshotContextNode?: boolean;
 }
 
 /**
@@ -43,6 +45,7 @@ export function FileTreeView({
   onNewFile,
   onNewDir,
   canCompareContextNode,
+  canSnapshotContextNode,
 }: FileTreeViewProps) {
   return (
     <div className="file-tree">
@@ -88,6 +91,7 @@ export function FileTreeView({
           y={contextMenu.y}
           node={contextMenu.node}
           canCompareWithCurrent={canCompareContextNode}
+          canSnapshot={canSnapshotContextNode}
           onAction={onMenuAction}
         />
       )}

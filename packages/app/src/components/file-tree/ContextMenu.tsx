@@ -5,7 +5,9 @@ export type ContextMenuAction =
   | "new-dir"
   | "rename"
   | "delete"
-  | "compare-with-current";
+  | "compare-with-current"
+  | "snapshot-now"
+  | "compare-with-snapshot";
 
 interface ContextMenuProps {
   x: number;
@@ -13,10 +15,19 @@ interface ContextMenuProps {
   node: FileTreeNode;
   /** When true, this file is comparable against the currently open file (Issue #650). */
   canCompareWithCurrent?: boolean;
+  /** When true, snapshot actions are available for this file (Issue #740). */
+  canSnapshot?: boolean;
   onAction: (action: ContextMenuAction) => void;
 }
 
-export function ContextMenu({ x, y, node, canCompareWithCurrent, onAction }: ContextMenuProps) {
+export function ContextMenu({
+  x,
+  y,
+  node,
+  canCompareWithCurrent,
+  canSnapshot,
+  onAction,
+}: ContextMenuProps) {
   const isDir = node.kind === "directory";
   const isNamedNode = node.name !== "";
 
@@ -42,6 +53,20 @@ export function ContextMenu({ x, y, node, canCompareWithCurrent, onAction }: Con
                 onClick={() => onAction("compare-with-current")}
               >
                 ⇄ Compare with current
+              </button>
+              <div className="context-menu-separator" />
+            </>
+          )}
+          {canSnapshot && (
+            <>
+              <button className="context-menu-item" onClick={() => onAction("snapshot-now")}>
+                ⤓ Snapshot now
+              </button>
+              <button
+                className="context-menu-item"
+                onClick={() => onAction("compare-with-snapshot")}
+              >
+                ⇄ Compare with snapshot…
               </button>
               <div className="context-menu-separator" />
             </>

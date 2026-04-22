@@ -8,12 +8,14 @@ import type { FileTreeNode } from "../components/file-tree/types.js";
 export async function loadDir(dirPath: string, fs: FileSystemProvider): Promise<FileTreeNode[]> {
   try {
     const entries = await fs.readDir(dirPath);
-    return entries.map((entry: DirEntry) => ({
-      name: entry.name,
-      path: `${dirPath}/${entry.name}`,
-      kind: entry.kind,
-      expanded: false,
-    }));
+    return entries
+      .filter((entry: DirEntry) => !entry.name.startsWith("."))
+      .map((entry: DirEntry) => ({
+        name: entry.name,
+        path: `${dirPath}/${entry.name}`,
+        kind: entry.kind,
+        expanded: false,
+      }));
   } catch {
     return [];
   }

@@ -20,6 +20,10 @@ interface FileTreeProps {
    * The path is the file to compare against the currently open file.
    */
   onCompareWithCurrent?: (path: string) => void;
+  /** Triggered when the user picks "Snapshot now" on a `.krs` file (Issue #740). */
+  onSnapshotNow?: (path: string) => void;
+  /** Triggered when the user picks "Compare with snapshot…" on a `.krs` file (Issue #740). */
+  onCompareWithSnapshot?: (path: string) => void;
   refreshKey?: number;
 }
 
@@ -32,6 +36,8 @@ export function FileTree({
   onFileDeleted,
   onFileRenamed,
   onCompareWithCurrent,
+  onSnapshotNow,
+  onCompareWithSnapshot,
   refreshKey,
 }: FileTreeProps) {
   const [tree, setTree] = useState<FileTreeNode[]>([]);
@@ -149,9 +155,15 @@ export function FileTree({
         case "compare-with-current":
           if (onCompareWithCurrent) onCompareWithCurrent(node.path);
           break;
+        case "snapshot-now":
+          if (onSnapshotNow) onSnapshotNow(node.path);
+          break;
+        case "compare-with-snapshot":
+          if (onCompareWithSnapshot) onCompareWithSnapshot(node.path);
+          break;
       }
     },
-    [contextMenu, deleteItem, onCompareWithCurrent],
+    [contextMenu, deleteItem, onCompareWithCurrent, onSnapshotNow, onCompareWithSnapshot],
   );
 
   const canCompareContextNode = !!(
@@ -161,6 +173,13 @@ export function FileTree({
     contextMenu.node.kind === "file" &&
     contextMenu.node.name.endsWith(".krs") &&
     contextMenu.node.path !== currentFilePath
+  );
+
+  const canSnapshotContextNode = !!(
+    contextMenu &&
+    (onSnapshotNow || onCompareWithSnapshot) &&
+    contextMenu.node.kind === "file" &&
+    contextMenu.node.name.endsWith(".krs")
   );
 
   const handleNewFile = useCallback(() => {
@@ -188,6 +207,7 @@ export function FileTree({
       onNewFile={handleNewFile}
       onNewDir={handleNewDir}
       canCompareContextNode={canCompareContextNode}
+      canSnapshotContextNode={canSnapshotContextNode}
     />
   );
 }
