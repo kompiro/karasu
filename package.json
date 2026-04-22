@@ -9,19 +9,27 @@
   "scripts": {
     "dev": "pnpm --filter @karasu-tools/app run dev",
     "build": "pnpm --filter @karasu-tools/core run build && pnpm --filter @karasu-tools/lsp run build && pnpm --filter @karasu-tools/app run build && pnpm --filter ./packages/cli run build",
-    "test": "pnpm --filter @karasu-tools/core run test && pnpm --filter @karasu-tools/app run test && pnpm --filter ./packages/cli run test && pnpm --filter @karasu-tools/lsp run test",
-    "test:coverage": "pnpm --filter @karasu-tools/core run test:coverage && pnpm --filter @karasu-tools/app run test:coverage && pnpm --filter ./packages/cli run test:coverage",
-    "lint": "oxlint --deny-warnings packages/",
-    "lint:fix": "oxlint --fix packages/",
-    "format": "oxfmt --write packages/",
-    "format:check": "oxfmt --check packages/",
-    "typecheck": "pnpm -r run typecheck",
-    "knip": "knip"
+    "test": "pnpm --filter @karasu-tools/core run test && pnpm --filter @karasu-tools/app run test && pnpm --filter ./packages/cli run test && pnpm --filter @karasu-tools/lsp run test && pnpm run test:scripts",
+    "test:scripts": "vitest run --config scripts/vitest.config.ts",
+    "test:coverage": "pnpm --filter @karasu-tools/core run test:coverage && pnpm --filter @karasu-tools/app run test:coverage && pnpm --filter ./packages/cli run test:coverage && pnpm run test:scripts",
+    "lint": "oxlint --deny-warnings packages/ scripts/",
+    "lint:fix": "oxlint --fix packages/ scripts/",
+    "format": "oxfmt --write packages/ scripts/",
+    "format:check": "oxfmt --check packages/ scripts/",
+    "typecheck": "pnpm -r run typecheck && tsc --noEmit -p scripts/tsconfig.json",
+    "knip": "knip",
+    "adr:validate": "tsx scripts/adr/validate.ts"
   },
   "devDependencies": {
+    "@types/js-yaml": "^4.0.9",
+    "@types/node": "^25.6.0",
+    "js-yaml": "^4.1.1",
     "knip": "^6.6.0",
     "lefthook": "^2.1.6",
     "oxfmt": "^0.45.0",
-    "oxlint": "1.60.0"
+    "oxlint": "1.60.0",
+    "tsx": "^4.21.0",
+    "typescript": "^6.0.3",
+    "vitest": "^4.1.4"
   }
 }

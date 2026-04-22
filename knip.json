@@ -2,8 +2,8 @@
   "$schema": "https://unpkg.com/knip@latest/schema.json",
   "workspaces": {
     ".": {
-      "entry": [],
-      "project": []
+      "entry": ["scripts/adr/validate.ts"],
+      "project": ["scripts/**/*.ts"]
     },
     "packages/core": {
       "entry": ["src/index.ts"],
@@ -25,6 +25,6 @@
       "project": ["tests/**/*.ts"]
     }
   },
-  "ignoreBinaries": ["vitest", "lefthook", "oxfmt", "oxlint", "knip", "vite", "tsc"],
+  "ignoreBinaries": ["vitest", "lefthook", "oxfmt", "oxlint", "knip", "vite", "tsc", "tsx"],
   "ignoreDependencies": ["lefthook", "oxfmt", "oxlint"]
 }
