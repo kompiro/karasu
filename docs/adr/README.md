@@ -118,6 +118,7 @@ URL hash・ブラウザ履歴・マルチファイル間のナビゲーション
 - [ADR-20260411-08](20260411-08-edit-pane-toolbar.md) — EditPaneToolbar — LeftPane アクションボタンの専用ツールバーへの集約
 - [ADR-20260413-02](20260413-02-single-detail-panel-at-a-time.md) — DetailPanel は常に 1 つだけ表示する
 - [ADR-20260419-02](20260419-02-rename-preview-column.md) — `KarasuPreviewColumn` を `PreviewColumn` にリネーム
+- [ADR-20260422-06](20260422-06-diff-paste-input-ui.md) — Diff ペースト入力の UI 配置とストレージ方式（FileTree ヘッダ + モーダル + 隠しファイル）
 
 ### プロジェクト / マルチファイル / Import-Export
 
