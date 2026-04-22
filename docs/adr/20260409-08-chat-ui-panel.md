@@ -1,3 +1,22 @@
+---
+id: ADR-20260409-08
+title: Chat UI Panel — 全体アーキテクチャと Phase 1 レイアウト
+status: accepted
+date: 2026-04-09
+depends_on:
+  - ADR-20260407-04
+related_to:
+  - ADR-20260409-01
+  - ADR-20260412-01
+  - ADR-20260411-04
+scope:
+  packages:
+    - app
+  domains:
+    - ui
+    - ai
+---
+
 # ADR-20260409-08: Chat UI Panel — 全体アーキテクチャと Phase 1 レイアウト
 
 - **日付**: 2026-04-09

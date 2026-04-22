@@ -1,3 +1,19 @@
+---
+id: ADR-20260401-05
+title: VSCode Phase 3.5 — Webview ドリルダウンナビゲーション
+status: accepted
+date: 2026-04-01
+depends_on:
+  - ADR-20260401-04
+  - ADR-20260320-01
+scope:
+  packages:
+    - vscode
+  domains:
+    - vscode
+    - navigation
+---
+
 # ADR-20260401-05: VSCode Phase 3.5 — Webview ドリルダウンナビゲーション
 
 - **日付**: 2026-04-01

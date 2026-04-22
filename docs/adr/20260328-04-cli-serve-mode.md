@@ -1,3 +1,17 @@
+---
+id: ADR-20260328-04
+title: "CLI `karasu serve` モード — ローカル `.krs` のリアルタイムプレビュー"
+status: accepted
+date: 2026-03-28
+depends_on:
+  - ADR-20260317-02
+scope:
+  packages:
+    - cli
+  domains:
+    - cli
+---
+
 # ADR-20260328-04: CLI `karasu serve` モード — ローカル `.krs` のリアルタイムプレビュー
 
 - **日付**: 2026-03-28

@@ -1,3 +1,15 @@
+---
+id: ADR-20260404-06
+title: "GitHub Markdown レンダリングサービス — `serve.ts` の `/render` エンドポイント"
+status: accepted
+date: 2026-04-04
+scope:
+  packages:
+    - cli
+  domains:
+    - cli
+---
+
 # ADR-20260404-06: GitHub Markdown レンダリングサービス — `serve.ts` の `/render` エンドポイント
 
 - **日付**: 2026-04-04
