@@ -1,3 +1,18 @@
+---
+id: ADR-20260422-04
+title: トップレベル service / domain を `(Unassigned)` 擬似システムで描画する
+status: accepted
+date: 2026-04-22
+depends_on:
+  - ADR-20260409-06
+scope:
+  packages:
+    - core
+  domains:
+    - rendering
+    - resolver
+---
+
 # ADR-20260422-04: トップレベル service / domain を `(Unassigned)` 擬似システムで描画する
 
 - **日付**: 2026-04-22

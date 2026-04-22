@@ -1,3 +1,17 @@
+---
+id: ADR-20260405-05
+title: "`database` / `queue` / `storage` を system 直下のファーストクラスノードに昇格"
+status: accepted
+date: 2026-04-05
+scope:
+  packages:
+    - core
+  domains:
+    - parser
+    - syntax
+    - rendering
+---
+
 # ADR-20260405-05: `database` / `queue` / `storage` を system 直下のファーストクラスノードに昇格
 
 - **日付**: 2026-04-05
