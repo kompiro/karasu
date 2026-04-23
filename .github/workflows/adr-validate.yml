@@ -42,3 +42,6 @@ jobs:
 
       - name: Check generated ADR files (effective.md, graph.md, graph/*.md)
         run: pnpm exec tsx scripts/adr/regenerate.ts --check
+
+      - name: Check ADR assumptions against the working tree
+        run: pnpm exec tsx scripts/adr/check-assumptions.ts --quiet

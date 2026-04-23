@@ -14,6 +14,9 @@ scope:
   domains:
     - rendering
     - resolver
+assumptions:
+  - "file: packages/core/src/view/unassigned-system.ts"
+  - "symbol: packages/core/src/view/unassigned-system.ts :: synthesizeUnassignedSystem"
 ---
 
 # ADR-20260422-04: トップレベル service / domain を `(Unassigned)` 擬似システムで描画する
