@@ -15,3 +15,6 @@ pre-push:
     adr-regenerate-check:
       glob: "{docs/adr/**,scripts/adr/**}"
       run: pnpm exec tsx scripts/adr/regenerate.ts --check
+    adr-check-assumptions:
+      glob: "{docs/adr/**,scripts/adr/**}"
+      run: pnpm exec tsx scripts/adr/check-assumptions.ts --quiet

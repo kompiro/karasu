@@ -9,6 +9,9 @@ supersedes:
 scope:
   domains:
     - testing
+assumptions:
+  - "file: packages/e2e/playwright.config.ts"
+  - "file: packages/e2e/package.json"
 ---
 
 # ADR-20260412-05: Playwright with AI-assisted visual review

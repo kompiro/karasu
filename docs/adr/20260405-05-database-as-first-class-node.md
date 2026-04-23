@@ -11,6 +11,10 @@ scope:
     - parser
     - syntax
     - rendering
+assumptions:
+  - "grep: packages/core/src/types/ast.ts :: DatabaseNode"
+  - "grep: packages/core/src/types/ast.ts :: QueueGroupNode"
+  - "grep: packages/core/src/types/ast.ts :: StorageNode"
 ---
 
 # ADR-20260405-05: `database` / `queue` / `storage` を system 直下のファーストクラスノードに昇格

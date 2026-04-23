@@ -14,6 +14,12 @@ scope:
     - parser
     - rendering
     - resolver
+assumptions:
+  - "file: packages/core/src/view/unassigned-system.ts"
+  - "grep: packages/core/src/view/unassigned-system.ts :: withUnassignedSystem"
+  - "grep: packages/core/src/parser/parser.ts :: case TokenType.Database"
+  - "grep: packages/core/src/parser/parser.ts :: case TokenType.Queue"
+  - "grep: packages/core/src/parser/parser.ts :: case TokenType.Storage"
 ---
 
 # ADR-20260422-05: トップレベル infra ブロック（database / queue / storage）を `(Unassigned)` で描画する
