@@ -31,7 +31,7 @@ scope:
 
 ## 背景
 
-`karasu translate --from db` は、SQL DDL 上の各 `CREATE TABLE` を 1 個ずつ `.krs` の `table` ノードに変換してきた。実際のスキーマでは多くのテーブルが「独立したドメイン」ではなく、ある集約ルートの内部構造である。典型例:
+`karasu translate`（ADR-20260409-02）の `--from db` は、SQL DDL 上の各 `CREATE TABLE` を 1 個ずつ `.krs` の `table` ノードに変換してきた。実際のスキーマでは多くのテーブルが「独立したドメイン」ではなく、ある集約ルートの内部構造である。典型例:
 
 - `contracts` + `contract_line_items` → 1 個の "Contract" ドメイン
 - `orders` + `order_items` → 1 個の "Order" ドメイン

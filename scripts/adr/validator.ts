@@ -23,6 +23,7 @@ const VALID_TOPICS = [
   "vscode",
   "testing",
   "build",
+  "adr-tooling",
 ] as const;
 type Topic = (typeof VALID_TOPICS)[number];
 
@@ -57,6 +58,7 @@ export interface ParsedAdr {
   id: string;
   fm: Frontmatter;
   bodyHeading: string | null;
+  body: string;
 }
 
 interface ValidationResult {
@@ -239,7 +241,18 @@ function validateFile(
     warnings.push(`${filePath}: body has no H1 heading`);
   }
 
-  return { file: filePath, id: fm.id, fm, bodyHeading };
+  return { file: filePath, id: fm.id, fm, bodyHeading, body };
+}
+
+const ADR_ID_REF_RE = /ADR-\d{8}-\d{2}/g;
+
+function declaredRelations(fm: Frontmatter): Set<string> {
+  const out = new Set<string>();
+  for (const field of RELATIONSHIP_FIELDS) {
+    for (const id of (fm[field] ?? []) as string[]) out.add(id);
+  }
+  if (fm.superseded_by) out.add(fm.superseded_by);
+  return out;
 }
 
 function crossValidate(parsed: ParsedAdr[], errors: string[], warnings: string[]): void {
@@ -316,6 +329,29 @@ function crossValidate(parsed: ParsedAdr[], errors: string[], warnings: string[]
             `${p.file}: status=accepted depends_on "${depId}" which has status=${dep.fm.status}`,
           );
         }
+      }
+    }
+  }
+
+  for (const p of parsed) {
+    const declared = declaredRelations(p.fm);
+    const mentioned = new Set<string>();
+    for (const ref of p.body.match(ADR_ID_REF_RE) ?? []) {
+      if (ref === p.id) continue;
+      if (!byId.has(ref)) continue;
+      mentioned.add(ref);
+    }
+    for (const ref of mentioned) {
+      if (!declared.has(ref)) {
+        warnings.push(
+          `${p.file}: body mentions "${ref}" but it is not listed in any relationship field (depends_on / related_to / supersedes / refines / conflicts_with / superseded_by)`,
+        );
+      }
+    }
+    for (const dep of p.fm.depends_on ?? []) {
+      if (!byId.has(dep)) continue;
+      if (!mentioned.has(dep)) {
+        warnings.push(`${p.file}: depends_on "${dep}" is declared but never mentioned in the body`);
       }
     }
   }

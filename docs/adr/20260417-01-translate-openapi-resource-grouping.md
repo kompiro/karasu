@@ -27,7 +27,7 @@ scope:
 
 ## 背景
 
-`karasu translate --from openapi` は、OpenAPI の HTTP オペレーションを 1 つずつ `.krs` の `usecase` に変換していた。標準的な REST リソース（`GET /orders` / `POST /orders` / `GET /orders/{id}` / `PUT /orders/{id}` / `PATCH /orders/{id}` / `DELETE /orders/{id}`）を変換すると 1 リソースあたり 6 個前後の usecase がフラットに並ぶ。
+`karasu translate` は ADR-20260409-02 で導入された外部スキーマ → `.krs` 変換機構であり、`--from openapi` は、OpenAPI の HTTP オペレーションを 1 つずつ `.krs` の `usecase` に変換していた。標準的な REST リソース（`GET /orders` / `POST /orders` / `GET /orders/{id}` / `PUT /orders/{id}` / `PATCH /orders/{id}` / `DELETE /orders/{id}`）を変換すると 1 リソースあたり 6 個前後の usecase がフラットに並ぶ。
 
 アーキテクチャモデリングの観点では、これらの個別オペレーションは「Order を管理する」という 1 つのユースケースに相当することがほとんどで、6 個のフラットな usecase は以下の問題を引き起こしていた:
 

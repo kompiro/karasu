@@ -7,6 +7,7 @@ topic: renderer
 depends_on:
   - ADR-20260317-01
   - ADR-20260320-01
+  - ADR-20260323-02
 scope:
   packages:
     - core
