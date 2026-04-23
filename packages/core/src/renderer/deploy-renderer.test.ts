@@ -94,6 +94,21 @@ describe("renderDeploy", () => {
     expect(svg).toContain("No deploy block defined");
   });
 
+  it("uses provided empty-state labels in the empty SVG", () => {
+    const empty: DeployViewSlice = {
+      deployLabel: "",
+      containers: [],
+      unclassifiedUnits: [],
+      ghostEdges: [],
+    };
+    const svg = renderDeploy(empty, styles, undefined, {
+      emptyLabels: { deployTitle: "デプロイ未定義", deployHint: "追加してね" },
+    });
+    expect(svg).toContain("デプロイ未定義");
+    expect(svg).toContain("追加してね");
+    expect(svg).not.toContain("No deploy block defined");
+  });
+
   it("includes ghost edge group", () => {
     const svg = renderDeploy(makeSlice(), styles);
     expect(svg).toContain("ghost-edges");

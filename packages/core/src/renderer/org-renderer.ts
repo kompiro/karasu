@@ -10,12 +10,15 @@ import {
   ICON_DESC_CHAR_WIDTH,
   ICON_DESC_MAX_WIDTH,
 } from "./rendering-constants.js";
+import { DEFAULT_EMPTY_STATE_LABELS, type EmptyStateLabels } from "./empty-state-labels.js";
 
 interface RenderOrgOptions {
   /** Diff state per team / member id. */
   nodeDiffState?: Map<string, string>;
   /** Diff state per `ownsEdgeKey(teamId, serviceId)`. */
   edgeDiffState?: Map<string, string>;
+  /** Localized empty-state labels. English fallback when omitted. */
+  emptyLabels?: EmptyStateLabels;
 }
 
 // Shape mode constants
@@ -437,7 +440,7 @@ function renderOrgViewIconMode(
             fill: "#9CA3AF",
             "font-family": "sans-serif",
           },
-          "No teams defined",
+          escapeXml(options?.emptyLabels?.orgNoTeams ?? DEFAULT_EMPTY_STATE_LABELS.orgNoTeams),
         ),
       );
     }
@@ -570,7 +573,7 @@ export function renderOrgView(
             fill: "#9CA3AF",
             "font-family": "sans-serif",
           },
-          "No teams defined",
+          escapeXml(options?.emptyLabels?.orgNoTeams ?? DEFAULT_EMPTY_STATE_LABELS.orgNoTeams),
         ),
       );
     }

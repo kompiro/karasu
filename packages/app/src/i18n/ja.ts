@@ -75,6 +75,11 @@ export const ja: Partial<Translations> = {
   "nodeDetail.jumpToEditor": "↗ エディタへジャンプ",
   "nodeDetail.annotationDiff.title": "⇄ アノテーション差分",
 
+  // Empty-state placeholders (rendered inside SVG by core renderers)
+  "emptyState.deploy.title": "deploy ブロックが定義されていません",
+  "emptyState.deploy.hint": ".krs ファイルに deploy ブロックを追加してください",
+  "emptyState.org.noTeams": "team が定義されていません",
+
   // ReferencePanel
   "referencePanel.unsupportedMessage": "Tags & Annotations はこのダイアグラムでは未対応です。",
   "referencePanel.builtin.description":

@@ -84,6 +84,11 @@ export type Translations = {
   "nodeDetail.jumpToEditor": string;
   "nodeDetail.annotationDiff.title": string;
 
+  // Empty-state placeholders (rendered inside SVG by core renderers)
+  "emptyState.deploy.title": string;
+  "emptyState.deploy.hint": string;
+  "emptyState.org.noTeams": string;
+
   // ReferencePanel (Phase C5)
   "referencePanel.unsupportedMessage": string;
   "referencePanel.builtin.description": string;

@@ -212,6 +212,9 @@ export interface DeployBlockInfo {
   label: string;
 }
 
+export type { EmptyStateLabels } from "./renderer/empty-state-labels.js";
+import type { EmptyStateLabels } from "./renderer/empty-state-labels.js";
+
 /** Options for compile() and compileProject(). */
 export interface CompileOptions {
   /** Which diagram to render. Defaults to "system". */
@@ -224,6 +227,8 @@ export interface CompileOptions {
   selectedDeployId?: string;
   /** "icon" switches nodes to fixed-size icon card layout. */
   displayMode?: DisplayMode;
+  /** Translated labels for renderer-embedded empty-state messages. */
+  emptyStateLabels?: EmptyStateLabels;
 }
 
 export interface SystemCompileResult {
@@ -284,7 +289,13 @@ function _compileFromPreparedInput(
   opts: CompileOptions,
 ): CompileResult {
   const { krsFile, diagnostics, sheets, nodeFileIndex } = input;
-  const { diagramType = "system", viewPath, selectedDeployId, displayMode } = opts;
+  const {
+    diagramType = "system",
+    viewPath,
+    selectedDeployId,
+    displayMode,
+    emptyStateLabels,
+  } = opts;
 
   const systemSheetCount = 1; // only builtin counts as system for conflict detection
   const warnings = analyze(krsFile, sheets, systemSheetCount);
@@ -296,7 +307,9 @@ function _compileFromPreparedInput(
   if (diagramType === "org") {
     const slice = extractOrgView(krsFile.organizations, viewPath ?? []);
     const styles = resolveStyles(krsFile.systems, resolveSheets, undefined, krsFile.organizations);
-    const svg = _renderOrgView(slice, styles, displayMode);
+    const svg = _renderOrgView(slice, styles, displayMode, undefined, {
+      emptyLabels: emptyStateLabels,
+    });
     return {
       diagramType: "org",
       svg,
@@ -324,7 +337,9 @@ function _compileFromPreparedInput(
       ...krsFile.services,
       ...krsFile.domains,
     ]);
-    const svg = renderDeploy(deploySliceForStyle, styles, displayMode);
+    const svg = renderDeploy(deploySliceForStyle, styles, displayMode, {
+      emptyLabels: emptyStateLabels,
+    });
     const nodeMetadata = buildDeployNodeMetadata(deploySliceForStyle);
     return { diagramType: "deploy", svg, warnings, diagnostics, nodeMetadata, deployBlocks };
   }
@@ -851,6 +866,8 @@ export interface CompileDeployDiffOptions {
   /** Deploy block id to compare. Falls back to the first block on each side. */
   selectedDeployId?: string;
   displayMode?: DisplayMode;
+  /** Translated labels for renderer-embedded empty-state messages. */
+  emptyStateLabels?: EmptyStateLabels;
 }
 
 /**
@@ -864,7 +881,8 @@ export interface CompileDeployDiffOptions {
 export async function compileDeployDiff(
   options: CompileDeployDiffOptions,
 ): Promise<DeployDiffCompileResult> {
-  const { beforeEntryPath, afterEntryPath, fs, selectedDeployId, displayMode } = options;
+  const { beforeEntryPath, afterEntryPath, fs, selectedDeployId, displayMode, emptyStateLabels } =
+    options;
 
   const resolver = new ImportResolver(fs);
   const [beforeResolved, afterResolved] = await Promise.all([
@@ -918,6 +936,7 @@ export async function compileDeployDiff(
     nodeDiffState: nodeDiffStateMap,
     edgeDiffState: edgeDiffStateMap,
     containerDiffState: containerDiffStateMap,
+    emptyLabels: emptyStateLabels,
   });
 
   return {
@@ -945,6 +964,8 @@ export interface CompileOrgDiffOptions {
   fs: FileSystemProvider;
   viewPath?: ViewPath;
   displayMode?: DisplayMode;
+  /** Translated labels for renderer-embedded empty-state messages. */
+  emptyStateLabels?: EmptyStateLabels;
 }
 
 /**
@@ -958,7 +979,7 @@ export interface CompileOrgDiffOptions {
 export async function compileOrgDiff(
   options: CompileOrgDiffOptions,
 ): Promise<OrgDiffCompileResult> {
-  const { beforeEntryPath, afterEntryPath, fs, viewPath, displayMode } = options;
+  const { beforeEntryPath, afterEntryPath, fs, viewPath, displayMode, emptyStateLabels } = options;
 
   const resolver = new ImportResolver(fs);
   const [beforeResolved, afterResolved] = await Promise.all([
@@ -993,6 +1014,7 @@ export async function compileOrgDiff(
   const svg = _renderOrgView(diffed.slice, styles, displayMode, undefined, {
     nodeDiffState: nodeDiffStateMap,
     edgeDiffState: edgeDiffStateMap,
+    emptyLabels: emptyStateLabels,
   });
 
   return {
