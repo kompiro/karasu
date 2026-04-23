@@ -7,6 +7,7 @@ topic: parser
 related_to:
   - ADR-20260409-01
   - ADR-20260409-08
+  - ADR-20260411-07
   - ADR-20260412-02
 scope:
   packages:

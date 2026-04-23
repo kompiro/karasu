@@ -8,6 +8,7 @@ related_to:
   - ADR-20260326-02
   - ADR-20260329-02
   - ADR-20260405-04
+  - ADR-20260409-08
 scope:
   packages:
     - app

@@ -4,6 +4,10 @@ title: グラフィカル diff ビューア
 status: accepted
 date: 2026-04-20
 topic: app-ui
+depends_on:
+  - ADR-20260317-01
+related_to:
+  - ADR-20260422-06
 scope:
   packages:
     - app

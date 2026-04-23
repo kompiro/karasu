@@ -4,6 +4,8 @@ title: "Domain 間エッジと `[implicit]` 自動タグによる暗黙サービ
 status: accepted
 date: 2026-04-10
 topic: edges
+related_to:
+  - ADR-20260411-02
 scope:
   packages:
     - core

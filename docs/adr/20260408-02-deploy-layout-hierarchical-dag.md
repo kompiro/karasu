@@ -6,6 +6,8 @@ date: 2026-04-08
 topic: renderer
 depends_on:
   - ADR-20260327-01
+related_to:
+  - ADR-20260409-04
 scope:
   packages:
     - core

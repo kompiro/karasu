@@ -6,6 +6,9 @@ date: 2026-03-23
 topic: core-concepts
 depends_on:
   - ADR-20260312-03
+  - ADR-20260323-02
+related_to:
+  - ADR-20260330-04
 scope:
   domains:
     - concepts
@@ -21,7 +24,7 @@ scope:
 
 ## 背景
 
-従来の karasu は**論理図**（`system` / `service` / `domain` / `usecase` / `resource`）と**物理図**（`deploy`）の 2 種類のビューを持ち、サービス・ドメインのオーナーシップは `service { team "文字列" }` で表現していた。しかしこの方式には：
+従来の karasu は ADR-20260312-03 の論理/物理分離方針に基づき、**論理図**（`system` / `service` / `domain` / `usecase` / `resource`）と**物理図**（`deploy`）の 2 種類のビューを持ち、サービス・ドメインのオーナーシップは `service { team "文字列" }` で表現していた。しかしこの方式には：
 
 - チームの**構造**（誰がいるか、何を担当しているか）を表現できない
 - `team` は文字列であり、組織エンティティとして参照・検証できない

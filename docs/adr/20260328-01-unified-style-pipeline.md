@@ -4,6 +4,11 @@ title: スタイル解決パイプラインの一元化
 status: accepted
 date: 2026-03-28
 topic: styling
+depends_on:
+  - ADR-20260312-04
+  - ADR-20260322-01
+related_to:
+  - ADR-20260327-01
 scope:
   packages:
     - core
