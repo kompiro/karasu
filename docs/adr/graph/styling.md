@@ -12,6 +12,8 @@ flowchart TD
     ADR_20260415_01["ADR-20260415-01<br/>親サービスのアノテーションを子ノードに継承する"]
   end
   ADR_20260411_02["ADR-20260411-02<br/>[resolver] 移行期における重複ドメイン ID の共存を `@deprecated` + `@migrati..."]
+  ADR_20260328_01 --> ADR_20260312_04
+  ADR_20260328_01 --> ADR_20260322_01
   ADR_20260415_01 --> ADR_20260411_02
 
   classDef accepted fill:#d4edda,stroke:#28a745,color:#155724

@@ -22,19 +22,29 @@ flowchart TD
     ADR_20260420_02["ADR-20260420-02<br/>グラフィカル diff ビューア"]
     ADR_20260422_06["ADR-20260422-06<br/>Diff ペースト入力の UI 配置とストレージ方式"]
   end
+  ADR_20260317_01["ADR-20260317-01<br/>[renderer] 2 レイヤレンダリングとドリルダウンナビゲーション"]
   ADR_20260317_02["ADR-20260317-02<br/>[project] プロジェクトとファイルシステム抽象化 — `FileSystemProvider` + OPFS"]
   ADR_20260320_01["ADR-20260320-01<br/>[renderer] インタラクティブ SVG レンダリングと NodeDetailPanel"]
+  ADR_20260323_03["ADR-20260323-03<br/>[core-concepts] Organization 図（organization / team / member）の追加"]
+  ADR_20260328_02["ADR-20260328-02<br/>[renderer] SVG エクスポートの 2 フェーズ実装（現在ビュー + Full View 単一ファイル）"]
   ADR_20260411_06["ADR-20260411-06<br/>[project] Export Project as ZIP — `fflate` による OPFS エクスポート"]
   ADR_20260412_03["ADR-20260412-03<br/>[project] Import Project from ZIP — `fflate` 再利用 + トップレベル除去"]
   ADR_20260422_07["ADR-20260422-07<br/>[project] OPFS 履歴スナップショットを diff 比較ソースにする"]
   ADR_20260326_03 --> ADR_20260320_01
   ADR_20260407_03 --> ADR_20260317_02
   ADR_20260411_08 --> ADR_20260323_02
+  ADR_20260420_02 --> ADR_20260317_01
   ADR_20260422_06 --> ADR_20260420_02
+  ADR_20260320_01 --> ADR_20260317_01
+  ADR_20260323_03 --> ADR_20260323_02
+  ADR_20260328_02 --> ADR_20260317_01
+  ADR_20260328_02 --> ADR_20260320_01
+  ADR_20260328_02 --> ADR_20260323_02
   ADR_20260411_06 --> ADR_20260317_02
   ADR_20260411_06 --> ADR_20260407_03
-  ADR_20260412_03 --> ADR_20260411_06
   ADR_20260412_03 --> ADR_20260407_03
+  ADR_20260412_03 --> ADR_20260408_03
+  ADR_20260412_03 --> ADR_20260411_06
   ADR_20260422_07 --> ADR_20260420_02
 
   classDef accepted fill:#d4edda,stroke:#28a745,color:#155724
@@ -58,8 +68,11 @@ flowchart TD
   class ADR_20260419_02 accepted
   class ADR_20260420_02 accepted
   class ADR_20260422_06 accepted
+  class ADR_20260317_01 ghost
   class ADR_20260317_02 ghost
   class ADR_20260320_01 ghost
+  class ADR_20260323_03 ghost
+  class ADR_20260328_02 ghost
   class ADR_20260411_06 ghost
   class ADR_20260412_03 ghost
   class ADR_20260422_07 ghost

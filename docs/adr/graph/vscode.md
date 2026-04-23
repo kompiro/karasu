@@ -13,11 +13,14 @@ flowchart TD
   end
   ADR_20260320_01["ADR-20260320-01<br/>[renderer] インタラクティブ SVG レンダリングと NodeDetailPanel"]
   ADR_20260328_03["ADR-20260328-03<br/>[renderer] アイコンモード — SVG アイコンによるノード表示切り替え"]
+  ADR_20260401_07["ADR-20260401-07<br/>[navigation] ノードクリック UX — ドリルダウンと Cmd/Ctrl+Click エディタジャンプ"]
   ADR_20260401_04 --> ADR_20260330_05
   ADR_20260401_05 --> ADR_20260401_04
   ADR_20260401_05 --> ADR_20260320_01
   ADR_20260404_07 --> ADR_20260328_03
   ADR_20260404_07 --> ADR_20260330_05
+  ADR_20260401_07 --> ADR_20260320_01
+  ADR_20260401_07 --> ADR_20260401_05
 
   classDef accepted fill:#d4edda,stroke:#28a745,color:#155724
   classDef proposed fill:#fff3cd,stroke:#ffc107,color:#856404
@@ -31,4 +34,5 @@ flowchart TD
   class ADR_20260404_07 accepted
   class ADR_20260320_01 ghost
   class ADR_20260328_03 ghost
+  class ADR_20260401_07 ghost
 ```

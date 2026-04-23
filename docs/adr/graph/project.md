@@ -13,11 +13,13 @@ flowchart TD
   end
   ADR_20260328_04["ADR-20260328-04<br/>[cli] CLI `karasu serve` モード — ローカル `.krs` のリアルタイムプレビュー"]
   ADR_20260407_03["ADR-20260407-03<br/>[app-ui] ProjectSelector の Rename 操作 — インライン入力欄パターン"]
+  ADR_20260408_03["ADR-20260408-03<br/>[app-ui] ProjectMode 初期コンテンツ — `examples/ec-platform` から..."]
   ADR_20260420_02["ADR-20260420-02<br/>[app-ui] グラフィカル diff ビューア"]
   ADR_20260411_06 --> ADR_20260317_02
   ADR_20260411_06 --> ADR_20260407_03
-  ADR_20260412_03 --> ADR_20260411_06
   ADR_20260412_03 --> ADR_20260407_03
+  ADR_20260412_03 --> ADR_20260408_03
+  ADR_20260412_03 --> ADR_20260411_06
   ADR_20260422_07 --> ADR_20260420_02
   ADR_20260328_04 --> ADR_20260317_02
   ADR_20260407_03 --> ADR_20260317_02
@@ -34,5 +36,6 @@ flowchart TD
   class ADR_20260422_07 accepted
   class ADR_20260328_04 ghost
   class ADR_20260407_03 ghost
+  class ADR_20260408_03 ghost
   class ADR_20260420_02 ghost
 ```

@@ -17,8 +17,10 @@ flowchart TD
   end
   ADR_20260320_01["ADR-20260320-01<br/>[renderer] インタラクティブ SVG レンダリングと NodeDetailPanel"]
   ADR_20260401_03["ADR-20260401-03<br/>[parser] `compile()` API 統一 — Discriminated Union による戻り値型"]
+  ADR_20260401_05["ADR-20260401-05<br/>[vscode] VSCode Phase 3.5 — Webview ドリルダウンナビゲーション"]
   ADR_20260409_06["ADR-20260409-06<br/>[parser] トップレベル service の Named Import — スタブ補完 + エッジ参照によ..."]
   ADR_20260401_07 --> ADR_20260320_01
+  ADR_20260401_07 --> ADR_20260401_05
   ADR_20260404_05 --> ADR_20260330_04
   ADR_20260405_08 --> ADR_20260404_05
   ADR_20260405_08 --> ADR_20260330_04
@@ -27,6 +29,7 @@ flowchart TD
   ADR_20260409_07 --> ADR_20260401_03
   ADR_20260411_03 --> ADR_20260409_03
   ADR_20260411_03 --> ADR_20260404_05
+  ADR_20260401_05 --> ADR_20260320_01
 
   classDef accepted fill:#d4edda,stroke:#28a745,color:#155724
   classDef proposed fill:#fff3cd,stroke:#ffc107,color:#856404
@@ -44,5 +47,6 @@ flowchart TD
   class ADR_20260411_03 accepted
   class ADR_20260320_01 ghost
   class ADR_20260401_03 ghost
+  class ADR_20260401_05 ghost
   class ADR_20260409_06 ghost
 ```

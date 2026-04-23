@@ -11,8 +11,10 @@ flowchart TD
     ADR_20260323_03["ADR-20260323-03<br/>Organization 図（organization / team / member）の追加"]
     ADR_20260404_10["ADR-20260404-10<br/>Org Tree View — 組織階層の左→右ツリー俯瞰図"]
   end
+  ADR_20260323_02["ADR-20260323-02<br/>[app-ui] ツールバーボタンはアイコン+テキストラベル必須"]
   ADR_20260401_06["ADR-20260401-06<br/>[resolver] Domain Drift Detection — Scope and Detection Key"]
   ADR_20260323_03 --> ADR_20260312_03
+  ADR_20260323_03 --> ADR_20260323_02
   ADR_20260404_10 --> ADR_20260323_03
   ADR_20260401_06 --> ADR_20260312_03
 
@@ -26,5 +28,6 @@ flowchart TD
   class ADR_20260312_03 accepted
   class ADR_20260323_03 accepted
   class ADR_20260404_10 accepted
+  class ADR_20260323_02 ghost
   class ADR_20260401_06 ghost
 ```

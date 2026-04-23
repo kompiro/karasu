@@ -1,8 +1,11 @@
 # ADR Dependency Graph — Overview
 
-111 ADRs across 14 topics. Clusters group by `topic` frontmatter field. Edges crossing cluster borders are cross-topic dependencies.
+112 ADRs across 15 topics. Clusters group by `topic` frontmatter field. Edges crossing cluster borders are cross-topic dependencies.
 ```mermaid
 flowchart TD
+  subgraph adr-tooling["adr-tooling"]
+    ADR_20260423_01["ADR-20260423-01<br/>ADR 本文とフロントマター関係フィールドの整合性を validator の warning ..."]
+  end
   subgraph app-ui["app-ui"]
     ADR_20260323_02["ADR-20260323-02<br/>ツールバーボタンはアイコン+テキストラベル必須"]
     ADR_20260326_02["ADR-20260326-02<br/>MemoryMode と ProjectMode の統一 — Reducer + `Karas..."]
@@ -145,11 +148,15 @@ flowchart TD
   ADR_20260320_01 --> ADR_20260320_02
   ADR_20260320_01 --> ADR_20260317_01
   ADR_20260323_03 --> ADR_20260312_03
+  ADR_20260323_03 --> ADR_20260323_02
   ADR_20260323_04 --> ADR_20260320_02
   ADR_20260326_03 --> ADR_20260320_01
   ADR_20260326_04 --> ADR_20260325_01
+  ADR_20260328_01 --> ADR_20260312_04
+  ADR_20260328_01 --> ADR_20260322_01
   ADR_20260328_02 --> ADR_20260317_01
   ADR_20260328_02 --> ADR_20260320_01
+  ADR_20260328_02 --> ADR_20260323_02
   ADR_20260328_04 --> ADR_20260317_02
   ADR_20260329_02 --> ADR_20260328_02
   ADR_20260401_02 --> ADR_20260328_02
@@ -158,6 +165,7 @@ flowchart TD
   ADR_20260401_05 --> ADR_20260320_01
   ADR_20260401_06 --> ADR_20260312_03
   ADR_20260401_07 --> ADR_20260320_01
+  ADR_20260401_07 --> ADR_20260401_05
   ADR_20260404_05 --> ADR_20260330_04
   ADR_20260404_07 --> ADR_20260328_03
   ADR_20260404_07 --> ADR_20260330_05
@@ -193,13 +201,15 @@ flowchart TD
   ADR_20260412_01 --> ADR_20260409_01
   ADR_20260412_01 --> ADR_20260409_08
   ADR_20260412_02 --> ADR_20260411_07
-  ADR_20260412_03 --> ADR_20260411_06
   ADR_20260412_03 --> ADR_20260407_03
+  ADR_20260412_03 --> ADR_20260408_03
+  ADR_20260412_03 --> ADR_20260411_06
   ADR_20260412_04 --> ADR_20260411_02
   ADR_20260413_02 --> ADR_20260410_01
   ADR_20260415_01 --> ADR_20260411_02
   ADR_20260417_01 --> ADR_20260409_02
   ADR_20260419_01 --> ADR_20260409_02
+  ADR_20260420_02 --> ADR_20260317_01
   ADR_20260420_03 --> ADR_20260418_01
   ADR_20260422_02 --> ADR_20260409_08
   ADR_20260422_02 --> ADR_20260412_01
@@ -328,10 +338,12 @@ flowchart TD
   class ADR_20260422_05 accepted
   class ADR_20260422_06 accepted
   class ADR_20260422_07 accepted
+  class ADR_20260423_01 accepted
 ```
 
 ## Per-topic detail
 
+- [`adr-tooling`](graph/adr-tooling.md) — 1 ADRs
 - [`app-ui`](graph/app-ui.md) — 15 ADRs
 - [`build`](graph/build.md) — 17 ADRs
 - [`chat-ai`](graph/chat-ai.md) — 8 ADRs

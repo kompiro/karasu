@@ -25,6 +25,7 @@ flowchart TD
     ADR_20260422_05["ADR-20260422-05<br/>トップレベル infra ブロック（database / queue / storage）を ..."]
   end
   ADR_20260320_02["ADR-20260320-02<br/>[parser] AST 再構成 — Discriminated Union とプロパティブロック"]
+  ADR_20260323_02["ADR-20260323-02<br/>[app-ui] ツールバーボタンはアイコン+テキストラベル必須"]
   ADR_20260326_03["ADR-20260326-03<br/>[app-ui] Editor 診断表示 — Monaco マーカー + Preview エラーオーバーレイ"]
   ADR_20260401_05["ADR-20260401-05<br/>[vscode] VSCode Phase 3.5 — Webview ドリルダウンナビゲーション"]
   ADR_20260401_07["ADR-20260401-07<br/>[navigation] ノードクリック UX — ドリルダウンと Cmd/Ctrl+Click エディタジャンプ"]
@@ -33,10 +34,12 @@ flowchart TD
   ADR_20260405_05["ADR-20260405-05<br/>[resolver] `database` / `queue` / `storage` を system 直下のファ..."]
   ADR_20260409_03["ADR-20260409-03<br/>[navigation] クロスナビゲーション時のアトミックなハイライト適用"]
   ADR_20260409_06["ADR-20260409-06<br/>[parser] トップレベル service の Named Import — スタブ補完 + エッジ参照によ..."]
+  ADR_20260420_02["ADR-20260420-02<br/>[app-ui] グラフィカル diff ビューア"]
   ADR_20260320_01 --> ADR_20260320_02
   ADR_20260320_01 --> ADR_20260317_01
   ADR_20260328_02 --> ADR_20260317_01
   ADR_20260328_02 --> ADR_20260320_01
+  ADR_20260328_02 --> ADR_20260323_02
   ADR_20260329_02 --> ADR_20260328_02
   ADR_20260401_02 --> ADR_20260328_02
   ADR_20260407_02 --> ADR_20260405_05
@@ -51,9 +54,11 @@ flowchart TD
   ADR_20260326_03 --> ADR_20260320_01
   ADR_20260401_05 --> ADR_20260320_01
   ADR_20260401_07 --> ADR_20260320_01
+  ADR_20260401_07 --> ADR_20260401_05
   ADR_20260404_07 --> ADR_20260328_03
   ADR_20260404_08 --> ADR_20260401_02
   ADR_20260409_03 --> ADR_20260320_01
+  ADR_20260420_02 --> ADR_20260317_01
 
   classDef accepted fill:#d4edda,stroke:#28a745,color:#155724
   classDef proposed fill:#fff3cd,stroke:#ffc107,color:#856404
@@ -79,6 +84,7 @@ flowchart TD
   class ADR_20260422_04 accepted
   class ADR_20260422_05 accepted
   class ADR_20260320_02 ghost
+  class ADR_20260323_02 ghost
   class ADR_20260326_03 ghost
   class ADR_20260401_05 ghost
   class ADR_20260401_07 ghost
@@ -87,4 +93,5 @@ flowchart TD
   class ADR_20260405_05 ghost
   class ADR_20260409_03 ghost
   class ADR_20260409_06 ghost
+  class ADR_20260420_02 ghost
 ```
