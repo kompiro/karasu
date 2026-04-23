@@ -186,6 +186,14 @@ VS Code 拡張と LSP の段階的実装。
 - [ADR-20260413-01](20260413-01-preview-workflow-no-label-gating.md) — Preview workflow はラベル駆動をやめ path filter で制御する
 - [ADR-20260414-01](20260414-01-dependabot-batch-2026-04-14.md) — Dependabot Batch Triage (2026-04-14)
 
+### ADR 運用・ツール — `adr-tooling`
+
+ADR 自体のスキーマ、フロントマター、バリデータ、extractor など、ADR を支える
+ツール層に関する判断。将来的には karasu 本体から独立したツールとして切り出す
+可能性があるため、コア機能トピックとは別枠で管理する。
+
+- [ADR-20260423-01](20260423-01-adr-body-ref-check.md) — Validator warning for body ↔ frontmatter reference consistency
+
 ---
 
 ## ステータス別

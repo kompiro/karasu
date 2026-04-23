@@ -5,7 +5,8 @@ status: accepted
 date: YYYY-MM-DD
 # topic must match one of the section headings in docs/adr/README.md:
 # core-concepts | parser | resolver | renderer | edges | styling |
-# navigation | app-ui | project | chat-ai | cli | vscode | testing | build
+# navigation | app-ui | project | chat-ai | cli | vscode | testing | build |
+# adr-tooling
 topic: core-concepts
 # authors: [your-handle]
 
