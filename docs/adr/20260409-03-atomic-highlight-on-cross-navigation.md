@@ -6,6 +6,8 @@ date: 2026-04-09
 topic: navigation
 depends_on:
   - ADR-20260320-01
+related_to:
+  - ADR-20260411-03
 scope:
   packages:
     - app

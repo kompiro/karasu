@@ -6,6 +6,8 @@ date: 2026-04-11
 topic: edges
 depends_on:
   - ADR-20260410-01
+related_to:
+  - ADR-20260411-02
 scope:
   packages:
     - core

@@ -6,6 +6,7 @@ date: 2026-04-01
 topic: navigation
 depends_on:
   - ADR-20260320-01
+  - ADR-20260401-05
 related_to:
   - ADR-20260330-05
 scope:

@@ -6,6 +6,8 @@ date: 2026-03-28
 topic: cli
 depends_on:
   - ADR-20260317-02
+related_to:
+  - ADR-20260330-05
 scope:
   packages:
     - cli

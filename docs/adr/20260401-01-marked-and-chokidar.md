@@ -4,6 +4,8 @@ title: Adopt marked for Markdown rendering and chokidar for file watching
 status: accepted
 date: 2026-04-01
 topic: build
+related_to:
+  - ADR-20260331-01
 scope:
   packages:
     - core

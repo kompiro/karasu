@@ -5,8 +5,9 @@ status: accepted
 date: 2026-04-12
 topic: project
 depends_on:
-  - ADR-20260411-06
   - ADR-20260407-03
+  - ADR-20260408-03
+  - ADR-20260411-06
 scope:
   packages:
     - app
