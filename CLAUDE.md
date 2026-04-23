@@ -11,7 +11,8 @@ C4 Modelに触発されつつも独自の語彙を持ち、論理構造と物理
 | .krs.style 構文リファレンス                         | `docs/spec/style.md`            |
 | タグ・アノテーション一覧                            | `docs/spec/tags-annotations.md` |
 | コアコンセプト（論理/物理分離など）                 | `docs/concepts.md`              |
-| 設計判断の経緯（ADR）                               | `docs/adr/`                     |
+| 設計判断の経緯（ADR）— 有効な決定一覧               | `docs/adr/effective.md` (auto-generated; see also `docs/adr/graph.md`) |
+| 設計判断の経緯（ADR）— 全履歴                        | `docs/adr/`                     |
 | 詳細技術設計 — どう作るか（制約・代替案・実装方針） | `docs/design/`                  |
 | 受け入れテスト基準                                  | `docs/acceptance/`              |
 | 開発プロセス（ドキュメントライフサイクル・PR フロー） | `docs/process.md`               |
