@@ -272,10 +272,13 @@ describe("PreviewColumn", () => {
   });
 
   describe("hasDeployDiagram=false", () => {
-    it("renders Deploy tab as disabled", () => {
+    it("still renders Deploy tab as clickable", () => {
       const props = makeProps({ hasDeployDiagram: false });
       const { getByRole } = renderPreview(props);
-      expect(getByRole("tab", { name: /Deploy/ })).toHaveProperty("ariaDisabled", "true");
+      const deployTab = getByRole("tab", { name: /Deploy/ });
+      expect(deployTab.getAttribute("aria-disabled")).not.toBe("true");
+      fireEvent.click(deployTab);
+      expect(props.onActiveViewChange).toHaveBeenCalledWith("deploy");
     });
   });
 

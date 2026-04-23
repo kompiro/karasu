@@ -75,9 +75,6 @@ export const en: Translations = {
   "nodeDetail.jumpToEditor": "↗ Jump to editor",
   "nodeDetail.annotationDiff.title": "⇄ Annotation diff",
 
-  // DiagramTabBar
-  "diagramTabBar.deploy.unavailableTitle": "No deploy block defined",
-
   // ReferencePanel
   "referencePanel.unsupportedMessage": "Tags & Annotations are not available for this diagram.",
   "referencePanel.builtin.description":

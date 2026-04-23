@@ -75,9 +75,6 @@ export const ja: Partial<Translations> = {
   "nodeDetail.jumpToEditor": "↗ エディタへジャンプ",
   "nodeDetail.annotationDiff.title": "⇄ アノテーション差分",
 
-  // DiagramTabBar
-  "diagramTabBar.deploy.unavailableTitle": "deploy ブロックがありません",
-
   // ReferencePanel
   "referencePanel.unsupportedMessage": "Tags & Annotations はこのダイアグラムでは未対応です。",
   "referencePanel.builtin.description":

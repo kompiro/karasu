@@ -91,7 +91,7 @@ describe("renderDeploy", () => {
     };
     const svg = renderDeploy(empty, styles);
     expect(svg).toContain("<svg");
-    expect(svg).toContain("No nodes to render");
+    expect(svg).toContain("No deploy block defined");
   });
 
   it("includes ghost edge group", () => {

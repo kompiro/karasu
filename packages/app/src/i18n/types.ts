@@ -84,9 +84,6 @@ export type Translations = {
   "nodeDetail.jumpToEditor": string;
   "nodeDetail.annotationDiff.title": string;
 
-  // DiagramTabBar (Phase C5)
-  "diagramTabBar.deploy.unavailableTitle": string;
-
   // ReferencePanel (Phase C5)
   "referencePanel.unsupportedMessage": string;
   "referencePanel.builtin.description": string;
