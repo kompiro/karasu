@@ -3,6 +3,7 @@ id: ADR-20260405-02
 title: Toolbar Button Actionable Modifier Class
 status: accepted
 date: 2026-04-05
+topic: app-ui
 related_to:
   - ADR-20260330-02
 scope:

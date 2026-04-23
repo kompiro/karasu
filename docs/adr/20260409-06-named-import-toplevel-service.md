@@ -3,6 +3,7 @@ id: ADR-20260409-06
 title: トップレベル service の Named Import — スタブ補完 + エッジ参照による自動メンバーシップ
 status: accepted
 date: 2026-04-09
+topic: parser
 depends_on:
   - ADR-20260409-05
   - ADR-20260405-03

@@ -3,6 +3,7 @@ id: ADR-20260404-04
 title: system セレクタUIを採用しない
 status: not_adopted
 date: 2026-04-04
+topic: app-ui
 scope:
   packages:
     - app

@@ -3,6 +3,7 @@ id: ADR-20260323-04
 title: ID 必須化と `label` のプロパティ化
 status: accepted
 date: 2026-03-23
+topic: parser
 depends_on:
   - ADR-20260320-02
 scope:

@@ -3,6 +3,7 @@ id: ADR-20260405-08
 title: "プロジェクト URL ナビゲーション — `/projects/<uuid>` パスネーム方式"
 status: accepted
 date: 2026-04-05
+topic: navigation
 depends_on:
   - ADR-20260404-05
   - ADR-20260330-04

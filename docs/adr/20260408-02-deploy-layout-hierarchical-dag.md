@@ -3,6 +3,7 @@ id: ADR-20260408-02
 title: "Deploy 図レイアウト — 階層 DAG レイアウト（Longest Path Layering）"
 status: accepted
 date: 2026-04-08
+topic: renderer
 depends_on:
   - ADR-20260327-01
 scope:

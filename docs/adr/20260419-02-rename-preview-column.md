@@ -3,6 +3,7 @@ id: ADR-20260419-02
 title: "`KarasuPreviewColumn` を `PreviewColumn` にリネーム"
 status: accepted
 date: 2026-04-19
+topic: app-ui
 related_to:
   - ADR-20260326-02
   - ADR-20260329-02

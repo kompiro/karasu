@@ -3,6 +3,7 @@ id: ADR-20260409-07
 title: マルチファイルプロジェクトでのクロスファイルナビゲーション
 status: accepted
 date: 2026-04-09
+topic: navigation
 depends_on:
   - ADR-20260409-06
   - ADR-20260401-03

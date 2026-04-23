@@ -3,6 +3,7 @@ id: ADR-20260411-01
 title: Architecture レイアウトへの Barycenter + Sub-row wrap は適用せず共通ユーティリティのみ抽出
 status: accepted
 date: 2026-04-11
+topic: renderer
 depends_on:
   - ADR-20260408-02
   - ADR-20260409-04

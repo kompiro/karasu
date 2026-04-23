@@ -3,6 +3,7 @@ id: ADR-20260330-02
 title: Toolbar Button Display Rules
 status: accepted
 date: 2026-03-30
+topic: app-ui
 related_to:
   - ADR-20260405-02
 scope:

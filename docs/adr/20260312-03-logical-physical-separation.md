@@ -3,6 +3,7 @@ id: ADR-20260312-03
 title: 論理構造と物理構造の分離
 status: accepted
 date: 2026-03-12
+topic: core-concepts
 scope:
   domains:
     - concepts

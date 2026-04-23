@@ -5,6 +5,27 @@ import { load as parseYaml } from "js-yaml";
 const VALID_STATUSES = ["proposed", "accepted", "deprecated", "superseded", "not_adopted"] as const;
 type Status = (typeof VALID_STATUSES)[number];
 
+// Controlled vocabulary for `topic`. Matches the section headings in
+// docs/adr/README.md so the two stay in sync. New topics require updating
+// both this list and the README.
+const VALID_TOPICS = [
+  "core-concepts",
+  "parser",
+  "resolver",
+  "renderer",
+  "edges",
+  "styling",
+  "navigation",
+  "app-ui",
+  "project",
+  "chat-ai",
+  "cli",
+  "vscode",
+  "testing",
+  "build",
+] as const;
+type Topic = (typeof VALID_TOPICS)[number];
+
 const RELATIONSHIP_FIELDS = [
   "supersedes",
   "depends_on",
@@ -19,6 +40,7 @@ export interface Frontmatter {
   title: string;
   status: Status;
   date: string;
+  topic: Topic;
   authors?: string[];
   supersedes?: string[];
   superseded_by?: string | null;
@@ -102,8 +124,15 @@ function parseFrontmatter(raw: string, file: string, errors: string[]): Frontmat
       `${file}: "status" must be one of ${VALID_STATUSES.join(" | ")}, got ${JSON.stringify(statusRaw)}`,
     );
   }
+  const topicRaw = fm.topic;
+  if (typeof topicRaw !== "string" || !VALID_TOPICS.includes(topicRaw as Topic)) {
+    errors.push(
+      `${file}: "topic" must be one of ${VALID_TOPICS.join(" | ")}, got ${JSON.stringify(topicRaw)}`,
+    );
+  }
 
-  if (!id || !title || !dateStr || typeof statusRaw !== "string") return null;
+  if (!id || !title || !dateStr || typeof statusRaw !== "string" || typeof topicRaw !== "string")
+    return null;
 
   const stringArray = (field: string): string[] => {
     const v = fm[field];
@@ -146,6 +175,7 @@ function parseFrontmatter(raw: string, file: string, errors: string[]): Frontmat
     title,
     status: statusRaw as Status,
     date: dateStr,
+    topic: topicRaw as Topic,
     authors: stringArray("authors"),
     supersedes: stringArray("supersedes"),
     superseded_by: typeof superseded_by === "string" ? superseded_by : null,

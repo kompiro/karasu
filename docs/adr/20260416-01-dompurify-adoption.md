@@ -3,6 +3,7 @@ id: ADR-20260416-01
 title: DOMPurify Adoption for HTML Sanitization
 status: accepted
 date: 2026-04-16
+topic: build
 scope:
   packages:
     - app

@@ -3,6 +3,7 @@ id: ADR-20260422-07
 title: OPFS 履歴スナップショットを diff 比較ソースにする
 status: accepted
 date: 2026-04-22
+topic: project
 depends_on:
   - ADR-20260420-02
 related_to:

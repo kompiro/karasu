@@ -3,6 +3,7 @@ id: ADR-20260422-02
 title: Chat UI AI 設計レビュー — プロンプト駆動 + トリガー二系統
 status: accepted
 date: 2026-04-22
+topic: chat-ai
 depends_on:
   - ADR-20260409-08
   - ADR-20260412-01

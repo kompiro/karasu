@@ -3,6 +3,7 @@ id: ADR-20260409-05
 title: "Directory Import — `import \"dir/\"` 構文"
 status: accepted
 date: 2026-04-09
+topic: parser
 depends_on:
   - ADR-20260405-03
 scope:

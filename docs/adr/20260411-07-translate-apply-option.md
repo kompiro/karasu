@@ -3,6 +3,7 @@ id: ADR-20260411-07
 title: "`karasu apply` サブコマンド — stdin + `applyKrsPatch` を core に移動"
 status: accepted
 date: 2026-04-11
+topic: cli
 depends_on:
   - ADR-20260409-02
 related_to:

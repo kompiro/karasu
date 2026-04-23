@@ -3,6 +3,7 @@ id: ADR-20260312-04
 title: CSSインスパイアのスタイリングシステム
 status: accepted
 date: 2026-03-12
+topic: styling
 scope:
   packages:
     - core

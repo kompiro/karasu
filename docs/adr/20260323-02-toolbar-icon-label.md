@@ -3,6 +3,7 @@ id: ADR-20260323-02
 title: ツールバーボタンはアイコン+テキストラベル必須
 status: accepted
 date: 2026-03-23
+topic: app-ui
 scope:
   packages:
     - app

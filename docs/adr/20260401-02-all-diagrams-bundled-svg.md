@@ -3,6 +3,7 @@ id: ADR-20260401-02
 title: 全ビュー統合バンドル SVG（buildAllViewsSvg）
 status: accepted
 date: 2026-04-01
+topic: renderer
 depends_on:
   - ADR-20260328-02
 scope:

@@ -3,6 +3,7 @@ id: ADR-20260413-02
 title: Implicit エッジにおける sync/async の視覚的区別
 status: accepted
 date: 2026-04-13
+topic: edges
 depends_on:
   - ADR-20260410-01
 related_to:

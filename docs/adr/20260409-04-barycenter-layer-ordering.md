@@ -3,6 +3,7 @@ id: ADR-20260409-04
 title: 同レイヤー内コンテナ順序の Barycenter ヒューリスティックによる最適化
 status: accepted
 date: 2026-04-09
+topic: renderer
 depends_on:
   - ADR-20260408-02
 scope:

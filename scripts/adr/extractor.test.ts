@@ -24,6 +24,7 @@ function seed(): void {
     `id: ADR-20260101-01
 title: Foundational
 status: accepted
+topic: core-concepts
 date: 2026-01-01
 scope:
   packages:
@@ -38,6 +39,7 @@ scope:
     `id: ADR-20260101-02
 title: Depends
 status: accepted
+topic: core-concepts
 date: 2026-01-01
 depends_on:
   - ADR-20260101-01
@@ -54,6 +56,7 @@ scope:
     `id: ADR-20260101-03
 title: Old
 status: superseded
+topic: core-concepts
 date: 2026-01-01
 superseded_by: ADR-20260101-04`,
     "ADR-20260101-03: Old",
@@ -64,6 +67,7 @@ superseded_by: ADR-20260101-04`,
     `id: ADR-20260101-04
 title: New
 status: accepted
+topic: core-concepts
 date: 2026-01-01
 supersedes:
   - ADR-20260101-03
@@ -80,6 +84,7 @@ scope:
     `id: ADR-20260101-05
 title: Rejected
 status: not_adopted
+topic: core-concepts
 date: 2026-01-01
 scope:
   packages:

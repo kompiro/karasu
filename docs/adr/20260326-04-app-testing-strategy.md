@@ -3,6 +3,7 @@ id: ADR-20260326-04
 title: "`packages/app` のテスト戦略 — `@testing-library/react` + renderHook + ARIA"
 status: accepted
 date: 2026-03-26
+topic: testing
 depends_on:
   - ADR-20260325-01
 related_to:

@@ -3,6 +3,7 @@ id: ADR-20260410-03
 title: "構造的 `.krs` パッチ — ノード ID ベースの `append` / `replace` / `remove`"
 status: accepted
 date: 2026-04-10
+topic: parser
 related_to:
   - ADR-20260409-01
   - ADR-20260409-08

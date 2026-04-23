@@ -3,6 +3,7 @@ id: ADR-20260409-01
 title: Chat UI Phase 2 — BYOK + AI 統合の実装方針
 status: accepted
 date: 2026-04-09
+topic: chat-ai
 depends_on:
   - ADR-20260409-08
   - ADR-20260407-04

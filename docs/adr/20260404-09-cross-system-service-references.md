@@ -3,6 +3,7 @@ id: ADR-20260404-09
 title: "クロスシステムサービス参照 — ドット記法（`SystemId.ServiceId`）"
 status: accepted
 date: 2026-04-04
+topic: edges
 depends_on:
   - ADR-20260405-03
 related_to:

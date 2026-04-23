@@ -3,6 +3,7 @@ id: ADR-20260412-02
 title: "CLI 変更系サブコマンド — `karasu remove` / `append` / `insert`"
 status: accepted
 date: 2026-04-12
+topic: cli
 depends_on:
   - ADR-20260411-07
 scope:

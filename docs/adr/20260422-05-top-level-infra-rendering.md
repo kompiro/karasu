@@ -3,6 +3,7 @@ id: ADR-20260422-05
 title: トップレベル infra ブロック（database / queue / storage）を `(Unassigned)` で描画する
 status: accepted
 date: 2026-04-22
+topic: renderer
 depends_on:
   - ADR-20260422-04
   - ADR-20260405-05

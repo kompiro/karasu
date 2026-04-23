@@ -3,6 +3,7 @@ id: ADR-20260417-01
 title: "`translate --from openapi` のデフォルトをリソース単位の usecase 集約に変更する"
 status: accepted
 date: 2026-04-17
+topic: cli
 depends_on:
   - ADR-20260409-02
 scope:

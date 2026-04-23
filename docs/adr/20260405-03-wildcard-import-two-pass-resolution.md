@@ -3,6 +3,7 @@ id: ADR-20260405-03
 title: ワイルドカードインポートと2パス解決の採用
 status: accepted
 date: 2026-04-05
+topic: parser
 scope:
   packages:
     - core

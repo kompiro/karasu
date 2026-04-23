@@ -3,6 +3,7 @@ id: ADR-20260404-07
 title: VSCode プレビュー Icon Mode トグル — Extension Host 管理 + postMessage
 status: accepted
 date: 2026-04-04
+topic: vscode
 depends_on:
   - ADR-20260328-03
   - ADR-20260330-05

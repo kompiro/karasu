@@ -3,6 +3,7 @@ id: ADR-20260404-03
 title: Do not implement PNG export
 status: not_adopted
 date: 2026-04-04
+topic: renderer
 scope:
   packages:
     - core

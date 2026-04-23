@@ -3,6 +3,7 @@ id: ADR-20260328-01
 title: スタイル解決パイプラインの一元化
 status: accepted
 date: 2026-03-28
+topic: styling
 scope:
   packages:
     - core
