@@ -41,6 +41,12 @@ interface UseAppViewsArgs {
   snapshotManager?: SnapshotManager | null;
   /** Required when `compareSource.kind === "snapshot"`. */
   projectRoot?: string | null;
+  /**
+   * When true, the diff direction is flipped: the compare source becomes the
+   * after-side and the project entry becomes the before-side (Issue #765 A).
+   * Ignored while the compare source has not resolved yet.
+   */
+  swapped?: boolean;
 }
 
 interface SystemViewBundle {
@@ -117,6 +123,7 @@ export function useAppViews(args: UseAppViewsArgs): UseAppViewsResult {
     compareSource = null,
     snapshotManager = null,
     projectRoot = null,
+    swapped = false,
   } = args;
 
   const { compareEntryPath, compareFs } = useResolvedCompareSource(
@@ -125,6 +132,14 @@ export function useAppViews(args: UseAppViewsArgs): UseAppViewsResult {
     snapshotManager,
     projectRoot,
   );
+
+  // Apply swap only once the compare source has resolved. While resolving,
+  // fall through to the un-swapped pair so the after-side keeps rendering.
+  const canSwap = swapped && compareEntryPath !== null && compareFs !== null;
+  const effEntryPath = canSwap ? compareEntryPath : entryPath;
+  const effFs = canSwap ? (compareFs as FileSystemProvider) : fs;
+  const effCompareEntryPath = canSwap ? entryPath : compareEntryPath;
+  const effCompareFs = canSwap ? fs : compareFs;
 
   const {
     svg: systemSvg,
@@ -136,7 +151,7 @@ export function useAppViews(args: UseAppViewsArgs): UseAppViewsResult {
     systems: resolvedSystems,
     nodeFileIndex,
     nodeDiff: systemNodeDiff,
-  } = useSystemView(entryPath, fs, viewPath, displayMode, compareEntryPath, compareFs);
+  } = useSystemView(effEntryPath, effFs, viewPath, displayMode, effCompareEntryPath, effCompareFs);
 
   const {
     svg: deploySvg,
@@ -145,7 +160,14 @@ export function useAppViews(args: UseAppViewsArgs): UseAppViewsResult {
     nodeMetadata: deployNodeMetadata,
     deployBlocks,
     recompile: recompileDeploy,
-  } = useDeployView(entryPath, fs, selectedDeployBlockId, displayMode, compareEntryPath, compareFs);
+  } = useDeployView(
+    effEntryPath,
+    effFs,
+    selectedDeployBlockId,
+    displayMode,
+    effCompareEntryPath,
+    effCompareFs,
+  );
 
   const {
     orgSvg,
@@ -157,7 +179,7 @@ export function useAppViews(args: UseAppViewsArgs): UseAppViewsResult {
     toggleTeamExpand,
     orgTreeSvg,
     orgTreeExportSvg,
-  } = useOrgView(entryPath, fs, viewPath, displayMode, compareEntryPath, compareFs);
+  } = useOrgView(effEntryPath, effFs, viewPath, displayMode, effCompareEntryPath, effCompareFs);
 
   const teamPathIndex = useMemo(() => {
     const index = new Map<string, string[]>();

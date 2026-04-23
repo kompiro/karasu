@@ -65,6 +65,7 @@ export function AppShell({
     currentFilePath,
     currentProject,
     compareSource,
+    diffSwapped,
   } = state;
 
   const projectRoot = currentProject?.rootPath ?? null;
@@ -92,6 +93,7 @@ export function AppShell({
     compareSource,
     snapshotManager,
     projectRoot,
+    swapped: diffSwapped,
   });
   const { recompile, navigateViewPath, navigateActiveView } = views;
 
@@ -315,7 +317,9 @@ export function AppShell({
             source={compareSource}
             snapshotManager={snapshotManager}
             currentPath={currentFilePath}
+            swapped={diffSwapped}
             onExit={() => dispatch({ type: "SET_COMPARE_SOURCE", source: null })}
+            onSwap={() => dispatch({ type: "TOGGLE_DIFF_SWAPPED" })}
             onViewPasted={onViewPasted}
           />
         )}

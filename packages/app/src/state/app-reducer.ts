@@ -28,6 +28,12 @@ export interface AppState {
    * path and the resolved content of this source.
    */
   compareSource: CompareSource | null;
+  /**
+   * When true, the diff direction is flipped (Issue #765 part A): the compare
+   * source acts as the after-side and the project entry as the before-side.
+   * Auto-resets to `false` whenever the compare source or project changes.
+   */
+  diffSwapped: boolean;
 }
 
 export const initialState: AppState = {
@@ -44,6 +50,7 @@ export const initialState: AppState = {
   isAllLayersOpen: false,
   loading: true,
   compareSource: null,
+  diffSwapped: false,
 };
 
 export type AppAction =
@@ -62,7 +69,8 @@ export type AppAction =
   | { type: "RENAME_PROJECT"; id: string; name: string }
   | { type: "SET_DISPLAY_MODE"; displayMode: DisplayMode }
   | { type: "SET_ALL_LAYERS_OPEN"; isAllLayersOpen: boolean }
-  | { type: "SET_COMPARE_SOURCE"; source: CompareSource | null };
+  | { type: "SET_COMPARE_SOURCE"; source: CompareSource | null }
+  | { type: "TOGGLE_DIFF_SWAPPED" };
 
 export function appReducer(state: AppState, action: AppAction): AppState {
   switch (action.type) {
@@ -81,6 +89,7 @@ export function appReducer(state: AppState, action: AppAction): AppState {
         selectedDeployBlockId: null,
         highlightedNodeId: null,
         compareSource: null,
+        diffSwapped: false,
       };
 
     case "SELECT_FILE":
@@ -150,7 +159,10 @@ export function appReducer(state: AppState, action: AppAction): AppState {
       return { ...state, isAllLayersOpen: action.isAllLayersOpen };
 
     case "SET_COMPARE_SOURCE":
-      return { ...state, compareSource: action.source };
+      return { ...state, compareSource: action.source, diffSwapped: false };
+
+    case "TOGGLE_DIFF_SWAPPED":
+      return state.compareSource ? { ...state, diffSwapped: !state.diffSwapped } : state;
 
     default:
       return state;
