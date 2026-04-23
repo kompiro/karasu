@@ -280,6 +280,161 @@ depends_on:
     ).toBe(true);
   });
 
+  it("accepts adr-tooling as a valid topic", () => {
+    write(
+      "20260101-01-sample.md",
+      adr(
+        `id: ADR-20260101-01
+title: Sample
+status: accepted
+topic: adr-tooling
+date: 2026-01-01`,
+        "ADR-20260101-01: Sample",
+      ),
+    );
+    const result = validateDirectory(tmp);
+    expect(result.errors).toEqual([]);
+  });
+
+  it("warns when body mentions an ADR ID not in any relationship field", () => {
+    write(
+      "20260101-01-referrer.md",
+      `---
+id: ADR-20260101-01
+title: Referrer
+status: accepted
+topic: core-concepts
+date: 2026-01-01
+---
+
+# ADR-20260101-01: Referrer
+
+background references ADR-20260101-02 without declaring the dep
+`,
+    );
+    write(
+      "20260101-02-target.md",
+      adr(`id: ADR-20260101-02
+title: Target
+status: accepted
+topic: core-concepts
+date: 2026-01-01`),
+    );
+    const result = validateDirectory(tmp);
+    expect(
+      result.warnings.some((w) => w.includes("body mentions") && w.includes("ADR-20260101-02")),
+    ).toBe(true);
+  });
+
+  it("does not warn when body mention is declared in any relationship field", () => {
+    for (const field of ["depends_on", "related_to", "refines", "conflicts_with"]) {
+      rmSync(tmp, { recursive: true, force: true });
+      tmp = mkdtempSync(join(tmpdir(), "adr-validator-"));
+      write(
+        "20260101-01-referrer.md",
+        `---
+id: ADR-20260101-01
+title: Referrer
+status: accepted
+topic: core-concepts
+date: 2026-01-01
+${field}:
+  - ADR-20260101-02
+---
+
+# ADR-20260101-01: Referrer
+
+mentions ADR-20260101-02 in body
+`,
+      );
+      write(
+        "20260101-02-target.md",
+        adr(`id: ADR-20260101-02
+title: Target
+status: accepted
+topic: core-concepts
+date: 2026-01-01`),
+      );
+      const result = validateDirectory(tmp);
+      expect({
+        field,
+        warned: result.warnings.some(
+          (w) => w.includes("body mentions") && w.includes("ADR-20260101-02"),
+        ),
+      }).toEqual({ field, warned: false });
+    }
+  });
+
+  it("does not warn when body mention is declared via superseded_by", () => {
+    write(
+      "20260101-01-old.md",
+      `---
+id: ADR-20260101-01
+title: Old
+status: superseded
+topic: core-concepts
+date: 2026-01-01
+superseded_by: ADR-20260102-01
+---
+
+# ADR-20260101-01: Old
+
+superseded by ADR-20260102-01
+`,
+    );
+    write(
+      "20260102-01-new.md",
+      adr(`id: ADR-20260102-01
+title: New
+status: accepted
+topic: core-concepts
+date: 2026-01-02
+supersedes:
+  - ADR-20260101-01`),
+    );
+    const result = validateDirectory(tmp);
+    expect(
+      result.warnings.some((w) => w.includes("body mentions") && w.includes("ADR-20260102-01")),
+    ).toBe(false);
+  });
+
+  it("warns when depends_on is declared but body never mentions it", () => {
+    write(
+      "20260101-01-referrer.md",
+      `---
+id: ADR-20260101-01
+title: Referrer
+status: accepted
+topic: core-concepts
+date: 2026-01-01
+depends_on:
+  - ADR-20260101-02
+---
+
+# ADR-20260101-01: Referrer
+
+body with no reference to the dep
+`,
+    );
+    write(
+      "20260101-02-target.md",
+      adr(`id: ADR-20260101-02
+title: Target
+status: accepted
+topic: core-concepts
+date: 2026-01-01`),
+    );
+    const result = validateDirectory(tmp);
+    expect(
+      result.warnings.some(
+        (w) =>
+          w.includes("depends_on") &&
+          w.includes("ADR-20260101-02") &&
+          w.includes("never mentioned"),
+      ),
+    ).toBe(true);
+  });
+
   it("warns when body H1 title differs from frontmatter title", () => {
     write(
       "20260101-01-sample.md",
