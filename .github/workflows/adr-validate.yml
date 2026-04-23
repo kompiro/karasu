@@ -39,3 +39,6 @@ jobs:
 
       - name: Run validator tests
         run: pnpm run test:scripts
+
+      - name: Check generated ADR files (effective.md, graph.md, graph/*.md)
+        run: pnpm exec tsx scripts/adr/regenerate.ts --check

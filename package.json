@@ -20,7 +20,8 @@
     "knip": "knip",
     "adr:validate": "tsx scripts/adr/validate.ts",
     "adr:extract": "tsx scripts/adr/extract.ts",
-    "adr:visualize": "tsx scripts/adr/visualize.ts"
+    "adr:visualize": "tsx scripts/adr/visualize.ts",
+    "adr:regenerate": "tsx scripts/adr/regenerate.ts"
   },
   "devDependencies": {
     "@types/js-yaml": "^4.0.9",

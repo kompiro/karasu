@@ -422,7 +422,9 @@ export function validateDirectory(dir: string): ValidationResult {
 
   const files = readdirSync(dir)
     .filter((f) => f.endsWith(".md"))
-    .filter((f) => f !== "README.md" && f !== "TEMPLATE.md" && f !== "graph.md")
+    .filter(
+      (f) => f !== "README.md" && f !== "TEMPLATE.md" && f !== "graph.md" && f !== "effective.md",
+    )
     .sort();
 
   for (const f of files) {

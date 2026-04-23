@@ -12,3 +12,6 @@ pre-push:
     adr-validate:
       glob: "docs/adr/*.md"
       run: pnpm run adr:validate
+    adr-regenerate-check:
+      glob: "{docs/adr/**,scripts/adr/**}"
+      run: pnpm exec tsx scripts/adr/regenerate.ts --check
