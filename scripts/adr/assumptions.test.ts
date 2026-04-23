@@ -78,6 +78,44 @@ describe("evaluateAssumption", () => {
     const r = evaluateAssumption(fakeAdr("ADR-X", []), "grep: foo.ts :: export type \\w+Bar", tmp);
     expect(r.status).toBe("ok");
   });
+
+  it("symbol: matches whole-word identifiers", () => {
+    writeFileSync(join(tmp, "foo.ts"), "export function withUnassignedSystem() {}\n");
+    const r = evaluateAssumption(
+      fakeAdr("ADR-X", []),
+      "symbol: foo.ts :: withUnassignedSystem",
+      tmp,
+    );
+    expect(r.status).toBe("ok");
+  });
+
+  it("symbol: does NOT match identifier prefixes (the motivating case)", () => {
+    writeFileSync(join(tmp, "foo.ts"), "export function withUnassignedSystem2() {}\n");
+    const r = evaluateAssumption(
+      fakeAdr("ADR-X", []),
+      "symbol: foo.ts :: withUnassignedSystem",
+      tmp,
+    );
+    expect(r.status).toBe("fail");
+    expect(r.message).toContain("not found");
+  });
+
+  it("symbol: rejects non-identifier names with a hint to use grep:", () => {
+    writeFileSync(join(tmp, "foo.ts"), "");
+    const r = evaluateAssumption(
+      fakeAdr("ADR-X", []),
+      "symbol: foo.ts :: case TokenType.Database",
+      tmp,
+    );
+    expect(r.status).toBe("fail");
+    expect(r.message).toContain("grep:");
+  });
+
+  it("symbol: escapes regex metacharacters (e.g. $ in identifiers)", () => {
+    writeFileSync(join(tmp, "foo.ts"), "const $foo = 1;\nconst bar = $foo;\n");
+    const r = evaluateAssumption(fakeAdr("ADR-X", []), "symbol: foo.ts :: $foo", tmp);
+    expect(r.status).toBe("ok");
+  });
 });
 
 describe("evaluateAll", () => {

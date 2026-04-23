@@ -26,10 +26,16 @@ topic: core-concepts
 # --- Assumptions (optional; checked by `pnpm adr:check-assumptions`) ---
 # Supported formats:
 #   "file: <path>"                    asserts the path exists
-#   "grep: <path> :: <regex>"         asserts the regex matches inside the file
+#   "symbol: <path> :: <name>"        asserts the identifier appears as a whole
+#                                     word (use for function / class / const /
+#                                     type names). Prefer this over grep: when
+#                                     the target is a named code entity.
+#   "grep: <path> :: <regex>"         asserts the regex matches inside the file;
+#                                     use for non-identifier patterns.
 #   "<anything else>"                 free text, surfaced for manual review only
 # assumptions:
 #   - "file: packages/core/src/view/unassigned-system.ts"
+#   - "symbol: packages/core/src/view/unassigned-system.ts :: withUnassignedSystem"
 #   - "grep: packages/core/src/parser/parser.ts :: case TokenType.Database"
 #   - "external IdP remains available"
 ---

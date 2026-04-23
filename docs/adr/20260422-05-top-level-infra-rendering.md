@@ -16,7 +16,7 @@ scope:
     - resolver
 assumptions:
   - "file: packages/core/src/view/unassigned-system.ts"
-  - "grep: packages/core/src/view/unassigned-system.ts :: withUnassignedSystem"
+  - "symbol: packages/core/src/view/unassigned-system.ts :: withUnassignedSystem"
   - "grep: packages/core/src/parser/parser.ts :: case TokenType.Database"
   - "grep: packages/core/src/parser/parser.ts :: case TokenType.Queue"
   - "grep: packages/core/src/parser/parser.ts :: case TokenType.Storage"
