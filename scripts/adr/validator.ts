@@ -8,7 +8,7 @@ type Status = (typeof VALID_STATUSES)[number];
 // Controlled vocabulary for `topic`. Matches the section headings in
 // docs/adr/README.md so the two stay in sync. New topics require updating
 // both this list and the README.
-const VALID_TOPICS = [
+export const VALID_TOPICS = [
   "core-concepts",
   "parser",
   "resolver",

@@ -127,6 +127,36 @@ describe("scopeSlice", () => {
     expect(ids).toEqual(["ADR-20260101-01", "ADR-20260101-02"]);
   });
 
+  it("filters by topic", () => {
+    seed();
+    writeAdr(
+      "20260101-06-parser.md",
+      `id: ADR-20260101-06
+title: Parser-only
+status: accepted
+topic: parser
+date: 2026-01-01`,
+      "ADR-20260101-06: Parser-only",
+    );
+    const parsed = loadParsed(tmp);
+    const ids = scopeSlice(parsed, { topics: ["parser"] })
+      .map((p) => p.id)
+      .sort();
+    // Only ADR-06 has topic=parser; no depends_on so the closure is just itself.
+    expect(ids).toEqual(["ADR-20260101-06"]);
+  });
+
+  it("intersects topic and concern axes (AND semantics)", () => {
+    seed();
+    const parsed = loadParsed(tmp);
+    // topic=core-concepts matches 01-05. concern=security matches only 02.
+    // Intersection = [02]; closure pulls in 01 via depends_on.
+    const ids = scopeSlice(parsed, { topics: ["core-concepts"], concerns: ["security"] })
+      .map((p) => p.id)
+      .sort();
+    expect(ids).toEqual(["ADR-20260101-01", "ADR-20260101-02"]);
+  });
+
   it("throws when called with no filter", () => {
     seed();
     const parsed = loadParsed(tmp);

@@ -8,21 +8,26 @@ export function effectiveSet(parsed: ParsedAdr[]): ParsedAdr[] {
 
 export function scopeSlice(
   parsed: ParsedAdr[],
-  filter: { packages?: string[]; concerns?: string[] },
+  filter: { packages?: string[]; concerns?: string[]; topics?: string[] },
 ): ParsedAdr[] {
   const packages = filter.packages ?? [];
   const concerns = filter.concerns ?? [];
-  if (packages.length === 0 && concerns.length === 0) {
-    throw new Error("slice requires at least one --package or --concern filter");
+  const topics = filter.topics ?? [];
+  if (packages.length === 0 && concerns.length === 0 && topics.length === 0) {
+    throw new Error("slice requires at least one --package, --concern, or --topic filter");
   }
   const directlyMatched = parsed.filter((p) => {
+    // `topic` is a top-level frontmatter field, not under `scope`, but it
+    // slices the corpus the same way so we treat it as a third filter axis.
+    const topicOk = topics.length === 0 || topics.includes(p.fm.topic);
     const scope = p.fm.scope;
-    if (!scope) return false;
     const pkgOk =
-      packages.length === 0 || (scope.packages ?? []).some((pk) => packages.includes(pk));
+      packages.length === 0 ||
+      (scope !== undefined && (scope.packages ?? []).some((pk) => packages.includes(pk)));
     const concernOk =
-      concerns.length === 0 || (scope.concerns ?? []).some((c) => concerns.includes(c));
-    return pkgOk && concernOk;
+      concerns.length === 0 ||
+      (scope !== undefined && (scope.concerns ?? []).some((c) => concerns.includes(c)));
+    return topicOk && pkgOk && concernOk;
   });
   return expandClosure(
     parsed,
