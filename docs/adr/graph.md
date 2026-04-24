@@ -1,10 +1,11 @@
 # ADR Dependency Graph — Overview
 
-112 ADRs across 15 topics. Clusters group by `topic` frontmatter field. Edges crossing cluster borders are cross-topic dependencies.
+113 ADRs across 15 topics. Clusters group by `topic` frontmatter field. Edges crossing cluster borders are cross-topic dependencies.
 ```mermaid
 flowchart TD
   subgraph adr-tooling["adr-tooling"]
     ADR_20260423_01["ADR-20260423-01<br/>ADR 本文とフロントマター関係フィールドの整合性を validator の warning ..."]
+    ADR_20260424_01["ADR-20260424-01<br/>ADR knowledge graph — machine-readable frontmat..."]
   end
   subgraph app-ui["app-ui"]
     ADR_20260323_02["ADR-20260323-02<br/>ツールバーボタンはアイコン+テキストラベル必須"]
@@ -339,11 +340,12 @@ flowchart TD
   class ADR_20260422_06 accepted
   class ADR_20260422_07 accepted
   class ADR_20260423_01 accepted
+  class ADR_20260424_01 accepted
 ```
 
 ## Per-topic detail
 
-- [`adr-tooling`](graph/adr-tooling.md) — 1 ADRs
+- [`adr-tooling`](graph/adr-tooling.md) — 2 ADRs
 - [`app-ui`](graph/app-ui.md) — 15 ADRs
 - [`build`](graph/build.md) — 17 ADRs
 - [`chat-ai`](graph/chat-ai.md) — 8 ADRs
