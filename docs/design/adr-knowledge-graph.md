@@ -219,7 +219,8 @@ refines: []
 # スコープ（任意だが推奨）
 scope:
   packages: [core, app]              # packages/* の短縮名
-  domains: [resolver, rendering]     # 自由タグ（将来 controlled vocabulary にする余地）
+  concerns: [security, i18n]         # controlled vocabulary — accessibility | ci | dependencies | deployment | i18n | performance | security
+                                     # (Phase 3 H: renamed from `domains` to avoid collision with karasu's product `domain` concept)
 
 # 前提条件（任意・Phase 2 の drift 検出で使う）
 assumptions: []                      # 自由記述の文字列配列
