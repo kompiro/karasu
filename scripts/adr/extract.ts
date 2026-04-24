@@ -8,6 +8,7 @@ import {
   scopeSlice,
   type OutputFormat,
 } from "./extractor.ts";
+import { VALID_TOPICS } from "./validator.ts";
 
 const VALID_FORMATS: readonly OutputFormat[] = ["list", "markdown", "json"] as const;
 
@@ -17,6 +18,7 @@ interface CliArgs {
   dir: string;
   packages: string[];
   concerns: string[];
+  topics: string[];
   adrId: string | null;
 }
 
@@ -27,14 +29,15 @@ function parseArgs(argv: string[]): CliArgs | { error: string } {
     return {
       error: `usage: extract.ts <effective|slice|closure> [options]
   effective               — list ADRs with status=accepted and no superseded_by
-  slice --package X --concern Y — ADRs whose scope matches + transitive depends_on
+  slice --package X --concern Y --topic Z — ADRs whose scope matches + transitive depends_on
   closure ADR-YYYYMMDD-NN — transitive depends_on closure of the given ADR
 
 Options (all subcommands):
   --format=<list|markdown|json>   default: list
   --dir=<path>                    default: docs/adr
   --package=<name>                repeatable or comma-separated (slice only)
-  --concern=<name>                repeatable or comma-separated (slice only)`,
+  --concern=<name>                repeatable or comma-separated (slice only)
+  --topic=<slug>                  repeatable or comma-separated (slice only)`,
     };
   }
 
@@ -42,6 +45,7 @@ Options (all subcommands):
   let dir = "docs/adr";
   const packages: string[] = [];
   const concerns: string[] = [];
+  const topics: string[] = [];
   let adrId: string | null = null;
 
   for (const raw of args.slice(1)) {
@@ -59,6 +63,16 @@ Options (all subcommands):
       packages.push(...raw.slice("--package=".length).split(",").filter(Boolean));
     } else if (raw.startsWith("--concern=")) {
       concerns.push(...raw.slice("--concern=".length).split(",").filter(Boolean));
+    } else if (raw.startsWith("--topic=")) {
+      const values = raw.slice("--topic=".length).split(",").filter(Boolean);
+      for (const v of values) {
+        if (!VALID_TOPICS.includes(v as (typeof VALID_TOPICS)[number])) {
+          return {
+            error: `invalid --topic (got ${JSON.stringify(v)}); expected one of ${VALID_TOPICS.join(", ")}`,
+          };
+        }
+        topics.push(v);
+      }
     } else if (raw.startsWith("--")) {
       return { error: `unknown option: ${raw}` };
     } else if (sub === "closure" && adrId === null) {
@@ -72,7 +86,7 @@ Options (all subcommands):
     return { error: "closure requires an ADR id (e.g. ADR-20260422-05)" };
   }
 
-  return { subcommand: sub, format: fmt, dir, packages, concerns, adrId };
+  return { subcommand: sub, format: fmt, dir, packages, concerns, topics, adrId };
 }
 
 function main(argv: string[]): number {
@@ -87,7 +101,11 @@ function main(argv: string[]): number {
     if (parsed.subcommand === "effective") {
       result = effectiveSet(adrs);
     } else if (parsed.subcommand === "slice") {
-      result = scopeSlice(adrs, { packages: parsed.packages, concerns: parsed.concerns });
+      result = scopeSlice(adrs, {
+        packages: parsed.packages,
+        concerns: parsed.concerns,
+        topics: parsed.topics,
+      });
     } else {
       result = closure(adrs, parsed.adrId!);
     }
