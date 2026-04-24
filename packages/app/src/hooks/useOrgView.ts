@@ -12,6 +12,7 @@ import {
   type OrganizationBlock,
   type ResolvedStyles,
 } from "@karasu-tools/core";
+import { useEmptyStateLabels } from "../i18n/use-empty-state-labels.js";
 
 interface OrgViewState {
   orgSvg: string;
@@ -72,6 +73,8 @@ export function useOrgView(
     setState((prev) => ({ ...prev }));
   }, []);
 
+  const emptyStateLabels = useEmptyStateLabels();
+
   useEffect(() => {
     if (!entryPath || !fs) return;
 
@@ -80,7 +83,12 @@ export function useOrgView(
     const currentKey = `${entryPath}:org:${viewPath.join("/")}:cmp=${compareEntryPath ?? ""}`;
 
     timerRef.current = setTimeout(() => {
-      const baseTask = compileProject(entryPath, fs, { diagramType: "org", viewPath, displayMode });
+      const baseTask = compileProject(entryPath, fs, {
+        diagramType: "org",
+        viewPath,
+        displayMode,
+        emptyStateLabels,
+      });
       const task = compareEntryPath
         ? Promise.all([
             baseTask,
@@ -90,6 +98,7 @@ export function useOrgView(
               fs: compareFs ?? fs,
               viewPath,
               displayMode,
+              emptyStateLabels,
             }),
           ]).then(([base, diff]) => {
             if (base.diagramType !== "org") return base;
@@ -139,8 +148,17 @@ export function useOrgView(
     return () => {
       if (timerRef.current) clearTimeout(timerRef.current);
     };
+  }, [
+    entryPath,
+    fs,
+    viewPath,
+    displayMode,
+    compareEntryPath,
+    compareFs,
+    emptyStateLabels,
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [entryPath, fs, viewPath, displayMode, compareEntryPath, compareFs, recompileCounter.current]);
+    recompileCounter.current,
+  ]);
 
   const orgTreeSvg =
     state.organizations.length > 0

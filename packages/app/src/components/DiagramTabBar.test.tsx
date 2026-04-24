@@ -14,7 +14,6 @@ function render(ui: ReactElement, initialLocale: "en" | "ja" = "en") {
 function baseProps() {
   return {
     active: "system" as const,
-    hasDeployDiagram: true,
     onChange: vi.fn<() => void>(),
   };
 }
@@ -28,7 +27,7 @@ describe("DiagramTabBar", () => {
     expect(props.onChange).toHaveBeenCalledWith("system");
   });
 
-  it("clicking Deploy tab calls onChange('deploy') when hasDeployDiagram is true", () => {
+  it("clicking Deploy tab calls onChange('deploy')", () => {
     const props = baseProps();
     const { getByRole } = render(<DiagramTabBar {...props} />);
     fireEvent.click(getByRole("tab", { name: /Deploy/ }));
@@ -42,10 +41,13 @@ describe("DiagramTabBar", () => {
     expect(props.onChange).toHaveBeenCalledWith("org");
   });
 
-  it("Deploy tab has aria-disabled when hasDeployDiagram is false", () => {
-    const props = { ...baseProps(), hasDeployDiagram: false };
+  it("Deploy tab is always clickable (even without deploy blocks)", () => {
+    const props = baseProps();
     const { getByRole } = render(<DiagramTabBar {...props} />);
-    expect(getByRole("tab", { name: /Deploy/ })).toHaveProperty("ariaDisabled", "true");
+    const deployTab = getByRole("tab", { name: /Deploy/ });
+    expect(deployTab.getAttribute("aria-disabled")).not.toBe("true");
+    fireEvent.click(deployTab);
+    expect(props.onChange).toHaveBeenCalledWith("deploy");
   });
 
   it("active tab has aria-selected=true; others have aria-selected=false", () => {

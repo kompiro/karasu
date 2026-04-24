@@ -27,7 +27,7 @@ interface LocaleContextValue {
   setLocale: SetLocale;
 }
 
-const LocaleContext = createContext<LocaleContextValue | null>(null);
+export const LocaleContext = createContext<LocaleContextValue | null>(null);
 
 interface LocaleProviderProps {
   children: ReactNode;
@@ -56,7 +56,11 @@ export function LocaleProvider({ children, initialLocale }: LocaleProviderProps)
  * English when the key is missing in the active map. If the resolved
  * value is a function (parameterized), invoke it with `params`.
  */
-function translate<K extends keyof Translations>(locale: Locale, key: K, params?: unknown): string {
+export function translate<K extends keyof Translations>(
+  locale: Locale,
+  key: K,
+  params?: unknown,
+): string {
   const activeMap = MAPS[locale];
   const entry = activeMap[key] ?? en[key];
 

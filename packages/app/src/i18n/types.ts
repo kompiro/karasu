@@ -84,8 +84,10 @@ export type Translations = {
   "nodeDetail.jumpToEditor": string;
   "nodeDetail.annotationDiff.title": string;
 
-  // DiagramTabBar (Phase C5)
-  "diagramTabBar.deploy.unavailableTitle": string;
+  // Empty-state placeholders (rendered inside SVG by core renderers)
+  "emptyState.deploy.title": string;
+  "emptyState.deploy.hint": string;
+  "emptyState.org.noTeams": string;
 
   // ReferencePanel (Phase C5)
   "referencePanel.unsupportedMessage": string;

@@ -327,18 +327,13 @@ body,
   white-space: nowrap;
 }
 
-.diagram-tab:hover:not(.diagram-tab--disabled) {
+.diagram-tab:hover {
   color: var(--text-secondary);
 }
 
 .diagram-tab--active {
   color: var(--text-primary);
   border-bottom-color: var(--accent);
-}
-
-.diagram-tab--disabled {
-  opacity: 0.28;
-  cursor: not-allowed;
 }
 
 .diagram-tab-icon {

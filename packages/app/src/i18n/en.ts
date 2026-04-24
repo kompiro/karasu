@@ -75,8 +75,10 @@ export const en: Translations = {
   "nodeDetail.jumpToEditor": "↗ Jump to editor",
   "nodeDetail.annotationDiff.title": "⇄ Annotation diff",
 
-  // DiagramTabBar
-  "diagramTabBar.deploy.unavailableTitle": "No deploy block defined",
+  // Empty-state placeholders (rendered inside SVG by core renderers)
+  "emptyState.deploy.title": "No deploy block defined",
+  "emptyState.deploy.hint": "Add a deploy block to your .krs file",
+  "emptyState.org.noTeams": "No teams defined",
 
   // ReferencePanel
   "referencePanel.unsupportedMessage": "Tags & Annotations are not available for this diagram.",

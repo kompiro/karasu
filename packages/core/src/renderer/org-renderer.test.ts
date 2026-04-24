@@ -91,6 +91,15 @@ describe("renderOrgView", () => {
       expect(svg).toContain("<svg");
     });
 
+    it("uses provided empty-state label when no teams", () => {
+      const slice: OrgViewSlice = { teams: [], focusedTeam: null, ancestorChain: [] };
+      const svg = renderOrgView(slice, makeStyles(), undefined, undefined, {
+        emptyLabels: { orgNoTeams: "チームが未定義です" },
+      });
+      expect(svg).toContain("チームが未定義です");
+      expect(svg).not.toContain("No teams defined");
+    });
+
     it("renders team cards in a grid", () => {
       const teams = [
         makeTeam("backend", { label: "Backend" }),

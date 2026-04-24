@@ -9,6 +9,7 @@ import {
   type DeployBlockInfo,
   type DisplayMode,
 } from "@karasu-tools/core";
+import { useEmptyStateLabels } from "../i18n/use-empty-state-labels.js";
 
 interface DeployViewState {
   svg: string;
@@ -46,6 +47,8 @@ export function useDeployView(
     setState((prev) => ({ ...prev }));
   }, []);
 
+  const emptyStateLabels = useEmptyStateLabels();
+
   useEffect(() => {
     if (!entryPath || !fs) return;
 
@@ -64,6 +67,7 @@ export function useDeployView(
               diagramType: "deploy",
               selectedDeployId: selectedDeployBlockId ?? undefined,
               displayMode,
+              emptyStateLabels,
             }),
             compileDeployDiff({
               beforeEntryPath: compareEntryPath,
@@ -71,6 +75,7 @@ export function useDeployView(
               fs: compareFs ?? fs,
               selectedDeployId: selectedDeployBlockId ?? undefined,
               displayMode,
+              emptyStateLabels,
             }),
           ]);
           if (base.diagramType !== "deploy") return;
@@ -103,6 +108,7 @@ export function useDeployView(
           diagramType: "deploy",
           selectedDeployId: selectedDeployBlockId ?? undefined,
           displayMode,
+          emptyStateLabels,
         });
         if (result.diagramType !== "deploy") return;
         const hasErrors = result.diagnostics.some((d) => d.severity === "error");
@@ -153,6 +159,7 @@ export function useDeployView(
     displayMode,
     compareEntryPath,
     compareFs,
+    emptyStateLabels,
     // eslint-disable-next-line react-hooks/exhaustive-deps
     recompileCounter.current,
   ]);

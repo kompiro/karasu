@@ -13,7 +13,6 @@ const EXPORT_ERROR_AUTO_DISMISS_MS = 6000;
 export function PreviewColumn() {
   const {
     activeView,
-    hasDeployDiagram,
     onActiveViewChange,
     systemView,
     deployView,
@@ -153,7 +152,6 @@ export function PreviewColumn() {
     <div className="preview-column">
       <DiagramTabBar
         active={activeView}
-        hasDeployDiagram={hasDeployDiagram}
         onChange={onActiveViewChange}
         deployBlocks={deployBlocks}
         selectedDeployBlockId={selectedDeployBlockId}
