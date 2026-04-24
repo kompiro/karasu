@@ -10,7 +10,7 @@ interface CliArgs {
   dir: string;
   outDir: string;
   packages: string[];
-  domains: string[];
+  concerns: string[];
   adrId: string | null;
   topic: string | null;
 }
@@ -21,7 +21,7 @@ function parseArgs(argv: string[]): CliArgs | { error: string } {
   let dir = "docs/adr";
   let outDir = "docs/adr";
   const packages: string[] = [];
-  const domains: string[] = [];
+  const concerns: string[] = [];
   let adrId: string | null = null;
   let topic: string | null = null;
 
@@ -35,9 +35,9 @@ function parseArgs(argv: string[]): CliArgs | { error: string } {
     } else if (raw.startsWith("--package=")) {
       mode = "slice";
       packages.push(...raw.slice("--package=".length).split(",").filter(Boolean));
-    } else if (raw.startsWith("--domain=")) {
+    } else if (raw.startsWith("--concern=")) {
       mode = "slice";
-      domains.push(...raw.slice("--domain=".length).split(",").filter(Boolean));
+      concerns.push(...raw.slice("--concern=".length).split(",").filter(Boolean));
     } else if (raw.startsWith("--closure=")) {
       mode = "closure";
       adrId = raw.slice("--closure=".length);
@@ -52,7 +52,7 @@ function parseArgs(argv: string[]): CliArgs | { error: string } {
   (no flags)             — topic-grouped overview to stdout
   --topic=<slug>         — single topic detail (with ghost nodes)
   --effective            — limit to ADRs with status=accepted and no superseded_by
-  --package=X --domain=Y — limit to scope slice + transitive depends_on
+  --package=X --concern=Y — limit to scope slice + transitive depends_on
   --closure=ADR-X        — limit to one ADR and its transitive depends_on
   --write-all            — regenerate docs/adr/graph.md and docs/adr/graph/<topic>.md
 
@@ -72,7 +72,7 @@ Options:
     return { error: "--topic requires a topic slug" };
   }
 
-  return { mode, dir, outDir, packages, domains, adrId, topic };
+  return { mode, dir, outDir, packages, concerns, adrId, topic };
 }
 
 function main(argv: string[]): number {
@@ -110,7 +110,7 @@ function main(argv: string[]): number {
     if (parsed.mode === "effective") {
       subset = effectiveSet(all);
     } else if (parsed.mode === "slice") {
-      subset = scopeSlice(all, { packages: parsed.packages, domains: parsed.domains });
+      subset = scopeSlice(all, { packages: parsed.packages, concerns: parsed.concerns });
     } else {
       subset = closure(all, parsed.adrId!);
     }

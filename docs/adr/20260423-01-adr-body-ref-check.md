@@ -5,9 +5,6 @@ status: accepted
 date: 2026-04-23
 topic: adr-tooling
 scope:
-  domains:
-    - adr
-    - validation
 ---
 
 # ADR-20260423-01: ADR 本文とフロントマター関係フィールドの整合性を validator の warning で検査する

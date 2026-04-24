@@ -5,8 +5,6 @@ status: accepted
 date: 2026-03-12
 topic: core-concepts
 scope:
-  domains:
-    - naming
 ---
 
 # ADR-20260312-02: ツール名「karasu」の採用

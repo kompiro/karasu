@@ -18,10 +18,18 @@ topic: core-concepts
 # conflicts_with: [ADR-YYYYMMDD-NN]       # mutually exclusive alternatives
 # refines: [ADR-YYYYMMDD-NN]              # this ADR is a concrete specialization of an abstract one
 
-# --- Scope (optional but recommended) ---
+# --- Scope (optional) ---
+# `scope.concerns` is a controlled vocabulary of cross-cutting aspects that
+# are orthogonal to `topic`. Prefer leaving it empty when `topic` already
+# captures the categorization; add a concern only when the ADR touches a
+# dimension that a topic-only query would miss.
+# Allowed values: accessibility | ci | dependencies | deployment | i18n |
+#                 performance | security
+# NOTE: renamed from `scope.domains` to avoid collision with karasu's
+# product-side `domain` modeling primitive.
 # scope:
 #   packages: [core, app, cli, lsp, vscode]
-#   domains: [parser, resolver, rendering, testing, ...]
+#   concerns: [security, dependencies]
 
 # --- Assumptions (optional; checked by `pnpm adr:check-assumptions`) ---
 # Supported formats:

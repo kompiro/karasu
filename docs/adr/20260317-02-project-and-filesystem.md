@@ -8,9 +8,6 @@ scope:
   packages:
     - app
     - core
-  domains:
-    - filesystem
-    - project
 ---
 
 # ADR-20260317-02: プロジェクトとファイルシステム抽象化 — `FileSystemProvider` + OPFS

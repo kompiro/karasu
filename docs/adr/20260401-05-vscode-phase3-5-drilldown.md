@@ -10,9 +10,6 @@ depends_on:
 scope:
   packages:
     - vscode
-  domains:
-    - vscode
-    - navigation
 ---
 
 # ADR-20260401-05: VSCode Phase 3.5 — Webview ドリルダウンナビゲーション

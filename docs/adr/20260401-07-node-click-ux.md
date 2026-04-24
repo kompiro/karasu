@@ -12,9 +12,6 @@ related_to:
 scope:
   packages:
     - app
-  domains:
-    - navigation
-    - ui
 ---
 
 # ADR-20260401-07: ノードクリック UX — ドリルダウンと Cmd/Ctrl+Click エディタジャンプ

@@ -10,9 +10,6 @@ depends_on:
 scope:
   packages:
     - app
-  domains:
-    - ai
-    - ui
 ---
 
 # ADR-20260412-01: Chat UI Phase 3 — 構造化インタビュープロンプトの実装方針

@@ -11,9 +11,6 @@ related_to:
 scope:
   packages:
     - app
-  domains:
-    - ui
-    - toolbar
 ---
 
 # ADR-20260411-08: EditPaneToolbar — LeftPane アクションボタンの専用ツールバーへの集約

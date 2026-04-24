@@ -9,9 +9,6 @@ depends_on:
 scope:
   packages:
     - core
-  domains:
-    - parser
-    - import
 ---
 
 # ADR-20260409-05: Directory Import — `import "dir/"` 構文

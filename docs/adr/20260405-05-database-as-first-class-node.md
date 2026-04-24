@@ -7,10 +7,6 @@ topic: resolver
 scope:
   packages:
     - core
-  domains:
-    - parser
-    - syntax
-    - rendering
 assumptions:
   - "symbol: packages/core/src/types/ast.ts :: DatabaseNode"
   - "symbol: packages/core/src/types/ast.ts :: QueueGroupNode"

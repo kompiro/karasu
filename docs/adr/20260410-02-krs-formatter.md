@@ -7,8 +7,6 @@ topic: parser
 scope:
   packages:
     - core
-  domains:
-    - formatter
 ---
 
 # ADR-20260410-02: `.krs` フォーマッター — トークン列ベースでコメント保持

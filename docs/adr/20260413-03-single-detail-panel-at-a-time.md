@@ -9,8 +9,6 @@ related_to:
 scope:
   packages:
     - app
-  domains:
-    - ui
 ---
 
 # ADR-20260413-03: DetailPanel は常に1つだけ表示する

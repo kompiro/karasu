@@ -7,8 +7,6 @@ topic: build
 scope:
   packages:
     - cli
-  domains:
-    - cli
 ---
 
 # ADR-20260404-06: GitHub Markdown レンダリングサービス — `serve.ts` の `/render` エンドポイント

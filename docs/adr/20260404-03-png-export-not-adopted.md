@@ -7,8 +7,6 @@ topic: renderer
 scope:
   packages:
     - core
-  domains:
-    - export
 ---
 
 # ADR-20260404-03: Do not implement PNG export

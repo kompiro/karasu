@@ -9,10 +9,6 @@ depends_on:
 scope:
   packages:
     - core
-  domains:
-    - rendering
-    - edges
-    - ui
 ---
 
 # ADR-20260422-03: 集約された暗黙エッジの詳細パネル — SVG 属性埋め込み方式

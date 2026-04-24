@@ -8,20 +8,21 @@ export function effectiveSet(parsed: ParsedAdr[]): ParsedAdr[] {
 
 export function scopeSlice(
   parsed: ParsedAdr[],
-  filter: { packages?: string[]; domains?: string[] },
+  filter: { packages?: string[]; concerns?: string[] },
 ): ParsedAdr[] {
   const packages = filter.packages ?? [];
-  const domains = filter.domains ?? [];
-  if (packages.length === 0 && domains.length === 0) {
-    throw new Error("slice requires at least one --package or --domain filter");
+  const concerns = filter.concerns ?? [];
+  if (packages.length === 0 && concerns.length === 0) {
+    throw new Error("slice requires at least one --package or --concern filter");
   }
   const directlyMatched = parsed.filter((p) => {
     const scope = p.fm.scope;
     if (!scope) return false;
     const pkgOk =
       packages.length === 0 || (scope.packages ?? []).some((pk) => packages.includes(pk));
-    const domOk = domains.length === 0 || (scope.domains ?? []).some((d) => domains.includes(d));
-    return pkgOk && domOk;
+    const concernOk =
+      concerns.length === 0 || (scope.concerns ?? []).some((c) => concerns.includes(c));
+    return pkgOk && concernOk;
   });
   return expandClosure(
     parsed,

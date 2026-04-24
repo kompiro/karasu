@@ -9,9 +9,6 @@ related_to:
 scope:
   packages:
     - core
-  domains:
-    - rendering
-    - edges
 ---
 
 # ADR-20260410-01: Domain 間エッジと `[implicit]` 自動タグによる暗黙サービスエッジ

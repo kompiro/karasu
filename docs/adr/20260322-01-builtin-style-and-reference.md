@@ -7,8 +7,6 @@ topic: styling
 scope:
   packages:
     - core
-  domains:
-    - styling
 ---
 
 # ADR-20260322-01: ビルトインスタイルの一元化と構造化リファレンス

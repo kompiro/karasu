@@ -11,8 +11,6 @@ related_to:
 scope:
   packages:
     - cli
-  domains:
-    - cli
 ---
 
 # ADR-20260328-04: CLI `karasu serve` モード — ローカル `.krs` のリアルタイムプレビュー

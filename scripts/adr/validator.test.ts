@@ -90,6 +90,42 @@ date: 2026-01-01`),
     expect(result.errors.some((e) => e.includes("topic"))).toBe(true);
   });
 
+  it("rejects unknown scope.concerns value", () => {
+    write(
+      "20260101-01-sample.md",
+      adr(`id: ADR-20260101-01
+title: Sample
+status: accepted
+topic: core-concepts
+date: 2026-01-01
+scope:
+  concerns:
+    - nonsense`),
+    );
+    const result = validateDirectory(tmp);
+    expect(result.errors.some((e) => e.includes("scope.concerns") && e.includes("nonsense"))).toBe(
+      true,
+    );
+  });
+
+  it("flags the legacy scope.domains field after the rename", () => {
+    write(
+      "20260101-01-sample.md",
+      adr(`id: ADR-20260101-01
+title: Sample
+status: accepted
+topic: core-concepts
+date: 2026-01-01
+scope:
+  domains:
+    - parser`),
+    );
+    const result = validateDirectory(tmp);
+    expect(
+      result.errors.some((e) => e.includes("renamed to") && e.includes("scope.concerns")),
+    ).toBe(true);
+  });
+
   it("rejects id mismatch with filename", () => {
     write(
       "20260101-01-sample.md",

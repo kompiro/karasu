@@ -36,6 +36,26 @@ const RELATIONSHIP_FIELDS = [
 ] as const;
 type RelationshipField = (typeof RELATIONSHIP_FIELDS)[number];
 
+// Controlled vocabulary for `scope.concerns` — cross-cutting aspects that are
+// orthogonal to `topic`. Prefer leaving `concerns` empty when `topic` already
+// captures the relevant categorization; add a concern only when the ADR
+// touches a genuinely cross-cutting dimension that would otherwise be
+// invisible to a topic-only query.
+//
+// Renamed from `scope.domains` to avoid collision with karasu's product-side
+// `domain` modeling primitive (the `service → domain → usecase → resource`
+// hierarchy).
+const VALID_CONCERNS = [
+  "accessibility",
+  "ci",
+  "dependencies",
+  "deployment",
+  "i18n",
+  "performance",
+  "security",
+] as const;
+type Concern = (typeof VALID_CONCERNS)[number];
+
 export interface Frontmatter {
   id: string;
   title: string;
@@ -49,7 +69,7 @@ export interface Frontmatter {
   related_to?: string[];
   conflicts_with?: string[];
   refines?: string[];
-  scope?: { packages?: string[]; domains?: string[] };
+  scope?: { packages?: string[]; concerns?: Concern[] };
   assumptions?: string[];
 }
 
@@ -157,17 +177,36 @@ function parseFrontmatter(raw: string, file: string, errors: string[]): Frontmat
       errors.push(`${file}: "scope" must be a mapping`);
     } else {
       const s = fm.scope as Record<string, unknown>;
+      if ("domains" in s) {
+        errors.push(
+          `${file}: "scope.domains" was renamed to "scope.concerns" with a controlled vocabulary; see docs/adr/TEMPLATE.md`,
+        );
+      }
       const pkgs = s.packages;
-      const doms = s.domains;
+      const concernsRaw = s.concerns;
       const pkgsOk =
         pkgs === undefined || (Array.isArray(pkgs) && pkgs.every((x) => typeof x === "string"));
-      const domsOk =
-        doms === undefined || (Array.isArray(doms) && doms.every((x) => typeof x === "string"));
+      const concernsOk =
+        concernsRaw === undefined ||
+        (Array.isArray(concernsRaw) && concernsRaw.every((x) => typeof x === "string"));
       if (!pkgsOk) errors.push(`${file}: "scope.packages" must be an array of strings`);
-      if (!domsOk) errors.push(`${file}: "scope.domains" must be an array of strings`);
+      if (!concernsOk) errors.push(`${file}: "scope.concerns" must be an array of strings`);
+      let concerns: Concern[] | undefined;
+      if (concernsOk && Array.isArray(concernsRaw)) {
+        concerns = [];
+        for (const v of concernsRaw as string[]) {
+          if (VALID_CONCERNS.includes(v as Concern)) {
+            concerns.push(v as Concern);
+          } else {
+            errors.push(
+              `${file}: "scope.concerns" contains unknown value ${JSON.stringify(v)}; allowed: ${VALID_CONCERNS.join(" | ")}`,
+            );
+          }
+        }
+      }
       scope = {
         packages: pkgsOk && Array.isArray(pkgs) ? (pkgs as string[]) : undefined,
-        domains: domsOk && Array.isArray(doms) ? (doms as string[]) : undefined,
+        concerns,
       };
     }
   }

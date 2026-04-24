@@ -10,9 +10,6 @@ depends_on:
 scope:
   packages:
     - app
-  domains:
-    - ai
-    - ui
 ---
 
 # ADR-20260422-02: Chat UI AI 設計レビュー — プロンプト駆動 + トリガー二系統

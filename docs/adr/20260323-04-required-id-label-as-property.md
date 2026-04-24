@@ -9,10 +9,6 @@ depends_on:
 scope:
   packages:
     - core
-  domains:
-    - parser
-    - syntax
-    - ast
 ---
 
 # ADR-20260323-04: ID 必須化と `label` のプロパティ化

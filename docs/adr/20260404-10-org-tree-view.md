@@ -10,9 +10,6 @@ scope:
   packages:
     - app
     - core
-  domains:
-    - rendering
-    - navigation
 ---
 
 # ADR-20260404-10: Org Tree View — 組織階層の左→右ツリー俯瞰図

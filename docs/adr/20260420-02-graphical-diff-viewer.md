@@ -12,9 +12,6 @@ scope:
   packages:
     - app
     - core
-  domains:
-    - rendering
-    - ui
 ---
 
 # ADR-20260420-02: グラフィカル diff ビューア

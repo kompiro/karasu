@@ -7,9 +7,6 @@ topic: app-ui
 scope:
   packages:
     - app
-  domains:
-    - ui
-    - navigation
 ---
 
 # ADR-20260404-04: system セレクタUIを採用しない

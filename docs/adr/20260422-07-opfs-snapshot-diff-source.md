@@ -11,9 +11,6 @@ related_to:
 scope:
   packages:
     - app
-  domains:
-    - rendering
-    - testing
 ---
 
 # ADR-20260422-07: OPFS 履歴スナップショットを diff 比較ソースにする

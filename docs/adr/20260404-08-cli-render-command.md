@@ -9,9 +9,6 @@ depends_on:
 scope:
   packages:
     - cli
-  domains:
-    - cli
-    - export
 ---
 
 # ADR-20260404-08: CLI `karasu render` コマンド

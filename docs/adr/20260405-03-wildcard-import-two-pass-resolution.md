@@ -7,10 +7,6 @@ topic: parser
 scope:
   packages:
     - core
-  domains:
-    - parser
-    - import
-    - resolver
 ---
 
 # ADR-20260405-03: ワイルドカードインポートと2パス解決の採用

@@ -10,8 +10,6 @@ scope:
   packages:
     - app
     - core
-  domains:
-    - navigation
 ---
 
 # ADR-20260330-04: Permanent Link — `nodePathIndex` と URL hash の 2 フェーズ実装

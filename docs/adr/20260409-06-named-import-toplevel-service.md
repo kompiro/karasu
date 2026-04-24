@@ -10,10 +10,6 @@ depends_on:
 scope:
   packages:
     - core
-  domains:
-    - parser
-    - import
-    - resolver
 ---
 
 # ADR-20260409-06: トップレベル service の Named Import — スタブ補完 + エッジ参照による自動メンバーシップ

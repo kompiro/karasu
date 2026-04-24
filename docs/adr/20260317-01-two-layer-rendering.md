@@ -7,9 +7,6 @@ topic: renderer
 scope:
   packages:
     - core
-  domains:
-    - rendering
-    - navigation
 ---
 
 # ADR-20260317-01: 2 レイヤレンダリングとドリルダウンナビゲーション

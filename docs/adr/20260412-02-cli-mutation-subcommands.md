@@ -9,9 +9,6 @@ depends_on:
 scope:
   packages:
     - cli
-  domains:
-    - cli
-    - patch
 ---
 
 # ADR-20260412-02: CLI 変更系サブコマンド — `karasu remove` / `append` / `insert`

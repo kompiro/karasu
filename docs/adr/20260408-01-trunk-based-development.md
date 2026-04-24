@@ -7,8 +7,7 @@ topic: build
 related_to:
   - ADR-20260326-01
 scope:
-  domains:
-    - process
+  concerns:
     - ci
 ---
 

@@ -10,10 +10,6 @@ depends_on:
 related_to:
   - ADR-20260330-04
 scope:
-  domains:
-    - concepts
-    - syntax
-    - rendering
 ---
 
 # ADR-20260323-03: Organization 図（organization / team / member）の追加

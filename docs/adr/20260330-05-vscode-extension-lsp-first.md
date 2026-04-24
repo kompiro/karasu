@@ -8,9 +8,6 @@ scope:
   packages:
     - lsp
     - vscode
-  domains:
-    - vscode
-    - lsp
 ---
 
 # ADR-20260330-05: VSCode 拡張 — LSP-first アーキテクチャと段階的フェーズ計画

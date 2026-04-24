@@ -9,9 +9,6 @@ related_to:
 scope:
   packages:
     - app
-  domains:
-    - ui
-    - toolbar
 ---
 
 # ADR-20260330-02: Toolbar Button Display Rules

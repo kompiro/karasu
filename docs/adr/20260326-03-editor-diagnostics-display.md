@@ -9,9 +9,6 @@ depends_on:
 scope:
   packages:
     - app
-  domains:
-    - ui
-    - diagnostics
 ---
 
 # ADR-20260326-03: Editor 診断表示 — Monaco マーカー + Preview エラーオーバーレイ

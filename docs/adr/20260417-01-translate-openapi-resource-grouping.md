@@ -9,9 +9,6 @@ depends_on:
 scope:
   packages:
     - cli
-  domains:
-    - cli
-    - translate
 ---
 
 # ADR-20260417-01: `translate --from openapi` のデフォルトをリソース単位の usecase 集約に変更する

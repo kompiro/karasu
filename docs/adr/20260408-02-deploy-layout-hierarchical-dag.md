@@ -11,10 +11,6 @@ related_to:
 scope:
   packages:
     - core
-  domains:
-    - rendering
-    - layout
-    - deployment
 ---
 
 # ADR-20260408-02: Deploy 図レイアウト — 階層 DAG レイアウト（Longest Path Layering）

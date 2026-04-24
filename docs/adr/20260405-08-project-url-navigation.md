@@ -10,8 +10,6 @@ depends_on:
 scope:
   packages:
     - app
-  domains:
-    - navigation
 ---
 
 # ADR-20260405-08: プロジェクト URL ナビゲーション — `/projects/<uuid>` パスネーム方式

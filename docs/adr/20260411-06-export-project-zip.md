@@ -10,9 +10,6 @@ depends_on:
 scope:
   packages:
     - app
-  domains:
-    - project
-    - export
 ---
 
 # ADR-20260411-06: Export Project as ZIP — `fflate` による OPFS エクスポート

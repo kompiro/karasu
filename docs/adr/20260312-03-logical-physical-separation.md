@@ -5,9 +5,6 @@ status: accepted
 date: 2026-03-12
 topic: core-concepts
 scope:
-  domains:
-    - concepts
-    - syntax
 ---
 
 # ADR-20260312-03: 論理構造と物理構造の分離

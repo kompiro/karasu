@@ -11,9 +11,6 @@ related_to:
 scope:
   packages:
     - cli
-  domains:
-    - cli
-    - translate
 ---
 
 # ADR-20260419-01: `translate --from db` のデフォルトを集約ルート単位のテーブル集約に変更する

@@ -9,9 +9,6 @@ depends_on:
 scope:
   packages:
     - app
-  domains:
-    - ui
-    - export
 ---
 
 # ADR-20260329-02: KarasuPreviewColumn からの SVG エクスポート責務分離

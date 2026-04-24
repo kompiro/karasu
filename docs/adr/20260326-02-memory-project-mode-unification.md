@@ -10,9 +10,6 @@ related_to:
 scope:
   packages:
     - app
-  domains:
-    - ui
-    - architecture
 ---
 
 # ADR-20260326-02: MemoryMode と ProjectMode の統一 — Reducer + `KarasuPreviewColumn`

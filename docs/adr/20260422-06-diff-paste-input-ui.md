@@ -11,9 +11,6 @@ related_to:
 scope:
   packages:
     - app
-  domains:
-    - rendering
-    - testing
 ---
 
 # ADR-20260422-06: Diff ペースト入力の UI 配置とストレージ方式

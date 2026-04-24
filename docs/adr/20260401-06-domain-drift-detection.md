@@ -9,8 +9,6 @@ depends_on:
 scope:
   packages:
     - core
-  domains:
-    - resolver
 ---
 
 # ADR-20260401-06: Domain Drift Detection — Scope and Detection Key

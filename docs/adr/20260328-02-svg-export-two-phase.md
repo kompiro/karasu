@@ -11,9 +11,6 @@ depends_on:
 scope:
   packages:
     - core
-  domains:
-    - rendering
-    - export
 ---
 
 # ADR-20260328-02: SVG エクスポートの 2 フェーズ実装（現在ビュー + Full View 単一ファイル）

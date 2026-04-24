@@ -9,8 +9,6 @@ depends_on:
 scope:
   packages:
     - app
-  domains:
-    - ui
 ---
 
 # ADR-20260407-03: ProjectSelector の Rename 操作 — インライン入力欄パターン

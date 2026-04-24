@@ -10,9 +10,6 @@ depends_on:
 scope:
   packages:
     - core
-  domains:
-    - rendering
-    - layout
 ---
 
 # ADR-20260411-01: Architecture レイアウトへの Barycenter + Sub-row wrap は適用せず共通ユーティリティのみ抽出

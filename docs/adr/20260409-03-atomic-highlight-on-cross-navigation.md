@@ -11,9 +11,6 @@ related_to:
 scope:
   packages:
     - app
-  domains:
-    - navigation
-    - rendering
 ---
 
 # ADR-20260409-03: クロスナビゲーション時のアトミックなハイライト適用

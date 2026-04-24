@@ -13,9 +13,6 @@ related_to:
 scope:
   packages:
     - app
-  domains:
-    - ui
-    - ai
 ---
 
 # ADR-20260409-08: Chat UI Panel — 全体アーキテクチャと Phase 1 レイアウト

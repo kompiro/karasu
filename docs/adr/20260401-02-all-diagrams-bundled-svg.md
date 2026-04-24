@@ -9,9 +9,6 @@ depends_on:
 scope:
   packages:
     - core
-  domains:
-    - rendering
-    - export
 ---
 
 # ADR-20260401-02: 全ビュー統合バンドル SVG（buildAllViewsSvg）

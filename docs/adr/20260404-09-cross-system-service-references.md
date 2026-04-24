@@ -11,10 +11,6 @@ related_to:
 scope:
   packages:
     - core
-  domains:
-    - parser
-    - rendering
-    - edges
 ---
 
 # ADR-20260404-09: クロスシステムサービス参照 — ドット記法（`SystemId.ServiceId`）
