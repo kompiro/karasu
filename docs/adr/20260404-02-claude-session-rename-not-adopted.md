@@ -5,8 +5,6 @@ status: not_adopted
 date: 2026-04-04
 topic: build
 scope:
-  domains:
-    - tooling
 ---
 
 # ADR-20260404-02: Do not rename Claude session to feature name in start-dev skill

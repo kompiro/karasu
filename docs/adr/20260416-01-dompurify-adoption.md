@@ -8,7 +8,7 @@ scope:
   packages:
     - app
     - core
-  domains:
+  concerns:
     - security
     - dependencies
 ---

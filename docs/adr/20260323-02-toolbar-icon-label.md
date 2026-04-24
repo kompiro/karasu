@@ -7,9 +7,6 @@ topic: app-ui
 scope:
   packages:
     - app
-  domains:
-    - ui
-    - toolbar
 ---
 
 # ADR-20260323-02: ツールバーボタンはアイコン+テキストラベル必須

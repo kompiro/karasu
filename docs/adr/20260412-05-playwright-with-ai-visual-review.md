@@ -7,8 +7,6 @@ topic: chat-ai
 supersedes:
   - ADR-20260324-01
 scope:
-  domains:
-    - testing
 assumptions:
   - "file: packages/e2e/playwright.config.ts"
   - "file: packages/e2e/package.json"

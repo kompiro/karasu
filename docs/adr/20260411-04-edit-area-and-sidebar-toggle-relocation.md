@@ -9,8 +9,6 @@ related_to:
 scope:
   packages:
     - app
-  domains:
-    - ui
 ---
 
 # ADR-20260411-04: `EditArea` コンポーネント新設と sidebar-toggle のサイドバーエリアへの移動

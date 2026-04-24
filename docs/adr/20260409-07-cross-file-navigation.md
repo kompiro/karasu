@@ -11,8 +11,6 @@ scope:
   packages:
     - app
     - core
-  domains:
-    - navigation
 ---
 
 # ADR-20260409-07: マルチファイルプロジェクトでのクロスファイルナビゲーション

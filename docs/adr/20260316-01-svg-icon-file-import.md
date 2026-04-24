@@ -7,9 +7,6 @@ topic: renderer
 scope:
   packages:
     - core
-  domains:
-    - rendering
-    - icons
 ---
 
 # ADR-20260316-01: SVGアイコンファイルの外部インポート方式

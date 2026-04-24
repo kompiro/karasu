@@ -11,9 +11,6 @@ related_to:
 scope:
   packages:
     - core
-  domains:
-    - rendering
-    - layout
 ---
 
 # ADR-20260409-04: 同レイヤー内コンテナ順序の Barycenter ヒューリスティックによる最適化

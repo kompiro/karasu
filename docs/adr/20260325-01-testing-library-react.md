@@ -9,8 +9,6 @@ related_to:
 scope:
   packages:
     - app
-  domains:
-    - testing
 ---
 
 # ADR-20260325-01: コンポーネントテストに @testing-library/react を採用する

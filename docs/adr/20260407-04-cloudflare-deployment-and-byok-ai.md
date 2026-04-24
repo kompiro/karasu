@@ -7,9 +7,8 @@ topic: chat-ai
 scope:
   packages:
     - app
-  domains:
+  concerns:
     - deployment
-    - ai
 ---
 
 # ADR-20260407-04: Cloudflare Pages デプロイ基盤と BYOK AI 連携

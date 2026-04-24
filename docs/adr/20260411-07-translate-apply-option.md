@@ -12,9 +12,6 @@ scope:
   packages:
     - cli
     - core
-  domains:
-    - cli
-    - patch
 ---
 
 # ADR-20260411-07: `karasu apply` サブコマンド — stdin + `applyKrsPatch` を core に移動

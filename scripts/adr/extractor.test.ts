@@ -29,8 +29,8 @@ date: 2026-01-01
 scope:
   packages:
     - core
-  domains:
-    - parser`,
+  concerns:
+    - dependencies`,
     "ADR-20260101-01: Foundational",
   );
 
@@ -46,8 +46,8 @@ depends_on:
 scope:
   packages:
     - core
-  domains:
-    - resolver`,
+  concerns:
+    - security`,
     "ADR-20260101-02: Depends",
   );
 
@@ -74,8 +74,8 @@ supersedes:
 scope:
   packages:
     - app
-  domains:
-    - ui`,
+  concerns:
+    - i18n`,
     "ADR-20260101-04: New",
   );
 
@@ -89,8 +89,8 @@ date: 2026-01-01
 scope:
   packages:
     - core
-  domains:
-    - parser`,
+  concerns:
+    - dependencies`,
     "ADR-20260101-05: Rejected",
   );
 }
@@ -113,19 +113,17 @@ describe("scopeSlice", () => {
     const ids = scopeSlice(parsed, { packages: ["core"] })
       .map((p) => p.id)
       .sort();
-    // 01 (core/parser) and 02 (core/resolver) match directly.
-    // 05 (core/parser) also matches (not_adopted is fine for slice — user may want history).
-    // 04 (app/ui) does not match. 03 has no scope.
+    // 01, 02, 05 have package=core; 03 has no scope; 04 has package=app.
     expect(ids).toEqual(["ADR-20260101-01", "ADR-20260101-02", "ADR-20260101-05"]);
   });
 
-  it("filters by domain intersection", () => {
+  it("filters by concern intersection", () => {
     seed();
     const parsed = loadParsed(tmp);
-    const ids = scopeSlice(parsed, { domains: ["resolver"] })
+    const ids = scopeSlice(parsed, { concerns: ["security"] })
       .map((p) => p.id)
       .sort();
-    // 02 matches directly; 01 is pulled in via depends_on closure.
+    // 02 matches directly (concern=security); 01 is pulled in via depends_on closure.
     expect(ids).toEqual(["ADR-20260101-01", "ADR-20260101-02"]);
   });
 
@@ -135,11 +133,11 @@ describe("scopeSlice", () => {
     expect(() => scopeSlice(parsed, {})).toThrow(/at least one/);
   });
 
-  it("requires BOTH package and domain to match when both specified", () => {
+  it("requires BOTH package and concern to match when both specified", () => {
     seed();
     const parsed = loadParsed(tmp);
-    // core + ui: no ADR has both → empty (before closure)
-    const ids = scopeSlice(parsed, { packages: ["core"], domains: ["ui"] }).map((p) => p.id);
+    // core + i18n: no ADR has both → empty (before closure)
+    const ids = scopeSlice(parsed, { packages: ["core"], concerns: ["i18n"] }).map((p) => p.id);
     expect(ids).toEqual([]);
   });
 });

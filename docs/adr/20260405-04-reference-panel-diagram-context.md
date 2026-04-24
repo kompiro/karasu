@@ -7,8 +7,6 @@ topic: app-ui
 scope:
   packages:
     - app
-  domains:
-    - ui
 ---
 
 # ADR-20260405-04: Reference パネルの図種別コンテキスト対応

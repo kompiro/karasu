@@ -9,9 +9,6 @@ depends_on:
 scope:
   packages:
     - cli
-  domains:
-    - cli
-    - translate
 ---
 
 # ADR-20260409-02: CLI `karasu translate` コマンドと複数 realizes 対応

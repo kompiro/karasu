@@ -7,8 +7,6 @@ topic: navigation
 scope:
   packages:
     - core
-  domains:
-    - navigation
 ---
 
 # ADR-20260403-01: Drill-down 収集ロジック統一 — `HierarchyNode` 型 + 高階関数

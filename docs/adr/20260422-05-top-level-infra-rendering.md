@@ -10,10 +10,6 @@ depends_on:
 scope:
   packages:
     - core
-  domains:
-    - parser
-    - rendering
-    - resolver
 assumptions:
   - "file: packages/core/src/view/unassigned-system.ts"
   - "symbol: packages/core/src/view/unassigned-system.ts :: withUnassignedSystem"

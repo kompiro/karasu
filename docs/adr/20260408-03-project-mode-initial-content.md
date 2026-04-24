@@ -7,9 +7,6 @@ topic: app-ui
 scope:
   packages:
     - app
-  domains:
-    - ui
-    - project
 ---
 
 # ADR-20260408-03: ProjectMode 初期コンテンツ — `examples/ec-platform` からの自動生成

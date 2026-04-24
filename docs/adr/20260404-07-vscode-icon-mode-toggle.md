@@ -10,9 +10,6 @@ depends_on:
 scope:
   packages:
     - vscode
-  domains:
-    - vscode
-    - icons
 ---
 
 # ADR-20260404-07: VSCode プレビュー Icon Mode トグル — Extension Host 管理 + postMessage

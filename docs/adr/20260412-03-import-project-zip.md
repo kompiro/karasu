@@ -11,9 +11,6 @@ depends_on:
 scope:
   packages:
     - app
-  domains:
-    - project
-    - import
 ---
 
 # ADR-20260412-03: Import Project from ZIP — `fflate` 再利用 + トップレベル除去

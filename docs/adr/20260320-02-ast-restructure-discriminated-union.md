@@ -7,10 +7,6 @@ topic: parser
 scope:
   packages:
     - core
-  domains:
-    - parser
-    - syntax
-    - ast
 ---
 
 # ADR-20260320-02: AST 再構成 — Discriminated Union とプロパティブロック

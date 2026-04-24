@@ -11,9 +11,6 @@ scope:
   packages:
     - core
     - app
-  domains:
-    - rendering
-    - ui
 ---
 
 # ADR-20260320-01: インタラクティブ SVG レンダリングと NodeDetailPanel

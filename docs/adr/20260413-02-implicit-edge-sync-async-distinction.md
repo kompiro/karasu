@@ -11,9 +11,6 @@ related_to:
 scope:
   packages:
     - core
-  domains:
-    - rendering
-    - edges
 ---
 
 # ADR-20260413-02: Implicit エッジにおける sync/async の視覚的区別

@@ -9,8 +9,6 @@ depends_on:
 scope:
   packages:
     - vscode
-  domains:
-    - vscode
 ---
 
 # ADR-20260401-04: VSCode Phase 3 — 独立 HTML Webview アーキテクチャ

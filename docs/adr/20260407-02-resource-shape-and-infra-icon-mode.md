@@ -10,9 +10,6 @@ depends_on:
 scope:
   packages:
     - core
-  domains:
-    - rendering
-    - icons
 ---
 
 # ADR-20260407-02: resource shape 自動推論とインフラノード Icon Mode 対応

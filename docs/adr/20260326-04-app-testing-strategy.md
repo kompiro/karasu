@@ -11,8 +11,6 @@ related_to:
 scope:
   packages:
     - app
-  domains:
-    - testing
 ---
 
 # ADR-20260326-04: `packages/app` のテスト戦略 — `@testing-library/react` + renderHook + ARIA

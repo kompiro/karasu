@@ -12,9 +12,6 @@ related_to:
 scope:
   packages:
     - core
-  domains:
-    - patch
-    - ast
 ---
 
 # ADR-20260410-03: 構造的 `.krs` パッチ — ノード ID ベースの `append` / `replace` / `remove`

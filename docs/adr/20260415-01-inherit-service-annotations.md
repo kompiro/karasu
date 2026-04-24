@@ -9,9 +9,6 @@ depends_on:
 scope:
   packages:
     - core
-  domains:
-    - styling
-    - annotations
 ---
 
 # ADR-20260415-01: 親サービスのアノテーションを子ノードに継承する

@@ -6,8 +6,6 @@ date: 2026-03-24
 topic: testing
 superseded_by: ADR-20260412-05
 scope:
-  domains:
-    - testing
 ---
 
 # ADR-20260324-01: E2EテストよりQA手動確認を優先する

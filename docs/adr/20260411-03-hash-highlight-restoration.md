@@ -10,8 +10,6 @@ depends_on:
 scope:
   packages:
     - app
-  domains:
-    - navigation
 ---
 
 # ADR-20260411-03: ブラウザ履歴でのハイライト復元 — hash コロン拡張

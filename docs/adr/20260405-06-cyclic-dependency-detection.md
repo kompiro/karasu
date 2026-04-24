@@ -7,9 +7,6 @@ topic: resolver
 scope:
   packages:
     - core
-  domains:
-    - resolver
-    - rendering
 ---
 
 # ADR-20260405-06: 循環依存の検出と `KrsEdge.cyclic` フラグによる視覚化

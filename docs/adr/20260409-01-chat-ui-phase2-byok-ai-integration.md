@@ -10,9 +10,6 @@ depends_on:
 scope:
   packages:
     - app
-  domains:
-    - ai
-    - ui
 ---
 
 # ADR-20260409-01: Chat UI Phase 2 — BYOK + AI 統合の実装方針

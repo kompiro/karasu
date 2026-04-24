@@ -16,7 +16,7 @@ interface CliArgs {
   format: OutputFormat;
   dir: string;
   packages: string[];
-  domains: string[];
+  concerns: string[];
   adrId: string | null;
 }
 
@@ -27,21 +27,21 @@ function parseArgs(argv: string[]): CliArgs | { error: string } {
     return {
       error: `usage: extract.ts <effective|slice|closure> [options]
   effective               — list ADRs with status=accepted and no superseded_by
-  slice --package X --domain Y — ADRs whose scope matches + transitive depends_on
+  slice --package X --concern Y — ADRs whose scope matches + transitive depends_on
   closure ADR-YYYYMMDD-NN — transitive depends_on closure of the given ADR
 
 Options (all subcommands):
   --format=<list|markdown|json>   default: list
   --dir=<path>                    default: docs/adr
   --package=<name>                repeatable or comma-separated (slice only)
-  --domain=<name>                 repeatable or comma-separated (slice only)`,
+  --concern=<name>                repeatable or comma-separated (slice only)`,
     };
   }
 
   let fmt: OutputFormat = "list";
   let dir = "docs/adr";
   const packages: string[] = [];
-  const domains: string[] = [];
+  const concerns: string[] = [];
   let adrId: string | null = null;
 
   for (const raw of args.slice(1)) {
@@ -57,8 +57,8 @@ Options (all subcommands):
       dir = raw.slice("--dir=".length);
     } else if (raw.startsWith("--package=")) {
       packages.push(...raw.slice("--package=".length).split(",").filter(Boolean));
-    } else if (raw.startsWith("--domain=")) {
-      domains.push(...raw.slice("--domain=".length).split(",").filter(Boolean));
+    } else if (raw.startsWith("--concern=")) {
+      concerns.push(...raw.slice("--concern=".length).split(",").filter(Boolean));
     } else if (raw.startsWith("--")) {
       return { error: `unknown option: ${raw}` };
     } else if (sub === "closure" && adrId === null) {
@@ -72,7 +72,7 @@ Options (all subcommands):
     return { error: "closure requires an ADR id (e.g. ADR-20260422-05)" };
   }
 
-  return { subcommand: sub, format: fmt, dir, packages, domains, adrId };
+  return { subcommand: sub, format: fmt, dir, packages, concerns, adrId };
 }
 
 function main(argv: string[]): number {
@@ -87,7 +87,7 @@ function main(argv: string[]): number {
     if (parsed.subcommand === "effective") {
       result = effectiveSet(adrs);
     } else if (parsed.subcommand === "slice") {
-      result = scopeSlice(adrs, { packages: parsed.packages, domains: parsed.domains });
+      result = scopeSlice(adrs, { packages: parsed.packages, concerns: parsed.concerns });
     } else {
       result = closure(adrs, parsed.adrId!);
     }

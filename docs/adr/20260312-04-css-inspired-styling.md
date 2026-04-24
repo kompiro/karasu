@@ -7,8 +7,6 @@ topic: styling
 scope:
   packages:
     - core
-  domains:
-    - styling
 ---
 
 # ADR-20260312-04: CSSインスパイアのスタイリングシステム

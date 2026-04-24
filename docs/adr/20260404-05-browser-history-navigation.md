@@ -9,8 +9,6 @@ depends_on:
 scope:
   packages:
     - app
-  domains:
-    - navigation
 ---
 
 # ADR-20260404-05: ブラウザ履歴ナビゲーション — URL hash による drill-down 同期

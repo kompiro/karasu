@@ -7,9 +7,6 @@ topic: renderer
 scope:
   packages:
     - core
-  domains:
-    - rendering
-    - deployment
 ---
 
 # ADR-20260327-01: Deployment Diagram Design Decisions

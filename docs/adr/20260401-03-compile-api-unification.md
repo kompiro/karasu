@@ -7,8 +7,6 @@ topic: parser
 scope:
   packages:
     - core
-  domains:
-    - api
 ---
 
 # ADR-20260401-03: `compile()` API 統一 — Discriminated Union による戻り値型

@@ -11,9 +11,6 @@ related_to:
 scope:
   packages:
     - core
-  domains:
-    - rendering
-    - edges
 ---
 
 # ADR-20260411-05: サービスドリルダウンビューでの Ghost Domain エッジ表示

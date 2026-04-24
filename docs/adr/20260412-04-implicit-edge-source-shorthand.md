@@ -11,9 +11,6 @@ related_to:
 scope:
   packages:
     - core
-  domains:
-    - parser
-    - syntax
 ---
 
 # ADR-20260412-04: ブロック内エッジの暗黙 source 簡略記法

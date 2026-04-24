@@ -7,9 +7,6 @@ topic: renderer
 scope:
   packages:
     - core
-  domains:
-    - rendering
-    - edges
 ---
 
 # ADR-20260405-07: クロスシステム参照の Ghost System レンダリング

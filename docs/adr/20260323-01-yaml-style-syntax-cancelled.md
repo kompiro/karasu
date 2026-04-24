@@ -7,9 +7,6 @@ topic: parser
 scope:
   packages:
     - core
-  domains:
-    - parser
-    - syntax
 ---
 
 # ADR-20260323-01: YAML スタイル構文移行の見送り

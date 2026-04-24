@@ -7,9 +7,6 @@ topic: renderer
 scope:
   packages:
     - core
-  domains:
-    - rendering
-    - export
 ---
 
 # ADR-20260420-01: draw.io (mxGraph XML) Export — a Layout Escape Hatch

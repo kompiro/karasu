@@ -9,9 +9,6 @@ related_to:
 scope:
   packages:
     - app
-  domains:
-    - ui
-    - toolbar
 ---
 
 # ADR-20260405-02: Toolbar Button Actionable Modifier Class

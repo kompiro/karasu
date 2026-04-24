@@ -10,7 +10,7 @@ scope:
   packages:
     - core
     - cli
-  domains:
+  concerns:
     - dependencies
 ---
 

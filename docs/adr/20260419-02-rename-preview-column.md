@@ -12,9 +12,6 @@ related_to:
 scope:
   packages:
     - app
-  domains:
-    - ui
-    - refactor
 ---
 
 # ADR-20260419-02: `KarasuPreviewColumn` を `PreviewColumn` にリネーム

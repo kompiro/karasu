@@ -12,8 +12,6 @@ related_to:
 scope:
   packages:
     - core
-  domains:
-    - styling
 ---
 
 # ADR-20260328-01: スタイル解決パイプラインの一元化

@@ -7,10 +7,6 @@ topic: resolver
 scope:
   packages:
     - core
-  domains:
-    - resolver
-    - syntax
-    - annotations
 ---
 
 # ADR-20260411-02: 移行期における重複ドメイン ID の共存を `@deprecated` + `@migration_target` で許容する
