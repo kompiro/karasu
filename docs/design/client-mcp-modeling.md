@@ -156,6 +156,40 @@ system ECommerce {
 - 二者の関係は新プロパティ `delivers <ClientId>` で明示（`service` から `client` への配信関係）。`realizes` の物理対応とは別軸の論理対応。
 - 物理 deploy では BFF は単一の `oci` / `lambda` として実体化され、`realizes NextServer` で繋ぐ。配信されるアセットは `assets` ユニットとして `realizes WebApp` で繋ぐ。
 
+##### `delivers` (配信) と通信エッジ (API 呼び出し) は別軸
+
+`delivers` は **「このサーバーがこのクライアントを packaging して送り出す」配信関係** を表す。
+`<ClientId> -> <ServiceId>` の通常エッジは **API 呼び出し / 依存** を表す。
+両者は別軸なので、`delivers` が登場するのは「ある `service` が `client` の配信責任を持つ」場合に限る。
+
+| アーキテクチャ | `delivers` | `client -> service` エッジ |
+|---|---|---|
+| 純粋 SPA / SSG | なし（CDN は logical な service ではなく deploy 側） | あり（直接 backend を叩く） |
+| ネイティブモバイル / デスクトップ | なし（App Store / インストーラ経由でシステム境界外） | あり |
+| BFF / SSR | あり（`NextServer delivers WebApp`） | あり（`WebApp -> NextServer`） |
+| 古典的 SSR (CGI / JSP) | なし（client ノード自体がない） | なし（同上） |
+
+純粋 SPA + Mobile + Desktop の例:
+
+```
+system ECommerce {
+  user Customer [human]
+  client WebApp [web]
+  client MobileApp [mobile]
+  client DesktopApp [desktop]
+  service OrderService { ... }
+
+  Customer     -> WebApp
+  Customer     -> MobileApp
+  Customer     -> DesktopApp
+  WebApp       -> OrderService     // 直接 backend を叩く（delivers なし）
+  MobileApp    -> OrderService
+  DesktopApp   -> OrderService
+}
+```
+
+ここでは `delivers` は一度も登場しない。配信は deploy 図側で `assets`（SPA）/ App Store 配布 / インストーラ等が担うが、それは logical な system 図のスコープ外。
+
 #### `client` が保持できる構造
 
 実装フェーズで具体化する想定だが、本ドキュメントで方向だけ決める:
