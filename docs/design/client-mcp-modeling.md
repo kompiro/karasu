@@ -226,11 +226,63 @@ client WebApp [web] {
 
 エッジのスコープに関する判断:
 
-- **直接の到達先のみ**を対象とする（`client -> BFF service -> backend service` の遷移経由は見ない）。BFF パターンでは BFF が backend のドメインを再公開しているとは限らないため、推移閉包は誤検知が出やすい。
+- **直接の到達先のみ**を対象とする（`client -> BFF service -> backend service` の推移閉包は取らない）。
 - `delivers` エッジは「配信」であり API 呼び出しではないので、`handles` の検査では数えない。
-- BFF 経由の場合は `client` から BFF に `handles` を書き、BFF 自身も該当 domain を子に持つ（または再エクスポートを表現する別構文を将来検討）と扱う方が一貫する。
+- BFF パターンの推移はバリデータで暗黙に追わず、**`service` 側で再エクスポートを明示する** 構文 `service.handles` で表現する（次節）。
 
 この検査が成立することで、`handles` は「書いておくと意味がある」レベルから「書かないと不整合が見えなくなる」レベルに格上げされる（`realizes` / `owns` と同格の役割になる）。
+
+**`service` 側の `handles` は再エクスポート (passthrough) を表す**
+
+BFF や API ゲートウェイは「自分が定義したわけではない domain を、呼び出し側に向けて公開する」ことが普通にある。
+その場合 `client.handles X` は BFF を経由するため、BFF 側にも何らかの目印が必要になる。
+`handles` キーワードを `service` でも許容し、**「呼び出し側に対して expose する domain」** という意味で統一する。
+
+```
+service OrderService {
+  domain Order { ... }       // owned
+  domain Catalog { ... }
+}
+
+service NextServer {
+  handles Order, Catalog     // re-export: 自分は owns しないが、呼び出し側に公開する
+  delivers WebApp
+}
+
+client WebApp [web] {
+  handles Order, Catalog
+}
+
+WebApp -> NextServer -> OrderService
+```
+
+**統一された "expose" の定義**:
+
+> ノード N が domain D を *expose* するとは、以下のいずれかが成り立つこと:
+> 1. N が D を子に持つ（`domain D { ... }`、つまり *owns*）
+> 2. N が `handles D` を宣言しており、かつ N から出ている通信エッジ (`->`) の直接の到達先のいずれかが D を *expose* する
+
+**統一された検査ルール**:
+
+- `client.handles D` または `service.handles D` のいずれも、上記 2 の条件で検査する（再帰は 1 ホップずつ展開）
+- N 自身が D を owns している場合に冗長な `handles D` が書かれても警告は出さない（許容）。書かないのが推奨
+- 推移は明示宣言が連鎖することで自然に成立する: `client → BFF (handles X) → backend (owns X)` の形が一直線に検証される
+
+**自動パススルーは採らない理由**:
+
+「BFF が backend に edge を持つなら backend の全 domain を自動再公開」とする設計は楽だが、誤った over-exposure を許す。
+再エクスポートは*意図*なので、TypeScript の `export { X } from './m'`、Rust の `pub use` と同じく明示的な宣言で書かせるほうが安全。
+
+**BFF 以外の用途**:
+
+- API ゲートウェイ・リバースプロキシ・edge worker でも同じ構文で「どの domain を経路上で公開するか」を表現できる
+- マイクロサービス間でも、`OrderService` が `BillingService` の `Invoice` ドメインを部分的に経路として通している、といったケースを `handles Invoice` で表現できる
+- 再エクスポート対象を厳密に絞ることで、「依存はあるが公開はしない」という *internal dependency* と区別できる
+
+**今後の拡張余地（別途検討）**:
+
+- `usecase` 単位の部分再エクスポート（`handles Order { ViewOrders, PlaceOrder }` のような書き方）。BFF が一部 usecase だけを公開するケース。
+- `handles X as Y` のようなリネーム再エクスポート（言語間の用語ゆれを吸収）。MVP には不要。
 
 ##### 案 ii: `service` 同型の階層構造（domain → usecase → resource）
 
@@ -583,8 +635,11 @@ M2M はそのまま `service ↔ service`、外部 SaaS / Webhook も `service @
    - クライアント側 `domain Order` とサービス側 `domain Order` の関係付けをどう書くか。クロスリファレンス必須 / 名前一致で推測 / クライアント側は `usecase` のみ書くなど複数案あり。
 10. **`handles` と既存ノード参照との整合**
     - `realizes`（deploy → logical）/ `owns`（team → logical）と並ぶ第三の論理対応リンクを追加することの是非。
-    - 検査ルール「`handles` は接続先 `service` の子 `domain` 集合の部分集合でなければ warning」は採用前提でよいか。
-    - BFF 経由など推移的なケースを将来どう扱うか（再エクスポート構文を入れるか、現状通り直接到達のみで運用するか）。
+    - 検査ルール「`handles` は接続先ノードが expose する domain の部分集合でなければ warning」は採用前提でよいか。
+    - 再エクスポート構文 `service.handles X` の MVP 同梱可否（BFF パターンが現実的に頻出するため、同時搭載が妥当か）。
+    - キーワードを `client` / `service` で同じ `handles` にするか (`service` 側だけ `re-exports` / `forwards` などに分けるか)。
+14. **再エクスポートの粒度**
+    - domain 全体ではなく `usecase` 単位や `resource` 単位で再エクスポートしたい要求があるか。MVP は domain 単位のみで足りるか。
 11. **system 図のレイアウトヒント**
     - クライアント層を強制的に user とサービスの間に揃えるか、ユーザーの記述順に任せるか。
 12. **examples の配置**
