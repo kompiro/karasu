@@ -10,6 +10,7 @@ C4 Modelに触発されつつも独自の語彙を持ち、論理構造と物理
 | .krs 構文リファレンス                               | `docs/spec/syntax.md`           |
 | .krs.style 構文リファレンス                         | `docs/spec/style.md`            |
 | タグ・アノテーション一覧                            | `docs/spec/tags-annotations.md` |
+| i18n ポリシー（ユーザー向け文字列）                  | `docs/spec/i18n.md`             |
 | コアコンセプト（論理/物理分離など）                 | `docs/concepts.md`              |
 | 設計判断の経緯（ADR）— 有効な決定一覧               | `docs/adr/effective.md` (auto-generated; see also `docs/adr/graph.md`) |
 | 設計判断の経緯（ADR）— 全履歴                        | `docs/adr/`                     |
