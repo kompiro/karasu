@@ -613,6 +613,123 @@ M2M はそのまま `service ↔ service`、外部 SaaS / Webhook も `service @
 - 三層（user → client → backend service）が構文として明示される
 - どれが client / service / external かが kind とアノテーションだけで読み解ける
 
+## メモ: 認可 (ユーザー属性に応じた usecase の利用許可) — 別軸の論点
+
+> **status**: 別 Issue / 別 Design Doc 化を想定。この流れの中で語彙が衝突しないようメモだけ残す。
+
+### 何を表現したいか
+
+ユーザーの **ロール / ライセンス / プラン / 機能フラグ** に応じて、利用できる `usecase` を絞りたい。
+カラスのモデルでも次のような区別が読み取れると価値が出る:
+
+- 「`RefundOrder` は admin ロールのみ」
+- 「`AdvancedAnalytics` は Pro ライセンス保有者のみ」
+- 「`BetaFeature` は beta-tester グループのみ」
+- 「`OverrideShipping` は admin かつ Pro 以上」
+
+これらは **system 図上で「この user は何を呼べるか」を視覚化する** ための情報。
+完全な IAM ポリシー言語にする意図はない（OPA / Cedar / Casbin の代替を狙わない）。
+
+### 既存語彙との接点
+
+- `user` には既に `role "<name>"` プロパティがある（単一ロール）
+- 認可情報は user 側 (`持っているもの`) と usecase 側 (`要求するもの`) のどちらにも書ける
+- `client` の節で `handles` を「expose する domain の集合」として整備したのと同様、認可も「user が満たす条件」と「usecase が要求する条件」のマッチングとして整理できそう
+
+### 3 つの候補スケッチ
+
+#### 候補 1: usecase に `requires` predicate
+
+```
+user Admin [human] {
+  roles ["admin"]
+  licenses ["enterprise"]
+}
+user Customer [human] {
+  roles ["customer"]
+}
+
+usecase RefundOrder {
+  requires role "admin"
+}
+usecase AdvancedAnalytics {
+  requires license "enterprise"
+}
+usecase OverrideShipping {
+  requires role "admin", license "pro"   // AND
+}
+```
+
+**Pro**: 直感的。`usecase` ローカルに認可要件が書ける。
+**Con**: OR / NOT / 複雑な式のサポートを始めると言語が膨らむ。
+
+#### 候補 2: 別軸の `policy` ブロック（organization と同じ第三軸として）
+
+```
+policy {
+  role "admin" allows RefundOrder, OverrideShipping
+  license "enterprise" allows AdvancedAnalytics
+  role "beta-tester" allows BetaFeature
+}
+```
+
+**Pro**: system / organization から独立。認可ポリシーだけ別ファイルに切り出せる。
+**Con**: 語彙の追加が最も大きい。新しい三軸目を入れることになる。
+
+#### 候補 3: edge への annotation
+
+```
+Admin    -> RefundOrder @allowed
+Customer -> RefundOrder @denied
+```
+
+**Pro**: 既存の edge + annotation 機構で済む。
+**Con**: ノード組み合わせの数だけエッジを書く必要があり、爆発する。属性ベースの汎用ルール (「全 admin が」) を表現しにくい。
+
+### 比較の論点
+
+| 論点 | 候補 1 (usecase.requires) | 候補 2 (policy block) | 候補 3 (edge annotation) |
+|---|---|---|---|
+| 学習コスト | 低 | 高（新軸） | 低 |
+| OR / NOT / 複雑式の表現 | 拡張で可能 | 自然 | 困難 |
+| user の属性集合との整合 | 強 | 強 | 弱（個別エッジ） |
+| `role` 以外（license / group / plan / flag）の扱い | 同じ predicate 形式で並列 | 同じブロック内で並列 | annotation を増やす形 |
+| 既存の `organization` との重複 | なし | `team.owns` と語彙が並ぶ（混同注意） | なし |
+| MVP コスト | 中 | 大 | 小 |
+
+### user 側の表現の更新要否
+
+現行 `user.role` は単一ロールしか持てない。複数ロール / ライセンス / グループ等を持てるようにする拡張が前提となる:
+
+```
+user Admin [human] {
+  roles ["admin", "support-lead"]      // 複数ロール
+  licenses ["enterprise"]
+  groups ["beta-testers"]
+  plan "pro"
+}
+```
+
+ここの語彙（`roles` 複数化、`licenses` / `groups` / `plan` の予約）は認可方式の選択と並行して決める必要がある。
+
+### 認可と client の関係
+
+「同じバックエンド service に繋がっていても、Customer 用クライアントと Admin 用クライアントで触れる範囲が違う」というケース（前節）は、二段で表現する:
+
+1. **client.handles** は「クライアントの UI が触れる domain の枠」を示す（クライアント設計の意図）
+2. **usecase.requires** は「実行時にユーザー属性で許可されるか」を示す（認可ルール）
+
+両方の検査が成立して初めて「この user がこの client を使ってこの usecase を実行できる」が成立する。
+
+### 想定する次の一手
+
+- 別 Issue（あるいは別 Design Doc）として切り出して議論する
+- まず候補 1（`usecase.requires` predicate）+ user 側の `roles` / `licenses` / `groups` 複数化を最小スコープとして検討
+- 表現できるレベルは「**人間が図を読んで誰が何を呼べるか把握できる**」程度に留める。ランタイムの認可エンジン互換は目指さない
+- candidate 2（`policy` ブロック）は「認可ルールが大量に増えてきた」「監査要件で別ファイル化したい」段階で再検討
+
+このメモは設計判断には踏み込まず、語彙が衝突しないよう用語予約だけ意識する: 本ドキュメントで使う `handles` / `delivers` / `realizes` / `owns` が将来の認可語彙とぶつからないこと、`role` / `license` / `group` / `plan` / `requires` / `allows` / `policy` を予約候補として認識しておくこと。
+
 ## 未解決の問い
 
 1. **`client` のサブタイプタグセット**
