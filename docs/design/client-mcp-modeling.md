@@ -212,6 +212,26 @@ client WebApp [web] {
 | `handles <DomainId>[, ...]` | このクライアントが UI 上で扱う domain への*参照* |
 | `storage <kind> "<name>"` | クライアントが保持するローカル状態（フラット） |
 
+**`handles` の整合性検査ルール（重要）**:
+`handles` を単なる飾りに終わらせないため、バリデータで以下のチェックを行う:
+
+> 各 `client.handles <DomainId>` について、その `client` から出ている通信エッジ (`->`) の直接の到達先 `service` の子 `domain` 集合を集め、`DomainId` がそのいずれにも含まれなければ **warning** を出す。
+
+これにより以下が静的に検出できる:
+
+- ドメイン名のタイプミス
+- 接続先 service の取り違え（例: `handles Order` と書いたが `CatalogService` にしか繋がっていない）
+- エッジの貼り忘れ
+- `service` 側でドメインが消えた／改名されたのに `client` 側を更新し忘れた
+
+エッジのスコープに関する判断:
+
+- **直接の到達先のみ**を対象とする（`client -> BFF service -> backend service` の遷移経由は見ない）。BFF パターンでは BFF が backend のドメインを再公開しているとは限らないため、推移閉包は誤検知が出やすい。
+- `delivers` エッジは「配信」であり API 呼び出しではないので、`handles` の検査では数えない。
+- BFF 経由の場合は `client` から BFF に `handles` を書き、BFF 自身も該当 domain を子に持つ（または再エクスポートを表現する別構文を将来検討）と扱う方が一貫する。
+
+この検査が成立することで、`handles` は「書いておくと意味がある」レベルから「書かないと不整合が見えなくなる」レベルに格上げされる（`realizes` / `owns` と同格の役割になる）。
+
 ##### 案 ii: `service` 同型の階層構造（domain → usecase → resource）
 
 `service` と同じく `client → domain → usecase → resource` の階層を持たせる。
@@ -303,6 +323,7 @@ client AdminDesktop [desktop] {
 - ストレージのセキュリティ議論（refresh token をどこに置くか）は「クライアント全体に紐づく属性」として表現するだけでも十分なケースが多い。
 - 案 ii は「オフラインファースト PWA」「複雑な SPA で独自ドメインモデルを持つ」「セキュリティ監査でストレージ → 操作の対応を厳密に書きたい」場面で価値が出るが、それは MVP の後で需要が見えてから実装する方が安全。
 - 案 i → 案 ii の移行は機械変換可能（`handles X` を `domain X { }` に展開できる）。逆は情報が失われる。
+- **`handles` を整合性検査の対象にすることで、案 i の弱点（参照が飾り化する）を解消できる**。接続先サービスが公開しているドメインの部分集合であることを CI で保証できれば、フラットでも実用的な役割を果たす。
 
 ただし**案 ii の余地を構文設計時点から残しておく**のは大事。具体的には:
 
@@ -562,6 +583,8 @@ M2M はそのまま `service ↔ service`、外部 SaaS / Webhook も `service @
    - クライアント側 `domain Order` とサービス側 `domain Order` の関係付けをどう書くか。クロスリファレンス必須 / 名前一致で推測 / クライアント側は `usecase` のみ書くなど複数案あり。
 10. **`handles` と既存ノード参照との整合**
     - `realizes`（deploy → logical）/ `owns`（team → logical）と並ぶ第三の論理対応リンクを追加することの是非。
+    - 検査ルール「`handles` は接続先 `service` の子 `domain` 集合の部分集合でなければ warning」は採用前提でよいか。
+    - BFF 経由など推移的なケースを将来どう扱うか（再エクスポート構文を入れるか、現状通り直接到達のみで運用するか）。
 11. **system 図のレイアウトヒント**
     - クライアント層を強制的に user とサービスの間に揃えるか、ユーザーの記述順に任せるか。
 12. **examples の配置**
