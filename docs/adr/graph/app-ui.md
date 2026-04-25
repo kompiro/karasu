@@ -21,7 +21,7 @@ flowchart TD
     ADR_20260419_02["ADR-20260419-02<br/>`KarasuPreviewColumn` を `PreviewColumn` にリネーム"]
     ADR_20260420_02["ADR-20260420-02<br/>グラフィカル diff ビューア"]
     ADR_20260422_06["ADR-20260422-06<br/>Diff ペースト入力の UI 配置とストレージ方式"]
-    ADR_20260425_01["ADR-20260425-01<br/>i18n is the default for user-facing strings"]
+    ADR_20260425_01["ADR-20260425-01<br/>ユーザー向け文字列はデフォルトで i18n を通す"]
   end
   ADR_20260317_01["ADR-20260317-01<br/>[renderer] 2 レイヤレンダリングとドリルダウンナビゲーション"]
   ADR_20260317_02["ADR-20260317-02<br/>[project] プロジェクトとファイルシステム抽象化 — `FileSystemProvider` + OPFS"]

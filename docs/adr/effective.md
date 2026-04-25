@@ -27,7 +27,7 @@ See also: [dependency graph](graph.md), per-topic detail under [graph/](graph/).
 - [ADR-20260419-02](20260419-02-rename-preview-column.md) — `KarasuPreviewColumn` を `PreviewColumn` にリネーム
 - [ADR-20260420-02](20260420-02-graphical-diff-viewer.md) — グラフィカル diff ビューア
 - [ADR-20260422-06](20260422-06-diff-paste-input-ui.md) — Diff ペースト入力の UI 配置とストレージ方式
-- [ADR-20260425-01](20260425-01-i18n-default-policy.md) — i18n is the default for user-facing strings
+- [ADR-20260425-01](20260425-01-i18n-default-policy.md) — ユーザー向け文字列はデフォルトで i18n を通す
 
 ## build
 

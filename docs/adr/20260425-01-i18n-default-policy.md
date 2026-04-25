@@ -1,6 +1,6 @@
 ---
 id: ADR-20260425-01
-title: i18n is the default for user-facing strings
+title: ユーザー向け文字列はデフォルトで i18n を通す
 status: accepted
 date: 2026-04-25
 topic: app-ui
@@ -24,7 +24,7 @@ assumptions:
   - "symbol: packages/app/src/i18n/use-empty-state-labels.ts :: useEmptyStateLabels"
 ---
 
-# ADR-20260425-01: i18n is the default for user-facing strings
+# ADR-20260425-01: ユーザー向け文字列はデフォルトで i18n を通す
 
 - **日付**: 2026-04-25
 - **ステータス**: 決定済み

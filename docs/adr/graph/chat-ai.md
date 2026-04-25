@@ -16,7 +16,7 @@ flowchart TD
     ADR_20260422_02["ADR-20260422-02<br/>Chat UI AI 設計レビュー — プロンプト駆動 + トリガー二系統"]
   end
   ADR_20260324_01["ADR-20260324-01<br/>[testing] E2EテストよりQA手動確認を優先する"]
-  ADR_20260425_01["ADR-20260425-01<br/>[app-ui] i18n is the default for user-facing strings"]
+  ADR_20260425_01["ADR-20260425-01<br/>[app-ui] ユーザー向け文字列はデフォルトで i18n を通す"]
   ADR_20260409_01 --> ADR_20260409_08
   ADR_20260409_01 --> ADR_20260407_04
   ADR_20260409_08 --> ADR_20260407_04
