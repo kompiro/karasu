@@ -189,17 +189,24 @@ system ECommerce {
 }
 ```
 
-判定の目安:
+判定の目安（**ブラウザ側にプログラムとしての固有性があるか**で割る）:
 
-| 形態 | `service` を立てるか | `client` を立てるか |
-|---|---|---|
-| 純粋 SPA（CRA / Vite + React など） | 不要 | 必要 |
-| SSG（Astro / Hugo / Next.js export） | 不要 | 必要 |
-| BFF / SSR（Next.js / Remix / Nuxt の通常運用） | 必要（confidential client + サーバー） | 必要（配信される public client） |
-| Server Components + Server Actions のみ（ブラウザ JS 最小） | 必要 | 任意（実装上 client がほぼ無いなら省略可） |
+| 形態 | `service` を立てるか | `client` を立てるか | 備考 |
+|---|---|---|---|
+| 純粋 SPA（CRA / Vite + React など） | 不要 | **必要** | ブラウザ側が独立したアプリ |
+| SSG（Astro / Hugo / Next.js export） | 不要 | **必要** | 配信元は CDN、ブラウザ側に状態を持つ |
+| BFF / SSR（Next.js / Remix / Nuxt の通常運用） | **必要**（confidential client） | **必要**（配信される public client）`delivers` で接続 | 二重実体 |
+| Server Components + Server Actions のみ（ブラウザ JS 最小） | 必要 | 任意 | クライアント側の意味が薄ければ省略可 |
+| **古典的 SSR（CGI / JSP / 古典的 Rails MVC / 古典的 PHP）** | **必要** | **不要** | ブラウザは「サーバー出力のビュー」、独自プログラムなし。Cookie セッションは server 側に保管 |
+| ネイティブモバイル / デスクトップアプリ | — | **必要** | 配信物ではなくプロダクトそのもの |
 
-物理側（deploy）では SPA / SSG は `assets` ユニットに `realizes WebApp` で繋ぎ、CDN 配信を表現する。
-BFF の場合は `oci` / `lambda` などのサーバー側ユニットが `realizes NextServer`、付随する静的アセットの `assets` ユニットが `realizes WebApp` という二段構成になる。
+判定基準: 「ブラウザ側に **OAuth2 public client としての識別 / 独自の状態 / ローカルストレージ** のいずれかがあるか」。
+No なら `service` のみで十分（ブラウザは Chrome と同じく「ユーザーの環境」として扱う）。
+
+物理側（deploy）の対応:
+- SPA / SSG: `assets` ユニットに `realizes WebApp`（CDN 配信）
+- BFF: `oci` / `lambda` 等のサーバーユニットに `realizes NextServer`、付随アセットの `assets` ユニットに `realizes WebApp`（二段構成）
+- 古典的 SSR: `war` / `jar` / `oci` 等のサーバーユニットに `realizes <ServiceId>` のみ。`client` ノードがないので二段にならない
 
 ### 案 B: 既存の `service` + tag で表現する
 
