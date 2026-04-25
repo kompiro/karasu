@@ -47,6 +47,12 @@ interface UseAppViewsArgs {
    * Ignored while the compare source has not resolved yet.
    */
   swapped?: boolean;
+  /**
+   * Restores the open file when the URL hash changes (back/forward) or when
+   * a deep-linked hash is loaded. Pass `selectFile` from `useFileSelection`.
+   * Issue #811.
+   */
+  onFileChange?: (path: string) => Promise<void> | void;
 }
 
 interface SystemViewBundle {
@@ -124,6 +130,7 @@ export function useAppViews(args: UseAppViewsArgs): UseAppViewsResult {
     snapshotManager = null,
     projectRoot = null,
     swapped = false,
+    onFileChange,
   } = args;
 
   const { compareEntryPath, compareFs } = useResolvedCompareSource(
@@ -226,6 +233,7 @@ export function useAppViews(args: UseAppViewsArgs): UseAppViewsResult {
     isOrgTreeView: isOrgTreeViewOpen,
     setIsOrgTreeView: setIsOrgTreeViewOpen,
     highlightedNodeId,
+    onFileChange,
   });
 
   const recompile = useCallback(() => {

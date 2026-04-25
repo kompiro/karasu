@@ -94,3 +94,19 @@ system Shop {
 - [ ] With `before.krs` open as the preview root, delete `before.krs` from
       the file tree.
 - [ ] The preview falls back to `index.krs`.
+
+### TC-7: Browser back/forward restores the open file
+
+- [ ] Open `index.krs` (preview shows the full project).
+- [ ] Click `before.krs` in the file tree (preview swaps to `before.krs`).
+- [ ] The URL hash now contains `?file=` followed by the encoded path of
+      `before.krs`.
+- [ ] Press the browser **Back** button. The editor and preview both revert
+      to `index.krs`.
+- [ ] Press **Forward**. They go back to `before.krs`.
+
+### TC-8: Deep-link with `?file=` parameter
+
+- [ ] Copy the URL while `before.krs` is open.
+- [ ] Paste it in a new tab. After load, the editor opens `before.krs` and
+      the preview is rooted at it (not at `index.krs`).

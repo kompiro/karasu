@@ -257,6 +257,7 @@ export function ProjectModeApp() {
         sidebarHeaderContent={sidebarHeader}
         sidebarContent={sidebarContent}
         onViewPasted={compareSource?.kind === "pasted" ? handleViewPasted : undefined}
+        onFileChange={selectFile}
       />
       {pasteDialog?.mode === "edit" && (
         <PasteCompareDialog
