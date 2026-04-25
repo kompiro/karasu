@@ -16,6 +16,7 @@ flowchart TD
     ADR_20260422_02["ADR-20260422-02<br/>Chat UI AI 設計レビュー — プロンプト駆動 + トリガー二系統"]
   end
   ADR_20260324_01["ADR-20260324-01<br/>[testing] E2EテストよりQA手動確認を優先する"]
+  ADR_20260425_01["ADR-20260425-01<br/>[app-ui] i18n is the default for user-facing strings"]
   ADR_20260409_01 --> ADR_20260409_08
   ADR_20260409_01 --> ADR_20260407_04
   ADR_20260409_08 --> ADR_20260407_04
@@ -24,6 +25,7 @@ flowchart TD
   ADR_20260420_03 --> ADR_20260418_01
   ADR_20260422_02 --> ADR_20260409_08
   ADR_20260422_02 --> ADR_20260412_01
+  ADR_20260425_01 --> ADR_20260420_03
   ADR_20260412_05 -.supersedes.-> ADR_20260324_01
 
   classDef accepted fill:#d4edda,stroke:#28a745,color:#155724
@@ -41,4 +43,5 @@ flowchart TD
   class ADR_20260420_03 accepted
   class ADR_20260422_02 accepted
   class ADR_20260324_01 ghost
+  class ADR_20260425_01 ghost
 ```
