@@ -103,6 +103,44 @@ describe("appReducer — activeView / highlightedNodeId", () => {
       const next = appReducer(state, { type: "SELECT_FILE", path: "/p/index.krs", content: "" });
       expect(next.viewPath).toEqual([]);
     });
+
+    describe("lastKrsFilePath (Issue #811)", () => {
+      it("updates lastKrsFilePath when a .krs file is selected", () => {
+        const state = stateWith({ lastKrsFilePath: null });
+        const next = appReducer(state, {
+          type: "SELECT_FILE",
+          path: "/p/before.krs",
+          content: "",
+        });
+        expect(next.lastKrsFilePath).toBe("/p/before.krs");
+      });
+
+      it("keeps lastKrsFilePath unchanged when a .krs.style file is selected", () => {
+        const state = stateWith({ lastKrsFilePath: "/p/before.krs" });
+        const next = appReducer(state, {
+          type: "SELECT_FILE",
+          path: "/p/styles.krs.style",
+          content: "",
+        });
+        expect(next.lastKrsFilePath).toBe("/p/before.krs");
+      });
+
+      it("keeps lastKrsFilePath unchanged when a non-.krs file is selected", () => {
+        const state = stateWith({ lastKrsFilePath: "/p/before.krs" });
+        const next = appReducer(state, {
+          type: "SELECT_FILE",
+          path: "/p/README.md",
+          content: "",
+        });
+        expect(next.lastKrsFilePath).toBe("/p/before.krs");
+      });
+
+      it("clears lastKrsFilePath when SELECT_FILE is dispatched with empty path (deselection)", () => {
+        const state = stateWith({ lastKrsFilePath: "/p/before.krs" });
+        const next = appReducer(state, { type: "SELECT_FILE", path: "", content: "" });
+        expect(next.lastKrsFilePath).toBeNull();
+      });
+    });
   });
 
   describe("SET_CURRENT_PROJECT", () => {
@@ -116,6 +154,12 @@ describe("appReducer — activeView / highlightedNodeId", () => {
       const state = stateWith({ highlightedNodeId: "ECommerce" });
       const next = appReducer(state, { type: "SET_CURRENT_PROJECT", project: PROJECT });
       expect(next.highlightedNodeId).toBeNull();
+    });
+
+    it("resets lastKrsFilePath (Issue #811)", () => {
+      const state = stateWith({ lastKrsFilePath: "/old-project/before.krs" });
+      const next = appReducer(state, { type: "SET_CURRENT_PROJECT", project: PROJECT });
+      expect(next.lastKrsFilePath).toBeNull();
     });
   });
 
