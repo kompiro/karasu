@@ -223,24 +223,63 @@ system ECommerce {
 }
 ```
 
-判定の目安（**ブラウザ側にプログラムとしての固有性があるか**で割る）:
+判定の目安（**ブラウザ側にアプリケーションとしての固有性があるか**で割る）:
 
-| 形態 | `service` を立てるか | `client` を立てるか | 備考 |
-|---|---|---|---|
-| 純粋 SPA（CRA / Vite + React など） | 不要 | **必要** | ブラウザ側が独立したアプリ |
-| SSG（Astro / Hugo / Next.js export） | 不要 | **必要** | 配信元は CDN、ブラウザ側に状態を持つ |
-| BFF / SSR（Next.js / Remix / Nuxt の通常運用） | **必要**（confidential client） | **必要**（配信される public client）`delivers` で接続 | 二重実体 |
-| Server Components + Server Actions のみ（ブラウザ JS 最小） | 必要 | 任意 | クライアント側の意味が薄ければ省略可 |
-| **古典的 SSR（CGI / JSP / 古典的 Rails MVC / 古典的 PHP）** | **必要** | **不要** | ブラウザは「サーバー出力のビュー」、独自プログラムなし。Cookie セッションは server 側に保管 |
-| ネイティブモバイル / デスクトップアプリ | — | **必要** | 配信物ではなくプロダクトそのもの |
+| 形態 | `service` を立てるか | `client` を立てるか | `delivers` | 備考 |
+|---|---|---|---|---|
+| 純粋 SPA（CRA / Vite + React など） | 不要 | **必要** | なし | 配信は CDN（deploy 側） |
+| SSG（Astro / Hugo / Next.js export） | 不要 | **必要** | なし | 配信は CDN |
+| **BFF / SSR（Next.js / Remix / Nuxt）** | **必要** | **必要** | **あり** | サーバーが JS フロントを配信＋自身も confidential client |
+| **サーバーフレームワーク + JS フロントエンド配信（Rails + React、Laravel + Vue 等）** | **必要** | **必要** | **あり** | 構造は BFF と同じ — アセットパイプラインが配信責任を持つ |
+| Server Components + Server Actions のみ（ブラウザ JS 最小） | 必要 | 任意 | 任意 | クライアント側の意味が薄ければ省略可 |
+| 軽量 JS shim 中心（Hotwire / Turbo / Livewire / HTMX） | 必要 | 大抵 不要 | 任意 | JS は転送補助で、アプリ識別を持たないため `service` のみで十分 |
+| 純粋なサーバーレンダリング（ERB / JSP / Blade / 古典 PHP テンプレートのみ、JS なし） | **必要** | **不要** | なし | ブラウザは「サーバー出力のビュー」。Cookie セッションも server 側 |
+| ネイティブモバイル / デスクトップアプリ | — | **必要** | なし | 配信物ではなくプロダクトそのもの。配布は App Store / インストーラ（deploy 側） |
 
-判定基準: 「ブラウザ側に **OAuth2 public client としての識別 / 独自の状態 / ローカルストレージ** のいずれかがあるか」。
-No なら `service` のみで十分（ブラウザは Chrome と同じく「ユーザーの環境」として扱う）。
+判定基準（一行サマリ）:
+
+> **アプリケーションサーバーが、ブラウザで独立して動く JS アプリケーションを出荷しているか？**
+> Yes なら `service` + `client` + `delivers` の三点セット。No なら `service` 単独。
+
+「独立して動く JS アプリケーション」の見分け方:
+- ブラウザ側にルーター / 状態管理 / OAuth2 public client 識別 / ローカルストレージのいずれかが存在する → **Yes**
+- JS は単なる転送ヘルパー（Hotwire / HTMX のように `<turbo-frame>` 等で部分更新するだけ） → **No**
+- 「JS 1 ファイルしか書いてない」「Alpine.js でちょっと動的にしてるだけ」レベル → **No**
+
+#### サーバーフレームワークが JS フロントエンドを配信する例
+
+Rails の asset pipeline (Sprockets / Propshaft / jsbundling-rails) や Laravel の Vite 統合は、サーバーフレームワーク自身が React/Vue/Svelte 等の SPA バンドルを配信する。
+これは **アセットパイプラインが配信責任を持つ BFF パターン** であり、Next.js / Remix と全く同じ書き方になる。
+
+```
+system ECommerce {
+  user Customer [human]
+
+  // Rails アプリ自身（API + アセット配信の二役）
+  service RailsApp {
+    label "Rails app server"
+    delivers WebApp           // asset pipeline 経由で配信
+  }
+
+  client WebApp [web] {
+    label "Customer SPA (React)"
+  }
+
+  service OrderService { ... }
+
+  Customer -> WebApp
+  WebApp   -> RailsApp
+  RailsApp -> OrderService
+}
+```
+
+Laravel + Vue、Django + React、Spring Boot + Vite なども同じ構造。
+「アプリケーションサーバーが JS フロントを出荷する」かどうかが分岐点であり、サーバー側の言語・フレームワークは関係ない。
 
 物理側（deploy）の対応:
-- SPA / SSG: `assets` ユニットに `realizes WebApp`（CDN 配信）
-- BFF: `oci` / `lambda` 等のサーバーユニットに `realizes NextServer`、付随アセットの `assets` ユニットに `realizes WebApp`（二段構成）
-- 古典的 SSR: `war` / `jar` / `oci` 等のサーバーユニットに `realizes <ServiceId>` のみ。`client` ノードがないので二段にならない
+- SPA / SSG: `assets` ユニットが `realizes WebApp`（CDN 配信）
+- BFF / サーバーフレームワーク + JS フロント: サーバー側ユニット（`oci` / `lambda` / `war` 等）が `realizes RailsApp` 等、配信される JS バンドルの `assets` ユニットが `realizes WebApp`（二段構成）
+- 純粋なサーバーレンダリング (JS なし) / 軽量 shim のみ: サーバー側ユニットが `realizes <ServiceId>` のみ。`client` ノードがないので一段
 
 #### その他のアーキテクチャ判定
 
