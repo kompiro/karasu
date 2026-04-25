@@ -190,20 +190,140 @@ system ECommerce {
 
 ここでは `delivers` は一度も登場しない。配信は deploy 図側で `assets`（SPA）/ App Store 配布 / インストーラ等が担うが、それは logical な system 図のスコープ外。
 
-#### `client` が保持できる構造
+#### `client` の内部構造: 現在案 vs `service` 同型案
 
-実装フェーズで具体化する想定だが、本ドキュメントで方向だけ決める:
+`client` がどんな子要素・プロパティを持てるかには 2 つの設計方針がある。
 
-| プロパティ / 子ノード | 意味 | 例 |
+##### 案 i: フラット参照型（先行ドラフト）
+
+`client` 直下に `handles` 参照と `storage` プロパティをフラットに並べる。
+
+```
+client WebApp [web] {
+  handles Order, Catalog
+  storage cookie "session"
+  storage localStorage "preferences"
+  storage indexedDB "outbox"
+}
+```
+
+| 要素 | 意味 |
+|---|---|
+| `handles <DomainId>[, ...]` | このクライアントが UI 上で扱う domain への*参照* |
+| `storage <kind> "<name>"` | クライアントが保持するローカル状態（フラット） |
+
+##### 案 ii: `service` 同型の階層構造（domain → usecase → resource）
+
+`service` と同じく `client → domain → usecase → resource` の階層を持たせる。
+ブラウザ/端末ストレージは `resource` の新 kind として表現する。
+
+```
+client WebApp [web] {
+  domain Order {
+    usecase ViewOrders {
+      resource sessionStorage "view-state"
+    }
+    usecase PlaceOrder {
+      resource localStorage "cart"
+      resource indexedDB "outbox"
+    }
+  }
+  domain Catalog {
+    usecase BrowseProducts {
+      resource indexedDB "catalog-cache"
+    }
+  }
+
+  resource cookie "session"   // クライアント全体の状態（usecase に紐付かない）
+}
+```
+
+| 要素 | 意味 |
+|---|---|
+| `domain` (子) | このクライアント*内*の bounded context（DDD と同じ語彙） |
+| `usecase` (孫) | UI 上の操作 |
+| `resource` (ひ孫) | usecase が触る storage や device 機能 |
+| `resource` の kind | `cookie` / `localStorage` / `sessionStorage` / `indexedDB` / `opfs` / `keychain` / `file` / `camera` / `geolocation` 等 |
+
+##### 比較
+
+| 観点 | 案 i (フラット参照) | 案 ii (`service` 同型) |
 |---|---|---|
-| `handles <DomainId>[, ...]` | このクライアントが UI 上で扱う domain への参照（drill-down 用ヒント） | `handles Order, Catalog` |
-| `storage <kind> "<name>"` | クライアントがローカルに保持する状態 | `storage cookie "session"` |
-| `storage` の `kind` | `cookie` / `localStorage` / `sessionStorage` / `indexedDB` / `opfs` / `keychain` / `file` | — |
+| 構文の表面積 | 小（プロパティ 2 種） | 大（`client → domain → usecase → resource` フル階層） |
+| `service` との対称性 | 弱（参照のみ） | 強（同じ語彙） |
+| ストレージと操作の対応 | 表現できない（storage はクライアント全体に紐づく） | 可能（`usecase` の `resource` として個別に紐付く） |
+| 「どの操作が何を保管するか」 | 表に出ない | 構造から読み取れる（refresh token がどの usecase で使われるか等） |
+| クライアント側 bounded context | 表現できない（domain はサーバー側のみ） | 表現できる（オフライン PWA 等で client が独自モデルを持つケース） |
+| ユーザーごとの操作可能範囲の差 | `handles` 参照の差で表現可能 | `domain`/`usecase` 構造の差で表現可能（より細粒度） |
+| 同じ業務概念の二重宣言 | 起きない（参照のみ） | 起きうる（client 側 `domain Order` と service 側 `domain Order` の関係付けが課題） |
+| MVP 実装コスト | 小 | 中〜大（パーサー、バリデータ、レンダラ全てに波及） |
+| drill-down との親和性 | 弱（client は葉ノード） | 強（client が drill-down 可能になる） |
 
-`storage` は**セキュリティ議論で頻出**（例: refresh token を localStorage に置くか HttpOnly Cookie に置くかは既知の論点）なので、kind ごとに視覚化できると価値が出る。
-`handles` は logical/physical の `realizes` と類似の「論理対応リンク」で、クライアント単独の図でも「このアプリが触るドメイン」が読み取れる。
+##### ユーザーごとの差をどう書くか（user の議論に戻る）
 
-これらは `client` の MVP には含めず、まず kind 導入と `delivers` だけ最初に入れ、`handles` / `storage` は別 PR で段階的に増やす。
+「同じバックエンドサービスでも、Customer 向けの SPA と Admin 向けデスクトップでは触れる範囲が違う」というのは現実的なケース。
+案 i / 案 ii どちらでも表現はできるが、表現の重みが違う:
+
+```
+// 案 i: 参照の集合の違いで表す
+client CustomerWebApp [web] { handles Order, Catalog }
+client AdminDesktop  [desktop] { handles Order, Catalog, Inventory, UserManagement }
+
+// 案 ii: 構造そのものの違いで表す
+client CustomerWebApp [web] {
+  domain Order { usecase PlaceOrder { ... } usecase ViewOrders { ... } }
+  domain Catalog { usecase BrowseProducts { ... } }
+}
+client AdminDesktop [desktop] {
+  domain Order { usecase RefundOrder { ... } usecase OverrideShipping { ... } }
+  domain Catalog { ... }
+  domain Inventory { ... }
+  domain UserManagement { ... }
+}
+```
+
+案 ii のほうが「同じ Order ドメインでも Customer は注文する側、Admin は返品処理側」のように **クライアントごとの usecase の違い** まで写し取れる。
+案 i ではドメイン名のリストが違うところまでしか表現されない。
+
+##### 同名 domain の二重宣言問題（案 ii の課題）
+
+案 ii では `service.OrderService.domain Order` と `client.CustomerWebApp.domain Order` の両方が存在する。
+これは DDD 的には正当（同じ業務概念に対するクライアント側コンテキストとサーバー側コンテキスト）だが、karasu の現行 syntax は「domain は service の子のみ」を前提としている。
+案 ii を採るなら以下のいずれかが必要:
+
+- **案 ii-a**: 同名は別ノードとして扱い、明示的なクロスリファレンス（例: `client.domain Order { realizes service.OrderService.domain Order }` のような新リンク）で繋ぐ
+- **案 ii-b**: 名前空間を分け、レンダラで「同じ業務概念を指している」ことを推測表示する
+- **案 ii-c**: クライアント側 `domain` 内では `usecase` のみ書き、`domain` 自体はサーバー側からの参照（`@references service.OrderService.Order` のような書き方）にする
+
+##### 現時点の方針（暫定）
+
+**案 i から始め、案 ii は将来オプションとして残す**。理由:
+
+- 多くのクライアントは「サーバーの API を叩いて表示する」薄いラッパで、独立した bounded context を持たない。フル階層は過剰になりやすい。
+- ストレージのセキュリティ議論（refresh token をどこに置くか）は「クライアント全体に紐づく属性」として表現するだけでも十分なケースが多い。
+- 案 ii は「オフラインファースト PWA」「複雑な SPA で独自ドメインモデルを持つ」「セキュリティ監査でストレージ → 操作の対応を厳密に書きたい」場面で価値が出るが、それは MVP の後で需要が見えてから実装する方が安全。
+- 案 i → 案 ii の移行は機械変換可能（`handles X` を `domain X { }` に展開できる）。逆は情報が失われる。
+
+ただし**案 ii の余地を構文設計時点から残しておく**のは大事。具体的には:
+
+- `client { ... }` のボディは将来 `domain` を子として受け入れられるように、最初からブロック記法を許す
+- `storage <kind> "<name>"` は将来 `resource <kind> "<name>"` に統一可能なように命名を慎重にする（あるいは最初から `resource <storageKind> "<name>"` で揃える）
+- `handles` は将来 `realizes` 系の言語拡張で同じ意味を吸収できるよう、独立した predicate として実装しておく
+
+**ストレージの kind 名についての結論**: 最初から `resource` の語彙を使い、`storage` という独立プロパティは導入しない方向で再検討する余地あり。
+そうすると最初から:
+
+```
+client WebApp [web] {
+  handles Order, Catalog
+  resource cookie "session"
+  resource localStorage "preferences"
+}
+```
+
+と書けて、後で `usecase` の中に移動するのが自然になる（`storage` から `resource` へのリネームが不要）。
+
+これらは `client` の MVP には含めず、まず kind 導入と `delivers` だけ最初に入れ、`handles` / `resource` は別 PR で段階的に増やす。
 
 #### SPA / SSG は単一の `client` で済む
 
@@ -430,13 +550,21 @@ M2M はそのまま `service ↔ service`、外部 SaaS / Webhook も `service @
    - 我々の MCP サーバーは `service` で十分か、`@mcp` アノテーションで「これは AI エージェント向けプロトコル面」と明示すべきか。後者の方がレンダラで色/アイコンを差し替えやすい。
 4. **`delivers` の構文・意味の正式化**
    - `service.delivers <ClientId>` で十分か、`<ServiceId> -delivers-> <ClientId>` のような新エッジ種別の方が grep 性が高いか。
-5. **`storage` の kind セット**
-   - `cookie / localStorage / sessionStorage / indexedDB / opfs / keychain / file` で過不足ないか。`secure-cookie` のような安全フラグを別軸で持つか。
-6. **`handles` と既存ノード参照との整合**
-   - `realizes`（deploy → logical）/ `owns`（team → logical）と並ぶ第三の論理対応リンクを追加することの是非。
-7. **system 図のレイアウトヒント**
-   - クライアント層を強制的に user とサービスの間に揃えるか、ユーザーの記述順に任せるか。
-8. **examples の配置**
-   - `examples/getting-started/` に統合するか、別の `examples/client-mcp/` を作るか。
-9. **MVP のスコープ**
-   - `client` kind と `[mobile|web|desktop]` サブタイプ + `delivers` だけを最初に出し、`handles` / `storage` は段階追加で良いか。
+5. **`client` の内部構造を `service` 同型 (`domain → usecase → resource`) にするか**
+   - 案 i (フラット参照: `handles` + `storage`) と案 ii (`service` 同型階層) の比較は本ドキュメントで整理済み。MVP は案 i 推奨だが、構文を案 ii 互換に予約しておくか、後付けでよいかは要決定。
+6. **ストレージは `storage` 独立プロパティか `resource <storageKind>` への統合か**
+   - 後者なら案 ii への移行時にリネームせずに済む。前者なら可読性は高いが将来移行コスト。
+7. **`resource` の kind セット**
+   - `cookie / localStorage / sessionStorage / indexedDB / opfs / keychain / file` で過不足ないか。`camera` / `geolocation` / `notification` / `webauthn` 等のデバイス能力もここに含めるか別軸 (capabilities / permissions) として扱うか。
+8. **`cookie` の安全属性**
+   - `secure` / `httpOnly` / `samesite` の組み合わせを kind に詰め込むか、別属性として持つか。
+9. **同名 domain の二重宣言（案 ii の課題）**
+   - クライアント側 `domain Order` とサービス側 `domain Order` の関係付けをどう書くか。クロスリファレンス必須 / 名前一致で推測 / クライアント側は `usecase` のみ書くなど複数案あり。
+10. **`handles` と既存ノード参照との整合**
+    - `realizes`（deploy → logical）/ `owns`（team → logical）と並ぶ第三の論理対応リンクを追加することの是非。
+11. **system 図のレイアウトヒント**
+    - クライアント層を強制的に user とサービスの間に揃えるか、ユーザーの記述順に任せるか。
+12. **examples の配置**
+    - `examples/getting-started/` に統合するか、別の `examples/client-mcp/` を作るか。
+13. **MVP のスコープ**
+    - `client` kind と `[mobile|web|desktop]` サブタイプ + `delivers` だけを最初に出し、`handles` / `resource` は段階追加で良いか。
