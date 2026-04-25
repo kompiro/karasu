@@ -31,17 +31,42 @@ Assistant (ai)   ──▶ OrderMcp  ──▶ OrderService
 - AI エージェント自身は karasu 利用組織のものではない（外部のアシスタント・コーディングエージェント等）。「我々が提供する MCP サーバー」と「それを使う AI ユーザー」は別ノード
 - 「クライアント」は論理層の概念とする。物理側（deploy）でモバイルアプリ・SPA・デスクトップアプリをどう実体化するかは別軸の議論
 
+## 用語の整理: OAuth2 / OIDC からの解きほぐし
+
+ノード種別の境界を曖昧にしたまま議論すると、後で「これは client なのか service なのか」で揉める。
+OAuth2 / OIDC が既に同じ問いに答えを出している（**誰の委譲で動くか** で分類している）ので、その語彙に揃える。
+
+| OAuth2/OIDC 概念 | 意味 | karasu でのノード |
+|---|---|---|
+| **End user (resource owner)** | 操作の主体である人間 | `user [human]` |
+| **AI agent / autonomous client** | 人間の代行で動く自律ソフトウェア（Claude, Cursor 等の外部エージェント） | `user [ai]` |
+| **Public client** | エンドユーザー端末で動く委譲型クライアント — モバイル / SPA / デスクトップ | `client` ノード（後述） |
+| **Confidential client (user-acting)** | サーバーサイドの委譲型クライアント — BFF・サーバー側 SSR・MCP server を提供する側のゲートウェイ | 案による（後述） |
+| **Client Credentials grant (M2M)** | ユーザー委譲なしのサービス間通信 — 外部 SaaS API 呼び出し、Webhook、バッチ取込 | `service` ↔ `service`（システム境界をまたぐ場合あり） |
+| **Resource server** | API を提供する側 | `service`（と内部の `domain` / `usecase` / `resource`） |
+
+この区分から導かれる結論:
+
+1. **「クライアント」とは "エンドユーザーの委譲で動くソフトウェア"** に絞る。M2M はクライアントではない。
+2. **外部 SaaS / Webhook 受信は M2M なので `service → service`** で表現する（追加語彙不要、システム境界をまたぐだけ）。
+3. **MCP サーバーはこちら側で提供する `service`**。それを叩く AI エージェントは `user [ai]`。AI エージェント自体（Cursor 等）は我々のプロダクトに含まれないので `client` ノードでは*ない*。
+4. **モデル化するのは「我々が出荷するクライアント」だけ** にする。ブラウザ Chrome や Cursor 自体はモデル化しない（人間ユーザーの場合に「Chrome」を書かないのと同じ）。
+
+これにより `client` の定義が一意に決まり、`service` との境界が「ユーザー委譲かどうか」で割り切れる。
+案 A における `client` kind 導入は語彙の重複ではなく、OAuth2 が既に切り出している境界をモデルに反映するだけになる。
+
 ## 検討した選択肢
 
-### 案 A: 新しい kind `client` を導入する
+### 案 A: 新しい kind `client` を導入する（OAuth2 の "client" 概念に対応）
 
 `system` の中で `service` と並ぶ第一級の論理ノードとして `client` を追加。
-`[mobile|web|desktop|mcp]` のサブタイプタグで種類を分類する。
+**定義**: エンドユーザー（`user [human|ai]`）の委譲で動く、我々が出荷するソフトウェア。
+`[mobile|web|desktop]` のサブタイプタグでフォームファクタを分類する（MCP サーバーは `service` 側）。
 
 ```
 system ECommerce {
   user Customer [human]
-  user Assistant [ai]
+  user PartnerAgent [ai]
 
   client MobileApp [mobile] {
     label "iOS / Android アプリ"
@@ -49,30 +74,47 @@ system ECommerce {
   client WebApp [web] {
     label "ブラウザ SPA"
   }
-  client OrderMcp [mcp] {
+  client AdminDesktop [desktop] {
+    label "管理者向けデスクトップ"
+  }
+
+  service OrderService {
+    domain Order { ... }
+  }
+
+  // 我々が提供する MCP サーバー（service として扱う）
+  service OrderMcp {
     label "Order MCP server"
   }
 
-  service OrderService { ... }
+  // 外部 SaaS（M2M、システム境界の外）
+  service Stripe @external {
+    label "Stripe API"
+  }
 
-  Customer -> MobileApp
-  Customer -> WebApp
-  Assistant -> OrderMcp
-  MobileApp -> OrderService
-  WebApp    -> OrderService
-  OrderMcp  -> OrderService
+  Customer     -> MobileApp     // 人間 → public client（Authorization Code + PKCE）
+  Customer     -> WebApp
+  Customer     -> AdminDesktop
+  PartnerAgent -> OrderMcp      // AI エージェント → resource server（MCP）
+
+  MobileApp    -> OrderService  // client → resource server（user-delegated）
+  WebApp       -> OrderService
+  AdminDesktop -> OrderService
+  OrderMcp     -> OrderService  // MCP server → 内部サービス（user-delegated 続き）
+  OrderService -> Stripe        // M2M（Client Credentials）
 }
 ```
 
 **メリット**
+- 「OAuth2 の client 概念」と一対一に対応する明確な定義を持てる（曖昧さが消える）
 - セマンティクスがコードから読み取れる（grep / 集計が容易）
 - 専用の形・色・アイコンを割り当てられる（icon mode で電話・ブラウザ・ロボット）
-- 物理側で「クライアントは特殊な配置先（端末・MCP ホスト）」と区別しやすい
+- 「これは client か service か」の判定が委譲フローの有無で決まるため、書き手のバラつきが減る
 
 **デメリット**
 - 仕様の表面積が増える（kind 追加 → パーサ・スタイル・リファレンス・i18n すべてに波及）
-- 「では `client` の子ノードは何を持てる？」というネスト議論を新たに開く
-- 他の概念（admin UI、CLI、外部システムからのコールバックなど）も後から `client` に押し込まれる圧力が生まれる
+- 「`client` の子ノードは何を持てる？」というネスト議論を新たに開く（最初は子なしでよい）
+- 公開直後は examples / バリデータ未対応の領域があり、移行期間が必要
 
 ### 案 B: 既存の `service` + tag で表現する
 
@@ -135,75 +177,54 @@ user Assistant [ai] {
 
 ## 現時点の方針（推奨）
 
-**案 B から始め、必要が確認できた時点で案 A に昇格させる**。
+**案 A（`client` kind 新設）を採る**。
 
-理由:
-- 構文の表面積を増やさずに、ユーザーが書きたいと言っている表現自体は今日から可能
-- 「`[client]` `[mcp]` タグを実際にどう書きたいか」が examples / 利用者から集まったあとで kind 昇格を判断できる
-- B → A への移行は「タグ付き service」を「client kind」に書き換える機械変換で済む（逆方向は意味の縮退になる）
+OAuth2/OIDC の語彙で「クライアント＝エンドユーザーから委譲されて動くソフトウェア」と一意に定義できることが分かったので、
+タグ駆動（案 B）では失っていた境界 — 「これは委譲型か、M2M か」 — を kind に正面から載せる方が、書き手のバラつきが少なく長期的に安定する。
+M2M はそのまま `service ↔ service`、外部 SaaS / Webhook も `service @external`（または既存の system 境界外サービス表現）で済むため、`client` 以外の新概念は要らない。
 
-伴う作業:
-1. `docs/spec/tags-annotations.md` に `[client]` `[mobile]` `[web]` `[desktop]` `[mcp]` を予約タグとして追記
-2. ビルトインスタイルで `service[client]` `service[mcp]` などの選択子に違う色/形を割り当て、視覚的に分離
-3. `examples/` に「client + MCP」を含む小さなサンプルを 1 本追加
-4. system 図のレンダラがこれらタグを見て、エッジ方向や配置のヒントに使うかは別途検討
+伴う作業（実装フェーズの粗いスケルトン、本ドキュメントでは決定だけ残す）:
+1. `client` kind をパーサ・型・バリデータに追加（`[mobile|web|desktop]` サブタイプタグを予約）
+2. ビルトインスタイル / icon mode で `client` 種別ごとのアイコンを割り当て（電話・ブラウザ・ノート PC 等）
+3. `docs/spec/syntax.md` / `docs/concepts.md` を更新し、OAuth2 用語との対応を明記
+4. `examples/` に「client + MCP service + 外部 SaaS」を含む小サンプルを 1 本追加
+5. レンダラのレイアウト: `user → client → service` の三層を「user 行・client 行・service 行」のように緩く揃えるかは別途検証（最初は強制レイアウトしない）
 
-将来、案 A へ昇格する判断材料:
-- examples / 実利用で「タグでは限界」（構造的検査が欲しい・物理側で別扱いしたい等）が再現性を持って観測されること
-- B のスタイルシート対応で発散が見える（書き手によって `[client]` `[frontend]` `[ui]` のような揺れが大量発生する等）
+破壊的変更ではない（既存 `.krs` で `client` を使っていなければ影響なし）。
 
 ## エッジ方向と意味について
 
-人間ユーザーは「使う」のでクライアント方向への矢印は素直。
-AI ユーザーが MCP に向かうエッジも同様。
-クライアント → サービス側のエッジは「呼び出す / 依存する」の既定セマンティクスでよく、新しい `edge kind` は導入しない方針とする。
+`user → client` は「使う」、`client → service` は OAuth2 の Authorization Code 系で「ユーザー委譲で叩く」。
+`service ↔ service` は M2M（Client Credentials）に対応。
+セマンティクスとしては既定のエッジで十分で、新しい `edge kind` は導入しない。
+将来、認可フロー別にエッジ装飾を変えたくなった場合のみ annotation で表現する余地を残す（`@user-delegated` / `@m2m` 等は本ドキュメント時点では決定しない）。
 
 ## 物理側との関係（メモ）
 
 物理側（deploy）に `mobile-app` / `spa` / `desktop-app` / `mcp-server` のような新 kind を追加するかは本ドキュメントのスコープ外とする。
-論理側で `service[client]` と書けても、deploy 側で `oci` / `assets` / `artifact` のいずれかに `realizes` で繋ぐことは可能なので、当面は既存 deploy kind を流用できる。
-新 kind が必要になるかは、論理側の運用が落ち着いてから判断する。
+論理側で `client` と書けても、deploy 側で `oci` / `assets` / `artifact` のいずれかに `realizes` で繋げば既存 deploy kind を流用できる。
+新 kind が必要かは、論理側の運用が落ち着いてから判断する。
 
 ## 想定されるユースケースでの検証
 
-```
-system ECommerce {
-  user Customer [human]
-  user PartnerAgent [ai]
+「案 A」セクションのコード例参照。
+そこで以下が表現できることを確認した:
 
-  service MobileApp [client] [mobile]
-  service WebApp [client] [web]
-  service AdminDesktop [client] [desktop]
-  service OrderMcp [mcp]
-
-  service OrderService {
-    domain Order { ... }
-  }
-
-  Customer -> MobileApp
-  Customer -> WebApp
-  Customer -> AdminDesktop
-  PartnerAgent -> OrderMcp
-  MobileApp     -> OrderService
-  WebApp        -> OrderService
-  AdminDesktop  -> OrderService
-  OrderMcp      -> OrderService
-}
-```
-
-- 三層（user → client → backend service）が構文として表現できる
-- AI エージェントの経路と人間の経路が並列に並ぶ
-- どれが「クライアント面」かはタグで判定でき、レンダラがアイコン/色を振れる
+- 人間ユーザーが mobile / web / desktop の三系統のクライアントを使う（Authorization Code + PKCE）
+- AI エージェントが我々の MCP サーバー（`service`）を叩く
+- 我々のサービスが外部 SaaS（Stripe）を呼ぶ M2M（Client Credentials）
+- 三層（user → client → backend service）が構文として明示される
+- どれが client / service / external かが kind とアノテーションだけで読み解ける
 
 ## 未解決の問い
 
-1. **B 案の予約タグセットは妥当か**
-   - `[client]` を必須として `[mobile]/[web]/[desktop]` をサブタイプとするのか、`[mobile-client]` のように 1 タグで表すか。
-2. **「外部からのコールバック / 第三者 SaaS」もここに含めるか**
-   - Webhook で叩かれる API、SDK 統合などは「クライアント」と呼ぶか別概念にするか。
-3. **MCP は `[mcp]` 単独で十分か**
-   - `[client] [mcp]` のように一般化するか、別カテゴリとして扱うか。
+1. **`client` のサブタイプタグセット**
+   - `[mobile]/[web]/[desktop]` で十分か、それとも `[cli]`（コマンドラインツール）`[device]`（IoT / 専用端末）等も最初から予約するか。
+2. **外部サービスの表現**
+   - 外部 SaaS / 第三者システムを `service @external` のようにアノテーションで表現するか、kind を分けるか。本ドキュメントは前者前提だが、別途決定が必要。
+3. **MCP サーバーへのマーカー**
+   - 我々の MCP サーバーは `service` で十分か、`@mcp` アノテーションで「これは AI エージェント向けプロトコル面」と明示すべきか。後者の方がレンダラで色/アイコンを差し替えやすい。
 4. **system 図のレイアウトヒント**
-   - クライアント層を強制的に user とサービスの間に置く（自動レイアウト）か、ユーザーの記述順に任せるか。
-5. **examples のレベル**
-   - `examples/getting-started/` に組み込むか、別の `examples/client-mcp/` を作るか。
+   - クライアント層を強制的に user とサービスの間に揃えるか、ユーザーの記述順に任せるか。
+5. **examples の配置**
+   - `examples/getting-started/` に統合するか、別の `examples/client-mcp/` を作るか。
