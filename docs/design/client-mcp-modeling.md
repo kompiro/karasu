@@ -116,6 +116,91 @@ system ECommerce {
 - 「`client` の子ノードは何を持てる？」というネスト議論を新たに開く（最初は子なしでよい）
 - 公開直後は examples / バリデータ未対応の領域があり、移行期間が必要
 
+#### BFF（Next.js / Remix / Nuxt 等）の二重性
+
+Next.js のような BFF は **サーバー（API routes・SSR・セッション保持）と、配信されるブラウザ側コード（React など）の二つの実体** を持つ。
+OAuth2 でいうと、BFF サーバー側は **confidential client**（refresh token をサーバーに保管できる側）であり、配信されたブラウザコードは **public client**。両者はセキュリティモデル・保管できる秘匿情報・脅威面が異なるため、karasu の図でも *別ノードとして書ける* べき。
+
+提案する書き方:
+
+```
+system ECommerce {
+  user Customer [human]
+
+  // BFF サーバー（confidential client + 内部 service の側面）
+  service NextServer {
+    label "Next.js BFF"
+    delivers WebApp           // 配信物として WebApp client を公開
+  }
+
+  // 配信されるブラウザ側のクライアント（public client）
+  client WebApp [web] {
+    label "Customer SPA"
+    handles Order, Catalog    // どの domain を扱うか（後述）
+    storage cookie "session"
+    storage localStorage "preferences"
+    storage indexedDB "outbox"
+  }
+
+  service OrderService { domain Order { ... } domain Catalog { ... } }
+
+  Customer  -> WebApp           // ユーザー操作
+  WebApp    -> NextServer       // BFF への通信（同一オリジン Cookie）
+  NextServer -> OrderService   // user-delegated で backend を叩く
+}
+```
+
+要点:
+
+- `service` 側は「BFF サーバー」、`client` 側は「ブラウザで動くアプリ」と名前で分ける（`Next…`／`WebApp` 等）。
+- 二者の関係は新プロパティ `delivers <ClientId>` で明示（`service` から `client` への配信関係）。`realizes` の物理対応とは別軸の論理対応。
+- 物理 deploy では BFF は単一の `oci` / `lambda` として実体化され、`realizes NextServer` で繋ぐ。配信されるアセットは `assets` ユニットとして `realizes WebApp` で繋ぐ。
+
+#### `client` が保持できる構造
+
+実装フェーズで具体化する想定だが、本ドキュメントで方向だけ決める:
+
+| プロパティ / 子ノード | 意味 | 例 |
+|---|---|---|
+| `handles <DomainId>[, ...]` | このクライアントが UI 上で扱う domain への参照（drill-down 用ヒント） | `handles Order, Catalog` |
+| `storage <kind> "<name>"` | クライアントがローカルに保持する状態 | `storage cookie "session"` |
+| `storage` の `kind` | `cookie` / `localStorage` / `sessionStorage` / `indexedDB` / `opfs` / `keychain` / `file` | — |
+
+`storage` は**セキュリティ議論で頻出**（例: refresh token を localStorage に置くか HttpOnly Cookie に置くかは既知の論点）なので、kind ごとに視覚化できると価値が出る。
+`handles` は logical/physical の `realizes` と類似の「論理対応リンク」で、クライアント単独の図でも「このアプリが触るドメイン」が読み取れる。
+
+これらは `client` の MVP には含めず、まず kind 導入と `delivers` だけ最初に入れ、`handles` / `storage` は別 PR で段階的に増やす。
+
+#### SPA / SSG は単一の `client` で済む
+
+BFF 二重性が問題になるのは「サーバー側に固有のロジックがある」ケース（SSR・API routes・セッション保持・エッジ関数）に限る。
+**純粋な SPA**（例: バックエンド API を直接叩く React アプリ）や **SSG**（例: Astro / Hugo / Next.js の static export）は、配信元が CDN や静的ホストでありロジックを持たないため、`service` を立てる必要はなく `client [web]` 一つで表現できる。
+
+```
+system ECommerce {
+  user Customer [human]
+  client WebApp [web] {
+    label "Customer SPA"
+  }
+  service OrderService { ... }
+
+  Customer -> WebApp
+  WebApp   -> OrderService     // 直接 backend に対して Authorization Code + PKCE
+}
+```
+
+判定の目安:
+
+| 形態 | `service` を立てるか | `client` を立てるか |
+|---|---|---|
+| 純粋 SPA（CRA / Vite + React など） | 不要 | 必要 |
+| SSG（Astro / Hugo / Next.js export） | 不要 | 必要 |
+| BFF / SSR（Next.js / Remix / Nuxt の通常運用） | 必要（confidential client + サーバー） | 必要（配信される public client） |
+| Server Components + Server Actions のみ（ブラウザ JS 最小） | 必要 | 任意（実装上 client がほぼ無いなら省略可） |
+
+物理側（deploy）では SPA / SSG は `assets` ユニットに `realizes WebApp` で繋ぎ、CDN 配信を表現する。
+BFF の場合は `oci` / `lambda` などのサーバー側ユニットが `realizes NextServer`、付随する静的アセットの `assets` ユニットが `realizes WebApp` という二段構成になる。
+
 ### 案 B: 既存の `service` + tag で表現する
 
 `service` のままで、`[client]` `[mcp]` 等のタグで意味付けし、レンダラはタグを見て描画を切り替える。
@@ -224,7 +309,15 @@ M2M はそのまま `service ↔ service`、外部 SaaS / Webhook も `service @
    - 外部 SaaS / 第三者システムを `service @external` のようにアノテーションで表現するか、kind を分けるか。本ドキュメントは前者前提だが、別途決定が必要。
 3. **MCP サーバーへのマーカー**
    - 我々の MCP サーバーは `service` で十分か、`@mcp` アノテーションで「これは AI エージェント向けプロトコル面」と明示すべきか。後者の方がレンダラで色/アイコンを差し替えやすい。
-4. **system 図のレイアウトヒント**
+4. **`delivers` の構文・意味の正式化**
+   - `service.delivers <ClientId>` で十分か、`<ServiceId> -delivers-> <ClientId>` のような新エッジ種別の方が grep 性が高いか。
+5. **`storage` の kind セット**
+   - `cookie / localStorage / sessionStorage / indexedDB / opfs / keychain / file` で過不足ないか。`secure-cookie` のような安全フラグを別軸で持つか。
+6. **`handles` と既存ノード参照との整合**
+   - `realizes`（deploy → logical）/ `owns`（team → logical）と並ぶ第三の論理対応リンクを追加することの是非。
+7. **system 図のレイアウトヒント**
    - クライアント層を強制的に user とサービスの間に揃えるか、ユーザーの記述順に任せるか。
-5. **examples の配置**
+8. **examples の配置**
    - `examples/getting-started/` に統合するか、別の `examples/client-mcp/` を作るか。
+9. **MVP のスコープ**
+   - `client` kind と `[mobile|web|desktop]` サブタイプ + `delivers` だけを最初に出し、`handles` / `storage` は段階追加で良いか。
