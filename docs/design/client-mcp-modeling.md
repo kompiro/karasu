@@ -623,12 +623,26 @@ M2M はそのまま `service ↔ service`、外部 SaaS / Webhook も `service @
 
 各問いに **推奨案** と **判断の重み** を付ける。`★承認待ち` はユーザー判断を仰ぎたい論点、`★`（自動判断）は他の決定から導出できるためユーザーが拒否しなければそのまま採用。
 
-### Q1. `client` のサブタイプタグセット ★承認待ち
+### Q1. `client` のサブタイプタグセット ✅ 決定
 
-`[mobile]/[web]/[desktop]` で十分か、`[cli]`（コマンドラインツール）`[device]`（IoT / 専用端末）等も最初から予約するか。
+最初に予約するのは **7 種**:
 
-**推奨**: 最初に予約するのは **5 種** — `[mobile|web|desktop|cli|device]`。
-理由: `[cli]` `[device]` はその他アーキテクチャ節で頻出し、後付けすると examples を書き直す必要がある。`[browser-extension]/[plugin]/[embed]` はタグなので将来追加しても破壊的変更にならない。
+```
+[mobile] [web] [desktop] [cli] [device] [extension] [embed]
+```
+
+| タグ | 意味 | 例 |
+|---|---|---|
+| `[mobile]` | iOS / Android ネイティブアプリ | App Store / Google Play 配布 |
+| `[web]` | 自社オリジンで動く SPA | React / Vue / Svelte のフル機能 SPA |
+| `[desktop]` | デスクトップアプリ | Electron / ネイティブ |
+| `[cli]` | コマンドラインツール / SDK | 自社 CLI、配布 SDK |
+| `[device]` | IoT / 専用端末 / KIOSK | 証明書ベース認証など |
+| `[extension]` | ホストアプリのプラグインとして動く | Chrome 拡張 / VS Code 拡張 / Figma plugin / Slack app フロント側 |
+| `[embed]` | 第三者ウェブコンテンツに埋め込まれる | Stripe Checkout / Intercom widget / Disqus |
+
+`[extension]` はホストアプリ種別を抽象化する意図的な統合で、ブラウザ拡張も IDE 拡張もデザインツールプラグインも同じセマンティクスで扱う（具体的なホストは description / annotation / 追加タグで補う）。
+`[embed]` は実行コンテキスト（第三者オリジン、iframe sandbox、postMessage 通信）が独立しているため `[extension]` とは別軸。
 
 ### Q2. 外部サービスの表現 ★
 
