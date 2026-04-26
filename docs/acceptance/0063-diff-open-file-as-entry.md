@@ -110,3 +110,12 @@ system Shop {
 - [ ] Copy the URL while `before.krs` is open.
 - [ ] Paste it in a new tab. After load, the editor opens `before.krs` and
       the preview is rooted at it (not at `index.krs`).
+
+### TC-9: Project switch preserves the forward history stack
+
+- [ ] Open project A.
+- [ ] Switch to project B via the project selector.
+- [ ] Press the browser **Back** button — the app returns to project A.
+- [ ] Press **Forward** — the app returns to project B.
+      (Regression guard: a stray `pushState` during the project-switch
+      transient would wipe the forward stack here.)

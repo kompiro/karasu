@@ -618,6 +618,66 @@ describe("useHistoryNavigation", () => {
 
       expect(onFileChange).not.toHaveBeenCalled();
     });
+
+    it("does not push a history entry during a project-switch transient (currentFilePath: non-null → null)", async () => {
+      const opts = makeOptions({ currentFilePath: "/a.krs" });
+      const { rerender } = renderHook((p) => useHistoryNavigation(p), { initialProps: opts });
+
+      const pushSpy = vi.spyOn(history, "pushState");
+      const replaceSpy = vi.spyOn(history, "replaceState");
+      pushSpy.mockClear();
+      replaceSpy.mockClear();
+
+      // SET_CURRENT_PROJECT reducer transiently sets currentFilePath to null.
+      await act(async () => {
+        rerender({ ...opts, currentFilePath: null });
+      });
+
+      expect(pushSpy).not.toHaveBeenCalled();
+      expect(replaceSpy).not.toHaveBeenCalled();
+      pushSpy.mockRestore();
+      replaceSpy.mockRestore();
+    });
+
+    it("uses replaceState when the initial file is loaded after a project switch (null → non-null)", async () => {
+      const opts = makeOptions({ currentFilePath: null });
+      const { rerender } = renderHook((p) => useHistoryNavigation(p), { initialProps: opts });
+
+      const pushSpy = vi.spyOn(history, "pushState");
+      const replaceSpy = vi.spyOn(history, "replaceState");
+      pushSpy.mockClear();
+      replaceSpy.mockClear();
+
+      // useProjectInitialization → selectFile(index.krs) — first non-null after
+      // a project switch must replace, not push, or the forward stack is wiped.
+      await act(async () => {
+        rerender({ ...opts, currentFilePath: "/b/index.krs" });
+      });
+
+      expect(pushSpy).not.toHaveBeenCalled();
+      expect(replaceSpy).toHaveBeenCalled();
+      pushSpy.mockRestore();
+      replaceSpy.mockRestore();
+    });
+
+    it("uses pushState when the user switches files within a project (non-null → non-null)", async () => {
+      const opts = makeOptions({ currentFilePath: "/a.krs" });
+      const { rerender } = renderHook((p) => useHistoryNavigation(p), { initialProps: opts });
+
+      const pushSpy = vi.spyOn(history, "pushState");
+      const replaceSpy = vi.spyOn(history, "replaceState");
+      pushSpy.mockClear();
+      replaceSpy.mockClear();
+
+      await act(async () => {
+        rerender({ ...opts, currentFilePath: "/b.krs" });
+      });
+
+      expect(pushSpy).toHaveBeenCalled();
+      expect(replaceSpy).not.toHaveBeenCalled();
+      pushSpy.mockRestore();
+      replaceSpy.mockRestore();
+    });
   });
 
   describe("feedback loop prevention", () => {

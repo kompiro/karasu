@@ -146,6 +146,11 @@ export function useHistoryNavigation({
   const currentFilePathRef = useRef(currentFilePath);
   currentFilePathRef.current = currentFilePath;
 
+  // Tracks the *previous* currentFilePath so effect ③ can distinguish
+  // user-initiated file switches (push) from project-switch initialization
+  // (replace) and transient null states (skip). Issue #811.
+  const prevFilePathRef = useRef<string | null>(currentFilePath);
+
   // ① Parse initial hash on mount and set pending resolution if needed
   useEffect(() => {
     const parsed = parseHash(location.hash);
@@ -203,12 +208,33 @@ export function useHistoryNavigation({
     dispatch({ type: "SET_VIEW_PATH", path: resolvedPath });
   }, [nodePathIndex, orgPathIndex, dispatch]);
 
-  // ③ Sync state changes → hash (push new history entry)
+  // ③ Sync state changes → hash (Issue #811)
   // Includes `currentFilePath` so file switches participate in browser
-  // history (Issue #811). SELECT_FILE resets viewPath in the reducer, so
-  // the file-switch hash naturally lands on `#krs-system-root?file=...`.
+  // history. The push/replace/skip decision depends on the file transition:
+  //
+  //   non-null → null         skip      project switch transient (reducer
+  //                                     resets currentFilePath; auto-select
+  //                                     of index.krs follows)
+  //   null     → non-null     replace   initial file load (mount or after
+  //                                     project init) — must NOT push, or
+  //                                     it wipes the forward stack
+  //   non-null → non-null *   push      user-initiated file switch within
+  //                                     the same project
+  //
+  // Without this, pressing Back across a project switch and then Forward
+  // would not restore the project: the auto-`selectFile(index.krs)` after
+  // SET_CURRENT_PROJECT triggers a pushState that clears forward history.
   useEffect(() => {
     if (isProgrammaticNavRef.current) return;
+    const prev = prevFilePathRef.current;
+
+    // Project-switch transient — currentFilePath momentarily null. Don't
+    // emit a hash entry; the next SELECT_FILE will replaceState.
+    if (currentFilePath === null && prev !== null) {
+      prevFilePathRef.current = null;
+      return;
+    }
+
     const newHash = buildHash(
       activeView,
       viewPath,
@@ -217,8 +243,14 @@ export function useHistoryNavigation({
       currentFilePath,
     );
     if (location.hash !== newHash) {
-      history.pushState(null, "", newHash);
+      const isInitialLoad = prev === null && currentFilePath !== null;
+      if (isInitialLoad) {
+        history.replaceState(null, "", newHash);
+      } else {
+        history.pushState(null, "", newHash);
+      }
     }
+    prevFilePathRef.current = currentFilePath;
   }, [activeView, viewPath, isOrgTreeView, highlightedNodeId, currentFilePath]);
 
   // ④ popstate handler — browser back/forward
