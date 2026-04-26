@@ -1,8 +1,8 @@
 # クライアント / MCP を system 図でどう表現するか
 
-- **日付**: 2026-04-25
-- **ステータス**: 検討中
-- **関連**: Issue #823, Issue #832 (認可は別 Issue), Issue #834 (security 関連トピックの親 — credential / cookie 等はそちらで扱う), `docs/spec/syntax.md`, `docs/concepts.md`
+- **日付**: 2026-04-25 (作成) / 2026-04-26 (Q1–Q14 全決定)
+- **ステータス**: 決定済み（実装フェーズへ）
+- **関連**: Issue #823, Issue #832 (認可は別 Issue), Issue #834 (security 関連トピックの親 — credential / cookie 等はそちらで扱う), Issue #837 (capability 軸 — camera / geolocation 等の能力許諾), `docs/spec/syntax.md`, `docs/concepts.md`
 
 ## 背景・課題
 
@@ -756,48 +756,65 @@ client WebApp [web] {
 **Issue #834（security 親）に委譲**。
 本 Doc では `cookie` は扱わない。`resource` の安全属性が将来必要になる場合は同じネスト記法（`resource <kind> "<name>" { ... }`）の形で拡張可能だが、MVP には含めない。
 
-### Q9. 同名 domain の二重宣言（案 ii の課題） ★
+### Q9. 同名 domain の二重宣言（案 ii の課題） ✅ 決定
 
-**推奨（自動）**: **MVP は案 i 採用のため発生しない**。案 ii を将来採る際に再検討。
+MVP は案 i 採用のため**発生せず保留**。案 ii を将来採る際に再検討。
 
-### Q10. `handles` の検査ルール・再エクスポート構文 ★
+### Q10. `handles` の検査ルール・再エクスポート構文 ✅ 決定
 
-**推奨（自動・既出）**: 以下を **MVP 同梱**。
+以下を **MVP 同梱**:
 
 - 検査ルール: `client.handles X` / `service.handles X` どちらも、直接の通信エッジ先のノードが X を expose していなければ **warning**
 - 再エクスポート: `service.handles X` で表現
-- キーワード統一: `client` / `service` で同じ `handles`（自身が owns しているか、再エクスポートかは `domain` 子の有無で区別）
+- キーワード統一: `client` / `service` で同じ `handles`（自身が owns しているかは `domain` 子の有無で区別）
 
-### Q11. system 図のレイアウトヒント ★
+### Q11. system 図のレイアウトヒント ✅ 決定
 
-**推奨（自動）**: **MVP では強制レイアウトしない**。ユーザーの記述順に任せ、レンダリングの偏りが観察されてから別 Issue で対応。
+**MVP で強制レイアウトを採用**。`user → client → service` の三層を上から下へ並べる。
 
-### Q12. examples の配置 ★
+ルール:
+- レンダラは三層をそれぞれ別の行（または列）として配置する
+- 同一層内の並び順はユーザーの記述順を尊重する
+- `delivers` 関係（service が client を配信）は通信エッジとは別軸で描画する（線種・色を変える等は実装の判断）
+- 例外: `client` を持たないグラフ（古典的 SSR のみ等）は user → service の二層に落ちる
 
-**推奨（自動）**: **`examples/client-mcp/` を新設**。
-理由: 既存の `examples/getting-started/` は最小機能のチュートリアル目的で、`client` + `delivers` + `@external` + 認可語彙の予約まで含む例は複雑度が高すぎる。専用ディレクトリで「クライアント / MCP / 外部サービス」のシナリオに集中した examples を 1 〜 2 本置く。`getting-started` への組み込みは MVP リリース後に再検討。
+理由:
+- 実際の通信フローは「人 → 端末上のクライアント → サーバー側のサービス」と上から下へ流れることが大半で、強制配置することで読み手の認知負荷が減る
+- 自由レイアウトに任せると、書き手によって配置がバラついて図が読みにくくなる
+- 例外（古典的 SSR で `client` 不在）は二層に縮約することで自然に対応できる
 
-### Q13. MVP のスコープ ★
+### Q12. examples の配置 ✅ 決定
 
-他の決定が固まった上で、MVP リリースの最小単位を確定する。
+**三段構成**で対応する。
 
-**推奨（自動・上記決定の集約）**:
-- `client` kind を新設（`[mobile|web|desktop|cli|device|extension|embed]` サブタイプ予約）
+1. **`examples/client-mcp/` を新設**: client + delivers + handles + 外部 service + MCP server を盛った最小サンプルを 1 本置く。クライアント / MCP / 外部サービスのシナリオに集中した実例。
+2. **`examples/getting-started/index.krs` と `examples/getting-started-en/index.krs` を更新**: 既存のサンプルに `client` ノードを少なくとも 1 つ追加する。例: Customer (user) → MobileApp (client) → ECommerce (service) のような形で、Getting Started を読んだ人が `client` 概念を最初から理解できるようにする。
+3. **`examples/ec-platform/` のステップ列に挿入**: 既存の `01-system.krs` → `02-users.krs` → `03-domains.krs` の流れに `02.5-clients.krs`（または同等のファイル）を入れて、users → clients → domains の順で段階的に説明する。
+
+理由: `client` は MVP の主役であり、Getting Started とチュートリアル両方に登場させないと「あとから追加された付録」感が出る。専用 `client-mcp/` の最小サンプルと、既存例の段階的更新を併用する。
+
+### Q13. MVP のスコープ ✅ 決定
+
+これまでの決定の集約:
+
+**含むもの**:
+- `client` kind を新設（`[mobile|web|desktop|cli|device|extension|embed]` 7 種のサブタイプタグ予約）
 - `service @external` アノテーション（境界表現）。MCP は通常の `service` で扱い、特別マーカーは付けない
 - `service.delivers <ClientId>` プロパティ
-- `client.handles <DomainId>` / `service.handles <DomainId>`（再エクスポート）+ 検査 warning
+- `client.handles <DomainId>` / `service.handles <DomainId>`（再エクスポート）+ 接続トポロジに対する検査 warning
 - `client { resource <storageKind> "<name>" }` フラット構文（kind は `localStorage` / `sessionStorage` / `indexedDB` / `opfs` / `file` / `keychain` の 6 種）
-- `examples/client-mcp/` に基本シナリオを 1 本
-- スタイル / icon 対応は最小（`service` と区別できる程度の差で十分）
+- **`user → client → service` 三層を上から下に強制配置するレイアウト**（client 不在時は user → service の二層）
+- **icon 対応**: `client` kind に対応する builtin SVG（`packages/core/icons/icons.json`）+ icon-theme stylesheet エントリ（`packages/core/src/builtins/icon-theme.ts`）。`service` と視覚的に明確に区別できることを目標とする
+- **examples**: `examples/client-mcp/` 新設 + `examples/getting-started/` / `getting-started-en/` への `client` 追加 + `examples/ec-platform/` のステップ拡充
 
-スコープ外（別 Issue）:
+**スコープ外（別 Issue）**:
 - `client → domain → usecase → resource` フル階層（案 ii）
-- `usecase` 単位の部分再エクスポート、リネーム再エクスポート
-- デバイス能力（`capability`）軸
-- system 図のレイアウトヒント
+- `usecase` / `resource` 単位の部分再エクスポート、リネーム再エクスポート
+- サブタイプタグ別の icon 差別化（`[mobile]` と `[desktop]` で違う icon を出す等）— MVP 後の段階的拡張
+- デバイス能力 / 権限の `capability` 軸 — Issue #837
 - 認可（#832）
 - 認証 credential / cookie / セッション / 脅威モデル（security 親 #834）
 
-### Q14. 再エクスポートの粒度 ★
+### Q14. 再エクスポートの粒度 ✅ 決定
 
-**推奨（自動）**: **MVP は domain 単位のみ**。`usecase` / `resource` 単位の部分再エクスポートは需要が見えてから追加。
+**MVP は domain 単位のみ**。`usecase` / `resource` 単位の部分再エクスポートは需要が見えてから別 Issue で追加。
