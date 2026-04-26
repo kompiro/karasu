@@ -19,6 +19,7 @@ import {
 } from "./rendering-constants.js";
 import { nodeStyleKey } from "../resolver/style-resolver.js";
 import type { NodeDiffMeta } from "../diff/view-diff.js";
+import { DEFAULT_EMPTY_STATE_LABELS, type EmptyStateLabels } from "./empty-state-labels.js";
 
 const GHOST_OPACITY = 0.3;
 
@@ -52,6 +53,12 @@ export interface RenderOptions {
    * CSS can highlight whole-container additions/removals (Issue #750).
    */
   containerDiffState?: Map<string, string>;
+  /**
+   * Localized labels for the empty-state placeholder rendered when the
+   * layout has no nodes or containers. When omitted, English fallbacks
+   * from `DEFAULT_EMPTY_STATE_LABELS` are used.
+   */
+  emptyLabels?: EmptyStateLabels;
 }
 
 export function render(
@@ -101,7 +108,7 @@ export function renderFromLayout(
           fill: "#9CA3AF",
           "font-family": "sans-serif",
         },
-        "No nodes to render",
+        escapeXml(options?.emptyLabels?.systemNoNodes ?? DEFAULT_EMPTY_STATE_LABELS.systemNoNodes),
       ),
     );
   }

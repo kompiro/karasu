@@ -363,7 +363,9 @@ function _compileFromPreparedInput(
     undefined,
     viewSlice.childEdges,
   );
-  const svg = render(viewSlice, styles, serviceIdsWithDeploy, ownerIndex, displayMode);
+  const svg = render(viewSlice, styles, serviceIdsWithDeploy, ownerIndex, displayMode, undefined, {
+    emptyLabels: emptyStateLabels,
+  });
   const nodeMetadata = buildNodeMetadata(
     viewSlice,
     serviceIdsWithDeploy,
