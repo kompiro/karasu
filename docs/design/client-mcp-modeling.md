@@ -506,7 +506,7 @@ Laravel + Vue、Django + React、Spring Boot + Vite なども同じ構造。
 | 形態 | 推奨アプローチ |
 |---|---|
 | **チャットボット (Slack App / Teams Bot / GitHub App)** | 我々がホストする `service`（受信エンドポイント）として書く。エンドユーザーは Slack 等の host platform にログインしており、bot は token exchange / OBO で内部 service を叩く。ボットの「クライアント面」は host platform 内に閉じるので `client` ノードは作らない |
-| **我々が外部 MCP サーバーを呼ぶ側になるケース** | 内部 `service` から外部 `service @external [mcp]` を呼ぶ M2M。`client` 概念は登場しない（ユーザー委譲ではなく Client Credentials） |
+| **我々が外部 MCP サーバーを呼ぶ側になるケース** | 内部 `service` から外部 `service @external` を呼ぶ M2M。`client` 概念は登場しない（ユーザー委譲ではなく Client Credentials）。MCP であることはプロトコル詳細であり、必要なら呼び出し側 `usecase` にタグを付けて表す |
 | **OBO (On-Behalf-Of) / Token Exchange (RFC 8693)** | `service → service` の通常エッジで表現。当面は装飾なし。将来的にユーザー委譲継続を強調したい場合は `@user-delegated` のような edge アノテーションを検討（本ドキュメント時点では追加しない） |
 | **PWA (Progressive Web App)** | `client [web]` のまま。`storage opfs / indexedDB` を多用するという表現になる |
 | **ハイブリッドモバイル (Capacitor / React Native)** | フォームファクタは `[mobile]`（App Store 配布、端末権限を使う）。Web 技術ベースであることは実装詳細であり論理層には出さない |
@@ -663,12 +663,26 @@ OurService -> Stripe       // M2M
 
 採らない代替: kind を分ける（`external_service` 新 kind）。検索性は上がるが、論理 vs 外部の二軸が kind に混ざる。
 
-### Q3. MCP サーバーへのマーカー ★承認待ち
+### Q3. MCP サーバーへのマーカー ✅ 決定
 
-`service` のみ vs `@mcp` アノテーション併用。
+**特別なマーカーを付けない**。MCP サーバーは通常の `service` として扱う。
 
-**推奨**: **`service` + `@mcp` アノテーション併用**。
-理由: AI エージェント向けプロトコル面であることをレンダラで色/アイコンに反映しやすい。kind は `service` のままなので owns/handles の検査ロジックは変わらない。
+```
+service OrderMcp {
+  label "Order MCP server"
+  handles Order, Catalog
+}
+
+PartnerAgent [ai] -> OrderMcp     // user [ai] → service のエッジで AI 向け経路は表現される
+OrderMcp        -> OrderService
+```
+
+理由:
+- MCP は API プロトコル選択の一つ。`@rest` / `@graphql` / `@grpc` を `service` に付けないのと同じく、`@mcp` も付ける必然性がない
+- AI エージェントが叩いていることは `user [ai] -> service` のエッジで既に読み取れる
+- プロトコル可視化が必要になったら **usecase 単位のタグ** (`[mcp]` / `[rest]` / `[graphql]` 等) で表現する方が現実的（一つの service が複数プロトコルで一部 usecase を公開するパターンが多い）
+
+スコープ外（将来 Issue）: usecase レベルのプロトコルタグ。
 
 ### Q4. `delivers` の構文 ★
 
@@ -742,7 +756,7 @@ resource cookie "session" {
 
 **推奨（自動・上記決定の集約）**:
 - `client` kind を新設（`[mobile|web|desktop|cli|device]` サブタイプ予約）
-- `service @external`、`service @mcp` アノテーション
+- `service @external` アノテーション（境界表現）。MCP は通常の `service` で扱い、特別マーカーは付けない
 - `service.delivers <ClientId>` プロパティ
 - `client.handles <DomainId>` / `service.handles <DomainId>`（再エクスポート）+ 検査 warning
 - `client { resource <storageKind> "<name>" { ... } }` 構文（属性 `secure` / `httpOnly` / `samesite` を含む）
