@@ -11,10 +11,13 @@ export interface EmptyStateLabels {
   deployHint?: string;
   /** Text for the org view when no teams have been defined yet. */
   orgNoTeams?: string;
+  /** Text for the system view when the layout has no nodes or containers. */
+  systemNoNodes?: string;
 }
 
 export const DEFAULT_EMPTY_STATE_LABELS = {
   deployTitle: "No deploy block defined",
   deployHint: "Add a deploy block to your .krs file",
   orgNoTeams: "No teams defined",
+  systemNoNodes: "No nodes to render",
 } as const satisfies Required<EmptyStateLabels>;
