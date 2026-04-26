@@ -2,7 +2,7 @@
 
 - **日付**: 2026-04-25
 - **ステータス**: 検討中
-- **関連**: Issue #823, Issue #832 (認可は別 Issue で扱う), `docs/spec/syntax.md`, `docs/concepts.md`
+- **関連**: Issue #823, Issue #832 (認可は別 Issue), Issue #834 (security 関連トピックの親 — credential / cookie 等はそちらで扱う), `docs/spec/syntax.md`, `docs/concepts.md`
 
 ## 背景・課題
 
@@ -136,10 +136,10 @@ system ECommerce {
   // 配信されるブラウザ側のクライアント（public client）
   client WebApp [web] {
     label "Customer SPA"
-    handles Order, Catalog    // どの domain を扱うか（後述）
-    storage cookie "session"
-    storage localStorage "preferences"
-    storage indexedDB "outbox"
+    handles Order, Catalog            // どの domain を扱うか（後述）
+    resource localStorage "preferences"
+    resource indexedDB "outbox"
+    // 認証 credential / cookie の表現は Issue #834 で扱う
   }
 
   service OrderService { domain Order { ... } domain Catalog { ... } }
@@ -196,21 +196,22 @@ system ECommerce {
 
 ##### 案 i: フラット参照型（先行ドラフト）
 
-`client` 直下に `handles` 参照と `storage` プロパティをフラットに並べる。
+`client` 直下に `handles` 参照と `resource` プロパティをフラットに並べる。
 
 ```
 client WebApp [web] {
   handles Order, Catalog
-  storage cookie "session"
-  storage localStorage "preferences"
-  storage indexedDB "outbox"
+  resource localStorage "preferences"
+  resource indexedDB "outbox"
 }
 ```
 
 | 要素 | 意味 |
 |---|---|
 | `handles <DomainId>[, ...]` | このクライアントが UI 上で扱う domain への*参照* |
-| `storage <kind> "<name>"` | クライアントが保持するローカル状態（フラット） |
+| `resource <kind> "<name>"` | クライアントが保持する操作-tied storage（フラット） |
+
+> 認証 credential / cookie / セッションといった HTTP プロトコル由来の cross-cutting な要素は本ドキュメントでは扱わない（Issue #834 を参照）。`resource` は **「特定の操作で読み書きするストレージ」** に絞る。
 
 **`handles` の整合性検査ルール（重要）**:
 `handles` を単なる飾りに終わらせないため、バリデータで以下のチェックを行う:
@@ -306,7 +307,6 @@ client WebApp [web] {
     }
   }
 
-  resource cookie "session"   // クライアント全体の状態（usecase に紐付かない）
 }
 ```
 
@@ -314,8 +314,10 @@ client WebApp [web] {
 |---|---|
 | `domain` (子) | このクライアント*内*の bounded context（DDD と同じ語彙） |
 | `usecase` (孫) | UI 上の操作 |
-| `resource` (ひ孫) | usecase が触る storage や device 機能 |
-| `resource` の kind | `cookie` / `localStorage` / `sessionStorage` / `indexedDB` / `opfs` / `keychain` / `file` / `camera` / `geolocation` 等 |
+| `resource` (ひ孫) | usecase が触る storage |
+| `resource` の kind | `localStorage` / `sessionStorage` / `indexedDB` / `opfs` / `file` / `keychain` |
+
+> 認証 credential / cookie / デバイス能力（camera / geolocation 等）は `resource` の対象外。security 関連は Issue #834 で扱う。
 
 ##### 比較
 
@@ -383,18 +385,18 @@ client AdminDesktop [desktop] {
 - `storage <kind> "<name>"` は将来 `resource <kind> "<name>"` に統一可能なように命名を慎重にする（あるいは最初から `resource <storageKind> "<name>"` で揃える）
 - `handles` は将来 `realizes` 系の言語拡張で同じ意味を吸収できるよう、独立した predicate として実装しておく
 
-**ストレージの kind 名についての結論**: 最初から `resource` の語彙を使い、`storage` という独立プロパティは導入しない方向で再検討する余地あり。
-そうすると最初から:
+**ストレージの kind 名についての結論**: 最初から `resource` の語彙を使い、`storage` という独立プロパティは導入しない。
 
 ```
 client WebApp [web] {
   handles Order, Catalog
-  resource cookie "session"
   resource localStorage "preferences"
+  resource indexedDB "outbox"
 }
 ```
 
-と書けて、後で `usecase` の中に移動するのが自然になる（`storage` から `resource` へのリネームが不要）。
+これで後で `usecase` の中に移動するのが自然になる（リネーム不要）。
+認証 credential / cookie の表現は Issue #834（security 親）に委譲。
 
 これらは `client` の MVP には含めず、まず kind 導入と `delivers` だけ最初に入れ、`handles` / `resource` は別 PR で段階的に増やす。
 
@@ -480,12 +482,11 @@ Laravel + Vue、Django + React、Spring Boot + Vite なども同じ構造。
 
 ##### 別種の `client`（フォームファクタ違い）
 
-| 形態 | 推奨ノード | サブタイプタグ案 | メモ |
+| 形態 | 推奨ノード | サブタイプタグ | メモ |
 |---|---|---|---|
-| CLI ツール / SDK（自社配布） | `client` | `[cli]` | 認証情報を `~/.config` などに保管 → `storage file "credentials"` |
-| IoT 端末 / 専用端末 / KIOSK | `client` | `[device]` | 端末固有 ID を持つ Public client。証明書ベース認証も多い |
-| ブラウザ拡張 (Chrome / Edge 拡張) | `client` | `[browser-extension]` | 我々が配布。ブラウザ host とは別の identity |
-| マーケットプレイス型プラグイン (VS Code / Figma 等) | `client` | `[plugin]` | host アプリ内で動く我々のコード |
+| CLI ツール / SDK（自社配布） | `client` | `[cli]` | `~/.config` 等に状態を保管。認証 credential 自体の扱いは Issue #834 |
+| IoT 端末 / 専用端末 / KIOSK | `client` | `[device]` | 端末固有 ID を持つ Public client。証明書ベース認証は Issue #834 |
+| ブラウザ / IDE / デザインツール拡張 | `client` | `[extension]` | host アプリのプラグインポイントに常駐するコード |
 | 埋め込みウィジェット / 配布 SDK (Stripe Checkout、Intercom 等) | `client` | `[embed]` | 第三者サイトに埋め込まれて動く我々のコード |
 
 これらすべて `[mobile|web|desktop]` と並ぶフォームファクタタグとして扱える。タグセットは順次拡張すれば良い。
@@ -707,43 +708,53 @@ WebApp -> NextServer        // API 通信は通常エッジ
 
 採らない代替: 新エッジ `<ServiceId> -delivers-> <ClientId>`。配信と呼び出しが矢印で混在する点が許容できない。
 
-### Q5. `client` の内部構造を `service` 同型にするか ★
+### Q5. `client` の内部構造を `service` 同型にするか ✅ 決定
 
-案 i（フラット参照: `handles` + `resource`） vs 案 ii（`service` 同型 `domain → usecase → resource`）。
-
-**推奨（自動・既出）**: **案 i** で MVP リリース、構文は案 ii 互換に予約する（`client { ... }` ボディを将来 `domain` 子を受け入れられる形に、`storage` ではなく `resource` を最初から使う）。
-
-### Q6. ストレージは `storage` 独立 vs `resource <storageKind>` 統合 ★
-
-**推奨（自動・既出）**: **`resource <storageKind> "<name>"` で統合**。
-理由: 案 i → 案 ii の移行コストを最小化（リネーム不要）。`service` 側の `resource` と語彙が揃う。
-
-### Q7. `resource` の kind セット ★承認待ち
-
-永続化系（cookie / localStorage / ...）に加えてデバイス能力（camera / geolocation / ...）も `resource` に含めるか、別軸とするか。
-
-**推奨**: **永続化系のみ最初に予約 / デバイス能力は別軸（将来 `capability` または `permission` 予約候補）**。
-
-最初に予約する `resource` kind:
-`cookie` / `localStorage` / `sessionStorage` / `indexedDB` / `opfs` / `keychain` / `file`
-
-デバイス能力（`camera` / `geolocation` / `notification` / `push` / `bluetooth` / `webauthn` 等）は意味が違う（保管ではなく能力許諾）ため別軸で扱う。MVP には含めず別 Issue。
-
-### Q8. `cookie` の安全属性 ★承認待ち
-
-`secure` / `httpOnly` / `samesite` を kind に詰め込むか、別属性として持つか。
-
-**推奨**: **別属性をネスト記法で持つ**。
+**案 i（フラット参照型）で MVP リリース、構文は案 ii 互換に予約**。
 
 ```
-resource cookie "session" {
-  secure
-  httpOnly
-  samesite "strict"
+client WebApp [web] {
+  label "Customer SPA"
+  handles Order, Catalog
+  resource localStorage "preferences"
+  resource indexedDB "outbox"
 }
 ```
 
-`secure-cookie` のように kind に詰めると組み合わせ爆発するため、属性側で扱う。他のストレージも将来同じネスト記法で属性追加可能（例: `localStorage` の TTL など）。
+理由:
+- 多くのクライアントは「サーバーの API を叩いて表示する」薄いラッパで、独立した bounded context を持たないため案 ii は過剰
+- 案 i → 案 ii の移行は機械変換可能（`handles X` → `domain X { }`）、逆は情報が失われる
+- `handles` を整合性検査の対象（Q10）にすることで案 i の弱点（参照の飾り化）を解消できる
+
+案 ii 互換のための予約:
+- `client { ... }` ボディは将来 `domain` 子を受け入れられる構文形にしておく
+- `resource` は最初から `service` と同じ語彙で書く（将来 `usecase` の中に移動するときリネーム不要）
+- `handles` は将来 `realizes` 系の言語拡張に置き換え可能な independent predicate として実装
+
+スコープ外（将来の別 Issue）: `client → domain → usecase → resource` フル階層（案 ii）。
+
+### Q6. ストレージは `storage` 独立 vs `resource <storageKind>` 統合 ✅ 決定
+
+**`resource <storageKind> "<name>"` に統合**。
+理由: 案 i → 案 ii の移行コストを最小化（リネーム不要）。`service` 側の `resource` と語彙が揃う。
+
+### Q7. `resource` の kind セット ✅ 決定
+
+最初に予約する `resource` kind:
+**`localStorage` / `sessionStorage` / `indexedDB` / `opfs` / `file` / `keychain`**
+
+すべて **「操作（usecase）に紐づくストレージ」** という共通セマンティクスを持つ。
+`localStorage` / `sessionStorage` / `indexedDB` / `opfs` / `file` は明示的にコードが読み書きするストレージで、特定の usecase の文脈で扱える。
+`keychain` は OS 提供のセキュアな鍵保管（モバイル / デスクトップ）で、操作の入出力として登場する。
+
+スコープ外（別 Issue）:
+- **`cookie` / 認証 credential** — Issue #834（security 親）で扱う。HTTP プロトコルが自動送信する request-scoped な要素であり、操作-tied storage と意味が異なる。脅威モデル / OAuth2 client type / コンプライアンスといった security 全般の文脈で語彙を決める方が筋が通る。
+- **デバイス能力 (`camera` / `geolocation` / `notification` / `push` / `bluetooth` / `webauthn`)** — 保管ではなく能力許諾。別軸として将来 `capability` / `permission` 予約候補で検討。
+
+### Q8. `cookie` 等の安全属性 ✅ 決定（委譲）
+
+**Issue #834（security 親）に委譲**。
+本 Doc では `cookie` は扱わない。`resource` の安全属性が将来必要になる場合は同じネスト記法（`resource <kind> "<name>" { ... }`）の形で拡張可能だが、MVP には含めない。
 
 ### Q9. 同名 domain の二重宣言（案 ii の課題） ★
 
@@ -771,11 +782,11 @@ resource cookie "session" {
 他の決定が固まった上で、MVP リリースの最小単位を確定する。
 
 **推奨（自動・上記決定の集約）**:
-- `client` kind を新設（`[mobile|web|desktop|cli|device]` サブタイプ予約）
+- `client` kind を新設（`[mobile|web|desktop|cli|device|extension|embed]` サブタイプ予約）
 - `service @external` アノテーション（境界表現）。MCP は通常の `service` で扱い、特別マーカーは付けない
 - `service.delivers <ClientId>` プロパティ
 - `client.handles <DomainId>` / `service.handles <DomainId>`（再エクスポート）+ 検査 warning
-- `client { resource <storageKind> "<name>" { ... } }` 構文（属性 `secure` / `httpOnly` / `samesite` を含む）
+- `client { resource <storageKind> "<name>" }` フラット構文（kind は `localStorage` / `sessionStorage` / `indexedDB` / `opfs` / `file` / `keychain` の 6 種）
 - `examples/client-mcp/` に基本シナリオを 1 本
 - スタイル / icon 対応は最小（`service` と区別できる程度の差で十分）
 
@@ -785,6 +796,7 @@ resource cookie "session" {
 - デバイス能力（`capability`）軸
 - system 図のレイアウトヒント
 - 認可（#832）
+- 認証 credential / cookie / セッション / 脅威モデル（security 親 #834）
 
 ### Q14. 再エクスポートの粒度 ★
 
