@@ -619,36 +619,117 @@ M2M はそのまま `service ↔ service`、外部 SaaS / Webhook も `service @
   本ドキュメントのスコープ外。語彙が衝突しないよう、`role` / `license` / `group` / `plan` / `requires` / `allows` / `policy` を将来の認可語彙として予約候補と認識しておく。
   `client.handles` (UI 上の枠) と `usecase.requires` (実行時認可) は二段で組み合わせて使う想定。
 
-## 未解決の問い
+## 未解決の問い と推奨案
 
-1. **`client` のサブタイプタグセット**
-   - `[mobile]/[web]/[desktop]` で十分か、それとも `[cli]`（コマンドラインツール）`[device]`（IoT / 専用端末）等も最初から予約するか。
-2. **外部サービスの表現**
-   - 外部 SaaS / 第三者システムを `service @external` のようにアノテーションで表現するか、kind を分けるか。本ドキュメントは前者前提だが、別途決定が必要。
-3. **MCP サーバーへのマーカー**
-   - 我々の MCP サーバーは `service` で十分か、`@mcp` アノテーションで「これは AI エージェント向けプロトコル面」と明示すべきか。後者の方がレンダラで色/アイコンを差し替えやすい。
-4. **`delivers` の構文・意味の正式化**
-   - `service.delivers <ClientId>` で十分か、`<ServiceId> -delivers-> <ClientId>` のような新エッジ種別の方が grep 性が高いか。
-5. **`client` の内部構造を `service` 同型 (`domain → usecase → resource`) にするか**
-   - 案 i (フラット参照: `handles` + `storage`) と案 ii (`service` 同型階層) の比較は本ドキュメントで整理済み。MVP は案 i 推奨だが、構文を案 ii 互換に予約しておくか、後付けでよいかは要決定。
-6. **ストレージは `storage` 独立プロパティか `resource <storageKind>` への統合か**
-   - 後者なら案 ii への移行時にリネームせずに済む。前者なら可読性は高いが将来移行コスト。
-7. **`resource` の kind セット**
-   - `cookie / localStorage / sessionStorage / indexedDB / opfs / keychain / file` で過不足ないか。`camera` / `geolocation` / `notification` / `webauthn` 等のデバイス能力もここに含めるか別軸 (capabilities / permissions) として扱うか。
-8. **`cookie` の安全属性**
-   - `secure` / `httpOnly` / `samesite` の組み合わせを kind に詰め込むか、別属性として持つか。
-9. **同名 domain の二重宣言（案 ii の課題）**
-   - クライアント側 `domain Order` とサービス側 `domain Order` の関係付けをどう書くか。クロスリファレンス必須 / 名前一致で推測 / クライアント側は `usecase` のみ書くなど複数案あり。
-10. **`handles` と既存ノード参照との整合**
-    - `realizes`（deploy → logical）/ `owns`（team → logical）と並ぶ第三の論理対応リンクを追加することの是非。
-    - 検査ルール「`handles` は接続先ノードが expose する domain の部分集合でなければ warning」は採用前提でよいか。
-    - 再エクスポート構文 `service.handles X` の MVP 同梱可否（BFF パターンが現実的に頻出するため、同時搭載が妥当か）。
-    - キーワードを `client` / `service` で同じ `handles` にするか (`service` 側だけ `re-exports` / `forwards` などに分けるか)。
-14. **再エクスポートの粒度**
-    - domain 全体ではなく `usecase` 単位や `resource` 単位で再エクスポートしたい要求があるか。MVP は domain 単位のみで足りるか。
-11. **system 図のレイアウトヒント**
-    - クライアント層を強制的に user とサービスの間に揃えるか、ユーザーの記述順に任せるか。
-12. **examples の配置**
-    - `examples/getting-started/` に統合するか、別の `examples/client-mcp/` を作るか。
-13. **MVP のスコープ**
-    - `client` kind と `[mobile|web|desktop]` サブタイプ + `delivers` だけを最初に出し、`handles` / `resource` は段階追加で良いか。
+各問いに **推奨案** と **判断の重み** を付ける。`★承認待ち` はユーザー判断を仰ぎたい論点、`★`（自動判断）は他の決定から導出できるためユーザーが拒否しなければそのまま採用。
+
+### Q1. `client` のサブタイプタグセット ★承認待ち
+
+`[mobile]/[web]/[desktop]` で十分か、`[cli]`（コマンドラインツール）`[device]`（IoT / 専用端末）等も最初から予約するか。
+
+**推奨**: 最初に予約するのは **5 種** — `[mobile|web|desktop|cli|device]`。
+理由: `[cli]` `[device]` はその他アーキテクチャ節で頻出し、後付けすると examples を書き直す必要がある。`[browser-extension]/[plugin]/[embed]` はタグなので将来追加しても破壊的変更にならない。
+
+### Q2. 外部サービスの表現 ★
+
+`service @external` アノテーション式 vs kind 分離。
+
+**推奨（自動）**: `service @external` アノテーション。
+理由: 外部かどうかは「owns/handles のセマンティクスが同じだが境界の外」であり、kind より属性で十分。kind を増やすと検索性は良くなるが、論理 vs 外部の二軸が混じる。アノテーションなら system 境界の表現を独立して扱える。
+
+### Q3. MCP サーバーへのマーカー ★承認待ち
+
+`service` のみ vs `@mcp` アノテーション併用。
+
+**推奨**: **`service` + `@mcp` アノテーション併用**。
+理由: AI エージェント向けプロトコル面であることをレンダラで色/アイコンに反映しやすい。kind は `service` のままなので owns/handles の検査ロジックは変わらない。
+
+### Q4. `delivers` の構文 ★
+
+プロパティ式 `service { delivers WebApp }` vs 新エッジ種別 `<ServiceId> -delivers-> <ClientId>`。
+
+**推奨（自動）**: **プロパティ式**。
+理由: `delivers` は配信責任を表す宣言的属性であり、通信エッジと並列に矢印で書くと意味が混じる。`realizes`（deploy → logical）と同じ宣言的プロパティとして揃える。grep 性は `delivers ` の検索で十分担保される。
+
+### Q5. `client` の内部構造を `service` 同型にするか ★
+
+案 i（フラット参照: `handles` + `resource`） vs 案 ii（`service` 同型 `domain → usecase → resource`）。
+
+**推奨（自動・既出）**: **案 i** で MVP リリース、構文は案 ii 互換に予約する（`client { ... }` ボディを将来 `domain` 子を受け入れられる形に、`storage` ではなく `resource` を最初から使う）。
+
+### Q6. ストレージは `storage` 独立 vs `resource <storageKind>` 統合 ★
+
+**推奨（自動・既出）**: **`resource <storageKind> "<name>"` で統合**。
+理由: 案 i → 案 ii の移行コストを最小化（リネーム不要）。`service` 側の `resource` と語彙が揃う。
+
+### Q7. `resource` の kind セット ★承認待ち
+
+永続化系（cookie / localStorage / ...）に加えてデバイス能力（camera / geolocation / ...）も `resource` に含めるか、別軸とするか。
+
+**推奨**: **永続化系のみ最初に予約 / デバイス能力は別軸（将来 `capability` または `permission` 予約候補）**。
+
+最初に予約する `resource` kind:
+`cookie` / `localStorage` / `sessionStorage` / `indexedDB` / `opfs` / `keychain` / `file`
+
+デバイス能力（`camera` / `geolocation` / `notification` / `push` / `bluetooth` / `webauthn` 等）は意味が違う（保管ではなく能力許諾）ため別軸で扱う。MVP には含めず別 Issue。
+
+### Q8. `cookie` の安全属性 ★承認待ち
+
+`secure` / `httpOnly` / `samesite` を kind に詰め込むか、別属性として持つか。
+
+**推奨**: **別属性をネスト記法で持つ**。
+
+```
+resource cookie "session" {
+  secure
+  httpOnly
+  samesite "strict"
+}
+```
+
+`secure-cookie` のように kind に詰めると組み合わせ爆発するため、属性側で扱う。他のストレージも将来同じネスト記法で属性追加可能（例: `localStorage` の TTL など）。
+
+### Q9. 同名 domain の二重宣言（案 ii の課題） ★
+
+**推奨（自動）**: **MVP は案 i 採用のため発生しない**。案 ii を将来採る際に再検討。
+
+### Q10. `handles` の検査ルール・再エクスポート構文 ★
+
+**推奨（自動・既出）**: 以下を **MVP 同梱**。
+
+- 検査ルール: `client.handles X` / `service.handles X` どちらも、直接の通信エッジ先のノードが X を expose していなければ **warning**
+- 再エクスポート: `service.handles X` で表現
+- キーワード統一: `client` / `service` で同じ `handles`（自身が owns しているか、再エクスポートかは `domain` 子の有無で区別）
+
+### Q11. system 図のレイアウトヒント ★
+
+**推奨（自動）**: **MVP では強制レイアウトしない**。ユーザーの記述順に任せ、レンダリングの偏りが観察されてから別 Issue で対応。
+
+### Q12. examples の配置 ★
+
+**推奨（自動）**: **`examples/client-mcp/` を新設**。
+理由: 既存の `examples/getting-started/` は最小機能のチュートリアル目的で、`client` + `delivers` + `@external` + 認可語彙の予約まで含む例は複雑度が高すぎる。専用ディレクトリで「クライアント / MCP / 外部サービス」のシナリオに集中した examples を 1 〜 2 本置く。`getting-started` への組み込みは MVP リリース後に再検討。
+
+### Q13. MVP のスコープ ★
+
+他の決定が固まった上で、MVP リリースの最小単位を確定する。
+
+**推奨（自動・上記決定の集約）**:
+- `client` kind を新設（`[mobile|web|desktop|cli|device]` サブタイプ予約）
+- `service @external`、`service @mcp` アノテーション
+- `service.delivers <ClientId>` プロパティ
+- `client.handles <DomainId>` / `service.handles <DomainId>`（再エクスポート）+ 検査 warning
+- `client { resource <storageKind> "<name>" { ... } }` 構文（属性 `secure` / `httpOnly` / `samesite` を含む）
+- `examples/client-mcp/` に基本シナリオを 1 本
+- スタイル / icon 対応は最小（`service` と区別できる程度の差で十分）
+
+スコープ外（別 Issue）:
+- `client → domain → usecase → resource` フル階層（案 ii）
+- `usecase` 単位の部分再エクスポート、リネーム再エクスポート
+- デバイス能力（`capability`）軸
+- system 図のレイアウトヒント
+- 認可（#832）
+
+### Q14. 再エクスポートの粒度 ★
+
+**推奨（自動）**: **MVP は domain 単位のみ**。`usecase` / `resource` 単位の部分再エクスポートは需要が見えてから追加。
