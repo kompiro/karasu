@@ -644,12 +644,24 @@ M2M はそのまま `service ↔ service`、外部 SaaS / Webhook も `service @
 `[extension]` はホストアプリ種別を抽象化する意図的な統合で、ブラウザ拡張も IDE 拡張もデザインツールプラグインも同じセマンティクスで扱う（具体的なホストは description / annotation / 追加タグで補う）。
 `[embed]` は実行コンテキスト（第三者オリジン、iframe sandbox、postMessage 通信）が独立しているため `[extension]` とは別軸。
 
-### Q2. 外部サービスの表現 ★
+### Q2. 外部サービスの表現 ✅ 決定
 
-`service @external` アノテーション式 vs kind 分離。
+**`service @external` アノテーション式** で表現する。
 
-**推奨（自動）**: `service @external` アノテーション。
-理由: 外部かどうかは「owns/handles のセマンティクスが同じだが境界の外」であり、kind より属性で十分。kind を増やすと検索性は良くなるが、論理 vs 外部の二軸が混じる。アノテーションなら system 境界の表現を独立して扱える。
+```
+service Stripe @external {
+  label "Stripe API"
+}
+
+OurService -> Stripe       // M2M
+```
+
+理由:
+- 「owns / handles のセマンティクスは内部 service と同じだが、システム境界の外」という意味で、kind を増やすほどの違いではない
+- アノテーションで「論理的役割 (`service`)」と「境界 (`@external`)」を直交軸として扱える
+- 内部取り込み（買収・内製化）時は `@external` を外すだけで済む
+
+採らない代替: kind を分ける（`external_service` 新 kind）。検索性は上がるが、論理 vs 外部の二軸が kind に混ざる。
 
 ### Q3. MCP サーバーへのマーカー ★承認待ち
 
