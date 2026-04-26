@@ -35,6 +35,7 @@ import functionSvg from "@karasu-tools/core/icons/function.svg?raw";
 import assetsSvg from "@karasu-tools/core/icons/assets.svg?raw";
 import jobSvg from "@karasu-tools/core/icons/job.svg?raw";
 import artifactSvg from "@karasu-tools/core/icons/artifact.svg?raw";
+import { useEmptyStateLabels } from "../i18n/use-empty-state-labels.js";
 
 interface SystemViewState {
   svg: string;
@@ -107,6 +108,8 @@ export function useSystemView(
   const timerRef = useRef<ReturnType<typeof setTimeout>>(undefined);
   const recompileCounter = useRef(0);
 
+  const emptyStateLabels = useEmptyStateLabels();
+
   const recompile = useCallback(() => {
     recompileCounter.current++;
     setState((prev) => ({ ...prev }));
@@ -126,13 +129,19 @@ export function useSystemView(
           // We still need a baseline compileProject result for nodeMetadata / systems used by
           // surrounding UI (breadcrumbs, NodeDetailPanel). The diff SVG replaces only `svg`.
           const [base, diff] = await Promise.all([
-            compileProject(entryPath, fs, { diagramType: "system", viewPath, displayMode }),
+            compileProject(entryPath, fs, {
+              diagramType: "system",
+              viewPath,
+              displayMode,
+              emptyStateLabels,
+            }),
             compileSystemDiff({
               beforeEntryPath: compareEntryPath,
               afterEntryPath: entryPath,
               fs: compareFs ?? fs,
               viewPath,
               displayMode,
+              emptyStateLabels,
             }),
           ]);
           if (base.diagramType !== "system") return;
@@ -173,6 +182,7 @@ export function useSystemView(
           diagramType: "system",
           viewPath,
           displayMode,
+          emptyStateLabels,
         });
         if (result.diagramType !== "system") return;
         const hasErrors = result.diagnostics.some((d) => d.severity === "error");
@@ -222,8 +232,17 @@ export function useSystemView(
     return () => {
       if (timerRef.current) clearTimeout(timerRef.current);
     };
+  }, [
+    entryPath,
+    fs,
+    viewPath,
+    displayMode,
+    compareEntryPath,
+    compareFs,
+    emptyStateLabels,
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [entryPath, fs, viewPath, displayMode, compareEntryPath, compareFs, recompileCounter.current]);
+    recompileCounter.current,
+  ]);
 
   return { ...state, recompile };
 }
