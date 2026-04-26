@@ -684,12 +684,28 @@ OrderMcp        -> OrderService
 
 スコープ外（将来 Issue）: usecase レベルのプロトコルタグ。
 
-### Q4. `delivers` の構文 ★
+### Q4. `delivers` の構文 ✅ 決定
 
-プロパティ式 `service { delivers WebApp }` vs 新エッジ種別 `<ServiceId> -delivers-> <ClientId>`。
+**プロパティ式** で表現する。
 
-**推奨（自動）**: **プロパティ式**。
-理由: `delivers` は配信責任を表す宣言的属性であり、通信エッジと並列に矢印で書くと意味が混じる。`realizes`（deploy → logical）と同じ宣言的プロパティとして揃える。grep 性は `delivers ` の検索で十分担保される。
+```
+service NextServer {
+  label "Next.js BFF"
+  delivers WebApp           // 配信は宣言的プロパティ
+}
+
+client WebApp [web] { ... }
+
+WebApp -> NextServer        // API 通信は通常エッジ
+```
+
+理由:
+- `delivers` は配信責任を表す宣言的属性。`realizes`（deploy → logical）/ `owns`（team → logical）と同じ宣言的プロパティ系統に揃える
+- 通信エッジ (`->`) と並べて新エッジ種別 (`-delivers->`) を入れると、配信（静的）と API 呼び出し（実行時）が視覚的に同列で混ざる
+- grep 性は `delivers ` の検索で担保される
+- 複数 client を配信する場合は `delivers WebApp, AdminUI` のようにカンマ区切り
+
+採らない代替: 新エッジ `<ServiceId> -delivers-> <ClientId>`。配信と呼び出しが矢印で混在する点が許容できない。
 
 ### Q5. `client` の内部構造を `service` 同型にするか ★
 
