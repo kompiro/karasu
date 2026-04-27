@@ -28,7 +28,7 @@ system S {
 }
 ```
 
-WarningPanel に `unresolved-handles` 警告が出ないこと。
+WarningPanel に `unresolved-handles` 警告が出ないことを確認する。
 
 ### 2. BFF チェーン: `client → BFF.handles → backend.owns` が解決する
 
@@ -42,7 +42,7 @@ system S {
 }
 ```
 
-WarningPanel に `unresolved-handles` 警告が出ないこと。
+WarningPanel に `unresolved-handles` 警告が出ないことを確認する。
 
 ### 3. タイポで警告が出る
 
@@ -109,6 +109,10 @@ system S {
 - `packages/core/src/parser/parser.test.ts` — handles 単体 / カンマリスト / 複数行 / service 側 / 不正 kind の各テスト
 - `packages/core/src/resolver/warnings.test.ts` — 直接解決 / BFF チェーン / タイポ / エッジ抜け / BFF 宣言抜け / cycle 安全性 のテスト
 - 既存の core (955) / app (549) スイートが引き続き通過
+
+## 既知の制限
+
+- **Top-level (system 外) の `client` / `service` に書いた `handles` は edge を歩いた検証を行わない**: 上位の `unassigned-client` / `unassigned-service` 警告ですでに到達不能であることが示されているため、`unresolved-handles` 警告は重ねて出さない。`handles` のタイポ自体は気付きにくくなるが、いったん system に取り込めば検証が走る。
 
 ## スコープ外（次フェーズ）
 

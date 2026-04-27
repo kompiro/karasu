@@ -48,8 +48,13 @@ export function useFormattedDiagnostic(): (d: Diagnostic) => string {
               return t("diagnostic.propertyNotForNodeKind.team");
             case "handles":
               return t("diagnostic.propertyNotForNodeKind.handles");
+            default: {
+              const exhaustive: never = d.params.property;
+              throw new Error(
+                `unhandled property-not-for-node-kind variant: ${String(exhaustive)}`,
+              );
+            }
           }
-          break;
         case "infra-not-in-context":
           return t("diagnostic.infraNotInContext.message", d.params);
         case "expected-id-or-string":

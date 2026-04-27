@@ -53,6 +53,10 @@ export function formatDiagnostic(d: Diagnostic): string {
           return `"team" property is only valid for service and domain nodes`;
         case "handles":
           return `"handles" property is only valid for client and service nodes`;
+        default: {
+          const exhaustive: never = d.params.property;
+          throw new Error(`unhandled property-not-for-node-kind variant: ${String(exhaustive)}`);
+        }
       }
     case "infra-not-in-context":
       return `"${d.params.infraKind}" is only valid as a direct child of system, not inside "${d.params.parentKind}"`;

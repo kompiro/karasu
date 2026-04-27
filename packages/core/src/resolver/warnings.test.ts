@@ -490,6 +490,20 @@ system S {
     expect(unresolved(multiLineForm)).toHaveLength(0);
   });
 
+  it("accepts redundant handles for a self-owned domain", () => {
+    const krs = `
+system S {
+  service Backend {
+    domain Order {}
+    handles Order
+  }
+}
+    `;
+    // The service owns Order via the child node; listing it again under
+    // handles is redundant but not an error.
+    expect(unresolved(krs)).toHaveLength(0);
+  });
+
   it("does not enter infinite recursion on cycles", () => {
     const krs = `
 system S {
