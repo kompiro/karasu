@@ -75,6 +75,8 @@ function makeWarning(kind: Warning["kind"]): Warning {
       return { kind, params: { ref: "A.B" } };
     case "cyclic-dependency":
       return { kind, params: { cyclePath: ["A", "B", "A"] } };
+    case "delivers-target-not-client":
+      return { kind, params: { serviceId: "test-service", targetId: "test-target" } };
   }
 }
 

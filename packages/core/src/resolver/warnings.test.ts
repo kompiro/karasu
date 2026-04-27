@@ -875,3 +875,38 @@ system ECPlatform {
     expect(unassigned[0].params).toEqual({ storageId: "FileStore", label: "ファイル" });
   });
 });
+
+describe("delivers-target-not-client warning", () => {
+  it("does not warn when delivers target is a client peer", () => {
+    const krs = `
+system S {
+  service NextServer {
+    delivers WebApp
+  }
+  client WebApp [web]
+}
+`;
+    const file = Parser.parse(krs).value;
+    const warnings = analyze(file, [getBuiltinStyleSheet()]);
+    expect(warnings.filter((w) => w.kind === "delivers-target-not-client")).toHaveLength(0);
+  });
+
+  it("warns when delivers target is missing or not a client", () => {
+    const krs = `
+system S {
+  service NextServer {
+    delivers OrderService, GhostId
+  }
+  service OrderService {}
+}
+`;
+    const file = Parser.parse(krs).value;
+    const warnings = analyze(file, [getBuiltinStyleSheet()]);
+    const filtered = warnings.filter((w) => w.kind === "delivers-target-not-client");
+    expect(filtered).toHaveLength(2);
+    const targets = filtered.map((w) =>
+      w.kind === "delivers-target-not-client" ? w.params.targetId : "",
+    );
+    expect(targets.sort()).toEqual(["GhostId", "OrderService"]);
+  });
+});

@@ -286,6 +286,7 @@ export class Parser {
       label?: string;
       resources?: import("../types/ast.js").ClientResource[];
       handles?: string[];
+      delivers?: string[];
     },
     parentId?: string,
   ): void {
@@ -366,6 +367,35 @@ export class Parser {
           }
         } else {
           this.error("property-not-for-node-kind", { property: "team", nodeKind: kind });
+          this.advance();
+        }
+        continue;
+      }
+
+      // Property: delivers (service only). Comma-separated list of client ids.
+      if (token.type === TokenType.Delivers) {
+        if (kind === "service") {
+          this.advance();
+          if (!properties.delivers) properties.delivers = [];
+          // Parse one or more identifiers separated by commas.
+          while (true) {
+            if (
+              this.peek().type === TokenType.Identifier ||
+              this.peek().type === TokenType.StringLiteral
+            ) {
+              properties.delivers.push(this.advance().value);
+            } else {
+              this.error("expected-id-after", { property: "delivers" });
+              break;
+            }
+            if (this.peek().type === TokenType.Comma) {
+              this.advance();
+              continue;
+            }
+            break;
+          }
+        } else {
+          this.error("property-not-for-node-kind", { property: "delivers", nodeKind: kind });
           this.advance();
         }
         continue;
@@ -574,6 +604,7 @@ export class Parser {
       label?: string;
       resources?: import("../types/ast.js").ClientResource[];
       handles?: string[];
+      delivers?: string[];
     } = {
       links: [],
     };
@@ -619,6 +650,9 @@ export class Parser {
             links: properties.links,
             team: properties.team,
             ...(properties.handles ? { handles: properties.handles } : {}),
+            ...(properties.delivers && properties.delivers.length > 0
+              ? { delivers: properties.delivers }
+              : {}),
           },
         };
       case "user":

@@ -279,6 +279,13 @@ class Printer {
     if ("team" in node.properties && node.properties.team !== undefined) {
       lines.push(`${indent}team "${node.properties.team}"`);
     }
+    if (
+      "delivers" in node.properties &&
+      Array.isArray(node.properties.delivers) &&
+      node.properties.delivers.length > 0
+    ) {
+      lines.push(`${indent}delivers ${node.properties.delivers.join(", ")}`);
+    }
     for (const link of node.properties.links) {
       lines.push(this.renderLink(link, indent));
     }

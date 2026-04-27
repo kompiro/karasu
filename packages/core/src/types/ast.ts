@@ -72,6 +72,12 @@ export interface ServiceNode extends BaseNodeFields {
      * must itself expose the named domain.
      */
     handles?: string[];
+    /**
+     * Client ids this service ships (BFF / SSR pattern). The renderer synthesizes
+     * a tagged `delivers` edge for each entry; the property itself is the source of
+     * truth for round-tripping.
+     */
+    delivers?: string[];
   };
 }
 
@@ -324,7 +330,10 @@ export interface DiagnosticParamsByCode {
   "expected-string-after": {
     property: "label" | "role" | "team" | "description" | "slack" | "github";
   };
-  "property-not-for-node-kind": { property: "role" | "team" | "handles"; nodeKind: string };
+  "property-not-for-node-kind": {
+    property: "role" | "team" | "handles" | "delivers";
+    nodeKind: string;
+  };
   "infra-not-in-context": { infraKind: string; parentKind: string };
   "expected-id-or-string": { context: string };
   "expected-node-id": { kind: string };

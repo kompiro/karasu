@@ -144,6 +144,8 @@ export const ja: Partial<Translations> = {
   "warning.crossSystemRefImplicitExternal.suppressHint": ({ targetSystemId, sourceSystemId }) =>
     `system ${sourceSystemId} に 'service ${targetSystemId} [external]' を追加するとこの警告を抑制できます`,
   "warning.cyclicDependency.message": ({ path }) => `循環依存を検出しました: ${path}`,
+  "warning.deliversTargetNotClient.message": ({ serviceId, targetId }) =>
+    `service "${serviceId}" の delivers 先 "${targetId}" は client ノードではありません`,
 
   // Diagnostics (rendered in PreviewPane's diagnostic banner)
   "diagnostic.tokenTypeMismatch.message": ({ expected, got, value }) =>
@@ -167,6 +169,7 @@ export const ja: Partial<Translations> = {
   "diagnostic.propertyNotForNodeKind.role": `"role" プロパティは user ノードでのみ有効です`,
   "diagnostic.propertyNotForNodeKind.team": `"team" プロパティは service / domain ノードでのみ有効です`,
   "diagnostic.propertyNotForNodeKind.handles": `"handles" プロパティは client / service ノードでのみ有効です`,
+  "diagnostic.propertyNotForNodeKind.delivers": `"delivers" プロパティは service ノードでのみ有効です`,
   "diagnostic.infraNotInContext.message": ({ infraKind, parentKind }) =>
     `"${infraKind}" は system の直接の子としてのみ有効です。"${parentKind}" の内側には配置できません`,
   "diagnostic.expectedIdOrString.message": ({ context }) =>

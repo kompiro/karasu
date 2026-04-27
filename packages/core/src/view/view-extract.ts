@@ -215,6 +215,39 @@ function deriveInfraEdges(children: KrsNode[]): KrsEdge[] {
 }
 
 /**
+ * Derive `service -> client` edges from each service's `properties.delivers` declaration.
+ * Only edges whose target id matches a `client` peer in `children` are surfaced; unresolved
+ * targets are reported as warnings by the resolver. Edges are tagged `delivers` so the
+ * stylesheet can render them distinctly from regular communication edges.
+ */
+function deriveDeliversEdges(children: KrsNode[]): KrsEdge[] {
+  const clientIds = new Set(children.filter((c) => c.kind === "client").map((c) => c.id));
+  if (clientIds.size === 0) return [];
+
+  const edges: KrsEdge[] = [];
+  const seen = new Set<string>();
+  for (const child of children) {
+    if (child.kind !== "service") continue;
+    const delivers = child.properties.delivers;
+    if (!delivers || delivers.length === 0) continue;
+    for (const targetId of delivers) {
+      if (!clientIds.has(targetId)) continue;
+      const key = `${child.id}->${targetId}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      edges.push({
+        from: child.id,
+        to: targetId,
+        kind: "sync",
+        tags: ["delivers"],
+        loc: child.loc,
+      });
+    }
+  }
+  return edges;
+}
+
+/**
  * ViewPath identifies the drill-down position in the hierarchy.
  * [] = root system view (shows systems[0])
  * ["ECPlatform", "ECommerce"] = ECommerce service inside ECPlatform system
@@ -554,10 +587,11 @@ export function extractView(
           new Set(),
         );
       const derivedEdges = deriveInfraEdges(orphans);
+      const deliversEdges = deriveDeliversEdges(orphans);
       return {
         ...empty,
         childNodes: orphans,
-        childEdges: [...derivedEdges, ...implicitServiceEdges],
+        childEdges: [...derivedEdges, ...implicitServiceEdges, ...deliversEdges],
         implicitEdgeDetails,
       };
     }
@@ -630,10 +664,12 @@ export function extractView(
         allChildren.filter((c) => c.kind === "service"),
         explicitKeys,
       );
+    const deliversEdges = deriveDeliversEdges(allChildren);
     const childEdges = [
       ...explicitEdges,
       ...derivedEdges.filter((e) => !explicitKeys.has(`${e.from}->${e.to}`)),
       ...implicitServiceEdges,
+      ...deliversEdges,
     ];
 
     // Cross-system edges: collect from all systems where target is qualified

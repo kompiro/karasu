@@ -20,6 +20,7 @@ const KEYWORDS: Record<string, TokenType> = {
   runtime: TokenType.Runtime,
   realizes: TokenType.Realizes,
   handles: TokenType.Handles,
+  delivers: TokenType.Delivers,
   schedule: TokenType.Schedule,
   image: TokenType.Image,
   type: TokenType.Type,

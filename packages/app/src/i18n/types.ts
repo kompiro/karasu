@@ -145,6 +145,10 @@ export type Translations = {
     sourceSystemId: string;
   }) => string;
   "warning.cyclicDependency.message": (params: { path: string }) => string;
+  "warning.deliversTargetNotClient.message": (params: {
+    serviceId: string;
+    targetId: string;
+  }) => string;
 
   // Diagnostic messages (Phase D.2) — rendered in PreviewPane's diagnostic
   // banner. One entry per DiagnosticCode; codes with branching messages
@@ -183,6 +187,7 @@ export type Translations = {
   "diagnostic.propertyNotForNodeKind.role": string;
   "diagnostic.propertyNotForNodeKind.team": string;
   "diagnostic.propertyNotForNodeKind.handles": string;
+  "diagnostic.propertyNotForNodeKind.delivers": string;
   "diagnostic.infraNotInContext.message": (params: {
     infraKind: string;
     parentKind: string;

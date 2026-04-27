@@ -75,6 +75,39 @@ system ECPlatform {
 `;
 
 describe("extractView", () => {
+  describe("delivers edge synthesis", () => {
+    it("synthesizes a tagged edge from service.delivers to a sibling client", () => {
+      const systems = parseSystem(`
+system ECPlatform {
+  service NextServer {
+    delivers WebApp
+  }
+  client WebApp [web]
+}
+`);
+      const view = extractView(systems, []);
+      const delivers = view.childEdges.filter((e) => e.tags.includes("delivers"));
+      expect(delivers).toHaveLength(1);
+      expect(delivers[0].from).toBe("NextServer");
+      expect(delivers[0].to).toBe("WebApp");
+    });
+
+    it("skips delivers entries whose target is not a peer client", () => {
+      const systems = parseSystem(`
+system S {
+  service BFF {
+    delivers WebApp, Missing
+  }
+  client WebApp [web]
+}
+`);
+      const view = extractView(systems, []);
+      const delivers = view.childEdges.filter((e) => e.tags.includes("delivers"));
+      expect(delivers).toHaveLength(1);
+      expect(delivers[0].to).toBe("WebApp");
+    });
+  });
+
   describe("system view (empty path)", () => {
     it("returns system's direct children", () => {
       const systems = parseSystem(FULL_KRS);

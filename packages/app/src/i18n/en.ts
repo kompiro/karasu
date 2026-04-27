@@ -144,6 +144,8 @@ export const en: Translations = {
   "warning.crossSystemRefImplicitExternal.suppressHint": ({ targetSystemId, sourceSystemId }) =>
     `Add 'service ${targetSystemId} [external]' to system ${sourceSystemId} to suppress this warning`,
   "warning.cyclicDependency.message": ({ path }) => `Circular dependency detected: ${path}`,
+  "warning.deliversTargetNotClient.message": ({ serviceId, targetId }) =>
+    `service "${serviceId}" delivers target "${targetId}" is not a client node`,
 
   // Diagnostics (rendered in PreviewPane's diagnostic banner)
   "diagnostic.tokenTypeMismatch.message": ({ expected, got, value }) =>
@@ -167,6 +169,7 @@ export const en: Translations = {
   "diagnostic.propertyNotForNodeKind.role": `"role" property is only valid for user nodes`,
   "diagnostic.propertyNotForNodeKind.team": `"team" property is only valid for service and domain nodes`,
   "diagnostic.propertyNotForNodeKind.handles": `"handles" property is only valid for client and service nodes`,
+  "diagnostic.propertyNotForNodeKind.delivers": `"delivers" property is only valid for service nodes`,
   "diagnostic.infraNotInContext.message": ({ infraKind, parentKind }) =>
     `"${infraKind}" is only valid as a direct child of system, not inside "${parentKind}"`,
   "diagnostic.expectedIdOrString.message": ({ context }) =>
