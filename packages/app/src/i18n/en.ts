@@ -80,6 +80,7 @@ export const en: Translations = {
   "emptyState.deploy.hint": "Add a deploy block to your .krs file",
   "emptyState.org.noTeams": "No teams defined",
   "emptyState.system.noNodes": "No nodes to render",
+  "emptyState.org.placeholder": "No org diagram",
 
   // ReferencePanel
   "referencePanel.unsupportedMessage": "Tags & Annotations are not available for this diagram.",

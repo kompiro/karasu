@@ -8,12 +8,14 @@ import {
   type DisplayMode,
   type Diagnostic,
 } from "@karasu-tools/core";
+import { useEmptyStateLabels } from "../i18n/use-empty-state-labels.js";
 
 export function useViewSvg(
   fileContent: string | undefined,
   displayMode: DisplayMode | undefined,
   styleSource?: string,
 ) {
+  const emptyStateLabels = useEmptyStateLabels();
   const drillDownResult = useMemo(() => {
     if (!fileContent) return undefined;
     try {
@@ -35,20 +37,20 @@ export function useViewSvg(
   const orgAllLayersResult = useMemo(() => {
     if (!fileContent) return undefined;
     try {
-      return buildAllLayersSvgOrg(fileContent, styleSource, displayMode);
+      return buildAllLayersSvgOrg(fileContent, styleSource, displayMode, emptyStateLabels);
     } catch {
       return undefined;
     }
-  }, [fileContent, displayMode, styleSource]);
+  }, [fileContent, displayMode, styleSource, emptyStateLabels]);
 
   const orgDrillDownResult = useMemo(() => {
     if (!fileContent) return undefined;
     try {
-      return buildDrillDownSvgOrg(fileContent, styleSource, displayMode);
+      return buildDrillDownSvgOrg(fileContent, styleSource, displayMode, emptyStateLabels);
     } catch {
       return undefined;
     }
-  }, [fileContent, displayMode, styleSource]);
+  }, [fileContent, displayMode, styleSource, emptyStateLabels]);
 
   const allViewsResult = useMemo(() => {
     if (!fileContent) return undefined;

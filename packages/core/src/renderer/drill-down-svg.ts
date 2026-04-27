@@ -16,6 +16,7 @@ import {
   type DrillDownCallbacks,
   type SvgResult,
 } from "./all-layers-svg.js";
+import { DEFAULT_EMPTY_STATE_LABELS, type EmptyStateLabels } from "./empty-state-labels.js";
 import "../renderer/shapes.js"; // ensure built-in shapes are registered
 
 const DRILL_DOWN_CSS = `
@@ -128,11 +129,15 @@ export function buildDrillDownSvgOrg(
   krsFile: KrsFile,
   styleSource?: string,
   displayMode?: DisplayMode,
+  emptyStateLabels?: EmptyStateLabels,
 ): SvgResult {
   const topLevelTeams = krsFile.organizations.flatMap((o) => o.teams);
   if (topLevelTeams.length === 0) {
+    const text = escapeXml(
+      emptyStateLabels?.orgPlaceholder ?? DEFAULT_EMPTY_STATE_LABELS.orgPlaceholder,
+    );
     return {
-      svg: `<svg xmlns="http://www.w3.org/2000/svg" width="100%" height="100%" viewBox="0 0 200 100"><text x="100" y="50" text-anchor="middle" fill="#9CA3AF" font-family="sans-serif">No org diagram</text></svg>`,
+      svg: `<svg xmlns="http://www.w3.org/2000/svg" width="100%" height="100%" viewBox="0 0 200 100"><text x="100" y="50" text-anchor="middle" fill="#9CA3AF" font-family="sans-serif">${text}</text></svg>`,
       diagnostics: [],
     };
   }

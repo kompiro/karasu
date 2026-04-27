@@ -89,6 +89,7 @@ export type Translations = {
   "emptyState.deploy.hint": string;
   "emptyState.org.noTeams": string;
   "emptyState.system.noNodes": string;
+  "emptyState.org.placeholder": string;
 
   // ReferencePanel (Phase C5)
   "referencePanel.unsupportedMessage": string;

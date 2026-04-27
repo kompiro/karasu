@@ -13,6 +13,11 @@ export interface EmptyStateLabels {
   orgNoTeams?: string;
   /** Text for the system view when the layout has no nodes or containers. */
   systemNoNodes?: string;
+  /**
+   * Text for the org all-layers / drill-down placeholder rendered when the
+   * `.krs` file has no organization block (or compiled to no levels).
+   */
+  orgPlaceholder?: string;
 }
 
 export const DEFAULT_EMPTY_STATE_LABELS = {
@@ -20,4 +25,5 @@ export const DEFAULT_EMPTY_STATE_LABELS = {
   deployHint: "Add a deploy block to your .krs file",
   orgNoTeams: "No teams defined",
   systemNoNodes: "No nodes to render",
+  orgPlaceholder: "No org diagram",
 } as const satisfies Required<EmptyStateLabels>;
