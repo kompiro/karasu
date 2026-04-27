@@ -1,6 +1,6 @@
 ---
 id: ADR-20260401-06
-title: Domain Drift Detection — Scope and Detection Key
+title: "Domain Drift Detection — 検出スコープと検出キー"
 status: accepted
 date: 2026-04-01
 topic: resolver
@@ -11,7 +11,7 @@ scope:
     - core
 ---
 
-# ADR-20260401-06: Domain Drift Detection — Scope and Detection Key
+# ADR-20260401-06: Domain Drift Detection — 検出スコープと検出キー
 
 - **日付**: 2026-04-01
 - **ステータス**: 決定済み

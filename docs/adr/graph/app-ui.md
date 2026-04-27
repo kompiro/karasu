@@ -9,9 +9,9 @@ flowchart TD
     ADR_20260323_02["ADR-20260323-02<br/>ツールバーボタンはアイコン+テキストラベル必須"]
     ADR_20260326_02["ADR-20260326-02<br/>MemoryMode と ProjectMode の統一 — Reducer + `Karas..."]
     ADR_20260326_03["ADR-20260326-03<br/>Editor 診断表示 — Monaco マーカー + Preview エラーオーバーレイ"]
-    ADR_20260330_02["ADR-20260330-02<br/>Toolbar Button Display Rules"]
+    ADR_20260330_02["ADR-20260330-02<br/>ツールバーボタンの表示ルール"]
     ADR_20260404_04["ADR-20260404-04<br/>system セレクタUIを採用しない"]
-    ADR_20260405_02["ADR-20260405-02<br/>Toolbar Button Actionable Modifier Class"]
+    ADR_20260405_02["ADR-20260405-02<br/>ツールバーボタンの actionable 修飾クラス"]
     ADR_20260405_04["ADR-20260405-04<br/>Reference パネルの図種別コンテキスト対応"]
     ADR_20260407_03["ADR-20260407-03<br/>ProjectSelector の Rename 操作 — インライン入力欄パターン"]
     ADR_20260408_03["ADR-20260408-03<br/>ProjectMode 初期コンテンツ — `examples/ec-platform` から..."]
@@ -30,7 +30,7 @@ flowchart TD
   ADR_20260328_02["ADR-20260328-02<br/>[renderer] SVG エクスポートの 2 フェーズ実装（現在ビュー + Full View 単一ファイル）"]
   ADR_20260411_06["ADR-20260411-06<br/>[project] Export Project as ZIP — `fflate` による OPFS エクスポート"]
   ADR_20260412_03["ADR-20260412-03<br/>[project] Import Project from ZIP — `fflate` 再利用 + トップレベル除去"]
-  ADR_20260420_03["ADR-20260420-03<br/>[chat-ai] i18n Rollout — English / Japanese UI, Diagnosti..."]
+  ADR_20260420_03["ADR-20260420-03<br/>[chat-ai] i18n ロールアウト — 英語 / 日本語の UI・診断・Chat"]
   ADR_20260422_07["ADR-20260422-07<br/>[project] OPFS 履歴スナップショットを diff 比較ソースにする"]
   ADR_20260326_03 --> ADR_20260320_01
   ADR_20260407_03 --> ADR_20260317_02

@@ -6,7 +6,7 @@ Other topics: [overview](../graph.md).
 ```mermaid
 flowchart TD
   subgraph resolver["resolver"]
-    ADR_20260401_06["ADR-20260401-06<br/>Domain Drift Detection — Scope and Detection Key"]
+    ADR_20260401_06["ADR-20260401-06<br/>Domain Drift Detection — 検出スコープと検出キー"]
     ADR_20260405_05["ADR-20260405-05<br/>`database` / `queue` / `storage` を system 直下のファ..."]
     ADR_20260405_06["ADR-20260405-06<br/>循環依存の検出と `KrsEdge.cyclic` フラグによる視覚化"]
     ADR_20260411_02["ADR-20260411-02<br/>移行期における重複ドメイン ID の共存を `@deprecated` + `@migrati..."]

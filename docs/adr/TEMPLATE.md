@@ -1,6 +1,6 @@
 ---
 id: ADR-YYYYMMDD-NN
-title: Short human-readable title (matches body H1 after the `:`)
+title: 短く人間が読めるタイトル（body H1 の `:` 以降と一致させる、原則日本語 — see ADR-20260427-02）
 status: accepted
 date: YYYY-MM-DD
 # topic must match one of the section headings in docs/adr/README.md:

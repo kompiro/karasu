@@ -1,6 +1,6 @@
 ---
 id: ADR-20260405-02
-title: Toolbar Button Actionable Modifier Class
+title: ツールバーボタンの actionable 修飾クラス
 status: accepted
 date: 2026-04-05
 topic: app-ui
@@ -11,7 +11,7 @@ scope:
     - app
 ---
 
-# ADR-20260405-02: Toolbar Button Actionable Modifier Class
+# ADR-20260405-02: ツールバーボタンの actionable 修飾クラス
 
 **Date:** 2026-04-05
 **Status:** Accepted

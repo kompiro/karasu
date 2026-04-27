@@ -1,13 +1,13 @@
 ---
 id: ADR-20260404-02
-title: Do not rename Claude session to feature name in start-dev skill
+title: "start-dev スキルで Claude セッション名を機能名にリネームしない"
 status: not_adopted
 date: 2026-04-04
 topic: build
 scope:
 ---
 
-# ADR-20260404-02: Do not rename Claude session to feature name in start-dev skill
+# ADR-20260404-02: start-dev スキルで Claude セッション名を機能名にリネームしない
 
 ## Status
 

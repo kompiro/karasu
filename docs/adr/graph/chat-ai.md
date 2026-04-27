@@ -10,9 +10,9 @@ flowchart TD
     ADR_20260409_01["ADR-20260409-01<br/>Chat UI Phase 2 — BYOK + AI 統合の実装方針"]
     ADR_20260409_08["ADR-20260409-08<br/>Chat UI Panel — 全体アーキテクチャと Phase 1 レイアウト"]
     ADR_20260412_01["ADR-20260412-01<br/>Chat UI Phase 3 — 構造化インタビュープロンプトの実装方針"]
-    ADR_20260412_05["ADR-20260412-05<br/>Playwright with AI-assisted visual review"]
-    ADR_20260418_01["ADR-20260418-01<br/>Chat system prompt i18n — locale detection and ..."]
-    ADR_20260420_03["ADR-20260420-03<br/>i18n Rollout — English / Japanese UI, Diagnosti..."]
+    ADR_20260412_05["ADR-20260412-05<br/>Playwright と AI による視覚レビューの併用"]
+    ADR_20260418_01["ADR-20260418-01<br/>Chat システムプロンプトの i18n — ロケール検出とプロンプト選択"]
+    ADR_20260420_03["ADR-20260420-03<br/>i18n ロールアウト — 英語 / 日本語の UI・診断・Chat"]
     ADR_20260422_02["ADR-20260422-02<br/>Chat UI AI 設計レビュー — プロンプト駆動 + トリガー二系統"]
   end
   ADR_20260324_01["ADR-20260324-01<br/>[testing] E2EテストよりQA手動確認を優先する"]
