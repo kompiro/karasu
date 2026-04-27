@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { compile } from "@karasu-tools/core";
+import { compile, buildAllLayersSvgOrg, buildDrillDownSvgOrg } from "@karasu-tools/core";
 import { ja } from "./ja.js";
 import { translate } from "./index.js";
 
@@ -13,26 +13,38 @@ describe("i18n locale coverage — empty-state pipeline", () => {
     expect(ja["emptyState.deploy.hint"]).toBeDefined();
     expect(ja["emptyState.org.noTeams"]).toBeDefined();
     expect(ja["emptyState.system.noNodes"]).toBeDefined();
+    expect(ja["emptyState.org.placeholder"]).toBeDefined();
   });
 });
 
 // Regression guard for ja-locale renders. As each follow-up i18n-izes a
 // known core hardcode, drop it from this list. When the list is empty the
-// test as a whole is dead code and can be removed. Currently active for
-// the system-view path (#827); the org placeholder path is tracked in
-// #828 and not yet covered here.
-const jaSystemLabels = {
+// test as a whole is dead code and can be removed.
+const jaLabels = {
   systemNoNodes: translate("ja", "emptyState.system.noNodes"),
+  orgPlaceholder: translate("ja", "emptyState.org.placeholder"),
 };
 
-describe("i18n locale coverage — ja system view has no English empty-state hardcode", () => {
-  it("renders the ja translation, not 'No nodes to render'", () => {
-    // An empty system block produces the empty-state placeholder.
+describe("i18n locale coverage — ja renders contain no English empty-state hardcodes", () => {
+  it("system view: renders ja, not 'No nodes to render'", () => {
     const result = compile("system Demo {}\n", {
       diagramType: "system",
-      emptyStateLabels: jaSystemLabels,
+      emptyStateLabels: jaLabels,
     });
     expect(result.svg).not.toContain("No nodes to render");
-    expect(result.svg).toContain(jaSystemLabels.systemNoNodes);
+    expect(result.svg).toContain(jaLabels.systemNoNodes);
+  });
+
+  it("org all-layers: renders ja, not 'No org diagram'", () => {
+    // Source with no organization block triggers the placeholder.
+    const result = buildAllLayersSvgOrg("system S {}\n", undefined, undefined, jaLabels);
+    expect(result.svg).not.toContain("No org diagram");
+    expect(result.svg).toContain(jaLabels.orgPlaceholder);
+  });
+
+  it("org drill-down: renders ja, not 'No org diagram'", () => {
+    const result = buildDrillDownSvgOrg("system S {}\n", undefined, undefined, jaLabels);
+    expect(result.svg).not.toContain("No org diagram");
+    expect(result.svg).toContain(jaLabels.orgPlaceholder);
   });
 });

@@ -11,7 +11,13 @@ import { resolveStyles } from "../resolver/style-resolver.js";
 import { getBuiltinStyleSheet } from "../builtins/default-style.js";
 import { getIconThemeStyleSheet } from "../builtins/icon-theme.js";
 import { StyleParser } from "../parser/style-parser.js";
+import { DEFAULT_EMPTY_STATE_LABELS, type EmptyStateLabels } from "./empty-state-labels.js";
 import "../renderer/shapes.js"; // ensure built-in shapes are registered
+
+function buildOrgPlaceholderSvg(labels?: EmptyStateLabels): string {
+  const text = escapeXml(labels?.orgPlaceholder ?? DEFAULT_EMPTY_STATE_LABELS.orgPlaceholder);
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="200" height="100" viewBox="0 0 200 100"><text x="100" y="50" text-anchor="middle" fill="#9CA3AF" font-family="sans-serif">${text}</text></svg>`;
+}
 
 // ─── Shared helpers (also used by drill-down-svg.ts) ─────────────────────────
 
@@ -196,12 +202,13 @@ export function buildAllLayersSvgOrg(
   krsFile: KrsFile,
   styleSource?: string,
   displayMode?: DisplayMode,
+  emptyStateLabels?: EmptyStateLabels,
 ): SvgResult {
   const organizations = krsFile.organizations;
   const topLevelTeams = organizations.flatMap((o) => o.teams);
   if (topLevelTeams.length === 0) {
     return {
-      svg: `<svg xmlns="http://www.w3.org/2000/svg" width="200" height="100" viewBox="0 0 200 100"><text x="100" y="50" text-anchor="middle" fill="#9CA3AF" font-family="sans-serif">No org diagram</text></svg>`,
+      svg: buildOrgPlaceholderSvg(emptyStateLabels),
       diagnostics: [],
     };
   }
@@ -228,7 +235,7 @@ export function buildAllLayersSvgOrg(
 
   if (levels.length === 0) {
     return {
-      svg: `<svg xmlns="http://www.w3.org/2000/svg" width="200" height="100" viewBox="0 0 200 100"><text x="100" y="50" text-anchor="middle" fill="#9CA3AF" font-family="sans-serif">No org diagram</text></svg>`,
+      svg: buildOrgPlaceholderSvg(emptyStateLabels),
       diagnostics,
     };
   }

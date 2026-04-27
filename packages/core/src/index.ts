@@ -682,9 +682,15 @@ export function buildAllLayersSvgOrg(
   krsSource: string,
   styleSource?: string,
   displayMode?: DisplayMode,
+  emptyStateLabels?: EmptyStateLabels,
 ): SvgResult {
   const parseResult: ParseResult<KrsFile> = Parser.parse(krsSource);
-  const result = _buildAllLayersSvgOrg(parseResult.value, styleSource, displayMode);
+  const result = _buildAllLayersSvgOrg(
+    parseResult.value,
+    styleSource,
+    displayMode,
+    emptyStateLabels,
+  );
   return { svg: result.svg, diagnostics: [...parseResult.diagnostics, ...result.diagnostics] };
 }
 
@@ -696,9 +702,15 @@ export function buildDrillDownSvgOrg(
   krsSource: string,
   styleSource?: string,
   displayMode?: DisplayMode,
+  emptyStateLabels?: EmptyStateLabels,
 ): SvgResult {
   const parseResult: ParseResult<KrsFile> = Parser.parse(krsSource);
-  const result = _buildDrillDownSvgOrg(parseResult.value, styleSource, displayMode);
+  const result = _buildDrillDownSvgOrg(
+    parseResult.value,
+    styleSource,
+    displayMode,
+    emptyStateLabels,
+  );
   return { svg: result.svg, diagnostics: [...parseResult.diagnostics, ...result.diagnostics] };
 }
 

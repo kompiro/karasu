@@ -80,6 +80,7 @@ export const ja: Partial<Translations> = {
   "emptyState.deploy.hint": ".krs ファイルに deploy ブロックを追加してください",
   "emptyState.org.noTeams": "team が定義されていません",
   "emptyState.system.noNodes": "表示するノードがありません",
+  "emptyState.org.placeholder": "org 図がありません",
 
   // ReferencePanel
   "referencePanel.unsupportedMessage": "Tags & Annotations はこのダイアグラムでは未対応です。",

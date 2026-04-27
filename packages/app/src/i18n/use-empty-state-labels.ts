@@ -19,6 +19,7 @@ export function useEmptyStateLabels(): EmptyStateLabels {
       deployHint: translate(locale, "emptyState.deploy.hint"),
       orgNoTeams: translate(locale, "emptyState.org.noTeams"),
       systemNoNodes: translate(locale, "emptyState.system.noNodes"),
+      orgPlaceholder: translate(locale, "emptyState.org.placeholder"),
     }),
     [locale],
   );
