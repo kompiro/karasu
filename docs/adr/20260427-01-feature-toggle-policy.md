@@ -1,6 +1,6 @@
 ---
 id: ADR-20260427-01
-title: Feature toggle policy — compile-time, short-lived, deleted on graduation
+title: "Feature toggle ポリシー — compile-time、短命、卒業時に削除"
 status: accepted
 date: 2026-04-27
 topic: build
@@ -13,7 +13,7 @@ scope:
     - ci
 ---
 
-# ADR-20260427-01: Feature toggle policy — compile-time, short-lived, deleted on graduation
+# ADR-20260427-01: Feature toggle ポリシー — compile-time、短命、卒業時に削除
 
 - **日付**: 2026-04-27
 - **ステータス**: 決定済み

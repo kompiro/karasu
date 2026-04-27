@@ -1,6 +1,6 @@
 ---
 id: ADR-20260416-01
-title: DOMPurify Adoption for HTML Sanitization
+title: HTML サニタイズに DOMPurify を採用
 status: accepted
 date: 2026-04-16
 topic: build
@@ -13,7 +13,7 @@ scope:
     - dependencies
 ---
 
-# ADR-20260416-01: DOMPurify Adoption for HTML Sanitization
+# ADR-20260416-01: HTML サニタイズに DOMPurify を採用
 
 ## Status
 

@@ -1,6 +1,6 @@
 ---
 id: ADR-20260412-05
-title: Playwright with AI-assisted visual review
+title: Playwright と AI による視覚レビューの併用
 status: accepted
 date: 2026-04-12
 topic: chat-ai
@@ -12,7 +12,7 @@ assumptions:
   - "file: packages/e2e/package.json"
 ---
 
-# ADR-20260412-05: Playwright with AI-assisted visual review
+# ADR-20260412-05: Playwright と AI による視覚レビューの併用
 
 - **日付**: 2026-04-12
 - **ステータス**: 決定済み

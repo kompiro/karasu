@@ -1,6 +1,6 @@
 ---
 id: ADR-20260401-01
-title: Adopt marked for Markdown rendering and chokidar for file watching
+title: Markdown レンダリングに marked、ファイル監視に chokidar を採用
 status: accepted
 date: 2026-04-01
 topic: build
@@ -14,7 +14,7 @@ scope:
     - dependencies
 ---
 
-# ADR-20260401-01: Adopt marked for Markdown rendering and chokidar for file watching
+# ADR-20260401-01: Markdown レンダリングに marked、ファイル監視に chokidar を採用
 
 ## Status
 

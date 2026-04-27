@@ -1,13 +1,13 @@
 ---
 id: ADR-20260330-03
-title: vitest Placement in Monorepo — Workspace Delegation over Root Install
+title: "モノレポ内 vitest の配置 — ルート install ではなく workspace delegation"
 status: accepted
 date: 2026-03-30
 topic: testing
 scope:
 ---
 
-# ADR-20260330-03: vitest Placement in Monorepo — Workspace Delegation over Root Install
+# ADR-20260330-03: モノレポ内 vitest の配置 — ルート install ではなく workspace delegation
 
 ## Status
 

@@ -1,6 +1,6 @@
 ---
 id: ADR-20260404-03
-title: Do not implement PNG export
+title: PNG エクスポートは実装しない
 status: not_adopted
 date: 2026-04-04
 topic: renderer
@@ -9,7 +9,7 @@ scope:
     - core
 ---
 
-# ADR-20260404-03: Do not implement PNG export
+# ADR-20260404-03: PNG エクスポートは実装しない
 
 ## Status
 

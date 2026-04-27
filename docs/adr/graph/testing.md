@@ -9,9 +9,9 @@ flowchart TD
     ADR_20260324_01["ADR-20260324-01<br/>E2EテストよりQA手動確認を優先する"]
     ADR_20260325_01["ADR-20260325-01<br/>コンポーネントテストに @testing-library/react を採用する"]
     ADR_20260326_04["ADR-20260326-04<br/>`packages/app` のテスト戦略 — `@testing-library/react..."]
-    ADR_20260330_03["ADR-20260330-03<br/>vitest Placement in Monorepo — Workspace Delega..."]
+    ADR_20260330_03["ADR-20260330-03<br/>モノレポ内 vitest の配置 — ルート install ではなく workspace d..."]
   end
-  ADR_20260412_05["ADR-20260412-05<br/>[chat-ai] Playwright with AI-assisted visual review"]
+  ADR_20260412_05["ADR-20260412-05<br/>[chat-ai] Playwright と AI による視覚レビューの併用"]
   ADR_20260326_04 --> ADR_20260325_01
   ADR_20260412_05 -.supersedes.-> ADR_20260324_01
 

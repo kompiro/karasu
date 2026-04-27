@@ -1,6 +1,6 @@
 ---
 id: ADR-20260408-01
-title: Trunk-Based Development with Release Toggles
+title: "リリーストグルを伴う Trunk-Based Development"
 status: accepted
 date: 2026-04-08
 topic: build
@@ -11,7 +11,7 @@ scope:
     - ci
 ---
 
-# ADR-20260408-01: Trunk-Based Development with Release Toggles
+# ADR-20260408-01: リリーストグルを伴う Trunk-Based Development
 
 ## Status
 

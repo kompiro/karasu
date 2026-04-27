@@ -1,6 +1,6 @@
 ---
 id: ADR-20260330-02
-title: Toolbar Button Display Rules
+title: ツールバーボタンの表示ルール
 status: accepted
 date: 2026-03-30
 topic: app-ui
@@ -11,7 +11,7 @@ scope:
     - app
 ---
 
-# ADR-20260330-02: Toolbar Button Display Rules
+# ADR-20260330-02: ツールバーボタンの表示ルール
 
 **Date:** 2026-03-30
 **Status:** Partially superseded by [ADR 0022](20260405-02-toolbar-btn-actionable.md) (Rule #2 amended)

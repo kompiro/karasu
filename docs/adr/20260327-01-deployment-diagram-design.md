@@ -1,6 +1,6 @@
 ---
 id: ADR-20260327-01
-title: Deployment Diagram Design Decisions
+title: Deployment 図の設計判断
 status: accepted
 date: 2026-03-27
 topic: renderer
@@ -9,7 +9,7 @@ scope:
     - core
 ---
 
-# ADR-20260327-01: Deployment Diagram Design Decisions
+# ADR-20260327-01: Deployment 図の設計判断
 
 ## Status
 

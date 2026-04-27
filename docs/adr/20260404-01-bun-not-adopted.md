@@ -1,13 +1,13 @@
 ---
 id: ADR-20260404-01
-title: Do not migrate to Bun
+title: Bun への移行は採用しない
 status: not_adopted
 date: 2026-04-04
 topic: build
 scope:
 ---
 
-# ADR-20260404-01: Do not migrate to Bun
+# ADR-20260404-01: Bun への移行は採用しない
 
 ## Status
 

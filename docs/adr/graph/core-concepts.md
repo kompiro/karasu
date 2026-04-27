@@ -12,7 +12,7 @@ flowchart TD
     ADR_20260404_10["ADR-20260404-10<br/>Org Tree View — 組織階層の左→右ツリー俯瞰図"]
   end
   ADR_20260323_02["ADR-20260323-02<br/>[app-ui] ツールバーボタンはアイコン+テキストラベル必須"]
-  ADR_20260401_06["ADR-20260401-06<br/>[resolver] Domain Drift Detection — Scope and Detection Key"]
+  ADR_20260401_06["ADR-20260401-06<br/>[resolver] Domain Drift Detection — 検出スコープと検出キー"]
   ADR_20260323_03 --> ADR_20260312_03
   ADR_20260323_03 --> ADR_20260323_02
   ADR_20260404_10 --> ADR_20260323_03
