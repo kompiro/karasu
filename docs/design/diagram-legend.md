@@ -35,10 +35,11 @@ karasu の図では色やバッジで意味を符号化することが多い:
 
 | 入る | 入らない（フォローアップ） |
 |------|--------------------------|
-| `legend` 1 ブロック / ファイル（共有凡例） | per-view legend（system / deploy / org 別々）|
-| `swatch <color> "<label>"` 行（直書き）| `shape` / `icon` / `pattern` 凡例 |
+| `system` ブロック内に書く `legend` ブロック（v2 で `deploy` / `organization` に展開）| トップレベル直下 / 複数ブロック |
+| **system view のみ凡例を描画**（deploy / org view では未表示） | deploy view / org view への描画 |
+| `swatch "<color>" "<label>"` 行（直書き）| `shape` / `icon` / `pattern` 凡例 |
 | `ref @<annotation>` / `ref [<tag>]` / `ref .<class>` 行（既存スタイル参照）| クラスから自動生成（v1 は明示宣言のみ）|
-| 図の右下フッターとして埋め込む（system / deploy / org 共通）| クリックでフィルタなどのインタラクション |
+| 図の右下フッターとして埋め込む | クリックでフィルタなどのインタラクション |
 | `legend "Title"` のオプショナルなタイトル | i18n 対応（v1 は素の文字列をそのまま埋め込む）|
 
 ## 提案する構文
@@ -46,33 +47,44 @@ karasu の図では色やバッジで意味を符号化することが多い:
 ### v1 の `.krs` 構文
 
 ```krs
-legend "Owner team" {
-  swatch "#2563EB" "Team Backend"
-  swatch "#16A34A" "Team Frontend"
-  swatch "#DC2626" "Third-party"
+system ECPlatform {
+  label "EC Platform"
 
-  ref @deprecated "Deprecated"
-  ref [external]  "External system"
+  legend "Owner team" {
+    swatch "#2563EB" "Team Backend"
+    swatch "#16A34A" "Team Frontend"
+    swatch "#DC2626" "Third-party"
+
+    ref @deprecated "Deprecated"
+    ref [external]  "External system"
+  }
+
+  service ECommerce { … }
+  service Payment   { … }
 }
 ```
 
-- **トップレベル専用**。`system` / `deploy` / `organization` の中には書けない。
-  ファイル全体に対して 1 つの凡例を持てる。
-- タイトル文字列はオプション（`legend { ... }` も可）。
+- **`system` ブロック内に置く**（v1）。1 つの system に対して `legend` は最大 1 つ。
+  トップレベル直下や `service` / `domain` 内には書けない。
+- v1 では **system view にのみ** 凡例フッターが描画される。
+  Deploy / Org view では `legend` ブロックは無視される（warning も出さない）。
+  v2 で `deploy { legend { … } }` / `organization { legend { … } }` の同形を解禁する想定。
+- タイトル文字列はオプション（`legend { … }` も可）。
 - 行の順序が描画順序になる（明示的）。
-- `swatch <"#hex">` は色を直接指定。
+- `swatch "<#hex>"` は色を直接指定。
 - `ref @deprecated` / `ref [tag]` / `ref .class` は **`.krs.style` の解決済み色** を参照する。
   v1 は背景色 / バッジ色を凡例の swatch として使う。
 
 ### 構文の選択
 
-**「トップレベル 1 ブロック」を選んだ理由**:
+**「`system` ブロック内に置く（v1 は system view のみ描画）」を選んだ理由**:
 
 | 案 | メリット | 却下理由 |
 |----|----------|---------|
-| **トップレベル 1 ブロック（採用）**| ファイルの「全体ガイド」として自然。書き手の負担が軽い | per-view 凡例を出したくなったら制約になる |
-| per-view ブロック（`legend system { … }`）| 図ごとに独立した凡例 | v1 で 3 ブロック書かせるのは過剰。色の符号化は普通図を跨いで共通 |
-| `.krs.style` 内の `legend { … }`セクション | スタイル定義との近接 | 「凡例＝意味の宣言」は **モデルの一部** で、見た目だけではない |
+| **`system { legend { … } }`（採用）**| 「この system 図に付随する凡例」として scope が明確。後で `deploy { legend { … } }` を同じ形で解禁できる（v2 拡張性）| 1 ファイル多 system のとき凡例を共有したい場合に重複が必要（v1 では妥協）|
+| トップレベル `legend { … }` 1 ブロック共有 | 書き手の負担が軽い | per-view 拡張のときに「どの view に出すか」のルールが追加で必要、v1 では曖昧化 |
+| per-view 専用キーワード（`legend system { … }` をトップレベルに）| 完全な per-view | v1 でいきなり 2 階層フラット構文を入れるのは過剰、karasu の他のブロックと違う形になる |
+| `.krs.style` 内の `legend { … }` セクション | スタイル定義との近接 | 「凡例＝意味の宣言」は **モデルの一部** で、見た目だけではない |
 
 ### `swatch` と `ref` の使い分け
 
@@ -113,12 +125,17 @@ legend "Owner team" {
 | 別 SVG として返す（呼び出し側が結合）| API が破壊的、CLI/エクスポートで二重管理 |
 | HTML オーバーレイ（app 側で描画）| エクスポート SVG 単体で凡例が見えなくなる |
 
-### system / deploy / org への共通適用
+### v1 は system view にのみ適用
 
-`renderFromLayout()` がレイアウトされた図 SVG を返すパスは 3 つともほぼ同じ
-（`svg-renderer.ts` / `deploy-renderer.ts` / `org-renderer.ts`）。
-凡例の合成は **`renderFromLayout()` の後ろ・SVG 閉じ前** に挿入する共通ヘルパー
-（`appendLegendFooter()`）で扱う。これによりレンダラー本体に分岐を散らさない。
+v1 では **system view** （`svg-renderer.ts` の `render()` から到達する経路）
+だけが凡例フッターを描画する。Deploy / Org view は `legend` ブロックを
+読み飛ばす（warning も出さない）。
+
+実装上は共通ヘルパー `appendLegendFooter()` を `svg-builder.ts` に置き、
+`svg-renderer.ts` の出力 SVG を閉じる直前で呼び出す。
+v2 で deploy / org も対応するときは、それぞれの renderer で
+`deploy { legend { … } }` / `organization { legend { … } }` を読み、
+同じヘルパーを呼び足すだけで済む（API は変えない）。
 
 ### `.krs.style` の解決と `ref` 参照
 
@@ -150,11 +167,14 @@ legend "Owner team" {
 順序:
 
 1. **lexer**: `legend`, `swatch`, `ref` キーワードを追加（`packages/core/src/lexer/lexer.ts`）。
-2. **AST**: `LegendBlock`, `LegendEntry` 型を追加し、`KrsFile.legends` フィールドを追加（`packages/core/src/types/ast.ts`）。
-3. **parser**: トップレベルの `legend` ブロック parse を追加（`packages/core/src/parser/parser.ts`）。`legend` の中で他の block は禁止（パーサで明示的にエラーにする）。
+2. **AST**: `LegendBlock` / `LegendEntry` 型を追加し、`SystemNode` に
+   `legend?: LegendBlock` フィールドを生やす（`packages/core/src/types/ast.ts`）。
+3. **parser**: `system` ブロック内の `legend` parse を追加
+   （`packages/core/src/parser/parser.ts`）。トップレベル / `service` / `domain` 内の
+   `legend` は明示的に parse error にする。同じ system 内に `legend` が複数あれば最後勝ち + warning。
 4. **resolver**: `ref` 参照を resolved styles と突き合わせ、未解決を warning に。
 5. **renderer**: `appendLegendFooter()` ヘルパーを `svg-builder.ts` に追加し、
-   `svg-renderer.ts` / `deploy-renderer.ts` / `org-renderer.ts` から呼ぶ。
+   `svg-renderer.ts` の system view 出力からのみ呼ぶ。Deploy / Org renderer は触らない。
 6. **examples**: `examples/legend/index.krs` を 1 つ追加してアクセプタンステストの基盤に。
 
 各ステップは独立した PR にできる粒度に分けられる（lexer+parser+AST、renderer、examples+AT を分けるのが自然）。
@@ -170,30 +190,20 @@ legend "Owner team" {
 | AT-0065-3 | `ref @deprecated` が `.krs.style` の色で描画される | 自動（renderer test）|
 | AT-0065-4 | 存在しないクラスを `ref` すると warning が出て、凡例エントリは省略される | 自動（resolver test）|
 | AT-0065-5 | `viewBox` が凡例ぶん拡張され、ノードと重ならない | 手動（視覚確認）|
-| AT-0065-6 | システム / Deploy / Org の 3 ビューすべてに凡例フッターが出る | 手動 + e2e |
+| AT-0065-6 | system view でフッター描画。Deploy / Org view では `legend` ブロックがあっても描画されない（v1 の合意動作） | 手動 + e2e |
 
-## 開かれている設計判断（決めたい）
+## 決定事項（Issue #833 の open question を解消）
 
-### Q1. v1 で `legend` は **トップレベル 1 ブロック共有** で良いか？
-
-→ 提案: **Yes**。v2 で `legend system "Owner team" { … }` のような per-view 拡張を後付け可能（後方互換）。
-
-### Q2. v1 で `shape` / `icon` 凡例を入れるか？
-
-→ 提案: **No**。色凡例だけにフォーカス。`swatch` の引数を将来 `shape: rect|circle|...` に拡張できる構文余地は残す（`swatch [shape=rect] "#2563EB" "label"` のような）。
-
-### Q3. 凡例タイトルは i18n 必要か？
-
-→ 提案: **No（v1）**。素の作者文字列を出す。i18n が必要なら `.krs` 自体を多言語化する別議論（`docs/spec/i18n.md`）。
-
-### Q4. `legend` を `system` / `deploy` の中にも書けるようにする？
-
-→ 提案: **No（v1）**。トップレベル限定。
-将来 per-view にしたいときに `legend system { ... }` のような形にしやすい。
+| Q | 決定 | 補足 |
+|---|------|------|
+| **Q1**. v1 のスコープ | **system view のみ**。Deploy / Org view では描画しない | 構文上は `system { legend { … } }` のため、後で deploy / org に同形で展開できる |
+| **Q2**. `shape` / `icon` 凡例 | **入れない**（v1）| `swatch` は将来 `swatch [shape=rect] "#…" "label"` のように拡張する余地を残す |
+| **Q3**. タイトル i18n | **入れない**（v1）| 作者の入れた素の文字列を SVG にそのまま埋め込む |
+| **Q4**. 配置スコープ | **`system` ブロック内のみ**（v1）| 将来 `deploy { legend { … } }` / `organization { legend { … } }` を解禁する想定 |
 
 ## フォローアップ（v1 の後）
 
-- per-view 凡例 (`legend system "..." { ... }`)
+- `deploy { legend { … } }` / `organization { legend { … } }` の解禁（v2 のメイン）
 - shape / icon / pattern バリアント
 - 凡例タイトル / ラベルの i18n キー対応
 - 自動凡例生成（用いられている annotation / tag を集める）
