@@ -17,6 +17,7 @@ import { useDeployView } from "./useDeployView.js";
 import { useOrgView } from "./useOrgView.js";
 import { useHistoryNavigation } from "./useHistoryNavigation.js";
 import { useAutoSwitchToDeploy } from "./useAutoSwitchToDeploy.js";
+import { useAutoSwitchToOrg } from "./useAutoSwitchToOrg.js";
 import { useResolvedCompareSource } from "./useResolvedCompareSource.js";
 import type { CompareSource } from "../fs/compare-source.js";
 import type { SnapshotManager } from "../fs/snapshot-manager.js";
@@ -240,6 +241,15 @@ export function useAppViews(args: UseAppViewsArgs): UseAppViewsResult {
     activeView,
     hasDeployDiagram,
     hasSystem: resolvedSystems.length > 0,
+    dispatch,
+  });
+
+  useAutoSwitchToOrg({
+    entryPath: effEntryPath,
+    activeView,
+    hasOrg: organizations.length > 0,
+    hasSystem: resolvedSystems.length > 0,
+    hasDeployDiagram,
     dispatch,
   });
 
