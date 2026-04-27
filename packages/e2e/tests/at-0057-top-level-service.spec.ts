@@ -54,6 +54,12 @@ test.describe("AT-0057 Top-level service declarations", () => {
     await page.goto("/");
     await replaceEditorContent(page, ZERO_SYSTEM_KRS);
 
+    // Make sure we are on the System tab — auto-switch hooks (#766/#844)
+    // can run during the seed → empty → ZERO_SYSTEM transition and leave the
+    // active tab somewhere other than System.
+    await page.getByRole("tab", { name: "System" }).click();
+    await expect(page.getByRole("tab", { name: "System", selected: true })).toBeVisible();
+
     const preview = page.locator(".preview-pane, .preview-container, main").first();
     await expect(preview).not.toContainText("No diagram");
     await expect(preview).toContainText("ECommerce");

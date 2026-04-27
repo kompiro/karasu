@@ -175,6 +175,12 @@ test.describe("AT-0044 Org Tree View", () => {
     await page.goto("/");
     await replaceEditorContent(page, ORG_KRS);
     await openOrgTab(page);
+    // Wait for the new ORG_KRS content to be reflected in the rendered SVG
+    // before exporting — otherwise the export can capture the seed's org
+    // SVG. `Engineering` is a top-level team unique to ORG_KRS, so its
+    // presence proves the seed has been replaced. (Members like `dave` are
+    // not visible until the team is expanded, so we cannot wait on them.)
+    await expect(page.locator("svg").first()).toContainText("Engineering");
     await activateTreeView(page);
 
     const downloadPromise = page.waitForEvent("download");

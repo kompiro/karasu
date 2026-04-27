@@ -85,6 +85,12 @@ test.describe("AT-0011 Deploy node detail panel", () => {
     await page.goto("/");
     await replaceEditorContent(page, KRS);
 
+    // Wait for the editor change to propagate into the rendered SVG before
+    // clicking. The `決済サービス` label is unique to KRS — once it shows up
+    // we know the seed's SVG has been replaced and clicks land on fresh
+    // elements (rather than racing the re-render).
+    await expect(page.locator("svg").first()).toContainText("決済サービス");
+
     await page.locator('svg [data-node-id="ECommerce"]').first().click();
 
     const panel = page.locator(".node-detail-panel");

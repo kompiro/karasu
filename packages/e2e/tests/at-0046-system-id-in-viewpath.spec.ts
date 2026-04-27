@@ -41,19 +41,19 @@ test.describe("AT-0046 System ID in ViewPath", () => {
 
     const breadcrumb = page.locator(".breadcrumb");
     await expect(breadcrumb).toBeVisible();
-    await expect(breadcrumb).toContainText(/ECPlatform|ECプラットフォーム/);
-    await expect(breadcrumb).toContainText(/ECommerce|ECサイト/);
+    await expect(breadcrumb).toContainText(/ECPlatform|ECプラットフォーム|EC Platform/);
+    await expect(breadcrumb).toContainText(/ECommerce|ECサイト|EC Site/);
 
     // Root link brings us back to the system view.
     await page
-      .getByRole("button", { name: /^(ECPlatform|ECプラットフォーム)$/ })
+      .getByRole("button", { name: /^(ECPlatform|ECプラットフォーム|EC Platform)$/ })
       .first()
       .click();
     // After returning to root the drilled service is no longer the
     // "current" breadcrumb item.
     const current = page.locator(".breadcrumb-current");
     if ((await current.count()) > 0) {
-      await expect(current).not.toContainText(/ECommerce|ECサイト/);
+      await expect(current).not.toContainText(/ECommerce|ECサイト|EC Site/);
     }
   });
 
