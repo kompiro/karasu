@@ -62,12 +62,7 @@ describe("Lexer", () => {
 
   it("tokenizes legend keywords", () => {
     const types = tokenTypes("legend swatch ref");
-    expect(types).toEqual([
-      TokenType.Legend,
-      TokenType.Swatch,
-      TokenType.Ref,
-      TokenType.EOF,
-    ]);
+    expect(types).toEqual([TokenType.Legend, TokenType.Swatch, TokenType.Ref, TokenType.EOF]);
   });
 
   it("tokenizes property keywords", () => {
