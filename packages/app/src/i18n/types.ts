@@ -90,6 +90,7 @@ export type Translations = {
   "emptyState.org.noTeams": string;
   "emptyState.system.noNodes": string;
   "emptyState.org.placeholder": string;
+  "emptyState.system.noDiagram": string;
 
   // ReferencePanel (Phase C5)
   "referencePanel.unsupportedMessage": string;

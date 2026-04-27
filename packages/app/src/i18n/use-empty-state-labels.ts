@@ -20,6 +20,7 @@ export function useEmptyStateLabels(): EmptyStateLabels {
       orgNoTeams: translate(locale, "emptyState.org.noTeams"),
       systemNoNodes: translate(locale, "emptyState.system.noNodes"),
       orgPlaceholder: translate(locale, "emptyState.org.placeholder"),
+      systemNoDiagram: translate(locale, "emptyState.system.noDiagram"),
     }),
     [locale],
   );
