@@ -1,0 +1,151 @@
+name: E2E (nightly)
+
+# Runs the full Playwright suite against main once a day.
+# - 21:00 UTC = 06:00 JST.
+# - On failure: open or update an Issue labelled `ci: nightly-e2e`.
+# - On success after a previous failure: close that Issue.
+# The PR-label-gated run lives in `e2e.yml` and is unaffected.
+
+on:
+  schedule:
+    - cron: "0 21 * * *"
+  workflow_dispatch:
+
+concurrency:
+  group: e2e-nightly-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  e2e:
+    name: Playwright (main)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    outputs:
+      result: ${{ steps.run-tests.outcome }}
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - uses: pnpm/action-setup@078e9d416474b29c0c387560859308974f7e9c53 # v6.0.1
+
+      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
+        with:
+          node-version: "22"
+          cache: "pnpm"
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Cache Playwright browsers
+        uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
+        id: playwright-cache
+        with:
+          path: ~/.cache/ms-playwright
+          key: ${{ runner.os }}-playwright-${{ hashFiles('pnpm-lock.yaml') }}
+
+      - name: Install Playwright browsers
+        if: steps.playwright-cache.outputs.cache-hit != 'true'
+        run: pnpm --filter @karasu-tools/e2e exec playwright install --with-deps chromium
+
+      - name: Install Playwright system deps
+        if: steps.playwright-cache.outputs.cache-hit == 'true'
+        run: pnpm --filter @karasu-tools/e2e exec playwright install-deps chromium
+
+      - name: Run E2E tests
+        id: run-tests
+        run: pnpm --filter @karasu-tools/e2e test
+
+      - name: Upload Playwright report
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: playwright-report
+          path: packages/e2e/playwright-report
+          retention-days: 14
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: playwright-test-results
+          path: packages/e2e/test-results
+          retention-days: 14
+
+  notify:
+    name: Update tracking issue
+    needs: e2e
+    if: ${{ always() }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      issues: write
+    steps:
+      - name: Open / update / close tracking issue
+        uses: actions/github-script@d746ffe35508b1917358783b479e04febd2b8f71 # v9.0.0
+        env:
+          OUTCOME: ${{ needs.e2e.result }}
+        with:
+          script: |
+            const label = "ci: nightly-e2e";
+            const outcome = process.env.OUTCOME;
+            const runUrl = `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
+            const sha = context.sha;
+            const shortSha = sha.slice(0, 7);
+
+            const { data: openIssues } = await github.rest.issues.listForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: "open",
+              labels: label,
+              per_page: 10,
+            });
+
+            if (outcome === "success") {
+              for (const issue of openIssues) {
+                await github.rest.issues.createComment({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: issue.number,
+                  body: `Nightly E2E recovered on \`${shortSha}\`. Closing.\n\nRun: ${runUrl}`,
+                });
+                await github.rest.issues.update({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: issue.number,
+                  state: "closed",
+                  state_reason: "completed",
+                });
+              }
+              return;
+            }
+
+            // Failure path — open or update the rolling tracker.
+            const body = [
+              `Nightly E2E failed on \`${shortSha}\`.`,
+              ``,
+              `- Run: ${runUrl}`,
+              `- Commit: ${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/commit/${sha}`,
+              ``,
+              `Artefacts (\`playwright-report\`, \`playwright-test-results\`) are attached to the run for 14 days.`,
+            ].join("\n");
+
+            if (openIssues.length === 0) {
+              await github.rest.issues.create({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                title: "Nightly E2E failing on main",
+                body,
+                labels: [label],
+              });
+            } else {
+              // Comment on the oldest open tracker; ignore any duplicates.
+              const target = openIssues[openIssues.length - 1];
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: target.number,
+                body,
+              });
+            }
