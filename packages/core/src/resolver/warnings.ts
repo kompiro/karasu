@@ -8,6 +8,7 @@ export function analyze(file: KrsFile, sheets: StyleSheet[], systemSheetCount = 
   warnings.push(...detectDomainDispersal(file));
   warnings.push(...detectUnassignedDomains(file));
   warnings.push(...detectUnassignedServices(file));
+  warnings.push(...detectUnassignedClients(file));
   warnings.push(...detectUnassignedDatabases(file));
   warnings.push(...detectUnassignedQueues(file));
   warnings.push(...detectUnassignedStorages(file));
@@ -89,6 +90,17 @@ function detectUnassignedServices(file: KrsFile): Warning[] {
       ...(service.label ? { label: service.label } : {}),
     },
     loc: service.loc,
+  }));
+}
+
+function detectUnassignedClients(file: KrsFile): Warning[] {
+  return (file.clients ?? []).map((client) => ({
+    kind: "unassigned-client" as const,
+    params: {
+      clientId: client.id,
+      ...(client.label ? { label: client.label } : {}),
+    },
+    loc: client.loc,
   }));
 }
 

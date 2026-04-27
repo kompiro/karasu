@@ -40,6 +40,13 @@ export function formatWarning(w: Warning): FormattedWarning {
         details: [],
       };
     }
+    case "unassigned-client": {
+      const display = w.params.label ?? w.params.clientId;
+      return {
+        message: `client "${display}" is not assigned to any system`,
+        details: [],
+      };
+    }
     case "unassigned-database": {
       const display = w.params.label ?? w.params.databaseId;
       return {

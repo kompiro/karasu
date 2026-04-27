@@ -30,6 +30,16 @@ service {
   font-size: 13;
 }
 
+client {
+  background-color: #6D28D9;
+  color: #FFFFFF;
+  border-color: #5B21B6;
+  border-width: 2;
+  shape: box;
+  font-weight: bold;
+  font-size: 13;
+}
+
 domain {
   background-color: #1E3A5F;
   color: #E0F2FE;

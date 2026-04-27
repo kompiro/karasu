@@ -163,6 +163,7 @@ export class ImportResolver {
       nodeImports: [],
       systems: [],
       services: [],
+      clients: [],
       domains: [],
       databases: [],
       queues: [],
@@ -184,6 +185,7 @@ export class ImportResolver {
     mergedFile.styleImports.push(...file.styleImports);
     mergedFile.systems.push(...file.systems);
     mergedFile.services.push(...file.services);
+    mergedFile.clients.push(...(file.clients ?? []));
     mergedFile.domains.push(...file.domains);
     mergedFile.databases.push(...(file.databases ?? []));
     mergedFile.queues.push(...(file.queues ?? []));
@@ -218,6 +220,11 @@ export class ImportResolver {
     for (const service of file.services) {
       if (!mergedFile.nodeFileIndex.has(service.id)) {
         mergedFile.nodeFileIndex.set(service.id, filePath);
+      }
+    }
+    for (const client of file.clients ?? []) {
+      if (!mergedFile.nodeFileIndex.has(client.id)) {
+        mergedFile.nodeFileIndex.set(client.id, filePath);
       }
     }
 

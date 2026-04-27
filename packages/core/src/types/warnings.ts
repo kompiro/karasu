@@ -9,6 +9,7 @@ export type WarningKind =
   | "deprecated-team-property"
   | "unassigned-domain"
   | "unassigned-service"
+  | "unassigned-client"
   | "unassigned-database"
   | "unassigned-queue"
   | "unassigned-storage"
@@ -35,6 +36,7 @@ export interface WarningParamsByKind {
   "deprecated-team-property": { nodeId: string; ownerTeamId: string };
   "unassigned-domain": { domainId: string; label?: string };
   "unassigned-service": { serviceId: string; label?: string };
+  "unassigned-client": { clientId: string; label?: string };
   "unassigned-database": { databaseId: string; label?: string };
   "unassigned-queue": { queueId: string; label?: string };
   "unassigned-storage": { storageId: string; label?: string };

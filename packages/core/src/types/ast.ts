@@ -7,6 +7,7 @@ export type LogicalNodeKind =
   | "usecase"
   | "resource"
   | "user"
+  | "client"
   | "database"
   | "queue"
   | "storage"
@@ -125,6 +126,11 @@ export interface UserNode extends BaseNodeFields {
   };
 }
 
+export interface ClientNode extends BaseNodeFields {
+  kind: "client";
+  properties: CommonProperties;
+}
+
 // ─── Union ─────────────────────────────────────────
 
 export type KrsNode =
@@ -134,6 +140,7 @@ export type KrsNode =
   | UsecaseNode
   | ResourceNode
   | UserNode
+  | ClientNode
   | DatabaseNode
   | QueueGroupNode
   | StorageNode
@@ -235,6 +242,7 @@ export interface KrsFile {
   nodeImports: ImportDeclaration[];
   systems: SystemNode[];
   services: ServiceNode[];
+  clients: ClientNode[];
   domains: DomainNode[];
   databases: DatabaseNode[];
   queues: QueueGroupNode[];
