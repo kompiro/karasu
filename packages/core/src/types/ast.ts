@@ -61,6 +61,17 @@ export interface ServiceNode extends BaseNodeFields {
   kind: "service";
   properties: CommonProperties & {
     team?: string;
+    /**
+     * Domain ids this service exposes to its callers.
+     *
+     * Self-owned domains (declared as `domain D { ... }` children) do not
+     * need to appear here — ownership is implicit. `handles` is for
+     * **re-exporting** a domain that lives elsewhere (BFF / gateway
+     * passthrough). The validator confirms each entry resolves through a
+     * one-hop expose rule: at least one outgoing communication edge target
+     * must itself expose the named domain.
+     */
+    handles?: string[];
   };
 }
 
@@ -152,6 +163,13 @@ export interface ClientNode extends BaseNodeFields {
   kind: "client";
   properties: CommonProperties & {
     resources: ClientResource[];
+    /**
+     * Domain ids this client surfaces to the user. Resolved through the
+     * one-hop expose rule: at least one outgoing communication edge target
+     * (a `service` it talks to) must expose the named domain (own it as a
+     * child, or re-export it via its own `handles`).
+     */
+    handles?: string[];
   };
 }
 
@@ -306,7 +324,7 @@ export interface DiagnosticParamsByCode {
   "expected-string-after": {
     property: "label" | "role" | "team" | "description" | "slack" | "github";
   };
-  "property-not-for-node-kind": { property: "role" | "team"; nodeKind: string };
+  "property-not-for-node-kind": { property: "role" | "team" | "handles"; nodeKind: string };
   "infra-not-in-context": { infraKind: string; parentKind: string };
   "expected-id-or-string": { context: string };
   "expected-node-id": { kind: string };

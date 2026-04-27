@@ -285,6 +285,7 @@ export class Parser {
       team?: string;
       label?: string;
       resources?: import("../types/ast.js").ClientResource[];
+      handles?: string[];
     },
     parentId?: string,
   ): void {
@@ -327,6 +328,22 @@ export class Parser {
           }
         } else {
           this.error("property-not-for-node-kind", { property: "role", nodeKind: kind });
+          this.advance();
+        }
+        continue;
+      }
+
+      // Property: handles (client and service) — domain ids exposed to callers
+      if (token.type === TokenType.Handles) {
+        if (kind === "client" || kind === "service") {
+          this.advance();
+          const ids = this.parseHandlesList();
+          if (ids.length > 0) {
+            if (!properties.handles) properties.handles = [];
+            properties.handles.push(...ids);
+          }
+        } else {
+          this.error("property-not-for-node-kind", { property: "handles", nodeKind: kind });
           this.advance();
         }
         continue;
@@ -462,6 +479,34 @@ export class Parser {
     return { url: url.value, label, loc: this.range(start, end) };
   }
 
+  /**
+   * Parse a comma-separated list of identifiers/strings following `handles`.
+   * Accepts both `handles A` and `handles A, B, C` forms.
+   * Stops at the first non-identifier / non-string token (e.g. newline-introduced
+   * keyword on the next line — the lexer is whitespace-insensitive so the
+   * comma is the delimiter).
+   */
+  private parseHandlesList(): string[] {
+    const ids: string[] = [];
+    if (this.peek().type !== TokenType.Identifier && this.peek().type !== TokenType.StringLiteral) {
+      this.error("expected-id-after", { property: "handles" });
+      return ids;
+    }
+    ids.push(this.advance().value);
+    while (this.peek().type === TokenType.Comma) {
+      this.advance();
+      if (
+        this.peek().type !== TokenType.Identifier &&
+        this.peek().type !== TokenType.StringLiteral
+      ) {
+        this.error("expected-id-after", { property: "handles" });
+        break;
+      }
+      ids.push(this.advance().value);
+    }
+    return ids;
+  }
+
   private isLogicalKeyword(token: Token): boolean {
     return LOGICAL_KEYWORDS.has(token.value) && this.isNodeKeywordType(token.type);
   }
@@ -528,6 +573,7 @@ export class Parser {
       team?: string;
       label?: string;
       resources?: import("../types/ast.js").ClientResource[];
+      handles?: string[];
     } = {
       links: [],
     };
@@ -572,6 +618,7 @@ export class Parser {
             description: properties.description,
             links: properties.links,
             team: properties.team,
+            ...(properties.handles ? { handles: properties.handles } : {}),
           },
         };
       case "user":
@@ -592,6 +639,7 @@ export class Parser {
             description: properties.description,
             links: properties.links,
             resources: properties.resources ?? [],
+            ...(properties.handles ? { handles: properties.handles } : {}),
           },
         };
       case "domain":

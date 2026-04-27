@@ -41,9 +41,20 @@ export function useFormattedDiagnostic(): (d: Diagnostic) => string {
         case "expected-string-after":
           return t("diagnostic.expectedStringAfter.message", d.params);
         case "property-not-for-node-kind":
-          return d.params.property === "role"
-            ? t("diagnostic.propertyNotForNodeKind.role")
-            : t("diagnostic.propertyNotForNodeKind.team");
+          switch (d.params.property) {
+            case "role":
+              return t("diagnostic.propertyNotForNodeKind.role");
+            case "team":
+              return t("diagnostic.propertyNotForNodeKind.team");
+            case "handles":
+              return t("diagnostic.propertyNotForNodeKind.handles");
+            default: {
+              const exhaustive: never = d.params.property;
+              throw new Error(
+                `unhandled property-not-for-node-kind variant: ${String(exhaustive)}`,
+              );
+            }
+          }
         case "infra-not-in-context":
           return t("diagnostic.infraNotInContext.message", d.params);
         case "expected-id-or-string":

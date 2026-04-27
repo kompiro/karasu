@@ -53,6 +53,44 @@ Recommended: pick at most one form-factor tag per client. Combining unrelated fo
 
 `client` is reserved for software the project itself ships. Third-party browsers / IDEs / AI agents that consume the system are modeled as `user` (typically `[human]` or `[ai]`), not `client`.
 
+#### `handles` property — what a client/service exposes to its callers
+
+Both `client` and `service` may declare a `handles` property listing **domain ids exposed to callers**. It is a *validated cross-reference*: the domain id must be reachable through a one-hop expose rule, otherwise an `unresolved-handles` warning is emitted.
+
+```krs
+service Backend {
+  domain Order {}      // self-owned — handles entry not required
+}
+service Bff {
+  handles Order        // re-export: Order is owned by Backend, reached via the edge below
+}
+client WebApp [web] {
+  handles Order        // surfaces Order to the end user via the BFF
+}
+
+WebApp -> Bff
+Bff -> Backend
+```
+
+Forms accepted:
+
+```krs
+client A [web] { handles Order }
+client B [web] { handles Order, Catalog, Inventory }
+client C [web] {
+  handles Order
+  handles Catalog
+}
+```
+
+**Expose rule** (used by the validator):
+
+> A node `N` *exposes* domain `D` iff:
+> 1. `N` has a child `domain D` (self-owned), **or**
+> 2. `N` declares `handles D` and at least one outgoing communication edge target also exposes `D`.
+
+`delivers` and other declarative properties do not count as edges. The rule expands one hop at a time, so each link in a `client → BFF → backend` chain must be declared explicitly — there is no implicit auto-passthrough.
+
 ### Organizational structure (who owns what) — rendered as a separate diagram
 
 An independent axis from logical/physical, describing the **ownership** of services and domains.

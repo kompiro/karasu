@@ -41,6 +41,7 @@ export enum TokenType {
   Schedule = "Schedule",
   Image = "Image",
   Type = "Type",
+  Handles = "Handles",
 
   // Keywords (org)
   Organization = "Organization",

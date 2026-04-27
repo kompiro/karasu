@@ -573,6 +573,47 @@ system S {
     expect(formatDiagnostic(result.diagnostics[0])).toContain("role");
   });
 
+  it("parses client handles property — single id", () => {
+    const result = Parser.parse(`system S { client A [web] { handles Order } }`);
+    expect(result.diagnostics).toHaveLength(0);
+    const client = result.value.systems[0].children[0] as ClientNode;
+    expect(client.properties.handles).toEqual(["Order"]);
+  });
+
+  it("parses client handles property — comma-separated list", () => {
+    const result = Parser.parse(`system S { client A [web] { handles X, Y, Z } }`);
+    expect(result.diagnostics).toHaveLength(0);
+    const client = result.value.systems[0].children[0] as ClientNode;
+    expect(client.properties.handles).toEqual(["X", "Y", "Z"]);
+  });
+
+  it("merges multiple handles lines", () => {
+    const result = Parser.parse(`
+system S {
+  client A [web] {
+    handles X
+    handles Y, Z
+  }
+}
+    `);
+    expect(result.diagnostics).toHaveLength(0);
+    const client = result.value.systems[0].children[0] as ClientNode;
+    expect(client.properties.handles).toEqual(["X", "Y", "Z"]);
+  });
+
+  it("parses service handles property (re-export)", () => {
+    const result = Parser.parse(`system S { service Bff { handles Order, Catalog } }`);
+    expect(result.diagnostics).toHaveLength(0);
+    const service = result.value.systems[0].children[0] as ServiceNode;
+    expect(service.properties.handles).toEqual(["Order", "Catalog"]);
+  });
+
+  it("rejects handles on user node", () => {
+    const result = Parser.parse(`system S { user U [human] { handles X } }`);
+    expect(result.diagnostics.length).toBeGreaterThan(0);
+    expect(formatDiagnostic(result.diagnostics[0])).toContain("handles");
+  });
+
   it("parses team property on service (deprecated)", () => {
     const result = Parser.parse(`
 system Test {

@@ -1,6 +1,6 @@
 # ADR Dependency Graph — Overview
 
-118 ADRs across 15 topics. Clusters group by `topic` frontmatter field. Edges crossing cluster borders are cross-topic dependencies.
+119 ADRs across 15 topics. Clusters group by `topic` frontmatter field. Edges crossing cluster borders are cross-topic dependencies.
 ```mermaid
 flowchart TD
   subgraph adr-tooling["adr-tooling"]
@@ -144,6 +144,7 @@ flowchart TD
     ADR_20260325_01["ADR-20260325-01<br/>コンポーネントテストに @testing-library/react を採用する"]
     ADR_20260326_04["ADR-20260326-04<br/>`packages/app` のテスト戦略 — `@testing-library/react..."]
     ADR_20260330_03["ADR-20260330-03<br/>モノレポ内 vitest の配置 — ルート install ではなく workspace d..."]
+    ADR_20260427_05["ADR-20260427-05<br/>Playwright 向け OPFS fixture ヘルパー"]
   end
   subgraph vscode["vscode"]
     ADR_20260330_05["ADR-20260330-05<br/>VSCode 拡張 — LSP-first アーキテクチャと段階的フェーズ計画"]
@@ -352,6 +353,7 @@ flowchart TD
   class ADR_20260427_02 accepted
   class ADR_20260427_03 accepted
   class ADR_20260427_04 accepted
+  class ADR_20260427_05 accepted
 ```
 
 ## Per-topic detail
@@ -369,5 +371,5 @@ flowchart TD
 - [`renderer`](graph/renderer.md) — 17 ADRs
 - [`resolver`](graph/resolver.md) — 4 ADRs
 - [`styling`](graph/styling.md) — 4 ADRs
-- [`testing`](graph/testing.md) — 4 ADRs
+- [`testing`](graph/testing.md) — 5 ADRs
 - [`vscode`](graph/vscode.md) — 4 ADRs
