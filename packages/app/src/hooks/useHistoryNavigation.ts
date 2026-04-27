@@ -6,22 +6,24 @@ import type { AppAction, ActiveView } from "../state/app-reducer.js";
 // ─── Utilities (exported for testing) ────────────────────────────────────────
 
 /**
- * Encodes activeView + viewPath into a URL hash string.
+ * Encodes activeView + viewPath + open file into a URL hash string.
  *
  * Examples:
- *   ("deploy", [])                          → "#krs-deploy"
- *   ("deploy", [], false, "ECommerce")      → "#krs-deploy:ECommerce"
- *   ("system", [])                          → "#krs-system-root"
- *   ("system", ["Payment"])                 → "#krs-system-Payment"
- *   ("org", ["a", "b"])                     → "#krs-org-b"  (last segment only)
- *   ("org", [], true)                       → "#krs-org-tree"  (Tree View mode)
- *   ("org", [], false, "ecTeam")            → "#krs-org-root:ecTeam"
+ *   ("deploy", [])                                    → "#krs-deploy"
+ *   ("deploy", [], false, "ECommerce")                → "#krs-deploy:ECommerce"
+ *   ("system", [])                                    → "#krs-system-root"
+ *   ("system", ["Payment"])                           → "#krs-system-Payment"
+ *   ("org", ["a", "b"])                               → "#krs-org-b"  (last segment only)
+ *   ("org", [], true)                                 → "#krs-org-tree"  (Tree View mode)
+ *   ("org", [], false, "ecTeam")                      → "#krs-org-root:ecTeam"
+ *   ("system", [], false, null, "/p/before.krs")      → "#krs-system-root?file=%2Fp%2Fbefore.krs"
  */
 export function buildHash(
   activeView: ActiveView,
   viewPath: string[],
   isOrgTreeView = false,
   highlightNodeId?: string | null,
+  filePath?: string | null,
 ): string {
   let base: string;
   if (activeView === "deploy") base = "#krs-deploy";
@@ -33,13 +35,15 @@ export function buildHash(
         ? `#krs-${prefix}-root`
         : `#krs-${prefix}-${sanitizeId(viewPath[viewPath.length - 1])}`;
   }
-  return highlightNodeId ? `${base}:${highlightNodeId}` : base;
+  const withHighlight = highlightNodeId ? `${base}:${highlightNodeId}` : base;
+  return filePath ? `${withHighlight}?file=${encodeURIComponent(filePath)}` : withHighlight;
 }
 
 /**
- * Decodes a URL hash string into { activeView, nodeId, isOrgTreeView, highlightNodeId }.
+ * Decodes a URL hash string into { activeView, nodeId, isOrgTreeView, highlightNodeId, filePath }.
  * nodeId is null for root and tree-view hashes.
  * highlightNodeId is extracted from the optional colon-suffixed segment (e.g. "#krs-deploy:ECommerce").
+ * filePath is extracted from the optional `?file=<encoded>` suffix (Issue #811).
  * Returns null for unrecognized hashes.
  */
 export function parseHash(hash: string): {
@@ -47,25 +51,38 @@ export function parseHash(hash: string): {
   nodeId: string | null;
   isOrgTreeView: boolean;
   highlightNodeId: string | null;
+  filePath: string | null;
 } | null {
+  // Strip the `?file=` suffix first so it doesn't interfere with `:` parsing.
+  let filePath: string | null = null;
+  let core = hash;
+  const queryIdx = hash.indexOf("?", 1);
+  if (queryIdx !== -1) {
+    const query = hash.slice(queryIdx + 1);
+    core = hash.slice(0, queryIdx);
+    const params = new URLSearchParams(query);
+    const f = params.get("file");
+    if (f) filePath = f;
+  }
+
   // Extract optional highlight suffix: "#krs-deploy:ECommerce" → base="#krs-deploy", highlight="ECommerce"
-  const colonIdx = hash.indexOf(":", 1);
+  const colonIdx = core.indexOf(":", 1);
   let highlightNodeId: string | null = null;
-  let base = hash;
+  let base = core;
   if (colonIdx !== -1) {
-    highlightNodeId = hash.slice(colonIdx + 1) || null;
-    base = hash.slice(0, colonIdx);
+    highlightNodeId = core.slice(colonIdx + 1) || null;
+    base = core.slice(0, colonIdx);
   }
 
   if (base === "#krs-deploy")
-    return { activeView: "deploy", nodeId: null, isOrgTreeView: false, highlightNodeId };
+    return { activeView: "deploy", nodeId: null, isOrgTreeView: false, highlightNodeId, filePath };
   if (base === "#krs-org-tree")
-    return { activeView: "org", nodeId: null, isOrgTreeView: true, highlightNodeId };
+    return { activeView: "org", nodeId: null, isOrgTreeView: true, highlightNodeId, filePath };
   const m = base.match(/^#krs-(system|org)-(.+)$/);
   if (!m) return null;
   const activeView = m[1] as "system" | "org";
   const nodeId = m[2] === "root" ? null : m[2];
-  return { activeView, nodeId, isOrgTreeView: false, highlightNodeId };
+  return { activeView, nodeId, isOrgTreeView: false, highlightNodeId, filePath };
 }
 
 // ─── Hook ────────────────────────────────────────────────────────────────────
@@ -80,6 +97,7 @@ export function useHistoryNavigation({
   isOrgTreeView,
   setIsOrgTreeView,
   highlightedNodeId,
+  onFileChange,
 }: {
   activeView: ActiveView;
   viewPath: string[];
@@ -92,6 +110,14 @@ export function useHistoryNavigation({
   isOrgTreeView: boolean;
   setIsOrgTreeView: (v: boolean) => void;
   highlightedNodeId: string | null;
+  /**
+   * Called when popstate (or initial-mount hash) requests a different file.
+   * Implementations should read the file's content and dispatch SELECT_FILE.
+   * Optional — when omitted, file changes are not restored from the URL
+   * (used by modes without per-file navigation, e.g. ServeMode/MemoryMode).
+   * Issue #811.
+   */
+  onFileChange?: (path: string) => Promise<void> | void;
 }): {
   navigateActiveView: (view: ActiveView) => void;
   navigateViewPath: (path: string[]) => void;
@@ -112,15 +138,37 @@ export function useHistoryNavigation({
   // activeView associated with the pending nodeId (determines which index to use)
   const pendingActiveViewRef = useRef<ActiveView>("system");
 
-  // Skip the file-reset effect on initial mount
-  const isFirstMountRef = useRef(true);
+  // Stable ref for onFileChange — referenced inside long-lived effects without re-running them.
+  const onFileChangeRef = useRef(onFileChange);
+  onFileChangeRef.current = onFileChange;
+
+  // Tracks the latest currentFilePath without re-binding the popstate listener.
+  const currentFilePathRef = useRef(currentFilePath);
+  currentFilePathRef.current = currentFilePath;
+
+  // Tracks the *previous* currentFilePath so effect ③ can distinguish
+  // user-initiated file switches (push) from project-switch initialization
+  // (replace) and transient null states (skip). Issue #811.
+  const prevFilePathRef = useRef<string | null>(currentFilePath);
 
   // ① Parse initial hash on mount and set pending resolution if needed
   useEffect(() => {
     const parsed = parseHash(location.hash);
     if (!parsed) {
-      history.replaceState(null, "", buildHash(activeView, viewPath, isOrgTreeView));
+      history.replaceState(
+        null,
+        "",
+        buildHash(activeView, viewPath, isOrgTreeView, null, currentFilePath),
+      );
       return;
+    }
+    // Restore the open file from the hash if it differs (Issue #811).
+    // The file load is async; downstream restoration (viewPath, etc.) still
+    // proceeds with the parsed values — SELECT_FILE resets viewPath in the
+    // reducer, but the deferred-resolution effect ② re-applies the parsed
+    // nodeId once the path index is ready.
+    if (parsed.filePath && parsed.filePath !== currentFilePath && onFileChangeRef.current) {
+      void onFileChangeRef.current(parsed.filePath);
     }
     // Restore activeView from hash if different (include highlightNodeId in the transition)
     if (parsed.activeView !== activeViewRef.current) {
@@ -160,31 +208,68 @@ export function useHistoryNavigation({
     dispatch({ type: "SET_VIEW_PATH", path: resolvedPath });
   }, [nodePathIndex, orgPathIndex, dispatch]);
 
-  // ③ Sync state changes → hash (push new history entry)
+  // ③ Sync state changes → hash (Issue #811)
+  // Includes `currentFilePath` so file switches participate in browser
+  // history. The push/replace/skip decision depends on the file transition:
+  //
+  //   non-null → null         skip      project switch transient (reducer
+  //                                     resets currentFilePath; auto-select
+  //                                     of index.krs follows)
+  //   null     → non-null     replace   initial file load (mount or after
+  //                                     project init) — must NOT push, or
+  //                                     it wipes the forward stack
+  //   non-null → non-null *   push      user-initiated file switch within
+  //                                     the same project
+  //
+  // Without this, pressing Back across a project switch and then Forward
+  // would not restore the project: the auto-`selectFile(index.krs)` after
+  // SET_CURRENT_PROJECT triggers a pushState that clears forward history.
   useEffect(() => {
     if (isProgrammaticNavRef.current) return;
-    const newHash = buildHash(activeView, viewPath, isOrgTreeView, highlightedNodeId);
-    if (location.hash !== newHash) {
-      history.pushState(null, "", newHash);
-    }
-  }, [activeView, viewPath, isOrgTreeView, highlightedNodeId]);
+    const prev = prevFilePathRef.current;
 
-  // ④ Reset hash on file switch (skip initial mount)
-  useEffect(() => {
-    if (isFirstMountRef.current) {
-      isFirstMountRef.current = false;
+    // Project-switch transient — currentFilePath momentarily null. Don't
+    // emit a hash entry; the next SELECT_FILE will replaceState.
+    if (currentFilePath === null && prev !== null) {
+      prevFilePathRef.current = null;
       return;
     }
-    history.replaceState(null, "", buildHash("system", []));
-  }, [currentFilePath]);
 
-  // ⑤ popstate handler — browser back/forward
+    const newHash = buildHash(
+      activeView,
+      viewPath,
+      isOrgTreeView,
+      highlightedNodeId,
+      currentFilePath,
+    );
+    if (location.hash !== newHash) {
+      const isInitialLoad = prev === null && currentFilePath !== null;
+      if (isInitialLoad) {
+        history.replaceState(null, "", newHash);
+      } else {
+        history.pushState(null, "", newHash);
+      }
+    }
+    prevFilePathRef.current = currentFilePath;
+  }, [activeView, viewPath, isOrgTreeView, highlightedNodeId, currentFilePath]);
+
+  // ④ popstate handler — browser back/forward
   useEffect(() => {
     const handlePopState = () => {
       const parsed = parseHash(location.hash);
       if (!parsed) return;
 
       isProgrammaticNavRef.current = true;
+
+      // Restore the open file first (Issue #811). Downstream dispatches
+      // happen synchronously below; the async file load completes later
+      // and SELECT_FILE will reset viewPath in the reducer, but by that
+      // point the user-intended viewPath has already been pushed.
+      if (parsed.filePath !== currentFilePathRef.current && onFileChangeRef.current) {
+        if (parsed.filePath) {
+          void onFileChangeRef.current(parsed.filePath);
+        }
+      }
 
       if (parsed.activeView !== activeViewRef.current) {
         dispatch({

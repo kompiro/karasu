@@ -23,7 +23,15 @@ export function ProjectModeApp() {
   const pmRef = useRef(new ProjectManager(fs));
   const pm = pmRef.current;
 
-  const { currentProject, projects, currentFilePath, fileContent, loading, compareSource } = state;
+  const {
+    currentProject,
+    projects,
+    currentFilePath,
+    fileContent,
+    loading,
+    compareSource,
+    lastKrsFilePath,
+  } = state;
 
   const projectRoot = currentProject?.rootPath ?? null;
   const snapshotManager = useMemo(
@@ -53,8 +61,13 @@ export function ProjectModeApp() {
     })();
   }, [fs, pastedPath, compareSource]);
 
-  // エントリパスを計算（現在のプロジェクトの index.krs）
-  const entryPath = currentProject ? `${currentProject.rootPath}/index.krs` : null;
+  // Preview entry: the last `.krs` the user opened, falling back to
+  // `${project}/index.krs` (Issue #811). Editing a non-`.krs` file (e.g.
+  // `.krs.style`) keeps `lastKrsFilePath` pointing at the prior `.krs`, so
+  // the diagram stays visible while the user tweaks styles.
+  const entryPath = currentProject
+    ? (lastKrsFilePath ?? `${currentProject.rootPath}/index.krs`)
+    : null;
 
   const { navigateToProject } = useProjectNavigation(projects, currentProject, dispatch);
   const { selectFile } = useFileSelection(fs, dispatch);
@@ -243,6 +256,7 @@ export function ProjectModeApp() {
         sidebarHeaderContent={sidebarHeader}
         sidebarContent={sidebarContent}
         onViewPasted={compareSource?.kind === "pasted" ? handleViewPasted : undefined}
+        onFileChange={selectFile}
       />
       {pasteDialog?.mode === "edit" && (
         <PasteCompareDialog

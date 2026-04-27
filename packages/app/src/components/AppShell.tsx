@@ -33,6 +33,12 @@ interface AppShellProps {
    * this callback to re-display the pasted blob (Issue #739).
    */
   onViewPasted?: () => void;
+  /**
+   * Restores the open file when the URL hash changes (browser back/forward
+   * or initial deep-link). ProjectMode passes `selectFile`; modes without
+   * per-file navigation (Serve/Memory) omit this. Issue #811.
+   */
+  onFileChange?: (path: string) => Promise<void> | void;
 }
 
 /**
@@ -53,6 +59,7 @@ export function AppShell({
   hideEditor,
   recompileRef,
   onViewPasted,
+  onFileChange,
 }: AppShellProps) {
   const { state, dispatch, fs } = useAppContext();
   const {
@@ -94,6 +101,7 @@ export function AppShell({
     snapshotManager,
     projectRoot,
     swapped: diffSwapped,
+    onFileChange,
   });
   const { recompile, navigateViewPath, navigateActiveView } = views;
 

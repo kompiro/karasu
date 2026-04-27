@@ -65,6 +65,18 @@ describe("buildHash", () => {
   it("omits colon when highlightNodeId is undefined", () => {
     expect(buildHash("deploy", [], false, undefined)).toBe("#krs-deploy");
   });
+
+  it("appends ?file= when filePath is provided (Issue #811)", () => {
+    expect(buildHash("system", [], false, null, "/projects/p/before.krs")).toBe(
+      "#krs-system-root?file=%2Fprojects%2Fp%2Fbefore.krs",
+    );
+  });
+
+  it("combines highlight and file segments", () => {
+    expect(buildHash("deploy", [], false, "ECommerce", "/p/index.krs")).toBe(
+      "#krs-deploy:ECommerce?file=%2Fp%2Findex.krs",
+    );
+  });
 });
 
 // ─── parseHash ────────────────────────────────────────────────────────────────
@@ -76,6 +88,7 @@ describe("parseHash", () => {
       nodeId: null,
       isOrgTreeView: false,
       highlightNodeId: null,
+      filePath: null,
     });
   });
 
@@ -85,6 +98,7 @@ describe("parseHash", () => {
       nodeId: null,
       isOrgTreeView: false,
       highlightNodeId: null,
+      filePath: null,
     });
   });
 
@@ -94,6 +108,7 @@ describe("parseHash", () => {
       nodeId: null,
       isOrgTreeView: false,
       highlightNodeId: null,
+      filePath: null,
     });
   });
 
@@ -103,6 +118,7 @@ describe("parseHash", () => {
       nodeId: "Payment",
       isOrgTreeView: false,
       highlightNodeId: null,
+      filePath: null,
     });
   });
 
@@ -112,6 +128,7 @@ describe("parseHash", () => {
       nodeId: "backend",
       isOrgTreeView: false,
       highlightNodeId: null,
+      filePath: null,
     });
   });
 
@@ -121,6 +138,7 @@ describe("parseHash", () => {
       nodeId: null,
       isOrgTreeView: true,
       highlightNodeId: null,
+      filePath: null,
     });
   });
 
@@ -130,6 +148,7 @@ describe("parseHash", () => {
       nodeId: null,
       isOrgTreeView: false,
       highlightNodeId: "ECommerce",
+      filePath: null,
     });
   });
 
@@ -139,6 +158,7 @@ describe("parseHash", () => {
       nodeId: null,
       isOrgTreeView: false,
       highlightNodeId: "ecTeam",
+      filePath: null,
     });
   });
 
@@ -148,6 +168,7 @@ describe("parseHash", () => {
       nodeId: "Payment",
       isOrgTreeView: false,
       highlightNodeId: "SomeNode",
+      filePath: null,
     });
   });
 
@@ -162,6 +183,26 @@ describe("parseHash", () => {
   it("returns null for partial match", () => {
     expect(parseHash("#krs-system")).toBeNull();
   });
+
+  it("extracts filePath from the ?file= suffix (Issue #811)", () => {
+    expect(parseHash("#krs-system-root?file=%2Fp%2Fbefore.krs")).toEqual({
+      activeView: "system",
+      nodeId: null,
+      isOrgTreeView: false,
+      highlightNodeId: null,
+      filePath: "/p/before.krs",
+    });
+  });
+
+  it("decodes filePath together with a highlightNodeId", () => {
+    expect(parseHash("#krs-deploy:ECommerce?file=%2Fp%2Findex.krs")).toEqual({
+      activeView: "deploy",
+      nodeId: null,
+      isOrgTreeView: false,
+      highlightNodeId: "ECommerce",
+      filePath: "/p/index.krs",
+    });
+  });
 });
 
 // ─── useHistoryNavigation ─────────────────────────────────────────────────────
@@ -174,7 +215,9 @@ function makeOptions(overrides: Partial<Parameters<typeof useHistoryNavigation>[
   return {
     activeView: "system" as const,
     viewPath: [] as string[],
-    currentFilePath: "/test/index.krs",
+    // Default null — most tests cover hash structure independently of the file
+    // segment. Specific file/history tests override below.
+    currentFilePath: null as string | null,
     nodePathIndex: new Map<string, string[]>(),
     dispatch: makeDispatch(),
     isOrgTreeView: false,
@@ -520,27 +563,120 @@ describe("useHistoryNavigation", () => {
     });
   });
 
-  describe("file switch — hash reset", () => {
-    it("resets hash to system root when currentFilePath changes", async () => {
-      const opts = makeOptions({ currentFilePath: "/a.krs", viewPath: ["Payment"] });
-      history.replaceState(null, "", "#krs-system-Payment");
-
+  describe("file switch — URL hash (Issue #811)", () => {
+    it("pushes a new hash entry encoding the file when currentFilePath changes", async () => {
+      const opts = makeOptions({ currentFilePath: "/a.krs" });
       const { rerender } = renderHook((p) => useHistoryNavigation(p), { initialProps: opts });
 
       await act(async () => {
-        rerender({ ...opts, currentFilePath: "/b.krs", viewPath: [] });
+        rerender({ ...opts, currentFilePath: "/b.krs" });
       });
 
-      expect(location.hash).toBe("#krs-system-root");
+      expect(location.hash).toBe("#krs-system-root?file=%2Fb.krs");
     });
 
-    it("does not reset hash on initial mount", () => {
-      history.replaceState(null, "", "#krs-system-Payment");
+    it("encodes the file in the hash on initial mount when no hash is present", () => {
+      renderHook(() => useHistoryNavigation(makeOptions({ currentFilePath: "/a.krs" })));
+      expect(location.hash).toBe("#krs-system-root?file=%2Fa.krs");
+    });
+
+    it("calls onFileChange on initial mount when the hash specifies a different file", () => {
+      history.replaceState(null, "", "#krs-system-root?file=%2Fwanted.krs");
+      const onFileChange = vi.fn<(path: string) => Promise<void>>(async () => {});
       renderHook(() =>
-        useHistoryNavigation(makeOptions({ currentFilePath: "/a.krs", viewPath: ["Payment"] })),
+        useHistoryNavigation(makeOptions({ currentFilePath: "/a.krs", onFileChange })),
       );
-      // hash should not be reset to root on mount
-      expect(location.hash).toBe("#krs-system-Payment");
+      expect(onFileChange).toHaveBeenCalledWith("/wanted.krs");
+    });
+
+    it("calls onFileChange on popstate when the hash specifies a different file", async () => {
+      const onFileChange = vi.fn<(path: string) => Promise<void>>(async () => {});
+      renderHook(() =>
+        useHistoryNavigation(makeOptions({ currentFilePath: "/a.krs", onFileChange })),
+      );
+      onFileChange.mockClear();
+
+      history.replaceState(null, "", "#krs-system-root?file=%2Fb.krs");
+      await act(async () => {
+        window.dispatchEvent(new PopStateEvent("popstate"));
+      });
+
+      expect(onFileChange).toHaveBeenCalledWith("/b.krs");
+    });
+
+    it("does not call onFileChange on popstate when the file is unchanged", async () => {
+      const onFileChange = vi.fn<(path: string) => Promise<void>>(async () => {});
+      renderHook(() =>
+        useHistoryNavigation(makeOptions({ currentFilePath: "/a.krs", onFileChange })),
+      );
+      onFileChange.mockClear();
+
+      history.replaceState(null, "", "#krs-system-Payment?file=%2Fa.krs");
+      await act(async () => {
+        window.dispatchEvent(new PopStateEvent("popstate"));
+      });
+
+      expect(onFileChange).not.toHaveBeenCalled();
+    });
+
+    it("does not push a history entry during a project-switch transient (currentFilePath: non-null → null)", async () => {
+      const opts = makeOptions({ currentFilePath: "/a.krs" });
+      const { rerender } = renderHook((p) => useHistoryNavigation(p), { initialProps: opts });
+
+      const pushSpy = vi.spyOn(history, "pushState");
+      const replaceSpy = vi.spyOn(history, "replaceState");
+      pushSpy.mockClear();
+      replaceSpy.mockClear();
+
+      // SET_CURRENT_PROJECT reducer transiently sets currentFilePath to null.
+      await act(async () => {
+        rerender({ ...opts, currentFilePath: null });
+      });
+
+      expect(pushSpy).not.toHaveBeenCalled();
+      expect(replaceSpy).not.toHaveBeenCalled();
+      pushSpy.mockRestore();
+      replaceSpy.mockRestore();
+    });
+
+    it("uses replaceState when the initial file is loaded after a project switch (null → non-null)", async () => {
+      const opts = makeOptions({ currentFilePath: null });
+      const { rerender } = renderHook((p) => useHistoryNavigation(p), { initialProps: opts });
+
+      const pushSpy = vi.spyOn(history, "pushState");
+      const replaceSpy = vi.spyOn(history, "replaceState");
+      pushSpy.mockClear();
+      replaceSpy.mockClear();
+
+      // useProjectInitialization → selectFile(index.krs) — first non-null after
+      // a project switch must replace, not push, or the forward stack is wiped.
+      await act(async () => {
+        rerender({ ...opts, currentFilePath: "/b/index.krs" });
+      });
+
+      expect(pushSpy).not.toHaveBeenCalled();
+      expect(replaceSpy).toHaveBeenCalled();
+      pushSpy.mockRestore();
+      replaceSpy.mockRestore();
+    });
+
+    it("uses pushState when the user switches files within a project (non-null → non-null)", async () => {
+      const opts = makeOptions({ currentFilePath: "/a.krs" });
+      const { rerender } = renderHook((p) => useHistoryNavigation(p), { initialProps: opts });
+
+      const pushSpy = vi.spyOn(history, "pushState");
+      const replaceSpy = vi.spyOn(history, "replaceState");
+      pushSpy.mockClear();
+      replaceSpy.mockClear();
+
+      await act(async () => {
+        rerender({ ...opts, currentFilePath: "/b.krs" });
+      });
+
+      expect(pushSpy).toHaveBeenCalled();
+      expect(replaceSpy).not.toHaveBeenCalled();
+      pushSpy.mockRestore();
+      replaceSpy.mockRestore();
     });
   });
 

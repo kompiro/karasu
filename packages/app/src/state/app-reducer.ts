@@ -11,6 +11,12 @@ export interface AppState {
   currentFilePath: string | null;
   fileContent: string;
   fileTree: DirEntry[];
+  /**
+   * Last `.krs` file the user opened (Issue #811). Used as the preview entry
+   * so that opening a non-`.krs` file (e.g. `.krs.style`, `.md`) does not blank
+   * out the diagram. Null until the user opens any `.krs`; reset on project switch.
+   */
+  lastKrsFilePath: string | null;
   // ビュー
   viewPath: string[];
   activeView: ActiveView;
@@ -42,6 +48,7 @@ export const initialState: AppState = {
   currentFilePath: null,
   fileContent: "",
   fileTree: [],
+  lastKrsFilePath: null,
   viewPath: [],
   activeView: "system",
   selectedDeployBlockId: null,
@@ -52,6 +59,14 @@ export const initialState: AppState = {
   compareSource: null,
   diffSwapped: false,
 };
+
+/**
+ * `.krs` files only — `.krs.style` and other extensions are excluded so opening
+ * a stylesheet does not change the preview root (Issue #811).
+ */
+function isKrsFile(path: string): boolean {
+  return path.endsWith(".krs");
+}
 
 export type AppAction =
   | { type: "SET_PROJECTS"; projects: Project[] }
@@ -84,6 +99,7 @@ export function appReducer(state: AppState, action: AppAction): AppState {
         currentFilePath: null,
         fileContent: "",
         fileTree: [],
+        lastKrsFilePath: null,
         viewPath: [],
         activeView: "system",
         selectedDeployBlockId: null,
@@ -97,6 +113,8 @@ export function appReducer(state: AppState, action: AppAction): AppState {
         ...state,
         currentFilePath: action.path,
         fileContent: action.content,
+        lastKrsFilePath:
+          action.path === "" ? null : isKrsFile(action.path) ? action.path : state.lastKrsFilePath,
         viewPath: [],
         activeView: "system",
         selectedDeployBlockId: null,
