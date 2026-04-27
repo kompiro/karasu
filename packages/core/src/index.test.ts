@@ -144,6 +144,17 @@ const SERVICE_NODE = {
   properties: { links: [] as LinkEntry[] },
 } as unknown as KrsNode;
 
+const CLIENT_NODE = {
+  id: "MyClient",
+  kind: "client",
+  label: "MyClient",
+  tags: ["mobile"] as string[],
+  annotations: [] as string[],
+  edges: [],
+  children: [],
+  properties: { links: [] as LinkEntry[] },
+} as unknown as KrsNode;
+
 describe("Icon Mode — shape cascade priority (issue #279)", () => {
   it("icon theme last in cascade: url() shape wins over user box declaration", () => {
     // This is the correct cascade for icon mode: [builtin, user, iconTheme]
@@ -198,6 +209,12 @@ describe("Icon Mode — shape cascade priority (issue #279)", () => {
     const styles = resolveStyles([DOMAIN_NODE, SERVICE_NODE], resolveSheets);
     expect(styles.nodes.get("MyDomain")!.shape).toMatchObject({ url: "domain" });
     expect(styles.nodes.get("MyService")!.shape).toMatchObject({ url: "service" });
+  });
+
+  it("icon theme assigns the dedicated client shape", () => {
+    const resolveSheets = [getBuiltinStyleSheet(), getIconThemeStyleSheet()];
+    const styles = resolveStyles([CLIENT_NODE], resolveSheets);
+    expect(styles.nodes.get("MyClient")!.shape).toMatchObject({ url: "client" });
   });
 
   it("compileProject: icon mode does not emit false style-conflict for shape overrides", async () => {

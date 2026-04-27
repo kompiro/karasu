@@ -1,6 +1,7 @@
 {
   "icons": [
     { "name": "service", "file": "service.svg" },
+    { "name": "client", "file": "client.svg" },
     { "name": "user-card", "file": "user.svg" },
     { "name": "domain", "file": "domain.svg" },
     { "name": "resource", "file": "resource.svg" },
