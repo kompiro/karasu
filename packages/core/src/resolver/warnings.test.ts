@@ -355,6 +355,171 @@ system ECPlatform {
   });
 });
 
+describe("unresolved-handles warning", () => {
+  function unresolved(krs: string) {
+    const file = Parser.parse(krs).value;
+    const warnings = analyze(file, [getBuiltinStyleSheet()]);
+    return warnings.filter((w) => w.kind === "unresolved-handles");
+  }
+
+  it("resolves client.handles when the connected service owns the domain", () => {
+    const krs = `
+system S {
+  client WebApp [web] { handles Order }
+  service Backend {
+    domain Order {}
+  }
+  WebApp -> Backend
+}
+    `;
+    expect(unresolved(krs)).toHaveLength(0);
+  });
+
+  it("resolves a BFF chain: client -> BFF.handles -> backend.owns", () => {
+    const krs = `
+system S {
+  client WebApp [web] { handles Order }
+  service NextServer { handles Order }
+  service Backend {
+    domain Order {}
+  }
+  WebApp -> NextServer
+  NextServer -> Backend
+}
+    `;
+    expect(unresolved(krs)).toHaveLength(0);
+  });
+
+  it("warns when client.handles cannot be resolved (typo)", () => {
+    const krs = `
+system S {
+  client WebApp [web] { handles Ordr }
+  service Backend {
+    domain Order {}
+  }
+  WebApp -> Backend
+}
+    `;
+    const w = unresolved(krs);
+    expect(w).toHaveLength(1);
+    if (w[0].kind !== "unresolved-handles") throw new Error("kind mismatch");
+    expect(w[0].params).toEqual({ nodeKind: "client", nodeId: "WebApp", domainId: "Ordr" });
+  });
+
+  it("warns when client has no outgoing edge to a service that exposes the domain", () => {
+    const krs = `
+system S {
+  client WebApp [web] { handles Order }
+  service Backend {
+    domain Order {}
+  }
+}
+    `;
+    // No edge from WebApp to Backend → unresolved
+    const w = unresolved(krs);
+    expect(w).toHaveLength(1);
+    if (w[0].kind !== "unresolved-handles") throw new Error("kind mismatch");
+    expect(w[0].params.nodeId).toBe("WebApp");
+    expect(w[0].params.domainId).toBe("Order");
+  });
+
+  it("warns when the BFF in the chain forgets to declare handles", () => {
+    const krs = `
+system S {
+  client WebApp [web] { handles Order }
+  service NextServer {}
+  service Backend {
+    domain Order {}
+  }
+  WebApp -> NextServer
+  NextServer -> Backend
+}
+    `;
+    // NextServer doesn't declare handles Order → re-export rule fails → WebApp.handles Order unresolved
+    const w = unresolved(krs);
+    expect(w).toHaveLength(1);
+    if (w[0].kind !== "unresolved-handles") throw new Error("kind mismatch");
+    expect(w[0].params.nodeId).toBe("WebApp");
+  });
+
+  it("warns on service.handles that does not match a downstream owner", () => {
+    const krs = `
+system S {
+  service Gateway { handles Invoice }
+  service Backend {
+    domain Order {}
+  }
+  Gateway -> Backend
+}
+    `;
+    const w = unresolved(krs);
+    expect(w).toHaveLength(1);
+    if (w[0].kind !== "unresolved-handles") throw new Error("kind mismatch");
+    expect(w[0].params).toEqual({
+      nodeKind: "service",
+      nodeId: "Gateway",
+      domainId: "Invoice",
+    });
+  });
+
+  it("accepts comma-separated and multiple-line handles forms equivalently", () => {
+    const commaForm = `
+system S {
+  client A [web] { handles X, Y }
+  service B {
+    domain X {}
+    domain Y {}
+  }
+  A -> B
+}
+    `;
+    const multiLineForm = `
+system S {
+  client A [web] {
+    handles X
+    handles Y
+  }
+  service B {
+    domain X {}
+    domain Y {}
+  }
+  A -> B
+}
+    `;
+    expect(unresolved(commaForm)).toHaveLength(0);
+    expect(unresolved(multiLineForm)).toHaveLength(0);
+  });
+
+  it("accepts redundant handles for a self-owned domain", () => {
+    const krs = `
+system S {
+  service Backend {
+    domain Order {}
+    handles Order
+  }
+}
+    `;
+    // The service owns Order via the child node; listing it again under
+    // handles is redundant but not an error.
+    expect(unresolved(krs)).toHaveLength(0);
+  });
+
+  it("does not enter infinite recursion on cycles", () => {
+    const krs = `
+system S {
+  service A { handles X }
+  service B { handles X }
+  A -> B
+  B -> A
+}
+    `;
+    // Neither owns X; the cycle guard should prevent infinite recursion and
+    // both A and B should warn.
+    const w = unresolved(krs);
+    expect(w).toHaveLength(2);
+  });
+});
+
 describe("cross-system-ref warnings", () => {
   it("emits implicit-external warning for cross-system reference", () => {
     const krs = `
@@ -708,5 +873,40 @@ system ECPlatform {
     expect(unassigned).toHaveLength(1);
     if (unassigned[0].kind !== "unassigned-storage") throw new Error("kind mismatch");
     expect(unassigned[0].params).toEqual({ storageId: "FileStore", label: "ファイル" });
+  });
+});
+
+describe("delivers-target-not-client warning", () => {
+  it("does not warn when delivers target is a client peer", () => {
+    const krs = `
+system S {
+  service NextServer {
+    delivers WebApp
+  }
+  client WebApp [web]
+}
+`;
+    const file = Parser.parse(krs).value;
+    const warnings = analyze(file, [getBuiltinStyleSheet()]);
+    expect(warnings.filter((w) => w.kind === "delivers-target-not-client")).toHaveLength(0);
+  });
+
+  it("warns when delivers target is missing or not a client", () => {
+    const krs = `
+system S {
+  service NextServer {
+    delivers OrderService, GhostId
+  }
+  service OrderService {}
+}
+`;
+    const file = Parser.parse(krs).value;
+    const warnings = analyze(file, [getBuiltinStyleSheet()]);
+    const filtered = warnings.filter((w) => w.kind === "delivers-target-not-client");
+    expect(filtered).toHaveLength(2);
+    const targets = filtered.map((w) =>
+      w.kind === "delivers-target-not-client" ? w.params.targetId : "",
+    );
+    expect(targets.sort()).toEqual(["GhostId", "OrderService"]);
   });
 });

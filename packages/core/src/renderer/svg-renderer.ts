@@ -526,6 +526,31 @@ function renderNode(
       nextY += fontSize + 4;
     }
 
+    // Resource lines (client only). Rendered text-only — Phase 5 MVP.
+    if (node.properties.resources && node.properties.resources.length > 0) {
+      const resFontSize = Math.round(fontSize * 0.8);
+      for (const resource of node.properties.resources) {
+        children.push(
+          el(
+            "text",
+            {
+              x: textX,
+              y: nextY,
+              "text-anchor": "middle",
+              "dominant-baseline": "central",
+              fill: textColor,
+              "font-size": `${resFontSize}px`,
+              "font-family": style.fontFamily,
+              opacity: 0.8,
+              "data-client-resource": resource.storageKind,
+            },
+            escapeXml(`📦 ${resource.storageKind} "${resource.name}"`),
+          ),
+        );
+        nextY += fontSize + 4;
+      }
+    }
+
     // Meta row: link count + team
     if (hasMetaRow) {
       const metaFontSize = `${Math.round(fontSize * 0.7)}px`;

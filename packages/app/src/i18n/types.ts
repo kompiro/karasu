@@ -90,6 +90,7 @@ export type Translations = {
   "emptyState.org.noTeams": string;
   "emptyState.system.noNodes": string;
   "emptyState.org.placeholder": string;
+  "emptyState.system.noDiagram": string;
 
   // ReferencePanel (Phase C5)
   "referencePanel.unsupportedMessage": string;
@@ -117,6 +118,11 @@ export type Translations = {
   "warning.unassignedUsecase.message": (params: { usecaseId: string }) => string;
   "warning.unassignedService.message": (params: { display: string }) => string;
   "warning.unassignedClient.message": (params: { display: string }) => string;
+  "warning.unresolvedHandles.message": (params: {
+    nodeKind: "client" | "service";
+    nodeId: string;
+    domainId: string;
+  }) => string;
   "warning.unassignedDatabase.message": (params: { display: string }) => string;
   "warning.unassignedQueue.message": (params: { display: string }) => string;
   "warning.unassignedStorage.message": (params: { display: string }) => string;
@@ -139,6 +145,10 @@ export type Translations = {
     sourceSystemId: string;
   }) => string;
   "warning.cyclicDependency.message": (params: { path: string }) => string;
+  "warning.deliversTargetNotClient.message": (params: {
+    serviceId: string;
+    targetId: string;
+  }) => string;
 
   // Diagnostic messages (Phase D.2) — rendered in PreviewPane's diagnostic
   // banner. One entry per DiagnosticCode; codes with branching messages
@@ -176,6 +186,8 @@ export type Translations = {
   "diagnostic.expectedStringAfter.message": (params: { property: string }) => string;
   "diagnostic.propertyNotForNodeKind.role": string;
   "diagnostic.propertyNotForNodeKind.team": string;
+  "diagnostic.propertyNotForNodeKind.handles": string;
+  "diagnostic.propertyNotForNodeKind.delivers": string;
   "diagnostic.infraNotInContext.message": (params: {
     infraKind: string;
     parentKind: string;
@@ -188,6 +200,10 @@ export type Translations = {
   "diagnostic.teamPropertyDeprecated.message": string;
   "diagnostic.edgeSourceMismatch.message": (params: { from: string; parentId: string }) => string;
   "diagnostic.unassignedResource.message": (params: { resourceId: string }) => string;
+  "diagnostic.clientResourceInvalidKind.message": (params: {
+    kind: string;
+    name: string;
+  }) => string;
   "diagnostic.duplicateOwnerAssignment.message": (params: {
     nodeId: string;
     existingTeam: string;

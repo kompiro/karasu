@@ -142,6 +142,13 @@ describe("format()", () => {
     expectIdempotent(fmt(src));
   });
 
+  it("formats service node with delivers property", () => {
+    const src = `system S { service BFF { delivers WebApp, Admin } client WebApp [web] client Admin [desktop] }`;
+    const out = fmt(src);
+    expect(out).toContain(`    delivers WebApp, Admin`);
+    expectIdempotent(out);
+  });
+
   it("formats service node with team property", () => {
     const src = `system S { service A { team "Backend" } }`;
     expect(fmt(src)).toContain(`    team "Backend"`);

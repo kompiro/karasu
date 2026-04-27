@@ -19,6 +19,18 @@ function buildOrgPlaceholderSvg(labels?: EmptyStateLabels): string {
   return `<svg xmlns="http://www.w3.org/2000/svg" width="200" height="100" viewBox="0 0 200 100"><text x="100" y="50" text-anchor="middle" fill="#9CA3AF" font-family="sans-serif">${text}</text></svg>`;
 }
 
+/**
+ * Builds the system-side "no diagram" placeholder SVG.
+ * `fluid: true` emits `width="100%" height="100%"` for callers that embed the
+ * SVG in a layout container (drill-down, bundled all-views); the default emits
+ * fixed `200×100` for the standalone all-layers export.
+ */
+export function buildNoDiagramSvg(labels?: EmptyStateLabels, fluid = false): string {
+  const text = escapeXml(labels?.systemNoDiagram ?? DEFAULT_EMPTY_STATE_LABELS.systemNoDiagram);
+  const dims = fluid ? `width="100%" height="100%"` : `width="200" height="100"`;
+  return `<svg xmlns="http://www.w3.org/2000/svg" ${dims} viewBox="0 0 200 100"><text x="100" y="50" text-anchor="middle" fill="#9CA3AF" font-family="sans-serif">${text}</text></svg>`;
+}
+
 // ─── Shared helpers (also used by drill-down-svg.ts) ─────────────────────────
 
 interface SvgParts {
@@ -159,12 +171,13 @@ export function buildAllLayersSvg(
   krsFile: KrsFile,
   styleSource?: string,
   displayMode?: DisplayMode,
+  emptyStateLabels?: EmptyStateLabels,
 ): SvgResult {
   const effectiveSystems = withUnassignedSystem(krsFile);
   const rootSlice = extractView(effectiveSystems, []);
   if (rootSlice.childNodes.length === 0) {
     return {
-      svg: `<svg xmlns="http://www.w3.org/2000/svg" width="200" height="100" viewBox="0 0 200 100"><text x="100" y="50" text-anchor="middle" fill="#9CA3AF" font-family="sans-serif">No diagram</text></svg>`,
+      svg: buildNoDiagramSvg(emptyStateLabels),
       diagnostics: [],
     };
   }

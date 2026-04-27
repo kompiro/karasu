@@ -60,6 +60,22 @@ system Test {
     expect(svg).toContain("#0369A1");
   });
 
+  it("renders client resource list inline on the card", () => {
+    const svg = renderFromSource(`
+system Test {
+  client WebApp [web] {
+    label "Web"
+    resource localStorage "preferences"
+    resource indexedDB "outbox"
+  }
+}
+    `);
+    expect(svg).toContain("📦 localStorage &quot;preferences&quot;");
+    expect(svg).toContain("📦 indexedDB &quot;outbox&quot;");
+    expect(svg).toContain('data-client-resource="localStorage"');
+    expect(svg).toContain('data-client-resource="indexedDB"');
+  });
+
   it("renders multiple nodes with edges", () => {
     const svg = renderFromSource(`
 system Test {

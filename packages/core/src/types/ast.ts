@@ -61,6 +61,23 @@ export interface ServiceNode extends BaseNodeFields {
   kind: "service";
   properties: CommonProperties & {
     team?: string;
+    /**
+     * Domain ids this service exposes to its callers.
+     *
+     * Self-owned domains (declared as `domain D { ... }` children) do not
+     * need to appear here — ownership is implicit. `handles` is for
+     * **re-exporting** a domain that lives elsewhere (BFF / gateway
+     * passthrough). The validator confirms each entry resolves through a
+     * one-hop expose rule: at least one outgoing communication edge target
+     * must itself expose the named domain.
+     */
+    handles?: string[];
+    /**
+     * Client ids this service ships (BFF / SSR pattern). The renderer synthesizes
+     * a tagged `delivers` edge for each entry; the property itself is the source of
+     * truth for round-tripping.
+     */
+    delivers?: string[];
   };
 }
 
@@ -126,9 +143,40 @@ export interface UserNode extends BaseNodeFields {
   };
 }
 
+/**
+ * Storage kinds whitelisted for `client { resource <kind> "<name>" }`.
+ * Cookie / credential storage and device capabilities are intentionally
+ * excluded — see Issues #834 / #837.
+ */
+export const CLIENT_RESOURCE_KINDS = [
+  "localStorage",
+  "sessionStorage",
+  "indexedDB",
+  "opfs",
+  "file",
+  "keychain",
+] as const;
+
+export type ClientResourceKind = (typeof CLIENT_RESOURCE_KINDS)[number];
+
+export interface ClientResource {
+  storageKind: ClientResourceKind;
+  name: string;
+  loc: SourceRange;
+}
+
 export interface ClientNode extends BaseNodeFields {
   kind: "client";
-  properties: CommonProperties;
+  properties: CommonProperties & {
+    resources: ClientResource[];
+    /**
+     * Domain ids this client surfaces to the user. Resolved through the
+     * one-hop expose rule: at least one outgoing communication edge target
+     * (a `service` it talks to) must expose the named domain (own it as a
+     * child, or re-export it via its own `handles`).
+     */
+    handles?: string[];
+  };
 }
 
 // ─── Union ─────────────────────────────────────────
@@ -311,7 +359,10 @@ export interface DiagnosticParamsByCode {
   "expected-string-after": {
     property: "label" | "role" | "team" | "description" | "slack" | "github";
   };
-  "property-not-for-node-kind": { property: "role" | "team"; nodeKind: string };
+  "property-not-for-node-kind": {
+    property: "role" | "team" | "handles" | "delivers";
+    nodeKind: string;
+  };
   "infra-not-in-context": { infraKind: string; parentKind: string };
   "expected-id-or-string": { context: string };
   "expected-node-id": { kind: string };
@@ -323,6 +374,7 @@ export interface DiagnosticParamsByCode {
   "team-property-deprecated": Record<string, never>;
   "edge-source-mismatch": { from: string; parentId: string };
   "unassigned-resource": { resourceId: string };
+  "client-resource-invalid-kind": { kind: string; name: string };
   "duplicate-owner-assignment": { nodeId: string; existingTeam: string };
   "duplicate-team-id": { teamId: string };
   "domain-id-not-unique": { domainId: string };

@@ -38,9 +38,11 @@ export enum TokenType {
   // Properties
   Runtime = "Runtime",
   Realizes = "Realizes",
+  Delivers = "Delivers",
   Schedule = "Schedule",
   Image = "Image",
   Type = "Type",
+  Handles = "Handles",
 
   // Keywords (org)
   Organization = "Organization",

@@ -48,6 +48,16 @@ export function useFormattedWarning(): (w: Warning) => FormattedWarning {
             details: [],
           };
         }
+        case "unresolved-handles": {
+          return {
+            message: t("warning.unresolvedHandles.message", {
+              nodeKind: w.params.nodeKind,
+              nodeId: w.params.nodeId,
+              domainId: w.params.domainId,
+            }),
+            details: [],
+          };
+        }
         case "unassigned-database": {
           const display = w.params.label ?? w.params.databaseId;
           return {
@@ -122,6 +132,14 @@ export function useFormattedWarning(): (w: Warning) => FormattedWarning {
                 sourceSystemId: w.params.sourceSystemId,
               }),
             ],
+          };
+        case "delivers-target-not-client":
+          return {
+            message: t("warning.deliversTargetNotClient.message", {
+              serviceId: w.params.serviceId,
+              targetId: w.params.targetId,
+            }),
+            details: [],
           };
         case "cyclic-dependency": {
           const { cyclePath } = w.params;

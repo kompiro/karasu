@@ -81,6 +81,7 @@ export const en: Translations = {
   "emptyState.org.noTeams": "No teams defined",
   "emptyState.system.noNodes": "No nodes to render",
   "emptyState.org.placeholder": "No org diagram",
+  "emptyState.system.noDiagram": "No diagram",
 
   // ReferencePanel
   "referencePanel.unsupportedMessage": "Tags & Annotations are not available for this diagram.",
@@ -113,6 +114,8 @@ export const en: Translations = {
     `Service "${display}" is not assigned to any system`,
   "warning.unassignedClient.message": ({ display }) =>
     `Client "${display}" is not assigned to any system`,
+  "warning.unresolvedHandles.message": ({ nodeKind, nodeId, domainId }) =>
+    `${nodeKind} "${nodeId}" declares handles "${domainId}" but no outgoing edge target exposes that domain`,
   "warning.unassignedDatabase.message": ({ display }) =>
     `Database "${display}" is not assigned to any system`,
   "warning.unassignedQueue.message": ({ display }) =>
@@ -141,6 +144,8 @@ export const en: Translations = {
   "warning.crossSystemRefImplicitExternal.suppressHint": ({ targetSystemId, sourceSystemId }) =>
     `Add 'service ${targetSystemId} [external]' to system ${sourceSystemId} to suppress this warning`,
   "warning.cyclicDependency.message": ({ path }) => `Circular dependency detected: ${path}`,
+  "warning.deliversTargetNotClient.message": ({ serviceId, targetId }) =>
+    `service "${serviceId}" delivers target "${targetId}" is not a client node`,
 
   // Diagnostics (rendered in PreviewPane's diagnostic banner)
   "diagnostic.tokenTypeMismatch.message": ({ expected, got, value }) =>
@@ -163,6 +168,8 @@ export const en: Translations = {
     `Expected string literal after "${property}"`,
   "diagnostic.propertyNotForNodeKind.role": `"role" property is only valid for user nodes`,
   "diagnostic.propertyNotForNodeKind.team": `"team" property is only valid for service and domain nodes`,
+  "diagnostic.propertyNotForNodeKind.handles": `"handles" property is only valid for client and service nodes`,
+  "diagnostic.propertyNotForNodeKind.delivers": `"delivers" property is only valid for service nodes`,
   "diagnostic.infraNotInContext.message": ({ infraKind, parentKind }) =>
     `"${infraKind}" is only valid as a direct child of system, not inside "${parentKind}"`,
   "diagnostic.expectedIdOrString.message": ({ context }) =>
@@ -179,6 +186,8 @@ export const en: Translations = {
     `Edge source "${from}" must match the enclosing block id "${parentId}"`,
   "diagnostic.unassignedResource.message": ({ resourceId }) =>
     `resource "${resourceId}" is not assigned to any database`,
+  "diagnostic.clientResourceInvalidKind.message": ({ kind, name }) =>
+    `Invalid client resource kind "${kind}" for resource "${name}". Allowed kinds: localStorage, sessionStorage, indexedDB, opfs, file, keychain`,
   "diagnostic.duplicateOwnerAssignment.message": ({ nodeId, existingTeam }) =>
     `"${nodeId}" is already owned by team "${existingTeam}"; multiple teams cannot own the same service or domain`,
   "diagnostic.duplicateTeamId.message": ({ teamId }) => `Duplicate team id "${teamId}"`,

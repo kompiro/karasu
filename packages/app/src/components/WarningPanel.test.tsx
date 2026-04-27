@@ -48,6 +48,11 @@ function makeWarning(kind: Warning["kind"]): Warning {
       return { kind, params: { serviceId: "test-service" } };
     case "unassigned-client":
       return { kind, params: { clientId: "test-client" } };
+    case "unresolved-handles":
+      return {
+        kind,
+        params: { nodeKind: "client", nodeId: "test-client", domainId: "test-domain" },
+      };
     case "unassigned-database":
       return { kind, params: { databaseId: "test-database" } };
     case "unassigned-queue":
@@ -70,6 +75,8 @@ function makeWarning(kind: Warning["kind"]): Warning {
       return { kind, params: { ref: "A.B" } };
     case "cyclic-dependency":
       return { kind, params: { cyclePath: ["A", "B", "A"] } };
+    case "delivers-target-not-client":
+      return { kind, params: { serviceId: "test-service", targetId: "test-target" } };
   }
 }
 

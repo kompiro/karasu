@@ -10,13 +10,15 @@ export type WarningKind =
   | "unassigned-domain"
   | "unassigned-service"
   | "unassigned-client"
+  | "unresolved-handles"
   | "unassigned-database"
   | "unassigned-queue"
   | "unassigned-storage"
   | "unassigned-usecase"
   | "cross-system-ref-implicit-external"
   | "cross-system-ref-unresolved"
-  | "cyclic-dependency";
+  | "cyclic-dependency"
+  | "delivers-target-not-client";
 
 /**
  * Per-kind params shape. Each entry carries only the structured data needed
@@ -37,6 +39,14 @@ export interface WarningParamsByKind {
   "unassigned-domain": { domainId: string; label?: string };
   "unassigned-service": { serviceId: string; label?: string };
   "unassigned-client": { clientId: string; label?: string };
+  "unresolved-handles": {
+    /** id of the node that declared `handles` */
+    nodeId: string;
+    /** kind of the declaring node ("client" or "service") */
+    nodeKind: "client" | "service";
+    /** the domain id that could not be resolved through the expose rule */
+    domainId: string;
+  };
   "unassigned-database": { databaseId: string; label?: string };
   "unassigned-queue": { queueId: string; label?: string };
   "unassigned-storage": { storageId: string; label?: string };
@@ -49,6 +59,7 @@ export interface WarningParamsByKind {
   };
   "cross-system-ref-unresolved": { ref: string };
   "cyclic-dependency": { cyclePath: string[] };
+  "delivers-target-not-client": { serviceId: string; targetId: string };
 }
 
 /**

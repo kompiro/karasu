@@ -13,6 +13,7 @@ import { resolveStyles } from "../resolver/style-resolver.js";
 import {
   extractSvgParts,
   buildStyles,
+  buildNoDiagramSvg,
   type DrillDownCallbacks,
   type SvgResult,
 } from "./all-layers-svg.js";
@@ -79,12 +80,13 @@ export function buildDrillDownSvg(
   krsFile: KrsFile,
   styleSource?: string,
   displayMode?: DisplayMode,
+  emptyStateLabels?: EmptyStateLabels,
 ): SvgResult {
   const effectiveSystems = withUnassignedSystem(krsFile);
   const rootSlice = extractView(effectiveSystems, []);
   if (rootSlice.childNodes.length === 0) {
     return {
-      svg: `<svg xmlns="http://www.w3.org/2000/svg" width="100%" height="100%" viewBox="0 0 200 100"><text x="100" y="50" text-anchor="middle" fill="#9CA3AF" font-family="sans-serif">No diagram</text></svg>`,
+      svg: buildNoDiagramSvg(emptyStateLabels, true),
       diagnostics: [],
     };
   }
@@ -298,6 +300,7 @@ export function buildAllViewsSvg(
   krsFile: KrsFile,
   styleSource?: string,
   displayMode?: DisplayMode,
+  emptyStateLabels?: EmptyStateLabels,
 ): SvgResult {
   const { sheets, diagnostics } = buildStyles(displayMode, styleSource);
   const effectiveSystems = withUnassignedSystem(krsFile);
@@ -358,7 +361,7 @@ export function buildAllViewsSvg(
 
   if (enabledViews.size === 0) {
     return {
-      svg: `<svg xmlns="http://www.w3.org/2000/svg" width="100%" height="100%" viewBox="0 0 200 100"><text x="100" y="50" text-anchor="middle" fill="#9CA3AF" font-family="sans-serif">No diagram</text></svg>`,
+      svg: buildNoDiagramSvg(emptyStateLabels, true),
       diagnostics,
     };
   }

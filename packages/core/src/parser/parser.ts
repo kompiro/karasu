@@ -281,7 +281,14 @@ export class Parser {
     children: KrsNode[],
     edges: KrsEdge[],
     kind: LogicalNodeKind,
-    properties: CommonProperties & { role?: string; team?: string; label?: string },
+    properties: CommonProperties & {
+      role?: string;
+      team?: string;
+      label?: string;
+      resources?: import("../types/ast.js").ClientResource[];
+      handles?: string[];
+      delivers?: string[];
+    },
     parentId?: string,
   ): void {
     while (this.peek().type !== TokenType.RightBrace && this.peek().type !== TokenType.EOF) {
@@ -328,6 +335,22 @@ export class Parser {
         continue;
       }
 
+      // Property: handles (client and service) — domain ids exposed to callers
+      if (token.type === TokenType.Handles) {
+        if (kind === "client" || kind === "service") {
+          this.advance();
+          const ids = this.parseHandlesList();
+          if (ids.length > 0) {
+            if (!properties.handles) properties.handles = [];
+            properties.handles.push(...ids);
+          }
+        } else {
+          this.error("property-not-for-node-kind", { property: "handles", nodeKind: kind });
+          this.advance();
+        }
+        continue;
+      }
+
       // Property: team (service and domain) — deprecated
       if (token.type === TokenType.Team) {
         if (kind === "service" || kind === "domain") {
@@ -345,6 +368,35 @@ export class Parser {
           }
         } else {
           this.error("property-not-for-node-kind", { property: "team", nodeKind: kind });
+          this.advance();
+        }
+        continue;
+      }
+
+      // Property: delivers (service only). Comma-separated list of client ids.
+      if (token.type === TokenType.Delivers) {
+        if (kind === "service") {
+          this.advance();
+          if (!properties.delivers) properties.delivers = [];
+          // Parse one or more identifiers separated by commas.
+          while (true) {
+            if (
+              this.peek().type === TokenType.Identifier ||
+              this.peek().type === TokenType.StringLiteral
+            ) {
+              properties.delivers.push(this.advance().value);
+            } else {
+              this.error("expected-id-after", { property: "delivers" });
+              break;
+            }
+            if (this.peek().type === TokenType.Comma) {
+              this.advance();
+              continue;
+            }
+            break;
+          }
+        } else {
+          this.error("property-not-for-node-kind", { property: "delivers", nodeKind: kind });
           this.advance();
         }
         continue;
@@ -371,6 +423,19 @@ export class Parser {
           });
         }
         edges.push(edge);
+        continue;
+      }
+
+      // Client-only: `resource <storageKind> "<name>"` declares operation-tied storage.
+      // Distinguished from a regular resource declaration by the trailing string literal.
+      if (
+        kind === "client" &&
+        token.type === TokenType.Resource &&
+        this.peekAt(1).type === TokenType.Identifier &&
+        this.peekAt(2).type === TokenType.StringLiteral
+      ) {
+        properties.resources ??= [];
+        properties.resources.push(this.parseClientResource());
         continue;
       }
 
@@ -409,6 +474,29 @@ export class Parser {
     return "";
   }
 
+  private parseClientResource(): import("../types/ast.js").ClientResource {
+    const start = this.expect(TokenType.Resource);
+    const kindToken = this.expect(TokenType.Identifier);
+    const nameToken = this.expect(TokenType.StringLiteral);
+    const kindName = kindToken.value;
+    const isAllowed = (
+      ["localStorage", "sessionStorage", "indexedDB", "opfs", "file", "keychain"] as const
+    ).some((k) => k === kindName);
+    if (!isAllowed) {
+      this.diagnostics.push({
+        severity: "error",
+        code: "client-resource-invalid-kind",
+        params: { kind: kindName, name: nameToken.value },
+        loc: this.range(start.loc, nameToken.loc),
+      });
+    }
+    return {
+      storageKind: kindName as import("../types/ast.js").ClientResourceKind,
+      name: nameToken.value,
+      loc: this.range(start.loc, nameToken.loc),
+    };
+  }
+
   private parseLink(): LinkEntry {
     const start = this.peek().loc;
     const url = this.expect(TokenType.StringLiteral);
@@ -420,6 +508,34 @@ export class Parser {
       end = labelToken.loc;
     }
     return { url: url.value, label, loc: this.range(start, end) };
+  }
+
+  /**
+   * Parse a comma-separated list of identifiers/strings following `handles`.
+   * Accepts both `handles A` and `handles A, B, C` forms.
+   * Stops at the first non-identifier / non-string token (e.g. newline-introduced
+   * keyword on the next line — the lexer is whitespace-insensitive so the
+   * comma is the delimiter).
+   */
+  private parseHandlesList(): string[] {
+    const ids: string[] = [];
+    if (this.peek().type !== TokenType.Identifier && this.peek().type !== TokenType.StringLiteral) {
+      this.error("expected-id-after", { property: "handles" });
+      return ids;
+    }
+    ids.push(this.advance().value);
+    while (this.peek().type === TokenType.Comma) {
+      this.advance();
+      if (
+        this.peek().type !== TokenType.Identifier &&
+        this.peek().type !== TokenType.StringLiteral
+      ) {
+        this.error("expected-id-after", { property: "handles" });
+        break;
+      }
+      ids.push(this.advance().value);
+    }
+    return ids;
   }
 
   private isLogicalKeyword(token: Token): boolean {
@@ -483,7 +599,14 @@ export class Parser {
     const annotations = this.parseAnnotations();
 
     // Properties (label is now a property inside the block)
-    const properties: CommonProperties & { role?: string; team?: string; label?: string } = {
+    const properties: CommonProperties & {
+      role?: string;
+      team?: string;
+      label?: string;
+      resources?: import("../types/ast.js").ClientResource[];
+      handles?: string[];
+      delivers?: string[];
+    } = {
       links: [],
     };
 
@@ -527,6 +650,10 @@ export class Parser {
             description: properties.description,
             links: properties.links,
             team: properties.team,
+            ...(properties.handles ? { handles: properties.handles } : {}),
+            ...(properties.delivers && properties.delivers.length > 0
+              ? { delivers: properties.delivers }
+              : {}),
           },
         };
       case "user":
@@ -546,6 +673,8 @@ export class Parser {
           properties: {
             description: properties.description,
             links: properties.links,
+            resources: properties.resources ?? [],
+            ...(properties.handles ? { handles: properties.handles } : {}),
           },
         };
       case "domain":

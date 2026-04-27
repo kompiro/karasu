@@ -53,6 +53,44 @@ Recommended: pick at most one form-factor tag per client. Combining unrelated fo
 
 `client` is reserved for software the project itself ships. Third-party browsers / IDEs / AI agents that consume the system are modeled as `user` (typically `[human]` or `[ai]`), not `client`.
 
+#### `handles` property — what a client/service exposes to its callers
+
+Both `client` and `service` may declare a `handles` property listing **domain ids exposed to callers**. It is a *validated cross-reference*: the domain id must be reachable through a one-hop expose rule, otherwise an `unresolved-handles` warning is emitted.
+
+```krs
+service Backend {
+  domain Order {}      // self-owned — handles entry not required
+}
+service Bff {
+  handles Order        // re-export: Order is owned by Backend, reached via the edge below
+}
+client WebApp [web] {
+  handles Order        // surfaces Order to the end user via the BFF
+}
+
+WebApp -> Bff
+Bff -> Backend
+```
+
+Forms accepted:
+
+```krs
+client A [web] { handles Order }
+client B [web] { handles Order, Catalog, Inventory }
+client C [web] {
+  handles Order
+  handles Catalog
+}
+```
+
+**Expose rule** (used by the validator):
+
+> A node `N` *exposes* domain `D` iff:
+> 1. `N` has a child `domain D` (self-owned), **or**
+> 2. `N` declares `handles D` and at least one outgoing communication edge target also exposes `D`.
+
+`delivers` and other declarative properties do not count as edges. The rule expands one hop at a time, so each link in a `client → BFF → backend` chain must be declared explicitly — there is no implicit auto-passthrough.
+
 ### Organizational structure (who owns what) — rendered as a separate diagram
 
 An independent axis from logical/physical, describing the **ownership** of services and domains.
@@ -102,7 +140,9 @@ Properties are written inside the body block `{ }`. Properties come before child
 | `description` | `description "<text>"` | All | Description text (use `"""..."""` for multi-line) |
 | `role` | `role "<role-name>"` | user | Business role |
 | `team` | `team "<team-name>"` | service, domain | Owner team |
+| `delivers` | `delivers <ClientId>[, <ClientId>...]` | service | Client(s) this service ships (BFF / SSR pattern). The renderer draws each entry as a distinct dashed edge from the service to the referenced `client` |
 | `link` | `link "<URL>" "<label>"` | All | Link to related documentation (multiple allowed). Label is optional |
+| `resource` | `resource <storageKind> "<name>"` | client | Operation-tied local storage on the client. Multiple allowed. See client resource kinds below |
 
 All properties are optional. `link` may appear multiple times within the same node.
 Using a property on a kind that does not support it produces an error.
@@ -135,6 +175,42 @@ service <id> {
     team "<team-name>"
     ...
   }
+}
+```
+
+### client node example
+
+```
+client <id> [<form-factor-tag>] {
+  label "<display-name>"
+  description "<text>"
+  resource <storageKind> "<name>"
+  resource <storageKind> "<name>"
+}
+```
+
+#### `client` `resource` storage kinds
+
+`resource <storageKind> "<name>"` declares operation-tied local storage on a client (a `localStorage` key, an IndexedDB database, an OPFS file, etc.). Multiple `resource` lines are allowed and render inline on the client card.
+
+The `<storageKind>` must be one of the six reserved values below. Any other kind is rejected with `client-resource-invalid-kind` so that authentication credentials, cookies, and device capabilities (which need stronger modeling) do not silently slip into the storage list.
+
+| Storage kind | Typical surface |
+|--------------|-----------------|
+| `localStorage`   | Browser localStorage key |
+| `sessionStorage` | Browser sessionStorage key |
+| `indexedDB`      | IndexedDB database |
+| `opfs`           | Origin Private File System file/directory |
+| `file`           | Local filesystem file (desktop / CLI / device clients) |
+| `keychain`       | OS keychain / Keystore entry (excluding raw credentials — modeled separately) |
+
+> Cookie / session / credential storage is intentionally out of scope here and is tracked under the security parent issue (#834). Device capabilities (camera, geolocation, etc.) are tracked under #837.
+
+```
+client WebApp [web] {
+  label "Customer SPA"
+  resource localStorage "preferences"
+  resource indexedDB "outbox"
 }
 ```
 
@@ -211,6 +287,33 @@ service ECommerce {
   }
 }
 ```
+
+#### `delivers` (service → client)
+
+A `service` may declare which `client` node(s) it ships, modeling the BFF / SSR
+pattern (Next.js, Rails+React, Laravel+Vue, etc.). The server-side and the
+browser-side bundle are different OAuth2 client types and are modeled as
+separate nodes joined by `delivers`:
+
+```
+service NextServer {
+  label "Next.js BFF"
+  delivers WebApp           // single client
+}
+
+service Gateway {
+  delivers WebApp, AdminUI  // comma-separated list
+}
+
+client WebApp [web] {}
+client AdminUI [desktop] {}
+```
+
+Each `delivers` entry synthesizes a dashed edge from the service to the
+referenced client on the system view. The target id must resolve to a peer
+`client` node; if it does not, the resolver emits a `delivers-target-not-client`
+warning. `delivers` is a declarative property — it is not a new edge kind, and
+regular API calls between client and service are still written with `->`.
 
 ### Top-level domain declaration
 
