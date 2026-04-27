@@ -76,7 +76,7 @@
     },
     "keyword-structure": {
       "name": "keyword.control.krs",
-      "match": "\\b(system|service|domain|usecase|resource|user|deploy|edge)\\b"
+      "match": "\\b(system|service|client|domain|usecase|resource|user|deploy|edge)\\b"
     },
     "keyword-deploy-type": {
       "name": "storage.type.deploy.krs",

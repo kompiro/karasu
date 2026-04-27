@@ -121,6 +121,7 @@ connection.onRequest(PositionOfNodeRequest, ({ uri, nodeId }) => {
 const KRS_KEYWORDS = [
   "system",
   "service",
+  "client",
   "domain",
   "usecase",
   "resource",
