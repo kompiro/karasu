@@ -1,6 +1,6 @@
 # ADR Dependency Graph — Overview
 
-114 ADRs across 15 topics. Clusters group by `topic` frontmatter field. Edges crossing cluster borders are cross-topic dependencies.
+115 ADRs across 15 topics. Clusters group by `topic` frontmatter field. Edges crossing cluster borders are cross-topic dependencies.
 ```mermaid
 flowchart TD
   subgraph adr-tooling["adr-tooling"]
@@ -43,6 +43,7 @@ flowchart TD
     ADR_20260416_01["ADR-20260416-01<br/>DOMPurify Adoption for HTML Sanitization"]
     ADR_20260421_01["ADR-20260421-01<br/>Dependency Updates — 2026-04-20"]
     ADR_20260422_01["ADR-20260422-01<br/>Dependency Updates — 2026-04-21"]
+    ADR_20260427_01["ADR-20260427-01<br/>Feature toggle policy — compile-time, short-liv..."]
   end
   subgraph chat-ai["chat-ai"]
     ADR_20260407_04["ADR-20260407-04<br/>Cloudflare Pages デプロイ基盤と BYOK AI 連携"]
@@ -344,13 +345,14 @@ flowchart TD
   class ADR_20260423_01 accepted
   class ADR_20260424_01 accepted
   class ADR_20260425_01 accepted
+  class ADR_20260427_01 accepted
 ```
 
 ## Per-topic detail
 
 - [`adr-tooling`](graph/adr-tooling.md) — 2 ADRs
 - [`app-ui`](graph/app-ui.md) — 16 ADRs
-- [`build`](graph/build.md) — 17 ADRs
+- [`build`](graph/build.md) — 18 ADRs
 - [`chat-ai`](graph/chat-ai.md) — 8 ADRs
 - [`cli`](graph/cli.md) — 7 ADRs
 - [`core-concepts`](graph/core-concepts.md) — 4 ADRs
