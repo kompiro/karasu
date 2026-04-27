@@ -103,9 +103,9 @@ deploy "本番環境" {
 
 ---
 
-## AT-0007-05: Deploy タブなし（deploy ブロックなし）
+## AT-0007-05: Deploy タブの空状態（deploy ブロックなし）
 
-> ✅ Automated — `packages/e2e/tests/at-0007-deployment-diagram.spec.ts` › `Deploy tab is disabled when no deploy block exists (AT-0007-05)`
+> ✅ Automated — `packages/e2e/tests/at-0007-deployment-diagram.spec.ts` › `Deploy tab stays enabled and renders empty-state placeholder when no deploy block (AT-0007-05)`
 
 **手順**
 1. 以下の `deploy` ブロックを含まない `index.krs` を開く:
@@ -124,11 +124,17 @@ system ECPlatform {
   ECommerce -> Payment "決済を処理する"
 }
 ```
+2. 「Deploy」タブをクリックする。
 
 **期待結果**
-- 「Deploy」タブがグレーアウトして表示される
-- グレーアウトされたタブにカーソルを合わせると「deploy ブロックがありません」ツールチップが表示される
-- タブはクリックできない（状態が変わらない）
+- 「Deploy」タブは有効（クリック可能）のまま表示される
+- クリックするとプレビュー領域が空状態の SVG プレースホルダーに切り替わる
+- 空状態 SVG にはロケールに応じたタイトル
+  （日本語: 「deploy ブロックが定義されていません」 / 英語: "No deploy block defined"）
+  と追加方法のヒントが表示される
+
+**変更履歴**: かつてはタブをグレーアウトしツールチップを表示する仕様だったが、
+#812 で「常にタブを有効にし、空状態 SVG を表示する」方式に変更された。
 
 ---
 

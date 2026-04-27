@@ -6,8 +6,8 @@ import { type Page, expect, test } from "@playwright/test";
  * Covers the deterministic behaviors:
  *  - AT-0007-01: Deploy tab is enabled when a deploy block exists
  *  - AT-0007-02: Switching to Deploy renders container labels for each service
- *  - AT-0007-05: Deploy tab is disabled (and non-interactive) when no deploy
- *    block is present
+ *  - AT-0007-05: Deploy tab is always enabled; switching with no deploy block
+ *    renders an empty-state placeholder SVG (#812)
  *  - AT-0007-07: Both tabs carry icon + text labels
  *
  * Out of scope:
@@ -62,21 +62,31 @@ test.describe("AT-0007 Deployment diagram", () => {
     await deployTab.click();
     await expect(page.getByRole("tab", { name: "Deploy", selected: true })).toBeVisible();
 
-    // The Getting Started project's deploy block contains `ECommerce` and
-    // `Payment` services — the rendered SVG should surface the service
-    // labels as container text.
+    // The Getting Started project's deploy block contains the EC service —
+    // its rendered label varies by locale-matched seed (Japanese seed: ECサイト,
+    // English seed: EC Site). The raw id `ECommerce` also appears as text in
+    // the cross-system seed. Accept any of them.
     const preview = page.locator(".preview-pane, .preview-container, main").first();
-    await expect(preview).toContainText(/ECommerce|ECサイト/);
+    await expect(preview).toContainText(/ECommerce|ECサイト|EC Site/);
   });
 
-  test("Deploy tab is disabled when no deploy block exists (AT-0007-05)", async ({ page }) => {
+  test("Deploy tab stays enabled and renders empty-state placeholder when no deploy block (AT-0007-05)", async ({
+    page,
+  }) => {
     await page.goto("/");
     await replaceEditorContent(page, NO_DEPLOY_KRS);
 
-    // Without a deploy block the tab is rendered as a non-interactive span
-    // with aria-disabled=true and a tooltip.
-    const deployTab = page.locator('[role="tab"][aria-disabled="true"]', { hasText: "Deploy" });
-    await expect(deployTab).toBeVisible();
-    await expect(deployTab).toHaveAttribute("title", /deploy ブロックがありません/);
+    // Behavior change in #812: rather than disabling the Deploy tab, we now
+    // keep it interactive and render an empty-state placeholder SVG when no
+    // deploy block exists. The placeholder text is locale-aware.
+    const deployTab = page.getByRole("tab", { name: "Deploy" });
+    await expect(deployTab).toBeEnabled();
+    await deployTab.click();
+    await expect(page.getByRole("tab", { name: "Deploy", selected: true })).toBeVisible();
+
+    const preview = page.locator(".preview-pane, .preview-container, main").first();
+    await expect(preview).toContainText(
+      /No deploy block defined|deploy ブロックが定義されていません/,
+    );
   });
 });
