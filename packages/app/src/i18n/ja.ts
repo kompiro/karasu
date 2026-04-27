@@ -79,6 +79,7 @@ export const ja: Partial<Translations> = {
   "emptyState.deploy.title": "deploy ブロックが定義されていません",
   "emptyState.deploy.hint": ".krs ファイルに deploy ブロックを追加してください",
   "emptyState.org.noTeams": "team が定義されていません",
+  "emptyState.system.noNodes": "表示するノードがありません",
 
   // ReferencePanel
   "referencePanel.unsupportedMessage": "Tags & Annotations はこのダイアグラムでは未対応です。",

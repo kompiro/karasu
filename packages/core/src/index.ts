@@ -363,7 +363,9 @@ function _compileFromPreparedInput(
     undefined,
     viewSlice.childEdges,
   );
-  const svg = render(viewSlice, styles, serviceIdsWithDeploy, ownerIndex, displayMode);
+  const svg = render(viewSlice, styles, serviceIdsWithDeploy, ownerIndex, displayMode, undefined, {
+    emptyLabels: emptyStateLabels,
+  });
   const nodeMetadata = buildNodeMetadata(
     viewSlice,
     serviceIdsWithDeploy,
@@ -771,6 +773,8 @@ export interface CompileSystemDiffOptions {
   fs: FileSystemProvider;
   viewPath?: ViewPath;
   displayMode?: DisplayMode;
+  /** Translated labels for renderer-embedded empty-state messages. */
+  emptyStateLabels?: EmptyStateLabels;
 }
 
 /**
@@ -784,7 +788,7 @@ export interface CompileSystemDiffOptions {
 export async function compileSystemDiff(
   options: CompileSystemDiffOptions,
 ): Promise<SystemDiffCompileResult> {
-  const { beforeEntryPath, afterEntryPath, fs, viewPath, displayMode } = options;
+  const { beforeEntryPath, afterEntryPath, fs, viewPath, displayMode, emptyStateLabels } = options;
 
   const resolver = new ImportResolver(fs);
   const [beforeResolved, afterResolved] = await Promise.all([
@@ -839,6 +843,7 @@ export async function compileSystemDiff(
       nodeDiffState: nodeDiffStateMap,
       edgeDiffState: edgeDiffStateMap,
       nodeDiffMeta: diffed.nodes,
+      emptyLabels: emptyStateLabels,
     },
   );
 

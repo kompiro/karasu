@@ -13,8 +13,7 @@ original direction. Exiting diff mode resets the swapped state.
 
 ## Prerequisites
 
-- App is running with the diff viewer flag enabled: open the app with
-  `?diff=1` in the URL (see `packages/app/src/utils/feature-flags.ts`)
+- App is running (the diff viewer is enabled by default — graduated in #839)
 - A project with an `index.krs` file and at least one other `.krs` file
 
 ## Automated coverage

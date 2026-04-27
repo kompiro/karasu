@@ -100,5 +100,5 @@ No orphan snapshot data remains.
   locally while verifying AT-1 / AT-4 if a full wait is impractical.
 - The picker lists snapshots newest-first with a trigger badge (`auto` /
   `manual`) and the optional label.
-- This feature is gated by the existing `ENABLE_DIFF_VIEWER` feature flag —
-  the same gate that surfaced the file-to-file picker.
+- The diff viewer (and this snapshot picker entry point) is now enabled by
+  default — the `ENABLE_DIFF_VIEWER` feature flag was removed in #839.
