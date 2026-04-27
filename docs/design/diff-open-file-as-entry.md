@@ -1,11 +1,12 @@
 # Diff viewer: make the open file the comparison root
 
 - **日付**: 2026-04-24
-- **ステータス**: 検討中
+- **ステータス**: 決定済み（[ADR-20260427-03](../adr/20260427-03-diff-open-file-as-entry.md) として昇格、[#825](https://github.com/kompiro/karasu/pull/825) で実装）
 - **関連**:
+  - ADR: [20260427-03-diff-open-file-as-entry.md](../adr/20260427-03-diff-open-file-as-entry.md)（本 design doc の決定版）
   - Issue: [#811](https://github.com/kompiro/karasu/issues/811)
   - 親 Issue: [#765](https://github.com/kompiro/karasu/issues/765)（part A は [#800](https://github.com/kompiro/karasu/pull/800) で shipped）
-  - ADR: [20260420-02-graphical-diff-viewer.md](../adr/20260420-02-graphical-diff-viewer.md), [20260422-06-diff-paste-input-ui.md](../adr/20260422-06-diff-paste-input-ui.md), [20260422-07-opfs-snapshot-diff-source.md](../adr/20260422-07-opfs-snapshot-diff-source.md)
+  - 既存 ADR: [20260420-02-graphical-diff-viewer.md](../adr/20260420-02-graphical-diff-viewer.md), [20260422-06-diff-paste-input-ui.md](../adr/20260422-06-diff-paste-input-ui.md), [20260422-07-opfs-snapshot-diff-source.md](../adr/20260422-07-opfs-snapshot-diff-source.md)
 
 ## 背景・課題
 
