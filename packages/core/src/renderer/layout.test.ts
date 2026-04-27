@@ -455,30 +455,24 @@ system S {
     expect(c.y).toBeLessThan(s.y);
   });
 
-  it("forces a user that bypasses the client to still sit above the service row", () => {
-    // Without forced layering, topo sort would place Admin alongside the
-    // client because Admin -> Backend creates a 2-layer DAG. Forced layout
-    // must keep Admin in the user row regardless of incident edges.
+  it("keeps a user in the top row even when topo sort would push it below", () => {
+    // Sharper than the obvious "user has no edges" case: here Subscriber is
+    // the *target* of a service edge, so topological sort would assign it to
+    // layer 1 (below the service). Forced kind-based layout must override
+    // that and pin every `user` to the top row.
     const slice = parseAndExtract(`
 system S {
-  user Customer [human]
-  user Admin [human]
-  client WebApp [web]
-  service Backend {}
-  Customer -> WebApp
-  Admin -> Backend
-  WebApp -> Backend
+  service Notifier {}
+  user Subscriber [human]
+  Notifier -> Subscriber
 }
 `);
     const result = layout(slice);
-    const customer = result.nodes.get("Customer")!;
-    const admin = result.nodes.get("Admin")!;
-    const webapp = result.nodes.get("WebApp")!;
-    const backend = result.nodes.get("Backend")!;
-    // Admin (user) shares the user row with Customer
-    expect(admin.y).toBe(customer.y);
-    expect(customer.y).toBeLessThan(webapp.y);
-    expect(webapp.y).toBeLessThan(backend.y);
+    const notifier = result.nodes.get("Notifier")!;
+    const subscriber = result.nodes.get("Subscriber")!;
+    // Without forcing, topo would give Notifier.y < Subscriber.y. Forced
+    // layout flips it: user above service.
+    expect(subscriber.y).toBeLessThan(notifier.y);
   });
 
   it("collapses to two rows when no client is declared (user → service fallback)", () => {
@@ -497,8 +491,15 @@ system S {
   });
 
   it("preserves declaration order within each forced layer (multi-system path)", () => {
-    // Multi-system root view goes through layoutMultipleSystems(); declaration
-    // order must override the barycenter heuristic when forced layout fires.
+    // Multi-system root view goes through layoutMultipleSystems(); that's the
+    // only path that applies the barycenter heuristic, so this is where
+    // "force declaration order" actually has work to do.
+    //
+    // Crossing edges U1→C2 and U2→C1 give:
+    //   - barycenter(C1) = x(U2)  (right)
+    //   - barycenter(C2) = x(U1)  (left)
+    // so without forcing, sortByBarycenter would flip the client row to
+    // [C2, C1]. Forced layout must keep declaration order [C1, C2].
     const krs = `
 system S {
   user U1 [human]
@@ -506,7 +507,6 @@ system S {
   client C1 [web]
   client C2 [web]
   service ServiceA {}
-  service ServiceB {}
   U1 -> C2
   U2 -> C1
 }
@@ -519,8 +519,25 @@ system Other {
     const result = layout(slice);
     const c1 = result.nodes.get("C1")!;
     const c2 = result.nodes.get("C2")!;
-    // Declaration order C1 before C2 — barycenter would have flipped them
-    // (predecessor U1 leftmost edges to C2) but forced layout preserves order.
     expect(c1.x).toBeLessThan(c2.x);
+  });
+
+  it("compacts to two rows when only client (no user) is declared", () => {
+    // Edge case for the helper's row-compaction logic: a system with `client`
+    // but no `user` should not leave row 0 empty — client moves up to row 0.
+    const slice = parseAndExtract(`
+system S {
+  client App [web]
+  service Backend {}
+  App -> Backend
+}
+`);
+    const result = layout(slice);
+    const app = result.nodes.get("App")!;
+    const backend = result.nodes.get("Backend")!;
+    expect(app.y).toBeLessThan(backend.y);
+    // Row 0 means y starts near NODE_GAP (60), not near 2*(h+LAYER_GAP).
+    // A non-compacted layout would put App well below 200px.
+    expect(app.y).toBeLessThan(200);
   });
 });

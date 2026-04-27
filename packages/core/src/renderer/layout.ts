@@ -553,6 +553,11 @@ export function layout(
   // a system view (i.e. there is at least one user/client among the children).
   // Otherwise fall back to topological sort, which is what drill-down views
   // (services, domains) need to lay out their internal structure.
+  //
+  // Note: this single-system path doesn't currently apply a barycenter sort —
+  // declaration order falls out of the Map iteration. If barycenter is added
+  // here in the future, gate it on `forcedLayers === null` (Q11 of the design
+  // doc requires declaration order within forced layers).
   const nodeIds = allNodes.map((n) => n.id);
   const forcedLayers = assignForcedSystemLayers(allNodes);
   let layers: Map<string, number>;
@@ -835,7 +840,6 @@ function layoutMultipleSystems(
       const { adj, inDegree } = buildGraph(nodeIds, sys.edges);
       layers = assignLayers(nodeIds, adj, inDegree);
     }
-    const useForcedLayout = forcedLayers !== null;
 
     const nodesByLayer = new Map<number, string[]>();
     for (const [id, layer] of layers) {
@@ -870,7 +874,7 @@ function layoutMultipleSystems(
       // crossings. Skip when the forced system layout is in effect — Q11 of
       // the design doc requires preserving declaration order within each layer.
       const sortedLayer =
-        useForcedLayout || layerOrder === 0
+        forcedLayers !== null || layerOrder === 0
           ? rawLayer
           : sortByBarycenter(rawLayer, predecessorsMap, nodeCenterX);
 
@@ -1116,11 +1120,10 @@ function computeEdgePoints(
 /**
  * Force a kind-based layered placement for the system-view (Phase 6 of #823).
  *
- * Returns a layer map keyed in declaration order so downstream sub-row
- * assembly preserves it:
- *   - `user`    → row 0
- *   - `client`  → row 1 (when present)
- *   - others    → row 2 if `client` exists, else row 1 (two-layer fallback)
+ * Layout schema (rows are compacted — we never emit an empty row at the top):
+ *   - user + client present  → user=0, client=1, others=2
+ *   - user only              → user=0, others=1
+ *   - client only            → client=0, others=1
  *
  * Returns `null` when neither `user` nor `client` appears among the nodes —
  * in that case the caller falls back to topological layering, which is the
@@ -1135,11 +1138,14 @@ function assignForcedSystemLayers(nodes: KrsNode[]): Map<string, number> | null 
   }
   if (!hasUser && !hasClient) return null;
 
-  const otherLayer = hasClient ? 2 : 1;
+  const userLayer = 0;
+  const clientLayer = hasUser ? 1 : 0;
+  const otherLayer = (hasUser ? 1 : 0) + (hasClient ? 1 : 0);
+
   const layers = new Map<string, number>();
   for (const n of nodes) {
-    if (n.kind === "user") layers.set(n.id, 0);
-    else if (n.kind === "client") layers.set(n.id, 1);
+    if (n.kind === "user") layers.set(n.id, userLayer);
+    else if (n.kind === "client") layers.set(n.id, clientLayer);
     else layers.set(n.id, otherLayer);
   }
   return layers;

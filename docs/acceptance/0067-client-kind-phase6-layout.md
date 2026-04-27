@@ -32,23 +32,21 @@ system Demo {
 }
 ```
 
-### 2. 直接接続のユーザーも `user` 行に残る
+### 2. user の配置はエッジトポロジーに依存しない
 
-`client` をスキップして `service` に直接エッジを張る user も、レイアウト上は `user` 行（最上段）に配置される。
+`user` は **エッジの有無や向きに関係なく** 常に最上段に配置される。トポロジカルソートでは `service` の下に押し下げられるようなパターンでも、強制レイアウトが `user` 行に引き上げる。
 
 ```krs
 system Demo {
-  user Customer [human]
-  user Admin [human]
-  client MobileApp [mobile]
-  service OrderService {}
-  Customer -> MobileApp
-  MobileApp -> OrderService
-  Admin -> OrderService
+  service Notifier {}
+  user Subscriber [human]
+  Notifier -> Subscriber
 }
 ```
 
-`Admin` は `Customer` と同じ Y 座標で並び、`OrderService` は両者より下に位置する。
+`Subscriber` が `Notifier` より上に配置されること（トポロジカルソートだけだと逆になる）を確認する。
+
+`client` をスキップして `service` に直接エッジを張る user（例: `Admin -> OrderService`）も同様で、`Admin` は他の user と同じ最上段に並ぶ。
 
 ### 3. `client` 不在時の二層フォールバック
 
