@@ -549,10 +549,19 @@ export function layout(
     };
   }
 
-  // Layout child nodes using topological sort
+  // Force kind-based layering (user → client → service) when this looks like
+  // a system view (i.e. there is at least one user/client among the children).
+  // Otherwise fall back to topological sort, which is what drill-down views
+  // (services, domains) need to lay out their internal structure.
   const nodeIds = allNodes.map((n) => n.id);
-  const { adj, inDegree } = buildGraph(nodeIds, allEdges);
-  const layers = assignLayers(nodeIds, adj, inDegree);
+  const forcedLayers = assignForcedSystemLayers(allNodes);
+  let layers: Map<string, number>;
+  if (forcedLayers) {
+    layers = forcedLayers;
+  } else {
+    const { adj, inDegree } = buildGraph(nodeIds, allEdges);
+    layers = assignLayers(nodeIds, adj, inDegree);
+  }
 
   // Position nodes inside the container area
   const layoutNodes = new Map<string, LayoutNode>();
@@ -818,8 +827,15 @@ function layoutMultipleSystems(
     const nodeIds = rawNodes.map((n) => n.id);
     const idSet = new Set(nodeIds);
     // Only include intra-system edges for layout ordering
-    const { adj, inDegree } = buildGraph(nodeIds, sys.edges);
-    const layers = assignLayers(nodeIds, adj, inDegree);
+    const forcedLayers = assignForcedSystemLayers(rawNodes);
+    let layers: Map<string, number>;
+    if (forcedLayers) {
+      layers = forcedLayers;
+    } else {
+      const { adj, inDegree } = buildGraph(nodeIds, sys.edges);
+      layers = assignLayers(nodeIds, adj, inDegree);
+    }
+    const useForcedLayout = forcedLayers !== null;
 
     const nodesByLayer = new Map<number, string[]>();
     for (const [id, layer] of layers) {
@@ -850,9 +866,13 @@ function layoutMultipleSystems(
     for (let layerOrder = 0; layerOrder < sortedLayers.length; layerOrder++) {
       const layerIdx = sortedLayers[layerOrder];
       const rawLayer = nodesByLayer.get(layerIdx)!.map((id) => ({ id }));
-      // Sort by barycenter for all layers after the first to minimize edge crossings
+      // Sort by barycenter for all layers after the first to minimize edge
+      // crossings. Skip when the forced system layout is in effect — Q11 of
+      // the design doc requires preserving declaration order within each layer.
       const sortedLayer =
-        layerOrder === 0 ? rawLayer : sortByBarycenter(rawLayer, predecessorsMap, nodeCenterX);
+        useForcedLayout || layerOrder === 0
+          ? rawLayer
+          : sortByBarycenter(rawLayer, predecessorsMap, nodeCenterX);
 
       // Place nodes with sub-row wrapping when layer width exceeds MAX_LAYER_WIDTH
       let currentX = NODE_GAP;
@@ -1091,6 +1111,38 @@ function computeEdgePoints(
     toPoint,
     cyclic: edge.cyclic,
   };
+}
+
+/**
+ * Force a kind-based layered placement for the system-view (Phase 6 of #823).
+ *
+ * Returns a layer map keyed in declaration order so downstream sub-row
+ * assembly preserves it:
+ *   - `user`    → row 0
+ *   - `client`  → row 1 (when present)
+ *   - others    → row 2 if `client` exists, else row 1 (two-layer fallback)
+ *
+ * Returns `null` when neither `user` nor `client` appears among the nodes —
+ * in that case the caller falls back to topological layering, which is the
+ * right behavior for service drill-down views (domains / usecases / resources).
+ */
+function assignForcedSystemLayers(nodes: KrsNode[]): Map<string, number> | null {
+  let hasUser = false;
+  let hasClient = false;
+  for (const n of nodes) {
+    if (n.kind === "user") hasUser = true;
+    else if (n.kind === "client") hasClient = true;
+  }
+  if (!hasUser && !hasClient) return null;
+
+  const otherLayer = hasClient ? 2 : 1;
+  const layers = new Map<string, number>();
+  for (const n of nodes) {
+    if (n.kind === "user") layers.set(n.id, 0);
+    else if (n.kind === "client") layers.set(n.id, 1);
+    else layers.set(n.id, otherLayer);
+  }
+  return layers;
 }
 
 function assignLayers(

@@ -435,3 +435,92 @@ system Target {
     }
   });
 });
+
+describe("layout > forced system layers (Phase 6 of #823)", () => {
+  it("places user, client, and service in three distinct rows", () => {
+    const slice = parseAndExtract(`
+system S {
+  user Customer [human]
+  client WebApp [web]
+  service Backend {}
+  Customer -> WebApp
+  WebApp -> Backend
+}
+`);
+    const result = layout(slice);
+    const u = result.nodes.get("Customer")!;
+    const c = result.nodes.get("WebApp")!;
+    const s = result.nodes.get("Backend")!;
+    expect(u.y).toBeLessThan(c.y);
+    expect(c.y).toBeLessThan(s.y);
+  });
+
+  it("forces a user that bypasses the client to still sit above the service row", () => {
+    // Without forced layering, topo sort would place Admin alongside the
+    // client because Admin -> Backend creates a 2-layer DAG. Forced layout
+    // must keep Admin in the user row regardless of incident edges.
+    const slice = parseAndExtract(`
+system S {
+  user Customer [human]
+  user Admin [human]
+  client WebApp [web]
+  service Backend {}
+  Customer -> WebApp
+  Admin -> Backend
+  WebApp -> Backend
+}
+`);
+    const result = layout(slice);
+    const customer = result.nodes.get("Customer")!;
+    const admin = result.nodes.get("Admin")!;
+    const webapp = result.nodes.get("WebApp")!;
+    const backend = result.nodes.get("Backend")!;
+    // Admin (user) shares the user row with Customer
+    expect(admin.y).toBe(customer.y);
+    expect(customer.y).toBeLessThan(webapp.y);
+    expect(webapp.y).toBeLessThan(backend.y);
+  });
+
+  it("collapses to two rows when no client is declared (user → service fallback)", () => {
+    const slice = parseAndExtract(`
+system S {
+  user Customer [human]
+  service Backend {}
+  Customer -> Backend
+}
+`);
+    const result = layout(slice);
+    const u = result.nodes.get("Customer")!;
+    const s = result.nodes.get("Backend")!;
+    // Two distinct rows; user is above service
+    expect(u.y).toBeLessThan(s.y);
+  });
+
+  it("preserves declaration order within each forced layer (multi-system path)", () => {
+    // Multi-system root view goes through layoutMultipleSystems(); declaration
+    // order must override the barycenter heuristic when forced layout fires.
+    const krs = `
+system S {
+  user U1 [human]
+  user U2 [human]
+  client C1 [web]
+  client C2 [web]
+  service ServiceA {}
+  service ServiceB {}
+  U1 -> C2
+  U2 -> C1
+}
+system Other {
+  service Z {}
+}
+`;
+    const parsed = Parser.parse(krs);
+    const slice = extractView(parsed.value.systems, [], parsed.value.domains);
+    const result = layout(slice);
+    const c1 = result.nodes.get("C1")!;
+    const c2 = result.nodes.get("C2")!;
+    // Declaration order C1 before C2 — barycenter would have flipped them
+    // (predecessor U1 leftmost edges to C2) but forced layout preserves order.
+    expect(c1.x).toBeLessThan(c2.x);
+  });
+});
