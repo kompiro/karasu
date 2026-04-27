@@ -7,7 +7,7 @@ type: product
 ## 概要
 
 `.krs` を編集した結果として警告 (`warning.*`) や診断 (`diagnostic.*`) の集合が変化した場合、WarningPanel の表示が**両方向に**正しく更新されることを確認する
-（Issue [#891](https://github.com/kompiro/causu/issues/891)）。
+（Issue [#891](https://github.com/kompiro/karasu/issues/891)）。
 
 これまで view hooks (`useSystemView` / `useDeployView` / `useOrgView`) の compile 結果は SVG 文字列のみで早期リターンを判定していたため、
 グラフ構造が変わらないが警告だけが変わる編集（例: `client.handles` のドメイン参照を typo → 修正）で WarningPanel が古い状態に固着していた。

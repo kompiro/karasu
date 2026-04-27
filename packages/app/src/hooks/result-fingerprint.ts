@@ -12,6 +12,20 @@ import type { Diagnostic, Warning } from "@karasu-tools/core";
  * diagnostics into the fingerprint preserves the "nothing changed → no
  * re-render" optimization while making both directions of warning
  * refresh (clear + appear) reliable. See Issue #891.
+ *
+ * Implementation note: this is a **plain string concatenation**, not a
+ * hash. It allocates roughly the size of the SVG plus the JSON encoding
+ * of warnings/diagnostics on every successful compile, which suits
+ * karasu's typical graph size (single-digit MB SVGs at most). A
+ * cryptographic hash is unnecessary — the only consumer is `===`
+ * inside the same JS realm.
+ *
+ * Failure-path semantics: callers do **not** reset the stored
+ * fingerprint on the error path. That is safe because (a) hooks that
+ * track `hadErrors` gate the success-branch fingerprint check on
+ * `!hadErrors.current`, and (b) hooks that don't track `hadErrors`
+ * (e.g. `useDeployView`) rely on `diagnostics` differing between
+ * error and clean states, which the fingerprint captures.
  */
 export function computeViewResultFingerprint(args: {
   svg: string;
