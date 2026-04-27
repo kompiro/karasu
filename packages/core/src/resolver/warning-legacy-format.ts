@@ -47,6 +47,13 @@ export function formatWarning(w: Warning): FormattedWarning {
         details: [],
       };
     }
+    case "unresolved-handles": {
+      const { nodeKind, nodeId, domainId } = w.params;
+      return {
+        message: `${nodeKind} "${nodeId}" handles "${domainId}" but no outgoing edge target exposes that domain`,
+        details: [],
+      };
+    }
     case "unassigned-database": {
       const display = w.params.label ?? w.params.databaseId;
       return {

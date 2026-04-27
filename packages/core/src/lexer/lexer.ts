@@ -19,6 +19,7 @@ const KEYWORDS: Record<string, TokenType> = {
   artifact: TokenType.Artifact,
   runtime: TokenType.Runtime,
   realizes: TokenType.Realizes,
+  handles: TokenType.Handles,
   schedule: TokenType.Schedule,
   image: TokenType.Image,
   type: TokenType.Type,
