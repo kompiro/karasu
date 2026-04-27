@@ -46,9 +46,14 @@ export function formatDiagnostic(d: Diagnostic): string {
     case "expected-string-after":
       return `Expected string literal after "${d.params.property}"`;
     case "property-not-for-node-kind":
-      return d.params.property === "role"
-        ? `"role" property is only valid for user nodes`
-        : `"team" property is only valid for service and domain nodes`;
+      switch (d.params.property) {
+        case "role":
+          return `"role" property is only valid for user nodes`;
+        case "team":
+          return `"team" property is only valid for service and domain nodes`;
+        case "handles":
+          return `"handles" property is only valid for client and service nodes`;
+      }
     case "infra-not-in-context":
       return `"${d.params.infraKind}" is only valid as a direct child of system, not inside "${d.params.parentKind}"`;
     case "expected-id-or-string":

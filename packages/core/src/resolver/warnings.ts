@@ -9,6 +9,7 @@ export function analyze(file: KrsFile, sheets: StyleSheet[], systemSheetCount = 
   warnings.push(...detectUnassignedDomains(file));
   warnings.push(...detectUnassignedServices(file));
   warnings.push(...detectUnassignedClients(file));
+  warnings.push(...detectUnresolvedHandles(file));
   warnings.push(...detectUnassignedDatabases(file));
   warnings.push(...detectUnassignedQueues(file));
   warnings.push(...detectUnassignedStorages(file));
@@ -102,6 +103,161 @@ function detectUnassignedClients(file: KrsFile): Warning[] {
     },
     loc: client.loc,
   }));
+}
+
+/**
+ * Validate `handles` cross-references for `client` and `service` nodes.
+ *
+ * Expose rule (one-hop, recursive):
+ *   A node N exposes domain D iff:
+ *     1. N has a child `domain D` (self-owned), OR
+ *     2. N declares `handles D` AND at least one of N's outgoing communication
+ *        edges targets a node that exposes D.
+ *
+ * For each `handles D` declaration whose D cannot be resolved through the
+ * rule, emit an `unresolved-handles` warning. The rule mirrors how the
+ * design doc describes the BFF passthrough chain (client → BFF.handles →
+ * backend.owns).
+ *
+ * Implementation notes:
+ * - Operates per-system: only edges declared at the same system scope are
+ *   considered. Top-level clients/services (file.clients / file.services)
+ *   already produce `unassigned-*` warnings; their `handles` declarations
+ *   simply have no edges to resolve through.
+ * - Memoizes "exposes(node, domain)" inside a single system to keep the
+ *   recursion linear in the number of nodes. The recursion is well-founded
+ *   because we expand exactly one hop per call (the recursive call resolves
+ *   on the *target* side of an edge, and a graph with finite nodes
+ *   terminates).
+ * - `delivers` is a service-side property and not an edge, so it does not
+ *   participate.
+ */
+function detectUnresolvedHandles(file: KrsFile): Warning[] {
+  const warnings: Warning[] = [];
+
+  for (const system of file.systems) {
+    // Build node lookup and outgoing-edge index keyed by source id.
+    const nodeById = new Map<string, KrsNode>();
+    for (const child of system.children) {
+      nodeById.set(child.id, child);
+    }
+    const outgoingByFrom = new Map<string, string[]>();
+    for (const edge of system.edges) {
+      let list = outgoingByFrom.get(edge.from);
+      if (!list) {
+        list = [];
+        outgoingByFrom.set(edge.from, list);
+      }
+      list.push(edge.to);
+    }
+
+    // Memoization: nodeId -> domainId -> boolean
+    const memo = new Map<string, Map<string, boolean>>();
+    const inProgress = new Set<string>(); // cycle guard (key: nodeId|domainId)
+
+    function ownsDomain(node: KrsNode, domainId: string): boolean {
+      return node.children.some((c) => c.kind === "domain" && c.id === domainId);
+    }
+
+    function declaredHandles(node: KrsNode): string[] | undefined {
+      if (node.kind === "client" || node.kind === "service") {
+        return node.properties.handles;
+      }
+      return undefined;
+    }
+
+    function exposes(nodeId: string, domainId: string): boolean {
+      let domainMap = memo.get(nodeId);
+      if (domainMap?.has(domainId)) return domainMap.get(domainId)!;
+
+      const node = nodeById.get(nodeId);
+      if (!node) {
+        if (!domainMap) {
+          domainMap = new Map();
+          memo.set(nodeId, domainMap);
+        }
+        domainMap.set(domainId, false);
+        return false;
+      }
+
+      // Cycle guard — treat in-progress lookups as not-yet-exposed; this
+      // prevents infinite recursion on pathological graphs (e.g. A.handles X
+      // pointing to B.handles X pointing back to A).
+      const key = `${nodeId}|${domainId}`;
+      if (inProgress.has(key)) {
+        if (!domainMap) {
+          domainMap = new Map();
+          memo.set(nodeId, domainMap);
+        }
+        domainMap.set(domainId, false);
+        return false;
+      }
+      inProgress.add(key);
+
+      // Rule 1: own
+      if (ownsDomain(node, domainId)) {
+        if (!domainMap) {
+          domainMap = new Map();
+          memo.set(nodeId, domainMap);
+        }
+        domainMap.set(domainId, true);
+        inProgress.delete(key);
+        return true;
+      }
+
+      // Rule 2: re-export — the node declared `handles D` AND an outgoing
+      // edge target also exposes D.
+      const handles = declaredHandles(node);
+      if (handles?.includes(domainId)) {
+        const targets = outgoingByFrom.get(nodeId) ?? [];
+        for (const target of targets) {
+          if (exposes(target, domainId)) {
+            if (!domainMap) {
+              domainMap = new Map();
+              memo.set(nodeId, domainMap);
+            }
+            domainMap.set(domainId, true);
+            inProgress.delete(key);
+            return true;
+          }
+        }
+      }
+
+      if (!domainMap) {
+        domainMap = new Map();
+        memo.set(nodeId, domainMap);
+      }
+      domainMap.set(domainId, false);
+      inProgress.delete(key);
+      return false;
+    }
+
+    // Check every client / service in this system that declares `handles`.
+    for (const node of system.children) {
+      if (node.kind !== "client" && node.kind !== "service") continue;
+      const handles = node.properties.handles;
+      if (!handles || handles.length === 0) continue;
+
+      for (const domainId of handles) {
+        // For the declaring node itself, "exposes" recurses into rule 2 and
+        // walks the outgoing edges. Self-owned domains (rule 1) take
+        // precedence and are also tested there.
+        if (exposes(node.id, domainId)) continue;
+
+        warnings.push({
+          kind: "unresolved-handles",
+          params: {
+            nodeId: node.id,
+            nodeKind: node.kind,
+            domainId,
+          },
+          loc: node.loc,
+        });
+      }
+    }
+  }
+
+  return warnings;
 }
 
 function detectUnassignedDatabases(file: KrsFile): Warning[] {
