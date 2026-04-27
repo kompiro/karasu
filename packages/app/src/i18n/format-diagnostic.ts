@@ -62,6 +62,8 @@ export function useFormattedDiagnostic(): (d: Diagnostic) => string {
           return t("diagnostic.edgeSourceMismatch.message", d.params);
         case "unassigned-resource":
           return t("diagnostic.unassignedResource.message", d.params);
+        case "client-resource-invalid-kind":
+          return t("diagnostic.clientResourceInvalidKind.message", d.params);
         case "duplicate-owner-assignment":
           return t("diagnostic.duplicateOwnerAssignment.message", d.params);
         case "duplicate-team-id":

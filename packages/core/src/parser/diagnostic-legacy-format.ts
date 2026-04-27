@@ -69,6 +69,8 @@ export function formatDiagnostic(d: Diagnostic): string {
       return `Edge source "${d.params.from}" must match the enclosing block id "${d.params.parentId}"`;
     case "unassigned-resource":
       return `resource "${d.params.resourceId}" is not assigned to any database`;
+    case "client-resource-invalid-kind":
+      return `Invalid client resource kind "${d.params.kind}" for resource "${d.params.name}". Allowed kinds: localStorage, sessionStorage, indexedDB, opfs, file, keychain`;
     case "duplicate-owner-assignment":
       return `"${d.params.nodeId}" is already owned by team "${d.params.existingTeam}"; multiple teams cannot own the same service or domain`;
     case "duplicate-team-id":

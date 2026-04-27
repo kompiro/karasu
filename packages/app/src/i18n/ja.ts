@@ -179,6 +179,8 @@ export const ja: Partial<Translations> = {
     `エッジ source "${from}" は所属するブロック id "${parentId}" と一致する必要があります`,
   "diagnostic.unassignedResource.message": ({ resourceId }) =>
     `resource "${resourceId}" はどの database にも割り当てられていません`,
+  "diagnostic.clientResourceInvalidKind.message": ({ kind, name }) =>
+    `client の resource "${name}" の種別 "${kind}" は無効です。利用可能な種別: localStorage, sessionStorage, indexedDB, opfs, file, keychain`,
   "diagnostic.duplicateOwnerAssignment.message": ({ nodeId, existingTeam }) =>
     `"${nodeId}" はすでに team "${existingTeam}" によって所有されています。複数の team が同じ service / domain を所有することはできません`,
   "diagnostic.duplicateTeamId.message": ({ teamId }) => `team id "${teamId}" が重複しています`,

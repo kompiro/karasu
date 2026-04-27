@@ -514,6 +514,53 @@ system ECPlatform {
     expect(result.value.clients[0].id).toBe("TopLevelClient");
   });
 
+  it("parses client resources with all whitelisted storage kinds", () => {
+    const result = Parser.parse(`
+system S {
+  client WebApp [web] {
+    resource localStorage "preferences"
+    resource sessionStorage "view-state"
+    resource indexedDB "outbox"
+    resource opfs "drafts"
+    resource file "config.json"
+    resource keychain "auth-token"
+  }
+}
+    `);
+    expect(result.diagnostics).toEqual([]);
+    const client = result.value.systems[0].children[0] as ClientNode;
+    expect(client.properties.resources).toHaveLength(6);
+    expect(client.properties.resources.map((r) => r.storageKind)).toEqual([
+      "localStorage",
+      "sessionStorage",
+      "indexedDB",
+      "opfs",
+      "file",
+      "keychain",
+    ]);
+    expect(client.properties.resources[0].name).toBe("preferences");
+  });
+
+  it("rejects unknown client resource kind", () => {
+    const result = Parser.parse(`
+system S {
+  client WebApp [web] {
+    resource cookie "session"
+  }
+}
+    `);
+    expect(result.diagnostics).toHaveLength(1);
+    expect(result.diagnostics[0].code).toBe("client-resource-invalid-kind");
+    expect(formatDiagnostic(result.diagnostics[0])).toContain("cookie");
+  });
+
+  it("client without resource block parses with empty resources", () => {
+    const result = Parser.parse(`system S { client X [web] }`);
+    expect(result.diagnostics).toEqual([]);
+    const client = result.value.systems[0].children[0] as ClientNode;
+    expect(client.properties.resources).toEqual([]);
+  });
+
   it("rejects role property on client", () => {
     const result = Parser.parse(`
 system S {
