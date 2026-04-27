@@ -30,7 +30,7 @@ describe("i18n locale coverage — empty-state pipeline", () => {
 const jaLabels = {
   systemNoNodes: translate("ja", "emptyState.system.noNodes"),
   orgPlaceholder: translate("ja", "emptyState.org.placeholder"),
-  noDiagram: translate("ja", "emptyState.system.noDiagram"),
+  systemNoDiagram: translate("ja", "emptyState.system.noDiagram"),
 };
 
 describe("i18n locale coverage — ja renders contain no English empty-state hardcodes", () => {
@@ -60,12 +60,12 @@ describe("i18n locale coverage — ja renders contain no English empty-state har
     // `system Empty {}` has no child nodes → triggers the placeholder.
     const result = buildAllLayersSvg("system Empty {}\n", undefined, undefined, jaLabels);
     expect(result.svg).not.toContain(">No diagram<");
-    expect(result.svg).toContain(jaLabels.noDiagram);
+    expect(result.svg).toContain(jaLabels.systemNoDiagram);
   });
 
   it("system drill-down: renders ja, not 'No diagram'", () => {
     const result = buildDrillDownSvg("system Empty {}\n", undefined, undefined, jaLabels);
     expect(result.svg).not.toContain(">No diagram<");
-    expect(result.svg).toContain(jaLabels.noDiagram);
+    expect(result.svg).toContain(jaLabels.systemNoDiagram);
   });
 });

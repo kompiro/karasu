@@ -22,7 +22,7 @@ export interface EmptyStateLabels {
    * Text for the system all-layers / drill-down placeholder rendered when
    * the `.krs` file produces no system-side root content.
    */
-  noDiagram?: string;
+  systemNoDiagram?: string;
 }
 
 export const DEFAULT_EMPTY_STATE_LABELS = {
@@ -31,5 +31,5 @@ export const DEFAULT_EMPTY_STATE_LABELS = {
   orgNoTeams: "No teams defined",
   systemNoNodes: "No nodes to render",
   orgPlaceholder: "No org diagram",
-  noDiagram: "No diagram",
+  systemNoDiagram: "No diagram",
 } as const satisfies Required<EmptyStateLabels>;
