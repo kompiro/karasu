@@ -49,6 +49,11 @@ export enum TokenType {
   Slack = "Slack",
   Github = "Github",
 
+  // Keywords (legend)
+  Legend = "Legend",
+  Swatch = "Swatch",
+  Ref = "Ref",
+
   // Properties (logical)
   Label = "Label",
   Role = "Role",

@@ -60,6 +60,16 @@ describe("Lexer", () => {
     ]);
   });
 
+  it("tokenizes legend keywords", () => {
+    const types = tokenTypes("legend swatch ref");
+    expect(types).toEqual([
+      TokenType.Legend,
+      TokenType.Swatch,
+      TokenType.Ref,
+      TokenType.EOF,
+    ]);
+  });
+
   it("tokenizes property keywords", () => {
     const types = tokenTypes("runtime realizes schedule image type role team link");
     expect(types).toEqual([
