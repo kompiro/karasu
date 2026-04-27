@@ -14,6 +14,13 @@ A tag is a semantic declaration, not a direct appearance override. Visual contro
 | `[sync]` | Synchronous communication (for edges) | Solid arrow (default) |
 | `[human]` | A human user | Used only on user nodes. No effect on default style |
 | `[ai]` | An AI agent | Used only on user nodes. No effect on default style |
+| `[mobile]` | Mobile native app form factor | Used only on `client` nodes |
+| `[web]` | SPA on our own origin | Used only on `client` nodes |
+| `[desktop]` | Desktop app form factor | Used only on `client` nodes |
+| `[cli]` | Command-line tool / SDK | Used only on `client` nodes |
+| `[device]` | IoT / dedicated terminal / KIOSK | Used only on `client` nodes |
+| `[extension]` | Plugin in another application's host | Used only on `client` nodes |
+| `[embed]` | Embedded widget / SDK in third-party site | Used only on `client` nodes |
 
 ### Example
 

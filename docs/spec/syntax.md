@@ -27,12 +27,29 @@ karasu explicitly separates **logical structure** and **physical structure**.
 
 | Keyword | Meaning | May contain |
 |---------|---------|-------------|
-| `system` | A container showing relationships between owned/external services | `service`, `user` |
+| `system` | A container showing relationships between owned/external services and clients | `service`, `user`, `client` |
 | `service` | An independent unit of business functionality | `domain` |
 | `domain` | A business-concern boundary (top-level or inside a service) | `usecase` |
 | `usecase` | A business operation inside a domain | `resource` |
 | `resource` | What a usecase operates on (tables, external APIs, files, etc.) | — |
 | `user` | A user of the system (human or AI agent) | — |
+| `client` | Software we ship that acts on behalf of an end user (mobile / web / desktop / CLI / device / extension / embed). See subtype tag table below | — |
+
+#### `client` subtype tags
+
+A `client` node is classified by **form factor** using one of seven reserved subtype tags. The tag is placed in `[...]` after the id, like `client MobileApp [mobile]`. Multiple subtype tags on a single client are allowed but unusual.
+
+| Tag | Form factor |
+|-----|-------------|
+| `[mobile]` | iOS / Android native app |
+| `[web]` | SPA running on the vendor's own origin |
+| `[desktop]` | Desktop app (Electron, native) |
+| `[cli]` | Command-line tool / SDK shipped to users |
+| `[device]` | IoT / dedicated terminal / KIOSK |
+| `[extension]` | Plugin / extension hosted by another application (browser extension, IDE extension, design-tool plugin) |
+| `[embed]` | Widget / SDK embedded into third-party web content (Stripe Checkout, Intercom, etc.) |
+
+`client` is reserved for software the project itself ships. Third-party browsers / IDEs / AI agents that consume the system are modeled as `user` (typically `[human]` or `[ai]`), not `client`.
 
 ### Organizational structure (who owns what) — rendered as a separate diagram
 
