@@ -654,9 +654,10 @@ export function buildDrillDownSvg(
   krsSource: string,
   styleSource?: string,
   displayMode?: DisplayMode,
+  emptyStateLabels?: EmptyStateLabels,
 ): SvgResult {
   const parseResult: ParseResult<KrsFile> = Parser.parse(krsSource);
-  const result = _buildDrillDownSvg(parseResult.value, styleSource, displayMode);
+  const result = _buildDrillDownSvg(parseResult.value, styleSource, displayMode, emptyStateLabels);
   return { svg: result.svg, diagnostics: [...parseResult.diagnostics, ...result.diagnostics] };
 }
 
@@ -668,9 +669,10 @@ export function buildAllLayersSvg(
   krsSource: string,
   styleSource?: string,
   displayMode?: DisplayMode,
+  emptyStateLabels?: EmptyStateLabels,
 ): SvgResult {
   const parseResult: ParseResult<KrsFile> = Parser.parse(krsSource);
-  const result = _buildAllLayersSvg(parseResult.value, styleSource, displayMode);
+  const result = _buildAllLayersSvg(parseResult.value, styleSource, displayMode, emptyStateLabels);
   return { svg: result.svg, diagnostics: [...parseResult.diagnostics, ...result.diagnostics] };
 }
 
@@ -722,9 +724,10 @@ export function buildAllViewsSvg(
   krsSource: string,
   styleSource?: string,
   displayMode?: DisplayMode,
+  emptyStateLabels?: EmptyStateLabels,
 ): SvgResult {
   const parseResult: ParseResult<KrsFile> = Parser.parse(krsSource);
-  const result = _buildAllViewsSvg(parseResult.value, styleSource, displayMode);
+  const result = _buildAllViewsSvg(parseResult.value, styleSource, displayMode, emptyStateLabels);
   return { svg: result.svg, diagnostics: [...parseResult.diagnostics, ...result.diagnostics] };
 }
 

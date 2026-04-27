@@ -19,6 +19,11 @@ function buildOrgPlaceholderSvg(labels?: EmptyStateLabels): string {
   return `<svg xmlns="http://www.w3.org/2000/svg" width="200" height="100" viewBox="0 0 200 100"><text x="100" y="50" text-anchor="middle" fill="#9CA3AF" font-family="sans-serif">${text}</text></svg>`;
 }
 
+function buildNoDiagramSvg(labels?: EmptyStateLabels): string {
+  const text = escapeXml(labels?.noDiagram ?? DEFAULT_EMPTY_STATE_LABELS.noDiagram);
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="200" height="100" viewBox="0 0 200 100"><text x="100" y="50" text-anchor="middle" fill="#9CA3AF" font-family="sans-serif">${text}</text></svg>`;
+}
+
 // ─── Shared helpers (also used by drill-down-svg.ts) ─────────────────────────
 
 interface SvgParts {
@@ -159,12 +164,13 @@ export function buildAllLayersSvg(
   krsFile: KrsFile,
   styleSource?: string,
   displayMode?: DisplayMode,
+  emptyStateLabels?: EmptyStateLabels,
 ): SvgResult {
   const effectiveSystems = withUnassignedSystem(krsFile);
   const rootSlice = extractView(effectiveSystems, []);
   if (rootSlice.childNodes.length === 0) {
     return {
-      svg: `<svg xmlns="http://www.w3.org/2000/svg" width="200" height="100" viewBox="0 0 200 100"><text x="100" y="50" text-anchor="middle" fill="#9CA3AF" font-family="sans-serif">No diagram</text></svg>`,
+      svg: buildNoDiagramSvg(emptyStateLabels),
       diagnostics: [],
     };
   }

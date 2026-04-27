@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { compile, buildAllLayersSvgOrg, buildDrillDownSvgOrg } from "@karasu-tools/core";
+import {
+  compile,
+  buildAllLayersSvg,
+  buildAllLayersSvgOrg,
+  buildDrillDownSvg,
+  buildDrillDownSvgOrg,
+} from "@karasu-tools/core";
 import { ja } from "./ja.js";
 import { translate } from "./index.js";
 
@@ -14,6 +20,7 @@ describe("i18n locale coverage — empty-state pipeline", () => {
     expect(ja["emptyState.org.noTeams"]).toBeDefined();
     expect(ja["emptyState.system.noNodes"]).toBeDefined();
     expect(ja["emptyState.org.placeholder"]).toBeDefined();
+    expect(ja["emptyState.system.noDiagram"]).toBeDefined();
   });
 });
 
@@ -23,6 +30,7 @@ describe("i18n locale coverage — empty-state pipeline", () => {
 const jaLabels = {
   systemNoNodes: translate("ja", "emptyState.system.noNodes"),
   orgPlaceholder: translate("ja", "emptyState.org.placeholder"),
+  noDiagram: translate("ja", "emptyState.system.noDiagram"),
 };
 
 describe("i18n locale coverage — ja renders contain no English empty-state hardcodes", () => {
@@ -46,5 +54,18 @@ describe("i18n locale coverage — ja renders contain no English empty-state har
     const result = buildDrillDownSvgOrg("system S {}\n", undefined, undefined, jaLabels);
     expect(result.svg).not.toContain("No org diagram");
     expect(result.svg).toContain(jaLabels.orgPlaceholder);
+  });
+
+  it("system all-layers: renders ja, not 'No diagram'", () => {
+    // `system Empty {}` has no child nodes → triggers the placeholder.
+    const result = buildAllLayersSvg("system Empty {}\n", undefined, undefined, jaLabels);
+    expect(result.svg).not.toContain(">No diagram<");
+    expect(result.svg).toContain(jaLabels.noDiagram);
+  });
+
+  it("system drill-down: renders ja, not 'No diagram'", () => {
+    const result = buildDrillDownSvg("system Empty {}\n", undefined, undefined, jaLabels);
+    expect(result.svg).not.toContain(">No diagram<");
+    expect(result.svg).toContain(jaLabels.noDiagram);
   });
 });

@@ -19,20 +19,20 @@ export function useViewSvg(
   const drillDownResult = useMemo(() => {
     if (!fileContent) return undefined;
     try {
-      return buildDrillDownSvg(fileContent, styleSource, displayMode);
+      return buildDrillDownSvg(fileContent, styleSource, displayMode, emptyStateLabels);
     } catch {
       return undefined;
     }
-  }, [fileContent, displayMode, styleSource]);
+  }, [fileContent, displayMode, styleSource, emptyStateLabels]);
 
   const allLayersResult = useMemo(() => {
     if (!fileContent) return undefined;
     try {
-      return buildAllLayersSvg(fileContent, styleSource, displayMode);
+      return buildAllLayersSvg(fileContent, styleSource, displayMode, emptyStateLabels);
     } catch {
       return undefined;
     }
-  }, [fileContent, displayMode, styleSource]);
+  }, [fileContent, displayMode, styleSource, emptyStateLabels]);
 
   const orgAllLayersResult = useMemo(() => {
     if (!fileContent) return undefined;
@@ -55,11 +55,11 @@ export function useViewSvg(
   const allViewsResult = useMemo(() => {
     if (!fileContent) return undefined;
     try {
-      return buildAllViewsSvg(fileContent, styleSource, displayMode);
+      return buildAllViewsSvg(fileContent, styleSource, displayMode, emptyStateLabels);
     } catch {
       return undefined;
     }
-  }, [fileContent, displayMode, styleSource]);
+  }, [fileContent, displayMode, styleSource, emptyStateLabels]);
 
   // All functions parse the same styleSource, so diagnostics are identical.
   // Take from the first available result to avoid duplication.

@@ -81,6 +81,7 @@ export const en: Translations = {
   "emptyState.org.noTeams": "No teams defined",
   "emptyState.system.noNodes": "No nodes to render",
   "emptyState.org.placeholder": "No org diagram",
+  "emptyState.system.noDiagram": "No diagram",
 
   // ReferencePanel
   "referencePanel.unsupportedMessage": "Tags & Annotations are not available for this diagram.",
