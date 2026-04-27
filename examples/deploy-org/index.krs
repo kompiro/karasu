@@ -1,0 +1,25 @@
+// deploy-org/index.krs
+// Example for verifying the priority rule "system > deploy > org" (#817).
+// This file has both deploy and organization but no system. The preview
+// should auto-select the Deploy tab (not Org).
+
+deploy Production {
+  label "本番環境"
+
+  oci "api" {
+    label "API サーバー"
+    image "api:1.0.0"
+    runtime "Node.js 22"
+  }
+}
+
+organization Acme {
+  label "Acme Engineering"
+
+  team "platform-team" {
+    label "プラットフォームチーム"
+    member alice {
+      label "Alice"
+    }
+  }
+}

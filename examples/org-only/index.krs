@@ -1,0 +1,32 @@
+// org-only/index.krs
+// Minimal example: a .krs file with only an organization block (no system,
+// no deploy). Used to demonstrate that the preview auto-selects the Org tab
+// when the file has no system block and no deploy block (Issue #817).
+
+organization Acme {
+  label "Acme Engineering"
+
+  team "platform-team" {
+    label "プラットフォームチーム"
+    description "共通基盤の開発・運用"
+
+    member alice {
+      label "Alice"
+      description "テックリード"
+    }
+    member bob {
+      label "Bob"
+      description "SRE"
+    }
+  }
+
+  team "product-team" {
+    label "プロダクトチーム"
+    description "プロダクト機能の開発"
+
+    member carol {
+      label "Carol"
+      description "プロダクトエンジニア"
+    }
+  }
+}
