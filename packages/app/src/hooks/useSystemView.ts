@@ -14,6 +14,7 @@ import {
 } from "@karasu-tools/core";
 import iconManifest from "@karasu-tools/core/icons/icons.json";
 import serviceSvg from "@karasu-tools/core/icons/service.svg?raw";
+import clientSvg from "@karasu-tools/core/icons/client.svg?raw";
 import userSvg from "@karasu-tools/core/icons/user.svg?raw";
 import domainSvg from "@karasu-tools/core/icons/domain.svg?raw";
 import resourceSvg from "@karasu-tools/core/icons/resource.svg?raw";
@@ -57,6 +58,7 @@ resolveIconManifest(
   iconManifest,
   {
     "service.svg": serviceSvg,
+    "client.svg": clientSvg,
     "user.svg": userSvg,
     "domain.svg": domainSvg,
     "resource.svg": resourceSvg,

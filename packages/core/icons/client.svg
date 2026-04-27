@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 100">
+  <g class="krs-pictogram" transform="translate(6, 4)">
+    <rect x="2" y="2" width="16" height="20" rx="2" fill="none" stroke="{{color}}" stroke-width="1.5"/>
+    <line x1="2" y1="6" x2="18" y2="6" stroke="{{color}}" stroke-width="1.5"/>
+    <rect x="5" y="9" width="3" height="3" fill="{{color}}"/>
+    <rect x="12" y="9" width="3" height="3" fill="{{color}}"/>
+    <rect x="5" y="15" width="3" height="3" fill="{{color}}"/>
+    <rect x="12" y="15" width="3" height="3" fill="{{color}}"/>
+  </g>
+  <text class="krs-label" x="30" y="19" text-anchor="start"/>
+  <text class="krs-description" x="8" y="44" text-anchor="start"/>
+</svg>

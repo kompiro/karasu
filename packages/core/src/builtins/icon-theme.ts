@@ -14,6 +14,7 @@ export const ICON_THEME_STYLE_SOURCE: string = `/* karasu icon theme */
 
 /* ── Logical nodes ── */
 service  { shape: url("service");  }
+client   { shape: url("client");   }
 user     { shape: url("user-card");     }
 domain   { shape: url("domain");   }
 usecase  { shape: url("usecase");  }
