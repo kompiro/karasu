@@ -74,7 +74,7 @@ organization Acme {
 
 ### 6. deploy + organization の優先度（regression check）
 
-- **操作**: `system` を持たず `deploy` と `organization` の両方を持つ `.krs` を開く。
+- **操作**: `examples/deploy-org/index.krs` を開く（`system` 無し、`deploy` と `organization` の両方を含む）。
 - **期待**:
   - Deploy タブが自動で選択される（org ではなく deploy が優先）。
   - Org タブをクリックすれば組織図が描画される。

@@ -236,6 +236,9 @@ export function useAppViews(args: UseAppViewsArgs): UseAppViewsResult {
     recompileOrg();
   }, [recompileSystem, recompileDeploy, recompileOrg]);
 
+  // Priority `system > deploy > org` is encoded via the predicates each hook
+  // checks (org yields when hasDeployDiagram), not via call order. Reordering
+  // these two would not change behavior.
   useAutoSwitchToDeploy({
     entryPath: effEntryPath,
     activeView,
