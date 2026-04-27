@@ -567,6 +567,48 @@ system S {
     expect(formatDiagnostic(result.diagnostics[0])).toContain("handles");
   });
 
+  it("parses delivers property on service (single client)", () => {
+    const result = Parser.parse(`
+system ECPlatform {
+  service NextServer {
+    label "Next.js BFF"
+    delivers WebApp
+  }
+  client WebApp [web]
+}
+    `);
+    expect(result.diagnostics).toHaveLength(0);
+    const service = result.value.systems[0].children[0] as ServiceNode;
+    expect(service.properties.delivers).toEqual(["WebApp"]);
+  });
+
+  it("parses delivers property on service (comma-separated list)", () => {
+    const result = Parser.parse(`
+system S {
+  service BFF {
+    delivers WebApp, AdminUI
+  }
+  client WebApp [web]
+  client AdminUI [desktop]
+}
+    `);
+    expect(result.diagnostics).toHaveLength(0);
+    const service = result.value.systems[0].children[0] as ServiceNode;
+    expect(service.properties.delivers).toEqual(["WebApp", "AdminUI"]);
+  });
+
+  it("rejects delivers property on non-service kinds", () => {
+    const result = Parser.parse(`
+system S {
+  client WebApp [web] {
+    delivers OtherClient
+  }
+}
+    `);
+    expect(result.diagnostics.length).toBeGreaterThan(0);
+    expect(formatDiagnostic(result.diagnostics[0])).toContain("delivers");
+  });
+
   it("parses team property on service (deprecated)", () => {
     const result = Parser.parse(`
 system Test {

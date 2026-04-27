@@ -1,0 +1,34 @@
+// bff-delivers.krs
+// Demonstrates: service.delivers <ClientId> for the BFF / SSR pattern.
+//
+// A Next.js / Rails+React / Laravel+Vue server ships a JS frontend bundle to
+// the browser and proxies API calls to backend services. The server-side and
+// the browser-side are different OAuth2 client types (confidential vs public)
+// and are modeled as separate nodes joined by `delivers`.
+
+system ECPlatform {
+  label "BFF pattern sample"
+
+  user Customer [human] {
+    label "Customer"
+  }
+
+  service NextServer {
+    label "Next.js BFF"
+    description "Server-side: SSR, API routes, session storage, asset pipeline."
+    delivers WebApp
+  }
+
+  client WebApp [web] {
+    label "Customer SPA"
+    description "Browser-side bundle delivered by NextServer."
+  }
+
+  service OrderService {
+    label "Order service"
+  }
+
+  Customer  -> WebApp       "uses"
+  WebApp    -> NextServer   "API calls (same-origin cookie)"
+  NextServer -> OrderService "user-delegated calls"
+}

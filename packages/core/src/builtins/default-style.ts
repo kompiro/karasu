@@ -230,6 +230,11 @@ edge[cyclic] {
 edge[implicit] {
   color: #F59E0B;
 }
+
+edge[delivers] {
+  color: #8B5CF6;
+  border-style: dashed;
+}
 `;
 
 // Reset cache whenever this module is reloaded or in tests

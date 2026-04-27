@@ -20,7 +20,41 @@ export function analyze(file: KrsFile, sheets: StyleSheet[], systemSheetCount = 
   warnings.push(...detectDeprecatedTeamProperty(file));
   warnings.push(...detectCrossSystemRefs(file));
   warnings.push(...detectCyclicDependencies(file));
+  warnings.push(...detectDeliversTargetNotClient(file));
 
+  return warnings;
+}
+
+function detectDeliversTargetNotClient(file: KrsFile): Warning[] {
+  const clientIds = new Set<string>();
+  const services: KrsNode[] = [];
+
+  function walk(nodes: KrsNode[]): void {
+    for (const node of nodes) {
+      if (node.kind === "client") clientIds.add(node.id);
+      if (node.kind === "service") services.push(node);
+      walk(node.children);
+    }
+  }
+  for (const system of file.systems) walk(system.children);
+  walk(file.services);
+  for (const client of file.clients) clientIds.add(client.id);
+
+  const warnings: Warning[] = [];
+  for (const service of services) {
+    const delivers = (service as KrsNode & { properties: { delivers?: string[] } }).properties
+      .delivers;
+    if (!delivers) continue;
+    for (const targetId of delivers) {
+      if (!clientIds.has(targetId)) {
+        warnings.push({
+          kind: "delivers-target-not-client",
+          params: { serviceId: service.id, targetId },
+          loc: service.loc,
+        });
+      }
+    }
+  }
   return warnings;
 }
 

@@ -140,6 +140,7 @@ Properties are written inside the body block `{ }`. Properties come before child
 | `description` | `description "<text>"` | All | Description text (use `"""..."""` for multi-line) |
 | `role` | `role "<role-name>"` | user | Business role |
 | `team` | `team "<team-name>"` | service, domain | Owner team |
+| `delivers` | `delivers <ClientId>[, <ClientId>...]` | service | Client(s) this service ships (BFF / SSR pattern). The renderer draws each entry as a distinct dashed edge from the service to the referenced `client` |
 | `link` | `link "<URL>" "<label>"` | All | Link to related documentation (multiple allowed). Label is optional |
 
 All properties are optional. `link` may appear multiple times within the same node.
@@ -249,6 +250,33 @@ service ECommerce {
   }
 }
 ```
+
+#### `delivers` (service → client)
+
+A `service` may declare which `client` node(s) it ships, modeling the BFF / SSR
+pattern (Next.js, Rails+React, Laravel+Vue, etc.). The server-side and the
+browser-side bundle are different OAuth2 client types and are modeled as
+separate nodes joined by `delivers`:
+
+```
+service NextServer {
+  label "Next.js BFF"
+  delivers WebApp           // single client
+}
+
+service Gateway {
+  delivers WebApp, AdminUI  // comma-separated list
+}
+
+client WebApp [web] {}
+client AdminUI [desktop] {}
+```
+
+Each `delivers` entry synthesizes a dashed edge from the service to the
+referenced client on the system view. The target id must resolve to a peer
+`client` node; if it does not, the resolver emits a `delivers-target-not-client`
+warning. `delivers` is a declarative property — it is not a new edge kind, and
+regular API calls between client and service are still written with `->`.
 
 ### Top-level domain declaration
 

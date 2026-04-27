@@ -120,6 +120,11 @@ export function formatWarning(w: Warning): FormattedWarning {
           `Add 'service ${w.params.targetSystemId} [external]' to system ${w.params.sourceSystemId} to suppress this warning`,
         ],
       };
+    case "delivers-target-not-client":
+      return {
+        message: `service "${w.params.serviceId}" delivers target "${w.params.targetId}" is not a client node`,
+        details: [],
+      };
     case "cyclic-dependency": {
       const { cyclePath } = w.params;
       const joined =

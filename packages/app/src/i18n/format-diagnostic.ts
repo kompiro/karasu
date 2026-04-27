@@ -48,6 +48,8 @@ export function useFormattedDiagnostic(): (d: Diagnostic) => string {
               return t("diagnostic.propertyNotForNodeKind.team");
             case "handles":
               return t("diagnostic.propertyNotForNodeKind.handles");
+            case "delivers":
+              return t("diagnostic.propertyNotForNodeKind.delivers");
             default: {
               const exhaustive: never = d.params.property;
               throw new Error(

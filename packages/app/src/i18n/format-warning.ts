@@ -133,6 +133,14 @@ export function useFormattedWarning(): (w: Warning) => FormattedWarning {
               }),
             ],
           };
+        case "delivers-target-not-client":
+          return {
+            message: t("warning.deliversTargetNotClient.message", {
+              serviceId: w.params.serviceId,
+              targetId: w.params.targetId,
+            }),
+            details: [],
+          };
         case "cyclic-dependency": {
           const { cyclePath } = w.params;
           const path =

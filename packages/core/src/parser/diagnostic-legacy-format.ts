@@ -53,6 +53,8 @@ export function formatDiagnostic(d: Diagnostic): string {
           return `"team" property is only valid for service and domain nodes`;
         case "handles":
           return `"handles" property is only valid for client and service nodes`;
+        case "delivers":
+          return `"delivers" property is only valid for service nodes`;
         default: {
           const exhaustive: never = d.params.property;
           throw new Error(`unhandled property-not-for-node-kind variant: ${String(exhaustive)}`);

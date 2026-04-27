@@ -17,7 +17,8 @@ export type WarningKind =
   | "unassigned-usecase"
   | "cross-system-ref-implicit-external"
   | "cross-system-ref-unresolved"
-  | "cyclic-dependency";
+  | "cyclic-dependency"
+  | "delivers-target-not-client";
 
 /**
  * Per-kind params shape. Each entry carries only the structured data needed
@@ -58,6 +59,7 @@ export interface WarningParamsByKind {
   };
   "cross-system-ref-unresolved": { ref: string };
   "cyclic-dependency": { cyclePath: string[] };
+  "delivers-target-not-client": { serviceId: string; targetId: string };
 }
 
 /**
