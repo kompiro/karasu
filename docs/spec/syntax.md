@@ -33,11 +33,11 @@ karasu explicitly separates **logical structure** and **physical structure**.
 | `usecase` | A business operation inside a domain | `resource` |
 | `resource` | What a usecase operates on (tables, external APIs, files, etc.) | — |
 | `user` | A user of the system (human or AI agent) | — |
-| `client` | Software we ship that acts on behalf of an end user (mobile / web / desktop / CLI / device / extension / embed). See subtype tag table below | — |
+| `client` | Software we ship that acts on behalf of an end user (mobile / web / desktop / CLI / device / extension / embed). See recognized form-factor tag table below | — |
 
-#### `client` subtype tags
+#### `client` form-factor tags (recognized)
 
-A `client` node is classified by **form factor** using one of seven reserved subtype tags. The tag is placed in `[...]` after the id, like `client MobileApp [mobile]`. Multiple subtype tags on a single client are allowed but unusual.
+karasu's tag system is intentionally open — any tag is accepted and styles react via selectors. For `client` specifically, **seven names are recognized** as form-factor classifications. Future versions will respond to them with kind-specific icons (Phase 2) and layout hints. Tags outside this list still parse and behave as ordinary user-defined tags; they simply do not trigger karasu's built-in form-factor treatment.
 
 | Tag | Form factor |
 |-----|-------------|
@@ -48,6 +48,8 @@ A `client` node is classified by **form factor** using one of seven reserved sub
 | `[device]` | IoT / dedicated terminal / KIOSK |
 | `[extension]` | Plugin / extension hosted by another application (browser extension, IDE extension, design-tool plugin) |
 | `[embed]` | Widget / SDK embedded into third-party web content (Stripe Checkout, Intercom, etc.) |
+
+Recommended: pick at most one form-factor tag per client. Combining unrelated form factors (e.g. `[mobile] [desktop]`) is parseable but conveys no additional architectural meaning.
 
 `client` is reserved for software the project itself ships. Third-party browsers / IDEs / AI agents that consume the system are modeled as `user` (typically `[human]` or `[ai]`), not `client`.
 
