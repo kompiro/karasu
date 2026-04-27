@@ -1,6 +1,6 @@
 # ADR Topic: build
 
-17 ADRs in this topic. Solid nodes belong to `build`; gray dashed nodes are ghosts showing cross-topic references to help navigation.
+18 ADRs in this topic. Solid nodes belong to `build`; gray dashed nodes are ghosts showing cross-topic references to help navigation.
 
 Other topics: [overview](../graph.md).
 ```mermaid
@@ -23,6 +23,7 @@ flowchart TD
     ADR_20260416_01["ADR-20260416-01<br/>DOMPurify Adoption for HTML Sanitization"]
     ADR_20260421_01["ADR-20260421-01<br/>Dependency Updates — 2026-04-20"]
     ADR_20260422_01["ADR-20260422-01<br/>Dependency Updates — 2026-04-21"]
+    ADR_20260427_01["ADR-20260427-01<br/>Feature toggle policy — compile-time, short-liv..."]
   end
 
   classDef accepted fill:#d4edda,stroke:#28a745,color:#155724
@@ -48,4 +49,5 @@ flowchart TD
   class ADR_20260416_01 accepted
   class ADR_20260421_01 accepted
   class ADR_20260422_01 accepted
+  class ADR_20260427_01 accepted
 ```

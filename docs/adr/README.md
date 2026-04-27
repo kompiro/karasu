@@ -185,6 +185,7 @@ VS Code 拡張と LSP の段階的実装。
 - [ADR-20260408-01](20260408-01-trunk-based-development.md) — Trunk-Based Development with Release Toggles
 - [ADR-20260413-01](20260413-01-preview-workflow-no-label-gating.md) — Preview workflow はラベル駆動をやめ path filter で制御する
 - [ADR-20260414-01](20260414-01-dependabot-batch-2026-04-14.md) — Dependabot Batch Triage (2026-04-14)
+- [ADR-20260427-01](20260427-01-feature-toggle-policy.md) — Feature toggle policy — compile-time, short-lived, deleted on graduation
 
 ### ADR 運用・ツール — `adr-tooling`
 
