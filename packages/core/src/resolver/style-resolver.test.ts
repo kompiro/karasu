@@ -36,6 +36,7 @@ function makeFile(overrides: Partial<KrsFile>): KrsFile {
     nodeImports: [],
     systems: [],
     services: [],
+    clients: [],
     domains: [],
     databases: [],
     queues: [],

@@ -111,6 +111,8 @@ export const ja: Partial<Translations> = {
     `usecase "${usecaseId}" はどの domain にも割り当てられていません`,
   "warning.unassignedService.message": ({ display }) =>
     `service "${display}" はどの system にも割り当てられていません`,
+  "warning.unassignedClient.message": ({ display }) =>
+    `client "${display}" はどの system にも割り当てられていません`,
   "warning.unassignedDatabase.message": ({ display }) =>
     `database "${display}" はどの system にも割り当てられていません`,
   "warning.unassignedQueue.message": ({ display }) =>

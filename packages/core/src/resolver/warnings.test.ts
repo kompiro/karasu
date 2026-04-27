@@ -323,6 +323,38 @@ system ECPlatform {
   });
 });
 
+describe("unassigned-client warning", () => {
+  it("warns for top-level clients not wrapped in a system", () => {
+    const krs = `
+client StandaloneApp [web] { label "Standalone" }
+
+system ECPlatform {
+  client MobileApp [mobile] {}
+}
+    `;
+    const file = Parser.parse(krs).value;
+    const builtin = getBuiltinStyleSheet();
+    const warnings = analyze(file, [builtin]);
+    const unassigned = warnings.filter((w) => w.kind === "unassigned-client");
+    expect(unassigned).toHaveLength(1);
+    if (unassigned[0].kind !== "unassigned-client") throw new Error("kind mismatch");
+    expect(unassigned[0].params).toEqual({ clientId: "StandaloneApp", label: "Standalone" });
+  });
+
+  it("does not warn for clients nested inside a system", () => {
+    const krs = `
+system ECPlatform {
+  client MobileApp [mobile] { label "Mobile" }
+}
+    `;
+    const file = Parser.parse(krs).value;
+    const builtin = getBuiltinStyleSheet();
+    const warnings = analyze(file, [builtin]);
+    const unassigned = warnings.filter((w) => w.kind === "unassigned-client");
+    expect(unassigned).toHaveLength(0);
+  });
+});
+
 describe("cross-system-ref warnings", () => {
   it("emits implicit-external warning for cross-system reference", () => {
     const krs = `

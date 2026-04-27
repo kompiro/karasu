@@ -7,6 +7,7 @@ const KEYWORDS: Record<string, TokenType> = {
   usecase: TokenType.Usecase,
   resource: TokenType.Resource,
   user: TokenType.User,
+  client: TokenType.Client,
   deploy: TokenType.Deploy,
   war: TokenType.War,
   jar: TokenType.Jar,

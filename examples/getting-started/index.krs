@@ -16,6 +16,11 @@ system ECPlatform {
     description "システムを運用する担当者"
   }
 
+  client MobileApp [mobile] {
+    label "モバイルアプリ"
+    description "iOS / Android 向け公式アプリ"
+  }
+
   service ECommerce {
     label "ECサイト"
     description "商品の閲覧・購入・出品を提供する"
@@ -65,7 +70,8 @@ system ECPlatform {
     description "メール・プッシュ通知の送信"
   }
 
-  Customer -> ECommerce "商品を購入する"
+  Customer -> MobileApp "アプリを利用する"
+  MobileApp -> ECommerce "API を呼び出す"
   Seller -> ECommerce "商品を出品する"
   Admin -> ECommerce "システムを管理する"
   ECommerce -> Payment "決済を処理する"

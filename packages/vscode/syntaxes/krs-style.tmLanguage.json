@@ -49,7 +49,7 @@
         },
         {
           "name": "entity.name.tag.krs-style",
-          "match": "\\b(system|service|domain|usecase|resource|user|deploy|war|jar|oci|lambda|function|assets|job|artifact|edge)\\b"
+          "match": "\\b(system|service|client|domain|usecase|resource|user|deploy|war|jar|oci|lambda|function|assets|job|artifact|edge)\\b"
         },
         {
           "name": "punctuation.separator.list.krs-style",

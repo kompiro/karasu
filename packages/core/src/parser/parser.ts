@@ -16,6 +16,7 @@ import type {
   DeployNodeKind,
   DomainNode,
   ServiceNode,
+  ClientNode,
   SystemNode,
   CommonProperties,
   OrganizationBlock,
@@ -38,6 +39,7 @@ const LOGICAL_KEYWORDS = new Set<string>([
   "usecase",
   "resource",
   "user",
+  "client",
   "database",
   "queue",
   "storage",
@@ -149,6 +151,7 @@ export class Parser {
       nodeImports: [],
       systems: [],
       services: [],
+      clients: [],
       domains: [],
       databases: [],
       queues: [],
@@ -175,6 +178,9 @@ export class Parser {
           break;
         case TokenType.Service:
           file.services.push(this.parseNodeDecl() as ServiceNode);
+          break;
+        case TokenType.Client:
+          file.clients.push(this.parseNodeDecl() as ClientNode);
           break;
         case TokenType.Domain:
           file.domains.push(this.parseNodeDecl() as DomainNode);
@@ -427,6 +433,7 @@ export class Parser {
       type === TokenType.Usecase ||
       type === TokenType.Resource ||
       type === TokenType.User ||
+      type === TokenType.Client ||
       type === TokenType.Database ||
       type === TokenType.Queue ||
       type === TokenType.Storage
@@ -529,6 +536,15 @@ export class Parser {
             description: properties.description,
             links: properties.links,
             role: properties.role,
+          },
+        };
+      case "client":
+        return {
+          ...base,
+          kind,
+          properties: {
+            description: properties.description,
+            links: properties.links,
           },
         };
       case "domain":

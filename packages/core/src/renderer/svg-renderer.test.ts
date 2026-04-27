@@ -46,6 +46,20 @@ system Test {
     expect(svg).toContain("<rect");
   });
 
+  it("renders client with distinct color from service", () => {
+    const svg = renderFromSource(`
+system Test {
+  client MobileApp [mobile] { label "Mobile" }
+  service ECommerce { label "EC" }
+}
+    `);
+    expect(svg).toContain("Mobile");
+    expect(svg).toContain("EC");
+    // client uses purple #6D28D9 (default-style.ts), service uses #0369A1
+    expect(svg).toContain("#6D28D9");
+    expect(svg).toContain("#0369A1");
+  });
+
   it("renders multiple nodes with edges", () => {
     const svg = renderFromSource(`
 system Test {

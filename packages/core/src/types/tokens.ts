@@ -15,6 +15,7 @@ export enum TokenType {
   Usecase = "Usecase",
   Resource = "Resource",
   User = "User",
+  Client = "Client",
 
   // Keywords (infra resources)
   Database = "Database",

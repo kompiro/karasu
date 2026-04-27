@@ -14,6 +14,15 @@ A tag is a semantic declaration, not a direct appearance override. Visual contro
 | `[sync]` | Synchronous communication (for edges) | Solid arrow (default) |
 | `[human]` | A human user | Used only on user nodes. No effect on default style |
 | `[ai]` | An AI agent | Used only on user nodes. No effect on default style |
+| `[mobile]` | Mobile native app form factor | Recognized form-factor tag for `client` nodes |
+| `[web]` | SPA on our own origin | Recognized form-factor tag for `client` nodes |
+| `[desktop]` | Desktop app form factor | Recognized form-factor tag for `client` nodes |
+| `[cli]` | Command-line tool / SDK | Recognized form-factor tag for `client` nodes |
+| `[device]` | IoT / dedicated terminal / KIOSK | Recognized form-factor tag for `client` nodes |
+| `[extension]` | Plugin in another application's host | Recognized form-factor tag for `client` nodes |
+| `[embed]` | Embedded widget / SDK in third-party site | Recognized form-factor tag for `client` nodes |
+
+> The seven `client` form-factor tags are **recognized** by karasu — future versions trigger kind-specific icons (Phase 2 of #823) and layout hints (Phase 6). Tags outside this list are still allowed on `client` and behave as ordinary user-defined tags.
 
 ### Example
 

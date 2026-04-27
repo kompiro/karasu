@@ -2,7 +2,7 @@ import { describe, it, expect, assert } from "vitest";
 import { Parser } from "./parser.js";
 import { formatDiagnostic } from "./diagnostic-legacy-format.js";
 import { getReference } from "../builtins/reference.js";
-import type { DomainNode, ServiceNode, UserNode } from "../types/ast.js";
+import type { ClientNode, DomainNode, ServiceNode, UserNode } from "../types/ast.js";
 
 describe("Parser", () => {
   it("parses empty input", () => {
@@ -478,6 +478,52 @@ system Test {
     expect(user.kind).toBe("user");
     expect(user.properties.role).toBeUndefined();
     expect(user.tags).toEqual(["human"]);
+  });
+
+  it("parses client kind with subtype tag", () => {
+    const result = Parser.parse(`
+system ECPlatform {
+  client MobileApp [mobile] {
+    label "Customer mobile app"
+    description "iOS / Android native app"
+  }
+}
+    `);
+    expect(result.diagnostics).toHaveLength(0);
+    const client = result.value.systems[0].children[0] as ClientNode;
+    expect(client.kind).toBe("client");
+    expect(client.id).toBe("MobileApp");
+    expect(client.label).toBe("Customer mobile app");
+    expect(client.tags).toEqual(["mobile"]);
+    expect(client.properties.description).toBe("iOS / Android native app");
+  });
+
+  it("accepts all reserved client subtype tags", () => {
+    for (const tag of ["mobile", "web", "desktop", "cli", "device", "extension", "embed"]) {
+      const result = Parser.parse(`system S { client X [${tag}] }`);
+      expect(result.diagnostics).toEqual([]);
+      const client = result.value.systems[0].children[0] as ClientNode;
+      expect(client.tags).toEqual([tag]);
+    }
+  });
+
+  it("emits unassigned-client warning for top-level client", () => {
+    const result = Parser.parse(`client TopLevelClient [web]`);
+    expect(result.diagnostics).toHaveLength(0);
+    expect(result.value.clients).toHaveLength(1);
+    expect(result.value.clients[0].id).toBe("TopLevelClient");
+  });
+
+  it("rejects role property on client", () => {
+    const result = Parser.parse(`
+system S {
+  client WebApp [web] {
+    role "should-not-be-allowed"
+  }
+}
+    `);
+    expect(result.diagnostics.length).toBeGreaterThan(0);
+    expect(formatDiagnostic(result.diagnostics[0])).toContain("role");
   });
 
   it("parses team property on service (deprecated)", () => {

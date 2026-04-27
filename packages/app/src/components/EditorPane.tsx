@@ -24,6 +24,7 @@ function registerKrsLanguage(monaco: Monaco): void {
     keywords: [
       "system",
       "service",
+      "client",
       "domain",
       "usecase",
       "resource",

@@ -111,6 +111,8 @@ export const en: Translations = {
     `Usecase "${usecaseId}" is not assigned to any domain`,
   "warning.unassignedService.message": ({ display }) =>
     `Service "${display}" is not assigned to any system`,
+  "warning.unassignedClient.message": ({ display }) =>
+    `Client "${display}" is not assigned to any system`,
   "warning.unassignedDatabase.message": ({ display }) =>
     `Database "${display}" is not assigned to any system`,
   "warning.unassignedQueue.message": ({ display }) =>
