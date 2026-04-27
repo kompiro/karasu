@@ -13,6 +13,7 @@ import {
   type ResolvedStyles,
 } from "@karasu-tools/core";
 import { useEmptyStateLabels } from "../i18n/use-empty-state-labels.js";
+import { computeViewResultFingerprint } from "./result-fingerprint.js";
 
 interface OrgViewState {
   orgSvg: string;
@@ -64,6 +65,7 @@ export function useOrgView(
 
   const lastValidSvg = useRef("");
   const lastValidSvgKey = useRef("");
+  const lastResultFingerprint = useRef<string | null>(null);
   const hadErrors = useRef(false);
   const timerRef = useRef<ReturnType<typeof setTimeout>>(undefined);
   const recompileCounter = useRef(0);
@@ -122,10 +124,16 @@ export function useOrgView(
               styles: prev.styles,
             }));
           } else {
-            if (result.svg === lastValidSvg.current && !hadErrors.current) return;
+            const fingerprint = computeViewResultFingerprint({
+              svg: result.svg,
+              warnings: result.warnings,
+              diagnostics: result.diagnostics,
+            });
+            if (fingerprint === lastResultFingerprint.current && !hadErrors.current) return;
             hadErrors.current = false;
             lastValidSvg.current = result.svg;
             lastValidSvgKey.current = currentKey;
+            lastResultFingerprint.current = fingerprint;
             setState({
               orgSvg: result.svg,
               orgDiagnostics: result.diagnostics,
