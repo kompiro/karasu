@@ -172,8 +172,10 @@ The `Chat` tab enables interactive modeling against the Claude API. It uses **BY
 
 - **Logical / physical separation** — Business structure and deployment structure live in separate diagrams, linked by `realizes`
 - **Drill-down** — Double-click to descend the hierarchy; breadcrumbs to go back up. "Show All Layers" flattens the hierarchy into one view; "Open All Views" opens every view in new windows
+- **Graphical diff viewer** — Compare two `.krs` files (or the current file against a pasted blob or an OPFS history snapshot) and see the differences highlighted directly on the System / Deploy / Org diagrams — added / removed / modified nodes, edges, and annotations, with a one-click swap of the comparison direction
 - **SVG / draw.io export** — Bulk export all diagrams as SVG (the exported SVG supports drill-down navigation in the browser on its own), or export to draw.io (mxGraph XML) as a layout escape hatch for pixel-perfect polishing
 - **Top-level infra blocks** — `service`, `database`, `queue`, `storage` can be written at the file root without an enclosing `system`, so a deployment-centric file renders on its own
+- **Deploy-only file auto-switch** — Opening a file whose only meaningful content is a `deploy` block automatically focuses the Deploy tab so you don't land on an empty System view
 - **Icon mode** — Toggle System / Deploy / Org diagrams into icon display
 - **Panel focus** — Collapse the sidebar and expand the preview to fill the screen
 - **Domain drift detection** — Warns automatically when the same domain name is dispersed across multiple services
