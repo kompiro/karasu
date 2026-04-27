@@ -137,9 +137,32 @@ export interface UserNode extends BaseNodeFields {
   };
 }
 
+/**
+ * Storage kinds whitelisted for `client { resource <kind> "<name>" }`.
+ * Cookie / credential storage and device capabilities are intentionally
+ * excluded — see Issues #834 / #837.
+ */
+export const CLIENT_RESOURCE_KINDS = [
+  "localStorage",
+  "sessionStorage",
+  "indexedDB",
+  "opfs",
+  "file",
+  "keychain",
+] as const;
+
+export type ClientResourceKind = (typeof CLIENT_RESOURCE_KINDS)[number];
+
+export interface ClientResource {
+  storageKind: ClientResourceKind;
+  name: string;
+  loc: SourceRange;
+}
+
 export interface ClientNode extends BaseNodeFields {
   kind: "client";
   properties: CommonProperties & {
+    resources: ClientResource[];
     /**
      * Domain ids this client surfaces to the user. Resolved through the
      * one-hop expose rule: at least one outgoing communication edge target
@@ -313,6 +336,7 @@ export interface DiagnosticParamsByCode {
   "team-property-deprecated": Record<string, never>;
   "edge-source-mismatch": { from: string; parentId: string };
   "unassigned-resource": { resourceId: string };
+  "client-resource-invalid-kind": { kind: string; name: string };
   "duplicate-owner-assignment": { nodeId: string; existingTeam: string };
   "duplicate-team-id": { teamId: string };
   "domain-id-not-unique": { domainId: string };

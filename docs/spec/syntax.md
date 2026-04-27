@@ -141,6 +141,7 @@ Properties are written inside the body block `{ }`. Properties come before child
 | `role` | `role "<role-name>"` | user | Business role |
 | `team` | `team "<team-name>"` | service, domain | Owner team |
 | `link` | `link "<URL>" "<label>"` | All | Link to related documentation (multiple allowed). Label is optional |
+| `resource` | `resource <storageKind> "<name>"` | client | Operation-tied local storage on the client. Multiple allowed. See client resource kinds below |
 
 All properties are optional. `link` may appear multiple times within the same node.
 Using a property on a kind that does not support it produces an error.
@@ -173,6 +174,42 @@ service <id> {
     team "<team-name>"
     ...
   }
+}
+```
+
+### client node example
+
+```
+client <id> [<form-factor-tag>] {
+  label "<display-name>"
+  description "<text>"
+  resource <storageKind> "<name>"
+  resource <storageKind> "<name>"
+}
+```
+
+#### `client` `resource` storage kinds
+
+`resource <storageKind> "<name>"` declares operation-tied local storage on a client (a `localStorage` key, an IndexedDB database, an OPFS file, etc.). Multiple `resource` lines are allowed and render inline on the client card.
+
+The `<storageKind>` must be one of the six reserved values below. Any other kind is rejected with `client-resource-invalid-kind` so that authentication credentials, cookies, and device capabilities (which need stronger modeling) do not silently slip into the storage list.
+
+| Storage kind | Typical surface |
+|--------------|-----------------|
+| `localStorage`   | Browser localStorage key |
+| `sessionStorage` | Browser sessionStorage key |
+| `indexedDB`      | IndexedDB database |
+| `opfs`           | Origin Private File System file/directory |
+| `file`           | Local filesystem file (desktop / CLI / device clients) |
+| `keychain`       | OS keychain / Keystore entry (excluding raw credentials — modeled separately) |
+
+> Cookie / session / credential storage is intentionally out of scope here and is tracked under the security parent issue (#834). Device capabilities (camera, geolocation, etc.) are tracked under #837.
+
+```
+client WebApp [web] {
+  label "Customer SPA"
+  resource localStorage "preferences"
+  resource indexedDB "outbox"
 }
 ```
 

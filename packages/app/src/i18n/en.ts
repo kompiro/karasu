@@ -183,6 +183,8 @@ export const en: Translations = {
     `Edge source "${from}" must match the enclosing block id "${parentId}"`,
   "diagnostic.unassignedResource.message": ({ resourceId }) =>
     `resource "${resourceId}" is not assigned to any database`,
+  "diagnostic.clientResourceInvalidKind.message": ({ kind, name }) =>
+    `Invalid client resource kind "${kind}" for resource "${name}". Allowed kinds: localStorage, sessionStorage, indexedDB, opfs, file, keychain`,
   "diagnostic.duplicateOwnerAssignment.message": ({ nodeId, existingTeam }) =>
     `"${nodeId}" is already owned by team "${existingTeam}"; multiple teams cannot own the same service or domain`,
   "diagnostic.duplicateTeamId.message": ({ teamId }) => `Duplicate team id "${teamId}"`,

@@ -284,6 +284,7 @@ export class Parser {
       role?: string;
       team?: string;
       label?: string;
+      resources?: import("../types/ast.js").ClientResource[];
       handles?: string[];
     },
     parentId?: string,
@@ -394,6 +395,19 @@ export class Parser {
         continue;
       }
 
+      // Client-only: `resource <storageKind> "<name>"` declares operation-tied storage.
+      // Distinguished from a regular resource declaration by the trailing string literal.
+      if (
+        kind === "client" &&
+        token.type === TokenType.Resource &&
+        this.peekAt(1).type === TokenType.Identifier &&
+        this.peekAt(2).type === TokenType.StringLiteral
+      ) {
+        properties.resources ??= [];
+        properties.resources.push(this.parseClientResource());
+        continue;
+      }
+
       // Check for logical node
       // Infra block kinds (database/queue/storage) are only valid as direct children of system.
       if (this.isLogicalKeyword(token)) {
@@ -427,6 +441,29 @@ export class Parser {
     }
     this.error("expected-string-after", { property: "description" });
     return "";
+  }
+
+  private parseClientResource(): import("../types/ast.js").ClientResource {
+    const start = this.expect(TokenType.Resource);
+    const kindToken = this.expect(TokenType.Identifier);
+    const nameToken = this.expect(TokenType.StringLiteral);
+    const kindName = kindToken.value;
+    const isAllowed = (
+      ["localStorage", "sessionStorage", "indexedDB", "opfs", "file", "keychain"] as const
+    ).some((k) => k === kindName);
+    if (!isAllowed) {
+      this.diagnostics.push({
+        severity: "error",
+        code: "client-resource-invalid-kind",
+        params: { kind: kindName, name: nameToken.value },
+        loc: this.range(start.loc, nameToken.loc),
+      });
+    }
+    return {
+      storageKind: kindName as import("../types/ast.js").ClientResourceKind,
+      name: nameToken.value,
+      loc: this.range(start.loc, nameToken.loc),
+    };
   }
 
   private parseLink(): LinkEntry {
@@ -535,6 +572,7 @@ export class Parser {
       role?: string;
       team?: string;
       label?: string;
+      resources?: import("../types/ast.js").ClientResource[];
       handles?: string[];
     } = {
       links: [],
@@ -600,6 +638,7 @@ export class Parser {
           properties: {
             description: properties.description,
             links: properties.links,
+            resources: properties.resources ?? [],
             ...(properties.handles ? { handles: properties.handles } : {}),
           },
         };

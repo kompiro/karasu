@@ -4,6 +4,7 @@ import type {
   LogicalNodeKind,
   DeployNodeKind,
   CommonProperties,
+  ClientResource,
 } from "../types/ast.js";
 import type { ViewSlice, GhostSystem, DomainEdgeDetail } from "../view/view-extract.js";
 import { buildInheritedAnnotations } from "../resolver/inherited-annotations.js";
@@ -14,6 +15,8 @@ import { sortByBarycenter } from "./layer-layout-logics.js";
 export type LayoutNodeProperties = CommonProperties & {
   role?: string;
   team?: string;
+  /** Client-only: operation-tied storage resources rendered inline on the card. */
+  resources?: ClientResource[];
 };
 
 export interface LayoutNode {
@@ -1143,6 +1146,9 @@ function extractLayoutProperties(node: KrsNode, resolvedTeam?: string): LayoutNo
   };
   if (node.kind === "user") props.role = node.properties.role;
   if (node.kind === "service" || node.kind === "domain") props.team = resolvedTeam;
+  if (node.kind === "client" && node.properties.resources.length > 0) {
+    props.resources = node.properties.resources;
+  }
   return props;
 }
 
@@ -1162,6 +1168,7 @@ function measureNode(
   const description = node.properties.description;
   const role = node.kind === "user" ? node.properties.role : undefined;
   const team = node.kind === "service" || node.kind === "domain" ? resolvedTeam : undefined;
+  const resources = node.kind === "client" ? node.properties.resources : [];
 
   // Description should not widen the box beyond label width
   const descWidth = 0;
@@ -1186,14 +1193,21 @@ function measureNode(
   // Info button adds width for nodes with children and description
   const infoButtonExtra = node.children.length > 0 && description ? INFO_BUTTON_WIDTH : 0;
 
+  // Resource lines (client-only): "📦 <kind> "<name>"" rendered at description font size
+  const resourceWidth = resources.reduce((max, r) => {
+    const text = `📦 ${r.storageKind} "${r.name}"`;
+    return Math.max(max, estimateTextWidth(text, CHAR_WIDTH * DESCRIPTION_FONT_RATIO));
+  }, 0);
+
   const width =
-    Math.max(labelWidth, descWidth, roleWidth, metaWidth, 80) +
+    Math.max(labelWidth, descWidth, roleWidth, metaWidth, resourceWidth, 80) +
     NODE_PADDING_X * 2 +
     infoButtonExtra;
   let height = NODE_PADDING_Y * 2 + LINE_HEIGHT;
   if (description) height += LINE_HEIGHT;
   if (role) height += LINE_HEIGHT;
   if (hasMetaRow) height += LINE_HEIGHT;
+  height += resources.length * LINE_HEIGHT;
 
   return { width, height };
 }

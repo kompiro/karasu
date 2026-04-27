@@ -195,6 +195,10 @@ export type Translations = {
   "diagnostic.teamPropertyDeprecated.message": string;
   "diagnostic.edgeSourceMismatch.message": (params: { from: string; parentId: string }) => string;
   "diagnostic.unassignedResource.message": (params: { resourceId: string }) => string;
+  "diagnostic.clientResourceInvalidKind.message": (params: {
+    kind: string;
+    name: string;
+  }) => string;
   "diagnostic.duplicateOwnerAssignment.message": (params: {
     nodeId: string;
     existingTeam: string;
