@@ -48,6 +48,16 @@ export function useFormattedWarning(): (w: Warning) => FormattedWarning {
             details: [],
           };
         }
+        case "unresolved-handles": {
+          return {
+            message: t("warning.unresolvedHandles.message", {
+              nodeKind: w.params.nodeKind,
+              nodeId: w.params.nodeId,
+              domainId: w.params.domainId,
+            }),
+            details: [],
+          };
+        }
         case "unassigned-database": {
           const display = w.params.label ?? w.params.databaseId;
           return {

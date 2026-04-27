@@ -117,6 +117,11 @@ export type Translations = {
   "warning.unassignedUsecase.message": (params: { usecaseId: string }) => string;
   "warning.unassignedService.message": (params: { display: string }) => string;
   "warning.unassignedClient.message": (params: { display: string }) => string;
+  "warning.unresolvedHandles.message": (params: {
+    nodeKind: "client" | "service";
+    nodeId: string;
+    domainId: string;
+  }) => string;
   "warning.unassignedDatabase.message": (params: { display: string }) => string;
   "warning.unassignedQueue.message": (params: { display: string }) => string;
   "warning.unassignedStorage.message": (params: { display: string }) => string;
@@ -176,6 +181,7 @@ export type Translations = {
   "diagnostic.expectedStringAfter.message": (params: { property: string }) => string;
   "diagnostic.propertyNotForNodeKind.role": string;
   "diagnostic.propertyNotForNodeKind.team": string;
+  "diagnostic.propertyNotForNodeKind.handles": string;
   "diagnostic.infraNotInContext.message": (params: {
     infraKind: string;
     parentKind: string;

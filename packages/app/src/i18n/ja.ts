@@ -113,6 +113,8 @@ export const ja: Partial<Translations> = {
     `service "${display}" はどの system にも割り当てられていません`,
   "warning.unassignedClient.message": ({ display }) =>
     `client "${display}" はどの system にも割り当てられていません`,
+  "warning.unresolvedHandles.message": ({ nodeKind, nodeId, domainId }) =>
+    `${nodeKind} "${nodeId}" の handles "${domainId}" を expose する送信先エッジが見つかりません`,
   "warning.unassignedDatabase.message": ({ display }) =>
     `database "${display}" はどの system にも割り当てられていません`,
   "warning.unassignedQueue.message": ({ display }) =>
@@ -163,6 +165,7 @@ export const ja: Partial<Translations> = {
     `"${property}" の後に文字列リテラルを期待しました`,
   "diagnostic.propertyNotForNodeKind.role": `"role" プロパティは user ノードでのみ有効です`,
   "diagnostic.propertyNotForNodeKind.team": `"team" プロパティは service / domain ノードでのみ有効です`,
+  "diagnostic.propertyNotForNodeKind.handles": `"handles" プロパティは client / service ノードでのみ有効です`,
   "diagnostic.infraNotInContext.message": ({ infraKind, parentKind }) =>
     `"${infraKind}" は system の直接の子としてのみ有効です。"${parentKind}" の内側には配置できません`,
   "diagnostic.expectedIdOrString.message": ({ context }) =>

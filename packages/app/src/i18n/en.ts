@@ -113,6 +113,8 @@ export const en: Translations = {
     `Service "${display}" is not assigned to any system`,
   "warning.unassignedClient.message": ({ display }) =>
     `Client "${display}" is not assigned to any system`,
+  "warning.unresolvedHandles.message": ({ nodeKind, nodeId, domainId }) =>
+    `${nodeKind} "${nodeId}" declares handles "${domainId}" but no outgoing edge target exposes that domain`,
   "warning.unassignedDatabase.message": ({ display }) =>
     `Database "${display}" is not assigned to any system`,
   "warning.unassignedQueue.message": ({ display }) =>
@@ -163,6 +165,7 @@ export const en: Translations = {
     `Expected string literal after "${property}"`,
   "diagnostic.propertyNotForNodeKind.role": `"role" property is only valid for user nodes`,
   "diagnostic.propertyNotForNodeKind.team": `"team" property is only valid for service and domain nodes`,
+  "diagnostic.propertyNotForNodeKind.handles": `"handles" property is only valid for client and service nodes`,
   "diagnostic.infraNotInContext.message": ({ infraKind, parentKind }) =>
     `"${infraKind}" is only valid as a direct child of system, not inside "${parentKind}"`,
   "diagnostic.expectedIdOrString.message": ({ context }) =>
