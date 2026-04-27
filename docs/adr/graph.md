@@ -1,6 +1,6 @@
 # ADR Dependency Graph — Overview
 
-117 ADRs across 15 topics. Clusters group by `topic` frontmatter field. Edges crossing cluster borders are cross-topic dependencies.
+118 ADRs across 15 topics. Clusters group by `topic` frontmatter field. Edges crossing cluster borders are cross-topic dependencies.
 ```mermaid
 flowchart TD
   subgraph adr-tooling["adr-tooling"]
@@ -26,6 +26,7 @@ flowchart TD
     ADR_20260422_06["ADR-20260422-06<br/>Diff ペースト入力の UI 配置とストレージ方式"]
     ADR_20260425_01["ADR-20260425-01<br/>ユーザー向け文字列はデフォルトで i18n を通す"]
     ADR_20260427_03["ADR-20260427-03<br/>プレビューのエントリは「開いている .krs ファイル」"]
+    ADR_20260427_04["ADR-20260427-04<br/>空ビューを避けるための自動タブ切替（system > deploy > org）"]
   end
   subgraph build["build"]
     ADR_20260312_01["ADR-20260312-01<br/>モノレポ構成の採用"]
@@ -350,12 +351,13 @@ flowchart TD
   class ADR_20260427_01 accepted
   class ADR_20260427_02 accepted
   class ADR_20260427_03 accepted
+  class ADR_20260427_04 accepted
 ```
 
 ## Per-topic detail
 
 - [`adr-tooling`](graph/adr-tooling.md) — 3 ADRs
-- [`app-ui`](graph/app-ui.md) — 17 ADRs
+- [`app-ui`](graph/app-ui.md) — 18 ADRs
 - [`build`](graph/build.md) — 18 ADRs
 - [`chat-ai`](graph/chat-ai.md) — 8 ADRs
 - [`cli`](graph/cli.md) — 7 ADRs
