@@ -50,6 +50,13 @@ calls. The fixture establishes the OPFS origin internally by booting
 `?mode=memory` once on first use, so tests do not need to perform a
 preliminary navigation.
 
+`lastProjectId` is applied in both modes — it is written to
+`localStorage` regardless of `mode`. `MemoryModeApp` does not consume
+it, but tests that toggle between OPFS and memory in the same
+`describe` block can rely on `localStorage` being clean either way.
+`projects` are silently dropped in memory mode (and OPFS is left
+untouched by that call).
+
 ### Two-environment runs (AT-0014 and similar)
 
 When the same scenario must run in both OPFS and InMemory modes,
@@ -58,18 +65,20 @@ entire test suite via Playwright `projects:`. The fixture's `mode`
 parameter handles URL routing.
 
 ```ts
-for (const mode of ["opfs", "memory"] as const) {
-  test(`scenario X (${mode})`, async ({ page, opfs }) => {
-    await opfs.seed({
-      mode,
-      projects: [
-        /* ... */
-      ],
+test.describe("AT-XXXX scenario", () => {
+  for (const mode of ["opfs", "memory"] as const) {
+    test(`scenario X (${mode})`, async ({ page, opfs }) => {
+      await opfs.seed({
+        mode,
+        projects: [
+          /* ... */
+        ],
+      });
+      await opfs.gotoApp();
+      // ...
     });
-    await opfs.gotoApp();
-    // ...
-  });
-}
+  }
+});
 ```
 
 This keeps the cost local to the AT that needs it; existing tests

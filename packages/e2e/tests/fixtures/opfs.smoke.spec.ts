@@ -63,4 +63,24 @@ test.describe("OPFS fixture smoke", () => {
     await expect(page.locator(".project-selector")).toHaveCount(0);
     expect(opfs.mode).toBe("memory");
   });
+
+  test("seed({ mode: 'memory', projects }) silently drops the projects payload", async ({
+    opfs,
+  }) => {
+    await opfs.seed({
+      mode: "memory",
+      projects: [
+        {
+          id: "should-not-be-written",
+          name: "Should Not Be Written",
+          files: { "index.krs": 'system "X" {}\n' },
+        },
+      ],
+    });
+
+    // Memory mode does not touch OPFS — the meta file and project tree must
+    // remain absent. Locks the contract before downstream tests rely on it.
+    expect(await opfs.read("/meta/projects.json")).toBeNull();
+    expect(await opfs.read("/projects/should-not-be-written/index.krs")).toBeNull();
+  });
 });

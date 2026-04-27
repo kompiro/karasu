@@ -71,7 +71,6 @@ const PROJECTS_DIR = "projects";
 const LAST_PROJECT_KEY = "karasu-last-project-id";
 
 export const test = base.extend<{ opfs: OpfsFixture }>({
-  // eslint-disable-next-line no-empty-pattern
   opfs: async ({ page, baseURL }, use) => {
     if (!baseURL) throw new Error("opfs fixture requires Playwright baseURL");
 
