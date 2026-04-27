@@ -41,6 +41,13 @@ export function useFormattedWarning(): (w: Warning) => FormattedWarning {
             details: [],
           };
         }
+        case "unassigned-client": {
+          const display = w.params.label ?? w.params.clientId;
+          return {
+            message: t("warning.unassignedClient.message", { display }),
+            details: [],
+          };
+        }
         case "unassigned-database": {
           const display = w.params.label ?? w.params.databaseId;
           return {

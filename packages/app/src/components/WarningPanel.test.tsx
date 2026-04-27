@@ -46,6 +46,8 @@ function makeWarning(kind: Warning["kind"]): Warning {
       return { kind, params: { domainId: "test-domain" } };
     case "unassigned-service":
       return { kind, params: { serviceId: "test-service" } };
+    case "unassigned-client":
+      return { kind, params: { clientId: "test-client" } };
     case "unassigned-database":
       return { kind, params: { databaseId: "test-database" } };
     case "unassigned-queue":

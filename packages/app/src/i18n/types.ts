@@ -116,6 +116,7 @@ export type Translations = {
   "warning.unassignedDomain.message": (params: { display: string }) => string;
   "warning.unassignedUsecase.message": (params: { usecaseId: string }) => string;
   "warning.unassignedService.message": (params: { display: string }) => string;
+  "warning.unassignedClient.message": (params: { display: string }) => string;
   "warning.unassignedDatabase.message": (params: { display: string }) => string;
   "warning.unassignedQueue.message": (params: { display: string }) => string;
   "warning.unassignedStorage.message": (params: { display: string }) => string;
