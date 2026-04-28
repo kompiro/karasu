@@ -19,6 +19,8 @@ enabling `.krs` diagrams to be embedded in GitHub Markdown via image URLs.
 
 ## Test Cases
 
+> ✅ Automated (partial) — `packages/cli/src/render-endpoint.test.ts` covers the `/render` handler's `?src=` / `?code=` branching, content-type, and error paths. Manual end-to-end tests below validate the running server. Per-test-case `[x]` flips deferred to phase B (#920).
+
 ### AT-0043-1: `?src=` with a public URL returns SVG
 
 1. Find a publicly accessible raw `.krs` URL (e.g. a GitHub Raw URL from this repo).

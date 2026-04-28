@@ -19,6 +19,8 @@ call the Anthropic API, and correctly handle `navigate_view` and `apply_krs_patc
 
 ---
 
+> ✅ Automated (partial) — `packages/e2e/tests/at-0050-chat-ui-phase2-byok.spec.ts` covers AC-2 / AC-3 (key storage), AC-4 / AC-5 (UI gating), and AC-6 (mock-driven send/receive). AC-1 (security copy), AC-7 / AC-8 (tool calls) stay manual until follow-up coverage lands. Per-AC `[x]` flips deferred to phase B (#920).
+
 ## AC-1: Settings pane shows BYOK security explanation
 
 **Steps:**

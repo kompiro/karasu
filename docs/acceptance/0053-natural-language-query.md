@@ -15,6 +15,8 @@ Set a valid Claude API key in the Settings tab before running these tests.
 
 ## Test Cases
 
+> ✅ Automated (partial) — `packages/cli/src/translate/translate.e2e.test.ts` covers the underlying translate→query pipeline used by natural-language queries. Chat-UI integration (this AT's primary scope) stays manual; per-TC `[x]` flips deferred to phase B (#920).
+
 ### TC-1: Impact analysis — which services are affected by a change
 
 **Steps**:

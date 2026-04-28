@@ -13,6 +13,8 @@ type: manual
 
 ## Test cases
 
+> ✅ Automated (partial) — `packages/cli/src/translate/translate.e2e.test.ts` covers the docker-compose / OpenAPI / DB heuristic paths, the `--from` / `--out` flags, and exit codes. Per-test-case `[x]` flips deferred to phase B (#920).
+
 ### AT-0050-01: Translate docker-compose.yml to deploy.krs (heuristic)
 
 **Input** `docker-compose.yml`:
