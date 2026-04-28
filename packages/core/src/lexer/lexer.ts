@@ -239,6 +239,13 @@ export class Lexer {
       case ".":
         this.advance();
         return { type: TokenType.Dot, value: ".", loc };
+      case "#":
+        // Used by legend blocks for hex colors (`#2563EB`) and id-selector
+        // references (`#NodeId`). Emit the `#` + the immediately following
+        // identifier-or-digit chars as a single Identifier token so the
+        // parser can disambiguate by inspecting the value. Style sheets
+        // have a parallel implementation in style-lexer.ts.
+        return this.readHashToken(loc);
       default:
         if (isIdentStart(ch)) {
           return this.readIdentifierOrKeyword(loc);
@@ -348,6 +355,19 @@ export class Lexer {
     const kwType = KEYWORDS[value];
     if (kwType) {
       return { type: kwType, value, loc };
+    }
+    return { type: TokenType.Identifier, value, loc };
+  }
+
+  /**
+   * Read `#<hex-or-ident>+` as a single Identifier (e.g. `#2563EB`,
+   * `#NodeId`). Used for legend swatch colors and ref id-selector targets.
+   */
+  private readHashToken(loc: SourceLocation): Token {
+    this.advance(); // #
+    let value = "#";
+    while (this.pos < this.source.length && isIdentPart(this.peek())) {
+      value += this.advance();
     }
     return { type: TokenType.Identifier, value, loc };
   }
