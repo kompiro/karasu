@@ -17,10 +17,12 @@
 > ✅ Automated — `packages/cli/src/serve.e2e.test.ts` › `writes the karasu serve banner with the resolved directory and preview URL`
 
 **手順**:
+
 1. テスト用ディレクトリを作成し `index.krs` を置く
 2. `node packages/cli/dist/index.js serve <dir>` を実行する
 
 **期待結果**:
+
 - `Serving <dir> at http://localhost:3000` のようなメッセージが表示される
 - ブラウザで `http://localhost:3000` にアクセスできる
 
@@ -31,9 +33,11 @@
 > 🟡 Partially automated — `packages/cli/src/serve.e2e.test.ts` › `serves the seeded index.krs through /api/file/index (TC-02)`（API レベルで確認、ブラウザ表示は手動）
 
 **手順**:
+
 1. TC-01 の状態でブラウザを開く
 
 **期待結果**:
+
 - Monaco Editor が表示されない（エディタペインが非表示）
 - `index.krs` の内容がプレビューとしてレンダリングされる
 
@@ -42,10 +46,12 @@
 ### TC-03: 複数ファイルの URL ルーティング
 
 **手順**:
+
 1. テスト用ディレクトリに `index.krs` と `system.krs` を置く
 2. サーバー起動後、`http://localhost:3000/system` にアクセスする
 
 **期待結果**:
+
 - `system.krs` の内容がプレビューとしてレンダリングされる
 
 ---
@@ -55,10 +61,12 @@
 > 🟡 Partially automated — `packages/cli/src/serve.e2e.test.ts` › `emits an SSE event when a watched file is rewritten (TC-04)`（SSE イベント発火を確認、ブラウザ自動更新は手動）
 
 **手順**:
+
 1. ブラウザで `http://localhost:3000` を開く
 2. 外部エディタで `index.krs` を編集・保存する
 
 **期待結果**:
+
 - ブラウザが自動的にリロードまたは再レンダリングされる
 - 編集内容が反映される
 
@@ -69,10 +77,12 @@
 > ✅ Automated — `packages/cli/src/serve.e2e.test.ts` › `returns the lone .krs file name when index.krs is absent` / `returns null when multiple .krs files exist with no index.krs`
 
 **手順**:
+
 1. `index.krs` を含まず `system.krs` 1 ファイルのみのディレクトリでサーバーを起動する
 2. `http://localhost:3000` にアクセスする
 
 **期待結果**:
+
 - `system.krs` が自動的に選択されてプレビューされる
 
 ---
@@ -80,9 +90,11 @@
 ### TC-06: 存在しないファイルへのアクセス
 
 **手順**:
+
 1. `http://localhost:3000/nonexistent` にアクセスする
 
 **期待結果**:
+
 - エラー画面またはファイルが見つからない旨のメッセージが表示される
 
 ---

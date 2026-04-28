@@ -29,24 +29,28 @@ pnpm run build --workspace=packages/core
 ### AC-1: 新 API — 判別共用体の戻り値
 
 - [x] `compile(src, { diagramType: "system" })` → `result.diagramType === "system"` かつ `nodeMetadata`, `hasDeployDiagram`, `deployBlocks` が存在する
-> ✅ Automated — `packages/core/src/index.test.ts`（unit）
+
+  > ✅ Automated — `packages/core/src/index.test.ts`（unit）
 
 - [x] `compile(src, { diagramType: "deploy" })` → `result.diagramType === "deploy"` かつ `nodeMetadata`, `deployBlocks` が存在する
-> ✅ Automated — `packages/core/src/index.test.ts`（unit）
+
+  > ✅ Automated — `packages/core/src/index.test.ts`（unit）
 
 - [x] `compile(src, { diagramType: "org" })` → `result.diagramType === "org"` かつ `nodePathIndex` が存在する
-> ✅ Automated — `packages/core/src/index.test.ts`（unit）
+
+  > ✅ Automated — `packages/core/src/index.test.ts`（unit）
 
 - [x] `compileProject(entry, fs, { diagramType: "org", orgPath: [], displayMode: "icon" })` が正常に SVG を返す
-> ✅ Automated — `packages/core/src/index.test.ts`（unit）
+
+  > ✅ Automated — `packages/core/src/index.test.ts`（unit）
 
 - [x] org モードで style-conflict 警告が出ない（builtin + icon theme の組み合わせ）
-> ✅ Automated — `packages/core/src/index.test.ts`（unit）
+  > ✅ Automated — `packages/core/src/index.test.ts`（unit）
 
 ### AC-2: 後方互換 — deprecated API
 
 - [x] `compileProjectOrgView(entry, fs, [], "icon")` が引き続き動作し、`diagramType: "org"` フィールドを含む `OrgCompileResult` を返す
-> ✅ Automated — `packages/core/src/index.test.ts`（unit）
+  > ✅ Automated — `packages/core/src/index.test.ts`（unit）
 
 ## Manual Verification Checklist
 

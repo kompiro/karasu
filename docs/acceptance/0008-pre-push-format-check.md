@@ -19,6 +19,7 @@ and type check in parallel before pushing, blocking the push if any check fails.
 ### AT-0008-01: Push is blocked when formatting violations exist
 
 **Steps:**
+
 1. Introduce a deliberate formatting violation in any `.ts` file under `packages/`
 2. Stage and commit the change
 3. Run `git push`
@@ -30,6 +31,7 @@ and type check in parallel before pushing, blocking the push if any check fails.
 ### AT-0008-02: Push is blocked when lint errors exist
 
 **Steps:**
+
 1. Introduce a lint error (e.g., unused variable) in any `.ts` file under `packages/`
 2. Stage and commit the change
 3. Run `git push`
@@ -41,6 +43,7 @@ and type check in parallel before pushing, blocking the push if any check fails.
 ### AT-0008-03: Push is blocked when type errors exist
 
 **Steps:**
+
 1. Introduce a type error in any `.ts` file under `packages/`
 2. Stage and commit the change
 3. Run `git push`
@@ -52,6 +55,7 @@ and type check in parallel before pushing, blocking the push if any check fails.
 ### AT-0008-04: Push succeeds when all checks pass
 
 **Steps:**
+
 1. Ensure `npm run format:check`, `npm run lint`, and `npm run typecheck` all pass
 2. Run `git push`
 
@@ -62,6 +66,7 @@ and type check in parallel before pushing, blocking the push if any check fails.
 ### AT-0008-05: Checks run in parallel
 
 **Steps:**
+
 1. Run `npx lefthook run pre-push --force`
 
 **Expected:** format, lint, and typecheck commands start simultaneously and

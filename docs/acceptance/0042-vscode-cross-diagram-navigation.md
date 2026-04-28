@@ -47,7 +47,7 @@ Verify that the VSCode Webview detail panel supports cross-diagram navigation (t
 
 ### AT-0042-4: Static text for team when no org nav available
 
-*(Not applicable — VSCode always provides the navigation button when team is set)*
+_(Not applicable — VSCode always provides the navigation button when team is set)_
 
 ### AT-0042-5: No deploy button when hasDeployContainer is false
 

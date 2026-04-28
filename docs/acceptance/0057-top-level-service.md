@@ -26,6 +26,7 @@ Mirrors AT-0040 (top-level domain). See design doc
 > ✅ Automated — `packages/e2e/tests/at-0057-top-level-service.spec.ts` › `top-level services render and emit unassigned warnings (TC-1, TC-2)`
 
 1. Enter the following in the editor:
+
    ```krs
    service AuthStandalone { label "認証" }
    domain Payment { label "決済" }
@@ -36,6 +37,7 @@ Mirrors AT-0040 (top-level domain). See design doc
      }
    }
    ```
+
 2. Verify the SVG preview renders **two labeled frames side by side**:
    - `ECPlatform` frame containing `ECommerce`
    - `Unassigned` frame containing `AuthStandalone` and `Payment`
@@ -50,6 +52,7 @@ Mirrors AT-0040 (top-level domain). See design doc
 2. Check the warnings panel
 
 **Expected**: Warning is shown:
+
 - `service "認証" is not assigned to any system`
 
 (AT-0040's unassigned-domain warning for `決済` continues to fire independently.)
@@ -68,6 +71,7 @@ Mirrors AT-0040 (top-level domain). See design doc
 3. Click the `ECommerce` node to drill down
 
 **Expected**:
+
 - Root view shows the `ECommerce` service node inside the `Unassigned` frame
 - Drill-down into `ECommerce` shows the `ManageOrders` usecase
 

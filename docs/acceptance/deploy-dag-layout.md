@@ -9,46 +9,59 @@
 すべて `packages/core/src/renderer/deploy-layout.test.ts` でカバーされる。
 
 - [x] 空スライスで空の `LayoutResult` を返す
-> ✅ Automated — `packages/core/src/renderer/deploy-layout.test.ts` › `returns empty result for empty slice`
+
+  > ✅ Automated — `packages/core/src/renderer/deploy-layout.test.ts` › `returns empty result for empty slice`
 
 - [x] 各サービスグループに対してコンテナが1つ生成される
-> ✅ Automated — `packages/core/src/renderer/deploy-layout.test.ts` › `creates a container for each service group`
+
+  > ✅ Automated — `packages/core/src/renderer/deploy-layout.test.ts` › `creates a container for each service group`
 
 - [x] deploy ユニットがレイアウトノードとして配置される
-> ✅ Automated — `packages/core/src/renderer/deploy-layout.test.ts` › `places units as layout nodes inside containers`
+
+  > ✅ Automated — `packages/core/src/renderer/deploy-layout.test.ts` › `places units as layout nodes inside containers`
 
 - [x] `realizes` なしのユニットが `__unclassified__` コンテナに入る
-> ✅ Automated — `packages/core/src/renderer/deploy-layout.test.ts` › `places unclassified units in an __unclassified__ container`
+
+  > ✅ Automated — `packages/core/src/renderer/deploy-layout.test.ts` › `places unclassified units in an __unclassified__ container`
 
 - [x] `realizes` ありのユニットのみの場合、`__unclassified__` コンテナが生成されない
-> ✅ Automated — `packages/core/src/renderer/deploy-layout.test.ts` › `does not create __unclassified__ container when all units have realizes`
+
+  > ✅ Automated — `packages/core/src/renderer/deploy-layout.test.ts` › `does not create __unclassified__ container when all units have realizes`
 
 - [x] ghost edge で接続された downstream コンテナが upstream より下のレイヤーに配置される
-> ✅ Automated — `packages/core/src/renderer/deploy-layout.test.ts` › `places downstream container in a lower layer than upstream when connected by a ghost edge`
+
+  > ✅ Automated — `packages/core/src/renderer/deploy-layout.test.ts` › `places downstream container in a lower layer than upstream when connected by a ghost edge`
 
 - [x] A→B→C のチェーンで C が B より下、B が A より下に配置される
-> ✅ Automated — `packages/core/src/renderer/deploy-layout.test.ts` › `places multi-hop chain in correct layer order`
+
+  > ✅ Automated — `packages/core/src/renderer/deploy-layout.test.ts` › `places multi-hop chain in correct layer order`
 
 - [x] 同レイヤーのコンテナが横方向に重ならない
-> ✅ Automated — `packages/core/src/renderer/deploy-layout.test.ts` › `containers do not overlap horizontally when in the same layer`
+
+  > ✅ Automated — `packages/core/src/renderer/deploy-layout.test.ts` › `containers do not overlap horizontally when in the same layer`
 
 - [x] ghost edge の `fromPoint` が上位コンテナの下辺中央、`toPoint` が下位コンテナの上辺中央になる
-> ✅ Automated — `packages/core/src/renderer/deploy-layout.test.ts` › `ghost edge fromPoint originates from bottom of from-container when from is above to`
+
+  > ✅ Automated — `packages/core/src/renderer/deploy-layout.test.ts` › `ghost edge fromPoint originates from bottom of from-container when from is above to`
 
 - [x] ghost edge のない孤立コンテナ同士は同レイヤー（横並び）に配置される
-> ✅ Automated — `packages/core/src/renderer/deploy-layout.test.ts` › `containers do not overlap horizontally when in the same layer`
+
+  > ✅ Automated — `packages/core/src/renderer/deploy-layout.test.ts` › `containers do not overlap horizontally when in the same layer`
 
 - [x] 循環 edge（A→B→A）があっても無限ループにならず正常終了する
-> ✅ Automated — `packages/core/src/renderer/deploy-layout.test.ts` › `handles cycles in ghost edges without infinite loop`
+
+  > ✅ Automated — `packages/core/src/renderer/deploy-layout.test.ts` › `handles cycles in ghost edges without infinite loop`
 
 - [x] 未分類コンテナが全分類コンテナより下に配置される
-> ✅ Automated — `packages/core/src/renderer/deploy-layout.test.ts` › `places unclassified container below all classified containers`
+
+  > ✅ Automated — `packages/core/src/renderer/deploy-layout.test.ts` › `places unclassified container below all classified containers`
 
 - [x] ノードがコンテナ内に収まる（x/y/width/height の境界チェック）
-> ✅ Automated — `packages/core/src/renderer/deploy-layout.test.ts` › `nodes are positioned inside their container`
+
+  > ✅ Automated — `packages/core/src/renderer/deploy-layout.test.ts` › `nodes are positioned inside their container`
 
 - [x] 合計サイズが正の値を持つ
-> ✅ Automated — `packages/core/src/renderer/deploy-layout.test.ts` › `has positive total dimensions`
+  > ✅ Automated — `packages/core/src/renderer/deploy-layout.test.ts` › `has positive total dimensions`
 
 ## 手動確認チェックリスト
 

@@ -108,16 +108,20 @@ domain OrderDomain {
 ```
 
 - [x] The system-view implicit edge label changes to `"2 domain edges"`
-> ✅ Automated — `packages/e2e/tests/at-0053-domain-to-domain-edges.spec.ts` › `multiple cross-service domain edges aggregate into a "N domain edges" label (Case 3)`
+
+  > ✅ Automated — `packages/e2e/tests/at-0053-domain-to-domain-edges.spec.ts` › `multiple cross-service domain edges aggregate into a "N domain edges" label (Case 3)`
 
 - [x] Clicking the `"2 domain edges"` label opens a detail panel listing each constituent domain edge
-> ✅ Automated — `packages/e2e/tests/at-0053-domain-to-domain-edges.spec.ts` › `clicking aggregated edge label opens detail panel listing constituent domain edges (Case 3)`
+
+  > ✅ Automated — `packages/e2e/tests/at-0053-domain-to-domain-edges.spec.ts` › `clicking aggregated edge label opens detail panel listing constituent domain edges (Case 3)`
 
 - [x] The panel shows two rows: `OrderDomain → PaymentDomain "decides payment"` and `OrderDomain → ExternalDomain "external call"` (or equivalent)
-> ✅ Automated — `packages/e2e/tests/at-0053-domain-to-domain-edges.spec.ts` › `clicking aggregated edge label opens detail panel listing constituent domain edges (Case 3)`
+
+  > ✅ Automated — `packages/e2e/tests/at-0053-domain-to-domain-edges.spec.ts` › `clicking aggregated edge label opens detail panel listing constituent domain edges (Case 3)`
 
 - [x] Closing the panel (× button) dismisses it
-> ✅ Automated — `packages/e2e/tests/at-0053-domain-to-domain-edges.spec.ts` › `clicking aggregated edge label opens detail panel listing constituent domain edges (Case 3)`
+
+  > ✅ Automated — `packages/e2e/tests/at-0053-domain-to-domain-edges.spec.ts` › `clicking aggregated edge label opens detail panel listing constituent domain edges (Case 3)`
 
 - [ ] Clicking anywhere outside the panel also dismisses it
 

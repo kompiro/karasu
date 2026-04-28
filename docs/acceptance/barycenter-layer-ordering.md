@@ -17,7 +17,7 @@
 **Then**: In the rendered layout, Z is to the left of Y, and Y is to the left of X (i.e., the barycenter sort reorders them to [Z, Y, X], eliminating all 3 crossings).
 
 - [x] `layoutDeploy()` orders the layer 2 containers as [Z, Y, X]
-> ✅ Automated — `packages/core/src/renderer/deploy-layout.test.ts` › `sorts layer 2 by barycenter to eliminate crossings (A→Z, B→Y, C→X)`
+  > ✅ Automated — `packages/core/src/renderer/deploy-layout.test.ts` › `sorts layer 2 by barycenter to eliminate crossings (A→Z, B→Y, C→X)`
 
 ### AC-2: Predecessor-less containers placed last
 
@@ -28,13 +28,17 @@
 **Then**: B is placed to the left of C (B has a predecessor in layer 0; C has none → C gets Infinity barycenter and is placed last).
 
 - [x] `layoutDeploy()` orders the layer 1 containers as [B, C]
-> ✅ Automated — `packages/core/src/renderer/deploy-layout.test.ts` › `places containers with no predecessors in previous layer at the end of the layer`
+  > ✅ Automated — `packages/core/src/renderer/deploy-layout.test.ts` › `places containers with no predecessors in previous layer at the end of the layer`
 
 ### AC-3: Visual edge crossing reduction on system.krs
+
+> Manual / visual review — the bullets below are not automated; AI / human
+> reviewer confirms edge readability after layout changes.
 
 **Given**: Open `examples/deploy/system.krs` in the karasu preview UI.
 
 **Verify**:
+
 - The deploy diagram shows containers in layers
 - Layer 2 (`PaymentService`, `InventoryService`, `ReportingService`) is ordered such that edges from `OrderAPI` do not cross each other (left-to-right order matches the visual flow from `OrderAPI`)
 - The overall diagram is readable with no unnecessary edge crossings
@@ -42,6 +46,7 @@
 **How to check**: Visually confirm that edges between `OrderAPI` and its downstream containers do not cross each other.
 
 Expected layer order for `examples/deploy/system.krs`:
+
 ```
 Layer 0: [Storefront]
 Layer 1: [OrderAPI]

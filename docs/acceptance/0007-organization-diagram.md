@@ -22,6 +22,7 @@ Verify that the organization diagram feature renders correctly, supports drill-d
 ### TC-01: Basic Org Rendering
 
 **Steps:**
+
 1. Open the app (ProjectMode — default)
 2. Replace the `index.krs` content in the editor with:
    ```krs
@@ -47,6 +48,7 @@ Verify that the organization diagram feature renders correctly, supports drill-d
 3. Click the **👥 Org** tab in the diagram tab bar
 
 **Expected:**
+
 - Preview renders two team cards (backend, frontend)
 - Each card shows team label, owns targets, and member count
 - Cards use green color scheme (from builtin `team` style)
@@ -56,10 +58,12 @@ Verify that the organization diagram feature renders correctly, supports drill-d
 ### TC-02: Drill-Down into Team
 
 **Steps:**
+
 1. With TC-01 content active and Org view selected
 2. Click the **backend** team card
 
 **Expected:**
+
 - Preview shows member cards (Alice, Bob)
 - Alice's card shows "@alice · alice-dev"
 - Bob's card shows "SRE担当" description
@@ -71,10 +75,12 @@ Verify that the organization diagram feature renders correctly, supports drill-d
 ### TC-03: Breadcrumb Navigation Back
 
 **Steps:**
+
 1. After drilling into backend (TC-02)
 2. Click **Org** in the breadcrumb
 
 **Expected:**
+
 - Returns to top-level team list
 - Both backend and frontend cards visible again
 
@@ -83,6 +89,7 @@ Verify that the organization diagram feature renders correctly, supports drill-d
 ### TC-04: Sub-Team Nesting
 
 **Steps:**
+
 1. Replace `index.krs` content with:
    ```krs
    organization Corp {
@@ -99,6 +106,7 @@ Verify that the organization diagram feature renders correctly, supports drill-d
 4. Verify sub-teams are shown, click **infra**
 
 **Expected:**
+
 - Top level: platform card with "2 sub-teams" text
 - After click: infra and security sub-team cards shown
 - After clicking infra: Dave's member card shown
@@ -108,6 +116,7 @@ Verify that the organization diagram feature renders correctly, supports drill-d
 ### TC-05: Invalid `owns` Warning
 
 **Steps:**
+
 1. Replace `index.krs` content with:
    ```krs
    organization Corp {
@@ -119,6 +128,7 @@ Verify that the organization diagram feature renders correctly, supports drill-d
 2. Click the **👥 Org** tab in the diagram tab bar
 
 **Expected:**
+
 - Warning panel shows: `team "backend" owns "NonExistentService" but no service or domain with that id exists`
 
 ---
@@ -126,6 +136,7 @@ Verify that the organization diagram feature renders correctly, supports drill-d
 ### TC-06: Duplicate Team ID Error
 
 **Steps:**
+
 1. Replace `index.krs` content with:
    ```krs
    organization Corp {
@@ -135,6 +146,7 @@ Verify that the organization diagram feature renders correctly, supports drill-d
    ```
 
 **Expected:**
+
 - Diagnostic error shown: `Duplicate team id "alpha"`
 - SVG still renders (error doesn't crash the preview)
 
@@ -143,6 +155,7 @@ Verify that the organization diagram feature renders correctly, supports drill-d
 ### TC-07: Deprecated `team` Property Warning
 
 **Steps:**
+
 1. Click the **⬡ System** tab in the diagram tab bar to switch to logical view
 2. Replace `index.krs` content with:
    ```krs
@@ -154,6 +167,7 @@ Verify that the organization diagram feature renders correctly, supports drill-d
    ```
 
 **Expected:**
+
 - Diagnostic warning: `"team" property is deprecated; use an organization block with "owns" instead`
 - Service still renders normally in logical view
 
@@ -162,6 +176,7 @@ Verify that the organization diagram feature renders correctly, supports drill-d
 ### TC-08: Multiple Organizations
 
 **Steps:**
+
 1. Replace `index.krs` content with:
    ```krs
    organization OrgA {
@@ -174,6 +189,7 @@ Verify that the organization diagram feature renders correctly, supports drill-d
 2. Click the **👥 Org** tab in the diagram tab bar
 
 **Expected:**
+
 - Both teamA and teamB shown in the same Org tab (flattened)
 
 ---
@@ -181,10 +197,12 @@ Verify that the organization diagram feature renders correctly, supports drill-d
 ### TC-09: Logical View Unaffected
 
 **Steps:**
+
 1. Replace `index.krs` content with both a `system` block and an `organization` block
 2. Switch between **⬡ System** tab and **👥 Org** tab in the diagram tab bar
 
 **Expected:**
+
 - Logical view shows the system diagram as before
 - Org view shows the org diagram
 - No cross-contamination between views
@@ -193,11 +211,11 @@ Verify that the organization diagram feature renders correctly, supports drill-d
 
 ## Automated Coverage
 
-| Area | Test File |
-|------|-----------|
-| Parser (org/team/member/owns) | `packages/core/src/parser/parser.test.ts` |
-| OrgViewExtract drill-down | `packages/core/src/view/org-view-extract.test.ts` |
-| Duplicate ID error | `parser.test.ts` |
-| Duplicate owns error | `parser.test.ts` |
-| Deprecation warning | `parser.test.ts` |
-| Invalid owns warning | `packages/core/src/resolver/warnings.test.ts` |
+| Area                          | Test File                                         |
+| ----------------------------- | ------------------------------------------------- |
+| Parser (org/team/member/owns) | `packages/core/src/parser/parser.test.ts`         |
+| OrgViewExtract drill-down     | `packages/core/src/view/org-view-extract.test.ts` |
+| Duplicate ID error            | `parser.test.ts`                                  |
+| Duplicate owns error          | `parser.test.ts`                                  |
+| Deprecation warning           | `parser.test.ts`                                  |
+| Invalid owns warning          | `packages/core/src/resolver/warnings.test.ts`     |

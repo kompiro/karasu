@@ -17,6 +17,7 @@ with Bezier connectors and click-to-expand member leaf nodes.
 - `karasu serve` running, or open the app in a browser.
 
 Example `.krs`:
+
 ```
 organization Acme {
   team Engineering {

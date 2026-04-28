@@ -14,7 +14,7 @@ type: product
 
 ## 受け入れ条件
 
-> ✅ Automated (partial) — `packages/e2e/tests/at-0014-memory-project-mode-unification.spec.ts` covers AC-1 (tab switching), AC-3 (editor↔diagram updates, partial), and AC-5 (Samples tab). AC-2 / AC-4 stay manual until follow-up coverage lands. Per-bullet `[x]` flips are deferred to phase B (#920).
+> 🟡 Partially automated — `packages/e2e/tests/at-0014-memory-project-mode-unification.spec.ts` covers AC-1 (tab switching), AC-3 (editor↔diagram updates, partial), and AC-5 (Samples tab). AC-2 / AC-4 stay manual until follow-up coverage lands. Per-bullet `[x]` flips are deferred to phase B (#920).
 
 ### AC-1: MemoryModeApp の3ビュー表示
 

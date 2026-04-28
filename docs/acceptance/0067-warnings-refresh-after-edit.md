@@ -56,6 +56,7 @@ system S {
 ```krs
 service Standalone { label "Standalone" }
 ```
+
 だけのファイルを開く → `unassigned-service` が出る。
 
 `system S { service Standalone {} }` で system に取り込む → 警告が消える。

@@ -17,6 +17,7 @@ consistent with logical nodes. The renderer shows the label when set, falling ba
 > ✅ Automated — `packages/e2e/tests/at-0015-deploy-id-label-separation.spec.ts` › `renders label text when both id and label are set (AT-0015-1)`
 
 **Input `.krs`:**
+
 ```
 deploy Production {
   label "本番環境"
@@ -29,10 +30,12 @@ deploy Production {
 ```
 
 **Steps:**
+
 1. Open the app and paste the above into the editor.
 2. Observe the deploy diagram.
 
 **Expected:**
+
 - The deploy container title shows `"本番環境"` (not `"Production"`).
 - The deploy node box shows `"EC Application"` (not `"ecommerceApp"`).
 
@@ -43,6 +46,7 @@ deploy Production {
 > ✅ Automated — `packages/e2e/tests/at-0015-deploy-id-label-separation.spec.ts` › `falls back to id when label is absent (AT-0015-2)`
 
 **Input `.krs`:**
+
 ```
 deploy Production {
   oci ecommerceApp {
@@ -53,10 +57,12 @@ deploy Production {
 ```
 
 **Steps:**
+
 1. Open the app and paste the above into the editor.
 2. Observe the deploy diagram.
 
 **Expected:**
+
 - The deploy container title shows `"Production"`.
 - The deploy node box shows `"ecommerceApp"`.
 
@@ -67,6 +73,7 @@ deploy Production {
 > ✅ Automated — `packages/e2e/tests/at-0015-deploy-id-label-separation.spec.ts` › `legacy string literal deploy syntax still works (AT-0015-3)`
 
 **Input `.krs`:**
+
 ```
 deploy "本番環境" {
   oci "order-service" {
@@ -77,10 +84,12 @@ deploy "本番環境" {
 ```
 
 **Steps:**
+
 1. Open the app and paste the above into the editor.
 2. Observe the deploy diagram.
 
 **Expected:**
+
 - The deploy container title shows `"本番環境"`.
 - The deploy node box shows `"order-service"`.
 - No parse errors are shown in the warning panel.

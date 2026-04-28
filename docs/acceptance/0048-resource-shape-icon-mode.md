@@ -3,6 +3,7 @@
 ## Overview
 
 Verifies that:
+
 1. `resource` nodes with dot-notation refs automatically infer a style tag based on the referenced infra sub-resource kind.
 2. Infra nodes (`database`, `queue`, `storage`) display as icon cards in Icon Mode.
 3. `resource[table]`, `resource[queue]`, and `resource[storage]` display as distinct icon cards.

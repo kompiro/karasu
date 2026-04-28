@@ -117,14 +117,20 @@ describe("slugTokens / hasTokenOverlap", () => {
     );
   });
 
-  it("matches the legitimate AT-0007 pair (organization-diagram ↔ deployment-diagram)", () => {
-    const tokens = slugTokens("organization-diagram");
-    expect(hasTokenOverlap("at-0007-deployment-diagram.spec.ts", tokens)).toBe(true);
-  });
-
   it("rejects the AT-0046 collision (database-queue-storage ↮ system-id-in-viewpath)", () => {
     const tokens = slugTokens("database-queue-storage-parser");
     expect(hasTokenOverlap("at-0046-system-id-in-viewpath.spec.ts", tokens)).toBe(false);
+  });
+
+  it("drops generic stoplist tokens (diagram, view, test, spec, ...)", () => {
+    expect(slugTokens("organization-diagram")).toEqual(["organization"]);
+    expect(slugTokens("deployment-diagram")).toEqual(["deployment"]);
+    // Previously the AT-0007 organization-vs-deployment pair shared
+    // "diagram" and slipped through the overlap check. With the stoplist
+    // dropping "diagram", the collision is now correctly rejected:
+    expect(
+      hasTokenOverlap("at-0007-deployment-diagram.spec.ts", slugTokens("organization-diagram")),
+    ).toBe(false);
   });
 });
 

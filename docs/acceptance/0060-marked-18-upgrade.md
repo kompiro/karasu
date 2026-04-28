@@ -4,7 +4,7 @@
 
 Verify that the upgrade of `marked` from `17.0.6` to `18.0.2` in `packages/app`
 does not introduce visible regressions in markdown rendering. The v18 release
-ships parser-level changes that *could* affect rendered output:
+ships parser-level changes that _could_ affect rendered output:
 
 - Block tokens now trim trailing blank lines (internal; should not change HTML output for our usage).
 - GFM tables no longer greedily capture trailing newlines.
@@ -35,9 +35,9 @@ Both paths pass the parsed HTML through DOMPurify before mounting.
 - `packages/app/src/components/NodeDetailPanel.test.tsx`
   — existing tests cover basic bold markdown and `<script>` XSS sanitization.
   — new regression guards added for v18 edge cases:
-    - `renders GFM tables without swallowing trailing newlines`
-    - `renders headings followed by blank lines`
-    - `renders indented code blocks with embedded blank lines`
+  - `renders GFM tables without swallowing trailing newlines`
+  - `renders headings followed by blank lines`
+  - `renders indented code blocks with embedded blank lines`
 - `pnpm --filter @karasu-tools/app test` passes 477 / 477 on this branch.
 - `pnpm --filter @karasu-tools/app typecheck` passes.
 
@@ -75,7 +75,7 @@ Trailing paragraph after the table.
 ```
 
 - [ ] Table renders with two columns, two data rows.
-- [ ] "Trailing paragraph after the table." renders as a paragraph *after* the table (v18 no longer swallows trailing newlines into the table token).
+- [ ] "Trailing paragraph after the table." renders as a paragraph _after_ the table (v18 no longer swallows trailing newlines into the table token).
 
 ### TC-3 — Heading followed by blank lines (NodeDetailPanel)
 

@@ -19,6 +19,7 @@ accept string literals as IDs, allowing hyphenated or otherwise non-identifier n
 > ✅ Automated — `packages/e2e/tests/at-0016-string-literal-ids.spec.ts` › `logical nodes with hyphenated string literal IDs parse and render labels (AT-0016-1)`
 
 **Input `.krs`:**
+
 ```
 system "e-commerce" {
   label "ECサイト"
@@ -33,6 +34,7 @@ system "e-commerce" {
 ```
 
 **Expected:**
+
 - No parse errors in the warning panel.
 - Diagram shows `"ECサイト"` as the system label.
 - Services show `"受注サービス"` and `"決済サービス"`.
@@ -45,6 +47,7 @@ system "e-commerce" {
 > ✅ Automated — `packages/e2e/tests/at-0016-string-literal-ids.spec.ts` › `organization/team/member with string literal IDs parse cleanly (AT-0016-2)`
 
 **Input `.krs`:**
+
 ```
 organization "dev-team" {
   label "開発チーム"
@@ -61,6 +64,7 @@ organization "dev-team" {
 ```
 
 **Expected:**
+
 - No parse errors in the warning panel.
 
 ---
@@ -70,6 +74,7 @@ organization "dev-team" {
 > ✅ Automated — `packages/e2e/tests/at-0016-string-literal-ids.spec.ts` › `deploy realizes with string literal cross-reference parses cleanly (AT-0016-3)`
 
 **Input `.krs`:**
+
 ```
 system "e-commerce" {
   service "order-service" {
@@ -87,6 +92,7 @@ deploy Production {
 ```
 
 **Expected:**
+
 - No parse errors.
 - Deploy diagram shows a `realizes` link from `"order-api"` to the `"order-service"` service.
 
@@ -95,6 +101,7 @@ deploy Production {
 ### AT-0016-4: Identifier syntax continues to work unchanged
 
 **Input `.krs`:**
+
 ```
 system ECommerce {
   label "ECサイト"
@@ -105,5 +112,6 @@ system ECommerce {
 ```
 
 **Expected:**
+
 - No parse errors.
 - Diagram renders correctly.
