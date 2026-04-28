@@ -43,10 +43,24 @@ describe("AT-0039 (WebView) — clicking a leaf node opens the detail panel", fu
     const driver = VSBrowser.instance.driver;
     const editorView = new EditorView();
 
-    // Make sure the .krs file is the active editor before invoking the
-    // command — `karasu.openPreview` reads `vscode.window.activeTextEditor`
-    // and silently bails if it does not see a krs document.
-    await editorView.openEditor("at-0039.krs", 0);
+    // Wait for the .krs file to surface as a tab (VSBrowser.openResources in
+    // the before-hook starts the open async; first boot is slow).
+    await driver.wait(
+      async () => {
+        const titles = await editorView.getOpenEditorTitles();
+        return titles.some((t) => t.includes("at-0039.krs"));
+      },
+      ELEMENT_TIMEOUT_MS,
+      "fixture .krs file did not appear as an open editor",
+    );
+
+    const titles = await editorView.getOpenEditorTitles();
+    const krsTitle = titles.find((t) => t.includes("at-0039.krs")) as string;
+
+    // Focus the krs editor — `karasu.openPreview` reads
+    // `vscode.window.activeTextEditor` and silently bails if the active
+    // editor is not a krs document.
+    await editorView.openEditor(krsTitle, 0);
     await driver.sleep(500);
 
     // Trigger karasu's Open Preview command. It opens a WebView in the
@@ -58,7 +72,7 @@ describe("AT-0039 (WebView) — clicking a leaf node opens the detail panel", fu
     await driver.wait(
       async () => (await editorView.getEditorGroups()).length >= 2,
       ELEMENT_TIMEOUT_MS,
-      "preview WebView did not open in a second editor group",
+      `preview WebView did not open in a second editor group; open editors: ${titles.join(", ")}`,
     );
 
     // Bring the WebView active so `new WebView()` resolves to it.
