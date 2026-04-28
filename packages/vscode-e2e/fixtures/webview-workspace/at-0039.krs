@@ -1,0 +1,19 @@
+// Fixture for AT-0039 (detail panel) WebView E2E.
+//
+// Customer is a leaf node — clicking it must surface the detail panel
+// in the karasu preview WebView.
+
+system Demo {
+  service OrderService {
+    description "Handles order processing and payment."
+    link "https://wiki.example.com/order" "Design Wiki"
+    team "Order Team"
+  }
+
+  user Customer [human] {
+    description "A customer who purchases products."
+    role "Buyer"
+  }
+
+  Customer -> OrderService "places an order"
+}
