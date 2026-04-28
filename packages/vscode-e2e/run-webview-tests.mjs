@@ -31,18 +31,12 @@ fs.mkdirSync(storage, { recursive: true });
 
 // Pre-package the extension into a vsix without dependency validation.
 const vsixOut = path.join(storage, "karasu-vscode.vsix");
-const cwdBefore = process.cwd();
-process.chdir(vscodePkg);
-try {
-  await vsce.createVSIX({
-    cwd: vscodePkg,
-    packagePath: vsixOut,
-    dependencies: false,
-    skipLicense: true,
-  });
-} finally {
-  process.chdir(cwdBefore);
-}
+await vsce.createVSIX({
+  cwd: vscodePkg,
+  packagePath: vsixOut,
+  dependencies: false,
+  skipLicense: true,
+});
 
 const extester = new ExTester(storage);
 await extester.downloadCode("max");
