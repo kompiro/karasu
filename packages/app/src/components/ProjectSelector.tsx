@@ -50,8 +50,18 @@ export function ProjectSelector({
 
   const handleCreateKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
-      if (e.key === "Enter") handleCreate();
-      if (e.key === "Escape") {
+      if (e.key === "Enter") {
+        // Stop the event before it reaches the action row that mounts on the
+        // very next render. Without this, focus can land on the Import button
+        // and the held-down Enter ends up calling `importInputRef.click()`,
+        // popping the OS file picker right after the project is created
+        // (Issue #948).
+        e.preventDefault();
+        e.stopPropagation();
+        handleCreate();
+      } else if (e.key === "Escape") {
+        e.preventDefault();
+        e.stopPropagation();
         setNewName("");
         setIsCreating(false);
       }
@@ -77,8 +87,15 @@ export function ProjectSelector({
 
   const handleRenameKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
-      if (e.key === "Enter") handleRenameCommit();
-      if (e.key === "Escape") setIsRenaming(false);
+      if (e.key === "Enter") {
+        e.preventDefault();
+        e.stopPropagation();
+        handleRenameCommit();
+      } else if (e.key === "Escape") {
+        e.preventDefault();
+        e.stopPropagation();
+        setIsRenaming(false);
+      }
     },
     [handleRenameCommit],
   );
