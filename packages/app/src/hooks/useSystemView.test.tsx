@@ -57,6 +57,34 @@ describe("useSystemView", () => {
     vi.useRealTimers();
   });
 
+  it("hasOrgDiagram tracks the source's organization blocks (Issue #923)", async () => {
+    vi.useFakeTimers();
+    // Start with a source that has an organization block. After the editor is
+    // edited to a source without one, hasOrgDiagram must flip to false in the
+    // SAME tick that the system result settles. Without this single source of
+    // truth, useAutoSwitchToOrg would race a stale orgCompile result and
+    // wrongly switch tabs.
+    const SOURCE_WITH_ORG = `system Sys {
+  service Svc { label "Svc" }
+}
+organization Acme {
+  team Backend { label "Backend" }
+}`;
+    const SOURCE_WITHOUT_ORG = `service Svc { label "Svc" }`;
+    const fs = makeFs(SOURCE_WITH_ORG);
+    const { result } = renderHook(() => useSystemView(ENTRY, fs, []));
+    await act(() => vi.advanceTimersByTimeAsync(300));
+    expect(result.current.hasOrgDiagram).toBe(true);
+
+    await act(async () => {
+      await fs.writeFile(ENTRY, SOURCE_WITHOUT_ORG);
+      result.current.recompile();
+    });
+    await act(() => vi.advanceTimersByTimeAsync(300));
+    expect(result.current.hasOrgDiagram).toBe(false);
+    vi.useRealTimers();
+  });
+
   it("source changes are debounced by 300ms", async () => {
     vi.useFakeTimers();
     const fs = makeFs(SOURCE_A);

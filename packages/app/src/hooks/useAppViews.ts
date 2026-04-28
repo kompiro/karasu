@@ -156,6 +156,7 @@ export function useAppViews(args: UseAppViewsArgs): UseAppViewsResult {
     diagnostics: systemDiagnostics,
     nodeMetadata: systemNodeMetadata,
     hasDeployDiagram,
+    hasOrgDiagram,
     recompile: recompileSystem,
     systems: resolvedSystems,
     nodeFileIndex,
@@ -258,7 +259,10 @@ export function useAppViews(args: UseAppViewsArgs): UseAppViewsResult {
   useAutoSwitchToOrg({
     entryPath: effEntryPath,
     activeView,
-    hasOrg: organizations.length > 0,
+    // Read from systemCompile (same source of truth as `hasSystem` and
+    // `hasDeployDiagram`) to avoid the race where orgCompile lags behind
+    // an editor edit and reports a stale `hasOrg=true` (Issue #923).
+    hasOrg: hasOrgDiagram,
     hasSystem: resolvedSystems.length > 0,
     hasDeployDiagram,
     dispatch,

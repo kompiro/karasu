@@ -45,6 +45,7 @@ interface SystemViewState {
   diagnostics: Diagnostic[];
   nodeMetadata: Map<string, NodeMetadata>;
   hasDeployDiagram: boolean;
+  hasOrgDiagram: boolean;
   systems: SystemNode[];
   nodeFileIndex: Map<string, string>;
   /**
@@ -101,6 +102,7 @@ export function useSystemView(
     diagnostics: [],
     nodeMetadata: new Map(),
     hasDeployDiagram: false,
+    hasOrgDiagram: false,
     systems: [],
     nodeFileIndex: new Map(),
   });
@@ -159,6 +161,7 @@ export function useSystemView(
               diagnostics: diff.diagnostics,
               nodeMetadata: base.nodeMetadata,
               hasDeployDiagram: base.hasDeployDiagram,
+              hasOrgDiagram: base.hasOrgDiagram,
               systems: base.systems,
               nodeFileIndex: base.nodeFileIndex,
               nodeDiff: diff.nodeDiff,
@@ -180,6 +183,7 @@ export function useSystemView(
               diagnostics: diff.diagnostics,
               nodeMetadata: base.nodeMetadata,
               hasDeployDiagram: base.hasDeployDiagram,
+              hasOrgDiagram: base.hasOrgDiagram,
               systems: base.systems,
               nodeFileIndex: base.nodeFileIndex,
               nodeDiff: diff.nodeDiff,
@@ -206,6 +210,7 @@ export function useSystemView(
             diagnostics: result.diagnostics,
             nodeMetadata: result.nodeMetadata,
             hasDeployDiagram: result.hasDeployDiagram,
+            hasOrgDiagram: result.hasOrgDiagram,
             systems: result.systems,
             nodeFileIndex: result.nodeFileIndex,
           });
@@ -226,6 +231,7 @@ export function useSystemView(
             diagnostics: result.diagnostics,
             nodeMetadata: result.nodeMetadata,
             hasDeployDiagram: result.hasDeployDiagram,
+            hasOrgDiagram: result.hasOrgDiagram,
             systems: result.systems,
             nodeFileIndex: result.nodeFileIndex,
           });
