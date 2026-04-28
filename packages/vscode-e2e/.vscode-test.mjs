@@ -9,9 +9,10 @@ export default defineConfig({
   files: "out/suite/**/*.test.js",
   workspaceFolder: path.join(here, "fixtures/workspace"),
   extensionDevelopmentPath: path.join(here, "..", "vscode"),
-  // Pin to a known-good VS Code version so CI cache hits don't mask
-  // breakage in upstream stable. Bump intentionally when validating a new release.
-  version: "1.117.0",
+  // Track upstream stable so each weekly VS Code release is exercised by
+  // this suite. The CI cache key intentionally does not pin a version, so
+  // a fresh download happens whenever the stable channel ships.
+  version: "stable",
   mocha: {
     ui: "bdd",
     timeout: 60_000,
