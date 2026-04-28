@@ -255,6 +255,23 @@ describe("Icon Mode — shape cascade priority (issue #279)", () => {
     expect(styles.nodes.get("Reversed")!.shape).toMatchObject({ url: "client-desktop" });
   });
 
+  it("icon theme: single-tag client resolution comes from cascade alone (post-step is a no-op)", () => {
+    // Regression guard: if applyClientSubtypeFirstMatch is widened to handle
+    // single-tag nodes, this test catches it. The point is that the resolver
+    // post-step must not even consider single-tag clients — those are owned
+    // entirely by the icon-theme cascade rules.
+    const themeOnly = [getBuiltinStyleSheet(), getIconThemeStyleSheet()];
+    const overrideOnTheme = StyleParser.parse(`client[mobile] { shape: box; }`).value;
+    const styles = resolveStyles(
+      [{ ...CLIENT_NODE, id: "Single", tags: ["mobile"] } as KrsNode],
+      [...themeOnly, overrideOnTheme],
+    );
+    // User override on a single-tag client wins via cascade specificity ties +
+    // higher source index. If the post-step ever re-asserted client-mobile here
+    // it would clobber the user choice.
+    expect(styles.nodes.get("Single")!.shape).toBe("box");
+  });
+
   it("icon theme: extra non-subtype tags do not affect first-match-wins", () => {
     const resolveSheets = [getBuiltinStyleSheet(), getIconThemeStyleSheet()];
     const node = {

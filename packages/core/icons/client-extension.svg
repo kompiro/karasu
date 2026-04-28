@@ -14,8 +14,8 @@
       L2 17
       Z"
       fill="none" stroke="{{color}}" stroke-width="1.5" stroke-linejoin="round"/>
-    <!-- inner accent dot -->
-    <circle cx="9" cy="11" r="1.2" fill="{{color}}"/>
+    <!-- inner accent dot — sized to read against the puzzle silhouette -->
+    <circle cx="9" cy="11" r="1.8" fill="{{color}}"/>
   </g>
   <text class="krs-label" x="30" y="19" text-anchor="start"/>
   <text class="krs-description" x="8" y="44" text-anchor="start"/>

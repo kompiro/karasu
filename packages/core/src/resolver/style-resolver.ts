@@ -1,5 +1,6 @@
 import type { KrsNode, KrsEdge, DeployNode, OrganizationBlock, TeamNode } from "../types/ast.js";
 import { hasShape } from "../renderer/shape-registry.js";
+import { CLIENT_SUBTYPE_TAGS, type ClientSubtypeTag } from "../builtins/icon-theme.js";
 import type {
   StyleSheet,
   StyleRule,
@@ -208,28 +209,19 @@ function resolveNodeStyle(node: KrsNode, rules: StyleRule[]): ResolvedNodeStyle 
 }
 
 /**
- * Recognised `client` form-factor subtypes. When a client node has more than
- * one of these tags, CSS cascade alone would resolve to the rule declared
- * latest in the icon theme; that contradicts the intuition that the *first*
- * tag the user wrote should win. This helper rewrites the resolved shape so
- * `client X [mobile] [desktop]` picks `client-mobile`.
+ * No-op for everything except multi-subtype client nodes.
  *
- * Single-tag and zero-tag clients are handled correctly by the cascade and
- * untouched here. User-defined shape overrides (anything that is not a
- * `client-<subtype>` icon URL) are left alone too.
+ * When a client node has more than one of {@link CLIENT_SUBTYPE_TAGS}, CSS
+ * cascade alone would resolve to the rule declared latest in the icon theme;
+ * that contradicts the intuition that the *first* tag the user wrote should
+ * win. This helper rewrites the resolved shape so `client X [mobile] [desktop]`
+ * picks `client-mobile`. Single-tag and zero-tag clients are handled correctly
+ * by the cascade and untouched here. User-defined shape overrides (anything
+ * that is not a `client-<subtype>` icon URL) are left alone too.
  */
-const CLIENT_SUBTYPE_TAGS = [
-  "mobile",
-  "web",
-  "desktop",
-  "cli",
-  "device",
-  "extension",
-  "embed",
-] as const;
-type ClientSubtypeTag = (typeof CLIENT_SUBTYPE_TAGS)[number];
-const CLIENT_SUBTYPE_SHAPE_RE =
-  /^url\("client-(?:mobile|web|desktop|cli|device|extension|embed)"\)$/;
+const CLIENT_SUBTYPE_SHAPE_RE = new RegExp(
+  String.raw`^url\("client-(?:${CLIENT_SUBTYPE_TAGS.join("|")})"\)$`,
+);
 
 function applyClientSubtypeFirstMatch(node: KrsNode, merged: Record<string, string>): void {
   if (node.kind !== "client") return;

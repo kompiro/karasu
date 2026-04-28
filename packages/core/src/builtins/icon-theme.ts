@@ -3,6 +3,25 @@ import { StyleParser } from "../parser/style-parser.js";
 import { formatDiagnostic } from "../parser/diagnostic-legacy-format.js";
 
 /**
+ * Recognised `client` form-factor subtype tags. The icon theme below maps
+ * each one to a `client-<tag>` SVG. The resolver also imports this list to
+ * implement first-match-wins on node.tags order for multi-tag clients (see
+ * `applyClientSubtypeFirstMatch` in `resolver/style-resolver.ts`). Adding a
+ * new subtype is a single-file change: extend this array and add the
+ * matching `client[<tag>]` rule + SVG.
+ */
+export const CLIENT_SUBTYPE_TAGS = [
+  "mobile",
+  "web",
+  "desktop",
+  "cli",
+  "device",
+  "extension",
+  "embed",
+] as const;
+export type ClientSubtypeTag = (typeof CLIENT_SUBTYPE_TAGS)[number];
+
+/**
  * Icon theme style source for icon display mode.
  * When active, all node types render as SVG icon cards (160x100 / 160x56)
  * instead of geometric shapes.
@@ -34,9 +53,11 @@ resource[api]     { shape: url("api");        }
 resource[storage] { shape: url("cloud-card"); }
 
 /* ── Client subtype variants ── */
-/* When a client node has multiple recognized subtype tags, the resolver
- * applies first-match-wins on node.tags order (see CLIENT_SUBTYPE_TAGS in
- * resolver/style-resolver.ts) rather than CSS-cascade last-wins. */
+/* When a client node has multiple recognised subtype tags, the resolver
+ * applies first-match-wins on node.tags order (see
+ * applyClientSubtypeFirstMatch in resolver/style-resolver.ts, which reads
+ * the CLIENT_SUBTYPE_TAGS constant exported above) rather than CSS-cascade
+ * last-wins. The selector list and the constant must stay in sync. */
 client[mobile]    { shape: url("client-mobile");    }
 client[web]       { shape: url("client-web");       }
 client[desktop]   { shape: url("client-desktop");   }
