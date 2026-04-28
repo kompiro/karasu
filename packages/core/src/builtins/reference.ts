@@ -164,20 +164,21 @@ const SAMPLE_KRS_JA = `system ECPlatform {
       label "商品カタログ"
       usecase SearchProducts {
         label "商品を検索する"
-        resource ProductTable { label "商品テーブル" }
+        resource ECommerceDB.ProductTable
         resource SearchIndex [external] { label "検索インデックス" }
       }
       usecase RegisterProduct {
         label "商品を登録する"
-        resource ProductTable { label "商品テーブル" }
-        resource ImageStorage [external] { label "画像ストレージ" }
+        resource ECommerceDB.ProductTable
+        resource MediaStorage.ProductImages
       }
     }
     domain Order {
       label "受注"
       usecase PlaceOrder {
         label "注文を確定する"
-        resource OrderTable { label "注文テーブル" }
+        resource ECommerceDB.OrderTable
+        resource OrderEvents.OrderPlaced
         resource InventoryAPI [external] { label "在庫API" }
         resource PaymentAPI [external] { label "決済API" }
       }
@@ -187,7 +188,7 @@ const SAMPLE_KRS_JA = `system ECPlatform {
       label "会員"
       usecase Register {
         label "会員登録する"
-        resource MemberTable { label "会員テーブル" }
+        resource ECommerceDB.MemberTable
       }
       usecase EditProfile { label "プロフィールを編集する" }
     }
@@ -203,6 +204,23 @@ const SAMPLE_KRS_JA = `system ECPlatform {
   service Notification {
     label "通知"
     description "メール・プッシュ通知の送信"
+  }
+
+  // インフラ層: service が共有する database / queue / storage を
+  // system 直下のファーストクラスノードとして宣言する。
+  database ECommerceDB {
+    label "ECサイトDB"
+    table ProductTable { label "商品テーブル" }
+    table OrderTable { label "注文テーブル" }
+    table MemberTable { label "会員テーブル" }
+  }
+  queue OrderEvents {
+    label "注文イベント"
+    queue OrderPlaced { label "注文確定" }
+  }
+  storage MediaStorage {
+    label "画像ストレージ"
+    bucket ProductImages { label "商品画像" }
   }
 
   Customer -> MobileApp "アプリを利用する"
@@ -310,20 +328,21 @@ const SAMPLE_KRS_EN = `system ECPlatform {
       label "Product Catalog"
       usecase SearchProducts {
         label "Search products"
-        resource ProductTable { label "Product table" }
+        resource ECommerceDB.ProductTable
         resource SearchIndex [external] { label "Search index" }
       }
       usecase RegisterProduct {
         label "Register a product"
-        resource ProductTable { label "Product table" }
-        resource ImageStorage [external] { label "Image storage" }
+        resource ECommerceDB.ProductTable
+        resource MediaStorage.ProductImages
       }
     }
     domain Order {
       label "Orders"
       usecase PlaceOrder {
         label "Place an order"
-        resource OrderTable { label "Order table" }
+        resource ECommerceDB.OrderTable
+        resource OrderEvents.OrderPlaced
         resource InventoryAPI [external] { label "Inventory API" }
         resource PaymentAPI [external] { label "Payment API" }
       }
@@ -333,7 +352,7 @@ const SAMPLE_KRS_EN = `system ECPlatform {
       label "Members"
       usecase Register {
         label "Sign up as a member"
-        resource MemberTable { label "Member table" }
+        resource ECommerceDB.MemberTable
       }
       usecase EditProfile { label "Edit profile" }
     }
@@ -349,6 +368,23 @@ const SAMPLE_KRS_EN = `system ECPlatform {
   service Notification {
     label "Notification"
     description "Email and push notification delivery"
+  }
+
+  // Infra layer: shared database / queue / storage that services depend on,
+  // declared as first-class nodes directly under system.
+  database ECommerceDB {
+    label "EC Site DB"
+    table ProductTable { label "Product table" }
+    table OrderTable { label "Order table" }
+    table MemberTable { label "Member table" }
+  }
+  queue OrderEvents {
+    label "Order events"
+    queue OrderPlaced { label "Order placed" }
+  }
+  storage MediaStorage {
+    label "Media storage"
+    bucket ProductImages { label "Product images" }
   }
 
   Customer -> MobileApp "Use the app"
