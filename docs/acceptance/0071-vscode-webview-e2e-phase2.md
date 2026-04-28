@@ -2,7 +2,7 @@
 type: tooling
 ---
 
-# AT-0070: VS Code WebView E2E harness — Phase 2 (AT-0039 TC-01 migration)
+# AT-0071: VS Code WebView E2E harness — Phase 2a (runner config; AT-0039 TC-01 wiring)
 
 ## 概要
 
@@ -35,8 +35,9 @@ Phase 2 の鍵となる技術ポイント:
 
 ### AC-2: Phase 2 PoC テストが PASS する
 
-- [x] `at-0039-detail-panel.test.ts` の唯一のケースが PASS する（VS Code 起動 → fixture 開く → preview command → WebView frame 切替 → leaf node click → `#detail-panel.visible` 検出）
-> 🟡 Partially automated — `packages/vscode-e2e/tests/webview/at-0039-detail-panel.test.ts` › `opens the preview, focuses the WebView, and clicks Customer to surface the detail panel` (CI は `vscode-webview-e2e` ラベル opt-in、xvfb 必要のため required check には昇格しない)
+- [ ] `at-0039-detail-panel.test.ts` の唯一のケースが PASS する（VS Code 起動 → fixture 開く → preview command → WebView frame 切替 → leaf node click → `#detail-panel.visible` 検出）
+
+> Phase 2a の現状: ランナー側の config（workspace 引数 / settings preseed / Quick Open scaffold）は wired したが、xvfb 上で ExTester が workspace folder を開かない事象に阻まれて test は `describe.skip()` のまま。test body は最終形の selector path で残してあるので、Phase 2b では「ファイル open の経路を直す」ところだけが残作業。CI artifacts のスクリーンショットを見ながらローカル Linux box で iterate するのが現実的。
 
 ### AC-3: AT-0039 の Coverage policy が更新される
 
