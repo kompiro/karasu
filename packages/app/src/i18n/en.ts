@@ -74,6 +74,7 @@ export const en: Translations = {
   "nodeDetail.openDeployView": "🚀 View in Deploy diagram →",
   "nodeDetail.jumpToEditor": "↗ Jump to editor",
   "nodeDetail.annotationDiff.title": "⇄ Annotation diff",
+  "nodeDetail.resources.title": "📦 Storage resources",
 
   // Empty-state placeholders (rendered inside SVG by core renderers)
   "emptyState.deploy.title": "No deploy block defined",

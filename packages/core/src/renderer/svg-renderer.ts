@@ -526,29 +526,33 @@ function renderNode(
       nextY += fontSize + 4;
     }
 
-    // Resource lines (client only). Rendered text-only — Phase 5 MVP.
+    // Resource badge (client only). Replaces the per-resource text loop with
+    // a single "📦 ×N" badge so the card height does not grow with resource
+    // count. The full list is surfaced in NodeDetailPanel (Issue #914).
     if (node.properties.resources && node.properties.resources.length > 0) {
-      const resFontSize = Math.round(fontSize * 0.8);
-      for (const resource of node.properties.resources) {
-        children.push(
-          el(
-            "text",
-            {
-              x: textX,
-              y: nextY,
-              "text-anchor": "middle",
-              "dominant-baseline": "central",
-              fill: textColor,
-              "font-size": `${resFontSize}px`,
-              "font-family": style.fontFamily,
-              opacity: 0.8,
-              "data-client-resource": resource.storageKind,
-            },
-            escapeXml(`📦 ${resource.storageKind} "${resource.name}"`),
-          ),
-        );
-        nextY += fontSize + 4;
-      }
+      const resCount = node.properties.resources.length;
+      const resFontSize = Math.round(fontSize * 0.7);
+      const tooltip = node.properties.resources
+        .map((r) => `${r.storageKind} "${r.name}"`)
+        .join(", ");
+      children.push(
+        el(
+          "text",
+          {
+            x: textX,
+            y: nextY,
+            "text-anchor": "middle",
+            "dominant-baseline": "central",
+            fill: textColor,
+            "font-size": `${resFontSize}px`,
+            "font-family": style.fontFamily,
+            opacity: 0.8,
+            "data-client-resource-count": String(resCount),
+          },
+          el("title", {}, escapeXml(tooltip)) + escapeXml(`📦 ×${resCount}`),
+        ),
+      );
+      nextY += fontSize + 4;
     }
 
     // Meta row: link count + team

@@ -1304,21 +1304,21 @@ function measureNode(
   // Info button adds width for nodes with children and description
   const infoButtonExtra = node.children.length > 0 && description ? INFO_BUTTON_WIDTH : 0;
 
-  // Resource lines (client-only): "📦 <kind> "<name>"" rendered at description font size
-  const resourceWidth = resources.reduce((max, r) => {
-    const text = `📦 ${r.storageKind} "${r.name}"`;
-    return Math.max(max, estimateTextWidth(text, CHAR_WIDTH * DESCRIPTION_FONT_RATIO));
-  }, 0);
+  // Resource badge (client-only): "📦 ×N" — one line regardless of count.
+  const hasResourceBadge = resources.length > 0;
+  const resourceBadgeWidth = hasResourceBadge
+    ? estimateTextWidth(`📦 ×${resources.length}`, CHAR_WIDTH * META_FONT_RATIO)
+    : 0;
 
   const width =
-    Math.max(labelWidth, descWidth, roleWidth, metaWidth, resourceWidth, 80) +
+    Math.max(labelWidth, descWidth, roleWidth, metaWidth, resourceBadgeWidth, 80) +
     NODE_PADDING_X * 2 +
     infoButtonExtra;
   let height = NODE_PADDING_Y * 2 + LINE_HEIGHT;
   if (description) height += LINE_HEIGHT;
   if (role) height += LINE_HEIGHT;
+  if (hasResourceBadge) height += LINE_HEIGHT;
   if (hasMetaRow) height += LINE_HEIGHT;
-  height += resources.length * LINE_HEIGHT;
 
   return { width, height };
 }

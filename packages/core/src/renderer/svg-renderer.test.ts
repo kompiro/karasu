@@ -60,7 +60,7 @@ system Test {
     expect(svg).toContain("#0369A1");
   });
 
-  it("renders client resource list inline on the card", () => {
+  it("renders a single resource count badge on the client card (Issue #914)", () => {
     const svg = renderFromSource(`
 system Test {
   client WebApp [web] {
@@ -70,10 +70,23 @@ system Test {
   }
 }
     `);
-    expect(svg).toContain("📦 localStorage &quot;preferences&quot;");
-    expect(svg).toContain("📦 indexedDB &quot;outbox&quot;");
-    expect(svg).toContain('data-client-resource="localStorage"');
-    expect(svg).toContain('data-client-resource="indexedDB"');
+    expect(svg).toContain("📦 ×2");
+    expect(svg).toContain('data-client-resource-count="2"');
+    // Per-resource text rows are no longer emitted; the full list moved to
+    // the NodeDetailPanel. A <title> tooltip preserves quick discoverability.
+    expect(svg).not.toContain('data-client-resource="');
+    expect(svg).toContain("localStorage &quot;preferences&quot;");
+    expect(svg).toContain("indexedDB &quot;outbox&quot;");
+  });
+
+  it("emits no resource badge when the client has zero resources", () => {
+    const svg = renderFromSource(`
+system Test {
+  client Bare [web] { label "Bare" }
+}
+    `);
+    expect(svg).not.toContain("📦");
+    expect(svg).not.toContain("data-client-resource-count");
   });
 
   it("renders multiple nodes with edges", () => {
