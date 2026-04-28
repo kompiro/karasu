@@ -60,6 +60,12 @@ export type CapturedRequest = {
 export type SeedApiKeyOptions = {
   /** Where to store the key. Mirrors `karasu.ai.settings.persist`. Default: `"session"`. */
   persist?: "session" | "local";
+  /**
+   * Pin `localStorage["karasu-locale"]` so English button labels stay
+   * stable across CI runners with different `navigator.language`.
+   * Default: `"en"`. Pass `null` to opt out.
+   */
+  pinLocale?: "en" | "ja" | null;
 };
 
 export type AnthropicFixture = {
@@ -69,30 +75,55 @@ export type AnthropicFixture = {
    * still calling the API, the next request gets a 500 + a console-visible
    * marker so the test fails loudly rather than hanging.
    */
-  scriptTurns(turns: ReadonlyArray<ScriptedTurn>): Promise<void>;
-  /** Make the next request fail with the given status. One-shot. */
-  respondWithError(error: ScriptedError): Promise<void>;
-  /** Captured request bodies, in arrival order. */
+  scriptTurns(turns: ReadonlyArray<ScriptedTurn>): void;
+  /**
+   * Serve the given error to every subsequent request until the queue is
+   * replaced via `scriptTurns(...)` or another `respondWithError(...)`.
+   * Sticky (rather than one-shot) because the SDK retries 429 / 5xx by
+   * default, and a single-fire error would be papered over by a retry.
+   */
+  respondWithError(error: ScriptedError): void;
+  /**
+   * Captured request bodies in arrival order. Each call returns a fresh
+   * snapshot so callers cannot accidentally mutate the fixture state.
+   */
   readonly requests: ReadonlyArray<CapturedRequest>;
-  /** Seed the BYOK API key + persist setting. Must be called before `gotoApp()`. */
+  /**
+   * Seed the BYOK API key + persist setting and (by default) pin the UI
+   * locale to `"en"`. Must be called after `opfs.seed()` (which wipes
+   * `localStorage`) and before `gotoApp()`.
+   */
   seedApiKey(apiKey: string, options?: SeedApiKeyOptions): Promise<void>;
   /** Remove the stored API key from both storages. */
   clearApiKey(): Promise<void>;
 };
 
+// NOTE: hardcoded against `https://api.anthropic.com/**`. If
+// `@anthropic-ai/sdk` ever exposes a configurable base URL or proxy that
+// `useChatSession` opts into, this glob will silently pass requests
+// through. Cross-check the SDK source if a chat spec starts hitting real
+// network.
 const ANTHROPIC_URL_GLOB = "https://api.anthropic.com/**";
 const KEY_API_KEY = "karasu.ai.anthropic.apiKey";
 const KEY_PERSIST = "karasu.ai.settings.persist";
+const KEY_LOCALE = "karasu-locale";
 
 type QueueState =
   | { kind: "turns"; turns: ScriptedTurn[] }
-  | { kind: "error"; error: ScriptedError; consumed: boolean };
+  | { kind: "error"; error: ScriptedError };
 
-let messageCounter = 0;
-const nextMessageId = () => `msg_test_${Date.now()}_${++messageCounter}`;
-const nextToolUseId = () => `toolu_test_${Date.now()}_${++messageCounter}`;
+function makeIdGenerators() {
+  let counter = 0;
+  return {
+    nextMessageId: () => `msg_test_${Date.now()}_${++counter}`,
+    nextToolUseId: () => `toolu_test_${Date.now()}_${++counter}`,
+  };
+}
 
-function buildMessageResponse(turn: ScriptedTurn): Record<string, unknown> {
+function buildMessageResponse(
+  turn: ScriptedTurn,
+  ids: ReturnType<typeof makeIdGenerators>,
+): Record<string, unknown> {
   const content: Array<Record<string, unknown>> = [];
   let stopReason: string;
 
@@ -105,7 +136,7 @@ function buildMessageResponse(turn: ScriptedTurn): Record<string, unknown> {
     }
     content.push({
       type: "tool_use",
-      id: turn.toolUseId ?? nextToolUseId(),
+      id: turn.toolUseId ?? ids.nextToolUseId(),
       name: turn.tool,
       input: turn.input,
     });
@@ -113,7 +144,7 @@ function buildMessageResponse(turn: ScriptedTurn): Record<string, unknown> {
   }
 
   return {
-    id: nextMessageId(),
+    id: ids.nextMessageId(),
     type: "message",
     role: "assistant",
     model: "claude-test-fake",
@@ -156,6 +187,7 @@ export const test = opfsTest.extend<{ anthropic: AnthropicFixture }>({
   anthropic: async ({ page }, use) => {
     let queue: QueueState = { kind: "turns", turns: [] };
     const requests: CapturedRequest[] = [];
+    const ids = makeIdGenerators();
 
     await page.route(ANTHROPIC_URL_GLOB, async (route) => {
       const request = route.request();
@@ -174,35 +206,26 @@ export const test = opfsTest.extend<{ anthropic: AnthropicFixture }>({
       try {
         const body = request.postDataJSON() as CapturedRequest["body"];
         requests.push({ body });
-      } catch {
-        // postDataJSON() throws if the body isn't valid JSON. Capture nothing
-        // but still serve a response so the test can observe the failure.
+      } catch (err) {
+        // postDataJSON() throws if the body isn't valid JSON. Surface the
+        // failure on the test trace rather than silently dropping it — a
+        // missing capture would otherwise mask request-shape bugs.
+        // eslint-disable-next-line no-console
+        console.warn("[anthropic fixture] failed to capture request body:", err);
       }
 
       if (queue.kind === "error") {
-        if (queue.consumed) {
-          await route.fulfill({
-            status: 500,
-            contentType: "application/json",
-            body: JSON.stringify({
-              type: "error",
-              error: {
-                type: "fixture_exhausted",
-                message: "anthropic fixture: scripted error already consumed",
-              },
-            }),
-          });
-          return;
-        }
-        queue.consumed = true;
+        // Sticky: 429 / 5xx are retried by the SDK by default, so a one-shot
+        // error would only surface on the first attempt and the SDK would
+        // recover (or get a different error) on retry. The error stays in the
+        // queue until the test calls scriptTurns(...) or another
+        // respondWithError(...).
         const { status, body } = buildErrorResponse(queue.error);
         await route.fulfill({
           status,
           contentType: "application/json",
           body: JSON.stringify(body),
         });
-        // After consuming the one-shot error, fall back to an empty turn queue.
-        queue = { kind: "turns", turns: [] };
         return;
       }
 
@@ -226,31 +249,40 @@ export const test = opfsTest.extend<{ anthropic: AnthropicFixture }>({
       await route.fulfill({
         status: 200,
         contentType: "application/json",
-        body: JSON.stringify(buildMessageResponse(turn)),
+        body: JSON.stringify(buildMessageResponse(turn, ids)),
       });
     });
 
     const fixture: AnthropicFixture = {
-      async scriptTurns(turns) {
+      scriptTurns(turns) {
         queue = { kind: "turns", turns: [...turns] };
       },
-      async respondWithError(error) {
-        queue = { kind: "error", error, consumed: false };
+      respondWithError(error) {
+        queue = { kind: "error", error };
       },
       get requests() {
-        return requests;
+        return [...requests];
       },
       async seedApiKey(apiKey, options = {}) {
         const persist = options.persist ?? "session";
+        const pinLocale = options.pinLocale === undefined ? "en" : options.pinLocale;
         await page.evaluate(
-          ({ key, where, keyApiKey, keyPersist }) => {
+          ({ key, where, locale, keyApiKey, keyPersist, keyLocale }) => {
             localStorage.setItem(keyPersist, where);
             const target = where === "local" ? localStorage : sessionStorage;
             const other = where === "local" ? sessionStorage : localStorage;
             target.setItem(keyApiKey, key);
             other.removeItem(keyApiKey);
+            if (locale !== null) localStorage.setItem(keyLocale, locale);
           },
-          { key: apiKey, where: persist, keyApiKey: KEY_API_KEY, keyPersist: KEY_PERSIST },
+          {
+            key: apiKey,
+            where: persist,
+            locale: pinLocale,
+            keyApiKey: KEY_API_KEY,
+            keyPersist: KEY_PERSIST,
+            keyLocale: KEY_LOCALE,
+          },
         );
       },
       async clearApiKey() {

@@ -127,13 +127,13 @@ test("chat round-trip", async ({ page, opfs, anthropic }) => {
 
 ### API
 
-| Method                          | Purpose                                                                      |
-| ------------------------------- | ---------------------------------------------------------------------------- |
-| `anthropic.scriptTurns(turns)`  | FIFO queue of responses for upcoming `messages.create` calls.                |
-| `anthropic.respondWithError(e)` | Make the next request fail with `{status: 401 \| 429 \| 500}` (one-shot).    |
-| `anthropic.requests`            | Captured request bodies in arrival order — assert tool definitions, etc.     |
-| `anthropic.seedApiKey(key, o)`  | Write `karasu.ai.anthropic.apiKey` + `...settings.persist` before `gotoApp`. |
-| `anthropic.clearApiKey()`       | Remove the key from both storages (AC-4 / AC-5).                             |
+| Method                          | Purpose                                                                       |
+| ------------------------------- | ----------------------------------------------------------------------------- |
+| `anthropic.scriptTurns(turns)`  | FIFO queue of responses for upcoming `messages.create` calls.                 |
+| `anthropic.respondWithError(e)` | Serve `{status: 401 \| 429 \| 500}` to every request until reset (sticky).    |
+| `anthropic.requests`            | Captured request bodies in arrival order — assert tool definitions, etc.      |
+| `anthropic.seedApiKey(key, o)`  | Write the BYOK key + persist setting and (by default) pin `karasu-locale=en`. |
+| `anthropic.clearApiKey()`       | Remove the key from both storages (AC-4 / AC-5).                              |
 
 ### Scripted turn shapes
 
@@ -155,10 +155,14 @@ hanging on a real network attempt.
 
 - **Call `seedApiKey()` after `opfs.seed()`.** `opfs.seed()` wipes
   `localStorage`, so any earlier `seedApiKey()` would be undone. Natural
-  order: `opfs.seed → seedApiKey → scriptTurns → gotoApp`.
-- **Errors are one-shot.** `respondWithError()` consumes itself after one
-  request; subsequent requests get `500 fixture_exhausted` until you
-  call `scriptTurns()` again.
+  order: `opfs.seed → seedApiKey → scriptTurns → gotoApp`. `seedApiKey`
+  also pins `karasu-locale=en` by default; pass `pinLocale: null` to opt
+  out (e.g. when explicitly verifying Japanese UI).
+- **Errors are sticky** rather than one-shot. The same error answers
+  every request until you call `scriptTurns(...)` or another
+  `respondWithError(...)`. This is required because `@anthropic-ai/sdk`
+  retries `429` / `5xx` by default; a one-shot mock would be hidden by
+  the retry.
 - **The 401/429/500 body shape mirrors the real Anthropic API** so
   `@anthropic-ai/sdk` still produces `APIError` instances and
   `useChatSession/errors.ts` keeps classifying them correctly.

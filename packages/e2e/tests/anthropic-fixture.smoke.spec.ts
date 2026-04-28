@@ -11,17 +11,17 @@ import type { OpfsFixture } from "../fixtures/opfs.js";
  * 2. A scripted `navigate_view` tool_use turn triggers the SDK's tool-use
  *    follow-up (a second `messages.create` call carrying `tool_result`),
  *    proving the mock returns the right shape for the SDK to decode.
- * 3. A scripted 401 surfaces as the auth-typed inline error in the chat,
- *    proving the SDK's `APIError` classification path is preserved by the
- *    mock and that `useChatSession/errors.ts` still maps it correctly.
+ * 3. Each `respondWithError` status (401 / 429 / 500) surfaces the matching
+ *    inline error and button affordance, proving the SDK's `APIError`
+ *    classification path is preserved by the mock and that
+ *    `useChatSession/errors.ts` still maps it correctly.
  *
  * If these pass, AT-0050 (BYOK Chat UI) can build on top of this fixture.
  *
- * Chromium-only: the underlying `opfs` fixture is chromium-only. The
- * `bootChat` helper pins `karasu-locale=en` after `opfs.seed()` (which
- * wipes localStorage) so the English button labels used by the
- * `getByRole(...)` selectors below stay stable across CI runners with
- * different `navigator.language`.
+ * Chromium-only: the underlying `opfs` fixture is chromium-only.
+ * `seedApiKey` pins `karasu-locale=en` by default so the English button
+ * labels used by the `getByRole(...)` selectors below stay stable across
+ * CI runners with different `navigator.language`.
  */
 
 const PROJECT = {
@@ -30,13 +30,8 @@ const PROJECT = {
   files: { "index.krs": 'system "Fixture Only" {}\n' },
 };
 
-async function bootChat(opts: {
-  page: import("@playwright/test").Page;
-  opfs: OpfsFixture;
-  anthropic: AnthropicFixture;
-}) {
+async function bootChat(opts: { opfs: OpfsFixture; anthropic: AnthropicFixture }) {
   await opts.opfs.seed({ projects: [PROJECT], lastProjectId: PROJECT.id });
-  await opts.page.evaluate(() => localStorage.setItem("karasu-locale", "en"));
   await opts.anthropic.seedApiKey("sk-ant-test-fake");
   await opts.opfs.gotoApp();
 }
@@ -47,9 +42,9 @@ test.describe("anthropic fixture smoke", () => {
     opfs,
     anthropic,
   }) => {
-    await bootChat({ page, opfs, anthropic });
+    await bootChat({ opfs, anthropic });
 
-    await anthropic.scriptTurns([{ kind: "text", text: "Hello from the fixture." }]);
+    anthropic.scriptTurns([{ kind: "text", text: "Hello from the fixture." }]);
 
     await page.getByRole("tab", { name: /Chat/ }).click();
     const input = page.getByRole("textbox", { name: /Chat message input/i });
@@ -68,9 +63,9 @@ test.describe("anthropic fixture smoke", () => {
     opfs,
     anthropic,
   }) => {
-    await bootChat({ page, opfs, anthropic });
+    await bootChat({ opfs, anthropic });
 
-    await anthropic.scriptTurns([
+    anthropic.scriptTurns([
       {
         kind: "tool_use",
         tool: "navigate_view",
@@ -102,25 +97,50 @@ test.describe("anthropic fixture smoke", () => {
     ]);
   });
 
-  test("respondWithError(401) surfaces the auth-typed inline error", async ({
-    page,
-    opfs,
-    anthropic,
-  }) => {
-    await bootChat({ page, opfs, anthropic });
+  // 401 / 429 / 500 are mapped by `useChatSession/errors.ts` to three
+  // distinct inline messages and button affordances. Locking all three
+  // here prevents the mock body shape from drifting away from what the
+  // SDK's `APIError` classifier expects.
+  const errorCases = [
+    {
+      status: 401 as const,
+      expectedText: /API key is invalid/,
+      expectedButton: /Open Settings/i,
+      hiddenButton: /Retry/i,
+    },
+    {
+      status: 429 as const,
+      expectedText: /Rate limit reached/,
+      expectedButton: /Retry/i,
+      hiddenButton: /Open Settings/i,
+    },
+    {
+      status: 500 as const,
+      expectedText: /Anthropic server error/,
+      expectedButton: /Retry/i,
+      hiddenButton: /Open Settings/i,
+    },
+  ];
 
-    await anthropic.respondWithError({ status: 401 });
+  for (const { status, expectedText, expectedButton, hiddenButton } of errorCases) {
+    test(`respondWithError(${status}) renders the matching inline error`, async ({
+      page,
+      opfs,
+      anthropic,
+    }) => {
+      await bootChat({ opfs, anthropic });
 
-    await page.getByRole("tab", { name: /Chat/ }).click();
-    const input = page.getByRole("textbox", { name: /Chat message input/i });
-    await input.fill("This should fail with 401");
-    await input.press("ControlOrMeta+Enter");
+      anthropic.respondWithError({ status });
 
-    const errorMsg = page.locator(".chat-message--error");
-    await expect(errorMsg).toContainText("API key is invalid");
+      await page.getByRole("tab", { name: /Chat/ }).click();
+      const input = page.getByRole("textbox", { name: /Chat message input/i });
+      await input.fill(`This should fail with ${status}`);
+      await input.press("ControlOrMeta+Enter");
 
-    // Auth-typed errors swap the retry button for the Open Settings button.
-    await expect(errorMsg.getByRole("button", { name: /Open Settings/i })).toBeVisible();
-    await expect(errorMsg.getByRole("button", { name: /Retry/i })).toHaveCount(0);
-  });
+      const errorMsg = page.locator(".chat-message--error");
+      await expect(errorMsg).toContainText(expectedText);
+      await expect(errorMsg.getByRole("button", { name: expectedButton })).toBeVisible();
+      await expect(errorMsg.getByRole("button", { name: hiddenButton })).toHaveCount(0);
+    });
+  }
 });
