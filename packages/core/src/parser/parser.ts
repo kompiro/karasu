@@ -158,6 +158,7 @@ export class Parser {
       storages: [],
       deploys: [],
       organizations: [],
+      legends: [],
       ownerIndex: new Map(),
       nodePathIndex: new Map(),
       nodeFileIndex: new Map(),

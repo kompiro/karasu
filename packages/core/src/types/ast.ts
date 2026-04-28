@@ -285,6 +285,34 @@ export interface ImportDeclaration {
   loc: SourceRange;
 }
 
+export type LegendViewScope = "system" | "deploy" | "org";
+
+/**
+ * A `ref` entry in a `legend` block resolves to a color via the existing
+ * style cascade. The three target kinds correspond to karasu's vocabulary:
+ *
+ * - `annotation` — `@deprecated`, `@external`, etc.
+ * - `tag` — `[external]`, `[implicit]`, etc.
+ * - `selector` — a `.krs.style` selector (`.class`, `#id`, or a type name).
+ */
+export type LegendRefTarget =
+  | { kind: "annotation"; name: string }
+  | { kind: "tag"; name: string }
+  | { kind: "selector"; selector: string };
+
+export type LegendEntry =
+  | { kind: "swatch"; color: string; label: string; loc: SourceRange }
+  | { kind: "ref"; target: LegendRefTarget; label: string; loc: SourceRange };
+
+export interface LegendBlock {
+  /** Optional view scope. When omitted, the legend is shown on every view. */
+  scope?: LegendViewScope;
+  /** Optional title rendered above the entries. */
+  title?: string;
+  entries: LegendEntry[];
+  loc: SourceRange;
+}
+
 export interface KrsFile {
   styleImports: string[];
   nodeImports: ImportDeclaration[];
@@ -297,6 +325,7 @@ export interface KrsFile {
   storages: StorageNode[];
   deploys: DeployBlock[];
   organizations: OrganizationBlock[];
+  legends: LegendBlock[];
   ownerIndex: Map<string, string>;
   /** Maps each node id to its viewPath (e.g. "EC" → ["Payment", "EC"]). System nodes are excluded. */
   nodePathIndex: Map<string, string[]>;

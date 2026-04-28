@@ -170,6 +170,7 @@ export class ImportResolver {
       storages: [],
       deploys: [],
       organizations: [],
+      legends: [],
       ownerIndex: new Map(),
       nodePathIndex: new Map(),
       nodeFileIndex: new Map(),
@@ -192,6 +193,7 @@ export class ImportResolver {
     mergedFile.storages.push(...(file.storages ?? []));
     mergedFile.deploys.push(...file.deploys);
     mergedFile.organizations.push(...file.organizations);
+    mergedFile.legends.push(...(file.legends ?? []));
     for (const [ownedId, teamId] of file.ownerIndex) {
       mergedFile.ownerIndex.set(ownedId, teamId);
     }

@@ -41,6 +41,9 @@ const KEYWORDS: Record<string, TokenType> = {
   storage: TokenType.Storage,
   table: TokenType.Table,
   bucket: TokenType.Bucket,
+  legend: TokenType.Legend,
+  swatch: TokenType.Swatch,
+  ref: TokenType.Ref,
 };
 
 export class Lexer {

@@ -43,6 +43,7 @@ function makeFile(overrides: Partial<KrsFile>): KrsFile {
     storages: [],
     deploys: [],
     organizations: [],
+    legends: [],
     ownerIndex: new Map(),
     nodePathIndex: new Map(),
     nodeFileIndex: new Map(),
