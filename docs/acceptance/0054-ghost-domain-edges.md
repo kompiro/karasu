@@ -13,18 +13,17 @@ Verify that cross-service domain edges are shown as ghost nodes and edges (opaci
 in the service drill-down view, making it possible to understand why an implicit service
 edge exists without returning to the system view.
 
-## Automated Checks
+> Unit-test coverage for the view-slice ghost computation
+> (`pnpm test` in `packages/core`):
+>
+> - Drilling into the source service produces `ghostDomains` containing the foreign domain node
+> - Drilling into the target service produces `ghostDomains` containing the calling domain node
+> - `ghostDomainEdges` preserves the original `from` / `to` domain IDs
+> - `ghostDomains` is empty at system view level and domain view level
+> - Multiple edges to the same foreign domain are deduplicated in `ghostDomains`
+> - `parentServiceLabel` uses the service `label` when defined, falling back to the service ID
 
-The following are covered by automated tests (`pnpm test`):
-
-- Drilling into the source service produces `ghostDomains` containing the foreign domain node
-- Drilling into the target service produces `ghostDomains` containing the calling domain node
-- `ghostDomainEdges` preserves the original `from`/`to` domain IDs
-- `ghostDomains` is empty at system view level and domain view level
-- Multiple edges pointing to the same foreign domain are deduplicated in `ghostDomains`
-- `parentServiceLabel` uses the service's `label` when defined, falling back to the service ID
-
-## Manual Verification
+## 受け入れ条件
 
 ### Setup
 
