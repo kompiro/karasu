@@ -124,6 +124,36 @@ describe("analyzeFile", () => {
     expect(offending && "bullet" in offending && offending.bullet).toContain("not covered");
   });
 
+  it("flags `[ ]` mixed under a suite-wide marker", () => {
+    const md = [
+      "### AC-1",
+      "> ✅ Automated by `packages/cli/src/render.test.ts` (suite-wide)",
+      "- [x] covered",
+      "- [ ] manual mixed in",
+    ].join("\n");
+
+    const r = analyzeFile("x.md", md);
+    const offending = r.findings.find((f) => f.kind === "unchecked-under-suite-wide");
+    expect(offending).toBeDefined();
+    expect(offending && "bullet" in offending && offending.bullet).toContain("manual mixed in");
+  });
+
+  it("does not treat `Automated by` without `(suite-wide)` as a suite-wide marker", () => {
+    const md = [
+      "### AC-1",
+      "> ✅ Automated by `packages/cli/src/render.test.ts`",
+      "- [x] needs its own per-bullet marker",
+    ].join("\n");
+
+    const r = analyzeFile("x.md", md);
+    // The header line still matches CANONICAL_BLOCKQUOTE (Automated\b),
+    // but suite-wide scope must NOT be activated, so the bullet below
+    // must rely on a *following* canonical blockquote — which there is
+    // none of, so the `[x]` is flagged.
+    const offending = r.findings.find((f) => f.kind === "checked-without-blockquote");
+    expect(offending).toBeDefined();
+  });
+
   it("accepts slash-separated multi-test names in a per-bullet blockquote", () => {
     const md = [
       "- [x] reads, lists, and exists",

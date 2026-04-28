@@ -93,7 +93,7 @@ type: product  # または tool
    > 🟡 Partially automated — `packages/e2e/tests/<file>.spec.ts` › `<test name>`（視覚的判定は手動）
    ```
 
-4. **ショートハンド A — ファイル単位（suite-wide）**: 同一テストファイルが連続する `[x]` バレット群を全部カバーする場合、各バレットに blockquote を書く代わりに、バレット群の**直前**に 1 つだけ suite-wide マーカーを置ける。次の `##` / `###` 見出しが来るか、別の canonical blockquote が現れるまでが対象範囲。
+4. **ショートハンド A — ファイル単位（suite-wide）**: 同一テストファイルが連続する `[x]` バレット群を全部カバーする場合、各バレットに blockquote を書く代わりに、バレット群の**直前**に 1 つだけ suite-wide マーカーを置ける。任意の markdown 見出し（`#`〜`######`）が現れた時点で対象範囲は終了する。
 
    ```markdown
    ### AC-1: render flags
