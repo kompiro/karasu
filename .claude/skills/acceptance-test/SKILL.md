@@ -106,7 +106,28 @@ type: product  # または tool
 
    この形式は AT-0004 / AT-0014 / AT-0043 / AT-0050 / AT-0053 で採用されている（#916 phase C 経由で導入）。`pnpm at:check-coverage` は AC 冒頭の partial blockquote を canonical とみなすため、この形のままでも検査を通る。per-bullet 展開はベストエフォートで進める。
 
-5. **未自動化バレットの理由 blockquote（任意）**: AC 節の末尾に 1 つだけ、未チェック項目をまとめて理由付きで blockquote にできる。何が／なぜ手動なのかを 1 行ずつ書く。
+5. **ショートハンド A — ファイル単位（suite-wide）**: 同一テストファイルが連続する `[x]` バレット群を全部カバーする場合、各バレットに blockquote を書く代わりに、バレット群の**直前**に 1 つだけ suite-wide マーカーを置ける。任意の markdown 見出し（`#`〜`######`）が現れた時点で対象範囲は終了する。
+
+   ```markdown
+   ### AC-1: render flags
+
+   > ✅ Automated by `packages/cli/src/render.test.ts` (suite-wide)
+
+   - [x] Missing file → stderr error message + exit code 1
+   - [x] Default (no `--view`) → SVG written to stdout
+   - [x] `--output <path>` → SVG written to file
+   ```
+
+   範囲内に未自動化（`- [ ]`）が混じる場合や、別ファイルでカバーされる項目がある場合は、suite-wide ではなく per-bullet 形式に戻すこと（局所例外を許すと範囲が曖昧になるため）。
+
+6. **ショートハンド B — 1 バレット → 複数テスト**: 1 つのバレットが複数の `it(...)` で構成される場合、テスト名をスラッシュ区切り（`/`）で列挙する。
+
+   ```markdown
+   - [x] `NodeFileSystemProvider` reads files, lists directories, and checks existence
+   > ✅ Automated — `packages/cli/src/render.test.ts` › `readFile returns file contents` / `readDir returns entries with kind` / `exists returns true` / `exists returns false`
+   ```
+
+7. **未自動化バレットの理由 blockquote（任意）**: AC 節の末尾に 1 つだけ、未チェック項目をまとめて理由付きで blockquote にできる。何が／なぜ手動なのかを 1 行ずつ書く。
 
    ```markdown
    > 未チェック項目について:

@@ -49,6 +49,7 @@ flowchart TD
     ADR_20260427_01["ADR-20260427-01<br/>Feature toggle ポリシー — compile-time、短命、卒業時に削除"]
     ADR_20260428_01["ADR-20260428-01<br/>Secret 必須の CI ジョブは bot 作者の PR で skip する"]
     ADR_20260428_02["ADR-20260428-02<br/>依存更新バッチ — 2026-04-28"]
+    ADR_20260428_08["ADR-20260428-08<br/>Required Check は paired stub workflow で docs-on..."]
   end
   subgraph chat-ai["chat-ai"]
     ADR_20260407_04["ADR-20260407-04<br/>Cloudflare Pages デプロイ基盤と BYOK AI 連携"]
@@ -376,7 +377,7 @@ flowchart TD
 
 - [`adr-tooling`](graph/adr-tooling.md) — 3 ADRs
 - [`app-ui`](graph/app-ui.md) — 18 ADRs
-- [`build`](graph/build.md) — 20 ADRs
+- [`build`](graph/build.md) — 21 ADRs
 - [`chat-ai`](graph/chat-ai.md) — 8 ADRs
 - [`cli`](graph/cli.md) — 7 ADRs
 - [`core-concepts`](graph/core-concepts.md) — 5 ADRs
