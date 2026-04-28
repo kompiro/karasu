@@ -559,7 +559,7 @@ export function layout(
   // here in the future, gate it on `forcedLayers === null` (Q11 of the design
   // doc requires declaration order within forced layers).
   const nodeIds = allNodes.map((n) => n.id);
-  const forcedLayers = assignForcedSystemLayers(allNodes);
+  const forcedLayers = assignForcedSystemLayers(allNodes, allEdges);
   let layers: Map<string, number>;
   if (forcedLayers) {
     layers = forcedLayers;
@@ -832,7 +832,7 @@ function layoutMultipleSystems(
     const nodeIds = rawNodes.map((n) => n.id);
     const idSet = new Set(nodeIds);
     // Only include intra-system edges for layout ordering
-    const forcedLayers = assignForcedSystemLayers(rawNodes);
+    const forcedLayers = assignForcedSystemLayers(rawNodes, sys.edges);
     let layers: Map<string, number>;
     if (forcedLayers) {
       layers = forcedLayers;
@@ -1118,66 +1118,89 @@ function computeEdgePoints(
 }
 
 /**
- * Bucket a system-view node into one of five ordered tiers.
- * Lower index → upper row.
+ * Bucket a system-view node into one of four ordered tiers.
+ * Lower index → upper row group.
  *
  *   0: user       — actor at the top of the access path
  *   1: client     — user-facing surface (mobile / web / desktop / etc.)
  *   2: internal   — services we own (and any other non-infra logical kinds)
- *   3: infra      — database / queue / storage that internal services depend on
- *   4: external   — anything tagged `[external]` (system boundary outside)
+ *   3: dep        — infra (database/queue/storage) and `[external]` services;
+ *                    the things internal services depend on
  *
- * `[external]` wins over the infra-kind check so that an external database
- * (e.g. a managed SaaS DB referenced as `database X [external]`) renders on
- * the external row, where it semantically belongs.
+ * `[external]` and infra kinds collapse into the same dep tier; visual
+ * differentiation between "we own this DB" and "this is a third-party SaaS"
+ * is left to styling (border / color via the `[external]` tag selector).
  */
 const INFRA_KINDS = new Set<KrsNode["kind"]>(["database", "queue", "storage"]);
 
-function systemTier(node: KrsNode): 0 | 1 | 2 | 3 | 4 {
+function systemTier(node: KrsNode): 0 | 1 | 2 | 3 {
   if (node.kind === "user") return 0;
   if (node.kind === "client") return 1;
-  if (node.tags.includes("external")) return 4;
-  if (INFRA_KINDS.has(node.kind)) return 3;
+  if (node.tags.includes("external") || INFRA_KINDS.has(node.kind)) return 3;
   return 2;
 }
 
 /**
  * Force a kind-based layered placement for the system-view (Phase 6 of #823).
  *
- * Each node is bucketed by `systemTier`, then non-empty tiers are compacted
- * into consecutive row indices (we never emit an empty row at the top or
- * gaps between occupied rows). Examples:
- *   - user + client + internal + infra + external → 0/1/2/3/4
- *   - user + internal + infra                     → 0/1/2 (no client / external)
- *   - internal + infra                            → 0/1   (svc above its DB)
- *   - internal + external                         → 0/1   (downstream dep below)
+ * Two-step layering:
+ *   1. Bucket each node into one of four tiers (`systemTier`).
+ *   2. Within each tier, run a fresh topological sort on the intra-tier
+ *      edges to assign sub-rows. Cross-tier edges don't influence sub-rows
+ *      (the tier order already pins them).
  *
- * Returns `null` when no `user`, `client`, infra, or `[external]` node
- * appears — in that case there is no kind-based separation to enforce, so
- * the caller falls back to topological layering. This keeps service
- * drill-down views (domains / usecases / resources) on the existing topo
- * path.
+ * Final row = (sum of tier heights of preceding tiers) + sub-row in own tier.
+ * Empty tiers contribute zero height. So a system with `service A → B → C`
+ * and a single `database D` yields A at row 0, B at row 1, C at row 2,
+ * D at row 3 — the call chain flows top-to-bottom and the dep sits below.
+ *
+ * Returns `null` when no `user`, `client`, or dep node appears — in that
+ * case there is no kind-based separation to enforce, so the caller falls
+ * back to top-level topological layering. This keeps service drill-down
+ * views (domains / usecases / resources) on the existing topo path.
  */
-function assignForcedSystemLayers(nodes: KrsNode[]): Map<string, number> | null {
-  const occupied = [false, false, false, false, false] as [
-    boolean,
-    boolean,
-    boolean,
-    boolean,
-    boolean,
-  ];
-  for (const n of nodes) occupied[systemTier(n)] = true;
+function assignForcedSystemLayers(nodes: KrsNode[], edges: KrsEdge[]): Map<string, number> | null {
+  const occupied = [false, false, false, false] as [boolean, boolean, boolean, boolean];
+  const byTier: KrsNode[][] = [[], [], [], []];
+  for (const n of nodes) {
+    const t = systemTier(n);
+    occupied[t] = true;
+    byTier[t].push(n);
+  }
 
-  // No system-view signal at all → let topo handle it.
-  if (!occupied[0] && !occupied[1] && !occupied[3] && !occupied[4]) return null;
+  // No system-view signal beyond plain internal services → let topo handle it.
+  if (!occupied[0] && !occupied[1] && !occupied[3]) return null;
 
-  // Map raw tier index → compacted row index.
-  const compacted: number[] = [];
-  let row = 0;
-  for (let t = 0; t < 5; t++) compacted.push(occupied[t] ? row++ : -1);
+  // Per-tier sub-layer assignment via topological sort on intra-tier edges.
+  const subLayers: Map<string, number>[] = byTier.map((tierNodes) => {
+    if (tierNodes.length === 0) return new Map<string, number>();
+    const ids = tierNodes.map((n) => n.id);
+    const idSet = new Set(ids);
+    const intraEdges = edges.filter((e) => idSet.has(e.from) && idSet.has(e.to));
+    const { adj, inDegree } = buildGraph(ids, intraEdges);
+    return assignLayers(ids, adj, inDegree);
+  });
+
+  // Tier base = cumulative height of preceding tiers (each tier contributes
+  // (max sub-layer + 1) when occupied, 0 when empty).
+  const tierBase: number[] = [];
+  let acc = 0;
+  for (let t = 0; t < 4; t++) {
+    tierBase.push(acc);
+    if (occupied[t]) {
+      let maxSub = 0;
+      for (const n of byTier[t]) {
+        maxSub = Math.max(maxSub, subLayers[t].get(n.id) ?? 0);
+      }
+      acc += maxSub + 1;
+    }
+  }
 
   const layers = new Map<string, number>();
-  for (const n of nodes) layers.set(n.id, compacted[systemTier(n)]);
+  for (const n of nodes) {
+    const t = systemTier(n);
+    layers.set(n.id, tierBase[t] + (subLayers[t].get(n.id) ?? 0));
+  }
   return layers;
 }
 

@@ -522,7 +522,7 @@ system Other {
     expect(c1.x).toBeLessThan(c2.x);
   });
 
-  it("places infra (database/queue/storage) below internal services and above external", () => {
+  it("places dep tier (infra + external) below internal services", () => {
     const slice = parseAndExtract(`
 system S {
   user Customer [human]
@@ -545,19 +545,19 @@ system S {
     const jobs = result.nodes.get("Jobs")!;
     const blobs = result.nodes.get("Blobs")!;
     const stripe = result.nodes.get("Stripe")!;
-    // Five compacted rows: user / client / internal / infra / external
     expect(customer.y).toBeLessThan(app.y);
     expect(app.y).toBeLessThan(backend.y);
     expect(backend.y).toBeLessThan(postgres.y);
-    // All three infra share the same row
+    // No edges among dep nodes → all share one sub-row
     expect(postgres.y).toBe(jobs.y);
     expect(jobs.y).toBe(blobs.y);
-    expect(postgres.y).toBeLessThan(stripe.y);
+    expect(postgres.y).toBe(stripe.y);
   });
 
-  it("treats database [external] as external, not as infra", () => {
-    // Tag wins over kind: a managed SaaS DB declared `database X [external]`
-    // belongs on the external row, not the infra row.
+  it("places database [external] in the dep tier alongside infra (tag does not change tier here)", () => {
+    // Both infra-kind and `[external]` collapse into the same dep tier.
+    // Without intra-dep edges, OurDb and SaaSDb share a sub-row; visual
+    // distinction comes from the [external] style, not from layout.
     const slice = parseAndExtract(`
 system S {
   service Backend {}
@@ -570,10 +570,10 @@ system S {
     const ourDb = result.nodes.get("OurDb")!;
     const saasDb = result.nodes.get("SaaSDb")!;
     expect(backend.y).toBeLessThan(ourDb.y);
-    expect(ourDb.y).toBeLessThan(saasDb.y);
+    expect(ourDb.y).toBe(saasDb.y);
   });
 
-  it("forces internal-vs-infra split even without user/client/external", () => {
+  it("forces internal-vs-dep split even without user/client", () => {
     // A pure backend system with just service + database still gets the
     // forced split: service above database.
     const slice = parseAndExtract(`
@@ -586,6 +586,68 @@ system S {
     const backend = result.nodes.get("Backend")!;
     const postgres = result.nodes.get("Postgres")!;
     expect(backend.y).toBeLessThan(postgres.y);
+  });
+
+  it("topo-layers internal services by call relationships within the internal tier", () => {
+    // A → B → C: each call is a sub-row inside the internal tier, so the
+    // chain reads top-to-bottom even though all three are services.
+    const slice = parseAndExtract(`
+system S {
+  service A {}
+  service B {}
+  service C {}
+  A -> B
+  B -> C
+}
+`);
+    const result = layout(slice);
+    const a = result.nodes.get("A")!;
+    const b = result.nodes.get("B")!;
+    const c = result.nodes.get("C")!;
+    expect(a.y).toBeLessThan(b.y);
+    expect(b.y).toBeLessThan(c.y);
+  });
+
+  it("topo-layers the dep tier by intra-dep edges", () => {
+    // queue Q → database D: an intra-dep edge orders Q above D inside
+    // the dep tier, while internal services stay above both.
+    const slice = parseAndExtract(`
+system S {
+  service App {}
+  queue Q {}
+  database D {}
+  Q -> D
+  App -> Q
+}
+`);
+    const result = layout(slice);
+    const app = result.nodes.get("App")!;
+    const q = result.nodes.get("Q")!;
+    const d = result.nodes.get("D")!;
+    expect(app.y).toBeLessThan(q.y);
+    expect(q.y).toBeLessThan(d.y);
+  });
+
+  it("does not let a cross-tier edge bleed into per-tier sub-row assignment", () => {
+    // Backend → DB is a cross-tier edge. Within the internal tier, A and
+    // Backend are independent (no A→Backend edge), so they share row 0 of
+    // the internal tier. Backend's edge to DB only affects DB's tier
+    // placement, not Backend's sub-row.
+    const slice = parseAndExtract(`
+system S {
+  service A {}
+  service Backend {}
+  database DB {}
+  Backend -> DB
+}
+`);
+    const result = layout(slice);
+    const a = result.nodes.get("A")!;
+    const backend = result.nodes.get("Backend")!;
+    const db = result.nodes.get("DB")!;
+    // A and Backend on the same internal sub-row
+    expect(a.y).toBe(backend.y);
+    expect(backend.y).toBeLessThan(db.y);
   });
 
   it("places external services in a row below internal services", () => {

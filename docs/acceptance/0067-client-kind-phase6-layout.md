@@ -6,10 +6,19 @@ type: product
 
 ## 概要
 
-system 図のレイアウトが、エッジの有無に関係なく **`user` → `client` → 内部 `service` → infra (`database` / `queue` / `storage`) → `[external]`** の五段を上から下に強制配置することを確認する
+system 図のレイアウトが kind ベースの **4 段グルーピング** + **段内の topological sort** で構成されることを確認する
 （Issue [#856](https://github.com/kompiro/karasu/issues/856)、設計は `docs/design/client-mcp-modeling.md` Q11）。
 
-設計ドキュメントの三層案を「infra 段」「`[external]` 段」で拡張している。空の段（その種類のノードが存在しない段）は行ごと詰められ、最終的な段数は 1〜5 段の範囲で動く。`[external]` タグは kind より優先され、`database X [external]` は infra 段ではなく external 段に置かれる。
+段（tier）の構造:
+
+| 段 | 含まれる kind | 役割 |
+|---|---|---|
+| 0 | `user` | 操作の起点となるアクター |
+| 1 | `client` | ユーザー接点（mobile / web / desktop / cli / device / extension / embed） |
+| 2 | `internal` (`service` その他、`[external]` でない非インフラ) | 我々が所有するサービス層 |
+| 3 | `dep` (`database` / `queue` / `storage` / `[external]` 付きノード) | internal が依存する要素群 |
+
+各段の中では **その段内のエッジでトポロジカルソートを行い sub-row を割り当てる**（呼び出し関係や依存関係が縦に流れる）。空の段は行ごと詰められる。`[external]` と infra kind は同じ段にまとめ、視覚的な区別は `[external]` タグのスタイル（枠線・色）に委ねる。
 
 ## 前提条件
 
@@ -18,17 +27,21 @@ system 図のレイアウトが、エッジの有無に関係なく **`user` →
 
 ## 受け入れ条件
 
-### 1. 三層レイアウト
+### 1. 4 段レイアウトと段内 topological sort
 
-以下の `.krs` をアプリで開いたとき、`Customer` が最上段、`MobileApp` が中段、`OrderService` が最下段に並ぶ。
+以下の `.krs` をアプリで開いたとき、`Customer`（user 段）→ `MobileApp`（client 段）→ `OrderService` → `BillingService`（internal 段、`OrderService -> BillingService` で sub-row 分離）→ `Postgres`（dep 段）の順に並ぶ。
 
 ```krs
 system Demo {
   user Customer [human]
   client MobileApp [mobile]
   service OrderService {}
+  service BillingService {}
+  database Postgres {}
   Customer -> MobileApp
   MobileApp -> OrderService
+  OrderService -> BillingService
+  BillingService -> Postgres
 }
 ```
 
@@ -48,9 +61,9 @@ system Demo {
 
 `client` をスキップして `service` に直接エッジを張る user（例: `Admin -> OrderService`）も同様で、`Admin` は他の user と同じ最上段に並ぶ。
 
-### 3. infra (database / queue / storage) は内部 service の下、external の上
+### 3. infra と `[external]` は同じ dep 段で、internal の下に並ぶ
 
-`database` / `queue` / `storage` kind のノードは、内部 service の下段、`[external]` の上段に配置される。サービスとそれが依存するインフラの上下関係をレイアウトで表現する。
+`database` / `queue` / `storage` kind のノードと、`[external]` タグの付いたノードはすべて **dep 段** にまとめられ、internal 段の下に配置される。dep 段内に依存エッジがなければ、それらは同じ sub-row に並ぶ。
 
 ```krs
 system Demo {
@@ -62,11 +75,23 @@ system Demo {
 }
 ```
 
-`Backend`（最上段相当）→ `Postgres / Jobs / Blobs`（同じ infra 段）→ `Stripe`（最下段）の順に並ぶ。
+`Backend`（internal 段）→ `Postgres / Jobs / Blobs / Stripe`（同じ dep 段の同じ sub-row）の順に並ぶ。
 
-`[external]` タグは kind より優先される。`database SaaSDb [external]` は infra 段ではなく external 段に配置される。
+### 4. dep 段内の依存エッジで sub-row が分かれる
 
-### 4. `[external]` service は内部 service より下の行
+`queue Q -> database D` のような dep 段内のエッジがあると、Q が D の上の sub-row に置かれ、依存方向が縦に流れる。
+
+```krs
+system Demo {
+  service App {}
+  queue Q {}
+  database D {}
+  Q -> D
+  App -> Q
+}
+```
+
+`App`（internal）→ `Q`（dep の上 sub-row）→ `D`（dep の下 sub-row）の 3 行レイアウト。
 
 `[external]` タグの付いた `service` は、内部 service より下段（最下段）に配置される。M2M 依存先（外部 SaaS など）が下流であることをレイアウトで表現する。
 
@@ -117,7 +142,7 @@ system Demo {
 ### 7. Getting Started への影響
 
 `examples/getting-started/index.krs` を開いたとき、上から順に
-`Customer / Seller / Admin`（user）→ `MobileApp`（client）→ `ECommerce / Notification`（internal service）→ `Payment / Inventory`（external service）の 4 段に並ぶ。エッジの矢印が下方向に流れている。
+`Customer / Seller / Admin`（user 段）→ `MobileApp`（client 段）→ `ECommerce / Notification`（internal 段）→ `Payment / Inventory`（dep 段、`[external]`）の順に並ぶ。エッジの矢印が下方向に流れている。
 
 ## 自動化された検証
 
