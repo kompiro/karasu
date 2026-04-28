@@ -15,26 +15,22 @@ Verify that domain-level dependency edges are parsed, rendered, and validated co
 2. Intra-service domain edges rendered directly in the service drill-down view
 3. Domain ID uniqueness enforced as an error within a system
 
-## Automated Checks
+> Unit-test coverage for parser / resolver / view slice behaviour
+> (`pnpm test` in `packages/core`):
+>
+> - `domain` blocks accept `->` and `-->` edge declarations
+> - Cross-service domain edges produce implicit service edges with `tags: ["implicit"]`
+> - Implicit service edges are suppressed when an explicit service edge exists in the same direction
+> - Multiple cross-service domain edges aggregate (label shows `"N domain edges"`)
+> - `EdgeDetailPanel` lists each constituent domain edge and can be × dismissed
+> - `ViewSlice.implicitEdgeDetails` carries `DomainEdgeDetail` objects
+> - Intra-service domain edges appear in the service view's `childEdges`; cross-service ones do not
+> - Duplicate domain ID within a system emits an `error` diagnostic; across systems does not
+> - `edge[implicit]` style sets color `#F59E0B`; sync vs async distinguished by `[sync]` / `[async]`
+> - Sync + async pair produces two separate implicit service edges
+> - `domain-drift.krs` parses cleanly with `OrderDomain → PaymentDomain` edge
 
-The following are covered by automated tests (`pnpm test`):
-
-- `domain` blocks accept `->` and `-->` edge declarations
-- Cross-service domain edges produce implicit service edges with `tags: ["implicit"]`
-- Implicit service edges are suppressed when an explicit service edge already exists in the same direction
-- Multiple cross-service domain edges between the same service pair are aggregated: label shows `"N domain edges"`
-- Clicking the `"N domain edges"` label opens an `EdgeDetailPanel` listing each constituent domain edge (from/to labels and edge label)
-- The `EdgeDetailPanel` can be dismissed via the × button
-- `ViewSlice.implicitEdgeDetails` contains `DomainEdgeDetail` objects for each constituent edge of an aggregated implicit edge
-- Intra-service domain edges (both endpoints in the same service) appear in the service view's `childEdges`
-- Cross-service domain edges (target domain in another service) do NOT appear in the service view's `childEdges`
-- Duplicate domain ID within the same system emits an `error` diagnostic
-- Duplicate domain ID across different systems does NOT emit an error
-- `edge[implicit]` style in the built-in stylesheet sets color `#F59E0B` (amber); the line style is left to `[async]` / `[sync]` so sync and async derived edges remain visually distinguishable
-- A service pair that has both sync and async cross-service domain edges produces two separate implicit service edges (one per `kind`)
-- `domain-drift.krs` parses without errors and `OrderDomain` has an outgoing edge to `PaymentDomain`
-
-## Manual Verification
+## 受け入れ条件
 
 ### Setup
 
@@ -112,9 +108,17 @@ domain OrderDomain {
 ```
 
 - [x] The system-view implicit edge label changes to `"2 domain edges"`
+> ✅ Automated — `packages/e2e/tests/at-0053-domain-to-domain-edges.spec.ts` › `multiple cross-service domain edges aggregate into a "N domain edges" label (Case 3)`
+
 - [x] Clicking the `"2 domain edges"` label opens a detail panel listing each constituent domain edge
+> ✅ Automated — `packages/e2e/tests/at-0053-domain-to-domain-edges.spec.ts` › `clicking aggregated edge label opens detail panel listing constituent domain edges (Case 3)`
+
 - [x] The panel shows two rows: `OrderDomain → PaymentDomain "decides payment"` and `OrderDomain → ExternalDomain "external call"` (or equivalent)
+> ✅ Automated — `packages/e2e/tests/at-0053-domain-to-domain-edges.spec.ts` › `clicking aggregated edge label opens detail panel listing constituent domain edges (Case 3)`
+
 - [x] Closing the panel (× button) dismisses it
+> ✅ Automated — `packages/e2e/tests/at-0053-domain-to-domain-edges.spec.ts` › `clicking aggregated edge label opens detail panel listing constituent domain edges (Case 3)`
+
 - [ ] Clicking anywhere outside the panel also dismisses it
 
 ---

@@ -14,21 +14,39 @@ date: 2026-04-01
 `compile()` / `compileOrgView()` を一本の `compile(src, options?)` に統合し、
 `DiagramType` に `"org"` を追加。戻り値を判別共用体 `CompileResult` に変更する。
 
-## Automated Tests
+## 検証方法
+
+```bash
+pnpm --filter @karasu-tools/core test    # packages/core/src/index.test.ts
+pnpm typecheck
+pnpm run build --workspace=packages/core
+```
+
+## 受け入れ条件
 
 以下はすべて `packages/core/src/index.test.ts` でカバーされる。
 
-### 新 API — 判別共用体の戻り値
+### AC-1: 新 API — 判別共用体の戻り値
 
-- [ ] `compile(src, { diagramType: "system" })` → `result.diagramType === "system"` かつ `nodeMetadata`, `hasDeployDiagram`, `deployBlocks` が存在する
-- [ ] `compile(src, { diagramType: "deploy" })` → `result.diagramType === "deploy"` かつ `nodeMetadata`, `deployBlocks` が存在する
-- [ ] `compile(src, { diagramType: "org" })` → `result.diagramType === "org"` かつ `nodePathIndex` が存在する
-- [ ] `compileProject(entry, fs, { diagramType: "org", orgPath: [], displayMode: "icon" })` が正常に SVG を返す
-- [ ] org モードで style-conflict 警告が出ない（builtin + icon theme の組み合わせ）
+- [x] `compile(src, { diagramType: "system" })` → `result.diagramType === "system"` かつ `nodeMetadata`, `hasDeployDiagram`, `deployBlocks` が存在する
+> ✅ Automated — `packages/core/src/index.test.ts`（unit）
 
-### 後方互換 — deprecated API
+- [x] `compile(src, { diagramType: "deploy" })` → `result.diagramType === "deploy"` かつ `nodeMetadata`, `deployBlocks` が存在する
+> ✅ Automated — `packages/core/src/index.test.ts`（unit）
 
-- [ ] `compileProjectOrgView(entry, fs, [], "icon")` が引き続き動作し、`diagramType: "org"` フィールドを含む `OrgCompileResult` を返す
+- [x] `compile(src, { diagramType: "org" })` → `result.diagramType === "org"` かつ `nodePathIndex` が存在する
+> ✅ Automated — `packages/core/src/index.test.ts`（unit）
+
+- [x] `compileProject(entry, fs, { diagramType: "org", orgPath: [], displayMode: "icon" })` が正常に SVG を返す
+> ✅ Automated — `packages/core/src/index.test.ts`（unit）
+
+- [x] org モードで style-conflict 警告が出ない（builtin + icon theme の組み合わせ）
+> ✅ Automated — `packages/core/src/index.test.ts`（unit）
+
+### AC-2: 後方互換 — deprecated API
+
+- [x] `compileProjectOrgView(entry, fs, [], "icon")` が引き続き動作し、`diagramType: "org"` フィールドを含む `OrgCompileResult` を返す
+> ✅ Automated — `packages/core/src/index.test.ts`（unit）
 
 ## Manual Verification Checklist
 
