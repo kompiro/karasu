@@ -129,6 +129,8 @@ export const ja: Partial<Translations> = {
     `デプロイノード "${nodeId}" に runtime が指定されていません`,
   "warning.missingRealizes.message": ({ nodeId }) =>
     `デプロイノード "${nodeId}" に realizes が指定されていません`,
+  "warning.unresolvedRealizes.message": ({ deployNodeId, target }) =>
+    `デプロイノード "${deployNodeId}" の realizes "${target}" を解決できる service / domain が見つかりません`,
   "warning.invalidOwns.message": ({ teamId, ownedId }) =>
     `team "${teamId}" が "${ownedId}" を owns していますが、その id を持つ service または domain が存在しません`,
   "warning.deprecatedTeamProperty.message": ({ nodeId }) =>
