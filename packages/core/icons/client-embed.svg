@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 100">
+  <g class="krs-pictogram" transform="translate(6, 4)">
+    <!-- outer frame -->
+    <rect x="1" y="2" width="18" height="16" rx="1.5" fill="none" stroke="{{color}}" stroke-width="1.5" opacity="0.6"/>
+    <!-- inner embedded widget -->
+    <rect x="5" y="6" width="10" height="8" rx="1" fill="{{color}}" opacity="0.85"/>
+    <!-- corner brackets to convey "embedded" -->
+    <polyline points="2,4 2,3 3,3" fill="none" stroke="{{color}}" stroke-width="1.2" stroke-linecap="round"/>
+    <polyline points="18,3 17,3 17,4" fill="none" stroke="{{color}}" stroke-width="1.2" stroke-linecap="round"/>
+    <polyline points="17,16 17,17 18,17" fill="none" stroke="{{color}}" stroke-width="1.2" stroke-linecap="round"/>
+    <polyline points="3,17 2,17 2,16" fill="none" stroke="{{color}}" stroke-width="1.2" stroke-linecap="round"/>
+  </g>
+  <text class="krs-label" x="30" y="19" text-anchor="start"/>
+  <text class="krs-description" x="8" y="44" text-anchor="start"/>
+</svg>

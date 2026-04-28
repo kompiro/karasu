@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 100">
+  <g class="krs-pictogram" transform="translate(6, 4)">
+    <!-- phone body -->
+    <rect x="5" y="1" width="10" height="18" rx="2" fill="none" stroke="{{color}}" stroke-width="1.5"/>
+    <!-- speaker notch -->
+    <line x1="8" y1="3.5" x2="12" y2="3.5" stroke="{{color}}" stroke-width="1.2" stroke-linecap="round"/>
+    <!-- single app icon centered -->
+    <rect x="8.5" y="8" width="3" height="3" rx="0.5" fill="{{color}}"/>
+    <!-- home button -->
+    <circle cx="10" cy="16.5" r="0.9" fill="none" stroke="{{color}}" stroke-width="1"/>
+  </g>
+  <text class="krs-label" x="30" y="19" text-anchor="start"/>
+  <text class="krs-description" x="8" y="44" text-anchor="start"/>
+</svg>

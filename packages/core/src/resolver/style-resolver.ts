@@ -202,7 +202,44 @@ function resolveNodeStyle(node: KrsNode, rules: StyleRule[]): ResolvedNodeStyle 
     Object.assign(merged, rule.properties);
   }
 
+  applyClientSubtypeFirstMatch(node, merged);
+
   return toResolvedNodeStyle(merged);
+}
+
+/**
+ * Recognised `client` form-factor subtypes. When a client node has more than
+ * one of these tags, CSS cascade alone would resolve to the rule declared
+ * latest in the icon theme; that contradicts the intuition that the *first*
+ * tag the user wrote should win. This helper rewrites the resolved shape so
+ * `client X [mobile] [desktop]` picks `client-mobile`.
+ *
+ * Single-tag and zero-tag clients are handled correctly by the cascade and
+ * untouched here. User-defined shape overrides (anything that is not a
+ * `client-<subtype>` icon URL) are left alone too.
+ */
+const CLIENT_SUBTYPE_TAGS = [
+  "mobile",
+  "web",
+  "desktop",
+  "cli",
+  "device",
+  "extension",
+  "embed",
+] as const;
+type ClientSubtypeTag = (typeof CLIENT_SUBTYPE_TAGS)[number];
+const CLIENT_SUBTYPE_SHAPE_RE =
+  /^url\("client-(?:mobile|web|desktop|cli|device|extension|embed)"\)$/;
+
+function applyClientSubtypeFirstMatch(node: KrsNode, merged: Record<string, string>): void {
+  if (node.kind !== "client") return;
+  const subtypes: ClientSubtypeTag[] = node.tags.filter((t): t is ClientSubtypeTag =>
+    (CLIENT_SUBTYPE_TAGS as readonly string[]).includes(t),
+  );
+  if (subtypes.length < 2) return;
+  const currentShape = merged["shape"];
+  if (!currentShape || !CLIENT_SUBTYPE_SHAPE_RE.test(currentShape)) return;
+  merged["shape"] = `url("client-${subtypes[0]}")`;
 }
 
 function resolveEdgeStyle(edge: KrsEdge, rules: StyleRule[]): ResolvedEdgeStyle {

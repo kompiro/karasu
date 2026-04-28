@@ -33,6 +33,18 @@ resource[queue]   { shape: url("queue-card"); }
 resource[api]     { shape: url("api");        }
 resource[storage] { shape: url("cloud-card"); }
 
+/* ── Client subtype variants ── */
+/* When a client node has multiple recognized subtype tags, the resolver
+ * applies first-match-wins on node.tags order (see CLIENT_SUBTYPE_TAGS in
+ * resolver/style-resolver.ts) rather than CSS-cascade last-wins. */
+client[mobile]    { shape: url("client-mobile");    }
+client[web]       { shape: url("client-web");       }
+client[desktop]   { shape: url("client-desktop");   }
+client[cli]       { shape: url("client-cli");       }
+client[device]    { shape: url("client-device");    }
+client[extension] { shape: url("client-extension"); }
+client[embed]     { shape: url("client-embed");     }
+
 /* ── Deploy nodes ── */
 oci      { shape: url("oci");      }
 lambda   { shape: url("lambda");   }
