@@ -33,7 +33,6 @@ Mirrors AT-0057 (top-level service). See design doc
 > ✅ Automated — `packages/core/src/renderer/drill-down-svg.test.ts` › `buildDrillDownSvg with top-level infra blocks` › `renders orphan database alongside an existing system frame`
 
 1. Enter the following in the editor:
-
    ```krs
    database OrderDB { label "注文DB" }
 
@@ -41,7 +40,6 @@ Mirrors AT-0057 (top-level service). See design doc
      service ECommerce { label "ECサイト" }
    }
    ```
-
 2. Verify the SVG preview renders **two labeled frames side by side**:
    - `ECPlatform` frame containing `ECommerce`
    - `Unassigned` frame containing `OrderDB`
@@ -56,7 +54,6 @@ Mirrors AT-0057 (top-level service). See design doc
 2. Check the warnings panel
 
 **Expected**: Warning is shown:
-
 - `database "注文DB" is not assigned to any system`
 
 ### TC-3: Zero-system file with only infra blocks renders

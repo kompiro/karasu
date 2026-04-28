@@ -14,47 +14,37 @@ Supports all-views bundled output (default) and individual view output (`--view`
 すべて `packages/cli/src/render.test.ts` でカバーされる。
 
 - [x] `NodeFileSystemProvider` reads files, lists directories, and checks existence
-
-  > ✅ Automated — `packages/cli/src/render.test.ts` › `readFile returns file contents` / `readDir returns entries with kind` / `exists returns true for existing file` / `exists returns false for missing file`
+> ✅ Automated — `packages/cli/src/render.test.ts` › `readFile returns file contents` / `readDir returns entries with kind` / `exists returns true for existing file` / `exists returns false for missing file`
 
 - [x] Missing file → stderr error message + exit code 1
-
-  > ✅ Automated — `packages/cli/src/render.test.ts` › `writes error to stderr and exits with code 1`
+> ✅ Automated — `packages/cli/src/render.test.ts` › `writes error to stderr and exits with code 1`
 
 - [x] Default (no `--view`) → calls `buildAllViewsSvgProject`, SVG written to stdout
-
-  > ✅ Automated — `packages/cli/src/render.test.ts` › `calls buildAllViewsSvgProject and writes SVG to stdout`
+> ✅ Automated — `packages/cli/src/render.test.ts` › `calls buildAllViewsSvgProject and writes SVG to stdout`
 
 - [x] `--output <path>` → SVG written to file instead of stdout
-
-  > ✅ Automated — `packages/cli/src/render.test.ts` › `writes SVG to --output file instead of stdout`
+> ✅ Automated — `packages/cli/src/render.test.ts` › `writes SVG to --output file instead of stdout`
 
 - [x] Error-severity diagnostics → stderr + exit code 1
-
-  > ✅ Automated — `packages/cli/src/render.test.ts` › `exits with code 1 when error-severity diagnostics are present`
+> ✅ Automated — `packages/cli/src/render.test.ts` › `exits with code 1 when error-severity diagnostics are present`
 
 - [x] Warning-severity diagnostics → stderr + exit code 0
-
-  > ✅ Automated — `packages/cli/src/render.test.ts` › `prints warning-severity diagnostics to stderr and exits with code 0`
+> ✅ Automated — `packages/cli/src/render.test.ts` › `prints warning-severity diagnostics to stderr and exits with code 0`
 
 - [x] `--view system` → calls `compileProject` with `diagramType: "system"`
-
-  > ✅ Automated — `packages/cli/src/render.test.ts` › `calls compileProject with diagramType system`
+> ✅ Automated — `packages/cli/src/render.test.ts` › `calls compileProject with diagramType system`
 
 - [x] `--view deploy` → calls `compileProject` with `diagramType: "deploy"`
-
-  > ✅ Automated — `packages/cli/src/render.test.ts` › `calls compileProject with diagramType deploy`
+> ✅ Automated — `packages/cli/src/render.test.ts` › `calls compileProject with diagramType deploy`
 
 - [x] `--view org` → calls `compileProject` with `diagramType: "org"`
-
-  > ✅ Automated — `packages/cli/src/render.test.ts` › `calls compileProject with diagramType org`
+> ✅ Automated — `packages/cli/src/render.test.ts` › `calls compileProject with diagramType org`
 
 - [x] Analyzer warnings → printed to stderr, exit code 0
-
-  > ✅ Automated — `packages/cli/src/render.test.ts` › `prints warnings to stderr but exits with code 0`
+> ✅ Automated — `packages/cli/src/render.test.ts` › `prints warnings to stderr but exits with code 0`
 
 - [x] CLI wiring: `render <file>`, `--output`, `-o`, `--view` all parsed correctly
-  > ✅ Automated — `packages/cli/src/render.test.ts`（CLI wiring suite）
+> ✅ Automated — `packages/cli/src/render.test.ts`（CLI wiring suite）
 
 ## Manual verification checklist
 

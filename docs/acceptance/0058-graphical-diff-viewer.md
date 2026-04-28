@@ -195,7 +195,7 @@ deploy Production {
 }
 ```
 
-**Forward direction (added unit):** `index.krs` is the project entry, so it is always the "after" side. Make sure `index.krs` is the file _with_ `payments-svc` and `before.krs` is the file _without_.
+**Forward direction (added unit):** `index.krs` is the project entry, so it is always the "after" side. Make sure `index.krs` is the file *with* `payments-svc` and `before.krs` is the file *without*.
 
 - [ ] Enter diff mode by right-clicking `before.krs` → **⇄ Compare with current**
 - [ ] Switch to the **Deploy** view tab
@@ -203,7 +203,7 @@ deploy Production {
 - [ ] The new ghost edge from `Orders` container to `Payments` container is **green**
 - [ ] Diff banner remains visible while the deploy view is active
 
-**Removed unit:** swap which file holds `payments-svc` — put it in `before.krs` only, with `index.krs` _not_ containing it. Then run the same Compare action.
+**Removed unit:** swap which file holds `payments-svc` — put it in `before.krs` only, with `index.krs` *not* containing it. Then run the same Compare action.
 
 - [ ] `payments-svc` deploy unit is rendered with a **red dashed** border
 - [ ] The `Orders → Payments` ghost edge is rendered in **red dashed**

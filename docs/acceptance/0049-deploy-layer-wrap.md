@@ -40,14 +40,14 @@ With the example above, each container renders at ~200px wide (unit width 160px 
 After 5 containers, `currentX ≈ 1232px`; placing the 6th would reach `1432px > OUTER_PADDING + MAX_LAYER_WIDTH (1240px)`,
 so the 6th container wraps.
 
-| #   | Check                                     | Expected                                                   |
-| --- | ----------------------------------------- | ---------------------------------------------------------- |
-| 1   | Open the deploy diagram in the preview UI | Diagram renders without horizontal scrollbar beyond 1200px |
-| 2   | First 5 containers (S1–S5)                | Arranged in a single horizontal row                        |
-| 3   | 6th–8th containers (S6–S8)                | Wrapped to a second sub-row below the first                |
-| 4   | Wrapped container X position              | Starts from the left margin (aligned with S1)              |
-| 5   | Diagram total width                       | Does not exceed ~1240px                                    |
-| 6   | Diagram total height                      | Taller than a 5-container diagram (extra sub-row space)    |
+| # | Check | Expected |
+|---|-------|----------|
+| 1 | Open the deploy diagram in the preview UI | Diagram renders without horizontal scrollbar beyond 1200px |
+| 2 | First 5 containers (S1–S5) | Arranged in a single horizontal row |
+| 3 | 6th–8th containers (S6–S8) | Wrapped to a second sub-row below the first |
+| 4 | Wrapped container X position | Starts from the left margin (aligned with S1) |
+| 5 | Diagram total width | Does not exceed ~1240px |
+| 6 | Diagram total height | Taller than a 5-container diagram (extra sub-row space) |
 
 ## Automated Coverage
 

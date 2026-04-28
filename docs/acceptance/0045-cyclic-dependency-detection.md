@@ -30,12 +30,10 @@ system ECommerce {
 ```
 
 - [x] 警告パネルに `cyclic-dependency` 警告 (`Circular dependency detected: OrderService → PaymentService → OrderService`) が表示される
-
-  > ✅ Automated — `packages/e2e/tests/at-0045-cyclic-dependency-detection.spec.ts` › `sync cycle emits warning and marks edges with krs-edge--cyclic`
+> ✅ Automated — `packages/e2e/tests/at-0045-cyclic-dependency-detection.spec.ts` › `sync cycle emits warning and marks edges with krs-edge--cyclic`
 
 - [x] 循環エッジ (`OrderService → PaymentService`, `PaymentService → OrderService`) に `class="krs-edge--cyclic"` が付与され、SVG 出力にビルトインスタイルの赤色 (`#EF4444`) が含まれる
-
-  > ✅ Automated — `packages/e2e/tests/at-0045-cyclic-dependency-detection.spec.ts` › `sync cycle emits warning and marks edges with krs-edge--cyclic`
+> ✅ Automated — `packages/e2e/tests/at-0045-cyclic-dependency-detection.spec.ts` › `sync cycle emits warning and marks edges with krs-edge--cyclic`
 
 - [ ] 循環エッジが赤色かつ太く描画される（視覚確認）
 - [ ] 非循環エッジ (`OrderService → InventoryService`) は通常の色で描画される
@@ -48,23 +46,19 @@ system ECommerce {
 ### AC-2: 直接 / 間接の循環検出
 
 - [x] 自己参照 (`A -> A`) で `cyclic-dependency` 警告が出る
-
-  > ✅ Automated — `packages/core/src/resolver/warnings.test.ts`（unit）
+> ✅ Automated — `packages/core/src/resolver/warnings.test.ts`（unit）
 
 - [x] 直接循環 (`A -> B -> A`) で警告が出て両エッジが `cyclic` マークされる
-
-  > ✅ Automated — `packages/core/src/resolver/warnings.test.ts`（unit）
+> ✅ Automated — `packages/core/src/resolver/warnings.test.ts`（unit）
 
 - [x] 間接循環 (`A -> B -> C -> A`) で警告が出て 3 本すべてが `cyclic` マークされる
-
-  > ✅ Automated — `packages/core/src/resolver/warnings.test.ts`（unit）
+> ✅ Automated — `packages/core/src/resolver/warnings.test.ts`（unit）
 
 - [x] 非循環グラフ (`A -> B -> C`) では警告が出ない
-
-  > ✅ Automated — `packages/core/src/resolver/warnings.test.ts`（unit）
+> ✅ Automated — `packages/core/src/resolver/warnings.test.ts`（unit）
 
 - [x] 循環があるグラフでも、循環に関与しないエッジは `cyclic` マークされない
-  > ✅ Automated — `packages/core/src/resolver/warnings.test.ts`（unit）
+> ✅ Automated — `packages/core/src/resolver/warnings.test.ts`（unit）
 
 ### AC-3: async edge は循環判定に含まれない
 
@@ -81,8 +75,7 @@ system ECommerce {
 ```
 
 - [x] async cycle (`A --> B --> A`) は `cyclic-dependency` 警告を出さない
-
-  > ✅ Automated — `packages/e2e/tests/at-0045-cyclic-dependency-detection.spec.ts` › `async-only cycle does not emit a cyclic-dependency warning`
+> ✅ Automated — `packages/e2e/tests/at-0045-cyclic-dependency-detection.spec.ts` › `async-only cycle does not emit a cyclic-dependency warning`
 
 - [ ] 両エッジがデフォルトの dashed async スタイルで描画される（赤くない）
 

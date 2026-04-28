@@ -18,7 +18,6 @@ type: manual
 > ✅ Automated — `packages/cli/src/translate/translate.e2e.test.ts` › `AT-0053-01: groups RESTful operations on the same resource into one usecase by default`
 
 **Input** `api.yaml`:
-
 ```yaml
 openapi: "3.0.0"
 info:
@@ -43,13 +42,11 @@ paths:
 ```
 
 **Command:**
-
 ```bash
 karasu translate --from openapi api.yaml --service ECommerce
 ```
 
 **Expected output** (stdout):
-
 ```krs
 service ECommerce {
   usecase ManageOrders {
@@ -78,7 +75,6 @@ service ECommerce {
 > ✅ Automated — `packages/cli/src/translate/translate.e2e.test.ts` › `AT-0053-02: groups operations even when operationId is absent`
 
 **Input** `api.yaml`:
-
 ```yaml
 openapi: "3.0.0"
 info:
@@ -90,13 +86,11 @@ paths:
 ```
 
 **Command:**
-
 ```bash
 karasu translate --from openapi api.yaml --service ItemService
 ```
 
 **Expected output**:
-
 ```krs
 service ItemService {
   usecase ManageItems {
@@ -117,7 +111,6 @@ service ItemService {
 > ✅ Automated — `packages/cli/src/translate/translate.e2e.test.ts` › `AT-0053-03: derives service name from info.title when --service is omitted`
 
 **Input** `api.yaml`:
-
 ```yaml
 openapi: "3.0.0"
 info:
@@ -129,13 +122,11 @@ paths:
 ```
 
 **Command (no --service flag):**
-
 ```bash
 karasu translate --from openapi api.yaml
 ```
 
 **Expected output**:
-
 ```krs
 service OrderService {
   usecase ManageOrders {
@@ -155,7 +146,6 @@ service OrderService {
 > ✅ Automated — `packages/cli/src/translate/translate.e2e.test.ts` › `AT-0053-04: translates SQL schema to database block with aggregate grouping`
 
 **Input** `schema.sql`:
-
 ```sql
 CREATE TABLE orders (
   id BIGINT PRIMARY KEY,
@@ -171,13 +161,11 @@ CREATE TABLE payments (
 ```
 
 **Command:**
-
 ```bash
 karasu translate --from db schema.sql --database OrderDB
 ```
 
 **Expected output** (stdout):
-
 ```krs
 database OrderDB {
   table OrdersTable {
@@ -205,19 +193,16 @@ database OrderDB {
 > ✅ Automated — `packages/cli/src/translate/translate.e2e.test.ts` › `AT-0053-05: derives database name from file name when --database is omitted`
 
 **Input** `order_db.sql`:
-
 ```sql
 CREATE TABLE orders ( id BIGINT PRIMARY KEY );
 ```
 
 **Command (no --database flag):**
-
 ```bash
 karasu translate --from db order_db.sql
 ```
 
 **Expected output**:
-
 ```krs
 database OrderDb {
   table OrdersTable { label "orders" }
@@ -233,7 +218,6 @@ database OrderDb {
 **Setup**: Paste the output of AT-0053-01 into the karasu preview or a `.krs` file.
 
 **Expected**: The preview renders the `service` block with the grouped `usecase` node directly under it, and the diagnostics panel shows:
-
 ```
 ⚠ usecase "ManageOrders" is not assigned to any domain
 ```
@@ -245,7 +229,6 @@ database OrderDb {
 > ⏸ Manual — Commander built-in `requiredOption` behavior; not exercised by the library-level `translate()` e2e.
 
 **Command:**
-
 ```bash
 karasu translate api.yaml
 ```
@@ -260,7 +243,6 @@ karasu translate api.yaml
 > ✅ Automated — `packages/cli/src/translate/translate.e2e.test.ts` › `AT-0053-08: exits with code 1 and error message for missing openapi file`
 
 **Command:**
-
 ```bash
 karasu translate --from openapi nonexistent.yaml --service Foo
 ```
@@ -275,7 +257,6 @@ karasu translate --from openapi nonexistent.yaml --service Foo
 > ✅ Automated — `packages/cli/src/translate/translate.e2e.test.ts` › `AT-0053-09: --granularity operation emits one usecase per HTTP operation`
 
 **Input** `api.yaml`:
-
 ```yaml
 openapi: "3.0.0"
 info:
@@ -290,13 +271,11 @@ paths:
 ```
 
 **Command:**
-
 ```bash
 karasu translate --from openapi api.yaml --service ECommerce --granularity operation
 ```
 
 **Expected output**:
-
 ```krs
 service ECommerce {
   usecase PlaceOrder { label "POST /orders" }
@@ -314,7 +293,6 @@ service ECommerce {
 > ⏸ Manual — validated at the Commander action layer (`packages/cli/src/index.ts`); not exercised by the library-level `translate()` e2e.
 
 **Command:**
-
 ```bash
 karasu translate --from openapi api.yaml --granularity invalid
 ```
@@ -342,7 +320,6 @@ there exits with code `1` and
 > ✅ Automated — `packages/cli/src/translate/translate.e2e.test.ts` › `AT-0053-11: folds child tables into the aggregate root by default`
 
 **Input** `schema.sql`:
-
 ```sql
 CREATE TABLE contracts (
   id BIGINT PRIMARY KEY
@@ -359,13 +336,11 @@ CREATE TABLE payments (
 ```
 
 **Command:**
-
 ```bash
 karasu translate --from db schema.sql --database BizDB
 ```
 
 **Expected output** (stdout):
-
 ```krs
 database BizDB {
   table ContractsTable {
@@ -391,7 +366,6 @@ database BizDB {
 > ✅ Automated — `packages/cli/src/translate/translate.e2e.test.ts` › `AT-0053-12: --granularity table emits one unit per SQL table`
 
 **Input** `schema.sql`:
-
 ```sql
 CREATE TABLE contracts (
   id BIGINT PRIMARY KEY
@@ -404,13 +378,11 @@ CREATE TABLE contract_line_items (
 ```
 
 **Command:**
-
 ```bash
 karasu translate --from db schema.sql --database BizDB --granularity table
 ```
 
 **Expected output**:
-
 ```krs
 database BizDB {
   table ContractsTable { label "contracts" }
@@ -428,7 +400,6 @@ database BizDB {
 > ✅ Automated — `packages/cli/src/translate/translate.e2e.test.ts` › `AT-0053-13: junction tables are not folded into either parent`
 
 **Input** `schema.sql`:
-
 ```sql
 CREATE TABLE users (id BIGINT PRIMARY KEY);
 CREATE TABLE roles (id BIGINT PRIMARY KEY);
@@ -440,13 +411,11 @@ CREATE TABLE user_roles (
 ```
 
 **Command:**
-
 ```bash
 karasu translate --from db schema.sql --database AuthDB
 ```
 
 **Expected output**:
-
 ```krs
 database AuthDB {
   table UsersTable { label "users" }
@@ -467,7 +436,6 @@ database AuthDB {
 > ⏸ Manual — exercised by unit tests (`db.test.ts` › `folds via soft FK using <parent>_code column`); no separate e2e.
 
 **Input** `schema.sql`:
-
 ```sql
 CREATE TABLE products (id BIGINT PRIMARY KEY);
 CREATE TABLE product_details (
@@ -477,13 +445,11 @@ CREATE TABLE product_details (
 ```
 
 **Command:**
-
 ```bash
 karasu translate --from db schema.sql --database CatalogDB
 ```
 
 **Expected output**:
-
 ```krs
 database CatalogDB {
   table ProductsTable {

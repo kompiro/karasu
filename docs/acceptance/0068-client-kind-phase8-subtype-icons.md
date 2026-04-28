@@ -27,15 +27,15 @@ Phase 2（[#851](https://github.com/kompiro/karasu/issues/851) /
 
 サブタイプタグが付いた `client` ノードは、icon mode で次のように描画される:
 
-| `.krs` 記述                     | 描画される icon                              |
-| ------------------------------- | -------------------------------------------- |
-| `client Mobile [mobile]`        | スマホ枠 + シングルアプリ                    |
-| `client Browser [web]`          | ブラウザウィンドウ + タブ + アドレスバー     |
-| `client Desktop [desktop]`      | モニター + タイトルバー + スタンド           |
-| `client CliTool [cli]`          | ターミナル枠 + `>` プロンプト + カーソル     |
-| `client Sensor [device]`        | アンテナ付き IoT 筐体 + LED                  |
-| `client BrowserExt [extension]` | パズルピース                                 |
-| `client Widget [embed]`         | 外枠 + 内側ウィジェット + コーナーブラケット |
+| `.krs` 記述                          | 描画される icon |
+| ------------------------------------ | --------------- |
+| `client Mobile [mobile]`             | スマホ枠 + シングルアプリ |
+| `client Browser [web]`               | ブラウザウィンドウ + タブ + アドレスバー |
+| `client Desktop [desktop]`           | モニター + タイトルバー + スタンド |
+| `client CliTool [cli]`               | ターミナル枠 + `>` プロンプト + カーソル |
+| `client Sensor [device]`             | アンテナ付き IoT 筐体 + LED |
+| `client BrowserExt [extension]`      | パズルピース |
+| `client Widget [embed]`              | 外枠 + 内側ウィジェット + コーナーブラケット |
 
 各 icon は隣接するノードと混ざらず、kind を一目で識別できること。
 
@@ -61,10 +61,10 @@ client InternalTool [my-team-internal]
 複数のサブタイプタグを持つノードは、`.krs` 上で **最初に宣言されたタグ** に
 対応する icon が選ばれる。CSS cascade の last-wins ではない:
 
-| `.krs` 記述                                  | 描画される icon                             |
-| -------------------------------------------- | ------------------------------------------- |
-| `client X [mobile] [desktop]`                | `client-mobile`                             |
-| `client Y [desktop] [mobile]`                | `client-desktop`                            |
+| `.krs` 記述                                 | 描画される icon |
+| ------------------------------------------- | --------------- |
+| `client X [mobile] [desktop]`               | `client-mobile` |
+| `client Y [desktop] [mobile]`               | `client-desktop` |
 | `client Z [my-internal] [web] [v2] [mobile]` | `client-web` （最初の認識されたサブタイプ） |
 
 > 実装上、cascade で解決した `client-<X>` shape を resolver が後処理して

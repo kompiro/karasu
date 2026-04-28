@@ -61,7 +61,6 @@ modal, and the diff banner reflecting snapshot metadata.
 4. Pick a snapshot from the modal.
 
 **Expected**:
-
 - Diff view opens showing added / removed / changed elements.
 - The diff banner shows the snapshot's timestamp and label (if set), e.g.
   `index.krs @ 4/22/2026, 10:15:33 AM "before-refactor"`.

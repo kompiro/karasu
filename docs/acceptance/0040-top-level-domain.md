@@ -21,7 +21,6 @@ domains, and that they appear in the system view SVG.
 > ✅ Automated — `packages/e2e/tests/at-0040-top-level-domain.spec.ts` › `top-level domains render and emit unassigned warnings (TC-1, TC-2)`
 
 1. Enter the following in the editor:
-
    ```krs
    domain Payment { label "決済" }
    domain Inventory { label "在庫" }
@@ -32,7 +31,6 @@ domains, and that they appear in the system view SVG.
      }
    }
    ```
-
 2. Verify the SVG preview renders **two labeled frames side by side**:
    - `ECPlatform` frame containing `ECommerce`
    - `Unassigned` frame containing `Payment` and `Inventory`
@@ -48,14 +46,12 @@ domains, and that they appear in the system view SVG.
 2. Check the warnings panel
 
 **Expected**: Two warnings are shown:
-
 - `domain "決済" is not assigned to any service`
 - `domain "在庫" is not assigned to any service`
 
 ### TC-3: Top-level domain with children supports drill-down
 
 1. Enter the following in the editor:
-
    ```krs
    domain Payment {
      label "決済"
@@ -66,7 +62,6 @@ domains, and that they appear in the system view SVG.
      service ECommerce {}
    }
    ```
-
 2. Click on the Payment domain node in the system view
 
 **Expected**: Drill-down into the Payment domain shows the ProcessPayment usecase.

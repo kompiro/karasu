@@ -11,12 +11,12 @@ system 図のレイアウトが kind ベースの **4 段グルーピング** + 
 
 段（tier）の構造:
 
-| 段  | 含まれる kind                                                      | 役割                                                                      |
-| --- | ------------------------------------------------------------------ | ------------------------------------------------------------------------- |
-| 0   | `user`                                                             | 操作の起点となるアクター                                                  |
-| 1   | `client`                                                           | ユーザー接点（mobile / web / desktop / cli / device / extension / embed） |
-| 2   | `internal` (`service` その他、`[external]` でない非インフラ)       | 我々が所有するサービス層                                                  |
-| 3   | `dep` (`database` / `queue` / `storage` / `[external]` 付きノード) | internal が依存する要素群                                                 |
+| 段 | 含まれる kind | 役割 |
+|---|---|---|
+| 0 | `user` | 操作の起点となるアクター |
+| 1 | `client` | ユーザー接点（mobile / web / desktop / cli / device / extension / embed） |
+| 2 | `internal` (`service` その他、`[external]` でない非インフラ) | 我々が所有するサービス層 |
+| 3 | `dep` (`database` / `queue` / `storage` / `[external]` 付きノード) | internal が依存する要素群 |
 
 各段の中では **その段内のエッジでトポロジカルソートを行い sub-row を割り当てる**（呼び出し関係や依存関係が縦に流れる）。空の段は行ごと詰められる。`[external]` と infra kind は同じ段にまとめ、視覚的な区別は `[external]` タグのスタイル（枠線・色）に委ねる。
 

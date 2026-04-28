@@ -14,13 +14,13 @@ derive their visual styles from the built-in style sheet rather than hardcoded c
 
 ## Automated checks
 
-| #   | Check                                                    | Location                  |
-| --- | -------------------------------------------------------- | ------------------------- |
-| 1   | All 8 deploy kind rules exist in `BUILTIN_STYLE_SOURCE`  | `default-style.test.ts`   |
-| 2   | `resolveStyles` resolves `oci` node to correct colors    | `style-resolver.test.ts`  |
-| 3   | `resolveStyles` resolves `lambda` node to correct colors | `style-resolver.test.ts`  |
-| 4   | User stylesheet can override a deploy kind color         | `style-resolver.test.ts`  |
-| 5   | `renderDeploy` produces valid SVG with kind badge labels | `deploy-renderer.test.ts` |
+| # | Check | Location |
+|---|-------|----------|
+| 1 | All 8 deploy kind rules exist in `BUILTIN_STYLE_SOURCE` | `default-style.test.ts` |
+| 2 | `resolveStyles` resolves `oci` node to correct colors | `style-resolver.test.ts` |
+| 3 | `resolveStyles` resolves `lambda` node to correct colors | `style-resolver.test.ts` |
+| 4 | User stylesheet can override a deploy kind color | `style-resolver.test.ts` |
+| 5 | `renderDeploy` produces valid SVG with kind badge labels | `deploy-renderer.test.ts` |
 
 ## Manual verification
 

@@ -20,7 +20,6 @@ drill-down navigation when multiple systems exist.
 **Setup**: Open `examples/getting-started.krs` (single system).
 
 **Steps**:
-
 1. App opens to the root system view.
 2. Click a service node that has children (e.g. ECommerce).
 3. Observe breadcrumb.
@@ -28,7 +27,6 @@ drill-down navigation when multiple systems exist.
 5. Navigate back using breadcrumb.
 
 **Expected**:
-
 - After clicking ECommerce: breadcrumb shows `ECPlatform > ECommerce`.
 - After clicking a domain: breadcrumb shows `ECPlatform > ECommerce > <domain>`.
 - Clicking the root breadcrumb item (ECPlatform) navigates back to the system view.
@@ -54,7 +52,6 @@ system SysB {
 ```
 
 **Steps**:
-
 1. Open the file. Root view shows SysA's children.
 2. Click ServiceA (from SysA).
 3. Observe view and breadcrumb.
@@ -62,7 +59,6 @@ system SysB {
 5. (If multi-system drill-down to SysB is supported in the UI) verify SysB navigation.
 
 **Expected**:
-
 - After clicking ServiceA: breadcrumb shows `SysA > ServiceA`.
 - DomainA appears as the child node.
 - Navigating back via breadcrumb returns to the root system view.
@@ -79,14 +75,12 @@ For a `.krs` file with `system EC { service Payment {} }`,
 **Setup**: Open a multi-service `.krs` file in VS Code with the karasu extension.
 
 **Steps**:
-
 1. Open the karasu preview panel.
 2. Click a service node with children.
 3. Observe breadcrumb in the preview panel.
 4. Navigate back using breadcrumb.
 
 **Expected**:
-
 - Breadcrumb shows `Root > <SystemLabel> > <ServiceLabel>` after drill-down.
 - Clicking the system label in breadcrumb navigates back to the system's root view.
 
@@ -95,6 +89,5 @@ For a `.krs` file with `system EC { service Payment {} }`,
 **Setup**: Open the app, drill into a service (ECommerce), then reload the page.
 
 **Expected**:
-
 - The URL hash contains the service ID (e.g. `#krs-system-ECommerce`).
 - After reload, the app navigates back to the service view for ECommerce.
