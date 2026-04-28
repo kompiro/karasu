@@ -153,6 +153,10 @@ export type Translations = {
     serviceId: string;
     targetId: string;
   }) => string;
+  "warning.legendRefUnresolved.message": (params: {
+    target: string;
+    legendTitle?: string;
+  }) => string;
 
   // Diagnostic messages (Phase D.2) — rendered in PreviewPane's diagnostic
   // banner. One entry per DiagnosticCode; codes with branching messages

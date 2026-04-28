@@ -148,6 +148,10 @@ export const ja: Partial<Translations> = {
   "warning.cyclicDependency.message": ({ path }) => `循環依存を検出しました: ${path}`,
   "warning.deliversTargetNotClient.message": ({ serviceId, targetId }) =>
     `service "${serviceId}" の delivers 先 "${targetId}" は client ノードではありません`,
+  "warning.legendRefUnresolved.message": ({ target, legendTitle }) =>
+    legendTitle
+      ? `legend "${legendTitle}": ref ${target} はどのノード・スタイル規則にも一致しません`
+      : `legend ref ${target} はどのノード・スタイル規則にも一致しません`,
 
   // Diagnostics (rendered in PreviewPane's diagnostic banner)
   "diagnostic.tokenTypeMismatch.message": ({ expected, got, value }) =>
