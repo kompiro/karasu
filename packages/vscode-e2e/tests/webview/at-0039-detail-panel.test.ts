@@ -47,9 +47,11 @@ describe("AT-0039 (WebView) — clicking a leaf node opens the detail panel", fu
     await new Workbench().executeCommand("karasu: Open Preview");
     await driver.sleep(SETTLE_MS);
 
-    // Switch the WebView to the active editor (defaults to .krs in col 1).
+    // The .krs file lives in editor group 0 (column 1) and the preview
+    // WebView in group 1 (ViewColumn.Beside). Bring the WebView active so
+    // `new WebView()` resolves to it.
     const editorView = new EditorView();
-    await editorView.openEditor(PREVIEW_TITLE);
+    await editorView.openEditor(PREVIEW_TITLE, 1);
     await driver.sleep(500);
 
     const webview = new WebView();
