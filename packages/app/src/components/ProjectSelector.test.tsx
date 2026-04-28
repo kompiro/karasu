@@ -151,6 +151,44 @@ describe("ProjectSelector — Rename", () => {
   });
 });
 
+describe("ProjectSelector — Create", () => {
+  it("pressing Enter to create a new project does not also fire the Import file picker (Issue #948)", () => {
+    const props = baseProps();
+    const { getByRole } = render(<ProjectSelector {...props} />);
+
+    // Spy on the hidden file input's click() — that's what would pop the
+    // OS file picker if the Enter key bubbled down to the Import button.
+    const fileInput = document.querySelector<HTMLInputElement>("input[type='file']")!;
+    const fileClickSpy = vi.spyOn(fileInput, "click");
+
+    fireEvent.click(getByRole("button", { name: /\+ New/ }));
+    const input = getByRole("textbox");
+    fireEvent.change(input, { target: { value: "My Project" } });
+    fireEvent.keyDown(input, { key: "Enter" });
+
+    expect(props.onCreateProject).toHaveBeenCalledWith("My Project");
+    expect(props.onImportProject).not.toHaveBeenCalled();
+    expect(fileClickSpy).not.toHaveBeenCalled();
+  });
+
+  it("pressing Enter on the create input prevents default and stops propagation", () => {
+    const props = baseProps();
+    const { getByRole } = render(<ProjectSelector {...props} />);
+    fireEvent.click(getByRole("button", { name: /\+ New/ }));
+    const input = getByRole("textbox");
+    fireEvent.change(input, { target: { value: "Foo" } });
+
+    // Use the keydown event API so we can read defaultPrevented after dispatch.
+    const event = new KeyboardEvent("keydown", {
+      key: "Enter",
+      bubbles: true,
+      cancelable: true,
+    });
+    input.dispatchEvent(event);
+    expect(event.defaultPrevented).toBe(true);
+  });
+});
+
 describe("ProjectSelector — Delete button label", () => {
   it("Delete button label contains ✕", () => {
     const { getByRole } = render(<ProjectSelector {...baseProps()} />);
