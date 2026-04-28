@@ -45,3 +45,11 @@ available directly.
 
 This package's smoke test only verifies extension activation. AT-0037ff are
 added incrementally as separate `*.test.ts` files in `tests/suite/`.
+
+> **Lint note.** The repo-level `oxlint` config has a per-directory override
+> for this package's tests so that `node:assert` calls (`assert.ok(...)`,
+> `assert.strictEqual(...)`) satisfy the `jest/expect-expect` rule. Without
+> this override, oxlint would flag every Mocha `it` block as having no
+> assertions because it only recognises `expect(...)` by default. If you add
+> a different assertion style, extend `assertFunctionNames` in
+> `.oxlintrc.json` accordingly.
