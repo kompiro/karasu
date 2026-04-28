@@ -6,6 +6,13 @@ status: draft
 issue: "#254"
 ---
 
+## Coverage policy
+
+**Manual** — see [ADR-20260428-05](../adr/20260428-05-vscode-webview-manual-tests.md).
+This AT exercises the karasu preview WebView (detail panel buttons and
+cross-diagram switch), which is unreachable from the `packages/vscode-e2e`
+harness. Verify by hand during release QA.
+
 ## Purpose
 
 Verify that the VSCode Webview detail panel supports cross-diagram navigation (team → Org, service → Deploy) and that the runtime/realizes properties are displayed in a separate section from team/role/tags.

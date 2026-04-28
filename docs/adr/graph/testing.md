@@ -1,6 +1,6 @@
 # ADR Topic: testing
 
-6 ADRs in this topic. Solid nodes belong to `testing`; gray dashed nodes are ghosts showing cross-topic references to help navigation.
+7 ADRs in this topic. Solid nodes belong to `testing`; gray dashed nodes are ghosts showing cross-topic references to help navigation.
 
 Other topics: [overview](../graph.md).
 ```mermaid
@@ -12,6 +12,7 @@ flowchart TD
     ADR_20260330_03["ADR-20260330-03<br/>モノレポ内 vitest の配置 — ルート install ではなく workspace d..."]
     ADR_20260427_05["ADR-20260427-05<br/>Playwright 向け OPFS fixture ヘルパー"]
     ADR_20260428_04["ADR-20260428-04<br/>Chat UI E2E は Playwright route で Anthropic API ..."]
+    ADR_20260428_05["ADR-20260428-05<br/>VS Code WebView の DOM 系テストはマニュアル運用とする"]
   end
   ADR_20260412_05["ADR-20260412-05<br/>[chat-ai] Playwright と AI による視覚レビューの併用"]
   ADR_20260326_04 --> ADR_20260325_01
@@ -29,5 +30,6 @@ flowchart TD
   class ADR_20260330_03 accepted
   class ADR_20260427_05 accepted
   class ADR_20260428_04 accepted
+  class ADR_20260428_05 accepted
   class ADR_20260412_05 ghost
 ```
