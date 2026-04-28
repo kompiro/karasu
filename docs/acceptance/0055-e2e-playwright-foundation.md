@@ -24,12 +24,16 @@ AT-0030（SVG Export）の最小検証を1本実装する。CI は PR に `e2e` 
 - [ ] `pnpm --filter @karasu-tools/e2e install-browsers` で chromium を取得できる
 - [ ] `pnpm --filter @karasu-tools/e2e test` がローカルで成功する
 
+> manual / visual review — ローカルマシンの workspace 認識・ブラウザ取得・初回テスト実行はインフラ確認で、CI からは検証できない。
+
 ### AC-2: パイロット E2E（AT-0030 最小カバレッジ）
 
 - [ ] Export SVG ボタンがロード直後に可視かつ有効である
 - [ ] ボタンクリックで `.svg` ファイルがダウンロードされる
 - [ ] ダウンロード内容に `<svg` と `</svg>` が含まれる
 - [ ] ダウンロード内容に `<script` が含まれない
+
+> manual / visual review — Playwright 自体の最小実行を起動して目視確認するため自動化対象外（自動化できる中身は AT-0030 が引き継ぐ）。
 
 ### AC-3: CI ラベル駆動実行
 
@@ -39,12 +43,16 @@ AT-0030（SVG Export）の最小検証を1本実装する。CI は PR に `e2e` 
 - [ ] artifact（`playwright-report`、`playwright-test-results`）が 14日保持で
       アップロードされる
 
+> manual / visual review — GitHub Actions のラベル駆動と artifact 保持挙動は実 PR でのみ検証できるため自動化対象外。
+
 ### AC-4: ADR の整合性
 
 - [ ] 新 ADR `20260412-05-playwright-with-ai-visual-review.md` が作成されている
 - [ ] 旧 ADR `20260324-01-manual-qa-over-e2e.md` のステータスが
       `Superseded by ADR-20260412-05` に更新されている
 - [ ] `docs/process.md` の E2E 関連記述が新 ADR を指すように更新されている
+
+> manual / visual review — ADR / docs の文面整合は人間レビューで確認する（`pnpm adr:validate` は構造のみカバー）。
 
 ## 検証方法
 

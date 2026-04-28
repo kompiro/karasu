@@ -94,6 +94,8 @@ system DriftSample {
 - [ ] The edge from `OrderDomain` to `ShippingDomain` is rendered with **full opacity** (not ghost)
 - [ ] `ShippingDomain` appears as a normal (non-ghost) node
 
+> manual / visual review — opacity / ghost vs normal rendering needs human judgment in the rendered SVG.
+
 ---
 
 ### Case 4: System view is unaffected

@@ -20,8 +20,12 @@ AT ファイルにフロントマター `type: product | tool` を追加し、`/
 - [ ] `type: product` の AT（例: AT-0006）の手動確認項目が含まれることを確認
 - [ ] `type` フィールドなしの AT が存在する場合、product として扱われ含まれることを確認
 
+> manual / visual review — Claude スキル経由の対話的フローで、生成チェックリストの中身を目視確認する必要があるため自動化対象外。
+
 ### AC-2: /acceptance-test スキルの type 推論
 
 - [ ] `packages/` 配下のみ変更した場合、生成される AT に `type: product` が設定される
 - [ ] `.claude/` 等 `packages/` 以外のみ変更した場合、`type: tool` が設定される
 - [ ] 両方が含まれる場合、type をユーザーに確認するプロンプトが表示される
+
+> manual / visual review — `/acceptance-test` スキルとの対話で type 推論を確認するため自動化対象外。
