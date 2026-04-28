@@ -2,14 +2,14 @@
 type: product
 ---
 
-# AT-0067: `client` kind — Phase 6 forced `user → client → service → external` layout
+# AT-0067: `client` kind — Phase 6 forced layered layout
 
 ## 概要
 
-system 図のレイアウトが、エッジの有無に関係なく **`user` → `client` → 内部 `service` → `[external]` service** の四段を上から下に強制配置することを確認する
+system 図のレイアウトが、エッジの有無に関係なく **`user` → `client` → 内部 `service` → infra (`database` / `queue` / `storage`) → `[external]`** の五段を上から下に強制配置することを確認する
 （Issue [#856](https://github.com/kompiro/karasu/issues/856)、設計は `docs/design/client-mcp-modeling.md` Q11）。
 
-設計ドキュメントの三層案を `[external]` 段で拡張している。空の段（user 不在 / client 不在 / external 不在）は行ごと詰めて、最終的な段数は 1〜4 段の範囲で動く。
+設計ドキュメントの三層案を「infra 段」「`[external]` 段」で拡張している。空の段（その種類のノードが存在しない段）は行ごと詰められ、最終的な段数は 1〜5 段の範囲で動く。`[external]` タグは kind より優先され、`database X [external]` は infra 段ではなく external 段に置かれる。
 
 ## 前提条件
 
@@ -48,7 +48,25 @@ system Demo {
 
 `client` をスキップして `service` に直接エッジを張る user（例: `Admin -> OrderService`）も同様で、`Admin` は他の user と同じ最上段に並ぶ。
 
-### 3. `[external]` service は内部 service より下の行
+### 3. infra (database / queue / storage) は内部 service の下、external の上
+
+`database` / `queue` / `storage` kind のノードは、内部 service の下段、`[external]` の上段に配置される。サービスとそれが依存するインフラの上下関係をレイアウトで表現する。
+
+```krs
+system Demo {
+  service Backend {}
+  database Postgres {}
+  queue Jobs {}
+  storage Blobs {}
+  service Stripe [external] {}
+}
+```
+
+`Backend`（最上段相当）→ `Postgres / Jobs / Blobs`（同じ infra 段）→ `Stripe`（最下段）の順に並ぶ。
+
+`[external]` タグは kind より優先される。`database SaaSDb [external]` は infra 段ではなく external 段に配置される。
+
+### 4. `[external]` service は内部 service より下の行
 
 `[external]` タグの付いた `service` は、内部 service より下段（最下段）に配置される。M2M 依存先（外部 SaaS など）が下流であることをレイアウトで表現する。
 
@@ -66,7 +84,7 @@ system Demo {
 
 `Customer`（最上段）→ `MobileApp` → `OrderService` → `Stripe`（最下段）の 4 段に並ぶ。`user` / `client` / `internal service` / `external service` のうち空の段は行ごと詰められる。
 
-### 4. `client` 不在時の二層フォールバック
+### 5. `client` 不在時の段の縮約
 
 `client` を持たない system は、`user` 行 → `service` 行の二層に縮約される。
 
@@ -78,7 +96,7 @@ system ClassicSSR {
 }
 ```
 
-### 5. 同一層内は宣言順
+### 6. 同一層内は宣言順
 
 同じ層内のノードは `.krs` での宣言順を保つ。barycenter による並び替えはかからない。
 
@@ -96,7 +114,7 @@ system Demo {
 
 `C1` は `C2` の左に、`U1` は `U2` の左に配置される（barycenter ヒューリスティクスが効いていれば flip するパターン）。
 
-### 6. Getting Started への影響
+### 7. Getting Started への影響
 
 `examples/getting-started/index.krs` を開いたとき、上から順に
 `Customer / Seller / Admin`（user）→ `MobileApp`（client）→ `ECommerce / Notification`（internal service）→ `Payment / Inventory`（external service）の 4 段に並ぶ。エッジの矢印が下方向に流れている。

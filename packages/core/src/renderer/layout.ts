@@ -1118,18 +1118,26 @@ function computeEdgePoints(
 }
 
 /**
- * Bucket a system-view node into one of four ordered tiers.
+ * Bucket a system-view node into one of five ordered tiers.
  * Lower index → upper row.
  *
  *   0: user       — actor at the top of the access path
  *   1: client     — user-facing surface (mobile / web / desktop / etc.)
- *   2: internal   — services, databases, queues, etc. that we own
- *   3: external   — anything tagged `[external]` (system boundary outside)
+ *   2: internal   — services we own (and any other non-infra logical kinds)
+ *   3: infra      — database / queue / storage that internal services depend on
+ *   4: external   — anything tagged `[external]` (system boundary outside)
+ *
+ * `[external]` wins over the infra-kind check so that an external database
+ * (e.g. a managed SaaS DB referenced as `database X [external]`) renders on
+ * the external row, where it semantically belongs.
  */
-function systemTier(node: KrsNode): 0 | 1 | 2 | 3 {
+const INFRA_KINDS = new Set<KrsNode["kind"]>(["database", "queue", "storage"]);
+
+function systemTier(node: KrsNode): 0 | 1 | 2 | 3 | 4 {
   if (node.kind === "user") return 0;
   if (node.kind === "client") return 1;
-  if (node.tags.includes("external")) return 3;
+  if (node.tags.includes("external")) return 4;
+  if (INFRA_KINDS.has(node.kind)) return 3;
   return 2;
 }
 
@@ -1139,26 +1147,34 @@ function systemTier(node: KrsNode): 0 | 1 | 2 | 3 {
  * Each node is bucketed by `systemTier`, then non-empty tiers are compacted
  * into consecutive row indices (we never emit an empty row at the top or
  * gaps between occupied rows). Examples:
- *   - user + client + internal + external → 0/1/2/3
- *   - user + internal + external          → 0/1/2 (no client row)
- *   - internal + external                 → 0/1   (downstream dep below)
+ *   - user + client + internal + infra + external → 0/1/2/3/4
+ *   - user + internal + infra                     → 0/1/2 (no client / external)
+ *   - internal + infra                            → 0/1   (svc above its DB)
+ *   - internal + external                         → 0/1   (downstream dep below)
  *
- * Returns `null` when no `user`, `client`, or `[external]` node appears —
- * in that case there is no kind-based separation to enforce, so the caller
- * falls back to topological layering. This keeps service drill-down views
- * (domains / usecases / resources) on the existing topo path.
+ * Returns `null` when no `user`, `client`, infra, or `[external]` node
+ * appears — in that case there is no kind-based separation to enforce, so
+ * the caller falls back to topological layering. This keeps service
+ * drill-down views (domains / usecases / resources) on the existing topo
+ * path.
  */
 function assignForcedSystemLayers(nodes: KrsNode[]): Map<string, number> | null {
-  const occupied = [false, false, false, false] as [boolean, boolean, boolean, boolean];
+  const occupied = [false, false, false, false, false] as [
+    boolean,
+    boolean,
+    boolean,
+    boolean,
+    boolean,
+  ];
   for (const n of nodes) occupied[systemTier(n)] = true;
 
   // No system-view signal at all → let topo handle it.
-  if (!occupied[0] && !occupied[1] && !occupied[3]) return null;
+  if (!occupied[0] && !occupied[1] && !occupied[3] && !occupied[4]) return null;
 
   // Map raw tier index → compacted row index.
   const compacted: number[] = [];
   let row = 0;
-  for (let t = 0; t < 4; t++) compacted.push(occupied[t] ? row++ : -1);
+  for (let t = 0; t < 5; t++) compacted.push(occupied[t] ? row++ : -1);
 
   const layers = new Map<string, number>();
   for (const n of nodes) layers.set(n.id, compacted[systemTier(n)]);

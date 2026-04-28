@@ -522,6 +522,72 @@ system Other {
     expect(c1.x).toBeLessThan(c2.x);
   });
 
+  it("places infra (database/queue/storage) below internal services and above external", () => {
+    const slice = parseAndExtract(`
+system S {
+  user Customer [human]
+  client App [web]
+  service Backend {}
+  database Postgres {}
+  queue Jobs {}
+  storage Blobs {}
+  service Stripe [external] {}
+  Customer -> App
+  App -> Backend
+  Backend -> Stripe
+}
+`);
+    const result = layout(slice);
+    const customer = result.nodes.get("Customer")!;
+    const app = result.nodes.get("App")!;
+    const backend = result.nodes.get("Backend")!;
+    const postgres = result.nodes.get("Postgres")!;
+    const jobs = result.nodes.get("Jobs")!;
+    const blobs = result.nodes.get("Blobs")!;
+    const stripe = result.nodes.get("Stripe")!;
+    // Five compacted rows: user / client / internal / infra / external
+    expect(customer.y).toBeLessThan(app.y);
+    expect(app.y).toBeLessThan(backend.y);
+    expect(backend.y).toBeLessThan(postgres.y);
+    // All three infra share the same row
+    expect(postgres.y).toBe(jobs.y);
+    expect(jobs.y).toBe(blobs.y);
+    expect(postgres.y).toBeLessThan(stripe.y);
+  });
+
+  it("treats database [external] as external, not as infra", () => {
+    // Tag wins over kind: a managed SaaS DB declared `database X [external]`
+    // belongs on the external row, not the infra row.
+    const slice = parseAndExtract(`
+system S {
+  service Backend {}
+  database OurDb {}
+  database SaaSDb [external] {}
+}
+`);
+    const result = layout(slice);
+    const backend = result.nodes.get("Backend")!;
+    const ourDb = result.nodes.get("OurDb")!;
+    const saasDb = result.nodes.get("SaaSDb")!;
+    expect(backend.y).toBeLessThan(ourDb.y);
+    expect(ourDb.y).toBeLessThan(saasDb.y);
+  });
+
+  it("forces internal-vs-infra split even without user/client/external", () => {
+    // A pure backend system with just service + database still gets the
+    // forced split: service above database.
+    const slice = parseAndExtract(`
+system S {
+  service Backend {}
+  database Postgres {}
+}
+`);
+    const result = layout(slice);
+    const backend = result.nodes.get("Backend")!;
+    const postgres = result.nodes.get("Postgres")!;
+    expect(backend.y).toBeLessThan(postgres.y);
+  });
+
   it("places external services in a row below internal services", () => {
     const slice = parseAndExtract(`
 system S {
