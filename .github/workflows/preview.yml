@@ -18,7 +18,9 @@ concurrency:
 jobs:
   preview:
     name: Deploy Preview to Cloudflare Pages
-    if: github.event.action != 'closed'
+    if: >-
+      github.event.action != 'closed' &&
+      github.event.pull_request.user.type != 'Bot'
     runs-on: ubuntu-latest
     permissions:
       contents: read
