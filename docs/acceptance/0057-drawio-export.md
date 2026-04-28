@@ -34,6 +34,8 @@ node packages/cli/dist/index.js render examples/ec-platform/05-multifile/system.
   - `<diagram id="deploy" name="Deploy">` — deploy ブロックがあるとき
   - `<diagram id="org" name="Organization">` — organization ブロックがあるとき
 
+> manual / visual review — マルチページ XML の冒頭・diagram 要素の存在は CLI 出力を目視確認する必要がある（ec-platform 一式に依存）。
+
 ### 2. draw.io で開く
 
 - [ ] `/tmp/ecplatform.drawio` を draw.io (desktop または diagrams.net Web) で開ける
@@ -44,6 +46,8 @@ node packages/cli/dist/index.js render examples/ec-platform/05-multifile/system.
 - [ ] 各ノードが karasu の SVG 描画と似た位置関係で配置されている（厳密なピクセル一致は不要）
 - [ ] コンテナ（system / service）が入れ子の枠として描画され、中のノードが一緒に動く
 
+> manual / visual review — 第三者ツール（draw.io / diagrams.net）での描画結果の検証は外部ツールに依存するため自動化対象外。
+
 ### 3. kind の可視化
 
 - [ ] 各ノードのラベル上部に `«service»` / `«domain»` / `«user»` のような
@@ -53,6 +57,8 @@ node packages/cli/dist/index.js render examples/ec-platform/05-multifile/system.
 - [ ] `usecase` ノードが楕円で描画される
 - [ ] `service` / `domain` / deploy kind（oci / lambda / jar ...）が
       それぞれ異なる淡い背景色で塗り分けられている
+
+> manual / visual review — UML ステレオタイプ・形状・配色の視覚的確認は draw.io でのレンダリング結果を目視で判定する。
 
 ### 4. アノテーション→スタイル
 
@@ -66,6 +72,8 @@ node packages/cli/dist/index.js render examples/ec-platform/05-multifile/system.
 - [ ] tag が付いているノードで、`#name` の小さな青文字ラベルが表示される
       （例: `examples/migration/` の `#human` タグ）
 
+> manual / visual review — annotation / tag 由来のスタイル変化（破線・斜体・色味）は draw.io 描画上の視覚チェック。
+
 ### 5. 単一 view の指定
 
 ```
@@ -74,6 +82,8 @@ node packages/cli/dist/index.js render examples/ec-platform/05-multifile/system.
 ```
 
 - [ ] 出力された `.drawio` ファイルに含まれる `<diagram>` は 1 つだけ
+
+> manual / visual review — `--view system` で生成した出力ファイルの diagram 要素数を実コマンドで確認する。
 
 ### 6. org view 単独指定
 
@@ -85,6 +95,8 @@ node packages/cli/dist/index.js render examples/org/system.krs \
 - [ ] コマンドが終了コード 0 で完了する
 - [ ] 出力された `.drawio` に `<diagram id="org" ...>` のみが含まれる（system / deploy は出ない）
 
+> manual / visual review — `--view org` 単独指定の出力検証は実 CLI 実行を要するため自動化対象外。
+
 ### 7. 未知フォーマットのリジェクト
 
 ```
@@ -95,12 +107,16 @@ node packages/cli/dist/index.js render examples/ec-platform/05-multifile/system.
 - [ ] コマンドが終了コード 1 で終了する
 - [ ] stderr に `unknown --format "xyz"` が含まれる
 
+> manual / visual review — エラーパスの exit code / stderr 文言は実 CLI 実行で確認する。
+
 ### 8. karasu 固有メタデータの保持
 
 draw.io で任意のセルを右クリック → Edit Geometry / Edit Style ではなく、左サイドバー「Arrange」タブまたは XML 直接閲覧で:
 
 - [ ] セル要素に `data-karasu-id`、`data-karasu-kind` のカスタム属性が残っている
 - [ ] 集約された implicit edge（"N domain edges" ラベルが付いたエッジ）に `data-karasu-aggregated` が残っている
+
+> manual / visual review — draw.io 内のセル属性は GUI 経由でしか直接確認できないため目視レビューが必要。
 
 ## 備考
 
