@@ -99,10 +99,14 @@ export function analyzeFile(file: string, content: string): FileReport {
 /**
  * Look at the lines after `index`, skipping blank lines, and return true if
  * the next non-blank line is a canonical Automated blockquote. Stops at the
- * next checkbox or markdown heading.
+ * next checkbox, markdown heading, or after `MAX_BLOCKQUOTE_LOOKAHEAD` lines
+ * to bound the scan on pathological input.
  */
+const MAX_BLOCKQUOTE_LOOKAHEAD = 20;
+
 function hasFollowingBlockquote(lines: string[], index: number): boolean {
-  for (let j = index + 1; j < lines.length; j++) {
+  const limit = Math.min(lines.length, index + 1 + MAX_BLOCKQUOTE_LOOKAHEAD);
+  for (let j = index + 1; j < limit; j++) {
     const line = lines[j];
     if (line.trim() === "") continue;
     if (CHECKBOX.test(line)) return false;
@@ -117,8 +121,13 @@ function extractAtId(file: string): string | null {
   return m ? m[1] : null;
 }
 
+/**
+ * "0004-project-management-opfs.md" → "project-management-opfs".
+ * Legacy AT files without a numeric prefix (e.g. `barycenter-layer-ordering.md`)
+ * still yield a slug, but `extractAtId` returns `null` for them, so they skip
+ * the cross-reference path entirely.
+ */
 function extractSlug(filename: string): string {
-  // "0004-project-management-opfs.md" → "project-management-opfs"
   return filename.replace(/^\d+-/, "").replace(/\.md$/, "");
 }
 
@@ -177,14 +186,19 @@ function createDefaultSpecLookup(repoRoot: string): SpecLookup {
   };
 }
 
-function slugTokens(slug: string): string[] {
+/**
+ * Tokenize a kebab/underscore slug, dropping short or numeric tokens that
+ * carry no signal (e.g. `02`, `to`). Exported for direct unit-testing of
+ * the slug-overlap heuristic.
+ */
+export function slugTokens(slug: string): string[] {
   return slug
     .toLowerCase()
     .split(/[-_]+/)
     .filter((t) => t.length >= 3 && !/^\d+$/.test(t));
 }
 
-function hasTokenOverlap(text: string, tokens: string[]): boolean {
+export function hasTokenOverlap(text: string, tokens: string[]): boolean {
   const lower = text.toLowerCase();
   return tokens.some((t) => lower.includes(t));
 }
@@ -194,6 +208,9 @@ interface UnitTestEntry {
   content: string;
 }
 
+// Reads every test file's full content into memory. For the current corpus
+// (~150 files, microseconds total) this is fine; if scan time becomes
+// noticeable, switch to streaming or pre-grep with `git grep`.
 function collectUnitTestFiles(repoRoot: string): UnitTestEntry[] {
   const roots = ["packages/core/src", "packages/app/src", "packages/cli/src", "packages/lsp/src"];
   const out: UnitTestEntry[] = [];

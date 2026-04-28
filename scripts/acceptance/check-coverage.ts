@@ -7,19 +7,34 @@ interface CliOptions {
   strict: boolean;
   json: boolean;
   repoRoot: string;
+  help: boolean;
 }
+
+const HELP_TEXT = `Usage: pnpm at:check-coverage [options]
+
+Surveys docs/acceptance/*.md for deviations from the canonical automation
+marker convention (see .claude/skills/acceptance-test/SKILL.md).
+
+Options:
+  --strict       Exit with code 1 if any findings are reported (default: 0).
+  --json         Emit findings as JSON instead of the human-readable summary.
+  --root=<path>  Override the repository root (default: process.cwd()).
+  --help, -h     Show this message and exit.
+`;
 
 function parseArgs(argv: string[]): CliOptions {
   const opts: CliOptions = {
     strict: false,
     json: false,
     repoRoot: process.cwd(),
+    help: false,
   };
   for (const arg of argv.slice(2)) {
     if (arg === "--strict") opts.strict = true;
     else if (arg === "--json") opts.json = true;
+    else if (arg === "--help" || arg === "-h") opts.help = true;
     else if (arg.startsWith("--root=")) opts.repoRoot = resolve(arg.slice("--root=".length));
-    else throw new Error(`Unknown argument: ${arg}`);
+    else throw new Error(`Unknown argument: ${arg}\n\n${HELP_TEXT}`);
   }
   return opts;
 }
@@ -71,6 +86,10 @@ function reportText(report: RepoReport): string {
 
 function main(argv: string[]): number {
   const opts = parseArgs(argv);
+  if (opts.help) {
+    console.log(HELP_TEXT);
+    return 0;
+  }
   const report = analyzeRepo({ repoRoot: opts.repoRoot });
   const summary = summarize(report);
 

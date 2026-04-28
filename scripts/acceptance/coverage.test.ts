@@ -1,5 +1,11 @@
 import { describe, it, expect } from "vitest";
-import { analyzeFile, analyzeRepo, type SpecLookup } from "./coverage.ts";
+import {
+  analyzeFile,
+  analyzeRepo,
+  hasTokenOverlap,
+  slugTokens,
+  type SpecLookup,
+} from "./coverage.ts";
 
 describe("analyzeFile", () => {
   it("recognizes a fully-canonical AT file", () => {
@@ -77,6 +83,35 @@ describe("analyzeFile", () => {
   it("extracts AT id from filename prefix", () => {
     const r = analyzeFile("docs/acceptance/0042-foo.md", "");
     expect(r.atId).toBe("0042");
+  });
+});
+
+describe("slugTokens / hasTokenOverlap", () => {
+  it("drops short tokens and pure-numeric tokens", () => {
+    expect(slugTokens("at-0046-system-id-in-viewpath")).toEqual(["system", "viewpath"]);
+    expect(slugTokens("project-management-opfs")).toEqual(["project", "management", "opfs"]);
+  });
+
+  it("returns empty for slugs that have no signal-bearing tokens", () => {
+    expect(slugTokens("0042")).toEqual([]);
+    expect(slugTokens("a-b-c")).toEqual([]); // all under 3 chars
+  });
+
+  it("hasTokenOverlap is case-insensitive substring match", () => {
+    expect(hasTokenOverlap("at-0007-Deployment-Diagram.spec.ts", ["diagram"])).toBe(true);
+    expect(hasTokenOverlap("at-0046-system-id-in-viewpath.spec.ts", ["database", "queue"])).toBe(
+      false,
+    );
+  });
+
+  it("matches the legitimate AT-0007 pair (organization-diagram ↔ deployment-diagram)", () => {
+    const tokens = slugTokens("organization-diagram");
+    expect(hasTokenOverlap("at-0007-deployment-diagram.spec.ts", tokens)).toBe(true);
+  });
+
+  it("rejects the AT-0046 collision (database-queue-storage ↮ system-id-in-viewpath)", () => {
+    const tokens = slugTokens("database-queue-storage-parser");
+    expect(hasTokenOverlap("at-0046-system-id-in-viewpath.spec.ts", tokens)).toBe(false);
   });
 });
 
