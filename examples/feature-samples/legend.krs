@@ -1,0 +1,53 @@
+// Diagram legend syntax (Issue #833).
+//
+// `legend` blocks declare color-meaning pairs that render as a footer band
+// below each diagram view. Two entry primitives exist:
+//   swatch <hex>  "label"   — explicit color sample
+//   ref <target>  "label"   — color from the .krs.style cascade for the
+//                              given annotation / tag / id / type
+//
+// View scope is optional. When omitted, the legend appears on every view.
+// Otherwise it is filtered to `system`, `deploy`, or `org`.
+
+system ECPlatform {
+  label "EC Platform"
+
+  service ECommerce {
+    label "EC Site"
+  }
+  service Payment [external] {
+    label "Payment"
+  }
+  service Legacy @deprecated {
+    label "Legacy"
+  }
+}
+
+deploy Production {
+  oci "ec-api"      { realizes ECommerce }
+  oci "payment-api" { realizes Payment }
+}
+
+organization Acme {
+  team Backend {
+    label "Backend"
+  }
+}
+
+// Shown on every view (system / deploy / org).
+legend "Owner team" {
+  swatch #2563EB "Team Backend"
+  swatch #16A34A "Team Frontend"
+  swatch #DC2626 "Third-party"
+
+  ref @deprecated "Deprecated"
+  ref [external]  "External system"
+  ref service     "Service"
+  ref #ECommerce  "EC site (focus)"
+}
+
+// Deploy-only legend — physical layer specifics.
+legend deploy "Hosting tier" {
+  swatch #0EA5E9 "Cloud Run"
+  swatch #F59E0B "On-prem"
+}
