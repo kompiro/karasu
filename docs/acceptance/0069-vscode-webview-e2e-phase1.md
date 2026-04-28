@@ -37,8 +37,11 @@ WebView の iframe に降りてカード/詳細パネルを assert するのは 
 
 - [ ] `at-0069-runner-smoke.test.ts` が PASS する:
   - `Extensions: Show Installed Extensions` を実行して Extensions view を開ける
-  - インストール済みリストに `karasu` の文字列を含む item がある
-  - `karasu: Open Preview` コマンドを呼び出せる（krs エディタが無いので info メッセージ分岐に落ちる — それで OK）
+  - インストール済みリストに `displayName: "karasu"` / `publisher: "karasu"` がちょうど一致する item がある（substring 一致ではないので将来の sibling 拡張で false positive にならない）
+
+> コマンド登録の検証（`karasu.openPreview` が registered か）は smoke runner 側
+> （`packages/vscode-e2e/tests/suite/00-activation.test.ts`）で既にカバー済のため、
+> 本テストでは重複させない。
 
 ### AC-3: CI から label gating でだけ起動する
 

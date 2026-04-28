@@ -99,6 +99,6 @@ jobs:
           name: vscode-webview-e2e-logs
           path: |
             packages/vscode-e2e/test-resources/**/logs/**
-            packages/vscode-e2e/screenshots/**
+            packages/vscode-e2e/test-resources/screenshots/**
             packages/vscode-e2e/out/**
           retention-days: 14
