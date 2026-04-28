@@ -1,0 +1,5 @@
+{
+  "security.workspace.trust.enabled": false,
+  "workbench.startupEditor": "none",
+  "telemetry.telemetryLevel": "off"
+}

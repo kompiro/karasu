@@ -7,10 +7,12 @@ This AT exercises the karasu preview WebView (detail panel rendering, links,
 Jump-to-editor button), which is unreachable from the `packages/vscode-e2e`
 smoke harness. Verify by hand during release QA.
 
-> Phase 1 of the WebView E2E harness rollout has landed
-> (see [`docs/design/vscode-webview-e2e-harness.md`](../design/vscode-webview-e2e-harness.md)
-> and AT-0069). Phase 2 will migrate the TC-01..TC-N cases below to the
-> ExTester runner once the WebView selector path is dialed in.
+> Phase 2a (#928) wired the runner config that AT-0039 will eventually
+> consume — workspace folder + settings preseed + Quick Open scaffold —
+> but the actual click-to-detail-panel test is parked as `describe.skip()`
+> in `packages/vscode-e2e/tests/webview/at-0039-detail-panel.test.ts`
+> until ExTester's file-open path stabilizes under xvfb. See
+> [AT-0071](./0071-vscode-webview-e2e-phase2.md) for the open work.
 
 ## Summary
 
