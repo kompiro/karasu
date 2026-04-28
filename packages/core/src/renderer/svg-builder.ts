@@ -226,7 +226,7 @@ const LEGEND_BORDER = "#334155";
 const LEGEND_TEXT = "#E5E7EB";
 const LEGEND_MUTED = "#9CA3AF";
 
-export interface LegendFooter {
+interface LegendFooter {
   /** SVG group positioned at y=0 in its own local coordinate space. */
   svg: string;
   height: number;
