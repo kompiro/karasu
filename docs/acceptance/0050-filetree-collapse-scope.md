@@ -30,6 +30,8 @@ Verify that in ProjectMode, the sidebar Collapse/Expand button only hides the Fi
 - [ ] Switching projects via the ProjectSelector dropdown works normally while the FileTree is collapsed
 - [ ] Creating / renaming / deleting a project via the toolbar works normally while collapsed
 
+> manual / visual review — verifies the toolbar stays interactive across collapse states; depends on real OPFS-backed projects and live layout shift.
+
 ### Expanding again
 
 > ✅ Automated — `packages/e2e/tests/at-0050-filetree-collapse-scope.spec.ts` › `expand restores the FileTree and preserves the ProjectSelector toolbar`
