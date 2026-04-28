@@ -19,6 +19,11 @@
     "packages/e2e": {
       "entry": ["tests/**/*.spec.ts"],
       "project": ["tests/**/*.ts"]
+    },
+    "packages/vscode-e2e": {
+      "entry": [".vscode-test.mjs", "tests/suite/**/*.test.ts"],
+      "project": ["tests/**/*.ts"],
+      "ignoreDependencies": ["@vscode/test-electron"]
     }
   }
 }

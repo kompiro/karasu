@@ -80,7 +80,10 @@
       }
     ]
   },
-  "activationEvents": [],
+  "activationEvents": [
+    "onLanguage:krs",
+    "onLanguage:krs-style"
+  ],
   "icon": "icon.svg",
   "engines": {
     "vscode": "^1.85.0"
