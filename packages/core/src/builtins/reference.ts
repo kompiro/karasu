@@ -65,9 +65,36 @@ export interface KarasuReference {
 export type ReferenceLocale = "en" | "ja";
 
 interface ReferenceStrings {
-  nodeKind: Record<"system" | "service" | "domain" | "usecase" | "resource" | "user", string>;
+  nodeKind: Record<
+    | "system"
+    | "service"
+    | "domain"
+    | "usecase"
+    | "resource"
+    | "user"
+    | "client"
+    | "database"
+    | "queue"
+    | "storage",
+    string
+  >;
   tag: Record<
-    "external" | "async" | "sync" | "human" | "ai" | "table" | "queue" | "api" | "storage",
+    | "external"
+    | "async"
+    | "sync"
+    | "human"
+    | "ai"
+    | "table"
+    | "queue"
+    | "api"
+    | "storage"
+    | "mobile"
+    | "web"
+    | "desktop"
+    | "cli"
+    | "device"
+    | "extension"
+    | "embed",
     string
   >;
   annotation: Record<
@@ -117,9 +144,21 @@ const SAMPLE_KRS_JA = `system ECPlatform {
     description "システムを運用する担当者"
   }
 
+  client MobileApp [mobile] {
+    label "モバイルアプリ"
+    description "iOS / Android 向け公式アプリ"
+    handles Order, Catalog
+    resource keychain "session-token"
+  }
+  client AdminConsole [web] {
+    label "管理者向け Web SPA"
+    handles Member
+  }
+
   service ECommerce {
     label "ECサイト"
     description "商品の閲覧・購入・出品を提供する"
+    delivers AdminConsole
 
     domain Catalog {
       label "商品カタログ"
@@ -166,9 +205,11 @@ const SAMPLE_KRS_JA = `system ECPlatform {
     description "メール・プッシュ通知の送信"
   }
 
-  Customer -> ECommerce "商品を購入する"
+  Customer -> MobileApp "アプリを利用する"
+  MobileApp -> ECommerce "API を呼び出す"
   Seller -> ECommerce "商品を出品する"
-  Admin -> ECommerce "システムを管理する"
+  Admin -> AdminConsole "管理画面を開く"
+  AdminConsole -> ECommerce "API を呼び出す"
   ECommerce -> Payment "決済を処理する"
   ECommerce -> Inventory "在庫を照会する"
   ECommerce --> Notification "注文確認を送信する"
@@ -239,9 +280,21 @@ const SAMPLE_KRS_EN = `system ECPlatform {
     description "Staff who operate the platform"
   }
 
+  client MobileApp [mobile] {
+    label "Mobile App"
+    description "Official iOS / Android app"
+    handles Order, Catalog
+    resource keychain "session-token"
+  }
+  client AdminConsole [web] {
+    label "Admin Web SPA"
+    handles Member
+  }
+
   service ECommerce {
     label "EC Site"
     description "Browsing, purchasing, and listing products"
+    delivers AdminConsole
 
     domain Catalog {
       label "Product Catalog"
@@ -288,9 +341,11 @@ const SAMPLE_KRS_EN = `system ECPlatform {
     description "Email and push notification delivery"
   }
 
-  Customer -> ECommerce "Buy a product"
+  Customer -> MobileApp "Use the app"
+  MobileApp -> ECommerce "Call the API"
   Seller -> ECommerce "List a product"
-  Admin -> ECommerce "Administer the platform"
+  Admin -> AdminConsole "Open the admin console"
+  AdminConsole -> ECommerce "Call the API"
   ECommerce -> Payment "Process payments"
   ECommerce -> Inventory "Check inventory"
   ECommerce --> Notification "Send order confirmation"
@@ -353,6 +408,12 @@ const STRINGS_JA: ReferenceStrings = {
     usecase: "ドメイン内の業務・操作",
     resource: "usecaseが操作する対象（テーブル、外部API、ファイル等）",
     user: "システムの利用者（人間またはAIエージェント）",
+    client:
+      "ユーザーの委譲で動く、自社が出荷するクライアントソフトウェア（mobile / web / desktop / cli / device / extension / embed）",
+    database: "system 直下に置く共有データベース。service が依存する infra",
+    queue: "system 直下に置く共有メッセージキュー。service が依存する infra",
+    storage:
+      "system 直下に置く共有ストレージ（オブジェクトストレージ等）。service が依存する infra",
   },
   tag: {
     external: "システム境界の外側",
@@ -364,6 +425,13 @@ const STRINGS_JA: ReferenceStrings = {
     queue: "キュー系リソース（シェイプ: queue）",
     api: "API系リソース（シェイプ: hexagon）",
     storage: "ストレージ系リソース（シェイプ: cloud）",
+    mobile: "モバイルネイティブアプリ（client）",
+    web: "ブラウザ SPA（client）",
+    desktop: "デスクトップアプリ（client）",
+    cli: "コマンドラインツール / SDK（client）",
+    device: "IoT / 専用端末 / KIOSK（client）",
+    extension: "ホストアプリのプラグイン — Chrome / VS Code / Figma 等（client）",
+    embed: "第三者サイトに埋め込まれるウィジェット / SDK（client）",
   },
   annotation: {
     deprecated: { description: "廃止予定", label: "非推奨" },
@@ -422,6 +490,12 @@ const STRINGS_EN: ReferenceStrings = {
     usecase: "A business task or operation within a domain",
     resource: "A target that a usecase reads or writes (table, external API, file, etc.)",
     user: "A user of the system (human or AI agent)",
+    client:
+      "User-delegated software the project itself ships (mobile / web / desktop / cli / device / extension / embed)",
+    database: "Shared database declared at system level — infra that services depend on",
+    queue: "Shared message queue declared at system level — infra that services depend on",
+    storage:
+      "Shared storage (object store, etc.) declared at system level — infra that services depend on",
   },
   tag: {
     external: "Outside the system boundary",
@@ -433,6 +507,13 @@ const STRINGS_EN: ReferenceStrings = {
     queue: "Queue-like resource (shape: queue)",
     api: "API-like resource (shape: hexagon)",
     storage: "Storage-like resource (shape: cloud)",
+    mobile: "Mobile native app (client)",
+    web: "Browser SPA (client)",
+    desktop: "Desktop app (client)",
+    cli: "Command-line tool / SDK (client)",
+    device: "IoT / dedicated terminal / KIOSK (client)",
+    extension: "Host-app plugin — Chrome / VS Code / Figma, etc. (client)",
+    embed: "Widget / SDK embedded in third-party sites (client)",
   },
   annotation: {
     deprecated: { description: "Slated for removal", label: "Deprecated" },
@@ -500,14 +581,26 @@ export function getReference(locale: ReferenceLocale = "en"): KarasuReference {
       {
         kind: "system",
         description: s.nodeKind.system,
-        canContain: ["service", "user"],
+        canContain: ["user", "client", "service", "database", "queue", "storage"],
         properties: ["label", "description", "link"],
+      },
+      {
+        kind: "user",
+        description: s.nodeKind.user,
+        canContain: [],
+        properties: ["label", "description", "role", "link"],
+      },
+      {
+        kind: "client",
+        description: s.nodeKind.client,
+        canContain: [],
+        properties: ["label", "description", "handles", "resource", "link"],
       },
       {
         kind: "service",
         description: s.nodeKind.service,
         canContain: ["domain"],
-        properties: ["label", "description", "team", "link"],
+        properties: ["label", "description", "team", "delivers", "handles", "link"],
       },
       {
         kind: "domain",
@@ -528,18 +621,41 @@ export function getReference(locale: ReferenceLocale = "en"): KarasuReference {
         properties: ["label", "description", "link"],
       },
       {
-        kind: "user",
-        description: s.nodeKind.user,
-        canContain: [],
-        properties: ["label", "description", "role", "link"],
+        kind: "database",
+        description: s.nodeKind.database,
+        canContain: ["table"],
+        properties: ["label", "description", "link"],
+      },
+      {
+        kind: "queue",
+        description: s.nodeKind.queue,
+        canContain: ["queue-item"],
+        properties: ["label", "description", "link"],
+      },
+      {
+        kind: "storage",
+        description: s.nodeKind.storage,
+        canContain: ["bucket"],
+        properties: ["label", "description", "link"],
       },
     ],
     tags: [
-      { name: "external", appliesTo: ["service", "resource"], description: s.tag.external },
+      {
+        name: "external",
+        appliesTo: ["service", "client", "database", "queue", "storage", "resource"],
+        description: s.tag.external,
+      },
       { name: "async", appliesTo: ["edge"], description: s.tag.async },
       { name: "sync", appliesTo: ["edge"], description: s.tag.sync },
       { name: "human", appliesTo: ["user"], description: s.tag.human },
       { name: "ai", appliesTo: ["user"], description: s.tag.ai },
+      { name: "mobile", appliesTo: ["client"], description: s.tag.mobile },
+      { name: "web", appliesTo: ["client"], description: s.tag.web },
+      { name: "desktop", appliesTo: ["client"], description: s.tag.desktop },
+      { name: "cli", appliesTo: ["client"], description: s.tag.cli },
+      { name: "device", appliesTo: ["client"], description: s.tag.device },
+      { name: "extension", appliesTo: ["client"], description: s.tag.extension },
+      { name: "embed", appliesTo: ["client"], description: s.tag.embed },
       { name: "table", appliesTo: ["resource"], description: s.tag.table },
       { name: "queue", appliesTo: ["resource"], description: s.tag.queue },
       { name: "api", appliesTo: ["resource"], description: s.tag.api },
