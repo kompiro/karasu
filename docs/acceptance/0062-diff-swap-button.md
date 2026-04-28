@@ -55,11 +55,15 @@ system Shop {
 - [ ] The Swap button has `aria-pressed="true"` (visually highlighted).
 - [ ] Click **⇄ Swap** again. Direction returns to the original orientation.
 
+> manual / visual review — visually confirms the diff colors flip when the swap toggles direction; banner text and SVG re-render must agree.
+
 ### TC-2: Exiting diff mode resets the swap
 
 - [ ] While swapped, click **✕ Exit diff**. Diff mode ends.
 - [ ] Re-enter diff mode with the same compare file. The banner renders in
       the default (un-swapped) direction, not the last-used direction.
+
+> manual / visual review — verifies the swap state does not persist across diff-mode exits, which depends on observing the banner across two interactive sessions.
 
 ### TC-3: Swap works with pasted compare source
 
@@ -67,3 +71,5 @@ system Shop {
 - [ ] The banner shows `pasted → index.krs`.
 - [ ] Click **⇄ Swap**. The banner now reads `index.krs → pasted` and the
       SVG re-renders with the pasted file as the after-side.
+
+> manual / visual review — exercises the swap interaction with a pasted (not file-picker) compare source through the live PasteCompareDialog flow.
