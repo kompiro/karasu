@@ -7,7 +7,7 @@ type: product
 ## 概要
 
 `client` kind に専用の builtin SVG icon を割り当て、icon mode で `service` などとは異なる絵柄で描画されることを確認する
-（Issue [#851](https://github.com/kompiro/karasu/issues/851)、設計は `docs/design/client-mcp-modeling.md` Phase 2 行）。
+（Issue [#851](https://github.com/kompiro/karasu/issues/851)、設計は `docs/adr/20260428-06-client-mcp-modeling.md` Phase 2 行）。
 
 Phase 2 のスコープは「単一の汎用 client icon」。サブタイプタグごとの icon 差別化（`[mobile]` と `[desktop]` で違う絵）は MVP 後の段階的拡張。
 
@@ -63,4 +63,4 @@ client { shape: box; }
 
 - 親 Issue: [#823](https://github.com/kompiro/karasu/issues/823)
 - 本 Phase: [#851](https://github.com/kompiro/karasu/issues/851)
-- 設計ドキュメント: `docs/design/client-mcp-modeling.md`
+- 設計ドキュメント: `docs/adr/20260428-06-client-mcp-modeling.md`

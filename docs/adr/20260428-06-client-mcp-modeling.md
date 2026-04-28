@@ -1,8 +1,28 @@
-# クライアント / MCP を system 図でどう表現するか
+---
+id: ADR-20260428-06
+title: クライアント / MCP を system 図でどう表現するか — `client` kind の導入
+status: accepted
+date: 2026-04-28
+topic: core-concepts
+related_to:
+  - ADR-20260427-01
+scope:
+  packages:
+    - core
+    - app
+assumptions:
+  - "grep: packages/core/src/types/ast.ts :: \"client\""
+  - "symbol: packages/core/src/renderer/layout.ts :: assignForcedSystemLayers"
+  - "file: docs/spec/syntax.md"
+  - "file: docs/spec/tags-annotations.md"
+---
 
-- **日付**: 2026-04-25 (作成) / 2026-04-26 (Q1–Q14 全決定)
-- **ステータス**: 決定済み（実装フェーズへ）
-- **関連**: Issue #823, Issue #832 (認可は別 Issue), Issue #834 (security 関連トピックの親 — credential / cookie 等はそちらで扱う), Issue #837 (capability 軸 — camera / geolocation 等の能力許諾), ADR-20260427-01 (feature toggle policy — 構文追加では非適用), `docs/spec/syntax.md`, `docs/concepts.md`
+# ADR-20260428-06: クライアント / MCP を system 図でどう表現するか — `client` kind の導入
+
+- **日付**: 2026-04-25 (Design Doc 作成) / 2026-04-26 (Q1–Q14 全決定) / 2026-04-28 (ADR 昇格)
+- **ステータス**: 決定済み — Phase 1〜7 実装完了、Phase 8 (本 ADR) で文書整備完了
+- **関連**: Issue #823, Issue #832 (認可は別 Issue), Issue #834 (security 関連トピックの親 — credential / cookie 等はそちらで扱う), Issue #837 (capability 軸 — camera / geolocation 等の能力許諾), ADR-20260427-01 (feature toggle policy — 構文追加では非適用), `docs/spec/syntax.md`, `docs/spec/tags-annotations.md`, `docs/concepts.md`
+- **実装 Issues**: #849 (Phase 1), #851 (Phase 2), #853 (Phase 3), #854 (Phase 4), #855 (Phase 5), #856 (Phase 6), #857 (Phase 7), #858 (Phase 8 — 本 ADR)
 
 ## 背景・課題
 

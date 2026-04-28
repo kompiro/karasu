@@ -7,7 +7,7 @@ type: product
 ## 概要
 
 `client` と `service` の両方で `handles <DomainId>[, ...]` プロパティが書けるようになり、接続トポロジに対する **expose ルール** が検証されることを確認する
-（Issue [#854](https://github.com/kompiro/karasu/issues/854)、設計は `docs/design/client-mcp-modeling.md` Phase 4 行）。
+（Issue [#854](https://github.com/kompiro/karasu/issues/854)、設計は `docs/adr/20260428-06-client-mcp-modeling.md` Phase 4 行）。
 
 Phase 4 のスコープは `handles` のパースと validator の警告。Renderer での視覚化は別フェーズ（Phase 6 のレイアウト等）。
 
@@ -126,4 +126,4 @@ system S {
 
 - 親 Issue: [#823](https://github.com/kompiro/karasu/issues/823)
 - 本 Phase: [#854](https://github.com/kompiro/karasu/issues/854)
-- 設計ドキュメント: `docs/design/client-mcp-modeling.md`
+- 設計ドキュメント: `docs/adr/20260428-06-client-mcp-modeling.md`

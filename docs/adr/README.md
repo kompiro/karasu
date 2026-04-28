@@ -22,6 +22,7 @@ karasu が何を表現するか、その根幹の設計判断。
 - [ADR-20260312-03](20260312-03-logical-physical-separation.md) — 論理構造と物理構造の分離
 - [ADR-20260323-03](20260323-03-organization-diagram.md) — Organization 図（organization / team / member）の追加
 - [ADR-20260404-10](20260404-10-org-tree-view.md) — Org Tree View — 組織階層の左→右ツリー俯瞰図
+- [ADR-20260428-06](20260428-06-client-mcp-modeling.md) — `client` kind 導入 — `user → client → service` のアクセス経路と MCP / 外部依存のモデル化
 
 ### パーサー / 構文 / AST / フォーマッター
 

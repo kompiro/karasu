@@ -13,15 +13,23 @@ The motivation for treating these three as a single language — Conway's Law (t
 
 Describes the system from a **"what and why"** perspective.
 
+A system has both an **access path** (who reaches the services and through what) and a **service hierarchy** (what business functionality each service contains):
+
 ```
-system → service → domain → usecase → resource
+system
+├─ user → client → service        (access path: who reaches what, through what surface)
+└─ service → domain → usecase → resource    (service hierarchy: what each service contains)
 ```
 
-- `system`: a container showing relationships between owned/external services
+- `system`: a container showing relationships between actors, clients, owned services, and external services
+- `user`: an actor that drives the system (`[human]` / `[ai]`)
+- `client`: software we ship that acts on a user's behalf (mobile / web / desktop / CLI / device / extension / embed). Sits between `user` and `service`. See [ADR-20260428-06](adr/20260428-06-client-mcp-modeling.md) for why this is its own kind rather than a tag on `service`
 - `service`: an independent unit of business functionality
 - `domain`: a business-concern boundary inside a service (close to DDD's Bounded Context)
 - `usecase`: a business operation inside a domain
-- `resource`: what a usecase operates on (tables, external APIs, files, etc.)
+- `resource`: what a usecase operates on (tables, external APIs, files, etc.); also reserved on `client` for operation-tied local storage (`localStorage` / `indexedDB` / `opfs` / `file` / `keychain`)
+
+`database` / `queue` / `storage` may also live directly under `system` as shared infrastructure that services depend on (see [ADR-20260405-05](adr/20260405-05-database-as-first-class-node.md)).
 
 ### Physical structure (How)
 
