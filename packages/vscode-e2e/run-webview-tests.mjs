@@ -26,7 +26,6 @@ const vscodePkg = path.join(repoRoot, "packages", "vscode");
 const storage = path.join(here, "test-resources");
 const mochaConfig = path.join(here, "tests", "webview", ".mocharc.json");
 const testGlob = path.join(here, "out", "webview", "**", "*.test.js");
-const workspaceFolder = path.join(here, "fixtures", "webview-workspace");
 const codeSettings = path.join(here, "tests", "webview", "settings.json");
 
 fs.mkdirSync(storage, { recursive: true });
@@ -47,11 +46,13 @@ await extester.installVsix({ vsixFile: vsixOut, useYarn: false });
 
 const exitCode = await extester.runTests(testGlob, {
   config: mochaConfig,
-  // Open the workspace folder so Quick Open / file explorer can resolve
-  // fixture paths in-test.
-  resources: [workspaceFolder],
-  // Pre-seed VS Code settings so the workspace-trust prompt does not block
-  // Quick Open and the welcome page does not steal focus on first launch.
+  // Tests create their own untitled buffers and switch language mode to
+  // krs — that is more reliable under xvfb than ExTester's
+  // `code -r <folder>` path (Phase 2a evidence: VS Code launched without a
+  // workspace).
+  resources: [],
+  // Pre-seed VS Code settings so the workspace-trust prompt and welcome
+  // editor do not block command palette interaction on first launch.
   settings: codeSettings,
   cleanup: false,
   logLevel: "Info",

@@ -2,17 +2,19 @@
 
 ## Coverage policy
 
-**Manual** — see [ADR-20260428-05](../adr/20260428-05-vscode-webview-manual-tests.md).
-This AT exercises the karasu preview WebView (detail panel rendering, links,
-Jump-to-editor button), which is unreachable from the `packages/vscode-e2e`
-smoke harness. Verify by hand during release QA.
+**Partial automation** — TC-01 (clicking a leaf node opens the detail panel)
+is automated in
+[`packages/vscode-e2e/tests/webview/at-0039-detail-panel.test.ts`](../../packages/vscode-e2e/tests/webview/at-0039-detail-panel.test.ts)
+under the WebView E2E harness
+([`docs/design/vscode-webview-e2e-harness.md`](../design/vscode-webview-e2e-harness.md)
+/ [AT-0071](./0071-vscode-webview-e2e-phase2.md)).
+Remaining TCs (description / links / Jump-to-editor / drill-down via [ⓘ]
+button) continue under
+[ADR-20260428-05](../adr/20260428-05-vscode-webview-manual-tests.md) manual
+coverage and will be migrated incrementally.
 
-> Phase 2a (#928) wired the runner config that AT-0039 will eventually
-> consume — workspace folder + settings preseed + Quick Open scaffold —
-> but the actual click-to-detail-panel test is parked as `describe.skip()`
-> in `packages/vscode-e2e/tests/webview/at-0039-detail-panel.test.ts`
-> until ExTester's file-open path stabilizes under xvfb. See
-> [AT-0071](./0071-vscode-webview-e2e-phase2.md) for the open work.
+The harness job is gated on the `vscode-webview-e2e` PR label and is **not**
+a required check.
 
 ## Summary
 
