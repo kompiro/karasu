@@ -129,6 +129,8 @@ export const en: Translations = {
     `Deploy node "${nodeId}" has no runtime specified`,
   "warning.missingRealizes.message": ({ nodeId }) =>
     `Deploy node "${nodeId}" has no realizes specified`,
+  "warning.unresolvedRealizes.message": ({ deployNodeId, target }) =>
+    `Deploy node "${deployNodeId}" realizes "${target}" but no service or domain with that id exists`,
   "warning.invalidOwns.message": ({ teamId, ownedId }) =>
     `Team "${teamId}" owns "${ownedId}" but no service or domain with that id exists`,
   "warning.deprecatedTeamProperty.message": ({ nodeId }) =>

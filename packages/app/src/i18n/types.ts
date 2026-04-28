@@ -130,6 +130,10 @@ export type Translations = {
   "warning.styleConflict.sheetLabel": (params: { index: number }) => string;
   "warning.missingRuntime.message": (params: { nodeId: string }) => string;
   "warning.missingRealizes.message": (params: { nodeId: string }) => string;
+  "warning.unresolvedRealizes.message": (params: {
+    deployNodeId: string;
+    target: string;
+  }) => string;
   "warning.invalidOwns.message": (params: { teamId: string; ownedId: string }) => string;
   "warning.deprecatedTeamProperty.message": (params: { nodeId: string }) => string;
   "warning.deprecatedTeamProperty.assignedBy": (params: { ownerTeamId: string }) => string;

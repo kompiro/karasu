@@ -5,6 +5,7 @@ export type WarningKind =
   | "style-conflict"
   | "missing-runtime"
   | "missing-realizes"
+  | "unresolved-realizes"
   | "invalid-owns"
   | "deprecated-team-property"
   | "unassigned-domain"
@@ -34,6 +35,14 @@ export interface WarningParamsByKind {
   "style-conflict": { selector: string; sheetIndices: number[] };
   "missing-runtime": { nodeId: string };
   "missing-realizes": { nodeId: string };
+  "unresolved-realizes": {
+    /** id of the deploy node that declared `realizes` */
+    deployNodeId: string;
+    /** id of the surrounding deploy block */
+    deployBlockId: string;
+    /** the target id that could not be resolved to any service / domain */
+    target: string;
+  };
   "invalid-owns": { teamId: string; ownedId: string };
   "deprecated-team-property": { nodeId: string; ownerTeamId: string };
   "unassigned-domain": { domainId: string; label?: string };

@@ -38,6 +38,15 @@ function makeWarning(kind: Warning["kind"]): Warning {
       return { kind, params: { nodeId: "test-node" } };
     case "missing-realizes":
       return { kind, params: { nodeId: "test-node" } };
+    case "unresolved-realizes":
+      return {
+        kind,
+        params: {
+          deployNodeId: "test-node",
+          deployBlockId: "test-deploy",
+          target: "test-target",
+        },
+      };
     case "invalid-owns":
       return { kind, params: { teamId: "test-team", ownedId: "test-owned" } };
     case "deprecated-team-property":
