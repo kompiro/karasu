@@ -29,12 +29,12 @@ system ECPlatform {
       label "Product Catalog"
       usecase SearchProducts {
         label "Search products"
-        resource CatalogDB.ProductTable
+        resource ECommerceDB.ProductTable
         resource SearchIndex [external] { label "Search index" }
       }
       usecase RegisterProduct {
         label "Register a product"
-        resource CatalogDB.ProductTable
+        resource ECommerceDB.ProductTable
         resource MediaStorage.ProductImages
       }
     }
@@ -42,7 +42,8 @@ system ECPlatform {
       label "Orders"
       usecase PlaceOrder {
         label "Place an order"
-        resource OrderDB.OrderTable
+        resource ECommerceDB.OrderTable
+        resource OrderEvents.OrderPlaced
         resource InventoryAPI [external] { label "Inventory API" }
         resource PaymentAPI [external] { label "Payment API" }
       }
@@ -52,7 +53,7 @@ system ECPlatform {
       label "Members"
       usecase Register {
         label "Sign up as a member"
-        resource MemberDB.MemberTable
+        resource ECommerceDB.MemberTable
       }
       usecase EditProfile { label "Edit profile" }
     }
@@ -72,16 +73,10 @@ system ECPlatform {
 
   // Infra layer: shared database / queue / storage that services depend on,
   // declared as first-class nodes directly under system.
-  database CatalogDB {
-    label "Catalog DB"
+  database ECommerceDB {
+    label "EC Site DB"
     table ProductTable { label "Product table" }
-  }
-  database OrderDB {
-    label "Order DB"
     table OrderTable { label "Order table" }
-  }
-  database MemberDB {
-    label "Member DB"
     table MemberTable { label "Member table" }
   }
   queue OrderEvents {

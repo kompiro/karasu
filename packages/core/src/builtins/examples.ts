@@ -48,12 +48,12 @@ system ECPlatform {
       label "商品カタログ"
       usecase SearchProducts {
         label "商品を検索する"
-        resource CatalogDB.ProductTable
+        resource ECommerceDB.ProductTable
         resource SearchIndex [external] { label "検索インデックス" }
       }
       usecase RegisterProduct {
         label "商品を登録する"
-        resource CatalogDB.ProductTable
+        resource ECommerceDB.ProductTable
         resource MediaStorage.ProductImages
       }
     }
@@ -61,7 +61,8 @@ system ECPlatform {
       label "受注"
       usecase PlaceOrder {
         label "注文を確定する"
-        resource OrderDB.OrderTable
+        resource ECommerceDB.OrderTable
+        resource OrderEvents.OrderPlaced
         resource InventoryAPI [external] { label "在庫API" }
         resource PaymentAPI [external] { label "決済API" }
       }
@@ -71,7 +72,7 @@ system ECPlatform {
       label "会員"
       usecase Register {
         label "会員登録する"
-        resource MemberDB.MemberTable
+        resource ECommerceDB.MemberTable
       }
       usecase EditProfile { label "プロフィールを編集する" }
     }
@@ -91,16 +92,10 @@ system ECPlatform {
 
   // インフラ層: service が共有する database / queue / storage を
   // system 直下のファーストクラスノードとして宣言する。
-  database CatalogDB {
-    label "商品カタログDB"
+  database ECommerceDB {
+    label "ECサイトDB"
     table ProductTable { label "商品テーブル" }
-  }
-  database OrderDB {
-    label "注文DB"
     table OrderTable { label "注文テーブル" }
-  }
-  database MemberDB {
-    label "会員DB"
     table MemberTable { label "会員テーブル" }
   }
   queue OrderEvents {
@@ -239,12 +234,12 @@ system ECPlatform {
       label "Product Catalog"
       usecase SearchProducts {
         label "Search products"
-        resource CatalogDB.ProductTable
+        resource ECommerceDB.ProductTable
         resource SearchIndex [external] { label "Search index" }
       }
       usecase RegisterProduct {
         label "Register a product"
-        resource CatalogDB.ProductTable
+        resource ECommerceDB.ProductTable
         resource MediaStorage.ProductImages
       }
     }
@@ -252,7 +247,8 @@ system ECPlatform {
       label "Orders"
       usecase PlaceOrder {
         label "Place an order"
-        resource OrderDB.OrderTable
+        resource ECommerceDB.OrderTable
+        resource OrderEvents.OrderPlaced
         resource InventoryAPI [external] { label "Inventory API" }
         resource PaymentAPI [external] { label "Payment API" }
       }
@@ -262,7 +258,7 @@ system ECPlatform {
       label "Members"
       usecase Register {
         label "Sign up as a member"
-        resource MemberDB.MemberTable
+        resource ECommerceDB.MemberTable
       }
       usecase EditProfile { label "Edit profile" }
     }
@@ -282,16 +278,10 @@ system ECPlatform {
 
   // Infra layer: shared database / queue / storage that services depend on,
   // declared as first-class nodes directly under system.
-  database CatalogDB {
-    label "Catalog DB"
+  database ECommerceDB {
+    label "EC Site DB"
     table ProductTable { label "Product table" }
-  }
-  database OrderDB {
-    label "Order DB"
     table OrderTable { label "Order table" }
-  }
-  database MemberDB {
-    label "Member DB"
     table MemberTable { label "Member table" }
   }
   queue OrderEvents {
