@@ -182,10 +182,19 @@ function createDefaultSpecLookup(repoRoot: string): SpecLookup {
           matches.push(path);
         }
       }
-      // unit tests: content contains the literal `AT-NNNN`
+      // unit tests: content contains the literal `AT-NNNN` AND the test
+      // filename has at least one slug-token in common with the AT (when
+      // the AT has signal-bearing tokens at all). This filters out the
+      // case where multiple ATs share the same numeric prefix and one of
+      // them references the id in test names — e.g. AT-0042-vscode-cross-
+      // diagram-navigation should not match `render.e2e.test.ts` (which
+      // references AT-0042-cli-render-command in its test names).
       const needle = `AT-${atId}`;
       for (const { path, content } of unitTestFiles) {
-        if (content.includes(needle)) matches.push(path);
+        if (!content.includes(needle)) continue;
+        if (atTokens.length === 0 || hasTokenOverlap(basename(path), atTokens)) {
+          matches.push(path);
+        }
       }
       return matches;
     },
@@ -193,15 +202,23 @@ function createDefaultSpecLookup(repoRoot: string): SpecLookup {
 }
 
 /**
- * Tokenize a kebab/underscore slug, dropping short or numeric tokens that
- * carry no signal (e.g. `02`, `to`). Exported for direct unit-testing of
- * the slug-overlap heuristic.
+ * Tokens dropped during slug tokenization because they appear so often
+ * across both AT slugs and spec filenames that an overlap on them carries
+ * no real signal (e.g. `0007-organization-diagram` × `at-0007-deployment-
+ * diagram.spec.ts` would otherwise match on `diagram` alone).
+ */
+const SLUG_TOKEN_STOPLIST = new Set(["diagram", "view", "test", "spec", "command", "support"]);
+
+/**
+ * Tokenize a kebab/underscore slug, dropping short, numeric, or generic
+ * tokens that carry no signal. Exported for direct unit-testing of the
+ * slug-overlap heuristic.
  */
 export function slugTokens(slug: string): string[] {
   return slug
     .toLowerCase()
     .split(/[-_]+/)
-    .filter((t) => t.length >= 3 && !/^\d+$/.test(t));
+    .filter((t) => t.length >= 3 && !/^\d+$/.test(t) && !SLUG_TOKEN_STOPLIST.has(t));
 }
 
 export function hasTokenOverlap(text: string, tokens: string[]): boolean {
