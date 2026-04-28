@@ -29,6 +29,7 @@ assumptions:
   - ADR-20260428-03 — VS Code 拡張ホスト向け smoke test harness
   - 親 Issue #597 — remaining E2E candidates after #534 rollout
   - 影響 Issue: #868（AT-0038）, #869（AT-0039）, AT-0042-vscode
+  - フォローアップ Issue: #928 — WebView E2E harness を建てる際のトラッカー
 
 ## 背景
 
@@ -58,8 +59,8 @@ Outline・診断）や `karasu.openPreview` のようなコマンド層は十分
 スタブテストを書かない。各 AT のドキュメントに「manual coverage」と明記し、
 リリース QA で `/qa` フローに乗せて手で確認する。
 
-将来 WebView も自動で操作したくなったら、**別 Issue / 別 Design Doc で
-WebView E2E harness を立てる**。候補は以下:
+将来 WebView も自動で操作したくなったら、**#928（WebView E2E harness
+トラッカー）から Design Doc を起こす**。候補は以下:
 
 - VS Code 拡張ホスト + `@vscode/test-electron` + Playwright を組み合わせて
   Electron に CDP 接続し、WebView の iframe DOM を駆動する（実装例は

@@ -2,10 +2,7 @@
 paths:
   - "packages/vscode-e2e/**"
   - "packages/vscode/src/preview-panel.ts"
-  - "docs/acceptance/0037-vscode-*.md"
-  - "docs/acceptance/0038-vscode-*.md"
-  - "docs/acceptance/0039-vscode-*.md"
-  - "docs/acceptance/0042-vscode-*.md"
+  - "docs/acceptance/*-vscode-*.md"
 ---
 
 # VS Code WebView Test Rules
