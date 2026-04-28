@@ -27,6 +27,7 @@ const storage = path.join(here, "test-resources");
 const mochaConfig = path.join(here, "tests", "webview", ".mocharc.json");
 const testGlob = path.join(here, "out", "webview", "**", "*.test.js");
 const workspaceFolder = path.join(here, "fixtures", "webview-workspace");
+const fixtureKrs = path.join(workspaceFolder, "at-0039.krs");
 
 fs.mkdirSync(storage, { recursive: true });
 
@@ -46,7 +47,10 @@ await extester.installVsix({ vsixFile: vsixOut, useYarn: false });
 
 const exitCode = await extester.runTests(testGlob, {
   config: mochaConfig,
-  resources: [workspaceFolder],
+  // Pass folder + file: the folder establishes a workspace root, and the
+  // file path makes VS Code open it as an editor on launch (without this
+  // the suite has to wrestle ExTester into opening the file mid-test).
+  resources: [workspaceFolder, fixtureKrs],
   cleanup: false,
   logLevel: "Info",
 });

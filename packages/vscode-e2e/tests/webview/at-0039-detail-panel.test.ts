@@ -1,5 +1,4 @@
 import * as assert from "node:assert";
-import * as path from "node:path";
 import { By, EditorView, VSBrowser, WebView, Workbench, until } from "vscode-extension-tester";
 
 /**
@@ -17,27 +16,11 @@ import { By, EditorView, VSBrowser, WebView, Workbench, until } from "vscode-ext
  * before constructing the WebView.
  */
 
-const FIXTURE_KRS = path.resolve(
-  __dirname,
-  "..",
-  "..",
-  "..",
-  "fixtures",
-  "webview-workspace",
-  "at-0039.krs",
-);
-
 const PREVIEW_TITLE = "karasu Preview";
-const SETTLE_MS = 2000;
-const ELEMENT_TIMEOUT_MS = 10_000;
+const ELEMENT_TIMEOUT_MS = 15_000;
 
 describe("AT-0039 (WebView) — clicking a leaf node opens the detail panel", function () {
   this.timeout(240_000);
-
-  before(async () => {
-    await VSBrowser.instance.openResources(FIXTURE_KRS);
-    await VSBrowser.instance.driver.sleep(SETTLE_MS);
-  });
 
   it("opens the preview, focuses the WebView, and clicks Customer to surface the detail panel", async () => {
     const driver = VSBrowser.instance.driver;
