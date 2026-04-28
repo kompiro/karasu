@@ -1,5 +1,12 @@
 # Acceptance Test: VSCode Extension Phase 6 — Detail Panel in SVG Preview (#235)
 
+## Coverage policy
+
+**Manual** — see [ADR-20260428-05](../adr/20260428-05-vscode-webview-manual-tests.md).
+This AT exercises the karasu preview WebView (detail panel rendering, links,
+Jump-to-editor button), which is unreachable from the `packages/vscode-e2e`
+harness. Verify by hand during release QA.
+
 ## Summary
 
 Verify that the VSCode Webview displays a detail panel when a leaf node is

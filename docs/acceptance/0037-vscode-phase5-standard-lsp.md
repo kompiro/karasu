@@ -175,6 +175,13 @@ Verify that the karasu VSCode extension provides standard LSP capabilities on to
 
 ### AT-0037-9: No Regression — Bidirectional Jump Still Works
 
+> **Coverage policy: manual** — see
+> [ADR-20260428-05](../adr/20260428-05-vscode-webview-manual-tests.md).
+> The "click a node in the SVG preview" half exercises the karasu preview
+> WebView, which is unreachable from the `packages/vscode-e2e` harness. The
+> editor → SVG highlight half is covered by Phase 4 LSP tests; the SVG → editor
+> click half stays manual.
+
 **Steps:**
 
 1. Open a `.krs` file and the karasu preview panel

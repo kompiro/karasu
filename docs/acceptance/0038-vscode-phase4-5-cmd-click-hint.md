@@ -1,5 +1,12 @@
 # Acceptance Test: VSCode Extension Phase 4.5 — Cmd/Ctrl+Click hint text (#228)
 
+## Coverage policy
+
+**Manual** — see [ADR-20260428-05](../adr/20260428-05-vscode-webview-manual-tests.md).
+This AT exercises the karasu preview WebView (toolbar hint rendering and
+modifier-click handlers), which is unreachable from the
+`packages/vscode-e2e` harness. Verify by hand during release QA.
+
 ## Summary
 
 Verify that the VSCode Webview toolbar displays a hint text informing users
