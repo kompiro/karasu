@@ -23,7 +23,8 @@
     "adr:visualize": "tsx scripts/adr/visualize.ts",
     "adr:regenerate": "tsx scripts/adr/regenerate.ts",
     "adr:check-assumptions": "tsx scripts/adr/check-assumptions.ts",
-    "at:check-coverage": "tsx scripts/acceptance/check-coverage.ts"
+    "at:check-coverage": "tsx scripts/acceptance/check-coverage.ts",
+    "at:test": "vitest run scripts/acceptance"
   },
   "devDependencies": {
     "@types/js-yaml": "^4.0.9",

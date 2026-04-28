@@ -93,7 +93,20 @@ type: product  # または tool
    > 🟡 Partially automated — `packages/e2e/tests/<file>.spec.ts` › `<test name>`（視覚的判定は手動）
    ```
 
-4. **未自動化バレットの理由 blockquote（任意）**: AC 節の末尾に 1 つだけ、未チェック項目をまとめて理由付きで blockquote にできる。何が／なぜ手動なのかを 1 行ずつ書く。
+4. **AC 節先頭の "section-level partial" blockquote（任意）**: 個々の `[x]` を per-bullet で展開する余裕がないとき、AC 節の冒頭に 1 つだけ `🟡 Partially automated — ...` blockquote を置いて、節全体の自動化スコープを記述してよい。後で per-bullet に展開する暫定形として使う。
+
+   ```markdown
+   ## 受け入れ条件
+
+   > 🟡 Partially automated — `packages/e2e/tests/at-XXXX.spec.ts` covers AC-1 (tab switching), AC-3 (editor↔diagram updates, partial), and AC-5 (Samples tab). AC-2 / AC-4 stay manual until follow-up coverage lands.
+
+   ### AC-1: ...
+   - [ ] ...
+   ```
+
+   この形式は AT-0004 / AT-0014 / AT-0043 / AT-0050 / AT-0053 で採用されている（#916 phase C 経由で導入）。`pnpm at:check-coverage` は AC 冒頭の partial blockquote を canonical とみなすため、この形のままでも検査を通る。per-bullet 展開はベストエフォートで進める。
+
+5. **未自動化バレットの理由 blockquote（任意）**: AC 節の末尾に 1 つだけ、未チェック項目をまとめて理由付きで blockquote にできる。何が／なぜ手動なのかを 1 行ずつ書く。
 
    ```markdown
    > 未チェック項目について:

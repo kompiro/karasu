@@ -18,3 +18,6 @@ pre-push:
     adr-check-assumptions:
       glob: "{docs/adr/**,scripts/adr/**}"
       run: pnpm exec tsx scripts/adr/check-assumptions.ts --quiet
+    at-check-coverage:
+      glob: "{docs/acceptance/**,scripts/acceptance/**}"
+      run: pnpm exec tsx scripts/acceptance/check-coverage.ts --strict
