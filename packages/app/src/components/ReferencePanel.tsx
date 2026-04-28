@@ -278,6 +278,23 @@ A --> B "label"   // async (dashed arrow)`}
   // kind-specific properties (team, role, link, …)
 }`}</pre>
       </div>
+
+      <h3>Legend (footer)</h3>
+      <div className="reference-code-block">
+        <pre>{`// Top-level. Renders as a footer band below each diagram view.
+// Scope ("system" | "deploy" | "org") is optional — omit to show on all views.
+legend "<title>"? {
+  swatch <#hex> "<label>"           // explicit color
+  ref @<annotation> "<label>"        // color from .krs.style cascade
+  ref [<tag>]       "<label>"        // ditto, by tag
+  ref <type>        "<label>"        // ditto, by node-kind type selector
+  ref #<id>         "<label>"        // ditto, by node id
+}
+
+legend deploy "Hosting tier" {       // scope to a single view
+  swatch #0EA5E9 "Cloud Run"
+}`}</pre>
+      </div>
     </div>
   );
 }
