@@ -178,7 +178,10 @@ class Printer {
 
   private renderImport(imp: ImportDeclaration): string {
     if (imp.ids.length === 0) return `import "${imp.path}"`;
-    return `import { ${imp.ids.join(", ")} } from "${imp.path}"`;
+    // Bare ids are stored as `["Foo"]`; multi-segment paths as `["A", "B", "C"]`.
+    // Re-join each path with "." to round-trip through the formatter.
+    const formatted = imp.ids.map((segments) => segments.join(".")).join(", ");
+    return `import { ${formatted} } from "${imp.path}"`;
   }
 
   // ── Top-level dispatch ────────────────────────────────────────────────────

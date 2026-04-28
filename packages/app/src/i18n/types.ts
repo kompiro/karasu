@@ -245,6 +245,13 @@ export type Translations = {
     orgId: string;
   }) => string;
   "diagnostic.importIdNotFound.message": (params: { id: string; path: string }) => string;
+  "diagnostic.importPathNotFound.message": (params: {
+    path: string;
+    failedAt: number;
+    failedSegment: string;
+    importPath: string;
+    lastResolvedId: string;
+  }) => string;
   "diagnostic.circularStyleImport.message": (params: { filePath: string }) => string;
   "diagnostic.styleFileNotFound.message": (params: { filePath: string }) => string;
   "diagnostic.appProjectCompileError.message": string;

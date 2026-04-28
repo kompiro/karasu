@@ -8,6 +8,7 @@ import type {
   DeployNode,
   DeployNodeProperties,
   ImportDeclaration,
+  ImportIdPath,
   Diagnostic,
   DiagnosticCode,
   DiagnosticParamsByCode,
@@ -255,10 +256,27 @@ export class Parser {
     }
     this.advance(); // {
 
-    const ids: string[] = [];
+    const ids: ImportIdPath[] = [];
     while (this.peek().type !== TokenType.RightBrace && this.peek().type !== TokenType.EOF) {
       if (this.peek().type === TokenType.Identifier) {
-        ids.push(this.advance().value);
+        // Read one path: Identifier (Dot Identifier)*
+        const path: string[] = [this.advance().value];
+        while (this.peek().type === TokenType.Dot) {
+          this.advance(); // consume "."
+          if (this.peek().type === TokenType.Identifier) {
+            path.push(this.advance().value);
+          } else {
+            // dot without trailing identifier — record error and stop reading
+            // segments for this entry; skip the bad token to make progress.
+            this.error("expected-identifier", {
+              got: String(this.peek().type),
+              value: this.peek().value,
+            });
+            this.advance();
+            break;
+          }
+        }
+        ids.push(path);
         this.match(TokenType.Comma);
       } else {
         // 予期しないトークン: エラーを記録してスキップ

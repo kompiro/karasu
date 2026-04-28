@@ -223,6 +223,16 @@ export const en: Translations = {
     `Duplicate team ID "${teamId}" in organization "${orgId}"`,
   "diagnostic.importIdNotFound.message": ({ id, path }) =>
     `Imported identifier "${id}" not found in ${path}`,
+  "diagnostic.importPathNotFound.message": ({
+    path,
+    failedAt,
+    failedSegment,
+    importPath,
+    lastResolvedId,
+  }) =>
+    lastResolvedId
+      ? `Import path "${path}" failed at segment "${failedSegment}" (#${failedAt}): no child with that id under "${lastResolvedId}"`
+      : `Import path "${path}" failed at segment "${failedSegment}" (#${failedAt}): no top-level system with that id in ${importPath}`,
   "diagnostic.circularStyleImport.message": ({ filePath }) =>
     `Circular style import detected: ${filePath}`,
   "diagnostic.styleFileNotFound.message": ({ filePath }) => `Style file not found: ${filePath}`,
