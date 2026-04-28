@@ -11,24 +11,11 @@ issue: "#287"
 
 Verify that cyclic sync (`->`) dependencies between services are detected, reported as warnings, and rendered visually distinct (red, bold) in the diagram.
 
-## Automated Checks
+## 受け入れ条件
 
-The following are covered by automated tests (`pnpm test`):
+### AC-1: 警告メッセージとエッジへのマーキング
 
-- Self-reference (`A -> A`) emits a `cyclic-dependency` warning
-- Direct cycle (`A -> B -> A`) emits a warning and marks both edges `cyclic`
-- Indirect cycle (`A -> B -> C -> A`) emits a warning and marks all three edges `cyclic`
-- Acyclic graph (`A -> B -> C`) emits no cyclic warning
-- Async cycles (`A --> B --> A`) are **not** flagged
-- Non-cyclic edges in a graph that also has a cycle are **not** marked cyclic
-- Cyclic edge SVG output contains `class="krs-edge--cyclic"` on the `<line>` element
-- Cyclic edge SVG output uses `#EF4444` (red) stroke color from the built-in style
-
-## Manual Verification
-
-### Setup
-
-Open the preview with the following `.krs` source:
+Setup:
 
 ```krs
 system ECommerce {
@@ -42,22 +29,40 @@ system ECommerce {
 }
 ```
 
-### Checklist
+- [x] 警告パネルに `cyclic-dependency` 警告 (`Circular dependency detected: OrderService → PaymentService → OrderService`) が表示される
+> ✅ Automated — `packages/e2e/tests/at-0045-cyclic-dependency-detection.spec.ts` › `sync cycle emits warning and marks edges with krs-edge--cyclic`
 
-> 🟡 Partially automated — `packages/e2e/tests/at-0045-cyclic-dependency-detection.spec.ts` › `sync cycle emits warning and marks edges with krs-edge--cyclic`（赤色・太さの視覚確認は手動）
+- [x] 循環エッジ (`OrderService → PaymentService`, `PaymentService → OrderService`) に `class="krs-edge--cyclic"` が付与され、SVG 出力にビルトインスタイルの赤色 (`#EF4444`) が含まれる
+> ✅ Automated — `packages/e2e/tests/at-0045-cyclic-dependency-detection.spec.ts` › `sync cycle emits warning and marks edges with krs-edge--cyclic`
 
-- [ ] The warning panel shows a `cyclic-dependency` warning with message  
-      `Circular dependency detected: OrderService → PaymentService → OrderService`
-- [ ] The edge `OrderService → PaymentService` is rendered in **red** and visually thicker than normal edges
-- [ ] The edge `PaymentService → OrderService` is rendered in **red** and visually thicker than normal edges
-- [ ] The edge `OrderService → InventoryService` is rendered in the **default color** (not red)
-- [ ] The diagram still renders completely — cyclic edges are never suppressed
+- [ ] 循環エッジが赤色かつ太く描画される（視覚確認）
+- [ ] 非循環エッジ (`OrderService → InventoryService`) は通常の色で描画される
+- [ ] 循環エッジがあっても図全体は描画される（エッジが省略されない）
 
-### Async Cycle (should NOT be flagged)
+> 上記 3 項目は赤色・太さの視覚的判定が必要なため AI / 人間レビューに残す。
+> ユニットテスト側ではエッジ属性 (`krs-edge--cyclic` クラス、ストローク色) を
+> 検証している (`packages/core/src/resolver/warnings.test.ts`)。
 
-> ✅ Automated — `packages/e2e/tests/at-0045-cyclic-dependency-detection.spec.ts` › `async-only cycle does not emit a cyclic-dependency warning`
+### AC-2: 直接 / 間接の循環検出
 
-Replace the source with:
+- [x] 自己参照 (`A -> A`) で `cyclic-dependency` 警告が出る
+> ✅ Automated — `packages/core/src/resolver/warnings.test.ts`（unit）
+
+- [x] 直接循環 (`A -> B -> A`) で警告が出て両エッジが `cyclic` マークされる
+> ✅ Automated — `packages/core/src/resolver/warnings.test.ts`（unit）
+
+- [x] 間接循環 (`A -> B -> C -> A`) で警告が出て 3 本すべてが `cyclic` マークされる
+> ✅ Automated — `packages/core/src/resolver/warnings.test.ts`（unit）
+
+- [x] 非循環グラフ (`A -> B -> C`) では警告が出ない
+> ✅ Automated — `packages/core/src/resolver/warnings.test.ts`（unit）
+
+- [x] 循環があるグラフでも、循環に関与しないエッジは `cyclic` マークされない
+> ✅ Automated — `packages/core/src/resolver/warnings.test.ts`（unit）
+
+### AC-3: async edge は循環判定に含まれない
+
+Setup:
 
 ```krs
 system ECommerce {
@@ -69,12 +74,16 @@ system ECommerce {
 }
 ```
 
-- [ ] No `cyclic-dependency` warning is shown
-- [ ] Both edges render with the default dashed async style (no red)
+- [x] async cycle (`A --> B --> A`) は `cyclic-dependency` 警告を出さない
+> ✅ Automated — `packages/e2e/tests/at-0045-cyclic-dependency-detection.spec.ts` › `async-only cycle does not emit a cyclic-dependency warning`
 
-### User Style Override
+- [ ] 両エッジがデフォルトの dashed async スタイルで描画される（赤くない）
 
-Add a `.krs.style` file:
+> 視覚的判定のため AI / 人間レビューに残す。
+
+### AC-4: ユーザースタイルでの上書き
+
+Setup: `.krs.style` に以下を追加:
 
 ```krs.style
 edge[cyclic] {
@@ -83,5 +92,7 @@ edge[cyclic] {
 }
 ```
 
-- [ ] Cyclic edges now render in **orange** (`#F97316`) with increased stroke width
-- [ ] Non-cyclic edges are unaffected
+- [ ] 循環エッジがオレンジ (`#F97316`) かつ stroke-width 4 で描画される
+- [ ] 非循環エッジは影響を受けない
+
+> ユーザースタイル適用後の視覚確認のため AI / 人間レビューに残す。

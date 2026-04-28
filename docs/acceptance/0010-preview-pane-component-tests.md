@@ -11,44 +11,34 @@ type: tool
 
 Verify that `PreviewPane` component callbacks and highlight behavior work correctly via automated component tests using `@testing-library/react`.
 
-## Automated Checks
+## 受け入れ条件
 
-Run the following command to verify all acceptance criteria:
+すべて `packages/app/src/components/PreviewPane.test.tsx` でカバーされる。
+ローカル実行は `pnpm --filter @karasu-tools/app test` で行う。
 
-```bash
-npm test --workspace=packages/app
-```
+### AC-1: ドリルダウン可能なノードクリック時のハイライト解除
 
-### AC-1: `onClearHighlight` called on drill-down node click
+- [x] `data-has-children="true"` のノードをクリックすると `onClearHighlight` と `onDrillDown` がトリガーされる
+> ✅ Automated — `packages/app/src/components/PreviewPane.test.tsx` › `it("calls onClearHighlight when a node with children is clicked")`
 
-- **Description**: Clicking a node with `data-has-children="true"` triggers `onClearHighlight` and `onDrillDown`
-- **Test file**: `packages/app/src/components/PreviewPane.test.tsx`
-- **Verified by**: `it("calls onClearHighlight when a node with children is clicked")`
+### AC-2: 葉ノードクリック時のハイライト解除
 
-### AC-2: `onClearHighlight` called on leaf node click
+- [x] `data-has-children="false"` のノードをクリックすると `onClearHighlight` がトリガーされ詳細パネルが開く
+> ✅ Automated — `packages/app/src/components/PreviewPane.test.tsx` › `it("calls onClearHighlight when a leaf node is clicked")`
 
-- **Description**: Clicking a node with `data-has-children="false"` triggers `onClearHighlight` and opens the detail panel
-- **Test file**: `packages/app/src/components/PreviewPane.test.tsx`
-- **Verified by**: `it("calls onClearHighlight when a leaf node is clicked")`
+### AC-3: コンテナクリック時はハイライト解除しない
 
-### AC-3: `onClearHighlight` NOT called on container click
+- [x] `data-container-id` 要素をクリックすると `onContainerClick` がトリガーされるが `onClearHighlight` は呼ばれない
+> ✅ Automated — `packages/app/src/components/PreviewPane.test.tsx` › `it("does not call onClearHighlight when a deploy container is clicked")`
 
-- **Description**: Clicking a `data-container-id` element triggers `onContainerClick` but NOT `onClearHighlight`
-- **Test file**: `packages/app/src/components/PreviewPane.test.tsx`
-- **Verified by**: `it("does not call onClearHighlight when a deploy container is clicked")`
+### AC-4: `highlightedNodeId` が `.karasu-highlighted` を適用する
 
-### AC-4: `highlightedNodeId` applies `.karasu-highlighted` CSS class
+- [x] `highlightedNodeId` prop を指定して描画すると、該当要素に `.karasu-highlighted` クラスが付与される
+> ✅ Automated — `packages/app/src/components/PreviewPane.test.tsx` › `it("applies .karasu-highlighted class to the matching element")`
 
-- **Description**: Rendering with a `highlightedNodeId` prop adds `.karasu-highlighted` to the matching element
-- **Test file**: `packages/app/src/components/PreviewPane.test.tsx`
-- **Verified by**: `it("applies .karasu-highlighted class to the matching element")`
+### AC-5: `highlightedNodeId` が `null` になると `.karasu-highlighted` が外れる
 
-### AC-5: `.karasu-highlighted` removed when `highlightedNodeId` becomes `null`
+- [x] `highlightedNodeId={null}` で再描画すると、すべての要素から `.karasu-highlighted` が外れる
+> ✅ Automated — `packages/app/src/components/PreviewPane.test.tsx` › `it("removes .karasu-highlighted when highlightedNodeId becomes null")`
 
-- **Description**: Re-rendering with `highlightedNodeId={null}` removes `.karasu-highlighted` from all elements
-- **Test file**: `packages/app/src/components/PreviewPane.test.tsx`
-- **Verified by**: `it("removes .karasu-highlighted when highlightedNodeId becomes null")`
-
-## Manual Checks
-
-None — all acceptance criteria are covered by automated component tests.
+> 全項目が自動テストで検証されており、手動確認は不要。

@@ -52,6 +52,19 @@ describe("analyzeFile", () => {
     expect(sections).toHaveLength(2);
   });
 
+  it("does not flag `## Manual Verification Checklist` / `Steps` post-impl review sections", () => {
+    const md = [
+      "## Manual Verification Checklist",
+      "- step 1",
+      "## Manual Verification Steps",
+      "- step a",
+    ].join("\n");
+
+    const r = analyzeFile("x.md", md);
+    const sections = r.findings.filter((f) => f.kind === "section-grouping");
+    expect(sections).toEqual([]);
+  });
+
   it("flags `[x]` without a following canonical blockquote", () => {
     const md = ["- [x] something works", "", "- [ ] manual thing"].join("\n");
 
