@@ -7,6 +7,9 @@
  *   el("g", { opacity: 0.8 }, el("circle", { cx: 50, cy: 50, r: 20 }))
  */
 
+import type { LegendBlock, LegendEntry, LegendRefTarget, LegendViewScope } from "../types/ast.js";
+import type { StyleRule, StyleSelector, StyleSheet } from "../types/style.js";
+
 type AttrValue = string | number | undefined | null | false;
 type Attrs = Record<string, AttrValue>;
 
@@ -206,4 +209,191 @@ export function renderIconCard(opts: IconCardOptions): string {
     },
     ...parts,
   );
+}
+
+// ─── Legend footer ────────────────────────────────────────────────────────
+
+const LEGEND_LEFT_PAD = 24;
+const LEGEND_TOP_PAD = 16;
+const LEGEND_BOTTOM_PAD = 16;
+const LEGEND_BLOCK_GAP = 12;
+const LEGEND_TITLE_HEIGHT = 22;
+const LEGEND_ENTRY_HEIGHT = 22;
+const LEGEND_SWATCH_SIZE = 16;
+const LEGEND_LABEL_GAP = 12;
+const LEGEND_BG = "#1F2937";
+const LEGEND_BORDER = "#334155";
+const LEGEND_TEXT = "#E5E7EB";
+const LEGEND_MUTED = "#9CA3AF";
+
+interface LegendFooter {
+  /** SVG group positioned at y=0 in its own local coordinate space. */
+  svg: string;
+  height: number;
+}
+
+/**
+ * Render a legend footer band that lists every legend block applicable to
+ * `scope`. Caller is responsible for positioning the returned `svg` group
+ * at y=mainHeight and extending its outer `<svg>` viewBox by `height`.
+ *
+ * Returns `null` when no legend block applies to `scope` — the renderer
+ * should skip the footer entirely in that case.
+ *
+ * Selector resolution mirrors the resolver's `legend-ref-unresolved`
+ * detection (`resolver/warnings.ts`): the highest-specificity matching
+ * style rule supplies the swatch color. Unresolved refs are skipped so
+ * a stale reference does not silently emit a colorless square.
+ */
+export function buildLegendFooter(
+  legends: LegendBlock[],
+  scope: LegendViewScope,
+  sheets: StyleSheet[],
+  width: number,
+): LegendFooter | null {
+  const applicable = legends.filter((l) => l.scope === undefined || l.scope === scope);
+  if (applicable.length === 0) return null;
+
+  const blocks: { title?: string; rows: { color: string; label: string }[] }[] = [];
+  let totalRows = 0;
+  let totalTitles = 0;
+  for (const legend of applicable) {
+    const rows: { color: string; label: string }[] = [];
+    for (const entry of legend.entries) {
+      const color = resolveLegendEntryColor(entry, sheets);
+      if (color === null) continue;
+      rows.push({ color, label: entry.label });
+    }
+    if (rows.length === 0) continue;
+    blocks.push({ title: legend.title, rows });
+    if (legend.title) totalTitles++;
+    totalRows += rows.length;
+  }
+  if (blocks.length === 0) return null;
+
+  const innerHeight =
+    LEGEND_TOP_PAD +
+    totalTitles * LEGEND_TITLE_HEIGHT +
+    totalRows * LEGEND_ENTRY_HEIGHT +
+    Math.max(0, blocks.length - 1) * LEGEND_BLOCK_GAP +
+    LEGEND_BOTTOM_PAD;
+
+  const parts: string[] = [];
+  // Background band + top separator
+  parts.push(
+    el("rect", {
+      x: 0,
+      y: 0,
+      width,
+      height: innerHeight,
+      fill: LEGEND_BG,
+    }),
+  );
+  parts.push(
+    el("line", {
+      x1: 0,
+      y1: 0,
+      x2: width,
+      y2: 0,
+      stroke: LEGEND_BORDER,
+      "stroke-width": 1,
+    }),
+  );
+
+  let cursor = LEGEND_TOP_PAD;
+  for (let i = 0; i < blocks.length; i++) {
+    const block = blocks[i];
+    if (block.title) {
+      parts.push(
+        el(
+          "text",
+          {
+            x: LEGEND_LEFT_PAD,
+            y: cursor + LEGEND_TITLE_HEIGHT - 6,
+            fill: LEGEND_MUTED,
+            "font-size": "12px",
+            "font-family": "sans-serif",
+            "font-weight": "bold",
+          },
+          escapeXml(block.title),
+        ),
+      );
+      cursor += LEGEND_TITLE_HEIGHT;
+    }
+    for (const row of block.rows) {
+      const swatchY = cursor + (LEGEND_ENTRY_HEIGHT - LEGEND_SWATCH_SIZE) / 2;
+      parts.push(
+        el("rect", {
+          x: LEGEND_LEFT_PAD,
+          y: swatchY,
+          width: LEGEND_SWATCH_SIZE,
+          height: LEGEND_SWATCH_SIZE,
+          fill: row.color,
+          stroke: LEGEND_BORDER,
+          "stroke-width": 1,
+          rx: 3,
+        }),
+      );
+      parts.push(
+        el(
+          "text",
+          {
+            x: LEGEND_LEFT_PAD + LEGEND_SWATCH_SIZE + LEGEND_LABEL_GAP,
+            y: cursor + LEGEND_ENTRY_HEIGHT - 7,
+            fill: LEGEND_TEXT,
+            "font-size": "12px",
+            "font-family": "sans-serif",
+          },
+          escapeXml(row.label),
+        ),
+      );
+      cursor += LEGEND_ENTRY_HEIGHT;
+    }
+    if (i < blocks.length - 1) cursor += LEGEND_BLOCK_GAP;
+  }
+
+  return {
+    svg: el("g", { class: "legend-footer" }, ...parts),
+    height: innerHeight,
+  };
+}
+
+function resolveLegendEntryColor(entry: LegendEntry, sheets: StyleSheet[]): string | null {
+  if (entry.kind === "swatch") return entry.color;
+  return resolveLegendRefColor(entry.target, sheets);
+}
+
+function resolveLegendRefColor(target: LegendRefTarget, sheets: StyleSheet[]): string | null {
+  let best: { rule: StyleRule; specificity: number; sourceIndex: number } | null = null;
+  for (const sheet of sheets) {
+    for (const rule of sheet.rules) {
+      if (!ruleMatchesTarget(rule.selector, target)) continue;
+      if (
+        best === null ||
+        rule.specificity > best.specificity ||
+        (rule.specificity === best.specificity && rule.sourceIndex >= best.sourceIndex)
+      ) {
+        best = { rule, specificity: rule.specificity, sourceIndex: rule.sourceIndex };
+      }
+    }
+  }
+  if (best === null) return null;
+  // Prefer background-color for the main swatch; fall back to badge-color
+  // (annotation rules in the builtin sheet often paint via badge-color).
+  return best.rule.properties["background-color"] ?? best.rule.properties["badge-color"] ?? null;
+}
+
+function ruleMatchesTarget(selector: StyleSelector, target: LegendRefTarget): boolean {
+  switch (target.kind) {
+    case "annotation":
+      return selector.annotations.includes(target.name);
+    case "tag":
+      return selector.tags.includes(target.name);
+    case "selector": {
+      const sel = target.selector;
+      if (sel.startsWith("#")) return selector.id === sel.slice(1);
+      if (sel.startsWith(".")) return false;
+      return selector.nodeType === sel;
+    }
+  }
 }
