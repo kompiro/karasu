@@ -16,7 +16,7 @@ scope:
 assumptions:
   - "file: packages/vscode-e2e/package.json"
   - "file: packages/vscode-e2e/.vscode-test.mjs"
-  - "file: packages/vscode-e2e/tests/suite/activation.test.ts"
+  - "file: packages/vscode-e2e/tests/suite/00-activation.test.ts"
   - "file: packages/vscode-e2e/fixtures/workspace/sample.krs"
   - "file: .github/workflows/vscode-e2e.yml"
   - "grep: packages/vscode/package.json :: onLanguage:krs"
