@@ -32,7 +32,13 @@ export interface FileReport {
 }
 
 const VERIFIED_BY = /^\s*-\s+\*\*Verified by\*\*:/;
-const SECTION_GROUPING = /^##\s+(Automated Checks|Manual Verification)\b/;
+// Match the deprecated section-grouping pattern by exact heading text. The
+// trailing `\s*$` is important: "Manual Verification" is the deprecated AC
+// section, but "Manual Verification Checklist" / "Manual Verification Steps"
+// at the end of a file is a legitimate post-implementation review section
+// that this convention does not target.
+const SECTION_GROUPING =
+  /^##\s+(Automated Checks|Automated Tests|Manual Verification|Manual Checks)\s*$/;
 const CHECKBOX = /^\s*-\s+\[(x| )\]\s+(.*)$/;
 const CANONICAL_BLOCKQUOTE = /^\s*>\s*(✅|🟡)\s+(Automated|Partially automated)\b/;
 
