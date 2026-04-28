@@ -2,6 +2,7 @@
 import { describe, it, expect, vi, afterEach, beforeEach } from "vitest";
 import { renderHook, cleanup, waitFor } from "@testing-library/react";
 import {
+  CLIENT_MCP_PROJECT,
   EC_PLATFORM_PROJECTS,
   GETTING_STARTED_PROJECT,
   GETTING_STARTED_PROJECT_EN,
@@ -61,13 +62,18 @@ describe("useProjectInitialization — bootstrap", () => {
       expect(dispatch).toHaveBeenCalledWith(expect.objectContaining({ type: "SET_PROJECTS" })),
     );
 
-    // Getting Started first, then one createProject per ec-platform example.
-    const expectedCalls = 1 + EC_PLATFORM_PROJECTS.length;
+    // Getting Started first, then one createProject per ec-platform example,
+    // then the client-mcp sample.
+    const expectedCalls = 1 + EC_PLATFORM_PROJECTS.length + 1;
     expect(pm.createProject).toHaveBeenCalledTimes(expectedCalls);
     expect(pm.createProject).toHaveBeenNthCalledWith(
       1,
       GETTING_STARTED_PROJECT.name,
       GETTING_STARTED_PROJECT.files,
+    );
+    expect(pm.createProject).toHaveBeenLastCalledWith(
+      CLIENT_MCP_PROJECT.name,
+      CLIENT_MCP_PROJECT.files,
     );
 
     const setProjectsCall = dispatch.mock.calls.find(
@@ -77,6 +83,7 @@ describe("useProjectInitialization — bootstrap", () => {
     const projects = (setProjectsCall![0] as { projects: Project[] }).projects;
     expect(projects).toHaveLength(expectedCalls);
     expect(projects[0].name).toBe(GETTING_STARTED_PROJECT.name);
+    expect(projects[projects.length - 1].name).toBe(CLIENT_MCP_PROJECT.name);
 
     expect(dispatch).toHaveBeenCalledWith({ type: "SET_LOADING", loading: false });
   });

@@ -1,5 +1,6 @@
 import { useEffect, type Dispatch } from "react";
 import {
+  CLIENT_MCP_PROJECT,
   EC_PLATFORM_PROJECTS,
   GETTING_STARTED_PROJECT,
   GETTING_STARTED_PROJECT_EN,
@@ -85,6 +86,11 @@ export function useProjectInitialization({
           const project = await pm.createProject(example.name, example.files);
           initialProjects.push(project);
         }
+        const clientMcpProject = await pm.createProject(
+          CLIENT_MCP_PROJECT.name,
+          CLIENT_MCP_PROJECT.files,
+        );
+        initialProjects.push(clientMcpProject);
         dispatch({ type: "SET_PROJECTS", projects: initialProjects });
       } else {
         dispatch({ type: "SET_PROJECTS", projects: projectList });

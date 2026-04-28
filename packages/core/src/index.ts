@@ -67,6 +67,7 @@ export {
   EC_PLATFORM_PROJECTS,
   GETTING_STARTED_PROJECT,
   GETTING_STARTED_PROJECT_EN,
+  CLIENT_MCP_PROJECT,
 } from "./builtins/examples.js";
 export {
   getReference,
