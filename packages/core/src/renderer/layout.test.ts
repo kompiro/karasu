@@ -459,7 +459,9 @@ system S {
     // Sharper than the obvious "user has no edges" case: here Subscriber is
     // the *target* of a service edge, so topological sort would assign it to
     // layer 1 (below the service). Forced kind-based layout must override
-    // that and pin every `user` to the top row.
+    // that and pin a user with no outgoing edges to the top row. (Users with
+    // outgoing edges to deeper rows are pulled down — see the actor-bypass
+    // test below.)
     const slice = parseAndExtract(`
 system S {
   service Notifier {}
@@ -473,6 +475,39 @@ system S {
     // Without forcing, topo would give Notifier.y < Subscriber.y. Forced
     // layout flips it: user above service.
     expect(subscriber.y).toBeLessThan(notifier.y);
+  });
+
+  it("places an actor that bypasses the client tier in the client row, not the top row", () => {
+    // Issue #967: when most actors go through an intermediate client but one
+    // (e.g. an admin) connects directly to a deeper service, the direct edge
+    // would otherwise have to cut through the client card. Place that actor
+    // in the row immediately above its closest target.
+    const slice = parseAndExtract(`
+system S {
+  user Customer [human]
+  user Seller [human]
+  user Admin [human]
+  client MobileApp [mobile]
+  service ECSite {}
+  Customer -> MobileApp
+  Seller -> MobileApp
+  Admin -> ECSite
+  MobileApp -> ECSite
+}
+`);
+    const result = layout(slice);
+    const customer = result.nodes.get("Customer")!;
+    const seller = result.nodes.get("Seller")!;
+    const admin = result.nodes.get("Admin")!;
+    const mobile = result.nodes.get("MobileApp")!;
+    const site = result.nodes.get("ECSite")!;
+    // Customer / Seller stay at the top because their target (MobileApp) is
+    // already on the next row. Admin moves down to the same row as MobileApp,
+    // so its edge to ECSite no longer crosses the MobileApp card.
+    expect(customer.y).toBeLessThan(mobile.y);
+    expect(seller.y).toBeLessThan(mobile.y);
+    expect(admin.y).toBe(mobile.y);
+    expect(mobile.y).toBeLessThan(site.y);
   });
 
   it("collapses to two rows when no client is declared (user → service fallback)", () => {
