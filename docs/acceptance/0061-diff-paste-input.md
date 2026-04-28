@@ -36,6 +36,8 @@ system Shop {
 - [ ] Clicking it opens a modal titled **⇄ Compare with pasted .krs**
 - [ ] The **Compare** button is disabled while the textarea is empty
 
+> manual / visual review — file-tree header button visibility and dialog open behaviour are checked in the live app.
+
 ### TC-2: Pasting a blob triggers diff mode
 
 Paste the following into the dialog textarea:
@@ -57,16 +59,22 @@ system Shop {
       **red dashed** (removed from the current file compared to the pasted
       blob)
 
+> manual / visual review — confirms the paste-driven diff round-trip end-to-end (dialog → banner label → SVG colours).
+
 ### TC-3: View pasted content
 
 - [ ] In the diff banner, click **👁 View pasted**
 - [ ] A read-only dialog opens showing the `.krs` text that was pasted
 - [ ] Click **Close** to dismiss
 
+> manual / visual review — read-only dialog content is verified in the live UI; modal accessibility (Escape, backdrop click) is implicitly exercised.
+
 ### TC-4: Pasted temp file is hidden from the file tree
 
 - [ ] While diff mode is active, the file tree shows `index.krs` but **does
       not** show `.karasu-paste-compare.krs`
+
+> manual / visual review — file-tree filter for `.karasu-*` temp files is checked by inspecting the live tree component.
 
 ### TC-5: Exit diff mode cleans up the temp file
 
@@ -74,6 +82,8 @@ system Shop {
 - [ ] The banner disappears and the diagram returns to its non-diff rendering
 - [ ] Reopen the project (or reload the page) — no `.karasu-paste-compare.krs`
       file exists in the project (it was deleted on exit)
+
+> manual / visual review — verifies temp-file cleanup persists across an OPFS reload, which only manifests in a real browser session.
 
 ### TC-6: Invalid pasted content surfaces diagnostics
 
@@ -89,11 +99,15 @@ system Shop {
 - [ ] A parse-error diagnostic is displayed for the pasted side (the diff SVG
       may be empty until the error is fixed)
 
+> manual / visual review — diagnostic banner placement and the empty-SVG behaviour for an invalid paste need a live render to confirm.
+
 ### TC-7: Switching to picker-based diff replaces the pasted source
 
 - [ ] Right-click another workspace `.krs` file → **⇄ Compare with current**
 - [ ] The banner no longer shows `pasted`; it shows the picked file name
 - [ ] The `.karasu-paste-compare.krs` temp file is deleted
+
+> manual / visual review — confirms transition from pasted source to file-picker source cleans up the temp file and updates the banner label.
 
 ## Out of scope
 
