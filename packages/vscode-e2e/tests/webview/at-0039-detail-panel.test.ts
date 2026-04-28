@@ -41,16 +41,27 @@ describe("AT-0039 (WebView) — clicking a leaf node opens the detail panel", fu
 
   it("opens the preview, focuses the WebView, and clicks Customer to surface the detail panel", async () => {
     const driver = VSBrowser.instance.driver;
+    const editorView = new EditorView();
+
+    // Make sure the .krs file is the active editor before invoking the
+    // command — `karasu.openPreview` reads `vscode.window.activeTextEditor`
+    // and silently bails if it does not see a krs document.
+    await editorView.openEditor("at-0039.krs", 0);
+    await driver.sleep(500);
 
     // Trigger karasu's Open Preview command. It opens a WebView in the
-    // beside column.
+    // beside column (editor group 1).
     await new Workbench().executeCommand("karasu: Open Preview");
-    await driver.sleep(SETTLE_MS);
 
-    // The .krs file lives in editor group 0 (column 1) and the preview
-    // WebView in group 1 (ViewColumn.Beside). Bring the WebView active so
-    // `new WebView()` resolves to it.
-    const editorView = new EditorView();
+    // Wait for the second editor group to appear before constructing the
+    // WebView. A static sleep was unreliable on CI's first-boot path.
+    await driver.wait(
+      async () => (await editorView.getEditorGroups()).length >= 2,
+      ELEMENT_TIMEOUT_MS,
+      "preview WebView did not open in a second editor group",
+    );
+
+    // Bring the WebView active so `new WebView()` resolves to it.
     await editorView.openEditor(PREVIEW_TITLE, 1);
     await driver.sleep(500);
 

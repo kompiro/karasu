@@ -35,14 +35,8 @@ Phase 2 の鍵となる技術ポイント:
 
 ### AC-2: Phase 2 PoC テストが PASS する
 
-- [ ] `at-0039-detail-panel.test.ts` の唯一のケースが PASS する:
-  - VS Code が起動して `karasu` 拡張が install 済
-  - `at-0039.krs` がエディタに開く
-  - `karasu: Open Preview` が WebView を column 2 に開く
-  - `EditorView.openEditor("karasu Preview")` で WebView を active にできる
-  - `WebView.switchToFrame()` で iframe に降りられる
-  - `[data-node-id="Customer"]` 要素が描画されている
-  - その要素を click すると `#detail-panel.visible` が現れ、テキストに "Customer" を含む
+- [x] `at-0039-detail-panel.test.ts` の唯一のケースが PASS する（VS Code 起動 → fixture 開く → preview command → WebView frame 切替 → leaf node click → `#detail-panel.visible` 検出）
+> 🟡 Partially automated — `packages/vscode-e2e/tests/webview/at-0039-detail-panel.test.ts` › `opens the preview, focuses the WebView, and clicks Customer to surface the detail panel` (CI は `vscode-webview-e2e` ラベル opt-in、xvfb 必要のため required check には昇格しない)
 
 ### AC-3: AT-0039 の Coverage policy が更新される
 
