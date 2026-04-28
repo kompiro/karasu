@@ -30,8 +30,7 @@ type: product
 - [ ] System ビューに切り替わった後、`realizes` で参照しているサービス（`ECommerce` 等）がハイライト表示されること
 - [ ] ハイライトは別のノードをクリックまたはドリルダウンすることで解除されること
 
-> AC-2 のクロスナビゲーション動作は現状 E2E カバレッジが無く、手動確認に
-> 残している。spec 追加は #970 で追跡。
+> manual / visual review — クロスナビゲーション（Deploy → System ハイライト）は現状 E2E カバレッジが無く手動確認に残している。spec 追加は #970 で追跡。
 
 ### AC-3: MemoryModeApp のエディタ連携
 
@@ -43,8 +42,7 @@ type: product
 
 - [ ] エディタに `organization` ブロックを削除すると Org タブをクリックしても空の図が表示されること（エラーにならないこと）
 
-> 「organization ブロック削除時の空図表示」は現状 spec が未追加のため
-> 手動で確認する。spec 追加は #970 で追跡。
+> manual / visual review — 「organization ブロック削除時の空図表示」は現状 spec が未追加のため手動で確認する。spec 追加は #970 で追跡。
 
 ### AC-4: ProjectModeApp のリグレッション
 
@@ -53,9 +51,7 @@ type: product
 - [ ] ProjectModeApp でクロスナビゲーション（Deploy → System ハイライト）が正常に動作すること
 - [ ] ProjectModeApp で Org の BreadcrumbBar が Org タブ選択時のみ表示されること
 
-> AC-4 は ProjectModeApp 側のリグレッション確認で、AT-0014 の spec は
-> MemoryModeApp 側を中心にカバーしている。ProjectModeApp の同等動作は
-> AT-0004 / AT-0029 / AT-0030 など他 AT で検証されている。
+> manual / visual review — AC-4 は ProjectModeApp 側のリグレッション確認で、AT-0014 の spec は MemoryModeApp 側を中心にカバーしている。ProjectModeApp の同等動作は AT-0004 / AT-0029 / AT-0030 など他 AT で検証されている。
 
 ### AC-5: ReferencePanel の Samples タブ
 
@@ -70,10 +66,7 @@ type: product
 - [x] MemoryModeApp・ProjectModeApp どちらのモードでも Samples タブが参照できること
 > ✅ Automated — `packages/e2e/tests/at-0014-memory-project-mode-unification.spec.ts` › `ReferencePanel exposes the Samples tab with system/deploy/organization sample (AC-5)`
 
-> 「Copy ボタンの動作」はブラウザの Clipboard API パーミッション付与が
-> 必要なため Playwright で安定して回せず、手動 / 視覚レビューに残す。
-> 「2 秒後ラベル復帰」は `page.waitForTimeout` で原理的には自動化可能だが、
-> Copy ボタンの動作が前提となるため同じ理由で現状は手動扱いとする。
+> manual / visual review — 「Copy ボタンの動作」はブラウザの Clipboard API パーミッション付与が必要なため Playwright で安定して回せず手動扱いに残す。「2 秒後ラベル復帰」も Copy ボタンの動作が前提となるため同じ理由で現状は手動扱いとする。
 
 ## 検証方法
 
