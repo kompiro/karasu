@@ -84,7 +84,6 @@
     "onLanguage:krs",
     "onLanguage:krs-style"
   ],
-  "icon": "icon.svg",
   "engines": {
     "vscode": "^1.116.0"
   }
