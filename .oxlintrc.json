@@ -12,6 +12,17 @@
     "no-await-in-loop": "off",
     "import/no-unassigned-import": "off"
   },
+  "overrides": [
+    {
+      "files": ["packages/vscode-e2e/tests/**/*.ts"],
+      "rules": {
+        "jest/expect-expect": [
+          "error",
+          { "assertFunctionNames": ["assert", "assert.*"] }
+        ]
+      }
+    }
+  ],
   "settings": {
     "react": {
       "version": "19"
