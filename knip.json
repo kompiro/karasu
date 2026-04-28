@@ -22,7 +22,8 @@
     },
     "packages/vscode-e2e": {
       "entry": [".vscode-test.mjs", "tests/suite/**/*.test.ts"],
-      "project": ["tests/**/*.ts"]
+      "project": ["tests/**/*.ts"],
+      "ignoreDependencies": ["@vscode/test-electron"]
     }
   }
 }

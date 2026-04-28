@@ -14,6 +14,7 @@
     "@types/node": "^25.6.0",
     "@types/vscode": "^1.116.0",
     "@vscode/test-cli": "^0.0.10",
+    "@vscode/test-electron": "^2.5.2",
     "mocha": "^11.7.4",
     "typescript": "^6.0.3"
   }
