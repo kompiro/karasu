@@ -254,8 +254,12 @@ function findDefinitionInImports(
     }
 
     const isNamed = imp.ids.length > 0;
-    // For named imports, only search files that declare the target id
-    if (isNamed && !imp.ids.includes(word)) continue;
+    // For named imports, only search files that declare the target id.
+    // After path-import support (#927) `imp.ids` is `string[][]`; check both
+    // bare entries (`["Foo"]`) and the leaf segment of multi-segment paths
+    // (`["A", "B", "Foo"]`) — the user can only place a cursor on a single
+    // identifier token, so we match against the final segment.
+    if (isNamed && !imp.ids.some((segments) => segments[segments.length - 1] === word)) continue;
 
     const importedUri = resolveImportUri(baseUri, imp.path);
     const importedFilePath = fileURLToPath(importedUri);
