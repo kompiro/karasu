@@ -108,11 +108,15 @@ organization Acme {
 - [ ] Clicking **System** tab returns to the system pane (URL fragment `#krs-system-root`)
 - [ ] Active tab has a visually distinct appearance
 
+> manual / visual review — CSS `:target` ベースのタブ切替はブラウザで開かなければ確認できない（自動化はヘッドレスブラウザを別途用意する必要あり）。
+
 ### Disabled Tabs
 
 - [ ] When a view has no content, its tab is visually disabled (dimmed)
 - [ ] Disabled tabs are not clickable (no `<a>` wrapper)
 - [ ] For a system-only file, Deploy and Org tabs are disabled
+
+> manual / visual review — タブの dimmed 表示・非クリック状態は SVG 描画結果をブラウザで目視確認する。
 
 ### Drill-Down (System View)
 
@@ -121,22 +125,32 @@ organization Acme {
 - [ ] Clicking Back returns to the parent level
 - [ ] Nested drill-down works for three levels if present
 
+> manual / visual review — System view のドリルダウンと Back 動作は CSS-only ナビゲーションのため実ブラウザでの動作確認が必要。
+
 ### Drill-Down (Org View)
 
 - [ ] Teams with sub-teams show a drill-down link
 - [ ] Clicking a team navigates to its detail level (e.g., `#krs-org-Engineering`)
 - [ ] Back button returns to org root
 
+> manual / visual review — Org view の team ドリルダウンはブラウザでフラグメント遷移を手動で確認する。
+
 ### Deploy View
 
 - [ ] Deploy view shows a single flat level with all deploy units
 - [ ] No drill-down within the deploy view
 
+> manual / visual review — Deploy ペインの単一レベル描画はブラウザレンダリング結果を目視確認する。
+
 ### Empty File
 
 - [ ] A `.krs` file with no content produces a "No diagram" placeholder SVG
+
+> manual / visual review — 空ファイル時のプレースホルダ SVG はブラウザで開いて文言を確認する。
 
 ### Style Source
 
 - [ ] Passing a `styleSource` string applies custom styles to the rendered output
 - [ ] Parse errors in `styleSource` are returned in `diagnostics` but the SVG still renders
+
+> manual / visual review — `styleSource` の適用結果は描画見た目で判定するため目視確認が必要。
