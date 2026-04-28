@@ -41,6 +41,11 @@ const SECTION_GROUPING =
   /^##\s+(Automated Checks|Automated Tests|Manual Verification|Manual Checks)\s*$/;
 const CHECKBOX = /^\s*-\s+\[(x| )\]\s+(.*)$/;
 const CANONICAL_BLOCKQUOTE = /^\s*>\s*(✅|🟡)\s+(Automated|Partially automated)\b/;
+// Suite-wide shorthand: a single header blockquote covers every `[x]`
+// bullet that follows until the next markdown heading. See SKILL.md
+// "ショートハンド A".
+const SUITE_WIDE_BLOCKQUOTE = /^\s*>\s*✅\s+Automated by\s+`[^`]+`\s*\(suite-wide\)/;
+const HEADING = /^#{1,6}\s/;
 
 const AT_FILENAME = /^(\d{4})-/;
 
@@ -60,7 +65,9 @@ export function analyzeFile(file: string, content: string): FileReport {
   // Fast pass: section headings and metadata lines.
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];
-    if (CANONICAL_BLOCKQUOTE.test(line)) hasCanonicalMarker = true;
+    if (CANONICAL_BLOCKQUOTE.test(line) || SUITE_WIDE_BLOCKQUOTE.test(line)) {
+      hasCanonicalMarker = true;
+    }
     if (VERIFIED_BY.test(line)) {
       findings.push({
         kind: "verified-by-metadata",
@@ -81,9 +88,22 @@ export function analyzeFile(file: string, content: string): FileReport {
   }
 
   // Per-checkbox pass: `[x]` bullets without a following canonical blockquote.
+  // A `[x]` is also accepted if a suite-wide marker precedes it within the
+  // same heading section.
+  let suiteWideActive = false;
   for (let i = 0; i < lines.length; i++) {
-    const m = lines[i].match(CHECKBOX);
+    const line = lines[i];
+    if (HEADING.test(line)) {
+      suiteWideActive = false;
+      continue;
+    }
+    if (SUITE_WIDE_BLOCKQUOTE.test(line)) {
+      suiteWideActive = true;
+      continue;
+    }
+    const m = line.match(CHECKBOX);
     if (!m || m[1] !== "x") continue;
+    if (suiteWideActive) continue;
     if (!hasFollowingBlockquote(lines, i)) {
       findings.push({
         kind: "checked-without-blockquote",
