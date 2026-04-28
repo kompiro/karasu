@@ -66,11 +66,15 @@ system ECPlatform {
 - [ ] An edge `MediaService → OrderDB` is rendered (derived from `resource OrderDB.InventoryTable`)
 - [ ] No duplicate edges appear between the same service and infra node
 
+> manual / visual review — derived-edge coverage and dedup are checked by eye on the rendered System diagram.
+
 ### Multi-service shared infra
 
 - [ ] When two services reference the same database, both edges appear independently:
   - `[OrderService] → [OrderDB]`
   - `[MediaService] → [OrderDB]`
+
+> manual / visual review — visual confirmation that both edges remain distinct on the rendered SVG.
 
 ### Explicit edge takes precedence
 
@@ -78,12 +82,16 @@ Given an additional `OrderService -> OrderDB "カスタムラベル"` edge in th
 
 - [ ] Only one `OrderService → OrderDB` edge is rendered (no duplication)
 
+> manual / visual review — checking precedence between an explicit edge and an auto-derived one requires looking at the rendered diagram for duplicates.
+
 ### Unassigned resources
 
 Given a `resource UnassignedTable` (no dot-notation ref) inside a usecase:
 
 - [ ] No spurious edge is derived to a non-existent node
 - [ ] No error is thrown; the diagram renders normally
+
+> manual / visual review — verifies the negative case (no spurious edge, no crash) on a real render.
 
 ## Manual Verification Steps
 

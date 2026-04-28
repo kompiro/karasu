@@ -28,3 +28,5 @@ derive their visual styles from the built-in style sheet rather than hardcoded c
 - [ ] Confirm the rendered SVG shows different background colors per kind (not all grey)
 - [ ] Add a `.krs.style` file with `oci { background-color: #FF0000; }` and confirm the override applies
 - [ ] Confirm kind badge labels (`oci`, `lambda`, etc.) appear on each node
+
+> manual / visual review — verifies the rendered deploy diagram's kind-specific colors and badge labels in the live app; the automated checks above only cover the resolver / SVG-string layer.
