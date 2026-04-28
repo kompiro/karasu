@@ -16,20 +16,13 @@ type: product
 
 ### AC-1: MemoryModeApp の3ビュー表示
 
+> ✅ Automated by `packages/e2e/tests/at-0014-memory-project-mode-unification.spec.ts` (suite-wide)
+
 - [x] MemoryModeApp 起動時（OPFS非対応ブラウザ）に DiagramTabBar が表示され、System / Deploy / Org の3つのタブが存在すること
-> ✅ Automated — `packages/e2e/tests/at-0014-memory-project-mode-unification.spec.ts` › `DiagramTabBar shows System / Deploy / Org with System selected by default (AC-1.1, AC-1.2)`
-
 - [x] System タブがデフォルトで選択された状態で起動すること
-> ✅ Automated — `packages/e2e/tests/at-0014-memory-project-mode-unification.spec.ts` › `DiagramTabBar shows System / Deploy / Org with System selected by default (AC-1.1, AC-1.2)`
-
 - [x] Deploy タブをクリックすると Deploy ダイアグラムが表示されること（サンプルの `deploy "本番環境"` ブロックが描画される）
-> ✅ Automated — `packages/e2e/tests/at-0014-memory-project-mode-unification.spec.ts` › `Switching to Deploy and Org renders their diagrams; switching back to System works (AC-1.3, AC-1.4, AC-1.5)`
-
 - [x] Org タブをクリックすると Org ダイアグラムが表示されること（サンプルの `organization "EC開発組織"` ブロックが描画される）
-> ✅ Automated — `packages/e2e/tests/at-0014-memory-project-mode-unification.spec.ts` › `Switching to Deploy and Org renders their diagrams; switching back to System works (AC-1.3, AC-1.4, AC-1.5)`
-
 - [x] System タブをクリックすると System ダイアグラムに戻ること
-> ✅ Automated — `packages/e2e/tests/at-0014-memory-project-mode-unification.spec.ts` › `Switching to Deploy and Org renders their diagrams; switching back to System works (AC-1.3, AC-1.4, AC-1.5)`
 
 ### AC-2: MemoryModeApp のクロスナビゲーション
 
@@ -38,7 +31,7 @@ type: product
 - [ ] ハイライトは別のノードをクリックまたはドリルダウンすることで解除されること
 
 > AC-2 のクロスナビゲーション動作は現状 E2E カバレッジが無く、手動確認に
-> 残している。フォローアップで spec を追加する予定 (TBD)。
+> 残している。spec 追加は #970 で追跡。
 
 ### AC-3: MemoryModeApp のエディタ連携
 
@@ -51,7 +44,7 @@ type: product
 - [ ] エディタに `organization` ブロックを削除すると Org タブをクリックしても空の図が表示されること（エラーにならないこと）
 
 > 「organization ブロック削除時の空図表示」は現状 spec が未追加のため
-> 手動で確認する。
+> 手動で確認する。spec 追加は #970 で追跡。
 
 ### AC-4: ProjectModeApp のリグレッション
 
@@ -77,8 +70,10 @@ type: product
 - [x] MemoryModeApp・ProjectModeApp どちらのモードでも Samples タブが参照できること
 > ✅ Automated — `packages/e2e/tests/at-0014-memory-project-mode-unification.spec.ts` › `ReferencePanel exposes the Samples tab with system/deploy/organization sample (AC-5)`
 
-> 「Copy ボタンの動作」「2 秒後ラベル復帰」はクリップボード API とタイマーが
-> 絡むため E2E 化せず手動 / 視覚レビューに残す。
+> 「Copy ボタンの動作」はブラウザの Clipboard API パーミッション付与が
+> 必要なため Playwright で安定して回せず、手動 / 視覚レビューに残す。
+> 「2 秒後ラベル復帰」は `page.waitForTimeout` で原理的には自動化可能だが、
+> Copy ボタンの動作が前提となるため同じ理由で現状は手動扱いとする。
 
 ## 検証方法
 
