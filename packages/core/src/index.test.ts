@@ -211,10 +211,76 @@ describe("Icon Mode — shape cascade priority (issue #279)", () => {
     expect(styles.nodes.get("MyService")!.shape).toMatchObject({ url: "service" });
   });
 
-  it("icon theme assigns the dedicated client shape", () => {
+  it("icon theme assigns the dedicated client shape (subtype tag picks variant)", () => {
     const resolveSheets = [getBuiltinStyleSheet(), getIconThemeStyleSheet()];
+    // CLIENT_NODE has tags: ["mobile"] → resolves to the client-mobile variant.
     const styles = resolveStyles([CLIENT_NODE], resolveSheets);
-    expect(styles.nodes.get("MyClient")!.shape).toMatchObject({ url: "client" });
+    expect(styles.nodes.get("MyClient")!.shape).toMatchObject({ url: "client-mobile" });
+  });
+
+  it("icon theme: client without recognized subtype tags falls back to generic client shape", () => {
+    const resolveSheets = [getBuiltinStyleSheet(), getIconThemeStyleSheet()];
+    const node = { ...CLIENT_NODE, id: "Plain", tags: ["my-team-internal-tag"] } as KrsNode;
+    const styles = resolveStyles([node], resolveSheets);
+    expect(styles.nodes.get("Plain")!.shape).toMatchObject({ url: "client" });
+  });
+
+  it.each([
+    ["mobile", "client-mobile"],
+    ["web", "client-web"],
+    ["desktop", "client-desktop"],
+    ["cli", "client-cli"],
+    ["device", "client-device"],
+    ["extension", "client-extension"],
+    ["embed", "client-embed"],
+  ])("icon theme: client[%s] resolves to %s", (tag, shape) => {
+    const resolveSheets = [getBuiltinStyleSheet(), getIconThemeStyleSheet()];
+    const node = { ...CLIENT_NODE, id: `C-${tag}`, tags: [tag] } as KrsNode;
+    const styles = resolveStyles([node], resolveSheets);
+    expect(styles.nodes.get(`C-${tag}`)!.shape).toMatchObject({ url: shape });
+  });
+
+  it("icon theme: multi-tag client picks first-declared subtype (first-match-wins)", () => {
+    const resolveSheets = [getBuiltinStyleSheet(), getIconThemeStyleSheet()];
+    // Tag order on the node, NOT theme rule order, governs the choice.
+    const node = { ...CLIENT_NODE, id: "Multi", tags: ["mobile", "desktop"] } as KrsNode;
+    const styles = resolveStyles([node], resolveSheets);
+    expect(styles.nodes.get("Multi")!.shape).toMatchObject({ url: "client-mobile" });
+  });
+
+  it("icon theme: multi-tag client respects node-tag order even when reversed", () => {
+    const resolveSheets = [getBuiltinStyleSheet(), getIconThemeStyleSheet()];
+    const node = { ...CLIENT_NODE, id: "Reversed", tags: ["desktop", "mobile"] } as KrsNode;
+    const styles = resolveStyles([node], resolveSheets);
+    expect(styles.nodes.get("Reversed")!.shape).toMatchObject({ url: "client-desktop" });
+  });
+
+  it("icon theme: single-tag client resolution comes from cascade alone (post-step is a no-op)", () => {
+    // Regression guard: if applyClientSubtypeFirstMatch is widened to handle
+    // single-tag nodes, this test catches it. The point is that the resolver
+    // post-step must not even consider single-tag clients — those are owned
+    // entirely by the icon-theme cascade rules.
+    const themeOnly = [getBuiltinStyleSheet(), getIconThemeStyleSheet()];
+    const overrideOnTheme = StyleParser.parse(`client[mobile] { shape: box; }`).value;
+    const styles = resolveStyles(
+      [{ ...CLIENT_NODE, id: "Single", tags: ["mobile"] } as KrsNode],
+      [...themeOnly, overrideOnTheme],
+    );
+    // User override on a single-tag client wins via cascade specificity ties +
+    // higher source index. If the post-step ever re-asserted client-mobile here
+    // it would clobber the user choice.
+    expect(styles.nodes.get("Single")!.shape).toBe("box");
+  });
+
+  it("icon theme: extra non-subtype tags do not affect first-match-wins", () => {
+    const resolveSheets = [getBuiltinStyleSheet(), getIconThemeStyleSheet()];
+    const node = {
+      ...CLIENT_NODE,
+      id: "Mixed",
+      tags: ["my-internal", "web", "v2", "mobile"],
+    } as KrsNode;
+    const styles = resolveStyles([node], resolveSheets);
+    expect(styles.nodes.get("Mixed")!.shape).toMatchObject({ url: "client-web" });
   });
 
   it("compileProject: icon mode does not emit false style-conflict for shape overrides", async () => {

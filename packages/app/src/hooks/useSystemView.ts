@@ -15,6 +15,13 @@ import {
 import iconManifest from "@karasu-tools/core/icons/icons.json";
 import serviceSvg from "@karasu-tools/core/icons/service.svg?raw";
 import clientSvg from "@karasu-tools/core/icons/client.svg?raw";
+import clientMobileSvg from "@karasu-tools/core/icons/client-mobile.svg?raw";
+import clientWebSvg from "@karasu-tools/core/icons/client-web.svg?raw";
+import clientDesktopSvg from "@karasu-tools/core/icons/client-desktop.svg?raw";
+import clientCliSvg from "@karasu-tools/core/icons/client-cli.svg?raw";
+import clientDeviceSvg from "@karasu-tools/core/icons/client-device.svg?raw";
+import clientExtensionSvg from "@karasu-tools/core/icons/client-extension.svg?raw";
+import clientEmbedSvg from "@karasu-tools/core/icons/client-embed.svg?raw";
 import userSvg from "@karasu-tools/core/icons/user.svg?raw";
 import domainSvg from "@karasu-tools/core/icons/domain.svg?raw";
 import resourceSvg from "@karasu-tools/core/icons/resource.svg?raw";
@@ -61,6 +68,13 @@ resolveIconManifest(
   {
     "service.svg": serviceSvg,
     "client.svg": clientSvg,
+    "client-mobile.svg": clientMobileSvg,
+    "client-web.svg": clientWebSvg,
+    "client-desktop.svg": clientDesktopSvg,
+    "client-cli.svg": clientCliSvg,
+    "client-device.svg": clientDeviceSvg,
+    "client-extension.svg": clientExtensionSvg,
+    "client-embed.svg": clientEmbedSvg,
     "user.svg": userSvg,
     "domain.svg": domainSvg,
     "resource.svg": resourceSvg,

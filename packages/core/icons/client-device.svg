@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 100">
+  <g class="krs-pictogram" transform="translate(6, 4)">
+    <!-- antenna -->
+    <line x1="10" y1="0" x2="10" y2="4" stroke="{{color}}" stroke-width="1.5" stroke-linecap="round"/>
+    <circle cx="10" cy="0" r="1" fill="{{color}}"/>
+    <!-- IoT box body -->
+    <rect x="2" y="4" width="16" height="14" rx="1.5" fill="none" stroke="{{color}}" stroke-width="1.5"/>
+    <!-- LED indicator -->
+    <circle cx="5" cy="7.5" r="1.1" fill="{{color}}"/>
+    <!-- vent slats -->
+    <line x1="9" y1="7" x2="16" y2="7" stroke="{{color}}" stroke-width="0.9" opacity="0.7"/>
+    <line x1="9" y1="9" x2="16" y2="9" stroke="{{color}}" stroke-width="0.9" opacity="0.7"/>
+    <!-- screen / dial -->
+    <rect x="5" y="11.5" width="10" height="4.5" rx="0.6" fill="none" stroke="{{color}}" stroke-width="1.2"/>
+    <line x1="6.5" y1="14" x2="13.5" y2="14" stroke="{{color}}" stroke-width="0.9" opacity="0.7"/>
+  </g>
+  <text class="krs-label" x="30" y="19" text-anchor="start"/>
+  <text class="krs-description" x="8" y="44" text-anchor="start"/>
+</svg>

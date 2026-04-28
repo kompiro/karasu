@@ -2,6 +2,13 @@
   "icons": [
     { "name": "service", "file": "service.svg" },
     { "name": "client", "file": "client.svg" },
+    { "name": "client-mobile", "file": "client-mobile.svg" },
+    { "name": "client-web", "file": "client-web.svg" },
+    { "name": "client-desktop", "file": "client-desktop.svg" },
+    { "name": "client-cli", "file": "client-cli.svg" },
+    { "name": "client-device", "file": "client-device.svg" },
+    { "name": "client-extension", "file": "client-extension.svg" },
+    { "name": "client-embed", "file": "client-embed.svg" },
     { "name": "user-card", "file": "user.svg" },
     { "name": "domain", "file": "domain.svg" },
     { "name": "resource", "file": "resource.svg" },
