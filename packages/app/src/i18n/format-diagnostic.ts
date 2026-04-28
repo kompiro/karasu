@@ -109,6 +109,14 @@ export function useFormattedDiagnostic(): (d: Diagnostic) => string {
           return t("diagnostic.duplicateTeamInOrganization.message", d.params);
         case "import-id-not-found":
           return t("diagnostic.importIdNotFound.message", d.params);
+        case "import-path-not-found":
+          return t("diagnostic.importPathNotFound.message", {
+            path: d.params.path.join("."),
+            failedAt: d.params.failedAt,
+            failedSegment: d.params.path[d.params.failedAt] ?? "",
+            importPath: d.params.importPath,
+            lastResolvedId: d.params.lastResolvedId ?? "",
+          });
         case "circular-style-import":
           return t("diagnostic.circularStyleImport.message", d.params);
         case "style-file-not-found":

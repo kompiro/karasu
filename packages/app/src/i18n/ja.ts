@@ -220,6 +220,16 @@ export const ja: Partial<Translations> = {
     `organization "${orgId}" 内で team ID "${teamId}" が重複しています`,
   "diagnostic.importIdNotFound.message": ({ id, path }) =>
     `インポートされた識別子 "${id}" が ${path} に見つかりません`,
+  "diagnostic.importPathNotFound.message": ({
+    path,
+    failedAt,
+    failedSegment,
+    importPath,
+    lastResolvedId,
+  }) =>
+    lastResolvedId
+      ? `import path "${path}" のセグメント "${failedSegment}" (#${failedAt}) を解決できません: "${lastResolvedId}" の下にその id の子は存在しません`
+      : `import path "${path}" のセグメント "${failedSegment}" (#${failedAt}) を解決できません: ${importPath} に該当 id を持つ top-level system はありません`,
   "diagnostic.circularStyleImport.message": ({ filePath }) =>
     `循環スタイルインポートを検出しました: ${filePath}`,
   "diagnostic.styleFileNotFound.message": ({ filePath }) =>
