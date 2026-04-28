@@ -30,6 +30,8 @@ Set a valid Claude API key in the Settings tab before running these tests.
 - Each item includes the service id/label and the edge kind (sync/async)
 - Response does not ask to edit the .krs file (read-only query)
 
+> manual / visual review — Claude API への自然言語クエリ応答の妥当性は LLM 出力に依存し、Chat UI 上で目視確認する必要がある。
+
 ---
 
 ### TC-2: Usecase enumeration
@@ -44,6 +46,8 @@ Set a valid Claude API key in the Settings tab before running these tests.
 - AI returns all usecases under the service/domain that references `OrderTable`
 - Results include node ids and labels
 
+> manual / visual review — usecase 列挙の網羅性とラベル妥当性は LLM 応答内容を読んで判定する。
+
 ---
 
 ### TC-3: External dependency analysis
@@ -57,6 +61,8 @@ Set a valid Claude API key in the Settings tab before running these tests.
 
 - AI ranks services by the number of `[external]` edges
 - Top entry is correctly identified
+
+> manual / visual review — `[external]` エッジ数のランキングと top entry の正しさは LLM 応答を目視確認する。
 
 ---
 
@@ -84,6 +90,8 @@ Set a valid Claude API key in the Settings tab before running these tests.
 - Each entry includes the team name and the link URLs with their labels
 - Links are shown as clickable references
 
+> manual / visual review — チーム情報・リンクの整形・クリック可能性は Chat UI のレンダリング結果を目視確認する。
+
 ---
 
 ### TC-5: Onboarding query
@@ -97,6 +105,8 @@ Set a valid Claude API key in the Settings tab before running these tests.
 
 - AI identifies the services with the most edges (highest connectivity)
 - Returns team name and contact links for each
+
+> manual / visual review — オンボーディング向け推奨サービス選定は LLM の判断に依存し、応答内容を目視確認する。
 
 ---
 
@@ -112,6 +122,8 @@ Set a valid Claude API key in the Settings tab before running these tests.
 - Diagram navigates to the ECommerce service scope
 - BreadcrumbBar updates to reflect the new ViewPath
 
+> manual / visual review — `navigate_view` ツール呼び出しと BreadcrumbBar 更新の連動は Chat UI とプレビューを並べて目視確認する。
+
 ---
 
 ### TC-7: Multi-file model (ProjectMode)
@@ -126,6 +138,8 @@ Set a valid Claude API key in the Settings tab before running these tests.
 
 - AI returns services from all imported files, not just the currently open file
 - This verifies that `resolvedSystems` (compiled from all files) is passed to the chat
+
+> manual / visual review — multi-file モデル全体が AI に渡っているかは Chat 応答の網羅性で判定するため目視確認が必要。
 
 ---
 
