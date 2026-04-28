@@ -130,6 +130,13 @@ export function formatWarning(w: Warning): FormattedWarning {
         message: `service "${w.params.serviceId}" delivers target "${w.params.targetId}" is not a client node`,
         details: [],
       };
+    case "legend-ref-unresolved":
+      return {
+        message: w.params.legendTitle
+          ? `legend "${w.params.legendTitle}": ref ${w.params.target} does not match any node or style rule`
+          : `legend ref ${w.params.target} does not match any node or style rule`,
+        details: [],
+      };
     case "cyclic-dependency": {
       const { cyclePath } = w.params;
       const joined =

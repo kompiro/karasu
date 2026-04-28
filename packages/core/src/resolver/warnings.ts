@@ -1,5 +1,5 @@
-import type { KrsNode, KrsEdge, KrsFile, TeamNode } from "../types/ast.js";
-import type { StyleSheet } from "../types/style.js";
+import type { KrsNode, KrsEdge, KrsFile, TeamNode, LegendRefTarget } from "../types/ast.js";
+import type { StyleSheet, StyleSelector } from "../types/style.js";
 import type { Warning } from "../types/warnings.js";
 
 export function analyze(file: KrsFile, sheets: StyleSheet[], systemSheetCount = 1): Warning[] {
@@ -22,8 +22,138 @@ export function analyze(file: KrsFile, sheets: StyleSheet[], systemSheetCount = 
   warnings.push(...detectCrossSystemRefs(file));
   warnings.push(...detectCyclicDependencies(file));
   warnings.push(...detectDeliversTargetNotClient(file));
+  warnings.push(...detectUnresolvedLegendRefs(file, sheets));
 
   return warnings;
+}
+
+/**
+ * Each `ref` entry in a `legend` block must resolve through the existing
+ * style cascade. Emit a warning when the target is not present in any
+ * node (annotations / tags / ids / kinds) or style rule selector.
+ */
+function detectUnresolvedLegendRefs(file: KrsFile, sheets: StyleSheet[]): Warning[] {
+  if (file.legends.length === 0) return [];
+
+  // Index the file's surface area once, then check each ref against it.
+  const annotationsInUse = new Set<string>();
+  const tagsInUse = new Set<string>();
+  const nodeIds = new Set<string>();
+  const nodeKinds = new Set<string>();
+  function walk(nodes: KrsNode[]): void {
+    for (const node of nodes) {
+      nodeIds.add(node.id);
+      nodeKinds.add(node.kind);
+      for (const a of node.annotations) annotationsInUse.add(a);
+      for (const t of node.tags) tagsInUse.add(t);
+      walk(node.children);
+    }
+  }
+  for (const system of file.systems) {
+    nodeIds.add(system.id);
+    nodeKinds.add(system.kind);
+    walk(system.children);
+  }
+  walk(file.services);
+  walk(file.clients);
+  walk(file.domains);
+  walk(file.databases);
+  walk(file.queues);
+  walk(file.storages);
+
+  const stylesIndex = indexStyleSelectors(sheets);
+
+  const warnings: Warning[] = [];
+  for (const legend of file.legends) {
+    for (const entry of legend.entries) {
+      if (entry.kind !== "ref") continue;
+      if (
+        legendRefResolves(
+          entry.target,
+          annotationsInUse,
+          tagsInUse,
+          nodeIds,
+          nodeKinds,
+          stylesIndex,
+        )
+      ) {
+        continue;
+      }
+      warnings.push({
+        kind: "legend-ref-unresolved",
+        params: {
+          target: stringifyLegendRefTarget(entry.target),
+          ...(legend.title ? { legendTitle: legend.title } : {}),
+        },
+        loc: entry.loc,
+      });
+    }
+  }
+  return warnings;
+}
+
+interface StyleSelectorIndex {
+  annotations: Set<string>;
+  tags: Set<string>;
+  ids: Set<string>;
+  nodeTypes: Set<string>;
+}
+
+function indexStyleSelectors(sheets: StyleSheet[]): StyleSelectorIndex {
+  const annotations = new Set<string>();
+  const tags = new Set<string>();
+  const ids = new Set<string>();
+  const nodeTypes = new Set<string>();
+  for (const sheet of sheets) {
+    for (const rule of sheet.rules) {
+      const sel: StyleSelector = rule.selector;
+      if (sel.id) ids.add(sel.id);
+      if (sel.nodeType) nodeTypes.add(sel.nodeType);
+      for (const a of sel.annotations) annotations.add(a);
+      for (const t of sel.tags) tags.add(t);
+    }
+  }
+  return { annotations, tags, ids, nodeTypes };
+}
+
+function legendRefResolves(
+  target: LegendRefTarget,
+  annotationsInUse: Set<string>,
+  tagsInUse: Set<string>,
+  nodeIds: Set<string>,
+  nodeKinds: Set<string>,
+  styles: StyleSelectorIndex,
+): boolean {
+  switch (target.kind) {
+    case "annotation":
+      return annotationsInUse.has(target.name) || styles.annotations.has(target.name);
+    case "tag":
+      return tagsInUse.has(target.name) || styles.tags.has(target.name);
+    case "selector": {
+      const sel = target.selector;
+      if (sel.startsWith("#")) {
+        const id = sel.slice(1);
+        return nodeIds.has(id) || styles.ids.has(id);
+      }
+      // `.class` selectors are accepted by the parser for forward
+      // compatibility, but `.krs.style` does not have CSS-style classes
+      // (see docs/spec/style.md). Always unresolved for now.
+      if (sel.startsWith(".")) return false;
+      // Bare type selector (`service`, `domain`, etc.).
+      return nodeKinds.has(sel) || styles.nodeTypes.has(sel);
+    }
+  }
+}
+
+function stringifyLegendRefTarget(target: LegendRefTarget): string {
+  switch (target.kind) {
+    case "annotation":
+      return `@${target.name}`;
+    case "tag":
+      return `[${target.name}]`;
+    case "selector":
+      return target.selector;
+  }
 }
 
 function detectDeliversTargetNotClient(file: KrsFile): Warning[] {

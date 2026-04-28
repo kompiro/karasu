@@ -148,6 +148,10 @@ export const en: Translations = {
   "warning.cyclicDependency.message": ({ path }) => `Circular dependency detected: ${path}`,
   "warning.deliversTargetNotClient.message": ({ serviceId, targetId }) =>
     `service "${serviceId}" delivers target "${targetId}" is not a client node`,
+  "warning.legendRefUnresolved.message": ({ target, legendTitle }) =>
+    legendTitle
+      ? `legend "${legendTitle}": ref ${target} does not match any node or style rule`
+      : `legend ref ${target} does not match any node or style rule`,
 
   // Diagnostics (rendered in PreviewPane's diagnostic banner)
   "diagnostic.tokenTypeMismatch.message": ({ expected, got, value }) =>

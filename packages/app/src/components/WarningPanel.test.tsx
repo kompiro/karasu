@@ -86,6 +86,8 @@ function makeWarning(kind: Warning["kind"]): Warning {
       return { kind, params: { cyclePath: ["A", "B", "A"] } };
     case "delivers-target-not-client":
       return { kind, params: { serviceId: "test-service", targetId: "test-target" } };
+    case "legend-ref-unresolved":
+      return { kind, params: { target: "@deprecated", legendTitle: "Owner team" } };
   }
 }
 

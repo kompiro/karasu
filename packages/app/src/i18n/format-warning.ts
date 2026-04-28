@@ -149,6 +149,14 @@ export function useFormattedWarning(): (w: Warning) => FormattedWarning {
             }),
             details: [],
           };
+        case "legend-ref-unresolved":
+          return {
+            message: t("warning.legendRefUnresolved.message", {
+              target: w.params.target,
+              legendTitle: w.params.legendTitle,
+            }),
+            details: [],
+          };
         case "cyclic-dependency": {
           const { cyclePath } = w.params;
           const path =

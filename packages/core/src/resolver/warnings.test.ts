@@ -1042,3 +1042,180 @@ system S {
     expect(targets.sort()).toEqual(["GhostId", "OrderService"]);
   });
 });
+
+describe("legend-ref-unresolved warning", () => {
+  function legendWarnings(krs: string) {
+    const file = Parser.parse(krs).value;
+    const warnings = analyze(file, [getBuiltinStyleSheet()]);
+    return warnings.filter((w) => w.kind === "legend-ref-unresolved");
+  }
+
+  it("does not warn for swatch entries", () => {
+    expect(
+      legendWarnings(`
+legend "Owner" {
+  swatch #2563EB "Team Backend"
+  swatch #16A34A "Team Frontend"
+}
+`),
+    ).toHaveLength(0);
+  });
+
+  it("resolves @annotation that is used by a node", () => {
+    expect(
+      legendWarnings(`
+system S {
+  service Legacy @deprecated {}
+}
+legend "Status" {
+  ref @deprecated "Deprecated"
+}
+`),
+    ).toHaveLength(0);
+  });
+
+  it("resolves [tag] that is present on a node", () => {
+    expect(
+      legendWarnings(`
+system S {
+  service ThirdParty [external] {}
+}
+legend "Origin" {
+  ref [external] "Third-party"
+}
+`),
+    ).toHaveLength(0);
+  });
+
+  it("resolves a bare type selector matching an existing node kind", () => {
+    expect(
+      legendWarnings(`
+system S {
+  service Demo {}
+}
+legend {
+  ref service "Service"
+}
+`),
+    ).toHaveLength(0);
+  });
+
+  it("resolves a #id selector matching an existing node id", () => {
+    expect(
+      legendWarnings(`
+system ECPlatform {
+  service ECommerce {}
+}
+legend {
+  ref #ECommerce "EC site"
+}
+`),
+    ).toHaveLength(0);
+  });
+
+  it("resolves @annotation defined in the builtin style sheet even when no node uses it", () => {
+    // @deprecated is part of the builtin sheet — the renderer can still
+    // surface its color even if no node currently carries it.
+    expect(
+      legendWarnings(`
+system S {
+  service Active {}
+}
+legend "Status" {
+  ref @deprecated "Deprecated"
+}
+`),
+    ).toHaveLength(0);
+  });
+
+  it("warns when @annotation is unknown to both nodes and styles", () => {
+    const w = legendWarnings(`
+system S {
+  service Active {}
+}
+legend "Status" {
+  ref @gone "Removed"
+}
+`);
+    expect(w).toHaveLength(1);
+    if (w[0].kind !== "legend-ref-unresolved") throw new Error("kind mismatch");
+    expect(w[0].params.target).toBe("@gone");
+    expect(w[0].params.legendTitle).toBe("Status");
+  });
+
+  it("warns when [tag] is unknown to both nodes and styles", () => {
+    const w = legendWarnings(`
+system S {
+  service Active {}
+}
+legend {
+  ref [unknownTag] "Unknown"
+}
+`);
+    expect(w).toHaveLength(1);
+    if (w[0].kind !== "legend-ref-unresolved") throw new Error("kind mismatch");
+    expect(w[0].params.target).toBe("[unknownTag]");
+    expect(w[0].params.legendTitle).toBeUndefined();
+  });
+
+  it("warns when a bare type selector does not match any node kind", () => {
+    const w = legendWarnings(`
+system S {
+  service Demo {}
+}
+legend {
+  ref bogus "Bogus"
+}
+`);
+    expect(w).toHaveLength(1);
+    if (w[0].kind !== "legend-ref-unresolved") throw new Error("kind mismatch");
+    expect(w[0].params.target).toBe("bogus");
+  });
+
+  it("warns when a #id selector does not match any node id", () => {
+    const w = legendWarnings(`
+system S {
+  service Demo {}
+}
+legend {
+  ref #Missing "Missing"
+}
+`);
+    expect(w).toHaveLength(1);
+    if (w[0].kind !== "legend-ref-unresolved") throw new Error("kind mismatch");
+    expect(w[0].params.target).toBe("#Missing");
+  });
+
+  it("always warns for .class selectors (.krs.style has no class concept)", () => {
+    const w = legendWarnings(`
+system S {
+  service Demo {}
+}
+legend {
+  ref .legacy "Legacy class"
+}
+`);
+    expect(w).toHaveLength(1);
+    if (w[0].kind !== "legend-ref-unresolved") throw new Error("kind mismatch");
+    expect(w[0].params.target).toBe(".legacy");
+  });
+
+  it("emits one warning per unresolved entry, leaving resolved entries alone", () => {
+    const w = legendWarnings(`
+system S {
+  service Active @deprecated {}
+}
+legend "Mixed" {
+  ref @deprecated         "Deprecated"
+  ref [unknownTag]     "Unknown tag"
+  ref @gone               "Annotation (missing)"
+  ref service             "Service kind"
+}
+`);
+    expect(w).toHaveLength(2);
+    const targets = w.map((entry) =>
+      entry.kind === "legend-ref-unresolved" ? entry.params.target : "",
+    );
+    expect(targets.sort()).toEqual(["@gone", "[unknownTag]"]);
+  });
+});

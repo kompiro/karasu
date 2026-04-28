@@ -19,7 +19,8 @@ export type WarningKind =
   | "cross-system-ref-implicit-external"
   | "cross-system-ref-unresolved"
   | "cyclic-dependency"
-  | "delivers-target-not-client";
+  | "delivers-target-not-client"
+  | "legend-ref-unresolved";
 
 /**
  * Per-kind params shape. Each entry carries only the structured data needed
@@ -69,6 +70,18 @@ export interface WarningParamsByKind {
   "cross-system-ref-unresolved": { ref: string };
   "cyclic-dependency": { cyclePath: string[] };
   "delivers-target-not-client": { serviceId: string; targetId: string };
+  /**
+   * A `ref` entry inside a `legend` block points at a target
+   * (annotation / tag / class / id / type) that does not match anything
+   * in the file's nodes or style rules. The renderer skips the entry;
+   * the warning surfaces the broken reference so the author can fix it.
+   */
+  "legend-ref-unresolved": {
+    /** "@deprecated" / "[external]" / ".legacy" / "#NodeId" / "service" */
+    target: string;
+    /** Optional title of the legend block, for context in the message. */
+    legendTitle?: string;
+  };
 }
 
 /**
