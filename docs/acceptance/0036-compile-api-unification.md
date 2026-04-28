@@ -14,6 +14,14 @@ date: 2026-04-01
 `compile()` / `compileOrgView()` を一本の `compile(src, options?)` に統合し、
 `DiagramType` に `"org"` を追加。戻り値を判別共用体 `CompileResult` に変更する。
 
+## 検証方法
+
+```bash
+pnpm --filter @karasu-tools/core test    # packages/core/src/index.test.ts
+pnpm typecheck
+pnpm run build --workspace=packages/core
+```
+
 ## 受け入れ条件
 
 以下はすべて `packages/core/src/index.test.ts` でカバーされる。
