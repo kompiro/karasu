@@ -317,6 +317,8 @@ function _compileFromPreparedInput(
     const styles = resolveStyles(krsFile.systems, resolveSheets, undefined, krsFile.organizations);
     const svg = _renderOrgView(slice, styles, displayMode, undefined, {
       emptyLabels: emptyStateLabels,
+      legends: krsFile.legends,
+      styleSheets: resolveSheets,
     });
     return {
       diagramType: "org",
@@ -348,6 +350,9 @@ function _compileFromPreparedInput(
     ]);
     const svg = renderDeploy(deploySliceForStyle, styles, displayMode, {
       emptyLabels: emptyStateLabels,
+      legends: krsFile.legends,
+      styleSheets: resolveSheets,
+      viewScope: "deploy",
     });
     const nodeMetadata = buildDeployNodeMetadata(deploySliceForStyle);
     return { diagramType: "deploy", svg, warnings, diagnostics, nodeMetadata, deployBlocks };
@@ -374,6 +379,9 @@ function _compileFromPreparedInput(
   );
   const svg = render(viewSlice, styles, serviceIdsWithDeploy, ownerIndex, displayMode, undefined, {
     emptyLabels: emptyStateLabels,
+    legends: krsFile.legends,
+    styleSheets: resolveSheets,
+    viewScope: "system",
   });
   const nodeMetadata = buildNodeMetadata(
     viewSlice,

@@ -2,7 +2,14 @@ import type { ResolvedNodeStyle, ResolvedStyles } from "../types/style.js";
 import type { OrgViewSlice } from "../view/org-view-extract.js";
 import type { TeamNode, MemberNode } from "../types/ast.js";
 import type { DisplayMode } from "./layout.js";
-import { el, escapeXml, truncateToWidth, renderIconCard, diffStateAttr } from "./svg-builder.js";
+import {
+  buildLegendFooter,
+  el,
+  escapeXml,
+  truncateToWidth,
+  renderIconCard,
+  diffStateAttr,
+} from "./svg-builder.js";
 import { getIconDef } from "./shape-registry.js";
 import { ownsEdgeKey } from "../diff/org-view-diff.js";
 import {
@@ -11,6 +18,8 @@ import {
   ICON_DESC_MAX_WIDTH,
 } from "./rendering-constants.js";
 import { DEFAULT_EMPTY_STATE_LABELS, type EmptyStateLabels } from "./empty-state-labels.js";
+import type { LegendBlock } from "../types/ast.js";
+import type { StyleSheet } from "../types/style.js";
 
 interface RenderOrgOptions {
   /** Diff state per team / member id. */
@@ -19,6 +28,10 @@ interface RenderOrgOptions {
   edgeDiffState?: Map<string, string>;
   /** Localized empty-state labels. English fallback when omitted. */
   emptyLabels?: EmptyStateLabels;
+  /** Legend blocks (Issue #887). Filtered by scope === "org" or unset. */
+  legends?: LegendBlock[];
+  /** Resolved style sheets for legend `ref` color resolution. */
+  styleSheets?: StyleSheet[];
 }
 
 // Shape mode constants
@@ -587,16 +600,34 @@ export function renderOrgView(
       return linkId ? el("a", { href: `#${linkId}` }, card) : card;
     });
 
+    // Legend footer (Issue #887). Org view receives every legend block
+    // whose scope is "org" or omitted.
+    let outerHeight = totalHeight;
+    const extra: string[] = [];
+    if (options?.legends && options.legends.length > 0) {
+      const footer = buildLegendFooter(
+        options.legends,
+        "org",
+        options.styleSheets ?? [],
+        totalWidth,
+      );
+      if (footer) {
+        extra.push(el("g", { transform: `translate(0,${totalHeight})` }, footer.svg));
+        outerHeight = totalHeight + footer.height;
+      }
+    }
+
     return el(
       "svg",
       {
         xmlns: "http://www.w3.org/2000/svg",
-        viewBox: `0 0 ${totalWidth} ${totalHeight}`,
+        viewBox: `0 0 ${totalWidth} ${outerHeight}`,
         width: totalWidth,
-        height: totalHeight,
+        height: outerHeight,
       },
-      el("rect", { width: totalWidth, height: totalHeight, fill: BG_COLOR }),
+      el("rect", { width: totalWidth, height: outerHeight, fill: BG_COLOR }),
       ...cards,
+      ...extra,
     );
   }
 

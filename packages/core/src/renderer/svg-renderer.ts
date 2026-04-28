@@ -9,7 +9,7 @@ import {
 } from "./layout.js";
 import { renderShape } from "./shapes.js";
 import { renderEdge, renderArrowMarker } from "./edge-routing.js";
-import { el, escapeXml, truncateToWidth, wrapToWidth } from "./svg-builder.js";
+import { buildLegendFooter, el, escapeXml, truncateToWidth, wrapToWidth } from "./svg-builder.js";
 import { getIconDef } from "./shape-registry.js";
 import {
   CHAR_WIDTH,
@@ -20,6 +20,8 @@ import {
 import { nodeStyleKey } from "../resolver/style-resolver.js";
 import type { NodeDiffMeta } from "../diff/view-diff.js";
 import { DEFAULT_EMPTY_STATE_LABELS, type EmptyStateLabels } from "./empty-state-labels.js";
+import type { LegendBlock, LegendViewScope } from "../types/ast.js";
+import type { StyleSheet } from "../types/style.js";
 
 const GHOST_OPACITY = 0.3;
 
@@ -59,6 +61,20 @@ export interface RenderOptions {
    * from `DEFAULT_EMPTY_STATE_LABELS` are used.
    */
   emptyLabels?: EmptyStateLabels;
+  /**
+   * Legend blocks declared in the source `.krs`. The renderer paints a
+   * footer band below the diagram for every block that targets the
+   * current view scope (or omits scope). Pair with `styleSheets` so
+   * `ref` entries can resolve to swatch colors via the style cascade.
+   */
+  legends?: LegendBlock[];
+  /** Resolved style sheets, used by the legend footer to color `ref` entries. */
+  styleSheets?: StyleSheet[];
+  /**
+   * Which view this render produces. Drives the legend's scope filter so
+   * a `legend deploy "..."` block does not leak into the system view.
+   */
+  viewScope?: LegendViewScope;
 }
 
 export function render(
@@ -250,13 +266,31 @@ export function renderFromLayout(
   }
   parts.push(el("g", { class: "nodes" }, ...normalNodeParts));
 
+  // Legend footer (Issue #887) — rendered as a band below the diagram so
+  // it survives panning and is preserved by single-file SVG exports.
+  // The footer's height extends the outer viewBox; positioning is handled
+  // via a translate at y=height of the diagram body.
+  let totalHeight = height;
+  if (options?.legends && options?.legends.length > 0 && options?.viewScope) {
+    const footer = buildLegendFooter(
+      options.legends,
+      options.viewScope,
+      options.styleSheets ?? [],
+      width,
+    );
+    if (footer) {
+      parts.push(el("g", { transform: `translate(0,${height})` }, footer.svg));
+      totalHeight = height + footer.height;
+    }
+  }
+
   return el(
     "svg",
     {
       xmlns: "http://www.w3.org/2000/svg",
-      viewBox: `0 0 ${width} ${height}`,
+      viewBox: `0 0 ${width} ${totalHeight}`,
       width,
-      height,
+      height: totalHeight,
     },
     ...parts,
   );
