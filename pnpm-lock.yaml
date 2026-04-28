@@ -207,6 +207,9 @@ importers:
       '@vscode/test-electron':
         specifier: ^2.5.2
         version: 2.5.2
+      '@vscode/vsce':
+        specifier: ^3.9.1
+        version: 3.9.1
       mocha:
         specifier: ^11.7.4
         version: 11.7.5
