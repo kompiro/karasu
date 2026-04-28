@@ -6,7 +6,54 @@ describe("getReference", () => {
 
   it("includes all logical node kinds", () => {
     const kinds = ref.nodeKinds.map((k) => k.kind);
-    expect(kinds).toEqual(["system", "service", "domain", "usecase", "resource", "user"]);
+    expect(kinds).toEqual([
+      "system",
+      "user",
+      "client",
+      "service",
+      "domain",
+      "usecase",
+      "resource",
+      "database",
+      "queue",
+      "storage",
+    ]);
+  });
+
+  it("client kind exposes handles, resource and link properties", () => {
+    const client = ref.nodeKinds.find((k) => k.kind === "client");
+    expect(client).toBeDefined();
+    expect(client!.properties).toContain("handles");
+    expect(client!.properties).toContain("resource");
+  });
+
+  it("service kind exposes delivers and handles properties", () => {
+    const service = ref.nodeKinds.find((k) => k.kind === "service");
+    expect(service!.properties).toContain("delivers");
+    expect(service!.properties).toContain("handles");
+  });
+
+  it("includes the seven client form-factor tags", () => {
+    const tags = ref.tags.map((t) => t.name);
+    for (const ff of ["mobile", "web", "desktop", "cli", "device", "extension", "embed"]) {
+      expect(tags).toContain(ff);
+    }
+    const mobile = ref.tags.find((t) => t.name === "mobile")!;
+    expect(mobile.appliesTo).toEqual(["client"]);
+  });
+
+  it("external tag applies to client as well as service / resource", () => {
+    const external = ref.tags.find((t) => t.name === "external")!;
+    expect(external.appliesTo).toContain("client");
+    expect(external.appliesTo).toContain("service");
+    expect(external.appliesTo).toContain("resource");
+  });
+
+  it("sample KRS demonstrates the user → client → service access path", () => {
+    expect(ref.sampleKrs).toContain("client MobileApp");
+    expect(ref.sampleKrs).toContain("delivers AdminConsole");
+    expect(ref.sampleKrs).toContain("Customer -> MobileApp");
+    expect(ref.sampleKrs).toContain("MobileApp -> ECommerce");
   });
 
   it("all node kinds include label and description as properties", () => {
@@ -86,6 +133,16 @@ describe("getReference", () => {
     expect(ref.sampleKrs).toContain("system");
     expect(ref.sampleKrs).toContain("deploy");
     expect(ref.sampleKrs).toContain("organization");
+  });
+
+  it("sampleKrs parses without errors for both locales", async () => {
+    const { Parser } = await import("../parser/parser.js");
+    for (const locale of ["en", "ja"] as const) {
+      const sample = getReference(locale).sampleKrs;
+      const result = Parser.parse(sample);
+      const errors = result.diagnostics.filter((d) => d.severity === "error");
+      expect(errors).toEqual([]);
+    }
   });
 
   it("returns the same cached instance on second call (cache hit branch)", () => {
