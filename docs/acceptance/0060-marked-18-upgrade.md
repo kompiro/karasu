@@ -61,6 +61,8 @@ This is **bold**, *italic*, and `inline code`.
 - [ ] `italic` is rendered with `<em>`.
 - [ ] `inline code` is rendered with `<code>`.
 
+> manual / visual review — NodeDetailPanel に貼り付けたあとの実描画を目視確認する受入観点（自動テストは別途 `NodeDetailPanel.test.tsx` でカバー）。
+
 ### TC-2 — GFM table with content after (NodeDetailPanel)
 
 Description:
@@ -77,6 +79,8 @@ Trailing paragraph after the table.
 - [ ] Table renders with two columns, two data rows.
 - [ ] "Trailing paragraph after the table." renders as a paragraph *after* the table (v18 no longer swallows trailing newlines into the table token).
 
+> manual / visual review — テーブル直後の段落分離は v18 の挙動差を実 UI で確認する観点。
+
 ### TC-3 — Heading followed by blank lines (NodeDetailPanel)
 
 Description:
@@ -91,6 +95,8 @@ Paragraph after two blank lines.
 - [ ] `Heading` renders as `<h1>`.
 - [ ] `Paragraph after two blank lines.` renders as a separate paragraph, not concatenated to the heading.
 
+> manual / visual review — 見出し後の連続空行が段落を消費しないことは描画結果で確認する。
+
 ### TC-4 — Indented code block with embedded blank line (NodeDetailPanel)
 
 Description:
@@ -102,6 +108,8 @@ Description:
 ```
 
 - [ ] Both lines appear inside a single `<pre><code>` block; the page does not hang (18.0.2 infinite-loop fix).
+
+> manual / visual review — 18.0.2 の無限ループ修正はブラウザでハングしないことを目視確認する観点。
 
 ### TC-5 — XSS sanitization still active (NodeDetailPanel)
 
@@ -115,6 +123,8 @@ Description:
 - [ ] `safe text` is visible.
 - [ ] No `<script>` element present in the DOM of the panel.
 
+> manual / visual review — DOMPurify によるサニタイズの実効性は実 DOM を目視確認する。
+
 ### TC-6 — ChatPane assistant response rendering
 
 In the chat UI, send a message whose assistant reply contains any of the
@@ -122,6 +132,8 @@ markdown patterns from TC-1–TC-4. Confirm:
 
 - [ ] Tables, headings, code blocks, and inline formatting render as expected.
 - [ ] No console errors from marked or DOMPurify.
+
+> manual / visual review — ChatPane のアシスタント応答描画は実チャットセッションで確認するためライブセッションが必要。
 
 ---
 

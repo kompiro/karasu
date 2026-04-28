@@ -33,6 +33,8 @@ WebView の iframe に降りてカード/詳細パネルを assert するのは 
   - VS Code に install されてから Mocha スイートが走る
   - exit code が 0 で完了する
 
+> manual / visual review — VS Code stable のダウンロード→展開→install→Mocha 起動の一連の流れは ExTester 環境（GUI または xvfb-run）に依存し、CI / ローカル実機での起動を目視確認する。
+
 ### AC-2: Phase 1 PoC スイートが karasu 拡張を認識する
 
 - [ ] `at-0069-runner-smoke.test.ts` が PASS する:
@@ -43,16 +45,22 @@ WebView の iframe に降りてカード/詳細パネルを assert するのは 
 > （`packages/vscode-e2e/tests/suite/00-activation.test.ts`）で既にカバー済のため、
 > 本テストでは重複させない。
 
+> manual / visual review — Phase 1 PoC スイート（`at-0069-runner-smoke.test.ts`）の PASS 自体は ExTester 環境でしか走らないため、ジョブ実機での結果を目視確認する。
+
 ### AC-3: CI から label gating でだけ起動する
 
 - [ ] PR に `vscode-webview-e2e` ラベルが**無い**ときは `VS Code WebView (ExTester)` ジョブが skip される
 - [ ] ラベルが**ある**ときに ジョブが走り、初回は VS Code + Chromedriver のダウンロード経路を含めて完了する
+
+> manual / visual review — ラベル付与による gating の skip / run は GitHub Actions 上で 1 度走らせて挙動を確認する観点。
 
 ### AC-4: AT-0039 の Coverage policy 注記が Phase 1 進捗を反映する
 
 - [ ] `docs/acceptance/0039-vscode-phase6-detail-panel.md` の Coverage policy に
   「Phase 1 が landed、Phase 2 で AT-0039 を移植予定」を示す注記が入っている
   （TC-01..TC-N 自体は Phase 2 で書き換えるため Manual のまま据え置き）
+
+> manual / visual review — AT-0039 側の Coverage policy 注記の追加はドキュメントの整合性チェックで、レビュー時に目視確認する。
 
 ## 自動化された検証
 
