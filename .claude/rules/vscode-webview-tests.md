@@ -41,6 +41,12 @@ VS Code 拡張のプレビュー（`packages/vscode/src/preview-panel.ts`）は 
    Design Doc から始める。** `vscode-extension-tester` / Playwright on
    Electron / `@vscode/test-web` などの選択肢があり、本 ADR と独立して
    評価する。
+   - **Phase 1 進捗 (#928 / `docs/design/vscode-webview-e2e-harness.md`)**:
+     ExTester ベースの WebView ランナーが `packages/vscode-e2e/tests/webview/`
+     配下に追加されている（`pnpm test:webview`、CI は `vscode-webview-e2e`
+     ラベルで gating）。**新規 WebView 系テストはここに書く** — 拡張ホスト側
+     スタブで偽装しない（ルール 3 は依然有効）。AT 全体を ExTester に移植する
+     のは Phase 2 / 3 の作業で、それまで未移植の AT は manual coverage を維持する。
 
 ## AT ファイルへの記述
 
