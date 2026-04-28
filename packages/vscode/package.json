@@ -19,7 +19,7 @@
     "vscode-languageclient": "^9.0.1"
   },
   "devDependencies": {
-    "@types/vscode": "^1.116.0",
+    "@types/vscode": "^1.111.0",
     "esbuild": "^0.28.0",
     "typescript": "^6.0.3"
   },
@@ -85,6 +85,6 @@
     "onLanguage:krs-style"
   ],
   "engines": {
-    "vscode": "^1.116.0"
+    "vscode": "^1.111.0"
   }
 }

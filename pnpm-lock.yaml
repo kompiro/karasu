@@ -181,7 +181,7 @@ importers:
         version: 9.0.1
     devDependencies:
       '@types/vscode':
-        specifier: ^1.116.0
+        specifier: ^1.111.0
         version: 1.116.0
       esbuild:
         specifier: ^0.28.0
@@ -199,7 +199,7 @@ importers:
         specifier: ^25.6.0
         version: 25.6.0
       '@types/vscode':
-        specifier: ^1.116.0
+        specifier: ^1.111.0
         version: 1.116.0
       '@vscode/test-cli':
         specifier: ^0.0.10

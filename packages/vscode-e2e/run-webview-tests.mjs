@@ -51,6 +51,9 @@ await extester.installVsix({ vsixFile: vsixOut, useYarn: false });
 
 const exitCode = await extester.runTests(testGlob, {
   config: mochaConfig,
+  resources: [],
+  cleanup: false,
+  logLevel: "Info",
 });
 
 process.exit(exitCode);
