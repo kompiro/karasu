@@ -95,3 +95,70 @@ This keeps the cost local to the AT that needs it; existing tests
   separately.
 - **`localStorage` is wiped on every `seed()` / `reset()`** so the app
   cannot restore stale `lastProjectId` from a previous run.
+
+## `anthropic.ts` — Anthropic transport mock
+
+Intercepts `POST https://api.anthropic.com/v1/messages` (the only endpoint
+`useChatSession` hits via `@anthropic-ai/sdk`) and serves scripted
+responses, so the BYOK Chat UI can be driven deterministically without a
+real API key. The fixture extends `opfs`, so a single test composes both
+filesystem seeding and API-key seeding.
+
+Design rationale: see `docs/design/chat-anthropic-mock-fixture.md`.
+
+### Quick start
+
+```ts
+import { test, expect } from "../fixtures/anthropic";
+
+test("chat round-trip", async ({ page, opfs, anthropic }) => {
+  await opfs.seed({
+    projects: [{ id: "demo", name: "Demo", files: { "index.krs": 'system "X" {}\n' } }],
+    lastProjectId: "demo",
+  });
+  await anthropic.seedApiKey("sk-ant-test-fake");
+  await anthropic.scriptTurns([{ kind: "text", text: "Hi" }]);
+  await opfs.gotoApp();
+
+  await page.getByRole("tab", { name: /Chat/ }).click();
+  // ... drive the chat input, assert the AI response shows up
+});
+```
+
+### API
+
+| Method                          | Purpose                                                                      |
+| ------------------------------- | ---------------------------------------------------------------------------- |
+| `anthropic.scriptTurns(turns)`  | FIFO queue of responses for upcoming `messages.create` calls.                |
+| `anthropic.respondWithError(e)` | Make the next request fail with `{status: 401 \| 429 \| 500}` (one-shot).    |
+| `anthropic.requests`            | Captured request bodies in arrival order — assert tool definitions, etc.     |
+| `anthropic.seedApiKey(key, o)`  | Write `karasu.ai.anthropic.apiKey` + `...settings.persist` before `gotoApp`. |
+| `anthropic.clearApiKey()`       | Remove the key from both storages (AC-4 / AC-5).                             |
+
+### Scripted turn shapes
+
+```ts
+// Text reply.
+{ kind: "text", text: "Done.", stopReason?: "end_turn" }
+
+// Tool-use reply. The SDK then issues a follow-up request carrying
+// `tool_result`, which consumes the next entry from the queue.
+{ kind: "tool_use", tool: "navigate_view", input: { path: ["sys-id"] }, precedingText?: "..." }
+{ kind: "tool_use", tool: "apply_krs_patch", input: { operation: "...", description: "...", ... } }
+```
+
+When the queue runs dry while the app is still calling, the fixture
+returns `500 fixture_exhausted` so the test fails loudly rather than
+hanging on a real network attempt.
+
+### Caveats
+
+- **Call `seedApiKey()` after `opfs.seed()`.** `opfs.seed()` wipes
+  `localStorage`, so any earlier `seedApiKey()` would be undone. Natural
+  order: `opfs.seed → seedApiKey → scriptTurns → gotoApp`.
+- **Errors are one-shot.** `respondWithError()` consumes itself after one
+  request; subsequent requests get `500 fixture_exhausted` until you
+  call `scriptTurns()` again.
+- **The 401/429/500 body shape mirrors the real Anthropic API** so
+  `@anthropic-ai/sdk` still produces `APIError` instances and
+  `useChatSession/errors.ts` keeps classifying them correctly.
