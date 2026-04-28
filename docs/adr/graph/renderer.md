@@ -1,6 +1,6 @@
 # ADR Topic: renderer
 
-17 ADRs in this topic. Solid nodes belong to `renderer`; gray dashed nodes are ghosts showing cross-topic references to help navigation.
+18 ADRs in this topic. Solid nodes belong to `renderer`; gray dashed nodes are ghosts showing cross-topic references to help navigation.
 
 Other topics: [overview](../graph.md).
 ```mermaid
@@ -23,6 +23,7 @@ flowchart TD
     ADR_20260420_01["ADR-20260420-01<br/>draw.io（mxGraph XML）エクスポート — レイアウトの逃げ道"]
     ADR_20260422_04["ADR-20260422-04<br/>トップレベル service / domain を `(Unassigned)` 擬似システム..."]
     ADR_20260422_05["ADR-20260422-05<br/>トップレベル infra ブロック（database / queue / storage）を ..."]
+    ADR_20260428_07["ADR-20260428-07<br/>図の凡例（legend）構文をモデル側に追加する"]
   end
   ADR_20260320_02["ADR-20260320-02<br/>[parser] AST 再構成 — Discriminated Union とプロパティブロック"]
   ADR_20260323_02["ADR-20260323-02<br/>[app-ui] ツールバーボタンはアイコン+テキストラベル必須"]
@@ -83,6 +84,7 @@ flowchart TD
   class ADR_20260420_01 accepted
   class ADR_20260422_04 accepted
   class ADR_20260422_05 accepted
+  class ADR_20260428_07 accepted
   class ADR_20260320_02 ghost
   class ADR_20260323_02 ghost
   class ADR_20260326_03 ghost
