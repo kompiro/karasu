@@ -29,20 +29,20 @@ system ECPlatform {
       label "Product Catalog"
       usecase SearchProducts {
         label "Search products"
-        resource ProductTable { label "Product table" }
+        resource CatalogDB.ProductTable
         resource SearchIndex [external] { label "Search index" }
       }
       usecase RegisterProduct {
         label "Register a product"
-        resource ProductTable { label "Product table" }
-        resource ImageStorage [storage] { label "Image storage" }
+        resource CatalogDB.ProductTable
+        resource MediaStorage.ProductImages
       }
     }
     domain Order {
       label "Orders"
       usecase PlaceOrder {
         label "Place an order"
-        resource OrderTable { label "Order table" }
+        resource OrderDB.OrderTable
         resource InventoryAPI [external] { label "Inventory API" }
         resource PaymentAPI [external] { label "Payment API" }
       }
@@ -52,7 +52,7 @@ system ECPlatform {
       label "Members"
       usecase Register {
         label "Sign up as a member"
-        resource MemberTable { label "Member table" }
+        resource MemberDB.MemberTable
       }
       usecase EditProfile { label "Edit profile" }
     }
@@ -68,6 +68,29 @@ system ECPlatform {
   service Notification {
     label "Notification"
     description "Email and push notification delivery"
+  }
+
+  // Infra layer: shared database / queue / storage that services depend on,
+  // declared as first-class nodes directly under system.
+  database CatalogDB {
+    label "Catalog DB"
+    table ProductTable { label "Product table" }
+  }
+  database OrderDB {
+    label "Order DB"
+    table OrderTable { label "Order table" }
+  }
+  database MemberDB {
+    label "Member DB"
+    table MemberTable { label "Member table" }
+  }
+  queue OrderEvents {
+    label "Order events"
+    queue OrderPlaced { label "Order placed" }
+  }
+  storage MediaStorage {
+    label "Media storage"
+    bucket ProductImages { label "Product images" }
   }
 
   Customer -> MobileApp "Open the app"

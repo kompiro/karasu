@@ -1271,15 +1271,13 @@ system Test {
   it("parses sampleKrs from getReference() without errors", () => {
     const { sampleKrs } = getReference();
     const result = Parser.parse(sampleKrs);
-    // sampleKrs has 4 non-external inline resources → 4 "unassigned-resource" warnings.
-    // The 4 [external]-tagged inline resources are suppressed and emit no warning.
+    // sampleKrs declares an infra layer (database / queue / storage) and references
+    // tables / buckets via dot notation, so no "unassigned-resource" warnings should fire.
+    // The [external]-tagged inline resources are also suppressed.
     const errors = result.diagnostics.filter((d) => d.severity === "error");
     expect(errors).toHaveLength(0);
     const warnings = result.diagnostics.filter((d) => d.severity === "warning");
-    expect(warnings).toHaveLength(4);
-    expect(
-      warnings.every((w) => formatDiagnostic(w).includes("is not assigned to any database")),
-    ).toBe(true);
+    expect(warnings).toHaveLength(0);
     expect(result.value.systems).toHaveLength(1);
     expect(result.value.deploys).toHaveLength(1);
     expect(result.value.organizations).toHaveLength(1);

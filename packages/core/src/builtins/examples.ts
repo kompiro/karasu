@@ -48,20 +48,20 @@ system ECPlatform {
       label "商品カタログ"
       usecase SearchProducts {
         label "商品を検索する"
-        resource ProductTable { label "商品テーブル" }
+        resource CatalogDB.ProductTable
         resource SearchIndex [external] { label "検索インデックス" }
       }
       usecase RegisterProduct {
         label "商品を登録する"
-        resource ProductTable { label "商品テーブル" }
-        resource ImageStorage [storage] { label "画像ストレージ" }
+        resource CatalogDB.ProductTable
+        resource MediaStorage.ProductImages
       }
     }
     domain Order {
       label "受注"
       usecase PlaceOrder {
         label "注文を確定する"
-        resource OrderTable { label "注文テーブル" }
+        resource OrderDB.OrderTable
         resource InventoryAPI [external] { label "在庫API" }
         resource PaymentAPI [external] { label "決済API" }
       }
@@ -71,7 +71,7 @@ system ECPlatform {
       label "会員"
       usecase Register {
         label "会員登録する"
-        resource MemberTable { label "会員テーブル" }
+        resource MemberDB.MemberTable
       }
       usecase EditProfile { label "プロフィールを編集する" }
     }
@@ -87,6 +87,29 @@ system ECPlatform {
   service Notification {
     label "通知"
     description "メール・プッシュ通知の送信"
+  }
+
+  // インフラ層: service が共有する database / queue / storage を
+  // system 直下のファーストクラスノードとして宣言する。
+  database CatalogDB {
+    label "商品カタログDB"
+    table ProductTable { label "商品テーブル" }
+  }
+  database OrderDB {
+    label "注文DB"
+    table OrderTable { label "注文テーブル" }
+  }
+  database MemberDB {
+    label "会員DB"
+    table MemberTable { label "会員テーブル" }
+  }
+  queue OrderEvents {
+    label "注文イベント"
+    queue OrderPlaced { label "注文確定" }
+  }
+  storage MediaStorage {
+    label "画像ストレージ"
+    bucket ProductImages { label "商品画像" }
   }
 
   Customer -> MobileApp "アプリを利用する"
@@ -216,20 +239,20 @@ system ECPlatform {
       label "Product Catalog"
       usecase SearchProducts {
         label "Search products"
-        resource ProductTable { label "Product table" }
+        resource CatalogDB.ProductTable
         resource SearchIndex [external] { label "Search index" }
       }
       usecase RegisterProduct {
         label "Register a product"
-        resource ProductTable { label "Product table" }
-        resource ImageStorage [storage] { label "Image storage" }
+        resource CatalogDB.ProductTable
+        resource MediaStorage.ProductImages
       }
     }
     domain Order {
       label "Orders"
       usecase PlaceOrder {
         label "Place an order"
-        resource OrderTable { label "Order table" }
+        resource OrderDB.OrderTable
         resource InventoryAPI [external] { label "Inventory API" }
         resource PaymentAPI [external] { label "Payment API" }
       }
@@ -239,7 +262,7 @@ system ECPlatform {
       label "Members"
       usecase Register {
         label "Sign up as a member"
-        resource MemberTable { label "Member table" }
+        resource MemberDB.MemberTable
       }
       usecase EditProfile { label "Edit profile" }
     }
@@ -255,6 +278,29 @@ system ECPlatform {
   service Notification {
     label "Notification"
     description "Email and push notification delivery"
+  }
+
+  // Infra layer: shared database / queue / storage that services depend on,
+  // declared as first-class nodes directly under system.
+  database CatalogDB {
+    label "Catalog DB"
+    table ProductTable { label "Product table" }
+  }
+  database OrderDB {
+    label "Order DB"
+    table OrderTable { label "Order table" }
+  }
+  database MemberDB {
+    label "Member DB"
+    table MemberTable { label "Member table" }
+  }
+  queue OrderEvents {
+    label "Order events"
+    queue OrderPlaced { label "Order placed" }
+  }
+  storage MediaStorage {
+    label "Media storage"
+    bucket ProductImages { label "Product images" }
   }
 
   Customer -> MobileApp "Open the app"
