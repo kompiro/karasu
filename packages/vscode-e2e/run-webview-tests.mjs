@@ -26,7 +26,6 @@ const vscodePkg = path.join(repoRoot, "packages", "vscode");
 const storage = path.join(here, "test-resources");
 const mochaConfig = path.join(here, "tests", "webview", ".mocharc.json");
 const testGlob = path.join(here, "out", "webview", "**", "*.test.js");
-const workspaceFolder = path.join(here, "fixtures", "webview-workspace");
 
 fs.mkdirSync(storage, { recursive: true });
 
@@ -52,7 +51,7 @@ await extester.installVsix({ vsixFile: vsixOut, useYarn: false });
 
 const exitCode = await extester.runTests(testGlob, {
   config: mochaConfig,
-  resources: [workspaceFolder],
+  resources: [],
   cleanup: false,
   logLevel: "Info",
 });

@@ -2,19 +2,15 @@
 
 ## Coverage policy
 
-**Partial automation** (Phase 1 PoC) — see
-[`docs/design/vscode-webview-e2e-harness.md`](../design/vscode-webview-e2e-harness.md).
+**Manual** — see [ADR-20260428-05](../adr/20260428-05-vscode-webview-manual-tests.md).
+This AT exercises the karasu preview WebView (detail panel rendering, links,
+Jump-to-editor button), which is unreachable from the `packages/vscode-e2e`
+smoke harness. Verify by hand during release QA.
 
-The WebView E2E harness (ExTester) added in PR for #928 reaches the karasu
-preview WebView through an `extest setup-and-run` runner alongside the
-`@vscode/test-cli` smoke suite. Phase 1 covers only the foundational
-"WebView is reachable" check (`packages/vscode-e2e/tests/webview/at-0039-detail-panel.test.ts`);
-the click-to-open-detail-panel and Jump-to-editor flows continue as manual
-verification under [ADR-20260428-05](../adr/20260428-05-vscode-webview-manual-tests.md)
-until Phase 2 migrates them.
-
-The WebView job is gated on the `vscode-webview-e2e` PR label and is **not**
-a required check.
+> Phase 1 of the WebView E2E harness rollout has landed
+> (see [`docs/design/vscode-webview-e2e-harness.md`](../design/vscode-webview-e2e-harness.md)
+> and AT-0069). Phase 2 will migrate the TC-01..TC-N cases below to the
+> ExTester runner once the WebView selector path is dialed in.
 
 ## Summary
 
