@@ -3,8 +3,11 @@
   "version": "0.0.0",
   "private": true,
   "packageManager": "pnpm@10.33.0",
-  "overrides": {
-    "dompurify": "^3.3.2"
+  "pnpm": {
+    "overrides": {
+      "dompurify": "^3.3.2",
+      "serialize-javascript": "^7.0.5"
+    }
   },
   "scripts": {
     "dev": "pnpm --filter @karasu-tools/app run dev",
