@@ -522,6 +522,45 @@ system Other {
     expect(c1.x).toBeLessThan(c2.x);
   });
 
+  it("places external services in a row below internal services", () => {
+    const slice = parseAndExtract(`
+system S {
+  user Customer [human]
+  client App [web]
+  service Backend {}
+  service Stripe [external] {}
+  Customer -> App
+  App -> Backend
+  Backend -> Stripe
+}
+`);
+    const result = layout(slice);
+    const customer = result.nodes.get("Customer")!;
+    const app = result.nodes.get("App")!;
+    const backend = result.nodes.get("Backend")!;
+    const stripe = result.nodes.get("Stripe")!;
+    expect(customer.y).toBeLessThan(app.y);
+    expect(app.y).toBeLessThan(backend.y);
+    expect(backend.y).toBeLessThan(stripe.y);
+  });
+
+  it("compacts to two rows when only internal and external services are declared", () => {
+    // No user, no client: internal moves up to row 0, external to row 1.
+    const slice = parseAndExtract(`
+system S {
+  service Backend {}
+  service Stripe [external] {}
+  Backend -> Stripe
+}
+`);
+    const result = layout(slice);
+    const backend = result.nodes.get("Backend")!;
+    const stripe = result.nodes.get("Stripe")!;
+    expect(backend.y).toBeLessThan(stripe.y);
+    // Row 0 means y starts near NODE_GAP (60).
+    expect(backend.y).toBeLessThan(200);
+  });
+
   it("compacts to two rows when only client (no user) is declared", () => {
     // Edge case for the helper's row-compaction logic: a system with `client`
     // but no `user` should not leave row 0 empty — client moves up to row 0.

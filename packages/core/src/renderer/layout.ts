@@ -1118,36 +1118,50 @@ function computeEdgePoints(
 }
 
 /**
+ * Bucket a system-view node into one of four ordered tiers.
+ * Lower index → upper row.
+ *
+ *   0: user       — actor at the top of the access path
+ *   1: client     — user-facing surface (mobile / web / desktop / etc.)
+ *   2: internal   — services, databases, queues, etc. that we own
+ *   3: external   — anything tagged `[external]` (system boundary outside)
+ */
+function systemTier(node: KrsNode): 0 | 1 | 2 | 3 {
+  if (node.kind === "user") return 0;
+  if (node.kind === "client") return 1;
+  if (node.tags.includes("external")) return 3;
+  return 2;
+}
+
+/**
  * Force a kind-based layered placement for the system-view (Phase 6 of #823).
  *
- * Layout schema (rows are compacted — we never emit an empty row at the top):
- *   - user + client present  → user=0, client=1, others=2
- *   - user only              → user=0, others=1
- *   - client only            → client=0, others=1
+ * Each node is bucketed by `systemTier`, then non-empty tiers are compacted
+ * into consecutive row indices (we never emit an empty row at the top or
+ * gaps between occupied rows). Examples:
+ *   - user + client + internal + external → 0/1/2/3
+ *   - user + internal + external          → 0/1/2 (no client row)
+ *   - internal + external                 → 0/1   (downstream dep below)
  *
- * Returns `null` when neither `user` nor `client` appears among the nodes —
- * in that case the caller falls back to topological layering, which is the
- * right behavior for service drill-down views (domains / usecases / resources).
+ * Returns `null` when no `user`, `client`, or `[external]` node appears —
+ * in that case there is no kind-based separation to enforce, so the caller
+ * falls back to topological layering. This keeps service drill-down views
+ * (domains / usecases / resources) on the existing topo path.
  */
 function assignForcedSystemLayers(nodes: KrsNode[]): Map<string, number> | null {
-  let hasUser = false;
-  let hasClient = false;
-  for (const n of nodes) {
-    if (n.kind === "user") hasUser = true;
-    else if (n.kind === "client") hasClient = true;
-  }
-  if (!hasUser && !hasClient) return null;
+  const occupied = [false, false, false, false] as [boolean, boolean, boolean, boolean];
+  for (const n of nodes) occupied[systemTier(n)] = true;
 
-  const userLayer = 0;
-  const clientLayer = hasUser ? 1 : 0;
-  const otherLayer = (hasUser ? 1 : 0) + (hasClient ? 1 : 0);
+  // No system-view signal at all → let topo handle it.
+  if (!occupied[0] && !occupied[1] && !occupied[3]) return null;
+
+  // Map raw tier index → compacted row index.
+  const compacted: number[] = [];
+  let row = 0;
+  for (let t = 0; t < 4; t++) compacted.push(occupied[t] ? row++ : -1);
 
   const layers = new Map<string, number>();
-  for (const n of nodes) {
-    if (n.kind === "user") layers.set(n.id, userLayer);
-    else if (n.kind === "client") layers.set(n.id, clientLayer);
-    else layers.set(n.id, otherLayer);
-  }
+  for (const n of nodes) layers.set(n.id, compacted[systemTier(n)]);
   return layers;
 }
 

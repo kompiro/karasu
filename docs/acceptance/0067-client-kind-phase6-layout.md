@@ -2,14 +2,14 @@
 type: product
 ---
 
-# AT-0067: `client` kind — Phase 6 forced `user → client → service` layout
+# AT-0067: `client` kind — Phase 6 forced `user → client → service → external` layout
 
 ## 概要
 
-system 図のレイアウトが、エッジの有無に関係なく **`user` 行 → `client` 行 → `service` 行** の三層を上から下に強制配置することを確認する
+system 図のレイアウトが、エッジの有無に関係なく **`user` → `client` → 内部 `service` → `[external]` service** の四段を上から下に強制配置することを確認する
 （Issue [#856](https://github.com/kompiro/karasu/issues/856)、設計は `docs/design/client-mcp-modeling.md` Q11）。
 
-`client` 不在の system は `user` 行 → `service` 行の二層に縮約される。
+設計ドキュメントの三層案を `[external]` 段で拡張している。空の段（user 不在 / client 不在 / external 不在）は行ごと詰めて、最終的な段数は 1〜4 段の範囲で動く。
 
 ## 前提条件
 
@@ -48,7 +48,25 @@ system Demo {
 
 `client` をスキップして `service` に直接エッジを張る user（例: `Admin -> OrderService`）も同様で、`Admin` は他の user と同じ最上段に並ぶ。
 
-### 3. `client` 不在時の二層フォールバック
+### 3. `[external]` service は内部 service より下の行
+
+`[external]` タグの付いた `service` は、内部 service より下段（最下段）に配置される。M2M 依存先（外部 SaaS など）が下流であることをレイアウトで表現する。
+
+```krs
+system Demo {
+  user Customer [human]
+  client MobileApp [mobile]
+  service OrderService {}
+  service Stripe [external] {}
+  Customer -> MobileApp
+  MobileApp -> OrderService
+  OrderService -> Stripe
+}
+```
+
+`Customer`（最上段）→ `MobileApp` → `OrderService` → `Stripe`（最下段）の 4 段に並ぶ。`user` / `client` / `internal service` / `external service` のうち空の段は行ごと詰められる。
+
+### 4. `client` 不在時の二層フォールバック
 
 `client` を持たない system は、`user` 行 → `service` 行の二層に縮約される。
 
@@ -60,7 +78,7 @@ system ClassicSSR {
 }
 ```
 
-### 4. 同一層内は宣言順
+### 5. 同一層内は宣言順
 
 同じ層内のノードは `.krs` での宣言順を保つ。barycenter による並び替えはかからない。
 
@@ -78,9 +96,10 @@ system Demo {
 
 `C1` は `C2` の左に、`U1` は `U2` の左に配置される（barycenter ヒューリスティクスが効いていれば flip するパターン）。
 
-### 5. Getting Started への影響
+### 6. Getting Started への影響
 
-`examples/getting-started/index.krs` を開いたとき、`Customer / Seller / Admin` が最上段、`MobileApp` が中段、`ECommerce / Payment / Inventory / Notification` が最下段に並ぶ。エッジの矢印が下方向に流れている。
+`examples/getting-started/index.krs` を開いたとき、上から順に
+`Customer / Seller / Admin`（user）→ `MobileApp`（client）→ `ECommerce / Notification`（internal service）→ `Payment / Inventory`（external service）の 4 段に並ぶ。エッジの矢印が下方向に流れている。
 
 ## 自動化された検証
 
