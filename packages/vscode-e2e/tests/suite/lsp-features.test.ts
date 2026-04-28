@@ -1,6 +1,13 @@
 import * as assert from "node:assert";
 import * as vscode from "vscode";
-import { fixtureUri, openFixture, waitForDiagnostics, waitForLspReady } from "./_helpers.js";
+import {
+  findIdentifierOnLine,
+  findUniqueIdentifier,
+  fixtureUri,
+  openFixture,
+  waitForDiagnostics,
+  waitForLspReady,
+} from "./_helpers.js";
 
 describe("AT-0037 — Phase 5 LSP features", () => {
   describe("AT-0037-1: keyword completion", () => {
@@ -64,16 +71,9 @@ describe("AT-0037 — Phase 5 LSP features", () => {
       const doc = await openFixture("at-0037/edges.krs");
       await waitForLspReady(doc.uri);
 
-      // `MySystem -> Auth "calls"` is on line index 3 (0-based); place cursor on `Auth`.
-      const edgeLineIdx = doc
-        .getText()
-        .split("\n")
-        .findIndex((l) => l.startsWith("MySystem ->"));
-      assert.ok(edgeLineIdx >= 0, "edge line not found in fixture");
-      const lineText = doc.lineAt(edgeLineIdx).text;
-      const authCol = lineText.indexOf("Auth");
-      assert.ok(authCol >= 0);
-      const cursor = new vscode.Position(edgeLineIdx, authCol + 1);
+      // `Auth` appears twice (declaration + edge reference); target the
+      // reference on the edge line specifically.
+      const cursor = findIdentifierOnLine(doc, /^MySystem\s*->/, "Auth");
 
       const locations = await vscode.commands.executeCommand<vscode.Location[]>(
         "vscode.executeDefinitionProvider",
@@ -95,12 +95,9 @@ describe("AT-0037 — Phase 5 LSP features", () => {
       const main = await openFixture("at-0037/cross-file/main.krs");
       await waitForLspReady(main.uri);
 
-      const text = main.getText();
-      const lines = text.split("\n");
-      const refLineIdx = lines.findIndex((l) => l.includes("SharedAuth -> Platform"));
-      assert.ok(refLineIdx >= 0, "SharedAuth reference line not found in main.krs");
-      const col = lines[refLineIdx].indexOf("SharedAuth");
-      const cursor = new vscode.Position(refLineIdx, col + 1);
+      // `SharedAuth` appears in both the import line and the edge line; target
+      // the edge reference so the LSP must walk the import to resolve it.
+      const cursor = findIdentifierOnLine(main, /SharedAuth\s*->/, "SharedAuth");
 
       const locations = await vscode.commands.executeCommand<vscode.Location[]>(
         "vscode.executeDefinitionProvider",
@@ -119,11 +116,7 @@ describe("AT-0037 — Phase 5 LSP features", () => {
       const doc = await openFixture("at-0037/with-description.krs");
       await waitForLspReady(doc.uri);
 
-      const lines = doc.getText().split("\n");
-      const lineIdx = lines.findIndex((l) => l.startsWith("system ECPlatform"));
-      assert.ok(lineIdx >= 0);
-      const col = lines[lineIdx].indexOf("ECPlatform");
-      const cursor = new vscode.Position(lineIdx, col + 2);
+      const cursor = findUniqueIdentifier(doc, "ECPlatform");
 
       const hovers = await vscode.commands.executeCommand<vscode.Hover[]>(
         "vscode.executeHoverProvider",
@@ -141,11 +134,7 @@ describe("AT-0037 — Phase 5 LSP features", () => {
       const doc = await openFixture("at-0037/single-system.krs");
       await waitForLspReady(doc.uri);
 
-      const lines = doc.getText().split("\n");
-      const lineIdx = lines.findIndex((l) => l.includes("service Payment"));
-      assert.ok(lineIdx >= 0);
-      const col = lines[lineIdx].indexOf("Payment");
-      const cursor = new vscode.Position(lineIdx, col + 2);
+      const cursor = findUniqueIdentifier(doc, "Payment");
 
       const hovers = await vscode.commands.executeCommand<vscode.Hover[]>(
         "vscode.executeHoverProvider",
@@ -195,14 +184,29 @@ describe("AT-0037 — Phase 5 LSP features", () => {
   });
 
   describe("AT-0037-8: diagnostics regression", () => {
-    it("publishes at least one error diagnostic for a syntactically broken file", async () => {
+    it("publishes an error diagnostic anchored near the unclosed brace", async () => {
       const doc = await openFixture("at-0037/syntax-error.krs");
       await waitForLspReady(doc.uri);
 
       const diags = await waitForDiagnostics(doc.uri, (d) =>
         d.some((diag) => diag.severity === vscode.DiagnosticSeverity.Error),
       );
-      assert.ok(diags.some((d) => d.severity === vscode.DiagnosticSeverity.Error));
+      const errors = diags.filter((d) => d.severity === vscode.DiagnosticSeverity.Error);
+      assert.ok(errors.length > 0, "expected at least one error diagnostic");
+
+      // The fixture's first line is `system Broken {` which is syntactically
+      // valid; the unclosed brace begins at `service Foo {` (line index 1).
+      // Assert at least one error is anchored on or after that line, so a
+      // future regression that publishes an error at line 0 (the wrong place)
+      // is caught.
+      const minLine = errors.reduce(
+        (acc, e) => Math.min(acc, e.range.start.line),
+        Number.POSITIVE_INFINITY,
+      );
+      assert.ok(
+        minLine >= 1,
+        `expected the earliest error diagnostic to be on line >= 2 (1-based), got line ${minLine + 1}`,
+      );
     });
   });
 });
