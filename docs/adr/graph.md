@@ -1,6 +1,6 @@
 # ADR Dependency Graph — Overview
 
-121 ADRs across 15 topics. Clusters group by `topic` frontmatter field. Edges crossing cluster borders are cross-topic dependencies.
+122 ADRs across 15 topics. Clusters group by `topic` frontmatter field. Edges crossing cluster borders are cross-topic dependencies.
 ```mermaid
 flowchart TD
   subgraph adr-tooling["adr-tooling"]
@@ -153,6 +153,7 @@ flowchart TD
     ADR_20260401_04["ADR-20260401-04<br/>VSCode Phase 3 — 独立 HTML Webview アーキテクチャ"]
     ADR_20260401_05["ADR-20260401-05<br/>VSCode Phase 3.5 — Webview ドリルダウンナビゲーション"]
     ADR_20260404_07["ADR-20260404-07<br/>VSCode プレビュー Icon Mode トグル — Extension Host 管理 ..."]
+    ADR_20260428_03["ADR-20260428-03<br/>VS Code 拡張ホスト向け smoke test harness"]
   end
   ADR_20260320_01 --> ADR_20260320_02
   ADR_20260320_01 --> ADR_20260317_01
@@ -358,6 +359,7 @@ flowchart TD
   class ADR_20260427_05 accepted
   class ADR_20260428_01 accepted
   class ADR_20260428_02 accepted
+  class ADR_20260428_03 accepted
 ```
 
 ## Per-topic detail
@@ -376,4 +378,4 @@ flowchart TD
 - [`resolver`](graph/resolver.md) — 4 ADRs
 - [`styling`](graph/styling.md) — 4 ADRs
 - [`testing`](graph/testing.md) — 5 ADRs
-- [`vscode`](graph/vscode.md) — 4 ADRs
+- [`vscode`](graph/vscode.md) — 5 ADRs
