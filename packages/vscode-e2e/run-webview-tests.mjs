@@ -27,8 +27,32 @@ const storage = path.join(here, "test-resources");
 const mochaConfig = path.join(here, "tests", "webview", ".mocharc.json");
 const testGlob = path.join(here, "out", "webview", "**", "*.test.js");
 const codeSettings = path.join(here, "tests", "webview", "settings.json");
+const fixtureDir = path.join(storage, "at-0039-fixture");
+const fixtureKrs = path.join(fixtureDir, "at-0039.krs");
 
 fs.mkdirSync(storage, { recursive: true });
+fs.mkdirSync(fixtureDir, { recursive: true });
+
+// Write the AT-0039 fixture to a stable on-disk path that the test can
+// reach via VS Code's "File: Open File…" command. We do this in the
+// runner (rather than committing a fixture under fixtures/) so the path
+// is absolute + writable in the CI sandbox; the fixture content is the
+// .krs source the test will exercise.
+fs.writeFileSync(
+  fixtureKrs,
+  `system Demo {
+  service OrderService {
+    description "Handles order processing and payment."
+  }
+  user Customer [human] {
+    description "A customer who purchases products."
+    role "Buyer"
+  }
+  Customer -> OrderService "places an order"
+}
+`,
+);
+process.env.KARASU_E2E_FIXTURE_KRS = fixtureKrs;
 
 // Pre-package the extension into a vsix without dependency validation.
 const vsixOut = path.join(storage, "karasu-vscode.vsix");
