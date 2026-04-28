@@ -435,3 +435,326 @@ system Target {
     }
   });
 });
+
+describe("layout > forced system layers (Phase 6 of #823)", () => {
+  it("places user, client, and service in three distinct rows", () => {
+    const slice = parseAndExtract(`
+system S {
+  user Customer [human]
+  client WebApp [web]
+  service Backend {}
+  Customer -> WebApp
+  WebApp -> Backend
+}
+`);
+    const result = layout(slice);
+    const u = result.nodes.get("Customer")!;
+    const c = result.nodes.get("WebApp")!;
+    const s = result.nodes.get("Backend")!;
+    expect(u.y).toBeLessThan(c.y);
+    expect(c.y).toBeLessThan(s.y);
+  });
+
+  it("keeps a user in the top row even when topo sort would push it below", () => {
+    // Sharper than the obvious "user has no edges" case: here Subscriber is
+    // the *target* of a service edge, so topological sort would assign it to
+    // layer 1 (below the service). Forced kind-based layout must override
+    // that and pin every `user` to the top row.
+    const slice = parseAndExtract(`
+system S {
+  service Notifier {}
+  user Subscriber [human]
+  Notifier -> Subscriber
+}
+`);
+    const result = layout(slice);
+    const notifier = result.nodes.get("Notifier")!;
+    const subscriber = result.nodes.get("Subscriber")!;
+    // Without forcing, topo would give Notifier.y < Subscriber.y. Forced
+    // layout flips it: user above service.
+    expect(subscriber.y).toBeLessThan(notifier.y);
+  });
+
+  it("collapses to two rows when no client is declared (user → service fallback)", () => {
+    const slice = parseAndExtract(`
+system S {
+  user Customer [human]
+  service Backend {}
+  Customer -> Backend
+}
+`);
+    const result = layout(slice);
+    const u = result.nodes.get("Customer")!;
+    const s = result.nodes.get("Backend")!;
+    // Two distinct rows; user is above service
+    expect(u.y).toBeLessThan(s.y);
+  });
+
+  it("preserves declaration order within each forced layer (multi-system path)", () => {
+    // Multi-system root view goes through layoutMultipleSystems(); that's the
+    // only path that applies the barycenter heuristic, so this is where
+    // "force declaration order" actually has work to do.
+    //
+    // Crossing edges U1→C2 and U2→C1 give:
+    //   - barycenter(C1) = x(U2)  (right)
+    //   - barycenter(C2) = x(U1)  (left)
+    // so without forcing, sortByBarycenter would flip the client row to
+    // [C2, C1]. Forced layout must keep declaration order [C1, C2].
+    const krs = `
+system S {
+  user U1 [human]
+  user U2 [human]
+  client C1 [web]
+  client C2 [web]
+  service ServiceA {}
+  U1 -> C2
+  U2 -> C1
+}
+system Other {
+  service Z {}
+}
+`;
+    const parsed = Parser.parse(krs);
+    const slice = extractView(parsed.value.systems, [], parsed.value.domains);
+    const result = layout(slice);
+    const c1 = result.nodes.get("C1")!;
+    const c2 = result.nodes.get("C2")!;
+    expect(c1.x).toBeLessThan(c2.x);
+  });
+
+  it("places dep tier (infra + external) below internal services", () => {
+    const slice = parseAndExtract(`
+system S {
+  user Customer [human]
+  client App [web]
+  service Backend {}
+  database Postgres {}
+  queue Jobs {}
+  storage Blobs {}
+  service Stripe [external] {}
+  Customer -> App
+  App -> Backend
+  Backend -> Stripe
+}
+`);
+    const result = layout(slice);
+    const customer = result.nodes.get("Customer")!;
+    const app = result.nodes.get("App")!;
+    const backend = result.nodes.get("Backend")!;
+    const postgres = result.nodes.get("Postgres")!;
+    const jobs = result.nodes.get("Jobs")!;
+    const blobs = result.nodes.get("Blobs")!;
+    const stripe = result.nodes.get("Stripe")!;
+    expect(customer.y).toBeLessThan(app.y);
+    expect(app.y).toBeLessThan(backend.y);
+    expect(backend.y).toBeLessThan(postgres.y);
+    // No edges among dep nodes → all share one sub-row
+    expect(postgres.y).toBe(jobs.y);
+    expect(jobs.y).toBe(blobs.y);
+    expect(postgres.y).toBe(stripe.y);
+  });
+
+  it("places database [external] in the dep tier alongside infra (tag does not change tier here)", () => {
+    // Both infra-kind and `[external]` collapse into the same dep tier.
+    // Without intra-dep edges, OurDb and SaaSDb share a sub-row; visual
+    // distinction comes from the [external] style, not from layout.
+    const slice = parseAndExtract(`
+system S {
+  service Backend {}
+  database OurDb {}
+  database SaaSDb [external] {}
+}
+`);
+    const result = layout(slice);
+    const backend = result.nodes.get("Backend")!;
+    const ourDb = result.nodes.get("OurDb")!;
+    const saasDb = result.nodes.get("SaaSDb")!;
+    expect(backend.y).toBeLessThan(ourDb.y);
+    expect(ourDb.y).toBe(saasDb.y);
+  });
+
+  it("forces internal-vs-dep split even without user/client", () => {
+    // A pure backend system with just service + database still gets the
+    // forced split: service above database.
+    const slice = parseAndExtract(`
+system S {
+  service Backend {}
+  database Postgres {}
+}
+`);
+    const result = layout(slice);
+    const backend = result.nodes.get("Backend")!;
+    const postgres = result.nodes.get("Postgres")!;
+    expect(backend.y).toBeLessThan(postgres.y);
+  });
+
+  it("topo-layers internal services by call relationships within the internal tier", () => {
+    // A → B → C: each call is a sub-row inside the internal tier, so the
+    // chain reads top-to-bottom even though all three are services.
+    const slice = parseAndExtract(`
+system S {
+  service A {}
+  service B {}
+  service C {}
+  A -> B
+  B -> C
+}
+`);
+    const result = layout(slice);
+    const a = result.nodes.get("A")!;
+    const b = result.nodes.get("B")!;
+    const c = result.nodes.get("C")!;
+    expect(a.y).toBeLessThan(b.y);
+    expect(b.y).toBeLessThan(c.y);
+  });
+
+  it("topo-layers the dep tier by intra-dep edges", () => {
+    // queue Q → database D: an intra-dep edge orders Q above D inside
+    // the dep tier, while internal services stay above both.
+    const slice = parseAndExtract(`
+system S {
+  service App {}
+  queue Q {}
+  database D {}
+  Q -> D
+  App -> Q
+}
+`);
+    const result = layout(slice);
+    const app = result.nodes.get("App")!;
+    const q = result.nodes.get("Q")!;
+    const d = result.nodes.get("D")!;
+    expect(app.y).toBeLessThan(q.y);
+    expect(q.y).toBeLessThan(d.y);
+  });
+
+  it("does not let a cross-tier edge bleed into per-tier sub-row assignment", () => {
+    // Backend → DB is a cross-tier edge. Within the internal tier, A and
+    // Backend are independent (no A→Backend edge), so they share row 0 of
+    // the internal tier. Backend's edge to DB only affects DB's tier
+    // placement, not Backend's sub-row.
+    const slice = parseAndExtract(`
+system S {
+  service A {}
+  service Backend {}
+  database DB {}
+  Backend -> DB
+}
+`);
+    const result = layout(slice);
+    const a = result.nodes.get("A")!;
+    const backend = result.nodes.get("Backend")!;
+    const db = result.nodes.get("DB")!;
+    // A and Backend on the same internal sub-row
+    expect(a.y).toBe(backend.y);
+    expect(backend.y).toBeLessThan(db.y);
+  });
+
+  it("places external services in a row below internal services", () => {
+    const slice = parseAndExtract(`
+system S {
+  user Customer [human]
+  client App [web]
+  service Backend {}
+  service Stripe [external] {}
+  Customer -> App
+  App -> Backend
+  Backend -> Stripe
+}
+`);
+    const result = layout(slice);
+    const customer = result.nodes.get("Customer")!;
+    const app = result.nodes.get("App")!;
+    const backend = result.nodes.get("Backend")!;
+    const stripe = result.nodes.get("Stripe")!;
+    expect(customer.y).toBeLessThan(app.y);
+    expect(app.y).toBeLessThan(backend.y);
+    expect(backend.y).toBeLessThan(stripe.y);
+  });
+
+  it("compacts to two rows when only internal and external services are declared", () => {
+    // No user, no client: internal moves up to row 0, external to row 1.
+    const slice = parseAndExtract(`
+system S {
+  service Backend {}
+  service Stripe [external] {}
+  Backend -> Stripe
+}
+`);
+    const result = layout(slice);
+    const backend = result.nodes.get("Backend")!;
+    const stripe = result.nodes.get("Stripe")!;
+    expect(backend.y).toBeLessThan(stripe.y);
+    // Row 0 means y starts near NODE_GAP (60).
+    expect(backend.y).toBeLessThan(200);
+  });
+
+  it("compacts to two rows when only client (no user) is declared", () => {
+    // Edge case for the helper's row-compaction logic: a system with `client`
+    // but no `user` should not leave row 0 empty — client moves up to row 0.
+    const slice = parseAndExtract(`
+system S {
+  client App [web]
+  service Backend {}
+  App -> Backend
+}
+`);
+    const result = layout(slice);
+    const app = result.nodes.get("App")!;
+    const backend = result.nodes.get("Backend")!;
+    expect(app.y).toBeLessThan(backend.y);
+    // Row 0 means y starts near NODE_GAP (60), not near 2*(h+LAYER_GAP).
+    // A non-compacted layout would put App well below 200px.
+    expect(app.y).toBeLessThan(200);
+  });
+
+  it("applies forced layering independently per system in the multi-system root view", () => {
+    // System A has all four tiers (user / client / internal / external).
+    // System B has only internal + external. Each system compacts its own
+    // bucket set; rows are *not* aligned across systems.
+    const krs = `
+system A {
+  user U [human]
+  client C [web]
+  service AInternal {}
+  service AExt [external] {}
+  U -> C
+  C -> AInternal
+  AInternal -> AExt
+}
+system B {
+  service BInternal {}
+  service BExt [external] {}
+  BInternal -> BExt
+}
+`;
+    const parsed = Parser.parse(krs);
+    const slice = extractView(parsed.value.systems, [], parsed.value.domains);
+    const result = layout(slice);
+
+    // System A: four ordered rows
+    const u = result.nodes.get("U")!;
+    const c = result.nodes.get("C")!;
+    const aInt = result.nodes.get("AInternal")!;
+    const aExt = result.nodes.get("AExt")!;
+    expect(u.y).toBeLessThan(c.y);
+    expect(c.y).toBeLessThan(aInt.y);
+    expect(aInt.y).toBeLessThan(aExt.y);
+
+    // System B: two compacted rows (internal at row 0, external at row 1)
+    const bInt = result.nodes.get("BInternal")!;
+    const bExt = result.nodes.get("BExt")!;
+    expect(bInt.y).toBeLessThan(bExt.y);
+
+    // Containers are placed side by side (B to the right of A)
+    const aContainer = result.containers.find((cn) => cn.id === "A")!;
+    const bContainer = result.containers.find((cn) => cn.id === "B")!;
+    expect(bContainer.x).toBeGreaterThan(aContainer.x + aContainer.width);
+
+    // Row alignment is intentionally NOT enforced across systems:
+    // B's internal row uses its own row 0, so it sits higher than A's
+    // internal row (which is row 2). This pins down current behavior; if
+    // we ever want cross-system row alignment, this assertion changes.
+    expect(bInt.y).toBeLessThan(aInt.y);
+  });
+});
