@@ -17,5 +17,9 @@ export default defineConfig({
     ui: "bdd",
     timeout: 60_000,
     color: true,
+    // Sort spec files by name so `00-activation.test.js` (which asserts the
+    // extension is inactive at startup) always runs before any AT suite that
+    // would have already activated it.
+    sort: true,
   },
 });
