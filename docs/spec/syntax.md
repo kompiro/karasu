@@ -532,6 +532,47 @@ system ECPlatform {
 }
 ```
 
+### Path syntax — reaching nodes nested inside a `system` block
+
+Use **dotted path** form to reach a `service` / `domain` / `usecase` defined deeper than the direct child of a `system` in another file:
+
+```
+import { ECPlatform.ECommerce.Order } from "./services.krs"
+```
+
+Each segment is matched against the previously-resolved node's `children` array by id (kind is not enforced). Path resolution starts from a top-level `system` in the imported file.
+
+The importer only materializes the chain it asked for: in the example above, the merged file gains a stub of `ECPlatform` with a stub of `ECommerce` whose only child is the resolved `Order` (with `Order`'s full subtree intact). Sibling domains under `ECommerce` are not auto-imported. Bring more by listing them in the same import or by wildcard-importing the whole file.
+
+#### When to use path syntax
+
+Path syntax shines when the same id appears in multiple systems — system migration is the canonical case:
+
+```
+// services.krs
+system OrderSystemV1 {
+  service OrderService { domain Legacy {} }
+}
+system OrderSystemV2 {
+  service OrderService { domain Modern {} }
+}
+
+// migration.krs — pull only V2 without renaming
+import { OrderSystemV2.OrderService } from "./services.krs"
+```
+
+Bare ids (`import { ECommerce }`) keep working — they remain the simplest form when the id is unambiguous.
+
+#### Failure mode
+
+A path that cannot be resolved emits an `import-path-not-found` diagnostic naming the failing segment and the last node walked successfully:
+
+```
+import { ECPlatform.NotThere.Order } from "./services.krs"
+// → Import path "ECPlatform.NotThere.Order" failed at segment "NotThere" (#1):
+//   no child with that id under "ECPlatform"
+```
+
 ---
 
 ## @import scope
