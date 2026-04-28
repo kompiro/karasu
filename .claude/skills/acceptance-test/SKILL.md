@@ -104,7 +104,7 @@ type: product  # または tool
    - [ ] ...
    ```
 
-   この形式は AT-0004 / AT-0014 / AT-0043 / AT-0050 / AT-0053 で採用されている（PR #950）。`pnpm at:check-coverage` は AC 冒頭の partial blockquote を canonical とみなすため、この形のままでも検査を通る。per-bullet 展開はベストエフォートで進める。
+   この形式は AT-0004 / AT-0014 / AT-0043 / AT-0050 / AT-0053 で採用されている（#916 phase C 経由で導入）。`pnpm at:check-coverage` は AC 冒頭の partial blockquote を canonical とみなすため、この形のままでも検査を通る。per-bullet 展開はベストエフォートで進める。
 
 5. **未自動化バレットの理由 blockquote（任意）**: AC 節の末尾に 1 つだけ、未チェック項目をまとめて理由付きで blockquote にできる。何が／なぜ手動なのかを 1 行ずつ書く。
 
