@@ -708,6 +708,36 @@ system S {
     expect(app.y).toBeLessThan(200);
   });
 
+  it("keeps client card height stable regardless of resource count (Issue #914)", () => {
+    // Phase 5 grew the card by `LINE_HEIGHT` per resource; #914 collapsed
+    // the per-line rendering into a single badge so the height adds at
+    // most one line, no matter how many resources are declared.
+    const oneRes = parseAndExtract(`
+system S {
+  client A [web] { resource localStorage "x" }
+  service B {}
+  A -> B
+}
+`);
+    const sixRes = parseAndExtract(`
+system S {
+  client A [web] {
+    resource localStorage "a"
+    resource sessionStorage "b"
+    resource indexedDB "c"
+    resource opfs "d"
+    resource file "e"
+    resource keychain "f"
+  }
+  service B {}
+  A -> B
+}
+`);
+    const a1 = layout(oneRes).nodes.get("A")!;
+    const a6 = layout(sixRes).nodes.get("A")!;
+    expect(a6.height).toBe(a1.height);
+  });
+
   it("applies forced layering independently per system in the multi-system root view", () => {
     // System A has all four tiers (user / client / internal / external).
     // System B has only internal + external. Each system compacts its own

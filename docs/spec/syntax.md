@@ -214,6 +214,8 @@ client WebApp [web] {
 }
 ```
 
+**Rendering**: the SVG card shows a single `📦 ×N` count badge instead of one row per resource (so card height stays bounded as the list grows). The full list — kind and name in declaration order — is surfaced in the `NodeDetailPanel` "Storage resources" section. See [AT-0069](../acceptance/0069-client-resource-badge-and-detail-panel.md).
+
 ---
 
 ## Writing logical diagrams

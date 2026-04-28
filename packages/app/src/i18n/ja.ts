@@ -74,6 +74,7 @@ export const ja: Partial<Translations> = {
   "nodeDetail.openDeployView": "🚀 Deploy 図で確認 →",
   "nodeDetail.jumpToEditor": "↗ エディタへジャンプ",
   "nodeDetail.annotationDiff.title": "⇄ アノテーション差分",
+  "nodeDetail.resources.title": "📦 ストレージリソース",
 
   // Empty-state placeholders (rendered inside SVG by core renderers)
   "emptyState.deploy.title": "deploy ブロックが定義されていません",

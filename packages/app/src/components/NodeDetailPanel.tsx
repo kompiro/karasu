@@ -125,6 +125,20 @@ export function NodeDetailPanel({
         </div>
       )}
 
+      {metadata.resources && metadata.resources.length > 0 && (
+        <div className="node-detail-section">
+          <div className="node-detail-section-title">{t("nodeDetail.resources.title")}</div>
+          <ul className="node-detail-resource-list">
+            {metadata.resources.map((r) => (
+              <li key={`${r.storageKind}-${r.name}`} className="node-detail-resource-item">
+                <span className="node-detail-resource-kind">{r.storageKind}</span>
+                <span className="node-detail-resource-name">{r.name}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
       {(metadata.runtime || metadata.realizes?.length) && (
         <div className="node-detail-section">
           {metadata.runtime && (

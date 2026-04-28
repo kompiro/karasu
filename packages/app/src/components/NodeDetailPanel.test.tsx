@@ -293,4 +293,60 @@ describe("NodeDetailPanel — pictogram icon", () => {
       expect(container.querySelector(".node-detail-annotation-diff")).toBeNull();
     });
   });
+
+  describe("storage resources section (Issue #914)", () => {
+    it("lists every client.resource entry in declaration order", () => {
+      const { container } = render(
+        <NodeDetailPanel
+          {...baseProps({
+            kind: "client",
+            resources: [
+              {
+                storageKind: "localStorage",
+                name: "preferences",
+                loc: {
+                  start: { line: 1, column: 1, offset: 0 },
+                  end: { line: 1, column: 1, offset: 0 },
+                },
+              },
+              {
+                storageKind: "indexedDB",
+                name: "outbox",
+                loc: {
+                  start: { line: 2, column: 1, offset: 0 },
+                  end: { line: 2, column: 1, offset: 0 },
+                },
+              },
+              {
+                storageKind: "keychain",
+                name: "session-key",
+                loc: {
+                  start: { line: 3, column: 1, offset: 0 },
+                  end: { line: 3, column: 1, offset: 0 },
+                },
+              },
+            ],
+          })}
+        />,
+      );
+      const items = container.querySelectorAll(".node-detail-resource-item");
+      expect(items).toHaveLength(3);
+      expect(items[0].textContent).toContain("localStorage");
+      expect(items[0].textContent).toContain("preferences");
+      expect(items[1].textContent).toContain("indexedDB");
+      expect(items[2].textContent).toContain("keychain");
+    });
+
+    it("omits the section when the client has no resources", () => {
+      const { container } = render(
+        <NodeDetailPanel {...baseProps({ kind: "client", resources: [] })} />,
+      );
+      expect(container.querySelector(".node-detail-resource-list")).toBeNull();
+    });
+
+    it("omits the section for non-client kinds even if resources is undefined", () => {
+      const { container } = render(<NodeDetailPanel {...baseProps()} />);
+      expect(container.querySelector(".node-detail-resource-list")).toBeNull();
+    });
+  });
 });

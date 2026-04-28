@@ -2408,6 +2408,31 @@ body,
   text-decoration-thickness: 1px;
 }
 
+/* Storage resources list inside NodeDetailPanel — show client.resource
+   entries that the SVG card collapses into a `📦 ×N` badge (Issue #914). */
+.node-detail-resource-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  font-family: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+  font-size: 12px;
+}
+
+.node-detail-resource-item {
+  display: flex;
+  gap: 8px;
+  padding: 2px 0;
+}
+
+.node-detail-resource-kind {
+  color: var(--text-muted, #94a3b8);
+  min-width: 96px;
+}
+
+.node-detail-resource-name {
+  color: var(--text-primary, #e2e8f0);
+}
+
 .node-detail-annotation-diff-marker {
   display: inline-block;
   width: 12px;

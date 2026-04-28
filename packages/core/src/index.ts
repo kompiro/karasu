@@ -26,7 +26,10 @@ export type {
   MemberNode,
   OrgNode,
   HierarchyNode,
+  ClientResource,
+  ClientResourceKind,
 } from "./types/ast.js";
+import type { ClientResource as ClientResourceImpl } from "./types/ast.js";
 
 export type {
   StyleSheet,
@@ -196,6 +199,8 @@ export interface NodeMetadata {
   tags: string[];
   annotations: string[];
   hasChildren: boolean;
+  /** Client-only: operation-tied storage resources, in declaration order. */
+  resources?: ClientResourceImpl[];
   /** True when this service/domain node has a corresponding deploy container */
   hasDeployContainer?: boolean;
   /**
@@ -584,6 +589,10 @@ function buildNodeMetadata(
       tags: [...node.tags],
       annotations: [...node.annotations],
       hasChildren: node.children.length > 0,
+      resources:
+        node.kind === "client" && node.properties.resources.length > 0
+          ? [...node.properties.resources]
+          : undefined,
       hasDeployContainer: isServiceOrDomain ? (serviceIdsWithDeploy?.has(id) ?? false) : undefined,
       viewPath: nodePathIndex?.get(id),
     });
