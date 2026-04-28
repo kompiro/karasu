@@ -127,13 +127,25 @@ deploy Production {
 
 ## 現時点の方針（暫定）
 
-**案 D（Phase 1: 再帰 + ambiguity diagnostic）から始める**。
+**案 D を採り、二段階で進める**。両 Phase は「path をどこで解決するか」の違いとして整理できる:
+
+| Phase | 別名 | 何をするか |
+|---|---|---|
+| Phase 1 | **暗黙的な path import** | bare id (`import { Order }`) を resolver が **descendant を辿って自動的に path を解決**する |
+| Phase 2 | **明示的な path import** | ユーザが書き手側で `import { A.B.C }` のように **path を明示**する |
+
+両者は競合せず補完関係にある:
+
+- 普段は **暗黙** (Phase 1) が摩擦ゼロで動く
+- 同名衝突など、自動解決が決められないケースだけ **明示** (Phase 2) で曖昧性を解く
+
+理由:
 
 - Phase 1 で大半のユースケース（`realizes`/`handles` のクロスファイル参照）を解消できる
-- 曖昧性の出る頻度を観測してから path syntax (Phase 2) を入れる判断ができる
+- 曖昧性の出る頻度を観測してから Phase 2 (明示構文) を入れる判断ができる
 - どちらの Phase も独立した小さな変更で `/start-dev` フローに乗せやすい
 
-### Phase 1 の実装スケッチ
+### Phase 1: 暗黙的な path import — 実装スケッチ
 
 `mergeNamedImport` の named-import 解決ループを、現在の「直接子のみ」から「descendants 全体」に拡張する:
 
@@ -171,9 +183,18 @@ if (matches.length === 0) {
 params: `{ id: string; path: string; matches: string[] }` （`matches` は jq-path 形式の文字列、例: `"ECPlatform.ECommerce.Order"`）。
 ユーザに「このどれかを path syntax で指定してください」と Phase 2 への誘導も可能。
 
-### Phase 2 (将来 / Issue 別出し)
+### Phase 2: 明示的な path import — 将来 / Issue 別出し
 
-`Identifier (Dot Identifier)*` を import block の id list で受理し、AST の `ImportDeclaration.ids` を `string[][]`（各 path のセグメント配列）に拡張。Phase 1 で導入した `import-id-ambiguous` の解消手段として位置づける。
+`Identifier (Dot Identifier)*` を import block の id list で受理し、AST の `ImportDeclaration.ids` を `string[][]`（各 path のセグメント配列）に拡張する。
+Phase 1 で導入した `import-id-ambiguous` 診断の **解消手段** として位置づけ、ユーザが「どの path から取るか」を明示できるようにする。
+
+```krs
+// Phase 1 では曖昧で import-id-ambiguous が出る
+import { Order } from "./services.krs"
+
+// Phase 2 では path を明示して曖昧性を解く
+import { ECPlatform.ECommerce.Order } from "./services.krs"
+```
 
 ## エッジケースとテスト方針
 
@@ -194,7 +215,7 @@ params: `{ id: string; path: string; matches: string[] }` （`matches` は jq-pa
 
 ## 未解決の問い
 
-1. **Phase 2 (path syntax) を最初から入れるか、別 Issue に分けるか** — 暫定では分割。ただ Phase 1 で ambiguity が出やすそうな examples が確認できれば、まとめて入れる選択肢もある。
-2. **`import-id-ambiguous` のメッセージ形式** — match した path のリストをどう提示するか（Phase 2 の path syntax を前提にした書式が良い）。
+1. **Phase 2（明示的な path import）を最初から入れるか、別 Issue に分けるか** — 暫定では分割。ただ Phase 1 (暗黙) で ambiguity が出やすそうな examples が確認できれば、まとめて入れる選択肢もある。
+2. **`import-id-ambiguous` のメッセージ形式** — match した path のリストをどう提示するか。Phase 2 の明示構文を前提にした書式 (`A.B.C`) で書いておけば、Phase 2 着手時にメッセージ更新が要らない。
 3. **wildcard import (`import "./file.krs"`) との関係** — wildcard は今もファイル全体を取り込むので、再帰拡張の影響を受けない。確認のみ。
 4. **検索順序の安定性** — 複数 system を持つファイルで、検索順がファイル定義順依存になることをテストで明示するかどうか。
