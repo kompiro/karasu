@@ -10,11 +10,15 @@ import type { Mode } from "../fixtures/opfs.js";
  * panel wiring.
  *
  * Out of scope:
- *  - AC-2 cross-navigation visual highlight (AT-0029 covers the deterministic
- *    parts; the highlight ring itself is AI visual review).
+ *  - AC-2 highlight ring opacity / colour (visual judgement; AI / human review).
+ *    The deterministic parts — tab switch on container click, `karasu-highlighted`
+ *    class on the target service node, and clear-on-other-click — are covered
+ *    here.
  *  - AC-4 ProjectModeApp regressions that AT-0029 / AT-0044 already cover —
  *    we only assert the parts unique to the unification (tab parity in both
  *    modes).
+ *  - AC-5 clipboard-side-effects (Copy → Copied! → 2-second revert): the
+ *    headless Chromium clipboard permission is environment-dependent.
  */
 
 const KRS_WITH_ALL_VIEWS = `system T {
@@ -45,6 +49,18 @@ const KRS_NO_DEPLOY = `system T {
 organization Acme {
   team Engineering {
     member alice { label "Alice" }
+  }
+}
+`;
+
+const KRS_NO_ORG = `system T {
+  service Web { label "WebService" }
+}
+
+deploy "Production" {
+  oci web {
+    runtime "Node.js"
+    realizes Web
   }
 }
 `;
@@ -192,6 +208,61 @@ for (const mode of MODES) {
       // because the headless Chromium clipboard permission is environment-
       // dependent).
       await expect(content.locator(".reference-copy-btn")).toBeVisible();
+    });
+
+    test("Clicking a deploy container switches to System and highlights the realized service (AC-2.1, AC-2.2, AC-2.3)", async ({
+      page,
+      opfs,
+    }) => {
+      await bootApp(page, opfs, mode, KRS_WITH_ALL_VIEWS);
+      // Wait for the seeded content to take effect before driving clicks.
+      await expect(page.locator(".preview-column svg").first()).toContainText("WebService");
+
+      // Switch to Deploy and click the container that realizes service `Web`.
+      // Click at the container's top-left so the central unit-label `<text>`
+      // does not intercept the pointer — the click handler is on the
+      // container `<g>` and walks up via `target.closest('[data-container-id]')`.
+      await page.getByRole("tab", { name: /Deploy$/ }).click();
+      const webContainer = page.locator('svg [data-container-id="Web"]').first();
+      await expect(webContainer).toBeVisible();
+      await webContainer.click({ position: { x: 5, y: 5 } });
+
+      // Tab flips back to System with the service highlighted.
+      await expect(page.getByRole("tab", { name: /System$/ })).toHaveAttribute(
+        "aria-selected",
+        "true",
+      );
+      const webNode = page.locator('svg [data-node-id="Web"]').first();
+      await expect(webNode).toHaveClass(/karasu-highlighted/);
+
+      // Clicking the preview background away from any node clears the
+      // highlight.
+      await page.locator(".preview-container").click({ position: { x: 1, y: 1 } });
+      await expect(page.locator("svg .karasu-highlighted")).toHaveCount(0);
+    });
+
+    test("Removing the organization block keeps the Org tab clickable with empty state (AC-3.3)", async ({
+      page,
+      opfs,
+    }) => {
+      await bootApp(page, opfs, mode, KRS_WITH_ALL_VIEWS);
+      // Wait for the seeded content to render before any tab navigation —
+      // otherwise the old sample diagram can leak into subsequent
+      // assertions on slow boots.
+      await expect(page.locator(".preview-column svg").first()).toContainText("WebService");
+
+      // Sanity: org content from the seed renders on the Org tab.
+      await page.getByRole("tab", { name: /Org$/ }).click();
+      await expect(page.locator(".preview-column svg").first()).toContainText("Engineering");
+
+      // Strip the organization block — Org tab must remain clickable and
+      // surface an empty-state placeholder rather than throwing.
+      await replaceEditorContent(page, KRS_NO_ORG);
+
+      const orgTab = page.getByRole("tab", { name: /Org$/ });
+      await orgTab.click();
+      await expect(orgTab).toHaveAttribute("aria-selected", "true");
+      await expect(page.locator(".preview-column svg").first()).toContainText("No teams defined");
     });
   });
 }
