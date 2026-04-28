@@ -25,16 +25,24 @@ describe("AT-0039 (WebView) — clicking a leaf node opens the detail panel", fu
   it("opens the preview, focuses the WebView, and clicks Customer to surface the detail panel", async () => {
     const driver = VSBrowser.instance.driver;
     const editorView = new EditorView();
+    const workbench = new Workbench();
 
-    // Wait for the .krs file to surface as a tab (VSBrowser.openResources in
-    // the before-hook starts the open async; first boot is slow).
+    // Open the fixture file via Quick Open. Passing the file path through
+    // ExTester's runOptions.resources is unreliable in xvfb (the spawned
+    // `code -r` does not always reach the running window), so we open it
+    // explicitly here. The karasu extension activates onLanguage:krs, so
+    // command registration also depends on this file being opened first.
+    const prompt = await workbench.openCommandPrompt();
+    await prompt.setText("at-0039.krs");
+    await prompt.confirm();
+
     await driver.wait(
       async () => {
         const titles = await editorView.getOpenEditorTitles();
         return titles.some((t) => t.includes("at-0039.krs"));
       },
       ELEMENT_TIMEOUT_MS,
-      "fixture .krs file did not appear as an open editor",
+      "fixture .krs file did not appear as an open editor after Quick Open",
     );
 
     const titles = await editorView.getOpenEditorTitles();
