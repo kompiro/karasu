@@ -279,8 +279,20 @@ export interface DeployBlock {
 
 // ─── ファイル ──────────────────────────────────────
 
+/**
+ * One named import entry, represented as an array of path segments.
+ *
+ * - Bare id `Foo` parses to `["Foo"]` (resolved by the existing
+ *   single-id lookup against `system` ids, direct system children,
+ *   top-level services, and deploy nodes).
+ * - Path id `A.B.C` parses to `["A", "B", "C"]` and is walked by the
+ *   resolver one segment at a time through each parent's `children`
+ *   array (id-only matching, no kind whitelist). See ADR / Issue #927.
+ */
+export type ImportIdPath = string[];
+
 export interface ImportDeclaration {
-  ids: string[];
+  ids: ImportIdPath[];
   path: string;
   loc: SourceRange;
 }
@@ -395,6 +407,16 @@ export interface DiagnosticParamsByCode {
   "duplicate-node-in-deploy": { nodeId: string; deployId: string };
   "duplicate-team-in-organization": { teamId: string; orgId: string };
   "import-id-not-found": { id: string; path: string };
+  "import-path-not-found": {
+    /** Path segments as written in the import block. */
+    path: string[];
+    /** 0-based index of the segment that failed to resolve. */
+    failedAt: number;
+    /** The imported file path (`from "..."`). */
+    importPath: string;
+    /** Id of the last node that did resolve successfully (omitted when segment 0 fails). */
+    lastResolvedId?: string;
+  };
   "circular-style-import": { filePath: string };
   "style-file-not-found": { filePath: string };
 

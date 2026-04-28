@@ -391,80 +391,11 @@ export class ImportResolver {
     importedFile: KrsFile,
     nodeImport: ImportDeclaration,
   ): void {
-    for (const id of nodeImport.ids) {
-      let found = false;
-
-      for (const system of importedFile.systems) {
-        const matchingChildren = system.children.filter((child) => child.id === id);
-        if (matchingChildren.length > 0) {
-          for (const matchedChild of matchingChildren) {
-            this.mergeNodeIntoSystems(mergedFile.systems, system, matchedChild);
-          }
-          found = true;
-        }
-
-        if (system.id === id) {
-          mergedFile.systems.push(system);
-          found = true;
-        }
-      }
-
-      for (const service of importedFile.services) {
-        if (service.id === id) {
-          // トップレベル service を system の child として組み込む。
-          // 優先順位:
-          //   1. スタブ（body なし宣言）があれば: タグ・アノテーションを保持して定義で補完する
-          //   2. スタブはないが system の edges で参照されていれば: child として追加する
-          //   3. どちらでもなければ: トップレベル service としてそのままマージする
-          let mergedIntoSystem = false;
-          for (const system of mergedFile.systems) {
-            const stubIndex = system.children.findIndex((c) => c.id === id && c.kind === "service");
-            if (stubIndex >= 0) {
-              // 1. スタブあり: タグ・アノテーションを保持して定義で補完する
-              const stub = system.children[stubIndex] as ServiceNode;
-              system.children[stubIndex] = {
-                ...service,
-                tags: stub.tags.length > 0 ? stub.tags : service.tags,
-                annotations: stub.annotations.length > 0 ? stub.annotations : service.annotations,
-              };
-              mergedIntoSystem = true;
-            } else if (system.edges.some((e) => e.from === id || e.to === id)) {
-              // 2. スタブなし・edges で参照あり: child として追加する
-              system.children.push(service);
-              mergedIntoSystem = true;
-            }
-          }
-          if (!mergedIntoSystem) {
-            // 3. どの system にも属さない場合はトップレベル service としてそのままマージする
-            mergedFile.services.push(service);
-          }
-          found = true;
-        }
-      }
-
-      for (const deploy of importedFile.deploys) {
-        const matchingNodes = deploy.nodes.filter((n) => n.id === id);
-        if (matchingNodes.length > 0) {
-          found = true;
-          const existingDeploy = mergedFile.deploys.find((d) => d.id === deploy.id);
-          if (existingDeploy) {
-            existingDeploy.nodes.push(...matchingNodes);
-          } else {
-            mergedFile.deploys.push({
-              ...deploy,
-              nodes: [...matchingNodes],
-            });
-          }
-        }
-      }
-
-      if (!found) {
-        this.diagnostics.push({
-          severity: "error",
-          code: "import-id-not-found",
-          params: { id, path: nodeImport.path },
-          loc: nodeImport.loc,
-        });
+    for (const idPath of nodeImport.ids) {
+      if (idPath.length === 1) {
+        this.resolveBareIdImport(mergedFile, importedFile, idPath[0], nodeImport);
+      } else {
+        this.resolveMultiSegmentImport(mergedFile, importedFile, idPath, nodeImport);
       }
     }
 
@@ -473,6 +404,199 @@ export class ImportResolver {
       if (!mergedFile.nodeFileIndex.has(nodeId)) {
         mergedFile.nodeFileIndex.set(nodeId, filePath);
       }
+    }
+  }
+
+  /**
+   * Resolve a bare id (`import { Foo }`) — preserves the historical
+   * single-id lookup against system ids, direct system children,
+   * top-level services, and deploy nodes. Behavior is unchanged from
+   * before path syntax existed.
+   */
+  private resolveBareIdImport(
+    mergedFile: KrsFile,
+    importedFile: KrsFile,
+    id: string,
+    nodeImport: ImportDeclaration,
+  ): void {
+    let found = false;
+
+    for (const system of importedFile.systems) {
+      const matchingChildren = system.children.filter((child) => child.id === id);
+      if (matchingChildren.length > 0) {
+        for (const matchedChild of matchingChildren) {
+          this.mergeNodeIntoSystems(mergedFile.systems, system, matchedChild);
+        }
+        found = true;
+      }
+
+      if (system.id === id) {
+        mergedFile.systems.push(system);
+        found = true;
+      }
+    }
+
+    for (const service of importedFile.services) {
+      if (service.id === id) {
+        // トップレベル service を system の child として組み込む。
+        // 優先順位:
+        //   1. スタブ（body なし宣言）があれば: タグ・アノテーションを保持して定義で補完する
+        //   2. スタブはないが system の edges で参照されていれば: child として追加する
+        //   3. どちらでもなければ: トップレベル service としてそのままマージする
+        let mergedIntoSystem = false;
+        for (const system of mergedFile.systems) {
+          const stubIndex = system.children.findIndex((c) => c.id === id && c.kind === "service");
+          if (stubIndex >= 0) {
+            // 1. スタブあり: タグ・アノテーションを保持して定義で補完する
+            const stub = system.children[stubIndex] as ServiceNode;
+            system.children[stubIndex] = {
+              ...service,
+              tags: stub.tags.length > 0 ? stub.tags : service.tags,
+              annotations: stub.annotations.length > 0 ? stub.annotations : service.annotations,
+            };
+            mergedIntoSystem = true;
+          } else if (system.edges.some((e) => e.from === id || e.to === id)) {
+            // 2. スタブなし・edges で参照あり: child として追加する
+            system.children.push(service);
+            mergedIntoSystem = true;
+          }
+        }
+        if (!mergedIntoSystem) {
+          // 3. どの system にも属さない場合はトップレベル service としてそのままマージする
+          mergedFile.services.push(service);
+        }
+        found = true;
+      }
+    }
+
+    for (const deploy of importedFile.deploys) {
+      const matchingNodes = deploy.nodes.filter((n) => n.id === id);
+      if (matchingNodes.length > 0) {
+        found = true;
+        const existingDeploy = mergedFile.deploys.find((d) => d.id === deploy.id);
+        if (existingDeploy) {
+          existingDeploy.nodes.push(...matchingNodes);
+        } else {
+          mergedFile.deploys.push({
+            ...deploy,
+            nodes: [...matchingNodes],
+          });
+        }
+      }
+    }
+
+    if (!found) {
+      this.diagnostics.push({
+        severity: "error",
+        code: "import-id-not-found",
+        params: { id, path: nodeImport.path },
+        loc: nodeImport.loc,
+      });
+    }
+  }
+
+  /**
+   * Resolve a multi-segment path (`import { Sys.Svc.Dom }`) introduced by
+   * Issue #927.
+   *
+   * Walks the path id-only (no kind whitelist) starting from a top-level
+   * `system` in the imported file, descending into `children` for each
+   * subsequent segment. Emits `import-path-not-found` with `failedAt` /
+   * `lastResolvedId` when any segment cannot be matched.
+   *
+   * On success the leaf is merged into the appropriate system in
+   * `mergedFile`, materializing minimal stubs of intermediate ancestors
+   * (id + label + properties only) when they don't already exist. The
+   * leaf itself is copied with its full subtree, mirroring how a
+   * targeted bare-id import behaves today.
+   */
+  private resolveMultiSegmentImport(
+    mergedFile: KrsFile,
+    importedFile: KrsFile,
+    path: string[],
+    nodeImport: ImportDeclaration,
+  ): void {
+    // segment 0 must resolve to a top-level `system` in the imported file.
+    // Top-level services / domains / deploy nodes are intentionally not
+    // valid path roots — they have no meaningful nested ancestry.
+    const rootSystem = importedFile.systems.find((s) => s.id === path[0]);
+    if (!rootSystem) {
+      this.diagnostics.push({
+        severity: "error",
+        code: "import-path-not-found",
+        params: { path, failedAt: 0, importPath: nodeImport.path },
+        loc: nodeImport.loc,
+      });
+      return;
+    }
+
+    // Walk path[1..] through `children`, recording ancestors so the merge
+    // step can reproduce the chain in `mergedFile`.
+    const ancestorsBetween: KrsNode[] = [];
+    let cursor: KrsNode = rootSystem;
+    for (let i = 1; i < path.length; i++) {
+      const segment = path[i];
+      const child: KrsNode | undefined = cursor.children.find((c) => c.id === segment);
+      if (!child) {
+        this.diagnostics.push({
+          severity: "error",
+          code: "import-path-not-found",
+          params: {
+            path,
+            failedAt: i,
+            importPath: nodeImport.path,
+            lastResolvedId: cursor.id,
+          },
+          loc: nodeImport.loc,
+        });
+        return;
+      }
+      // The previous cursor becomes an ancestor between root and leaf.
+      // (When i === 1 this is the rootSystem itself, but we handle the
+      // root specially below to keep the merge target explicit.)
+      if (i > 1) {
+        ancestorsBetween.push(cursor);
+      }
+      cursor = child;
+    }
+
+    // Materialize the path in mergedFile.systems, preserving any nodes
+    // already imported by other statements.
+    let targetSystem = mergedFile.systems.find((s) => s.id === rootSystem.id);
+    if (!targetSystem) {
+      // Shallow stub: copy id / label / properties / loc but start with no
+      // children or edges so other imports targeting the same system can
+      // populate it.
+      targetSystem = {
+        ...rootSystem,
+        children: [],
+        edges: [],
+      };
+      mergedFile.systems.push(targetSystem);
+    }
+
+    let parentChildren: KrsNode[] = targetSystem.children;
+    for (const ancestor of ancestorsBetween) {
+      let existing = parentChildren.find((c) => c.id === ancestor.id);
+      if (!existing) {
+        // Minimal ancestor stub — id, label, kind, and metadata, but no
+        // children or edges so we don't accidentally over-import sibling
+        // nodes the user did not request.
+        existing = {
+          ...ancestor,
+          children: [],
+          edges: [],
+        } as KrsNode;
+        parentChildren.push(existing);
+      }
+      parentChildren = existing.children;
+    }
+
+    // Push the leaf as the final child if not already present (idempotent
+    // across multiple imports).
+    const alreadyPresent = parentChildren.some((c) => c.id === cursor.id && c.kind === cursor.kind);
+    if (!alreadyPresent) {
+      parentChildren.push(cursor);
     }
   }
 

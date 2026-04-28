@@ -118,6 +118,15 @@ export function formatDiagnostic(d: Diagnostic): string {
       return `Duplicate team ID "${d.params.teamId}" in organization "${d.params.orgId}"`;
     case "import-id-not-found":
       return `Imported identifier "${d.params.id}" not found in ${d.params.path}`;
+    case "import-path-not-found": {
+      const { path, failedAt, importPath, lastResolvedId } = d.params;
+      const pathStr = path.join(".");
+      const segment = path[failedAt] ?? "";
+      if (lastResolvedId !== undefined) {
+        return `Import path "${pathStr}" failed at segment "${segment}" (#${failedAt}): no child with that id under "${lastResolvedId}"`;
+      }
+      return `Import path "${pathStr}" failed at segment "${segment}" (#${failedAt}): no top-level system with that id in ${importPath}`;
+    }
     case "circular-style-import":
       return `Circular style import detected: ${d.params.filePath}`;
     case "style-file-not-found":

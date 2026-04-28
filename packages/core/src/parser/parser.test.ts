@@ -26,8 +26,27 @@ describe("Parser", () => {
   it("parses import declaration", () => {
     const result = Parser.parse('import { ECommerce, Payment } from "ec.krs"');
     expect(result.value.nodeImports).toHaveLength(1);
-    expect(result.value.nodeImports[0].ids).toEqual(["ECommerce", "Payment"]);
+    // After path-import support (#927) ids are stored as `string[][]`.
+    // Bare ids parse to single-segment paths.
+    expect(result.value.nodeImports[0].ids).toEqual([["ECommerce"], ["Payment"]]);
     expect(result.value.nodeImports[0].path).toBe("ec.krs");
+  });
+
+  it("parses path-syntax import declaration (Sys.Svc.Dom)", () => {
+    const result = Parser.parse('import { ECPlatform.ECommerce.Order } from "services.krs"');
+    expect(result.diagnostics).toHaveLength(0);
+    expect(result.value.nodeImports[0].ids).toEqual([["ECPlatform", "ECommerce", "Order"]]);
+  });
+
+  it("mixes bare ids and path imports in one block", () => {
+    const result = Parser.parse('import { Foo, Sys.Bar } from "x.krs"');
+    expect(result.diagnostics).toHaveLength(0);
+    expect(result.value.nodeImports[0].ids).toEqual([["Foo"], ["Sys", "Bar"]]);
+  });
+
+  it("emits expected-identifier when a path ends with a trailing dot", () => {
+    const result = Parser.parse('import { Sys. } from "x.krs"');
+    expect(result.diagnostics.length).toBeGreaterThan(0);
   });
 
   it("parses wildcard import declaration", () => {

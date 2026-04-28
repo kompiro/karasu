@@ -335,6 +335,178 @@ deploy Production {
     });
   });
 
+  describe("path syntax (Issue #927)", () => {
+    it("resolves a 3-segment path Sys.Svc.Dom", async () => {
+      await fs.writeFile(
+        "/project/main.krs",
+        `import { ECPlatform.ECommerce.Order } from "./services.krs"
+deploy Production {
+  oci app {
+    runtime "k"
+    realizes Order
+  }
+}`,
+      );
+      await fs.writeFile(
+        "/project/services.krs",
+        `system ECPlatform {
+  service ECommerce {
+    domain Order {}
+    domain Catalog {}
+  }
+}`,
+      );
+
+      const result = await resolver.resolve("/project/main.krs");
+      expect(result.diagnostics.filter((d) => d.severity === "error")).toHaveLength(0);
+
+      // ECPlatform should exist with ECommerce as ancestor stub of Order
+      const sys = result.krsFile.systems.find((s) => s.id === "ECPlatform");
+      expect(sys).toBeDefined();
+      const svc = sys!.children.find((c) => c.id === "ECommerce");
+      expect(svc).toBeDefined();
+      const dom = svc!.children.find((c) => c.id === "Order");
+      expect(dom).toBeDefined();
+      expect(dom!.kind).toBe("domain");
+
+      // Catalog (sibling not requested) should NOT have been imported.
+      const catalog = svc!.children.find((c) => c.id === "Catalog");
+      expect(catalog).toBeUndefined();
+    });
+
+    it("resolves a 2-segment path Sys.Svc (equivalent to bare-id Svc)", async () => {
+      await fs.writeFile(
+        "/project/main.krs",
+        `import { ECPlatform.ECommerce } from "./services.krs"`,
+      );
+      await fs.writeFile(
+        "/project/services.krs",
+        `system ECPlatform {
+  service ECommerce { domain Order {} }
+}`,
+      );
+
+      const result = await resolver.resolve("/project/main.krs");
+      expect(result.diagnostics.filter((d) => d.severity === "error")).toHaveLength(0);
+
+      const sys = result.krsFile.systems.find((s) => s.id === "ECPlatform");
+      const svc = sys!.children.find((c) => c.id === "ECommerce");
+      expect(svc).toBeDefined();
+      // The leaf is copied with its full subtree, so Order comes along.
+      expect(svc!.children.some((c) => c.id === "Order")).toBe(true);
+    });
+
+    it("disambiguates same-id services across different systems via path", async () => {
+      await fs.writeFile(
+        "/project/main.krs",
+        `import { OrderSystemV2.OrderService } from "./services.krs"`,
+      );
+      await fs.writeFile(
+        "/project/services.krs",
+        `system OrderSystemV1 {
+  service OrderService { domain Legacy {} }
+}
+system OrderSystemV2 {
+  service OrderService { domain Modern {} }
+}`,
+      );
+
+      const result = await resolver.resolve("/project/main.krs");
+      expect(result.diagnostics.filter((d) => d.severity === "error")).toHaveLength(0);
+
+      // Only V2 should be present.
+      const v1 = result.krsFile.systems.find((s) => s.id === "OrderSystemV1");
+      expect(v1).toBeUndefined();
+      const v2 = result.krsFile.systems.find((s) => s.id === "OrderSystemV2");
+      expect(v2).toBeDefined();
+      const svc = v2!.children.find((c) => c.id === "OrderService");
+      expect(svc!.children.some((c) => c.id === "Modern")).toBe(true);
+      expect(svc!.children.some((c) => c.id === "Legacy")).toBe(false);
+    });
+
+    it("emits import-path-not-found when the root system id is missing", async () => {
+      await fs.writeFile("/project/main.krs", `import { Missing.Foo } from "./services.krs"`);
+      await fs.writeFile("/project/services.krs", `system ECPlatform { service ECommerce {} }`);
+
+      const result = await resolver.resolve("/project/main.krs");
+      expect(result.diagnostics).toContainEqual(
+        expect.objectContaining({
+          severity: "error",
+          code: "import-path-not-found",
+          params: expect.objectContaining({ failedAt: 0 }),
+        }),
+      );
+    });
+
+    it("emits import-path-not-found when an intermediate segment is missing", async () => {
+      await fs.writeFile(
+        "/project/main.krs",
+        `import { ECPlatform.NotThere.Order } from "./services.krs"`,
+      );
+      await fs.writeFile(
+        "/project/services.krs",
+        `system ECPlatform {
+  service ECommerce { domain Order {} }
+}`,
+      );
+
+      const result = await resolver.resolve("/project/main.krs");
+      const diag = result.diagnostics.find((d) => d.code === "import-path-not-found");
+      expect(diag).toBeDefined();
+      if (diag?.code !== "import-path-not-found") throw new Error("kind mismatch");
+      expect(diag.params.failedAt).toBe(1);
+      expect(diag.params.lastResolvedId).toBe("ECPlatform");
+    });
+
+    it("does not affect wildcard imports — they continue to take the whole file", async () => {
+      await fs.writeFile(
+        "/project/main.krs",
+        `import "./services.krs"
+deploy Production { oci app { runtime "k" realizes Order } }`,
+      );
+      await fs.writeFile(
+        "/project/services.krs",
+        `system ECPlatform { service ECommerce { domain Order {} } }`,
+      );
+
+      const result = await resolver.resolve("/project/main.krs");
+      expect(result.diagnostics.filter((d) => d.severity === "error")).toHaveLength(0);
+      // Whole system imported.
+      const sys = result.krsFile.systems.find((s) => s.id === "ECPlatform");
+      expect(sys!.children.some((c) => c.id === "ECommerce")).toBe(true);
+    });
+
+    it("merges multiple leaves under one shared ancestor stub when listed in the same import block", async () => {
+      // Two paths in the same import statement share the ancestor walk, so
+      // ECommerce ends up as a single stub holding both Order and Catalog.
+      await fs.writeFile(
+        "/project/main.krs",
+        `import { ECPlatform.ECommerce.Order, ECPlatform.ECommerce.Catalog } from "./services.krs"`,
+      );
+      await fs.writeFile(
+        "/project/services.krs",
+        `system ECPlatform {
+  service ECommerce {
+    domain Order {}
+    domain Catalog {}
+    domain Member {}
+  }
+}`,
+      );
+
+      const result = await resolver.resolve("/project/main.krs");
+      expect(result.diagnostics.filter((d) => d.severity === "error")).toHaveLength(0);
+
+      const sys = result.krsFile.systems.find((s) => s.id === "ECPlatform");
+      const svcs = sys!.children.filter((c) => c.id === "ECommerce");
+      expect(svcs).toHaveLength(1); // single shared stub
+      const childIds = svcs[0].children.map((c) => c.id);
+      expect(childIds).toContain("Order");
+      expect(childIds).toContain("Catalog");
+      expect(childIds).not.toContain("Member"); // not requested
+    });
+  });
+
   describe("chained imports", () => {
     it("resolves A -> B -> C chain", async () => {
       await fs.writeFile(
