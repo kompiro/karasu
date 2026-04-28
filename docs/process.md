@@ -103,6 +103,10 @@ ready → implementing → in-review → (close)
   → docs/qa/YYYY-MM-DD-checklist.md を生成
 ```
 
+### 自動化アノテーションの書式
+
+自動化されたケースを `docs/acceptance/*.md` に反映するときは、`.claude/skills/acceptance-test/SKILL.md` の「自動化アノテーション」節に従って `> ✅ Automated — ... › ...` 形式の blockquote を箇条書き直下に添える。書式は repo 全体で統一されており、過去の "Verified by" メタ欄や "Automated Checks" 節分割は順次本方式に畳まれる（#916）。
+
 - 生成ファイルは git にコミットしない（`.gitignore` 対象）
 - 手動確認項目は生成されたファイルをもとに順番に実施する
 - `/qa` は手動 QA のチェックリストを生成する。機械化可能な AT は Playwright による E2E 層（`packages/e2e/`）が補完する。自動化は手動 QA を置き換えず補完する（詳細は ADR-20260412-05）
