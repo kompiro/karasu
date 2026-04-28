@@ -182,6 +182,10 @@ for (const mode of MODES) {
         "aria-selected",
         "true",
       );
+      // Wait for the deploy SVG to fully render — otherwise the click can land
+      // on a transient element while the realize-target container is still
+      // being mounted.
+      await expect(page.locator("svg").first()).toContainText("web");
 
       // The container <g> wraps a rect + label; the deploy-unit text node sits
       // in a sibling overlay group and intercepts a centered click. Click the
