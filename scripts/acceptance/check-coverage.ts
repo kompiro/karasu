@@ -47,6 +47,8 @@ function describeFinding(f: Finding): string {
       return `${f.file}:${f.line} — section grouping: "${f.heading}"`;
     case "checked-without-blockquote":
       return `${f.file}:${f.line} — [x] without canonical blockquote: ${f.bullet}`;
+    case "unchecked-under-suite-wide":
+      return `${f.file}:${f.line} — [ ] under suite-wide marker (fall back to per-bullet): ${f.bullet}`;
     case "missing-marker-with-spec":
       return `${f.file} — no automation marker, but spec(s) exist: ${f.specPaths.join(", ")}`;
   }

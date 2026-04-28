@@ -93,6 +93,78 @@ describe("analyzeFile", () => {
     expect(r.findings.find((f) => f.kind === "checked-without-blockquote")).toBeDefined();
   });
 
+  it("accepts the suite-wide shorthand covering a run of [x] bullets", () => {
+    const md = [
+      "### AC-1",
+      "",
+      "> ✅ Automated by `packages/cli/src/render.test.ts` (suite-wide)",
+      "",
+      "- [x] first",
+      "- [x] second",
+      "- [x] third",
+    ].join("\n");
+
+    const r = analyzeFile("x.md", md);
+    expect(r.hasCanonicalMarker).toBe(true);
+    expect(r.findings).toEqual([]);
+  });
+
+  it("ends suite-wide scope at the next markdown heading", () => {
+    const md = [
+      "### AC-1",
+      "> ✅ Automated by `packages/cli/src/render.test.ts` (suite-wide)",
+      "- [x] covered by suite",
+      "### AC-2",
+      "- [x] not covered",
+    ].join("\n");
+
+    const r = analyzeFile("x.md", md);
+    const offending = r.findings.find((f) => f.kind === "checked-without-blockquote");
+    expect(offending).toBeDefined();
+    expect(offending && "bullet" in offending && offending.bullet).toContain("not covered");
+  });
+
+  it("flags `[ ]` mixed under a suite-wide marker", () => {
+    const md = [
+      "### AC-1",
+      "> ✅ Automated by `packages/cli/src/render.test.ts` (suite-wide)",
+      "- [x] covered",
+      "- [ ] manual mixed in",
+    ].join("\n");
+
+    const r = analyzeFile("x.md", md);
+    const offending = r.findings.find((f) => f.kind === "unchecked-under-suite-wide");
+    expect(offending).toBeDefined();
+    expect(offending && "bullet" in offending && offending.bullet).toContain("manual mixed in");
+  });
+
+  it("does not treat `Automated by` without `(suite-wide)` as a suite-wide marker", () => {
+    const md = [
+      "### AC-1",
+      "> ✅ Automated by `packages/cli/src/render.test.ts`",
+      "- [x] needs its own per-bullet marker",
+    ].join("\n");
+
+    const r = analyzeFile("x.md", md);
+    // The header line still matches CANONICAL_BLOCKQUOTE (Automated\b),
+    // but suite-wide scope must NOT be activated, so the bullet below
+    // must rely on a *following* canonical blockquote — which there is
+    // none of, so the `[x]` is flagged.
+    const offending = r.findings.find((f) => f.kind === "checked-without-blockquote");
+    expect(offending).toBeDefined();
+  });
+
+  it("accepts slash-separated multi-test names in a per-bullet blockquote", () => {
+    const md = [
+      "- [x] reads, lists, and exists",
+      "> ✅ Automated — `packages/cli/src/render.test.ts` › `readFile` / `readDir` / `exists true` / `exists false`",
+    ].join("\n");
+
+    const r = analyzeFile("x.md", md);
+    expect(r.hasCanonicalMarker).toBe(true);
+    expect(r.findings).toEqual([]);
+  });
+
   it("extracts AT id from filename prefix", () => {
     const r = analyzeFile("docs/acceptance/0042-foo.md", "");
     expect(r.atId).toBe("0042");

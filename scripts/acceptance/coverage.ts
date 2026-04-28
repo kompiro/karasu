@@ -22,6 +22,7 @@ export type Finding =
   | { kind: "verified-by-metadata"; file: string; line: number; snippet: string }
   | { kind: "section-grouping"; file: string; line: number; heading: string }
   | { kind: "checked-without-blockquote"; file: string; line: number; bullet: string }
+  | { kind: "unchecked-under-suite-wide"; file: string; line: number; bullet: string }
   | { kind: "missing-marker-with-spec"; file: string; specPaths: string[] };
 
 export interface FileReport {
@@ -41,6 +42,18 @@ const SECTION_GROUPING =
   /^##\s+(Automated Checks|Automated Tests|Manual Verification|Manual Checks)\s*$/;
 const CHECKBOX = /^\s*-\s+\[(x| )\]\s+(.*)$/;
 const CANONICAL_BLOCKQUOTE = /^\s*>\s*(✅|🟡)\s+(Automated|Partially automated)\b/;
+// Suite-wide shorthand: a single header blockquote covers every `[x]`
+// bullet that follows until the next markdown heading. See SKILL.md
+// "ショートハンド A".
+//
+// Note: this regex also matches `CANONICAL_BLOCKQUOTE` (the `\b` after
+// "Automated" accepts the space before "by"), so the suite-wide line
+// trivially counts as a canonical marker too. The two checks are kept
+// separate because the per-checkbox pass needs to distinguish a
+// suite-wide *header* (sets `suiteWideActive`) from a per-bullet marker
+// (does not).
+const SUITE_WIDE_BLOCKQUOTE = /^\s*>\s*✅\s+Automated by\s+`[^`]+`\s*\(suite-wide\)/;
+const HEADING = /^#{1,6}\s/;
 
 const AT_FILENAME = /^(\d{4})-/;
 
@@ -60,7 +73,9 @@ export function analyzeFile(file: string, content: string): FileReport {
   // Fast pass: section headings and metadata lines.
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];
-    if (CANONICAL_BLOCKQUOTE.test(line)) hasCanonicalMarker = true;
+    if (CANONICAL_BLOCKQUOTE.test(line) || SUITE_WIDE_BLOCKQUOTE.test(line)) {
+      hasCanonicalMarker = true;
+    }
     if (VERIFIED_BY.test(line)) {
       findings.push({
         kind: "verified-by-metadata",
@@ -81,9 +96,34 @@ export function analyzeFile(file: string, content: string): FileReport {
   }
 
   // Per-checkbox pass: `[x]` bullets without a following canonical blockquote.
+  // A `[x]` is also accepted if a suite-wide marker precedes it within the
+  // same heading section.
+  let suiteWideActive = false;
   for (let i = 0; i < lines.length; i++) {
-    const m = lines[i].match(CHECKBOX);
-    if (!m || m[1] !== "x") continue;
+    const line = lines[i];
+    if (HEADING.test(line)) {
+      suiteWideActive = false;
+      continue;
+    }
+    if (SUITE_WIDE_BLOCKQUOTE.test(line)) {
+      suiteWideActive = true;
+      continue;
+    }
+    const m = line.match(CHECKBOX);
+    if (!m) continue;
+    if (suiteWideActive && m[1] === " ") {
+      // Convention forbids `[ ]` under a suite-wide marker — the whole
+      // section must fall back to per-bullet form so coverage is unambiguous.
+      findings.push({
+        kind: "unchecked-under-suite-wide",
+        file,
+        line: i + 1,
+        bullet: m[2].trim(),
+      });
+      continue;
+    }
+    if (m[1] !== "x") continue;
+    if (suiteWideActive) continue;
     if (!hasFollowingBlockquote(lines, i)) {
       findings.push({
         kind: "checked-without-blockquote",
