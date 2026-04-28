@@ -5,7 +5,19 @@ import { test, expect } from "../fixtures/opfs";
  * AT-0004: Project management & OPFS.
  *
  * Covers the deterministic bullets of `docs/acceptance/0004-project-management-opfs.md`
- * using the `opfs` fixture (ADR-20260427-05). Out of scope here:
+ * using the `opfs` fixture (ADR-20260427-05).
+ *
+ * Coverage map (test name → AC bullets):
+ *  - "dropdown lists seeded projects ..."             → AC-1 dropdown listing
+ *  - "+ New flow creates ..."                          → AC-1 create flow + OPFS persistence
+ *  - "✕ Delete with confirm ..."                       → AC-1 delete flow + OPFS persistence
+ *  - "FileTree lists files ... toggles ..."            → AC-2 listing + expand/collapse
+ *  - "FileTree click switches the editor ..."          → AC-2 select + highlight, AC-3 switch loads index.krs
+ *  - "first-run seeding ..."                           → AC-3 empty-OPFS bootstrap
+ *  - "lastProjectId in localStorage restores ..."      → AC-3 last-project restore + AC-1 dropdown switch effect
+ *  - "editor edits autosave to OPFS"                   → AC-3 autosave round-trip
+ *
+ * Out of scope here:
  *  - Drilldown / breadcrumb behavior (covered by AT-0029, AT-0030)
  *  - Warning panel (covered by AT-0045, AT-0057)
  *  - Live preview re-render (visual; stays in human / AI review)
@@ -196,11 +208,12 @@ test.describe("AT-0004 Project management & OPFS", () => {
     const dropdown = page.locator(".project-selector select.project-selector-dropdown");
     await expect(dropdown).toBeVisible();
 
-    // First-run seeds Getting Started + the seven ec-platform examples.
-    // We don't pin the exact count (it can change as examples are added),
-    // but `01-system` must always be present.
-    await expect(dropdown.locator('option:has-text("01-system")')).toHaveCount(1);
-    await expect(dropdown.locator("option")).not.toHaveCount(0);
+    // First-run seeds Getting Started + the ec-platform examples. We assert
+    // a lower bound rather than a specific name (the example list can be
+    // reorganized) — the AT bullet only requires that empty OPFS bootstraps
+    // into a populated dropdown.
+    const optionCount = await dropdown.locator("option").count();
+    expect(optionCount).toBeGreaterThanOrEqual(2);
   });
 
   test("lastProjectId in localStorage restores the previously selected project", async ({
