@@ -1,7 +1,7 @@
 # Importing system-nested service / domain
 
 - **日付**: 2026-04-28
-- **ステータス**: 検討中
+- **ステータス**: 決定済み（実装フェーズへ）
 - **関連**: Issue #927, PR #913 (#907 — `unresolved-realizes`), PR #880 (#854 — `unresolved-handles`), `packages/core/src/fs/import-resolver.ts`, `docs/spec/syntax.md`
 
 ## 背景・課題
@@ -249,9 +249,53 @@ bare id 形式 (`import { ECommerce }`) は引き続き受理する。AST 上は
 - `docs/spec/syntax.md` の import セクション: 「named import の id は単純な識別子か `A.B.C` 形式の path を許容する」「path の各セグメントは system / service / domain / usecase のいずれかの id を順に辿る」と明記する。同名 id 共存時の例（システム移行）も併記。
 - AT-0068 (PR #913 で追加) の「import 越しの参照は警告しない」前提: 本 Issue 着手後は明示 path で深いネストにも成立する。AT-0068 を更新して `import { Sys.Svc.Domain }` の例を追加する想定。
 
-## 未解決の問い
+## 解消した論点
 
-1. **`import-path-not-found` 診断のメッセージ書式** — どのセグメントで外れたかを示す UX を決める。`failedAt` をどう文章化するか（例: `import path "A.B.C" failed at segment 2 ("B"): no service / domain with that id under "A"`）。
-2. **wildcard import (`import "./file.krs"`) との関係** — wildcard はファイル全体を取り込むので、本変更の影響を受けない。確認のみ。
-3. **path セグメント間の許容ノード種別** — 各セグメントで system → service → domain → usecase の階層に厳密に従うか、もしくは「id が一致すれば kind を問わず辿る」か。前者の方が typo が早く検出できるが、karasu の AST が将来追加する子ノード種別との互換性で迷う余地がある。
-4. **path に対する LSP 補完** — 別 Issue 化候補。本実装の後に path 補完を追加すると writer 体験が一気に上がる。
+### Q1. `import-path-not-found` 診断のメッセージ書式 ✅
+
+Params:
+
+```ts
+"import-path-not-found": {
+  path: string[];           // 書かれた path セグメント列
+  failedAt: number;         // 0 始まりの index — どのセグメントで外れたか
+  importPath: string;       // import 元のファイルパス
+  lastResolvedId?: string;  // 直前まで解決できていたノードの id（あれば）
+};
+```
+
+メッセージ書式:
+
+- en: `Import path "A.B.C" failed at segment "B" (#1): no child with that id under "A"`
+- ja: `import path "A.B.C" のセグメント "B" (#1) を解決できません: "A" の下にその id の子は存在しません`
+
+`lastResolvedId` がない場合（最初のセグメントで外れた）はファイル全体を走査して該当 id がないと示す:
+
+- en: `Import path "X.Y" failed at segment "X" (#0): no top-level system or service with that id in "./services.krs"`
+
+### Q2. wildcard import との関係 ✅
+
+`import "./file.krs"` は本変更の影響を受けない。
+リグレッション防止として「wildcard と明示 path syntax は独立して動く（同一ファイル内での共存も可）」をテスト 1 件で pinning する。
+
+### Q3. path セグメント間の許容ノード種別 — **id 一致のみ（loose）** ✅
+
+各セグメントは親ノードの `children` 配列を **id で線形検索**して一致した子に進む。kind は問わない。
+
+理由:
+
+- karasu の AST が今後新ノード種別を追加するときに、resolver 側で「親 → 許容される子 kind」の whitelist を維持し続ける運用負荷を避ける
+- 誤った kind を path に書いても、その id で子が見つからないため結局 `import-path-not-found` で失敗する。早期検出には十分
+- 後で「kind 厳格」モードが必要だと分かったら別 Issue で締める。緩める方が難しいので、最初は loose の方が後戻りしない
+
+具体的な走査ルール:
+
+1. セグメント 0 (`path[0]`) は `importedFile.systems` / `importedFile.services` / `importedFile.deploys[].nodes` のいずれかと id 一致するノードを探す（既存の bare id 解決と同じ集合）
+2. セグメント i ≥ 1 は、セグメント i-1 で解決したノードの `children` から id 一致を探す
+3. どこかで失敗したら `import-path-not-found` を発行
+4. 全セグメント解決したら最終ノードを既存の merge ロジック（system 階層を保持しながら mergedFile に組み込む）に渡す
+
+### Q4. path に対する LSP 補完 — 本 Issue のスコープ外 ✅
+
+本 Issue の resolver + parser がマージされた後、follow-up Issue として `feat(lsp): completion for import path syntax` を切り出す。
+書き手が `import { Sys.<カーソル>` で system 配下を補完できるようになると writer 体験が一段上がるが、resolver / parser が無い段階では実装できないので順序を分ける。
