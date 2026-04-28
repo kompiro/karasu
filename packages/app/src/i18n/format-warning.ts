@@ -96,6 +96,14 @@ export function useFormattedWarning(): (w: Warning) => FormattedWarning {
             message: t("warning.missingRealizes.message", { nodeId: w.params.nodeId }),
             details: [],
           };
+        case "unresolved-realizes":
+          return {
+            message: t("warning.unresolvedRealizes.message", {
+              deployNodeId: w.params.deployNodeId,
+              target: w.params.target,
+            }),
+            details: [],
+          };
         case "invalid-owns":
           return {
             message: t("warning.invalidOwns.message", {
@@ -132,6 +140,14 @@ export function useFormattedWarning(): (w: Warning) => FormattedWarning {
                 sourceSystemId: w.params.sourceSystemId,
               }),
             ],
+          };
+        case "delivers-target-not-client":
+          return {
+            message: t("warning.deliversTargetNotClient.message", {
+              serviceId: w.params.serviceId,
+              targetId: w.params.targetId,
+            }),
+            details: [],
           };
         case "cyclic-dependency": {
           const { cyclePath } = w.params;

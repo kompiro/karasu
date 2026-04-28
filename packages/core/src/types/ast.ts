@@ -72,6 +72,12 @@ export interface ServiceNode extends BaseNodeFields {
      * must itself expose the named domain.
      */
     handles?: string[];
+    /**
+     * Client ids this service ships (BFF / SSR pattern). The renderer synthesizes
+     * a tagged `delivers` edge for each entry; the property itself is the source of
+     * truth for round-tripping.
+     */
+    delivers?: string[];
   };
 }
 
@@ -137,9 +143,32 @@ export interface UserNode extends BaseNodeFields {
   };
 }
 
+/**
+ * Storage kinds whitelisted for `client { resource <kind> "<name>" }`.
+ * Cookie / credential storage and device capabilities are intentionally
+ * excluded — see Issues #834 / #837.
+ */
+export const CLIENT_RESOURCE_KINDS = [
+  "localStorage",
+  "sessionStorage",
+  "indexedDB",
+  "opfs",
+  "file",
+  "keychain",
+] as const;
+
+export type ClientResourceKind = (typeof CLIENT_RESOURCE_KINDS)[number];
+
+export interface ClientResource {
+  storageKind: ClientResourceKind;
+  name: string;
+  loc: SourceRange;
+}
+
 export interface ClientNode extends BaseNodeFields {
   kind: "client";
   properties: CommonProperties & {
+    resources: ClientResource[];
     /**
      * Domain ids this client surfaces to the user. Resolved through the
      * one-hop expose rule: at least one outgoing communication edge target
@@ -256,6 +285,34 @@ export interface ImportDeclaration {
   loc: SourceRange;
 }
 
+export type LegendViewScope = "system" | "deploy" | "org";
+
+/**
+ * A `ref` entry in a `legend` block resolves to a color via the existing
+ * style cascade. The three target kinds correspond to karasu's vocabulary:
+ *
+ * - `annotation` — `@deprecated`, `@external`, etc.
+ * - `tag` — `[external]`, `[implicit]`, etc.
+ * - `selector` — a `.krs.style` selector (`.class`, `#id`, or a type name).
+ */
+export type LegendRefTarget =
+  | { kind: "annotation"; name: string }
+  | { kind: "tag"; name: string }
+  | { kind: "selector"; selector: string };
+
+export type LegendEntry =
+  | { kind: "swatch"; color: string; label: string; loc: SourceRange }
+  | { kind: "ref"; target: LegendRefTarget; label: string; loc: SourceRange };
+
+export interface LegendBlock {
+  /** Optional view scope. When omitted, the legend is shown on every view. */
+  scope?: LegendViewScope;
+  /** Optional title rendered above the entries. */
+  title?: string;
+  entries: LegendEntry[];
+  loc: SourceRange;
+}
+
 export interface KrsFile {
   styleImports: string[];
   nodeImports: ImportDeclaration[];
@@ -268,6 +325,7 @@ export interface KrsFile {
   storages: StorageNode[];
   deploys: DeployBlock[];
   organizations: OrganizationBlock[];
+  legends: LegendBlock[];
   ownerIndex: Map<string, string>;
   /** Maps each node id to its viewPath (e.g. "EC" → ["Payment", "EC"]). System nodes are excluded. */
   nodePathIndex: Map<string, string[]>;
@@ -301,7 +359,10 @@ export interface DiagnosticParamsByCode {
   "expected-string-after": {
     property: "label" | "role" | "team" | "description" | "slack" | "github";
   };
-  "property-not-for-node-kind": { property: "role" | "team" | "handles"; nodeKind: string };
+  "property-not-for-node-kind": {
+    property: "role" | "team" | "handles" | "delivers";
+    nodeKind: string;
+  };
   "infra-not-in-context": { infraKind: string; parentKind: string };
   "expected-id-or-string": { context: string };
   "expected-node-id": { kind: string };
@@ -313,6 +374,7 @@ export interface DiagnosticParamsByCode {
   "team-property-deprecated": Record<string, never>;
   "edge-source-mismatch": { from: string; parentId: string };
   "unassigned-resource": { resourceId: string };
+  "client-resource-invalid-kind": { kind: string; name: string };
   "duplicate-owner-assignment": { nodeId: string; existingTeam: string };
   "duplicate-team-id": { teamId: string };
   "domain-id-not-unique": { domainId: string };

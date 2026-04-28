@@ -57,6 +57,34 @@ describe("useSystemView", () => {
     vi.useRealTimers();
   });
 
+  it("hasOrgDiagram tracks the source's organization blocks (Issue #923)", async () => {
+    vi.useFakeTimers();
+    // Start with a source that has an organization block. After the editor is
+    // edited to a source without one, hasOrgDiagram must flip to false in the
+    // SAME tick that the system result settles. Without this single source of
+    // truth, useAutoSwitchToOrg would race a stale orgCompile result and
+    // wrongly switch tabs.
+    const SOURCE_WITH_ORG = `system Sys {
+  service Svc { label "Svc" }
+}
+organization Acme {
+  team Backend { label "Backend" }
+}`;
+    const SOURCE_WITHOUT_ORG = `service Svc { label "Svc" }`;
+    const fs = makeFs(SOURCE_WITH_ORG);
+    const { result } = renderHook(() => useSystemView(ENTRY, fs, []));
+    await act(() => vi.advanceTimersByTimeAsync(300));
+    expect(result.current.hasOrgDiagram).toBe(true);
+
+    await act(async () => {
+      await fs.writeFile(ENTRY, SOURCE_WITHOUT_ORG);
+      result.current.recompile();
+    });
+    await act(() => vi.advanceTimersByTimeAsync(300));
+    expect(result.current.hasOrgDiagram).toBe(false);
+    vi.useRealTimers();
+  });
+
   it("source changes are debounced by 300ms", async () => {
     vi.useFakeTimers();
     const fs = makeFs(SOURCE_A);
@@ -123,6 +151,65 @@ describe("useSystemView", () => {
     // Diagnostics must be cleared even though SVG bytes didn't change
     expect(result.current.diagnostics.some((d) => d.severity === "error")).toBe(false);
     expect(result.current.svg).toContain("FrontendA");
+    vi.useRealTimers();
+  });
+
+  it("clears a warning after the source is fixed even when SVG topology is identical", async () => {
+    vi.useFakeTimers();
+    // Phase 4 introduced an `unresolved-handles` warning. The bug fixed by
+    // Issue #891: when the user repairs the typo, the rendered SVG topology
+    // is the same as the broken version (both render the same nodes /
+    // edges), so the previous svg-only equality check would short-circuit
+    // setState and leave the stale warning visible.
+    const WITH_TYPO = `system S {
+  client WebApp [web] { handles Ordr }
+  service Backend { domain Order {} }
+  WebApp -> Backend
+}`;
+    const FIXED = `system S {
+  client WebApp [web] { handles Order }
+  service Backend { domain Order {} }
+  WebApp -> Backend
+}`;
+    const fs = makeFs(WITH_TYPO);
+    const { result } = renderHook(() => useSystemView(ENTRY, fs, []));
+    await act(() => vi.advanceTimersByTimeAsync(300));
+    expect(result.current.warnings.some((w) => w.kind === "unresolved-handles")).toBe(true);
+
+    await act(async () => {
+      await fs.writeFile(ENTRY, FIXED);
+      result.current.recompile();
+    });
+    await act(() => vi.advanceTimersByTimeAsync(300));
+
+    expect(result.current.warnings.some((w) => w.kind === "unresolved-handles")).toBe(false);
+    vi.useRealTimers();
+  });
+
+  it("surfaces a new warning when one is introduced after a clean compile", async () => {
+    vi.useFakeTimers();
+    const CLEAN = `system S {
+  client WebApp [web] { handles Order }
+  service Backend { domain Order {} }
+  WebApp -> Backend
+}`;
+    const WITH_TYPO = `system S {
+  client WebApp [web] { handles Ordr }
+  service Backend { domain Order {} }
+  WebApp -> Backend
+}`;
+    const fs = makeFs(CLEAN);
+    const { result } = renderHook(() => useSystemView(ENTRY, fs, []));
+    await act(() => vi.advanceTimersByTimeAsync(300));
+    expect(result.current.warnings.some((w) => w.kind === "unresolved-handles")).toBe(false);
+
+    await act(async () => {
+      await fs.writeFile(ENTRY, WITH_TYPO);
+      result.current.recompile();
+    });
+    await act(() => vi.advanceTimersByTimeAsync(300));
+
+    expect(result.current.warnings.some((w) => w.kind === "unresolved-handles")).toBe(true);
     vi.useRealTimers();
   });
 

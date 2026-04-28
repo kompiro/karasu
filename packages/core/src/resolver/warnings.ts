@@ -16,11 +16,46 @@ export function analyze(file: KrsFile, sheets: StyleSheet[], systemSheetCount = 
   warnings.push(...detectUnassignedUsecases(file));
   warnings.push(...detectStyleConflicts(sheets, systemSheetCount));
   warnings.push(...detectMissingProperties(file));
+  warnings.push(...detectUnresolvedRealizes(file));
   warnings.push(...detectInvalidOwns(file));
   warnings.push(...detectDeprecatedTeamProperty(file));
   warnings.push(...detectCrossSystemRefs(file));
   warnings.push(...detectCyclicDependencies(file));
+  warnings.push(...detectDeliversTargetNotClient(file));
 
+  return warnings;
+}
+
+function detectDeliversTargetNotClient(file: KrsFile): Warning[] {
+  const clientIds = new Set<string>();
+  const services: KrsNode[] = [];
+
+  function walk(nodes: KrsNode[]): void {
+    for (const node of nodes) {
+      if (node.kind === "client") clientIds.add(node.id);
+      if (node.kind === "service") services.push(node);
+      walk(node.children);
+    }
+  }
+  for (const system of file.systems) walk(system.children);
+  walk(file.services);
+  for (const client of file.clients) clientIds.add(client.id);
+
+  const warnings: Warning[] = [];
+  for (const service of services) {
+    const delivers = (service as KrsNode & { properties: { delivers?: string[] } }).properties
+      .delivers;
+    if (!delivers) continue;
+    for (const targetId of delivers) {
+      if (!clientIds.has(targetId)) {
+        warnings.push({
+          kind: "delivers-target-not-client",
+          params: { serviceId: service.id, targetId },
+          loc: service.loc,
+        });
+      }
+    }
+  }
   return warnings;
 }
 
@@ -372,6 +407,72 @@ function detectMissingProperties(file: KrsFile): Warning[] {
           params: { nodeId: node.id },
           loc: node.loc,
         });
+      }
+    }
+  }
+
+  return warnings;
+}
+
+/**
+ * Validate that every `realizes <target>` on a deploy node points to a
+ * known logical-side service or domain id.
+ *
+ * Closes the validation gap reported in Issue #907: previously the parser
+ * accepted any identifier after `realizes` and silently disconnected the
+ * physical node from the logical layer when the target was a typo. Mirrors
+ * the pattern used by `detectInvalidOwns`.
+ *
+ * Notes:
+ * - Skips deploy nodes with empty `realizes` — those are already covered
+ *   by `missing-realizes`.
+ * - Cross-file imports work transparently because `compileProject` merges
+ *   imported files into a single `KrsFile` before analysis runs.
+ * - The valid-id set covers `service` and `domain` ids reachable through
+ *   `file.systems` plus the top-level `file.services` / `file.domains`
+ *   buckets, matching how `realizes` is consumed by `extractDeployView`.
+ */
+function detectUnresolvedRealizes(file: KrsFile): Warning[] {
+  const warnings: Warning[] = [];
+
+  // Build the set of all valid service / domain IDs (mirrors detectInvalidOwns).
+  const validIds = new Set<string>();
+  function collectIds(nodes: KrsNode[]): void {
+    for (const node of nodes) {
+      if (node.kind === "service" || node.kind === "domain") {
+        validIds.add(node.id);
+      }
+      collectIds(node.children);
+    }
+  }
+  for (const system of file.systems) {
+    collectIds(system.children);
+  }
+  for (const service of file.services) {
+    validIds.add(service.id);
+    collectIds(service.children);
+  }
+  for (const domain of file.domains) {
+    validIds.add(domain.id);
+    collectIds(domain.children);
+  }
+
+  for (const deploy of file.deploys) {
+    for (const node of deploy.nodes) {
+      const realizes = node.properties.realizes;
+      if (!realizes || realizes.length === 0) continue;
+      for (const target of realizes) {
+        if (!validIds.has(target)) {
+          warnings.push({
+            kind: "unresolved-realizes",
+            params: {
+              deployNodeId: node.id,
+              deployBlockId: deploy.id,
+              target,
+            },
+            loc: node.loc,
+          });
+        }
       }
     }
   }

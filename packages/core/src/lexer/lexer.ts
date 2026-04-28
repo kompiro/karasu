@@ -20,6 +20,7 @@ const KEYWORDS: Record<string, TokenType> = {
   runtime: TokenType.Runtime,
   realizes: TokenType.Realizes,
   handles: TokenType.Handles,
+  delivers: TokenType.Delivers,
   schedule: TokenType.Schedule,
   image: TokenType.Image,
   type: TokenType.Type,
@@ -40,6 +41,9 @@ const KEYWORDS: Record<string, TokenType> = {
   storage: TokenType.Storage,
   table: TokenType.Table,
   bucket: TokenType.Bucket,
+  legend: TokenType.Legend,
+  swatch: TokenType.Swatch,
+  ref: TokenType.Ref,
 };
 
 export class Lexer {

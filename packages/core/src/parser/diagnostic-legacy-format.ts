@@ -53,6 +53,8 @@ export function formatDiagnostic(d: Diagnostic): string {
           return `"team" property is only valid for service and domain nodes`;
         case "handles":
           return `"handles" property is only valid for client and service nodes`;
+        case "delivers":
+          return `"delivers" property is only valid for service nodes`;
         default: {
           const exhaustive: never = d.params.property;
           throw new Error(`unhandled property-not-for-node-kind variant: ${String(exhaustive)}`);
@@ -78,6 +80,8 @@ export function formatDiagnostic(d: Diagnostic): string {
       return `Edge source "${d.params.from}" must match the enclosing block id "${d.params.parentId}"`;
     case "unassigned-resource":
       return `resource "${d.params.resourceId}" is not assigned to any database`;
+    case "client-resource-invalid-kind":
+      return `Invalid client resource kind "${d.params.kind}" for resource "${d.params.name}". Allowed kinds: localStorage, sessionStorage, indexedDB, opfs, file, keychain`;
     case "duplicate-owner-assignment":
       return `"${d.params.nodeId}" is already owned by team "${d.params.existingTeam}"; multiple teams cannot own the same service or domain`;
     case "duplicate-team-id":

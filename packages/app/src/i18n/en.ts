@@ -129,6 +129,8 @@ export const en: Translations = {
     `Deploy node "${nodeId}" has no runtime specified`,
   "warning.missingRealizes.message": ({ nodeId }) =>
     `Deploy node "${nodeId}" has no realizes specified`,
+  "warning.unresolvedRealizes.message": ({ deployNodeId, target }) =>
+    `Deploy node "${deployNodeId}" realizes "${target}" but no service or domain with that id exists`,
   "warning.invalidOwns.message": ({ teamId, ownedId }) =>
     `Team "${teamId}" owns "${ownedId}" but no service or domain with that id exists`,
   "warning.deprecatedTeamProperty.message": ({ nodeId }) =>
@@ -144,6 +146,8 @@ export const en: Translations = {
   "warning.crossSystemRefImplicitExternal.suppressHint": ({ targetSystemId, sourceSystemId }) =>
     `Add 'service ${targetSystemId} [external]' to system ${sourceSystemId} to suppress this warning`,
   "warning.cyclicDependency.message": ({ path }) => `Circular dependency detected: ${path}`,
+  "warning.deliversTargetNotClient.message": ({ serviceId, targetId }) =>
+    `service "${serviceId}" delivers target "${targetId}" is not a client node`,
 
   // Diagnostics (rendered in PreviewPane's diagnostic banner)
   "diagnostic.tokenTypeMismatch.message": ({ expected, got, value }) =>
@@ -167,6 +171,7 @@ export const en: Translations = {
   "diagnostic.propertyNotForNodeKind.role": `"role" property is only valid for user nodes`,
   "diagnostic.propertyNotForNodeKind.team": `"team" property is only valid for service and domain nodes`,
   "diagnostic.propertyNotForNodeKind.handles": `"handles" property is only valid for client and service nodes`,
+  "diagnostic.propertyNotForNodeKind.delivers": `"delivers" property is only valid for service nodes`,
   "diagnostic.infraNotInContext.message": ({ infraKind, parentKind }) =>
     `"${infraKind}" is only valid as a direct child of system, not inside "${parentKind}"`,
   "diagnostic.expectedIdOrString.message": ({ context }) =>
@@ -183,6 +188,8 @@ export const en: Translations = {
     `Edge source "${from}" must match the enclosing block id "${parentId}"`,
   "diagnostic.unassignedResource.message": ({ resourceId }) =>
     `resource "${resourceId}" is not assigned to any database`,
+  "diagnostic.clientResourceInvalidKind.message": ({ kind, name }) =>
+    `Invalid client resource kind "${kind}" for resource "${name}". Allowed kinds: localStorage, sessionStorage, indexedDB, opfs, file, keychain`,
   "diagnostic.duplicateOwnerAssignment.message": ({ nodeId, existingTeam }) =>
     `"${nodeId}" is already owned by team "${existingTeam}"; multiple teams cannot own the same service or domain`,
   "diagnostic.duplicateTeamId.message": ({ teamId }) => `Duplicate team id "${teamId}"`,

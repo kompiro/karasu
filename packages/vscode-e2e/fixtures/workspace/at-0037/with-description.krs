@@ -1,0 +1,4 @@
+system ECPlatform {
+  description "EC platform for online shopping"
+  service Payment {}
+}

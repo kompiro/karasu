@@ -129,6 +129,8 @@ export const ja: Partial<Translations> = {
     `デプロイノード "${nodeId}" に runtime が指定されていません`,
   "warning.missingRealizes.message": ({ nodeId }) =>
     `デプロイノード "${nodeId}" に realizes が指定されていません`,
+  "warning.unresolvedRealizes.message": ({ deployNodeId, target }) =>
+    `デプロイノード "${deployNodeId}" の realizes "${target}" を解決できる service / domain が見つかりません`,
   "warning.invalidOwns.message": ({ teamId, ownedId }) =>
     `team "${teamId}" が "${ownedId}" を owns していますが、その id を持つ service または domain が存在しません`,
   "warning.deprecatedTeamProperty.message": ({ nodeId }) =>
@@ -144,6 +146,8 @@ export const ja: Partial<Translations> = {
   "warning.crossSystemRefImplicitExternal.suppressHint": ({ targetSystemId, sourceSystemId }) =>
     `system ${sourceSystemId} に 'service ${targetSystemId} [external]' を追加するとこの警告を抑制できます`,
   "warning.cyclicDependency.message": ({ path }) => `循環依存を検出しました: ${path}`,
+  "warning.deliversTargetNotClient.message": ({ serviceId, targetId }) =>
+    `service "${serviceId}" の delivers 先 "${targetId}" は client ノードではありません`,
 
   // Diagnostics (rendered in PreviewPane's diagnostic banner)
   "diagnostic.tokenTypeMismatch.message": ({ expected, got, value }) =>
@@ -167,6 +171,7 @@ export const ja: Partial<Translations> = {
   "diagnostic.propertyNotForNodeKind.role": `"role" プロパティは user ノードでのみ有効です`,
   "diagnostic.propertyNotForNodeKind.team": `"team" プロパティは service / domain ノードでのみ有効です`,
   "diagnostic.propertyNotForNodeKind.handles": `"handles" プロパティは client / service ノードでのみ有効です`,
+  "diagnostic.propertyNotForNodeKind.delivers": `"delivers" プロパティは service ノードでのみ有効です`,
   "diagnostic.infraNotInContext.message": ({ infraKind, parentKind }) =>
     `"${infraKind}" は system の直接の子としてのみ有効です。"${parentKind}" の内側には配置できません`,
   "diagnostic.expectedIdOrString.message": ({ context }) =>
@@ -183,6 +188,8 @@ export const ja: Partial<Translations> = {
     `エッジ source "${from}" は所属するブロック id "${parentId}" と一致する必要があります`,
   "diagnostic.unassignedResource.message": ({ resourceId }) =>
     `resource "${resourceId}" はどの database にも割り当てられていません`,
+  "diagnostic.clientResourceInvalidKind.message": ({ kind, name }) =>
+    `client の resource "${name}" の種別 "${kind}" は無効です。利用可能な種別: localStorage, sessionStorage, indexedDB, opfs, file, keychain`,
   "diagnostic.duplicateOwnerAssignment.message": ({ nodeId, existingTeam }) =>
     `"${nodeId}" はすでに team "${existingTeam}" によって所有されています。複数の team が同じ service / domain を所有することはできません`,
   "diagnostic.duplicateTeamId.message": ({ teamId }) => `team id "${teamId}" が重複しています`,

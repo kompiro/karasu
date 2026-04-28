@@ -348,6 +348,103 @@ organization ECOrg {
   ],
 };
 
+export const CLIENT_MCP_PROJECT: ExampleProject = {
+  name: "client-mcp",
+  files: [
+    {
+      path: "index.krs",
+      content: `// client-mcp: a minimal sample exercising the full client MVP feature set
+// (Phase 1–5 of #823): client kind, delivers, handles re-export, resource
+// for client-side storage, [external] services, and an MCP-style server.
+//
+// Scenario:
+//   Customer (human)  → MobileApp + ClaudeDesktop  (clients we ship)
+//   PartnerAgent (ai) → OrderMcp                   (third-party AI agent)
+//
+//   MobileApp talks to a BFF (MobileBff) which re-exports OrderService's
+//   Order domain. ClaudeDesktop talks to OrderMcp, an MCP server that
+//   adapts OrderService for AI tool-use.
+
+system OrderPlatform {
+  label "Order Platform"
+  description "Order management exposed to mobile apps, desktop AI clients, and partner AI agents."
+
+  user Customer [human] {
+    label "Customer"
+    role "End user placing and tracking orders"
+  }
+
+  user PartnerAgent [ai] {
+    label "Partner Agent"
+    role "Third-party AI agent that calls our MCP endpoint"
+  }
+
+  client MobileApp [mobile] {
+    label "Mobile App"
+    description "iOS / Android native app"
+    handles Order
+    resource localStorage "preferences"
+    resource indexedDB "outbox"
+    resource keychain "auth-token"
+  }
+
+  client ClaudeDesktop [desktop] {
+    label "Claude Desktop"
+    description "Local desktop client wired to the MCP server via stdio"
+    handles Order
+    resource opfs "drafts"
+    resource file "claude-desktop.config"
+  }
+
+  service MobileBff {
+    label "Mobile BFF"
+    description "Edge-side API gateway tailored for the mobile app"
+    delivers MobileApp
+    handles Order
+  }
+
+  service OrderService {
+    label "Order Service"
+    description "Source of truth for orders"
+
+    domain Order {
+      label "Order"
+      description "Order placement, query, and cancellation"
+
+      usecase PlaceOrder {
+        label "Place an order"
+        resource OrderTable [external] { label "Order table" }
+      }
+      usecase CancelOrder {
+        label "Cancel an order"
+        resource OrderTable [external] { label "Order table" }
+      }
+      usecase QueryOrder {
+        label "Query order status"
+        resource OrderTable [external] { label "Order table" }
+      }
+    }
+  }
+
+  service OrderMcp [external] {
+    label "Order MCP"
+    description "MCP server that exposes OrderService to AI agents"
+    handles Order
+  }
+
+  Customer       -> MobileApp     "uses the app"
+  Customer       -> ClaudeDesktop "uses the desktop client"
+  PartnerAgent   -> OrderMcp      "tool-use over MCP"
+  MobileApp      -> MobileBff     "HTTPS"
+  ClaudeDesktop  -> OrderMcp      "stdio / MCP"
+  MobileBff      -> OrderService  "internal RPC"
+  OrderMcp       -> OrderService  "internal RPC"
+}
+`,
+    },
+  ],
+};
+
 export const EC_PLATFORM_PROJECTS: ExampleProject[] = [
   {
     name: "01-system",
@@ -444,6 +541,79 @@ system ECPlatform {
   ECommerce          ->  Payment      "決済を処理する"
   ECommerce          ->  Inventory    "在庫を確認する"
   ECommerce         --> Notification  "注文確定メールを送る"
+}
+`,
+      },
+    ],
+  },
+  {
+    name: "02.5-clients",
+    files: [
+      {
+        path: "index.krs",
+        content: `// ec-platform/02.5-clients.krs
+// Demonstrates: client kind with form-factor tags, service.delivers,
+// client.handles, and resource <storageKind> "<name>" lines.
+// Slots between 02-users (who) and 03-domains (what each domain does).
+//
+// User → Client → Service is the natural progression: the people in 02-users
+// don't talk to ECommerce directly — they go through a mobile or web client.
+
+system ECPlatform {
+  label "ECプラットフォーム"
+
+  user Customer [human] {
+    label "購入者"
+    role "商品を購入する一般ユーザー"
+  }
+
+  user Admin [human] {
+    label "運用担当者"
+    role "在庫・注文・通知の管理を行う担当者"
+  }
+
+  // Clients we ship — sit between users and services.
+  client MobileApp [mobile] {
+    label "モバイルアプリ"
+    description "iOS / Android 向け公式アプリ"
+    handles Order
+    resource localStorage "preferences"
+    resource indexedDB "outbox"
+  }
+
+  client WebApp [web] {
+    label "Web アプリ"
+    description "ブラウザ向け SPA"
+    handles Order
+    resource sessionStorage "view-state"
+  }
+
+  service ECommerce {
+    label "ECサイト"
+    description "商品管理と注文処理"
+    // delivers links a service to the client(s) it ships to end users.
+    delivers MobileApp, WebApp
+
+    domain Order {
+      label "受注"
+    }
+  }
+
+  service Payment {
+    label "決済サービス"
+  }
+
+  service Inventory {
+    label "在庫管理"
+  }
+
+  Customer  -> MobileApp "アプリを利用する"
+  Customer  -> WebApp    "ブラウザから利用する"
+  Admin     -> WebApp    "管理画面を使う"
+  MobileApp -> ECommerce "API を呼び出す"
+  WebApp    -> ECommerce "API を呼び出す"
+  ECommerce -> Payment   "決済を処理する"
+  ECommerce -> Inventory "在庫を確認する"
 }
 `,
       },

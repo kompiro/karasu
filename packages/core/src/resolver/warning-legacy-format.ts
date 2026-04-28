@@ -95,6 +95,11 @@ export function formatWarning(w: Warning): FormattedWarning {
         message: `デプロイノード "${w.params.nodeId}" に realizes が指定されていません`,
         details: [],
       };
+    case "unresolved-realizes":
+      return {
+        message: `デプロイノード "${w.params.deployNodeId}" の realizes "${w.params.target}" を解決できる service / domain が見つかりません`,
+        details: [],
+      };
     case "invalid-owns":
       return {
         message: `team "${w.params.teamId}" owns "${w.params.ownedId}" but no service or domain with that id exists`,
@@ -119,6 +124,11 @@ export function formatWarning(w: Warning): FormattedWarning {
         details: [
           `Add 'service ${w.params.targetSystemId} [external]' to system ${w.params.sourceSystemId} to suppress this warning`,
         ],
+      };
+    case "delivers-target-not-client":
+      return {
+        message: `service "${w.params.serviceId}" delivers target "${w.params.targetId}" is not a client node`,
+        details: [],
       };
     case "cyclic-dependency": {
       const { cyclePath } = w.params;

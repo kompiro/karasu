@@ -1,6 +1,6 @@
 # ADR Dependency Graph — Overview
 
-119 ADRs across 15 topics. Clusters group by `topic` frontmatter field. Edges crossing cluster borders are cross-topic dependencies.
+123 ADRs across 15 topics. Clusters group by `topic` frontmatter field. Edges crossing cluster borders are cross-topic dependencies.
 ```mermaid
 flowchart TD
   subgraph adr-tooling["adr-tooling"]
@@ -47,6 +47,8 @@ flowchart TD
     ADR_20260421_01["ADR-20260421-01<br/>依存パッケージ更新 — 2026-04-20"]
     ADR_20260422_01["ADR-20260422-01<br/>依存パッケージ更新 — 2026-04-21"]
     ADR_20260427_01["ADR-20260427-01<br/>Feature toggle ポリシー — compile-time、短命、卒業時に削除"]
+    ADR_20260428_01["ADR-20260428-01<br/>Secret 必須の CI ジョブは bot 作者の PR で skip する"]
+    ADR_20260428_02["ADR-20260428-02<br/>依存更新バッチ — 2026-04-28"]
   end
   subgraph chat-ai["chat-ai"]
     ADR_20260407_04["ADR-20260407-04<br/>Cloudflare Pages デプロイ基盤と BYOK AI 連携"]
@@ -145,12 +147,14 @@ flowchart TD
     ADR_20260326_04["ADR-20260326-04<br/>`packages/app` のテスト戦略 — `@testing-library/react..."]
     ADR_20260330_03["ADR-20260330-03<br/>モノレポ内 vitest の配置 — ルート install ではなく workspace d..."]
     ADR_20260427_05["ADR-20260427-05<br/>Playwright 向け OPFS fixture ヘルパー"]
+    ADR_20260428_04["ADR-20260428-04<br/>Chat UI E2E は Playwright route で Anthropic API ..."]
   end
   subgraph vscode["vscode"]
     ADR_20260330_05["ADR-20260330-05<br/>VSCode 拡張 — LSP-first アーキテクチャと段階的フェーズ計画"]
     ADR_20260401_04["ADR-20260401-04<br/>VSCode Phase 3 — 独立 HTML Webview アーキテクチャ"]
     ADR_20260401_05["ADR-20260401-05<br/>VSCode Phase 3.5 — Webview ドリルダウンナビゲーション"]
     ADR_20260404_07["ADR-20260404-07<br/>VSCode プレビュー Icon Mode トグル — Extension Host 管理 ..."]
+    ADR_20260428_03["ADR-20260428-03<br/>VS Code 拡張ホスト向け smoke test harness"]
   end
   ADR_20260320_01 --> ADR_20260320_02
   ADR_20260320_01 --> ADR_20260317_01
@@ -354,13 +358,17 @@ flowchart TD
   class ADR_20260427_03 accepted
   class ADR_20260427_04 accepted
   class ADR_20260427_05 accepted
+  class ADR_20260428_01 accepted
+  class ADR_20260428_02 accepted
+  class ADR_20260428_03 accepted
+  class ADR_20260428_04 accepted
 ```
 
 ## Per-topic detail
 
 - [`adr-tooling`](graph/adr-tooling.md) — 3 ADRs
 - [`app-ui`](graph/app-ui.md) — 18 ADRs
-- [`build`](graph/build.md) — 18 ADRs
+- [`build`](graph/build.md) — 20 ADRs
 - [`chat-ai`](graph/chat-ai.md) — 8 ADRs
 - [`cli`](graph/cli.md) — 7 ADRs
 - [`core-concepts`](graph/core-concepts.md) — 4 ADRs
@@ -371,5 +379,5 @@ flowchart TD
 - [`renderer`](graph/renderer.md) — 17 ADRs
 - [`resolver`](graph/resolver.md) — 4 ADRs
 - [`styling`](graph/styling.md) — 4 ADRs
-- [`testing`](graph/testing.md) — 5 ADRs
-- [`vscode`](graph/vscode.md) — 4 ADRs
+- [`testing`](graph/testing.md) — 6 ADRs
+- [`vscode`](graph/vscode.md) — 5 ADRs

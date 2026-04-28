@@ -520,6 +520,138 @@ system S {
   });
 });
 
+describe("unresolved-realizes warning", () => {
+  function unresolved(krs: string) {
+    const file = Parser.parse(krs).value;
+    const warnings = analyze(file, [getBuiltinStyleSheet()]);
+    return warnings.filter((w) => w.kind === "unresolved-realizes");
+  }
+
+  it("does not warn when realizes points to an existing service", () => {
+    const krs = `
+system S {
+  service ECommerce {}
+}
+deploy Production {
+  oci ecommerceApp {
+    runtime "Kubernetes"
+    realizes ECommerce
+  }
+}
+    `;
+    expect(unresolved(krs)).toHaveLength(0);
+  });
+
+  it("warns when realizes target is a typo", () => {
+    const krs = `
+system S {
+  service ECommerce {}
+}
+deploy Production {
+  oci ecommerceApp {
+    runtime "Kubernetes"
+    realizes ECommrce
+  }
+}
+    `;
+    const w = unresolved(krs);
+    expect(w).toHaveLength(1);
+    if (w[0].kind !== "unresolved-realizes") throw new Error("kind mismatch");
+    expect(w[0].params).toEqual({
+      deployNodeId: "ecommerceApp",
+      deployBlockId: "Production",
+      target: "ECommrce",
+    });
+  });
+
+  it("does not warn when realizes is missing (covered by missing-realizes)", () => {
+    const krs = `
+system S {
+  service ECommerce {}
+}
+deploy Production {
+  oci ecommerceApp {
+    runtime "Kubernetes"
+  }
+}
+    `;
+    // missing-realizes still fires, but unresolved-realizes does not.
+    expect(unresolved(krs)).toHaveLength(0);
+  });
+
+  it("resolves a domain target nested under a service", () => {
+    const krs = `
+system S {
+  service ECommerce {
+    domain Order {}
+  }
+}
+deploy Production {
+  oci orderProcessor {
+    runtime "Kubernetes"
+    realizes Order
+  }
+}
+    `;
+    expect(unresolved(krs)).toHaveLength(0);
+  });
+
+  it("resolves top-level service / domain (no system wrapper)", () => {
+    const krs = `
+service Standalone {}
+domain Inventory {}
+deploy Production {
+  oci app {
+    runtime "Kubernetes"
+    realizes Standalone
+    realizes Inventory
+  }
+}
+    `;
+    expect(unresolved(krs)).toHaveLength(0);
+  });
+
+  it("warns once per typoed entry on a single deploy node", () => {
+    const krs = `
+system S {
+  service A {}
+  service B {}
+}
+deploy Production {
+  oci app {
+    runtime "Kubernetes"
+    realizes A
+    realizes Bx
+    realizes Cx
+  }
+}
+    `;
+    const w = unresolved(krs);
+    expect(w).toHaveLength(2);
+    const targets = w.map((wn) => (wn.kind === "unresolved-realizes" ? wn.params.target : null));
+    expect(targets).toEqual(["Bx", "Cx"]);
+  });
+
+  it("warns separately per deploy block when each has its own typo", () => {
+    const krs = `
+system S {
+  service ECommerce {}
+}
+deploy Production {
+  oci app1 { runtime "k" realizes ECommrce }
+}
+deploy Staging {
+  oci app2 { runtime "k" realizes Comm }
+}
+    `;
+    const w = unresolved(krs);
+    expect(w).toHaveLength(2);
+    expect(
+      w.map((x) => (x.kind === "unresolved-realizes" ? x.params.deployBlockId : null)),
+    ).toEqual(["Production", "Staging"]);
+  });
+});
+
 describe("cross-system-ref warnings", () => {
   it("emits implicit-external warning for cross-system reference", () => {
     const krs = `
@@ -873,5 +1005,40 @@ system ECPlatform {
     expect(unassigned).toHaveLength(1);
     if (unassigned[0].kind !== "unassigned-storage") throw new Error("kind mismatch");
     expect(unassigned[0].params).toEqual({ storageId: "FileStore", label: "ファイル" });
+  });
+});
+
+describe("delivers-target-not-client warning", () => {
+  it("does not warn when delivers target is a client peer", () => {
+    const krs = `
+system S {
+  service NextServer {
+    delivers WebApp
+  }
+  client WebApp [web]
+}
+`;
+    const file = Parser.parse(krs).value;
+    const warnings = analyze(file, [getBuiltinStyleSheet()]);
+    expect(warnings.filter((w) => w.kind === "delivers-target-not-client")).toHaveLength(0);
+  });
+
+  it("warns when delivers target is missing or not a client", () => {
+    const krs = `
+system S {
+  service NextServer {
+    delivers OrderService, GhostId
+  }
+  service OrderService {}
+}
+`;
+    const file = Parser.parse(krs).value;
+    const warnings = analyze(file, [getBuiltinStyleSheet()]);
+    const filtered = warnings.filter((w) => w.kind === "delivers-target-not-client");
+    expect(filtered).toHaveLength(2);
+    const targets = filtered.map((w) =>
+      w.kind === "delivers-target-not-client" ? w.params.targetId : "",
+    );
+    expect(targets.sort()).toEqual(["GhostId", "OrderService"]);
   });
 });

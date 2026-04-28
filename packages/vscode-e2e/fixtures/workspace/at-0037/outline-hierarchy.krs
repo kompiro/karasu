@@ -1,0 +1,8 @@
+system ECPlatform {
+  service ECommerce {
+    domain Order {}
+  }
+}
+deploy prod {
+  jar ApiServer {}
+}

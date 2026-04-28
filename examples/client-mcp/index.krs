@@ -1,0 +1,87 @@
+// client-mcp: a minimal sample exercising the full client MVP feature set
+// (Phase 1–5 of #823): client kind, delivers, handles re-export, resource
+// for client-side storage, [external] services, and an MCP-style server.
+//
+// Scenario:
+//   Customer (human)  → MobileApp + ClaudeDesktop  (clients we ship)
+//   PartnerAgent (ai) → OrderMcp                   (third-party AI agent)
+//
+//   MobileApp talks to a BFF (MobileBff) which re-exports OrderService's
+//   Order domain. ClaudeDesktop talks to OrderMcp, an MCP server that
+//   adapts OrderService for AI tool-use.
+
+system OrderPlatform {
+  label "Order Platform"
+  description "Order management exposed to mobile apps, desktop AI clients, and partner AI agents."
+
+  user Customer [human] {
+    label "Customer"
+    role "End user placing and tracking orders"
+  }
+
+  user PartnerAgent [ai] {
+    label "Partner Agent"
+    role "Third-party AI agent that calls our MCP endpoint"
+  }
+
+  client MobileApp [mobile] {
+    label "Mobile App"
+    description "iOS / Android native app"
+    handles Order
+    resource localStorage "preferences"
+    resource indexedDB "outbox"
+    resource keychain "auth-token"
+  }
+
+  client ClaudeDesktop [desktop] {
+    label "Claude Desktop"
+    description "Local desktop client wired to the MCP server via stdio"
+    handles Order
+    resource opfs "drafts"
+    resource file "claude-desktop.config"
+  }
+
+  service MobileBff {
+    label "Mobile BFF"
+    description "Edge-side API gateway tailored for the mobile app"
+    delivers MobileApp
+    handles Order
+  }
+
+  service OrderService {
+    label "Order Service"
+    description "Source of truth for orders"
+
+    domain Order {
+      label "Order"
+      description "Order placement, query, and cancellation"
+
+      usecase PlaceOrder {
+        label "Place an order"
+        resource OrderTable [external] { label "Order table" }
+      }
+      usecase CancelOrder {
+        label "Cancel an order"
+        resource OrderTable [external] { label "Order table" }
+      }
+      usecase QueryOrder {
+        label "Query order status"
+        resource OrderTable [external] { label "Order table" }
+      }
+    }
+  }
+
+  service OrderMcp [external] {
+    label "Order MCP"
+    description "MCP server that exposes OrderService to AI agents"
+    handles Order
+  }
+
+  Customer       -> MobileApp     "uses the app"
+  Customer       -> ClaudeDesktop "uses the desktop client"
+  PartnerAgent   -> OrderMcp      "tool-use over MCP"
+  MobileApp      -> MobileBff     "HTTPS"
+  ClaudeDesktop  -> OrderMcp      "stdio / MCP"
+  MobileBff      -> OrderService  "internal RPC"
+  OrderMcp       -> OrderService  "internal RPC"
+}

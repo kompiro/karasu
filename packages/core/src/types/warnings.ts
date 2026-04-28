@@ -5,6 +5,7 @@ export type WarningKind =
   | "style-conflict"
   | "missing-runtime"
   | "missing-realizes"
+  | "unresolved-realizes"
   | "invalid-owns"
   | "deprecated-team-property"
   | "unassigned-domain"
@@ -17,7 +18,8 @@ export type WarningKind =
   | "unassigned-usecase"
   | "cross-system-ref-implicit-external"
   | "cross-system-ref-unresolved"
-  | "cyclic-dependency";
+  | "cyclic-dependency"
+  | "delivers-target-not-client";
 
 /**
  * Per-kind params shape. Each entry carries only the structured data needed
@@ -33,6 +35,14 @@ export interface WarningParamsByKind {
   "style-conflict": { selector: string; sheetIndices: number[] };
   "missing-runtime": { nodeId: string };
   "missing-realizes": { nodeId: string };
+  "unresolved-realizes": {
+    /** id of the deploy node that declared `realizes` */
+    deployNodeId: string;
+    /** id of the surrounding deploy block */
+    deployBlockId: string;
+    /** the target id that could not be resolved to any service / domain */
+    target: string;
+  };
   "invalid-owns": { teamId: string; ownedId: string };
   "deprecated-team-property": { nodeId: string; ownerTeamId: string };
   "unassigned-domain": { domainId: string; label?: string };
@@ -58,6 +68,7 @@ export interface WarningParamsByKind {
   };
   "cross-system-ref-unresolved": { ref: string };
   "cyclic-dependency": { cyclePath: string[] };
+  "delivers-target-not-client": { serviceId: string; targetId: string };
 }
 
 /**

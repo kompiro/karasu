@@ -1,0 +1,4 @@
+system MySystem {
+  service Auth {}
+}
+MySystem -> Auth "calls"

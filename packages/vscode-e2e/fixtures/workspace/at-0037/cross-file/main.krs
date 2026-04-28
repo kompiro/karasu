@@ -1,0 +1,4 @@
+import { SharedAuth } from "./base.krs"
+system Platform {
+  SharedAuth -> Platform "authenticates"
+}

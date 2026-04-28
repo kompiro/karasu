@@ -158,6 +158,7 @@ export class Parser {
       storages: [],
       deploys: [],
       organizations: [],
+      legends: [],
       ownerIndex: new Map(),
       nodePathIndex: new Map(),
       nodeFileIndex: new Map(),
@@ -284,7 +285,9 @@ export class Parser {
       role?: string;
       team?: string;
       label?: string;
+      resources?: import("../types/ast.js").ClientResource[];
       handles?: string[];
+      delivers?: string[];
     },
     parentId?: string,
   ): void {
@@ -370,6 +373,35 @@ export class Parser {
         continue;
       }
 
+      // Property: delivers (service only). Comma-separated list of client ids.
+      if (token.type === TokenType.Delivers) {
+        if (kind === "service") {
+          this.advance();
+          if (!properties.delivers) properties.delivers = [];
+          // Parse one or more identifiers separated by commas.
+          while (true) {
+            if (
+              this.peek().type === TokenType.Identifier ||
+              this.peek().type === TokenType.StringLiteral
+            ) {
+              properties.delivers.push(this.advance().value);
+            } else {
+              this.error("expected-id-after", { property: "delivers" });
+              break;
+            }
+            if (this.peek().type === TokenType.Comma) {
+              this.advance();
+              continue;
+            }
+            break;
+          }
+        } else {
+          this.error("property-not-for-node-kind", { property: "delivers", nodeKind: kind });
+          this.advance();
+        }
+        continue;
+      }
+
       // Implicit-source edge: -> or --> (source = parent node ID)
       if ((token.type === TokenType.Arrow || token.type === TokenType.DashedArrow) && parentId) {
         edges.push(this.parseEdge(parentId));
@@ -391,6 +423,19 @@ export class Parser {
           });
         }
         edges.push(edge);
+        continue;
+      }
+
+      // Client-only: `resource <storageKind> "<name>"` declares operation-tied storage.
+      // Distinguished from a regular resource declaration by the trailing string literal.
+      if (
+        kind === "client" &&
+        token.type === TokenType.Resource &&
+        this.peekAt(1).type === TokenType.Identifier &&
+        this.peekAt(2).type === TokenType.StringLiteral
+      ) {
+        properties.resources ??= [];
+        properties.resources.push(this.parseClientResource());
         continue;
       }
 
@@ -427,6 +472,29 @@ export class Parser {
     }
     this.error("expected-string-after", { property: "description" });
     return "";
+  }
+
+  private parseClientResource(): import("../types/ast.js").ClientResource {
+    const start = this.expect(TokenType.Resource);
+    const kindToken = this.expect(TokenType.Identifier);
+    const nameToken = this.expect(TokenType.StringLiteral);
+    const kindName = kindToken.value;
+    const isAllowed = (
+      ["localStorage", "sessionStorage", "indexedDB", "opfs", "file", "keychain"] as const
+    ).some((k) => k === kindName);
+    if (!isAllowed) {
+      this.diagnostics.push({
+        severity: "error",
+        code: "client-resource-invalid-kind",
+        params: { kind: kindName, name: nameToken.value },
+        loc: this.range(start.loc, nameToken.loc),
+      });
+    }
+    return {
+      storageKind: kindName as import("../types/ast.js").ClientResourceKind,
+      name: nameToken.value,
+      loc: this.range(start.loc, nameToken.loc),
+    };
   }
 
   private parseLink(): LinkEntry {
@@ -535,7 +603,9 @@ export class Parser {
       role?: string;
       team?: string;
       label?: string;
+      resources?: import("../types/ast.js").ClientResource[];
       handles?: string[];
+      delivers?: string[];
     } = {
       links: [],
     };
@@ -581,6 +651,9 @@ export class Parser {
             links: properties.links,
             team: properties.team,
             ...(properties.handles ? { handles: properties.handles } : {}),
+            ...(properties.delivers && properties.delivers.length > 0
+              ? { delivers: properties.delivers }
+              : {}),
           },
         };
       case "user":
@@ -600,6 +673,7 @@ export class Parser {
           properties: {
             description: properties.description,
             links: properties.links,
+            resources: properties.resources ?? [],
             ...(properties.handles ? { handles: properties.handles } : {}),
           },
         };

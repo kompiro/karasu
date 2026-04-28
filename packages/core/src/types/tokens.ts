@@ -38,6 +38,7 @@ export enum TokenType {
   // Properties
   Runtime = "Runtime",
   Realizes = "Realizes",
+  Delivers = "Delivers",
   Schedule = "Schedule",
   Image = "Image",
   Type = "Type",
@@ -49,6 +50,11 @@ export enum TokenType {
   Owns = "Owns",
   Slack = "Slack",
   Github = "Github",
+
+  // Keywords (legend)
+  Legend = "Legend",
+  Swatch = "Swatch",
+  Ref = "Ref",
 
   // Properties (logical)
   Label = "Label",
