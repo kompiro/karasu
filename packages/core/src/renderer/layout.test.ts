@@ -579,4 +579,54 @@ system S {
     // A non-compacted layout would put App well below 200px.
     expect(app.y).toBeLessThan(200);
   });
+
+  it("applies forced layering independently per system in the multi-system root view", () => {
+    // System A has all four tiers (user / client / internal / external).
+    // System B has only internal + external. Each system compacts its own
+    // bucket set; rows are *not* aligned across systems.
+    const krs = `
+system A {
+  user U [human]
+  client C [web]
+  service AInternal {}
+  service AExt [external] {}
+  U -> C
+  C -> AInternal
+  AInternal -> AExt
+}
+system B {
+  service BInternal {}
+  service BExt [external] {}
+  BInternal -> BExt
+}
+`;
+    const parsed = Parser.parse(krs);
+    const slice = extractView(parsed.value.systems, [], parsed.value.domains);
+    const result = layout(slice);
+
+    // System A: four ordered rows
+    const u = result.nodes.get("U")!;
+    const c = result.nodes.get("C")!;
+    const aInt = result.nodes.get("AInternal")!;
+    const aExt = result.nodes.get("AExt")!;
+    expect(u.y).toBeLessThan(c.y);
+    expect(c.y).toBeLessThan(aInt.y);
+    expect(aInt.y).toBeLessThan(aExt.y);
+
+    // System B: two compacted rows (internal at row 0, external at row 1)
+    const bInt = result.nodes.get("BInternal")!;
+    const bExt = result.nodes.get("BExt")!;
+    expect(bInt.y).toBeLessThan(bExt.y);
+
+    // Containers are placed side by side (B to the right of A)
+    const aContainer = result.containers.find((cn) => cn.id === "A")!;
+    const bContainer = result.containers.find((cn) => cn.id === "B")!;
+    expect(bContainer.x).toBeGreaterThan(aContainer.x + aContainer.width);
+
+    // Row alignment is intentionally NOT enforced across systems:
+    // B's internal row uses its own row 0, so it sits higher than A's
+    // internal row (which is row 2). This pins down current behavior; if
+    // we ever want cross-system row alignment, this assertion changes.
+    expect(bInt.y).toBeLessThan(aInt.y);
+  });
 });
