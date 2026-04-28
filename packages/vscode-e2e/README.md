@@ -46,6 +46,20 @@ available directly.
 This package's smoke test only verifies extension activation. AT-0037ff are
 added incrementally as separate `*.test.ts` files in `tests/suite/`.
 
+> **Mocha shares the extension host across spec files.** A test that depends
+> on the extension being inactive at startup must run before any other spec
+> opens a `.krs` document. Place such a test in a numerically-first file
+> (e.g. `00-activation.test.ts`); `mocha.sort: true` in `.vscode-test.mjs`
+> guarantees deterministic file ordering. Tests that simply need the
+> extension to be active can call `await ext.activate()` themselves and
+> assert `isActive === true` afterwards.
+
+> **Cursor positioning helper.** Use `findUniqueIdentifier(doc, name)` from
+> `_helpers.ts` rather than calling `text.indexOf(name)` directly. The
+> helper asserts the identifier appears exactly once in the fixture so that
+> a fixture edit (adding a comment, renaming a sibling node, etc.) cannot
+> silently change which occurrence the test targets.
+
 > **Lint note.** The repo-level `oxlint` config has a per-directory override
 > for this package's tests so that `node:assert` calls (`assert.ok(...)`,
 > `assert.strictEqual(...)`) satisfy the `jest/expect-expect` rule. Without
