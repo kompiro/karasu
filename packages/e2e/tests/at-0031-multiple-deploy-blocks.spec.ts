@@ -1,4 +1,5 @@
-import { type Page, expect, test } from "@playwright/test";
+import { expect, test } from "@playwright/test";
+import { replaceEditorContent } from "../fixtures/editor.js";
 
 /**
  * AT-0031: Multiple deploy blocks.
@@ -34,15 +35,6 @@ deploy staging {
   node stgWeb [web]
 }
 `;
-
-async function replaceEditorContent(page: Page, content: string) {
-  // Click the visible code area to focus the editor — Monaco's `inputarea`
-  // textarea sits behind the view layer and is not directly clickable.
-  await page.locator(".monaco-editor .view-lines").first().click();
-  await page.keyboard.press("Control+A");
-  await page.keyboard.press("Delete");
-  await page.keyboard.insertText(content);
-}
 
 test.describe("AT-0031 Multiple deploy blocks", () => {
   test("no selector is shown when only one deploy block exists (AT-0031-01)", async ({ page }) => {

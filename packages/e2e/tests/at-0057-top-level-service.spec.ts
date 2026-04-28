@@ -1,4 +1,5 @@
-import { type Page, expect, test } from "@playwright/test";
+import { expect, test } from "@playwright/test";
+import { replaceEditorContent } from "../fixtures/editor.js";
 
 /**
  * AT-0057: Top-level service declarations.
@@ -27,13 +28,6 @@ const SERVICE_INSIDE_SYSTEM_KRS = `system ECPlatform {
   service ECommerce { label "ECサイト" }
 }
 `;
-
-async function replaceEditorContent(page: Page, content: string) {
-  await page.locator(".monaco-editor .view-lines").first().click();
-  await page.keyboard.press("Control+A");
-  await page.keyboard.press("Delete");
-  await page.keyboard.insertText(content);
-}
 
 test.describe("AT-0057 Top-level service declarations", () => {
   test("top-level services render and emit unassigned warnings (TC-1, TC-2)", async ({ page }) => {

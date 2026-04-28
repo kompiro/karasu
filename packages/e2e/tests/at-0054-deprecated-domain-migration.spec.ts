@@ -1,4 +1,5 @@
 import { type Page, expect, test } from "@playwright/test";
+import { replaceEditorContent } from "../fixtures/editor.js";
 
 /**
  * AT-0054: Deprecated domain migration annotations.
@@ -64,15 +65,6 @@ const SWAPPED_ORDER_KRS = `system OrderSystem {
 `;
 
 const UNIQUE_ERROR_PATTERN = /must be unique within a system/i;
-
-async function replaceEditorContent(page: Page, content: string) {
-  // Click the visible code area to focus the editor — Monaco's `inputarea`
-  // textarea sits behind the view layer and is not directly clickable.
-  await page.locator(".monaco-editor .view-lines").first().click();
-  await page.keyboard.press("Control+A");
-  await page.keyboard.press("Delete");
-  await page.keyboard.insertText(content);
-}
 
 async function goToSystemTab(page: Page) {
   await page.getByRole("tab", { name: "System" }).click();

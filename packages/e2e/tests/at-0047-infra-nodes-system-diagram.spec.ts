@@ -1,4 +1,5 @@
-import { type Page, expect, test } from "@playwright/test";
+import { expect, test } from "@playwright/test";
+import { replaceEditorContent } from "../fixtures/editor.js";
 
 /**
  * AT-0047: Infra nodes (database/queue/storage) in the System diagram.
@@ -46,12 +47,6 @@ const INFRA_KRS = `system ECPlatform {
 }
 `;
 
-async function replaceEditorContent(page: Page, content: string) {
-  await page.locator(".monaco-editor .view-lines").first().click();
-  await page.keyboard.press("Control+A");
-  await page.keyboard.press("Delete");
-  await page.keyboard.insertText(content);
-}
 
 test.describe("AT-0047 Infra nodes in System diagram", () => {
   test("database, queue and storage blocks render as System-level nodes", async ({ page }) => {

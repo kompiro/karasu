@@ -1,4 +1,5 @@
 import { type Page, expect, test } from "@playwright/test";
+import { replaceEditorContent } from "../fixtures/editor.js";
 
 /**
  * AT-0044: Org Tree View.
@@ -46,12 +47,6 @@ organization Globex {
 }
 `;
 
-async function replaceEditorContent(page: Page, content: string) {
-  await page.locator(".monaco-editor .view-lines").first().click();
-  await page.keyboard.press("Control+A");
-  await page.keyboard.press("Delete");
-  await page.keyboard.insertText(content);
-}
 
 async function openOrgTab(page: Page) {
   await page.getByRole("tab", { name: /Org/ }).click();
@@ -66,7 +61,11 @@ test.describe("AT-0044 Org Tree View", () => {
     await page.goto("/");
     await replaceEditorContent(page, ORG_KRS);
 
-    // System tab — no Tree View button
+    // ORG_KRS has no system block, so `useAutoSwitchToOrg` (#817) fires and
+    // lands the user on the Org tab automatically. Explicitly navigate back
+    // to System to verify the toggle is not rendered there.
+    await page.getByRole("tab", { name: "System" }).click();
+    await expect(page.getByRole("tab", { name: "System", selected: true })).toBeVisible();
     await expect(page.getByRole("button", { name: "Toggle org tree view" })).toHaveCount(0);
 
     await openOrgTab(page);
