@@ -7,7 +7,7 @@ type: product
 ## 概要
 
 system 図のレイアウトが kind ベースの **4 段グルーピング** + **段内の topological sort** で構成されることを確認する
-（Issue [#856](https://github.com/kompiro/karasu/issues/856)、設計は `docs/design/client-mcp-modeling.md` Q11）。
+（Issue [#856](https://github.com/kompiro/karasu/issues/856)、設計は `docs/adr/20260428-06-client-mcp-modeling.md` Q11）。
 
 段（tier）の構造:
 
@@ -159,4 +159,4 @@ system Demo {
 
 - 親 Issue: [#823](https://github.com/kompiro/karasu/issues/823)
 - 本 Phase: [#856](https://github.com/kompiro/karasu/issues/856)
-- 設計ドキュメント: `docs/design/client-mcp-modeling.md` Q11
+- 設計ドキュメント: `docs/adr/20260428-06-client-mcp-modeling.md` Q11

@@ -7,7 +7,7 @@ type: product
 ## 概要
 
 `.krs` 言語に `client` kind が追加され、parser から renderer まで end-to-end で動作することを確認する
-（Issue [#849](https://github.com/kompiro/karasu/issues/849)、設計は [#823](https://github.com/kompiro/karasu/issues/823) / `docs/design/client-mcp-modeling.md`）。
+（Issue [#849](https://github.com/kompiro/karasu/issues/849)、設計は [#823](https://github.com/kompiro/karasu/issues/823) / `docs/adr/20260428-06-client-mcp-modeling.md`）。
 
 Phase 1 のスコープは「最小実装」: kind の追加・サブタイプタグの予約・既定 card レンダリング・Getting Started への露出まで。
 `delivers` / `handles` / `resource` / 強制レイアウト / 専用 icon は後続 Phase で扱う。
@@ -88,4 +88,4 @@ client OrphanApp [web] { label "Orphan" }
 
 - 親 Issue: [#823](https://github.com/kompiro/karasu/issues/823)
 - 本 Phase: [#849](https://github.com/kompiro/karasu/issues/849)
-- 設計ドキュメント: `docs/design/client-mcp-modeling.md`
+- 設計ドキュメント: `docs/adr/20260428-06-client-mcp-modeling.md`

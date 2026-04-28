@@ -7,7 +7,7 @@ type: product
 ## 概要
 
 `client { resource <storageKind> "<name>" }` フラット構文が parser → validator → renderer まで end-to-end で動作することを確認する
-（Issue [#855](https://github.com/kompiro/karasu/issues/855)、設計は [#823](https://github.com/kompiro/karasu/issues/823) / `docs/design/client-mcp-modeling.md`）。
+（Issue [#855](https://github.com/kompiro/karasu/issues/855)、設計は [#823](https://github.com/kompiro/karasu/issues/823) / `docs/adr/20260428-06-client-mcp-modeling.md`）。
 
 Phase 5 のスコープは 6 種の予約 storage kind（`localStorage` / `sessionStorage` / `indexedDB` / `opfs` / `file` / `keychain`）の受理と、それ以外の kind の拒否、および client カードへのテキスト一覧描画まで。
 cookie / credential / device capability などは別 Issue（[#834](https://github.com/kompiro/karasu/issues/834) / [#837](https://github.com/kompiro/karasu/issues/837)）に委譲する。
@@ -104,4 +104,4 @@ system T {
 - 親 Issue: [#823](https://github.com/kompiro/karasu/issues/823)
 - 本 Phase: [#855](https://github.com/kompiro/karasu/issues/855)
 - PR: [#884](https://github.com/kompiro/karasu/pull/884)
-- 設計ドキュメント: `docs/design/client-mcp-modeling.md`
+- 設計ドキュメント: `docs/adr/20260428-06-client-mcp-modeling.md`

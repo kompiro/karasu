@@ -7,7 +7,7 @@ type: product
 ## 概要
 
 `client` MVP の機能（kind / `delivers` / `handles` / `resource`）を盛り込んだ examples が ProjectMode のシード内容として正しく登録され、アプリで開いたときに警告なく描画されることを確認する
-（Issue [#857](https://github.com/kompiro/karasu/issues/857)、設計は [#823](https://github.com/kompiro/karasu/issues/823) / `docs/design/client-mcp-modeling.md`）。
+（Issue [#857](https://github.com/kompiro/karasu/issues/857)、設計は [#823](https://github.com/kompiro/karasu/issues/823) / `docs/adr/20260428-06-client-mcp-modeling.md`）。
 
 Phase 7 では既存の `getting-started`（Phase 1 で更新済）に加えて、以下の 2 つを追加する:
 
@@ -86,4 +86,4 @@ console.log('ok');
 
 - 親 Issue: [#823](https://github.com/kompiro/karasu/issues/823)
 - 本 Phase: [#857](https://github.com/kompiro/karasu/issues/857)
-- 設計ドキュメント: `docs/design/client-mcp-modeling.md`
+- 設計ドキュメント: `docs/adr/20260428-06-client-mcp-modeling.md`

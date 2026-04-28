@@ -9,7 +9,7 @@ type: product
 `service.delivers <ClientId>[, ...]` プロパティが parser / validator / renderer の各層を
 通過し、レンダリング結果に通信エッジとは見分けが付く線で「配信」関係が表れることを確認する
 （Issue [#853](https://github.com/kompiro/karasu/issues/853)、設計は
-`docs/design/client-mcp-modeling.md` の Q4 / Phase 3）。
+`docs/adr/20260428-06-client-mcp-modeling.md` の Q4 / Phase 3）。
 
 自動テストで covered:
 
