@@ -238,6 +238,13 @@ export interface SystemCompileResult {
   diagnostics: Diagnostic[];
   nodeMetadata: Map<string, NodeMetadata>;
   hasDeployDiagram: boolean;
+  /**
+   * Whether the project has at least one `organization` block. Mirrors
+   * `hasDeployDiagram` so app-level auto-switch hooks can read every
+   * "is view X populated?" flag from a single compile result instead of
+   * racing the org compile (Issue #923).
+   */
+  hasOrgDiagram: boolean;
   deployBlocks: DeployBlockInfo[];
   /** Fully resolved system tree (all imports merged). Use for breadcrumb traversal. */
   systems: SystemNode[];
@@ -328,6 +335,7 @@ function _compileFromPreparedInput(
     ...deploySliceForStyle.unclassifiedUnits,
   ];
   const hasDeployDiagram = krsFile.deploys.length > 0;
+  const hasOrgDiagram = krsFile.organizations.length > 0;
   const deployBlocks = krsFile.deploys.map((d) => ({ id: d.id, label: d.label ?? d.id }));
   const serviceIdsWithDeploy = new Set(deploySliceForStyle.containers.map((c) => c.serviceId));
   const ownerIndex = krsFile.ownerIndex;
@@ -379,6 +387,7 @@ function _compileFromPreparedInput(
     diagnostics,
     nodeMetadata,
     hasDeployDiagram,
+    hasOrgDiagram,
     deployBlocks,
     systems: krsFile.systems,
     nodeFileIndex,
