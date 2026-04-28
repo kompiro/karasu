@@ -125,97 +125,133 @@ deploy Production {
 | ユーザに `import-id-ambiguous` が出る頻度 | なし | なし | 中（同名衝突時） | 中 → 解消手段あり |
 | 段階リリース可能性 | 単発 | 単発（ドキュメント PR） | 単発 | Phase 1 / Phase 2 で分割可能 |
 
-## 現時点の方針（暫定）
+## 現時点の方針
 
-**案 D を採り、二段階で進める**。両 Phase は「path をどこで解決するか」の違いとして整理できる:
-
-| Phase | 別名 | 何をするか |
-|---|---|---|
-| Phase 1 | **暗黙的な path import** | bare id (`import { Order }`) を resolver が **descendant を辿って自動的に path を解決**する |
-| Phase 2 | **明示的な path import** | ユーザが書き手側で `import { A.B.C }` のように **path を明示**する |
-
-両者は競合せず補完関係にある:
-
-- 普段は **暗黙** (Phase 1) が摩擦ゼロで動く
-- 同名衝突など、自動解決が決められないケースだけ **明示** (Phase 2) で曖昧性を解く
-
-理由:
-
-- Phase 1 で大半のユースケース（`realizes`/`handles` のクロスファイル参照）を解消できる
-- 曖昧性の出る頻度を観測してから Phase 2 (明示構文) を入れる判断ができる
-- どちらの Phase も独立した小さな変更で `/start-dev` フローに乗せやすい
-
-### Phase 1: 暗黙的な path import — 実装スケッチ
-
-`mergeNamedImport` の named-import 解決ループを、現在の「直接子のみ」から「descendants 全体」に拡張する:
-
-```ts
-// before (要約)
-for (const system of importedFile.systems) {
-  const matchingChildren = system.children.filter((c) => c.id === id);
-  if (matchingChildren.length > 0) { /* merge */ }
-  if (system.id === id) { /* import whole system */ }
-}
-
-// after (要約)
-const matches = collectMatchingDescendants(importedFile, id);
-// matches は { system: SystemNode | null; node: KrsNode }[] 等
-if (matches.length === 0) {
-  // 既存の import-id-not-found
-} else if (matches.length === 1) {
-  // 1 件 → 既存の merge ロジックに渡す（system を辿りながら祖先を維持）
-} else {
-  // 新診断 import-id-ambiguous を発行
-}
-```
-
-`collectMatchingDescendants` は system の children を DFS して、`service`/`domain` 等の論理ノードを集める。
-
-### Phase 1 で開放する範囲
-
-- `system → service` (現状でも OK、変更なし)
-- `system → service → domain` (新規対応)
-- `system → service → domain → usecase` (将来 `realizes`/`handles` が usecase を扱うようになったら自動で機能)
-- `system` 全体取り込み (現状通り)
-
-### 新規診断: `import-id-ambiguous`
-
-params: `{ id: string; path: string; matches: string[] }` （`matches` は jq-path 形式の文字列、例: `"ECPlatform.ECommerce.Order"`）。
-ユーザに「このどれかを path syntax で指定してください」と Phase 2 への誘導も可能。
-
-### Phase 2: 明示的な path import — 将来 / Issue 別出し
-
-`Identifier (Dot Identifier)*` を import block の id list で受理し、AST の `ImportDeclaration.ids` を `string[][]`（各 path のセグメント配列）に拡張する。
-Phase 1 で導入した `import-id-ambiguous` 診断の **解消手段** として位置づけ、ユーザが「どの path から取るか」を明示できるようにする。
+**案 A を直接採る — 明示的な path import を最初から実装する**。
 
 ```krs
-// Phase 1 では曖昧で import-id-ambiguous が出る
-import { Order } from "./services.krs"
-
-// Phase 2 では path を明示して曖昧性を解く
 import { ECPlatform.ECommerce.Order } from "./services.krs"
 ```
 
+### なぜ暗黙解決（案 C / 案 D の Phase 1）を採らないか
+
+**同名 id がたびたび意図的に共存する**。これがあるため、暗黙的な再帰解決は「正しく書いているのに ambiguous 診断が出る」状態を量産しがち。
+
+代表的なシナリオ:
+
+1. **システム移行**: 旧システムと新システムが意図的に同じ service id を使う
+
+   ```krs
+   // services-legacy.krs
+   system OrderSystemV1 {
+     service OrderService { ... }
+   }
+   // services-new.krs
+   system OrderSystemV2 {
+     service OrderService { ... }   // 意図的に同名
+   }
+   ```
+
+   どちらか一方を `import { OrderService }` で取りたいとき、暗黙解決では即 ambiguous エラー。明示 path なら `import { OrderSystemV1.OrderService }` / `import { OrderSystemV2.OrderService }` で意図がそのまま書ける。
+
+2. **マルチテナント / 環境別構成**: tenant ごとに同じ shape の system を持つ場合（`TenantA.Billing` / `TenantB.Billing`）。
+
+3. **ドメイン名の自然な再利用**: `Catalog`, `Order`, `Member` のように一般的すぎるドメイン名は複数 system にまたがって登場することが珍しくない（既存の `domain-dispersal` 警告がこの状況を前提にしている）。
+
+これらは「将来の特殊事例」ではなく **karasu のモデリングが許容している通常の使い方**。暗黙解決を最初に出してから「ambiguity が頻出しました → 明示 syntax を追加します」と進めると、ユーザは中途半端な期間中に `import-id-ambiguous` でブロックされる。最初から明示の道を整備する方が体験が良い。
+
+### 実装スケッチ
+
+#### Parser
+
+`Identifier (Dot Identifier)*` を import block の id list で受理する。
+
+```krs
+import { ECPlatform.ECommerce.Order } from "./services.krs"
+import { Foo, Bar.Baz } from "./other.krs"   // 単一 id と path を混在可
+```
+
+AST 変更:
+
+```ts
+// before
+export interface ImportDeclaration {
+  ids: string[];
+  path: string;
+  loc: SourceRange;
+}
+
+// after
+export interface ImportDeclaration {
+  ids: ImportIdPath[];   // 各 entry が path セグメントのリスト
+  path: string;
+  loc: SourceRange;
+}
+
+/** `Foo` は `["Foo"]`、`A.B.C` は `["A", "B", "C"]`。 */
+export type ImportIdPath = string[];
+```
+
+bare id `Foo` は `["Foo"]` として保持し、resolver 側で「長さ 1」を直接子のみ照合と見なす。長さ 2 以上は path 解決。
+
+#### Resolver
+
+`mergeNamedImport` を path 走査に拡張:
+
+```ts
+// 各 ImportIdPath について
+for (const path of nodeImport.ids) {
+  if (path.length === 1) {
+    // 既存の挙動: top-level / direct child / system / deploy.nodes をそのまま検索
+    resolveBareId(importedFile, path[0]);
+  } else {
+    // path[0] が system id にマッチ → そこから path[1..] で children を辿る
+    // 全セグメントが解決すれば merge、途中で外れたら import-path-not-found 診断
+    resolvePath(importedFile, path);
+  }
+}
+```
+
+#### 診断
+
+- `import-id-not-found`: 既存。bare id (`["Foo"]`) で見つからないとき。
+- `import-path-not-found`: 新規。path (`["A", "B", "C"]`) のいずれかのセグメントが解決できないとき。params は `{ path: string[]; failedAt: number; importPath: string }`（どのセグメントで外れたか分かるように）。
+
+bare id で複数 hit する状況は、**現状の named import (直接子のみ走査) では発生しないので新規診断は不要**。明示 path に来たユーザが `A.B.C` で 1 件絞り込めばいい。同じ system 内で同名 id が衝突する状況は、別の `domain-dispersal` などで既に検知されている。
+
+### 開放する範囲
+
+- `import { ECPlatform }` — system 全体（現状維持）
+- `import { ECPlatform.ECommerce }` — system 直下の service（現状の bare id と同じものに別の書き方が増える）
+- `import { ECPlatform.ECommerce.Order }` — service 内の domain（**新規対応**）
+- `import { ECPlatform.ECommerce.Order.PlaceOrder }` — domain 内の usecase（将来 `realizes`/`handles` が usecase を扱うようになれば即解放）
+
+### 後方互換性
+
+bare id 形式 (`import { ECommerce }`) は引き続き受理する。AST 上は `["ECommerce"]` として表現されるだけで、resolver の挙動は変わらない。既存の `.krs` を一切書き換える必要がない。
+
 ## エッジケースとテスト方針
 
-| ケース | 期待 |
-|---|---|
-| direct child of system (`system.children[]`) | 解決（Phase 1 でも Phase 2 でも） |
-| grandchild (system → service → domain) | Phase 1 で新たに解決される |
-| 複数 system に同名 id | Phase 1 で `import-id-ambiguous` 診断 |
-| 同一 system 内の同名 (現実的には domain-dispersal で別途 warning が出る状況) | `import-id-ambiguous` |
-| 存在しない id | 既存通り `import-id-not-found` |
-| system 自身を指す `import { ECPlatform }` | 現状維持（system に直接 hit したらそちら優先） |
-| top-level service / deploy 内ノード | 現状維持 |
+| ケース | 書き方 | 期待 |
+|---|---|---|
+| 既存の bare id (system 直接子 service) | `import { ECommerce }` | 現状通り解決（後方互換） |
+| system 自身 | `import { ECPlatform }` | 現状通り system 全体取り込み |
+| top-level service / deploy 内ノード | `import { Standalone }` | 現状通り |
+| **明示 path で grandchild** | `import { ECPlatform.ECommerce.Order }` | **新規対応** |
+| **明示 path で system 直下** | `import { ECPlatform.ECommerce }` | bare id と同等の結果（書き方の選択肢が増える） |
+| **同名 id を path で曖昧性回避** | `import { OrderSystemV1.OrderService }` | 意図した片方だけ取り込む |
+| 存在しない bare id | `import { Nothing }` | 既存の `import-id-not-found` |
+| 途中で外れる path | `import { ECPlatform.NotThere.Order }` | 新規 `import-path-not-found`（`failedAt: 1` を返す） |
+| 同名衝突したまま bare id を書いてしまう | `import { OrderService }`（複数 system に存在） | **暗黙解決を導入していないので、現状の挙動（最初に hit した system からの取り込み）を踏襲。明示 path への置き換えを spec で推奨** |
 
 ## 既存仕様との関係
 
-- `docs/spec/syntax.md` の import セクション: Phase 1 で「named import は descendants まで再帰的に解決する」「曖昧時は `import-id-ambiguous` 診断」と追記する
-- AT-0068 (PR #913 で追加) の「import 越しの参照は警告しない」前提: Phase 1 後はネストされたターゲットでも実際に成り立つようになる。AT-0068 を更新して "deeply nested" の例を追加する想定
+- `docs/spec/syntax.md` の import セクション: 「named import の id は単純な識別子か `A.B.C` 形式の path を許容する」「path の各セグメントは system / service / domain / usecase のいずれかの id を順に辿る」と明記する。同名 id 共存時の例（システム移行）も併記。
+- AT-0068 (PR #913 で追加) の「import 越しの参照は警告しない」前提: 本 Issue 着手後は明示 path で深いネストにも成立する。AT-0068 を更新して `import { Sys.Svc.Domain }` の例を追加する想定。
 
 ## 未解決の問い
 
-1. **Phase 2（明示的な path import）を最初から入れるか、別 Issue に分けるか** — 暫定では分割。ただ Phase 1 (暗黙) で ambiguity が出やすそうな examples が確認できれば、まとめて入れる選択肢もある。
-2. **`import-id-ambiguous` のメッセージ形式** — match した path のリストをどう提示するか。Phase 2 の明示構文を前提にした書式 (`A.B.C`) で書いておけば、Phase 2 着手時にメッセージ更新が要らない。
-3. **wildcard import (`import "./file.krs"`) との関係** — wildcard は今もファイル全体を取り込むので、再帰拡張の影響を受けない。確認のみ。
-4. **検索順序の安定性** — 複数 system を持つファイルで、検索順がファイル定義順依存になることをテストで明示するかどうか。
+1. **`import-path-not-found` 診断のメッセージ書式** — どのセグメントで外れたかを示す UX を決める。`failedAt` をどう文章化するか（例: `import path "A.B.C" failed at segment 2 ("B"): no service / domain with that id under "A"`）。
+2. **wildcard import (`import "./file.krs"`) との関係** — wildcard はファイル全体を取り込むので、本変更の影響を受けない。確認のみ。
+3. **path セグメント間の許容ノード種別** — 各セグメントで system → service → domain → usecase の階層に厳密に従うか、もしくは「id が一致すれば kind を問わず辿る」か。前者の方が typo が早く検出できるが、karasu の AST が将来追加する子ノード種別との互換性で迷う余地がある。
+4. **path に対する LSP 補完** — 別 Issue 化候補。本実装の後に path 補完を追加すると writer 体験が一気に上がる。
