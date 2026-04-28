@@ -145,3 +145,13 @@ organization ECOrg {
     }
   }
 }
+
+// Legend: swatch supplies a literal color, ref pulls the color from
+// .krs.style for the given [tag] / type / #id. Omit the scope to show
+// on system / deploy / org views.
+legend "Legend" {
+  ref [external] "External system"
+  ref [human]    "Human user"
+  ref database   "Shared database"
+  ref queue      "Message queue"
+}

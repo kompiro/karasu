@@ -164,6 +164,16 @@ organization ECOrg {
     }
   }
 }
+
+// 凡例: swatch は色を直接指定、ref は [tag] / 型 / #id を
+// .krs.style から解決して色を引き継ぐ。scope を省略すると
+// system / deploy / org の全ビューに描画される。
+legend "凡例" {
+  ref [external] "外部システム"
+  ref [human]    "人間ユーザー"
+  ref database   "共有データベース"
+  ref queue      "メッセージキュー"
+}
 `,
     },
     {
@@ -349,6 +359,16 @@ organization ECOrg {
       slack "@carol"
     }
   }
+}
+
+// Legend: swatch supplies a literal color, ref pulls the color from
+// .krs.style for the given [tag] / type / #id. Omit the scope to show
+// on system / deploy / org views.
+legend "Legend" {
+  ref [external] "External system"
+  ref [human]    "Human user"
+  ref database   "Shared database"
+  ref queue      "Message queue"
 }
 `,
     },
