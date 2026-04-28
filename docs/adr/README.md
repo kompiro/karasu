@@ -187,6 +187,7 @@ VS Code 拡張と LSP の段階的実装。
 - [ADR-20260414-01](20260414-01-dependabot-batch-2026-04-14.md) — Dependabot Batch Triage (2026-04-14)
 - [ADR-20260427-01](20260427-01-feature-toggle-policy.md) — Feature toggle policy — compile-time, short-lived, deleted on graduation
 - [ADR-20260428-01](20260428-01-skip-secret-gated-jobs-on-bot-prs.md) — Secret 必須の CI ジョブは bot 作者の PR で skip する
+- [ADR-20260428-02](20260428-02-update-dependencies-20260428.md) — 依存更新バッチ — 2026-04-28
 
 ### ADR 運用・ツール — `adr-tooling`
 
