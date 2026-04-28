@@ -18,3 +18,5 @@ Verify that the karasu toolbar icon appears in the VS Code editor title bar when
 - [ ] In a dark theme, the icon appears in light color (`#dce8ff`)
 - [ ] In a light theme, the icon appears in dark color (`#1a1a2e`)
 - [ ] Clicking the icon opens the karasu preview panel
+
+> manual / visual review — VS Code editor-title toolbar icon rendering and theme-color switching are visual checks against a live VS Code window.

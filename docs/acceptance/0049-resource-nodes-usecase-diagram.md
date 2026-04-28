@@ -67,9 +67,13 @@ Drill down to `OrderService → Order` (domain view):
 - [ ] An edge `PlaceOrder → EventBus.OrderCreated` is rendered
 - [ ] An edge `CancelOrder → OrderDB.InventoryTable` is rendered
 
+> manual / visual review — visual edge coverage in the rendered domain view.
+
 ### Label resolution
 
 - [ ] Resource nodes use the label from the `table`/`queue`/`bucket` declaration, not the raw dot-notation ID
+
+> manual / visual review — confirms the rendered text on the resource node matches the declared label, not the dot-notation id.
 
 ### Shared resource deduplication
 
