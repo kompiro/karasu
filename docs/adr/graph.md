@@ -1,6 +1,6 @@
 # ADR Dependency Graph — Overview
 
-127 ADRs across 15 topics. Clusters group by `topic` frontmatter field. Edges crossing cluster borders are cross-topic dependencies.
+128 ADRs across 15 topics. Clusters group by `topic` frontmatter field. Edges crossing cluster borders are cross-topic dependencies.
 ```mermaid
 flowchart TD
   subgraph adr-tooling["adr-tooling"]
@@ -152,7 +152,7 @@ flowchart TD
     ADR_20260427_05["ADR-20260427-05<br/>Playwright 向け OPFS fixture ヘルパー"]
     ADR_20260428_04["ADR-20260428-04<br/>Chat UI E2E は Playwright route で Anthropic API ..."]
     ADR_20260428_05["ADR-20260428-05<br/>VS Code WebView の DOM 系テストはマニュアル運用とする"]
-    ADR_20260428_08["ADR-20260428-08<br/>受け入れテストの自動化マーカー規約と検出スクリプト"]
+    ADR_20260428_09["ADR-20260428-09<br/>受け入れテストの自動化マーカー規約と検出スクリプト"]
   end
   subgraph vscode["vscode"]
     ADR_20260330_05["ADR-20260330-05<br/>VSCode 拡張 — LSP-first アーキテクチャと段階的フェーズ計画"]
@@ -371,6 +371,7 @@ flowchart TD
   class ADR_20260428_06 accepted
   class ADR_20260428_07 accepted
   class ADR_20260428_08 accepted
+  class ADR_20260428_09 accepted
 ```
 
 ## Per-topic detail
