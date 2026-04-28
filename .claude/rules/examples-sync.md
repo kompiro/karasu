@@ -15,7 +15,7 @@ paths:
 
 `packages/core/src/builtins/examples.ts` は `examples/` 配下のうち **`examples.ts` に登録済みのファイル**の内容を文字列として保持しており、ProjectMode の初回起動時に使用される。
 
-現在 `examples.ts` に登録されているのは `examples/getting-started/`、`examples/getting-started-en/`、`examples/ec-platform/`。他のディレクトリ（`hr-tool/` など）は登録されていないため、それらを変更しても `examples.ts` の更新は不要。
+現在 `examples.ts` に登録されているのは `examples/getting-started/`、`examples/getting-started-en/`、`examples/ec-platform/`、`examples/client-mcp/`。他のディレクトリ（`hr-tool/` など）は登録されていないため、それらを変更しても `examples.ts` の更新は不要。
 
 ## 更新手順
 
@@ -40,17 +40,19 @@ paths:
 | `getting-started/default.krs.style` | `GETTING_STARTED_PROJECT.files[1].content` |
 | `getting-started-en/index.krs` | `GETTING_STARTED_PROJECT_EN.files[0].content` |
 | `getting-started-en/default.krs.style` | `GETTING_STARTED_PROJECT_EN.files[1].content` |
+| `client-mcp/index.krs` | `CLIENT_MCP_PROJECT.files[0].content` |
 | `ec-platform/01-system.krs` | `EC_PLATFORM_PROJECTS[0].files[0].content` (name: `01-system`) |
 | `ec-platform/02-users.krs` | `EC_PLATFORM_PROJECTS[1].files[0].content` (name: `02-users`) |
-| `ec-platform/03-domains.krs` | `EC_PLATFORM_PROJECTS[2].files[0].content` (name: `03-domains`) |
-| `ec-platform/04-annotations.krs` | `EC_PLATFORM_PROJECTS[3].files[0].content` (name: `04-annotations`) |
-| `ec-platform/05-multifile/system.krs` | `EC_PLATFORM_PROJECTS[4].files[0].content` (path: `index.krs`) |
-| `ec-platform/05-multifile/ecommerce.krs` | `EC_PLATFORM_PROJECTS[4].files[1].content` |
-| `ec-platform/05-multifile/payment.krs` | `EC_PLATFORM_PROJECTS[4].files[2].content` |
-| `ec-platform/06-deploy/system.krs` | `EC_PLATFORM_PROJECTS[5].files[0].content` (path: `index.krs`) |
-| `ec-platform/06-deploy/ecommerce.krs` | `EC_PLATFORM_PROJECTS[5].files[1].content` |
-| `ec-platform/06-deploy/payment.krs` | `EC_PLATFORM_PROJECTS[5].files[2].content` |
-| `ec-platform/06-deploy/deploy.krs` | `EC_PLATFORM_PROJECTS[5].files[3].content` |
-| `ec-platform/07-cross-system/main.krs` | `EC_PLATFORM_PROJECTS[6].files[0].content` (path: `index.krs`) |
-| `ec-platform/07-cross-system/ec-platform.krs` | `EC_PLATFORM_PROJECTS[6].files[1].content` |
-| `ec-platform/07-cross-system/payment-gateway.krs` | `EC_PLATFORM_PROJECTS[6].files[2].content` |
+| `ec-platform/02.5-clients.krs` | `EC_PLATFORM_PROJECTS[2].files[0].content` (name: `02.5-clients`) |
+| `ec-platform/03-domains.krs` | `EC_PLATFORM_PROJECTS[3].files[0].content` (name: `03-domains`) |
+| `ec-platform/04-annotations.krs` | `EC_PLATFORM_PROJECTS[4].files[0].content` (name: `04-annotations`) |
+| `ec-platform/05-multifile/system.krs` | `EC_PLATFORM_PROJECTS[5].files[0].content` (path: `index.krs`) |
+| `ec-platform/05-multifile/ecommerce.krs` | `EC_PLATFORM_PROJECTS[5].files[1].content` |
+| `ec-platform/05-multifile/payment.krs` | `EC_PLATFORM_PROJECTS[5].files[2].content` |
+| `ec-platform/06-deploy/system.krs` | `EC_PLATFORM_PROJECTS[6].files[0].content` (path: `index.krs`) |
+| `ec-platform/06-deploy/ecommerce.krs` | `EC_PLATFORM_PROJECTS[6].files[1].content` |
+| `ec-platform/06-deploy/payment.krs` | `EC_PLATFORM_PROJECTS[6].files[2].content` |
+| `ec-platform/06-deploy/deploy.krs` | `EC_PLATFORM_PROJECTS[6].files[3].content` |
+| `ec-platform/07-cross-system/main.krs` | `EC_PLATFORM_PROJECTS[7].files[0].content` (path: `index.krs`) |
+| `ec-platform/07-cross-system/ec-platform.krs` | `EC_PLATFORM_PROJECTS[7].files[1].content` |
+| `ec-platform/07-cross-system/payment-gateway.krs` | `EC_PLATFORM_PROJECTS[7].files[2].content` |
