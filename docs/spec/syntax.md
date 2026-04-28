@@ -507,6 +507,100 @@ When both are specified, the property form takes precedence.
 
 ---
 
+## Diagram legend
+
+A `legend` block declares color → meaning pairs that the renderer paints as a footer band below the diagram view. Use it to document what your colors, annotations, and tags signify so the rendered SVG is self-explanatory in reviews and exports.
+
+### Top-level placement
+
+`legend` blocks live at the top level of a `.krs` file — alongside `system`, `deploy`, and `organization`. Nesting inside `system`, `service`, or `domain` is a parse error. Multiple `legend` blocks are allowed and stack vertically in declaration order on each view that contains them.
+
+### Grammar
+
+```
+legend ::= "legend" view-scope? title? "{" entry* "}"
+
+view-scope ::= "system" | "deploy" | "org"
+title      ::= <string-literal>
+entry      ::= swatch-entry | ref-entry
+
+swatch-entry ::= "swatch" "#" hex-digits <string-literal>
+ref-entry    ::= "ref" ref-target <string-literal>
+
+ref-target ::= "@" identifier      ; annotation
+             | "[" identifier "]"  ; tag
+             | "." identifier      ; class (forward-compat; always unresolved today)
+             | "#" identifier      ; node id
+             | identifier          ; node-kind type
+```
+
+### View scope
+
+| `<view-scope>` | Where the legend appears |
+|-----------|--------------------------|
+| omitted   | system, deploy, and org views |
+| `system`  | system view only |
+| `deploy`  | deploy view only |
+| `org`     | org view only |
+
+### Example
+
+```krs
+system ECPlatform {
+  service ECommerce { label "EC Site" }
+  service Payment [external] { label "Payment" }
+  service Legacy @deprecated { label "Legacy" }
+}
+
+deploy Production {
+  oci "ec-api" { realizes ECommerce }
+}
+
+// Shown on every view.
+legend "Owner team" {
+  swatch #2563EB "Team Backend"
+  swatch #16A34A "Team Frontend"
+  swatch #DC2626 "Third-party"
+
+  ref @deprecated "Deprecated"   // color from .krs.style
+  ref [external]  "External"
+  ref service     "Service"
+  ref #ECommerce  "EC site"
+}
+
+// Deploy-only legend.
+legend deploy "Hosting tier" {
+  swatch #0EA5E9 "Cloud Run"
+  swatch #F59E0B "On-prem"
+}
+```
+
+### Color resolution
+
+- **`swatch`** uses the literal hex color verbatim (3, 4, 6, or 8 hex digits, with `#`).
+- **`ref`** resolves through the `.krs.style` cascade. The renderer picks the highest-specificity matching rule and uses its `background-color`, falling back to `badge-color`.
+- A `ref` that matches no rule and no node is **dropped from the rendered footer** and surfaced in the warning panel as `legend-ref-unresolved`. Authors can then either remove the entry or add a matching style rule.
+- `.class` selectors are accepted by the parser for forward compatibility but always resolve as unresolved today (`.krs.style` has no class concept — see [`style.md`](style.md)).
+
+### Labels are not localized
+
+Legend labels are author-supplied strings, treated the same way as `name` and `label` properties on regular nodes — the renderer embeds them verbatim into the SVG and the app's i18n layer does **not** translate them. See [`i18n.md`](i18n.md) for the exemption list.
+
+### Sample file
+
+`examples/feature-samples/legend.krs` exercises every primitive in one self-contained file (paste into the app to try).
+
+### What's not in v1
+
+The following are deferred (see [`docs/design/diagram-legend.md`](../design/diagram-legend.md) for rationale):
+
+- Shape / icon / pattern legends (only color today).
+- Interactive legends (click to filter, etc.).
+- Auto-generation from used annotations / tags.
+- Rendering on diff views (`compileSystemDiff` / `compileDeployDiff`) and on org drill-down / focused-team / icon-mode return paths.
+
+---
+
 ## Drill-down and external file references
 
 Write with inline nesting first, then extract into separate files as things grow.

@@ -384,6 +384,111 @@ team の直下に `member` を宣言して個人を記述する。
 
 ---
 
+## 図の凡例（legend ブロック）
+
+`legend` ブロックは「色と意味の対応」を宣言する。レンダラーは各ビューの図の下に
+フッター帯として描画する。エクスポートやレビューで「この色は何？」を口頭で
+説明せずに済むようにするのが目的。
+
+### 配置
+
+`legend` はトップレベルに置く（`system` / `deploy` / `organization` と同列）。
+`system` / `service` / `domain` 内へのネストは parse error。同じビューが対象の
+`legend` ブロックは複数書けて、宣言順に縦に並ぶ。
+
+### 文法
+
+```
+legend ::= "legend" view-scope? title? "{" entry* "}"
+
+view-scope ::= "system" | "deploy" | "org"
+title      ::= <文字列リテラル>
+entry      ::= swatch-entry | ref-entry
+
+swatch-entry ::= "swatch" "#" hex-digits <文字列リテラル>
+ref-entry    ::= "ref" ref-target <文字列リテラル>
+
+ref-target ::= "@" identifier      ; annotation
+             | "[" identifier "]"  ; tag
+             | "." identifier      ; class（前方互換、現状常に未解決）
+             | "#" identifier      ; node id
+             | identifier          ; node 種別（type）
+```
+
+### ビュースコープ
+
+| `<view-scope>` | 描画されるビュー |
+|----------------|------------------|
+| 省略           | system / deploy / org すべて |
+| `system`       | system 図のみ |
+| `deploy`       | deploy 図のみ |
+| `org`          | org 図のみ |
+
+### 例
+
+```krs
+system ECPlatform {
+  service ECommerce { label "EC サイト" }
+  service Payment [external] { label "決済" }
+  service Legacy @deprecated { label "レガシー" }
+}
+
+deploy Production {
+  oci "ec-api" { realizes ECommerce }
+}
+
+// 全ビューに表示
+legend "オーナーチーム" {
+  swatch #2563EB "バックエンド"
+  swatch #16A34A "フロントエンド"
+  swatch #DC2626 "サードパーティ"
+
+  ref @deprecated "廃止予定"   // 色は .krs.style から
+  ref [external]  "外部システム"
+  ref service     "サービス"
+  ref #ECommerce  "EC サイト"
+}
+
+// deploy 図だけに表示
+legend deploy "ホスティング層" {
+  swatch #0EA5E9 "Cloud Run"
+  swatch #F59E0B "On-prem"
+}
+```
+
+### 色の解決
+
+- **`swatch`** は hex 値をそのまま使う（3 / 4 / 6 / 8 桁、`#` プレフィックス必須）。
+- **`ref`** は `.krs.style` のカスケードで解決する。一致したルールのうち
+  specificity が最も高いものから `background-color`（無ければ `badge-color`）を採用。
+- 一致するルールも該当ノードも無い `ref` は**フッターから省略**され、
+  warning panel に `legend-ref-unresolved` が表示される。
+- `.class` セレクタはパーサーが受け付けるが、`.krs.style` にクラス概念が
+  ないため現状は常に未解決扱い（[`style.ja.md`](style.ja.md) 参照）。
+
+### ラベルは i18n しない
+
+凡例ラベルは著者が `.krs` に直接書いた文字列で、`name` / `label` プロパティと
+同じく **i18n の対象外**。レンダラーは SVG にそのまま埋め込み、app の翻訳層は
+触らない（[`i18n.md`](i18n.md) の exemption リスト参照）。
+
+### サンプル
+
+`examples/feature-samples/legend.krs` に v1 の全プリミティブを盛り込んだ
+サンプルがあるので、アプリにペーストして動作を確認できる。
+
+### v1 で扱わないこと
+
+設計判断の経緯は [`docs/design/diagram-legend.md`](../design/diagram-legend.md) を参照。
+
+- shape / icon / pattern 凡例（v1 は色のみ）
+- インタラクティブ凡例（クリックでハイライト 等）
+- 使用中アノテーション / タグからの自動生成
+- diff ビュー（`compileSystemDiff` / `compileDeployDiff`）と
+  org のドリルダウン / focused-team / icon-mode 経路への描画
+
+---
+
 ## ドリルダウンと外部ファイル参照
 
 インラインネストで記述し、育ってきたら外部ファイルに extract できる。
