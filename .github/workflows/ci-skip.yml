@@ -1,0 +1,41 @@
+name: CI (docs-only)
+
+# Companion of `ci.yml`. Triggered ONLY on docs-only PRs (the inverse of
+# `ci.yml`'s `paths-ignore`) and emits a job named `Check` that just exits
+# 0 so the Required status configured in branch protection stays green
+# without paying for a full lint / typecheck / build / test cycle.
+#
+# Keep the path lists below in sync with `ci.yml`'s `paths-ignore`. If a
+# new docs-only path is added there, mirror it under `paths:` here.
+#
+# Issue #953.
+
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, synchronize, reopened]
+    paths:
+      - "docs/**"
+      - "**/*.md"
+      - ".claude/**"
+
+concurrency:
+  # Distinct from ci.yml's group on purpose: when a PR mixes code + docs,
+  # both workflows fire (paths-ignore filters only when *every* changed
+  # path is ignored, while paths fires when *any* changed path matches).
+  # Sharing a concurrency group caused the stub to be cancelled by the
+  # real Check. With separate groups, both report `Check / success` and
+  # branch protection (which AND-s all checks named `Check`) is satisfied.
+  group: ci-skip-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    name: Check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Docs-only change — skip Check
+        run: |
+          echo "Docs-only PR. Lint / typecheck / build / test are skipped."
+          echo "If your change touches code as well, ensure paths fall outside"
+          echo "ci.yml's paths-ignore so the real Check runs."

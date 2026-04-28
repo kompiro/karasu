@@ -1,6 +1,6 @@
 # ADR Topic: build
 
-20 ADRs in this topic. Solid nodes belong to `build`; gray dashed nodes are ghosts showing cross-topic references to help navigation.
+21 ADRs in this topic. Solid nodes belong to `build`; gray dashed nodes are ghosts showing cross-topic references to help navigation.
 
 Other topics: [overview](../graph.md).
 ```mermaid
@@ -26,6 +26,7 @@ flowchart TD
     ADR_20260427_01["ADR-20260427-01<br/>Feature toggle ポリシー — compile-time、短命、卒業時に削除"]
     ADR_20260428_01["ADR-20260428-01<br/>Secret 必須の CI ジョブは bot 作者の PR で skip する"]
     ADR_20260428_02["ADR-20260428-02<br/>依存更新バッチ — 2026-04-28"]
+    ADR_20260428_08["ADR-20260428-08<br/>Required Check は paired stub workflow で docs-on..."]
   end
 
   classDef accepted fill:#d4edda,stroke:#28a745,color:#155724
@@ -54,4 +55,5 @@ flowchart TD
   class ADR_20260427_01 accepted
   class ADR_20260428_01 accepted
   class ADR_20260428_02 accepted
+  class ADR_20260428_08 accepted
 ```

@@ -4,6 +4,14 @@ on:
   pull_request:
     branches: [main]
     types: [opened, synchronize, reopened]
+    # Docs-only changes don't affect lint / typecheck / build / test, so this
+    # workflow is filtered out on those PRs. The companion `ci-skip.yml`
+    # provides a stub `Check` job for docs-only PRs so the Required status
+    # is still satisfied. Keep both filters in sync (Issue #953).
+    paths-ignore:
+      - "docs/**"
+      - "**/*.md"
+      - ".claude/**"
   push:
     branches: [main]
   merge_group:
