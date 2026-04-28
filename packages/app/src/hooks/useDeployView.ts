@@ -10,6 +10,7 @@ import {
   type DisplayMode,
 } from "@karasu-tools/core";
 import { useEmptyStateLabels } from "../i18n/use-empty-state-labels.js";
+import { computeViewResultFingerprint } from "./result-fingerprint.js";
 
 interface DeployViewState {
   svg: string;
@@ -39,6 +40,7 @@ export function useDeployView(
 
   const lastValidSvg = useRef("");
   const lastValidSvgKey = useRef("");
+  const lastResultFingerprint = useRef<string | null>(null);
   const timerRef = useRef<ReturnType<typeof setTimeout>>(undefined);
   const recompileCounter = useRef(0);
 
@@ -90,9 +92,15 @@ export function useDeployView(
               deployBlocks: base.deployBlocks,
             });
           } else {
-            if (diff.svg === lastValidSvg.current) return;
+            const fingerprint = computeViewResultFingerprint({
+              svg: diff.svg,
+              warnings: base.warnings,
+              diagnostics: diff.diagnostics,
+            });
+            if (fingerprint === lastResultFingerprint.current) return;
             lastValidSvg.current = diff.svg;
             lastValidSvgKey.current = currentKey;
+            lastResultFingerprint.current = fingerprint;
             setState({
               svg: diff.svg,
               warnings: base.warnings,
@@ -123,9 +131,15 @@ export function useDeployView(
             deployBlocks: result.deployBlocks,
           });
         } else {
-          if (result.svg === lastValidSvg.current) return;
+          const fingerprint = computeViewResultFingerprint({
+            svg: result.svg,
+            warnings: result.warnings,
+            diagnostics: result.diagnostics,
+          });
+          if (fingerprint === lastResultFingerprint.current) return;
           lastValidSvg.current = result.svg;
           lastValidSvgKey.current = currentKey;
+          lastResultFingerprint.current = fingerprint;
           setState({
             svg: result.svg,
             warnings: result.warnings,

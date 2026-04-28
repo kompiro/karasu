@@ -37,6 +37,7 @@ import assetsSvg from "@karasu-tools/core/icons/assets.svg?raw";
 import jobSvg from "@karasu-tools/core/icons/job.svg?raw";
 import artifactSvg from "@karasu-tools/core/icons/artifact.svg?raw";
 import { useEmptyStateLabels } from "../i18n/use-empty-state-labels.js";
+import { computeViewResultFingerprint } from "./result-fingerprint.js";
 
 interface SystemViewState {
   svg: string;
@@ -106,6 +107,7 @@ export function useSystemView(
 
   const lastValidSvg = useRef("");
   const lastValidSvgKey = useRef("");
+  const lastResultFingerprint = useRef<string | null>(null);
   const hadErrors = useRef(false);
   const timerRef = useRef<ReturnType<typeof setTimeout>>(undefined);
   const recompileCounter = useRef(0);
@@ -162,10 +164,16 @@ export function useSystemView(
               nodeDiff: diff.nodeDiff,
             });
           } else {
-            if (diff.svg === lastValidSvg.current && !hadErrors.current) return;
+            const fingerprint = computeViewResultFingerprint({
+              svg: diff.svg,
+              warnings: base.warnings,
+              diagnostics: diff.diagnostics,
+            });
+            if (fingerprint === lastResultFingerprint.current && !hadErrors.current) return;
             hadErrors.current = false;
             lastValidSvg.current = diff.svg;
             lastValidSvgKey.current = currentKey;
+            lastResultFingerprint.current = fingerprint;
             setState({
               svg: diff.svg,
               warnings: base.warnings,
@@ -202,10 +210,16 @@ export function useSystemView(
             nodeFileIndex: result.nodeFileIndex,
           });
         } else {
-          if (result.svg === lastValidSvg.current && !hadErrors.current) return;
+          const fingerprint = computeViewResultFingerprint({
+            svg: result.svg,
+            warnings: result.warnings,
+            diagnostics: result.diagnostics,
+          });
+          if (fingerprint === lastResultFingerprint.current && !hadErrors.current) return;
           hadErrors.current = false;
           lastValidSvg.current = result.svg;
           lastValidSvgKey.current = currentKey;
+          lastResultFingerprint.current = fingerprint;
           setState({
             svg: result.svg,
             warnings: result.warnings,

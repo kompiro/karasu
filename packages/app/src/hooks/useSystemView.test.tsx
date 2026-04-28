@@ -126,6 +126,65 @@ describe("useSystemView", () => {
     vi.useRealTimers();
   });
 
+  it("clears a warning after the source is fixed even when SVG topology is identical", async () => {
+    vi.useFakeTimers();
+    // Phase 4 introduced an `unresolved-handles` warning. The bug fixed by
+    // Issue #891: when the user repairs the typo, the rendered SVG topology
+    // is the same as the broken version (both render the same nodes /
+    // edges), so the previous svg-only equality check would short-circuit
+    // setState and leave the stale warning visible.
+    const WITH_TYPO = `system S {
+  client WebApp [web] { handles Ordr }
+  service Backend { domain Order {} }
+  WebApp -> Backend
+}`;
+    const FIXED = `system S {
+  client WebApp [web] { handles Order }
+  service Backend { domain Order {} }
+  WebApp -> Backend
+}`;
+    const fs = makeFs(WITH_TYPO);
+    const { result } = renderHook(() => useSystemView(ENTRY, fs, []));
+    await act(() => vi.advanceTimersByTimeAsync(300));
+    expect(result.current.warnings.some((w) => w.kind === "unresolved-handles")).toBe(true);
+
+    await act(async () => {
+      await fs.writeFile(ENTRY, FIXED);
+      result.current.recompile();
+    });
+    await act(() => vi.advanceTimersByTimeAsync(300));
+
+    expect(result.current.warnings.some((w) => w.kind === "unresolved-handles")).toBe(false);
+    vi.useRealTimers();
+  });
+
+  it("surfaces a new warning when one is introduced after a clean compile", async () => {
+    vi.useFakeTimers();
+    const CLEAN = `system S {
+  client WebApp [web] { handles Order }
+  service Backend { domain Order {} }
+  WebApp -> Backend
+}`;
+    const WITH_TYPO = `system S {
+  client WebApp [web] { handles Ordr }
+  service Backend { domain Order {} }
+  WebApp -> Backend
+}`;
+    const fs = makeFs(CLEAN);
+    const { result } = renderHook(() => useSystemView(ENTRY, fs, []));
+    await act(() => vi.advanceTimersByTimeAsync(300));
+    expect(result.current.warnings.some((w) => w.kind === "unresolved-handles")).toBe(false);
+
+    await act(async () => {
+      await fs.writeFile(ENTRY, WITH_TYPO);
+      result.current.recompile();
+    });
+    await act(() => vi.advanceTimersByTimeAsync(300));
+
+    expect(result.current.warnings.some((w) => w.kind === "unresolved-handles")).toBe(true);
+    vi.useRealTimers();
+  });
+
   it("skips setState when recompile produces the same SVG", async () => {
     vi.useFakeTimers();
     const fs = makeFs(SOURCE_A);
