@@ -262,6 +262,16 @@ organization ECOrg {
     }
   }
 }
+
+// 凡例: swatch は色を直接指定、ref は @annotation / [tag] /
+// 型 / #id を .krs.style から解決して色を引き継ぐ。scope を省略すると
+// system / deploy / org の全ビューに描画される。
+legend "オーナー / 状態" {
+  swatch #2563EB "プラットフォーム"
+  swatch #16A34A "通知"
+  ref @deprecated "廃止予定"
+  ref [external]  "外部システム"
+}
 `;
 
 const SAMPLE_KRS_EN = `system ECPlatform {
@@ -397,6 +407,16 @@ organization ECOrg {
       slack "@carol"
     }
   }
+}
+
+// Legend: swatch supplies a literal color, ref pulls the color from
+// .krs.style for the given @annotation / [tag] / type / #id. Omit
+// the scope to show on system / deploy / org views.
+legend "Owner / status" {
+  swatch #2563EB "Platform"
+  swatch #16A34A "Notification"
+  ref @deprecated "Deprecated"
+  ref [external]  "External system"
 }
 `;
 

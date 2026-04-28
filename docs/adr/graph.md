@@ -1,6 +1,6 @@
 # ADR Dependency Graph — Overview
 
-126 ADRs across 15 topics. Clusters group by `topic` frontmatter field. Edges crossing cluster borders are cross-topic dependencies.
+127 ADRs across 15 topics. Clusters group by `topic` frontmatter field. Edges crossing cluster borders are cross-topic dependencies.
 ```mermaid
 flowchart TD
   subgraph adr-tooling["adr-tooling"]
@@ -130,6 +130,7 @@ flowchart TD
     ADR_20260420_01["ADR-20260420-01<br/>draw.io（mxGraph XML）エクスポート — レイアウトの逃げ道"]
     ADR_20260422_04["ADR-20260422-04<br/>トップレベル service / domain を `(Unassigned)` 擬似システム..."]
     ADR_20260422_05["ADR-20260422-05<br/>トップレベル infra ブロック（database / queue / storage）を ..."]
+    ADR_20260428_07["ADR-20260428-07<br/>図の凡例（legend）構文をモデル側に追加する"]
   end
   subgraph resolver["resolver"]
     ADR_20260401_06["ADR-20260401-06<br/>Domain Drift Detection — 検出スコープと検出キー"]
@@ -367,6 +368,7 @@ flowchart TD
   class ADR_20260428_04 accepted
   class ADR_20260428_05 accepted
   class ADR_20260428_06 accepted
+  class ADR_20260428_07 accepted
   class ADR_20260428_08 accepted
 ```
 
@@ -382,7 +384,7 @@ flowchart TD
 - [`navigation`](graph/navigation.md) — 8 ADRs
 - [`parser`](graph/parser.md) — 10 ADRs
 - [`project`](graph/project.md) — 4 ADRs
-- [`renderer`](graph/renderer.md) — 17 ADRs
+- [`renderer`](graph/renderer.md) — 18 ADRs
 - [`resolver`](graph/resolver.md) — 4 ADRs
 - [`styling`](graph/styling.md) — 4 ADRs
 - [`testing`](graph/testing.md) — 7 ADRs

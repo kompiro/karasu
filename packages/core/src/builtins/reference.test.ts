@@ -135,6 +135,12 @@ describe("getReference", () => {
     expect(ref.sampleKrs).toContain("organization");
   });
 
+  it("includes a legend block exercising swatch and ref entries", () => {
+    expect(ref.sampleKrs).toMatch(/^legend\b/m);
+    expect(ref.sampleKrs).toContain("swatch ");
+    expect(ref.sampleKrs).toContain("ref @deprecated");
+  });
+
   it("sampleKrs parses without errors for both locales", async () => {
     const { Parser } = await import("../parser/parser.js");
     for (const locale of ["en", "ja"] as const) {

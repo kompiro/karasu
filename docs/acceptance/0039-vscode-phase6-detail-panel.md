@@ -5,7 +5,12 @@
 **Manual** — see [ADR-20260428-05](../adr/20260428-05-vscode-webview-manual-tests.md).
 This AT exercises the karasu preview WebView (detail panel rendering, links,
 Jump-to-editor button), which is unreachable from the `packages/vscode-e2e`
-harness. Verify by hand during release QA.
+smoke harness. Verify by hand during release QA.
+
+> Phase 1 of the WebView E2E harness rollout has landed
+> (see [`docs/design/vscode-webview-e2e-harness.md`](../design/vscode-webview-e2e-harness.md)
+> and AT-0069). Phase 2 will migrate the TC-01..TC-N cases below to the
+> ExTester runner once the WebView selector path is dialed in.
 
 ## Summary
 

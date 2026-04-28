@@ -13,9 +13,12 @@ type: manual
 
 ## Test cases
 
+> 🟡 Partially automated — `packages/cli/src/translate/translate.e2e.test.ts` covers the docker-compose / OpenAPI / DB heuristic paths, the `--from` / `--out` flags, and exit codes. Per-test-case `[x]` flips deferred to phase B (#920).
+
 ### AT-0050-01: Translate docker-compose.yml to deploy.krs (heuristic)
 
 **Input** `docker-compose.yml`:
+
 ```yaml
 name: production
 services:
@@ -26,11 +29,13 @@ services:
 ```
 
 **Command:**
+
 ```bash
 karasu translate --from compose docker-compose.yml
 ```
 
 **Expected output** (stdout):
+
 ```krs
 deploy "production" {
   oci "order-service" {
@@ -49,6 +54,7 @@ deploy "production" {
 ### AT-0050-02: karasu/realizes label takes priority (stage 1)
 
 **Input** `docker-compose.yml`:
+
 ```yaml
 name: production
 services:
@@ -59,11 +65,13 @@ services:
 ```
 
 **Command:**
+
 ```bash
 karasu translate --from compose docker-compose.yml
 ```
 
 **Expected output**:
+
 ```krs
 deploy "production" {
   oci "monolith" {
@@ -79,6 +87,7 @@ deploy "production" {
 ### AT-0050-03: karasu.map.yaml is used (stage 2)
 
 **Input** `docker-compose.yml`:
+
 ```yaml
 name: production
 services:
@@ -87,16 +96,19 @@ services:
 ```
 
 **Input** `karasu.map.yaml` (in same directory):
+
 ```yaml
 app: ECommerce
 ```
 
 **Command:**
+
 ```bash
 karasu translate --from compose docker-compose.yml
 ```
 
 **Expected output**:
+
 ```krs
 deploy "production" {
   oci "app" {
@@ -113,6 +125,7 @@ deploy "production" {
 **Setup**: `karasu.map.yaml` placed in a different directory.
 
 **Command:**
+
 ```bash
 karasu translate --from compose docker-compose.yml --map /path/to/karasu.map.yaml
 ```
@@ -124,6 +137,7 @@ karasu translate --from compose docker-compose.yml --map /path/to/karasu.map.yam
 ### AT-0050-05: TODO comment for unresolvable unit
 
 **Input** `docker-compose.yml`:
+
 ```yaml
 name: production
 services:
@@ -134,11 +148,13 @@ services:
 (No `karasu.map.yaml`, no labels)
 
 **Command:**
+
 ```bash
 karasu translate --from compose docker-compose.yml
 ```
 
 **Expected output**:
+
 ```krs
 deploy "production" {
   oci "app" {
@@ -150,6 +166,7 @@ deploy "production" {
 ```
 
 **Expected stderr**:
+
 ```
 Warning: Could not resolve realizes for "app"
 ```
@@ -159,6 +176,7 @@ Warning: Could not resolve realizes for "app"
 ### AT-0050-06: Translate k8s Deployment manifest
 
 **Input** `deployment.yaml`:
+
 ```yaml
 apiVersion: apps/v1
 kind: Deployment
@@ -174,11 +192,13 @@ spec:
 ```
 
 **Command:**
+
 ```bash
 karasu translate --from k8s deployment.yaml
 ```
 
 **Expected output**:
+
 ```krs
 deploy "production" {
   oci "order-service" {
@@ -193,6 +213,7 @@ deploy "production" {
 ### AT-0050-07: Translate k8s CronJob with schedule
 
 **Input** `cronjob.yaml`:
+
 ```yaml
 apiVersion: batch/v1
 kind: CronJob
@@ -211,11 +232,13 @@ spec:
 ```
 
 **Command:**
+
 ```bash
 karasu translate --from k8s cronjob.yaml
 ```
 
 **Expected output**:
+
 ```krs
 deploy "default" {
   job "billing-job" {
@@ -231,6 +254,7 @@ deploy "default" {
 ### AT-0050-08: --output flag writes to file
 
 **Command:**
+
 ```bash
 karasu translate --from compose docker-compose.yml --output deploy.krs
 ```
@@ -242,6 +266,7 @@ karasu translate --from compose docker-compose.yml --output deploy.krs
 ### AT-0050-09: Multiple k8s files concatenated via shell
 
 **Command:**
+
 ```bash
 for f in manifests/*.yaml; do karasu translate --from k8s "$f"; done > deploy.krs
 ```
@@ -253,6 +278,7 @@ for f in manifests/*.yaml; do karasu translate --from k8s "$f"; done > deploy.kr
 ### AT-0050-10: Error on missing file
 
 **Command:**
+
 ```bash
 karasu translate --from compose nonexistent.yml
 ```

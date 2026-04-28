@@ -109,7 +109,15 @@ function main(argv: string[]): number {
     console.log(reportText(report));
   }
 
-  return opts.strict && summary.totalFindings > 0 ? 1 : 0;
+  if (opts.strict && summary.totalFindings > 0) {
+    if (!opts.json) {
+      console.error(
+        "\nStrict mode: exiting non-zero. Rerun `pnpm at:check-coverage` (without --strict) for the full report above.",
+      );
+    }
+    return 1;
+  }
+  return 0;
 }
 
 if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
