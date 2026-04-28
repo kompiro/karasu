@@ -2057,3 +2057,116 @@ organization Corp {
     });
   });
 });
+
+describe("legend block", () => {
+  it("parses a top-level legend with a swatch entry", () => {
+    const result = Parser.parse(`
+legend "Owner team" {
+  swatch #2563EB "Team Backend"
+}
+    `);
+    expect(result.diagnostics).toHaveLength(0);
+    expect(result.value.legends).toHaveLength(1);
+    const legend = result.value.legends[0];
+    expect(legend.scope).toBeUndefined();
+    expect(legend.title).toBe("Owner team");
+    expect(legend.entries).toHaveLength(1);
+    const entry = legend.entries[0];
+    expect(entry.kind).toBe("swatch");
+    if (entry.kind !== "swatch") throw new Error("kind mismatch");
+    expect(entry.color).toBe("#2563EB");
+    expect(entry.label).toBe("Team Backend");
+  });
+
+  it("parses a legend without a title", () => {
+    const result = Parser.parse(`
+legend {
+  swatch #FFF "White"
+}
+    `);
+    expect(result.diagnostics).toHaveLength(0);
+    expect(result.value.legends[0].title).toBeUndefined();
+  });
+
+  it("parses each view-scope variant", () => {
+    const result = Parser.parse(`
+legend system "S" { swatch #111 "a" }
+legend deploy "D" { swatch #222 "b" }
+legend org "O" { swatch #333 "c" }
+    `);
+    expect(result.diagnostics).toHaveLength(0);
+    expect(result.value.legends.map((l) => l.scope)).toEqual(["system", "deploy", "org"]);
+  });
+
+  it("parses every ref target kind", () => {
+    const result = Parser.parse(`
+legend "All ref kinds" {
+  ref @deprecated "Deprecated"
+  ref [external]  "External"
+  ref .legacy     "Legacy class"
+  ref #LegacyId   "Legacy id"
+  ref service     "Service type"
+}
+    `);
+    expect(result.diagnostics).toHaveLength(0);
+    const targets = result.value.legends[0].entries.map((e) => {
+      if (e.kind !== "ref") throw new Error("expected ref");
+      return e.target;
+    });
+    expect(targets).toEqual([
+      { kind: "annotation", name: "deprecated" },
+      { kind: "tag", name: "external" },
+      { kind: "selector", selector: ".legacy" },
+      { kind: "selector", selector: "#LegacyId" },
+      { kind: "selector", selector: "service" },
+    ]);
+  });
+
+  it("preserves declaration order for multiple entries", () => {
+    const result = Parser.parse(`
+legend {
+  swatch #111 "a"
+  ref @deprecated "b"
+  swatch #222 "c"
+}
+    `);
+    expect(result.value.legends[0].entries.map((e) => e.label)).toEqual(["a", "b", "c"]);
+  });
+
+  it("allows multiple legend blocks with independent scopes", () => {
+    const result = Parser.parse(`
+legend "All views" { swatch #111 "a" }
+legend deploy "Hosting" { swatch #222 "b" }
+    `);
+    expect(result.value.legends).toHaveLength(2);
+    expect(result.value.legends[0].scope).toBeUndefined();
+    expect(result.value.legends[1].scope).toBe("deploy");
+  });
+
+  it("rejects legend nested inside a system block", () => {
+    const result = Parser.parse(`
+system S {
+  legend "nope" { swatch #111 "x" }
+}
+    `);
+    // The inner block does not handle Legend, so the parser falls through to
+    // its generic "unexpected token in <kind> block" diagnostic.
+    const errors = result.diagnostics.filter((d) => d.severity === "error");
+    expect(errors.length).toBeGreaterThan(0);
+    // Top-level legends remain empty — nested content is not collected.
+    expect(result.value.legends).toHaveLength(0);
+  });
+
+  it("emits unexpected-token-in-block on an unknown entry keyword", () => {
+    const result = Parser.parse(`
+legend "x" {
+  swatch #111 "ok"
+  bogus "bad"
+}
+    `);
+    const errors = result.diagnostics.filter((d) => d.severity === "error");
+    expect(errors.some((d) => d.code === "unexpected-token-in-block")).toBe(true);
+    // The valid entry is still captured.
+    expect(result.value.legends[0].entries.some((e) => e.label === "ok")).toBe(true);
+  });
+});

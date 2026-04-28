@@ -29,6 +29,10 @@ import type {
   DatabaseNode,
   QueueGroupNode,
   StorageNode,
+  LegendBlock,
+  LegendEntry,
+  LegendRefTarget,
+  LegendViewScope,
 } from "../types/ast.js";
 import { Lexer } from "../lexer/lexer.js";
 
@@ -200,6 +204,9 @@ export class Parser {
           break;
         case TokenType.Organization:
           file.organizations.push(this.parseOrganizationBlock());
+          break;
+        case TokenType.Legend:
+          file.legends.push(this.parseLegendBlock());
           break;
         default:
           this.error("unexpected-token-root", {
@@ -1558,4 +1565,169 @@ export class Parser {
       check(org.teams);
     }
   }
+
+  // ─── Legend block ────────────────────────────────────────────────────────
+  // Grammar: `legend <view-scope>? <title?> { (swatch | ref)* }`
+  //   view-scope ::= "system" | "deploy" | "org"
+  //   swatch     ::= "swatch" "#" hex-id <string>
+  //   ref        ::= "ref" ("@" id | "[" id "]" | "." id | "#" id | id) <string>
+  //
+  // Reference: docs/design/diagram-legend.md.
+
+  private parseLegendBlock(): LegendBlock {
+    const start = this.advance(); // legend
+
+    const scope = this.parseLegendScope();
+
+    let title: string | undefined;
+    if (this.peek().type === TokenType.StringLiteral) {
+      title = this.advance().value;
+    }
+
+    this.expect(TokenType.LeftBrace);
+
+    const entries: LegendEntry[] = [];
+    while (this.peek().type !== TokenType.RightBrace && this.peek().type !== TokenType.EOF) {
+      const token = this.peek();
+      if (token.type === TokenType.Swatch) {
+        const entry = this.parseLegendSwatch();
+        if (entry) entries.push(entry);
+      } else if (token.type === TokenType.Ref) {
+        const entry = this.parseLegendRef();
+        if (entry) entries.push(entry);
+      } else {
+        this.error("unexpected-token-in-block", {
+          blockKind: "legend",
+          tokenType: String(token.type),
+          value: token.value,
+        });
+        this.advance();
+      }
+    }
+
+    const end = this.expect(TokenType.RightBrace);
+
+    return {
+      scope,
+      title,
+      entries,
+      loc: this.range(start.loc, end.loc),
+    };
+  }
+
+  private parseLegendScope(): LegendViewScope | undefined {
+    const next = this.peek();
+    if (next.type === TokenType.System) {
+      this.advance();
+      return "system";
+    }
+    if (next.type === TokenType.Deploy) {
+      this.advance();
+      return "deploy";
+    }
+    // "org" is intentionally not a reserved keyword (the block keyword is
+    // "organization"). Match it contextually as an identifier here.
+    if (next.type === TokenType.Identifier && next.value === "org") {
+      this.advance();
+      return "org";
+    }
+    return undefined;
+  }
+
+  private parseLegendSwatch(): LegendEntry | null {
+    const start = this.advance(); // swatch
+    // The lexer emits `#xxx` as a single Identifier token (see lexer's
+    // readHashToken). The parser stores the value verbatim and lets the
+    // resolver / renderer validate the hex shape.
+    const colorTok = this.expect(TokenType.Identifier);
+    const labelTok = this.expect(TokenType.StringLiteral);
+    return {
+      kind: "swatch",
+      color: colorTok.value,
+      label: labelTok.value,
+      loc: this.range(start.loc, labelTok.loc),
+    };
+  }
+
+  private parseLegendRef(): LegendEntry | null {
+    const start = this.advance(); // ref
+    const target = this.parseLegendRefTarget();
+    if (!target) {
+      // Skip until label or end of entry to recover.
+      if (this.peek().type === TokenType.StringLiteral) this.advance();
+      return null;
+    }
+    const labelTok = this.expect(TokenType.StringLiteral);
+    return {
+      kind: "ref",
+      target,
+      label: labelTok.value,
+      loc: this.range(start.loc, labelTok.loc),
+    };
+  }
+
+  private parseLegendRefTarget(): LegendRefTarget | null {
+    const tok = this.peek();
+    switch (tok.type) {
+      case TokenType.At: {
+        this.advance();
+        const name = this.expect(TokenType.Identifier);
+        return { kind: "annotation", name: name.value };
+      }
+      case TokenType.LeftBracket: {
+        this.advance();
+        const name = this.expect(TokenType.Identifier);
+        this.expect(TokenType.RightBracket);
+        return { kind: "tag", name: name.value };
+      }
+      case TokenType.Dot: {
+        this.advance();
+        const name = this.expect(TokenType.Identifier);
+        return { kind: "selector", selector: `.${name.value}` };
+      }
+      case TokenType.Identifier: {
+        // `#xxx` is lexed as a single Identifier with the leading `#`
+        // (see lexer's readHashToken). All other identifiers are bare type
+        // selectors (e.g. unknown custom kinds).
+        const name = this.advance();
+        return { kind: "selector", selector: name.value };
+      }
+      default:
+        // Accept node-kind keywords as type selectors (e.g. `service`,
+        // `domain`, `client`). The lexer reserves these as keywords for
+        // block parsing; here they are valid `.krs.style` selector names.
+        if (isTypeSelectorKeyword(tok.type)) {
+          const name = this.advance();
+          return { kind: "selector", selector: name.value };
+        }
+        this.error("expected-identifier", {
+          got: String(tok.type),
+          value: tok.value,
+        });
+        this.advance();
+        return null;
+    }
+  }
+}
+
+const TYPE_SELECTOR_KEYWORDS = new Set<TokenType>([
+  TokenType.System,
+  TokenType.Service,
+  TokenType.Domain,
+  TokenType.Usecase,
+  TokenType.Resource,
+  TokenType.User,
+  TokenType.Client,
+  TokenType.Database,
+  TokenType.Queue,
+  TokenType.Storage,
+  TokenType.Table,
+  TokenType.Bucket,
+  TokenType.Team,
+  TokenType.Member,
+  TokenType.Organization,
+]);
+
+function isTypeSelectorKeyword(type: TokenType): boolean {
+  return TYPE_SELECTOR_KEYWORDS.has(type);
 }
