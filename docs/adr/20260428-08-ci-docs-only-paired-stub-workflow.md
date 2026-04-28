@@ -1,5 +1,5 @@
 ---
-id: ADR-20260428-07
+id: ADR-20260428-08
 title: Required Check は paired stub workflow で docs-only PR を成功扱いにする
 status: accepted
 date: 2026-04-28
@@ -17,7 +17,7 @@ assumptions:
   - "grep: .github/workflows/ci-skip.yml :: name: Check"
 ---
 
-# ADR-20260428-07: Required Check は paired stub workflow で docs-only PR を成功扱いにする
+# ADR-20260428-08: Required Check は paired stub workflow で docs-only PR を成功扱いにする
 
 - **日付**: 2026-04-28
 - **ステータス**: 決定済み

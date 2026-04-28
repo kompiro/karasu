@@ -20,7 +20,13 @@ on:
       - ".claude/**"
 
 concurrency:
-  group: ci-${{ github.ref }}
+  # Distinct from ci.yml's group on purpose: when a PR mixes code + docs,
+  # both workflows fire (paths-ignore filters only when *every* changed
+  # path is ignored, while paths fires when *any* changed path matches).
+  # Sharing a concurrency group caused the stub to be cancelled by the
+  # real Check. With separate groups, both report `Check / success` and
+  # branch protection (which AND-s all checks named `Check`) is satisfied.
+  group: ci-skip-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
