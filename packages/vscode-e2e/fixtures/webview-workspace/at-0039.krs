@@ -1,0 +1,17 @@
+// Fixture for AT-0039 (detail panel) WebView E2E.
+// Provides a service with description / link / team so the detail panel has
+// content to render when the node is clicked.
+
+system Demo {
+  service OrderService {
+    description "Handles order processing and payment."
+    link "https://wiki.example.com/order" "Design Wiki"
+    team "Order Team"
+  }
+
+  user Customer [human] {
+    role "A customer who purchases products"
+  }
+
+  Customer -> OrderService "places an order"
+}
