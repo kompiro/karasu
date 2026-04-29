@@ -1264,6 +1264,40 @@ function assignForcedSystemLayers(nodes: KrsNode[], edges: KrsEdge[]): Map<strin
     const current = layers.get(u.id) ?? 0;
     if (desired > current) layers.set(u.id, desired);
   }
+
+  // Post-pass: mirror of the user pull-down for the dep tier (Issue #974).
+  // A dep node (infra/external) used only by a service that sits above the
+  // deepest internal service would otherwise be forced to the global bottom,
+  // with a long edge cutting through several intermediate rows. Pull each
+  // dep up to one row below its deepest source. Strictly upward — never
+  // push a dep down. Deps with no incoming edges keep the bottom-tier
+  // default. Process in ascending current-layer order so an upstream dep
+  // that gets pulled up propagates into the placement of a downstream dep.
+  const inByDep = new Map<string, string[]>();
+  for (const e of edges) {
+    const toNode = nodes.find((n) => n.id === e.to);
+    if (!toNode || systemTier(toNode) !== 3) continue;
+    const list = inByDep.get(e.to) ?? [];
+    list.push(e.from);
+    inByDep.set(e.to, list);
+  }
+  const depsAscending = byTier[3]
+    .slice()
+    .sort((a, b) => (layers.get(a.id) ?? 0) - (layers.get(b.id) ?? 0));
+  for (const d of depsAscending) {
+    const sources = inByDep.get(d.id);
+    if (!sources || sources.length === 0) continue;
+    let maxSourceLayer = -Infinity;
+    for (const sid of sources) {
+      const sl = layers.get(sid);
+      if (sl === undefined) continue;
+      if (sl > maxSourceLayer) maxSourceLayer = sl;
+    }
+    if (!Number.isFinite(maxSourceLayer)) continue;
+    const desired = maxSourceLayer + 1;
+    const current = layers.get(d.id) ?? 0;
+    if (desired < current) layers.set(d.id, desired);
+  }
   return layers;
 }
 
