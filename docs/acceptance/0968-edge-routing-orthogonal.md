@@ -23,7 +23,7 @@
   > ✅ Automated — `packages/core/src/renderer/layout.test.ts` › `adds waypoints to a skip-layer edge whose straight line crosses an intermediate node`
 
 - [x] 既存の図（same-layer / adjacent-layer のみ）の SVG 出力に regression が無い
-  > ✅ Automated — `packages/core/src/` の全 snapshot/unit テスト 1056 件が変更なしで通過することで担保（waypoints が空のときは従来の `<line>` レンダリングを維持）
+  > ✅ Automated — `packages/core/src/` の全 snapshot/unit テストが変更なしで通過することで担保（waypoints が空のときは従来の `<line>` レンダリングを維持）
 
 - [ ] EC Platform の例を `pnpm dev` のプレビューで開き、`Admin → ECSite` のエッジが目視で MobileApp カードを横断していないこと、エッジ全体が L 字に折れて見やすくなっていることを確認する
   > 🧑 Manual — Preview URL（`https://feat-edge-routing-impl.karasu.pages.dev`）または `pnpm dev` でローカル起動して `examples/ec-platform/02.5-clients.krs` を読み込み、視覚的に確認する。
