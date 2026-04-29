@@ -145,10 +145,9 @@ export function NodeDetailPanel({
           <ul className="node-detail-capability-list">
             {metadata.capabilities.map((c) => (
               <li key={c.name} className="node-detail-capability-item">
-                <span className="node-detail-capability-name">{c.name}</span>
-                {c.label && <span className="node-detail-capability-label">{c.label}</span>}
+                <span className="node-detail-capability-title">{c.label ?? c.name}</span>
                 {c.description && (
-                  <span className="node-detail-capability-description">{c.description}</span>
+                  <p className="node-detail-capability-description">{c.description}</p>
                 )}
               </li>
             ))}

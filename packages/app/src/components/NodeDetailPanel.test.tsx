@@ -356,7 +356,7 @@ describe("NodeDetailPanel — pictogram icon", () => {
       end: { line: 1, column: 1, offset: 0 },
     };
 
-    it("lists every client.capability entry with optional label and description", () => {
+    it("uses label as the primary title when present, falling back to name", () => {
       const { container } = render(
         <NodeDetailPanel
           {...baseProps({
@@ -376,12 +376,25 @@ describe("NodeDetailPanel — pictogram icon", () => {
       );
       const items = container.querySelectorAll(".node-detail-capability-item");
       expect(items).toHaveLength(3);
-      expect(items[0].textContent).toContain("notification");
-      expect(items[1].textContent).toContain("camera");
-      expect(items[1].textContent).toContain("QR scanning");
-      expect(items[1].textContent).toContain("Used to scan QR codes");
-      expect(items[2].textContent).toContain("geolocation");
-      expect(items[2].textContent).toContain("Continuous tracking");
+      // notification: no label → name shown as title
+      expect(items[0].querySelector(".node-detail-capability-title")?.textContent).toBe(
+        "notification",
+      );
+      // camera: label replaces name
+      expect(items[1].querySelector(".node-detail-capability-title")?.textContent).toBe(
+        "QR scanning",
+      );
+      expect(items[1].textContent).not.toContain("camera");
+      expect(items[1].querySelector(".node-detail-capability-description")?.textContent).toBe(
+        "Used to scan QR codes",
+      );
+      // geolocation: no label, description present
+      expect(items[2].querySelector(".node-detail-capability-title")?.textContent).toBe(
+        "geolocation",
+      );
+      expect(items[2].querySelector(".node-detail-capability-description")?.textContent).toBe(
+        "Continuous tracking",
+      );
     });
 
     it("omits the section when the client has no capabilities", () => {

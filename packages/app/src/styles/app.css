@@ -2439,28 +2439,30 @@ body,
   list-style: none;
   padding: 0;
   margin: 0;
-  font-size: 12px;
 }
 
 .node-detail-capability-item {
   display: flex;
   flex-direction: column;
-  padding: 2px 0;
+  gap: 2px;
+  padding: 6px 0;
 }
 
-.node-detail-capability-name {
-  font-family: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+.node-detail-capability-item + .node-detail-capability-item {
+  border-top: 1px solid var(--border-subtle, rgba(148, 163, 184, 0.15));
+}
+
+.node-detail-capability-title {
   color: var(--text-primary, #e2e8f0);
-}
-
-.node-detail-capability-label {
-  color: var(--text-muted, #94a3b8);
-  font-size: 11px;
+  font-size: 12px;
+  font-weight: 600;
 }
 
 .node-detail-capability-description {
-  color: var(--text-muted, #94a3b8);
-  font-size: 11px;
+  margin: 0;
+  color: var(--text-secondary, #cbd5e1);
+  font-size: 12px;
+  line-height: 1.4;
   white-space: pre-wrap;
 }
 
