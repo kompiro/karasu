@@ -1,3 +1,4 @@
+import * as fs from "fs";
 import * as path from "path";
 import * as vscode from "vscode";
 import {
@@ -37,7 +38,17 @@ let cursorDebounceTimer: ReturnType<typeof setTimeout> | undefined;
 
 export function activate(context: vscode.ExtensionContext): void {
   // --- LSP ---
-  const serverModule = context.asAbsolutePath(path.join("..", "lsp", "out", "server.js"));
+  // The vscode build script copies the bundled server into `out/server.js`
+  // so installed extensions can load it from inside the .vsix. In the
+  // dev tree (F5 from packages/vscode) that copy might not exist yet;
+  // fall back to packages/lsp's build output as a sibling of the
+  // extension folder.
+  const serverModuleCandidates = [
+    context.asAbsolutePath(path.join("out", "server.js")),
+    context.asAbsolutePath(path.join("..", "lsp", "out", "server.js")),
+  ];
+  const serverModule =
+    serverModuleCandidates.find((p) => fs.existsSync(p)) ?? serverModuleCandidates[0];
 
   const serverOptions: ServerOptions = {
     run: { module: serverModule, transport: TransportKind.ipc },

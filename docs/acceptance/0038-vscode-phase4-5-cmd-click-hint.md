@@ -2,24 +2,12 @@
 
 ## Coverage policy
 
-**Partial automation** — TC-01 (hint at root) and TC-02 (hint after
-drill) are automated in
+**Automated (TC-01..TC-04)** — all four TCs are automated in
 [`packages/vscode-e2e/tests/webview/at-0038-cmd-click-hint.test.ts`](../../packages/vscode-e2e/tests/webview/at-0038-cmd-click-hint.test.ts)
 under the WebView E2E harness
 ([`docs/design/vscode-webview-e2e-harness.md`](../design/vscode-webview-e2e-harness.md)
-/ [AT-0072](./0072-vscode-webview-e2e-phase3-at-0038.md)).
-
-TC-03 and TC-04 (Cmd/Ctrl+Click → editor cursor jump) have automated
-implementations in the same file but are **`it.skip`** today: the
-karasu extension resolves its LSP server module via
-`context.asAbsolutePath("../lsp/out/server.js")`, which only works in
-the dev tree. The path falls outside the `.vsix` that vsce produces
-from `packages/vscode`, so an installed-mode harness cannot start the
-LSP and `handleNavigate` early-returns. They will un-skip once the
-extension packages the LSP server inside its own folder
-(see [AT-0073](./0073-vscode-webview-e2e-phase3-at-0038-jump.md)).
-Until then they remain manual under
-[ADR-20260428-05](../adr/20260428-05-vscode-webview-manual-tests.md).
+/ [AT-0072](./0072-vscode-webview-e2e-phase3-at-0038.md) (hint visibility),
+[AT-0073](./0073-vscode-webview-e2e-phase3-at-0038-jump.md) (editor jump)).
 
 TC-05 in earlier revisions described "plain click on leaf → editor jump",
 which pre-dated the Phase 6 detail-panel work (#250). The current
