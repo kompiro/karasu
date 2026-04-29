@@ -26,11 +26,14 @@ type: product
 
 ### AC-2: MemoryModeApp のクロスナビゲーション
 
-- [ ] Deploy ビューで deploy コンテナ（`oci "ecommerce-app"` 等）をクリックすると、System ビューへ自動的に切り替わること
-- [ ] System ビューに切り替わった後、`realizes` で参照しているサービス（`ECommerce` 等）がハイライト表示されること
-- [ ] ハイライトは別のノードをクリックまたはドリルダウンすることで解除されること
+- [x] Deploy ビューで deploy コンテナ（`oci "ecommerce-app"` 等）をクリックすると、System ビューへ自動的に切り替わること
+> ✅ Automated — `packages/e2e/tests/at-0014-memory-project-mode-unification.spec.ts` › `Clicking a deploy container switches to System with the realizes target highlighted (AC-2.1, AC-2.2, AC-2.3)`
 
-> manual / visual review — クロスナビゲーション（Deploy → System ハイライト）は現状 E2E カバレッジが無く手動確認に残している。spec 追加は #970 で追跡。
+- [x] System ビューに切り替わった後、`realizes` で参照しているサービス（`ECommerce` 等）がハイライト表示されること
+> ✅ Automated — `packages/e2e/tests/at-0014-memory-project-mode-unification.spec.ts` › `Clicking a deploy container switches to System with the realizes target highlighted (AC-2.1, AC-2.2, AC-2.3)`
+
+- [x] ハイライトは別のノードをクリックまたはドリルダウンすることで解除されること
+> ✅ Automated — `packages/e2e/tests/at-0014-memory-project-mode-unification.spec.ts` › `Clicking a deploy container switches to System with the realizes target highlighted (AC-2.1, AC-2.2, AC-2.3)`
 
 ### AC-3: MemoryModeApp のエディタ連携
 
@@ -40,9 +43,8 @@ type: product
 - [x] エディタに `deploy` ブロックを削除すると Deploy タブが無効化（グレーアウト）されること
 > ✅ Automated — `packages/e2e/tests/at-0014-memory-project-mode-unification.spec.ts` › `Removing the deploy block surfaces the empty-state placeholder on the Deploy tab (AC-3.2)`
 
-- [ ] エディタに `organization` ブロックを削除すると Org タブをクリックしても空の図が表示されること（エラーにならないこと）
-
-> manual / visual review — 「organization ブロック削除時の空図表示」は現状 spec が未追加のため手動で確認する。spec 追加は #970 で追跡。
+- [x] エディタに `organization` ブロックを削除すると Org タブをクリックしても空の図が表示されること（エラーにならないこと）
+> ✅ Automated — `packages/e2e/tests/at-0014-memory-project-mode-unification.spec.ts` › `Removing the organization block keeps the Org tab clickable with an empty placeholder (AC-3.3)`
 
 ### AC-4: ProjectModeApp のリグレッション
 
