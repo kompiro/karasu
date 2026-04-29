@@ -153,12 +153,14 @@ renderer の judgement が以下の順で決まる:
 
 ## 未解決事項 / フォローアップ
 
-- `docs/spec/tags-annotations.md` の `[human]` 行に「凡例で参照されると neutral swatch で描画される」一文を足すかどうか。spec の本筋（ノード描画への影響）からは外れるので別タスクで判断する。
-- `ref #SomeId` のような selector 系 ref に対しても同じフォールバックが効くが、明示的なテストカバレッジは無い（`legendRefHasUsage` の `selector` ブランチは実装済み）。
+なし — 設計時点の論点はすべて本 PR で解消した。
 
 ## 実装済みのフォローアップ
 
 - ~~`resolver/warnings.ts` の inline walker を `collectLegendUsage` に置き換える~~ — 同 PR で対応済み。`detectUnresolvedLegendRefs` は `collectLegendUsage(file)` + `legendRefHasUsage(target, usage)` を呼ぶ形にリファクタされ、resolver と renderer は同じヘルパーから「in use」判定を得る。SSOT の主張が文字通りに成立した。
+- ~~spec doc を更新する~~ — `docs/spec/syntax.md` / `syntax.ja.md` の凡例「色の解決」節に汎用ルールを追加（"target が in use なら neutral fallback swatch で描画される"）。`tags-annotations.md` の `[human]` / `[ai]` 行は触らず、特定タグに依存しない一般則として書く。
+- ~~`ref #SomeId` selector 系 ref のテスト~~ — `legend-footer.test.ts` に in-use な node id を指す selector ref のフォールバックテストを追加。
+- ~~組織 / deploy view での `legendUsage` 配線テスト~~ — org view 経由で fallback が効くテストを追加。
 
 ## ADR 化
 
