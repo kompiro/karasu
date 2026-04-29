@@ -396,6 +396,11 @@ describe("AT-0039 (WebView) — detail panel", function () {
     );
   });
 
+  // NOTE: TC-03 must remain the last `it()` in this file. It intentionally
+  // leaves `inWebViewFrame = false` so `after()` doesn't try to switchBack
+  // from a default-frame context. If a new TC is appended after this one,
+  // it relies on `beforeEach`'s `ensureWebViewFrame()` to re-acquire the
+  // frame, which works fine — but the ordering is worth flagging.
   it("TC-03: Jump to editor button moves the .krs editor cursor and leaves the panel open", async () => {
     await closePanelIfOpen();
 
