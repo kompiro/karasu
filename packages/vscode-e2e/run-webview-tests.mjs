@@ -31,10 +31,13 @@ const fixtureDir = path.join(storage, "at-0039-fixture");
 const fixtureKrs = path.join(fixtureDir, "at-0039.krs");
 const at0038FixtureDir = path.join(storage, "at-0038-fixture");
 const at0038FixtureKrs = path.join(at0038FixtureDir, "at-0038.krs");
+const at0037FixtureDir = path.join(storage, "at-0037-fixture");
+const at0037FixtureKrs = path.join(at0037FixtureDir, "at-0037.krs");
 
 fs.mkdirSync(storage, { recursive: true });
 fs.mkdirSync(fixtureDir, { recursive: true });
 fs.mkdirSync(at0038FixtureDir, { recursive: true });
+fs.mkdirSync(at0037FixtureDir, { recursive: true });
 
 // Write the AT-0039 fixture to a stable on-disk path that the test can
 // reach via VS Code's "File: Open File…" command. We do this in the
@@ -75,6 +78,27 @@ fs.writeFileSync(
 `,
 );
 process.env.KARASU_E2E_FIXTURE_KRS_AT0038 = at0038FixtureKrs;
+
+// AT-0037-9 reuses the same content as AT-0038 (it just needs an
+// `OrderService` identifier on a known line for the cursor → highlight
+// check), but lives at its own path. Sharing the AT-0038 file across
+// suites tripped a VS Code "File: Open File..." simple-dialog flake
+// where the second open against the recently-used path stalled.
+fs.writeFileSync(
+  at0037FixtureKrs,
+  `system ECommerce {
+  service OrderService {
+    domain OrderManagement {}
+    domain Inventory {}
+  }
+  service UserService {
+    domain Auth {}
+  }
+  OrderService -> UserService
+}
+`,
+);
+process.env.KARASU_E2E_FIXTURE_KRS_AT0037 = at0037FixtureKrs;
 
 // Pre-package the extension into a vsix without dependency validation.
 const vsixOut = path.join(storage, "karasu-vscode.vsix");

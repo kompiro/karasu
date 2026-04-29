@@ -25,10 +25,12 @@ import {
  * is NOT covered elsewhere is the editor → SVG direction; that is what
  * this suite locks in.
  *
- * Reuses the AT-0038 fixture (`KARASU_E2E_FIXTURE_KRS_AT0038`) — its
- * multi-level structure is already what we need, and `OrderService`
- * lives at line 2 col 11 (1-indexed) which is what `TextEditor.moveCursor`
- * accepts.
+ * Uses its own fixture `KARASU_E2E_FIXTURE_KRS_AT0037` (same content as
+ * the AT-0038 fixture, but at a separate path). Sharing the AT-0038
+ * file across suites tripped a VS Code "File: Open File..." simple-
+ * dialog flake where the second open against the recently-used path
+ * stalled. `OrderService` lives at line 2 col 11 (1-indexed) which is
+ * what `TextEditor.moveCursor` accepts.
  *
  * Implementation notes:
  *
@@ -45,7 +47,7 @@ import {
  */
 
 const PREVIEW_TITLE = "karasu Preview";
-const FIXTURE_NAME = "at-0038.krs";
+const FIXTURE_NAME = "at-0037.krs";
 const ELEMENT_TIMEOUT_MS = 15_000;
 
 // `OrderService` identifier: line 2, column 11 in the AT-0038 fixture
@@ -65,9 +67,9 @@ describe("AT-0037-9 (WebView) — editor cursor highlights the matching SVG node
   let webview: WebView;
 
   before(async () => {
-    const fixturePath = process.env.KARASU_E2E_FIXTURE_KRS_AT0038;
+    const fixturePath = process.env.KARASU_E2E_FIXTURE_KRS_AT0037;
     if (!fixturePath) {
-      throw new Error("KARASU_E2E_FIXTURE_KRS_AT0038 env var was not set by run-webview-tests.mjs");
+      throw new Error("KARASU_E2E_FIXTURE_KRS_AT0037 env var was not set by run-webview-tests.mjs");
     }
 
     driver = VSBrowser.instance.driver;
