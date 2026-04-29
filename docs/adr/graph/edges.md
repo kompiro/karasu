@@ -1,6 +1,6 @@
 # ADR Topic: edges
 
-5 ADRs in this topic. Solid nodes belong to `edges`; gray dashed nodes are ghosts showing cross-topic references to help navigation.
+6 ADRs in this topic. Solid nodes belong to `edges`; gray dashed nodes are ghosts showing cross-topic references to help navigation.
 
 Other topics: [overview](../graph.md).
 ```mermaid
@@ -11,6 +11,7 @@ flowchart TD
     ADR_20260411_05["ADR-20260411-05<br/>サービスドリルダウンビューでの Ghost Domain エッジ表示"]
     ADR_20260413_02["ADR-20260413-02<br/>Implicit エッジにおける sync/async の視覚的区別"]
     ADR_20260422_03["ADR-20260422-03<br/>集約された暗黙エッジの詳細パネル — SVG 属性埋め込み方式"]
+    ADR_20260429_01["ADR-20260429-01<br/>Skip-layer エッジの直交チャネルルーティング"]
   end
   ADR_20260405_03["ADR-20260405-03<br/>[parser] ワイルドカードインポートと2パス解決の採用"]
   ADR_20260404_09 --> ADR_20260405_03
@@ -29,5 +30,6 @@ flowchart TD
   class ADR_20260411_05 accepted
   class ADR_20260413_02 accepted
   class ADR_20260422_03 accepted
+  class ADR_20260429_01 accepted
   class ADR_20260405_03 ghost
 ```
