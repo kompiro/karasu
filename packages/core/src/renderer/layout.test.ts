@@ -707,6 +707,124 @@ system S {
     expect(backend.y).toBeLessThan(stripe.y);
   });
 
+  it("pulls a dep used only by an upper service up to one row below its consumer (Issue #974)", () => {
+    // Mirror of the actor-bypass test: A → B → C is a deep service chain;
+    // Cache is consumed only by A. Without the dep pull-up, Cache would sit
+    // at the global bottom (below C), with its edge cutting through B and C.
+    // The post-pass places Cache one row below A instead.
+    const slice = parseAndExtract(`
+system S {
+  service A {}
+  service B {}
+  service C {}
+  database Cache {}
+  A -> B
+  B -> C
+  A -> Cache
+}
+`);
+    const result = layout(slice);
+    const a = result.nodes.get("A")!;
+    const b = result.nodes.get("B")!;
+    const c = result.nodes.get("C")!;
+    const cache = result.nodes.get("Cache")!;
+    expect(a.y).toBeLessThan(b.y);
+    expect(b.y).toBeLessThan(c.y);
+    // Cache is pulled up to the row immediately below A — same row as B —
+    // not the global bottom below C.
+    expect(cache.y).toBe(b.y);
+  });
+
+  it("keeps a dep with no incoming edges at the bottom-tier default (Issue #974)", () => {
+    // The pull-up must skip deps with no incoming edges so that "all infra
+    // at the bottom" still works for orphan or unused infra nodes.
+    const slice = parseAndExtract(`
+system S {
+  service A {}
+  service B {}
+  database Orphan {}
+  A -> B
+}
+`);
+    const result = layout(slice);
+    const a = result.nodes.get("A")!;
+    const b = result.nodes.get("B")!;
+    const orphan = result.nodes.get("Orphan")!;
+    expect(a.y).toBeLessThan(b.y);
+    expect(b.y).toBeLessThan(orphan.y);
+  });
+
+  it("places a shared dep just below its deepest consumer (Issue #974)", () => {
+    // When multiple consumers across different rows point to the same dep,
+    // max(source_layer) + 1 places it just below the deepest. Here B is
+    // deeper than A and both point to Cache → Cache sits one row below B.
+    const slice = parseAndExtract(`
+system S {
+  service A {}
+  service B {}
+  service C {}
+  database Cache {}
+  A -> B
+  B -> C
+  A -> Cache
+  B -> Cache
+}
+`);
+    const result = layout(slice);
+    const c = result.nodes.get("C")!;
+    const cache = result.nodes.get("Cache")!;
+    // Cache aligns to the row right below B — the same row as C — rather
+    // than dropping to a row of its own under C.
+    expect(cache.y).toBe(c.y);
+  });
+
+  it("does not push a dep down when its source is below it (Issue #974, downward-safe)", () => {
+    // External service Stripe is consumed by Backend; with the pull-up,
+    // Stripe sits one row below Backend. A second external Other has no
+    // incoming edges — it must stay at the existing dep-tier row, not be
+    // pushed up or down by the post-pass.
+    const slice = parseAndExtract(`
+system S {
+  service Backend {}
+  service Stripe [external] {}
+  service Other [external] {}
+  Backend -> Stripe
+}
+`);
+    const result = layout(slice);
+    const backend = result.nodes.get("Backend")!;
+    const stripe = result.nodes.get("Stripe")!;
+    const other = result.nodes.get("Other")!;
+    // Stripe is pulled up to the row immediately below Backend.
+    expect(backend.y).toBeLessThan(stripe.y);
+    // Other has no incoming edges → keeps the default dep-tier row, which
+    // (because Stripe was pulled up) is the same row as Stripe in this
+    // two-row layout.
+    expect(other.y).toBe(stripe.y);
+  });
+
+  it("propagates pull-up through a dep-on-dep chain regardless of declaration order (Issue #974)", () => {
+    // External Auth is consumed only by Stripe; Stripe is consumed only by
+    // Backend. The pull-up must place Auth one row below Stripe, even when
+    // Auth happens to be declared before Stripe (so the naive single-pass
+    // version would process Auth before Stripe is updated).
+    const slice = parseAndExtract(`
+system S {
+  service Backend {}
+  service Auth [external] {}
+  service Stripe [external] {}
+  Backend -> Stripe
+  Stripe -> Auth
+}
+`);
+    const result = layout(slice);
+    const backend = result.nodes.get("Backend")!;
+    const stripe = result.nodes.get("Stripe")!;
+    const auth = result.nodes.get("Auth")!;
+    expect(backend.y).toBeLessThan(stripe.y);
+    expect(stripe.y).toBeLessThan(auth.y);
+  });
+
   it("compacts to two rows when only internal and external services are declared", () => {
     // No user, no client: internal moves up to row 0, external to row 1.
     const slice = parseAndExtract(`

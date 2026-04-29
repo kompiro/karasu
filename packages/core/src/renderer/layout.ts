@@ -1264,6 +1264,50 @@ function assignForcedSystemLayers(nodes: KrsNode[], edges: KrsEdge[]): Map<strin
     const current = layers.get(u.id) ?? 0;
     if (desired > current) layers.set(u.id, desired);
   }
+
+  // Post-pass: mirror of the user pull-down for the dep tier (Issue #974).
+  // A dep node (infra/external) used only by a service that sits above the
+  // deepest internal service would otherwise be forced to the global bottom,
+  // with a long edge cutting through several intermediate rows. Pull each
+  // dep up to one row below its deepest source. Strictly upward — never
+  // push a dep down. Deps with no incoming edges keep the bottom-tier
+  // default.
+  //
+  // Iterate to a fixed point so that dep-on-dep chains propagate
+  // regardless of `byTier[3]` order: when an upstream dep gets pulled up,
+  // its downstream consumers see the updated layer on the next pass.
+  // Bounded by `byTier[3].length` iterations (each pass either pulls at
+  // least one dep up or terminates), so the cost stays linear in the
+  // number of deps.
+  const depIds = new Set(byTier[3].map((n) => n.id));
+  const inByDep = new Map<string, string[]>();
+  for (const e of edges) {
+    if (!depIds.has(e.to)) continue;
+    const list = inByDep.get(e.to) ?? [];
+    list.push(e.from);
+    inByDep.set(e.to, list);
+  }
+  for (let pass = 0; pass < byTier[3].length; pass++) {
+    let changed = false;
+    for (const d of byTier[3]) {
+      const sources = inByDep.get(d.id);
+      if (!sources || sources.length === 0) continue;
+      let maxSourceLayer = -Infinity;
+      for (const sid of sources) {
+        const sl = layers.get(sid);
+        if (sl === undefined) continue;
+        if (sl > maxSourceLayer) maxSourceLayer = sl;
+      }
+      if (!Number.isFinite(maxSourceLayer)) continue;
+      const desired = maxSourceLayer + 1;
+      const current = layers.get(d.id) ?? 0;
+      if (desired < current) {
+        layers.set(d.id, desired);
+        changed = true;
+      }
+    }
+    if (!changed) break;
+  }
   return layers;
 }
 
