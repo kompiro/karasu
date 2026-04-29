@@ -56,8 +56,8 @@ Handles **order processing** and payment.
 - Accept new orders
 - Process payments
 """
-    link "Design Wiki" "https://wiki.example.com/order"
-    link "API Docs" "https://api.example.com/order"
+    link "https://wiki.example.com/order" "Design Wiki"
+    link "https://api.example.com/order" "API Docs"
     team "Order Team"
 
     domain OrderManagement {}

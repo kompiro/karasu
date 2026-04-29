@@ -412,7 +412,25 @@ describe("AT-0039 (WebView) — detail panel", function () {
         "btn.click();",
     );
 
+    // Allow the postMessage roundtrip to settle, then assert that the
+    // panel is still visible — this proves the dp-jump-btn handler
+    // does not call hideDetailPanel(). We MUST do this assertion
+    // before focusing the .krs editor below: focusing the editor fires
+    // `onDidChangeActiveTextEditor`, which rebuilds `webview.html` and
+    // wipes panel state. That rebuild is a test-only artefact (real
+    // users keep looking at the preview after Jump-to-editor) so we
+    // capture the panel state while we are still inside the live
+    // WebView frame.
+    await driver.sleep(500);
+    assert.strictEqual(
+      await detailPanelHasVisibleClass(),
+      true,
+      "panel should remain visible after Jump-to-editor (handler does not call hideDetailPanel)",
+    );
+
     // Switch out of the WebView frame to read the editor's coordinates.
+    // Bringing the .krs editor to focus rebuilds the preview, which is
+    // why the visibility assertion above runs first.
     await webview.switchBack();
     inWebViewFrame = false;
 
@@ -427,14 +445,6 @@ describe("AT-0039 (WebView) — detail panel", function () {
       },
       ELEMENT_TIMEOUT_MS,
       `editor cursor did not move to Customer line (expected ${FIXTURE_LINE.Customer}); last seen line ${lastLine}`,
-    );
-
-    await ensureWebViewFrame();
-
-    assert.strictEqual(
-      await detailPanelHasVisibleClass(),
-      true,
-      "panel should remain visible after Jump-to-editor (handler does not call hideDetailPanel)",
     );
   });
 });
