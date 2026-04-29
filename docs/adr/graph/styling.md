@@ -1,6 +1,6 @@
 # ADR Topic: styling
 
-4 ADRs in this topic. Solid nodes belong to `styling`; gray dashed nodes are ghosts showing cross-topic references to help navigation.
+5 ADRs in this topic. Solid nodes belong to `styling`; gray dashed nodes are ghosts showing cross-topic references to help navigation.
 
 Other topics: [overview](../graph.md).
 ```mermaid
@@ -10,6 +10,7 @@ flowchart TD
     ADR_20260322_01["ADR-20260322-01<br/>ビルトインスタイルの一元化と構造化リファレンス"]
     ADR_20260328_01["ADR-20260328-01<br/>スタイル解決パイプラインの一元化"]
     ADR_20260415_01["ADR-20260415-01<br/>親サービスのアノテーションを子ノードに継承する"]
+    ADR_20260429_03["ADR-20260429-03<br/>凡例 ref のフォールバック swatch（in-use なら描画する）"]
   end
   ADR_20260411_02["ADR-20260411-02<br/>[resolver] 移行期における重複ドメイン ID の共存を `@deprecated` + `@migrati..."]
   ADR_20260328_01 --> ADR_20260312_04
@@ -26,5 +27,6 @@ flowchart TD
   class ADR_20260322_01 accepted
   class ADR_20260328_01 accepted
   class ADR_20260415_01 accepted
+  class ADR_20260429_03 accepted
   class ADR_20260411_02 ghost
 ```
