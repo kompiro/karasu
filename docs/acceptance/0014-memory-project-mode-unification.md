@@ -53,9 +53,7 @@ type: product
 - [ ] ProjectModeApp でクロスナビゲーション（Deploy → System ハイライト）が正常に動作すること
 - [ ] ProjectModeApp で Org の BreadcrumbBar が Org タブ選択時のみ表示されること
 
-> AC-4 は ProjectModeApp 側のリグレッション確認で、AT-0014 の spec は
-> MemoryModeApp 側を中心にカバーしている。ProjectModeApp の同等動作は
-> AT-0004 / AT-0029 / AT-0030 など他 AT で検証されている。
+> manual / visual review — AC-4 は ProjectModeApp 側のリグレッション確認で、AT-0014 の spec は MemoryModeApp 側を中心にカバーしている。ProjectModeApp の同等動作は AT-0004 / AT-0029 / AT-0030 など他 AT で検証されている。
 
 ### AC-5: ReferencePanel の Samples タブ
 
@@ -70,10 +68,7 @@ type: product
 - [x] MemoryModeApp・ProjectModeApp どちらのモードでも Samples タブが参照できること
 > ✅ Automated — `packages/e2e/tests/at-0014-memory-project-mode-unification.spec.ts` › `ReferencePanel exposes the Samples tab with system/deploy/organization sample (AC-5)`
 
-> 「Copy ボタンの動作」はブラウザの Clipboard API パーミッション付与が
-> 必要なため Playwright で安定して回せず、手動 / 視覚レビューに残す。
-> 「2 秒後ラベル復帰」は `page.waitForTimeout` で原理的には自動化可能だが、
-> Copy ボタンの動作が前提となるため同じ理由で現状は手動扱いとする。
+> manual / visual review — 「Copy ボタンの動作」はブラウザの Clipboard API パーミッション付与が必要なため Playwright で安定して回せず手動扱いに残す。「2 秒後ラベル復帰」も Copy ボタンの動作が前提となるため同じ理由で現状は手動扱いとする。
 
 ## 検証方法
 

@@ -1,4 +1,5 @@
 import { type Page, expect, test } from "@playwright/test";
+import { replaceEditorContent } from "../fixtures/editor.js";
 
 /**
  * AT-0011: Deploy node detail panel.
@@ -34,13 +35,6 @@ deploy "本番環境" {
   lambda "mailer" {}
 }
 `;
-
-async function replaceEditorContent(page: Page, content: string) {
-  await page.locator(".monaco-editor .view-lines").first().click();
-  await page.keyboard.press("Control+A");
-  await page.keyboard.press("Delete");
-  await page.keyboard.insertText(content);
-}
 
 async function openDeployTab(page: Page) {
   await page.getByRole("tab", { name: "Deploy" }).click();

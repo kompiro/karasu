@@ -27,6 +27,8 @@ npm run format:check  # フォーマット OK
 - [ ] `[external]` タグ付きノードが破線枠・グレー系で表示される
 - [ ] async エッジ（`-->`）が破線矢印で表示される
 
+> manual / visual review — シェイプ・色・破線などの描画結果はブラウザ目視で判定する受入観点。
+
 ### AC-1.2: リソースタグによるシェイプ自動適用
 
 - [ ] KRS エディタで `resource DB "DB" [table]` を追加し、cylinder シェイプで表示されることを確認
@@ -34,16 +36,22 @@ npm run format:check  # フォーマット OK
 - [ ] `resource API "API" [api]` → hexagon シェイプ
 - [ ] `resource S3 "Storage" [storage]` → cloud シェイプ
 
+> manual / visual review — タグ→シェイプ自動適用の見た目はブラウザで描画結果を確認する。
+
 ### AC-1.3: ユーザースタイルによるオーバーライド
 
 - [ ] Project モードで `.krs.style` ファイルを作成し、`resource { shape: hexagon; }` と記述
 - [ ] resource ノードが hexagon シェイプで表示される（ビルトインの box を上書き）
+
+> manual / visual review — ビルトインのオーバーライドはブラウザの実描画で hexagon に切り替わるかを確認する。
 
 ### AC-1.4: 存在しないスタイルファイルのインポート
 
 - [ ] `.krs` ファイルに `@import "nonexistent.krs.style"` を記述
 - [ ] 警告パネルに warning（error ではない）が表示される
 - [ ] 描画はビルトインスタイルで正常に行われる
+
+> manual / visual review — 警告パネル表示と描画継続の同時確認はライブセッションで行う。
 
 ## AC-2: 冗長なデフォルトの削除（Phase 2）
 
@@ -54,6 +62,8 @@ npm run format:check  # フォーマット OK
 - [ ] `index.krs` に `@import` 行が含まれていないことを確認
 - [ ] 描画が正常に行われることを確認
 
+> manual / visual review — 新規プロジェクト作成時のファイルツリー状態と描画結果はブラウザ操作で確認する。
+
 ## AC-3: リファレンスパネル（Phase 4）
 
 ### AC-3.1: パネルの開閉
@@ -61,11 +71,15 @@ npm run format:check  # フォーマット OK
 - [ ] ブレッドクラム右端の "?" ボタンをクリック → リファレンスパネルがスライドイン
 - [ ] パネルの "×" ボタンまたはオーバーレイ部分をクリック → パネルが閉じる
 
+> manual / visual review — リファレンスパネルのスライドイン・閉じる挙動はブラウザ操作で確認する。
+
 ### AC-3.2: Syntax タブ
 
 - [ ] ノード種別一覧テーブルが表示される（system, service, domain, usecase, resource, user）
 - [ ] 各種別の含有関係と使用可能プロパティが表示される
 - [ ] エッジ構文の例が表示される
+
+> manual / visual review — Syntax タブのテーブル表示・例の可読性はパネルを開いて目視確認する。
 
 ### AC-3.3: Styles タブ
 
@@ -73,11 +87,15 @@ npm run format:check  # フォーマット OK
 - [ ] スタイルプロパティ一覧が表示される（background-color, shape 等）
 - [ ] シェイプキーワード一覧が表示される
 
+> manual / visual review — Styles タブのプロパティ・キーワード一覧はブラウザでパネルを開いて確認する。
+
 ### AC-3.4: Tags & Annotations タブ
 
 - [ ] タグ一覧テーブルが表示される（external, async, sync, human, ai, table, queue, api, storage）
 - [ ] アノテーション一覧テーブルが表示される（deprecated, new, experimental, migration_target）
 - [ ] 各アノテーションにバッジプレビューが表示される
+
+> manual / visual review — タグ／アノテーション一覧とバッジプレビュー描画はパネル UI を目視確認する。
 
 ### AC-3.5: Built-in Theme タブ
 
@@ -85,7 +103,11 @@ npm run format:check  # フォーマット OK
 - [ ] "Copy" ボタンでクリップボードにコピーされる
 - [ ] コピー後 "Copied!" と一時的に表示される
 
+> manual / visual review — Copy ボタンのクリップボード操作と "Copied!" 表示はブラウザ操作で確認する。
+
 ### AC-3.6: 両モード対応
 
 - [ ] Memory モードでリファレンスパネルが動作する
 - [ ] Project モードでリファレンスパネルが動作する
+
+> manual / visual review — Memory / Project 両モードでパネルを開く動作はブラウザでモードを切替えて目視確認する。

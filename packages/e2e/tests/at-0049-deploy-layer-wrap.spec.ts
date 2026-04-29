@@ -1,4 +1,5 @@
-import { type Page, expect, test } from "@playwright/test";
+import { expect, test } from "@playwright/test";
+import { replaceEditorContent } from "../fixtures/editor.js";
 
 /**
  * AT-0049: Deploy diagram layer width wrapping.
@@ -37,13 +38,6 @@ deploy "Production" {
   oci "s8" { realizes "S8" }
 }
 `;
-
-async function replaceEditorContent(page: Page, content: string) {
-  await page.locator(".monaco-editor .view-lines").first().click();
-  await page.keyboard.press("Control+A");
-  await page.keyboard.press("Delete");
-  await page.keyboard.insertText(content);
-}
 
 test.describe("AT-0049 Deploy diagram layer width wrapping", () => {
   test("8 isolated containers in a single layer wrap into two sub-rows", async ({ page }) => {

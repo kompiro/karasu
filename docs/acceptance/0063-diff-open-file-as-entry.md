@@ -50,6 +50,8 @@ system Shop {
 - [ ] No file is highlighted in the editor tab; or `index.krs` is selected
       automatically per the existing initialization behavior.
 
+> manual / visual review — initial-load preview / editor coupling depends on the live OPFS-backed project and is not covered by app-level unit tests.
+
 ### TC-2: Opening another `.krs` switches the preview root
 
 Set up `before.krs` (a different root, **not** imported from `index.krs`):
@@ -65,6 +67,8 @@ system Shop {
       is visible (no `Orders`, no edge).
 - [ ] Re-click `index.krs`. The preview returns to the full `Shop` system.
 
+> manual / visual review — clicking through the file tree and inspecting which root is rendered requires a live preview re-render.
+
 ### TC-3: Editing `.krs.style` keeps the prior `.krs` preview
 
 - [ ] Open `before.krs` so the preview shows it.
@@ -72,6 +76,8 @@ system Shop {
 - [ ] The preview still shows `before.krs` (not blank, not `index.krs`).
 - [ ] Edit a color in `styles.krs.style`. The preview updates with the new
       style applied to `before.krs`'s diagram.
+
+> manual / visual review — confirms the `.krs` ↔ `.krs.style` decoupling by visually watching the preview while switching the active file.
 
 ### TC-4: Diff after-side follows the open `.krs`
 
@@ -83,17 +89,23 @@ system Shop {
 - [ ] Click another `.krs` file in the tree (still in diff mode). The
       after-side updates to that file; swap state resets to default.
 
+> manual / visual review — combines diff-mode entry, swap, and tree-click; verifying the banner direction matches the diff colors needs human inspection.
+
 ### TC-5: Project switch resets the preview root
 
 - [ ] After opening `before.krs` in project A, switch to project B.
 - [ ] The preview in project B shows project B's `index.krs`, not a stale
       reference to `before.krs`.
 
+> manual / visual review — verifies cross-project state isolation through the live ProjectSelector and OPFS-backed project list.
+
 ### TC-6: Deleting the open `.krs` file falls back
 
 - [ ] With `before.krs` open as the preview root, delete `before.krs` from
       the file tree.
 - [ ] The preview falls back to `index.krs`.
+
+> manual / visual review — destructive file-tree operation with live OPFS — needs a real session to confirm the fallback render.
 
 ### TC-7: Browser back/forward restores the open file
 
@@ -105,11 +117,15 @@ system Shop {
       to `index.krs`.
 - [ ] Press **Forward**. They go back to `before.krs`.
 
+> manual / visual review — exercises the live browser history stack, which can only be driven from a real browser session.
+
 ### TC-8: Deep-link with `?file=` parameter
 
 - [ ] Copy the URL while `before.krs` is open.
 - [ ] Paste it in a new tab. After load, the editor opens `before.krs` and
       the preview is rooted at it (not at `index.krs`).
+
+> manual / visual review — fresh-tab load behavior with a deep-link query is a real-browser flow.
 
 ### TC-9: Project switch preserves the forward history stack
 
@@ -119,3 +135,5 @@ system Shop {
 - [ ] Press **Forward** — the app returns to project B.
       (Regression guard: a stray `pushState` during the project-switch
       transient would wipe the forward stack here.)
+
+> manual / visual review — regression guard against a transient `pushState`; only observable through a real browser's forward stack.

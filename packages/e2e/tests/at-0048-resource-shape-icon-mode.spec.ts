@@ -1,4 +1,5 @@
 import { type Page, expect, test } from "@playwright/test";
+import { replaceEditorContent } from "../fixtures/editor.js";
 
 /**
  * AT-0048: Resource shape auto-inference & Icon Mode for infra nodes.
@@ -45,13 +46,6 @@ const SAMPLE_KRS = `system ECPlatform {
   }
 }
 `;
-
-async function replaceEditorContent(page: Page, content: string) {
-  await page.locator(".monaco-editor .view-lines").first().click();
-  await page.keyboard.press("Control+A");
-  await page.keyboard.press("Delete");
-  await page.keyboard.insertText(content);
-}
 
 async function goToSystemTab(page: Page) {
   await page.getByRole("tab", { name: "System" }).click();

@@ -1,4 +1,5 @@
-import { type Page, expect, test } from "@playwright/test";
+import { expect, test } from "@playwright/test";
+import { replaceEditorContent } from "../fixtures/editor.js";
 
 /**
  * AT-0029: System ↔ Deploy / Org cross-navigation.
@@ -55,13 +56,6 @@ organization Corp {
   }
 }
 `;
-
-async function replaceEditorContent(page: Page, content: string) {
-  await page.locator(".monaco-editor .view-lines").first().click();
-  await page.keyboard.press("Control+A");
-  await page.keyboard.press("Delete");
-  await page.keyboard.insertText(content);
-}
 
 test.describe("AT-0029 Cross-navigation", () => {
   test("deploy button exists on services with deploy containers and not others (AT-0029-01, AT-0029-08)", async ({

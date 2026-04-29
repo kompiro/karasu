@@ -1,4 +1,5 @@
 import type { Page } from "@playwright/test";
+import { replaceEditorContent } from "../fixtures/editor.js";
 import { expect, test } from "../fixtures/opfs.js";
 import type { Mode } from "../fixtures/opfs.js";
 
@@ -87,13 +88,6 @@ async function bootApp(
     // scenario content so the assertions read against the same source.
     await replaceEditorContent(page, initialContent);
   }
-}
-
-async function replaceEditorContent(page: Page, content: string) {
-  await page.locator(".monaco-editor .view-lines").first().click();
-  await page.keyboard.press("Control+A");
-  await page.keyboard.press("Delete");
-  await page.keyboard.insertText(content);
 }
 
 const MODES: Mode[] = ["opfs", "memory"];

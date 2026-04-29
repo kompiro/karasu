@@ -1,4 +1,5 @@
 import { type Page, expect, test } from "@playwright/test";
+import { replaceEditorContent } from "../fixtures/editor.js";
 
 /**
  * AT-0016: String literal IDs for logical and organization nodes.
@@ -61,13 +62,6 @@ deploy Production {
   }
 }
 `;
-
-async function replaceEditorContent(page: Page, content: string) {
-  await page.locator(".monaco-editor .view-lines").first().click();
-  await page.keyboard.press("Control+A");
-  await page.keyboard.press("Delete");
-  await page.keyboard.insertText(content);
-}
 
 async function expectNoWarnings(page: Page) {
   // Give the reactive pipeline a moment to settle then assert the panel
