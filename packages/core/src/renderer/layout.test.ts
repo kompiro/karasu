@@ -803,6 +803,28 @@ system S {
     expect(other.y).toBe(stripe.y);
   });
 
+  it("propagates pull-up through a dep-on-dep chain regardless of declaration order (Issue #974)", () => {
+    // External Auth is consumed only by Stripe; Stripe is consumed only by
+    // Backend. The pull-up must place Auth one row below Stripe, even when
+    // Auth happens to be declared before Stripe (so the naive single-pass
+    // version would process Auth before Stripe is updated).
+    const slice = parseAndExtract(`
+system S {
+  service Backend {}
+  service Auth [external] {}
+  service Stripe [external] {}
+  Backend -> Stripe
+  Stripe -> Auth
+}
+`);
+    const result = layout(slice);
+    const backend = result.nodes.get("Backend")!;
+    const stripe = result.nodes.get("Stripe")!;
+    const auth = result.nodes.get("Auth")!;
+    expect(backend.y).toBeLessThan(stripe.y);
+    expect(stripe.y).toBeLessThan(auth.y);
+  });
+
   it("compacts to two rows when only internal and external services are declared", () => {
     // No user, no client: internal moves up to row 0, external to row 1.
     const slice = parseAndExtract(`
