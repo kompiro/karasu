@@ -116,8 +116,12 @@ export function resolveStyles(
       if (resolvedNode.annotations.length === 0 && parentAnnotations.length > 0) {
         resolvedNode = { ...resolvedNode, annotations: parentAnnotations };
       }
-      const style = resolveNodeStyle(resolvedNode, allRules);
-      const hints = resolveLayoutHintsForNode(resolvedNode, allRules, resolvedStyleWarnings);
+      const merged = mergeMatchingProperties(resolvedNode, allRules);
+      const hints = finalizeLayoutHints(resolvedNode.id, merged, resolvedStyleWarnings);
+      // applyClientSubtypeFirstMatch mutates `merged` (shape-related only — does
+      // not touch `column`), so it must run after the layout-hint read.
+      applyClientSubtypeFirstMatch(resolvedNode, merged);
+      const style = toResolvedNodeStyle(merged);
       // Always store under the simple ID key for backward-compat lookups (e.g., container
       // rendering uses container.id directly).
       nodeStyles.set(node.id, style);
@@ -165,11 +169,12 @@ export function resolveStyles(
 
   if (deployNodes) {
     for (const unit of deployNodes) {
-      nodeStyles.set(unit.id, resolveDeployNodeStyle(unit, allRules));
+      const merged = mergeMatchingPropertiesForDeploy(unit, allRules);
       // Surface layout hints that target deploy nodes so authors are warned
-      // they have no effect there. The hints are not stored — `layoutHints`
-      // remains a system-view-only signal.
-      const hint = resolveLayoutHintsForDeployNode(unit, allRules);
+      // they have no effect there (and so typo'd values still produce
+      // `style-column-invalid-value` rather than vanishing). The hints are
+      // not stored — `layoutHints` remains a system-view-only signal.
+      const hint = finalizeLayoutHints(unit.id, merged, resolvedStyleWarnings);
       if (hint?.column) {
         resolvedStyleWarnings.push({
           kind: "style-column-ignored-non-system-view",
@@ -177,13 +182,14 @@ export function resolveStyles(
           viewType: "deploy",
         });
       }
+      nodeStyles.set(unit.id, toResolvedNodeStyle(merged));
     }
   }
 
   if (organizations) {
     for (const node of collectOrgNodes(organizations)) {
-      nodeStyles.set(node.id, resolveOrgNodeStyle(node, allRules));
-      const hint = resolveLayoutHintsForOrgNode(node, allRules);
+      const merged = mergeMatchingPropertiesForOrg(node, allRules);
+      const hint = finalizeLayoutHints(node.id, merged, resolvedStyleWarnings);
       if (hint?.column) {
         resolvedStyleWarnings.push({
           kind: "style-column-ignored-non-system-view",
@@ -191,6 +197,7 @@ export function resolveStyles(
           viewType: "org",
         });
       }
+      nodeStyles.set(node.id, toResolvedNodeStyle(merged));
     }
   }
 
@@ -205,55 +212,15 @@ export function resolveStyles(
 }
 
 /**
- * Resolve `column` (and any future layout hint) for a single node by running
- * the same cascade as the visual style resolver. Pushes a warning into
- * `warnings` for invalid values (`column: foo`); silently ignores unknown
- * hint properties to stay forward-compatible.
+ * Read `column` (and any future layout hint) from a merged property map and
+ * return the resolved hint, or `null` when no hint resolved. Invalid values
+ * (`column: foo`) push a `style-column-invalid-value` warning and produce
+ * `null` so the caller can skip storing an empty map entry. Unknown hint
+ * properties are ignored to stay forward-compatible.
  *
- * Returns `null` when no hint resolved so callers can skip storing an empty
- * map entry.
+ * Callers are expected to share `merged` with the visual-style resolver so
+ * the cascade runs once per node.
  */
-function resolveLayoutHintsForNode(
-  node: KrsNode,
-  rules: StyleRule[],
-  warnings: ResolvedStyleWarning[],
-): ResolvedLayoutHints | null {
-  const merged = mergeMatchingProperties(node, rules);
-  return finalizeLayoutHints(node.id, merged, warnings);
-}
-
-function resolveLayoutHintsForDeployNode(
-  unit: DeployNode,
-  rules: StyleRule[],
-): ResolvedLayoutHints | null {
-  const matching = rules.filter((rule) => deployNodeSelectorMatches(unit, rule.selector));
-  matching.sort((a, b) => a.specificity - b.specificity || a.sourceIndex - b.sourceIndex);
-  const merged: Record<string, string> = {};
-  for (const rule of matching) Object.assign(merged, rule.properties);
-  return finalizeLayoutHints(unit.id, merged, []);
-}
-
-function resolveLayoutHintsForOrgNode(
-  node: OrgNodeDescriptor,
-  rules: StyleRule[],
-): ResolvedLayoutHints | null {
-  const matching = rules.filter((rule) => orgNodeSelectorMatches(node, rule.selector));
-  matching.sort((a, b) => a.specificity - b.specificity || a.sourceIndex - b.sourceIndex);
-  const merged: Record<string, string> = {};
-  for (const rule of matching) Object.assign(merged, rule.properties);
-  return finalizeLayoutHints(node.id, merged, []);
-}
-
-function orgNodeSelectorMatches(node: OrgNodeDescriptor, sel: StyleSelector): boolean {
-  if (sel.id) return sel.id === node.id;
-  if (sel.nodeType === "edge") return false;
-  if (sel.nodeType && sel.nodeType !== node.kind) return false;
-  if (sel.tags.length > 0) return false;
-  if (sel.annotations.length > 0) return false;
-  if (!sel.nodeType && !sel.id) return false;
-  return true;
-}
-
 function finalizeLayoutHints(
   nodeId: string,
   merged: Record<string, string>,
@@ -276,6 +243,38 @@ function mergeMatchingProperties(node: KrsNode, rules: StyleRule[]): Record<stri
   return merged;
 }
 
+function mergeMatchingPropertiesForDeploy(
+  unit: DeployNode,
+  rules: StyleRule[],
+): Record<string, string> {
+  const matching = rules.filter((rule) => deployNodeSelectorMatches(unit, rule.selector));
+  matching.sort((a, b) => a.specificity - b.specificity || a.sourceIndex - b.sourceIndex);
+  const merged: Record<string, string> = {};
+  for (const rule of matching) Object.assign(merged, rule.properties);
+  return merged;
+}
+
+function mergeMatchingPropertiesForOrg(
+  node: OrgNodeDescriptor,
+  rules: StyleRule[],
+): Record<string, string> {
+  const matching = rules.filter((rule) => orgNodeSelectorMatches(node, rule.selector));
+  matching.sort((a, b) => a.specificity - b.specificity || a.sourceIndex - b.sourceIndex);
+  const merged: Record<string, string> = {};
+  for (const rule of matching) Object.assign(merged, rule.properties);
+  return merged;
+}
+
+function orgNodeSelectorMatches(node: OrgNodeDescriptor, sel: StyleSelector): boolean {
+  if (sel.id) return sel.id === node.id;
+  if (sel.nodeType === "edge") return false;
+  if (sel.nodeType && sel.nodeType !== node.kind) return false;
+  if (sel.tags.length > 0) return false;
+  if (sel.annotations.length > 0) return false;
+  if (!sel.nodeType && !sel.id) return false;
+  return true;
+}
+
 function resolveDefaultEdgeStyle(rules: StyleRule[]): ResolvedEdgeStyle {
   const matching = rules.filter(
     (rule) => rule.selector.nodeType === "edge" && rule.selector.tags.length === 0,
@@ -294,20 +293,6 @@ function collectEdges(node: KrsNode): KrsEdge[] {
     edges.push(...collectEdges(child));
   }
   return edges;
-}
-
-function resolveNodeStyle(node: KrsNode, rules: StyleRule[]): ResolvedNodeStyle {
-  const matching = rules.filter((rule) => nodeSelectorMatches(node, rule.selector));
-  matching.sort((a, b) => a.specificity - b.specificity || a.sourceIndex - b.sourceIndex);
-
-  const merged: Record<string, string> = {};
-  for (const rule of matching) {
-    Object.assign(merged, rule.properties);
-  }
-
-  applyClientSubtypeFirstMatch(node, merged);
-
-  return toResolvedNodeStyle(merged);
 }
 
 /**
@@ -348,18 +333,6 @@ function resolveEdgeStyle(edge: KrsEdge, rules: StyleRule[]): ResolvedEdgeStyle 
   return toResolvedEdgeStyle(merged);
 }
 
-function resolveDeployNodeStyle(unit: DeployNode, rules: StyleRule[]): ResolvedNodeStyle {
-  const matching = rules.filter((rule) => deployNodeSelectorMatches(unit, rule.selector));
-  matching.sort((a, b) => a.specificity - b.specificity || a.sourceIndex - b.sourceIndex);
-
-  const merged: Record<string, string> = {};
-  for (const rule of matching) {
-    Object.assign(merged, rule.properties);
-  }
-
-  return toResolvedNodeStyle(merged);
-}
-
 function deployNodeSelectorMatches(unit: DeployNode, sel: StyleSelector): boolean {
   if (sel.id) return sel.id === unit.id;
   if (sel.nodeType === "edge") return false;
@@ -396,27 +369,6 @@ function collectOrgNodes(organizations: OrganizationBlock[]): OrgNodeDescriptor[
   }
 
   return nodes;
-}
-
-function resolveOrgNodeStyle(node: OrgNodeDescriptor, rules: StyleRule[]): ResolvedNodeStyle {
-  const matching = rules.filter((rule) => {
-    const sel = rule.selector;
-    if (sel.id) return sel.id === node.id;
-    if (sel.nodeType === "edge") return false;
-    if (sel.nodeType && sel.nodeType !== node.kind) return false;
-    if (sel.tags.length > 0) return false;
-    if (sel.annotations.length > 0) return false;
-    if (!sel.nodeType && !sel.id) return false;
-    return true;
-  });
-  matching.sort((a, b) => a.specificity - b.specificity || a.sourceIndex - b.sourceIndex);
-
-  const merged: Record<string, string> = {};
-  for (const rule of matching) {
-    Object.assign(merged, rule.properties);
-  }
-
-  return toResolvedNodeStyle(merged);
 }
 
 function nodeSelectorMatches(node: KrsNode, selector: StyleSelector): boolean {

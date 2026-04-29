@@ -317,21 +317,30 @@ function _compileFromPreparedInput(
   // into the analyze() output. Both sources speak the same Warning shape;
   // the ResolvedStyleWarning is just a narrow projection that keeps the
   // resolver decoupled from the warnings type union.
-  function mergeResolvedStyleWarnings(styles: ResolvedStyles): void {
+  const mergeResolvedStyleWarnings = (styles: ResolvedStyles): void => {
     for (const w of styles.warnings) {
-      if (w.kind === "style-column-invalid-value") {
-        warnings.push({
-          kind: "style-column-invalid-value",
-          params: { nodeId: w.nodeId, value: w.value },
-        });
-      } else if (w.kind === "style-column-ignored-non-system-view") {
-        warnings.push({
-          kind: "style-column-ignored-non-system-view",
-          params: { nodeId: w.nodeId, viewType: w.viewType },
-        });
+      switch (w.kind) {
+        case "style-column-invalid-value":
+          warnings.push({
+            kind: "style-column-invalid-value",
+            params: { nodeId: w.nodeId, value: w.value },
+          });
+          break;
+        case "style-column-ignored-non-system-view":
+          warnings.push({
+            kind: "style-column-ignored-non-system-view",
+            params: { nodeId: w.nodeId, viewType: w.viewType },
+          });
+          break;
+        default: {
+          // Exhaustiveness guard — adding a new ResolvedStyleWarning variant
+          // without updating this switch will fail the build.
+          const _exhaustive: never = w;
+          throw new Error(`Unhandled ResolvedStyleWarning kind: ${JSON.stringify(_exhaustive)}`);
+        }
       }
     }
-  }
+  };
 
   // For style resolution, icon theme is appended last so it takes highest priority for `shape`.
   // This ensures Icon Mode is immune to `shape` overrides from user or builtin stylesheets.

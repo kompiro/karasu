@@ -970,6 +970,28 @@ describe("resolveStyles — column layout hint (#969)", () => {
     });
   });
 
+  it("emits style-column-invalid-value for invalid values on deploy nodes (not silently dropped)", () => {
+    const system = makeNode({ kind: "system", id: "S", children: [] });
+    const deployUnit: DeployNode = {
+      kind: "oci",
+      id: "ecommerceApp",
+      label: "ecommerce-app",
+      properties: { runtime: "GKE", realizes: [] },
+      loc: dummyLoc,
+    };
+    const sheet: StyleSheet = {
+      rules: [
+        makeRule({ id: "ecommerceApp", tags: [], annotations: [] }, { column: "middel" }, 100),
+      ],
+    };
+    const result = resolveStyles([system], [sheet], [deployUnit]);
+    expect(result.warnings).toContainEqual({
+      kind: "style-column-invalid-value",
+      nodeId: "ecommerceApp",
+      value: "middel",
+    });
+  });
+
   it("warns when a column hint resolves on an org team node", () => {
     const system = makeNode({ kind: "system", id: "S", children: [] });
     const team: TeamNode = {

@@ -38,17 +38,20 @@ export function sortByBarycenter<T extends { id: string }>(
 /**
  * Bucket items by their resolved `column` hint (`left` / unspecified-or-center / `right`),
  * preserving the relative input order within each bucket. Used to honor the
- * `.krs.style` `column` property in system view (see ADR/Design doc for #969).
+ * `.krs.style` `column` property in system view (see `docs/design/auto-layout-style-hints.md`).
  *
  * The middle bucket merges unspecified nodes and `column: center` nodes so
  * authors can pin only the extremes (`left` / `right`) and let the rest
  * settle in the middle without writing `center` explicitly.
+ *
+ * Returns the input array unchanged when no item has a `left` or `right`
+ * hint, so call sites can safely route every layer through this helper
+ * without measuring whether bucketing actually applies.
  */
 export function bucketByColumn<T extends { id: string }>(
   items: T[],
   layoutHints: Map<string, ResolvedLayoutHints>,
 ): T[] {
-  if (items.length <= 1) return items;
   const left: T[] = [];
   const middle: T[] = [];
   const right: T[] = [];
