@@ -19,6 +19,7 @@ import {
 } from "./rendering-constants.js";
 import { DEFAULT_EMPTY_STATE_LABELS, type EmptyStateLabels } from "./empty-state-labels.js";
 import type { LegendBlock } from "../types/ast.js";
+import type { LegendUsage } from "../legend/usage.js";
 import type { StyleSheet } from "../types/style.js";
 
 interface RenderOrgOptions {
@@ -32,6 +33,8 @@ interface RenderOrgOptions {
   legends?: LegendBlock[];
   /** Resolved style sheets for legend `ref` color resolution. */
   styleSheets?: StyleSheet[];
+  /** Tag/annotation/id/kind usage for legend fallback resolution (Issue #999). */
+  legendUsage?: LegendUsage;
 }
 
 // Shape mode constants
@@ -610,6 +613,7 @@ export function renderOrgView(
         "org",
         options.styleSheets ?? [],
         totalWidth,
+        options.legendUsage,
       );
       if (footer) {
         extra.push(el("g", { transform: `translate(0,${totalHeight})` }, footer.svg));

@@ -175,6 +175,46 @@ legend "Owner" {
     expect(heightAttr(withLegend.svg)).toBeGreaterThan(heightAttr(without.svg));
   });
 
+  it("emits a fallback swatch for a ref whose tag is in use but unstyled (Issue #999)", () => {
+    // `[human]` is documented in spec/tags-annotations.md as having no
+    // default style impact, but it appears on real user nodes — so the
+    // legend ref is semantically valid and must be shown. The renderer
+    // falls back to a neutral swatch (#9CA3AF).
+    const krs = `
+system Demo {
+  user Customer [human] {}
+  service Api {}
+  Customer -> Api
+}
+legend "凡例" {
+  ref [human] "人間ユーザー"
+}
+`;
+    const result = compile(krs, { diagramType: "system" });
+    expect(result.svg).toContain("legend-footer");
+    expect(result.svg).toContain("人間ユーザー");
+    expect(result.svg).toContain('fill="#9CA3AF"');
+    // No legend-ref-unresolved warning: the resolver agreed the ref
+    // resolves (annotation in use), and the renderer now agrees too.
+    const unresolved = result.warnings.filter((w) => w.kind === "legend-ref-unresolved");
+    expect(unresolved).toHaveLength(0);
+  });
+
+  it("still drops a ref whose target is unused (regression check)", () => {
+    // `@gone` has no nodes carrying it and no style rule paints it. The
+    // legend footer must keep dropping these so the prior unresolved-ref
+    // behavior is preserved.
+    const krs = `${SYSTEM_KRS}
+legend {
+  swatch #2563EB "Resolved swatch"
+  ref @gone "Unresolved annotation"
+}
+`;
+    const result = compile(krs, { diagramType: "system" });
+    expect(result.svg).toContain("Resolved swatch");
+    expect(result.svg).not.toContain("Unresolved annotation");
+  });
+
   it("renders a footer on the org view", () => {
     const krs = `${ORG_KRS}
 legend "Owner" {

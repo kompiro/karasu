@@ -49,6 +49,11 @@ function detectUnresolvedLegendRefs(file: KrsFile, sheets: StyleSheet[]): Warnin
       walk(node.children);
     }
   }
+  // The full-tree walk below mirrors collectLegendUsage; we keep the
+  // local copy because the warnings detector also needs intermediate state
+  // (annotationsInUse, tagsInUse) for fall-through reasons. The shared
+  // helper is the single source of truth for *what counts as in use*; the
+  // renderer consumes it via collectLegendUsage(file) directly.
   for (const system of file.systems) {
     nodeIds.add(system.id);
     nodeKinds.add(system.kind);
