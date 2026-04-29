@@ -80,20 +80,30 @@ export interface LayoutResult {
 }
 
 const LINE_HEIGHT = 18;
-const LAYER_GAP = 120;
-const NODE_GAP = 60;
 const DESCRIPTION_FONT_RATIO = 0.85;
 const CONTAINER_PADDING = 40;
 const CONTAINER_LABEL_HEIGHT = 30;
 const GHOST_MARGIN = 30;
 
-// Icon-mode card dimensions (from design doc)
-const MAX_LAYER_WIDTH = 1200; // wrap nodes to a new sub-row when a layer exceeds this width
 const ICON_CARD_WIDTH = 160;
 const ICON_CARD_HEIGHT_WITH_DESC = 100;
 const ICON_CARD_HEIGHT_NO_DESC = 56;
 
 export type DisplayMode = "shape" | "icon";
+
+// Per-mode gap constants. Shape values are the historical defaults tuned
+// for variable-width cards (~250px). Icon values are tuned for uniform
+// 160-wide cards — see docs/design/icon-mode-layout-tuning.md.
+function getLayoutConstants(displayMode?: DisplayMode): {
+  LAYER_GAP: number;
+  NODE_GAP: number;
+  MAX_LAYER_WIDTH: number;
+} {
+  if (displayMode === "icon") {
+    return { LAYER_GAP: 80, NODE_GAP: 36, MAX_LAYER_WIDTH: 1040 };
+  }
+  return { LAYER_GAP: 120, NODE_GAP: 60, MAX_LAYER_WIDTH: 1200 };
+}
 
 // ---------------------------------------------------------------------------
 // Extracted helpers for layout decomposition
@@ -127,6 +137,7 @@ function placeGhostUsers(
   displayMode?: DisplayMode,
 ): void {
   if (viewSlice.ghostUsers.length === 0) return;
+  const { NODE_GAP } = getLayoutConstants(displayMode);
 
   const mainContainer = containers.find((c) => !c.ghost) ?? containers[0];
   const userX = (mainContainer?.x ?? 0) - 20;
@@ -184,6 +195,7 @@ function placeGhostDomains(
 ): void {
   const GHOST_DOMAIN_GAP = 60;
   if (viewSlice.ghostDomains.length === 0 || containers.length === 0) return;
+  const { NODE_GAP } = getLayoutConstants(displayMode);
 
   const mainContainer = containers.find((c) => !c.ghost) ?? containers[0];
   const ghostY = mainContainer.y + mainContainer.height + GHOST_DOMAIN_GAP;
@@ -508,7 +520,9 @@ function normalizeCoordinates(
 function computeTotalDimensions(
   containers: ContainerRect[],
   layoutNodes: Map<string, LayoutNode>,
+  displayMode?: DisplayMode,
 ): { width: number; height: number } {
+  const { NODE_GAP } = getLayoutConstants(displayMode);
   let totalWidth = 0;
   let totalHeight = 0;
   for (const c of containers) {
@@ -528,6 +542,7 @@ export function layout(
   displayMode?: DisplayMode,
   layoutHints?: Map<string, ResolvedLayoutHints>,
 ): LayoutResult {
+  const { LAYER_GAP, NODE_GAP } = getLayoutConstants(displayMode);
   // Build the inherited-annotations map from the focused container's subtree
   // (or all systems for the root view). Within a single drill-down view, IDs
   // are unique by construction, so this map can be safely keyed by id and
@@ -792,6 +807,7 @@ export function layout(
   const { width: totalWidth, height: totalHeight } = computeTotalDimensions(
     containers,
     layoutNodes,
+    displayMode,
   );
 
   return {
@@ -814,6 +830,7 @@ function layoutGhostSystem(
   ownerIndex?: Map<string, string>,
   displayMode?: DisplayMode,
 ): { nodes: Map<string, LayoutNode>; containerRect: ContainerRect } {
+  const { NODE_GAP } = getLayoutConstants(displayMode);
   const nodes = new Map<string, LayoutNode>();
   let maxW = 0;
   let maxH = 0;
@@ -874,6 +891,7 @@ function layoutMultipleSystems(
   displayMode?: DisplayMode,
   layoutHints?: Map<string, ResolvedLayoutHints>,
 ): LayoutResult {
+  const { LAYER_GAP, NODE_GAP, MAX_LAYER_WIDTH } = getLayoutConstants(displayMode);
   // Multi-system view places only services (one nesting level), and a system's
   // annotations do not propagate to its services, so no inheritance is needed.
   const effectiveAnnotations = (n: KrsNode): string[] => n.annotations;

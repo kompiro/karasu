@@ -116,6 +116,52 @@ system S {
     expect(node.width).toBe(160);
     expect(node.height).toBe(56);
   });
+
+  // Gap tuning for icon mode (see docs/design/icon-mode-layout-tuning.md).
+  // Shape uses LAYER_GAP=120 / NODE_GAP=60 / MAX_LAYER_WIDTH=1200.
+  // Icon uses LAYER_GAP=80 / NODE_GAP=36 / MAX_LAYER_WIDTH=1040.
+  it("uses ICON_NODE_GAP (36) between sibling nodes within the same layer", () => {
+    const slice = parseAndExtract(`
+system S {
+  service A { label "A" }
+  service B { label "B" }
+}
+    `);
+    const result = layout(slice, undefined, "icon");
+    const a = result.nodes.get("A")!;
+    const b = result.nodes.get("B")!;
+    // Siblings without an edge land in the same layer; centred row → gap is B.x - (A.x + A.width).
+    expect(a.y).toBe(b.y);
+    expect(b.x - (a.x + a.width)).toBe(36);
+  });
+
+  it("uses ICON_LAYER_GAP (80) between layers in icon mode", () => {
+    const slice = parseAndExtract(`
+system S {
+  service A { label "A" }
+  service B { label "B" }
+  A -> B "calls"
+}
+    `);
+    const result = layout(slice, undefined, "icon");
+    const a = result.nodes.get("A")!;
+    const b = result.nodes.get("B")!;
+    // A is in layer 0, B in layer 1 (edge A → B).
+    expect(b.y - (a.y + a.height)).toBe(80);
+  });
+
+  it("retains shape-mode gaps (60) when displayMode is shape", () => {
+    const slice = parseAndExtract(`
+system S {
+  service A { label "A" }
+  service B { label "B" }
+}
+    `);
+    const result = layout(slice, undefined, "shape");
+    const a = result.nodes.get("A")!;
+    const b = result.nodes.get("B")!;
+    expect(b.x - (a.x + a.width)).toBe(60);
+  });
 });
 
 describe("layout > ownerIndex team resolution", () => {
