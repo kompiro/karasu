@@ -29,9 +29,12 @@ const testGlob = path.join(here, "out", "webview", "**", "*.test.js");
 const codeSettings = path.join(here, "tests", "webview", "settings.json");
 const fixtureDir = path.join(storage, "at-0039-fixture");
 const fixtureKrs = path.join(fixtureDir, "at-0039.krs");
+const at0038FixtureDir = path.join(storage, "at-0038-fixture");
+const at0038FixtureKrs = path.join(at0038FixtureDir, "at-0038.krs");
 
 fs.mkdirSync(storage, { recursive: true });
 fs.mkdirSync(fixtureDir, { recursive: true });
+fs.mkdirSync(at0038FixtureDir, { recursive: true });
 
 // Write the AT-0039 fixture to a stable on-disk path that the test can
 // reach via VS Code's "File: Open File…" command. We do this in the
@@ -53,6 +56,25 @@ fs.writeFileSync(
 `,
 );
 process.env.KARASU_E2E_FIXTURE_KRS = fixtureKrs;
+
+// AT-0038 fixture needs a parent node (service with children) so the
+// drill-down half of the hint-visibility check (TC-02) has somewhere to
+// drill into.
+fs.writeFileSync(
+  at0038FixtureKrs,
+  `system ECommerce {
+  service OrderService {
+    domain OrderManagement {}
+    domain Inventory {}
+  }
+  service UserService {
+    domain Auth {}
+  }
+  OrderService -> UserService
+}
+`,
+);
+process.env.KARASU_E2E_FIXTURE_KRS_AT0038 = at0038FixtureKrs;
 
 // Pre-package the extension into a vsix without dependency validation.
 const vsixOut = path.join(storage, "karasu-vscode.vsix");
