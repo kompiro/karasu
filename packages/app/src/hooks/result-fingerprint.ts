@@ -1,4 +1,4 @@
-import type { Diagnostic, Warning } from "@karasu-tools/core";
+import type { Diagnostic, NodeMetadata, Warning } from "@karasu-tools/core";
 
 /**
  * Compute a compact fingerprint over the user-visible parts of a compile
@@ -31,10 +31,23 @@ export function computeViewResultFingerprint(args: {
   svg: string;
   warnings: readonly Warning[];
   diagnostics: readonly Diagnostic[];
+  /**
+   * Optional. When provided, folds the metadata map into the fingerprint so
+   * that edits which change *only* metadata (e.g. a `description` body, a
+   * `link` URL, a `capability`'s `label` / `description`) — and therefore
+   * produce identical SVG + warnings + diagnostics — still cause a state
+   * publish, keeping consumers like `NodeDetailPanel` in sync. Hooks that
+   * don't carry `nodeMetadata` (e.g. `useOrgView`) can omit this. See
+   * Issue #1032.
+   */
+  nodeMetadata?: ReadonlyMap<string, NodeMetadata>;
 }): string {
   // U+001F (Unit Separator) cannot appear in JSON-encoded strings —
   // JSON.stringify escapes control characters — and karasu's SVG output
   // is plain printable text, so this separator is unambiguous.
   const SEP = "\x1f";
-  return `${args.svg}${SEP}${JSON.stringify(args.warnings)}${SEP}${JSON.stringify(args.diagnostics)}`;
+  const metadataSegment = args.nodeMetadata
+    ? JSON.stringify(Array.from(args.nodeMetadata.entries()))
+    : "";
+  return `${args.svg}${SEP}${JSON.stringify(args.warnings)}${SEP}${JSON.stringify(args.diagnostics)}${SEP}${metadataSegment}`;
 }
