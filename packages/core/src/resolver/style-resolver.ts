@@ -235,6 +235,10 @@ function finalizeLayoutHints(
   return { column: raw as LayoutColumn };
 }
 
+// NOTE: the legend resolver in renderer/svg-builder.ts uses an identical
+// per-property cascade merge (see `resolveLegendRefColor`). When tweaking
+// the cascade semantics here, mirror the change there to keep node colors
+// and legend swatches consistent (Issue #1001).
 function mergeMatchingProperties(node: KrsNode, rules: StyleRule[]): Record<string, string> {
   const matching = rules.filter((rule) => nodeSelectorMatches(node, rule.selector));
   matching.sort((a, b) => a.specificity - b.specificity || a.sourceIndex - b.sourceIndex);
