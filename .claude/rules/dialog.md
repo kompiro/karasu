@@ -1,3 +1,9 @@
+---
+paths:
+  - "packages/app/**/*.tsx"
+  - "packages/app/**/*.css"
+---
+
 # App UI Rules — Modal Dialogs
 
 Every modal dialog in `packages/app` shares a single visual base so that
