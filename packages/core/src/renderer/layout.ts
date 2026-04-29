@@ -7,10 +7,11 @@ import type {
   ClientResource,
 } from "../types/ast.js";
 import type { ViewSlice, GhostSystem, DomainEdgeDetail } from "../view/view-extract.js";
+import type { ResolvedLayoutHints } from "../types/style.js";
 import { buildInheritedAnnotations } from "../resolver/inherited-annotations.js";
 import { summarizeDescription } from "./description-summary.js";
 import { CHAR_WIDTH, NODE_PADDING_X, NODE_PADDING_Y } from "./rendering-constants.js";
-import { sortByBarycenter } from "./layer-layout-logics.js";
+import { sortByBarycenter, bucketByColumn } from "./layer-layout-logics.js";
 import { routeOrthogonalEdges } from "./edge-routing-channels.js";
 import { distributePorts } from "./edge-routing-ports.js";
 import { distributeChannelLanes } from "./edge-routing-lanes.js";
@@ -525,6 +526,7 @@ export function layout(
   viewSlice: ViewSlice,
   ownerIndex?: Map<string, string>,
   displayMode?: DisplayMode,
+  layoutHints?: Map<string, ResolvedLayoutHints>,
 ): LayoutResult {
   // Build the inherited-annotations map from the focused container's subtree
   // (or all systems for the root view). Within a single drill-down view, IDs
@@ -544,7 +546,7 @@ export function layout(
   const isUnassignedOnly =
     viewSlice.systems.length === 1 && viewSlice.systems[0].id === "__unassigned__";
   if (viewSlice.systems.length > 1 || isUnassignedOnly) {
-    return layoutMultipleSystems(viewSlice, ownerIndex, displayMode);
+    return layoutMultipleSystems(viewSlice, ownerIndex, displayMode, layoutHints);
   }
 
   const allNodes = viewSlice.childNodes;
@@ -605,10 +607,35 @@ export function layout(
 
   const sortedLayers = Array.from(nodesByLayer.keys()).sort((a, b) => a - b);
 
-  // Compute initial positions (will be offset later for container nesting)
+  // System view: bucket by column hint while preserving declaration order
+  // within each bucket. The single-system path does not run a barycenter
+  // pass (Q11 of the layout design doc), so the input order *is* the
+  // declaration order, and bucketing is the only x-axis intervention.
+  const orderedByLayer = new Map<number, string[]>();
   for (const layerIdx of sortedLayers) {
     const nodesInLayer = nodesByLayer.get(layerIdx)!;
+    const ordered =
+      forcedLayers !== null && layoutHints && layoutHints.size > 0
+        ? bucketByColumn(
+            nodesInLayer.map((id) => ({ id })),
+            layoutHints,
+          ).map((item) => item.id)
+        : nodesInLayer;
+    orderedByLayer.set(layerIdx, ordered);
+  }
+
+  // Compute initial positions (will be offset later for container nesting).
+  // y is fixed per layer (max bottom of previously-placed layers + LAYER_GAP)
+  // so heterogeneous-height nodes share a top baseline. Without this,
+  // `y = layerIdx * (dims.height + LAYER_GAP)` would push the *tallest*
+  // node in a layer down — a service with a team chip would dive below
+  // its rowmate cylinders / clouds. Mirrors the multi-system path's
+  // `prevBottom` computation.
+  let layerBaselineY = NODE_GAP;
+  for (const layerIdx of sortedLayers) {
+    const nodesInLayer = orderedByLayer.get(layerIdx)!;
     let xOffset = NODE_GAP;
+    let layerMaxBottom = layerBaselineY;
 
     for (const nid of nodesInLayer) {
       const krsNode = nodeMap.get(nid)!;
@@ -617,7 +644,7 @@ export function layout(
           ? (ownerIndex?.get(nid) ?? krsNode.properties.team)
           : undefined;
       const dims = measureNode(krsNode, resolvedTeam, displayMode);
-      const y = layerIdx * (dims.height + LAYER_GAP) + NODE_GAP;
+      const y = layerBaselineY;
 
       layoutNodes.set(nid, {
         kind: krsNode.kind,
@@ -640,12 +667,14 @@ export function layout(
       xOffset += dims.width + NODE_GAP;
       childMaxWidth = Math.max(childMaxWidth, xOffset);
       childMaxHeight = Math.max(childMaxHeight, y + dims.height + NODE_GAP);
+      layerMaxBottom = Math.max(layerMaxBottom, y + dims.height);
     }
+    layerBaselineY = layerMaxBottom + LAYER_GAP;
   }
 
   // Center each layer
   for (const layerIdx of sortedLayers) {
-    const nodesInLayer = nodesByLayer.get(layerIdx)!;
+    const nodesInLayer = orderedByLayer.get(layerIdx)!;
     const layerWidth = nodesInLayer.reduce((sum, id) => {
       const n = layoutNodes.get(id)!;
       return sum + n.width + NODE_GAP;
@@ -843,6 +872,7 @@ function layoutMultipleSystems(
   viewSlice: ViewSlice,
   ownerIndex?: Map<string, string>,
   displayMode?: DisplayMode,
+  layoutHints?: Map<string, ResolvedLayoutHints>,
 ): LayoutResult {
   // Multi-system view places only services (one nesting level), and a system's
   // annotations do not propagate to its services, so no inheritance is needed.
@@ -907,10 +937,14 @@ function layoutMultipleSystems(
       // Sort by barycenter for all layers after the first to minimize edge
       // crossings. Skip when the forced system layout is in effect — Q11 of
       // the design doc requires preserving declaration order within each layer.
-      const sortedLayer =
+      const innerSorted =
         forcedLayers !== null || layerOrder === 0
           ? rawLayer
           : sortByBarycenter(rawLayer, predecessorsMap, nodeCenterX);
+      const sortedLayer =
+        forcedLayers !== null && layoutHints && layoutHints.size > 0
+          ? bucketByColumn(innerSorted, layoutHints)
+          : innerSorted;
 
       // Place nodes with sub-row wrapping when layer width exceeds MAX_LAYER_WIDTH
       let currentX = NODE_GAP;

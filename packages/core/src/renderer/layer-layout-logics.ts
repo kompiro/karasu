@@ -7,6 +7,8 @@
  * within each layer.
  */
 
+import type { ResolvedLayoutHints } from "../types/style.js";
+
 /**
  * Sort items within a layer by the barycenter heuristic to minimize edge crossings.
  *
@@ -31,4 +33,34 @@ export function sortByBarycenter<T extends { id: string }>(
     }
   }
   return [...items].sort((a, b) => barycenter.get(a.id)! - barycenter.get(b.id)!);
+}
+
+/**
+ * Bucket items by their resolved `column` hint (`left` / unspecified-or-center / `right`),
+ * preserving the relative input order within each bucket. Used to honor the
+ * `.krs.style` `column` property in system view (see `docs/design/auto-layout-style-hints.md`).
+ *
+ * The middle bucket merges unspecified nodes and `column: center` nodes so
+ * authors can pin only the extremes (`left` / `right`) and let the rest
+ * settle in the middle without writing `center` explicitly.
+ *
+ * Returns the input array unchanged when no item has a `left` or `right`
+ * hint, so call sites can safely route every layer through this helper
+ * without measuring whether bucketing actually applies.
+ */
+export function bucketByColumn<T extends { id: string }>(
+  items: T[],
+  layoutHints: Map<string, ResolvedLayoutHints>,
+): T[] {
+  const left: T[] = [];
+  const middle: T[] = [];
+  const right: T[] = [];
+  for (const item of items) {
+    const col = layoutHints.get(item.id)?.column;
+    if (col === "left") left.push(item);
+    else if (col === "right") right.push(item);
+    else middle.push(item);
+  }
+  if (left.length === 0 && right.length === 0) return items;
+  return [...left, ...middle, ...right];
 }

@@ -88,6 +88,10 @@ function makeWarning(kind: Warning["kind"]): Warning {
       return { kind, params: { serviceId: "test-service", targetId: "test-target" } };
     case "legend-ref-unresolved":
       return { kind, params: { target: "@deprecated", legendTitle: "Owner team" } };
+    case "style-column-invalid-value":
+      return { kind, params: { nodeId: "test-node", value: "wrong" } };
+    case "style-column-ignored-non-system-view":
+      return { kind, params: { nodeId: "test-node", viewType: "deploy" } };
   }
 }
 

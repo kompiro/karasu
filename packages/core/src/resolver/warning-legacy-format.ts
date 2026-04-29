@@ -137,6 +137,16 @@ export function formatWarning(w: Warning): FormattedWarning {
           : `legend ref ${w.params.target} does not match any node or style rule`,
         details: [],
       };
+    case "style-column-invalid-value":
+      return {
+        message: `column: "${w.params.value}" on #${w.params.nodeId} is not one of left / center / right — ignored`,
+        details: [],
+      };
+    case "style-column-ignored-non-system-view":
+      return {
+        message: `column hint on #${w.params.nodeId} is ignored in ${w.params.viewType} view (layout hints currently apply only to system view)`,
+        details: [],
+      };
     case "cyclic-dependency": {
       const { cyclePath } = w.params;
       const joined =

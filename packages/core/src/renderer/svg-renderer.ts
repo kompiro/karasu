@@ -93,7 +93,7 @@ export function render(
   childLevelLinks?: Map<string, string>,
   options?: RenderOptions,
 ): string {
-  const layoutResult = layout(viewSlice, ownerIndex, displayMode);
+  const layoutResult = layout(viewSlice, ownerIndex, displayMode, styles.layoutHints);
   const title =
     layoutResult.containers.length === 0 && viewSlice.containerNode
       ? (viewSlice.containerNode.label ?? viewSlice.containerNode.id)
