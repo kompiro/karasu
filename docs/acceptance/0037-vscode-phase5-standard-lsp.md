@@ -175,20 +175,29 @@ Verify that the karasu VSCode extension provides standard LSP capabilities on to
 
 ### AT-0037-9: No Regression — Bidirectional Jump Still Works
 
-> **Coverage policy: manual** — see
-> [ADR-20260428-05](../adr/20260428-05-vscode-webview-manual-tests.md).
-> The "click a node in the SVG preview" half exercises the karasu preview
-> WebView, which is unreachable from the `packages/vscode-e2e` harness. The
-> editor → SVG highlight half is covered by Phase 4 LSP tests; the SVG → editor
-> click half stays manual.
+> **Coverage policy: automated** — the editor → SVG highlight direction is
+> automated in
+> [`packages/vscode-e2e/tests/webview/at-0037-9-bidirectional-jump.test.ts`](../../packages/vscode-e2e/tests/webview/at-0037-9-bidirectional-jump.test.ts)
+> under the WebView E2E harness (see
+> [AT-0074](./0074-vscode-webview-e2e-phase3-at-0037-9.md)).
+>
+> The "click an SVG node → jump the editor" direction expected here pre-dated
+> the Phase 6 detail-panel work (#250). The current behaviour splits across
+> two automated TCs:
+>
+> - **Cmd/Ctrl+Click on a node → editor jump** is covered by
+>   [AT-0038 TC-03 / TC-04](./0038-vscode-phase4-5-cmd-click-hint.md).
+> - **Plain click on a leaf → detail panel opens** is covered by
+>   [AT-0039 TC-01](./0039-vscode-phase6-detail-panel.md).
+>
+> No part of AT-0037-9 still requires manual coverage.
 
 **Steps:**
 
 1. Open a `.krs` file and the karasu preview panel
 2. Move the cursor to a node definition
-3. Click a node in the SVG preview
 
 **Expected:**
 
-- Cursor movement highlights the corresponding SVG node (Phase 4 behavior intact)
-- Clicking the SVG node jumps the editor cursor to the definition (Phase 4 behavior intact)
+- Cursor movement highlights the corresponding SVG node (the
+  `<g data-node-id="…">` element gains `class="karasu-highlighted"`)
