@@ -1,7 +1,6 @@
 import * as assert from "node:assert";
 import {
   EditorView,
-  InputBox,
   TextEditor,
   VSBrowser,
   type WebDriver,
@@ -26,11 +25,17 @@ import {
  * this suite locks in.
  *
  * Uses its own fixture `KARASU_E2E_FIXTURE_KRS_AT0037` (same content as
- * the AT-0038 fixture, but at a separate path). Sharing the AT-0038
- * file across suites tripped a VS Code "File: Open File..." simple-
- * dialog flake where the second open against the recently-used path
- * stalled. `OrderService` lives at line 2 col 11 (1-indexed) which is
- * what `TextEditor.moveCursor` accepts.
+ * the AT-0038 fixture, but at a separate path), opened via
+ * `VSBrowser.openResources(...)` rather than the "File: Open File..."
+ * simple-dialog. The simple-dialog path stalls on the second open in a
+ * single VS Code session — the dialog appears with the path typed in,
+ * but `confirm()` does not advance to the workspace. `openResources`
+ * shells out to `code -r <path>` against the already-running instance,
+ * so it sidesteps the dialog entirely. AT-0038 and AT-0039 still use
+ * the simple-dialog because they each see a clean state when they run
+ * (this suite no longer leaves a dialog interaction behind).
+ * `OrderService` lives at line 2 col 11 (1-indexed) which is what
+ * `TextEditor.moveCursor` accepts.
  *
  * Implementation notes:
  *
@@ -76,10 +81,11 @@ describe("AT-0037-9 (WebView) — editor cursor highlights the matching SVG node
     const editorView = new EditorView();
     const workbench = new Workbench();
 
-    await workbench.executeCommand("File: Open File...");
-    const openInput = await InputBox.create();
-    await openInput.setText(fixturePath);
-    await openInput.confirm();
+    // Open the fixture via the VS Code CLI (`code -r <path>`) instead of
+    // the workbench File: Open File... simple-dialog. The simple-dialog
+    // is reliable on a fresh session but stalls on a second open in the
+    // same run, which broke the AT-0037-9 → AT-0038 sequence on CI.
+    await VSBrowser.instance.openResources(fixturePath);
 
     await driver.wait(
       async () => {
