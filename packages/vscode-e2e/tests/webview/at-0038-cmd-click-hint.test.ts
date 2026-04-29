@@ -111,11 +111,18 @@ describe("AT-0038 (WebView) — Cmd/Ctrl+Click hint text visibility", function (
           "el.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }));",
       );
 
+      // The drill-down handler postMessages the extension host, which
+      // reassigns `webview.html`. That replaces the iframe's document,
+      // invalidating Selenium's current frame context. Detach and let
+      // VS Code rebuild before re-acquiring the WebView.
+      await webview.switchBack();
+      await driver.sleep(1000);
+      await webview.switchToFrame();
+
       // Wait for the breadcrumb to advance past Root. Drilling fans out
       // the full ancestor chain (e.g. "Root › ECommerce › OrderService"),
-      // so we just check that more than the bare "Root" segment is
-      // present. Read atomically via the page — references captured
-      // before the rebuild would be stale.
+      // so checking for more than one segment is enough — and is robust
+      // to overflow:hidden truncation that can confuse `innerText`.
       let lastBreadcrumb = "";
       try {
         await driver.wait(
@@ -140,8 +147,8 @@ describe("AT-0038 (WebView) — Cmd/Ctrl+Click hint text visibility", function (
         );
       }
 
-      // TC-02: re-locate #jump-hint after the rebuild and assert it is
-      // still visible with the same text.
+      // TC-02: locate #jump-hint in the rebuilt document and assert it
+      // is still visible with the same text.
       const drilledHint = await driver.wait(
         until.elementLocated(By.css("#jump-hint")),
         ELEMENT_TIMEOUT_MS,
