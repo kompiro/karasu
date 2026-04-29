@@ -62,7 +62,15 @@ export async function replaceEditorContent(page: Page, content: string): Promise
   // top of the file is not in the DOM — verifying the first line of the
   // pasted content would fail not because the paste failed but because the
   // line is off-screen. `Ctrl+Home` scrolls back to the top.
-  await page.keyboard.press("Control+Home");
+  //
+  // Monaco's paste handler can momentarily steal keyboard focus from the
+  // EditContext textbox; if `Ctrl+Home` is sent during that window the
+  // chord never reaches the editor and the viewport stays at end-of-file
+  // (#990). Re-focus the textbox and dispatch the chord through the locator
+  // so it is bound to the focused element rather than the page.
+  await editorTextbox.focus();
+  await expect(editorTextbox).toBeFocused();
+  await editorTextbox.press("Control+Home");
 
   const firstLine = content.split("\n").find((line) => line.trim().length > 0);
   if (firstLine) {
