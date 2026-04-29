@@ -1,5 +1,14 @@
 name: ADR validate
 
+# Companion of `adr-validate-skip.yml`. This workflow runs the real ADR
+# validator on PRs that touch ADR paths. The skip workflow emits a no-op
+# `Validate` job for all other PRs so the Required status named
+# `Validate` stays green repository-wide.
+#
+# Keep the `paths:` list below in sync with `adr-validate-skip.yml`'s
+# `paths-ignore:`. If you add a new ADR-related path here, mirror it
+# under `paths-ignore:` in the skip workflow.
+
 on:
   pull_request:
     branches: [main]
