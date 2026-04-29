@@ -823,3 +823,75 @@ system B {
     expect(bInt.y).toBeLessThan(aInt.y);
   });
 });
+
+describe("layout > orthogonal edge routing", () => {
+  it("adds waypoints to a skip-layer edge whose straight line crosses an intermediate node", () => {
+    // Customer/Seller go through MobileApp; Admin goes directly to ECSite.
+    // Without A's row-by-target fix, Admin sits in row 0 alongside the others
+    // and its straight edge passes through MobileApp's bounding box.
+    const slice = parseAndExtract(`
+system EC {
+  user Customer {}
+  user Seller {}
+  user Admin {}
+  client MobileApp {}
+  service ECSite {}
+  Customer -> MobileApp
+  Seller -> MobileApp
+  MobileApp -> ECSite
+  Admin -> ECSite
+}
+    `);
+    const result = layout(slice);
+    const adminEdge = result.edges.find((e) => e.from === "Admin" && e.to === "ECSite");
+    expect(adminEdge).toBeDefined();
+    // Either orthogonal waypoints get inserted, or the straight line is
+    // already clear (e.g. if A's actor-row fix lands later and puts Admin
+    // adjacent to ECSite). In both cases the routed path must not cross
+    // MobileApp's bounding box.
+    const mobileApp = result.nodes.get("MobileApp")!;
+    const path = [adminEdge!.fromPoint, ...(adminEdge!.waypoints ?? []), adminEdge!.toPoint];
+    expect(pathCrossesRect(path, mobileApp)).toBe(false);
+  });
+});
+
+// Liang-Barsky helpers intentionally duplicated here rather than imported
+// from edge-routing-channels.ts: sharing the same implementation in tests
+// would mask a regression in the production copy.
+function pathCrossesRect(
+  path: { x: number; y: number }[],
+  rect: { x: number; y: number; width: number; height: number },
+): boolean {
+  for (let i = 0; i < path.length - 1; i++) {
+    if (segmentCrossesRectInterior(path[i], path[i + 1], rect)) return true;
+  }
+  return false;
+}
+
+function segmentCrossesRectInterior(
+  a: { x: number; y: number },
+  b: { x: number; y: number },
+  r: { x: number; y: number; width: number; height: number },
+): boolean {
+  const dx = b.x - a.x;
+  const dy = b.y - a.y;
+  let t0 = 0;
+  let t1 = 1;
+  const p = [-dx, dx, -dy, dy];
+  const q = [a.x - r.x, r.x + r.width - a.x, a.y - r.y, r.y + r.height - a.y];
+  for (let i = 0; i < 4; i++) {
+    if (p[i] === 0) {
+      if (q[i] <= 0) return false;
+    } else {
+      const t = q[i] / p[i];
+      if (p[i] < 0) {
+        if (t > t1) return false;
+        if (t > t0) t0 = t;
+      } else {
+        if (t < t0) return false;
+        if (t < t1) t1 = t;
+      }
+    }
+  }
+  return t1 - t0 > 1e-6;
+}

@@ -11,6 +11,7 @@ import { buildInheritedAnnotations } from "../resolver/inherited-annotations.js"
 import { summarizeDescription } from "./description-summary.js";
 import { CHAR_WIDTH, NODE_PADDING_X, NODE_PADDING_Y } from "./rendering-constants.js";
 import { sortByBarycenter } from "./layer-layout-logics.js";
+import { routeOrthogonalEdges } from "./edge-routing-channels.js";
 
 export type LayoutNodeProperties = CommonProperties & {
   role?: string;
@@ -48,6 +49,13 @@ export interface LayoutEdge {
   cyclic?: boolean;
   /** Constituent domain edges for aggregated "N domain edges" implicit service edges. */
   domainEdges?: DomainEdgeDetail[];
+  /**
+   * Optional intermediate points for orthogonal routing (skip-layer edges).
+   * When set, the edge renders as a polyline `fromPoint → ...waypoints → toPoint`.
+   * When unset/empty, renders as a straight line `fromPoint → toPoint`.
+   * See docs/design/auto-layout-edge-routing-orthogonal.md.
+   */
+  waypoints?: { x: number; y: number }[];
 }
 
 export interface ContainerRect {
@@ -468,6 +476,12 @@ function normalizeCoordinates(
       edge.fromPoint.y += shiftY;
       edge.toPoint.x += shiftX;
       edge.toPoint.y += shiftY;
+      if (edge.waypoints) {
+        for (const wp of edge.waypoints) {
+          wp.x += shiftX;
+          wp.y += shiftY;
+        }
+      }
     }
   }
 
@@ -726,6 +740,12 @@ export function layout(
 
   // Compute all edges (regular + ghost)
   const layoutEdges = computeLayoutEdges(viewSlice, layoutNodes, layers, containers, allEdges);
+
+  // Apply orthogonal channel routing to skip-layer edges that would cross
+  // intermediate node cards. Only sets `waypoints`; same-layer / adjacent
+  // edges keep their straight lines. See docs/design/auto-layout-edge-
+  // routing-orthogonal.md.
+  routeOrthogonalEdges(layoutNodes, layoutEdges);
 
   // Normalize coordinates and compute dimensions
   normalizeCoordinates(containers, layoutNodes, layoutEdges);
