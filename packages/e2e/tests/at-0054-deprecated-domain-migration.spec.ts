@@ -1,4 +1,5 @@
-import { type Page, expect, test } from "@playwright/test";
+import type { Page } from "@playwright/test";
+import { expect, test } from "../fixtures/opfs.js";
 import { replaceEditorContent } from "../fixtures/editor.js";
 
 /**
@@ -74,8 +75,11 @@ async function goToSystemTab(page: Page) {
 test.describe("AT-0054 Deprecated domain migration annotations", () => {
   test("annotated duplicate produces no uniqueness error and both edges resolve (Case 1/2)", async ({
     page,
+    opfs,
   }) => {
-    await page.goto("/");
+    await opfs.seed({ mode: "memory" });
+
+    await opfs.gotoApp();
     await replaceEditorContent(page, ANNOTATED_KRS);
     await goToSystemTab(page);
 
@@ -97,8 +101,10 @@ test.describe("AT-0054 Deprecated domain migration annotations", () => {
     expect(await edgeLines.count()).toBeGreaterThanOrEqual(2);
   });
 
-  test("unannotated duplicate still emits uniqueness error (Case 4)", async ({ page }) => {
-    await page.goto("/");
+  test("unannotated duplicate still emits uniqueness error (Case 4)", async ({ page, opfs }) => {
+    await opfs.seed({ mode: "memory" });
+
+    await opfs.gotoApp();
     await replaceEditorContent(page, UNANNOTATED_DUPLICATE_KRS);
     await goToSystemTab(page);
 
@@ -109,8 +115,11 @@ test.describe("AT-0054 Deprecated domain migration annotations", () => {
 
   test("swapping migration_target before deprecated keeps the duplicate legal (Case 5)", async ({
     page,
+    opfs,
   }) => {
-    await page.goto("/");
+    await opfs.seed({ mode: "memory" });
+
+    await opfs.gotoApp();
     await replaceEditorContent(page, SWAPPED_ORDER_KRS);
     await goToSystemTab(page);
 

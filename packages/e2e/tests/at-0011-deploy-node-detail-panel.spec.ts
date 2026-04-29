@@ -1,4 +1,5 @@
-import { type Page, expect, test } from "@playwright/test";
+import type { Page } from "@playwright/test";
+import { expect, test } from "../fixtures/opfs.js";
 import { replaceEditorContent } from "../fixtures/editor.js";
 
 /**
@@ -44,8 +45,11 @@ async function openDeployTab(page: Page) {
 test.describe("AT-0011 Deploy node detail panel", () => {
   test("clicking a deploy unit with runtime + realizes opens the detail panel", async ({
     page,
+    opfs,
   }) => {
-    await page.goto("/");
+    await opfs.seed({ mode: "memory" });
+
+    await opfs.gotoApp();
     await replaceEditorContent(page, KRS);
     await openDeployTab(page);
 
@@ -59,8 +63,13 @@ test.describe("AT-0011 Deploy node detail panel", () => {
     await expect(panel).toContainText(/ECommerce|ECサイト/);
   });
 
-  test("clicking a deploy unit without runtime/realizes omits those sections", async ({ page }) => {
-    await page.goto("/");
+  test("clicking a deploy unit without runtime/realizes omits those sections", async ({
+    page,
+    opfs,
+  }) => {
+    await opfs.seed({ mode: "memory" });
+
+    await opfs.gotoApp();
     await replaceEditorContent(page, KRS);
     await openDeployTab(page);
 
@@ -75,8 +84,10 @@ test.describe("AT-0011 Deploy node detail panel", () => {
     await expect(panel).not.toContainText(/realizes:/);
   });
 
-  test("system view click still opens the detail panel for a service", async ({ page }) => {
-    await page.goto("/");
+  test("system view click still opens the detail panel for a service", async ({ page, opfs }) => {
+    await opfs.seed({ mode: "memory" });
+
+    await opfs.gotoApp();
     await replaceEditorContent(page, KRS);
 
     // Wait for the editor change to propagate into the rendered SVG before

@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect, test } from "../fixtures/opfs.js";
 import { replaceEditorContent } from "../fixtures/editor.js";
 
 /**
@@ -31,8 +31,13 @@ const DOMAIN_INSIDE_SERVICE_KRS = `system ECPlatform {
 `;
 
 test.describe("AT-0040 Top-level domain declarations", () => {
-  test("top-level domains render and emit unassigned warnings (TC-1, TC-2)", async ({ page }) => {
-    await page.goto("/");
+  test("top-level domains render and emit unassigned warnings (TC-1, TC-2)", async ({
+    page,
+    opfs,
+  }) => {
+    await opfs.seed({ mode: "memory" });
+
+    await opfs.gotoApp();
     await replaceEditorContent(page, TOP_LEVEL_DOMAINS_KRS);
 
     const preview = page.locator(".preview-pane, .preview-container, main").first();
@@ -48,8 +53,11 @@ test.describe("AT-0040 Top-level domain declarations", () => {
 
   test("domains nested inside services do not emit unassigned warnings (TC-4)", async ({
     page,
+    opfs,
   }) => {
-    await page.goto("/");
+    await opfs.seed({ mode: "memory" });
+
+    await opfs.gotoApp();
     await replaceEditorContent(page, DOMAIN_INSIDE_SERVICE_KRS);
 
     await page.waitForTimeout(500);

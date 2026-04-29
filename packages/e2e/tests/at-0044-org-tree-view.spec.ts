@@ -1,4 +1,5 @@
-import { type Page, expect, test } from "@playwright/test";
+import type { Page } from "@playwright/test";
+import { expect, test } from "../fixtures/opfs.js";
 import { replaceEditorContent } from "../fixtures/editor.js";
 
 /**
@@ -56,8 +57,10 @@ async function activateTreeView(page: Page) {
 }
 
 test.describe("AT-0044 Org Tree View", () => {
-  test("Tree View toggle appears on Org tab only (Case 1)", async ({ page }) => {
-    await page.goto("/");
+  test("Tree View toggle appears on Org tab only (Case 1)", async ({ page, opfs }) => {
+    await opfs.seed({ mode: "memory" });
+
+    await opfs.gotoApp();
     await replaceEditorContent(page, ORG_KRS);
 
     // ORG_KRS has no system block, so `useAutoSwitchToOrg` (#817) fires and
@@ -73,8 +76,11 @@ test.describe("AT-0044 Org Tree View", () => {
 
   test("Activating Tree View renders top-level teams as roots and hides breadcrumb (Cases 2 & 3)", async ({
     page,
+    opfs,
   }) => {
-    await page.goto("/");
+    await opfs.seed({ mode: "memory" });
+
+    await opfs.gotoApp();
     await replaceEditorContent(page, ORG_KRS);
     await openOrgTab(page);
 
@@ -99,8 +105,13 @@ test.describe("AT-0044 Org Tree View", () => {
     await expect(treePane.getByText("1 member ▾").first()).toBeVisible();
   });
 
-  test("Sub-teams render to the right of their parent (Case 4, DOM only)", async ({ page }) => {
-    await page.goto("/");
+  test("Sub-teams render to the right of their parent (Case 4, DOM only)", async ({
+    page,
+    opfs,
+  }) => {
+    await opfs.seed({ mode: "memory" });
+
+    await opfs.gotoApp();
     await replaceEditorContent(page, ORG_KRS);
     await openOrgTab(page);
     await activateTreeView(page);
@@ -110,8 +121,10 @@ test.describe("AT-0044 Org Tree View", () => {
     await expect(treePane.locator('[data-team-id="Frontend"]')).toBeVisible();
   });
 
-  test("Click to expand members; click again to collapse (Cases 5 & 7)", async ({ page }) => {
-    await page.goto("/");
+  test("Click to expand members; click again to collapse (Cases 5 & 7)", async ({ page, opfs }) => {
+    await opfs.seed({ mode: "memory" });
+
+    await opfs.gotoApp();
     await replaceEditorContent(page, ORG_KRS);
     await openOrgTab(page);
     await activateTreeView(page);
@@ -137,8 +150,10 @@ test.describe("AT-0044 Org Tree View", () => {
     await expect(treePane.getByText("2 members ▾")).toBeVisible();
   });
 
-  test("Multiple teams can be expanded simultaneously (Case 6)", async ({ page }) => {
-    await page.goto("/");
+  test("Multiple teams can be expanded simultaneously (Case 6)", async ({ page, opfs }) => {
+    await opfs.seed({ mode: "memory" });
+
+    await opfs.gotoApp();
     await replaceEditorContent(page, ORG_KRS);
     await openOrgTab(page);
     await activateTreeView(page);
@@ -152,8 +167,10 @@ test.describe("AT-0044 Org Tree View", () => {
     await expect(treePane.locator('[data-node-id="carol"]')).toBeVisible();
   });
 
-  test("Deactivating Tree View restores breadcrumb bar (Case 8)", async ({ page }) => {
-    await page.goto("/");
+  test("Deactivating Tree View restores breadcrumb bar (Case 8)", async ({ page, opfs }) => {
+    await opfs.seed({ mode: "memory" });
+
+    await opfs.gotoApp();
     await replaceEditorContent(page, ORG_KRS);
     await openOrgTab(page);
     await activateTreeView(page);
@@ -169,8 +186,11 @@ test.describe("AT-0044 Org Tree View", () => {
 
   test("Export SVG in Tree View produces `-tree.svg` with all members embedded (Case 9)", async ({
     page,
+    opfs,
   }) => {
-    await page.goto("/");
+    await opfs.seed({ mode: "memory" });
+
+    await opfs.gotoApp();
     await replaceEditorContent(page, ORG_KRS);
     await openOrgTab(page);
     // Wait for the new ORG_KRS content to be reflected in the rendered SVG
@@ -204,8 +224,11 @@ test.describe("AT-0044 Org Tree View", () => {
 
   test("Multiple organizations — top-level teams from each org appear as roots (Case 10)", async ({
     page,
+    opfs,
   }) => {
-    await page.goto("/");
+    await opfs.seed({ mode: "memory" });
+
+    await opfs.gotoApp();
     await replaceEditorContent(page, TWO_ORGS_KRS);
     await openOrgTab(page);
     await activateTreeView(page);

@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect, test } from "../fixtures/opfs.js";
 import { replaceEditorContent } from "../fixtures/editor.js";
 
 /**
@@ -34,8 +34,9 @@ const NO_DEPLOY_KRS = `system ECPlatform {
 `;
 
 test.describe("AT-0007 Deployment diagram", () => {
-  test("both tabs display icon + text labels (AT-0007-07)", async ({ page }) => {
-    await page.goto("/");
+  test("both tabs display icon + text labels (AT-0007-07)", async ({ page, opfs }) => {
+    await opfs.reset();
+    await opfs.gotoApp();
 
     const systemTab = page.getByRole("tab", { name: "System" });
     const deployTab = page.getByRole("tab", { name: "Deploy" });
@@ -48,8 +49,10 @@ test.describe("AT-0007 Deployment diagram", () => {
 
   test("Deploy tab is enabled and renders deploy diagram (AT-0007-01, AT-0007-02)", async ({
     page,
+    opfs,
   }) => {
-    await page.goto("/");
+    await opfs.reset();
+    await opfs.gotoApp();
 
     const deployTab = page.getByRole("tab", { name: "Deploy" });
     await expect(deployTab).toBeEnabled();
@@ -66,8 +69,10 @@ test.describe("AT-0007 Deployment diagram", () => {
 
   test("Deploy tab stays enabled and renders empty-state placeholder when no deploy block (AT-0007-05)", async ({
     page,
+    opfs,
   }) => {
-    await page.goto("/");
+    await opfs.seed({ mode: "memory" });
+    await opfs.gotoApp();
     await replaceEditorContent(page, NO_DEPLOY_KRS);
 
     // Behavior change in #812: rather than disabling the Deploy tab, we now
