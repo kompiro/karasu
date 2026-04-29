@@ -14,6 +14,7 @@ export enum TokenType {
   Domain = "Domain",
   Usecase = "Usecase",
   Resource = "Resource",
+  Capability = "Capability",
   User = "User",
   Client = "Client",
 

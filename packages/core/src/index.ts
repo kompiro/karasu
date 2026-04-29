@@ -28,8 +28,12 @@ export type {
   HierarchyNode,
   ClientResource,
   ClientResourceKind,
+  ClientCapability,
 } from "./types/ast.js";
-import type { ClientResource as ClientResourceImpl } from "./types/ast.js";
+import type {
+  ClientResource as ClientResourceImpl,
+  ClientCapability as ClientCapabilityImpl,
+} from "./types/ast.js";
 
 export type {
   StyleSheet,
@@ -202,6 +206,8 @@ export interface NodeMetadata {
   hasChildren: boolean;
   /** Client-only: operation-tied storage resources, in declaration order. */
   resources?: ClientResourceImpl[];
+  /** Client-only: device / browser capabilities, in declaration order. */
+  capabilities?: ClientCapabilityImpl[];
   /** True when this service/domain node has a corresponding deploy container */
   hasDeployContainer?: boolean;
   /**
@@ -636,6 +642,10 @@ function buildNodeMetadata(
       resources:
         node.kind === "client" && node.properties.resources.length > 0
           ? [...node.properties.resources]
+          : undefined,
+      capabilities:
+        node.kind === "client" && node.properties.capabilities.length > 0
+          ? [...node.properties.capabilities]
           : undefined,
       hasDeployContainer: isServiceOrDomain ? (serviceIdsWithDeploy?.has(id) ?? false) : undefined,
       viewPath: nodePathIndex?.get(id),

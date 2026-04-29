@@ -84,6 +84,7 @@ export type Translations = {
   "nodeDetail.jumpToEditor": string;
   "nodeDetail.annotationDiff.title": string;
   "nodeDetail.resources.title": string;
+  "nodeDetail.capabilities.title": string;
 
   // Empty-state placeholders (rendered inside SVG by core renderers)
   "emptyState.deploy.title": string;
@@ -153,6 +154,10 @@ export type Translations = {
   "warning.deliversTargetNotClient.message": (params: {
     serviceId: string;
     targetId: string;
+  }) => string;
+  "warning.clientCapabilityDuplicate.message": (params: {
+    clientId: string;
+    name: string;
   }) => string;
   "warning.legendRefUnresolved.message": (params: {
     target: string;

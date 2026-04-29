@@ -139,6 +139,22 @@ export function NodeDetailPanel({
         </div>
       )}
 
+      {metadata.capabilities && metadata.capabilities.length > 0 && (
+        <div className="node-detail-section">
+          <div className="node-detail-section-title">{t("nodeDetail.capabilities.title")}</div>
+          <ul className="node-detail-capability-list">
+            {metadata.capabilities.map((c) => (
+              <li key={c.name} className="node-detail-capability-item">
+                <span className="node-detail-capability-title">{c.label ?? c.name}</span>
+                {c.description && (
+                  <p className="node-detail-capability-description">{c.description}</p>
+                )}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
       {(metadata.runtime || metadata.realizes?.length) && (
         <div className="node-detail-section">
           {metadata.runtime && (

@@ -143,6 +143,7 @@ Properties are written inside the body block `{ }`. Properties come before child
 | `delivers` | `delivers <ClientId>[, <ClientId>...]` | service | Client(s) this service ships (BFF / SSR pattern). The renderer draws each entry as a distinct dashed edge from the service to the referenced `client` |
 | `link` | `link "<URL>" "<label>"` | All | Link to related documentation (multiple allowed). Label is optional |
 | `resource` | `resource <storageKind> "<name>"` | client | Operation-tied local storage on the client. Multiple allowed. See client resource kinds below |
+| `capability` | `capability <name>` or `capability <name> { label "..." description "..." }` | client | Device / browser capability the client requests (camera, geolocation, notification, etc.). Multiple allowed. See client capabilities below |
 
 All properties are optional. `link` may appear multiple times within the same node.
 Using a property on a kind that does not support it produces an error.
@@ -215,6 +216,33 @@ client WebApp [web] {
 ```
 
 **Rendering**: the SVG card shows a single `📦 ×N` count badge instead of one row per resource (so card height stays bounded as the list grows). The full list — kind and name in declaration order — is surfaced in the `NodeDetailPanel` "Storage resources" section. See [AT-0069](../acceptance/0069-client-resource-badge-and-detail-panel.md).
+
+#### `client` `capability`
+
+`capability <name>` declares a device or browser capability the client requests (camera, geolocation, notification, bluetooth, …). Capabilities are conceptually distinct from `resource`: a resource is storage the client reads/writes, a capability is a feature the OS / browser must grant permission for. The recommended capability set is documented in [docs/spec/tags-annotations.md](./tags-annotations.md#client-capabilities).
+
+Two forms are supported:
+
+```
+client OrderClient [mobile] {
+  // Short form — flat 1 line for capabilities that need no annotation
+  capability notification
+
+  // Block form — when "why this capability" matters for review / threat
+  // modeling, attach a label and / or description
+  capability camera {
+    label "QR scanning"
+    description "Used to scan QR codes attached to inspection items"
+  }
+  capability geolocation {
+    description "Continuous tracking during delivery"
+  }
+}
+```
+
+Capability identifier set is **open**: any kebab-case identifier is accepted. Names outside the recommended set parse without warning so that domain-specific capabilities (industry devices, internal-only features) can be expressed. The validator emits `client-capability-duplicate` when the same capability name is declared more than once on the same client.
+
+**Rendering**: the SVG card shows a single `🔐 ×N` count badge mirroring the `resource` badge so the card height stays bounded. The full list (with label / description) surfaces in the `NodeDetailPanel`. See [AT-1002](../acceptance/1002-client-capability.md).
 
 ---
 

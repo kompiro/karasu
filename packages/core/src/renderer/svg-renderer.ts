@@ -597,6 +597,34 @@ function renderNode(
       nextY += fontSize + 4;
     }
 
+    // Capability badge (client only). Mirrors the resource badge: a single
+    // "🔐 ×N" so the card height stays bounded regardless of how many
+    // capabilities the client declares. Full list (including label /
+    // description) is surfaced in NodeDetailPanel.
+    if (node.properties.capabilities && node.properties.capabilities.length > 0) {
+      const capCount = node.properties.capabilities.length;
+      const capFontSize = Math.round(fontSize * 0.7);
+      const tooltip = node.properties.capabilities.map((c) => c.name).join(", ");
+      children.push(
+        el(
+          "text",
+          {
+            x: textX,
+            y: nextY,
+            "text-anchor": "middle",
+            "dominant-baseline": "central",
+            fill: textColor,
+            "font-size": `${capFontSize}px`,
+            "font-family": style.fontFamily,
+            opacity: 0.8,
+            "data-client-capability-count": String(capCount),
+          },
+          el("title", {}, escapeXml(tooltip)) + escapeXml(`🔐 ×${capCount}`),
+        ),
+      );
+      nextY += fontSize + 4;
+    }
+
     // Meta row: link count + team
     if (hasMetaRow) {
       const metaFontSize = `${Math.round(fontSize * 0.7)}px`;

@@ -2433,6 +2433,39 @@ body,
   color: var(--text-primary, #e2e8f0);
 }
 
+/* Capabilities list inside NodeDetailPanel — collapsed into `🔐 ×N` on the
+   SVG card; full list (with optional label / description) lives here. */
+.node-detail-capability-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.node-detail-capability-item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 6px 0;
+}
+
+.node-detail-capability-item + .node-detail-capability-item {
+  border-top: 1px solid var(--border-subtle, rgba(148, 163, 184, 0.15));
+}
+
+.node-detail-capability-title {
+  color: var(--text-primary, #e2e8f0);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.node-detail-capability-description {
+  margin: 0;
+  color: var(--text-secondary, #cbd5e1);
+  font-size: 12px;
+  line-height: 1.4;
+  white-space: pre-wrap;
+}
+
 .node-detail-annotation-diff-marker {
   display: inline-block;
   width: 12px;

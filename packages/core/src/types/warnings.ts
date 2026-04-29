@@ -20,6 +20,7 @@ export type WarningKind =
   | "cross-system-ref-unresolved"
   | "cyclic-dependency"
   | "delivers-target-not-client"
+  | "client-capability-duplicate"
   | "legend-ref-unresolved"
   | "style-column-invalid-value"
   | "style-column-ignored-non-system-view";
@@ -72,6 +73,13 @@ export interface WarningParamsByKind {
   "cross-system-ref-unresolved": { ref: string };
   "cyclic-dependency": { cyclePath: string[] };
   "delivers-target-not-client": { serviceId: string; targetId: string };
+  /**
+   * A `client` declared the same `capability <name>` more than once. The
+   * second declaration is a programming mistake (no false positives), so
+   * we surface it as a warning rather than silently accepting the
+   * duplicate.
+   */
+  "client-capability-duplicate": { clientId: string; name: string };
   /**
    * A `ref` entry inside a `legend` block points at a target
    * (annotation / tag / class / id / type) that does not match anything

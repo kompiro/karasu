@@ -75,6 +75,7 @@ export const en: Translations = {
   "nodeDetail.jumpToEditor": "↗ Jump to editor",
   "nodeDetail.annotationDiff.title": "⇄ Annotation diff",
   "nodeDetail.resources.title": "📦 Storage resources",
+  "nodeDetail.capabilities.title": "🔐 Capabilities",
 
   // Empty-state placeholders (rendered inside SVG by core renderers)
   "emptyState.deploy.title": "No deploy block defined",
@@ -149,6 +150,8 @@ export const en: Translations = {
   "warning.cyclicDependency.message": ({ path }) => `Circular dependency detected: ${path}`,
   "warning.deliversTargetNotClient.message": ({ serviceId, targetId }) =>
     `service "${serviceId}" delivers target "${targetId}" is not a client node`,
+  "warning.clientCapabilityDuplicate.message": ({ clientId, name }) =>
+    `client "${clientId}" declares capability "${name}" more than once`,
   "warning.legendRefUnresolved.message": ({ target, legendTitle }) =>
     legendTitle
       ? `legend "${legendTitle}": ref ${target} does not match any node or style rule`

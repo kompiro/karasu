@@ -349,4 +349,64 @@ describe("NodeDetailPanel — pictogram icon", () => {
       expect(container.querySelector(".node-detail-resource-list")).toBeNull();
     });
   });
+
+  describe("capabilities section (#837)", () => {
+    const loc = {
+      start: { line: 1, column: 1, offset: 0 },
+      end: { line: 1, column: 1, offset: 0 },
+    };
+
+    it("uses label as the primary title when present, falling back to name", () => {
+      const { container } = render(
+        <NodeDetailPanel
+          {...baseProps({
+            kind: "client",
+            capabilities: [
+              { name: "notification", loc },
+              {
+                name: "camera",
+                label: "QR scanning",
+                description: "Used to scan QR codes",
+                loc,
+              },
+              { name: "geolocation", description: "Continuous tracking", loc },
+            ],
+          })}
+        />,
+      );
+      const items = container.querySelectorAll(".node-detail-capability-item");
+      expect(items).toHaveLength(3);
+      // notification: no label → name shown as title
+      expect(items[0].querySelector(".node-detail-capability-title")?.textContent).toBe(
+        "notification",
+      );
+      // camera: label replaces name
+      expect(items[1].querySelector(".node-detail-capability-title")?.textContent).toBe(
+        "QR scanning",
+      );
+      expect(items[1].textContent).not.toContain("camera");
+      expect(items[1].querySelector(".node-detail-capability-description")?.textContent).toBe(
+        "Used to scan QR codes",
+      );
+      // geolocation: no label, description present
+      expect(items[2].querySelector(".node-detail-capability-title")?.textContent).toBe(
+        "geolocation",
+      );
+      expect(items[2].querySelector(".node-detail-capability-description")?.textContent).toBe(
+        "Continuous tracking",
+      );
+    });
+
+    it("omits the section when the client has no capabilities", () => {
+      const { container } = render(
+        <NodeDetailPanel {...baseProps({ kind: "client", capabilities: [] })} />,
+      );
+      expect(container.querySelector(".node-detail-capability-list")).toBeNull();
+    });
+
+    it("omits the section for non-client kinds", () => {
+      const { container } = render(<NodeDetailPanel {...baseProps()} />);
+      expect(container.querySelector(".node-detail-capability-list")).toBeNull();
+    });
+  });
 });

@@ -5,6 +5,7 @@ import type {
   DeployNodeKind,
   CommonProperties,
   ClientResource,
+  ClientCapability,
 } from "../types/ast.js";
 import type { ViewSlice, GhostSystem, DomainEdgeDetail } from "../view/view-extract.js";
 import type { ResolvedLayoutHints } from "../types/style.js";
@@ -21,6 +22,8 @@ export type LayoutNodeProperties = CommonProperties & {
   team?: string;
   /** Client-only: operation-tied storage resources rendered inline on the card. */
   resources?: ClientResource[];
+  /** Client-only: device / browser capabilities rendered inline on the card. */
+  capabilities?: ClientCapability[];
 };
 
 export interface LayoutNode {
@@ -1416,6 +1419,9 @@ function extractLayoutProperties(node: KrsNode, resolvedTeam?: string): LayoutNo
   if (node.kind === "client" && node.properties.resources.length > 0) {
     props.resources = node.properties.resources;
   }
+  if (node.kind === "client" && node.properties.capabilities.length > 0) {
+    props.capabilities = node.properties.capabilities;
+  }
   return props;
 }
 
@@ -1436,6 +1442,7 @@ function measureNode(
   const role = node.kind === "user" ? node.properties.role : undefined;
   const team = node.kind === "service" || node.kind === "domain" ? resolvedTeam : undefined;
   const resources = node.kind === "client" ? node.properties.resources : [];
+  const capabilities = node.kind === "client" ? node.properties.capabilities : [];
 
   // Description should not widen the box beyond label width
   const descWidth = 0;
@@ -1466,14 +1473,29 @@ function measureNode(
     ? estimateTextWidth(`📦 ×${resources.length}`, CHAR_WIDTH * META_FONT_RATIO)
     : 0;
 
+  // Capability badge (client-only): "🔐 ×N" — same single-line pattern as resource.
+  const hasCapabilityBadge = capabilities.length > 0;
+  const capabilityBadgeWidth = hasCapabilityBadge
+    ? estimateTextWidth(`🔐 ×${capabilities.length}`, CHAR_WIDTH * META_FONT_RATIO)
+    : 0;
+
   const width =
-    Math.max(labelWidth, descWidth, roleWidth, metaWidth, resourceBadgeWidth, 80) +
+    Math.max(
+      labelWidth,
+      descWidth,
+      roleWidth,
+      metaWidth,
+      resourceBadgeWidth,
+      capabilityBadgeWidth,
+      80,
+    ) +
     NODE_PADDING_X * 2 +
     infoButtonExtra;
   let height = NODE_PADDING_Y * 2 + LINE_HEIGHT;
   if (description) height += LINE_HEIGHT;
   if (role) height += LINE_HEIGHT;
   if (hasResourceBadge) height += LINE_HEIGHT;
+  if (hasCapabilityBadge) height += LINE_HEIGHT;
   if (hasMetaRow) height += LINE_HEIGHT;
 
   return { width, height };

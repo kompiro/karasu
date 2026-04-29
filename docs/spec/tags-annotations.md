@@ -80,6 +80,38 @@ system OrderSystem {
 
 ---
 
+## Client capabilities
+
+`capability <name>` declares a **device or browser capability** the client requests permission to use. See [`docs/spec/syntax.md`](./syntax.md#client-capability) for the syntax.
+
+The identifier set is **open** — any kebab-case identifier is accepted, no warnings are emitted for names outside the recommended set, and authors can express domain-specific capabilities (industry devices, internal-only features) freely. The recommended set below covers the cases the validator and editor tooling expect to see most often.
+
+### Recommended capability identifiers
+
+| Group | Identifiers |
+|-------|-------------|
+| Web / browser | `camera`, `microphone`, `geolocation`, `notification`, `push`, `clipboard`, `webauthn`, `bluetooth`, `usb`, `midi`, `screen-wake-lock`, `accelerometer`, `gyroscope`, `storage-access` |
+| Mobile (additional) | `contacts`, `calendar`, `photo-library`, `face-id`, `touch-id`, `background-processing`, `local-network`, `bluetooth-le-peripheral` |
+| Desktop (additional) | `file-system-access`, `global-shortcuts`, `auto-launch`, `screen-recording` |
+| IoT / device (additional) | `gpio`, `serial`, `zigbee`, `lora`, `nfc`, `rfid` |
+
+### Naming conventions
+
+- Use **kebab-case** (`screen-wake-lock`, `face-id`).
+- Prefer the Web Permissions API / W3C name when one exists (`geolocation`, `notification`).
+- Avoid OS-specific identifiers (`android.permission.CAMERA`); use the abstract feature name.
+- For names outside the recommended set, attach a `description` so other readers understand what the capability covers.
+
+### What `capability` is NOT
+
+| Concept | Where it lives |
+|---------|----------------|
+| Operation-tied storage (`localStorage`, `indexedDB`, `keychain`) | `resource <storageKind> "<name>"` |
+| HTTP session / authentication credentials | Separate vocabulary, tracked under #834 |
+| Runtime authorization (role / license / feature flag) | Separate vocabulary, tracked under #832 |
+
+---
+
 ## Difference between tags and annotations
 
 | | Tag | Annotation |
