@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import type { Diagnostic, Warning } from "@karasu-tools/core";
+import type { Diagnostic, NodeMetadata, Warning } from "@karasu-tools/core";
 import { computeViewResultFingerprint } from "./result-fingerprint.js";
 
 describe("computeViewResultFingerprint", () => {
@@ -48,6 +48,65 @@ describe("computeViewResultFingerprint", () => {
       diagnostics: [diagnostic],
     });
     expect(clean).not.toBe(dirty);
+  });
+
+  it("changes when only nodeMetadata changes (Issue #1032 root cause)", () => {
+    const baseEntry = (overrides: Partial<NodeMetadata> = {}): NodeMetadata => ({
+      kind: "client",
+      label: "WebApp",
+      links: [],
+      tags: [],
+      annotations: [],
+      hasChildren: false,
+      ...overrides,
+    });
+
+    const before = new Map<string, NodeMetadata>([
+      ["WebApp", baseEntry({ description: "Original description" })],
+    ]);
+    const after = new Map<string, NodeMetadata>([
+      ["WebApp", baseEntry({ description: "Edited description" })],
+    ]);
+
+    // SVG / warnings / diagnostics are byte-identical: only the metadata
+    // (e.g. a description body) changed.
+    const a = computeViewResultFingerprint({
+      svg: baseSvg,
+      warnings: [],
+      diagnostics: [],
+      nodeMetadata: before,
+    });
+    const b = computeViewResultFingerprint({
+      svg: baseSvg,
+      warnings: [],
+      diagnostics: [],
+      nodeMetadata: after,
+    });
+    expect(a).not.toBe(b);
+  });
+
+  it("returns the same fingerprint when nodeMetadata content is unchanged", () => {
+    const entry: NodeMetadata = {
+      kind: "client",
+      label: "WebApp",
+      links: [],
+      tags: [],
+      annotations: [],
+      hasChildren: false,
+    };
+    const a = computeViewResultFingerprint({
+      svg: baseSvg,
+      warnings: [],
+      diagnostics: [],
+      nodeMetadata: new Map([["WebApp", entry]]),
+    });
+    const b = computeViewResultFingerprint({
+      svg: baseSvg,
+      warnings: [],
+      diagnostics: [],
+      nodeMetadata: new Map([["WebApp", { ...entry }]]),
+    });
+    expect(a).toBe(b);
   });
 
   it("uses an unambiguous separator that cannot collide with input", () => {

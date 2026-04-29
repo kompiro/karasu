@@ -185,6 +185,7 @@ export function useSystemView(
               svg: diff.svg,
               warnings: base.warnings,
               diagnostics: diff.diagnostics,
+              nodeMetadata: base.nodeMetadata,
             });
             if (fingerprint === lastResultFingerprint.current && !hadErrors.current) return;
             hadErrors.current = false;
@@ -233,6 +234,7 @@ export function useSystemView(
             svg: result.svg,
             warnings: result.warnings,
             diagnostics: result.diagnostics,
+            nodeMetadata: result.nodeMetadata,
           });
           if (fingerprint === lastResultFingerprint.current && !hadErrors.current) return;
           hadErrors.current = false;

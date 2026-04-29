@@ -96,6 +96,7 @@ export function useDeployView(
               svg: diff.svg,
               warnings: base.warnings,
               diagnostics: diff.diagnostics,
+              nodeMetadata: base.nodeMetadata,
             });
             if (fingerprint === lastResultFingerprint.current) return;
             lastValidSvg.current = diff.svg;
@@ -135,6 +136,7 @@ export function useDeployView(
             svg: result.svg,
             warnings: result.warnings,
             diagnostics: result.diagnostics,
+            nodeMetadata: result.nodeMetadata,
           });
           if (fingerprint === lastResultFingerprint.current) return;
           lastValidSvg.current = result.svg;
