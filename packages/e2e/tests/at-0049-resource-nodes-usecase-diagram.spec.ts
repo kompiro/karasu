@@ -1,4 +1,5 @@
 import { type Page, expect, test } from "@playwright/test";
+import { replaceEditorContent } from "../fixtures/editor.js";
 
 /**
  * AT-0049: Resource nodes in the domain-level UseCase diagram.
@@ -72,13 +73,6 @@ const INLINE_KRS = `system ECPlatform {
   }
 }
 `;
-
-async function replaceEditorContent(page: Page, content: string) {
-  await page.locator(".monaco-editor .view-lines").first().click();
-  await page.keyboard.press("Control+A");
-  await page.keyboard.press("Delete");
-  await page.keyboard.insertText(content);
-}
 
 async function drillIntoOrderDomain(page: Page) {
   await page.getByRole("tab", { name: "System" }).click();

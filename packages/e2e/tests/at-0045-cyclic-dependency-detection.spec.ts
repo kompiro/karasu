@@ -1,4 +1,5 @@
-import { type Page, expect, test } from "@playwright/test";
+import { expect, test } from "@playwright/test";
+import { replaceEditorContent } from "../fixtures/editor.js";
 
 /**
  * AT-0045: Cyclic dependency detection and rendering.
@@ -33,13 +34,6 @@ const ASYNC_CYCLE_KRS = `system ECommerce {
   PaymentService --> OrderService
 }
 `;
-
-async function replaceEditorContent(page: Page, content: string) {
-  await page.locator(".monaco-editor .view-lines").first().click();
-  await page.keyboard.press("Control+A");
-  await page.keyboard.press("Delete");
-  await page.keyboard.insertText(content);
-}
 
 test.describe("AT-0045 Cyclic dependency detection", () => {
   test("sync cycle emits warning and marks edges with krs-edge--cyclic", async ({ page }) => {
