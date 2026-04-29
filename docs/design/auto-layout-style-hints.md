@@ -1,40 +1,58 @@
 # Auto-layout: presentation-only layout hints in `.krs.style`
 
-- **日付**: 2026-04-29（B 着地反映: 2026-04-29）
-- **ステータス**: 検討中（A・B 着地済み、本ドキュメントの方針合意後に実装着手可）
+- **日付**: 2026-04-29（B / Phase 3 着地反映: 2026-04-29）
+- **ステータス**: 設計合意・実装は実例待ち（A・B Phase 2・B Phase 3 がすべて
+  着地し、現時点で hint が必要な実例は確認できていない）
 - **関連**:
   - 親 Issue: [#966](https://github.com/kompiro/karasu/issues/966) — Auto-layout: actors that bypass intermediate clients render with crossing edges
   - Issue: [#969](https://github.com/kompiro/karasu/issues/969) — C. presentation-only layout hints in `.krs.style` (escape hatch)
   - 兄弟（着地済み）:
     - A: [auto-layout-actor-row-by-target](./auto-layout-actor-row-by-target.md)（[#967](https://github.com/kompiro/karasu/issues/967)）
-    - B: [ADR-20260429-01 — Skip-layer エッジの直交チャネルルーティング](../adr/20260429-01-orthogonal-edge-routing-skip-layer.md)（[#968](https://github.com/kompiro/karasu/issues/968) / 実装 PR [#989](https://github.com/kompiro/karasu/pull/989)）
-  - B のフォローアップ: [#996](https://github.com/kompiro/karasu/issues/996)（Phase 3 — port distribution + per-channel lane allocation）
-  - 関連 ADR: [ADR-20260411-01](../adr/20260411-01-arch-layout-barycenter-wrap-scope-reduction.md)（layer 内の x 順序ヒューリスティクス）
+    - B Phase 2: [ADR-20260429-01 — Skip-layer エッジの直交チャネルルーティング](../adr/20260429-01-orthogonal-edge-routing-skip-layer.md)（[#968](https://github.com/kompiro/karasu/issues/968) / 実装 PR [#989](https://github.com/kompiro/karasu/pull/989)）
+    - B Phase 3: port distribution + channel lane allocation（[#996](https://github.com/kompiro/karasu/issues/996) / 実装 PR [#998](https://github.com/kompiro/karasu/pull/998)）
+  - 関連 ADR: [ADR-20260411-01](../adr/20260411-01-arch-layout-barycenter-wrap-scope-reduction.md)（layer 内の x 順序ヒューリスティクス）, [ADR-20260408-02](../adr/20260408-02-deploy-layout-hierarchical-dag.md)（deploy view layout）
 
 ## 背景・課題
 
-A（actor row 再配置）と B（直交チャネルエッジルーティング）が main に着地した
-ことで、karasu の auto-layout は EC Platform 例の崩れを自動で解消できる:
+A（actor row 再配置）・B Phase 2（skip-layer 直交ルーティング）・B Phase 3
+（port distribution + channel lane allocation）が main に着地したことで、
+karasu の auto-layout は EC Platform 例の主要な崩れを自動で解消できる:
 
 - A: outgoing edge を持つ actor は target の直前 row に降りる。
-- B: 中間ノード矩形を貫通する skip-layer downward edge は L 字型 polyline に
-  自動置換される。フォールバックで最悪でも従来の直線（regression なし）。
+- B Phase 2: 中間ノード矩形を貫通する skip-layer downward edge は L 字型
+  polyline に自動置換される。フォールバックで最悪でも従来の直線（regression なし）。
+- B Phase 3: ハブノードの多数のエッジは port を `i/(N+1)` に分散して anchor され、
+  同チャネルを通る水平セグメントは lane に分散される。
 
-しかし A・B が **トポロジ起点**で動く以上、以下は依然として残る:
+これらが **トポロジ起点**で動く以上、以下だけが原理的に残る:
 
-- **作者が意図する位置を auto-layout が推論できない**ケース。例: 監査用の
+- **作者が意図する x 位置を auto-layout が推論できない**ケース。例: 監査用の
   `Admin` を意図的に右端に固定したい、外部 SaaS だけ右側に集めたい、など。
-  これはトポロジ情報には現れない「読みやすさのための意図」。
+  これはトポロジ情報には現れない「読みやすさのための意図」。Phase 3 は
+  edge 端点とラベル位置の分散であって、**ノード x 位置の制御ではない**。
 - A/B 後に同 row へ並んだ複数ノードの **x 順序**は barycenter が決める。
   実例で「Customer を Seller の左に置きたい」のような意図が満たせない場合
-  がある（B Phase 3 #996 はラベル位置の分散であって、ノード x 順序の制御
-  ではない）。
+  がある。
 - B が対象外としている **同層 / 隣接層 / ghost / cyclic** edge での視覚的
   崩れは hint で動かしても改善しない（ノード位置を変えても直線が引かれる
   まま）ので、本ドキュメントのスコープからも外す。
 
-要するに C は **B 後の残課題のうち、トポロジでは表せない意図**だけを担う
-escape hatch である。
+要するに C は **A+B+Phase3 後の残課題のうち、トポロジでは表せない作者の
+x 位置意図**だけを担う escape hatch である。
+
+### 実装の前提条件: 実例 driven
+
+Phase 3 着地後の再評価で、現時点で hint が必要となる実例は確認できていない
+（EC Platform 例は A+B Phase2+Phase3 で許容範囲に収まった）。本設計は
+**書面合意までを目的**とし、実装着手は以下のいずれかを満たした時点で行う:
+
+1. 実プロジェクトの `.krs` で auto-layout の出力が許容できず、A/B/Phase 3
+   のヒューリスティクス改善でも吸収しきれない明確な事例が出る。
+2. その事例で `column` 1 つ（最終的に `rank` 等の追加が必要なら別 Issue）
+   が解として最も適切であることを示せる。
+
+実例なしでの投機的実装は本 Issue の "keep it minimal" 制約に反するため、
+設計合意後も #969 はオープンのまま実例を待つ。
 
 ## 制約・前提
 
@@ -137,7 +155,28 @@ B の経路も **自動的に再計算**される。
   性が保たれる。`column` の実装は layout 段の x ソートに介入するだけで、
   B の実装に変更は要らない。
 
-### 6. ドキュメント・警告ガイドライン
+### 6. View 種別の扱い（system view 限定 + 警告）
+
+`column` は **system view にのみ適用**する。deploy view（ADR-20260408-02 の
+hierarchical DAG）と org view（組織ツリー）は配置ロジックが根本的に異なる
+ため、現時点では `column` を解釈しない。
+
+- パーサ段では `column` を一律受理する（view 種別を見ない）。
+- レンダラー段で view 種別を判定し、**system view 以外で `column` が
+  解決された場合は警告を出して無視する**:
+
+  ```
+  ⚠ Warning: `column` hint on #Admin is ignored in deploy view
+    (layout hints are currently supported only in system view).
+  ```
+
+- 警告は `style-resolver` の既存「不明プロパティ警告」と同じ経路に乗せる
+  （ユーザーは Preview UI / CLI 出力で気付ける）。
+- deploy / org view 用の hint が将来必要になった場合は、別プロパティ名
+  （例: deploy 向け `tier:` 等）で個別に設計する。`column` は system view
+  の x 列概念に固有なので、安易に再利用しない。
+
+### 7. ドキュメント・用語ガイドライン
 
 - `docs/spec/style.md` / `style.ja.md` に "Layout hints" セクションを追加し、
   **最終手段**であることを明記する。
@@ -204,7 +243,9 @@ B の経路も **自動的に再計算**される。
 | `packages/core/src/parser/style-parser.ts`          | `column` プロパティを受理、`left/center/right` 以外は警告 |
 | `packages/core/src/types/style.ts`                  | `ResolvedLayoutHints` 型を追加               |
 | `packages/core/src/resolver/style-resolver.ts`      | layout hints の解決を追加                    |
-| `packages/core/src/renderer/layout.ts`              | x 順序決定（barycenter）の前に column bucket を適用 |
+| `packages/core/src/renderer/layout.ts`              | x 順序決定（barycenter）の前に column bucket を適用（system view のみ） |
+| `packages/core/src/renderer/deploy-renderer.ts`     | `column` が解決済みの場合に警告を出して無視 |
+| `packages/core/src/renderer/org-tree-renderer.ts`   | 同上                                         |
 | `packages/core/src/renderer/edge-routing-channels.ts` | 変更不要（B は新しい座標で再計算する）     |
 | `docs/spec/style.md`, `docs/spec/style.ja.md`       | "Layout hints" セクション追加                |
 | 既存の `.krs.style`                                 | 影響なし（新プロパティ・既定値は未指定）     |
@@ -213,13 +254,18 @@ B の経路も **自動的に再計算**される。
 
 ### 自動
 
-- 既存スタイル / レイアウトテストすべて通過（A 着地後 / B 着地後のスナップ
-  ショットを破壊しないこと）
-- 新規テスト:
+- 既存スタイル / レイアウトテストすべて通過（A・B Phase 2・Phase 3 着地後
+  のスナップショットを破壊しないこと）
+- 新規テスト（実装着手時に追加）:
   - パーサ: `column: right` を受理、`column: foo` で警告
   - リゾルバ: id selector が kind selector を上書きする
-  - レイアウト: 同じ layer 内で `column: left` ノードが左端、`column: right`
-    ノードが右端に来る
+  - リゾルバ: 同 specificity で複数宣言があった場合、宣言順で後勝ち（既存
+    cascade 規則と一致）
+  - レイアウト: system view で同じ layer 内の `column: left` ノードが左端、
+    `column: right` ノードが右端に来る
+  - レイアウト: bucket 内は従来どおり barycenter で並ぶ
+  - View 種別: deploy view / org view で `column` が解決された場合に警告を
+    出し、配置に影響しない
   - B との結合: `column` でノードを動かしたとき B の polyline 経路が
     新座標に追随することをスナップショットで確認
   - 後方互換: `column` を含まない既存スナップショットが変化しない
@@ -228,20 +274,24 @@ B の経路も **自動的に再計算**される。
 
 - AT に「ある actor を右端に固定したい」という代表ケースを追加し、`.krs`
   を変えずに `.krs.style` だけで意図どおりの並びになることを確認する。
-- 既存の EC Platform 例で hint を一切 **付けない** まま、A+B のみで描画が
-  許容範囲に収まっていることを確認する（C 実装によって自動レイアウトの
-  品質が劣化していないことのガード）。
+- 既存の EC Platform 例で hint を一切 **付けない** まま、A+B+Phase 3 のみで
+  描画が許容範囲に収まっていることを確認する（C 実装によって自動レイア
+  ウトの品質が劣化していないことのガード）。
+
+## 決定事項（旧未解決事項からの移行）
+
+| 項目 | 決定 |
+| --- | --- |
+| `rank` の追加 | **追加しない**。layer 自体を hint で動かすと A の哲学（layer = kind+target で決まる）が崩れる。row を動かしたい不満は実態として x 並びの不満であり、`column` で吸収する。本当に layer を変えたい例が出たら A のヒューリスティクス側で対処する Issue を立てる。 |
+| deploy / org view での扱い | **system view のみ適用、それ以外では警告を出して無視**（決定 §6 参照）。将来 deploy / org に hint を入れたくなった場合は別プロパティ名で個別設計する。 |
+| 同 specificity 衝突 | **既存スタイル cascade 規則そのまま**: specificity 高いほうが勝ち、同点なら宣言順で後勝ち。専用エラー / 中央値丸めは導入しない。 |
+| Phase 3 着地後の再評価 | **完了**: 設計は維持しつつ実装は実例 driven に格下げ（背景・課題「実装の前提条件」参照）。EC Platform 例は A+B+Phase 3 で許容範囲。 |
 
 ## 未解決事項
 
-- **`rank` の追加判断**: A+B+Phase3 着地後でも row が意図と違うケースが
-  実例で残ったら追加する。`rank: <integer>` の正確なセマンティクス
-  （絶対 row index か、layer 内オフセットか）は実例を見てから決める。
-- **deploy / org view での扱い**: 当面 system view のみに適用する。
-  deploy view（hierarchical DAG, ADR-20260408-02）は別ロジックなので、
-  そちらの hint は別途 Issue で検討する。
-- **複数選択時のカスケード境界例**: 同じ specificity で `column: left` と
-  `column: right` が当たった場合は「後勝ち」（既存規則）に従うが、テスト
-  ケースで明示する。
-- **Phase 3（#996）着地後の再評価**: Phase 3 のフォローアップが終わった
-  時点でもう一度「`column` 一本で十分か」を実例ベースで確認する。
+- **実例待ち**: 実プロジェクトの `.krs` で「auto-layout が出した x 配置を
+  どうしても上書きしたい」具体例が出た時点で、その図を motivating example
+  として #969 の実装に着手する。例が出ないまま長期化した場合（半年程度を
+  目安）は #969 を `wontfix` でクローズする判断を検討する。
+- **実装時の `column-span` / `rank` 等の追加可否**: 上記の motivating example
+  を見てから判断する。`column` 単独で済まない場合のみ追加検討する。
