@@ -141,6 +141,3 @@ async function materializeStdin(dir: string, basename: string): Promise<string> 
   await writeFile(target, Buffer.concat(chunks));
   return target;
 }
-
-// Re-exported for tests; not part of the public surface.
-export { materializeStdin as _materializeStdin };
