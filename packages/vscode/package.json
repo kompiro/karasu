@@ -10,7 +10,7 @@
   "publisher": "karasu",
   "main": "./out/extension.js",
   "scripts": {
-    "build": "esbuild src/extension.ts --bundle --platform=node --format=cjs --outfile=out/extension.js --external:vscode && cp ../lsp/out/server.js out/server.js",
+    "build": "pnpm --filter @karasu-tools/lsp run build && esbuild src/extension.ts --bundle --platform=node --format=cjs --outfile=out/extension.js --external:vscode && node -e \"require('node:fs').cpSync('../lsp/out/server.js', 'out/server.js')\"",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {

@@ -126,12 +126,12 @@ describe("AT-0038 (WebView) — Cmd/Ctrl+Click hint and editor jump", function (
     }
   }
 
-  // Repeatedly dispatch a Cmd/Ctrl+Click at `selector` and poll the .krs
-  // editor cursor until it lands on `expectedLine`. The first navigate
-  // postMessage can no-op if the LSP client is still warming up
-  // (`handleNavigate` early-returns when `PositionOfNodeRequest` has no
-  // range), so we re-dispatch on each poll iteration. The helper leaves
-  // the driver in WebView frame context.
+  // Dispatch a Cmd/Ctrl+Click at `selector` and poll the .krs editor
+  // cursor until it lands on `expectedLine`. We re-dispatch on each
+  // poll iteration as a defensive guard: LSP cold-start under a fresh
+  // VS Code session can drop the very first `PositionOfNodeRequest`,
+  // and re-dispatching is cheap. Leaves the driver in WebView frame
+  // context.
   async function clickAndAwaitCursor(
     selector: string,
     expectedLine: number,
