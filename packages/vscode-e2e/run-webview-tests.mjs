@@ -39,13 +39,29 @@ fs.mkdirSync(at0038FixtureDir, { recursive: true });
 // Write the AT-0039 fixture to a stable on-disk path that the test can
 // reach via VS Code's "File: Open File…" command. We do this in the
 // runner (rather than committing a fixture under fixtures/) so the path
-// is absolute + writable in the CI sandbox; the fixture content is the
-// .krs source the test will exercise.
+// is absolute + writable in the CI sandbox. The content mirrors the
+// AT-0039 spec fixture: OrderService has a Markdown description block,
+// links, and a team (so the detail-panel content TC can assert all
+// three sections), Customer is a leaf user with a role (used by
+// TC-01 / TC-03 / TC-04 / TC-08), and OrderManagement is a leaf inside
+// OrderService (referenced by TC-06).
 fs.writeFileSync(
   fixtureKrs,
   `system Demo {
   service OrderService {
-    description "Handles order processing and payment."
+    description """
+Handles **order processing** and payment.
+
+## Responsibilities
+- Accept new orders
+- Process payments
+"""
+    link "Design Wiki" "https://wiki.example.com/order"
+    link "API Docs" "https://api.example.com/order"
+    team "Order Team"
+
+    domain OrderManagement {}
+    domain Inventory {}
   }
   user Customer [human] {
     description "A customer who purchases products."
