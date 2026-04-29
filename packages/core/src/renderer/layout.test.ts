@@ -895,3 +895,31 @@ function segmentCrossesRectInterior(
   }
   return t1 - t0 > 1e-6;
 }
+
+describe("layout > port distribution (Phase 3)", () => {
+  it("spreads multiple downward edges from a hub across distinct x ports", () => {
+    const slice = parseAndExtract(`
+system S {
+  service Hub {}
+  service A {}
+  service B {}
+  service C {}
+  Hub -> A
+  Hub -> B
+  Hub -> C
+}
+    `);
+    const result = layout(slice);
+    const outgoing = result.edges.filter((e) => e.from === "Hub");
+    expect(outgoing).toHaveLength(3);
+    const xs = outgoing.map((e) => e.fromPoint.x).sort((a, b) => a - b);
+    // All three ports must be distinct.
+    expect(new Set(xs).size).toBe(3);
+    // Ports stay inside the hub's bottom side.
+    const hub = result.nodes.get("Hub")!;
+    for (const x of xs) {
+      expect(x).toBeGreaterThanOrEqual(hub.x);
+      expect(x).toBeLessThanOrEqual(hub.x + hub.width);
+    }
+  });
+});
