@@ -11,15 +11,6 @@ import type { LegendBlock, LegendEntry, LegendRefTarget, LegendViewScope } from 
 import type { StyleRule, StyleSelector, StyleSheet } from "../types/style.js";
 import { type LegendUsage, legendRefHasUsage } from "../legend/usage.js";
 
-/**
- * Neutral swatch shown for legend refs whose target appears on a real node
- * (so the resolver considers them resolved) but no `.krs.style` rule paints
- * them. Without this fallback, semantic-only annotations like `[human]` —
- * which the spec documents as having no default visual style — silently
- * disappeared from the legend even though they were valid (Issue #999).
- */
-const FALLBACK_SWATCH_COLOR = "#9CA3AF";
-
 type AttrValue = string | number | undefined | null | false;
 type Attrs = Record<string, AttrValue>;
 
@@ -234,6 +225,11 @@ const LEGEND_LABEL_GAP = 12;
 const LEGEND_BG = "#1F2937";
 const LEGEND_BORDER = "#334155";
 const LEGEND_TEXT = "#E5E7EB";
+// Neutral muted color, used both for legend block titles and as the
+// fallback swatch for refs whose target appears on a real node but no
+// `.krs.style` rule paints them — e.g. semantic-only annotations like
+// `[human]` (Issue #999). Sharing the constant keeps both uses in sync
+// if the palette ever changes.
 const LEGEND_MUTED = "#9CA3AF";
 
 interface LegendFooter {
@@ -408,7 +404,7 @@ function resolveLegendRefColor(
   // emit a neutral fallback swatch rather than silently dropping the
   // entry. If the target is unused, the resolver has already emitted
   // `legend-ref-unresolved`; we drop it here too.
-  if (usage && legendRefHasUsage(target, usage)) return FALLBACK_SWATCH_COLOR;
+  if (usage && legendRefHasUsage(target, usage)) return LEGEND_MUTED;
   return null;
 }
 
