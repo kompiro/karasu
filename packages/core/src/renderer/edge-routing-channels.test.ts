@@ -89,6 +89,21 @@ describe("routeOrthogonalEdges", () => {
     expect(edges[0].waypoints).toBeUndefined();
   });
 
+  it("falls back to straight line when an L-shape stub would still cross an obstacle", () => {
+    // a (top, narrow) and c (bottom) sit nearly column-aligned. b is a
+    // wide intermediate node whose interior contains both src.x and to.x.
+    // The straight diagonal crosses b; so does each L-shape vertical stub.
+    // Routing is unsafe → keep the straight line for Phase 3 to fix.
+    const nodes = new Map<string, LayoutNode>([
+      ["a", node("a", 200, 0, 60, 40)],
+      ["b", node("b", 100, 100, 200, 40)], // wide; spans both columns
+      ["c", node("c", 210, 200, 60, 40)],
+    ]);
+    const edges: LayoutEdge[] = [edge("a", "c", { x: 230, y: 40 }, { x: 240, y: 200 })];
+    routeOrthogonalEdges(nodes, edges);
+    expect(edges[0].waypoints).toBeUndefined();
+  });
+
   it("preserves existing waypoints (idempotent)", () => {
     const nodes = new Map<string, LayoutNode>([
       ["a", node("a", 200, 0)],

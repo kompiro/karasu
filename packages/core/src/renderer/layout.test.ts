@@ -855,6 +855,9 @@ system EC {
   });
 });
 
+// Liang-Barsky helpers intentionally duplicated here rather than imported
+// from edge-routing-channels.ts: sharing the same implementation in tests
+// would mask a regression in the production copy.
 function pathCrossesRect(
   path: { x: number; y: number }[],
   rect: { x: number; y: number; width: number; height: number },
@@ -878,7 +881,7 @@ function segmentCrossesRectInterior(
   const q = [a.x - r.x, r.x + r.width - a.x, a.y - r.y, r.y + r.height - a.y];
   for (let i = 0; i < 4; i++) {
     if (p[i] === 0) {
-      if (q[i] < 0) return false;
+      if (q[i] <= 0) return false;
     } else {
       const t = q[i] / p[i];
       if (p[i] < 0) {

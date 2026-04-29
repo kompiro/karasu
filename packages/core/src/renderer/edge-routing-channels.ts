@@ -7,9 +7,19 @@
  * the target's column. Same-layer and adjacent-row edges keep their straight
  * lines (set no waypoints).
  *
+ * The candidate polyline is verified against obstacles before being applied:
+ * if any of its three segments still crosses a node (e.g. when src.x or to.x
+ * happens to align with an intermediate node card), routing is skipped and
+ * the edge stays straight. Strictly monotonic — never makes a diagram worse.
+ *
+ * Performance: O(E · N²) — for each edge, intersection-test against every
+ * other node. Adequate for karasu's typical diagrams (N < ~50). If we ever
+ * import very large systems, switch to a row-indexed obstacle structure.
+ *
  * See docs/design/auto-layout-edge-routing-orthogonal.md for the full design
  * (Phase 2). Phase 3 — port distribution and lane allocation when many edges
- * share a side or channel — is out of scope here.
+ * share a side or channel, plus column-shifting when stubs are blocked — is
+ * out of scope here.
  *
  * Out of scope (per design): ghost edges and cyclic edges are skipped; they
  * keep the existing straight-line rendering so back-arc styling and ghost
@@ -57,10 +67,25 @@ export function routeOrthogonalEdges(
     const channelY = computeChannelY(from, to, nodes);
     if (channelY === null) continue;
 
-    edge.waypoints = [
+    const waypoints = [
       { x: edge.fromPoint.x, y: channelY },
       { x: edge.toPoint.x, y: channelY },
     ];
+
+    // Validate the candidate L-shape: each segment must be obstacle-free.
+    // The vertical stubs at src.x / to.x can still hit an intermediate node
+    // when columns line up — in that case keep the original straight line.
+    const path = [edge.fromPoint, ...waypoints, edge.toPoint];
+    let blocked = false;
+    for (let i = 0; i < path.length - 1; i++) {
+      if (segmentCrossesAnyRect(path[i], path[i + 1], obstacles)) {
+        blocked = true;
+        break;
+      }
+    }
+    if (blocked) continue;
+
+    edge.waypoints = waypoints;
   }
 }
 
@@ -72,6 +97,7 @@ function isDownwardEdge(
 ): boolean {
   // The downstream edge attaches at from.bottom and to.top when
   // computeEdgePoints decides the edge crosses layers downward.
+  // The 0.5 tolerance accommodates sub-pixel rounding from the layout pipeline.
   const fromBottom = from.y + from.height;
   const toTop = to.y;
   if (fromBottom > toTop) return false;
@@ -122,7 +148,11 @@ function segmentCrossesRect(a: Point, b: Point, r: Rect): boolean {
   const q = [a.x - r.x, r.x + r.width - a.x, a.y - r.y, r.y + r.height - a.y];
   for (let i = 0; i < 4; i++) {
     if (p[i] === 0) {
-      if (q[i] < 0) return false;
+      // Segment is parallel to this rect edge. If q[i] <= 0 the segment lies
+      // on or outside that edge — no strict-interior crossing on this axis,
+      // and a vertical/horizontal stub running along a node's side should
+      // not be flagged as a collision.
+      if (q[i] <= 0) return false;
     } else {
       const t = q[i] / p[i];
       if (p[i] < 0) {
