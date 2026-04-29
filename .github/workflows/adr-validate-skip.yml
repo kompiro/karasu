@@ -1,0 +1,40 @@
+name: ADR validate (skip)
+
+# Companion of `adr-validate.yml`. Triggered ONLY on PRs that do NOT touch
+# ADR-related paths (the inverse of `adr-validate.yml`'s `paths`) and emits
+# a job named `Validate` that just exits 0 so a Required status named
+# `Validate` configured in branch protection stays green without running
+# the real ADR validator on unrelated PRs.
+#
+# Keep the path lists below in sync with `adr-validate.yml`'s `paths`. If a
+# new ADR-related path is added there, mirror it under `paths-ignore:` here.
+
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, synchronize, reopened]
+    paths-ignore:
+      - "docs/adr/**"
+      - "scripts/adr/**"
+      - ".github/workflows/adr-validate.yml"
+
+concurrency:
+  # Distinct group from adr-validate.yml on purpose: when a PR mixes ADR +
+  # non-ADR paths, both workflows can fire (paths-ignore only filters when
+  # *every* changed path is ignored, while paths fires when *any* path
+  # matches). Sharing a concurrency group would let the stub cancel the
+  # real Validate. With separate groups, both report `Validate / success`
+  # and branch protection (which AND-s checks named `Validate`) is satisfied.
+  group: adr-validate-skip-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    name: Validate
+    runs-on: ubuntu-latest
+    steps:
+      - name: Non-ADR change — skip Validate
+        run: |
+          echo "PR does not touch ADR paths. Validation is skipped."
+          echo "If your change touches docs/adr/**, scripts/adr/**, or"
+          echo ".github/workflows/adr-validate.yml, the real Validate runs."
