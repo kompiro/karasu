@@ -20,6 +20,10 @@
 import type { LayoutEdge } from "./layout.js";
 
 const CHANNEL_KEY_QUANTUM = 0.5;
+// Total height (px) over which lanes spread inside an inter-row channel.
+// LAYER_GAP is 120 in layout.ts and average node height ~80, leaving a
+// channel ~36px tall; 18px keeps lanes inside without colliding with the
+// rows above and below. If LAYER_GAP changes materially, revisit.
 const LANE_BAND = 18;
 
 interface ChannelEdge {
@@ -53,6 +57,9 @@ export function distributeChannelLanes(layoutEdges: LayoutEdge[]): void {
 
     const N = items.length;
     // Spread N lanes across LANE_BAND px centred on the original channel y.
+    // All bucket members share the same y to within CHANNEL_KEY_QUANTUM
+    // (that's how they got bucketed), so picking the first edge's y as the
+    // band centre is a deterministic, well-defined choice.
     const step = LANE_BAND / (N + 1);
     const baseY = items[0].edge.waypoints![0].y;
     const top = baseY - LANE_BAND / 2;

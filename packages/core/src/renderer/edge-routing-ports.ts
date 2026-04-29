@@ -36,6 +36,9 @@ export function distributePorts(
 ): void {
   // Group every edge endpoint by (nodeId, side). Endpoints not anchored
   // on any side (e.g. ghost edges with custom positions) are skipped.
+  // The `#` separator is safe because karasu's identifier grammar (parser
+  // accepts kebab/camel/snake) does not allow `#` in node IDs, and
+  // qualified ghost-system IDs use `.` as the separator.
   const groups = new Map<string, Anchor[]>();
 
   for (const edge of layoutEdges) {
