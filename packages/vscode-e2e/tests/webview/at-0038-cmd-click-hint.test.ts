@@ -18,20 +18,36 @@ import {
  *   TC-01: hint visible on first render (root view).
  *   TC-02: hint still visible after drilling into a parent node.
  *
- * Drilling rebuilds the WebView HTML, which means any element references
- * captured before the click become stale. The breadcrumb advance check
- * therefore reads `document.getElementById('breadcrumb').innerText` via
- * `executeScript` — atomic and stale-ref-safe — instead of holding onto
- * `WebElement` handles across the rebuild.
+ * Two Selenium-vs-VS-Code-WebView pitfalls drive the implementation
+ * shape:
  *
- * The two TCs share an open WebView, so they run in a single `it()` block
- * (mirroring AT-0039). This also keeps the suite's editor / WebView state
- * fully scoped to one Mocha case, which is friendlier to other suites
- * that run in the same VS Code session.
+ *   1. A coordinate-based `element.click()` on the OrderService SVG
+ *      group routes the click to a sibling group (the bounding box of
+ *      a parent SVG `<g>` includes its children, so the center can
+ *      land on an overlapping ancestor). We dispatch the event on the
+ *      exact target via `executeScript` so the handler's `e.target`
+ *      is the intended element.
+ *   2. The drill-down handler reassigns `webview.html` from the
+ *      extension host, replacing the iframe document and invalidating
+ *      Selenium's current frame context. We `switchBack` and
+ *      `switchToFrame` again before reading post-drill state, then
+ *      read each `<button>`'s textContent (atomic, no stale-ref risk)
+ *      to confirm the breadcrumb advanced past Root.
  *
- * Remaining AT-0038 TCs (TC-03..TC-05, modifier-click → editor jump) also
- * need to assert the active TextEditor's cursor moved; that is deferred
- * to a follow-up PR (see #1014).
+ * The drill assertion only checks `segments.length > 1` — drilling
+ * OrderService surfaces its full ancestor chain
+ * ("Root › ECommerce › OrderService") and TC-02's purpose is just
+ * "hint stays visible after *some* drill happened". Tightening to a
+ * specific target would belong with the editor-jump TCs.
+ *
+ * The two TCs share an open WebView, so they run in a single `it()`
+ * block (mirroring AT-0039). That also keeps the suite's editor /
+ * WebView state fully scoped to one Mocha case, which is friendlier
+ * to other suites running in the same VS Code session.
+ *
+ * Remaining AT-0038 TCs (TC-03..TC-05, modifier-click → editor jump)
+ * need to assert the active TextEditor's cursor moved; that is
+ * deferred to a follow-up PR (see #1014).
  */
 
 const PREVIEW_TITLE = "karasu Preview";

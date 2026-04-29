@@ -27,10 +27,19 @@ Phase 3 / AT-0038 のスコープ:
 
 技術ポイント:
 
-1. **drill-down は WebView HTML 全体を再描画する**。`#jump-hint` の参照は
-   再 locate しなおす必要があるため、TC-02 では breadcrumb の `OrderService`
-   が現れたのを待ってから `By.css("#jump-hint")` を再度 wait する。
-2. **fixture には parent ノードが必要**。AT-0039 の fixture（`Customer` /
+1. **drill-down は extension host 側で `webview.html` を再代入し、iframe
+   の document を入れ替える**。Selenium の current frame コンテキストが
+   無効化されるため、click の直後に一旦 `switchBack` してから
+   `switchToFrame` で再アタッチする必要がある。
+2. **SVG `<g>` の coordinate-based click は親グループに流れやすい**
+   （OrderService の bounding box は子要素を含むので、center 座標が
+   ECommerce の rect に乗ることがある）。`dispatchEvent` で `e.target` を
+   厳密に指定する。
+3. **drill 後の breadcrumb は祖先チェーン全体を展開する**（OrderService の
+   metadata viewPath が `['ECommerce', 'OrderService']` のため `Root ›
+   ECommerce › OrderService` になる）。TC-02 の本旨は「drill 後も hint が
+   見える」なので、`segments.length > 1` でアサートする。
+4. **fixture には parent ノードが必要**。AT-0039 の fixture（`Customer` /
    `OrderService` がいずれも leaf）は drill-down 用件を満たさないので、
    AT-0038 専用に `service > domain` 階層を持つ別 fixture を出力する。
 
