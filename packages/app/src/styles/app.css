@@ -2433,6 +2433,37 @@ body,
   color: var(--text-primary, #e2e8f0);
 }
 
+/* Capabilities list inside NodeDetailPanel — collapsed into `🔐 ×N` on the
+   SVG card; full list (with optional label / description) lives here. */
+.node-detail-capability-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  font-size: 12px;
+}
+
+.node-detail-capability-item {
+  display: flex;
+  flex-direction: column;
+  padding: 2px 0;
+}
+
+.node-detail-capability-name {
+  font-family: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+  color: var(--text-primary, #e2e8f0);
+}
+
+.node-detail-capability-label {
+  color: var(--text-muted, #94a3b8);
+  font-size: 11px;
+}
+
+.node-detail-capability-description {
+  color: var(--text-muted, #94a3b8);
+  font-size: 11px;
+  white-space: pre-wrap;
+}
+
 .node-detail-annotation-diff-marker {
   display: inline-block;
   width: 12px;

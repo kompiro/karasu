@@ -75,6 +75,7 @@ export const en: Translations = {
   "nodeDetail.jumpToEditor": "↗ Jump to editor",
   "nodeDetail.annotationDiff.title": "⇄ Annotation diff",
   "nodeDetail.resources.title": "📦 Storage resources",
+  "nodeDetail.capabilities.title": "🔐 Capabilities",
 
   // Empty-state placeholders (rendered inside SVG by core renderers)
   "emptyState.deploy.title": "No deploy block defined",

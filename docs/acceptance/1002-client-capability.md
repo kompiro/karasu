@@ -34,6 +34,9 @@
 - [x] AT-F: `examples/client-mcp/` にブロック形式の capability（`camera { label "..." description "..." }`）を含むクライアントが追加される
   > ✅ Automated — `examples/client-mcp/index.krs` の Parser.parse() による diagnostics-zero スモーク（既存 examples テストでカバー）
 
+- [x] AT-J: NodeDetailPanel が `🔐 Capabilities` セクションを表示し、`capability` の `name` / `label` / `description` がフルリストで読める
+  > ✅ Automated — `packages/app/src/components/NodeDetailPanel.test.tsx` › `lists every client.capability entry with optional label and description` / `omits the section when the client has no capabilities` / `omits the section for non-client kinds`
+
 - [ ] AT-G: `docs/spec/syntax.md` / `docs/spec/tags-annotations.md` に `capability` の構文と推奨集合が追加される
   > 🧑 Manual — 本 PR の syntax.md / tags-annotations.md 差分をレビューして、構文と推奨集合が正しく載っているか確認する
 

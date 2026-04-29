@@ -84,6 +84,7 @@ export type Translations = {
   "nodeDetail.jumpToEditor": string;
   "nodeDetail.annotationDiff.title": string;
   "nodeDetail.resources.title": string;
+  "nodeDetail.capabilities.title": string;
 
   // Empty-state placeholders (rendered inside SVG by core renderers)
   "emptyState.deploy.title": string;
