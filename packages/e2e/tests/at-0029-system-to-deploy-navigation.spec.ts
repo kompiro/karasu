@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect, test } from "../fixtures/opfs.js";
 import { replaceEditorContent } from "../fixtures/editor.js";
 
 /**
@@ -60,8 +60,11 @@ organization Corp {
 test.describe("AT-0029 Cross-navigation", () => {
   test("deploy button exists on services with deploy containers and not others (AT-0029-01, AT-0029-08)", async ({
     page,
+    opfs,
   }) => {
-    await page.goto("/");
+    await opfs.seed({ mode: "memory" });
+
+    await opfs.gotoApp();
     await replaceEditorContent(page, KRS);
 
     await expect(page.locator('svg [data-deploy-button="ECommerce"]').first()).toBeAttached();
@@ -69,16 +72,23 @@ test.describe("AT-0029 Cross-navigation", () => {
     await expect(page.locator('svg [data-deploy-button="Legacy"]')).toHaveCount(0);
   });
 
-  test("clicking the deploy button switches to the Deploy tab (AT-0029-02)", async ({ page }) => {
-    await page.goto("/");
+  test("clicking the deploy button switches to the Deploy tab (AT-0029-02)", async ({
+    page,
+    opfs,
+  }) => {
+    await opfs.seed({ mode: "memory" });
+
+    await opfs.gotoApp();
     await replaceEditorContent(page, KRS);
 
     await page.locator('svg [data-deploy-button="ECommerce"]').first().click();
     await expect(page.getByRole("tab", { name: "Deploy", selected: true })).toBeVisible();
   });
 
-  test("clicking the team button switches to the Org tab (AT-0029-04)", async ({ page }) => {
-    await page.goto("/");
+  test("clicking the team button switches to the Org tab (AT-0029-04)", async ({ page, opfs }) => {
+    await opfs.seed({ mode: "memory" });
+
+    await opfs.gotoApp();
     await replaceEditorContent(page, KRS);
 
     await page.locator('svg [data-team-button="ecTeam"]').first().click();
@@ -87,8 +97,11 @@ test.describe("AT-0029 Cross-navigation", () => {
 
   test("clicking an owned-service link on the Org tab jumps back to System (AT-0029-11)", async ({
     page,
+    opfs,
   }) => {
-    await page.goto("/");
+    await opfs.seed({ mode: "memory" });
+
+    await opfs.gotoApp();
     await replaceEditorContent(page, KRS);
 
     await page.getByRole("tab", { name: "Org" }).click();

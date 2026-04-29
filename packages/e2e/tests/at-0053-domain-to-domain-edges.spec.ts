@@ -1,4 +1,5 @@
-import { type Page, expect, test } from "@playwright/test";
+import type { Page } from "@playwright/test";
+import { expect, test } from "../fixtures/opfs.js";
 import { replaceEditorContent } from "../fixtures/editor.js";
 
 /**
@@ -110,8 +111,11 @@ async function goToSystemTab(page: Page) {
 test.describe("AT-0053 Domain-to-domain dependency edges", () => {
   test("cross-service domain edge becomes an amber implicit service edge (Case 1)", async ({
     page,
+    opfs,
   }) => {
-    await page.goto("/");
+    await opfs.seed({ mode: "memory" });
+
+    await opfs.gotoApp();
     await replaceEditorContent(page, BASE_KRS);
     await goToSystemTab(page);
 
@@ -137,8 +141,11 @@ test.describe("AT-0053 Domain-to-domain dependency edges", () => {
 
   test("sync and async implicit edges are visually distinguishable (Case 7, #510)", async ({
     page,
+    opfs,
   }) => {
-    await page.goto("/");
+    await opfs.seed({ mode: "memory" });
+
+    await opfs.gotoApp();
     await replaceEditorContent(page, SYNC_ASYNC_MIX_KRS);
     await goToSystemTab(page);
 
@@ -163,8 +170,11 @@ test.describe("AT-0053 Domain-to-domain dependency edges", () => {
 
   test("intra-service domain edge renders in the service drill-down view (Case 2)", async ({
     page,
+    opfs,
   }) => {
-    await page.goto("/");
+    await opfs.seed({ mode: "memory" });
+
+    await opfs.gotoApp();
     await replaceEditorContent(page, BASE_KRS);
     await goToSystemTab(page);
 
@@ -187,8 +197,11 @@ test.describe("AT-0053 Domain-to-domain dependency edges", () => {
 
   test('multiple cross-service domain edges aggregate into a "N domain edges" label (Case 3)', async ({
     page,
+    opfs,
   }) => {
-    await page.goto("/");
+    await opfs.seed({ mode: "memory" });
+
+    await opfs.gotoApp();
     await replaceEditorContent(page, AGGREGATED_KRS);
     await goToSystemTab(page);
 
@@ -200,8 +213,11 @@ test.describe("AT-0053 Domain-to-domain dependency edges", () => {
 
   test("clicking aggregated edge label opens detail panel listing constituent domain edges (Case 3)", async ({
     page,
+    opfs,
   }) => {
-    await page.goto("/");
+    await opfs.seed({ mode: "memory" });
+
+    await opfs.gotoApp();
     await replaceEditorContent(page, AGGREGATED_KRS);
     await goToSystemTab(page);
 
@@ -224,8 +240,11 @@ test.describe("AT-0053 Domain-to-domain dependency edges", () => {
 
   test("duplicate domain ID within a system surfaces a uniqueness error (Case 4)", async ({
     page,
+    opfs,
   }) => {
-    await page.goto("/");
+    await opfs.seed({ mode: "memory" });
+
+    await opfs.gotoApp();
     await replaceEditorContent(page, DUPLICATE_IN_SYSTEM_KRS);
     await goToSystemTab(page);
 
@@ -234,8 +253,10 @@ test.describe("AT-0053 Domain-to-domain dependency edges", () => {
     ).toHaveCount(1);
   });
 
-  test("same domain ID in different systems does not error (Case 5)", async ({ page }) => {
-    await page.goto("/");
+  test("same domain ID in different systems does not error (Case 5)", async ({ page, opfs }) => {
+    await opfs.seed({ mode: "memory" });
+
+    await opfs.gotoApp();
     await replaceEditorContent(page, DUPLICATE_ACROSS_SYSTEMS_KRS);
     await goToSystemTab(page);
 

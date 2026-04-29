@@ -1,4 +1,5 @@
-import { type Page, expect, test } from "@playwright/test";
+import type { Page } from "@playwright/test";
+import { expect, test } from "../fixtures/opfs.js";
 import { replaceEditorContent } from "../fixtures/editor.js";
 
 /**
@@ -51,8 +52,10 @@ async function openDeployTab(page: Page) {
 }
 
 test.describe("AT-0015 Deploy id/label separation", () => {
-  test("renders label text when both id and label are set (AT-0015-1)", async ({ page }) => {
-    await page.goto("/");
+  test("renders label text when both id and label are set (AT-0015-1)", async ({ page, opfs }) => {
+    await opfs.seed({ mode: "memory" });
+
+    await opfs.gotoApp();
     await replaceEditorContent(page, WITH_LABELS);
     await openDeployTab(page);
 
@@ -64,8 +67,10 @@ test.describe("AT-0015 Deploy id/label separation", () => {
     await expect(preview).not.toContainText("ecommerceApp");
   });
 
-  test("falls back to id when label is absent (AT-0015-2)", async ({ page }) => {
-    await page.goto("/");
+  test("falls back to id when label is absent (AT-0015-2)", async ({ page, opfs }) => {
+    await opfs.seed({ mode: "memory" });
+
+    await opfs.gotoApp();
     await replaceEditorContent(page, WITHOUT_LABELS);
     await openDeployTab(page);
 
@@ -74,8 +79,10 @@ test.describe("AT-0015 Deploy id/label separation", () => {
     await expect(preview).toContainText("ecommerceApp");
   });
 
-  test("legacy string literal deploy syntax still works (AT-0015-3)", async ({ page }) => {
-    await page.goto("/");
+  test("legacy string literal deploy syntax still works (AT-0015-3)", async ({ page, opfs }) => {
+    await opfs.seed({ mode: "memory" });
+
+    await opfs.gotoApp();
     await replaceEditorContent(page, LEGACY_STRING_LITERAL);
     await openDeployTab(page);
 

@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect, test } from "../fixtures/opfs.js";
 import { replaceEditorContent } from "../fixtures/editor.js";
 
 /**
@@ -36,8 +36,10 @@ const ASYNC_CYCLE_KRS = `system ECommerce {
 `;
 
 test.describe("AT-0045 Cyclic dependency detection", () => {
-  test("sync cycle emits warning and marks edges with krs-edge--cyclic", async ({ page }) => {
-    await page.goto("/");
+  test("sync cycle emits warning and marks edges with krs-edge--cyclic", async ({ page, opfs }) => {
+    await opfs.seed({ mode: "memory" });
+
+    await opfs.gotoApp();
     await replaceEditorContent(page, SYNC_CYCLE_KRS);
 
     // Warning panel surfaces the circular dependency message.
@@ -53,8 +55,10 @@ test.describe("AT-0045 Cyclic dependency detection", () => {
     expect(await cyclicEdges.count()).toBeGreaterThanOrEqual(2);
   });
 
-  test("async-only cycle does not emit a cyclic-dependency warning", async ({ page }) => {
-    await page.goto("/");
+  test("async-only cycle does not emit a cyclic-dependency warning", async ({ page, opfs }) => {
+    await opfs.seed({ mode: "memory" });
+
+    await opfs.gotoApp();
     await replaceEditorContent(page, ASYNC_CYCLE_KRS);
 
     // Either the warning panel is absent entirely, or it does not mention

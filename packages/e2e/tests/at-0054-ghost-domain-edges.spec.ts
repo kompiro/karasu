@@ -1,4 +1,5 @@
-import { type Page, expect, test } from "@playwright/test";
+import type { Page } from "@playwright/test";
+import { expect, test } from "../fixtures/opfs.js";
 import { replaceEditorContent } from "../fixtures/editor.js";
 
 /**
@@ -48,16 +49,20 @@ async function drillInto(page: Page, nodeId: string) {
 }
 
 test.describe("AT-0054 Ghost domain edges", () => {
-  test("system view has no ghost groups (Case 4)", async ({ page }) => {
-    await page.goto("/");
+  test("system view has no ghost groups (Case 4)", async ({ page, opfs }) => {
+    await opfs.seed({ mode: "memory" });
+
+    await opfs.gotoApp();
     await replaceEditorContent(page, DOMAIN_DRIFT_KRS);
 
     await expect(page.locator("svg g.ghost-nodes")).toHaveCount(0);
     await expect(page.locator("svg g.ghost-edges")).toHaveCount(0);
   });
 
-  test("drilling into the source service renders ghost groups (Case 1)", async ({ page }) => {
-    await page.goto("/");
+  test("drilling into the source service renders ghost groups (Case 1)", async ({ page, opfs }) => {
+    await opfs.seed({ mode: "memory" });
+
+    await opfs.gotoApp();
     await replaceEditorContent(page, DOMAIN_DRIFT_KRS);
 
     await drillInto(page, "OrderService");
@@ -66,8 +71,13 @@ test.describe("AT-0054 Ghost domain edges", () => {
     await expect(page.locator("svg g.ghost-edges").first()).toBeAttached();
   });
 
-  test("drilling into the target service also renders ghost groups (Case 2)", async ({ page }) => {
-    await page.goto("/");
+  test("drilling into the target service also renders ghost groups (Case 2)", async ({
+    page,
+    opfs,
+  }) => {
+    await opfs.seed({ mode: "memory" });
+
+    await opfs.gotoApp();
     await replaceEditorContent(page, DOMAIN_DRIFT_KRS);
 
     await drillInto(page, "PaymentService");

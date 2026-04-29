@@ -1,4 +1,5 @@
-import { type Page, expect, test } from "@playwright/test";
+import type { Page } from "@playwright/test";
+import { expect, test } from "../fixtures/opfs.js";
 import { replaceEditorContent } from "../fixtures/editor.js";
 
 /**
@@ -86,8 +87,11 @@ async function drillIntoOrderDomain(page: Page) {
 test.describe("AT-0049 Resource nodes in domain-level UseCase diagram", () => {
   test("table, queue, and bucket resources render as sibling nodes with infra labels", async ({
     page,
+    opfs,
   }) => {
-    await page.goto("/");
+    await opfs.seed({ mode: "memory" });
+
+    await opfs.gotoApp();
     await replaceEditorContent(page, BASE_KRS);
     await drillIntoOrderDomain(page);
 
@@ -114,8 +118,11 @@ test.describe("AT-0049 Resource nodes in domain-level UseCase diagram", () => {
 
   test("shared resource across usecases deduplicates to one node with two incoming edges", async ({
     page,
+    opfs,
   }) => {
-    await page.goto("/");
+    await opfs.seed({ mode: "memory" });
+
+    await opfs.gotoApp();
     await replaceEditorContent(page, SHARED_KRS);
     await drillIntoOrderDomain(page);
 
@@ -129,8 +136,11 @@ test.describe("AT-0049 Resource nodes in domain-level UseCase diagram", () => {
 
   test("inline (unassigned) resources without dot-notation refs are not promoted to siblings", async ({
     page,
+    opfs,
   }) => {
-    await page.goto("/");
+    await opfs.seed({ mode: "memory" });
+
+    await opfs.gotoApp();
     await replaceEditorContent(page, INLINE_KRS);
     await drillIntoOrderDomain(page);
 

@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect, test } from "../fixtures/opfs.js";
 import { replaceEditorContent } from "../fixtures/editor.js";
 
 /**
@@ -26,8 +26,11 @@ system SysB {
 test.describe("AT-0046 System ID in ViewPath", () => {
   test("single-system breadcrumb includes the system label and restores root on click (AC1)", async ({
     page,
+    opfs,
   }) => {
-    await page.goto("/");
+    await opfs.seed({ mode: "memory" });
+
+    await opfs.gotoApp();
 
     // Default Getting Started project is a single system `ECPlatform`
     // with an ECommerce service. Drill into it.
@@ -53,8 +56,11 @@ test.describe("AT-0046 System ID in ViewPath", () => {
 
   test("multi-system drill-down keeps the correct system in the breadcrumb (AC2)", async ({
     page,
+    opfs,
   }) => {
-    await page.goto("/");
+    await opfs.seed({ mode: "memory" });
+
+    await opfs.gotoApp();
     await replaceEditorContent(page, MULTI_SYSTEM_KRS);
 
     // Click ServiceA — it belongs to SysA. The breadcrumb should reflect

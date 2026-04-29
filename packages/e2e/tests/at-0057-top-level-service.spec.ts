@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect, test } from "../fixtures/opfs.js";
 import { replaceEditorContent } from "../fixtures/editor.js";
 
 /**
@@ -30,8 +30,13 @@ const SERVICE_INSIDE_SYSTEM_KRS = `system ECPlatform {
 `;
 
 test.describe("AT-0057 Top-level service declarations", () => {
-  test("top-level services render and emit unassigned warnings (TC-1, TC-2)", async ({ page }) => {
-    await page.goto("/");
+  test("top-level services render and emit unassigned warnings (TC-1, TC-2)", async ({
+    page,
+    opfs,
+  }) => {
+    await opfs.seed({ mode: "memory" });
+
+    await opfs.gotoApp();
     await replaceEditorContent(page, TOP_LEVEL_SERVICE_KRS);
 
     const preview = page.locator(".preview-pane, .preview-container, main").first();
@@ -44,8 +49,10 @@ test.describe("AT-0057 Top-level service declarations", () => {
     await expect(warningPanel).toContainText(/認証.*not assigned to any system/);
   });
 
-  test("zero-system file renders orphan service drill-down (TC-3)", async ({ page }) => {
-    await page.goto("/");
+  test("zero-system file renders orphan service drill-down (TC-3)", async ({ page, opfs }) => {
+    await opfs.seed({ mode: "memory" });
+
+    await opfs.gotoApp();
     await replaceEditorContent(page, ZERO_SYSTEM_KRS);
 
     // Make sure we are on the System tab — auto-switch hooks (#766/#844)
@@ -61,8 +68,11 @@ test.describe("AT-0057 Top-level service declarations", () => {
 
   test("services nested inside a system do not emit unassigned warnings (TC-4)", async ({
     page,
+    opfs,
   }) => {
-    await page.goto("/");
+    await opfs.seed({ mode: "memory" });
+
+    await opfs.gotoApp();
     await replaceEditorContent(page, SERVICE_INSIDE_SYSTEM_KRS);
 
     await page.waitForTimeout(500);

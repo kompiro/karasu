@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect, test } from "../fixtures/opfs.js";
 import { replaceEditorContent } from "../fixtures/editor.js";
 
 /**
@@ -40,8 +40,10 @@ deploy "Production" {
 `;
 
 test.describe("AT-0049 Deploy diagram layer width wrapping", () => {
-  test("8 isolated containers in a single layer wrap into two sub-rows", async ({ page }) => {
-    await page.goto("/");
+  test("8 isolated containers in a single layer wrap into two sub-rows", async ({ page, opfs }) => {
+    await opfs.seed({ mode: "memory" });
+
+    await opfs.gotoApp();
     await replaceEditorContent(page, WRAP_KRS);
 
     await page.getByRole("tab", { name: "Deploy" }).click();
