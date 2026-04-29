@@ -5,8 +5,10 @@
   "packageManager": "pnpm@10.33.0",
   "pnpm": {
     "overrides": {
+      "diff": "^8.0.3",
       "dompurify": "^3.3.2",
-      "serialize-javascript": "^7.0.5"
+      "serialize-javascript": "^7.0.5",
+      "uuid": "^14.0.0"
     }
   },
   "scripts": {
