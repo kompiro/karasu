@@ -1,0 +1,311 @@
+# Auto-layout: presentation-only layout hints in `.krs.style`
+
+- **日付**: 2026-04-29（B / Phase 3 / D 着地反映 + 実装着手: 2026-04-29）
+- **ステータス**: 決定済み・実装中（getting-started example が motivating
+  case として確定）
+- **関連**:
+  - 親 Issue: [#966](https://github.com/kompiro/karasu/issues/966) — Auto-layout: actors that bypass intermediate clients render with crossing edges
+  - Issue: [#969](https://github.com/kompiro/karasu/issues/969) — C. presentation-only layout hints in `.krs.style` (escape hatch)
+  - 兄弟（着地済み）:
+    - A: [auto-layout-actor-row-by-target](./auto-layout-actor-row-by-target.md)（[#967](https://github.com/kompiro/karasu/issues/967)）
+    - B Phase 2: [ADR-20260429-01 — Skip-layer エッジの直交チャネルルーティング](../adr/20260429-01-orthogonal-edge-routing-skip-layer.md)（[#968](https://github.com/kompiro/karasu/issues/968) / 実装 PR [#989](https://github.com/kompiro/karasu/pull/989)）
+    - B Phase 3: port distribution + channel lane allocation（[#996](https://github.com/kompiro/karasu/issues/996) / 実装 PR [#998](https://github.com/kompiro/karasu/pull/998)）
+  - 関連 ADR: [ADR-20260411-01](../adr/20260411-01-arch-layout-barycenter-wrap-scope-reduction.md)（layer 内の x 順序ヒューリスティクス）, [ADR-20260408-02](../adr/20260408-02-deploy-layout-hierarchical-dag.md)（deploy view layout）
+
+## 背景・課題
+
+A（actor row 再配置）・B Phase 2（skip-layer 直交ルーティング）・B Phase 3
+（port distribution + channel lane allocation）が main に着地したことで、
+karasu の auto-layout は EC Platform 例の主要な崩れを自動で解消できる:
+
+- A: outgoing edge を持つ actor は target の直前 row に降りる。
+- B Phase 2: 中間ノード矩形を貫通する skip-layer downward edge は L 字型
+  polyline に自動置換される。フォールバックで最悪でも従来の直線（regression なし）。
+- B Phase 3: ハブノードの多数のエッジは port を `i/(N+1)` に分散して anchor され、
+  同チャネルを通る水平セグメントは lane に分散される。
+
+これらが **トポロジ起点**で動く以上、以下だけが原理的に残る:
+
+- **作者が意図する x 位置を auto-layout が推論できない**ケース。例: 監査用の
+  `Admin` を意図的に右端に固定したい、外部 SaaS だけ右側に集めたい、など。
+  これはトポロジ情報には現れない「読みやすさのための意図」。Phase 3 は
+  edge 端点とラベル位置の分散であって、**ノード x 位置の制御ではない**。
+- A/B 後に同 row へ並んだ複数ノードの **x 順序**は barycenter が決める。
+  実例で「Customer を Seller の左に置きたい」のような意図が満たせない場合
+  がある。
+- B が対象外としている **同層 / 隣接層 / ghost / cyclic** edge での視覚的
+  崩れは hint で動かしても改善しない（ノード位置を変えても直線が引かれる
+  まま）ので、本ドキュメントのスコープからも外す。
+
+要するに C は **A+B+Phase3 後の残課題のうち、トポロジでは表せない作者の
+x 位置意図**だけを担う escape hatch である。
+
+### Motivating example: getting-started の EC Platform 図
+
+A + B Phase 2 + B Phase 3 + D（[#974](https://github.com/kompiro/karasu/issues/974)）が
+すべて着地した後の `examples/ec-platform/` の system view では、行 3
+（infra / external 行）の **x 順序**が barycenter に委ねられた結果、
+external service（Payment / Inventory / Media storage）と infra
+（EC Site DB / Order events）と internal service（Notification）が混在
+した並びになる。これはトポロジ起点のヒューリスティクスでは原理的に救えず
+（並び替えの根拠がトポロジに無い）、純粋に「読みやすさのための作者意図」の
+領域である。
+
+getting-started は karasu の看板チュートリアルであり、ここで `.krs.style`
+の例を提供する価値も高い。よって本実装は以下を motivating example として
+着手する:
+
+```css
+/* getting-started で示す代表パターン */
+service[external] { column: right; }
+queue, database   { column: center; }
+/* internal service は未指定 → 左に寄る */
+```
+
+期待される行 3 の並び: `[Notification] [DB, OrderEvents] [Payment, Inventory, Media storage]`。
+
+これにより、設計の前提条件（実プロジェクト相当の `.krs` で許容できない出力 +
+A/B/Phase3/D で吸収不能 + `column` 単独で解決可能）をすべて満たす。
+
+## 制約・前提
+
+- **escape hatch であって推奨ルートではない**: hint なしで読める図を
+  auto-layout が出すのが正であり、hint は最小限に留める。プロパティを
+  追加するたびに「この hint が必要なケースは A/B / Phase 3 に取り込めないか」
+  を必ず検討する。
+- **モデル語彙は変えない**: `.krs` には影響を与えない。
+- **既存 `.krs.style` と互換**: 既存スタイル（`background-color` 等）と
+  同じセレクタ・カスケード規則を使う。新セレクタ型は追加しない。
+- **B との用語衝突を避ける**: B のフォローアップ #996 が **per-channel
+  lane allocation** という内部用語で「lane」を使う。これは edge routing の
+  チャネル内ラベル y 分散を指す概念で、`.krs.style` の hint とは別物。
+  本ドキュメントでは混乱回避のため hint プロパティ名は **`column`** を採用
+  する（後述 C6 で詳説）。
+- **B Phase 2 が修正したケースを hint で重複対処しない**: skip-layer 貫通
+  は B が自動で解決するため、`.krs.style` 側の hint は **node x 配置**の
+  意図表明に限定する。
+- **決定的なレンダリング**: snapshot test 多数のため、hint は決定的に
+  反映されること（座標から純関数で導出）。
+
+## 決定（提案）
+
+### 1. 最小プロパティセット
+
+初期実装は **`column` の 1 プロパティのみ**を導入する。layer（行）を
+動かす `rank` 系は実例で必要になってから追加する（Issue 本文の "smallest
+unblocks real cases" に従う）。
+
+```css
+#Admin {
+  column: right;       /* left | center | right */
+}
+```
+
+#### `column` の意味
+
+- 値は `left` / `center` / `right` の 3 値（列挙）。任意の数値や `%` は
+  受け付けない（escape hatch を最小に保つため）。
+- 同じ layer 内で **x 順序の決定的なバケット**を表す。barycenter による
+  並べ替えの **前** に bucket 分けし、bucket 内は従来どおり barycenter で
+  並べる。
+- 既定値は「未指定」。未指定ノードは barycenter 単独で並ぶ（既存挙動）。
+
+```
+layer 1:  [ left bucket ] [ center bucket / unspecified ] [ right bucket ]
+            ↑ left の中は barycenter で並ぶ        ↑ right も同様
+```
+
+#### 適用される selector
+
+`.krs.style` の既存 selector（id / kind / tag / annotation / 複合）すべてで
+書ける。実用上は **id** が最頻、次いで kind + tag。
+
+```css
+#Admin            { column: right; }
+user[ops]         { column: right; }
+service[external] { column: right; }
+```
+
+### 2. プロパティの分類: `layout-*` 名前空間は使わない
+
+CSS 風の素直な名前（`column`）を採用する。`layout-column:` のような
+名前空間プレフィックスは却下（後述 C2）。
+
+### 3. 解決パイプライン
+
+既存の `style-resolver` は `ResolvedNodeStyle`（描画属性）を返す。`column` は
+**描画ではなくレイアウト入力**なので、別の解決パスを設ける:
+
+```
+parser → StyleSheet → style-resolver
+  ├─ ResolvedNodeStyle  (描画属性 — 既存)
+  └─ ResolvedLayoutHints (新規 — column など)
+```
+
+- `ResolvedLayoutHints` は `Map<nodeId, { column?: "left" | "center" | "right" }>`。
+- カスケード規則・specificity は既存と同一（最後勝ち、id=100, tag=10, kind=1）。
+- 不正値（`column: foo` 等）はパーサが警告を出して該当宣言を無視する
+  （既存の不明プロパティ警告経路を流用）。
+
+### 4. 層配置との関係
+
+`column` は **layer（行）の指定ではなく、layer 内 x 配置の指定**である。
+これは A の挙動（layer は kind とエッジから決まる）と直交する:
+
+- `#Admin { column: right; }` を書いても Admin の **layer** は変わらない。
+- A/B の自動配置を尊重したまま「同じ row の右端」に寄せられる。
+- layer 自体を動かしたい場合は将来 `rank` プロパティで対応（v2 以降）。
+
+### 5. B（直交ルーティング）との相互作用
+
+B は `LayoutEdge.waypoints` に基づき、エッジ経路を計算する。`column` で
+ノードの x が動くと、B の channel 計算に渡される矩形位置も動くため、
+B の経路も **自動的に再計算**される。
+
+- `column: right` で右に寄せたノードへの skip-layer edge は、B が新しい
+  座標を見て改めて貫通判定 → polyline / 直線フォールバックを選ぶ。
+- 結果として「hint で位置を動かしたら B のルーティングも追随する」整合
+  性が保たれる。`column` の実装は layout 段の x ソートに介入するだけで、
+  B の実装に変更は要らない。
+
+### 6. View 種別の扱い（system view 限定 + 警告）
+
+`column` は **system view にのみ適用**する。deploy view（ADR-20260408-02 の
+hierarchical DAG）と org view（組織ツリー）は配置ロジックが根本的に異なる
+ため、現時点では `column` を解釈しない。
+
+- パーサ段では `column` を一律受理する（view 種別を見ない）。
+- レンダラー段で view 種別を判定し、**system view 以外で `column` が
+  解決された場合は警告を出して無視する**:
+
+  ```
+  ⚠ Warning: `column` hint on #Admin is ignored in deploy view
+    (layout hints are currently supported only in system view).
+  ```
+
+- 警告は `style-resolver` の既存「不明プロパティ警告」と同じ経路に乗せる
+  （ユーザーは Preview UI / CLI 出力で気付ける）。
+- deploy / org view 用の hint が将来必要になった場合は、別プロパティ名
+  （例: deploy 向け `tier:` 等）で個別に設計する。`column` は system view
+  の x 列概念に固有なので、安易に再利用しない。
+
+### 7. ドキュメント・用語ガイドライン
+
+- `docs/spec/style.md` / `style.ja.md` に "Layout hints" セクションを追加し、
+  **最終手段**であることを明記する。
+- 各 hint の説明に「これが必要だと感じたら、まず A/B / Phase 3 のヒュー
+  リスティクス改善で吸収できないか検討すること」を記載。
+- 用語: B 内部の "channel lane"（edge routing の per-channel y 分散）と
+  `.krs.style` の `column` は別物だと注記する。
+
+## 理由
+
+1. **モデルを汚さない**: `.krs` は「実際の構造」、`.krs.style` は「見せ方」
+   という分離が貫ける。escape hatch をモデルに置くと、後で「なぜ Admin に
+   `[right]` タグが付いているのか」と誤読される。
+2. **既存の `.krs.style` とつなぐコストが低い**: 同じ selector / cascade /
+   parser を流用できる。実装は新プロパティの追加と layout への小さな
+   フックのみ。
+3. **B と非干渉**: `column` は layer 内 x 順序にだけ作用するので、B の
+   waypoint 計算ロジックに手を入れずに済む。B が後段で再ルーティングする。
+4. **段階的拡張**: `column` だけで始めて、実例が出てから `rank`・`row`・
+   `column-span` 等を足す。空振り設計を避ける。
+
+## 却下した案
+
+### C1: モデル側にレイアウト用タグ（例: `[lane:right]`）を追加
+- `.krs` に `[lane:right]` のようなタグを書けるようにする案。
+- 却下理由: タグは「この要素が何者か」を表す語彙。レイアウト都合をタグに
+  混ぜると、モデルの意味が見せ方に汚染される（A の代替案 A2 と同じ理由）。
+
+### C2: 名前空間付きプロパティ（`layout-column:`, `karasu-layout: ...`）
+- CSS の `-webkit-` のようにベンダープレフィックスでレイアウト系を分ける。
+- 却下理由: karasu の `.krs.style` は CSS 風だが CSS そのものではない
+  （`shape:` 等、独自プロパティが既にある）。プレフィックスを足すと既存
+  プロパティとの一貫性が崩れる。
+
+### C3: 数値座標 `x: 320px;` `y: 80px;`
+- 完全フリーフォームで絶対座標を指定できるようにする。
+- 却下理由: escape hatch の用途を超える。図のサイズ・フォント・テーマで
+  座標は容易にズレるため、保守不能になる。`column` のような **意図** ベース
+  に絞る。
+
+### C4: 別ファイル `*.krs.layout` を新設
+- レイアウトヒントは独立ファイルに切り出す。
+- 却下理由: ファイルが増える割に得るものが少ない。`.krs.style` で
+  selector を共有できる方がはるかに便利。
+
+### C5: `flex` / `grid` 風のフルレイアウト DSL
+- `display: grid; grid-template-rows: ...` のような完全な DSL を導入。
+- 却下理由: スコープ過剰。auto-layout が主役で、hint は最後の調整という
+  本 Issue の前提（"keep it minimal"）から逸脱する。
+
+### C6: Issue 本文の strawman どおり `lane:` を採用
+- 却下理由: B の ADR-20260429-01 と Phase 3（[#996](https://github.com/kompiro/karasu/issues/996)）が edge routing の **per-channel
+  lane allocation**（チャネル内ラベル y 分散）という内部概念で「lane」を
+  使う。同じファイル内のエッジに作用する内部用語と、`.krs.style` のノード
+  x 配置プロパティが同名だと、ドキュメントとコードの両方で曖昧になる。
+  Issue 本文の `lane:` は strawman 表記なので、実装時に **`column`** に
+  改名する。`column` は「同 row 内のどの列か」を素直に表し、CSS の
+  `flex`/`grid` 系慣習にも近い。
+
+## 影響範囲
+
+| 領域                                                | 影響                                         |
+| --------------------------------------------------- | -------------------------------------------- |
+| `packages/core/src/parser/style-parser.ts`          | `column` プロパティを受理、`left/center/right` 以外は警告 |
+| `packages/core/src/types/style.ts`                  | `ResolvedLayoutHints` 型を追加               |
+| `packages/core/src/resolver/style-resolver.ts`      | layout hints の解決を追加                    |
+| `packages/core/src/renderer/layout.ts`              | x 順序決定（barycenter）の前に column bucket を適用（system view のみ） |
+| `packages/core/src/renderer/deploy-renderer.ts`     | `column` が解決済みの場合に警告を出して無視 |
+| `packages/core/src/renderer/org-tree-renderer.ts`   | 同上                                         |
+| `packages/core/src/renderer/edge-routing-channels.ts` | 変更不要（B は新しい座標で再計算する）     |
+| `docs/spec/style.md`, `docs/spec/style.ja.md`       | "Layout hints" セクション追加                |
+| 既存の `.krs.style`                                 | 影響なし（新プロパティ・既定値は未指定）     |
+
+## 検証
+
+### 自動
+
+- 既存スタイル / レイアウトテストすべて通過（A・B Phase 2・Phase 3 着地後
+  のスナップショットを破壊しないこと）
+- 新規テスト（実装着手時に追加）:
+  - パーサ: `column: right` を受理、`column: foo` で警告
+  - リゾルバ: id selector が kind selector を上書きする
+  - リゾルバ: 同 specificity で複数宣言があった場合、宣言順で後勝ち（既存
+    cascade 規則と一致）
+  - レイアウト: system view で同じ layer 内の `column: left` ノードが左端、
+    `column: right` ノードが右端に来る
+  - レイアウト: bucket 内は従来どおり barycenter で並ぶ
+  - View 種別: deploy view / org view で `column` が解決された場合に警告を
+    出し、配置に影響しない
+  - B との結合: `column` でノードを動かしたとき B の polyline 経路が
+    新座標に追随することをスナップショットで確認
+  - 後方互換: `column` を含まない既存スナップショットが変化しない
+
+### 手動 / Acceptance Test
+
+- AT に「ある actor を右端に固定したい」という代表ケースを追加し、`.krs`
+  を変えずに `.krs.style` だけで意図どおりの並びになることを確認する。
+- 既存の EC Platform 例で hint を一切 **付けない** まま、A+B+Phase 3 のみで
+  描画が許容範囲に収まっていることを確認する（C 実装によって自動レイア
+  ウトの品質が劣化していないことのガード）。
+
+## 決定事項（旧未解決事項からの移行）
+
+| 項目 | 決定 |
+| --- | --- |
+| `rank` の追加 | **追加しない**。layer 自体を hint で動かすと A の哲学（layer = kind+target で決まる）が崩れる。row を動かしたい不満は実態として x 並びの不満であり、`column` で吸収する。本当に layer を変えたい例が出たら A のヒューリスティクス側で対処する Issue を立てる。 |
+| deploy / org view での扱い | **system view のみ適用、それ以外では警告を出して無視**（決定 §6 参照）。将来 deploy / org に hint を入れたくなった場合は別プロパティ名で個別設計する。 |
+| 同 specificity 衝突 | **既存スタイル cascade 規則そのまま**: specificity 高いほうが勝ち、同点なら宣言順で後勝ち。専用エラー / 中央値丸めは導入しない。 |
+| Phase 3 着地後の再評価 | **完了**: getting-started の EC Platform 図が motivating example として確定（背景・課題「Motivating example」参照）。実装に着手する。 |
+
+## 未解決事項
+
+- **`column-span` / `rank` 等の追加可否**: getting-started の motivating
+  example で `column` 単独で済む見込みだが、実装中に他の例が出てきて
+  `column` だけでは不足することが判明したら、その時点で別 Issue として
+  追加検討する。
+- **getting-started のサンプル `.krs.style` の置き場所**: `examples/ec-platform/`
+  内に `.krs.style` を追加するか、別ファイルとして提示するかは実装時に
+  既存の examples 配置慣習に合わせて決める。
