@@ -153,9 +153,12 @@ renderer の judgement が以下の順で決まる:
 
 ## 未解決事項 / フォローアップ
 
-- `resolver/warnings.ts` の inline walker を `collectLegendUsage` に置き換えれば、SSOT の主張が文字通りになる。今回はリスクを抑えるため触らず、コメントだけ残す。
 - `docs/spec/tags-annotations.md` の `[human]` 行に「凡例で参照されると neutral swatch で描画される」一文を足すかどうか。spec の本筋（ノード描画への影響）からは外れるので別タスクで判断する。
 - `ref #SomeId` のような selector 系 ref に対しても同じフォールバックが効くが、明示的なテストカバレッジは無い（`legendRefHasUsage` の `selector` ブランチは実装済み）。
+
+## 実装済みのフォローアップ
+
+- ~~`resolver/warnings.ts` の inline walker を `collectLegendUsage` に置き換える~~ — 同 PR で対応済み。`detectUnresolvedLegendRefs` は `collectLegendUsage(file)` + `legendRefHasUsage(target, usage)` を呼ぶ形にリファクタされ、resolver と renderer は同じヘルパーから「in use」判定を得る。SSOT の主張が文字通りに成立した。
 
 ## ADR 化
 
