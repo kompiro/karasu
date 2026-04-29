@@ -7,6 +7,8 @@
   - 関連 ADR:
     - [ADR-20260411-01](../adr/20260411-01-arch-layout-barycenter-wrap-scope-reduction.md) — barycenter ordering + sub-row wrapping
     - [ADR-20260429-01](../adr/20260429-01-orthogonal-edge-routing-skip-layer.md) — orthogonal channel routing for skip-layer edges
+  - 関連 Design Doc / 先行実装:
+    - [auto-layout-style-hints.md](./auto-layout-style-hints.md) — `.krs.style` 経由の presentation-only hint の枠組み（[#969](https://github.com/kompiro/karasu/issues/969) / 実装 PR [#1010](https://github.com/kompiro/karasu/pull/1010)）。`ResolvedStyles.layoutHints` に hint を載せ、layout 側で参照する。column hint がその第一弾。
   - 関連コード: `packages/core/src/renderer/layout.ts`,
     `packages/core/src/renderer/edge-routing-{channels,lanes,ports}.ts`
 
@@ -185,8 +187,19 @@ tier ベースを捨てて icon mode は密グリッドパッキング（kind/an
   上下のレイヤ間の中央付近にチャネルを引くため、80px 中
   18px LANE_BAND を載せても余裕は残る見込みだが要検証。
 - 案 1 の icon-mode 定数を `.krs.style` 経由でユーザーがオーバーライド
-  できるべきか? 当面は内部定数に閉じ、必要が出たときに
-  `auto-layout-style-hints` の延長として検討する。
+  できるべきか?
+  - 先行事例として [#1010](https://github.com/kompiro/karasu/pull/1010) で
+    `column` hint が `.krs.style` → `ResolvedStyles.layoutHints` →
+    layout 側参照、というルートを既に敷いている。**新規枠組みではなく、
+    既存枠の延長**として `gap` 等を追加できる素地はある。
+  - ただし column hint は **per-node** の x バケット指示なのに対し、
+    icon-mode の gap は **diagram-wide な定数**であり、`layoutHints`
+    （Map<nodeId, hint>）の粒度には合わない。導入するなら
+    `ResolvedStyles` 側にトップレベルの `layoutDefaults` を追加する
+    別の階層が必要。
+  - **当面の方針は内部定数に閉じる**。利用者からの要望が具体化したら、
+    `layoutDefaults`（diagram スコープ）として `auto-layout-style-hints`
+    の続編で別途設計する。
 - icon mode の縦折返しは shape mode と同じ「`MAX_LAYER_WIDTH` を超えたら
   次の sub-row」で良いか、それとも「アイコン何枚で揃える」（例: 4 枚
   単位の格子）の方が読みやすいか — Getting Started を icon で見て
