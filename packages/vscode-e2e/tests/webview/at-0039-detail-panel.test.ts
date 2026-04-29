@@ -3,6 +3,7 @@ import {
   By,
   EditorView,
   InputBox,
+  Key,
   VSBrowser,
   WebView,
   Workbench,
@@ -53,20 +54,45 @@ describe("AT-0039 (WebView) — clicking a leaf node opens the detail panel", fu
 
     // Open the on-disk fixture via VS Code's File: Open File command.
     // settings.json forces the simple (Quick Pick) dialog so we can type
-    // the absolute path even under xvfb.
-    await workbench.executeCommand("File: Open File...");
-    const openInput = await InputBox.create();
-    await openInput.setText(fixturePath);
-    await openInput.confirm();
-
-    await driver.wait(
-      async () => {
-        const titles = await editorView.getOpenEditorTitles();
-        return titles.some((t) => t.includes("at-0039.krs"));
-      },
-      ELEMENT_TIMEOUT_MS,
-      "fixture .krs file did not appear as an open editor",
-    );
+    // the absolute path even under xvfb. The simple-dialog occasionally
+    // stalls on confirm() — retry up to 3 times, dismissing any lingering
+    // dialog with ESC between attempts.
+    let opened = false;
+    let lastErr: unknown;
+    for (let attempt = 0; attempt < 3 && !opened; attempt++) {
+      try {
+        if (attempt > 0) {
+          try {
+            await driver.actions().sendKeys(Key.ESCAPE).perform();
+            await driver.actions().sendKeys(Key.ESCAPE).perform();
+          } catch {
+            // best-effort dismissal
+          }
+          await driver.sleep(500);
+        }
+        await workbench.executeCommand("File: Open File...");
+        const openInput = await InputBox.create();
+        await openInput.setText(fixturePath);
+        await openInput.confirm();
+        await driver.wait(
+          async () => {
+            const titles = await editorView.getOpenEditorTitles();
+            return titles.some((t) => t.includes("at-0039.krs"));
+          },
+          7_000,
+          "fixture .krs file did not appear as an open editor",
+        );
+        opened = true;
+      } catch (err) {
+        lastErr = err;
+      }
+    }
+    if (!opened) {
+      throw new Error(
+        `failed to open at-0039.krs after 3 attempts; last error: ${(lastErr as Error)?.message ?? lastErr}`,
+        { cause: lastErr },
+      );
+    }
 
     // Trigger the preview command. Opens a WebView in the beside column
     // (editor group 1).

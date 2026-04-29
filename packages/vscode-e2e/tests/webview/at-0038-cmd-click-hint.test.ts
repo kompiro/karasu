@@ -3,6 +3,7 @@ import {
   By,
   EditorView,
   InputBox,
+  Key,
   TextEditor,
   VSBrowser,
   type WebDriver,
@@ -182,19 +183,46 @@ describe("AT-0037-9 / AT-0038 (WebView) — bidirectional editor ↔ SVG preview
     const editorView = new EditorView();
     const workbench = new Workbench();
 
-    await workbench.executeCommand("File: Open File...");
-    const openInput = await InputBox.create();
-    await openInput.setText(fixturePath);
-    await openInput.confirm();
-
-    await driver.wait(
-      async () => {
-        const titles = await editorView.getOpenEditorTitles();
-        return titles.some((t) => t.includes(FIXTURE_NAME));
-      },
-      ELEMENT_TIMEOUT_MS,
-      "fixture .krs file did not appear as an open editor",
-    );
+    // The "File: Open File..." simple-dialog occasionally stalls on
+    // confirm() under xvfb — the dialog stays open with the typed path
+    // but the editor never appears. Retry up to 3 times, dismissing any
+    // lingering dialog with ESC between attempts.
+    let opened = false;
+    let lastErr: unknown;
+    for (let attempt = 0; attempt < 3 && !opened; attempt++) {
+      try {
+        if (attempt > 0) {
+          try {
+            await driver.actions().sendKeys(Key.ESCAPE).perform();
+            await driver.actions().sendKeys(Key.ESCAPE).perform();
+          } catch {
+            // best-effort dismissal
+          }
+          await driver.sleep(500);
+        }
+        await workbench.executeCommand("File: Open File...");
+        const openInput = await InputBox.create();
+        await openInput.setText(fixturePath);
+        await openInput.confirm();
+        await driver.wait(
+          async () => {
+            const titles = await editorView.getOpenEditorTitles();
+            return titles.some((t) => t.includes(FIXTURE_NAME));
+          },
+          7_000,
+          "fixture .krs file did not appear as an open editor",
+        );
+        opened = true;
+      } catch (err) {
+        lastErr = err;
+      }
+    }
+    if (!opened) {
+      throw new Error(
+        `failed to open ${FIXTURE_NAME} after 3 attempts; last error: ${(lastErr as Error)?.message ?? lastErr}`,
+        { cause: lastErr },
+      );
+    }
 
     await workbench.executeCommand("karasu: Open Preview");
     await driver.wait(
