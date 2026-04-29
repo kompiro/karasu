@@ -624,10 +624,18 @@ export function layout(
     orderedByLayer.set(layerIdx, ordered);
   }
 
-  // Compute initial positions (will be offset later for container nesting)
+  // Compute initial positions (will be offset later for container nesting).
+  // y is fixed per layer (max bottom of previously-placed layers + LAYER_GAP)
+  // so heterogeneous-height nodes share a top baseline. Without this,
+  // `y = layerIdx * (dims.height + LAYER_GAP)` would push the *tallest*
+  // node in a layer down — a service with a team chip would dive below
+  // its rowmate cylinders / clouds. Mirrors the multi-system path's
+  // `prevBottom` computation.
+  let layerBaselineY = NODE_GAP;
   for (const layerIdx of sortedLayers) {
     const nodesInLayer = orderedByLayer.get(layerIdx)!;
     let xOffset = NODE_GAP;
+    let layerMaxBottom = layerBaselineY;
 
     for (const nid of nodesInLayer) {
       const krsNode = nodeMap.get(nid)!;
@@ -636,7 +644,7 @@ export function layout(
           ? (ownerIndex?.get(nid) ?? krsNode.properties.team)
           : undefined;
       const dims = measureNode(krsNode, resolvedTeam, displayMode);
-      const y = layerIdx * (dims.height + LAYER_GAP) + NODE_GAP;
+      const y = layerBaselineY;
 
       layoutNodes.set(nid, {
         kind: krsNode.kind,
@@ -659,7 +667,9 @@ export function layout(
       xOffset += dims.width + NODE_GAP;
       childMaxWidth = Math.max(childMaxWidth, xOffset);
       childMaxHeight = Math.max(childMaxHeight, y + dims.height + NODE_GAP);
+      layerMaxBottom = Math.max(layerMaxBottom, y + dims.height);
     }
+    layerBaselineY = layerMaxBottom + LAYER_GAP;
   }
 
   // Center each layer

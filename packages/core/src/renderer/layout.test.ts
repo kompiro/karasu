@@ -1180,6 +1180,30 @@ system B {
     expect(y.x).toBeLessThan(x.x);
   });
 
+  it("nodes with different heights in the same layer share a y baseline", () => {
+    // Pre-fix, `y = layerIdx * (dims.height + LAYER_GAP) + NODE_GAP` used
+    // each node's own height, so a service with a team chip would slip
+    // below its rowmate cylinders / queues. The column hint exposed this
+    // by reordering and visually highlighting the gap. Guard against
+    // regression: rowmates in the same forced layer must start at the
+    // same y. Database / queue / storage all live in tier 3 (dep), so
+    // mixing them gives heterogeneous heights inside one layer.
+    const slice = parseAndExtract(`
+system S {
+  service Backend {}
+  database Cyl {}
+  queue Q {}
+  storage Cloud {}
+}
+`);
+    const result = layout(slice);
+    const cyl = result.nodes.get("Cyl")!;
+    const q = result.nodes.get("Q")!;
+    const cloud = result.nodes.get("Cloud")!;
+    expect(cyl.y).toBe(q.y);
+    expect(q.y).toBe(cloud.y);
+  });
+
   it("no-op when every node is in the same bucket (unspecified)", () => {
     const slice = parseAndExtract(krs);
     const baseline = layout(slice);
