@@ -8,10 +8,29 @@ issue: "#254"
 
 ## Coverage policy
 
-**Manual** — see [ADR-20260428-05](../adr/20260428-05-vscode-webview-manual-tests.md).
-This AT exercises the karasu preview WebView (detail panel buttons and
-cross-diagram switch), which is unreachable from the `packages/vscode-e2e`
-harness. Verify by hand during release QA.
+**Automated (TC-1, TC-2, TC-5)** — the team navigation button (TC-1),
+the deploy navigation button (TC-2), and the absence of the deploy
+button when there is no matching deploy block (TC-5) are automated in
+[`packages/vscode-e2e/tests/webview/at-0039-detail-panel.test.ts`](../../packages/vscode-e2e/tests/webview/at-0039-detail-panel.test.ts)
+under the WebView E2E harness — co-located with AT-0039 to share the
+suite-level fixture and avoid the simple-dialog flake of opening a
+second file in the same VS Code session
+([AT-0076](./0076-vscode-webview-e2e-phase3-at-0042.md)).
+
+**TC-3** (`runtime`/`realizes` rendered in their own section above the
+team/role/tags section) is a static layout invariant of the renderer:
+the `// Runtime / realizes` and `// Team / role / tags` blocks in
+`packages/vscode/src/preview-panel.ts` are emitted in fixed source
+order, and no live fixture node carries both groups of properties
+simultaneously (services have `team`; deploy units like `oci`/`war`
+have `runtime`/`realizes`; the metadata aggregator does not merge
+across them). Verified by code review at AT-0076-time.
+
+**TC-4** is N/A in VSCode per the spec — the extension always provides
+the team navigation button when `team` is set.
+
+The harness job is gated on the `vscode-webview-e2e` PR label and is
+**not** a required check.
 
 ## Purpose
 

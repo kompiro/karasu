@@ -13,9 +13,10 @@ import {
 } from "vscode-extension-tester";
 
 /**
- * AT-0039 (WebView E2E — Phase 6 detail panel).
+ * AT-0039 / AT-0042-vscode (WebView E2E — Phase 6 detail panel +
+ * cross-diagram navigation).
  *
- * Coverage:
+ * AT-0039 coverage:
  *   TC-01: clicking a leaf node opens the detail panel.
  *   TC-02: detail panel shows description (Markdown rendered), links,
  *          and properties (team / role).
@@ -28,16 +29,38 @@ import {
  *   TC-08: tooltip is suppressed while the detail panel is open and
  *          reappears once it is closed.
  *
- * TC-05 (Cmd/Ctrl+Click → editor jump, no panel) is automated by
- * AT-0038 TC-03/TC-04. TC-09 (toolbar hint text) is automated by
+ * AT-0042 coverage (co-located here to share the WebView/fixture):
+ *   AT-0042-1: detail panel renders a `data-nav-view="org"` button for
+ *              a node with a `team` property; clicking it switches the
+ *              preview to the Org diagram.
+ *   AT-0042-2: detail panel renders a `data-nav-view="deploy"` button
+ *              for a node with `hasDeployContainer=true`; clicking it
+ *              switches the preview to the Deploy diagram.
+ *   AT-0042-5: detail panel for a service with `team` but no deploy
+ *              container does NOT render the deploy navigation button.
+ *
+ * TC-05 of AT-0039 (Cmd/Ctrl+Click → editor jump, no panel) is automated
+ * by AT-0038 TC-03/TC-04. TC-09 (toolbar hint text) is automated by
  * AT-0038 TC-01.
  *
- * TC-07 (clicking a Links link opens the URL in the external browser)
- * stays manual: from inside the WebView frame we can verify that the
- * page posts an `openExternal` message to the extension, but cannot
- * observe `vscode.env.openExternal` actually being called by the host
- * without test-only seams in production code (see ADR-20260428-05's
+ * TC-07 of AT-0039 (clicking a Links link opens the URL in the external
+ * browser) stays manual: from inside the WebView frame we can verify
+ * that the page posts an `openExternal` message to the extension, but
+ * cannot observe `vscode.env.openExternal` actually being called by the
+ * host without test-only seams in production code (see ADR-20260428-05's
  * "no extension-host stubs" rule).
+ *
+ * AT-0042-3 (runtime/realizes section above team/role/tags section) is
+ * a static layout invariant of the renderer — sections are emitted in
+ * fixed source order in `preview-panel.ts`, and no live fixture node
+ * carries both runtime/realizes AND team/role/tags simultaneously
+ * (services have team; deploy units have runtime/realizes; metadata
+ * does not aggregate across them). Verified by code review of
+ * `_buildHtml`'s `// Runtime / realizes` and `// Team / role / tags`
+ * blocks; see AT-0076 for context.
+ *
+ * AT-0042-4 is N/A in VSCode per the AT-0042 spec (the extension
+ * always provides the team navigation button when team is set).
  *
  * The "File: Open File..." simple-dialog stalls intermittently under
  * xvfb (see the retry pattern shared with AT-0038); we keep the
@@ -49,12 +72,13 @@ const FIXTURE_NAME = "at-0039.krs";
 const ELEMENT_TIMEOUT_MS = 15_000;
 
 // Lines (1-indexed) match `TextEditor.getCoordinates()`. The Customer
-// node identifier in the AT-0039 fixture lives on line 17.
+// node identifier in the AT-0039 fixture lives on line 20 (after the
+// AT-0042 fixture extension added a UserService block above it).
 const FIXTURE_LINE = {
-  Customer: 17,
+  Customer: 20,
 } as const;
 
-describe("AT-0039 (WebView) — detail panel", function () {
+describe("AT-0039 / AT-0042-vscode (WebView) — detail panel + cross-diagram navigation", function () {
   this.timeout(240_000);
 
   let driver: WebDriver;
@@ -143,6 +167,39 @@ describe("AT-0039 (WebView) — detail panel", function () {
         "detail panel did not close",
       );
     }
+  }
+
+  async function isViewActive(view: "system" | "deploy" | "org"): Promise<boolean> {
+    return (await driver.executeScript(
+      `const btn = document.querySelector('[data-view="${view}"]');` +
+        "const style = btn ? (btn.getAttribute('style') || '') : '';" +
+        "return style.includes('background');",
+    )) as boolean;
+  }
+
+  // Click a toolbar view button (`system` / `deploy` / `org`) and wait
+  // for the WebView to rebuild. The switchView postMessage causes the
+  // extension to reassign `webview.html`, invalidating the current
+  // frame context — handle that the same way as the drill click.
+  async function switchToView(view: "system" | "deploy" | "org"): Promise<void> {
+    if (await isViewActive(view)) return;
+    await driver.executeScript(
+      `const btn = document.querySelector('[data-view="${view}"]');` +
+        "if (!btn) throw new Error('toolbar view button not found: ' + " +
+        JSON.stringify(view) +
+        ");" +
+        "btn.click();",
+    );
+    await webview.switchBack();
+    inWebViewFrame = false;
+    await driver.sleep(800);
+    await webview.switchToFrame();
+    inWebViewFrame = true;
+    await driver.wait(
+      async () => await isViewActive(view),
+      ELEMENT_TIMEOUT_MS,
+      `${view} view did not become active after toolbar click`,
+    );
   }
 
   before(async () => {
@@ -396,11 +453,10 @@ describe("AT-0039 (WebView) — detail panel", function () {
     );
   });
 
-  // NOTE: TC-03 must remain the last `it()` in this file. It intentionally
-  // leaves `inWebViewFrame = false` so `after()` doesn't try to switchBack
-  // from a default-frame context. If a new TC is appended after this one,
-  // it relies on `beforeEach`'s `ensureWebViewFrame()` to re-acquire the
-  // frame, which works fine — but the ordering is worth flagging.
+  // NOTE: TC-03 leaves `inWebViewFrame = false` (focusing the .krs
+  // editor rebuilds the WebView). The AT-0042 tests below recover via
+  // `beforeEach`'s `ensureWebViewFrame()` and call `switchToView` to
+  // restore System view, since the TC-03 rebuild also resets state.
   it("TC-03: Jump to editor button moves the .krs editor cursor and leaves the panel open", async () => {
     await closePanelIfOpen();
 
@@ -450,6 +506,130 @@ describe("AT-0039 (WebView) — detail panel", function () {
       },
       ELEMENT_TIMEOUT_MS,
       `editor cursor did not move to Customer line (expected ${FIXTURE_LINE.Customer}); last seen line ${lastLine}`,
+    );
+  });
+
+  it("AT-0042-5: detail panel for a service without a deploy block does NOT show the deploy nav button", async () => {
+    await switchToView("system");
+    await closePanelIfOpen();
+
+    // UserService has `team "User Team"` but no matching deploy block,
+    // so `meta.hasDeployContainer === false` and the deploy nav button
+    // must not be rendered.
+    await driver.wait(
+      until.elementLocated(By.css('[data-info-button="UserService"]')),
+      ELEMENT_TIMEOUT_MS,
+    );
+    await dispatchClickOnSelector('[data-info-button="UserService"]');
+    await driver.wait(
+      async () => await detailPanelHasVisibleClass(),
+      ELEMENT_TIMEOUT_MS,
+      "detail panel did not open after clicking UserService ⓘ button",
+    );
+
+    const html = await detailPanelHtml();
+    assert.match(
+      html,
+      /data-nav-view="org"/,
+      `panel for UserService should still show the team nav button; saw HTML: ${html.slice(0, 400)}`,
+    );
+    assert.doesNotMatch(
+      html,
+      /data-nav-view="deploy"/,
+      `panel for UserService must NOT show the deploy nav button; saw HTML: ${html.slice(0, 400)}`,
+    );
+  });
+
+  it("AT-0042-1: clicking the team nav button switches the preview to the Org diagram", async () => {
+    await switchToView("system");
+    await closePanelIfOpen();
+
+    await driver.wait(
+      until.elementLocated(By.css('[data-info-button="OrderService"]')),
+      ELEMENT_TIMEOUT_MS,
+    );
+    await dispatchClickOnSelector('[data-info-button="OrderService"]');
+    await driver.wait(
+      async () => await detailPanelHasVisibleClass(),
+      ELEMENT_TIMEOUT_MS,
+      "panel did not open before testing team nav button",
+    );
+
+    const html = await detailPanelHtml();
+    assert.match(
+      html,
+      /data-nav-view="org"[^>]*data-nav-node="Order Team"/,
+      `panel should render an org nav button for "Order Team"; saw HTML: ${html.slice(0, 600)}`,
+    );
+
+    // Click the team nav button. The handler postMessages
+    // switchViewAndHighlight, the extension reassigns webview.html, and
+    // the iframe needs to be re-acquired (same as the drill flow).
+    await driver.executeScript(
+      "const btn = document.querySelector('[data-nav-view=\"org\"]');" +
+        "if (!btn) throw new Error('org nav button not found');" +
+        "btn.click();",
+    );
+    await webview.switchBack();
+    inWebViewFrame = false;
+    await driver.sleep(800);
+    await webview.switchToFrame();
+    inWebViewFrame = true;
+
+    await driver.wait(
+      async () => await isViewActive("org"),
+      ELEMENT_TIMEOUT_MS,
+      "org view did not become active after clicking the team nav button",
+    );
+    assert.strictEqual(
+      await isViewActive("org"),
+      true,
+      "Org toolbar button should carry the active style after team nav click",
+    );
+  });
+
+  it("AT-0042-2: clicking the deploy nav button switches the preview to the Deploy diagram", async () => {
+    await switchToView("system");
+    await closePanelIfOpen();
+
+    await driver.wait(
+      until.elementLocated(By.css('[data-info-button="OrderService"]')),
+      ELEMENT_TIMEOUT_MS,
+    );
+    await dispatchClickOnSelector('[data-info-button="OrderService"]');
+    await driver.wait(
+      async () => await detailPanelHasVisibleClass(),
+      ELEMENT_TIMEOUT_MS,
+      "panel did not open before testing deploy nav button",
+    );
+
+    const html = await detailPanelHtml();
+    assert.match(
+      html,
+      /data-nav-view="deploy"[^>]*data-nav-node="OrderService"/,
+      `panel should render a deploy nav button for OrderService; saw HTML: ${html.slice(0, 600)}`,
+    );
+
+    await driver.executeScript(
+      "const btn = document.querySelector('[data-nav-view=\"deploy\"]');" +
+        "if (!btn) throw new Error('deploy nav button not found');" +
+        "btn.click();",
+    );
+    await webview.switchBack();
+    inWebViewFrame = false;
+    await driver.sleep(800);
+    await webview.switchToFrame();
+    inWebViewFrame = true;
+
+    await driver.wait(
+      async () => await isViewActive("deploy"),
+      ELEMENT_TIMEOUT_MS,
+      "deploy view did not become active after clicking the deploy nav button",
+    );
+    assert.strictEqual(
+      await isViewActive("deploy"),
+      true,
+      "Deploy toolbar button should carry the active style after deploy nav click",
     );
   });
 });

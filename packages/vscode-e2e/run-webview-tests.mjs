@@ -40,11 +40,12 @@ fs.mkdirSync(at0038FixtureDir, { recursive: true });
 // reach via VS Code's "File: Open File…" command. We do this in the
 // runner (rather than committing a fixture under fixtures/) so the path
 // is absolute + writable in the CI sandbox. The content mirrors the
-// AT-0039 spec fixture: OrderService has a Markdown description block,
-// links, and a team (so the detail-panel content TC can assert all
-// three sections), Customer is a leaf user with a role (used by
-// TC-01 / TC-03 / TC-04 / TC-08), and OrderManagement is a leaf inside
-// OrderService (referenced by TC-06).
+// AT-0039 spec fixture and is also reused by AT-0042-vscode (cross-
+// diagram navigation): OrderService has a Markdown description block,
+// links, and a team (AT-0039 TC-02) plus a matching deploy unit
+// (AT-0042 TC-1 / TC-2). UserService has a team but no deploy block
+// (AT-0042 TC-5). Customer is a leaf user with a role (AT-0039 TC-01
+// / TC-03 / TC-04 / TC-08).
 fs.writeFileSync(
   fixtureKrs,
   `system Demo {
@@ -63,11 +64,22 @@ Handles **order processing** and payment.
     domain OrderManagement {}
     domain Inventory {}
   }
+  service UserService {
+    team "User Team"
+  }
   user Customer [human] {
     description "A customer who purchases products."
     role "Buyer"
   }
   Customer -> OrderService "places an order"
+}
+
+deploy "production" {
+  oci "order-svc" {
+    image "order:1.0"
+    runtime "Node 20"
+    realizes OrderService
+  }
 }
 `,
 );
