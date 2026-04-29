@@ -153,6 +153,10 @@ export const en: Translations = {
     legendTitle
       ? `legend "${legendTitle}": ref ${target} does not match any node or style rule`
       : `legend ref ${target} does not match any node or style rule`,
+  "warning.styleColumnInvalidValue.message": ({ nodeId, value }) =>
+    `column: "${value}" on #${nodeId} is not one of left / center / right — ignored`,
+  "warning.styleColumnIgnoredNonSystemView.message": ({ nodeId, viewType }) =>
+    `column hint on #${nodeId} is ignored in ${viewType} view (layout hints currently apply only to system view)`,
 
   // Diagnostics (rendered in PreviewPane's diagnostic banner)
   "diagnostic.tokenTypeMismatch.message": ({ expected, got, value }) =>

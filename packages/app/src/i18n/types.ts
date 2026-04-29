@@ -158,6 +158,11 @@ export type Translations = {
     target: string;
     legendTitle?: string;
   }) => string;
+  "warning.styleColumnInvalidValue.message": (params: { nodeId: string; value: string }) => string;
+  "warning.styleColumnIgnoredNonSystemView.message": (params: {
+    nodeId: string;
+    viewType: "deploy" | "org";
+  }) => string;
 
   // Diagnostic messages (Phase D.2) — rendered in PreviewPane's diagnostic
   // banner. One entry per DiagnosticCode; codes with branching messages

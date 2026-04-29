@@ -20,7 +20,9 @@ export type WarningKind =
   | "cross-system-ref-unresolved"
   | "cyclic-dependency"
   | "delivers-target-not-client"
-  | "legend-ref-unresolved";
+  | "legend-ref-unresolved"
+  | "style-column-invalid-value"
+  | "style-column-ignored-non-system-view";
 
 /**
  * Per-kind params shape. Each entry carries only the structured data needed
@@ -81,6 +83,29 @@ export interface WarningParamsByKind {
     target: string;
     /** Optional title of the legend block, for context in the message. */
     legendTitle?: string;
+  };
+  /**
+   * A `.krs.style` rule declared `column: <foo>` with a value that is not
+   * one of `left` / `center` / `right`. The resolver discards the
+   * declaration; the surface is informational so the author can fix the
+   * typo.
+   */
+  "style-column-invalid-value": {
+    /** id of the node whose hint was rejected */
+    nodeId: string;
+    /** The invalid value as written in the source. */
+    value: string;
+  };
+  /**
+   * A `column` hint was resolved for a node, but the current view is not
+   * `system`. Layout hints only apply to system view; the renderer
+   * surfaces this so authors who target a deploy / org node by id are
+   * not silently surprised.
+   */
+  "style-column-ignored-non-system-view": {
+    nodeId: string;
+    /** "deploy" or "org" */
+    viewType: "deploy" | "org";
   };
 }
 

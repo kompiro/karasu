@@ -1086,3 +1086,115 @@ system S {
     expect(new Set(xs).size).toBe(xs.length);
   });
 });
+
+describe("layout > column hint (#969)", () => {
+  // The column hint buckets nodes inside a layer into [left, middle, right]
+  // before the existing within-layer ordering kicks in. In the system view
+  // the input order *is* declaration order (Q11), so bucketing is the only
+  // x-axis intervention. These tests exercise both the single-system path
+  // and the multi-system path of layoutMultipleSystems().
+  const krs = `
+system S {
+  service A {}
+  service B {}
+  service C {}
+  database DB {}
+}
+`;
+
+  it("places left-bucket nodes before middle, right-bucket after middle (single-system path)", () => {
+    const slice = parseAndExtract(krs);
+    const hints = new Map([
+      ["B", { column: "left" as const }],
+      ["C", { column: "right" as const }],
+    ]);
+    const result = layout(slice, undefined, undefined, hints);
+    const a = result.nodes.get("A")!;
+    const b = result.nodes.get("B")!;
+    const c = result.nodes.get("C")!;
+    expect(b.x).toBeLessThan(a.x);
+    expect(a.x).toBeLessThan(c.x);
+  });
+
+  it("preserves declaration order within each bucket", () => {
+    // Two left-bucket nodes (A, C) must keep declaration order A < C in the
+    // left bucket; B (unspecified) goes to middle.
+    const slice = parseAndExtract(krs);
+    const hints = new Map([
+      ["A", { column: "left" as const }],
+      ["C", { column: "left" as const }],
+    ]);
+    const result = layout(slice, undefined, undefined, hints);
+    const a = result.nodes.get("A")!;
+    const b = result.nodes.get("B")!;
+    const c = result.nodes.get("C")!;
+    expect(a.x).toBeLessThan(c.x);
+    expect(c.x).toBeLessThan(b.x);
+  });
+
+  it("treats column: center as middle (same bucket as unspecified)", () => {
+    const slice = parseAndExtract(krs);
+    const hints = new Map([
+      ["A", { column: "left" as const }],
+      ["B", { column: "center" as const }],
+    ]);
+    const result = layout(slice, undefined, undefined, hints);
+    const a = result.nodes.get("A")!;
+    const b = result.nodes.get("B")!;
+    const c = result.nodes.get("C")!;
+    // A is left, B and C share middle → A < B and A < C.
+    expect(a.x).toBeLessThan(b.x);
+    expect(a.x).toBeLessThan(c.x);
+  });
+
+  it("layout output is unchanged when no hints are passed", () => {
+    const slice = parseAndExtract(krs);
+    const baseline = layout(slice);
+    const explicitEmpty = layout(slice, undefined, undefined, new Map());
+    for (const id of ["A", "B", "C", "DB"]) {
+      expect(explicitEmpty.nodes.get(id)!.x).toBe(baseline.nodes.get(id)!.x);
+    }
+  });
+
+  it("applies bucketing in the multi-system root path", () => {
+    // Two systems forces the layoutMultipleSystems() codepath. The actor +
+    // services in system A trigger the forced-layer codepath so the bucket
+    // pass actually runs (without an actor, assignForcedSystemLayers
+    // returns null and the column hint is intentionally skipped).
+    const slice = parseAndExtract(`
+system A {
+  user U [human]
+  service X {}
+  service Y {}
+  U -> X
+  U -> Y
+}
+system B {
+  service Z {}
+}
+`);
+    const hints = new Map([["Y", { column: "left" as const }]]);
+    const result = layout(slice, undefined, undefined, hints);
+    const x = result.nodes.get("X")!;
+    const y = result.nodes.get("Y")!;
+    expect(y.x).toBeLessThan(x.x);
+  });
+
+  it("no-op when every node is in the same bucket (unspecified)", () => {
+    const slice = parseAndExtract(krs);
+    const baseline = layout(slice);
+    const allCenter = layout(
+      slice,
+      undefined,
+      undefined,
+      new Map([
+        ["A", { column: "center" as const }],
+        ["B", { column: "center" as const }],
+        ["C", { column: "center" as const }],
+      ]),
+    );
+    for (const id of ["A", "B", "C"]) {
+      expect(allCenter.nodes.get(id)!.x).toBe(baseline.nodes.get(id)!.x);
+    }
+  });
+});

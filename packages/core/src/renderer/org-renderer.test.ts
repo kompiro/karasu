@@ -36,6 +36,8 @@ function makeStyles(nodeMap: Map<string, ResolvedNodeStyle> = new Map()): Resolv
     edges: new Map(),
     defaultNodeStyle: DEFAULT_STYLE,
     defaultEdgeStyle: DEFAULT_EDGE_STYLE,
+    layoutHints: new Map(),
+    warnings: [],
   };
 }
 

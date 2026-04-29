@@ -223,7 +223,14 @@ function makeStyles(
   for (const [id, overrides] of nodeOverrides) {
     nodes.set(id, { ...base, ...overrides });
   }
-  return { nodes, edges: new Map(), defaultNodeStyle: base, defaultEdgeStyle: baseEdge };
+  return {
+    nodes,
+    edges: new Map(),
+    defaultNodeStyle: base,
+    defaultEdgeStyle: baseEdge,
+    layoutHints: new Map(),
+    warnings: [],
+  };
 }
 
 describe("renderOrgTreeView — styles option", () => {

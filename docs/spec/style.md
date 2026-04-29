@@ -87,6 +87,45 @@ service[external] {
 
 ---
 
+## Layout hints (escape hatch)
+
+> **Use as a last resort.** karasu's auto-layout (rows by kind + reachability,
+> orthogonal edge routing, port distribution) handles most diagrams without
+> input. A layout hint is appropriate only when the auto-layout cannot
+> express the author's intent — e.g. an admin actor that must read on the
+> right, or external services grouped to one side. Reach for the
+> heuristics first; reach for hints last.
+
+### `column` — `left | center | right`
+
+Buckets a node into one of three columns within its layer. The middle
+bucket merges `center` and unspecified nodes, so authors can pin only the
+extremes:
+
+```css
+service[external]      { column: right; }
+queue, database, storage { column: center; }
+/* internal services left unspecified — they fall into the middle bucket */
+```
+
+Within each bucket, the existing within-layer order is preserved
+(declaration order in system view; barycenter elsewhere). The hint does
+**not** move a node to a different layer (row); for that, file an
+auto-layout heuristic issue rather than reaching for a new hint.
+
+### Scope
+
+| View | Behavior |
+| --- | --- |
+| `system` | Honored as described above. |
+| `deploy` | Ignored. A `style-column-ignored-non-system-view` warning is emitted on resolution. |
+| `org`    | Ignored. Same warning. |
+
+Invalid values (anything other than `left` / `center` / `right`) emit a
+`style-column-invalid-value` warning and are dropped.
+
+---
+
 ## @import scope and conflicts
 
 - Global scope (applies to the entire file).
