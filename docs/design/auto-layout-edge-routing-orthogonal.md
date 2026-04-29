@@ -214,13 +214,34 @@ export interface LayoutEdge {
 
 各 Phase ごとに別 PR を切るかは実装中の差分量を見て判断する。
 
-## 未解決事項
+## スコープ外（別 Issue で扱う）
 
-- ghost domain edge / cyclic edge も skip-layer 化の対象に含めるか。最初は
-  対象外（現行直線のまま）とし、Phase 2 完了後に拡張するか別 Issue で扱う。
-- 横方向レイアウト（layered horizontally）モードがいずれ入ったときに、
-  チャネル方向の前提（垂直層 → 水平 channel）を抽象化する必要がある。
-  現状は垂直前提でハードコードする。
-- 同一 channel に多数のエッジが入ったときのレーン数上限。N が大きいほど
-  channel が高くなり、レイアウト全体の縦方向スペースを圧迫する。
-  Phase 3 で実例を見ながら閾値を決める（暫定: max 4 lanes / channel）。
+- **ghost domain edge / cyclic edge は対象外**。これらは現行通りの直線描画を
+  維持する。理由:
+  - ghost domain edge はシステム横断の implicit edge で、共有レイヤスタックの
+    概念が成立しない（`fromIsAbove` ヒューリスティクスで top/bottom anchor を
+    切り替える既存ロジックを温存する）。
+  - cyclic edge は `krs-edge--cyclic` クラスで back-arc として視覚的に区別
+    されている。同じ channel に直交化すると forward edge と衝突して
+    back-arc セマンティクスが見えにくくなる。
+  - 必要があれば本 Issue 完了後に follow-up Issue を立てる。
+
+## 方向抽象化（YAGNI）
+
+karasu には現状「横方向 layered モード」は無い（行は上から下に積まれる）。
+本実装はこの **垂直スタック前提でハードコード** する（channel は水平、port は
+top/bottom）。横方向モードが将来導入された場合は `edge-routing-channels.ts`
+モジュール単位でリファクタする。今はロードマップに無いので投機的抽象化を
+避ける。
+
+## レーン数上限（Phase 3 で確定）
+
+同一 channel のレーン数上限は **Phase 3 で実データを見てから決める**。
+Phase 1–2 は上限なしで実装し、Phase 3 で密な fan-out を持つ実例
+（EC Platform 等）の必要レーン数を観測してから次のいずれかを選ぶ:
+
+- 上限なしで chanel を必要なだけ拡張
+- N 本までは個別レーン、超過分は単一バンドルに集約して `+N more` 風に表示
+
+判断材料が無い段階で先に決めると外す可能性が高いので、Phase 1–2 の
+PR に判断を含めない。
