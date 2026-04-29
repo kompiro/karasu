@@ -382,22 +382,32 @@ function resolveLegendRefColor(
   sheets: StyleSheet[],
   usage: LegendUsage | undefined,
 ): string | null {
-  let best: { rule: StyleRule; specificity: number; sourceIndex: number } | null = null;
+  // Per-property cascade merge across every matching rule, mirroring
+  // `mergeMatchingProperties` in resolver/style-resolver.ts. Picking a
+  // single "best" rule and reading its background-color/badge-color used
+  // to lose the swatch in icon mode (Issue #1001): the icon-theme rule
+  // (e.g. `service { shape: url(...) }`) tied on specificity with the
+  // builtin `service { background-color: ... }` rule and won as best
+  // because it was declared later — but it only set `shape`, so no
+  // color was found.
+  const matching: { rule: StyleRule; specificity: number; sourceIndex: number }[] = [];
   for (const sheet of sheets) {
     for (const rule of sheet.rules) {
       if (!ruleMatchesTarget(rule.selector, target)) continue;
-      if (
-        best === null ||
-        rule.specificity > best.specificity ||
-        (rule.specificity === best.specificity && rule.sourceIndex >= best.sourceIndex)
-      ) {
-        best = { rule, specificity: rule.specificity, sourceIndex: rule.sourceIndex };
-      }
+      matching.push({
+        rule,
+        specificity: rule.specificity,
+        sourceIndex: rule.sourceIndex,
+      });
     }
   }
+  matching.sort((a, b) => a.specificity - b.specificity || a.sourceIndex - b.sourceIndex);
+  const merged: Record<string, string> = {};
+  for (const { rule } of matching) Object.assign(merged, rule.properties);
+
   // Prefer background-color for the main swatch; fall back to badge-color
   // (annotation rules in the builtin sheet often paint via badge-color).
-  const painted = best?.rule.properties["background-color"] ?? best?.rule.properties["badge-color"];
+  const painted = merged["background-color"] ?? merged["badge-color"];
   if (painted) return painted;
   // No painting rule (or matching rule that doesn't paint). If the target
   // is in use on at least one node, the ref is still semantically valid —

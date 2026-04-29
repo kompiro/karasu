@@ -255,6 +255,43 @@ legend "凡例" {
     expect(result.svg).toContain('fill="#9CA3AF"');
   });
 
+  it("preserves builtin kind colors in icon mode (Issue #1001)", () => {
+    // In icon mode, the icon-theme stylesheet is appended last and
+    // contributes `service { shape: url(...) }` — same specificity as
+    // the builtin `service { background-color: ... }`. The legend
+    // resolver merges properties across the cascade so the swatch keeps
+    // the builtin color rather than dropping (because the icon-theme
+    // rule has no color of its own).
+    const krs = `
+system Demo {
+  service Api { label "API" }
+}
+legend "凡例" {
+  ref service "サービス"
+}
+`;
+    const result = compile(krs, { diagramType: "system", displayMode: "icon" });
+    expect(result.svg).toContain("legend-footer");
+    expect(result.svg).toContain("サービス");
+    // Builtin service { background-color: #0369A1 } survives the cascade.
+    expect(result.svg).toContain('fill="#0369A1"');
+  });
+
+  it("preserves builtin tag colors in icon mode for [external] (Issue #1001)", () => {
+    const krs = `
+system Demo {
+  service Stripe [external] { label "Stripe" }
+}
+legend "凡例" {
+  ref [external] "外部"
+}
+`;
+    const result = compile(krs, { diagramType: "system", displayMode: "icon" });
+    expect(result.svg).toContain("外部");
+    // Builtin [external] { background-color: #1F2937 }.
+    expect(result.svg).toContain('fill="#1F2937"');
+  });
+
   it("renders a footer on the org view", () => {
     const krs = `${ORG_KRS}
 legend "Owner" {
