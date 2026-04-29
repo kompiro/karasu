@@ -895,3 +895,76 @@ function segmentCrossesRectInterior(
   }
   return t1 - t0 > 1e-6;
 }
+
+describe("layout > port distribution (Phase 3)", () => {
+  it("spreads multiple downward edges from a hub across distinct x ports", () => {
+    const slice = parseAndExtract(`
+system S {
+  service Hub {}
+  service A {}
+  service B {}
+  service C {}
+  Hub -> A
+  Hub -> B
+  Hub -> C
+}
+    `);
+    const result = layout(slice);
+    const outgoing = result.edges.filter((e) => e.from === "Hub");
+    expect(outgoing).toHaveLength(3);
+    const xs = outgoing.map((e) => e.fromPoint.x).sort((a, b) => a - b);
+    // All three ports must be distinct.
+    expect(new Set(xs).size).toBe(3);
+    // Ports stay inside the hub's bottom side.
+    const hub = result.nodes.get("Hub")!;
+    for (const x of xs) {
+      expect(x).toBeGreaterThanOrEqual(hub.x);
+      expect(x).toBeLessThanOrEqual(hub.x + hub.width);
+    }
+  });
+});
+
+describe("layout > port distribution + orthogonal routing interaction", () => {
+  it("distributed ports do not introduce new obstacle crossings (Phase 3 + Phase 2 cooperate)", () => {
+    // Hub fanning out across two rows: row 0 = top hub, row 1 = three
+    // siblings between (acting as potential obstacles), row 2 = three
+    // targets below. After port distribution spreads the hub's outgoing
+    // edges, each must either be obstacle-free or get routed orthogonally
+    // by Phase 2 — never silently cross an intermediate node.
+    const slice = parseAndExtract(`
+system S {
+  service Hub {}
+  service Mid1 {}
+  service Mid2 {}
+  service Mid3 {}
+  service Bot1 {}
+  service Bot2 {}
+  service Bot3 {}
+  Hub -> Mid1
+  Hub -> Mid2
+  Hub -> Mid3
+  Hub -> Bot1
+  Hub -> Bot2
+  Hub -> Bot3
+}
+    `);
+    const result = layout(slice);
+    const mids = ["Mid1", "Mid2", "Mid3"].map((id) => result.nodes.get(id)!);
+    const targets = ["Bot1", "Bot2", "Bot3"];
+
+    for (const targetId of targets) {
+      const edge = result.edges.find((e) => e.from === "Hub" && e.to === targetId);
+      expect(edge).toBeDefined();
+      const path = [edge!.fromPoint, ...(edge!.waypoints ?? []), edge!.toPoint];
+      // No segment of the routed path may cross any Mid* card's interior.
+      for (const mid of mids) {
+        expect(pathCrossesRect(path, mid)).toBe(false);
+      }
+    }
+
+    // Hub-side ports must be distinct (port distribution succeeded).
+    const hubEdges = result.edges.filter((e) => e.from === "Hub");
+    const xs = hubEdges.map((e) => e.fromPoint.x);
+    expect(new Set(xs).size).toBe(xs.length);
+  });
+});

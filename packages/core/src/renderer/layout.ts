@@ -12,6 +12,8 @@ import { summarizeDescription } from "./description-summary.js";
 import { CHAR_WIDTH, NODE_PADDING_X, NODE_PADDING_Y } from "./rendering-constants.js";
 import { sortByBarycenter } from "./layer-layout-logics.js";
 import { routeOrthogonalEdges } from "./edge-routing-channels.js";
+import { distributePorts } from "./edge-routing-ports.js";
+import { distributeChannelLanes } from "./edge-routing-lanes.js";
 
 export type LayoutNodeProperties = CommonProperties & {
   role?: string;
@@ -741,11 +743,20 @@ export function layout(
   // Compute all edges (regular + ghost)
   const layoutEdges = computeLayoutEdges(viewSlice, layoutNodes, layers, containers, allEdges);
 
-  // Apply orthogonal channel routing to skip-layer edges that would cross
-  // intermediate node cards. Only sets `waypoints`; same-layer / adjacent
-  // edges keep their straight lines. See docs/design/auto-layout-edge-
-  // routing-orthogonal.md.
+  // Phase 3: distribute ports across each node side that hosts ≥ 2 edges,
+  // so labels separate horizontally / vertically instead of stacking. Must
+  // run before channel routing so the orthogonal pass uses the new ports.
+  // See ADR-20260429-01 and Issue #996.
+  distributePorts(layoutNodes, layoutEdges);
+
+  // Phase 2: orthogonal channel routing for skip-layer edges that would
+  // cross intermediate node cards. Sets `waypoints` only when needed.
+  // See ADR-20260429-01.
   routeOrthogonalEdges(layoutNodes, layoutEdges);
+
+  // Phase 3: stagger horizontal segments that share an inter-row channel
+  // across distinct lanes. No-op when each channel hosts ≤ 1 edge.
+  distributeChannelLanes(layoutEdges);
 
   // Normalize coordinates and compute dimensions
   normalizeCoordinates(containers, layoutNodes, layoutEdges);
