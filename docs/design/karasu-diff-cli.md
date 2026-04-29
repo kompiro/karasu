@@ -115,7 +115,7 @@ karasu には既にこの問題への解として **アプリ内 graphical diff 
 
 ## 未解決事項 / フォローアップ
 
-- **bundled all-views diff**: 案 C の検討材料。需要が確認できたら `buildAllViewsSvgDiffProject` を core に追加し、CLI から `--view all`（or 既定）で呼べるようにする。
+- ~~**bundled all-views diff**~~: follow-up Issue [#1025](https://github.com/kompiro/karasu/issues/1025) に切り出した。core に `buildAllViewsSvgDiffProject` を追加して CLI 既定値を bundle に切り替える形を想定している。
 - **drawio 形式の diff**: `karasu render --format drawio` の diff 版。layout escape hatch を diff でも使いたいケース用。`compile*Diff` が drawio を吐く API を持っていないので新規開発が必要。follow-up。
 - **tempfile leak on SIGKILL**: 通常パスでは `finally` で削除するが、プロセスが強制終了されると `.karasu-diff-XXXXXX/` が残る。`process.on("exit")` でクリーンアップを追加するか、`.gitignore` で握りつぶすか。実害は小さい。
 
