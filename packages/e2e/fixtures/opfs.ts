@@ -50,13 +50,24 @@ export type SeedOptions = {
    * - `"memory"`: skip OPFS seeding and load `MemoryModeApp` (`?mode=memory`).
    */
   mode?: Mode;
+  /**
+   * Pin `localStorage["karasu-locale"]` so English UI strings stay stable
+   * across CI runners with different `navigator.language`. Default: `"en"`.
+   * Pass `null` to opt out (e.g. when explicitly verifying Japanese UI).
+   */
+  pinLocale?: "en" | "ja" | null;
+};
+
+export type ResetOptions = {
+  /** Same as `SeedOptions.pinLocale`. Default: `"en"`. */
+  pinLocale?: "en" | "ja" | null;
 };
 
 export type OpfsFixture = {
   /** Wipe OPFS + localStorage, then optionally seed projects/last-project. */
   seed(options?: SeedOptions): Promise<void>;
   /** Wipe OPFS + localStorage without seeding anything. */
-  reset(): Promise<void>;
+  reset(options?: ResetOptions): Promise<void>;
   /** Read a file from OPFS, or `null` if the path does not exist. */
   read(path: string): Promise<string | null>;
   /** Navigate to the app, applying `?mode=memory` when the fixture is in memory mode. */
@@ -69,6 +80,8 @@ const META_PATH_DIR = "meta";
 const META_PATH_FILE = "projects.json";
 const PROJECTS_DIR = "projects";
 const LAST_PROJECT_KEY = "karasu-last-project-id";
+const LOCALE_KEY = "karasu-locale";
+const DEFAULT_PIN_LOCALE: "en" | "ja" | null = "en";
 
 export const test = base.extend<{ opfs: OpfsFixture }>({
   opfs: async ({ page, baseURL }, use) => {
@@ -103,15 +116,29 @@ export const test = base.extend<{ opfs: OpfsFixture }>({
       });
     };
 
-    const reset = async () => {
+    const applyLocalePin = async (pinLocale: "en" | "ja" | null) => {
+      if (pinLocale === null) return;
+      await page.evaluate(
+        ({ key, value }) => {
+          localStorage.setItem(key, value);
+        },
+        { key: LOCALE_KEY, value: pinLocale },
+      );
+    };
+
+    const reset = async (options: ResetOptions = {}) => {
+      const pinLocale = options.pinLocale === undefined ? DEFAULT_PIN_LOCALE : options.pinLocale;
       await ensureOrigin();
       await wipe();
+      await applyLocalePin(pinLocale);
     };
 
     const seed = async (options: SeedOptions = {}) => {
       mode = options.mode ?? "opfs";
+      const pinLocale = options.pinLocale === undefined ? DEFAULT_PIN_LOCALE : options.pinLocale;
       await ensureOrigin();
       await wipe();
+      await applyLocalePin(pinLocale);
 
       await page.evaluate(
         async ({

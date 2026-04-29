@@ -37,13 +37,13 @@ test("seeded project is preselected", async ({ page, opfs }) => {
 
 ### API
 
-| Method                     | Purpose                                                                                         |
-| -------------------------- | ----------------------------------------------------------------------------------------------- |
-| `opfs.seed(options)`       | Wipe OPFS + `localStorage`, then write `projects`, `lastProjectId`, and remember the `mode`.    |
-| `opfs.reset()`             | Wipe OPFS + `localStorage` without seeding.                                                     |
-| `opfs.read(path)`          | Read a file from OPFS (returns `null` if missing).                                              |
-| `opfs.gotoApp(path = "/")` | Navigate to the app, appending `?mode=memory` automatically when the fixture is in memory mode. |
-| `opfs.mode`                | The current mode (`"opfs"` by default; updated by `seed()`).                                    |
+| Method                     | Purpose                                                                                                                         |
+| -------------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
+| `opfs.seed(options)`       | Wipe OPFS + `localStorage`, pin `karasu-locale=en` by default, then write `projects`, `lastProjectId`, and remember the `mode`. |
+| `opfs.reset(options)`      | Wipe OPFS + `localStorage` without seeding. Re-pins `karasu-locale=en` by default.                                              |
+| `opfs.read(path)`          | Read a file from OPFS (returns `null` if missing).                                                                              |
+| `opfs.gotoApp(path = "/")` | Navigate to the app, appending `?mode=memory` automatically when the fixture is in memory mode.                                 |
+| `opfs.mode`                | The current mode (`"opfs"` by default; updated by `seed()`).                                                                    |
 
 `seed()` and `reset()` are safe to call before or between `gotoApp()`
 calls. The fixture establishes the OPFS origin internally by booting
@@ -95,6 +95,12 @@ This keeps the cost local to the AT that needs it; existing tests
   separately.
 - **`localStorage` is wiped on every `seed()` / `reset()`** so the app
   cannot restore stale `lastProjectId` from a previous run.
+- **`karasu-locale` is pinned to `"en"` by default** after the wipe so
+  English UI strings (button labels, empty-state copy, toolbar text)
+  stay stable on CI runners with non-English `navigator.language`. Pass
+  `pinLocale: null` to either `seed()` or `reset()` to opt out — e.g.
+  when the test explicitly verifies Japanese UI. Pass `pinLocale: "ja"`
+  to pin Japanese explicitly.
 
 ## `anthropic.ts` — Anthropic transport mock
 

@@ -64,6 +64,33 @@ test.describe("OPFS fixture smoke", () => {
     expect(opfs.mode).toBe("memory");
   });
 
+  test("seed() pins karasu-locale=en by default after wiping localStorage (#1007)", async ({
+    page,
+    opfs,
+  }) => {
+    await opfs.seed({ projects: [], lastProjectId: undefined });
+    const locale = await page.evaluate(() => localStorage.getItem("karasu-locale"));
+    expect(locale).toBe("en");
+  });
+
+  test("reset() also pins karasu-locale=en by default (#1007)", async ({ page, opfs }) => {
+    await opfs.reset();
+    const locale = await page.evaluate(() => localStorage.getItem("karasu-locale"));
+    expect(locale).toBe("en");
+  });
+
+  test("seed({ pinLocale: null }) leaves karasu-locale unset (#1007)", async ({ page, opfs }) => {
+    await opfs.seed({ pinLocale: null });
+    const locale = await page.evaluate(() => localStorage.getItem("karasu-locale"));
+    expect(locale).toBeNull();
+  });
+
+  test("seed({ pinLocale: 'ja' }) pins karasu-locale=ja (#1007)", async ({ page, opfs }) => {
+    await opfs.seed({ pinLocale: "ja" });
+    const locale = await page.evaluate(() => localStorage.getItem("karasu-locale"));
+    expect(locale).toBe("ja");
+  });
+
   test("seed({ mode: 'memory', projects }) silently drops the projects payload", async ({
     opfs,
   }) => {

@@ -1,7 +1,7 @@
 import type { Page } from "@playwright/test";
 import { replaceEditorContent } from "../fixtures/editor.js";
 import { expect, test } from "../fixtures/opfs.js";
-import type { Mode } from "../fixtures/opfs.js";
+import type { Mode, OpfsFixture } from "../fixtures/opfs.js";
 
 /**
  * AT-0014: MemoryModeApp / ProjectModeApp unification.
@@ -62,12 +62,7 @@ deploy "Production" {
 }
 `;
 
-async function bootApp(
-  page: Page,
-  opfs: { seed: (o?: unknown) => Promise<void>; gotoApp: (path?: string) => Promise<void> },
-  mode: Mode,
-  initialContent: string,
-) {
+async function bootApp(page: Page, opfs: OpfsFixture, mode: Mode, initialContent: string) {
   if (mode === "opfs") {
     await opfs.seed({
       mode: "opfs",
