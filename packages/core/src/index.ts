@@ -166,6 +166,7 @@ import {
 
 import type { DisplayMode } from "./renderer/layout.js";
 import { renderOrgView as _renderOrgView } from "./renderer/org-renderer.js";
+import { collectLegendUsage } from "./legend/usage.js";
 import { renderDeploy } from "./renderer/deploy-renderer.js";
 import { extractView, type ViewPath } from "./view/view-extract.js";
 import { withUnassignedSystem } from "./view/unassigned-system.js";
@@ -324,6 +325,7 @@ function _compileFromPreparedInput(
       emptyLabels: emptyStateLabels,
       legends: krsFile.legends,
       styleSheets: resolveSheets,
+      legendUsage: collectLegendUsage(krsFile),
     });
     return {
       diagramType: "org",
@@ -357,6 +359,7 @@ function _compileFromPreparedInput(
       emptyLabels: emptyStateLabels,
       legends: krsFile.legends,
       styleSheets: resolveSheets,
+      legendUsage: collectLegendUsage(krsFile),
       viewScope: "deploy",
     });
     const nodeMetadata = buildDeployNodeMetadata(deploySliceForStyle);
@@ -386,6 +389,7 @@ function _compileFromPreparedInput(
     emptyLabels: emptyStateLabels,
     legends: krsFile.legends,
     styleSheets: resolveSheets,
+    legendUsage: collectLegendUsage(krsFile),
     viewScope: "system",
   });
   const nodeMetadata = buildNodeMetadata(

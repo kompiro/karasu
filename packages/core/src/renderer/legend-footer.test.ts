@@ -175,6 +175,86 @@ legend "Owner" {
     expect(heightAttr(withLegend.svg)).toBeGreaterThan(heightAttr(without.svg));
   });
 
+  it("emits a fallback swatch for a ref whose tag is in use but unstyled (Issue #999)", () => {
+    // `[human]` is documented in spec/tags-annotations.md as having no
+    // default style impact, but it appears on real user nodes — so the
+    // legend ref is semantically valid and must be shown. The renderer
+    // falls back to a neutral swatch (#9CA3AF).
+    const krs = `
+system Demo {
+  user Customer [human] {}
+  service Api {}
+  Customer -> Api
+}
+legend "凡例" {
+  ref [human] "人間ユーザー"
+}
+`;
+    const result = compile(krs, { diagramType: "system" });
+    expect(result.svg).toContain("legend-footer");
+    expect(result.svg).toContain("人間ユーザー");
+    expect(result.svg).toContain('fill="#9CA3AF"');
+    // No legend-ref-unresolved warning: the resolver agreed the ref
+    // resolves (annotation in use), and the renderer now agrees too.
+    const unresolved = result.warnings.filter((w) => w.kind === "legend-ref-unresolved");
+    expect(unresolved).toHaveLength(0);
+  });
+
+  it("still drops a ref whose target is unused (regression check)", () => {
+    // `@gone` has no nodes carrying it and no style rule paints it. The
+    // legend footer must keep dropping these so the prior unresolved-ref
+    // behavior is preserved.
+    const krs = `${SYSTEM_KRS}
+legend {
+  swatch #2563EB "Resolved swatch"
+  ref @gone "Unresolved annotation"
+}
+`;
+    const result = compile(krs, { diagramType: "system" });
+    expect(result.svg).toContain("Resolved swatch");
+    expect(result.svg).not.toContain("Unresolved annotation");
+  });
+
+  it("emits a fallback swatch via the org renderer too (Issue #999)", () => {
+    // Verify the legendUsage threading is wired into the org renderer
+    // path, not just the system renderer. `[mobile]` has no builtin
+    // style rule but appears on a client node, so the legend ref must
+    // surface with the fallback swatch when the org view is rendered.
+    const krs = `
+system S {
+  client App [mobile] { label "App" }
+}
+organization Acme {
+  team Backend { label "Backend" }
+}
+legend "凡例" {
+  ref [mobile] "モバイル"
+}
+`;
+    const result = compile(krs, { diagramType: "org" });
+    expect(result.svg).toContain("legend-footer");
+    expect(result.svg).toContain("モバイル");
+    expect(result.svg).toContain('fill="#9CA3AF"');
+  });
+
+  it("emits a fallback swatch for a selector ref pointing at an in-use node id (Issue #999)", () => {
+    // `ref #ApiNode` resolves to a real node id, but no style rule
+    // paints `#ApiNode`. The selector branch of legendRefHasUsage must
+    // pick this up and trigger the same fallback.
+    const krs = `
+system Demo {
+  service ApiNode { label "API" }
+}
+legend "凡例" {
+  ref #ApiNode "メイン API"
+}
+`;
+    const result = compile(krs, { diagramType: "system" });
+    expect(result.svg).toContain("legend-footer");
+    expect(result.svg).toContain("メイン API");
+    expect(result.svg).toContain('fill="#9CA3AF"');
+  });
+
   it("renders a footer on the org view", () => {
     const krs = `${ORG_KRS}
 legend "Owner" {

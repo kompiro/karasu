@@ -21,6 +21,7 @@ import { nodeStyleKey } from "../resolver/style-resolver.js";
 import type { NodeDiffMeta } from "../diff/view-diff.js";
 import { DEFAULT_EMPTY_STATE_LABELS, type EmptyStateLabels } from "./empty-state-labels.js";
 import type { LegendBlock, LegendViewScope } from "../types/ast.js";
+import type { LegendUsage } from "../legend/usage.js";
 import type { StyleSheet } from "../types/style.js";
 
 const GHOST_OPACITY = 0.3;
@@ -70,6 +71,12 @@ export interface RenderOptions {
   legends?: LegendBlock[];
   /** Resolved style sheets, used by the legend footer to color `ref` entries. */
   styleSheets?: StyleSheet[];
+  /**
+   * Tag/annotation/id/kind usage from the file. Lets the legend footer
+   * fall back to a neutral swatch for refs that are in use on real nodes
+   * but not painted by any style rule (e.g. `[human]`).
+   */
+  legendUsage?: LegendUsage;
   /**
    * Which view this render produces. Drives the legend's scope filter so
    * a `legend deploy "..."` block does not leak into the system view.
@@ -277,6 +284,7 @@ export function renderFromLayout(
       options.viewScope,
       options.styleSheets ?? [],
       width,
+      options.legendUsage,
     );
     if (footer) {
       parts.push(el("g", { transform: `translate(0,${height})` }, footer.svg));

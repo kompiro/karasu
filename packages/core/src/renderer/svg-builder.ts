@@ -9,6 +9,7 @@
 
 import type { LegendBlock, LegendEntry, LegendRefTarget, LegendViewScope } from "../types/ast.js";
 import type { StyleRule, StyleSelector, StyleSheet } from "../types/style.js";
+import { type LegendUsage, legendRefHasUsage } from "../legend/usage.js";
 
 type AttrValue = string | number | undefined | null | false;
 type Attrs = Record<string, AttrValue>;
@@ -224,6 +225,11 @@ const LEGEND_LABEL_GAP = 12;
 const LEGEND_BG = "#1F2937";
 const LEGEND_BORDER = "#334155";
 const LEGEND_TEXT = "#E5E7EB";
+// Neutral muted color, used both for legend block titles and as the
+// fallback swatch for refs whose target appears on a real node but no
+// `.krs.style` rule paints them — e.g. semantic-only annotations like
+// `[human]` (Issue #999). Sharing the constant keeps both uses in sync
+// if the palette ever changes.
 const LEGEND_MUTED = "#9CA3AF";
 
 interface LegendFooter {
@@ -242,14 +248,18 @@ interface LegendFooter {
  *
  * Selector resolution mirrors the resolver's `legend-ref-unresolved`
  * detection (`resolver/warnings.ts`): the highest-specificity matching
- * style rule supplies the swatch color. Unresolved refs are skipped so
- * a stale reference does not silently emit a colorless square.
+ * style rule supplies the swatch color. Refs with no node usage *and* no
+ * matching rule are skipped so a stale reference does not silently emit a
+ * colorless square. Refs that *are* in use but have no painting rule fall
+ * back to a neutral swatch so the legend stays informative for semantic-
+ * only annotations like `[human]` (Issue #999).
  */
 export function buildLegendFooter(
   legends: LegendBlock[],
   scope: LegendViewScope,
   sheets: StyleSheet[],
   width: number,
+  usage?: LegendUsage,
 ): LegendFooter | null {
   const applicable = legends.filter((l) => l.scope === undefined || l.scope === scope);
   if (applicable.length === 0) return null;
@@ -260,7 +270,7 @@ export function buildLegendFooter(
   for (const legend of applicable) {
     const rows: { color: string; label: string }[] = [];
     for (const entry of legend.entries) {
-      const color = resolveLegendEntryColor(entry, sheets);
+      const color = resolveLegendEntryColor(entry, sheets, usage);
       if (color === null) continue;
       rows.push({ color, label: entry.label });
     }
@@ -358,12 +368,20 @@ export function buildLegendFooter(
   };
 }
 
-function resolveLegendEntryColor(entry: LegendEntry, sheets: StyleSheet[]): string | null {
+function resolveLegendEntryColor(
+  entry: LegendEntry,
+  sheets: StyleSheet[],
+  usage: LegendUsage | undefined,
+): string | null {
   if (entry.kind === "swatch") return entry.color;
-  return resolveLegendRefColor(entry.target, sheets);
+  return resolveLegendRefColor(entry.target, sheets, usage);
 }
 
-function resolveLegendRefColor(target: LegendRefTarget, sheets: StyleSheet[]): string | null {
+function resolveLegendRefColor(
+  target: LegendRefTarget,
+  sheets: StyleSheet[],
+  usage: LegendUsage | undefined,
+): string | null {
   let best: { rule: StyleRule; specificity: number; sourceIndex: number } | null = null;
   for (const sheet of sheets) {
     for (const rule of sheet.rules) {
@@ -377,10 +395,17 @@ function resolveLegendRefColor(target: LegendRefTarget, sheets: StyleSheet[]): s
       }
     }
   }
-  if (best === null) return null;
   // Prefer background-color for the main swatch; fall back to badge-color
   // (annotation rules in the builtin sheet often paint via badge-color).
-  return best.rule.properties["background-color"] ?? best.rule.properties["badge-color"] ?? null;
+  const painted = best?.rule.properties["background-color"] ?? best?.rule.properties["badge-color"];
+  if (painted) return painted;
+  // No painting rule (or matching rule that doesn't paint). If the target
+  // is in use on at least one node, the ref is still semantically valid —
+  // emit a neutral fallback swatch rather than silently dropping the
+  // entry. If the target is unused, the resolver has already emitted
+  // `legend-ref-unresolved`; we drop it here too.
+  if (usage && legendRefHasUsage(target, usage)) return LEGEND_MUTED;
+  return null;
 }
 
 function ruleMatchesTarget(selector: StyleSelector, target: LegendRefTarget): boolean {

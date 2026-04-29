@@ -1,6 +1,7 @@
 import type { KrsNode, KrsEdge, KrsFile, TeamNode, LegendRefTarget } from "../types/ast.js";
 import type { StyleSheet, StyleSelector } from "../types/style.js";
 import type { Warning } from "../types/warnings.js";
+import { collectLegendUsage, legendRefHasUsage } from "../legend/usage.js";
 
 export function analyze(file: KrsFile, sheets: StyleSheet[], systemSheetCount = 1): Warning[] {
   const warnings: Warning[] = [];
@@ -35,32 +36,10 @@ export function analyze(file: KrsFile, sheets: StyleSheet[], systemSheetCount = 
 function detectUnresolvedLegendRefs(file: KrsFile, sheets: StyleSheet[]): Warning[] {
   if (file.legends.length === 0) return [];
 
-  // Index the file's surface area once, then check each ref against it.
-  const annotationsInUse = new Set<string>();
-  const tagsInUse = new Set<string>();
-  const nodeIds = new Set<string>();
-  const nodeKinds = new Set<string>();
-  function walk(nodes: KrsNode[]): void {
-    for (const node of nodes) {
-      nodeIds.add(node.id);
-      nodeKinds.add(node.kind);
-      for (const a of node.annotations) annotationsInUse.add(a);
-      for (const t of node.tags) tagsInUse.add(t);
-      walk(node.children);
-    }
-  }
-  for (const system of file.systems) {
-    nodeIds.add(system.id);
-    nodeKinds.add(system.kind);
-    walk(system.children);
-  }
-  walk(file.services);
-  walk(file.clients);
-  walk(file.domains);
-  walk(file.databases);
-  walk(file.queues);
-  walk(file.storages);
-
+  // Single source of truth for "is this ref's target in use". The renderer
+  // consumes the same helper (see legend/usage.ts and svg-builder.ts) so
+  // both layers agree on what "resolved" means.
+  const usage = collectLegendUsage(file);
   const stylesIndex = indexStyleSelectors(sheets);
 
   const warnings: Warning[] = [];
@@ -68,14 +47,8 @@ function detectUnresolvedLegendRefs(file: KrsFile, sheets: StyleSheet[]): Warnin
     for (const entry of legend.entries) {
       if (entry.kind !== "ref") continue;
       if (
-        legendRefResolves(
-          entry.target,
-          annotationsInUse,
-          tagsInUse,
-          nodeIds,
-          nodeKinds,
-          stylesIndex,
-        )
+        legendRefHasUsage(entry.target, usage) ||
+        legendRefMatchesStyle(entry.target, stylesIndex)
       ) {
         continue;
       }
@@ -116,31 +89,21 @@ function indexStyleSelectors(sheets: StyleSheet[]): StyleSelectorIndex {
   return { annotations, tags, ids, nodeTypes };
 }
 
-function legendRefResolves(
-  target: LegendRefTarget,
-  annotationsInUse: Set<string>,
-  tagsInUse: Set<string>,
-  nodeIds: Set<string>,
-  nodeKinds: Set<string>,
-  styles: StyleSelectorIndex,
-): boolean {
+function legendRefMatchesStyle(target: LegendRefTarget, styles: StyleSelectorIndex): boolean {
   switch (target.kind) {
     case "annotation":
-      return annotationsInUse.has(target.name) || styles.annotations.has(target.name);
+      return styles.annotations.has(target.name);
     case "tag":
-      return tagsInUse.has(target.name) || styles.tags.has(target.name);
+      return styles.tags.has(target.name);
     case "selector": {
       const sel = target.selector;
-      if (sel.startsWith("#")) {
-        const id = sel.slice(1);
-        return nodeIds.has(id) || styles.ids.has(id);
-      }
+      if (sel.startsWith("#")) return styles.ids.has(sel.slice(1));
       // `.class` selectors are accepted by the parser for forward
       // compatibility, but `.krs.style` does not have CSS-style classes
       // (see docs/spec/style.md). Always unresolved for now.
       if (sel.startsWith(".")) return false;
       // Bare type selector (`service`, `domain`, etc.).
-      return nodeKinds.has(sel) || styles.nodeTypes.has(sel);
+      return styles.nodeTypes.has(sel);
     }
   }
 }

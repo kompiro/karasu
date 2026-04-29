@@ -461,6 +461,9 @@ legend deploy "ホスティング層" {
 - **`swatch`** は hex 値をそのまま使う（3 / 4 / 6 / 8 桁、`#` プレフィックス必須）。
 - **`ref`** は `.krs.style` のカスケードで解決する。一致したルールのうち
   specificity が最も高いものから `background-color`（無ければ `badge-color`）を採用。
+- ターゲットが少なくとも 1 つの実ノードに付いているが painting rule を持たない
+  `ref` は、**中立的なフォールバック swatch** で描画される。これにより
+  `[human]` / `[ai]` のような意味的アノテーション / タグも凡例に表示される。
 - 一致するルールも該当ノードも無い `ref` は**フッターから省略**され、
   warning panel に `legend-ref-unresolved` が表示される。
 - `.class` セレクタはパーサーが受け付けるが、`.krs.style` にクラス概念が

@@ -579,7 +579,8 @@ legend deploy "Hosting tier" {
 
 - **`swatch`** uses the literal hex color verbatim (3, 4, 6, or 8 hex digits, with `#`).
 - **`ref`** resolves through the `.krs.style` cascade. The renderer picks the highest-specificity matching rule and uses its `background-color`, falling back to `badge-color`.
-- A `ref` that matches no rule and no node is **dropped from the rendered footer** and surfaced in the warning panel as `legend-ref-unresolved`. Authors can then either remove the entry or add a matching style rule.
+- A `ref` whose target appears on at least one node in the file but has no painting style rule renders with a **neutral fallback swatch** so semantic-only annotations / tags (e.g. `[human]`, `[ai]`) still surface in the legend.
+- A `ref` that matches no rule **and** no node is **dropped from the rendered footer** and surfaced in the warning panel as `legend-ref-unresolved`. Authors can then either remove the entry or add a matching style rule.
 - `.class` selectors are accepted by the parser for forward compatibility but always resolve as unresolved today (`.krs.style` has no class concept — see [`style.md`](style.md)).
 
 ### Labels are not localized
