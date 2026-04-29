@@ -1,4 +1,5 @@
-import { type Page, expect, test } from "@playwright/test";
+import type { Page } from "@playwright/test";
+import { expect, test } from "../fixtures/opfs.js";
 import { replaceEditorContent } from "../fixtures/editor.js";
 
 /**
@@ -55,8 +56,10 @@ async function goToSystemTab(page: Page) {
 test.describe("AT-0048 Resource shape auto-inference and Icon Mode", () => {
   test("Icon Mode toggle changes active state and embeds icon-card markup for infra nodes (TC-3)", async ({
     page,
+    opfs,
   }) => {
-    await page.goto("/");
+    await opfs.seed({ mode: "memory" });
+    await opfs.gotoApp();
     await replaceEditorContent(page, SAMPLE_KRS);
     await goToSystemTab(page);
 
@@ -88,8 +91,10 @@ test.describe("AT-0048 Resource shape auto-inference and Icon Mode", () => {
 
   test("resource labels resolve from infra declarations in both display modes (TC-5)", async ({
     page,
+    opfs,
   }) => {
-    await page.goto("/");
+    await opfs.seed({ mode: "memory" });
+    await opfs.gotoApp();
     await replaceEditorContent(page, SAMPLE_KRS);
     await goToSystemTab(page);
 

@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect, test } from "../fixtures/opfs.js";
 
 /**
  * AT-0033: Drill-down (all-layers) SVG export.
@@ -23,8 +23,10 @@ import { expect, test } from "@playwright/test";
 test.describe("AT-0033 Drill-down SVG export", () => {
   test("toggle is visible on System and disabled on Deploy (AT-0033-1, AT-0033-3)", async ({
     page,
+    opfs,
   }) => {
-    await page.goto("/");
+    await opfs.reset();
+    await opfs.gotoApp();
 
     const toggle = page.getByRole("button", { name: "Toggle all layers" });
     await expect(toggle).toBeVisible();
@@ -36,8 +38,10 @@ test.describe("AT-0033 Drill-down SVG export", () => {
 
   test("toggling activates and deactivates the all-layers iframe (AT-0033-4, AT-0033-8)", async ({
     page,
+    opfs,
   }) => {
-    await page.goto("/");
+    await opfs.reset();
+    await opfs.gotoApp();
 
     const toggle = page.getByRole("button", { name: "Toggle all layers" });
     await toggle.click();
@@ -51,8 +55,10 @@ test.describe("AT-0033 Drill-down SVG export", () => {
 
   test("Export SVG produces the all-layers file when the toggle is active (AT-0033-9)", async ({
     page,
+    opfs,
   }) => {
-    await page.goto("/");
+    await opfs.reset();
+    await opfs.gotoApp();
 
     await page.getByRole("button", { name: "Toggle all layers" }).click();
 
@@ -75,8 +81,10 @@ test.describe("AT-0033 Drill-down SVG export", () => {
 
   test("Export SVG produces a single-level file when the toggle is inactive (AT-0033-11)", async ({
     page,
+    opfs,
   }) => {
-    await page.goto("/");
+    await opfs.reset();
+    await opfs.gotoApp();
 
     const downloadPromise = page.waitForEvent("download");
     await page.getByRole("button", { name: "Export SVG" }).click();

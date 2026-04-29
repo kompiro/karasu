@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect, test } from "../fixtures/opfs.js";
 import { replaceEditorContent } from "../fixtures/editor.js";
 
 /**
@@ -37,8 +37,12 @@ deploy staging {
 `;
 
 test.describe("AT-0031 Multiple deploy blocks", () => {
-  test("no selector is shown when only one deploy block exists (AT-0031-01)", async ({ page }) => {
-    await page.goto("/");
+  test("no selector is shown when only one deploy block exists (AT-0031-01)", async ({
+    page,
+    opfs,
+  }) => {
+    await opfs.reset();
+    await opfs.gotoApp();
 
     // Default Getting Started project has a single `deploy Production` block.
     await page.getByRole("tab", { name: "Deploy" }).click();
@@ -48,8 +52,10 @@ test.describe("AT-0031 Multiple deploy blocks", () => {
 
   test("selector appears, switches diagram, and persists across tab switch (AT-0031-02/03/05)", async ({
     page,
+    opfs,
   }) => {
-    await page.goto("/");
+    await opfs.seed({ mode: "memory" });
+    await opfs.gotoApp();
 
     await replaceEditorContent(page, MULTI_DEPLOY_KRS);
 

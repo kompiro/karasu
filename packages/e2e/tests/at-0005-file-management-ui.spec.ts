@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect, test } from "../fixtures/opfs.js";
 
 /**
  * AT-0005: File management UI (FileTree CRUD).
@@ -17,8 +17,9 @@ import { expect, test } from "@playwright/test";
  */
 
 test.describe("AT-0005 File management UI", () => {
-  test("header +File button creates a new .krs file (AC-1)", async ({ page }) => {
-    await page.goto("/");
+  test("header +File button creates a new .krs file (AC-1)", async ({ page, opfs }) => {
+    await opfs.reset();
+    await opfs.gotoApp();
 
     await page.getByRole("button", { name: "+File" }).click();
 
@@ -35,8 +36,9 @@ test.describe("AT-0005 File management UI", () => {
     await expect(newItem).toBeVisible();
   });
 
-  test("header +Dir button creates a new directory (AC-1)", async ({ page }) => {
-    await page.goto("/");
+  test("header +Dir button creates a new directory (AC-1)", async ({ page, opfs }) => {
+    await opfs.reset();
+    await opfs.gotoApp();
 
     await page.getByRole("button", { name: "+Dir" }).click();
 
@@ -51,8 +53,9 @@ test.describe("AT-0005 File management UI", () => {
     await expect(newItem).toBeVisible();
   });
 
-  test("Esc cancels the inline input without creating an entry (AC-1)", async ({ page }) => {
-    await page.goto("/");
+  test("Esc cancels the inline input without creating an entry (AC-1)", async ({ page, opfs }) => {
+    await opfs.reset();
+    await opfs.gotoApp();
 
     await page.getByRole("button", { name: "+File" }).click();
     const input = page.locator(".file-tree-inline-input");

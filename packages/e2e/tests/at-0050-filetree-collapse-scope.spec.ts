@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect, test } from "../fixtures/opfs.js";
 
 /**
  * AT-0050: FileTree collapse scope.
@@ -15,8 +15,10 @@ import { expect, test } from "@playwright/test";
 test.describe("AT-0050 FileTree collapse scope", () => {
   test("collapse hides the FileTree while keeping the ProjectSelector toolbar accessible", async ({
     page,
+    opfs,
   }) => {
-    await page.goto("/");
+    await opfs.reset();
+    await opfs.gotoApp();
 
     const projectSelector = page.locator(".project-selector");
     const fileTree = page.locator(".file-tree");
@@ -48,8 +50,10 @@ test.describe("AT-0050 FileTree collapse scope", () => {
 
   test("expand restores the FileTree and preserves the ProjectSelector toolbar", async ({
     page,
+    opfs,
   }) => {
-    await page.goto("/");
+    await opfs.reset();
+    await opfs.gotoApp();
 
     await page.getByRole("button", { name: "Collapse sidebar" }).click();
     await expect(page.locator(".file-tree")).toBeHidden();
@@ -63,8 +67,10 @@ test.describe("AT-0050 FileTree collapse scope", () => {
 
   test("preview focus mode hides both FileTree and ProjectSelector toolbar (regression)", async ({
     page,
+    opfs,
   }) => {
-    await page.goto("/");
+    await opfs.reset();
+    await opfs.gotoApp();
 
     await expect(page.locator(".project-selector")).toBeVisible();
     await expect(page.locator(".file-tree")).toBeVisible();

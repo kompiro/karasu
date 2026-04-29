@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect, test } from "../fixtures/opfs.js";
 
 /**
  * AT-0030: SVG Export — pilot coverage.
@@ -11,8 +11,9 @@ import { expect, test } from "@playwright/test";
  * foundation is proven to work in CI.
  */
 test.describe("AT-0030 SVG Export", () => {
-  test("exports the current view as a valid SVG file", async ({ page }) => {
-    await page.goto("/");
+  test("exports the current view as a valid SVG file", async ({ page, opfs }) => {
+    await opfs.reset();
+    await opfs.gotoApp();
 
     const exportButton = page.getByRole("button", { name: "Export SVG" });
     await expect(exportButton).toBeVisible();

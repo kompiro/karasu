@@ -1,4 +1,5 @@
-import { type Page, expect, test } from "@playwright/test";
+import type { Page } from "@playwright/test";
+import { expect, test } from "../fixtures/opfs.js";
 import { replaceEditorContent } from "../fixtures/editor.js";
 
 /**
@@ -76,8 +77,10 @@ async function expectNoWarnings(page: Page) {
 test.describe("AT-0016 String literal IDs", () => {
   test("logical nodes with hyphenated string literal IDs parse and render labels (AT-0016-1)", async ({
     page,
+    opfs,
   }) => {
-    await page.goto("/");
+    await opfs.seed({ mode: "memory" });
+    await opfs.gotoApp();
     await replaceEditorContent(page, LOGICAL_HYPHENATED_KRS);
 
     await expectNoWarnings(page);
@@ -90,8 +93,10 @@ test.describe("AT-0016 String literal IDs", () => {
 
   test("organization/team/member with string literal IDs parse cleanly (AT-0016-2)", async ({
     page,
+    opfs,
   }) => {
-    await page.goto("/");
+    await opfs.seed({ mode: "memory" });
+    await opfs.gotoApp();
     await replaceEditorContent(page, ORG_LITERAL_KRS);
 
     await expectNoWarnings(page);
@@ -99,8 +104,10 @@ test.describe("AT-0016 String literal IDs", () => {
 
   test("deploy realizes with string literal cross-reference parses cleanly (AT-0016-3)", async ({
     page,
+    opfs,
   }) => {
-    await page.goto("/");
+    await opfs.seed({ mode: "memory" });
+    await opfs.gotoApp();
     await replaceEditorContent(page, DEPLOY_REALIZES_LITERAL_KRS);
 
     await expectNoWarnings(page);

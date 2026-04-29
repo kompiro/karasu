@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect, test } from "../fixtures/opfs.js";
 
 /**
  * AT-0043: Open All Views — bundled SVG popup.
@@ -19,8 +19,9 @@ import { expect, test } from "@playwright/test";
  */
 
 test.describe("AT-0043 Open All Views (bundled SVG popup)", () => {
-  test("button is visible and enabled with a project that has views", async ({ page }) => {
-    await page.goto("/");
+  test("button is visible and enabled with a project that has views", async ({ page, opfs }) => {
+    await opfs.reset();
+    await opfs.gotoApp();
 
     const button = page.getByRole("button", { name: "Open all views in new window" });
     await expect(button).toBeVisible();
@@ -28,8 +29,12 @@ test.describe("AT-0043 Open All Views (bundled SVG popup)", () => {
     await expect(button).toContainText("Open All Views");
   });
 
-  test("clicking the button opens a blob: popup carrying the bundled SVG", async ({ page }) => {
-    await page.goto("/");
+  test("clicking the button opens a blob: popup carrying the bundled SVG", async ({
+    page,
+    opfs,
+  }) => {
+    await opfs.reset();
+    await opfs.gotoApp();
 
     const button = page.getByRole("button", { name: "Open all views in new window" });
     const popupPromise = page.waitForEvent("popup");

@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect, test } from "../fixtures/opfs.js";
 import { replaceEditorContent } from "../fixtures/editor.js";
 
 /**
@@ -48,8 +48,12 @@ const INFRA_KRS = `system ECPlatform {
 `;
 
 test.describe("AT-0047 Infra nodes in System diagram", () => {
-  test("database, queue and storage blocks render as System-level nodes", async ({ page }) => {
-    await page.goto("/");
+  test("database, queue and storage blocks render as System-level nodes", async ({
+    page,
+    opfs,
+  }) => {
+    await opfs.seed({ mode: "memory" });
+    await opfs.gotoApp();
     await replaceEditorContent(page, INFRA_KRS);
 
     for (const id of ["OrderDB", "EventBus", "MediaStorage", "OrderService", "MediaService"]) {
@@ -63,8 +67,9 @@ test.describe("AT-0047 Infra nodes in System diagram", () => {
     }
   });
 
-  test("drilling into OrderService hides System-level infra nodes", async ({ page }) => {
-    await page.goto("/");
+  test("drilling into OrderService hides System-level infra nodes", async ({ page, opfs }) => {
+    await opfs.seed({ mode: "memory" });
+    await opfs.gotoApp();
     await replaceEditorContent(page, INFRA_KRS);
 
     await page.locator('svg [data-node-id="OrderService"]').first().click();
