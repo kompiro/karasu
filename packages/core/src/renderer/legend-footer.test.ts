@@ -277,6 +277,23 @@ legend "凡例" {
     expect(result.svg).toContain('fill="#0369A1"');
   });
 
+  it("preserves builtin annotation badge-color in icon mode (Issue #1001)", () => {
+    // @deprecated paints via badge-color (#EF4444), not background-color.
+    // The cascade merge must still pick this up when icon-theme is layered
+    // on top — closes the annotation × icon-mode coverage matrix point.
+    const krs = `
+system Demo {
+  service Old @deprecated { label "Old" }
+}
+legend "Status" {
+  ref @deprecated "Deprecated"
+}
+`;
+    const result = compile(krs, { diagramType: "system", displayMode: "icon" });
+    expect(result.svg).toContain("Deprecated");
+    expect(result.svg).toContain('fill="#EF4444"');
+  });
+
   it("preserves builtin tag colors in icon mode for [external] (Issue #1001)", () => {
     const krs = `
 system Demo {
