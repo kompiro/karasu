@@ -154,6 +154,10 @@ export type Translations = {
     serviceId: string;
     targetId: string;
   }) => string;
+  "warning.clientCapabilityDuplicate.message": (params: {
+    clientId: string;
+    name: string;
+  }) => string;
   "warning.legendRefUnresolved.message": (params: {
     target: string;
     legendTitle?: string;

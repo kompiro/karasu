@@ -578,6 +578,79 @@ system S {
     expect(result.diagnostics).toEqual([]);
     const client = result.value.systems[0].children[0] as ClientNode;
     expect(client.properties.resources).toEqual([]);
+    expect(client.properties.capabilities).toEqual([]);
+  });
+
+  it("parses flat client capabilities", () => {
+    const result = Parser.parse(`
+system S {
+  client App [mobile] {
+    capability camera
+    capability geolocation
+    capability notification
+  }
+}
+    `);
+    expect(result.diagnostics).toEqual([]);
+    const client = result.value.systems[0].children[0] as ClientNode;
+    expect(client.properties.capabilities.map((c) => c.name)).toEqual([
+      "camera",
+      "geolocation",
+      "notification",
+    ]);
+    expect(client.properties.capabilities[0].label).toBeUndefined();
+    expect(client.properties.capabilities[0].description).toBeUndefined();
+  });
+
+  it("parses block-form capability with label and description", () => {
+    const result = Parser.parse(`
+system S {
+  client App [mobile] {
+    capability camera {
+      label "QR scanning"
+      description "Used to scan QR codes on inspection items"
+    }
+  }
+}
+    `);
+    expect(result.diagnostics).toEqual([]);
+    const client = result.value.systems[0].children[0] as ClientNode;
+    expect(client.properties.capabilities).toHaveLength(1);
+    expect(client.properties.capabilities[0].name).toBe("camera");
+    expect(client.properties.capabilities[0].label).toBe("QR scanning");
+    expect(client.properties.capabilities[0].description).toBe(
+      "Used to scan QR codes on inspection items",
+    );
+  });
+
+  it("accepts capability identifiers outside the recommended set without warnings", () => {
+    const result = Parser.parse(`
+system S {
+  client X [device] {
+    capability remote-config-fetch
+  }
+}
+    `);
+    expect(result.diagnostics).toEqual([]);
+    const client = result.value.systems[0].children[0] as ClientNode;
+    expect(client.properties.capabilities[0].name).toBe("remote-config-fetch");
+  });
+
+  it("parses capabilities mixed with resources", () => {
+    const result = Parser.parse(`
+system S {
+  client App [mobile] {
+    resource keychain "session"
+    capability camera
+    resource indexedDB "outbox"
+    capability geolocation
+  }
+}
+    `);
+    expect(result.diagnostics).toEqual([]);
+    const client = result.value.systems[0].children[0] as ClientNode;
+    expect(client.properties.resources).toHaveLength(2);
+    expect(client.properties.capabilities.map((c) => c.name)).toEqual(["camera", "geolocation"]);
   });
 
   it("rejects role property on client", () => {

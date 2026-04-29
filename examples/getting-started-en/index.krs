@@ -19,6 +19,7 @@ system ECPlatform {
   client MobileApp [mobile] {
     label "Mobile App"
     description "Official iOS / Android app"
+    capability notification
   }
 
   service ECommerce {

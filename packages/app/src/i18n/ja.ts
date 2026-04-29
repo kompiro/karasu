@@ -149,6 +149,8 @@ export const ja: Partial<Translations> = {
   "warning.cyclicDependency.message": ({ path }) => `循環依存を検出しました: ${path}`,
   "warning.deliversTargetNotClient.message": ({ serviceId, targetId }) =>
     `service "${serviceId}" の delivers 先 "${targetId}" は client ノードではありません`,
+  "warning.clientCapabilityDuplicate.message": ({ clientId, name }) =>
+    `client "${clientId}" は capability "${name}" を複数回宣言しています`,
   "warning.legendRefUnresolved.message": ({ target, legendTitle }) =>
     legendTitle
       ? `legend "${legendTitle}": ref ${target} はどのノード・スタイル規則にも一致しません`

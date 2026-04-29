@@ -89,6 +89,31 @@ system Test {
     expect(svg).not.toContain("data-client-resource-count");
   });
 
+  it("renders a capability count badge on the client card", () => {
+    const svg = renderFromSource(`
+system Test {
+  client App [mobile] {
+    label "App"
+    capability camera
+    capability geolocation
+  }
+}
+    `);
+    expect(svg).toContain("🔐 ×2");
+    expect(svg).toContain('data-client-capability-count="2"');
+    expect(svg).toContain("camera, geolocation");
+  });
+
+  it("emits no capability badge when the client has zero capabilities", () => {
+    const svg = renderFromSource(`
+system Test {
+  client Bare [web] { label "Bare" }
+}
+    `);
+    expect(svg).not.toContain("🔐");
+    expect(svg).not.toContain("data-client-capability-count");
+  });
+
   it("renders multiple nodes with edges", () => {
     const svg = renderFromSource(`
 system Test {

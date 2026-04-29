@@ -311,6 +311,7 @@ export class Parser {
       team?: string;
       label?: string;
       resources?: import("../types/ast.js").ClientResource[];
+      capabilities?: import("../types/ast.js").ClientCapability[];
       handles?: string[];
       delivers?: string[];
     },
@@ -464,6 +465,14 @@ export class Parser {
         continue;
       }
 
+      // Client-only: `capability <name>` or `capability <name> { label "..." description "..." }`.
+      // Identifier set is open by design — see docs/design/client-capability-modeling.md.
+      if (kind === "client" && token.type === TokenType.Capability) {
+        properties.capabilities ??= [];
+        properties.capabilities.push(this.parseClientCapability());
+        continue;
+      }
+
       // Check for logical node
       // Infra block kinds (database/queue/storage) are only valid as direct children of system.
       if (this.isLogicalKeyword(token)) {
@@ -519,6 +528,66 @@ export class Parser {
       storageKind: kindName as import("../types/ast.js").ClientResourceKind,
       name: nameToken.value,
       loc: this.range(start.loc, nameToken.loc),
+    };
+  }
+
+  private parseClientCapability(): import("../types/ast.js").ClientCapability {
+    const start = this.expect(TokenType.Capability);
+    const nameToken = this.expect(TokenType.Identifier);
+    // Capability identifiers are kebab-case by convention (e.g. screen-wake-lock,
+    // face-id). The lexer does not include `-` in identifier characters, so it
+    // emits the dash as a separate `Identifier("-")` token. Stitch consecutive
+    // `<ident>-<ident>` runs back together so `screen-wake-lock` parses as one
+    // capability name.
+    let name = nameToken.value;
+    let end: Token = nameToken;
+    while (
+      this.peek().type === TokenType.Identifier &&
+      this.peek().value === "-" &&
+      this.peekAt(1).type === TokenType.Identifier &&
+      this.peekAt(1).value !== "-"
+    ) {
+      this.advance(); // -
+      const next = this.advance();
+      name += `-${next.value}`;
+      end = next;
+    }
+    let label: string | undefined;
+    let description: string | undefined;
+
+    if (this.peek().type === TokenType.LeftBrace) {
+      this.advance();
+      while (this.peek().type !== TokenType.RightBrace && this.peek().type !== TokenType.EOF) {
+        const inner = this.peek();
+        if (inner.type === TokenType.Label) {
+          this.advance();
+          if (this.peek().type === TokenType.StringLiteral) {
+            label = this.advance().value;
+          } else {
+            this.error("expected-string-after", { property: "label" });
+          }
+          continue;
+        }
+        if (inner.type === TokenType.Description) {
+          this.advance();
+          description = this.parseDescriptionValue();
+          continue;
+        }
+        this.error("unexpected-token-in-block", {
+          blockKind: "capability",
+          tokenType: String(inner.type),
+          value: inner.value,
+        });
+        this.advance();
+      }
+      end = this.expect(TokenType.RightBrace);
+    }
+
+    return {
+      name,
+      ...(label !== undefined ? { label } : {}),
+      ...(description !== undefined ? { description } : {}),
+      loc: this.range(start.loc, end.loc),
     };
   }
 
@@ -629,6 +698,7 @@ export class Parser {
       team?: string;
       label?: string;
       resources?: import("../types/ast.js").ClientResource[];
+      capabilities?: import("../types/ast.js").ClientCapability[];
       handles?: string[];
       delivers?: string[];
     } = {
@@ -699,6 +769,7 @@ export class Parser {
             description: properties.description,
             links: properties.links,
             resources: properties.resources ?? [],
+            capabilities: properties.capabilities ?? [],
             ...(properties.handles ? { handles: properties.handles } : {}),
           },
         };

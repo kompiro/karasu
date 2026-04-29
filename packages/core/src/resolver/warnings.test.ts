@@ -355,6 +355,41 @@ system ECPlatform {
   });
 });
 
+describe("client-capability-duplicate warning", () => {
+  it("warns when a client declares the same capability twice", () => {
+    const krs = `
+system S {
+  client App [mobile] {
+    capability camera
+    capability camera
+  }
+}
+    `;
+    const file = Parser.parse(krs).value;
+    const builtin = getBuiltinStyleSheet();
+    const warnings = analyze(file, [builtin]);
+    const dups = warnings.filter((w) => w.kind === "client-capability-duplicate");
+    expect(dups).toHaveLength(1);
+    if (dups[0].kind !== "client-capability-duplicate") throw new Error("kind mismatch");
+    expect(dups[0].params).toEqual({ clientId: "App", name: "camera" });
+  });
+
+  it("does not warn for distinct capability names", () => {
+    const krs = `
+system S {
+  client App [mobile] {
+    capability camera
+    capability geolocation
+  }
+}
+    `;
+    const file = Parser.parse(krs).value;
+    const builtin = getBuiltinStyleSheet();
+    const warnings = analyze(file, [builtin]);
+    expect(warnings.filter((w) => w.kind === "client-capability-duplicate")).toHaveLength(0);
+  });
+});
+
 describe("unresolved-handles warning", () => {
   function unresolved(krs: string) {
     const file = Parser.parse(krs).value;

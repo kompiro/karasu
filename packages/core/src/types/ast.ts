@@ -165,10 +165,24 @@ export interface ClientResource {
   loc: SourceRange;
 }
 
+/**
+ * Device / browser capability declared on a client (camera, geolocation,
+ * notification, etc.). Identifier set is intentionally open — see
+ * `docs/design/client-capability-modeling.md`. Recommended names live in
+ * `docs/spec/tags-annotations.md`.
+ */
+export interface ClientCapability {
+  name: string;
+  label?: string;
+  description?: string;
+  loc: SourceRange;
+}
+
 export interface ClientNode extends BaseNodeFields {
   kind: "client";
   properties: CommonProperties & {
     resources: ClientResource[];
+    capabilities: ClientCapability[];
     /**
      * Domain ids this client surfaces to the user. Resolved through the
      * one-hop expose rule: at least one outgoing communication edge target

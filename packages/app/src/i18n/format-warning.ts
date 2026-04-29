@@ -149,6 +149,14 @@ export function useFormattedWarning(): (w: Warning) => FormattedWarning {
             }),
             details: [],
           };
+        case "client-capability-duplicate":
+          return {
+            message: t("warning.clientCapabilityDuplicate.message", {
+              clientId: w.params.clientId,
+              name: w.params.name,
+            }),
+            details: [],
+          };
         case "legend-ref-unresolved":
           return {
             message: t("warning.legendRefUnresolved.message", {

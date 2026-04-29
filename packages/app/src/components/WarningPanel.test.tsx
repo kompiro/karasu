@@ -92,6 +92,8 @@ function makeWarning(kind: Warning["kind"]): Warning {
       return { kind, params: { nodeId: "test-node", value: "wrong" } };
     case "style-column-ignored-non-system-view":
       return { kind, params: { nodeId: "test-node", viewType: "deploy" } };
+    case "client-capability-duplicate":
+      return { kind, params: { clientId: "test-client", name: "camera" } };
   }
 }
 

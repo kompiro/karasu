@@ -38,6 +38,7 @@ system ECPlatform {
   client MobileApp [mobile] {
     label "モバイルアプリ"
     description "iOS / Android 向け公式アプリ"
+    capability notification
   }
 
   service ECommerce {
@@ -241,6 +242,7 @@ system ECPlatform {
   client MobileApp [mobile] {
     label "Mobile App"
     description "Official iOS / Android app"
+    capability notification
   }
 
   service ECommerce {
@@ -455,6 +457,14 @@ system OrderPlatform {
     resource localStorage "preferences"
     resource indexedDB "outbox"
     resource keychain "auth-token"
+    capability notification
+    capability camera {
+      label "QR scanning"
+      description "Scan QR codes printed on physical receipts"
+    }
+    capability geolocation {
+      description "Continuous tracking while a delivery is in progress"
+    }
   }
 
   client ClaudeDesktop [desktop] {
@@ -463,6 +473,7 @@ system OrderPlatform {
     handles Order
     resource opfs "drafts"
     resource file "claude-desktop.config"
+    capability clipboard
   }
 
   service MobileBff {
