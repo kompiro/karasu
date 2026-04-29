@@ -1204,6 +1204,35 @@ function assignForcedSystemLayers(nodes: KrsNode[], edges: KrsEdge[]): Map<strin
     const t = systemTier(n);
     layers.set(n.id, tierBase[t] + (subLayers[t].get(n.id) ?? 0));
   }
+
+  // Post-pass: an actor that bypasses the client tier (e.g. an admin that
+  // connects directly to a backend service) would otherwise sit in the top
+  // row and have its edge cut through any intermediate client card. Pull
+  // each user whose outgoing edges all target a deeper row down to one row
+  // above its closest target. Users with no outgoing edges keep the tier-0
+  // placement.
+  const outByUser = new Map<string, string[]>();
+  for (const e of edges) {
+    const fromNode = nodes.find((n) => n.id === e.from);
+    if (!fromNode || fromNode.kind !== "user") continue;
+    const list = outByUser.get(e.from) ?? [];
+    list.push(e.to);
+    outByUser.set(e.from, list);
+  }
+  for (const u of byTier[0]) {
+    const targets = outByUser.get(u.id);
+    if (!targets || targets.length === 0) continue;
+    let minTargetLayer = Infinity;
+    for (const tid of targets) {
+      const tl = layers.get(tid);
+      if (tl === undefined) continue;
+      if (tl < minTargetLayer) minTargetLayer = tl;
+    }
+    if (!Number.isFinite(minTargetLayer)) continue;
+    const desired = Math.max(0, minTargetLayer - 1);
+    const current = layers.get(u.id) ?? 0;
+    if (desired > current) layers.set(u.id, desired);
+  }
   return layers;
 }
 

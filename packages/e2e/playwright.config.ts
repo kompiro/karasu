@@ -20,6 +20,11 @@ export default defineConfig({
     trace: "retain-on-failure",
     screenshot: "only-on-failure",
     video: "retain-on-failure",
+    // Required by `replaceEditorContent` in fixtures/editor.ts — Monaco's
+    // current build uses the EditContext API, so multi-line content must be
+    // pasted via the clipboard to avoid auto-indent compounding on every
+    // newline.
+    permissions: ["clipboard-read", "clipboard-write"],
   },
   projects: [
     {

@@ -1,4 +1,5 @@
-import { type Page, expect, test } from "@playwright/test";
+import { expect, test } from "@playwright/test";
+import { replaceEditorContent } from "../fixtures/editor.js";
 
 /**
  * AT-0007: Deployment diagram.
@@ -31,13 +32,6 @@ const NO_DEPLOY_KRS = `system ECPlatform {
   ECommerce -> Payment "決済を処理する"
 }
 `;
-
-async function replaceEditorContent(page: Page, content: string) {
-  await page.locator(".monaco-editor .view-lines").first().click();
-  await page.keyboard.press("Control+A");
-  await page.keyboard.press("Delete");
-  await page.keyboard.insertText(content);
-}
 
 test.describe("AT-0007 Deployment diagram", () => {
   test("both tabs display icon + text labels (AT-0007-07)", async ({ page }) => {

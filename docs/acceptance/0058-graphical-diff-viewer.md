@@ -68,6 +68,8 @@ Open `index.krs` so it is the current file.
 - [ ] `Payments` service node is rendered with a **green** border
 - [ ] The `Orders → Payments` edge is rendered in **green**
 
+> manual / visual review — green vs default border tone is a colour-perception check on the live SVG render.
+
 ### TC-2: Removed node still appears, in red
 
 - [ ] Reverse the comparison: open `before.krs`, then right-click `index.krs`
@@ -76,10 +78,14 @@ Open `index.krs` so it is the current file.
       removed in the after-side)
 - [ ] The `Orders → Payments` edge is **red dashed**
 
+> manual / visual review — red-dashed-border styling on a removed node is a visual outcome that depends on the live diff render.
+
 ### TC-3: Label change is rendered as `changed`
 
 - [ ] In the original orientation (before → index), `Catalog` is rendered with
       an **amber** border (label changed from default to "商品カタログ")
+
+> manual / visual review — amber-border tone on a label change is judged by eye on the rendered SVG.
 
 ### TC-4: Annotation-only change renders as a badge diff
 
@@ -93,10 +99,14 @@ Open `index.krs` so it is the current file.
 - [ ] Reversing the comparison renders a **ghost removed badge** (dashed red
       circle with `−`) and the panel shows `- @deprecated`
 
+> manual / visual review — annotation-badge-only diff (vs whole-node diff) plus the "Annotation diff" detail-panel section needs interactive UI inspection.
+
 ### TC-5: Unchanged elements are dimmed
 
 - [ ] `Catalog → Orders` edge and `Catalog` text are dimmed compared to
       a non-diff render (opacity ~0.55) so changes stand out
+
+> manual / visual review — opacity-based dimming of unchanged elements is a perceptual contrast check.
 
 ### TC-6: Exit diff mode
 
@@ -104,10 +114,14 @@ Open `index.krs` so it is the current file.
 - [ ] Banner disappears, diagram returns to its non-diff rendering
 - [ ] Non-diff styling (no `data-diff-state` attribute) is restored on all nodes
 
+> manual / visual review — diff-mode exit cleans up state across the banner and SVG; visual confirmation of restoration.
+
 ### TC-7: Existing interactions still work in diff mode
 
 - [ ] In diff mode, clicking a node still opens the existing detail panel
 - [ ] Drilling down into a service still works
+
+> manual / visual review — verifies non-diff interactions (detail panel, drill-down) continue to work while diff styling is active.
 
 ### TC-8a: Org view — added / removed teams and owns reshuffle
 
@@ -167,12 +181,16 @@ organization Acme {
 - [ ] Drilling into `teamA` preserves the `added` state on the `→ Catalog`
       owned-service button in the drill-down view
 
+> manual / visual review — org-view diff styling spans team cards, owns buttons, and drill-down levels; visual coverage on real fixtures is needed.
+
 ### TC-8: Identical files
 
 - [ ] Make a copy of `index.krs` as `same.krs` (identical content)
 - [ ] Compare `same.krs` against `index.krs` from the file tree
 - [ ] All nodes render with `data-diff-state="unchanged"` (uniformly dimmed)
 - [ ] No green/red/amber appears anywhere
+
+> manual / visual review — negative case for diff colours; needs visual confirmation that nothing turns coloured for an identical-source comparison.
 
 ### TC-9: Deploy view diff (Issue #735)
 
@@ -207,6 +225,8 @@ deploy Production {
 
 - [ ] `payments-svc` deploy unit is rendered with a **red dashed** border
 - [ ] The `Orders → Payments` ghost edge is rendered in **red dashed**
+
+> manual / visual review — deploy-view diff colours and ghost-edge styling need to be inspected after switching tabs in a live diff session.
 
 > Why the file swap instead of a "reverse" toggle: the project entry (`index.krs`) is hard-coded as the after-side in the current implementation. Picking which side is the base / swapping in-place is tracked in #765.
 
