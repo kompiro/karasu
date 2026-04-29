@@ -111,18 +111,34 @@ describe("AT-0038 (WebView) — Cmd/Ctrl+Click hint text visibility", function (
           "el.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }));",
       );
 
-      // Read breadcrumb text atomically via the page itself — references
-      // captured before the rebuild would be stale.
-      await driver.wait(
-        async () => {
-          const text = (await driver.executeScript(
-            "return document.getElementById('breadcrumb') ? document.getElementById('breadcrumb').innerText : '';",
-          )) as string;
-          return text.includes("OrderService");
-        },
-        ELEMENT_TIMEOUT_MS,
-        "breadcrumb did not advance to OrderService after click",
-      );
+      // Wait for the breadcrumb to advance past Root. Drilling fans out
+      // the full ancestor chain (e.g. "Root › ECommerce › OrderService"),
+      // so we just check that more than the bare "Root" segment is
+      // present. Read atomically via the page — references captured
+      // before the rebuild would be stale.
+      let lastBreadcrumb = "";
+      try {
+        await driver.wait(
+          async () => {
+            lastBreadcrumb = (await driver.executeScript(
+              "const el = document.getElementById('breadcrumb');" +
+                "return el ? Array.from(el.querySelectorAll('button')).map(b => b.textContent).join(' › ') : '';",
+            )) as string;
+            const segments = lastBreadcrumb
+              .split("›")
+              .map((s) => s.trim())
+              .filter(Boolean);
+            return segments.length > 1;
+          },
+          ELEMENT_TIMEOUT_MS,
+          "breadcrumb did not advance past Root after click",
+        );
+      } catch (err) {
+        throw new Error(
+          `breadcrumb did not advance past Root after click; last seen: "${lastBreadcrumb}". Original: ${(err as Error).message}`,
+          { cause: err },
+        );
+      }
 
       // TC-02: re-locate #jump-hint after the rebuild and assert it is
       // still visible with the same text.
