@@ -203,6 +203,13 @@ legend "凡例" {
 //   color: #92400e;
 //   background-color: #fef3c7;
 // }
+
+// Layout hints (escape hatch — see docs/spec/style.md)
+// 外部サービスを右に寄せて行末に揃え、最下段の並びを
+// [internal service] [infra] [external services] にする。
+service[external] {
+  column: right;
+}
 `,
     },
   ],
@@ -399,6 +406,12 @@ legend "Legend" {
 //   color: #92400e;
 //   background-color: #fef3c7;
 // }
+
+// Layout hints (escape hatch — see docs/spec/style.md)
+// Pin external services to the right side of the bottom row.
+service[external] {
+  column: right;
+}
 `,
     },
   ],

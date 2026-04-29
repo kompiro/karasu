@@ -882,3 +882,137 @@ describe("nodeStyleKey", () => {
     expect(nodeStyleKey("X", ["a", "b"])).toBe("X@a,b");
   });
 });
+
+describe("resolveStyles — column layout hint (#969)", () => {
+  function nodeWithColumn(value: string): {
+    system: KrsNode;
+    sheet: StyleSheet;
+  } {
+    const system = makeNode({
+      kind: "system",
+      id: "S",
+      children: [makeNode({ kind: "service", id: "Admin", tags: ["external"] })],
+    });
+    const sheet: StyleSheet = {
+      rules: [makeRule({ id: "Admin", tags: [], annotations: [] }, { column: value }, 100)],
+    };
+    return { system, sheet };
+  }
+
+  it("populates layoutHints for valid values", () => {
+    for (const value of ["left", "center", "right"] as const) {
+      const { system, sheet } = nodeWithColumn(value);
+      const result = resolveStyles([system], [sheet]);
+      expect(result.layoutHints.get("Admin")).toEqual({ column: value });
+      expect(result.warnings).toEqual([]);
+    }
+  });
+
+  it("emits style-column-invalid-value and skips the hint when the value is unknown", () => {
+    const { system, sheet } = nodeWithColumn("middle");
+    const result = resolveStyles([system], [sheet]);
+    expect(result.layoutHints.has("Admin")).toBe(false);
+    expect(result.warnings).toEqual([
+      { kind: "style-column-invalid-value", nodeId: "Admin", value: "middle" },
+    ]);
+  });
+
+  it("honors cascade: id selector overrides kind selector", () => {
+    const system = makeNode({
+      kind: "system",
+      id: "S",
+      children: [makeNode({ kind: "service", id: "Admin" })],
+    });
+    const sheet: StyleSheet = {
+      rules: [
+        makeRule({ nodeType: "service", tags: [], annotations: [] }, { column: "left" }, 1),
+        makeRule({ id: "Admin", tags: [], annotations: [] }, { column: "right" }, 100),
+      ],
+    };
+    const result = resolveStyles([system], [sheet]);
+    expect(result.layoutHints.get("Admin")).toEqual({ column: "right" });
+  });
+
+  it("honors cascade: same specificity → declaration order, last wins", () => {
+    const system = makeNode({
+      kind: "system",
+      id: "S",
+      children: [makeNode({ kind: "service", id: "Admin" })],
+    });
+    const sheet: StyleSheet = {
+      rules: [
+        makeRule({ id: "Admin", tags: [], annotations: [] }, { column: "left" }, 100, 0),
+        makeRule({ id: "Admin", tags: [], annotations: [] }, { column: "right" }, 100, 1),
+      ],
+    };
+    const result = resolveStyles([system], [sheet]);
+    expect(result.layoutHints.get("Admin")).toEqual({ column: "right" });
+  });
+
+  it("warns when a column hint resolves on a deploy node", () => {
+    const system = makeNode({ kind: "system", id: "S", children: [] });
+    const deployUnit: DeployNode = {
+      kind: "oci",
+      id: "ecommerceApp",
+      label: "ecommerce-app",
+      properties: { runtime: "GKE", realizes: [] },
+      loc: dummyLoc,
+    };
+    const sheet: StyleSheet = {
+      rules: [makeRule({ id: "ecommerceApp", tags: [], annotations: [] }, { column: "left" }, 100)],
+    };
+    const result = resolveStyles([system], [sheet], [deployUnit]);
+    expect(result.layoutHints.has("ecommerceApp")).toBe(false);
+    expect(result.warnings).toContainEqual({
+      kind: "style-column-ignored-non-system-view",
+      nodeId: "ecommerceApp",
+      viewType: "deploy",
+    });
+  });
+
+  it("emits style-column-invalid-value for invalid values on deploy nodes (not silently dropped)", () => {
+    const system = makeNode({ kind: "system", id: "S", children: [] });
+    const deployUnit: DeployNode = {
+      kind: "oci",
+      id: "ecommerceApp",
+      label: "ecommerce-app",
+      properties: { runtime: "GKE", realizes: [] },
+      loc: dummyLoc,
+    };
+    const sheet: StyleSheet = {
+      rules: [
+        makeRule({ id: "ecommerceApp", tags: [], annotations: [] }, { column: "middel" }, 100),
+      ],
+    };
+    const result = resolveStyles([system], [sheet], [deployUnit]);
+    expect(result.warnings).toContainEqual({
+      kind: "style-column-invalid-value",
+      nodeId: "ecommerceApp",
+      value: "middel",
+    });
+  });
+
+  it("warns when a column hint resolves on an org team node", () => {
+    const system = makeNode({ kind: "system", id: "S", children: [] });
+    const team: TeamNode = {
+      kind: "team",
+      id: "platform",
+      label: "Platform",
+      children: [],
+      properties: { owns: [], links: [] },
+      loc: dummyLoc,
+    };
+    const orgs: OrganizationBlock[] = [
+      { id: "Org", label: "Org", teams: [team], loc: dummyLoc, properties: { links: [] } },
+    ];
+    const sheet: StyleSheet = {
+      rules: [makeRule({ id: "platform", tags: [], annotations: [] }, { column: "right" }, 100)],
+    };
+    const result = resolveStyles([system], [sheet], undefined, orgs);
+    expect(result.warnings).toContainEqual({
+      kind: "style-column-ignored-non-system-view",
+      nodeId: "platform",
+      viewType: "org",
+    });
+  });
+});

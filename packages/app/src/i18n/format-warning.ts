@@ -157,6 +157,22 @@ export function useFormattedWarning(): (w: Warning) => FormattedWarning {
             }),
             details: [],
           };
+        case "style-column-invalid-value":
+          return {
+            message: t("warning.styleColumnInvalidValue.message", {
+              nodeId: w.params.nodeId,
+              value: w.params.value,
+            }),
+            details: [],
+          };
+        case "style-column-ignored-non-system-view":
+          return {
+            message: t("warning.styleColumnIgnoredNonSystemView.message", {
+              nodeId: w.params.nodeId,
+              viewType: w.params.viewType,
+            }),
+            details: [],
+          };
         case "cyclic-dependency": {
           const { cyclePath } = w.params;
           const path =

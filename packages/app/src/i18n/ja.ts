@@ -153,6 +153,10 @@ export const ja: Partial<Translations> = {
     legendTitle
       ? `legend "${legendTitle}": ref ${target} はどのノード・スタイル規則にも一致しません`
       : `legend ref ${target} はどのノード・スタイル規則にも一致しません`,
+  "warning.styleColumnInvalidValue.message": ({ nodeId, value }) =>
+    `column: "${value}"（#${nodeId}）は left / center / right のいずれでもないため無視されました`,
+  "warning.styleColumnIgnoredNonSystemView.message": ({ nodeId, viewType }) =>
+    `#${nodeId} の column ヒントは ${viewType} ビューでは無視されます（layout hints は現状 system view のみ対応）`,
 
   // Diagnostics (rendered in PreviewPane's diagnostic banner)
   "diagnostic.tokenTypeMismatch.message": ({ expected, got, value }) =>

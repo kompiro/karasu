@@ -314,6 +314,35 @@ function _compileFromPreparedInput(
   const systemSheetCount = 1; // only builtin counts as system for conflict detection
   const warnings = analyze(krsFile, sheets, systemSheetCount);
 
+  // Merge structural style-resolver warnings (e.g. invalid `column` value)
+  // into the analyze() output. Both sources speak the same Warning shape;
+  // the ResolvedStyleWarning is just a narrow projection that keeps the
+  // resolver decoupled from the warnings type union.
+  const mergeResolvedStyleWarnings = (styles: ResolvedStyles): void => {
+    for (const w of styles.warnings) {
+      switch (w.kind) {
+        case "style-column-invalid-value":
+          warnings.push({
+            kind: "style-column-invalid-value",
+            params: { nodeId: w.nodeId, value: w.value },
+          });
+          break;
+        case "style-column-ignored-non-system-view":
+          warnings.push({
+            kind: "style-column-ignored-non-system-view",
+            params: { nodeId: w.nodeId, viewType: w.viewType },
+          });
+          break;
+        default: {
+          // Exhaustiveness guard — adding a new ResolvedStyleWarning variant
+          // without updating this switch will fail the build.
+          const _exhaustive: never = w;
+          throw new Error(`Unhandled ResolvedStyleWarning kind: ${JSON.stringify(_exhaustive)}`);
+        }
+      }
+    }
+  };
+
   // For style resolution, icon theme is appended last so it takes highest priority for `shape`.
   // This ensures Icon Mode is immune to `shape` overrides from user or builtin stylesheets.
   const resolveSheets = displayMode === "icon" ? [...sheets, getIconThemeStyleSheet()] : sheets;
@@ -321,6 +350,7 @@ function _compileFromPreparedInput(
   if (diagramType === "org") {
     const slice = extractOrgView(krsFile.organizations, viewPath ?? []);
     const styles = resolveStyles(krsFile.systems, resolveSheets, undefined, krsFile.organizations);
+    mergeResolvedStyleWarnings(styles);
     const svg = _renderOrgView(slice, styles, displayMode, undefined, {
       emptyLabels: emptyStateLabels,
       legends: krsFile.legends,
@@ -355,6 +385,7 @@ function _compileFromPreparedInput(
       ...krsFile.services,
       ...krsFile.domains,
     ]);
+    mergeResolvedStyleWarnings(styles);
     const svg = renderDeploy(deploySliceForStyle, styles, displayMode, {
       emptyLabels: emptyStateLabels,
       legends: krsFile.legends,
@@ -385,6 +416,7 @@ function _compileFromPreparedInput(
     undefined,
     viewSlice.childEdges,
   );
+  mergeResolvedStyleWarnings(styles);
   const svg = render(viewSlice, styles, serviceIdsWithDeploy, ownerIndex, displayMode, undefined, {
     emptyLabels: emptyStateLabels,
     legends: krsFile.legends,

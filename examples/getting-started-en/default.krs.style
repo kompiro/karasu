@@ -23,3 +23,9 @@
 //   color: #92400e;
 //   background-color: #fef3c7;
 // }
+
+// Layout hints (escape hatch — see docs/spec/style.md)
+// Pin external services to the right side of the bottom row.
+service[external] {
+  column: right;
+}

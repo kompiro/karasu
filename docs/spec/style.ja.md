@@ -87,6 +87,44 @@ service[external] {
 
 ---
 
+## レイアウトヒント（escape hatch）
+
+> **最後の手段として使う。** karasu の auto-layout（kind と到達性で決まる
+> 行配置、直交エッジルーティング、ポート分散）はほとんどの図を入力なしで
+> 描けます。レイアウトヒントは、それでも作者の意図を表現できない場合（例：
+> 管理用 actor を右側に固定したい、外部サービスを片側に寄せたい）にだけ
+> 使うこと。まずヒューリスティクスでの吸収を検討し、ヒントは最後に。
+
+### `column` — `left | center | right`
+
+同じ layer 内のノードを 3 つのバケット（`left` / `center`-もしくは未指定 / `right`）
+に振り分けます。`center` と未指定は同じ中央バケットに入るため、両端だけを
+明示的に指定して残りは未指定で済ませられます:
+
+```css
+service[external]        { column: right; }
+queue, database, storage { column: center; }
+/* internal service は未指定 → 中央バケットに入る */
+```
+
+各バケット内は既存の並び（system view では宣言順、それ以外では barycenter）
+を保持します。**layer（行）自体を動かす効果はありません**。行を変えたく
+なった場合はヒントを増やす前に auto-layout のヒューリスティクス改善 Issue
+を立ててください。
+
+### 適用スコープ
+
+| View | 挙動 |
+| --- | --- |
+| `system` | 上記の通り適用。 |
+| `deploy` | 無視。解決時に `style-column-ignored-non-system-view` 警告が出る。 |
+| `org`    | 同上。 |
+
+`left` / `center` / `right` 以外の値は `style-column-invalid-value`
+警告とともに破棄されます。
+
+---
+
 ## @import のスコープと衝突
 
 - グローバルスコープ（ファイル全体に適用）
