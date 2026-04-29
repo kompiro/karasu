@@ -3,67 +3,138 @@ import {
   By,
   EditorView,
   InputBox,
+  TextEditor,
   VSBrowser,
+  type WebDriver,
   WebView,
   Workbench,
   until,
 } from "vscode-extension-tester";
 
 /**
- * AT-0038 TC-01 / TC-02 (WebView E2E — Phase 3, AT-0038 hint visibility).
+ * AT-0038 (WebView E2E — Phase 3, AT-0038 hint + editor jump).
  *
- * The karasu preview toolbar renders a `#jump-hint` element with the text
- * "ⓘ for details · Cmd/Ctrl+Click to jump". Two TCs are covered here:
- *
+ * Coverage:
  *   TC-01: hint visible on first render (root view).
  *   TC-02: hint still visible after drilling into a parent node.
+ *   TC-03: Cmd/Ctrl+Click on a parent node moves the editor cursor and
+ *          does NOT drill the preview.
+ *   TC-04: Cmd/Ctrl+Click on a leaf node moves the editor cursor and
+ *          does NOT change the preview view.
  *
- * Two Selenium-vs-VS-Code-WebView pitfalls drive the implementation
+ * (TC-05 in the spec was "plain click on leaf → editor jump", which
+ * pre-dates the Phase 6 detail-panel work. Plain-click on leaf now opens
+ * the detail panel and is covered by AT-0039 TC-01; the AT-0038 doc has
+ * been corrected to reflect that.)
+ *
+ * Three Selenium-vs-VS-Code-WebView pitfalls drive the implementation
  * shape:
  *
  *   1. A coordinate-based `element.click()` on the OrderService SVG
  *      group routes the click to a sibling group (the bounding box of
- *      a parent SVG `<g>` includes its children, so the center can
- *      land on an overlapping ancestor). We dispatch the event on the
- *      exact target via `executeScript` so the handler's `e.target`
- *      is the intended element.
+ *      a parent `<g>` includes its children, so the center can land on
+ *      an overlapping ancestor). We dispatch the event on the exact
+ *      target via `executeScript` so the handler's `e.target` is the
+ *      intended element. Modifier-clicks pass `ctrlKey: true` directly
+ *      to the synthetic MouseEvent — the WebView handler reads
+ *      `e.metaKey || e.ctrlKey` from the event object, so we don't
+ *      need to drive the OS keyboard via Actions (xvfb-friendly).
  *   2. The drill-down handler reassigns `webview.html` from the
  *      extension host, replacing the iframe document and invalidating
- *      Selenium's current frame context. We `switchBack` and
- *      `switchToFrame` again before reading post-drill state, then
- *      read each `<button>`'s textContent (atomic, no stale-ref risk)
- *      to confirm the breadcrumb advanced past Root.
+ *      Selenium's current frame context. After a drill click we
+ *      `switchBack` and `switchToFrame` again before reading post-
+ *      drill state. The Cmd/Ctrl+Click navigate path does NOT rebuild
+ *      the WebView, so it does not need this dance.
+ *   3. Reading the .krs editor's cursor needs the .krs editor to be
+ *      active. After clicking inside the WebView the preview panel is
+ *      active, so `editorView.openEditor("at-0038.krs", 0)` returns
+ *      the TextEditor and brings it into focus. We refocus the preview
+ *      afterwards so the next test starts in the same WebView frame.
  *
- * The drill assertion only checks `segments.length > 1` — drilling
- * OrderService surfaces its full ancestor chain
+ * The drill assertion in TC-02 only checks `segments.length > 1` —
+ * drilling OrderService surfaces its full ancestor chain
  * ("Root › ECommerce › OrderService") and TC-02's purpose is just
- * "hint stays visible after *some* drill happened". Tightening to a
- * specific target would belong with the editor-jump TCs.
+ * "hint stays visible after *some* drill happened".
  *
- * The two TCs share an open WebView, so they run in a single `it()`
- * block (mirroring AT-0039). That also keeps the suite's editor /
- * WebView state fully scoped to one Mocha case, which is friendlier
- * to other suites running in the same VS Code session.
- *
- * Remaining AT-0038 TCs (TC-03..TC-05, modifier-click → editor jump)
- * need to assert the active TextEditor's cursor moved; that is
- * deferred to a follow-up PR (see #1014).
+ * Test order is state-driven (01 → 03 → 02 → 04) rather than spec
+ * order: TC-01/03 both run at root view, TC-02 drills into OrderService,
+ * TC-04 then runs in that drilled view. Each test name is independent,
+ * so the CI output still reads cleanly.
  */
 
 const PREVIEW_TITLE = "karasu Preview";
+const FIXTURE_NAME = "at-0038.krs";
 const ELEMENT_TIMEOUT_MS = 15_000;
 const HINT_TEXT = "Cmd/Ctrl+Click to jump";
 
-describe("AT-0038 (WebView) — Cmd/Ctrl+Click hint text visibility", function () {
+// Identifiers in the AT-0038 fixture (see run-webview-tests.mjs). Lines
+// are 1-indexed to match what `TextEditor.getCoordinates()` returns.
+const FIXTURE_LINE = {
+  OrderService: 2,
+  OrderManagement: 3,
+} as const;
+
+describe("AT-0038 (WebView) — Cmd/Ctrl+Click hint and editor jump", function () {
   this.timeout(240_000);
 
-  it("shows the hint text on the root view and keeps it visible after drilling into a parent node", async () => {
+  let driver: WebDriver;
+  let webview: WebView;
+  let inWebViewFrame = false;
+
+  async function readBreadcrumb(): Promise<string> {
+    return (await driver.executeScript(
+      "const el = document.getElementById('breadcrumb');" +
+        "return el ? Array.from(el.querySelectorAll('button')).map(b => b.textContent).join(' › ') : '';",
+    )) as string;
+  }
+
+  function breadcrumbSegments(text: string): string[] {
+    return text
+      .split("›")
+      .map((s) => s.trim())
+      .filter(Boolean);
+  }
+
+  async function dispatchClick(selector: string, modifier: boolean): Promise<void> {
+    const ctrl = modifier ? "true" : "false";
+    await driver.executeScript(
+      `const el = document.querySelector(${JSON.stringify(selector)});` +
+        "if (!el) throw new Error('selector did not match: ' + " +
+        JSON.stringify(selector) +
+        ");" +
+        `el.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, ctrlKey: ${ctrl}, metaKey: ${ctrl} }));`,
+    );
+  }
+
+  async function refocusPreview(): Promise<void> {
+    if (inWebViewFrame) {
+      await webview.switchBack();
+      inWebViewFrame = false;
+    }
+    await new EditorView().openEditor(PREVIEW_TITLE, 1);
+    await driver.sleep(300);
+    await webview.switchToFrame();
+    inWebViewFrame = true;
+  }
+
+  async function readEditorLine(): Promise<number> {
+    if (inWebViewFrame) {
+      await webview.switchBack();
+      inWebViewFrame = false;
+    }
+    const editor = (await new EditorView().openEditor(FIXTURE_NAME, 0)) as TextEditor;
+    await driver.sleep(150);
+    const [line] = await editor.getCoordinates();
+    return line;
+  }
+
+  before(async () => {
     const fixturePath = process.env.KARASU_E2E_FIXTURE_KRS_AT0038;
     if (!fixturePath) {
       throw new Error("KARASU_E2E_FIXTURE_KRS_AT0038 env var was not set by run-webview-tests.mjs");
     }
 
-    const driver = VSBrowser.instance.driver;
+    driver = VSBrowser.instance.driver;
     const editorView = new EditorView();
     const workbench = new Workbench();
 
@@ -75,7 +146,7 @@ describe("AT-0038 (WebView) — Cmd/Ctrl+Click hint text visibility", function (
     await driver.wait(
       async () => {
         const titles = await editorView.getOpenEditorTitles();
-        return titles.some((t) => t.includes("at-0038.krs"));
+        return titles.some((t) => t.includes(FIXTURE_NAME));
       },
       ELEMENT_TIMEOUT_MS,
       "fixture .krs file did not appear as an open editor",
@@ -91,100 +162,147 @@ describe("AT-0038 (WebView) — Cmd/Ctrl+Click hint text visibility", function (
     await editorView.openEditor(PREVIEW_TITLE, 1);
     await driver.sleep(500);
 
-    const webview = new WebView();
+    webview = new WebView();
     await webview.switchToFrame();
-
-    try {
-      // TC-01: hint visible at root view.
-      const rootHint = await driver.wait(
-        until.elementLocated(By.css("#jump-hint")),
-        ELEMENT_TIMEOUT_MS,
-      );
-      assert.strictEqual(
-        await rootHint.isDisplayed(),
-        true,
-        "#jump-hint should be visible at root view",
-      );
-      const rootText = await rootHint.getText();
-      assert.ok(
-        rootText.includes(HINT_TEXT),
-        `#jump-hint should contain "${HINT_TEXT}" at root; saw: ${rootText}`,
-      );
-
-      // Drill into OrderService (a parent). The SVG renders OrderService
-      // as a container whose bounding box includes its children — a
-      // coordinate-based `element.click()` lands inside that area but
-      // can route the click to a sibling group (e.g. the parent system
-      // ECommerce when nested groups overlap), so we dispatch the event
-      // on the exact target element via the page's own DOM.
-      await driver.wait(
-        until.elementLocated(By.css('[data-node-id="OrderService"][data-has-children="true"]')),
-        ELEMENT_TIMEOUT_MS,
-      );
-      await driver.executeScript(
-        'const el = document.querySelector(\'[data-node-id="OrderService"][data-has-children="true"]\');' +
-          "if (!el) throw new Error('OrderService node not found');" +
-          "el.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }));",
-      );
-
-      // The drill-down handler postMessages the extension host, which
-      // reassigns `webview.html`. That replaces the iframe's document,
-      // invalidating Selenium's current frame context. Detach and let
-      // VS Code rebuild before re-acquiring the WebView.
-      await webview.switchBack();
-      await driver.sleep(1000);
-      await webview.switchToFrame();
-
-      // Wait for the breadcrumb to advance past Root. Drilling fans out
-      // the full ancestor chain (e.g. "Root › ECommerce › OrderService"),
-      // so checking for more than one segment is enough — and is robust
-      // to overflow:hidden truncation that can confuse `innerText`.
-      let lastBreadcrumb = "";
-      try {
-        await driver.wait(
-          async () => {
-            lastBreadcrumb = (await driver.executeScript(
-              "const el = document.getElementById('breadcrumb');" +
-                "return el ? Array.from(el.querySelectorAll('button')).map(b => b.textContent).join(' › ') : '';",
-            )) as string;
-            const segments = lastBreadcrumb
-              .split("›")
-              .map((s) => s.trim())
-              .filter(Boolean);
-            return segments.length > 1;
-          },
-          ELEMENT_TIMEOUT_MS,
-          "breadcrumb did not advance past Root after click",
-        );
-      } catch (err) {
-        throw new Error(
-          `breadcrumb did not advance past Root after click; last seen: "${lastBreadcrumb}". Original: ${(err as Error).message}`,
-          { cause: err },
-        );
-      }
-
-      // TC-02: locate #jump-hint in the rebuilt document and assert it
-      // is still visible with the same text.
-      const drilledHint = await driver.wait(
-        until.elementLocated(By.css("#jump-hint")),
-        ELEMENT_TIMEOUT_MS,
-      );
-      assert.strictEqual(
-        await drilledHint.isDisplayed(),
-        true,
-        "#jump-hint should remain visible after drilling into OrderService",
-      );
-      const drilledText = await drilledHint.getText();
-      assert.ok(
-        drilledText.includes(HINT_TEXT),
-        `#jump-hint should still contain "${HINT_TEXT}" after drill-down; saw: ${drilledText}`,
-      );
-    } finally {
-      await webview.switchBack();
-    }
+    inWebViewFrame = true;
   });
 
   after(async () => {
+    if (inWebViewFrame) {
+      try {
+        await webview.switchBack();
+      } catch {
+        // already detached
+      }
+      inWebViewFrame = false;
+    }
     await new EditorView().closeAllEditors();
+  });
+
+  it("TC-01: shows the hint text on the root view", async () => {
+    const hint = await driver.wait(until.elementLocated(By.css("#jump-hint")), ELEMENT_TIMEOUT_MS);
+    assert.strictEqual(await hint.isDisplayed(), true, "#jump-hint should be visible at root view");
+    const text = await hint.getText();
+    assert.ok(
+      text.includes(HINT_TEXT),
+      `#jump-hint should contain "${HINT_TEXT}" at root; saw: ${text}`,
+    );
+  });
+
+  it("TC-03: Cmd/Ctrl+Click on a parent node moves the editor cursor without drilling", async () => {
+    const beforeBreadcrumb = await readBreadcrumb();
+    assert.deepStrictEqual(
+      breadcrumbSegments(beforeBreadcrumb),
+      ["Root"],
+      `expected to start at root, but breadcrumb was "${beforeBreadcrumb}"`,
+    );
+
+    await driver.wait(
+      until.elementLocated(By.css('[data-node-id="OrderService"][data-has-children="true"]')),
+      ELEMENT_TIMEOUT_MS,
+    );
+    await dispatchClick('[data-node-id="OrderService"][data-has-children="true"]', true);
+
+    let lastLine = 0;
+    try {
+      await driver.wait(
+        async () => {
+          lastLine = await readEditorLine();
+          return lastLine === FIXTURE_LINE.OrderService;
+        },
+        ELEMENT_TIMEOUT_MS,
+        "editor cursor did not move to OrderService line after Cmd/Ctrl+Click",
+      );
+    } catch (err) {
+      throw new Error(
+        `editor cursor did not reach line ${FIXTURE_LINE.OrderService} for OrderService; last seen line ${lastLine}. Original: ${(err as Error).message}`,
+        { cause: err },
+      );
+    }
+
+    await refocusPreview();
+    const afterBreadcrumb = await readBreadcrumb();
+    assert.deepStrictEqual(
+      breadcrumbSegments(afterBreadcrumb),
+      ["Root"],
+      `Cmd/Ctrl+Click should not drill the preview; breadcrumb went to "${afterBreadcrumb}"`,
+    );
+  });
+
+  it("TC-02: keeps the hint visible after plain-clicking a parent node to drill in", async () => {
+    await dispatchClick('[data-node-id="OrderService"][data-has-children="true"]', false);
+
+    // Drill rebuilds webview.html — re-acquire the frame.
+    await webview.switchBack();
+    inWebViewFrame = false;
+    await driver.sleep(1000);
+    await webview.switchToFrame();
+    inWebViewFrame = true;
+
+    let lastBreadcrumb = "";
+    try {
+      await driver.wait(
+        async () => {
+          lastBreadcrumb = await readBreadcrumb();
+          return breadcrumbSegments(lastBreadcrumb).length > 1;
+        },
+        ELEMENT_TIMEOUT_MS,
+        "breadcrumb did not advance past Root after drill click",
+      );
+    } catch (err) {
+      throw new Error(
+        `breadcrumb did not advance past Root after drill click; last seen: "${lastBreadcrumb}". Original: ${(err as Error).message}`,
+        { cause: err },
+      );
+    }
+
+    const hint = await driver.wait(until.elementLocated(By.css("#jump-hint")), ELEMENT_TIMEOUT_MS);
+    assert.strictEqual(
+      await hint.isDisplayed(),
+      true,
+      "#jump-hint should remain visible after drilling into OrderService",
+    );
+    const text = await hint.getText();
+    assert.ok(
+      text.includes(HINT_TEXT),
+      `#jump-hint should still contain "${HINT_TEXT}" after drill-down; saw: ${text}`,
+    );
+  });
+
+  it("TC-04: Cmd/Ctrl+Click on a leaf node moves the editor cursor without changing the view", async () => {
+    const beforeBreadcrumb = await readBreadcrumb();
+    assert.ok(
+      breadcrumbSegments(beforeBreadcrumb).length > 1,
+      `TC-04 expects to start in a drilled view; breadcrumb was "${beforeBreadcrumb}"`,
+    );
+
+    const leafSelector = '[data-node-id="OrderManagement"]';
+    await driver.wait(until.elementLocated(By.css(leafSelector)), ELEMENT_TIMEOUT_MS);
+    await dispatchClick(leafSelector, true);
+
+    let lastLine = 0;
+    try {
+      await driver.wait(
+        async () => {
+          lastLine = await readEditorLine();
+          return lastLine === FIXTURE_LINE.OrderManagement;
+        },
+        ELEMENT_TIMEOUT_MS,
+        "editor cursor did not move to OrderManagement line after Cmd/Ctrl+Click",
+      );
+    } catch (err) {
+      throw new Error(
+        `editor cursor did not reach line ${FIXTURE_LINE.OrderManagement} for OrderManagement; last seen line ${lastLine}. Original: ${(err as Error).message}`,
+        { cause: err },
+      );
+    }
+
+    await refocusPreview();
+    const afterBreadcrumb = await readBreadcrumb();
+    assert.strictEqual(
+      afterBreadcrumb,
+      beforeBreadcrumb,
+      `Cmd/Ctrl+Click on a leaf should not change the preview view; breadcrumb went from "${beforeBreadcrumb}" to "${afterBreadcrumb}"`,
+    );
   });
 });
