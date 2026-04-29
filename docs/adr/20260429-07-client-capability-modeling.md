@@ -1,5 +1,5 @@
 ---
-id: ADR-20260429-06
+id: ADR-20260429-07
 title: client の capability 軸 — device / browser permission の語彙設計
 status: accepted
 date: 2026-04-29
@@ -20,7 +20,7 @@ assumptions:
   - "file: docs/acceptance/1002-client-capability.md"
 ---
 
-# ADR-20260429-06: client の capability 軸 — device / browser permission の語彙設計
+# ADR-20260429-07: client の capability 軸 — device / browser permission の語彙設計
 
 - **日付**: 2026-04-29 (Design Doc 作成・実装・ADR 昇格)
 - **ステータス**: 決定済み — 実装完了 (PR #1026)
