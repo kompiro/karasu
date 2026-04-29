@@ -153,6 +153,15 @@ tier ベースを捨てて icon mode は密グリッドパッキング（kind/an
 - 観測した結果案 1 では足りない（典型例で依然崩れる）と分かった時点で
   案 2 に拡張する余地が残る。
 
+### `.krs.style` 経由での公開可否
+
+**当面は内部定数に閉じる**。先行事例として [#1010](https://github.com/kompiro/karasu/pull/1010) で
+`column` hint が `.krs.style` → `ResolvedStyles.layoutHints` → layout 側参照
+というルートを敷いているが、column hint は per-node（`Map<nodeId, hint>`）
+であり、icon-mode の gap は diagram-wide な定数のため `layoutHints` の
+粒度には合わない。利用者からの要望が具体化したら、`ResolvedStyles` の
+トップレベルに `layoutDefaults` を追加する続編 design doc として別途設計する。
+
 ### 実装ステップ
 
 1. `layout.ts` の冒頭で gap 定数を mode 別 lookup に置き換える
@@ -167,40 +176,22 @@ tier ベースを捨てて icon mode は密グリッドパッキング（kind/an
    レンダリングを目視確認し、shape mode と比較した
    スクリーンショットを `docs/acceptance/` に残す（Issue 投資タスクの
    "Render representative diagrams" 項目の解消）。
+   このとき以下も併せて判断する:
+   - 縦折返しは現行の `MAX_LAYER_WIDTH` 超過で wrap する戦略のままで
+     読みやすいか、それとも「アイコン N 枚で揃える」（例: 4 枚単位の
+     格子）の方が typology を把握しやすいか。後者が明らかに良ければ
+     案 1 のサブ調整として fixed-N 折返しを採用する。
 
 ### 観測すべきリグレッション
 
 - icon mode の sub-row wrap 後にラベル / 凡例が重ならないか
-- LANE_BAND=18 と圧縮後の LAYER_GAP=80 の差が十分あるか
-  （マルチレーン交差時のラベル・arrowhead の隙間）
+- `LAYER_GAP` を 80 まで詰めたとき、orthogonal channel routing
+  （ADR-20260429-01）の skip-layer エッジ用 L 字経路が入りきるか。
+  Phase 2 の channel allocation は上下のレイヤ間の中央付近にチャネルを
+  引くため、80px 中 18px LANE_BAND を載せても余裕は残る見込みだが、
+  実レンダリングでの衝突有無を確認する。
 - forced system layout（ADR-20260429-02 系列）で ghost ノード配置が
   狭すぎになっていないか
 
 これらが問題なら案 1 のパラメータを再調整し、それでも崩れる典型例が
 出た場合のみ案 2 へエスカレーションする。
-
-## 未解決の問い
-
-- `LAYER_GAP` を 80 まで詰めると、orthogonal channel routing
-  （ADR-20260429-01）の skip-layer エッジ用 L 字経路が
-  入りきらないケースが出るか? Phase 2 の channel allocation は
-  上下のレイヤ間の中央付近にチャネルを引くため、80px 中
-  18px LANE_BAND を載せても余裕は残る見込みだが要検証。
-- 案 1 の icon-mode 定数を `.krs.style` 経由でユーザーがオーバーライド
-  できるべきか?
-  - 先行事例として [#1010](https://github.com/kompiro/karasu/pull/1010) で
-    `column` hint が `.krs.style` → `ResolvedStyles.layoutHints` →
-    layout 側参照、というルートを既に敷いている。**新規枠組みではなく、
-    既存枠の延長**として `gap` 等を追加できる素地はある。
-  - ただし column hint は **per-node** の x バケット指示なのに対し、
-    icon-mode の gap は **diagram-wide な定数**であり、`layoutHints`
-    （Map<nodeId, hint>）の粒度には合わない。導入するなら
-    `ResolvedStyles` 側にトップレベルの `layoutDefaults` を追加する
-    別の階層が必要。
-  - **当面の方針は内部定数に閉じる**。利用者からの要望が具体化したら、
-    `layoutDefaults`（diagram スコープ）として `auto-layout-style-hints`
-    の続編で別途設計する。
-- icon mode の縦折返しは shape mode と同じ「`MAX_LAYER_WIDTH` を超えたら
-  次の sub-row」で良いか、それとも「アイコン何枚で揃える」（例: 4 枚
-  単位の格子）の方が読みやすいか — Getting Started を icon で見て
-  ユーザーに判断を仰ぐ。
