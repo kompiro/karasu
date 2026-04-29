@@ -8,6 +8,7 @@ import { append } from "./append.js";
 import { remove } from "./remove.js";
 import { insert } from "./insert.js";
 import { fmt } from "./fmt.js";
+import { diff } from "./diff.js";
 
 program.name("karasu").description("karasu — architecture diagram tool").version("0.0.0");
 
@@ -257,6 +258,45 @@ Examples:
   )
   .action((parentId: string, file: string) => {
     insert(parentId, file);
+  });
+
+program
+  .command("diff <before> <after>")
+  .description(
+    "Render a diff SVG between two .krs entries (added/removed/changed nodes and edges). " +
+      "Either argument may be `-` to read that side from stdin.",
+  )
+  .option("-o, --output <path>", "Write SVG to file (default: stdout)")
+  .option("--view <type>", "Diagram view: system | deploy | org (default: system)", "system")
+  .addHelpText(
+    "after",
+    `
+Examples:
+  # Diff two committed revisions piped from git
+  $ git show HEAD~1:src/system.krs | karasu diff - src/system.krs > diff.svg
+
+  # Diff two files on disk
+  $ karasu diff old.krs new.krs --output diff.svg
+
+  # Use as a custom git diff driver (renders the SVG to stdout per file).
+  # Add to .gitconfig:
+  #   [diff "krs"]
+  #     textconv = karasu render
+  #     binary  = false
+  # Or, for a graphical diff between revisions, configure an external diff
+  # script that calls \`karasu diff "$2" "$5"\` (git's external diff slots
+  # for the before / after path).`,
+  )
+  .action((before: string, after: string, options: { output?: string; view?: string }) => {
+    const view = options.view ?? "system";
+    if (view !== "system" && view !== "deploy" && view !== "org") {
+      process.stderr.write(`Error: unknown --view "${view}" (expected system | deploy | org)\n`);
+      process.exit(1);
+    }
+    diff(before, after, {
+      output: options.output,
+      view: view as "system" | "deploy" | "org",
+    });
   });
 
 program
