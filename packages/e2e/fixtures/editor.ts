@@ -66,8 +66,8 @@ export async function replaceEditorContent(page: Page, content: string): Promise
   // Monaco's paste handler can momentarily steal keyboard focus from the
   // EditContext textbox; if `Ctrl+Home` is sent during that window the
   // chord never reaches the editor and the viewport stays at end-of-file
-  // (#990). Re-focus first and dispatch the chord through the locator so
-  // it is bound to the focused element rather than the page.
+  // (#990). Re-focus the textbox and dispatch the chord through the locator
+  // so it is bound to the focused element rather than the page.
   await editorTextbox.focus();
   await expect(editorTextbox).toBeFocused();
   await editorTextbox.press("Control+Home");
@@ -75,17 +75,7 @@ export async function replaceEditorContent(page: Page, content: string): Promise
   const firstLine = content.split("\n").find((line) => line.trim().length > 0);
   if (firstLine) {
     const probe = firstLine.trim().slice(0, 24);
-    const viewLines = page.locator(".monaco-editor .view-lines").first();
-    // Re-issue `Control+Home` between polls — covers the residual case
-    // where the first chord landed before the paste finished commit-and-
-    // render and line 1 stayed off-screen.
-    await expect(async () => {
-      const text = (await viewLines.textContent()) ?? "";
-      if (!text.includes(probe)) {
-        await editorTextbox.press("Control+Home");
-        throw new Error(`view-lines did not include ${JSON.stringify(probe)}`);
-      }
-    }).toPass({ timeout: 5_000, intervals: [100, 250, 500] });
+    await expect(page.locator(".monaco-editor .view-lines").first()).toContainText(probe);
   }
 
   await page.waitForTimeout(COMPILE_SETTLE_MS);
