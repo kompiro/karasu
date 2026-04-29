@@ -106,17 +106,6 @@ describe("AT-0038 (WebView) — Cmd/Ctrl+Click hint and editor jump", function (
     );
   }
 
-  async function refocusPreview(): Promise<void> {
-    if (inWebViewFrame) {
-      await webview.switchBack();
-      inWebViewFrame = false;
-    }
-    await new EditorView().openEditor(PREVIEW_TITLE, 1);
-    await driver.sleep(300);
-    await webview.switchToFrame();
-    inWebViewFrame = true;
-  }
-
   async function readEditorLine(): Promise<number> {
     if (inWebViewFrame) {
       await webview.switchBack();
@@ -126,6 +115,49 @@ describe("AT-0038 (WebView) — Cmd/Ctrl+Click hint and editor jump", function (
     await driver.sleep(150);
     const [line] = await editor.getCoordinates();
     return line;
+  }
+
+  async function ensureWebViewFrame(): Promise<void> {
+    if (!inWebViewFrame) {
+      await new EditorView().openEditor(PREVIEW_TITLE, 1);
+      await driver.sleep(300);
+      await webview.switchToFrame();
+      inWebViewFrame = true;
+    }
+  }
+
+  // Repeatedly dispatch a Cmd/Ctrl+Click at `selector` and poll the .krs
+  // editor cursor until it lands on `expectedLine`. The first navigate
+  // postMessage can no-op if the LSP client is still warming up
+  // (`handleNavigate` early-returns when `PositionOfNodeRequest` has no
+  // range), so we re-dispatch on each poll iteration. The helper leaves
+  // the driver in WebView frame context.
+  async function clickAndAwaitCursor(
+    selector: string,
+    expectedLine: number,
+    description: string,
+  ): Promise<void> {
+    let lastLine = 0;
+    try {
+      await driver.wait(
+        async () => {
+          await ensureWebViewFrame();
+          await dispatchClick(selector, true);
+          await driver.sleep(200);
+          lastLine = await readEditorLine();
+          return lastLine === expectedLine;
+        },
+        ELEMENT_TIMEOUT_MS,
+        `editor cursor did not move to line ${expectedLine} for ${description} after Cmd/Ctrl+Click`,
+      );
+    } catch (err) {
+      throw new Error(
+        `editor cursor did not reach line ${expectedLine} for ${description}; last seen line ${lastLine}. Original: ${(err as Error).message}`,
+        { cause: err },
+      );
+    } finally {
+      await ensureWebViewFrame();
+    }
   }
 
   before(async () => {
@@ -167,6 +199,10 @@ describe("AT-0038 (WebView) — Cmd/Ctrl+Click hint and editor jump", function (
     inWebViewFrame = true;
   });
 
+  beforeEach(async () => {
+    await ensureWebViewFrame();
+  });
+
   after(async () => {
     if (inWebViewFrame) {
       try {
@@ -197,30 +233,11 @@ describe("AT-0038 (WebView) — Cmd/Ctrl+Click hint and editor jump", function (
       `expected to start at root, but breadcrumb was "${beforeBreadcrumb}"`,
     );
 
-    await driver.wait(
-      until.elementLocated(By.css('[data-node-id="OrderService"][data-has-children="true"]')),
-      ELEMENT_TIMEOUT_MS,
-    );
-    await dispatchClick('[data-node-id="OrderService"][data-has-children="true"]', true);
+    const selector = '[data-node-id="OrderService"][data-has-children="true"]';
+    await driver.wait(until.elementLocated(By.css(selector)), ELEMENT_TIMEOUT_MS);
 
-    let lastLine = 0;
-    try {
-      await driver.wait(
-        async () => {
-          lastLine = await readEditorLine();
-          return lastLine === FIXTURE_LINE.OrderService;
-        },
-        ELEMENT_TIMEOUT_MS,
-        "editor cursor did not move to OrderService line after Cmd/Ctrl+Click",
-      );
-    } catch (err) {
-      throw new Error(
-        `editor cursor did not reach line ${FIXTURE_LINE.OrderService} for OrderService; last seen line ${lastLine}. Original: ${(err as Error).message}`,
-        { cause: err },
-      );
-    }
+    await clickAndAwaitCursor(selector, FIXTURE_LINE.OrderService, "OrderService");
 
-    await refocusPreview();
     const afterBreadcrumb = await readBreadcrumb();
     assert.deepStrictEqual(
       breadcrumbSegments(afterBreadcrumb),
@@ -278,26 +295,9 @@ describe("AT-0038 (WebView) — Cmd/Ctrl+Click hint and editor jump", function (
 
     const leafSelector = '[data-node-id="OrderManagement"]';
     await driver.wait(until.elementLocated(By.css(leafSelector)), ELEMENT_TIMEOUT_MS);
-    await dispatchClick(leafSelector, true);
 
-    let lastLine = 0;
-    try {
-      await driver.wait(
-        async () => {
-          lastLine = await readEditorLine();
-          return lastLine === FIXTURE_LINE.OrderManagement;
-        },
-        ELEMENT_TIMEOUT_MS,
-        "editor cursor did not move to OrderManagement line after Cmd/Ctrl+Click",
-      );
-    } catch (err) {
-      throw new Error(
-        `editor cursor did not reach line ${FIXTURE_LINE.OrderManagement} for OrderManagement; last seen line ${lastLine}. Original: ${(err as Error).message}`,
-        { cause: err },
-      );
-    }
+    await clickAndAwaitCursor(leafSelector, FIXTURE_LINE.OrderManagement, "OrderManagement");
 
-    await refocusPreview();
     const afterBreadcrumb = await readBreadcrumb();
     assert.strictEqual(
       afterBreadcrumb,
