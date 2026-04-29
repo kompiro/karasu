@@ -844,6 +844,7 @@ import { diffSystemViewSlices } from "./diff/view-diff.js";
 import { diffDeployViewSlices } from "./diff/deploy-view-diff.js";
 import { diffOrgViewSlices } from "./diff/org-view-diff.js";
 import type { NodeDiffMeta, EdgeDiffMeta } from "./diff/view-diff.js";
+import { injectDiffStyle } from "./diff/diff-style.js";
 
 export interface SystemDiffCompileResult {
   diagramType: "system";
@@ -937,7 +938,7 @@ export async function compileSystemDiff(
 
   return {
     diagramType: "system",
-    svg,
+    svg: injectDiffStyle(svg),
     diagnostics,
     nodeDiff: diffed.nodes,
     edgeDiff: diffed.edges,
@@ -1034,7 +1035,7 @@ export async function compileDeployDiff(
 
   return {
     diagramType: "deploy",
-    svg,
+    svg: injectDiffStyle(svg),
     diagnostics,
     nodeDiff: diffed.nodes,
     edgeDiff: diffed.edges,
@@ -1112,7 +1113,7 @@ export async function compileOrgDiff(
 
   return {
     diagramType: "org",
-    svg,
+    svg: injectDiffStyle(svg),
     diagnostics,
     nodeDiff: diffed.nodes,
     edgeDiff: diffed.edges,
