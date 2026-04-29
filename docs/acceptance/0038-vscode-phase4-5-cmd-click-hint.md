@@ -2,16 +2,31 @@
 
 ## Coverage policy
 
-**Partial automation** — TC-01 (hint text visible at root) and TC-02 (hint
-text visible after drill-down) are automated in
+**Partial automation** — TC-01 (hint at root) and TC-02 (hint after
+drill) are automated in
 [`packages/vscode-e2e/tests/webview/at-0038-cmd-click-hint.test.ts`](../../packages/vscode-e2e/tests/webview/at-0038-cmd-click-hint.test.ts)
 under the WebView E2E harness
 ([`docs/design/vscode-webview-e2e-harness.md`](../design/vscode-webview-e2e-harness.md)
 / [AT-0072](./0072-vscode-webview-e2e-phase3-at-0038.md)).
-TC-03..TC-05 (modifier-click and plain-click triggering editor jump) still
-require asserting the active editor's cursor moved; they continue under
-[ADR-20260428-05](../adr/20260428-05-vscode-webview-manual-tests.md) manual
-coverage and will be migrated in a follow-up.
+
+TC-03 and TC-04 (Cmd/Ctrl+Click → editor cursor jump) have automated
+implementations in the same file but are **`it.skip`** today: the
+karasu extension resolves its LSP server module via
+`context.asAbsolutePath("../lsp/out/server.js")`, which only works in
+the dev tree. The path falls outside the `.vsix` that vsce produces
+from `packages/vscode`, so an installed-mode harness cannot start the
+LSP and `handleNavigate` early-returns. They will un-skip once the
+extension packages the LSP server inside its own folder
+(see [AT-0073](./0073-vscode-webview-e2e-phase3-at-0038-jump.md)).
+Until then they remain manual under
+[ADR-20260428-05](../adr/20260428-05-vscode-webview-manual-tests.md).
+
+TC-05 in earlier revisions described "plain click on leaf → editor jump",
+which pre-dated the Phase 6 detail-panel work (#250). The current
+behaviour is that a plain click on a leaf opens the detail panel; that
+case is already automated by
+[AT-0039 TC-01](./0039-vscode-phase6-detail-panel.md) and TC-05 below
+has been rewritten to match.
 
 The harness job is gated on the `vscode-webview-e2e` PR label and is **not**
 a required check.
@@ -82,10 +97,12 @@ system ECommerce {
 
 ---
 
-### TC-05: Plain click on a leaf node triggers editor jump
+### TC-05 (superseded): Plain click on a leaf opens the detail panel
 
-1. Drill into OrderService so OrderManagement and Inventory are visible
-2. Click **OrderManagement** without any modifier key
-3. **Expected**:
-   - The preview does **not** change view depth
-   - The editor cursor moves to the `OrderManagement` definition in the `.krs` file
+Earlier revisions of this AT expected a plain click on a leaf node to
+trigger an editor jump. Phase 6 (#250) replaced that behaviour: a plain
+click on a leaf now opens the detail panel in the preview.
+
+The current behaviour is covered by
+[AT-0039 TC-01](./0039-vscode-phase6-detail-panel.md) and is automated in
+the WebView E2E harness, so no additional manual TC is needed here.
