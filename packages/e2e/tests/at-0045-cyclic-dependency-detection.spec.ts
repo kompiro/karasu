@@ -35,7 +35,6 @@ const ASYNC_CYCLE_KRS = `system ECommerce {
 }
 `;
 
-
 test.describe("AT-0045 Cyclic dependency detection", () => {
   test("sync cycle emits warning and marks edges with krs-edge--cyclic", async ({ page }) => {
     await page.goto("/");

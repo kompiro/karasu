@@ -33,7 +33,6 @@ const NO_DEPLOY_KRS = `system ECPlatform {
 }
 `;
 
-
 test.describe("AT-0007 Deployment diagram", () => {
   test("both tabs display icon + text labels (AT-0007-07)", async ({ page }) => {
     await page.goto("/");

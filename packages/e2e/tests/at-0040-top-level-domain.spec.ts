@@ -30,7 +30,6 @@ const DOMAIN_INSIDE_SERVICE_KRS = `system ECPlatform {
 }
 `;
 
-
 test.describe("AT-0040 Top-level domain declarations", () => {
   test("top-level domains render and emit unassigned warnings (TC-1, TC-2)", async ({ page }) => {
     await page.goto("/");

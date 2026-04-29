@@ -63,7 +63,6 @@ deploy Production {
 }
 `;
 
-
 async function expectNoWarnings(page: Page) {
   // Give the reactive pipeline a moment to settle then assert the panel
   // is either absent or free of any listed warnings.

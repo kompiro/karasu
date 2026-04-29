@@ -78,7 +78,6 @@ async function bootApp(
   }
 }
 
-
 const MODES: Mode[] = ["opfs", "memory"];
 
 for (const mode of MODES) {

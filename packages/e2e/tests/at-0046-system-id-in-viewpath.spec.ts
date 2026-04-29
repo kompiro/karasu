@@ -23,7 +23,6 @@ system SysB {
 }
 `;
 
-
 test.describe("AT-0046 System ID in ViewPath", () => {
   test("single-system breadcrumb includes the system label and restores root on click (AC1)", async ({
     page,

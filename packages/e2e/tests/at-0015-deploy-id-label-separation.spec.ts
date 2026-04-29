@@ -45,7 +45,6 @@ deploy "本番環境" {
 }
 `;
 
-
 async function openDeployTab(page: Page) {
   await page.getByRole("tab", { name: "Deploy" }).click();
   await expect(page.getByRole("tab", { name: "Deploy", selected: true })).toBeVisible();

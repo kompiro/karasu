@@ -43,7 +43,6 @@ const DOMAIN_DRIFT_KRS = `system DriftSample {
 }
 `;
 
-
 async function drillInto(page: Page, nodeId: string) {
   await page.locator(`svg [data-node-id="${nodeId}"]`).first().click();
 }

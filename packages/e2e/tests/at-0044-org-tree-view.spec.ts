@@ -47,7 +47,6 @@ organization Globex {
 }
 `;
 
-
 async function openOrgTab(page: Page) {
   await page.getByRole("tab", { name: /Org/ }).click();
 }

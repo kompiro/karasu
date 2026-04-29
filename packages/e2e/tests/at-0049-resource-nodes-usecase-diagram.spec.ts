@@ -74,7 +74,6 @@ const INLINE_KRS = `system ECPlatform {
 }
 `;
 
-
 async function drillIntoOrderDomain(page: Page) {
   await page.getByRole("tab", { name: "System" }).click();
   await expect(page.getByRole("tab", { name: "System", selected: true })).toBeVisible();

@@ -102,7 +102,6 @@ system SystemB {
 
 const UNIQUE_ERROR_PATTERN = /must be unique within a system/i;
 
-
 async function goToSystemTab(page: Page) {
   await page.getByRole("tab", { name: "System" }).click();
   await expect(page.getByRole("tab", { name: "System", selected: true })).toBeVisible();

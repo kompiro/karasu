@@ -47,7 +47,6 @@ const INFRA_KRS = `system ECPlatform {
 }
 `;
 
-
 test.describe("AT-0047 Infra nodes in System diagram", () => {
   test("database, queue and storage blocks render as System-level nodes", async ({ page }) => {
     await page.goto("/");
