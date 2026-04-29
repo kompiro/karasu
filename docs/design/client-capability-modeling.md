@@ -153,33 +153,49 @@ client ScannerApp [mobile] {
 
 ## 現時点の方針（推奨）
 
-**案 A（フラット宣言）を MVP として採る**。`@when` / `@scope` 等の修飾は **将来オプション** として残す（annotation の文法は予約済みなので構文側の変更不要）。
+**案 A（フラット宣言）を MVP として採る**。ただし `label` / `description` を書きたい場合はブロック形式 `capability <name> { label "..." description "..." }` も許す（他の karasu ノードの宣言形式と統一）。`@when` / `@scope` 等の追加修飾は **将来オプション** として残す（annotation の文法は予約済みなので構文側の変更不要）。
 
 ```
 client OrderClient [mobile] {
   label "Customer mobile app"
   handles Order, Catalog
   resource keychain "session"
-  capability camera
-  capability geolocation
+
+  // 短縮形: 補足が要らない capability はフラット 1 行で書く
   capability notification
+
+  // ブロック形式: 「なぜ要るのか」を残したい場合
+  capability camera {
+    label "QR scanning"
+    description "Used to scan QR codes attached to inspection items"
+  }
+  capability geolocation {
+    description "Continuous tracking during delivery"
+  }
 }
 ```
 
 理由:
 - ADR-20260428-06 の `resource` フラット原則と対称で、学習コストが最小
-- 大半の現実ケース（capability 1〜3 個）に最適化される
+- 大半の現実ケース（capability 1〜3 個）はフラット 1 行で済む
+- 「なぜこの権限を要求するか」は脅威モデリング・ストア審査の本質情報なので、書きたい場合の構造化された置き場（label / description）を最初から提供する
+- 他のノード（`client` / `service` / `domain` / `usecase` / `resource`）と同じく `label` / `description` を `{ ... }` ブロック内で書ける統一感を保つ
 - `usecase` 階層（将来の案 ii）に降ろす拡張パスは案 A → ブロック → usecase の順に機械変換可能で塞がれない
 - 将来 annotation で `@when` 等を加えるのも上乗せとして可能（破壊的変更にならない）
 
 採らない代替:
-- 案 B（ブロック）は対称性の崩れと冗長さで却下
-- 案 C（修飾必須）は MVP の表面積を膨らませる。useful だが先回りしすぎ
+- 案 B（`capabilities { ... }` ラッパブロック）は対称性の崩れと冗長さで却下
+- 案 C（`@when` 修飾を MVP 必須）は表面積を膨らませる。`description` で当面しのげる
 
-## 予約する capability セット（MVP）
+## 推奨する capability セット（オープン推奨集合）
 
-最初に予約するセットは **「複数 OS / プラットフォームを横断する代表的な機能」** に絞る。
-プラットフォーム固有の細かい permission（例: Android の `READ_EXTERNAL_STORAGE`）はマニフェスト出力時の話で、modeling には不要。
+karasu は modeling tool であり、想定外の使われ方（業界特有のデバイス、未来のブラウザ API、社内独自の権限軸）が必ず出る。
+そのため capability の識別子集合は **クローズドな予約セットではなく、推奨集合（recommended set）** として扱う:
+
+- **任意の識別子を `capability` として書ける**（unknown も警告なし）
+- 下記の推奨集合は「迷ったらこの名前を使ってほしい」という規範であり、強制ではない
+- LSP / エディタ補完や docs 上のリファレンスは推奨集合をベースにする
+- 推奨集合外の名前を使った場合、書き手の責任で意味が一意になるよう description を添える運用
 
 ### Web / ブラウザ系（共通）
 
@@ -197,26 +213,31 @@ client OrderClient [mobile] {
 
 ### IoT 追加
 
-`gpio` / `serial` / `zigbee` / `lora`
+`gpio` / `serial` / `zigbee` / `lora` / `nfc` / `rfid`
+
+> 例: ハンディターミナル（`client [device]`）が `zigbee` を在庫管理サーバーへの通信路として要求する、KIOSK が `nfc` で IC カード読み取りを行う、といったケース。
 
 ### 命名規則
 
 - **kebab-case** で揃える（`screen-wake-lock`, `face-id`）
 - Web Permissions API / W3C 仕様の名前を優先する（`geolocation`, `notification`）
 - OS 固有名は避け、抽象機能名を選ぶ（×`android.permission.CAMERA`, ◯`camera`）
-- 不明な capability は parser で warning（typo 検出のため。fatal にはしない — 仕様外の長尾ケースは存在する）
+- 推奨集合外でも書き手が一貫して使う限り許容する
 
-### 将来追加の方針
+### 推奨集合の拡張
 
-新規 capability は需要が出たら都度追加。MVP セットを最初から完璧に揃える必要はない（ホワイトリスト方式 + warning）。
+需要が出た capability は推奨集合に都度追加する。`docs/spec/tags-annotations.md` 等の更新で対応し、コード側のホワイトリスト変更は不要（オープン集合のため）。
 
 ## バリデーション
 
 ### 必須チェック（MVP）
 
-- **不明な capability**: 予約セット外の name は **warning**（fatal にはしない）。typo（`geoloaction`）の検出が目的
-- **重複宣言**: 同 capability の 2 度宣言は **warning**
-- **subtype との整合**: `client [cli] { capability camera }` のように、形態的にあり得ない組み合わせは **warning**（CLI ツールが camera を要求するのは普通ない）。ホワイトリスト的にゆるく。
+- **重複宣言**: 同 capability を同 client 内で 2 度宣言した場合は **warning**（明確なバグであり false positive がない）
+
+### あえて入れないチェック
+
+- **不明な capability の警告**: 入れない。識別子集合をオープンに保つ方針（推奨集合の節を参照）と整合する。typo は LSP の補完候補で支援する想定で、validator は黙って通す
+- **subtype との整合警告**: 入れない。`client [cli] { capability camera }` のような組み合わせも、想定外のツール用途（例えば CLI が動画キャプチャ用 binary を起動する）を排除しない。書き手の判断に委ねる
 
 ### スコープ外（将来）
 
@@ -282,24 +303,47 @@ client InvoiceHelper [extension] {
 
 → extension 固有の permission 軸（`clipboard`, `storage-access`）が表現できる。
 
-### ケース 4: 形態不一致の警告
+### ケース 4: ハンディターミナル（IoT × 通信路）
 
 ```
-client AdminCLI [cli] {
-  capability camera   // ← validator warning: cli + camera は通常ない
+client WarehouseTerminal [device] {
+  label "Handheld inventory terminal"
+  handles Inventory
+  capability zigbee {
+    description "Communication path to in-warehouse inventory hub"
+  }
+  capability nfc {
+    description "RFID tag scanning for shelf inventory"
+  }
 }
 ```
+
+→ 「IoT 端末がどんな通信・読み取り経路を要求するか」を modeling 上で読み取れる。validator は推奨集合外でも警告しない。
+
+### ケース 5: 推奨集合外の独自 capability
+
+```
+client SignageDisplay [device] {
+  label "Digital signage"
+  capability remote-config-fetch {
+    description "Pulls layout updates from internal CMS over LAN"
+  }
+}
+```
+
+→ 推奨集合に無い識別子でも警告は出ない。description で意味を補い、書き手の責任で一貫した命名を保つ運用。
 
 ## MVP のスコープ
 
 ### 含むもの
 
-- `capability <name>` フラット構文（`client` ボディ直下）
-- 予約 capability セット（上記 web / mobile / desktop / IoT 計 30 種前後）
-- バリデーション: unknown capability warning / 重複 warning / subtype mismatch warning（ゆるい）
+- `capability <name>` フラット構文 + `capability <name> { label "..." description "..." }` ブロック構文（`client` ボディ直下）
+- 推奨 capability 集合のドキュメント化（コード側はオープン受容のためホワイトリスト不要）
+- バリデーション: 同一 client 内での重複宣言 warning のみ
 - レンダリング: client ノード内テキスト表示（icon は最小）
-- `docs/spec/syntax.md` / `docs/spec/tags-annotations.md` の更新
-- `examples/client-mcp/` への capability 例示の追加
+- `docs/spec/syntax.md` / `docs/spec/tags-annotations.md` の更新（推奨集合の章を追加）
+- `examples/getting-started/` および `examples/getting-started-en/` の MobileApp client に `capability notification` を 1 行追加
+- `examples/client-mcp/` への capability ブロック構文を含むリッチな例
 
 ### スコープ外（別 Issue）
 
@@ -314,53 +358,71 @@ client AdminCLI [cli] {
 
 > 実装フェーズで `docs/acceptance/` に正式追記。本 Doc では outline のみ。
 
-- AT-A: `client X [mobile] { capability camera }` が parse / render / examples で確認できる
-- AT-B: 不明な capability（`capability foo`）で warning、parse は成功
-- AT-C: 同 capability の重複宣言で warning
-- AT-D: `client [cli] { capability camera }` で subtype mismatch warning
-- AT-E: `examples/client-mcp/` に capability を含むクライアントが追加され、render 結果に capability 行が出る
-- AT-F: docs（`docs/spec/syntax.md` / `docs/spec/tags-annotations.md`）に `capability` の記述が追加される
-- AT-G（manual）: ドキュメントを読んだ第三者が `capability` と `resource` の役割の違いを理解できる
+- AT-A: `client X [mobile] { capability camera }` がフラット形式で parse / render できる
+- AT-B: `capability camera { label "QR" description "..." }` ブロック形式で parse / render できる
+- AT-C: 推奨集合外の識別子（`capability foo`）でも parse / render が成功し、警告は出ない
+- AT-D: 同 capability の重複宣言で warning
+- AT-E: `examples/getting-started/` および `examples/getting-started-en/` の MobileApp client に capability が追加され、render 結果に capability 行が出る
+- AT-F: `examples/client-mcp/` にブロック形式の capability を含むクライアントが追加され、label / description が render に反映される
+- AT-G: docs（`docs/spec/syntax.md` / `docs/spec/tags-annotations.md`）に `capability` の構文と推奨集合が追加される
+- AT-H（manual）: ドキュメントを読んだ第三者が `capability` と `resource` の役割の違いを理解できる
 
-## 未解決の問い
+## 決定事項のサマリ（旧「未解決の問い」を確定）
 
-### Q1. capability の値はサブタグ拡張を許すか
-
-```
-capability bluetooth [le]            // BLE 限定
-capability bluetooth [classic, le]   // 両方
-```
-
-**推奨**: MVP では **採らない**。`bluetooth` 一語で表現し、必要なら `bluetooth-le` を別 capability として予約セットに追加する。サブタグは将来検討。
-
-### Q2. capability に label / description を付けられるか
+### D1. capability にサブタグは付けない ✅ 決定
 
 ```
-capability geolocation { label "配達追跡用" }
+capability bluetooth [le]    // 採らない
 ```
 
-**推奨**: MVP では **採らない**（フラット 1 行のシンプルさを保つ）。将来 `@when` annotation で似た情報を載せられる。
+`bluetooth` / `bluetooth-le` / `bluetooth-classic` のように **別識別子** で表現する。subtype tag 構文は `client` の形態タグと表記が混ざり、混乱の元になるため。
 
-### Q3. `examples/getting-started/` への追加
+### D2. capability に label / description を許す ✅ 決定
 
-ADR-20260428-06 で `getting-started` には `client` を追加した。capability も同様に getting-started に出すか？
+```
+capability geolocation {
+  label "配達追跡用"
+  description "Continuous tracking for the courier dashboard"
+}
+```
 
-**推奨**: **出さない**。getting-started は最小学習導線であり、capability は応用編。`examples/client-mcp/` のリッチな例で見せれば十分。
+理由:
+- 「なぜこの権限を要求するか」は脅威モデリング・ストア審査の本質情報なので、書きたい場合の構造化された置き場が要る
+- 他のノード（`client` / `service` / `domain` / `usecase` / `resource`）は `label` / `description` をプロパティとして持っており、capability だけ持たないのは非対称
+- フラット形式 `capability camera` も維持するため、補足が要らないケースは 1 行で済む
 
-### Q4. Phase 計画
+### D3. getting-started に capability を出す ✅ 決定
 
-ADR-20260428-06 が 8 phase に分けたのと同様、capability も独立 phase でリリースするか、`client` MVP の延長 PR でまとめるか。
+`examples/getting-started/index.krs` および `examples/getting-started-en/index.krs` の MobileApp client に `capability notification` 等を 1 行追加する。読み手に「こういう軸がある」と早期に伝える方が、後付けで紹介するより `client` の輪郭がはっきりする。
 
-**推奨**: **独立 1 PR で投入**。capability は `client` MVP 完了後の追加トピックなので、ADR-20260428-06 の 8 phase 構造とは独立。実装規模も中程度（1 PR でレビューに収まる想定）。
+### D4. Phase 分割は実装着手時に判断 🟡 保留
+
+実装着手時に規模を見積もり、1 PR に収まれば独立 1 PR、大きくなれば分割する。
+分割する場合の自然な切れ目: (a) parser + AST + 重複 warning, (b) renderer + examples, (c) docs。
+
+### D5. capability の識別子集合はオープン ✅ 決定（Q6 を再定義）
+
+karasu は modeling tool であり、想定外の使われ方が必ず出る。識別子集合を **クローズドな予約セットではなく推奨集合** として扱う:
+
+- 任意の識別子を `capability` として書ける（unknown も警告なし）
+- 推奨集合は「迷ったらこの名前を使ってほしい」という規範
+- LSP / エディタ補完や docs リファレンスは推奨集合をベースにする
+- 推奨集合外の名前を使った場合、書き手の責任で description を添える運用
+
+これに伴い、subtype mismatch（`[cli]` + camera 等）の警告も廃止。重複宣言警告のみ残す。
+
+### D6. IoT 系も推奨集合に含める ✅ 決定
+
+ハンディターミナルが `zigbee` を在庫サーバーとの通信路として要求する、KIOSK が `nfc` で IC カードを読む、といった現実ケースがある。IoT 追加: `gpio` / `serial` / `zigbee` / `lora` / `nfc` / `rfid`。
 
 ## 参考: Issue #837 で挙がった open question への回答
 
 | #837 の問い | 本 Doc での結論 |
 |---|---|
 | 1. keyword: `capability` vs `permission` vs `uses` | **`capability`** |
-| 2. scope qualifier (`@when` / `@scope`) | MVP では採らない、annotation 余地は残す |
-| 3. 予約セット | web 14 + mobile 8 + desktop 4 + IoT 4 種程度を初期予約、需要で追加 |
-| 4. placement: flat vs `capabilities { }` | **flat**（案 A） |
+| 2. scope qualifier (`@when` / `@scope`) | MVP では採らない、annotation 余地は残す。`label` / `description` で当面しのぐ |
+| 3. 推奨集合 | web / mobile / desktop / IoT 計 30+ 種を推奨集合として提示、需要で拡張 |
+| 4. placement: flat vs `capabilities { }` | **flat 単独 + `capability X { ... }` ブロック併用**（案 A 拡張） |
 | 5. ネイティブマニフェスト連携 | スコープ外、構文側で塞がない |
 | 6. 未使用警告 | MVP では出さない（usecase 階層がないため）。将来 |
 
