@@ -113,10 +113,13 @@ karasu には既にこの問題への解として **アプリ内 graphical diff 
 | `packages/core` | 変更なし（既存 API を呼ぶだけ） |
 | アプリ側 | 変更なし |
 
-## 未解決事項 / フォローアップ
+## フォローアップ
 
-- ~~**bundled all-views diff**~~: follow-up Issue [#1025](https://github.com/kompiro/karasu/issues/1025) に切り出した。core に `buildAllViewsSvgDiffProject` を追加して CLI 既定値を bundle に切り替える形を想定している。
-- **tempfile leak on SIGKILL**: 通常パスでは `finally` で削除するが、プロセスが強制終了されると `.karasu-diff-XXXXXX/` が残る。`process.on("exit")` でクリーンアップを追加するか、`.gitignore` で握りつぶすか。実害は小さい。
+- **bundled all-views diff**: follow-up Issue [#1025](https://github.com/kompiro/karasu/issues/1025) に切り出した。core に `buildAllViewsSvgDiffProject` を追加して CLI 既定値を bundle に切り替える形を想定している。
+
+## 未対応として確定した論点
+
+- **tempfile leak on SIGKILL**: 通常パスでは `finally` で `.karasu-diff-XXXXXX/` を削除する。`SIGKILL` で強制終了された場合のみ leak するが、Node の `exit` イベントは SIGKILL では発火しないので捕捉手段が無い。OS tempdir に作る案は stdin 側 `@import` の解決を壊すため不可（対側のディレクトリから resolve する設計を捨てる必要がある）。起動時 cleanup は並列実行のレースが煩雑で割に合わない。実害は隠しディレクトリが 1 つ残る程度なので **明示的に未対応とする**。実害が観測されたら `karasu cleanup` 相当のサブコマンドで対応する判断にする。
 
 ## ADR 化
 
