@@ -49,9 +49,28 @@ describe("diff CLI — same content yields no-change SVG", () => {
 
     expect(stdout).toContain("<svg");
     expect(stdout).toContain("data-diff-state");
-    expect(stdout).toContain('data-diff-state="unchanged"');
-    expect(stdout).not.toContain('data-diff-state="added"');
-    expect(stdout).not.toContain('data-diff-state="removed"');
+    // Element-level matches only (the inline <style> block also contains
+    // the literal substring data-diff-state="added" / "removed" inside CSS
+    // selectors, so naive substring matches would hit those false positives).
+    expect(stdout).toMatch(/<g[^>]*data-diff-state="unchanged"/);
+    expect(stdout).not.toMatch(/<g[^>]*data-diff-state="added"/);
+    expect(stdout).not.toMatch(/<g[^>]*data-diff-state="removed"/);
+  });
+
+  it("embeds the diff stylesheet so standalone SVGs render with color", async () => {
+    // Belt-and-suspenders for #1020 follow-up: the SVG must carry its own
+    // diff styling, otherwise opening the file outside the app shows the
+    // attributes but no visual treatment.
+    const a = join(tmpDir, "a.krs");
+    const b = join(tmpDir, "b.krs");
+    await writeFile(a, SAME_KRS);
+    await writeFile(b, ADDED_KRS);
+
+    await diff(a, b, {});
+
+    expect(stdout).toContain("/* karasu-diff-style */");
+    expect(stdout).toContain("#22c55e"); // added color
+    expect(stdout).toContain("#ef4444"); // removed color
   });
 });
 
@@ -63,7 +82,7 @@ describe("diff CLI — added node surfaces in SVG", () => {
     await writeFile(b, ADDED_KRS);
 
     await diff(a, b, {});
-    expect(stdout).toContain('data-diff-state="added"');
+    expect(stdout).toMatch(/<g[^>]*data-diff-state="added"/);
   });
 
   it("symmetrically annotates the removed node when sides flip", async () => {
@@ -73,7 +92,7 @@ describe("diff CLI — added node surfaces in SVG", () => {
     await writeFile(b, SAME_KRS);
 
     await diff(a, b, {});
-    expect(stdout).toContain('data-diff-state="removed"');
+    expect(stdout).toMatch(/<g[^>]*data-diff-state="removed"/);
   });
 });
 
@@ -89,7 +108,7 @@ describe("diff CLI — output handling", () => {
 
     const written = await readFile(out, "utf-8");
     expect(written).toContain("<svg");
-    expect(written).toContain('data-diff-state="added"');
+    expect(written).toMatch(/<g[^>]*data-diff-state="added"/);
     // Stdout stays clean when --output is set.
     expect(stdout).toBe("");
   });

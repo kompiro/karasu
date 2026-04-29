@@ -60,7 +60,7 @@ describe("AT-1020 karasu diff — stdin handling", () => {
       restore();
     }
     expect(stdout).toContain("<svg");
-    expect(stdout).toContain('data-diff-state="added"');
+    expect(stdout).toMatch(/<g[^>]*data-diff-state="added"/);
   });
 
   it("reads the after side from stdin when second arg is `-`", async () => {
@@ -73,6 +73,6 @@ describe("AT-1020 karasu diff — stdin handling", () => {
       restore();
     }
     expect(stdout).toContain("<svg");
-    expect(stdout).toContain('data-diff-state="removed"');
+    expect(stdout).toMatch(/<g[^>]*data-diff-state="removed"/);
   });
 });
