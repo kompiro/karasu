@@ -12,15 +12,27 @@ import {
 } from "vscode-extension-tester";
 
 /**
- * AT-0038 (WebView E2E — Phase 3, AT-0038 hint + editor jump).
+ * AT-0037-9 / AT-0038 (WebView E2E — Phase 3, bidirectional editor ↔
+ * SVG preview interaction).
  *
  * Coverage:
- *   TC-01: hint visible on first render (root view).
- *   TC-02: hint still visible after drilling into a parent node.
- *   TC-03: Cmd/Ctrl+Click on a parent node moves the editor cursor and
- *          does NOT drill the preview.
- *   TC-04: Cmd/Ctrl+Click on a leaf node moves the editor cursor and
- *          does NOT change the preview view.
+ *   AT-0037-9: editor cursor on a node identifier highlights the
+ *              matching `<g data-node-id>` in the SVG preview
+ *              (`class="karasu-highlighted"`).
+ *   TC-01:     hint visible on first render (root view).
+ *   TC-02:     hint still visible after drilling into a parent node.
+ *   TC-03:     Cmd/Ctrl+Click on a parent node moves the editor cursor
+ *              and does NOT drill the preview.
+ *   TC-04:     Cmd/Ctrl+Click on a leaf node moves the editor cursor
+ *              and does NOT change the preview view.
+ *
+ * AT-0037-9 is colocated here (rather than its own file) on purpose:
+ * the WebView ExTester harness's "File: Open File..." simple-dialog
+ * stalls on the second open in the same VS Code session, so each
+ * additional test file that opens a fixture risked breaking later
+ * suites. AT-0037-9 just needs the same fixture as AT-0038 plus a
+ * cursor move, so sharing the suite-level `before` is the cheapest
+ * way to keep the harness reliable.
  *
  * (TC-05 in the spec was "plain click on leaf → editor jump", which
  * pre-dates the Phase 6 detail-panel work. Plain-click on leaf now opens
@@ -74,7 +86,7 @@ const FIXTURE_LINE = {
   OrderManagement: 3,
 } as const;
 
-describe("AT-0038 (WebView) — Cmd/Ctrl+Click hint and editor jump", function () {
+describe("AT-0037-9 / AT-0038 (WebView) — bidirectional editor ↔ SVG preview", function () {
   this.timeout(240_000);
 
   let driver: WebDriver;
@@ -213,6 +225,40 @@ describe("AT-0038 (WebView) — Cmd/Ctrl+Click hint and editor jump", function (
       inWebViewFrame = false;
     }
     await new EditorView().closeAllEditors();
+  });
+
+  it("AT-0037-9: editor cursor on a node identifier highlights the matching SVG node", async () => {
+    // Move the .krs editor cursor onto OrderService (line 2, col 11).
+    // The cursor watcher in extension.ts debounces by 150 ms, asks the
+    // LSP for the node id, and posts a `highlight` message that adds
+    // `karasu-highlighted` to the matching `<g data-node-id>`.
+    if (inWebViewFrame) {
+      await webview.switchBack();
+      inWebViewFrame = false;
+    }
+    const editorView = new EditorView();
+    const editor = (await editorView.openEditor(FIXTURE_NAME, 0)) as TextEditor;
+    await editor.moveCursor(FIXTURE_LINE.OrderService, 11);
+
+    await ensureWebViewFrame();
+
+    let lastClass = "";
+    await driver.wait(
+      async () => {
+        lastClass = (await driver.executeScript(
+          "const el = document.querySelector('[data-node-id=\"OrderService\"]');" +
+            'return el ? el.getAttribute("class") || "" : "";',
+        )) as string;
+        return lastClass.includes("karasu-highlighted");
+      },
+      ELEMENT_TIMEOUT_MS,
+      `[data-node-id="OrderService"] never picked up class "karasu-highlighted"; last class was "${lastClass}"`,
+    );
+
+    assert.ok(
+      lastClass.includes("karasu-highlighted"),
+      `expected [data-node-id="OrderService"]'s class to contain "karasu-highlighted"; saw: "${lastClass}"`,
+    );
   });
 
   it("TC-01: shows the hint text on the root view", async () => {

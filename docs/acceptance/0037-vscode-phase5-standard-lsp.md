@@ -177,7 +177,7 @@ Verify that the karasu VSCode extension provides standard LSP capabilities on to
 
 > **Coverage policy: automated** — the editor → SVG highlight direction is
 > automated in
-> [`packages/vscode-e2e/tests/webview/at-0037-9-bidirectional-jump.test.ts`](../../packages/vscode-e2e/tests/webview/at-0037-9-bidirectional-jump.test.ts)
+> [`packages/vscode-e2e/tests/webview/at-0038-cmd-click-hint.test.ts`](../../packages/vscode-e2e/tests/webview/at-0038-cmd-click-hint.test.ts)
 > under the WebView E2E harness (see
 > [AT-0074](./0074-vscode-webview-e2e-phase3-at-0037-9.md)).
 >
