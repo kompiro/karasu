@@ -10,43 +10,23 @@
 
 ## 受け入れ条件
 
-- [x] skip-layer エッジ（`|fromLayer - toLayer| >= 2`）の直線が中間ノードの
-      バウンディングボックスを横断する場合、L 字型の直交経路に置き換えられる
-
-  > ✅ Automated — `packages/core/src/renderer/edge-routing-channels.test.ts` ›
-  > `routes a skip-layer edge around an obstructing intermediate node`
+- [x] skip-layer エッジ（`|fromLayer - toLayer| >= 2`）の直線が中間ノードのバウンディングボックスを横断する場合、L 字型の直交経路に置き換えられる
+  > ✅ Automated — `packages/core/src/renderer/edge-routing-channels.test.ts` › `routes a skip-layer edge around an obstructing intermediate node`
 
 - [x] 直線が中間ノードを横断しない skip-layer エッジは直線のまま残る
-
-  > ✅ Automated — `packages/core/src/renderer/edge-routing-channels.test.ts` ›
-  > `leaves an unobstructed straight edge alone`
+  > ✅ Automated — `packages/core/src/renderer/edge-routing-channels.test.ts` › `leaves an unobstructed straight edge alone`
 
 - [x] ghost edge と cyclic edge は対象外（直線のまま）
+  > ✅ Automated — `packages/core/src/renderer/edge-routing-channels.test.ts` › `skips ghost edges` / `skips cyclic edges`
 
-  > ✅ Automated — `packages/core/src/renderer/edge-routing-channels.test.ts` ›
-  > `skips ghost edges` / `skips cyclic edges`
+- [x] EC Platform 風の構造（actor が中間 client を介さず深い service に到達）で `Admin → ECSite` のエッジが MobileApp のバウンディングボックスを横断しない
+  > ✅ Automated — `packages/core/src/renderer/layout.test.ts` › `adds waypoints to a skip-layer edge whose straight line crosses an intermediate node`
 
-- [x] EC Platform 風の構造（actor が中間 client を介さず深い service に到達）で
-      `Admin → ECSite` のエッジが MobileApp のバウンディングボックスを横断しない
+- [x] 既存の図（same-layer / adjacent-layer のみ）の SVG 出力に regression が無い
+  > ✅ Automated — `packages/core/src/` の全 snapshot/unit テスト 1056 件が変更なしで通過することで担保（waypoints が空のときは従来の `<line>` レンダリングを維持）
 
-  > ✅ Automated — `packages/core/src/renderer/layout.test.ts` ›
-  > `adds waypoints to a skip-layer edge whose straight line crosses an intermediate node`
-  > （Liang-Barsky 交差判定で経路が MobileApp 内部を通らないことを検証）
-
-- [x] 既存の図（same-layer / adjacent-layer のみ）の SVG 出力に regression が
-      無い
-
-  > ✅ Automated — `packages/core/src/` の全 snapshot/unit テスト 1056 件が
-  > 変更なしで通過することで担保（waypoints が空のときは従来の `<line>`
-  > レンダリングを維持）
-
-- [ ] EC Platform の例を `pnpm dev` のプレビューで開き、`Admin → ECSite` の
-      エッジが目視で MobileApp カードを横断していないこと、エッジ全体が
-      L 字に折れて見やすくなっていることを確認する
-
-  > 🧑 Manual — Preview URL（`https://feat-edge-routing-impl.karasu.pages.dev`）
-  > または `pnpm dev` でローカル起動して `examples/ec-platform/02.5-clients.krs` を
-  > 読み込み、視覚的に確認する。
+- [ ] EC Platform の例を `pnpm dev` のプレビューで開き、`Admin → ECSite` のエッジが目視で MobileApp カードを横断していないこと、エッジ全体が L 字に折れて見やすくなっていることを確認する
+  > 🧑 Manual — Preview URL（`https://feat-edge-routing-impl.karasu.pages.dev`）または `pnpm dev` でローカル起動して `examples/ec-platform/02.5-clients.krs` を読み込み、視覚的に確認する。
 
 ## スコープ外（follow-up）
 
