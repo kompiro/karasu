@@ -2,10 +2,19 @@
 
 ## Coverage policy
 
-**Manual** — see [ADR-20260428-05](../adr/20260428-05-vscode-webview-manual-tests.md).
-This AT exercises the karasu preview WebView (toolbar hint rendering and
-modifier-click handlers), which is unreachable from the
-`packages/vscode-e2e` harness. Verify by hand during release QA.
+**Partial automation** — TC-01 (hint text visible at root) and TC-02 (hint
+text visible after drill-down) are automated in
+[`packages/vscode-e2e/tests/webview/at-0038-cmd-click-hint.test.ts`](../../packages/vscode-e2e/tests/webview/at-0038-cmd-click-hint.test.ts)
+under the WebView E2E harness
+([`docs/design/vscode-webview-e2e-harness.md`](../design/vscode-webview-e2e-harness.md)
+/ [AT-0072](./0072-vscode-webview-e2e-phase3-at-0038.md)).
+TC-03..TC-05 (modifier-click and plain-click triggering editor jump) still
+require asserting the active editor's cursor moved; they continue under
+[ADR-20260428-05](../adr/20260428-05-vscode-webview-manual-tests.md) manual
+coverage and will be migrated in a follow-up.
+
+The harness job is gated on the `vscode-webview-e2e` PR label and is **not**
+a required check.
 
 ## Summary
 
