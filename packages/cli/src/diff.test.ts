@@ -153,3 +153,45 @@ deploy Prod {
     expect(stdout).toContain("ApiUnit");
   });
 });
+
+describe("diff CLI — bundled all-views default (Issue #1025)", () => {
+  it("emits a tabbed bundled SVG when --view is omitted", async () => {
+    const a = join(tmpDir, "a.krs");
+    const b = join(tmpDir, "b.krs");
+    const before = `system Demo { service Api {} }
+deploy Prod {
+  oci ApiUnit { realizes Api }
+}
+organization Org { team Squad {} }
+`;
+    const after = `system Demo { service Api {} service Billing {} }
+deploy Prod {
+  oci ApiUnit { realizes Api }
+  lambda Mailer {}
+}
+organization Org { team Squad {} team Squad2 {} }
+`;
+    await writeFile(a, before);
+    await writeFile(b, after);
+
+    await diff(a, b, {});
+
+    expect(stdout).toContain('id="krs-system-root"');
+    expect(stdout).toContain('id="krs-deploy-root"');
+    expect(stdout).toContain('id="krs-org-root"');
+    expect(stdout).toContain("/* karasu-diff-style */");
+  });
+
+  it("omits deploy / org tabs when neither side has those blocks", async () => {
+    const a = join(tmpDir, "a.krs");
+    const b = join(tmpDir, "b.krs");
+    await writeFile(a, `system Demo { service Api {} }`);
+    await writeFile(b, `system Demo { service Api {} service Billing {} }`);
+
+    await diff(a, b, {});
+
+    expect(stdout).toContain('id="krs-system-root"');
+    expect(stdout).not.toContain('id="krs-deploy-root"');
+    expect(stdout).not.toContain('id="krs-org-root"');
+  });
+});
