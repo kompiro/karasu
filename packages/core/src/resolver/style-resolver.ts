@@ -1,5 +1,5 @@
 import type { KrsNode, KrsEdge, DeployNode, OrganizationBlock, TeamNode } from "../types/ast.js";
-import { hasShape } from "../renderer/shape-registry.js";
+import { hasShape } from "../shapes/shape-registry.js";
 import { CLIENT_SUBTYPE_TAGS, type ClientSubtypeTag } from "../builtins/icon-theme.js";
 import type {
   StyleSheet,

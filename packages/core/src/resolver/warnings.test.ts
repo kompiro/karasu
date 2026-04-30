@@ -5,7 +5,7 @@ import { StyleParser } from "../parser/style-parser.js";
 import { Parser } from "../parser/parser.js";
 import { getBuiltinStyleSheet } from "../builtins/default-style.js";
 import { loadAndRegisterIcons } from "../renderer/svg-icon-loader.js";
-import { clearRegistry } from "../renderer/shape-registry.js";
+import { clearRegistry } from "../shapes/shape-registry.js";
 import { registerBuiltinShapes } from "../renderer/shapes.js";
 
 // Minimal icon SVG for test registration

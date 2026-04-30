@@ -5,7 +5,7 @@ import {
   getShape,
   type ShapeContext,
   type ShapeRenderFn,
-} from "./shape-registry.js";
+} from "../shapes/shape-registry.js";
 
 // ---------------------------------------------------------------------------
 // Built-in shape definitions

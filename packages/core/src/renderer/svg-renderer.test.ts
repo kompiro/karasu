@@ -7,7 +7,7 @@ import { StyleParser } from "../parser/style-parser.js";
 import { getBuiltinStyleSheet } from "../builtins/default-style.js";
 import { analyze } from "../resolver/warnings.js";
 import { loadAndRegisterIcon } from "./svg-icon-loader.js";
-import { clearRegistry } from "./shape-registry.js";
+import { clearRegistry } from "../shapes/shape-registry.js";
 import { registerBuiltinShapes } from "./shapes.js";
 import type { DisplayMode } from "./layout.js";
 

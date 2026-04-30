@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import { parseSvgIcon, loadAndRegisterIcon, loadAndRegisterIcons } from "./svg-icon-loader.js";
-import { getShape, getIconDef, clearRegistry, renderPictogram } from "./shape-registry.js";
+import { getShape, getIconDef, clearRegistry, renderPictogram } from "../shapes/shape-registry.js";
 import { registerBuiltinShapes } from "./shapes.js";
 
 const SAMPLE_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 80" width="160" height="80">
