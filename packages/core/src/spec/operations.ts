@@ -15,8 +15,8 @@
  * See `docs/spec/syntax.md` §"Resource operations" and ADR derived from
  * `docs/design/resource-crud-operations.md`.
  */
-export const RECOGNIZED_RESOURCE_OPERATIONS = ["create", "read", "update", "delete"] as const;
-export type RecognizedResourceOperation = (typeof RECOGNIZED_RESOURCE_OPERATIONS)[number];
+const RECOGNIZED_RESOURCE_OPERATIONS = ["create", "read", "update", "delete"] as const;
+type RecognizedResourceOperation = (typeof RECOGNIZED_RESOURCE_OPERATIONS)[number];
 
 export function isRecognizedResourceOperation(value: string): value is RecognizedResourceOperation {
   return (RECOGNIZED_RESOURCE_OPERATIONS as readonly string[]).includes(value);
