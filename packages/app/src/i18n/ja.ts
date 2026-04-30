@@ -184,6 +184,7 @@ export const ja: Partial<Translations> = {
   "diagnostic.propertyNotForNodeKind.team": `"team" プロパティは service / domain ノードでのみ有効です`,
   "diagnostic.propertyNotForNodeKind.handles": `"handles" プロパティは client / service ノードでのみ有効です`,
   "diagnostic.propertyNotForNodeKind.delivers": `"delivers" プロパティは service ノードでのみ有効です`,
+  "diagnostic.propertyNotForNodeKind.operations": `"operations" プロパティは usecase 内の resource 宣言でのみ有効です`,
   "diagnostic.infraNotInContext.message": ({ infraKind, parentKind }) =>
     `"${infraKind}" は system の直接の子としてのみ有効です。"${parentKind}" の内側には配置できません`,
   "diagnostic.expectedIdOrString.message": ({ context }) =>
@@ -202,6 +203,10 @@ export const ja: Partial<Translations> = {
     `resource "${resourceId}" はどの database にも割り当てられていません`,
   "diagnostic.clientResourceInvalidKind.message": ({ kind, name }) =>
     `client の resource "${name}" の種別 "${kind}" は無効です。利用可能な種別: localStorage, sessionStorage, indexedDB, opfs, file, keychain`,
+  "diagnostic.unknownResourceOperation.message": ({ operation, resourceId }) =>
+    `resource "${resourceId}" に未知の operation "${operation}" が指定されました。認識される verb: create, read, update, delete`,
+  "diagnostic.duplicateResourceOperation.message": ({ operation, resourceId }) =>
+    `resource "${resourceId}" の operation "${operation}" が重複しています`,
   "diagnostic.duplicateOwnerAssignment.message": ({ nodeId, existingTeam }) =>
     `"${nodeId}" はすでに team "${existingTeam}" によって所有されています。複数の team が同じ service / domain を所有することはできません`,
   "diagnostic.duplicateTeamId.message": ({ teamId }) => `team id "${teamId}" が重複しています`,

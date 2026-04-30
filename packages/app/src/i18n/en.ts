@@ -184,6 +184,7 @@ export const en: Translations = {
   "diagnostic.propertyNotForNodeKind.team": `"team" property is only valid for service and domain nodes`,
   "diagnostic.propertyNotForNodeKind.handles": `"handles" property is only valid for client and service nodes`,
   "diagnostic.propertyNotForNodeKind.delivers": `"delivers" property is only valid for service nodes`,
+  "diagnostic.propertyNotForNodeKind.operations": `"operations" property is only valid for resource declarations inside a usecase`,
   "diagnostic.infraNotInContext.message": ({ infraKind, parentKind }) =>
     `"${infraKind}" is only valid as a direct child of system, not inside "${parentKind}"`,
   "diagnostic.expectedIdOrString.message": ({ context }) =>
@@ -202,6 +203,10 @@ export const en: Translations = {
     `resource "${resourceId}" is not assigned to any database`,
   "diagnostic.clientResourceInvalidKind.message": ({ kind, name }) =>
     `Invalid client resource kind "${kind}" for resource "${name}". Allowed kinds: localStorage, sessionStorage, indexedDB, opfs, file, keychain`,
+  "diagnostic.unknownResourceOperation.message": ({ operation, resourceId }) =>
+    `Unknown resource operation "${operation}" on "${resourceId}". Recognized verbs: create, read, update, delete`,
+  "diagnostic.duplicateResourceOperation.message": ({ operation, resourceId }) =>
+    `Duplicate resource operation "${operation}" on "${resourceId}"`,
   "diagnostic.duplicateOwnerAssignment.message": ({ nodeId, existingTeam }) =>
     `"${nodeId}" is already owned by team "${existingTeam}"; multiple teams cannot own the same service or domain`,
   "diagnostic.duplicateTeamId.message": ({ teamId }) => `Duplicate team id "${teamId}"`,

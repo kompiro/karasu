@@ -36,6 +36,7 @@ import type {
   LegendViewScope,
 } from "../types/ast.js";
 import { Lexer } from "../lexer/lexer.js";
+import { isRecognizedResourceOperation } from "../spec/operations.js";
 
 const LOGICAL_KEYWORDS = new Set<string>([
   "system",
@@ -314,6 +315,7 @@ export class Parser {
       capabilities?: import("../types/ast.js").ClientCapability[];
       handles?: string[];
       delivers?: string[];
+      operations?: string[];
     },
     parentId?: string,
   ): void {
@@ -372,6 +374,24 @@ export class Parser {
           }
         } else {
           this.error("property-not-for-node-kind", { property: "handles", nodeKind: kind });
+          this.advance();
+        }
+        continue;
+      }
+
+      // Property: operations (resource only) — CRUD verbs the enclosing usecase
+      // performs on this resource. Comma-separated identifiers; multiple
+      // `operations` lines accumulate (mirroring `handles`).
+      if (token.type === TokenType.Operations) {
+        if (kind === "resource") {
+          this.advance();
+          const verbs = this.parseHandlesList();
+          if (verbs.length > 0) {
+            if (!properties.operations) properties.operations = [];
+            properties.operations.push(...verbs);
+          }
+        } else {
+          this.error("property-not-for-node-kind", { property: "operations", nodeKind: kind });
           this.advance();
         }
         continue;
@@ -835,7 +855,9 @@ export class Parser {
     const tags = this.parseTags();
     const annotations = this.parseAnnotations();
 
-    const properties: CommonProperties & { label?: string } = { links: [] };
+    const properties: CommonProperties & { label?: string; operations?: string[] } = {
+      links: [],
+    };
     const children: KrsNode[] = [];
     const edges: KrsEdge[] = [];
     let end = idToken;
@@ -858,6 +880,33 @@ export class Parser {
       });
     }
 
+    let operations: string[] | undefined;
+    if (properties.operations && properties.operations.length > 0) {
+      operations = [];
+      const seen = new Set<string>();
+      for (const verb of properties.operations) {
+        if (!isRecognizedResourceOperation(verb)) {
+          this.diagnostics.push({
+            severity: "warning",
+            code: "unknown-resource-operation",
+            params: { operation: verb, resourceId: id },
+            loc: this.range(start.loc, end.loc),
+          });
+        }
+        if (seen.has(verb)) {
+          this.diagnostics.push({
+            severity: "warning",
+            code: "duplicate-resource-operation",
+            params: { operation: verb, resourceId: id },
+            loc: this.range(start.loc, end.loc),
+          });
+          continue;
+        }
+        seen.add(verb);
+        operations.push(verb);
+      }
+    }
+
     return {
       kind: "resource",
       id,
@@ -870,6 +919,7 @@ export class Parser {
       properties: {
         description: properties.description,
         links: properties.links,
+        ...(operations ? { operations } : {}),
       },
       ref,
     };

@@ -2,7 +2,14 @@ import { describe, it, expect, assert } from "vitest";
 import { Parser } from "./parser.js";
 import { formatDiagnostic } from "./diagnostic-legacy-format.js";
 import { getReference } from "../builtins/reference.js";
-import type { ClientNode, DomainNode, ServiceNode, UserNode } from "../types/ast.js";
+import type {
+  ClientNode,
+  DomainNode,
+  KrsFile,
+  KrsNode,
+  ServiceNode,
+  UserNode,
+} from "../types/ast.js";
 
 describe("Parser", () => {
   it("parses empty input", () => {
@@ -1995,6 +2002,140 @@ system ECPlatform {
       const warnings = result.diagnostics.filter((d) => d.severity === "warning");
       expect(warnings).toHaveLength(1);
       expect(formatDiagnostic(warnings[0])).toContain("OrderTable");
+    });
+  });
+
+  describe("resource operations", () => {
+    function findResource(file: KrsFile, id: string) {
+      let found: import("../types/ast.js").ResourceNode | undefined;
+      const visit = (node: KrsNode) => {
+        if (node.kind === "resource" && node.id === id) {
+          found = node;
+          return;
+        }
+        for (const child of node.children) visit(child);
+      };
+      for (const node of file.systems) visit(node);
+      assert(found, `resource ${id} not found`);
+      return found;
+    }
+
+    it("accepts CRUD verbs on a resource inside a usecase", () => {
+      const result = Parser.parse(`
+system ECPlatform {
+  service A {
+    domain X {
+      usecase PlaceOrder {
+        resource OrderTable [external] {
+          operations create, read
+        }
+      }
+    }
+  }
+}
+      `);
+      const errors = result.diagnostics.filter((d) => d.severity === "error");
+      expect(errors).toHaveLength(0);
+      const warnings = result.diagnostics.filter((d) => d.severity === "warning");
+      expect(warnings).toHaveLength(0);
+      const resource = findResource(result.value, "OrderTable");
+      expect(resource.properties.operations).toEqual(["create", "read"]);
+    });
+
+    it("accumulates verbs across multiple operations lines", () => {
+      const result = Parser.parse(`
+system ECPlatform {
+  service A {
+    domain X {
+      usecase PlaceOrder {
+        resource OrderTable [external] {
+          operations create
+          operations read, update
+        }
+      }
+    }
+  }
+}
+      `);
+      const resource = findResource(result.value, "OrderTable");
+      expect(resource.properties.operations).toEqual(["create", "read", "update"]);
+    });
+
+    it("emits no diagnostic when operations is omitted", () => {
+      const result = Parser.parse(`
+system ECPlatform {
+  service A {
+    domain X {
+      usecase PlaceOrder {
+        resource OrderTable [external] { label "Order table" }
+      }
+    }
+  }
+}
+      `);
+      const warnings = result.diagnostics.filter((d) => d.severity === "warning");
+      expect(warnings).toHaveLength(0);
+      const resource = findResource(result.value, "OrderTable");
+      expect(resource.properties.operations).toBeUndefined();
+    });
+
+    it("warns on unknown verbs but preserves them on the AST", () => {
+      const result = Parser.parse(`
+system ECPlatform {
+  service A {
+    domain X {
+      usecase PlaceOrder {
+        resource OrderTable [external] {
+          operations read, fetch
+        }
+      }
+    }
+  }
+}
+      `);
+      const warnings = result.diagnostics.filter((d) => d.severity === "warning");
+      expect(warnings).toHaveLength(1);
+      expect(warnings[0].code).toBe("unknown-resource-operation");
+      expect(formatDiagnostic(warnings[0])).toContain("fetch");
+      const resource = findResource(result.value, "OrderTable");
+      expect(resource.properties.operations).toEqual(["read", "fetch"]);
+    });
+
+    it("warns on duplicate verbs and dedupes them on the AST", () => {
+      const result = Parser.parse(`
+system ECPlatform {
+  service A {
+    domain X {
+      usecase PlaceOrder {
+        resource OrderTable [external] {
+          operations read, read
+        }
+      }
+    }
+  }
+}
+      `);
+      const warnings = result.diagnostics.filter((d) => d.severity === "warning");
+      expect(warnings).toHaveLength(1);
+      expect(warnings[0].code).toBe("duplicate-resource-operation");
+      const resource = findResource(result.value, "OrderTable");
+      expect(resource.properties.operations).toEqual(["read"]);
+    });
+
+    it("rejects operations on non-resource nodes", () => {
+      const result = Parser.parse(`
+system ECPlatform {
+  service A {
+    domain X {
+      usecase PlaceOrder {
+        operations create
+      }
+    }
+  }
+}
+      `);
+      const errors = result.diagnostics.filter((d) => d.severity === "error");
+      expect(errors.some((e) => e.code === "property-not-for-node-kind")).toBe(true);
     });
   });
 
