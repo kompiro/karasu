@@ -383,4 +383,96 @@ describe("format()", () => {
   it("FormatError has correct name", () => {
     expect(() => format("system {")).toThrow(expect.objectContaining({ name: "FormatError" }));
   });
+
+  // ── Quoting of IDs that cannot be emitted bare (Issue #1058) ────────────
+
+  describe("preserves quotes around IDs that need them", () => {
+    it("keeps quotes on system / service IDs containing spaces", () => {
+      const src = `system "My System" {\n  service "Order Service" {}\n}`;
+      const out = fmt(src);
+      expect(out).toContain(`system "My System"`);
+      expect(out).toContain(`service "Order Service"`);
+      expectIdempotent(out);
+    });
+
+    it("keeps quotes on hyphenated IDs (hyphen is not a bare ident char)", () => {
+      const src = `system "my-system" {\n  service "order-svc" {}\n}`;
+      const out = fmt(src);
+      expect(out).toContain(`system "my-system"`);
+      expect(out).toContain(`service "order-svc"`);
+      expectIdempotent(out);
+    });
+
+    it("keeps quotes on IDs starting with a digit", () => {
+      const src = `system "1stSystem" {}`;
+      const out = fmt(src);
+      expect(out).toContain(`system "1stSystem"`);
+      expectIdempotent(out);
+    });
+
+    it("keeps quotes on IDs that collide with reserved keywords", () => {
+      const src = `system "system" {\n  service "service" {}\n}`;
+      const out = fmt(src);
+      expect(out).toContain(`system "system"`);
+      expect(out).toContain(`service "service"`);
+      expectIdempotent(out);
+    });
+
+    it("keeps quotes on deploy block / unit IDs", () => {
+      const src = `system EC { service Api {} }\ndeploy "prod-east" {\n  oci "api-svc" { realizes Api }\n}`;
+      const out = fmt(src);
+      expect(out).toContain(`deploy "prod-east"`);
+      expect(out).toContain(`oci "api-svc"`);
+      expectIdempotent(out);
+    });
+
+    it("keeps quotes on organization / team / member IDs", () => {
+      const src = `organization "Acme Corp" {\n  team "Platform Team" {\n    member "alice smith" {}\n  }\n}`;
+      const out = fmt(src);
+      expect(out).toContain(`organization "Acme Corp"`);
+      expect(out).toContain(`team "Platform Team"`);
+      expect(out).toContain(`member "alice smith"`);
+      expectIdempotent(out);
+    });
+
+    it("keeps quotes on edge from / to references", () => {
+      const src = `system EC {\n  service "Order Service" {}\n  service "Billing Service" {}\n  "Order Service" -> "Billing Service" "charges"\n}`;
+      const out = fmt(src);
+      expect(out).toContain(`"Order Service" -> "Billing Service"`);
+      expectIdempotent(out);
+    });
+
+    it("keeps quotes on realizes / owns / delivers references", () => {
+      const src = `system EC { service "Order Service" {} }
+deploy Prod {
+  oci api { realizes "Order Service" }
+}
+organization Acme {
+  team Platform {
+    owns "Order Service"
+  }
+}`;
+      const out = fmt(src);
+      expect(out).toContain(`realizes "Order Service"`);
+      expect(out).toContain(`owns "Order Service"`);
+      expectIdempotent(out);
+    });
+
+    it("escapes embedded double quotes and backslashes in IDs", () => {
+      const src = `system "with \\" quote" {}`;
+      const out = fmt(src);
+      // Round-trip must parse cleanly.
+      expectIdempotent(out);
+      expect(out).toContain(`"with \\" quote"`);
+    });
+
+    it("strips unnecessary quotes from bare-safe IDs", () => {
+      // Inverse direction: round-trip should be canonical, not preserve
+      // gratuitous quotes. `Foo` is a valid bare identifier, so the
+      // formatter is free to drop the quotes.
+      const src = `system "Foo" {}`;
+      const out = fmt(src);
+      expect(out).toBe(`system Foo {}`);
+    });
+  });
 });
