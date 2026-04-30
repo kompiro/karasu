@@ -394,3 +394,50 @@ export function buildAllViewsSvg(
     diagnostics,
   };
 }
+
+/**
+ * Bundle pre-rendered single-level view SVGs into one tabbed SVG.
+ *
+ * Used by the diff bundled output (`buildAllViewsSvgDiffProject`) where each
+ * view is a single root level (no drill-down). Each pane wraps the inner
+ * content of the provided SVG into a `<g id="krs-<type>-root">`.
+ *
+ * Returns null if no panes are provided.
+ */
+export function bundleSingleLevelViews(panes: {
+  system?: string;
+  deploy?: string;
+  org?: string;
+}): string | null {
+  const enabledViews = new Set<ViewType>();
+  if (panes.system !== undefined) enabledViews.add("system");
+  if (panes.deploy !== undefined) enabledViews.add("deploy");
+  if (panes.org !== undefined) enabledViews.add("org");
+  if (enabledViews.size === 0) return null;
+
+  const wrap = (
+    type: ViewType,
+    svg: string,
+  ): { element: string; width: number; height: number } => {
+    const { viewBox, innerContent, width, height } = extractSvgParts(svg);
+    const innerSvg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${viewBox}" width="100%" height="100%">${innerContent}</svg>`;
+    const element = `<g class="krs-pane krs-pane--${type}" transform="translate(0, ${TAB_HEIGHT})"><g id="krs-${type}-root" class="krs-view krs-root-level">${innerSvg}</g></g>`;
+    return { element, width, height };
+  };
+
+  const built: { type: ViewType; element: string; width: number; height: number }[] = [];
+  if (panes.system !== undefined) built.push({ type: "system", ...wrap("system", panes.system) });
+  if (panes.deploy !== undefined) built.push({ type: "deploy", ...wrap("deploy", panes.deploy) });
+  if (panes.org !== undefined) built.push({ type: "org", ...wrap("org", panes.org) });
+
+  const maxWidth = Math.max(...built.map((b) => b.width));
+  const maxHeight = Math.max(...built.map((b) => b.height));
+  const totalWidth = maxWidth;
+  const totalHeight = TAB_HEIGHT + maxHeight;
+
+  const tabBar = renderTabBar(enabledViews);
+  const css = buildAllViewsCss();
+  const panesXml = built.map((b) => b.element).join("");
+
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${totalWidth}" height="${totalHeight}"><style>${css}</style>${tabBar}${panesXml}</svg>`;
+}

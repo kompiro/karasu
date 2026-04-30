@@ -161,6 +161,7 @@ import {
   buildDrillDownSvg as _buildDrillDownSvg,
   buildDrillDownSvgOrg as _buildDrillDownSvgOrg,
   buildAllViewsSvg as _buildAllViewsSvg,
+  bundleSingleLevelViews,
 } from "./renderer/drill-down-svg.js";
 import {
   buildAllLayersSvg as _buildAllLayersSvg,
@@ -1118,4 +1119,99 @@ export async function compileOrgDiff(
     nodeDiff: diffed.nodes,
     edgeDiff: diffed.edges,
   };
+}
+
+export interface CompileBundledDiffOptions {
+  beforeEntryPath: string;
+  afterEntryPath: string;
+  fs: FileSystemProvider;
+  displayMode?: DisplayMode;
+  emptyStateLabels?: EmptyStateLabels;
+}
+
+export interface BundledDiffCompileResult {
+  svg: string;
+  diagnostics: Diagnostic[];
+  /** Per-view diff result for each view that was applicable and rendered. */
+  views: {
+    system?: SystemDiffCompileResult;
+    deploy?: DeployDiffCompileResult;
+    org?: OrgDiffCompileResult;
+  };
+}
+
+/**
+ * Compile two `.krs` project entries and produce a bundled SVG that contains
+ * diff state annotations for every applicable view (system / deploy / org)
+ * with CSS-only tab navigation.
+ *
+ * Views that don't apply on either side are skipped:
+ * - deploy: omitted when neither side has a deploy block
+ * - org:    omitted when neither side has any team
+ * - system: omitted when neither side has any system / service / domain
+ *
+ * Mirrors `buildAllViewsSvgProject` (the non-diff bundled variant) but
+ * composes `compile{System,Deploy,Org}Diff` outputs instead of fresh renders.
+ */
+export async function buildAllViewsSvgDiffProject(
+  options: CompileBundledDiffOptions,
+): Promise<BundledDiffCompileResult> {
+  const { beforeEntryPath, afterEntryPath, fs, displayMode, emptyStateLabels } = options;
+
+  const resolver = new ImportResolver(fs);
+  const [beforeResolved, afterResolved] = await Promise.all([
+    resolver.resolve(beforeEntryPath),
+    resolver.resolve(afterEntryPath),
+  ]);
+  const resolverDiagnostics = [...beforeResolved.diagnostics, ...afterResolved.diagnostics];
+
+  const before = beforeResolved.krsFile;
+  const after = afterResolved.krsFile;
+
+  const hasSystem =
+    before.systems.length > 0 ||
+    after.systems.length > 0 ||
+    before.services.length > 0 ||
+    after.services.length > 0 ||
+    before.domains.length > 0 ||
+    after.domains.length > 0;
+  const hasDeploy = before.deploys.length > 0 || after.deploys.length > 0;
+  const hasOrg =
+    (before.organizations?.flatMap((o) => o.teams).length ?? 0) > 0 ||
+    (after.organizations?.flatMap((o) => o.teams).length ?? 0) > 0;
+
+  const compileOpts = { beforeEntryPath, afterEntryPath, fs, displayMode, emptyStateLabels };
+
+  const [systemResult, deployResult, orgResult] = await Promise.all([
+    hasSystem ? compileSystemDiff(compileOpts) : Promise.resolve(undefined),
+    hasDeploy ? compileDeployDiff(compileOpts) : Promise.resolve(undefined),
+    hasOrg ? compileOrgDiff(compileOpts) : Promise.resolve(undefined),
+  ]);
+
+  const views: BundledDiffCompileResult["views"] = {};
+  if (systemResult) views.system = systemResult;
+  if (deployResult) views.deploy = deployResult;
+  if (orgResult) views.org = orgResult;
+
+  // Each compile*Diff re-resolves both sides via its own ImportResolver and
+  // returns the same resolver diagnostics. To avoid duplicates, use the
+  // diagnostics from the upfront resolver pass (which is the same data).
+  const diagnostics = resolverDiagnostics;
+
+  const bundled = bundleSingleLevelViews({
+    system: systemResult?.svg,
+    deploy: deployResult?.svg,
+    org: orgResult?.svg,
+  });
+
+  if (bundled === null) {
+    // Nothing applicable — emit a placeholder consistent with non-diff
+    // bundled output.
+    const placeholder = `<svg xmlns="http://www.w3.org/2000/svg" width="200" height="100" viewBox="0 0 200 100"><text x="100" y="50" text-anchor="middle" fill="#9CA3AF" font-family="sans-serif">${
+      emptyStateLabels?.systemNoDiagram ?? "No diagram"
+    }</text></svg>`;
+    return { svg: placeholder, diagnostics, views };
+  }
+
+  return { svg: injectDiffStyle(bundled), diagnostics, views };
 }
