@@ -45,6 +45,9 @@ jobs:
       - name: Knip
         run: pnpm run knip
 
+      - name: Check circular dependencies
+        run: pnpm run check:cycles
+
       - name: Typecheck (core)
         run: pnpm --filter @karasu-tools/core run typecheck
 

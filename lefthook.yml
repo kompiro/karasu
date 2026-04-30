@@ -9,6 +9,8 @@ pre-push:
       run: pnpm run typecheck
     knip:
       run: pnpm run knip
+    check-cycles:
+      run: pnpm run check:cycles
     adr-validate:
       glob: "docs/adr/*.md"
       run: pnpm run adr:validate
