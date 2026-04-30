@@ -55,6 +55,7 @@ Useful for isolating rendering bugs and providing minimal reproducible cases.
 | [`deploy-all.krs`](feature-samples/deploy-all.krs) | All deploy artifact types: `war`, `jar`, `oci`, `lambda`, `function`, `assets`, `job`, `artifact` |
 | [`domain-drift.krs`](feature-samples/domain-drift.krs) | Same domain `id` in two services — triggers a drift warning |
 | [`legend.krs`](feature-samples/legend.krs) | `legend` block — `swatch` + `ref` entries, unscoped + per-view scope |
+| [`resource-operations.krs`](feature-samples/resource-operations.krs) | `operations` property on `resource` — comma-separated, multi-line, omission |
 
 ## How to use
 
