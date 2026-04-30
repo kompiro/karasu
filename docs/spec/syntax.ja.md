@@ -193,6 +193,44 @@ service ECommerce {
 }
 ```
 
+#### `operations` プロパティ — usecase が resource に対して行う CRUD 動作
+
+`usecase` 内の `resource` には `operations` プロパティを指定でき、その usecase が当該 resource に対して行う CRUD 動作を明示できる。usecase × resource マトリクス上で「書き込み／読み取り専用」を判別できるようにし、結合度シグナルや translate アダプタとの情報往復に役立てる。
+
+```
+usecase PlaceOrder {
+  resource OrderTable {
+    label "注文テーブル"
+    operations create, read
+  }
+  resource InventoryAPI [external] {
+    operations read
+  }
+}
+```
+
+許容される記法:
+
+```
+operations create                 // 単一
+operations create, read           // カンマ区切り
+operations create
+operations read, update           // 複数行は累積される
+```
+
+`operations` は `usecase` 内の `resource` 宣言でのみ有効。インフラ側の `table` / `queue-item` / `bucket` には書けない。
+
+| Operation | 意味 |
+|-----------|------|
+| `create` | resource 上に新しい項目を生成する書き込み |
+| `read` | resource を非破壊で参照する |
+| `update` | 既存項目を変更する書き込み |
+| `delete` | 項目を消去する書き込み |
+
+認識セット外の動詞も AST にはそのまま保持する（translate アダプタが `list` / `search` / `execute` などを往復できるようにするため）。パーサは `unknown-resource-operation` 警告を出す。重複は `duplicate-resource-operation` 警告を出して AST 上で重複排除される。
+
+**省略時の意味**: `operations` を書かなければ現状と同じ挙動。依存は opaque のままで警告は出ない。「未決定の許容」（§プロパティの必須・省略ルール）方針を踏襲する。
+
 ### トップレベル domain 宣言
 
 `domain` は `service` の内部だけでなく、ファイルのトップレベルにも記述できる。

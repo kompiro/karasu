@@ -345,6 +345,44 @@ referenced client on the system view. The target id must resolve to a peer
 warning. `delivers` is a declarative property — it is not a new edge kind, and
 regular API calls between client and service are still written with `->`.
 
+#### `operations` property — CRUD verbs a usecase performs on a resource
+
+Inside a `usecase`, a `resource` may declare `operations` to record which CRUD-style verbs the usecase performs on that resource. This makes the usecase × resource matrix explicit (write vs. read-only) for domain analysis, coupling detection, and translate-adapter round-tripping.
+
+```
+usecase PlaceOrder {
+  resource OrderTable {
+    label "Order table"
+    operations create, read
+  }
+  resource InventoryAPI [external] {
+    operations read
+  }
+}
+```
+
+Forms accepted:
+
+```
+operations create                 // single verb
+operations create, read           // comma-separated list
+operations create
+operations read, update           // multiple lines accumulate
+```
+
+The `operations` property is only valid for `resource` declarations inside a `usecase`. It is not meaningful on infra-side declarations (`table` / `queue-item` / `bucket`).
+
+| Operation | Meaning |
+|-----------|---------|
+| `create` | The usecase produces new items in the resource (write) |
+| `read` | The usecase consumes the resource non-destructively |
+| `update` | The usecase mutates existing items in the resource (write) |
+| `delete` | The usecase removes items from the resource (write) |
+
+Verbs outside this set still parse and are preserved on the AST so translate adapters (`translate openapi` / `translate db`) can round-trip non-CRUD operations such as `list`, `search`, or `execute`. The parser emits an `unknown-resource-operation` warning pointing at the offending verb. Duplicate verbs raise a `duplicate-resource-operation` warning and are deduplicated on the AST.
+
+**Omission semantics**: when `operations` is omitted, behavior matches today — the dependency is opaque and no warning is emitted. This preserves the "not-yet-decided" tolerance documented under §Property requirement and omission rules.
+
 ### Top-level domain declaration
 
 A `domain` can be declared at the top level of a file, not only inside a `service`.
