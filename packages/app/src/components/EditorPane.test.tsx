@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { cleanup, render } from "@testing-library/react";
+import { useEffect } from "react";
 import type { editor } from "monaco-editor";
 
 afterEach(cleanup);
@@ -38,8 +39,11 @@ vi.mock("@monaco-editor/react", () => {
   return {
     default: ({ onChange, onMount }: MonacoMockProps) => {
       lastChange = onChange;
-      // Synchronously invoke onMount once on initial render.
-      queueMicrotask(() => onMount?.(fakeEditor));
+      // Fire onMount once after commit so refs/listeners are wired before the
+      // test interacts. Using useEffect keeps render side-effect-free.
+      useEffect(() => {
+        onMount?.(fakeEditor);
+      }, [onMount]);
       return <div data-testid="mock-monaco" />;
     },
   };
@@ -47,25 +51,18 @@ vi.mock("@monaco-editor/react", () => {
 
 import { EditorPane } from "./EditorPane.js";
 
-async function flushMicrotasks() {
-  await Promise.resolve();
-  await Promise.resolve();
-}
-
 describe("EditorPane IME composition gating", () => {
-  it("propagates changes when not composing", async () => {
+  it("propagates changes when not composing", () => {
     const onChange = vi.fn<(value: string) => void>();
     render(<EditorPane value="" onChange={onChange} />);
-    await flushMicrotasks();
 
     lastChange?.("hello");
     expect(onChange).toHaveBeenCalledWith("hello");
   });
 
-  it("buffers changes during composition and flushes once on compositionEnd", async () => {
+  it("buffers changes during composition and flushes once on compositionEnd", () => {
     const onChange = vi.fn<(value: string) => void>();
     render(<EditorPane value="" onChange={onChange} />);
-    await flushMicrotasks();
 
     compositionStartListener?.();
     lastChange?.("k");
@@ -78,20 +75,18 @@ describe("EditorPane IME composition gating", () => {
     expect(onChange).toHaveBeenCalledWith("kon");
   });
 
-  it("does not flush a stale value if composition ends without intermediate changes", async () => {
+  it("does not flush a stale value if composition ends without intermediate changes", () => {
     const onChange = vi.fn<(value: string) => void>();
     render(<EditorPane value="" onChange={onChange} />);
-    await flushMicrotasks();
 
     compositionStartListener?.();
     compositionEndListener?.();
     expect(onChange).not.toHaveBeenCalled();
   });
 
-  it("resumes propagating after composition ends", async () => {
+  it("resumes propagating after composition ends", () => {
     const onChange = vi.fn<(value: string) => void>();
     render(<EditorPane value="" onChange={onChange} />);
-    await flushMicrotasks();
 
     compositionStartListener?.();
     lastChange?.("a");

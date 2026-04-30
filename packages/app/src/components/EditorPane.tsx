@@ -106,7 +106,6 @@ function registerKrsLanguage(monaco: Monaco): void {
 
 export function EditorPane({ value, onChange, onEditorReady, onFormat }: EditorPaneProps) {
   const monacoRef = useRef<Monaco | null>(null);
-  const editorRef = useRef<editor.IStandaloneCodeEditor | null>(null);
   // Keep a ref so the Shift+Alt+F keybinding always calls the latest onFormat,
   // even after re-renders update the prop (addCommand is only called once at mount).
   const onFormatRef = useRef(onFormat);
@@ -136,7 +135,6 @@ export function EditorPane({ value, onChange, onEditorReady, onFormat }: EditorP
 
   const handleMount = useCallback(
     (editorInstance: editor.IStandaloneCodeEditor) => {
-      editorRef.current = editorInstance;
       onEditorReady?.(editorInstance);
       const monaco = monacoRef.current;
       if (monaco) {
