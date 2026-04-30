@@ -2,6 +2,7 @@ import { Parser } from "../parser/parser.js";
 import { Lexer } from "../lexer/lexer.js";
 import { TokenType } from "../types/tokens.js";
 import type { Token } from "../types/tokens.js";
+import { quoteId } from "./quote-id.js";
 import type {
   KrsFile,
   KrsNode,
@@ -180,7 +181,7 @@ class Printer {
     if (imp.ids.length === 0) return `import "${imp.path}"`;
     // Bare ids are stored as `["Foo"]`; multi-segment paths as `["A", "B", "C"]`.
     // Re-join each path with "." to round-trip through the formatter.
-    const formatted = imp.ids.map((segments) => segments.join(".")).join(", ");
+    const formatted = imp.ids.map((segments) => segments.map(quoteId).join(".")).join(", ");
     return `import { ${formatted} } from "${imp.path}"`;
   }
 
@@ -199,7 +200,7 @@ class Printer {
     const keyword = kindToKeyword(node.kind);
 
     // Declaration parts: keyword id [tags] @annotations
-    const decl: string[] = [keyword, node.id];
+    const decl: string[] = [keyword, quoteId(node.id)];
     if (node.tags.length > 0) decl.push(`[${node.tags.join(", ")}]`);
     for (const ann of node.annotations) decl.push(`@${ann}`);
 
@@ -287,7 +288,7 @@ class Printer {
       Array.isArray(node.properties.delivers) &&
       node.properties.delivers.length > 0
     ) {
-      lines.push(`${indent}delivers ${node.properties.delivers.join(", ")}`);
+      lines.push(`${indent}delivers ${node.properties.delivers.map(quoteId).join(", ")}`);
     }
     for (const link of node.properties.links) {
       lines.push(this.renderLink(link, indent));
@@ -314,15 +315,16 @@ class Printer {
     const label = edge.label !== undefined ? ` "${edge.label}"` : "";
     const tags = edge.tags.length > 0 ? ` [${edge.tags.join(", ")}]` : "";
     // Use implicit-source shorthand for service/domain blocks (from is always parentId)
-    const from = parentKind === "service" || parentKind === "domain" ? "" : `${edge.from} `;
-    return `${from}${arrow} ${edge.to}${label}${tags}`;
+    const from =
+      parentKind === "service" || parentKind === "domain" ? "" : `${quoteId(edge.from)} `;
+    return `${from}${arrow} ${quoteId(edge.to)}${label}${tags}`;
   }
 
   // ── DeployBlock ───────────────────────────────────────────────────────────
 
   private renderDeployBlock(block: DeployBlock): string[] {
     const trail = this.extractTrailing(block.loc.start.line);
-    const lines: string[] = [`deploy ${block.id} {${trail}`];
+    const lines: string[] = [`deploy ${quoteId(block.id)} {${trail}`];
 
     if (block.label !== undefined) lines.push(`  label "${block.label}"`);
 
@@ -342,7 +344,7 @@ class Printer {
 
   private renderDeployNode(node: DeployNode): string[] {
     const trail = this.extractTrailing(node.loc.start.line);
-    const lines: string[] = [`  ${node.kind} ${node.id} {${trail}`];
+    const lines: string[] = [`  ${node.kind} ${quoteId(node.id)} {${trail}`];
 
     if (node.label !== undefined) lines.push(`    label "${node.label}"`);
     if (node.properties.runtime !== undefined)
@@ -352,7 +354,7 @@ class Printer {
     if (node.properties.schedule !== undefined)
       lines.push(`    schedule "${node.properties.schedule}"`);
     for (const r of node.properties.realizes ?? []) {
-      lines.push(`    realizes ${r}`);
+      lines.push(`    realizes ${quoteId(r)}`);
     }
 
     lines.push("  }");
@@ -363,7 +365,7 @@ class Printer {
 
   private renderOrganizationBlock(block: OrganizationBlock): string[] {
     const trail = this.extractTrailing(block.loc.start.line);
-    const lines: string[] = [`organization ${block.id} {${trail}`];
+    const lines: string[] = [`organization ${quoteId(block.id)} {${trail}`];
 
     if (block.label !== undefined) lines.push(`  label "${block.label}"`);
     if (block.properties.description !== undefined) {
@@ -390,7 +392,7 @@ class Printer {
   private renderTeam(team: TeamNode, depth: number): string[] {
     const indent = "  ".repeat(depth);
     const trail = this.extractTrailing(team.loc.start.line);
-    const lines: string[] = [`${indent}team ${team.id} {${trail}`];
+    const lines: string[] = [`${indent}team ${quoteId(team.id)} {${trail}`];
 
     if (team.label !== undefined) lines.push(`${indent}  label "${team.label}"`);
     if (team.properties.description !== undefined) {
@@ -400,7 +402,7 @@ class Printer {
       lines.push(this.renderLink(link, `${indent}  `));
     }
     for (const owns of team.properties.owns) {
-      lines.push(`${indent}  owns ${owns}`);
+      lines.push(`${indent}  owns ${quoteId(owns)}`);
     }
 
     let prevEndLine = team.loc.start.line;
@@ -425,7 +427,7 @@ class Printer {
   private renderMember(member: MemberNode, depth: number): string[] {
     const indent = "  ".repeat(depth);
     const trail = this.extractTrailing(member.loc.start.line);
-    const lines: string[] = [`${indent}member ${member.id} {${trail}`];
+    const lines: string[] = [`${indent}member ${quoteId(member.id)} {${trail}`];
 
     if (member.label !== undefined) lines.push(`${indent}  label "${member.label}"`);
     if (member.properties.description !== undefined) {
