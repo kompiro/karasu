@@ -1,5 +1,5 @@
 import type { ResolvedEdgeStyle } from "../types/style.js";
-import type { LayoutEdge } from "./layout.js";
+import type { LayoutEdge } from "./layout-types.js";
 import { el, escapeXml } from "./svg-builder.js";
 
 interface Point {

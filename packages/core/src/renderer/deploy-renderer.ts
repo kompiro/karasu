@@ -1,6 +1,6 @@
 import type { ResolvedStyles } from "../types/style.js";
 import type { DeployViewSlice } from "../view/deploy-view-extract.js";
-import type { DisplayMode } from "./layout.js";
+import type { DisplayMode } from "./layout-types.js";
 import { layoutDeploy } from "./deploy-layout.js";
 import { renderFromLayout, type RenderOptions } from "./svg-renderer.js";
 import { DEFAULT_EMPTY_STATE_LABELS, type EmptyStateLabels } from "./empty-state-labels.js";

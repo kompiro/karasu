@@ -1,13 +1,5 @@
-import type {
-  KrsNode,
-  KrsEdge,
-  LogicalNodeKind,
-  DeployNodeKind,
-  CommonProperties,
-  ClientResource,
-  ClientCapability,
-} from "../types/ast.js";
-import type { ViewSlice, GhostSystem, DomainEdgeDetail } from "../view/view-extract.js";
+import type { KrsNode, KrsEdge } from "../types/ast.js";
+import type { ViewSlice, GhostSystem } from "../view/view-extract.js";
 import type { ResolvedLayoutHints } from "../types/style.js";
 import { buildInheritedAnnotations } from "../resolver/inherited-annotations.js";
 import { summarizeDescription } from "./description-summary.js";
@@ -16,71 +8,16 @@ import { sortByBarycenter, bucketByColumn } from "./layer-layout-logics.js";
 import { routeOrthogonalEdges } from "./edge-routing-channels.js";
 import { distributePorts } from "./edge-routing-ports.js";
 import { distributeChannelLanes } from "./edge-routing-lanes.js";
+import type {
+  LayoutNode,
+  LayoutNodeProperties,
+  LayoutEdge,
+  ContainerRect,
+  LayoutResult,
+  DisplayMode,
+} from "./layout-types.js";
 
-export type LayoutNodeProperties = CommonProperties & {
-  role?: string;
-  team?: string;
-  /** Client-only: operation-tied storage resources rendered inline on the card. */
-  resources?: ClientResource[];
-  /** Client-only: device / browser capabilities rendered inline on the card. */
-  capabilities?: ClientCapability[];
-};
-
-export interface LayoutNode {
-  kind: LogicalNodeKind | DeployNodeKind;
-  id: string;
-  label: string;
-  annotations?: string[];
-  properties: LayoutNodeProperties;
-  descriptionSummary?: string;
-  linkCount: number;
-  hasChildren: boolean;
-  hasDescription: boolean;
-  x: number;
-  y: number;
-  width: number;
-  height: number;
-  ghost?: boolean;
-  /** Optional sub-label rendered below the main label (e.g., parent service name for ghost domains). */
-  subLabel?: string;
-}
-
-export interface LayoutEdge {
-  from: string;
-  to: string;
-  label?: string;
-  fromPoint: { x: number; y: number };
-  toPoint: { x: number; y: number };
-  ghost?: boolean;
-  cyclic?: boolean;
-  /** Constituent domain edges for aggregated "N domain edges" implicit service edges. */
-  domainEdges?: DomainEdgeDetail[];
-  /**
-   * Optional intermediate points for orthogonal routing (skip-layer edges).
-   * When set, the edge renders as a polyline `fromPoint → ...waypoints → toPoint`.
-   * When unset/empty, renders as a straight line `fromPoint → toPoint`.
-   * See docs/design/auto-layout-edge-routing-orthogonal.md.
-   */
-  waypoints?: { x: number; y: number }[];
-}
-
-export interface ContainerRect {
-  id: string;
-  label: string;
-  x: number;
-  y: number;
-  width: number;
-  height: number;
-  ghost: boolean;
-}
-
-export interface LayoutResult {
-  nodes: Map<string, LayoutNode>;
-  edges: LayoutEdge[];
-  containers: ContainerRect[];
-  width: number;
-  height: number;
-}
+export type { LayoutNode, LayoutEdge, LayoutResult, DisplayMode } from "./layout-types.js";
 
 const LINE_HEIGHT = 18;
 const DESCRIPTION_FONT_RATIO = 0.85;
@@ -91,8 +28,6 @@ const GHOST_MARGIN = 30;
 const ICON_CARD_WIDTH = 160;
 const ICON_CARD_HEIGHT_WITH_DESC = 100;
 const ICON_CARD_HEIGHT_NO_DESC = 56;
-
-export type DisplayMode = "shape" | "icon";
 
 // Per-mode gap constants. Shape values are the historical defaults tuned
 // for variable-width cards (~250px). Icon values are tuned for uniform

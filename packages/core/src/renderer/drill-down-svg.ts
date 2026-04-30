@@ -1,6 +1,6 @@
 import type { KrsFile, TeamNode } from "../types/ast.js";
 import type { StyleSheet } from "../types/style.js";
-import type { DisplayMode } from "./layout.js";
+import type { DisplayMode } from "./layout-types.js";
 import { extractView } from "../view/view-extract.js";
 import { withUnassignedSystem } from "../view/unassigned-system.js";
 import { extractOrgView } from "../view/org-view-extract.js";

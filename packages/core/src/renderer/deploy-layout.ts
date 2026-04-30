@@ -1,5 +1,5 @@
 import type { DeployNode } from "../types/ast.js";
-import type { LayoutResult, LayoutNode, ContainerRect, LayoutEdge } from "./layout.js";
+import type { LayoutResult, LayoutNode, ContainerRect, LayoutEdge } from "./layout-types.js";
 import type { DeployViewSlice } from "../view/deploy-view-extract.js";
 import { CHAR_WIDTH, NODE_PADDING_X, NODE_PADDING_Y } from "./rendering-constants.js";
 import { sortByBarycenter } from "./layer-layout-logics.js";

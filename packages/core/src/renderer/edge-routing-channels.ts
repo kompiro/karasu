@@ -25,7 +25,7 @@
  * keep the existing straight-line rendering so back-arc styling and ghost
  * anchor logic are not disturbed.
  */
-import type { LayoutEdge, LayoutNode } from "./layout.js";
+import type { LayoutEdge, LayoutNode } from "./layout-types.js";
 
 interface Rect {
   x: number;

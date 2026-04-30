@@ -17,7 +17,7 @@
  *
  * Run after `routeOrthogonalEdges`. Edges without waypoints are untouched.
  */
-import type { LayoutEdge } from "./layout.js";
+import type { LayoutEdge } from "./layout-types.js";
 
 const CHANNEL_KEY_QUANTUM = 0.5;
 // Total height (px) over which lanes spread inside an inter-row channel.
