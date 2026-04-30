@@ -106,12 +106,28 @@ function registerKrsLanguage(monaco: Monaco): void {
 
 export function EditorPane({ value, onChange, onEditorReady, onFormat }: EditorPaneProps) {
   const monacoRef = useRef<Monaco | null>(null);
+  const editorRef = useRef<editor.IStandaloneCodeEditor | null>(null);
   // Keep a ref so the Shift+Alt+F keybinding always calls the latest onFormat,
   // even after re-renders update the prop (addCommand is only called once at mount).
   const onFormatRef = useRef(onFormat);
   useEffect(() => {
     onFormatRef.current = onFormat;
   }, [onFormat]);
+
+  // Latest onChange in a ref so composition-end handler (registered once at
+  // mount) can flush via the current parent callback.
+  const onChangeRef = useRef(onChange);
+  useEffect(() => {
+    onChangeRef.current = onChange;
+  }, [onChange]);
+
+  // Gate value propagation while an IME composition is in flight. Pushing
+  // intermediate values back into the controlled `value` prop disturbs the
+  // browser-level composition (e.g. Google JP IME on Blink), causing dropped
+  // or duplicated characters. Buffer the latest value and flush on
+  // compositionEnd.
+  const isComposingRef = useRef(false);
+  const pendingValueRef = useRef<string | null>(null);
 
   const handleBeforeMount = useCallback((monaco: Monaco) => {
     monacoRef.current = monaco;
@@ -120,6 +136,7 @@ export function EditorPane({ value, onChange, onEditorReady, onFormat }: EditorP
 
   const handleMount = useCallback(
     (editorInstance: editor.IStandaloneCodeEditor) => {
+      editorRef.current = editorInstance;
       onEditorReady?.(editorInstance);
       const monaco = monacoRef.current;
       if (monaco) {
@@ -129,13 +146,30 @@ export function EditorPane({ value, onChange, onEditorReady, onFormat }: EditorP
           () => onFormatRef.current?.(),
         );
       }
+
+      editorInstance.onDidCompositionStart(() => {
+        isComposingRef.current = true;
+      });
+      editorInstance.onDidCompositionEnd(() => {
+        isComposingRef.current = false;
+        const pending = pendingValueRef.current;
+        pendingValueRef.current = null;
+        if (pending !== null) {
+          onChangeRef.current(pending);
+        }
+      });
     },
     [onEditorReady],
   );
 
   const handleChange = useCallback(
     (newValue: string | undefined) => {
-      onChange(newValue ?? "");
+      const next = newValue ?? "";
+      if (isComposingRef.current) {
+        pendingValueRef.current = next;
+        return;
+      }
+      onChange(next);
     },
     [onChange],
   );
