@@ -1,6 +1,6 @@
 # ADR Topic: parser
 
-10 ADRs in this topic. Solid nodes belong to `parser`; gray dashed nodes are ghosts showing cross-topic references to help navigation.
+11 ADRs in this topic. Solid nodes belong to `parser`; gray dashed nodes are ghosts showing cross-topic references to help navigation.
 
 Other topics: [overview](../graph.md).
 ```mermaid
@@ -16,6 +16,7 @@ flowchart TD
     ADR_20260410_02["ADR-20260410-02<br/>`.krs` フォーマッター — トークン列ベースでコメント保持"]
     ADR_20260410_03["ADR-20260410-03<br/>構造的 `.krs` パッチ — ノード ID ベースの `append` / `replac..."]
     ADR_20260412_04["ADR-20260412-04<br/>ブロック内エッジの暗黙 source 簡略記法"]
+    ADR_20260430_03["ADR-20260430-03<br/>usecase 内 resource に CRUD operations プロパティを追加する"]
   end
   ADR_20260320_01["ADR-20260320-01<br/>[renderer] インタラクティブ SVG レンダリングと NodeDetailPanel"]
   ADR_20260404_09["ADR-20260404-09<br/>[edges] クロスシステムサービス参照 — ドット記法（`SystemId.ServiceId`）"]
@@ -49,6 +50,7 @@ flowchart TD
   class ADR_20260410_02 accepted
   class ADR_20260410_03 accepted
   class ADR_20260412_04 accepted
+  class ADR_20260430_03 accepted
   class ADR_20260320_01 ghost
   class ADR_20260404_09 ghost
   class ADR_20260409_07 ghost
