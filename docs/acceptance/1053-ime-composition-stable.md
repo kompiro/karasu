@@ -27,6 +27,9 @@
 - [ ] AT-Manual: 非 IME（半角英数）入力時のタイピングレイテンシが体感で劣化していない
   > 🧑 Manual — Preview URL で確認する
 
+- [ ] AT-Manual: 他ブラウザ／IME 組み合わせ（macOS Chrome、任意で Safari/WebKit）でも regression が無いことをスポットチェックする
+  > 🧑 Manual — Preview URL で確認する
+
 ## 補足
 
 - 根本原因: `EditorPane` が Monaco の `onChange`（IME 変換中も発火）を毎回親へ伝播し、親 state 更新→`value` プロップ往復によって `@monaco-editor/react` が in-flight な composition を破壊する（特に Blink + Google JP IME で顕著）
