@@ -127,7 +127,7 @@ export {
   type ShapeRenderFn,
   type SvgIconDef,
   type SvgIconTextSlot,
-} from "./renderer/shape-registry.js";
+} from "./shapes/shape-registry.js";
 export { registerBuiltinShapes } from "./renderer/shapes.js";
 export {
   parseSvgIcon,

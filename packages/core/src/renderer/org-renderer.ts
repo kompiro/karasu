@@ -10,7 +10,7 @@ import {
   renderIconCard,
   diffStateAttr,
 } from "./svg-builder.js";
-import { getIconDef } from "./shape-registry.js";
+import { getIconDef } from "../shapes/shape-registry.js";
 import { ownsEdgeKey } from "../diff/org-view-diff.js";
 import {
   ICON_LABEL_CHAR_WIDTH,

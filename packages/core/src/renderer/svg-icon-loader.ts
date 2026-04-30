@@ -5,7 +5,7 @@
  * and the remaining SVG body for use as a registered shape.
  */
 
-import { registerIcon, type SvgIconDef, type SvgIconTextSlot } from "./shape-registry.js";
+import { registerIcon, type SvgIconDef, type SvgIconTextSlot } from "../shapes/shape-registry.js";
 
 /**
  * Parse an SVG string into an SvgIconDef.

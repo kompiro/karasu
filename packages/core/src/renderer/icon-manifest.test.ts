@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import { resolveIconManifest, type IconManifest } from "./icon-manifest.js";
-import { getIconDef, clearRegistry } from "./shape-registry.js";
+import { getIconDef, clearRegistry } from "../shapes/shape-registry.js";
 import { registerBuiltinShapes } from "./shapes.js";
 
 const SAMPLE_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 80" width="160" height="80">

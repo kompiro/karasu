@@ -5,7 +5,7 @@ import type { ContainerRect, DisplayMode, LayoutNode, LayoutResult } from "./lay
 import { renderShape } from "./shapes.js";
 import { renderEdge, renderArrowMarker } from "./edge-routing.js";
 import { buildLegendFooter, el, escapeXml, truncateToWidth, wrapToWidth } from "./svg-builder.js";
-import { getIconDef } from "./shape-registry.js";
+import { getIconDef } from "../shapes/shape-registry.js";
 import {
   CHAR_WIDTH,
   ICON_LABEL_CHAR_WIDTH,
