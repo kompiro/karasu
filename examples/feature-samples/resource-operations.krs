@@ -1,0 +1,49 @@
+// Resource CRUD operations on usecases (Issue #1046).
+//
+// `operations` declares which CRUD verbs the enclosing usecase performs on a
+// resource. Recognized verbs are `create` / `read` / `update` / `delete`.
+// Unknown verbs still parse (preserved for translate adapters that emit
+// `list` / `search` / `execute`) but raise an `unknown-resource-operation`
+// warning. Omission keeps the dependency opaque — no diagnostic.
+//
+// This file is the AT-friendly minimal sample. See `examples/ec-platform/`
+// for the same property used in a realistic scenario.
+
+system Demo {
+  label "Resource operations demo"
+
+  service Backend {
+    domain Order {
+      // Comma-separated form.
+      usecase PlaceOrder {
+        label "Accept a new order"
+        resource OrderTable {
+          label "Orders table"
+          operations create, read
+        }
+        resource InventoryAPI [external] {
+          label "Inventory check API"
+          operations read
+        }
+      }
+
+      // Multi-line form (lines accumulate).
+      usecase UpdateOrder {
+        label "Modify an order"
+        resource OrderTable {
+          label "Orders table"
+          operations read
+          operations update
+        }
+      }
+
+      // Omission form — opaque dependency, no warning.
+      usecase QueryOrder {
+        label "Query order status"
+        resource OrderTable {
+          label "Orders table"
+        }
+      }
+    }
+  }
+}

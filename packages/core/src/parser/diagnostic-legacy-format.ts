@@ -55,6 +55,8 @@ export function formatDiagnostic(d: Diagnostic): string {
           return `"handles" property is only valid for client and service nodes`;
         case "delivers":
           return `"delivers" property is only valid for service nodes`;
+        case "operations":
+          return `"operations" property is only valid for resource declarations inside a usecase`;
         default: {
           const exhaustive: never = d.params.property;
           throw new Error(`unhandled property-not-for-node-kind variant: ${String(exhaustive)}`);
@@ -82,6 +84,10 @@ export function formatDiagnostic(d: Diagnostic): string {
       return `resource "${d.params.resourceId}" is not assigned to any database`;
     case "client-resource-invalid-kind":
       return `Invalid client resource kind "${d.params.kind}" for resource "${d.params.name}". Allowed kinds: localStorage, sessionStorage, indexedDB, opfs, file, keychain`;
+    case "unknown-resource-operation":
+      return `Unknown resource operation "${d.params.operation}" on "${d.params.resourceId}". Recognized verbs: create, read, update, delete`;
+    case "duplicate-resource-operation":
+      return `Duplicate resource operation "${d.params.operation}" on "${d.params.resourceId}"`;
     case "duplicate-owner-assignment":
       return `"${d.params.nodeId}" is already owned by team "${d.params.existingTeam}"; multiple teams cannot own the same service or domain`;
     case "duplicate-team-id":

@@ -727,9 +727,11 @@ system ECPlatform {
         label "注文を受け付ける"
         resource OrderTable {
           label "注文テーブル"
+          operations create, read
         }
         resource InventoryAPI {
           label "在庫API"
+          operations read
         }
       }
 
@@ -737,6 +739,7 @@ system ECPlatform {
         label "注文をキャンセルする"
         resource OrderTable {
           label "注文テーブル"
+          operations read, update
         }
       }
 
@@ -744,6 +747,7 @@ system ECPlatform {
         label "注文状況を照会する"
         resource OrderTable {
           label "注文テーブル"
+          operations read
         }
       }
     }
@@ -756,6 +760,7 @@ system ECPlatform {
         label "商品を検索する"
         resource ProductTable {
           label "商品テーブル"
+          operations read
         }
       }
 
@@ -763,9 +768,11 @@ system ECPlatform {
         label "商品情報を更新する"
         resource ProductTable {
           label "商品テーブル"
+          operations read, update
         }
         resource ImageStorage {
           label "画像ストレージ"
+          operations create, update, delete
         }
       }
     }

@@ -50,6 +50,8 @@ export function useFormattedDiagnostic(): (d: Diagnostic) => string {
               return t("diagnostic.propertyNotForNodeKind.handles");
             case "delivers":
               return t("diagnostic.propertyNotForNodeKind.delivers");
+            case "operations":
+              return t("diagnostic.propertyNotForNodeKind.operations");
             default: {
               const exhaustive: never = d.params.property;
               throw new Error(
@@ -77,6 +79,10 @@ export function useFormattedDiagnostic(): (d: Diagnostic) => string {
           return t("diagnostic.unassignedResource.message", d.params);
         case "client-resource-invalid-kind":
           return t("diagnostic.clientResourceInvalidKind.message", d.params);
+        case "unknown-resource-operation":
+          return t("diagnostic.unknownResourceOperation.message", d.params);
+        case "duplicate-resource-operation":
+          return t("diagnostic.duplicateResourceOperation.message", d.params);
         case "duplicate-owner-assignment":
           return t("diagnostic.duplicateOwnerAssignment.message", d.params);
         case "duplicate-team-id":

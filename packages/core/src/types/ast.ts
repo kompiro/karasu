@@ -95,7 +95,16 @@ export interface UsecaseNode extends BaseNodeFields {
 
 export interface ResourceNode extends BaseNodeFields {
   kind: "resource";
-  properties: CommonProperties;
+  properties: CommonProperties & {
+    /**
+     * CRUD-style operations this usecase performs on the resource. Recognized
+     * verbs are `create` / `read` / `update` / `delete`; unknown verbs parse
+     * but raise an `unknown-resource-operation` warning so future verbs
+     * (`list`, `search`, `execute`, …) round-trip through translate adapters.
+     * Omission keeps current behavior (no diagnostic, opaque dependency).
+     */
+    operations?: string[];
+  };
   /**
    * Set when the resource uses dot-notation reference syntax (e.g. `resource OrderDB.C`).
    * `parent` is the infra node id (e.g. "OrderDB"), `child` is the sub-resource id (e.g. "C").
@@ -386,7 +395,7 @@ export interface DiagnosticParamsByCode {
     property: "label" | "role" | "team" | "description" | "slack" | "github";
   };
   "property-not-for-node-kind": {
-    property: "role" | "team" | "handles" | "delivers";
+    property: "role" | "team" | "handles" | "delivers" | "operations";
     nodeKind: string;
   };
   "infra-not-in-context": { infraKind: string; parentKind: string };
@@ -401,6 +410,8 @@ export interface DiagnosticParamsByCode {
   "edge-source-mismatch": { from: string; parentId: string };
   "unassigned-resource": { resourceId: string };
   "client-resource-invalid-kind": { kind: string; name: string };
+  "unknown-resource-operation": { operation: string; resourceId: string };
+  "duplicate-resource-operation": { operation: string; resourceId: string };
   "duplicate-owner-assignment": { nodeId: string; existingTeam: string };
   "duplicate-team-id": { teamId: string };
   "domain-id-not-unique": { domainId: string };

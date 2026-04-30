@@ -207,6 +207,7 @@ export type Translations = {
   "diagnostic.propertyNotForNodeKind.team": string;
   "diagnostic.propertyNotForNodeKind.handles": string;
   "diagnostic.propertyNotForNodeKind.delivers": string;
+  "diagnostic.propertyNotForNodeKind.operations": string;
   "diagnostic.infraNotInContext.message": (params: {
     infraKind: string;
     parentKind: string;
@@ -222,6 +223,14 @@ export type Translations = {
   "diagnostic.clientResourceInvalidKind.message": (params: {
     kind: string;
     name: string;
+  }) => string;
+  "diagnostic.unknownResourceOperation.message": (params: {
+    operation: string;
+    resourceId: string;
+  }) => string;
+  "diagnostic.duplicateResourceOperation.message": (params: {
+    operation: string;
+    resourceId: string;
   }) => string;
   "diagnostic.duplicateOwnerAssignment.message": (params: {
     nodeId: string;
