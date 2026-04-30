@@ -8,7 +8,7 @@ paths:
 # VS Code WebView Test Rules
 
 VS Code 拡張のプレビュー（`packages/vscode/src/preview-panel.ts`）は WebView
-として実装されている。WebView 系テストの方針は **ADR-20260429-08** で
+として実装されている。WebView 系テストの方針は **ADR-20260429-09** で
 更新済み（旧 ADR-20260428-05 を supersede）。
 
 ## ルール
@@ -38,7 +38,7 @@ VS Code 拡張のプレビュー（`packages/vscode/src/preview-panel.ts`）は 
    `webview.postMessage` を直接呼ぶ・`handleNavigate` を export して呼ぶ等の
    手段で部分的にカバーすると、テストは緑だが実際の WebView 上の挙動は
    壊れている、という状態を作りやすい。本番のシームを増やすコストに対して
-   得られる検証範囲が狭いため、ADR-20260429-08 でも維持されている禁止事項。
+   得られる検証範囲が狭いため、ADR-20260429-09 でも維持されている禁止事項。
 
 4. **WebView 操作の確立済みパターン**:
    - **Click**: `MouseEvent` を `dispatchEvent` で element に直接送る
@@ -81,6 +81,6 @@ manual 残置 TC がある場合は同節内で「TC-XX stays manual」と理由
 
 ## 関連
 
-- ADR-20260429-08 — VS Code WebView の DOM 系テストは ExTester ハーネスで自動化する
+- ADR-20260429-09 — VS Code WebView の DOM 系テストは ExTester ハーネスで自動化する
 - ADR-20260428-05 — superseded by 上記
 - ADR-20260428-03 — VS Code 拡張ホスト向け smoke test harness
