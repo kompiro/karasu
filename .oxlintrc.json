@@ -21,6 +21,28 @@
           { "assertFunctionNames": ["assert", "assert.*"] }
         ]
       }
+    },
+    {
+      "files": ["packages/core/src/**/*.ts"],
+      "rules": {
+        "no-restricted-imports": [
+          "error",
+          {
+            "patterns": [
+              {
+                "group": ["**/index.js", "**/index"],
+                "message": "Do not import from core/index.ts inside core/. Use direct module paths to avoid barrel-induced cycles."
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "files": ["packages/core/src/**/*.test.ts", "packages/core/src/**/*.spec.ts"],
+      "rules": {
+        "no-restricted-imports": "off"
+      }
     }
   ],
   "settings": {

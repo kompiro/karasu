@@ -99,6 +99,13 @@ ready → implementing → in-review → (close)
 - 型のみの import (`import type`) でも madge は循環として検出する。共有契約は専用の leaf module（例: `renderer/layout-types.ts`）に分離して回避する
 - e2e パッケージ（`packages/e2e`, `packages/vscode-e2e`）はテスト専用で意図的にスキャン対象外
 
+### Barrel import 禁止（core 内部）
+
+`packages/core/src/` 配下のプロダクションコードから `**/index.js` への import を `no-restricted-imports` で禁止している（`.oxlintrc.json` の overrides）。`packages/core/src/index.ts` は 1,100 行超・78 export を持つ barrel で、内部から自分自身を経由する import を許すと runtime 循環依存に直結するため。
+
+- 内部モジュールは直接 deep path（例: `from "./parser/parser.js"`）で import する
+- テストファイル（`*.test.ts`, `*.spec.ts`）は引き続き `from "../index.js"` を許可（公開 API としての smoke test を兼ねるため）
+
 ### QA チェックリスト
 
 `/qa` スキルはリリース前や任意のタイミングで実行できる。
