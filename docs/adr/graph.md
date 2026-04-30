@@ -1,6 +1,6 @@
 # ADR Dependency Graph — Overview
 
-136 ADRs across 15 topics. Clusters group by `topic` frontmatter field. Edges crossing cluster borders are cross-topic dependencies.
+138 ADRs across 15 topics. Clusters group by `topic` frontmatter field. Edges crossing cluster borders are cross-topic dependencies.
 ```mermaid
 flowchart TD
   subgraph adr-tooling["adr-tooling"]
@@ -50,6 +50,7 @@ flowchart TD
     ADR_20260428_01["ADR-20260428-01<br/>Secret 必須の CI ジョブは bot 作者の PR で skip する"]
     ADR_20260428_02["ADR-20260428-02<br/>依存更新バッチ — 2026-04-28"]
     ADR_20260428_08["ADR-20260428-08<br/>Required Check は paired stub workflow で docs-on..."]
+    ADR_20260429_08["ADR-20260429-08<br/>Dependabot security update — `@anthropic-ai/sdk..."]
   end
   subgraph chat-ai["chat-ai"]
     ADR_20260407_04["ADR-20260407-04<br/>Cloudflare Pages デプロイ基盤と BYOK AI 連携"]
@@ -78,7 +79,7 @@ flowchart TD
     ADR_20260404_10["ADR-20260404-10<br/>Org Tree View — 組織階層の左→右ツリー俯瞰図"]
     ADR_20260428_06["ADR-20260428-06<br/>クライアント / MCP を system 図でどう表現するか — `client` kind..."]
     ADR_20260429_07["ADR-20260429-07<br/>client の capability 軸 — device / browser permis..."]
-    ADR_20260429_08["ADR-20260429-08<br/>セキュリティ／脅威モデリングは karasu の語彙に取り込まず companion docu..."]
+    ADR_20260430_01["ADR-20260430-01<br/>セキュリティ／脅威モデリングは karasu の語彙に取り込まず companion docu..."]
   end
   subgraph edges["edges"]
     ADR_20260404_09["ADR-20260404-09<br/>クロスシステムサービス参照 — ドット記法（`SystemId.ServiceId`）"]
@@ -161,6 +162,7 @@ flowchart TD
     ADR_20260428_04["ADR-20260428-04<br/>Chat UI E2E は Playwright route で Anthropic API ..."]
     ADR_20260428_05["ADR-20260428-05<br/>VS Code WebView の DOM 系テストはマニュアル運用とする"]
     ADR_20260428_09["ADR-20260428-09<br/>受け入れテストの自動化マーカー規約と検出スクリプト"]
+    ADR_20260429_09["ADR-20260429-09<br/>VS Code WebView の DOM 系テストは ExTester ハーネスで自動化する"]
   end
   subgraph vscode["vscode"]
     ADR_20260330_05["ADR-20260330-05<br/>VSCode 拡張 — LSP-first アーキテクチャと段階的フェーズ計画"]
@@ -245,6 +247,7 @@ flowchart TD
   ADR_20260422_07 --> ADR_20260420_02
   ADR_20260425_01 --> ADR_20260420_03
   ADR_20260412_05 -.supersedes.-> ADR_20260324_01
+  ADR_20260429_09 -.supersedes.-> ADR_20260428_05
 
   classDef accepted fill:#d4edda,stroke:#28a745,color:#155724
   classDef proposed fill:#fff3cd,stroke:#ffc107,color:#856404
@@ -375,7 +378,7 @@ flowchart TD
   class ADR_20260428_02 accepted
   class ADR_20260428_03 accepted
   class ADR_20260428_04 accepted
-  class ADR_20260428_05 accepted
+  class ADR_20260428_05 superseded
   class ADR_20260428_06 accepted
   class ADR_20260428_07 accepted
   class ADR_20260428_08 accepted
@@ -388,13 +391,15 @@ flowchart TD
   class ADR_20260429_06 accepted
   class ADR_20260429_07 accepted
   class ADR_20260429_08 accepted
+  class ADR_20260429_09 accepted
+  class ADR_20260430_01 accepted
 ```
 
 ## Per-topic detail
 
 - [`adr-tooling`](graph/adr-tooling.md) — 3 ADRs
 - [`app-ui`](graph/app-ui.md) — 18 ADRs
-- [`build`](graph/build.md) — 21 ADRs
+- [`build`](graph/build.md) — 22 ADRs
 - [`chat-ai`](graph/chat-ai.md) — 8 ADRs
 - [`cli`](graph/cli.md) — 8 ADRs
 - [`core-concepts`](graph/core-concepts.md) — 7 ADRs
@@ -405,5 +410,5 @@ flowchart TD
 - [`renderer`](graph/renderer.md) — 20 ADRs
 - [`resolver`](graph/resolver.md) — 4 ADRs
 - [`styling`](graph/styling.md) — 6 ADRs
-- [`testing`](graph/testing.md) — 8 ADRs
+- [`testing`](graph/testing.md) — 9 ADRs
 - [`vscode`](graph/vscode.md) — 5 ADRs

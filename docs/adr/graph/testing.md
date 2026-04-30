@@ -1,6 +1,6 @@
 # ADR Topic: testing
 
-8 ADRs in this topic. Solid nodes belong to `testing`; gray dashed nodes are ghosts showing cross-topic references to help navigation.
+9 ADRs in this topic. Solid nodes belong to `testing`; gray dashed nodes are ghosts showing cross-topic references to help navigation.
 
 Other topics: [overview](../graph.md).
 ```mermaid
@@ -14,9 +14,11 @@ flowchart TD
     ADR_20260428_04["ADR-20260428-04<br/>Chat UI E2E は Playwright route で Anthropic API ..."]
     ADR_20260428_05["ADR-20260428-05<br/>VS Code WebView の DOM 系テストはマニュアル運用とする"]
     ADR_20260428_09["ADR-20260428-09<br/>受け入れテストの自動化マーカー規約と検出スクリプト"]
+    ADR_20260429_09["ADR-20260429-09<br/>VS Code WebView の DOM 系テストは ExTester ハーネスで自動化する"]
   end
   ADR_20260412_05["ADR-20260412-05<br/>[chat-ai] Playwright と AI による視覚レビューの併用"]
   ADR_20260326_04 --> ADR_20260325_01
+  ADR_20260429_09 -.supersedes.-> ADR_20260428_05
   ADR_20260412_05 -.supersedes.-> ADR_20260324_01
 
   classDef accepted fill:#d4edda,stroke:#28a745,color:#155724
@@ -31,7 +33,8 @@ flowchart TD
   class ADR_20260330_03 accepted
   class ADR_20260427_05 accepted
   class ADR_20260428_04 accepted
-  class ADR_20260428_05 accepted
+  class ADR_20260428_05 superseded
   class ADR_20260428_09 accepted
+  class ADR_20260429_09 accepted
   class ADR_20260412_05 ghost
 ```
