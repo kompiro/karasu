@@ -83,13 +83,21 @@ ready → implementing → in-review → (close)
 5. 実装する
 6. /commit でコミットする（Conventional Commits 形式）
 7. PR を作成する（Closes #N で Issue と紐付ける）
-8. CI（test / lint / format / typecheck / build）が通過することを確認する
+8. CI（test / lint / format / typecheck / knip / check:cycles / build）が通過することを確認する
 9. Issue ラベルを status: in-review に更新する
 10. 手動検証チェックリストを実施する
 11. レビュー → マージ → git worktree remove .worktrees/<branch> でクリーンアップ
 ```
 
 詳細な手順は `/start-dev` スキルを参照。
+
+### 循環依存チェック
+
+`pnpm check:cycles` で `madge --circular` を 5 つのプロダクションパッケージ（core / app / cli / lsp / vscode）の `src/` に対して実行し、モジュール間の循環依存を検出する。
+
+- pre-push の lefthook と CI の `Check` ジョブで自動実行されるため、ローカル / PR どちらでも循環導入時にブロックされる
+- 型のみの import (`import type`) でも madge は循環として検出する。共有契約は専用の leaf module（例: `renderer/layout-types.ts`）に分離して回避する
+- e2e パッケージ（`packages/e2e`, `packages/vscode-e2e`）はテスト専用で意図的にスキャン対象外
 
 ### QA チェックリスト
 
