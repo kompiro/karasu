@@ -1,6 +1,6 @@
 # ADR Dependency Graph — Overview
 
-136 ADRs across 15 topics. Clusters group by `topic` frontmatter field. Edges crossing cluster borders are cross-topic dependencies.
+137 ADRs across 15 topics. Clusters group by `topic` frontmatter field. Edges crossing cluster borders are cross-topic dependencies.
 ```mermaid
 flowchart TD
   subgraph adr-tooling["adr-tooling"]
@@ -161,6 +161,7 @@ flowchart TD
     ADR_20260428_04["ADR-20260428-04<br/>Chat UI E2E は Playwright route で Anthropic API ..."]
     ADR_20260428_05["ADR-20260428-05<br/>VS Code WebView の DOM 系テストはマニュアル運用とする"]
     ADR_20260428_09["ADR-20260428-09<br/>受け入れテストの自動化マーカー規約と検出スクリプト"]
+    ADR_20260429_09["ADR-20260429-09<br/>VS Code WebView の DOM 系テストは ExTester ハーネスで自動化する"]
   end
   subgraph vscode["vscode"]
     ADR_20260330_05["ADR-20260330-05<br/>VSCode 拡張 — LSP-first アーキテクチャと段階的フェーズ計画"]
@@ -245,6 +246,7 @@ flowchart TD
   ADR_20260422_07 --> ADR_20260420_02
   ADR_20260425_01 --> ADR_20260420_03
   ADR_20260412_05 -.supersedes.-> ADR_20260324_01
+  ADR_20260429_09 -.supersedes.-> ADR_20260428_05
 
   classDef accepted fill:#d4edda,stroke:#28a745,color:#155724
   classDef proposed fill:#fff3cd,stroke:#ffc107,color:#856404
@@ -375,7 +377,7 @@ flowchart TD
   class ADR_20260428_02 accepted
   class ADR_20260428_03 accepted
   class ADR_20260428_04 accepted
-  class ADR_20260428_05 accepted
+  class ADR_20260428_05 superseded
   class ADR_20260428_06 accepted
   class ADR_20260428_07 accepted
   class ADR_20260428_08 accepted
@@ -388,6 +390,7 @@ flowchart TD
   class ADR_20260429_06 accepted
   class ADR_20260429_07 accepted
   class ADR_20260429_08 accepted
+  class ADR_20260429_09 accepted
 ```
 
 ## Per-topic detail
@@ -405,5 +408,5 @@ flowchart TD
 - [`renderer`](graph/renderer.md) — 20 ADRs
 - [`resolver`](graph/resolver.md) — 4 ADRs
 - [`styling`](graph/styling.md) — 6 ADRs
-- [`testing`](graph/testing.md) — 8 ADRs
+- [`testing`](graph/testing.md) — 9 ADRs
 - [`vscode`](graph/vscode.md) — 5 ADRs

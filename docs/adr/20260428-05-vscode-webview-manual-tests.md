@@ -1,7 +1,8 @@
 ---
 id: ADR-20260428-05
 title: VS Code WebView の DOM 系テストはマニュアル運用とする
-status: accepted
+status: superseded
+superseded_by: ADR-20260429-09
 date: 2026-04-28
 topic: testing
 related_to:
@@ -24,7 +25,7 @@ assumptions:
 # ADR-20260428-05: VS Code WebView の DOM 系テストはマニュアル運用とする
 
 - **日付**: 2026-04-28
-- **ステータス**: 決定済み
+- **ステータス**: 廃止（2026-04-29 ADR-20260429-09 で supersede）
 - **関連**:
   - ADR-20260428-03 — VS Code 拡張ホスト向け smoke test harness
   - 親 Issue #597 — remaining E2E candidates after #534 rollout
