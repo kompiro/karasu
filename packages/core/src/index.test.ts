@@ -1,5 +1,10 @@
 import { describe, it, expect } from "vitest";
-import { compile, compileProject, compileProjectOrgView } from "./index.js";
+import {
+  compile,
+  compileProject,
+  compileProjectOrgView,
+  buildAllViewsSvgDiffProject,
+} from "./index.js";
 import { InMemoryFileSystemProvider } from "./fs/in-memory-provider.js";
 import { resolveStyles } from "./resolver/style-resolver.js";
 import { StyleParser } from "./parser/style-parser.js";
@@ -404,5 +409,123 @@ describe("deprecated compileProjectOrgView — backward compatibility", () => {
     expect(result.svg).toBeTruthy();
     expect(result.diagramType).toBe("org");
     expect(result.nodePathIndex).toBeDefined();
+  });
+});
+
+describe("buildAllViewsSvgDiffProject — bundled diff (Issue #1025)", () => {
+  const SYSTEM_DEPLOY_ORG_BEFORE = `
+system "EC" {
+  service "ECommerce" {}
+}
+
+deploy "prod" {
+  oci "ec-app" { realizes = "ECommerce"; runtime = "node:20"; }
+}
+
+organization "OrgA" {
+  team "TeamA" {}
+}
+`;
+
+  const SYSTEM_DEPLOY_ORG_AFTER = `
+system "EC" {
+  service "ECommerce" {}
+  service "Billing" {}
+}
+
+deploy "prod" {
+  oci "ec-app" { realizes = "ECommerce"; runtime = "node:20"; }
+  lambda "mailer" {}
+}
+
+organization "OrgA" {
+  team "TeamA" {}
+  team "TeamB" {}
+}
+`;
+
+  const SYSTEM_ONLY = `
+system "EC" {
+  service "ECommerce" {}
+}
+`;
+  const SYSTEM_ONLY_AFTER = `
+system "EC" {
+  service "ECommerce" {}
+  service "Billing" {}
+}
+`;
+
+  it("bundles system + deploy + org tabs when all three apply", async () => {
+    const fs = new InMemoryFileSystemProvider();
+    await fs.writeFile("/before.krs", SYSTEM_DEPLOY_ORG_BEFORE);
+    await fs.writeFile("/after.krs", SYSTEM_DEPLOY_ORG_AFTER);
+
+    const result = await buildAllViewsSvgDiffProject({
+      beforeEntryPath: "/before.krs",
+      afterEntryPath: "/after.krs",
+      fs,
+    });
+
+    expect(result.svg).toContain('id="krs-system-root"');
+    expect(result.svg).toContain('id="krs-deploy-root"');
+    expect(result.svg).toContain('id="krs-org-root"');
+    expect(result.svg).toContain("/* karasu-diff-style */");
+    expect(result.views.system).toBeDefined();
+    expect(result.views.deploy).toBeDefined();
+    expect(result.views.org).toBeDefined();
+    // Diff annotations should be present in the bundle.
+    expect(result.svg).toContain('data-diff-state="added"');
+  });
+
+  it("skips deploy tab when neither side has a deploy block", async () => {
+    const fs = new InMemoryFileSystemProvider();
+    await fs.writeFile("/before.krs", SYSTEM_ONLY);
+    await fs.writeFile("/after.krs", SYSTEM_ONLY_AFTER);
+
+    const result = await buildAllViewsSvgDiffProject({
+      beforeEntryPath: "/before.krs",
+      afterEntryPath: "/after.krs",
+      fs,
+    });
+
+    expect(result.svg).toContain('id="krs-system-root"');
+    expect(result.svg).not.toContain('id="krs-deploy-root"');
+    expect(result.svg).not.toContain('id="krs-org-root"');
+    expect(result.views.system).toBeDefined();
+    expect(result.views.deploy).toBeUndefined();
+    expect(result.views.org).toBeUndefined();
+  });
+
+  it("skips org tab when neither side has any team", async () => {
+    const fs = new InMemoryFileSystemProvider();
+    await fs.writeFile("/before.krs", DEPLOY_KRS);
+    await fs.writeFile("/after.krs", DEPLOY_KRS);
+
+    const result = await buildAllViewsSvgDiffProject({
+      beforeEntryPath: "/before.krs",
+      afterEntryPath: "/after.krs",
+      fs,
+    });
+
+    expect(result.svg).toContain('id="krs-system-root"');
+    expect(result.svg).toContain('id="krs-deploy-root"');
+    expect(result.svg).not.toContain('id="krs-org-root"');
+    expect(result.views.org).toBeUndefined();
+  });
+
+  it("includes a view if it appears on only one side (added or removed)", async () => {
+    const fs = new InMemoryFileSystemProvider();
+    await fs.writeFile("/before.krs", SYSTEM_ONLY);
+    await fs.writeFile("/after.krs", SYSTEM_DEPLOY_ORG_AFTER);
+
+    const result = await buildAllViewsSvgDiffProject({
+      beforeEntryPath: "/before.krs",
+      afterEntryPath: "/after.krs",
+      fs,
+    });
+
+    expect(result.svg).toContain('id="krs-deploy-root"');
+    expect(result.svg).toContain('id="krs-org-root"');
   });
 });

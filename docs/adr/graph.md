@@ -1,6 +1,6 @@
 # ADR Dependency Graph — Overview
 
-138 ADRs across 15 topics. Clusters group by `topic` frontmatter field. Edges crossing cluster borders are cross-topic dependencies.
+139 ADRs across 15 topics. Clusters group by `topic` frontmatter field. Edges crossing cluster borders are cross-topic dependencies.
 ```mermaid
 flowchart TD
   subgraph adr-tooling["adr-tooling"]
@@ -71,6 +71,7 @@ flowchart TD
     ADR_20260417_01["ADR-20260417-01<br/>`translate --from openapi` のデフォルトをリソース単位の useca..."]
     ADR_20260419_01["ADR-20260419-01<br/>`translate --from db` のデフォルトを集約ルート単位のテーブル集約に変更する"]
     ADR_20260429_06["ADR-20260429-06<br/>`karasu diff` CLI と diff SVG の self-contained ス..."]
+    ADR_20260430_02["ADR-20260430-02<br/>`karasu diff` の bundled all-views 出力"]
   end
   subgraph core-concepts["core-concepts"]
     ADR_20260312_02["ADR-20260312-02<br/>ツール名「karasu」の採用"]
@@ -393,6 +394,7 @@ flowchart TD
   class ADR_20260429_08 accepted
   class ADR_20260429_09 accepted
   class ADR_20260430_01 accepted
+  class ADR_20260430_02 accepted
 ```
 
 ## Per-topic detail
@@ -401,7 +403,7 @@ flowchart TD
 - [`app-ui`](graph/app-ui.md) — 18 ADRs
 - [`build`](graph/build.md) — 22 ADRs
 - [`chat-ai`](graph/chat-ai.md) — 8 ADRs
-- [`cli`](graph/cli.md) — 8 ADRs
+- [`cli`](graph/cli.md) — 9 ADRs
 - [`core-concepts`](graph/core-concepts.md) — 7 ADRs
 - [`edges`](graph/edges.md) — 6 ADRs
 - [`navigation`](graph/navigation.md) — 8 ADRs

@@ -2,6 +2,7 @@ import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import {
+  buildAllViewsSvgDiffProject,
   compileDeployDiff,
   compileOrgDiff,
   compileSystemDiff,
@@ -13,6 +14,7 @@ import { NodeFileSystemProvider } from "./render.js";
 
 interface DiffOptions {
   output?: string;
+  /** When omitted, emits a bundled all-views SVG. */
   view?: DiagramType;
 }
 
@@ -24,17 +26,16 @@ const STDIN_TOKEN = "-";
  * stdin is read and written to a tempfile co-located with the other
  * side's directory so relative `@import`s resolve consistently.
  *
- * Supports `--view system | deploy | org` (default: `system`). Unlike
- * `karasu render`, there is no bundled "all views" diff yet — that would
- * require composing three separate diff SVGs into a single document and
- * is tracked as follow-up work.
+ * Supports `--view system | deploy | org` for single-view output. When
+ * `--view` is omitted, emits a bundled SVG that contains all applicable
+ * views with CSS-only tab navigation (mirrors `karasu render` behavior).
  */
 export async function diff(
   beforeArg: string,
   afterArg: string,
   options: DiffOptions,
 ): Promise<void> {
-  const view: DiagramType = options.view ?? "system";
+  const view: DiagramType | undefined = options.view;
 
   // Decide a stable directory for any temp files the stdin shim creates.
   // Co-locating the temp file with the *other* side's directory makes the
@@ -116,7 +117,7 @@ interface DiffCompileResult {
 }
 
 async function compileFor(
-  view: DiagramType,
+  view: DiagramType | undefined,
   beforeEntryPath: string,
   afterEntryPath: string,
   fs: import("@karasu-tools/core").FileSystemProvider,
@@ -129,6 +130,10 @@ async function compileFor(
       return compileDeployDiff(opts);
     case "org":
       return compileOrgDiff(opts);
+    case undefined: {
+      const result = await buildAllViewsSvgDiffProject(opts);
+      return { svg: result.svg, diagnostics: result.diagnostics };
+    }
   }
 }
 
