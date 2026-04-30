@@ -1,4 +1,4 @@
-import type { ContainerRect, LayoutNode, LayoutResult } from "../../renderer/layout.js";
+import type { ContainerRect, LayoutNode, LayoutResult } from "../../renderer/layout-types.js";
 import type { MemberNode, OrganizationBlock, TeamNode } from "../../types/ast.js";
 
 /**

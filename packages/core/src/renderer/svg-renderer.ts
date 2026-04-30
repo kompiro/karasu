@@ -1,12 +1,7 @@
 import type { ResolvedNodeStyle, ResolvedStyles } from "../types/style.js";
 import type { ViewSlice } from "../view/view-extract.js";
-import {
-  layout,
-  type ContainerRect,
-  type DisplayMode,
-  type LayoutNode,
-  type LayoutResult,
-} from "./layout.js";
+import { layout } from "./layout.js";
+import type { ContainerRect, DisplayMode, LayoutNode, LayoutResult } from "./layout-types.js";
 import { renderShape } from "./shapes.js";
 import { renderEdge, renderArrowMarker } from "./edge-routing.js";
 import { buildLegendFooter, el, escapeXml, truncateToWidth, wrapToWidth } from "./svg-builder.js";

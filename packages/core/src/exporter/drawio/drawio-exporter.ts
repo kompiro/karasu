@@ -1,4 +1,9 @@
-import type { ContainerRect, LayoutEdge, LayoutNode, LayoutResult } from "../../renderer/layout.js";
+import type {
+  ContainerRect,
+  LayoutEdge,
+  LayoutNode,
+  LayoutResult,
+} from "../../renderer/layout-types.js";
 import { sanitizeId } from "../../renderer/svg-renderer.js";
 import { escapeXml, renderAttrs, renderStyle, type AttrValue } from "./mxgraph-builder.js";
 import {

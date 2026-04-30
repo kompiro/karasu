@@ -19,7 +19,7 @@
  * Run before `routeOrthogonalEdges` so the channel routing uses the
  * distributed ports.
  */
-import type { LayoutEdge, LayoutNode } from "./layout.js";
+import type { LayoutEdge, LayoutNode } from "./layout-types.js";
 
 type Side = "top" | "bottom" | "left" | "right";
 

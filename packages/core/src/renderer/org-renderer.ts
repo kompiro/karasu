@@ -1,7 +1,7 @@
 import type { ResolvedNodeStyle, ResolvedStyles } from "../types/style.js";
 import type { OrgViewSlice } from "../view/org-view-extract.js";
 import type { TeamNode, MemberNode } from "../types/ast.js";
-import type { DisplayMode } from "./layout.js";
+import type { DisplayMode } from "./layout-types.js";
 import {
   buildLegendFooter,
   el,
