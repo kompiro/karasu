@@ -448,7 +448,8 @@ function toResolvedEdgeStyle(props: Record<string, string>): ResolvedEdgeStyle {
   if (props["color"]) style.color = props["color"];
   if (props["stroke-width"]) style.strokeWidth = parseFloat(props["stroke-width"]);
   if (props["font-size"]) style.fontSize = parseFloat(props["font-size"]);
-  if (props["border-style"]) style.strokeStyle = props["border-style"] as "solid" | "dashed";
+  if (props["border-style"])
+    style.strokeStyle = props["border-style"] as "solid" | "dashed" | "dotted";
 
   return style;
 }

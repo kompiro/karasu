@@ -20,7 +20,8 @@ export function renderEdge(
   const strokeAttrs = {
     stroke: style.color,
     "stroke-width": style.strokeWidth,
-    "stroke-dasharray": style.strokeStyle === "dashed" ? "8 4" : undefined,
+    "stroke-dasharray":
+      style.strokeStyle === "dashed" ? "8 4" : style.strokeStyle === "dotted" ? "2 2" : undefined,
     "marker-end": `url(#${markerId})`,
     class: edge.cyclic ? "krs-edge--cyclic" : undefined,
   };
