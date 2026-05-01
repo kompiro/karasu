@@ -135,9 +135,13 @@ They can be referenced and overridden via tag selectors in `.krs.style`.
 | `[async]` | An edge declared with `-->` | Dashed |
 | `[sync]` | An edge declared with `->` | Solid |
 | `[cyclic]` | Detected as part of a cyclic dependency | Red (`#EF4444`) solid |
+| `[write]` | A synthesized usecase→resource edge whose target resource declares any of `create` / `update` / `delete` in its `operations` | `stroke-width: 2`, label `"W"` |
+| `[read]` | A synthesized usecase→resource edge classified as read-only (no write verbs, or `operations` omitted) | `stroke-width: 1.5` (default), label `"R"` |
 
 > `[implicit]` uses color (amber) to signal "derived," while the line style distinguishes sync from async.
 > When both sync and async domain edges exist between the same service pair, they are derived as separate implicit edges, one per kind.
+>
+> `[write]` / `[read]` are auto-injected on synthesized usecase→resource edges only. **Do not write them by hand on explicit edges** — the resolver will accept them syntactically, but the semantics (write-dominates classification of the target resource's `operations`) only make sense for the synthesized edges. The width hierarchy is intentionally `read (1.5) < write (2) < cyclic (2.5)` so that cyclic remains the most attention-grabbing axis.
 
 ### Customization example
 
