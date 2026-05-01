@@ -7,6 +7,12 @@ interface Point {
   y: number;
 }
 
+const STROKE_DASHARRAY: Record<ResolvedEdgeStyle["strokeStyle"], string | undefined> = {
+  solid: undefined,
+  dashed: "8 4",
+  dotted: "2 2",
+};
+
 export function renderEdge(
   edge: LayoutEdge,
   style: ResolvedEdgeStyle,
@@ -20,8 +26,7 @@ export function renderEdge(
   const strokeAttrs = {
     stroke: style.color,
     "stroke-width": style.strokeWidth,
-    "stroke-dasharray":
-      style.strokeStyle === "dashed" ? "8 4" : style.strokeStyle === "dotted" ? "2 2" : undefined,
+    "stroke-dasharray": STROKE_DASHARRAY[style.strokeStyle],
     "marker-end": `url(#${markerId})`,
     class: edge.cyclic ? "krs-edge--cyclic" : undefined,
   };
