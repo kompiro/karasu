@@ -23,6 +23,7 @@ flowchart TD
   ADR_20260409_07["ADR-20260409-07<br/>[navigation] マルチファイルプロジェクトでのクロスファイルナビゲーション"]
   ADR_20260411_02["ADR-20260411-02<br/>[resolver] 移行期における重複ドメイン ID の共存を `@deprecated` + `@migrati..."]
   ADR_20260422_04["ADR-20260422-04<br/>[renderer] トップレベル service / domain を `(Unassigned)` 擬似システム..."]
+  ADR_20260430_04["ADR-20260430-04<br/>[renderer] usecase→resource edge を read/write で視覚的に区別する"]
   ADR_20260323_04 --> ADR_20260320_02
   ADR_20260409_05 --> ADR_20260405_03
   ADR_20260409_06 --> ADR_20260409_05
@@ -33,6 +34,7 @@ flowchart TD
   ADR_20260409_07 --> ADR_20260409_06
   ADR_20260409_07 --> ADR_20260401_03
   ADR_20260422_04 --> ADR_20260409_06
+  ADR_20260430_04 --> ADR_20260430_03
 
   classDef accepted fill:#d4edda,stroke:#28a745,color:#155724
   classDef proposed fill:#fff3cd,stroke:#ffc107,color:#856404
@@ -56,4 +58,5 @@ flowchart TD
   class ADR_20260409_07 ghost
   class ADR_20260411_02 ghost
   class ADR_20260422_04 ghost
+  class ADR_20260430_04 ghost
 ```
