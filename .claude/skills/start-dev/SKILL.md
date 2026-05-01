@@ -197,5 +197,8 @@ CI 通過後、以下のチェックを順に実行する。
    - ステータスが「検討中」または「承認済み」のままになっている Design Doc があれば、`/design-doc` スキルまたは手動で ADR として `docs/adr/` に移動・昇格させる
    - ADR のファイル名は `YYYYMMDD-XX-description.md` 形式とする（例: `20260412-05-getting-started-project.md`）。`YYYYMMDD` は作成日、`XX` は同日内の連番（`docs/adr/` 内の同日ファイルを確認して決める）
    - Design Doc のステータスを「決定済み」に更新し、対応する ADR へのリンクを追記する
+   - ADR 昇格 PR（または新規 ADR 追記のみの PR）は `gh pr create` 直後に
+     `gh pr merge <pr-number> --auto --squash` で auto-merge を有効化する。
+     詳細は `.claude/rules/adr.md` の「ADR PR の auto-merge」を参照
 
 リモートブランチは GitHub 上で PR マージ時に自動削除される設定を推奨。
