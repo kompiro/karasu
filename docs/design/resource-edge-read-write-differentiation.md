@@ -1,152 +1,180 @@
-# Read/write differentiation for usecase resources
+# Read/write differentiation for usecase→resource edges
 
 - **日付**: 2026-04-30
 - **ステータス**: 検討中
 - **関連**:
-  - Issue: [#1061](https://github.com/kompiro/issues/1061)
+  - Issue: [#1061](https://github.com/kompiro/karasu/issues/1061)
   - 既存 ADR: [ADR-20260430-03](../adr/20260430-03-resource-crud-operations.md)（`operations` プロパティ導入）
   - 関連 Issue: [#1062](https://github.com/kompiro/karasu/issues/1062)（CRUD マトリクスビュー — 補完的・別レーン）
   - 仕様: [docs/spec/syntax.md](../spec/syntax.md) §`operations property`
-  - スタイル: [`packages/core/src/builtins/default-style.ts`](../../packages/core/src/builtins/default-style.ts)
+  - 既存実装: [`packages/core/src/view/view-extract.ts`](../../packages/core/src/view/view-extract.ts) — synthetic usecase→resource edges
+  - スタイル: [`packages/core/src/builtins/default-style.ts`](../../packages/core/src/builtins/default-style.ts), [`packages/core/src/resolver/style-resolver.ts`](../../packages/core/src/resolver/style-resolver.ts)
 
 ## 背景・課題
 
 ADR-20260430-03 で `usecase` 内の `resource` に `operations` プロパティ（CRUD verbs）を持たせられるようになった。次のステップは、その情報を **usecase ビュー上で視覚化** すること。これは特にシステム移行で「DB X を別サービスに切り出すと、どの usecase が壊れるか／読むだけで済むか」を一目で判断できるようにするのが目的。
 
-Issue #1061 起票時には "edge differentiation" と書いたが、実際の renderer を調査すると **usecase view では `resource` は `usecase` コンテナの **子カードとして nested 描画** されている。usecase→resource を結ぶエッジ（line / polyline）は存在しない**。したがって視覚化の主舞台はエッジ装飾ではなく **resource カード自身のスタイル** になる。
-
-現状の usecase view（簡略表示）:
+usecase view では `view-extract.ts` の `deriveUsecaseResourceNodes` が **`usecase -> resource` の synthetic edges** を生成し、`kind: "sync"` として描画している（実例は Issue #1061 添付の "Search products → Product table" などの矢印）。したがって視覚化は **edge 装飾** で行うのが自然。
 
 ```
-┌─ usecase PlaceOrder ────────────────────┐
-│ ┌─ resource OrderTable ──┐  ┌─ resource InventoryAPI [external] ─ ┐
-│ │  Order table           │  │  (border dashed for external)       │
-│ └────────────────────────┘  └─────────────────────────────────────┘
-└─────────────────────────────────────────┘
+[ usecase Search products ] ─────▶ ( Product table )
+[ usecase Register a product ] ──▶ ( Product table )
+                              └──▶ ( Product images )
 ```
 
-resource カードの上には既に **2 つの視覚的軸** が乗っている:
+エッジ上に乗っている既存の視覚軸:
 
-1. **配置（containment）** — どの usecase の子か = 「触るかどうか」
-2. **`[external]` タグ → border-style: dashed** — 外部リソースかどうか
+1. **kind: sync / async** → `stroke-style: solid / dashed`（builtins/default-style 経由、style-resolver が `edge[sync]` / `edge[async]` 疑似タグを注入）
+2. **cyclic flag** → `class="krs-edge--cyclic"`（循環依存マーカー）
+3. **arrowhead marker** → `marker-end`
 
-write/read の差別化を入れるには、これらと干渉しない第 3 の軸を選ぶ必要がある。
+write/read の差別化を入れるには、これらと**直交する第 3 の軸**が要る。`stroke-style` は sync/async に取られているので、空いているのは:
+
+- `stroke-width`（数値、現在 1.5 がデフォルト）
+- `stroke color`（テーマ色や cyclic で使われている）
+- arrowhead 形状（変更コスト大、累積する装飾と衝突）
+- edge label / badge（既存 label と同居して情報密度が上がる）
+
+**`stroke-width` が最も軸の干渉が少ない**。ユーザーご指摘の通り、点線/実線は sync/async に既に取られているため、太さ調整で表現するのが妥当。
 
 ## 制約・前提
 
-- 本設計は **usecase view（domain ドリルダウン以下）** のみを対象とする。system / deploy / org view では resource はそもそも非表示か集約表示なので関係ない。
-- ADR-20260430-03 の **write-dominates ルール** を採用する。`create` / `update` / `delete` のいずれかが含まれていれば **write**、それ以外（`read` のみ、または `operations` 未指定）は **read** として扱う。
-- `operations` 未指定の resource は **read として扱う**（新規追加の視覚信号が出ないように、最も保守的な側に倒す）。これは「未指定 = 読むだけ」と意味付けるのではなく、**「write の確証が無いものは write 扱いしない」** という解釈。
-- 既存の user `.krs.style` を破壊しない。任意のユーザースタイルが `border-style` / `background-color` / `border-color` を上書きできる現状を維持する。
-- v1 では SVG の視覚エンコーディングのみを扱う。`.krs.style` セレクタの拡張（`resource[write]` など）は v2 以降。
+- 本設計は **usecase view のみ** を対象とする（`deriveUsecaseResourceNodes` が edge を生成するレベル）。
+- ADR-20260430-03 の **write-dominates ルール** を採用。`create` / `update` / `delete` のいずれかが含まれていれば **write**、それ以外（`read` のみ、`operations` 未指定）は **read**。
+- 既存の sync/async dashed 表現を変更しない。write/read 軸は**stroke-style ではなく stroke-width** で表現する。
+- 既存の `.krs.style` カスケード（ユーザーが `edge[async] { color: ... }` のように上書きできる仕組み）と整合させ、新軸も同じ手段で上書きできるようにする。
+- `[external]` タグ（resource ノード側）の dashed border 表現は edge 軸とは独立した別レーンなので干渉しない。
 
 ## 設計の選択肢
 
-### Option A — Border width
+### Option A — Pseudo-tag injection（推奨）
 
-`resource` のデフォルト `border-width` を read = `2`（既存値）, write = `4` に変える。
+`style-resolver.ts` で既に `edge.kind === "async"` から `[async]` 疑似タグを注入している仕組みを **拡張** し、`view-extract.ts` で生成する usecase→resource edge に対しても、target resource の `operations` を見て **`[write]` / `[read]` 疑似タグを注入** する。`default-style.ts` に `edge[write] { stroke-width: 3; }` を追加する。
 
-```css
-resource           { border-width: 2; }   /* read（既存） */
-/* renderer が write 判定で border-width を 4 にオーバーライド */
-```
-
-**Pros**:
-- 既存スタイル軸（border-style: dashed for external、background-color）と干渉しない
-- 「write は強い結合」という意味と「太い枠線」という視覚が直感的に対応
-- 実装が最小（renderer 側で write 判定 → strokeWidth を上書きする 1 ヶ所変更で済む）
-- 色覚多様性に依存しない
-
-**Cons**:
-- 1ステップの太さ違いはノートPC等の高 DPI で見落とされやすい（ただし read=2/write=4 なら 2倍差で十分視認可能）
-- ユーザーが `.krs.style` で `border-width` を上書きすると writes/reads の区別も失われる（ただし**ユーザーの意図的上書きが優先される**のは現状仕様と一貫）
-
-### Option B — Decorator badge on resource card
-
-resource カードのコーナーに小さなテキストバッジ（`W` / `R`）を置く。`[external]` の dashed border と同様、**追加の視覚要素** として描画する。
-
-```
-┌─ resource OrderTable ──────[W]─┐
-│  Order table                   │
-└────────────────────────────────┘
-```
+- **edge の生成側**: `deriveUsecaseResourceNodes` で edge.tags に `"write"` / `"read"` を埋め込む（write-dominates 判定）
+- **style-resolver**: 既存の `[async]`/`[sync]` 注入と並んで、edge.tags の `write`/`read` をそのまま selector マッチングに使う（追加コードはほぼゼロ）
+- **default-style**: `edge[write] { stroke-width: 3; }` の 1 ルールを追加。read は既存デフォルト（1.5）のまま
+- **ユーザー上書き**: `.krs.style` で `edge[write] { stroke-width: 4; color: #f87171; }` のように自由に上書き可能
 
 **Pros**:
-- スタイル軸の干渉ゼロ（独立した DOM 要素）
-- 拡張性: 将来 v2 で「CR」「RUD」のように生 verb を表示する余地
-- スクリーンリーダー対応が容易（`<title>`/`aria-label` を付けやすい）
+- 既存メカニズムをそのまま再利用、追加コード最小
+- `.krs.style` カスケードに最初から乗るので、書き換えたいユーザーの上書き手段が用意されている
+- write/read だけでなく将来 `[create]` / `[update]` / `[delete]` の生 verb tag を edge に注入する余地もある（が v1 では write/read 集約のみ）
+- 既存 `[async]` / `[cyclic]` と同じ語彙ルールで読み手が学習しなくて済む
 
 **Cons**:
-- 描画コードが増える（badge レイアウト計算、card 高さへの影響）
-- 既存の `📦 client.resource` バッジ・`🔐 capability` バッジと**バッジの語彙が混雑**し始める
-- テキスト主体なので i18n の論点が出る（`W`/`R` を使うか `✏️`/`👁️` を使うか）
+- edge.tags に "write"/"read" という pseudo-tag が混ざるので、ユーザーが自分のタグとして "write"/"read" を edge に書いた場合に意味が二重化する（ただしユーザーが手書きで edge にタグを書く構文は限定的なので実害は少ない）
+- "write"/"read" という単語が `tags-annotations.md` の reserved 語彙に増える（要記載）
 
-### Option C — Synthesized usecase→resource edges
+### Option B — 専用フィールドを edge AST に追加
 
-containment ではなく明示的なエッジを描き、エッジ自体を read/write でスタイル分け（width / arrowhead / dasharray）する。
+`KrsEdge` に `operations?: { write: boolean }` のような専用フィールドを生やし、renderer / style-resolver で参照する。
 
 **Pros**:
-- 「edge differentiation」という当初の Issue 名に最も忠実
-- service/system view で resource を表に出した時にも転用可能
+- pseudo-tag namespace を汚さない
+- 型レベルで意味が明確
 
 **Cons**:
-- レイアウトを大きく変える（既存の nested レイアウト前提を壊す）
-- usecase が複数 resource を持つと内部にエッジが束になり、密度問題が現実化する
-- 既存の sync (`->`) / async (`-->`) エッジ軸（dashed-vs-solid）と衝突する。エッジで read/write も dashed-vs-solid を使うと sync/async と競合
-- v1 のスコープを大きく超える
+- AST 拡張・型変更・複数の参照箇所修正で **コストが大きい割に得られる便益が小さい**
+- `.krs.style` セレクタとの紐付けで結局疑似タグ注入相当の処理が必要になる
+- 将来 v2 で `[create]` 等の生 verb を出したくなったとき、また AST フィールドを追加することになる
+
+### Option C — Renderer 側でのハードコード上書き
+
+`view-extract.ts` 側は触らず、renderer の edge 描画箇所で resource を逆引きし、write 判定して `stroke-width` を直接上書きする。
+
+**Pros**:
+- 最少修正
+
+**Cons**:
+- ユーザーが `.krs.style` で上書きできない（renderer が後勝ちで上書きするため）
+- 「カスケードで決まったスタイルを renderer がオーバーライドする」のは既存設計と整合しない（cyclic edge も同じ理由で `class` 経由で CSS 上書きしている）
+- 将来の verb 別表示拡張パスが閉じる
 
 ## 決定（提案）
 
-**Option A（border width）を採用する**。
+**Option A — pseudo-tag injection**。実装方針:
 
-実装方針:
+1. **`view-extract.ts` `deriveUsecaseResourceNodes`** を拡張:
+   - target `resource.properties.operations` を見て、`isWriteOperation(ops)` で write 判定
+   - synthesized edge の `tags` に `"write"` または `"read"` を 1 個入れる
+   - `operations` 未指定なら `"read"` を入れる（保守的に「write の確証無し」扱い）
 
-1. **renderer**: usecase view の resource カード描画パスで、`resource.properties.operations` を見て write 判定し、SVG の `stroke-width` を read=2 / write=4 で出し分ける。
-2. **判定ロジック**: `isWriteOperation(operations)` ヘルパを `packages/core/src/spec/operations.ts` に追加。`create` / `update` / `delete` のいずれかが含まれていれば true。`isRecognizedResourceOperation` と並んで recognized set 由来の純粋関数。
-3. **default style**: `default-style.ts` は変更しない（`resource` のデフォルト `border-width: 2` のまま）。write 用の太さは renderer のハードコード定数として置く（v2 で `.krs.style` セレクタ化する際にカスケード化する余地を残す）。
-4. **scope guard**: write の太さ上書きは usecase の **直接の子** resource にだけ適用する。`database` / `queue` / `storage` 配下の物理 resource（`table` / `queue-item` / `bucket`）は対象外。
+2. **`packages/core/src/spec/operations.ts`** に純粋関数を追加:
+   ```ts
+   export function isWriteOperation(operations: readonly string[] | undefined): boolean {
+     if (!operations) return false;
+     return operations.some((op) => op === "create" || op === "update" || op === "delete");
+   }
+   ```
 
-### 細部の決定
+3. **`style-resolver.ts`** は **無変更**。`edgeSelectorMatches` は既に `edge.tags` を見ているので、write/read pseudo-tag が edge.tags に入っていれば自動でセレクタにマッチする。
 
-- **read=2, write=4 の 2:1 比** を採用。視認性が確保でき、かつ既存の `border-width: 2` を壊さない。
-- **`[external] + write` の場合は dashed border + width=4** を併用（軸が直交するので両方のスタイルが乗る）。
-- **`operations` 未指定の resource** は read 扱い（width=2、現状と同じ見た目）。
-- **i18n** は不要。視覚エンコーディングのみで、表示テキストは増えない。
+4. **`default-style.ts`** に `edge[write] { stroke-width: 3; }` を 1 行追加。read は既存デフォルト（`strokeWidth: 1.5`）のまま。
+
+5. **`docs/spec/tags-annotations.md`** に reserved edge tag の項目として `write` / `read` を追記。usecase view で自動付与される旨を明記し、ユーザーが手で書く想定ではないと示す。
+
+6. **ユーザー上書き可能性**: `edge[write] { stroke-width: 4; color: #f87171; }` のような `.krs.style` ルールでカスタマイズ可能。上書きなしでも default-style で write が太く描画される。
+
+### Edge tag に write/read を入れる影響範囲
+
+`edgeSelectorMatches` が `edge.tags` を `[async]`/`[sync]`/`[cyclic]` に拡張して扱っているのと同じ階層で `write`/`read` も働くので、追加コードは **edge 生成側 1 ヶ所 + style 1 ルール** で済む。
+
+### 太さ比
+
+`read = 1.5`（既存）/ `write = 3`（2 倍）を採用。視認性が確保でき、かつ既存の sync edge 太さを変えない。
+
+### sync/async と write/read の組み合わせ表
+
+| edge | stroke-style | stroke-width |
+|------|--------------|--------------|
+| sync + read | solid | 1.5 |
+| sync + write | solid | 3 |
+| async + read | dashed | 1.5 |
+| async + write | dashed | 3 |
+
+軸が完全に直交するので、4 通り全てが視覚的に区別可能。
 
 ## 理由
 
-- Containment レイアウトに**自然に乗る視覚軸**（カードの border 属性）を選ぶことで、既存のレイアウト前提・カスケード仕様を壊さずに済む。
-- `border-style`（external 用）/ `background-color`（テーマ・タグ用）/ `color`（テキスト）と独立した `border-width` は、本機能のために空いている数少ない直交軸。
-- 太さは数値的・連続的な軸なので、v2 で「`list` / `search` 等の認識外 verb をどう表示するか」「strict-write / soft-write をどう区別するか」が出てきた際にも、`border-width` 値の段階を増やせば拡張できる（badge を増やすより素直）。
-- Option B の badge は将来 CRUD verb の生表記を出したくなった時に有効だが、その用途はマトリクスビュー（Issue #1062）の方が遥かに適している。usecase view 上で badge を増やすのは情報密度を上げ過ぎる。
+- **既存の pseudo-tag 仕組み（`[async]`/`[sync]`/`[cyclic]`）の自然な拡張**になる。新しい設計概念を導入せず、追加コードもほぼゼロ。
+- **`.krs.style` カスケードに最初から乗る**ので、ユーザーが「もっと太く」「色も変えたい」「v2 で生 verb を見せたい」となったときに、コード変更なしで `.krs.style` で対応できる。
+- `stroke-width` は sync/async（stroke-style）と完全に直交する軸で、視覚的にも 1.5px と 3px の差は十分に判別可能。
+- 太さは数値的・連続的な軸なので、v2 で「`list` や `subscribe` のような認識外 verb を中間レベルで表す」「`delete` だけ更に太くする」等のグラデーションを足したくなった時にも、追加ルールで素直に拡張できる。
+- write-dominates 判定を **`view-extract.ts` で edge 生成時に集約** することで、renderer や resolver は「edge.tags を見るだけ」の純粋な責務分離を維持できる。
 
 ## 却下した案
 
-### Option B — Decorator badge
+### Option B — AST に専用フィールドを追加
 
-スタイル干渉は無いが、既存の `📦` / `🔐` バッジと混在し、card のコーナーが賑やかになる。「W/R をひと目で」見えるという目的は border width で十分達成でき、badge の表現力を使い切るのは v2 でマトリクスを作るタイミングがふさわしい。
+`KrsEdge` の AST 変更は影響範囲が大きく、得られるのは型安全性のみ。pseudo-tag 注入は AST 変更ゼロで同じ機能を提供でき、`.krs.style` カスケードとの統合も自然。型安全性が必要になったら別途リファクタで導入できる。
 
-### Option C — Synthesized edges
+### Option C — renderer でハードコード上書き
 
-レイアウト変更が大き過ぎる上、エッジ軸（sync/async）との衝突回避のために更にスタイル軸を設計する必要があり、スコープが膨らむ。usecase view を edge based に書き換えるのは別の大きな決定で、本 Issue の枠を超える。
+ユーザーが `.krs.style` で write 軸を再定義できなくなり、karasu のスタイル設計（カスケード優先）と矛盾する。`cyclic` ですら CSS class 経由で上書き可能にしている前例があるため、ハードコード上書きは採らない。
 
-### `[external]` を再利用して write/read を一緒に表す
+### `stroke-style: dotted` 等の第 3 の dasharray を使う
 
-`[external]` は所在（外部か内部か）の役割タグで、操作種別ではない。混ぜると `.krs.style` の `[external]` セレクタとの意味が壊れる。
+現状 `[async]` が `8 4` の dashed を使っている。dotted (`2 2`) を read/write に割り当てると、3 種類の dash パターンが並んで見分けがつきにくくなる。視覚軸を分離するべきで、dasharray 軸を共有してはいけない。
 
-### `border-color` で write を強調する
+### 色（color）を使う
 
-色は既にカテゴリ（resource 系統色 vs database 系統色）に使われており、tag セレクタや annotation で更に上書きされる可能性が高い。色覚多様性への配慮も必要になり、border width より複雑度が上がる。
+既存の cyclic edge が色（赤系）を使っており、theme やユーザー `.krs.style` で edge color を上書きするケースもある。色覚多様性への配慮も必要なので、第 1 軸として色を使うのは避ける（v1 default-style では color 変更はしない。ユーザーが `edge[write] { color: ... }` で上書きするのは自由）。
+
+### `[external]` resource の dashed border を流用
+
+`[external]` は所在を表す resource 側のタグで、edge の軸ではない。混ぜると意味の階層が壊れる。
 
 ## アクセプタンステスト候補（人間確認が必要なもののみ）
 
-- 実装後、`examples/ec-platform/03-domains.krs` の usecase ドリルダウン view を `karasu render` または preview で開き、`PlaceOrder` 内の `OrderTable`（write）と `InventoryAPI`（read）が border の太さで明確に区別できることを目視確認する。
-- `[external]` タグと write が両立する resource（例: 新規サンプルで `resource ExternalDB [external] { operations create }`）を作り、dashed + width=4 が両方適用されることを確認する。
+- 実装後、`examples/ec-platform/03-domains.krs` の usecase ドリルダウン view を `karasu render` または preview で開き、`PlaceOrder` の `OrderTable`（write）と `InventoryAPI`（read）に向かう edge が太さで明確に区別できることを目視確認する。
+- `[external]` タグと write が両立する resource（例: `examples/feature-samples/resource-operations.krs` に追加 or 既存の `InventoryAPI [external]` で write 系 verb を持たせる）を作り、async + write の組み合わせ（dashed + thick）が正しく重なることを確認する。
 
-> 自動テスト範囲（write 判定ロジック、SVG の `stroke-width` 値、recognized set との整合）は Vitest で保証する。
+> 自動テスト範囲（`isWriteOperation` 純粋関数、edge.tags への注入、style-resolver の selector マッチング、SVG の `stroke-width` 値）は Vitest で保証する。
 
 ## 確認事項（実装着手前にユーザー判断が欲しい）
 
-- **width 比**: `read=2 / write=4` でよいか、もう少し控えめな `read=2 / write=3` がよいか。**推奨: 2:4**。
-- **default-style.ts の改変**: 触らずに renderer のハードコード定数で済ませる方針でよいか。**推奨: そのまま**（v2 でセレクタ化する余地を残す）。
-- **examples の追加サンプル**: 専用サンプル（`feature-samples/resource-rw-edges.krs` など）を追加するか、既存 `examples/ec-platform/03-domains.krs` の手動確認だけで足りるか。**推奨: 既存サンプルで十分**（追加せず、AT に視認チェックの 1 行を残す）。
+- **width 比**: `read=1.5 / write=3` でよいか、もう少し控えめな `read=1.5 / write=2.5` がよいか。**推奨: 1.5/3**（2 倍差で視認性が高い）。
+- **default-style.ts の改変**: `edge[write] { stroke-width: 3; }` を builtin に入れる方針でよいか、それとも renderer 側のフォールバック値で持つか。**推奨: builtin に入れる**（カスケードの一級市民として扱い、ユーザー上書きを自然にする）。
+- **examples の追加**: 既存 `feature-samples/resource-operations.krs` を編集して write 系 verb のバラエティを増やすか、新規サンプルを足すか。**推奨: 既存サンプルを増強**（feature 1 件あたり 1 ファイルの方が `legend.krs` 等の慣例とも一貫）。
+- **`tags-annotations.md` への記載**: `write`/`read` を reserved edge tag として明記する範囲。**推奨: 短めに**（usecase view で自動付与される旨と、ユーザーが edge に手書きしないでくださいの 1 行のみ）。
