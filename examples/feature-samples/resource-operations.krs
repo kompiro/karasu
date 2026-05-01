@@ -1,4 +1,5 @@
-// Resource CRUD operations on usecases (Issue #1046).
+// Resource CRUD operations on usecases (Issue #1046) and the
+// derived read/write edge differentiation in the usecase view (Issue #1061).
 //
 // `operations` declares which CRUD verbs the enclosing usecase performs on a
 // resource. Recognized verbs are `create` / `read` / `update` / `delete`.
@@ -6,19 +7,30 @@
 // `list` / `search` / `execute`) but raise an `unknown-resource-operation`
 // warning. Omission keeps the dependency opaque — no diagnostic.
 //
+// In the usecase drill-down view the renderer derives a write-vs-read
+// classification from `operations` and shows it via:
+//   - synthesized usecase->resource edge gets a [write] / [read] pseudo-tag
+//   - edge label: "W" for write, "R" for read
+//   - edge stroke-width: 2 for write, 1.5 for read (default style)
+// Hierarchy: read (1.5) < write (2) < cyclic (2.5) keeps cyclic the
+// most attention-grabbing axis.
+//
 // This file is the AT-friendly minimal sample. See `examples/ec-platform/`
 // for the same property used in a realistic scenario.
 
 system Demo {
   label "Resource operations demo"
 
+  database OrderDB {
+    table OrderTable { label "Orders table" }
+  }
+
   service Backend {
     domain Order {
-      // Comma-separated form.
+      // Write usecase: edge renders thicker with "W" label.
       usecase PlaceOrder {
         label "Accept a new order"
-        resource OrderTable {
-          label "Orders table"
+        resource OrderDB.OrderTable {
           operations create, read
         }
         resource InventoryAPI [external] {
@@ -27,22 +39,29 @@ system Demo {
         }
       }
 
-      // Multi-line form (lines accumulate).
+      // Multi-line form accumulates verbs; still classified as write
+      // because update is in the list.
       usecase UpdateOrder {
         label "Modify an order"
-        resource OrderTable {
-          label "Orders table"
+        resource OrderDB.OrderTable {
           operations read
           operations update
         }
       }
 
-      // Omission form — opaque dependency, no warning.
+      // Pure read usecase: edge renders thinner with "R" label.
       usecase QueryOrder {
         label "Query order status"
-        resource OrderTable {
-          label "Orders table"
+        resource OrderDB.OrderTable {
+          operations read
         }
+      }
+
+      // Omission form — opaque dependency. Renders as read (conservative)
+      // with "R" label and the default thin stroke.
+      usecase ListOrders {
+        label "List recent orders"
+        resource OrderDB.OrderTable
       }
     }
   }
