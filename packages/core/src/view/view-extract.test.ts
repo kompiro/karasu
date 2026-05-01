@@ -863,6 +863,41 @@ system ECPlatform {
       expect(readEdge!.label).toBe("R");
     });
 
+    it("uses last-wins classification when the same (usecase, resource) pair is declared twice", () => {
+      // Authors can override an earlier classification by re-stating the
+      // resource with different operations later in the same usecase block,
+      // mirroring how cascading stylesheets resolve conflicts.
+      const krs = `
+system ECPlatform {
+  database OrderDB {
+    table OrderTable { label "注文テーブル" }
+  }
+  service OrderService {
+    domain Order {
+      usecase PlaceOrder {
+        resource OrderDB.OrderTable {
+          operations read
+        }
+        resource OrderDB.OrderTable {
+          operations create
+        }
+      }
+    }
+  }
+}
+`;
+      const systems = parseSystem(krs);
+      const view = extractView(systems, ["ECPlatform", "OrderService", "Order"]);
+
+      const edges = view.childEdges.filter(
+        (e) => e.from === "PlaceOrder" && e.to === "OrderDB.OrderTable",
+      );
+      expect(edges).toHaveLength(1);
+      // Last declaration (operations create) wins → write classification.
+      expect(edges[0].tags).toContain("write");
+      expect(edges[0].label).toBe("W");
+    });
+
     it("deduplicates resource nodes referenced by multiple usecases", () => {
       const krs = `
 system ECPlatform {

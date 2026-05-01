@@ -23,15 +23,10 @@ export function isRecognizedResourceOperation(value: string): value is Recognize
 }
 
 /**
- * Write-dominates classification used by the usecase view to differentiate
- * usecase→resource edges as read-only or write. Returns true when any of
+ * Write-dominates classification: returns true when any of
  * `create` / `update` / `delete` appears in the operation list. Unknown
- * verbs are treated as read (conservative — only verbs we know mean
+ * verbs are treated as non-write (conservative — only verbs we know mean
  * mutation count as write).
- *
- * Used by `view-extract.ts` to inject a `[write]` / `[read]` pseudo-tag
- * and an explicit `R` / `W` label on each synthesized usecase→resource
- * edge.
  */
 export function isWriteOperation(operations: readonly string[] | undefined): boolean {
   if (!operations) return false;

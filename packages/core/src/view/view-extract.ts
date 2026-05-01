@@ -44,8 +44,11 @@ function deriveUsecaseResourceNodes(
   tagMap: Map<string, string>,
 ): { resourceNodes: KrsNode[]; edges: KrsEdge[] } {
   const resourceMap = new Map<string, KrsNode>();
-  const edges: KrsEdge[] = [];
-  const seen = new Set<string>();
+  // Last-wins: a later declaration of the same (usecase, resource) pair
+  // overrides the earlier classification. This mirrors how cascading
+  // stylesheets resolve conflicts and lets authors override an inherited
+  // classification by re-stating the resource with different operations.
+  const edgeMap = new Map<string, KrsEdge>();
 
   for (const usecase of usecases) {
     if (usecase.kind !== "usecase") continue;
@@ -58,10 +61,8 @@ function deriveUsecaseResourceNodes(
         resourceMap.set(resource.id, applyInferredTagsDeep(resource, tagMap));
       }
       const key = `${usecase.id}->${resource.id}`;
-      if (seen.has(key)) continue;
-      seen.add(key);
       const isWrite = isWriteOperation(resNode.properties.operations);
-      edges.push({
+      edgeMap.set(key, {
         from: usecase.id,
         to: resource.id,
         kind: "sync",
@@ -72,7 +73,7 @@ function deriveUsecaseResourceNodes(
     }
   }
 
-  return { resourceNodes: Array.from(resourceMap.values()), edges };
+  return { resourceNodes: Array.from(resourceMap.values()), edges: Array.from(edgeMap.values()) };
 }
 
 /**
