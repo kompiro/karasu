@@ -811,6 +811,93 @@ system ECPlatform {
       expect(edgeKeys).toContain("PlaceOrder->EventBus.OrderCreated");
     });
 
+    it("tags synthetic usecase→resource edges as read by default and labels them R", () => {
+      const systems = parseSystem(INFRA_KRS);
+      const view = extractView(systems, ["ECPlatform", "OrderService", "Order"]);
+
+      const edge = view.childEdges.find(
+        (e) => e.from === "PlaceOrder" && e.to === "OrderDB.OrderTable",
+      );
+      expect(edge).toBeDefined();
+      expect(edge!.tags).toContain("read");
+      expect(edge!.label).toBe("R");
+    });
+
+    it("tags synthetic usecase→resource edges as write and labels them W when operations include create/update/delete", () => {
+      const krs = `
+system ECPlatform {
+  database OrderDB {
+    table OrderTable { label "注文テーブル" }
+  }
+  service OrderService {
+    domain Order {
+      usecase PlaceOrder {
+        resource OrderDB.OrderTable {
+          operations create, read
+        }
+      }
+      usecase QueryOrder {
+        resource OrderDB.OrderTable {
+          operations read
+        }
+      }
+    }
+  }
+}
+`;
+      const systems = parseSystem(krs);
+      const view = extractView(systems, ["ECPlatform", "OrderService", "Order"]);
+
+      const writeEdge = view.childEdges.find(
+        (e) => e.from === "PlaceOrder" && e.to === "OrderDB.OrderTable",
+      );
+      expect(writeEdge).toBeDefined();
+      expect(writeEdge!.tags).toContain("write");
+      expect(writeEdge!.label).toBe("W");
+
+      const readEdge = view.childEdges.find(
+        (e) => e.from === "QueryOrder" && e.to === "OrderDB.OrderTable",
+      );
+      expect(readEdge).toBeDefined();
+      expect(readEdge!.tags).toContain("read");
+      expect(readEdge!.label).toBe("R");
+    });
+
+    it("uses last-wins classification when the same (usecase, resource) pair is declared twice", () => {
+      // Authors can override an earlier classification by re-stating the
+      // resource with different operations later in the same usecase block,
+      // mirroring how cascading stylesheets resolve conflicts.
+      const krs = `
+system ECPlatform {
+  database OrderDB {
+    table OrderTable { label "注文テーブル" }
+  }
+  service OrderService {
+    domain Order {
+      usecase PlaceOrder {
+        resource OrderDB.OrderTable {
+          operations read
+        }
+        resource OrderDB.OrderTable {
+          operations create
+        }
+      }
+    }
+  }
+}
+`;
+      const systems = parseSystem(krs);
+      const view = extractView(systems, ["ECPlatform", "OrderService", "Order"]);
+
+      const edges = view.childEdges.filter(
+        (e) => e.from === "PlaceOrder" && e.to === "OrderDB.OrderTable",
+      );
+      expect(edges).toHaveLength(1);
+      // Last declaration (operations create) wins → write classification.
+      expect(edges[0].tags).toContain("write");
+      expect(edges[0].label).toBe("W");
+    });
+
     it("deduplicates resource nodes referenced by multiple usecases", () => {
       const krs = `
 system ECPlatform {

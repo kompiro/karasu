@@ -222,6 +222,10 @@ edge[async] {
   border-style: dashed;
 }
 
+edge[write] {
+  stroke-width: 2;
+}
+
 edge[cyclic] {
   color: #EF4444;
   stroke-width: 2.5;

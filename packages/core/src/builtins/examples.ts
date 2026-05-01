@@ -49,23 +49,42 @@ system ECPlatform {
       label "商品カタログ"
       usecase SearchProducts {
         label "商品を検索する"
-        resource ECommerceDB.ProductTable
-        resource SearchIndex [external] { label "検索インデックス" }
+        resource ECommerceDB.ProductTable {
+          operations read
+        }
+        resource SearchIndex [external] {
+          label "検索インデックス"
+          operations read
+        }
       }
       usecase RegisterProduct {
         label "商品を登録する"
-        resource ECommerceDB.ProductTable
-        resource MediaStorage.ProductImages
+        resource ECommerceDB.ProductTable {
+          operations create, update
+        }
+        resource MediaStorage.ProductImages {
+          operations create
+        }
       }
     }
     domain Order {
       label "受注"
       usecase PlaceOrder {
         label "注文を確定する"
-        resource ECommerceDB.OrderTable
-        resource OrderEvents.OrderPlaced
-        resource InventoryAPI [external] { label "在庫API" }
-        resource PaymentAPI [external] { label "決済API" }
+        resource ECommerceDB.OrderTable {
+          operations create
+        }
+        resource OrderEvents.OrderPlaced {
+          operations create
+        }
+        resource InventoryAPI [external] {
+          label "在庫API"
+          operations read, update
+        }
+        resource PaymentAPI [external] {
+          label "決済API"
+          operations create
+        }
       }
       usecase ShowOrderHistory { label "注文履歴を照会する" }
     }
@@ -73,7 +92,9 @@ system ECPlatform {
       label "会員"
       usecase Register {
         label "会員登録する"
-        resource ECommerceDB.MemberTable
+        resource ECommerceDB.MemberTable {
+          operations create
+        }
       }
       usecase EditProfile { label "プロフィールを編集する" }
     }
@@ -253,23 +274,42 @@ system ECPlatform {
       label "Product Catalog"
       usecase SearchProducts {
         label "Search products"
-        resource ECommerceDB.ProductTable
-        resource SearchIndex [external] { label "Search index" }
+        resource ECommerceDB.ProductTable {
+          operations read
+        }
+        resource SearchIndex [external] {
+          label "Search index"
+          operations read
+        }
       }
       usecase RegisterProduct {
         label "Register a product"
-        resource ECommerceDB.ProductTable
-        resource MediaStorage.ProductImages
+        resource ECommerceDB.ProductTable {
+          operations create, update
+        }
+        resource MediaStorage.ProductImages {
+          operations create
+        }
       }
     }
     domain Order {
       label "Orders"
       usecase PlaceOrder {
         label "Place an order"
-        resource ECommerceDB.OrderTable
-        resource OrderEvents.OrderPlaced
-        resource InventoryAPI [external] { label "Inventory API" }
-        resource PaymentAPI [external] { label "Payment API" }
+        resource ECommerceDB.OrderTable {
+          operations create
+        }
+        resource OrderEvents.OrderPlaced {
+          operations create
+        }
+        resource InventoryAPI [external] {
+          label "Inventory API"
+          operations read, update
+        }
+        resource PaymentAPI [external] {
+          label "Payment API"
+          operations create
+        }
       }
       usecase ShowOrderHistory { label "View order history" }
     }
@@ -277,7 +317,9 @@ system ECPlatform {
       label "Members"
       usecase Register {
         label "Sign up as a member"
-        resource ECommerceDB.MemberTable
+        resource ECommerceDB.MemberTable {
+          operations create
+        }
       }
       usecase EditProfile { label "Edit profile" }
     }

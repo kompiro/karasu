@@ -363,6 +363,55 @@ describe("resolveStyles", () => {
     expect(edgeStyle.strokeStyle).toBe("dashed");
   });
 
+  it("resolves [write] edge to stroke-width 2 via builtin stylesheet (read < write < cyclic)", () => {
+    const writeSystem = makeNode({
+      kind: "system",
+      id: "WriteSys",
+      children: [
+        makeNode({ kind: "usecase", id: "WU", label: "WU" }),
+        makeNode({ kind: "resource", id: "WR", label: "WR" }),
+      ],
+      edges: [
+        {
+          from: "WU",
+          to: "WR",
+          label: "W",
+          kind: "sync",
+          tags: ["write"],
+          loc: dummyLoc,
+        },
+      ],
+    });
+    const readSystem = makeNode({
+      kind: "system",
+      id: "ReadSys",
+      children: [
+        makeNode({ kind: "usecase", id: "RU", label: "RU" }),
+        makeNode({ kind: "resource", id: "RR", label: "RR" }),
+      ],
+      edges: [
+        {
+          from: "RU",
+          to: "RR",
+          label: "R",
+          kind: "sync",
+          tags: ["read"],
+          loc: dummyLoc,
+        },
+      ],
+    });
+    const result = resolveStyles([writeSystem, readSystem], [getBuiltinStyleSheet()]);
+    const writeStyle = result.edges.get("WU->WR")!;
+    const readStyle = result.edges.get("RU->RR")!;
+    // edge[write] from default-style picks up stroke-width: 2.
+    expect(writeStyle.strokeWidth).toBe(2);
+    // edge default (read tag has no rule) keeps strokeWidth: 1.5.
+    expect(readStyle.strokeWidth).toBe(1.5);
+    // Hierarchy: read (1.5) < write (2) < cyclic (2.5).
+    expect(readStyle.strokeWidth).toBeLessThan(writeStyle.strokeWidth);
+    expect(writeStyle.strokeWidth).toBeLessThan(2.5);
+  });
+
   it("user stylesheet overrides builtin", () => {
     const system = makeNode({
       kind: "system",
