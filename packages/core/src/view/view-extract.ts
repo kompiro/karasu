@@ -1,4 +1,5 @@
 import type { KrsNode, KrsEdge, ResourceNode } from "../types/ast.js";
+import { isWriteOperation } from "../spec/operations.js";
 
 const INFRA_KINDS = new Set(["database", "queue", "storage"] as const);
 
@@ -59,11 +60,13 @@ function deriveUsecaseResourceNodes(
       const key = `${usecase.id}->${resource.id}`;
       if (seen.has(key)) continue;
       seen.add(key);
+      const isWrite = isWriteOperation(resNode.properties.operations);
       edges.push({
         from: usecase.id,
         to: resource.id,
         kind: "sync",
-        tags: [],
+        tags: [isWrite ? "write" : "read"],
+        label: isWrite ? "W" : "R",
         loc: resource.loc,
       });
     }

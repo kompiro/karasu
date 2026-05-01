@@ -21,3 +21,19 @@ type RecognizedResourceOperation = (typeof RECOGNIZED_RESOURCE_OPERATIONS)[numbe
 export function isRecognizedResourceOperation(value: string): value is RecognizedResourceOperation {
   return (RECOGNIZED_RESOURCE_OPERATIONS as readonly string[]).includes(value);
 }
+
+/**
+ * Write-dominates classification used by the usecase view to differentiate
+ * usecase→resource edges as read-only or write. Returns true when any of
+ * `create` / `update` / `delete` appears in the operation list. Unknown
+ * verbs are treated as read (conservative — only verbs we know mean
+ * mutation count as write).
+ *
+ * Used by `view-extract.ts` to inject a `[write]` / `[read]` pseudo-tag
+ * and an explicit `R` / `W` label on each synthesized usecase→resource
+ * edge.
+ */
+export function isWriteOperation(operations: readonly string[] | undefined): boolean {
+  if (!operations) return false;
+  return operations.some((op) => op === "create" || op === "update" || op === "delete");
+}

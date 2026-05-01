@@ -811,6 +811,58 @@ system ECPlatform {
       expect(edgeKeys).toContain("PlaceOrder->EventBus.OrderCreated");
     });
 
+    it("tags synthetic usecase→resource edges as read by default and labels them R", () => {
+      const systems = parseSystem(INFRA_KRS);
+      const view = extractView(systems, ["ECPlatform", "OrderService", "Order"]);
+
+      const edge = view.childEdges.find(
+        (e) => e.from === "PlaceOrder" && e.to === "OrderDB.OrderTable",
+      );
+      expect(edge).toBeDefined();
+      expect(edge!.tags).toContain("read");
+      expect(edge!.label).toBe("R");
+    });
+
+    it("tags synthetic usecase→resource edges as write and labels them W when operations include create/update/delete", () => {
+      const krs = `
+system ECPlatform {
+  database OrderDB {
+    table OrderTable { label "注文テーブル" }
+  }
+  service OrderService {
+    domain Order {
+      usecase PlaceOrder {
+        resource OrderDB.OrderTable {
+          operations create, read
+        }
+      }
+      usecase QueryOrder {
+        resource OrderDB.OrderTable {
+          operations read
+        }
+      }
+    }
+  }
+}
+`;
+      const systems = parseSystem(krs);
+      const view = extractView(systems, ["ECPlatform", "OrderService", "Order"]);
+
+      const writeEdge = view.childEdges.find(
+        (e) => e.from === "PlaceOrder" && e.to === "OrderDB.OrderTable",
+      );
+      expect(writeEdge).toBeDefined();
+      expect(writeEdge!.tags).toContain("write");
+      expect(writeEdge!.label).toBe("W");
+
+      const readEdge = view.childEdges.find(
+        (e) => e.from === "QueryOrder" && e.to === "OrderDB.OrderTable",
+      );
+      expect(readEdge).toBeDefined();
+      expect(readEdge!.tags).toContain("read");
+      expect(readEdge!.label).toBe("R");
+    });
+
     it("deduplicates resource nodes referenced by multiple usecases", () => {
       const krs = `
 system ECPlatform {
