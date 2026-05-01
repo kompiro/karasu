@@ -442,13 +442,18 @@ function toResolvedNodeStyle(props: Record<string, string>): ResolvedNodeStyle {
   return style;
 }
 
+const EDGE_STROKE_STYLES = new Set<ResolvedEdgeStyle["strokeStyle"]>(["solid", "dashed", "dotted"]);
+
 function toResolvedEdgeStyle(props: Record<string, string>): ResolvedEdgeStyle {
   const style = { ...DEFAULT_EDGE_STYLE };
 
   if (props["color"]) style.color = props["color"];
   if (props["stroke-width"]) style.strokeWidth = parseFloat(props["stroke-width"]);
   if (props["font-size"]) style.fontSize = parseFloat(props["font-size"]);
-  if (props["border-style"]) style.strokeStyle = props["border-style"] as "solid" | "dashed";
+  if (props["border-style"]) {
+    const value = props["border-style"] as ResolvedEdgeStyle["strokeStyle"];
+    if (EDGE_STROKE_STYLES.has(value)) style.strokeStyle = value;
+  }
 
   return style;
 }

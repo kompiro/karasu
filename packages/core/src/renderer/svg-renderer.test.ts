@@ -254,6 +254,36 @@ system Test {
     expect(svg).toContain("非同期");
   });
 
+  it("renders dotted edges with a distinct stroke-dasharray from dashed", () => {
+    const dashedSvg = renderFromSource(
+      `
+system Test {
+  service A
+  service B
+  A -> B [link]
+}
+      `,
+      `
+edge[link] { border-style: dashed; }
+      `,
+    );
+    const dottedSvg = renderFromSource(
+      `
+system Test {
+  service A
+  service B
+  A -> B [link]
+}
+      `,
+      `
+edge[link] { border-style: dotted; }
+      `,
+    );
+    expect(dashedSvg).toContain('stroke-dasharray="8 4"');
+    expect(dottedSvg).toContain('stroke-dasharray="2 2"');
+    expect(dottedSvg).not.toContain('stroke-dasharray="8 4"');
+  });
+
   it("renders description text", () => {
     const svg = renderFromSource(`
 system Test {

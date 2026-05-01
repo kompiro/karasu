@@ -39,7 +39,7 @@ export interface ResolvedEdgeStyle {
   color: string;
   strokeWidth: number;
   fontSize: number;
-  strokeStyle: "solid" | "dashed";
+  strokeStyle: "solid" | "dashed" | "dotted";
 }
 
 /**

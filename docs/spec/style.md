@@ -54,6 +54,7 @@ opacity:          0.6;
 color:            #94A3B8;
 stroke-width:     1.5px;
 font-size:        11px;
+border-style:     solid;         /* solid | dashed | dotted */
 
 /* karasu-specific properties (not standard CSS) */
 shape:            box;           /* box | user | cylinder | queue | hexagon | cloud | url("...") */
