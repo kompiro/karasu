@@ -65,3 +65,20 @@ pnpm adr:regenerate        # docs/adr/effective.md, graph/*.md を再生成
 
 詳細フローは `docs/process.md` の「設計判断を ADR に残すタイミング」と
 `/start-dev` スキルのステップ 9.5 を参照。
+
+## ADR PR の auto-merge
+
+実装と切り離して ADR のみを記録する PR（昇格 PR・新規 ADR 追記 PR の
+どちらも含む）は、CI 通過後の人手確認をブロッカーにせず、`gh pr create`
+直後に auto-merge を有効化する：
+
+```
+gh pr merge <pr-number> --auto --squash
+```
+
+- 対象は ADR ファイルとその派生物（`docs/adr/*.md`、`docs/adr/effective.md`、
+  `docs/adr/graph.md`、`docs/adr/graph/*.md`）のみを含む PR。コード変更や
+  spec 更新を伴う場合は通常レビュー扱いとし、auto-merge は付けない。
+- 既に CI 通過済みであれば auto-merge は即マージとして作用する。
+- ブランチ保護ルールで required check が落ちた場合は通常通り失敗する
+  （auto-merge は強制ではなく「揃ったら入れる」セマンティクス）。
