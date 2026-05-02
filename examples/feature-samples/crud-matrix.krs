@@ -1,0 +1,73 @@
+// Feature sample: CRUD matrix view
+//
+// Showcases the inputs that `karasu matrix` reduces into a usecase x resource
+// grid: write/read mix, [external] resources, and undeclared / unrecognized
+// verbs that surface as `?` cells.
+
+system ECPlatform {
+  database OrderDB {
+    label "Order DB"
+    table OrderTable { label "Order table" }
+    table InventoryTable { label "Inventory table" }
+  }
+  queue OrderEvents {
+    label "Order events"
+    queue OrderPlaced { label "Order placed" }
+  }
+
+  service OrderService {
+    label "Order service"
+
+    domain Order {
+      usecase PlaceOrder {
+        label "Place an order"
+        resource OrderDB.OrderTable {
+          operations create, read
+        }
+        resource OrderDB.InventoryTable {
+          operations read, update
+        }
+        resource OrderEvents.OrderPlaced {
+          operations create
+        }
+        resource PaymentAPI [external] {
+          label "Payment API"
+          operations create
+        }
+      }
+      usecase CancelOrder {
+        label "Cancel an order"
+        resource OrderDB.OrderTable {
+          operations update, delete
+        }
+        resource OrderEvents.OrderPlaced {
+          operations create
+        }
+      }
+      usecase SearchOrders {
+        label "Search orders"
+        // `list` is unrecognized — surfaces as `R?` in the matrix until
+        // a verb-decoration syntax (`list:read`) lands.
+        resource OrderDB.OrderTable {
+          operations read, list
+        }
+      }
+      usecase ReplayOrderEvents {
+        label "Replay order events (no operations declared)"
+        resource OrderEvents.OrderPlaced
+      }
+    }
+  }
+
+  service ReportService {
+    label "Reporting"
+    domain Report {
+      usecase ExportOrders {
+        label "Export orders"
+        resource OrderDB.OrderTable {
+          operations read
+        }
+      }
+    }
+  }
+}
