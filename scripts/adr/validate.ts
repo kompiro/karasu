@@ -1,10 +1,21 @@
 /* eslint-disable no-console -- CLI entry point; stdout/stderr reporting is the whole job */
 import { fileURLToPath } from "node:url";
+import { AdrConfigInvalidError, AdrConfigMissingError, loadConfig } from "./config.ts";
 import { validateDirectory } from "./validator.ts";
 
 function main(argv: string[]): number {
-  const dir = argv[2] ?? "docs/adr";
-  const { errors, warnings, parsed } = validateDirectory(dir);
+  let config;
+  try {
+    config = loadConfig();
+  } catch (e) {
+    if (e instanceof AdrConfigMissingError || e instanceof AdrConfigInvalidError) {
+      console.error(e.message);
+      return 1;
+    }
+    throw e;
+  }
+  const dir = argv[2] ?? config.paths.adrDir;
+  const { errors, warnings, parsed } = validateDirectory(dir, config);
 
   if (warnings.length > 0) {
     console.warn(`${warnings.length} warning(s):`);

@@ -1,4 +1,5 @@
 import { basename } from "node:path";
+import type { AdrConfig } from "./config.ts";
 import { effectiveSet, loadParsed } from "./extractor.ts";
 import type { ParsedAdr } from "./validator.ts";
 import { listTopics, renderOverview, renderTopicMarkdown } from "./visualizer.ts";
@@ -7,6 +8,10 @@ interface GeneratedFile {
   /** Path relative to the ADR dir (e.g. "graph.md", "graph/parser.md"). */
   relativePath: string;
   contents: string;
+}
+
+function stripTrailingSlash(p: string): string {
+  return p.endsWith("/") ? p.slice(0, -1) : p;
 }
 
 /**
@@ -52,20 +57,22 @@ function renderEffective(adrs: ParsedAdr[]): string {
  * `docs/adr/`. The caller either writes them to disk (`regenerate`) or
  * compares them against disk state (`check`).
  */
-export function buildGeneratedFiles(adrs: ParsedAdr[]): GeneratedFile[] {
+export function buildGeneratedFiles(adrs: ParsedAdr[], config: AdrConfig): GeneratedFile[] {
+  const { effective, graph, graphByTopic } = config.paths.outputs;
+  const topicDir = stripTrailingSlash(graphByTopic);
   const files: GeneratedFile[] = [
-    { relativePath: "effective.md", contents: renderEffective(adrs) },
-    { relativePath: "graph.md", contents: renderOverview(adrs) },
+    { relativePath: effective, contents: renderEffective(adrs) },
+    { relativePath: graph, contents: renderOverview(adrs) },
   ];
   for (const topic of listTopics(adrs)) {
     files.push({
-      relativePath: `graph/${topic}.md`,
+      relativePath: `${topicDir}/${topic}.md`,
       contents: renderTopicMarkdown(adrs, topic),
     });
   }
   return files;
 }
 
-export function loadAdrs(dir: string): ParsedAdr[] {
-  return loadParsed(dir);
+export function loadAdrs(dir: string, config: AdrConfig): ParsedAdr[] {
+  return loadParsed(dir, config);
 }

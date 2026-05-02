@@ -3,6 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { buildGeneratedFiles, loadAdrs } from "./regenerator.ts";
+import { TEST_CONFIG } from "./test-helpers.ts";
 
 let tmp: string;
 
@@ -54,7 +55,7 @@ supersedes:
 describe("buildGeneratedFiles", () => {
   it("produces effective.md, graph.md, and one graph/<topic>.md per topic", () => {
     seed();
-    const files = buildGeneratedFiles(loadAdrs(tmp));
+    const files = buildGeneratedFiles(loadAdrs(tmp, TEST_CONFIG), TEST_CONFIG);
     const paths = files.map((f) => f.relativePath).sort();
     expect(paths).toContain("effective.md");
     expect(paths).toContain("graph.md");
@@ -64,7 +65,7 @@ describe("buildGeneratedFiles", () => {
 
   it("effective.md excludes superseded ADRs and groups by topic", () => {
     seed();
-    const files = buildGeneratedFiles(loadAdrs(tmp));
+    const files = buildGeneratedFiles(loadAdrs(tmp, TEST_CONFIG), TEST_CONFIG);
     const eff = files.find((f) => f.relativePath === "effective.md");
     expect(eff).toBeDefined();
     const body = eff!.contents;
@@ -80,15 +81,15 @@ describe("buildGeneratedFiles", () => {
 
   it("header notes the effective / total count", () => {
     seed();
-    const files = buildGeneratedFiles(loadAdrs(tmp));
+    const files = buildGeneratedFiles(loadAdrs(tmp, TEST_CONFIG), TEST_CONFIG);
     const eff = files.find((f) => f.relativePath === "effective.md")!;
     expect(eff.contents).toMatch(/2 of 3 ADRs/);
   });
 
   it("produces deterministic output for the same input", () => {
     seed();
-    const first = buildGeneratedFiles(loadAdrs(tmp));
-    const second = buildGeneratedFiles(loadAdrs(tmp));
+    const first = buildGeneratedFiles(loadAdrs(tmp, TEST_CONFIG), TEST_CONFIG);
+    const second = buildGeneratedFiles(loadAdrs(tmp, TEST_CONFIG), TEST_CONFIG);
     expect(first).toEqual(second);
   });
 });

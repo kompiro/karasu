@@ -2,6 +2,7 @@
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { AdrConfigInvalidError, AdrConfigMissingError, loadConfig } from "./config.ts";
 import { closure, effectiveSet, loadParsed, scopeSlice } from "./extractor.ts";
 import { listTopics, renderMarkdown, renderOverview, renderTopicMarkdown } from "./visualizer.ts";
 
@@ -15,11 +16,11 @@ interface CliArgs {
   topic: string | null;
 }
 
-function parseArgs(argv: string[]): CliArgs | { error: string } {
+function parseArgs(argv: string[], defaultDir: string): CliArgs | { error: string } {
   const args = argv.slice(2);
   let mode: CliArgs["mode"] = "all";
-  let dir = "docs/adr";
-  let outDir = "docs/adr";
+  let dir = defaultDir;
+  let outDir = defaultDir;
   const packages: string[] = [];
   const concerns: string[] = [];
   let adrId: string | null = null;
@@ -76,21 +77,33 @@ Options:
 }
 
 function main(argv: string[]): number {
-  const parsed = parseArgs(argv);
+  let config;
+  try {
+    config = loadConfig();
+  } catch (e) {
+    if (e instanceof AdrConfigMissingError || e instanceof AdrConfigInvalidError) {
+      console.error(e.message);
+      return 1;
+    }
+    throw e;
+  }
+  const parsed = parseArgs(argv, config.paths.adrDir);
   if ("error" in parsed) {
     console.error(parsed.error);
     return 2;
   }
-  const all = loadParsed(parsed.dir);
+  const all = loadParsed(parsed.dir, config);
   try {
     if (parsed.mode === "write-all") {
-      const graphDir = join(parsed.outDir, "graph");
-      mkdirSync(graphDir, { recursive: true });
-      writeFileSync(join(parsed.outDir, "graph.md"), renderOverview(all));
-      const written: string[] = ["graph.md"];
+      const { graph, graphByTopic } = config.paths.outputs;
+      const topicDir = graphByTopic.endsWith("/") ? graphByTopic.slice(0, -1) : graphByTopic;
+      const fullTopicDir = join(parsed.outDir, topicDir);
+      mkdirSync(fullTopicDir, { recursive: true });
+      writeFileSync(join(parsed.outDir, graph), renderOverview(all));
+      const written: string[] = [graph];
       for (const t of listTopics(all)) {
-        writeFileSync(join(graphDir, `${t}.md`), renderTopicMarkdown(all, t));
-        written.push(`graph/${t}.md`);
+        writeFileSync(join(fullTopicDir, `${t}.md`), renderTopicMarkdown(all, t));
+        written.push(`${topicDir}/${t}.md`);
       }
       process.stderr.write(`wrote ${written.length} file(s) under ${parsed.outDir}/\n`);
       for (const w of written) process.stderr.write(`  ${w}\n`);

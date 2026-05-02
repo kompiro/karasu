@@ -3,6 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { loadParsed } from "./extractor.ts";
+import { TEST_CONFIG } from "./test-helpers.ts";
 import {
   findDependsOnCycles,
   listTopics,
@@ -74,7 +75,7 @@ supersedes:
 describe("renderMermaid flat", () => {
   it("emits a flowchart with every ADR as a node", () => {
     seed();
-    const out = renderMermaid(loadParsed(tmp));
+    const out = renderMermaid(loadParsed(tmp, TEST_CONFIG));
     expect(out).toMatch(/^flowchart TD/);
     expect(out).toContain("ADR_20260101_01");
     expect(out).toContain("ADR_20260101_04");
@@ -82,14 +83,14 @@ describe("renderMermaid flat", () => {
 
   it("renders depends_on as solid arrow, supersedes as dashed", () => {
     seed();
-    const out = renderMermaid(loadParsed(tmp));
+    const out = renderMermaid(loadParsed(tmp, TEST_CONFIG));
     expect(out).toContain("ADR_20260101_02 --> ADR_20260101_01");
     expect(out).toContain("ADR_20260101_04 -.supersedes.-> ADR_20260101_03");
   });
 
   it("attaches status classes to nodes", () => {
     seed();
-    const out = renderMermaid(loadParsed(tmp));
+    const out = renderMermaid(loadParsed(tmp, TEST_CONFIG));
     expect(out).toContain("class ADR_20260101_01 accepted");
     expect(out).toContain("class ADR_20260101_03 superseded");
   });
@@ -98,7 +99,7 @@ describe("renderMermaid flat", () => {
 describe("renderMermaid groupByTopic", () => {
   it("wraps nodes in subgraphs sorted by topic slug", () => {
     seed();
-    const out = renderMermaid(loadParsed(tmp), { groupByTopic: true });
+    const out = renderMermaid(loadParsed(tmp, TEST_CONFIG), { groupByTopic: true });
     expect(out).toContain("subgraph core-concepts");
     expect(out).toContain("subgraph parser");
     // core-concepts should appear before parser alphabetically
@@ -109,7 +110,7 @@ describe("renderMermaid groupByTopic", () => {
 describe("renderMermaidForTopic", () => {
   it("includes only in-topic ADRs as first-class nodes", () => {
     seed();
-    const out = renderMermaidForTopic(loadParsed(tmp), "parser");
+    const out = renderMermaidForTopic(loadParsed(tmp, TEST_CONFIG), "parser");
     expect(out).toContain("subgraph parser");
     expect(out).toContain("ADR_20260101_02");
     expect(out).toContain("ADR_20260101_04");
@@ -117,7 +118,7 @@ describe("renderMermaidForTopic", () => {
 
   it("renders cross-topic references as ghost nodes with the other topic tagged", () => {
     seed();
-    const out = renderMermaidForTopic(loadParsed(tmp), "parser");
+    const out = renderMermaidForTopic(loadParsed(tmp, TEST_CONFIG), "parser");
     // ADR-01 is core-concepts but is pulled in as a ghost because ADR-02 depends on it.
     expect(out).toContain("ADR_20260101_01");
     expect(out).toContain("[core-concepts]");
@@ -126,7 +127,7 @@ describe("renderMermaidForTopic", () => {
 
   it("handles topics with no ADRs gracefully", () => {
     seed();
-    const out = renderMermaidForTopic(loadParsed(tmp), "chat-ai");
+    const out = renderMermaidForTopic(loadParsed(tmp, TEST_CONFIG), "chat-ai");
     expect(out).toContain("no ADRs in topic: chat-ai");
   });
 });
@@ -134,21 +135,21 @@ describe("renderMermaidForTopic", () => {
 describe("listTopics", () => {
   it("returns sorted unique topics from the parsed set", () => {
     seed();
-    expect(listTopics(loadParsed(tmp))).toEqual(["core-concepts", "parser"]);
+    expect(listTopics(loadParsed(tmp, TEST_CONFIG))).toEqual(["core-concepts", "parser"]);
   });
 });
 
 describe("findDependsOnCycles", () => {
   it("returns empty when the graph is acyclic", () => {
     seed();
-    expect(findDependsOnCycles(loadParsed(tmp))).toEqual([]);
+    expect(findDependsOnCycles(loadParsed(tmp, TEST_CONFIG))).toEqual([]);
   });
 });
 
 describe("renderMarkdown", () => {
   it("wraps the Mermaid output in a fenced block with a header", () => {
     seed();
-    const out = renderMarkdown(loadParsed(tmp));
+    const out = renderMarkdown(loadParsed(tmp, TEST_CONFIG));
     expect(out).toMatch(/^# ADR Dependency Graph/);
     expect(out).toContain("```mermaid");
     expect(out).toContain("flowchart TD");
@@ -159,7 +160,7 @@ describe("renderMarkdown", () => {
 describe("renderOverview", () => {
   it("includes a legend linking each topic to its detail file", () => {
     seed();
-    const out = renderOverview(loadParsed(tmp));
+    const out = renderOverview(loadParsed(tmp, TEST_CONFIG));
     expect(out).toContain("# ADR Dependency Graph — Overview");
     expect(out).toContain("subgraph core-concepts");
     expect(out).toContain("[`core-concepts`](graph/core-concepts.md)");
@@ -170,7 +171,7 @@ describe("renderOverview", () => {
 describe("renderTopicMarkdown", () => {
   it("links back to the overview and counts topic membership", () => {
     seed();
-    const out = renderTopicMarkdown(loadParsed(tmp), "parser");
+    const out = renderTopicMarkdown(loadParsed(tmp, TEST_CONFIG), "parser");
     expect(out).toContain("# ADR Topic: parser");
     expect(out).toContain("3 ADRs"); // ADR-02, ADR-03, ADR-04
     expect(out).toContain("[overview](../graph.md)");

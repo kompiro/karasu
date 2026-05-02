@@ -3,6 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { validateDirectory } from "./validator.ts";
+import { TEST_CONFIG } from "./test-helpers.ts";
 
 let tmp: string;
 
@@ -40,14 +41,14 @@ date: 2026-01-01`,
         "ADR-20260101-01: Sample",
       ),
     );
-    const result = validateDirectory(tmp);
+    const result = validateDirectory(tmp, TEST_CONFIG);
     expect(result.errors).toEqual([]);
     expect(result.parsed).toHaveLength(1);
   });
 
   it("rejects files without frontmatter", () => {
     write("20260101-01-legacy.md", "# legacy\n\nno frontmatter\n");
-    const result = validateDirectory(tmp);
+    const result = validateDirectory(tmp, TEST_CONFIG);
     expect(result.errors.some((e) => e.includes("missing YAML frontmatter"))).toBe(true);
     expect(result.parsed).toHaveLength(0);
   });
@@ -61,7 +62,7 @@ status: wip
 topic: core-concepts
 date: 2026-01-01`),
     );
-    const result = validateDirectory(tmp);
+    const result = validateDirectory(tmp, TEST_CONFIG);
     expect(result.errors.some((e) => e.includes("status"))).toBe(true);
   });
 
@@ -74,7 +75,7 @@ status: accepted
 topic: nonexistent
 date: 2026-01-01`),
     );
-    const result = validateDirectory(tmp);
+    const result = validateDirectory(tmp, TEST_CONFIG);
     expect(result.errors.some((e) => e.includes("topic"))).toBe(true);
   });
 
@@ -86,7 +87,7 @@ title: Sample
 status: accepted
 date: 2026-01-01`),
     );
-    const result = validateDirectory(tmp);
+    const result = validateDirectory(tmp, TEST_CONFIG);
     expect(result.errors.some((e) => e.includes("topic"))).toBe(true);
   });
 
@@ -102,7 +103,7 @@ scope:
   concerns:
     - nonsense`),
     );
-    const result = validateDirectory(tmp);
+    const result = validateDirectory(tmp, TEST_CONFIG);
     expect(result.errors.some((e) => e.includes("scope.concerns") && e.includes("nonsense"))).toBe(
       true,
     );
@@ -120,7 +121,7 @@ scope:
   domains:
     - parser`),
     );
-    const result = validateDirectory(tmp);
+    const result = validateDirectory(tmp, TEST_CONFIG);
     expect(
       result.errors.some((e) => e.includes("renamed to") && e.includes("scope.concerns")),
     ).toBe(true);
@@ -135,7 +136,7 @@ status: accepted
 topic: core-concepts
 date: 2026-01-01`),
     );
-    const result = validateDirectory(tmp);
+    const result = validateDirectory(tmp, TEST_CONFIG);
     expect(result.errors.some((e) => e.includes("does not match filename"))).toBe(true);
   });
 
@@ -148,7 +149,7 @@ status: superseded
 topic: core-concepts
 date: 2026-01-01`),
     );
-    const result = validateDirectory(tmp);
+    const result = validateDirectory(tmp, TEST_CONFIG);
     expect(result.errors.some((e) => e.includes("superseded_by"))).toBe(true);
   });
 
@@ -162,7 +163,7 @@ topic: core-concepts
 date: 2026-01-01
 superseded_by: ADR-20260102-01`),
     );
-    const result = validateDirectory(tmp);
+    const result = validateDirectory(tmp, TEST_CONFIG);
     expect(result.errors.some((e) => e.includes("only allowed when status=superseded"))).toBe(true);
   });
 
@@ -184,7 +185,7 @@ status: accepted
 topic: core-concepts
 date: 2026-01-02`),
     );
-    const result = validateDirectory(tmp);
+    const result = validateDirectory(tmp, TEST_CONFIG);
     expect(result.errors.some((e) => e.includes("does not list") && e.includes("supersedes"))).toBe(
       true,
     );
@@ -210,7 +211,7 @@ date: 2026-01-02
 supersedes:
   - ADR-20260101-01`),
     );
-    const result = validateDirectory(tmp);
+    const result = validateDirectory(tmp, TEST_CONFIG);
     expect(result.errors).toEqual([]);
   });
 
@@ -225,7 +226,7 @@ date: 2026-01-01
 depends_on:
   - ADR-99999999-01`),
     );
-    const result = validateDirectory(tmp);
+    const result = validateDirectory(tmp, TEST_CONFIG);
     expect(result.errors).toEqual([]);
     expect(result.warnings.some((w) => w.includes("ADR-99999999-01"))).toBe(true);
   });
@@ -251,7 +252,7 @@ date: 2026-01-01
 depends_on:
   - ADR-20260101-01`),
     );
-    const result = validateDirectory(tmp);
+    const result = validateDirectory(tmp, TEST_CONFIG);
     expect(result.errors.some((e) => e.includes("depends_on cycle"))).toBe(true);
   });
 
@@ -276,7 +277,7 @@ date: 2026-01-01
 refines:
   - ADR-20260101-01`),
     );
-    const result = validateDirectory(tmp);
+    const result = validateDirectory(tmp, TEST_CONFIG);
     expect(result.errors.some((e) => e.includes("refines cycle"))).toBe(true);
   });
 
@@ -310,7 +311,7 @@ date: 2026-01-02
 depends_on:
   - ADR-20260101-01`),
     );
-    const result = validateDirectory(tmp);
+    const result = validateDirectory(tmp, TEST_CONFIG);
     expect(
       result.errors.some((e) => e.includes("depends_on") && e.includes("status=superseded")),
     ).toBe(true);
@@ -328,7 +329,7 @@ date: 2026-01-01`,
         "ADR-20260101-01: Sample",
       ),
     );
-    const result = validateDirectory(tmp);
+    const result = validateDirectory(tmp, TEST_CONFIG);
     expect(result.errors).toEqual([]);
   });
 
@@ -356,7 +357,7 @@ status: accepted
 topic: core-concepts
 date: 2026-01-01`),
     );
-    const result = validateDirectory(tmp);
+    const result = validateDirectory(tmp, TEST_CONFIG);
     expect(
       result.warnings.some((w) => w.includes("body mentions") && w.includes("ADR-20260101-02")),
     ).toBe(true);
@@ -391,7 +392,7 @@ status: accepted
 topic: core-concepts
 date: 2026-01-01`),
       );
-      const result = validateDirectory(tmp);
+      const result = validateDirectory(tmp, TEST_CONFIG);
       expect({
         field,
         warned: result.warnings.some(
@@ -428,7 +429,7 @@ date: 2026-01-02
 supersedes:
   - ADR-20260101-01`),
     );
-    const result = validateDirectory(tmp);
+    const result = validateDirectory(tmp, TEST_CONFIG);
     expect(
       result.warnings.some((w) => w.includes("body mentions") && w.includes("ADR-20260102-01")),
     ).toBe(false);
@@ -460,7 +461,7 @@ status: accepted
 topic: core-concepts
 date: 2026-01-01`),
     );
-    const result = validateDirectory(tmp);
+    const result = validateDirectory(tmp, TEST_CONFIG);
     expect(
       result.warnings.some(
         (w) =>
@@ -483,7 +484,7 @@ date: 2026-01-01`,
         "ADR-20260101-01: Something else",
       ),
     );
-    const result = validateDirectory(tmp);
+    const result = validateDirectory(tmp, TEST_CONFIG);
     expect(result.warnings.some((w) => w.includes("body H1"))).toBe(true);
   });
 });

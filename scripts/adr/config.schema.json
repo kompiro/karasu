@@ -1,0 +1,44 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/kompiro/karasu/scripts/adr/config.schema.json",
+  "title": "ADR tooling config",
+  "description": "Configuration consumed by scripts under scripts/adr/. Required at the directory where adr:* commands are invoked (typically the repo root).",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["topics", "concerns", "paths"],
+  "properties": {
+    "$schema": { "type": "string" },
+    "topics": {
+      "type": "array",
+      "description": "Controlled vocabulary for ADR `topic` field. Empty array disables vocabulary checks.",
+      "items": { "type": "string", "minLength": 1 }
+    },
+    "concerns": {
+      "type": "array",
+      "description": "Controlled vocabulary for `scope.concerns`. Empty array disables vocabulary checks.",
+      "items": { "type": "string", "minLength": 1 }
+    },
+    "paths": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["adrDir", "outputs"],
+      "properties": {
+        "adrDir": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Directory containing ADR markdown files (relative to CWD)."
+        },
+        "outputs": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["effective", "graph", "graphByTopic"],
+          "properties": {
+            "effective": { "type": "string", "minLength": 1 },
+            "graph": { "type": "string", "minLength": 1 },
+            "graphByTopic": { "type": "string", "minLength": 1 }
+          }
+        }
+      }
+    }
+  }
+}
