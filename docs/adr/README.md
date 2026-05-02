@@ -205,6 +205,7 @@ ADR 自体のスキーマ、フロントマター、バリデータ、extractor 
 
 - [ADR-20260423-01](20260423-01-adr-body-ref-check.md) — Validator warning for body ↔ frontmatter reference consistency
 - [ADR-20260424-01](20260424-01-adr-knowledge-graph.md) — ADR knowledge graph — machine-readable frontmatter + tooling
+- [ADR-20260502-02](20260502-02-adr-config-externalization.md) — ADR ツール用語彙の `adr.config.json` への外部化
 
 ---
 
