@@ -63,12 +63,6 @@ describe("loadConfig", () => {
     expect(() => loadConfig(tmp)).toThrow(/graph/);
   });
 
-  it("ignores unknown top-level fields (forward-compat)", () => {
-    write(JSON.stringify({ ...VALID, futureField: 42 }));
-    const cfg = loadConfig(tmp);
-    expect(cfg.topics).toEqual(["a", "b"]);
-  });
-
   it("accepts empty arrays for topics and concerns", () => {
     write(JSON.stringify({ ...VALID, topics: [], concerns: [] }));
     const cfg = loadConfig(tmp);

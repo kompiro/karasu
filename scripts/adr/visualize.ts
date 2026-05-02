@@ -95,13 +95,15 @@ function main(argv: string[]): number {
   const all = loadParsed(parsed.dir, config);
   try {
     if (parsed.mode === "write-all") {
-      const graphDir = join(parsed.outDir, "graph");
-      mkdirSync(graphDir, { recursive: true });
-      writeFileSync(join(parsed.outDir, "graph.md"), renderOverview(all));
-      const written: string[] = ["graph.md"];
+      const { graph, graphByTopic } = config.paths.outputs;
+      const topicDir = graphByTopic.endsWith("/") ? graphByTopic.slice(0, -1) : graphByTopic;
+      const fullTopicDir = join(parsed.outDir, topicDir);
+      mkdirSync(fullTopicDir, { recursive: true });
+      writeFileSync(join(parsed.outDir, graph), renderOverview(all));
+      const written: string[] = [graph];
       for (const t of listTopics(all)) {
-        writeFileSync(join(graphDir, `${t}.md`), renderTopicMarkdown(all, t));
-        written.push(`graph/${t}.md`);
+        writeFileSync(join(fullTopicDir, `${t}.md`), renderTopicMarkdown(all, t));
+        written.push(`${topicDir}/${t}.md`);
       }
       process.stderr.write(`wrote ${written.length} file(s) under ${parsed.outDir}/\n`);
       for (const w of written) process.stderr.write(`  ${w}\n`);
