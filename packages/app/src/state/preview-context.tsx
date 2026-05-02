@@ -6,6 +6,7 @@ import type {
   DeployBlockInfo,
   DisplayMode,
   NodeDiffMeta,
+  SystemNode,
 } from "@karasu-tools/core";
 import type { ActiveView } from "./app-reducer.js";
 
@@ -28,6 +29,8 @@ export interface SystemViewData {
    * (Issue #738 / design doc D-2).
    */
   nodeDiff?: Map<string, NodeDiffMeta>;
+  /** Resolved system AST — used by the CRUD matrix view. */
+  systems: SystemNode[];
 }
 
 export interface DeployViewData {

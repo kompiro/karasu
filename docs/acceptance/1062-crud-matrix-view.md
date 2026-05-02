@@ -18,6 +18,11 @@ type: product
   - `packages/cli/src/render.ts` (`--include-matrix`)
   - `packages/app/src/components/CrudMatrixPanel.tsx`
   - `packages/app/src/components/CrudMatrixPanel.test.tsx`
+  - `packages/app/src/components/DiagramTabBar.tsx` (Matrix tab)
+  - `packages/app/src/components/PreviewColumn.tsx` (matrix view branch)
+  - `packages/app/src/state/app-reducer.ts` (`ActiveView` += `"matrix"`)
+  - `packages/app/src/state/preview-context.tsx` (`SystemViewData.systems`)
+  - `packages/app/src/components/AppShell.tsx` (passes `resolvedSystems`)
   - `examples/feature-samples/crud-matrix.krs`
   - `examples/getting-started/index.krs`, `examples/getting-started-en/index.krs`
   - `packages/core/src/builtins/examples.ts`
@@ -56,6 +61,9 @@ type: product
 - [x] AT-J: `CrudMatrixPanel` が systems から HTML テーブルを描画し、service / infra dropdown フィルタが行・列を絞り込む
   > ✅ Automated — `packages/app/src/components/CrudMatrixPanel.test.tsx`
 
+- [x] AT-J2: app の `DiagramTabBar` に Matrix タブが出て、選択すると `CrudMatrixPanel` が描画される（preview-toolbar は隠れる）
+  > ✅ Automated — `packages/app/src/components/PreviewColumn.test.tsx` › `matrix tab`
+
 - [ ] AT-K（manual）: `karasu matrix examples/getting-started/index.krs --format=md` を実行し、`OrderTable` 列を眺めたとき、書き込む usecase（`PlaceOrder` / `RegisterProduct`）と read だけの usecase（`ShowOrderHistory` / `SearchProducts`）が verb 文字列で識別でき、行末・列末の Σ 集計セルが描画されていることを目視確認する
   > 🧑 Manual — terminal で出力を確認
 
@@ -72,4 +80,4 @@ type: product
 
 verb 装飾構文（`<verb>:<crud>` の 1:N マッピング、例 `replace:create,delete`）は本 PR のスコープ外。装飾無しの unrecognized verb は cell に `?` suffix として現れる。装飾構文が landed 後は `?` suffix が自然に減る — design doc の「未起票の follow-up」セクション参照。
 
-App panel は本 PR では standalone コンポーネントとして提供。AppShell（toolbar / view 切替 / state 永続化）への組み込みは別 Issue で扱う。
+App panel は `DiagramTabBar` の 4 つ目のタブとして組み込まれており、System / Deploy / Org と並んで Matrix を選択できる。Matrix モード時は preview-toolbar（Icon Mode / All Layers 等）は描画されない（適用対象でないため）。state 永続化（タブ復帰時に最後の Matrix フィルタを覚える）は別 Issue で扱う。
