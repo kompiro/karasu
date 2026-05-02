@@ -111,34 +111,37 @@ export function loadConfig(cwd: string = process.cwd()): AdrConfig;
 
 ### 論点 3: 設定不在時のフォールバック
 
-#### 案 3A: 厳格モード — 設定ファイル必須、無ければエラー
+#### 案 3A: 厳格モード — 設定ファイル必須、無ければエラー（init で雛形生成）
 
-- ➕ 動作が予測可能
-- ➖ karasu の現状 `docs/adr/` を別マシンで初めて clone した時に hint が必要
+- ➕ ライブラリとして自然: karasu 固有の語彙が defaults に焼き付かない
+- ➕ 抽出後、他プロジェクトが採用するときに「自分の vocabulary を持つ」ことを強制でき、混乱を防げる
+- ➕ エラーメッセージで `npx adr-tools init` を案内すれば onboarding は損なわれない
+- ➖ Issue #1077 の AT（"falls back to current built-in defaults"）を満たさない → AT を改訂する必要あり
+- ➖ karasu リポでは `adr.config.json` をコミット必須にする運用変更が入る
 
 #### 案 3B: 寛容モード — 設定ファイル無しは built-in defaults を使う
 
-- ➕ Issue #1077 のアクセプタンス基準そのもの（"Removing `adr.config.json` and re-running falls back to current built-in defaults"）
-- ➕ 抽出後、他プロジェクトが「とりあえず試す」ハードルが下がる
-- ➖ defaults が karasu 固有（topics に `parser`, `vscode` 等）なのは奇妙
-  - → 解消案: defaults は **空配列** にする（フォールバック時は「topic / concerns の controlled vocabulary 検査をスキップ」）か、**現 karasu 値** を defaults とする
+- ➕ Issue #1077 のアクセプタンス基準そのもの
+- ➖ defaults が karasu 固有（topics に `parser`, `vscode` 等）なのは抽出後に奇妙
+- ➖ 他プロジェクトが何も設定せず使い始めると karasu の topic 名で警告が出続け、デバッグしづらい
 
-#### 案 3B-1: defaults = 現 karasu の値
+**現時点の方針: 3A（厳格 + init）**。理由:
 
-- karasu リポ内では config 不在でも今と同じ挙動
-- 抽出後に新規プロジェクトが採用すると karasu の topic 名が見えるが、自分の `adr.config.json` を作るので実害はない
+- 親 Issue #1074 のゴールは「他プロジェクトでも使える adr-tools」であり、defaults を karasu に寄せると Phase 2 抽出後に必ず作り直す（負債を Phase 1 に作って Phase 2 で返す形になる）
+- init サブコマンドで雛形を出すパターンは `eslint --init` / `tsc --init` など先例が多く、ユーザー体験として違和感がない
+- karasu リポでも `adr.config.json` をコミットして「ADR 運用ルールの可視化」が進む副次効果がある
 
-#### 案 3B-2: defaults = 空（vocabulary なし = 任意の文字列を許容）
-
-- 抽出後、他プロジェクトに優しい
-- karasu リポでは config を必ず置く運用となる（Issue 本文の AT を満たさない）
-
-**現時点の方針: 3B-1**。Issue 本文の「Removing `adr.config.json` and re-running falls back to current built-in defaults」の文言とも整合する。Phase 2 で抽出する際に「組み込み defaults を空配列化し、karasu の defaults は karasu の `adr.config.json` で表現する」へ移行する（この移行はそのときに 1 PR で完結する）。
+**Issue #1077 の AT 改訂**: 「Removing `adr.config.json` and re-running falls back to defaults」を「Removing `adr.config.json` and re-running exits with a clear error pointing to `adr:init`」に差し替える（実装 PR で Issue 本文を更新）。
 
 ### 論点 4: ローダ API の形
 
+`DEFAULT_CONFIG` は廃し、`loadConfig` は config 不在時 / 必須欠損時に専用の例外を投げる。CLI 側で catch して人間向けエラーに変換する。
+
 ```typescript
 // scripts/adr/config.ts
+export class AdrConfigMissingError extends Error {} // file not found
+export class AdrConfigInvalidError extends Error {} // JSON parse / shape error
+
 export interface AdrConfig {
   topics: readonly string[];
   concerns: readonly string[];
@@ -152,27 +155,27 @@ export interface AdrConfig {
   };
 }
 
-export const DEFAULT_CONFIG: AdrConfig;
 export function loadConfig(cwd?: string): AdrConfig;
 ```
 
 - 関数は同期（既存コードがすべて同期 I/O）
-- 不正な JSON は `Error` を throw（CLI が catch して終了コード 1）
-- 部分定義は `DEFAULT_CONFIG` とマージ（`topics` を省くと defaults を使う）
-
-**論点 4-x: マージ戦略**
-- `topics`, `concerns`, `paths.outputs.*` のいずれも、ユーザー指定があれば **置換**（concat ではない）
-- 理由: vocabulary の管理権はユーザーに完全に渡す。defaults はあくまで「設定無しでも動く」ための下駄
+- ファイル不在 → `AdrConfigMissingError`（CLI 側で `adr:init` を案内）
+- JSON parse 失敗 / 必須フィールド欠損 / 不正 enum → `AdrConfigInvalidError`
+- どちらも CLI で catch して終了コード 1
+- 必須フィールド: `topics`, `concerns`, `paths.adrDir`, `paths.outputs.{effective,graph,graphByTopic}` すべて
+  - 一部だけ省略は許さない（部分マージは「実質 defaults を持つ」ことになり論点 3 と矛盾する）
+  - init で生成する雛形に全フィールドが含まれるので、ユーザーが意図的に削った場合のみ起こる
+- ただし配列は **空配列を許容**: `"topics": []` を書けば「topic の controlled vocabulary 検査をスキップ」として動く（フリーテキスト topic を許可したいプロジェクト向け）
 
 ### 論点 5: 関数シグネチャの変更
 
-`validateDirectory(dir)` を `validateDirectory(dir, config?)` にする。
+`validateDirectory(dir)` を `validateDirectory(dir, config)` にする（config は必須引数）。
 
-- 既存呼び出し（テスト含む）は引数追加で済むため後方互換
-- `config` 省略時は内部で `loadConfig()` を呼ぶ
-- テストは config を明示注入できる（fixture 不要）
+- CLI エントリ（`validate.ts`）が `loadConfig()` を呼んで結果を渡す
+- テストは config を明示注入する（fixture 配列リテラルでよい）
+- 必須化により「どこかで暗黙に defaults が混ざる」事故を排除
 
-`buildGeneratedFiles(adrs)` も同様に `(adrs, config?)` に。
+`buildGeneratedFiles(adrs)` も同様に `(adrs, config)` に。
 
 ### 論点 6: VALID_TOPICS / VALID_CONCERNS の export 維持
 
@@ -201,13 +204,54 @@ export function loadConfig(cwd?: string): AdrConfig;
 新規 `scripts/adr/config.test.ts` で以下をカバー:
 
 1. `loadConfig(cwd)` が `adr.config.json` を読んで返す
-2. `adr.config.json` 不在時は `DEFAULT_CONFIG` を返す
-3. 不正 JSON は throw
-4. 必須フィールド欠損時は `DEFAULT_CONFIG` の値で補完される
-5. 既知の余剰フィールドは無視（forward-compat）か警告（strictness の方針確認）
-   - **方針: 無視**（Phase 1 は寛容に、抽出後にバージョン管理を入れる）
+2. `adr.config.json` 不在時は `AdrConfigMissingError` を投げる
+3. 不正 JSON は `AdrConfigInvalidError`
+4. 必須フィールド欠損時も `AdrConfigInvalidError`
+5. 余剰フィールドは無視（forward-compat、Phase 2 でバージョンフィールドを導入予定）
+6. `topics: []` / `concerns: []` は許容（vocabulary 検査スキップ動作）
 
-既存テスト（`validator.test.ts`, `regenerator.test.ts`）は config を明示注入する形に追記する箇所がある。多くはそのまま通る想定。
+新規 `scripts/adr/init.test.ts`:
+
+1. `runInit(cwd)` が `adr.config.json` を生成し、内容が組み込みテンプレートと一致する
+2. 既存ファイルがある場合はエラー（上書き防止）
+3. 生成された JSON は `loadConfig` で読み込めて検証を通る（roundtrip）
+
+既存テスト（`validator.test.ts`, `regenerator.test.ts`）は config を明示注入する形にすべて修正する。defaults に依存している test は karasu の `adr.config.json` 相当の fixture を読ませる。
+
+### 論点 9: init サブコマンド
+
+設定ファイル必須化（論点 3A）に伴い、雛形を生成するサブコマンドを Phase 1 で導入する。
+
+**配置**: `scripts/adr/init.ts`（既存エントリ群と同パターン）+ `scripts/adr/init.template.json`（雛形本体）
+
+**呼び出し**: `pnpm adr:init`（`package.json` に追加）
+
+**動作**:
+1. CWD に `adr.config.json` が既にあれば即エラー終了（exit 1）— 上書き防止
+2. なければ `init.template.json` をそのまま `adr.config.json` として書き出す
+3. 標準出力に「Generated `adr.config.json`. Edit `topics` and `concerns` for your project.」を表示
+
+**雛形の内容（karasu 採用ではなく、汎用的な最小例）**:
+
+```json
+{
+  "$schema": "./scripts/adr/config.schema.json",
+  "topics": ["architecture", "infrastructure", "process"],
+  "concerns": ["security", "performance", "ci"],
+  "paths": {
+    "adrDir": "docs/adr",
+    "outputs": {
+      "effective": "effective.md",
+      "graph": "graph.md",
+      "graphByTopic": "graph/"
+    }
+  }
+}
+```
+
+**karasu 自身の `adr.config.json`**: 雛形ではなく、現 `VALID_TOPICS` / `VALID_CONCERNS` を反映した内容を手書きで Phase 1 PR に含める。`init` で生成するわけではない（karasu は既存値を引き継ぐ必要があるため）。
+
+**Phase 2 への引き継ぎ**: テンプレートは抽出後の package 内に bundle するだけ。`adr-tools init` という形で外部ユーザーに公開される。
 
 ## 比較サマリ
 
@@ -215,21 +259,24 @@ export function loadConfig(cwd?: string): AdrConfig;
 |---|---|---|
 | 形式 | JSON (`adr.config.json`) | editor 体験 + 依存ゼロ + 信頼境界明確 |
 | 探索 | CWD 直下 + 引数で明示可 | YAGNI、必要なら後で追加 |
-| フォールバック | 現 karasu 値を defaults | Issue AT 準拠、移行コスト最小 |
-| ローダ | 同期、`loadConfig(cwd?)` + `DEFAULT_CONFIG` | 既存 I/O パターン踏襲 |
-| シグネチャ | `(dir, config?)` 形式に拡張 | 後方互換 + テスト注入容易 |
-| 後方互換 | `VALID_TOPICS` 等の export 維持 | Phase 1 差分最小化 |
+| フォールバック | **厳格モード + init サブコマンド** | 抽出後の library 体験を優先、karasu 固有値を defaults に焼かない |
+| ローダ | 同期、`loadConfig(cwd?)` + 専用例外 2 種 | 不在 / 不正を区別して CLI で人間向けエラーに変換 |
+| シグネチャ | `(dir, config)` を必須引数に拡張 | config が必ず存在する前提で型を引き締める |
+| 後方互換 | `VALID_TOPICS` 等の export 維持 | Phase 1 差分最小化（Phase 2 で削除） |
 | Schema | `additionalProperties: false`、ローダで検証はせず editor のみ | 依存追加を避ける |
+| init | `adr:init` で雛形生成、既存ファイルあれば失敗 | `eslint --init` 等の先例に倣う |
 
 ## 現時点の方針
 
-上記「採用案」で Phase 1 を実装する。Phase 2 で予定する変更（このドキュメントには含めない、参考として記録のみ）:
+上記「採用案」で Phase 1 を実装する。**Issue #1077 本文の AT 改訂が前提**: 「config 不在時は defaults にフォールバック」を「config 不在時は明確なエラーで `adr:init` を案内」に差し替える。
 
-- 組み込み defaults を空配列化 / undefined 化し、設定不在の挙動をライブラリらしく整える
+Phase 2 で予定する変更（このドキュメントには含めない、参考として記録のみ）:
+
 - `VALID_TOPICS` / `VALID_CONCERNS` の export 削除
 - cosmiconfig 風の上位探索を必要に応じて追加
 - ajv による厳格バリデーション
+- config schema にバージョンフィールド追加 + 後方互換ポリシー
 
 ## 未解決の問い
 
-なし（論点 1〜8 を本ドキュメント内で確定済み）。
+なし（論点 1〜9 を本ドキュメント内で確定済み）。
