@@ -67,7 +67,12 @@ system ECPlatform {
           operations create
         }
       }
-      usecase ShowOrderHistory { label "View order history" }
+      usecase ShowOrderHistory {
+        label "View order history"
+        resource ECommerceDB.OrderTable {
+          operations read
+        }
+      }
     }
     domain Member {
       label "Members"
@@ -77,7 +82,12 @@ system ECPlatform {
           operations create
         }
       }
-      usecase EditProfile { label "Edit profile" }
+      usecase EditProfile {
+        label "Edit profile"
+        resource ECommerceDB.MemberTable {
+          operations read, update
+        }
+      }
     }
   }
   service Payment [external] {

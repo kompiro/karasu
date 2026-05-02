@@ -1,7 +1,7 @@
 import type { Project, DirEntry, DisplayMode } from "@karasu-tools/core";
 import type { CompareSource } from "../fs/compare-source";
 
-export type ActiveView = "system" | "deploy" | "org";
+export type ActiveView = "system" | "deploy" | "org" | "matrix";
 
 export interface AppState {
   // プロジェクト管理
