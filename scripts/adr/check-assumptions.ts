@@ -1,6 +1,7 @@
 /* eslint-disable no-console -- CLI entry point; stdout/stderr reporting is the whole job */
 import { fileURLToPath } from "node:url";
 import { evaluateAll } from "./assumptions.ts";
+import { AdrConfigInvalidError, AdrConfigMissingError, loadConfig } from "./config.ts";
 import { loadParsed } from "./extractor.ts";
 
 interface CliArgs {
@@ -9,9 +10,9 @@ interface CliArgs {
   quiet: boolean;
 }
 
-function parseArgs(argv: string[]): CliArgs | { error: string } {
+function parseArgs(argv: string[], defaultDir: string): CliArgs | { error: string } {
   const args = argv.slice(2);
-  let dir = "docs/adr";
+  let dir = defaultDir;
   let repoRoot = ".";
   let quiet = false;
   for (const raw of args) {
@@ -36,12 +37,22 @@ function parseArgs(argv: string[]): CliArgs | { error: string } {
 }
 
 function main(argv: string[]): number {
-  const parsed = parseArgs(argv);
+  let config;
+  try {
+    config = loadConfig();
+  } catch (e) {
+    if (e instanceof AdrConfigMissingError || e instanceof AdrConfigInvalidError) {
+      console.error(e.message);
+      return 1;
+    }
+    throw e;
+  }
+  const parsed = parseArgs(argv, config.paths.adrDir);
   if ("error" in parsed) {
     console.error(parsed.error);
     return 2;
   }
-  const adrs = loadParsed(parsed.dir);
+  const adrs = loadParsed(parsed.dir, config);
   const results = evaluateAll(adrs, parsed.repoRoot);
 
   const byStatus = { ok: 0, fail: 0, manual: 0 };

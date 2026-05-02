@@ -1,3 +1,4 @@
+import type { AdrConfig } from "./config.ts";
 import { validateDirectory, type ParsedAdr } from "./validator.ts";
 
 export type OutputFormat = "list" | "markdown" | "json";
@@ -58,10 +59,10 @@ function expandClosure(parsed: ParsedAdr[], seeds: string[]): ParsedAdr[] {
   return parsed.filter((p) => visited.has(p.id));
 }
 
-export function loadParsed(dir: string): ParsedAdr[] {
+export function loadParsed(dir: string, config: AdrConfig): ParsedAdr[] {
   // We reuse the validator's parsing pass. Any validation errors surface via
   // `pnpm adr:validate` / CI; extractors proceed with the parsed subset.
-  return validateDirectory(dir).parsed;
+  return validateDirectory(dir, config).parsed;
 }
 
 export function format(adrs: ParsedAdr[], fmt: OutputFormat): string {

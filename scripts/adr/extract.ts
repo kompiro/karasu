@@ -1,6 +1,12 @@
 /* eslint-disable no-console -- CLI entry point; stdout/stderr reporting is the whole job */
 import { fileURLToPath } from "node:url";
 import {
+  AdrConfigInvalidError,
+  AdrConfigMissingError,
+  loadConfig,
+  type AdrConfig,
+} from "./config.ts";
+import {
   closure,
   effectiveSet,
   format,
@@ -8,7 +14,6 @@ import {
   scopeSlice,
   type OutputFormat,
 } from "./extractor.ts";
-import { VALID_TOPICS } from "./validator.ts";
 
 const VALID_FORMATS: readonly OutputFormat[] = ["list", "markdown", "json"] as const;
 
@@ -22,7 +27,7 @@ interface CliArgs {
   adrId: string | null;
 }
 
-function parseArgs(argv: string[]): CliArgs | { error: string } {
+function parseArgs(argv: string[], config: AdrConfig): CliArgs | { error: string } {
   const args = argv.slice(2);
   const sub = args[0];
   if (sub !== "effective" && sub !== "slice" && sub !== "closure") {
@@ -42,7 +47,7 @@ Options (all subcommands):
   }
 
   let fmt: OutputFormat = "list";
-  let dir = "docs/adr";
+  let dir = config.paths.adrDir;
   const packages: string[] = [];
   const concerns: string[] = [];
   const topics: string[] = [];
@@ -66,9 +71,9 @@ Options (all subcommands):
     } else if (raw.startsWith("--topic=")) {
       const values = raw.slice("--topic=".length).split(",").filter(Boolean);
       for (const v of values) {
-        if (!VALID_TOPICS.includes(v as (typeof VALID_TOPICS)[number])) {
+        if (config.topics.length > 0 && !config.topics.includes(v)) {
           return {
-            error: `invalid --topic (got ${JSON.stringify(v)}); expected one of ${VALID_TOPICS.join(", ")}`,
+            error: `invalid --topic (got ${JSON.stringify(v)}); expected one of ${config.topics.join(", ")}`,
           };
         }
         topics.push(v);
@@ -90,12 +95,22 @@ Options (all subcommands):
 }
 
 function main(argv: string[]): number {
-  const parsed = parseArgs(argv);
+  let config;
+  try {
+    config = loadConfig();
+  } catch (e) {
+    if (e instanceof AdrConfigMissingError || e instanceof AdrConfigInvalidError) {
+      console.error(e.message);
+      return 1;
+    }
+    throw e;
+  }
+  const parsed = parseArgs(argv, config);
   if ("error" in parsed) {
     console.error(parsed.error);
     return 2;
   }
-  const adrs = loadParsed(parsed.dir);
+  const adrs = loadParsed(parsed.dir, config);
   try {
     let result;
     if (parsed.subcommand === "effective") {

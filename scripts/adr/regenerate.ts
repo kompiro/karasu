@@ -2,6 +2,7 @@
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { AdrConfigInvalidError, AdrConfigMissingError, loadConfig } from "./config.ts";
 import { buildGeneratedFiles, loadAdrs } from "./regenerator.ts";
 
 interface CliArgs {
@@ -10,10 +11,10 @@ interface CliArgs {
   check: boolean;
 }
 
-function parseArgs(argv: string[]): CliArgs | { error: string } {
+function parseArgs(argv: string[], defaultDir: string): CliArgs | { error: string } {
   const args = argv.slice(2);
-  let dir = "docs/adr";
-  let outDir = "docs/adr";
+  let dir = defaultDir;
+  let outDir = defaultDir;
   let check = false;
   for (const raw of args) {
     if (raw === "--check") {
@@ -48,13 +49,23 @@ function readFileOrNull(path: string): string | null {
 }
 
 function main(argv: string[]): number {
-  const parsed = parseArgs(argv);
+  let config;
+  try {
+    config = loadConfig();
+  } catch (e) {
+    if (e instanceof AdrConfigMissingError || e instanceof AdrConfigInvalidError) {
+      console.error(e.message);
+      return 1;
+    }
+    throw e;
+  }
+  const parsed = parseArgs(argv, config.paths.adrDir);
   if ("error" in parsed) {
     console.error(parsed.error);
     return 2;
   }
-  const adrs = loadAdrs(parsed.dir);
-  const files = buildGeneratedFiles(adrs);
+  const adrs = loadAdrs(parsed.dir, config);
+  const files = buildGeneratedFiles(adrs, config);
 
   if (parsed.check) {
     const stale: string[] = [];

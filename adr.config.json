@@ -1,0 +1,29 @@
+{
+  "$schema": "./scripts/adr/config.schema.json",
+  "topics": [
+    "core-concepts",
+    "parser",
+    "resolver",
+    "renderer",
+    "edges",
+    "styling",
+    "navigation",
+    "app-ui",
+    "project",
+    "chat-ai",
+    "cli",
+    "vscode",
+    "testing",
+    "build",
+    "adr-tooling"
+  ],
+  "concerns": ["accessibility", "ci", "dependencies", "deployment", "i18n", "performance", "security"],
+  "paths": {
+    "adrDir": "docs/adr",
+    "outputs": {
+      "effective": "effective.md",
+      "graph": "graph.md",
+      "graphByTopic": "graph/"
+    }
+  }
+}

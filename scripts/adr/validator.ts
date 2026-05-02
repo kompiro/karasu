@@ -1,13 +1,15 @@
 import { readdirSync, readFileSync } from "node:fs";
 import { basename, join } from "node:path";
 import { load as parseYaml } from "js-yaml";
+import type { AdrConfig } from "./config.ts";
 
 const VALID_STATUSES = ["proposed", "accepted", "deprecated", "superseded", "not_adopted"] as const;
 type Status = (typeof VALID_STATUSES)[number];
 
-// Controlled vocabulary for `topic`. Matches the section headings in
-// docs/adr/README.md so the two stay in sync. New topics require updating
-// both this list and the README.
+// Karasu's historical topic vocabulary. Kept as an exported constant for the
+// duration of Phase 1 (Issue #1077) so consumers like extract.ts continue to
+// work; will be removed in Phase 2 when scripts/adr/ becomes its own package.
+// New code should read topics from AdrConfig.topics instead.
 export const VALID_TOPICS = [
   "core-concepts",
   "parser",
@@ -25,7 +27,7 @@ export const VALID_TOPICS = [
   "build",
   "adr-tooling",
 ] as const;
-type Topic = (typeof VALID_TOPICS)[number];
+type Topic = string;
 
 const RELATIONSHIP_FIELDS = [
   "supersedes",
@@ -36,25 +38,7 @@ const RELATIONSHIP_FIELDS = [
 ] as const;
 type RelationshipField = (typeof RELATIONSHIP_FIELDS)[number];
 
-// Controlled vocabulary for `scope.concerns` — cross-cutting aspects that are
-// orthogonal to `topic`. Prefer leaving `concerns` empty when `topic` already
-// captures the relevant categorization; add a concern only when the ADR
-// touches a genuinely cross-cutting dimension that would otherwise be
-// invisible to a topic-only query.
-//
-// Renamed from `scope.domains` to avoid collision with karasu's product-side
-// `domain` modeling primitive (the `service → domain → usecase → resource`
-// hierarchy).
-const VALID_CONCERNS = [
-  "accessibility",
-  "ci",
-  "dependencies",
-  "deployment",
-  "i18n",
-  "performance",
-  "security",
-] as const;
-type Concern = (typeof VALID_CONCERNS)[number];
+type Concern = string;
 
 export interface Frontmatter {
   id: string;
@@ -106,7 +90,13 @@ function idFromFilename(file: string): string | null {
   return `ADR-${m[1]}-${m[2]}`;
 }
 
-function parseFrontmatter(raw: string, file: string, errors: string[]): Frontmatter | null {
+function parseFrontmatter(
+  raw: string,
+  file: string,
+  errors: string[],
+  topics: readonly string[],
+  concerns: readonly string[],
+): Frontmatter | null {
   let data: unknown;
   try {
     data = parseYaml(raw);
@@ -147,9 +137,11 @@ function parseFrontmatter(raw: string, file: string, errors: string[]): Frontmat
     );
   }
   const topicRaw = fm.topic;
-  if (typeof topicRaw !== "string" || !VALID_TOPICS.includes(topicRaw as Topic)) {
+  if (typeof topicRaw !== "string") {
+    errors.push(`${file}: "topic" is required and must be a string`);
+  } else if (topics.length > 0 && !topics.includes(topicRaw)) {
     errors.push(
-      `${file}: "topic" must be one of ${VALID_TOPICS.join(" | ")}, got ${JSON.stringify(topicRaw)}`,
+      `${file}: "topic" must be one of ${topics.join(" | ")}, got ${JSON.stringify(topicRaw)}`,
     );
   }
 
@@ -191,22 +183,22 @@ function parseFrontmatter(raw: string, file: string, errors: string[]): Frontmat
         (Array.isArray(concernsRaw) && concernsRaw.every((x) => typeof x === "string"));
       if (!pkgsOk) errors.push(`${file}: "scope.packages" must be an array of strings`);
       if (!concernsOk) errors.push(`${file}: "scope.concerns" must be an array of strings`);
-      let concerns: Concern[] | undefined;
+      let concernsParsed: Concern[] | undefined;
       if (concernsOk && Array.isArray(concernsRaw)) {
-        concerns = [];
+        concernsParsed = [];
         for (const v of concernsRaw as string[]) {
-          if (VALID_CONCERNS.includes(v as Concern)) {
-            concerns.push(v as Concern);
+          if (concerns.length === 0 || concerns.includes(v)) {
+            concernsParsed.push(v);
           } else {
             errors.push(
-              `${file}: "scope.concerns" contains unknown value ${JSON.stringify(v)}; allowed: ${VALID_CONCERNS.join(" | ")}`,
+              `${file}: "scope.concerns" contains unknown value ${JSON.stringify(v)}; allowed: ${concerns.join(" | ")}`,
             );
           }
         }
       }
       scope = {
         packages: pkgsOk && Array.isArray(pkgs) ? (pkgs as string[]) : undefined,
-        concerns,
+        concerns: concernsParsed,
       };
     }
   }
@@ -216,7 +208,7 @@ function parseFrontmatter(raw: string, file: string, errors: string[]): Frontmat
     title,
     status: statusRaw as Status,
     date: dateStr,
-    topic: topicRaw as Topic,
+    topic: topicRaw,
     authors: stringArray("authors"),
     supersedes: stringArray("supersedes"),
     superseded_by: typeof superseded_by === "string" ? superseded_by : null,
@@ -244,13 +236,15 @@ function validateFile(
   content: string,
   errors: string[],
   warnings: string[],
+  topics: readonly string[],
+  concerns: readonly string[],
 ): ParsedAdr | null {
   const { raw, body } = extractFrontmatter(content);
   if (raw === null) {
     errors.push(`${filePath}: missing YAML frontmatter (see docs/adr/TEMPLATE.md)`);
     return null;
   }
-  const fm = parseFrontmatter(raw, filePath, errors);
+  const fm = parseFrontmatter(raw, filePath, errors, topics, concerns);
   if (!fm) return null;
 
   const expectedId = idFromFilename(filePath);
@@ -454,7 +448,7 @@ function detectCycle(
   }
 }
 
-export function validateDirectory(dir: string): ValidationResult {
+export function validateDirectory(dir: string, config: AdrConfig): ValidationResult {
   const errors: string[] = [];
   const warnings: string[] = [];
   const parsed: ParsedAdr[] = [];
@@ -469,7 +463,7 @@ export function validateDirectory(dir: string): ValidationResult {
   for (const f of files) {
     const full = join(dir, f);
     const content = readFileSync(full, "utf8");
-    const result = validateFile(full, content, errors, warnings);
+    const result = validateFile(full, content, errors, warnings, config.topics, config.concerns);
     if (result) parsed.push(result);
   }
 

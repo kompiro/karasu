@@ -3,6 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { closure, effectiveSet, format, loadParsed, scopeSlice } from "./extractor.ts";
+import { TEST_CONFIG } from "./test-helpers.ts";
 
 let tmp: string;
 
@@ -98,7 +99,7 @@ scope:
 describe("effectiveSet", () => {
   it("excludes superseded and not_adopted", () => {
     seed();
-    const parsed = loadParsed(tmp);
+    const parsed = loadParsed(tmp, TEST_CONFIG);
     const ids = effectiveSet(parsed)
       .map((p) => p.id)
       .sort();
@@ -109,7 +110,7 @@ describe("effectiveSet", () => {
 describe("scopeSlice", () => {
   it("filters by package intersection and pulls in transitive depends_on", () => {
     seed();
-    const parsed = loadParsed(tmp);
+    const parsed = loadParsed(tmp, TEST_CONFIG);
     const ids = scopeSlice(parsed, { packages: ["core"] })
       .map((p) => p.id)
       .sort();
@@ -119,7 +120,7 @@ describe("scopeSlice", () => {
 
   it("filters by concern intersection", () => {
     seed();
-    const parsed = loadParsed(tmp);
+    const parsed = loadParsed(tmp, TEST_CONFIG);
     const ids = scopeSlice(parsed, { concerns: ["security"] })
       .map((p) => p.id)
       .sort();
@@ -138,7 +139,7 @@ topic: parser
 date: 2026-01-01`,
       "ADR-20260101-06: Parser-only",
     );
-    const parsed = loadParsed(tmp);
+    const parsed = loadParsed(tmp, TEST_CONFIG);
     const ids = scopeSlice(parsed, { topics: ["parser"] })
       .map((p) => p.id)
       .sort();
@@ -148,7 +149,7 @@ date: 2026-01-01`,
 
   it("intersects topic and concern axes (AND semantics)", () => {
     seed();
-    const parsed = loadParsed(tmp);
+    const parsed = loadParsed(tmp, TEST_CONFIG);
     // topic=core-concepts matches 01-05. concern=security matches only 02.
     // Intersection = [02]; closure pulls in 01 via depends_on.
     const ids = scopeSlice(parsed, { topics: ["core-concepts"], concerns: ["security"] })
@@ -159,13 +160,13 @@ date: 2026-01-01`,
 
   it("throws when called with no filter", () => {
     seed();
-    const parsed = loadParsed(tmp);
+    const parsed = loadParsed(tmp, TEST_CONFIG);
     expect(() => scopeSlice(parsed, {})).toThrow(/at least one/);
   });
 
   it("requires BOTH package and concern to match when both specified", () => {
     seed();
-    const parsed = loadParsed(tmp);
+    const parsed = loadParsed(tmp, TEST_CONFIG);
     // core + i18n: no ADR has both → empty (before closure)
     const ids = scopeSlice(parsed, { packages: ["core"], concerns: ["i18n"] }).map((p) => p.id);
     expect(ids).toEqual([]);
@@ -175,7 +176,7 @@ date: 2026-01-01`,
 describe("closure", () => {
   it("returns the ADR plus transitive depends_on", () => {
     seed();
-    const parsed = loadParsed(tmp);
+    const parsed = loadParsed(tmp, TEST_CONFIG);
     const ids = closure(parsed, "ADR-20260101-02")
       .map((p) => p.id)
       .sort();
@@ -184,7 +185,7 @@ describe("closure", () => {
 
   it("throws when the starting ADR is unknown", () => {
     seed();
-    const parsed = loadParsed(tmp);
+    const parsed = loadParsed(tmp, TEST_CONFIG);
     expect(() => closure(parsed, "ADR-99999999-99")).toThrow(/not found/);
   });
 });
@@ -192,7 +193,7 @@ describe("closure", () => {
 describe("format", () => {
   it("emits tab-separated list by default", () => {
     seed();
-    const parsed = loadParsed(tmp);
+    const parsed = loadParsed(tmp, TEST_CONFIG);
     const out = format(effectiveSet(parsed), "list");
     expect(out).toContain("ADR-20260101-01\taccepted\tFoundational");
     expect(out).not.toContain("ADR-20260101-03");
@@ -200,14 +201,14 @@ describe("format", () => {
 
   it("emits markdown links", () => {
     seed();
-    const parsed = loadParsed(tmp);
+    const parsed = loadParsed(tmp, TEST_CONFIG);
     const out = format(effectiveSet(parsed), "markdown");
     expect(out).toContain("- [ADR-20260101-01](20260101-01-foundational.md) — Foundational");
   });
 
   it("emits JSON with id / title / status / scope", () => {
     seed();
-    const parsed = loadParsed(tmp);
+    const parsed = loadParsed(tmp, TEST_CONFIG);
     const out = JSON.parse(format(effectiveSet(parsed), "json"));
     expect(Array.isArray(out)).toBe(true);
     expect(out[0]).toHaveProperty("id");

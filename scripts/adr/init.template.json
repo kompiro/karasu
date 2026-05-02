@@ -1,0 +1,13 @@
+{
+  "$schema": "./scripts/adr/config.schema.json",
+  "topics": ["architecture", "infrastructure", "process"],
+  "concerns": ["security", "performance", "ci"],
+  "paths": {
+    "adrDir": "docs/adr",
+    "outputs": {
+      "effective": "effective.md",
+      "graph": "graph.md",
+      "graphByTopic": "graph/"
+    }
+  }
+}
