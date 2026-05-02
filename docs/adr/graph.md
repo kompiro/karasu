@@ -1,12 +1,13 @@
 # ADR Dependency Graph — Overview
 
-143 ADRs across 15 topics. Clusters group by `topic` frontmatter field. Edges crossing cluster borders are cross-topic dependencies.
+144 ADRs across 15 topics. Clusters group by `topic` frontmatter field. Edges crossing cluster borders are cross-topic dependencies.
 ```mermaid
 flowchart TD
   subgraph adr-tooling["adr-tooling"]
     ADR_20260423_01["ADR-20260423-01<br/>ADR 本文とフロントマター関係フィールドの整合性を validator の warning ..."]
     ADR_20260424_01["ADR-20260424-01<br/>ADR knowledge graph — machine-readable frontmat..."]
     ADR_20260427_02["ADR-20260427-02<br/>ADR タイトルは OSS 化までは日本語で書く"]
+    ADR_20260502_02["ADR-20260502-02<br/>ADR ツール用語彙の adr.config.json への外部化"]
   end
   subgraph app-ui["app-ui"]
     ADR_20260323_02["ADR-20260323-02<br/>ツールバーボタンはアイコン+テキストラベル必須"]
@@ -252,6 +253,7 @@ flowchart TD
   ADR_20260422_07 --> ADR_20260420_02
   ADR_20260425_01 --> ADR_20260420_03
   ADR_20260430_04 --> ADR_20260430_03
+  ADR_20260502_02 --> ADR_20260424_01
   ADR_20260412_05 -.supersedes.-> ADR_20260324_01
   ADR_20260429_09 -.supersedes.-> ADR_20260428_05
 
@@ -404,11 +406,12 @@ flowchart TD
   class ADR_20260430_04 accepted
   class ADR_20260501_01 accepted
   class ADR_20260502_01 accepted
+  class ADR_20260502_02 accepted
 ```
 
 ## Per-topic detail
 
-- [`adr-tooling`](graph/adr-tooling.md) — 3 ADRs
+- [`adr-tooling`](graph/adr-tooling.md) — 4 ADRs
 - [`app-ui`](graph/app-ui.md) — 18 ADRs
 - [`build`](graph/build.md) — 22 ADRs
 - [`chat-ai`](graph/chat-ai.md) — 8 ADRs
