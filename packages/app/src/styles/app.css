@@ -2472,3 +2472,95 @@ body,
   font-weight: bold;
   text-align: center;
 }
+
+/* CRUD matrix view (usecase × resource grid) */
+.crud-matrix-panel {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 20px 24px;
+  overflow: auto;
+  color: var(--text-primary);
+}
+
+.crud-matrix-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  align-items: center;
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.crud-matrix-toolbar select {
+  margin-left: 6px;
+  padding: 4px 8px;
+  background: var(--bg-raised);
+  color: var(--text-primary);
+  border: 1px solid var(--border-strong);
+  border-radius: 4px;
+  font-size: 13px;
+}
+
+.crud-matrix-table {
+  border-collapse: collapse;
+  background: var(--bg-surface);
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.crud-matrix-table th,
+.crud-matrix-table td {
+  border: 1px solid var(--border-strong);
+  padding: 8px 12px;
+  text-align: left;
+  vertical-align: middle;
+  white-space: nowrap;
+}
+
+.crud-matrix-table thead th {
+  background: var(--bg-raised);
+  color: var(--text-primary);
+  font-weight: 600;
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+
+.crud-matrix-table tbody td:first-child {
+  font-weight: 500;
+  color: var(--text-primary);
+  background: var(--bg-raised);
+}
+
+.crud-matrix-cell {
+  text-align: center;
+  font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace;
+  letter-spacing: 0.05em;
+  color: var(--text-primary);
+}
+
+.crud-matrix-cell--write {
+  background: var(--accent-dim);
+  color: var(--accent-hover);
+  font-weight: 600;
+}
+
+.crud-matrix-total {
+  text-align: center;
+  font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace;
+  background: var(--bg-base);
+  color: var(--text-secondary);
+}
+
+.crud-matrix-total-row td {
+  background: var(--bg-base);
+  color: var(--text-secondary);
+  font-weight: 600;
+}
+
+.crud-matrix-total-row td:first-child {
+  background: var(--bg-base);
+  color: var(--text-primary);
+}

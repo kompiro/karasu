@@ -569,10 +569,10 @@ describe("PreviewColumn", () => {
   });
 
   describe("matrix tab", () => {
-    it("exposes a Matrix tab in the diagram tab bar", () => {
+    it("exposes a CRUD tab in the diagram tab bar", () => {
       const props = makeProps();
       const { getByRole } = renderPreview(props);
-      expect(getByRole("tab", { name: /Matrix/ })).toBeTruthy();
+      expect(getByRole("tab", { name: /CRUD/ })).toBeTruthy();
     });
 
     it("renders the CRUD matrix panel when activeView is matrix", () => {

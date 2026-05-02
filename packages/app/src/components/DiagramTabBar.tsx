@@ -66,7 +66,7 @@ export function DiagramTabBar({
         onClick={() => onChange("matrix")}
       >
         <span className="diagram-tab-icon">▦</span>
-        Matrix
+        CRUD
       </button>
     </div>
   );
