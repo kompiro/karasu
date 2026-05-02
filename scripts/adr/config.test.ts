@@ -39,11 +39,7 @@ describe("loadConfig", () => {
   });
 
   it("missing-error message points the user at adr:init", () => {
-    try {
-      loadConfig(tmp);
-    } catch (e) {
-      expect((e as Error).message).toContain("adr:init");
-    }
+    expect(() => loadConfig(tmp)).toThrow(/adr:init/);
   });
 
   it("throws AdrConfigInvalidError for invalid JSON", () => {

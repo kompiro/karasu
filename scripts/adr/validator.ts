@@ -6,27 +6,6 @@ import type { AdrConfig } from "./config.ts";
 const VALID_STATUSES = ["proposed", "accepted", "deprecated", "superseded", "not_adopted"] as const;
 type Status = (typeof VALID_STATUSES)[number];
 
-// Karasu's historical topic vocabulary. Kept as an exported constant for the
-// duration of Phase 1 (Issue #1077) so consumers like extract.ts continue to
-// work; will be removed in Phase 2 when scripts/adr/ becomes its own package.
-// New code should read topics from AdrConfig.topics instead.
-export const VALID_TOPICS = [
-  "core-concepts",
-  "parser",
-  "resolver",
-  "renderer",
-  "edges",
-  "styling",
-  "navigation",
-  "app-ui",
-  "project",
-  "chat-ai",
-  "cli",
-  "vscode",
-  "testing",
-  "build",
-  "adr-tooling",
-] as const;
 type Topic = string;
 
 const RELATIONSHIP_FIELDS = [
