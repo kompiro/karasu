@@ -24,7 +24,15 @@ export const TEST_CONFIG: AdrConfig = {
     "build",
     "adr-tooling",
   ],
-  concerns: ["accessibility", "ci", "dependencies", "deployment", "i18n", "performance", "security"],
+  concerns: [
+    "accessibility",
+    "ci",
+    "dependencies",
+    "deployment",
+    "i18n",
+    "performance",
+    "security",
+  ],
   paths: {
     adrDir: "docs/adr",
     outputs: {
