@@ -26,6 +26,8 @@ jobs:
           cache: "pnpm"
 
       - run: pnpm install --frozen-lockfile
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.ADR_TOOLS_READ_TOKEN }}
 
       - name: Install Electron system dependencies
         run: |
@@ -71,6 +73,8 @@ jobs:
           cache: "pnpm"
 
       - run: pnpm install --frozen-lockfile
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.ADR_TOOLS_READ_TOKEN }}
 
       - name: Install Electron + Chromium system dependencies
         run: |

@@ -8,16 +8,7 @@ related_to:
   - ADR-20260410-03
   - ADR-20260423-01
 assumptions:
-  - "file: scripts/adr/validator.ts"
-  - "symbol: scripts/adr/validator.ts :: validateDirectory"
-  - "file: scripts/adr/extract.ts"
-  - "file: scripts/adr/extractor.ts"
-  - "file: scripts/adr/visualize.ts"
-  - "file: scripts/adr/visualizer.ts"
-  - "file: scripts/adr/regenerate.ts"
-  - "file: scripts/adr/regenerator.ts"
-  - "file: scripts/adr/check-assumptions.ts"
-  - "file: scripts/adr/assumptions.ts"
+  - "grep: package.json :: @kompiro/adr-tools"
   - "file: docs/adr/TEMPLATE.md"
   - "file: docs/adr/effective.md"
   - "file: docs/adr/graph.md"

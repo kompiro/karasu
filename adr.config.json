@@ -1,5 +1,5 @@
 {
-  "$schema": "./scripts/adr/config.schema.json",
+  "$schema": "./node_modules/@kompiro/adr-tools/dist/config.schema.json",
   "topics": [
     "core-concepts",
     "parser",

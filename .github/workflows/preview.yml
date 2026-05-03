@@ -37,6 +37,8 @@ jobs:
           cache: "pnpm"
 
       - run: pnpm install --frozen-lockfile
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.ADR_TOOLS_READ_TOKEN }}
 
       - name: Build (core)
         run: pnpm --filter @karasu-tools/core run build
