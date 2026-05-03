@@ -200,7 +200,13 @@ class Printer {
     const keyword = kindToKeyword(node.kind);
 
     // Declaration parts: keyword id [tags] @annotations
-    const decl: string[] = [keyword, quoteId(node.id)];
+    // Resource dot-notation refs serialise each segment separately so the
+    // joined id (which contains a `.`) does not get wrapped in quotes.
+    const idText =
+      node.kind === "resource" && node.ref
+        ? `${quoteId(node.ref.parent)}.${quoteId(node.ref.child)}`
+        : quoteId(node.id);
+    const decl: string[] = [keyword, idText];
     if (node.tags.length > 0) decl.push(`[${node.tags.join(", ")}]`);
     for (const ann of node.annotations) decl.push(`@${ann}`);
 
