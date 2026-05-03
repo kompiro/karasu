@@ -296,10 +296,30 @@ class Printer {
     ) {
       lines.push(`${indent}delivers ${node.properties.delivers.map(quoteId).join(", ")}`);
     }
+    if (
+      "operations" in node.properties &&
+      Array.isArray(node.properties.operations) &&
+      node.properties.operations.length > 0
+    ) {
+      lines.push(`${indent}operations ${this.renderOperations(node.properties.operations)}`);
+    }
     for (const link of node.properties.links) {
       lines.push(this.renderLink(link, indent));
     }
     return lines;
+  }
+
+  private renderOperations(
+    ops: readonly { verb: string; decoratedAs?: readonly string[] }[],
+  ): string {
+    return ops
+      .map((op) => {
+        if (op.decoratedAs && op.decoratedAs.length > 0) {
+          return `${quoteId(op.verb)}:${op.decoratedAs.join(",")}`;
+        }
+        return quoteId(op.verb);
+      })
+      .join(", ");
   }
 
   private renderDescription(value: string, indent: string): string {

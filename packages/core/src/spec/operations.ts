@@ -7,28 +7,58 @@
  *     resource OrderTable { operations create, read }
  *   }
  *
- * Verbs outside this list still parse and are preserved on the AST so
+ * Verbs outside this set still parse and are preserved on the AST so
  * translate adapters can round-trip non-CRUD operations (`list`, `search`,
- * `execute`, …); the parser emits an `unknown-resource-operation` warning
- * pointing at the offending verb.
+ * `execute`, …). Authors can annotate such verbs with their CRUD intent
+ * via the verb-decoration syntax — `operations list:read, replace:create,delete` —
+ * to feed the matrix view and write-dominates classifier without rewriting
+ * domain language. See `docs/design/verb-crud-decoration.md`.
  *
- * See `docs/spec/syntax.md` §"Resource operations" and ADR derived from
- * `docs/design/resource-crud-operations.md`.
+ * See `docs/spec/syntax.md` §"Resource operations".
  */
-const RECOGNIZED_RESOURCE_OPERATIONS = ["create", "read", "update", "delete"] as const;
-type RecognizedResourceOperation = (typeof RECOGNIZED_RESOURCE_OPERATIONS)[number];
+export const RECOGNIZED_RESOURCE_OPERATIONS = ["create", "read", "update", "delete"] as const;
+export type CrudVerb = (typeof RECOGNIZED_RESOURCE_OPERATIONS)[number];
 
-export function isRecognizedResourceOperation(value: string): value is RecognizedResourceOperation {
+export function isRecognizedResourceOperation(value: string): value is CrudVerb {
   return (RECOGNIZED_RESOURCE_OPERATIONS as readonly string[]).includes(value);
 }
 
 /**
- * Write-dominates classification: returns true when any of
- * `create` / `update` / `delete` appears in the operation list. Unknown
- * verbs are treated as non-write (conservative — only verbs we know mean
- * mutation count as write).
+ * One entry on a resource's `operations` property. `verb` is the raw verb
+ * the author wrote; `decoratedAs` is the CRUD set they explicitly mapped it
+ * to via `verb:c[,c]` syntax (undefined when no decoration was provided).
  */
-export function isWriteOperation(operations: readonly string[] | undefined): boolean {
+export interface ResourceOperation {
+  /** The raw verb token (e.g. `"create"`, `"list"`, `"replace"`). */
+  verb: string;
+  /**
+   * CRUD verbs the author explicitly mapped this verb to. Undefined when the
+   * author wrote a bare verb (no `:` decoration). An empty array means the
+   * decoration was malformed and emitted a diagnostic — consumers should
+   * treat it like undefined.
+   */
+  decoratedAs?: readonly CrudVerb[];
+}
+
+/**
+ * Write-dominates classification: returns true when any CRUD effect on this
+ * resource is a write (`create` / `update` / `delete`). Decoration takes
+ * precedence — `list:read` is not a write even though `list` is unrecognized,
+ * and `replace:create,delete` is a write even though `replace` is unrecognized.
+ *
+ * Bare unrecognized verbs are conservatively treated as non-write (we only
+ * count verbs we know mean mutation).
+ */
+export function isWriteOperation(operations: readonly ResourceOperation[] | undefined): boolean {
   if (!operations) return false;
-  return operations.some((op) => op === "create" || op === "update" || op === "delete");
+  for (const op of operations) {
+    if (op.decoratedAs && op.decoratedAs.length > 0) {
+      if (op.decoratedAs.some((v) => v === "create" || v === "update" || v === "delete")) {
+        return true;
+      }
+      continue;
+    }
+    if (op.verb === "create" || op.verb === "update" || op.verb === "delete") return true;
+  }
+  return false;
 }

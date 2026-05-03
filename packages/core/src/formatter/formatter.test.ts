@@ -504,4 +504,40 @@ organization Acme {
       expect(out).toBe(`system Foo {}`);
     });
   });
+
+  describe("resource operations", () => {
+    it("emits bare verbs comma-separated", () => {
+      const src = `system S {
+  service A {
+    domain D {
+      usecase U {
+        resource R [external] {
+          operations create, read
+        }
+      }
+    }
+  }
+}`;
+      const out = fmt(src);
+      expect(out).toContain("operations create, read");
+      expectIdempotent(out);
+    });
+
+    it("emits decorated verbs without spaces around `:` or in CRUD list", () => {
+      const src = `system S {
+  service A {
+    domain D {
+      usecase U {
+        resource R [external] {
+          operations list:read, replace:create,delete
+        }
+      }
+    }
+  }
+}`;
+      const out = fmt(src);
+      expect(out).toContain("operations list:read, replace:create,delete");
+      expectIdempotent(out);
+    });
+  });
 });

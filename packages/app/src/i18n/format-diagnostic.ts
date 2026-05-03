@@ -83,6 +83,12 @@ export function useFormattedDiagnostic(): (d: Diagnostic) => string {
           return t("diagnostic.unknownResourceOperation.message", d.params);
         case "duplicate-resource-operation":
           return t("diagnostic.duplicateResourceOperation.message", d.params);
+        case "invalid-crud-decoration":
+          return t("diagnostic.invalidCrudDecoration.message", d.params);
+        case "empty-crud-decoration":
+          return t("diagnostic.emptyCrudDecoration.message", d.params);
+        case "duplicate-crud-decoration-target":
+          return t("diagnostic.duplicateCrudDecorationTarget.message", d.params);
         case "duplicate-owner-assignment":
           return t("diagnostic.duplicateOwnerAssignment.message", d.params);
         case "duplicate-team-id":
