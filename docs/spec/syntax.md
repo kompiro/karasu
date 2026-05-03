@@ -383,6 +383,29 @@ Verbs outside this set still parse and are preserved on the AST so translate ada
 
 **Omission semantics**: when `operations` is omitted, behavior matches today — the dependency is opaque and no warning is emitted. This preserves the "not-yet-decided" tolerance documented under §Property requirement and omission rules.
 
+##### Verb-decoration syntax (1:N CRUD mapping)
+
+Custom verbs that carry domain meaning can be annotated with their CRUD intent using the `<verb>:<crud>[,<crud>...]` decoration. This lets authors keep their natural vocabulary while still feeding the CRUD matrix view and write-dominates classifier.
+
+```
+operations list:read, search:read           // 1:1 mapping
+operations enqueue:create, dequeue:delete   // queue idioms
+operations replace:create,delete            // physical delete-insert (1:N)
+operations create, list:read                // mix decorated + bare
+```
+
+Behavior:
+
+- The right-hand side accepts only recognised CRUD verbs (`create` / `read` / `update` / `delete`). Any other identifier raises `invalid-crud-decoration` (error).
+- An empty right-hand side (`list:`) raises `empty-crud-decoration` (error).
+- A duplicated CRUD verb on the right (`replace:create,create`) raises `duplicate-crud-decoration-target` (warning) and is deduplicated.
+- A decorated verb does **not** raise `unknown-resource-operation`, even if the verb itself is outside the recognised set — the decoration is the author's CRUD declaration.
+- The CRUD matrix view ([ADR-20260502-01](../adr/20260502-01-crud-matrix-view.md)) reads `decoratedAs` first when computing cell letters, ΣC/R/U/D totals, and the write-dominates flag. A decorated verb never produces a `?` suffix.
+
+Disambiguation rule for 1:N + multiple verbs on one line: once the parser sees `verb:`, the comma-separated identifiers that follow are CRUD-RHS continuations until the next `<id>:` boundary. So `search:read,create, list:read` parses as `search:[read,create]` then `list:[read]`. To express a bare verb after a decorated one, place the bare verb earlier in the list (`create, list:read`).
+
+**Usage guidance — when to use 1:N**: reserve `verb:create,delete` for genuine physical delete-insert idioms (`REPLACE INTO`, soft-delete + new row, Kafka tombstone + new key). For logical in-place rewrites of the same entity, use `update` instead. Tools do not enforce this distinction — it is a documentation convention.
+
 ### Top-level domain declaration
 
 A `domain` can be declared at the top level of a file, not only inside a `service`.

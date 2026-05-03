@@ -207,6 +207,12 @@ export const ja: Partial<Translations> = {
     `resource "${resourceId}" に未知の operation "${operation}" が指定されました。認識される verb: create, read, update, delete`,
   "diagnostic.duplicateResourceOperation.message": ({ operation, resourceId }) =>
     `resource "${resourceId}" の operation "${operation}" が重複しています`,
+  "diagnostic.invalidCrudDecoration.message": ({ operation, value, resourceId }) =>
+    `resource "${resourceId}" の operation "${operation}" の CRUD 装飾 "${value}" が無効です。右辺は create / read / update / delete のいずれかである必要があります`,
+  "diagnostic.emptyCrudDecoration.message": ({ operation, resourceId }) =>
+    `resource "${resourceId}" の operation "${operation}" の CRUD 装飾が空です。"${operation}:create,read,update,delete" 形式で指定するか、コロンを削除してください`,
+  "diagnostic.duplicateCrudDecorationTarget.message": ({ operation, value, resourceId }) =>
+    `resource "${resourceId}" の operation "${operation}" の装飾内に CRUD verb "${value}" が重複しています`,
   "diagnostic.duplicateOwnerAssignment.message": ({ nodeId, existingTeam }) =>
     `"${nodeId}" はすでに team "${existingTeam}" によって所有されています。複数の team が同じ service / domain を所有することはできません`,
   "diagnostic.duplicateTeamId.message": ({ teamId }) => `team id "${teamId}" が重複しています`,

@@ -46,10 +46,17 @@ system ECPlatform {
       }
       usecase SearchOrders {
         label "Search orders"
-        // `list` is unrecognized — surfaces as `R?` in the matrix until
-        // a verb-decoration syntax (`list:read`) lands.
+        // `list` is decorated as `read` — matrix shows `R` (no `?` suffix).
         resource OrderDB.OrderTable {
-          operations read, list
+          operations read, list:read
+        }
+      }
+      usecase ReplaceOrderSnapshot {
+        label "Replace order snapshot (physical delete-insert)"
+        // `replace` decorated as both create + delete (1:N mapping).
+        // Matrix counts this as a write and contributes to ΣC and ΣD.
+        resource OrderDB.OrderTable {
+          operations replace:create,delete
         }
       }
       usecase ReplayOrderEvents {

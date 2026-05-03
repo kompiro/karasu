@@ -2039,7 +2039,7 @@ system ECPlatform {
       const warnings = result.diagnostics.filter((d) => d.severity === "warning");
       expect(warnings).toHaveLength(0);
       const resource = findResource(result.value, "OrderTable");
-      expect(resource.properties.operations).toEqual(["create", "read"]);
+      expect(resource.properties.operations).toEqual([{ verb: "create" }, { verb: "read" }]);
     });
 
     it("accumulates verbs across multiple operations lines", () => {
@@ -2058,7 +2058,11 @@ system ECPlatform {
 }
       `);
       const resource = findResource(result.value, "OrderTable");
-      expect(resource.properties.operations).toEqual(["create", "read", "update"]);
+      expect(resource.properties.operations).toEqual([
+        { verb: "create" },
+        { verb: "read" },
+        { verb: "update" },
+      ]);
     });
 
     it("emits no diagnostic when operations is omitted", () => {
@@ -2098,7 +2102,7 @@ system ECPlatform {
       expect(warnings[0].code).toBe("unknown-resource-operation");
       expect(formatDiagnostic(warnings[0])).toContain("fetch");
       const resource = findResource(result.value, "OrderTable");
-      expect(resource.properties.operations).toEqual(["read", "fetch"]);
+      expect(resource.properties.operations).toEqual([{ verb: "read" }, { verb: "fetch" }]);
     });
 
     it("warns on duplicate verbs and dedupes them on the AST", () => {
@@ -2119,7 +2123,7 @@ system ECPlatform {
       expect(warnings).toHaveLength(1);
       expect(warnings[0].code).toBe("duplicate-resource-operation");
       const resource = findResource(result.value, "OrderTable");
-      expect(resource.properties.operations).toEqual(["read"]);
+      expect(resource.properties.operations).toEqual([{ verb: "read" }]);
     });
 
     it("rejects operations on non-resource nodes", () => {
@@ -2136,6 +2140,139 @@ system ECPlatform {
       `);
       const errors = result.diagnostics.filter((d) => d.severity === "error");
       expect(errors.some((e) => e.code === "property-not-for-node-kind")).toBe(true);
+    });
+
+    it("accepts verb decoration `verb:crud` and suppresses unknown-resource-operation", () => {
+      const result = Parser.parse(`
+system S {
+  service A {
+    domain X {
+      usecase U {
+        resource OrderTable [external] {
+          operations create, list:read, search:read
+        }
+      }
+    }
+  }
+}
+      `);
+      const errors = result.diagnostics.filter((d) => d.severity === "error");
+      const warnings = result.diagnostics.filter((d) => d.severity === "warning");
+      expect(errors).toHaveLength(0);
+      expect(warnings).toHaveLength(0);
+      const resource = findResource(result.value, "OrderTable");
+      expect(resource.properties.operations).toEqual([
+        { verb: "create" },
+        { verb: "list", decoratedAs: ["read"] },
+        { verb: "search", decoratedAs: ["read"] },
+      ]);
+    });
+
+    it("groups CRUD continuations until the next `verb:` boundary (Q1.1 rule)", () => {
+      // `replace:create,delete, list:read` → replace:[C,D], list:[R]
+      // `search:read,create` → search:[R,C] because `create` has no following `:`.
+      const result = Parser.parse(`
+system S {
+  service A {
+    domain X {
+      usecase U {
+        resource T [external] {
+          operations search:read,create, list:read
+        }
+      }
+    }
+  }
+}
+      `);
+      expect(result.diagnostics).toHaveLength(0);
+      const resource = findResource(result.value, "T");
+      expect(resource.properties.operations).toEqual([
+        { verb: "search", decoratedAs: ["read", "create"] },
+        { verb: "list", decoratedAs: ["read"] },
+      ]);
+    });
+
+    it("accepts 1:N decoration `verb:c1,c2`", () => {
+      const result = Parser.parse(`
+system S {
+  service A {
+    domain X {
+      usecase U {
+        resource Cache [external] {
+          operations replace:create,delete, list:read
+        }
+      }
+    }
+  }
+}
+      `);
+      expect(result.diagnostics).toHaveLength(0);
+      const resource = findResource(result.value, "Cache");
+      expect(resource.properties.operations).toEqual([
+        { verb: "replace", decoratedAs: ["create", "delete"] },
+        { verb: "list", decoratedAs: ["read"] },
+      ]);
+    });
+
+    it("emits invalid-crud-decoration when RHS is not a CRUD verb", () => {
+      const result = Parser.parse(`
+system S {
+  service A {
+    domain X {
+      usecase U {
+        resource T [external] {
+          operations list:bogus
+        }
+      }
+    }
+  }
+}
+      `);
+      const errors = result.diagnostics.filter((d) => d.severity === "error");
+      expect(errors).toHaveLength(1);
+      expect(errors[0].code).toBe("invalid-crud-decoration");
+      const resource = findResource(result.value, "T");
+      expect(resource.properties.operations).toEqual([{ verb: "list", decoratedAs: [] }]);
+    });
+
+    it("emits empty-crud-decoration when RHS is empty", () => {
+      const result = Parser.parse(`
+system S {
+  service A {
+    domain X {
+      usecase U {
+        resource T [external] {
+          operations list:, create
+        }
+      }
+    }
+  }
+}
+      `);
+      const errors = result.diagnostics.filter((d) => d.severity === "error");
+      expect(errors.some((e) => e.code === "empty-crud-decoration")).toBe(true);
+    });
+
+    it("emits duplicate-crud-decoration-target on `replace:create,create`", () => {
+      const result = Parser.parse(`
+system S {
+  service A {
+    domain X {
+      usecase U {
+        resource T [external] {
+          operations replace:create,create
+        }
+      }
+    }
+  }
+}
+      `);
+      const warnings = result.diagnostics.filter((d) => d.severity === "warning");
+      expect(warnings.some((w) => w.code === "duplicate-crud-decoration-target")).toBe(true);
+      const resource = findResource(result.value, "T");
+      expect(resource.properties.operations).toEqual([
+        { verb: "replace", decoratedAs: ["create"] },
+      ]);
     });
   });
 
