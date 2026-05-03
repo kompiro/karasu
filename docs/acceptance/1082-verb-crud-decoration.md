@@ -21,8 +21,7 @@ type: product
   - `packages/app/src/i18n/{en,ja,types,format-diagnostic}.ts`
   - `docs/spec/syntax.md` § Verb-decoration syntax
   - `examples/feature-samples/crud-matrix.krs`
-- **関連 ADR**: [ADR-20260430-03](../adr/20260430-03-resource-crud-operations.md)（`operations` プロパティ — 本機能はその syntax 拡張）, [ADR-20260502-01](../adr/20260502-01-crud-matrix-view.md)（CRUD マトリクスビューが consumer）
-- **関連 Design Doc**: [verb-crud-decoration.md](../design/verb-crud-decoration.md)
+- **関連 ADR**: [ADR-20260503-01](../adr/20260503-01-verb-crud-decoration.md)（本機能の決定）, [ADR-20260430-03](../adr/20260430-03-resource-crud-operations.md)（`operations` プロパティ — 本機能はその syntax 拡張）, [ADR-20260502-01](../adr/20260502-01-crud-matrix-view.md)（CRUD マトリクスビューが consumer）
 
 ## 受け入れ条件
 
