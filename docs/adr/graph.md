@@ -1,12 +1,13 @@
 # ADR Dependency Graph — Overview
 
-142 ADRs across 15 topics. Clusters group by `topic` frontmatter field. Edges crossing cluster borders are cross-topic dependencies.
+146 ADRs across 15 topics. Clusters group by `topic` frontmatter field. Edges crossing cluster borders are cross-topic dependencies.
 ```mermaid
 flowchart TD
   subgraph adr-tooling["adr-tooling"]
     ADR_20260423_01["ADR-20260423-01<br/>ADR 本文とフロントマター関係フィールドの整合性を validator の warning ..."]
     ADR_20260424_01["ADR-20260424-01<br/>ADR knowledge graph — machine-readable frontmat..."]
     ADR_20260427_02["ADR-20260427-02<br/>ADR タイトルは OSS 化までは日本語で書く"]
+    ADR_20260502_02["ADR-20260502-02<br/>ADR ツール用語彙の adr.config.json への外部化"]
   end
   subgraph app-ui["app-ui"]
     ADR_20260323_02["ADR-20260323-02<br/>ツールバーボタンはアイコン+テキストラベル必須"]
@@ -72,6 +73,7 @@ flowchart TD
     ADR_20260419_01["ADR-20260419-01<br/>`translate --from db` のデフォルトを集約ルート単位のテーブル集約に変更する"]
     ADR_20260429_06["ADR-20260429-06<br/>`karasu diff` CLI と diff SVG の self-contained ス..."]
     ADR_20260430_02["ADR-20260430-02<br/>`karasu diff` の bundled all-views 出力"]
+    ADR_20260502_01["ADR-20260502-01<br/>CRUD マトリクスビュー（usecase × resource）を派生プロジェクションとして..."]
   end
   subgraph core-concepts["core-concepts"]
     ADR_20260312_02["ADR-20260312-02<br/>ツール名「karasu」の採用"]
@@ -100,6 +102,7 @@ flowchart TD
     ADR_20260409_03["ADR-20260409-03<br/>クロスナビゲーション時のアトミックなハイライト適用"]
     ADR_20260409_07["ADR-20260409-07<br/>マルチファイルプロジェクトでのクロスファイルナビゲーション"]
     ADR_20260411_03["ADR-20260411-03<br/>ブラウザ履歴でのハイライト復元 — hash コロン拡張"]
+    ADR_20260504_01["ADR-20260504-01<br/>ActiveView を追加するときは URL hash 対応もセットで行う"]
   end
   subgraph parser["parser"]
     ADR_20260320_02["ADR-20260320-02<br/>AST 再構成 — Discriminated Union とプロパティブロック"]
@@ -113,6 +116,7 @@ flowchart TD
     ADR_20260410_03["ADR-20260410-03<br/>構造的 `.krs` パッチ — ノード ID ベースの `append` / `replac..."]
     ADR_20260412_04["ADR-20260412-04<br/>ブロック内エッジの暗黙 source 簡略記法"]
     ADR_20260430_03["ADR-20260430-03<br/>usecase 内 resource に CRUD operations プロパティを追加する"]
+    ADR_20260503_01["ADR-20260503-01<br/>usecase resource operations に verb 装飾構文（1:N CRU..."]
   end
   subgraph project["project"]
     ADR_20260317_02["ADR-20260317-02<br/>プロジェクトとファイルシステム抽象化 — `FileSystemProvider` + OPFS"]
@@ -251,6 +255,7 @@ flowchart TD
   ADR_20260422_07 --> ADR_20260420_02
   ADR_20260425_01 --> ADR_20260420_03
   ADR_20260430_04 --> ADR_20260430_03
+  ADR_20260502_02 --> ADR_20260424_01
   ADR_20260412_05 -.supersedes.-> ADR_20260324_01
   ADR_20260429_09 -.supersedes.-> ADR_20260428_05
 
@@ -402,19 +407,23 @@ flowchart TD
   class ADR_20260430_03 accepted
   class ADR_20260430_04 accepted
   class ADR_20260501_01 accepted
+  class ADR_20260502_01 accepted
+  class ADR_20260502_02 accepted
+  class ADR_20260503_01 accepted
+  class ADR_20260504_01 accepted
 ```
 
 ## Per-topic detail
 
-- [`adr-tooling`](graph/adr-tooling.md) — 3 ADRs
+- [`adr-tooling`](graph/adr-tooling.md) — 4 ADRs
 - [`app-ui`](graph/app-ui.md) — 18 ADRs
 - [`build`](graph/build.md) — 22 ADRs
 - [`chat-ai`](graph/chat-ai.md) — 8 ADRs
-- [`cli`](graph/cli.md) — 9 ADRs
+- [`cli`](graph/cli.md) — 10 ADRs
 - [`core-concepts`](graph/core-concepts.md) — 7 ADRs
 - [`edges`](graph/edges.md) — 7 ADRs
-- [`navigation`](graph/navigation.md) — 8 ADRs
-- [`parser`](graph/parser.md) — 11 ADRs
+- [`navigation`](graph/navigation.md) — 9 ADRs
+- [`parser`](graph/parser.md) — 12 ADRs
 - [`project`](graph/project.md) — 4 ADRs
 - [`renderer`](graph/renderer.md) — 21 ADRs
 - [`resolver`](graph/resolver.md) — 4 ADRs

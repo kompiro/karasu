@@ -51,6 +51,28 @@ export { formatDiagnostic } from "./parser/diagnostic-legacy-format.js";
 
 export type { ViewPath, ViewSlice, DomainEdgeDetail } from "./view/view-extract.js";
 export { extractView } from "./view/view-extract.js";
+export type {
+  CrudMatrix,
+  CrudMatrixRow,
+  CrudMatrixColumn,
+  CrudMatrixCell,
+  CrudMatrixOptions,
+  CrudTally,
+  CrudVerb,
+  InfraKind,
+} from "./view/crud-matrix-extract.js";
+export {
+  extractCrudMatrix,
+  cellKey,
+  formatCell,
+  CRUD_VERB_ORDER,
+} from "./view/crud-matrix-extract.js";
+export {
+  formatMatrixAsMarkdown,
+  formatMatrixAsCsv,
+  type CrudMatrixFormatOptions,
+} from "./view/crud-matrix-format.js";
+export { renderMatrixAsSvg, type MatrixSvgOptions } from "./render/matrix-svg.js";
 export type { OrgViewPath, OrgViewSlice } from "./view/org-view-extract.js";
 export { extractOrgView } from "./view/org-view-extract.js";
 export type {

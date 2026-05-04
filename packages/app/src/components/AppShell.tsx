@@ -208,6 +208,7 @@ export function AppShell({
         highlightedNodeId,
         onClearHighlight: nav.clearHighlight,
         nodeDiff: views.system.nodeDiff,
+        systems: views.system.resolvedSystems,
       },
       deployView: {
         svg: views.deploy.svg,
@@ -263,6 +264,7 @@ export function AppShell({
       views.system.diagnostics,
       views.system.warnings,
       views.system.nodeDiff,
+      views.system.resolvedSystems,
       views.deploy.svg,
       views.deploy.diagnostics,
       views.deploy.warnings,

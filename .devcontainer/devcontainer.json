@@ -13,7 +13,8 @@
     "source=${localEnv:HOME}/.config/git/,target=/home/node/.config/git/,type=bind,consistency=cached"
   ],
   "containerEnv": {
-    "CLAUDE_CONFIG_DIR": "/home/node/.claude"
+    "CLAUDE_CONFIG_DIR": "/home/node/.claude",
+    "NODE_AUTH_TOKEN": "${localEnv:NODE_AUTH_TOKEN}"
   },
   "remoteUser": "node",
   "forwardPorts": [5173],

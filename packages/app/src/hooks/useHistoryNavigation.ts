@@ -27,6 +27,7 @@ export function buildHash(
 ): string {
   let base: string;
   if (activeView === "deploy") base = "#krs-deploy";
+  else if (activeView === "matrix") base = "#krs-matrix";
   else if (activeView === "org" && isOrgTreeView) base = "#krs-org-tree";
   else {
     const prefix = activeView === "org" ? "org" : "system";
@@ -76,6 +77,8 @@ export function parseHash(hash: string): {
 
   if (base === "#krs-deploy")
     return { activeView: "deploy", nodeId: null, isOrgTreeView: false, highlightNodeId, filePath };
+  if (base === "#krs-matrix")
+    return { activeView: "matrix", nodeId: null, isOrgTreeView: false, highlightNodeId, filePath };
   if (base === "#krs-org-tree")
     return { activeView: "org", nodeId: null, isOrgTreeView: true, highlightNodeId, filePath };
   const m = base.match(/^#krs-(system|org)-(.+)$/);

@@ -86,7 +86,12 @@ system ECPlatform {
           operations create
         }
       }
-      usecase ShowOrderHistory { label "注文履歴を照会する" }
+      usecase ShowOrderHistory {
+        label "注文履歴を照会する"
+        resource ECommerceDB.OrderTable {
+          operations read
+        }
+      }
     }
     domain Member {
       label "会員"
@@ -96,7 +101,12 @@ system ECPlatform {
           operations create
         }
       }
-      usecase EditProfile { label "プロフィールを編集する" }
+      usecase EditProfile {
+        label "プロフィールを編集する"
+        resource ECommerceDB.MemberTable {
+          operations read, update
+        }
+      }
     }
   }
   service Payment [external] {
@@ -311,7 +321,12 @@ system ECPlatform {
           operations create
         }
       }
-      usecase ShowOrderHistory { label "View order history" }
+      usecase ShowOrderHistory {
+        label "View order history"
+        resource ECommerceDB.OrderTable {
+          operations read
+        }
+      }
     }
     domain Member {
       label "Members"
@@ -321,7 +336,12 @@ system ECPlatform {
           operations create
         }
       }
-      usecase EditProfile { label "Edit profile" }
+      usecase EditProfile {
+        label "Edit profile"
+        resource ECommerceDB.MemberTable {
+          operations read, update
+        }
+      }
     }
   }
   service Payment [external] {

@@ -1,9 +1,11 @@
 import { readFile, writeFile, readdir, stat } from "node:fs/promises";
-import { resolve } from "node:path";
+import { resolve, dirname, basename, extname } from "node:path";
 import {
   buildAllViewsSvgProject,
   buildDrawioProject,
   compileProject,
+  extractCrudMatrix,
+  renderMatrixAsSvg,
   formatDiagnostic,
   formatWarning,
 } from "@karasu-tools/core";
@@ -63,6 +65,7 @@ interface RenderOptions {
   output?: string;
   view?: DiagramType;
   format?: RenderFormat;
+  includeMatrix?: boolean;
 }
 
 export async function render(filePath: string, options: RenderOptions): Promise<void> {
@@ -122,6 +125,26 @@ export async function render(filePath: string, options: RenderOptions): Promise<
     await writeFile(resolve(options.output), output, "utf-8");
   } else {
     process.stdout.write(output);
+  }
+
+  if (options.includeMatrix) {
+    if (!options.output) {
+      process.stderr.write("Warning: --include-matrix requires --output; matrix.svg not written\n");
+    } else if (format !== "svg") {
+      process.stderr.write(
+        `Warning: --include-matrix is only supported with --format svg; matrix.svg not written\n`,
+      );
+    } else {
+      const result = await compileProject(absolutePath, fs, { diagramType: "system" });
+      if (result.diagramType === "system") {
+        const matrix = extractCrudMatrix(result.systems);
+        const matrixSvg = renderMatrixAsSvg(matrix);
+        const outDir = dirname(resolve(options.output));
+        const stem = basename(options.output, extname(options.output));
+        const matrixPath = resolve(outDir, `${stem}.matrix.svg`);
+        await writeFile(matrixPath, matrixSvg, "utf-8");
+      }
+    }
   }
 }
 

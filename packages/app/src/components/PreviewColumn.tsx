@@ -4,6 +4,7 @@ import { BreadcrumbBar } from "./BreadcrumbBar.js";
 import { PreviewPane } from "./PreviewPane.js";
 import { WarningPanel } from "./WarningPanel.js";
 import { ReferencePanel } from "./ReferencePanel.js";
+import { CrudMatrixPanel } from "./CrudMatrixPanel.js";
 import { buildSvgExportFilename } from "../utils/build-svg-export-filename.js";
 import { usePreview } from "../state/preview-context.js";
 import { useTranslation } from "../i18n/index.js";
@@ -146,6 +147,21 @@ export function PreviewColumn() {
     const blob = new Blob([allViewsSvg], { type: "image/svg+xml" });
     const url = URL.createObjectURL(blob);
     window.open(url, "_blank");
+  }
+
+  if (activeView === "matrix") {
+    return (
+      <div className="preview-column">
+        <DiagramTabBar
+          active={activeView}
+          onChange={onActiveViewChange}
+          deployBlocks={deployBlocks}
+          selectedDeployBlockId={selectedDeployBlockId}
+          onDeployBlockChange={onDeployBlockChange}
+        />
+        <CrudMatrixPanel systems={systemView.systems} />
+      </div>
+    );
   }
 
   return (

@@ -229,6 +229,9 @@ export class Lexer {
       case ",":
         this.advance();
         return { type: TokenType.Comma, value: ",", loc };
+      case ":":
+        this.advance();
+        return { type: TokenType.Colon, value: ":", loc };
       case '"':
         if (this.peekAt(1) === '"' && this.peekAt(2) === '"') {
           return this.readTripleQuoteString(loc);

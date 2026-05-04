@@ -9,6 +9,7 @@ import { remove } from "./remove.js";
 import { insert } from "./insert.js";
 import { fmt } from "./fmt.js";
 import { diff } from "./diff.js";
+import { matrix } from "./matrix.js";
 
 program.name("karasu").description("karasu — architecture diagram tool").version("0.0.0");
 
@@ -35,6 +36,10 @@ program
     "Output format: svg | drawio (default: svg). drawio emits one page per view and per system drill-down level.",
     "svg",
   )
+  .option(
+    "--include-matrix",
+    "Also write a CRUD matrix SVG (<output-stem>.matrix.svg) alongside --output. Requires --format svg and --output.",
+  )
   .addHelpText(
     "after",
     `
@@ -56,17 +61,25 @@ Examples:
   $ karasu render index.krs --format drawio --output arch.drawio
   $ karasu render index.krs --format drawio --view system --output system.drawio`,
   )
-  .action((file: string, options: { output?: string; view?: string; format?: string }) => {
-    if (options.format && options.format !== "svg" && options.format !== "drawio") {
-      process.stderr.write(`Error: unknown --format "${options.format}" (expected svg | drawio)\n`);
-      process.exit(1);
-    }
-    render(file, {
-      output: options.output,
-      view: options.view as "system" | "deploy" | "org" | undefined,
-      format: options.format as "svg" | "drawio" | undefined,
-    });
-  });
+  .action(
+    (
+      file: string,
+      options: { output?: string; view?: string; format?: string; includeMatrix?: boolean },
+    ) => {
+      if (options.format && options.format !== "svg" && options.format !== "drawio") {
+        process.stderr.write(
+          `Error: unknown --format "${options.format}" (expected svg | drawio)\n`,
+        );
+        process.exit(1);
+      }
+      render(file, {
+        output: options.output,
+        view: options.view as "system" | "deploy" | "org" | undefined,
+        format: options.format as "svg" | "drawio" | undefined,
+        includeMatrix: options.includeMatrix,
+      });
+    },
+  );
 
 program
   .command("translate <file>")
@@ -326,6 +339,56 @@ Examples:
   )
   .action((files: string[], options: { check?: boolean; stdin?: boolean }) => {
     fmt(files, { check: options.check, stdin: options.stdin });
+  });
+
+program
+  .command("matrix <file>")
+  .description("Render a usecase × resource CRUD matrix from a .krs project")
+  .option("-o, --output <path>", "Write output to file (default: stdout)")
+  .option("--format <format>", "Output format: md | csv | svg (default: md)", "md")
+  .option(
+    "--service <name>",
+    "Restrict rows to usecases inside the named service (repeatable)",
+    (value: string, prev: string[] | undefined) => [...(prev ?? []), value],
+  )
+  .option(
+    "--infra <kind>",
+    "Restrict columns to the named infra kind: database | queue | storage (repeatable)",
+    (value: string, prev: string[] | undefined) => [...(prev ?? []), value],
+  )
+  .option("--external", "Show only [external] resources")
+  .option("--no-external", "Hide [external] resources")
+  .option("--writes-only", "Drop read-only cells (and any rows/columns left empty)")
+  .option("--omit-empty", "Drop rows/columns with no cells (default: show all)")
+  .option("--no-totals", "Hide row/column ΣC/ΣR/ΣU/ΣD totals (default: show)")
+  .addHelpText(
+    "after",
+    `
+Examples:
+  # Markdown to terminal (default)
+  $ karasu matrix index.krs
+
+  # CSV for spreadsheet / CI snapshot
+  $ karasu matrix index.krs --format csv -o matrix.csv
+
+  # SVG for documentation
+  $ karasu matrix index.krs --format svg -o matrix.svg
+
+  # Filter to one service and database resources only
+  $ karasu matrix index.krs --service Catalog --infra database`,
+  )
+  .action((file: string, options) => {
+    matrix(file, {
+      output: options.output,
+      format: options.format,
+      service: options.service,
+      infra: options.infra,
+      external: options.external === true,
+      noExternal: options.external === false,
+      writesOnly: options.writesOnly,
+      omitEmpty: options.omitEmpty,
+      noTotals: options.totals === false,
+    });
   });
 
 export { program };

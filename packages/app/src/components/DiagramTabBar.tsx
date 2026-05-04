@@ -59,6 +59,15 @@ export function DiagramTabBar({
         <span className="diagram-tab-icon">👥</span>
         Org
       </button>
+      <button
+        className={`diagram-tab ${active === "matrix" ? "diagram-tab--active" : ""}`}
+        role="tab"
+        aria-selected={active === "matrix"}
+        onClick={() => onChange("matrix")}
+      >
+        <span className="diagram-tab-icon">▦</span>
+        CRUD
+      </button>
     </div>
   );
 }

@@ -207,6 +207,12 @@ export const en: Translations = {
     `Unknown resource operation "${operation}" on "${resourceId}". Recognized verbs: create, read, update, delete`,
   "diagnostic.duplicateResourceOperation.message": ({ operation, resourceId }) =>
     `Duplicate resource operation "${operation}" on "${resourceId}"`,
+  "diagnostic.invalidCrudDecoration.message": ({ operation, value, resourceId }) =>
+    `Invalid CRUD decoration "${value}" on operation "${operation}" of resource "${resourceId}". Right-hand side must be one of: create, read, update, delete`,
+  "diagnostic.emptyCrudDecoration.message": ({ operation, resourceId }) =>
+    `Empty CRUD decoration on operation "${operation}" of resource "${resourceId}". Use "${operation}:create,read,update,delete" or drop the colon`,
+  "diagnostic.duplicateCrudDecorationTarget.message": ({ operation, value, resourceId }) =>
+    `Duplicate CRUD verb "${value}" in decoration of "${operation}" on resource "${resourceId}"`,
   "diagnostic.duplicateOwnerAssignment.message": ({ nodeId, existingTeam }) =>
     `"${nodeId}" is already owned by team "${existingTeam}"; multiple teams cannot own the same service or domain`,
   "diagnostic.duplicateTeamId.message": ({ teamId }) => `Duplicate team id "${teamId}"`,

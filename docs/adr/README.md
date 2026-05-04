@@ -105,6 +105,7 @@ URL hash・ブラウザ履歴・マルチファイル間のナビゲーション
 - [ADR-20260409-03](20260409-03-atomic-highlight-on-cross-navigation.md) — クロスナビゲーション時のアトミックなハイライト適用
 - [ADR-20260409-07](20260409-07-cross-file-navigation.md) — マルチファイルプロジェクトでのクロスファイルナビゲーション
 - [ADR-20260411-03](20260411-03-hash-highlight-restoration.md) — ブラウザ履歴でのハイライト復元 — hash コロン拡張
+- [ADR-20260504-01](20260504-01-active-view-url-hash.md) — ActiveView を追加するときは URL hash 対応もセットで行う — チェックリスト化
 
 ### App UI — Editor / Toolbar / Panels
 
@@ -205,6 +206,7 @@ ADR 自体のスキーマ、フロントマター、バリデータ、extractor 
 
 - [ADR-20260423-01](20260423-01-adr-body-ref-check.md) — Validator warning for body ↔ frontmatter reference consistency
 - [ADR-20260424-01](20260424-01-adr-knowledge-graph.md) — ADR knowledge graph — machine-readable frontmatter + tooling
+- [ADR-20260502-02](20260502-02-adr-config-externalization.md) — ADR ツール用語彙の `adr.config.json` への外部化
 
 ---
 

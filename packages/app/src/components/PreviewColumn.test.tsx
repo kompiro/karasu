@@ -46,6 +46,7 @@ function makeProps(overrides: Partial<PreviewContextValue> = {}): PreviewContext
       breadcrumbItems: [{ id: "root", label: "Root" }],
       warnings: emptyWarnings,
       onBreadcrumbNavigate: noop,
+      systems: [],
     },
     deployView: {
       svg: emptySvg,
@@ -564,6 +565,22 @@ describe("PreviewColumn", () => {
       getByRole("button", { name: /Open all views in new window/ });
       expect(openSpy).not.toHaveBeenCalled();
       openSpy.mockRestore();
+    });
+  });
+
+  describe("matrix tab", () => {
+    it("exposes a CRUD tab in the diagram tab bar", () => {
+      const props = makeProps();
+      const { getByRole } = renderPreview(props);
+      expect(getByRole("tab", { name: /CRUD/ })).toBeTruthy();
+    });
+
+    it("renders the CRUD matrix panel when activeView is matrix", () => {
+      const props = makeProps({ activeView: "matrix" });
+      const { container } = renderPreview(props);
+      expect(container.querySelector(".crud-matrix-panel")).toBeTruthy();
+      // Toolbar (Icon Mode etc.) is hidden in matrix mode
+      expect(container.querySelector(".preview-toolbar")).toBeNull();
     });
   });
 });
