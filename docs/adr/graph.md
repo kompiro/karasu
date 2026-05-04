@@ -1,6 +1,6 @@
 # ADR Dependency Graph — Overview
 
-145 ADRs across 15 topics. Clusters group by `topic` frontmatter field. Edges crossing cluster borders are cross-topic dependencies.
+146 ADRs across 15 topics. Clusters group by `topic` frontmatter field. Edges crossing cluster borders are cross-topic dependencies.
 ```mermaid
 flowchart TD
   subgraph adr-tooling["adr-tooling"]
@@ -102,6 +102,7 @@ flowchart TD
     ADR_20260409_03["ADR-20260409-03<br/>クロスナビゲーション時のアトミックなハイライト適用"]
     ADR_20260409_07["ADR-20260409-07<br/>マルチファイルプロジェクトでのクロスファイルナビゲーション"]
     ADR_20260411_03["ADR-20260411-03<br/>ブラウザ履歴でのハイライト復元 — hash コロン拡張"]
+    ADR_20260504_01["ADR-20260504-01<br/>ActiveView を追加するときは URL hash 対応もセットで行う"]
   end
   subgraph parser["parser"]
     ADR_20260320_02["ADR-20260320-02<br/>AST 再構成 — Discriminated Union とプロパティブロック"]
@@ -409,6 +410,7 @@ flowchart TD
   class ADR_20260502_01 accepted
   class ADR_20260502_02 accepted
   class ADR_20260503_01 accepted
+  class ADR_20260504_01 accepted
 ```
 
 ## Per-topic detail
@@ -420,7 +422,7 @@ flowchart TD
 - [`cli`](graph/cli.md) — 10 ADRs
 - [`core-concepts`](graph/core-concepts.md) — 7 ADRs
 - [`edges`](graph/edges.md) — 7 ADRs
-- [`navigation`](graph/navigation.md) — 8 ADRs
+- [`navigation`](graph/navigation.md) — 9 ADRs
 - [`parser`](graph/parser.md) — 12 ADRs
 - [`project`](graph/project.md) — 4 ADRs
 - [`renderer`](graph/renderer.md) — 21 ADRs
