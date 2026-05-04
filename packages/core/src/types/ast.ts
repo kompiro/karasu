@@ -1,4 +1,7 @@
 import type { SourceRange } from "./tokens.js";
+import type { ResourceOperation } from "../spec/operations.js";
+
+export type { ResourceOperation } from "../spec/operations.js";
 
 export type LogicalNodeKind =
   | "system"
@@ -97,13 +100,17 @@ export interface ResourceNode extends BaseNodeFields {
   kind: "resource";
   properties: CommonProperties & {
     /**
-     * CRUD-style operations this usecase performs on the resource. Recognized
-     * verbs are `create` / `read` / `update` / `delete`; unknown verbs parse
-     * but raise an `unknown-resource-operation` warning so future verbs
-     * (`list`, `search`, `execute`, …) round-trip through translate adapters.
-     * Omission keeps current behavior (no diagnostic, opaque dependency).
+     * CRUD-style operations this usecase performs on the resource. Each
+     * entry carries the raw verb the author wrote and, when they used the
+     * decoration syntax (`verb:c[,c]`), the CRUD verbs they mapped it to.
+     *
+     * Recognized bare verbs are `create` / `read` / `update` / `delete`.
+     * Unknown bare verbs (`list`, `search`, `execute`, …) parse and raise
+     * an `unknown-resource-operation` warning unless they carry decoration
+     * (e.g. `list:read`). Omission of `operations` keeps current behavior
+     * (no diagnostic, opaque dependency).
      */
-    operations?: string[];
+    operations?: ResourceOperation[];
   };
   /**
    * Set when the resource uses dot-notation reference syntax (e.g. `resource OrderDB.C`).
@@ -412,6 +419,9 @@ export interface DiagnosticParamsByCode {
   "client-resource-invalid-kind": { kind: string; name: string };
   "unknown-resource-operation": { operation: string; resourceId: string };
   "duplicate-resource-operation": { operation: string; resourceId: string };
+  "invalid-crud-decoration": { operation: string; value: string; resourceId: string };
+  "empty-crud-decoration": { operation: string; resourceId: string };
+  "duplicate-crud-decoration-target": { operation: string; value: string; resourceId: string };
   "duplicate-owner-assignment": { nodeId: string; existingTeam: string };
   "duplicate-team-id": { teamId: string };
   "domain-id-not-unique": { domainId: string };

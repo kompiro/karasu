@@ -14,18 +14,22 @@ on:
     branches: [main]
     paths:
       - "docs/adr/**"
-      - "scripts/adr/**"
+      - "adr.config.json"
       - ".github/workflows/adr-validate.yml"
   push:
     branches: [main]
     paths:
       - "docs/adr/**"
-      - "scripts/adr/**"
+      - "adr.config.json"
       - ".github/workflows/adr-validate.yml"
 
 concurrency:
   group: adr-validate-${{ github.ref }}
   cancel-in-progress: true
+
+permissions:
+  contents: read
+  packages: read
 
 jobs:
   validate:
@@ -42,6 +46,8 @@ jobs:
           cache: "pnpm"
 
       - run: pnpm install --frozen-lockfile
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Validate ADR frontmatter
         run: pnpm run adr:validate
@@ -50,7 +56,7 @@ jobs:
         run: pnpm run test:scripts
 
       - name: Check generated ADR files (effective.md, graph.md, graph/*.md)
-        run: pnpm exec tsx scripts/adr/regenerate.ts --check
+        run: pnpm exec adr regenerate --check
 
       - name: Check ADR assumptions against the working tree
-        run: pnpm exec tsx scripts/adr/check-assumptions.ts --quiet
+        run: pnpm exec adr check-assumptions --quiet

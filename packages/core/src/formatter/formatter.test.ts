@@ -466,6 +466,35 @@ organization Acme {
       expect(out).toContain(`"with \\" quote"`);
     });
 
+    it("preserves dot-notation resource refs without quoting the joined id", () => {
+      const src = `system EC {
+  database ProductDB { table T { label "T" } }
+  service ECommerce {
+    domain D {
+      usecase U { resource ProductDB.T }
+    }
+  }
+}`;
+      const out = fmt(src);
+      expect(out).toContain(`resource ProductDB.T`);
+      expect(out).not.toContain(`"ProductDB.T"`);
+      expectIdempotent(out);
+    });
+
+    it("quotes dot-notation resource segments individually when needed", () => {
+      const src = `system EC {
+  database "Product DB" { table "T 1" { label "T" } }
+  service ECommerce {
+    domain D {
+      usecase U { resource "Product DB"."T 1" }
+    }
+  }
+}`;
+      const out = fmt(src);
+      expect(out).toContain(`resource "Product DB"."T 1"`);
+      expectIdempotent(out);
+    });
+
     it("strips unnecessary quotes from bare-safe IDs", () => {
       // Inverse direction: round-trip should be canonical, not preserve
       // gratuitous quotes. `Foo` is a valid bare identifier, so the
@@ -473,6 +502,42 @@ organization Acme {
       const src = `system "Foo" {}`;
       const out = fmt(src);
       expect(out).toBe(`system Foo {}`);
+    });
+  });
+
+  describe("resource operations", () => {
+    it("emits bare verbs comma-separated", () => {
+      const src = `system S {
+  service A {
+    domain D {
+      usecase U {
+        resource R [external] {
+          operations create, read
+        }
+      }
+    }
+  }
+}`;
+      const out = fmt(src);
+      expect(out).toContain("operations create, read");
+      expectIdempotent(out);
+    });
+
+    it("emits decorated verbs without spaces around `:` or in CRUD list", () => {
+      const src = `system S {
+  service A {
+    domain D {
+      usecase U {
+        resource R [external] {
+          operations list:read, replace:create,delete
+        }
+      }
+    }
+  }
+}`;
+      const out = fmt(src);
+      expect(out).toContain("operations list:read, replace:create,delete");
+      expectIdempotent(out);
     });
   });
 });

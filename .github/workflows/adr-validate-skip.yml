@@ -15,7 +15,7 @@ on:
     types: [opened, synchronize, reopened]
     paths-ignore:
       - "docs/adr/**"
-      - "scripts/adr/**"
+      - "adr.config.json"
       - ".github/workflows/adr-validate.yml"
 
 concurrency:
