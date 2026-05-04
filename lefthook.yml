@@ -15,11 +15,11 @@ pre-push:
       glob: "docs/adr/*.md"
       run: pnpm run adr:validate
     adr-regenerate-check:
-      glob: "{docs/adr/**,scripts/adr/**}"
-      run: pnpm exec tsx scripts/adr/regenerate.ts --check
+      glob: "{docs/adr/**,adr.config.json}"
+      run: pnpm exec adr regenerate --check
     adr-check-assumptions:
-      glob: "{docs/adr/**,scripts/adr/**}"
-      run: pnpm exec tsx scripts/adr/check-assumptions.ts --quiet
+      glob: "{docs/adr/**,adr.config.json}"
+      run: pnpm exec adr check-assumptions --quiet
     at-check-coverage:
       glob: "{docs/acceptance/**,scripts/acceptance/**}"
       run: pnpm exec tsx scripts/acceptance/check-coverage.ts --strict
