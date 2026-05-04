@@ -18,6 +18,10 @@ concurrency:
   group: at-check-coverage-${{ github.ref }}
   cancel-in-progress: true
 
+permissions:
+  contents: read
+  packages: read
+
 jobs:
   check:
     name: Check
@@ -34,7 +38,7 @@ jobs:
 
       - run: pnpm install --frozen-lockfile
         env:
-          NODE_AUTH_TOKEN: ${{ secrets.ADR_TOOLS_READ_TOKEN }}
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Run AT coverage tests
         run: pnpm run at:test

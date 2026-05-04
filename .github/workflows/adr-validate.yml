@@ -27,6 +27,10 @@ concurrency:
   group: adr-validate-${{ github.ref }}
   cancel-in-progress: true
 
+permissions:
+  contents: read
+  packages: read
+
 jobs:
   validate:
     name: Validate
@@ -43,7 +47,7 @@ jobs:
 
       - run: pnpm install --frozen-lockfile
         env:
-          NODE_AUTH_TOKEN: ${{ secrets.ADR_TOOLS_READ_TOKEN }}
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Validate ADR frontmatter
         run: pnpm run adr:validate
