@@ -36,6 +36,18 @@ describe("buildHash", () => {
     expect(buildHash("system", ["my service"])).toBe("#krs-system-my_service");
   });
 
+  it("returns #krs-matrix for matrix view", () => {
+    expect(buildHash("matrix", [])).toBe("#krs-matrix");
+  });
+
+  it("ignores viewPath for matrix view (matrix has no drill-down)", () => {
+    expect(buildHash("matrix", ["ignored"])).toBe("#krs-matrix");
+  });
+
+  it("appends :highlightNodeId to matrix hash when provided", () => {
+    expect(buildHash("matrix", [], false, "OrderTable")).toBe("#krs-matrix:OrderTable");
+  });
+
   it("returns #krs-org-tree when isOrgTreeView is true", () => {
     expect(buildHash("org", [], true)).toBe("#krs-org-tree");
   });
@@ -126,6 +138,46 @@ describe("parseHash", () => {
     expect(parseHash("#krs-org-backend")).toEqual({
       activeView: "org",
       nodeId: "backend",
+      isOrgTreeView: false,
+      highlightNodeId: null,
+      filePath: null,
+    });
+  });
+
+  it("parses #krs-matrix as matrix view (no nodeId, no tree-view)", () => {
+    expect(parseHash("#krs-matrix")).toEqual({
+      activeView: "matrix",
+      nodeId: null,
+      isOrgTreeView: false,
+      highlightNodeId: null,
+      filePath: null,
+    });
+  });
+
+  it("parses #krs-matrix:OrderTable with highlight suffix", () => {
+    expect(parseHash("#krs-matrix:OrderTable")).toEqual({
+      activeView: "matrix",
+      nodeId: null,
+      isOrgTreeView: false,
+      highlightNodeId: "OrderTable",
+      filePath: null,
+    });
+  });
+
+  it("parses #krs-matrix?file=... with file suffix", () => {
+    expect(parseHash("#krs-matrix?file=%2Fp%2Findex.krs")).toEqual({
+      activeView: "matrix",
+      nodeId: null,
+      isOrgTreeView: false,
+      highlightNodeId: null,
+      filePath: "/p/index.krs",
+    });
+  });
+
+  it("round-trips matrix view through buildHash → parseHash", () => {
+    expect(parseHash(buildHash("matrix", []))).toEqual({
+      activeView: "matrix",
+      nodeId: null,
       isOrgTreeView: false,
       highlightNodeId: null,
       filePath: null,
