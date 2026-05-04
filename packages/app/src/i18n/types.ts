@@ -232,6 +232,20 @@ export type Translations = {
     operation: string;
     resourceId: string;
   }) => string;
+  "diagnostic.invalidCrudDecoration.message": (params: {
+    operation: string;
+    value: string;
+    resourceId: string;
+  }) => string;
+  "diagnostic.emptyCrudDecoration.message": (params: {
+    operation: string;
+    resourceId: string;
+  }) => string;
+  "diagnostic.duplicateCrudDecorationTarget.message": (params: {
+    operation: string;
+    value: string;
+    resourceId: string;
+  }) => string;
   "diagnostic.duplicateOwnerAssignment.message": (params: {
     nodeId: string;
     existingTeam: string;

@@ -1,5 +1,9 @@
 import type { KrsNode, SystemNode, ResourceNode } from "../types/ast.js";
-import { isWriteOperation, isRecognizedResourceOperation } from "../spec/operations.js";
+import {
+  isWriteOperation,
+  isRecognizedResourceOperation,
+  type ResourceOperation,
+} from "../spec/operations.js";
 
 export type CrudVerb = "create" | "read" | "update" | "delete";
 export type InfraKind = "database" | "queue" | "storage";
@@ -119,15 +123,20 @@ interface VerbBuckets {
   unknown: string[];
 }
 
-function classifyVerbs(operations: readonly string[] | undefined): VerbBuckets {
+function classifyVerbs(operations: readonly ResourceOperation[] | undefined): VerbBuckets {
   const recognized = new Set<CrudVerb>();
   const unknown: string[] = [];
   if (!operations) return { recognized, unknown };
-  for (const raw of operations) {
-    if (isRecognizedResourceOperation(raw)) {
-      recognized.add(raw as CrudVerb);
+  for (const op of operations) {
+    if (op.decoratedAs && op.decoratedAs.length > 0) {
+      // Decoration wins: contribute the mapped CRUD verbs, no `?` suffix.
+      for (const v of op.decoratedAs) recognized.add(v);
+      continue;
+    }
+    if (isRecognizedResourceOperation(op.verb)) {
+      recognized.add(op.verb);
     } else {
-      unknown.push(raw);
+      unknown.push(op.verb);
     }
   }
   return { recognized, unknown };

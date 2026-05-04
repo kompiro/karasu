@@ -36,7 +36,22 @@ import type {
   LegendViewScope,
 } from "../types/ast.js";
 import { Lexer } from "../lexer/lexer.js";
-import { isRecognizedResourceOperation } from "../spec/operations.js";
+import { isRecognizedResourceOperation, type CrudVerb } from "../spec/operations.js";
+import type { ResourceOperation } from "../spec/operations.js";
+
+/** Intermediate shape returned by `parseOperationsList` before per-resource validation. */
+interface ParsedOperation {
+  verb: string;
+  /**
+   * Decorated CRUD candidates. `undefined` = no `:` decoration was present
+   * (bare verb). `[]` = `:` was present but RHS was empty (will produce
+   * `empty-crud-decoration`). Otherwise each entry's `recognized` flag tells
+   * the resource builder whether to count it or emit `invalid-crud-decoration`.
+   */
+  decoration: { value: string; recognized: boolean }[] | undefined;
+  /** Loc of the verb token (for diagnostic positioning). */
+  decorationLoc: SourceLocation | undefined;
+}
 
 const LOGICAL_KEYWORDS = new Set<string>([
   "system",
@@ -315,7 +330,7 @@ export class Parser {
       capabilities?: import("../types/ast.js").ClientCapability[];
       handles?: string[];
       delivers?: string[];
-      operations?: string[];
+      operations?: ParsedOperation[];
     },
     parentId?: string,
   ): void {
@@ -381,14 +396,15 @@ export class Parser {
 
       // Property: operations (resource only) — CRUD verbs the enclosing usecase
       // performs on this resource. Comma-separated identifiers; multiple
-      // `operations` lines accumulate (mirroring `handles`).
+      // `operations` lines accumulate. Optional `verb:c[,c]` decoration maps
+      // a non-CRUD verb to its CRUD intent (`list:read`, `replace:create,delete`).
       if (token.type === TokenType.Operations) {
         if (kind === "resource") {
           this.advance();
-          const verbs = this.parseHandlesList();
-          if (verbs.length > 0) {
+          const ops = this.parseOperationsList();
+          if (ops.length > 0) {
             if (!properties.operations) properties.operations = [];
-            properties.operations.push(...verbs);
+            properties.operations.push(...ops);
           }
         } else {
           this.error("property-not-for-node-kind", { property: "operations", nodeKind: kind });
@@ -631,6 +647,81 @@ export class Parser {
    * keyword on the next line — the lexer is whitespace-insensitive so the
    * comma is the delimiter).
    */
+  /**
+   * Parse the right-hand side of an `operations` property. Each entry is
+   * either a bare verb (`create`, `list`) or a decorated verb (`list:read`,
+   * `replace:create,delete`). Comma-separated; the comma after a decoration
+   * RHS is recognised as a verb separator only when the next identifier is
+   * followed by `:` — otherwise the bare identifier becomes a CRUD-RHS
+   * continuation that the per-verb validator will accept (recognised CRUD)
+   * or flag with `invalid-crud-decoration` (anything else).
+   *
+   * Diagnostics are *deferred* to the resource builder so the resourceId is
+   * available; we return raw entries plus malformed-flag info here.
+   */
+  private parseOperationsList(): ParsedOperation[] {
+    const out: ParsedOperation[] = [];
+    if (!this.peekIsIdOrString()) {
+      this.error("expected-id-after", { property: "operations" });
+      return out;
+    }
+    out.push(this.parseOneOperation());
+    while (this.peek().type === TokenType.Comma) {
+      this.advance();
+      if (!this.peekIsIdOrString()) {
+        this.error("expected-id-after", { property: "operations" });
+        break;
+      }
+      out.push(this.parseOneOperation());
+    }
+    return out;
+  }
+
+  private parseOneOperation(): ParsedOperation {
+    const verbToken = this.advance();
+    const verb = verbToken.value;
+    if (this.peek().type !== TokenType.Colon) {
+      return { verb, decoration: undefined, decorationLoc: undefined };
+    }
+    this.advance(); // consume `:`
+    const decoration: { value: string; recognized: boolean }[] = [];
+    if (!this.peekIsIdOrString()) {
+      // Empty RHS — emit empty-crud-decoration later in the resource builder.
+      return { verb, decoration: [], decorationLoc: verbToken.loc };
+    }
+    decoration.push(this.consumeDecorationItem());
+    while (this.peek().type === TokenType.Comma) {
+      // Lookahead: comma + id + colon → this is a new verb, not RHS continuation.
+      const next = this.tokens[this.pos + 1];
+      const after = this.tokens[this.pos + 2];
+      if (
+        next &&
+        (next.type === TokenType.Identifier || next.type === TokenType.StringLiteral) &&
+        after &&
+        after.type === TokenType.Colon
+      ) {
+        break;
+      }
+      this.advance(); // consume `,`
+      if (!this.peekIsIdOrString()) {
+        this.error("expected-id-after", { property: "operations" });
+        break;
+      }
+      decoration.push(this.consumeDecorationItem());
+    }
+    return { verb, decoration, decorationLoc: verbToken.loc };
+  }
+
+  private consumeDecorationItem(): { value: string; recognized: boolean } {
+    const tok = this.advance();
+    return { value: tok.value, recognized: isRecognizedResourceOperation(tok.value) };
+  }
+
+  private peekIsIdOrString(): boolean {
+    const t = this.peek().type;
+    return t === TokenType.Identifier || t === TokenType.StringLiteral;
+  }
+
   private parseHandlesList(): string[] {
     const ids: string[] = [];
     if (this.peek().type !== TokenType.Identifier && this.peek().type !== TokenType.StringLiteral) {
@@ -855,7 +946,7 @@ export class Parser {
     const tags = this.parseTags();
     const annotations = this.parseAnnotations();
 
-    const properties: CommonProperties & { label?: string; operations?: string[] } = {
+    const properties: CommonProperties & { label?: string; operations?: ParsedOperation[] } = {
       links: [],
     };
     const children: KrsNode[] = [];
@@ -880,30 +971,77 @@ export class Parser {
       });
     }
 
-    let operations: string[] | undefined;
+    let operations: ResourceOperation[] | undefined;
     if (properties.operations && properties.operations.length > 0) {
       operations = [];
       const seen = new Set<string>();
-      for (const verb of properties.operations) {
-        if (!isRecognizedResourceOperation(verb)) {
-          this.diagnostics.push({
-            severity: "warning",
-            code: "unknown-resource-operation",
-            params: { operation: verb, resourceId: id },
-            loc: this.range(start.loc, end.loc),
-          });
-        }
-        if (seen.has(verb)) {
+      for (const op of properties.operations) {
+        const opLoc = op.decorationLoc
+          ? this.range(op.decorationLoc, op.decorationLoc)
+          : this.range(start.loc, end.loc);
+
+        // De-dupe by verb (matching pre-decoration behavior).
+        if (seen.has(op.verb)) {
           this.diagnostics.push({
             severity: "warning",
             code: "duplicate-resource-operation",
-            params: { operation: verb, resourceId: id },
-            loc: this.range(start.loc, end.loc),
+            params: { operation: op.verb, resourceId: id },
+            loc: opLoc,
           });
           continue;
         }
-        seen.add(verb);
-        operations.push(verb);
+        seen.add(op.verb);
+
+        let decoratedAs: CrudVerb[] | undefined;
+        if (op.decoration === undefined) {
+          // Bare verb — current ADR-20260430-03 behavior.
+          if (!isRecognizedResourceOperation(op.verb)) {
+            this.diagnostics.push({
+              severity: "warning",
+              code: "unknown-resource-operation",
+              params: { operation: op.verb, resourceId: id },
+              loc: opLoc,
+            });
+          }
+        } else if (op.decoration.length === 0) {
+          this.diagnostics.push({
+            severity: "error",
+            code: "empty-crud-decoration",
+            params: { operation: op.verb, resourceId: id },
+            loc: opLoc,
+          });
+          decoratedAs = [];
+        } else {
+          decoratedAs = [];
+          const seenCrud = new Set<string>();
+          for (const item of op.decoration) {
+            if (!item.recognized) {
+              this.diagnostics.push({
+                severity: "error",
+                code: "invalid-crud-decoration",
+                params: { operation: op.verb, value: item.value, resourceId: id },
+                loc: opLoc,
+              });
+              continue;
+            }
+            if (seenCrud.has(item.value)) {
+              this.diagnostics.push({
+                severity: "warning",
+                code: "duplicate-crud-decoration-target",
+                params: { operation: op.verb, value: item.value, resourceId: id },
+                loc: opLoc,
+              });
+              continue;
+            }
+            seenCrud.add(item.value);
+            decoratedAs.push(item.value as CrudVerb);
+          }
+        }
+
+        operations.push({
+          verb: op.verb,
+          ...(decoratedAs !== undefined ? { decoratedAs } : {}),
+        });
       }
     }
 

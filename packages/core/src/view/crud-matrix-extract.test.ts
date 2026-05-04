@@ -126,6 +126,44 @@ system S {
     expect(omitted.omitted.rows).toBe(1);
   });
 
+  it("decorated verb (list:read) contributes to recognized set without ? suffix", () => {
+    const krs = `
+system S {
+  database DB { table T { label "T" } }
+  service Svc {
+    domain D {
+      usecase U {
+        resource DB.T { operations list:read }
+      }
+    }
+  }
+}`;
+    const m = extractCrudMatrix(parseSystems(krs));
+    const cell = m.cells.get(cellKey("U", "DB.T"))!;
+    expect(formatCell(cell)).toBe("R");
+    expect(cell.hasUnknown).toBe(false);
+    expect(cell.isWrite).toBe(false);
+  });
+
+  it("decorated 1:N (replace:create,delete) contributes to both ΣC and ΣD as a write", () => {
+    const krs = `
+system S {
+  database DB { table T { label "T" } }
+  service Svc {
+    domain D {
+      usecase U {
+        resource DB.T { operations replace:create,delete }
+      }
+    }
+  }
+}`;
+    const m = extractCrudMatrix(parseSystems(krs));
+    const cell = m.cells.get(cellKey("U", "DB.T"))!;
+    expect(formatCell(cell)).toBe("CD");
+    expect(cell.isWrite).toBe(true);
+    expect(m.columnTotals.get("DB.T")).toEqual({ create: 1, read: 0, update: 0, delete: 1 });
+  });
+
   it("marks external resources via tag on usecase resource declaration", () => {
     const ext = `
 system S {

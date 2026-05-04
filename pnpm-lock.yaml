@@ -14,15 +14,12 @@ importers:
 
   .:
     devDependencies:
-      '@types/js-yaml':
-        specifier: ^4.0.9
-        version: 4.0.9
+      '@kompiro/adr-tools':
+        specifier: ^0.0.2
+        version: 0.0.2
       '@types/node':
         specifier: ^25.6.0
         version: 25.6.0
-      js-yaml:
-        specifier: ^4.1.1
-        version: 4.1.1
       knip:
         specifier: ^6.6.0
         version: 6.6.0(@emnapi/core@1.9.2)(@emnapi/runtime@1.9.2)
@@ -734,6 +731,11 @@ packages:
 
   '@keyv/serialize@1.1.1':
     resolution: {integrity: sha512-dXn3FZhPv0US+7dtJsIi2R+c7qWYiReoEh5zUntWCf4oSpMNib8FDhSoed6m3QyZdx5hK7iLFkYk3rNxwt8vTA==}
+
+  '@kompiro/adr-tools@0.0.2':
+    resolution: {integrity: sha512-vr/XNmSOA2BQa6vRXvkavdDKN12GkRHT9vnytdfH5rRwo2MBm8qbpawZBmMKlqfLTzUxUlGxOVQdfyGsibT/Pw==, tarball: https://npm.pkg.github.com/download/@kompiro/adr-tools/0.0.2/eaff3118de40230ca04d8ed592e371872677ca99}
+    engines: {node: '>=20.0.0'}
+    hasBin: true
 
   '@monaco-editor/loader@1.7.0':
     resolution: {integrity: sha512-gIwR1HrJrrx+vfyOhYmCZ0/JcWqG5kbfG7+d3f/C1LXk2EvzAbHSg3MQ5lO2sMlo9izoAZ04shohfKLVT6crVA==}
@@ -1500,9 +1502,6 @@ packages:
 
   '@types/istanbul-lib-coverage@2.0.6':
     resolution: {integrity: sha512-2QF/t/auWm0lsy8XtKVPG19v3sSOQlJe/YHZgfjb/KBBHOGSV+J2q/S671rcq9uTBrLAXmZpqJiaQbMT+zNU1w==}
-
-  '@types/js-yaml@4.0.9':
-    resolution: {integrity: sha512-k4MGaQl5TGo/iipqb2UDG2UwjXziSWkh0uysQelTlJpX1qGlpUZYm8PnO4DxG1qBomtJUdYJ6qR6xdIah10JLg==}
 
   '@types/mocha@10.0.10':
     resolution: {integrity: sha512-xPyYSz1cMPnJQhl0CLMH68j3gprKZaTjG3s5Vi+fDgx+uhG9NOXwbVt52eFS8ECyXhyKcjDLCBEqBExKuiZb7Q==}
@@ -4641,6 +4640,10 @@ snapshots:
 
   '@keyv/serialize@1.1.1': {}
 
+  '@kompiro/adr-tools@0.0.2':
+    dependencies:
+      js-yaml: 4.1.1
+
   '@monaco-editor/loader@1.7.0':
     dependencies:
       state-local: 1.0.7
@@ -5159,8 +5162,6 @@ snapshots:
   '@types/http-cache-semantics@4.2.0': {}
 
   '@types/istanbul-lib-coverage@2.0.6': {}
-
-  '@types/js-yaml@4.0.9': {}
 
   '@types/mocha@10.0.10': {}
 

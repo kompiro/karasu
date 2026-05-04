@@ -8,13 +8,7 @@ depends_on: [ADR-20260424-01]
 related_to: [ADR-20260423-01]
 assumptions:
   - "file: adr.config.json"
-  - "file: scripts/adr/config.ts"
-  - "file: scripts/adr/config.schema.json"
-  - "file: scripts/adr/init.ts"
-  - "file: scripts/adr/init.template.json"
-  - "symbol: scripts/adr/config.ts :: loadConfig"
-  - "symbol: scripts/adr/config.ts :: AdrConfigMissingError"
-  - "symbol: scripts/adr/config.ts :: AdrConfigInvalidError"
+  - "grep: package.json :: @kompiro/adr-tools"
 ---
 
 # ADR-20260502-02: ADR ツール用語彙の adr.config.json への外部化

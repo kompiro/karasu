@@ -88,6 +88,12 @@ export function formatDiagnostic(d: Diagnostic): string {
       return `Unknown resource operation "${d.params.operation}" on "${d.params.resourceId}". Recognized verbs: create, read, update, delete`;
     case "duplicate-resource-operation":
       return `Duplicate resource operation "${d.params.operation}" on "${d.params.resourceId}"`;
+    case "invalid-crud-decoration":
+      return `Invalid CRUD decoration "${d.params.value}" on operation "${d.params.operation}" of resource "${d.params.resourceId}". Right-hand side must be one of: create, read, update, delete`;
+    case "empty-crud-decoration":
+      return `Empty CRUD decoration on operation "${d.params.operation}" of resource "${d.params.resourceId}". Use "${d.params.operation}:create,read,update,delete" or drop the colon`;
+    case "duplicate-crud-decoration-target":
+      return `Duplicate CRUD verb "${d.params.value}" in decoration of "${d.params.operation}" on resource "${d.params.resourceId}"`;
     case "duplicate-owner-assignment":
       return `"${d.params.nodeId}" is already owned by team "${d.params.existingTeam}"; multiple teams cannot own the same service or domain`;
     case "duplicate-team-id":
