@@ -1098,7 +1098,10 @@ body,
 }
 
 .file-tree-header {
-  padding: 9px 12px 7px;
+  /* Left padding reserves space for the absolutely-positioned sidebar
+     collapse toggle (.toolbar-btn--sidebar-toggle), which is anchored to
+     the top-left of .edit-area and visually sits inside this header. */
+  padding: 9px 12px 7px 84px;
   font-size: 10px;
   font-weight: 700;
   color: var(--text-muted);
@@ -1328,49 +1331,48 @@ body,
 }
 
 /* ── Sidebar Toggle Button ─────────────────────────────────────── */
-/* Absolutely positioned relative to .edit-area (its containing block).
-   Placed at left: var(--sidebar-w) so it straddles the sidebar/editor boundary
-   without being clipped by .sidebar-area { overflow: hidden }. */
+/* Anchored to the top-left of .edit-area so it visually sits at the
+   top-left of the file tree header (GitHub-style). Styled as a compact
+   ghost button that matches .file-tree-header-btn. Sits above the
+   sidebar via z-index so it remains clickable when expanded. */
 .toolbar-btn--sidebar-toggle {
   position: absolute;
-  left: var(--sidebar-w);
-  top: 50%;
-  transform: translate(-50%, -50%);
+  left: 6px;
+  top: 4px;
   z-index: 100;
-  background: var(--bg-raised);
-  color: var(--text-secondary);
-  border: 1px solid var(--border-strong);
-  border-radius: var(--radius-sm);
-  padding: 4px 8px;
+  background: transparent;
+  color: var(--text-muted);
+  border: none;
+  border-radius: var(--radius-xs);
+  padding: 2px 6px;
   font-size: 11px;
   font-weight: 500;
   font-family: var(--font-ui);
+  line-height: 1;
   cursor: pointer;
   white-space: nowrap;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
   transition:
-    background 0.15s,
-    color 0.15s,
-    border-color 0.15s;
+    background 0.12s,
+    color 0.12s;
 }
 
 .toolbar-btn--sidebar-toggle:hover {
-  background: var(--bg-overlay);
-  color: var(--text-primary);
-  border-color: var(--accent);
+  background: var(--bg-raised);
+  color: var(--text-secondary);
 }
 
 /* When collapsed: sidebar area shrinks to 0 (content clipped by overflow: hidden);
-   toggle anchored to left edge of edit-area. */
+   toggle stays anchored to top-left of edit-area to surface the expand affordance. */
 .edit-area.has-sidebar.sidebar-collapsed .sidebar-area {
   width: 0;
   border-right: none;
 }
 
 .edit-area.has-sidebar.sidebar-collapsed .toolbar-btn--sidebar-toggle {
-  left: 0;
-  transform: translate(0, -50%);
-  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+  background: var(--bg-raised);
+  color: var(--text-secondary);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
 }
 
 /* ── Preview Focused (fullscreen preview) ──────────────────────── */
