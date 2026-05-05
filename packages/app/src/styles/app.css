@@ -1278,8 +1278,7 @@ body,
 
 /* ── EditArea internal layout ──────────────────────────────────── */
 /* Explicit placement keeps no-sidebar case independent of source order and
-   auto-placement assumptions. has-sidebar overrides grid-row to 2 below.
-   position: relative is the containing block for .toolbar-btn--sidebar-toggle. */
+   auto-placement assumptions. has-sidebar overrides grid-row to 2 below. */
 .edit-area {
   grid-row: 1;
   grid-column: 1;
@@ -1298,6 +1297,31 @@ body,
   overflow: hidden;
   background: var(--bg-void);
   border-right: 1px solid var(--border-subtle);
+  position: relative;
+}
+
+/* Drag handle on the right edge of the sidebar; expanded state only. */
+.sidebar-resize-handle {
+  position: absolute;
+  top: 0;
+  right: -3px;
+  width: 6px;
+  height: 100%;
+  cursor: col-resize;
+  z-index: 50;
+  background: transparent;
+  transition: background 0.15s;
+}
+
+.sidebar-resize-handle:hover,
+.edit-area.sidebar-dragging .sidebar-resize-handle {
+  background: var(--accent-glow);
+}
+
+.edit-area.sidebar-dragging,
+.edit-area.sidebar-dragging * {
+  user-select: none;
+  cursor: col-resize !important;
 }
 
 /* Applies in both sidebar and non-sidebar contexts; overflow/border/position
@@ -1327,50 +1351,62 @@ body,
   z-index: 1;
 }
 
-/* ── Sidebar Toggle Button ─────────────────────────────────────── */
-/* Absolutely positioned relative to .edit-area (its containing block).
-   Placed at left: var(--sidebar-w) so it straddles the sidebar/editor boundary
-   without being clipped by .sidebar-area { overflow: hidden }. */
-.toolbar-btn--sidebar-toggle {
-  position: absolute;
-  left: var(--sidebar-w);
-  top: 50%;
-  transform: translate(-50%, -50%);
-  z-index: 100;
-  background: var(--bg-raised);
-  color: var(--text-secondary);
-  border: 1px solid var(--border-strong);
-  border-radius: var(--radius-sm);
-  padding: 4px 8px;
-  font-size: 11px;
-  font-weight: 500;
+/* ── Activity Bar (VSCode-style) ─────────────────────────────────
+   Persistent thin column on the far left of .edit-area. Hosts the
+   sidebar toggle (Files) and is the always-available re-entry point
+   when the sidebar is collapsed. */
+.activity-bar {
+  flex: 0 0 auto;
+  width: 44px;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  padding-top: 4px;
+  background: var(--bg-void);
+  border-right: 1px solid var(--border-subtle);
+}
+
+.activity-bar-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 8px 4px;
+  background: transparent;
+  border: none;
+  border-left: 2px solid transparent;
+  color: var(--text-muted);
   font-family: var(--font-ui);
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
   cursor: pointer;
-  white-space: nowrap;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
   transition:
-    background 0.15s,
-    color 0.15s,
-    border-color 0.15s;
+    background 0.12s,
+    color 0.12s,
+    border-color 0.12s;
 }
 
-.toolbar-btn--sidebar-toggle:hover {
-  background: var(--bg-overlay);
+.activity-bar-btn:hover {
+  color: var(--text-secondary);
+  background: var(--bg-raised);
+}
+
+.activity-bar-btn--active {
   color: var(--text-primary);
-  border-color: var(--accent);
+  border-left-color: var(--accent);
 }
 
-/* When collapsed: sidebar area shrinks to 0 (content clipped by overflow: hidden);
-   toggle anchored to left edge of edit-area. */
-.edit-area.has-sidebar.sidebar-collapsed .sidebar-area {
-  width: 0;
-  border-right: none;
+.activity-bar-btn__icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 0;
 }
 
-.edit-area.has-sidebar.sidebar-collapsed .toolbar-btn--sidebar-toggle {
-  left: 0;
-  transform: translate(0, -50%);
-  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+.activity-bar-btn__label {
+  text-transform: uppercase;
 }
 
 /* ── Preview Focused (fullscreen preview) ──────────────────────── */
