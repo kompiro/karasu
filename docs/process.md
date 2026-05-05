@@ -115,8 +115,6 @@ plugin にバンドルされる skill とその karasu 内での主な用途:
 
 karasu 専用の skill（`/svg-icon`, `/update-examples`）は `.claude/skills/` 配下にローカル定義されている（plugin 化対象外）。
 
-> **移行期間中**: ローカル `.claude/skills/{commit,ship,start-dev,...}/` も当面残しているため、`/commit` と `/hane:commit` の両方が available skill として表示される。plugin 動作確認後に local 側は別 PR で削除予定（[#1089](https://github.com/kompiro/karasu/issues/1089)）。
-
 ### 循環依存チェック
 
 `pnpm check:cycles` で `madge --circular` を 5 つのプロダクションパッケージ（core / app / cli / lsp / vscode）の `src/` に対して実行し、モジュール間の循環依存を検出する。
