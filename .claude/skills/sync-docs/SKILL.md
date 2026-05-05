@@ -12,18 +12,17 @@ description: >
 
 コードベースの現状を読み取り、陳腐化した参照用ドキュメントを更新する。
 
-## 対象ドキュメント
+## 対象ドキュメントの決定
 
-以下のドキュメントが対象。設計記録（ADR・Design Doc）や受け入れテストは対象外（変更不可な履歴記録のため）。
+ホスト repo の **`CLAUDE.md`** に記載されたドキュメント表（または同等のパス一覧）を読み、対象ファイルを動的に決定する。典型的には以下のような項目が含まれる:
 
-| ドキュメント | パス |
-|---|---|
-| README | `README.md` |
-| コアコンセプト | `docs/concepts.md` |
-| .krs 構文リファレンス | `docs/spec/syntax.md` |
-| .krs.style 構文リファレンス | `docs/spec/style.md` |
-| タグ・アノテーション一覧 | `docs/spec/tags-annotations.md` |
-| 要求・要件 | `docs/requirements.md` |
+- README（`README.md` など）
+- コアコンセプト・アーキテクチャ概要
+- 構文・仕様リファレンス
+- 要求・要件（requirements）
+- API リファレンス
+
+設計記録（ADR・Design Doc）や受け入れテスト記録は **対象外**（変更不可な履歴記録のため）。`CLAUDE.md` が無い repo では、ユーザーに対象ドキュメントを確認する。
 
 ## アーキテクチャ
 
@@ -38,6 +37,10 @@ description: >
 
 ## 手順
 
+### 0. 対象ドキュメントの収集
+
+`CLAUDE.md` のドキュメント表をパースし、対象ファイル一覧を生成する。`CLAUDE.md` が存在しない / ドキュメント表が無い場合は、ユーザーに対象を確認する。
+
 ### 1. サブエージェントを並列起動する
 
 以下の2つの Explore エージェントを **同時に（1メッセージで）** 起動する。
@@ -48,37 +51,21 @@ description: >
 
 **プロンプト（要旨）**:
 
-> `packages/core/src/` と `packages/app/src/` を調査し、現在実装されている機能を網羅的に把握せよ。
-> 以下の観点で調べ、結果を報告せよ:
+> ホスト repo のソースルート（host の `package.json` の `workspaces` / `main` / `module` フィールドや、典型的な `src/` `packages/*/src/` 等から検出）を調査し、現在実装されている機能を網羅的に把握せよ。
 >
-> **1. .krs 構文の実装状況**
-> - `packages/core/src/lexer.ts` または類似ファイルでサポートされているキーワード・トークン一覧
-> - `packages/core/src/parser.ts` または類似ファイルで実装されているブロック・プロパティ・構文要素
+> `CLAUDE.md` のドキュメント表で挙がっている各ドキュメントが扱うトピックに対応する実装観点で調べ、結果を報告せよ。例えば「構文リファレンス」が表にあるなら lexer / parser を見て対応するキーワード・ブロック・プロパティを抽出し、「要求・要件」が表にあるなら主要な機能・UI コンポーネントを抽出する。
 >
-> **2. .krs.style 構文の実装状況**
-> - スタイルファイルのパーサーで受け付けるセレクタ・プロパティ一覧
+> 結果は以下の形式で返せ（カテゴリは対象ドキュメントに応じて適宜追加せよ）:
+> ```
+> CATEGORY|サブキー|説明
+> ```
 >
-> **3. タグ・アノテーション**
-> - `packages/core/src/` 内でサポートされているタグ（`@deprecated` 等）・アノテーション一覧
->
-> **4. コアコンセプトに関わる型・構造**
-> - `packages/core/src/types/` の主要な型定義（AST ノード、Warning、Diagnostic 等）
-> - 論理構造（system, service, role, team）と物理構造（deploy）の型
->
-> **5. 要求・要件に関わる実装済み機能**
-> - UI コンポーネント一覧（`packages/app/src/components/`）
-> - 主要な機能（タブ切り替え、ドリルダウン、警告パネル、スタイル、import 等）
->
-> 結果は以下の形式で返せ:
+> 例:
 > ```
 > SYNTAX_KEYWORD|キーワード名|説明
 > SYNTAX_BLOCK|ブロック名|説明
-> SYNTAX_PROPERTY|ブロック名.プロパティ名|説明
-> STYLE_SELECTOR|セレクタ名|説明
-> STYLE_PROPERTY|プロパティ名|説明
-> TAG|タグ名|説明
-> CORE_TYPE|型名|説明
 > FEATURE|機能名|説明
+> CORE_TYPE|型名|説明
 > ```
 
 ---
@@ -90,13 +77,7 @@ description: >
 > 以下のドキュメントをすべて読み込み、各ドキュメントが何を記述しているかを把握せよ。
 > 陳腐化している可能性のある記述（「将来的に」「未実装」「検討中」等）を特に注意して抽出せよ。
 >
-> 対象ファイル:
-> - `README.md`
-> - `docs/concepts.md`
-> - `docs/spec/syntax.md`
-> - `docs/spec/style.md`
-> - `docs/spec/tags-annotations.md`
-> - `docs/requirements.md`
+> 対象ファイル: <ステップ 0 で収集した一覧をここに展開>
 >
 > 結果は以下の形式で返せ:
 > ```
@@ -127,8 +108,8 @@ description: >
 ### README.md
 - Line N: 「...（古い記述）...」→ 「...（新しい記述）...」
 
-### docs/spec/syntax.md
-- 未記載の構文要素: `deploy` ブロックの `label` プロパティ
+### docs/spec/<...>.md
+- 未記載の構文要素: <要素名>
   → セクション XX に追記提案
 
 （更新不要と判断したドキュメントは「変更なし」と明記）

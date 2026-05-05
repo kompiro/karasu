@@ -19,6 +19,10 @@ description: >
 - 現在のブランチが `main` でないこと（機能ブランチ上であること）
 - コミット済みの変更があること
 
+## ホスト repo に依存する慣習について
+
+`/start-dev` skill と同じ optional 仕様に従う。`status: *` ラベル運用、preview deploy URL 表示などはホスト repo が当該慣習を採用している場合のみ実行する。
+
 ## 手順
 
 ### 0. 状態確認
@@ -33,7 +37,7 @@ description: >
 4. main からの差分コミット一覧を取得する: `git log --oneline origin/main..HEAD`
    - コミットがない場合はエラーメッセージを表示して終了する
 5. worktree 内かどうかを判定する: `git rev-parse --show-toplevel`
-   - `.worktrees/` を含む場合は worktree 内と判定する
+   - パスに `.claude/worktrees/` または `.worktrees/` を含む場合は worktree 内と判定する
 6. 関連 Issue を検出する:
    - ブランチ名からパターンマッチ（例: `feat/issue-42-xxx` → #42）
    - コミットメッセージ内の `#N` パターン
@@ -41,15 +45,16 @@ description: >
 
 ### 1. PR 作成
 
-1. `pnpm install` を実行して依存関係を同期する
+1. host のパッケージマネージャで依存関係を同期する（`package.json` がある場合のみ）
    - 新しい worktree や main から切り替えた直後は `node_modules` が古くなっており、pre-push hook の typecheck が依存不足で失敗するため
    - ロックファイルが最新なら即座に完了する
+   - パッケージマネージャは `package.json` の `packageManager` フィールドまたは lock file（`pnpm-lock.yaml` / `package-lock.json` / `yarn.lock`）から検出する
 2. リモートにプッシュする:
    ```
    git push -u origin <branch-name>
    ```
 3. `git log --oneline origin/main..HEAD` と `git diff origin/main...HEAD --stat` で変更内容を分析する
-4. PR 本文を生成する。`.github/PULL_REQUEST_TEMPLATE.md` のセクション構成に従い、コメントを実際の内容で埋める:
+4. PR 本文を生成する。`.github/PULL_REQUEST_TEMPLATE.md` のセクション構成に従い、コメントを実際の内容で埋める。テンプレートが無い場合は以下の最小構成にフォールバックする:
 
    - **Purpose**: `Closes #N` で Issue と紐付け。Issue がない場合は変更の目的を1行で記述
    - **Summary**: コミット履歴と差分から1-3行で要約
@@ -84,11 +89,11 @@ CI 通過後、以下のチェックを順に実行する。
 1. **コンフリクト確認**: `gh pr view <pr-number> --json mergeable` で確認する
    - `CONFLICTING` の場合はユーザーに通知し、コンフリクト解消を案内する
    - `MERGEABLE` または `UNKNOWN` の場合は次へ進む
-2. **PR Description の言語確認**: `gh pr view <pr-number> --json title,body` で取得し、タイトルと本文が英語であることを確認する
-   - 日本語やその他の非英語テキストが含まれている場合は警告し、修正を提案する
+2. **PR Description の言語確認**: `gh pr view <pr-number> --json title,body` で取得し、host repo の言語ポリシー（CLAUDE.md 等で定義されている場合）に沿っていることを確認する
+   - ポリシーから外れている場合は警告し、修正を提案する
 3. **コードレビュー**: `/review` を実行して PR の変更内容をレビューし、GitHub にレビューコメントを投稿する
 
-すべてのチェック完了後、Issue がある場合はラベルを `status: in-review` に更新する:
+すべてのチェック完了後、Issue がある場合はラベルを `status: in-review` に更新する（ラベル運用がある場合のみ）:
 
    ```
    gh issue edit <N> --remove-label "status: implementing" --add-label "status: in-review"
@@ -116,10 +121,11 @@ CI 通過後、以下のチェックを順に実行する。
 2. マージ済みでない場合は警告し、確認を求める
 3. マージ済みの場合、環境に応じてクリーンアップする:
 
-   **worktree 内の場合:**
+   **worktree 内の場合（パスに `.claude/worktrees/` または `.worktrees/` を含む）:**
    ```
-   cd /workspaces/karasu
-   git worktree remove .worktrees/<機能名>
+   MAIN_ROOT=$(git worktree list | head -1 | awk '{print $1}')
+   cd "$MAIN_ROOT"
+   git worktree remove <worktree-path>
    git branch -d <branch-name>
    ```
 
@@ -132,11 +138,10 @@ CI 通過後、以下のチェックを順に実行する。
 
 4. main ブランチを最新化する（worktree の場合も実行）:
    ```
-   cd /workspaces/karasu
    git checkout main
    git pull origin main
    ```
-5. Issue のラベルを更新する（Issue 紐付けがある場合）:
+5. Issue のラベルを更新する（Issue 紐付けかつラベル運用がある場合）:
    - PR で `Closes #N` した Issue は GitHub が自動で close するため、ラベル操作は不要
    - 依存していた Issue（`status: blocked` のもの）があれば `status: ready` に更新する:
      ```
