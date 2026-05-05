@@ -3,6 +3,13 @@ export interface StyleSelector {
   tags: string[];
   annotations: string[];
   id?: string;
+  /**
+   * Edge canonical id targeted by an `edge#<id>` selector. Compared against
+   * `KrsEdge.canonicalId` (set by the canonical-id pass after view extract).
+   * Either an author-supplied identifier (`#criticalWrite`) or a base form
+   * (`#A->B` / `#A-->B`). See `docs/design/edge-id-selector.md`.
+   */
+  edgeId?: string;
 }
 
 export interface StyleRule {

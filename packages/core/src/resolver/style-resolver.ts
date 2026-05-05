@@ -400,6 +400,10 @@ function nodeSelectorMatches(node: KrsNode, selector: StyleSelector): boolean {
 function edgeSelectorMatches(edge: KrsEdge, selector: StyleSelector): boolean {
   if (selector.nodeType !== "edge" && selector.nodeType !== undefined) return false;
   if (selector.nodeType !== "edge") return false;
+  if (selector.edgeId !== undefined) {
+    if (edge.canonicalId === undefined) return false;
+    if (edge.canonicalId !== selector.edgeId) return false;
+  }
   if (selector.tags.length > 0) {
     const edgeTags = [...edge.tags];
     if (edge.kind === "async") edgeTags.push("async");

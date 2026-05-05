@@ -16,6 +16,7 @@
 | ID | `#ECommerce` | A specific node only |
 | Edge | `edge` | All edges |
 | Edge + tag | `edge[async]` | Edges with the given tag |
+| Edge ID | `edge#criticalWrite`, `edge#A->B`, `edge#A-->B` | A specific edge only |
 
 ---
 
@@ -30,8 +31,48 @@
 | Tag + annotation (`[external]@deprecated`) | 20 |
 | Kind + tag + annotation | 21 |
 | ID (`#ECommerce`) | 100 |
+| Edge ID (`edge#criticalWrite`) | 101 (100 for the id + 1 for the `edge` kind) |
 
 When scores are equal, the later declaration wins (same as CSS).
+
+---
+
+## Edge ID selector (`edge#<id>`)
+
+Targets a single edge for surgical overrides. The `<id>` is the edge's
+**canonical id**, derived after parsing:
+
+1. If the author wrote `#<id>` on the edge in `.krs` (or on the
+   `usecase` `resource` row), that author id is the canonical id.
+2. Otherwise the canonical id is the **base form** `<from><arrow><to>`,
+   where the arrow is `->` for sync edges and `-->` for async edges.
+
+```css
+/* Author-supplied id from `.krs`:  A -> B "primary" #criticalWrite */
+edge#criticalWrite { color: #EF4444; }
+
+/* Base form for an unauthored edge */
+edge#A->B { color: #00FF00; }
+
+/* Async base form */
+edge#A-->B { stroke-width: 2px; }
+```
+
+When two edges share the same computed base id and neither has an
+author id, the parser raises an `ambiguous-edge-base` warning and the
+`edge#<base>` selector matches **none** of them. To disambiguate, give
+one of the edges an `#<id>` in `.krs`. See
+[`docs/spec/syntax.md`](syntax.md#edge-declaration) and
+[`docs/design/edge-id-selector.md`](../design/edge-id-selector.md).
+
+### When to prefer tag selectors
+
+For classification overrides like read vs. write, use the tag form
+(`edge[write]`, `edge[read]`) rather than `edge#<id>`. Tag selectors
+follow the logical classification — when a `usecase`'s `operations`
+change, the matching edges follow automatically. Per-edge `edge#<id>`
+overrides are best reserved for genuinely one-off styling decisions
+where the identity of *that specific edge* is what matters.
 
 ---
 

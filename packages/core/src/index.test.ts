@@ -529,3 +529,39 @@ system "EC" {
     expect(result.svg).toContain('id="krs-org-root"');
   });
 });
+
+describe("compile — edge#<id> style selector (end-to-end)", () => {
+  const KRS = `
+system S {
+  service A {}
+  service B {}
+  service C {}
+  A -> B "primary" #criticalWrite
+  A -> C "secondary"
+}
+  `;
+
+  it("targets an edge by author id", () => {
+    const result = compile(KRS, {
+      styleSource: `
+edge { color: #000000; }
+edge#criticalWrite { color: #FF0000; }
+      `,
+    });
+    expect(result.diagnostics.filter((d) => d.severity === "error")).toHaveLength(0);
+    if (result.diagramType !== "system") throw new Error("expected system result");
+    expect(result.svg).toContain("#FF0000");
+  });
+
+  it("targets an edge by computed base id when no author id is present", () => {
+    const result = compile(KRS, {
+      styleSource: `
+edge { color: #000000; }
+edge#A->C { color: #00FF00; }
+      `,
+    });
+    expect(result.diagnostics.filter((d) => d.severity === "error")).toHaveLength(0);
+    if (result.diagramType !== "system") throw new Error("expected system result");
+    expect(result.svg).toContain("#00FF00");
+  });
+});

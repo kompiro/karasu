@@ -16,6 +16,7 @@
 | ID | `#ECommerce` | 特定ノードのみ |
 | エッジ | `edge` | 全エッジ |
 | エッジ+タグ | `edge[async]` | 指定タグのエッジ |
+| エッジ ID | `edge#criticalWrite`、`edge#A->B`、`edge#A-->B` | 特定のエッジのみ |
 
 ---
 
@@ -30,8 +31,45 @@
 | タグ+アノテーション（`[external]@deprecated`） | 20 |
 | 種別+タグ+アノテーション | 21 |
 | ID（`#ECommerce`） | 100 |
+| エッジ ID（`edge#criticalWrite`） | 101（ID 100 + `edge` 種別 1） |
 
 同スコアなら後に書いた方が優先（CSS同様）。
+
+---
+
+## エッジ ID セレクタ（`edge#<id>`）
+
+特定のエッジ 1 本だけにスタイルを適用する。`<id>` はエッジの **canonical id** で、
+パース後に以下の規則で確定する:
+
+1. `.krs` でエッジ宣言（または `usecase` の `resource` 行）に `#<id>` が
+   書かれていれば、その author id がそのまま canonical id になる
+2. それ以外は **base 形式** `<from><arrow><to>`。`->` は sync、`-->` は async
+
+```css
+/* `.krs` 側で  A -> B "primary" #criticalWrite  と書かれた場合 */
+edge#criticalWrite { color: #EF4444; }
+
+/* author id が無い場合の base 形式 */
+edge#A->B { color: #00FF00; }
+
+/* async の base 形式 */
+edge#A-->B { stroke-width: 2px; }
+```
+
+同じ base id を持つエッジが 2 本以上あって両方に author id が無い場合、
+パーサが `ambiguous-edge-base` warning を出し、`edge#<base>` セレクタは
+**どちらにも一致しない**。区別したい場合は `.krs` 側でいずれかに `#<id>` を
+付ける。詳細は [`docs/spec/syntax.md`](syntax.md#edge-declaration) と
+[`docs/design/edge-id-selector.md`](../design/edge-id-selector.md) を参照。
+
+### タグセレクタを優先すべきケース
+
+「read / write の見た目を変えたい」のような **論理分類による上書き** は
+`edge#<id>` ではなく `edge[write]` / `edge[read]` を使うこと。タグセレクタは
+論理分類に追従するので、`usecase` の `operations` を変更しただけで対象エッジが
+正しく追従する。`edge#<id>` は「**この特定のエッジ**」を直接指したい場合に
+限定して使う。
 
 ---
 

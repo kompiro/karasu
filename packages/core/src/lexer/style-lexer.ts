@@ -126,6 +126,8 @@ export class StyleLexer {
       case "@":
         this.advance();
         return { type: TokenType.At, value: "@", loc };
+      case "-":
+        return this.readArrow(loc);
       case '"':
         return this.readString(loc);
       default:
@@ -165,6 +167,30 @@ export class StyleLexer {
     return { type: TokenType.Identifier, value, loc };
   }
 
+  /**
+   * Lex `->` (sync) or `-->` (async) for use inside `edge#<base>` selectors.
+   * Returns null on a bare `-` so unexpected hyphens still fall through to
+   * the existing "advance and skip" default at the call site.
+   */
+  private readArrow(loc: SourceLocation): Token | null {
+    this.advance(); // first -
+    if (this.peek() === "-") {
+      this.advance(); // second -
+      if (this.peek() === ">") {
+        this.advance(); // >
+        return { type: TokenType.DashedArrow, value: "-->", loc };
+      }
+      // Stray `--`: drop and let the parser recover at the next token.
+      return null;
+    }
+    if (this.peek() === ">") {
+      this.advance(); // >
+      return { type: TokenType.Arrow, value: "->", loc };
+    }
+    // Stray `-`: drop.
+    return null;
+  }
+
   private readString(loc: SourceLocation): Token {
     this.advance(); // opening "
     let value = "";
@@ -182,7 +208,17 @@ export class StyleLexer {
 
   private readIdentifier(loc: SourceLocation): Token {
     let value = "";
-    while (this.pos < this.source.length && isIdentPartWithHyphen(this.peek())) {
+    while (this.pos < this.source.length) {
+      const ch = this.peek();
+      // Hyphens are normally part of identifiers (e.g. `font-family`,
+      // `border-style`), but `->` and `-->` are arrow tokens used inside
+      // `edge#<base>` selectors. Don't swallow the hyphen when it is the
+      // leading character of an arrow.
+      if (ch === "-") {
+        const after = this.peekAt(1);
+        if (after === ">" || (after === "-" && this.peekAt(2) === ">")) break;
+      }
+      if (!isIdentPartWithHyphen(ch)) break;
       value += this.advance();
     }
     return { type: TokenType.Identifier, value, loc };
