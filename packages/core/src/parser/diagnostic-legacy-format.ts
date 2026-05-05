@@ -106,6 +106,10 @@ export function formatDiagnostic(d: Diagnostic): string {
       return `Duplicate node id "${d.params.nodeId}" under the same parent`;
     case "owns-target-not-found":
       return `"${d.params.ownedId}" referenced in "owns" was not found in the system hierarchy`;
+    case "duplicate-edge-id":
+      return `Duplicate edge id "#${d.params.authorId}"; edge ids must be unique within a system`;
+    case "ambiguous-edge-base":
+      return `Multiple edges share the base "${d.params.fromId}${d.params.arrow}${d.params.toId}" with no #<id> to disambiguate; per-edge style selectors will not match any of them`;
 
     // ── Style parser ────────────────────────────────────────────────────
     case "style-token-type-mismatch":

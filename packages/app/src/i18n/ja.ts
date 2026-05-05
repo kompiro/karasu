@@ -224,6 +224,10 @@ export const ja: Partial<Translations> = {
     `同じ親の下でノード id "${nodeId}" が重複しています`,
   "diagnostic.ownsTargetNotFound.message": ({ ownedId }) =>
     `"owns" で参照されている "${ownedId}" が system 階層内に見つかりません`,
+  "diagnostic.duplicateEdgeId.message": ({ authorId }) =>
+    `エッジ id "#${authorId}" が重複しています。エッジ id は system 内で一意である必要があります`,
+  "diagnostic.ambiguousEdgeBase.message": ({ fromId, toId, arrow }) =>
+    `複数のエッジが base "${fromId}${arrow}${toId}" を共有しており、識別する #<id> がありません。これらのエッジは per-edge style selector では一致しません`,
   "diagnostic.styleTokenTypeMismatch.message": ({ expected, got, value }) =>
     `${expected} を期待しましたが ${got} ("${value}") が見つかりました`,
   "diagnostic.expectedStylePropertyName.message": ({ got }) =>

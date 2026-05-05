@@ -255,6 +255,12 @@ export type Translations = {
   "diagnostic.nodeIdMultipleLocations.message": (params: { nodeId: string }) => string;
   "diagnostic.duplicateNodeIdParent.message": (params: { nodeId: string }) => string;
   "diagnostic.ownsTargetNotFound.message": (params: { ownedId: string }) => string;
+  "diagnostic.duplicateEdgeId.message": (params: { authorId: string }) => string;
+  "diagnostic.ambiguousEdgeBase.message": (params: {
+    fromId: string;
+    toId: string;
+    arrow: "->" | "-->";
+  }) => string;
   "diagnostic.styleTokenTypeMismatch.message": (params: {
     expected: string;
     got: string;

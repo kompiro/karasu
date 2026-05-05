@@ -88,6 +88,7 @@ export type { PatchOperation } from "./patch/krs-patch.js";
 export { format, FormatError } from "./formatter/formatter.js";
 export { Parser } from "./parser/parser.js";
 export { StyleParser } from "./parser/style-parser.js";
+export { assignEdgeCanonicalIds, edgeBaseId } from "./resolver/canonical-id.js";
 export { resolveStyles } from "./resolver/style-resolver.js";
 export { getBuiltinStyleSheet, BUILTIN_STYLE_SOURCE } from "./builtins/default-style.js";
 export { getIconThemeStyleSheet, ICON_THEME_STYLE_SOURCE } from "./builtins/icon-theme.js";
@@ -176,6 +177,7 @@ import type { Warning } from "./types/warnings.js";
 import type { FileSystemProvider } from "./fs/types.js";
 import { Parser } from "./parser/parser.js";
 import { StyleParser } from "./parser/style-parser.js";
+import { assignEdgeCanonicalIds } from "./resolver/canonical-id.js";
 import { resolveStyles } from "./resolver/style-resolver.js";
 import { analyze } from "./resolver/warnings.js";
 import { render } from "./renderer/svg-renderer.js";
@@ -437,6 +439,7 @@ function _compileFromPreparedInput(
   // systems list; the legacy unassigned* params are left empty for that reason.
   const effectiveSystems = withUnassignedSystem(krsFile);
   const viewSlice = extractView(effectiveSystems, viewPath ?? []);
+  diagnostics.push(...assignEdgeCanonicalIds(viewSlice.childEdges));
   const styles = resolveStyles(
     effectiveSystems,
     resolveSheets,
@@ -914,6 +917,8 @@ export async function compileSystemDiff(
 
   const beforeSlice = extractView(beforeSystems, viewPath ?? []);
   const afterSlice = extractView(afterSystems, viewPath ?? []);
+  diagnostics.push(...assignEdgeCanonicalIds(beforeSlice.childEdges));
+  diagnostics.push(...assignEdgeCanonicalIds(afterSlice.childEdges));
 
   const diffed = diffSystemViewSlices(beforeSlice, afterSlice);
 

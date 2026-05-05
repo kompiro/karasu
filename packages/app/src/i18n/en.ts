@@ -224,6 +224,10 @@ export const en: Translations = {
     `Duplicate node id "${nodeId}" under the same parent`,
   "diagnostic.ownsTargetNotFound.message": ({ ownedId }) =>
     `"${ownedId}" referenced in "owns" was not found in the system hierarchy`,
+  "diagnostic.duplicateEdgeId.message": ({ authorId }) =>
+    `Duplicate edge id "#${authorId}"; edge ids must be unique within a system`,
+  "diagnostic.ambiguousEdgeBase.message": ({ fromId, toId, arrow }) =>
+    `Multiple edges share the base "${fromId}${arrow}${toId}" with no #<id> to disambiguate; per-edge style selectors will not match any of them`,
   "diagnostic.styleTokenTypeMismatch.message": ({ expected, got, value }) =>
     `Expected ${expected} but got ${got} ("${value}")`,
   "diagnostic.expectedStylePropertyName.message": ({ got }) =>

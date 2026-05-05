@@ -437,6 +437,39 @@ Use cases:
 
 Edges can be written inside `system`, `service`, and `domain` blocks.
 
+#### Optional edge id (`#<id>`)
+
+A trailing `#<id>` gives an edge a stable, author-defined identifier that
+the `.krs.style` resolver can target with the `edge#<id>` selector.
+
+```
+ECommerce -> Payment "Process payment" #criticalWrite
+WebApp --> Bff #liveStream
+A -> B [important] #namedEdge
+```
+
+The `#<id>` token comes after the optional label and tags. Edge ids must
+be unique within the project; duplicates raise a `duplicate-edge-id`
+error. When the `#<id>` is omitted, the edge falls back to a computed
+canonical id of `<from><arrow><to>` (with `->` for sync and `-->` for
+async). If two edges share the same computed base and neither has an
+`#<id>`, an `ambiguous-edge-base` warning is raised and per-edge style
+selectors do not match either of them.
+
+The same suffix is accepted on a `usecase` block's `resource` row to
+identify the synthesized usecase→resource edge:
+
+```
+usecase PlaceOrder {
+  resource OrderDB.OrderTable #placeOrderWrite { operations create, read }
+}
+```
+
+See [`docs/design/edge-id-selector.md`](../design/edge-id-selector.md)
+for how the id flows into the `edge#<id>` style selector. The selector
+itself will be documented in [`docs/spec/style.md`](style.md) once Phase
+B lands.
+
 #### Edges inside a domain block
 
 Declaring an edge inside a `domain` block expresses a dependency between domains.
