@@ -1,5 +1,6 @@
-import { useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { EditPane } from "./EditPane.js";
+import { SidebarCollapseContext } from "./sidebar-collapse-context.js";
 
 import type { ReactNode } from "react";
 import type { editor } from "monaco-editor";
@@ -39,6 +40,11 @@ export function EditArea({
 }: EditAreaProps) {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const hasSidebar = !!sidebarContent;
+  const toggle = useCallback(() => setSidebarCollapsed((v) => !v), []);
+  const collapseValue = useMemo(
+    () => ({ collapsed: sidebarCollapsed, toggle }),
+    [sidebarCollapsed, toggle],
+  );
 
   const className = [
     "edit-area",
@@ -50,14 +56,18 @@ export function EditArea({
 
   return (
     <div className={className}>
-      {hasSidebar && <div className="sidebar-area">{sidebarContent}</div>}
-      {hasSidebar && !previewFocused && (
+      {hasSidebar && (
+        <SidebarCollapseContext.Provider value={collapseValue}>
+          <div className="sidebar-area">{sidebarContent}</div>
+        </SidebarCollapseContext.Provider>
+      )}
+      {hasSidebar && sidebarCollapsed && !previewFocused && (
         <button
           className="toolbar-btn toolbar-btn--sidebar-toggle"
-          onClick={() => setSidebarCollapsed((v) => !v)}
-          aria-label={sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+          onClick={toggle}
+          aria-label="Expand sidebar"
         >
-          {sidebarCollapsed ? "» Expand" : "« Collapse"}
+          » Expand
         </button>
       )}
       <EditPane

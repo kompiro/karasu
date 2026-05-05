@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+import { useEffect } from "react";
 import { describe, it, expect, vi, afterEach } from "vitest";
 import { render, fireEvent, cleanup } from "@testing-library/react";
 
@@ -10,6 +11,7 @@ vi.mock("./EditPane.js", () => ({
 }));
 
 import { EditArea } from "./EditArea.js";
+import { useSidebarCollapse } from "./sidebar-collapse-context.js";
 
 const defaultProps = {
   previewFocused: false,
@@ -30,37 +32,46 @@ describe("EditArea", () => {
     expect(queryByRole("button")).toBeNull();
   });
 
-  it("renders sidebar area with toggle button when sidebarContent is provided", () => {
-    const { getByRole, getByText } = render(
+  it("renders sidebar area without an expand button when expanded", () => {
+    const { queryByRole, getByText } = render(
       <EditArea {...defaultProps} sidebarContent={<div>File Tree</div>} />,
     );
     expect(getByText("File Tree")).toBeTruthy();
-    expect(getByRole("button", { name: /Collapse sidebar/ })).toBeTruthy();
+    // The collapse button is rendered inside FileTreeView (via context),
+    // not by EditArea itself, so EditArea exposes no toggle when expanded.
+    expect(queryByRole("button", { name: /sidebar/ })).toBeNull();
   });
 
-  it("toggle button collapses sidebar when clicked", () => {
-    const { getByRole, container } = render(
-      <EditArea {...defaultProps} sidebarContent={<div>File Tree</div>} />,
+  it("renders an expand button only when collapsed (via context consumer)", () => {
+    function TogglingSidebar() {
+      const ctx = useSidebarCollapse();
+      return (
+        <button data-testid="ctx-toggle" onClick={() => ctx?.toggle()}>
+          File Tree
+        </button>
+      );
+    }
+    const { getByTestId, getByRole, queryByRole, container } = render(
+      <EditArea {...defaultProps} sidebarContent={<TogglingSidebar />} />,
     );
-    const btn = getByRole("button", { name: /Collapse sidebar/ });
-    fireEvent.click(btn);
+    expect(queryByRole("button", { name: /Expand sidebar/ })).toBeNull();
+    fireEvent.click(getByTestId("ctx-toggle"));
     expect(container.querySelector(".edit-area.sidebar-collapsed")).toBeTruthy();
     expect(getByRole("button", { name: /Expand sidebar/ })).toBeTruthy();
-  });
-
-  it("toggle button expands sidebar when clicked again", () => {
-    const { getByRole, container } = render(
-      <EditArea {...defaultProps} sidebarContent={<div>File Tree</div>} />,
-    );
-    const btn = getByRole("button", { name: /Collapse sidebar/ });
-    fireEvent.click(btn);
     fireEvent.click(getByRole("button", { name: /Expand sidebar/ }));
     expect(container.querySelector(".edit-area.sidebar-collapsed")).toBeNull();
   });
 
-  it("hides toggle button when previewFocused is true", () => {
+  it("hides expand button when previewFocused is true", () => {
+    function ForceCollapsed() {
+      const ctx = useSidebarCollapse();
+      useEffect(() => {
+        if (ctx && !ctx.collapsed) ctx.toggle();
+      }, [ctx]);
+      return <div>File Tree</div>;
+    }
     const { queryByRole } = render(
-      <EditArea {...defaultProps} previewFocused sidebarContent={<div>File Tree</div>} />,
+      <EditArea {...defaultProps} previewFocused sidebarContent={<ForceCollapsed />} />,
     );
     expect(queryByRole("button", { name: /sidebar/ })).toBeNull();
   });

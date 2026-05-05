@@ -1098,10 +1098,7 @@ body,
 }
 
 .file-tree-header {
-  /* Left padding reserves space for the absolutely-positioned sidebar
-     collapse toggle (.toolbar-btn--sidebar-toggle), which is anchored to
-     the top-left of .edit-area and visually sits inside this header. */
-  padding: 9px 12px 7px 84px;
+  padding: 6px 8px;
   font-size: 10px;
   font-weight: 700;
   color: var(--text-muted);
@@ -1111,7 +1108,18 @@ body,
   flex-shrink: 0;
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  gap: 6px;
+}
+
+.file-tree-header__label {
+  flex: 1;
+  min-width: 0;
+}
+
+.file-tree-header-btn--collapse {
+  /* Collapse toggle sits as the first flex item — leading position to
+     mirror GitHub's file tree layout. */
+  flex-shrink: 0;
 }
 
 .file-tree-header-actions {
@@ -1330,49 +1338,44 @@ body,
   z-index: 1;
 }
 
-/* ── Sidebar Toggle Button ─────────────────────────────────────── */
-/* Anchored to the top-left of .edit-area so it visually sits at the
-   top-left of the file tree header (GitHub-style). Styled as a compact
-   ghost button that matches .file-tree-header-btn. Sits above the
-   sidebar via z-index so it remains clickable when expanded. */
+/* ── Sidebar Expand Button (collapsed state only) ──────────────── */
+/* The collapse button lives inside .file-tree-header (see FileTreeView).
+   When the sidebar is collapsed, .sidebar-area shrinks to 0 and the
+   in-header button is no longer reachable, so this floating expand
+   affordance is rendered at the top-left of .edit-area. */
 .toolbar-btn--sidebar-toggle {
   position: absolute;
   left: 6px;
-  top: 4px;
+  top: 6px;
   z-index: 100;
-  background: transparent;
-  color: var(--text-muted);
-  border: none;
-  border-radius: var(--radius-xs);
-  padding: 2px 6px;
+  background: var(--bg-raised);
+  color: var(--text-secondary);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  padding: 3px 8px;
   font-size: 11px;
   font-weight: 500;
   font-family: var(--font-ui);
   line-height: 1;
   cursor: pointer;
   white-space: nowrap;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
   transition:
-    background 0.12s,
-    color 0.12s;
+    background 0.15s,
+    color 0.15s,
+    border-color 0.15s;
 }
 
 .toolbar-btn--sidebar-toggle:hover {
-  background: var(--bg-raised);
-  color: var(--text-secondary);
+  background: var(--bg-overlay);
+  color: var(--text-primary);
+  border-color: var(--accent);
 }
 
-/* When collapsed: sidebar area shrinks to 0 (content clipped by overflow: hidden);
-   toggle stays anchored to top-left of edit-area to surface the expand affordance. */
+/* When collapsed: sidebar area shrinks to 0 (content clipped by overflow: hidden). */
 .edit-area.has-sidebar.sidebar-collapsed .sidebar-area {
   width: 0;
   border-right: none;
-}
-
-.edit-area.has-sidebar.sidebar-collapsed .toolbar-btn--sidebar-toggle {
-  background: var(--bg-raised);
-  color: var(--text-secondary);
-  border: 1px solid var(--border-strong);
-  border-radius: var(--radius-sm);
 }
 
 /* ── Preview Focused (fullscreen preview) ──────────────────────── */
