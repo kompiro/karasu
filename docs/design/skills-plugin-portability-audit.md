@@ -79,8 +79,8 @@
 | K | `docs/design/` `docs/spec/` `docs/acceptance/` 参照 | 各ディレクトリの存在チェックを噛ませて optional 化 |
 | K | `.github/PULL_REQUEST_TEMPLATE.md` のセクション構成 | fallback テンプレート用意 |
 | K | Cloudflare Pages preview URL（`*.karasu.pages.dev`） | **karasu 固有**。削除 |
-| K | `.claude/rules/adr.md` ADR auto-merge ルール | **karasu 固有**。削除 |
-| K | ADR 昇格（cleanup 内） | **karasu 固有のドキュメントライフサイクル**。plugin からは外す（karasu に専用 skill を残す案あり） |
+| K | `.claude/rules/adr.md` ADR auto-merge ルール | optional 化（auto-merge 設定がある repo のみ実行） |
+| K | ADR 昇格（cleanup 内） | Plugin に含める。`docs/adr/` と `YYYYMMDD-NN-description.md` 命名を採用する repo のみ有効、未採用なら no-op |
 | L | skill 本体は日本語、PR/Issue は英語 | 英語ルールを `CLAUDE.md` 設定可能化 |
 | T | `gh issue edit` でラベル更新 | label set が無ければ no-op |
 | C | `status: ready/blocked/implementing/designing/designed/in-review` ラベル | `CLAUDE.md` の `labels:` フィールドで定義、未定義なら skip |
@@ -109,7 +109,7 @@
 | K | Playwright `packages/e2e/tests/` 直接参照 | テストフレームワーク名はパラメータ化、サンプルパスは一般化 |
 | K | AT-0004 / AT-0014 等 karasu 固有の AT への参照 | plugin からは例として残してよいが「karasu の例」と明示 |
 | K | #916/#918/#919/#920 等 karasu Issue 番号 | 削除 |
-| K | `pnpm at:check-coverage` コマンド | **karasu 固有**。説明から削除 or 「optional tooling」と注記 |
+| K | `pnpm at:check-coverage` コマンド | コマンド名は plugin から削除し、「coverage 検査ツールを併用するとよい」と一般化。実体は karasu 側に残す |
 | L | skill 本体は日本語、ファイル名は英語 kebab-case | portable |
 
 **結論**: 中程度。`type: product/tool` 判定ロジックと karasu 固有の Issue/AT 参照を削除。
@@ -166,17 +166,22 @@
 4. **package manager**: lock file（`pnpm-lock.yaml` / `package-lock.json` / `yarn.lock`）または `package.json` の `packageManager` フィールドから検出。無ければ install ステップを skip。
 5. **ドキュメント構造**: `docs/design/` `docs/adr/` `docs/acceptance/` `docs/qa/` `docs/review/` の有無を実行時にチェック。無いものはその skill のサブステップを skip。
 6. **テンプレート**: `.github/PULL_REQUEST_TEMPLATE.md` 不在時の fallback PR 本文テンプレを plugin 内に持つ。
-7. **karasu 固有部分の切り出し**: preview URL 表示（Cloudflare Pages）と ADR 昇格は karasu に残す薄いラッパ skill として継続。plugin 本体からは除去。
+7. **ADR 昇格ワークフロー**: Plugin に含める（optional）。skill は `docs/adr/` と `YYYYMMDD-NN-description.md` 命名規則の存在を実行時にチェックし、無ければ no-op。validator / lefthook / schema 等の周辺ツールは plugin の対象外（`kompiro/adr-tools` 等の独立リポジトリの管轄）。
+8. **karasu 固有部分の切り出し**: Cloudflare Pages の preview URL 表示と `pnpm at:check-coverage` 等の karasu 専用コマンドは plugin 本体からは除去し、karasu 側に残す。
 
 ## 削除対象（plugin 化時に外す karasu 固有要素）
 
 - `*.karasu.pages.dev` の preview URL 構築ロジック
-- ADR-20260413-01 への参照
-- `.claude/rules/adr.md` への参照
-- ADR 昇格手順（`/start-dev` cleanup 内、および `/ship` 内）
+- ADR-20260413-01 への参照（karasu 固有 ADR 番号）
+- `.claude/rules/adr.md` への直接参照（auto-merge ルールは optional 化して plugin に内包）
 - karasu 固有の Issue 番号（#916, #918 など）
-- `pnpm at:check-coverage` 等の karasu 固有スクリプト名
+- `pnpm at:check-coverage` 等の karasu 固有スクリプト名（カバレッジ検査の概念は一般化して残す）
 - `cd /workspaces/karasu` 等の絶対パス
+
+## Plugin に含めるが optional 化する要素
+
+- ADR 昇格ワークフロー（`/start-dev` cleanup 内）— `docs/adr/` ディレクトリと命名規則を採用する repo でのみ有効
+- ADR PR の auto-merge 設定 — `gh pr merge --auto --squash` が許可されている repo でのみ有効
 
 ## 次ステップ
 
