@@ -488,6 +488,95 @@ describe("resolveStyles", () => {
     expect(edgeStyle.strokeStyle).toBe("dashed");
   });
 
+  describe("direction property", () => {
+    it("defaults to auto when no rule sets it", () => {
+      const sliceEdges = [
+        {
+          from: "A",
+          to: "B",
+          kind: "sync" as const,
+          tags: [],
+          loc: dummyLoc,
+          canonicalId: "A->B",
+        },
+      ];
+      const result = resolveStyles([], [], undefined, undefined, undefined, sliceEdges);
+      expect(result.edges.get("A->B")!.direction).toBe("auto");
+    });
+
+    it("applies a direction value from the cascade", () => {
+      const sliceEdges = [
+        {
+          from: "A",
+          to: "B",
+          kind: "sync" as const,
+          tags: [],
+          loc: dummyLoc,
+          canonicalId: "A->B",
+        },
+      ];
+      const sheet: StyleSheet = {
+        rules: [
+          makeRule({ nodeType: "edge", tags: [], annotations: [] }, { direction: "down" }, 1, 0),
+        ],
+      };
+      const result = resolveStyles([], [sheet], undefined, undefined, undefined, sliceEdges);
+      expect(result.edges.get("A->B")!.direction).toBe("down");
+    });
+
+    it("higher-specificity edge#<id> rule overrides a base edge rule", () => {
+      const sliceEdges = [
+        {
+          from: "A",
+          to: "B",
+          kind: "sync" as const,
+          tags: [],
+          loc: dummyLoc,
+          canonicalId: "criticalWrite",
+          authorId: "criticalWrite",
+        },
+      ];
+      const sheet: StyleSheet = {
+        rules: [
+          makeRule({ nodeType: "edge", tags: [], annotations: [] }, { direction: "auto" }, 1, 0),
+          makeRule(
+            { nodeType: "edge", edgeId: "criticalWrite", tags: [], annotations: [] },
+            { direction: "down" },
+            101,
+            1,
+          ),
+        ],
+      };
+      const result = resolveStyles([], [sheet], undefined, undefined, undefined, sliceEdges);
+      expect(result.edges.get("A->B")!.direction).toBe("down");
+    });
+
+    it("drops invalid direction values and keeps the default", () => {
+      const sliceEdges = [
+        {
+          from: "A",
+          to: "B",
+          kind: "sync" as const,
+          tags: [],
+          loc: dummyLoc,
+          canonicalId: "A->B",
+        },
+      ];
+      const sheet: StyleSheet = {
+        rules: [
+          makeRule(
+            { nodeType: "edge", tags: [], annotations: [] },
+            { direction: "diagonal" },
+            1,
+            0,
+          ),
+        ],
+      };
+      const result = resolveStyles([], [sheet], undefined, undefined, undefined, sliceEdges);
+      expect(result.edges.get("A->B")!.direction).toBe("auto");
+    });
+  });
+
   it("resolves [write] edge to stroke-width 2 via builtin stylesheet (read < write < cyclic)", () => {
     const writeSystem = makeNode({
       kind: "system",

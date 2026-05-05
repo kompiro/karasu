@@ -96,6 +96,7 @@ color:            #94A3B8;
 stroke-width:     1.5px;
 font-size:        11px;
 border-style:     solid;         /* solid | dashed | dotted */
+direction:        auto;          /* up | down | left | right | auto (hint, see below) */
 
 /* karasu-specific properties (not standard CSS) */
 shape:            box;           /* box | user | cylinder | queue | hexagon | cloud | url("...") */
@@ -165,6 +166,33 @@ auto-layout heuristic issue rather than reaching for a new hint.
 
 Invalid values (anything other than `left` / `center` / `right`) emit a
 `style-column-invalid-value` warning and are dropped.
+
+### `direction` — `auto | up | down | left | right`
+
+A layout hint on edges. Suggests the visual direction in which the edge
+should flow; default `auto` lets the layout engine decide.
+
+```css
+edge[write] { direction: down; }
+edge[read]  { direction: right; }
+edge#criticalWrite { direction: down; }
+```
+
+The hint travels through the resolver into `ResolvedEdgeStyle.direction`
+and is intended to be consumed by the GUI editing flow (#1076 / #1098)
+that writes per-edge `edge#<id> { direction: <value> }` rules to a
+`.krs.style`.
+
+> **MVP limitation.** The current layout engine does not yet read
+> `direction` to bias layer assignment or routing — the value parses,
+> resolves, and is observable on `ResolvedEdgeStyle`, but the rendered
+> diagram is unchanged. Wiring the hint into the layered layout is
+> tracked in [#1124](https://github.com/kompiro/karasu/issues/1124).
+> See `docs/design/edge-direction-style.md` for the intended semantics
+> (hint, not absolute; the engine may override when honoring it would
+> create a cycle).
+
+Invalid values are silently dropped and `direction` falls back to `auto`.
 
 ---
 
