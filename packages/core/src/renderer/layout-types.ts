@@ -41,6 +41,15 @@ export interface LayoutEdge {
   label?: string;
   fromPoint: { x: number; y: number };
   toPoint: { x: number; y: number };
+  /** "sync" (`->`) or "async" (`-->`); needed to disambiguate canonicalId in the SVG output. */
+  kind?: "sync" | "async";
+  /**
+   * The resolver-derived canonical id for `edge#<id>` style selectors. Mirrors
+   * `KrsEdge.canonicalId`; left undefined for edges that lost their id to a
+   * base collision or for synthetic layout-only edges (ghosts, delivers, etc.)
+   * that aren't represented as a single KrsEdge.
+   */
+  canonicalId?: string;
   ghost?: boolean;
   cyclic?: boolean;
   /** Constituent domain edges for aggregated "N domain edges" implicit service edges. */

@@ -369,4 +369,58 @@ describe("PreviewPane", () => {
       expect(banner?.textContent).toContain("boom");
     });
   });
+
+  describe("edge context menu", () => {
+    it("opens the menu on right-click of an edge group with a canonical id", () => {
+      const svg = `<div data-edge-from="A" data-edge-to="B" data-edge-kind="sync" data-edge-canonical-id="A->B"></div>`;
+      const { container } = render(
+        <PreviewPane {...baseProps()} svg={svg} styleTargetPath="/style.krs.style" />,
+      );
+      const edge = container.querySelector("[data-edge-canonical-id]")!;
+      fireEvent.contextMenu(edge, { clientX: 50, clientY: 60 });
+      const menu = container.querySelector(".edge-context-menu");
+      expect(menu).not.toBeNull();
+      expect(menu!.textContent).toContain("A->B");
+    });
+
+    it("does not open the menu on right-click outside an edge", () => {
+      const svg = `<div data-node-id="svc"></div>`;
+      const { container } = render(<PreviewPane {...baseProps()} svg={svg} />);
+      const node = container.querySelector("[data-node-id='svc']")!;
+      fireEvent.contextMenu(node, { clientX: 50, clientY: 60 });
+      expect(container.querySelector(".edge-context-menu")).toBeNull();
+    });
+
+    it("calls onPickEdgeDirection when a direction is chosen", () => {
+      const onPick = vi.fn<(id: string, direction: string) => void>();
+      const svg = `<div data-edge-from="A" data-edge-to="B" data-edge-kind="sync" data-edge-canonical-id="criticalWrite"></div>`;
+      const { container } = render(
+        <PreviewPane
+          {...baseProps()}
+          svg={svg}
+          styleTargetPath="/style.krs.style"
+          onPickEdgeDirection={onPick}
+        />,
+      );
+      const edge = container.querySelector("[data-edge-canonical-id]")!;
+      fireEvent.contextMenu(edge, { clientX: 50, clientY: 60 });
+      const downBtn = Array.from(container.querySelectorAll("button.context-menu-item")).find((b) =>
+        b.textContent?.includes("Down"),
+      ) as HTMLButtonElement;
+      fireEvent.click(downBtn);
+      expect(onPick).toHaveBeenCalledWith("criticalWrite", "down");
+    });
+
+    it("disables the direction items when no styleTargetPath is set", () => {
+      const svg = `<div data-edge-from="A" data-edge-to="B" data-edge-kind="sync" data-edge-canonical-id="A->B"></div>`;
+      const { container } = render(<PreviewPane {...baseProps()} svg={svg} />);
+      const edge = container.querySelector("[data-edge-canonical-id]")!;
+      fireEvent.contextMenu(edge, { clientX: 50, clientY: 60 });
+      const items = container.querySelectorAll<HTMLButtonElement>("button.context-menu-item");
+      expect(items.length).toBeGreaterThan(0);
+      for (const btn of items) {
+        expect(btn.disabled).toBe(true);
+      }
+    });
+  });
 });

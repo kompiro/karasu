@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach } from "vitest";
 import { render } from "./svg-renderer.js";
 import { resolveStyles } from "../resolver/style-resolver.js";
 import { extractView } from "../view/view-extract.js";
+import { assignEdgeCanonicalIds } from "../resolver/canonical-id.js";
 import { Parser } from "../parser/parser.js";
 import { StyleParser } from "../parser/style-parser.js";
 import { getBuiltinStyleSheet } from "../builtins/default-style.js";
@@ -771,6 +772,7 @@ system S {
       const parseResult = Parser.parse(krs);
       const styles = resolveStyles(parseResult.value.systems, [getBuiltinStyleSheet()]);
       const viewSlice = extractView(parseResult.value.systems, ["S"]);
+      assignEdgeCanonicalIds(viewSlice.childEdges);
       return render(
         viewSlice,
         styles,
@@ -819,6 +821,37 @@ system S {
       expect(svg).toContain('data-diff-state="added"');
     });
 
+    it("emits data-edge-canonical-id and data-edge-kind for unauthored edges", () => {
+      const krs = `
+system S {
+  service A {}
+  service B {}
+  A -> B
+  A --> B "async"
+}
+`;
+      const svg = renderWithDiff(krs, new Map(), new Map());
+      // `>` is XML-escaped inside attribute values; the browser unescapes it
+      // when reading the attribute via the DOM (verified separately in the
+      // PreviewPane menu test).
+      expect(svg).toContain('data-edge-canonical-id="A-&gt;B"');
+      expect(svg).toContain('data-edge-canonical-id="A--&gt;B"');
+      expect(svg).toContain('data-edge-kind="sync"');
+      expect(svg).toContain('data-edge-kind="async"');
+    });
+
+    it("emits data-edge-canonical-id from the author id when present", () => {
+      const krs = `
+system S {
+  service A {}
+  service B {}
+  A -> B "primary" #criticalWrite
+}
+`;
+      const svg = renderWithDiff(krs, new Map(), new Map());
+      expect(svg).toContain('data-edge-canonical-id="criticalWrite"');
+    });
+
     it("omits data-diff-state when no diff entry is provided", () => {
       const krs = `
 system S {
@@ -840,6 +873,7 @@ system S {
       const parseResult = Parser.parse(krs);
       const styles = resolveStyles(parseResult.value.systems, [getBuiltinStyleSheet()]);
       const viewSlice = extractView(parseResult.value.systems, ["S"]);
+      assignEdgeCanonicalIds(viewSlice.childEdges);
       return render(
         viewSlice,
         styles,

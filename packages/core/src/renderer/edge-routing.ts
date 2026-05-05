@@ -97,6 +97,8 @@ export function renderEdge(
     {
       "data-edge-from": edge.from,
       "data-edge-to": edge.to,
+      "data-edge-kind": edge.kind,
+      "data-edge-canonical-id": edge.canonicalId,
       "data-diff-state": diffState,
     },
     parts.join("\n"),

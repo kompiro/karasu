@@ -1,6 +1,7 @@
 import { createContext, useContext, type ReactNode } from "react";
 import type {
   Diagnostic,
+  EdgeDirection,
   NodeMetadata,
   Warning,
   DeployBlockInfo,
@@ -105,6 +106,21 @@ export interface PreviewContextValue {
   onTeamToggle?: (teamId: string) => void;
   /** Fully-expanded org tree SVG for export */
   orgTreeExportSvg?: string;
+
+  /**
+   * Path of the `.krs.style` file the GUI append writer should target,
+   * resolved from the active project (typically the last `@import` in the
+   * current `.krs`). `undefined` keeps the right-click → Direction menu
+   * disabled with a hint.
+   */
+  styleTargetPath?: string;
+  /**
+   * Apply a GUI-driven edge `direction` override by appending an
+   * `edge#<canonicalId> { direction: <value>; }` rule to the active
+   * `.krs.style` file. `undefined` when the host shell does not support
+   * GUI style writes.
+   */
+  onPickEdgeDirection?: (canonicalId: string, direction: EdgeDirection) => void;
 }
 
 const PreviewContext = createContext<PreviewContextValue | null>(null);
