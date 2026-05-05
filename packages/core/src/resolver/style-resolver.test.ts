@@ -339,6 +339,131 @@ describe("resolveStyles", () => {
     expect(edgeStyle.color).toBe("#FF0000");
   });
 
+  describe("edge#<id> selector", () => {
+    it("matches an edge by author id and beats a tag selector", () => {
+      const sliceEdges = [
+        {
+          from: "A",
+          to: "B",
+          kind: "sync" as const,
+          tags: ["write"],
+          loc: dummyLoc,
+          authorId: "criticalWrite",
+          canonicalId: "criticalWrite",
+        },
+        {
+          from: "C",
+          to: "D",
+          kind: "sync" as const,
+          tags: ["write"],
+          loc: dummyLoc,
+          canonicalId: "C->D",
+        },
+      ];
+      const sheet: StyleSheet = {
+        rules: [
+          makeRule(
+            { nodeType: "edge", tags: ["write"], annotations: [] },
+            { color: "#000000" },
+            11,
+            0,
+          ),
+          makeRule(
+            { nodeType: "edge", edgeId: "criticalWrite", tags: [], annotations: [] },
+            { color: "#FF0000" },
+            101,
+            1,
+          ),
+        ],
+      };
+      const result = resolveStyles([], [sheet], undefined, undefined, undefined, sliceEdges);
+      expect(result.edges.get("A->B")!.color).toBe("#FF0000");
+      expect(result.edges.get("C->D")!.color).toBe("#000000");
+    });
+
+    it("matches an edge by computed sync base id", () => {
+      const sliceEdges = [
+        {
+          from: "A",
+          to: "B",
+          kind: "sync" as const,
+          tags: [],
+          loc: dummyLoc,
+          canonicalId: "A->B",
+        },
+      ];
+      const sheet: StyleSheet = {
+        rules: [
+          makeRule(
+            { nodeType: "edge", edgeId: "A->B", tags: [], annotations: [] },
+            { color: "#FF0000" },
+            101,
+            0,
+          ),
+        ],
+      };
+      const result = resolveStyles([], [sheet], undefined, undefined, undefined, sliceEdges);
+      expect(result.edges.get("A->B")!.color).toBe("#FF0000");
+    });
+
+    it("matches an edge by computed async base id without matching the sync rule", () => {
+      const sliceEdges = [
+        {
+          from: "A",
+          to: "B",
+          kind: "async" as const,
+          tags: [],
+          loc: dummyLoc,
+          canonicalId: "A-->B",
+        },
+      ];
+      const sheet: StyleSheet = {
+        rules: [
+          makeRule(
+            { nodeType: "edge", edgeId: "A-->B", tags: [], annotations: [] },
+            { color: "#00FF00" },
+            101,
+            0,
+          ),
+          makeRule(
+            { nodeType: "edge", edgeId: "A->B", tags: [], annotations: [] },
+            { color: "#0000FF" },
+            101,
+            1,
+          ),
+        ],
+      };
+      const result = resolveStyles([], [sheet], undefined, undefined, undefined, sliceEdges);
+      expect(result.edges.get("A->B")!.color).toBe("#00FF00");
+    });
+
+    it("does not match an edge whose canonicalId was cleared by a base collision", () => {
+      const sliceEdges = [
+        {
+          from: "A",
+          to: "B",
+          kind: "sync" as const,
+          tags: [],
+          loc: dummyLoc,
+          canonicalId: undefined,
+        },
+      ];
+      const sheet: StyleSheet = {
+        rules: [
+          makeRule(
+            { nodeType: "edge", edgeId: "A->B", tags: [], annotations: [] },
+            { color: "#FF0000" },
+            101,
+            0,
+          ),
+        ],
+      };
+      const result = resolveStyles([], [sheet], undefined, undefined, undefined, sliceEdges);
+      // Default edge color from DEFAULT_EDGE_STYLE.
+      expect(result.edges.get("A->B")!.color).not.toBe("#FF0000");
+    });
+  });
+
   it("resolves async edge as dashed via builtin stylesheet", () => {
     const system = makeNode({
       kind: "system",

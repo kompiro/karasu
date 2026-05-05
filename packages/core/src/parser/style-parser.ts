@@ -119,6 +119,22 @@ export class StyleParser {
       selector.nodeType = this.advance().value;
     }
 
+    // edge#<id> selector — only meaningful after `edge`. Accepts either an
+    // author identifier (`edge#criticalWrite`) or a base form
+    // (`edge#A->B` / `edge#A-->B`).
+    if (selector.nodeType === "edge" && this.peek().type === TokenType.Hash) {
+      this.advance(); // #
+      const first = this.expect(TokenType.Identifier).value;
+      const next = this.peek().type;
+      if (next === TokenType.Arrow || next === TokenType.DashedArrow) {
+        const arrow = this.advance().value;
+        const second = this.expect(TokenType.Identifier).value;
+        selector.edgeId = `${first}${arrow}${second}`;
+      } else {
+        selector.edgeId = first;
+      }
+    }
+
     // Tag selectors [tag]
     while (this.peek().type === TokenType.LeftBracket) {
       this.advance(); // [
@@ -213,6 +229,7 @@ export class StyleParser {
 export function computeSpecificity(selector: StyleSelector): number {
   let score = 0;
   if (selector.id) score += 100;
+  if (selector.edgeId) score += 100;
   score += selector.tags.length * 10;
   score += selector.annotations.length * 10;
   if (selector.nodeType) score += 1;
