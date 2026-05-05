@@ -103,6 +103,52 @@ edge[async] {
     expect(rule.selector.tags).toEqual(["async"]);
   });
 
+  describe("edge#<id> selector", () => {
+    it("parses an edge selector with an author id", () => {
+      const result = StyleParser.parse(`
+edge#criticalWrite {
+  color: #EF4444;
+}
+      `);
+      const rule = result.value.rules[0];
+      expect(rule.selector.nodeType).toBe("edge");
+      expect(rule.selector.edgeId).toBe("criticalWrite");
+    });
+
+    it("parses an edge selector with a sync base id", () => {
+      const result = StyleParser.parse(`
+edge#A->B {
+  color: #EF4444;
+}
+      `);
+      const rule = result.value.rules[0];
+      expect(rule.selector.nodeType).toBe("edge");
+      expect(rule.selector.edgeId).toBe("A->B");
+    });
+
+    it("parses an edge selector with an async base id", () => {
+      const result = StyleParser.parse(`
+edge#A-->B {
+  color: #EF4444;
+}
+      `);
+      const rule = result.value.rules[0];
+      expect(rule.selector.nodeType).toBe("edge");
+      expect(rule.selector.edgeId).toBe("A-->B");
+    });
+
+    it("combines edge id with a tag selector", () => {
+      const result = StyleParser.parse(`
+edge#criticalWrite[write] {
+  color: #EF4444;
+}
+      `);
+      const rule = result.value.rules[0];
+      expect(rule.selector.edgeId).toBe("criticalWrite");
+      expect(rule.selector.tags).toEqual(["write"]);
+    });
+  });
+
   it("parses grouped selectors", () => {
     const result = StyleParser.parse(`
 service, domain {
@@ -201,5 +247,17 @@ describe("computeSpecificity", () => {
 
   it("id = 100", () => {
     expect(computeSpecificity({ id: "ECommerce", tags: [], annotations: [] })).toBe(100);
+  });
+
+  it("edge id = 100, edge#<id> with type = 101", () => {
+    expect(computeSpecificity({ edgeId: "criticalWrite", tags: [], annotations: [] })).toBe(100);
+    expect(
+      computeSpecificity({
+        nodeType: "edge",
+        edgeId: "criticalWrite",
+        tags: [],
+        annotations: [],
+      }),
+    ).toBe(101);
   });
 });
