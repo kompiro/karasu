@@ -73,7 +73,7 @@
     "commit-commands@claude-plugins-official": true,
     "frontend-design@claude-plugins-official": true,
     "code-review@claude-plugins-official": true,
-    "claude-skills@kompiro-claude-skills": true
+    "hane@kompiro-hane": true
   },
   "defaultMode": "acceptEdits"
 }

@@ -53,7 +53,7 @@ karasu/
 ## 開発ワークフロー
 
 > **作業開始時は必ず `docs/process.md` を読んでから着手すること。**
-> 以下は必ず守る制約のみ記載する。詳細手順は `docs/process.md` および `/claude-skills:start-dev` スキル（[`kompiro/claude-skills`](https://github.com/kompiro/claude-skills) plugin）を参照。
+> 以下は必ず守る制約のみ記載する。詳細手順は `docs/process.md` および `/hane:start-dev` スキル（[`kompiro/hane`](https://github.com/kompiro/hane) plugin）を参照。
 
 ### ブランチ・worktree ルール
 
