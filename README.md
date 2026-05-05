@@ -180,7 +180,7 @@ The `Chat` tab enables interactive modeling against the Claude API. It uses **BY
 - **Panel focus** — Collapse the sidebar and expand the preview to fill the screen
 - **Domain drift detection** — Warns automatically when the same domain name is dispersed across multiple services
 - **Deprecated-domain coexistence during migrations** — Render old and new domains side by side with `@deprecated` / `@migration_target`
-- **Tags and annotations** — Supports `[external]` `[human]` `[async]` as tags and `@deprecated` `@new` as annotations
+- **Tags and annotations** — Tags such as `[external]` `[human]` `[async]` and client form-factors (`[web]` `[mobile]` `[desktop]` `[cli]` `[device]` `[extension]` `[embed]`); annotations `@deprecated` `@new` `@experimental` `@migration_target`. See `docs/spec/tags-annotations.md` for the full list (including synthesized tags like `[implicit]` `[cyclic]` `[read]` `[write]`)
 - **Style separation** — A CSS-like `.krs.style` file controls appearance
 - **Multi-file projects** — Compose files with relative-path `import` and `import "dir/"`, with cross-file navigation and jump support
 - **Cross-system references** — Reference a service in another system with the dotted `PaymentGateway.PaymentService` notation
@@ -259,6 +259,24 @@ echo 'service NewService {}' | karasu append arch.krs
 
 # Insert as a child of a given parent node (indent handled automatically)
 echo 'service NewService {}' | karasu insert ECommerce arch.krs
+
+# Apply a piped patch — replace nodes whose IDs already exist, append the rest
+cat patch.krs | karasu apply arch.krs
+```
+
+### Diff and CRUD matrix
+
+```bash
+# Render a visual diff between two .krs versions
+karasu diff before.krs after.krs --output diff.svg
+
+# Pipe one side from stdin (e.g. compare HEAD against the working tree)
+git show HEAD:arch.krs | karasu diff - arch.krs --output diff.svg
+
+# Extract the usecase × resource CRUD matrix
+karasu matrix arch.krs --format md > docs/crud.md
+karasu matrix arch.krs --format svg --output docs/crud.svg
+karasu matrix arch.krs --format csv --writes-only > writes.csv
 ```
 
 ## VS Code extension
