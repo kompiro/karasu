@@ -81,7 +81,7 @@ ready → implementing → in-review → (close)
    - Design Doc PR がマージされたら status: designed → 実装開始時に status: implementing に戻す
    - 受け入れテスト（docs/acceptance/）を計画に含める
 5. 実装する
-6. /commit でコミットする（Conventional Commits 形式）
+6. /hane:commit でコミットする（Conventional Commits 形式）
 7. PR を作成する（Closes #N で Issue と紐付ける）
 8. CI（test / lint / format / typecheck / knip / check:cycles / build）が通過することを確認する
 9. Issue ラベルを status: in-review に更新する
@@ -89,7 +89,33 @@ ready → implementing → in-review → (close)
 11. レビュー → マージ → git worktree remove .worktrees/<branch> でクリーンアップ
 ```
 
-詳細な手順は `/start-dev` スキルを参照。
+詳細な手順は `/hane:start-dev` スキル（[`kompiro/hane`](https://github.com/kompiro/hane) plugin）を参照。
+
+### Claude Code plugin のセットアップ
+
+karasu のワークフローを Claude Code 上で再現するには、portable な skill 群を提供する `kompiro/hane` plugin をインストールする。
+
+```
+/plugin marketplace add kompiro/hane
+/plugin install hane@kompiro-hane
+```
+
+plugin にバンドルされる skill とその karasu 内での主な用途:
+
+| Skill | 用途 |
+|---|---|
+| `/hane:start-dev` | Issue → worktree → 計画 → 実装 → コミット → PR の全体フロー |
+| `/hane:commit` | Conventional Commits でコミット |
+| `/hane:ship` | push → PR → CI → クリーンアップ |
+| `/hane:design-doc` | `docs/design/` への設計検討記録の作成 |
+| `/hane:acceptance-test` | `docs/acceptance/NNNN-*.md` の受け入れテスト記録作成 |
+| `/hane:qa` | `docs/qa/YYYY-MM-DD-checklist.md` 生成 |
+| `/hane:review-docs` | リンク切れ・ドキュメント整合性レビュー |
+| `/hane:sync-docs` | コード現状に合わせてリファレンス系ドキュメントを更新 |
+
+karasu 専用の skill（`/svg-icon`, `/update-examples`）は `.claude/skills/` 配下にローカル定義されている（plugin 化対象外）。
+
+> **移行期間中**: ローカル `.claude/skills/{commit,ship,start-dev,...}/` も当面残しているため、`/commit` と `/hane:commit` の両方が available skill として表示される。plugin 動作確認後に local 側は別 PR で削除予定（[#1089](https://github.com/kompiro/karasu/issues/1089)）。
 
 ### 循環依存チェック
 
@@ -108,10 +134,10 @@ ready → implementing → in-review → (close)
 
 ### QA チェックリスト
 
-`/qa` スキルはリリース前や任意のタイミングで実行できる。
+`/hane:qa` スキルはリリース前や任意のタイミングで実行できる。
 
 ```
-/qa を実行
+/hane:qa を実行
   → docs/acceptance/*.md を読み込む
   → bash コマンドを自動実行（build / test / lint 等）
   → 手動確認が必要な - [ ] 項目を収集
@@ -120,11 +146,11 @@ ready → implementing → in-review → (close)
 
 ### 自動化アノテーションの書式
 
-自動化されたケースを `docs/acceptance/*.md` に反映するときは、`.claude/skills/acceptance-test/SKILL.md` の「自動化アノテーション」節に従って `> ✅ Automated — ... › ...` 形式の blockquote を箇条書き直下に添える。書式は repo 全体で統一されており、過去の "Verified by" メタ欄や "Automated Checks" 節分割は順次本方式に畳まれる（#916）。
+自動化されたケースを `docs/acceptance/*.md` に反映するときは、`/hane:acceptance-test` スキル（plugin: `kompiro/hane`）の「自動化アノテーション」節に従って `> ✅ Automated — ... › ...` 形式の blockquote を箇条書き直下に添える。書式は repo 全体で統一されており、過去の "Verified by" メタ欄や "Automated Checks" 節分割は順次本方式に畳まれる（#916）。
 
 - 生成ファイルは git にコミットしない（`.gitignore` 対象）
 - 手動確認項目は生成されたファイルをもとに順番に実施する
-- `/qa` は手動 QA のチェックリストを生成する。機械化可能な AT は Playwright による E2E 層（`packages/e2e/`）が補完する。自動化は手動 QA を置き換えず補完する（詳細は ADR-20260412-05）
+- `/hane:qa` は手動 QA のチェックリストを生成する。機械化可能な AT は Playwright による E2E 層（`packages/e2e/`）が補完する。自動化は手動 QA を置き換えず補完する（詳細は ADR-20260412-05）
 
 ### 設計判断を ADR に残すタイミング
 
