@@ -852,6 +852,22 @@ system S {
       expect(svg).toContain('data-edge-canonical-id="criticalWrite"');
     });
 
+    it("marks edges with a canonical id as interactive and emits a wide transparent hitline", () => {
+      const krs = `
+system S {
+  service A {}
+  service B {}
+  A -> B
+}
+`;
+      const svg = renderWithDiff(krs, new Map(), new Map());
+      // Interactive class signals hover/cursor styling in the app layer.
+      expect(svg).toContain('class="krs-edge krs-edge--interactive"');
+      // Wide transparent hitline behind the visible stroke for easier targeting.
+      expect(svg).toContain('class="krs-edge__hitline"');
+      expect(svg).toMatch(/stroke="transparent"\s+stroke-width="14"/);
+    });
+
     it("omits data-diff-state when no diff entry is provided", () => {
       const krs = `
 system S {

@@ -1314,6 +1314,28 @@ body,
   min-width: 200px;
 }
 
+/* ── Edge hover affordance ─────────────────────────────────────────
+   Edges with a canonical id are right-clickable. The renderer adds a
+   wide transparent hit-line behind the visible stroke; the cursor and
+   hover-tinted stroke advertise the interactive surface.
+
+   Only the SVG-internal `g.krs-edge--interactive` is targeted so the
+   styling is scoped to the rendered diagram. The hit-line itself
+   stays transparent — only its stroke widens the click target. */
+.preview-container svg .krs-edge--interactive {
+  cursor: context-menu;
+}
+
+.preview-container svg .krs-edge--interactive:hover line:not(.krs-edge__hitline),
+.preview-container svg .krs-edge--interactive:hover polyline:not(.krs-edge__hitline) {
+  stroke-width: 3;
+  filter: brightness(1.4);
+}
+
+.preview-container svg .krs-edge--interactive:hover text {
+  filter: brightness(1.4);
+}
+
 /* ── Editor / Preview resize handle ─────────────────────────────────
    Sits at the seam between .edit-area and .preview-column. Placed in
    grid column 1 with justify-self: end so it tracks the actual column
