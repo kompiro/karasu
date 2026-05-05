@@ -1,6 +1,6 @@
 import type { KrsNode, KrsEdge } from "../types/ast.js";
 import type { ViewSlice, GhostSystem } from "../view/view-extract.js";
-import type { ResolvedLayoutHints } from "../types/style.js";
+import type { EdgeDirection, ResolvedLayoutHints } from "../types/style.js";
 import { buildInheritedAnnotations } from "../resolver/inherited-annotations.js";
 import { summarizeDescription } from "./description-summary.js";
 import { CHAR_WIDTH, NODE_PADDING_X, NODE_PADDING_Y } from "./rendering-constants.js";
@@ -50,6 +50,7 @@ function getLayoutConstants(displayMode?: DisplayMode): {
 function buildGraph(
   nodeIds: string[],
   edges: KrsEdge[],
+  edgeDirections?: Map<string, EdgeDirection>,
 ): { adj: Map<string, string[]>; inDegree: Map<string, number> } {
   const idSet = new Set(nodeIds);
   const adj = new Map<string, string[]>();
@@ -58,13 +59,76 @@ function buildGraph(
     adj.set(id, []);
     inDegree.set(id, 0);
   }
+
+  // Pre-pass: build the dependency edges with `direction: up` applied as
+  // logical reversals. If applying a reversal would close a cycle, drop the
+  // reversal for that edge (keeping the original orientation) so layer
+  // assignment stays valid. `down` / `auto` / `left` / `right` use the
+  // natural `from -> to` orientation (left/right are not honored by the
+  // layered layout — see docs/spec/style.md).
+  const dependencyPairs: Array<{ from: string; to: string }> = [];
   for (const edge of edges) {
-    if (idSet.has(edge.from) && idSet.has(edge.to)) {
-      adj.get(edge.from)!.push(edge.to);
-      inDegree.set(edge.to, (inDegree.get(edge.to) ?? 0) + 1);
+    if (!idSet.has(edge.from) || !idSet.has(edge.to)) continue;
+    const direction = edgeDirections?.get(`${edge.from}->${edge.to}`);
+    if (direction === "up") {
+      dependencyPairs.push({ from: edge.to, to: edge.from });
+    } else {
+      dependencyPairs.push({ from: edge.from, to: edge.to });
     }
   }
+
+  // Cycle guard: if `up` reversals introduce a cycle, retry without them.
+  // We don't try to drop a minimal subset — for the MVP, falling back
+  // entirely is honest and predictable.
+  if (edgeDirections && hasCycle(nodeIds, dependencyPairs)) {
+    dependencyPairs.length = 0;
+    for (const edge of edges) {
+      if (!idSet.has(edge.from) || !idSet.has(edge.to)) continue;
+      dependencyPairs.push({ from: edge.from, to: edge.to });
+    }
+  }
+
+  for (const pair of dependencyPairs) {
+    adj.get(pair.from)!.push(pair.to);
+    inDegree.set(pair.to, (inDegree.get(pair.to) ?? 0) + 1);
+  }
   return { adj, inDegree };
+}
+
+function hasCycle(nodeIds: string[], pairs: Array<{ from: string; to: string }>): boolean {
+  const adj = new Map<string, string[]>();
+  for (const id of nodeIds) adj.set(id, []);
+  for (const pair of pairs) adj.get(pair.from)?.push(pair.to);
+
+  const WHITE = 0;
+  const GRAY = 1;
+  const BLACK = 2;
+  const color = new Map<string, number>();
+  for (const id of nodeIds) color.set(id, WHITE);
+
+  const stack: Array<{ node: string; nextChild: number }> = [];
+  for (const start of nodeIds) {
+    if (color.get(start) !== WHITE) continue;
+    stack.push({ node: start, nextChild: 0 });
+    color.set(start, GRAY);
+    while (stack.length > 0) {
+      const top = stack[stack.length - 1];
+      const children = adj.get(top.node) ?? [];
+      if (top.nextChild < children.length) {
+        const next = children[top.nextChild++];
+        const c = color.get(next);
+        if (c === GRAY) return true;
+        if (c === WHITE) {
+          color.set(next, GRAY);
+          stack.push({ node: next, nextChild: 0 });
+        }
+      } else {
+        color.set(top.node, BLACK);
+        stack.pop();
+      }
+    }
+  }
+  return false;
 }
 
 function placeGhostUsers(
@@ -479,6 +543,7 @@ export function layout(
   ownerIndex?: Map<string, string>,
   displayMode?: DisplayMode,
   layoutHints?: Map<string, ResolvedLayoutHints>,
+  edgeDirections?: Map<string, EdgeDirection>,
 ): LayoutResult {
   const { LAYER_GAP, NODE_GAP } = getLayoutConstants(displayMode);
   // Build the inherited-annotations map from the focused container's subtree
@@ -499,7 +564,7 @@ export function layout(
   const isUnassignedOnly =
     viewSlice.systems.length === 1 && viewSlice.systems[0].id === "__unassigned__";
   if (viewSlice.systems.length > 1 || isUnassignedOnly) {
-    return layoutMultipleSystems(viewSlice, ownerIndex, displayMode, layoutHints);
+    return layoutMultipleSystems(viewSlice, ownerIndex, displayMode, layoutHints, edgeDirections);
   }
 
   const allNodes = viewSlice.childNodes;
@@ -538,7 +603,7 @@ export function layout(
   if (forcedLayers) {
     layers = forcedLayers;
   } else {
-    const { adj, inDegree } = buildGraph(nodeIds, allEdges);
+    const { adj, inDegree } = buildGraph(nodeIds, allEdges, edgeDirections);
     layers = assignLayers(nodeIds, adj, inDegree);
   }
 
@@ -828,6 +893,7 @@ function layoutMultipleSystems(
   ownerIndex?: Map<string, string>,
   displayMode?: DisplayMode,
   layoutHints?: Map<string, ResolvedLayoutHints>,
+  edgeDirections?: Map<string, EdgeDirection>,
 ): LayoutResult {
   const { LAYER_GAP, NODE_GAP, MAX_LAYER_WIDTH } = getLayoutConstants(displayMode);
   // Multi-system view places only services (one nesting level), and a system's
@@ -857,7 +923,7 @@ function layoutMultipleSystems(
     if (forcedLayers) {
       layers = forcedLayers;
     } else {
-      const { adj, inDegree } = buildGraph(nodeIds, sys.edges);
+      const { adj, inDegree } = buildGraph(nodeIds, sys.edges, edgeDirections);
       layers = assignLayers(nodeIds, adj, inDegree);
     }
 

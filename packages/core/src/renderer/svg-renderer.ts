@@ -1,4 +1,4 @@
-import type { ResolvedNodeStyle, ResolvedStyles } from "../types/style.js";
+import type { EdgeDirection, ResolvedNodeStyle, ResolvedStyles } from "../types/style.js";
 import type { ViewSlice } from "../view/view-extract.js";
 import { layout } from "./layout.js";
 import type { ContainerRect, DisplayMode, LayoutNode, LayoutResult } from "./layout-types.js";
@@ -88,7 +88,17 @@ export function render(
   childLevelLinks?: Map<string, string>,
   options?: RenderOptions,
 ): string {
-  const layoutResult = layout(viewSlice, ownerIndex, displayMode, styles.layoutHints);
+  const edgeDirections = new Map<string, EdgeDirection>();
+  for (const [key, edgeStyle] of styles.edges) {
+    if (edgeStyle.direction !== "auto") edgeDirections.set(key, edgeStyle.direction);
+  }
+  const layoutResult = layout(
+    viewSlice,
+    ownerIndex,
+    displayMode,
+    styles.layoutHints,
+    edgeDirections,
+  );
   const title =
     layoutResult.containers.length === 0 && viewSlice.containerNode
       ? (viewSlice.containerNode.label ?? viewSlice.containerNode.id)

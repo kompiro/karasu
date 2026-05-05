@@ -68,6 +68,96 @@ system S {
   });
 });
 
+describe("layout > edge direction hint", () => {
+  it("places source below target when an edge has direction:up", () => {
+    const slice = parseAndExtract(`
+system S {
+  service A { label "A" }
+  service B { label "B" }
+  A -> B "uses"
+}
+    `);
+    const baseline = layout(slice);
+    const baselineA = baseline.nodes.get("A")!;
+    const baselineB = baseline.nodes.get("B")!;
+    // Sanity: with no hint, A is above B (default top-down layering).
+    expect(baselineA.y).toBeLessThan(baselineB.y);
+
+    const directions = new Map([["A->B", "up" as const]]);
+    const flipped = layout(slice, undefined, undefined, undefined, directions);
+    const flippedA = flipped.nodes.get("A")!;
+    const flippedB = flipped.nodes.get("B")!;
+    // With direction:up, A is below B.
+    expect(flippedA.y).toBeGreaterThan(flippedB.y);
+  });
+
+  it("treats direction:down as the natural orientation (no change)", () => {
+    const slice = parseAndExtract(`
+system S {
+  service A { label "A" }
+  service B { label "B" }
+  A -> B "uses"
+}
+    `);
+    const baseline = layout(slice);
+    const directions = new Map([["A->B", "down" as const]]);
+    const downward = layout(slice, undefined, undefined, undefined, directions);
+    expect(downward.nodes.get("A")!.y).toBe(baseline.nodes.get("A")!.y);
+    expect(downward.nodes.get("B")!.y).toBe(baseline.nodes.get("B")!.y);
+  });
+
+  it("falls back to natural orientation when direction:up would create a cycle", () => {
+    // A -> B with direction:up, plus A -> B again (treated as a parallel edge
+    // here just to keep the example minimal). The graph that drives the layered
+    // sort already knows the orientation, but combining `up` with another
+    // already-oriented edge between the same pair would close a cycle when the
+    // `up` flips one of them. We force a cycle by adding a third node.
+    const slice = parseAndExtract(`
+system S {
+  service A { label "A" }
+  service B { label "B" }
+  service C { label "C" }
+  A -> B
+  B -> C
+  C -> A
+}
+    `);
+    // Without any hint, this is already cyclic (existing behavior puts every
+    // node on layer 0). Adding a `direction: up` hint must not break anything
+    // worse — in particular, the layout still produces a result.
+    const directions = new Map([["A->B", "up" as const]]);
+    const result = layout(slice, undefined, undefined, undefined, directions);
+    expect(result.nodes.size).toBe(3);
+  });
+
+  it("ignores direction:left / direction:right in the layered layout (parses but no-op)", () => {
+    const slice = parseAndExtract(`
+system S {
+  service A { label "A" }
+  service B { label "B" }
+  A -> B
+}
+    `);
+    const baseline = layout(slice);
+    const left = layout(
+      slice,
+      undefined,
+      undefined,
+      undefined,
+      new Map([["A->B", "left" as const]]),
+    );
+    const right = layout(
+      slice,
+      undefined,
+      undefined,
+      undefined,
+      new Map([["A->B", "right" as const]]),
+    );
+    expect(left.nodes.get("A")!.y).toBe(baseline.nodes.get("A")!.y);
+    expect(right.nodes.get("A")!.y).toBe(baseline.nodes.get("A")!.y);
+  });
+});
+
 describe("layout > cyclic edges (assignLayers fallback)", () => {
   it("assigns layer 0 to all nodes when edges form a cycle (lines 510-513)", () => {
     // A→B and B→A: both have in-degree 1, neither enters BFS queue.
