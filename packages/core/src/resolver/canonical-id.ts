@@ -1,4 +1,5 @@
-import type { Diagnostic, KrsEdge } from "../types/ast.js";
+import type { Diagnostic, KrsEdge, KrsFile, KrsNode } from "../types/ast.js";
+import type { SourceRange } from "../types/tokens.js";
 
 /**
  * Compute the base portion of an edge's canonical ID — `<from><arrow><to>`
@@ -17,14 +18,14 @@ export function edgeBaseId(edge: KrsEdge): string {
  * Rules (see `docs/design/edge-id-selector.md`):
  *  - If `authorId` is set, it becomes `canonicalId`.
  *  - Otherwise the base `<from><arrow><to>` is used.
- *  - Duplicate `authorId` across edges → `duplicate-edge-id` error on each
- *    duplicate; their `canonicalId` is cleared so the `edge#<id>` selector
- *    matches none of them.
  *  - Multiple edges sharing the same computed base with no `authorId` →
- *    `ambiguous-edge-base` warning on each; their `canonicalId` is cleared.
- *  - An authored ID that happens to collide with a computed base on a
- *    different edge is reported as `duplicate-edge-id` and both lose their
- *    `canonicalId`.
+ *    `ambiguous-edge-base` warning on each; their `canonicalId` is
+ *    cleared so the `edge#<base>` selector matches none of them.
+ *  - When two edges share an authored id (or an authored id collides
+ *    with another edge's computed base), `canonicalId` is silently
+ *    cleared — the corresponding `duplicate-edge-id` error is raised
+ *    project-wide by `validateProjectEdgeIdUniqueness`, so emitting the
+ *    same diagnostic again here would just double up.
  *
  * Edges are mutated in place; callers receive the diagnostics list to merge
  * with their own collection.
@@ -48,20 +49,11 @@ export function assignEdgeCanonicalIds(edges: readonly KrsEdge[]): Diagnostic[] 
     }
   }
 
-  for (const [id, group] of groups) {
+  for (const group of groups.values()) {
     if (group.length < 2) continue;
 
     const anyAuthored = group.some((e) => e.authorId !== undefined);
-    if (anyAuthored) {
-      for (const edge of group) {
-        diagnostics.push({
-          severity: "error",
-          code: "duplicate-edge-id",
-          params: { authorId: id },
-          ...(edge.loc ? { loc: edge.loc } : {}),
-        });
-      }
-    } else {
+    if (!anyAuthored) {
       const sample = group[0];
       const arrow: "->" | "-->" = sample.kind === "async" ? "-->" : "->";
       for (const edge of group) {
@@ -79,5 +71,68 @@ export function assignEdgeCanonicalIds(edges: readonly KrsEdge[]): Diagnostic[] 
     }
   }
 
+  return diagnostics;
+}
+
+interface AuthorIdSite {
+  authorId: string;
+  loc: SourceRange | undefined;
+}
+
+function collectAuthorIdSites(node: KrsNode, sink: AuthorIdSite[]): void {
+  if (node.kind === "resource" && node.authorId !== undefined) {
+    sink.push({ authorId: node.authorId, loc: node.loc });
+  }
+  for (const edge of node.edges) {
+    if (edge.authorId !== undefined) {
+      sink.push({ authorId: edge.authorId, loc: edge.loc });
+    }
+  }
+  for (const child of node.children) {
+    collectAuthorIdSites(child, sink);
+  }
+}
+
+/**
+ * Project-wide check that every author-supplied edge id (from `from -> to
+ * #<id>` declarations and from `usecase` `resource <ref> #<id>` rows) is
+ * unique across the whole `KrsFile`. Runs at parse time, before view
+ * extraction, so collisions surface even when the colliding edges live in
+ * disjoint views (e.g. an explicit edge in a system block and a
+ * synthesized usecase->resource edge that only appears under a usecase
+ * drilldown).
+ *
+ * `assignEdgeCanonicalIds` still runs per view to handle base-form
+ * disambiguation among edges that share endpoints; this pass is the
+ * higher-level guarantee that the design doc promises.
+ */
+export function validateProjectEdgeIdUniqueness(krsFile: KrsFile): Diagnostic[] {
+  const sites: AuthorIdSite[] = [];
+  for (const system of krsFile.systems) {
+    collectAuthorIdSites(system, sites);
+  }
+
+  const groups = new Map<string, AuthorIdSite[]>();
+  for (const site of sites) {
+    const bucket = groups.get(site.authorId);
+    if (bucket) {
+      bucket.push(site);
+    } else {
+      groups.set(site.authorId, [site]);
+    }
+  }
+
+  const diagnostics: Diagnostic[] = [];
+  for (const [authorId, group] of groups) {
+    if (group.length < 2) continue;
+    for (const site of group) {
+      diagnostics.push({
+        severity: "error",
+        code: "duplicate-edge-id",
+        params: { authorId },
+        ...(site.loc ? { loc: site.loc } : {}),
+      });
+    }
+  }
   return diagnostics;
 }
