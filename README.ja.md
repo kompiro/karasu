@@ -186,7 +186,7 @@ organization DevOrg {
 - **パネルフォーカス** — サイドバーの折りたたみとプレビューの全画面表示
 - **ドメイン分散の検出** — 同じドメイン名が複数サービスに分散していると自動警告
 - **移行期のドメイン共存** — `@deprecated` / `@migration_target` で旧新ドメインを同時に描画
-- **タグ・アノテーション** — `[external]` `[human]` `[async]` と `@deprecated` `@new` などに対応
+- **タグ・アノテーション** — `[external]` `[human]` `[async]` などに加え、クライアントの形態タグ（`[web]` `[mobile]` `[desktop]` `[cli]` `[device]` `[extension]` `[embed]`）と、アノテーション `@deprecated` `@new` `@experimental` `@migration_target` をサポート。合成タグ（`[implicit]` `[cyclic]` `[read]` `[write]`）を含む全リストは `docs/spec/tags-annotations.md` を参照
 - **スタイル分離** — CSS ライクな `.krs.style` ファイルで見た目を制御
 - **マルチファイルプロジェクト** — `import` と `import "dir/"` による相対パス結合、クロスファイル navigation/ジャンプ対応
 - **クロスシステム参照** — `PaymentGateway.PaymentService` のドット記法で別システムのサービスを参照
@@ -265,6 +265,24 @@ echo 'service NewService {}' | karasu append arch.krs
 
 # 指定親ノードの子として挿入（インデント自動）
 echo 'service NewService {}' | karasu insert ECommerce arch.krs
+
+# パイプ入力をパッチとして適用（ID 一致で replace、なければ append）
+cat patch.krs | karasu apply arch.krs
+```
+
+### Diff と CRUD マトリクス
+
+```bash
+# 2 つの .krs バージョン間の視覚的な差分を描画
+karasu diff before.krs after.krs --output diff.svg
+
+# 片側を stdin から渡す例（HEAD と作業ツリーを比較）
+git show HEAD:arch.krs | karasu diff - arch.krs --output diff.svg
+
+# usecase × resource の CRUD マトリクスを抽出
+karasu matrix arch.krs --format md > docs/crud.md
+karasu matrix arch.krs --format svg --output docs/crud.svg
+karasu matrix arch.krs --format csv --writes-only > writes.csv
 ```
 
 ## VS Code 拡張
