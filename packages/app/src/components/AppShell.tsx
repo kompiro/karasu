@@ -1,4 +1,13 @@
-import { useCallback, useMemo, useState, type ReactNode, type RefObject } from "react";
+import {
+  useCallback,
+  useMemo,
+  useRef,
+  useState,
+  type CSSProperties,
+  type ReactNode,
+  type RefObject,
+} from "react";
+import { useEditorWidth } from "../hooks/useEditorWidth.js";
 import { format, FormatError } from "@karasu-tools/core";
 import { SnapshotManager } from "../fs/snapshot-manager.js";
 import { EditArea } from "./EditArea.js";
@@ -181,11 +190,24 @@ export function AppShell({
   );
 
   const hasSidebar = !!(sidebarHeaderContent || sidebarContent);
+  const shellRef = useRef<HTMLDivElement | null>(null);
+  const editorResize = useEditorWidth(shellRef);
+  const showEditorResizeHandle = !hideEditor && !previewFocused;
+  const hasExplicitEditorWidth = editorResize.editorWidth != null && !previewFocused && !hideEditor;
   const className = hideEditor
     ? "app serve-mode"
-    : ["app-shell", hasSidebar ? "has-sidebar" : "", previewFocused ? "preview-focused" : ""]
+    : [
+        "app-shell",
+        hasSidebar ? "has-sidebar" : "",
+        previewFocused ? "preview-focused" : "",
+        hasExplicitEditorWidth ? "has-editor-width" : "",
+        editorResize.isDragging ? "editor-dragging" : "",
+      ]
         .filter(Boolean)
         .join(" ");
+  const shellStyle: CSSProperties | undefined = hasExplicitEditorWidth
+    ? ({ "--editor-w": `${editorResize.editorWidth}px` } as CSSProperties)
+    : undefined;
 
   const toggleAllLayers = useCallback(() => setIsAllLayersOpen((v) => !v), []);
   const togglePreviewFocus = useCallback(() => setPreviewFocused((v) => !v), []);
@@ -302,8 +324,18 @@ export function AppShell({
   );
 
   return (
-    <div className={className}>
+    <div className={className} style={shellStyle} ref={shellRef}>
       {sidebarHeaderContent}
+      {showEditorResizeHandle && (
+        <div
+          className="editor-preview-handle"
+          onMouseDown={editorResize.onMouseDown}
+          onDoubleClick={editorResize.onDoubleClick}
+          role="separator"
+          aria-orientation="vertical"
+          aria-label="Resize editor and preview"
+        />
+      )}
       {!hideEditor && (
         <EditArea
           sidebarContent={sidebarContent}

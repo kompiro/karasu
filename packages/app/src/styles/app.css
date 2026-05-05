@@ -111,12 +111,21 @@ body,
   grid-template-columns: 1fr 1fr;
   height: 100%;
   width: 100%;
+  position: relative;
 }
 
 /* With sidebar: topbar + 2-column (edit-area | preview) */
 .app-shell.has-sidebar {
   grid-template-rows: var(--topbar-h) 1fr auto;
   grid-template-columns: 1fr 1fr;
+}
+
+/* User has dragged the editor/preview handle — pin editor width and let
+   preview flex (with its own 320px floor). Applies to both has-sidebar and
+   no-sidebar variants. preview-focused and serve-mode override this below. */
+.app-shell.has-editor-width,
+.app-shell.has-editor-width.has-sidebar {
+  grid-template-columns: var(--editor-w) minmax(320px, 1fr);
 }
 
 /* ================================================================
@@ -1254,6 +1263,39 @@ body,
   height: 1px;
   background: var(--border-default);
   margin: 4px 0;
+}
+
+/* ── Editor / Preview resize handle ─────────────────────────────────
+   Sits at the seam between .edit-area and .preview-column. Placed in
+   grid column 1 with justify-self: end so it tracks the actual column
+   boundary regardless of whether --editor-w is set or the default 1fr
+   1fr layout is in effect. */
+.app-shell .editor-preview-handle {
+  grid-row: 1;
+  grid-column: 1;
+  justify-self: end;
+  align-self: stretch;
+  width: 6px;
+  margin-right: -3px;
+  cursor: col-resize;
+  z-index: 50;
+  background: transparent;
+  transition: background 0.15s;
+}
+
+.app-shell.has-sidebar .editor-preview-handle {
+  grid-row: 2;
+}
+
+.app-shell .editor-preview-handle:hover,
+.app-shell.editor-dragging .editor-preview-handle {
+  background: var(--accent-glow);
+}
+
+.app-shell.editor-dragging,
+.app-shell.editor-dragging * {
+  user-select: none;
+  cursor: col-resize !important;
 }
 
 /* ── Sidebar Mode: edit-area & preview grid overrides ───────────── */
