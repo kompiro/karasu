@@ -1111,7 +1111,7 @@ body,
   gap: 6px;
 }
 
-.file-tree-header__label {
+.file-tree-header__spacer {
   flex: 1;
   min-width: 0;
 }
@@ -1289,8 +1289,7 @@ body,
 
 /* ── EditArea internal layout ──────────────────────────────────── */
 /* Explicit placement keeps no-sidebar case independent of source order and
-   auto-placement assumptions. has-sidebar overrides grid-row to 2 below.
-   position: relative is the containing block for .toolbar-btn--sidebar-toggle. */
+   auto-placement assumptions. has-sidebar overrides grid-row to 2 below. */
 .edit-area {
   grid-row: 1;
   grid-column: 1;
@@ -1309,6 +1308,31 @@ body,
   overflow: hidden;
   background: var(--bg-void);
   border-right: 1px solid var(--border-subtle);
+  position: relative;
+}
+
+/* Drag handle on the right edge of the sidebar; expanded state only. */
+.sidebar-resize-handle {
+  position: absolute;
+  top: 0;
+  right: -3px;
+  width: 6px;
+  height: 100%;
+  cursor: col-resize;
+  z-index: 50;
+  background: transparent;
+  transition: background 0.15s;
+}
+
+.sidebar-resize-handle:hover,
+.edit-area.sidebar-dragging .sidebar-resize-handle {
+  background: var(--accent-glow);
+}
+
+.edit-area.sidebar-dragging,
+.edit-area.sidebar-dragging * {
+  user-select: none;
+  cursor: col-resize !important;
 }
 
 /* Applies in both sidebar and non-sidebar contexts; overflow/border/position
@@ -1338,44 +1362,36 @@ body,
   z-index: 1;
 }
 
-/* ── Sidebar Expand Button (collapsed state only) ──────────────── */
-/* The collapse button lives inside .file-tree-header (see FileTreeView).
-   When the sidebar is collapsed, .sidebar-area shrinks to 0 and the
-   in-header button is no longer reachable, so this floating expand
-   affordance is rendered at the top-left of .edit-area. */
-.toolbar-btn--sidebar-toggle {
-  position: absolute;
-  left: 6px;
-  top: 6px;
-  z-index: 100;
-  background: var(--bg-raised);
-  color: var(--text-secondary);
-  border: 1px solid var(--border-strong);
-  border-radius: var(--radius-sm);
-  padding: 3px 8px;
-  font-size: 11px;
-  font-weight: 500;
-  font-family: var(--font-ui);
-  line-height: 1;
+/* ── Sidebar Expand Gutter (collapsed state only) ──────────────── */
+/* When the sidebar is collapsed it shrinks to a thin clickable gutter
+   in place of the panel. The gutter does not overlap the editor and
+   reveals a hover hint. Click anywhere on it to re-expand. */
+.edit-area.has-sidebar.sidebar-collapsed .sidebar-area {
+  display: none;
+}
+
+.sidebar-expand-gutter {
+  flex: 0 0 auto;
+  width: 8px;
+  height: 100%;
+  padding: 0;
+  border: none;
+  border-right: 1px solid var(--border-subtle);
+  background: var(--bg-void);
   cursor: pointer;
-  white-space: nowrap;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
   transition:
     background 0.15s,
-    color 0.15s,
-    border-color 0.15s;
+    width 0.15s;
 }
 
-.toolbar-btn--sidebar-toggle:hover {
-  background: var(--bg-overlay);
-  color: var(--text-primary);
-  border-color: var(--accent);
+.sidebar-expand-gutter:hover {
+  background: var(--accent-glow);
+  width: 10px;
 }
 
-/* When collapsed: sidebar area shrinks to 0 (content clipped by overflow: hidden). */
-.edit-area.has-sidebar.sidebar-collapsed .sidebar-area {
-  width: 0;
-  border-right: none;
+.sidebar-expand-gutter:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
 }
 
 /* ── Preview Focused (fullscreen preview) ──────────────────────── */

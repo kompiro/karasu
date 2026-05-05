@@ -68,7 +68,7 @@ export function FileTreeView({
             « Hide
           </button>
         )}
-        <span className="file-tree-header__label">Files</span>
+        <div className="file-tree-header__spacer" />
         <div className="file-tree-header-actions">
           {onCompareWithPaste && (
             <button

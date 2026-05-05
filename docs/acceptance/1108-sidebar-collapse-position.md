@@ -20,15 +20,26 @@ type: product
 - [x] AT-C: `previewFocused` のときはトグルボタンが描画されない（既存テストで担保）
   > ✅ Automated — `EditArea.test.tsx` › `hides toggle button when previewFocused is true`
 
-- [ ] AT-D（manual）: app preview を起動して、collapse ボタンがファイルツリーヘッダーの左上（GitHub の file tree と同じ位置）に表示されることを目視確認する
+- [ ] AT-D（manual）: app preview で collapse ボタン（`« Hide`）がファイルツリーヘッダーの左端に表示されることを目視確認する
   > 🧑 Manual — preview で確認
 
-- [ ] AT-E（manual）: collapse 状態で expand ボタンが edit-area の左上に残り、押下するとサイドバーが復元することを目視確認する
+- [ ] AT-E（manual）: collapse 状態でサイドバー領域が薄いガター（8px）になり、エディタを覆い隠さないことを目視確認する
   > 🧑 Manual — preview で確認
 
-- [ ] AT-F（manual）: ボタンがアイコン + テキストラベル（`« Collapse` / `» Expand`）を保持していることを目視確認する（toolbar button rule, ADR 0007）
+- [ ] AT-F（manual）: collapsed gutter をクリックでサイドバーが再展開することを目視確認する
+  > 🧑 Manual — preview で確認
+
+- [ ] AT-G（manual）: サイドバー右端の resize handle をドラッグして幅を変更でき、180–480px の範囲でクランプされることを目視確認する
+  > 🧑 Manual — preview で確認
+
+- [ ] AT-H（manual）: resize handle をダブルクリックで既定幅（210px）に戻ることを目視確認する
+  > 🧑 Manual — preview で確認
+
+- [ ] AT-I（manual）: ページリロード後も直前のサイドバー幅が `localStorage` から復元されることを目視確認する
   > 🧑 Manual — preview で確認
 
 ## 補足
 
-スコープは CSS による位置・スタイル調整のみ。React コンポーネント構造、トグル状態、aria-label は変更しない。
+- スコープは collapse トグルの位置調整・collapsed 時のガター UI・サイドバー幅のドラッグリサイズ。
+- 幅は `localStorage` キー `karasu:sidebar:width` に保存。
+- 幅の上下限: 180px / 480px。既定値: 210px。
