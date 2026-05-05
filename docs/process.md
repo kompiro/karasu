@@ -36,7 +36,7 @@
 
 - `main` への直接コミット・push は禁止 — PR 経由でマージする
 - 機能開発は `git worktree add` により worktree を作成して行う
-- worktree の作成先は必ず `.worktrees/<branch-name>` とする（例: `git worktree add .worktrees/feat/my-feature feat/my-feature`）
+- worktree の作成先は必ず `.claude/worktrees/<branch-name>` とする（例: `git worktree add .claude/worktrees/feat/my-feature feat/my-feature`）
 - ブランチ命名規則: `feat/`, `fix/`, `docs/`, `chore/`, `refactor/` + kebab-case
 
 ### Issue・PR 記述ルール
@@ -74,7 +74,7 @@ ready → implementing → in-review → (close)
 
 ```
 1. GitHub Issue を作成する（gh issue create）
-2. git worktree add .worktrees/<branch> <branch> で作業ブランチ・worktree を作成する
+2. git worktree add .claude/worktrees/<branch> <branch> で作業ブランチ・worktree を作成する
 3. Issue ラベルを status: implementing に更新する
 4. Plan モードで実装計画を作成し、レビューを受ける
    - 必要に応じて docs/design/ に設計ドキュメントを作成する（Issue を status: designing に更新）
@@ -86,7 +86,7 @@ ready → implementing → in-review → (close)
 8. CI（test / lint / format / typecheck / knip / check:cycles / build）が通過することを確認する
 9. Issue ラベルを status: in-review に更新する
 10. 手動検証チェックリストを実施する
-11. レビュー → マージ → git worktree remove .worktrees/<branch> でクリーンアップ
+11. レビュー → マージ → git worktree remove .claude/worktrees/<branch> でクリーンアップ
 ```
 
 詳細な手順は `/hane:start-dev` スキル（[`kompiro/hane`](https://github.com/kompiro/hane) plugin）を参照。
