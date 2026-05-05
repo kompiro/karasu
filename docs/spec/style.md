@@ -56,6 +56,9 @@ edge#A->B { color: #00FF00; }
 
 /* Async base form */
 edge#A-->B { stroke-width: 2px; }
+
+/* Dot-notation node refs in the base id (e.g. usecase→resource synthesized edges) */
+edge#PlaceOrder->OrderDB.OrderTable { direction: down; }
 ```
 
 When two edges share the same computed base id and neither has an

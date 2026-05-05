@@ -592,6 +592,28 @@ system S {
     return parseFloat(m[1]);
   }
 
+  it("targets a synthesized usecase->resource edge whose base id contains a dot", () => {
+    const krs = `
+system S {
+  database OrderDB { table OrderTable {} }
+  service Backend {
+    domain Order {
+      usecase PlaceOrder {
+        resource OrderDB.OrderTable { operations create }
+      }
+    }
+  }
+}
+    `;
+    const result = compile(krs, {
+      viewPath: ["S", "Backend", "Order"],
+      styleSource: `edge#PlaceOrder->OrderDB.OrderTable { color: #EF4444; }`,
+    });
+    expect(result.diagnostics.filter((d) => d.severity === "error")).toHaveLength(0);
+    if (result.diagramType !== "system") throw new Error("expected system result");
+    expect(result.svg).toContain("#EF4444");
+  });
+
   it("`direction: up` flips the source/target layer order in drill-down views", () => {
     const path = ["S", "Backend"];
     const baseline = compile(KRS, { viewPath: path });

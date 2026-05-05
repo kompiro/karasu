@@ -55,6 +55,9 @@ edge#A->B { color: #00FF00; }
 
 /* async の base 形式 */
 edge#A-->B { stroke-width: 2px; }
+
+/* dot-notation を含む base id（usecase→resource 合成エッジなど） */
+edge#PlaceOrder->OrderDB.OrderTable { direction: down; }
 ```
 
 同じ base id を持つエッジが 2 本以上あって両方に author id が無い場合、

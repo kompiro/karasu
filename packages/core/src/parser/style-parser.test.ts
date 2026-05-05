@@ -147,6 +147,26 @@ edge#criticalWrite[write] {
       expect(rule.selector.edgeId).toBe("criticalWrite");
       expect(rule.selector.tags).toEqual(["write"]);
     });
+
+    it("parses an edge selector with dot-notation in the base id (usecase->resource synthesized edges)", () => {
+      const result = StyleParser.parse(`
+edge#SearchProducts->ECommerceDB.ProductTable {
+  direction: down;
+}
+      `);
+      const rule = result.value.rules[0];
+      expect(rule.selector.nodeType).toBe("edge");
+      expect(rule.selector.edgeId).toBe("SearchProducts->ECommerceDB.ProductTable");
+      expect(rule.properties["direction"]).toBe("down");
+    });
+
+    it("parses an edge selector with dot-notation on the source side", () => {
+      const result = StyleParser.parse(`
+edge#OrderDB.OrderTable->Logger { color: #EF4444; }
+      `);
+      const rule = result.value.rules[0];
+      expect(rule.selector.edgeId).toBe("OrderDB.OrderTable->Logger");
+    });
   });
 
   it("parses grouped selectors", () => {
