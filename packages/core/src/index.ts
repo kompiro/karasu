@@ -88,7 +88,11 @@ export type { PatchOperation } from "./patch/krs-patch.js";
 export { format, FormatError } from "./formatter/formatter.js";
 export { Parser } from "./parser/parser.js";
 export { StyleParser } from "./parser/style-parser.js";
-export { assignEdgeCanonicalIds, edgeBaseId } from "./resolver/canonical-id.js";
+export {
+  assignEdgeCanonicalIds,
+  edgeBaseId,
+  validateProjectEdgeIdUniqueness,
+} from "./resolver/canonical-id.js";
 export { resolveStyles } from "./resolver/style-resolver.js";
 export { getBuiltinStyleSheet, BUILTIN_STYLE_SOURCE } from "./builtins/default-style.js";
 export { getIconThemeStyleSheet, ICON_THEME_STYLE_SOURCE } from "./builtins/icon-theme.js";
@@ -177,7 +181,10 @@ import type { Warning } from "./types/warnings.js";
 import type { FileSystemProvider } from "./fs/types.js";
 import { Parser } from "./parser/parser.js";
 import { StyleParser } from "./parser/style-parser.js";
-import { assignEdgeCanonicalIds } from "./resolver/canonical-id.js";
+import {
+  assignEdgeCanonicalIds,
+  validateProjectEdgeIdUniqueness,
+} from "./resolver/canonical-id.js";
 import { resolveStyles } from "./resolver/style-resolver.js";
 import { analyze } from "./resolver/warnings.js";
 import { render } from "./renderer/svg-renderer.js";
@@ -341,6 +348,11 @@ function _compileFromPreparedInput(
     displayMode,
     emptyStateLabels,
   } = opts;
+
+  // Project-wide edge author-id uniqueness. Runs once before view extraction
+  // so collisions between explicit edges and resource rows surface even when
+  // they live in different views' slices.
+  diagnostics.push(...validateProjectEdgeIdUniqueness(krsFile));
 
   const systemSheetCount = 1; // only builtin counts as system for conflict detection
   const warnings = analyze(krsFile, sheets, systemSheetCount);
@@ -911,6 +923,8 @@ export async function compileSystemDiff(
     resolver.resolve(afterEntryPath),
   ]);
   const diagnostics = [...beforeResolved.diagnostics, ...afterResolved.diagnostics];
+  diagnostics.push(...validateProjectEdgeIdUniqueness(beforeResolved.krsFile));
+  diagnostics.push(...validateProjectEdgeIdUniqueness(afterResolved.krsFile));
 
   const beforeSystems = withUnassignedSystem(beforeResolved.krsFile);
   const afterSystems = withUnassignedSystem(afterResolved.krsFile);
