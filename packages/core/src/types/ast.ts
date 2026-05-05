@@ -118,6 +118,13 @@ export interface ResourceNode extends BaseNodeFields {
    * When undefined, the resource is an inline declaration (may trigger an "unassigned-resource" warning).
    */
   ref?: { parent: string; child: string };
+  /**
+   * Optional author-supplied identifier for the synthesized usecase->resource
+   * edge, written as `resource <ref> #<id> { ... }`. Propagates to the
+   * generated KrsEdge as `authorId`. Used by the canonical-id pass and the
+   * `edge#<id>` style selector. See `docs/design/edge-id-selector.md`.
+   */
+  authorId?: string;
 }
 
 // ─── インフラリソース（system 直下） ───────────────────
@@ -236,6 +243,22 @@ export interface KrsEdge {
   tags: string[];
   cyclic?: boolean;
   loc: SourceRange;
+  /**
+   * Author-supplied identifier from `from -> to "label" #<id>` (or, for
+   * synthesized usecase->resource edges, from `resource <ref> #<id>`).
+   * See `docs/design/edge-id-selector.md`.
+   */
+  authorId?: string;
+  /**
+   * Derived identifier for `edge#<id>` style selectors. Set by the
+   * canonical-id pass that runs after view extraction:
+   *   - `authorId` if present
+   *   - else `<from><arrow><to>` (arrow follows `kind`: `->` for sync,
+   *     `-->` for async)
+   *   - left undefined when the base form collides with another edge and
+   *     no author ID disambiguates them (a warning is emitted instead)
+   */
+  canonicalId?: string;
 }
 
 // ─── 階層型 ──────────────────────────────────────
@@ -428,6 +451,8 @@ export interface DiagnosticParamsByCode {
   "node-id-multiple-locations": { nodeId: string };
   "duplicate-node-id-parent": { nodeId: string };
   "owns-target-not-found": { ownedId: string };
+  "duplicate-edge-id": { authorId: string };
+  "ambiguous-edge-base": { fromId: string; toId: string; arrow: "->" | "-->" };
 
   // ── Style parser ────────────────────────────────────────────────────────
   "style-token-type-mismatch": { expected: string; got: string; value: string };

@@ -863,6 +863,33 @@ system ECPlatform {
       expect(readEdge!.label).toBe("R");
     });
 
+    it("propagates the resource row #<id> to the synthesized edge as authorId", () => {
+      const krs = `
+system ECPlatform {
+  database OrderDB {
+    table OrderTable {}
+  }
+  service OrderService {
+    domain Order {
+      usecase PlaceOrder {
+        resource OrderDB.OrderTable #placeOrderWrite {
+          operations create
+        }
+      }
+    }
+  }
+}
+`;
+      const systems = parseSystem(krs);
+      const view = extractView(systems, ["ECPlatform", "OrderService", "Order"]);
+
+      const edge = view.childEdges.find(
+        (e) => e.from === "PlaceOrder" && e.to === "OrderDB.OrderTable",
+      );
+      expect(edge).toBeDefined();
+      expect(edge!.authorId).toBe("placeOrderWrite");
+    });
+
     it("uses last-wins classification when the same (usecase, resource) pair is declared twice", () => {
       // Authors can override an earlier classification by re-stating the
       // resource with different operations later in the same usecase block,

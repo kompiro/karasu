@@ -945,6 +945,7 @@ export class Parser {
 
     const tags = this.parseTags();
     const annotations = this.parseAnnotations();
+    const authorId = this.parseAuthorIdSuffix();
 
     const properties: CommonProperties & { label?: string; operations?: ParsedOperation[] } = {
       links: [],
@@ -1060,6 +1061,7 @@ export class Parser {
         ...(operations ? { operations } : {}),
       },
       ref,
+      ...(authorId !== undefined ? { authorId } : {}),
     };
   }
 
@@ -1349,6 +1351,7 @@ export class Parser {
     }
 
     const tags = this.parseTags();
+    const authorId = this.parseAuthorIdSuffix();
 
     return {
       from: fromValue,
@@ -1357,7 +1360,23 @@ export class Parser {
       kind: arrowToken.type === TokenType.DashedArrow ? "async" : "sync",
       tags,
       loc: this.range(startLoc, toEnd),
+      ...(authorId !== undefined ? { authorId } : {}),
     };
+  }
+
+  /**
+   * Optional `#<id>` author identifier for edges and resource rows. The lexer
+   * already emits `#foo` as a single Identifier token, so we just check the
+   * leading `#`. Returns the id without the leading `#`, or undefined if the
+   * next token is something else.
+   */
+  private parseAuthorIdSuffix(): string | undefined {
+    const next = this.peek();
+    if (next.type !== TokenType.Identifier) return undefined;
+    if (!next.value.startsWith("#")) return undefined;
+    if (next.value.length === 1) return undefined;
+    this.advance();
+    return next.value.slice(1);
   }
 
   private parseDeployBlock(): DeployBlock {

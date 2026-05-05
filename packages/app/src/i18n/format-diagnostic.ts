@@ -101,6 +101,10 @@ export function useFormattedDiagnostic(): (d: Diagnostic) => string {
           return t("diagnostic.duplicateNodeIdParent.message", d.params);
         case "owns-target-not-found":
           return t("diagnostic.ownsTargetNotFound.message", d.params);
+        case "duplicate-edge-id":
+          return t("diagnostic.duplicateEdgeId.message", d.params);
+        case "ambiguous-edge-base":
+          return t("diagnostic.ambiguousEdgeBase.message", d.params);
         case "style-token-type-mismatch":
           return t("diagnostic.styleTokenTypeMismatch.message", d.params);
         case "expected-style-property-name":

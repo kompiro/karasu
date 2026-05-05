@@ -1745,6 +1745,81 @@ system ECPlatform {
     expect(edge.kind).toBe("async");
   });
 
+  describe("edge author IDs (#<id>)", () => {
+    it("captures #<id> on a sync edge", () => {
+      const result = Parser.parse(`
+system S {
+  service A {}
+  service B {}
+  A -> B #criticalWrite
+}
+      `);
+      expect(result.diagnostics).toHaveLength(0);
+      const edge = result.value.systems[0].edges[0];
+      expect(edge.authorId).toBe("criticalWrite");
+    });
+
+    it("captures #<id> after a label and tags", () => {
+      const result = Parser.parse(`
+system S {
+  service A {}
+  service B {}
+  A -> B "do work" [important] #namedEdge
+}
+      `);
+      expect(result.diagnostics).toHaveLength(0);
+      const edge = result.value.systems[0].edges[0];
+      expect(edge.label).toBe("do work");
+      expect(edge.tags).toContain("important");
+      expect(edge.authorId).toBe("namedEdge");
+    });
+
+    it("captures #<id> on async edges", () => {
+      const result = Parser.parse(`
+system S {
+  service A {}
+  service B {}
+  A --> B #liveStream
+}
+      `);
+      expect(result.diagnostics).toHaveLength(0);
+      const edge = result.value.systems[0].edges[0];
+      expect(edge.kind).toBe("async");
+      expect(edge.authorId).toBe("liveStream");
+    });
+
+    it("leaves authorId undefined when no #<id> is present", () => {
+      const result = Parser.parse(`
+system S {
+  service A {}
+  service B {}
+  A -> B
+}
+      `);
+      const edge = result.value.systems[0].edges[0];
+      expect(edge.authorId).toBeUndefined();
+    });
+
+    it("captures #<id> on a usecase resource row", () => {
+      const result = Parser.parse(`
+system S {
+  database OrderDB {
+    table OrderTable {}
+  }
+  usecase PlaceOrder {
+    resource OrderDB.OrderTable #placeOrderWrite { operations create, read }
+  }
+}
+      `);
+      expect(result.diagnostics.filter((d) => d.severity === "error")).toHaveLength(0);
+      const usecase = result.value.systems[0].children.find((c) => c.kind === "usecase");
+      if (!usecase) throw new Error("usecase not found");
+      const resource = usecase.children[0];
+      if (resource.kind !== "resource") throw new Error("resource kind mismatch");
+      expect(resource.authorId).toBe("placeOrderWrite");
+    });
+  });
+
   // ─── Infra resource blocks (database / queue / storage) ───────────────────
 
   describe("database block", () => {

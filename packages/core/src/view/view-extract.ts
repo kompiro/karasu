@@ -69,6 +69,7 @@ function deriveUsecaseResourceNodes(
         tags: [isWrite ? "write" : "read"],
         label: isWrite ? "W" : "R",
         loc: resource.loc,
+        ...(resNode.authorId !== undefined ? { authorId: resNode.authorId } : {}),
       });
     }
   }
