@@ -43,6 +43,7 @@ export type {
   ResolvedEdgeStyle,
   ResolvedStyles,
   ShapeKind,
+  EdgeDirection,
 } from "./types/style.js";
 
 export type { Warning, WarningKind, WarningParamsByKind } from "./types/warnings.js";

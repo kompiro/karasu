@@ -1,7 +1,14 @@
 import { useRef, useState, useCallback, useEffect, type WheelEvent, type MouseEvent } from "react";
-import type { Diagnostic, NodeMetadata, DomainEdgeDetail, NodeDiffMeta } from "@karasu-tools/core";
+import type {
+  Diagnostic,
+  EdgeDirection,
+  NodeMetadata,
+  DomainEdgeDetail,
+  NodeDiffMeta,
+} from "@karasu-tools/core";
 import { NodeDetailPanel } from "./NodeDetailPanel.js";
 import { EdgeDetailPanel } from "./EdgeDetailPanel.js";
+import { EdgeContextMenu } from "./EdgeContextMenu.js";
 import { useFormattedDiagnostic } from "../i18n/format-diagnostic.js";
 
 interface PreviewPaneProps {
@@ -30,6 +37,26 @@ interface PreviewPaneProps {
    * (Issue #738 / design doc D-2).
    */
   nodeDiff?: Map<string, NodeDiffMeta>;
+  /**
+   * Resolved path of the `.krs.style` file the GUI writer should append
+   * to. `undefined` disables the right-click → Direction menu's
+   * write path (the menu still shows but the items are disabled with a
+   * hint).
+   */
+  styleTargetPath?: string;
+  /**
+   * Called when the user picks a direction from the edge context menu. The
+   * caller is responsible for the actual file write; this prop only
+   * forwards intent.
+   */
+  onPickEdgeDirection?: (canonicalId: string, direction: EdgeDirection) => void;
+}
+
+interface EdgeContextMenuState {
+  x: number;
+  y: number;
+  canonicalId: string;
+  displayLabel: string;
 }
 
 type DetailPanelState =
@@ -52,6 +79,8 @@ export function PreviewPane({
   onClearHighlight,
   onJumpToEditor,
   nodeDiff,
+  styleTargetPath,
+  onPickEdgeDirection,
 }: PreviewPaneProps) {
   const formatDiagnostic = useFormattedDiagnostic();
   const containerRef = useRef<HTMLDivElement>(null);
@@ -60,8 +89,51 @@ export function PreviewPane({
   const [isDragging, setIsDragging] = useState(false);
   const isDraggingRef = useRef(false);
   const [detailPanel, setDetailPanel] = useState<DetailPanelState | null>(null);
+  const [edgeMenu, setEdgeMenu] = useState<EdgeContextMenuState | null>(null);
   const dragStart = useRef({ x: 0, y: 0 });
   const mouseDownPos = useRef({ x: 0, y: 0 });
+
+  const handleContextMenu = useCallback((e: MouseEvent<HTMLDivElement>) => {
+    const target = e.target as Element;
+    const edgeGroup = target.closest("[data-edge-canonical-id]");
+    if (!edgeGroup) return;
+    const canonicalId = edgeGroup.getAttribute("data-edge-canonical-id");
+    const from = edgeGroup.getAttribute("data-edge-from") ?? "";
+    const to = edgeGroup.getAttribute("data-edge-to") ?? "";
+    const kind = edgeGroup.getAttribute("data-edge-kind");
+    if (!canonicalId) return;
+    e.preventDefault();
+    const arrow = kind === "async" ? "→→" : "→";
+    setEdgeMenu({
+      x: e.clientX,
+      y: e.clientY,
+      canonicalId,
+      displayLabel: `${from} ${arrow} ${to}`,
+    });
+  }, []);
+
+  const handlePickDirection = useCallback(
+    (direction: EdgeDirection) => {
+      if (!edgeMenu) return;
+      onPickEdgeDirection?.(edgeMenu.canonicalId, direction);
+    },
+    [edgeMenu, onPickEdgeDirection],
+  );
+
+  // Dismiss the edge context menu on outside click or Escape.
+  useEffect(() => {
+    if (!edgeMenu) return;
+    const onDocClick = () => setEdgeMenu(null);
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setEdgeMenu(null);
+    };
+    document.addEventListener("click", onDocClick);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("click", onDocClick);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [edgeMenu]);
 
   const visibleDiagnostics = diagnostics.filter(
     (d) => d.severity === "error" || d.severity === "warning",
@@ -302,6 +374,7 @@ export function PreviewPane({
         onMouseMove={handleMouseMove}
         onMouseUp={handleMouseUp}
         onMouseLeave={handleMouseLeave}
+        onContextMenu={handleContextMenu}
         style={{ cursor: isDragging ? "grabbing" : "grab", position: "relative" }}
       >
         <div
@@ -312,6 +385,17 @@ export function PreviewPane({
           ref={svgRef}
           dangerouslySetInnerHTML={{ __html: svg }}
         />
+        {edgeMenu && (
+          <EdgeContextMenu
+            x={edgeMenu.x}
+            y={edgeMenu.y}
+            canonicalId={edgeMenu.canonicalId}
+            displayLabel={edgeMenu.displayLabel}
+            styleTargetPath={styleTargetPath}
+            onPickDirection={handlePickDirection}
+            onClose={() => setEdgeMenu(null)}
+          />
+        )}
         {detailPanel?.kind === "node" && nodePanelMetadata && (
           <NodeDetailPanel
             nodeId={detailPanel.nodeId}

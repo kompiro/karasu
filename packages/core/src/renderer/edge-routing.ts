@@ -31,6 +31,40 @@ export function renderEdge(
     class: edge.cyclic ? "krs-edge--cyclic" : undefined,
   };
 
+  // Wide invisible hit-line behind the visible stroke. Keeps the right-click
+  // target practical even on default 1.5px edges, without changing the visual
+  // weight of the diagram. Only emitted when the edge carries a canonical id —
+  // edges that aren't addressable by `edge#<id>` selectors (e.g. ones whose id
+  // was cleared by a base collision) don't need an interactive hit area.
+  const interactive = edge.canonicalId !== undefined;
+  if (interactive) {
+    if (points.length === 2) {
+      parts.push(
+        el("line", {
+          x1: fromPoint.x,
+          y1: fromPoint.y,
+          x2: toPoint.x,
+          y2: toPoint.y,
+          stroke: "transparent",
+          "stroke-width": 14,
+          "stroke-linecap": "butt",
+          class: "krs-edge__hitline",
+        }),
+      );
+    } else {
+      parts.push(
+        el("polyline", {
+          points: points.map((p) => `${p.x},${p.y}`).join(" "),
+          fill: "none",
+          stroke: "transparent",
+          "stroke-width": 14,
+          "stroke-linecap": "butt",
+          class: "krs-edge__hitline",
+        }),
+      );
+    }
+  }
+
   if (points.length === 2) {
     parts.push(
       el("line", {
@@ -97,7 +131,10 @@ export function renderEdge(
     {
       "data-edge-from": edge.from,
       "data-edge-to": edge.to,
+      "data-edge-kind": edge.kind,
+      "data-edge-canonical-id": edge.canonicalId,
       "data-diff-state": diffState,
+      class: interactive ? "krs-edge krs-edge--interactive" : "krs-edge",
     },
     parts.join("\n"),
   );

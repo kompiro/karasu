@@ -8,7 +8,7 @@ import {
   type RefObject,
 } from "react";
 import { useEditorWidth } from "../hooks/useEditorWidth.js";
-import { format, FormatError } from "@karasu-tools/core";
+import { format, FormatError, type EdgeDirection } from "@karasu-tools/core";
 import { SnapshotManager } from "../fs/snapshot-manager.js";
 import { EditArea } from "./EditArea.js";
 import { PreviewColumn } from "./PreviewColumn.js";
@@ -23,6 +23,7 @@ import { useJumpToEditor } from "../hooks/useJumpToEditor.js";
 import { useCrossNavigation } from "../hooks/useCrossNavigation.js";
 import { useViewSvg } from "../hooks/useViewSvg.js";
 import { useStyleSource } from "../hooks/useStyleSource.js";
+import { appendEdgeDirectionRule, resolveStyleAppendTarget } from "../lib/append-style-rule.js";
 import { DiffModeBanner } from "./DiffModeBanner.js";
 
 interface AppShellProps {
@@ -183,6 +184,20 @@ export function AppShell({
   }, [fileContent, handleEditorChange]);
 
   const styleSource = useStyleSource(fileContent, currentFilePath ?? undefined, fs);
+
+  const styleTargetPath = useMemo(
+    () => resolveStyleAppendTarget(fileContent, currentFilePath ?? undefined),
+    [fileContent, currentFilePath],
+  );
+
+  const handlePickEdgeDirection = useCallback(
+    async (canonicalId: string, direction: EdgeDirection) => {
+      if (!styleTargetPath) return;
+      await appendEdgeDirectionRule(fs, styleTargetPath, canonicalId, direction);
+      recompile();
+    },
+    [fs, styleTargetPath, recompile],
+  );
   const { drillDownSvg, allLayersSvg, orgAllLayersSvg, orgDrillDownSvg, allViewsSvg } = useViewSvg(
     fileContent,
     displayMode,
@@ -276,6 +291,8 @@ export function AppShell({
       orgTreeSvg: views.org.orgTreeSvg,
       onTeamToggle: views.org.toggleTeamExpand,
       orgTreeExportSvg: views.org.orgTreeExportSvg,
+      styleTargetPath,
+      onPickEdgeDirection: handlePickEdgeDirection,
     }),
     [
       activeView,
@@ -320,6 +337,8 @@ export function AppShell({
       toggleOrgTreeView,
       entryPath,
       fs,
+      styleTargetPath,
+      handlePickEdgeDirection,
     ],
   );
 

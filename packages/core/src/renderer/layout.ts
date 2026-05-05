@@ -1135,9 +1135,11 @@ function computeEdgePoints(
     from: edge.from,
     to: edge.to,
     label: edge.label,
+    kind: edge.kind,
     fromPoint,
     toPoint,
     cyclic: edge.cyclic,
+    ...(edge.canonicalId !== undefined ? { canonicalId: edge.canonicalId } : {}),
   };
 }
 

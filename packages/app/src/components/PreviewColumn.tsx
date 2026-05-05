@@ -41,6 +41,8 @@ export function PreviewColumn() {
     onTeamToggle,
     orgTreeExportSvg,
     onExportDrawio,
+    styleTargetPath,
+    onPickEdgeDirection,
   } = usePreview();
 
   const { t } = useTranslation();
@@ -342,6 +344,8 @@ export function PreviewColumn() {
           }
           onJumpToEditor={onJumpToEditor}
           nodeDiff={activeView === "system" ? systemView.nodeDiff : undefined}
+          styleTargetPath={activeView === "system" ? styleTargetPath : undefined}
+          onPickEdgeDirection={activeView === "system" ? onPickEdgeDirection : undefined}
         />
       )}
       <WarningPanel
