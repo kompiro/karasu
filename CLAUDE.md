@@ -58,7 +58,7 @@ karasu/
 ### ブランチ・worktree ルール
 
 - `main` への直接コミット・push は禁止 — 必ずブランチ + PR 経由でマージする
-- worktree の作成先は必ず `.worktrees/<branch-name>` とする（例: `git worktree add .worktrees/feat/my-feature feat/my-feature`）
+- worktree の作成先は必ず `.claude/worktrees/<branch-name>` とする（例: `git worktree add .claude/worktrees/feat/my-feature feat/my-feature`）
 - ブランチ命名規則: `feat/`, `fix/`, `docs/`, `chore/`, `refactor/` + kebab-case
 
 ### Issue・PR 記述ルール
