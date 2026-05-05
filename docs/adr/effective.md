@@ -55,6 +55,7 @@ See also: [dependency graph](graph.md), per-topic detail under [graph/](graph/).
 - [ADR-20260428-02](20260428-02-update-dependencies-20260428.md) — 依存更新バッチ — 2026-04-28
 - [ADR-20260428-08](20260428-08-ci-docs-only-paired-stub-workflow.md) — Required Check は paired stub workflow で docs-only PR を成功扱いにする
 - [ADR-20260429-08](20260429-08-dependabot-security-2026-04-29.md) — Dependabot security update — `@anthropic-ai/sdk` 0.91.1（重複 PR 整理）
+- [ADR-20260505-01](20260505-01-update-dependencies-20260505.md) — 依存パッケージ更新 — 2026-05-05
 
 ## chat-ai
 
