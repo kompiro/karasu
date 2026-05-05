@@ -67,7 +67,7 @@ description: >
 ### ルール
 
 - `subject` は命令形・現在形で、先頭を小文字に、末尾にピリオドを付けない
-- `scope` はオプション。変更対象のモジュール・パッケージ名（例: `core`, `app`, `parser`）
+- `scope` はオプション。変更対象のモジュール・パッケージ名（例: `parser`, `build`, `api`）
 - 破壊的変更は `!` を type の後に付ける（例: `feat!:`）か、footer に `BREAKING CHANGE:` を記載
 - subject は英語で記述する（body/footer は日本語可）
 - 複数の独立した変更が混在する場合は、関心事ごとにコミットを分離する
@@ -97,12 +97,12 @@ EOF
 ### コミット計画
 
 1. `feat(parser): add token position tracking`
-   - packages/core/src/lexer.ts
-   - packages/core/src/parser.ts
-   - packages/core/tests/lexer.test.ts
+   - src/lexer.ts
+   - src/parser.ts
+   - tests/lexer.test.ts
 
-2. `chore(app): update vite config`
-   - packages/app/vite.config.ts
+2. `chore(build): update bundler config`
+   - build.config.ts
 
 ```
 
