@@ -199,8 +199,10 @@ edge#criticalWrite { direction: down; }
   場合、該当エッジの反転を無効化し、自然な orientation で描画する
 - **Forced kind-based layouts**: トップレベルの system view は
   `user → client → service → ...` のような種別による段組を強制する。
-  C4 風の段組を保つため、これらのエッジでは `direction` は無視される。
-  drill-down view（service / domain）はヒントを honor する
+  ここでも `direction: up` は honor され、**source ノードを target の
+  1 段下にずらす** 形で実現する（target 自身と他の同種ノードは
+  動かない）。明示された該当エッジに限ってのみ kind stratification が
+  乱れる
 
 詳細は [`docs/design/edge-direction-style.md`](../design/edge-direction-style.md)。
 

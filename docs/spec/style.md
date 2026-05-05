@@ -207,9 +207,11 @@ cases:
   DAG, the engine ignores the reversals for the affected edges and
   renders with the natural orientation.
 - **Forced kind-based layouts.** The top-level system view stratifies
-  nodes by kind (`user → client → service → ...`). `direction` is
-  ignored on those edges so the C4-style stratification is preserved.
-  Drill-down views (service / domain) honor the hint.
+  nodes by kind (`user → client → service → ...`). `direction: up` is
+  honored by *moving the source one layer below the target*; the
+  target itself stays in its kind row, and other nodes of the same
+  kind are unaffected. The kind stratification is therefore only
+  perturbed for the explicitly-flagged edge.
 
 See [`docs/design/edge-direction-style.md`](../design/edge-direction-style.md)
 for the rationale.

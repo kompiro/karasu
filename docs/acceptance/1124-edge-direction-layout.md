@@ -28,14 +28,11 @@ type: product
 - [x] AT-D: `up` 反転がサイクルを引き起こす場合、エンジンは反転を破棄して自然な orientation でレンダリングする（クラッシュしない）
   > ✅ Automated — `packages/core/src/renderer/layout.test.ts` › `layout > edge direction hint > falls back to natural orientation when direction:up would create a cycle`
 
-- [x] AT-E: トップレベル system view の forced kind-based layout（user → client → service の段組）では `direction` が無視される
-  > ✅ Automated — `packages/core/src/renderer/layout.ts` で forced layer 経路に `edgeDirections` を渡していないことで仕様化、spec にも明記。`packages/core/src/renderer/layout.test.ts` の forced layout 既存テストが no-op を保証
+- [x] AT-E: トップレベル system view の forced kind-based layout でも `direction: up` が honor される。source は target の 1 段下に降り、target と他の同種ノードは動かない
+  > ✅ Automated — `packages/core/src/renderer/layout.test.ts` › `layout > edge direction hint > honors direction:up in the forced kind-based layout (system top view)` & `... > only perturbs the source endpoint ...`
 
-- [ ] AT-F（manual）: 実際の Preview で edge を右クリック → Direction ▸ Up を選び、対象エッジが上下に flip して描画されることを確認する。drill-down view（service 配下の domain など）で行うこと
-  > 🧑 Manual — `pnpm --filter @karasu-tools/app dev` で Preview を起動。`examples/getting-started/index.krs` の service 内 domain edge などに対し操作を行い、配置が変わることを目視
-
-- [ ] AT-G（manual）: トップレベル system view で edge を右クリック → Direction ▸ Up を選んでも図が変化しないことを確認する（forced layer の挙動）。`.krs.style` には rule が増えるが描画は変わらない
-  > 🧑 Manual — system view で操作し、layout が変化しないことを期待値として目視
+- [ ] AT-F（manual）: 実際の Preview で edge を右クリック → Direction ▸ Up を選び、対象エッジが上下に flip して描画されることを確認する。drill-down view と top-level system view どちらでも有効
+  > 🧑 Manual — `pnpm --filter @karasu-tools/app dev` で Preview を起動。`examples/getting-started/index.krs` の service 内 domain edge と top-level の user → service edge の両方で配置変化を目視
 
 ## 補足
 

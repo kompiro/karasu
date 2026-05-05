@@ -95,6 +95,43 @@ function buildGraph(
   return { adj, inDegree };
 }
 
+/**
+ * Apply `direction: up` hints on top of an already-assigned forced layer
+ * map. The forced kind-based layout in system view (user → client →
+ * service → ...) ignores edge orientation by design, so a topological
+ * reversal in `buildGraph` never reaches it. Instead, for each `up` edge
+ * whose source currently sits at or above its target, we push the source
+ * one layer below the target. Other endpoints (and the target itself)
+ * are left in place, so a single `direction: up` only perturbs the kind
+ * stratification for the involved source.
+ *
+ * The pass is intentionally simple: it walks the edges once, in
+ * declaration order, applying each hint independently. A chain of `up`
+ * edges (`A -> B`, `B -> C`, both with `direction: up`) compounds
+ * naturally because each later hint reads the freshly-adjusted layer of
+ * its target. Conflicting hints (e.g. `A -> B up` and `B -> A up`) are
+ * resolved by last-wins, which is a documented quirk rather than a
+ * cycle-guarded fallback — forced layers cannot deadlock on a per-edge
+ * adjustment the way the topological DAG can.
+ */
+function applyUpDirectionToForcedLayers(
+  layers: Map<string, number>,
+  edges: KrsEdge[],
+  edgeDirections: Map<string, EdgeDirection>,
+): Map<string, number> {
+  const adjusted = new Map(layers);
+  for (const edge of edges) {
+    const dir = edgeDirections.get(`${edge.from}->${edge.to}`);
+    if (dir !== "up") continue;
+    if (!adjusted.has(edge.from) || !adjusted.has(edge.to)) continue;
+    const targetLayer = adjusted.get(edge.to)!;
+    if (adjusted.get(edge.from)! <= targetLayer) {
+      adjusted.set(edge.from, targetLayer + 1);
+    }
+  }
+  return adjusted;
+}
+
 function hasCycle(nodeIds: string[], pairs: Array<{ from: string; to: string }>): boolean {
   const adj = new Map<string, string[]>();
   for (const id of nodeIds) adj.set(id, []);
@@ -601,7 +638,9 @@ export function layout(
   const forcedLayers = assignForcedSystemLayers(allNodes, allEdges);
   let layers: Map<string, number>;
   if (forcedLayers) {
-    layers = forcedLayers;
+    layers = edgeDirections
+      ? applyUpDirectionToForcedLayers(forcedLayers, allEdges, edgeDirections)
+      : forcedLayers;
   } else {
     const { adj, inDegree } = buildGraph(nodeIds, allEdges, edgeDirections);
     layers = assignLayers(nodeIds, adj, inDegree);
@@ -921,7 +960,9 @@ function layoutMultipleSystems(
     const forcedLayers = assignForcedSystemLayers(rawNodes, sys.edges);
     let layers: Map<string, number>;
     if (forcedLayers) {
-      layers = forcedLayers;
+      layers = edgeDirections
+        ? applyUpDirectionToForcedLayers(forcedLayers, sys.edges, edgeDirections)
+        : forcedLayers;
     } else {
       const { adj, inDegree } = buildGraph(nodeIds, sys.edges, edgeDirections);
       layers = assignLayers(nodeIds, adj, inDegree);

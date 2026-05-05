@@ -130,6 +130,46 @@ system S {
     expect(result.nodes.size).toBe(3);
   });
 
+  it("honors direction:up in the forced kind-based layout (system top view)", () => {
+    const slice = parseAndExtract(`
+system S {
+  user U { label "U" }
+  service A { label "A" }
+  U -> A "uses"
+}
+    `);
+    const baseline = layout(slice);
+    const baselineU = baseline.nodes.get("U")!;
+    const baselineA = baseline.nodes.get("A")!;
+    // Default forced kind layout: user above service.
+    expect(baselineU.y).toBeLessThan(baselineA.y);
+
+    const directions = new Map([["U->A", "up" as const]]);
+    const flipped = layout(slice, undefined, undefined, undefined, directions);
+    const flippedU = flipped.nodes.get("U")!;
+    const flippedA = flipped.nodes.get("A")!;
+    // direction:up moves U below A while leaving A's row untouched.
+    expect(flippedU.y).toBeGreaterThan(flippedA.y);
+  });
+
+  it("only perturbs the source endpoint when adjusting a forced layer for direction:up", () => {
+    const slice = parseAndExtract(`
+system S {
+  user U1 { label "U1" }
+  user U2 { label "U2" }
+  service A { label "A" }
+  U1 -> A "uses"
+  U2 -> A "uses"
+}
+    `);
+    const baseline = layout(slice);
+    const directions = new Map([["U1->A", "up" as const]]);
+    const flipped = layout(slice, undefined, undefined, undefined, directions);
+    // U2 stays where it was; only U1 moves below the service.
+    expect(flipped.nodes.get("U2")!.y).toBe(baseline.nodes.get("U2")!.y);
+    expect(flipped.nodes.get("U1")!.y).toBeGreaterThan(flipped.nodes.get("A")!.y);
+  });
+
   it("ignores direction:left / direction:right in the layered layout (parses but no-op)", () => {
     const slice = parseAndExtract(`
 system S {
