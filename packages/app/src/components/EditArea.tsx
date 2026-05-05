@@ -1,6 +1,5 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { EditPane } from "./EditPane.js";
-import { SidebarCollapseContext } from "./sidebar-collapse-context.js";
 
 import type { CSSProperties, ReactNode } from "react";
 import type { editor } from "monaco-editor";
@@ -56,10 +55,6 @@ export function EditArea({
   const [sidebarWidth, setSidebarWidth] = useState<number>(readPersistedWidth);
   const hasSidebar = !!sidebarContent;
   const toggle = useCallback(() => setSidebarCollapsed((v) => !v), []);
-  const collapseValue = useMemo(
-    () => ({ collapsed: sidebarCollapsed, toggle }),
-    [sidebarCollapsed, toggle],
-  );
 
   const dragStateRef = useRef<{ startX: number; startWidth: number } | null>(null);
   const [isDragging, setIsDragging] = useState(false);
@@ -106,10 +101,6 @@ export function EditArea({
     setSidebarWidth(SIDEBAR_DEFAULT_WIDTH);
   }, []);
 
-  const handleGutterClick = useCallback(() => {
-    setSidebarCollapsed(false);
-  }, []);
-
   const className = [
     "edit-area",
     hasSidebar && "has-sidebar",
@@ -123,31 +114,48 @@ export function EditArea({
 
   return (
     <div className={className} style={style}>
-      {hasSidebar && (
-        <SidebarCollapseContext.Provider value={collapseValue}>
-          <div className="sidebar-area">
-            {!sidebarCollapsed && sidebarContent}
-            {!sidebarCollapsed && !previewFocused && (
-              <div
-                className="sidebar-resize-handle"
-                onMouseDown={handleResizeStart}
-                onDoubleClick={handleResizeReset}
-                role="separator"
-                aria-orientation="vertical"
-                aria-label="Resize sidebar"
-              />
-            )}
-          </div>
-        </SidebarCollapseContext.Provider>
+      {hasSidebar && !previewFocused && (
+        <nav className="activity-bar" aria-label="Activity Bar">
+          <button
+            type="button"
+            className={`activity-bar-btn${sidebarCollapsed ? "" : " activity-bar-btn--active"}`}
+            onClick={toggle}
+            aria-label={sidebarCollapsed ? "Show files" : "Hide files"}
+            aria-pressed={!sidebarCollapsed}
+            title={sidebarCollapsed ? "Show files" : "Hide files"}
+          >
+            <span className="activity-bar-btn__icon" aria-hidden="true">
+              {/* File-tree glyph */}
+              <svg
+                viewBox="0 0 16 16"
+                width="20"
+                height="20"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.4"
+              >
+                <path d="M2 3.5h4l1.5 1.5H14v8H2z" />
+                <path d="M2 6.5h12" />
+              </svg>
+            </span>
+            <span className="activity-bar-btn__label">Files</span>
+          </button>
+        </nav>
       )}
-      {hasSidebar && sidebarCollapsed && !previewFocused && (
-        <button
-          type="button"
-          className="sidebar-expand-gutter"
-          onClick={handleGutterClick}
-          aria-label="Expand sidebar"
-          title="Expand sidebar"
-        />
+      {hasSidebar && !sidebarCollapsed && (
+        <div className="sidebar-area">
+          {sidebarContent}
+          {!previewFocused && (
+            <div
+              className="sidebar-resize-handle"
+              onMouseDown={handleResizeStart}
+              onDoubleClick={handleResizeReset}
+              role="separator"
+              aria-orientation="vertical"
+              aria-label="Resize sidebar"
+            />
+          )}
+        </div>
       )}
       <EditPane
         value={value}

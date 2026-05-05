@@ -1,4 +1,3 @@
-import { useSidebarCollapse } from "../sidebar-collapse-context.js";
 import { ContextMenu, type ContextMenuAction } from "./ContextMenu.js";
 import { FileTreeItem } from "./FileTreeItem.js";
 import { InlineInput } from "./InlineInput.js";
@@ -54,21 +53,10 @@ export function FileTreeView({
   canSnapshotContextNode,
   onCompareWithPaste,
 }: FileTreeViewProps) {
-  const sidebarCollapse = useSidebarCollapse();
   return (
     <div className="file-tree">
       <div className="file-tree-header">
-        {sidebarCollapse && !sidebarCollapse.collapsed && (
-          <button
-            className="file-tree-header-btn file-tree-header-btn--collapse"
-            onClick={sidebarCollapse.toggle}
-            aria-label="Collapse sidebar"
-            title="Collapse sidebar"
-          >
-            « Hide
-          </button>
-        )}
-        <div className="file-tree-header__spacer" />
+        <span>Files</span>
         <div className="file-tree-header-actions">
           {onCompareWithPaste && (
             <button

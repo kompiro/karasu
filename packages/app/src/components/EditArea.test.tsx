@@ -1,5 +1,4 @@
 // @vitest-environment jsdom
-import { useEffect } from "react";
 import { describe, it, expect, vi, afterEach } from "vitest";
 import { render, fireEvent, cleanup } from "@testing-library/react";
 
@@ -11,7 +10,6 @@ vi.mock("./EditPane.js", () => ({
 }));
 
 import { EditArea } from "./EditArea.js";
-import { useSidebarCollapse } from "./sidebar-collapse-context.js";
 
 const defaultProps = {
   previewFocused: false,
@@ -26,54 +24,41 @@ const defaultProps = {
 };
 
 describe("EditArea", () => {
-  it("renders EditPane without sidebar area when sidebarContent is not provided", () => {
-    const { queryByTestId, queryByRole } = render(<EditArea {...defaultProps} />);
+  it("renders EditPane without sidebar area or activity bar when sidebarContent is not provided", () => {
+    const { queryByTestId, queryByRole, container } = render(<EditArea {...defaultProps} />);
     expect(queryByTestId("edit-pane")).toBeTruthy();
     expect(queryByRole("button")).toBeNull();
+    expect(container.querySelector(".activity-bar")).toBeNull();
   });
 
-  it("renders sidebar area without an expand button when expanded", () => {
-    const { queryByRole, getByText } = render(
+  it("renders the activity bar Files toggle when sidebarContent is provided", () => {
+    const { getByRole, getByText, container } = render(
       <EditArea {...defaultProps} sidebarContent={<div>File Tree</div>} />,
     );
     expect(getByText("File Tree")).toBeTruthy();
-    // The collapse button is rendered inside FileTreeView (via context),
-    // not by EditArea itself, so EditArea exposes no toggle when expanded.
-    expect(queryByRole("button", { name: /sidebar/ })).toBeNull();
+    expect(container.querySelector(".activity-bar")).toBeTruthy();
+    // Expanded by default → button toggles to "Hide files".
+    expect(getByRole("button", { name: /Hide files/ })).toBeTruthy();
   });
 
-  it("renders an expand button only when collapsed (via context consumer)", () => {
-    function TogglingSidebar() {
-      const ctx = useSidebarCollapse();
-      return (
-        <button data-testid="ctx-toggle" onClick={() => ctx?.toggle()}>
-          File Tree
-        </button>
-      );
-    }
-    const { getByTestId, getByRole, queryByRole, container } = render(
-      <EditArea {...defaultProps} sidebarContent={<TogglingSidebar />} />,
+  it("activity bar button toggles the sidebar visibility", () => {
+    const { getByRole, container } = render(
+      <EditArea {...defaultProps} sidebarContent={<div>File Tree</div>} />,
     );
-    expect(queryByRole("button", { name: /Expand sidebar/ })).toBeNull();
-    fireEvent.click(getByTestId("ctx-toggle"));
+    fireEvent.click(getByRole("button", { name: /Hide files/ }));
     expect(container.querySelector(".edit-area.sidebar-collapsed")).toBeTruthy();
-    expect(getByRole("button", { name: /Expand sidebar/ })).toBeTruthy();
-    fireEvent.click(getByRole("button", { name: /Expand sidebar/ }));
+    expect(container.querySelector(".sidebar-area")).toBeNull();
+    fireEvent.click(getByRole("button", { name: /Show files/ }));
     expect(container.querySelector(".edit-area.sidebar-collapsed")).toBeNull();
+    expect(container.querySelector(".sidebar-area")).toBeTruthy();
   });
 
-  it("hides expand button when previewFocused is true", () => {
-    function ForceCollapsed() {
-      const ctx = useSidebarCollapse();
-      useEffect(() => {
-        if (ctx && !ctx.collapsed) ctx.toggle();
-      }, [ctx]);
-      return <div>File Tree</div>;
-    }
-    const { queryByRole } = render(
-      <EditArea {...defaultProps} previewFocused sidebarContent={<ForceCollapsed />} />,
+  it("hides the activity bar when previewFocused is true", () => {
+    const { container, queryByRole } = render(
+      <EditArea {...defaultProps} previewFocused sidebarContent={<div>File Tree</div>} />,
     );
-    expect(queryByRole("button", { name: /sidebar/ })).toBeNull();
+    expect(container.querySelector(".activity-bar")).toBeNull();
+    expect(queryByRole("button", { name: /files/ })).toBeNull();
   });
 
   it("adds has-sidebar class when sidebarContent is provided", () => {
