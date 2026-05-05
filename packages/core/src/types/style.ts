@@ -42,11 +42,27 @@ export interface ResolvedNodeStyle {
   badgeLabel?: string;
 }
 
+/**
+ * Direction hint for the `direction` edge property in `.krs.style`.
+ *
+ * Hints the layout engine toward routing the edge in the given visual
+ * direction. The engine treats it as advisory and may override when
+ * honoring it would create a cycle. `auto` (default) leaves the engine
+ * free to choose.
+ *
+ * NOTE: in the current MVP the value is parsed and surfaces in
+ * `ResolvedEdgeStyle.direction`, but the karasu layout engine does not
+ * yet bias routing on it. Tracked separately — see
+ * `docs/design/edge-direction-style.md`.
+ */
+export type EdgeDirection = "auto" | "up" | "down" | "left" | "right";
+
 export interface ResolvedEdgeStyle {
   color: string;
   strokeWidth: number;
   fontSize: number;
   strokeStyle: "solid" | "dashed" | "dotted";
+  direction: EdgeDirection;
 }
 
 /**

@@ -28,6 +28,7 @@ const DEFAULT_EDGE_STYLE = {
   strokeWidth: 1.5,
   fontSize: 11,
   strokeStyle: "solid" as const,
+  direction: "auto" as const,
 };
 
 function makeStyles(nodeMap: Map<string, ResolvedNodeStyle> = new Map()): ResolvedStyles {

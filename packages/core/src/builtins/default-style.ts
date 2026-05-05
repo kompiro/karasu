@@ -216,6 +216,7 @@ edge {
   color: #94A3B8;
   stroke-width: 1.5;
   font-size: 11;
+  direction: auto;
 }
 
 edge[async] {

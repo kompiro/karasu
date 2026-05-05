@@ -92,6 +92,7 @@ opacity:          0.6;
 color:            #94A3B8;
 stroke-width:     1.5px;
 font-size:        11px;
+direction:        auto;          /* up | down | left | right | auto（ヒント、後述） */
 
 /* karasu固有プロパティ（CSS非対応のため例外） */
 shape:            box;           /* box | user | cylinder | queue | hexagon | cloud | url("...") */
@@ -160,6 +161,30 @@ queue, database, storage { column: center; }
 
 `left` / `center` / `right` 以外の値は `style-column-invalid-value`
 警告とともに破棄されます。
+
+### `direction` — `auto | up | down | left | right`
+
+エッジに対するレイアウトヒント。エッジを視覚的にどの方向に流したいかを
+示唆する。デフォルトは `auto`（エンジンに任せる）。
+
+```css
+edge[write] { direction: down; }
+edge[read]  { direction: right; }
+edge#criticalWrite { direction: down; }
+```
+
+値はリゾルバを経由して `ResolvedEdgeStyle.direction` に届く。GUI 編集フロー
+（#1076 / #1098）が `.krs.style` に `edge#<id> { direction: <value> }` を
+書き戻す前提のプロパティ。
+
+> **MVP の制約.** 現在のレイアウトエンジンは `direction` を読まないため、
+> 値は parse / resolve され `ResolvedEdgeStyle` 上には載るが、描画結果は
+> 変わらない。レイヤ割り当て / 経路探索への組み込みは
+> [#1124](https://github.com/kompiro/karasu/issues/1124) で追跡している。
+> 設計上の意図（ヒントであり絶対指定ではない、サイクル回避時はエンジンが
+> 上書きできる）は `docs/design/edge-direction-style.md` を参照。
+
+不正値は黙って破棄され、`direction` は `auto` にフォールバックする。
 
 ---
 

@@ -35,7 +35,10 @@ const DEFAULT_EDGE_STYLE: ResolvedEdgeStyle = {
   strokeWidth: 1.5,
   fontSize: 11,
   strokeStyle: "solid",
+  direction: "auto",
 };
+
+const EDGE_DIRECTION_VALUES = new Set<string>(["auto", "up", "down", "left", "right"]);
 
 const SHAPE_KEYWORDS = new Set<string>(["box", "user", "cylinder", "queue", "hexagon", "cloud"]);
 
@@ -457,6 +460,12 @@ function toResolvedEdgeStyle(props: Record<string, string>): ResolvedEdgeStyle {
   if (props["border-style"]) {
     const value = props["border-style"] as ResolvedEdgeStyle["strokeStyle"];
     if (EDGE_STROKE_STYLES.has(value)) style.strokeStyle = value;
+  }
+  if (props["direction"]) {
+    const value = props["direction"];
+    if (EDGE_DIRECTION_VALUES.has(value)) {
+      style.direction = value as ResolvedEdgeStyle["direction"];
+    }
   }
 
   return style;
