@@ -117,7 +117,7 @@ for (const mode of MODES) {
         "aria-selected",
         "true",
       );
-      await expect(page.locator("svg").first()).toContainText("web");
+      await expect(page.locator(".preview-column svg").first()).toContainText("web");
 
       // Org view: alice member card must appear.
       await page.getByRole("tab", { name: /Org$/ }).click();
@@ -125,7 +125,7 @@ for (const mode of MODES) {
         "aria-selected",
         "true",
       );
-      await expect(page.locator("svg").first()).toContainText("Engineering");
+      await expect(page.locator(".preview-column svg").first()).toContainText("Engineering");
 
       // Back to System.
       await page.getByRole("tab", { name: /System$/ }).click();
@@ -133,7 +133,7 @@ for (const mode of MODES) {
         "aria-selected",
         "true",
       );
-      await expect(page.locator("svg").first()).toContainText("WebService");
+      await expect(page.locator(".preview-column svg").first()).toContainText("WebService");
     });
 
     test("Editing the .krs source updates all three diagrams (AC-3.1)", async ({ page, opfs }) => {
@@ -174,7 +174,7 @@ for (const mode of MODES) {
       // Wait for the deploy SVG to fully render — otherwise the click can land
       // on a transient element while the realize-target container is still
       // being mounted.
-      await expect(page.locator("svg").first()).toContainText("web");
+      await expect(page.locator(".preview-column svg").first()).toContainText("web");
 
       // The container <g> wraps a rect + label; the deploy-unit text node sits
       // in a sibling overlay group and intercepts a centered click. Click the
@@ -210,7 +210,7 @@ for (const mode of MODES) {
       await orgTab.click();
       await expect(orgTab).toHaveAttribute("aria-selected", "true");
       // No error: the org view renders the localized empty placeholder.
-      await expect(page.locator("svg").first()).toContainText(
+      await expect(page.locator(".preview-column svg").first()).toContainText(
         /No org diagram|org 図がありません|No teams defined|team が定義されていません/,
       );
     });
@@ -223,7 +223,9 @@ for (const mode of MODES) {
 
       await page.getByRole("tab", { name: /Deploy$/ }).click();
       // Empty-state SVG carries the localized placeholder text.
-      await expect(page.locator("svg").first()).toContainText(/No deploy block|deploy ブロック/);
+      await expect(page.locator(".preview-column svg").first()).toContainText(
+        /No deploy block|deploy ブロック/,
+      );
     });
 
     test("ReferencePanel exposes the Samples tab with system/deploy/organization sample (AC-5)", async ({

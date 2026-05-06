@@ -17,17 +17,17 @@ test.describe("AT-0040 Panel focus mode", () => {
     await opfs.reset();
     await opfs.gotoApp();
 
-    const collapseButton = page.getByRole("button", { name: "Collapse sidebar" });
+    const collapseButton = page.getByRole("button", { name: "Hide files" });
     await expect(collapseButton).toBeVisible();
 
     await collapseButton.click();
 
-    const expandButton = page.getByRole("button", { name: "Expand sidebar" });
+    const expandButton = page.getByRole("button", { name: "Show files" });
     await expect(expandButton).toBeVisible();
-    await expect(page.getByRole("button", { name: "Collapse sidebar" })).toHaveCount(0);
+    await expect(page.getByRole("button", { name: "Hide files" })).toHaveCount(0);
 
     await expandButton.click();
-    await expect(page.getByRole("button", { name: "Collapse sidebar" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Hide files" })).toBeVisible();
   });
 
   test("enters and exits preview focus mode (TC-2)", async ({ page, opfs }) => {
@@ -43,20 +43,20 @@ test.describe("AT-0040 Panel focus mode", () => {
     await expect(page.getByRole("button", { name: "Exit focus mode" })).toBeVisible();
     await expect(page.getByRole("button", { name: "Export SVG" })).toBeVisible();
     // Sidebar toggle disappears because the sidebar itself is hidden.
-    await expect(page.getByRole("button", { name: "Collapse sidebar" })).toHaveCount(0);
-    await expect(page.getByRole("button", { name: "Expand sidebar" })).toHaveCount(0);
+    await expect(page.getByRole("button", { name: "Hide files" })).toHaveCount(0);
+    await expect(page.getByRole("button", { name: "Show files" })).toHaveCount(0);
 
     await page.getByRole("button", { name: "Exit focus mode" }).click();
     await expect(page.getByRole("button", { name: "Enter focus mode" })).toBeVisible();
-    await expect(page.getByRole("button", { name: "Collapse sidebar" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Hide files" })).toBeVisible();
   });
 
   test("preserves sidebar-collapsed state across focus toggle (TC-5)", async ({ page, opfs }) => {
     await opfs.reset();
     await opfs.gotoApp();
 
-    await page.getByRole("button", { name: "Collapse sidebar" }).click();
-    await expect(page.getByRole("button", { name: "Expand sidebar" })).toBeVisible();
+    await page.getByRole("button", { name: "Hide files" }).click();
+    await expect(page.getByRole("button", { name: "Show files" })).toBeVisible();
 
     await page.getByRole("button", { name: "Enter focus mode" }).click();
     await expect(page.getByRole("button", { name: "Exit focus mode" })).toBeVisible();
@@ -64,10 +64,10 @@ test.describe("AT-0040 Panel focus mode", () => {
     await page.getByRole("button", { name: "Exit focus mode" }).click();
 
     // Sidebar should still be collapsed after exiting focus mode.
-    await expect(page.getByRole("button", { name: "Expand sidebar" })).toBeVisible();
-    await expect(page.getByRole("button", { name: "Collapse sidebar" })).toHaveCount(0);
+    await expect(page.getByRole("button", { name: "Show files" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Hide files" })).toHaveCount(0);
 
-    await page.getByRole("button", { name: "Expand sidebar" }).click();
-    await expect(page.getByRole("button", { name: "Collapse sidebar" })).toBeVisible();
+    await page.getByRole("button", { name: "Show files" }).click();
+    await expect(page.getByRole("button", { name: "Hide files" })).toBeVisible();
   });
 });
