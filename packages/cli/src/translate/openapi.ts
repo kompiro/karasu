@@ -125,7 +125,53 @@ function formatResourceLabel(resource: string): string {
   return resource.replace(/[-_]+/g, " ");
 }
 
-function emitResourceUsecases(operations: CollectedOperation[]): string[] {
+/**
+ * Map an HTTP method + path shape to the verb string we emit for resource
+ * bindings. GET on a parameter-less collection path becomes `list`; GET on
+ * `/orders/{id}` stays as `get`. This lets `list:read` and `get:read` line up
+ * with how authors typically distinguish list vs read-by-id usecases.
+ */
+function verbForOperation(op: CollectedOperation): string {
+  if (op.method === "get") {
+    return op.path.includes("{") ? "get" : "list";
+  }
+  return op.method;
+}
+
+const HTTP_VERB_TO_CRUD: Record<string, string> = {
+  get: "read",
+  list: "read",
+  post: "create",
+  put: "update",
+  patch: "update",
+  delete: "delete",
+};
+
+function decorate(verb: string): string {
+  const crud = HTTP_VERB_TO_CRUD[verb];
+  if (crud === undefined) return verb;
+  // `delete` is already a recognized CRUD verb — bare form is sufficient.
+  if (verb === crud) return verb;
+  return `${verb}:${crud}`;
+}
+
+function buildOperationsLine(ops: CollectedOperation[], decorated: boolean): string {
+  const seen = new Set<string>();
+  const verbs: string[] = [];
+  for (const op of ops) {
+    const verb = verbForOperation(op);
+    if (seen.has(verb)) continue;
+    seen.add(verb);
+    verbs.push(verb);
+  }
+  const rendered = decorated ? verbs.map(decorate) : verbs;
+  return rendered.join(", ");
+}
+
+function emitResourceUsecases(
+  operations: CollectedOperation[],
+  options: { emitBindings: boolean; emitCrudDecoration: boolean },
+): string[] {
   // Map key is lowercased so that paths differing only in case (`/Orders` vs
   // `/orders`) collapse into one group — toPascalCase would otherwise produce
   // duplicate `ManageOrders` ids in the same service block.
@@ -161,6 +207,13 @@ function emitResourceUsecases(operations: CollectedOperation[]): string[] {
       lines.push(`      - ${summary ? `${head} — ${summary}` : head}`);
     }
     lines.push(`      """`);
+    if (options.emitBindings) {
+      const resourceId = `${toPascalCase(displayName)}Resource`;
+      const opsLine = buildOperationsLine(ops, options.emitCrudDecoration);
+      lines.push(`    resource ${resourceId} {`);
+      lines.push(`      operations ${opsLine}`);
+      lines.push(`    }`);
+    }
     lines.push(`  }`);
   }
   for (const op of ungrouped) {
@@ -195,10 +248,12 @@ export class OpenApiTranslator implements Translator {
     const operations = collectOperations(paths);
     const granularity = context.granularity ?? "resource";
 
+    const emitCrudDecoration = context.emitCrudDecoration ?? false;
+    const emitBindings = emitCrudDecoration || (context.emitBindings ?? false);
     const bodyLines =
       granularity === "operation"
         ? operations.map(emitOperationUsecase)
-        : emitResourceUsecases(operations);
+        : emitResourceUsecases(operations, { emitBindings, emitCrudDecoration });
 
     const lines: string[] = [`service ${serviceName} {`, ...bodyLines, "}", ""];
     return lines.join("\n");
