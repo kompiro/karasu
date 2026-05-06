@@ -5,6 +5,7 @@ import { ProjectModeApp } from "./ProjectModeApp.js";
 import { ServeModeApp } from "./ServeModeApp.js";
 import { AppProvider } from "./state/app-context.js";
 import { OpfsFileSystemProvider } from "./fs/opfs-provider.js";
+import { ObservableFileSystemProvider } from "./fs/observable-provider.js";
 import { detectAppMode, type AppMode } from "./fs/detect-storage-mode.js";
 
 export function App() {
@@ -22,8 +23,9 @@ export function App() {
 
 function ModeWrapper({ mode }: { mode: AppMode }) {
   const fs = useMemo(() => {
-    if (mode === "opfs") return new OpfsFileSystemProvider();
-    return new InMemoryFileSystemProvider();
+    const delegate =
+      mode === "opfs" ? new OpfsFileSystemProvider() : new InMemoryFileSystemProvider();
+    return new ObservableFileSystemProvider(delegate);
   }, [mode]);
 
   return (
