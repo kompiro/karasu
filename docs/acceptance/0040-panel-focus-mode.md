@@ -22,9 +22,9 @@ to fullscreen focus mode, and that toggling back restores the previous layout.
 
 | # | Action | Expected |
 |---|--------|----------|
-| 1 | Open app in ProjectMode (OPFS-supported browser) | Sidebar (ProjectSelector + FileTree) is visible on the left |
-| 2 | Click the "Collapse" button on the sidebar edge | Sidebar collapses, editor and preview expand to fill the space |
-| 3 | Click the "Expand" button | Sidebar reappears with previous width |
+| 1 | Open app in ProjectMode (OPFS-supported browser) | Activity bar (with Files button) is visible at the far left; sidebar (ProjectSelector + FileTree) is visible to its right |
+| 2 | Click the "Hide files" button on the activity bar | Sidebar collapses, editor and preview expand to fill the space |
+| 3 | Click the "Show files" button on the activity bar | Sidebar reappears with previous width |
 
 ### TC-2: Preview fullscreen (Focus mode)
 
