@@ -240,8 +240,9 @@ system S {
     );
     // Source pulled into target's layer.
     expect(right.nodes.get("A")!.y).toBe(right.nodes.get("B")!.y);
-    // And placed to the right of the target.
-    expect(right.nodes.get("A")!.x).toBeGreaterThan(right.nodes.get("B")!.x);
+    // direction:right names the arrow flow direction → arrow flows
+    // rightward → A (source) lands to the left of B (target).
+    expect(right.nodes.get("A")!.x).toBeLessThan(right.nodes.get("B")!.x);
 
     const left = layout(
       slice,
@@ -251,7 +252,8 @@ system S {
       new Map([["A->B", "left" as const]]),
     );
     expect(left.nodes.get("A")!.y).toBe(left.nodes.get("B")!.y);
-    expect(left.nodes.get("A")!.x).toBeLessThan(left.nodes.get("B")!.x);
+    // direction:left → arrow flows leftward → source on right of target.
+    expect(left.nodes.get("A")!.x).toBeGreaterThan(left.nodes.get("B")!.x);
   });
 });
 

@@ -654,11 +654,13 @@ system S {
     expect(yOf(upward.svg, "Order")).toBeGreaterThan(yOf(upward.svg, "Payment"));
   });
 
-  it("`direction: right` pulls a service-to-service edge into the same layer and places source to the right", () => {
+  it("`direction: right` pulls a service-to-service edge into the same layer and orients the arrow rightward", () => {
     // Without the hint, a service A → service C edge separates A and C
     // into adjacent forced sub-layers (A above, C below). With
-    // direction:right the source should be pulled into target's layer
-    // and placed to the right of it.
+    // direction:right the source is pulled into target's layer and the
+    // arrow flows rightward → A (source) lands to the left of C
+    // (target). Naming the value after the arrow flow keeps it
+    // consistent with `up` / `down`.
     const krs = `
 system S {
   user U { label "U" }
@@ -686,10 +688,10 @@ system S {
     // Sanity: without the hint, A and C are vertically separated
     // (different y), so x ordering tells us nothing useful.
     expect(yOf(baseline.svg, "A")).toBeLessThan(yOf(baseline.svg, "C"));
-    // With direction:right the edge pulls C into A's layer (same y)
-    // and places A to the right of C.
+    // With direction:right the edge pulls C into A's layer (same y);
+    // arrow flows rightward → A on the left of C.
     expect(yOf(result.svg, "A")).toBe(yOf(result.svg, "C"));
-    expect(xOfRect(result.svg, "A")).toBeGreaterThan(xOfRect(result.svg, "C"));
+    expect(xOfRect(result.svg, "A")).toBeLessThan(xOfRect(result.svg, "C"));
   });
 
   it("`direction: right` places the source to the right of the target within the same layer", () => {
@@ -728,15 +730,15 @@ system S {
     const baseline = compile(krs, { viewPath: path });
     const reordered = compile(krs, {
       viewPath: path,
-      styleSource: `edge#Inner1->Inner2 { direction: right; }`,
+      // direction:left → arrow Inner1→Inner2 flows leftward → Inner1
+      // (source) lands to the right of Inner2.
+      styleSource: `edge#Inner1->Inner2 { direction: left; }`,
     });
     if (baseline.diagramType !== "system" || reordered.diagramType !== "system") {
       throw new Error("expected system result");
     }
     // Without the hint, declaration order puts Inner1 before Inner2.
     expect(xOfRect(baseline.svg, "Inner1")).toBeLessThan(xOfRect(baseline.svg, "Inner2"));
-    // With direction:right on Inner1->Inner2, Inner1 lands to the right
-    // of Inner2.
     expect(xOfRect(reordered.svg, "Inner1")).toBeGreaterThan(xOfRect(reordered.svg, "Inner2"));
   });
 });

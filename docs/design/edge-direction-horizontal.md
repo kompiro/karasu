@@ -169,11 +169,17 @@ A -> C { direction: left  }  /* A は C の左 */
 具体的な処理:
 
 1. declaration 順に edge を走査
-2. `right`: source を target の **直後**（target の右）に並び替える
-3. `left`: source を target の **直前**（target の左）に並び替える
+2. `right`: 矢印を右方向に流す → source を target の **直前**（左）に並び替える
+3. `left`: 矢印を左方向に流す → source を target の **直後**（右）に並び替える
 4. 後発のヒントが先発の配置を上書きするのは仕様上当然（last-wins）
 
 矛盾検出時の挙動: warning を出さずに silent に上書き。`up` / `down` と一貫。
+
+> **値の意味**: `direction:` は **矢印の流れる向き** を指定する。
+> `up` / `down` 同様、`left` / `right` も矢印が流れる方向を表す
+> （source の絶対位置ではない）。source endpoint は矢印と逆側に
+> 配置される。GUI 編集器でも「Direction ▸ Right」を選んだら矢印が
+> 右に流れる、と読めるよう統一。
 
 ## 適用スコープ
 
@@ -203,8 +209,8 @@ A -> C { direction: left  }  /* A は C の左 */
 2. 各 layer 内で `bucketByColumn` を実行（既存）
 3. その後段に新パス **`applyEdgeDirectionWithinLayer`** を追加。同一層に
    landed した source / target に対して:
-   - `right`: source を target の **直後** に並び替える
-   - `left`: source を target の **直前** に並び替える
+   - `right`: 矢印を右に流す → source を target の **直前**（左側）へ
+   - `left`: 矢印を左に流す → source を target の **直後**（右側）へ
    - 後発ヒントが先発の配置を上書きしてもそのまま適用（last-wins）
 
 `up` / `down` と同じ「per-edge で source を target の周辺に局所変位させる」

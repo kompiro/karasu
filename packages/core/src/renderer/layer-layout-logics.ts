@@ -118,7 +118,11 @@ export function applyEdgeDirectionWithinLayer(
     // Remove source first so toIdx stays meaningful for the destination.
     result.splice(fromIdx, 1);
     const adjustedToIdx = fromIdx < toIdx ? toIdx - 1 : toIdx;
-    const insertAt = hint.direction === "right" ? adjustedToIdx + 1 : adjustedToIdx;
+    // `direction: right` means the visual arrow flows rightward (mirrors
+    // `up` / `down` where the value names the arrow flow direction). The
+    // source therefore lands to the *left* of the target. `direction: left`
+    // mirrors with the source on the *right*.
+    const insertAt = hint.direction === "right" ? adjustedToIdx : adjustedToIdx + 1;
     result.splice(insertAt, 0, hint.from);
   }
   return result;
