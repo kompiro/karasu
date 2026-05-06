@@ -96,25 +96,32 @@ function buildGraph(
 }
 
 /**
- * Apply `direction: up` hints on top of an already-assigned forced layer
- * map. The forced kind-based layout in system view (user → client →
- * service → ...) ignores edge orientation by design, so a topological
- * reversal in `buildGraph` never reaches it. Instead, for each `up` edge
- * whose source currently sits at or above its target, we push the source
- * one layer below the target. Other endpoints (and the target itself)
- * are left in place, so a single `direction: up` only perturbs the kind
- * stratification for the involved source.
+ * Apply `direction: up` / `direction: down` hints on top of an
+ * already-assigned forced layer map. The forced kind-based layout in
+ * system view (user → client → service → ...) ignores edge orientation
+ * by design, so a topological reversal in `buildGraph` never reaches it.
+ * Instead, for each hinted edge whose source currently sits on the wrong
+ * side of its target, we push the source one layer past the target.
+ * Other endpoints (and the target itself) are left in place, so a
+ * single hint only perturbs the kind stratification for the involved
+ * source.
+ *
+ *   - `up`:   source.layer  =  target.layer + 1   (source ends up below)
+ *   - `down`: source.layer  =  target.layer - 1   (source ends up above)
+ *
+ * `down` is a no-op when the target is already at layer 0 — there is no
+ * room to push the source above the topmost row, so the hint is silently
+ * dropped (no warning) and the natural orientation is kept.
  *
  * The pass is intentionally simple: it walks the edges once, in
- * declaration order, applying each hint independently. A chain of `up`
- * edges (`A -> B`, `B -> C`, both with `direction: up`) compounds
- * naturally because each later hint reads the freshly-adjusted layer of
- * its target. Conflicting hints (e.g. `A -> B up` and `B -> A up`) are
- * resolved by last-wins, which is a documented quirk rather than a
- * cycle-guarded fallback — forced layers cannot deadlock on a per-edge
- * adjustment the way the topological DAG can.
+ * declaration order, applying each hint independently. A chain of hints
+ * compounds naturally because each later hint reads the freshly-adjusted
+ * layer of its target. Conflicting hints (e.g. `A -> B up` and
+ * `B -> A up`) are resolved by last-wins, which is a documented quirk
+ * rather than a cycle-guarded fallback — forced layers cannot deadlock
+ * on a per-edge adjustment the way the topological DAG can.
  */
-function applyUpDirectionToForcedLayers(
+function applyDirectionHintsToForcedLayers(
   layers: Map<string, number>,
   edges: KrsEdge[],
   edgeDirections: Map<string, EdgeDirection>,
@@ -122,11 +129,14 @@ function applyUpDirectionToForcedLayers(
   const adjusted = new Map(layers);
   for (const edge of edges) {
     const dir = edgeDirections.get(`${edge.from}->${edge.to}`);
-    if (dir !== "up") continue;
+    if (dir !== "up" && dir !== "down") continue;
     if (!adjusted.has(edge.from) || !adjusted.has(edge.to)) continue;
     const targetLayer = adjusted.get(edge.to)!;
-    if (adjusted.get(edge.from)! <= targetLayer) {
+    const fromLayer = adjusted.get(edge.from)!;
+    if (dir === "up" && fromLayer <= targetLayer) {
       adjusted.set(edge.from, targetLayer + 1);
+    } else if (dir === "down" && fromLayer >= targetLayer && targetLayer > 0) {
+      adjusted.set(edge.from, targetLayer - 1);
     }
   }
   return adjusted;
@@ -639,7 +649,7 @@ export function layout(
   let layers: Map<string, number>;
   if (forcedLayers) {
     layers = edgeDirections
-      ? applyUpDirectionToForcedLayers(forcedLayers, allEdges, edgeDirections)
+      ? applyDirectionHintsToForcedLayers(forcedLayers, allEdges, edgeDirections)
       : forcedLayers;
   } else {
     const { adj, inDegree } = buildGraph(nodeIds, allEdges, edgeDirections);
@@ -961,7 +971,7 @@ function layoutMultipleSystems(
     let layers: Map<string, number>;
     if (forcedLayers) {
       layers = edgeDirections
-        ? applyUpDirectionToForcedLayers(forcedLayers, sys.edges, edgeDirections)
+        ? applyDirectionHintsToForcedLayers(forcedLayers, sys.edges, edgeDirections)
         : forcedLayers;
     } else {
       const { adj, inDegree } = buildGraph(nodeIds, sys.edges, edgeDirections);

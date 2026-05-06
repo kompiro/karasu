@@ -188,12 +188,21 @@ karasu layered layout.
 #### Honored values
 
 - **`auto`** (default): no bias; the engine is free to choose.
-- **`down`**: alias for the natural top-down flow. Equivalent to `auto`
-  today.
 - **`up`**: place the source *below* the target so the visual arrow
   flows upward. Implemented by reversing the edge in the topological
-  layer assignment. The visual `from -> to` orientation of the arrow
-  itself is unchanged.
+  layer assignment, or — under the forced kind-based system view — by
+  pushing the source one layer below the target. The visual
+  `from -> to` orientation of the arrow itself is unchanged.
+- **`down`**: place the source *above* the target so the visual arrow
+  flows downward, even when other constraints (e.g. a back-edge in the
+  forced kind-based layout) would otherwise route it the other way.
+  Mirrors `up`: under the forced kind-based layout the source is
+  pushed one layer above the target, leaving the target and other
+  same-kind nodes in place. No-op when the target is already at
+  layer 0 (no room to push the source above the topmost row) — falls
+  back to the natural orientation. In drill-down views without forced
+  layers the natural topological order already satisfies `down`, so it
+  is observationally identical to `auto` there.
 - **`left` / `right`**: parse and surface on `ResolvedEdgeStyle`, but
   **not honored** by the layered layout — vertical layering has no
   clean projection for a horizontal hint. They fall through to `auto`.
