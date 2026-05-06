@@ -217,7 +217,10 @@ system S {
     expect(flipped.nodes.get("U1")!.y).toBeGreaterThan(flipped.nodes.get("A")!.y);
   });
 
-  it("ignores direction:left / direction:right in the layered layout (parses but no-op)", () => {
+  it("pulls source into target's layer for direction:left / direction:right (cross-layer hint)", () => {
+    // Without the hint, A → B separates A and B into adjacent layers.
+    // direction:right pulls A into B's row so the within-layer reorder
+    // pass can place them side by side.
     const slice = parseAndExtract(`
 system S {
   service A { label "A" }
@@ -226,13 +229,8 @@ system S {
 }
     `);
     const baseline = layout(slice);
-    const left = layout(
-      slice,
-      undefined,
-      undefined,
-      undefined,
-      new Map([["A->B", "left" as const]]),
-    );
+    expect(baseline.nodes.get("A")!.y).toBeLessThan(baseline.nodes.get("B")!.y);
+
     const right = layout(
       slice,
       undefined,
@@ -240,8 +238,20 @@ system S {
       undefined,
       new Map([["A->B", "right" as const]]),
     );
-    expect(left.nodes.get("A")!.y).toBe(baseline.nodes.get("A")!.y);
-    expect(right.nodes.get("A")!.y).toBe(baseline.nodes.get("A")!.y);
+    // Source pulled into target's layer.
+    expect(right.nodes.get("A")!.y).toBe(right.nodes.get("B")!.y);
+    // And placed to the right of the target.
+    expect(right.nodes.get("A")!.x).toBeGreaterThan(right.nodes.get("B")!.x);
+
+    const left = layout(
+      slice,
+      undefined,
+      undefined,
+      undefined,
+      new Map([["A->B", "left" as const]]),
+    );
+    expect(left.nodes.get("A")!.y).toBe(left.nodes.get("B")!.y);
+    expect(left.nodes.get("A")!.x).toBeLessThan(left.nodes.get("B")!.x);
   });
 });
 

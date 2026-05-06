@@ -204,13 +204,15 @@ karasu layered layout.
   layers the natural topological order already satisfies `down`, so it
   is observationally identical to `auto` there.
 - **`left` / `right`**: position the source endpoint immediately left
-  (`left`) or right (`right`) of the target *within their shared
-  layer*. Cross-layer hints fall through to `auto` because the layered
-  layout has no clean projection for "horizontal" when the endpoints
-  sit in different rows. The pass runs after `bucketByColumn` so it
-  overrides node `column` placement for the source endpoint; the
-  target's `column` stays in effect. Conflicts on the same source
-  resolve **last-wins**, matching the cascade convention. See
+  (`left`) or right (`right`) of the target. When the natural layered
+  layout puts source and target in different rows (the common case for
+  service-to-service edges), the engine **pulls the source into the
+  target's layer first**, then runs the within-layer reorder; mirrors
+  the way `up` / `down` push the source one layer past the target.
+  The reorder pass runs after `bucketByColumn` so it overrides node
+  `column` placement for the source endpoint; the target's `column`
+  stays in effect. Conflicts on the same source resolve **last-wins**,
+  matching the cascade convention. See
   [`docs/design/edge-direction-horizontal.md`](../design/edge-direction-horizontal.md).
 
 #### Cycle / forced-layer fallback

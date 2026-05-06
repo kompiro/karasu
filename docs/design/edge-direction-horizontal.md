@@ -43,36 +43,43 @@ layered layout に反映済み。残った `left` / `right` は parse / resolve 
 
 ## 検討した選択肢
 
-### 案A: 同一層引き寄せ（強い意味）
+### 案A: 同一層引き寄せ（強い意味、採用）
 
 source / target が異なる層にあるとき、source を target の層に **引っ張ってきて**
 横並びにする。
 
-- 利点: ユーザー意図に直感的に応える。`A -> B direction: right` と書けば
-  必ず横並びになる
+- 利点:
+  - ユーザー意図に直感的に応える。`A -> B direction: right` と書けば
+    service 同士のエッジなど典型ケースで必ず横並びになる
+  - `up` / `down` が既に「source の layer を per-edge で修正する」介入を
+    行っているので、karasu 全体として一貫した「source 局所変位」モデルに
+    収まる
 - 欠点:
-  - layer 割当に大きく介入するため、他のレイアウト最適化（barycenter、
-    forced kind tier 等）と衝突しやすい
-  - kind 段組を壊す（service が user と同じ層に来る等）
-  - 引き寄せが連鎖すると複雑な依存解決になる
+  - kind 段組を局所的に崩すが、影響は明示されたエッジの source endpoint
+    のみ（target と他の同種ノードは動かない）
+  - 引き寄せが連鎖し得るが、`up` / `down` で既に同様の連鎖が実装されており
+    観察上は素直に振る舞う
 
-→ 介入が強すぎる。MVP には含めない
+→ **採用**。`up` / `down` と同じ「source の layer を target に合わせて
+　 修正」セマンティクスで実装する
 
-### 案B: 同一層内バイアスのみ（弱い意味、採用候補）
+### 案B: 同一層内バイアスのみ（弱い意味、初版採用→撤回）
 
 source / target が **既に同一層にいる場合に限り**、source を target の
 左側 / 右側に並べる。異なる層なら no-op（auto 扱い）。
 
 - 利点:
   - layer 割当を変えないので副作用が小さい
-  - 既存の bucket / barycenter の出力を後段で並び替える形で実装できる
-  - karasu の典型的なユースケースで「同一 kind tier 内の sibling 同士の
-    順序を調整したい」要望に素直に応える
 - 欠点:
-  - 別層にいるとき is no-op になるため「効かない」と感じるケースがある
-  - `column` ヒントとの優先順位を決める必要がある
+  - 別層にいるとき no-op になる。`service A -> service C` のような
+    典型ケースは forced 段組内の topological sub-sort で別 sub-layer に
+    分かれるため、ユーザーが GUI で `direction: right` を指定しても
+    "効かない" 状態になる（実装中に確認）
+  - `up` / `down` の "source 局所変位" モデルと整合しない（横方向だけ
+    no-op になる）
 
-→ **採用**。spec に "applies only when same layer" を明記して期待値を揃える
+→ 初版で採用したが、実装直後の動作確認で `service A -> service C` を含む
+　 典型ケースで効かないことが判明。案 A に切り替え（PR #1139 内で対応）
 
 ### 案C: 案 B + 別層なら警告
 
@@ -185,34 +192,38 @@ A -> C { direction: left  }  /* A は C の左 */
 
 ## 現時点の方針
 
-**案 B + 同一層内のみ + edge hint が source endpoint の column 指定を上書き**
-を採用。
+**案 A + edge hint が source endpoint の column 指定を上書き** を採用。
 
 ### アルゴリズム概要
 
-1. layer 割当 → barycenter sort → bucketByColumn の流れの **後段** に新パス
-   `applyEdgeDirectionWithinLayer` を追加
-2. 各 layer について:
-   1. 当該層に source / target 両方が存在する `direction: left/right` の
-      edge を抽出
-   2. declaration 順に処理:
-      - `right`: source を target の **直後** に並び替える（source が
-        target の右に来る）
-      - `left`: source を target の **直前** に並び替える
-   3. 後発ヒントが先発の配置を上書きしてもそのまま適用（last-wins）
+1. layer 割当（forced kind-based または topological）後、**`applyDirectionHintsToForcedLayers`** を全エッジに対して走らせる:
+   - `up`: source.layer = target.layer + 1（既存実装）
+   - `down`: source.layer = target.layer - 1（既存実装、target が layer 0 のときは no-op）
+   - **`left` / `right`: source.layer = target.layer**（本設計の追加分。元から同一層なら no-op）
+2. 各 layer 内で `bucketByColumn` を実行（既存）
+3. その後段に新パス **`applyEdgeDirectionWithinLayer`** を追加。同一層に
+   landed した source / target に対して:
+   - `right`: source を target の **直後** に並び替える
+   - `left`: source を target の **直前** に並び替える
+   - 後発ヒントが先発の配置を上書きしてもそのまま適用（last-wins）
+
+`up` / `down` と同じ「per-edge で source を target の周辺に局所変位させる」
+モデル。target と他のノードは動かない。
 
 ### 影響範囲
 
-- 同一 layer に source / target が無いエッジ: 無視（fallback to auto）
 - node `column` ヒントは引き続き bucket 分けに使われる。edge ヒントは
-  bucket 内 / バケット間の **相対位置** を最終調整する形で動く
+  source endpoint について bucket 配置を上書きする
+- forced kind-based layout で他の同種ノードは元の位置に残るので、kind
+  stratification への影響は明示されたエッジの source endpoint のみ
+- topological 経路でも同じ機構が動く（drill-down view でも honor される）
 
 ### Spec / コード変更
 
 | 場所 | 変更 |
 |---|---|
 | `packages/core/src/renderer/layer-layout-logics.ts` | 新関数 `applyEdgeDirectionWithinLayer(orderedIds, edges, edgeDirections, layerOf)` を追加 |
-| `packages/core/src/renderer/layout.ts` | forced layer + `bucketByColumn` の後で新パスを呼ぶ |
+| `packages/core/src/renderer/layout.ts` | `applyDirectionHintsToForcedLayers` を `left`/`right` も扱うよう拡張、layer 計算後 forced/topological 両経路で実行。`bucketByColumn` の後段で `applyEdgeDirectionWithinLayer` を呼ぶ |
 | `docs/spec/style.md`、`style.ja.md` | `direction: left/right` の挙動と `column` precedence を明記 |
 | `docs/acceptance/1135-edge-direction-horizontal.md` | AT |
 

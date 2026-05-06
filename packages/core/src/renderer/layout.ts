@@ -133,7 +133,7 @@ function applyDirectionHintsToForcedLayers(
   const adjusted = new Map(layers);
   for (const edge of edges) {
     const dir = edgeDirections.get(`${edge.from}->${edge.to}`);
-    if (dir !== "up" && dir !== "down") continue;
+    if (dir === undefined || dir === "auto") continue;
     if (!adjusted.has(edge.from) || !adjusted.has(edge.to)) continue;
     const targetLayer = adjusted.get(edge.to)!;
     const fromLayer = adjusted.get(edge.from)!;
@@ -141,6 +141,12 @@ function applyDirectionHintsToForcedLayers(
       adjusted.set(edge.from, targetLayer + 1);
     } else if (dir === "down" && fromLayer >= targetLayer && targetLayer > 0) {
       adjusted.set(edge.from, targetLayer - 1);
+    } else if ((dir === "left" || dir === "right") && fromLayer !== targetLayer) {
+      // Pull the source into the target's layer so the within-layer
+      // reorder pass can place them side by side. The forced kind layout
+      // still informs every other node's row, so the perturbation is
+      // local to the hinted source endpoint.
+      adjusted.set(edge.from, targetLayer);
     }
   }
   return adjusted;
@@ -652,12 +658,13 @@ export function layout(
   const forcedLayers = assignForcedSystemLayers(allNodes, allEdges);
   let layers: Map<string, number>;
   if (forcedLayers) {
-    layers = edgeDirections
-      ? applyDirectionHintsToForcedLayers(forcedLayers, allEdges, edgeDirections)
-      : forcedLayers;
+    layers = forcedLayers;
   } else {
     const { adj, inDegree } = buildGraph(nodeIds, allEdges, edgeDirections);
     layers = assignLayers(nodeIds, adj, inDegree);
+  }
+  if (edgeDirections) {
+    layers = applyDirectionHintsToForcedLayers(layers, allEdges, edgeDirections);
   }
 
   // Position nodes inside the container area
@@ -975,12 +982,13 @@ function layoutMultipleSystems(
     const forcedLayers = assignForcedSystemLayers(rawNodes, sys.edges);
     let layers: Map<string, number>;
     if (forcedLayers) {
-      layers = edgeDirections
-        ? applyDirectionHintsToForcedLayers(forcedLayers, sys.edges, edgeDirections)
-        : forcedLayers;
+      layers = forcedLayers;
     } else {
       const { adj, inDegree } = buildGraph(nodeIds, sys.edges, edgeDirections);
       layers = assignLayers(nodeIds, adj, inDegree);
+    }
+    if (edgeDirections) {
+      layers = applyDirectionHintsToForcedLayers(layers, sys.edges, edgeDirections);
     }
 
     const nodesByLayer = new Map<number, string[]>();

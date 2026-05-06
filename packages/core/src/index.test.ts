@@ -654,6 +654,44 @@ system S {
     expect(yOf(upward.svg, "Order")).toBeGreaterThan(yOf(upward.svg, "Payment"));
   });
 
+  it("`direction: right` pulls a service-to-service edge into the same layer and places source to the right", () => {
+    // Without the hint, a service A → service C edge separates A and C
+    // into adjacent forced sub-layers (A above, C below). With
+    // direction:right the source should be pulled into target's layer
+    // and placed to the right of it.
+    const krs = `
+system S {
+  user U { label "U" }
+  service A { label "A" }
+  service C { label "C" }
+  U -> A "uses"
+  A -> C "calls"
+}
+    `;
+    const xOfRect = (svg: string, id: string): number => {
+      const open = svg.indexOf(`data-node-id="${id}"`);
+      if (open < 0) throw new Error(`no data-node-id="${id}"`);
+      const segment = svg.slice(open, open + 800);
+      const m = /<rect\b[^>]*?\bx="([0-9.]+)"/.exec(segment);
+      if (!m) throw new Error(`no rect x for ${id}`);
+      return parseFloat(m[1]);
+    };
+    const baseline = compile(krs);
+    const result = compile(krs, {
+      styleSource: `edge#A->C { direction: right; }`,
+    });
+    if (baseline.diagramType !== "system" || result.diagramType !== "system") {
+      throw new Error("expected system result");
+    }
+    // Sanity: without the hint, A and C are vertically separated
+    // (different y), so x ordering tells us nothing useful.
+    expect(yOf(baseline.svg, "A")).toBeLessThan(yOf(baseline.svg, "C"));
+    // With direction:right the edge pulls C into A's layer (same y)
+    // and places A to the right of C.
+    expect(yOf(result.svg, "A")).toBe(yOf(result.svg, "C"));
+    expect(xOfRect(result.svg, "A")).toBeGreaterThan(xOfRect(result.svg, "C"));
+  });
+
   it("`direction: right` places the source to the right of the target within the same layer", () => {
     // A reciprocal edge pair `Inner1 <-> Inner2` produces a cycle, so
     // assignLayers' fallback puts both nodes on layer 0 — the same
