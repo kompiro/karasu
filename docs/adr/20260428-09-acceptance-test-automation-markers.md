@@ -11,7 +11,9 @@ scope:
   concerns:
     - ci
 assumptions:
-  - "file: .claude/skills/acceptance-test/SKILL.md"
+  # acceptance-test skill moved to the kompiro/hane plugin (see CLAUDE.md);
+  # the host repo no longer ships SKILL.md in-tree.
+  - "external: kompiro/hane plugin :: skills/acceptance-test/SKILL.md"
   - "file: scripts/acceptance/coverage.ts"
   - "file: scripts/acceptance/check-coverage.ts"
   - "file: scripts/acceptance/coverage.test.ts"
