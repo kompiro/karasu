@@ -218,6 +218,15 @@ export class StyleLexer {
         const after = this.peekAt(1);
         if (after === ">" || (after === "-" && this.peekAt(2) === ">")) break;
       }
+      // Dot-notation node references (e.g. `OrderDB.OrderTable` inside an
+      // `edge#<base>` selector) are part of the identifier. Only continue
+      // consuming when the character after the dot starts another identifier
+      // segment — otherwise the dot belongs to a different token (e.g. a
+      // numeric value `0.5`, but those go through `readValue`, not here).
+      if (ch === "." && isIdentStart(this.peekAt(1))) {
+        value += this.advance();
+        continue;
+      }
       if (!isIdentPartWithHyphen(ch)) break;
       value += this.advance();
     }

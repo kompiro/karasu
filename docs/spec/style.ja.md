@@ -55,6 +55,9 @@ edge#A->B { color: #00FF00; }
 
 /* async の base 形式 */
 edge#A-->B { stroke-width: 2px; }
+
+/* dot-notation を含む base id（usecase→resource 合成エッジなど） */
+edge#PlaceOrder->OrderDB.OrderTable { direction: down; }
 ```
 
 同じ base id を持つエッジが 2 本以上あって両方に author id が無い場合、
@@ -173,16 +176,35 @@ edge[read]  { direction: right; }
 edge#criticalWrite { direction: down; }
 ```
 
-値はリゾルバを経由して `ResolvedEdgeStyle.direction` に届く。GUI 編集フロー
-（#1076 / #1098）が `.krs.style` に `edge#<id> { direction: <value> }` を
-書き戻す前提のプロパティ。
+値はリゾルバを経由して `ResolvedEdgeStyle.direction` に届き、GUI 編集
+フロー（#1076 / #1098）と karasu の layered layout の両方で使われる。
 
-> **MVP の制約.** 現在のレイアウトエンジンは `direction` を読まないため、
-> 値は parse / resolve され `ResolvedEdgeStyle` 上には載るが、描画結果は
-> 変わらない。レイヤ割り当て / 経路探索への組み込みは
-> [#1124](https://github.com/kompiro/karasu/issues/1124) で追跡している。
-> 設計上の意図（ヒントであり絶対指定ではない、サイクル回避時はエンジンが
-> 上書きできる）は `docs/design/edge-direction-style.md` を参照。
+#### 反映される値
+
+- **`auto`**（デフォルト）: バイアスなし。エンジンに完全に任せる
+- **`down`**: 上下方向の自然な流れ。現状 `auto` と同じ
+- **`up`**: source を target の **下** に配置し、矢印が視覚的に上向きに
+  流れるようにする。トポロジカルなレイヤ割り当てでエッジを反転する
+  ことで実現する。矢印自体の `from -> to` 方向は変わらない
+- **`left` / `right`**: parse され `ResolvedEdgeStyle` には載るが、
+  layered layout は honor しない（縦方向のレイヤ割り当てに横方向の
+  ヒントを射影できないため）。`auto` にフォールバックする
+
+#### サイクル / forced-layer フォールバック
+
+`up` は absolute 指定ではなくヒント。以下のケースでエンジンは反転を
+無効化する:
+
+- **サイクルガード**: `up` を適用すると layer DAG にサイクルが発生する
+  場合、該当エッジの反転を無効化し、自然な orientation で描画する
+- **Forced kind-based layouts**: トップレベルの system view は
+  `user → client → service → ...` のような種別による段組を強制する。
+  ここでも `direction: up` は honor され、**source ノードを target の
+  1 段下にずらす** 形で実現する（target 自身と他の同種ノードは
+  動かない）。明示された該当エッジに限ってのみ kind stratification が
+  乱れる
+
+詳細は [`docs/design/edge-direction-style.md`](../design/edge-direction-style.md)。
 
 不正値は黙って破棄され、`direction` は `auto` にフォールバックする。
 

@@ -56,6 +56,9 @@ edge#A->B { color: #00FF00; }
 
 /* Async base form */
 edge#A-->B { stroke-width: 2px; }
+
+/* Dot-notation node refs in the base id (e.g. usecase→resource synthesized edges) */
+edge#PlaceOrder->OrderDB.OrderTable { direction: down; }
 ```
 
 When two edges share the same computed base id and neither has an
@@ -179,18 +182,39 @@ edge#criticalWrite { direction: down; }
 ```
 
 The hint travels through the resolver into `ResolvedEdgeStyle.direction`
-and is intended to be consumed by the GUI editing flow (#1076 / #1098)
-that writes per-edge `edge#<id> { direction: <value> }` rules to a
-`.krs.style`.
+and is consumed by both the GUI editing flow (#1076 / #1098) and the
+karasu layered layout.
 
-> **MVP limitation.** The current layout engine does not yet read
-> `direction` to bias layer assignment or routing — the value parses,
-> resolves, and is observable on `ResolvedEdgeStyle`, but the rendered
-> diagram is unchanged. Wiring the hint into the layered layout is
-> tracked in [#1124](https://github.com/kompiro/karasu/issues/1124).
-> See `docs/design/edge-direction-style.md` for the intended semantics
-> (hint, not absolute; the engine may override when honoring it would
-> create a cycle).
+#### Honored values
+
+- **`auto`** (default): no bias; the engine is free to choose.
+- **`down`**: alias for the natural top-down flow. Equivalent to `auto`
+  today.
+- **`up`**: place the source *below* the target so the visual arrow
+  flows upward. Implemented by reversing the edge in the topological
+  layer assignment. The visual `from -> to` orientation of the arrow
+  itself is unchanged.
+- **`left` / `right`**: parse and surface on `ResolvedEdgeStyle`, but
+  **not honored** by the layered layout — vertical layering has no
+  clean projection for a horizontal hint. They fall through to `auto`.
+
+#### Cycle / forced-layer fallback
+
+`up` is a hint, not a constraint. The engine drops the reversal in two
+cases:
+
+- **Cycle guard.** If applying `up` would close a cycle in the layer
+  DAG, the engine ignores the reversals for the affected edges and
+  renders with the natural orientation.
+- **Forced kind-based layouts.** The top-level system view stratifies
+  nodes by kind (`user → client → service → ...`). `direction: up` is
+  honored by *moving the source one layer below the target*; the
+  target itself stays in its kind row, and other nodes of the same
+  kind are unaffected. The kind stratification is therefore only
+  perturbed for the explicitly-flagged edge.
+
+See [`docs/design/edge-direction-style.md`](../design/edge-direction-style.md)
+for the rationale.
 
 Invalid values are silently dropped and `direction` falls back to `auto`.
 

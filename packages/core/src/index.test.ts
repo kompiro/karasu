@@ -565,3 +565,66 @@ edge#A->C { color: #00FF00; }
     expect(result.svg).toContain("#00FF00");
   });
 });
+
+describe("compile — edge direction hint reaches the layered layout", () => {
+  // Drill into a service (non-forced layer path) and observe the rendered
+  // SVG to verify the direction hint reaches the layout. The top-level
+  // forced kind-based layering is intentionally untouched.
+  const KRS = `
+system S {
+  service Backend {
+    domain Order { label "Order" }
+    domain Payment { label "Payment" }
+    Order -> Payment "calls"
+  }
+}
+  `;
+
+  function yOf(svg: string, id: string): number {
+    // Find the <g data-node-id="..."> opener, then read the first inner rect's
+    // y attribute. We can't use a single regex because the SVG has multiple
+    // unrelated rects scattered between nodes.
+    const open = svg.indexOf(`data-node-id="${id}"`);
+    if (open < 0) throw new Error(`no data-node-id="${id}"`);
+    const segment = svg.slice(open, open + 800);
+    const m = /<rect\s[^>]*\sy="([0-9.]+)"/.exec(segment);
+    if (!m) throw new Error(`no rect y for ${id} (segment: ${segment.slice(0, 200)})`);
+    return parseFloat(m[1]);
+  }
+
+  it("targets a synthesized usecase->resource edge whose base id contains a dot", () => {
+    const krs = `
+system S {
+  database OrderDB { table OrderTable {} }
+  service Backend {
+    domain Order {
+      usecase PlaceOrder {
+        resource OrderDB.OrderTable { operations create }
+      }
+    }
+  }
+}
+    `;
+    const result = compile(krs, {
+      viewPath: ["S", "Backend", "Order"],
+      styleSource: `edge#PlaceOrder->OrderDB.OrderTable { color: #EF4444; }`,
+    });
+    expect(result.diagnostics.filter((d) => d.severity === "error")).toHaveLength(0);
+    if (result.diagramType !== "system") throw new Error("expected system result");
+    expect(result.svg).toContain("#EF4444");
+  });
+
+  it("`direction: up` flips the source/target layer order in drill-down views", () => {
+    const path = ["S", "Backend"];
+    const baseline = compile(KRS, { viewPath: path });
+    const upward = compile(KRS, {
+      viewPath: path,
+      styleSource: `edge#Order->Payment { direction: up; }`,
+    });
+    if (baseline.diagramType !== "system" || upward.diagramType !== "system") {
+      throw new Error("expected system result");
+    }
+    expect(yOf(baseline.svg, "Order")).toBeLessThan(yOf(baseline.svg, "Payment"));
+    expect(yOf(upward.svg, "Order")).toBeGreaterThan(yOf(upward.svg, "Payment"));
+  });
+});
