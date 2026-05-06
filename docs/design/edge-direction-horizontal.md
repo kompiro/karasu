@@ -119,18 +119,24 @@ A -> C { direction: left  }  /* A は C の左 */
 この 2 本は両立可能なケースもある（C が B の右にいて、A はその間にいる）が、
 両立不能なケースもある（B = C, または C が B の左にいる）。
 
-**ルール**: **declaration 順で先勝ち**。後の hint は前の hint を覆さない
-範囲で適用される。`up` / `down` は last-wins だったが、こちらは先勝ち
-(`first-wins`) — 理由:
+**ルール**: **declaration 順で後勝ち（last-wins）**。プロジェクト全体の
+慣習に揃える:
 
-- `up` / `down` は **同じソースの layer を 1 段ずらす** だけなので
-  last-wins でも layer 値が確定する
-- `left/right` は **複数の隣接関係** を同時に満たそうとするので、
-  順序を明確にしておく方が予測可能
-- 著者は普通、より重要なヒントを先に書く / GUI も append-only なので
-  先のものほど "前から存在していた" と仮定できる
+- カスケードレベル: GUI が `.krs.style` に append する設計（#1076）なので
+  resolved style 自体が常に **後勝ち** で確定する
+- `up` / `down` の forced layer 適用も last-wins（#1132 で確立）
+- 著者にとって「最後に操作した GUI 入力 / 最後に書いた rule が反映される」
+  という直感が一貫する。`left/right` だけ先勝ちにすると、GUI で操作した
+  はずなのに反映されないケースが出てユーザーを混乱させる
 
-矛盾検出時の挙動: warning を出さずに silent fallback。`up`/`down` と一貫。
+具体的な処理:
+
+1. declaration 順に edge を走査
+2. `right`: source を target の **直後**（target の右）に並び替える
+3. `left`: source を target の **直前**（target の左）に並び替える
+4. 後発のヒントが先発の配置を上書きするのは仕様上当然（last-wins）
+
+矛盾検出時の挙動: warning を出さずに silent に上書き。`up` / `down` と一貫。
 
 ## 適用スコープ
 
@@ -163,8 +169,7 @@ A -> C { direction: left  }  /* A は C の左 */
       - `right`: source を target の **直後** に並び替える（source が
         target の右に来る）
       - `left`: source を target の **直前** に並び替える
-   3. 移動の結果、すでに先のヒントで決まっていた相対順序を壊す場合は
-      その後発ヒントは skip（first-wins）
+   3. 後発ヒントが先発の配置を上書きしてもそのまま適用（last-wins）
 
 ### 影響範囲
 
@@ -187,7 +192,7 @@ A -> C { direction: left  }  /* A は C の左 */
 - AT-B: `direction: left` で対称
 - AT-C: source / target が異なる layer にいるとき、`direction: left/right` は no-op（auto 扱い）
 - AT-D: ノード A に `column: right` を、エッジ A -> B に `direction: left` を付けたとき、A は B の左に並ぶ（edge hint が node hint を上書き）
-- AT-E: 同じソースに対する複数の矛盾する `left/right` ヒントは declaration 順で先勝ち、後発は silent skip
+- AT-E: 同じソースに対する複数の矛盾する `left/right` ヒントは declaration 順で **後勝ち**（プロジェクトの cascade / forced-layer last-wins ルールと一貫）
 - AT-F: end-to-end で `compile()` が direction:left/right を SVG x 座標に反映する
 
 ## 未解決の問い
