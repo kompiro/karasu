@@ -94,6 +94,14 @@ program
     "--granularity <mode>",
     "Emission granularity. openapi: resource | operation (default: resource). db: aggregate | table (default: aggregate).",
   )
+  .option(
+    "--emit-bindings",
+    "Emit usecase → resource bindings (openapi: resource granularity, db: aggregate granularity only)",
+  )
+  .option(
+    "--emit-crud-decoration",
+    "Decorate emitted operations with <verb>:<crud> (ADR-20260503-01). Implies --emit-bindings.",
+  )
   .option("-o, --output <path>", "Write .krs to file (default: stdout)")
   .addHelpText(
     "after",
@@ -133,6 +141,8 @@ Examples:
         service?: string;
         database?: string;
         granularity?: string;
+        emitBindings?: boolean;
+        emitCrudDecoration?: boolean;
       },
     ) => {
       if (
@@ -171,6 +181,24 @@ Examples:
         );
         process.exit(1);
       }
+      let emitBindings = options.emitBindings ?? false;
+      let emitCrudDecoration = options.emitCrudDecoration ?? false;
+      if (emitCrudDecoration) emitBindings = true;
+      if (emitBindings || emitCrudDecoration) {
+        if (options.from !== "openapi" && options.from !== "db") {
+          process.stderr.write(
+            `Warning: --emit-bindings / --emit-crud-decoration are only supported with --from openapi or --from db; ignoring.\n`,
+          );
+          emitBindings = false;
+          emitCrudDecoration = false;
+        } else if (granularity === "operation" || granularity === "table") {
+          process.stderr.write(
+            `Warning: --emit-bindings / --emit-crud-decoration are ignored with --granularity ${granularity}.\n`,
+          );
+          emitBindings = false;
+          emitCrudDecoration = false;
+        }
+      }
       translate(file, {
         from: options.from,
         map: options.map,
@@ -178,6 +206,8 @@ Examples:
         service: options.service,
         database: options.database,
         granularity,
+        emitBindings,
+        emitCrudDecoration,
       });
     },
   );
