@@ -10,6 +10,10 @@
 - **既存実装**:
   - `packages/core/src/renderer/layer-layout-logics.ts`（`sortByBarycenter`、`bucketByColumn`）
   - `packages/core/src/renderer/layout.ts`（forced layer / 多 system view から呼ばれる）
+- **関連 ADR**:
+  - [ADR-20260409-04](../adr/20260409-04-barycenter-layer-ordering.md): 同 layer 内の barycenter による x 順序（baseline）
+  - [ADR-20260429-04](../adr/20260429-04-style-column-layout-hint.md): node `column` hint の escape hatch。本設計はこの上に **edge 側の override 層** を追加する位置付け
+  - [ADR-20260430-04](../adr/20260430-04-resource-rw-edges.md): **last-wins** を CSS カスケード整合の project-wide 慣習として採用 — 本設計の last-wins ルールはこれに従う
 
 ## 背景・課題
 
@@ -107,6 +111,29 @@ target endpoint の `column` は引き続き尊重する（変更しない）。
 
 spec に precedence ルールを明記する。
 
+### ADR-20260429-04 との関係
+
+ADR-20260429-04 は「各バケット内では既存の並び（system view では宣言順、
+それ以外では barycenter）を保持」と書いている。本設計で source を target
+の右 / 左に並び替える際、結果として **bucket 境界を越える可能性がある**。
+
+これは ADR を覆すものではなく、**新しい上位 override 層を 1 段加える**
+扱い:
+
+| 層 | 役割 | ADR |
+|---|---|---|
+| 1. layer 割当 | y 軸（kind tier または topology） | 既存 |
+| 2. barycenter sort | bucket 内 x の baseline | ADR-20260409-04 |
+| 3. `bucketByColumn` | node 単位の bucket 振り分け | ADR-20260429-04 |
+| 4. **`applyEdgeDirectionWithinLayer`**（本設計） | edge の二項 hint で source の最終位置を決定 | 本設計 |
+
+各層は **下から上へ override 関係**で、edge hint が来たときだけ層 4 が
+発火する。column hint しかなければ層 4 は no-op で ADR-20260429-04 の
+「bucket 内並び保持」が引き続き成立する。`direction` プロパティが
+増えるのは GUI 編集器（#1076）という motivating example の登場による
+もので、ADR-20260429-04 の「rank/row は motivating example が出てから
+個別検討」という方針にも整合する。
+
 ## 矛盾するヒントの解決
 
 同一ノードを source とする複数のエッジで矛盾する `left/right` を書いた場合:
@@ -124,6 +151,9 @@ A -> C { direction: left  }  /* A は C の左 */
 
 - カスケードレベル: GUI が `.krs.style` に append する設計（#1076）なので
   resolved style 自体が常に **後勝ち** で確定する
+- ADR-20260430-04 が「**last-wins** は CSS カスケードと整合し、authors が
+  後の宣言で前の classification を上書きできる（一貫性のある編集体験）」
+  として last-wins を **project-wide 慣習** として正式採用
 - `up` / `down` の forced layer 適用も last-wins（#1132 で確立）
 - 著者にとって「最後に操作した GUI 入力 / 最後に書いた rule が反映される」
   という直感が一貫する。`left/right` だけ先勝ちにすると、GUI で操作した
