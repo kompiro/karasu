@@ -182,10 +182,19 @@ edge#criticalWrite { direction: down; }
 #### 反映される値
 
 - **`auto`**（デフォルト）: バイアスなし。エンジンに完全に任せる
-- **`down`**: 上下方向の自然な流れ。現状 `auto` と同じ
 - **`up`**: source を target の **下** に配置し、矢印が視覚的に上向きに
   流れるようにする。トポロジカルなレイヤ割り当てでエッジを反転する
-  ことで実現する。矢印自体の `from -> to` 方向は変わらない
+  か、forced kind-based system view では source を target の 1 段下に
+  ずらすことで実現する。矢印自体の `from -> to` 方向は変わらない
+- **`down`**: source を target の **上** に配置し、矢印が視覚的に下方向に
+  流れるようにする。バックエッジや forced kind-based 段組などで他の
+  制約が逆方向にレイアウトしようとしても、明示的に `down` で
+  上書きできる。`up` の鏡像で、forced layout では source を target の
+  1 段上に押し上げる（target 自身と他の同種ノードは動かない）。
+  target が既に layer 0 にある場合（押し上げる余地がない）は no-op で
+  自然な orientation に戻る。drill-down view（forced layer なし）では
+  自然な topological order が既に `down` を満たすので、`auto` と
+  観察上同じ
 - **`left` / `right`**: parse され `ResolvedEdgeStyle` には載るが、
   layered layout は honor しない（縦方向のレイヤ割り当てに横方向の
   ヒントを射影できないため）。`auto` にフォールバックする

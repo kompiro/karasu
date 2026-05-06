@@ -614,6 +614,32 @@ system S {
     expect(result.svg).toContain("#EF4444");
   });
 
+  it("`direction: down` pushes the source above the target under the forced kind-based layout", () => {
+    // service → client back-edge ends up routed upward by default. With
+    // direction:down it should flow downward, with the service drawn
+    // above the client. We render the top-level system view so the
+    // forced kind-based path runs.
+    const krs = `
+system S {
+  user U { label "U" }
+  client C { label "C" }
+  service A { label "A" }
+  U -> C "uses"
+  C -> A "calls"
+  A -> C "push"
+}
+    `;
+    const baseline = compile(krs);
+    const downward = compile(krs, {
+      styleSource: `edge#A->C { direction: down; }`,
+    });
+    if (baseline.diagramType !== "system" || downward.diagramType !== "system") {
+      throw new Error("expected system result");
+    }
+    expect(yOf(baseline.svg, "C")).toBeLessThan(yOf(baseline.svg, "A"));
+    expect(yOf(downward.svg, "A")).toBeLessThan(yOf(downward.svg, "C"));
+  });
+
   it("`direction: up` flips the source/target layer order in drill-down views", () => {
     const path = ["S", "Backend"];
     const baseline = compile(KRS, { viewPath: path });

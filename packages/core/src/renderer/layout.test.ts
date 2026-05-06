@@ -152,6 +152,53 @@ system S {
     expect(flippedU.y).toBeGreaterThan(flippedA.y);
   });
 
+  it("honors direction:down in the forced kind-based layout (mirror of up)", () => {
+    // In the forced kind layout, client lives above service. A back-edge
+    // service → client (e.g. a service-side push notification) ends up
+    // routed upward by default. With direction:down on that edge the
+    // source (service) is pushed one layer above the target (client),
+    // so the arrow flows downward.
+    const slice = parseAndExtract(`
+system S {
+  user U { label "U" }
+  client C { label "C" }
+  service A { label "A" }
+  U -> C "uses"
+  C -> A "calls"
+  A -> C "push"
+}
+    `);
+    const baseline = layout(slice);
+    const baselineC = baseline.nodes.get("C")!;
+    const baselineA = baseline.nodes.get("A")!;
+    // Default forced kind layout: client (layer 1) above service (layer 2).
+    expect(baselineC.y).toBeLessThan(baselineA.y);
+
+    const directions = new Map([["A->C", "down" as const]]);
+    const flipped = layout(slice, undefined, undefined, undefined, directions);
+    const flippedC = flipped.nodes.get("C")!;
+    const flippedA = flipped.nodes.get("A")!;
+    // direction:down on the push edge moves service A above client C.
+    expect(flippedA.y).toBeLessThan(flippedC.y);
+  });
+
+  it("treats direction:down as a no-op when the target is already at layer 0", () => {
+    // Pushing the source above layer 0 has no room — `down` silently
+    // falls back rather than producing a negative layer.
+    const slice = parseAndExtract(`
+system S {
+  user U { label "U" }
+  service A { label "A" }
+  A -> U "calls back"
+}
+    `);
+    const baseline = layout(slice);
+    const directions = new Map([["A->U", "down" as const]]);
+    const flipped = layout(slice, undefined, undefined, undefined, directions);
+    expect(flipped.nodes.get("U")!.y).toBe(baseline.nodes.get("U")!.y);
+    expect(flipped.nodes.get("A")!.y).toBe(baseline.nodes.get("A")!.y);
+  });
+
   it("only perturbs the source endpoint when adjusting a forced layer for direction:up", () => {
     const slice = parseAndExtract(`
 system S {
