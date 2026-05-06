@@ -1,6 +1,6 @@
 # ADR Topic: app-ui
 
-20 ADRs in this topic. Solid nodes belong to `app-ui`; gray dashed nodes are ghosts showing cross-topic references to help navigation.
+21 ADRs in this topic. Solid nodes belong to `app-ui`; gray dashed nodes are ghosts showing cross-topic references to help navigation.
 
 Other topics: [overview](../graph.md).
 ```mermaid
@@ -26,6 +26,7 @@ flowchart TD
     ADR_20260427_04["ADR-20260427-04<br/>空ビューを避けるための自動タブ切替（system > deploy > org）"]
     ADR_20260505_02["ADR-20260505-02<br/>アクティビティバー + サイドバー構造の導入"]
     ADR_20260505_03["ADR-20260505-03<br/>エディタ・プレビュー間のドラッグハンドル"]
+    ADR_20260506_01["ADR-20260506-01<br/>GUI 駆動の `.krs.style` 編集 — Preview コンテキストメニューから ..."]
   end
   ADR_20260317_01["ADR-20260317-01<br/>[renderer] 2 レイヤレンダリングとドリルダウンナビゲーション"]
   ADR_20260317_02["ADR-20260317-02<br/>[project] プロジェクトとファイルシステム抽象化 — `FileSystemProvider` + OPFS"]
@@ -36,6 +37,8 @@ flowchart TD
   ADR_20260412_03["ADR-20260412-03<br/>[project] Import Project from ZIP — `fflate` 再利用 + トップレベル除去"]
   ADR_20260420_03["ADR-20260420-03<br/>[chat-ai] i18n ロールアウト — 英語 / 日本語の UI・診断・Chat"]
   ADR_20260422_07["ADR-20260422-07<br/>[project] OPFS 履歴スナップショットを diff 比較ソースにする"]
+  ADR_20260506_02["ADR-20260506-02<br/>[edges] `.krs.style` の `edge#<id>` セレクタ — base ID + opt..."]
+  ADR_20260506_03["ADR-20260506-03<br/>[edges] `.krs.style` の edge `direction` プロパティ — 矢印の流れる向..."]
   ADR_20260326_03 --> ADR_20260320_01
   ADR_20260407_03 --> ADR_20260317_02
   ADR_20260411_08 --> ADR_20260323_02
@@ -53,6 +56,9 @@ flowchart TD
   ADR_20260412_03 --> ADR_20260408_03
   ADR_20260412_03 --> ADR_20260411_06
   ADR_20260422_07 --> ADR_20260420_02
+  ADR_20260506_02 --> ADR_20260506_01
+  ADR_20260506_03 --> ADR_20260506_01
+  ADR_20260506_03 --> ADR_20260506_02
 
   classDef accepted fill:#d4edda,stroke:#28a745,color:#155724
   classDef proposed fill:#fff3cd,stroke:#ffc107,color:#856404
@@ -80,6 +86,7 @@ flowchart TD
   class ADR_20260427_04 accepted
   class ADR_20260505_02 accepted
   class ADR_20260505_03 accepted
+  class ADR_20260506_01 accepted
   class ADR_20260317_01 ghost
   class ADR_20260317_02 ghost
   class ADR_20260320_01 ghost
@@ -89,4 +96,6 @@ flowchart TD
   class ADR_20260412_03 ghost
   class ADR_20260420_03 ghost
   class ADR_20260422_07 ghost
+  class ADR_20260506_02 ghost
+  class ADR_20260506_03 ghost
 ```

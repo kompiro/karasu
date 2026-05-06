@@ -1,6 +1,6 @@
 # ADR Dependency Graph — Overview
 
-150 ADRs across 15 topics. Clusters group by `topic` frontmatter field. Edges crossing cluster borders are cross-topic dependencies.
+154 ADRs across 15 topics. Clusters group by `topic` frontmatter field. Edges crossing cluster borders are cross-topic dependencies.
 ```mermaid
 flowchart TD
   subgraph adr-tooling["adr-tooling"]
@@ -30,6 +30,7 @@ flowchart TD
     ADR_20260427_04["ADR-20260427-04<br/>空ビューを避けるための自動タブ切替（system > deploy > org）"]
     ADR_20260505_02["ADR-20260505-02<br/>アクティビティバー + サイドバー構造の導入"]
     ADR_20260505_03["ADR-20260505-03<br/>エディタ・プレビュー間のドラッグハンドル"]
+    ADR_20260506_01["ADR-20260506-01<br/>GUI 駆動の `.krs.style` 編集 — Preview コンテキストメニューから ..."]
   end
   subgraph build["build"]
     ADR_20260312_01["ADR-20260312-01<br/>モノレポ構成の採用"]
@@ -95,6 +96,9 @@ flowchart TD
     ADR_20260422_03["ADR-20260422-03<br/>集約された暗黙エッジの詳細パネル — SVG 属性埋め込み方式"]
     ADR_20260429_01["ADR-20260429-01<br/>Skip-layer エッジの直交チャネルルーティング"]
     ADR_20260501_01["ADR-20260501-01<br/>エッジの border-style に dotted を追加してユーザーが第3の線スタイル軸を..."]
+    ADR_20260506_02["ADR-20260506-02<br/>`.krs.style` の `edge#<id>` セレクタ — base ID + opt..."]
+    ADR_20260506_03["ADR-20260506-03<br/>`.krs.style` の edge `direction` プロパティ — 矢印の流れる向..."]
+    ADR_20260506_04["ADR-20260506-04<br/>edge `direction: left` / `direction: right` の l..."]
   end
   subgraph navigation["navigation"]
     ADR_20260330_04["ADR-20260330-04<br/>Permanent Link — `nodePathIndex` と URL hash の 2..."]
@@ -260,6 +264,10 @@ flowchart TD
   ADR_20260425_01 --> ADR_20260420_03
   ADR_20260430_04 --> ADR_20260430_03
   ADR_20260502_02 --> ADR_20260424_01
+  ADR_20260506_02 --> ADR_20260506_01
+  ADR_20260506_03 --> ADR_20260506_01
+  ADR_20260506_03 --> ADR_20260506_02
+  ADR_20260506_04 --> ADR_20260506_03
   ADR_20260412_05 -.supersedes.-> ADR_20260324_01
   ADR_20260429_09 -.supersedes.-> ADR_20260428_05
 
@@ -419,17 +427,21 @@ flowchart TD
   class ADR_20260505_01 accepted
   class ADR_20260505_02 accepted
   class ADR_20260505_03 accepted
+  class ADR_20260506_01 accepted
+  class ADR_20260506_02 accepted
+  class ADR_20260506_03 accepted
+  class ADR_20260506_04 accepted
 ```
 
 ## Per-topic detail
 
 - [`adr-tooling`](graph/adr-tooling.md) — 4 ADRs
-- [`app-ui`](graph/app-ui.md) — 20 ADRs
+- [`app-ui`](graph/app-ui.md) — 21 ADRs
 - [`build`](graph/build.md) — 23 ADRs
 - [`chat-ai`](graph/chat-ai.md) — 8 ADRs
 - [`cli`](graph/cli.md) — 10 ADRs
 - [`core-concepts`](graph/core-concepts.md) — 7 ADRs
-- [`edges`](graph/edges.md) — 7 ADRs
+- [`edges`](graph/edges.md) — 10 ADRs
 - [`navigation`](graph/navigation.md) — 9 ADRs
 - [`parser`](graph/parser.md) — 12 ADRs
 - [`project`](graph/project.md) — 4 ADRs
