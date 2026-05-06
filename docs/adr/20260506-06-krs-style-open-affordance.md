@@ -1,5 +1,5 @@
 ---
-id: ADR-20260506-05
+id: ADR-20260506-06
 title: "GUI コンテキストメニューの append 先解決 — `.krs.style` 直接編集時の優先と target 表示"
 status: accepted
 date: 2026-05-06
@@ -12,7 +12,7 @@ scope:
   packages: [app]
 ---
 
-# ADR-20260506-05: GUI コンテキストメニューの append 先解決 — `.krs.style` 直接編集時の優先と target 表示
+# ADR-20260506-06: GUI コンテキストメニューの append 先解決 — `.krs.style` 直接編集時の優先と target 表示
 
 - **日付**: 2026-05-06
 - **ステータス**: 決定済み
