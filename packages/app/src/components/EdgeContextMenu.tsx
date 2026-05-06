@@ -37,6 +37,12 @@ export function EdgeContextMenu({
 }: EdgeContextMenuProps) {
   const writable = styleTargetPath !== undefined;
 
+  // Show only the basename in the menu so the line stays readable; the
+  // full path is on the title attribute for hover.
+  const targetBasename = styleTargetPath
+    ? styleTargetPath.split("/").pop() || styleTargetPath
+    : undefined;
+
   return (
     <div
       className="context-menu edge-context-menu"
@@ -49,6 +55,11 @@ export function EdgeContextMenu({
         <div className="context-menu-header__subtitle">
           edge#<code>{canonicalId}</code>
         </div>
+        {writable && (
+          <div className="context-menu-header__target" title={styleTargetPath}>
+            → <code>{targetBasename}</code>
+          </div>
+        )}
       </div>
       <div className="context-menu-separator" />
       <div className="context-menu-section-label">Direction</div>
@@ -69,8 +80,8 @@ export function EdgeContextMenu({
         <>
           <div className="context-menu-separator" />
           <div className="context-menu-hint">
-            No <code>.krs.style</code> import found in the current file. Add an <code>@import</code>{" "}
-            first to enable direction overrides.
+            No <code>.krs.style</code> available to write to. Open a <code>.krs.style</code> file
+            directly, or add an <code>@import</code> to the current <code>.krs</code> source.
           </div>
         </>
       )}

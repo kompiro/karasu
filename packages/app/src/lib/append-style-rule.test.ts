@@ -30,6 +30,28 @@ describe("resolveStyleAppendTarget", () => {
     );
     expect(result).toBe("/project/theme.krs.style");
   });
+
+  it("uses the open file itself when it is a .krs.style", () => {
+    // The file content is irrelevant in this case — we don't parse a
+    // .krs.style as if it were .krs.
+    expect(resolveStyleAppendTarget("edge { color: red; }", "/project/site.krs.style")).toBe(
+      "/project/site.krs.style",
+    );
+  });
+
+  it("uses the open .krs.style even when its content is empty / unloaded", () => {
+    expect(resolveStyleAppendTarget(undefined, "/project/site.krs.style")).toBe(
+      "/project/site.krs.style",
+    );
+  });
+
+  it("treats files that merely contain `.krs.style` in the path correctly", () => {
+    // The trailing `.krs.style` is what matters — the path can include
+    // arbitrary directory segments.
+    expect(resolveStyleAppendTarget(undefined, "/deep/nested/path/theme.krs.style")).toBe(
+      "/deep/nested/path/theme.krs.style",
+    );
+  });
 });
 
 describe("appendEdgeDirectionRule", () => {

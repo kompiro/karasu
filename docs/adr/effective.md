@@ -35,6 +35,7 @@ See also: [dependency graph](graph.md), per-topic detail under [graph/](graph/).
 - [ADR-20260505-02](20260505-02-activity-bar-sidebar.md) — アクティビティバー + サイドバー構造の導入
 - [ADR-20260505-03](20260505-03-editor-preview-resize.md) — エディタ・プレビュー間のドラッグハンドル
 - [ADR-20260506-01](20260506-01-gui-driven-style-editing.md) — GUI 駆動の `.krs.style` 編集 — Preview コンテキストメニューから append round-trip
+- [ADR-20260506-05](20260506-05-krs-style-open-affordance.md) — GUI コンテキストメニューの append 先解決 — `.krs.style` 直接編集時の優先と target 表示
 
 ## build
 
