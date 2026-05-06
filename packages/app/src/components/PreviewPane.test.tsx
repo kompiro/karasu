@@ -422,5 +422,27 @@ describe("PreviewPane", () => {
         expect(btn.disabled).toBe(true);
       }
     });
+
+    it("shows the resolved target path basename in the menu header", () => {
+      const svg = `<div data-edge-from="A" data-edge-to="B" data-edge-kind="sync" data-edge-canonical-id="A->B"></div>`;
+      const { container } = render(
+        <PreviewPane {...baseProps()} svg={svg} styleTargetPath="/project/site.krs.style" />,
+      );
+      const edge = container.querySelector("[data-edge-canonical-id]")!;
+      fireEvent.contextMenu(edge, { clientX: 50, clientY: 60 });
+      const target = container.querySelector(".context-menu-header__target");
+      expect(target).not.toBeNull();
+      // basename is shown inline; full path lives on the title attribute
+      expect(target!.textContent).toContain("site.krs.style");
+      expect(target!.getAttribute("title")).toBe("/project/site.krs.style");
+    });
+
+    it("omits the target path line when there is no styleTargetPath", () => {
+      const svg = `<div data-edge-from="A" data-edge-to="B" data-edge-kind="sync" data-edge-canonical-id="A->B"></div>`;
+      const { container } = render(<PreviewPane {...baseProps()} svg={svg} />);
+      const edge = container.querySelector("[data-edge-canonical-id]")!;
+      fireEvent.contextMenu(edge, { clientX: 50, clientY: 60 });
+      expect(container.querySelector(".context-menu-header__target")).toBeNull();
+    });
   });
 });
