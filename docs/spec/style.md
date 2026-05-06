@@ -203,9 +203,15 @@ karasu layered layout.
   back to the natural orientation. In drill-down views without forced
   layers the natural topological order already satisfies `down`, so it
   is observationally identical to `auto` there.
-- **`left` / `right`**: parse and surface on `ResolvedEdgeStyle`, but
-  **not honored** by the layered layout — vertical layering has no
-  clean projection for a horizontal hint. They fall through to `auto`.
+- **`left` / `right`**: position the source endpoint immediately left
+  (`left`) or right (`right`) of the target *within their shared
+  layer*. Cross-layer hints fall through to `auto` because the layered
+  layout has no clean projection for "horizontal" when the endpoints
+  sit in different rows. The pass runs after `bucketByColumn` so it
+  overrides node `column` placement for the source endpoint; the
+  target's `column` stays in effect. Conflicts on the same source
+  resolve **last-wins**, matching the cascade convention. See
+  [`docs/design/edge-direction-horizontal.md`](../design/edge-direction-horizontal.md).
 
 #### Cycle / forced-layer fallback
 

@@ -195,9 +195,15 @@ edge#criticalWrite { direction: down; }
   自然な orientation に戻る。drill-down view（forced layer なし）では
   自然な topological order が既に `down` を満たすので、`auto` と
   観察上同じ
-- **`left` / `right`**: parse され `ResolvedEdgeStyle` には載るが、
-  layered layout は honor しない（縦方向のレイヤ割り当てに横方向の
-  ヒントを射影できないため）。`auto` にフォールバックする
+- **`left` / `right`**: source / target が **同一 layer に居る場合に
+  限り**、source を target の直接左（`left`）または直接右（`right`）に
+  並び替える。異なる layer にいる場合は `auto` にフォールバックする
+  （縦方向に層を割る layered layout には横方向の自然な射影が無いため）。
+  `bucketByColumn` の後段で実行されるため、source endpoint については
+  node `column` ヒントを上書きする（target の `column` は尊重）。
+  同じ source への矛盾するヒントは **last-wins** で、cascade 規約と
+  一貫する。詳細は
+  [`docs/design/edge-direction-horizontal.md`](../design/edge-direction-horizontal.md)
 
 #### サイクル / forced-layer フォールバック
 

@@ -653,4 +653,52 @@ system S {
     expect(yOf(baseline.svg, "Order")).toBeLessThan(yOf(baseline.svg, "Payment"));
     expect(yOf(upward.svg, "Order")).toBeGreaterThan(yOf(upward.svg, "Payment"));
   });
+
+  it("`direction: right` places the source to the right of the target within the same layer", () => {
+    // A reciprocal edge pair `Inner1 <-> Inner2` produces a cycle, so
+    // assignLayers' fallback puts both nodes on layer 0 — the same
+    // forced-row scenario where direction:left/right is meaningful. The
+    // domain-level drill-down keeps the layered layout in its
+    // topological branch where applyEdgeDirectionWithinLayer runs.
+    const krs = `
+system S {
+  service Backend {
+    domain Order {
+      label "Order"
+      domain Inner1 { label "Inner1" }
+      domain Inner2 { label "Inner2" }
+      Inner1 -> Inner2 "forward"
+      Inner2 -> Inner1 "reply"
+    }
+  }
+}
+    `;
+    // Read the first x="..." attribute that follows the node group. Tries
+    // <rect x="..."> and falls back to <text x="..."> for shapes that don't
+    // emit an explicit rect x (some shape variants center via text only).
+    const xOfRect = (svg: string, id: string): number => {
+      const open = svg.indexOf(`data-node-id="${id}"`);
+      if (open < 0) throw new Error(`no data-node-id="${id}"`);
+      const segment = svg.slice(open, open + 800);
+      const rectMatch = /<rect\b[^>]*?\bx="([0-9.]+)"/.exec(segment);
+      if (rectMatch) return parseFloat(rectMatch[1]);
+      const textMatch = /<text\b[^>]*?\bx="([0-9.]+)"/.exec(segment);
+      if (textMatch) return parseFloat(textMatch[1]);
+      throw new Error(`no x for ${id} (segment: ${segment.slice(0, 200)})`);
+    };
+    const path = ["S", "Backend", "Order"];
+    const baseline = compile(krs, { viewPath: path });
+    const reordered = compile(krs, {
+      viewPath: path,
+      styleSource: `edge#Inner1->Inner2 { direction: right; }`,
+    });
+    if (baseline.diagramType !== "system" || reordered.diagramType !== "system") {
+      throw new Error("expected system result");
+    }
+    // Without the hint, declaration order puts Inner1 before Inner2.
+    expect(xOfRect(baseline.svg, "Inner1")).toBeLessThan(xOfRect(baseline.svg, "Inner2"));
+    // With direction:right on Inner1->Inner2, Inner1 lands to the right
+    // of Inner2.
+    expect(xOfRect(reordered.svg, "Inner1")).toBeGreaterThan(xOfRect(reordered.svg, "Inner2"));
+  });
 });

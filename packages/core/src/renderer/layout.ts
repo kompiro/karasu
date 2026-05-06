@@ -4,7 +4,11 @@ import type { EdgeDirection, ResolvedLayoutHints } from "../types/style.js";
 import { buildInheritedAnnotations } from "../resolver/inherited-annotations.js";
 import { summarizeDescription } from "./description-summary.js";
 import { CHAR_WIDTH, NODE_PADDING_X, NODE_PADDING_Y } from "./rendering-constants.js";
-import { sortByBarycenter, bucketByColumn } from "./layer-layout-logics.js";
+import {
+  sortByBarycenter,
+  bucketByColumn,
+  applyEdgeDirectionWithinLayer,
+} from "./layer-layout-logics.js";
 import { routeOrthogonalEdges } from "./edge-routing-channels.js";
 import { distributePorts } from "./edge-routing-ports.js";
 import { distributeChannelLanes } from "./edge-routing-lanes.js";
@@ -681,13 +685,14 @@ export function layout(
   const orderedByLayer = new Map<number, string[]>();
   for (const layerIdx of sortedLayers) {
     const nodesInLayer = nodesByLayer.get(layerIdx)!;
-    const ordered =
+    const bucketed =
       forcedLayers !== null && layoutHints && layoutHints.size > 0
         ? bucketByColumn(
             nodesInLayer.map((id) => ({ id })),
             layoutHints,
           ).map((item) => item.id)
         : nodesInLayer;
+    const ordered = applyEdgeDirectionWithinLayer(bucketed, allEdges, edgeDirections, layers);
     orderedByLayer.set(layerIdx, ordered);
   }
 
@@ -1014,10 +1019,16 @@ function layoutMultipleSystems(
         forcedLayers !== null || layerOrder === 0
           ? rawLayer
           : sortByBarycenter(rawLayer, predecessorsMap, nodeCenterX);
-      const sortedLayer =
+      const bucketed =
         forcedLayers !== null && layoutHints && layoutHints.size > 0
           ? bucketByColumn(innerSorted, layoutHints)
           : innerSorted;
+      const sortedLayer = applyEdgeDirectionWithinLayer(
+        bucketed.map((item) => item.id),
+        sys.edges,
+        edgeDirections,
+        layers,
+      ).map((id) => ({ id }));
 
       // Place nodes with sub-row wrapping when layer width exceeds MAX_LAYER_WIDTH
       let currentX = NODE_GAP;
