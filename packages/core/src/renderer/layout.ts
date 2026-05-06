@@ -4,7 +4,11 @@ import type { EdgeDirection, ResolvedLayoutHints } from "../types/style.js";
 import { buildInheritedAnnotations } from "../resolver/inherited-annotations.js";
 import { summarizeDescription } from "./description-summary.js";
 import { CHAR_WIDTH, NODE_PADDING_X, NODE_PADDING_Y } from "./rendering-constants.js";
-import { sortByBarycenter, bucketByColumn } from "./layer-layout-logics.js";
+import {
+  sortByBarycenter,
+  bucketByColumn,
+  applyEdgeDirectionWithinLayer,
+} from "./layer-layout-logics.js";
 import { routeOrthogonalEdges } from "./edge-routing-channels.js";
 import { distributePorts } from "./edge-routing-ports.js";
 import { distributeChannelLanes } from "./edge-routing-lanes.js";
@@ -129,7 +133,7 @@ function applyDirectionHintsToForcedLayers(
   const adjusted = new Map(layers);
   for (const edge of edges) {
     const dir = edgeDirections.get(`${edge.from}->${edge.to}`);
-    if (dir !== "up" && dir !== "down") continue;
+    if (dir === undefined || dir === "auto") continue;
     if (!adjusted.has(edge.from) || !adjusted.has(edge.to)) continue;
     const targetLayer = adjusted.get(edge.to)!;
     const fromLayer = adjusted.get(edge.from)!;
@@ -137,6 +141,12 @@ function applyDirectionHintsToForcedLayers(
       adjusted.set(edge.from, targetLayer + 1);
     } else if (dir === "down" && fromLayer >= targetLayer && targetLayer > 0) {
       adjusted.set(edge.from, targetLayer - 1);
+    } else if ((dir === "left" || dir === "right") && fromLayer !== targetLayer) {
+      // Pull the source into the target's layer so the within-layer
+      // reorder pass can place them side by side. The forced kind layout
+      // still informs every other node's row, so the perturbation is
+      // local to the hinted source endpoint.
+      adjusted.set(edge.from, targetLayer);
     }
   }
   return adjusted;
@@ -648,12 +658,13 @@ export function layout(
   const forcedLayers = assignForcedSystemLayers(allNodes, allEdges);
   let layers: Map<string, number>;
   if (forcedLayers) {
-    layers = edgeDirections
-      ? applyDirectionHintsToForcedLayers(forcedLayers, allEdges, edgeDirections)
-      : forcedLayers;
+    layers = forcedLayers;
   } else {
     const { adj, inDegree } = buildGraph(nodeIds, allEdges, edgeDirections);
     layers = assignLayers(nodeIds, adj, inDegree);
+  }
+  if (edgeDirections) {
+    layers = applyDirectionHintsToForcedLayers(layers, allEdges, edgeDirections);
   }
 
   // Position nodes inside the container area
@@ -681,13 +692,14 @@ export function layout(
   const orderedByLayer = new Map<number, string[]>();
   for (const layerIdx of sortedLayers) {
     const nodesInLayer = nodesByLayer.get(layerIdx)!;
-    const ordered =
+    const bucketed =
       forcedLayers !== null && layoutHints && layoutHints.size > 0
         ? bucketByColumn(
             nodesInLayer.map((id) => ({ id })),
             layoutHints,
           ).map((item) => item.id)
         : nodesInLayer;
+    const ordered = applyEdgeDirectionWithinLayer(bucketed, allEdges, edgeDirections, layers);
     orderedByLayer.set(layerIdx, ordered);
   }
 
@@ -970,12 +982,13 @@ function layoutMultipleSystems(
     const forcedLayers = assignForcedSystemLayers(rawNodes, sys.edges);
     let layers: Map<string, number>;
     if (forcedLayers) {
-      layers = edgeDirections
-        ? applyDirectionHintsToForcedLayers(forcedLayers, sys.edges, edgeDirections)
-        : forcedLayers;
+      layers = forcedLayers;
     } else {
       const { adj, inDegree } = buildGraph(nodeIds, sys.edges, edgeDirections);
       layers = assignLayers(nodeIds, adj, inDegree);
+    }
+    if (edgeDirections) {
+      layers = applyDirectionHintsToForcedLayers(layers, sys.edges, edgeDirections);
     }
 
     const nodesByLayer = new Map<number, string[]>();
@@ -1014,10 +1027,16 @@ function layoutMultipleSystems(
         forcedLayers !== null || layerOrder === 0
           ? rawLayer
           : sortByBarycenter(rawLayer, predecessorsMap, nodeCenterX);
-      const sortedLayer =
+      const bucketed =
         forcedLayers !== null && layoutHints && layoutHints.size > 0
           ? bucketByColumn(innerSorted, layoutHints)
           : innerSorted;
+      const sortedLayer = applyEdgeDirectionWithinLayer(
+        bucketed.map((item) => item.id),
+        sys.edges,
+        edgeDirections,
+        layers,
+      ).map((id) => ({ id }));
 
       // Place nodes with sub-row wrapping when layer width exceeds MAX_LAYER_WIDTH
       let currentX = NODE_GAP;

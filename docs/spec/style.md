@@ -203,9 +203,20 @@ karasu layered layout.
   back to the natural orientation. In drill-down views without forced
   layers the natural topological order already satisfies `down`, so it
   is observationally identical to `auto` there.
-- **`left` / `right`**: parse and surface on `ResolvedEdgeStyle`, but
-  **not honored** by the layered layout — vertical layering has no
-  clean projection for a horizontal hint. They fall through to `auto`.
+- **`left` / `right`**: orient the visual arrow leftward / rightward,
+  mirroring the way `up` / `down` name the arrow flow. The source
+  endpoint lands on the **opposite** side of the target from the
+  arrowhead — `direction: right` puts the source on the *left* of the
+  target so the arrow ends up flowing rightward; `direction: left`
+  mirrors. When the natural layered layout puts source and target in
+  different rows (the common case for service-to-service edges), the
+  engine **pulls the source into the target's layer first**, then runs
+  the within-layer reorder. The reorder pass runs after
+  `bucketByColumn` so it overrides node `column` placement for the
+  source endpoint; the target's `column` stays in effect. Conflicts on
+  the same source resolve **last-wins**, matching the cascade
+  convention. See
+  [`docs/design/edge-direction-horizontal.md`](../design/edge-direction-horizontal.md).
 
 #### Cycle / forced-layer fallback
 

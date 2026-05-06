@@ -195,9 +195,19 @@ edge#criticalWrite { direction: down; }
   自然な orientation に戻る。drill-down view（forced layer なし）では
   自然な topological order が既に `down` を満たすので、`auto` と
   観察上同じ
-- **`left` / `right`**: parse され `ResolvedEdgeStyle` には載るが、
-  layered layout は honor しない（縦方向のレイヤ割り当てに横方向の
-  ヒントを射影できないため）。`auto` にフォールバックする
+- **`left` / `right`**: 矢印を **左** / **右** に流す（`up` / `down` と
+  同じく「矢印の流れる向き」を値で指定する）。source endpoint は
+  矢印の流れと逆側に配置される — `direction: right` は source を
+  target の **左** に、`direction: left` は source を target の **右**
+  に置く（結果として矢印は反対側に流れる）。自然な layered layout で
+  source / target が異なる row に分かれる場合（service 同士の edge など
+  典型的なケース）、エンジンは **まず source を target の layer に
+  引き寄せ**、その後 within-layer の並び替えを行う。`up` / `down` の
+  「source 局所変位」モデルと同じ。`bucketByColumn` の後段で実行される
+  ため、source endpoint については node `column` ヒントを上書きする
+  （target の `column` は尊重）。同じ source への矛盾するヒントは
+  **last-wins** で、cascade 規約と一貫する。詳細は
+  [`docs/design/edge-direction-horizontal.md`](../design/edge-direction-horizontal.md)
 
 #### サイクル / forced-layer フォールバック
 
