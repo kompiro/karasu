@@ -102,6 +102,7 @@ program
     "--emit-crud-decoration",
     "Decorate emitted operations with <verb>:<crud> (ADR-20260503-01). Implies --emit-bindings.",
   )
+  .option("--system <name>", "Wrap emitted blocks in `system <name> { ... }` (openapi / db only)")
   .option("-o, --output <path>", "Write .krs to file (default: stdout)")
   .addHelpText(
     "after",
@@ -129,7 +130,11 @@ Examples:
   $ karasu translate --from db schema.sql --database OrderDB >> resources.krs
 
   # Emit one table entry per SQL table instead of folding
-  $ karasu translate --from db schema.sql --granularity table >> resources.krs`,
+  $ karasu translate --from db schema.sql --granularity table >> resources.krs
+
+  # Wrap output in a logical system block (openapi / db only)
+  $ karasu translate --from openapi orders.yaml  --system Orders  > out.krs
+  $ karasu translate --from openapi billing.yaml --system Billing >> out.krs`,
   )
   .action(
     (
@@ -143,6 +148,7 @@ Examples:
         granularity?: string;
         emitBindings?: boolean;
         emitCrudDecoration?: boolean;
+        system?: string;
       },
     ) => {
       if (
@@ -199,6 +205,15 @@ Examples:
           emitCrudDecoration = false;
         }
       }
+      let system: string | undefined = options.system;
+      if (system !== undefined) {
+        if (!/^[A-Za-z_][A-Za-z0-9_]*$/.test(system)) {
+          process.stderr.write(
+            `Error: --system value "${system}" is not a valid identifier (expected [A-Za-z_][A-Za-z0-9_]*)\n`,
+          );
+          process.exit(1);
+        }
+      }
       translate(file, {
         from: options.from,
         map: options.map,
@@ -208,6 +223,7 @@ Examples:
         granularity,
         emitBindings,
         emitCrudDecoration,
+        system,
       });
     },
   );

@@ -17,6 +17,23 @@ interface TranslateOptions {
   granularity?: "resource" | "operation" | "aggregate" | "table";
   emitBindings?: boolean;
   emitCrudDecoration?: boolean;
+  system?: string;
+}
+
+/**
+ * Wrap translator output in a `system <Name> { ... }` block, indenting the
+ * body by two spaces. Blank lines are preserved as blank (no trailing spaces).
+ */
+export function wrapInSystem(body: string, name: string): string {
+  const trimmed = body.replace(/\n+$/, "");
+  if (trimmed.length === 0) {
+    return `system ${name} {\n}\n`;
+  }
+  const indented = trimmed
+    .split("\n")
+    .map((line) => (line.length === 0 ? "" : `  ${line}`))
+    .join("\n");
+  return `system ${name} {\n${indented}\n}\n`;
 }
 
 export async function translate(inputFile: string, options: TranslateOptions): Promise<void> {
@@ -62,6 +79,16 @@ export async function translate(inputFile: string, options: TranslateOptions): P
     const message = err instanceof Error ? err.message : String(err);
     process.stderr.write(`Error: Failed to parse ${inputFile}: ${message}\n`);
     process.exit(1);
+  }
+
+  if (options.system !== undefined) {
+    if (options.from === "openapi" || options.from === "db") {
+      result = wrapInSystem(result, options.system);
+    } else {
+      process.stderr.write(
+        `Warning: --system is only supported with --from openapi or --from db; ignoring.\n`,
+      );
+    }
   }
 
   if (options.output) {
