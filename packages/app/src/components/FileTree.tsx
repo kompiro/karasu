@@ -30,7 +30,6 @@ interface FileTreeProps {
    * back to the diff viewer.
    */
   onCompareWithPaste?: () => void;
-  refreshKey?: number;
 }
 
 export function FileTree({
@@ -45,7 +44,6 @@ export function FileTree({
   onSnapshotNow,
   onCompareWithSnapshot,
   onCompareWithPaste,
-  refreshKey,
 }: FileTreeProps) {
   const [tree, setTree] = useState<FileTreeNode[]>([]);
   const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null);
@@ -58,7 +56,19 @@ export function FileTree({
 
   useEffect(() => {
     reload();
-  }, [reload, refreshKey]);
+  }, [reload]);
+
+  // Subscribe to fs change events so writes that bypass `useFileTreeOps`
+  // (GUI style bootstrap, AI translate output, snapshot writes, …) still
+  // refresh the sidebar. The wrapping `ObservableFileSystemProvider` filters
+  // events to descendants of `rootPath`, so any descendant create/change/delete
+  // triggers a full reload.
+  useEffect(() => {
+    const disposable = fs.watch?.(rootPath, () => {
+      reload();
+    });
+    return () => disposable?.dispose();
+  }, [fs, rootPath, reload]);
 
   // Close the context menu on outside click or Escape.
   useEffect(() => {
