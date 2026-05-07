@@ -47,7 +47,7 @@ export function synthesizeUnassignedSystem(krsFile: KrsFile): SystemNode | null 
  * list unchanged when the file has none. Convenience wrapper used by the entry
  * points that need to drive the renderer.
  */
-export function withUnassignedSystem(krsFile: KrsFile): KrsNode[] {
+export function withUnassignedSystem(krsFile: KrsFile): SystemNode[] {
   const pseudo = synthesizeUnassignedSystem(krsFile);
   return pseudo ? [...krsFile.systems, pseudo] : krsFile.systems;
 }
