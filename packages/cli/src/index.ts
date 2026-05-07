@@ -2,7 +2,7 @@
 import { program } from "commander";
 import { serve } from "./serve.js";
 import { render } from "./render.js";
-import { translate } from "./translate/index.js";
+import { translate, SYSTEM_NAME_PATTERN } from "./translate/index.js";
 import { apply } from "./apply.js";
 import { append } from "./append.js";
 import { remove } from "./remove.js";
@@ -205,14 +205,12 @@ Examples:
           emitCrudDecoration = false;
         }
       }
-      let system: string | undefined = options.system;
-      if (system !== undefined) {
-        if (!/^[A-Za-z_][A-Za-z0-9_]*$/.test(system)) {
-          process.stderr.write(
-            `Error: --system value "${system}" is not a valid identifier (expected [A-Za-z_][A-Za-z0-9_]*)\n`,
-          );
-          process.exit(1);
-        }
+      const system: string | undefined = options.system;
+      if (system !== undefined && !SYSTEM_NAME_PATTERN.test(system)) {
+        process.stderr.write(
+          `Error: --system value "${system}" is not a valid identifier (expected [A-Za-z_][A-Za-z0-9_]*)\n`,
+        );
+        process.exit(1);
       }
       translate(file, {
         from: options.from,

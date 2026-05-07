@@ -42,6 +42,12 @@ describe("wrapInSystem", () => {
     expect(wrapInSystem("", "Empty")).toBe(`system Empty {\n}\n`);
     expect(wrapInSystem("\n\n", "Empty")).toBe(`system Empty {\n}\n`);
   });
+
+  it("throws on invalid identifier", () => {
+    expect(() => wrapInSystem("service Foo {}\n", "bad name")).toThrow(/not a valid identifier/);
+    expect(() => wrapInSystem("service Foo {}\n", "")).toThrow(/not a valid identifier/);
+    expect(() => wrapInSystem("service Foo {}\n", "1Leading")).toThrow(/not a valid identifier/);
+  });
 });
 
 describe("translate --system", () => {

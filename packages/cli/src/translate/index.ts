@@ -20,11 +20,22 @@ interface TranslateOptions {
   system?: string;
 }
 
+export const SYSTEM_NAME_PATTERN = /^[A-Za-z_][A-Za-z0-9_]*$/;
+
 /**
  * Wrap translator output in a `system <Name> { ... }` block, indenting the
  * body by two spaces. Blank lines are preserved as blank (no trailing spaces).
+ *
+ * Throws if `name` is not a valid `.krs` identifier — emitting an unquoted
+ * name with whitespace or punctuation would produce a syntactically invalid
+ * `.krs` file. Programmatic callers must pass a validated name.
  */
 export function wrapInSystem(body: string, name: string): string {
+  if (!SYSTEM_NAME_PATTERN.test(name)) {
+    throw new Error(
+      `system name "${name}" is not a valid identifier (expected [A-Za-z_][A-Za-z0-9_]*)`,
+    );
+  }
   const trimmed = body.replace(/\n+$/, "");
   if (trimmed.length === 0) {
     return `system ${name} {\n}\n`;
