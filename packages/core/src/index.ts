@@ -292,7 +292,13 @@ export interface SystemCompileResult {
    */
   hasOrgDiagram: boolean;
   deployBlocks: DeployBlockInfo[];
-  /** Fully resolved system tree (all imports merged). Use for breadcrumb traversal. */
+  /**
+   * Fully resolved system tree (all imports merged), with a synthetic
+   * `__unassigned__` system wrapping any top-level orphan services / domains /
+   * infra blocks so consumers can walk a single system list and reach every
+   * usecase / resource. Use for breadcrumb traversal and for view extractors
+   * such as `extractCrudMatrix`.
+   */
   systems: SystemNode[];
   /** Maps each node id to the file path where it is defined. */
   nodeFileIndex: Map<string, string>;
@@ -484,7 +490,7 @@ function _compileFromPreparedInput(
     hasDeployDiagram,
     hasOrgDiagram,
     deployBlocks,
-    systems: krsFile.systems,
+    systems: effectiveSystems,
     nodeFileIndex,
   };
 }

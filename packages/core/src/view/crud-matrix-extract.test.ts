@@ -1,10 +1,15 @@
 import { describe, it, expect } from "vitest";
 import { extractCrudMatrix, formatCell, cellKey } from "./crud-matrix-extract.js";
 import { Parser } from "../parser/parser.js";
+import { withUnassignedSystem } from "./unassigned-system.js";
 import type { SystemNode } from "../types/ast.js";
 
 function parseSystems(krs: string): SystemNode[] {
   return Parser.parse(krs).value.systems;
+}
+
+function parseSystemsWithUnassigned(krs: string): SystemNode[] {
+  return withUnassignedSystem(Parser.parse(krs).value);
 }
 
 const KRS = `
@@ -177,5 +182,57 @@ system S {
 }`;
     const m = extractCrudMatrix(parseSystems(ext));
     expect(m.columns[0].external).toBe(true);
+  });
+});
+
+describe("extractCrudMatrix — top-level (unassigned) blocks via withUnassignedSystem", () => {
+  // Mirrors the shape produced by `karasu translate --from db ... --emit-bindings`,
+  // which emits `database` and `service` at the top level (no enclosing
+  // `system { ... }`). Without `withUnassignedSystem` wrapping, these orphans
+  // were invisible to extractCrudMatrix and the matrix came out empty.
+  const ORPHAN_KRS = `
+database OrderDB {
+  table OrdersTable { label "orders" }
+  table PaymentsTable { label "payments" }
+}
+
+service OrderDBService {
+  usecase ManageOrders {
+    resource OrderDB.OrdersTable {
+      operations select:read, insert:create, update, delete
+    }
+  }
+  usecase ManagePayments {
+    resource OrderDB.PaymentsTable {
+      operations select:read, insert:create, update, delete
+    }
+  }
+}
+`;
+
+  it("collects rows and columns from top-level blocks when wrapped", () => {
+    const m = extractCrudMatrix(parseSystemsWithUnassigned(ORPHAN_KRS));
+    expect(m.rows.map((r) => r.usecaseId)).toEqual(["ManageOrders", "ManagePayments"]);
+    expect(m.columns.map((c) => c.resourceId)).toEqual([
+      "OrderDB.OrdersTable",
+      "OrderDB.PaymentsTable",
+    ]);
+  });
+
+  it("resolves CRUD decoration on orphan-block usecases without `?` suffix", () => {
+    const m = extractCrudMatrix(parseSystemsWithUnassigned(ORPHAN_KRS));
+    const cell = m.cells.get(cellKey("ManageOrders", "OrderDB.OrdersTable"))!;
+    expect(formatCell(cell)).toBe("CRUD");
+    expect(cell.isWrite).toBe(true);
+  });
+
+  it("returns empty matrix without wrapping (regression guard)", () => {
+    // Documents the prior bug: without withUnassignedSystem the matrix is empty
+    // because parseSystems returns krsFile.systems which excludes top-level
+    // orphans. compileProject now wraps internally, so consumers reading
+    // result.systems do not have to.
+    const m = extractCrudMatrix(parseSystems(ORPHAN_KRS));
+    expect(m.rows).toEqual([]);
+    expect(m.columns).toEqual([]);
   });
 });
