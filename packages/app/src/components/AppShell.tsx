@@ -23,6 +23,7 @@ import { useJumpToEditor } from "../hooks/useJumpToEditor.js";
 import { useCrossNavigation } from "../hooks/useCrossNavigation.js";
 import { useViewSvg } from "../hooks/useViewSvg.js";
 import { useStyleSource } from "../hooks/useStyleSource.js";
+import { useEditorExternalRefresh } from "../hooks/useEditorExternalRefresh.js";
 import {
   appendEdgeDirectionRule,
   deriveStyleFilePath,
@@ -172,6 +173,17 @@ export function AppShell({
     },
     [currentFilePath, fs, dispatch, recompile],
   );
+
+  // External writes (GUI direction append, AI translate, snapshot writes,
+  // …) reach the editor via the ObservableFileSystemProvider. Refresh
+  // Monaco's buffer when disk diverges from state.
+  useEditorExternalRefresh({
+    fs,
+    currentFilePath,
+    fileContent,
+    dispatch,
+    onRefresh: recompile,
+  });
 
   const hasParseErrors = views.system.diagnostics.some((d) => d.severity === "error");
 

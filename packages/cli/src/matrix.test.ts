@@ -77,4 +77,31 @@ describe("matrix CLI", () => {
     const out = stdoutSpy.mock.calls.map((c: unknown[]) => String(c[0])).join("");
     expect(out).not.toContain("ΣC");
   });
+
+  it("picks up top-level (unassigned) blocks emitted by `karasu translate`", async () => {
+    // Mirrors `karasu translate --from db ... --emit-bindings` output: top-level
+    // `database` and `service` with no enclosing `system { ... }`. compileProject
+    // now wraps these via withUnassignedSystem so matrix is no longer empty.
+    const orphanKrs = `
+database OrderDB {
+  table OrdersTable { label "orders" }
+}
+
+service OrderDBService {
+  usecase ManageOrders {
+    resource OrderDB.OrdersTable {
+      operations select:read, insert:create, update, delete
+    }
+  }
+}
+`;
+    await writeFile(krsPath, orphanKrs, "utf-8");
+    await matrix(krsPath, { service: ["OrderDBService"] });
+    const out = stdoutSpy.mock.calls.map((c: unknown[]) => String(c[0])).join("");
+    expect(out).toContain("ManageOrders");
+    // Column header uses the resource label ("orders"), not the id, but the
+    // CRUD letters confirm the cell resolved correctly with no `?` suffix.
+    expect(out).toContain("orders");
+    expect(out).toContain("CRUD");
+  });
 });
