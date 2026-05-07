@@ -19,6 +19,16 @@ export interface TranslatorContext {
    * Other formats ignore this field.
    */
   granularity?: "resource" | "operation" | "aggregate" | "table";
+  /**
+   * Emit `usecase` → `resource` bindings (openapi: resource granularity, db: aggregate granularity only).
+   * Off by default to keep existing translate output stable.
+   */
+  emitBindings?: boolean;
+  /**
+   * Annotate emitted operations with `<verb>:<crud>` decoration per ADR-20260503-01.
+   * Implies `emitBindings`.
+   */
+  emitCrudDecoration?: boolean;
 }
 
 export interface Translator {

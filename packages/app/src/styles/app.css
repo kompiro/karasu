@@ -1282,6 +1282,14 @@ body,
   margin-top: 2px;
 }
 
+.context-menu-header__target {
+  font-size: 11px;
+  font-family: var(--font-mono, monospace);
+  color: var(--text-tertiary, var(--text-secondary));
+  margin-top: 2px;
+  cursor: help;
+}
+
 .context-menu-section-label {
   padding: 4px 13px;
   font-size: 10.5px;

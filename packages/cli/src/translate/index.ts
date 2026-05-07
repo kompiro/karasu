@@ -15,6 +15,8 @@ interface TranslateOptions {
   service?: string;
   database?: string;
   granularity?: "resource" | "operation" | "aggregate" | "table";
+  emitBindings?: boolean;
+  emitCrudDecoration?: boolean;
 }
 
 export async function translate(inputFile: string, options: TranslateOptions): Promise<void> {
@@ -33,6 +35,8 @@ export async function translate(inputFile: string, options: TranslateOptions): P
     service: options.service,
     database: options.database,
     granularity: options.granularity,
+    emitBindings: options.emitBindings,
+    emitCrudDecoration: options.emitCrudDecoration,
   };
 
   let translator;

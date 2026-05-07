@@ -303,6 +303,48 @@ function emitAggregateTable(root: Table, children: { table: Table; reason: strin
   return lines;
 }
 
+// ─── Bindings emission ───────────────────────────────────────────────────────
+
+/**
+ * SQL DML verbs we emit per table when bindings are requested. The db
+ * translator does not parse DML — these represent the *maximum* CRUD surface
+ * a schema-defined table exposes, so the resulting matrix shows full coverage.
+ */
+const SQL_VERBS = ["select", "insert", "update", "delete"] as const;
+const SQL_VERB_TO_CRUD: Record<string, string> = {
+  select: "read",
+  insert: "create",
+  // update / delete are recognized CRUD verbs — bare form is sufficient.
+};
+
+function decorateSqlVerb(verb: string): string {
+  const crud = SQL_VERB_TO_CRUD[verb];
+  return crud === undefined ? verb : `${verb}:${crud}`;
+}
+
+function buildSqlOperationsLine(decorated: boolean): string {
+  return SQL_VERBS.map((v) => (decorated ? decorateSqlVerb(v) : v)).join(", ");
+}
+
+function emitServiceBindings(dbName: string, rootTables: Table[], decorated: boolean): string[] {
+  if (rootTables.length === 0) return [];
+  const lines: string[] = [];
+  lines.push("");
+  lines.push(`service ${dbName}Service {`);
+  const opsLine = buildSqlOperationsLine(decorated);
+  for (const t of rootTables) {
+    const usecaseId = `Manage${toPascalCase(t.name)}`;
+    const tableId = toTableId(t.name);
+    lines.push(`  usecase ${usecaseId} {`);
+    lines.push(`    resource ${dbName}.${tableId} {`);
+    lines.push(`      operations ${opsLine}`);
+    lines.push(`    }`);
+    lines.push(`  }`);
+  }
+  lines.push("}");
+  return lines;
+}
+
 // ─── Translator ───────────────────────────────────────────────────────────────
 
 export class DbTranslator implements Translator {
@@ -310,11 +352,17 @@ export class DbTranslator implements Translator {
     const dbName = context.database ?? deriveDbName(context.inputPath);
     const tables = parseTables(input);
     const granularity = context.granularity ?? "aggregate";
+    const emitCrudDecoration = context.emitCrudDecoration ?? false;
+    const emitBindings = emitCrudDecoration || (context.emitBindings ?? false);
 
     const bodyLines: string[] = [];
+    const rootTables: Table[] = [];
 
     if (granularity === "table" || tables.length === 0) {
-      for (const t of tables) bodyLines.push(emitFlatTable(t));
+      for (const t of tables) {
+        bodyLines.push(emitFlatTable(t));
+        rootTables.push(t);
+      }
     } else {
       augmentWithSoftForeignKeys(tables);
       const { parentOf, reasonOf } = inferAggregates(tables);
@@ -331,10 +379,19 @@ export class DbTranslator implements Translator {
         if (parentOf.has(t.name)) continue;
         const children = childrenOf.get(t.name) ?? [];
         for (const line of emitAggregateTable(t, children)) bodyLines.push(line);
+        rootTables.push(t);
       }
     }
 
-    const lines: string[] = [`database ${dbName} {`, ...bodyLines, "}", ""];
+    // Bindings only make sense in aggregate granularity — `table` granularity
+    // means "give me the schema as flat tables", and decoration would multiply
+    // verbose noise. Skip silently here; the CLI layer warns up-front.
+    const bindingsLines =
+      emitBindings && granularity !== "table"
+        ? emitServiceBindings(dbName, rootTables, emitCrudDecoration)
+        : [];
+
+    const lines: string[] = [`database ${dbName} {`, ...bodyLines, "}", ...bindingsLines, ""];
     return lines.join("\n");
   }
 }
