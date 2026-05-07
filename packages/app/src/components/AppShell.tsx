@@ -8,7 +8,7 @@ import {
   type RefObject,
 } from "react";
 import { useEditorWidth } from "../hooks/useEditorWidth.js";
-import { format, FormatError, type EdgeDirection } from "@karasu-tools/core";
+import { basename, format, FormatError, type EdgeDirection } from "@karasu-tools/core";
 import { SnapshotManager } from "../fs/snapshot-manager.js";
 import { EditArea } from "./EditArea.js";
 import { PreviewColumn } from "./PreviewColumn.js";
@@ -23,7 +23,13 @@ import { useJumpToEditor } from "../hooks/useJumpToEditor.js";
 import { useCrossNavigation } from "../hooks/useCrossNavigation.js";
 import { useViewSvg } from "../hooks/useViewSvg.js";
 import { useStyleSource } from "../hooks/useStyleSource.js";
-import { appendEdgeDirectionRule, resolveStyleAppendTarget } from "../lib/append-style-rule.js";
+import {
+  appendEdgeDirectionRule,
+  deriveStyleFilePath,
+  injectStyleImport,
+  resolveOrDeriveStyleAppendTarget,
+  resolveStyleAppendTarget,
+} from "../lib/append-style-rule.js";
 import { DiffModeBanner } from "./DiffModeBanner.js";
 
 interface AppShellProps {
@@ -186,17 +192,30 @@ export function AppShell({
   const styleSource = useStyleSource(fileContent, currentFilePath ?? undefined, fs);
 
   const styleTargetPath = useMemo(
-    () => resolveStyleAppendTarget(fileContent, currentFilePath ?? undefined),
+    () => resolveOrDeriveStyleAppendTarget(fileContent, currentFilePath ?? undefined),
     [fileContent, currentFilePath],
   );
 
   const handlePickEdgeDirection = useCallback(
     async (canonicalId: string, direction: EdgeDirection) => {
-      if (!styleTargetPath) return;
-      await appendEdgeDirectionRule(fs, styleTargetPath, canonicalId, direction);
+      if (!currentFilePath) return;
+      const activeContent = fileContent ?? "";
+      let targetPath = resolveStyleAppendTarget(activeContent, currentFilePath);
+      if (!targetPath) {
+        // Bootstrap: no `@import` yet. Derive `<basename>.krs.style` next to
+        // the source, inject the directive at line 1 of the `.krs`, and let
+        // appendEdgeDirectionRule create the style file on its first write.
+        targetPath = deriveStyleFilePath(currentFilePath);
+        const styleFileName = basename(targetPath);
+        const updated = injectStyleImport(activeContent, styleFileName);
+        if (updated !== activeContent) {
+          await handleEditorChange(updated);
+        }
+      }
+      await appendEdgeDirectionRule(fs, targetPath, canonicalId, direction);
       recompile();
     },
-    [fs, styleTargetPath, recompile],
+    [currentFilePath, fileContent, fs, handleEditorChange, recompile],
   );
   const { drillDownSvg, allLayersSvg, orgAllLayersSvg, orgDrillDownSvg, allViewsSvg } = useViewSvg(
     fileContent,
