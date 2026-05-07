@@ -226,17 +226,22 @@ GUI が生成する rule 末尾に `/* karasu:gui id=A->B */` のような署名
   append-only でも同じ問題で、本変更で悪化はしない（editor 側のリロード
   経路は ADR-20260507-XX で別途）
 
-## 未解決の問い
+## 確定した方針
 
-- **「単一行」の厳密な定義**: 改行を含まない、コメントを含まない、で十分か。
-  `\n` を含むが意味的には単一の宣言（インデント整形だけ）の rule は
-  fallback に倒すか in-place に乗せるか。一旦 fallback に倒して経験で
-  判断したい
-- **fallback 時の通知**: console.warn で十分か、UI に小さなトーストを
-  出すか。MVP では console のみで開始したい
-- **node ID rule 対応のタイミング**: 本 PR で general 化する（`upsertRule`
-  を node/edge 共通にする）か、edge だけで切り出して後で広げるか
-- **ADR-20260506-01 の扱い**: 本決定が確定したら、ADR-20260506-01 に
-  `superseded_by: ADR-...` を付け、新 ADR で `supersedes:
-  [ADR-20260506-01]` するか、新 ADR を「append-only から conditional
-  in-place に refines」として `refines: [ADR-20260506-01]` するか
+レビューで以下を確定した:
+
+- **「単一行」の判定は「1 プロパティ・コメント無し」で OK**: 改行を含んで
+  も property 数=1 かつコメント無しなら in-place 対象。`edge#A->B {\n
+    direction: down;\n}` のような軽い整形にも追従する。複数プロパティ
+  混在やコメント混在は append にフォールバック
+- **fallback 時の通知は出さない**: 黙って append する。fallback 自体が
+  rule の複雑なケースだけなので、ユーザーはファイルを見れば気付く。
+  通知 UI は追加しない（チャトリ・コンポーネント追加を避ける）
+- **node ID rule も同時に general 化**: `upsert` ロジックを selector 種別
+  非依存にして、node `#<id>` rule にも効かせる。GUI の node メニューが
+  追加された時に追加実装が要らないようにする
+- **ADR は supersedes**: 新 ADR が accepted、旧 ADR-20260506-01 は
+  `status: superseded` + `superseded_by: ADR-NEW`、新 ADR に
+  `supersedes: [ADR-20260506-01]`。「action は append ではなく
+  conditional in-place」という本質的な方針転換なので、effective から
+  旧 ADR を外す
