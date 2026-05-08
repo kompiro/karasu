@@ -1,6 +1,6 @@
 # ADR Dependency Graph — Overview
 
-158 ADRs across 15 topics. Clusters group by `topic` frontmatter field. Edges crossing cluster borders are cross-topic dependencies.
+159 ADRs across 15 topics. Clusters group by `topic` frontmatter field. Edges crossing cluster borders are cross-topic dependencies.
 ```mermaid
 flowchart TD
   subgraph adr-tooling["adr-tooling"]
@@ -34,6 +34,7 @@ flowchart TD
     ADR_20260506_06["ADR-20260506-06<br/>GUI コンテキストメニューの append 先解決 — `.krs.style` 直接編集時..."]
     ADR_20260507_01["ADR-20260507-01<br/>FileTree の外部書き込み反映 — ObservableFileSystemProvid..."]
     ADR_20260507_02["ADR-20260507-02<br/>Editor バッファの外部書き込み追従 — 差分検出ベースの auto-refresh"]
+    ADR_20260508_01["ADR-20260508-01<br/>GUI 駆動の `.krs.style` 編集 — 単一プロパティ rule は in-pla..."]
   end
   subgraph build["build"]
     ADR_20260312_01["ADR-20260312-01<br/>モノレポ構成の採用"]
@@ -268,13 +269,14 @@ flowchart TD
   ADR_20260425_01 --> ADR_20260420_03
   ADR_20260430_04 --> ADR_20260430_03
   ADR_20260502_02 --> ADR_20260424_01
-  ADR_20260506_02 --> ADR_20260506_01
-  ADR_20260506_03 --> ADR_20260506_01
+  ADR_20260506_02 --> ADR_20260508_01
+  ADR_20260506_03 --> ADR_20260508_01
   ADR_20260506_03 --> ADR_20260506_02
   ADR_20260506_04 --> ADR_20260506_03
   ADR_20260507_02 --> ADR_20260507_01
   ADR_20260412_05 -.supersedes.-> ADR_20260324_01
   ADR_20260429_09 -.supersedes.-> ADR_20260428_05
+  ADR_20260508_01 -.supersedes.-> ADR_20260506_01
 
   classDef accepted fill:#d4edda,stroke:#28a745,color:#155724
   classDef proposed fill:#fff3cd,stroke:#ffc107,color:#856404
@@ -432,7 +434,7 @@ flowchart TD
   class ADR_20260505_01 accepted
   class ADR_20260505_02 accepted
   class ADR_20260505_03 accepted
-  class ADR_20260506_01 accepted
+  class ADR_20260506_01 superseded
   class ADR_20260506_02 accepted
   class ADR_20260506_03 accepted
   class ADR_20260506_04 accepted
@@ -440,12 +442,13 @@ flowchart TD
   class ADR_20260506_06 accepted
   class ADR_20260507_01 accepted
   class ADR_20260507_02 accepted
+  class ADR_20260508_01 accepted
 ```
 
 ## Per-topic detail
 
 - [`adr-tooling`](graph/adr-tooling.md) — 4 ADRs
-- [`app-ui`](graph/app-ui.md) — 24 ADRs
+- [`app-ui`](graph/app-ui.md) — 25 ADRs
 - [`build`](graph/build.md) — 23 ADRs
 - [`chat-ai`](graph/chat-ai.md) — 8 ADRs
 - [`cli`](graph/cli.md) — 11 ADRs

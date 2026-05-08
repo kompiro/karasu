@@ -25,7 +25,7 @@ import { useViewSvg } from "../hooks/useViewSvg.js";
 import { useStyleSource } from "../hooks/useStyleSource.js";
 import { useEditorExternalRefresh } from "../hooks/useEditorExternalRefresh.js";
 import {
-  appendEdgeDirectionRule,
+  upsertEdgeDirectionRule,
   deriveStyleFilePath,
   injectStyleImport,
   resolveOrDeriveStyleAppendTarget,
@@ -216,7 +216,7 @@ export function AppShell({
       if (!targetPath) {
         // Bootstrap: no `@import` yet. Derive `<basename>.krs.style` next to
         // the source, inject the directive at line 1 of the `.krs`, and let
-        // appendEdgeDirectionRule create the style file on its first write.
+        // upsertEdgeDirectionRule create the style file on its first write.
         targetPath = deriveStyleFilePath(currentFilePath);
         const styleFileName = basename(targetPath);
         const updated = injectStyleImport(activeContent, styleFileName);
@@ -224,7 +224,7 @@ export function AppShell({
           await handleEditorChange(updated);
         }
       }
-      await appendEdgeDirectionRule(fs, targetPath, canonicalId, direction);
+      await upsertEdgeDirectionRule(fs, targetPath, canonicalId, direction);
       recompile();
     },
     [currentFilePath, fileContent, fs, handleEditorChange, recompile],

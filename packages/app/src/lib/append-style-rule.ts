@@ -49,7 +49,7 @@ export function deriveStyleFilePath(krsPath: string): string {
 /**
  * Resolve the existing append target if the source has an `@import`,
  * otherwise fall back to the basename-derived path. The returned path may
- * not exist on disk yet — callers writing through `appendEdgeDirectionRule`
+ * not exist on disk yet — callers writing through `upsertEdgeDirectionRule`
  * tolerate that. Returns `undefined` only when there is no source file at
  * all (`krsPath` missing).
  */
@@ -79,14 +79,103 @@ export function injectStyleImport(krsContent: string, styleFileName: string): st
 }
 
 /**
- * Append `selector { property: value; }` to the given `.krs.style` file. The
- * file's existing content is preserved verbatim; the new rule lands on its
- * own line at the bottom so the cascade resolves it last among rules of the
- * same specificity. Creates the file with the new rule when it doesn't
- * exist yet (the resolver tolerates a missing file but we prefer to make
- * the user's intent visible).
+ * Update the value of `property` inside the last block matching `selector`,
+ * or append a fresh single-line rule when no eligible block exists. A block
+ * is eligible for in-place rewrite when:
+ *
+ *   - it declares exactly the requested selector (full match, not prefix),
+ *   - it contains no block or line comments, and
+ *   - it declares the targeted property exactly once.
+ *
+ * Multi-property blocks, comment-bearing blocks, and any shape this scanner
+ * cannot confidently round-trip fall through to append. The cascade puts
+ * the new rule last, so behavior is preserved either way — the upgrade is
+ * that GUI-emitted single-line rules collapse into one entry instead of
+ * stacking on every edit (see ADR-20260508-01, supersedes ADR-20260506-01).
  */
-export async function appendEdgeDirectionRule(
+export function upsertStyleProperty(
+  content: string,
+  selector: string,
+  property: string,
+  value: string,
+): string {
+  const updated = updateLastSingleProperty(content, selector, property, value);
+  if (updated !== null) return updated;
+  return appendSingleLineRule(content, selector, property, value);
+}
+
+function updateLastSingleProperty(
+  content: string,
+  selector: string,
+  property: string,
+  value: string,
+): string | null {
+  const blockRe = /([^{}]*)\{([^{}]*)\}/g;
+  let lastMatch: { selectorStart: number; bodyStart: number; bodyEnd: number } | null = null;
+  let m: RegExpExecArray | null;
+  while ((m = blockRe.exec(content)) !== null) {
+    const head = m[1];
+    const body = m[2];
+    const headStart = m.index;
+    const bodyStart = headStart + head.length + 1;
+    const bodyEnd = bodyStart + body.length;
+    if (!isExactSelector(head, selector)) continue;
+    if (!isCommentFree(body)) continue;
+    if (countPropertyDeclarations(body) !== 1) continue;
+    lastMatch = { selectorStart: headStart, bodyStart, bodyEnd };
+  }
+  if (!lastMatch) return null;
+  const body = content.slice(lastMatch.bodyStart, lastMatch.bodyEnd);
+  const propRe = new RegExp(`(${escapeRegex(property)}\\s*:\\s*)([^;]*)(;?)`);
+  const propMatch = propRe.exec(body);
+  if (!propMatch) return null;
+  const newBody =
+    body.slice(0, propMatch.index) +
+    propMatch[1] +
+    value +
+    (propMatch[3] || ";") +
+    body.slice(propMatch.index + propMatch[0].length);
+  return content.slice(0, lastMatch.bodyStart) + newBody + content.slice(lastMatch.bodyEnd);
+}
+
+function appendSingleLineRule(
+  content: string,
+  selector: string,
+  property: string,
+  value: string,
+): string {
+  const block = `${selector} { ${property}: ${value}; }\n`;
+  const separator = content.length === 0 || content.endsWith("\n") ? "" : "\n";
+  return content + separator + block;
+}
+
+function isExactSelector(head: string, selector: string): boolean {
+  return head.trim() === selector;
+}
+
+function isCommentFree(body: string): boolean {
+  return !body.includes("/*") && !body.includes("*/") && !body.includes("//");
+}
+
+function countPropertyDeclarations(body: string): number {
+  return body
+    .split(";")
+    .map((s) => s.trim())
+    .filter((s) => s.length > 0 && s.includes(":")).length;
+}
+
+function escapeRegex(s: string): string {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+/**
+ * Upsert `edge#<canonicalId> { direction: <direction>; }` into the given
+ * `.krs.style` file. When an eligible single-property `edge#<canonicalId>`
+ * block already exists, the existing direction value is rewritten in place
+ * (no duplicate rule). Otherwise the rule is appended to the end of the
+ * file. See `upsertStyleProperty` for the eligibility rules.
+ */
+export async function upsertEdgeDirectionRule(
   fs: FileSystemProvider,
   styleFilePath: string,
   canonicalId: string,
@@ -98,7 +187,6 @@ export async function appendEdgeDirectionRule(
   } catch {
     existing = "";
   }
-  const block = `edge#${canonicalId} { direction: ${direction}; }\n`;
-  const separator = existing.length === 0 || existing.endsWith("\n") ? "" : "\n";
-  await fs.writeFile(styleFilePath, existing + separator + block);
+  const updated = upsertStyleProperty(existing, `edge#${canonicalId}`, "direction", direction);
+  await fs.writeFile(styleFilePath, updated);
 }

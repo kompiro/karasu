@@ -1,7 +1,7 @@
 # GUI 編集時に同一 ID rule を in-place 更新する
 
 - **日付**: 2026-05-07
-- **ステータス**: 検討中
+- **ステータス**: 決定済み（[ADR-20260508-01](../adr/20260508-01-gui-style-inplace-update.md) として昇格）
 - **関連**:
   - 親 Issue: [#1142](https://github.com/kompiro/karasu/issues/1142) — GUI style editing: update existing ID rule in place
   - 親 ADR（再検討対象）: [ADR-20260506-01](../adr/20260506-01-gui-driven-style-editing.md) — append-only round-trip
