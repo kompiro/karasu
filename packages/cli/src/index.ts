@@ -2,7 +2,7 @@
 import { program } from "commander";
 import { serve } from "./serve.js";
 import { render } from "./render.js";
-import { translate } from "./translate/index.js";
+import { translate, SYSTEM_NAME_PATTERN } from "./translate/index.js";
 import { apply } from "./apply.js";
 import { append } from "./append.js";
 import { remove } from "./remove.js";
@@ -102,6 +102,7 @@ program
     "--emit-crud-decoration",
     "Decorate emitted operations with <verb>:<crud> (ADR-20260503-01). Implies --emit-bindings.",
   )
+  .option("--system <name>", "Wrap emitted blocks in `system <name> { ... }` (openapi / db only)")
   .option("-o, --output <path>", "Write .krs to file (default: stdout)")
   .addHelpText(
     "after",
@@ -129,7 +130,11 @@ Examples:
   $ karasu translate --from db schema.sql --database OrderDB >> resources.krs
 
   # Emit one table entry per SQL table instead of folding
-  $ karasu translate --from db schema.sql --granularity table >> resources.krs`,
+  $ karasu translate --from db schema.sql --granularity table >> resources.krs
+
+  # Wrap output in a logical system block (openapi / db only)
+  $ karasu translate --from openapi orders.yaml  --system Orders  > out.krs
+  $ karasu translate --from openapi billing.yaml --system Billing >> out.krs`,
   )
   .action(
     (
@@ -143,6 +148,7 @@ Examples:
         granularity?: string;
         emitBindings?: boolean;
         emitCrudDecoration?: boolean;
+        system?: string;
       },
     ) => {
       if (
@@ -199,6 +205,13 @@ Examples:
           emitCrudDecoration = false;
         }
       }
+      const system: string | undefined = options.system;
+      if (system !== undefined && !SYSTEM_NAME_PATTERN.test(system)) {
+        process.stderr.write(
+          `Error: --system value "${system}" is not a valid identifier (expected [A-Za-z_][A-Za-z0-9_]*)\n`,
+        );
+        process.exit(1);
+      }
       translate(file, {
         from: options.from,
         map: options.map,
@@ -208,6 +221,7 @@ Examples:
         granularity,
         emitBindings,
         emitCrudDecoration,
+        system,
       });
     },
   );
