@@ -4,8 +4,8 @@ title: "`.krs.style` の `edge#<id>` セレクタ — base ID + opt-in 著者 ID
 status: accepted
 date: 2026-05-06
 topic: edges
-depends_on: [ADR-20260506-01]
-related_to: [ADR-20260429-04]
+depends_on: [ADR-20260508-01]
+related_to: [ADR-20260429-04, ADR-20260506-01]
 scope:
   packages: [core]
 ---
@@ -20,7 +20,7 @@ scope:
     [#1114](https://github.com/kompiro/karasu/pull/1114)（Phase A: parser + canonicalId）、
     [#1117](https://github.com/kompiro/karasu/pull/1117)（Phase B: style selector）、
     [#1120](https://github.com/kompiro/karasu/pull/1120)（project-wide uniqueness）
-  - 親 ADR: [ADR-20260506-01](./20260506-01-gui-driven-style-editing.md)
+  - 親 ADR: [ADR-20260508-01](./20260508-01-gui-style-inplace-update.md)（旧: [ADR-20260506-01](./20260506-01-gui-driven-style-editing.md)、本決定で superseded）
   - 関連 ADR: [ADR-20260429-04](./20260429-04-style-column-layout-hint.md)（node `#<id>` の specificity 階段に揃える）
 
 ## 背景

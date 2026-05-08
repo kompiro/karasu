@@ -1,6 +1,6 @@
 # ADR Topic: app-ui
 
-24 ADRs in this topic. Solid nodes belong to `app-ui`; gray dashed nodes are ghosts showing cross-topic references to help navigation.
+25 ADRs in this topic. Solid nodes belong to `app-ui`; gray dashed nodes are ghosts showing cross-topic references to help navigation.
 
 Other topics: [overview](../graph.md).
 ```mermaid
@@ -30,6 +30,7 @@ flowchart TD
     ADR_20260506_06["ADR-20260506-06<br/>GUI コンテキストメニューの append 先解決 — `.krs.style` 直接編集時..."]
     ADR_20260507_01["ADR-20260507-01<br/>FileTree の外部書き込み反映 — ObservableFileSystemProvid..."]
     ADR_20260507_02["ADR-20260507-02<br/>Editor バッファの外部書き込み追従 — 差分検出ベースの auto-refresh"]
+    ADR_20260508_01["ADR-20260508-01<br/>GUI 駆動の `.krs.style` 編集 — 単一プロパティ rule は in-pla..."]
   end
   ADR_20260317_01["ADR-20260317-01<br/>[renderer] 2 レイヤレンダリングとドリルダウンナビゲーション"]
   ADR_20260317_02["ADR-20260317-02<br/>[project] プロジェクトとファイルシステム抽象化 — `FileSystemProvider` + OPFS"]
@@ -60,9 +61,10 @@ flowchart TD
   ADR_20260412_03 --> ADR_20260408_03
   ADR_20260412_03 --> ADR_20260411_06
   ADR_20260422_07 --> ADR_20260420_02
-  ADR_20260506_02 --> ADR_20260506_01
-  ADR_20260506_03 --> ADR_20260506_01
+  ADR_20260506_02 --> ADR_20260508_01
+  ADR_20260506_03 --> ADR_20260508_01
   ADR_20260506_03 --> ADR_20260506_02
+  ADR_20260508_01 -.supersedes.-> ADR_20260506_01
 
   classDef accepted fill:#d4edda,stroke:#28a745,color:#155724
   classDef proposed fill:#fff3cd,stroke:#ffc107,color:#856404
@@ -90,10 +92,11 @@ flowchart TD
   class ADR_20260427_04 accepted
   class ADR_20260505_02 accepted
   class ADR_20260505_03 accepted
-  class ADR_20260506_01 accepted
+  class ADR_20260506_01 superseded
   class ADR_20260506_06 accepted
   class ADR_20260507_01 accepted
   class ADR_20260507_02 accepted
+  class ADR_20260508_01 accepted
   class ADR_20260317_01 ghost
   class ADR_20260317_02 ghost
   class ADR_20260320_01 ghost

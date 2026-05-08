@@ -18,13 +18,13 @@ flowchart TD
     ADR_20260506_04["ADR-20260506-04<br/>edge `direction: left` / `direction: right` の l..."]
   end
   ADR_20260405_03["ADR-20260405-03<br/>[parser] ワイルドカードインポートと2パス解決の採用"]
-  ADR_20260506_01["ADR-20260506-01<br/>[app-ui] GUI 駆動の `.krs.style` 編集 — Preview コンテキストメニューから ..."]
+  ADR_20260508_01["ADR-20260508-01<br/>[app-ui] GUI 駆動の `.krs.style` 編集 — 単一プロパティ rule は in-pla..."]
   ADR_20260404_09 --> ADR_20260405_03
   ADR_20260411_05 --> ADR_20260410_01
   ADR_20260413_02 --> ADR_20260410_01
   ADR_20260422_03 --> ADR_20260410_01
-  ADR_20260506_02 --> ADR_20260506_01
-  ADR_20260506_03 --> ADR_20260506_01
+  ADR_20260506_02 --> ADR_20260508_01
+  ADR_20260506_03 --> ADR_20260508_01
   ADR_20260506_03 --> ADR_20260506_02
   ADR_20260506_04 --> ADR_20260506_03
 
@@ -45,5 +45,5 @@ flowchart TD
   class ADR_20260506_03 accepted
   class ADR_20260506_04 accepted
   class ADR_20260405_03 ghost
-  class ADR_20260506_01 ghost
+  class ADR_20260508_01 ghost
 ```

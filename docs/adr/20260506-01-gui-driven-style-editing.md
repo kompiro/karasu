@@ -1,7 +1,8 @@
 ---
 id: ADR-20260506-01
 title: "GUI 駆動の `.krs.style` 編集 — Preview コンテキストメニューから append round-trip"
-status: accepted
+status: superseded
+superseded_by: ADR-20260508-01
 date: 2026-05-06
 topic: app-ui
 related_to:

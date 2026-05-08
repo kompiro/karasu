@@ -4,8 +4,8 @@ title: "`.krs.style` の edge `direction` プロパティ — 矢印の流れる
 status: accepted
 date: 2026-05-06
 topic: edges
-depends_on: [ADR-20260506-01, ADR-20260506-02]
-related_to: [ADR-20260506-04]
+depends_on: [ADR-20260508-01, ADR-20260506-02]
+related_to: [ADR-20260506-04, ADR-20260506-01]
 scope:
   packages: [core, app]
 ---
@@ -22,7 +22,7 @@ scope:
     [#1125](https://github.com/kompiro/karasu/pull/1125)（property 追加）、
     [#1132](https://github.com/kompiro/karasu/pull/1132)（layered layout で `up` を honor）、
     [#1136](https://github.com/kompiro/karasu/pull/1136)（`down` 強化）
-  - 親 ADR: [ADR-20260506-01](./20260506-01-gui-driven-style-editing.md)、
+  - 親 ADR: [ADR-20260508-01](./20260508-01-gui-style-inplace-update.md)（旧: [ADR-20260506-01](./20260506-01-gui-driven-style-editing.md)、本決定で superseded）、
     [ADR-20260506-02](./20260506-02-edge-id-selector.md)
   - 派生 ADR: [ADR-20260506-04](./20260506-04-edge-direction-horizontal.md)（`left` / `right` を refine）
 

@@ -1,11 +1,12 @@
 import { describe, expect, it } from "vitest";
 import { InMemoryFileSystemProvider } from "@karasu-tools/core";
 import {
-  appendEdgeDirectionRule,
   deriveStyleFilePath,
   injectStyleImport,
   resolveOrDeriveStyleAppendTarget,
   resolveStyleAppendTarget,
+  upsertEdgeDirectionRule,
+  upsertStyleProperty,
 } from "./append-style-rule.js";
 
 describe("resolveStyleAppendTarget", () => {
@@ -60,17 +61,17 @@ describe("resolveStyleAppendTarget", () => {
   });
 });
 
-describe("appendEdgeDirectionRule", () => {
+describe("upsertEdgeDirectionRule", () => {
   it("creates the file with the rule when it does not exist", async () => {
     const fs = new InMemoryFileSystemProvider();
-    await appendEdgeDirectionRule(fs, "/site.krs.style", "criticalWrite", "down");
+    await upsertEdgeDirectionRule(fs, "/site.krs.style", "criticalWrite", "down");
     expect(await fs.readFile("/site.krs.style")).toBe("edge#criticalWrite { direction: down; }\n");
   });
 
-  it("appends to an existing file without disturbing prior content", async () => {
+  it("appends to an existing file when no matching rule is present", async () => {
     const fs = new InMemoryFileSystemProvider();
     await fs.writeFile("/site.krs.style", "edge { color: red; }\n");
-    await appendEdgeDirectionRule(fs, "/site.krs.style", "criticalWrite", "right");
+    await upsertEdgeDirectionRule(fs, "/site.krs.style", "criticalWrite", "right");
     expect(await fs.readFile("/site.krs.style")).toBe(
       "edge { color: red; }\nedge#criticalWrite { direction: right; }\n",
     );
@@ -79,16 +80,90 @@ describe("appendEdgeDirectionRule", () => {
   it("inserts a separator newline when the existing file lacks a trailing newline", async () => {
     const fs = new InMemoryFileSystemProvider();
     await fs.writeFile("/site.krs.style", "edge { color: red; }");
-    await appendEdgeDirectionRule(fs, "/site.krs.style", "foo", "up");
+    await upsertEdgeDirectionRule(fs, "/site.krs.style", "foo", "up");
     expect(await fs.readFile("/site.krs.style")).toBe(
       "edge { color: red; }\nedge#foo { direction: up; }\n",
     );
   });
 
-  it("emits exactly the expected block (no extra spaces, single newline)", async () => {
+  it("rewrites the existing single-line rule in place instead of appending", async () => {
     const fs = new InMemoryFileSystemProvider();
-    await appendEdgeDirectionRule(fs, "/x.krs.style", "id", "auto");
-    expect(await fs.readFile("/x.krs.style")).toBe("edge#id { direction: auto; }\n");
+    await fs.writeFile("/site.krs.style", "edge#flow { direction: down; }\n");
+    await upsertEdgeDirectionRule(fs, "/site.krs.style", "flow", "right");
+    expect(await fs.readFile("/site.krs.style")).toBe("edge#flow { direction: right; }\n");
+  });
+
+  it("does not collide rules whose ids share a prefix", async () => {
+    // edge#flow must not match edge#flow2 (full selector match, not prefix).
+    const fs = new InMemoryFileSystemProvider();
+    await fs.writeFile("/site.krs.style", "edge#flow2 { direction: down; }\n");
+    await upsertEdgeDirectionRule(fs, "/site.krs.style", "flow", "up");
+    expect(await fs.readFile("/site.krs.style")).toBe(
+      "edge#flow2 { direction: down; }\nedge#flow { direction: up; }\n",
+    );
+  });
+});
+
+describe("upsertStyleProperty", () => {
+  it("appends when no block exists", () => {
+    expect(upsertStyleProperty("", "edge#a", "direction", "down")).toBe(
+      "edge#a { direction: down; }\n",
+    );
+  });
+
+  it("rewrites a single-line rule in place", () => {
+    expect(upsertStyleProperty("edge#a { direction: down; }\n", "edge#a", "direction", "up")).toBe(
+      "edge#a { direction: up; }\n",
+    );
+  });
+
+  it("rewrites a multi-line single-property rule in place (newlines OK when 1 prop, no comments)", () => {
+    const before = "edge#a {\n  direction: down;\n}\n";
+    const after = upsertStyleProperty(before, "edge#a", "direction", "up");
+    expect(after).toBe("edge#a {\n  direction: up;\n}\n");
+  });
+
+  it("falls back to append for multi-property rules", () => {
+    const before = "edge#a { color: red; direction: down; }\n";
+    const after = upsertStyleProperty(before, "edge#a", "direction", "up");
+    expect(after).toBe("edge#a { color: red; direction: down; }\nedge#a { direction: up; }\n");
+  });
+
+  it("falls back to append when the block contains a /* */ comment", () => {
+    const before = "edge#a { /* note */ direction: down; }\n";
+    const after = upsertStyleProperty(before, "edge#a", "direction", "up");
+    expect(after).toBe("edge#a { /* note */ direction: down; }\nedge#a { direction: up; }\n");
+  });
+
+  it("falls back to append when the block contains a // line comment", () => {
+    const before = "edge#a {\n  // note\n  direction: down;\n}\n";
+    const after = upsertStyleProperty(before, "edge#a", "direction", "up");
+    expect(after).toBe("edge#a {\n  // note\n  direction: down;\n}\nedge#a { direction: up; }\n");
+  });
+
+  it("updates the LAST matching block when the same selector appears multiple times", () => {
+    // Cascade-tail wins; rewriting the last block matches the effective value.
+    const before =
+      "edge#a { direction: down; }\nedge { color: red; }\nedge#a { direction: left; }\n";
+    const after = upsertStyleProperty(before, "edge#a", "direction", "right");
+    expect(after).toBe(
+      "edge#a { direction: down; }\nedge { color: red; }\nedge#a { direction: right; }\n",
+    );
+  });
+
+  it("works for node-style id selectors (general for `#<id>`)", () => {
+    const before = "#OrderDB { color: red; }\n";
+    const after = upsertStyleProperty(before, "#OrderDB", "color", "blue");
+    expect(after).toBe("#OrderDB { color: blue; }\n");
+  });
+
+  it("preserves the rest of the file verbatim around the rewrite", () => {
+    const before =
+      "/* heading */\nedge { color: red; }\nedge#a { direction: down; }\n// trailing\n";
+    const after = upsertStyleProperty(before, "edge#a", "direction", "up");
+    expect(after).toBe(
+      "/* heading */\nedge { color: red; }\nedge#a { direction: up; }\n// trailing\n",
+    );
   });
 });
 
