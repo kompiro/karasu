@@ -12,6 +12,10 @@ export default defineConfig({
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,
+  // 3x p95 of healthy runs (p95=5s, max=6s on the 5/4 nightly green baseline);
+  // 30s default was ~5x the slowest healthy test and only consumed by hangs
+  // (e.g. #1152 burned 90s/test with retries=2). See #1155.
+  timeout: 15_000,
   workers: process.env.CI ? 1 : undefined,
   reporter: [["list"], ["html", { outputFolder: "playwright-report", open: "never" }]],
   outputDir: "test-results",
