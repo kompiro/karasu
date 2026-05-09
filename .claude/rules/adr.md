@@ -69,16 +69,33 @@ pnpm adr:regenerate        # docs/adr/effective.md, graph/*.md を再生成
 ## ADR PR の auto-merge
 
 実装と切り離して ADR のみを記録する PR（昇格 PR・新規 ADR 追記 PR の
-どちらも含む）は、CI 通過後の人手確認をブロッカーにせず、`gh pr create`
-直後に auto-merge を有効化する：
+どちらも含む）は、`gh pr create` 直後に auto-merge を有効化する。
 
 ```
-gh pr merge <pr-number> --auto --squash
+gh pr merge <pr-number> --auto --squash --delete-branch
 ```
 
-- 対象は ADR ファイルとその派生物（`docs/adr/*.md`、`docs/adr/effective.md`、
-  `docs/adr/graph.md`、`docs/adr/graph/*.md`）のみを含む PR。コード変更や
-  spec 更新を伴う場合は通常レビュー扱いとし、auto-merge は付けない。
-- 既に CI 通過済みであれば auto-merge は即マージとして作用する。
-- ブランチ保護ルールで required check が落ちた場合は通常通り失敗する
-  （auto-merge は強制ではなく「揃ったら入れる」セマンティクス）。
+### 適用条件（すべて満たすこと）
+
+1. PR タイトルが `docs(adr): ` で始まる
+2. 変更ファイルが以下の集合のみ（ほかディレクトリの変更が 1 ファイルでも
+   あれば対象外）:
+   - `docs/adr/**`（新 ADR、`effective.md` / `graph.md` / `graph/*.md` などの
+     生成物を含む）
+   - `docs/design/<name>.md` の **削除** または **更新**:
+     - 削除 — Design Doc 全体を ADR に昇格させて元ファイルを消すケース
+     - 更新 — 部分昇格（複数フェーズの一部だけ ADR 化し、残りを Design Doc
+       に保持するケース。例: ADR-20260509-02）
+3. `gh pr view <N> --json files,title` で 1〜2 を確認した直後にコマンドを
+   実行する
+
+### 補足
+
+- `--auto` を使うので CI 完走前にコマンド発行して構わない（GitHub 側が
+  required check 通過を待つ）
+- リポジトリ設定で `allow_auto_merge=true` 済み
+- 適用条件のいずれかが満たされない場合は **通常通りユーザー確認を経る**
+- 不安があるとき（例: ADR 昇格に伴って `docs/spec/` や `packages/**` も
+  触った）は **必ずユーザーに確認**
+- ブランチ保護で required check が落ちた場合は通常通り失敗する
+  （auto-merge は強制ではなく「揃ったら入れる」セマンティクス）
