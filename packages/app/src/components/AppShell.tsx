@@ -415,7 +415,7 @@ export function AppShell({
           currentProjectId={currentProject?.id ?? null}
           resolvedSystems={views.system.resolvedSystems}
           onNavigateViewPath={navigateViewPath}
-          onFormat={handleFormat}
+          onFormat={isStyleFile ? undefined : handleFormat}
           onTidyStyle={isStyleFile ? handleTidyStyle : undefined}
           hasParseErrors={hasParseErrors}
         />
