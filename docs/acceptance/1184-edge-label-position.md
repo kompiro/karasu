@@ -30,8 +30,14 @@ type: product
 - [x] AT-E: 認識できない値は `middle` にフォールバックする（warning なし silent）
   > ✅ Automated — `style-resolver.test.ts` › `... > falls back to the default for unrecognised keywords / non-numeric values`
 
-- [x] AT-F: `label-offset` は `8px` も `8` も `-12` も同じく数値として parse され、`labelOffset` に格納される
-  > ✅ Automated — `style-resolver.test.ts` › `... > parses a numeric label-offset, with or without the px suffix`
+- [x] AT-F1: `label-offset: 8px`（1 値）は y 軸のみのずらしとして解釈され、`labelOffsetX === 0`、`labelOffsetY === 8` になる
+  > ✅ Automated — `style-resolver.test.ts` › `... > parses a single-token label-offset as y-only (x stays 0)`
+
+- [x] AT-F2: `label-offset: 4px 8px`（2 値）は CSS shorthand と同じく `dx dy` として解釈される
+  > ✅ Automated — `style-resolver.test.ts` › `... > parses a two-token label-offset as \`dx dy\``
+
+- [x] AT-F3: 負の値も `dx` / `dy` どちらでも受理される
+  > ✅ Automated — `style-resolver.test.ts` › `... > accepts negative offsets in either token`
 
 - [x] AT-G: `label-position: start` を edge に当てると、SVG 上の label `<text>` の y が baseline より小さくなる（source 端に寄る）
   > ✅ Automated — `packages/core/src/index.test.ts` › `compile — edge label-position and label-offset > \`label-position: start\` moves the label closer to the source end`
@@ -39,8 +45,11 @@ type: product
 - [x] AT-H: `label-position: end` で y が baseline より大きくなる（target 端に寄る）
   > ✅ Automated — `index.test.ts` › `... > \`label-position: end\` moves the label closer to the target end`
 
-- [x] AT-I: `label-offset: 12px` を当てると、下方向に流れる edge の label x が baseline より小さくなる（CCW perpendicular = leftward）
-  > ✅ Automated — `index.test.ts` › `... > \`label-offset\` shifts the label perpendicular to the edge`
+- [x] AT-I1: `label-offset: 8px`（1 値）を当てると、SVG 上の label `<text>` の y が baseline より大きくなる（下方向にずれる）。x は同じ
+  > ✅ Automated — `index.test.ts` › `... > \`label-offset: 8px\` shifts the label downward (single-token = y axis)`
+
+- [x] AT-I2: `label-offset: 4px 8px`（2 値）を当てると、x も y も baseline より大きくなる（右下にずれる）
+  > ✅ Automated — `index.test.ts` › `... > \`label-offset: 4px 8px\` shifts the label both right and down`
 
 - [x] AT-J: 既存の `direction` 等のプロパティを設定しても、`label-position` / `label-offset` を触らなければ label の y は byte-stable のまま（互換性）
   > ✅ Automated — `index.test.ts` › `... > default label-position keeps the historical longest-segment heuristic byte-stable`
@@ -51,5 +60,5 @@ type: product
 ## 補足
 
 - **デフォルト保護**: `labelPosition === 0.5 && labelOffset === 0` のときは既存の "最長セグメント中点" ヒューリスティクスを維持。これにより既存図の SVG 出力が変わらないことを AT-J で担保
-- **2 軸 offset は MVP 外**: Issue 本文の `<dx>px <dy>px` は 1 軸 perpendicular に差し戻し。spec に明記済み
+- **screen-axis CSS shorthand を採用**: 1 値で y のみ、2 値で `dx dy`。`edge { label-offset: 0 8px }` のような全 edge 一律ルールが予測通りに動く（initial draft の 1 軸 perpendicular はレビューで即撤回 — 詳細は ADR-20260509-04）
 - **GUI menu との統合**: `direction` 同様、Preview 右クリックメニューに `Label position ▸ Start / Middle / End` を追加するのは別 issue で扱う（本 PR は spec + renderer + resolver のみ）

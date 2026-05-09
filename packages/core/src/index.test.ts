@@ -799,20 +799,43 @@ system S {
     );
   });
 
-  it("`label-offset` shifts the label perpendicular to the edge", () => {
+  it("`label-offset: 8px` shifts the label downward (single-token = y axis)", () => {
     const path = ["S", "Backend"];
     const baseline = compile(KRS, { viewPath: path });
-    // The edge flows downward (Order above Payment); a positive offset
-    // rotates 90° CCW in SVG coordinates → the label shifts leftward
-    // on screen, so x decreases.
-    const offset = compile(KRS, {
+    const shifted = compile(KRS, {
+      // label-position needs to be non-default so the fractional anchor
+      // path runs and the offset takes effect.
       viewPath: path,
-      styleSource: `edge#Order->Payment { label-position: 0.5; label-offset: 12px; }`,
+      styleSource: `edge#Order->Payment { label-position: 0.5; label-offset: 8px; }`,
     });
-    if (baseline.diagramType !== "system" || offset.diagramType !== "system") {
+    if (baseline.diagramType !== "system" || shifted.diagramType !== "system") {
       throw new Error("expected system result");
     }
-    expect(labelAttr(offset.svg, "calls", "x")).toBeLessThan(labelAttr(baseline.svg, "calls", "x"));
+    // SVG y grows downward; offset y of 8 pushes the label below the
+    // baseline anchor.
+    expect(labelAttr(shifted.svg, "calls", "y")).toBeGreaterThan(
+      labelAttr(baseline.svg, "calls", "y"),
+    );
+    // Same x — single-token doesn't touch x.
+    expect(labelAttr(shifted.svg, "calls", "x")).toBe(labelAttr(baseline.svg, "calls", "x"));
+  });
+
+  it("`label-offset: 4px 8px` shifts the label both right and down", () => {
+    const path = ["S", "Backend"];
+    const baseline = compile(KRS, { viewPath: path });
+    const shifted = compile(KRS, {
+      viewPath: path,
+      styleSource: `edge#Order->Payment { label-position: 0.5; label-offset: 4px 8px; }`,
+    });
+    if (baseline.diagramType !== "system" || shifted.diagramType !== "system") {
+      throw new Error("expected system result");
+    }
+    expect(labelAttr(shifted.svg, "calls", "x")).toBeGreaterThan(
+      labelAttr(baseline.svg, "calls", "x"),
+    );
+    expect(labelAttr(shifted.svg, "calls", "y")).toBeGreaterThan(
+      labelAttr(baseline.svg, "calls", "y"),
+    );
   });
 
   it("default label-position keeps the historical longest-segment heuristic byte-stable", () => {

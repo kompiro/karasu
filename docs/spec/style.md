@@ -107,7 +107,7 @@ font-size:        11px;
 border-style:     solid;         /* solid | dashed | dotted */
 direction:        auto;          /* up | down | left | right | auto (hint, see below) */
 label-position:   middle;        /* start | middle | end | <0.0..1.0> */
-label-offset:     0px;           /* perpendicular nudge of the label, in pixels */
+label-offset:     0 0;            /* <dy>px or <dx>px <dy>px (screen-axis) */
 
 /* karasu-specific properties (not standard CSS) */
 shape:            box;           /* box | user | cylinder | queue | hexagon | cloud | url("...") */
@@ -265,29 +265,34 @@ landing at `position × totalLength`.
 Invalid values (unknown keywords, non-numeric strings) silently fall
 back to `middle`. Fractional values outside `[0, 1]` are clamped.
 
-### `label-offset` — `<number>px`
+### `label-offset` — `<dy>px` or `<dx>px <dy>px`
 
-Perpendicular nudge of the label relative to the edge, measured in
-pixels. Useful when two labels still stack after `label-position` alone.
+Screen-axis nudge of the label relative to its computed anchor, in
+pixels. CSS-shorthand parsing:
+
+- **One value** (`label-offset: 8px`) → `dx = 0`, `dy = 8`. The most
+  common "shift labels downward" case
+- **Two values** (`label-offset: 4px 8px`) → `dx = 4`, `dy = 8`
 
 ```css
-edge#parallelA { label-offset: 8px; }
-edge#parallelB { label-offset: -8px; }
+edge { label-offset: 0 8px; }    /* every label drops 8px below its anchor */
+edge#wide { label-offset: 4px 8px; }
 ```
 
-Sign convention: positive offset rotates the segment direction `(dx, dy)`
-90° counter-clockwise. In SVG coordinates that means a positive offset
-shifts the label *below* an edge flowing rightward and to the *left* of
-an edge flowing downward. Flip the sign if the resulting side is the
-wrong one for the diagram.
+Screen axis (not edge-perpendicular) so a global rule applies a uniform
+visual shift regardless of each edge's slope. Positive values shift
+right (x) and down (y); negative values shift left and up.
 
 The offset is independent of the existing `-6px` typographic lift the
 renderer applies above the anchor — the lift stays in place to keep
-labels off the line.
+labels off the line, and the offset adds on top.
 
-Two-axis offset (`label-offset: <dx>px <dy>px`) is intentionally not
-supported. Single-axis perpendicular nudge covers the "labels still
-overlap" use case while keeping the spec narrow.
+> **Earlier draft (rejected)**: an earlier iteration of this property
+> defined `label-offset` as a 1-axis perpendicular nudge relative to
+> the edge direction. That made `edge { label-offset: 8px; }` produce
+> a different visual direction per edge slope, which was hard to
+> reason about. Switched to screen-axis CSS-shorthand semantics — see
+> [ADR-20260509-04](../adr/20260509-04-edge-label-position-offset.md).
 
 ---
 

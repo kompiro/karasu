@@ -608,11 +608,12 @@ describe("resolveStyles", () => {
       ];
     }
 
-    it("defaults label-position to 0.5 (midpoint) and label-offset to 0", () => {
+    it("defaults label-position to 0.5 (midpoint) and label-offset to 0,0", () => {
       const result = resolveStyles([], [], undefined, undefined, undefined, singleEdge());
       const style = result.edges.get("A->B")!;
       expect(style.labelPosition).toBe(0.5);
-      expect(style.labelOffset).toBe(0);
+      expect(style.labelOffsetX).toBe(0);
+      expect(style.labelOffsetY).toBe(0);
     });
 
     it("translates the `start` keyword to 0", () => {
@@ -690,7 +691,7 @@ describe("resolveStyles", () => {
       expect(result.edges.get("A->B")!.labelPosition).toBe(0.5);
     });
 
-    it("parses a numeric label-offset, with or without the px suffix", () => {
+    it("parses a single-token label-offset as y-only (x stays 0)", () => {
       const sheet: StyleSheet = {
         rules: [
           makeRule(
@@ -701,21 +702,41 @@ describe("resolveStyles", () => {
           ),
         ],
       };
-      const withPx = resolveStyles([], [sheet], undefined, undefined, undefined, singleEdge());
-      expect(withPx.edges.get("A->B")!.labelOffset).toBe(8);
+      const result = resolveStyles([], [sheet], undefined, undefined, undefined, singleEdge());
+      expect(result.edges.get("A->B")!.labelOffsetX).toBe(0);
+      expect(result.edges.get("A->B")!.labelOffsetY).toBe(8);
+    });
 
-      const sheet2: StyleSheet = {
+    it("parses a two-token label-offset as `dx dy`", () => {
+      const sheet: StyleSheet = {
         rules: [
           makeRule(
             { nodeType: "edge", tags: [], annotations: [] },
-            { "label-offset": "-12" },
+            { "label-offset": "4px 8px" },
             1,
             0,
           ),
         ],
       };
-      const negative = resolveStyles([], [sheet2], undefined, undefined, undefined, singleEdge());
-      expect(negative.edges.get("A->B")!.labelOffset).toBe(-12);
+      const result = resolveStyles([], [sheet], undefined, undefined, undefined, singleEdge());
+      expect(result.edges.get("A->B")!.labelOffsetX).toBe(4);
+      expect(result.edges.get("A->B")!.labelOffsetY).toBe(8);
+    });
+
+    it("accepts negative offsets in either token", () => {
+      const sheet: StyleSheet = {
+        rules: [
+          makeRule(
+            { nodeType: "edge", tags: [], annotations: [] },
+            { "label-offset": "-4px -8px" },
+            1,
+            0,
+          ),
+        ],
+      };
+      const result = resolveStyles([], [sheet], undefined, undefined, undefined, singleEdge());
+      expect(result.edges.get("A->B")!.labelOffsetX).toBe(-4);
+      expect(result.edges.get("A->B")!.labelOffsetY).toBe(-8);
     });
   });
 

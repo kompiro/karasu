@@ -30,7 +30,8 @@ const DEFAULT_EDGE_STYLE = {
   strokeStyle: "solid" as const,
   direction: "auto" as const,
   labelPosition: 0.5,
-  labelOffset: 0,
+  labelOffsetX: 0,
+  labelOffsetY: 0,
 };
 
 function makeStyles(nodeMap: Map<string, ResolvedNodeStyle> = new Map()): ResolvedStyles {

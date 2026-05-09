@@ -86,7 +86,12 @@ export function renderEdge(
   }
 
   if (edge.label) {
-    const { x: midX, y: midY } = labelAnchor(points, style.labelPosition, style.labelOffset);
+    const { x: midX, y: midY } = labelAnchor(
+      points,
+      style.labelPosition,
+      style.labelOffsetX,
+      style.labelOffsetY,
+    );
     const labelText = el(
       "text",
       {
@@ -143,24 +148,22 @@ export function renderEdge(
 /**
  * Anchor point for the edge label.
  *
- * When `position === 0.5` and `offset === 0`, the historical "longest
- * segment midpoint" heuristic fires — keeping unstyled diagrams visually
- * stable. Once the author sets `label-position` or `label-offset` on the
- * edge, the renderer switches to fractional traversal (anchor at
- * `position * totalLength` along the polyline) and applies a
- * perpendicular nudge of `offset` pixels.
+ * When `position === 0.5` and both offsets are `0`, the historical
+ * "longest segment midpoint" heuristic fires — keeping unstyled
+ * diagrams visually stable. Once the author sets `label-position` or
+ * `label-offset` on the edge, the renderer switches to fractional
+ * traversal (anchor at `position * totalLength` along the polyline) and
+ * adds the screen-axis offsets `(offsetX, offsetY)` on top.
  *
- * Sign convention for offset: rotate the segment direction `(dx, dy)`
- * 90° counter-clockwise. In SVG coordinates that means a positive
- * offset shifts the label *below* an edge flowing rightward, and to the
- * *left* of an edge flowing downward. Authors can flip the sign if the
- * resulting side is the wrong one for their diagram.
+ * Offsets are screen-axis (not edge-perpendicular) so a global rule
+ * like `edge { label-offset: 0 8px; }` produces a uniform downward
+ * shift across the diagram regardless of each edge's slope.
  */
-function labelAnchor(points: Point[], position: number, offset: number): Point {
-  if (position === 0.5 && offset === 0) {
+function labelAnchor(points: Point[], position: number, offsetX: number, offsetY: number): Point {
+  if (position === 0.5 && offsetX === 0 && offsetY === 0) {
     return defaultLabelAnchor(points);
   }
-  return fractionalLabelAnchor(points, position, offset);
+  return fractionalLabelAnchor(points, position, offsetX, offsetY);
 }
 
 function defaultLabelAnchor(points: Point[]): Point {
@@ -187,7 +190,12 @@ function defaultLabelAnchor(points: Point[]): Point {
   };
 }
 
-function fractionalLabelAnchor(points: Point[], position: number, offset: number): Point {
+function fractionalLabelAnchor(
+  points: Point[],
+  position: number,
+  offsetX: number,
+  offsetY: number,
+): Point {
   const segLengths: number[] = [];
   let total = 0;
   for (let i = 0; i < points.length - 1; i++) {
@@ -197,7 +205,9 @@ function fractionalLabelAnchor(points: Point[], position: number, offset: number
     segLengths.push(len);
     total += len;
   }
-  if (total === 0) return points[0];
+  if (total === 0) {
+    return { x: points[0].x + offsetX, y: points[0].y + offsetY };
+  }
 
   const clamped = Math.min(1, Math.max(0, position));
   const target = clamped * total;
@@ -210,24 +220,15 @@ function fractionalLabelAnchor(points: Point[], position: number, offset: number
       const localT = segLen === 0 ? 0 : (target - acc) / segLen;
       const dx = points[i + 1].x - points[i].x;
       const dy = points[i + 1].y - points[i].y;
-      const baseX = points[i].x + dx * localT;
-      const baseY = points[i].y + dy * localT;
-      if (offset === 0) {
-        return { x: baseX, y: baseY };
-      }
-      // Rotate (dx, dy) 90° CCW to get the perpendicular direction.
-      const norm = segLen || 1;
-      const perpX = -dy / norm;
-      const perpY = dx / norm;
       return {
-        x: baseX + perpX * offset,
-        y: baseY + perpY * offset,
+        x: points[i].x + dx * localT + offsetX,
+        y: points[i].y + dy * localT + offsetY,
       };
     }
     acc += segLen;
   }
   // Unreachable in practice — the loop above covers `isLast`.
-  return points[points.length - 1];
+  return { x: points[points.length - 1].x + offsetX, y: points[points.length - 1].y + offsetY };
 }
 
 export function renderArrowMarker(id: string, color: string): string {

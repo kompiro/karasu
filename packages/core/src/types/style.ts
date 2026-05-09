@@ -138,16 +138,25 @@ export interface ResolvedEdgeStyle {
    */
   labelPosition: LabelPosition;
   /**
-   * Perpendicular nudge of the label relative to the edge, in pixels.
-   * Positive values shift to the right of the edge's direction of travel
-   * (visual right when the edge flows downward); negative values shift
-   * left. Used to disambiguate stacked labels on parallel edges.
+   * Screen-axis x-offset of the label relative to its computed anchor,
+   * in pixels. Positive shifts right, negative shifts left.
    *
-   * Independent of the existing `-6px` typographic lift the renderer
-   * applies above the anchor — that stays in place to keep labels off
-   * the line.
+   * In `.krs.style` users write a CSS-like shorthand:
+   *   `label-offset: <dy>px`           → x=0, y=<dy>
+   *   `label-offset: <dx>px <dy>px`    → x=<dx>, y=<dy>
+   *
+   * Screen-axis (not edge-perpendicular) is intentional: a global rule
+   * `edge { label-offset: 0 8px; }` should shift every label down by
+   * the same visual amount regardless of each edge's slope.
    */
-  labelOffset: number;
+  labelOffsetX: number;
+  /**
+   * Screen-axis y-offset of the label relative to its computed anchor,
+   * in pixels. Positive shifts down, negative shifts up. Independent of
+   * the existing `-6px` typographic lift the renderer applies above the
+   * anchor — that lift stays in place so the offset adds on top.
+   */
+  labelOffsetY: number;
 }
 
 /**

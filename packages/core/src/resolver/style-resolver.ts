@@ -37,7 +37,8 @@ const DEFAULT_EDGE_STYLE: ResolvedEdgeStyle = {
   strokeStyle: "solid",
   direction: "auto",
   labelPosition: 0.5,
-  labelOffset: 0,
+  labelOffsetX: 0,
+  labelOffsetY: 0,
 };
 
 const EDGE_DIRECTION_VALUES = new Set<string>(["auto", "up", "down", "left", "right"]);
@@ -487,11 +488,26 @@ function toResolvedEdgeStyle(props: Record<string, string>): ResolvedEdgeStyle {
     }
   }
   if (props["label-offset"]) {
-    // `label-offset: 8` and `label-offset: 8px` both mean 8 pixels of
-    // perpendicular nudge. parseFloat handles the unit suffix.
-    const numeric = parseFloat(props["label-offset"]);
-    if (Number.isFinite(numeric)) {
-      style.labelOffset = numeric;
+    // CSS-like shorthand:
+    //   "8px"       → x=0, y=8
+    //   "4px 8px"   → x=4, y=8
+    // The two-token form mirrors `padding`/`margin` and lets a global
+    // rule like `edge { label-offset: 0 8px; }` shift every label by
+    // the same screen-axis amount, regardless of edge slope.
+    const tokens = props["label-offset"].trim().split(/\s+/);
+    if (tokens.length === 1) {
+      const dy = parseFloat(tokens[0]);
+      if (Number.isFinite(dy)) {
+        style.labelOffsetX = 0;
+        style.labelOffsetY = dy;
+      }
+    } else if (tokens.length >= 2) {
+      const dx = parseFloat(tokens[0]);
+      const dy = parseFloat(tokens[1]);
+      if (Number.isFinite(dx) && Number.isFinite(dy)) {
+        style.labelOffsetX = dx;
+        style.labelOffsetY = dy;
+      }
     }
   }
 

@@ -97,7 +97,7 @@ stroke-width:     1.5px;
 font-size:        11px;
 direction:        auto;          /* up | down | left | right | auto（ヒント、後述） */
 label-position:   middle;        /* start | middle | end | <0.0..1.0> */
-label-offset:     0px;           /* edge に対して垂直なずれ（px） */
+label-offset:     0 0;            /* <dy>px or <dx>px <dy>px（screen-axis） */
 
 /* karasu固有プロパティ（CSS非対応のため例外） */
 shape:            box;           /* box | user | cylinder | queue | hexagon | cloud | url("...") */
@@ -248,27 +248,32 @@ totalLength` の点をアンカーにする経路に切り替わる。
 不正値（未知のキーワード、数値でない文字列）は `middle` にフォールバック。
 `[0, 1]` 範囲外の小数値はクランプ。
 
-### `label-offset` — `<number>px`
+### `label-offset` — `<dy>px` または `<dx>px <dy>px`
 
-エッジに対して垂直方向に label をずらす値（pixel）。`label-position` だけ
-では衝突が解消しない場合の微調整に使う。
+label アンカーを画面の x/y 軸方向にずらす値（pixel）。CSS shorthand
+の構文を踏襲:
+
+- **1 値** (`label-offset: 8px`) → `dx = 0`, `dy = 8`。最頻出の
+  「label を下方向にずらす」ケース
+- **2 値** (`label-offset: 4px 8px`) → `dx = 4`, `dy = 8`
 
 ```css
-edge#parallelA { label-offset: 8px; }
-edge#parallelB { label-offset: -8px; }
+edge { label-offset: 0 8px; }    /* 全 label を anchor から 8px 下に */
+edge#wide { label-offset: 4px 8px; }
 ```
 
-符号の規約: 正の offset はセグメント方向 `(dx, dy)` を 90° 反時計回りに
-回転した方向。SVG 座標では、右に流れるエッジでは label が **下方向** に、
-下に流れるエッジでは **左方向** にずれる。意図と逆になる場合は符号を
-反転する。
+screen axis（edge perpendicular ではなく）なので、グローバルルールでも
+edge の傾きに関係なく統一された方向にシフトする。正の値は右 (x) /
+下 (y)、負の値は左 / 上。
 
 renderer が anchor の上 `-6px` に label を置く既存のオフセットとは独立。
-typographic な lift は変更されない。
+typographic な lift はそのまま、その上にこの offset が加算される。
 
-`label-offset: <dx>px <dy>px` のような 2 軸版はサポートしない。
-1 軸の垂直ずらしで「label 同士が重なる」用途に十分対応でき、spec を
-狭く保つ判断。
+> **以前の draft（撤回）**: 初版は `label-offset` を edge 方向に対する
+> 1 軸 perpendicular ずらしと定義していた。これだと
+> `edge { label-offset: 8px; }` の効果が edge の傾きごとに違う方向に出て
+> 予測が立てにくかった。screen-axis CSS shorthand に切り替えた。詳細は
+> [ADR-20260509-04](../adr/20260509-04-edge-label-position-offset.md)。
 
 ---
 
