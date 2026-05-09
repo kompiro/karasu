@@ -666,7 +666,7 @@ export class ImportResolver {
       return null;
     }
 
-    const parseResult = StyleParser.parse(source);
+    const parseResult = StyleParser.parse(source, filePath);
     this.diagnostics.push(...parseResult.diagnostics);
 
     return parseResult.value;

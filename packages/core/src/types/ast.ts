@@ -457,6 +457,7 @@ export interface DiagnosticParamsByCode {
   // ── Style parser ────────────────────────────────────────────────────────
   "style-token-type-mismatch": { expected: string; got: string; value: string };
   "expected-style-property-name": { got: string };
+  "expected-semicolon-between-properties": { property: string };
 
   // ── Import resolver ─────────────────────────────────────────────────────
   "circular-import": { filePath: string };

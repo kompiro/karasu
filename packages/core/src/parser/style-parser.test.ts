@@ -238,6 +238,64 @@ domain {
   });
 });
 
+describe("StyleParser AST shape (Phase 1)", () => {
+  it("attaches a SourceRange to each rule, selector, and declaration", () => {
+    const result = StyleParser.parse(`service {\n  color: #DBEAFE;\n}\n`);
+    const rule = result.value.rules[0];
+    expect(rule.loc.start.line).toBeGreaterThan(0);
+    expect(rule.loc.end.offset).toBeGreaterThan(rule.loc.start.offset);
+    expect(rule.selector.loc.start.line).toBeGreaterThan(0);
+    expect(rule.declarationLocs["color"]).toBeDefined();
+    expect(rule.declarationLocs["color"].start.offset).toBeGreaterThan(
+      rule.selector.loc.end.offset,
+    );
+  });
+
+  it("uses `<anonymous>` as the default sheetId", () => {
+    const result = StyleParser.parse(`service { color: red; }`);
+    expect(result.value.sheetId).toBe("<anonymous>");
+    expect(result.value.rules[0].sheetId).toBe("<anonymous>");
+  });
+
+  it("threads an explicit sheetId through every rule", () => {
+    const result = StyleParser.parse(`service { color: red; }`, "/project/site.krs.style");
+    expect(result.value.sheetId).toBe("/project/site.krs.style");
+    expect(result.value.rules[0].sheetId).toBe("/project/site.krs.style");
+  });
+});
+
+describe("StyleParser comma-as-separator recovery (#1168)", () => {
+  it("emits an error and recovers when `,` is used between properties", () => {
+    const result = StyleParser.parse(`edge#A->B { color: red, direction: down; }`);
+    const errors = result.diagnostics.filter((d) => d.severity === "error");
+    expect(errors).toHaveLength(1);
+    expect(errors[0].code).toBe("expected-semicolon-between-properties");
+    expect(errors[0].params).toEqual({ property: "color" });
+    expect(result.value.rules[0].properties).toEqual({
+      color: "red",
+      direction: "down",
+    });
+  });
+
+  it("emits one diagnostic per misplaced comma", () => {
+    const result = StyleParser.parse(`service { a: 1, b: 2, c: 3; }`);
+    const errors = result.diagnostics.filter(
+      (d) => d.code === "expected-semicolon-between-properties",
+    );
+    expect(errors).toHaveLength(2);
+    expect(result.value.rules[0].properties).toEqual({ a: "1", b: "2", c: "3" });
+  });
+
+  it("does not flag legitimate comma-separated values like font-family", () => {
+    const result = StyleParser.parse(`service { font-family: "Noto", sans-serif; }`);
+    const errors = result.diagnostics.filter(
+      (d) => d.code === "expected-semicolon-between-properties",
+    );
+    expect(errors).toHaveLength(0);
+    expect(result.value.rules[0].properties["font-family"]).toBe('"Noto" , sans-serif');
+  });
+});
+
 describe("computeSpecificity", () => {
   it("type selector = 1", () => {
     expect(computeSpecificity({ nodeType: "service", tags: [], annotations: [] })).toBe(1);

@@ -116,6 +116,8 @@ export function formatDiagnostic(d: Diagnostic): string {
       return `Expected ${d.params.expected} but got ${d.params.got} ("${d.params.value}")`;
     case "expected-style-property-name":
       return `Expected property name but got ${d.params.got}`;
+    case "expected-semicolon-between-properties":
+      return `Expected ";" after property "${d.params.property}" but found ","; properties are separated by semicolons`;
 
     // ── Import resolver ─────────────────────────────────────────────────
     case "circular-import":

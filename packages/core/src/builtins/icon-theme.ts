@@ -81,7 +81,7 @@ let _cachedSheet: StyleSheet | null = null;
 
 export function getIconThemeStyleSheet(): StyleSheet {
   if (!_cachedSheet) {
-    const result = StyleParser.parse(ICON_THEME_STYLE_SOURCE);
+    const result = StyleParser.parse(ICON_THEME_STYLE_SOURCE, "<icon-theme>");
     /* c8 ignore next 4 */
     if (result.diagnostics.length > 0) {
       throw new Error(
