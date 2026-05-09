@@ -1,0 +1,89 @@
+# テスト観点ライブラリ（Test Perspective Library, TPL）
+
+## 目的
+
+karasu の `bug` ラベル付き Issue から抽出された **再発しうる失敗パターン** を、構造化された観点として蓄積する。新機能の DesignDoc 作成時や受け入れテスト設計時に、過去の失敗パターンが自動的に参照される状態を作ることが目的。
+
+運用開始の意思決定は [ADR-20260509-04](../adr/20260509-04-test-perspective-library.md) に記録されている。
+
+## ADR との違い
+
+- **ADR**: 判断の記録（「私たちはこう判断した」）
+- **TPL**: 検証すべき観点の集約（「これを検証すべき」）
+
+ADR が **過去の判断を残す** ためのものに対し、TPL は **未来の検証を促す** ためのもの。両者は frontmatter の `topic` / `scope.packages` を共有しており、同じトピックで横串検索することで「過去の判断」と「検証すべき観点」を同時に発見できる。
+
+## エントリの構造
+
+各 TPL は 1 ファイル = 1 観点で、`docs/test-perspectives/TPL-YYYYMMDD-NN-<slug>.md` というファイル名規約に従う。
+
+### Frontmatter
+
+```yaml
+---
+id: TPL-YYYYMMDD-NN
+title: "観点を1行で表現"
+status: active            # active | deprecated
+date: YYYY-MM-DD
+applicable_to:
+  - "この観点が適用される範囲（例: KrsFile.systems を消費するすべての機能）"
+discovered_from:
+  - issue: "#1234"
+  - root_cause_adr: "ADR-XXXXXXXX-XX"        # optional
+  - root_cause_file: "path/to/file.ts:LINE"  # optional
+related_to:
+  - TPL-XXXXXXXX-XX
+topic: app-ui              # ADR と同じ controlled vocabulary
+scope:
+  packages:
+    - app
+---
+```
+
+`topic` の値は ADR と同じものを使う（`docs/adr/README.md` のセクション見出しを参照）。たとえば: `core-concepts` / `parser` / `resolver` / `renderer` / `edges` / `styling` / `navigation` / `app-ui` / `project` / `chat-ai` / `cli` / `vscode` / `testing` / `build` / `adr-tooling`。
+
+### 本文セクション
+
+1. **観点** — 何を検証すべきかを、再利用可能な抽象度で記述する
+2. **想定される失敗モード** — この観点が見落とされた場合に、どのような形で失敗が現れるか
+3. **チェックリスト** — 新機能の実装/修正時に確認する項目。**3〜5項目に絞る**（多すぎると使われない）
+4. **既知の対処パターン** — 過去にこの問題を解決した方法
+5. **関連テスト** — この観点を検証する既存テストのパス
+
+## 運用ルール
+
+### 新規エントリの追加タイミング
+
+`bug` ラベルが付いた Issue が起票されたとき、以下の **3-Yes ルール** で TPL 化を検討する。
+
+1. 同じ root cause が **別の機能でも発生しうる** か?
+2. 構造的なパターンとして **再発する可能性がある** か?
+3. 既存の TPL でカバーされていない観点か?
+
+3つすべてが Yes なら新規 TPL として起こす。1つでも No なら個別 Issue として処理して TPL は作らない。
+
+### 既存エントリの更新
+
+新しい Issue が既存 TPL のパターンに該当する場合、その TPL の `discovered_from` セクションに Issue を追記する。チェックリストや「既知の対処パターン」の更新が必要なら、それも併せて行う。
+
+### deprecated への移行
+
+実装の構造変更などで、ある観点が原理的に発生しなくなった場合、`status` を `deprecated` に変更する。エントリ自体は **削除しない** — なぜ deprecated にしたかを末尾に追記する（後から「この観点はなぜ消えたのか」を辿れるようにするため）。
+
+## 参照タイミング
+
+- **DesignDoc 作成時**: 該当する `topic` / `scope.packages` の TPL を一覧し、関連する観点を DesignDoc に取り込む
+- **新機能の実装時**: 受け入れテストの項目を作る前に該当 TPL のチェックリストを確認する
+- **bug 修正時**: 同じパターンの TPL がすでに存在しないか確認し、あれば `discovered_from` に追記する。なければ 3-Yes ルールで新規作成を検討する
+
+## 一覧
+
+現時点で active な TPL は以下:
+
+| ID | タイトル | topic | 起源 |
+|---|---|---|---|
+| [TPL-20260510-01](TPL-20260510-01-top-level-orphans.md) | top-level orphans の扱い | core-concepts | #1160 |
+| [TPL-20260510-02](TPL-20260510-02-round-trip-guarantee.md) | コード変換における round-trip 保証 | parser | #1101, #1058 |
+| [TPL-20260510-03](TPL-20260510-03-enum-member-addition.md) | 列挙型メンバー追加時の更新漏れ | navigation | #1094 |
+| [TPL-20260510-04](TPL-20260510-04-continuous-input-dom-interference.md) | 連続操作中の DOM 介入 | app-ui | #1053 |
+| [TPL-20260510-05](TPL-20260510-05-implicit-data-filtering.md) | データ表示の暗黙フィルタ | renderer | #999 |
