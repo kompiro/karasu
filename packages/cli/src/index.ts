@@ -408,17 +408,15 @@ Examples:
   # Pipe via stdin
   $ cat theme.krs.style | karasu tidy-style --stdin`,
   )
-  .action(
-    (files: string[], options: { check?: boolean; stdin?: boolean; merge?: boolean }) => {
-      // commander's `--no-merge` toggles `options.merge` to false; map to
-      // our internal `noMerge` boolean.
-      tidyStyle(files, {
-        check: options.check,
-        stdin: options.stdin,
-        noMerge: options.merge === false,
-      });
-    },
-  );
+  .action((files: string[], options: { check?: boolean; stdin?: boolean; merge?: boolean }) => {
+    // commander's `--no-merge` toggles `options.merge` to false; map to
+    // our internal `noMerge` boolean.
+    tidyStyle(files, {
+      check: options.check,
+      stdin: options.stdin,
+      noMerge: options.merge === false,
+    });
+  });
 
 program
   .command("matrix <file>")

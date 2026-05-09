@@ -32,6 +32,10 @@
           "light": "./images/karasu-light.svg",
           "dark": "./images/karasu-dark.svg"
         }
+      },
+      {
+        "command": "karasu.tidyStyle",
+        "title": "karasu: Tidy Style"
       }
     ],
     "menus": {

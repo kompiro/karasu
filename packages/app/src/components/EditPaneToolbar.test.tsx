@@ -70,9 +70,7 @@ describe("EditPaneToolbar", () => {
 
   it("clicking Tidy button calls onTidyStyle", () => {
     const onTidyStyle = vi.fn<() => void>();
-    const { getByRole } = render(
-      <EditPaneToolbar activeTab="editor" onTidyStyle={onTidyStyle} />,
-    );
+    const { getByRole } = render(<EditPaneToolbar activeTab="editor" onTidyStyle={onTidyStyle} />);
     fireEvent.click(getByRole("button", { name: /Tidy/ }));
     expect(onTidyStyle).toHaveBeenCalledOnce();
   });

@@ -49,10 +49,7 @@ import { tidyStyle } from "./tidy-style.js";
 
 describe("tidyStyle() with explicit files", () => {
   it("rewrites a non-tidy file in place", async () => {
-    const file = await writeStyle(
-      "site.krs.style",
-      `service { shape: user; color: red; }\n`,
-    );
+    const file = await writeStyle("site.krs.style", `service { shape: user; color: red; }\n`);
     const stdout = captureStdout();
     await tidyStyle([file], {});
 
@@ -67,10 +64,7 @@ describe("tidyStyle() with explicit files", () => {
   });
 
   it("leaves an already-tidy file untouched and prints nothing", async () => {
-    const file = await writeStyle(
-      "tidy.krs.style",
-      `service {\n  color: red;\n}\n`,
-    );
+    const file = await writeStyle("tidy.krs.style", `service {\n  color: red;\n}\n`);
     const before = readFileSync(file, "utf8");
     const stdout = captureStdout();
     await tidyStyle([file], {});
@@ -110,10 +104,7 @@ describe("tidyStyle() with explicit files", () => {
 
 describe("tidyStyle() --check mode", () => {
   it("exits 1 when a file would change and writes the diff hint to stderr", async () => {
-    const file = await writeStyle(
-      "drift.krs.style",
-      `service { shape: user; color: red; }\n`,
-    );
+    const file = await writeStyle("drift.krs.style", `service { shape: user; color: red; }\n`);
     const before = readFileSync(file, "utf8");
     const exit = mockExit();
     const stderr = captureStderr();
@@ -126,10 +117,7 @@ describe("tidyStyle() --check mode", () => {
   });
 
   it("exits 0 when every file is already tidy", async () => {
-    const file = await writeStyle(
-      "tidy.krs.style",
-      `service {\n  color: red;\n}\n`,
-    );
+    const file = await writeStyle("tidy.krs.style", `service {\n  color: red;\n}\n`);
     captureStderr();
 
     // No exit(1) thrown — the call should resolve.

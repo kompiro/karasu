@@ -9,6 +9,7 @@ import {
   RequestType,
 } from "vscode-languageclient/node";
 import { PreviewPanel } from "./preview-panel.js";
+import { styleFormattingProvider } from "./style-formatter.js";
 
 const PREVIEW_DEBOUNCE_MS = 300;
 const CURSOR_DEBOUNCE_MS = 150;
@@ -138,12 +139,33 @@ export function activate(context: vscode.ExtensionContext): void {
     }, CURSOR_DEBOUNCE_MS);
   });
 
+  // --- Tidy Style ---
+  // Register a formatter so `editor.action.formatDocument` (and
+  // `editor.formatOnSave` when the user opts in) produce a tidied
+  // `.krs.style`. The palette command wraps the same operation so users
+  // can discover it without enabling format-on-save.
+  const styleFormatter = vscode.languages.registerDocumentFormattingEditProvider(
+    { scheme: "file", language: "krs-style" },
+    styleFormattingProvider,
+  );
+
+  const tidyStyleCmd = vscode.commands.registerCommand("karasu.tidyStyle", async () => {
+    const editor = vscode.window.activeTextEditor;
+    if (!editor || editor.document.languageId !== "krs-style") {
+      void vscode.window.showInformationMessage("Open a .krs.style file to run Tidy Style.");
+      return;
+    }
+    await vscode.commands.executeCommand("editor.action.formatDocument");
+  });
+
   context.subscriptions.push(
     { dispose: () => client?.stop() },
     openPreviewCmd,
     changeWatcher,
     editorWatcher,
     cursorWatcher,
+    styleFormatter,
+    tidyStyleCmd,
   );
 }
 
