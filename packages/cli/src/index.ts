@@ -8,6 +8,7 @@ import { append } from "./append.js";
 import { remove } from "./remove.js";
 import { insert } from "./insert.js";
 import { fmt } from "./fmt.js";
+import { tidyStyle } from "./tidy-style.js";
 import { diff } from "./diff.js";
 import { matrix } from "./matrix.js";
 
@@ -384,6 +385,40 @@ Examples:
   .action((files: string[], options: { check?: boolean; stdin?: boolean }) => {
     fmt(files, { check: options.check, stdin: options.stdin });
   });
+
+program
+  .command("tidy-style [files...]")
+  .description("Tidy .krs.style files: merge duplicate rules, group properties by axis")
+  .option("--check", "Exit 1 if any file would be tidied (no files are changed)")
+  .option("--stdin", "Read from stdin, write tidied output to stdout")
+  .option("--no-merge", "Skip merging duplicate rules; reorder + comment-glue only")
+  .addHelpText(
+    "after",
+    `
+Examples:
+  # Tidy all .krs.style files under the current directory
+  $ karasu tidy-style
+
+  # Tidy specific files
+  $ karasu tidy-style theme.krs.style site.krs.style
+
+  # CI check (exit 1 if any file would change)
+  $ karasu tidy-style --check
+
+  # Pipe via stdin
+  $ cat theme.krs.style | karasu tidy-style --stdin`,
+  )
+  .action(
+    (files: string[], options: { check?: boolean; stdin?: boolean; merge?: boolean }) => {
+      // commander's `--no-merge` toggles `options.merge` to false; map to
+      // our internal `noMerge` boolean.
+      tidyStyle(files, {
+        check: options.check,
+        stdin: options.stdin,
+        noMerge: options.merge === false,
+      });
+    },
+  );
 
 program
   .command("matrix <file>")
