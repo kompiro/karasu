@@ -1,4 +1,4 @@
-import { TokenType, type Token, type SourceLocation } from "../types/tokens.js";
+import { TokenType, type Token, type SourceLocation, type Trivia } from "../types/tokens.js";
 
 export class StyleLexer {
   private source: string;
@@ -13,13 +13,19 @@ export class StyleLexer {
   tokenize(): Token[] {
     const tokens: Token[] = [];
     while (this.pos < this.source.length) {
-      this.skipWhitespaceAndComments();
-      if (this.pos >= this.source.length) break;
+      const leadingTrivia = this.collectTrivia();
+      if (this.pos >= this.source.length) {
+        // Trailing trivia at EOF: attach to the EOF token below.
+        tokens.push({ type: TokenType.EOF, value: "", loc: this.loc(), leadingTrivia });
+        return tokens;
+      }
 
       const token = this.readToken();
-      if (token) tokens.push(token);
+      if (token) {
+        tokens.push({ ...token, leadingTrivia });
+      }
     }
-    tokens.push({ type: TokenType.EOF, value: "", loc: this.loc() });
+    tokens.push({ type: TokenType.EOF, value: "", loc: this.loc(), leadingTrivia: [] });
     return tokens;
   }
 
@@ -47,40 +53,87 @@ export class StyleLexer {
     return ch;
   }
 
-  private skipWhitespaceAndComments(): void {
+  /**
+   * Scan whitespace and comments, collecting comment / blank-line trivia
+   * for round-trip formatting. Returns trivia in source order; consecutive
+   * blank lines collapse into a single `blank-line` Trivia entry.
+   */
+  private collectTrivia(): Trivia[] {
+    const trivia: Trivia[] = [];
+    let pendingNewlines = 0;
+    let blankLineStart: SourceLocation | null = null;
+
+    const flushBlankLine = (end: SourceLocation): void => {
+      if (pendingNewlines >= 2 && blankLineStart) {
+        trivia.push({
+          kind: "blank-line",
+          text: "",
+          loc: { start: blankLineStart, end },
+        });
+      }
+      pendingNewlines = 0;
+      blankLineStart = null;
+    };
+
     while (this.pos < this.source.length) {
       const ch = this.peek();
 
-      if (ch === " " || ch === "\t" || ch === "\r" || ch === "\n") {
+      if (ch === "\n") {
+        if (pendingNewlines === 0) blankLineStart = this.loc();
+        pendingNewlines++;
+        this.advance();
+        continue;
+      }
+
+      if (ch === " " || ch === "\t" || ch === "\r") {
         this.advance();
         continue;
       }
 
       if (ch === "/" && this.peekAt(1) === "/") {
-        this.advance();
-        this.advance();
+        flushBlankLine(this.loc());
+        const start = this.loc();
+        let text = "";
+        text += this.advance(); // /
+        text += this.advance(); // /
         while (this.pos < this.source.length && this.peek() !== "\n") {
-          this.advance();
+          text += this.advance();
         }
+        trivia.push({
+          kind: "line-comment",
+          text,
+          loc: { start, end: this.loc() },
+        });
         continue;
       }
 
       if (ch === "/" && this.peekAt(1) === "*") {
-        this.advance();
-        this.advance();
+        flushBlankLine(this.loc());
+        const start = this.loc();
+        let text = "";
+        text += this.advance(); // /
+        text += this.advance(); // *
         while (this.pos < this.source.length) {
           if (this.peek() === "*" && this.peekAt(1) === "/") {
-            this.advance();
-            this.advance();
+            text += this.advance(); // *
+            text += this.advance(); // /
             break;
           }
-          this.advance();
+          text += this.advance();
         }
+        trivia.push({
+          kind: "block-comment",
+          text,
+          loc: { start, end: this.loc() },
+        });
         continue;
       }
 
       break;
     }
+
+    flushBlankLine(this.loc());
+    return trivia;
   }
 
   private readToken(): Token | null {

@@ -339,3 +339,82 @@ describe("computeSpecificity", () => {
     ).toBe(101);
   });
 });
+
+describe("StyleParser trivia preservation (Phase 2)", () => {
+  it("attaches a leading block comment to the rule that follows", () => {
+    const result = StyleParser.parse(`/* heading */\nservice { color: red; }\n`);
+    const rule = result.value.rules[0];
+    expect(rule.leadingTrivia).toHaveLength(1);
+    expect(rule.leadingTrivia![0].kind).toBe("block-comment");
+    expect(rule.leadingTrivia![0].text).toBe("/* heading */");
+  });
+
+  it("attaches a leading line comment to the rule that follows", () => {
+    const result = StyleParser.parse(`// note\nservice { color: red; }\n`);
+    const rule = result.value.rules[0];
+    expect(rule.leadingTrivia).toHaveLength(1);
+    expect(rule.leadingTrivia![0].kind).toBe("line-comment");
+    expect(rule.leadingTrivia![0].text).toBe("// note");
+  });
+
+  it("attaches a same-line trailing block comment to a declaration", () => {
+    const result = StyleParser.parse(`service { color: red; /* primary */ }\n`);
+    const rule = result.value.rules[0];
+    expect(rule.declarationTrivia?.color?.trailing).toHaveLength(1);
+    expect(rule.declarationTrivia?.color?.trailing[0].kind).toBe("block-comment");
+    expect(rule.declarationTrivia?.color?.trailing[0].text).toBe("/* primary */");
+  });
+
+  it("attaches a same-line trailing line comment to a declaration", () => {
+    const result = StyleParser.parse(`service { color: red; // primary\n}\n`);
+    const rule = result.value.rules[0];
+    expect(rule.declarationTrivia?.color?.trailing).toHaveLength(1);
+    expect(rule.declarationTrivia?.color?.trailing[0].kind).toBe("line-comment");
+    expect(rule.declarationTrivia?.color?.trailing[0].text).toBe("// primary");
+  });
+
+  it("attaches a leading comment between declarations to the next declaration", () => {
+    const result = StyleParser.parse(
+      `service {\n  color: red;\n  // group: visual\n  background-color: blue;\n}\n`,
+    );
+    const rule = result.value.rules[0];
+    expect(rule.declarationTrivia?.color?.trailing).toEqual([]);
+    expect(rule.declarationTrivia?.["background-color"]?.leading).toHaveLength(1);
+    expect(rule.declarationTrivia?.["background-color"]?.leading[0].text).toBe("// group: visual");
+  });
+
+  it("preserves a blank line between rules as Trivia on the next rule", () => {
+    const result = StyleParser.parse(`service { color: red; }\n\nedge { color: blue; }\n`);
+    const second = result.value.rules[1];
+    const blankLineTrivia = (second.leadingTrivia ?? []).filter((t) => t.kind === "blank-line");
+    expect(blankLineTrivia.length).toBeGreaterThan(0);
+  });
+
+  it("collapses multiple consecutive blank lines into a single blank-line trivia", () => {
+    const result = StyleParser.parse(`service { color: red; }\n\n\n\nedge { color: blue; }\n`);
+    const second = result.value.rules[1];
+    const blankLineTrivia = (second.leadingTrivia ?? []).filter((t) => t.kind === "blank-line");
+    expect(blankLineTrivia).toHaveLength(1);
+  });
+
+  it("captures trivia between the last `;` and `}` as the last declaration's trailing", () => {
+    const result = StyleParser.parse(`service {\n  color: red;\n  // tail note\n}\n`);
+    const rule = result.value.rules[0];
+    const trailing = rule.declarationTrivia?.color?.trailing ?? [];
+    expect(trailing.some((t) => t.text === "// tail note")).toBe(true);
+  });
+
+  it("preserves trailing trivia after the file's last rule on the sheet", () => {
+    const result = StyleParser.parse(`service { color: red; }\n/* footer */\n`);
+    expect(result.value.trailingTrivia).toBeDefined();
+    expect(result.value.trailingTrivia!.some((t) => t.text === "/* footer */")).toBe(true);
+  });
+
+  it("does not duplicate trivia across grouped selectors", () => {
+    // `a, b { ... }` expands into two rules, but the leading comment must
+    // attach to only the first.
+    const result = StyleParser.parse(`/* shared */\nservice, edge { color: red; }\n`);
+    expect(result.value.rules[0].leadingTrivia).toHaveLength(1);
+    expect(result.value.rules[1].leadingTrivia).toEqual([]);
+  });
+});
