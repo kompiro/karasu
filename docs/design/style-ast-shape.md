@@ -286,15 +286,31 @@ interface StyleSelector {
 
 これらは具体機能が立ち上がるときに再検討する。
 
+## 確定した方針
+
+レビューで以下を確定した:
+
+- **`loc` は最初から required**: `StyleRule.loc: SourceRange` などを
+  optional にしない。parser で必ずセットする責任を型で強制する。代償
+  として既存の test fixture（`makeRule(...)` ヘルパ等）と builtin-style
+  の生成パスに `loc` を埋める修正が一斉に必要になる。LSP 等の consumer
+  側で「loc が undefined かもしれない」分岐を書かなくて済む価値の方が
+  大きいと判断
+- **`sheetId` はファイルパス文字列**: `sheetId: string` を main で
+  処理されているパス（例: `"/project/site.krs.style"`）で持つ。builtin
+  は `"<builtin>"` のような sentinel。`StyleSheetIndex` 型を導入する
+  symbolic ID 案より consumer のコストが小さい
+- **`expected-semicolon-between-properties` は error severity**: silent に
+  property が消えるのは明らかな誘いバグなので、error で表面化させる。
+  診断は表示のみで build を止めないため、既存の壊れた `.krs.style` も
+  recover で動作を継続する
+- **#1168 PR の scope は audit 結果を含めて広く取る**: parser の他の silent
+  ケース（parseSelector / parseDeclaration の recovery が緩い箇所）も
+  同じ PR で audit して必要な診断を追加する。レビュー負荷は上がるが、
+  「parser 全体の診断方針」を一度の PR で足並み揃えて整理した方が
+  後の認知コストが低い
+
 ## 未解決の問い
 
-- **`loc?` を additive にする vs 必須にする**: 必須にすれば「位置を渡し
-  忘れる」バグを型で防げるが、移行コストが上がる。MVP は optional で良いか
-- **`sheetId` の表現**: パス文字列で良いか、symbolic な ID を別途振るか。
-  resolver の重複排除との関係も整理が必要
-- **`expected-semicolon-between-properties` の severity**: error にすると
-  既存の壊れた `.krs.style` が build を止めうる。warning から始めるか、
-  最初から error か
-- **「audit してついでに直す診断」を本 PR に詰めすぎないライン**: フェーズ 1
-  PR が肥大化しないよう、scope を `,/;` のみに絞り、他は別 issue に
-  繰り出すべきか
+なし（フェーズ 1 のスコープは確定。フェーズ 2/3 は意図的に方向性のみで
+止め、機能要請が立ち上がった時に本 doc に戻ってきて詳細化する）
