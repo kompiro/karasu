@@ -232,17 +232,24 @@ LSP の `textDocument/formatting` ハンドラを実装。`Karasu: Tidy Style`
 - **format-on-save の VS Code 設定 UI**: ユーザーが手で settings に書く
   運用で開始
 
-## 未解決の問い
+## 確定した方針（追加レビューで確定）
 
-- **マージ後の trivia 集約戦略の詳細**: 同一 selector の 2 つ以上の rule を
-  マージするとき、各 rule が leading コメントを持っていたらどう統合するか
-  （並べる順、blank-line で区切るかなど）。idempotent を保つための具体
-  ルールを実装で詰める
-- **空行コメントの扱い**: `/* */ \n\n service { ... }` のようにコメントの後に
-  blank line を挟むケース。blank line を Trivia として保持するか、ただの
-  whitespace として捨てるか
-- **行末コメントのインライン化**: 並べ替え後にも `color: red; /* primary */`
-  のように同一行に保てるが、行が長くなりすぎたら次行に折るか。MVP では
-  「常に同一行を保つ」で簡素化
-- **VS Code formatter プロバイダの登録範囲**: `.krs.style` のみか `.krs` も
-  対象に含めるか（後者は `.krs` Tidy が立ち上がるまで無効）
+1. **マージ後の leading コメントは出現順にルール先頭へ連結**:
+   - 同一 selector の rule が複数あった場合、各 rule の `leadingTrivia` を
+     **元の出現順** で結合してマージ後 rule の `leadingTrivia` にする
+   - 著者のコメントは 1 つも捨てない
+   - blank-line trivia は通常通りそのまま保持
+2. **コメント直後の blank line は Trivia として保持**:
+   - `/* group: visuals */\n\n service { ... }` のような「表題 + 空行」を
+     著者の意図として残す
+   - 通常の rule 間 blank line（コメントなし連続）は前述の通り 1 行に正規化
+   - **例外**: コメント trivia の直後に来る blank line は別扱いで保持
+3. **行末コメントは常に同一行を保つ（折り返さない）**:
+   - 長さに関わらず `color: red; /* primary */` のスタイルを維持
+   - idempotent の証明が軽い（行幅判定を入れない）
+   - 将来 `--print-width` のような設定が要れば別 issue で
+4. **VS Code formatter プロバイダは `krs-style` 言語のみに登録**:
+   - `.krs.style` のみ format 対象。`.krs` は `.krs` Tidy が立ち上がる
+     まで対象外
+   - `editor.formatOnSave` でユーザーが意図せず `.krs` を破壊するリスクを
+     避ける
