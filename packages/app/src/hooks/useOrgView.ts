@@ -77,12 +77,18 @@ export function useOrgView(
 
   const emptyStateLabels = useEmptyStateLabels();
 
+  // Structural key for `viewPath` so a fresh `[]` from `SET_ACTIVE_VIEW` does
+  // not cancel the in-flight debounce when the previous value was also empty.
+  // Mirrors the same fix in `useSystemView`. See #1171.
+  const viewPathKey = viewPath.join("/");
+
+  /* eslint-disable react-hooks/exhaustive-deps */
   useEffect(() => {
     if (!entryPath || !fs) return;
 
     if (timerRef.current) clearTimeout(timerRef.current);
 
-    const currentKey = `${entryPath}:org:${viewPath.join("/")}:cmp=${compareEntryPath ?? ""}`;
+    const currentKey = `${entryPath}:org:${viewPathKey}:cmp=${compareEntryPath ?? ""}`;
 
     timerRef.current = setTimeout(() => {
       const baseTask = compileProject(entryPath, fs, {
@@ -159,14 +165,14 @@ export function useOrgView(
   }, [
     entryPath,
     fs,
-    viewPath,
+    viewPathKey,
     displayMode,
     compareEntryPath,
     compareFs,
     emptyStateLabels,
-    // eslint-disable-next-line react-hooks/exhaustive-deps
     recompileCounter.current,
   ]);
+  /* eslint-enable react-hooks/exhaustive-deps */
 
   const orgTreeSvg =
     state.organizations.length > 0

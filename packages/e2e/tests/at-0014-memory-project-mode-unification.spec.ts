@@ -165,15 +165,6 @@ for (const mode of MODES) {
     }) => {
       await bootApp(page, opfs, mode, KRS_WITH_ALL_VIEWS);
 
-      // Wait for the initial System view to finish its first debounced compile
-      // (useSystemView in packages/app/src/hooks/useSystemView.ts uses a 300ms
-      // debounce on dep changes). Without this wait, the immediate Deploy-tab
-      // click that follows can cancel the in-flight initial compile via the
-      // viewPath-reset path, leaving systemView.svg = "" when the user later
-      // cross-navigates back to System — at which point the highlight effect
-      // queries an empty DOM and never re-applies. Tracked in #1171.
-      await expect(page.locator(".preview-column svg").first()).toContainText("WebService");
-
       // Open the Deploy view and click the container whose realizes target is `Web`.
       await page.getByRole("tab", { name: /Deploy$/ }).click();
       await expect(page.getByRole("tab", { name: /Deploy$/ })).toHaveAttribute(
