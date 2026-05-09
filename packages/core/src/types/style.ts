@@ -113,12 +113,41 @@ export interface ResolvedNodeStyle {
  */
 export type EdgeDirection = "auto" | "up" | "down" | "left" | "right";
 
+/**
+ * Position of an edge's label along the edge's path.
+ *
+ * Stored as a normalized fraction in `[0, 1]` after resolution: `0`
+ * places the label at the source end, `1` at the target end, `0.5` at
+ * the midpoint. The keyword forms `start | middle | end` are accepted in
+ * `.krs.style` and translated to `0`, `0.5`, `1` respectively. Values
+ * outside `[0, 1]` are clamped.
+ *
+ * Default: `0.5` (matches the historical midpoint behaviour).
+ */
+export type LabelPosition = number;
+
 export interface ResolvedEdgeStyle {
   color: string;
   strokeWidth: number;
   fontSize: number;
   strokeStyle: "solid" | "dashed" | "dotted";
   direction: EdgeDirection;
+  /**
+   * Where along the edge the label anchor sits, normalised to `[0, 1]`.
+   * `0` = source end, `1` = target end. See `LabelPosition`.
+   */
+  labelPosition: LabelPosition;
+  /**
+   * Perpendicular nudge of the label relative to the edge, in pixels.
+   * Positive values shift to the right of the edge's direction of travel
+   * (visual right when the edge flows downward); negative values shift
+   * left. Used to disambiguate stacked labels on parallel edges.
+   *
+   * Independent of the existing `-6px` typographic lift the renderer
+   * applies above the anchor — that stays in place to keep labels off
+   * the line.
+   */
+  labelOffset: number;
 }
 
 /**

@@ -36,9 +36,17 @@ const DEFAULT_EDGE_STYLE: ResolvedEdgeStyle = {
   fontSize: 11,
   strokeStyle: "solid",
   direction: "auto",
+  labelPosition: 0.5,
+  labelOffset: 0,
 };
 
 const EDGE_DIRECTION_VALUES = new Set<string>(["auto", "up", "down", "left", "right"]);
+
+const LABEL_POSITION_KEYWORDS: Record<string, number> = {
+  start: 0,
+  middle: 0.5,
+  end: 1,
+};
 
 const SHAPE_KEYWORDS = new Set<string>(["box", "user", "cylinder", "queue", "hexagon", "cloud"]);
 
@@ -465,6 +473,25 @@ function toResolvedEdgeStyle(props: Record<string, string>): ResolvedEdgeStyle {
     const value = props["direction"];
     if (EDGE_DIRECTION_VALUES.has(value)) {
       style.direction = value as ResolvedEdgeStyle["direction"];
+    }
+  }
+  if (props["label-position"]) {
+    const raw = props["label-position"];
+    if (raw in LABEL_POSITION_KEYWORDS) {
+      style.labelPosition = LABEL_POSITION_KEYWORDS[raw];
+    } else {
+      const numeric = parseFloat(raw);
+      if (Number.isFinite(numeric)) {
+        style.labelPosition = Math.min(1, Math.max(0, numeric));
+      }
+    }
+  }
+  if (props["label-offset"]) {
+    // `label-offset: 8` and `label-offset: 8px` both mean 8 pixels of
+    // perpendicular nudge. parseFloat handles the unit suffix.
+    const numeric = parseFloat(props["label-offset"]);
+    if (Number.isFinite(numeric)) {
+      style.labelOffset = numeric;
     }
   }
 

@@ -86,7 +86,7 @@ export function renderEdge(
   }
 
   if (edge.label) {
-    const { x: midX, y: midY } = labelAnchor(points);
+    const { x: midX, y: midY } = labelAnchor(points, style.labelPosition, style.labelOffset);
     const labelText = el(
       "text",
       {
@@ -140,9 +140,30 @@ export function renderEdge(
   );
 }
 
-// For polylines, anchor the label on the longest segment so it lands in open
-// space rather than on a bend. For straight lines, use the geometric midpoint.
-function labelAnchor(points: Point[]): Point {
+/**
+ * Anchor point for the edge label.
+ *
+ * When `position === 0.5` and `offset === 0`, the historical "longest
+ * segment midpoint" heuristic fires — keeping unstyled diagrams visually
+ * stable. Once the author sets `label-position` or `label-offset` on the
+ * edge, the renderer switches to fractional traversal (anchor at
+ * `position * totalLength` along the polyline) and applies a
+ * perpendicular nudge of `offset` pixels.
+ *
+ * Sign convention for offset: rotate the segment direction `(dx, dy)`
+ * 90° counter-clockwise. In SVG coordinates that means a positive
+ * offset shifts the label *below* an edge flowing rightward, and to the
+ * *left* of an edge flowing downward. Authors can flip the sign if the
+ * resulting side is the wrong one for their diagram.
+ */
+function labelAnchor(points: Point[], position: number, offset: number): Point {
+  if (position === 0.5 && offset === 0) {
+    return defaultLabelAnchor(points);
+  }
+  return fractionalLabelAnchor(points, position, offset);
+}
+
+function defaultLabelAnchor(points: Point[]): Point {
   if (points.length === 2) {
     return {
       x: (points[0].x + points[1].x) / 2,
@@ -164,6 +185,49 @@ function labelAnchor(points: Point[]): Point {
     x: (points[bestIdx].x + points[bestIdx + 1].x) / 2,
     y: (points[bestIdx].y + points[bestIdx + 1].y) / 2,
   };
+}
+
+function fractionalLabelAnchor(points: Point[], position: number, offset: number): Point {
+  const segLengths: number[] = [];
+  let total = 0;
+  for (let i = 0; i < points.length - 1; i++) {
+    const dx = points[i + 1].x - points[i].x;
+    const dy = points[i + 1].y - points[i].y;
+    const len = Math.hypot(dx, dy);
+    segLengths.push(len);
+    total += len;
+  }
+  if (total === 0) return points[0];
+
+  const clamped = Math.min(1, Math.max(0, position));
+  const target = clamped * total;
+  let acc = 0;
+  for (let i = 0; i < segLengths.length; i++) {
+    const segLen = segLengths[i];
+    const reachable = acc + segLen;
+    const isLast = i === segLengths.length - 1;
+    if (reachable >= target || isLast) {
+      const localT = segLen === 0 ? 0 : (target - acc) / segLen;
+      const dx = points[i + 1].x - points[i].x;
+      const dy = points[i + 1].y - points[i].y;
+      const baseX = points[i].x + dx * localT;
+      const baseY = points[i].y + dy * localT;
+      if (offset === 0) {
+        return { x: baseX, y: baseY };
+      }
+      // Rotate (dx, dy) 90° CCW to get the perpendicular direction.
+      const norm = segLen || 1;
+      const perpX = -dy / norm;
+      const perpY = dx / norm;
+      return {
+        x: baseX + perpX * offset,
+        y: baseY + perpY * offset,
+      };
+    }
+    acc += segLen;
+  }
+  // Unreachable in practice — the loop above covers `isLast`.
+  return points[points.length - 1];
 }
 
 export function renderArrowMarker(id: string, color: string): string {

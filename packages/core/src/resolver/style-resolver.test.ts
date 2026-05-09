@@ -594,6 +594,131 @@ describe("resolveStyles", () => {
     });
   });
 
+  describe("label-position / label-offset properties", () => {
+    function singleEdge() {
+      return [
+        {
+          from: "A",
+          to: "B",
+          kind: "sync" as const,
+          tags: [],
+          loc: dummyLoc,
+          canonicalId: "A->B",
+        },
+      ];
+    }
+
+    it("defaults label-position to 0.5 (midpoint) and label-offset to 0", () => {
+      const result = resolveStyles([], [], undefined, undefined, undefined, singleEdge());
+      const style = result.edges.get("A->B")!;
+      expect(style.labelPosition).toBe(0.5);
+      expect(style.labelOffset).toBe(0);
+    });
+
+    it("translates the `start` keyword to 0", () => {
+      const sheet: StyleSheet = {
+        rules: [
+          makeRule(
+            { nodeType: "edge", tags: [], annotations: [] },
+            { "label-position": "start" },
+            1,
+            0,
+          ),
+        ],
+      };
+      const result = resolveStyles([], [sheet], undefined, undefined, undefined, singleEdge());
+      expect(result.edges.get("A->B")!.labelPosition).toBe(0);
+    });
+
+    it("translates the `end` keyword to 1", () => {
+      const sheet: StyleSheet = {
+        rules: [
+          makeRule(
+            { nodeType: "edge", tags: [], annotations: [] },
+            { "label-position": "end" },
+            1,
+            0,
+          ),
+        ],
+      };
+      const result = resolveStyles([], [sheet], undefined, undefined, undefined, singleEdge());
+      expect(result.edges.get("A->B")!.labelPosition).toBe(1);
+    });
+
+    it("accepts a fractional value", () => {
+      const sheet: StyleSheet = {
+        rules: [
+          makeRule(
+            { nodeType: "edge", tags: [], annotations: [] },
+            { "label-position": "0.25" },
+            1,
+            0,
+          ),
+        ],
+      };
+      const result = resolveStyles([], [sheet], undefined, undefined, undefined, singleEdge());
+      expect(result.edges.get("A->B")!.labelPosition).toBe(0.25);
+    });
+
+    it("clamps fractional values outside [0, 1]", () => {
+      const sheet: StyleSheet = {
+        rules: [
+          makeRule(
+            { nodeType: "edge", tags: [], annotations: [] },
+            { "label-position": "1.5" },
+            1,
+            0,
+          ),
+        ],
+      };
+      const result = resolveStyles([], [sheet], undefined, undefined, undefined, singleEdge());
+      expect(result.edges.get("A->B")!.labelPosition).toBe(1);
+    });
+
+    it("falls back to the default for unrecognised keywords / non-numeric values", () => {
+      const sheet: StyleSheet = {
+        rules: [
+          makeRule(
+            { nodeType: "edge", tags: [], annotations: [] },
+            { "label-position": "near-the-arrow" },
+            1,
+            0,
+          ),
+        ],
+      };
+      const result = resolveStyles([], [sheet], undefined, undefined, undefined, singleEdge());
+      expect(result.edges.get("A->B")!.labelPosition).toBe(0.5);
+    });
+
+    it("parses a numeric label-offset, with or without the px suffix", () => {
+      const sheet: StyleSheet = {
+        rules: [
+          makeRule(
+            { nodeType: "edge", tags: [], annotations: [] },
+            { "label-offset": "8px" },
+            1,
+            0,
+          ),
+        ],
+      };
+      const withPx = resolveStyles([], [sheet], undefined, undefined, undefined, singleEdge());
+      expect(withPx.edges.get("A->B")!.labelOffset).toBe(8);
+
+      const sheet2: StyleSheet = {
+        rules: [
+          makeRule(
+            { nodeType: "edge", tags: [], annotations: [] },
+            { "label-offset": "-12" },
+            1,
+            0,
+          ),
+        ],
+      };
+      const negative = resolveStyles([], [sheet2], undefined, undefined, undefined, singleEdge());
+      expect(negative.edges.get("A->B")!.labelOffset).toBe(-12);
+    });
+  });
+
   it("resolves [write] edge to stroke-width 2 via builtin stylesheet (read < write < cyclic)", () => {
     const writeSystem = makeNode({
       kind: "system",

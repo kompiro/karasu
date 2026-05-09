@@ -218,6 +218,8 @@ function makeStyles(
     fontSize: 11,
     strokeStyle: "solid",
     direction: "auto",
+    labelPosition: 0.5,
+    labelOffset: 0,
     ...edgeOverrides,
   };
   const nodes = new Map<string, ResolvedNodeStyle>();

@@ -96,6 +96,8 @@ color:            #94A3B8;
 stroke-width:     1.5px;
 font-size:        11px;
 direction:        auto;          /* up | down | left | right | auto（ヒント、後述） */
+label-position:   middle;        /* start | middle | end | <0.0..1.0> */
+label-offset:     0px;           /* edge に対して垂直なずれ（px） */
 
 /* karasu固有プロパティ（CSS非対応のため例外） */
 shape:            box;           /* box | user | cylinder | queue | hexagon | cloud | url("...") */
@@ -226,6 +228,47 @@ edge#criticalWrite { direction: down; }
 詳細は [`docs/design/edge-direction-style.md`](../design/edge-direction-style.md)。
 
 不正値は黙って破棄され、`direction` は `auto` にフォールバックする。
+
+### `label-position` — `start | middle | end | <0.0..1.0>`
+
+エッジに沿って label アンカーがどこに置かれるかを指定する。デフォルトは
+`middle`（= `0.5`）。
+
+```css
+edge[delivers] { label-position: start; }   /* source 端寄り */
+edge[implicit] { label-position: end; }     /* target 端寄り */
+edge#criticalWrite { label-position: 0.25; }
+```
+
+値がデフォルト（`0.5`）かつ `label-offset` が `0` のときは「最長セグメント
+の中点」ヒューリスティクスを保持し、既存図の出力は byte-stable のまま。
+著者がいずれかを設定した時点で、polyline 全長を辿って `position ×
+totalLength` の点をアンカーにする経路に切り替わる。
+
+不正値（未知のキーワード、数値でない文字列）は `middle` にフォールバック。
+`[0, 1]` 範囲外の小数値はクランプ。
+
+### `label-offset` — `<number>px`
+
+エッジに対して垂直方向に label をずらす値（pixel）。`label-position` だけ
+では衝突が解消しない場合の微調整に使う。
+
+```css
+edge#parallelA { label-offset: 8px; }
+edge#parallelB { label-offset: -8px; }
+```
+
+符号の規約: 正の offset はセグメント方向 `(dx, dy)` を 90° 反時計回りに
+回転した方向。SVG 座標では、右に流れるエッジでは label が **下方向** に、
+下に流れるエッジでは **左方向** にずれる。意図と逆になる場合は符号を
+反転する。
+
+renderer が anchor の上 `-6px` に label を置く既存のオフセットとは独立。
+typographic な lift は変更されない。
+
+`label-offset: <dx>px <dy>px` のような 2 軸版はサポートしない。
+1 軸の垂直ずらしで「label 同士が重なる」用途に十分対応でき、spec を
+狭く保つ判断。
 
 ---
 

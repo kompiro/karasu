@@ -106,6 +106,8 @@ stroke-width:     1.5px;
 font-size:        11px;
 border-style:     solid;         /* solid | dashed | dotted */
 direction:        auto;          /* up | down | left | right | auto (hint, see below) */
+label-position:   middle;        /* start | middle | end | <0.0..1.0> */
+label-offset:     0px;           /* perpendicular nudge of the label, in pixels */
 
 /* karasu-specific properties (not standard CSS) */
 shape:            box;           /* box | user | cylinder | queue | hexagon | cloud | url("...") */
@@ -243,6 +245,49 @@ See [`docs/design/edge-direction-style.md`](../design/edge-direction-style.md)
 for the rationale.
 
 Invalid values are silently dropped and `direction` falls back to `auto`.
+
+### `label-position` — `start | middle | end | <0.0..1.0>`
+
+Where along the edge the label anchor sits. Default `middle` (= `0.5`).
+
+```css
+edge[delivers] { label-position: start; }   /* near the source end */
+edge[implicit] { label-position: end; }     /* near the target end */
+edge#criticalWrite { label-position: 0.25; }
+```
+
+The renderer keeps the historical "longest-segment midpoint" heuristic
+when the value is the default (`0.5`) and `label-offset` is `0`, so
+existing diagrams stay byte-stable. As soon as the author sets either
+property, the anchor is computed by walking the edge polyline and
+landing at `position × totalLength`.
+
+Invalid values (unknown keywords, non-numeric strings) silently fall
+back to `middle`. Fractional values outside `[0, 1]` are clamped.
+
+### `label-offset` — `<number>px`
+
+Perpendicular nudge of the label relative to the edge, measured in
+pixels. Useful when two labels still stack after `label-position` alone.
+
+```css
+edge#parallelA { label-offset: 8px; }
+edge#parallelB { label-offset: -8px; }
+```
+
+Sign convention: positive offset rotates the segment direction `(dx, dy)`
+90° counter-clockwise. In SVG coordinates that means a positive offset
+shifts the label *below* an edge flowing rightward and to the *left* of
+an edge flowing downward. Flip the sign if the resulting side is the
+wrong one for the diagram.
+
+The offset is independent of the existing `-6px` typographic lift the
+renderer applies above the anchor — the lift stays in place to keep
+labels off the line.
+
+Two-axis offset (`label-offset: <dx>px <dy>px`) is intentionally not
+supported. Single-axis perpendicular nudge covers the "labels still
+overlap" use case while keeping the spec narrow.
 
 ---
 
