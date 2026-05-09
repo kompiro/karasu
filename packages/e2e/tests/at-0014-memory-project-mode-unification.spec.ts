@@ -159,10 +159,7 @@ for (const mode of MODES) {
       await expect(previewSvg).toContainText("Engineering");
     });
 
-    // Tracked in #1171 — flake surfaced by #1169 (retries 2 → 1 in #1008
-    // Phase 1). The highlight assertion failed both attempts under retries=1
-    // but passed under retries=2 (3 attempts). Re-enable once stabilized.
-    test.fixme("Clicking a deploy container switches to System with the realizes target highlighted (AC-2.1, AC-2.2, AC-2.3)", async ({
+    test("Clicking a deploy container switches to System with the realizes target highlighted (AC-2.1, AC-2.2, AC-2.3)", async ({
       page,
       opfs,
     }) => {

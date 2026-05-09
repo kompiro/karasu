@@ -135,12 +135,23 @@ export function useSystemView(
     setState((prev) => ({ ...prev }));
   }, []);
 
+  // Structural key for `viewPath` so that a fresh `[]` from `SET_ACTIVE_VIEW`
+  // does not cancel the in-flight debounce when the previous value was also
+  // empty. Without this, a user (or a fast e2e test) that switches view tabs
+  // while the initial compile is still pending will keep restarting the 300ms
+  // timer and never see a rendered SVG. See #1171.
+  const viewPathKey = viewPath.join("/");
+
+  // The exhaustive-deps rule asks for `viewPath` in the dep array because we
+  // read it inside, but the whole point of `viewPathKey` is to avoid keying
+  // on the array reference. Suppressed for the entire effect.
+  /* eslint-disable react-hooks/exhaustive-deps */
   useEffect(() => {
     if (!entryPath || !fs) return;
 
     if (timerRef.current) clearTimeout(timerRef.current);
 
-    const currentKey = `${entryPath}:system:${viewPath.join("/")}:cmp=${compareEntryPath ?? ""}`;
+    const currentKey = `${entryPath}:system:${viewPathKey}:cmp=${compareEntryPath ?? ""}`;
 
     timerRef.current = setTimeout(async () => {
       try {
@@ -273,14 +284,14 @@ export function useSystemView(
   }, [
     entryPath,
     fs,
-    viewPath,
+    viewPathKey,
     displayMode,
     compareEntryPath,
     compareFs,
     emptyStateLabels,
-    // eslint-disable-next-line react-hooks/exhaustive-deps
     recompileCounter.current,
   ]);
+  /* eslint-enable react-hooks/exhaustive-deps */
 
   return { ...state, recompile };
 }
