@@ -159,14 +159,20 @@ for (const mode of MODES) {
       await expect(previewSvg).toContainText("Engineering");
     });
 
-    // Tracked in #1171 — flake surfaced by #1169 (retries 2 → 1 in #1008
-    // Phase 1). The highlight assertion failed both attempts under retries=1
-    // but passed under retries=2 (3 attempts). Re-enable once stabilized.
-    test.fixme("Clicking a deploy container switches to System with the realizes target highlighted (AC-2.1, AC-2.2, AC-2.3)", async ({
+    test("Clicking a deploy container switches to System with the realizes target highlighted (AC-2.1, AC-2.2, AC-2.3)", async ({
       page,
       opfs,
     }) => {
       await bootApp(page, opfs, mode, KRS_WITH_ALL_VIEWS);
+
+      // Wait for the initial System view to finish its first debounced compile
+      // (useSystemView in packages/app/src/hooks/useSystemView.ts uses a 300ms
+      // debounce on dep changes). Without this wait, the immediate Deploy-tab
+      // click that follows can cancel the in-flight initial compile via the
+      // viewPath-reset path, leaving systemView.svg = "" when the user later
+      // cross-navigates back to System — at which point the highlight effect
+      // queries an empty DOM and never re-applies. Tracked in #1171.
+      await expect(page.locator(".preview-column svg").first()).toContainText("WebService");
 
       // Open the Deploy view and click the container whose realizes target is `Web`.
       await page.getByRole("tab", { name: /Deploy$/ }).click();
