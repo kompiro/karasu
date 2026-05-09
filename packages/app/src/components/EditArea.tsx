@@ -19,6 +19,7 @@ interface EditAreaProps {
   resolvedSystems: SystemNode[];
   onNavigateViewPath: (path: string[]) => void;
   onFormat?: () => void;
+  onTidyStyle?: () => void;
   hasParseErrors?: boolean;
 }
 
@@ -49,6 +50,7 @@ export function EditArea({
   resolvedSystems,
   onNavigateViewPath,
   onFormat,
+  onTidyStyle,
   hasParseErrors,
 }: EditAreaProps) {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
@@ -168,6 +170,7 @@ export function EditArea({
         resolvedSystems={resolvedSystems}
         onNavigateViewPath={onNavigateViewPath}
         onFormat={onFormat}
+        onTidyStyle={onTidyStyle}
         hasParseErrors={hasParseErrors}
       />
     </div>

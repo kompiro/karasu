@@ -20,6 +20,11 @@ interface EditPaneProps {
   onNavigateViewPath: (path: string[]) => void;
   /** Called when the user clicks Format or presses Shift+Alt+F */
   onFormat?: () => void;
+  /**
+   * Called when the user clicks Tidy on a `.krs.style` file. Only shown
+   * by `EditPaneToolbar` when the active file is a `.krs.style`.
+   */
+  onTidyStyle?: () => void;
   /** When true, the Format button is disabled (source has parse errors) */
   hasParseErrors?: boolean;
 }
@@ -35,6 +40,7 @@ export function EditPane({
   resolvedSystems,
   onNavigateViewPath,
   onFormat,
+  onTidyStyle,
   hasParseErrors,
 }: EditPaneProps) {
   const [activeTab, setActiveTab] = useState<EditTab>("editor");
@@ -51,7 +57,12 @@ export function EditPane({
   return (
     <div className="edit-pane">
       <EditTabBar activeTab={activeTab} onTabChange={setActiveTab} />
-      <EditPaneToolbar activeTab={activeTab} onFormat={onFormat} hasParseErrors={hasParseErrors} />
+      <EditPaneToolbar
+        activeTab={activeTab}
+        onFormat={onFormat}
+        onTidyStyle={onTidyStyle}
+        hasParseErrors={hasParseErrors}
+      />
       {activeTab === "editor" && (
         <EditorPane
           value={value}

@@ -53,4 +53,39 @@ describe("EditPaneToolbar", () => {
     fireEvent.click(getByRole("button", { name: /Format/ }));
     expect(onFormat).toHaveBeenCalledOnce();
   });
+
+  it("renders Tidy button on editor tab when onTidyStyle is provided", () => {
+    const { getByRole } = render(
+      <EditPaneToolbar activeTab="editor" onTidyStyle={vi.fn<() => void>()} />,
+    );
+    expect(getByRole("button", { name: /Tidy/ })).toBeTruthy();
+  });
+
+  it("does not render Tidy button when onTidyStyle is not provided", () => {
+    const { queryByRole } = render(
+      <EditPaneToolbar activeTab="editor" onFormat={vi.fn<() => void>()} />,
+    );
+    expect(queryByRole("button", { name: /Tidy/ })).toBeNull();
+  });
+
+  it("clicking Tidy button calls onTidyStyle", () => {
+    const onTidyStyle = vi.fn<() => void>();
+    const { getByRole } = render(
+      <EditPaneToolbar activeTab="editor" onTidyStyle={onTidyStyle} />,
+    );
+    fireEvent.click(getByRole("button", { name: /Tidy/ }));
+    expect(onTidyStyle).toHaveBeenCalledOnce();
+  });
+
+  it("renders both Format and Tidy when both callbacks are provided", () => {
+    const { getByRole } = render(
+      <EditPaneToolbar
+        activeTab="editor"
+        onFormat={vi.fn<() => void>()}
+        onTidyStyle={vi.fn<() => void>()}
+      />,
+    );
+    expect(getByRole("button", { name: /Format/ })).toBeTruthy();
+    expect(getByRole("button", { name: /Tidy/ })).toBeTruthy();
+  });
 });

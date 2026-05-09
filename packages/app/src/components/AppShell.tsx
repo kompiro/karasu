@@ -8,7 +8,13 @@ import {
   type RefObject,
 } from "react";
 import { useEditorWidth } from "../hooks/useEditorWidth.js";
-import { basename, format, FormatError, type EdgeDirection } from "@karasu-tools/core";
+import {
+  basename,
+  format,
+  FormatError,
+  tidyStyleSheet,
+  type EdgeDirection,
+} from "@karasu-tools/core";
 import { SnapshotManager } from "../fs/snapshot-manager.js";
 import { EditArea } from "./EditArea.js";
 import { PreviewColumn } from "./PreviewColumn.js";
@@ -198,6 +204,16 @@ export function AppShell({
     }
     if (formatted !== fileContent) {
       handleEditorChange(formatted);
+    }
+  }, [fileContent, handleEditorChange]);
+
+  const isStyleFile = currentFilePath?.endsWith(".krs.style") ?? false;
+
+  const handleTidyStyle = useCallback(() => {
+    if (!fileContent) return;
+    const result = tidyStyleSheet(fileContent);
+    if (result.changed) {
+      handleEditorChange(result.output);
     }
   }, [fileContent, handleEditorChange]);
 
@@ -400,6 +416,7 @@ export function AppShell({
           resolvedSystems={views.system.resolvedSystems}
           onNavigateViewPath={navigateViewPath}
           onFormat={handleFormat}
+          onTidyStyle={isStyleFile ? handleTidyStyle : undefined}
           hasParseErrors={hasParseErrors}
         />
       )}
