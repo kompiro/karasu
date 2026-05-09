@@ -34,10 +34,11 @@ renderer は `synthesizeUnassignedSystem()`（`packages/core/src/view/unassigned
 
 新機能の実装/修正時に、以下を確認する:
 
-- [ ] top-level の `service` / `database` / `queue` / `storage` / `domain` が含まれる `.krs` を fixture に含めて動作確認したか
+- [ ] top-level の `service` / `database` / `queue` / `storage` / `domain` が含まれる `.krs` で動作確認されているか
 - [ ] `KrsFile.systems` を走査するロジックで、orphan を扱う責務を `synthesizeUnassignedSystem()` に委ねるか自前で扱うかが明示的に決まっているか
-- [ ] 合成 system が UI に表示される場合、他のビューでの orphan の見せ方と整合しているか（ラベル `Unassigned` の有無、アイコン扱いなど）
-- [ ] 関連 AT / ユニットテストに「orphan のみの `.krs`」「orphan + system 混在の `.krs`」両方のケースがあるか
+- [ ] 合成 system を UI に表示するか / 表示しないかが決定されているか
+- [ ] 表示する場合、ラベル `Unassigned` の有無やアイコン扱いが他ビューと整合しているか
+- [ ] 関連 AT / ユニットテストに「orphan のみの `.krs`」と「orphan + system 混在の `.krs`」の両方が含まれているか
 
 ## 既知の対処パターン
 
