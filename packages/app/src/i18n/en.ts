@@ -232,6 +232,8 @@ export const en: Translations = {
     `Expected ${expected} but got ${got} ("${value}")`,
   "diagnostic.expectedStylePropertyName.message": ({ got }) =>
     `Expected property name but got ${got}`,
+  "diagnostic.expectedSemicolonBetweenProperties.message": ({ property }) =>
+    `Expected ";" after "${property}" but found ","; properties are separated by semicolons`,
   "diagnostic.circularImport.message": ({ filePath }) => `Circular import detected: ${filePath}`,
   "diagnostic.fileNotFound.message": ({ filePath }) => `File not found: ${filePath}`,
   "diagnostic.directoryNotFound.message": ({ dirPath }) => `Directory not found: ${dirPath}`,

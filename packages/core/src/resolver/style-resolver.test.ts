@@ -51,13 +51,30 @@ function makeFile(overrides: Partial<KrsFile>): KrsFile {
   };
 }
 
+const ZERO_RANGE = {
+  start: { line: 0, column: 0, offset: 0 },
+  end: { line: 0, column: 0, offset: 0 },
+};
+
 function makeRule(
-  selector: StyleRule["selector"],
+  selectorPartial: Omit<StyleRule["selector"], "loc"> & { loc?: StyleRule["selector"]["loc"] },
   properties: Record<string, string>,
   specificity: number,
   sourceIndex = 0,
 ): StyleRule {
-  return { selector, properties, specificity, sourceIndex };
+  const selector: StyleRule["selector"] = {
+    ...selectorPartial,
+    loc: selectorPartial.loc ?? ZERO_RANGE,
+  };
+  return {
+    selector,
+    properties,
+    specificity,
+    sourceIndex,
+    loc: ZERO_RANGE,
+    declarationLocs: {},
+    sheetId: "<test>",
+  };
 }
 
 describe("resolveStyles", () => {

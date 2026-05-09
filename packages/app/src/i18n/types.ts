@@ -267,6 +267,7 @@ export type Translations = {
     value: string;
   }) => string;
   "diagnostic.expectedStylePropertyName.message": (params: { got: string }) => string;
+  "diagnostic.expectedSemicolonBetweenProperties.message": (params: { property: string }) => string;
   "diagnostic.circularImport.message": (params: { filePath: string }) => string;
   "diagnostic.fileNotFound.message": (params: { filePath: string }) => string;
   "diagnostic.directoryNotFound.message": (params: { dirPath: string }) => string;

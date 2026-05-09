@@ -109,6 +109,8 @@ export function useFormattedDiagnostic(): (d: Diagnostic) => string {
           return t("diagnostic.styleTokenTypeMismatch.message", d.params);
         case "expected-style-property-name":
           return t("diagnostic.expectedStylePropertyName.message", d.params);
+        case "expected-semicolon-between-properties":
+          return t("diagnostic.expectedSemicolonBetweenProperties.message", d.params);
         case "circular-import":
           return t("diagnostic.circularImport.message", d.params);
         case "file-not-found":

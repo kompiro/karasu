@@ -81,6 +81,12 @@ where the identity of *that specific edge* is what matters.
 
 ## Property list
 
+> Properties are separated by **`;`**. A `,` between two declarations is
+> a parse error (`expected-semicolon-between-properties`); the parser
+> recovers by treating the comma as a semicolon and continues with the
+> next property. Commas inside a single value (e.g. `font-family: "X",
+> sans-serif`) remain valid.
+
 ```css
 /* Node properties */
 background-color: #1D4ED8;

@@ -1,21 +1,25 @@
-import { TokenType, type Token } from "../types/tokens.js";
+import { TokenType, type Token, type SourceLocation, type SourceRange } from "../types/tokens.js";
 import type { StyleSheet, StyleRule, StyleSelector } from "../types/style.js";
 import type { Diagnostic, ParseResult } from "../types/ast.js";
 import { StyleLexer } from "../lexer/style-lexer.js";
+
+const ANONYMOUS_SHEET_ID = "<anonymous>";
 
 export class StyleParser {
   private tokens: Token[];
   private pos = 0;
   private diagnostics: Diagnostic[] = [];
   private ruleIndex = 0;
+  private sheetId: string;
 
-  constructor(tokens: Token[]) {
+  constructor(tokens: Token[], sheetId: string = ANONYMOUS_SHEET_ID) {
     this.tokens = tokens;
+    this.sheetId = sheetId;
   }
 
-  static parse(source: string): ParseResult<StyleSheet> {
+  static parse(source: string, sheetId: string = ANONYMOUS_SHEET_ID): ParseResult<StyleSheet> {
     const tokens = new StyleLexer(source).tokenize();
-    const parser = new StyleParser(tokens);
+    const parser = new StyleParser(tokens, sheetId);
     return parser.parseStyleSheet();
   }
 
@@ -27,6 +31,18 @@ export class StyleParser {
         loc: { line: 0, column: 0, offset: 0 },
       }
     );
+  }
+
+  private peekAt(offset: number): Token {
+    const idx = this.pos + offset;
+    if (idx < 0 || idx >= this.tokens.length) {
+      return {
+        type: TokenType.EOF,
+        value: "",
+        loc: { line: 0, column: 0, offset: 0 },
+      };
+    }
+    return this.tokens[idx];
   }
 
   private advance(): Token {
@@ -56,6 +72,19 @@ export class StyleParser {
     return false;
   }
 
+  private rangeBetween(start: Token, end: Token): SourceRange {
+    return { start: { ...start.loc }, end: this.endOfToken(end) };
+  }
+
+  private endOfToken(token: Token): SourceLocation {
+    const len = token.value.length;
+    return {
+      line: token.loc.line,
+      column: token.loc.column + len,
+      offset: token.loc.offset + len,
+    };
+  }
+
   parseStyleSheet(): ParseResult<StyleSheet> {
     const rules: StyleRule[] = [];
 
@@ -64,24 +93,31 @@ export class StyleParser {
       rules.push(...parsedRules);
     }
 
-    return { value: { rules }, diagnostics: this.diagnostics };
+    return { value: { rules, sheetId: this.sheetId }, diagnostics: this.diagnostics };
   }
 
   private parseRuleSet(): StyleRule[] {
+    const startToken = this.peek();
     const selectors = this.parseSelectorList();
     this.expect(TokenType.LeftBrace);
 
     const properties: Record<string, string> = {};
+    const declarationLocs: Record<string, SourceRange> = {};
     while (this.peek().type !== TokenType.RightBrace && this.peek().type !== TokenType.EOF) {
-      this.parseDeclaration(properties);
+      this.parseDeclaration(properties, declarationLocs);
     }
+    const closeToken = this.peek();
     this.expect(TokenType.RightBrace);
 
+    const ruleLoc = this.rangeBetween(startToken, closeToken);
     return selectors.map((selector) => ({
       selector,
       properties: { ...properties },
       specificity: computeSpecificity(selector),
       sourceIndex: this.ruleIndex++,
+      loc: ruleLoc,
+      declarationLocs: { ...declarationLocs },
+      sheetId: this.sheetId,
     }));
   }
 
@@ -98,25 +134,28 @@ export class StyleParser {
   }
 
   private parseSelector(): StyleSelector {
+    const startToken = this.peek();
     const selector: StyleSelector = {
       tags: [],
       annotations: [],
+      loc: this.rangeBetween(startToken, startToken),
     };
 
     // #id selector
     if (this.peek().type === TokenType.Hash) {
       this.advance(); // #
-      selector.id = this.expect(TokenType.Identifier).value;
+      const idToken = this.expect(TokenType.Identifier);
+      selector.id = idToken.value;
+      selector.loc = this.rangeBetween(startToken, idToken);
       return selector;
     }
 
+    let lastToken = startToken;
+
     // Type selector (identifier like "service", "edge", "user")
-    if (
-      this.peek().type === TokenType.Identifier &&
-      this.peek().value !== "{" &&
-      !this.isPropertyLike()
-    ) {
-      selector.nodeType = this.advance().value;
+    if (this.peek().type === TokenType.Identifier) {
+      lastToken = this.advance();
+      selector.nodeType = lastToken.value;
     }
 
     // edge#<id> selector — only meaningful after `edge`. Accepts either an
@@ -124,49 +163,42 @@ export class StyleParser {
     // (`edge#A->B` / `edge#A-->B`).
     if (selector.nodeType === "edge" && this.peek().type === TokenType.Hash) {
       this.advance(); // #
-      const first = this.expect(TokenType.Identifier).value;
+      const first = this.expect(TokenType.Identifier);
       const next = this.peek().type;
       if (next === TokenType.Arrow || next === TokenType.DashedArrow) {
         const arrow = this.advance().value;
-        const second = this.expect(TokenType.Identifier).value;
-        selector.edgeId = `${first}${arrow}${second}`;
+        const second = this.expect(TokenType.Identifier);
+        selector.edgeId = `${first.value}${arrow}${second.value}`;
+        lastToken = second;
       } else {
-        selector.edgeId = first;
+        selector.edgeId = first.value;
+        lastToken = first;
       }
     }
 
     // Tag selectors [tag]
     while (this.peek().type === TokenType.LeftBracket) {
       this.advance(); // [
-      const tag = this.expect(TokenType.Identifier).value;
-      this.expect(TokenType.RightBracket);
-      selector.tags.push(tag);
+      const tag = this.expect(TokenType.Identifier);
+      lastToken = this.expect(TokenType.RightBracket);
+      selector.tags.push(tag.value);
     }
 
     // Annotation selectors @annotation
     while (this.peek().type === TokenType.At) {
       this.advance(); // @
-      const annotation = this.expect(TokenType.Identifier).value;
-      selector.annotations.push(annotation);
+      lastToken = this.expect(TokenType.Identifier);
+      selector.annotations.push(lastToken.value);
     }
 
+    selector.loc = this.rangeBetween(startToken, lastToken);
     return selector;
   }
 
-  private isPropertyLike(): boolean {
-    // Look ahead: if we see identifier followed by colon, it's a property not a selector
-    // This helps differentiate bare selectors from declarations
-    let lookahead = 1;
-    while (
-      this.pos + lookahead < this.tokens.length &&
-      this.tokens[this.pos + lookahead].type === TokenType.Identifier
-    ) {
-      lookahead++;
-    }
-    return false; // Selectors are always followed by { or , or [ or @
-  }
-
-  private parseDeclaration(properties: Record<string, string>): void {
+  private parseDeclaration(
+    properties: Record<string, string>,
+    declarationLocs: Record<string, SourceRange>,
+  ): void {
     if (this.peek().type !== TokenType.Identifier) {
       this.diagnostics.push({
         severity: "error",
@@ -177,16 +209,19 @@ export class StyleParser {
       return;
     }
 
-    const property = this.advance().value;
+    const propertyToken = this.advance();
+    const property = propertyToken.value;
     this.expect(TokenType.Colon);
 
-    const value = this.parseValue();
+    const value = this.parseValue(property);
     properties[property] = value;
 
+    const semicolonToken = this.peek().type === TokenType.Semicolon ? this.peek() : null;
     this.match(TokenType.Semicolon);
+    declarationLocs[property] = this.rangeBetween(propertyToken, semicolonToken ?? this.peekAt(-1));
   }
 
-  private parseValue(): string {
+  private parseValue(propertyName: string): string {
     const parts: string[] = [];
 
     while (
@@ -216,6 +251,23 @@ export class StyleParser {
           parts.push(ident);
         }
       } else if (token.type === TokenType.Comma) {
+        // Recovery for the "comma instead of semicolon" mistake (#1168):
+        // if the comma is immediately followed by `<identifier> :`, the user
+        // most likely meant to terminate this declaration. Emit a diagnostic,
+        // consume the comma as if it were a semicolon, and let the outer
+        // declaration loop pick up the next property cleanly.
+        if (
+          this.peekAt(1).type === TokenType.Identifier &&
+          this.peekAt(2).type === TokenType.Colon
+        ) {
+          this.diagnostics.push({
+            severity: "error",
+            code: "expected-semicolon-between-properties",
+            params: { property: propertyName },
+          });
+          this.advance(); // consume the comma — treat as `;`
+          break;
+        }
         parts.push(this.advance().value);
       } else {
         parts.push(this.advance().value);
@@ -226,7 +278,7 @@ export class StyleParser {
   }
 }
 
-export function computeSpecificity(selector: StyleSelector): number {
+export function computeSpecificity(selector: Omit<StyleSelector, "loc">): number {
   let score = 0;
   if (selector.id) score += 100;
   if (selector.edgeId) score += 100;

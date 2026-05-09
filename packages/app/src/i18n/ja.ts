@@ -232,6 +232,8 @@ export const ja: Partial<Translations> = {
     `${expected} を期待しましたが ${got} ("${value}") が見つかりました`,
   "diagnostic.expectedStylePropertyName.message": ({ got }) =>
     `プロパティ名を期待しましたが ${got} が見つかりました`,
+  "diagnostic.expectedSemicolonBetweenProperties.message": ({ property }) =>
+    `"${property}" の後に ";" を期待しましたが "," が見つかりました。プロパティはセミコロンで区切ってください`,
   "diagnostic.circularImport.message": ({ filePath }) =>
     `循環インポートを検出しました: ${filePath}`,
   "diagnostic.fileNotFound.message": ({ filePath }) => `ファイルが見つかりません: ${filePath}`,

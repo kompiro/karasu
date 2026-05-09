@@ -1,3 +1,5 @@
+import type { SourceRange } from "./tokens.js";
+
 export interface StyleSelector {
   nodeType?: string;
   tags: string[];
@@ -10,6 +12,7 @@ export interface StyleSelector {
    * (`#A->B` / `#A-->B`). See `docs/design/edge-id-selector.md`.
    */
   edgeId?: string;
+  loc: SourceRange;
 }
 
 export interface StyleRule {
@@ -17,10 +20,27 @@ export interface StyleRule {
   properties: Record<string, string>;
   specificity: number;
   sourceIndex: number;
+  /** Range from `{` through `}`. */
+  loc: SourceRange;
+  /** Range covering each property declaration (name through trailing `;` if present). */
+  declarationLocs: Record<string, SourceRange>;
+  /**
+   * Identifier of the originating sheet — typically a `.krs.style` file path,
+   * or a sentinel like `"<builtin>"` for `BUILTIN_STYLE_SOURCE` and
+   * `"<anonymous>"` when callers parse without specifying a path.
+   */
+  sheetId: string;
 }
 
 export interface StyleSheet {
   rules: StyleRule[];
+  /**
+   * Identifier of this sheet, attached by the parser. Optional on the
+   * `StyleSheet` envelope (test fixtures often build rules directly), but
+   * required on each `StyleRule`. The resolver propagates the rule-level
+   * `sheetId` and ignores any envelope-level value.
+   */
+  sheetId?: string;
 }
 
 export type ShapeKind = "box" | "user" | "cylinder" | "queue" | "hexagon" | "cloud";

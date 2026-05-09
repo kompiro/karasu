@@ -247,7 +247,7 @@ let _cachedSheet: StyleSheet | null = null;
 
 export function getBuiltinStyleSheet(): StyleSheet {
   if (!_cachedSheet) {
-    const result = StyleParser.parse(BUILTIN_STYLE_SOURCE);
+    const result = StyleParser.parse(BUILTIN_STYLE_SOURCE, "<builtin>");
     /* c8 ignore next 4 */
     if (result.diagnostics.length > 0) {
       throw new Error(
