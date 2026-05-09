@@ -1,7 +1,7 @@
 # `.krs.style` AST の形と将来の拡張
 
 - **日付**: 2026-05-08
-- **ステータス**: 検討中
+- **ステータス**: フェーズ 1 = 決定済み（[ADR-20260509-02](../adr/20260509-02-style-ast-position-and-recovery.md) として昇格・実装済み）。フェーズ 2 / 3 は引き続き検討中
 - **関連**:
   - 引き金 Issue: [#1168](https://github.com/kompiro/karasu/issues/1168) — `,` と `;` の取り違えが silent に通る
   - 関連 ADR: [ADR-20260322-01](../adr/20260322-01-builtin-style-and-reference.md)（builtin + cascade）、
@@ -199,8 +199,10 @@ interface StyleSelector {
 
 ### 採否
 
-採用候補。実装コストは中（parser を loc 伝搬で書き直す程度）、後方互換性
-は高い、利用者が即座に得る価値（#1168 と LSP 改善）が大きい。
+**採用済み** — [ADR-20260509-02](../adr/20260509-02-style-ast-position-and-recovery.md)
+として昇格、PR [#1173](https://github.com/kompiro/karasu/pull/1173) で
+実装。`StyleSheet.sheetId` のみ envelope レベルで optional に残す譲歩あり
+（test fixture 数の都合）。それ以外は本 design doc の MVP どおり。
 
 ## フェーズ 2（方向性のみ）: trivia 保持
 
