@@ -1,4 +1,15 @@
-import type { SourceRange } from "./tokens.js";
+import type { SourceRange, Trivia } from "./tokens.js";
+
+/**
+ * Trivia attached to a single declaration. `leading` is everything that
+ * precedes the property name on a line of its own (or starts with a blank
+ * line); `trailing` is comments that share the same line as the closing
+ * `;` (or the property if `;` was omitted).
+ */
+export interface DeclarationTrivia {
+  leading: Trivia[];
+  trailing: Trivia[];
+}
 
 export interface StyleSelector {
   nodeType?: string;
@@ -30,6 +41,25 @@ export interface StyleRule {
    * `"<anonymous>"` when callers parse without specifying a path.
    */
   sheetId: string;
+  /**
+   * Comments / blank lines that immediately precede this rule on lines of
+   * their own. Optional so consumers that build rules in code (test
+   * fixtures, builtin sheets) can omit it; the parser always sets it.
+   */
+  leadingTrivia?: Trivia[];
+  /**
+   * Trivia on the same line as the closing `}` (typically a trailing
+   * inline comment). Multi-line trivia after the rule lives in the
+   * following construct's `leadingTrivia` instead.
+   */
+  trailingTrivia?: Trivia[];
+  /**
+   * Per-declaration leading / trailing trivia keyed by property name.
+   * Only present for declarations the parser observed; missing keys
+   * mean "no trivia attached". The Tidy formatter reads this to keep
+   * comments glued to their declarations across reordering.
+   */
+  declarationTrivia?: Record<string, DeclarationTrivia>;
 }
 
 export interface StyleSheet {
@@ -41,6 +71,12 @@ export interface StyleSheet {
    * `sheetId` and ignores any envelope-level value.
    */
   sheetId?: string;
+  /**
+   * Trivia after the last rule (and after EOF if the file ends with
+   * comments / blank lines). Used by the Tidy formatter to preserve
+   * trailing notes / footer comments.
+   */
+  trailingTrivia?: Trivia[];
 }
 
 export type ShapeKind = "box" | "user" | "cylinder" | "queue" | "hexagon" | "cloud";

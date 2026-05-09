@@ -1,5 +1,11 @@
-import { TokenType, type Token, type SourceLocation, type SourceRange } from "../types/tokens.js";
-import type { StyleSheet, StyleRule, StyleSelector } from "../types/style.js";
+import {
+  TokenType,
+  type Token,
+  type SourceLocation,
+  type SourceRange,
+  type Trivia,
+} from "../types/tokens.js";
+import type { StyleSheet, StyleRule, StyleSelector, DeclarationTrivia } from "../types/style.js";
 import type { Diagnostic, ParseResult } from "../types/ast.js";
 import { StyleLexer } from "../lexer/style-lexer.js";
 
@@ -93,24 +99,66 @@ export class StyleParser {
       rules.push(...parsedRules);
     }
 
-    return { value: { rules, sheetId: this.sheetId }, diagnostics: this.diagnostics };
+    // Anything still attached to the EOF token (or trailing trivia of the
+    // last rule's closing `}`) belongs at the sheet trailing trivia. The
+    // last rule's `trailingTrivia` already absorbed same-line items; the
+    // remainder is multi-line trivia that follows the file's last
+    // construct.
+    const trailingTrivia = takeLeadingTrivia(this.peek());
+
+    return {
+      value: { rules, sheetId: this.sheetId, trailingTrivia },
+      diagnostics: this.diagnostics,
+    };
   }
 
   private parseRuleSet(): StyleRule[] {
     const startToken = this.peek();
+    const leadingTrivia = takeLeadingTrivia(startToken);
     const selectors = this.parseSelectorList();
     this.expect(TokenType.LeftBrace);
 
     const properties: Record<string, string> = {};
     const declarationLocs: Record<string, SourceRange> = {};
+    const declarationTrivia: Record<string, DeclarationTrivia> = {};
+    let lastDeclarationName: string | null = null;
     while (this.peek().type !== TokenType.RightBrace && this.peek().type !== TokenType.EOF) {
-      this.parseDeclaration(properties, declarationLocs);
+      const beforePos = this.pos;
+      const declName = this.parseDeclaration(
+        properties,
+        declarationLocs,
+        declarationTrivia,
+        lastDeclarationName,
+      );
+      if (declName) {
+        lastDeclarationName = declName;
+      } else if (this.pos === beforePos) {
+        // Defensive: parseDeclaration always advances, but make sure we
+        // never spin if it does not.
+        this.advance();
+      }
     }
     const closeToken = this.peek();
+    // Trivia between the last `;` (or last decl tail) and `}`. Attach it to
+    // the last declaration's trailing so comments tucked at end of rule
+    // survive a Tidy round-trip.
+    const beforeBrace = takeLeadingTrivia(closeToken);
+    if (beforeBrace.length > 0 && lastDeclarationName) {
+      const decl = declarationTrivia[lastDeclarationName] ?? { leading: [], trailing: [] };
+      declarationTrivia[lastDeclarationName] = {
+        leading: decl.leading,
+        trailing: [...decl.trailing, ...beforeBrace],
+      };
+    }
     this.expect(TokenType.RightBrace);
 
+    // Trivia immediately following `}`: split into same-line trailing of
+    // this rule vs. multi-line leading of the next construct.
+    const afterBrace = splitSameLineTrivia(this.peek(), closeToken.loc.line);
+    const trailingTrivia = afterBrace.sameLine;
+
     const ruleLoc = this.rangeBetween(startToken, closeToken);
-    return selectors.map((selector) => ({
+    return selectors.map((selector, idx) => ({
       selector,
       properties: { ...properties },
       specificity: computeSpecificity(selector),
@@ -118,6 +166,12 @@ export class StyleParser {
       loc: ruleLoc,
       declarationLocs: { ...declarationLocs },
       sheetId: this.sheetId,
+      // Attach trivia only to the first emitted rule when a comma-list
+      // expanded into multiple rules; subsequent rules get empty trivia
+      // so the reformatter does not duplicate comments.
+      leadingTrivia: idx === 0 ? leadingTrivia : [],
+      trailingTrivia: idx === selectors.length - 1 ? trailingTrivia : [],
+      declarationTrivia: idx === 0 ? { ...declarationTrivia } : {},
     }));
   }
 
@@ -198,7 +252,9 @@ export class StyleParser {
   private parseDeclaration(
     properties: Record<string, string>,
     declarationLocs: Record<string, SourceRange>,
-  ): void {
+    declarationTrivia: Record<string, DeclarationTrivia>,
+    previousDeclarationName: string | null,
+  ): string | null {
     if (this.peek().type !== TokenType.Identifier) {
       this.diagnostics.push({
         severity: "error",
@@ -206,10 +262,12 @@ export class StyleParser {
         params: { got: String(this.peek().type) },
       });
       this.advance();
-      return;
+      return null;
     }
 
-    const propertyToken = this.advance();
+    const propertyToken = this.peek();
+    const leading = takeLeadingTrivia(propertyToken);
+    this.advance();
     const property = propertyToken.value;
     this.expect(TokenType.Colon);
 
@@ -219,6 +277,22 @@ export class StyleParser {
     const semicolonToken = this.peek().type === TokenType.Semicolon ? this.peek() : null;
     this.match(TokenType.Semicolon);
     declarationLocs[property] = this.rangeBetween(propertyToken, semicolonToken ?? this.peekAt(-1));
+
+    // Trivia leading the *next* token may include line-comments that share
+    // the same line as our `;` — those become this declaration's trailing.
+    const boundaryLine = (semicolonToken ?? this.peekAt(-1)).loc.line;
+    const split = splitSameLineTrivia(this.peek(), boundaryLine);
+
+    declarationTrivia[property] = {
+      leading,
+      trailing: split.sameLine,
+    };
+
+    // Defensive — keep any pre-existing entry for the previous declaration
+    // intact (they were already finalized when we parsed them).
+    void previousDeclarationName;
+
+    return property;
   }
 
   private parseValue(propertyName: string): string {
@@ -276,6 +350,40 @@ export class StyleParser {
 
     return parts.join(" ").trim();
   }
+}
+
+/**
+ * Consume the leading trivia attached to `token` and clear it on the token
+ * so the same trivia is not visible to a later splitter call.
+ */
+function takeLeadingTrivia(token: Token): Trivia[] {
+  const trivia = token.leadingTrivia ?? [];
+  token.leadingTrivia = [];
+  return trivia;
+}
+
+/**
+ * Split `nextToken.leadingTrivia` into trivia that occurs on `boundaryLine`
+ * (returned as `sameLine`) and the rest, which is left attached to the
+ * token as its remaining `leadingTrivia`. The same-line slice is the
+ * trailing trivia of whatever construct ended on `boundaryLine`.
+ */
+function splitSameLineTrivia(nextToken: Token, boundaryLine: number): { sameLine: Trivia[] } {
+  const trivia = nextToken.leadingTrivia ?? [];
+  if (trivia.length === 0) return { sameLine: [] };
+  const sameLine: Trivia[] = [];
+  const rest: Trivia[] = [];
+  let stillSameLine = true;
+  for (const t of trivia) {
+    if (stillSameLine && t.kind !== "blank-line" && t.loc.start.line === boundaryLine) {
+      sameLine.push(t);
+    } else {
+      stillSameLine = false;
+      rest.push(t);
+    }
+  }
+  nextToken.leadingTrivia = rest;
+  return { sameLine };
 }
 
 export function computeSpecificity(selector: Omit<StyleSelector, "loc">): number {

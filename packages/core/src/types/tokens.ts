@@ -109,8 +109,31 @@ export interface SourceRange {
   end: SourceLocation;
 }
 
+/**
+ * Comment / blank-line metadata preserved for round-trip formatting.
+ * Discarded by parsers that only care about logical structure.
+ */
+export interface Trivia {
+  kind: "block-comment" | "line-comment" | "blank-line";
+  /**
+   * Raw source text. For `block-comment` includes the `/` `*` `*` `/` markers; for
+   * `line-comment` includes the leading `//` but not the trailing newline.
+   * For `blank-line` the text is empty (consecutive blank lines collapse
+   * into a single Trivia entry).
+   */
+  text: string;
+  /** Source range of the trivia in the original input. */
+  loc: SourceRange;
+}
+
 export interface Token {
   type: TokenType;
   value: string;
   loc: SourceLocation;
+  /**
+   * Trivia (comments / blank lines) collected since the previous token.
+   * Always present after the lexer runs (default `[]`). Marked optional
+   * for backward compatibility with hand-built tokens in tests.
+   */
+  leadingTrivia?: Trivia[];
 }
