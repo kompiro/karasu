@@ -4,7 +4,11 @@ title: "コードを変換する機能では parse(format(x)) ≡ parse(x) の r
 status: active
 date: 2026-05-10
 applicable_to:
-  - "AST を入力に取り `.krs` テキストを生成する全機能（karasu fmt / translate / apply / refactor / ...）"
+  - "AST を入力に取り `.krs` テキストを生成する機能"
+  - "parser のレキサ仕様とトークン化ルールを共有する必要がある変換層"
+known_consumers:
+  - formatter
+  - translator
 discovered_from:
   - issue: "#1101"
   - issue: "#1058"

@@ -4,7 +4,9 @@ title: "観点を1行で表現"
 status: active
 date: YYYY-MM-DD
 applicable_to:
-  - "この観点が適用される範囲"
+  - "再利用可能な抽象パターン（1 行 1 パターン）"
+# known_consumers:           # optional — 既知の具体的 consumer。grep 可能な kebab-case
+#   - feature-name
 discovered_from:
   - issue: "#NNNN"
   # - root_cause_adr: "ADR-XXXXXXXX-XX"

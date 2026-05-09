@@ -4,7 +4,9 @@ title: "列挙型メンバー追加時に消費側の網羅性を型で強制す
 status: active
 date: 2026-05-10
 applicable_to:
-  - "Discriminated union や enum like なリテラル union を扱う全コード（activeView / diagramType / NodeKind / ToolType など）"
+  - "Discriminated union や enum-like なリテラル union を消費するコード"
+  - "if-else 連鎖や default 句で union 値を分岐する箇所"
+# known_consumers: 列挙の消費箇所はリポジトリ全体に広がるため省略。代表例は activeView / diagramType / NodeKind / ToolType など
 discovered_from:
   - issue: "#1094"
   - root_cause_file: "packages/app/src/hooks/useHistoryNavigation.ts"

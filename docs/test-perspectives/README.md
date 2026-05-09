@@ -26,7 +26,11 @@ title: "観点を1行で表現"
 status: active            # active | deprecated
 date: YYYY-MM-DD
 applicable_to:
-  - "この観点が適用される範囲（例: KrsFile.systems を消費するすべての機能）"
+  - "再利用可能な抽象パターン（例: KrsFile.systems を消費する機能）"
+  - "1 パターン 1 行に分解する（複数の抽象パターンに当てはまるなら複数行）"
+known_consumers:           # optional — この観点が適用されると判明している具体的な consumer
+  - renderer               # kebab-case の feature / module 名（grep 可能な形）
+  - matrix
 discovered_from:
   - issue: "#1234"
   - root_cause_adr: "ADR-XXXXXXXX-XX"        # optional
@@ -40,7 +44,11 @@ scope:
 ---
 ```
 
-`topic` の値は ADR と同じものを使う（`docs/adr/README.md` のセクション見出しを参照）。たとえば: `core-concepts` / `parser` / `resolver` / `renderer` / `edges` / `styling` / `navigation` / `app-ui` / `project` / `chat-ai` / `cli` / `vscode` / `testing` / `build` / `adr-tooling`。
+各フィールドの意図:
+
+- **`applicable_to`** — この観点が適用される **抽象パターン**。再利用可能な抽象度で書く。1 行 = 1 パターンに分解し、複数パターンに当てはまる観点なら複数行で並べる。consumer の具体名は書かない（そちらは `known_consumers`）
+- **`known_consumers`** — この観点が適用されると判明している **具体的な consumer**（feature / module / package など）。kebab-case で、grep で検索しやすい形にする。union のように consumer 空間が広すぎて列挙が無意味な場合は省略する（フィールドごとオミット）。新たに該当 consumer が見つかったら追記する
+- **`topic`** — ADR と同じ controlled vocabulary（`docs/adr/README.md` のセクション見出しを参照）。たとえば: `core-concepts` / `parser` / `resolver` / `renderer` / `edges` / `styling` / `navigation` / `app-ui` / `project` / `chat-ai` / `cli` / `vscode` / `testing` / `build` / `adr-tooling`
 
 ### 本文セクション
 
