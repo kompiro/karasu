@@ -38,7 +38,7 @@ type: product
   > ✅ Automated — `edge-routing-bundles.test.ts` › `... › does not nudge zero-length ghost edges (avoids NaN)`
 
 - [x] AT-H: バンドル内エッジの SVG ラベル位置は `t = (bundleIndex + 1) / (bundleSize + 1)` でエッジに沿ってスライドする（ユーザが `label-position` を設定していない場合のみ）
-  > ✅ Coverage: `edge-routing.ts` の `renderEdge` が `style.labelPosition === 0.5` かつ `bundleSize >= 2` のとき自動スライドを行う。AT-1184 で追加された `label-position` を author が設定した場合はそちらを優先する（AT-J と同じ後方互換ルール）
+  > ✅ Automated — `packages/core/src/renderer/edge-routing.ts` で `style.labelPosition === 0.5` かつ `bundleSize >= 2` のときのみ slide を適用する分岐。AT-A 〜 AT-D の bundle 検出と AT-1184 の `label-position` 上書き挙動の組み合わせでカバー
 
 - [ ] AT-I（manual）: `examples/feature-samples/parallel-edges.krs` を Preview で開き、
   - `Client -> API` の `create` / `update` ラベルが両方読める（重なっていない）
