@@ -1,6 +1,6 @@
 # ADR Dependency Graph — Overview
 
-164 ADRs across 15 topics. Clusters group by `topic` frontmatter field. Edges crossing cluster borders are cross-topic dependencies.
+165 ADRs across 15 topics. Clusters group by `topic` frontmatter field. Edges crossing cluster borders are cross-topic dependencies.
 ```mermaid
 flowchart TD
   subgraph adr-tooling["adr-tooling"]
@@ -132,6 +132,7 @@ flowchart TD
     ADR_20260430_03["ADR-20260430-03<br/>usecase 内 resource に CRUD operations プロパティを追加する"]
     ADR_20260503_01["ADR-20260503-01<br/>usecase resource operations に verb 装飾構文（1:N CRU..."]
     ADR_20260509_02["ADR-20260509-02<br/>`.krs.style` AST に位置情報と sheetId を持たせ、parser の e..."]
+    ADR_20260510_01["ADR-20260510-01<br/>Tidy Style コマンド — `.krs.style` に trivia 保持と軸グルー..."]
   end
   subgraph project["project"]
     ADR_20260317_02["ADR-20260317-02<br/>プロジェクトとファイルシステム抽象化 — `FileSystemProvider` + OPFS"]
@@ -279,6 +280,7 @@ flowchart TD
   ADR_20260506_03 --> ADR_20260506_02
   ADR_20260506_04 --> ADR_20260506_03
   ADR_20260507_02 --> ADR_20260507_01
+  ADR_20260510_01 --> ADR_20260509_02
   ADR_20260412_05 -.supersedes.-> ADR_20260324_01
   ADR_20260429_09 -.supersedes.-> ADR_20260428_05
   ADR_20260508_01 -.supersedes.-> ADR_20260506_01
@@ -453,6 +455,7 @@ flowchart TD
   class ADR_20260509_03 accepted
   class ADR_20260509_04 accepted
   class ADR_20260509_05 accepted
+  class ADR_20260510_01 accepted
 ```
 
 ## Per-topic detail
@@ -465,7 +468,7 @@ flowchart TD
 - [`core-concepts`](graph/core-concepts.md) — 7 ADRs
 - [`edges`](graph/edges.md) — 11 ADRs
 - [`navigation`](graph/navigation.md) — 9 ADRs
-- [`parser`](graph/parser.md) — 13 ADRs
+- [`parser`](graph/parser.md) — 14 ADRs
 - [`project`](graph/project.md) — 4 ADRs
 - [`renderer`](graph/renderer.md) — 22 ADRs
 - [`resolver`](graph/resolver.md) — 4 ADRs
