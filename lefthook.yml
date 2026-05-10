@@ -20,6 +20,9 @@ pre-push:
     adr-check-assumptions:
       glob: "{docs/adr/**,adr.config.json}"
       run: pnpm exec adr check-assumptions --quiet
+    tpl-validate:
+      glob: "{docs/test-perspectives/**,scripts/tpl/**}"
+      run: pnpm run tpl:validate
     at-check-coverage:
       glob: "{docs/acceptance/**,scripts/acceptance/**}"
       run: pnpm exec tsx scripts/acceptance/check-coverage.ts --strict

@@ -85,7 +85,25 @@ scope:
 
 ### deprecated への移行
 
-実装の構造変更などで、ある観点が原理的に発生しなくなった場合、`status` を `deprecated` に変更する。エントリ自体は **削除しない** — なぜ deprecated にしたかを末尾に追記する（後から「この観点はなぜ消えたのか」を辿れるようにするため）。
+実装の構造変更などで、ある観点が原理的に発生しなくなった場合、`status` を `deprecated` に変更する。エントリ自体は **削除しない** — なぜ deprecated にしたかを末尾に追記する（後から「この観点はなぜ消えたのか」を辿れるようにするため）。validator は `status: deprecated` のエントリ本文に `deprecated` の語を含む rationale を要求する（理由が無いまま deprecated にすると CI で落ちる）。
+
+### Validator
+
+frontmatter とこの README の一覧表は **`pnpm tpl:validate`** で機械的にチェックされる。pre-push の lefthook と PR-gated の `.github/workflows/tpl-validate.yml` で自動実行されるが、ローカルで先に確認したいときも同じコマンドで走る。
+
+検査内容:
+
+- ファイル名が `TPL-YYYYMMDD-NN-<slug>.md` で frontmatter `id` と一致すること
+- 必須フィールド（`id` / `title` / `status` / `date` / `applicable_to` / `discovered_from` / `topic` / `scope.packages`）の存在
+- `status` が `active` / `deprecated` のいずれか
+- `topic` が `adr.config.json` の controlled vocabulary（ADR と共有）に含まれること
+- `applicable_to` / `discovered_from` が非空、`discovered_from` の各エントリは既知 key（`issue` / `root_cause_adr` / `root_cause_file`）のみを持つこと
+- `related_to` が指す TPL が同ディレクトリに存在すること
+- `scope.packages` が `packages/` 配下の実在ディレクトリを指すこと
+- `status: deprecated` のエントリ本文に deprecation rationale が含まれること
+- README の一覧表が全 TPL ファイルと双方向に整合していること（行欠落 / dead リンク無し）
+
+実装は `scripts/tpl/validate.ts`、テストは `scripts/tpl/validate.test.ts`（`pnpm run test:scripts` で実行）。`@kompiro/adr-tools` の `loadConfig` を再利用して `topics` 語彙を ADR と共有している。
 
 ## TPL のライフサイクル
 
