@@ -31,6 +31,7 @@
     "adr:regenerate": "adr regenerate",
     "adr:check-assumptions": "adr check-assumptions",
     "tpl:validate": "tsx scripts/tpl/cli.ts",
+    "tpl:related": "tsx scripts/tpl/related-cli.ts",
     "tpl:review:body": "tsx scripts/tpl/review-body.ts",
     "at:check-coverage": "tsx scripts/acceptance/check-coverage.ts",
     "at:test": "vitest run scripts/acceptance"

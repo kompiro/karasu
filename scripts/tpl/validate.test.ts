@@ -306,6 +306,25 @@ describe("README index check", () => {
     expect(findings.some((f) => f.kind === "readme-missing-row")).toBe(true);
   });
 
+  it("ignores TPL-link markdown inside fenced code blocks", () => {
+    // Example output rendered in README explanations should not be parsed as
+    // index rows pointing at missing files.
+    const readme = [
+      "# normal section",
+      "[TPL-20260510-01](TPL-20260510-01-x.md)",
+      "",
+      "```",
+      "$ pnpm tpl:related app-ui",
+      "- [TPL-99999999-99](docs/test-perspectives/TPL-99999999-99-fake.md) — example output",
+      "```",
+    ].join("\n");
+    const parsed: ParsedTpl[] = [];
+    const { findings, rowIds } = validateReadmeIndex(readme, parsed, "/tmp");
+    expect([...rowIds]).toEqual(["TPL-20260510-01"]);
+    // No "row points to missing" findings for the fake link inside the code block:
+    expect(findings.filter((f) => f.kind === "readme-row-points-to-missing-file")).toHaveLength(1); // the real TPL-20260510-01 link is dangling against /tmp
+  });
+
   it("flags rows that point to missing files", () => {
     const readme = "[TPL-20260510-99](TPL-20260510-99-missing.md)";
     const { findings } = validateReadmeIndex(readme, [], TPL_DIR);
