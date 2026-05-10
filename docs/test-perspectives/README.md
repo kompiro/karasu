@@ -104,3 +104,6 @@ scope:
 | [TPL-20260510-12](TPL-20260510-12-ast-parser-renderer-agreement.md) | AST 型 / parser keyword / renderer fallback の三点同意 | parser | #74 |
 | [TPL-20260510-13](TPL-20260510-13-e2e-fixture-controlled-state.md) | E2E fixture が状態 / 環境 / 後始末を所有する | testing | #976, #1006, #1007 |
 | [TPL-20260510-14](TPL-20260510-14-wait-for-stable-state.md) | E2E は到達した stable state を待ってから assert する | testing | #1171, #976 |
+| [TPL-20260510-15](TPL-20260510-15-dev-vs-packaged-mode-parity.md) | dev mode と packaged / installed mode の parity | vscode | #1024 |
+| [TPL-20260510-16](TPL-20260510-16-convenience-vs-principled-api.md) | consumer 境界では convenience より principled API | cli | #239, #507 |
+| [TPL-20260510-17](TPL-20260510-17-trust-boundary-input-validation.md) | trust boundary で外部入力を validate / canonicalize | cli | #168 |
