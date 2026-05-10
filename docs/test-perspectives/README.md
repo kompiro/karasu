@@ -102,3 +102,5 @@ scope:
 | [TPL-20260510-10](TPL-20260510-10-cross-reference-validation.md) | cross-reference プロパティの resolver-side 検証 | parser | #907 |
 | [TPL-20260510-11](TPL-20260510-11-parallel-function-parity.md) | 並列関数ファミリの parameter parity | build | #219, #160 |
 | [TPL-20260510-12](TPL-20260510-12-ast-parser-renderer-agreement.md) | AST 型 / parser keyword / renderer fallback の三点同意 | parser | #74 |
+| [TPL-20260510-13](TPL-20260510-13-e2e-fixture-controlled-state.md) | E2E fixture が状態 / 環境 / 後始末を所有する | testing | #976, #1006, #1007 |
+| [TPL-20260510-14](TPL-20260510-14-wait-for-stable-state.md) | E2E は到達した stable state を待ってから assert する | testing | #1171, #976 |
