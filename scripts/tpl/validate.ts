@@ -271,15 +271,36 @@ interface ValidateResult {
   parsed: ParsedTpl[];
 }
 
+/** List TPL files in a directory, in stable order. */
+function listTplFiles(dir: string): string[] {
+  return readdirSync(dir)
+    .filter((f) => f.startsWith("TPL-") && f.endsWith(".md"))
+    .sort();
+}
+
+/**
+ * Read + parse every TPL file in a directory, skipping unparseable ones
+ * silently. Used by tools that only care about valid entries (e.g. the
+ * `related` query CLI). For validation errors, use `validateAll` instead.
+ */
+export function loadAllTpls(dir: string): ParsedTpl[] {
+  const out: ParsedTpl[] = [];
+  for (const f of listTplFiles(dir)) {
+    const content = readFileSync(join(dir, f), "utf8");
+    const r = parseFrontmatter(content);
+    if (r.error || !r.fm || typeof r.fm !== "object") continue;
+    const fm = r.fm as Record<string, unknown>;
+    if (typeof fm.id !== "string") continue;
+    out.push({ file: f, fm: fm as unknown as Frontmatter, body: r.body });
+  }
+  return out;
+}
+
 export function validateAll(opts: ValidateOptions): ValidateResult {
   const findings: Finding[] = [];
   const parsed: ParsedTpl[] = [];
 
-  const files = readdirSync(opts.tplDir)
-    .filter((f) => f.startsWith("TPL-") && f.endsWith(".md"))
-    .sort();
-
-  for (const f of files) {
+  for (const f of listTplFiles(opts.tplDir)) {
     const full = join(opts.tplDir, f);
     const content = readFileSync(full, "utf8");
     const result = validateFile(full, content, {
