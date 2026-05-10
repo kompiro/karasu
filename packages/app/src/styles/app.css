@@ -1351,13 +1351,25 @@ body,
 
    Trigger is gated to `.krs-edge--interactive:hover` so hovering a
    non-interactive edge (one without a canonical id, e.g. system-internal
-   edges with no domain meaning) does not dim its peers. */
+   edges with no domain meaning) does not dim its peers.
+
+   `!important` is used on both the focused-edge lift and the peer-dim so
+   the rules win against the diff-mode opacity rules below
+   (`[data-diff-state="unchanged"] { opacity: 0.55 }` and
+   `[data-diff-state="added"|"removed"|"changed"] { opacity: 1 !important }`).
+   Without this, hovering an unchanged edge in diff mode would leave it at
+   0.55 (focused edge fails to stand out), and added/removed/changed peers
+   would resist dimming — the focus effect would only partially work. */
 .preview-container svg .krs-edge {
   transition: opacity 0.15s ease;
 }
 
+.preview-container svg .krs-edge--interactive:hover {
+  opacity: 1 !important;
+}
+
 .preview-container svg:has(.krs-edge--interactive:hover) .krs-edge:not(:hover) {
-  opacity: 0.25;
+  opacity: 0.25 !important;
 }
 
 /* ── Editor / Preview resize handle ─────────────────────────────────

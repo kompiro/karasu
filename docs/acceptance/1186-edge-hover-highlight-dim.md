@@ -30,3 +30,6 @@ type: product
 
 - [ ] AT-F（manual）: 既存の右クリック → direction menu（#1129）と label-click → edge detail panel（ADR-20260422-03）が引き続き機能する。具体的には: (1) edge を右クリックして Direction ▸ Up/Down/Left/Right が選べる、(2) edge label をクリックして detail panel が開く
   > 🧑 Manual — hover dim はそれらの click ハンドラに干渉しないが、CSS 状態の遷移として相互作用が起きないことの最終確認は目視で行う
+
+- [ ] AT-G（manual）: **diff mode** で hover dim が破綻しないこと。snapshot diff を有効化した状態で edge に hover → 焦点 edge は `opacity: 1` になり（`[data-diff-state="unchanged"]` の `opacity: 0.55` を上書き）、diff-tagged な peer (`added` / `removed` / `changed`) も含めて `opacity: 0.25` まで dim される
+  > 🧑 Manual — diff mode の e2e 自動化は snapshot 作成 UI に依存するためスコープ外。CSS 上は `!important` で `[data-diff-state]` ルールに勝つように実装されているが、最終確認は目視で行う
