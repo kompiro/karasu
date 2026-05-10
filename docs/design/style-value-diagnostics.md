@@ -297,20 +297,36 @@ export function validateStyleValues(sheet: StyleSheet): ValueDiagnostic[];
   knip / 静的検査で `valueNodes` を `JSON.stringify` するコードが入って
   いないことを確認
 
-## 未解決の問い
+## 確定した方針
 
-- **`shape` のような union 型 schema をどう表現するか**: `ident-of |
-  url()` の union を `ValueSpec` に入れるか、shape 専用の特殊 case に
-  するか
-- **未知 property の扱い**: `color2: red;` のような typo property 名に
-  warning を出すか（spec.md 由来の `KNOWN_PROPERTIES` セットを別途持つ）
-- **`color: red` のような color keyword**: 厳密には CSS の named color。
-  spec を文字列 ident として受け入れるか、enum 化するか（CSS named
-  color は 147 個ある）
-- **CLI surface**: `karasu lint-style` のような専用コマンドを足すか、
-  `tidy-style --check` の枠で診断もまとめて出すか
-- **severity の決め方**: typo は error / 範囲外は warning で MVP は十分
-  か、もっと細かく分けるか
-- **case insensitive**: `direction: DOWN` は valid か、warning か、error か
-- **将来的な ValueNode → properties 移行（案4）の実施タイミング**: 本 ADR
-  にロードマップとして含めるか、別 ADR で扱うか
+レビューで以下を確定した:
+
+1. **`ValueSpec` を union 拡張**: `{ kind: "union"; specs: ValueSpec[] }`
+   を ValueSpec に追加し、validator は順に試して 1 つでも match したら
+   OK。`shape` だけでなく `color` の hex/named-color union も同じ仕組み
+   で扱える
+2. **未知 property は warning**: spec.md 由来の `KNOWN_PROPERTIES` セット
+   を保持し、一致しない property 名に対して `style-unknown-property`
+   warning を出す（error にせず将来追加予定の property での誤検出を抑える）
+3. **color は hex または CSS named color (147 色) を許容**:
+   ```ts
+   color: { kind: "union", specs: [
+     { kind: "hex" },
+     { kind: "ident-of", values: CSS_NAMED_COLORS },
+   ]}
+   ```
+   それ以外は error。`color: primary` のような design token 風の文字列は
+   未対応（将来 design token 機能が立ち上がったら別途検討）
+4. **CLI は専用コマンド `karasu lint-style`**: `fmt` / `tidy-style` と並ぶ
+   3 つ目。lint と Tidy を別コマンドに分けることで CI のフローに乗せ
+   やすく、将来 `.krs` の lint も同じコマンドの拡張で乗せられる
+5. **新規 diagnostic は全て error severity**: 厳密スタートで CI を強く
+   止める。緩める方が後から容易。spec.md と齟齬がある値は明らかな
+   バグなので error で問題ない
+6. **enum 値は case sensitive (error)**: spec.md は全て小文字、karasu の
+   vocabulary は小さく、規復コストが低い。`direction: DOWN` は error。
+   CSS の case-insensitivity に揃える必要は無い
+7. **ロードマップ「`properties` を `valueNodes` 由来に置換」は本 ADR の
+   「スコープ外」節に明記、実施は別 ADR**: 二重表現の長期化リスクは
+   認識しつつ、本 PR で実施するとレビュー粒度が肥大化する。Phase 3
+   完了後に別 PR/ADR で対応する旨を ADR の末尾に記録
