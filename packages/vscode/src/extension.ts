@@ -9,7 +9,6 @@ import {
   RequestType,
 } from "vscode-languageclient/node";
 import { PreviewPanel } from "./preview-panel.js";
-import { styleFormattingProvider } from "./style-formatter.js";
 
 const PREVIEW_DEBOUNCE_MS = 300;
 const CURSOR_DEBOUNCE_MS = 150;
@@ -139,16 +138,13 @@ export function activate(context: vscode.ExtensionContext): void {
     }, CURSOR_DEBOUNCE_MS);
   });
 
-  // --- Tidy Style ---
-  // Register a formatter so `editor.action.formatDocument` (and
-  // `editor.formatOnSave` when the user opts in) produce a tidied
-  // `.krs.style`. The palette command wraps the same operation so users
-  // can discover it without enabling format-on-save.
-  const styleFormatter = vscode.languages.registerDocumentFormattingEditProvider(
-    { scheme: "file", language: "krs-style" },
-    styleFormattingProvider,
-  );
-
+  // --- Tidy Style palette command ---
+  // The actual formatter is provided by the LSP server (which routes
+  // `krs` and `krs-style` to their respective formatters), so we only
+  // need a palette entry that triggers `editor.action.formatDocument`
+  // when the active document is `.krs.style`. This keeps a single
+  // formatter registered for the language and avoids VS Code's
+  // "Configure default formatter" prompt.
   const tidyStyleCmd = vscode.commands.registerCommand("karasu.tidyStyle", async () => {
     const editor = vscode.window.activeTextEditor;
     if (!editor || editor.document.languageId !== "krs-style") {
@@ -164,7 +160,6 @@ export function activate(context: vscode.ExtensionContext): void {
     changeWatcher,
     editorWatcher,
     cursorWatcher,
-    styleFormatter,
     tidyStyleCmd,
   );
 }

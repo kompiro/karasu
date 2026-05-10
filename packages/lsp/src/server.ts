@@ -19,7 +19,14 @@ import {
   Range,
 } from "vscode-languageserver/node";
 import { TextDocument } from "vscode-languageserver-textdocument";
-import { Parser, StyleParser, format, FormatError, formatDiagnostic } from "@karasu-tools/core";
+import {
+  Parser,
+  StyleParser,
+  format,
+  FormatError,
+  formatDiagnostic,
+  tidyStyleSheet,
+} from "@karasu-tools/core";
 import {
   findNodeAtPosition,
   findRangeOfNode,
@@ -76,15 +83,25 @@ connection.onDocumentFormatting((params) => {
   const doc = documents.get(params.textDocument.uri);
   if (!doc) return [];
   const src = doc.getText();
+
+  // Route by language: `.krs` uses the source formatter, `.krs.style` uses
+  // the Tidy passes from `@karasu-tools/core`. Both are exposed through the
+  // same LSP request so VS Code sees a single document-formatting provider
+  // (avoiding the "configure default formatter" dialog when more than one
+  // is registered).
   let formatted: string;
-  try {
-    formatted = format(src);
-  } catch (e) {
-    if (e instanceof FormatError) return [];
-    throw e;
+  if (doc.languageId === "krs-style") {
+    formatted = tidyStyleSheet(src).output;
+  } else {
+    try {
+      formatted = format(src);
+    } catch (e) {
+      if (e instanceof FormatError) return [];
+      throw e;
+    }
   }
+
   if (formatted === src) return [];
-  // Replace the entire document with a single TextEdit
   const lastLine = doc.lineCount - 1;
   const lastChar = doc.getText().split("\n").at(-1)?.length ?? 0;
   const fullRange: Range = {

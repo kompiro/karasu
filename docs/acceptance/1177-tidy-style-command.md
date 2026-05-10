@@ -9,7 +9,7 @@ type: product
 - **対象ファイル**:
   - CLI: `packages/cli/src/tidy-style.ts`、`packages/cli/src/tidy-style.test.ts`、`packages/cli/src/index.ts`
   - App: `packages/app/src/components/EditPaneToolbar.tsx`、`packages/app/src/components/EditPane.tsx`、`packages/app/src/components/EditArea.tsx`、`packages/app/src/components/AppShell.tsx`、`packages/app/src/components/EditPaneToolbar.test.tsx`、`packages/app/src/styles/app.css`
-  - VS Code: `packages/vscode/src/style-formatter.ts`、`packages/vscode/src/extension.ts`、`packages/vscode/package.json`
+  - VS Code: `packages/vscode/src/extension.ts`、`packages/vscode/package.json`、`packages/lsp/src/server.ts`（formatter のルーティング）
 - **関連 Design Doc**: [`docs/design/tidy-style-and-trivia.md`](../design/tidy-style-and-trivia.md)（Phase 2 計画 — 本 PR は step 3 of 3）
 - **依存**: [#1183](https://github.com/kompiro/karasu/pull/1183)（PR-A: AST trivia）、[#1188](https://github.com/kompiro/karasu/pull/1188)（PR-B: tidy core）
 
@@ -62,6 +62,12 @@ type: product
 - 本 PR は Phase 2 の **step 3 of 3** に対応。step 1 (AST trivia) と
   step 2 (tidy core) を combine することで、この PR ではコアロジックを
   書かず surface 接続のみに集中している
-- VS Code 側は `Karasu: Tidy Style` パレットコマンドが内部的に
+- VS Code 側は formatter を **LSP サーバー側で集約** している:
+  `connection.onDocumentFormatting` が `doc.languageId` を見て、`krs`
+  なら `format()`、`krs-style` なら `tidyStyleSheet()` にルーティング。
+  拡張本体側で `registerDocumentFormattingEditProvider` を呼ばないので、
+  VS Code には formatter が 1 つだけ見える（"Configure default
+  formatter" ダイアログを避ける）
+- `Karasu: Tidy Style` パレットコマンドは内部的に
   `editor.action.formatDocument` を呼ぶ薄いラッパ。format-on-save と
   パレットコマンドはコード経路を共有する
