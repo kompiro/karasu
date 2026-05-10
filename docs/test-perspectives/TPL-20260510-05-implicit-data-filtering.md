@@ -13,8 +13,10 @@ known_consumers:
   - org-view
 discovered_from:
   - issue: "#999"
+  - issue: "#132"
 related_to:
   - TPL-20260510-01
+  - TPL-20260510-06
 topic: renderer
 scope:
   packages:
