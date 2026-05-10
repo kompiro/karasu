@@ -261,6 +261,42 @@ export function validateStyleValues(sheet: StyleSheet): ValueDiagnostic[];
 - `style-parser.test.ts`: ValueNode の shape を確認
 - LSP integration: 診断が `publishDiagnostics` に出ることを確認（後で）
 
+## TPL から確認した観点
+
+`docs/test-perspectives/` を `topic: parser` / `topic: styling` で
+スキャンし、本フェーズで明示的に押さえるべき観点を抽出した。受け入れ
+テストの設計時に観点 ID を引用する。
+
+| TPL | 観点 | フェーズ 3 への適用 |
+|---|---|---|
+| [TPL-20260510-02](../test-perspectives/TPL-20260510-02-round-trip-guarantee.md) | `parse(format(x)) ≡ parse(x)` の round-trip 保証 | ValueNode を文字列に再シリアライズしたとき、元の `properties` 文字列とトークン列が等価であること。Tidy の round-trip 契約はフェーズ 2 で確立済みだが、ValueNode 経由でも保たれることを fixture テストで確認する |
+| [TPL-20260510-03](../test-perspectives/TPL-20260510-03-enum-member-addition.md) | 列挙型メンバー追加時に消費側の網羅性を **型で** 強制 | `direction` / `border-style` の `ident-of` リストに値を足したとき、validator・resolver・renderer の switch / Record が exhaustive check で漏れを検出できる構造にする。`ValueSpec` を discriminated union にして switch + `never` の exhaustive チェックを必須化 |
+| [TPL-20260510-10](../test-perspectives/TPL-20260510-10-cross-reference-validation.md) | parser は loose に受理、resolver / 別パスが validate | フェーズ 3 がやろうとしている分業そのもの。parser は ValueNode を **意味解釈なしに** 受理し、validator pass で property schema に対する整合性を見る。設計の根拠としてこの TPL を引用 |
+| [TPL-20260510-12](../test-perspectives/TPL-20260510-12-ast-parser-renderer-agreement.md) | AST 型 / parser / renderer の三点同意 | `ValueNode` を AST に追加するときは、parser が出力できること・consumer（validator / 将来の resolver / Tidy）が読めること・既存 renderer が壊れないことを同時に検証。型レベルで `ValueNode | undefined` の取扱を強制 |
+| [TPL-20260510-17](../test-perspectives/TPL-20260510-17-trust-boundary-input-validation.md) | trust boundary を越える input は validate | `.krs.style` は外部 input。validator が値を検証するのは trust boundary 越えの一環。LSP の `publishDiagnostics` 経由でユーザに即フィードバックする経路を設計に織り込む |
+| [TPL-20260510-18](../test-perspectives/TPL-20260510-18-text-as-single-source-of-truth.md) | `.krs` テキストが単一の真実 | `valueNodes` は **派生** で、永続化対象ではない。serializer は `properties` 側を canonical とする（案2 の二重表現で `valueNodes` を canonical に格上げするのは案4 の future ロードマップで扱う） |
+
+## 受け入れテスト案（TPL を踏まえた骨子）
+
+最終的な AT は実装 PR で確定するが、本 design doc の段階で以下を予定:
+
+- **AT-A〜D（validator hit/miss）**: enum / hex / length / number/range の各
+  schema kind について、valid / typo の双方を fixture でカバー。TPL-10
+  の「parser は受理、validator が検出」の分業を確認
+- **AT-E（exhaustive switch）**: `ValueSpec` の判別子を 1 つ追加した
+  ら、validator が型エラーで網羅漏れを検出する。TPL-03 由来
+- **AT-F（round-trip）**: `tidyStyleSheet(input).output === tidyStyleSheet(tidyStyleSheet(input).output).output` が ValueNode 経由でも成り立つ。TPL-02 由来
+- **AT-G（既存 consumer 不変）**: `valueNodes` 追加後も `resolver` /
+  `svg-builder` / `Tidy` の挙動が一切変わらない。回帰テスト（fixture
+  で SVG 出力 diff 0）。TPL-12 由来
+- **AT-H（LSP 表示）**: `publishDiagnostics` 経由で `.krs.style` のエラー
+  位置に波線が出る。TPL-17 由来。manual だが reproducible なシナリオを
+  AT 文書に書く
+- **AT-I（永続化されない）**: ValueNode は parser の出力にのみ存在し、
+  ファイル / セッション / キャッシュには保存されないこと。TPL-18 由来。
+  knip / 静的検査で `valueNodes` を `JSON.stringify` するコードが入って
+  いないことを確認
+
 ## 未解決の問い
 
 - **`shape` のような union 型 schema をどう表現するか**: `ident-of |
