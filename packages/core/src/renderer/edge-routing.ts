@@ -86,9 +86,22 @@ export function renderEdge(
   }
 
   if (edge.label) {
+    // When the edge is part of a parallel-edge bundle (N ≥ 2 sharing
+    // `(from, to)`) and the author has not overridden label-position via
+    // style, slide the label along the edge so parallel labels separate.
+    // See docs/design/parallel-edge-bundling.md.
+    let position = style.labelPosition;
+    if (
+      position === 0.5 &&
+      edge.bundleSize !== undefined &&
+      edge.bundleIndex !== undefined &&
+      edge.bundleSize >= 2
+    ) {
+      position = (edge.bundleIndex + 1) / (edge.bundleSize + 1);
+    }
     const { x: midX, y: midY } = labelAnchor(
       points,
-      style.labelPosition,
+      position,
       style.labelOffsetX,
       style.labelOffsetY,
     );

@@ -1,0 +1,23 @@
+// parallel-edges.krs
+// Demonstrates parallel edges between the same node pair. The renderer
+// automatically bundles them: ports spread along the node sides (via the
+// existing port-distribution pass), and labels slide along the edge so
+// "create" and "update" do not stack on top of each other.
+// See docs/design/parallel-edge-bundling.md and Issue #1185.
+
+system ParallelEdges {
+  label "Parallel Edges"
+
+  service A { label "Client" }
+  service B { label "API" }
+  service C { label "Worker" }
+
+  // Two sync edges between the same pair: both labels must be readable.
+  A -> B "create"
+  A -> B "update"
+
+  // Sync + async between the same pair: stroke style differs and labels
+  // still need to separate.
+  B -> C "enqueue"
+  B --> C "callback"
+}
