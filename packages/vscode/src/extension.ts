@@ -138,12 +138,29 @@ export function activate(context: vscode.ExtensionContext): void {
     }, CURSOR_DEBOUNCE_MS);
   });
 
+  // --- Tidy Style palette command ---
+  // The actual formatter is provided by the LSP server (which routes
+  // `krs` and `krs-style` to their respective formatters), so we only
+  // need a palette entry that triggers `editor.action.formatDocument`
+  // when the active document is `.krs.style`. This keeps a single
+  // formatter registered for the language and avoids VS Code's
+  // "Configure default formatter" prompt.
+  const tidyStyleCmd = vscode.commands.registerCommand("karasu.tidyStyle", async () => {
+    const editor = vscode.window.activeTextEditor;
+    if (!editor || editor.document.languageId !== "krs-style") {
+      void vscode.window.showInformationMessage("Open a .krs.style file to run Tidy Style.");
+      return;
+    }
+    await vscode.commands.executeCommand("editor.action.formatDocument");
+  });
+
   context.subscriptions.push(
     { dispose: () => client?.stop() },
     openPreviewCmd,
     changeWatcher,
     editorWatcher,
     cursorWatcher,
+    tidyStyleCmd,
   );
 }
 

@@ -1869,6 +1869,8 @@ body,
   cursor: not-allowed;
   pointer-events: none;
 }
+.toolbar-btn--tidy-style {
+}
 
 /* Split export button group */
 .toolbar-btn-group {
