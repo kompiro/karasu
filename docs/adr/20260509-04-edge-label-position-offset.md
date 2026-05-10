@@ -1,6 +1,6 @@
 ---
 id: ADR-20260509-04
-title: "edge `label-position` / `label-offset` プロパティ — fractional 位置と 1 軸 perpendicular ずらし"
+title: "edge `label-position` / `label-offset` プロパティ — fractional 位置と screen-axis CSS shorthand offset"
 status: accepted
 date: 2026-05-09
 topic: edges
@@ -11,7 +11,7 @@ scope:
   packages: [core]
 ---
 
-# ADR-20260509-04: edge `label-position` / `label-offset` プロパティ — fractional 位置と 1 軸 perpendicular ずらし
+# ADR-20260509-04: edge `label-position` / `label-offset` プロパティ — fractional 位置と screen-axis CSS shorthand offset
 
 - **日付**: 2026-05-09
 - **ステータス**: 決定済み
