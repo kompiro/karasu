@@ -87,11 +87,49 @@ scope:
 
 実装の構造変更などで、ある観点が原理的に発生しなくなった場合、`status` を `deprecated` に変更する。エントリ自体は **削除しない** — なぜ deprecated にしたかを末尾に追記する（後から「この観点はなぜ消えたのか」を辿れるようにするため）。
 
+## TPL のライフサイクル
+
+TPL は以下のライフサイクルを持つ。**proactive を先に書ければ書けるほど、retrospective に学ぶしかない bug が減る**。
+
+```
+concept (docs/concepts.ja.md / ADR)
+   │
+   │   原則を実装に落とすときに違反しうる観点を抽出
+   ▼
+proactive TPL  ← 開発前に書く（予防可能な学習）
+   │
+   ▼
+development (DesignDoc + 実装)
+   │
+   ▼
+bug (proactive TPL でカバーできなかった失敗)
+   │
+   │   実際に起きた失敗を一般化
+   ▼
+retrospective TPL  ← bug 修正と同じ PR で書く（不可避な学習）
+```
+
+### 非対称性
+
+- **proactive TPL** は **予防可能** な学習。書ければ bug を未然に防げる
+- **retrospective TPL** は **不可避** な学習。起きてからしか書けないが、起きたら必ず書く（同じ bug を 2 回起こさない）
+
+retrospective TPL を書くたびに「**この観点を proactive TPL として書いておけたか?**」を自問する。書けたはずなら、それは「**proactive スキャンの漏れ**」自体が次回への学びになる（ただし TPL として記録するわけではなく、レトロスペクティブの素材として扱う）。
+
+### 起源と運用ルールは独立
+
+proactive / retrospective の区別は **起源** の違いだけで、frontmatter スキーマも 3-Yes ルールも運用ルール（更新 / deprecated）も同じ。`discovered_from` を見れば起源は判る:
+
+- `discovered_from.issue: #N` → retrospective（bug 起源）
+- `discovered_from.root_cause_file: docs/concepts.*` → proactive（原則起源）
+
 ## 参照タイミング
 
-- **DesignDoc 作成時**: 該当する `topic` / `scope.packages` の TPL を一覧し、関連する観点を DesignDoc に取り込む
+- **DesignDoc 作成時**: 以下の 2 段階で観点を取り込む:
+  1. 該当する `topic` / `scope.packages` の **既存 TPL** を一覧する
+  2. 同じ `topic` の `docs/concepts.ja.md` セクションと関連 ADR を読み、**まだ TPL になっていない原則** で今回の設計が違反しうるものがないか確認する。あれば 3-Yes ルールに照らして proactive TPL を起こす（同じ PR で起こすのが最も摩擦が少ない）
 - **新機能の実装時**: 受け入れテストの項目を作る前に該当 TPL のチェックリストを確認する
-- **bug 修正時**: 同じパターンの TPL がすでに存在しないか確認し、あれば `discovered_from` に追記する。なければ 3-Yes ルールで新規作成を検討する
+- **bug 修正時**: 同じパターンの TPL がすでに存在しないか確認し、あれば `discovered_from` に追記する。なければ 3-Yes ルールで retrospective TPL の新規作成を検討する。**併せて「この bug は proactive TPL を書いていれば防げたか?」も自問する**（防げた場合、それ自体が次のレトロスペクティブの素材）
 
 ## 一覧
 
