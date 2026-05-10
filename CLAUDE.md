@@ -74,4 +74,5 @@ karasu/
 
 - **DesignDoc 作成時 / 新機能実装時 / bug 修正時** に該当する `topic` / `scope.packages` の TPL を確認する
 - 該当する観点が見つかったら、DesignDoc または PR description で TPL の ID を引用する
+- **DesignDoc 作成時は既存 TPL の確認に加えて `docs/concepts.ja.md` と関連 ADR もスキャン** し、まだ TPL になっていない原則で今回の設計が違反しうるものがあれば proactive TPL を同じ PR で起こす（理想ライフサイクルは concept → proactive TPL → development → bug → retrospective TPL — `docs/test-perspectives/README.md` 「TPL のライフサイクル」節）
 - bug 修正時、3-Yes ルール（横展開しうる / 構造的に再発しうる / 既存 TPL に未掲載）すべて満たすなら新規 TPL を起こす（詳細は `docs/test-perspectives/README.md`）
