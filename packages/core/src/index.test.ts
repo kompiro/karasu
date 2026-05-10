@@ -742,3 +742,115 @@ system S {
     expect(xOfRect(reordered.svg, "Inner1")).toBeGreaterThan(xOfRect(reordered.svg, "Inner2"));
   });
 });
+
+describe("compile — edge label-position and label-offset", () => {
+  // Drill into a service so the simple topological path runs (no kind
+  // stratification interfering). One edge with a label is enough to
+  // observe where the label anchor lands.
+  const KRS = `
+system S {
+  service Backend {
+    domain Order { label "Order" }
+    domain Payment { label "Payment" }
+    Order -> Payment "calls"
+  }
+}
+  `;
+
+  // Pull the y / x attribute of the first <text> tag whose content
+  // matches the given label. SVG escapes & < >, but plain word labels
+  // round-trip verbatim.
+  function labelAttr(svg: string, text: string, attr: "x" | "y"): number {
+    const re = new RegExp(`<text\\b[^>]*\\s${attr}="([0-9.-]+)"[^>]*>${text}</text>`);
+    const m = re.exec(svg);
+    if (!m) throw new Error(`no <text> ${attr} for ${text}`);
+    return parseFloat(m[1]);
+  }
+
+  it("`label-position: start` moves the label closer to the source end", () => {
+    const path = ["S", "Backend"];
+    const baseline = compile(KRS, { viewPath: path });
+    const atStart = compile(KRS, {
+      viewPath: path,
+      styleSource: `edge#Order->Payment { label-position: start; }`,
+    });
+    if (baseline.diagramType !== "system" || atStart.diagramType !== "system") {
+      throw new Error("expected system result");
+    }
+    // Order is laid out above Payment in the topological path, so
+    // moving the label toward the source pulls its y upward (smaller).
+    expect(labelAttr(atStart.svg, "calls", "y")).toBeLessThan(
+      labelAttr(baseline.svg, "calls", "y"),
+    );
+  });
+
+  it("`label-position: end` moves the label closer to the target end", () => {
+    const path = ["S", "Backend"];
+    const baseline = compile(KRS, { viewPath: path });
+    const atEnd = compile(KRS, {
+      viewPath: path,
+      styleSource: `edge#Order->Payment { label-position: end; }`,
+    });
+    if (baseline.diagramType !== "system" || atEnd.diagramType !== "system") {
+      throw new Error("expected system result");
+    }
+    expect(labelAttr(atEnd.svg, "calls", "y")).toBeGreaterThan(
+      labelAttr(baseline.svg, "calls", "y"),
+    );
+  });
+
+  it("`label-offset: 8px` shifts the label downward (single-token = y axis)", () => {
+    const path = ["S", "Backend"];
+    const baseline = compile(KRS, { viewPath: path });
+    const shifted = compile(KRS, {
+      // label-position needs to be non-default so the fractional anchor
+      // path runs and the offset takes effect.
+      viewPath: path,
+      styleSource: `edge#Order->Payment { label-position: 0.5; label-offset: 8px; }`,
+    });
+    if (baseline.diagramType !== "system" || shifted.diagramType !== "system") {
+      throw new Error("expected system result");
+    }
+    // SVG y grows downward; offset y of 8 pushes the label below the
+    // baseline anchor.
+    expect(labelAttr(shifted.svg, "calls", "y")).toBeGreaterThan(
+      labelAttr(baseline.svg, "calls", "y"),
+    );
+    // Same x — single-token doesn't touch x.
+    expect(labelAttr(shifted.svg, "calls", "x")).toBe(labelAttr(baseline.svg, "calls", "x"));
+  });
+
+  it("`label-offset: 4px 8px` shifts the label both right and down", () => {
+    const path = ["S", "Backend"];
+    const baseline = compile(KRS, { viewPath: path });
+    const shifted = compile(KRS, {
+      viewPath: path,
+      styleSource: `edge#Order->Payment { label-position: 0.5; label-offset: 4px 8px; }`,
+    });
+    if (baseline.diagramType !== "system" || shifted.diagramType !== "system") {
+      throw new Error("expected system result");
+    }
+    expect(labelAttr(shifted.svg, "calls", "x")).toBeGreaterThan(
+      labelAttr(baseline.svg, "calls", "x"),
+    );
+    expect(labelAttr(shifted.svg, "calls", "y")).toBeGreaterThan(
+      labelAttr(baseline.svg, "calls", "y"),
+    );
+  });
+
+  it("default label-position keeps the historical longest-segment heuristic byte-stable", () => {
+    const path = ["S", "Backend"];
+    const baseline = compile(KRS, { viewPath: path });
+    // Resolving an edge rule that doesn't touch label-position must not
+    // shift the label at all — older diagrams stay stable for the y of
+    // the existing label.
+    const colored = compile(KRS, {
+      viewPath: path,
+      styleSource: `edge#Order->Payment { color: #ef4444; }`,
+    });
+    if (baseline.diagramType !== "system" || colored.diagramType !== "system") {
+      throw new Error("expected system result");
+    }
+    expect(labelAttr(colored.svg, "calls", "y")).toBe(labelAttr(baseline.svg, "calls", "y"));
+  });
+});

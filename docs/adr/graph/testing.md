@@ -1,6 +1,6 @@
 # ADR Topic: testing
 
-10 ADRs in this topic. Solid nodes belong to `testing`; gray dashed nodes are ghosts showing cross-topic references to help navigation.
+11 ADRs in this topic. Solid nodes belong to `testing`; gray dashed nodes are ghosts showing cross-topic references to help navigation.
 
 Other topics: [overview](../graph.md).
 ```mermaid
@@ -16,6 +16,7 @@ flowchart TD
     ADR_20260428_09["ADR-20260428-09<br/>受け入れテストの自動化マーカー規約と検出スクリプト"]
     ADR_20260429_09["ADR-20260429-09<br/>VS Code WebView の DOM 系テストは ExTester ハーネスで自動化する"]
     ADR_20260509_01["ADR-20260509-01<br/>flaky な E2E テストは test.fixme でマークし追跡 Issue を立てる"]
+    ADR_20260509_04["ADR-20260509-04<br/>テスト観点ライブラリ（Test Perspective Library, TPL）の運用開始"]
   end
   ADR_20260412_05["ADR-20260412-05<br/>[chat-ai] Playwright と AI による視覚レビューの併用"]
   ADR_20260326_04 --> ADR_20260325_01
@@ -38,5 +39,6 @@ flowchart TD
   class ADR_20260428_09 accepted
   class ADR_20260429_09 accepted
   class ADR_20260509_01 accepted
+  class ADR_20260509_04 accepted
   class ADR_20260412_05 ghost
 ```

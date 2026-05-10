@@ -113,12 +113,50 @@ export interface ResolvedNodeStyle {
  */
 export type EdgeDirection = "auto" | "up" | "down" | "left" | "right";
 
+/**
+ * Position of an edge's label along the edge's path.
+ *
+ * Stored as a normalized fraction in `[0, 1]` after resolution: `0`
+ * places the label at the source end, `1` at the target end, `0.5` at
+ * the midpoint. The keyword forms `start | middle | end` are accepted in
+ * `.krs.style` and translated to `0`, `0.5`, `1` respectively. Values
+ * outside `[0, 1]` are clamped.
+ *
+ * Default: `0.5` (matches the historical midpoint behaviour).
+ */
+export type LabelPosition = number;
+
 export interface ResolvedEdgeStyle {
   color: string;
   strokeWidth: number;
   fontSize: number;
   strokeStyle: "solid" | "dashed" | "dotted";
   direction: EdgeDirection;
+  /**
+   * Where along the edge the label anchor sits, normalised to `[0, 1]`.
+   * `0` = source end, `1` = target end. See `LabelPosition`.
+   */
+  labelPosition: LabelPosition;
+  /**
+   * Screen-axis x-offset of the label relative to its computed anchor,
+   * in pixels. Positive shifts right, negative shifts left.
+   *
+   * In `.krs.style` users write a CSS-like shorthand:
+   *   `label-offset: <dy>px`           → x=0, y=<dy>
+   *   `label-offset: <dx>px <dy>px`    → x=<dx>, y=<dy>
+   *
+   * Screen-axis (not edge-perpendicular) is intentional: a global rule
+   * `edge { label-offset: 0 8px; }` should shift every label down by
+   * the same visual amount regardless of each edge's slope.
+   */
+  labelOffsetX: number;
+  /**
+   * Screen-axis y-offset of the label relative to its computed anchor,
+   * in pixels. Positive shifts down, negative shifts up. Independent of
+   * the existing `-6px` typographic lift the renderer applies above the
+   * anchor — that lift stays in place so the offset adds on top.
+   */
+  labelOffsetY: number;
 }
 
 /**

@@ -45,6 +45,19 @@
 - PR のタイトル・description（本文）は英語で書く
 - commit メッセージも英語（subject）
 
+### Issue 種別ラベル — `bug` と `test-infra` の使い分け
+
+Issue が表面化した「失敗の種類」によってラベルを使い分ける。バーンダウンや TPL 抽出の signal を分離するため、両者は混在させない。
+
+| ラベル | 適用範囲 |
+|--------|----------|
+| `bug` | エンドユーザーが観測した（または観測しうる）プロダクト上の不具合 |
+| `test-infra` | E2E flake、fixture drift、locale pinning など、テスト基盤側の問題でありプロダクトのユーザー影響を伴わないもの |
+
+- `bug` と `test-infra` は **mutually exclusive**（同時に付けない）
+- どちらでも TPL の素材になりうる（testing-topic TPL は `test-infra` 起源、product-topic TPL は `bug` 起源が典型）
+- 3-Yes ルールの起動トリガーは `bug` と `test-infra` の双方
+
 ### Issue ステータスラベル
 
 Issue の進捗は以下のラベルで管理する。

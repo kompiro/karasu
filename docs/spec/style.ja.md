@@ -96,6 +96,8 @@ color:            #94A3B8;
 stroke-width:     1.5px;
 font-size:        11px;
 direction:        auto;          /* up | down | left | right | auto（ヒント、後述） */
+label-position:   middle;        /* start | middle | end | <0.0..1.0> */
+label-offset:     0 0;            /* <dy>px or <dx>px <dy>px（screen-axis） */
 
 /* karasu固有プロパティ（CSS非対応のため例外） */
 shape:            box;           /* box | user | cylinder | queue | hexagon | cloud | url("...") */
@@ -226,6 +228,52 @@ edge#criticalWrite { direction: down; }
 詳細は [`docs/design/edge-direction-style.md`](../design/edge-direction-style.md)。
 
 不正値は黙って破棄され、`direction` は `auto` にフォールバックする。
+
+### `label-position` — `start | middle | end | <0.0..1.0>`
+
+エッジに沿って label アンカーがどこに置かれるかを指定する。デフォルトは
+`middle`（= `0.5`）。
+
+```css
+edge[delivers] { label-position: start; }   /* source 端寄り */
+edge[implicit] { label-position: end; }     /* target 端寄り */
+edge#criticalWrite { label-position: 0.25; }
+```
+
+値がデフォルト（`0.5`）かつ `label-offset` が `0` のときは「最長セグメント
+の中点」ヒューリスティクスを保持し、既存図の出力は byte-stable のまま。
+著者がいずれかを設定した時点で、polyline 全長を辿って `position ×
+totalLength` の点をアンカーにする経路に切り替わる。
+
+不正値（未知のキーワード、数値でない文字列）は `middle` にフォールバック。
+`[0, 1]` 範囲外の小数値はクランプ。
+
+### `label-offset` — `<dy>px` または `<dx>px <dy>px`
+
+label アンカーを画面の x/y 軸方向にずらす値（pixel）。CSS shorthand
+の構文を踏襲:
+
+- **1 値** (`label-offset: 8px`) → `dx = 0`, `dy = 8`。最頻出の
+  「label を下方向にずらす」ケース
+- **2 値** (`label-offset: 4px 8px`) → `dx = 4`, `dy = 8`
+
+```css
+edge { label-offset: 0 8px; }    /* 全 label を anchor から 8px 下に */
+edge#wide { label-offset: 4px 8px; }
+```
+
+screen axis（edge perpendicular ではなく）なので、グローバルルールでも
+edge の傾きに関係なく統一された方向にシフトする。正の値は右 (x) /
+下 (y)、負の値は左 / 上。
+
+renderer が anchor の上 `-6px` に label を置く既存のオフセットとは独立。
+typographic な lift はそのまま、その上にこの offset が加算される。
+
+> **以前の draft（撤回）**: 初版は `label-offset` を edge 方向に対する
+> 1 軸 perpendicular ずらしと定義していた。これだと
+> `edge { label-offset: 8px; }` の効果が edge の傾きごとに違う方向に出て
+> 予測が立てにくかった。screen-axis CSS shorthand に切り替えた。詳細は
+> [ADR-20260509-05](../adr/20260509-05-edge-label-position-offset.md)。
 
 ---
 

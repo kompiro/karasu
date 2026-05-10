@@ -106,6 +106,8 @@ stroke-width:     1.5px;
 font-size:        11px;
 border-style:     solid;         /* solid | dashed | dotted */
 direction:        auto;          /* up | down | left | right | auto (hint, see below) */
+label-position:   middle;        /* start | middle | end | <0.0..1.0> */
+label-offset:     0 0;            /* <dy>px or <dx>px <dy>px (screen-axis) */
 
 /* karasu-specific properties (not standard CSS) */
 shape:            box;           /* box | user | cylinder | queue | hexagon | cloud | url("...") */
@@ -243,6 +245,54 @@ See [`docs/design/edge-direction-style.md`](../design/edge-direction-style.md)
 for the rationale.
 
 Invalid values are silently dropped and `direction` falls back to `auto`.
+
+### `label-position` — `start | middle | end | <0.0..1.0>`
+
+Where along the edge the label anchor sits. Default `middle` (= `0.5`).
+
+```css
+edge[delivers] { label-position: start; }   /* near the source end */
+edge[implicit] { label-position: end; }     /* near the target end */
+edge#criticalWrite { label-position: 0.25; }
+```
+
+The renderer keeps the historical "longest-segment midpoint" heuristic
+when the value is the default (`0.5`) and `label-offset` is `0`, so
+existing diagrams stay byte-stable. As soon as the author sets either
+property, the anchor is computed by walking the edge polyline and
+landing at `position × totalLength`.
+
+Invalid values (unknown keywords, non-numeric strings) silently fall
+back to `middle`. Fractional values outside `[0, 1]` are clamped.
+
+### `label-offset` — `<dy>px` or `<dx>px <dy>px`
+
+Screen-axis nudge of the label relative to its computed anchor, in
+pixels. CSS-shorthand parsing:
+
+- **One value** (`label-offset: 8px`) → `dx = 0`, `dy = 8`. The most
+  common "shift labels downward" case
+- **Two values** (`label-offset: 4px 8px`) → `dx = 4`, `dy = 8`
+
+```css
+edge { label-offset: 0 8px; }    /* every label drops 8px below its anchor */
+edge#wide { label-offset: 4px 8px; }
+```
+
+Screen axis (not edge-perpendicular) so a global rule applies a uniform
+visual shift regardless of each edge's slope. Positive values shift
+right (x) and down (y); negative values shift left and up.
+
+The offset is independent of the existing `-6px` typographic lift the
+renderer applies above the anchor — the lift stays in place to keep
+labels off the line, and the offset adds on top.
+
+> **Earlier draft (rejected)**: an earlier iteration of this property
+> defined `label-offset` as a 1-axis perpendicular nudge relative to
+> the edge direction. That made `edge { label-offset: 8px; }` produce
+> a different visual direction per edge slope, which was hard to
+> reason about. Switched to screen-axis CSS-shorthand semantics — see
+> [ADR-20260509-05](../adr/20260509-05-edge-label-position-offset.md).
 
 ---
 

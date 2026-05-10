@@ -36,9 +36,18 @@ const DEFAULT_EDGE_STYLE: ResolvedEdgeStyle = {
   fontSize: 11,
   strokeStyle: "solid",
   direction: "auto",
+  labelPosition: 0.5,
+  labelOffsetX: 0,
+  labelOffsetY: 0,
 };
 
 const EDGE_DIRECTION_VALUES = new Set<string>(["auto", "up", "down", "left", "right"]);
+
+const LABEL_POSITION_KEYWORDS: Record<string, number> = {
+  start: 0,
+  middle: 0.5,
+  end: 1,
+};
 
 const SHAPE_KEYWORDS = new Set<string>(["box", "user", "cylinder", "queue", "hexagon", "cloud"]);
 
@@ -465,6 +474,40 @@ function toResolvedEdgeStyle(props: Record<string, string>): ResolvedEdgeStyle {
     const value = props["direction"];
     if (EDGE_DIRECTION_VALUES.has(value)) {
       style.direction = value as ResolvedEdgeStyle["direction"];
+    }
+  }
+  if (props["label-position"]) {
+    const raw = props["label-position"];
+    if (raw in LABEL_POSITION_KEYWORDS) {
+      style.labelPosition = LABEL_POSITION_KEYWORDS[raw];
+    } else {
+      const numeric = parseFloat(raw);
+      if (Number.isFinite(numeric)) {
+        style.labelPosition = Math.min(1, Math.max(0, numeric));
+      }
+    }
+  }
+  if (props["label-offset"]) {
+    // CSS-like shorthand:
+    //   "8px"       → x=0, y=8
+    //   "4px 8px"   → x=4, y=8
+    // The two-token form mirrors `padding`/`margin` and lets a global
+    // rule like `edge { label-offset: 0 8px; }` shift every label by
+    // the same screen-axis amount, regardless of edge slope.
+    const tokens = props["label-offset"].trim().split(/\s+/);
+    if (tokens.length === 1) {
+      const dy = parseFloat(tokens[0]);
+      if (Number.isFinite(dy)) {
+        style.labelOffsetX = 0;
+        style.labelOffsetY = dy;
+      }
+    } else if (tokens.length >= 2) {
+      const dx = parseFloat(tokens[0]);
+      const dy = parseFloat(tokens[1]);
+      if (Number.isFinite(dx) && Number.isFinite(dy)) {
+        style.labelOffsetX = dx;
+        style.labelOffsetY = dy;
+      }
     }
   }
 

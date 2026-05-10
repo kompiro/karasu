@@ -49,6 +49,8 @@ export type {
 export type { Warning, WarningKind, WarningParamsByKind } from "./types/warnings.js";
 export { formatWarning, type FormattedWarning } from "./resolver/warning-legacy-format.js";
 export { formatDiagnostic } from "./parser/diagnostic-legacy-format.js";
+export { tidyStyleSheet, type TidyOptions, type TidyResult } from "./style/tidy.js";
+export { serializeStyleSheet } from "./style/serialize.js";
 
 export type { ViewPath, ViewSlice, DomainEdgeDetail } from "./view/view-extract.js";
 export { extractView } from "./view/view-extract.js";
