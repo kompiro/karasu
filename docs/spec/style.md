@@ -292,7 +292,7 @@ labels off the line, and the offset adds on top.
 > the edge direction. That made `edge { label-offset: 8px; }` produce
 > a different visual direction per edge slope, which was hard to
 > reason about. Switched to screen-axis CSS-shorthand semantics — see
-> [ADR-20260509-04](../adr/20260509-04-edge-label-position-offset.md).
+> [ADR-20260509-05](../adr/20260509-05-edge-label-position-offset.md).
 
 ---
 

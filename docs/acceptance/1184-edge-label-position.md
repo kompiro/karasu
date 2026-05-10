@@ -60,5 +60,5 @@ type: product
 ## 補足
 
 - **デフォルト保護**: `labelPosition === 0.5 && labelOffset === 0` のときは既存の "最長セグメント中点" ヒューリスティクスを維持。これにより既存図の SVG 出力が変わらないことを AT-J で担保
-- **screen-axis CSS shorthand を採用**: 1 値で y のみ、2 値で `dx dy`。`edge { label-offset: 0 8px }` のような全 edge 一律ルールが予測通りに動く（initial draft の 1 軸 perpendicular はレビューで即撤回 — 詳細は ADR-20260509-04）
+- **screen-axis CSS shorthand を採用**: 1 値で y のみ、2 値で `dx dy`。`edge { label-offset: 0 8px }` のような全 edge 一律ルールが予測通りに動く（initial draft の 1 軸 perpendicular はレビューで即撤回 — 詳細は ADR-20260509-05）
 - **GUI menu との統合**: `direction` 同様、Preview 右クリックメニューに `Label position ▸ Start / Middle / End` を追加するのは別 issue で扱う（本 PR は spec + renderer + resolver のみ）

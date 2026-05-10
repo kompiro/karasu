@@ -105,7 +105,7 @@ flowchart TD
     ADR_20260506_02["ADR-20260506-02<br/>`.krs.style` の `edge#<id>` セレクタ — base ID + opt..."]
     ADR_20260506_03["ADR-20260506-03<br/>`.krs.style` の edge `direction` プロパティ — 矢印の流れる向..."]
     ADR_20260506_04["ADR-20260506-04<br/>edge `direction: left` / `direction: right` の l..."]
-    ADR_20260509_04["ADR-20260509-04<br/>edge `label-position` / `label-offset` プロパティ — ..."]
+    ADR_20260509_05["ADR-20260509-05<br/>edge `label-position` / `label-offset` プロパティ — ..."]
   end
   subgraph navigation["navigation"]
     ADR_20260330_04["ADR-20260330-04<br/>Permanent Link — `nodePathIndex` と URL hash の 2..."]
@@ -450,7 +450,7 @@ flowchart TD
   class ADR_20260509_01 accepted
   class ADR_20260509_02 accepted
   class ADR_20260509_03 accepted
-  class ADR_20260509_04 accepted
+  class ADR_20260509_05 accepted
 ```
 
 ## Per-topic detail

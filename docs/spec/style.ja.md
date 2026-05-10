@@ -273,7 +273,7 @@ typographic な lift はそのまま、その上にこの offset が加算され
 > 1 軸 perpendicular ずらしと定義していた。これだと
 > `edge { label-offset: 8px; }` の効果が edge の傾きごとに違う方向に出て
 > 予測が立てにくかった。screen-axis CSS shorthand に切り替えた。詳細は
-> [ADR-20260509-04](../adr/20260509-04-edge-label-position-offset.md)。
+> [ADR-20260509-05](../adr/20260509-05-edge-label-position-offset.md)。
 
 ---
 

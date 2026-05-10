@@ -111,7 +111,7 @@ See also: [dependency graph](graph.md), per-topic detail under [graph/](graph/).
 - [ADR-20260506-02](20260506-02-edge-id-selector.md) — `.krs.style` の `edge#<id>` セレクタ — base ID + opt-in 著者 ID
 - [ADR-20260506-03](20260506-03-edge-direction-style.md) — `.krs.style` の edge `direction` プロパティ — 矢印の流れる向きを 5 値 enum で指定
 - [ADR-20260506-04](20260506-04-edge-direction-horizontal.md) — edge `direction: left` / `direction: right` の layered layout 反映
-- [ADR-20260509-04](20260509-04-edge-label-position-offset.md) — edge `label-position` / `label-offset` プロパティ — fractional 位置と screen-axis CSS shorthand offset
+- [ADR-20260509-05](20260509-05-edge-label-position-offset.md) — edge `label-position` / `label-offset` プロパティ — fractional 位置と screen-axis CSS shorthand offset
 
 ## navigation
 
