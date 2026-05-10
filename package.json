@@ -30,12 +30,15 @@
     "adr:visualize": "adr visualize",
     "adr:regenerate": "adr regenerate",
     "adr:check-assumptions": "adr check-assumptions",
+    "tpl:validate": "tsx scripts/tpl/cli.ts",
     "at:check-coverage": "tsx scripts/acceptance/check-coverage.ts",
     "at:test": "vitest run scripts/acceptance"
   },
   "devDependencies": {
     "@kompiro/adr-tools": "^0.0.2",
+    "@types/js-yaml": "^4.0.9",
     "@types/node": "^25.6.0",
+    "js-yaml": "^4.1.1",
     "knip": "^6.6.0",
     "lefthook": "^2.1.6",
     "madge": "^8.0.0",
