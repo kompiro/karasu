@@ -76,3 +76,17 @@ karasu/
 - 該当する観点が見つかったら、DesignDoc または PR description で TPL の ID を引用する
 - **DesignDoc 作成時は既存 TPL の確認に加えて `docs/concepts.ja.md` と関連 ADR もスキャン** し、まだ TPL になっていない原則で今回の設計が違反しうるものがあれば proactive TPL を同じ PR で起こす（理想ライフサイクルは concept → proactive TPL → development → bug → retrospective TPL — `docs/test-perspectives/README.md` 「TPL のライフサイクル」節）
 - bug 修正時、3-Yes ルール（横展開しうる / 構造的に再発しうる / 既存 TPL に未掲載）すべて満たすなら新規 TPL を起こす（詳細は `docs/test-perspectives/README.md`）
+
+### メタフィルタ — 「ゆっくり変化する構造的な文脈」
+
+新 feature / 構文拡張 / 連携機能を提案・レビューするときは、個別 TPL とは別に **`docs/concepts.ja.md` 「非目標 → 共通フィルタ」** に照らして必ず一度評価する:
+
+> karasu が扱うのは ゆっくり変化する構造的な文脈 — 何が存在し、どう関係し、誰が所有するかであり、実装の詳細も運用の現況もその外側にある。
+
+提案がこのフィルタを通るかを問う 3 つのチェック:
+
+- 実装の詳細をモデルに引き込もうとしていないか（コード生成 / DB スキーマ設計 / 型生成 など）
+- 運用の現況・ランタイムメトリクス・本番トポロジを取り込もうとしていないか（個々の pod / リージョン / ライブダッシュボード化）
+- 情報の流れが詳細化方向（down）になっていないか（→ TPL-20260510-19 と相補。あちらは流れの方向、こちらは扱う情報のレイヤ）
+
+このメタフィルタは個別 feature ではなく **すべての feature** に適用される性質のため、TPL ファイルではなく CLAUDE.md に置いている（決定経緯と alternative 比較は #1221）。
