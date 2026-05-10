@@ -89,9 +89,11 @@ scope:
 
 ### 定期 deprecation レビュー
 
-deprecation の **トリガー** は半年ごとの定期レビューで起こす。`active` な TPL を放置すると、構造変更で原理的に発生しなくなった観点がそのまま残り続けるため。
+deprecation の **トリガー** は週次の定期レビューで起こす。`active` な TPL を放置すると、構造変更で原理的に発生しなくなった観点がそのまま残り続けるため。
 
-**カデンス**: 4月1日 / 10月1日 09:00 UTC に `.github/workflows/tpl-review.yml` が走り、レビュー用 Issue を自動作成する。`workflow_dispatch` で手動実行も可能（bootstrap や大きなアーキテクチャ変更直後の ad-hoc 用）。
+**カデンス**: 毎週月曜 09:00 UTC に `.github/workflows/tpl-review.yml` が走り、その週のレビュー用 Issue を自動作成する。`workflow_dispatch` で手動実行も可能（bootstrap や大きなアーキテクチャ変更直後の ad-hoc 用）。
+
+> なぜ週次か: TPL 運用は始まったばかりで、20 件近くを一括 backfill した直後でもある。早く obsolescence を捕捉するために、当面は高頻度で回す。ほとんどの週で全件 `keep` になる状態が安定したら、月次 / 半年に伸ばすかを再検討する（cadence 自体も TPL のレビュー対象）。
 
 **Issue の中身**: `pnpm tpl:review:body` が生成する。`active` TPL ごとにチェックボックス + 3 つの観点が並ぶ:
 

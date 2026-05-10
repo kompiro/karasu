@@ -1,4 +1,4 @@
-// Generates the markdown body for a periodic TPL deprecation-review Issue.
+// Generates the markdown body for a weekly TPL deprecation-review Issue.
 //
 // Reads docs/test-perspectives/, filters TPLs whose status is "active",
 // and emits to stdout: an introduction, a per-TPL checklist with the three
@@ -37,19 +37,23 @@ for (const file of entries) {
 }
 
 const periodLabel = (() => {
+  // ISO 8601 week date, e.g. 2026-W19. Computed in UTC to match the workflow's `date -u +%G-W%V`.
   const d = new Date();
-  const year = d.getUTCFullYear();
-  const month = d.getUTCMonth() + 1;
-  // Apr/May → H1, Oct/Nov → H2; fall back to current half by month.
-  return month <= 6 ? `${year}-H1` : `${year}-H2`;
+  const utc = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()));
+  const day = utc.getUTCDay() || 7;
+  utc.setUTCDate(utc.getUTCDate() + 4 - day);
+  const yearStart = new Date(Date.UTC(utc.getUTCFullYear(), 0, 1));
+  const week = Math.ceil(((utc.getTime() - yearStart.getTime()) / 86400000 + 1) / 7);
+  return `${utc.getUTCFullYear()}-W${String(week).padStart(2, "0")}`;
 })();
 
 const lines: string[] = [];
 lines.push(`# TPL deprecation review — ${periodLabel}`);
 lines.push("");
 lines.push(
-  "Periodic semi-annual review of every `active` TPL in `docs/test-perspectives/`. " +
-    "For each entry, decide a disposition (`keep` / `update` / `deprecate`) using the three questions below.",
+  "Weekly review of every `active` TPL in `docs/test-perspectives/`. " +
+    "For each entry, decide a disposition (`keep` / `update` / `deprecate`) using the three questions below. " +
+    "If nothing changed this week the answer is almost always `keep` — that's fine; the point is to catch the rare entry that quietly went obsolete.",
 );
 lines.push("");
 lines.push("## Review questions (per TPL)");
