@@ -2,9 +2,18 @@
 
 ## 目的
 
-karasu の `bug` ラベル付き Issue から抽出された **再発しうる失敗パターン** を、構造化された観点として蓄積する。新機能の DesignDoc 作成時や受け入れテスト設計時に、過去の失敗パターンが自動的に参照される状態を作ることが目的。
+karasu で **再発しうる失敗パターン** を、構造化された観点として蓄積する。新機能の DesignDoc 作成時や受け入れテスト設計時に、これらの観点が自動的に参照される状態を作ることが目的。
 
 運用開始の意思決定は [ADR-20260509-04](../adr/20260509-04-test-perspective-library.md) に記録されている。
+
+### 観点の起源 — retrospective と proactive
+
+TPL は **2 つの起源** から生まれる:
+
+- **Retrospective（事後）** — 過去の `bug` Issue から、実際に起きた失敗を一般化する。バックフィルの主流（TPL-01〜17）はこの形
+- **Proactive（事前）** — `docs/concepts.ja.md` のようなアーキテクチャ原則 / 非目標 / north-star から、**原則が破られたときに起きるであろう失敗** を予測して観点化する（TPL-18〜20 はこの形）
+
+どちらも 3-Yes ルール（次節）と同じ基準で評価する。バグ起源 / 原則起源は frontmatter の `discovered_from` を見れば分かる（`issue:` か `root_cause_file: docs/concepts.*` か）。両方とも同じスキーマ・同じ運用ルールに乗る。
 
 ## ADR との違い
 
@@ -107,3 +116,6 @@ scope:
 | [TPL-20260510-15](TPL-20260510-15-dev-vs-packaged-mode-parity.md) | dev mode と packaged / installed mode の parity | vscode | #1024 |
 | [TPL-20260510-16](TPL-20260510-16-convenience-vs-principled-api.md) | consumer 境界では convenience より principled API | cli | #239, #507 |
 | [TPL-20260510-17](TPL-20260510-17-trust-boundary-input-validation.md) | trust boundary で外部入力を validate / canonicalize | cli | #168 |
+| [TPL-20260510-18](TPL-20260510-18-text-as-single-source-of-truth.md) | `.krs` テキストを single source of truth に保つ | core-concepts | concepts.ja.md |
+| [TPL-20260510-19](TPL-20260510-19-information-flows-up.md) | 情報の流れは抽象化方向（up）か詳細化方向（down）かを判定する | core-concepts | concepts.ja.md |
+| [TPL-20260510-20](TPL-20260510-20-id-not-label-for-identity.md) | identity は `id` で判定し `label` を比較に使わない | resolver | concepts.ja.md |
