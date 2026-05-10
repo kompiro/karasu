@@ -131,6 +131,56 @@ proactive / retrospective の区別は **起源** の違いだけで、frontmatt
 - **新機能の実装時**: 受け入れテストの項目を作る前に該当 TPL のチェックリストを確認する
 - **bug 修正時**: 同じパターンの TPL がすでに存在しないか確認し、あれば `discovered_from` に追記する。なければ 3-Yes ルールで retrospective TPL の新規作成を検討する。**併せて「この bug は proactive TPL を書いていれば防げたか?」も自問する**（防げた場合、それ自体が次のレトロスペクティブの素材）
 
+## 繰り返し現れる対処パターン
+
+複数の TPL の「既知の対処パターン」節を横断すると、**同じ shape の解決策** が繰り返し提示されている。これらは単独の観点ではなく、複数の観点に共通する **メタパターン** として、新しい TPL を書くときにまず候補に挙げる価値がある。
+
+ここに載せるのは「**3 つ以上の TPL で同じ対処が出現したもの**」だけ。1〜2 件の偶然をパターン化すると、本来別々の問題を一括りにする圧力が生まれてしまう。
+
+### 1. 共通 helper / fixture への抽出
+
+duplication が複数箇所に分散していて drift の温床になっている場合、**共通 helper / 共通 fixture / 共通 base interface** に集約する。drift が再発する限り、ローカル fix では何度も同じ shape のバグが立ち戻ってくる。
+
+現時点の evidence:
+
+- [TPL-06](TPL-20260510-06-display-mode-cross-surface.md) — 共通アセット（pictogram など）を「id → 単一ソース」の解決関数に集約
+- [TPL-11](TPL-20260510-11-parallel-function-parity.md) — 並列関数ファミリの差を共通 helper に抽出（`buildStyles` のような形）
+- [TPL-12](TPL-20260510-12-ast-parser-renderer-agreement.md) — ノード共通フィールドを `BaseNodeFields` に集約、parser の keyword 処理を共通関数に
+- [TPL-13](TPL-20260510-13-e2e-fixture-controlled-state.md) — 既存 fixture（`anthropic.ts` の locale pin）を他 fixture にテンプレ展開
+- [TPL-14](TPL-20260510-14-wait-for-stable-state.md) — Monaco の async mount 操作を fixture helper（`replaceEditorContent`）に集約
+- [TPL-15](TPL-20260510-15-dev-vs-packaged-mode-parity.md) — 候補パス配列 + `find(fs.existsSync)` の解決ロジックを 1 箇所に
+
+**使わないケース**: duplication がまだ 2 箇所しかなく、抽象化すると形が決まりすぎて将来の divergence を阻害する場合。3 箇所目で再評価する（rule of three）。
+
+### 2. 境界では principled / safe variant をデフォルトにする
+
+trust boundary / consumer 境界 / 入出力境界では、**便利な変種ではなく原則的な変種** をデフォルトにする。便利な変種を選ぶと、限定された前提（single-file / sync only / 信頼できる input）の外側で silent に挙動が壊れる。
+
+現時点の evidence:
+
+- [TPL-13](TPL-20260510-13-e2e-fixture-controlled-state.md) — テスト boot は `page.goto("/")` ではなく fixture 経由をデフォルト（fixture が wipe / seed / locale pin を担保）
+- [TPL-16](TPL-20260510-16-convenience-vs-principled-api.md) — consumer 境界では convenience API（`compile`, `parse`）ではなく principled API（`compileProject`, `parseAsync`）をデフォルト
+- [TPL-17](TPL-20260510-17-trust-boundary-input-validation.md) — 外部入力は受け取った時点で validate / canonicalize する（downstream の incidental mitigation に頼らない）
+
+**使わないケース**: principled variant が genuinely overspec で、convenience を選ぶ理由を Design Doc / コメントで言える場合。境界の内側（純粋な internal helper）では convenience でよい。
+
+### 3. Negative test を regression fence にする
+
+「**起きてはいけないこと** が起きないことを assert する test」を 1 件以上必ず置く。positive test（期待通り動く）だけでは、validation の不在 / 過剰一致 / 暗黙の許可が表面化しない。
+
+現時点の evidence:
+
+- [TPL-10](TPL-20260510-10-cross-reference-validation.md) — **正しい参照に warning が出ない** 反対方向の test
+- [TPL-13](TPL-20260510-13-e2e-fixture-controlled-state.md) — retry-pass を `failed` と同等に集計、**flake が隠蔽されない** ことを担保
+- [TPL-14](TPL-20260510-14-wait-for-stable-state.md) — `retries=0` で通らないテストを「隠れ flake」として可視化
+- [TPL-17](TPL-20260510-17-trust-boundary-input-validation.md) — traversal 試行 / injection 試行 / null byte / 巨大入力の **negative test** を回帰テストに必ず 1 件
+
+**使わないケース**: positive test だけで boundary が完全に枚挙できる場合（pure function で input 集合が小さく、全列挙できるなど）。多くの実コードでは該当しない。
+
+### このリストの拡張ルール
+
+新しい対処パターン候補が出てきても、**3 つ以上の TPL で同じ shape が確認できるまで** はここに追加しない。1〜2 件はまだ「特定の問題に対する個別解決」かもしれず、メタパターンとして固定すると過剰一般化のリスクがある。逆に、ここに載っているパターンの 4 件目以降の evidence は、新しい TPL を書くときに自然と既知パターンへ整理されていく。
+
 ## 一覧
 
 現時点で active な TPL は以下:
