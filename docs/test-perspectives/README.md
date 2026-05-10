@@ -90,8 +90,10 @@ scope:
 
 | ID | タイトル | topic | 起源 |
 |---|---|---|---|
-| [TPL-20260510-01](TPL-20260510-01-top-level-orphans.md) | top-level orphans の扱い | core-concepts | #1160 |
+| [TPL-20260510-01](TPL-20260510-01-top-level-orphans.md) | top-level orphans の扱い | core-concepts | #1160, #412 |
 | [TPL-20260510-02](TPL-20260510-02-round-trip-guarantee.md) | コード変換における round-trip 保証 | parser | #1101, #1058 |
 | [TPL-20260510-03](TPL-20260510-03-enum-member-addition.md) | 列挙型メンバー追加時の更新漏れ | navigation | #1094 |
 | [TPL-20260510-04](TPL-20260510-04-continuous-input-dom-interference.md) | 連続操作中の DOM 介入 | app-ui | #1053 |
-| [TPL-20260510-05](TPL-20260510-05-implicit-data-filtering.md) | データ表示の暗黙フィルタ | renderer | #999 |
+| [TPL-20260510-05](TPL-20260510-05-implicit-data-filtering.md) | データ表示の暗黙フィルタ | renderer | #999, #132 |
+| [TPL-20260510-06](TPL-20260510-06-display-mode-cross-surface.md) | 表示モード切替の cross-surface 点検 | renderer | #1001, #279, #132 |
+| [TPL-20260510-07](TPL-20260510-07-derivation-tag-semantics.md) | 派生タグでの semantic 区別の保存 | edges | #510 |
