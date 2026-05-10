@@ -87,6 +87,28 @@ scope:
 
 実装の構造変更などで、ある観点が原理的に発生しなくなった場合、`status` を `deprecated` に変更する。エントリ自体は **削除しない** — なぜ deprecated にしたかを末尾に追記する（後から「この観点はなぜ消えたのか」を辿れるようにするため）。validator は `status: deprecated` のエントリ本文に `deprecated` の語を含む rationale を要求する（理由が無いまま deprecated にすると CI で落ちる）。
 
+### 定期 deprecation レビュー
+
+deprecation の **トリガー** は週次の定期レビューで起こす。`active` な TPL を放置すると、構造変更で原理的に発生しなくなった観点がそのまま残り続けるため。
+
+**カデンス**: 毎週月曜 09:00 UTC に `.github/workflows/tpl-review.yml` が走り、その週のレビュー用 Issue を自動作成する。`workflow_dispatch` で手動実行も可能（bootstrap や大きなアーキテクチャ変更直後の ad-hoc 用）。
+
+> なぜ週次か: TPL 運用は始まったばかりで、20 件近くを一括 backfill した直後でもある。早く obsolescence を捕捉するために、当面は高頻度で回す。ほとんどの週で全件 `keep` になる状態が安定したら、月次 / 半年に伸ばすかを再検討する（cadence 自体も TPL のレビュー対象）。
+
+**Issue の中身**: `pnpm tpl:review:body` が生成する。`active` TPL ごとにチェックボックス + 3 つの観点が並ぶ:
+
+1. 引用された `root_cause_file` / `root_cause_adr` は今も存在するか? 関数 / パターンは生き残っているか?
+2. アーキテクチャの前提が変わっていないか?（例: 「user stylesheet は常に最後」 → 「mode-locked properties は user sheet を bypass する」）
+3. この TPL を包含するより新しい TPL があるか?（あれば `superseded_by` として deprecate — ADR と同じ運用）
+
+**処分（disposition）**:
+
+- **keep** — 今も妥当。編集不要
+- **update** — 観点は妥当だが、チェックリスト / 既知の対処 / 関連テストの refresh が必要
+- **deprecate** — root cause が構造的に消滅。`status: deprecated` にして末尾に rationale を追記（前節 "deprecated への移行" の手順）
+
+**完了処理**: レビューが終わったら、Issue にディスポジションのサマリ（例: `keep: 18 / update: 1 / deprecate: 1`）をコメントしてクローズする。
+
 ### Validator
 
 frontmatter とこの README の一覧表は **`pnpm tpl:validate`** で機械的にチェックされる。pre-push の lefthook と PR-gated の `.github/workflows/tpl-validate.yml` で自動実行されるが、ローカルで先に確認したいときも同じコマンドで走る。

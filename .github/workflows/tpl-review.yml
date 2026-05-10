@@ -1,0 +1,65 @@
+name: TPL deprecation review
+
+# Opens a periodic TPL deprecation review Issue every Monday at 09:00 UTC.
+#
+# Cadence is intentionally weekly during rollout: TPL practice is new and
+# many entries were backfilled in a single batch, so we want fast feedback
+# on which observations actually rot vs. survive. Once the queue stabilizes
+# (most weeks → all `keep`), revisit and consider stretching to monthly /
+# semi-annual.
+#
+# `workflow_dispatch` is the manual escape hatch — used for the bootstrap
+# review and for ad-hoc runs (e.g. right after a major architectural change).
+
+on:
+  schedule:
+    # 09:00 UTC every Monday.
+    - cron: "0 9 * * 1"
+  workflow_dispatch:
+
+concurrency:
+  group: tpl-review-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  open-review-issue:
+    name: Open TPL review Issue
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - uses: pnpm/action-setup@903f9c1a6ebcba6cf41d87230be49611ac97822e # v6.0.3
+
+      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
+        with:
+          node-version: "22"
+          cache: "pnpm"
+
+      - run: pnpm install --frozen-lockfile
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Generate review Issue body
+        env:
+          GITHUB_REPOSITORY: ${{ github.repository }}
+        run: pnpm --silent tpl:review:body > /tmp/tpl-review-body.md
+
+      - name: Compute period label
+        id: period
+        run: |
+          # ISO 8601 week date, e.g. 2026-W19 — unambiguous across years.
+          label=$(date -u +%G-W%V)
+          echo "label=${label}" >> "$GITHUB_OUTPUT"
+
+      - name: Open review Issue
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh issue create \
+            --title "TPL deprecation review — ${{ steps.period.outputs.label }}" \
+            --label "documentation" \
+            --body-file /tmp/tpl-review-body.md
