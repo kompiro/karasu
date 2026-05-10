@@ -28,3 +28,16 @@ body:
         - [ ]
     validations:
       required: false
+
+  - type: checkboxes
+    id: scope-filter
+    attributes:
+      label: Scope filter — 「ゆっくり変化する構造的な文脈」
+      description: |
+        karasu が扱うのは **ゆっくり変化する構造的な文脈** — 何が存在し、どう関係し、誰が所有するかであり、
+        実装の詳細も運用の現況もその外側にある（[docs/concepts.ja.md「非目標 → 共通フィルタ」](../../docs/concepts.ja.md)）。
+        以下に該当する場合は既存の **非目標** に当たる可能性が高い。該当する場合は概要欄に rationale を明記すること。
+      options:
+        - label: 実装の詳細をモデル側に引き込んでいない（コード生成・DB スキーマ・関数シグネチャなど）
+        - label: ランタイムメトリクス / 運用の現況をモデルに追わせていない（個別 pod / deploy 状態 / live metrics など）
+        - label: 時間軸 / 高頻度に変化する状態をモデルに引き込んでいない（シーケンス図・実行ログ・トレースなど）

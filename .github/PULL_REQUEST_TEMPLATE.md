@@ -18,6 +18,27 @@
 <!-- Cloudflare Pages preview URL (generated automatically by the Preview workflow) -->
 <!-- e.g. https://<branch-name>.karasu.pages.dev -->
 
+## Scope filter (new-feature PRs only)
+
+<!--
+For PRs that introduce a new user-facing feature or external integration,
+confirm the change stays inside karasu's scope filter from
+docs/concepts.ja.md "非目標 → 共通フィルタ":
+
+> karasu が扱うのは ゆっくり変化する構造的な文脈 —
+> 何が存在し、どう関係し、誰が所有するかであり、
+> 実装の詳細も運用の現況もその外側にある。
+
+If any of the bullets below is checked (the PR pulls karasu *toward* one
+of those failure modes), justify it in the Summary or in the linked
+DesignDoc. For pure refactor / docs / chore / bug-fix PRs, mark "N/A".
+-->
+
+- [ ] N/A — not a new-feature PR
+- [ ] Pulls implementation detail into the model (code generation, DB schema, function signatures, ...)
+- [ ] Pulls runtime metrics / operational state into the model (per-pod state, live metrics, deploy status, ...)
+- [ ] Pulls time-axis / high-frequency state into the model (sequence diagrams, execution logs, traces, ...)
+
 ## Manual Verification Checklist
 
 <!-- List items that cannot be verified by CI -->
