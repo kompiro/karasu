@@ -95,5 +95,7 @@ scope:
 | [TPL-20260510-03](TPL-20260510-03-enum-member-addition.md) | 列挙型メンバー追加時の更新漏れ | navigation | #1094 |
 | [TPL-20260510-04](TPL-20260510-04-continuous-input-dom-interference.md) | 連続操作中の DOM 介入 | app-ui | #1053 |
 | [TPL-20260510-05](TPL-20260510-05-implicit-data-filtering.md) | データ表示の暗黙フィルタ | renderer | #999, #132 |
-| [TPL-20260510-06](TPL-20260510-06-display-mode-cross-surface.md) | 表示モード切替の cross-surface 点検 | renderer | #1001, #279, #132 |
+| [TPL-20260510-06](TPL-20260510-06-display-mode-cross-surface.md) | 表示モード切替の cross-surface 点検 | renderer | #1001, #279, #132, #183 |
 | [TPL-20260510-07](TPL-20260510-07-derivation-tag-semantics.md) | 派生タグでの semantic 区別の保存 | edges | #510 |
+| [TPL-20260510-08](TPL-20260510-08-derived-state-staleness.md) | 派生 view / panel の memoization と publish | app-ui | #1032, #891 |
+| [TPL-20260510-09](TPL-20260510-09-event-handler-ui-restructure.md) | UI 構造を変える event handler の event 漏れ | app-ui | #948 |

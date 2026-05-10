@@ -14,13 +14,17 @@ known_consumers:
   - style-resolver
   - legend-footer
   - node-detail-panel
+  - full-view-svg
+  - export-svg
 discovered_from:
   - issue: "#1001"
   - issue: "#279"
   - issue: "#132"
+  - issue: "#183"
   - root_cause_file: "packages/core/src/renderer/svg-builder.ts:257"
   - root_cause_file: "packages/core/src/builtins/icon-theme.ts"
   - root_cause_file: "packages/core/src/resolver/style-resolver.ts"
+  - root_cause_file: "packages/app/src/hooks/useFullViewSvg.ts"
 related_to:
   - TPL-20260510-05
 topic: renderer
@@ -36,7 +40,7 @@ scope:
 
 `displayMode = "icon" | "shape"` のような **描画全体に影響するグローバルなトグル** は、見かけ以上に多くの場所と接点を持つ。新しいモードを追加する、もしくは既存モードの挙動を変えるとき、以下のすべての面で「このモードが正しく扱われているか」を能動的に点検する必要がある。
 
-1. **各描画面（surface）が個別にモードを認識しているか** — レイアウト本体だけでなく、legend / icon card frame / detail panel の icon / 各種 footer / マージンなど、SVG / DOM を生成するすべての関数が「このモードのとき何を描くか」を明示的に決めているか
+1. **各描画面（surface）が個別にモードを認識しているか** — レイアウト本体だけでなく、legend / icon card frame / detail panel の icon / 各種 footer / マージンなど、SVG / DOM を生成するすべての関数が「このモードのとき何を描くか」を明示的に決めているか。**主描画と並列の代替描画パス**（Full View、export SVG、印刷用、画像書き出しなど）も同様に対象。これらは別 hook / 別関数で構築されるため、主描画の修正だけでは追従しない（#183: `useFullViewSvg` が `displayMode` を `buildExportSvg` に渡し忘れていた）
 2. **スタイルカスケードでモード由来のプロパティが上書きされない設計になっているか** — モード固有のテーマ（icon-theme など）が「ユーザーが上書きできるレイヤー」より前に挿入されていると、ユーザー stylesheet（あるいは built-in stylesheet）が無自覚にモードを破壊する
 3. **診断・警告系がモードを理解しているか** — モード由来の意図的な override を「style 衝突」と誤検知して false-positive な warning を出さないか
 4. **同じデータの cross-surface 表示が一貫しているか** — 例: icon card に出る pictogram と NodeDetailPanel に出る kind icon が同じソースから来ているか（→ TPL-20260510-05 とも関連）
@@ -54,7 +58,7 @@ scope:
 
 新しい display mode を追加するとき・既存モードの挙動を変えるとき、以下を確認する:
 
-- [ ] モードを参照する描画面の一覧（legend / card frame / detail panel / footer / 各 builder）が洗い出されているか
+- [ ] モードを参照する描画面の一覧（legend / card frame / detail panel / footer / 各 builder / **Full View / export SVG など代替描画パス**）が洗い出されているか
 - [ ] モード固有のテーマシート（`ICON_THEME_STYLE_SOURCE` など）が、ユーザー stylesheet より **後** に積まれる（= 高優先度になる）カスケード構成になっているか。または、モード支配下のプロパティが「ユーザーが上書きできない」と明示されているか
 - [ ] スタイル resolver / 診断ロジックが「モード由来の意図的な override」を warning から除外しているか（false-positive チェック）
 - [ ] 同じ kind / data に対する表示が、すべての surface（icon card / NodeDetailPanel / legend / tooltip / etc.）で **同一のソース** から引かれているか（→ TPL-05 のチェックリストとも合わせて確認）
