@@ -1,5 +1,5 @@
 ---
-id: TPL-20260510-21
+id: TPL-20260510-22
 title: "論理・物理・組織の三面は一つの `.krs` artifact 内で交差させる"
 status: active
 date: 2026-05-10
@@ -26,7 +26,7 @@ scope:
     - vscode
 ---
 
-# TPL-20260510-21: 論理・物理・組織の三面は一つの `.krs` artifact 内で交差させる
+# TPL-20260510-22: 論理・物理・組織の三面は一つの `.krs` artifact 内で交差させる
 
 ## 観点
 
