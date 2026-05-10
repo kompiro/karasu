@@ -594,6 +594,152 @@ describe("resolveStyles", () => {
     });
   });
 
+  describe("label-position / label-offset properties", () => {
+    function singleEdge() {
+      return [
+        {
+          from: "A",
+          to: "B",
+          kind: "sync" as const,
+          tags: [],
+          loc: dummyLoc,
+          canonicalId: "A->B",
+        },
+      ];
+    }
+
+    it("defaults label-position to 0.5 (midpoint) and label-offset to 0,0", () => {
+      const result = resolveStyles([], [], undefined, undefined, undefined, singleEdge());
+      const style = result.edges.get("A->B")!;
+      expect(style.labelPosition).toBe(0.5);
+      expect(style.labelOffsetX).toBe(0);
+      expect(style.labelOffsetY).toBe(0);
+    });
+
+    it("translates the `start` keyword to 0", () => {
+      const sheet: StyleSheet = {
+        rules: [
+          makeRule(
+            { nodeType: "edge", tags: [], annotations: [] },
+            { "label-position": "start" },
+            1,
+            0,
+          ),
+        ],
+      };
+      const result = resolveStyles([], [sheet], undefined, undefined, undefined, singleEdge());
+      expect(result.edges.get("A->B")!.labelPosition).toBe(0);
+    });
+
+    it("translates the `end` keyword to 1", () => {
+      const sheet: StyleSheet = {
+        rules: [
+          makeRule(
+            { nodeType: "edge", tags: [], annotations: [] },
+            { "label-position": "end" },
+            1,
+            0,
+          ),
+        ],
+      };
+      const result = resolveStyles([], [sheet], undefined, undefined, undefined, singleEdge());
+      expect(result.edges.get("A->B")!.labelPosition).toBe(1);
+    });
+
+    it("accepts a fractional value", () => {
+      const sheet: StyleSheet = {
+        rules: [
+          makeRule(
+            { nodeType: "edge", tags: [], annotations: [] },
+            { "label-position": "0.25" },
+            1,
+            0,
+          ),
+        ],
+      };
+      const result = resolveStyles([], [sheet], undefined, undefined, undefined, singleEdge());
+      expect(result.edges.get("A->B")!.labelPosition).toBe(0.25);
+    });
+
+    it("clamps fractional values outside [0, 1]", () => {
+      const sheet: StyleSheet = {
+        rules: [
+          makeRule(
+            { nodeType: "edge", tags: [], annotations: [] },
+            { "label-position": "1.5" },
+            1,
+            0,
+          ),
+        ],
+      };
+      const result = resolveStyles([], [sheet], undefined, undefined, undefined, singleEdge());
+      expect(result.edges.get("A->B")!.labelPosition).toBe(1);
+    });
+
+    it("falls back to the default for unrecognised keywords / non-numeric values", () => {
+      const sheet: StyleSheet = {
+        rules: [
+          makeRule(
+            { nodeType: "edge", tags: [], annotations: [] },
+            { "label-position": "near-the-arrow" },
+            1,
+            0,
+          ),
+        ],
+      };
+      const result = resolveStyles([], [sheet], undefined, undefined, undefined, singleEdge());
+      expect(result.edges.get("A->B")!.labelPosition).toBe(0.5);
+    });
+
+    it("parses a single-token label-offset as y-only (x stays 0)", () => {
+      const sheet: StyleSheet = {
+        rules: [
+          makeRule(
+            { nodeType: "edge", tags: [], annotations: [] },
+            { "label-offset": "8px" },
+            1,
+            0,
+          ),
+        ],
+      };
+      const result = resolveStyles([], [sheet], undefined, undefined, undefined, singleEdge());
+      expect(result.edges.get("A->B")!.labelOffsetX).toBe(0);
+      expect(result.edges.get("A->B")!.labelOffsetY).toBe(8);
+    });
+
+    it("parses a two-token label-offset as `dx dy`", () => {
+      const sheet: StyleSheet = {
+        rules: [
+          makeRule(
+            { nodeType: "edge", tags: [], annotations: [] },
+            { "label-offset": "4px 8px" },
+            1,
+            0,
+          ),
+        ],
+      };
+      const result = resolveStyles([], [sheet], undefined, undefined, undefined, singleEdge());
+      expect(result.edges.get("A->B")!.labelOffsetX).toBe(4);
+      expect(result.edges.get("A->B")!.labelOffsetY).toBe(8);
+    });
+
+    it("accepts negative offsets in either token", () => {
+      const sheet: StyleSheet = {
+        rules: [
+          makeRule(
+            { nodeType: "edge", tags: [], annotations: [] },
+            { "label-offset": "-4px -8px" },
+            1,
+            0,
+          ),
+        ],
+      };
+      const result = resolveStyles([], [sheet], undefined, undefined, undefined, singleEdge());
+      expect(result.edges.get("A->B")!.labelOffsetX).toBe(-4);
+      expect(result.edges.get("A->B")!.labelOffsetY).toBe(-8);
+    });
+  });
+
   it("resolves [write] edge to stroke-width 2 via builtin stylesheet (read < write < cyclic)", () => {
     const writeSystem = makeNode({
       kind: "system",

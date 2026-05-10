@@ -1,6 +1,6 @@
 # ADR Dependency Graph — Overview
 
-163 ADRs across 15 topics. Clusters group by `topic` frontmatter field. Edges crossing cluster borders are cross-topic dependencies.
+164 ADRs across 15 topics. Clusters group by `topic` frontmatter field. Edges crossing cluster borders are cross-topic dependencies.
 ```mermaid
 flowchart TD
   subgraph adr-tooling["adr-tooling"]
@@ -105,6 +105,7 @@ flowchart TD
     ADR_20260506_02["ADR-20260506-02<br/>`.krs.style` の `edge#<id>` セレクタ — base ID + opt..."]
     ADR_20260506_03["ADR-20260506-03<br/>`.krs.style` の edge `direction` プロパティ — 矢印の流れる向..."]
     ADR_20260506_04["ADR-20260506-04<br/>edge `direction: left` / `direction: right` の l..."]
+    ADR_20260509_05["ADR-20260509-05<br/>edge `label-position` / `label-offset` プロパティ — ..."]
   end
   subgraph navigation["navigation"]
     ADR_20260330_04["ADR-20260330-04<br/>Permanent Link — `nodePathIndex` と URL hash の 2..."]
@@ -451,6 +452,7 @@ flowchart TD
   class ADR_20260509_02 accepted
   class ADR_20260509_03 accepted
   class ADR_20260509_04 accepted
+  class ADR_20260509_05 accepted
 ```
 
 ## Per-topic detail
@@ -461,7 +463,7 @@ flowchart TD
 - [`chat-ai`](graph/chat-ai.md) — 8 ADRs
 - [`cli`](graph/cli.md) — 11 ADRs
 - [`core-concepts`](graph/core-concepts.md) — 7 ADRs
-- [`edges`](graph/edges.md) — 10 ADRs
+- [`edges`](graph/edges.md) — 11 ADRs
 - [`navigation`](graph/navigation.md) — 9 ADRs
 - [`parser`](graph/parser.md) — 13 ADRs
 - [`project`](graph/project.md) — 4 ADRs
