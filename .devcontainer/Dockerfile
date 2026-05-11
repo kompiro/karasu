@@ -7,6 +7,21 @@ RUN curl -fsSL "https://github.com/dandavison/delta/releases/download/${DELTA_VE
   && dpkg -i /tmp/delta.deb \
   && rm /tmp/delta.deb
 
+# gitleaks のインストール（秘密情報スキャン — ローカル/CI で同一バージョンを使う）
+# CI 側 (.github/workflows/secret-scan.yml) と version を揃えること。
+ARG GITLEAKS_VERSION="8.21.2"
+RUN ARCH="$(dpkg --print-architecture)" \
+  && case "$ARCH" in \
+       amd64) GL_ARCH="x64" ;; \
+       arm64) GL_ARCH="arm64" ;; \
+       *) echo "unsupported arch for gitleaks: $ARCH" && exit 1 ;; \
+     esac \
+  && curl -fsSL "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/gitleaks_${GITLEAKS_VERSION}_linux_${GL_ARCH}.tar.gz" \
+       -o /tmp/gitleaks.tgz \
+  && tar -xzf /tmp/gitleaks.tgz -C /usr/local/bin gitleaks \
+  && rm /tmp/gitleaks.tgz \
+  && gitleaks version
+
 # packages/vscode-e2e の Electron ベース VS Code を headless 起動するための依存
 # (xvfb-run / xauth + GTK・NSS 系ライブラリ)。CI では vscode-e2e.yml が同等のものを apt-get する。
 RUN apt-get update \
