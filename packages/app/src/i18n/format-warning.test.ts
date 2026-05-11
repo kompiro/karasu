@@ -92,6 +92,30 @@ const SAMPLES: Record<WarningKind, Warning> = {
     kind: "style-column-ignored-non-system-view",
     params: { nodeId: "OrderUnit", viewType: "deploy" },
   },
+  "style-invalid-enum-value": {
+    kind: "style-invalid-enum-value",
+    params: { property: "direction", value: "dwon", allowed: ["auto", "up", "down"] },
+  },
+  "style-invalid-hex-color": {
+    kind: "style-invalid-hex-color",
+    params: { property: "color", value: "#zzzz" },
+  },
+  "style-missing-length-unit": {
+    kind: "style-missing-length-unit",
+    params: { property: "stroke-width", value: "1.5", allowedUnits: ["px"] },
+  },
+  "style-invalid-length-unit": {
+    kind: "style-invalid-length-unit",
+    params: { property: "stroke-width", value: "1.5em", unit: "em", allowedUnits: ["px"] },
+  },
+  "style-out-of-range": {
+    kind: "style-out-of-range",
+    params: { property: "opacity", value: 1.5, min: 0, max: 1 },
+  },
+  "style-unknown-property": {
+    kind: "style-unknown-property",
+    params: { property: "color2" },
+  },
 };
 
 // Identifying fields that should appear verbatim in the rendered message,
@@ -121,6 +145,12 @@ const IDENTIFIERS: Record<WarningKind, string[]> = {
   "legend-ref-unresolved": ["@missing"],
   "style-column-invalid-value": ["OrderService", "centre"],
   "style-column-ignored-non-system-view": ["OrderUnit"],
+  "style-invalid-enum-value": ["direction", "dwon"],
+  "style-invalid-hex-color": ["color", "#zzzz"],
+  "style-missing-length-unit": ["stroke-width", "1.5"],
+  "style-invalid-length-unit": ["stroke-width", "em"],
+  "style-out-of-range": ["opacity", "1.5"],
+  "style-unknown-property": ["color2"],
 };
 
 const localeTranslator = (locale: Locale): TranslateFn =>

@@ -160,6 +160,27 @@ export const en: Translations = {
     `column: "${value}" on #${nodeId} is not one of left / center / right — ignored`,
   "warning.styleColumnIgnoredNonSystemView.message": ({ nodeId, viewType }) =>
     `column hint on #${nodeId} is ignored in ${viewType} view (layout hints currently apply only to system view)`,
+  "warning.styleInvalidEnumValue.message": ({ property, value, allowed }) =>
+    `${property}: "${value}" is not one of ${allowed.join(" / ")} — ignored`,
+  "warning.styleInvalidHexColor.message": ({ property, value }) =>
+    `${property}: "${value}" is not a valid hex color (expected #RGB / #RGBA / #RRGGBB / #RRGGBBAA) — ignored`,
+  "warning.styleMissingLengthUnit.message": ({ property, value, allowedUnits }) =>
+    `${property}: "${value}" is missing a unit (expected ${allowedUnits.join(" / ")}) — ignored`,
+  "warning.styleInvalidLengthUnit.message": ({ property, value, unit, allowedUnits }) =>
+    `${property}: "${value}" uses unit "${unit}" (expected ${allowedUnits.join(" / ")}) — ignored`,
+  "warning.styleOutOfRange.message": ({ property, value, min, max }) => {
+    const range =
+      min !== undefined && max !== undefined
+        ? `[${min}, ${max}]`
+        : min !== undefined
+          ? `>= ${min}`
+          : max !== undefined
+            ? `<= ${max}`
+            : "";
+    return `${property}: ${value} is out of range ${range} — ignored`;
+  },
+  "warning.styleUnknownProperty.message": ({ property }) =>
+    `unknown style property "${property}" — ignored`,
 
   // Diagnostics (rendered in PreviewPane's diagnostic banner)
   "diagnostic.tokenTypeMismatch.message": ({ expected, got, value }) =>

@@ -368,6 +368,19 @@ function _compileFromPreparedInput(
   const systemSheetCount = 1; // only builtin counts as system for conflict detection
   const warnings = analyze(krsFile, sheets, systemSheetCount);
 
+  // Phase 3 value-level validator. Walk every user sheet (sheets[0] is
+  // the builtin theme; trust it) and translate the validator's
+  // parser-shaped Diagnostics into Warnings so the App's WarningPanel
+  // displays them next to the existing `style-column-invalid-value`
+  // entry. LSP / CLI invoke `validateStyleValues` directly, so this
+  // translation is only for the App / compile-pipeline path.
+  for (let i = 1; i < sheets.length; i++) {
+    for (const d of validateStyleValues(sheets[i])) {
+      const w = diagnosticToWarning(d);
+      if (w) warnings.push(w);
+    }
+  }
+
   // Merge structural style-resolver warnings (e.g. invalid `column` value)
   // into the analyze() output. Both sources speak the same Warning shape;
   // the ResolvedStyleWarning is just a narrow projection that keeps the
@@ -511,14 +524,11 @@ function _compileCore(krsSource: string, opts: CompileOptions): CompileResult {
   if (styleSource) {
     const styleResult = StyleParser.parse(styleSource);
     diagnostics.push(...styleResult.diagnostics);
-    // Value-level validation (Phase 3): surface typo / invalid-hex /
-    // wrong-unit / out-of-range / unknown-property diagnostics through
-    // the same `diagnostics` channel so the App's `PreviewPane`
-    // displays them alongside parse diagnostics. The LSP path runs the
-    // same validator separately in `validateDocument`.
-    diagnostics.push(...validateStyleValues(styleResult.value));
     sheets.push(styleResult.value);
   }
+  // Value-level validation runs inside `_compileFromPreparedInput` so
+  // its output joins the existing `warnings` channel (not `diagnostics`)
+  // and shows up in the App's WarningPanel.
 
   return _compileFromPreparedInput(
     { krsFile: parseResult.value, diagnostics, sheets, nodeFileIndex: new Map<string, string>() },
@@ -538,13 +548,9 @@ async function _compileProjectCore(
   // Build sheets for conflict analysis: [builtin, ...userSheets]
   // Icon theme is intentionally excluded from analysis to avoid false style-conflict warnings.
   const sheets = [getBuiltinStyleSheet(), ...resolved.styleSheets];
-
-  // Value-level validation for every user-provided style sheet (Phase
-  // 3). Builtin sheets are trusted and validated at write time, so
-  // running the validator on them is wasteful — restrict to user sheets.
-  for (const sheet of resolved.styleSheets) {
-    diagnostics.push(...validateStyleValues(sheet));
-  }
+  // Value-level validation runs inside `_compileFromPreparedInput` so
+  // its output joins the existing `warnings` channel (not `diagnostics`)
+  // and shows up in the App's WarningPanel.
 
   return _compileFromPreparedInput(
     {
@@ -1279,4 +1285,30 @@ export async function buildAllViewsSvgDiffProject(
   }
 
   return { svg: injectDiffStyle(bundled), diagnostics, views };
+}
+
+/**
+ * Translate a parser-shaped Diagnostic from `validateStyleValues` into
+ * the matching `Warning` so the App's WarningPanel displays it next to
+ * existing style warnings. Returns `null` for diagnostic codes that are
+ * not value-level validator output (defensive — the validator only
+ * emits the codes handled below).
+ */
+function diagnosticToWarning(d: Diagnostic): Warning | null {
+  switch (d.code) {
+    case "style-invalid-enum-value":
+      return { kind: "style-invalid-enum-value", params: d.params };
+    case "style-invalid-hex-color":
+      return { kind: "style-invalid-hex-color", params: d.params };
+    case "style-missing-length-unit":
+      return { kind: "style-missing-length-unit", params: d.params };
+    case "style-invalid-length-unit":
+      return { kind: "style-invalid-length-unit", params: d.params };
+    case "style-out-of-range":
+      return { kind: "style-out-of-range", params: d.params };
+    case "style-unknown-property":
+      return { kind: "style-unknown-property", params: d.params };
+    default:
+      return null;
+  }
 }
