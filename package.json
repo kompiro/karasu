@@ -14,7 +14,7 @@
   "scripts": {
     "dev": "pnpm --filter @karasu-tools/app run dev",
     "build": "pnpm --filter @karasu-tools/core run build && pnpm --filter @karasu-tools/lsp run build && pnpm --filter @karasu-tools/app run build && pnpm --filter ./packages/cli run build",
-    "test": "pnpm --filter @karasu-tools/core run test && pnpm --filter @karasu-tools/app run test && pnpm --filter ./packages/cli run test && pnpm --filter @karasu-tools/lsp run test && pnpm run test:scripts",
+    "test": "pnpm --filter @karasu-tools/core run test && pnpm --filter @karasu-tools/app run test && pnpm --filter ./packages/cli run test && pnpm --filter @karasu-tools/lsp run test && pnpm --filter karasu-vscode run test && pnpm run test:scripts",
     "test:scripts": "vitest run --config scripts/vitest.config.ts",
     "test:coverage": "pnpm --filter @karasu-tools/core run test:coverage && pnpm --filter @karasu-tools/app run test:coverage && pnpm --filter ./packages/cli run test:coverage && pnpm run test:scripts",
     "lint": "oxlint --deny-warnings packages/ scripts/",
