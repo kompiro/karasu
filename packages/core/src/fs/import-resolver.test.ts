@@ -1,6 +1,11 @@
 import { describe, it, expect, beforeEach } from "vitest";
+import { readFileSync } from "node:fs";
+import { dirname, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 import { InMemoryFileSystemProvider } from "./in-memory-provider";
 import { ImportResolver } from "./import-resolver";
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
 
 describe("ImportResolver", () => {
   let fs: InMemoryFileSystemProvider;
@@ -100,6 +105,14 @@ system EC {
       expect(childIds).toContain("Payment");
     });
 
+    // Regression coverage for #412 — `examples/ec-platform/05-multifile/` was
+    // the originating reproduction (top-level `service` in one file, named-
+    // imported and stub-referenced from a `system` in another). TPL-20260510-01
+    // checklist item 5 ("top-level 宣言を named import で `system` 内に取り込む
+    // `.krs`") is locked in by this test plus the two that follow (tag
+    // preservation and multi-system fan-out). The end-to-end variant that runs
+    // the same scenario against the actual example files lives at the bottom
+    // of this file under the ec-platform/05-multifile suite.
     it("fills stub in system.children when importing a top-level service by name", async () => {
       await fs.writeFile(
         "/project/system.krs",
@@ -972,6 +985,62 @@ system ECPlatform {
       expect(result.diagnostics.filter((d) => d.severity === "error")).toHaveLength(0);
       const sys = result.krsFile.systems.find((s) => s.id === "ECPlatform");
       expect(sys!.children.map((c) => c.id)).toContain("ECommerce");
+    });
+  });
+
+  // End-to-end regression test for #412 (named import + top-level service +
+  // stub reference inside a `system` block). Runs the actual example files
+  // through ImportResolver — complementary to the synthetic-fixture unit
+  // tests in `describe("node imports")` above. Closes TPL-20260510-01
+  // checklist item 5's coverage at the integration level so a refactor of
+  // `mergeNamedImport` / `resolveBareIdImport` that breaks the user-visible
+  // example fails CI before #412 reappears.
+  describe("ec-platform/05-multifile end-to-end (#412 / TPL-20260510-01)", () => {
+    it("merges both ECommerce and Payment into ECPlatform with full content preserved", async () => {
+      const exampleDir = resolve(__dirname, "../../../../examples/ec-platform/05-multifile");
+      const provider = new InMemoryFileSystemProvider();
+      await provider.writeFile(
+        "/project/system.krs",
+        readFileSync(resolve(exampleDir, "system.krs"), "utf8"),
+      );
+      await provider.writeFile(
+        "/project/ecommerce.krs",
+        readFileSync(resolve(exampleDir, "ecommerce.krs"), "utf8"),
+      );
+      await provider.writeFile(
+        "/project/payment.krs",
+        readFileSync(resolve(exampleDir, "payment.krs"), "utf8"),
+      );
+
+      const localResolver = new ImportResolver(provider);
+      const result = await localResolver.resolve("/project/system.krs");
+
+      expect(result.diagnostics.filter((d) => d.severity === "error")).toEqual([]);
+
+      const platform = result.krsFile.systems.find((s) => s.id === "ECPlatform");
+      expect(platform).toBeDefined();
+
+      // Both imported top-level services must end up as children of the system
+      // (the #412 failure mode left them as orphan top-level services and the
+      // ECPlatform diagram rendered without them).
+      const childIds = platform!.children.map((c) => c.id);
+      expect(childIds).toContain("ECommerce");
+      expect(childIds).toContain("Payment");
+      expect(childIds).toContain("Inventory"); // declared inline — sanity check
+
+      // Full content from the imported files must be preserved through the
+      // merge — not just the id. ECommerce.Order and Payment have their
+      // domains intact.
+      const ecommerce = platform!.children.find((c) => c.id === "ECommerce");
+      expect(ecommerce!.children.map((c) => c.id)).toContain("Order");
+      const payment = platform!.children.find((c) => c.id === "Payment");
+      expect(payment!.children.length).toBeGreaterThan(0);
+
+      // Imported services must NOT leak into the top-level services array
+      // (the #412 symptom included orphan top-level services rendered next to
+      // the system instead of inside it).
+      expect(result.krsFile.services.map((s) => s.id)).not.toContain("ECommerce");
+      expect(result.krsFile.services.map((s) => s.id)).not.toContain("Payment");
     });
   });
 });
