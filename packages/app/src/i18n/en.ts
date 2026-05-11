@@ -234,6 +234,27 @@ export const en: Translations = {
     `Expected property name but got ${got}`,
   "diagnostic.expectedSemicolonBetweenProperties.message": ({ property }) =>
     `Expected ";" after "${property}" but found ","; properties are separated by semicolons`,
+  "diagnostic.styleInvalidEnumValue.message": ({ property, value, allowed }) =>
+    `Invalid value for "${property}": "${value}". Allowed: ${allowed.join(", ")}`,
+  "diagnostic.styleInvalidHexColor.message": ({ property, value }) =>
+    `Invalid hex color for "${property}": "${value}" (expected #RGB / #RGBA / #RRGGBB / #RRGGBBAA)`,
+  "diagnostic.styleMissingLengthUnit.message": ({ property, value, allowedUnits }) =>
+    `Missing unit for "${property}": "${value}". Expected one of: ${allowedUnits.join(", ")}`,
+  "diagnostic.styleInvalidLengthUnit.message": ({ property, value, unit, allowedUnits }) =>
+    `Invalid unit "${unit}" for "${property}": "${value}". Allowed: ${allowedUnits.join(", ")}`,
+  "diagnostic.styleOutOfRange.message": ({ property, value, min, max }) => {
+    const range =
+      min !== undefined && max !== undefined
+        ? `[${min}, ${max}]`
+        : min !== undefined
+          ? `>= ${min}`
+          : max !== undefined
+            ? `<= ${max}`
+            : "";
+    return `Value ${value} for "${property}" is out of range ${range}`;
+  },
+  "diagnostic.styleUnknownProperty.message": ({ property }) =>
+    `Unknown style property "${property}"`,
   "diagnostic.circularImport.message": ({ filePath }) => `Circular import detected: ${filePath}`,
   "diagnostic.fileNotFound.message": ({ filePath }) => `File not found: ${filePath}`,
   "diagnostic.directoryNotFound.message": ({ dirPath }) => `Directory not found: ${dirPath}`,

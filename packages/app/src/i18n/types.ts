@@ -268,6 +268,33 @@ export type Translations = {
   }) => string;
   "diagnostic.expectedStylePropertyName.message": (params: { got: string }) => string;
   "diagnostic.expectedSemicolonBetweenProperties.message": (params: { property: string }) => string;
+  "diagnostic.styleInvalidEnumValue.message": (params: {
+    property: string;
+    value: string;
+    allowed: string[];
+  }) => string;
+  "diagnostic.styleInvalidHexColor.message": (params: {
+    property: string;
+    value: string;
+  }) => string;
+  "diagnostic.styleMissingLengthUnit.message": (params: {
+    property: string;
+    value: string;
+    allowedUnits: string[];
+  }) => string;
+  "diagnostic.styleInvalidLengthUnit.message": (params: {
+    property: string;
+    value: string;
+    unit: string;
+    allowedUnits: string[];
+  }) => string;
+  "diagnostic.styleOutOfRange.message": (params: {
+    property: string;
+    value: number;
+    min?: number;
+    max?: number;
+  }) => string;
+  "diagnostic.styleUnknownProperty.message": (params: { property: string }) => string;
   "diagnostic.circularImport.message": (params: { filePath: string }) => string;
   "diagnostic.fileNotFound.message": (params: { filePath: string }) => string;
   "diagnostic.directoryNotFound.message": (params: { dirPath: string }) => string;

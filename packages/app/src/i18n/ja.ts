@@ -234,6 +234,27 @@ export const ja: Partial<Translations> = {
     `プロパティ名を期待しましたが ${got} が見つかりました`,
   "diagnostic.expectedSemicolonBetweenProperties.message": ({ property }) =>
     `"${property}" の後に ";" を期待しましたが "," が見つかりました。プロパティはセミコロンで区切ってください`,
+  "diagnostic.styleInvalidEnumValue.message": ({ property, value, allowed }) =>
+    `"${property}" の値 "${value}" は無効です。有効な値: ${allowed.join(", ")}`,
+  "diagnostic.styleInvalidHexColor.message": ({ property, value }) =>
+    `"${property}" の hex color "${value}" は無効です（#RGB / #RGBA / #RRGGBB / #RRGGBBAA を期待）`,
+  "diagnostic.styleMissingLengthUnit.message": ({ property, value, allowedUnits }) =>
+    `"${property}" の値 "${value}" に単位がありません。期待する単位: ${allowedUnits.join(", ")}`,
+  "diagnostic.styleInvalidLengthUnit.message": ({ property, value, unit, allowedUnits }) =>
+    `"${property}" の値 "${value}" の単位 "${unit}" は無効です。許容: ${allowedUnits.join(", ")}`,
+  "diagnostic.styleOutOfRange.message": ({ property, value, min, max }) => {
+    const range =
+      min !== undefined && max !== undefined
+        ? `[${min}, ${max}]`
+        : min !== undefined
+          ? `>= ${min}`
+          : max !== undefined
+            ? `<= ${max}`
+            : "";
+    return `"${property}" の値 ${value} は範囲外です ${range}`;
+  },
+  "diagnostic.styleUnknownProperty.message": ({ property }) =>
+    `未知のスタイルプロパティ "${property}"`,
   "diagnostic.circularImport.message": ({ filePath }) =>
     `循環インポートを検出しました: ${filePath}`,
   "diagnostic.fileNotFound.message": ({ filePath }) => `ファイルが見つかりません: ${filePath}`,
