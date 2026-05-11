@@ -20,11 +20,18 @@ Older versions are not patched.
 
 ## Secret scanning
 
-We run [`gitleaks`](https://github.com/gitleaks/gitleaks) on every pull
-request (diff scan) and on a daily schedule against `main` (full-history
-scan). The workflow is at `.github/workflows/secret-scan.yml`. The version
-of gitleaks used in CI is pinned and kept in sync with
-`.devcontainer/Dockerfile` so local and CI runs match.
+We run [`gitleaks`](https://github.com/gitleaks/gitleaks) at three points:
+
+- **`pre-push` (local)** — `lefthook.yml` runs a diff scan before anything
+  reaches `origin`. gitleaks ships in the devcontainer; if it is not on your
+  `PATH` the hook fails with install instructions rather than skipping
+  silently.
+- **Pull requests** — diff scan in `.github/workflows/secret-scan.yml`.
+- **Daily schedule against `main`** — full-history scan (same workflow), so
+  anything that slips past the per-PR check is caught within a day.
+
+The gitleaks version is pinned and kept in sync between
+`.devcontainer/Dockerfile` and the CI workflow so local and CI runs match.
 
 ### History rewrite policy
 
