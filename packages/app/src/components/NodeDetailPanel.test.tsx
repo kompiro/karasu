@@ -408,5 +408,44 @@ describe("NodeDetailPanel — pictogram icon", () => {
       const { container } = render(<NodeDetailPanel {...baseProps()} />);
       expect(container.querySelector(".node-detail-capability-list")).toBeNull();
     });
+
+    // Regression guard for #1032: reopening the panel on the same nodeId
+    // after the source has been edited (and metadata recomputed) must
+    // surface the new capabilities. A future refactor of the metadata
+    // pipeline that memoizes on `nodeId` alone — rather than on metadata
+    // identity — would silently re-introduce the staleness.
+    // Mirrors useSystemView.test.tsx (#891) at the panel layer.
+    it("refreshes capabilities when reopened on same node after metadata update (#1032)", () => {
+      const propsWith = (caps: { name: string; loc: typeof loc }[]) => ({
+        ...baseProps({ kind: "client", capabilities: caps }),
+        // Keep nodeId stable across renders to exercise the same-node path.
+        nodeId: "client-1",
+      });
+      const { container, rerender } = render(
+        <NodeDetailPanel {...propsWith([{ name: "notification", loc }])} />,
+      );
+      let items = container.querySelectorAll(".node-detail-capability-item");
+      expect(items).toHaveLength(1);
+      expect(items[0].querySelector(".node-detail-capability-title")?.textContent).toBe(
+        "notification",
+      );
+
+      // Same nodeId, recomputed metadata with an additional capability.
+      // `rerender` from RTL replaces the entire tree, so re-wrap with
+      // LocaleProvider explicitly here.
+      rerender(
+        <LocaleProvider initialLocale="en">
+          <NodeDetailPanel
+            {...propsWith([
+              { name: "notification", loc },
+              { name: "camera", loc },
+            ])}
+          />
+        </LocaleProvider>,
+      );
+      items = container.querySelectorAll(".node-detail-capability-item");
+      expect(items).toHaveLength(2);
+      expect(items[1].querySelector(".node-detail-capability-title")?.textContent).toBe("camera");
+    });
   });
 });

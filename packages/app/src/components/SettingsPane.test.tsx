@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { act, cleanup, render, screen } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { LocaleProvider } from "../i18n/index.js";
 import { SettingsPane } from "./SettingsPane.js";
@@ -158,5 +158,29 @@ describe("SettingsPane — AI settings localization (Phase C2)", () => {
     // Button label text varies by locale but the distinction between the two
     // states is the emoji prefix; verify the pre-save label exists.
     expect(screen.getByRole("button", { name: /Save/i })).toBeTruthy();
+  });
+});
+
+describe("SettingsPane — IME composition anti-regression (TPL-20260510-04)", () => {
+  beforeEach(() => {
+    localStorage.clear();
+  });
+
+  // The API-key input is a plain controlled `<input type="password">`;
+  // `setApiKey` is only invoked from its own `onChange`. Nothing rewrites
+  // the value mid-composition today, so the #1053 failure mode cannot
+  // reach this input. If a future change adds live validation (length /
+  // prefix / format normalization) that fires during composition, this
+  // assertion fires.
+  it("controlled API-key input during a simulated IME composition cycle is not rewritten", () => {
+    renderWithLocale("en");
+    const input = screen.getByLabelText(/Claude API key/i) as HTMLInputElement;
+
+    fireEvent.compositionStart(input);
+    fireEvent.change(input, { target: { value: "テスト鍵" } });
+    expect(input.value).toBe("テスト鍵");
+
+    fireEvent.compositionEnd(input);
+    expect(input.value).toBe("テスト鍵");
   });
 });

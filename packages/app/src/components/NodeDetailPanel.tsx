@@ -26,13 +26,16 @@ interface NodeDetailPanelProps {
   annotationDiff?: { added: string[]; removed: string[] };
 }
 
-// Maps node kind to the registered icon name (mirrors ICON_THEME_STYLE_SOURCE).
-// Used to look up the SVG pictogram for consistent display with icon cards.
-const KIND_TO_ICON_NAME: Record<string, string> = {
+// Maps node kind to the registered icon name (mirrors ICON_THEME_STYLE_SOURCE
+// from @karasu-tools/core's icon-theme builtins). Exported so cross-surface
+// tests can assert this map and the icon-card style cascade resolve identical
+// icons per kind — the contract enforced by TPL-20260510-05 / 06 item 4 and
+// originally violated in #132 §3 (panel pictogram diverged from icon card).
+export const KIND_TO_ICON_NAME: Record<string, string> = {
   service: "service",
   user: "user-card",
   domain: "domain",
-  usecase: "domain",
+  usecase: "usecase",
   resource: "resource",
   team: "team",
   member: "member",
