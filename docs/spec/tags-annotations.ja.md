@@ -14,6 +14,15 @@
 | `[sync]` | 同期通信（エッジ用） | 実線矢印（デフォルト） |
 | `[human]` | 人間の利用者 | user ノードにのみ使用。デフォルトスタイルへの影響なし |
 | `[ai]` | AIエージェント | user ノードにのみ使用。デフォルトスタイルへの影響なし |
+| `[mobile]` | モバイルネイティブアプリの form factor | `client` ノード用の認識済み form-factor タグ |
+| `[web]` | 自社オリジンで動く SPA | `client` ノード用の認識済み form-factor タグ |
+| `[desktop]` | デスクトップアプリの form factor | `client` ノード用の認識済み form-factor タグ |
+| `[cli]` | コマンドライン ツール / SDK | `client` ノード用の認識済み form-factor タグ |
+| `[device]` | IoT / 専用端末 / KIOSK | `client` ノード用の認識済み form-factor タグ |
+| `[extension]` | 他アプリケーションの拡張機能 | `client` ノード用の認識済み form-factor タグ |
+| `[embed]` | サードパーティ Web に埋め込む widget / SDK | `client` ノード用の認識済み form-factor タグ |
+
+> `client` 用の 7 つの form-factor タグは karasu が **認識** している。将来的に kind 固有のアイコン（#823 Phase 2）やレイアウトヒント（Phase 6）に反応する予定。リスト外のタグも `client` に付与可能で、その場合は通常のユーザー定義タグとして扱われる。
 
 ### 記述例
 
@@ -72,6 +81,38 @@ system OrderSystem {
 
 ---
 
+## client capability
+
+`capability <name>` は client が利用許可を要求する **デバイス / ブラウザの capability** を宣言する。構文は [`docs/spec/syntax.ja.md`](./syntax.ja.md#client-capability) を参照。
+
+identifier セットは **オープン** — 任意の kebab-case 識別子を受け付け、推奨セット外の名前でも警告は出さない。これにより業界固有デバイスや社内専用機能など、ドメイン固有の capability も自由に表現できる。下記の推奨セットは、バリデータやエディタツールが想定する最も典型的なケースを網羅する。
+
+### 推奨 capability 識別子
+
+| グループ | 識別子 |
+|----------|--------|
+| Web / browser | `camera`, `microphone`, `geolocation`, `notification`, `push`, `clipboard`, `webauthn`, `bluetooth`, `usb`, `midi`, `screen-wake-lock`, `accelerometer`, `gyroscope`, `storage-access` |
+| Mobile（追加分） | `contacts`, `calendar`, `photo-library`, `face-id`, `touch-id`, `background-processing`, `local-network`, `bluetooth-le-peripheral` |
+| Desktop（追加分） | `file-system-access`, `global-shortcuts`, `auto-launch`, `screen-recording` |
+| IoT / device（追加分） | `gpio`, `serial`, `zigbee`, `lora`, `nfc`, `rfid` |
+
+### 命名規約
+
+- **kebab-case** を使用（`screen-wake-lock`, `face-id`）。
+- 該当する Web Permissions API / W3C 名がある場合はそちらを優先（`geolocation`, `notification`）。
+- OS 固有の識別子（`android.permission.CAMERA` 等）は避け、抽象的な機能名を使う。
+- 推奨セット外の名前を使う場合は `description` を添えて、他の読者が何を指すか把握できるようにする。
+
+### `capability` ではないもの
+
+| 概念 | 記述する場所 |
+|------|--------------|
+| 操作に紐づくストレージ（`localStorage`, `indexedDB`, `keychain`） | `resource <storageKind> "<name>"` |
+| HTTP セッション / 認証クレデンシャル | 別語彙。#834 で追跡 |
+| 実行時の認可（RBAC permission bundle、ライセンス / フィーチャーフラグ） | karasu はモデル化しない — [ADR-20260511-02](../adr/20260511-02-no-runtime-authz-modeling.md) 参照。`user.role` プロパティは actor-archetype ラベルであり authz primitive ではない — [ADR-20260511-04](../adr/20260511-04-user-role-keyword-clarification.md) 参照 |
+
+---
+
 ## タグとアノテーションの違い
 
 | | タグ | アノテーション |
@@ -95,9 +136,13 @@ system OrderSystem {
 | `[async]` | `-->` で宣言されたエッジ | 破線 |
 | `[sync]` | `->` で宣言されたエッジ | 実線 |
 | `[cyclic]` | 循環依存検出時 | 赤（`#EF4444`）実線 |
+| `[write]` | usecase→resource の合成エッジで、対象 resource の `operations` に `create` / `update` / `delete` が含まれる場合 | `stroke-width: 2`、ラベル `"W"` |
+| `[read]` | usecase→resource の合成エッジで read-only と分類される場合（write 動詞なし、または `operations` 省略） | `stroke-width: 1.5`（デフォルト）、ラベル `"R"` |
 
 > `[implicit]` は色（アンバー）で「派生」を表し、線種は同期/非同期の区別に使う。
 > 同一サービスペア間に sync と async の両方のドメインエッジがある場合は、kind ごとに別の暗黙エッジとして派生される。
+>
+> `[write]` / `[read]` は usecase→resource の合成エッジに対してのみ自動付与される。**明示的なエッジに手で書かないこと** — 構文上はパーサが受け付けるが、意味（対象 resource の `operations` を write-dominates 分類した結果）は合成エッジに対してしか成立しない。線幅の階層は意図的に `read (1.5) < write (2) < cyclic (2.5)` の順で、循環依存が最も目立つ軸として残るようにしている。
 
 ### カスタマイズ例
 
