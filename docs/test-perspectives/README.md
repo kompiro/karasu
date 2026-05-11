@@ -328,13 +328,23 @@ per-topic で 1 つずつ進める。一度に全 topic を audit すると 200 
 
 5 件中 UI 層 / 代替 rendering path / per-consumer integration が共通点。core 層の純粋ロジックのテスト文化に比べ、**「ある層の output を別の層が消費する」境界の integration が薄い**ことを示唆している。**新 feature を design するときは、layer ごとの test に加えて cross-layer integration test を 1 つは持つ** ことを default にすべき。
 
-#### 観察 C（暫定）: proactive TPL は test gap として現れにくい
+#### 観察 C（暫定）: proactive TPL は backward gap を出さないが forward test を生むべき
 
-`docs/concepts.ja.md` 由来の proactive TPL は、checklist 項目が「設計時に review すべき問い」であって「実装が満たすべき不変条件」ではないことが多い。core-concepts topic の 5 TPL のうち TPL-18 (text as SoT) / TPL-19 (information flows up) / TPL-21 (scoped glance) は、checklist のほぼすべての項目が test 化できず（「全 state が `.krs` から復元可能か」「情報の流れは up か down か」のような問いは feature 提案を見て判断する性質）、Fit/Gap 分析では test gap がほとんど出なかった。
+Fit/Gap 分析は「**既存コードにその観点の test があるか**」を見る = **backward gap** を探す作業。proactive TPL（`docs/concepts.ja.md` 由来）はこの backward gap をほとんど出さない — checklist 項目が「全 state が `.krs` から復元可能か」「情報の流れは up か down か」のような **feature 提案を見て判断する設計時の問い** だから。core-concepts topic の TPL-18 / 19 / 21 は実際そうだった。
 
-これは bug ではなく **proactive TPL の正しい姿** — 「テストが無い」のではなく「テストではなく review で守る観点」だから。Fit/Gap 分析を proactive 中心の topic に適用するときは、gap が少ない＝健全、と読んでよい。逆に **TPL-01 のような retrospective TPL は具体的な bug 由来なので test gap が明確に出る**。topic ごとに TPL の retrospective / proactive 比率を見れば、どのくらい gap が出るかをあらかじめ予測できる。
+ただしこれは **「proactive TPL は test と無関係」という意味ではない**。proactive TPL の目的は「これを元に設計・テストを書くことで、そもそも bug が出ない状態を作る」こと。つまり proactive TPL は **forward gap** — *将来* の feature がその観点を設計と test に織り込むべき、織り込まなければ次の bug になる — を防ぐためにある。backward gap は Fit/Gap 分析が捕捉し、forward gap は **DesignDoc review + 実装 PR の test 追加** が捕捉する。
 
-> ステータス: 1 事例（core-concepts）のみ。次に proactive 中心の topic（例: `cli` の TPL-16 など）を audit したとき同じパターンが再現すれば、暫定マークを外して確定パターンにする。
+##### proactive TPL を forward に使う運用
+
+DesignDoc が proactive TPL を引用したら、実装 PR で次をやる:
+
+1. **引用した TPL の checklist 項目のうち、その feature に該当するものを assertion 化した test を機能と一緒に書く** — bug が起きてから書く retrospective な regression test ではなく、**設計判断をロックする contract test**。例: 新しい入力経路を作るとき TPL-18 を引用 → 「この経路の出力が `.krs` を round-trip する」test を実装と同時に追加。
+2. **AT を作る場合（`/hane:acceptance-test`）は、引用した proactive TPL の checklist 項目を AC として転記** する。例: TPL-19 を引く feature なら「出力の詳細量が入力より減っている（抽象化方向 = up）」を AC に明記し、自動 / 手動どちらかで検証する。
+3. PR テンプレの「TPL impact」セクション（`docs(adr)` / new-feature PR 向け）には、引用した proactive TPL に対して **「relevant な checklist 項目を test / AC に落としたか」** を記録する欄がある（後述「PR テンプレ」参照）。
+
+この運用により、proactive TPL は「review で気づく観点」から「review で気づき、その feature の test に落とす観点」へ格上げされ、観点違反が *コードに到達する前* に止まる。
+
+> ステータス: forward 運用は #1264 / 関連 PR で導入。Fit/Gap 側の「proactive は backward gap を出さない」観察は core-concepts 1 事例のみ — 次に proactive 中心の topic（例: `cli` の TPL-16）を audit したとき同じパターンが再現すれば暫定マークを外す。なお `/hane:acceptance-test` skill 側への同等プロンプト追加は別リポ（kompiro/hane）の作業のため follow-up（karasu 側からは PR テンプレと本 README だけ更新）。
 
 ### 推奨 cadence
 

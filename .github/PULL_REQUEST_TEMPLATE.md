@@ -62,9 +62,15 @@ Pick the row(s) that apply; write "N/A" if none (pure refactor / docs / chore):
 - New-feature PR (DesignDoc-driven) — scan the design's `topic` in
   `docs/concepts.ja.md` and related ADRs. If a principle could be
   violated by this design and isn't yet a TPL, add a proactive TPL.
+  Also: for every TPL (proactive or existing) this feature is designed
+  against, turn the relevant checklist items into contract tests / ACs
+  shipped with the feature — not later. Record this below.
 
-Examples for Disposition: "Added TPL-21 from #N" /
-"Updated TPL-08.discovered_from with #M" / "N/A — pure refactor"
+Examples for Disposition:
+  "Added TPL-21 from #N; checklist items 1,3 covered by `foo.test.ts`"
+  "Designed against TPL-18; round-trip contract test in `bar.test.ts`"
+  "Updated TPL-08.discovered_from with #M"
+  "N/A — pure refactor"
 -->
 
 > Disposition:
