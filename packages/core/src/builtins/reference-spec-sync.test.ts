@@ -149,4 +149,31 @@ describe("Reference data ↔ docs/spec agreement (TPL-20260511-02)", () => {
     const missing = documented.filter((k) => !known.has(k)).sort();
     expect(missing).toEqual([]);
   });
+
+  it("syntax.md: the Infra layer section documents the infra-block keywords & sub-resources", () => {
+    const syntaxMd = readSpec("syntax.md");
+    const documented = new Set(tableFirstColumn(sectionLines(syntaxMd, /^### Infra layer/)));
+    // system-level infra blocks + their leaf sub-resources
+    for (const k of ["database", "queue", "storage", "table", "queue-item", "bucket"]) {
+      expect(documented).toContain(k);
+    }
+    // the system-level infra blocks must also be present in the reference data
+    // (the leaf sub-resources are intentionally not first-class node kinds —
+    // see the parser comment on `parseLeafNodeContents`).
+    const known = new Set(ref.nodeKinds.map((k) => k.kind));
+    for (const k of ["database", "queue", "storage"]) {
+      expect(known.has(k)).toBe(true);
+    }
+  });
+
+  it("tags-annotations.md: every resolver-synthesized edge tag is documented", () => {
+    const md = readSpec("tags-annotations.md");
+    const rows = tableFirstColumn(sectionLines(md, /^## System-assigned tags/));
+    const documented = new Set(
+      rows.map((c) => c.match(/^\[([a-z][a-z-]*)\]$/)?.[1]).filter((x): x is string => Boolean(x)),
+    );
+    for (const t of ["implicit", "cyclic", "write", "read"]) {
+      expect(documented).toContain(t);
+    }
+  });
 });
