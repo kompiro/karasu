@@ -283,6 +283,8 @@ per-topic で 1 つずつ進める。一度に全 topic を audit すると 200 
 
 ### 実施済み事例
 
+全 23 TPL を持つ全 topic の Fit/Gap 分析を完了（2026-05-10〜11）。抽出された全 25 gap の tracking issue は [#1276](https://github.com/kompiro/karasu/issues/1276)。
+
 | 実施日 | Topic | TPL 件数 | Gap 件数 | Issues |
 |---|---|---|---|---|
 | 2026-05-10 | [parser](#fit-gap-parser) | 3 (TPL-02 / 10 / 12) | 4 | [#1231](https://github.com/kompiro/karasu/issues/1231) [#1232](https://github.com/kompiro/karasu/issues/1232) [#1233](https://github.com/kompiro/karasu/issues/1233) [#1234](https://github.com/kompiro/karasu/issues/1234) |
@@ -290,6 +292,13 @@ per-topic で 1 つずつ進める。一度に全 topic を audit すると 200 
 | 2026-05-11 | [renderer](#fit-gap-renderer) | 2 (TPL-05 / 06) | 3 | [#1245](https://github.com/kompiro/karasu/issues/1245) [#1246](https://github.com/kompiro/karasu/issues/1246) [#1247](https://github.com/kompiro/karasu/issues/1247) |
 | 2026-05-11 | [edges](#fit-gap-edges) | 2 (TPL-07 / 23) | 3 | [#1248](https://github.com/kompiro/karasu/issues/1248) [#1249](https://github.com/kompiro/karasu/issues/1249) [#1250](https://github.com/kompiro/karasu/issues/1250) |
 | 2026-05-11 | [core-concepts](#fit-gap-core-concepts) | 5 (TPL-01 / 18 / 19 / 21 / 22) | 3 | [#1260](https://github.com/kompiro/karasu/issues/1260) [#1261](https://github.com/kompiro/karasu/issues/1261) [#1262](https://github.com/kompiro/karasu/issues/1262) |
+| 2026-05-11 | [cli](#fit-gap-cli) | 2 (TPL-16 / 17) | 2 | [#1268](https://github.com/kompiro/karasu/issues/1268) [#1269](https://github.com/kompiro/karasu/issues/1269) |
+| 2026-05-11 | [testing](#fit-gap-testing) | 2 (TPL-13 / 14) | 2 | [#1270](https://github.com/kompiro/karasu/issues/1270) [#1271](https://github.com/kompiro/karasu/issues/1271) |
+| 2026-05-11 | [vscode](#fit-gap-vscode) | 1 (TPL-15) | 1 | [#1272](https://github.com/kompiro/karasu/issues/1272) |
+| 2026-05-11 | [build](#fit-gap-build) | 1 (TPL-11) | 1 | [#1273](https://github.com/kompiro/karasu/issues/1273) |
+| 2026-05-11 | [navigation](#fit-gap-navigation) | 1 (TPL-03) | 1 | [#1274](https://github.com/kompiro/karasu/issues/1274) |
+| 2026-05-11 | [resolver](#fit-gap-resolver) | 1 (TPL-20) | 1 | [#1275](https://github.com/kompiro/karasu/issues/1275) |
+| — | styling / chat-ai / project / adr-tooling | 0 | — | TPL なし、audit 対象外 |
 
 <a id="fit-gap-parser"></a>**parser (2026-05-10)** — bug 起源の TPL に対する regression は core 系で完備だが、AST 構造的等価 / i18n 出力 / parser keyword の exhaustiveness / spec ↔ impl smoke が未カバー。
 
@@ -299,7 +308,19 @@ per-topic で 1 つずつ進める。一度に全 topic を audit すると 200 
 
 <a id="fit-gap-edges"></a>**edges (2026-05-11)** — `[implicit]` と `[async/sync]` の coexistence integration / 派生関数の semantic 保存契約の meta-test / owns / inherited annotation の cross-view rendering integration が未カバー。AT-0056 が automation marker を持たないことが判明。
 
-<a id="fit-gap-core-concepts"></a>**core-concepts (2026-05-11)** — 5 TPL 中 **3 つ (TPL-18 / 19 / 21) はほぼ完全に proactive** で「設計時 review」型の checklist 項目しか持たず、test gap として現れなかった（後述「proactive TPL は test gap が出にくい」）。残る retrospective な TPL-01 と一部 testable な TPL-22 から 3 gap: TPL-01 の `known_consumers` のうち deploy-view / org-view が top-level handling を test していない / #412 (named import → system membership) の regression fixture 不在 / 三面（論理+物理+組織）を 1 fixture に含む cross-face integration test 不在。
+<a id="fit-gap-core-concepts"></a>**core-concepts (2026-05-11)** — 5 TPL 中 **3 つ (TPL-18 / 19 / 21) はほぼ完全に proactive** で「設計時 review」型の checklist 項目しか持たず、test gap として現れなかった（後述「proactive TPL は backward gap を出さない」）。残る retrospective な TPL-01 と一部 testable な TPL-22 から 3 gap: TPL-01 の `known_consumers` のうち deploy-view / org-view が top-level handling を test していない / #412 (named import → system membership) の regression fixture 不在 / 三面（論理+物理+組織）を 1 fixture に含む cross-face integration test 不在。
+
+<a id="fit-gap-cli"></a>**cli (2026-05-11)** — `resolveKrsFile` の path traversal は 6 case で網羅 ✅。gap 2 つ: render-endpoint.ts の `/render` HTTP endpoint が single-file `compile()` を使っており multi-file 解決ができない (#239-style) / vscode preview-panel.ts の webview message handler が `url` / `index` を validation なしで受け取る（trust boundary 検証なし）。
+
+<a id="fit-gap-testing"></a>**testing (2026-05-11)** — `page.goto("/")` migration 完了 ✅ (0 hits)、locale pin ✅、e2e-nightly.yml ✅、replaceEditorContent helper ✅、retries=1 in CI（推奨通り）✅。gap 2 つ: migration を再 creep させない lint rule が無い / retry-passed (flaky) test を CI で surface する仕組みが無い。
+
+<a id="fit-gap-vscode"></a>**vscode (2026-05-11)** — TPL-15 起源の #1024 修正が **comprehensive**（多候補パス解決 + bundling step + e2e で installed 動作検証）で、実質 gap がほぼ無い。残る 1 つ: `pnpm build` 後に `out/server.js` が存在することの fast unit-level check（bundling step が壊れても dev-tree fallback で local は動くため vscode-e2e でしか検出できない）。
+
+<a id="fit-gap-build"></a>**build (2026-05-11)** — compileProject / compileProjectOrgView は #160 fix で parity ✅、drill-down / multi-level は `buildStyles` 共通化済み (#219) ✅。gap 1 つ: SVG builder family を同一 fixture + 同一 styleSource + 同一 displayMode で呼んで挙動一致を assert する family-wide parity test が無い（TPL-11 checklist 項目 5）。
+
+<a id="fit-gap-navigation"></a>**navigation (2026-05-11)** — buildHash/parseHash は 15+ case（matrix 含む）✅ (#1094)。gap 1 つ: useHistoryNavigation.ts が依然 if-else chain で `activeView` の網羅性が型強制されていない — #1094 の修正は matrix case を追加したが構造的 exhaustiveness は未達。
+
+<a id="fit-gap-resolver"></a>**resolver (2026-05-11)** — domain-dispersal の id-vs-label は双方向 test 完備 ✅、他 detector も `.id ===` を一貫使用 ✅。gap 1 つ（低優先度）: identity-comparison を行う全 detector を curated table で列挙し各々が id-based であることを assert する meta-test が無い（discipline は守られているので予防的措置）。
 
 ### 横断観察 — topic 横断で見えた繰り返しパターン
 
@@ -307,26 +328,30 @@ per-topic で 1 つずつ進める。一度に全 topic を audit すると 200 
 
 #### 観察 A: curated table for meta-checks across structurally-recurring family
 
-「すべての X について Y を確認する」型のテストが必要なとき、curated table（明示的な配列で対象を列挙）+ 各エントリで same-shape の assertion を実行する形が繰り返し採られている:
+「すべての X について Y を確認する」型のテストが必要なとき、curated table（明示的な配列で対象を列挙）+ 各エントリで same-shape の assertion を実行する形が繰り返し採られている（**6 instance**）:
 
 - [#1233](https://github.com/kompiro/karasu/issues/1233) **G12-1** — parser keyword exhaustiveness（BaseNodeFields × kinds）
 - [#1241](https://github.com/kompiro/karasu/issues/1241) **GA08-2** — cross-surface timing alignment（panels × source state）
 - [#1247](https://github.com/kompiro/karasu/issues/1247) **GR06-2** — displayMode-consuming surfaces（render entry points × modes）
 - [#1249](https://github.com/kompiro/karasu/issues/1249) **GE07-2** — derivation contracts（derivation paths × preserved attrs）
+- [#1273](https://github.com/kompiro/karasu/issues/1273) **GB11-1** — SVG builder family parity（builders × params）
+- [#1275](https://github.com/kompiro/karasu/issues/1275) **GR20-1** — identity-comparison sites use id（detectors × id-vs-label）
 
 採用理由: TS reflection / 自動 discovery より explicit な table のほうが code review で auditable で、新エントリ追加時に table 編集を強制できる。**新しいファミリの meta-check が必要になったら、まず curated table を default の選択肢に置く**。
 
 #### 観察 B: per-layer-strong / cross-layer-weak ギャップ
 
-各層（parser / resolver / renderer / panel）が個別に強くテストされているが、**層を跨ぐ contract が implicit** で integration test が空白という gap が繰り返し見つかった:
+各層（parser / resolver / renderer / panel）が個別に強くテストされているが、**層を跨ぐ contract が implicit** で integration test が空白という gap が繰り返し見つかった（**7 instance**）:
 
 - [#1238](https://github.com/kompiro/karasu/issues/1238) **GA08-1** — NodeDetailPanel stale on reopen（resolver は ✅ だが panel との integration ✗）
 - [#1245](https://github.com/kompiro/karasu/issues/1245) **GR06-1** — Full View displayMode threading（buildExportSvg 単独は ✅ だが useFullViewSvg との integration ✗）
 - [#1250](https://github.com/kompiro/karasu/issues/1250) **GE23-1** — owns / inherited annotation cross-view rendering（resolver は ✅ だが renderer-side application との integration ✗）
 - [#1260](https://github.com/kompiro/karasu/issues/1260) **GC01-1** — deploy-view / org-view の top-level orphan handling（`withUnassignedSystem` は ✅ だが該当 consumer の integration ✗）
 - [#1262](https://github.com/kompiro/karasu/issues/1262) **GC22-1** — 三面の cross-face integration（各面の resolver は ✅ だが 3 面同時の integration ✗）
+- [#1268](https://github.com/kompiro/karasu/issues/1268) **GCL17-1** — vscode webview ↔ extension-host message boundary（serve.ts の resolveKrsFile は ✅ だが message handler の input 検証 ✗）
+- [#1269](https://github.com/kompiro/karasu/issues/1269) **GCL16-1** — /render HTTP endpoint が convenience `compile()` を使用（CLI render/matrix は `compileProject` ✅ だが HTTP endpoint だけ ✗）
 
-5 件中 UI 層 / 代替 rendering path / per-consumer integration が共通点。core 層の純粋ロジックのテスト文化に比べ、**「ある層の output を別の層が消費する」境界の integration が薄い**ことを示唆している。**新 feature を design するときは、layer ごとの test に加えて cross-layer integration test を 1 つは持つ** ことを default にすべき。
+7 件中 UI 層 / 代替 rendering path / per-consumer integration / process 境界が共通点。core 層の純粋ロジックのテスト文化に比べ、**「ある層の output を別の層が消費する」境界の integration が薄い**ことを示唆している。**新 feature を design するときは、layer ごとの test に加えて cross-layer integration test を 1 つは持つ** ことを default にすべき。
 
 #### 観察 C（暫定）: proactive TPL は backward gap を出さないが forward test を生むべき
 
@@ -344,13 +369,15 @@ DesignDoc が proactive TPL を引用したら、実装 PR で次をやる:
 
 この運用により、proactive TPL は「review で気づく観点」から「review で気づき、その feature の test に落とす観点」へ格上げされ、観点違反が *コードに到達する前* に止まる。
 
-> ステータス: forward 運用は #1264 / 関連 PR で導入。Fit/Gap 側の「proactive は backward gap を出さない」観察は core-concepts 1 事例のみ — 次に proactive 中心の topic（例: `cli` の TPL-16）を audit したとき同じパターンが再現すれば暫定マークを外す。なお `/hane:acceptance-test` skill 側への同等プロンプト追加は別リポ（kompiro/hane）の作業のため follow-up（karasu 側からは PR テンプレと本 README だけ更新）。
+> ステータス: forward 運用は #1264 / 関連 PR で導入。Fit/Gap 側の「proactive は backward gap を出さない」観察は **2 近縁事例**（core-concepts の TPL-18/19/21 が backward gap ゼロ + vscode の TPL-15 は #1024 修正が comprehensive で実質 gap なし）。rule of three の 3 件目（次に proactive 中心 / 修正が comprehensive な topic を audit したとき同じパターンが再現）で暫定マークを外す。なお `/hane:acceptance-test` skill 側への同等プロンプト追加は別リポ（kompiro/hane）の作業のため follow-up（karasu 側からは PR テンプレと本 README だけ更新）。
 
 ### 推奨 cadence
 
-- **新 topic の TPL が 3 件溜まった時点で 1 回目** を実施
-- 以降、半期に 1 回の TPL deprecation review に合わせて **対象 topic を 1 つ rotate** して再分析（毎回は不要、覚えていれば程度で十分）
-- 大きな bug クラスタが解消されて新 TPL が複数発生したときは、そのクラスタの topic に絞って前倒し audit
+全 23 TPL（全 topic）の初回 Fit/Gap は 2026-05-10〜11 で完了済み（[#1276](https://github.com/kompiro/karasu/issues/1276)）。今後:
+
+- **新 topic に TPL が 3 件溜まった時点で その topic を 1 回 audit**（既存 topic は完了済み）
+- **既存 topic は半期に 1 回の TPL deprecation review に合わせて 1 つ rotate** して再 audit（テスト構造が大きく変わった可能性があるため。毎回は不要）
+- 大きな bug クラスタが解消されて既存 topic に新 TPL が複数発生したときは、そのクラスタの topic に絞って前倒し再 audit
 
 ## 一覧
 
