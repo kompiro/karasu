@@ -146,7 +146,19 @@ export async function handleRender(
     }
   }
 
-  // Compile
+  // Compile.
+  //
+  // The /render HTTP endpoint is a single-file boundary by design: the source
+  // arrives either as a single remote URL (`?src=`) or as a base64-encoded
+  // text blob (`?code=`), with no filesystem context for resolving sibling
+  // `.krs` files. We therefore use the convenience `compile` /
+  // `buildAllViewsSvg` APIs rather than the principled `compileProject`
+  // variants — `import { ... } from "./other.krs"` declarations in the posted
+  // source are intentionally left unresolved. Multi-file projects are out of
+  // scope for this endpoint; consumers that need import resolution should use
+  // the `karasu render` CLI (which resolves against a real filesystem) or the
+  // VS Code preview. See TPL-20260510-16 for the convenience-vs-principled
+  // API distinction.
   let svg: string;
   try {
     if (params.view) {

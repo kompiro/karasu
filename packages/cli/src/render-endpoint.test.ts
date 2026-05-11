@@ -271,6 +271,49 @@ organization AppOrg {
     expect(bodies.system).not.toEqual(bodies.org);
   });
 
+  // TPL-20260510-16: the /render endpoint is a single-file boundary by
+  // design — `import { ... } from "./other.krs"` declarations in the posted
+  // source are intentionally NOT resolved (no filesystem context exists for
+  // a remote URL or a base64 text blob). This test locks in that documented
+  // contract: an import pointing at a non-existent sibling must not crash
+  // the endpoint, and the imported entity must not appear in the rendered
+  // SVG. Consumers needing multi-file resolution should use `karasu render`
+  // (CLI, real filesystem) or the VS Code preview.
+  it("TPL-16: posted source's `import` is left unresolved (single-file contract)", async () => {
+    const source = `import { ImportedRemoteService } from "./does-not-exist.krs"
+
+system App {
+  service LocalRenderedService { label "Local" }
+}`;
+    const code = Buffer.from(source).toString("base64");
+    const res = makeRes();
+    await handleRender(
+      makeReq(),
+      res as unknown as ServerResponse,
+      new URLSearchParams({ code, view: "system" }),
+    );
+
+    // The endpoint must respond — never throw or hang — even when the source
+    // contains an unresolvable import. The current behavior is to skip the
+    // import silently and render the rest of the file (status 200). If a
+    // future change makes the compiler reject unresolved imports here, the
+    // endpoint should surface that as a 422; either is an acceptable
+    // documented contract — the load-bearing assertion below is that the
+    // imported entity never leaks into the output, confirming nothing
+    // fetched `./does-not-exist.krs` on our behalf.
+    const status: number = res.writeHead.mock.calls[0][0];
+    expect([200, 422]).toContain(status);
+
+    const body: string = res.end.mock.calls[0][0];
+    expect(body).not.toContain("ImportedRemoteService");
+    // Today we expect the silent-skip path: a 200 SVG containing the local
+    // entity. Locked in deterministically so a regression to multi-file
+    // resolution (e.g. someone swapping in `compileProject`) is loud.
+    expect(status).toBe(200);
+    expect(body).toContain("<svg");
+    expect(body).toContain("LocalRenderedService");
+  });
+
   // AT-0043-4: Omitting ?view= returns a bundled all-views SVG.
   it("AT-0043-4: no ?view= returns a bundled SVG containing all available views", async () => {
     const source = `system App {
