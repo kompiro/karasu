@@ -60,3 +60,4 @@ scope:
 ## 関連テスト
 
 - `packages/core/src/renderer/legend-footer.test.ts`
+- `packages/app/src/icon-source-consistency.test.tsx` — NodeDetailPanel と icon-card が同一 kind に対して同一 icon 名を参照していることを検査するクロス surface 整合テスト（Issue #132 §3 の回帰防止、Issue #1246）

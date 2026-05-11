@@ -78,3 +78,4 @@ scope:
 - `packages/core/src/renderer/legend-footer.test.ts`
 - `packages/app/src/hooks/useViewSvg.test.tsx` — Full View / All Layers regression fence for #183 (`displayMode` threading from the hook into `buildAllLayersSvg`)
 - `packages/core/src/displaymode-meta.test.ts` — curated meta-test enumerating every public SVG-producing entry point that consumes `displayMode`. **Adding a new SVG-producing entry to the public API requires registering it in `DISPLAY_MODE_CONSUMERS`** so the next #183-style missed surface is caught at code review
+- `packages/app/src/icon-source-consistency.test.tsx` — NodeDetailPanel と icon-card が同一 kind に対して同一 icon 名を参照していることを検査するクロス surface 整合テスト（Issue #132 §3 の回帰防止、Issue #1246）

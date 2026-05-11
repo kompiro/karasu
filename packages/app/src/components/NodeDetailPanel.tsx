@@ -28,7 +28,12 @@ interface NodeDetailPanelProps {
 
 // Maps node kind to the registered icon name (mirrors ICON_THEME_STYLE_SOURCE).
 // Used to look up the SVG pictogram for consistent display with icon cards.
-const KIND_TO_ICON_NAME: Record<string, string> = {
+//
+// Exported for the cross-surface consistency test in
+// `packages/app/src/icon-source-consistency.test.tsx`, which asserts this
+// map agrees with the source of truth (`ICON_THEME_STYLE_SOURCE` in
+// `@karasu-tools/core`). See Issue #1246 and TPL-20260510-05/06.
+export const KIND_TO_ICON_NAME: Record<string, string> = {
   service: "service",
   user: "user-card",
   domain: "domain",
