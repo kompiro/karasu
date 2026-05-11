@@ -28,6 +28,7 @@
       "Bash(cd /workspaces/karasu* && git:*)"
     ],
     "additionalDirectories": [
+      "/workspaces",
       "/workspaces/karasu",
       "/workspaces/karasu/.claude",
       "/workspaces/karasu/.worktrees"
