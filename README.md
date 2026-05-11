@@ -13,7 +13,7 @@
 - **Three-dimensional structure (logical / physical / organizational)** —
   Express the logical relationships between services and domains, the physical artifacts that get deployed, and the teams that own them in a single `.krs` language.
   Designed so that Conway's Law and the inverse Conway maneuver can be debated at the same table as the architecture itself.
-- **Scoped glance + drill-down** —
+- **Scoped glance + drill-down (progressive disclosure)** —
   Limit how much is shown at once; descend into any node when detail is needed.
   Rather than cramming an entire system into one "at a glance" bird's-eye diagram, karasu takes an intentional design choice to manage cognitive load.
 - **A DSL humans and AI can co-author** —
@@ -21,6 +21,16 @@
 
 karasu takes inspiration from C4 Model, Structurizr, and Mermaid but stakes out a different position through its continuous drill-down, its third axis for organizational structure, and its affinity with AI co-authorship.
 See [`docs/concepts.md`](docs/concepts.md) for the full design rationale.
+
+## Project status
+
+karasu is a **personal learning project** — not a commercial product. It is developed in the open partly as a vehicle for learning [Claude Code](https://claude.com/claude-code), and it is maintained on a **best-effort basis with no SLA**: issues and pull requests are welcome, but response times are not guaranteed.
+
+That said, it is built to be safe to start adopting now:
+
+- **`.krs` / `.krs.style` language spec — v1.0 (stable).** Backward compatibility is a commitment; a breaking change to the language would mean a v2.
+- **`packages/core` TypeScript API — v0.x (no stability commitment).** The programmatic API may change between minor releases.
+- **Maintainer response — best-effort, no SLA.**
 
 ## Try it
 
