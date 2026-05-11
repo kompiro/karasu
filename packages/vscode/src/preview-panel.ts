@@ -1,9 +1,13 @@
 import * as vscode from "vscode";
 import { compileProject, type NodeMetadata } from "@karasu-tools/core";
 import { marked } from "marked";
+import {
+  type ViewType,
+  isAllowedExternalUrl,
+  isValidNavIndex,
+  isViewType,
+} from "./message-validation.js";
 import { VsCodeFileSystemProvider } from "./vscode-fs-provider.js";
-
-type ViewType = "system" | "deploy" | "org";
 
 /** Subset of NodeMetadata serialized as JSON for the webview. */
 interface SerializedNodeMeta {
@@ -47,12 +51,14 @@ export class PreviewPanel {
     this._panel.webview.onDidReceiveMessage(
       (message: {
         type: string;
-        viewType?: ViewType;
+        viewType?: unknown;
         nodeId?: string;
-        index?: number;
-        url?: string;
+        index?: unknown;
+        url?: unknown;
       }) => {
-        if (message.type === "switchView" && message.viewType) {
+        // The webview is a trust boundary: messages it posts are tainted and
+        // must be validated here before acting on them. See message-validation.ts.
+        if (message.type === "switchView" && isViewType(message.viewType)) {
           this._viewType = message.viewType;
           this._viewPath = [];
           this._viewLabels = [];
@@ -72,7 +78,10 @@ export class PreviewPanel {
           if (this._currentDocument) {
             void this._render(this._currentDocument);
           }
-        } else if (message.type === "navigateTo" && message.index !== undefined) {
+        } else if (
+          message.type === "navigateTo" &&
+          isValidNavIndex(message.index, this._viewPath.length)
+        ) {
           this._viewPath = this._viewPath.slice(0, message.index);
           this._viewLabels = this._viewLabels.slice(0, message.index);
           if (this._currentDocument) {
@@ -80,7 +89,7 @@ export class PreviewPanel {
           }
         } else if (
           message.type === "switchViewAndHighlight" &&
-          message.viewType &&
+          isViewType(message.viewType) &&
           message.nodeId
         ) {
           this._viewType = message.viewType;
@@ -99,7 +108,7 @@ export class PreviewPanel {
           }
         } else if (message.type === "navigate" && message.nodeId) {
           this._onNavigate(message.nodeId);
-        } else if (message.type === "openExternal" && message.url) {
+        } else if (message.type === "openExternal" && isAllowedExternalUrl(message.url)) {
           void vscode.env.openExternal(vscode.Uri.parse(message.url));
         }
       },
