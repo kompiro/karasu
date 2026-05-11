@@ -1,6 +1,23 @@
 pre-push:
   parallel: true
   commands:
+    gitleaks:
+      # Secret scan before anything reaches origin — the point at which
+      # removal becomes costly under the no-history-rewrite policy
+      # (SECURITY.md). Mirrors the diff scan in
+      # .github/workflows/secret-scan.yml. gitleaks ships in the
+      # devcontainer; contributors not using it must install it
+      # (https://github.com/gitleaks/gitleaks#installing) — we fail loudly
+      # rather than silently skip so the safety net isn't quietly disabled.
+      run: |
+        if ! command -v gitleaks >/dev/null 2>&1; then
+          echo "lefthook(pre-push): gitleaks not found on PATH." >&2
+          echo "  Install it: https://github.com/gitleaks/gitleaks#installing" >&2
+          echo "  (or rebuild the devcontainer, which ships a pinned version)." >&2
+          echo "  CI still runs the scan, but please fix this locally." >&2
+          exit 1
+        fi
+        gitleaks detect --source . --redact --no-banner --exit-code 1
     format:
       run: pnpm run format:check
     lint:
