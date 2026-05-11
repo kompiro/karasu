@@ -281,16 +281,47 @@ per-topic で 1 つずつ進める。一度に全 topic を audit すると 200 
 
 **Part 2: Gap list** — 各 gap について「観点」「根拠」「優先度」「scope」を 1 ブロックで。Issue 化するときはこの形式をそのまま本文に転載できる。
 
-### 第 1 回事例 (2026-05-10): parser topic
+### 実施済み事例
 
-最初の Fit / Gap 分析として **parser topic (TPL-02 / 10 / 12) × packages/core 関連テスト** を audit。20+ テストケースを 13 チェックリスト項目にマッピングした結果、**4 つの gap** が抽出され Issue 化された:
+| 実施日 | Topic | TPL 件数 | Gap 件数 | Issues |
+|---|---|---|---|---|
+| 2026-05-10 | [parser](#fit-gap-parser) | 3 (TPL-02 / 10 / 12) | 4 | [#1231](https://github.com/kompiro/karasu/issues/1231) [#1232](https://github.com/kompiro/karasu/issues/1232) [#1233](https://github.com/kompiro/karasu/issues/1233) [#1234](https://github.com/kompiro/karasu/issues/1234) |
+| 2026-05-10 | [app-ui](#fit-gap-app-ui) | 3 (TPL-04 / 08 / 09) | 4 | [#1238](https://github.com/kompiro/karasu/issues/1238) [#1239](https://github.com/kompiro/karasu/issues/1239) [#1240](https://github.com/kompiro/karasu/issues/1240) [#1241](https://github.com/kompiro/karasu/issues/1241) |
+| 2026-05-11 | [renderer](#fit-gap-renderer) | 2 (TPL-05 / 06) | 3 | [#1245](https://github.com/kompiro/karasu/issues/1245) [#1246](https://github.com/kompiro/karasu/issues/1246) [#1247](https://github.com/kompiro/karasu/issues/1247) |
+| 2026-05-11 | [edges](#fit-gap-edges) | 2 (TPL-07 / 23) | 3 | [#1248](https://github.com/kompiro/karasu/issues/1248) [#1249](https://github.com/kompiro/karasu/issues/1249) [#1250](https://github.com/kompiro/karasu/issues/1250) |
 
-- [#1231](https://github.com/kompiro/karasu/issues/1231) **G02-1** — AST 構造的等価 round-trip テスト（text idempotence のみで AST 不変が保証されていない）
-- [#1232](https://github.com/kompiro/karasu/issues/1232) **G10-1** — i18n メッセージレンダリングテスト（en / ja 両方の出力検証なし）
-- [#1233](https://github.com/kompiro/karasu/issues/1233) **G12-1** — BaseNodeFields × parser keyword の exhaustiveness meta-test
-- [#1234](https://github.com/kompiro/karasu/issues/1234) **G12-2** — `docs/spec/syntax.md` のコードブロック parse smoke test
+<a id="fit-gap-parser"></a>**parser (2026-05-10)** — bug 起源の TPL に対する regression は core 系で完備だが、AST 構造的等価 / i18n 出力 / parser keyword の exhaustiveness / spec ↔ impl smoke が未カバー。
 
-最初の事例として **TPL-02 round-trip の text-only idempotence で AST 変質バグが見逃されていた** ことが分かったのは、TPL-13/14/17 の「Negative test を regression fence」をさらに掘り下げる材料。今後 fit/gap を別 topic で繰り返すと、この種のメタな知見がさらに溜まる。
+<a id="fit-gap-app-ui"></a>**app-ui (2026-05-10)** — EditorPane / ProjectSelector の TPL 起源 bug は強い regression を持つ一方、**#1032 (NodeDetailPanel stale on reopen) の regression test が空白**。他の text input UI (ChatPane / PasteCompareDialog / SettingsPane) と inline editor (ChatPane / PasteCompareDialog) は audit 未実施。cross-surface 整合性の integration test 不在。
+
+<a id="fit-gap-renderer"></a>**renderer (2026-05-11)** — #279 cascade priority は 6 case で異常に強いが、**#183 (Full View displayMode threading) は useFullViewSvg.test.ts が存在せず regression なし**。icon card と NodeDetailPanel の pictogram cross-surface 整合性も per-surface 単位で個別 mock のため未保証。
+
+<a id="fit-gap-edges"></a>**edges (2026-05-11)** — `[implicit]` と `[async/sync]` の coexistence integration / 派生関数の semantic 保存契約の meta-test / owns / inherited annotation の cross-view rendering integration が未カバー。AT-0056 が automation marker を持たないことが判明。
+
+### 横断観察 — 4 topic から見えた繰り返しパターン
+
+複数 topic で繰り返し抽出された **gap の解決パターン** が 2 つあり、いずれも rule of three を満たしている。前述の「繰り返し現れる対処パターン」は TPL 本文の「既知の対処パターン」節を集約したもの（実装者向けの recommendations）に対し、こちらは **gap の test 設計に共通する shape**（テスト追加者向けの recommendations）。混同しないよう別建てで扱う。
+
+#### 観察 A: curated table for meta-checks across structurally-recurring family
+
+「すべての X について Y を確認する」型のテストが必要なとき、curated table（明示的な配列で対象を列挙）+ 各エントリで same-shape の assertion を実行する形が繰り返し採られている:
+
+- [#1233](https://github.com/kompiro/karasu/issues/1233) **G12-1** — parser keyword exhaustiveness（BaseNodeFields × kinds）
+- [#1241](https://github.com/kompiro/karasu/issues/1241) **GA08-2** — cross-surface timing alignment（panels × source state）
+- [#1247](https://github.com/kompiro/karasu/issues/1247) **GR06-2** — displayMode-consuming surfaces（render entry points × modes）
+- [#1249](https://github.com/kompiro/karasu/issues/1249) **GE07-2** — derivation contracts（derivation paths × preserved attrs）
+
+採用理由: TS reflection / 自動 discovery より explicit な table のほうが code review で auditable で、新エントリ追加時に table 編集を強制できる。**新しいファミリの meta-check が必要になったら、まず curated table を default の選択肢に置く**。
+
+#### 観察 B: per-layer-strong / cross-layer-weak ギャップ
+
+各層（parser / resolver / renderer / panel）が個別に強くテストされているが、**層を跨ぐ contract が implicit** で integration test が空白という gap が繰り返し見つかった:
+
+- [#1238](https://github.com/kompiro/karasu/issues/1238) **GA08-1** — NodeDetailPanel stale on reopen（resolver は ✅ だが panel との integration ✗）
+- [#1245](https://github.com/kompiro/karasu/issues/1245) **GR06-1** — Full View displayMode threading（buildExportSvg 単独は ✅ だが useFullViewSvg との integration ✗）
+- [#1250](https://github.com/kompiro/karasu/issues/1250) **GE23-1** — owns / inherited annotation cross-view rendering（resolver は ✅ だが renderer-side application との integration ✗）
+
+3 件とも **UI 層 / 代替 rendering path** が共通点。core 層のテスト文化に比べて UI 層の integration が薄いことを示唆している。**新 feature を design するときは、layer ごとの test に加えて cross-layer integration test を 1 つは持つ** ことを default にすべき。
 
 ### 推奨 cadence
 
