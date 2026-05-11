@@ -100,7 +100,7 @@ lines.push("");
 lines.push("## Procedure");
 lines.push("");
 lines.push(
-  "See `docs/test-perspectives/README.md` 「定期 deprecation レビュー」 section for the full procedure. " +
+  "See the periodic deprecation review section of `docs/test-perspectives/README.md` for the full procedure. " +
     "When the review is complete, close this Issue with a summary comment listing the dispositions taken " +
     "(e.g. `keep: 18`, `update: 1`, `deprecate: 1`).",
 );
