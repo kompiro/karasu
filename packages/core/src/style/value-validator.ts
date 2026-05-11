@@ -19,18 +19,26 @@ export function validateStyleValues(sheet: StyleSheet): Diagnostic[] {
     const valueNodes = rule.valueNodes;
     if (!valueNodes) continue;
     for (const property of Object.keys(rule.properties)) {
+      const declLoc = rule.declarationLocs[property];
       if (!isKnownProperty(property)) {
         out.push({
           severity: "warning",
           code: "style-unknown-property",
           params: { property },
+          ...(declLoc ? { loc: declLoc } : {}),
         });
         continue;
       }
       const node = valueNodes[property];
       if (!node) continue; // value classification failed in parser; skip
       const schema = PROPERTY_SCHEMAS[property];
-      validateAgainstSpec(node, schema, property, out);
+      const diags: Diagnostic[] = [];
+      validateAgainstSpec(node, schema, property, diags);
+      // Use the value node's loc when available (more precise than the
+      // whole declaration); fall back to the declaration loc.
+      for (const d of diags) {
+        out.push({ ...d, loc: node.loc ?? declLoc });
+      }
     }
   }
   return out;

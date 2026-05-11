@@ -26,6 +26,7 @@ import {
   FormatError,
   formatDiagnostic,
   tidyStyleSheet,
+  validateStyleValues,
 } from "@karasu-tools/core";
 import {
   findNodeAtPosition,
@@ -353,10 +354,19 @@ function toLspPosition(line: number, column: number) {
 
 function validateDocument(document: TextDocument): void {
   const text = document.getText();
-  const parseResult =
-    document.languageId === "krs-style" ? StyleParser.parse(text) : Parser.parse(text);
+  const isStyleDocument = document.languageId === "krs-style";
+  const parseResult = isStyleDocument ? StyleParser.parse(text) : Parser.parse(text);
 
-  const diagnostics: Diagnostic[] = parseResult.diagnostics.map((d) => {
+  // Style documents go through an extra value-level validation pass
+  // (Phase 3, ADR-pending). The validator returns parser-shaped
+  // diagnostics with `loc` already filled in (declaration- or value-
+  // level) so they merge cleanly with parse diagnostics.
+  const allDiagnostics =
+    isStyleDocument && "rules" in parseResult.value
+      ? [...parseResult.diagnostics, ...validateStyleValues(parseResult.value)]
+      : parseResult.diagnostics;
+
+  const diagnostics: Diagnostic[] = allDiagnostics.map((d) => {
     const start = d.loc
       ? toLspPosition(d.loc.start.line, d.loc.start.column)
       : { line: 0, character: 0 };
