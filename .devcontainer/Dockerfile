@@ -1,5 +1,9 @@
 FROM mcr.microsoft.com/devcontainers/typescript-node:1-22-bookworm
 
+# karasu の隣に sibling repo (kompiro/adr-tools, kompiro/hane 等) を clone できるよう
+# /workspaces を node ユーザー所有にしておく。bind mount 時にも親 dir の所有権は維持される。
+RUN mkdir -p /workspaces && chown node:node /workspaces
+
 # delta のインストール
 ARG DELTA_VERSION="0.18.2"
 RUN curl -fsSL "https://github.com/dandavison/delta/releases/download/${DELTA_VERSION}/git-delta_${DELTA_VERSION}_arm64.deb" \
