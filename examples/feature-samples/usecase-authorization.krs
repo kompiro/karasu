@@ -1,0 +1,41 @@
+// Authorization notes on a usecase — the description + link convention
+// (ADR-20260511-02, Issue #1282).
+//
+// karasu deliberately does NOT model runtime authorization (who may call
+// which usecase) in its vocabulary. There is no `requires`, no `policy`,
+// no `role: admin` attribute. Instead, the constraint is written as prose
+// in `description` and the canonical rule lives behind a `link`.
+//
+// Convention:
+//   - Start the relevant sentence with `Access:` (or `アクセス:` in JP).
+//   - Add a `link` whose label contains `Authorization policy`.
+//   - The link is authoritative; the description is a one-sentence hint.
+//   - Do NOT invent attributes inside the description text.
+//
+// See docs/spec/syntax.md "Authorization notes" for the full rationale.
+
+system Billing {
+  label "Billing platform"
+
+  service BillingAPI {
+    label "Billing API"
+
+    domain Refund {
+      label "Refunds"
+
+      // Restricted usecase — Access: prefix + policy link.
+      usecase RefundOrder {
+        label "Refund an order"
+        description "Access: admins and billing operators only. Customers cannot self-serve; partial refunds require dual approval above 10,000 JPY."
+        link "https://policy.example.com/billing/refund-order" "Authorization policy"
+      }
+
+      // Open usecase — no Access: prefix, no policy link. Anyone authenticated
+      // can call this; the absence of the convention is itself a signal.
+      usecase QueryRefundStatus {
+        label "Check refund status"
+        description "Returns the current state of a refund request."
+      }
+    }
+  }
+}
