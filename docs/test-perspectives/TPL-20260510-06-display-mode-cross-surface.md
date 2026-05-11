@@ -24,7 +24,7 @@ discovered_from:
   - root_cause_file: "packages/core/src/renderer/svg-builder.ts:257"
   - root_cause_file: "packages/core/src/builtins/icon-theme.ts"
   - root_cause_file: "packages/core/src/resolver/style-resolver.ts"
-  - root_cause_file: "packages/app/src/hooks/useFullViewSvg.ts"
+  - root_cause_file: "packages/app/src/hooks/useViewSvg.ts"
 related_to:
   - TPL-20260510-05
 topic: renderer
@@ -76,3 +76,4 @@ scope:
 - `packages/core/src/builtins/icon-theme.test.ts`
 - `packages/core/src/builtins/default-style.test.ts`
 - `packages/core/src/renderer/legend-footer.test.ts`
+- `packages/app/src/hooks/useViewSvg.test.tsx` — Full View / All Layers regression fence for #183 (`displayMode` threading from the hook into `buildAllLayersSvg`)
