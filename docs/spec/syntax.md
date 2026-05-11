@@ -406,6 +406,28 @@ Disambiguation rule for 1:N + multiple verbs on one line: once the parser sees `
 
 **Usage guidance — when to use 1:N**: reserve `verb:create,delete` for genuine physical delete-insert idioms (`REPLACE INTO`, soft-delete + new row, Kafka tombstone + new key). For logical in-place rewrites of the same entity, use `update` instead. Tools do not enforce this distinction — it is a documentation convention.
 
+#### Authorization notes — write them as `description` + `link`
+
+[ADR-20260511-02](../adr/20260511-02-no-runtime-authz-modeling.md) decided that karasu does **not** model usecase-level authorization (role / license / plan / scope predicates) in its vocabulary. The structural language describes *what exists* and *how it relates*; *who may call a usecase at runtime* is left to the canonical policy doc or IAM tool (OPA, Cedar, Casbin, internal RBAC docs, etc.).
+
+To keep that prose from drifting into ad-hoc vocabulary across teams, write authz notes on a `usecase` using this pattern:
+
+```
+usecase RefundOrder {
+  label "Refund an order"
+  description "Access: admins and billing operators only. See policy link for the exact rule."
+  link "https://policy.example.com/refund-order" "Authorization policy"
+}
+```
+
+**Convention**:
+
+- Start the relevant sentence in `description` with `Access:` (English) or `アクセス:` (Japanese) so a reader scanning the diagram can recognise the constraint at a glance. Keep it to one short sentence — the description is a *hint*, not the rule.
+- Add a `link` whose label contains `Authorization policy` (or `Policy`) and whose URL points at the canonical policy doc / IAM rule. **The link is authoritative.** When the prose and the link disagree, the link wins; readers should treat the description as out-of-date.
+- Do not invent attributes (`role: admin`, `requires: billing.write`, etc.) inside `description`. If a constraint cannot be summarised in one sentence, that is a signal the constraint belongs in the policy doc, not in the model.
+
+Tools do not enforce or render this convention — there is no `Access:` badge, no policy-link decoration, no validator. It is a *prose contract* between authors so the same constraint is recognisable across files and teams. If you need a machine-checkable gate, that need is explicitly out of scope (see ADR-20260511-02).
+
 ### Top-level domain declaration
 
 A `domain` can be declared at the top level of a file, not only inside a `service`.
