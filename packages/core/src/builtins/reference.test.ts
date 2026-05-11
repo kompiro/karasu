@@ -63,6 +63,32 @@ describe("getReference", () => {
     }
   });
 
+  it("every reference entry has a non-empty description in both locales", () => {
+    for (const locale of ["en", "ja"] as const) {
+      const r = getReference(locale);
+      const entries: { what: string; description: string }[] = [
+        ...r.nodeKinds.map((k) => ({ what: `nodeKind ${k.kind}`, description: k.description })),
+        ...r.deployUnitKinds.map((k) => ({
+          what: `deployUnitKind ${k.kind}`,
+          description: k.description,
+        })),
+        ...r.orgKinds.map((k) => ({ what: `orgKind ${k.kind}`, description: k.description })),
+        ...r.tags.map((t) => ({ what: `tag ${t.name}`, description: t.description })),
+        ...r.annotations.map((a) => ({
+          what: `annotation ${a.name}`,
+          description: a.description,
+        })),
+        ...r.styleProperties.map((p) => ({
+          what: `styleProperty ${p.name}`,
+          description: p.description,
+        })),
+        ...r.shapes.map((s) => ({ what: `shape ${s.name}`, description: s.description })),
+      ];
+      const blank = entries.filter((e) => !e.description || e.description.trim() === "");
+      expect({ locale, blank: blank.map((e) => e.what) }).toEqual({ locale, blank: [] });
+    }
+  });
+
   it("includes all tags", () => {
     const tags = ref.tags.map((t) => t.name);
     expect(tags).toContain("external");

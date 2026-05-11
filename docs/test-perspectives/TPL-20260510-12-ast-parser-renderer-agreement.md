@@ -14,6 +14,7 @@ known_consumers:
 related_to:
   - TPL-20260510-03
   - TPL-20260510-11
+  - TPL-20260511-02
 discovered_from:
   - issue: "#74"
   - issue: "#1233"
