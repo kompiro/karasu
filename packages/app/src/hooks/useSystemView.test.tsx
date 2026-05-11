@@ -330,4 +330,66 @@ organization Acme {
     expect(result.current.svg).toContain("FrontendA");
     vi.useRealTimers();
   });
+
+  // TPL-20260510-08 checklist item 5 — cross-surface timing alignment.
+  // After one source edit + one recompile cycle, every surface derived
+  // from the source must reflect the new shape in the same React tick:
+  // none of `svg`, `warnings`, `nodeMetadata`, `systems`, `hasOrgDiagram`
+  // is allowed to stay on the old value. Generalizes #891 (warnings-only)
+  // to every surface the publish path feeds.
+  //
+  // If a future refactor splits the single `setState({...})` in
+  // useSystemView's compile callback into multiple effects (or drops one
+  // field from the payload), the assertion against that surface fails on
+  // the very same recompile that updates the others — surfacing the skew
+  // before users see a half-stale UI.
+  it("publishes svg / warnings / nodeMetadata / systems / hasOrgDiagram together in one recompile (TPL-08 item 5)", async () => {
+    vi.useFakeTimers();
+
+    // BEFORE: a clean system with one service, no warnings, no
+    // organization block.
+    const BEFORE = `system Shop {
+  service Catalog { label "Catalog" }
+}`;
+    // AFTER: same file path, but every observed surface should change in
+    // one go — new service node (svg + nodeMetadata + systems), typo'd
+    // handles ref (warnings), new organization block (hasOrgDiagram).
+    const AFTER = `system Shop {
+  service Catalog { label "Catalog" }
+  client WebApp [web] { handles Ordr }
+  WebApp -> Catalog
+}
+organization Acme {
+  team Backend { label "Backend" }
+}`;
+
+    const fs = makeFs(BEFORE);
+    const { result } = renderHook(() => useSystemView(ENTRY, fs, []));
+    await act(() => vi.advanceTimersByTimeAsync(300));
+
+    // Sanity: BEFORE shape on every surface
+    expect(result.current.svg).toContain("Catalog");
+    expect(result.current.svg).not.toContain("WebApp");
+    expect(result.current.warnings.some((w) => w.kind === "unresolved-handles")).toBe(false);
+    expect(result.current.nodeMetadata.has("WebApp")).toBe(false);
+    expect(result.current.hasOrgDiagram).toBe(false);
+
+    // Single source edit, single recompile.
+    await act(async () => {
+      await fs.writeFile(ENTRY, AFTER);
+      result.current.recompile();
+    });
+    await act(() => vi.advanceTimersByTimeAsync(300));
+
+    // AFTER shape must be reflected on EVERY surface — not just one of them.
+    // If a future change publishes one field on a separate tick / drops it,
+    // the corresponding assertion below catches the skew.
+    expect(result.current.svg).toContain("WebApp");
+    expect(result.current.warnings.some((w) => w.kind === "unresolved-handles")).toBe(true);
+    expect(result.current.nodeMetadata.has("WebApp")).toBe(true);
+    expect(result.current.systems.some((s) => s.id === "Shop")).toBe(true);
+    expect(result.current.hasOrgDiagram).toBe(true);
+
+    vi.useRealTimers();
+  });
 });
