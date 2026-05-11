@@ -231,6 +231,28 @@ operations read, update           // 複数行は累積される
 
 **省略時の意味**: `operations` を書かなければ現状と同じ挙動。依存は opaque のままで警告は出ない。「未決定の許容」（§プロパティの必須・省略ルール）方針を踏襲する。
 
+#### 認可ノート — `description` + `link` で書く
+
+[ADR-20260511-02](../adr/20260511-02-no-runtime-authz-modeling.md) により、karasu は usecase レベルの認可（ロール／ライセンス／プラン／スコープなどの述語）を語彙に取り込まない。構造言語が表現するのは「何が存在し、どう関係するか」であり、「実行時に誰が当該 usecase を呼べるか」は外部の policy doc や IAM ツール（OPA, Cedar, Casbin, 社内 RBAC ドキュメントなど）に委ねる。
+
+そのため認可記述を散文に逃がすことになるが、何も決めないとチームごとに語彙がブレる（「Admin only」「`billing.write` スコープ必要」「pro プラン以上」など）。次の取り決めで散文の見た目を揃え、読者と AI が「この usecase には認可制約がある」と一目で認識できるようにする:
+
+```
+usecase RefundOrder {
+  label "返金処理"
+  description "アクセス: 管理者と請求オペレーターのみ。詳細は policy リンクを参照。"
+  link "https://policy.example.com/refund-order" "Authorization policy"
+}
+```
+
+**規約**:
+
+- 認可制約を持つ usecase の `description` では、該当する文を `アクセス:`（または英語で `Access:`）で始める。一文に収める — `description` は「ヒント」であって規則そのものではない。
+- 同じ usecase に `link` を添え、ラベルに `Authorization policy`（または `認可ポリシー`）を含めて canonical な policy doc / IAM ルールを指す。**source of truth は link 側。** 散文と link が食い違ったときは link が正で、`description` は古いとみなす。
+- `description` の中に属性風の語彙（`role: admin`、`requires: billing.write` 等）を発明しない。一文に収まらない制約はモデルではなく policy doc に置くべきというサインである。
+
+ツールはこの規約を強制も描画もしない（`アクセス:` バッジも policy-link デコレーションもバリデータも存在しない）。あくまで著者間の「散文の取り決め」であり、同じ制約がファイルやチームを跨いでも同じ姿で読めるようにするためのもの。machine-checkable なゲートが必要な場合は明示的に対象外である（ADR-20260511-02 参照）。
+
 ### トップレベル domain 宣言
 
 `domain` は `service` の内部だけでなく、ファイルのトップレベルにも記述できる。
