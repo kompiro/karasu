@@ -160,6 +160,27 @@ export const ja: Partial<Translations> = {
     `column: "${value}"（#${nodeId}）は left / center / right のいずれでもないため無視されました`,
   "warning.styleColumnIgnoredNonSystemView.message": ({ nodeId, viewType }) =>
     `#${nodeId} の column ヒントは ${viewType} ビューでは無視されます（layout hints は現状 system view のみ対応）`,
+  "warning.styleInvalidEnumValue.message": ({ property, value, allowed }) =>
+    `${property}: "${value}" は ${allowed.join(" / ")} のいずれでもないため無視されました`,
+  "warning.styleInvalidHexColor.message": ({ property, value }) =>
+    `${property}: "${value}" は有効な hex color ではないため無視されました（#RGB / #RGBA / #RRGGBB / #RRGGBBAA を期待）`,
+  "warning.styleMissingLengthUnit.message": ({ property, value, allowedUnits }) =>
+    `${property}: "${value}" に単位がないため無視されました（${allowedUnits.join(" / ")} を期待）`,
+  "warning.styleInvalidLengthUnit.message": ({ property, value, unit, allowedUnits }) =>
+    `${property}: "${value}" の単位 "${unit}" は無効です（${allowedUnits.join(" / ")} を期待）— 無視されました`,
+  "warning.styleOutOfRange.message": ({ property, value, min, max }) => {
+    const range =
+      min !== undefined && max !== undefined
+        ? `[${min}, ${max}]`
+        : min !== undefined
+          ? `>= ${min}`
+          : max !== undefined
+            ? `<= ${max}`
+            : "";
+    return `${property}: ${value} は範囲外 ${range} のため無視されました`;
+  },
+  "warning.styleUnknownProperty.message": ({ property }) =>
+    `未知のスタイルプロパティ "${property}" — 無視されました`,
 
   // Diagnostics (rendered in PreviewPane's diagnostic banner)
   "diagnostic.tokenTypeMismatch.message": ({ expected, got, value }) =>

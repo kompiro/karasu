@@ -23,7 +23,13 @@ export type WarningKind =
   | "client-capability-duplicate"
   | "legend-ref-unresolved"
   | "style-column-invalid-value"
-  | "style-column-ignored-non-system-view";
+  | "style-column-ignored-non-system-view"
+  | "style-invalid-enum-value"
+  | "style-invalid-hex-color"
+  | "style-missing-length-unit"
+  | "style-invalid-length-unit"
+  | "style-out-of-range"
+  | "style-unknown-property";
 
 /**
  * Per-kind params shape. Each entry carries only the structured data needed
@@ -115,6 +121,23 @@ export interface WarningParamsByKind {
     /** "deploy" or "org" */
     viewType: "deploy" | "org";
   };
+  /**
+   * Value-level diagnostics produced by `validateStyleValues` (Phase 3).
+   * Surfaced in the App's WarningPanel via the compile pipeline; the
+   * LSP path emits the same checks as parser-level Diagnostics in
+   * `validateDocument`.
+   */
+  "style-invalid-enum-value": { property: string; value: string; allowed: string[] };
+  "style-invalid-hex-color": { property: string; value: string };
+  "style-missing-length-unit": { property: string; value: string; allowedUnits: string[] };
+  "style-invalid-length-unit": {
+    property: string;
+    value: string;
+    unit: string;
+    allowedUnits: string[];
+  };
+  "style-out-of-range": { property: string; value: number; min?: number; max?: number };
+  "style-unknown-property": { property: string };
 }
 
 /**

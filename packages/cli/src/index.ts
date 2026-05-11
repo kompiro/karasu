@@ -9,6 +9,7 @@ import { remove } from "./remove.js";
 import { insert } from "./insert.js";
 import { fmt } from "./fmt.js";
 import { tidyStyle } from "./tidy-style.js";
+import { lintStyle } from "./lint-style.js";
 import { diff } from "./diff.js";
 import { matrix } from "./matrix.js";
 
@@ -416,6 +417,32 @@ Examples:
       stdin: options.stdin,
       noMerge: options.merge === false,
     });
+  });
+
+program
+  .command("lint-style [files...]")
+  .description(
+    "Lint .krs.style files: check property values against the schema (typos, invalid hex, missing units, ...)",
+  )
+  .option("--stdin", "Read from stdin instead of resolving file paths")
+  .addHelpText(
+    "after",
+    `
+Examples:
+  # Lint every .krs.style under the current directory
+  $ karasu lint-style
+
+  # Lint specific files
+  $ karasu lint-style theme.krs.style site.krs.style
+
+  # Pipe via stdin
+  $ cat theme.krs.style | karasu lint-style --stdin
+
+Exits with status 1 when any error-severity diagnostic is reported.
+Warnings (e.g. unknown property names) do not change the exit code.`,
+  )
+  .action((files: string[], options: { stdin?: boolean }) => {
+    lintStyle(files, { stdin: options.stdin });
   });
 
 program

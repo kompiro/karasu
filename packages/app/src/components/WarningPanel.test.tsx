@@ -92,6 +92,27 @@ function makeWarning(kind: Warning["kind"]): Warning {
       return { kind, params: { nodeId: "test-node", value: "wrong" } };
     case "style-column-ignored-non-system-view":
       return { kind, params: { nodeId: "test-node", viewType: "deploy" } };
+    case "style-invalid-enum-value":
+      return {
+        kind,
+        params: { property: "direction", value: "dwon", allowed: ["up", "down"] },
+      };
+    case "style-invalid-hex-color":
+      return { kind, params: { property: "color", value: "#zzzz" } };
+    case "style-missing-length-unit":
+      return {
+        kind,
+        params: { property: "stroke-width", value: "1.5", allowedUnits: ["px"] },
+      };
+    case "style-invalid-length-unit":
+      return {
+        kind,
+        params: { property: "stroke-width", value: "1.5em", unit: "em", allowedUnits: ["px"] },
+      };
+    case "style-out-of-range":
+      return { kind, params: { property: "opacity", value: 1.5, min: 0, max: 1 } };
+    case "style-unknown-property":
+      return { kind, params: { property: "color2" } };
     case "client-capability-duplicate":
       return { kind, params: { clientId: "test-client", name: "camera" } };
   }

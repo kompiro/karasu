@@ -190,6 +190,36 @@ export function renderWarning(w: Warning, t: TranslateFn): FormattedWarning {
         }),
         details: [],
       };
+    case "style-invalid-enum-value":
+      return {
+        message: t("warning.styleInvalidEnumValue.message", w.params),
+        details: [],
+      };
+    case "style-invalid-hex-color":
+      return {
+        message: t("warning.styleInvalidHexColor.message", w.params),
+        details: [],
+      };
+    case "style-missing-length-unit":
+      return {
+        message: t("warning.styleMissingLengthUnit.message", w.params),
+        details: [],
+      };
+    case "style-invalid-length-unit":
+      return {
+        message: t("warning.styleInvalidLengthUnit.message", w.params),
+        details: [],
+      };
+    case "style-out-of-range":
+      return {
+        message: t("warning.styleOutOfRange.message", w.params),
+        details: [],
+      };
+    case "style-unknown-property":
+      return {
+        message: t("warning.styleUnknownProperty.message", w.params),
+        details: [],
+      };
     case "cyclic-dependency": {
       const { cyclePath } = w.params;
       const path =

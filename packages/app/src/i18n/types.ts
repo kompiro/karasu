@@ -168,6 +168,31 @@ export type Translations = {
     nodeId: string;
     viewType: "deploy" | "org";
   }) => string;
+  // Value-level validator (Phase 3)
+  "warning.styleInvalidEnumValue.message": (params: {
+    property: string;
+    value: string;
+    allowed: string[];
+  }) => string;
+  "warning.styleInvalidHexColor.message": (params: { property: string; value: string }) => string;
+  "warning.styleMissingLengthUnit.message": (params: {
+    property: string;
+    value: string;
+    allowedUnits: string[];
+  }) => string;
+  "warning.styleInvalidLengthUnit.message": (params: {
+    property: string;
+    value: string;
+    unit: string;
+    allowedUnits: string[];
+  }) => string;
+  "warning.styleOutOfRange.message": (params: {
+    property: string;
+    value: number;
+    min?: number;
+    max?: number;
+  }) => string;
+  "warning.styleUnknownProperty.message": (params: { property: string }) => string;
 
   // Diagnostic messages (Phase D.2) — rendered in PreviewPane's diagnostic
   // banner. One entry per DiagnosticCode; codes with branching messages

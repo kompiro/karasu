@@ -147,6 +147,38 @@ export function formatWarning(w: Warning): FormattedWarning {
         message: `column hint on #${w.params.nodeId} is ignored in ${w.params.viewType} view (layout hints currently apply only to system view)`,
         details: [],
       };
+    case "style-invalid-enum-value":
+      return {
+        message: `${w.params.property}: "${w.params.value}" is not one of ${w.params.allowed.join(" / ")} — ignored`,
+        details: [],
+      };
+    case "style-invalid-hex-color":
+      return {
+        message: `${w.params.property}: "${w.params.value}" is not a valid hex color (expected #RGB / #RGBA / #RRGGBB / #RRGGBBAA) — ignored`,
+        details: [],
+      };
+    case "style-missing-length-unit":
+      return {
+        message: `${w.params.property}: "${w.params.value}" is missing a unit (expected ${w.params.allowedUnits.join(" / ")}) — ignored`,
+        details: [],
+      };
+    case "style-invalid-length-unit":
+      return {
+        message: `${w.params.property}: "${w.params.value}" uses unit "${w.params.unit}" (expected ${w.params.allowedUnits.join(" / ")}) — ignored`,
+        details: [],
+      };
+    case "style-out-of-range": {
+      const range = formatStyleRange(w.params.min, w.params.max);
+      return {
+        message: `${w.params.property}: ${w.params.value} is out of range ${range} — ignored`,
+        details: [],
+      };
+    }
+    case "style-unknown-property":
+      return {
+        message: `unknown style property "${w.params.property}" — ignored`,
+        details: [],
+      };
     case "client-capability-duplicate":
       return {
         message: `client "${w.params.clientId}" declares capability "${w.params.name}" more than once`,
@@ -164,4 +196,11 @@ export function formatWarning(w: Warning): FormattedWarning {
       };
     }
   }
+}
+
+function formatStyleRange(min: number | undefined, max: number | undefined): string {
+  if (min !== undefined && max !== undefined) return `[${min}, ${max}]`;
+  if (min !== undefined) return `>= ${min}`;
+  if (max !== undefined) return `<= ${max}`;
+  return "";
 }
