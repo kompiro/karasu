@@ -1,6 +1,6 @@
 # ADR Dependency Graph — Overview
 
-168 ADRs across 15 topics. Clusters group by `topic` frontmatter field. Edges crossing cluster borders are cross-topic dependencies.
+169 ADRs across 15 topics. Clusters group by `topic` frontmatter field. Edges crossing cluster borders are cross-topic dependencies.
 ```mermaid
 flowchart TD
   subgraph adr-tooling["adr-tooling"]
@@ -94,6 +94,7 @@ flowchart TD
     ADR_20260429_07["ADR-20260429-07<br/>client の capability 軸 — device / browser permis..."]
     ADR_20260430_01["ADR-20260430-01<br/>セキュリティ／脅威モデリングは karasu の語彙に取り込まず companion docu..."]
     ADR_20260511_02["ADR-20260511-02<br/>実行時認可（usecase レベルの authz）は karasu の語彙に取り込まない"]
+    ADR_20260511_04["ADR-20260511-04<br/>user.role キーワードは存続させ、spec で「authz primitive ではな..."]
   end
   subgraph edges["edges"]
     ADR_20260404_09["ADR-20260404-09<br/>クロスシステムサービス参照 — ドット記法（`SystemId.ServiceId`）"]
@@ -464,6 +465,7 @@ flowchart TD
   class ADR_20260511_01 accepted
   class ADR_20260511_02 accepted
   class ADR_20260511_03 accepted
+  class ADR_20260511_04 accepted
 ```
 
 ## Per-topic detail
@@ -473,7 +475,7 @@ flowchart TD
 - [`build`](graph/build.md) — 23 ADRs
 - [`chat-ai`](graph/chat-ai.md) — 8 ADRs
 - [`cli`](graph/cli.md) — 11 ADRs
-- [`core-concepts`](graph/core-concepts.md) — 8 ADRs
+- [`core-concepts`](graph/core-concepts.md) — 9 ADRs
 - [`edges`](graph/edges.md) — 12 ADRs
 - [`navigation`](graph/navigation.md) — 9 ADRs
 - [`parser`](graph/parser.md) — 15 ADRs
