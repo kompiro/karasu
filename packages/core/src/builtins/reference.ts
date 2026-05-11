@@ -113,7 +113,11 @@ interface ReferenceStrings {
     | "font-family"
     | "opacity"
     | "shape"
+    | "column"
     | "stroke-width"
+    | "direction"
+    | "label-position"
+    | "label-offset"
     | "badge-color"
     | "badge-icon"
     | "badge-label",
@@ -507,7 +511,12 @@ const STRINGS_JA: ReferenceStrings = {
     "font-family": "フォントファミリー",
     opacity: "不透明度（0.0〜1.0）",
     shape: 'ノードの形状。url("...") でカスタムSVGも指定可',
+    column:
+      "レイヤー内の列バケット（left / center / right）。最終手段のレイアウトヒント。system ビューのみ有効",
     "stroke-width": "エッジ線の太さ",
+    direction: "エッジの推奨レイアウト方向（auto / up / down / left / right）。レイアウトヒント",
+    "label-position": "エッジ上のラベル位置（start / middle / end、または 0.0〜1.0 の比率）",
+    "label-offset": "エッジラベルの画面軸方向オフセット（<dy>px、または <dx>px <dy>px）",
     "badge-color": "アノテーションバッジの背景色",
     "badge-icon": "アノテーションバッジのアイコン文字",
     "badge-label": "アノテーションバッジのラベルテキスト",
@@ -589,7 +598,14 @@ const STRINGS_EN: ReferenceStrings = {
     "font-family": "Font family",
     opacity: "Opacity (0.0 to 1.0)",
     shape: 'Node shape. Also accepts url("...") for a custom SVG',
+    column:
+      "Column bucket within the layer (left / center / right). Last-resort layout hint; honored on the system view only",
     "stroke-width": "Edge line width",
+    direction:
+      "Suggested layout direction of the edge (auto / up / down / left / right). Layout hint",
+    "label-position":
+      "Position of the label along the edge (start / middle / end, or a 0.0–1.0 fraction)",
+    "label-offset": "Screen-axis offset of the edge label (<dy>px, or <dx>px <dy>px)",
     "badge-color": "Annotation badge background color",
     "badge-icon": "Annotation badge icon character",
     "badge-label": "Annotation badge label text",
@@ -805,10 +821,37 @@ export function getReference(locale: ReferenceLocale = "en"): KarasuReference {
         description: s.styleProperty.shape,
       },
       {
+        name: "column",
+        appliesTo: "node",
+        valueType: "keyword",
+        keywords: ["left", "center", "right"],
+        description: s.styleProperty.column,
+      },
+      {
         name: "stroke-width",
         appliesTo: "edge",
         valueType: "number",
         description: s.styleProperty["stroke-width"],
+      },
+      {
+        name: "direction",
+        appliesTo: "edge",
+        valueType: "keyword",
+        keywords: ["auto", "up", "down", "left", "right"],
+        description: s.styleProperty.direction,
+      },
+      {
+        name: "label-position",
+        appliesTo: "edge",
+        valueType: "keyword",
+        keywords: ["start", "middle", "end"],
+        description: s.styleProperty["label-position"],
+      },
+      {
+        name: "label-offset",
+        appliesTo: "edge",
+        valueType: "length",
+        description: s.styleProperty["label-offset"],
       },
       {
         name: "badge-color",

@@ -103,6 +103,18 @@ describe("ReferencePanel", () => {
     expect(container.querySelector(".reference-unsupported")).toBeTruthy();
   });
 
+  it("Styles tab lists the edge / layout style properties from the spec", () => {
+    const { container } = render(<ReferencePanel {...defaultProps} />);
+    const stylesTab = Array.from(container.querySelectorAll(".reference-panel-tab")).find(
+      (el) => el.textContent === "Styles",
+    )!;
+    fireEvent.click(stylesTab);
+    const body = container.querySelector(".reference-tab-body")?.textContent ?? "";
+    for (const prop of ["direction", "label-position", "label-offset", "column"]) {
+      expect(body).toContain(prop);
+    }
+  });
+
   it("Styles tab shows deploy selector examples when activeView=deploy", () => {
     const { container } = render(<ReferencePanel {...defaultProps} activeView="deploy" />);
     const stylesTab = Array.from(container.querySelectorAll(".reference-panel-tab")).find(
