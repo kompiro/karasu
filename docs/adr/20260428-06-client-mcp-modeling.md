@@ -6,6 +6,7 @@ date: 2026-04-28
 topic: core-concepts
 related_to:
   - ADR-20260427-01
+  - ADR-20260511-02
 scope:
   packages:
     - core
@@ -21,7 +22,7 @@ assumptions:
 
 - **日付**: 2026-04-25 (Design Doc 作成) / 2026-04-26 (Q1–Q14 全決定) / 2026-04-28 (ADR 昇格)
 - **ステータス**: 決定済み — Phase 1〜7 実装完了、Phase 8 (本 ADR) で文書整備完了
-- **関連**: Issue #823, Issue #832 (認可は別 Issue), Issue #834 (security 関連トピックの親 — credential / cookie 等はそちらで扱う), Issue #837 (capability 軸 — camera / geolocation 等の能力許諾), ADR-20260427-01 (feature toggle policy — 構文追加では非適用), `docs/spec/syntax.md`, `docs/spec/tags-annotations.md`, `docs/concepts.md`
+- **関連**: Issue #823, Issue #832 (認可は別 Issue — 結論は ADR-20260511-02), Issue #834 (security 関連トピックの親 — credential / cookie 等はそちらで扱う), Issue #837 (capability 軸 — camera / geolocation 等の能力許諾), ADR-20260427-01 (feature toggle policy — 構文追加では非適用), ADR-20260511-02 (usecase レベル authz は語彙化しない), `docs/spec/syntax.md`, `docs/spec/tags-annotations.md`, `docs/concepts.md`
 - **実装 Issues**: #849 (Phase 1), #851 (Phase 2), #853 (Phase 3), #854 (Phase 4), #855 (Phase 5), #856 (Phase 6), #857 (Phase 7), #858 (Phase 8 — 本 ADR)
 
 ## 背景・課題
@@ -639,6 +640,7 @@ M2M はそのまま `service ↔ service`、外部 SaaS / Webhook も `service [
 - **ユーザー属性に応じた usecase の認可** (ロール / ライセンス / プラン / 機能フラグ) — Issue #832。
   本ドキュメントのスコープ外。語彙が衝突しないよう、`role` / `license` / `group` / `plan` / `requires` / `allows` / `policy` を将来の認可語彙として予約候補と認識しておく。
   `client.handles` (UI 上の枠) と `usecase.requires` (実行時認可) は二段で組み合わせて使う想定。
+  → その後 **ADR-20260511-02** で「usecase レベルの authz は karasu の語彙に取り込まない」と決定した。ここで挙げた予約候補は「将来 authz 機能を作るとき用」ではなく「衝突回避のための予約」という位置づけになり、`usecase.requires` を実装する計画はない。
 
 ## 未解決の問い と推奨案
 

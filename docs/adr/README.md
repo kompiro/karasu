@@ -24,6 +24,7 @@ karasu が何を表現するか、その根幹の設計判断。
 - [ADR-20260404-10](20260404-10-org-tree-view.md) — Org Tree View — 組織階層の左→右ツリー俯瞰図
 - [ADR-20260428-06](20260428-06-client-mcp-modeling.md) — `client` kind 導入 — `user → client → service` のアクセス経路と MCP / 外部依存のモデル化
 - [ADR-20260430-01](20260430-01-security-modeling-stance.md) — セキュリティ／脅威モデリングは karasu の語彙に取り込まず companion document に委ねる
+- [ADR-20260511-02](20260511-02-no-runtime-authz-modeling.md) — 実行時認可（usecase レベルの authz）は karasu の語彙に取り込まない
 
 ### パーサー / 構文 / AST / フォーマッター
 

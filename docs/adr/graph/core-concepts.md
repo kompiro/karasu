@@ -1,6 +1,6 @@
 # ADR Topic: core-concepts
 
-7 ADRs in this topic. Solid nodes belong to `core-concepts`; gray dashed nodes are ghosts showing cross-topic references to help navigation.
+8 ADRs in this topic. Solid nodes belong to `core-concepts`; gray dashed nodes are ghosts showing cross-topic references to help navigation.
 
 Other topics: [overview](../graph.md).
 ```mermaid
@@ -13,6 +13,7 @@ flowchart TD
     ADR_20260428_06["ADR-20260428-06<br/>クライアント / MCP を system 図でどう表現するか — `client` kind..."]
     ADR_20260429_07["ADR-20260429-07<br/>client の capability 軸 — device / browser permis..."]
     ADR_20260430_01["ADR-20260430-01<br/>セキュリティ／脅威モデリングは karasu の語彙に取り込まず companion docu..."]
+    ADR_20260511_02["ADR-20260511-02<br/>実行時認可（usecase レベルの authz）は karasu の語彙に取り込まない"]
   end
   ADR_20260323_02["ADR-20260323-02<br/>[app-ui] ツールバーボタンはアイコン+テキストラベル必須"]
   ADR_20260401_06["ADR-20260401-06<br/>[resolver] Domain Drift Detection — 検出スコープと検出キー"]
@@ -34,6 +35,7 @@ flowchart TD
   class ADR_20260428_06 accepted
   class ADR_20260429_07 accepted
   class ADR_20260430_01 accepted
+  class ADR_20260511_02 accepted
   class ADR_20260323_02 ghost
   class ADR_20260401_06 ghost
 ```
