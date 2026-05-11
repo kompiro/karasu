@@ -5,7 +5,13 @@ import {
   type SourceRange,
   type Trivia,
 } from "../types/tokens.js";
-import type { StyleSheet, StyleRule, StyleSelector, DeclarationTrivia } from "../types/style.js";
+import type {
+  StyleSheet,
+  StyleRule,
+  StyleSelector,
+  DeclarationTrivia,
+  ValueNode,
+} from "../types/style.js";
 import type { Diagnostic, ParseResult } from "../types/ast.js";
 import { StyleLexer } from "../lexer/style-lexer.js";
 
@@ -121,6 +127,7 @@ export class StyleParser {
     const properties: Record<string, string> = {};
     const declarationLocs: Record<string, SourceRange> = {};
     const declarationTrivia: Record<string, DeclarationTrivia> = {};
+    const valueNodes: Record<string, ValueNode> = {};
     let lastDeclarationName: string | null = null;
     while (this.peek().type !== TokenType.RightBrace && this.peek().type !== TokenType.EOF) {
       const beforePos = this.pos;
@@ -128,6 +135,7 @@ export class StyleParser {
         properties,
         declarationLocs,
         declarationTrivia,
+        valueNodes,
         lastDeclarationName,
       );
       if (declName) {
@@ -172,6 +180,7 @@ export class StyleParser {
       leadingTrivia: idx === 0 ? leadingTrivia : [],
       trailingTrivia: idx === selectors.length - 1 ? trailingTrivia : [],
       declarationTrivia: idx === 0 ? { ...declarationTrivia } : {},
+      valueNodes: { ...valueNodes },
     }));
   }
 
@@ -253,6 +262,7 @@ export class StyleParser {
     properties: Record<string, string>,
     declarationLocs: Record<string, SourceRange>,
     declarationTrivia: Record<string, DeclarationTrivia>,
+    valueNodes: Record<string, ValueNode>,
     previousDeclarationName: string | null,
   ): string | null {
     if (this.peek().type !== TokenType.Identifier) {
@@ -271,8 +281,11 @@ export class StyleParser {
     const property = propertyToken.value;
     this.expect(TokenType.Colon);
 
-    const value = this.parseValue(property);
-    properties[property] = value;
+    const valueResult = this.parseValue(property);
+    properties[property] = valueResult.text;
+    if (valueResult.node) {
+      valueNodes[property] = valueResult.node;
+    }
 
     const semicolonToken = this.peek().type === TokenType.Semicolon ? this.peek() : null;
     this.match(TokenType.Semicolon);
@@ -295,8 +308,20 @@ export class StyleParser {
     return property;
   }
 
-  private parseValue(propertyName: string): string {
+  /**
+   * Parse a property value into both its joined-string form (canonical for
+   * resolver / Tidy / svg-builder) and a structured `ValueNode` (used by
+   * the validator pass added in Phase 3 / PR-B). Both consume the same
+   * tokens, so they are produced together to avoid re-parsing.
+   *
+   * Returns `node: undefined` when the value is empty (no atoms before
+   * `;` / `}`) or every atom failed to classify; in that case only the
+   * joined string is meaningful and the validator pass will skip it.
+   */
+  private parseValue(propertyName: string): { text: string; node: ValueNode | undefined } {
     const parts: string[] = [];
+    const atoms: ValueNode[] = [];
+    const segmentStarts: number[] = [0]; // indices into `atoms` where each comma-separated segment starts
 
     while (
       this.peek().type !== TokenType.Semicolon &&
@@ -305,10 +330,17 @@ export class StyleParser {
     ) {
       const token = this.peek();
       if (token.type === TokenType.StringLiteral) {
-        parts.push(`"${this.advance().value}"`);
+        const t = this.advance();
+        parts.push(`"${t.value}"`);
+        atoms.push({
+          kind: "string",
+          value: t.value,
+          loc: tokenLoc(t),
+        });
       } else if (token.type === TokenType.Identifier) {
-        const ident = this.advance().value;
-        // Check for function call like url(...)
+        const t = this.advance();
+        const ident = t.value;
+        // Function call like url("...")
         if (this.peek().type === TokenType.LeftParen) {
           this.advance(); // (
           let arg = "";
@@ -319,17 +351,24 @@ export class StyleParser {
               arg += this.advance().value;
             }
           }
+          const close = this.peek().type === TokenType.RightParen ? this.peek() : null;
           this.expect(TokenType.RightParen);
           parts.push(`${ident}("${arg}")`);
+          atoms.push({
+            kind: "function",
+            name: ident,
+            argRaw: arg,
+            loc: rangeBetweenTokens(t, close ?? t),
+          });
         } else {
           parts.push(ident);
+          atoms.push(classifyIdentAtom(ident, t));
         }
       } else if (token.type === TokenType.Comma) {
-        // Recovery for the "comma instead of semicolon" mistake (#1168):
-        // if the comma is immediately followed by `<identifier> :`, the user
-        // most likely meant to terminate this declaration. Emit a diagnostic,
-        // consume the comma as if it were a semicolon, and let the outer
-        // declaration loop pick up the next property cleanly.
+        // Recovery for "comma instead of semicolon" (#1168): if the
+        // comma is immediately followed by `<identifier> :`, the user
+        // most likely meant `;`. Emit a diagnostic and treat the comma
+        // as a terminator.
         if (
           this.peekAt(1).type === TokenType.Identifier &&
           this.peekAt(2).type === TokenType.Colon
@@ -342,14 +381,111 @@ export class StyleParser {
           this.advance(); // consume the comma — treat as `;`
           break;
         }
+        // Legitimate comma — start a new segment for the list builder.
         parts.push(this.advance().value);
+        segmentStarts.push(atoms.length);
       } else {
+        // Unknown / unhandled token — keep it in the joined string but
+        // do not attempt to classify into a ValueNode.
         parts.push(this.advance().value);
       }
     }
 
-    return parts.join(" ").trim();
+    const text = parts.join(" ").trim();
+    const node = buildValueNode(atoms, segmentStarts);
+    return { text, node };
   }
+}
+
+/**
+ * Classify a bare identifier atom. Hex tokens land here too because the
+ * lexer emits them as `Identifier` with a leading `#` (see style-lexer
+ * `readHexColor`). Numeric values (`12`, `12px`, `0.5`) similarly come
+ * through as `Identifier`.
+ */
+function classifyIdentAtom(value: string, token: Token): ValueNode {
+  if (value.startsWith("#")) {
+    return { kind: "hex", value, loc: tokenLoc(token) };
+  }
+  const numericMatch = /^(-?\d+(?:\.\d+)?)([a-zA-Z%]+)?$/.exec(value);
+  if (numericMatch) {
+    const numeric = Number.parseFloat(numericMatch[1]);
+    const unit = numericMatch[2];
+    if (unit) {
+      return {
+        kind: "length",
+        value: numeric,
+        unit,
+        raw: numericMatch[1],
+        loc: tokenLoc(token),
+      };
+    }
+    return {
+      kind: "number",
+      value: numeric,
+      raw: numericMatch[1],
+      loc: tokenLoc(token),
+    };
+  }
+  return { kind: "ident", value, loc: tokenLoc(token) };
+}
+
+function buildValueNode(atoms: ValueNode[], segmentStarts: number[]): ValueNode | undefined {
+  if (atoms.length === 0) return undefined;
+  if (segmentStarts.length <= 1) {
+    // No commas — single segment. If exactly one atom, return it; if
+    // multiple atoms (e.g. a sequence the parser does not recognize),
+    // leave node undefined for now and let the validator skip.
+    return atoms.length === 1 ? atoms[0] : undefined;
+  }
+  // Comma-separated list. Each segment becomes one item: a single atom
+  // when the segment has exactly one, and `undefined` (skipped) otherwise.
+  const items: ValueNode[] = [];
+  for (let i = 0; i < segmentStarts.length; i++) {
+    const start = segmentStarts[i];
+    const end = i + 1 < segmentStarts.length ? segmentStarts[i + 1] : atoms.length;
+    if (end - start === 1) {
+      items.push(atoms[start]);
+    } else if (end - start > 1) {
+      // Multi-atom segment — fold by using the first atom's loc as a
+      // placeholder. The validator can still report on the segment but
+      // cannot zoom into a sub-atom.
+      items.push(atoms[start]);
+    }
+  }
+  if (items.length === 0) return undefined;
+  return {
+    kind: "list",
+    items,
+    loc: {
+      start: items[0].loc.start,
+      end: items[items.length - 1].loc.end,
+    },
+  };
+}
+
+function tokenLoc(token: Token): SourceRange {
+  const len = token.value.length;
+  return {
+    start: { ...token.loc },
+    end: {
+      line: token.loc.line,
+      column: token.loc.column + len,
+      offset: token.loc.offset + len,
+    },
+  };
+}
+
+function rangeBetweenTokens(start: Token, end: Token): SourceRange {
+  const len = end.value.length;
+  return {
+    start: { ...start.loc },
+    end: {
+      line: end.loc.line,
+      column: end.loc.column + len,
+      offset: end.loc.offset + len,
+    },
+  };
 }
 
 /**

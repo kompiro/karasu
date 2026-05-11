@@ -1,4 +1,7 @@
 import type { SourceRange, Trivia } from "./tokens.js";
+import type { ValueNode } from "./value-node.js";
+
+export type { ValueNode };
 
 /**
  * Trivia attached to a single declaration. `leading` is everything that
@@ -60,6 +63,14 @@ export interface StyleRule {
    * comments glued to their declarations across reordering.
    */
   declarationTrivia?: Record<string, DeclarationTrivia>;
+  /**
+   * Structured value AST keyed by property name. Phase 3 of
+   * `docs/design/style-value-diagnostics.md`. Optional so consumers that
+   * build rules in code (test fixtures, builtin sheets) can omit it; the
+   * parser always sets it. The string value in `properties` remains
+   * canonical for resolver / Tidy / svg-builder.
+   */
+  valueNodes?: Record<string, ValueNode>;
 }
 
 export interface StyleSheet {
