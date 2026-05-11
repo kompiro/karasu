@@ -1,11 +1,48 @@
 import { describe, it, expect } from "vitest";
 import { format, FormatError } from "./formatter.js";
+import { Parser } from "../parser/parser.js";
 
-// Helper: assert format is idempotent
+// Helper: assert format is idempotent at the text level
 function expectIdempotent(src: string): void {
   const once = format(src);
   const twice = format(once);
   expect(twice).toBe(once);
+}
+
+// Strip every `loc` field from an AST so structural equality is independent
+// of positional metadata (which legitimately changes after formatting).
+function stripLocations<T>(node: T): T {
+  if (Array.isArray(node)) {
+    return node.map((item) => stripLocations(item)) as unknown as T;
+  }
+  if (node !== null && typeof node === "object") {
+    const out: Record<string, unknown> = {};
+    for (const [key, value] of Object.entries(node as Record<string, unknown>)) {
+      if (key === "loc") continue;
+      out[key] = stripLocations(value);
+    }
+    return out as T;
+  }
+  return node;
+}
+
+// Helper: assert format() preserves the AST structurally — parse(src) and
+// parse(format(src)) must produce the same AST modulo source locations.
+// This is the round-trip guarantee from TPL-20260510-02 and is strictly
+// stronger than text-level idempotence: it would catch a future regression
+// where formatter output still re-formats cleanly but the AST has shifted
+// (the failure mode behind #1101 and #1058).
+function expectAstRoundTrip(src: string): void {
+  const before = Parser.parse(src);
+  if (before.diagnostics.some((d) => d.severity === "error")) {
+    throw new Error("expectAstRoundTrip: input failed to parse");
+  }
+  const formatted = format(src);
+  const after = Parser.parse(formatted);
+  if (after.diagnostics.some((d) => d.severity === "error")) {
+    throw new Error("expectAstRoundTrip: formatted output failed to parse");
+  }
+  expect(stripLocations(after.value)).toEqual(stripLocations(before.value));
 }
 
 // Helper: format and strip the trailing newline for compact assertions
@@ -24,24 +61,28 @@ describe("format()", () => {
     const src = `system S {}`;
     expect(fmt(src)).toBe(`system S {}`);
     expectIdempotent(fmt(src));
+    expectAstRoundTrip(src);
   });
 
   it("formats @import statements", () => {
     const src = `@import "default.krs.style"\nsystem S {}`;
     expect(fmt(src)).toContain(`@import "default.krs.style"`);
     expectIdempotent(fmt(src));
+    expectAstRoundTrip(src);
   });
 
   it("formats node import", () => {
     const src = `import { A, B } from "other.krs"\nsystem S {}`;
     expect(fmt(src)).toContain(`import { A, B } from "other.krs"`);
     expectIdempotent(fmt(src));
+    expectAstRoundTrip(src);
   });
 
   it("formats wildcard import", () => {
     const src = `import "other.krs"\nsystem S {}`;
     expect(fmt(src)).toContain(`import "other.krs"`);
     expectIdempotent(fmt(src));
+    expectAstRoundTrip(src);
   });
 
   // ── Indentation ─────────────────────────────────────────────────────────
@@ -50,6 +91,7 @@ describe("format()", () => {
     const src = `system S {\nlabel "My System"\n}`;
     expect(fmt(src)).toBe(`system S {\n  label "My System"\n}`);
     expectIdempotent(fmt(src));
+    expectAstRoundTrip(src);
   });
 
   it("indents nested nodes", () => {
@@ -58,6 +100,7 @@ describe("format()", () => {
     expect(result).toContain(`  service A {`);
     expect(result).toContain(`    label "A"`);
     expectIdempotent(result);
+    expectAstRoundTrip(src);
   });
 
   // ── Blank lines ─────────────────────────────────────────────────────────
@@ -94,6 +137,7 @@ describe("format()", () => {
     const result = fmt(src);
     expect(result).toContain(`  service A {}\n\n  A -> B`);
     expectIdempotent(result);
+    expectAstRoundTrip(src);
   });
 
   it("does not insert blank line between consecutive edges", () => {
@@ -101,6 +145,7 @@ describe("format()", () => {
     const result = fmt(src);
     expect(result).toBe(`system S {\n  A -> B\n  B -> C\n}`);
     expectIdempotent(result);
+    expectAstRoundTrip(src);
   });
 
   // ── Properties ──────────────────────────────────────────────────────────
@@ -109,12 +154,14 @@ describe("format()", () => {
     const src = `system S { label "Hello" }`;
     expect(fmt(src)).toBe(`system S {\n  label "Hello"\n}`);
     expectIdempotent(fmt(src));
+    expectAstRoundTrip(src);
   });
 
   it("formats description property (single-line)", () => {
     const src = `service A { description "Handles payments" }`;
     expect(fmt(src)).toBe(`service A {\n  description "Handles payments"\n}`);
     expectIdempotent(fmt(src));
+    expectAstRoundTrip(src);
   });
 
   it("formats description property (multi-line)", () => {
@@ -122,24 +169,28 @@ describe("format()", () => {
     const result = fmt(src);
     expect(result).toContain(`description """`);
     expectIdempotent(result);
+    expectAstRoundTrip(src);
   });
 
   it("formats role property for user node", () => {
     const src = `system S { user U { role "Buyer" } }`;
     expect(fmt(src)).toContain(`  role "Buyer"`);
     expectIdempotent(fmt(src));
+    expectAstRoundTrip(src);
   });
 
   it("formats link property with label", () => {
     const src = `system S { link "https://example.com" "Docs" }`;
     expect(fmt(src)).toContain(`  link "https://example.com" "Docs"`);
     expectIdempotent(fmt(src));
+    expectAstRoundTrip(src);
   });
 
   it("formats link property without label", () => {
     const src = `system S { link "https://example.com" }`;
     expect(fmt(src)).toContain(`  link "https://example.com"`);
     expectIdempotent(fmt(src));
+    expectAstRoundTrip(src);
   });
 
   it("formats service node with delivers property", () => {
@@ -147,12 +198,14 @@ describe("format()", () => {
     const out = fmt(src);
     expect(out).toContain(`    delivers WebApp, Admin`);
     expectIdempotent(out);
+    expectAstRoundTrip(src);
   });
 
   it("formats service node with team property", () => {
     const src = `system S { service A { team "Backend" } }`;
     expect(fmt(src)).toContain(`    team "Backend"`);
     expectIdempotent(fmt(src));
+    expectAstRoundTrip(src);
   });
 
   // ── Tags and annotations ─────────────────────────────────────────────────
@@ -161,18 +214,21 @@ describe("format()", () => {
     const src = `service A [external] {}`;
     expect(fmt(src)).toBe(`service A [external] {}`);
     expectIdempotent(fmt(src));
+    expectAstRoundTrip(src);
   });
 
   it("formats annotations", () => {
     const src = `service A @deprecated {}`;
     expect(fmt(src)).toBe(`service A @deprecated {}`);
     expectIdempotent(fmt(src));
+    expectAstRoundTrip(src);
   });
 
   it("formats tags and annotations together", () => {
     const src = `service A [external] @deprecated {}`;
     expect(fmt(src)).toBe(`service A [external] @deprecated {}`);
     expectIdempotent(fmt(src));
+    expectAstRoundTrip(src);
   });
 
   // ── Edges ────────────────────────────────────────────────────────────────
@@ -181,24 +237,28 @@ describe("format()", () => {
     const src = `system S { A -> B }`;
     expect(fmt(src)).toBe(`system S {\n  A -> B\n}`);
     expectIdempotent(fmt(src));
+    expectAstRoundTrip(src);
   });
 
   it("formats async edge", () => {
     const src = `system S { A --> B }`;
     expect(fmt(src)).toBe(`system S {\n  A --> B\n}`);
     expectIdempotent(fmt(src));
+    expectAstRoundTrip(src);
   });
 
   it("formats edge with label", () => {
     const src = `system S { A -> B "calls" }`;
     expect(fmt(src)).toBe(`system S {\n  A -> B "calls"\n}`);
     expectIdempotent(fmt(src));
+    expectAstRoundTrip(src);
   });
 
   it("formats edge with tags", () => {
     const src = `system S { A -> B [critical] }`;
     expect(fmt(src)).toBe(`system S {\n  A -> B [critical]\n}`);
     expectIdempotent(fmt(src));
+    expectAstRoundTrip(src);
   });
 
   // ── Deploy block ─────────────────────────────────────────────────────────
@@ -211,6 +271,7 @@ describe("format()", () => {
     expect(result).toContain(`    runtime "node"`);
     expect(result).toContain(`    realizes MyService`);
     expectIdempotent(result);
+    expectAstRoundTrip(src);
   });
 
   it("formats deploy node with schedule property", () => {
@@ -218,6 +279,7 @@ describe("format()", () => {
     const result = fmt(src);
     expect(result).toContain(`    schedule "0 * * * *"`);
     expectIdempotent(result);
+    expectAstRoundTrip(src);
   });
 
   // ── Organization block ────────────────────────────────────────────────────
@@ -229,6 +291,7 @@ describe("format()", () => {
     expect(result).toContain(`  team Backend {`);
     expect(result).toContain(`    owns ECommerce`);
     expectIdempotent(result);
+    expectAstRoundTrip(src);
   });
 
   it("formats organization with description and link", () => {
@@ -237,6 +300,7 @@ describe("format()", () => {
     expect(result).toContain(`  description "Our org"`);
     expect(result).toContain(`  link "https://example.com" "Site"`);
     expectIdempotent(result);
+    expectAstRoundTrip(src);
   });
 
   it("formats team with description", () => {
@@ -244,6 +308,7 @@ describe("format()", () => {
     const result = fmt(src);
     expect(result).toContain(`    description "Backend team"`);
     expectIdempotent(result);
+    expectAstRoundTrip(src);
   });
 
   it("formats member block", () => {
@@ -252,6 +317,7 @@ describe("format()", () => {
     expect(result).toContain(`    member Alice {`);
     expect(result).toContain(`      github "alice"`);
     expectIdempotent(result);
+    expectAstRoundTrip(src);
   });
 
   it("formats team with link property", () => {
@@ -259,6 +325,7 @@ describe("format()", () => {
     const result = fmt(src);
     expect(result).toContain(`    link "https://slack.com/backend" "Slack"`);
     expectIdempotent(result);
+    expectAstRoundTrip(src);
   });
 
   it("formats nested team inside team", () => {
@@ -268,6 +335,7 @@ describe("format()", () => {
     expect(result).toContain(`    team Backend {`);
     expect(result).toContain(`      owns ECommerce`);
     expectIdempotent(result);
+    expectAstRoundTrip(src);
   });
 
   it("formats member with description and slack", () => {
@@ -277,6 +345,7 @@ describe("format()", () => {
     expect(result).toContain(`      slack "@alice"`);
     expect(result).toContain(`      github "alice"`);
     expectIdempotent(result);
+    expectAstRoundTrip(src);
   });
 
   // ── Comment preservation ─────────────────────────────────────────────────
@@ -354,6 +423,7 @@ describe("format()", () => {
     expect(result).toContain(`  label "S"`);
     expect(result).toContain(`  service A {}`);
     expectIdempotent(result);
+    expectAstRoundTrip(src);
   });
 
   // ── Infra nodes ──────────────────────────────────────────────────────────
@@ -364,6 +434,7 @@ describe("format()", () => {
     expect(result).toContain(`  database DB {`);
     expect(result).toContain(`    table Users {}`);
     expectIdempotent(result);
+    expectAstRoundTrip(src);
   });
 
   it("formats queue block with queue-item children using 'queue' keyword", () => {
@@ -372,6 +443,7 @@ describe("format()", () => {
     expect(result).toContain(`  queue Q {`);
     expect(result).toContain(`    queue Item {}`);
     expectIdempotent(result);
+    expectAstRoundTrip(src);
   });
 
   // ── Error handling ───────────────────────────────────────────────────────
@@ -393,6 +465,7 @@ describe("format()", () => {
       expect(out).toContain(`system "My System"`);
       expect(out).toContain(`service "Order Service"`);
       expectIdempotent(out);
+      expectAstRoundTrip(src);
     });
 
     it("keeps quotes on hyphenated IDs (hyphen is not a bare ident char)", () => {
@@ -401,6 +474,7 @@ describe("format()", () => {
       expect(out).toContain(`system "my-system"`);
       expect(out).toContain(`service "order-svc"`);
       expectIdempotent(out);
+      expectAstRoundTrip(src);
     });
 
     it("keeps quotes on IDs starting with a digit", () => {
@@ -408,6 +482,7 @@ describe("format()", () => {
       const out = fmt(src);
       expect(out).toContain(`system "1stSystem"`);
       expectIdempotent(out);
+      expectAstRoundTrip(src);
     });
 
     it("keeps quotes on IDs that collide with reserved keywords", () => {
@@ -416,6 +491,7 @@ describe("format()", () => {
       expect(out).toContain(`system "system"`);
       expect(out).toContain(`service "service"`);
       expectIdempotent(out);
+      expectAstRoundTrip(src);
     });
 
     it("keeps quotes on deploy block / unit IDs", () => {
@@ -424,6 +500,7 @@ describe("format()", () => {
       expect(out).toContain(`deploy "prod-east"`);
       expect(out).toContain(`oci "api-svc"`);
       expectIdempotent(out);
+      expectAstRoundTrip(src);
     });
 
     it("keeps quotes on organization / team / member IDs", () => {
@@ -433,6 +510,7 @@ describe("format()", () => {
       expect(out).toContain(`team "Platform Team"`);
       expect(out).toContain(`member "alice smith"`);
       expectIdempotent(out);
+      expectAstRoundTrip(src);
     });
 
     it("keeps quotes on edge from / to references", () => {
@@ -440,6 +518,7 @@ describe("format()", () => {
       const out = fmt(src);
       expect(out).toContain(`"Order Service" -> "Billing Service"`);
       expectIdempotent(out);
+      expectAstRoundTrip(src);
     });
 
     it("keeps quotes on realizes / owns / delivers references", () => {
@@ -456,6 +535,7 @@ organization Acme {
       expect(out).toContain(`realizes "Order Service"`);
       expect(out).toContain(`owns "Order Service"`);
       expectIdempotent(out);
+      expectAstRoundTrip(src);
     });
 
     it("escapes embedded double quotes and backslashes in IDs", () => {
@@ -479,6 +559,7 @@ organization Acme {
       expect(out).toContain(`resource ProductDB.T`);
       expect(out).not.toContain(`"ProductDB.T"`);
       expectIdempotent(out);
+      expectAstRoundTrip(src);
     });
 
     it("quotes dot-notation resource segments individually when needed", () => {
@@ -493,6 +574,7 @@ organization Acme {
       const out = fmt(src);
       expect(out).toContain(`resource "Product DB"."T 1"`);
       expectIdempotent(out);
+      expectAstRoundTrip(src);
     });
 
     it("strips unnecessary quotes from bare-safe IDs", () => {
@@ -521,6 +603,7 @@ organization Acme {
       const out = fmt(src);
       expect(out).toContain("operations create, read");
       expectIdempotent(out);
+      expectAstRoundTrip(src);
     });
 
     it("emits decorated verbs without spaces around `:` or in CRUD list", () => {
@@ -538,6 +621,7 @@ organization Acme {
       const out = fmt(src);
       expect(out).toContain("operations list:read, replace:create,delete");
       expectIdempotent(out);
+      expectAstRoundTrip(src);
     });
   });
 });
