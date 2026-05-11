@@ -459,6 +459,19 @@ export interface DiagnosticParamsByCode {
   "expected-style-property-name": { got: string };
   "expected-semicolon-between-properties": { property: string };
 
+  // ── Style value validator (Phase 3) ────────────────────────────────────
+  "style-invalid-enum-value": { property: string; value: string; allowed: string[] };
+  "style-invalid-hex-color": { property: string; value: string };
+  "style-missing-length-unit": { property: string; value: string; allowedUnits: string[] };
+  "style-invalid-length-unit": {
+    property: string;
+    value: string;
+    unit: string;
+    allowedUnits: string[];
+  };
+  "style-out-of-range": { property: string; value: number; min?: number; max?: number };
+  "style-unknown-property": { property: string };
+
   // ── Import resolver ─────────────────────────────────────────────────────
   "circular-import": { filePath: string };
   "file-not-found": { filePath: string };

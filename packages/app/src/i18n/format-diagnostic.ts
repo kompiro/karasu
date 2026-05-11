@@ -111,6 +111,18 @@ export function useFormattedDiagnostic(): (d: Diagnostic) => string {
           return t("diagnostic.expectedStylePropertyName.message", d.params);
         case "expected-semicolon-between-properties":
           return t("diagnostic.expectedSemicolonBetweenProperties.message", d.params);
+        case "style-invalid-enum-value":
+          return t("diagnostic.styleInvalidEnumValue.message", d.params);
+        case "style-invalid-hex-color":
+          return t("diagnostic.styleInvalidHexColor.message", d.params);
+        case "style-missing-length-unit":
+          return t("diagnostic.styleMissingLengthUnit.message", d.params);
+        case "style-invalid-length-unit":
+          return t("diagnostic.styleInvalidLengthUnit.message", d.params);
+        case "style-out-of-range":
+          return t("diagnostic.styleOutOfRange.message", d.params);
+        case "style-unknown-property":
+          return t("diagnostic.styleUnknownProperty.message", d.params);
         case "circular-import":
           return t("diagnostic.circularImport.message", d.params);
         case "file-not-found":

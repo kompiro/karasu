@@ -119,6 +119,22 @@ export function formatDiagnostic(d: Diagnostic): string {
     case "expected-semicolon-between-properties":
       return `Expected ";" after property "${d.params.property}" but found ","; properties are separated by semicolons`;
 
+    // ── Style value validator (Phase 3) ─────────────────────────────────
+    case "style-invalid-enum-value":
+      return `Invalid value for "${d.params.property}": "${d.params.value}". Allowed: ${d.params.allowed.join(", ")}`;
+    case "style-invalid-hex-color":
+      return `Invalid hex color for "${d.params.property}": "${d.params.value}" (expected #RGB / #RGBA / #RRGGBB / #RRGGBBAA)`;
+    case "style-missing-length-unit":
+      return `Missing unit for "${d.params.property}": "${d.params.value}". Expected one of: ${d.params.allowedUnits.join(", ")}`;
+    case "style-invalid-length-unit":
+      return `Invalid unit "${d.params.unit}" for "${d.params.property}": "${d.params.value}". Allowed: ${d.params.allowedUnits.join(", ")}`;
+    case "style-out-of-range": {
+      const range = formatRange(d.params.min, d.params.max);
+      return `Value ${d.params.value} for "${d.params.property}" is out of range ${range}`;
+    }
+    case "style-unknown-property":
+      return `Unknown style property "${d.params.property}"`;
+
     // ── Import resolver ─────────────────────────────────────────────────
     case "circular-import":
       return `Circular import detected: ${d.params.filePath}`;
@@ -158,4 +174,11 @@ export function formatDiagnostic(d: Diagnostic): string {
     case "generic-text":
       return d.params.text;
   }
+}
+
+function formatRange(min: number | undefined, max: number | undefined): string {
+  if (min !== undefined && max !== undefined) return `[${min}, ${max}]`;
+  if (min !== undefined) return `>= ${min}`;
+  if (max !== undefined) return `<= ${max}`;
+  return "";
 }
