@@ -505,6 +505,53 @@ describe("resolveStyles", () => {
     expect(edgeStyle.strokeStyle).toBe("dashed");
   });
 
+  // TPL-20260510-07 item 3: a derivation-time tag (`[implicit]`) and the
+  // edge's `kind` (sync / async) are orthogonal style dimensions. The
+  // visual contract from #510 is that an implicit async edge renders
+  // dashed-and-amber while an implicit sync edge renders solid-and-amber
+  // — neither rule silently cancels the other. Today each rule is tested
+  // in isolation (the "async dashed" case above; default-style.test.ts
+  // for `edge[implicit]` existence), but nothing pins the *coexistence*
+  // on a single edge. A future cascade refactor could break the
+  // orthogonality and no test would notice.
+  describe("[implicit] + kind coexistence (TPL-07 item 3 / #510)", () => {
+    const IMPLICIT_AMBER = "#F59E0B";
+
+    function resolveImplicitEdge(kind: "sync" | "async") {
+      const system = makeNode({
+        kind: "system",
+        id: "Test",
+        children: [
+          makeNode({ kind: "service", id: "A", label: "A" }),
+          makeNode({ kind: "service", id: "B", label: "B" }),
+        ],
+        edges: [
+          {
+            from: "A",
+            to: "B",
+            kind,
+            tags: ["implicit"],
+            loc: dummyLoc,
+          },
+        ],
+      });
+      const result = resolveStyles([system], [getBuiltinStyleSheet()]);
+      return result.edges.get("A->B")!;
+    }
+
+    it("async + [implicit]: dashed (from edge[async]) AND amber (from edge[implicit])", () => {
+      const edgeStyle = resolveImplicitEdge("async");
+      expect(edgeStyle.color).toBe(IMPLICIT_AMBER);
+      expect(edgeStyle.strokeStyle).toBe("dashed");
+    });
+
+    it("sync + [implicit]: solid (no dash) AND amber (still applies)", () => {
+      const edgeStyle = resolveImplicitEdge("sync");
+      expect(edgeStyle.color).toBe(IMPLICIT_AMBER);
+      expect(edgeStyle.strokeStyle).not.toBe("dashed");
+    });
+  });
+
   describe("direction property", () => {
     it("defaults to auto when no rule sets it", () => {
       const sliceEdges = [
