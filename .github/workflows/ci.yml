@@ -71,3 +71,9 @@ jobs:
 
       - name: Build
         run: pnpm run build
+
+      # The vscode extension isn't part of `pnpm run build`. Build it here so
+      # its `postbuild` assertion (out/server.js bundled) runs on every PR,
+      # not only behind the `vscode-e2e` label. See Issue #1272 / TPL-20260510-15.
+      - name: Build (vscode)
+        run: pnpm --filter karasu-vscode run build
