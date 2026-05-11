@@ -63,6 +63,17 @@ export const PROPERTY_SCHEMAS: Record<string, ValueSpec> = {
   // Layout (karasu-specific)
   direction: { kind: "ident-of", values: ["auto", "up", "down", "left", "right"] },
   column: { kind: "ident-of", values: ["left", "center", "right"] },
+  "label-position": {
+    kind: "union",
+    specs: [
+      { kind: "ident-of", values: ["start", "middle", "end"] },
+      { kind: "number", min: 0, max: 1 },
+    ],
+  },
+  // `<dy>px` or `<dx>px <dy>px`. The two-length form parses as a list,
+  // a single length parses as a bare length — the validator's
+  // `list-of` case accepts both.
+  "label-offset": { kind: "list-of", item: LENGTH_PX_SPEC },
 
   // karasu-specific (badges, shape)
   shape: {
