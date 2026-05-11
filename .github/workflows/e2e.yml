@@ -51,6 +51,12 @@ jobs:
       - name: Run E2E tests
         run: pnpm --filter @karasu-tools/e2e test
 
+      # Informative-only — surfaces tests that failed once then passed on
+      # retry so the flake count is visible per PR (TPL-20260510-13 / #1271).
+      - name: Surface flaky retry-passes
+        if: always()
+        run: pnpm exec tsx scripts/ci/playwright-flaky-summary.ts
+
       - name: Upload Playwright report
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
