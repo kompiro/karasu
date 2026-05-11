@@ -141,6 +141,38 @@ describe("ChatPane — with API key", () => {
     const { queryByRole } = render(<ChatPane {...defaultProps} />);
     expect(queryByRole("button", { name: /Start Interview/ })).toBeNull();
   });
+
+  // TPL-20260510-09 anti-regression: ChatPane's submit is gated by a
+  // modifier (Cmd/Ctrl+Enter); a bare Enter inserts a newline and must
+  // NOT call sendMessage. Today the only post-submit state transition is
+  // `setInputValue("")` — the textarea stays mounted, no new focusable
+  // sibling appears, so the #948 shape (state flip → new mount → leaked
+  // keypress) cannot reproduce here. If a future change rewires Enter
+  // (without modifier) to submit, the implementer must consciously port
+  // ProjectSelector's `preventDefault + stopPropagation` pattern.
+  it("plain Enter (no modifier) does not submit (TPL-09 / #948 prophylaxis)", () => {
+    const sendMessage = vi.fn<(text: string) => Promise<void>>().mockResolvedValue(undefined);
+    mockUseChatSession.mockReturnValue(makeDefaultSession({ sendMessage }));
+    const { getByLabelText } = render(<ChatPane {...defaultProps} />);
+    const input = getByLabelText("Chat message input") as HTMLTextAreaElement;
+    fireEvent.change(input, { target: { value: "hello" } });
+
+    fireEvent.keyDown(input, { key: "Enter" });
+    expect(sendMessage).not.toHaveBeenCalled();
+  });
+
+  it("Cmd/Ctrl+Enter submits exactly once with preventDefault (TPL-09)", () => {
+    const sendMessage = vi.fn<(text: string) => Promise<void>>().mockResolvedValue(undefined);
+    mockUseChatSession.mockReturnValue(makeDefaultSession({ sendMessage }));
+    const { getByLabelText } = render(<ChatPane {...defaultProps} />);
+    const input = getByLabelText("Chat message input") as HTMLTextAreaElement;
+    fireEvent.change(input, { target: { value: "hello" } });
+
+    const defaultPrevented = !fireEvent.keyDown(input, { key: "Enter", ctrlKey: true });
+    expect(defaultPrevented).toBe(true);
+    expect(sendMessage).toHaveBeenCalledTimes(1);
+    expect(sendMessage).toHaveBeenCalledWith("hello");
+  });
 });
 
 describe("ChatPane — Markdown rendering in assistant messages", () => {
