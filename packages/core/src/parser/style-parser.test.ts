@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { StyleParser, computeSpecificity } from "./style-parser.js";
+import type { ValueNode } from "../types/value-node.js";
 
 describe("StyleParser", () => {
   it("parses empty input", () => {
@@ -416,5 +417,85 @@ describe("StyleParser trivia preservation (Phase 2)", () => {
     const result = StyleParser.parse(`/* shared */\nservice, edge { color: red; }\n`);
     expect(result.value.rules[0].leadingTrivia).toHaveLength(1);
     expect(result.value.rules[1].leadingTrivia).toEqual([]);
+  });
+});
+
+describe("StyleParser ValueNode AST (Phase 3 / step 1)", () => {
+  // Type-narrowing helper that throws on mismatch. Avoids the
+  // `expect()` inside `if` pattern that oxlint forbids
+  // (no-conditional-expect).
+  function expectKind<K extends ValueNode["kind"]>(
+    node: ValueNode,
+    kind: K,
+  ): Extract<ValueNode, { kind: K }> {
+    if (node.kind !== kind) {
+      throw new Error(`Expected ValueNode kind "${kind}", got "${node.kind}"`);
+    }
+    return node as Extract<ValueNode, { kind: K }>;
+  }
+
+  it("classifies a hex color value", () => {
+    const result = StyleParser.parse(`service { color: #1A2B3C; }`);
+    const node = expectKind(result.value.rules[0].valueNodes!.color, "hex");
+    expect(node.value).toBe("#1A2B3C");
+  });
+
+  it("classifies a bare identifier value", () => {
+    const result = StyleParser.parse(`edge { direction: down; }`);
+    const node = expectKind(result.value.rules[0].valueNodes!.direction, "ident");
+    expect(node.value).toBe("down");
+  });
+
+  it("classifies a unitless number value", () => {
+    const result = StyleParser.parse(`service { opacity: 0.6; }`);
+    const node = expectKind(result.value.rules[0].valueNodes!.opacity, "number");
+    expect(node.value).toBe(0.6);
+    expect(node.raw).toBe("0.6");
+  });
+
+  it("classifies a length value with a unit", () => {
+    const result = StyleParser.parse(`service { font-size: 12px; }`);
+    const node = expectKind(result.value.rules[0].valueNodes!["font-size"], "length");
+    expect(node.value).toBe(12);
+    expect(node.unit).toBe("px");
+    expect(node.raw).toBe("12");
+  });
+
+  it("classifies a quoted string value", () => {
+    const result = StyleParser.parse(`@deprecated { badge-icon: "warn"; }`);
+    const node = expectKind(result.value.rules[0].valueNodes!["badge-icon"], "string");
+    expect(node.value).toBe("warn");
+  });
+
+  it("classifies a function value like url(...)", () => {
+    const result = StyleParser.parse(`service { shape: url("shapes/cloud.svg"); }`);
+    const node = expectKind(result.value.rules[0].valueNodes!.shape, "function");
+    expect(node.name).toBe("url");
+    expect(node.argRaw).toBe("shapes/cloud.svg");
+  });
+
+  it("classifies a comma-separated list (font-family)", () => {
+    const result = StyleParser.parse(`service { font-family: "Noto Sans JP", sans-serif; }`);
+    const node = expectKind(result.value.rules[0].valueNodes!["font-family"], "list");
+    expect(node.items.map((i) => i.kind)).toEqual(["string", "ident"]);
+  });
+
+  it("attaches a SourceRange to each ValueNode", () => {
+    const result = StyleParser.parse(`service { color: #1A2B3C; }`);
+    const node = result.value.rules[0].valueNodes!.color;
+    expect(node.loc.start.offset).toBeGreaterThan(0);
+    expect(node.loc.end.offset).toBeGreaterThan(node.loc.start.offset);
+  });
+
+  it("keeps the canonical string properties intact alongside the ValueNode", () => {
+    // Existing consumers (resolver / Tidy / svg-builder) read
+    // `properties` — adding `valueNodes` must not change that side.
+    const result = StyleParser.parse(
+      `service { color: #1A2B3C; font-family: "Noto", sans-serif; opacity: 0.6; }`,
+    );
+    const rule = result.value.rules[0];
+    expect(rule.properties.color).toBe("#1A2B3C");
+    expect(rule.properties["font-family"]).toBe('"Noto" , sans-serif');
+    expect(rule.properties.opacity).toBe("0.6");
   });
 });
