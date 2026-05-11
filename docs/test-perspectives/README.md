@@ -289,6 +289,7 @@ per-topic で 1 つずつ進める。一度に全 topic を audit すると 200 
 | 2026-05-10 | [app-ui](#fit-gap-app-ui) | 3 (TPL-04 / 08 / 09) | 4 | [#1238](https://github.com/kompiro/karasu/issues/1238) [#1239](https://github.com/kompiro/karasu/issues/1239) [#1240](https://github.com/kompiro/karasu/issues/1240) [#1241](https://github.com/kompiro/karasu/issues/1241) |
 | 2026-05-11 | [renderer](#fit-gap-renderer) | 2 (TPL-05 / 06) | 3 | [#1245](https://github.com/kompiro/karasu/issues/1245) [#1246](https://github.com/kompiro/karasu/issues/1246) [#1247](https://github.com/kompiro/karasu/issues/1247) |
 | 2026-05-11 | [edges](#fit-gap-edges) | 2 (TPL-07 / 23) | 3 | [#1248](https://github.com/kompiro/karasu/issues/1248) [#1249](https://github.com/kompiro/karasu/issues/1249) [#1250](https://github.com/kompiro/karasu/issues/1250) |
+| 2026-05-11 | [core-concepts](#fit-gap-core-concepts) | 5 (TPL-01 / 18 / 19 / 21 / 22) | 3 | [#1260](https://github.com/kompiro/karasu/issues/1260) [#1261](https://github.com/kompiro/karasu/issues/1261) [#1262](https://github.com/kompiro/karasu/issues/1262) |
 
 <a id="fit-gap-parser"></a>**parser (2026-05-10)** — bug 起源の TPL に対する regression は core 系で完備だが、AST 構造的等価 / i18n 出力 / parser keyword の exhaustiveness / spec ↔ impl smoke が未カバー。
 
@@ -298,7 +299,9 @@ per-topic で 1 つずつ進める。一度に全 topic を audit すると 200 
 
 <a id="fit-gap-edges"></a>**edges (2026-05-11)** — `[implicit]` と `[async/sync]` の coexistence integration / 派生関数の semantic 保存契約の meta-test / owns / inherited annotation の cross-view rendering integration が未カバー。AT-0056 が automation marker を持たないことが判明。
 
-### 横断観察 — 4 topic から見えた繰り返しパターン
+<a id="fit-gap-core-concepts"></a>**core-concepts (2026-05-11)** — 5 TPL 中 **3 つ (TPL-18 / 19 / 21) はほぼ完全に proactive** で「設計時 review」型の checklist 項目しか持たず、test gap として現れなかった（後述「proactive TPL は test gap が出にくい」）。残る retrospective な TPL-01 と一部 testable な TPL-22 から 3 gap: TPL-01 の `known_consumers` のうち deploy-view / org-view が top-level handling を test していない / #412 (named import → system membership) の regression fixture 不在 / 三面（論理+物理+組織）を 1 fixture に含む cross-face integration test 不在。
+
+### 横断観察 — topic 横断で見えた繰り返しパターン
 
 複数 topic で繰り返し抽出された **gap の解決パターン** が 2 つあり、いずれも rule of three を満たしている。前述の「繰り返し現れる対処パターン」は TPL 本文の「既知の対処パターン」節を集約したもの（実装者向けの recommendations）に対し、こちらは **gap の test 設計に共通する shape**（テスト追加者向けの recommendations）。混同しないよう別建てで扱う。
 
@@ -320,8 +323,28 @@ per-topic で 1 つずつ進める。一度に全 topic を audit すると 200 
 - [#1238](https://github.com/kompiro/karasu/issues/1238) **GA08-1** — NodeDetailPanel stale on reopen（resolver は ✅ だが panel との integration ✗）
 - [#1245](https://github.com/kompiro/karasu/issues/1245) **GR06-1** — Full View displayMode threading（buildExportSvg 単独は ✅ だが useFullViewSvg との integration ✗）
 - [#1250](https://github.com/kompiro/karasu/issues/1250) **GE23-1** — owns / inherited annotation cross-view rendering（resolver は ✅ だが renderer-side application との integration ✗）
+- [#1260](https://github.com/kompiro/karasu/issues/1260) **GC01-1** — deploy-view / org-view の top-level orphan handling（`withUnassignedSystem` は ✅ だが該当 consumer の integration ✗）
+- [#1262](https://github.com/kompiro/karasu/issues/1262) **GC22-1** — 三面の cross-face integration（各面の resolver は ✅ だが 3 面同時の integration ✗）
 
-3 件とも **UI 層 / 代替 rendering path** が共通点。core 層のテスト文化に比べて UI 層の integration が薄いことを示唆している。**新 feature を design するときは、layer ごとの test に加えて cross-layer integration test を 1 つは持つ** ことを default にすべき。
+5 件中 UI 層 / 代替 rendering path / per-consumer integration が共通点。core 層の純粋ロジックのテスト文化に比べ、**「ある層の output を別の層が消費する」境界の integration が薄い**ことを示唆している。**新 feature を design するときは、layer ごとの test に加えて cross-layer integration test を 1 つは持つ** ことを default にすべき。
+
+#### 観察 C（暫定）: proactive TPL は backward gap を出さないが forward test を生むべき
+
+Fit/Gap 分析は「**既存コードにその観点の test があるか**」を見る = **backward gap** を探す作業。proactive TPL（`docs/concepts.ja.md` 由来）はこの backward gap をほとんど出さない — checklist 項目が「全 state が `.krs` から復元可能か」「情報の流れは up か down か」のような **feature 提案を見て判断する設計時の問い** だから。core-concepts topic の TPL-18 / 19 / 21 は実際そうだった。
+
+ただしこれは **「proactive TPL は test と無関係」という意味ではない**。proactive TPL の目的は「これを元に設計・テストを書くことで、そもそも bug が出ない状態を作る」こと。つまり proactive TPL は **forward gap** — *将来* の feature がその観点を設計と test に織り込むべき、織り込まなければ次の bug になる — を防ぐためにある。backward gap は Fit/Gap 分析が捕捉し、forward gap は **DesignDoc review + 実装 PR の test 追加** が捕捉する。
+
+##### proactive TPL を forward に使う運用
+
+DesignDoc が proactive TPL を引用したら、実装 PR で次をやる:
+
+1. **引用した TPL の checklist 項目のうち、その feature に該当するものを assertion 化した test を機能と一緒に書く** — bug が起きてから書く retrospective な regression test ではなく、**設計判断をロックする contract test**。例: 新しい入力経路を作るとき TPL-18 を引用 → 「この経路の出力が `.krs` を round-trip する」test を実装と同時に追加。
+2. **AT を作る場合（`/hane:acceptance-test`）は、引用した proactive TPL の checklist 項目を AC として転記** する。例: TPL-19 を引く feature なら「出力の詳細量が入力より減っている（抽象化方向 = up）」を AC に明記し、自動 / 手動どちらかで検証する。
+3. PR テンプレの「TPL impact」セクション（`docs(adr)` / new-feature PR 向け）には、引用した proactive TPL に対して **「relevant な checklist 項目を test / AC に落としたか」** を記録する欄がある（後述「PR テンプレ」参照）。
+
+この運用により、proactive TPL は「review で気づく観点」から「review で気づき、その feature の test に落とす観点」へ格上げされ、観点違反が *コードに到達する前* に止まる。
+
+> ステータス: forward 運用は #1264 / 関連 PR で導入。Fit/Gap 側の「proactive は backward gap を出さない」観察は core-concepts 1 事例のみ — 次に proactive 中心の topic（例: `cli` の TPL-16）を audit したとき同じパターンが再現すれば暫定マークを外す。なお `/hane:acceptance-test` skill 側への同等プロンプト追加は別リポ（kompiro/hane）の作業のため follow-up（karasu 側からは PR テンプレと本 README だけ更新）。
 
 ### 推奨 cadence
 
