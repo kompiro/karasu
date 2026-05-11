@@ -91,6 +91,44 @@ client C [web] {
 
 `delivers` and other declarative properties do not count as edges. The rule expands one hop at a time, so each link in a `client → BFF → backend` chain must be declared explicitly — there is no implicit auto-passthrough.
 
+### Infra layer (shared data stores) — rendered on the system view
+
+Some data stores are shared by several services rather than owned by a single `usecase`. Declare them at the **top level of a `.krs` file** (or directly inside a `system` block) using one of the three infra-block keywords below; each may nest leaf sub-resources. These nodes render on the **system view**, in the dependency tier next to `[external]` services — services *depend on* shared infra, never the other way round. They were promoted to first-class nodes in [ADR-20260405-05](../adr/20260405-05-database-as-first-class-node.md).
+
+| Keyword | Layer | Intended use | May contain |
+|---------|-------|--------------|-------------|
+| `database` | system-level infra block | A database shared by services (RDBMS, document store, …) | `table` |
+| `queue` | system-level infra block | A message queue / topic shared by services | `queue-item` |
+| `storage` | system-level infra block | An object store / blob storage shared by services (S3, GCS, …) | `bucket` |
+| `table` | leaf, inside a `database` block | A table / collection in the database | — |
+| `queue-item` | leaf, inside a `queue` block | A message / event type carried by the queue. Written with the `queue` keyword inside a `queue` block (parsed internally as `queue-item`) | — |
+| `bucket` | leaf, inside a `storage` block | A bucket / container in the object store | — |
+
+- Only `label`, `description`, and `link` properties apply to infra nodes and their sub-resources; all are optional, and omission emits a warning, not an error. The `operations` CRUD property is **not** valid here — it is only meaningful on `resource` declarations inside a `usecase` (see below).
+- `database` / `queue` / `storage` are valid only at the top level or as a direct child of `system`. Nesting one inside a `service`, `domain`, or `usecase` is rejected with `infra-not-in-context`.
+- `table` / `queue-item` / `bucket` are leaf nodes: they accept properties and edges but no nested declarations.
+- A `usecase` ties one of its `resource`s to a shared sub-resource with dot-notation — `resource <InfraId>.<SubResourceId>` (e.g. `resource OrderDB.OrderTable`). The resolver aggregates these references to derive the `service → database` (and `service → queue` / `service → storage`) edges shown on the system view, and may synthesize `[read]` / `[write]` tags on the usecase→resource edges — see [docs/spec/tags-annotations.md](./tags-annotations.md#system-assigned-tags).
+- `[external]` may be applied to `database` / `queue` / `storage` for a store that lives outside the system boundary (a managed third-party DB, an external event bus, …).
+- Writing `resource OrderTable` *without* a matching `database` block is allowed (warning only, rendered as an orphan node) so you can discover resources bottom-up while sketching a `usecase`, then group them into a `database` block and switch to the dot-notation reference.
+
+```krs
+system ECPlatform {
+  service ECommerce {}        // domains / usecases omitted for brevity
+
+  database OrderDB {
+    label "Order DB"
+    table OrderTable   { label "Orders" }
+    table ProductTable { label "Products" }
+  }
+  queue OrderEvents {
+    queue OrderPlaced  { label "Order placed" }   // declared with `queue`, parsed as a queue-item
+  }
+  storage MediaStorage {
+    bucket ProductImages { label "Product images" }
+  }
+}
+```
+
 ### Organizational structure (who owns what) — rendered as a separate diagram
 
 An independent axis from logical/physical, describing the **ownership** of services and domains.
@@ -370,7 +408,7 @@ operations create
 operations read, update           // multiple lines accumulate
 ```
 
-The `operations` property is only valid for `resource` declarations inside a `usecase`. It is not meaningful on infra-side declarations (`table` / `queue-item` / `bucket`).
+The `operations` property is only valid for `resource` declarations inside a `usecase`. It is not meaningful on infra-side declarations (`table` / `queue-item` / `bucket` — see the "Infra layer (shared data stores)" section above).
 
 | Operation | Meaning |
 |-----------|---------|

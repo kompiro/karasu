@@ -91,6 +91,44 @@ client C [web] {
 
 `delivers` などの宣言的プロパティはエッジとしてカウントされない。expose ルールは 1 ホップずつ展開されるため、`client → BFF → backend` 連鎖の各リンクは明示的に宣言する必要がある — 暗黙の auto-passthrough は存在しない。
 
+### インフラ層（共有データストア）— system 図に描画される
+
+複数の service が共有するデータストアは、特定の `usecase` に所有させるのではなく、**`.krs` ファイルのトップレベル**（または `system` ブロックの直下）に下記 3 つのインフラブロックキーワードのいずれかで宣言する。各ブロックは leaf なサブリソースをネストできる。これらのノードは **system 図** に描画され、`[external]` service と同じ依存先 tier に並ぶ — service が共有インフラに *依存する* のであって、その逆はない。ファーストクラスノードへの昇格は [ADR-20260405-05](../adr/20260405-05-database-as-first-class-node.md) を参照。
+
+| キーワード | 階層 | 用途 | 含むことができるもの |
+|-----------|------|------|-------------------|
+| `database` | system 直下のインフラブロック | service が共有するデータベース（RDBMS、ドキュメントストア等） | `table` |
+| `queue` | system 直下のインフラブロック | service が共有するメッセージキュー / トピック | `queue-item` |
+| `storage` | system 直下のインフラブロック | service が共有するオブジェクトストア / ブロブストレージ（S3、GCS 等） | `bucket` |
+| `table` | leaf、`database` ブロック内 | データベース内のテーブル / コレクション | — |
+| `queue-item` | leaf、`queue` ブロック内 | キューが運ぶメッセージ / イベント型。`queue` ブロック内では `queue` キーワードで書く（内部的には `queue-item` としてパースされる） | — |
+| `bucket` | leaf、`storage` ブロック内 | オブジェクトストア内のバケット / コンテナ | — |
+
+- インフラノードとサブリソースに適用できるのは `label` / `description` / `link` プロパティのみ。すべて省略可で、省略時はエラーではなく警告を出すにとどめる。`operations`（CRUD）プロパティはここでは無効 — `usecase` 内の `resource` 宣言でのみ意味を持つ（後述）。
+- `database` / `queue` / `storage` はトップレベルまたは `system` の直下でのみ有効。`service` / `domain` / `usecase` の中にネストすると `infra-not-in-context` で拒否される。
+- `table` / `queue-item` / `bucket` は leaf ノード — プロパティとエッジは持てるが、ネストした宣言は持てない。
+- `usecase` は自身の `resource` を共有サブリソースにドット記法で紐づける — `resource <InfraId>.<SubResourceId>`（例: `resource OrderDB.OrderTable`）。resolver はこれらの参照を集約して system 図上の `service → database`（および `service → queue` / `service → storage`）エッジを導出し、usecase→resource エッジに `[read]` / `[write]` タグを合成することがある（[docs/spec/tags-annotations.ja.md](./tags-annotations.ja.md) の「システム自動付与タグ」節を参照）。
+- `[external]` はシステム境界の外にあるストア（マネージドなサードパーティ DB、外部イベントバス等）を表すために `database` / `queue` / `storage` に付けられる。
+- `database` ブロックがないまま `resource OrderTable` と書くことも許容される（警告のみ、孤立ノードとして描画）。`usecase` を書きながらボトムアップに resource を発見し、後で `database` ブロックにグループ化してドット記法の参照に切り替えればよい。
+
+```krs
+system ECPlatform {
+  service ECommerce {}        // domain / usecase は簡潔さのため省略
+
+  database OrderDB {
+    label "注文DB"
+    table OrderTable   { label "注文" }
+    table ProductTable { label "商品" }
+  }
+  queue OrderEvents {
+    queue OrderPlaced  { label "注文確定" }   // queue キーワードで書くが queue-item としてパースされる
+  }
+  storage MediaStorage {
+    bucket ProductImages { label "商品画像" }
+  }
+}
+```
+
 ### 組織構造（誰が所有するか）— 別図で表現
 
 論理・物理とは独立した軸として、サービス・ドメインの **オーナーシップ** を記述する。
@@ -363,7 +401,7 @@ operations create
 operations read, update           // 複数行は累積される
 ```
 
-`operations` は `usecase` 内の `resource` 宣言でのみ有効。インフラ側の `table` / `queue-item` / `bucket` には書けない。
+`operations` は `usecase` 内の `resource` 宣言でのみ有効。インフラ側の `table` / `queue-item` / `bucket` には書けない（上の「インフラ層（共有データストア）」節を参照）。
 
 | Operation | 意味 |
 |-----------|------|
