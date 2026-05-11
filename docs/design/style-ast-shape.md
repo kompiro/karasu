@@ -1,7 +1,7 @@
 # `.krs.style` AST の形と将来の拡張
 
 - **日付**: 2026-05-08
-- **ステータス**: フェーズ 1 = 決定済み（[ADR-20260509-02](../adr/20260509-02-style-ast-position-and-recovery.md) として昇格・実装済み）。フェーズ 2 = 決定済み（[ADR-20260510-01](../adr/20260510-01-tidy-style-and-trivia.md) として昇格・実装済み — `docs/design/tidy-style-and-trivia.md` は ADR に集約して削除）。フェーズ 3 は引き続き検討中
+- **ステータス**: 全フェーズ完了。フェーズ 1 = [ADR-20260509-02](../adr/20260509-02-style-ast-position-and-recovery.md) として昇格・実装済み。フェーズ 2 = [ADR-20260510-01](../adr/20260510-01-tidy-style-and-trivia.md) として昇格・実装済み（`docs/design/tidy-style-and-trivia.md` は ADR に集約して削除）。フェーズ 3 = [ADR-20260511-03](../adr/20260511-03-style-value-diagnostics.md) として昇格・実装済み（`docs/design/style-value-diagnostics.md` は ADR に集約して削除）
 - **関連**:
   - 引き金 Issue: [#1168](https://github.com/kompiro/karasu/issues/1168) — `,` と `;` の取り違えが silent に通る
   - 関連 ADR: [ADR-20260322-01](../adr/20260322-01-builtin-style-and-reference.md)（builtin + cascade）、
