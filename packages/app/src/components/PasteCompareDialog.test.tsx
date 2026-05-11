@@ -60,4 +60,24 @@ describe("PasteCompareDialog", () => {
     expect(textarea.readOnly).toBe(true);
     expect(textarea.value).toBe("system Y {}");
   });
+
+  // TPL-20260510-04 anti-regression: the textarea is a plain controlled
+  // component whose `value` only changes via the user's own `onChange`.
+  // No parent-side derived rewrite fires mid-composition today, so the
+  // EditorPane-class IME bug (#1053) cannot reach it. If a future change
+  // introduces a live transform (validation, normalization, AI suggestion
+  // prefix, ...) that fires during composition, this assertion catches it.
+  it("controlled value during a simulated IME composition cycle is not rewritten", () => {
+    const { getByLabelText } = render(
+      <PasteCompareDialog onConfirm={() => {}} onCancel={() => {}} />,
+    );
+    const textarea = getByLabelText("Pasted .krs content") as HTMLTextAreaElement;
+
+    fireEvent.compositionStart(textarea);
+    fireEvent.change(textarea, { target: { value: "システム" } });
+    expect(textarea.value).toBe("システム");
+
+    fireEvent.compositionEnd(textarea);
+    expect(textarea.value).toBe("システム");
+  });
 });

@@ -314,4 +314,24 @@ describe("ProjectSelector — localization (Phase C3)", () => {
     expect(getByRole("button", { name: /^OK$/ })).toBeTruthy();
     expect(getByRole("button", { name: /^キャンセル$/ })).toBeTruthy();
   });
+
+  // TPL-20260510-04 anti-regression: the create and rename inputs are
+  // plain controlled `<input type="text">`; the corresponding setters
+  // (`setNewName` / `setRenameValue`) only fire from `onChange`. Nothing
+  // rewrites the value mid-composition today, so the #1053 failure mode
+  // cannot reach here. If a future change adds live duplicate-name
+  // detection or normalization that fires during composition, this
+  // assertion fires.
+  it("controlled rename input during a simulated IME composition cycle is not rewritten", () => {
+    const { getByRole } = render(<ProjectSelector {...baseProps()} />);
+    fireEvent.click(getByRole("button", { name: /Rename/ }));
+    const input = getByRole("textbox") as HTMLInputElement;
+
+    fireEvent.compositionStart(input);
+    fireEvent.change(input, { target: { value: "新しい名前" } });
+    expect(input.value).toBe("新しい名前");
+
+    fireEvent.compositionEnd(input);
+    expect(input.value).toBe("新しい名前");
+  });
 });

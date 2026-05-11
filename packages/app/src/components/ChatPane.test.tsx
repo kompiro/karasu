@@ -244,4 +244,22 @@ describe("ChatPane — localization (Phase C4)", () => {
     const { container } = render(<ChatPane {...defaultProps} apiKey={null} />, "ja");
     expect(container.textContent).toContain("AI 機能を使うには Claude API キーが必要です");
   });
+
+  // TPL-20260510-04 anti-regression: the chat input is a plain controlled
+  // textarea (`value` only changes via the user's `onChange`). Today
+  // nothing rewrites it mid-composition, so the EditorPane-class IME bug
+  // (#1053) cannot reach here. If AI streaming, prefix autofill, or live
+  // validation is later wired into `setInputValue`, this assertion fires.
+  it("controlled chat input during a simulated IME composition cycle is not rewritten", () => {
+    mockUseChatSession.mockReturnValue(makeDefaultSession());
+    const { getByLabelText } = render(<ChatPane {...defaultProps} />);
+    const input = getByLabelText("Chat message input") as HTMLTextAreaElement;
+
+    fireEvent.compositionStart(input);
+    fireEvent.change(input, { target: { value: "こんにちは" } });
+    expect(input.value).toBe("こんにちは");
+
+    fireEvent.compositionEnd(input);
+    expect(input.value).toBe("こんにちは");
+  });
 });
