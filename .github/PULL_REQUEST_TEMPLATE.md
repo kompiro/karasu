@@ -23,11 +23,11 @@
 <!--
 For PRs that introduce a new user-facing feature or external integration,
 confirm the change stays inside karasu's scope filter from
-docs/concepts.ja.md "非目標 → 共通フィルタ":
+docs/concepts.md "Goals and non-goals → Non-goals":
 
-> karasu が扱うのは ゆっくり変化する構造的な文脈 —
-> 何が存在し、どう関係し、誰が所有するかであり、
-> 実装の詳細も運用の現況もその外側にある。
+> karasu handles a slowly-changing structural context — what exists,
+> how things relate, and who owns them; implementation details and
+> runtime state sit outside that.
 
 If any of the bullets below is checked (the PR pulls karasu *toward* one
 of those failure modes), justify it in the Summary or in the linked
@@ -60,7 +60,7 @@ Pick the row(s) that apply; write "N/A" if none (pure refactor / docs / chore):
   this PR (or open a follow-up). If a matching TPL exists, append the
   Issue to its `discovered_from`.
 - New-feature PR (DesignDoc-driven) — scan the design's `topic` in
-  `docs/concepts.ja.md` and related ADRs. If a principle could be
+  `docs/concepts.md` and related ADRs. If a principle could be
   violated by this design and isn't yet a TPL, add a proactive TPL.
   Also: for every TPL (proactive or existing) this feature is designed
   against, turn the relevant checklist items into contract tests / ACs
