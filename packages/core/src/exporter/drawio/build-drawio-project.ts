@@ -5,6 +5,7 @@ import type { Warning } from "../../types/warnings.js";
 import type { KrsFile, KrsNode, OrganizationBlock, TeamNode } from "../../types/ast.js";
 import { extractView } from "../../view/view-extract.js";
 import { extractDeployView } from "../../view/deploy-view-extract.js";
+import { withUnassignedSystem } from "../../view/unassigned-system.js";
 import { layout } from "../../renderer/layout.js";
 import { layoutDeploy } from "../../renderer/deploy-layout.js";
 import { analyze } from "../../resolver/warnings.js";
@@ -136,12 +137,16 @@ function collectLogicalLabels(nodes: KrsNode[], into: Map<string, string>): void
 
 function buildDeployPage(krsFile: KrsFile): DrawioPage | null {
   if (krsFile.deploys.length === 0) return null;
-  const slice = extractDeployView(krsFile.deploys, krsFile.systems);
+  // Orphan-wrap so `realizes` targets pointing at top-level (unassigned)
+  // services/domains resolve to their declared labels, and so the metadata
+  // map below picks up the orphans' tags/annotations.
+  const effectiveSystems = withUnassignedSystem(krsFile);
+  const slice = extractDeployView(krsFile.deploys, effectiveSystems);
   const layoutResult = layoutDeploy(slice);
   const metadata = new Map<string, DrawioNodeMeta>();
   // Deploy containers are keyed by the realized service id, so the logical
   // tree provides their tags/annotations.
-  collectLogicalMeta(krsFile.systems, metadata);
+  collectLogicalMeta(effectiveSystems, metadata);
   return { id: "deploy", name: "Deploy", layout: layoutResult, metadata };
 }
 

@@ -435,8 +435,16 @@ function _compileFromPreparedInput(
     };
   }
 
-  // system / deploy shared setup
-  const deploySliceForStyle = extractDeployView(krsFile.deploys, krsFile.systems, selectedDeployId);
+  // system / deploy shared setup.
+  // Pass the orphan-wrapped systems list so `realizes` targets that point at
+  // top-level (unassigned) services/domains resolve to their declared labels
+  // instead of degrading to the bare id.
+  const effectiveSystems = withUnassignedSystem(krsFile);
+  const deploySliceForStyle = extractDeployView(
+    krsFile.deploys,
+    effectiveSystems,
+    selectedDeployId,
+  );
   const deployUnits = [
     ...deploySliceForStyle.containers.flatMap((c) => c.units),
     ...deploySliceForStyle.unclassifiedUnits,
@@ -469,11 +477,11 @@ function _compileFromPreparedInput(
   // service edges synthesized from cross-service domain edges) can be included in the
   // edgeStyles cache. Without this, derived edges fall back to defaultEdgeStyle.
   //
-  // Top-level (unassigned) services/domains are wrapped in a synthesized
-  // "Unassigned" pseudo-system so they render in their own labeled frame
-  // rather than being merged into systems[0]. extractView only needs the
-  // systems list; the legacy unassigned* params are left empty for that reason.
-  const effectiveSystems = withUnassignedSystem(krsFile);
+  // `effectiveSystems` (computed above) wraps top-level (unassigned)
+  // services/domains in a synthesized "Unassigned" pseudo-system so they
+  // render in their own labeled frame rather than being merged into
+  // systems[0]. extractView only needs the systems list; the legacy
+  // unassigned* params are left empty for that reason.
   const viewSlice = extractView(effectiveSystems, viewPath ?? []);
   diagnostics.push(...assignEdgeCanonicalIds(viewSlice.childEdges));
   const styles = resolveStyles(
@@ -1057,14 +1065,16 @@ export async function compileDeployDiff(
   ]);
   const diagnostics = [...beforeResolved.diagnostics, ...afterResolved.diagnostics];
 
+  // Orphan-wrap so `realizes` targets that point at top-level (unassigned)
+  // services/domains resolve to their declared labels (see extractDeployView).
   const beforeSlice = extractDeployView(
     beforeResolved.krsFile.deploys,
-    beforeResolved.krsFile.systems,
+    withUnassignedSystem(beforeResolved.krsFile),
     selectedDeployId,
   );
   const afterSlice = extractDeployView(
     afterResolved.krsFile.deploys,
-    afterResolved.krsFile.systems,
+    withUnassignedSystem(afterResolved.krsFile),
     selectedDeployId,
   );
 

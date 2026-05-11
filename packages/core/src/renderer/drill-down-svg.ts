@@ -279,7 +279,9 @@ function collectDeployLevel(
   const deployBlocks = krsFile.deploys;
   if (deployBlocks.length === 0) return null;
 
-  const deployView = extractDeployView(deployBlocks, krsFile.systems);
+  // Orphan-wrap so `realizes` targets pointing at top-level (unassigned)
+  // services/domains resolve to their declared labels.
+  const deployView = extractDeployView(deployBlocks, withUnassignedSystem(krsFile));
   if (deployView.containers.length === 0 && deployView.unclassifiedUnits.length === 0) return null;
 
   const deployNodes = deployBlocks.flatMap((b) => b.nodes);

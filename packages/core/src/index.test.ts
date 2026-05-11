@@ -44,6 +44,23 @@ describe("compileProject — diagramType org with displayMode", () => {
   });
 });
 
+describe("compile — deploy view resolves labels for top-level orphan services (#1260)", () => {
+  const ORPHAN_REALIZES_KRS = `
+service "OrderService" { label "注文サービス" }
+
+deploy "prod" {
+  oci "order-app" { realizes = "OrderService"; runtime = "node:20"; }
+}
+`;
+
+  it("renders the orphan service's declared label, not the bare id, in the deploy view", () => {
+    const result = compile(ORPHAN_REALIZES_KRS, { diagramType: "deploy" });
+    if (result.diagramType !== "deploy") throw new Error("expected deploy result");
+    expect(result.svg).toContain("注文サービス");
+    expect(result.diagnostics.filter((d) => d.severity === "error")).toHaveLength(0);
+  });
+});
+
 describe("compile — deploy diagram nodeMetadata", () => {
   it("populates nodeMetadata for deploy units", () => {
     const result = compile(DEPLOY_KRS, { diagramType: "deploy" });
