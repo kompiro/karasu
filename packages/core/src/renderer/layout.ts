@@ -12,6 +12,7 @@ import {
 import { routeOrthogonalEdges } from "./edge-routing-channels.js";
 import { distributePorts } from "./edge-routing-ports.js";
 import { distributeChannelLanes } from "./edge-routing-lanes.js";
+import { markParallelBundles } from "./edge-routing-bundles.js";
 import type {
   LayoutNode,
   LayoutNodeProperties,
@@ -866,6 +867,13 @@ export function layout(
   // across distinct lanes. No-op when each channel hosts ≤ 1 edge.
   distributeChannelLanes(layoutEdges);
 
+  // Annotate parallel-edge bundles (edges sharing `(from, to)`) so the
+  // renderer can slide labels along the edge instead of stacking them at
+  // the midpoint. Also nudges ghost/cyclic edges perpendicular when they
+  // land in a bundle, since `distributePorts` skipped those above.
+  // See docs/design/parallel-edge-bundling.md and Issue #1185.
+  markParallelBundles(layoutEdges);
+
   // Normalize coordinates and compute dimensions
   normalizeCoordinates(containers, layoutNodes, layoutEdges);
   const { width: totalWidth, height: totalHeight } = computeTotalDimensions(
@@ -1175,6 +1183,8 @@ function layoutMultipleSystems(
       },
     });
   }
+
+  markParallelBundles(allEdges);
 
   // Calculate total dimensions
   let totalWidth = 0;

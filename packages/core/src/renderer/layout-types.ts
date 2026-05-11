@@ -61,6 +61,15 @@ export interface LayoutEdge {
    * See docs/design/auto-layout-edge-routing-orthogonal.md.
    */
   waypoints?: { x: number; y: number }[];
+  /**
+   * 0-based index inside a parallel-edge bundle (edges sharing `(from, to)`).
+   * Set together with `bundleSize` only when `bundleSize >= 2`. Used by the
+   * renderer to slide labels along the edge so parallel labels don't stack.
+   * See docs/design/parallel-edge-bundling.md.
+   */
+  bundleIndex?: number;
+  /** Total number of edges in this edge's parallel bundle; ≥ 2 when set. */
+  bundleSize?: number;
 }
 
 export interface ContainerRect {

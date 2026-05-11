@@ -1457,3 +1457,51 @@ system S {
     }
   });
 });
+
+describe("layout > parallel edge bundling", () => {
+  it("annotates parallel A->B edges with bundleIndex / bundleSize", () => {
+    const slice = parseAndExtract(`
+system S {
+  service A { label "A" }
+  service B { label "B" }
+  A -> B "create"
+  A -> B "update"
+}
+    `);
+    const result = layout(slice);
+    const ab = result.edges.filter((e) => e.from === "A" && e.to === "B");
+    expect(ab).toHaveLength(2);
+    expect(ab[0].bundleSize).toBe(2);
+    expect(ab[1].bundleSize).toBe(2);
+    expect(ab.map((e) => e.bundleIndex).sort()).toEqual([0, 1]);
+  });
+
+  it("does not annotate single edges", () => {
+    const slice = parseAndExtract(`
+system S {
+  service A { label "A" }
+  service B { label "B" }
+  A -> B "only"
+}
+    `);
+    const result = layout(slice);
+    const ab = result.edges.find((e) => e.from === "A" && e.to === "B")!;
+    expect(ab.bundleSize).toBeUndefined();
+    expect(ab.bundleIndex).toBeUndefined();
+  });
+
+  it("bundles sync and async between same pair together", () => {
+    const slice = parseAndExtract(`
+system S {
+  service A { label "A" }
+  service B { label "B" }
+  A -> B "sync"
+  A --> B "async"
+}
+    `);
+    const result = layout(slice);
+    const ab = result.edges.filter((e) => e.from === "A" && e.to === "B");
+    expect(ab).toHaveLength(2);
+    expect(ab.every((e) => e.bundleSize === 2)).toBe(true);
+  });
+});
