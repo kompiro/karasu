@@ -409,3 +409,4 @@ DesignDoc が proactive TPL を引用したら、実装 PR で次をやる:
 | [TPL-20260510-22](TPL-20260510-22-three-face-intersection-single-artifact.md) | 論理・物理・組織の三面は一つの `.krs` artifact 内で交差させる | core-concepts | concepts.ja.md |
 | [TPL-20260510-23](TPL-20260510-23-writer-reader-asymmetry.md) | 新しい edge / relation 機能は writer の coarse 表現と reader の progressive disclosure を両立する | edges | concepts.ja.md |
 | [TPL-20260511-01](TPL-20260511-01-keyword-lexical-ambiguity-fence-vs-deprecate.md) | 既存キーワードの語彙的曖昧さは外部 fence ADR を deprecate より先に検討する | core-concepts | #1281 |
+| [TPL-20260511-02](TPL-20260511-02-spec-doc-reference-data-sync.md) | spec ドキュメントと in-app reference データは片方向 smoke test で同期を縛る | build | #1296 |
