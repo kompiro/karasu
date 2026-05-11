@@ -1,6 +1,6 @@
 # ADR Topic: edges
 
-11 ADRs in this topic. Solid nodes belong to `edges`; gray dashed nodes are ghosts showing cross-topic references to help navigation.
+12 ADRs in this topic. Solid nodes belong to `edges`; gray dashed nodes are ghosts showing cross-topic references to help navigation.
 
 Other topics: [overview](../graph.md).
 ```mermaid
@@ -17,6 +17,7 @@ flowchart TD
     ADR_20260506_03["ADR-20260506-03<br/>`.krs.style` の edge `direction` プロパティ — 矢印の流れる向..."]
     ADR_20260506_04["ADR-20260506-04<br/>edge `direction: left` / `direction: right` の l..."]
     ADR_20260509_05["ADR-20260509-05<br/>edge `label-position` / `label-offset` プロパティ — ..."]
+    ADR_20260511_01["ADR-20260511-01<br/>同一ペア間の並列エッジ束ね"]
   end
   ADR_20260405_03["ADR-20260405-03<br/>[parser] ワイルドカードインポートと2パス解決の採用"]
   ADR_20260508_01["ADR-20260508-01<br/>[app-ui] GUI 駆動の `.krs.style` 編集 — 単一プロパティ rule は in-pla..."]
@@ -46,6 +47,7 @@ flowchart TD
   class ADR_20260506_03 accepted
   class ADR_20260506_04 accepted
   class ADR_20260509_05 accepted
+  class ADR_20260511_01 accepted
   class ADR_20260405_03 ghost
   class ADR_20260508_01 ghost
 ```
