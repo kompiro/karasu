@@ -171,6 +171,43 @@ describe("extractDeployView", () => {
     expect(result.containers[0].serviceLabel).toBe("UnknownService");
   });
 
+  it("resolves the container label from a synthesized Unassigned system's children (#1260)", () => {
+    // `withUnassignedSystem(krsFile)` wraps top-level (orphan) services in a
+    // synthetic "__unassigned__" pseudo-system. extractDeployView must read
+    // those children so a `realizes` pointing at an orphan service gets the
+    // declared label, not the bare id. Distinct from the "not in system" case
+    // above: there the target is undeclared everywhere; here it is declared,
+    // just at the top level.
+    const unassigned: SystemNode = {
+      kind: "system",
+      id: "__unassigned__",
+      label: "Unassigned",
+      tags: [],
+      annotations: [],
+      properties: { links: [] },
+      children: [
+        {
+          kind: "service",
+          id: "OrderService",
+          label: "注文サービス",
+          tags: [],
+          annotations: [],
+          properties: { links: [] },
+          children: [],
+          edges: [],
+          loc: LOC,
+        },
+      ],
+      edges: [],
+      loc: LOC,
+    };
+    const deploy = makeDeployBlock([{ kind: "oci", id: "order-app", realizes: "OrderService" }]);
+    const result = extractDeployView([deploy], [makeSystem(), unassigned]);
+    const container = result.containers.find((c) => c.serviceId === "OrderService");
+    expect(container).toBeDefined();
+    expect(container!.serviceLabel).toBe("注文サービス");
+  });
+
   it("uses the deploy block label", () => {
     const deploy = makeDeployBlock([{ kind: "oci", id: "api", realizes: "ECommerce" }]);
     const result = extractDeployView([deploy], [makeSystem()]);
