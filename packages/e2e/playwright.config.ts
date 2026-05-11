@@ -17,7 +17,13 @@ export default defineConfig({
   // (e.g. #1152 burned 90s/test with retries=2). See #1155.
   timeout: 15_000,
   workers: process.env.CI ? 1 : undefined,
-  reporter: [["list"], ["html", { outputFolder: "playwright-report", open: "never" }]],
+  reporter: [
+    ["list"],
+    ["html", { outputFolder: "playwright-report", open: "never" }],
+    // JSON reporter feeds `scripts/ci/playwright-flaky-summary.ts`, which
+    // surfaces retry-pass (flaky) tests in CI (TPL-20260510-13 / #1271).
+    ["json", { outputFile: "playwright-report/results.json" }],
+  ],
   outputDir: "test-results",
   use: {
     baseURL: BASE_URL,
