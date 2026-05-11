@@ -5,23 +5,23 @@
 // Gateway team — blue
 #Gateway {
   color: #1e40af;
-  background: #dbeafe;
+  background-color: #dbeafe;
 }
 
 // Risk team — amber (signals caution / security focus)
 #RiskEngine {
   color: #92400e;
-  background: #fef3c7;
+  background-color: #fef3c7;
 }
 
 // Ledger team — green (financial / trusted)
 #Ledger {
   color: #065f46;
-  background: #d1fae5;
+  background-color: #d1fae5;
 }
 
 // External services — neutral gray
 service[external] {
   color: #374151;
-  background: #f3f4f6;
+  background-color: #f3f4f6;
 }
