@@ -7,7 +7,7 @@
     "ghcr.io/devcontainers/features/git:1": {},
     "ghcr.io/devcontainers/features/github-cli:1": {}
   },
-  "postCreateCommand": "sudo chown node:node /workspaces && curl -fsSL https://claude.ai/install.sh | bash",
+  "postCreateCommand": "curl -fsSL https://claude.ai/install.sh | bash",
   "mounts": [
     "source=${localEnv:HOME}/.claude,target=/home/node/.claude,type=bind,consistency=cached",
     "source=${localEnv:HOME}/.config/git/,target=/home/node/.config/git/,type=bind,consistency=cached"

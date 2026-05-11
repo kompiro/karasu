@@ -137,7 +137,7 @@ git clone https://github.com/kompiro/adr-tools.git /workspaces/adr-tools
 git clone https://github.com/kompiro/hane.git     /workspaces/hane
 ```
 
-karasu 側のセッション内で `/workspaces/adr-tools` や `/workspaces/hane` の編集・コミット・PR 作成が可能。devcontainer を作り直した直後でも `postCreateCommand` の `sudo chown node:node /workspaces` で書き込み権限が付与される。
+karasu 側のセッション内で `/workspaces/adr-tools` や `/workspaces/hane` の編集・コミット・PR 作成が可能。書き込み権限は image build 時に Dockerfile で `/workspaces` を `node:node` 所有に設定しているため、devcontainer を作り直した直後から有効。
 
 ### 循環依存チェック
 
