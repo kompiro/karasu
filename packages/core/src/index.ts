@@ -185,6 +185,7 @@ import type { Warning } from "./types/warnings.js";
 import type { FileSystemProvider } from "./fs/types.js";
 import { Parser } from "./parser/parser.js";
 import { StyleParser } from "./parser/style-parser.js";
+import { validateStyleValues } from "./style/value-validator.js";
 import {
   assignEdgeCanonicalIds,
   validateProjectEdgeIdUniqueness,
@@ -510,6 +511,12 @@ function _compileCore(krsSource: string, opts: CompileOptions): CompileResult {
   if (styleSource) {
     const styleResult = StyleParser.parse(styleSource);
     diagnostics.push(...styleResult.diagnostics);
+    // Value-level validation (Phase 3): surface typo / invalid-hex /
+    // wrong-unit / out-of-range / unknown-property diagnostics through
+    // the same `diagnostics` channel so the App's `PreviewPane`
+    // displays them alongside parse diagnostics. The LSP path runs the
+    // same validator separately in `validateDocument`.
+    diagnostics.push(...validateStyleValues(styleResult.value));
     sheets.push(styleResult.value);
   }
 
@@ -531,6 +538,13 @@ async function _compileProjectCore(
   // Build sheets for conflict analysis: [builtin, ...userSheets]
   // Icon theme is intentionally excluded from analysis to avoid false style-conflict warnings.
   const sheets = [getBuiltinStyleSheet(), ...resolved.styleSheets];
+
+  // Value-level validation for every user-provided style sheet (Phase
+  // 3). Builtin sheets are trusted and validated at write time, so
+  // running the validator on them is wasteful — restrict to user sheets.
+  for (const sheet of resolved.styleSheets) {
+    diagnostics.push(...validateStyleValues(sheet));
+  }
 
   return _compileFromPreparedInput(
     {
