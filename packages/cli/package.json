@@ -2,6 +2,7 @@
   "name": "karasu",
   "version": "0.0.0",
   "description": "karasu CLI — serve and build .krs architecture diagrams",
+  "license": "Apache-2.0",
   "bin": {
     "karasu": "./dist/index.js"
   },

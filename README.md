@@ -355,3 +355,7 @@ karasu/
 ## Inspiration
 
 Inspired by C4 Model, but with its own vocabulary and an explicit separation between logical and physical structure.
+
+## License
+
+Licensed under the [Apache License, Version 2.0](./LICENSE).
