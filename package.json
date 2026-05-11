@@ -30,6 +30,7 @@
     "adr:visualize": "adr visualize",
     "adr:regenerate": "adr regenerate",
     "adr:check-assumptions": "adr check-assumptions",
+    "lint:e2e-page-goto": "tsx scripts/lint/no-direct-page-goto.ts",
     "tpl:validate": "tsx scripts/tpl/cli.ts",
     "tpl:related": "tsx scripts/tpl/related-cli.ts",
     "tpl:review:body": "tsx scripts/tpl/review-body.ts",
