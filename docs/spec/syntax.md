@@ -138,7 +138,7 @@ Properties are written inside the body block `{ }`. Properties come before child
 |----------|--------|-----------------|-------------|
 | `label` | `label "<display-name>"` | All | Display name on the diagram. Defaults to the id when omitted |
 | `description` | `description "<text>"` | All | Description text (use `"""..."""` for multi-line) |
-| `role` | `role "<role-name>"` | user | Business role |
+| `role` | `role "<role-name>"` | user | Actor archetype, or a short one-line description of what this user does. **Not** an authz primitive (no `requires role = ...` predicate, no RBAC permission bundle) — see [ADR-20260511-02](../adr/20260511-02-no-runtime-authz-modeling.md) and [ADR-20260511-04](../adr/20260511-04-user-role-keyword-clarification.md) |
 | `team` | `team "<team-name>"` | service, domain | Owner team |
 | `delivers` | `delivers <ClientId>[, <ClientId>...]` | service | Client(s) this service ships (BFF / SSR pattern). The renderer draws each entry as a distinct dashed edge from the service to the referenced `client` |
 | `link` | `link "<URL>" "<label>"` | All | Link to related documentation (multiple allowed). Label is optional |
@@ -159,7 +159,7 @@ user <id> [<human|ai>] {
 ```
 
 - The tag `[human]` / `[ai]` distinguishes human users from AI agents.
-- `role` describes the business role within the system.
+- `role` describes the actor archetype or what this user does within the system (a short one-line label or sentence). It is **not** an authz primitive: it does not represent a RBAC permission bundle, and karasu does not introduce a `requires role = ...` predicate or similar authz construct (see [ADR-20260511-02](../adr/20260511-02-no-runtime-authz-modeling.md) and [ADR-20260511-04](../adr/20260511-04-user-role-keyword-clarification.md)). To document who may execute a usecase, use the usecase's `description` and a `link` to an external policy document.
 - Properties and the body block `{ }` are optional.
 
 ### service / domain node example

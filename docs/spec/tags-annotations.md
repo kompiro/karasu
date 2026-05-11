@@ -108,7 +108,7 @@ The identifier set is **open** — any kebab-case identifier is accepted, no war
 |---------|----------------|
 | Operation-tied storage (`localStorage`, `indexedDB`, `keychain`) | `resource <storageKind> "<name>"` |
 | HTTP session / authentication credentials | Separate vocabulary, tracked under #834 |
-| Runtime authorization (role / license / feature flag) | Separate vocabulary, tracked under #832 |
+| Runtime authorization (RBAC permission bundles, license / feature flag gates) | Not modelled in karasu — see [ADR-20260511-02](../adr/20260511-02-no-runtime-authz-modeling.md). The `user.role` property is an actor-archetype label, not an authz primitive — see [ADR-20260511-04](../adr/20260511-04-user-role-keyword-clarification.md) |
 
 ---
 
