@@ -1,0 +1,44 @@
+name: Feature request
+description: Propose a new feature, or request implementation based on a doc under docs/features/
+labels: ["enhancement"]
+body:
+  - type: input
+    id: feature-doc
+    attributes:
+      label: Related feature doc
+      description: "Path to a file under docs/features/ (if any)"
+      placeholder: "docs/features/planned/drilldown.md"
+    validations:
+      required: false
+
+  - type: textarea
+    id: summary
+    attributes:
+      label: Summary
+      description: "Overview of the feature you want implemented"
+    validations:
+      required: true
+
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance criteria
+      description: "Definition of done (a checklist is recommended)"
+      value: |
+        - [ ]
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: scope-filter
+    attributes:
+      label: Scope filter — "a slowly-changing structural context"
+      description: |
+        karasu handles a **slowly-changing structural context** — what exists, how things relate, and who owns them;
+        implementation details and runtime state sit outside that ([docs/concepts.md "Goals and non-goals → Non-goals"](../../docs/concepts.md)).
+        If your request falls into any of the cases below, it likely hits one of karasu's existing **non-goals** —
+        in that case, explain the rationale in the Summary field above.
+      options:
+        - label: Not pulling implementation detail into the model (code generation, DB schema, function signatures, ...)
+        - label: Not making the model track runtime metrics / operational state (individual pods, deploy status, live metrics, ...)
+        - label: Not pulling the time axis / high-frequency state into the model (sequence diagrams, execution logs, traces, ...)
