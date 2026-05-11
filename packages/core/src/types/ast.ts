@@ -38,7 +38,7 @@ export interface LinkEntry {
   loc: SourceRange;
 }
 
-interface BaseNodeFields {
+export interface BaseNodeFields {
   id: string;
   label?: string;
   tags: string[];
