@@ -128,6 +128,17 @@ plugin にバンドルされる skill とその karasu 内での主な用途:
 
 karasu 専用の skill（`/svg-icon`, `/update-examples`）は `.claude/skills/` 配下にローカル定義されている（plugin 化対象外）。
 
+### Sibling repo の clone（`adr-tools`, `hane` 等）
+
+devcontainer の `/workspaces` は `node` ユーザー所有に設定されており、karasu の隣に関連リポジトリを clone できる。Claude Code の sandbox にも `/workspaces` を `additionalDirectories` で追加済みのため、セッションを離れずに sibling repo の更新作業ができる。
+
+```
+git clone https://github.com/kompiro/adr-tools.git /workspaces/adr-tools
+git clone https://github.com/kompiro/hane.git     /workspaces/hane
+```
+
+karasu 側のセッション内で `/workspaces/adr-tools` や `/workspaces/hane` の編集・コミット・PR 作成が可能。devcontainer を作り直した直後でも `postCreateCommand` の `sudo chown node:node /workspaces` で書き込み権限が付与される。
+
 ### 循環依存チェック
 
 `pnpm check:cycles` で `madge --circular` を 5 つのプロダクションパッケージ（core / app / cli / lsp / vscode）の `src/` に対して実行し、モジュール間の循環依存を検出する。
