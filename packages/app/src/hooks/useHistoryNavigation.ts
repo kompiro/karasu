@@ -25,16 +25,35 @@ export function buildHash(
   highlightNodeId?: string | null,
   filePath?: string | null,
 ): string {
+  // Exhaustive dispatch on activeView — adding a new ActiveView member without
+  // updating this switch fails the `never` assignment at compile time. Locks in
+  // TPL-20260510-03 (the #1094 failure mode where a new tab silently fell into
+  // the fallback branch and produced the wrong hash).
   let base: string;
-  if (activeView === "deploy") base = "#krs-deploy";
-  else if (activeView === "matrix") base = "#krs-matrix";
-  else if (activeView === "org" && isOrgTreeView) base = "#krs-org-tree";
-  else {
-    const prefix = activeView === "org" ? "org" : "system";
-    base =
-      viewPath.length === 0
-        ? `#krs-${prefix}-root`
-        : `#krs-${prefix}-${sanitizeId(viewPath[viewPath.length - 1])}`;
+  switch (activeView) {
+    case "deploy":
+      base = "#krs-deploy";
+      break;
+    case "matrix":
+      base = "#krs-matrix";
+      break;
+    case "org":
+      base = isOrgTreeView
+        ? "#krs-org-tree"
+        : viewPath.length === 0
+          ? "#krs-org-root"
+          : `#krs-org-${sanitizeId(viewPath[viewPath.length - 1])}`;
+      break;
+    case "system":
+      base =
+        viewPath.length === 0
+          ? "#krs-system-root"
+          : `#krs-system-${sanitizeId(viewPath[viewPath.length - 1])}`;
+      break;
+    default: {
+      const _exhaustive: never = activeView;
+      throw new Error(`unhandled activeView: ${String(_exhaustive)}`);
+    }
   }
   const withHighlight = highlightNodeId ? `${base}:${highlightNodeId}` : base;
   return filePath ? `${withHighlight}?file=${encodeURIComponent(filePath)}` : withHighlight;
@@ -75,18 +94,44 @@ export function parseHash(hash: string): {
     base = core.slice(0, colonIdx);
   }
 
-  if (base === "#krs-deploy")
-    return { activeView: "deploy", nodeId: null, isOrgTreeView: false, highlightNodeId, filePath };
-  if (base === "#krs-matrix")
-    return { activeView: "matrix", nodeId: null, isOrgTreeView: false, highlightNodeId, filePath };
-  if (base === "#krs-org-tree")
-    return { activeView: "org", nodeId: null, isOrgTreeView: true, highlightNodeId, filePath };
-  const m = base.match(/^#krs-(system|org)-(.+)$/);
-  if (!m) return null;
-  const activeView = m[1] as "system" | "org";
-  const nodeId = m[2] === "root" ? null : m[2];
-  return { activeView, nodeId, isOrgTreeView: false, highlightNodeId, filePath };
+  // Exhaustive dispatch table — `satisfies Record<ActiveView, ...>` on
+  // PARSE_DISPATCHERS makes adding a new ActiveView a compile error here as
+  // well as in buildHash. Each dispatcher matches a disjoint prefix, so
+  // iteration order is irrelevant.
+  for (const view of Object.keys(PARSE_DISPATCHERS) as ActiveView[]) {
+    const parsed = PARSE_DISPATCHERS[view](base);
+    if (parsed) return { ...parsed, highlightNodeId, filePath };
+  }
+  return null;
 }
+
+type ParseResult = {
+  activeView: ActiveView;
+  nodeId: string | null;
+  isOrgTreeView: boolean;
+};
+
+const PARSE_DISPATCHERS = {
+  deploy: (base) =>
+    base === "#krs-deploy" ? { activeView: "deploy", nodeId: null, isOrgTreeView: false } : null,
+  matrix: (base) =>
+    base === "#krs-matrix" ? { activeView: "matrix", nodeId: null, isOrgTreeView: false } : null,
+  org: (base) => {
+    if (base === "#krs-org-tree") return { activeView: "org", nodeId: null, isOrgTreeView: true };
+    const m = base.match(/^#krs-org-(.+)$/);
+    if (!m) return null;
+    return { activeView: "org", nodeId: m[1] === "root" ? null : m[1], isOrgTreeView: false };
+  },
+  system: (base) => {
+    const m = base.match(/^#krs-system-(.+)$/);
+    if (!m) return null;
+    return {
+      activeView: "system",
+      nodeId: m[1] === "root" ? null : m[1],
+      isOrgTreeView: false,
+    };
+  },
+} satisfies Record<ActiveView, (base: string) => ParseResult | null>;
 
 // ─── Hook ────────────────────────────────────────────────────────────────────
 
