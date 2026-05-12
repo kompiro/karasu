@@ -130,9 +130,12 @@ describe("ReferencePanel", () => {
       (el) => el.textContent === "Styles",
     )!;
     fireEvent.click(stylesTab);
+    const edgeIdRow = Array.from(container.querySelectorAll(".reference-table tr")).find(
+      (tr) => tr.querySelector("td")?.textContent === "Edge ID",
+    );
+    expect(edgeIdRow?.textContent).toContain("edge#criticalWrite");
+    expect(edgeIdRow?.textContent).toContain("101");
     const body = container.querySelector(".reference-tab-body")?.textContent ?? "";
-    expect(body).toContain("edge#criticalWrite");
-    expect(body).toContain("101"); // specificity of the edge#<id> row
     expect(body).toContain("direction: down"); // layout-direction hint example
   });
 
