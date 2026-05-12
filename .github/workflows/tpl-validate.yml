@@ -1,24 +1,22 @@
 name: TPL validate
 
 # Validates docs/test-perspectives frontmatter and the README index on
-# PRs that touch TPL paths. Mirrors the structural pattern of
-# adr-validate.yml but is *not* a required check yet — start as
-# informative-only, promote to required (with a `tpl-validate-skip.yml`
-# companion) once the validator has proven stable through real PRs.
+# PRs that touch TPL paths. The validator itself lives in the external
+# @kompiro/tpl-tools package (see karasu#1357); this workflow just runs
+# `tpl validate` against the controlled vocabulary in adr.config.json.
+# Still informative-only — not a required check yet.
 
 on:
   pull_request:
     branches: [main]
     paths:
       - "docs/test-perspectives/**"
-      - "scripts/tpl/**"
       - "adr.config.json"
       - ".github/workflows/tpl-validate.yml"
   push:
     branches: [main]
     paths:
       - "docs/test-perspectives/**"
-      - "scripts/tpl/**"
       - "adr.config.json"
       - ".github/workflows/tpl-validate.yml"
 
@@ -50,6 +48,3 @@ jobs:
 
       - name: Validate TPL frontmatter and README index
         run: pnpm run tpl:validate
-
-      - name: Run validator tests
-        run: pnpm run test:scripts
