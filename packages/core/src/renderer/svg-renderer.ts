@@ -12,7 +12,7 @@ import {
   ICON_DESC_CHAR_WIDTH,
   ICON_DESC_MAX_WIDTH,
 } from "./rendering-constants.js";
-import { nodeStyleKey } from "../resolver/style-resolver.js";
+import { edgeStyleKey, nodeStyleKey } from "../resolver/style-resolver.js";
 import type { NodeDiffMeta } from "../diff/view-diff.js";
 import { DEFAULT_EMPTY_STATE_LABELS, type EmptyStateLabels } from "./empty-state-labels.js";
 import type { LegendBlock, LegendViewScope } from "../types/ast.js";
@@ -219,7 +219,13 @@ export function renderFromLayout(
   const normalEdgeParts: string[] = [];
   for (const edgeLayout of layoutResult.edges) {
     const edgeKey = `${edgeLayout.from}->${edgeLayout.to}`;
-    const edgeStyle = styles.edges.get(edgeKey) ?? styles.defaultEdgeStyle;
+    // Prefer the kind-qualified style entry so parallel sync/async edges between
+    // the same pair keep their own stroke style; fall back to the bare key for
+    // synthetic layout edges (delivers, owns, ghosts, aggregated domain edges).
+    const edgeStyle =
+      styles.edges.get(edgeStyleKey(edgeLayout.from, edgeLayout.to, edgeLayout.kind)) ??
+      styles.edges.get(edgeKey) ??
+      styles.defaultEdgeStyle;
     const markerId = colorToMarkerId.get(edgeStyle.color) ?? "arrow-default";
     const diffState = options?.edgeDiffState?.get(edgeKey);
     const rendered = renderEdge(edgeLayout, edgeStyle, markerId, diffState);

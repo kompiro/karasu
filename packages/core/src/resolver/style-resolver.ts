@@ -1,4 +1,11 @@
-import type { KrsNode, KrsEdge, DeployNode, OrganizationBlock, TeamNode } from "../types/ast.js";
+import type {
+  KrsNode,
+  KrsEdge,
+  EdgeKind,
+  DeployNode,
+  OrganizationBlock,
+  TeamNode,
+} from "../types/ast.js";
 import { hasShape } from "../shapes/shape-registry.js";
 import { CLIENT_SUBTYPE_TAGS, type ClientSubtypeTag } from "../builtins/icon-theme.js";
 import type {
@@ -161,8 +168,11 @@ export function resolveStyles(
   for (const system of systems) {
     processNodes([system], []);
     for (const edge of collectEdges(system)) {
-      const key = `${edge.from}->${edge.to}`;
-      edgeStyles.set(key, resolveEdgeStyle(edge, allRules));
+      const style = resolveEdgeStyle(edge, allRules);
+      // Kind-qualified key (preferred by the renderer) so parallel sync/async
+      // edges keep distinct styles; bare key as a fallback for synthetic edges.
+      edgeStyles.set(edgeStyleKey(edge.from, edge.to, edge.kind), style);
+      edgeStyles.set(`${edge.from}->${edge.to}`, style);
     }
   }
 
@@ -172,9 +182,13 @@ export function resolveStyles(
 
   if (extraEdges) {
     for (const edge of extraEdges) {
-      const key = `${edge.from}->${edge.to}`;
-      if (!edgeStyles.has(key)) {
-        edgeStyles.set(key, resolveEdgeStyle(edge, allRules));
+      const qualifiedKey = edgeStyleKey(edge.from, edge.to, edge.kind);
+      if (!edgeStyles.has(qualifiedKey)) {
+        const style = resolveEdgeStyle(edge, allRules);
+        edgeStyles.set(qualifiedKey, style);
+        if (!edgeStyles.has(`${edge.from}->${edge.to}`)) {
+          edgeStyles.set(`${edge.from}->${edge.to}`, style);
+        }
       }
     }
   }
@@ -533,4 +547,23 @@ function stripQuotes(s: string): string {
 export function nodeStyleKey(id: string, annotations: string[] | undefined): string {
   if (!annotations || annotations.length === 0) return id;
   return `${id}@${[...annotations].sort().join(",")}`;
+}
+
+/**
+ * Build the style-map key for an edge.
+ *
+ * Parallel edges between the same `(from, to)` pair (e.g. a sync `A -> B` and an
+ * async `A --> B`) must each keep their own resolved style — `kind` drives the
+ * stroke style, so keying the map by `from->to` alone makes the last edge clobber
+ * the others. Appending the kind disambiguates them. Synthetic layout-only edges
+ * (delivers, owns, ghosts, aggregated domain edges) pass `kind === undefined` and
+ * fall back to the bare `from->to` key, which the resolver also registers.
+ *
+ * Examples:
+ *   edgeStyleKey("A", "B", undefined) → "A->B"
+ *   edgeStyleKey("A", "B", "sync")    → "A->B#sync"
+ *   edgeStyleKey("A", "B", "async")   → "A->B#async"
+ */
+export function edgeStyleKey(from: string, to: string, kind: EdgeKind | undefined): string {
+  return kind === undefined ? `${from}->${to}` : `${from}->${to}#${kind}`;
 }
