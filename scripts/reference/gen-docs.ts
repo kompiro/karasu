@@ -1,0 +1,145 @@
+// Generate the machine-derived tables in `docs/spec/*.md` (and the `.ja.md`
+// counterparts) from `packages/core/src/builtins/reference-data.ts`.
+//
+// Each generated table lives between a pair of HTML-comment markers:
+//
+//   <!-- gen:reference:<id> — DO NOT EDIT ... -->
+//   | ... a markdown table ... |
+//   <!-- /gen:reference:<id> -->
+//
+// Everything outside the markers — the surrounding prose — stays
+// hand-written. This is the same arrangement as the auto-generated
+// `docs/adr/effective.md`, scoped down to individual table regions so the
+// docs stay readable. See docs/design/reference-from-spec.md (Issue #1328).
+//
+// Run `pnpm gen:reference` to (re)write the tables; `pnpm gen:reference
+// --check` exits non-zero if anything is stale (used by lefthook + CI).
+
+import { readFileSync, writeFileSync } from "node:fs";
+import { resolve } from "node:path";
+import { pathToFileURL } from "node:url";
+import { REFERENCE_DATA } from "../../packages/core/src/builtins/reference-data.ts";
+
+export type Locale = "en" | "ja";
+
+export interface TableSpec {
+  /** Identifier used in the `<!-- gen:reference:<id> -->` markers. */
+  id: string;
+  /** Source file per locale, relative to the repo root. */
+  file: Record<Locale, string>;
+  /** Column headers per locale. */
+  headers: Record<Locale, string[]>;
+  /** The table body for a locale: one array of cell strings per row. */
+  rows: (locale: Locale) => string[][];
+}
+
+const code = (s: string): string => `\`${s}\``;
+
+export const TABLES: TableSpec[] = [
+  {
+    id: "annotations",
+    file: {
+      en: "docs/spec/tags-annotations.md",
+      ja: "docs/spec/tags-annotations.ja.md",
+    },
+    headers: {
+      en: ["Annotation", "Meaning", "Default rendering"],
+      ja: ["アノテーション", "意味", "デフォルト描画"],
+    },
+    rows: (locale) =>
+      REFERENCE_DATA.annotations.map((a) => [
+        code(`@${a.name}`),
+        a.description[locale],
+        a.defaultRendering[locale],
+      ]),
+  },
+  {
+    id: "shapes",
+    file: { en: "docs/spec/style.md", ja: "docs/spec/style.ja.md" },
+    headers: {
+      en: ["Keyword", "Shape", "Typical use"],
+      ja: ["キーワード", "形状", "主な用途"],
+    },
+    rows: (locale) =>
+      REFERENCE_DATA.shapes.map((s) => [code(s.name), s.description[locale], s.typicalUse[locale]]),
+  },
+];
+
+const MARKER_NOTE =
+  "DO NOT EDIT. Generated from packages/core/src/builtins/reference-data.ts; run `pnpm gen:reference`.";
+
+function renderTable(headers: string[], rows: string[][]): string {
+  const headerLine = `| ${headers.join(" | ")} |`;
+  const sepLine = `|${headers.map((h) => "-".repeat(h.length + 2)).join("|")}|`;
+  const bodyLines = rows.map((r) => `| ${r.join(" | ")} |`);
+  return [headerLine, sepLine, ...bodyLines].join("\n");
+}
+
+export function blockFor(spec: TableSpec, locale: Locale): string {
+  const open = `<!-- gen:reference:${spec.id} — ${MARKER_NOTE} -->`;
+  const close = `<!-- /gen:reference:${spec.id} -->`;
+  return `${open}\n${renderTable(spec.headers[locale], spec.rows(locale))}\n${close}`;
+}
+
+function markerRegex(id: string): RegExp {
+  return new RegExp(
+    `<!-- gen:reference:${id}\\b[\\s\\S]*?-->[\\s\\S]*?<!-- /gen:reference:${id} -->`,
+  );
+}
+
+/** Replace the marked region for `spec`/`locale` inside `content`. Throws if the markers are missing. */
+export function applyBlock(content: string, spec: TableSpec, locale: Locale): string {
+  const re = markerRegex(spec.id);
+  if (!re.test(content)) {
+    throw new Error(`gen:reference:${spec.id} markers not found in ${spec.file[locale]}`);
+  }
+  return content.replace(re, blockFor(spec, locale));
+}
+
+export interface RegenerateResult {
+  /** Files whose generated region differs from what's on disk. */
+  stale: string[];
+  /** Files actually written (empty when `check` is true). */
+  updated: string[];
+}
+
+export function regenerate(opts: { root: string; check: boolean }): RegenerateResult {
+  const stale: string[] = [];
+  const updated: string[] = [];
+  for (const spec of TABLES) {
+    for (const locale of ["en", "ja"] as const) {
+      const path = resolve(opts.root, spec.file[locale]);
+      const before = readFileSync(path, "utf8");
+      const after = applyBlock(before, spec, locale);
+      if (before === after) continue;
+      stale.push(spec.file[locale]);
+      if (!opts.check) {
+        writeFileSync(path, after);
+        updated.push(spec.file[locale]);
+      }
+    }
+  }
+  return { stale, updated };
+}
+
+function main(): void {
+  const check = process.argv.includes("--check");
+  const { stale, updated } = regenerate({ root: process.cwd(), check });
+  if (check) {
+    if (stale.length > 0) {
+      process.stderr.write(`Stale generated tables:\n${stale.map((f) => `  - ${f}`).join("\n")}\n`);
+      process.stderr.write("Run `pnpm gen:reference` and commit the result.\n");
+      process.exitCode = 1;
+    }
+    return;
+  }
+  if (updated.length > 0) {
+    process.stdout.write(`Updated:\n${updated.map((f) => `  - ${f}`).join("\n")}\n`);
+  } else {
+    process.stdout.write("Reference docs already up to date.\n");
+  }
+}
+
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+  main();
+}

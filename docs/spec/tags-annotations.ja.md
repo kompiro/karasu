@@ -39,12 +39,14 @@ user AIAgent "注文自動化エージェント" [ai]
 
 アノテーションは**ライフサイクル・状態**を表すメタ情報。タグとは別の概念。
 
+<!-- gen:reference:annotations — DO NOT EDIT. Generated from packages/core/src/builtins/reference-data.ts; run `pnpm gen:reference`. -->
 | アノテーション | 意味 | デフォルト描画 |
-|--------------|------|--------------|
+|---------|----|---------|
 | `@deprecated` | 廃止予定 | ⚠バッジ、ノードを半透明に |
 | `@new` | 新規追加 | ✦バッジ |
 | `@experimental` | 実験的 | ⚗バッジ |
 | `@migration_target` | 移行先 | →バッジ |
+<!-- /gen:reference:annotations -->
 
 ### 記述例
 

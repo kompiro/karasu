@@ -112,14 +112,16 @@ badge-label:      "非推奨";
 
 ## shape プロパティ
 
+<!-- gen:reference:shapes — DO NOT EDIT. Generated from packages/core/src/builtins/reference-data.ts; run `pnpm gen:reference`. -->
 | キーワード | 形状 | 主な用途 |
-|-----------|------|---------|
+|-------|----|------|
 | `box` | 角丸長方形 | service, domain（デフォルト） |
 | `user` | 人型（頭+体） | user |
 | `cylinder` | 円柱 | db系 |
 | `queue` | 横向き円柱 | queue系 |
 | `hexagon` | 六角形 | マイクロサービス |
 | `cloud` | 雲形 | 外部クラウド |
+<!-- /gen:reference:shapes -->
 
 カスタム形状（SVGファイル参照）：
 

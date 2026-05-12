@@ -39,12 +39,14 @@ user AIAgent "Order Automation Agent" [ai]
 
 Annotations are metadata expressing **lifecycle and state**. They are a separate concept from tags.
 
+<!-- gen:reference:annotations — DO NOT EDIT. Generated from packages/core/src/builtins/reference-data.ts; run `pnpm gen:reference`. -->
 | Annotation | Meaning | Default rendering |
 |------------|---------|-------------------|
-| `@deprecated` | Scheduled for removal | ⚠ badge, node rendered semi-transparent |
+| `@deprecated` | Slated for removal | ⚠ badge, node rendered semi-transparent |
 | `@new` | Newly added | ✦ badge |
 | `@experimental` | Experimental | ⚗ badge |
 | `@migration_target` | Migration target | → badge |
+<!-- /gen:reference:annotations -->
 
 ### Example
 

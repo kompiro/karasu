@@ -54,6 +54,9 @@ jobs:
       - name: Check circular dependencies
         run: pnpm run check:cycles
 
+      - name: Reference docs in sync
+        run: pnpm exec tsx scripts/reference/gen-docs.ts --check
+
       - name: Typecheck (core)
         run: pnpm --filter @karasu-tools/core run typecheck
 
