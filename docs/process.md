@@ -222,3 +222,36 @@ Dependabot security update は alert 検知時に即時起票され、`schedule`
 理由: pnpm workspace では依存宣言（`packages/*/package.json`）と解決済みバージョン（root の `pnpm-lock.yaml`）が別 manifest として alert 化されるため、Dependabot は alert ごとに PR を作る。`packages/*` 単独 PR は workspace ルートの lockfile を更新できず、`pnpm install --frozen-lockfile` で必ず CI が落ちる構造的制約があり、`@dependabot recreate` でも直らない。`dependabot.yml` でも抑制不可（security update は `updates:` を参照しない）。
 
 詳細・経緯は `ADR-20260429-08`（`docs/adr/20260429-08-dependabot-security-2026-04-29.md`）を参照。同様の事象が再発した場合は ADR を増やさず、本ルールに従って処理する。
+
+## リリース運用
+
+npm への公開は **changesets** で管理する。設計の経緯は `docs/design/release-automation.md`（実装後 ADR 化予定）を参照。
+
+### 対象パッケージ
+
+現状 npm に公開しているのは `karasu`（CLI、`packages/cli`）のみ。CLI は esbuild で `@karasu-tools/core` を内包した単一 ESM バンドルとしてビルドする（`packages/cli` の `build` スクリプト）。`@karasu-tools/app` / `@karasu-tools/core` / `@karasu-tools/lsp` / `@karasu-tools/e2e` / `@karasu-tools/vscode-e2e` と `karasu-vscode` は `.changeset/config.json` の `ignore` に入っており公開対象外（VS Code 拡張の配布は Marketplace 経由で別管理 — Issue #1316）。
+
+> `@karasu-tools/core` を「v0.x の TS API」として独立公開する話（#1302）は別タスク。`exports` エントリの整理・API surface のレビュー・互換ポリシー策定が必要なため、本フローには含めていない。
+
+### 変更を加えるとき
+
+公開パッケージ（= `karasu`）に利用者から見える変更を入れる PR では、`pnpm changeset` を実行して `.changeset/<name>.md` を追加し、PR に含める。
+
+- bump レベルは semver に従う（破壊的変更 = major、機能追加 = minor、修正 = patch）。CLI はまだ 0.x なので、当面は破壊的変更も minor で扱ってよい。
+- 内部リファクタ・テスト・ドキュメントのみ・他パッケージのみの変更では changeset 不要。
+- `CHANGELOG.md` の文面は利用者向けに書く（コミット subject の流用ではなく）。
+
+`pnpm changeset status` で「未リリースの変更があるか」を確認できる。
+
+### リリースの流れ
+
+1. `main` への push をトリガに `release.yml`（GitHub Actions）が走る。
+2. 未消化の changeset があると、changesets が **"Version Packages" PR** を自動で作成・更新する（バージョン bump + `CHANGELOG.md` 更新 + lockfile 更新）。
+3. その PR をレビューしてマージすると、再び `release.yml` が走り `changeset publish` が bump 済みパッケージを npm に公開する。
+4. publish 時に npm provenance（`--provenance`）を付与する。
+
+### 未対応のフォローアップ
+
+- **changeset-bot**（GitHub App）— PR に changeset の有無をコメントしてくれる。リポジトリを public 化（#1302 Phase 1）したあとに有効化する。
+- **npm Trusted Publishing（OIDC）** — トークンレス publish へ移行する。npm 側はパッケージ作成後に設定する必要があるため、初回はリポジトリ Secrets の `NPM_TOKEN` で publish し、その後 OIDC に切り替える。`release.yml` には `id-token: write` と provenance を最初から付けてある。
+- **npm 上の名前確保** — `karasu`（unscoped）と `@karasu-tools` org を npm で確保する（launch 前チェック項目）。確保前は `release.yml` の publish が失敗するため、実 publish はそれ以降。

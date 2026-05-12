@@ -13,7 +13,8 @@ import { lintStyle } from "./lint-style.js";
 import { diff } from "./diff.js";
 import { matrix } from "./matrix.js";
 
-program.name("karasu").description("karasu — architecture diagram tool").version("0.0.0");
+// Keep in sync with the "version" field in packages/cli/package.json (bumped by changesets).
+program.name("karasu").description("karasu — architecture diagram tool").version("0.1.0");
 
 program
   .command("serve [dir]")

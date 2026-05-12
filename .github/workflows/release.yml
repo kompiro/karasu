@@ -1,0 +1,68 @@
+name: Release
+
+# Changesets-driven release pipeline.
+#
+# On every push to `main`:
+#   - if there are pending changesets, open/refresh a "Version Packages" PR
+#     (bumps versions + updates CHANGELOGs);
+#   - when that PR is merged, publish the bumped public packages to npm.
+#
+# Currently the only public package is `karasu` (the CLI). `@karasu-tools/*`
+# and `karasu-vscode` are listed in `.changeset/config.json` `ignore` — the
+# VS Code extension is released separately (see Issue #1316).
+#
+# Follow-ups intentionally out of scope here (tracked on #1315 / docs/process.md):
+#   - changeset-bot GitHub App (enable once the repo is public);
+#   - npm Trusted Publishing via OIDC (migrate after the first token-based publish).
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+  pull-requests: write
+  id-token: write
+
+jobs:
+  release:
+    name: Release
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 0
+
+      - uses: pnpm/action-setup@8912a9102ac27614460f54aedde9e1e7f9aec20d # v6.0.5
+
+      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
+        with:
+          node-version: "22"
+          cache: "pnpm"
+
+      # The repo `.npmrc` already points the `@kompiro` scope at GitHub Packages
+      # (authenticated via NODE_AUTH_TOKEN). Add the npmjs.org auth line so
+      # `changeset publish` can push the public `karasu` package; the token is
+      # interpolated from $NPM_AUTH_TOKEN at runtime.
+      - name: Configure npm registry auth
+        run: echo '//registry.npmjs.org/:_authToken=${NPM_AUTH_TOKEN}' >> "$HOME/.npmrc"
+
+      - run: pnpm install --frozen-lockfile
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Create Release PR or publish to npm
+        uses: changesets/action@63a615b9cd06ba9a3e6d13796c7fbcb080a60a0b # v1.8.0
+        with:
+          version: pnpm run version-packages
+          publish: pnpm run release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NPM_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          NPM_CONFIG_PROVENANCE: "true"
