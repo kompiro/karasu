@@ -255,6 +255,29 @@ system Test {
     expect(svg).toContain("非同期");
   });
 
+  it("keeps the sync edge solid when a parallel async edge exists between the same pair", () => {
+    // Regression: the edge style map was keyed by `from->to` only, so the
+    // async edge clobbered the sync edge's style and both rendered dashed.
+    const svg = renderFromSource(`
+system Test {
+  service A
+  service B
+  A -> B "sync call"
+  A --> B "async call"
+}
+    `);
+    const groupFor = (kind: string) => {
+      const m = svg.match(new RegExp(`<g[^>]*data-edge-kind="${kind}"[\\s\\S]*?</g>`));
+      return m?.[0] ?? "";
+    };
+    const syncGroup = groupFor("sync");
+    const asyncGroup = groupFor("async");
+    expect(syncGroup).not.toBe("");
+    expect(asyncGroup).not.toBe("");
+    expect(syncGroup).not.toContain("stroke-dasharray");
+    expect(asyncGroup).toContain('stroke-dasharray="8 4"');
+  });
+
   it("renders dotted edges with a distinct stroke-dasharray from dashed", () => {
     const dashedSvg = renderFromSource(
       `
