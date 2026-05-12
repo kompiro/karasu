@@ -4,7 +4,7 @@ import { getReference } from "./reference.js";
 describe("getReference", () => {
   const ref = getReference();
 
-  it("includes all logical node kinds", () => {
+  it("includes all node kinds (logical + infra blocks + infra leaves)", () => {
     const kinds = ref.nodeKinds.map((k) => k.kind);
     expect(kinds).toEqual([
       "system",
@@ -17,6 +17,9 @@ describe("getReference", () => {
       "database",
       "queue",
       "storage",
+      "table",
+      "queue-item",
+      "bucket",
     ]);
   });
 
