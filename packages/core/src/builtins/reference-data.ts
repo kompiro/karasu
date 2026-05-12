@@ -44,6 +44,13 @@ interface TagData {
   name: string;
   appliesTo: string[];
   description: LocalizedString;
+  /** "Effect on default rendering" column of the spec-doc Tags table. */
+  defaultEffect: LocalizedString;
+  /**
+   * "Form factor" column of the `client` form-factor table — set only on the
+   * seven recognized `client` form-factor tags.
+   */
+  formFactor?: LocalizedString;
 }
 
 interface AnnotationData {
@@ -178,11 +185,16 @@ export const REFERENCE_DATA = {
       name: "external",
       appliesTo: ["service", "client", "database", "queue", "storage", "resource"],
       description: { en: "Outside the system boundary", ja: "システム境界の外側" },
+      defaultEffect: {
+        en: "Dashed border, gray-toned color",
+        ja: "枠線を破線、色をグレー系に",
+      },
     },
     {
       name: "async",
       appliesTo: ["edge"],
       description: { en: "Asynchronous communication (for edges)", ja: "非同期通信（エッジ用）" },
+      defaultEffect: { en: "Dashed arrow", ja: "破線矢印" },
     },
     {
       name: "sync",
@@ -191,31 +203,58 @@ export const REFERENCE_DATA = {
         en: "Synchronous communication (for edges, default)",
         ja: "同期通信（エッジ用、デフォルト）",
       },
+      defaultEffect: { en: "Solid arrow (default)", ja: "実線矢印（デフォルト）" },
     },
     {
       name: "human",
       appliesTo: ["user"],
       description: { en: "A human user", ja: "人間の利用者" },
+      defaultEffect: {
+        en: "Used only on user nodes. No effect on default style",
+        ja: "user ノードにのみ使用。デフォルトスタイルへの影響なし",
+      },
     },
     {
       name: "ai",
       appliesTo: ["user"],
       description: { en: "An AI agent", ja: "AIエージェント" },
+      defaultEffect: {
+        en: "Used only on user nodes. No effect on default style",
+        ja: "user ノードにのみ使用。デフォルトスタイルへの影響なし",
+      },
     },
     {
       name: "mobile",
       appliesTo: ["client"],
       description: { en: "Mobile native app (client)", ja: "モバイルネイティブアプリ（client）" },
+      defaultEffect: {
+        en: "Recognized form-factor tag for `client` nodes",
+        ja: "`client` ノード用の認識済み form-factor タグ",
+      },
+      formFactor: { en: "iOS / Android native app", ja: "iOS / Android ネイティブアプリ" },
     },
     {
       name: "web",
       appliesTo: ["client"],
       description: { en: "Browser SPA (client)", ja: "ブラウザ SPA（client）" },
+      defaultEffect: {
+        en: "Recognized form-factor tag for `client` nodes",
+        ja: "`client` ノード用の認識済み form-factor タグ",
+      },
+      formFactor: { en: "SPA running on the vendor's own origin", ja: "自社オリジンで動く SPA" },
     },
     {
       name: "desktop",
       appliesTo: ["client"],
       description: { en: "Desktop app (client)", ja: "デスクトップアプリ（client）" },
+      defaultEffect: {
+        en: "Recognized form-factor tag for `client` nodes",
+        ja: "`client` ノード用の認識済み form-factor タグ",
+      },
+      formFactor: {
+        en: "Desktop app (Electron, native)",
+        ja: "デスクトップアプリ（Electron、ネイティブ）",
+      },
     },
     {
       name: "cli",
@@ -223,6 +262,14 @@ export const REFERENCE_DATA = {
       description: {
         en: "Command-line tool / SDK (client)",
         ja: "コマンドラインツール / SDK（client）",
+      },
+      defaultEffect: {
+        en: "Recognized form-factor tag for `client` nodes",
+        ja: "`client` ノード用の認識済み form-factor タグ",
+      },
+      formFactor: {
+        en: "Command-line tool / SDK shipped to users",
+        ja: "エンドユーザーに配布するコマンドラインツール / SDK",
       },
     },
     {
@@ -232,6 +279,11 @@ export const REFERENCE_DATA = {
         en: "IoT / dedicated terminal / KIOSK (client)",
         ja: "IoT / 専用端末 / KIOSK（client）",
       },
+      defaultEffect: {
+        en: "Recognized form-factor tag for `client` nodes",
+        ja: "`client` ノード用の認識済み form-factor タグ",
+      },
+      formFactor: { en: "IoT / dedicated terminal / KIOSK", ja: "IoT / 専用端末 / KIOSK" },
     },
     {
       name: "extension",
@@ -239,6 +291,14 @@ export const REFERENCE_DATA = {
       description: {
         en: "Host-app plugin — Chrome / VS Code / Figma, etc. (client)",
         ja: "ホストアプリのプラグイン — Chrome / VS Code / Figma 等（client）",
+      },
+      defaultEffect: {
+        en: "Recognized form-factor tag for `client` nodes",
+        ja: "`client` ノード用の認識済み form-factor タグ",
+      },
+      formFactor: {
+        en: "Plugin / extension hosted by another application (browser extension, IDE extension, design-tool plugin)",
+        ja: "他アプリケーションがホストするプラグイン・拡張（ブラウザ拡張、IDE 拡張、デザインツールのプラグイン）",
       },
     },
     {
@@ -248,6 +308,14 @@ export const REFERENCE_DATA = {
         en: "Widget / SDK embedded in third-party sites (client)",
         ja: "第三者サイトに埋め込まれるウィジェット / SDK（client）",
       },
+      defaultEffect: {
+        en: "Recognized form-factor tag for `client` nodes",
+        ja: "`client` ノード用の認識済み form-factor タグ",
+      },
+      formFactor: {
+        en: "Widget / SDK embedded into third-party web content (Stripe Checkout, Intercom, etc.)",
+        ja: "サードパーティの Web コンテンツに埋め込む widget / SDK（Stripe Checkout、Intercom 等）",
+      },
     },
     {
       name: "table",
@@ -256,6 +324,7 @@ export const REFERENCE_DATA = {
         en: "Table-like resource (shape: cylinder)",
         ja: "テーブル系リソース（シェイプ: cylinder）",
       },
+      defaultEffect: { en: "Rendered as a cylinder shape", ja: "cylinder シェイプで描画" },
     },
     {
       name: "queue",
@@ -264,6 +333,7 @@ export const REFERENCE_DATA = {
         en: "Queue-like resource (shape: queue)",
         ja: "キュー系リソース（シェイプ: queue）",
       },
+      defaultEffect: { en: "Rendered as a queue shape", ja: "queue シェイプで描画" },
     },
     {
       name: "api",
@@ -272,6 +342,7 @@ export const REFERENCE_DATA = {
         en: "API-like resource (shape: hexagon)",
         ja: "API系リソース（シェイプ: hexagon）",
       },
+      defaultEffect: { en: "Rendered as a hexagon shape", ja: "hexagon シェイプで描画" },
     },
     {
       name: "storage",
@@ -280,6 +351,7 @@ export const REFERENCE_DATA = {
         en: "Storage-like resource (shape: cloud)",
         ja: "ストレージ系リソース（シェイプ: cloud）",
       },
+      defaultEffect: { en: "Rendered as a cloud shape", ja: "cloud シェイプで描画" },
     },
   ],
   annotations: [
