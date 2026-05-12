@@ -35,6 +35,36 @@ export interface TableSpec {
 
 const code = (s: string): string => `\`${s}\``;
 
+const escapeRegExp = (s: string): string => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+/**
+ * Approximate terminal/source column width: characters in the common
+ * East-Asian wide ranges (Hiragana, Katakana, CJK ideographs, fullwidth
+ * forms) count as 2. Used only to pad the table separator row so the
+ * generated markdown lines up roughly with the header — markdown itself
+ * is indifferent to it.
+ */
+function displayWidth(s: string): number {
+  let w = 0;
+  for (const ch of s) {
+    const cp = ch.codePointAt(0) ?? 0;
+    const wide =
+      (cp >= 0x1100 && cp <= 0x115f) ||
+      (cp >= 0x2e80 && cp <= 0x303e) ||
+      (cp >= 0x3041 && cp <= 0x33ff) ||
+      (cp >= 0x3400 && cp <= 0x4dbf) ||
+      (cp >= 0x4e00 && cp <= 0x9fff) ||
+      (cp >= 0xa000 && cp <= 0xa4cf) ||
+      (cp >= 0xac00 && cp <= 0xd7a3) ||
+      (cp >= 0xf900 && cp <= 0xfaff) ||
+      (cp >= 0xfe30 && cp <= 0xfe4f) ||
+      (cp >= 0xff00 && cp <= 0xff60) ||
+      (cp >= 0xffe0 && cp <= 0xffe6);
+    w += wide ? 2 : 1;
+  }
+  return w;
+}
+
 export const TABLES: TableSpec[] = [
   {
     id: "annotations",
@@ -70,7 +100,7 @@ const MARKER_NOTE =
 
 function renderTable(headers: string[], rows: string[][]): string {
   const headerLine = `| ${headers.join(" | ")} |`;
-  const sepLine = `|${headers.map((h) => "-".repeat(h.length + 2)).join("|")}|`;
+  const sepLine = `|${headers.map((h) => "-".repeat(displayWidth(h) + 2)).join("|")}|`;
   const bodyLines = rows.map((r) => `| ${r.join(" | ")} |`);
   return [headerLine, sepLine, ...bodyLines].join("\n");
 }
@@ -82,8 +112,9 @@ export function blockFor(spec: TableSpec, locale: Locale): string {
 }
 
 function markerRegex(id: string): RegExp {
+  const e = escapeRegExp(id);
   return new RegExp(
-    `<!-- gen:reference:${id}\\b[\\s\\S]*?-->[\\s\\S]*?<!-- /gen:reference:${id} -->`,
+    `<!-- gen:reference:${e}\\b[\\s\\S]*?-->[\\s\\S]*?<!-- /gen:reference:${e} -->`,
   );
 }
 

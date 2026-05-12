@@ -114,7 +114,7 @@ badge-label:      "非推奨";
 
 <!-- gen:reference:shapes — DO NOT EDIT. Generated from packages/core/src/builtins/reference-data.ts; run `pnpm gen:reference`. -->
 | キーワード | 形状 | 主な用途 |
-|-------|----|------|
+|------------|------|----------|
 | `box` | 角丸長方形 | service, domain（デフォルト） |
 | `user` | 人型（頭+体） | user |
 | `cylinder` | 円柱 | db系 |

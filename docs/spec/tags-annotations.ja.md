@@ -41,7 +41,7 @@ user AIAgent "注文自動化エージェント" [ai]
 
 <!-- gen:reference:annotations — DO NOT EDIT. Generated from packages/core/src/builtins/reference-data.ts; run `pnpm gen:reference`. -->
 | アノテーション | 意味 | デフォルト描画 |
-|---------|----|---------|
+|----------------|------|----------------|
 | `@deprecated` | 廃止予定 | ⚠バッジ、ノードを半透明に |
 | `@new` | 新規追加 | ✦バッジ |
 | `@experimental` | 実験的 | ⚗バッジ |
