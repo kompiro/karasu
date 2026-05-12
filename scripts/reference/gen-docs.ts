@@ -10,7 +10,7 @@
 // Everything outside the markers — the surrounding prose — stays
 // hand-written. This is the same arrangement as the auto-generated
 // `docs/adr/effective.md`, scoped down to individual table regions so the
-// docs stay readable. See docs/design/reference-from-spec.md (Issue #1328).
+// docs stay readable. See docs/adr/20260512-03-reference-data-single-source.md (Issue #1328).
 //
 // Run `pnpm gen:reference` to (re)write the tables; `pnpm gen:reference
 // --check` exits non-zero if anything is stale (used by lefthook + CI).

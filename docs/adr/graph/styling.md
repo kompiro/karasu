@@ -14,9 +14,11 @@ flowchart TD
     ADR_20260429_04["ADR-20260429-04<br/>`.krs.style` 側の `column` で layer 内 x 配置を上書きする e..."]
   end
   ADR_20260411_02["ADR-20260411-02<br/>[resolver] 移行期における重複ドメイン ID の共存を `@deprecated` + `@migrati..."]
+  ADR_20260512_03["ADR-20260512-03<br/>[build] in-app Reference データを `reference-data.ts` に集約し、..."]
   ADR_20260328_01 --> ADR_20260312_04
   ADR_20260328_01 --> ADR_20260322_01
   ADR_20260415_01 --> ADR_20260411_02
+  ADR_20260512_03 --> ADR_20260322_01
 
   classDef accepted fill:#d4edda,stroke:#28a745,color:#155724
   classDef proposed fill:#fff3cd,stroke:#ffc107,color:#856404
@@ -31,4 +33,5 @@ flowchart TD
   class ADR_20260429_03 accepted
   class ADR_20260429_04 accepted
   class ADR_20260411_02 ghost
+  class ADR_20260512_03 ghost
 ```

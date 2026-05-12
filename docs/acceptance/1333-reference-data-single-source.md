@@ -10,7 +10,7 @@ type: product
   - `packages/core/src/builtins/reference-data.ts`（新規 — single source of truth）
   - `packages/core/src/builtins/reference.ts`（`getReference()` を adapter 化）
   - `packages/core/src/builtins/reference-data.test.ts`（新規）
-- **設計**: [docs/design/reference-from-spec.md](../design/reference-from-spec.md)
+- **ADR**: [ADR-20260512-03](../adr/20260512-03-reference-data-single-source.md)
 - **TPL**: [TPL-20260511-02](../test-perspectives/TPL-20260511-02-spec-doc-reference-data-sync.md)（i18n 片落ちの失敗モードを構造的に潰す）
 
 ## 受け入れ条件

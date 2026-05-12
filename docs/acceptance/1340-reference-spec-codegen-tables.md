@@ -11,7 +11,7 @@ type: product
   - `scripts/reference/gen-docs.ts`（`tags` / `client-form-factor-tags` / `deploy-unit-kinds` テーブル追加）
   - `docs/spec/tags-annotations.md` / `.ja.md`（`## Tags` テーブルを `<!-- gen:reference:tags -->` 区間に）
   - `docs/spec/syntax.md` / `.ja.md`（`#### client form-factor tags` テーブルを `<!-- gen:reference:client-form-factor-tags -->` 区間に、deploy-unit テーブルを `<!-- gen:reference:deploy-unit-kinds -->` 区間に）
-- **設計**: [docs/design/reference-from-spec.md](../design/reference-from-spec.md)
+- **ADR**: [ADR-20260512-03](../adr/20260512-03-reference-data-single-source.md)
 - **TPL**: [TPL-20260511-02](../test-perspectives/TPL-20260511-02-spec-doc-reference-data-sync.md)
 
 ## 受け入れ条件
