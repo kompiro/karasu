@@ -58,6 +58,15 @@ describe("ReferencePanel", () => {
     expect(body).toContain("service");
   });
 
+  it("Syntax tab documents resource operations (CRUD) and the optional edge id", () => {
+    const { container } = render(<ReferencePanel {...defaultProps} />);
+    const body = container.querySelector(".reference-tab-body")?.textContent ?? "";
+    expect(body).toContain("Resource Operations");
+    expect(body).toContain("operations create, read");
+    expect(body).toContain("enqueue:create"); // verb-decoration
+    expect(body).toContain("#criticalWrite"); // optional edge id in the Edge Syntax block
+  });
+
   it("Syntax tab shows deploy unit kinds when activeView=deploy", () => {
     const { container } = render(<ReferencePanel {...defaultProps} activeView="deploy" />);
     const body = container.querySelector(".reference-tab-body")?.textContent ?? "";
@@ -113,6 +122,18 @@ describe("ReferencePanel", () => {
     for (const prop of ["direction", "label-position", "label-offset", "column"]) {
       expect(body).toContain(prop);
     }
+  });
+
+  it("Styles tab includes the edge#<id> selector (specificity 101) and a direction example", () => {
+    const { container } = render(<ReferencePanel {...defaultProps} />);
+    const stylesTab = Array.from(container.querySelectorAll(".reference-panel-tab")).find(
+      (el) => el.textContent === "Styles",
+    )!;
+    fireEvent.click(stylesTab);
+    const body = container.querySelector(".reference-tab-body")?.textContent ?? "";
+    expect(body).toContain("edge#criticalWrite");
+    expect(body).toContain("101"); // specificity of the edge#<id> row
+    expect(body).toContain("direction: down"); // layout-direction hint example
   });
 
   it("Styles tab shows deploy selector examples when activeView=deploy", () => {

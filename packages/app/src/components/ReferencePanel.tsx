@@ -259,7 +259,9 @@ artifact <id> {
       <div className="reference-code-block">
         <pre>
           {`A ->  B "label"   // sync (solid arrow)
-A --> B "label"   // async (dashed arrow)`}
+A --> B "label"   // async (dashed arrow)
+A ->  B "label" #criticalWrite   // optional edge id (#<id>) — targetable via edge#<id> in .krs.style
+// omitting #<id> → canonical id = <from><arrow><to>  (e.g. A->B / A-->B)`}
         </pre>
       </div>
 
@@ -276,6 +278,21 @@ A --> B "label"   // async (dashed arrow)`}
   label "<表示名>"        // display name; id used if omitted
   description "<説明>"    // free-form description
   // kind-specific properties (team, role, link, …)
+}`}</pre>
+      </div>
+
+      <h3>Resource Operations (CRUD)</h3>
+      <div className="reference-code-block">
+        <pre>{`// Inside a usecase, a resource may declare the CRUD verbs the usecase
+// performs on it: create | read | update | delete.
+usecase PlaceOrder {
+  resource OrderDB.OrderTable {
+    operations create, read
+  }
+  // verb-decoration (1:N CRUD mapping): keep a domain verb, declare its CRUD intent
+  resource OrderEvents.OrderPlaced {
+    operations enqueue:create, dequeue:delete
+  }
 }`}</pre>
       </div>
 
@@ -320,6 +337,8 @@ service { background-color: #0369A1; }
 domain[external] { border-style: dashed; }
 user[human] { shape: user; }
 edge[async] { border-style: dashed; }
+edge[write] { direction: down; }       /* layout-direction hint: up | down | left | right | auto */
+edge#criticalWrite { color: #EF4444; } /* target one edge by id */
 #ECommerce { background-color: #1D4ED8; }`;
 
   return (
@@ -387,6 +406,13 @@ edge[async] { border-style: dashed; }
               <code>edge[async]</code>
             </td>
             <td>11</td>
+          </tr>
+          <tr>
+            <td>Edge ID</td>
+            <td>
+              <code>edge#criticalWrite</code>
+            </td>
+            <td>101</td>
           </tr>
         </tbody>
       </table>
