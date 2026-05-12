@@ -19,3 +19,6 @@ docs/review/
 # ExTester runtime artifacts (downloaded VS Code, vsix, screenshots, logs)
 packages/vscode-e2e/test-resources/
 packages/vscode-e2e/screenshots/
+
+# Generated at build time by scripts/ci/generate-third-party-notices.ts
+THIRD_PARTY_NOTICES.md

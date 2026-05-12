@@ -39,6 +39,19 @@ DesignDoc. For pure refactor / docs / chore / bug-fix PRs, mark "N/A".
 - [ ] Pulls runtime metrics / operational state into the model (per-pod state, live metrics, deploy status, ...)
 - [ ] Pulls time-axis / high-frequency state into the model (sequence diagrams, execution logs, traces, ...)
 
+## Dependency & license impact
+
+<!--
+Fires when this PR adds a production dependency or bumps one across a major
+version (including Dependabot PRs). See CONTRIBUTING.md "License compliance".
+The CI `License allowlist` check enforces the allowlist automatically; the
+NOTICE item below is a manual check CI cannot do. Mark "N/A" otherwise.
+-->
+
+- [ ] N/A — no production dependency added or bumped across a major version
+- [ ] New / major-bumped prod dep: its SPDX license is in the CONTRIBUTING.md allowlist (CI `License allowlist` passes)
+- [ ] If a new Apache-2.0 dep was added, checked upstream for a `NOTICE` file and merged it into our `NOTICE` if present
+
 ## Manual Verification Checklist
 
 <!-- List items that cannot be verified by CI -->

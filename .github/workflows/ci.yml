@@ -54,6 +54,9 @@ jobs:
       - name: Check circular dependencies
         run: pnpm run check:cycles
 
+      - name: License allowlist
+        run: pnpm run check:licenses
+
       # The reference-docs drift guard lives in its own workflow
       # (`reference-docs-check.yml`), mirroring the ADR setup, so it also runs
       # on docs-only PRs that `ci.yml`'s `paths-ignore` filters out. Issue #1342.

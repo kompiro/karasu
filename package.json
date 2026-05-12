@@ -29,6 +29,8 @@
     "version-packages": "changeset version && pnpm install --lockfile-only",
     "release": "pnpm build && changeset publish",
     "check:cycles": "madge --circular --extensions ts,tsx packages/core/src packages/app/src packages/cli/src packages/lsp/src packages/vscode/src",
+    "check:licenses": "tsx scripts/ci/check-license-allowlist.ts",
+    "gen:notices": "tsx scripts/ci/generate-third-party-notices.ts packages/cli packages/vscode",
     "adr:init": "adr init",
     "adr:validate": "adr validate",
     "adr:extract": "adr extract",
