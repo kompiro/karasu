@@ -54,8 +54,9 @@ jobs:
       - name: Check circular dependencies
         run: pnpm run check:cycles
 
-      - name: Reference docs in sync
-        run: pnpm exec tsx scripts/reference/gen-docs.ts --check
+      # The reference-docs drift guard lives in its own workflow
+      # (`reference-docs-check.yml`), mirroring the ADR setup, so it also runs
+      # on docs-only PRs that `ci.yml`'s `paths-ignore` filters out. Issue #1342.
 
       - name: Typecheck (core)
         run: pnpm --filter @karasu-tools/core run typecheck

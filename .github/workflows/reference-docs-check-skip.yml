@@ -1,0 +1,42 @@
+name: Reference docs check (skip)
+
+# Companion of `reference-docs-check.yml`. Triggered ONLY on PRs that do NOT
+# touch the reference single-source paths (the inverse of
+# `reference-docs-check.yml`'s `paths`) and emits a job named `Reference docs`
+# that just exits 0 so a Required status named `Reference docs` configured in
+# branch protection stays green without running the real drift guard on
+# unrelated PRs. Issue #1342.
+#
+# Keep the path lists below in sync with `reference-docs-check.yml`'s `paths`.
+
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, synchronize, reopened]
+    paths-ignore:
+      - "docs/spec/**"
+      - "packages/core/src/builtins/reference-data.ts"
+      - "scripts/reference/**"
+      - ".github/workflows/reference-docs-check.yml"
+
+concurrency:
+  # Distinct group from reference-docs-check.yml on purpose: when a PR mixes
+  # reference + non-reference paths, both workflows can fire (paths-ignore
+  # filters only when *every* changed path is ignored, while paths fires when
+  # *any* path matches). Sharing a concurrency group would let the stub cancel
+  # the real job. With separate groups, both report `Reference docs / success`
+  # and branch protection (which AND-s checks named `Reference docs`) is satisfied.
+  group: reference-docs-check-skip-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  reference-docs-check:
+    name: Reference docs
+    runs-on: ubuntu-latest
+    steps:
+      - name: Non-reference change — skip Reference docs
+        run: |
+          echo "PR does not touch reference single-source paths. Check is skipped."
+          echo "If your change touches docs/spec/**,"
+          echo "packages/core/src/builtins/reference-data.ts, scripts/reference/**,"
+          echo "or .github/workflows/reference-docs-check.yml, the real check runs."

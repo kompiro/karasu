@@ -1,0 +1,61 @@
+name: Reference docs check
+
+# Companion of `reference-docs-check-skip.yml`. This workflow runs the real
+# reference-docs drift guard (`gen-docs.ts --check`) on PRs that touch the
+# reference single-source paths. The skip workflow emits a no-op
+# `Reference docs` job for all other PRs so a Required status named
+# `Reference docs` stays green repository-wide.
+#
+# Why a dedicated workflow: `ci.yml` has `paths-ignore: docs/**, **/*.md`, so
+# a PR that only edits `docs/spec/*.md` (e.g. a hand edit inside a
+# `<!-- gen:reference:* -->` region) gets the `ci-skip.yml` stub Check and
+# the drift guard never runs in CI for that PR. lefthook catches it locally,
+# but a contributor who bypasses lefthook would slip through. Issue #1342.
+#
+# Keep the `paths:` list below in sync with `reference-docs-check-skip.yml`'s
+# `paths-ignore:` and with lefthook's `reference-docs-check` glob.
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - "docs/spec/**"
+      - "packages/core/src/builtins/reference-data.ts"
+      - "scripts/reference/**"
+      - ".github/workflows/reference-docs-check.yml"
+  push:
+    branches: [main]
+    paths:
+      - "docs/spec/**"
+      - "packages/core/src/builtins/reference-data.ts"
+      - "scripts/reference/**"
+      - ".github/workflows/reference-docs-check.yml"
+
+concurrency:
+  group: reference-docs-check-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  packages: read
+
+jobs:
+  reference-docs-check:
+    name: Reference docs
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - uses: pnpm/action-setup@903f9c1a6ebcba6cf41d87230be49611ac97822e # v6.0.3
+
+      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
+        with:
+          node-version: "22"
+          cache: "pnpm"
+
+      - run: pnpm install --frozen-lockfile
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Reference docs in sync
+        run: pnpm exec tsx scripts/reference/gen-docs.ts --check
