@@ -9,7 +9,7 @@ type: product
 - **対象ファイル**:
   - `packages/core/src/builtins/reference.ts`（inline `SAMPLE_KRS_JA` / `SAMPLE_KRS_EN` / `SAMPLE_KRS` を削除、`getReference().sampleKrs` を `GETTING_STARTED_PROJECT` / `GETTING_STARTED_PROJECT_EN` の `index.krs` から取得）
   - `packages/core/src/builtins/reference.test.ts`（getting-started の内容に合わせて `sampleKrs` 系 assertion を調整）
-- **設計**: [docs/design/reference-from-spec.md](../design/reference-from-spec.md)
+- **ADR**: [ADR-20260512-03](../adr/20260512-03-reference-data-single-source.md)
 
 ## 受け入れ条件
 

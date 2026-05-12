@@ -5,14 +5,11 @@
 // public `KarasuReference` type. Keeping the data here — with each
 // description carrying both locales inline — means the `STRINGS_EN` /
 // `STRINGS_JA` half-update failure mode (one locale left `undefined`) is
-// structurally impossible, and a future codegen step can derive the
-// `docs/spec/*.md` tables from this same module (see
-// docs/design/reference-from-spec.md, Issue #1328).
-//
-// NOTE (Phase 1): the sample `.krs` text (`sampleKrs`) is intentionally
-// NOT here yet — it still lives inline in `./reference.ts` and moves to
-// `examples/` in a follow-up (Issue #1335). Everything else the panel
-// renders structurally lives in this file.
+// structurally impossible, and `scripts/reference/gen-docs.ts` derives the
+// `docs/spec/*.md` tables from this same module. The Reference panel's
+// "Samples" tab content comes from `examples/getting-started/` (via
+// `./examples.ts`), not from here. See
+// docs/adr/20260512-03-reference-data-single-source.md.
 
 /** A user-facing string in every supported locale. */
 interface LocalizedString {
