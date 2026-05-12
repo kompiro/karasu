@@ -49,6 +49,8 @@ interface TagData {
 interface AnnotationData {
   name: string;
   description: LocalizedString;
+  /** How the annotation affects default rendering — the "Default rendering" column of the spec-doc table. */
+  defaultRendering: LocalizedString;
   defaultBadge: { color: string; icon: string; label: LocalizedString };
 }
 
@@ -63,6 +65,8 @@ interface StylePropertyData {
 interface ShapeData {
   name: string;
   description: LocalizedString;
+  /** Free-text "Typical use" column of the spec-doc shape table (distinct from `defaultFor`, which is a selector). */
+  typicalUse: LocalizedString;
   defaultFor?: string;
 }
 
@@ -282,21 +286,28 @@ export const REFERENCE_DATA = {
     {
       name: "deprecated",
       description: { en: "Slated for removal", ja: "廃止予定" },
+      defaultRendering: {
+        en: "⚠ badge, node rendered semi-transparent",
+        ja: "⚠バッジ、ノードを半透明に",
+      },
       defaultBadge: { color: "#EF4444", icon: "⚠", label: { en: "Deprecated", ja: "非推奨" } },
     },
     {
       name: "new",
       description: { en: "Newly added", ja: "新規追加" },
+      defaultRendering: { en: "✦ badge", ja: "✦バッジ" },
       defaultBadge: { color: "#10B981", icon: "✦", label: { en: "NEW", ja: "NEW" } },
     },
     {
       name: "experimental",
       description: { en: "Experimental", ja: "実験的" },
+      defaultRendering: { en: "⚗ badge", ja: "⚗バッジ" },
       defaultBadge: { color: "#F59E0B", icon: "⚗", label: { en: "Experimental", ja: "実験的" } },
     },
     {
       name: "migration_target",
       description: { en: "Migration target", ja: "移行先" },
+      defaultRendering: { en: "→ badge", ja: "→バッジ" },
       defaultBadge: {
         color: "#3B82F6",
         icon: "→",
@@ -537,31 +548,37 @@ export const REFERENCE_DATA = {
     {
       name: "box",
       description: { en: "Rounded rectangle", ja: "角丸長方形" },
+      typicalUse: { en: "service, domain (default)", ja: "service, domain（デフォルト）" },
       defaultFor: "service, domain, usecase",
     },
     {
       name: "user",
       description: { en: "Person icon (head + body)", ja: "人型（頭+体）" },
+      typicalUse: { en: "user", ja: "user" },
       defaultFor: "user",
     },
     {
       name: "cylinder",
       description: { en: "Cylinder", ja: "円柱" },
+      typicalUse: { en: "databases", ja: "db系" },
       defaultFor: "resource[table]",
     },
     {
       name: "queue",
       description: { en: "Horizontal cylinder", ja: "横向き円柱" },
+      typicalUse: { en: "queues", ja: "queue系" },
       defaultFor: "resource[queue]",
     },
     {
       name: "hexagon",
       description: { en: "Hexagon", ja: "六角形" },
+      typicalUse: { en: "microservices", ja: "マイクロサービス" },
       defaultFor: "resource[api]",
     },
     {
       name: "cloud",
       description: { en: "Cloud", ja: "雲形" },
+      typicalUse: { en: "external cloud services", ja: "外部クラウド" },
       defaultFor: "resource[storage]",
     },
   ],

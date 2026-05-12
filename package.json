@@ -37,7 +37,8 @@
     "tpl:related": "tsx scripts/tpl/related-cli.ts",
     "tpl:review:body": "tsx scripts/tpl/review-body.ts",
     "at:check-coverage": "tsx scripts/acceptance/check-coverage.ts",
-    "at:test": "vitest run scripts/acceptance"
+    "at:test": "vitest run scripts/acceptance",
+    "gen:reference": "tsx scripts/reference/gen-docs.ts"
   },
   "devDependencies": {
     "@kompiro/adr-tools": "^0.0.2",

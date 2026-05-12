@@ -122,14 +122,16 @@ badge-label:      "Deprecated";
 
 ## shape property
 
+<!-- gen:reference:shapes — DO NOT EDIT. Generated from packages/core/src/builtins/reference-data.ts; run `pnpm gen:reference`. -->
 | Keyword | Shape | Typical use |
 |---------|-------|-------------|
 | `box` | Rounded rectangle | service, domain (default) |
-| `user` | Person (head + body) | user |
+| `user` | Person icon (head + body) | user |
 | `cylinder` | Cylinder | databases |
 | `queue` | Horizontal cylinder | queues |
 | `hexagon` | Hexagon | microservices |
 | `cloud` | Cloud | external cloud services |
+<!-- /gen:reference:shapes -->
 
 Custom shapes (SVG file reference):
 

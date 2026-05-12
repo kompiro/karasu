@@ -43,3 +43,10 @@ pre-push:
     at-check-coverage:
       glob: "{docs/acceptance/**,scripts/acceptance/**}"
       run: pnpm exec tsx scripts/acceptance/check-coverage.ts --strict
+    reference-docs-check:
+      # The machine-derived tables in docs/spec/*.md (and the .ja.md
+      # counterparts) are generated from reference-data.ts — fail if a hand
+      # edit landed inside a `<!-- gen:reference:* -->` region, or the data
+      # changed without regenerating. Mirrors the CI step in ci.yml.
+      glob: "{docs/spec/**,packages/core/src/builtins/reference-data.ts,scripts/reference/**}"
+      run: pnpm exec tsx scripts/reference/gen-docs.ts --check
