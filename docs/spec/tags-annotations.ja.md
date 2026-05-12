@@ -7,20 +7,26 @@
 タグは**アーキテクチャ上の意味**を宣言する。スタイルはタグを受けて変わる。
 タグは意味の宣言であり、見た目の直接指定ではない。見た目の制御は `.krs.style` で行う。
 
+<!-- gen:reference:tags — DO NOT EDIT. Generated from packages/core/src/builtins/reference-data.ts; run `pnpm gen:reference`. -->
 | タグ | 意味 | デフォルト描画への影響 |
-|------|------|----------------------|
+|------|------|------------------------|
 | `[external]` | システム境界の外側 | 枠線を破線、色をグレー系に |
 | `[async]` | 非同期通信（エッジ用） | 破線矢印 |
-| `[sync]` | 同期通信（エッジ用） | 実線矢印（デフォルト） |
+| `[sync]` | 同期通信（エッジ用、デフォルト） | 実線矢印（デフォルト） |
 | `[human]` | 人間の利用者 | user ノードにのみ使用。デフォルトスタイルへの影響なし |
 | `[ai]` | AIエージェント | user ノードにのみ使用。デフォルトスタイルへの影響なし |
-| `[mobile]` | モバイルネイティブアプリの form factor | `client` ノード用の認識済み form-factor タグ |
-| `[web]` | 自社オリジンで動く SPA | `client` ノード用の認識済み form-factor タグ |
-| `[desktop]` | デスクトップアプリの form factor | `client` ノード用の認識済み form-factor タグ |
-| `[cli]` | コマンドライン ツール / SDK | `client` ノード用の認識済み form-factor タグ |
-| `[device]` | IoT / 専用端末 / KIOSK | `client` ノード用の認識済み form-factor タグ |
-| `[extension]` | 他アプリケーションの拡張機能 | `client` ノード用の認識済み form-factor タグ |
-| `[embed]` | サードパーティ Web に埋め込む widget / SDK | `client` ノード用の認識済み form-factor タグ |
+| `[mobile]` | モバイルネイティブアプリ（client） | `client` ノード用の認識済み form-factor タグ |
+| `[web]` | ブラウザ SPA（client） | `client` ノード用の認識済み form-factor タグ |
+| `[desktop]` | デスクトップアプリ（client） | `client` ノード用の認識済み form-factor タグ |
+| `[cli]` | コマンドラインツール / SDK（client） | `client` ノード用の認識済み form-factor タグ |
+| `[device]` | IoT / 専用端末 / KIOSK（client） | `client` ノード用の認識済み form-factor タグ |
+| `[extension]` | ホストアプリのプラグイン — Chrome / VS Code / Figma 等（client） | `client` ノード用の認識済み form-factor タグ |
+| `[embed]` | 第三者サイトに埋め込まれるウィジェット / SDK（client） | `client` ノード用の認識済み form-factor タグ |
+| `[table]` | テーブル系リソース（シェイプ: cylinder） | cylinder シェイプで描画 |
+| `[queue]` | キュー系リソース（シェイプ: queue） | queue シェイプで描画 |
+| `[api]` | API系リソース（シェイプ: hexagon） | hexagon シェイプで描画 |
+| `[storage]` | ストレージ系リソース（シェイプ: cloud） | cloud シェイプで描画 |
+<!-- /gen:reference:tags -->
 
 > `client` 用の 7 つの form-factor タグは karasu が **認識** している。将来的に kind 固有のアイコン（#823 Phase 2）やレイアウトヒント（Phase 6）に反応する予定。リスト外のタグも `client` に付与可能で、その場合は通常のユーザー定義タグとして扱われる。
 

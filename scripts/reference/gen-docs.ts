@@ -93,6 +93,52 @@ export const TABLES: TableSpec[] = [
     rows: (locale) =>
       REFERENCE_DATA.shapes.map((s) => [code(s.name), s.description[locale], s.typicalUse[locale]]),
   },
+  {
+    id: "tags",
+    file: {
+      en: "docs/spec/tags-annotations.md",
+      ja: "docs/spec/tags-annotations.ja.md",
+    },
+    headers: {
+      en: ["Tag", "Meaning", "Effect on default rendering"],
+      ja: ["タグ", "意味", "デフォルト描画への影響"],
+    },
+    rows: (locale) =>
+      REFERENCE_DATA.tags.map((t) => [
+        code(`[${t.name}]`),
+        t.description[locale],
+        t.defaultEffect[locale],
+      ]),
+  },
+  {
+    id: "client-form-factor-tags",
+    file: { en: "docs/spec/syntax.md", ja: "docs/spec/syntax.ja.md" },
+    headers: {
+      en: ["Tag", "Form factor"],
+      ja: ["タグ", "Form factor"],
+    },
+    rows: (locale) =>
+      REFERENCE_DATA.tags.flatMap((t) =>
+        t.formFactor ? [[code(`[${t.name}]`), t.formFactor[locale]]] : [],
+      ),
+  },
+  {
+    id: "deploy-unit-kinds",
+    file: { en: "docs/spec/syntax.md", ja: "docs/spec/syntax.ja.md" },
+    headers: {
+      en: ["Keyword", "Description", "Properties"],
+      ja: ["キーワード", "説明", "プロパティ"],
+    },
+    rows: (locale) =>
+      REFERENCE_DATA.deployUnitKinds.map((k) => [
+        code(k.kind),
+        k.description[locale],
+        k.properties
+          .filter((p) => p !== "label")
+          .map(code)
+          .join(", "),
+      ]),
+  },
 ];
 
 const MARKER_NOTE =

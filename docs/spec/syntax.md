@@ -39,6 +39,7 @@ karasu explicitly separates **logical structure** and **physical structure**.
 
 karasu's tag system is intentionally open — any tag is accepted and styles react via selectors. For `client` specifically, **seven names are recognized** as form-factor classifications. Future versions will respond to them with kind-specific icons (Phase 2) and layout hints. Tags outside this list still parse and behave as ordinary user-defined tags; they simply do not trigger karasu's built-in form-factor treatment.
 
+<!-- gen:reference:client-form-factor-tags — DO NOT EDIT. Generated from packages/core/src/builtins/reference-data.ts; run `pnpm gen:reference`. -->
 | Tag | Form factor |
 |-----|-------------|
 | `[mobile]` | iOS / Android native app |
@@ -48,6 +49,7 @@ karasu's tag system is intentionally open — any tag is accepted and styles rea
 | `[device]` | IoT / dedicated terminal / KIOSK |
 | `[extension]` | Plugin / extension hosted by another application (browser extension, IDE extension, design-tool plugin) |
 | `[embed]` | Widget / SDK embedded into third-party web content (Stripe Checkout, Intercom, etc.) |
+<!-- /gen:reference:client-form-factor-tags -->
 
 Recommended: pick at most one form-factor tag per client. Combining unrelated form factors (e.g. `[mobile] [desktop]`) is parseable but conveys no additional architectural meaning.
 
@@ -145,16 +147,18 @@ An independent axis from logical/physical, describing the **ownership** of servi
 Deployment units are declared inside a `deploy` block using a kind keyword.
 All properties are optional. When omitted, a warning is emitted rather than an error.
 
+<!-- gen:reference:deploy-unit-kinds — DO NOT EDIT. Generated from packages/core/src/builtins/reference-data.ts; run `pnpm gen:reference`. -->
 | Keyword | Description | Properties |
 |---------|-------------|------------|
 | `war` | WAR / EAR (Servlet / EJB container) | `runtime`, `realizes` |
-| `jar` | Executable JAR (Spring Boot, etc.) | `runtime`, `realizes` |
-| `oci` | Container image | `image` (optional), `runtime`, `realizes` |
+| `jar` | Executable JAR (e.g. Spring Boot) | `runtime`, `realizes` |
+| `oci` | Container image | `image`, `runtime`, `realizes` |
 | `lambda` | AWS Lambda | `runtime`, `realizes` |
 | `function` | Azure Functions / Google Cloud Functions | `runtime`, `realizes` |
-| `assets` | Static files / SPA (CDN distribution) | `runtime`, `realizes` |
-| `job` | Batch processing. Omit `schedule` for one-shot, specify for recurring | `runtime`, `schedule` (optional), `realizes` |
-| `artifact` | Any kind not covered above (escape hatch) | `type` (optional), `runtime`, `realizes` |
+| `assets` | Static files / SPA (served via CDN) | `runtime`, `realizes` |
+| `job` | Batch job. Without schedule: one-shot; with schedule: recurring | `runtime`, `schedule`, `realizes` |
+| `artifact` | Any kind not covered above | `type`, `runtime`, `realizes` |
+<!-- /gen:reference:deploy-unit-kinds -->
 
 ---
 

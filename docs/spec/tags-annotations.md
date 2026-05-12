@@ -7,20 +7,26 @@
 Tags declare **architectural meaning**. Styles change in response to tags.
 A tag is a semantic declaration, not a direct appearance override. Visual control is handled in `.krs.style`.
 
+<!-- gen:reference:tags — DO NOT EDIT. Generated from packages/core/src/builtins/reference-data.ts; run `pnpm gen:reference`. -->
 | Tag | Meaning | Effect on default rendering |
-|-----|---------|---------------------------|
+|-----|---------|-----------------------------|
 | `[external]` | Outside the system boundary | Dashed border, gray-toned color |
 | `[async]` | Asynchronous communication (for edges) | Dashed arrow |
-| `[sync]` | Synchronous communication (for edges) | Solid arrow (default) |
+| `[sync]` | Synchronous communication (for edges, default) | Solid arrow (default) |
 | `[human]` | A human user | Used only on user nodes. No effect on default style |
 | `[ai]` | An AI agent | Used only on user nodes. No effect on default style |
-| `[mobile]` | Mobile native app form factor | Recognized form-factor tag for `client` nodes |
-| `[web]` | SPA on our own origin | Recognized form-factor tag for `client` nodes |
-| `[desktop]` | Desktop app form factor | Recognized form-factor tag for `client` nodes |
-| `[cli]` | Command-line tool / SDK | Recognized form-factor tag for `client` nodes |
-| `[device]` | IoT / dedicated terminal / KIOSK | Recognized form-factor tag for `client` nodes |
-| `[extension]` | Plugin in another application's host | Recognized form-factor tag for `client` nodes |
-| `[embed]` | Embedded widget / SDK in third-party site | Recognized form-factor tag for `client` nodes |
+| `[mobile]` | Mobile native app (client) | Recognized form-factor tag for `client` nodes |
+| `[web]` | Browser SPA (client) | Recognized form-factor tag for `client` nodes |
+| `[desktop]` | Desktop app (client) | Recognized form-factor tag for `client` nodes |
+| `[cli]` | Command-line tool / SDK (client) | Recognized form-factor tag for `client` nodes |
+| `[device]` | IoT / dedicated terminal / KIOSK (client) | Recognized form-factor tag for `client` nodes |
+| `[extension]` | Host-app plugin — Chrome / VS Code / Figma, etc. (client) | Recognized form-factor tag for `client` nodes |
+| `[embed]` | Widget / SDK embedded in third-party sites (client) | Recognized form-factor tag for `client` nodes |
+| `[table]` | Table-like resource (shape: cylinder) | Rendered as a cylinder shape |
+| `[queue]` | Queue-like resource (shape: queue) | Rendered as a queue shape |
+| `[api]` | API-like resource (shape: hexagon) | Rendered as a hexagon shape |
+| `[storage]` | Storage-like resource (shape: cloud) | Rendered as a cloud shape |
+<!-- /gen:reference:tags -->
 
 > The seven `client` form-factor tags are **recognized** by karasu — future versions trigger kind-specific icons (Phase 2 of #823) and layout hints (Phase 6). Tags outside this list are still allowed on `client` and behave as ordinary user-defined tags.
 
