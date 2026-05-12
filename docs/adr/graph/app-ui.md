@@ -32,7 +32,7 @@ flowchart TD
     ADR_20260507_02["ADR-20260507-02<br/>Editor バッファの外部書き込み追従 — 差分検出ベースの auto-refresh"]
     ADR_20260508_01["ADR-20260508-01<br/>GUI 駆動の `.krs.style` 編集 — 単一プロパティ rule は in-pla..."]
     ADR_20260509_03["ADR-20260509-03<br/>Monaco undo stack 統合 — `@monaco-editor/react` 経..."]
-    ADR_20260512_02["ADR-20260512-02<br/>`examples/feature-samples/` を built-in ProjectM..."]
+    ADR_20260512_04["ADR-20260512-04<br/>`examples/feature-samples/` を built-in ProjectM..."]
   end
   ADR_20260317_01["ADR-20260317-01<br/>[renderer] 2 レイヤレンダリングとドリルダウンナビゲーション"]
   ADR_20260317_02["ADR-20260317-02<br/>[project] プロジェクトとファイルシステム抽象化 — `FileSystemProvider` + OPFS"]
@@ -100,7 +100,7 @@ flowchart TD
   class ADR_20260507_02 accepted
   class ADR_20260508_01 accepted
   class ADR_20260509_03 accepted
-  class ADR_20260512_02 accepted
+  class ADR_20260512_04 accepted
   class ADR_20260317_01 ghost
   class ADR_20260317_02 ghost
   class ADR_20260320_01 ghost

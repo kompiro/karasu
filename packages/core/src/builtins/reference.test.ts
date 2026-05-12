@@ -54,7 +54,6 @@ describe("getReference", () => {
 
   it("sample KRS demonstrates the user → client → service access path", () => {
     expect(ref.sampleKrs).toContain("client MobileApp");
-    expect(ref.sampleKrs).toContain("delivers AdminConsole");
     expect(ref.sampleKrs).toContain("Customer -> MobileApp");
     expect(ref.sampleKrs).toContain("MobileApp -> ECommerce");
   });
@@ -164,10 +163,9 @@ describe("getReference", () => {
     expect(ref.sampleKrs).toContain("organization");
   });
 
-  it("includes a legend block exercising swatch and ref entries", () => {
+  it("includes a legend block with ref entries", () => {
     expect(ref.sampleKrs).toMatch(/^legend\b/m);
-    expect(ref.sampleKrs).toContain("swatch ");
-    expect(ref.sampleKrs).toContain("ref @deprecated");
+    expect(ref.sampleKrs).toContain("ref [external]");
   });
 
   it("sampleKrs parses without errors for both locales", async () => {

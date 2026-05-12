@@ -13,7 +13,7 @@ type: product
   - `packages/app/src/hooks/useProjectInitialization.ts`（初回シードに追加）
   - `packages/app/src/hooks/useProjectInitialization.test.ts` / `packages/core/src/examples.test.ts`（テスト更新・drift ガード追加）
   - `.claude/rules/examples-sync.md` / `.claude/skills/update-examples/SKILL.md`（同期ルール・スキル対象に `feature-samples/` 追加）
-- **ADR**: [ADR-20260512-02](../adr/20260512-02-feature-samples-builtin-project.md)
+- **ADR**: [ADR-20260512-04](../adr/20260512-04-feature-samples-builtin-project.md)
 
 ## 受け入れ条件
 

@@ -1,5 +1,5 @@
 ---
-id: ADR-20260512-02
+id: ADR-20260512-04
 title: "`examples/feature-samples/` を built-in ProjectMode example（1 プロジェクト）として同梱"
 status: accepted
 date: 2026-05-12
@@ -16,7 +16,7 @@ assumptions:
   - "grep: .claude/rules/examples-sync.md :: feature-samples/"
 ---
 
-# ADR-20260512-02: `examples/feature-samples/` を built-in ProjectMode example（1 プロジェクト）として同梱
+# ADR-20260512-04: `examples/feature-samples/` を built-in ProjectMode example（1 プロジェクト）として同梱
 
 - **日付**: 2026-05-12
 - **ステータス**: 決定済み
