@@ -25,15 +25,19 @@ karasu explicitly separates **logical structure** and **physical structure**.
 
 ### Logical structure (what / why)
 
+<!-- gen:reference:node-kinds-logical — DO NOT EDIT. Generated from packages/core/src/builtins/reference-data.ts; run `pnpm gen:reference`. -->
 | Keyword | Meaning | May contain |
 |---------|---------|-------------|
-| `system` | A container showing relationships between owned/external services and clients | `service`, `user`, `client` |
-| `service` | An independent unit of business functionality | `domain` |
-| `domain` | A business-concern boundary (top-level or inside a service) | `usecase` |
-| `usecase` | A business operation inside a domain | `resource` |
-| `resource` | What a usecase operates on (tables, external APIs, files, etc.) | — |
+| `system` | Container showing the relationships between owned/external services and clients | `service`, `user`, `client`, `database`, `queue`, `storage` |
 | `user` | A user of the system (human or AI agent) | — |
-| `client` | Software we ship that acts on behalf of an end user (mobile / web / desktop / CLI / device / extension / embed). See recognized form-factor tag table below | — |
+| `client` | User-delegated software the project itself ships (mobile / web / desktop / cli / device / extension / embed) | — |
+| `service` | An independent unit of business capability | `domain` |
+| `domain` | A business-concern boundary (top-level or inside a service) | `usecase` |
+| `usecase` | A business task or operation within a domain | `resource` |
+| `resource` | A target that a usecase reads or writes (table, external API, file, etc.) | — |
+<!-- /gen:reference:node-kinds-logical -->
+
+The recognized `client` form-factor tags are listed below.
 
 #### `client` form-factor tags (recognized)
 
@@ -97,6 +101,7 @@ client C [web] {
 
 Some data stores are shared by several services rather than owned by a single `usecase`. Declare them at the **top level of a `.krs` file** (or directly inside a `system` block) using one of the three infra-block keywords below; each may nest leaf sub-resources. These nodes render on the **system view**, in the dependency tier next to `[external]` services — services *depend on* shared infra, never the other way round. They were promoted to first-class nodes in [ADR-20260405-05](../adr/20260405-05-database-as-first-class-node.md).
 
+<!-- gen:reference:node-kinds-infra — DO NOT EDIT. Generated from packages/core/src/builtins/reference-data.ts; run `pnpm gen:reference`. -->
 | Keyword | Layer | Intended use | May contain |
 |---------|-------|--------------|-------------|
 | `database` | system-level infra block | A database shared by services (RDBMS, document store, …) | `table` |
@@ -105,6 +110,7 @@ Some data stores are shared by several services rather than owned by a single `u
 | `table` | leaf, inside a `database` block | A table / collection in the database | — |
 | `queue-item` | leaf, inside a `queue` block | A message / event type carried by the queue. Written with the `queue` keyword inside a `queue` block (parsed internally as `queue-item`) | — |
 | `bucket` | leaf, inside a `storage` block | A bucket / container in the object store | — |
+<!-- /gen:reference:node-kinds-infra -->
 
 - Only `label`, `description`, and `link` properties apply to infra nodes and their sub-resources; all are optional, and omission emits a warning, not an error. The `operations` CRUD property is **not** valid here — it is only meaningful on `resource` declarations inside a `usecase` (see below).
 - `database` / `queue` / `storage` are valid only at the top level or as a direct child of `system`. Nesting one inside a `service`, `domain`, or `usecase` is rejected with `infra-not-in-context`.

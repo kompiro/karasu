@@ -20,11 +20,23 @@ interface LocalizedString {
   ja: string;
 }
 
+/**
+ * Which spec-doc table a node kind belongs to: the `### Logical structure`
+ * table (`logical`), or the `### Infra layer` table — as a top-level infra
+ * block (`infra-block`) or a leaf inside one (`infra-leaf`).
+ */
+type NodeLayer = "logical" | "infra-block" | "infra-leaf";
+
 interface NodeKindData {
   kind: string;
   description: LocalizedString;
   canContain: string[];
   properties: string[];
+  layer: NodeLayer;
+  /** "Layer" column of the `### Infra layer` table (e.g. "system-level infra block"). Infra kinds only. */
+  infraLayerLabel?: LocalizedString;
+  /** "Intended use" column of the `### Infra layer` table. Infra kinds only. */
+  infraIntendedUse?: LocalizedString;
 }
 
 interface DeployUnitKindData {
@@ -92,11 +104,12 @@ export const REFERENCE_DATA = {
     {
       kind: "system",
       description: {
-        en: "Container showing the relationships between owned and external services",
-        ja: "owned/externalなサービスの関係を示す器",
+        en: "Container showing the relationships between owned/external services and clients",
+        ja: "owned/external なサービスやクライアントの関係を示す器",
       },
-      canContain: ["user", "client", "service", "database", "queue", "storage"],
+      canContain: ["service", "user", "client", "database", "queue", "storage"],
       properties: ["label", "description", "link"],
+      layer: "logical",
     },
     {
       kind: "user",
@@ -106,6 +119,7 @@ export const REFERENCE_DATA = {
       },
       canContain: [],
       properties: ["label", "description", "role", "link"],
+      layer: "logical",
     },
     {
       kind: "client",
@@ -115,6 +129,7 @@ export const REFERENCE_DATA = {
       },
       canContain: [],
       properties: ["label", "description", "handles", "resource", "link"],
+      layer: "logical",
     },
     {
       kind: "service",
@@ -124,15 +139,17 @@ export const REFERENCE_DATA = {
       },
       canContain: ["domain"],
       properties: ["label", "description", "team", "delivers", "handles", "link"],
+      layer: "logical",
     },
     {
       kind: "domain",
       description: {
-        en: "A business-concern boundary within a service",
-        ja: "サービス内のビジネス上の関心事の境界",
+        en: "A business-concern boundary (top-level or inside a service)",
+        ja: "ビジネス上の関心事の境界（トップレベルまたはサービス内）",
       },
       canContain: ["usecase"],
       properties: ["label", "description", "team", "link"],
+      layer: "logical",
     },
     {
       kind: "usecase",
@@ -142,6 +159,7 @@ export const REFERENCE_DATA = {
       },
       canContain: ["resource"],
       properties: ["label", "description", "link"],
+      layer: "logical",
     },
     {
       kind: "resource",
@@ -151,6 +169,7 @@ export const REFERENCE_DATA = {
       },
       canContain: [],
       properties: ["label", "description", "link"],
+      layer: "logical",
     },
     {
       kind: "database",
@@ -160,6 +179,12 @@ export const REFERENCE_DATA = {
       },
       canContain: ["table"],
       properties: ["label", "description", "link"],
+      layer: "infra-block",
+      infraLayerLabel: { en: "system-level infra block", ja: "system 直下のインフラブロック" },
+      infraIntendedUse: {
+        en: "A database shared by services (RDBMS, document store, …)",
+        ja: "service が共有するデータベース（RDBMS、ドキュメントストア等）",
+      },
     },
     {
       kind: "queue",
@@ -169,6 +194,12 @@ export const REFERENCE_DATA = {
       },
       canContain: ["queue-item"],
       properties: ["label", "description", "link"],
+      layer: "infra-block",
+      infraLayerLabel: { en: "system-level infra block", ja: "system 直下のインフラブロック" },
+      infraIntendedUse: {
+        en: "A message queue / topic shared by services",
+        ja: "service が共有するメッセージキュー / トピック",
+      },
     },
     {
       kind: "storage",
@@ -178,6 +209,57 @@ export const REFERENCE_DATA = {
       },
       canContain: ["bucket"],
       properties: ["label", "description", "link"],
+      layer: "infra-block",
+      infraLayerLabel: { en: "system-level infra block", ja: "system 直下のインフラブロック" },
+      infraIntendedUse: {
+        en: "An object store / blob storage shared by services (S3, GCS, …)",
+        ja: "service が共有するオブジェクトストア / ブロブストレージ（S3、GCS 等）",
+      },
+    },
+    {
+      kind: "table",
+      description: {
+        en: "Table / collection inside a `database` block",
+        ja: "`database` ブロック内のテーブル / コレクション",
+      },
+      canContain: [],
+      properties: ["label", "description", "link"],
+      layer: "infra-leaf",
+      infraLayerLabel: { en: "leaf, inside a `database` block", ja: "leaf、`database` ブロック内" },
+      infraIntendedUse: {
+        en: "A table / collection in the database",
+        ja: "データベース内のテーブル / コレクション",
+      },
+    },
+    {
+      kind: "queue-item",
+      description: {
+        en: "Message / event type carried by a `queue` block",
+        ja: "`queue` ブロックが運ぶメッセージ / イベント型",
+      },
+      canContain: [],
+      properties: ["label", "description", "link"],
+      layer: "infra-leaf",
+      infraLayerLabel: { en: "leaf, inside a `queue` block", ja: "leaf、`queue` ブロック内" },
+      infraIntendedUse: {
+        en: "A message / event type carried by the queue. Written with the `queue` keyword inside a `queue` block (parsed internally as `queue-item`)",
+        ja: "キューが運ぶメッセージ / イベント型。`queue` ブロック内では `queue` キーワードで書く（内部的には `queue-item` としてパースされる）",
+      },
+    },
+    {
+      kind: "bucket",
+      description: {
+        en: "Bucket / container inside a `storage` block",
+        ja: "`storage` ブロック内のバケット / コンテナ",
+      },
+      canContain: [],
+      properties: ["label", "description", "link"],
+      layer: "infra-leaf",
+      infraLayerLabel: { en: "leaf, inside a `storage` block", ja: "leaf、`storage` ブロック内" },
+      infraIntendedUse: {
+        en: "A bucket / container in the object store",
+        ja: "オブジェクトストア内のバケット / コンテナ",
+      },
     },
   ],
   tags: [

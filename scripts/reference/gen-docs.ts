@@ -35,6 +35,10 @@ export interface TableSpec {
 
 const code = (s: string): string => `\`${s}\``;
 
+/** Render a `canContain` list for the "May contain" column — `` `a`, `b` `` or an em dash when empty. */
+const mayContain = (kinds: string[]): string =>
+  kinds.length > 0 ? kinds.map(code).join(", ") : "—";
+
 const escapeRegExp = (s: string): string => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
 /**
@@ -138,6 +142,41 @@ export const TABLES: TableSpec[] = [
           .map(code)
           .join(", "),
       ]),
+  },
+  {
+    id: "node-kinds-logical",
+    file: { en: "docs/spec/syntax.md", ja: "docs/spec/syntax.ja.md" },
+    headers: {
+      en: ["Keyword", "Meaning", "May contain"],
+      ja: ["キーワード", "意味", "含むことができるもの"],
+    },
+    rows: (locale) =>
+      REFERENCE_DATA.nodeKinds.flatMap((k) =>
+        k.layer === "logical"
+          ? [[code(k.kind), k.description[locale], mayContain(k.canContain)]]
+          : [],
+      ),
+  },
+  {
+    id: "node-kinds-infra",
+    file: { en: "docs/spec/syntax.md", ja: "docs/spec/syntax.ja.md" },
+    headers: {
+      en: ["Keyword", "Layer", "Intended use", "May contain"],
+      ja: ["キーワード", "階層", "用途", "含むことができるもの"],
+    },
+    rows: (locale) =>
+      REFERENCE_DATA.nodeKinds.flatMap((k) =>
+        k.layer !== "logical" && k.infraLayerLabel && k.infraIntendedUse
+          ? [
+              [
+                code(k.kind),
+                k.infraLayerLabel[locale],
+                k.infraIntendedUse[locale],
+                mayContain(k.canContain),
+              ],
+            ]
+          : [],
+      ),
   },
 ];
 

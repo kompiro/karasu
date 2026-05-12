@@ -150,20 +150,18 @@ describe("Reference data ↔ docs/spec agreement (TPL-20260511-02)", () => {
     expect(missing).toEqual([]);
   });
 
-  it("syntax.md: the Infra layer section documents the infra-block keywords & sub-resources", () => {
+  it("syntax.md: every Infra layer keyword (blocks + leaf sub-resources) is in getReference().nodeKinds", () => {
     const syntaxMd = readSpec("syntax.md");
-    const documented = new Set(tableFirstColumn(sectionLines(syntaxMd, /^### Infra layer/)));
-    // system-level infra blocks + their leaf sub-resources
+    const documented = tableFirstColumn(sectionLines(syntaxMd, /^### Infra layer/)).filter((k) =>
+      /^[a-z][a-z-]*$/.test(k),
+    );
+    // 3 system-level infra blocks + their 3 leaf sub-resources
     for (const k of ["database", "queue", "storage", "table", "queue-item", "bucket"]) {
       expect(documented).toContain(k);
     }
-    // the system-level infra blocks must also be present in the reference data
-    // (the leaf sub-resources are intentionally not first-class node kinds —
-    // see the parser comment on `parseLeafNodeContents`).
     const known = new Set(ref.nodeKinds.map((k) => k.kind));
-    for (const k of ["database", "queue", "storage"]) {
-      expect(known.has(k)).toBe(true);
-    }
+    const missing = documented.filter((k) => !known.has(k)).sort();
+    expect(missing).toEqual([]);
   });
 
   it("tags-annotations.md: every resolver-synthesized edge tag is documented", () => {
