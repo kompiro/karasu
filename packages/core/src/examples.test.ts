@@ -1,7 +1,7 @@
 /// <reference types="node" />
 import { describe, it, expect } from "vitest";
 import { Parser } from "./parser/parser.js";
-import { compile } from "./index.js";
+import { compile, FEATURE_SAMPLES_PROJECT } from "./index.js";
 import { readFileSync, readdirSync } from "fs";
 import { resolve, dirname } from "path";
 import { fileURLToPath } from "url";
@@ -17,6 +17,25 @@ describe("feature-samples: all files parse without errors", () => {
     const result = Parser.parse(src);
     const errors = result.diagnostics.filter((d) => d.severity === "error");
     expect(errors).toHaveLength(0);
+  });
+});
+
+// Drift guard (Issue #1344): FEATURE_SAMPLES_PROJECT bundles examples/feature-samples/
+// for ProjectMode. The bundled `content` strings must stay byte-identical to the
+// on-disk files. The `.claude/rules/examples-sync.md` mapping and `/update-examples`
+// skill keep them in sync; this test fails if a hand edit lands on only one side.
+describe("feature-samples: bundled examples.ts content matches examples/feature-samples/", () => {
+  it("registers index.krs plus every .krs file in the directory, and nothing else", () => {
+    const bundledPaths = FEATURE_SAMPLES_PROJECT.files.map((f) => f.path).sort();
+    const expectedPaths = ["index.krs", ...files.filter((f) => f !== "index.krs")].sort();
+    expect(bundledPaths).toEqual(expectedPaths);
+  });
+
+  it.each(files)("%s content is byte-identical to the bundled entry", (file) => {
+    const onDisk = readFileSync(resolve(dir, file), "utf8");
+    const entry = FEATURE_SAMPLES_PROJECT.files.find((f) => f.path === file);
+    expect(entry).toBeDefined();
+    expect(entry?.content).toBe(onDisk);
   });
 });
 

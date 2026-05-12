@@ -4,6 +4,7 @@ import { renderHook, cleanup, waitFor } from "@testing-library/react";
 import {
   CLIENT_MCP_PROJECT,
   EC_PLATFORM_PROJECTS,
+  FEATURE_SAMPLES_PROJECT,
   GETTING_STARTED_PROJECT,
   GETTING_STARTED_PROJECT_EN,
   InMemoryFileSystemProvider,
@@ -63,17 +64,22 @@ describe("useProjectInitialization — bootstrap", () => {
     );
 
     // Getting Started first, then one createProject per ec-platform example,
-    // then the client-mcp sample.
-    const expectedCalls = 1 + EC_PLATFORM_PROJECTS.length + 1;
+    // then the client-mcp sample, then the feature-samples catalog.
+    const expectedCalls = 1 + EC_PLATFORM_PROJECTS.length + 2;
     expect(pm.createProject).toHaveBeenCalledTimes(expectedCalls);
     expect(pm.createProject).toHaveBeenNthCalledWith(
       1,
       GETTING_STARTED_PROJECT.name,
       GETTING_STARTED_PROJECT.files,
     );
-    expect(pm.createProject).toHaveBeenLastCalledWith(
+    expect(pm.createProject).toHaveBeenNthCalledWith(
+      1 + EC_PLATFORM_PROJECTS.length + 1,
       CLIENT_MCP_PROJECT.name,
       CLIENT_MCP_PROJECT.files,
+    );
+    expect(pm.createProject).toHaveBeenLastCalledWith(
+      FEATURE_SAMPLES_PROJECT.name,
+      FEATURE_SAMPLES_PROJECT.files,
     );
 
     const setProjectsCall = dispatch.mock.calls.find(
@@ -83,7 +89,7 @@ describe("useProjectInitialization — bootstrap", () => {
     const projects = (setProjectsCall![0] as { projects: Project[] }).projects;
     expect(projects).toHaveLength(expectedCalls);
     expect(projects[0].name).toBe(GETTING_STARTED_PROJECT.name);
-    expect(projects[projects.length - 1].name).toBe(CLIENT_MCP_PROJECT.name);
+    expect(projects[projects.length - 1].name).toBe(FEATURE_SAMPLES_PROJECT.name);
 
     expect(dispatch).toHaveBeenCalledWith({ type: "SET_LOADING", loading: false });
   });

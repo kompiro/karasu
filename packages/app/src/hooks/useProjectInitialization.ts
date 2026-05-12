@@ -2,6 +2,7 @@ import { useEffect, type Dispatch } from "react";
 import {
   CLIENT_MCP_PROJECT,
   EC_PLATFORM_PROJECTS,
+  FEATURE_SAMPLES_PROJECT,
   GETTING_STARTED_PROJECT,
   GETTING_STARTED_PROJECT_EN,
   type FileSystemProvider,
@@ -50,8 +51,9 @@ async function cleanupPasteCompareTempFiles(
  * Coordinates ProjectMode startup in a single explicit location:
  *
  * 1. **Bootstrap** (runs once): read the project list from OPFS. On first
- *    run the list is empty, so seed it with the Getting Started project
- *    plus the ec-platform examples. Clear the loading flag when done.
+ *    run the list is empty, so seed it with the Getting Started project,
+ *    the ec-platform examples, the client-mcp sample, and the
+ *    feature-samples catalog. Clear the loading flag when done.
  * 2. **On project switch**: persist `currentProject.id` to localStorage so
  *    the next session can restore it, and auto-select the project's
  *    `index.krs` as the active editor file.
@@ -91,6 +93,11 @@ export function useProjectInitialization({
           CLIENT_MCP_PROJECT.files,
         );
         initialProjects.push(clientMcpProject);
+        const featureSamplesProject = await pm.createProject(
+          FEATURE_SAMPLES_PROJECT.name,
+          FEATURE_SAMPLES_PROJECT.files,
+        );
+        initialProjects.push(featureSamplesProject);
         dispatch({ type: "SET_PROJECTS", projects: initialProjects });
       } else {
         dispatch({ type: "SET_PROJECTS", projects: projectList });

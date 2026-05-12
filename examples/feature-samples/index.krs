@@ -1,0 +1,29 @@
+// feature-samples/index.krs
+// Catalog of single-feature .krs samples bundled with karasu.
+//
+// Each file in this project demonstrates one syntax feature in isolation —
+// open them from the file tree:
+//
+//   minimal.krs               smallest valid input (system + 2 services + edges)
+//   edges.krs                 sync (->) vs async (-->) edges, labelled / bare
+//   parallel-edges.krs        parallel edges between the same node pair
+//   users.krs                 [human] / [ai] user nodes with role + description
+//   external-nodes.krs        [external] tag on service / resource nodes
+//   annotations.krs           @deprecated / @new / @experimental / @migration_target
+//   legend.krs                legend blocks (swatch / ref, view scoping)
+//   domain-drill.krs          full hierarchy: system -> service -> domain -> usecase -> resource
+//   domain-drift.krs          domain-to-domain edges (cross-service + intra-service)
+//   resource-operations.krs   usecase resource CRUD operations + read/write edges
+//   crud-matrix.krs           inputs for the `karasu matrix` usecase x resource grid
+//   usecase-authorization.krs authorization-as-prose convention (Access: + policy link)
+//   bff-delivers.krs          service.delivers <ClientId> for the BFF / SSR pattern
+//   deploy-all.krs            every deploy artifact type (war / jar / oci / lambda / ...)
+
+system FeatureSamples {
+  label "Feature samples"
+  description "Open the sibling .krs files from the file tree — each one demonstrates a single syntax feature."
+
+  service Catalog {
+    label "See the file tree"
+  }
+}
