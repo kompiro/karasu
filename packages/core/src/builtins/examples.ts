@@ -1249,3 +1249,691 @@ system PaymentGateway {
     ],
   },
 ];
+
+export const FEATURE_SAMPLES_PROJECT: ExampleProject = {
+  name: "feature-samples",
+  files: [
+    {
+      path: "index.krs",
+      content: `// feature-samples/index.krs
+// Catalog of single-feature .krs samples bundled with karasu.
+//
+// Each file in this project demonstrates one syntax feature in isolation —
+// open them from the file tree:
+//
+//   minimal.krs               smallest valid input (system + 2 services + edges)
+//   edges.krs                 sync (->) vs async (-->) edges, labelled / bare
+//   parallel-edges.krs        parallel edges between the same node pair
+//   users.krs                 [human] / [ai] user nodes with role + description
+//   external-nodes.krs        [external] tag on service / resource nodes
+//   annotations.krs           @deprecated / @new / @experimental / @migration_target
+//   legend.krs                legend blocks (swatch / ref, view scoping)
+//   domain-drill.krs          full hierarchy: system -> service -> domain -> usecase -> resource
+//   domain-drift.krs          domain-to-domain edges (cross-service + intra-service)
+//   resource-operations.krs   usecase resource CRUD operations + read/write edges
+//   crud-matrix.krs           inputs for the \`karasu matrix\` usecase x resource grid
+//   usecase-authorization.krs authorization-as-prose convention (Access: + policy link)
+//   bff-delivers.krs          service.delivers <ClientId> for the BFF / SSR pattern
+//   deploy-all.krs            every deploy artifact type (war / jar / oci / lambda / ...)
+
+system FeatureSamples {
+  label "Feature samples"
+  description "Open the sibling .krs files from the file tree — each one demonstrates a single syntax feature."
+
+  service Catalog {
+    label "See the file tree"
+  }
+}
+`,
+    },
+    {
+      path: "annotations.krs",
+      content: `// annotations.krs
+// Demonstrates: all four lifecycle annotations — @deprecated, @new,
+// @experimental, @migration_target — individually and combined.
+
+system AnnotationSample {
+  label "Annotation Sample"
+
+  service LegacyAuth @deprecated {
+    label "Legacy Auth"
+    description "Scheduled for removal in Q3."
+  }
+
+  service NewAuth @new {
+    label "New Auth"
+    description "Introduced in the latest release."
+  }
+
+  service BetaSearch @experimental {
+    label "Beta Search"
+    description "Feature-flagged; not yet in general availability."
+  }
+
+  service MigrationBridge @deprecated @migration_target {
+    label "Migration Bridge"
+    description "Deprecated origin that is also the migration target stub."
+  }
+
+  LegacyAuth -> MigrationBridge "migrate traffic"
+  MigrationBridge -> NewAuth    "forward requests"
+  NewAuth -> BetaSearch         "delegate search"
+}
+`,
+    },
+    {
+      path: "bff-delivers.krs",
+      content: `// bff-delivers.krs
+// Demonstrates: service.delivers <ClientId> for the BFF / SSR pattern.
+//
+// A Next.js / Rails+React / Laravel+Vue server ships a JS frontend bundle to
+// the browser and proxies API calls to backend services. The server-side and
+// the browser-side are different OAuth2 client types (confidential vs public)
+// and are modeled as separate nodes joined by \`delivers\`.
+
+system ECPlatform {
+  label "BFF pattern sample"
+
+  user Customer [human] {
+    label "Customer"
+  }
+
+  service NextServer {
+    label "Next.js BFF"
+    description "Server-side: SSR, API routes, session storage, asset pipeline."
+    delivers WebApp
+  }
+
+  client WebApp [web] {
+    label "Customer SPA"
+    description "Browser-side bundle delivered by NextServer."
+  }
+
+  service OrderService {
+    label "Order service"
+  }
+
+  Customer  -> WebApp       "uses"
+  WebApp    -> NextServer   "API calls (same-origin cookie)"
+  NextServer -> OrderService "user-delegated calls"
+}
+`,
+    },
+    {
+      path: "crud-matrix.krs",
+      content: `// Feature sample: CRUD matrix view
+//
+// Showcases the inputs that \`karasu matrix\` reduces into a usecase x resource
+// grid: write/read mix, [external] resources, and undeclared / unrecognized
+// verbs that surface as \`?\` cells.
+
+system ECPlatform {
+  database OrderDB {
+    label "Order DB"
+    table OrderTable { label "Order table" }
+    table InventoryTable { label "Inventory table" }
+  }
+  queue OrderEvents {
+    label "Order events"
+    queue OrderPlaced { label "Order placed" }
+  }
+
+  service OrderService {
+    label "Order service"
+
+    domain Order {
+      usecase PlaceOrder {
+        label "Place an order"
+        resource OrderDB.OrderTable {
+          operations create, read
+        }
+        resource OrderDB.InventoryTable {
+          operations read, update
+        }
+        resource OrderEvents.OrderPlaced {
+          operations create
+        }
+        resource PaymentAPI [external] {
+          label "Payment API"
+          operations create
+        }
+      }
+      usecase CancelOrder {
+        label "Cancel an order"
+        resource OrderDB.OrderTable {
+          operations update, delete
+        }
+        resource OrderEvents.OrderPlaced {
+          operations create
+        }
+      }
+      usecase SearchOrders {
+        label "Search orders"
+        // \`list\` is decorated as \`read\` — matrix shows \`R\` (no \`?\` suffix).
+        resource OrderDB.OrderTable {
+          operations read, list:read
+        }
+      }
+      usecase ReplaceOrderSnapshot {
+        label "Replace order snapshot (physical delete-insert)"
+        // \`replace\` decorated as both create + delete (1:N mapping).
+        // Matrix counts this as a write and contributes to ΣC and ΣD.
+        resource OrderDB.OrderTable {
+          operations replace:create,delete
+        }
+      }
+      usecase ReplayOrderEvents {
+        label "Replay order events (no operations declared)"
+        resource OrderEvents.OrderPlaced
+      }
+    }
+  }
+
+  service ReportService {
+    label "Reporting"
+    domain Report {
+      usecase ExportOrders {
+        label "Export orders"
+        resource OrderDB.OrderTable {
+          operations read
+        }
+      }
+    }
+  }
+}
+`,
+    },
+    {
+      path: "deploy-all.krs",
+      content: `// deploy-all.krs
+// Demonstrates: all deploy artifact types — war, jar, oci, lambda, function,
+// assets, job (one-shot and scheduled), artifact.
+
+system DeploySample {
+  label "Deploy Sample"
+
+  service LegacyApp    { label "Legacy App" }
+  service ApiServer    { label "API Server" }
+  service WorkerApp    { label "Worker App" }
+  service WebFrontend  { label "Web Frontend" }
+  service DataPipeline { label "Data Pipeline" }
+  service BillingJob   { label "Billing Job" }
+  service FnHandler    { label "Function Handler" }
+  service AzureFn      { label "Azure Function" }
+  service LegacyBatch  { label "Legacy Batch" }
+}
+
+deploy "Production" {
+  war "legacy-app" {
+    runtime "Tomcat 10"
+    realizes "LegacyApp"
+  }
+
+  jar "api-server" {
+    runtime "JVM 21"
+    realizes "ApiServer"
+  }
+
+  oci "worker" {
+    image "worker-app:latest"
+    runtime "Kubernetes"
+    realizes "WorkerApp"
+  }
+
+  lambda "fn-handler" {
+    runtime "Node.js 22"
+    realizes "FnHandler"
+  }
+
+  function "azure-fn" {
+    runtime "Node.js 20"
+    realizes "AzureFn"
+  }
+
+  assets "web-frontend" {
+    runtime "CloudFront"
+    realizes "WebFrontend"
+  }
+
+  job "data-pipeline" {
+    runtime "JVM 21"
+    realizes "DataPipeline"
+  }
+
+  job "monthly-billing" {
+    runtime "JVM 21"
+    schedule "0 0 1 * *"
+    realizes "BillingJob"
+  }
+
+  artifact "legacy-batch" {
+    type "COBOL batch"
+    runtime "Mainframe"
+    realizes "LegacyBatch"
+  }
+}
+`,
+    },
+    {
+      path: "domain-drift.krs",
+      content: `// domain-drift.krs
+// Demonstrates: domain-to-domain edges across and within services.
+//
+// Cross-service edge (OrderDomain -> PaymentDomain):
+//   No explicit service edge exists, so an implicit service edge is derived
+//   and rendered in amber dashed style in the system view.
+//
+// Intra-service edge (OrderDomain -> ShippingDomain within OrderService):
+//   Both domains belong to OrderService, so the edge is rendered directly
+//   in the service drill-down view.
+
+system DriftSample {
+  label "Domain Drift Sample"
+
+  service OrderService {
+    label "Order Service"
+
+    domain OrderDomain {
+      label "Order Domain"
+      description "Depends on PaymentDomain to process payments and ShippingDomain to ship orders."
+      OrderDomain -> PaymentDomain "decides payment"
+      OrderDomain -> ShippingDomain "triggers shipment"
+    }
+
+    domain ShippingDomain {
+      label "Shipping Domain"
+      description "Handles order shipment."
+    }
+  }
+
+  service PaymentService {
+    label "Payment Service"
+
+    domain PaymentDomain {
+      label "Payment Domain"
+      description "Handles payment processing for orders."
+    }
+  }
+}
+`,
+    },
+    {
+      path: "domain-drill.krs",
+      content: `// domain-drill.krs
+// Demonstrates: full logical hierarchy — system → service → domain → usecase → resource.
+// Use this to verify drill-down rendering at every level.
+
+system ECommerce {
+  label "EC Platform"
+
+  service OrderService {
+    label "Order Service"
+    team "Order Team"
+
+    domain OrderDomain {
+      label "Order Domain"
+      team "Order Team"
+
+      usecase PlaceOrder {
+        label "Place Order"
+
+        resource OrderDB {
+          label "Order DB"
+          description "Primary database for order records."
+        }
+
+        resource PaymentAPI [external] {
+          label "Payment API"
+        }
+      }
+
+      usecase CancelOrder {
+        label "Cancel Order"
+
+        resource OrderDB {
+          label "Order DB"
+        }
+      }
+    }
+
+    domain ShippingDomain {
+      label "Shipping Domain"
+
+      usecase TrackShipment {
+        label "Track Shipment"
+
+        resource ShippingAPI [external] {
+          label "Shipping API"
+        }
+      }
+    }
+  }
+}
+`,
+    },
+    {
+      path: "edges.krs",
+      content: `// edges.krs
+// Demonstrates: sync (->) and async (-->) edges, with and without labels.
+
+system EdgeSample {
+  label "Edge Variants"
+
+  service A { label "Service A" }
+  service B { label "Service B" }
+  service C { label "Service C" }
+  service D { label "Service D" }
+
+  // Sync edges
+  A -> B "labelled sync call"
+  A -> C
+
+  // Async edges
+  B --> D "labelled async call"
+  C --> D
+}
+`,
+    },
+    {
+      path: "external-nodes.krs",
+      content: `// external-nodes.krs
+// Demonstrates: [external] tag on service and resource nodes.
+// External nodes represent components outside the system boundary.
+
+system ExternalSample {
+  label "External Nodes"
+
+  service OrderService {
+    label "Order Service"
+
+    domain OrderDomain {
+      label "Order Domain"
+
+      usecase PlaceOrder {
+        label "Place Order"
+
+        resource PaymentAPI [external] {
+          label "Payment API"
+          description "Third-party payment gateway outside our boundary."
+        }
+
+        resource InventoryDB {
+          label "Inventory DB"
+        }
+      }
+    }
+  }
+
+  service PaymentGateway [external] {
+    label "Payment Gateway"
+    description "External payment provider — not owned by this team."
+  }
+
+  OrderService -> PaymentGateway "charges card"
+}
+`,
+    },
+    {
+      path: "legend.krs",
+      content: `// Diagram legend syntax (Issue #833).
+//
+// \`legend\` blocks declare color-meaning pairs that render as a footer band
+// below each diagram view. Two entry primitives exist:
+//   swatch <hex>  "label"   — explicit color sample
+//   ref <target>  "label"   — color from the .krs.style cascade for the
+//                              given annotation / tag / id / type
+//
+// View scope is optional. When omitted, the legend appears on every view.
+// Otherwise it is filtered to \`system\`, \`deploy\`, or \`org\`.
+
+system ECPlatform {
+  label "EC Platform"
+
+  service ECommerce {
+    label "EC Site"
+  }
+  service Payment [external] {
+    label "Payment"
+  }
+  service Legacy @deprecated {
+    label "Legacy"
+  }
+}
+
+deploy Production {
+  oci "ec-api"      { realizes ECommerce }
+  oci "payment-api" { realizes Payment }
+}
+
+organization Acme {
+  team Backend {
+    label "Backend"
+  }
+}
+
+// Shown on every view (system / deploy / org).
+legend "Owner team" {
+  swatch #2563EB "Team Backend"
+  swatch #16A34A "Team Frontend"
+  swatch #DC2626 "Third-party"
+
+  ref @deprecated "Deprecated"
+  ref [external]  "External system"
+  ref service     "Service"
+  ref #ECommerce  "EC site (focus)"
+}
+
+// Deploy-only legend — physical layer specifics.
+legend deploy "Hosting tier" {
+  swatch #0EA5E9 "Cloud Run"
+  swatch #F59E0B "On-prem"
+}
+`,
+    },
+    {
+      path: "minimal.krs",
+      content: `// minimal.krs
+// Demonstrates: the smallest valid .krs input — system + 2 services + sync/async edges.
+// Use this as a baseline when isolating rendering bugs.
+
+system Minimal {
+  label "Minimal System"
+
+  service Frontend {
+    label "Frontend"
+  }
+
+  service Backend {
+    label "Backend"
+  }
+
+  Frontend ->  Backend "sync call"
+  Frontend --> Backend "async call"
+}
+`,
+    },
+    {
+      path: "parallel-edges.krs",
+      content: `// parallel-edges.krs
+// Demonstrates parallel edges between the same node pair. The renderer
+// automatically bundles them: ports spread along the node sides (via the
+// existing port-distribution pass), and labels slide along the edge so
+// "create" and "update" do not stack on top of each other.
+// See docs/design/parallel-edge-bundling.md and Issue #1185.
+
+system ParallelEdges {
+  label "Parallel Edges"
+
+  service A { label "Client" }
+  service B { label "API" }
+  service C { label "Worker" }
+
+  // Two sync edges between the same pair: both labels must be readable.
+  A -> B "create"
+  A -> B "update"
+
+  // Sync + async between the same pair: stroke style differs and labels
+  // still need to separate.
+  B -> C "enqueue"
+  B --> C "callback"
+}
+`,
+    },
+    {
+      path: "resource-operations.krs",
+      content: `// Resource CRUD operations on usecases (Issue #1046) and the
+// derived read/write edge differentiation in the usecase view (Issue #1061).
+//
+// \`operations\` declares which CRUD verbs the enclosing usecase performs on a
+// resource. Recognized verbs are \`create\` / \`read\` / \`update\` / \`delete\`.
+// Unknown verbs still parse (preserved for translate adapters that emit
+// \`list\` / \`search\` / \`execute\`) but raise an \`unknown-resource-operation\`
+// warning. Omission keeps the dependency opaque — no diagnostic.
+//
+// In the usecase drill-down view the renderer derives a write-vs-read
+// classification from \`operations\` and shows it via:
+//   - synthesized usecase->resource edge gets a [write] / [read] pseudo-tag
+//   - edge label: "W" for write, "R" for read
+//   - edge stroke-width: 2 for write, 1.5 for read (default style)
+// Hierarchy: read (1.5) < write (2) < cyclic (2.5) keeps cyclic the
+// most attention-grabbing axis.
+//
+// This file is the AT-friendly minimal sample. See \`examples/ec-platform/\`
+// for the same property used in a realistic scenario.
+
+system Demo {
+  label "Resource operations demo"
+
+  database OrderDB {
+    table OrderTable { label "Orders table" }
+  }
+
+  service Backend {
+    domain Order {
+      // Write usecase: edge renders thicker with "W" label.
+      usecase PlaceOrder {
+        label "Accept a new order"
+        resource OrderDB.OrderTable {
+          operations create, read
+        }
+        resource InventoryAPI [external] {
+          label "Inventory check API"
+          operations read
+        }
+      }
+
+      // Multi-line form accumulates verbs; still classified as write
+      // because update is in the list.
+      usecase UpdateOrder {
+        label "Modify an order"
+        resource OrderDB.OrderTable {
+          operations read
+          operations update
+        }
+      }
+
+      // Pure read usecase: edge renders thinner with "R" label.
+      usecase QueryOrder {
+        label "Query order status"
+        resource OrderDB.OrderTable {
+          operations read
+        }
+      }
+
+      // Omission form — opaque dependency. Renders as read (conservative)
+      // with "R" label and the default thin stroke.
+      usecase ListOrders {
+        label "List recent orders"
+        resource OrderDB.OrderTable
+      }
+    }
+  }
+}
+`,
+    },
+    {
+      path: "usecase-authorization.krs",
+      content: `// Authorization notes on a usecase — the description + link convention
+// (ADR-20260511-02, Issue #1282).
+//
+// karasu deliberately does NOT model runtime authorization (who may call
+// which usecase) in its vocabulary. There is no \`requires\`, no \`policy\`,
+// no \`role: admin\` attribute. Instead, the constraint is written as prose
+// in \`description\` and the canonical rule lives behind a \`link\`.
+//
+// Convention:
+//   - Start the relevant sentence with \`Access:\` (or \`アクセス:\` in JP).
+//   - Add a \`link\` whose label contains \`Authorization policy\`.
+//   - The link is authoritative; the description is a one-sentence hint.
+//   - Do NOT invent attributes inside the description text.
+//
+// See docs/spec/syntax.md "Authorization notes" for the full rationale.
+
+system Billing {
+  label "Billing platform"
+
+  service BillingAPI {
+    label "Billing API"
+
+    domain Refund {
+      label "Refunds"
+
+      // Restricted usecase — Access: prefix + policy link.
+      usecase RefundOrder {
+        label "Refund an order"
+        description "Access: admins and billing operators only. Customers cannot self-serve; partial refunds require dual approval above 10,000 JPY."
+        link "https://policy.example.com/billing/refund-order" "Authorization policy"
+      }
+
+      // Open usecase — no Access: prefix, no policy link. Anyone authenticated
+      // can call this; the absence of the convention is itself a signal.
+      usecase QueryRefundStatus {
+        label "Check refund status"
+        description "Returns the current state of a refund request."
+      }
+    }
+  }
+}
+`,
+    },
+    {
+      path: "users.krs",
+      content: `// users.krs
+// Demonstrates: [human] and [ai] user nodes with role and description properties.
+
+system UserSample {
+  label "User Node Sample"
+
+  user Customer [human] {
+    label "Customer"
+    role "Places orders and tracks shipments"
+    description "A human user who interacts with the storefront."
+  }
+
+  user SupportAgent [human] {
+    label "Support Agent"
+    role "Handles customer inquiries"
+  }
+
+  user RecommendBot [ai] {
+    label "Recommendation Bot"
+    role "Generates personalised product recommendations"
+    description "An AI agent that analyses purchase history."
+  }
+
+  service Storefront {
+    label "Storefront"
+  }
+
+  service SupportPortal {
+    label "Support Portal"
+  }
+
+  Customer      -> Storefront     "browses and orders"
+  SupportAgent  -> SupportPortal  "resolves tickets"
+  RecommendBot  -> Storefront     "injects recommendations"
+}
+`,
+    },
+  ],
+};

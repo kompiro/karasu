@@ -1,14 +1,14 @@
 ---
 name: update-examples
 description: >
-  Edit any examples/ file. For ec-platform files, also sync examples.ts in the same commit.
+  Edit any examples/ file. For ec-platform and feature-samples files, also sync examples.ts in the same commit.
   Trigger when the user says: "examples を更新", "update examples", "edit example",
   "サンプルを更新", "サンプルを編集", or similar phrases requesting to edit example files.
 ---
 
 # Update Examples Skill
 
-`examples/` 配下のファイルを編集する。`ec-platform/` のファイルは `packages/core/src/builtins/examples.ts` への同期も行い、同一コミットにまとめる。
+`examples/` 配下のファイルを編集する。`ec-platform/` と `feature-samples/` のファイルは `packages/core/src/builtins/examples.ts` への同期も行い、同一コミットにまとめる。
 
 ## 前提
 
@@ -31,7 +31,7 @@ description: >
 
 マッピング表を確認して、対象ファイルが `examples.ts` に登録されているかどうかを判断する。
 
-- **登録済み**（現在は `ec-platform/` のみ）→ ステップ3〜5へ進む
+- **登録済み**（現在は `ec-platform/` と `feature-samples/`）→ ステップ3〜5へ進む
 - **未登録**（`hr-tool/` など）→ ステップ3のみ実行し、ステップ4・5はスキップしてステップ6へ進む
 
 ### 3. `examples/` ファイルを編集する
@@ -54,7 +54,7 @@ description: >
 変更したファイルをすべて**同一コミット**に含める。コミットメッセージの例：
 
 ```
-# ec-platform の場合（examples.ts も同期）
+# ec-platform / feature-samples の場合（examples.ts も同期）
 chore(examples): update ec-platform/<target-file>.krs and sync examples.ts
 
 # 未登録ディレクトリの場合（examples.ts の更新なし）
