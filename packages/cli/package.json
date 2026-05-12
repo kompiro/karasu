@@ -2,28 +2,45 @@
   "name": "karasu",
   "version": "0.0.0",
   "description": "karasu CLI — serve and build .krs architecture diagrams",
+  "homepage": "https://github.com/kompiro/karasu#readme",
   "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/kompiro/karasu.git",
+    "directory": "packages/cli"
+  },
   "bin": {
     "karasu": "./dist/index.js"
   },
+  "files": [
+    "dist"
+  ],
   "type": "module",
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
+  },
   "scripts": {
-    "build": "tsc",
-    "dev": "tsc --watch",
+    "build": "esbuild src/index.ts --bundle --platform=node --format=esm --target=node20 --outfile=dist/index.js --alias:@karasu-tools/core=../core/src/index.ts --external:commander --external:chokidar --external:yaml",
+    "dev": "esbuild src/index.ts --bundle --platform=node --format=esm --target=node20 --outfile=dist/index.js --alias:@karasu-tools/core=../core/src/index.ts --external:commander --external:chokidar --external:yaml --watch",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:coverage": "vitest run --coverage"
   },
   "dependencies": {
-    "@karasu-tools/core": "workspace:*",
     "chokidar": "^5.0.0",
     "commander": "^14.0.0",
     "yaml": "^2.8.3"
   },
   "devDependencies": {
+    "@karasu-tools/core": "workspace:*",
     "@types/node": "^25.6.0",
     "@vitest/coverage-v8": "^4.1.4",
+    "esbuild": "^0.28.0",
     "typescript": "^6.0.3",
     "vitest": "^4.1.4"
+  },
+  "engines": {
+    "node": ">=20"
   }
 }

@@ -25,6 +25,9 @@
     "format:check": "oxfmt --check packages/ scripts/",
     "typecheck": "pnpm -r run typecheck && tsc --noEmit -p scripts/tsconfig.json",
     "knip": "knip",
+    "changeset": "changeset",
+    "version-packages": "changeset version && pnpm install --lockfile-only",
+    "release": "pnpm build && changeset publish",
     "check:cycles": "madge --circular --extensions ts,tsx packages/core/src packages/app/src packages/cli/src packages/lsp/src packages/vscode/src",
     "adr:init": "adr init",
     "adr:validate": "adr validate",
@@ -41,6 +44,7 @@
     "gen:reference": "tsx scripts/reference/gen-docs.ts"
   },
   "devDependencies": {
+    "@changesets/cli": "^2.31.0",
     "@kompiro/adr-tools": "^0.0.2",
     "@types/js-yaml": "^4.0.9",
     "@types/node": "^25.6.0",
