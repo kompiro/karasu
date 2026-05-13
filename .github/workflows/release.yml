@@ -8,12 +8,14 @@ name: Release
 # pending, this workflow is a no-op — the maintainer is expected to run
 # `pnpm changeset version` locally and open a regular release PR.
 #
-# We deliberately do NOT pass `version:` to changesets/action so the action
-# never tries to create the "Version Packages" PR itself. That avoided
-# needing the repo-wide "Allow GitHub Actions to create and approve pull
-# requests" setting (see Issue #1370). When changeset-bot is introduced
-# post-public (Issue #1315), this workflow can switch back to the bot-PR
-# flow.
+# We call `changeset publish` directly rather than using changesets/action.
+# The action always runs `changeset version` first (even with `version:`
+# omitted) and then tries to open or list a "Version Packages" PR, which
+# requires the repo-wide "Allow GitHub Actions to create and approve pull
+# requests" setting we keep OFF (see Issue #1370). `changeset publish`
+# alone is a no-op when no versions have been bumped, so this step is safe
+# to run on every push. When changeset-bot is introduced post-public
+# (Issue #1315), we can switch back to the bot-PR flow.
 #
 # Currently the only public package is `karasu` (the CLI). `@karasu-tools/*`
 # and `karasu-vscode` are listed in `.changeset/config.json` `ignore` — the
@@ -64,12 +66,13 @@ jobs:
         env:
           NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+      # `pnpm run release` runs `pnpm build && changeset publish`. When no
+      # versions have been bumped (the common case on every push), `changeset
+      # publish` exits cleanly without publishing anything. Publishes happen
+      # only after a maintainer merges a `pnpm changeset version` PR.
       - name: Publish to npm
-        uses: changesets/action@63a615b9cd06ba9a3e6d13796c7fbcb080a60a0b # v1.8.0
-        with:
-          publish: pnpm run release
+        run: pnpm run release
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           NPM_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
           NPM_CONFIG_PROVENANCE: "true"
