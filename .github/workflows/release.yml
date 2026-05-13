@@ -66,11 +66,31 @@ jobs:
         env:
           NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      # `pnpm run release` runs `pnpm build && changeset publish`. When no
-      # versions have been bumped (the common case on every push), `changeset
-      # publish` exits cleanly without publishing anything. Publishes happen
-      # only after a maintainer merges a `pnpm changeset version` PR.
+      # Skip the publish step until the OSS launch prerequisites are in place
+      # (npm name reserved + `NPM_TOKEN` secret configured — see Issue #1315
+      # and docs/process.md "未対応のフォローアップ"). Without this guard,
+      # every push to `main` would fail with `ENEEDAUTH` from `changeset
+      # publish`, because the current `packages/cli/package.json` version
+      # (0.0.0) is not yet on the registry and `changeset publish` will
+      # attempt to push it.
+      - name: Check publish prerequisites
+        id: prereqs
+        env:
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          if [ -n "$NPM_TOKEN" ]; then
+            echo "can_publish=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "::notice::NPM_TOKEN secret is not set — skipping publish (expected pre-launch; see #1315)."
+            echo "can_publish=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      # `pnpm run release` runs `pnpm build && changeset publish`. `changeset
+      # publish` will publish any package whose `package.json` version is not
+      # yet on npm, so it only does real work after a maintainer merges a
+      # `pnpm changeset version` PR.
       - name: Publish to npm
+        if: steps.prereqs.outputs.can_publish == 'true'
         run: pnpm run release
         env:
           NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
