@@ -128,16 +128,19 @@ plugin にバンドルされる skill とその karasu 内での主な用途:
 
 karasu 専用の skill（`/svg-icon`, `/update-examples`）は `.claude/skills/` 配下にローカル定義されている（plugin 化対象外）。
 
-### Sibling repo の clone（`adr-tools`, `hane` 等）
+### Sibling repo の clone（`adr-tools`, `tpl-tools`, `hane` 等）
 
 devcontainer の `/workspaces` は `node` ユーザー所有に設定されており、karasu の隣に関連リポジトリを clone できる。Claude Code の sandbox にも `/workspaces` を `additionalDirectories` で追加済みのため、セッションを離れずに sibling repo の更新作業ができる。
 
 ```
 git clone https://github.com/kompiro/adr-tools.git /workspaces/adr-tools
+git clone https://github.com/kompiro/tpl-tools.git /workspaces/tpl-tools
 git clone https://github.com/kompiro/hane.git     /workspaces/hane
 ```
 
-karasu 側のセッション内で `/workspaces/adr-tools` や `/workspaces/hane` の編集・コミット・PR 作成が可能。書き込み権限は image build 時に Dockerfile で `/workspaces` を `node:node` 所有に設定しているため、devcontainer を作り直した直後から有効。
+karasu 側のセッション内で `/workspaces/adr-tools` / `/workspaces/tpl-tools` / `/workspaces/hane` の編集・コミット・PR 作成が可能。書き込み権限は image build 時に Dockerfile で `/workspaces` を `node:node` 所有に設定しているため、devcontainer を作り直した直後から有効。
+
+karasu は ADR / TPL ツールを外部パッケージ（`@kompiro/adr-tools`, `@kompiro/tpl-tools`）として GitHub Packages から install する。`.npmrc` は `@kompiro:registry=https://npm.pkg.github.com` を指定済みで、CI は `secrets.GITHUB_TOKEN` 経由で読み取る（各 package の "Manage Actions access" に `kompiro/karasu` を `Read` で追加してある）。ローカル install には `NODE_AUTH_TOKEN` に `read:packages` 権限を持つ token を渡す。fine-grained PAT を使う場合は Repository permissions の **Packages: Read-only** が必要。
 
 ### 循環依存チェック
 
