@@ -13,7 +13,8 @@
     "karasu": "./dist/index.js"
   },
   "files": [
-    "dist"
+    "dist",
+    "THIRD_PARTY_NOTICES.md"
   ],
   "type": "module",
   "publishConfig": {
@@ -21,7 +22,9 @@
     "provenance": true
   },
   "scripts": {
+    "prebuild": "tsx ../../scripts/ci/generate-third-party-notices.ts .",
     "build": "esbuild src/index.ts --bundle --platform=node --format=esm --target=node20 --outfile=dist/index.js --alias:@karasu-tools/core=../core/src/index.ts --external:commander --external:chokidar --external:yaml",
+    "prepack": "pnpm run build",
     "dev": "esbuild src/index.ts --bundle --platform=node --format=esm --target=node20 --outfile=dist/index.js --alias:@karasu-tools/core=../core/src/index.ts --external:commander --external:chokidar --external:yaml --watch",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",

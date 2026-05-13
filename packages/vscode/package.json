@@ -11,6 +11,7 @@
   "publisher": "karasu",
   "main": "./out/extension.js",
   "scripts": {
+    "prebuild": "tsx ../../scripts/ci/generate-third-party-notices.ts .",
     "build": "pnpm --filter @karasu-tools/lsp run build && esbuild src/extension.ts --bundle --platform=node --format=cjs --outfile=out/extension.js --external:vscode && node -e \"require('node:fs').cpSync('../lsp/out/server.js', 'out/server.js')\"",
     "postbuild": "node scripts/assert-server-bundled.mjs",
     "test": "vitest run",
