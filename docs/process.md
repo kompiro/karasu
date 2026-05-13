@@ -248,10 +248,16 @@ npm への公開は **changesets** で管理する。設計の経緯は `docs/de
 
 ### リリースの流れ
 
-1. `main` への push をトリガに `release.yml`（GitHub Actions）が走る。
-2. 未消化の changeset があると、changesets が **"Version Packages" PR** を自動で作成・更新する（バージョン bump + `CHANGELOG.md` 更新 + lockfile 更新）。
-3. その PR をレビューしてマージすると、再び `release.yml` が走り `changeset publish` が bump 済みパッケージを npm に公開する。
+`release.yml` は **publish-only** で運用する。GitHub Actions に PR 作成権限を与えなくて済むよう、bot による "Version Packages" PR は使わない（経緯は Issue #1370）。
+
+リリース手順は以下のとおり:
+
+1. メンテナがローカルで `pnpm changeset version` を実行する（バージョン bump + `CHANGELOG.md` 生成 + lockfile 更新）。
+2. その差分を通常の PR（例: `chore: release X.Y.Z`）として上げ、レビュー後に `main` にマージする。
+3. `main` への push をトリガに `release.yml` が走り、pending changeset が無い状態なので `changeset publish` が bump 済みパッケージを npm に公開する。
 4. publish 時に npm provenance（`--provenance`）を付与する。
+
+> changeset-bot（GitHub App、後述）を導入したらこのフローは bot-PR ベースに戻せる。
 
 ### 未対応のフォローアップ
 

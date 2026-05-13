@@ -1,11 +1,19 @@
 name: Release
 
-# Changesets-driven release pipeline.
+# Changesets-driven release pipeline (publish-only mode).
 #
-# On every push to `main`:
-#   - if there are pending changesets, open/refresh a "Version Packages" PR
-#     (bumps versions + updates CHANGELOGs);
-#   - when that PR is merged, publish the bumped public packages to npm.
+# On every push to `main`, if there are NO pending changesets (i.e. a
+# maintainer has already merged a Version Packages PR that consumed them),
+# publish the bumped public packages to npm. When changesets are still
+# pending, this workflow is a no-op — the maintainer is expected to run
+# `pnpm changeset version` locally and open a regular release PR.
+#
+# We deliberately do NOT pass `version:` to changesets/action so the action
+# never tries to create the "Version Packages" PR itself. That avoided
+# needing the repo-wide "Allow GitHub Actions to create and approve pull
+# requests" setting (see Issue #1370). When changeset-bot is introduced
+# post-public (Issue #1315), this workflow can switch back to the bot-PR
+# flow.
 #
 # Currently the only public package is `karasu` (the CLI). `@karasu-tools/*`
 # and `karasu-vscode` are listed in `.changeset/config.json` `ignore` — the
@@ -25,8 +33,7 @@ concurrency:
   cancel-in-progress: false
 
 permissions:
-  contents: write
-  pull-requests: write
+  contents: read
   id-token: write
   packages: read
 
@@ -57,10 +64,9 @@ jobs:
         env:
           NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Create Release PR or publish to npm
+      - name: Publish to npm
         uses: changesets/action@63a615b9cd06ba9a3e6d13796c7fbcb080a60a0b # v1.8.0
         with:
-          version: pnpm run version-packages
           publish: pnpm run release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
