@@ -16,12 +16,20 @@
     "@anthropic-ai/sdk": "^0.91.1",
     "@karasu-tools/core": "workspace:*",
     "@monaco-editor/react": "^4.7.0",
+    "@radix-ui/react-context-menu": "^2.2.16",
+    "@radix-ui/react-dialog": "^1.1.15",
+    "@tailwindcss/vite": "^4.3.0",
+    "class-variance-authority": "^0.7.1",
+    "clsx": "^2.1.1",
     "dompurify": "^3.4.0",
     "fflate": "^0.8.2",
+    "lucide-react": "^1.14.0",
     "marked": "^18.0.2",
     "monaco-editor": "^0.55.0",
     "react": "^19.2.5",
-    "react-dom": "^19.2.5"
+    "react-dom": "^19.2.5",
+    "tailwind-merge": "^3.6.0",
+    "tailwindcss": "^4.3.0"
   },
   "devDependencies": {
     "@testing-library/react": "^16.3.2",

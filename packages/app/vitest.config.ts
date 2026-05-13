@@ -13,6 +13,10 @@ export default defineConfig({
         find: "@karasu-tools/core",
         replacement: path.resolve(__dirname, "../core/src/index.ts"),
       },
+      {
+        find: /^@\/(.*)/,
+        replacement: path.resolve(__dirname, "src") + "/$1",
+      },
     ],
   },
   test: {

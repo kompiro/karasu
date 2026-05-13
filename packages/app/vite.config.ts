@@ -1,6 +1,7 @@
 import path from "path";
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
+import tailwindcss from "@tailwindcss/vite";
 
 export default defineConfig({
   server: {
@@ -9,7 +10,7 @@ export default defineConfig({
       strict: false,
     },
   },
-  plugins: [react()],
+  plugins: [react(), tailwindcss()],
   build: {
     minify: false,
     sourcemap: true,
@@ -23,6 +24,10 @@ export default defineConfig({
       {
         find: "@karasu-tools/core",
         replacement: path.resolve(__dirname, "../core/src/index.ts"),
+      },
+      {
+        find: /^@\/(.*)/,
+        replacement: path.resolve(__dirname, "src") + "/$1",
       },
     ],
   },

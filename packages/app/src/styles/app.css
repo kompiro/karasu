@@ -6,6 +6,28 @@
 
 @import url("https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap");
 
+/* Tailwind v4 — shadcn/ui experiment (Issue #1368).
+ * Loaded AFTER existing tokens so :root variables below are still authoritative.
+ * preflight is left enabled per design-doc decision; conflicts are fixed case-by-case. */
+@import "tailwindcss";
+
+/* shadcn/ui theme bridge — map Tailwind theme tokens to karasu's existing CSS variables
+ * so that shadcn primitives (Dialog, ContextMenu) pick up the Onyx Cartographer palette
+ * without re-declaring colors. Only tokens shadcn primitives actually consume are bridged. */
+@theme inline {
+  --color-background: var(--bg-base);
+  --color-foreground: var(--text-primary);
+  --color-popover: var(--bg-overlay);
+  --color-popover-foreground: var(--text-primary);
+  --color-border: var(--border-strong);
+  --color-ring: var(--accent);
+  --color-accent: var(--accent);
+  --color-accent-foreground: #ffffff;
+  --color-muted: var(--bg-raised);
+  --color-muted-foreground: var(--text-secondary);
+  --radius: 8px;
+}
+
 /* ── Design Tokens ──────────────────────────────────────────────── */
 :root {
   /* Surface depths — from void to raised */
