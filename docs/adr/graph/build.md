@@ -1,6 +1,6 @@
 # ADR Topic: build
 
-28 ADRs in this topic. Solid nodes belong to `build`; gray dashed nodes are ghosts showing cross-topic references to help navigation.
+29 ADRs in this topic. Solid nodes belong to `build`; gray dashed nodes are ghosts showing cross-topic references to help navigation.
 
 Other topics: [overview](../graph.md).
 ```mermaid
@@ -34,6 +34,7 @@ flowchart TD
     ADR_20260512_03["ADR-20260512-03<br/>in-app Reference データを `reference-data.ts` に集約し、..."]
     ADR_20260512_05["ADR-20260512-05<br/>OSS リリース自動化に changesets を採用し、当面は `karasu`（CLI）の..."]
     ADR_20260513_02["ADR-20260513-02<br/>OSS リリースのライセンス順守を allowlist CI と自動生成 THIRD_PART..."]
+    ADR_20260513_04["ADR-20260513-04<br/>portable な開発スキルは `kompiro/hane` plugin に切り出し、ka..."]
   end
   ADR_20260322_01["ADR-20260322-01<br/>[styling] ビルトインスタイルの一元化と構造化リファレンス"]
   ADR_20260512_03 --> ADR_20260322_01
@@ -72,5 +73,6 @@ flowchart TD
   class ADR_20260512_03 accepted
   class ADR_20260512_05 accepted
   class ADR_20260513_02 accepted
+  class ADR_20260513_04 accepted
   class ADR_20260322_01 ghost
 ```
