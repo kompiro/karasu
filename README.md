@@ -366,6 +366,10 @@ karasu/
 
 Inspired by C4 Model, but with its own vocabulary and an explicit separation between logical and physical structure.
 
+## Contributing
+
+See [`CONTRIBUTING.md`](CONTRIBUTING.md) for how to file issues, the maintainer's "best-effort, no SLA" stance, local setup, and the PR flow. Participation is governed by the [Contributor Covenant 2.1](CODE_OF_CONDUCT.md).
+
 ## License
 
 Licensed under the [Apache License, Version 2.0](./LICENSE).
