@@ -11,9 +11,7 @@ import { X } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const Dialog = DialogPrimitive.Root;
-const DialogTrigger = DialogPrimitive.Trigger;
 const DialogPortal = DialogPrimitive.Portal;
-const DialogClose = DialogPrimitive.Close;
 
 const DialogOverlay = React.forwardRef<
   React.ElementRef<typeof DialogPrimitive.Overlay>,
@@ -65,10 +63,7 @@ const DialogHeader = ({ className, ...props }: React.HTMLAttributes<HTMLDivEleme
 DialogHeader.displayName = "DialogHeader";
 
 const DialogFooter = ({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) => (
-  <div
-    className={cn("flex flex-row justify-end gap-2", className)}
-    {...props}
-  />
+  <div className={cn("flex flex-row justify-end gap-2", className)} {...props} />
 );
 DialogFooter.displayName = "DialogFooter";
 
@@ -96,15 +91,7 @@ const DialogDescription = React.forwardRef<
 ));
 DialogDescription.displayName = DialogPrimitive.Description.displayName;
 
-export {
-  Dialog,
-  DialogPortal,
-  DialogOverlay,
-  DialogTrigger,
-  DialogClose,
-  DialogContent,
-  DialogHeader,
-  DialogFooter,
-  DialogTitle,
-  DialogDescription,
-};
+// Only export the surface karasu currently consumes; knip flags the rest.
+// Re-export the trimmed primitives (Portal/Overlay/Trigger/Close) when a
+// new caller actually needs them.
+export { Dialog, DialogContent, DialogHeader, DialogFooter, DialogTitle, DialogDescription };
