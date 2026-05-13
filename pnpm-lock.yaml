@@ -21,15 +21,12 @@ importers:
       '@kompiro/adr-tools':
         specifier: ^0.0.2
         version: 0.0.2
-      '@types/js-yaml':
-        specifier: ^4.0.9
-        version: 4.0.9
+      '@kompiro/tpl-tools':
+        specifier: ^0.0.1
+        version: 0.0.1
       '@types/node':
         specifier: ^25.6.0
         version: 25.6.0
-      js-yaml:
-        specifier: ^4.1.1
-        version: 4.1.1
       knip:
         specifier: ^6.6.0
         version: 6.6.0(@emnapi/core@1.9.2)(@emnapi/runtime@1.9.2)
@@ -817,6 +814,11 @@ packages:
     engines: {node: '>=20.0.0'}
     hasBin: true
 
+  '@kompiro/tpl-tools@0.0.1':
+    resolution: {integrity: sha512-avWqH9yhLot91lDu+ZBAEUmuNR9cL7nyEIQFkbWHG0mY5MfB9aARaf7ZaN43jAEHsZhXPNFMihl01dwJT40rdQ==, tarball: https://npm.pkg.github.com/download/@kompiro/tpl-tools/0.0.1/ce46490a457a695cccfc5910406ac2bf4383e449}
+    engines: {node: '>=20.0.0'}
+    hasBin: true
+
   '@manypkg/find-root@1.1.0':
     resolution: {integrity: sha512-mki5uBvhHzO8kYYix/WRy2WX8S3B5wdVSc9D6KcU5lQNglP2yt58/VfLuAK49glRXChosY8ap2oJ1qgma3GUVA==}
 
@@ -1588,9 +1590,6 @@ packages:
 
   '@types/istanbul-lib-coverage@2.0.6':
     resolution: {integrity: sha512-2QF/t/auWm0lsy8XtKVPG19v3sSOQlJe/YHZgfjb/KBBHOGSV+J2q/S671rcq9uTBrLAXmZpqJiaQbMT+zNU1w==}
-
-  '@types/js-yaml@4.0.9':
-    resolution: {integrity: sha512-k4MGaQl5TGo/iipqb2UDG2UwjXziSWkh0uysQelTlJpX1qGlpUZYm8PnO4DxG1qBomtJUdYJ6qR6xdIah10JLg==}
 
   '@types/mocha@10.0.10':
     resolution: {integrity: sha512-xPyYSz1cMPnJQhl0CLMH68j3gprKZaTjG3s5Vi+fDgx+uhG9NOXwbVt52eFS8ECyXhyKcjDLCBEqBExKuiZb7Q==}
@@ -5037,6 +5036,10 @@ snapshots:
     dependencies:
       js-yaml: 4.1.1
 
+  '@kompiro/tpl-tools@0.0.1':
+    dependencies:
+      js-yaml: 4.1.1
+
   '@manypkg/find-root@1.1.0':
     dependencies:
       '@babel/runtime': 7.29.2
@@ -5571,8 +5574,6 @@ snapshots:
   '@types/http-cache-semantics@4.2.0': {}
 
   '@types/istanbul-lib-coverage@2.0.6': {}
-
-  '@types/js-yaml@4.0.9': {}
 
   '@types/mocha@10.0.10': {}
 

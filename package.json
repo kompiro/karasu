@@ -36,9 +36,9 @@
     "adr:regenerate": "adr regenerate",
     "adr:check-assumptions": "adr check-assumptions",
     "lint:e2e-page-goto": "tsx scripts/lint/no-direct-page-goto.ts",
-    "tpl:validate": "tsx scripts/tpl/cli.ts",
-    "tpl:related": "tsx scripts/tpl/related-cli.ts",
-    "tpl:review:body": "tsx scripts/tpl/review-body.ts",
+    "tpl:validate": "tpl validate --config adr.config.json --packages-root packages",
+    "tpl:related": "tpl related --config adr.config.json",
+    "tpl:review:body": "tpl review-body --repo kompiro/karasu",
     "at:check-coverage": "tsx scripts/acceptance/check-coverage.ts",
     "at:test": "vitest run scripts/acceptance",
     "gen:reference": "tsx scripts/reference/gen-docs.ts"
@@ -46,9 +46,8 @@
   "devDependencies": {
     "@changesets/cli": "^2.31.0",
     "@kompiro/adr-tools": "^0.0.2",
-    "@types/js-yaml": "^4.0.9",
+    "@kompiro/tpl-tools": "^0.0.1",
     "@types/node": "^25.6.0",
-    "js-yaml": "^4.1.1",
     "knip": "^6.6.0",
     "lefthook": "^2.1.6",
     "madge": "^8.0.0",

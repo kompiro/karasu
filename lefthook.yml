@@ -38,7 +38,7 @@ pre-push:
       glob: "{docs/adr/**,adr.config.json}"
       run: pnpm exec adr check-assumptions --quiet
     tpl-validate:
-      glob: "{docs/test-perspectives/**,scripts/tpl/**}"
+      glob: "{docs/test-perspectives/**,adr.config.json}"
       run: pnpm run tpl:validate
     at-check-coverage:
       glob: "{docs/acceptance/**,scripts/acceptance/**}"
