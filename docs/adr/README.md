@@ -40,6 +40,7 @@ karasu が何を表現するか、その根幹の設計判断。
 - [ADR-20260410-02](20260410-02-krs-formatter.md) — `.krs` フォーマッター — トークン列ベースでコメント保持
 - [ADR-20260410-03](20260410-03-structural-krs-patch.md) — 構造的 `.krs` パッチ — ノード ID ベースの `append` / `replace` / `remove`
 - [ADR-20260412-04](20260412-04-implicit-edge-source-shorthand.md) — ブロック内エッジの暗黙 source 簡略記法
+- [ADR-20260513-03](20260513-03-import-system-nested.md) — system にネストした service / domain の Named Import は明示的な path 構文で取り込む
 
 ### リゾルバ / 警告 / 検証
 
