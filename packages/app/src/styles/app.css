@@ -956,11 +956,21 @@ body,
 }
 .diagnostic-banner__item--info {
   /* `info` is for structural facts karasu visualizes but does not
-     prescribe (e.g. shared databases across services). Render at lower
-     visual weight than `warning` per ADR pending (see design doc
-     karasu-position-on-style-prescriptions). */
-  color: var(--text-muted, #94a3b8);
-  opacity: 0.85;
+     prescribe (e.g. shared databases across services). Use a calm blue
+     (the IDE convention for "informational") that is clearly
+     distinguishable from warning yellow and error red, while still being
+     less attention-grabbing than warning thanks to lower saturation.
+     See design doc karasu-position-on-style-prescriptions. */
+  color: #93c5fd; /* blue-300 — readable on dark surface, distinct from warning/error */
+}
+
+.diagnostic-banner__item--info::before {
+  /* Severity label glyph so users can identify the row's register at a
+     glance, even when several diagnostics share the banner. */
+  content: "ℹ ";
+  display: inline-block;
+  margin-right: 4px;
+  font-weight: 600;
 }
 
 /* ── Error State Overlay ────────────────────────────────────────── */
