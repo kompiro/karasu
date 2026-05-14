@@ -1,6 +1,8 @@
-// multi-file-system/cms.krs
-// Core CMS slice — reached via two paths: named import from editor.krs and
-// whole-file import from index.krs. Not a cycle (S5).
+// multi-file-system/moderation.krs
+// Trust & Safety slice — owns moderation review and surfaces the external
+// search service that delivery relies on. Reached via two paths: named
+// import from editor.krs (Authoring asks Moderation for approval before
+// publishing) and whole-file import from index.krs. Not a cycle (S5).
 // Pulls shared databases from infra.krs (canonical infra-file pattern).
 
 import "infra.krs"
@@ -18,20 +20,6 @@ system Blog {
     description "モデレーション / 公開キュー操作"
   }
 
-  service ContentStore {
-    label "公開記事ストア"
-    description "公開済み記事の永続化と版管理"
-
-    domain "保存" {
-      usecase "記事を保存する" {
-        resource ArticleDB.articles
-      }
-      usecase "版を切り替える" {
-        resource ArticleDB.articles
-      }
-    }
-  }
-
   service Moderation {
     label "モデレーション"
     description "公開前チェック・違反通報の処理"
@@ -46,25 +34,13 @@ system Blog {
     }
   }
 
-  service Search [external] {
-    label "全文検索エンジン"
-    description "外部ホスト型の検索サービス"
-  }
-
   Moderator -> AdminApp "モデレーション操作"
   AdminApp -> Moderation "判定を記録"
-  Moderation -> ContentStore "公開反映"
-  ContentStore -> Search "インデックス更新"
 }
 
 // Same-id `deploy` / `organization` blocks merge with the ones in
 // reader.krs and editor.krs (S4 union).
 deploy Production {
-  oci cmsContainer {
-    label "cms-container"
-    runtime "Docker"
-    realizes ContentStore
-  }
   oci moderationContainer {
     label "moderation-container"
     runtime "Docker"

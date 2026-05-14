@@ -1,11 +1,16 @@
 // multi-file-system/editor.krs
-// Editor-facing slice of the Blog system.
-// Reaches cms.krs via a named import; cms.krs is also brought in whole-file
-// by index.krs (DAG re-arrival — no circular warning per S5).
-// Pulls shared databases from infra.krs (canonical infra-file pattern).
+// Authoring slice — editors write drafts, publish articles, and ask
+// Moderation for approval. Single `Authoring` service owns the whole
+// write-side lifecycle (drafting → publishing) rather than splitting
+// each step into its own microservice — both responsibilities are one
+// team's purview and share the same DB.
+//
+// Reaches moderation.krs via a named import; moderation.krs is also
+// brought in whole-file by index.krs (DAG re-arrival — no circular
+// warning per S5). Pulls shared databases from infra.krs.
 
 import "infra.krs"
-import { ContentStore, Moderation } from "cms.krs"
+import { Moderation } from "moderation.krs"
 
 system Blog {
   label "Editor slice"  // overridden by index.krs (S3)
@@ -20,8 +25,9 @@ system Blog {
     description "下書き編集・プレビュー・公開操作"
   }
 
-  service Drafting {
-    label "下書き管理"
+  service Authoring {
+    label "編集・公開"
+    description "下書きから公開までの記事ライフサイクル"
 
     domain "編集" {
       usecase "下書きを編集する" {
@@ -40,25 +46,24 @@ system Blog {
   }
 
   Editor -> EditorApp "記事を書く"
-  EditorApp -> Drafting "下書き保存 / 公開"
-  Drafting -> ContentStore "公開記事として登録"
-  Drafting -> Moderation "公開前チェック依頼"
+  EditorApp -> Authoring "下書き保存 / 公開"
+  Authoring -> Moderation "公開前チェック依頼"
 }
 
 // Same-id `deploy` / `organization` blocks merge with the ones in
-// reader.krs and cms.krs (S4 union).
+// reader.krs and moderation.krs (S4 union).
 deploy Production {
-  oci editorContainer {
-    label "editor-container"
+  oci authoringContainer {
+    label "authoring-container"
     runtime "Docker"
-    realizes Drafting
+    realizes Authoring
   }
 }
 
 organization Editorial {
   team editorial {
     label "Editorial"
-    owns Drafting
+    owns Authoring
     member bob {
       label "Bob"
       description "Editor-in-chief"

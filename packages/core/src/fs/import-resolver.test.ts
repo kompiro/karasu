@@ -1209,7 +1209,7 @@ system ECPlatform {
       // Drives the actual on-disk example so the spec & the impl are
       // exercised against the same fixture users will read.
       const exampleDir = resolve(__dirname, "../../../../examples/multi-file-system");
-      for (const name of ["index.krs", "reader.krs", "editor.krs", "cms.krs", "infra.krs"]) {
+      for (const name of ["index.krs", "reader.krs", "editor.krs", "moderation.krs", "infra.krs"]) {
         await fs.writeFile(`/proj/${name}`, readFileSync(resolve(exampleDir, name), "utf-8"));
       }
       const result = await resolver.resolve("/proj/index.krs");
@@ -1228,12 +1228,12 @@ system ECPlatform {
           // editor.krs
           "Editor",
           "EditorApp",
-          "Drafting",
-          // cms.krs (the previously-dropped slice)
+          "Authoring",
+          // moderation.krs (the previously-dropped slice)
           "Moderator",
           "AdminApp",
-          "ContentStore",
           "Moderation",
+          // infra.krs (external service)
           "Search",
         ]),
       );
@@ -1248,12 +1248,7 @@ system ECPlatform {
       // deploy / organization (S4)
       const prod = result.krsFile.deploys.find((d) => d.id === "Production");
       expect(prod!.nodes.map((n) => n.id)).toEqual(
-        expect.arrayContaining([
-          "readerContainer",
-          "editorContainer",
-          "cmsContainer",
-          "moderationContainer",
-        ]),
+        expect.arrayContaining(["readerContainer", "authoringContainer", "moderationContainer"]),
       );
       const editorial = result.krsFile.organizations.find((o) => o.id === "Editorial");
       expect(editorial!.teams.map((t) => t.id)).toEqual(

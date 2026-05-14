@@ -1950,14 +1950,14 @@ export const MULTI_FILE_SYSTEM_PROJECT: ExampleProject = {
 
 import "reader.krs"
 import "editor.krs"
-import "cms.krs"
+import "moderation.krs"
 
 // The system body declared here wins over the same-id declarations in the
 // imported files (S3: root entry preference). Open reader.krs / editor.krs /
-// cms.krs directly to see the same system labeled differently.
+// moderation.krs directly to see the same system labeled differently.
 system Blog {
   label "ブログプラットフォームデモ"
-  description "Reader / Editor / CMS の三面を別ファイルに分割した例"
+  description "Reader / Editor / Moderation の三面を別ファイルに分割した例"
 }
 `,
     },
@@ -2001,7 +2001,6 @@ system Blog {
 
   Reader -> ReaderApp "記事を読む"
   ReaderApp -> ArticleDelivery "記事取得"
-  ArticleDelivery -> ContentStore "公開記事を読み込む"
   ArticleDelivery -> Search "クエリ転送"
 }
 
@@ -2030,13 +2029,18 @@ organization Editorial {
     {
       path: "editor.krs",
       content: `// multi-file-system/editor.krs
-// Editor-facing slice of the Blog system.
-// Reaches cms.krs via a named import; cms.krs is also brought in whole-file
-// by index.krs (DAG re-arrival — no circular warning per S5).
-// Pulls shared databases from infra.krs (canonical infra-file pattern).
+// Authoring slice — editors write drafts, publish articles, and ask
+// Moderation for approval. Single \`Authoring\` service owns the whole
+// write-side lifecycle (drafting → publishing) rather than splitting
+// each step into its own microservice — both responsibilities are one
+// team's purview and share the same DB.
+//
+// Reaches moderation.krs via a named import; moderation.krs is also
+// brought in whole-file by index.krs (DAG re-arrival — no circular
+// warning per S5). Pulls shared databases from infra.krs.
 
 import "infra.krs"
-import { ContentStore, Moderation } from "cms.krs"
+import { Moderation } from "moderation.krs"
 
 system Blog {
   label "Editor slice"  // overridden by index.krs (S3)
@@ -2051,8 +2055,9 @@ system Blog {
     description "下書き編集・プレビュー・公開操作"
   }
 
-  service Drafting {
-    label "下書き管理"
+  service Authoring {
+    label "編集・公開"
+    description "下書きから公開までの記事ライフサイクル"
 
     domain "編集" {
       usecase "下書きを編集する" {
@@ -2071,25 +2076,24 @@ system Blog {
   }
 
   Editor -> EditorApp "記事を書く"
-  EditorApp -> Drafting "下書き保存 / 公開"
-  Drafting -> ContentStore "公開記事として登録"
-  Drafting -> Moderation "公開前チェック依頼"
+  EditorApp -> Authoring "下書き保存 / 公開"
+  Authoring -> Moderation "公開前チェック依頼"
 }
 
 // Same-id \`deploy\` / \`organization\` blocks merge with the ones in
-// reader.krs and cms.krs (S4 union).
+// reader.krs and moderation.krs (S4 union).
 deploy Production {
-  oci editorContainer {
-    label "editor-container"
+  oci authoringContainer {
+    label "authoring-container"
     runtime "Docker"
-    realizes Drafting
+    realizes Authoring
   }
 }
 
 organization Editorial {
   team editorial {
     label "Editorial"
-    owns Drafting
+    owns Authoring
     member bob {
       label "Bob"
       description "Editor-in-chief"
@@ -2099,10 +2103,12 @@ organization Editorial {
 `,
     },
     {
-      path: "cms.krs",
-      content: `// multi-file-system/cms.krs
-// Core CMS slice — reached via two paths: named import from editor.krs and
-// whole-file import from index.krs. Not a cycle (S5).
+      path: "moderation.krs",
+      content: `// multi-file-system/moderation.krs
+// Trust & Safety slice — owns moderation review and surfaces the external
+// search service that delivery relies on. Reached via two paths: named
+// import from editor.krs (Authoring asks Moderation for approval before
+// publishing) and whole-file import from index.krs. Not a cycle (S5).
 // Pulls shared databases from infra.krs (canonical infra-file pattern).
 
 import "infra.krs"
@@ -2120,20 +2126,6 @@ system Blog {
     description "モデレーション / 公開キュー操作"
   }
 
-  service ContentStore {
-    label "公開記事ストア"
-    description "公開済み記事の永続化と版管理"
-
-    domain "保存" {
-      usecase "記事を保存する" {
-        resource ArticleDB.articles
-      }
-      usecase "版を切り替える" {
-        resource ArticleDB.articles
-      }
-    }
-  }
-
   service Moderation {
     label "モデレーション"
     description "公開前チェック・違反通報の処理"
@@ -2148,25 +2140,13 @@ system Blog {
     }
   }
 
-  service Search [external] {
-    label "全文検索エンジン"
-    description "外部ホスト型の検索サービス"
-  }
-
   Moderator -> AdminApp "モデレーション操作"
   AdminApp -> Moderation "判定を記録"
-  Moderation -> ContentStore "公開反映"
-  ContentStore -> Search "インデックス更新"
 }
 
 // Same-id \`deploy\` / \`organization\` blocks merge with the ones in
 // reader.krs and editor.krs (S4 union).
 deploy Production {
-  oci cmsContainer {
-    label "cms-container"
-    runtime "Docker"
-    realizes ContentStore
-  }
   oci moderationContainer {
     label "moderation-container"
     runtime "Docker"
@@ -2189,20 +2169,21 @@ organization Editorial {
     {
       path: "infra.krs",
       content: `// multi-file-system/infra.krs
-// Shared infrastructure — databases referenced by services across reader /
-// editor / cms slices. Declared once here, inside a reopened \`system Blog\`
-// block (S3), and pulled into each slice via \`import "infra.krs"\`. This is
-// the canonical pattern for cross-file shared infra:
+// Shared infrastructure — databases and external dependencies referenced
+// by services across reader / editor / moderation slices. Declared once
+// here, inside a reopened \`system Blog\` block (S3), and pulled into each
+// slice via \`import "infra.krs"\`. This is the canonical pattern for
+// cross-file shared infra:
 //
-//   - Each slice that uses a database imports infra.krs, so it renders
-//     standalone in the App without unresolved-resource warnings.
+//   - Each slice that uses a shared resource imports infra.krs, so it
+//     renders standalone in the App without unresolved-edge warnings.
 //   - DAG re-arrival (S5) memoizes the resolved infra.krs, so being
-//     reached through reader / editor / cms doesn't duplicate work.
-//   - The merged model has one canonical declaration per database — no
+//     reached through reader / editor / moderation doesn't duplicate work.
+//   - The merged model has one canonical declaration per resource — no
 //     ambiguity about where shared infra "lives".
-//   - Declaring infra inside \`system Blog { ... }\` (rather than at file
-//     root) lets the system-reopen merge in S3 attach the infra to the
-//     system, so the \`unassigned-database\` warning doesn't fire.
+//   - Declaring inside \`system Blog { ... }\` (rather than at file root)
+//     lets the system-reopen merge in S3 attach the infra to the system,
+//     so the \`unassigned-database\` warning doesn't fire.
 
 system Blog {
   database ArticleDB {
@@ -2219,6 +2200,11 @@ system Blog {
 
   database ModerationLog {
     table decisions
+  }
+
+  service Search [external] {
+    label "全文検索エンジン"
+    description "外部ホスト型の検索サービス。Delivery が直接クエリする"
   }
 }
 `,

@@ -36,7 +36,6 @@ system Blog {
 
   Reader -> ReaderApp "記事を読む"
   ReaderApp -> ArticleDelivery "記事取得"
-  ArticleDelivery -> ContentStore "公開記事を読み込む"
   ArticleDelivery -> Search "クエリ転送"
 }
 
