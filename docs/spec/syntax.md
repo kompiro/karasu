@@ -990,7 +990,7 @@ The same project always produces the same merged AST.
 > - [TPL-20260514-03](../test-perspectives/TPL-20260514-03-system-reopen-merge.md) — reopened `system` merges children, root entry wins for properties (S3)
 > - [TPL-20260514-04](../test-perspectives/TPL-20260514-04-deploy-org-wildcard-propagation.md) — `deploy` / `organization` propagate through whole-file import (S4)
 > - [TPL-20260514-05](../test-perspectives/TPL-20260514-05-dangling-edge-preserves-node.md) — unresolved edge endpoint does not drop the surviving node (S6)
-> - [TPL-20260514-06](../test-perspectives/TPL-20260514-06-infra-redeclared-across-files.md) — same-id `database` / `queue` / `storage` reopens union-merge with an info diagnostic (S4.5)
+> - [TPL-20260514-07](../test-perspectives/TPL-20260514-07-infra-redeclared-across-files.md) — same-id `database` / `queue` / `storage` reopens union-merge with an info diagnostic (S4.5)
 
 ---
 

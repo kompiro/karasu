@@ -945,7 +945,7 @@ system Blog {
 > - [TPL-20260514-03](../test-perspectives/TPL-20260514-03-system-reopen-merge.md) — 再オープン `system` は children を union、property は root entry が勝つ（S3）
 > - [TPL-20260514-04](../test-perspectives/TPL-20260514-04-deploy-org-wildcard-propagation.md) — `deploy` / `organization` も whole-file import で伝搬する（S4）
 > - [TPL-20260514-05](../test-perspectives/TPL-20260514-05-dangling-edge-preserves-node.md) — 未解決 edge endpoint は残存ノードを drop しない（S6）
-> - [TPL-20260514-06](../test-perspectives/TPL-20260514-06-infra-redeclared-across-files.md) — 同名 `database` / `queue` / `storage` の再宣言は union merge、info 診断（S4.5）
+> - [TPL-20260514-07](../test-perspectives/TPL-20260514-07-infra-redeclared-across-files.md) — 同名 `database` / `queue` / `storage` の再宣言は union merge、info 診断（S4.5）
 
 ---
 

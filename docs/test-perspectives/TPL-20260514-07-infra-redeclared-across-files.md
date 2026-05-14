@@ -1,5 +1,5 @@
 ---
-id: TPL-20260514-06
+id: TPL-20260514-07
 title: "同名 database / queue / storage の再宣言は union merge、info 診断で surface する"
 status: active
 date: 2026-05-14
@@ -21,7 +21,7 @@ scope:
     - core
 ---
 
-# TPL-20260514-06: 同名 database / queue / storage の再宣言は union merge、info 診断で surface する
+# TPL-20260514-07: 同名 database / queue / storage の再宣言は union merge、info 診断で surface する
 
 ## 観点
 

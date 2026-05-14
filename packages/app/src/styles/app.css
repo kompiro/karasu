@@ -964,13 +964,24 @@ body,
   color: #93c5fd; /* blue-300 — readable on dark surface, distinct from warning/error */
 }
 
+/* Severity glyph prefixes — applied uniformly to all three registers so the
+   row's level is identifiable at a glance even before color is perceived,
+   and so info doesn't stand out as the only one with an icon. */
+.diagnostic-banner__item--error::before,
+.diagnostic-banner__item--warning::before,
 .diagnostic-banner__item--info::before {
-  /* Severity label glyph so users can identify the row's register at a
-     glance, even when several diagnostics share the banner. */
-  content: "ℹ ";
   display: inline-block;
-  margin-right: 4px;
+  margin-right: 6px;
   font-weight: 600;
+}
+.diagnostic-banner__item--error::before {
+  content: "✕";
+}
+.diagnostic-banner__item--warning::before {
+  content: "⚠";
+}
+.diagnostic-banner__item--info::before {
+  content: "ℹ";
 }
 
 /* ── Error State Overlay ────────────────────────────────────────── */
