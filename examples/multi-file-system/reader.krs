@@ -1,0 +1,57 @@
+// multi-file-system/reader.krs
+// Reader-facing slice of the Blog system, plus the deploy and organization
+// views (S4: whole-file import propagates `deploy` / `organization`).
+
+system Blog {
+  label "Reader slice"  // overridden by index.krs (S3)
+
+  user Reader [human] {
+    label "読者"
+    description "公開記事を閲覧するエンドユーザー"
+  }
+
+  client ReaderApp {
+    label "閲覧フロント"
+    description "公開ページ・記事詳細・検索"
+  }
+
+  service ArticleDelivery {
+    label "記事配信"
+    description "公開済み記事の配信とキャッシュ"
+
+    domain "配信" {
+      usecase "記事を取得する" {
+        resource ArticleDB.articles
+      }
+      usecase "全文検索する" {
+        resource SearchIndex.documents
+      }
+    }
+  }
+
+  Reader -> ReaderApp "記事を読む"
+  ReaderApp -> ArticleDelivery "記事取得"
+  ArticleDelivery -> ContentStore "公開記事を読み込む"
+  ArticleDelivery -> Search "クエリ転送"
+}
+
+deploy Production {
+  label "Production"
+  oci readerContainer {
+    label "reader-container"
+    runtime "Docker"
+    realizes ArticleDelivery
+  }
+}
+
+organization Editorial {
+  label "Editorial"
+  team platform {
+    label "Platform"
+    owns ArticleDelivery
+    member alice {
+      label "Alice"
+      description "Tech lead"
+    }
+  }
+}

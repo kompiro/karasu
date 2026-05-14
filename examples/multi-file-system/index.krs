@@ -3,14 +3,14 @@
 // (system reopen, whole-file import, deploy + organization propagation).
 // See docs/spec/syntax.md §"Multi-file import semantics".
 
-import "admin.krs"
-import "user.krs"
-import "auth.krs"
+import "reader.krs"
+import "editor.krs"
+import "cms.krs"
 
 // The system body declared here wins over the same-id declarations in the
-// imported files (S3: root entry preference). Open admin.krs / user.krs /
-// auth.krs directly to see the same system labeled differently.
-system Auth {
-  label "認証権限基盤デモ"
-  description "Auth + AuthZ demo — split across admin / user / auth files"
+// imported files (S3: root entry preference). Open reader.krs / editor.krs /
+// cms.krs directly to see the same system labeled differently.
+system Blog {
+  label "ブログプラットフォームデモ"
+  description "Reader / Editor / CMS の三面を別ファイルに分割した例"
 }
