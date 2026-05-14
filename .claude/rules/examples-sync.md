@@ -77,3 +77,4 @@ paths:
 | `multi-file-system/reader.krs` | `MULTI_FILE_SYSTEM_PROJECT.files[1].content` |
 | `multi-file-system/editor.krs` | `MULTI_FILE_SYSTEM_PROJECT.files[2].content` |
 | `multi-file-system/cms.krs` | `MULTI_FILE_SYSTEM_PROJECT.files[3].content` |
+| `multi-file-system/infra.krs` | `MULTI_FILE_SYSTEM_PROJECT.files[4].content` |

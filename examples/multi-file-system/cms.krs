@@ -1,6 +1,9 @@
 // multi-file-system/cms.krs
 // Core CMS slice — reached via two paths: named import from editor.krs and
 // whole-file import from index.krs. Not a cycle (S5).
+// Pulls shared databases from infra.krs (canonical infra-file pattern).
+
+import "infra.krs"
 
 system Blog {
   // No label here — S3 leaves index.krs's label intact.
@@ -46,22 +49,6 @@ system Blog {
   service Search [external] {
     label "全文検索エンジン"
     description "外部ホスト型の検索サービス"
-  }
-
-  database ArticleDB {
-    table articles
-  }
-
-  database DraftStore {
-    table drafts
-  }
-
-  database SearchIndex {
-    table documents
-  }
-
-  database ModerationLog {
-    table decisions
   }
 
   Moderator -> AdminApp "モデレーション操作"

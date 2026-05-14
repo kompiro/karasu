@@ -1966,6 +1966,11 @@ system Blog {
       content: `// multi-file-system/reader.krs
 // Reader-facing slice of the Blog system, plus the deploy and organization
 // views (S4: whole-file import propagates \`deploy\` / \`organization\`).
+//
+// Pulls shared databases from infra.krs so this file renders standalone
+// in the App (canonical infra-file pattern).
+
+import "infra.krs"
 
 system Blog {
   label "Reader slice"  // overridden by index.krs (S3)
@@ -2028,7 +2033,9 @@ organization Editorial {
 // Editor-facing slice of the Blog system.
 // Reaches cms.krs via a named import; cms.krs is also brought in whole-file
 // by index.krs (DAG re-arrival — no circular warning per S5).
+// Pulls shared databases from infra.krs (canonical infra-file pattern).
 
+import "infra.krs"
 import { ContentStore, Moderation } from "cms.krs"
 
 system Blog {
@@ -2096,6 +2103,9 @@ organization Editorial {
       content: `// multi-file-system/cms.krs
 // Core CMS slice — reached via two paths: named import from editor.krs and
 // whole-file import from index.krs. Not a cycle (S5).
+// Pulls shared databases from infra.krs (canonical infra-file pattern).
+
+import "infra.krs"
 
 system Blog {
   // No label here — S3 leaves index.krs's label intact.
@@ -2143,22 +2153,6 @@ system Blog {
     description "外部ホスト型の検索サービス"
   }
 
-  database ArticleDB {
-    table articles
-  }
-
-  database DraftStore {
-    table drafts
-  }
-
-  database SearchIndex {
-    table documents
-  }
-
-  database ModerationLog {
-    table decisions
-  }
-
   Moderator -> AdminApp "モデレーション操作"
   AdminApp -> Moderation "判定を記録"
   Moderation -> ContentStore "公開反映"
@@ -2188,6 +2182,43 @@ organization Editorial {
       label "Carol"
       description "Trust & Safety lead"
     }
+  }
+}
+`,
+    },
+    {
+      path: "infra.krs",
+      content: `// multi-file-system/infra.krs
+// Shared infrastructure — databases referenced by services across reader /
+// editor / cms slices. Declared once here, inside a reopened \`system Blog\`
+// block (S3), and pulled into each slice via \`import "infra.krs"\`. This is
+// the canonical pattern for cross-file shared infra:
+//
+//   - Each slice that uses a database imports infra.krs, so it renders
+//     standalone in the App without unresolved-resource warnings.
+//   - DAG re-arrival (S5) memoizes the resolved infra.krs, so being
+//     reached through reader / editor / cms doesn't duplicate work.
+//   - The merged model has one canonical declaration per database — no
+//     ambiguity about where shared infra "lives".
+//   - Declaring infra inside \`system Blog { ... }\` (rather than at file
+//     root) lets the system-reopen merge in S3 attach the infra to the
+//     system, so the \`unassigned-database\` warning doesn't fire.
+
+system Blog {
+  database ArticleDB {
+    table articles
+  }
+
+  database DraftStore {
+    table drafts
+  }
+
+  database SearchIndex {
+    table documents
+  }
+
+  database ModerationLog {
+    table decisions
   }
 }
 `,

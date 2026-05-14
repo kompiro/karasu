@@ -1209,7 +1209,7 @@ system ECPlatform {
       // Drives the actual on-disk example so the spec & the impl are
       // exercised against the same fixture users will read.
       const exampleDir = resolve(__dirname, "../../../../examples/multi-file-system");
-      for (const name of ["index.krs", "reader.krs", "editor.krs", "cms.krs"]) {
+      for (const name of ["index.krs", "reader.krs", "editor.krs", "cms.krs", "infra.krs"]) {
         await fs.writeFile(`/proj/${name}`, readFileSync(resolve(exampleDir, name), "utf-8"));
       }
       const result = await resolver.resolve("/proj/index.krs");
@@ -1237,7 +1237,11 @@ system ECPlatform {
           "Search",
         ]),
       );
-      // Databases from cms.krs propagate as `database` children of system Blog.
+      // Databases from infra.krs propagate as children of system Blog via
+      // S3 system reopen — the canonical pattern declares them once inside
+      // a reopened `system Blog { ... }` so the system-membership inference
+      // attaches them cleanly. DAG re-arrival (S5) memoizes infra.krs so
+      // reaching it through reader / editor / cms doesn't duplicate work.
       expect(childIds).toEqual(
         expect.arrayContaining(["ArticleDB", "DraftStore", "SearchIndex", "ModerationLog"]),
       );

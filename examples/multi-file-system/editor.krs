@@ -2,7 +2,9 @@
 // Editor-facing slice of the Blog system.
 // Reaches cms.krs via a named import; cms.krs is also brought in whole-file
 // by index.krs (DAG re-arrival — no circular warning per S5).
+// Pulls shared databases from infra.krs (canonical infra-file pattern).
 
+import "infra.krs"
 import { ContentStore, Moderation } from "cms.krs"
 
 system Blog {

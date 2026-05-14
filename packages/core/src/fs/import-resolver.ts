@@ -353,6 +353,43 @@ export class ImportResolver {
       }
     }
 
+    // S2: top-level infra blocks (database / queue / storage) propagate
+    // through whole-file import. Identity dedup handles DAG re-arrival —
+    // a database declared once in infra.krs reached via three different
+    // import chains does not get triplicated. Two distinct declarations
+    // with the same id are kept side-by-side here and surfaced as a
+    // duplicate later by downstream validation.
+    for (const database of resolved.databases) {
+      if (!mergedFile.databases.includes(database)) {
+        mergedFile.databases.push(database);
+      }
+    }
+    for (const queue of resolved.queues) {
+      if (!mergedFile.queues.includes(queue)) {
+        mergedFile.queues.push(queue);
+      }
+    }
+    for (const storage of resolved.storages) {
+      if (!mergedFile.storages.includes(storage)) {
+        mergedFile.storages.push(storage);
+      }
+    }
+    for (const client of resolved.clients) {
+      if (!mergedFile.clients.includes(client)) {
+        mergedFile.clients.push(client);
+      }
+    }
+    for (const domain of resolved.domains) {
+      if (!mergedFile.domains.includes(domain)) {
+        mergedFile.domains.push(domain);
+      }
+    }
+    for (const legend of resolved.legends) {
+      if (!mergedFile.legends.includes(legend)) {
+        mergedFile.legends.push(legend);
+      }
+    }
+
     for (const [ownedId, teamId] of resolved.ownerIndex) {
       mergedFile.ownerIndex.set(ownedId, teamId);
     }
