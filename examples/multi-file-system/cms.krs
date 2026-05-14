@@ -69,3 +69,29 @@ system Blog {
   Moderation -> ContentStore "公開反映"
   ContentStore -> Search "インデックス更新"
 }
+
+// Same-id `deploy` / `organization` blocks merge with the ones in
+// reader.krs and editor.krs (S4 union).
+deploy Production {
+  oci cmsContainer {
+    label "cms-container"
+    runtime "Docker"
+    realizes ContentStore
+  }
+  oci moderationContainer {
+    label "moderation-container"
+    runtime "Docker"
+    realizes Moderation
+  }
+}
+
+organization Editorial {
+  team trustSafety {
+    label "Trust & Safety"
+    owns Moderation
+    member carol {
+      label "Carol"
+      description "Trust & Safety lead"
+    }
+  }
+}

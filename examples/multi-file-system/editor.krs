@@ -42,3 +42,24 @@ system Blog {
   Drafting -> ContentStore "公開記事として登録"
   Drafting -> Moderation "公開前チェック依頼"
 }
+
+// Same-id `deploy` / `organization` blocks merge with the ones in
+// reader.krs and cms.krs (S4 union).
+deploy Production {
+  oci editorContainer {
+    label "editor-container"
+    runtime "Docker"
+    realizes Drafting
+  }
+}
+
+organization Editorial {
+  team editorial {
+    label "Editorial"
+    owns Drafting
+    member bob {
+      label "Bob"
+      description "Editor-in-chief"
+    }
+  }
+}
