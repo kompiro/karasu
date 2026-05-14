@@ -338,7 +338,7 @@ export type Translations = {
   }) => string;
   "diagnostic.systemPropertyConflict.message": (params: {
     blockId: string;
-    blockKind: "system" | "deploy" | "organization";
+    blockKind: "system" | "deploy" | "organization" | "database" | "queue" | "storage";
     property: "label" | "description";
     chosen: string;
     ignored: string;
@@ -346,6 +346,11 @@ export type Translations = {
   "diagnostic.infraRedeclaredAcrossFiles.message": (params: {
     blockId: string;
     blockKind: "database" | "queue" | "storage";
+  }) => string;
+  "diagnostic.duplicateNodeInInfra.message": (params: {
+    nodeId: string;
+    infraId: string;
+    infraKind: "database" | "queue" | "storage";
   }) => string;
   "diagnostic.importIdNotFound.message": (params: { id: string; path: string }) => string;
   "diagnostic.importPathNotFound.message": (params: {

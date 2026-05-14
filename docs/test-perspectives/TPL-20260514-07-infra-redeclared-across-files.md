@@ -46,6 +46,8 @@ infra block (`database` / `queue` / `storage`) が複数ファイルで宣言さ
 - [ ] **同一インスタンス**は黙って dedup される（DAG 経由）
 - [ ] **別インスタンス・同 id** は union merge + `infra-redeclared-across-files` (info) を発火する
 - [ ] **別インスタンス・別 id** はそれぞれ別ノードとしてマージ済みに並ぶ
+- [ ] **本体プロパティ衝突** (`label` / `description` の non-empty 不一致) は S3 と対称に `system-property-conflict` warning を発火する（root-entry-wins）
+- [ ] **children 衝突** (同 id 異インスタンスの `table` / `queue-item` / `bucket`) は `duplicate-node-in-infra` error を発火し、2 番目の宣言を drop する
 - [ ] 文言は事実先行（「複数ファイルで宣言されている」「merged」）— 「smell」「anti-pattern」「Database-per-Service」のような流派用語は文言から外す
 - [ ] LSP / App / CLI の表示パイプラインに `info` が通っており、`warning` より控えめに描画される
 

@@ -296,6 +296,8 @@ export const en: Translations = {
   }) => `${blockKind} "${blockId}" ${property} conflict — using "${chosen}", ignoring "${ignored}"`,
   "diagnostic.infraRedeclaredAcrossFiles.message": ({ blockKind, blockId }) =>
     `${blockKind} "${blockId}" is declared in multiple files; karasu merged them.`,
+  "diagnostic.duplicateNodeInInfra.message": ({ nodeId, infraKind, infraId }) =>
+    `Duplicate node ID "${nodeId}" in ${infraKind} "${infraId}"`,
   "diagnostic.importIdNotFound.message": ({ id, path }) =>
     `Imported identifier "${id}" not found in ${path}`,
   "diagnostic.importPathNotFound.message": ({

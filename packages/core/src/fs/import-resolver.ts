@@ -403,18 +403,38 @@ export class ImportResolver {
   }
 
   /**
-   * Same-id infra reopen: merge `table` (or other leaf) children silently
-   * by id. The infra body is intentionally flat — declaring
-   * `database UserDB { table users }` in two files should leave one merged
-   * node with a single `users` child, not raise duplicate-node errors on
-   * the tables.
+   * Same-id infra reopen (S4.5): merge two infra block bodies S3-symmetric.
+   *
+   * - Body properties (`label`, `description`): root-entry-wins with the
+   *   shared `reconcileLabel` / `reconcileDescription` helpers, emitting
+   *   `system-property-conflict` on non-empty conflicts.
+   * - Children (`table` / `queue-item` / `bucket`): identity dedup silent;
+   *   different-instance same-id pairs emit `duplicate-node-in-infra` error
+   *   and drop the second (mirroring how `mergeSystemIntoExisting` handles
+   *   same-id children at the system level).
    */
-  private mergeInfraBody(target: KrsNode, source: KrsNode): void {
+  private mergeInfraBody(
+    target: KrsNode & { properties?: { description?: string } },
+    source: KrsNode & { properties?: { description?: string } },
+    infraKind: "database" | "queue" | "storage",
+  ): void {
     if (target === source) return;
+    this.reconcileLabel(target, source, infraKind);
+    if (target.properties && source.properties) {
+      this.reconcileDescription(target.properties, source.properties, target.id, infraKind);
+    }
     for (const child of source.children) {
       if (target.children.includes(child)) continue;
       const dup = target.children.find((c) => c.id === child.id && c.kind === child.kind);
-      if (!dup) target.children.push(child);
+      if (dup) {
+        this.diagnostics.push({
+          severity: "error",
+          code: "duplicate-node-in-infra",
+          params: { nodeId: child.id, infraId: target.id, infraKind },
+        });
+      } else {
+        target.children.push(child);
+      }
     }
   }
 
@@ -438,7 +458,7 @@ export class ImportResolver {
           code: "infra-redeclared-across-files",
           params: { blockId: incoming.id, blockKind: kind },
         });
-        this.mergeInfraBody(idConflict, incoming);
+        this.mergeInfraBody(idConflict, incoming, kind);
       } else {
         targetList.push(incoming);
       }
@@ -471,7 +491,11 @@ export class ImportResolver {
               blockKind: child.kind as "database" | "queue" | "storage",
             },
           });
-          this.mergeInfraBody(idConflict, child);
+          this.mergeInfraBody(
+            idConflict as KrsNode & { properties?: { description?: string } },
+            child as KrsNode & { properties?: { description?: string } },
+            child.kind as "database" | "queue" | "storage",
+          );
         } else {
           this.diagnostics.push({
             severity: "error",
@@ -544,7 +568,7 @@ export class ImportResolver {
   private reconcileLabel(
     target: { id: string; label?: string },
     source: { id: string; label?: string },
-    blockKind: "system" | "deploy" | "organization",
+    blockKind: "system" | "deploy" | "organization" | "database" | "queue" | "storage",
   ): void {
     const t = target.label?.trim() ?? "";
     const s = source.label?.trim() ?? "";
@@ -571,7 +595,7 @@ export class ImportResolver {
     target: { description?: string },
     source: { description?: string },
     blockId: string,
-    blockKind: "system" | "deploy" | "organization",
+    blockKind: "system" | "deploy" | "organization" | "database" | "queue" | "storage",
   ): void {
     const t = target.description?.trim() ?? "";
     const s = source.description?.trim() ?? "";

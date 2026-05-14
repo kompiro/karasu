@@ -158,6 +158,10 @@ export function formatDiagnostic(d: Diagnostic): string {
       const { blockKind, blockId } = d.params;
       return `${blockKind} "${blockId}" is declared in multiple files; karasu merged them.`;
     }
+    case "duplicate-node-in-infra": {
+      const { nodeId, infraKind, infraId } = d.params;
+      return `Duplicate node ID "${nodeId}" in ${infraKind} "${infraId}"`;
+    }
     case "import-id-not-found":
       return `Imported identifier "${d.params.id}" not found in ${d.params.path}`;
     case "import-path-not-found": {

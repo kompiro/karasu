@@ -299,6 +299,8 @@ export const ja: Partial<Translations> = {
     `${blockKind} "${blockId}" の ${property} が衝突しています — "${chosen}" を採用、"${ignored}" を無視`,
   "diagnostic.infraRedeclaredAcrossFiles.message": ({ blockKind, blockId }) =>
     `${blockKind} "${blockId}" は複数のファイルで宣言されています（merge 済み）`,
+  "diagnostic.duplicateNodeInInfra.message": ({ nodeId, infraKind, infraId }) =>
+    `${infraKind} "${infraId}" 内でノード ID "${nodeId}" が重複しています`,
   "diagnostic.importIdNotFound.message": ({ id, path }) =>
     `インポートされた識別子 "${id}" が ${path} に見つかりません`,
   "diagnostic.importPathNotFound.message": ({

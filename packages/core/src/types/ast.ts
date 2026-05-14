@@ -490,10 +490,14 @@ export interface DiagnosticParamsByCode {
   "duplicate-node-in-deploy": { nodeId: string; deployId: string };
   "duplicate-team-in-organization": { teamId: string; orgId: string };
   "system-property-conflict": {
-    /** Block id (`system` / `deploy` / `organization` block). */
+    /** Block id (`system` / `deploy` / `organization` / infra block). */
     blockId: string;
-    /** Discriminator so the formatter can phrase the warning correctly. */
-    blockKind: "system" | "deploy" | "organization";
+    /**
+     * Discriminator so the formatter can phrase the warning correctly.
+     * Includes infra kinds (`database` / `queue` / `storage`) because S4.5
+     * reuses the same reconcile path for cross-file infra reopens.
+     */
+    blockKind: "system" | "deploy" | "organization" | "database" | "queue" | "storage";
     /** Property name (`label` or `description`). */
     property: "label" | "description";
     /** Value that the resolver kept (closer to the import-graph root). */
@@ -506,6 +510,14 @@ export interface DiagnosticParamsByCode {
     blockId: string;
     /** Discriminator so the formatter can phrase the message correctly. */
     blockKind: "database" | "queue" | "storage";
+  };
+  "duplicate-node-in-infra": {
+    /** Sub-resource id (table / queue-item / bucket). */
+    nodeId: string;
+    /** Parent infra block id. */
+    infraId: string;
+    /** Parent infra kind for message phrasing. */
+    infraKind: "database" | "queue" | "storage";
   };
   "import-id-not-found": { id: string; path: string };
   "import-path-not-found": {

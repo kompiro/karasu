@@ -28,10 +28,16 @@ type: feature
 - [ ] AT-C: ファイル root（top-level）で同名 `database` を 2 ファイルが宣言した場合も union merge + info 診断（system-nested と同じ shape）
   > ✅ Automated — `import-resolver.test.ts` `"S4.5: same-id at file-root (top-level 'database') also merges + info"`
 
-- [ ] AT-D: `queue` / `storage` についても同じルールが適用される（観点としては code path 共通 — `mergeInfraBody` が kind-agnostic）
+- [ ] AT-D: 同名 infra の **本体プロパティ** (`label` / `description`) が衝突したら root-entry-wins + `system-property-conflict` warning が発火する（S3 対称、`blockKind` フィールドに infra 種別が入る）
+  > ✅ Automated — `import-resolver.test.ts` `"S4.5: same-id infra blocks reconcile body label root-entry-wins + emit system-property-conflict warning"`
+
+- [ ] AT-E: 同名 infra の **children**（`table` / `queue-item` / `bucket`）で異インスタンス・同 id が衝突したら `duplicate-node-in-infra` error を発火し、2 番目の宣言を drop する
+  > ✅ Automated — `import-resolver.test.ts` `"S4.5: same-id infra child collision emits duplicate-node-in-infra error and drops the second"`
+
+- [ ] AT-F: `queue` / `storage` についても同じルール（infra reopen info / property conflict warning / child duplicate error）が適用される（code path 共通 — `mergeInfraBody` が kind-agnostic）
   > 🧑 Manual — `database` を `queue` / `storage` に置換した同等 fixture でメッセージ内容と merge 結果を目視確認
 
-- [ ] AT-E: App / VS Code 拡張で同名 `database` を宣言した複数ファイルを開いて、`info` 診断が `warning` より控えめに描画される（color / opacity）
+- [ ] AT-G: App / VS Code 拡張で同名 `database` を宣言した複数ファイルを開いて、`info` 診断が `warning` より控えめに描画される（color / glyph prefix）
   > 🧑 Manual — App / Editor で目視
 
 ## 関連

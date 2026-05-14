@@ -1291,6 +1291,77 @@ system ECPlatform {
       expect(merged.children.map((c) => c.id).sort()).toEqual(["accounts", "users"]);
     });
 
+    it("S4.5: same-id infra blocks reconcile body label root-entry-wins + emit system-property-conflict warning", async () => {
+      await fs.writeFile(
+        "/project/index.krs",
+        `import "a.krs"
+         system X { database UserDB { label "Root choice" } }`,
+      );
+      await fs.writeFile(
+        "/project/a.krs",
+        `system X { database UserDB { label "Imported choice" table t } }`,
+      );
+
+      const result = await resolver.resolve("/project/index.krs");
+
+      const sys = result.krsFile.systems.find((s) => s.id === "X")!;
+      const userDb = sys.children.find((c) => c.id === "UserDB")!;
+      expect(userDb.label).toBe("Root choice");
+
+      const conflicts = result.diagnostics.filter((d) => d.code === "system-property-conflict");
+      expect(conflicts).toHaveLength(1);
+      expect(conflicts[0].params).toMatchObject({
+        blockId: "UserDB",
+        blockKind: "database",
+        property: "label",
+        chosen: "Root choice",
+        ignored: "Imported choice",
+      });
+    });
+
+    it("S4.5: same-id infra child collision emits duplicate-node-in-infra error and drops the second", async () => {
+      // Two different `table users` declarations under the same merged
+      // `database UserDB` — S3-symmetric: the second is dropped with an
+      // error, identity-dedup of literally identical AST nodes still works
+      // when DAG-reached.
+      await fs.writeFile(
+        "/project/index.krs",
+        `import "a.krs"
+         import "b.krs"
+         system X { }`,
+      );
+      await fs.writeFile(
+        "/project/a.krs",
+        `system X { database UserDB { table users { label "from a" } } }`,
+      );
+      await fs.writeFile(
+        "/project/b.krs",
+        `system X { database UserDB { table users { label "from b" } } }`,
+      );
+
+      const result = await resolver.resolve("/project/index.krs");
+
+      const errors = result.diagnostics.filter((d) => d.code === "duplicate-node-in-infra");
+      expect(errors).toHaveLength(1);
+      expect(errors[0].severity).toBe("error");
+      expect(errors[0].params).toMatchObject({
+        nodeId: "users",
+        infraId: "UserDB",
+        infraKind: "database",
+      });
+
+      // Info diagnostic for the infra reopen itself still fires alongside.
+      const infos = result.diagnostics.filter((d) => d.code === "infra-redeclared-across-files");
+      expect(infos).toHaveLength(1);
+
+      const sys = result.krsFile.systems.find((s) => s.id === "X")!;
+      const userDb = sys.children.find((c) => c.id === "UserDB")!;
+      const tables = userDb.children.filter((c) => c.id === "users");
+      // First declaration wins; second is dropped.
+      expect(tables).toHaveLength(1);
+      expect(tables[0].label).toBe("from a");
+    });
+
     it("S2 + S4: end-to-end on the examples/multi-file-system fixture", async () => {
       // Drives the actual on-disk example so the spec & the impl are
       // exercised against the same fixture users will read.

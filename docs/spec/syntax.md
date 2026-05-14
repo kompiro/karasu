@@ -935,9 +935,9 @@ The same rule applies to `realizes` / `owns` / `handles` cross-references: the s
 
 The same rules as S3 apply when the same `database`, `queue`, or `storage` id is declared in more than one file (or in more than one `system` block within one file's import graph):
 
-- **Body properties** (`label`, `description`, tags): root-entry-wins, same as S3.
-- **Children** (`table` declarations and other leaves): merged by id with find-or-create. Two identically-shaped children silently dedup. Two different children with the same id within the merged infra body are kept side-by-side (consistent with how a single file would emit `duplicate-node-in-system` for two `table users { }` declarations in one `database`).
-- **Diagnostic**: an `infra-redeclared-across-files` **info** diagnostic surfaces the fact that the infra was declared in multiple places — listing the id and kind — without prescribing how to fix it.
+- **Body properties** (`label`, `description`): root-entry-wins, same as S3. Non-empty conflicts emit a `system-property-conflict` warning (the same diagnostic S3 uses for `system` / `deploy` / `organization`; its `blockKind` field carries the infra kind).
+- **Children** (`table` declarations and other leaves): identity-dedup silent for DAG re-arrival. A different-instance same-id pair emits a `duplicate-node-in-infra` error and the second declaration is dropped (mirroring how `mergeSystemIntoExisting` handles same-id system children at the system level).
+- **Diagnostic**: an `infra-redeclared-across-files` **info** diagnostic surfaces the fact that the infra was declared in multiple places — listing the id and kind — without prescribing how to fix it. The info is separate from the `system-property-conflict` / `duplicate-node-in-infra` diagnostics above; all of them can fire on the same merge if both body and child conflicts exist.
 
 The info register (distinct from `warning`) is intentional: karasu visualizes shared infrastructure (one `database` written to by multiple services across files) but does not refuse to model it. The wording is fact-first; whether the sharing is a smell depends on the project's style and is left to its documentation. See the canonical pattern below.
 
