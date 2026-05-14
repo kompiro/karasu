@@ -411,3 +411,8 @@ DesignDoc が proactive TPL を引用したら、実装 PR で次をやる:
 | [TPL-20260511-01](TPL-20260511-01-keyword-lexical-ambiguity-fence-vs-deprecate.md) | 既存キーワードの語彙的曖昧さは外部 fence ADR を deprecate より先に検討する | core-concepts | #1281 |
 | [TPL-20260511-02](TPL-20260511-02-spec-doc-reference-data-sync.md) | spec ドキュメントと in-app reference データは片方向 smoke test で同期を縛る | build | #1296 |
 | [TPL-20260512-01](TPL-20260512-01-composite-key-must-cover-all-distinguishing-dimensions.md) | 値ごとに区別が必要な属性は、その値を格納するマップのキーに含める | core-concepts | #1352 |
+| [TPL-20260514-01](TPL-20260514-01-import-dag-not-cycle.md) | DAG 経由で同じファイルに 2 回到達するのは循環ではない | resolver | docs/spec/syntax.md (S5), #1381 |
+| [TPL-20260514-02](TPL-20260514-02-whole-file-import-completeness.md) | whole-file import は imported ファイルの全 top-level ノードと全 children を merged に流す | resolver | docs/spec/syntax.md (S2), #1381 |
+| [TPL-20260514-03](TPL-20260514-03-system-reopen-merge.md) | 同名 system / deploy / organization の再オープンは children を union し、property は import-graph root に近い側が勝つ | resolver | docs/spec/syntax.md (S3), #1381 |
+| [TPL-20260514-04](TPL-20260514-04-deploy-org-wildcard-propagation.md) | whole-file import は system だけでなく deploy / organization も伝搬する | resolver | docs/spec/syntax.md (S4), #1381 |
+| [TPL-20260514-05](TPL-20260514-05-dangling-edge-preserves-node.md) | edge / relation の片側が未解決でも、解決できた側のノードは drop しない | resolver | docs/spec/syntax.md (S6), #1381 |

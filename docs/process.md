@@ -193,6 +193,18 @@ ADR の内容:
 
 Frontmatter スキーマ・関係性セマンティクス・バリデータの詳細は `docs/design/adr-knowledge-graph.md` を参照。
 
+### spec / concepts 改訂時の proactive TPL 同梱
+
+`docs/spec/` または `docs/concepts*.md` に**新規セクションを追加する PR**は、そのセクションの規定が破られたときに検出する **proactive TPL を最低 1 件、同 PR で起こす**（または既存 TPL を当該 spec に back-ref で紐付ける）。
+
+理由: spec の明文化と TPL を時間差で進めると、明文化されない期間に「概念だけはあるがテスト観点が無い」状態が生まれ、そこで踏んだ bug が retrospective TPL を量産する。spec を書くタイミングで proactive TPL を起こすほうが、proactive-first ライフサイクル（`docs/test-perspectives/README.md` 「TPL のライフサイクル」）の理想形に近づく。
+
+運用:
+
+- spec 章末尾に `> Related TPLs:` 注釈を追加し、当該章を裏付ける TPL を一覧する（spec ↔ TPL の双方向リンク）
+- 新規 TPL の本文末尾に「## 派生元 spec」セクションを置き、`docs/spec/...#anchor` を引用する
+- spec 章の改訂 PR description のチェックリストに「対応する proactive TPL を起こした / 既存 TPL に back-ref した」を含める
+
 ### 既存 ADR を見直すとき
 
 既に決定済みの ADR を覆す・方針変更する場合は、**旧 ADR を書き換えず新 ADR で supersede する**。

@@ -1,0 +1,55 @@
+// multi-file-system/user.krs
+// End-user-facing slice of the Auth system, plus the deploy and organization
+// views (S4: whole-file import propagates `deploy` / `organization`).
+
+system Auth {
+  label "End-user slice"  // overridden by index.krs (S3)
+
+  user User [human] {
+    label "ユーザー"
+    description "サービスを利用するユーザー"
+  }
+
+  client LicenseApply {
+    label "ライセンス適用"
+    description "同時起動台数や接続先アプリを管理"
+  }
+
+  client WebApp {
+    label "業務用フロント"
+  }
+
+  service App {
+    label "業務アプリ"
+  }
+
+  User -> WebApp "業務を行う"
+  User -> LicenseApply "利用可能か問い合わせ"
+  LicenseApply --> LicenseManagement "契約確認"
+
+  WebApp -> Authentication "ユーザー認証"
+  WebApp -> Authlete
+  WebApp -> AuthorizeGateway "権限確認"
+  AuthorizeGateway -> App "認可OK"
+}
+
+deploy Production {
+  label "Production"
+  oci appContainer {
+    label "app-container"
+    runtime "Docker"
+    realizes App
+  }
+}
+
+organization Team {
+  label "Team"
+  team dev {
+    label "Development"
+    owns App
+    member alice {
+      label "Alice"
+      description "Tech lead"
+    }
+  }
+}
