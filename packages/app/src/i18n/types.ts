@@ -336,6 +336,13 @@ export type Translations = {
     teamId: string;
     orgId: string;
   }) => string;
+  "diagnostic.systemPropertyConflict.message": (params: {
+    blockId: string;
+    blockKind: "system" | "deploy" | "organization";
+    property: "label" | "description";
+    chosen: string;
+    ignored: string;
+  }) => string;
   "diagnostic.importIdNotFound.message": (params: { id: string; path: string }) => string;
   "diagnostic.importPathNotFound.message": (params: {
     path: string;

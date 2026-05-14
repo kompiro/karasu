@@ -1043,4 +1043,217 @@ system ECPlatform {
       expect(result.krsFile.services.map((s) => s.id)).not.toContain("Payment");
     });
   });
+
+  // ─── Spec §"Multi-file import semantics" (S1–S7) — Issue #1381 ─────────────
+  // Locked in by TPL-20260514-01 through TPL-20260514-05.
+  describe("multi-file import semantics (#1381)", () => {
+    it("S5: DAG re-arrival of the same file is not a cycle — no circular-import warning", async () => {
+      // index.krs → admin.krs → auth.krs   (named import)
+      // index.krs → auth.krs               (wildcard import, second arrival)
+      await fs.writeFile(
+        "/project/index.krs",
+        `import "admin.krs"
+         import "auth.krs"
+         system Blog { label "Top" }`,
+      );
+      await fs.writeFile(
+        "/project/admin.krs",
+        `import { Inner } from "auth.krs"
+         system Blog { client AdminApp { } AdminApp -> Inner }`,
+      );
+      await fs.writeFile("/project/auth.krs", "system Blog { service Inner { } }");
+
+      const result = await resolver.resolve("/project/index.krs");
+      const cycleWarnings = result.diagnostics.filter((d) => d.code === "circular-import");
+      expect(cycleWarnings).toEqual([]);
+    });
+
+    it("S5: a true cycle still produces a circular-import warning", async () => {
+      await fs.writeFile("/project/a.krs", `import "b.krs"\nsystem X { }`);
+      await fs.writeFile("/project/b.krs", `import "a.krs"\nsystem X { }`);
+
+      const result = await resolver.resolve("/project/a.krs");
+      const cycleWarnings = result.diagnostics.filter((d) => d.code === "circular-import");
+      expect(cycleWarnings.length).toBeGreaterThan(0);
+    });
+
+    it("S2: whole-file import preserves all top-level + nested nodes after a named import preceded it", async () => {
+      // The #1381 failure mode: admin.krs named-imports {Inner} from auth.krs;
+      // then index.krs's `import "auth.krs"` previously returned an empty
+      // KrsFile and silently dropped Outer / Db / SupportUser.
+      await fs.writeFile(
+        "/project/index.krs",
+        `import "admin.krs"
+         import "auth.krs"
+         system Blog { label "Top" }`,
+      );
+      await fs.writeFile(
+        "/project/admin.krs",
+        `import { Inner } from "auth.krs"
+         system Blog { client AdminApp { } AdminApp -> Inner }`,
+      );
+      await fs.writeFile(
+        "/project/auth.krs",
+        `system Blog {
+           user SupportUser [human] { }
+           service Inner { }
+           service Outer { }
+           database Db { table t }
+         }`,
+      );
+
+      const result = await resolver.resolve("/project/index.krs");
+      const blog = result.krsFile.systems.find((s) => s.id === "Blog");
+      expect(blog).toBeDefined();
+      const childIds = blog!.children.map((c) => c.id);
+      // Every child declared in auth.krs's `system Blog` must end up in the
+      // merged system, regardless of which import path brought it in.
+      expect(childIds).toEqual(expect.arrayContaining(["SupportUser", "Inner", "Outer", "Db"]));
+    });
+
+    it("S3: reopened `system` merges children and root entry wins for `label`", async () => {
+      await fs.writeFile(
+        "/project/index.krs",
+        `import "reader.krs"
+         system Blog { label "Root choice" }`,
+      );
+      await fs.writeFile(
+        "/project/reader.krs",
+        `system Blog {
+           label "Reader slice"
+           user Reader [human] { }
+           service Delivery { }
+         }`,
+      );
+
+      const result = await resolver.resolve("/project/index.krs");
+      const blog = result.krsFile.systems.find((s) => s.id === "Blog");
+      expect(blog).toBeDefined();
+      expect(blog!.label).toBe("Root choice");
+      // Children from the imported file are still merged in.
+      expect(blog!.children.map((c) => c.id)).toEqual(
+        expect.arrayContaining(["Reader", "Delivery"]),
+      );
+      // The non-empty conflict surfaces as a warning.
+      const conflicts = result.diagnostics.filter((d) => d.code === "system-property-conflict");
+      expect(conflicts).toHaveLength(1);
+      expect(conflicts[0].params).toMatchObject({
+        blockId: "Blog",
+        blockKind: "system",
+        property: "label",
+        chosen: "Root choice",
+        ignored: "Reader slice",
+      });
+    });
+
+    it("S3: importer with no `label` adopts the imported file's value silently", async () => {
+      await fs.writeFile(
+        "/project/index.krs",
+        `import "reader.krs"
+         system Blog { }`,
+      );
+      await fs.writeFile(
+        "/project/reader.krs",
+        `system Blog {
+           label "Reader slice"
+           user Reader [human] { }
+         }`,
+      );
+
+      const result = await resolver.resolve("/project/index.krs");
+      const blog = result.krsFile.systems.find((s) => s.id === "Blog");
+      expect(blog!.label).toBe("Reader slice");
+      expect(result.diagnostics.filter((d) => d.code === "system-property-conflict")).toEqual([]);
+    });
+
+    it("S4: same-id `deploy` and `organization` blocks merge across files", async () => {
+      await fs.writeFile(
+        "/project/index.krs",
+        `import "reader.krs"
+         import "editor.krs"
+         system Blog { service Delivery { } service Drafting { } }`,
+      );
+      await fs.writeFile(
+        "/project/reader.krs",
+        `deploy Prod {
+           oci readerContainer { runtime "Docker" realizes Delivery }
+         }
+         organization Co {
+           team platform { owns Delivery }
+         }`,
+      );
+      await fs.writeFile(
+        "/project/editor.krs",
+        `deploy Prod {
+           oci editorContainer { runtime "Docker" realizes Drafting }
+         }
+         organization Co {
+           team editorial { owns Drafting }
+         }`,
+      );
+
+      const result = await resolver.resolve("/project/index.krs");
+      const prod = result.krsFile.deploys.find((d) => d.id === "Prod");
+      expect(prod).toBeDefined();
+      expect(prod!.nodes.map((n) => n.id)).toEqual(
+        expect.arrayContaining(["readerContainer", "editorContainer"]),
+      );
+      const org = result.krsFile.organizations.find((o) => o.id === "Co");
+      expect(org).toBeDefined();
+      expect(org!.teams.map((t) => t.id)).toEqual(
+        expect.arrayContaining(["platform", "editorial"]),
+      );
+    });
+
+    it("S2 + S4: end-to-end on the examples/multi-file-system fixture", async () => {
+      // Drives the actual on-disk example so the spec & the impl are
+      // exercised against the same fixture users will read.
+      const exampleDir = resolve(__dirname, "../../../../examples/multi-file-system");
+      for (const name of ["index.krs", "reader.krs", "editor.krs", "moderation.krs", "infra.krs"]) {
+        await fs.writeFile(`/proj/${name}`, readFileSync(resolve(exampleDir, name), "utf-8"));
+      }
+      const result = await resolver.resolve("/proj/index.krs");
+      const errors = result.diagnostics.filter((d) => d.severity === "error");
+      expect(errors).toEqual([]);
+
+      const blog = result.krsFile.systems.find((s) => s.id === "Blog");
+      expect(blog).toBeDefined();
+      const childIds = blog!.children.map((c) => c.id);
+      expect(childIds).toEqual(
+        expect.arrayContaining([
+          // reader.krs
+          "Reader",
+          "ReaderApp",
+          "ArticleDelivery",
+          // editor.krs
+          "Editor",
+          "EditorApp",
+          "Authoring",
+          // moderation.krs (the previously-dropped slice)
+          "Moderator",
+          "AdminApp",
+          "Moderation",
+          // infra.krs (external service)
+          "Search",
+        ]),
+      );
+      // Databases from infra.krs propagate as children of system Blog via
+      // S3 system reopen — the canonical pattern declares them once inside
+      // a reopened `system Blog { ... }` so the system-membership inference
+      // attaches them cleanly. DAG re-arrival (S5) memoizes infra.krs so
+      // reaching it through reader / editor / cms doesn't duplicate work.
+      expect(childIds).toEqual(
+        expect.arrayContaining(["ArticleDB", "DraftStore", "SearchIndex", "ModerationLog"]),
+      );
+      // deploy / organization (S4)
+      const prod = result.krsFile.deploys.find((d) => d.id === "Production");
+      expect(prod!.nodes.map((n) => n.id)).toEqual(
+        expect.arrayContaining(["readerContainer", "authoringContainer", "moderationContainer"]),
+      );
+      const editorial = result.krsFile.organizations.find((o) => o.id === "Editorial");
+      expect(editorial!.teams.map((t) => t.id)).toEqual(
+        expect.arrayContaining(["platform", "editorial", "trustSafety"]),
+      );
+    });
+  });
 });
