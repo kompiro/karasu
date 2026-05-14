@@ -1,6 +1,6 @@
 # ADR Topic: core-concepts
 
-9 ADRs in this topic. Solid nodes belong to `core-concepts`; gray dashed nodes are ghosts showing cross-topic references to help navigation.
+10 ADRs in this topic. Solid nodes belong to `core-concepts`; gray dashed nodes are ghosts showing cross-topic references to help navigation.
 
 Other topics: [overview](../graph.md).
 ```mermaid
@@ -15,6 +15,7 @@ flowchart TD
     ADR_20260430_01["ADR-20260430-01<br/>セキュリティ／脅威モデリングは karasu の語彙に取り込まず companion docu..."]
     ADR_20260511_02["ADR-20260511-02<br/>実行時認可（usecase レベルの authz）は karasu の語彙に取り込まない"]
     ADR_20260511_04["ADR-20260511-04<br/>user.role キーワードは存続させ、spec で「authz primitive ではな..."]
+    ADR_20260514_02["ADR-20260514-02<br/>karasu はスタイル流派を規定せず、流派が smell と呼ぶ構造は `info` 診断で..."]
   end
   ADR_20260323_02["ADR-20260323-02<br/>[app-ui] ツールバーボタンはアイコン+テキストラベル必須"]
   ADR_20260401_06["ADR-20260401-06<br/>[resolver] Domain Drift Detection — 検出スコープと検出キー"]
@@ -38,6 +39,7 @@ flowchart TD
   class ADR_20260430_01 accepted
   class ADR_20260511_02 accepted
   class ADR_20260511_04 accepted
+  class ADR_20260514_02 accepted
   class ADR_20260323_02 ghost
   class ADR_20260401_06 ghost
 ```
