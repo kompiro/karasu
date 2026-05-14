@@ -374,6 +374,10 @@ karasu/
 
 C4 Model に触発されつつも、独自の語彙と論理／物理分離のコンセプトを採用しています。
 
+## コントリビュート
+
+Issue の起票方法、メンテナの「Best-effort, no SLA」スタンス、ローカルセットアップ、PR フローは [`CONTRIBUTING.md`](CONTRIBUTING.md) を参照してください（英語）。本プロジェクトの参加は [Contributor Covenant 2.1](CODE_OF_CONDUCT.md) に従います。
+
 ## ライセンス
 
 [Apache License, Version 2.0](./LICENSE) の下で公開されています。
