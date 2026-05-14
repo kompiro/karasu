@@ -819,6 +819,92 @@ system ECPlatform {
 
 ---
 
+## マルチファイル import の意味論
+
+このセクションは、モデルを複数の `.krs` ファイルに分割したときに各 `import` 形式が何を意味するかを定義する。実装: `packages/core/src/fs/import-resolver.ts`。関連 ADR: [ADR-20260405-03](../adr/20260405-03-wildcard-import-two-pass-resolution.md)（wildcard / 2 パス）, [ADR-20260409-05](../adr/20260409-05-directory-import.md)（ディレクトリ）, [ADR-20260409-06](../adr/20260409-06-named-import-toplevel-service.md)（named top-level）, [ADR-20260513-03](../adr/20260513-03-import-system-nested.md)（named path 構文）。
+
+### S1. 4 つの import 形式
+
+```krs
+@import "theme.krs.style"             // (a) スタイル import — 下の「@import のスコープ」節を参照
+import { Foo, Bar.Baz } from "p.krs"  // (b) named import — 「ドリルダウンと外部ファイル参照」節を参照
+import "p.krs"                        // (c) whole-file import — 本セクションで定義
+import "dir/"                         // (d) ディレクトリ import — 本セクションで定義
+```
+
+(c) と (d) は同一の merge 規則を持つ。(d) の意味は「`dir/` 直下の `.krs` ファイルをアルファベット順で列挙し、それぞれを同じ位置に書かれた個別の `import "..."` 宣言として処理した結果」と等価。サブディレクトリは再帰しない。
+
+### S2. whole-file import の merge 規則
+
+`import "p.krs"` は **p.krs を完全再帰展開した KrsFile** を importer に取り込む。「完全再帰展開」とは p.krs 自身の import をすべて解決した後の最終形であり、importer ごとに再計算する必要はなく **ファイル単位でメモ化できる** — 同じ p.krs を複数経路で到達しても同じ内容になる（S5 参照）。
+
+importer が吸収するもの:
+
+- すべての top-level ノード（`system` / `service` / `client` / `database` / `queue` / `storage` / `legend` / `deploy` / `organization`）
+- 各 `system` ブロック内のすべての children（`user` / `client` / `service` / `domain` / `usecase` / `resource` / edge / infra）
+- p.krs 内で `@import` 参照されているすべてのスタイルシート（cascade に追加）
+
+### S3. 同名 system ブロックの merge（system 再オープン）
+
+同じ id の `system` が複数ファイルに現れた場合（importer 自身のファイルと imported ファイル、あるいは複数の imported ファイル）、重複として扱わず **1 つに merge** する:
+
+- **system 本体プロパティ**（`label` / `description` / タグ）: **import グラフの root に近いファイル**で書かれた宣言が勝つ。root とは `ImportResolver.resolve(entryPath)` に渡された `entryPath` — 実用上は App / VS Code 拡張で開いているファイル、または `karasu render` に渡したファイル。resolver は import グラフを bottom-up に traverse し、root 側で未設定のフィールドだけを imported 側の値で埋める。
+  - 2 つのファイルが異なる non-empty 値で衝突した場合、root に近い側が採用され、`system-property-conflict` 警告が出る（採用値・無視値・両者の location を含む）。
+- **children**: id ごとに find-or-create で union。同じ merged system 内で 2 つの children が同じ id を持つと `duplicate-node-in-system` エラー（既存挙動）。異なる id なら問題なく union される。
+- **edges**: union。完全に同一な edge（`from` / `to` / kind / label すべて一致）のみ dedup、それ以外は両方残る。
+
+これが 1 つの大きな `system` を複数ファイルに分割する canonical な方法。App / CLI で「今開いているファイル」が自然と top-level system メタデータの source of truth になる。
+
+### S4. 同名 deploy / organization ブロックの merge
+
+S3 と同じ規則を `deploy.nodes`（oci / k8s / vm / …）と `organization.teams`（および member）に適用する。`realizes` / `owns` の relation は union される。`import "p.krs"` は `system` だけでなく `deploy` / `organization` も同時に取り込む — 物理ビュー / 組織ビュー専用の別 import 形式は存在しない。
+
+### S5. DAG 経由再到達と真の循環
+
+import グラフは **DAG** を許す。同じファイルが 2 つの異なる import チェーン（entry → A → C と entry → B → C）で到達されても警告は出ない。resolver はファイルパスごとに解決済みスナップショットをメモ化し、2 回目の到達では 1 回目の結果を再利用する。
+
+`circular-import` 警告は **真の循環** — あるファイルが **現在ロード中スタック**に既に居る状態で再度要求された場合 — に限り発する。実装上は `loading` セット（path stack: 入るときに push、出るときに pop）と `loaded` メモを別々に持つ。後者は警告を出さない。
+
+```
+// DAG — 警告なし
+index.krs:  import "admin.krs"
+            import "auth.krs"
+admin.krs:  import { Service } from "auth.krs"  // admin 経由で auth.krs に到達
+auth.krs:   // (import なし)
+
+// 真の循環 — a.krs の 2 回目到達で警告
+a.krs:      import "b.krs"
+b.krs:      import "a.krs"   // ← circular-import 警告
+```
+
+### S6. edge endpoint 未解決時はノードを残す
+
+edge `A -> B` の片方の endpoint が解決できない（merged モデルに target id が存在しない）とき、resolver は:
+
+- edge を drop し、`unresolved-edge-endpoint` 警告を発する — 未解決 id と edge の source location を含む
+- **解決できた側のノードは drop しない**。あるファイルで宣言されたノードは、その outbound / inbound edge が解決できるか否かに関わらずモデルの一部である
+
+`realizes` / `owns` / `handles` などの cross-reference にも同じ規則を適用する — source ノードは残り、relation のみ警告と共に消える。
+
+### S7. 決定的順序
+
+`mergedFile` の順序は以下で決まる:
+
+1. import 宣言は各ファイル内で source order で処理される
+2. ディレクトリ import はファイル名のアルファベット順で展開される
+3. ノードは merged コレクションへの初回登場時に挿入される（以降の merge は find-or-create で既存エントリを変更するだけ）
+
+同じプロジェクトは常に同じ merged AST を生成する。
+
+> **関連 TPL**:
+> - [TPL-20260514-01](../test-perspectives/TPL-20260514-01-import-dag-not-cycle.md) — DAG 経由再到達は循環ではない（S5）
+> - [TPL-20260514-02](../test-perspectives/TPL-20260514-02-whole-file-import-completeness.md) — whole-file import は全 top-level / nested ノードを保持する（S2）
+> - [TPL-20260514-03](../test-perspectives/TPL-20260514-03-system-reopen-merge.md) — 再オープン `system` は children を union、property は root entry が勝つ（S3）
+> - [TPL-20260514-04](../test-perspectives/TPL-20260514-04-deploy-org-wildcard-propagation.md) — `deploy` / `organization` も whole-file import で伝搬する（S4）
+> - [TPL-20260514-05](../test-perspectives/TPL-20260514-05-dangling-edge-preserves-node.md) — 未解決 edge endpoint は残存ノードを drop しない（S6）
+
+---
+
 ## @import のスコープ
 
 - ファイル全体に適用される（グローバルスコープ）

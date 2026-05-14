@@ -1,0 +1,97 @@
+// multi-file-system/cms.krs
+// Core CMS slice — reached via two paths: named import from editor.krs and
+// whole-file import from index.krs. Not a cycle (S5).
+
+system Blog {
+  // No label here — S3 leaves index.krs's label intact.
+
+  user Moderator [human] {
+    label "モデレーター"
+    description "投稿内容の審査・公開可否を判断"
+  }
+
+  client AdminApp [internal] {
+    label "管理コンソール"
+    description "モデレーション / 公開キュー操作"
+  }
+
+  service ContentStore {
+    label "公開記事ストア"
+    description "公開済み記事の永続化と版管理"
+
+    domain "保存" {
+      usecase "記事を保存する" {
+        resource ArticleDB.articles
+      }
+      usecase "版を切り替える" {
+        resource ArticleDB.articles
+      }
+    }
+  }
+
+  service Moderation {
+    label "モデレーション"
+    description "公開前チェック・違反通報の処理"
+
+    domain "審査" {
+      usecase "公開可否を判断する" {
+        resource ModerationLog.decisions
+      }
+      usecase "違反通報を処理する" {
+        resource ModerationLog.decisions
+      }
+    }
+  }
+
+  service Search [external] {
+    label "全文検索エンジン"
+    description "外部ホスト型の検索サービス"
+  }
+
+  database ArticleDB {
+    table articles
+  }
+
+  database DraftStore {
+    table drafts
+  }
+
+  database SearchIndex {
+    table documents
+  }
+
+  database ModerationLog {
+    table decisions
+  }
+
+  Moderator -> AdminApp "モデレーション操作"
+  AdminApp -> Moderation "判定を記録"
+  Moderation -> ContentStore "公開反映"
+  ContentStore -> Search "インデックス更新"
+}
+
+// Same-id `deploy` / `organization` blocks merge with the ones in
+// reader.krs and editor.krs (S4 union).
+deploy Production {
+  oci cmsContainer {
+    label "cms-container"
+    runtime "Docker"
+    realizes ContentStore
+  }
+  oci moderationContainer {
+    label "moderation-container"
+    runtime "Docker"
+    realizes Moderation
+  }
+}
+
+organization Editorial {
+  team trustSafety {
+    label "Trust & Safety"
+    owns Moderation
+    member carol {
+      label "Carol"
+      description "Trust & Safety lead"
+    }
+  }
+}
