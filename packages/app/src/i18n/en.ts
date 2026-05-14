@@ -293,8 +293,7 @@ export const en: Translations = {
     property,
     chosen,
     ignored,
-  }) =>
-    `${blockKind} "${blockId}" ${property} conflict — using "${chosen}", ignoring "${ignored}"`,
+  }) => `${blockKind} "${blockId}" ${property} conflict — using "${chosen}", ignoring "${ignored}"`,
   "diagnostic.importIdNotFound.message": ({ id, path }) =>
     `Imported identifier "${id}" not found in ${path}`,
   "diagnostic.importPathNotFound.message": ({

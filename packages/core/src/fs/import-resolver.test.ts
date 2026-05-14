@@ -1108,9 +1108,7 @@ system ECPlatform {
       const childIds = blog!.children.map((c) => c.id);
       // Every child declared in auth.krs's `system Blog` must end up in the
       // merged system, regardless of which import path brought it in.
-      expect(childIds).toEqual(
-        expect.arrayContaining(["SupportUser", "Inner", "Outer", "Db"]),
-      );
+      expect(childIds).toEqual(expect.arrayContaining(["SupportUser", "Inner", "Outer", "Db"]));
     });
 
     it("S3: reopened `system` merges children and root entry wins for `label`", async () => {
@@ -1202,7 +1200,9 @@ system ECPlatform {
       );
       const org = result.krsFile.organizations.find((o) => o.id === "Co");
       expect(org).toBeDefined();
-      expect(org!.teams.map((t) => t.id)).toEqual(expect.arrayContaining(["platform", "editorial"]));
+      expect(org!.teams.map((t) => t.id)).toEqual(
+        expect.arrayContaining(["platform", "editorial"]),
+      );
     });
 
     it("S2 + S4: end-to-end on the examples/multi-file-system fixture", async () => {
