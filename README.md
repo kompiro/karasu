@@ -117,6 +117,8 @@ system ECPlatform {
 }
 ```
 
+Reopen the same-id `system` block in multiple files to split one large system across files (the same works for `deploy` / `organization`). Body properties (`label` / `description`) from the file **closer to the import-graph root** (i.e. the file you have open in the App / CLI) win. See [docs/spec/syntax.md "Multi-file import semantics"](docs/spec/syntax.md#multi-file-import-semantics) and [`examples/multi-file-system/`](examples/multi-file-system/) for details.
+
 ## Logical and physical structure
 
 `realizes` makes explicit that "this deployment unit realizes this service".
