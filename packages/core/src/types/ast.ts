@@ -400,7 +400,16 @@ export interface KrsFile {
 
 // ─── Diagnostics ───────────────────────────────────
 
-export type DiagnosticSeverity = "error" | "warning";
+/**
+ * Three-level severity. `info` is reserved for diagnostics that surface a
+ * **structural fact karasu visualizes but does not prescribe** — e.g. shared
+ * databases across services (`infra-redeclared-across-files`). The wording
+ * is fact-first; any "this is a smell" framing belongs in linked
+ * documentation, not in the message itself. `info` SHOULD render less
+ * prominently than `warning` in downstream surfaces (App diagnostic banner,
+ * LSP, CLI). See design doc `karasu-position-on-style-prescriptions.md`.
+ */
+export type DiagnosticSeverity = "error" | "warning" | "info";
 
 /**
  * Per-code params shape. Each entry carries only the structured data needed
@@ -491,6 +500,12 @@ export interface DiagnosticParamsByCode {
     chosen: string;
     /** Value that was ignored (declared in a deeper imported file). */
     ignored: string;
+  };
+  "infra-redeclared-across-files": {
+    /** Infra node id (database / queue / storage). */
+    blockId: string;
+    /** Discriminator so the formatter can phrase the message correctly. */
+    blockKind: "database" | "queue" | "storage";
   };
   "import-id-not-found": { id: string; path: string };
   "import-path-not-found": {

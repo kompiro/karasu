@@ -954,6 +954,14 @@ body,
 .diagnostic-banner__item--warning {
   color: var(--warning);
 }
+.diagnostic-banner__item--info {
+  /* `info` is for structural facts karasu visualizes but does not
+     prescribe (e.g. shared databases across services). Render at lower
+     visual weight than `warning` per ADR pending (see design doc
+     karasu-position-on-style-prescriptions). */
+  color: var(--text-muted, #94a3b8);
+  opacity: 0.85;
+}
 
 /* ── Error State Overlay ────────────────────────────────────────── */
 .preview-pane--has-errors .preview-container svg {

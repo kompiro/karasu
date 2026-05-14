@@ -357,23 +357,11 @@ export class ImportResolver {
     // through whole-file import. Identity dedup handles DAG re-arrival —
     // a database declared once in infra.krs reached via three different
     // import chains does not get triplicated. Two distinct declarations
-    // with the same id are kept side-by-side here and surfaced as a
-    // duplicate later by downstream validation.
-    for (const database of resolved.databases) {
-      if (!mergedFile.databases.includes(database)) {
-        mergedFile.databases.push(database);
-      }
-    }
-    for (const queue of resolved.queues) {
-      if (!mergedFile.queues.includes(queue)) {
-        mergedFile.queues.push(queue);
-      }
-    }
-    for (const storage of resolved.storages) {
-      if (!mergedFile.storages.includes(storage)) {
-        mergedFile.storages.push(storage);
-      }
-    }
+    // with the same id are union-merged (S3-shaped: shared infra is
+    // visualized but not prescribed — info diagnostic, not error).
+    this.mergeTopLevelInfra(mergedFile.databases, resolved.databases, "database");
+    this.mergeTopLevelInfra(mergedFile.queues, resolved.queues, "queue");
+    this.mergeTopLevelInfra(mergedFile.storages, resolved.storages, "storage");
     for (const client of resolved.clients) {
       if (!mergedFile.clients.includes(client)) {
         mergedFile.clients.push(client);
@@ -410,6 +398,53 @@ export class ImportResolver {
     }
   }
 
+  private isInfraKind(kind: string): kind is "database" | "queue" | "storage" {
+    return kind === "database" || kind === "queue" || kind === "storage";
+  }
+
+  /**
+   * Same-id infra reopen: merge `table` (or other leaf) children silently
+   * by id. The infra body is intentionally flat — declaring
+   * `database UserDB { table users }` in two files should leave one merged
+   * node with a single `users` child, not raise duplicate-node errors on
+   * the tables.
+   */
+  private mergeInfraBody(target: KrsNode, source: KrsNode): void {
+    if (target === source) return;
+    for (const child of source.children) {
+      if (target.children.includes(child)) continue;
+      const dup = target.children.find((c) => c.id === child.id && c.kind === child.kind);
+      if (!dup) target.children.push(child);
+    }
+  }
+
+  /**
+   * Wildcard merge of a top-level infra list (`databases` / `queues` /
+   * `storages`). Same-id reopens are union-merged with an
+   * `infra-redeclared-across-files` info diagnostic; DAG re-arrival
+   * (same instance) is dedup'd silently.
+   */
+  private mergeTopLevelInfra<T extends KrsNode & { id: string }>(
+    targetList: T[],
+    sourceList: T[],
+    kind: "database" | "queue" | "storage",
+  ): void {
+    for (const incoming of sourceList) {
+      if (targetList.includes(incoming)) continue;
+      const idConflict = targetList.find((n) => n.id === incoming.id);
+      if (idConflict) {
+        this.diagnostics.push({
+          severity: "info",
+          code: "infra-redeclared-across-files",
+          params: { blockId: incoming.id, blockKind: kind },
+        });
+        this.mergeInfraBody(idConflict, incoming);
+      } else {
+        targetList.push(incoming);
+      }
+    }
+  }
+
   private mergeSystemIntoExisting(target: SystemNode, source: SystemNode): void {
     if (target === source) return;
     this.reconcileLabel(target, source, "system");
@@ -424,11 +459,26 @@ export class ImportResolver {
       if (target.children.includes(child)) continue;
       const idConflict = target.children.find((c) => c.id === child.id);
       if (idConflict) {
-        this.diagnostics.push({
-          severity: "error",
-          code: "duplicate-node-in-system",
-          params: { nodeId: child.id, systemId: target.id },
-        });
+        if (this.isInfraKind(child.kind) && idConflict.kind === child.kind) {
+          // 同名 infra (database / queue / storage) の再オープンは union merge。
+          // 「shared infra」は karasu が可視化はするが prescribe しない事実なので
+          // info severity で surface（design doc: karasu-position-on-style-prescriptions）。
+          this.diagnostics.push({
+            severity: "info",
+            code: "infra-redeclared-across-files",
+            params: {
+              blockId: child.id,
+              blockKind: child.kind as "database" | "queue" | "storage",
+            },
+          });
+          this.mergeInfraBody(idConflict, child);
+        } else {
+          this.diagnostics.push({
+            severity: "error",
+            code: "duplicate-node-in-system",
+            params: { nodeId: child.id, systemId: target.id },
+          });
+        }
       } else {
         target.children.push(child);
       }

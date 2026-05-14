@@ -1205,6 +1205,92 @@ system ECPlatform {
       );
     });
 
+    it("S4.5: same-id `database` declared in multiple files merges with an info diagnostic", async () => {
+      await fs.writeFile(
+        "/project/index.krs",
+        `import "a.krs"
+         import "b.krs"
+         system X { }`,
+      );
+      await fs.writeFile(
+        "/project/a.krs",
+        `system X {
+           database UserDB { table users }
+         }`,
+      );
+      await fs.writeFile(
+        "/project/b.krs",
+        `system X {
+           database UserDB { table sessions }
+         }`,
+      );
+
+      const result = await resolver.resolve("/project/index.krs");
+      const errors = result.diagnostics.filter((d) => d.severity === "error");
+      expect(errors).toEqual([]);
+
+      const infos = result.diagnostics.filter((d) => d.code === "infra-redeclared-across-files");
+      expect(infos).toHaveLength(1);
+      expect(infos[0].severity).toBe("info");
+      expect(infos[0].params).toMatchObject({ blockId: "UserDB", blockKind: "database" });
+
+      const sys = result.krsFile.systems.find((s) => s.id === "X")!;
+      const userDb = sys.children.find((c) => c.id === "UserDB")!;
+      const tableIds = userDb.children.map((c) => c.id).sort();
+      expect(tableIds).toEqual(["sessions", "users"]);
+    });
+
+    it("S4.5: same `database` declaration reached via DAG re-arrival does not emit an info", async () => {
+      await fs.writeFile(
+        "/project/index.krs",
+        `import "infra.krs"
+         import "a.krs"
+         system X { }`,
+      );
+      // Both a.krs and index.krs reach infra.krs — same instance via cache, must dedup silently.
+      await fs.writeFile("/project/infra.krs", `system X { database UserDB { table users } }`);
+      await fs.writeFile(
+        "/project/a.krs",
+        `import "infra.krs"
+         system X {
+           service Svc {
+             domain D { usecase U { resource UserDB.users } }
+           }
+         }`,
+      );
+
+      const result = await resolver.resolve("/project/index.krs");
+      const errors = result.diagnostics.filter((d) => d.severity === "error");
+      expect(errors).toEqual([]);
+      const infos = result.diagnostics.filter((d) => d.code === "infra-redeclared-across-files");
+      expect(infos).toEqual([]);
+
+      const sys = result.krsFile.systems.find((s) => s.id === "X")!;
+      const userDb = sys.children.find((c) => c.id === "UserDB");
+      expect(userDb).toBeDefined();
+    });
+
+    it("S4.5: same-id at file-root (top-level `database`) also merges + info", async () => {
+      await fs.writeFile(
+        "/project/index.krs",
+        `import "a.krs"
+         import "b.krs"
+         system X { }`,
+      );
+      await fs.writeFile("/project/a.krs", `database UserDB { table users }`);
+      await fs.writeFile("/project/b.krs", `database UserDB { table accounts }`);
+
+      const result = await resolver.resolve("/project/index.krs");
+      const infos = result.diagnostics.filter((d) => d.code === "infra-redeclared-across-files");
+      expect(infos).toHaveLength(1);
+      expect(infos[0].severity).toBe("info");
+
+      expect(result.krsFile.databases).toHaveLength(1);
+      const merged = result.krsFile.databases[0];
+      expect(merged.id).toBe("UserDB");
+      expect(merged.children.map((c) => c.id).sort()).toEqual(["accounts", "users"]);
+    });
+
     it("S2 + S4: end-to-end on the examples/multi-file-system fixture", async () => {
       // Drives the actual on-disk example so the spec & the impl are
       // exercised against the same fixture users will read.

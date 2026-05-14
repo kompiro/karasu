@@ -886,6 +886,49 @@ edge `A -> B` の片方の endpoint が解決できない（merged モデルに 
 
 `realizes` / `owns` / `handles` などの cross-reference にも同じ規則を適用する — source ノードは残り、relation のみ警告と共に消える。
 
+### S4.5. 同名 infra (`database` / `queue` / `storage`) の再オープン
+
+S3 と同じ規則を `database` / `queue` / `storage` にも適用する（複数ファイルで同じ id を宣言した場合、または 1 つの import グラフ内で複数の `system` ブロックに同じ infra id が現れた場合）:
+
+- **本体プロパティ**（`label` / `description` / タグ）: root-entry-wins、S3 と同じ
+- **children**（`table` 宣言などのリーフ）: id ごとに find-or-create で merge。完全に同形のリーフは silent に dedup される
+- **診断**: `infra-redeclared-across-files` **info** 診断が、infra が複数箇所で宣言された事実を id と kind 付きで surface する — 修正方法は指示しない
+
+`warning` ではなく `info` を使うのは意図的: karasu は共有 infra（複数 service がまたがって読み書きする `database`）を **可視化** はするが、それを禁止しない。文言は事実先行 — 共有が smell かどうかはプロジェクトのスタイル次第で、ドキュメントに委ねる。canonical な書き方は下のパターン参照。
+
+#### Canonical なパターン — 専用 infra ファイル
+
+`database` / `queue` / `storage` をスライス間で共有する推奨方法は、専用 infra ファイルに 1 度だけ宣言し、使う側のスライスから `import "infra.krs"` で取り込むこと。S2 のファイル単位 memoization と S5 の DAG 取り扱いにより、infra ファイルは 1 度だけ解決され、すべての importer から再利用される:
+
+```krs
+// infra.krs
+system Blog {
+  database ArticleDB { table articles }
+}
+
+// reader.krs
+import "infra.krs"
+system Blog {
+  service ArticleDelivery {
+    domain Delivery {
+      usecase ReadArticle { resource ArticleDB.articles }
+    }
+  }
+}
+
+// editor.krs
+import "infra.krs"
+system Blog {
+  service Authoring {
+    domain Publish {
+      usecase Publish { resource ArticleDB.articles }
+    }
+  }
+}
+```
+
+このパターンでは `infra-redeclared-across-files` 診断は発生しない — 各 infra id は `infra.krs` で 1 度だけ宣言され、他スライスは `resource` パスで参照するだけ。診断が出るのは「**同じ `database UserDB { ... }`** という宣言が複数ファイルに literal に書かれている」ときで、resolver が受け入れるが推奨しないフォールバック動作。
+
 ### S7. 決定的順序
 
 `mergedFile` の順序は以下で決まる:
@@ -902,6 +945,7 @@ edge `A -> B` の片方の endpoint が解決できない（merged モデルに 
 > - [TPL-20260514-03](../test-perspectives/TPL-20260514-03-system-reopen-merge.md) — 再オープン `system` は children を union、property は root entry が勝つ（S3）
 > - [TPL-20260514-04](../test-perspectives/TPL-20260514-04-deploy-org-wildcard-propagation.md) — `deploy` / `organization` も whole-file import で伝搬する（S4）
 > - [TPL-20260514-05](../test-perspectives/TPL-20260514-05-dangling-edge-preserves-node.md) — 未解決 edge endpoint は残存ノードを drop しない（S6）
+> - [TPL-20260514-06](../test-perspectives/TPL-20260514-06-infra-redeclared-across-files.md) — 同名 `database` / `queue` / `storage` の再宣言は union merge、info 診断（S4.5）
 
 ---
 

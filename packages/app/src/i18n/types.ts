@@ -343,6 +343,10 @@ export type Translations = {
     chosen: string;
     ignored: string;
   }) => string;
+  "diagnostic.infraRedeclaredAcrossFiles.message": (params: {
+    blockId: string;
+    blockKind: "database" | "queue" | "storage";
+  }) => string;
   "diagnostic.importIdNotFound.message": (params: { id: string; path: string }) => string;
   "diagnostic.importPathNotFound.message": (params: {
     path: string;
