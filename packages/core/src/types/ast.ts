@@ -480,6 +480,18 @@ export interface DiagnosticParamsByCode {
   "duplicate-node-in-system": { nodeId: string; systemId: string };
   "duplicate-node-in-deploy": { nodeId: string; deployId: string };
   "duplicate-team-in-organization": { teamId: string; orgId: string };
+  "system-property-conflict": {
+    /** Block id (`system` / `deploy` / `organization` block). */
+    blockId: string;
+    /** Discriminator so the formatter can phrase the warning correctly. */
+    blockKind: "system" | "deploy" | "organization";
+    /** Property name (`label` or `description`). */
+    property: "label" | "description";
+    /** Value that the resolver kept (closer to the import-graph root). */
+    chosen: string;
+    /** Value that was ignored (declared in a deeper imported file). */
+    ignored: string;
+  };
   "import-id-not-found": { id: string; path: string };
   "import-path-not-found": {
     /** Path segments as written in the import block. */

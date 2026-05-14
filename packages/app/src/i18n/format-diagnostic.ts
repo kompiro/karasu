@@ -137,6 +137,8 @@ export function useFormattedDiagnostic(): (d: Diagnostic) => string {
           return t("diagnostic.duplicateNodeInDeploy.message", d.params);
         case "duplicate-team-in-organization":
           return t("diagnostic.duplicateTeamInOrganization.message", d.params);
+        case "system-property-conflict":
+          return t("diagnostic.systemPropertyConflict.message", d.params);
         case "import-id-not-found":
           return t("diagnostic.importIdNotFound.message", d.params);
         case "import-path-not-found":

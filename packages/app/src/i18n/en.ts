@@ -287,6 +287,14 @@ export const en: Translations = {
     `Duplicate node ID "${nodeId}" in deploy block "${deployId}"`,
   "diagnostic.duplicateTeamInOrganization.message": ({ teamId, orgId }) =>
     `Duplicate team ID "${teamId}" in organization "${orgId}"`,
+  "diagnostic.systemPropertyConflict.message": ({
+    blockKind,
+    blockId,
+    property,
+    chosen,
+    ignored,
+  }) =>
+    `${blockKind} "${blockId}" ${property} conflict — using "${chosen}", ignoring "${ignored}"`,
   "diagnostic.importIdNotFound.message": ({ id, path }) =>
     `Imported identifier "${id}" not found in ${path}`,
   "diagnostic.importPathNotFound.message": ({
