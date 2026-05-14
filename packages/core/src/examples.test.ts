@@ -1,7 +1,7 @@
 /// <reference types="node" />
 import { describe, it, expect } from "vitest";
 import { Parser } from "./parser/parser.js";
-import { compile, FEATURE_SAMPLES_PROJECT } from "./index.js";
+import { compile, FEATURE_SAMPLES_PROJECT, MULTI_FILE_SYSTEM_PROJECT } from "./index.js";
 import { readFileSync, readdirSync } from "fs";
 import { resolve, dirname } from "path";
 import { fileURLToPath } from "url";
@@ -34,6 +34,28 @@ describe("feature-samples: bundled examples.ts content matches examples/feature-
   it.each(files)("%s content is byte-identical to the bundled entry", (file) => {
     const onDisk = readFileSync(resolve(dir, file), "utf8");
     const entry = FEATURE_SAMPLES_PROJECT.files.find((f) => f.path === file);
+    expect(entry).toBeDefined();
+    expect(entry?.content).toBe(onDisk);
+  });
+});
+
+// Drift guard for MULTI_FILE_SYSTEM_PROJECT — same byte-equal contract as
+// FEATURE_SAMPLES_PROJECT above. ProjectMode seeds this on first launch
+// (`useProjectInitialization`) so the App's preview matches what users see
+// when they open the directory on disk.
+describe("multi-file-system: bundled examples.ts content matches examples/multi-file-system/", () => {
+  const mfsDir = resolve(__dirname, "../../../examples/multi-file-system");
+  const mfsFiles = readdirSync(mfsDir).filter((f: string) => f.endsWith(".krs"));
+
+  it("registers every .krs file in the directory, and nothing else", () => {
+    const bundledPaths = MULTI_FILE_SYSTEM_PROJECT.files.map((f) => f.path).sort();
+    const expectedPaths = [...mfsFiles].sort();
+    expect(bundledPaths).toEqual(expectedPaths);
+  });
+
+  it.each(mfsFiles)("%s content is byte-identical to the bundled entry", (file) => {
+    const onDisk = readFileSync(resolve(mfsDir, file), "utf8");
+    const entry = MULTI_FILE_SYSTEM_PROJECT.files.find((f) => f.path === file);
     expect(entry).toBeDefined();
     expect(entry?.content).toBe(onDisk);
   });

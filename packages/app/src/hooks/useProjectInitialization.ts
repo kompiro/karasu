@@ -5,6 +5,7 @@ import {
   FEATURE_SAMPLES_PROJECT,
   GETTING_STARTED_PROJECT,
   GETTING_STARTED_PROJECT_EN,
+  MULTI_FILE_SYSTEM_PROJECT,
   type FileSystemProvider,
   type Project,
 } from "@karasu-tools/core";
@@ -52,8 +53,9 @@ async function cleanupPasteCompareTempFiles(
  *
  * 1. **Bootstrap** (runs once): read the project list from OPFS. On first
  *    run the list is empty, so seed it with the Getting Started project,
- *    the ec-platform examples, the client-mcp sample, and the
- *    feature-samples catalog. Clear the loading flag when done.
+ *    the ec-platform examples, the client-mcp sample, the multi-file-system
+ *    sample, and the feature-samples catalog. Clear the loading flag when
+ *    done.
  * 2. **On project switch**: persist `currentProject.id` to localStorage so
  *    the next session can restore it, and auto-select the project's
  *    `index.krs` as the active editor file.
@@ -93,6 +95,11 @@ export function useProjectInitialization({
           CLIENT_MCP_PROJECT.files,
         );
         initialProjects.push(clientMcpProject);
+        const multiFileSystemProject = await pm.createProject(
+          MULTI_FILE_SYSTEM_PROJECT.name,
+          MULTI_FILE_SYSTEM_PROJECT.files,
+        );
+        initialProjects.push(multiFileSystemProject);
         const featureSamplesProject = await pm.createProject(
           FEATURE_SAMPLES_PROJECT.name,
           FEATURE_SAMPLES_PROJECT.files,

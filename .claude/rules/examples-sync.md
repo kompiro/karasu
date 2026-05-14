@@ -15,7 +15,7 @@ paths:
 
 `packages/core/src/builtins/examples.ts` は `examples/` 配下のうち **`examples.ts` に登録済みのファイル**の内容を文字列として保持しており、ProjectMode の初回起動時に使用される。
 
-現在 `examples.ts` に登録されているのは `examples/getting-started/`、`examples/getting-started-en/`、`examples/ec-platform/`、`examples/client-mcp/`、`examples/feature-samples/`。他のディレクトリ（`hr-tool/` など）は登録されていないため、それらを変更しても `examples.ts` の更新は不要。
+現在 `examples.ts` に登録されているのは `examples/getting-started/`、`examples/getting-started-en/`、`examples/ec-platform/`、`examples/client-mcp/`、`examples/multi-file-system/`、`examples/feature-samples/`。他のディレクトリ（`hr-tool/` など）は登録されていないため、それらを変更しても `examples.ts` の更新は不要。
 
 `examples/feature-samples/` は ProjectMode で 1 プロジェクト（`FEATURE_SAMPLES_PROJECT`、name: `feature-samples`）として束ねられる。アプリは project 切替時に `index.krs` を自動で開くため、ディレクトリには 14 個の単機能サンプルに加えてカタログ役の `index.krs`（各サンプルへの索引コメント + 最小の `system`）が含まれる。**`examples/feature-samples/` のファイルは `examples.ts` の対応エントリと byte 単位で一致させること**（`packages/core/src/examples.test.ts` の drift ガードで検証）。新しいサンプルを追加したら 14 → 15... と `index.krs` のカタログにも 1 行追記する。
 
@@ -73,3 +73,7 @@ paths:
 | `feature-samples/resource-operations.krs` | `FEATURE_SAMPLES_PROJECT.files[12].content` |
 | `feature-samples/usecase-authorization.krs` | `FEATURE_SAMPLES_PROJECT.files[13].content` |
 | `feature-samples/users.krs` | `FEATURE_SAMPLES_PROJECT.files[14].content` |
+| `multi-file-system/index.krs` | `MULTI_FILE_SYSTEM_PROJECT.files[0].content` |
+| `multi-file-system/reader.krs` | `MULTI_FILE_SYSTEM_PROJECT.files[1].content` |
+| `multi-file-system/editor.krs` | `MULTI_FILE_SYSTEM_PROJECT.files[2].content` |
+| `multi-file-system/cms.krs` | `MULTI_FILE_SYSTEM_PROJECT.files[3].content` |

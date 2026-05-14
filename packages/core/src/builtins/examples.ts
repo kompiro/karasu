@@ -1937,3 +1937,260 @@ system UserSample {
     },
   ],
 };
+
+export const MULTI_FILE_SYSTEM_PROJECT: ExampleProject = {
+  name: "multi-file-system",
+  files: [
+    {
+      path: "index.krs",
+      content: `// multi-file-system/index.krs
+// Demonstrates: splitting one \`system\` block across multiple files
+// (system reopen, whole-file import, deploy + organization propagation).
+// See docs/spec/syntax.md §"Multi-file import semantics".
+
+import "reader.krs"
+import "editor.krs"
+import "cms.krs"
+
+// The system body declared here wins over the same-id declarations in the
+// imported files (S3: root entry preference). Open reader.krs / editor.krs /
+// cms.krs directly to see the same system labeled differently.
+system Blog {
+  label "ブログプラットフォームデモ"
+  description "Reader / Editor / CMS の三面を別ファイルに分割した例"
+}
+`,
+    },
+    {
+      path: "reader.krs",
+      content: `// multi-file-system/reader.krs
+// Reader-facing slice of the Blog system, plus the deploy and organization
+// views (S4: whole-file import propagates \`deploy\` / \`organization\`).
+
+system Blog {
+  label "Reader slice"  // overridden by index.krs (S3)
+
+  user Reader [human] {
+    label "読者"
+    description "公開記事を閲覧するエンドユーザー"
+  }
+
+  client ReaderApp {
+    label "閲覧フロント"
+    description "公開ページ・記事詳細・検索"
+  }
+
+  service ArticleDelivery {
+    label "記事配信"
+    description "公開済み記事の配信とキャッシュ"
+
+    domain "配信" {
+      usecase "記事を取得する" {
+        resource ArticleDB.articles
+      }
+      usecase "全文検索する" {
+        resource SearchIndex.documents
+      }
+    }
+  }
+
+  Reader -> ReaderApp "記事を読む"
+  ReaderApp -> ArticleDelivery "記事取得"
+  ArticleDelivery -> ContentStore "公開記事を読み込む"
+  ArticleDelivery -> Search "クエリ転送"
+}
+
+deploy Production {
+  label "Production"
+  oci readerContainer {
+    label "reader-container"
+    runtime "Docker"
+    realizes ArticleDelivery
+  }
+}
+
+organization Editorial {
+  label "Editorial"
+  team platform {
+    label "Platform"
+    owns ArticleDelivery
+    member alice {
+      label "Alice"
+      description "Tech lead"
+    }
+  }
+}
+`,
+    },
+    {
+      path: "editor.krs",
+      content: `// multi-file-system/editor.krs
+// Editor-facing slice of the Blog system.
+// Reaches cms.krs via a named import; cms.krs is also brought in whole-file
+// by index.krs (DAG re-arrival — no circular warning per S5).
+
+import { ContentStore, Moderation } from "cms.krs"
+
+system Blog {
+  label "Editor slice"  // overridden by index.krs (S3)
+
+  user Editor [human] {
+    label "編集者"
+    description "記事を執筆・公開する"
+  }
+
+  client EditorApp {
+    label "編集フロント"
+    description "下書き編集・プレビュー・公開操作"
+  }
+
+  service Drafting {
+    label "下書き管理"
+
+    domain "編集" {
+      usecase "下書きを編集する" {
+        resource DraftStore.drafts
+      }
+      usecase "プレビューを生成する" {
+        resource DraftStore.drafts
+      }
+    }
+
+    domain "公開" {
+      usecase "記事を公開する" {
+        resource ArticleDB.articles
+      }
+    }
+  }
+
+  Editor -> EditorApp "記事を書く"
+  EditorApp -> Drafting "下書き保存 / 公開"
+  Drafting -> ContentStore "公開記事として登録"
+  Drafting -> Moderation "公開前チェック依頼"
+}
+
+// Same-id \`deploy\` / \`organization\` blocks merge with the ones in
+// reader.krs and cms.krs (S4 union).
+deploy Production {
+  oci editorContainer {
+    label "editor-container"
+    runtime "Docker"
+    realizes Drafting
+  }
+}
+
+organization Editorial {
+  team editorial {
+    label "Editorial"
+    owns Drafting
+    member bob {
+      label "Bob"
+      description "Editor-in-chief"
+    }
+  }
+}
+`,
+    },
+    {
+      path: "cms.krs",
+      content: `// multi-file-system/cms.krs
+// Core CMS slice — reached via two paths: named import from editor.krs and
+// whole-file import from index.krs. Not a cycle (S5).
+
+system Blog {
+  // No label here — S3 leaves index.krs's label intact.
+
+  user Moderator [human] {
+    label "モデレーター"
+    description "投稿内容の審査・公開可否を判断"
+  }
+
+  client AdminApp [internal] {
+    label "管理コンソール"
+    description "モデレーション / 公開キュー操作"
+  }
+
+  service ContentStore {
+    label "公開記事ストア"
+    description "公開済み記事の永続化と版管理"
+
+    domain "保存" {
+      usecase "記事を保存する" {
+        resource ArticleDB.articles
+      }
+      usecase "版を切り替える" {
+        resource ArticleDB.articles
+      }
+    }
+  }
+
+  service Moderation {
+    label "モデレーション"
+    description "公開前チェック・違反通報の処理"
+
+    domain "審査" {
+      usecase "公開可否を判断する" {
+        resource ModerationLog.decisions
+      }
+      usecase "違反通報を処理する" {
+        resource ModerationLog.decisions
+      }
+    }
+  }
+
+  service Search [external] {
+    label "全文検索エンジン"
+    description "外部ホスト型の検索サービス"
+  }
+
+  database ArticleDB {
+    table articles
+  }
+
+  database DraftStore {
+    table drafts
+  }
+
+  database SearchIndex {
+    table documents
+  }
+
+  database ModerationLog {
+    table decisions
+  }
+
+  Moderator -> AdminApp "モデレーション操作"
+  AdminApp -> Moderation "判定を記録"
+  Moderation -> ContentStore "公開反映"
+  ContentStore -> Search "インデックス更新"
+}
+
+// Same-id \`deploy\` / \`organization\` blocks merge with the ones in
+// reader.krs and editor.krs (S4 union).
+deploy Production {
+  oci cmsContainer {
+    label "cms-container"
+    runtime "Docker"
+    realizes ContentStore
+  }
+  oci moderationContainer {
+    label "moderation-container"
+    runtime "Docker"
+    realizes Moderation
+  }
+}
+
+organization Editorial {
+  team trustSafety {
+    label "Trust & Safety"
+    owns Moderation
+    member carol {
+      label "Carol"
+      description "Trust & Safety lead"
+    }
+  }
+}
+`,
+    },
+  ],
+};

@@ -8,6 +8,7 @@ import {
   GETTING_STARTED_PROJECT,
   GETTING_STARTED_PROJECT_EN,
   InMemoryFileSystemProvider,
+  MULTI_FILE_SYSTEM_PROJECT,
   type Project,
 } from "@karasu-tools/core";
 import { useProjectInitialization } from "./useProjectInitialization.js";
@@ -64,8 +65,9 @@ describe("useProjectInitialization — bootstrap", () => {
     );
 
     // Getting Started first, then one createProject per ec-platform example,
-    // then the client-mcp sample, then the feature-samples catalog.
-    const expectedCalls = 1 + EC_PLATFORM_PROJECTS.length + 2;
+    // then the client-mcp sample, the multi-file-system sample, and finally
+    // the feature-samples catalog.
+    const expectedCalls = 1 + EC_PLATFORM_PROJECTS.length + 3;
     expect(pm.createProject).toHaveBeenCalledTimes(expectedCalls);
     expect(pm.createProject).toHaveBeenNthCalledWith(
       1,
@@ -76,6 +78,11 @@ describe("useProjectInitialization — bootstrap", () => {
       1 + EC_PLATFORM_PROJECTS.length + 1,
       CLIENT_MCP_PROJECT.name,
       CLIENT_MCP_PROJECT.files,
+    );
+    expect(pm.createProject).toHaveBeenNthCalledWith(
+      1 + EC_PLATFORM_PROJECTS.length + 2,
+      MULTI_FILE_SYSTEM_PROJECT.name,
+      MULTI_FILE_SYSTEM_PROJECT.files,
     );
     expect(pm.createProject).toHaveBeenLastCalledWith(
       FEATURE_SAMPLES_PROJECT.name,
