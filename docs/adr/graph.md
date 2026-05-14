@@ -1,6 +1,6 @@
 # ADR Dependency Graph — Overview
 
-177 ADRs across 15 topics. Clusters group by `topic` frontmatter field. Edges crossing cluster borders are cross-topic dependencies.
+179 ADRs across 15 topics. Clusters group by `topic` frontmatter field. Edges crossing cluster borders are cross-topic dependencies.
 ```mermaid
 flowchart TD
   subgraph adr-tooling["adr-tooling"]
@@ -69,6 +69,7 @@ flowchart TD
     ADR_20260512_05["ADR-20260512-05<br/>OSS リリース自動化に changesets を採用し、当面は `karasu`（CLI）の..."]
     ADR_20260513_02["ADR-20260513-02<br/>OSS リリースのライセンス順守を allowlist CI と自動生成 THIRD_PART..."]
     ADR_20260513_04["ADR-20260513-04<br/>portable な開発スキルは `kompiro/hane` plugin に切り出し、ka..."]
+    ADR_20260513_05["ADR-20260513-05<br/>ユーザー作成 worktree は `.claude/worktrees/<branch>` ..."]
   end
   subgraph chat-ai["chat-ai"]
     ADR_20260407_04["ADR-20260407-04<br/>Cloudflare Pages デプロイ基盤と BYOK AI 連携"]
@@ -145,6 +146,7 @@ flowchart TD
     ADR_20260509_02["ADR-20260509-02<br/>`.krs.style` AST に位置情報と sheetId を持たせ、parser の e..."]
     ADR_20260510_01["ADR-20260510-01<br/>Tidy Style コマンド — `.krs.style` に trivia 保持と軸グルー..."]
     ADR_20260511_03["ADR-20260511-03<br/>`.krs.style` 値レベル診断 — 構造化 ValueNode AST と prope..."]
+    ADR_20260513_03["ADR-20260513-03<br/>system にネストした service / domain の Named Import は..."]
   end
   subgraph project["project"]
     ADR_20260317_02["ADR-20260317-02<br/>プロジェクトとファイルシステム抽象化 — `FileSystemProvider` + OPFS"]
@@ -482,20 +484,22 @@ flowchart TD
   class ADR_20260512_05 accepted
   class ADR_20260513_01 accepted
   class ADR_20260513_02 accepted
+  class ADR_20260513_03 accepted
   class ADR_20260513_04 accepted
+  class ADR_20260513_05 accepted
 ```
 
 ## Per-topic detail
 
 - [`adr-tooling`](graph/adr-tooling.md) — 5 ADRs
 - [`app-ui`](graph/app-ui.md) — 27 ADRs
-- [`build`](graph/build.md) — 29 ADRs
+- [`build`](graph/build.md) — 30 ADRs
 - [`chat-ai`](graph/chat-ai.md) — 8 ADRs
 - [`cli`](graph/cli.md) — 11 ADRs
 - [`core-concepts`](graph/core-concepts.md) — 9 ADRs
 - [`edges`](graph/edges.md) — 12 ADRs
 - [`navigation`](graph/navigation.md) — 9 ADRs
-- [`parser`](graph/parser.md) — 15 ADRs
+- [`parser`](graph/parser.md) — 16 ADRs
 - [`project`](graph/project.md) — 4 ADRs
 - [`renderer`](graph/renderer.md) — 22 ADRs
 - [`resolver`](graph/resolver.md) — 4 ADRs

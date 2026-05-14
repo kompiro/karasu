@@ -7,6 +7,7 @@ topic: build
 related_to:
   - ADR-20260513-01
   - ADR-20260413-01
+  - ADR-20260513-05
 scope:
   concerns:
     - ci
