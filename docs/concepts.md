@@ -247,7 +247,7 @@ core) and ADR-20260511-02 (no runtime-authorization modeling): both refuse to
 encode an external discipline's preferred shape into karasu's vocabulary while
 still allowing the underlying facts to be modeled.
 
-> Related TPLs: TPL-20260514-06 — `Diagnostic register reflects "fact vs. style"`
+> Related TPLs: TPL-20260514-07 — `Diagnostic register reflects "fact vs. style"`
 
 ## Domain dispersal detection
 
