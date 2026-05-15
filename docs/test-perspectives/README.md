@@ -416,5 +416,5 @@ DesignDoc が proactive TPL を引用したら、実装 PR で次をやる:
 | [TPL-20260514-03](TPL-20260514-03-system-reopen-merge.md) | 同名 system / deploy / organization の再オープンは children を union し、property は import-graph root に近い側が勝つ | resolver | docs/spec/syntax.md (S3), #1381 |
 | [TPL-20260514-04](TPL-20260514-04-deploy-org-wildcard-propagation.md) | whole-file import は system だけでなく deploy / organization も伝搬する | resolver | docs/spec/syntax.md (S4), #1381 |
 | [TPL-20260514-05](TPL-20260514-05-dangling-edge-preserves-node.md) | edge / relation の片側が未解決でも、解決できた側のノードは drop しない | resolver | docs/spec/syntax.md (S6), #1381 |
-| [TPL-20260514-06](TPL-20260514-06-diagnostic-register-fact-vs-style.md) | 新規 resolver diagnostic の register は「事実か流派判断か」で決める | core-concepts | docs/concepts.md (§What karasu visualizes vs. what it doesn't prescribe), #1386 |
 | [TPL-20260514-07](TPL-20260514-07-infra-redeclared-across-files.md) | 同名 `database` / `queue` / `storage` の再宣言は union merge、info 診断で surface する | resolver | docs/spec/syntax.md (S4.5), #1385 |
+| [TPL-20260514-08](TPL-20260514-08-diagnostic-register-fact-vs-style.md) | 新規 resolver diagnostic の register は「事実か流派判断か」で決める | core-concepts | docs/concepts.md (§What karasu visualizes vs. what it doesn't prescribe), #1386 |

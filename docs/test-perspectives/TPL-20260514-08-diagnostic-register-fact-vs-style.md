@@ -1,5 +1,5 @@
 ---
-id: TPL-20260514-06
+id: TPL-20260514-08
 title: "新規 resolver diagnostic の register は「事実か流派判断か」で決める"
 status: active
 date: 2026-05-14
@@ -19,7 +19,7 @@ scope:
     - app
 ---
 
-# TPL-20260514-06: 新規 resolver diagnostic の register は「事実か流派判断か」で決める
+# TPL-20260514-08: 新規 resolver diagnostic の register は「事実か流派判断か」で決める
 
 ## 観点
 
