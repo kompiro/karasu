@@ -338,7 +338,7 @@ export type Translations = {
   }) => string;
   "diagnostic.systemPropertyConflict.message": (params: {
     blockId: string;
-    blockKind: "system" | "deploy" | "organization" | "database" | "queue" | "storage";
+    blockKind: "system" | "deploy" | "organization";
     property: "label" | "description";
     chosen: string;
     ignored: string;
@@ -347,8 +347,9 @@ export type Translations = {
     blockId: string;
     blockKind: "database" | "queue" | "storage";
   }) => string;
-  "diagnostic.duplicateNodeInInfra.message": (params: {
-    nodeId: string;
+  "diagnostic.infraLeafRedeclaredSilently.message": (params: {
+    leafId: string;
+    leafKind: "table" | "queue-item" | "bucket";
     infraId: string;
     infraKind: "database" | "queue" | "storage";
   }) => string;

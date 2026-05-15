@@ -403,38 +403,47 @@ export class ImportResolver {
   }
 
   /**
-   * Same-id infra reopen (S4.5): merge two infra block bodies S3-symmetric.
-   *
-   * - Body properties (`label`, `description`): root-entry-wins with the
-   *   shared `reconcileLabel` / `reconcileDescription` helpers, emitting
-   *   `system-property-conflict` on non-empty conflicts.
-   * - Children (`table` / `queue-item` / `bucket`): identity dedup silent;
-   *   different-instance same-id pairs emit `duplicate-node-in-infra` error
-   *   and drop the second (mirroring how `mergeSystemIntoExisting` handles
-   *   same-id children at the system level).
+   * Same-id infra reopen: merge `table` (or other leaf) children by id.
+   * The infra body is intentionally flat — declaring
+   * `database UserDB { table users }` in two files leaves one merged
+   * node with a single `users` child. Identity-identical re-arrival
+   * (DAG hit) dedups silently. A same-`(id, kind)` collision between
+   * **different instances** emits an `infra-leaf-redeclared-silently`
+   * info diagnostic so the dropped declaration's existence is at least
+   * surfaced — silent loss of information would be debug-hostile.
    */
   private mergeInfraBody(
-    target: KrsNode & { properties?: { description?: string } },
-    source: KrsNode & { properties?: { description?: string } },
-    infraKind: "database" | "queue" | "storage",
+    target: KrsNode & { id: string; kind: string },
+    source: KrsNode,
   ): void {
     if (target === source) return;
-    this.reconcileLabel(target, source, infraKind);
-    if (target.properties && source.properties) {
-      this.reconcileDescription(target.properties, source.properties, target.id, infraKind);
-    }
+    const infraKind =
+      target.kind === "database" || target.kind === "queue" || target.kind === "storage"
+        ? (target.kind as "database" | "queue" | "storage")
+        : undefined;
     for (const child of source.children) {
       if (target.children.includes(child)) continue;
       const dup = target.children.find((c) => c.id === child.id && c.kind === child.kind);
       if (dup) {
-        this.diagnostics.push({
-          severity: "error",
-          code: "duplicate-node-in-infra",
-          params: { nodeId: child.id, infraId: target.id, infraKind },
-        });
-      } else {
-        target.children.push(child);
+        if (
+          infraKind &&
+          (child.kind === "table" || child.kind === "queue-item" || child.kind === "bucket")
+        ) {
+          this.diagnostics.push({
+            severity: "info",
+            code: "infra-leaf-redeclared-silently",
+            params: {
+              leafId: child.id,
+              leafKind: child.kind as "table" | "queue-item" | "bucket",
+              infraId: target.id,
+              infraKind,
+            },
+            loc: child.loc,
+          });
+        }
+        continue;
       }
+      target.children.push(child);
     }
   }
 
@@ -458,7 +467,7 @@ export class ImportResolver {
           code: "infra-redeclared-across-files",
           params: { blockId: incoming.id, blockKind: kind },
         });
-        this.mergeInfraBody(idConflict, incoming, kind);
+        this.mergeInfraBody(idConflict, incoming);
       } else {
         targetList.push(incoming);
       }
@@ -491,11 +500,7 @@ export class ImportResolver {
               blockKind: child.kind as "database" | "queue" | "storage",
             },
           });
-          this.mergeInfraBody(
-            idConflict as KrsNode & { properties?: { description?: string } },
-            child as KrsNode & { properties?: { description?: string } },
-            child.kind as "database" | "queue" | "storage",
-          );
+          this.mergeInfraBody(idConflict, child);
         } else {
           this.diagnostics.push({
             severity: "error",
@@ -568,7 +573,7 @@ export class ImportResolver {
   private reconcileLabel(
     target: { id: string; label?: string },
     source: { id: string; label?: string },
-    blockKind: "system" | "deploy" | "organization" | "database" | "queue" | "storage",
+    blockKind: "system" | "deploy" | "organization",
   ): void {
     const t = target.label?.trim() ?? "";
     const s = source.label?.trim() ?? "";
@@ -595,7 +600,7 @@ export class ImportResolver {
     target: { description?: string },
     source: { description?: string },
     blockId: string,
-    blockKind: "system" | "deploy" | "organization" | "database" | "queue" | "storage",
+    blockKind: "system" | "deploy" | "organization",
   ): void {
     const t = target.description?.trim() ?? "";
     const s = source.description?.trim() ?? "";

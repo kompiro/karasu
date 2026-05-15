@@ -890,9 +890,9 @@ edge `A -> B` の片方の endpoint が解決できない（merged モデルに 
 
 S3 と同じ規則を `database` / `queue` / `storage` にも適用する（複数ファイルで同じ id を宣言した場合、または 1 つの import グラフ内で複数の `system` ブロックに同じ infra id が現れた場合）:
 
-- **本体プロパティ**（`label` / `description`）: root-entry-wins、S3 と同じ。non-empty 値の衝突時は `system-property-conflict` warning を発火する（S3 が `system` / `deploy` / `organization` で使うのと同じ診断コードを再利用 — `blockKind` フィールドが infra 種別を保持する）
-- **children**（`table` 宣言などのリーフ）: DAG 再到達は identity dedup で silent。**異なるインスタンスで同じ id** のペアは `duplicate-node-in-infra` error を発火し、2 番目の宣言を drop する（`mergeSystemIntoExisting` が system レベルで同名 children を扱うのと同じ shape）
-- **診断**: `infra-redeclared-across-files` **info** 診断が、infra が複数箇所で宣言された事実を id と kind 付きで surface する — 修正方法は指示しない。これは `system-property-conflict` / `duplicate-node-in-infra` とは独立で、本体・children の両方に衝突がある merge では同時に発火しうる
+- **本体プロパティ**（`label` / `description` / タグ）: root-entry-wins で silent。S3 と異なり、衝突する non-empty 値があっても warning は出ない（共有 infra は移行途中で複数箇所に同じ宣言が散在しやすく、property warning がノイズになるための意図的な非対称）
+- **children**（`table` 宣言などのリーフ）: id ごとに find-or-create で merge。DAG 再到達（同一インスタンスが複数経路で到達）は silent に dedup。**異なる** 宣言で `(id, kind)` が衝突した場合 — 例: 片方が `table users { ... cols A ... }`、もう片方が `table users { ... cols B ... }` — 先勝ちで後者は drop され、`infra-leaf-redeclared-silently` **info** 診断で「捨てた宣言があった」事実を surface する（build は止めない）
+- **診断**: `infra-redeclared-across-files` **info** 診断が、infra が複数箇所で宣言された事実を id と kind 付きで surface する — 修正方法は指示しない
 
 `warning` ではなく `info` を使うのは意図的: karasu は共有 infra（複数 service がまたがって読み書きする `database`）を **可視化** はするが、それを禁止しない。文言は事実先行 — 共有が smell かどうかはプロジェクトのスタイル次第で、ドキュメントに委ねる。canonical な書き方は下のパターン参照。
 

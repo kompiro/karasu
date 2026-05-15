@@ -490,14 +490,10 @@ export interface DiagnosticParamsByCode {
   "duplicate-node-in-deploy": { nodeId: string; deployId: string };
   "duplicate-team-in-organization": { teamId: string; orgId: string };
   "system-property-conflict": {
-    /** Block id (`system` / `deploy` / `organization` / infra block). */
+    /** Block id (`system` / `deploy` / `organization` block). */
     blockId: string;
-    /**
-     * Discriminator so the formatter can phrase the warning correctly.
-     * Includes infra kinds (`database` / `queue` / `storage`) because S4.5
-     * reuses the same reconcile path for cross-file infra reopens.
-     */
-    blockKind: "system" | "deploy" | "organization" | "database" | "queue" | "storage";
+    /** Discriminator so the formatter can phrase the warning correctly. */
+    blockKind: "system" | "deploy" | "organization";
     /** Property name (`label` or `description`). */
     property: "label" | "description";
     /** Value that the resolver kept (closer to the import-graph root). */
@@ -511,12 +507,14 @@ export interface DiagnosticParamsByCode {
     /** Discriminator so the formatter can phrase the message correctly. */
     blockKind: "database" | "queue" | "storage";
   };
-  "duplicate-node-in-infra": {
-    /** Sub-resource id (table / queue-item / bucket). */
-    nodeId: string;
-    /** Parent infra block id. */
+  "infra-leaf-redeclared-silently": {
+    /** Leaf id (table / queue-item / bucket). */
+    leafId: string;
+    /** Leaf kind. */
+    leafKind: "table" | "queue-item" | "bucket";
+    /** Parent infra block id that contains the leaf. */
     infraId: string;
-    /** Parent infra kind for message phrasing. */
+    /** Parent infra kind. */
     infraKind: "database" | "queue" | "storage";
   };
   "import-id-not-found": { id: string; path: string };
