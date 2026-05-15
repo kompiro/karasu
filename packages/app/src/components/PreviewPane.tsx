@@ -120,20 +120,9 @@ export function PreviewPane({
     [edgeMenu, onPickEdgeDirection],
   );
 
-  // Dismiss the edge context menu on outside click or Escape.
-  useEffect(() => {
-    if (!edgeMenu) return;
-    const onDocClick = () => setEdgeMenu(null);
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setEdgeMenu(null);
-    };
-    document.addEventListener("click", onDocClick);
-    document.addEventListener("keydown", onKey);
-    return () => {
-      document.removeEventListener("click", onDocClick);
-      document.removeEventListener("keydown", onKey);
-    };
-  }, [edgeMenu]);
+  // Radix Popover handles outside-click + Escape dismissal internally via
+  // its DismissableLayer (see EdgeContextMenu — Popover migration, #1368).
+  // The bespoke document listeners are no longer needed.
 
   const visibleDiagnostics = diagnostics.filter(
     (d) => d.severity === "error" || d.severity === "warning" || d.severity === "info",
