@@ -106,8 +106,9 @@ export const en: Translations = {
 
   // Warnings (rendered in the WarningPanel)
   "warning.domainDispersal.message": ({ domainId }) =>
-    `Domain "${domainId}" is dispersed across multiple services`,
-  "warning.domainDispersal.checkCohesion": "Review the domain's cohesion",
+    `Domain "${domainId}" appears under multiple services`,
+  "warning.domainDispersal.checkCohesion":
+    "DDD sometimes calls cross-service domain reuse a cohesion smell",
   "warning.unassignedDomain.message": ({ display }) =>
     `Domain "${display}" is not assigned to any service`,
   "warning.unassignedUsecase.message": ({ usecaseId }) =>

@@ -46,7 +46,13 @@ export type {
   EdgeDirection,
 } from "./types/style.js";
 
-export type { Warning, WarningKind, WarningParamsByKind } from "./types/warnings.js";
+export type {
+  Warning,
+  WarningKind,
+  WarningParamsByKind,
+  WarningSeverity,
+} from "./types/warnings.js";
+export { warningSeverity } from "./types/warnings.js";
 export { formatWarning, type FormattedWarning } from "./resolver/warning-legacy-format.js";
 export { formatDiagnostic } from "./parser/diagnostic-legacy-format.js";
 export { tidyStyleSheet, type TidyOptions, type TidyResult } from "./style/tidy.js";

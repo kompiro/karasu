@@ -106,8 +106,9 @@ export const ja: Partial<Translations> = {
 
   // Warnings (rendered in the WarningPanel)
   "warning.domainDispersal.message": ({ domainId }) =>
-    `domain "${domainId}" が複数の service に分散しています`,
-  "warning.domainDispersal.checkCohesion": "ドメインの凝集性を確認してください",
+    `domain "${domainId}" は複数の service の配下に登場します`,
+  "warning.domainDispersal.checkCohesion":
+    "DDD では同じドメインが複数 service にまたがる状態を凝集性のシグナルとみなすことがあります",
   "warning.unassignedDomain.message": ({ display }) =>
     `domain "${display}" はどの service にも割り当てられていません`,
   "warning.unassignedUsecase.message": ({ usecaseId }) =>

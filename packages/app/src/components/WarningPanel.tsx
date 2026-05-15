@@ -1,17 +1,16 @@
 import { useState, useCallback } from "react";
 import type { Warning } from "@karasu-tools/core";
+import { warningSeverity } from "@karasu-tools/core";
 import { useFormattedWarning } from "../i18n/format-warning.js";
 
 interface WarningPanelProps {
   warnings: Warning[];
 }
 
-const WARNING_ICONS: Record<string, string> = {
-  "domain-dispersal": "\u26A0",
-  "style-conflict": "\u26A0",
-  "missing-runtime": "\u2139",
-  "missing-realizes": "\u2139",
-};
+const SEVERITY_ICON = {
+  warning: "\u26A0",
+  info: "\u2139",
+} as const;
 
 export function WarningPanel({ warnings }: WarningPanelProps) {
   const [collapsed, setCollapsed] = useState(false);
@@ -33,9 +32,13 @@ export function WarningPanel({ warnings }: WarningPanelProps) {
           {warnings.map((w) => {
             const { message, details } = formatWarning(w);
             const locKey = w.loc ? `:${w.loc.start.offset}` : "";
+            const severity = warningSeverity(w.kind);
             return (
-              <li key={`${w.kind}:${message}${locKey}`} className="warning-item">
-                <span className="warning-icon warning">{WARNING_ICONS[w.kind] ?? "\u26A0"}</span>
+              <li
+                key={`${w.kind}:${message}${locKey}`}
+                className={`warning-item warning-item--${severity}`}
+              >
+                <span className={`warning-icon ${severity}`}>{SEVERITY_ICON[severity]}</span>
                 {w.loc ? `Line ${w.loc.start.line}: ${message}` : message}
                 {details.length > 0 && (
                   <div className="warning-details">

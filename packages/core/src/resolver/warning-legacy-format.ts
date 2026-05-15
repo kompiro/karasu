@@ -23,8 +23,11 @@ export function formatWarning(w: Warning): FormattedWarning {
   switch (w.kind) {
     case "domain-dispersal":
       return {
-        message: `domain "${w.params.domainId}" が複数の service に分散しています`,
-        details: [...w.params.services, "ドメインの凝集性を確認してください"],
+        message: `domain "${w.params.domainId}" は複数の service の配下に登場します`,
+        details: [
+          ...w.params.services,
+          "DDD では同じドメインが複数 service にまたがる状態を凝集性のシグナルとみなすことがあります",
+        ],
       };
     case "unassigned-domain": {
       const display = w.params.label ?? w.params.domainId;

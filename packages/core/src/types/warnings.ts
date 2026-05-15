@@ -155,3 +155,24 @@ export type Warning = {
     loc?: SourceRange;
   };
 }[WarningKind];
+
+/**
+ * Visual register of a Warning. Most kinds render as `warning`; style-school
+ * smell detections (per ADR-20260514-02 / TPL-20260514-08) render as `info`
+ * — the configuration is a structural fact, not a defect karasu prescribes
+ * fixing. The mapping is keyed by `kind` so producers do not need to set
+ * severity explicitly.
+ */
+export type WarningSeverity = "warning" | "info";
+
+const INFO_WARNING_KINDS: ReadonlySet<WarningKind> = new Set<WarningKind>([
+  "domain-dispersal",
+  // Pre-existing informational kinds: the UI already rendered these with
+  // the ℹ icon via the old `WARNING_ICONS` map; preserve that register.
+  "missing-runtime",
+  "missing-realizes",
+]);
+
+export function warningSeverity(kind: WarningKind): WarningSeverity {
+  return INFO_WARNING_KINDS.has(kind) ? "info" : "warning";
+}
