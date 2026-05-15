@@ -17,6 +17,7 @@
     "@karasu-tools/core": "workspace:*",
     "@monaco-editor/react": "^4.7.0",
     "@radix-ui/react-dialog": "^1.1.15",
+    "@radix-ui/react-popover": "^1.1.15",
     "@radix-ui/react-tooltip": "^1.2.8",
     "@tailwindcss/vite": "^4.3.0",
     "clsx": "^2.1.1",
