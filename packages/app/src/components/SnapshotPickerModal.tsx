@@ -46,7 +46,8 @@ export function SnapshotPickerModal({
     <Dialog open onOpenChange={(open) => !open && onClose()}>
       <DialogContent
         hideCloseButton
-        className="max-w-[480px] gap-3"
+        className="gap-3"
+        style={{ maxWidth: 480, width: "90vw" }}
         aria-labelledby="snapshot-picker-dialog-title"
       >
         <DialogHeader>

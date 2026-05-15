@@ -49,7 +49,8 @@ export function PasteCompareDialog(props: PasteCompareDialogProps) {
     <Dialog open onOpenChange={(open) => !open && onCancel()}>
       <DialogContent
         hideCloseButton
-        className="max-w-[640px] gap-3"
+        className="gap-3"
+        style={{ maxWidth: 640, width: "90vw" }}
         aria-labelledby="paste-compare-dialog-title"
       >
         <DialogHeader>
