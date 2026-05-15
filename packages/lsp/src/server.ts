@@ -373,7 +373,12 @@ function validateDocument(document: TextDocument): void {
     const end = d.loc ? toLspPosition(d.loc.end.line, d.loc.end.column) : { line: 0, character: 0 };
 
     return {
-      severity: d.severity === "error" ? DiagnosticSeverity.Error : DiagnosticSeverity.Warning,
+      severity:
+        d.severity === "error"
+          ? DiagnosticSeverity.Error
+          : d.severity === "info"
+            ? DiagnosticSeverity.Information
+            : DiagnosticSeverity.Warning,
       range: { start, end },
       message: formatDiagnostic(d),
       source: "karasu",
