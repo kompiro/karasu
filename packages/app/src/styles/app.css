@@ -6,10 +6,19 @@
 
 @import url("https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap");
 
-/* Tailwind v4 — shadcn/ui experiment (Issue #1368).
+/* Tailwind v4 — shadcn/ui (ADR-20260515-01).
  * Loaded AFTER existing tokens so :root variables below are still authoritative.
- * preflight is left enabled per design-doc decision; conflicts are fixed case-by-case. */
+ * preflight is left enabled per ADR; conflicts are fixed case-by-case. */
 @import "tailwindcss";
+
+/* Tailwind v4 auto-detection misses arbitrary-value classes (e.g.
+ * `max-w-[640px]`, `w-[180px]`) in this monorepo + workspace-alias
+ * setup — point the scanner at our source tree explicitly so those
+ * utilities are actually emitted. Without this, tailwind-merge correctly
+ * drops the base `max-w-lg` in favor of the user-supplied
+ * `max-w-[640px]`, but the latter has no CSS rule and the element ends
+ * up unbounded (#1379 follow-up). */
+@source "../**/*.{ts,tsx}";
 
 /* shadcn/ui theme bridge — map Tailwind theme tokens to karasu's existing CSS variables
  * so that shadcn primitives (Dialog, ContextMenu) pick up the Onyx Cartographer palette
