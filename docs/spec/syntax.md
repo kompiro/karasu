@@ -931,6 +931,49 @@ When an edge `A -> B` cannot resolve one of its endpoints (because the target id
 
 The same rule applies to `realizes` / `owns` / `handles` cross-references: the source node stays, the unresolved relation is reported.
 
+### S4.5. Same-id infra reopen (`database` / `queue` / `storage`)
+
+The same rules as S3 apply when the same `database`, `queue`, or `storage` id is declared in more than one file (or in more than one `system` block within one file's import graph):
+
+- **Body properties** (`label`, `description`, tags): root-entry-wins silently. Unlike S3 (which warns on conflicting non-empty `label`/`description`), infra body conflicts emit no diagnostic — the intentional asymmetry: shared infra is more often refactored across files than `system`, and a property warning would be noise during a migration.
+- **Children** (`table` declarations and other leaves): merged by id with find-or-create. DAG re-arrival (same node instance reached via two import paths) dedups silently. Two **different** declarations with the same `(id, kind)` — e.g. `table users { ... cols A ... }` in one file and `table users { ... cols B ... }` in another — keep the first one and drop the second; an `infra-leaf-redeclared-silently` **info** diagnostic surfaces the dropped declaration so the loss is visible without blocking the build.
+- **Diagnostic**: an `infra-redeclared-across-files` **info** diagnostic surfaces the fact that the infra was declared in multiple places — listing the id and kind — without prescribing how to fix it.
+
+The info register (distinct from `warning`) is intentional: karasu visualizes shared infrastructure (one `database` written to by multiple services across files) but does not refuse to model it. The wording is fact-first; whether the sharing is a smell depends on the project's style and is left to its documentation. See the canonical pattern below.
+
+#### Canonical pattern — dedicated infra file
+
+The recommended way to share `database` / `queue` / `storage` declarations across slices is to put them in a dedicated infra file and `import "infra.krs"` from each slice that uses them. Because of S2's per-file memoization and S5's DAG handling, the infra file is resolved once and reused from every importer:
+
+```krs
+// infra.krs
+system Blog {
+  database ArticleDB { table articles }
+}
+
+// reader.krs
+import "infra.krs"
+system Blog {
+  service ArticleDelivery {
+    domain Delivery {
+      usecase ReadArticle { resource ArticleDB.articles }
+    }
+  }
+}
+
+// editor.krs
+import "infra.krs"
+system Blog {
+  service Authoring {
+    domain Publish {
+      usecase Publish { resource ArticleDB.articles }
+    }
+  }
+}
+```
+
+No `infra-redeclared-across-files` diagnostic fires for this pattern — each infra id is declared exactly once in `infra.krs`; the other slices only reference it via `resource` paths. The diagnostic surfaces only when the **same `database UserDB { ... }`** declaration appears literally in two files, which is the fallback the resolver accepts but does not encourage.
+
 ### S7. Deterministic order
 
 `mergedFile` order is determined by:
@@ -947,6 +990,7 @@ The same project always produces the same merged AST.
 > - [TPL-20260514-03](../test-perspectives/TPL-20260514-03-system-reopen-merge.md) — reopened `system` merges children, root entry wins for properties (S3)
 > - [TPL-20260514-04](../test-perspectives/TPL-20260514-04-deploy-org-wildcard-propagation.md) — `deploy` / `organization` propagate through whole-file import (S4)
 > - [TPL-20260514-05](../test-perspectives/TPL-20260514-05-dangling-edge-preserves-node.md) — unresolved edge endpoint does not drop the surviving node (S6)
+> - [TPL-20260514-07](../test-perspectives/TPL-20260514-07-infra-redeclared-across-files.md) — same-id `database` / `queue` / `storage` reopens union-merge with an info diagnostic (S4.5)
 
 ---
 

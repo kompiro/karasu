@@ -294,6 +294,10 @@ export const en: Translations = {
     chosen,
     ignored,
   }) => `${blockKind} "${blockId}" ${property} conflict — using "${chosen}", ignoring "${ignored}"`,
+  "diagnostic.infraLeafRedeclaredSilently.message": ({ leafKind, leafId, infraKind, infraId }) =>
+    `${leafKind} "${leafId}" is declared more than once inside ${infraKind} "${infraId}"; karasu kept the first declaration.`,
+  "diagnostic.infraRedeclaredAcrossFiles.message": ({ blockKind, blockId }) =>
+    `${blockKind} "${blockId}" is declared in multiple files; karasu merged them.`,
   "diagnostic.importIdNotFound.message": ({ id, path }) =>
     `Imported identifier "${id}" not found in ${path}`,
   "diagnostic.importPathNotFound.message": ({

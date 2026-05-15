@@ -154,6 +154,14 @@ export function formatDiagnostic(d: Diagnostic): string {
       const { blockKind, blockId, property, chosen, ignored } = d.params;
       return `${blockKind} "${blockId}" ${property} conflict — using "${chosen}", ignoring "${ignored}"`;
     }
+    case "infra-redeclared-across-files": {
+      const { blockKind, blockId } = d.params;
+      return `${blockKind} "${blockId}" is declared in multiple files; karasu merged them.`;
+    }
+    case "infra-leaf-redeclared-silently": {
+      const { leafKind, leafId, infraKind, infraId } = d.params;
+      return `${leafKind} "${leafId}" is declared more than once inside ${infraKind} "${infraId}"; karasu kept the first declaration.`;
+    }
     case "import-id-not-found":
       return `Imported identifier "${d.params.id}" not found in ${d.params.path}`;
     case "import-path-not-found": {
