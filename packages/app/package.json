@@ -30,7 +30,9 @@
     "tailwind-merge": "^3.6.0"
   },
   "devDependencies": {
+    "@radix-ui/react-tabs": "^1.1.13",
     "@testing-library/react": "^16.3.2",
+    "@testing-library/user-event": "^14.6.1",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
     "@vitejs/plugin-react": "^6.0.1",

@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { describe, it, expect, vi, afterEach } from "vitest";
 import { render as rtlRender, fireEvent, cleanup } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import type { ReactElement } from "react";
 import type { Diagnostic, Warning } from "@karasu-tools/core";
 import { PreviewColumn } from "./PreviewColumn.js";
@@ -87,24 +88,31 @@ function makeProps(overrides: Partial<PreviewContextValue> = {}): PreviewContext
 
 describe("PreviewColumn", () => {
   describe("tab switching", () => {
-    it("calls onActiveViewChange when System tab is clicked", () => {
+    // shadcn migration (#1368): Radix Tabs.Trigger needs userEvent to fire
+    // the full pointerdown→pointerup→click sequence; bare fireEvent.click
+    // is silently dropped by the Radix dismissable layer.
+
+    it("calls onActiveViewChange when System tab is clicked", async () => {
+      const user = userEvent.setup();
       const props = makeProps({ activeView: "org" });
       const { getByRole } = renderPreview(props);
-      fireEvent.click(getByRole("tab", { name: /System/ }));
+      await user.click(getByRole("tab", { name: /System/ }));
       expect(props.onActiveViewChange).toHaveBeenCalledWith("system");
     });
 
-    it("calls onActiveViewChange when Deploy tab is clicked", () => {
+    it("calls onActiveViewChange when Deploy tab is clicked", async () => {
+      const user = userEvent.setup();
       const props = makeProps({ activeView: "system" });
       const { getByRole } = renderPreview(props);
-      fireEvent.click(getByRole("tab", { name: /Deploy/ }));
+      await user.click(getByRole("tab", { name: /Deploy/ }));
       expect(props.onActiveViewChange).toHaveBeenCalledWith("deploy");
     });
 
-    it("calls onActiveViewChange when Org tab is clicked", () => {
+    it("calls onActiveViewChange when Org tab is clicked", async () => {
+      const user = userEvent.setup();
       const props = makeProps({ activeView: "system" });
       const { getByRole } = renderPreview(props);
-      fireEvent.click(getByRole("tab", { name: /Org/ }));
+      await user.click(getByRole("tab", { name: /Org/ }));
       expect(props.onActiveViewChange).toHaveBeenCalledWith("org");
     });
   });
@@ -273,12 +281,13 @@ describe("PreviewColumn", () => {
   });
 
   describe("hasDeployDiagram=false", () => {
-    it("still renders Deploy tab as clickable", () => {
+    it("still renders Deploy tab as clickable", async () => {
+      const user = userEvent.setup();
       const props = makeProps({ hasDeployDiagram: false });
       const { getByRole } = renderPreview(props);
       const deployTab = getByRole("tab", { name: /Deploy/ });
       expect(deployTab.getAttribute("aria-disabled")).not.toBe("true");
-      fireEvent.click(deployTab);
+      await user.click(deployTab);
       expect(props.onActiveViewChange).toHaveBeenCalledWith("deploy");
     });
   });
