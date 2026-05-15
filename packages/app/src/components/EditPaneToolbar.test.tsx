@@ -1,10 +1,19 @@
 // @vitest-environment jsdom
+import type React from "react";
 import { describe, it, expect, vi, afterEach } from "vitest";
-import { render, fireEvent, cleanup } from "@testing-library/react";
+import { render as rtlRender, fireEvent, cleanup } from "@testing-library/react";
+import { TooltipProvider } from "./ui/tooltip.js";
 
 afterEach(cleanup);
 
 import { EditPaneToolbar } from "./EditPaneToolbar.js";
+
+// shadcn migration (#1368): Radix Tooltip primitives require a Provider
+// in the ancestor tree. Wrap every render so the existing assertions
+// keep working unchanged.
+function render(ui: React.ReactElement) {
+  return rtlRender(<TooltipProvider>{ui}</TooltipProvider>);
+}
 
 describe("EditPaneToolbar", () => {
   it("renders Format button on editor tab when onFormat is provided", () => {
