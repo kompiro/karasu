@@ -63,6 +63,8 @@ pnpm adr:regenerate        # docs/adr/effective.md, graph/*.md を再生成
 `docs/design/<name>.md` を削除する（履歴は PR / Issue で追える）。
 昇格時のファイル名は `docs/adr/YYYYMMDD-NN-<name>.md`（NN は同日内連番）。
 
+新規 Design Doc の雛形は `docs/design/TEMPLATE.md` を参照。
+
 詳細フローは `docs/process.md` の「設計判断を ADR に残すタイミング」と
 `/start-dev` スキルのステップ 9.5 を参照。
 
