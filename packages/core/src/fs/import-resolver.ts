@@ -412,10 +412,7 @@ export class ImportResolver {
    * info diagnostic so the dropped declaration's existence is at least
    * surfaced — silent loss of information would be debug-hostile.
    */
-  private mergeInfraBody(
-    target: KrsNode & { id: string; kind: string },
-    source: KrsNode,
-  ): void {
+  private mergeInfraBody(target: KrsNode & { id: string; kind: string }, source: KrsNode): void {
     if (target === source) return;
     const infraKind =
       target.kind === "database" || target.kind === "queue" || target.kind === "storage"
