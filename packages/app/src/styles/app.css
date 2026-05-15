@@ -976,6 +976,35 @@ body,
 .diagnostic-banner__item--warning {
   color: var(--warning);
 }
+.diagnostic-banner__item--info {
+  /* `info` is for structural facts karasu visualizes but does not
+     prescribe (e.g. shared databases across services). Use a calm blue
+     (the IDE convention for "informational") that is clearly
+     distinguishable from warning yellow and error red, while still being
+     less attention-grabbing than warning thanks to lower saturation.
+     See design doc karasu-position-on-style-prescriptions. */
+  color: #93c5fd; /* blue-300 — readable on dark surface, distinct from warning/error */
+}
+
+/* Severity glyph prefixes — applied uniformly to all three registers so the
+   row's level is identifiable at a glance even before color is perceived,
+   and so info doesn't stand out as the only one with an icon. */
+.diagnostic-banner__item--error::before,
+.diagnostic-banner__item--warning::before,
+.diagnostic-banner__item--info::before {
+  display: inline-block;
+  margin-right: 6px;
+  font-weight: 600;
+}
+.diagnostic-banner__item--error::before {
+  content: "✕";
+}
+.diagnostic-banner__item--warning::before {
+  content: "⚠";
+}
+.diagnostic-banner__item--info::before {
+  content: "ℹ";
+}
 
 /* ── Error State Overlay ────────────────────────────────────────── */
 .preview-pane--has-errors .preview-container svg {

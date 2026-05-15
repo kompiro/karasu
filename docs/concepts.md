@@ -194,6 +194,61 @@ The writer records details; the reader receives a bounded field of view; boundar
 
 ---
 
+## What karasu visualizes vs. what it doesn't prescribe
+
+karasu **visualizes** architecture; it does not **prescribe** a particular style.
+The tool models *what exists* — not what *ought* to exist in some school's view of
+"good architecture." This is a second axis on top of the "slowly-changing structural
+context" filter from the Non-goals section: even within karasu's scope, there are
+configurations (a shared database, a domain reused across services) that some
+schools call a smell. karasu's job is to **show them clearly and let the team judge**,
+not to refuse to compile.
+
+In practice this means karasu will:
+
+- **Render any shape the user writes.** A `database UserDB` referenced by three
+  services across three files renders as three edges into one DB node. A `domain`
+  reused under multiple services renders under each of them. A `service [external]`
+  pointing back into the system is drawn the way it was written. No configuration
+  that is *structurally* valid is rejected on stylistic grounds.
+- **Surface informational diagnostics (`info`, not `warning`) for style smells.**
+  When the resolver detects a configuration that *some* style calls a smell, it
+  emits an `info` diagnostic that states the fact and links here. The diagnostic
+  does **not** assert the configuration is wrong.
+
+Diagnostics in this category are read as **"karasu noticed something — read on if
+it matters in your context, ignore if it doesn't"**:
+
+| Diagnostic | What it observes | Style context |
+|---|---|---|
+| `domain-dispersal` (info) | Same domain id under ≥ 2 services in one system | DDD considers same-domain dispersal a cohesion warning |
+| `infra-redeclared-across-files` (info) | Same `database` / `queue` / `storage` id declared in multiple files | Microservices Database-per-Service treats shared DB as a smell |
+
+This list will grow over time. The criterion for adding to it is:
+
+- **Is this a structural fact that some external style would call a smell?** →
+  `info` diagnostic, fact-first wording, link to this section.
+- **Is this a fact about karasu's own model** (e.g. an `id` referenced without
+  being declared, a `realizes` pointing at nothing)? → `error` or `warning` as
+  usual (these are not style judgments — they are about the model's internal
+  consistency).
+- **Is this a style judgment karasu itself takes no position on** (e.g.
+  "Hexagonal would require this", "Clean Architecture would forbid that")? →
+  No diagnostic at all. Out of scope.
+
+Why this stance: karasu's center of gravity (see "Goals and non-goals") is
+structural facts. Embedding a style preference into core diagnostics would force
+karasu to take and re-litigate positions in design schools that change with the
+field. Surfacing facts and linking to context lets the user — who knows the
+project, the team, and the constraints — judge.
+
+The same reasoning underlies ADR-20260430-01 (no security / threat modeling in
+core) and ADR-20260511-02 (no runtime-authorization modeling): both refuse to
+encode an external discipline's preferred shape into karasu's vocabulary while
+still allowing the underlying facts to be modeled.
+
+> Related TPLs: TPL-20260514-08 — `Diagnostic register reflects "fact vs. style"`
+
 ## Domain dispersal detection
 
 From a DDD standpoint, the same domain appearing across multiple services is a design warning sign.

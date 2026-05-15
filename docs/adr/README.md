@@ -25,6 +25,7 @@ karasu が何を表現するか、その根幹の設計判断。
 - [ADR-20260428-06](20260428-06-client-mcp-modeling.md) — `client` kind 導入 — `user → client → service` のアクセス経路と MCP / 外部依存のモデル化
 - [ADR-20260430-01](20260430-01-security-modeling-stance.md) — セキュリティ／脅威モデリングは karasu の語彙に取り込まず companion document に委ねる
 - [ADR-20260511-02](20260511-02-no-runtime-authz-modeling.md) — 実行時認可（usecase レベルの authz）は karasu の語彙に取り込まない
+- [ADR-20260514-02](20260514-02-style-prescription-stance.md) — karasu はスタイル流派を規定せず、流派が smell と呼ぶ構造は `info` 診断で事実通知する
 
 ### パーサー / 構文 / AST / フォーマッター
 
@@ -40,6 +41,7 @@ karasu が何を表現するか、その根幹の設計判断。
 - [ADR-20260410-02](20260410-02-krs-formatter.md) — `.krs` フォーマッター — トークン列ベースでコメント保持
 - [ADR-20260410-03](20260410-03-structural-krs-patch.md) — 構造的 `.krs` パッチ — ノード ID ベースの `append` / `replace` / `remove`
 - [ADR-20260412-04](20260412-04-implicit-edge-source-shorthand.md) — ブロック内エッジの暗黙 source 簡略記法
+- [ADR-20260513-03](20260513-03-import-system-nested.md) — system にネストした service / domain の Named Import は明示的な path 構文で取り込む
 
 ### リゾルバ / 警告 / 検証
 
@@ -200,6 +202,8 @@ VS Code 拡張と LSP の段階的実装。
 - [ADR-20260428-08](20260428-08-ci-docs-only-paired-stub-workflow.md) — Required Check は paired stub workflow で docs-only PR を成功扱いにする
 - [ADR-20260512-01](20260512-01-fast-uri-override-pin.md) — `fast-uri` を `pnpm.overrides` で `^3.1.2` に固定（GHSA セキュリティ修正）
 - [ADR-20260512-02](20260512-02-dependabot-batch-2026-05-12.md) — Dependabot Batch Triage (2026-05-12)
+- [ADR-20260513-04](20260513-04-skills-plugin-portability.md) — portable な開発スキルは `kompiro/hane` plugin に切り出し、karasu からは plugin 経由で読み込む
+- [ADR-20260513-05](20260513-05-agent-worktree-coexistence.md) — ユーザー作成 worktree は `.claude/worktrees/<branch>` 配下に置き、Claude Code Agent の自動 worktree と共存させる
 
 ### ADR 運用・ツール — `adr-tooling`
 

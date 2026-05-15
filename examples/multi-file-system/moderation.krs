@@ -1,0 +1,60 @@
+// multi-file-system/moderation.krs
+// Trust & Safety slice — owns moderation review and surfaces the external
+// search service that delivery relies on. Reached via two paths: named
+// import from editor.krs (Authoring asks Moderation for approval before
+// publishing) and whole-file import from index.krs. Not a cycle (S5).
+// Pulls shared databases from infra.krs (canonical infra-file pattern).
+
+import "infra.krs"
+
+system Blog {
+  // No label here — S3 leaves index.krs's label intact.
+
+  user Moderator [human] {
+    label "モデレーター"
+    description "投稿内容の審査・公開可否を判断"
+  }
+
+  client AdminApp [internal] {
+    label "管理コンソール"
+    description "モデレーション / 公開キュー操作"
+  }
+
+  service Moderation {
+    label "モデレーション"
+    description "公開前チェック・違反通報の処理"
+
+    domain "審査" {
+      usecase "公開可否を判断する" {
+        resource ModerationLog.decisions
+      }
+      usecase "違反通報を処理する" {
+        resource ModerationLog.decisions
+      }
+    }
+  }
+
+  Moderator -> AdminApp "モデレーション操作"
+  AdminApp -> Moderation "判定を記録"
+}
+
+// Same-id `deploy` / `organization` blocks merge with the ones in
+// reader.krs and editor.krs (S4 union).
+deploy Production {
+  oci moderationContainer {
+    label "moderation-container"
+    runtime "Docker"
+    realizes Moderation
+  }
+}
+
+organization Editorial {
+  team trustSafety {
+    label "Trust & Safety"
+    owns Moderation
+    member carol {
+      label "Carol"
+      description "Trust & Safety lead"
+    }
+  }
+}

@@ -1,0 +1,72 @@
+// multi-file-system/editor.krs
+// Authoring slice — editors write drafts, publish articles, and ask
+// Moderation for approval. Single `Authoring` service owns the whole
+// write-side lifecycle (drafting → publishing) rather than splitting
+// each step into its own microservice — both responsibilities are one
+// team's purview and share the same DB.
+//
+// Reaches moderation.krs via a named import; moderation.krs is also
+// brought in whole-file by index.krs (DAG re-arrival — no circular
+// warning per S5). Pulls shared databases from infra.krs.
+
+import "infra.krs"
+import { Moderation } from "moderation.krs"
+
+system Blog {
+  label "Editor slice"  // overridden by index.krs (S3)
+
+  user Editor [human] {
+    label "編集者"
+    description "記事を執筆・公開する"
+  }
+
+  client EditorApp {
+    label "編集フロント"
+    description "下書き編集・プレビュー・公開操作"
+  }
+
+  service Authoring {
+    label "編集・公開"
+    description "下書きから公開までの記事ライフサイクル"
+
+    domain "編集" {
+      usecase "下書きを編集する" {
+        resource DraftStore.drafts
+      }
+      usecase "プレビューを生成する" {
+        resource DraftStore.drafts
+      }
+    }
+
+    domain "公開" {
+      usecase "記事を公開する" {
+        resource ArticleDB.articles
+      }
+    }
+  }
+
+  Editor -> EditorApp "記事を書く"
+  EditorApp -> Authoring "下書き保存 / 公開"
+  Authoring -> Moderation "公開前チェック依頼"
+}
+
+// Same-id `deploy` / `organization` blocks merge with the ones in
+// reader.krs and moderation.krs (S4 union).
+deploy Production {
+  oci authoringContainer {
+    label "authoring-container"
+    runtime "Docker"
+    realizes Authoring
+  }
+}
+
+organization Editorial {
+  team editorial {
+    label "Editorial"
+    owns Authoring
+    member bob {
+      label "Bob"
+      description "Editor-in-chief"
+    }
+  }
+}

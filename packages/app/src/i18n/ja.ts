@@ -289,6 +289,18 @@ export const ja: Partial<Translations> = {
     `deploy ブロック "${deployId}" 内でノード ID "${nodeId}" が重複しています`,
   "diagnostic.duplicateTeamInOrganization.message": ({ teamId, orgId }) =>
     `organization "${orgId}" 内で team ID "${teamId}" が重複しています`,
+  "diagnostic.systemPropertyConflict.message": ({
+    blockKind,
+    blockId,
+    property,
+    chosen,
+    ignored,
+  }) =>
+    `${blockKind} "${blockId}" の ${property} が衝突しています — "${chosen}" を採用、"${ignored}" を無視`,
+  "diagnostic.infraLeafRedeclaredSilently.message": ({ leafKind, leafId, infraKind, infraId }) =>
+    `${leafKind} "${leafId}" は ${infraKind} "${infraId}" 内で複数回宣言されています（最初の宣言を採用）`,
+  "diagnostic.infraRedeclaredAcrossFiles.message": ({ blockKind, blockId }) =>
+    `${blockKind} "${blockId}" は複数のファイルで宣言されています（merge 済み）`,
   "diagnostic.importIdNotFound.message": ({ id, path }) =>
     `インポートされた識別子 "${id}" が ${path} に見つかりません`,
   "diagnostic.importPathNotFound.message": ({

@@ -107,6 +107,7 @@ export {
   GETTING_STARTED_PROJECT_EN,
   CLIENT_MCP_PROJECT,
   FEATURE_SAMPLES_PROJECT,
+  MULTI_FILE_SYSTEM_PROJECT,
 } from "./builtins/examples.js";
 export {
   getReference,

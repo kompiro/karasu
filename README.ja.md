@@ -123,6 +123,8 @@ system ECPlatform {
 }
 ```
 
+同じ id の `system` ブロックを複数ファイルで再オープンすれば、1 つの大きな system を分割して書けます（`deploy` / `organization` も同様）。本体プロパティ（`label` / `description`）は **import グラフの root に近いファイル**（= App / CLI で開いているファイル）の宣言が勝ちます。詳細は [docs/spec/syntax.ja.md「マルチファイル import の意味論」](docs/spec/syntax.ja.md#マルチファイル-import-の意味論) と [`examples/multi-file-system/`](examples/multi-file-system/) を参照してください。
+
 ## 論理構造と物理構造
 
 `realizes` によって「このデプロイ単位がこのサービスを実現している」を明示します。
@@ -371,6 +373,10 @@ karasu/
 ## インスピレーション
 
 C4 Model に触発されつつも、独自の語彙と論理／物理分離のコンセプトを採用しています。
+
+## コントリビュート
+
+Issue の起票方法、メンテナの「Best-effort, no SLA」スタンス、ローカルセットアップ、PR フローは [`CONTRIBUTING.md`](CONTRIBUTING.md) を参照してください（英語）。本プロジェクトの参加は [Contributor Covenant 2.1](CODE_OF_CONDUCT.md) に従います。
 
 ## ライセンス
 

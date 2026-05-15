@@ -33,11 +33,18 @@ export interface ResolvedProject {
  *           - Named import: 指定 ID のノードのみをマージ（既存動作）
  */
 export class ImportResolver {
-  private visitedKrs = new Set<string>();
+  /** Pass 1: 現在ロード中スタック（push on enter / pop on exit）— 真の循環検出に使う */
+  private loadingKrs = new Set<string>();
+  /** Pass 1: 読み込み完了 memo — DAG 再到達で warning を出さないために使う */
+  private loadedKrs = new Set<string>();
   private visitedStyles = new Set<string>();
   private diagnostics: Diagnostic[] = [];
   /** ディレクトリ import の展開結果キャッシュ（Pass 1 で構築、Pass 2 で参照） */
   private dirExpansions = new Map<string, string[]>();
+  /** Pass 2: ファイル単位の解決済み KrsFile cache（DAG 経由の同一ファイル到達で再利用） */
+  private resolvedCache = new Map<string, KrsFile>();
+  /** Pass 2: 現在解決中スタック — resolveKrsFromMap の真の循環防止に使う */
+  private resolvingKrs = new Set<string>();
 
   constructor(private fs: FileSystemProvider) {}
 
@@ -46,17 +53,19 @@ export class ImportResolver {
    * マージ済みの KrsFile とスタイルシートを返す。
    */
   async resolve(entryPath: string): Promise<ResolvedProject> {
-    this.visitedKrs.clear();
+    this.loadingKrs.clear();
+    this.loadedKrs.clear();
     this.visitedStyles.clear();
     this.diagnostics = [];
     this.dirExpansions.clear();
+    this.resolvedCache.clear();
+    this.resolvingKrs.clear();
 
     // Pass 1: 全ファイルをロード（循環検出・ファイル不在の報告）
     const fileMap = await this.loadFileMap(entryPath);
 
-    // Pass 2: エントリから再帰的にマージ（Pass 1 とは別の visited セット）
-    const mergeVisited = new Set<string>();
-    const krsFile = this.resolveKrsFromMap(fileMap, entryPath, mergeVisited);
+    // Pass 2: エントリから再帰的にマージ
+    const krsFile = this.resolveKrsFromMap(fileMap, entryPath);
 
     const styleSheets = await this.resolveStyles(entryPath, krsFile.styleImports);
 
@@ -76,7 +85,8 @@ export class ImportResolver {
   }
 
   private async loadFileRecursive(filePath: string, fileMap: Map<string, KrsFile>): Promise<void> {
-    if (this.visitedKrs.has(filePath)) {
+    // 真の循環: 現在ロード中のファイルに戻ってきた場合のみ警告（S5）
+    if (this.loadingKrs.has(filePath)) {
       this.diagnostics.push({
         severity: "warning",
         code: "circular-import",
@@ -84,7 +94,11 @@ export class ImportResolver {
       });
       return;
     }
-    this.visitedKrs.add(filePath);
+    // DAG 再到達: 既にロード済みなら黙って早期 return（warning なし）
+    if (this.loadedKrs.has(filePath)) {
+      return;
+    }
+    this.loadingKrs.add(filePath);
 
     let source: string;
     try {
@@ -95,6 +109,7 @@ export class ImportResolver {
         code: "file-not-found",
         params: { filePath },
       });
+      this.loadingKrs.delete(filePath);
       return;
     }
 
@@ -119,6 +134,9 @@ export class ImportResolver {
         await this.loadFileRecursive(importPath, fileMap);
       }
     }
+
+    this.loadingKrs.delete(filePath);
+    this.loadedKrs.add(filePath);
   }
 
   /**
@@ -152,12 +170,16 @@ export class ImportResolver {
   /**
    * fileMap を参照し、filePath のファイルを完全解決した KrsFile を返す。
    * 自身のコンテンツ + 全 import を再帰的にマージした結果。
+   *
+   * 解決結果は filePath 単位で memoize される（S2 / S5）。同じファイルが DAG 経由で
+   * 複数経路から到達されても、解決処理は 1 度だけ行われ、その結果が共有される。
+   * 真の循環（resolveKrsFromMap の入れ子で自分自身に戻ってきた場合）のみ空 KrsFile
+   * を返して無限再帰を断つ。
    */
-  private resolveKrsFromMap(
-    fileMap: Map<string, KrsFile>,
-    filePath: string,
-    visited: Set<string>,
-  ): KrsFile {
+  private resolveKrsFromMap(fileMap: Map<string, KrsFile>, filePath: string): KrsFile {
+    const cached = this.resolvedCache.get(filePath);
+    if (cached) return cached;
+
     const mergedFile: KrsFile = {
       styleImports: [],
       nodeImports: [],
@@ -176,11 +198,15 @@ export class ImportResolver {
       nodeFileIndex: new Map(),
     };
 
-    if (visited.has(filePath)) return mergedFile;
-    visited.add(filePath);
+    // 真の循環: 既に解決中なら空を返す（Pass 1 で circular-import 警告は出ている）
+    if (this.resolvingKrs.has(filePath)) return mergedFile;
+    this.resolvingKrs.add(filePath);
 
     const file = fileMap.get(filePath);
-    if (!file) return mergedFile;
+    if (!file) {
+      this.resolvingKrs.delete(filePath);
+      return mergedFile;
+    }
 
     // 自身のコンテンツをマージ
     mergedFile.styleImports.push(...file.styleImports);
@@ -231,6 +257,9 @@ export class ImportResolver {
     }
 
     // import を処理
+    // service-outside-system 警告は同じファイルに対して 1 回だけ出す（DAG 経由でも重複させない）
+    const warnedServiceOutsideSystem = new Set<string>();
+
     for (const nodeImport of file.nodeImports) {
       if (nodeImport.path === "") continue;
 
@@ -239,7 +268,7 @@ export class ImportResolver {
         const dirPath = resolvePath(filePath, nodeImport.path);
         const expandedFiles = this.dirExpansions.get(dirPath) ?? [];
         for (const krsFilePath of expandedFiles) {
-          const resolvedImported = this.resolveKrsFromMap(fileMap, krsFilePath, visited);
+          const resolvedImported = this.resolveKrsFromMap(fileMap, krsFilePath);
           this.mergeWildcardResolved(mergedFile, resolvedImported);
         }
         continue;
@@ -249,9 +278,10 @@ export class ImportResolver {
       const rawImported = fileMap.get(importPath);
       if (!rawImported) continue;
 
-      // Case B 警告: ワイルドカードかつ未処理のファイルに top-level service がある場合
+      // Case B 警告: ワイルドカードで取り込むファイルに top-level service がある場合
       const isWildcard = nodeImport.ids.length === 0;
-      if (isWildcard && !visited.has(importPath)) {
+      if (isWildcard && !warnedServiceOutsideSystem.has(importPath)) {
+        warnedServiceOutsideSystem.add(importPath);
         for (const service of rawImported.services) {
           this.diagnostics.push({
             severity: "warning",
@@ -262,11 +292,11 @@ export class ImportResolver {
         }
       }
 
-      // import 先を再帰解決（visited を共有することで重複ロードを防ぐ）
-      const resolvedImported = this.resolveKrsFromMap(fileMap, importPath, visited);
+      // import 先を再帰解決（cache で重複処理を防ぐ）
+      const resolvedImported = this.resolveKrsFromMap(fileMap, importPath);
 
       if (isWildcard) {
-        // ワイルドカード: 全ブロックをマージ（同名 → dedup）
+        // ワイルドカード: 全ブロックをマージ（DAG 再到達時は同一インスタンスを重複登録しない）
         this.mergeWildcardResolved(mergedFile, resolvedImported);
       } else {
         // Named: 指定 ID のノードのみをマージ
@@ -274,6 +304,8 @@ export class ImportResolver {
       }
     }
 
+    this.resolvingKrs.delete(filePath);
+    this.resolvedCache.set(filePath, mergedFile);
     return mergedFile;
   }
 
@@ -285,6 +317,7 @@ export class ImportResolver {
    * 重複 ID は error diagnostic を出す。
    */
   private mergeWildcardResolved(mergedFile: KrsFile, resolved: KrsFile): void {
+    if (mergedFile === resolved) return;
     for (const system of resolved.systems) {
       const existing = mergedFile.systems.find((s) => s.id === system.id);
       if (existing) {
@@ -312,9 +345,37 @@ export class ImportResolver {
       }
     }
 
-    // services（Case B 警告は resolveKrsFromMap 側で発行済み）
+    // services（Case B 警告は resolveKrsFromMap 側で発行済み）。
+    // DAG 経由で同じ resolved を 2 回 merge してもインスタンス重複させない。
     for (const service of resolved.services) {
-      mergedFile.services.push(service);
+      if (!mergedFile.services.includes(service)) {
+        mergedFile.services.push(service);
+      }
+    }
+
+    // S2: top-level infra blocks (database / queue / storage) propagate
+    // through whole-file import. Identity dedup handles DAG re-arrival —
+    // a database declared once in infra.krs reached via three different
+    // import chains does not get triplicated. Two distinct declarations
+    // with the same id are union-merged (S3-shaped: shared infra is
+    // visualized but not prescribed — info diagnostic, not error).
+    this.mergeTopLevelInfra(mergedFile.databases, resolved.databases, "database");
+    this.mergeTopLevelInfra(mergedFile.queues, resolved.queues, "queue");
+    this.mergeTopLevelInfra(mergedFile.storages, resolved.storages, "storage");
+    for (const client of resolved.clients) {
+      if (!mergedFile.clients.includes(client)) {
+        mergedFile.clients.push(client);
+      }
+    }
+    for (const domain of resolved.domains) {
+      if (!mergedFile.domains.includes(domain)) {
+        mergedFile.domains.push(domain);
+      }
+    }
+    for (const legend of resolved.legends) {
+      if (!mergedFile.legends.includes(legend)) {
+        mergedFile.legends.push(legend);
+      }
     }
 
     for (const [ownedId, teamId] of resolved.ownerIndex) {
@@ -330,24 +391,129 @@ export class ImportResolver {
         mergedFile.nodeFileIndex.set(nodeId, filePath);
       }
     }
-    mergedFile.styleImports.push(...resolved.styleImports);
+    for (const styleImport of resolved.styleImports) {
+      if (!mergedFile.styleImports.includes(styleImport)) {
+        mergedFile.styleImports.push(styleImport);
+      }
+    }
+  }
+
+  private isInfraKind(kind: string): kind is "database" | "queue" | "storage" {
+    return kind === "database" || kind === "queue" || kind === "storage";
+  }
+
+  /**
+   * Same-id infra reopen: merge `table` (or other leaf) children by id.
+   * The infra body is intentionally flat — declaring
+   * `database UserDB { table users }` in two files leaves one merged
+   * node with a single `users` child. Identity-identical re-arrival
+   * (DAG hit) dedups silently. A same-`(id, kind)` collision between
+   * **different instances** emits an `infra-leaf-redeclared-silently`
+   * info diagnostic so the dropped declaration's existence is at least
+   * surfaced — silent loss of information would be debug-hostile.
+   */
+  private mergeInfraBody(target: KrsNode & { id: string; kind: string }, source: KrsNode): void {
+    if (target === source) return;
+    const infraKind =
+      target.kind === "database" || target.kind === "queue" || target.kind === "storage"
+        ? (target.kind as "database" | "queue" | "storage")
+        : undefined;
+    for (const child of source.children) {
+      if (target.children.includes(child)) continue;
+      const dup = target.children.find((c) => c.id === child.id && c.kind === child.kind);
+      if (dup) {
+        if (
+          infraKind &&
+          (child.kind === "table" || child.kind === "queue-item" || child.kind === "bucket")
+        ) {
+          this.diagnostics.push({
+            severity: "info",
+            code: "infra-leaf-redeclared-silently",
+            params: {
+              leafId: child.id,
+              leafKind: child.kind as "table" | "queue-item" | "bucket",
+              infraId: target.id,
+              infraKind,
+            },
+            loc: child.loc,
+          });
+        }
+        continue;
+      }
+      target.children.push(child);
+    }
+  }
+
+  /**
+   * Wildcard merge of a top-level infra list (`databases` / `queues` /
+   * `storages`). Same-id reopens are union-merged with an
+   * `infra-redeclared-across-files` info diagnostic; DAG re-arrival
+   * (same instance) is dedup'd silently.
+   */
+  private mergeTopLevelInfra<T extends KrsNode & { id: string }>(
+    targetList: T[],
+    sourceList: T[],
+    kind: "database" | "queue" | "storage",
+  ): void {
+    for (const incoming of sourceList) {
+      if (targetList.includes(incoming)) continue;
+      const idConflict = targetList.find((n) => n.id === incoming.id);
+      if (idConflict) {
+        this.diagnostics.push({
+          severity: "info",
+          code: "infra-redeclared-across-files",
+          params: { blockId: incoming.id, blockKind: kind },
+        });
+        this.mergeInfraBody(idConflict, incoming);
+      } else {
+        targetList.push(incoming);
+      }
+    }
   }
 
   private mergeSystemIntoExisting(target: SystemNode, source: SystemNode): void {
+    if (target === source) return;
+    this.reconcileLabel(target, source, "system");
+    this.reconcileDescription(
+      target.properties as { description?: string },
+      source.properties as { description?: string },
+      target.id,
+      "system",
+    );
     for (const child of source.children) {
-      const alreadyExists = target.children.some((c) => c.id === child.id);
-      if (alreadyExists) {
-        this.diagnostics.push({
-          severity: "error",
-          code: "duplicate-node-in-system",
-          params: { nodeId: child.id, systemId: target.id },
-        });
+      // 同一インスタンス: DAG 経由で同じノードに到達した場合（cache hit）— 黙って dedup
+      if (target.children.includes(child)) continue;
+      const idConflict = target.children.find((c) => c.id === child.id);
+      if (idConflict) {
+        if (this.isInfraKind(child.kind) && idConflict.kind === child.kind) {
+          // 同名 infra (database / queue / storage) の再オープンは union merge。
+          // 「shared infra」は karasu が可視化はするが prescribe しない事実なので
+          // info severity で surface（design doc: karasu-position-on-style-prescriptions）。
+          this.diagnostics.push({
+            severity: "info",
+            code: "infra-redeclared-across-files",
+            params: {
+              blockId: child.id,
+              blockKind: child.kind as "database" | "queue" | "storage",
+            },
+          });
+          this.mergeInfraBody(idConflict, child);
+        } else {
+          this.diagnostics.push({
+            severity: "error",
+            code: "duplicate-node-in-system",
+            params: { nodeId: child.id, systemId: target.id },
+          });
+        }
       } else {
         target.children.push(child);
       }
     }
     for (const edge of source.edges) {
-      const edgeExists = target.edges.some((e) => e.from === edge.from && e.to === edge.to);
+      if (target.edges.includes(edge)) continue;
+      const edgeExists = target.edges.some(
+        (e) => e.from === edge.from && e.to === edge.to && e.label === edge.label,
+      );
       if (!edgeExists) {
         target.edges.push(edge);
       }
@@ -355,9 +521,12 @@ export class ImportResolver {
   }
 
   private mergeDeployIntoExisting(target: DeployBlock, source: DeployBlock): void {
+    if (target === source) return;
+    this.reconcileLabel(target, source, "deploy");
     for (const node of source.nodes) {
-      const alreadyExists = target.nodes.some((n) => n.id === node.id);
-      if (alreadyExists) {
+      if (target.nodes.includes(node)) continue;
+      const idConflict = target.nodes.find((n) => n.id === node.id);
+      if (idConflict) {
         this.diagnostics.push({
           severity: "error",
           code: "duplicate-node-in-deploy",
@@ -370,9 +539,18 @@ export class ImportResolver {
   }
 
   private mergeOrgIntoExisting(target: OrganizationBlock, source: OrganizationBlock): void {
+    if (target === source) return;
+    this.reconcileLabel(target, source, "organization");
+    this.reconcileDescription(
+      target.properties as { description?: string },
+      source.properties as { description?: string },
+      target.id,
+      "organization",
+    );
     for (const team of source.teams) {
-      const alreadyExists = target.teams.some((t) => t.id === team.id);
-      if (alreadyExists) {
+      if (target.teams.includes(team)) continue;
+      const idConflict = target.teams.find((t) => t.id === team.id);
+      if (idConflict) {
         this.diagnostics.push({
           severity: "error",
           code: "duplicate-team-in-organization",
@@ -381,6 +559,64 @@ export class ImportResolver {
       } else {
         target.teams.push(team);
       }
+    }
+  }
+
+  /**
+   * S3: import グラフの root に近い側が勝つ。
+   * - target が未設定 → source の値で埋める
+   * - 両方が non-empty で異なる → target を維持して `system-property-conflict` warning
+   */
+  private reconcileLabel(
+    target: { id: string; label?: string },
+    source: { id: string; label?: string },
+    blockKind: "system" | "deploy" | "organization",
+  ): void {
+    const t = target.label?.trim() ?? "";
+    const s = source.label?.trim() ?? "";
+    if (!t && s) {
+      target.label = source.label;
+      return;
+    }
+    if (t && s && t !== s) {
+      this.diagnostics.push({
+        severity: "warning",
+        code: "system-property-conflict",
+        params: {
+          blockId: target.id,
+          blockKind,
+          property: "label",
+          chosen: t,
+          ignored: s,
+        },
+      });
+    }
+  }
+
+  private reconcileDescription(
+    target: { description?: string },
+    source: { description?: string },
+    blockId: string,
+    blockKind: "system" | "deploy" | "organization",
+  ): void {
+    const t = target.description?.trim() ?? "";
+    const s = source.description?.trim() ?? "";
+    if (!t && s) {
+      target.description = source.description;
+      return;
+    }
+    if (t && s && t !== s) {
+      this.diagnostics.push({
+        severity: "warning",
+        code: "system-property-conflict",
+        params: {
+          blockId,
+          blockKind,
+          property: "description",
+          chosen: t,
+          ignored: s,
+        },
+      });
     }
   }
 

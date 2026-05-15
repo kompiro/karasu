@@ -1,0 +1,16 @@
+// multi-file-system/index.krs
+// Demonstrates: splitting one `system` block across multiple files
+// (system reopen, whole-file import, deploy + organization propagation).
+// See docs/spec/syntax.md §"Multi-file import semantics".
+
+import "reader.krs"
+import "editor.krs"
+import "moderation.krs"
+
+// The system body declared here wins over the same-id declarations in the
+// imported files (S3: root entry preference). Open reader.krs / editor.krs /
+// moderation.krs directly to see the same system labeled differently.
+system Blog {
+  label "ブログプラットフォームデモ"
+  description "Reader / Editor / Moderation の三面を別ファイルに分割した例"
+}

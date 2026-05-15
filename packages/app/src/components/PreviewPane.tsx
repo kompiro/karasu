@@ -136,7 +136,7 @@ export function PreviewPane({
   }, [edgeMenu]);
 
   const visibleDiagnostics = diagnostics.filter(
-    (d) => d.severity === "error" || d.severity === "warning",
+    (d) => d.severity === "error" || d.severity === "warning" || d.severity === "info",
   );
   const hasErrors = diagnostics.some((d) => d.severity === "error");
 

@@ -1937,3 +1937,277 @@ system UserSample {
     },
   ],
 };
+
+export const MULTI_FILE_SYSTEM_PROJECT: ExampleProject = {
+  name: "multi-file-system",
+  files: [
+    {
+      path: "index.krs",
+      content: `// multi-file-system/index.krs
+// Demonstrates: splitting one \`system\` block across multiple files
+// (system reopen, whole-file import, deploy + organization propagation).
+// See docs/spec/syntax.md §"Multi-file import semantics".
+
+import "reader.krs"
+import "editor.krs"
+import "moderation.krs"
+
+// The system body declared here wins over the same-id declarations in the
+// imported files (S3: root entry preference). Open reader.krs / editor.krs /
+// moderation.krs directly to see the same system labeled differently.
+system Blog {
+  label "ブログプラットフォームデモ"
+  description "Reader / Editor / Moderation の三面を別ファイルに分割した例"
+}
+`,
+    },
+    {
+      path: "reader.krs",
+      content: `// multi-file-system/reader.krs
+// Reader-facing slice of the Blog system, plus the deploy and organization
+// views (S4: whole-file import propagates \`deploy\` / \`organization\`).
+//
+// Pulls shared databases from infra.krs so this file renders standalone
+// in the App (canonical infra-file pattern).
+
+import "infra.krs"
+
+system Blog {
+  label "Reader slice"  // overridden by index.krs (S3)
+
+  user Reader [human] {
+    label "読者"
+    description "公開記事を閲覧するエンドユーザー"
+  }
+
+  client ReaderApp {
+    label "閲覧フロント"
+    description "公開ページ・記事詳細・検索"
+  }
+
+  service ArticleDelivery {
+    label "記事配信"
+    description "公開済み記事の配信とキャッシュ"
+
+    domain "配信" {
+      usecase "記事を取得する" {
+        resource ArticleDB.articles
+      }
+      usecase "全文検索する" {
+        resource SearchIndex.documents
+      }
+    }
+  }
+
+  Reader -> ReaderApp "記事を読む"
+  ReaderApp -> ArticleDelivery "記事取得"
+  ArticleDelivery -> Search "クエリ転送"
+}
+
+deploy Production {
+  label "Production"
+  oci readerContainer {
+    label "reader-container"
+    runtime "Docker"
+    realizes ArticleDelivery
+  }
+}
+
+organization Editorial {
+  label "Editorial"
+  team platform {
+    label "Platform"
+    owns ArticleDelivery
+    member alice {
+      label "Alice"
+      description "Tech lead"
+    }
+  }
+}
+`,
+    },
+    {
+      path: "editor.krs",
+      content: `// multi-file-system/editor.krs
+// Authoring slice — editors write drafts, publish articles, and ask
+// Moderation for approval. Single \`Authoring\` service owns the whole
+// write-side lifecycle (drafting → publishing) rather than splitting
+// each step into its own microservice — both responsibilities are one
+// team's purview and share the same DB.
+//
+// Reaches moderation.krs via a named import; moderation.krs is also
+// brought in whole-file by index.krs (DAG re-arrival — no circular
+// warning per S5). Pulls shared databases from infra.krs.
+
+import "infra.krs"
+import { Moderation } from "moderation.krs"
+
+system Blog {
+  label "Editor slice"  // overridden by index.krs (S3)
+
+  user Editor [human] {
+    label "編集者"
+    description "記事を執筆・公開する"
+  }
+
+  client EditorApp {
+    label "編集フロント"
+    description "下書き編集・プレビュー・公開操作"
+  }
+
+  service Authoring {
+    label "編集・公開"
+    description "下書きから公開までの記事ライフサイクル"
+
+    domain "編集" {
+      usecase "下書きを編集する" {
+        resource DraftStore.drafts
+      }
+      usecase "プレビューを生成する" {
+        resource DraftStore.drafts
+      }
+    }
+
+    domain "公開" {
+      usecase "記事を公開する" {
+        resource ArticleDB.articles
+      }
+    }
+  }
+
+  Editor -> EditorApp "記事を書く"
+  EditorApp -> Authoring "下書き保存 / 公開"
+  Authoring -> Moderation "公開前チェック依頼"
+}
+
+// Same-id \`deploy\` / \`organization\` blocks merge with the ones in
+// reader.krs and moderation.krs (S4 union).
+deploy Production {
+  oci authoringContainer {
+    label "authoring-container"
+    runtime "Docker"
+    realizes Authoring
+  }
+}
+
+organization Editorial {
+  team editorial {
+    label "Editorial"
+    owns Authoring
+    member bob {
+      label "Bob"
+      description "Editor-in-chief"
+    }
+  }
+}
+`,
+    },
+    {
+      path: "moderation.krs",
+      content: `// multi-file-system/moderation.krs
+// Trust & Safety slice — owns moderation review and surfaces the external
+// search service that delivery relies on. Reached via two paths: named
+// import from editor.krs (Authoring asks Moderation for approval before
+// publishing) and whole-file import from index.krs. Not a cycle (S5).
+// Pulls shared databases from infra.krs (canonical infra-file pattern).
+
+import "infra.krs"
+
+system Blog {
+  // No label here — S3 leaves index.krs's label intact.
+
+  user Moderator [human] {
+    label "モデレーター"
+    description "投稿内容の審査・公開可否を判断"
+  }
+
+  client AdminApp [internal] {
+    label "管理コンソール"
+    description "モデレーション / 公開キュー操作"
+  }
+
+  service Moderation {
+    label "モデレーション"
+    description "公開前チェック・違反通報の処理"
+
+    domain "審査" {
+      usecase "公開可否を判断する" {
+        resource ModerationLog.decisions
+      }
+      usecase "違反通報を処理する" {
+        resource ModerationLog.decisions
+      }
+    }
+  }
+
+  Moderator -> AdminApp "モデレーション操作"
+  AdminApp -> Moderation "判定を記録"
+}
+
+// Same-id \`deploy\` / \`organization\` blocks merge with the ones in
+// reader.krs and editor.krs (S4 union).
+deploy Production {
+  oci moderationContainer {
+    label "moderation-container"
+    runtime "Docker"
+    realizes Moderation
+  }
+}
+
+organization Editorial {
+  team trustSafety {
+    label "Trust & Safety"
+    owns Moderation
+    member carol {
+      label "Carol"
+      description "Trust & Safety lead"
+    }
+  }
+}
+`,
+    },
+    {
+      path: "infra.krs",
+      content: `// multi-file-system/infra.krs
+// Shared infrastructure — databases and external dependencies referenced
+// by services across reader / editor / moderation slices. Declared once
+// here, inside a reopened \`system Blog\` block (S3), and pulled into each
+// slice via \`import "infra.krs"\`. This is the canonical pattern for
+// cross-file shared infra:
+//
+//   - Each slice that uses a shared resource imports infra.krs, so it
+//     renders standalone in the App without unresolved-edge warnings.
+//   - DAG re-arrival (S5) memoizes the resolved infra.krs, so being
+//     reached through reader / editor / moderation doesn't duplicate work.
+//   - The merged model has one canonical declaration per resource — no
+//     ambiguity about where shared infra "lives".
+//   - Declaring inside \`system Blog { ... }\` (rather than at file root)
+//     lets the system-reopen merge in S3 attach the infra to the system,
+//     so the \`unassigned-database\` warning doesn't fire.
+
+system Blog {
+  database ArticleDB {
+    table articles
+  }
+
+  database DraftStore {
+    table drafts
+  }
+
+  database SearchIndex {
+    table documents
+  }
+
+  database ModerationLog {
+    table decisions
+  }
+
+  service Search [external] {
+    label "全文検索エンジン"
+    description "外部ホスト型の検索サービス。Delivery が直接クエリする"
+  }
+}
+`,
+    },
+  ],
+};

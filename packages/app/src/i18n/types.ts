@@ -336,6 +336,23 @@ export type Translations = {
     teamId: string;
     orgId: string;
   }) => string;
+  "diagnostic.systemPropertyConflict.message": (params: {
+    blockId: string;
+    blockKind: "system" | "deploy" | "organization";
+    property: "label" | "description";
+    chosen: string;
+    ignored: string;
+  }) => string;
+  "diagnostic.infraRedeclaredAcrossFiles.message": (params: {
+    blockId: string;
+    blockKind: "database" | "queue" | "storage";
+  }) => string;
+  "diagnostic.infraLeafRedeclaredSilently.message": (params: {
+    leafId: string;
+    leafKind: "table" | "queue-item" | "bucket";
+    infraId: string;
+    infraKind: "database" | "queue" | "storage";
+  }) => string;
   "diagnostic.importIdNotFound.message": (params: { id: string; path: string }) => string;
   "diagnostic.importPathNotFound.message": (params: {
     path: string;

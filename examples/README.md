@@ -14,6 +14,7 @@ This directory contains sample `.krs` files demonstrating the karasu architectur
 | `04-annotations.krs` | `[external]`, `@deprecated`, `@new`, `@experimental` |
 | `05-multifile/` | `import { } from` — file splitting (VSCode Extension / server mode) |
 | `06-deploy/` | `deploy`, `oci`, `jar`, `job`, `realizes` — physical structure |
+| `multi-file-system/` | `import "file.krs"` whole-file form — split one `system` block across files, plus `deploy` / `organization` propagation |
 
 ## Themed Scenarios
 

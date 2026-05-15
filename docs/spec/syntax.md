@@ -864,6 +864,136 @@ import { ECPlatform.NotThere.Order } from "./services.krs"
 
 ---
 
+## Multi-file import semantics
+
+This section defines what each `import` form means when a model is split across multiple `.krs` files. Implementation: `packages/core/src/fs/import-resolver.ts`. Related ADRs: [ADR-20260405-03](../adr/20260405-03-wildcard-import-two-pass-resolution.md) (wildcard / two-pass), [ADR-20260409-05](../adr/20260409-05-directory-import.md) (directory), [ADR-20260409-06](../adr/20260409-06-named-import-toplevel-service.md) (named top-level), [ADR-20260513-03](../adr/20260513-03-import-system-nested.md) (named path syntax).
+
+### S1. The four import forms
+
+```krs
+@import "theme.krs.style"             // (a) style import — see §"@import scope" below
+import { Foo, Bar.Baz } from "p.krs"  // (b) named import — see §"Drill-down and external file references"
+import "p.krs"                        // (c) whole-file import — defined in this section
+import "dir/"                         // (d) directory import — defined in this section
+```
+
+(c) and (d) share the same merge rules. (d) is defined as: list all `.krs` files directly under `dir/` in alphabetical order, then process each as if it were a separate `import "..."` declaration at the same place. Sub-directories are not recursed.
+
+### S2. Whole-file import merge rules
+
+`import "p.krs"` brings the **fully-resolved KrsFile of `p.krs`** into the importer. "Fully-resolved" means after recursively resolving all of `p.krs`'s own imports. This resolved snapshot is computed **once per file path** and reused — the same `p.krs` reached through multiple paths yields the same content (see S5).
+
+The importer absorbs:
+
+- all top-level nodes (`system` / `service` / `client` / `database` / `queue` / `storage` / `legend` / `deploy` / `organization`)
+- all children inside each `system` block (`user` / `client` / `service` / `domain` / `usecase` / `resource` / edges / infra)
+- all stylesheets referenced via `@import` in `p.krs` (added to the cascade)
+
+### S3. Same-id `system` blocks merge (system reopen)
+
+When the same `system` id appears in more than one file (the importer's own file and an imported file, or two imported files), the blocks are **merged into one** rather than treated as duplicates:
+
+- **System body properties** (`label` / `description` / tags): the declaration in the file **closer to the import-graph root** wins. The root is `ImportResolver.resolve(entryPath)`'s `entryPath` — in practice the file currently open in the App / VS Code extension, or the file passed to `karasu render`. The resolver walks the graph bottom-up; values from deeper imports fill in only where the closer file left them unset.
+  - When two files declare conflicting non-empty values, the resolver picks the closer-to-root one and emits a `system-property-conflict` warning (chosen value + ignored value + both source locations).
+- **Children**: merged by id with find-or-create. Two children with the same id in the same merged system produce a `duplicate-node-in-system` error (existing behavior). Two different ids merge cleanly.
+- **Edges**: union. Exact duplicates (same `from`, `to`, kind, label) are deduplicated; otherwise both are kept.
+
+This is the canonical way to split a large `system` into several files. The App / CLI's notion of "the current file" naturally becomes the source of truth for top-level system metadata.
+
+### S4. Same-id `deploy` / `organization` blocks merge
+
+Same rules as S3, applied to `deploy.nodes` (oci / k8s / vm / …) and `organization.teams` (and members). `realizes` / `owns` relations are unioned. `import "p.krs"` therefore brings `deploy` and `organization` content alongside `system` content — there is no separate import form for the physical / org views.
+
+### S5. DAG re-arrival vs. true cycles
+
+The import graph is allowed to be a **DAG**. The same file may be reached through two different import chains (entry → A → C and entry → B → C) without warning. The resolver memoizes the resolved snapshot per file path so the second arrival reuses the first arrival's result.
+
+A `circular-import` warning is emitted only on a **true cycle** — a file is already on the *currently-being-loaded* stack when it is requested again. Detection uses a `loading` set (path stack, push on enter / pop on exit) distinct from a `loaded` memo. The latter does not warn.
+
+```
+// DAG — no warning
+index.krs:  import "admin.krs"
+            import "auth.krs"
+admin.krs:  import { Service } from "auth.krs"  // reaches auth.krs via admin
+auth.krs:   // (no imports)
+
+// True cycle — warning at the second arrival on a.krs
+a.krs:      import "b.krs"
+b.krs:      import "a.krs"   // ← circular-import warning
+```
+
+### S6. Dangling edge endpoints preserve their nodes
+
+When an edge `A -> B` cannot resolve one of its endpoints (because the target id is not present in the merged model), the resolver:
+
+- drops the edge and emits an `unresolved-edge-endpoint` warning naming the unresolved id and the edge's source location;
+- **keeps the node on the resolved side**. A node declared in some file is part of the model regardless of whether its outbound / inbound edges resolve.
+
+The same rule applies to `realizes` / `owns` / `handles` cross-references: the source node stays, the unresolved relation is reported.
+
+### S4.5. Same-id infra reopen (`database` / `queue` / `storage`)
+
+The same rules as S3 apply when the same `database`, `queue`, or `storage` id is declared in more than one file (or in more than one `system` block within one file's import graph):
+
+- **Body properties** (`label`, `description`, tags): root-entry-wins silently. Unlike S3 (which warns on conflicting non-empty `label`/`description`), infra body conflicts emit no diagnostic — the intentional asymmetry: shared infra is more often refactored across files than `system`, and a property warning would be noise during a migration.
+- **Children** (`table` declarations and other leaves): merged by id with find-or-create. DAG re-arrival (same node instance reached via two import paths) dedups silently. Two **different** declarations with the same `(id, kind)` — e.g. `table users { ... cols A ... }` in one file and `table users { ... cols B ... }` in another — keep the first one and drop the second; an `infra-leaf-redeclared-silently` **info** diagnostic surfaces the dropped declaration so the loss is visible without blocking the build.
+- **Diagnostic**: an `infra-redeclared-across-files` **info** diagnostic surfaces the fact that the infra was declared in multiple places — listing the id and kind — without prescribing how to fix it.
+
+The info register (distinct from `warning`) is intentional: karasu visualizes shared infrastructure (one `database` written to by multiple services across files) but does not refuse to model it. The wording is fact-first; whether the sharing is a smell depends on the project's style and is left to its documentation. See the canonical pattern below.
+
+#### Canonical pattern — dedicated infra file
+
+The recommended way to share `database` / `queue` / `storage` declarations across slices is to put them in a dedicated infra file and `import "infra.krs"` from each slice that uses them. Because of S2's per-file memoization and S5's DAG handling, the infra file is resolved once and reused from every importer:
+
+```krs
+// infra.krs
+system Blog {
+  database ArticleDB { table articles }
+}
+
+// reader.krs
+import "infra.krs"
+system Blog {
+  service ArticleDelivery {
+    domain Delivery {
+      usecase ReadArticle { resource ArticleDB.articles }
+    }
+  }
+}
+
+// editor.krs
+import "infra.krs"
+system Blog {
+  service Authoring {
+    domain Publish {
+      usecase Publish { resource ArticleDB.articles }
+    }
+  }
+}
+```
+
+No `infra-redeclared-across-files` diagnostic fires for this pattern — each infra id is declared exactly once in `infra.krs`; the other slices only reference it via `resource` paths. The diagnostic surfaces only when the **same `database UserDB { ... }`** declaration appears literally in two files, which is the fallback the resolver accepts but does not encourage.
+
+### S7. Deterministic order
+
+`mergedFile` order is determined by:
+
+1. import declarations are processed in source order within each file;
+2. directory imports expand to file names in alphabetical order;
+3. nodes are inserted into merged collections on first encounter (later merges only mutate existing entries via find-or-create).
+
+The same project always produces the same merged AST.
+
+> **Related TPLs**:
+> - [TPL-20260514-01](../test-perspectives/TPL-20260514-01-import-dag-not-cycle.md) — DAG re-arrival is not a cycle (S5)
+> - [TPL-20260514-02](../test-perspectives/TPL-20260514-02-whole-file-import-completeness.md) — whole-file import preserves all top-level and nested nodes (S2)
+> - [TPL-20260514-03](../test-perspectives/TPL-20260514-03-system-reopen-merge.md) — reopened `system` merges children, root entry wins for properties (S3)
+> - [TPL-20260514-04](../test-perspectives/TPL-20260514-04-deploy-org-wildcard-propagation.md) — `deploy` / `organization` propagate through whole-file import (S4)
+> - [TPL-20260514-05](../test-perspectives/TPL-20260514-05-dangling-edge-preserves-node.md) — unresolved edge endpoint does not drop the surviving node (S6)
+> - [TPL-20260514-07](../test-perspectives/TPL-20260514-07-infra-redeclared-across-files.md) — same-id `database` / `queue` / `storage` reopens union-merge with an info diagnostic (S4.5)
+
+---
+
 ## @import scope
 
 - Applies to the entire file (global scope).
