@@ -90,7 +90,7 @@ export function DiffModeBanner({
             aria-label="Swap diff direction"
             aria-pressed={swapped}
           >
-            ⇄ Swap
+            {swapped ? "⇄ Swap back" : "⇄ Swap"}
           </Button>
         )}
         {isPasted && onViewPasted && (

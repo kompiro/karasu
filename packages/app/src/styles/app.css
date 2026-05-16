@@ -2042,6 +2042,9 @@ body,
   flex: 1;
 }
 
+/* Rendered as a shadcn <Button> (#1399); these unlayered rules override the
+   ghost variant so the control keeps the light error-banner appearance
+   instead of the dark-theme ghost styling. */
 .export-error-dismiss {
   background: transparent;
   border: none;
@@ -2053,6 +2056,7 @@ body,
 
 .export-error-dismiss:hover {
   color: #5a110c;
+  background: transparent;
 }
 
 /* Reference button — bolder weight to stand out as a persistent entry point */
@@ -2514,6 +2518,9 @@ body,
   font-size: 13px;
   color: inherit;
   font-family: inherit;
+  /* The button now sits inside a role="listitem" wrapper (#1399); it must
+     still span the full row width the way it did as a direct flex child. */
+  width: 100%;
 }
 
 .snapshot-picker-item:hover {

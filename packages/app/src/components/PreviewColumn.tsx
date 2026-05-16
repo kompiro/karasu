@@ -283,14 +283,13 @@ export function PreviewColumn() {
       {exportError && (
         <div className="export-error" role="alert">
           <span className="export-error-message">{exportError}</span>
-          <button
-            type="button"
+          <Button
             className="export-error-dismiss"
             onClick={() => setExportError(null)}
-            aria-label="Dismiss"
+            aria-label="Dismiss export error"
           >
-            ✕
-          </button>
+            ✕ Dismiss
+          </Button>
         </div>
       )}
       <ReferencePanel isOpen={refOpen} onClose={() => setRefOpen(false)} activeView={activeView} />
