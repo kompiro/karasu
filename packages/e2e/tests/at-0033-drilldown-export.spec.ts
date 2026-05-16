@@ -45,11 +45,12 @@ test.describe("AT-0033 Drill-down SVG export", () => {
 
     const toggle = page.getByRole("button", { name: "Toggle all layers" });
     await toggle.click();
-    await expect(toggle).toHaveClass(/active/);
+    // shadcn Button migration: toggle state is `aria-pressed`, not a class.
+    await expect(toggle).toHaveAttribute("aria-pressed", "true");
     await expect(page.locator("iframe")).toHaveCount(1);
 
     await toggle.click();
-    await expect(toggle).not.toHaveClass(/active/);
+    await expect(toggle).toHaveAttribute("aria-pressed", "false");
     await expect(page.locator("iframe")).toHaveCount(0);
   });
 
