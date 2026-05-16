@@ -1,4 +1,5 @@
 import type { EditTab } from "./EditTabBar.js";
+import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 
 interface EditPaneToolbarProps {
@@ -30,13 +31,9 @@ export function EditPaneToolbar({
       {onFormat && (
         <Tooltip>
           <TooltipTrigger asChild>
-            <button
-              className="toolbar-btn toolbar-btn--actionable toolbar-btn--format"
-              onClick={onFormat}
-              disabled={hasParseErrors}
-            >
+            <Button variant="actionable" onClick={onFormat} disabled={hasParseErrors}>
               ⌥ Format
-            </button>
+            </Button>
           </TooltipTrigger>
           <TooltipContent>
             {hasParseErrors
@@ -48,12 +45,9 @@ export function EditPaneToolbar({
       {onTidyStyle && (
         <Tooltip>
           <TooltipTrigger asChild>
-            <button
-              className="toolbar-btn toolbar-btn--actionable toolbar-btn--tidy-style"
-              onClick={onTidyStyle}
-            >
+            <Button variant="actionable" onClick={onTidyStyle}>
               ✨ Tidy
-            </button>
+            </Button>
           </TooltipTrigger>
           <TooltipContent>
             Tidy this .krs.style file (merge duplicates, group properties by axis)

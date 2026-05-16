@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import type { SnapshotManager, SnapshotRecord } from "../fs/snapshot-manager";
+import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
@@ -79,9 +80,9 @@ export function SnapshotPickerModal({
           ))}
         </div>
         <DialogFooter>
-          <button type="button" className="toolbar-btn" onClick={onClose} aria-label="Close">
+          <Button onClick={onClose} aria-label="Close">
             Close
-          </button>
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

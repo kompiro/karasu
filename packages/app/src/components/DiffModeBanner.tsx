@@ -1,6 +1,7 @@
 import { useEffect, useState, type ReactNode } from "react";
 import type { CompareSource } from "../fs/compare-source.js";
 import type { SnapshotManager, SnapshotRecord } from "../fs/snapshot-manager.js";
+import { Button } from "@/components/ui/button";
 
 interface DiffModeBannerProps {
   source: CompareSource;
@@ -71,34 +72,18 @@ export function DiffModeBanner({
       </span>
       <div className="diff-mode-banner__actions">
         {onSwap && (
-          <button
-            type="button"
-            className="toolbar-btn toolbar-btn--diff-swap"
-            onClick={onSwap}
-            aria-label="Swap diff direction"
-            aria-pressed={swapped}
-          >
+          <Button onClick={onSwap} aria-label="Swap diff direction" aria-pressed={swapped}>
             ⇄ Swap
-          </button>
+          </Button>
         )}
         {isPasted && onViewPasted && (
-          <button
-            type="button"
-            className="toolbar-btn toolbar-btn--diff-view-pasted"
-            onClick={onViewPasted}
-            aria-label="View pasted .krs"
-          >
+          <Button onClick={onViewPasted} aria-label="View pasted .krs">
             👁 View pasted
-          </button>
+          </Button>
         )}
-        <button
-          type="button"
-          className="toolbar-btn toolbar-btn--diff-exit"
-          onClick={onExit}
-          aria-label="Exit diff mode"
-        >
+        <Button onClick={onExit} aria-label="Exit diff mode">
           ✕ Exit diff
-        </button>
+        </Button>
       </div>
     </div>
   );

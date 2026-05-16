@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
@@ -73,24 +74,18 @@ export function PasteCompareDialog(props: PasteCompareDialogProps) {
           aria-label="Pasted .krs content"
         />
         <DialogFooter>
-          <button
-            type="button"
-            className="toolbar-btn"
-            onClick={onCancel}
-            aria-label={readOnly ? "Close" : "Cancel"}
-          >
+          <Button onClick={onCancel} aria-label={readOnly ? "Close" : "Cancel"}>
             {readOnly ? "Close" : "Cancel"}
-          </button>
+          </Button>
           {!readOnly && (
-            <button
-              type="button"
-              className="toolbar-btn toolbar-btn--actionable toolbar-btn--paste-confirm"
+            <Button
+              variant="actionable"
               onClick={handleConfirm}
               disabled={!value.trim()}
               aria-label="Compare with pasted .krs"
             >
               ⇄ Compare
-            </button>
+            </Button>
           )}
         </DialogFooter>
       </DialogContent>

@@ -8,6 +8,7 @@ import { CrudMatrixPanel } from "./CrudMatrixPanel.js";
 import { buildSvgExportFilename } from "../utils/build-svg-export-filename.js";
 import { usePreview } from "../state/preview-context.js";
 import { useTranslation } from "../i18n/index.js";
+import { Button } from "@/components/ui/button";
 
 const EXPORT_ERROR_AUTO_DISMISS_MS = 6000;
 
@@ -176,51 +177,57 @@ export function PreviewColumn() {
         onDeployBlockChange={onDeployBlockChange}
       />
       <div className="preview-toolbar">
-        <button
-          className={`toolbar-btn toolbar-btn--actionable toolbar-btn--icon-mode${displayMode === "icon" ? " active" : ""}`}
+        <Button
+          variant="actionable"
+          aria-pressed={displayMode === "icon"}
           onClick={() => onDisplayModeChange(displayMode === "icon" ? "shape" : "icon")}
           aria-label="Toggle icon mode"
         >
           ◇ Icon Mode
-        </button>
+        </Button>
         {activeView === "org" && (
-          <button
-            className={`toolbar-btn toolbar-btn--actionable toolbar-btn--org-tree${isOrgTreeViewOpen ? " active" : ""}`}
+          <Button
+            variant="actionable"
+            aria-pressed={isOrgTreeViewOpen}
             onClick={onOrgTreeViewToggle}
             aria-label="Toggle org tree view"
           >
             ⬡ Tree View
-          </button>
+          </Button>
         )}
-        <button
-          className={`toolbar-btn toolbar-btn--actionable toolbar-btn--all-layers${isAllLayersOpen ? " active" : ""}`}
+        <Button
+          variant="actionable"
+          aria-pressed={isAllLayersOpen}
           onClick={onAllLayersToggle}
           aria-label="Toggle all layers"
           disabled={!allLayersAvailable}
         >
           ⊞ Show All Layers
-        </button>
-        <button
-          className="toolbar-btn toolbar-btn--actionable toolbar-btn--all-views"
+        </Button>
+        <Button
+          variant="actionable"
           onClick={handleOpenAllViews}
           aria-label="Open all views in new window"
           disabled={!allViewsSvg}
         >
           ⊟ Open All Views
-        </button>
+        </Button>
 
         {/* Split export button: left = export current/full, right = drill-down export */}
         <div className="toolbar-btn-group">
-          <button
-            className="toolbar-btn toolbar-btn--actionable toolbar-btn--export toolbar-btn--export-main"
+          <Button
+            variant="actionable"
+            className="rounded-r-none border-r-0"
             onClick={handleExport}
             aria-label={t("preview.export.svg.ariaLabel")}
             disabled={!exportAvailable}
           >
             {t("preview.export.svg.label")}
-          </button>
-          <button
-            className={`toolbar-btn toolbar-btn--actionable toolbar-btn--export toolbar-btn--export-toggle${exportMenuOpen ? " active" : ""}`}
+          </Button>
+          <Button
+            variant="actionable"
+            className="rounded-l-none px-1.5"
+            aria-pressed={exportMenuOpen}
             onClick={() => setExportMenuOpen((v) => !v)}
             aria-label={t("preview.export.options.ariaLabel")}
             aria-haspopup="menu"
@@ -228,7 +235,7 @@ export function PreviewColumn() {
             disabled={!exportAvailable}
           >
             ▾
-          </button>
+          </Button>
           {exportMenuOpen && (
             <div className="export-menu" role="menu" onMouseLeave={() => setExportMenuOpen(false)}>
               <button
@@ -260,21 +267,18 @@ export function PreviewColumn() {
           )}
         </div>
 
-        <button
-          className="toolbar-btn toolbar-btn--actionable toolbar-btn--reference"
-          onClick={() => setRefOpen(true)}
-          aria-label="Open reference"
-        >
+        <Button variant="actionable" onClick={() => setRefOpen(true)} aria-label="Open reference">
           ? Reference
-        </button>
+        </Button>
 
-        <button
-          className={`toolbar-btn toolbar-btn--actionable toolbar-btn--focus${previewFocused ? " active" : ""}`}
+        <Button
+          variant="actionable"
+          aria-pressed={previewFocused}
           onClick={onPreviewFocusToggle}
           aria-label={previewFocused ? "Exit focus mode" : "Enter focus mode"}
         >
           {previewFocused ? "↙ Exit Focus" : "↗ Focus"}
-        </button>
+        </Button>
       </div>
       {exportError && (
         <div className="export-error" role="alert">

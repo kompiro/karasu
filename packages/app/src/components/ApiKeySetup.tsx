@@ -1,4 +1,5 @@
 import { useTranslation } from "../i18n/index.js";
+import { Button } from "@/components/ui/button";
 
 interface ApiKeySetupProps {
   onGoToSettings: () => void;
@@ -9,12 +10,9 @@ export function ApiKeySetup({ onGoToSettings }: ApiKeySetupProps) {
   return (
     <div className="api-key-setup">
       <p className="api-key-setup__message">{t("chat.apiKeySetup.message")}</p>
-      <button
-        className="toolbar-btn toolbar-btn--actionable toolbar-btn--go-to-settings"
-        onClick={onGoToSettings}
-      >
+      <Button variant="actionable" onClick={onGoToSettings}>
         {t("chat.apiKeySetup.goToSettings")}
-      </button>
+      </Button>
     </div>
   );
 }

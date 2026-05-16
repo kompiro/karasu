@@ -4,54 +4,101 @@ paths:
   - "packages/app/**/*.css"
 ---
 
-# App UI Rules — Toolbar Buttons
+# App UI Rules — Buttons
 
-## Toolbar button tiers (ADR 0022)
+karasu adopted shadcn/ui in [ADR-20260515-01](../../docs/adr/20260515-01-adopt-shadcn-ui.md).
+**All buttons use the shadcn `Button` primitive** (`@/components/ui/button`).
+The legacy `toolbar-btn` / `toolbar-btn--actionable` / `toolbar-btn--<name>`
+class system is deprecated — no new code should add those classes.
 
-Toolbar buttons have two visual tiers:
+## The two tiers map to Button variants
 
-### Tier 1 — Actionable buttons
-Persistent actions the user needs to notice and click.
-Add **both** `toolbar-btn--actionable` and a button-specific modifier class:
+The tier model from ADR-20260405-02 is preserved, now expressed as
+`Button` variants instead of CSS classes:
+
+| Tier | Old class | `Button` variant |
+| --- | --- | --- |
+| Tier 1 — Actionable (persistent, should be noticed) | `toolbar-btn toolbar-btn--actionable` | `variant="actionable"` |
+| Tier 2 — Ghost / contextual (low-priority) | `toolbar-btn` | `variant="ghost"` (the default) |
 
 ```tsx
-// Example
-<button className="toolbar-btn toolbar-btn--actionable toolbar-btn--export">
-  ↓ Export SVG
-</button>
+import { Button } from "@/components/ui/button";
+
+// Tier 1 — actionable
+<Button variant="actionable" onClick={onFormat} disabled={hasParseErrors}>
+  ⌥ Format
+</Button>
+
+// Tier 2 — ghost / contextual (variant defaults to "ghost")
+<Button onClick={onCancel}>Cancel</Button>
 ```
 
-In CSS, define only the properties that differ from `--actionable` in the button-specific class:
+## Sizes
 
-```css
-/* Only overrides — shared styles live in .toolbar-btn--actionable */
-.toolbar-btn--export {
-  /* e.g. border-radius override for split button */
-}
-```
+`size="sm"` (default) matches the old toolbar button metrics
+(`3px 9px`, 11px text). `size="md"` (`6px 14px`, 12px text) is for the
+slightly larger call-to-action buttons (e.g. Chat's Start Interview /
+Start Review).
 
-### Tier 2 — Ghost / contextual buttons
-Low-priority or contextual buttons. Use only the base `toolbar-btn` class (no `--actionable`).
+## Label rule (ADR-20260328)
 
-## Label rule (ADR 0007)
-
-Every toolbar button requires an **icon + text label**. Icon-only buttons are not allowed:
+Every button still needs an **icon + text label** — icon-only buttons
+are not allowed. This is a caller responsibility; `Button` does not
+enforce it.
 
 ```tsx
 // Good
-<button className="toolbar-btn toolbar-btn--actionable toolbar-btn--focus">
-  ↗ Focus
-</button>
+<Button variant="actionable">↗ Focus</Button>
 
-// Bad
-<button className="toolbar-btn toolbar-btn--actionable toolbar-btn--focus">
-  ↗
-</button>
+// Bad — icon only
+<Button variant="actionable">↗</Button>
 ```
 
-## Adding a new toolbar button — checklist
+## Toggle buttons use `aria-pressed`
 
-1. **Choose a tier**: Persistent action? → Tier 1 (`toolbar-btn--actionable`). Contextual/secondary? → Tier 2.
-2. **Add a modifier class**: Always create a `toolbar-btn--<name>` class in `app.css`, even if it has no extra properties beyond `--actionable`. This keeps per-button overrides easy to find.
-3. **Include icon + text label** in the button content.
-4. **Update ADR 0022** (`docs/adr/20260405-02-toolbar-btn-actionable.md`) if the tier classification is non-obvious.
+For buttons that toggle a state (Icon Mode, Focus, Show All Layers, …)
+set `aria-pressed`. `Button` styles the pressed state automatically via
+its `aria-pressed:` variant — do **not** add an `active` CSS class.
+
+```tsx
+<Button variant="actionable" aria-pressed={isFocusMode} onClick={toggle}>
+  {isFocusMode ? "↙ Exit Focus" : "↗ Focus"}
+</Button>
+```
+
+In tests, assert toggle state with `getAttribute("aria-pressed")`, not
+a class check.
+
+## Split buttons
+
+For a split button (e.g. the SVG export control), keep the layout
+wrapper `div.toolbar-btn-group` and override the inner buttons' border
+radius with Tailwind utilities:
+
+```tsx
+<div className="toolbar-btn-group">
+  <Button variant="actionable" className="rounded-r-none border-r-0" onClick={onExport}>
+    ↓ Export
+  </Button>
+  <Button variant="actionable" className="rounded-l-none px-1.5" aria-pressed={menuOpen} ...>
+    ▾
+  </Button>
+</div>
+```
+
+## Adding a new button — checklist
+
+1. Import `Button` from `@/components/ui/button`.
+2. Pick the variant: persistent action → `actionable`; contextual → omit
+   (defaults to `ghost`).
+3. Include an icon + text label.
+4. If it toggles state, drive the look with `aria-pressed`, not a class.
+5. Per-button tweaks (border radius, extra width) go through `className`
+   — `cn()` inside `Button` merges them.
+
+## Legacy `toolbar-btn` CSS (deprecated)
+
+The `.toolbar-btn*` rules remain in `app.css` as dead-but-harmless CSS
+pending removal in a cleanup pass. `.toolbar-btn-group` is still live —
+it is the split-button layout wrapper. Do not write new code that
+depends on any `.toolbar-btn` class.

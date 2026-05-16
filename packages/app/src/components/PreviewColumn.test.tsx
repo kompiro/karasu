@@ -387,11 +387,13 @@ describe("PreviewColumn", () => {
       expect(onPreviewFocusToggle).toHaveBeenCalled();
     });
 
-    it("has active class when previewFocused is true", () => {
+    it("is in the pressed state when previewFocused is true", () => {
+      // shadcn Button migration (#1368): toggle state moved from an
+      // `active` CSS class to the semantic `aria-pressed` attribute.
       const props = makeProps({ previewFocused: true });
       const { getByRole } = renderPreview(props);
       const btn = getByRole("button", { name: /Exit focus mode/ });
-      expect(btn.className).toContain("active");
+      expect(btn.getAttribute("aria-pressed")).toBe("true");
     });
   });
 
