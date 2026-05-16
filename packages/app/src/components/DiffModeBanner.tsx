@@ -1,6 +1,19 @@
 import { useEffect, useState, type ReactNode } from "react";
 import type { CompareSource } from "../fs/compare-source.js";
 import type { SnapshotManager, SnapshotRecord } from "../fs/snapshot-manager.js";
+import { Button } from "@/components/ui/button";
+
+/**
+ * Amber tint that marks the diff-mode action buttons as belonging to the
+ * "you are in diff mode" banner context. Restores the visual signal the
+ * legacy `.toolbar-btn--diff-*` classes carried before the shadcn Button
+ * migration. The `aria-pressed:` rules give the Swap toggle its deeper
+ * amber active state.
+ */
+const DIFF_BTN_CLASS =
+  "border-[rgba(245,158,11,0.4)] text-[color:var(--text-primary)] " +
+  "hover:border-[rgba(245,158,11,0.4)] hover:bg-[rgba(245,158,11,0.15)] hover:text-[color:var(--text-primary)] " +
+  "aria-pressed:border-[rgba(245,158,11,0.7)] aria-pressed:bg-[rgba(245,158,11,0.25)] aria-pressed:text-[color:var(--text-primary)]";
 
 interface DiffModeBannerProps {
   source: CompareSource;
@@ -71,34 +84,23 @@ export function DiffModeBanner({
       </span>
       <div className="diff-mode-banner__actions">
         {onSwap && (
-          <button
-            type="button"
-            className="toolbar-btn toolbar-btn--diff-swap"
+          <Button
+            className={DIFF_BTN_CLASS}
             onClick={onSwap}
             aria-label="Swap diff direction"
             aria-pressed={swapped}
           >
             ⇄ Swap
-          </button>
+          </Button>
         )}
         {isPasted && onViewPasted && (
-          <button
-            type="button"
-            className="toolbar-btn toolbar-btn--diff-view-pasted"
-            onClick={onViewPasted}
-            aria-label="View pasted .krs"
-          >
+          <Button className={DIFF_BTN_CLASS} onClick={onViewPasted} aria-label="View pasted .krs">
             👁 View pasted
-          </button>
+          </Button>
         )}
-        <button
-          type="button"
-          className="toolbar-btn toolbar-btn--diff-exit"
-          onClick={onExit}
-          aria-label="Exit diff mode"
-        >
+        <Button className={DIFF_BTN_CLASS} onClick={onExit} aria-label="Exit diff mode">
           ✕ Exit diff
-        </button>
+        </Button>
       </div>
     </div>
   );

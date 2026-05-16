@@ -89,8 +89,11 @@ test.describe("AT-0044 Org Tree View", () => {
 
     await activateTreeView(page);
 
-    // Button becomes active
-    await expect(page.getByRole("button", { name: "Toggle org tree view" })).toHaveClass(/active/);
+    // Button becomes pressed (shadcn Button migration: aria-pressed, not a class)
+    await expect(page.getByRole("button", { name: "Toggle org tree view" })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
 
     // Breadcrumb bar is hidden
     await expect(breadcrumb).toHaveCount(0);

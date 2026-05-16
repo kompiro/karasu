@@ -1,4 +1,12 @@
-import { useCallback } from "react";
+import { Fragment, useCallback } from "react";
+import {
+  Breadcrumb as UIBreadcrumb,
+  BreadcrumbItem,
+  BreadcrumbLink,
+  BreadcrumbList,
+  BreadcrumbPage,
+  BreadcrumbSeparator,
+} from "@/components/ui/breadcrumb";
 
 export interface BreadcrumbItem {
   id: string;
@@ -16,6 +24,14 @@ interface BreadcrumbProps {
   onNavigate: (path: string[]) => void;
 }
 
+/**
+ * Migrated to shadcn/ui `Breadcrumb` (Issue #1368).
+ *
+ * Legacy class names (`breadcrumb-link`, `breadcrumb-current`, `breadcrumb-separator`)
+ * are preserved via `className` passthrough so existing tests and any
+ * cross-package CSS continue to work. The visual baseline now comes from
+ * the shadcn primitives (focus ring, gap, separator icon).
+ */
 export function Breadcrumb({ items, onNavigate }: BreadcrumbProps) {
   const handleClick = useCallback(
     (index: number) => {
@@ -34,22 +50,28 @@ export function Breadcrumb({ items, onNavigate }: BreadcrumbProps) {
   if (items.length === 0) return null;
 
   return (
-    <div className="breadcrumb">
-      {items.map((item, index) => {
-        const isLast = index === items.length - 1;
-        return (
-          <span key={item.id}>
-            {index > 0 && <span className="breadcrumb-separator">&gt;</span>}
-            {isLast ? (
-              <span className="breadcrumb-current">{item.label}</span>
-            ) : (
-              <button className="breadcrumb-link" onClick={() => handleClick(index)}>
-                {item.label}
-              </button>
-            )}
-          </span>
-        );
-      })}
-    </div>
+    <UIBreadcrumb className="breadcrumb">
+      <BreadcrumbList>
+        {items.map((item, index) => {
+          const isLast = index === items.length - 1;
+          return (
+            <Fragment key={item.id}>
+              {index > 0 && (
+                <BreadcrumbSeparator className="breadcrumb-separator">&gt;</BreadcrumbSeparator>
+              )}
+              <BreadcrumbItem>
+                {isLast ? (
+                  <BreadcrumbPage className="breadcrumb-current">{item.label}</BreadcrumbPage>
+                ) : (
+                  <BreadcrumbLink className="breadcrumb-link" onClick={() => handleClick(index)}>
+                    {item.label}
+                  </BreadcrumbLink>
+                )}
+              </BreadcrumbItem>
+            </Fragment>
+          );
+        })}
+      </BreadcrumbList>
+    </UIBreadcrumb>
   );
 }

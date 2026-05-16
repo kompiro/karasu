@@ -1,5 +1,6 @@
 import type { DeployBlockInfo } from "@karasu-tools/core";
 import type { ActiveView } from "../state/app-reducer.js";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 interface DiagramTabBarProps {
   active: ActiveView;
@@ -9,6 +10,18 @@ interface DiagramTabBarProps {
   onDeployBlockChange?: (id: string) => void;
 }
 
+function tabClass(active: boolean) {
+  return active ? "diagram-tab diagram-tab--active" : "diagram-tab";
+}
+
+/**
+ * Migrated to shadcn/ui `Tabs` (Issue #1368). Radix adds arrow-key navigation
+ * between triggers as an a11y baseline upgrade. Legacy class names retained.
+ *
+ * The deploy-block `<select>` stays as a native element — shadcn `Select`
+ * renders a Radix popover that wouldn't satisfy the existing
+ * `getByLabelText(...) as HTMLSelectElement` test contract.
+ */
 export function DiagramTabBar({
   active,
   onChange,
@@ -17,57 +30,41 @@ export function DiagramTabBar({
   onDeployBlockChange,
 }: DiagramTabBarProps) {
   return (
-    <div className="diagram-tab-bar" role="tablist">
-      <button
-        className={`diagram-tab ${active === "system" ? "diagram-tab--active" : ""}`}
-        role="tab"
-        aria-selected={active === "system"}
-        onClick={() => onChange("system")}
-      >
-        <span className="diagram-tab-icon">⬡</span>
-        System
-      </button>
-      <button
-        className={`diagram-tab ${active === "deploy" ? "diagram-tab--active" : ""}`}
-        role="tab"
-        aria-selected={active === "deploy"}
-        onClick={() => onChange("deploy")}
-      >
-        <span className="diagram-tab-icon">⬢</span>
-        Deploy
-      </button>
-      {active === "deploy" && deployBlocks && deployBlocks.length > 1 && (
-        <select
-          className="deploy-block-selector"
-          value={selectedDeployBlockId ?? deployBlocks[0].id}
-          onChange={(e) => onDeployBlockChange?.(e.target.value)}
-          aria-label="deploy block selector"
-        >
-          {deployBlocks.map((b) => (
-            <option key={b.id} value={b.id}>
-              {b.label}
-            </option>
-          ))}
-        </select>
-      )}
-      <button
-        className={`diagram-tab ${active === "org" ? "diagram-tab--active" : ""}`}
-        role="tab"
-        aria-selected={active === "org"}
-        onClick={() => onChange("org")}
-      >
-        <span className="diagram-tab-icon">👥</span>
-        Org
-      </button>
-      <button
-        className={`diagram-tab ${active === "matrix" ? "diagram-tab--active" : ""}`}
-        role="tab"
-        aria-selected={active === "matrix"}
-        onClick={() => onChange("matrix")}
-      >
-        <span className="diagram-tab-icon">▦</span>
-        CRUD
-      </button>
-    </div>
+    <Tabs value={active} onValueChange={(v) => onChange(v as ActiveView)}>
+      {/* justify-start overrides shadcn TabsList's default justify-center —
+          karasu's tab bars are left-aligned nav bars, not centered. */}
+      <TabsList className="diagram-tab-bar justify-start">
+        <TabsTrigger value="system" className={tabClass(active === "system")}>
+          <span className="diagram-tab-icon">⬡</span>
+          System
+        </TabsTrigger>
+        <TabsTrigger value="deploy" className={tabClass(active === "deploy")}>
+          <span className="diagram-tab-icon">⬢</span>
+          Deploy
+        </TabsTrigger>
+        {active === "deploy" && deployBlocks && deployBlocks.length > 1 && (
+          <select
+            className="deploy-block-selector"
+            value={selectedDeployBlockId ?? deployBlocks[0].id}
+            onChange={(e) => onDeployBlockChange?.(e.target.value)}
+            aria-label="deploy block selector"
+          >
+            {deployBlocks.map((b) => (
+              <option key={b.id} value={b.id}>
+                {b.label}
+              </option>
+            ))}
+          </select>
+        )}
+        <TabsTrigger value="org" className={tabClass(active === "org")}>
+          <span className="diagram-tab-icon">👥</span>
+          Org
+        </TabsTrigger>
+        <TabsTrigger value="matrix" className={tabClass(active === "matrix")}>
+          <span className="diagram-tab-icon">▦</span>
+          CRUD
+        </TabsTrigger>
+      </TabsList>
+    </Tabs>
   );
 }

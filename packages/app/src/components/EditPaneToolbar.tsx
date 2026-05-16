@@ -1,4 +1,6 @@
 import type { EditTab } from "./EditTabBar.js";
+import { Button } from "@/components/ui/button";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 
 interface EditPaneToolbarProps {
   activeTab: EditTab;
@@ -7,6 +9,14 @@ interface EditPaneToolbarProps {
   hasParseErrors?: boolean;
 }
 
+/**
+ * Migrated to shadcn/ui `Tooltip` (Issue #1368).
+ *
+ * The `title` attribute is replaced with a Radix-backed Tooltip so screen
+ * readers receive the hint via `aria-describedby` and the tooltip is
+ * keyboard-accessible (focus + hover). A `TooltipProvider` is mounted in
+ * `main.tsx` so all consumers share one provider.
+ */
 export function EditPaneToolbar({
   activeTab,
   onFormat,
@@ -19,27 +29,30 @@ export function EditPaneToolbar({
   return (
     <div className="edit-pane-toolbar">
       {onFormat && (
-        <button
-          className="toolbar-btn toolbar-btn--actionable toolbar-btn--format"
-          onClick={onFormat}
-          disabled={hasParseErrors}
-          title={
-            hasParseErrors
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button variant="actionable" onClick={onFormat} disabled={hasParseErrors}>
+              ⌥ Format
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>
+            {hasParseErrors
               ? "Cannot format: source has parse errors"
-              : "Format document (Shift+Alt+F)"
-          }
-        >
-          ⌥ Format
-        </button>
+              : "Format document (Shift+Alt+F)"}
+          </TooltipContent>
+        </Tooltip>
       )}
       {onTidyStyle && (
-        <button
-          className="toolbar-btn toolbar-btn--actionable toolbar-btn--tidy-style"
-          onClick={onTidyStyle}
-          title="Tidy this .krs.style file (merge duplicates, group properties by axis)"
-        >
-          ✨ Tidy
-        </button>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button variant="actionable" onClick={onTidyStyle}>
+              ✨ Tidy
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>
+            Tidy this .krs.style file (merge duplicates, group properties by axis)
+          </TooltipContent>
+        </Tooltip>
       )}
     </div>
   );

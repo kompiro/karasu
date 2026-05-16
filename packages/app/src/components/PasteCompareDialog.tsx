@@ -1,4 +1,13 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 type PasteCompareDialogProps = {
   /** Initial value in the textarea (e.g. when "View pasted" is used to re-open). */
@@ -9,6 +18,15 @@ type PasteCompareDialogProps = {
   | { readOnly: true; onConfirm?: never }
 );
 
+/**
+ * Migrated to shadcn/ui `Dialog` (Issue #1368).
+ *
+ * Behavioural contract preserved:
+ * - Esc closes (Radix's built-in `onEscapeKeyDown`).
+ * - Outside-pointer-down closes (Radix's `onPointerDownOutside`).
+ * - Focus the textarea on open (still done with a ref + effect).
+ * - Compare button stays disabled while textarea is whitespace-only.
+ */
 export function PasteCompareDialog(props: PasteCompareDialogProps) {
   const { initialValue = "", onCancel } = props;
   const readOnly = props.readOnly === true;
@@ -17,16 +35,11 @@ export function PasteCompareDialog(props: PasteCompareDialogProps) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
-    textareaRef.current?.focus();
+    // Radix focuses Content first; defer to next tick so our explicit
+    // textarea focus wins.
+    const id = window.setTimeout(() => textareaRef.current?.focus(), 0);
+    return () => window.clearTimeout(id);
   }, []);
-
-  useEffect(() => {
-    const handleKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onCancel();
-    };
-    document.addEventListener("keydown", handleKey);
-    return () => document.removeEventListener("keydown", handleKey);
-  }, [onCancel]);
 
   const handleConfirm = useCallback(() => {
     if (!value.trim() || !onConfirm) return;
@@ -34,24 +47,22 @@ export function PasteCompareDialog(props: PasteCompareDialogProps) {
   }, [value, onConfirm]);
 
   return (
-    <div
-      className="dialog-overlay"
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="paste-compare-dialog-title"
-      onClick={onCancel}
-    >
-      <div className="dialog dialog--paste-compare" onClick={(e) => e.stopPropagation()}>
-        <header>
-          <h2 id="paste-compare-dialog-title" className="dialog__title">
+    <Dialog open onOpenChange={(open) => !open && onCancel()}>
+      <DialogContent
+        hideCloseButton
+        className="w-[90vw] max-w-[640px] gap-3"
+        aria-labelledby="paste-compare-dialog-title"
+      >
+        <DialogHeader>
+          <DialogTitle id="paste-compare-dialog-title">
             {readOnly ? "⇄ Pasted .krs (preview)" : "⇄ Compare with pasted .krs"}
-          </h2>
-        </header>
-        <p className="dialog__subtitle">
-          {readOnly
-            ? "The .krs text used as the before-side of the current diff."
-            : "Paste a .krs snippet to use as the before-side of the diff."}
-        </p>
+          </DialogTitle>
+          <DialogDescription>
+            {readOnly
+              ? "The .krs text used as the before-side of the current diff."
+              : "Paste a .krs snippet to use as the before-side of the diff."}
+          </DialogDescription>
+        </DialogHeader>
         <textarea
           ref={textareaRef}
           className="paste-compare-dialog__textarea"
@@ -62,28 +73,22 @@ export function PasteCompareDialog(props: PasteCompareDialogProps) {
           readOnly={readOnly}
           aria-label="Pasted .krs content"
         />
-        <footer className="dialog__footer">
-          <button
-            type="button"
-            className="toolbar-btn"
-            onClick={onCancel}
-            aria-label={readOnly ? "Close" : "Cancel"}
-          >
+        <DialogFooter>
+          <Button onClick={onCancel} aria-label={readOnly ? "Close" : "Cancel"}>
             {readOnly ? "Close" : "Cancel"}
-          </button>
+          </Button>
           {!readOnly && (
-            <button
-              type="button"
-              className="toolbar-btn toolbar-btn--actionable toolbar-btn--paste-confirm"
+            <Button
+              variant="actionable"
               onClick={handleConfirm}
               disabled={!value.trim()}
               aria-label="Compare with pasted .krs"
             >
               ⇄ Compare
-            </button>
+            </Button>
           )}
-        </footer>
-      </div>
-    </div>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
