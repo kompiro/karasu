@@ -20,7 +20,9 @@ function tabClass(active: boolean) {
 export function EditTabBar({ activeTab, onTabChange }: EditTabBarProps) {
   return (
     <Tabs value={activeTab} onValueChange={(v) => onTabChange(v as EditTab)}>
-      <TabsList className="edit-tab-bar">
+      {/* justify-start overrides shadcn TabsList's default justify-center —
+          karasu's tab bars are left-aligned nav bars, not centered. */}
+      <TabsList className="edit-tab-bar justify-start">
         <TabsTrigger value="editor" className={tabClass(activeTab === "editor")}>
           <span className="edit-tab-icon">✏</span>
           Editor

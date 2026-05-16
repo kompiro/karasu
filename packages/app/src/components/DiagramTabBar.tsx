@@ -31,7 +31,9 @@ export function DiagramTabBar({
 }: DiagramTabBarProps) {
   return (
     <Tabs value={active} onValueChange={(v) => onChange(v as ActiveView)}>
-      <TabsList className="diagram-tab-bar">
+      {/* justify-start overrides shadcn TabsList's default justify-center —
+          karasu's tab bars are left-aligned nav bars, not centered. */}
+      <TabsList className="diagram-tab-bar justify-start">
         <TabsTrigger value="system" className={tabClass(active === "system")}>
           <span className="diagram-tab-icon">⬡</span>
           System
