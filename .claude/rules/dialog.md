@@ -15,6 +15,7 @@ remaining dialog is migrated, but no new code should add it.
 ## New dialogs — use shadcn `Dialog`
 
 ```tsx
+import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
@@ -34,16 +35,10 @@ export function MyDialog({ open, onClose }: { open: boolean; onClose: () => void
         </DialogHeader>
         <div>{/* body */}</div>
         <DialogFooter>
-          <button type="button" className="toolbar-btn" onClick={onClose}>
-            Cancel
-          </button>
-          <button
-            type="button"
-            className="toolbar-btn toolbar-btn--actionable toolbar-btn--my-confirm"
-            onClick={/* ... */}
-          >
+          <Button onClick={onClose}>Cancel</Button>
+          <Button variant="actionable" onClick={/* ... */}>
             Confirm
-          </button>
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
@@ -90,7 +85,8 @@ If the dialog already has a Cancel/Close action in its footer, pass
 2. Pass `open` and `onOpenChange` as a controlled pair. Map close to
    `(v) => !v && onClose()`.
 3. Title goes inside `DialogTitle` for a11y — Radix warns if missing.
-4. Footer buttons use the toolbar-btn classes (see `app-ui.md`).
+4. Footer buttons use the shadcn `Button` primitive (see `app-ui.md`) —
+   `variant="actionable"` for the confirm action, default `ghost` for Cancel.
 5. If a primary input should be auto-focused (e.g. a textarea), use a
    `useRef` + `useEffect` with a `setTimeout(..., 0)` so Radix's
    focus-on-open settles before you focus your element.
