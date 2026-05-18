@@ -8,8 +8,6 @@ import {
   InitializeParams,
   InitializeResult,
   TextDocumentSyncKind,
-  Diagnostic,
-  DiagnosticSeverity,
   RequestType,
   CompletionItem,
   CompletionItemKind,
@@ -19,15 +17,8 @@ import {
   Range,
 } from "vscode-languageserver/node";
 import { TextDocument } from "vscode-languageserver-textdocument";
-import {
-  Parser,
-  StyleParser,
-  format,
-  FormatError,
-  formatDiagnostic,
-  tidyStyleSheet,
-  validateStyleValues,
-} from "@karasu-tools/core";
+import { Parser, format, FormatError, tidyStyleSheet } from "@karasu-tools/core";
+import { computeDiagnostics } from "./diagnostics.js";
 import {
   findNodeAtPosition,
   findRangeOfNode,
@@ -343,48 +334,8 @@ connection.onDocumentSymbol((params) => {
 
 // ─── Diagnostics ─────────────────────────────────────────────────────────────
 
-function toLspPosition(line: number, column: number) {
-  // Core positions are 1-based; LSP positions are 0-based.
-  // Clamp to 0 to guard against synthetic EOF tokens (line: 0, column: 0).
-  return {
-    line: Math.max(0, line - 1),
-    character: Math.max(0, column - 1),
-  };
-}
-
 function validateDocument(document: TextDocument): void {
-  const text = document.getText();
-  const isStyleDocument = document.languageId === "krs-style";
-  const parseResult = isStyleDocument ? StyleParser.parse(text) : Parser.parse(text);
-
-  // Style documents go through an extra value-level validation pass
-  // (Phase 3, ADR-pending). The validator returns parser-shaped
-  // diagnostics with `loc` already filled in (declaration- or value-
-  // level) so they merge cleanly with parse diagnostics.
-  const allDiagnostics =
-    isStyleDocument && "rules" in parseResult.value
-      ? [...parseResult.diagnostics, ...validateStyleValues(parseResult.value)]
-      : parseResult.diagnostics;
-
-  const diagnostics: Diagnostic[] = allDiagnostics.map((d) => {
-    const start = d.loc
-      ? toLspPosition(d.loc.start.line, d.loc.start.column)
-      : { line: 0, character: 0 };
-    const end = d.loc ? toLspPosition(d.loc.end.line, d.loc.end.column) : { line: 0, character: 0 };
-
-    return {
-      severity:
-        d.severity === "error"
-          ? DiagnosticSeverity.Error
-          : d.severity === "info"
-            ? DiagnosticSeverity.Information
-            : DiagnosticSeverity.Warning,
-      range: { start, end },
-      message: formatDiagnostic(d),
-      source: "karasu",
-    };
-  });
-
+  const diagnostics = computeDiagnostics(document.getText(), document.languageId === "krs-style");
   connection.sendDiagnostics({ uri: document.uri, diagnostics });
 }
 
