@@ -371,6 +371,15 @@ describe("PreviewPane", () => {
   });
 
   describe("edge context menu", () => {
+    // shadcn migration (#1368): EdgeContextMenu is now a Radix Popover and
+    // its content is rendered through a portal attached to `document.body`,
+    // so menu DOM is NOT inside `container`. Query the menu from document
+    // scope instead.
+    const queryMenu = () => document.querySelector(".edge-context-menu");
+    const queryItems = () =>
+      document.querySelectorAll<HTMLButtonElement>(".edge-context-menu button.context-menu-item");
+    const queryTarget = () => document.querySelector(".context-menu-header__target");
+
     it("opens the menu on right-click of an edge group with a canonical id", () => {
       const svg = `<div data-edge-from="A" data-edge-to="B" data-edge-kind="sync" data-edge-canonical-id="A->B"></div>`;
       const { container } = render(
@@ -378,7 +387,7 @@ describe("PreviewPane", () => {
       );
       const edge = container.querySelector("[data-edge-canonical-id]")!;
       fireEvent.contextMenu(edge, { clientX: 50, clientY: 60 });
-      const menu = container.querySelector(".edge-context-menu");
+      const menu = queryMenu();
       expect(menu).not.toBeNull();
       expect(menu!.textContent).toContain("A->B");
     });
@@ -388,7 +397,7 @@ describe("PreviewPane", () => {
       const { container } = render(<PreviewPane {...baseProps()} svg={svg} />);
       const node = container.querySelector("[data-node-id='svc']")!;
       fireEvent.contextMenu(node, { clientX: 50, clientY: 60 });
-      expect(container.querySelector(".edge-context-menu")).toBeNull();
+      expect(queryMenu()).toBeNull();
     });
 
     it("calls onPickEdgeDirection when a direction is chosen", () => {
@@ -404,7 +413,7 @@ describe("PreviewPane", () => {
       );
       const edge = container.querySelector("[data-edge-canonical-id]")!;
       fireEvent.contextMenu(edge, { clientX: 50, clientY: 60 });
-      const downBtn = Array.from(container.querySelectorAll("button.context-menu-item")).find((b) =>
+      const downBtn = Array.from(queryItems()).find((b) =>
         b.textContent?.includes("Down"),
       ) as HTMLButtonElement;
       fireEvent.click(downBtn);
@@ -416,7 +425,7 @@ describe("PreviewPane", () => {
       const { container } = render(<PreviewPane {...baseProps()} svg={svg} />);
       const edge = container.querySelector("[data-edge-canonical-id]")!;
       fireEvent.contextMenu(edge, { clientX: 50, clientY: 60 });
-      const items = container.querySelectorAll<HTMLButtonElement>("button.context-menu-item");
+      const items = queryItems();
       expect(items.length).toBeGreaterThan(0);
       for (const btn of items) {
         expect(btn.disabled).toBe(true);
@@ -430,7 +439,7 @@ describe("PreviewPane", () => {
       );
       const edge = container.querySelector("[data-edge-canonical-id]")!;
       fireEvent.contextMenu(edge, { clientX: 50, clientY: 60 });
-      const target = container.querySelector(".context-menu-header__target");
+      const target = queryTarget();
       expect(target).not.toBeNull();
       // basename is shown inline; full path lives on the title attribute
       expect(target!.textContent).toContain("site.krs.style");
@@ -442,7 +451,7 @@ describe("PreviewPane", () => {
       const { container } = render(<PreviewPane {...baseProps()} svg={svg} />);
       const edge = container.querySelector("[data-edge-canonical-id]")!;
       fireEvent.contextMenu(edge, { clientX: 50, clientY: 60 });
-      expect(container.querySelector(".context-menu-header__target")).toBeNull();
+      expect(queryTarget()).toBeNull();
     });
   });
 });

@@ -8,6 +8,7 @@ import {
 } from "../utils/api-key-storage.js";
 import { useTranslation } from "../i18n/index.js";
 import type { Locale } from "../i18n/locale.js";
+import { Button } from "@/components/ui/button";
 
 interface SettingsPaneProps {
   onApiKeyChange: () => void;
@@ -99,18 +100,10 @@ export function SettingsPane({ onApiKeyChange }: SettingsPaneProps) {
         </div>
 
         <div className="settings-actions">
-          <button
-            className="toolbar-btn toolbar-btn--actionable toolbar-btn--save-key"
-            onClick={handleSave}
-            disabled={!apiKey.trim()}
-          >
+          <Button variant="actionable" onClick={handleSave} disabled={!apiKey.trim()}>
             {saved ? t("settings.save.saved") : t("settings.save.label")}
-          </button>
-          {getStoredApiKey() && (
-            <button className="toolbar-btn toolbar-btn--clear-key" onClick={handleClear}>
-              {t("settings.clear.label")}
-            </button>
-          )}
+          </Button>
+          {getStoredApiKey() && <Button onClick={handleClear}>{t("settings.clear.label")}</Button>}
         </div>
       </section>
     </div>

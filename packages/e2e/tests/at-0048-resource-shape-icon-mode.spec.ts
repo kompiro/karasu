@@ -70,23 +70,24 @@ test.describe("AT-0048 Resource shape auto-inference and Icon Mode", () => {
 
     const iconButton = page.getByRole("button", { name: "Toggle icon mode" });
     await expect(iconButton).toBeVisible();
-    // Default display mode is `shape`, so the button should not be active.
-    await expect(iconButton).not.toHaveClass(/active/);
+    // Default display mode is `shape`, so the button should not be pressed.
+    // (shadcn Button migration: toggle state is `aria-pressed`, not a class.)
+    await expect(iconButton).toHaveAttribute("aria-pressed", "false");
 
     // Capture the SVG markup before toggling so we can assert it changes.
     const diagram = page.locator("svg").first();
     const baselineMarkup = await diagram.innerHTML();
 
     await iconButton.click();
-    await expect(iconButton).toHaveClass(/active/);
+    await expect(iconButton).toHaveAttribute("aria-pressed", "true");
 
     // The diagram must re-render in icon mode — the SVG markup will differ
     // because infra nodes pick up icon-card frames and shape paths.
     await expect.poll(() => diagram.innerHTML()).not.toBe(baselineMarkup);
 
-    // Toggle back returns to shape mode and removes the active state.
+    // Toggle back returns to shape mode and removes the pressed state.
     await iconButton.click();
-    await expect(iconButton).not.toHaveClass(/active/);
+    await expect(iconButton).toHaveAttribute("aria-pressed", "false");
   });
 
   test("resource labels resolve from infra declarations in both display modes (TC-5)", async ({

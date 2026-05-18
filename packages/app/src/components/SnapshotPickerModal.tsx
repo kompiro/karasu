@@ -1,5 +1,14 @@
 import { useEffect, useState } from "react";
 import type { SnapshotManager, SnapshotRecord } from "../fs/snapshot-manager";
+import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 interface SnapshotPickerModalProps {
   snapshots: SnapshotManager;
@@ -11,6 +20,10 @@ interface SnapshotPickerModalProps {
   onClose: () => void;
 }
 
+/**
+ * Migrated to shadcn/ui `Dialog` (Issue #1368). Behavioural contract preserved:
+ * Esc + outside-pointer-down close the modal; list renders one button per record.
+ */
 export function SnapshotPickerModal({
   snapshots,
   filePath,
@@ -30,60 +43,46 @@ export function SnapshotPickerModal({
     };
   }, [snapshots, filePath]);
 
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [onClose]);
-
   return (
-    <div
-      className="dialog-overlay"
-      onClick={onClose}
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="snapshot-picker-dialog-title"
-    >
-      <div className="dialog dialog--snapshot-picker" onClick={(e) => e.stopPropagation()}>
-        <header>
-          <h2 id="snapshot-picker-dialog-title" className="dialog__title">
-            ⇄ Compare with snapshot
-          </h2>
-          <p className="dialog__subtitle">{fileBasename}</p>
-        </header>
+    <Dialog open onOpenChange={(open) => !open && onClose()}>
+      <DialogContent
+        hideCloseButton
+        className="w-[90vw] max-w-[480px] gap-3"
+        aria-labelledby="snapshot-picker-dialog-title"
+      >
+        <DialogHeader>
+          <DialogTitle id="snapshot-picker-dialog-title">⇄ Compare with snapshot</DialogTitle>
+          <DialogDescription>{fileBasename}</DialogDescription>
+        </DialogHeader>
         <div className="dialog__body" role="list">
           {records === null && <p className="snapshot-picker-empty">Loading…</p>}
           {records !== null && records.length === 0 && (
             <p className="snapshot-picker-empty">No snapshots yet for this file.</p>
           )}
           {records?.map((r) => (
-            <button
-              key={r.id}
-              type="button"
-              role="listitem"
-              className="snapshot-picker-item"
-              onClick={() => onSelect(r)}
-            >
-              <span className="snapshot-picker-item-time">
-                {new Date(r.createdAt).toLocaleString()}
-              </span>
-              <span
-                className={`snapshot-picker-item-trigger snapshot-picker-item-trigger--${r.trigger}`}
-              >
-                {r.trigger}
-              </span>
-              {r.label && <span className="snapshot-picker-item-label">{r.label}</span>}
-            </button>
+            // role="listitem" belongs on a list-child wrapper, not on the
+            // <button> itself — a button cannot also be a listitem (#1399).
+            <div key={r.id} role="listitem">
+              <button type="button" className="snapshot-picker-item" onClick={() => onSelect(r)}>
+                <span className="snapshot-picker-item-time">
+                  {new Date(r.createdAt).toLocaleString()}
+                </span>
+                <span
+                  className={`snapshot-picker-item-trigger snapshot-picker-item-trigger--${r.trigger}`}
+                >
+                  {r.trigger}
+                </span>
+                {r.label && <span className="snapshot-picker-item-label">{r.label}</span>}
+              </button>
+            </div>
           ))}
         </div>
-        <footer className="dialog__footer">
-          <button type="button" className="toolbar-btn" onClick={onClose} aria-label="Close">
+        <DialogFooter>
+          <Button onClick={onClose} aria-label="Close">
             Close
-          </button>
-        </footer>
-      </div>
-    </div>
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }

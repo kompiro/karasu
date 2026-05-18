@@ -181,6 +181,8 @@ karasu は ADR / TPL ツールを外部パッケージ（`@kompiro/adr-tools`, `
 
 設計ドキュメントのステータスが「採用」または「取りやめ」に確定したら ADR を作成する。
 
+新規 Design Doc を書くときの雛形は `docs/design/TEMPLATE.md` を参照する。
+
 ADR の内容:
 - **Frontmatter**: `id` / `title` / `status` / `date` と、該当する関係性（`supersedes` / `depends_on` 等）を YAML frontmatter に記述する。雛形は `docs/adr/TEMPLATE.md` を参照。ローカル検証は `pnpm adr:validate`。
 - **背景**: なぜ検討することになったか

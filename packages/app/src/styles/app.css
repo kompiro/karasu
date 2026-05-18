@@ -6,6 +6,37 @@
 
 @import url("https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap");
 
+/* Tailwind v4 — shadcn/ui (ADR-20260515-01).
+ * Loaded AFTER existing tokens so :root variables below are still authoritative.
+ * preflight is left enabled per ADR; conflicts are fixed case-by-case. */
+@import "tailwindcss";
+
+/* Tailwind v4 auto-detection misses arbitrary-value classes (e.g.
+ * `max-w-[640px]`, `w-[180px]`) in this monorepo + workspace-alias
+ * setup — point the scanner at our source tree explicitly so those
+ * utilities are actually emitted. Without this, tailwind-merge correctly
+ * drops the base `max-w-lg` in favor of the user-supplied
+ * `max-w-[640px]`, but the latter has no CSS rule and the element ends
+ * up unbounded (#1379 follow-up). */
+@source "../**/*.{ts,tsx}";
+
+/* shadcn/ui theme bridge — map Tailwind theme tokens to karasu's existing CSS variables
+ * so that shadcn primitives (Dialog, ContextMenu) pick up the Onyx Cartographer palette
+ * without re-declaring colors. Only tokens shadcn primitives actually consume are bridged. */
+@theme inline {
+  --color-background: var(--bg-base);
+  --color-foreground: var(--text-primary);
+  --color-popover: var(--bg-overlay);
+  --color-popover-foreground: var(--text-primary);
+  --color-border: var(--border-strong);
+  --color-ring: var(--accent);
+  --color-accent: var(--accent);
+  --color-accent-foreground: #ffffff;
+  --color-muted: var(--bg-raised);
+  --color-muted-foreground: var(--text-secondary);
+  --radius: 8px;
+}
+
 /* ── Design Tokens ──────────────────────────────────────────────── */
 :root {
   /* Surface depths — from void to raised */
@@ -63,12 +94,12 @@
   --font-mono: "JetBrains Mono", "Fira Code", "Consolas", monospace;
 }
 
-/* ── Base Reset ─────────────────────────────────────────────────── */
-* {
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
-}
+/* Base reset is provided by Tailwind v4's preflight (`@layer base`):
+ * `*, ::before, ::after, ::backdrop { box-sizing: border-box; margin: 0;
+ * padding: 0 }`. A second *unlayered* `* {}` reset here would beat every
+ * Tailwind utility (unlayered CSS always wins over @layer rules), so
+ * `p-5`, `gap-3`, etc. on shadcn primitives would silently resolve to 0.
+ * The legacy reset is therefore removed — preflight covers it exactly. */
 
 html,
 body,
@@ -2011,6 +2042,9 @@ body,
   flex: 1;
 }
 
+/* Rendered as a shadcn <Button> (#1399); these unlayered rules override the
+   ghost variant so the control keeps the light error-banner appearance
+   instead of the dark-theme ghost styling. */
 .export-error-dismiss {
   background: transparent;
   border: none;
@@ -2022,6 +2056,7 @@ body,
 
 .export-error-dismiss:hover {
   color: #5a110c;
+  background: transparent;
 }
 
 /* Reference button — bolder weight to stand out as a persistent entry point */
@@ -2483,6 +2518,9 @@ body,
   font-size: 13px;
   color: inherit;
   font-family: inherit;
+  /* The button now sits inside a role="listitem" wrapper (#1399); it must
+     still span the full row width the way it did as a direct flex child. */
+  width: 100%;
 }
 
 .snapshot-picker-item:hover {

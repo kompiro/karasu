@@ -5,6 +5,7 @@ import type { SystemNode } from "@karasu-tools/core";
 import { ApiKeySetup } from "./ApiKeySetup.js";
 import { useChatSession, type PatchProposal } from "../hooks/useChatSession.js";
 import { useTranslation } from "../i18n/index.js";
+import { Button } from "@/components/ui/button";
 
 interface ChatPaneProps {
   scopeLabel: string;
@@ -96,31 +97,21 @@ export function ChatPane({
     <div className="chat-pane">
       <div className="chat-header">
         <span className="chat-scope-indicator">📍 {scopeLabel}</span>
-        <button
-          className="toolbar-btn toolbar-btn--new-session"
-          onClick={resetSession}
-          disabled={isLoading}
-        >
+        <Button onClick={resetSession} disabled={isLoading}>
           {t("chat.newSession.button")}
-        </button>
+        </Button>
       </div>
 
       <div className="chat-messages" role="log" aria-live="polite">
         {isEmpty && (
           <div className="chat-empty-state">
             <div className="chat-empty-state__actions">
-              <button
-                className="toolbar-btn toolbar-btn--actionable toolbar-btn--start-interview"
-                onClick={() => void startInterview()}
-              >
+              <Button variant="actionable" size="md" onClick={() => void startInterview()}>
                 {t("chat.startInterview.button")}
-              </button>
-              <button
-                className="toolbar-btn toolbar-btn--actionable toolbar-btn--start-review"
-                onClick={() => void startReview()}
-              >
+              </Button>
+              <Button variant="actionable" size="md" onClick={() => void startReview()}>
                 {t("chat.startReview.button")}
-              </button>
+              </Button>
             </div>
             <p className="chat-empty-state__hint">{t("chat.emptyState.hint")}</p>
           </div>
@@ -155,20 +146,12 @@ export function ChatPane({
             <div key={msg.id} className="chat-message chat-message--error">
               <p className="chat-message-content">{msg.content}</p>
               {msg.errorType !== "auth" && msg.retryMessageId && (
-                <button
-                  className="toolbar-btn toolbar-btn--actionable toolbar-btn--retry"
-                  onClick={() => retryMessage(msg.retryMessageId!)}
-                >
+                <Button variant="actionable" onClick={() => retryMessage(msg.retryMessageId!)}>
                   {t("chat.retry.button")}
-                </button>
+                </Button>
               )}
               {msg.errorType === "auth" && (
-                <button
-                  className="toolbar-btn toolbar-btn--go-to-settings"
-                  onClick={onNavigateToSettings}
-                >
-                  {t("chat.openSettings.button")}
-                </button>
+                <Button onClick={onNavigateToSettings}>{t("chat.openSettings.button")}</Button>
               )}
             </div>
           );
@@ -194,13 +177,9 @@ export function ChatPane({
           aria-label={t("chat.input.ariaLabel")}
           disabled={inputDisabled}
         />
-        <button
-          type="submit"
-          className="toolbar-btn toolbar-btn--actionable toolbar-btn--send"
-          disabled={inputDisabled || !inputValue.trim()}
-        >
+        <Button type="submit" variant="actionable" disabled={inputDisabled || !inputValue.trim()}>
           {t("chat.send.button")}
-        </button>
+        </Button>
       </form>
     </div>
   );
@@ -238,15 +217,10 @@ function PatchConfirmation({ patch, isActive, onApply, onReject }: PatchConfirma
       {patch.content && <pre className="chat-patch-proposal__code">{patch.content}</pre>}
       {isActive && (
         <div className="chat-patch-proposal__actions">
-          <button
-            className="toolbar-btn toolbar-btn--actionable toolbar-btn--apply-patch"
-            onClick={() => onApply(patch)}
-          >
+          <Button variant="actionable" onClick={() => onApply(patch)}>
             {t("chat.patch.apply.button")}
-          </button>
-          <button className="toolbar-btn toolbar-btn--reject-patch" onClick={() => onReject(patch)}>
-            {t("chat.patch.reject.button")}
-          </button>
+          </Button>
+          <Button onClick={() => onReject(patch)}>{t("chat.patch.reject.button")}</Button>
         </div>
       )}
     </div>

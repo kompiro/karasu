@@ -1,3 +1,5 @@
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+
 export type EditTab = "editor" | "chat" | "settings";
 
 interface EditTabBarProps {
@@ -5,36 +7,35 @@ interface EditTabBarProps {
   onTabChange: (tab: EditTab) => void;
 }
 
+function tabClass(active: boolean) {
+  return active ? "edit-tab edit-tab--active" : "edit-tab";
+}
+
+/**
+ * Migrated to shadcn/ui `Tabs` (Issue #1368). Radix adds arrow-key navigation
+ * between triggers — a free a11y baseline upgrade over the bespoke buttons.
+ * Legacy class names (`edit-tab-bar`, `edit-tab`, `edit-tab--active`,
+ * `edit-tab-icon`) are kept so existing CSS continues to apply.
+ */
 export function EditTabBar({ activeTab, onTabChange }: EditTabBarProps) {
   return (
-    <div className="edit-tab-bar" role="tablist">
-      <button
-        className={`edit-tab ${activeTab === "editor" ? "edit-tab--active" : ""}`}
-        role="tab"
-        aria-selected={activeTab === "editor"}
-        onClick={() => onTabChange("editor")}
-      >
-        <span className="edit-tab-icon">✏</span>
-        Editor
-      </button>
-      <button
-        className={`edit-tab ${activeTab === "chat" ? "edit-tab--active" : ""}`}
-        role="tab"
-        aria-selected={activeTab === "chat"}
-        onClick={() => onTabChange("chat")}
-      >
-        <span className="edit-tab-icon">💬</span>
-        Chat
-      </button>
-      <button
-        className={`edit-tab ${activeTab === "settings" ? "edit-tab--active" : ""}`}
-        role="tab"
-        aria-selected={activeTab === "settings"}
-        onClick={() => onTabChange("settings")}
-      >
-        <span className="edit-tab-icon">⚙</span>
-        Settings
-      </button>
-    </div>
+    <Tabs value={activeTab} onValueChange={(v) => onTabChange(v as EditTab)}>
+      {/* justify-start overrides shadcn TabsList's default justify-center —
+          karasu's tab bars are left-aligned nav bars, not centered. */}
+      <TabsList className="edit-tab-bar justify-start">
+        <TabsTrigger value="editor" className={tabClass(activeTab === "editor")}>
+          <span className="edit-tab-icon">✏</span>
+          Editor
+        </TabsTrigger>
+        <TabsTrigger value="chat" className={tabClass(activeTab === "chat")}>
+          <span className="edit-tab-icon">💬</span>
+          Chat
+        </TabsTrigger>
+        <TabsTrigger value="settings" className={tabClass(activeTab === "settings")}>
+          <span className="edit-tab-icon">⚙</span>
+          Settings
+        </TabsTrigger>
+      </TabsList>
+    </Tabs>
   );
 }
