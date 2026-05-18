@@ -24,6 +24,9 @@ original direction. Exiting diff mode resets the swapped state.
 - `packages/app/src/state/app-reducer.test.ts` — `TOGGLE_DIFF_SWAPPED`
   toggles when a compare path is set, is a no-op otherwise, and resets on
   `SET_COMPARE_ENTRY_PATH` or `SET_CURRENT_PROJECT`.
+- `packages/app/src/hooks/useAppViews.test.tsx` — swapping a **snapshot**
+  compare source re-renders the diff against the overlay FS instead of
+  failing to compile (Issue #1402).
 
 ## Manual verification checklist
 
@@ -73,3 +76,18 @@ system Shop {
       SVG re-renders with the pasted file as the after-side.
 
 > manual / visual review — exercises the swap interaction with a pasted (not file-picker) compare source through the live PasteCompareDialog flow.
+
+### TC-4: Swap works with a snapshot compare source (Issue #1402)
+
+- [ ] Edit `index.krs`, then create a snapshot (the editor auto-captures, or
+      use the snapshot picker) so a prior version exists.
+- [ ] Enter diff mode against that snapshot — the banner shows
+      `index.krs @ <timestamp> → index.krs`.
+- [ ] Click **⇄ Swap**. The banner reads `index.krs → index.krs @ <timestamp>`
+      and the diagram **re-renders** — no error banner appears.
+- [ ] Click **⇄ Swap back**. Direction returns to the original orientation
+      and the diagram re-renders again, still without an error.
+
+> manual / visual review — snapshot sources resolve through a virtual overlay
+> FS; this confirms the swapped diff compiles against the overlay (not the
+> base FS, which cannot serve the virtual snapshot path).
