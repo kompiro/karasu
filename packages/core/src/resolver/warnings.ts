@@ -186,6 +186,11 @@ function detectDomainDispersal(file: KrsFile): Warning[] {
   // Each system is an organizational boundary; cross-system domains are intentional.
   function detectInScope(nodes: KrsNode[]): void {
     const domainToServices = new Map<string, Set<string>>();
+    // Record the location of the *last* occurrence of each dispersed domain id
+    // so the warning can be anchored in the editor (LSP / Monaco) instead of
+    // collapsing to the document start. The last occurrence is the one a
+    // reader would treat as the "duplicate".
+    const domainToLoc = new Map<string, KrsNode["loc"]>();
 
     function walk(node: KrsNode, parentServiceId?: string): void {
       if (node.kind === "service") {
@@ -196,6 +201,7 @@ function detectDomainDispersal(file: KrsFile): Warning[] {
           domainToServices.set(node.id, new Set());
         }
         domainToServices.get(node.id)!.add(parentServiceId);
+        domainToLoc.set(node.id, node.loc);
       }
       for (const child of node.children) {
         walk(child, parentServiceId);
@@ -211,6 +217,7 @@ function detectDomainDispersal(file: KrsFile): Warning[] {
         warnings.push({
           kind: "domain-dispersal",
           params: { domainId, services: Array.from(services) },
+          loc: domainToLoc.get(domainId),
         });
       }
     }

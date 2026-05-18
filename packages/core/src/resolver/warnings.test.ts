@@ -203,6 +203,25 @@ system ECPlatform {
     expect(w?.params.services).toContain("Legacy");
   });
 
+  it("carries the loc of a dispersed domain so editors can anchor the diagnostic", () => {
+    // Without a loc the LSP / Monaco collapse the diagnostic to line 0. The
+    // detector records the last occurrence's loc — here the `domain Order`
+    // inside `Legacy`.
+    const krs = `system ECPlatform {
+  service ECommerce {
+    domain Order {}
+  }
+  service Legacy {
+    domain Order {}
+  }
+}`;
+    const result = compile(krs);
+    const w = result.warnings.find((warning) => warning.kind === "domain-dispersal");
+    expect(w?.loc).toBeDefined();
+    // The second `domain Order` is on line 6 (1-based).
+    expect(w?.loc?.start.line).toBe(6);
+  });
+
   it("does not block rendering — dispersed domain produces no error diagnostic (ADR-20260514-02)", () => {
     // Regression: a domain id shared across services used to also raise the
     // `domain-id-not-unique` parser error, which made the App refuse to draw

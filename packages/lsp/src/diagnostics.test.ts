@@ -19,6 +19,9 @@ describe("computeDiagnostics — resolver warnings (.krs)", () => {
     expect(dispersal!.severity).toBe(DiagnosticSeverity.Information);
     // ADR-20260514-02: a dispersed domain is representable — not an error.
     expect(diagnostics.some((d) => d.severity === DiagnosticSeverity.Error)).toBe(false);
+    // The warning carries a loc, so it anchors on the dispersed node — not
+    // collapsed to the document start.
+    expect(dispersal!.range.start.line).toBeGreaterThan(0);
   });
 
   it("surfaces a resolver warning kind at Warning severity", () => {
