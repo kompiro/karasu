@@ -19,7 +19,11 @@
 
 - [x] Outline エントリのクリックで `onSelectNode` がノード id 付きで呼ばれる
 
-  > ✅ Automated — `packages/app/src/components/OutlineView.test.tsx` › `calls onSelectNode with the node id when an entry is clicked`
+  > ✅ Automated — `packages/app/src/components/OutlineView.test.tsx` › `calls onSelectNode with the node id on a single click`
+
+- [x] Outline エントリのダブルクリックで `onActivateNode` がノード id と祖先チェーン付きで呼ばれる
+
+  > ✅ Automated — `packages/app/src/components/OutlineView.test.tsx` › `calls onActivateNode with the node id and ancestor chain on a double click`
 
 - [x] highlighted ノードに selected スタイルが当たる
 
@@ -60,6 +64,8 @@
 
 ### ノード選択とハイライト
 
-- [ ] 現在の viewPath 内のノードを Outline で選ぶと、プレビューの該当ノードがハイライトされる
-- [ ] 深くネストしたノードを選ぶと、プレビューが drill-down してから該当ノードをハイライトする
-- [ ] deploy / org ビュー表示中に Outline ノードを選ぶと system ビューに切り替わってハイライトされる
+- [ ] Outline ノードをシングルクリックすると、現在の viewPath 内に描画されていればプレビューの該当ノードがハイライトされる
+- [ ] Outline ノードをダブルクリックすると、プレビューが drill-down してから該当ノードがハイライトされる
+- [ ] service / domain / infra ノードのダブルクリックでそのノードの中（子の図）に潜る
+- [ ] usecase / resource など leaf ノードのダブルクリックで、`viewPath` を持つ最も近い祖先の図に移動し leaf がハイライトされる
+- [ ] deploy / org ビュー表示中に Outline ノードを操作すると system ビューに切り替わる

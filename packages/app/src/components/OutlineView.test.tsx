@@ -38,6 +38,7 @@ function renderView(overrides: Partial<Parameters<typeof OutlineView>[0]> = {}) 
     systems: sampleSystems,
     highlightedNodeId: null,
     onSelectNode: vi.fn<(id: string) => void>(),
+    onActivateNode: vi.fn<(id: string, ancestors: string[]) => void>(),
     ...overrides,
   };
   return { ...render(<OutlineView {...props} />), props };
@@ -57,10 +58,23 @@ describe("OutlineView", () => {
     expect(container.querySelector(".outline-item")).toBeNull();
   });
 
-  it("calls onSelectNode with the node id when an entry is clicked", () => {
+  it("calls onSelectNode with the node id on a single click", () => {
     const { props } = renderView();
     fireEvent.click(screen.getByText("Orders"));
     expect(props.onSelectNode).toHaveBeenCalledWith("Orders");
+  });
+
+  it("calls onActivateNode with the node id and ancestor chain on a double click", () => {
+    const { props } = renderView();
+    fireEvent.doubleClick(screen.getByText("Orders"));
+    // Orders is a domain nested under service API under system Shop.
+    expect(props.onActivateNode).toHaveBeenCalledWith("Orders", ["Shop", "API"]);
+  });
+
+  it("passes an empty ancestor chain when a top-level system is activated", () => {
+    const { props } = renderView();
+    fireEvent.doubleClick(screen.getByText("Shop"));
+    expect(props.onActivateNode).toHaveBeenCalledWith("Shop", []);
   });
 
   it("marks the highlighted node as selected", () => {

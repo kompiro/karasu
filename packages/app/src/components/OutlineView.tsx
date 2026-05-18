@@ -6,8 +6,14 @@ interface OutlineViewProps {
   systems: SystemNode[];
   /** Currently highlighted node id (shared with the preview). */
   highlightedNodeId: string | null;
-  /** Called with a node id when the user selects an outline entry. */
+  /** Single click — highlight the node in the preview. */
   onSelectNode: (nodeId: string) => void;
+  /**
+   * Double click — drill the preview down to reveal the node. `ancestorIds`
+   * is the chain of ancestor node ids (root system first, parent last),
+   * used to resolve a drill target for nodes without their own viewPath.
+   */
+  onActivateNode: (nodeId: string, ancestorIds: string[]) => void;
 }
 
 /**
@@ -45,7 +51,12 @@ const ICON_SIZE = 16;
  * resolved AST (`SystemNode[]` and their nested children); selecting an entry
  * flows back through `onSelectNode`. Has no dependency on app state.
  */
-export function OutlineView({ systems, highlightedNodeId, onSelectNode }: OutlineViewProps) {
+export function OutlineView({
+  systems,
+  highlightedNodeId,
+  onSelectNode,
+  onActivateNode,
+}: OutlineViewProps) {
   return (
     <div className="outline-view">
       <div className="outline-content">
@@ -56,10 +67,11 @@ export function OutlineView({ systems, highlightedNodeId, onSelectNode }: Outlin
             <OutlineItem
               key={system.id}
               node={system}
-              path={system.id}
+              ancestors={[]}
               depth={0}
               highlightedNodeId={highlightedNodeId}
               onSelectNode={onSelectNode}
+              onActivateNode={onActivateNode}
             />
           ))
         )}
@@ -70,14 +82,22 @@ export function OutlineView({ systems, highlightedNodeId, onSelectNode }: Outlin
 
 interface OutlineItemProps {
   node: KrsNode;
-  /** Chain of ancestor ids ending at this node — a stable, data-derived key. */
-  path: string;
+  /** Ancestor node ids (root system first, parent last) — excludes this node. */
+  ancestors: string[];
   depth: number;
   highlightedNodeId: string | null;
   onSelectNode: (nodeId: string) => void;
+  onActivateNode: (nodeId: string, ancestorIds: string[]) => void;
 }
 
-function OutlineItem({ node, path, depth, highlightedNodeId, onSelectNode }: OutlineItemProps) {
+function OutlineItem({
+  node,
+  ancestors,
+  depth,
+  highlightedNodeId,
+  onSelectNode,
+  onActivateNode,
+}: OutlineItemProps) {
   const selected = node.id === highlightedNodeId;
   const label = node.label ?? node.id;
   const iconName = KIND_ICON_NAME[node.kind];
@@ -90,6 +110,7 @@ function OutlineItem({ node, path, depth, highlightedNodeId, onSelectNode }: Out
         className={`outline-item${selected ? " outline-item--selected" : ""}`}
         style={{ paddingLeft: 10 + depth * 14 }}
         onClick={() => onSelectNode(node.id)}
+        onDoubleClick={() => onActivateNode(node.id, ancestors)}
         aria-current={selected ? "true" : undefined}
         title={`${label} (${node.kind})`}
       >
@@ -107,16 +128,20 @@ function OutlineItem({ node, path, depth, highlightedNodeId, onSelectNode }: Out
         )}
         <span className="outline-item__label">{label}</span>
       </button>
-      {node.children.map((child) => (
-        <OutlineItem
-          key={`${path}/${child.id}`}
-          node={child}
-          path={`${path}/${child.id}`}
-          depth={depth + 1}
-          highlightedNodeId={highlightedNodeId}
-          onSelectNode={onSelectNode}
-        />
-      ))}
+      {node.children.map((child) => {
+        const childAncestors = [...ancestors, node.id];
+        return (
+          <OutlineItem
+            key={[...childAncestors, child.id].join("/")}
+            node={child}
+            ancestors={childAncestors}
+            depth={depth + 1}
+            highlightedNodeId={highlightedNodeId}
+            onSelectNode={onSelectNode}
+            onActivateNode={onActivateNode}
+          />
+        );
+      })}
     </>
   );
 }

@@ -163,24 +163,42 @@ export function AppShell({
   const nodeMetadata =
     activeView === "deploy" ? views.deploy.nodeMetadata : views.system.nodeMetadata;
 
-  // Outline node selection: highlight the node in the preview and, when the
-  // node lives outside the current viewPath, drill down to reveal it. The
   // Outline always reflects the system AST, so switch to the system view
   // first if another view is active (deploy/org/matrix). Follow-up: #1410.
   const systemNodeMetadata = views.system.nodeMetadata;
-  const handleOutlineSelect = useCallback(
+  const highlightSystemNode = useCallback(
     (nodeId: string) => {
       if (activeView !== "system") {
         dispatch({ type: "SET_ACTIVE_VIEW", activeView: "system", highlightNodeId: nodeId });
       } else {
         dispatch({ type: "SET_HIGHLIGHTED_NODE", nodeId });
       }
-      const drillPath = systemNodeMetadata.get(nodeId)?.viewPath;
-      if (drillPath) {
-        navigateViewPath(drillPath);
-      }
     },
-    [activeView, dispatch, navigateViewPath, systemNodeMetadata],
+    [activeView, dispatch],
+  );
+
+  // Single click — highlight the node in the preview (no navigation).
+  const handleOutlineSelect = highlightSystemNode;
+
+  // Double click — drill the preview down to reveal the node, then highlight
+  // it. Only service/domain/infra nodes carry their own viewPath; for leaf
+  // nodes (usecase/resource/user/client) drill into the nearest ancestor that
+  // does, so the node renders as a child there. Falls back to the root view.
+  const handleOutlineActivate = useCallback(
+    (nodeId: string, ancestorIds: string[]) => {
+      highlightSystemNode(nodeId);
+      const candidates = [nodeId, ...[...ancestorIds].reverse()];
+      let drillPath: string[] = [];
+      for (const id of candidates) {
+        const vp = systemNodeMetadata.get(id)?.viewPath;
+        if (vp) {
+          drillPath = vp;
+          break;
+        }
+      }
+      navigateViewPath(drillPath);
+    },
+    [highlightSystemNode, navigateViewPath, systemNodeMetadata],
   );
 
   const handleEditorChange = useCallback(
@@ -432,6 +450,7 @@ export function AppShell({
                 systems={views.system.resolvedSystems}
                 highlightedNodeId={highlightedNodeId}
                 onSelectNode={handleOutlineSelect}
+                onActivateNode={handleOutlineActivate}
               />
             ) : undefined
           }
