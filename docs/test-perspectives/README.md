@@ -419,3 +419,4 @@ DesignDoc が proactive TPL を引用したら、実装 PR で次をやる:
 | [TPL-20260514-07](TPL-20260514-07-infra-redeclared-across-files.md) | 同名 `database` / `queue` / `storage` の再宣言は union merge、info 診断で surface する | resolver | docs/spec/syntax.md (S4.5), #1385 |
 | [TPL-20260514-08](TPL-20260514-08-diagnostic-register-fact-vs-style.md) | 新規 resolver diagnostic の register は「事実か流派判断か」で決める | core-concepts | docs/concepts.md (§What karasu visualizes vs. what it doesn't prescribe), #1386 |
 | [TPL-20260516-01](TPL-20260516-01-control-a11y-contract-survives-migration.md) | interactive control の a11y 契約は移行・リファクタで静かに壊れる | app-ui | ADR-20260515-01, #1399 |
+| [TPL-20260518-01](TPL-20260518-01-involutive-toggle-renders-both-states.md) | involutive な toggle は両方の結果状態を end-to-end でレンダリング検証する | app-ui | #1402 |

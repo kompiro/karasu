@@ -148,7 +148,14 @@ export function useAppViews(args: UseAppViewsArgs): UseAppViewsResult {
   const effEntryPath = canSwap ? compareEntryPath : entryPath;
   const effFs = canSwap ? (compareFs as FileSystemProvider) : fs;
   const effCompareEntryPath = canSwap ? entryPath : compareEntryPath;
-  const effCompareFs = canSwap ? fs : compareFs;
+  // `compile*Diff` takes a single FS that must resolve BOTH the before- and
+  // after-side entry paths. For a snapshot compare source, `compareFs` is a
+  // `SnapshotOverlayFs` that serves the virtual `/.snapshot-view/…` path AND
+  // delegates every other read to the base `fs` — a strict superset of `fs`.
+  // The base `fs` cannot serve the virtual snapshot path, so the diff must
+  // always run on the overlay regardless of swap direction. Swapping this to
+  // the base `fs` broke the swapped render for snapshot sources (Issue #1402).
+  const effCompareFs = compareFs;
 
   const {
     svg: systemSvg,
