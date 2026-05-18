@@ -176,3 +176,11 @@ system OrderSystem {
 **Expected:**
 - No error diagnostic.
 - Navigation resolves to `NewService.Contract` (`@migration_target` takes highest priority).
+
+---
+
+## Related TPLs
+
+| TPL | 適用 |
+|---|---|
+| [TPL-20260514-08](../test-perspectives/TPL-20260514-08-diagnostic-register-fact-vs-style.md) | Case 4 — アノテーション無しの重複 domain id も error ではなく `domain-dispersal` info として扱う |

@@ -8,6 +8,7 @@ import {
   renderMatrixAsSvg,
   formatDiagnostic,
   formatWarning,
+  warningSeverity,
 } from "@karasu-tools/core";
 import type {
   FileSystemProvider,
@@ -114,7 +115,11 @@ export async function render(filePath: string, options: RenderOptions): Promise<
     process.stderr.write(`Warning: ${loc}: ${formatDiagnostic(d)}\n`);
   }
   for (const w of warnings) {
-    process.stderr.write(`Warning: ${formatWarning(w).message}\n`);
+    // Honour the warning's register: info-severity kinds (e.g.
+    // domain-dispersal) print as `Info:`, not `Warning:` — see
+    // ADR-20260514-02.
+    const prefix = warningSeverity(w.kind) === "info" ? "Info" : "Warning";
+    process.stderr.write(`${prefix}: ${formatWarning(w).message}\n`);
   }
 
   if (errors.length > 0) {
