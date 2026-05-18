@@ -1763,16 +1763,14 @@ export class Parser {
               : 1;
           if (seenDomainIds.has(node.id)) {
             const existingPriority = seenDomainIds.get(node.id)!;
-            if (priority === 1 && existingPriority === 1) {
-              // Neither duplicate carries a migration annotation → error (existing behaviour)
-              this.diagnostics.push({
-                severity: "error",
-                code: "domain-id-not-unique",
-                params: { domainId: node.id },
-                loc: node.loc,
-              });
-            }
-            // Higher priority wins the index
+            // A domain id shared by multiple services within one system is a
+            // structural fact, not an error: karasu visualizes it, and the
+            // resolver surfaces it through the `domain-dispersal` info
+            // diagnostic (ADR-20260514-02 — "smell is representable"). The
+            // nodePathIndex keeps a single winner — the higher-priority
+            // (migration-target) entry, or the first occurrence when
+            // priorities tie — exactly as the migration-coexistence path
+            // (ADR-20260411-02) already does.
             if (priority > existingPriority) {
               index.set(node.id, currentPath);
               seenDomainIds.set(node.id, priority);

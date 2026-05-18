@@ -276,7 +276,6 @@ export type Translations = {
     existingTeam: string;
   }) => string;
   "diagnostic.duplicateTeamId.message": (params: { teamId: string }) => string;
-  "diagnostic.domainIdNotUnique.message": (params: { domainId: string }) => string;
   "diagnostic.nodeIdMultipleLocations.message": (params: { nodeId: string }) => string;
   "diagnostic.duplicateNodeIdParent.message": (params: { nodeId: string }) => string;
   "diagnostic.ownsTargetNotFound.message": (params: { ownedId: string }) => string;

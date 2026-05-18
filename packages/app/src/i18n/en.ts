@@ -238,8 +238,6 @@ export const en: Translations = {
   "diagnostic.duplicateOwnerAssignment.message": ({ nodeId, existingTeam }) =>
     `"${nodeId}" is already owned by team "${existingTeam}"; multiple teams cannot own the same service or domain`,
   "diagnostic.duplicateTeamId.message": ({ teamId }) => `Duplicate team id "${teamId}"`,
-  "diagnostic.domainIdNotUnique.message": ({ domainId }) =>
-    `Domain id "${domainId}" must be unique within a system; found in multiple services`,
   "diagnostic.nodeIdMultipleLocations.message": ({ nodeId }) =>
     `Node id "${nodeId}" appears in multiple locations; first path is used for navigation`,
   "diagnostic.duplicateNodeIdParent.message": ({ nodeId }) =>

@@ -78,9 +78,9 @@ system OrderSystem {
 
 ---
 
-### Case 4: Non-annotated duplicates still produce an error
+### Case 4: Non-annotated duplicates render with an info note (not an error)
 
-> ✅ Automated — `packages/e2e/tests/at-0054-deprecated-domain-migration.spec.ts` › `unannotated duplicate still emits uniqueness error (Case 4)`
+> ✅ Automated — `packages/e2e/tests/at-0054-deprecated-domain-migration.spec.ts` › `unannotated duplicate renders with an info note, not an error (Case 4)`
 
 **Steps:**
 1. Open the following `.krs` source:
@@ -97,7 +97,9 @@ system OrderSystem {
 ```
 
 **Expected:**
-- An error diagnostic appears: `Domain id "Contract" must be unique within a system; found in multiple services`.
+- No error diagnostic appears (per ADR-20260514-02 — a dispersed domain is representable, with or without migration annotations).
+- The system diagram renders.
+- An info note appears in the WarningPanel (ℹ icon): `Domain "Contract" appears under multiple services`.
 
 ---
 

@@ -7,7 +7,8 @@ import { replaceEditorContent } from "../fixtures/editor.js";
  *
  * Covers Case 1 (implicit service edge derivation + amber color, solid for
  * sync source), Case 2 (intra-service domain edge in drill-down), Case 3
- * (aggregated "N domain edges" label), Case 4 (duplicate domain ID error),
+ * (aggregated "N domain edges" label), Case 4 (duplicate domain ID is an
+ * info-register `domain-dispersal` note, not an error — ADR-20260514-02),
  * Case 5 (same ID across different systems is legal), and Case 7 (sync vs
  * async implicit edges are visually distinguishable — amber solid vs amber
  * dashed; see #510).
@@ -102,6 +103,7 @@ system SystemB {
 `;
 
 const UNIQUE_ERROR_PATTERN = /must be unique within a system/i;
+const DISPERSAL_INFO_PATTERN = /appears under multiple services/i;
 
 async function goToSystemTab(page: Page) {
   await page.getByRole("tab", { name: "System" }).click();
@@ -238,7 +240,7 @@ test.describe("AT-0053 Domain-to-domain dependency edges", () => {
     await expect(page.locator(".node-detail-panel")).not.toBeVisible();
   });
 
-  test("duplicate domain ID within a system surfaces a uniqueness error (Case 4)", async ({
+  test("duplicate domain ID within a system surfaces an info note, not an error (Case 4)", async ({
     page,
     opfs,
   }) => {
@@ -248,8 +250,16 @@ test.describe("AT-0053 Domain-to-domain dependency edges", () => {
     await replaceEditorContent(page, DUPLICATE_IN_SYSTEM_KRS);
     await goToSystemTab(page);
 
+    // ADR-20260514-02: a dispersed domain is a structural fact karasu
+    // visualizes, not a defect that blocks rendering. No uniqueness error.
     await expect(
       page.locator(".diagnostic-banner__item", { hasText: UNIQUE_ERROR_PATTERN }),
+    ).toHaveCount(0);
+    // The diagram still renders.
+    await expect(page.locator('[data-node-id="OrderService"]')).toBeVisible();
+    // The dispersal is surfaced as an info note in the WarningPanel.
+    await expect(
+      page.locator(".warning-item--info", { hasText: DISPERSAL_INFO_PATTERN }),
     ).toHaveCount(1);
   });
 

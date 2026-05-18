@@ -1411,7 +1411,12 @@ system EC {
       expect(formatDiagnostic(errors[0])).toContain("Payment");
     });
 
-    it("errors on cross-scope duplicate domain id and keeps first path", () => {
+    it("does not error on cross-service duplicate domain id and keeps first path", () => {
+      // A domain id shared by multiple services within one system is a
+      // structural fact, not a parse error (ADR-20260514-02 — "smell is
+      // representable"). The resolver surfaces it via the `domain-dispersal`
+      // info diagnostic; the parser just keeps the first occurrence in the
+      // nodePathIndex so navigation stays deterministic.
       const result = Parser.parse(`
 system EC {
   service Payment {
@@ -1423,8 +1428,7 @@ system EC {
 }
       `);
       const errors = result.diagnostics.filter((d) => d.severity === "error");
-      expect(errors.length).toBeGreaterThanOrEqual(1);
-      expect(formatDiagnostic(errors[0])).toContain("Checkout");
+      expect(errors).toHaveLength(0);
       expect(result.value.nodePathIndex.get("Checkout")).toEqual(["EC", "Payment", "Checkout"]);
     });
 
@@ -1583,7 +1587,10 @@ system EC {
       expect(result.value.nodePathIndex.get("Contract")).toEqual(["EC", "Other", "Contract"]);
     });
 
-    it("still errors when both duplicate domain ids have no migration annotation", () => {
+    it("does not error when both duplicate domain ids have no migration annotation", () => {
+      // Pre-ADR-20260514-02 this raised `domain-id-not-unique` (error). The
+      // dispersal is now informational only (`domain-dispersal`, info), so
+      // the parser stays silent and keeps the first occurrence in the index.
       const result = Parser.parse(`
 system EC {
   service A {
@@ -1595,8 +1602,8 @@ system EC {
 }
       `);
       const errors = result.diagnostics.filter((d) => d.severity === "error");
-      expect(errors.length).toBeGreaterThanOrEqual(1);
-      expect(formatDiagnostic(errors[0])).toContain("Checkout");
+      expect(errors).toHaveLength(0);
+      expect(result.value.nodePathIndex.get("Checkout")).toEqual(["EC", "A", "Checkout"]);
     });
 
     it("warns when owns references an id not found in the system hierarchy", () => {

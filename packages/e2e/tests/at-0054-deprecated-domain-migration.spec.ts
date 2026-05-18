@@ -5,9 +5,10 @@ import { replaceEditorContent } from "../fixtures/editor.js";
 /**
  * AT-0054: Deprecated domain migration annotations.
  *
- * Covers Case 1 (error suppression for annotated duplicate), Case 2 (edges on
- * both services resolve), Case 4 (unannotated duplicates still error), and
- * Case 5 (order independence).
+ * Covers Case 1 (no uniqueness error for annotated duplicate), Case 2 (edges on
+ * both services resolve), Case 4 (unannotated duplicates render with an
+ * info-register `domain-dispersal` note — ADR-20260514-02), and Case 5 (order
+ * independence).
  *
  * Out of scope for this spec (issue #558):
  *  - Case 3: visual distinction — handled by manual visual review.
@@ -66,6 +67,7 @@ const SWAPPED_ORDER_KRS = `system OrderSystem {
 `;
 
 const UNIQUE_ERROR_PATTERN = /must be unique within a system/i;
+const DISPERSAL_INFO_PATTERN = /appears under multiple services/i;
 
 async function goToSystemTab(page: Page) {
   await page.getByRole("tab", { name: "System" }).click();
@@ -101,15 +103,25 @@ test.describe("AT-0054 Deprecated domain migration annotations", () => {
     expect(await edgeLines.count()).toBeGreaterThanOrEqual(2);
   });
 
-  test("unannotated duplicate still emits uniqueness error (Case 4)", async ({ page, opfs }) => {
+  test("unannotated duplicate renders with an info note, not an error (Case 4)", async ({
+    page,
+    opfs,
+  }) => {
     await opfs.seed({ mode: "memory" });
 
     await opfs.gotoApp();
     await replaceEditorContent(page, UNANNOTATED_DUPLICATE_KRS);
     await goToSystemTab(page);
 
+    // ADR-20260514-02: an unannotated duplicate domain id is a structural
+    // fact karasu visualizes. No uniqueness error, the diagram renders, and
+    // the dispersal is surfaced as an info note.
+    await expect(page.locator('[data-node-id="A"]')).toBeVisible();
     await expect(
       page.locator(".diagnostic-banner__item", { hasText: UNIQUE_ERROR_PATTERN }),
+    ).toHaveCount(0);
+    await expect(
+      page.locator(".warning-item--info", { hasText: DISPERSAL_INFO_PATTERN }),
     ).toHaveCount(1);
   });
 

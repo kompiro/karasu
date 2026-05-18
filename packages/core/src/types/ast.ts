@@ -456,7 +456,6 @@ export interface DiagnosticParamsByCode {
   "duplicate-crud-decoration-target": { operation: string; value: string; resourceId: string };
   "duplicate-owner-assignment": { nodeId: string; existingTeam: string };
   "duplicate-team-id": { teamId: string };
-  "domain-id-not-unique": { domainId: string };
   "node-id-multiple-locations": { nodeId: string };
   "duplicate-node-id-parent": { nodeId: string };
   "owns-target-not-found": { ownedId: string };

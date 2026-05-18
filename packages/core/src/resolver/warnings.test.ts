@@ -201,6 +201,26 @@ system ECPlatform {
     expect(w?.params.services).toContain("Legacy");
   });
 
+  it("does not block rendering — dispersed domain produces no error diagnostic (ADR-20260514-02)", () => {
+    // Regression: a domain id shared across services used to also raise the
+    // `domain-id-not-unique` parser error, which made the App refuse to draw
+    // the diagram. The dispersal is informational only; the diagram must
+    // still render.
+    const krs = `
+system ECPlatform {
+  service ECommerce {
+    domain Order { label "注文" }
+  }
+  service Legacy {
+    domain Order { label "受注" }
+  }
+}
+`;
+    const result = compile(krs);
+    expect(result.diagnostics.filter((d) => d.severity === "error")).toHaveLength(0);
+    expect(result.svg.length).toBeGreaterThan(0);
+  });
+
   it("warns when same domain id has different labels (id is the detection key, not label)", () => {
     const krs = `
 system ECPlatform {

@@ -238,8 +238,6 @@ export const ja: Partial<Translations> = {
   "diagnostic.duplicateOwnerAssignment.message": ({ nodeId, existingTeam }) =>
     `"${nodeId}" はすでに team "${existingTeam}" によって所有されています。複数の team が同じ service / domain を所有することはできません`,
   "diagnostic.duplicateTeamId.message": ({ teamId }) => `team id "${teamId}" が重複しています`,
-  "diagnostic.domainIdNotUnique.message": ({ domainId }) =>
-    `domain id "${domainId}" は system 内で一意である必要がありますが、複数の service で検出されました`,
   "diagnostic.nodeIdMultipleLocations.message": ({ nodeId }) =>
     `ノード id "${nodeId}" が複数箇所に出現しています。ナビゲーションには最初のパスが使われます`,
   "diagnostic.duplicateNodeIdParent.message": ({ nodeId }) =>
