@@ -17,6 +17,7 @@ import {
 } from "@karasu-tools/core";
 import { SnapshotManager } from "../fs/snapshot-manager.js";
 import { EditArea } from "./EditArea.js";
+import { OutlineView } from "./OutlineView.js";
 import { PreviewColumn } from "./PreviewColumn.js";
 import { downloadSvg } from "../utils/download-svg.js";
 import { downloadDrawio } from "../utils/download-drawio.js";
@@ -161,6 +162,26 @@ export function AppShell({
 
   const nodeMetadata =
     activeView === "deploy" ? views.deploy.nodeMetadata : views.system.nodeMetadata;
+
+  // Outline node selection: highlight the node in the preview and, when the
+  // node lives outside the current viewPath, drill down to reveal it. The
+  // Outline always reflects the system AST, so switch to the system view
+  // first if another view is active (deploy/org/matrix). Follow-up: #1410.
+  const systemNodeMetadata = views.system.nodeMetadata;
+  const handleOutlineSelect = useCallback(
+    (nodeId: string) => {
+      if (activeView !== "system") {
+        dispatch({ type: "SET_ACTIVE_VIEW", activeView: "system", highlightNodeId: nodeId });
+      } else {
+        dispatch({ type: "SET_HIGHLIGHTED_NODE", nodeId });
+      }
+      const drillPath = systemNodeMetadata.get(nodeId)?.viewPath;
+      if (drillPath) {
+        navigateViewPath(drillPath);
+      }
+    },
+    [activeView, dispatch, navigateViewPath, systemNodeMetadata],
+  );
 
   const handleEditorChange = useCallback(
     async (value: string) => {
@@ -405,6 +426,15 @@ export function AppShell({
       {!hideEditor && (
         <EditArea
           sidebarContent={sidebarContent}
+          outlineContent={
+            sidebarContent ? (
+              <OutlineView
+                systems={views.system.resolvedSystems}
+                highlightedNodeId={highlightedNodeId}
+                onSelectNode={handleOutlineSelect}
+              />
+            ) : undefined
+          }
           previewFocused={previewFocused}
           value={fileContent}
           currentFilePath={currentFilePath}
