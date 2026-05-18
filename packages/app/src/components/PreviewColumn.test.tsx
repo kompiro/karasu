@@ -526,8 +526,13 @@ describe("PreviewColumn", () => {
       fireEvent.click(getByText("Export draw.io (mxGraph XML)"));
       const banner = await findByRole("alert");
       expect(banner.textContent).toContain("disk full");
+      // a11y contract (#1399 / TPL-20260516-01): the dismiss control is a
+      // shadcn <Button> with a visible text label (not an icon-only button)
+      // and an exact, descriptive accessible name.
+      const dismiss = getByRole("button", { name: "Dismiss export error" });
+      expect(dismiss.textContent).toBe("✕ Dismiss");
       // Dismiss button wipes the banner immediately.
-      fireEvent.click(getByRole("button", { name: /Dismiss/ }));
+      fireEvent.click(dismiss);
       expect(queryByRole("alert")).toBeNull();
     });
   });
