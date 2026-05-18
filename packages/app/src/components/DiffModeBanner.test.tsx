@@ -80,6 +80,39 @@ describe("DiffModeBanner", () => {
     expect(queryByLabelText("Swap diff direction")).toBeNull();
   });
 
+  it("Swap button visible label reads '⇄ Swap' when not swapped", () => {
+    // a11y contract (#1399 / TPL-20260516-01): a toggle's visible label must
+    // reflect its state — not just the aria-pressed attribute.
+    const { getByLabelText } = render(
+      <DiffModeBanner
+        source={{ kind: "file", path: "/a/before.krs" }}
+        snapshotManager={null}
+        currentPath="/a/index.krs"
+        onExit={() => {}}
+        onSwap={() => {}}
+      />,
+    );
+    const swapBtn = getByLabelText("Swap diff direction");
+    expect(swapBtn.textContent).toBe("⇄ Swap");
+    expect(swapBtn.getAttribute("aria-pressed")).toBe("false");
+  });
+
+  it("Swap button visible label reads '⇄ Swap back' when swapped=true", () => {
+    const { getByLabelText } = render(
+      <DiffModeBanner
+        source={{ kind: "file", path: "/a/before.krs" }}
+        snapshotManager={null}
+        currentPath="/a/index.krs"
+        swapped
+        onExit={() => {}}
+        onSwap={() => {}}
+      />,
+    );
+    const swapBtn = getByLabelText("Swap diff direction");
+    expect(swapBtn.textContent).toBe("⇄ Swap back");
+    expect(swapBtn.getAttribute("aria-pressed")).toBe("true");
+  });
+
   it("flips the before/after label order when swapped=true", () => {
     const { container, getByLabelText } = render(
       <DiffModeBanner

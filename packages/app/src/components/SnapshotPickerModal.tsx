@@ -60,23 +60,21 @@ export function SnapshotPickerModal({
             <p className="snapshot-picker-empty">No snapshots yet for this file.</p>
           )}
           {records?.map((r) => (
-            <button
-              key={r.id}
-              type="button"
-              role="listitem"
-              className="snapshot-picker-item"
-              onClick={() => onSelect(r)}
-            >
-              <span className="snapshot-picker-item-time">
-                {new Date(r.createdAt).toLocaleString()}
-              </span>
-              <span
-                className={`snapshot-picker-item-trigger snapshot-picker-item-trigger--${r.trigger}`}
-              >
-                {r.trigger}
-              </span>
-              {r.label && <span className="snapshot-picker-item-label">{r.label}</span>}
-            </button>
+            // role="listitem" belongs on a list-child wrapper, not on the
+            // <button> itself — a button cannot also be a listitem (#1399).
+            <div key={r.id} role="listitem">
+              <button type="button" className="snapshot-picker-item" onClick={() => onSelect(r)}>
+                <span className="snapshot-picker-item-time">
+                  {new Date(r.createdAt).toLocaleString()}
+                </span>
+                <span
+                  className={`snapshot-picker-item-trigger snapshot-picker-item-trigger--${r.trigger}`}
+                >
+                  {r.trigger}
+                </span>
+                {r.label && <span className="snapshot-picker-item-label">{r.label}</span>}
+              </button>
+            </div>
           ))}
         </div>
         <DialogFooter>
