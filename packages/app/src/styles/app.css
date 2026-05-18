@@ -1674,12 +1674,29 @@ body,
   border-left-color: var(--accent);
 }
 
-.outline-item__kind {
+.outline-item__icon {
   flex-shrink: 0;
-  width: 12px;
-  text-align: center;
-  font-size: 11px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  line-height: 0;
   color: var(--text-muted);
+}
+
+.outline-item:hover .outline-item__icon,
+.outline-item--selected .outline-item__icon {
+  color: inherit;
+}
+
+.outline-item__icon--glyph {
+  font-size: 11px;
+  line-height: 1;
+}
+
+.outline-item__icon svg {
+  display: block;
 }
 
 .outline-item__label {

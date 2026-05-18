@@ -1,3 +1,4 @@
+import { renderPictogram } from "@karasu-tools/core";
 import type { KrsNode, SystemNode } from "@karasu-tools/core";
 
 interface OutlineViewProps {
@@ -10,24 +11,34 @@ interface OutlineViewProps {
 }
 
 /**
- * Geometric glyph per node kind. Kept to plain Unicode shapes (no emoji) so
- * rendering stays consistent across platforms.
+ * Node kind → Icon Mode icon name. Mirrors the base-kind rules of
+ * `ICON_THEME_STYLE_SOURCE` (`packages/core/src/builtins/icon-theme.ts`) so
+ * the Outline shows the same pictograms the preview draws in Icon Mode.
+ * Tag-driven variants (client subtypes, `resource[table]`, …) are not
+ * resolved here — the base kind icon is used. `system` has no icon card in
+ * Icon Mode either, so it falls back to a glyph.
  */
+const KIND_ICON_NAME: Partial<Record<KrsNode["kind"], string>> = {
+  service: "service",
+  client: "client",
+  user: "user-card",
+  domain: "domain",
+  usecase: "usecase",
+  resource: "resource",
+  database: "database",
+  queue: "queue-node",
+  storage: "cloud-node",
+  table: "table",
+  "queue-item": "queue-card",
+  bucket: "cloud-card",
+};
+
+/** Fallback glyph for kinds without an Icon Mode icon (i.e. `system`). */
 const KIND_GLYPH: Record<string, string> = {
   system: "▣",
-  service: "◆",
-  client: "▢",
-  user: "◉",
-  domain: "◇",
-  usecase: "▷",
-  resource: "▤",
-  database: "▥",
-  table: "▦",
-  storage: "▤",
-  queue: "▤",
-  "queue-item": "▪",
-  bucket: "◖",
 };
+
+const ICON_SIZE = 16;
 
 /**
  * Pure presentational layer for the Outline sidebar. Recursively renders the
@@ -69,6 +80,9 @@ interface OutlineItemProps {
 function OutlineItem({ node, path, depth, highlightedNodeId, onSelectNode }: OutlineItemProps) {
   const selected = node.id === highlightedNodeId;
   const label = node.label ?? node.id;
+  const iconName = KIND_ICON_NAME[node.kind];
+  // `currentColor` lets the icon inherit the item's text color (hover/selected).
+  const pictogram = iconName ? renderPictogram(iconName, "currentColor", ICON_SIZE) : undefined;
   return (
     <>
       <button
@@ -79,9 +93,18 @@ function OutlineItem({ node, path, depth, highlightedNodeId, onSelectNode }: Out
         aria-current={selected ? "true" : undefined}
         title={`${label} (${node.kind})`}
       >
-        <span className="outline-item__kind" aria-hidden="true">
-          {KIND_GLYPH[node.kind] ?? "•"}
-        </span>
+        {pictogram ? (
+          <span
+            className="outline-item__icon"
+            aria-hidden="true"
+            // Pictogram markup comes from core's renderPictogram — trusted, not user input.
+            dangerouslySetInnerHTML={{ __html: pictogram }}
+          />
+        ) : (
+          <span className="outline-item__icon outline-item__icon--glyph" aria-hidden="true">
+            {KIND_GLYPH[node.kind] ?? "•"}
+          </span>
+        )}
         <span className="outline-item__label">{label}</span>
       </button>
       {node.children.map((child) => (
