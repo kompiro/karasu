@@ -60,12 +60,18 @@ describe("useAppViews — diff swap", () => {
       { initialProps: { swapped: false } },
     );
 
-    const hasCompileError = () =>
-      result.current.system.diagnostics.some((d) => d.code === "app-project-compile-error");
+    // The buggy `effCompareFs` is shared by all three view hooks, so each
+    // `compile*Diff` failed on the swapped virtual path. Assert all three.
+    const noCompileError = () => {
+      const { system, deploy, org } = result.current;
+      expect(system.diagnostics.some((d) => d.code === "app-project-compile-error")).toBe(false);
+      expect(deploy.diagnostics.some((d) => d.code === "app-project-compile-error")).toBe(false);
+      expect(org.diagnostics.some((d) => d.code === "app-org-parse-error")).toBe(false);
+    };
 
     // Un-swapped diff renders.
     await waitFor(() => expect(result.current.system.svg).toBeTruthy(), { timeout: 2000 });
-    expect(hasCompileError()).toBe(false);
+    noCompileError();
     const unswappedSvg = result.current.system.svg;
 
     // Swap: before/after flip. The diff must re-render — on the buggy code the
@@ -74,7 +80,7 @@ describe("useAppViews — diff swap", () => {
     await waitFor(() => expect(result.current.system.svg).not.toBe(unswappedSvg), {
       timeout: 2000,
     });
-    expect(hasCompileError()).toBe(false);
+    noCompileError();
     expect(result.current.system.svg).toBeTruthy();
   });
 });
