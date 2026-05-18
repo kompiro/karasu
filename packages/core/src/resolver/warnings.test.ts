@@ -1,6 +1,8 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import { compile } from "../index.js";
 import { analyze } from "./warnings.js";
+import { warningSeverity } from "../types/warnings.js";
+import type { WarningKind, WarningSeverity } from "../types/warnings.js";
 import { StyleParser } from "../parser/style-parser.js";
 import { Parser } from "../parser/parser.js";
 import { getBuiltinStyleSheet } from "../builtins/default-style.js";
@@ -199,6 +201,26 @@ system ECPlatform {
     expect(w?.params.domainId).toBe("Order");
     expect(w?.params.services).toContain("ECommerce");
     expect(w?.params.services).toContain("Legacy");
+  });
+
+  it("does not block rendering — dispersed domain produces no error diagnostic (ADR-20260514-02)", () => {
+    // Regression: a domain id shared across services used to also raise the
+    // `domain-id-not-unique` parser error, which made the App refuse to draw
+    // the diagram. The dispersal is informational only; the diagram must
+    // still render.
+    const krs = `
+system ECPlatform {
+  service ECommerce {
+    domain Order { label "注文" }
+  }
+  service Legacy {
+    domain Order { label "受注" }
+  }
+}
+`;
+    const result = compile(krs);
+    expect(result.diagnostics.filter((d) => d.severity === "error")).toHaveLength(0);
+    expect(result.svg.length).toBeGreaterThan(0);
   });
 
   it("warns when same domain id has different labels (id is the detection key, not label)", () => {
@@ -1253,4 +1275,53 @@ legend "Mixed" {
     );
     expect(targets.sort()).toEqual(["@gone", "[unknownTag]"]);
   });
+});
+
+describe("warningSeverity — exhaustive register map", () => {
+  // The `Record<WarningKind, WarningSeverity>` literal forces this table to
+  // stay exhaustive: adding a new `WarningKind` to the union without an entry
+  // here is a compile error. That is the fence — it makes the author decide,
+  // per ADR-20260514-02 / TPL-20260514-08, whether the new kind is a model
+  // fact (`warning`) or a style-school smell (`info`), instead of silently
+  // inheriting the `warning` default.
+  const EXPECTED_SEVERITY: Record<WarningKind, WarningSeverity> = {
+    "domain-dispersal": "info",
+    "missing-runtime": "info",
+    "missing-realizes": "info",
+    "style-conflict": "warning",
+    "unresolved-realizes": "warning",
+    "invalid-owns": "warning",
+    "deprecated-team-property": "warning",
+    "unassigned-domain": "warning",
+    "unassigned-service": "warning",
+    "unassigned-client": "warning",
+    "unresolved-handles": "warning",
+    "unassigned-database": "warning",
+    "unassigned-queue": "warning",
+    "unassigned-storage": "warning",
+    "unassigned-usecase": "warning",
+    "cross-system-ref-implicit-external": "warning",
+    "cross-system-ref-unresolved": "warning",
+    "cyclic-dependency": "warning",
+    "delivers-target-not-client": "warning",
+    "client-capability-duplicate": "warning",
+    "legend-ref-unresolved": "warning",
+    "style-column-invalid-value": "warning",
+    "style-column-ignored-non-system-view": "warning",
+    "style-invalid-enum-value": "warning",
+    "style-invalid-hex-color": "warning",
+    "style-missing-length-unit": "warning",
+    "style-invalid-length-unit": "warning",
+    "style-out-of-range": "warning",
+    "style-unknown-property": "warning",
+  };
+
+  for (const [kind, expected] of Object.entries(EXPECTED_SEVERITY) as [
+    WarningKind,
+    WarningSeverity,
+  ][]) {
+    it(`${kind} → ${expected}`, () => {
+      expect(warningSeverity(kind)).toBe(expected);
+    });
+  }
 });

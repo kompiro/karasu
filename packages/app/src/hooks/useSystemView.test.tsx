@@ -22,17 +22,20 @@ const SOURCE_B = `system SysB {
 }`;
 const INVALID_SOURCE = "!!! invalid krs !!!";
 
-// Duplicate domain ID across services — triggers a semantic error (not a parse error).
-// Both services parse successfully, but the duplicate domain ID is flagged as an error
-// in buildNodePathIndex, added in feat(core): domain-to-domain dependency edges (#451).
-const SOURCE_DUPLICATE_DOMAIN = `system SysA {
+// Duplicate node ID under the same parent — triggers a semantic error (not a
+// parse error). Both services parse successfully, but the duplicate service ID
+// under one system is flagged as an error in buildNodePathIndex.
+// (A duplicate *domain* ID across services is no longer an error — it is an
+// informational `domain-dispersal` diagnostic per ADR-20260514-02 — so this
+// fixture uses a duplicate service ID, which still errors.)
+const SOURCE_DUPLICATE_NODE_ID = `system SysA {
   service SvcB {
     label "ServiceB"
     domain DomD {}
   }
-  service SvcC {
-    label "ServiceC"
-    domain DomD {}
+  service SvcB {
+    label "ServiceB again"
+    domain DomE {}
   }
 }`;
 
@@ -272,7 +275,7 @@ organization Acme {
     vi.useRealTimers();
   });
 
-  it("restores diagram after transitioning from semantic error (duplicate domain) back to valid", async () => {
+  it("restores diagram after transitioning from semantic error (duplicate node id) back to valid", async () => {
     vi.useFakeTimers();
     const fs = makeFs(SOURCE_A);
     const { result } = renderHook(() => useSystemView(ENTRY, fs, []));
@@ -281,9 +284,9 @@ organization Acme {
     expect(result.current.svg).not.toBe("");
     expect(result.current.diagnostics.some((d) => d.severity === "error")).toBe(false);
 
-    // Step 1: introduce semantic error (duplicate domain ID)
+    // Step 1: introduce semantic error (duplicate service ID)
     await act(async () => {
-      await fs.writeFile(ENTRY, SOURCE_DUPLICATE_DOMAIN);
+      await fs.writeFile(ENTRY, SOURCE_DUPLICATE_NODE_ID);
       result.current.recompile();
     });
     await act(() => vi.advanceTimersByTimeAsync(300));

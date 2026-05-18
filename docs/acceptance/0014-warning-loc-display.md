@@ -21,7 +21,7 @@ system "Example" {
 }
 ```
 
-2. WarningPanel に `domain "billing" is dispersed` のような警告が表示される
+2. WarningPanel に `domain "billing" appears under multiple services` のような info 通知が表示される（ℹ アイコン）
 3. **確認**: 行番号プレフィックス（`Line N:`）が**表示されない**こと
 
 ### ケース2: loc あり Warning の表示

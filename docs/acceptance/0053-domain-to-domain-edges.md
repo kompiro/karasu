@@ -13,7 +13,7 @@ Verify that domain-level dependency edges are parsed, rendered, and validated co
 
 1. Cross-service domain edges derived as implicit service edges (amber dashed) in the system view
 2. Intra-service domain edges rendered directly in the service drill-down view
-3. Domain ID uniqueness enforced as an error within a system
+3. Duplicate domain ID within a system surfaced as an info `domain-dispersal` note (not an error)
 
 > Unit-test coverage for parser / resolver / view slice behaviour
 > (`pnpm test` in `packages/core`):
@@ -25,7 +25,7 @@ Verify that domain-level dependency edges are parsed, rendered, and validated co
 > - `EdgeDetailPanel` lists each constituent domain edge and can be × dismissed
 > - `ViewSlice.implicitEdgeDetails` carries `DomainEdgeDetail` objects
 > - Intra-service domain edges appear in the service view's `childEdges`; cross-service ones do not
-> - Duplicate domain ID within a system emits an `error` diagnostic; across systems does not
+> - Duplicate domain ID within a system emits an info `domain-dispersal` diagnostic (no error); across systems emits nothing
 > - `edge[implicit]` style sets color `#F59E0B`; sync vs async distinguished by `[sync]` / `[async]`
 > - Sync + async pair produces two separate implicit service edges
 > - `domain-drift.krs` parses cleanly with `OrderDomain → PaymentDomain` edge
@@ -123,9 +123,9 @@ domain OrderDomain {
 
 ---
 
-### Case 4: Duplicate domain ID error within a system
+### Case 4: Duplicate domain ID within a system is an info note, not an error
 
-> ✅ Automated — `packages/e2e/tests/at-0053-domain-to-domain-edges.spec.ts` › `duplicate domain ID within a system surfaces a uniqueness error (Case 4)`
+> ✅ Automated — `packages/e2e/tests/at-0053-domain-to-domain-edges.spec.ts` › `duplicate domain ID within a system surfaces an info note, not an error (Case 4)`
 
 Enter the following source:
 
@@ -140,8 +140,9 @@ system DriftSample {
 }
 ```
 
-- [ ] An **error** diagnostic is shown: `Domain id "SharedDomain" must be unique within a system; found in multiple services`
-- [ ] The system diagram is not rendered (or shows last valid state)
+- [ ] **No error** diagnostic is shown (per ADR-20260514-02 — a dispersed domain is representable)
+- [ ] The system diagram **is** rendered
+- [ ] An **info** note appears in the WarningPanel (ℹ icon): `Domain "SharedDomain" appears under multiple services`
 
 ---
 
@@ -226,3 +227,11 @@ system MixedSystem {
 ```
 
 - [ ] `ServiceA → ServiceB` is rendered as **two** implicit edges — one solid amber, one dashed amber
+
+---
+
+## Related TPLs
+
+| TPL | 適用 |
+|---|---|
+| [TPL-20260514-08](../test-perspectives/TPL-20260514-08-diagnostic-register-fact-vs-style.md) | Case 4 — 同名 domain id の分散は error ではなく `domain-dispersal` info 診断で surface する（register は「事実か流派判断か」で決める） |

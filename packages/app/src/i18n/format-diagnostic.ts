@@ -93,8 +93,6 @@ export function useFormattedDiagnostic(): (d: Diagnostic) => string {
           return t("diagnostic.duplicateOwnerAssignment.message", d.params);
         case "duplicate-team-id":
           return t("diagnostic.duplicateTeamId.message", d.params);
-        case "domain-id-not-unique":
-          return t("diagnostic.domainIdNotUnique.message", d.params);
         case "node-id-multiple-locations":
           return t("diagnostic.nodeIdMultipleLocations.message", d.params);
         case "duplicate-node-id-parent":

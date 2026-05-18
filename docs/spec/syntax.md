@@ -1017,18 +1017,24 @@ This policy exists to tolerate a "not yet decided" state while iterating on the 
 
 ---
 
-## Domain ID uniqueness
+## Domain dispersal
 
-If the same `domain id` appears in multiple `service` blocks within the same `system`, the tool emits an error.
+If the same `domain id` appears in multiple `service` blocks within the same `system`, the tool emits an **informational** `domain-dispersal` diagnostic (info register, not an error). The diagram still renders.
 
 ```
-✖ Error: Domain id "Order" must be unique within a system; found in multiple services
+ℹ domain "Order" appears under multiple services
+  - ECommerce
+  - Legacy
+  DDD sometimes calls cross-service domain reuse a cohesion smell
 ```
 
-Domain edges (`Billing -> Contract`) are resolved by domain ID, so the reference target becomes ambiguous if the ID is not unique.
-This constraint prevents duplicate domain IDs within the same system.
+This follows karasu's "visualize, don't prescribe" stance (see `docs/concepts.md` — "What karasu visualizes vs. what it doesn't prescribe"): a domain shared across services is a structural fact karasu draws truthfully and surfaces, leaving the cohesion judgment to the reader. Compilation is never refused on this ground.
+
+Domain edges (`Billing -> Contract`) are resolved by domain ID. When the same ID is dispersed, navigation (the `nodePathIndex`) keeps the **first occurrence**; the higher-priority entry wins when one side carries a migration annotation (see "Deprecated domain migration").
 
 **Detection scope**: per `system` block.
-The same `domain` name across different `system` blocks is treated as intentionally independent parallel modeling and does not produce an error.
+The same `domain` name across different `system` blocks is treated as intentionally independent parallel modeling and produces no diagnostic.
 
 **Detection key**: the `id` of the `domain`. The `label` (display name) is not used for detection.
+
+> Related TPLs: TPL-20260514-08 — `Diagnostic register reflects "fact vs. style"`

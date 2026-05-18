@@ -972,18 +972,24 @@ system Blog {
 
 ---
 
-## ドメイン ID の一意性
+## ドメイン分散
 
-同じ `domain id` が同一 `system` 内の複数の `service` に登場した場合、ツールがエラーを出す。
+同じ `domain id` が同一 `system` 内の複数の `service` に登場した場合、ツールは **情報的な** `domain-dispersal` 診断（info 段、error ではない）を出す。図はそのまま描画される。
 
 ```
-✖ Error: Domain id "Order" must be unique within a system; found in multiple services
+ℹ domain "Order" は複数の service の配下に登場します
+  - ECommerce
+  - Legacy
+  DDD では同じドメインが複数 service にまたがる状態を凝集性のシグナルとみなすことがあります
 ```
 
-ドメインエッジ（`Billing -> Contract`）の解決は domain ID で行われるため、ID が一意でなければ参照先が曖昧になる。  
-この制約により、同一 system 内では domain ID を重複させることはできない。
+これは karasu の「描くが規定しない」立場（`docs/concepts.md` 「What karasu visualizes vs. what it doesn't prescribe」節）に従う。複数 service に共有された domain は karasu が忠実に描いて通知する構造的事実であり、凝集性の判断は読み手に委ねる。この理由でコンパイルを拒否することはない。
+
+ドメインエッジ（`Billing -> Contract`）の解決は domain ID で行われる。同名 ID が分散している場合、ナビゲーション（`nodePathIndex`）は **最初の登場箇所** を保持する。片側が移行アノテーションを持つときは優先度の高い方が勝つ（「非推奨ドメインの移行」節を参照）。
 
 **検出スコープ**: `system` ブロック単位。
-異なる `system` にまたがる同名 `domain` は組織的に独立した並行モデリングとして扱い、エラーにしない。
+異なる `system` にまたがる同名 `domain` は組織的に独立した並行モデリングとして扱い、診断を出さない。
 
 **検出キー**: `domain` の `id`。`label`（表示名）は検出に使用しない。
+
+> Related TPLs: TPL-20260514-08 — `Diagnostic register reflects "fact vs. style"`

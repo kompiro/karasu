@@ -234,6 +234,27 @@ describe("render — --view system", () => {
 
     expect(stderrSpy.mock.calls.some((args) => String(args[0]).includes("Warning"))).toBe(true);
   });
+
+  it("prints info-severity warnings (domain-dispersal) with an `Info:` prefix", async () => {
+    const filePath = join(tmpDir, "index.krs");
+    await writeFile(filePath, "system { }", "utf-8");
+
+    mockCompileProject.mockResolvedValue({
+      svg: "<svg>system</svg>",
+      diagnostics: [],
+      warnings: [{ kind: "domain-dispersal", params: { domainId: "Order", services: ["A", "B"] } }],
+    });
+    const stderrSpy = vi.spyOn(process.stderr, "write").mockImplementation(() => true);
+    vi.spyOn(process.stdout, "write").mockImplementation(() => true);
+
+    await render(filePath, { view: "system" });
+
+    // domain-dispersal is info register (ADR-20260514-02): the CLI labels it
+    // `Info:`, not `Warning:`.
+    const lines = stderrSpy.mock.calls.map((args) => String(args[0]));
+    expect(lines.some((l) => l.startsWith("Info:") && l.includes("Order"))).toBe(true);
+    expect(lines.some((l) => l.startsWith("Warning:") && l.includes("Order"))).toBe(false);
+  });
 });
 
 // ── render: --format drawio ───────────────────────────────────────────────────

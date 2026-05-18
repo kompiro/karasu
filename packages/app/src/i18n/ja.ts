@@ -106,8 +106,9 @@ export const ja: Partial<Translations> = {
 
   // Warnings (rendered in the WarningPanel)
   "warning.domainDispersal.message": ({ domainId }) =>
-    `domain "${domainId}" が複数の service に分散しています`,
-  "warning.domainDispersal.checkCohesion": "ドメインの凝集性を確認してください",
+    `domain "${domainId}" は複数の service の配下に登場します`,
+  "warning.domainDispersal.checkCohesion":
+    "DDD では同じドメインが複数 service にまたがる状態を凝集性のシグナルとみなすことがあります",
   "warning.unassignedDomain.message": ({ display }) =>
     `domain "${display}" はどの service にも割り当てられていません`,
   "warning.unassignedUsecase.message": ({ usecaseId }) =>
@@ -237,8 +238,6 @@ export const ja: Partial<Translations> = {
   "diagnostic.duplicateOwnerAssignment.message": ({ nodeId, existingTeam }) =>
     `"${nodeId}" はすでに team "${existingTeam}" によって所有されています。複数の team が同じ service / domain を所有することはできません`,
   "diagnostic.duplicateTeamId.message": ({ teamId }) => `team id "${teamId}" が重複しています`,
-  "diagnostic.domainIdNotUnique.message": ({ domainId }) =>
-    `domain id "${domainId}" は system 内で一意である必要がありますが、複数の service で検出されました`,
   "diagnostic.nodeIdMultipleLocations.message": ({ nodeId }) =>
     `ノード id "${nodeId}" が複数箇所に出現しています。ナビゲーションには最初のパスが使われます`,
   "diagnostic.duplicateNodeIdParent.message": ({ nodeId }) =>

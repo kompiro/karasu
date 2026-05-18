@@ -251,22 +251,21 @@ still allowing the underlying facts to be modeled.
 
 ## Domain dispersal detection
 
-From a DDD standpoint, the same domain appearing across multiple services is a design warning sign.
-karasu detects this automatically and surfaces a warning.
+When the same `domain` id appears under multiple `service` blocks within a single `system`, karasu surfaces this as an **`info`-register** observation. Per the "What karasu visualizes vs. what it doesn't prescribe" section above, the diagnostic states the fact and leaves the judgment to the reader — it does not assert that the configuration is wrong.
 
 ```
-⚠ Warning: domain "Order" is dispersed across multiple services
+ℹ domain "Order" appears under multiple services
   - ECommerce
   - Legacy
-  Check the cohesion of the domain.
+  DDD sometimes calls cross-service domain reuse a cohesion smell
 ```
 
 ### Detection scope (design direction — implementation tracked in #237)
 
-Detection is performed **within a `system` block**. Because `system` represents an organizational ownership boundary, the same domain name appearing across different `system` blocks is treated as **intentional parallel modeling** and is not warned about.
+Detection is performed **within a `system` block**. Because `system` represents an organizational ownership boundary, the same domain name appearing across different `system` blocks is treated as **intentional parallel modeling** and is not flagged.
 
 ```krs
-// No warning — different systems are independent organizational boundaries
+// No diagnostic — different systems are independent organizational boundaries
 system LegacyPlatform {
   service OldBilling { domain Payment { ... } }
 }
@@ -274,10 +273,10 @@ system NewPlatform {
   service PaymentService { domain Payment { ... } }
 }
 
-// Warning — the same system has duplicate domain ids
+// info diagnostic — the same system has duplicate domain ids
 system ECPlatform {
   service ECommerce { domain Order { ... } }
-  service Legacy    { domain Order { ... } }  // ← warning
+  service Legacy    { domain Order { ... } }  // ← info
 }
 ```
 

@@ -39,6 +39,6 @@ the high-priority components identified in [ADR-20260326-04](../adr/20260326-04-
 | 10 | Renders nothing when the warnings list is empty | `WarningPanel.test.tsx` | |
 | 11 | Clicking the header collapses the warning list | `WarningPanel.test.tsx` | |
 | 12 | Clicking the header again expands the warning list | `WarningPanel.test.tsx` | |
-| 13 | A warning with kind `domain-dispersal` or `style-conflict` shows the ⚠ icon (U+26A0) | `WarningPanel.test.tsx` | |
-| 14 | A warning with kind `missing-runtime` or `missing-realizes` shows the ℹ icon (U+2139) | `WarningPanel.test.tsx` | |
-| 15 | A warning with an unknown kind falls back to the ⚠ icon | `WarningPanel.test.tsx` | |
+| 13 | A warning-severity kind (e.g. `style-conflict`, `invalid-owns`) shows the ⚠ icon (U+26A0) | `WarningPanel.test.tsx` | |
+| 14 | An info-severity kind (`domain-dispersal`, `missing-runtime`, `missing-realizes`) shows the ℹ icon (U+2139) and the row carries `warning-item--info` | `WarningPanel.test.tsx` | |
+| 15 | A warning with an unknown kind falls back to the ⚠ icon (default warning severity) | `WarningPanel.test.tsx` | |

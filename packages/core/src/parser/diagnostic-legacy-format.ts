@@ -98,8 +98,6 @@ export function formatDiagnostic(d: Diagnostic): string {
       return `"${d.params.nodeId}" is already owned by team "${d.params.existingTeam}"; multiple teams cannot own the same service or domain`;
     case "duplicate-team-id":
       return `Duplicate team id "${d.params.teamId}"`;
-    case "domain-id-not-unique":
-      return `Domain id "${d.params.domainId}" must be unique within a system; found in multiple services`;
     case "node-id-multiple-locations":
       return `Node id "${d.params.nodeId}" appears in multiple locations; first path is used for navigation`;
     case "duplicate-node-id-parent":

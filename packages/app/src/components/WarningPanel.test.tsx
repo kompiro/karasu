@@ -140,35 +140,33 @@ describe("WarningPanel", () => {
     expect(container.querySelector(".warning-list")).not.toBeNull();
   });
 
-  it("domain-dispersal and style-conflict show the ⚠ icon (U+26A0)", () => {
+  it("warning-severity kinds (style-conflict, invalid-owns) show the ⚠ icon (U+26A0)", () => {
     const { container, rerender } = render(
-      <WarningPanel warnings={[makeWarning("domain-dispersal")]} />,
+      <WarningPanel warnings={[makeWarning("style-conflict")]} />,
     );
     expect(container.querySelector(".warning-icon")?.textContent).toBe("\u26A0");
 
-    rerender(<WarningPanel warnings={[makeWarning("style-conflict")]} />);
+    rerender(<WarningPanel warnings={[makeWarning("invalid-owns")]} />);
     expect(container.querySelector(".warning-icon")?.textContent).toBe("\u26A0");
   });
 
-  it("missing-runtime and missing-realizes show the ℹ icon (U+2139)", () => {
+  it("info-severity kinds (domain-dispersal, missing-runtime, missing-realizes) show the ℹ icon (U+2139)", () => {
     const { container, rerender } = render(
-      <WarningPanel warnings={[makeWarning("missing-runtime")]} />,
+      <WarningPanel warnings={[makeWarning("domain-dispersal")]} />,
     );
+    expect(container.querySelector(".warning-icon")?.textContent).toBe("\u2139");
+    expect(container.querySelector(".warning-item")?.className).toContain("warning-item--info");
+
+    rerender(<WarningPanel warnings={[makeWarning("missing-runtime")]} />);
     expect(container.querySelector(".warning-icon")?.textContent).toBe("\u2139");
 
     rerender(<WarningPanel warnings={[makeWarning("missing-realizes")]} />);
     expect(container.querySelector(".warning-icon")?.textContent).toBe("\u2139");
   });
 
-  it("an unknown kind falls back to the ⚠ icon", () => {
-    const { container } = render(<WarningPanel warnings={[makeWarning("invalid-owns")]} />);
-    expect(container.querySelector(".warning-icon")?.textContent).toBe("\u26A0");
-  });
-
   it("renders the formatted message (via compat bridge) without prefix when loc is absent", () => {
     const { container } = render(<WarningPanel warnings={[makeWarning("domain-dispersal")]} />);
     const item = container.querySelector(".warning-item")!;
-    // The formatWarning compat bridge renders "domain \"<id>\" が複数の service に分散しています"
     expect(item.textContent).toContain("test-domain");
     expect(item.textContent).not.toContain("Line");
   });
@@ -206,8 +204,10 @@ describe("WarningPanel — localization (Phase D.1)", () => {
     );
     const item = container.querySelector(".warning-item");
     expect(item?.textContent).toContain("Domain");
-    expect(item?.textContent).toContain("is dispersed");
-    expect(item?.textContent).toContain("Review the domain's cohesion");
+    expect(item?.textContent).toContain("appears under multiple services");
+    expect(item?.textContent).toContain(
+      "DDD sometimes calls cross-service domain reuse a cohesion smell",
+    );
   });
 
   it("renders domain-dispersal in Japanese when locale is 'ja'", () => {
@@ -216,8 +216,10 @@ describe("WarningPanel — localization (Phase D.1)", () => {
       "ja",
     );
     const item = container.querySelector(".warning-item");
-    expect(item?.textContent).toContain("複数の service に分散しています");
-    expect(item?.textContent).toContain("ドメインの凝集性を確認してください");
+    expect(item?.textContent).toContain("複数の service の配下に登場します");
+    expect(item?.textContent).toContain(
+      "DDD では同じドメインが複数 service にまたがる状態を凝集性のシグナルとみなすことがあります",
+    );
   });
 
   it("renders missing-runtime in the active locale", () => {
