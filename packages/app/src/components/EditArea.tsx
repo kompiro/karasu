@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { EditPane } from "./EditPane.js";
+import { useCommand } from "../keyboard/use-command.js";
 
 import type { CSSProperties, ReactNode } from "react";
 import type { editor } from "monaco-editor";
@@ -137,6 +138,7 @@ export function EditArea({
 
   return (
     <div className={className} style={style}>
+      {hasSidebar && <SidebarToggleCommand onToggle={() => setSidebarCollapsed((v) => !v)} />}
       {hasSidebar && !previewFocused && (
         <nav className="activity-bar" aria-label="Activity Bar">
           <ActivityBarButton
@@ -215,6 +217,22 @@ export function EditArea({
       />
     </div>
   );
+}
+
+/**
+ * Registers the `mod+B` "Toggle Sidebar" keyboard command. Rendered only when
+ * the sidebar exists, so the command is absent in modes without one. Renders
+ * nothing. Expanding restores the last `sidebarView` (it is separate state).
+ */
+function SidebarToggleCommand({ onToggle }: { onToggle: () => void }) {
+  useCommand({
+    id: "view.toggleSidebar",
+    title: "Toggle Sidebar",
+    keybinding: "mod+b",
+    whenTextInputFocused: "skip",
+    run: onToggle,
+  });
+  return null;
 }
 
 interface ActivityBarButtonProps {

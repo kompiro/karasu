@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { describe, it, expect, vi, afterEach } from "vitest";
 import { render, fireEvent, cleanup } from "@testing-library/react";
+import type { ReactElement } from "react";
 
 afterEach(cleanup);
 
@@ -10,6 +11,18 @@ vi.mock("./EditPane.js", () => ({
 }));
 
 import { EditArea } from "./EditArea.js";
+import { CommandProvider } from "../keyboard/command-context.js";
+import { KeyboardShortcutDispatcher } from "../keyboard/KeyboardShortcutDispatcher.js";
+
+/** Wrap with the keyboard-shortcut infrastructure so `mod+B` is live. */
+function renderWithShortcuts(ui: ReactElement) {
+  return render(
+    <CommandProvider>
+      <KeyboardShortcutDispatcher />
+      {ui}
+    </CommandProvider>,
+  );
+}
 
 const defaultProps = {
   previewFocused: false,
@@ -140,6 +153,48 @@ describe("EditArea", () => {
     // Clicking the inactive Outline button re-opens the sidebar on that view.
     fireEvent.click(getByRole("button", { name: /Show outline/ }));
     expect(container.querySelector(".sidebar-area")).toBeTruthy();
+    expect(getByText("AST Outline")).toBeTruthy();
+  });
+
+  // TPL-20260518-01: an involutive toggle must render both result states.
+  it("toggles the sidebar with the mod+B shortcut", () => {
+    const { container } = renderWithShortcuts(
+      <EditArea {...defaultProps} sidebarContent={<div>File Tree</div>} />,
+    );
+    // Collapse.
+    fireEvent.keyDown(document, { key: "b", ctrlKey: true });
+    expect(container.querySelector(".sidebar-area")).toBeNull();
+    // Expand.
+    fireEvent.keyDown(document, { key: "b", ctrlKey: true });
+    expect(container.querySelector(".sidebar-area")).toBeTruthy();
+  });
+
+  it("ignores the mod+B shortcut while a text input is focused", () => {
+    const { container } = renderWithShortcuts(
+      <EditArea {...defaultProps} sidebarContent={<div>File Tree</div>} />,
+    );
+    const textarea = document.createElement("textarea");
+    document.body.appendChild(textarea);
+    textarea.focus();
+    fireEvent.keyDown(document, { key: "b", ctrlKey: true });
+    expect(container.querySelector(".sidebar-area")).toBeTruthy(); // unchanged
+    textarea.remove();
+  });
+
+  it("restores the previously active sidebar view after a shortcut collapse/expand", () => {
+    const { container, getByRole, getByText } = renderWithShortcuts(
+      <EditArea
+        {...defaultProps}
+        sidebarContent={<div>File Tree</div>}
+        outlineContent={<div>AST Outline</div>}
+      />,
+    );
+    fireEvent.click(getByRole("button", { name: /Show outline/ }));
+    expect(getByText("AST Outline")).toBeTruthy();
+    // Collapse then expand via the shortcut.
+    fireEvent.keyDown(document, { key: "b", ctrlKey: true });
+    expect(container.querySelector(".sidebar-area")).toBeNull();
+    fireEvent.keyDown(document, { key: "b", ctrlKey: true });
     expect(getByText("AST Outline")).toBeTruthy();
   });
 });
