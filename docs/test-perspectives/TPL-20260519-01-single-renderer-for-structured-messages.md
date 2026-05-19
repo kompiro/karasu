@@ -59,10 +59,11 @@ consumer ごとに表示が割れる。
 - [ ] 新しい consumer（app / lsp / cli / その他）は、既存の共有 renderer
       （`@karasu-tools/i18n` の `renderWarning` / `renderDiagnostic`）を呼んでいるか。
       独自の文字列化を再実装していないか
-- [ ] やむを得ず別の文字列化関数を残す場合（例: core 内部のエラーメッセージ —
-      core は `@karasu-tools/i18n` に依存できないため）、それが**ユーザー向けでない**
-      ことを確認し、共有 renderer と文言が乖離しても害がない範囲に閉じているか。
-      その旨をコード上のコメントで明示し、この TPL を参照しているか
+- [ ] `@karasu-tools/i18n` を呼べない場所（core 内部のエラーメッセージ、
+      core のテストなど。core は i18n に依存できない）で `kind` / `code` を
+      参照したくなったとき、文字列化関数を再実装していないか。`d.code` /
+      `d.params` を直接使う（内部エラーなら `code` を出す、テストなら `code` /
+      `params` を assert する）こと
 - [ ] union に `kind` / `code` を追加したとき、すべての renderer が網羅性チェック
       （`never` 検査など）で更新漏れを検出できるか
 
@@ -74,10 +75,12 @@ consumer ごとに表示が割れる。
   `LANG` / `LC_ALL` でそれぞれ `t` を束ねて同じ renderer を呼ぶ。
 - **網羅性の強制**: 各 renderer の `switch` 末尾に `const _: never = x` を置き、
   `kind` / `code` 追加時にコンパイルエラーで更新漏れを検出する。
-- **例外的に残す文字列化の隔離**: `packages/core/src/parser/diagnostic-format.ts`
-  は core 内部用（built-in stylesheet のパースエラー Error、parser テスト）に
-  限定して残してある。`@karasu-tools/i18n` は core に依存するため core から
-  逆参照できないことが理由で、ユーザー向け出力には使わない。
+- **i18n を呼べない場所では構造化フィールドを直接使う**: core 内部のエラー
+  メッセージや core のテストは `@karasu-tools/i18n` を呼べない（i18n が core
+  に依存するため）。ここでは文字列化関数を再実装せず、`d.code` をそのまま
+  出す / `d.code` ・ `d.params` を assert する。#1417 の stage 4 で core から
+  `formatWarning` / `formatDiagnostic` を完全に撤去し、parser テストは
+  `formatDiagnostic(d)).toContain(...)` を `code` / `params` の検証に置換した。
 
 ## 関連テスト
 
