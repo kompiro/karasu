@@ -201,3 +201,31 @@ Verify that the karasu VSCode extension provides standard LSP capabilities on to
 
 - Cursor movement highlights the corresponding SVG node (the
   `<g data-node-id="…">` element gains `class="karasu-highlighted"`)
+
+---
+
+### AT-0037-10: Resolver warnings surface in the editor (domain-dispersal as info)
+
+> Added with #1413 — the LSP now publishes resolver-level warnings, not just
+> parser diagnostics.
+
+**Steps:**
+
+1. Open a `.krs` file with the following content:
+
+   ```krs
+   system EC {
+     service ECommerce { domain Order {} }
+     service Legacy { domain Order {} }
+   }
+   ```
+
+**Expected:**
+
+- An **Information**-severity diagnostic (blue underline, not red) appears on
+  the dispersed `domain Order`, sourced `karasu`. It does **not** block
+  anything — there is no error squiggle (ADR-20260514-02: a dispersed domain
+  is representable).
+- Introducing a genuine resolver warning instead — e.g. a top-level
+  `domain Orphan {}` with no owning service — shows a **Warning**-severity
+  diagnostic.
