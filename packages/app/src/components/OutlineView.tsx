@@ -1,17 +1,30 @@
 import { renderPictogram } from "@karasu-tools/core";
-import type { KrsNode, SystemNode } from "@karasu-tools/core";
+
+/**
+ * View-agnostic node the Outline renders. The three diagram ASTs
+ * (system / deploy / org) are mapped to `OutlineNode[]` by the adapters
+ * in `outline-adapters.ts`, so this component stays presentational and
+ * independent of any one AST shape.
+ */
+export interface OutlineNode {
+  id: string;
+  label?: string;
+  /** Drives the icon — a `KrsNode` kind, a `DeployNodeKind`, or an org kind. */
+  kind: string;
+  children: OutlineNode[];
+}
 
 interface OutlineViewProps {
-  /** Resolved system AST to outline. */
-  systems: SystemNode[];
+  /** Nodes to outline — already mapped to the active view's AST. */
+  nodes: OutlineNode[];
   /** Currently highlighted node id (shared with the preview). */
   highlightedNodeId: string | null;
   /** Single click — highlight the node in the preview. */
   onSelectNode: (nodeId: string) => void;
   /**
    * Double click — drill the preview down to reveal the node. `ancestorIds`
-   * is the chain of ancestor node ids (root system first, parent last),
-   * used to resolve a drill target for nodes without their own viewPath.
+   * is the chain of ancestor node ids (root first, parent last), used to
+   * resolve a drill target for nodes without their own viewPath.
    */
   onActivateNode: (nodeId: string, ancestorIds: string[]) => void;
 }
@@ -21,10 +34,10 @@ interface OutlineViewProps {
  * `ICON_THEME_STYLE_SOURCE` (`packages/core/src/builtins/icon-theme.ts`) so
  * the Outline shows the same pictograms the preview draws in Icon Mode.
  * Tag-driven variants (client subtypes, `resource[table]`, …) are not
- * resolved here — the base kind icon is used. `system` has no icon card in
- * Icon Mode either, so it falls back to a glyph.
+ * resolved here — the base kind icon is used. Kinds without an Icon Mode
+ * icon (`system`, deploy / org kinds) fall back to a glyph.
  */
-const KIND_ICON_NAME: Partial<Record<KrsNode["kind"], string>> = {
+const KIND_ICON_NAME: Record<string, string> = {
   service: "service",
   client: "client",
   user: "user-card",
@@ -39,20 +52,26 @@ const KIND_ICON_NAME: Partial<Record<KrsNode["kind"], string>> = {
   bucket: "cloud-card",
 };
 
-/** Fallback glyph for kinds without an Icon Mode icon (i.e. `system`). */
+/** Fallback glyph for kinds without an Icon Mode icon. */
 const KIND_GLYPH: Record<string, string> = {
   system: "▣",
+  // org kinds
+  organization: "▣",
+  team: "▦",
+  member: "○",
+  // deploy kinds
+  "deploy-block": "▣",
 };
 
 const ICON_SIZE = 16;
 
 /**
  * Pure presentational layer for the Outline sidebar. Recursively renders the
- * resolved AST (`SystemNode[]` and their nested children); selecting an entry
- * flows back through `onSelectNode`. Has no dependency on app state.
+ * `OutlineNode` tree; selecting an entry flows back through `onSelectNode`.
+ * Has no dependency on app state or any specific AST shape.
  */
 export function OutlineView({
-  systems,
+  nodes,
   highlightedNodeId,
   onSelectNode,
   onActivateNode,
@@ -60,13 +79,13 @@ export function OutlineView({
   return (
     <div className="outline-view">
       <div className="outline-content">
-        {systems.length === 0 ? (
+        {nodes.length === 0 ? (
           <p className="outline-empty">No structure to outline.</p>
         ) : (
-          systems.map((system) => (
+          nodes.map((node) => (
             <OutlineItem
-              key={system.id}
-              node={system}
+              key={node.id}
+              node={node}
               ancestors={[]}
               depth={0}
               highlightedNodeId={highlightedNodeId}
@@ -81,8 +100,8 @@ export function OutlineView({
 }
 
 interface OutlineItemProps {
-  node: KrsNode;
-  /** Ancestor node ids (root system first, parent last) — excludes this node. */
+  node: OutlineNode;
+  /** Ancestor node ids (root first, parent last) — excludes this node. */
   ancestors: string[];
   depth: number;
   highlightedNodeId: string | null;

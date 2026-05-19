@@ -17,7 +17,8 @@ import {
 } from "@karasu-tools/core";
 import { SnapshotManager } from "../fs/snapshot-manager.js";
 import { EditArea } from "./EditArea.js";
-import { OutlineView } from "./OutlineView.js";
+import { OutlineView, type OutlineNode } from "./OutlineView.js";
+import { toDeployOutline, toOrgOutline, toSystemOutline } from "./outline-adapters.js";
 import { PreviewColumn } from "./PreviewColumn.js";
 import { downloadSvg } from "../utils/download-svg.js";
 import { downloadDrawio } from "../utils/download-drawio.js";
@@ -164,12 +165,30 @@ export function AppShell({
   const nodeMetadata =
     activeView === "deploy" ? views.deploy.nodeMetadata : views.system.nodeMetadata;
 
-  // Outline always reflects the system AST, so switch to the system view
-  // first if another view is active (deploy/org/matrix). Follow-up: #1410.
+  // The Outline reflects the active view's AST (Issue #1410): the system AST
+  // for system/matrix, the deploy block tree for deploy, the org AST for org.
+  const outlineNodes = useMemo<OutlineNode[]>(() => {
+    switch (activeView) {
+      case "deploy":
+        return toDeployOutline(views.deploy.deployTree);
+      case "org":
+        return toOrgOutline(views.org.organizations);
+      default:
+        // system and matrix both outline the system AST.
+        return toSystemOutline(views.system.resolvedSystems);
+    }
+  }, [activeView, views.deploy.deployTree, views.org.organizations, views.system.resolvedSystems]);
+
   const systemNodeMetadata = views.system.nodeMetadata;
-  const highlightSystemNode = useCallback(
+  const orgPathIndex = views.orgPathIndex;
+
+  // Single click — highlight the node in the preview (no navigation). The
+  // Outline already reflects the active view, so the highlight stays in it.
+  // matrix is the exception: it has no per-node highlight, so a click drops
+  // to the system view it derives from.
+  const handleOutlineSelect = useCallback(
     (nodeId: string) => {
-      if (activeView !== "system") {
+      if (activeView === "matrix") {
         dispatch({ type: "SET_ACTIVE_VIEW", activeView: "system", highlightNodeId: nodeId });
       } else {
         dispatch({ type: "SET_HIGHLIGHTED_NODE", nodeId });
@@ -178,17 +197,40 @@ export function AppShell({
     [activeView, dispatch],
   );
 
-  // Single click — highlight the node in the preview (no navigation).
-  const handleOutlineSelect = highlightSystemNode;
-
   // Double click — drill the preview down to reveal the node, then highlight
-  // it. Only service/domain/infra nodes carry their own viewPath; for leaf
-  // nodes (usecase/resource/user/client) drill into the nearest ancestor that
-  // does, so the node renders as a child there. Falls back to the root view.
+  // it. Drill resolution is per view: system/matrix walk `nodeMetadata.viewPath`
+  // (leaf nodes fall back to the nearest ancestor that carries one), org walks
+  // `orgPathIndex`; deploy has no drill path — it switches the selected block.
   const handleOutlineActivate = useCallback(
     (nodeId: string, ancestorIds: string[]) => {
-      highlightSystemNode(nodeId);
+      if (activeView === "deploy") {
+        // The node's deploy block is the top-level ancestor, or the node
+        // itself when a block row is activated.
+        const blockId = ancestorIds[0] ?? nodeId;
+        dispatch({ type: "SET_SELECTED_DEPLOY_BLOCK", id: blockId });
+        dispatch({ type: "SET_HIGHLIGHTED_NODE", nodeId });
+        return;
+      }
       const candidates = [nodeId, ...[...ancestorIds].reverse()];
+      if (activeView === "org") {
+        let drillPath: string[] = [];
+        for (const id of candidates) {
+          const vp = orgPathIndex.get(id);
+          if (vp) {
+            drillPath = vp;
+            break;
+          }
+        }
+        dispatch({ type: "SET_HIGHLIGHTED_NODE", nodeId });
+        navigateViewPath(drillPath);
+        return;
+      }
+      // system / matrix
+      if (activeView === "matrix") {
+        dispatch({ type: "SET_ACTIVE_VIEW", activeView: "system", highlightNodeId: nodeId });
+      } else {
+        dispatch({ type: "SET_HIGHLIGHTED_NODE", nodeId });
+      }
       let drillPath: string[] = [];
       for (const id of candidates) {
         const vp = systemNodeMetadata.get(id)?.viewPath;
@@ -199,7 +241,7 @@ export function AppShell({
       }
       navigateViewPath(drillPath);
     },
-    [highlightSystemNode, navigateViewPath, systemNodeMetadata],
+    [activeView, dispatch, navigateViewPath, systemNodeMetadata, orgPathIndex],
   );
 
   const handleEditorChange = useCallback(
@@ -448,7 +490,7 @@ export function AppShell({
           outlineContent={
             sidebarContent ? (
               <OutlineView
-                systems={views.system.resolvedSystems}
+                nodes={outlineNodes}
                 highlightedNodeId={highlightedNodeId}
                 onSelectNode={handleOutlineSelect}
                 onActivateNode={handleOutlineActivate}

@@ -186,7 +186,7 @@ export { ImportResolver, type ResolvedProject } from "./fs/import-resolver.js";
 export type { Project } from "./fs/project.js";
 export { normalizePath, resolvePath, dirname, basename, extname } from "./fs/path-utils.js";
 
-import type { ParseResult, OrganizationBlock, SystemNode } from "./types/ast.js";
+import type { ParseResult, OrganizationBlock, SystemNode, DeployBlock } from "./types/ast.js";
 import type { KrsFile } from "./types/ast.js";
 import type { StyleSheet, ResolvedStyles } from "./types/style.js";
 import type { Warning } from "./types/warnings.js";
@@ -323,6 +323,12 @@ export interface DeployCompileResult {
   diagnostics: Diagnostic[];
   nodeMetadata: Map<string, NodeMetadata>;
   deployBlocks: DeployBlockInfo[];
+  /**
+   * All deploy blocks with their nodes, as parsed. Unlike the rendered
+   * `svg` (one selected block) this carries the full tree so consumers
+   * such as the App Outline can list every block. Flat: block → nodes.
+   */
+  deployTree: DeployBlock[];
 }
 
 export interface OrgCompileResult {
@@ -477,7 +483,15 @@ function _compileFromPreparedInput(
       viewScope: "deploy",
     });
     const nodeMetadata = buildDeployNodeMetadata(deploySliceForStyle);
-    return { diagramType: "deploy", svg, warnings, diagnostics, nodeMetadata, deployBlocks };
+    return {
+      diagramType: "deploy",
+      svg,
+      warnings,
+      diagnostics,
+      nodeMetadata,
+      deployBlocks,
+      deployTree: krsFile.deploys,
+    };
   }
 
   // system (default)

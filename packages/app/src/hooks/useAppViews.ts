@@ -7,6 +7,7 @@ import type {
   SystemNode,
   NodeMetadata,
   DeployBlockInfo,
+  DeployBlock,
   Warning,
   Diagnostic,
   NodeDiffMeta,
@@ -75,6 +76,8 @@ interface DeployViewBundle {
   diagnostics: Diagnostic[];
   nodeMetadata: Map<string, NodeMetadata>;
   deployBlocks: DeployBlockInfo[];
+  /** All deploy blocks with their nodes — source for the App Outline. */
+  deployTree: DeployBlock[];
 }
 
 interface OrgViewBundle {
@@ -176,6 +179,7 @@ export function useAppViews(args: UseAppViewsArgs): UseAppViewsResult {
     diagnostics: deployDiagnostics,
     nodeMetadata: deployNodeMetadata,
     deployBlocks,
+    deployTree,
     recompile: recompileDeploy,
   } = useDeployView(
     effEntryPath,
@@ -292,6 +296,7 @@ export function useAppViews(args: UseAppViewsArgs): UseAppViewsResult {
       diagnostics: deployDiagnostics,
       nodeMetadata: deployNodeMetadata,
       deployBlocks,
+      deployTree,
     },
     org: {
       svg: orgSvg,

@@ -1,41 +1,26 @@
 // @vitest-environment jsdom
 import { describe, it, expect, vi, afterEach } from "vitest";
 import { render, screen, fireEvent, cleanup } from "@testing-library/react";
-import { OutlineView } from "./OutlineView.js";
+import { OutlineView, type OutlineNode } from "./OutlineView.js";
 import { clearRegistry, loadAndRegisterIcon } from "@karasu-tools/core";
-import type { KrsNode, SystemNode } from "@karasu-tools/core";
 
 afterEach(() => {
   cleanup();
   clearRegistry();
 });
 
-const LOC = {
-  start: { line: 1, column: 1, offset: 0 },
-  end: { line: 1, column: 1, offset: 0 },
-};
-
-function node(kind: KrsNode["kind"], id: string, children: KrsNode[] = []): KrsNode {
-  return {
-    kind,
-    id,
-    tags: [],
-    annotations: [],
-    children,
-    edges: [],
-    loc: LOC,
-    properties: { links: [] },
-  } as KrsNode;
+function node(kind: string, id: string, children: OutlineNode[] = []): OutlineNode {
+  return { kind, id, children };
 }
 
 /** A system with a nested service that owns a domain. */
-const sampleSystems: SystemNode[] = [
-  node("system", "Shop", [node("service", "API", [node("domain", "Orders")])]) as SystemNode,
+const sampleNodes: OutlineNode[] = [
+  node("system", "Shop", [node("service", "API", [node("domain", "Orders")])]),
 ];
 
 function renderView(overrides: Partial<Parameters<typeof OutlineView>[0]> = {}) {
   const props: Parameters<typeof OutlineView>[0] = {
-    systems: sampleSystems,
+    nodes: sampleNodes,
     highlightedNodeId: null,
     onSelectNode: vi.fn<(id: string) => void>(),
     onActivateNode: vi.fn<(id: string, ancestors: string[]) => void>(),
@@ -45,7 +30,7 @@ function renderView(overrides: Partial<Parameters<typeof OutlineView>[0]> = {}) 
 }
 
 describe("OutlineView", () => {
-  it("recursively renders systems and their nested children", () => {
+  it("recursively renders nodes and their nested children", () => {
     renderView();
     expect(screen.getByText("Shop")).toBeTruthy();
     expect(screen.getByText("API")).toBeTruthy();
@@ -53,7 +38,7 @@ describe("OutlineView", () => {
   });
 
   it("shows an empty message when there is no structure", () => {
-    const { container } = renderView({ systems: [] });
+    const { container } = renderView({ nodes: [] });
     expect(container.querySelector(".outline-empty")).toBeTruthy();
     expect(container.querySelector(".outline-item")).toBeNull();
   });
@@ -71,7 +56,7 @@ describe("OutlineView", () => {
     expect(props.onActivateNode).toHaveBeenCalledWith("Orders", ["Shop", "API"]);
   });
 
-  it("passes an empty ancestor chain when a top-level system is activated", () => {
+  it("passes an empty ancestor chain when a top-level node is activated", () => {
     const { props } = renderView();
     fireEvent.doubleClick(screen.getByText("Shop"));
     expect(props.onActivateNode).toHaveBeenCalledWith("Shop", []);
@@ -85,10 +70,30 @@ describe("OutlineView", () => {
   });
 
   it("prefers the label over the id when present", () => {
-    const labelled = node("system", "Shop") as SystemNode;
-    labelled.label = "Online Shop";
-    renderView({ systems: [labelled] });
+    const labelled: OutlineNode = {
+      kind: "system",
+      id: "Shop",
+      label: "Online Shop",
+      children: [],
+    };
+    renderView({ nodes: [labelled] });
     expect(screen.getByText("Online Shop")).toBeTruthy();
+  });
+
+  it("renders deploy and org node kinds with a glyph fallback", () => {
+    const { container } = renderView({
+      nodes: [
+        node("deploy-block", "prod", [node("lambda", "ingest")]),
+        node("organization", "Corp", [node("team", "Platform", [node("member", "alice")])]),
+      ],
+    });
+    // All these kinds lack an Icon Mode pictogram → glyph fallback, no <svg>.
+    for (const id of ["prod", "ingest", "Corp", "Platform", "alice"]) {
+      const item = [...container.querySelectorAll(".outline-item")].find((el) =>
+        el.textContent?.includes(id),
+      );
+      expect(item?.querySelector(".outline-item__icon--glyph")).toBeTruthy();
+    }
   });
 
   it("renders the Icon Mode pictogram for a node kind whose icon is registered", () => {
@@ -100,7 +105,7 @@ describe("OutlineView", () => {
       true,
     );
     const { container } = renderView({
-      systems: [node("system", "Shop", [node("service", "API")]) as SystemNode],
+      nodes: [node("system", "Shop", [node("service", "API")])],
     });
     const apiItem = [...container.querySelectorAll(".outline-item")].find((el) =>
       el.textContent?.includes("API"),
@@ -110,7 +115,7 @@ describe("OutlineView", () => {
   });
 
   it("falls back to a glyph for kinds without a registered icon", () => {
-    const { container } = renderView({ systems: [node("system", "Shop") as SystemNode] });
+    const { container } = renderView({ nodes: [node("system", "Shop")] });
     const systemItem = container.querySelector(".outline-item");
     expect(systemItem?.querySelector(".outline-item__icon--glyph")).toBeTruthy();
     expect(systemItem?.querySelector("svg")).toBeNull();
