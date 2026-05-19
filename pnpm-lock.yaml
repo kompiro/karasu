@@ -60,6 +60,9 @@ importers:
       '@karasu-tools/core':
         specifier: workspace:*
         version: link:../core
+      '@karasu-tools/i18n':
+        specifier: workspace:*
+        version: link:../i18n
       '@monaco-editor/react':
         specifier: ^4.7.0
         version: 4.7.0(monaco-editor@0.55.1)(react-dom@19.2.5(react@19.2.5))(react@19.2.5)
@@ -191,6 +194,25 @@ importers:
       '@playwright/test':
         specifier: ^1.49.0
         version: 1.59.1
+
+  packages/i18n:
+    dependencies:
+      '@karasu-tools/core':
+        specifier: workspace:*
+        version: link:../core
+    devDependencies:
+      '@types/node':
+        specifier: ^25.6.0
+        version: 25.6.0
+      '@vitest/coverage-v8':
+        specifier: ^4.1.4
+        version: 4.1.4(vitest@4.1.4)
+      typescript:
+        specifier: ^6.0.3
+        version: 6.0.3
+      vitest:
+        specifier: ^4.1.4
+        version: 4.1.4(@types/node@25.6.0)(@vitest/coverage-v8@4.1.4)(jsdom@29.0.2)(vite@8.0.9(@types/node@25.6.0)(esbuild@0.28.0)(jiti@2.6.1)(tsx@4.21.0)(yaml@2.8.3))
 
   packages/lsp:
     dependencies:

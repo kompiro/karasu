@@ -7,6 +7,9 @@
     "packages/core": {
       "project": ["src/**/*.ts", "!src/**/*.test.ts"]
     },
+    "packages/i18n": {
+      "project": ["src/**/*.ts", "!src/**/*.test.ts"]
+    },
     "packages/app": {
       "project": ["src/**/*.{ts,tsx}", "!src/**/*.test.{ts,tsx}"]
     },

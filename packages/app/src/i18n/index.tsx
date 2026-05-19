@@ -1,7 +1,10 @@
 /**
- * i18n entry point.
+ * i18n entry point (app React layer).
  *
- * Exports:
+ * The translation data and lookup (`Translations`, `en` / `ja`,
+ * `translate`) live in `@karasu-tools/i18n`, shared with the lsp / cli.
+ * This module adds the app-specific React layer on top:
+ *
  *   - `LocaleProvider`: wrap the app root to make the locale available to
  *     descendants. Persists changes via `setStoredLocale()` and notifies
  *     subscribers so UI re-renders on switch.
@@ -9,16 +12,15 @@
  *     `t(key)` for string-valued translations, `t(key, params)` for
  *     function-valued ones. Type enforces the correct arity per key.
  *
- * See `docs/design/i18n-support.md` for the wider design.
+ * `translate` is re-exported for non-React callers inside the app
+ * (e.g. `useEmptyStateLabels`).
  */
 
 import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from "react";
+import { translate, type Translations, type TranslationParams } from "@karasu-tools/i18n";
 import { resolveLocale, setLocale as setStoredLocale, type Locale } from "./locale.js";
-import { en } from "./en.js";
-import { ja } from "./ja.js";
-import type { Translations, TranslationParams } from "./types.js";
 
-const MAPS: Record<Locale, Partial<Translations>> = { en, ja };
+export { translate };
 
 type SetLocale = (locale: Locale) => void;
 
@@ -49,25 +51,6 @@ export function LocaleProvider({ children, initialLocale }: LocaleProviderProps)
   const value = useMemo<LocaleContextValue>(() => ({ locale, setLocale }), [locale, setLocale]);
 
   return <LocaleContext.Provider value={value}>{children}</LocaleContext.Provider>;
-}
-
-/**
- * Resolve a translation key against the active locale, falling back to
- * English when the key is missing in the active map. If the resolved
- * value is a function (parameterized), invoke it with `params`.
- */
-export function translate<K extends keyof Translations>(
-  locale: Locale,
-  key: K,
-  params?: unknown,
-): string {
-  const activeMap = MAPS[locale];
-  const entry = activeMap[key] ?? en[key];
-
-  if (typeof entry === "function") {
-    return (entry as (p: unknown) => string)(params);
-  }
-  return entry;
 }
 
 // Overloads: parameterless keys take exactly one arg, parameterized keys require a params object.

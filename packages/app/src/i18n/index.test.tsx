@@ -2,18 +2,7 @@
 import { act, cleanup, render, renderHook, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-// Mock ja.ts with a deliberately partial map so we can exercise the
-// English-fallback path. The default (un-mocked) test cases exercise
-// full-key coverage via unmock at the bottom of this file.
-vi.mock("./ja.js", () => ({
-  ja: {
-    // Intentionally only provide one of the three keys; the others should
-    // fall through to en.
-    "languageSelector.label": "言語",
-  },
-}));
-
-const { LocaleProvider, useTranslation } = await import("./index.js");
+import { LocaleProvider, useTranslation } from "./index.js";
 
 afterEach(() => {
   cleanup();
@@ -116,22 +105,5 @@ describe("useTranslation", () => {
       </LocaleProvider>,
     );
     expect(screen.getByTestId("locale").textContent).toBe("ja");
-  });
-});
-
-describe("translation fallback", () => {
-  it("falls back to English when a key is missing in the active locale map", () => {
-    // ja.ts is mocked (top of file) to include only "languageSelector.label".
-    // The other two keys should fall through to the English values.
-    const { result } = renderHook(() => useTranslation(), {
-      wrapper: ({ children }) => <LocaleProvider initialLocale="ja">{children}</LocaleProvider>,
-    });
-
-    // Present in ja map → Japanese
-    expect(result.current.t("languageSelector.label")).toBe("言語");
-
-    // Missing in ja map → falls through to English
-    expect(result.current.t("languageSelector.english")).toBe("English");
-    expect(result.current.t("languageSelector.japanese")).toBe("Japanese");
   });
 });
