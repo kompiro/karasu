@@ -1,6 +1,6 @@
 # ADR Topic: app-ui
 
-32 ADRs in this topic. Solid nodes belong to `app-ui`; gray dashed nodes are ghosts showing cross-topic references to help navigation.
+33 ADRs in this topic. Solid nodes belong to `app-ui`; gray dashed nodes are ghosts showing cross-topic references to help navigation.
 
 Other topics: [overview](../graph.md).
 ```mermaid
@@ -38,6 +38,7 @@ flowchart TD
     ADR_20260519_02["ADR-20260519-02<br/>App キーボードショートカットはコマンドレジストリを基盤にする"]
     ADR_20260519_03["ADR-20260519-03<br/>EdgeContextMenu の direction メニューは shadcn Dropdo..."]
     ADR_20260519_04["ADR-20260519-04<br/>Outline ビューはアクティブビューの AST に追従する"]
+    ADR_20260519_06["ADR-20260519-06<br/>Outline ビューはタグ駆動アイコン variant を core 共有関数で解決する"]
   end
   ADR_20260317_01["ADR-20260317-01<br/>[renderer] 2 レイヤレンダリングとドリルダウンナビゲーション"]
   ADR_20260317_02["ADR-20260317-02<br/>[project] プロジェクトとファイルシステム抽象化 — `FileSystemProvider` + OPFS"]
@@ -111,6 +112,7 @@ flowchart TD
   class ADR_20260519_02 accepted
   class ADR_20260519_03 accepted
   class ADR_20260519_04 accepted
+  class ADR_20260519_06 accepted
   class ADR_20260317_01 ghost
   class ADR_20260317_02 ghost
   class ADR_20260320_01 ghost
