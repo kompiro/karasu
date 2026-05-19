@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import type { Warning, WarningKind } from "@karasu-tools/core";
-import { renderWarning, type TranslateFn } from "./format-warning.js";
-import { translate } from "./index.js";
+import { renderWarning, type TranslateFn } from "./render-warning.js";
+import { translate } from "./translate.js";
 import type { Locale } from "./locale.js";
 
 // One sample `Warning` per `WarningKind`. The `Record<WarningKind, Warning>`

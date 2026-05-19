@@ -6,8 +6,7 @@ import {
   buildDrillDownSvg,
   buildDrillDownSvgOrg,
 } from "@karasu-tools/core";
-import { ja } from "./ja.js";
-import { translate } from "./index.js";
+import { ja, translate } from "@karasu-tools/i18n";
 
 // Sanity check: the ja translation map covers the empty-state keys the
 // app passes into core renderers via useEmptyStateLabels. If this fails,

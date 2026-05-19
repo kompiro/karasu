@@ -1,22 +1,19 @@
 /**
- * Locale resolution for karasu app.
+ * Browser locale resolution for the karasu app.
  *
- * Follows the design in docs/design/i18n-support.md:
+ * Resolution order (per ADR-20260420-03):
  *   localStorage['karasu-locale'] → navigator.language → 'en' fallback
  *
- * This file is introduced ahead of the full i18n infrastructure (#34) to
- * unblock the Chat system prompt localization (#639). When #34 lands and
- * the Translations map is introduced, this module will move under
- * packages/i18n/ without changing its public API.
+ * The `Locale` type and `isLocale` guard now live in `@karasu-tools/i18n`,
+ * shared with the lsp / cli. This module keeps only the browser-specific
+ * resolution (localStorage + navigator).
  */
 
-export type Locale = "en" | "ja";
+import { isLocale, type Locale } from "@karasu-tools/i18n";
+
+export type { Locale };
 
 const STORAGE_KEY = "karasu-locale";
-
-function isLocale(value: unknown): value is Locale {
-  return value === "en" || value === "ja";
-}
 
 function readStoredLocale(): Locale | null {
   if (typeof localStorage === "undefined") return null;
