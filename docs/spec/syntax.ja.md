@@ -520,7 +520,7 @@ usecase PlaceOrder {
 }
 ```
 
-`#<id>` が `edge#<id>` スタイルセレクタにどう流れるかは [`docs/design/edge-id-selector.md`](../design/edge-id-selector.md) を参照。セレクタ自体は Phase B が着地した時点で [`docs/spec/style.ja.md`](style.ja.md) に追記される。
+`#<id>` が `edge#<id>` スタイルセレクタにどう流れるかは [`docs/design/edge-id-selector.md`](../design/edge-id-selector.md) を参照。セレクタ自体は [`docs/spec/style.ja.md` — エッジ ID セレクタ](style.ja.md#エッジ-id-セレクタedgeid) に記載されている。
 
 #### domain ブロック内のエッジ
 
