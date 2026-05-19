@@ -1,4 +1,4 @@
-import { renderPictogram } from "@karasu-tools/core";
+import { iconNameForNode, renderPictogram } from "@karasu-tools/core";
 
 /**
  * View-agnostic node the Outline renders. The three diagram ASTs
@@ -11,6 +11,12 @@ export interface OutlineNode {
   label?: string;
   /** Drives the icon — a `KrsNode` kind, a `DeployNodeKind`, or an org kind. */
   kind: string;
+  /**
+   * Node tags, used to resolve tag-driven icon variants (`client[mobile]`,
+   * `resource[table]`, …) the same way the preview's Icon Mode does.
+   * Optional — AST shapes without tags (deploy / org nodes) omit it.
+   */
+  tags?: string[];
   children: OutlineNode[];
 }
 
@@ -30,23 +36,13 @@ interface OutlineViewProps {
 }
 
 /**
- * Node kind → Icon Mode icon name. Mirrors the base-kind rules of
- * `ICON_THEME_STYLE_SOURCE` (`packages/core/src/builtins/icon-theme.ts`) so
- * the Outline shows the same pictograms the preview draws in Icon Mode.
- * Tag-driven variants (client subtypes, `resource[table]`, …) are not
- * resolved here — the base kind icon is used. Kinds without an Icon Mode
- * icon (`system`, deploy / org kinds) fall back to a glyph.
+ * Icon Mode pictograms for the infra *item* kinds (`table` / `queue-item`
+ * / `bucket`). `ICON_THEME_STYLE_SOURCE` has no CSS rule for these kinds —
+ * Icon Mode never draws them on their own — so `iconNameForNode` returns
+ * `undefined` for them. This Outline-only fallback keeps the pre-#1415
+ * behaviour of showing a pictogram for infra items in the tree.
  */
-const KIND_ICON_NAME: Record<string, string> = {
-  service: "service",
-  client: "client",
-  user: "user-card",
-  domain: "domain",
-  usecase: "usecase",
-  resource: "resource",
-  database: "database",
-  queue: "queue-node",
-  storage: "cloud-node",
+const INFRA_ITEM_ICON: Record<string, string> = {
   table: "table",
   "queue-item": "queue-card",
   bucket: "cloud-card",
@@ -119,7 +115,9 @@ function OutlineItem({
 }: OutlineItemProps) {
   const selected = node.id === highlightedNodeId;
   const label = node.label ?? node.id;
-  const iconName = KIND_ICON_NAME[node.kind];
+  // Shared `(kind, tags) → icon` resolution with the preview's Icon Mode,
+  // so tag-driven variants (`client[mobile]`, `resource[table]`, …) match.
+  const iconName = iconNameForNode(node.kind, node.tags ?? []) ?? INFRA_ITEM_ICON[node.kind];
   // `currentColor` lets the icon inherit the item's text color (hover/selected).
   const pictogram = iconName ? renderPictogram(iconName, "currentColor", ICON_SIZE) : undefined;
   return (

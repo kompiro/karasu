@@ -104,7 +104,13 @@ export {
 } from "./resolver/canonical-id.js";
 export { resolveStyles } from "./resolver/style-resolver.js";
 export { getBuiltinStyleSheet, BUILTIN_STYLE_SOURCE } from "./builtins/default-style.js";
-export { getIconThemeStyleSheet, ICON_THEME_STYLE_SOURCE } from "./builtins/icon-theme.js";
+export {
+  getIconThemeStyleSheet,
+  ICON_THEME_STYLE_SOURCE,
+  iconNameForNode,
+  CLIENT_SUBTYPE_TAGS,
+  type ClientSubtypeTag,
+} from "./builtins/icon-theme.js";
 export {
   type ExampleProject,
   EC_PLATFORM_PROJECTS,

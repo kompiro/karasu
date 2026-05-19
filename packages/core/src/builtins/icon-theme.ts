@@ -77,6 +77,93 @@ job      { shape: url("job");      }
 artifact { shape: url("artifact"); }
 `;
 
+/**
+ * System-view node kind → Icon Mode icon name. Mirrors the logical /
+ * infra base-kind rules of {@link ICON_THEME_STYLE_SOURCE}.
+ *
+ * Deliberately scoped to system-view kinds: deploy kinds (`oci`,
+ * `lambda`, …) and org kinds (`team`, `member`) have `ICON_THEME_STYLE_SOURCE`
+ * rules too, but `iconNameForNode`'s contract is to resolve only what the
+ * preview's Icon Mode — a system-view concept — draws. Those kinds, plus
+ * `system` and infra item kinds, resolve to `undefined`.
+ *
+ * NOTE: this map and `ICON_THEME_STYLE_SOURCE` are two representations of
+ * the same vocabulary — adding a kind to one requires adding it to the
+ * other. See TPL-20260519-02.
+ */
+const BASE_KIND_ICON: Record<string, string> = {
+  service: "service",
+  client: "client",
+  user: "user-card",
+  domain: "domain",
+  usecase: "usecase",
+  resource: "resource",
+  database: "database",
+  queue: "queue-node",
+  storage: "cloud-node",
+};
+
+/**
+ * `resource` tag variant → icon name. Mirrors the `resource[<tag>]` rules
+ * of {@link ICON_THEME_STYLE_SOURCE}.
+ */
+const RESOURCE_TAG_ICON: Record<string, string> = {
+  table: "table",
+  queue: "queue-card",
+  api: "api",
+  storage: "cloud-card",
+};
+
+/**
+ * `client` subtype tag → icon name. Mirrors the `client[<tag>]` rules of
+ * {@link ICON_THEME_STYLE_SOURCE}. Keyed by every {@link CLIENT_SUBTYPE_TAGS}
+ * entry.
+ */
+const CLIENT_SUBTYPE_ICON: Record<ClientSubtypeTag, string> = {
+  mobile: "client-mobile",
+  web: "client-web",
+  desktop: "client-desktop",
+  cli: "client-cli",
+  device: "client-device",
+  extension: "client-extension",
+  embed: "client-embed",
+};
+
+/**
+ * Resolves a node's `(kind, tags)` to the Icon Mode icon name the preview
+ * draws for it — the same vocabulary {@link ICON_THEME_STYLE_SOURCE}
+ * encodes as CSS. Surfaces other than the renderer (e.g. the app's Outline
+ * view) call this so they show the same pictogram for a given node.
+ *
+ * Tag-driven variants take precedence over the base kind:
+ * - a `client` with a recognised subtype tag → `client-<tag>`, using
+ *   first-match-wins on `tags` order (matching `applyClientSubtypeFirstMatch`
+ *   in `resolver/style-resolver.ts`);
+ * - a `resource` with a recognised variant tag → the variant icon,
+ *   first-match-wins on `tags` order. (Icon Mode resolves `resource[...]`
+ *   through the CSS cascade; the two agree for the common single-variant
+ *   case, which is the only one karasu's vocabulary expects.)
+ *
+ * Returns `undefined` for kinds with no Icon Mode pictogram (`system`,
+ * deploy / org kinds, infra item kinds).
+ */
+export function iconNameForNode(kind: string, tags: readonly string[]): string | undefined {
+  if (kind === "client") {
+    for (const tag of tags) {
+      if (tag in CLIENT_SUBTYPE_ICON) {
+        return CLIENT_SUBTYPE_ICON[tag as ClientSubtypeTag];
+      }
+    }
+  } else if (kind === "resource") {
+    for (const tag of tags) {
+      if (tag in RESOURCE_TAG_ICON) {
+        return RESOURCE_TAG_ICON[tag];
+      }
+    }
+  }
+  return BASE_KIND_ICON[kind];
+}
+
 let _cachedSheet: StyleSheet | null = null;
 
 export function getIconThemeStyleSheet(): StyleSheet {
