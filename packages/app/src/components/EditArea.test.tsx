@@ -73,4 +73,73 @@ describe("EditArea", () => {
     expect(container.querySelector(".edit-area.has-sidebar")).toBeNull();
     expect(container.querySelector(".edit-area")).toBeTruthy();
   });
+
+  it("does not render the Outline activity-bar button when outlineContent is absent", () => {
+    const { queryByRole } = render(
+      <EditArea {...defaultProps} sidebarContent={<div>File Tree</div>} />,
+    );
+    expect(queryByRole("button", { name: /outline/i })).toBeNull();
+  });
+
+  it("renders the Outline button and switches the sidebar to the outline view", () => {
+    const { getByRole, getByText, queryByText } = render(
+      <EditArea
+        {...defaultProps}
+        sidebarContent={<div>File Tree</div>}
+        outlineContent={<div>AST Outline</div>}
+      />,
+    );
+    // Files view is active by default.
+    expect(getByText("File Tree")).toBeTruthy();
+    expect(queryByText("AST Outline")).toBeNull();
+    // Clicking Outline switches the sidebar content.
+    fireEvent.click(getByRole("button", { name: /Show outline/ }));
+    expect(getByText("AST Outline")).toBeTruthy();
+    expect(queryByText("File Tree")).toBeNull();
+    // The Outline button now reflects the active state.
+    expect(getByRole("button", { name: /Hide outline/ }).getAttribute("aria-pressed")).toBe("true");
+    expect(getByRole("button", { name: /Show files/ }).getAttribute("aria-pressed")).toBe("false");
+  });
+
+  // TPL-20260518-01: an involutive toggle must render both result states.
+  it("collapses and re-expands the sidebar when the active view button is re-clicked", () => {
+    const { getByRole, container } = render(
+      <EditArea
+        {...defaultProps}
+        sidebarContent={<div>File Tree</div>}
+        outlineContent={<div>AST Outline</div>}
+      />,
+    );
+    // Files (active) → collapse.
+    fireEvent.click(getByRole("button", { name: /Hide files/ }));
+    expect(container.querySelector(".sidebar-area")).toBeNull();
+    // Files → expand again.
+    fireEvent.click(getByRole("button", { name: /Show files/ }));
+    expect(container.querySelector(".sidebar-area")).toBeTruthy();
+
+    // Switch to Outline, then collapse / re-expand it too.
+    fireEvent.click(getByRole("button", { name: /Show outline/ }));
+    expect(container.querySelector(".sidebar-area")).toBeTruthy();
+    fireEvent.click(getByRole("button", { name: /Hide outline/ }));
+    expect(container.querySelector(".sidebar-area")).toBeNull();
+    fireEvent.click(getByRole("button", { name: /Show outline/ }));
+    expect(container.querySelector(".sidebar-area")).toBeTruthy();
+  });
+
+  it("expands the sidebar when switching views while collapsed", () => {
+    const { getByRole, getByText, container } = render(
+      <EditArea
+        {...defaultProps}
+        sidebarContent={<div>File Tree</div>}
+        outlineContent={<div>AST Outline</div>}
+      />,
+    );
+    // Collapse the (active) Files view.
+    fireEvent.click(getByRole("button", { name: /Hide files/ }));
+    expect(container.querySelector(".sidebar-area")).toBeNull();
+    // Clicking the inactive Outline button re-opens the sidebar on that view.
+    fireEvent.click(getByRole("button", { name: /Show outline/ }));
+    expect(container.querySelector(".sidebar-area")).toBeTruthy();
+    expect(getByText("AST Outline")).toBeTruthy();
+  });
 });

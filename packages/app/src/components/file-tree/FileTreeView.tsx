@@ -56,7 +56,7 @@ export function FileTreeView({
   return (
     <div className="file-tree">
       <div className="file-tree-header">
-        <span>Files</span>
+        {/* View name is shown by the activity bar; header keeps only actions. */}
         <div className="file-tree-header-actions">
           {onCompareWithPaste && (
             <button

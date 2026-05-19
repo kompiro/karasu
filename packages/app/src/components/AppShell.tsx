@@ -17,6 +17,7 @@ import {
 } from "@karasu-tools/core";
 import { SnapshotManager } from "../fs/snapshot-manager.js";
 import { EditArea } from "./EditArea.js";
+import { OutlineView } from "./OutlineView.js";
 import { PreviewColumn } from "./PreviewColumn.js";
 import { downloadSvg } from "../utils/download-svg.js";
 import { downloadDrawio } from "../utils/download-drawio.js";
@@ -161,6 +162,44 @@ export function AppShell({
 
   const nodeMetadata =
     activeView === "deploy" ? views.deploy.nodeMetadata : views.system.nodeMetadata;
+
+  // Outline always reflects the system AST, so switch to the system view
+  // first if another view is active (deploy/org/matrix). Follow-up: #1410.
+  const systemNodeMetadata = views.system.nodeMetadata;
+  const highlightSystemNode = useCallback(
+    (nodeId: string) => {
+      if (activeView !== "system") {
+        dispatch({ type: "SET_ACTIVE_VIEW", activeView: "system", highlightNodeId: nodeId });
+      } else {
+        dispatch({ type: "SET_HIGHLIGHTED_NODE", nodeId });
+      }
+    },
+    [activeView, dispatch],
+  );
+
+  // Single click — highlight the node in the preview (no navigation).
+  const handleOutlineSelect = highlightSystemNode;
+
+  // Double click — drill the preview down to reveal the node, then highlight
+  // it. Only service/domain/infra nodes carry their own viewPath; for leaf
+  // nodes (usecase/resource/user/client) drill into the nearest ancestor that
+  // does, so the node renders as a child there. Falls back to the root view.
+  const handleOutlineActivate = useCallback(
+    (nodeId: string, ancestorIds: string[]) => {
+      highlightSystemNode(nodeId);
+      const candidates = [nodeId, ...[...ancestorIds].reverse()];
+      let drillPath: string[] = [];
+      for (const id of candidates) {
+        const vp = systemNodeMetadata.get(id)?.viewPath;
+        if (vp) {
+          drillPath = vp;
+          break;
+        }
+      }
+      navigateViewPath(drillPath);
+    },
+    [highlightSystemNode, navigateViewPath, systemNodeMetadata],
+  );
 
   const handleEditorChange = useCallback(
     async (value: string) => {
@@ -405,6 +444,16 @@ export function AppShell({
       {!hideEditor && (
         <EditArea
           sidebarContent={sidebarContent}
+          outlineContent={
+            sidebarContent ? (
+              <OutlineView
+                systems={views.system.resolvedSystems}
+                highlightedNodeId={highlightedNodeId}
+                onSelectNode={handleOutlineSelect}
+                onActivateNode={handleOutlineActivate}
+              />
+            ) : undefined
+          }
           previewFocused={previewFocused}
           value={fileContent}
           currentFilePath={currentFilePath}

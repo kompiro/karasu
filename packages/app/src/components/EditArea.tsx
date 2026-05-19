@@ -5,8 +5,13 @@ import type { CSSProperties, ReactNode } from "react";
 import type { editor } from "monaco-editor";
 import type { SystemNode } from "@karasu-tools/core";
 
+type SidebarView = "files" | "outline";
+
 interface EditAreaProps {
+  /** Files view content (the file tree). */
   sidebarContent?: ReactNode;
+  /** Outline view content (the AST outline). Enables the Outline activity-bar button. */
+  outlineContent?: ReactNode;
   previewFocused: boolean;
   // EditPane props
   value: string;
@@ -39,6 +44,7 @@ function readPersistedWidth(): number {
 
 export function EditArea({
   sidebarContent,
+  outlineContent,
   previewFocused,
   value,
   currentFilePath,
@@ -54,9 +60,24 @@ export function EditArea({
   hasParseErrors,
 }: EditAreaProps) {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [sidebarView, setSidebarView] = useState<SidebarView>("files");
   const [sidebarWidth, setSidebarWidth] = useState<number>(readPersistedWidth);
   const hasSidebar = !!sidebarContent;
-  const toggle = useCallback(() => setSidebarCollapsed((v) => !v), []);
+  const hasOutline = !!outlineContent;
+
+  // Activity-bar click: re-clicking the active view toggles collapse;
+  // clicking an inactive view switches to it and ensures the sidebar is open.
+  const handleActivityClick = useCallback(
+    (view: SidebarView) => {
+      if (sidebarView === view) {
+        setSidebarCollapsed((v) => !v);
+      } else {
+        setSidebarView(view);
+        setSidebarCollapsed(false);
+      }
+    },
+    [sidebarView],
+  );
 
   const dragStateRef = useRef<{ startX: number; startWidth: number } | null>(null);
   const [isDragging, setIsDragging] = useState(false);
@@ -118,16 +139,12 @@ export function EditArea({
     <div className={className} style={style}>
       {hasSidebar && !previewFocused && (
         <nav className="activity-bar" aria-label="Activity Bar">
-          <button
-            type="button"
-            className={`activity-bar-btn${sidebarCollapsed ? "" : " activity-bar-btn--active"}`}
-            onClick={toggle}
-            aria-label={sidebarCollapsed ? "Show files" : "Hide files"}
-            aria-pressed={!sidebarCollapsed}
-            title={sidebarCollapsed ? "Show files" : "Hide files"}
-          >
-            <span className="activity-bar-btn__icon" aria-hidden="true">
-              {/* File-tree glyph */}
+          <ActivityBarButton
+            label="Files"
+            active={sidebarView === "files" && !sidebarCollapsed}
+            onClick={() => handleActivityClick("files")}
+            icon={
+              /* File-tree glyph */
               <svg
                 viewBox="0 0 16 16"
                 width="20"
@@ -139,14 +156,37 @@ export function EditArea({
                 <path d="M2 3.5h4l1.5 1.5H14v8H2z" />
                 <path d="M2 6.5h12" />
               </svg>
-            </span>
-            <span className="activity-bar-btn__label">Files</span>
-          </button>
+            }
+          />
+          {hasOutline && (
+            <ActivityBarButton
+              label="Outline"
+              active={sidebarView === "outline" && !sidebarCollapsed}
+              onClick={() => handleActivityClick("outline")}
+              icon={
+                /* Outline / tree glyph */
+                <svg
+                  viewBox="0 0 16 16"
+                  width="20"
+                  height="20"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.4"
+                >
+                  <path d="M3 4h10" />
+                  <path d="M6.5 8h6.5" />
+                  <path d="M6.5 12h6.5" />
+                  <circle cx="3.4" cy="8" r="1" fill="currentColor" stroke="none" />
+                  <circle cx="3.4" cy="12" r="1" fill="currentColor" stroke="none" />
+                </svg>
+              }
+            />
+          )}
         </nav>
       )}
       {hasSidebar && !sidebarCollapsed && (
         <div className="sidebar-area">
-          {sidebarContent}
+          {sidebarView === "outline" && hasOutline ? outlineContent : sidebarContent}
           {!previewFocused && (
             <div
               className="sidebar-resize-handle"
@@ -174,5 +214,33 @@ export function EditArea({
         hasParseErrors={hasParseErrors}
       />
     </div>
+  );
+}
+
+interface ActivityBarButtonProps {
+  label: string;
+  /** True when this view is the active sidebar view and the sidebar is open. */
+  active: boolean;
+  icon: ReactNode;
+  onClick: () => void;
+}
+
+function ActivityBarButton({ label, active, icon, onClick }: ActivityBarButtonProps) {
+  // When active+open, clicking collapses; otherwise clicking reveals the view.
+  const action = active ? `Hide ${label.toLowerCase()}` : `Show ${label.toLowerCase()}`;
+  return (
+    <button
+      type="button"
+      className={`activity-bar-btn${active ? " activity-bar-btn--active" : ""}`}
+      onClick={onClick}
+      aria-label={action}
+      aria-pressed={active}
+      title={action}
+    >
+      <span className="activity-bar-btn__icon" aria-hidden="true">
+        {icon}
+      </span>
+      <span className="activity-bar-btn__label">{label}</span>
+    </button>
   );
 }
