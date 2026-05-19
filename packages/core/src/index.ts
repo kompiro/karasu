@@ -134,7 +134,7 @@ export {
 } from "./builtins/reference.js";
 export { analyze } from "./resolver/warnings.js";
 export type { DisplayMode } from "./renderer/layout.js";
-export type { SvgResult } from "./renderer/all-layers-svg.js";
+export type { SvgResult, AllViewsSvgResult } from "./renderer/all-layers-svg.js";
 export { render, renderFromLayout, sanitizeId } from "./renderer/svg-renderer.js";
 
 export {
@@ -216,6 +216,7 @@ import {
   buildAllLayersSvg as _buildAllLayersSvg,
   buildAllLayersSvgOrg as _buildAllLayersSvgOrg,
   type SvgResult,
+  type AllViewsSvgResult,
 } from "./renderer/all-layers-svg.js";
 
 import type { DisplayMode } from "./renderer/layout.js";
@@ -901,10 +902,14 @@ export function buildAllViewsSvg(
   styleSource?: string,
   displayMode?: DisplayMode,
   emptyStateLabels?: EmptyStateLabels,
-): SvgResult {
+): AllViewsSvgResult {
   const parseResult: ParseResult<KrsFile> = Parser.parse(krsSource);
   const result = _buildAllViewsSvg(parseResult.value, styleSource, displayMode, emptyStateLabels);
-  return { svg: result.svg, diagnostics: [...parseResult.diagnostics, ...result.diagnostics] };
+  return {
+    svg: result.svg,
+    diagnostics: [...parseResult.diagnostics, ...result.diagnostics],
+    warnings: result.warnings,
+  };
 }
 
 /**
@@ -922,13 +927,14 @@ export async function buildAllViewsSvgProject(
   fs: FileSystemProvider,
   styleSource?: string,
   displayMode?: DisplayMode,
-): Promise<SvgResult> {
+): Promise<AllViewsSvgResult> {
   const resolver = new ImportResolver(fs);
   const resolved = await resolver.resolve(entryPath);
   const result = _buildAllViewsSvg(resolved.krsFile, styleSource, displayMode);
   return {
     svg: result.svg,
     diagnostics: [...resolved.diagnostics, ...result.diagnostics],
+    warnings: result.warnings,
   };
 }
 

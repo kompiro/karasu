@@ -1,5 +1,6 @@
 import type { KrsFile, TeamNode, HierarchyNode, Diagnostic } from "../types/ast.js";
 import type { StyleSheet } from "../types/style.js";
+import type { Warning } from "../types/warnings.js";
 import type { DisplayMode } from "./layout-types.js";
 import { extractView } from "../view/view-extract.js";
 import { withUnassignedSystem } from "../view/unassigned-system.js";
@@ -62,6 +63,16 @@ export function extractSvgParts(svg: string): SvgParts {
 export interface SvgResult {
   svg: string;
   diagnostics: Diagnostic[];
+}
+
+/**
+ * Result of the bundled all-views builders. Extends {@link SvgResult} with the
+ * resolver `warnings` so the all-views path matches `compileProject()`'s shape
+ * and surfaces model-level facts (domain dispersal, unassigned nodes, …) that
+ * do not depend on which view is rendered. See Issue #1438.
+ */
+export interface AllViewsSvgResult extends SvgResult {
+  warnings: Warning[];
 }
 
 export function buildStyles(

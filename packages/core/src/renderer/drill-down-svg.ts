@@ -10,12 +10,14 @@ import { renderOrgView } from "./org-renderer.js";
 import { renderDeploy } from "./deploy-renderer.js";
 import { escapeXml } from "./svg-builder.js";
 import { resolveStyles } from "../resolver/style-resolver.js";
+import { analyze } from "../resolver/warnings.js";
 import {
   extractSvgParts,
   buildStyles,
   buildNoDiagramSvg,
   type DrillDownCallbacks,
   type SvgResult,
+  type AllViewsSvgResult,
 } from "./all-layers-svg.js";
 import { DEFAULT_EMPTY_STATE_LABELS, type EmptyStateLabels } from "./empty-state-labels.js";
 import "../renderer/shapes.js"; // ensure built-in shapes are registered
@@ -303,8 +305,11 @@ export function buildAllViewsSvg(
   styleSource?: string,
   displayMode?: DisplayMode,
   emptyStateLabels?: EmptyStateLabels,
-): SvgResult {
+): AllViewsSvgResult {
   const { sheets, diagnostics } = buildStyles(displayMode, styleSource);
+  // Resolver warnings are a model-level fact, independent of which view is
+  // rendered — surface them on the all-views path too (Issue #1438).
+  const warnings = analyze(krsFile, sheets);
   const effectiveSystems = withUnassignedSystem(krsFile);
 
   // Collect system levels
@@ -365,6 +370,7 @@ export function buildAllViewsSvg(
     return {
       svg: buildNoDiagramSvg(emptyStateLabels, true),
       diagnostics,
+      warnings,
     };
   }
 
@@ -394,6 +400,7 @@ export function buildAllViewsSvg(
   return {
     svg: `<svg xmlns="http://www.w3.org/2000/svg" width="${totalWidth}" height="${totalHeight}"><style>${css}</style>${tabBar}${systemPane}${deployPane}${orgPane}</svg>`,
     diagnostics,
+    warnings,
   };
 }
 
