@@ -1,0 +1,71 @@
+---
+id: TPL-20260519-02
+title: "同一語彙を複数の表現で持つときは片方更新による静かな drift を検証する"
+status: active
+date: 2026-05-19
+applicable_to:
+  - "同じマッピング / 語彙を 2 つ以上の表現（CSS 文字列と関数、enum とラベルマップ、スキーマと型定義 ...）で重複して持つコード"
+  - "片方が描画に、もう片方が別の表示面 / 別経路の解決に使われ、両者の一致がユーザーに見える形で要求される場合"
+  - "新しいメンバー（kind / variant / enum 値）の追加が複数ファイルの同時編集を必要とする構造"
+known_consumers:
+  - icon-theme
+discovered_from:
+  - issue: "#1415"
+  - root_cause_file: "packages/core/src/builtins/icon-theme.ts"
+related_to:
+  - TPL-20260510-03
+  - TPL-20260510-06
+topic: renderer
+scope:
+  packages:
+    - core
+    - app
+---
+
+# TPL-20260519-02: 同一語彙を複数の表現で持つときは片方更新による静かな drift を検証する
+
+## 観点
+
+同じマッピング（`(kind, tags) → icon name` など）を 2 つ以上の表現で重複して
+持つとき、片方だけ更新されてもコンパイルは通り、テストも個別には通る。
+ずれは「2 つの表現を同じ入力に通すと違う結果が出る」という形でしか現れない。
+
+新しいメンバーを足すときに **全表現を同時に更新する**こと、そして
+**全表現が同じ入力に対して同じ結果を返す**ことをテストで固定する。
+
+具体例（#1415）: Icon Mode のアイコン語彙は `ICON_THEME_STYLE_SOURCE`
+（CSS 文字列）と `iconNameForNode`（関数）の 2 表現で持たれている。CSS だけに
+新 variant を足すと Outline view が古いアイコンを出し続け、Icon Mode と
+Outline が静かに食い違う。
+
+## 想定される失敗モード
+
+- CSS（または片方の表現）にだけ新しい kind / variant を追加し、もう片方の
+  関数 / マップを更新し忘れる。型エラーにならず、追加した側のテストは通る。
+- 表示面 A（renderer）と表示面 B（Outline / legend / export 等）が同じ
+  ノードに別のアイコン・別のラベルを出す（cross-surface drift —
+  [TPL-20260510-06]）。
+- enum に値を足したが対応するラベルマップ / switch 分岐を足さず、`undefined`
+  や fallback が表示される（[TPL-20260510-03] の派生形）。
+
+## チェックリスト
+
+同一語彙を複数表現で持つコードを追加・変更するとき:
+
+- [ ] 表現が複数あること、どれが真実源（または相互ミラー）かをコメントで明示したか
+- [ ] 新メンバー追加時に「全表現を更新せよ」と分かる導線（コメント / TPL 参照）があるか
+- [ ] 全表現が同じ入力に対し同じ結果を返すことを検証するテストがあるか（理想は表現の網羅を 1 つのソースから駆動する parity テスト）
+- [ ] 解決順序（first-match-wins / cascade last-wins など）が表現間で一致しているか
+
+## 既知の対処パターン
+
+- 真実源を 1 つに定め、他の表現をそこから生成する（#1445 が `iconNameForNode`
+  と `ICON_THEME_STYLE_SOURCE` についてこの恒久対策を追跡している）。
+- それが未着手の間は、両表現を同一ファイルに co-locate し、相互参照コメントと
+  本 TPL への参照でフェンスする（#1415 で採用）。
+
+## 関連テスト
+
+- `packages/core/src/builtins/icon-theme.test.ts` — `iconNameForNode` の
+  variant 解決と、`ICON_THEME_STYLE_SOURCE` が同じ variant 規則を含むことの
+  両方を検証する。

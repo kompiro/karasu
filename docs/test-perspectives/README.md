@@ -421,3 +421,4 @@ DesignDoc が proactive TPL を引用したら、実装 PR で次をやる:
 | [TPL-20260516-01](TPL-20260516-01-control-a11y-contract-survives-migration.md) | interactive control の a11y 契約は移行・リファクタで静かに壊れる | app-ui | ADR-20260515-01, #1399 |
 | [TPL-20260518-01](TPL-20260518-01-involutive-toggle-renders-both-states.md) | involutive な toggle は両方の結果状態を end-to-end でレンダリング検証する | app-ui | #1402 |
 | [TPL-20260519-01](TPL-20260519-01-global-shortcut-text-input-inhibition.md) | グローバルキーボードショートカットはテキスト入力フォーカス下での挙動を契約として検証する | app-ui | packages/app/src/keyboard/KeyboardShortcutDispatcher.tsx |
+| [TPL-20260519-02](TPL-20260519-02-shared-vocabulary-dual-representation.md) | 同一語彙を複数の表現で持つときは片方更新による静かな drift を検証する | renderer | #1415 |
