@@ -128,8 +128,19 @@ describe("iconNameForNode", () => {
 
   it("returns undefined for kinds without an Icon Mode pictogram", () => {
     expect(iconNameForNode("system", [])).toBeUndefined();
-    expect(iconNameForNode("deploy-block", [])).toBeUndefined();
-    expect(iconNameForNode("organization", [])).toBeUndefined();
     expect(iconNameForNode("table", [])).toBeUndefined();
+  });
+
+  it("returns undefined for deploy kinds (not a system-view concept)", () => {
+    expect(iconNameForNode("deploy-block", [])).toBeUndefined();
+    expect(iconNameForNode("lambda", [])).toBeUndefined();
+    expect(iconNameForNode("job", [])).toBeUndefined();
+  });
+
+  it("returns undefined for org kinds even though icon-theme has team/member rules", () => {
+    // iconNameForNode resolves only what the system-view Icon Mode draws.
+    expect(iconNameForNode("organization", [])).toBeUndefined();
+    expect(iconNameForNode("team", [])).toBeUndefined();
+    expect(iconNameForNode("member", [])).toBeUndefined();
   });
 });

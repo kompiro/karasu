@@ -78,9 +78,14 @@ artifact { shape: url("artifact"); }
 `;
 
 /**
- * Base node kind → Icon Mode icon name. Mirrors the base-kind rules of
- * {@link ICON_THEME_STYLE_SOURCE}. Kinds absent here (`system`, deploy /
- * org kinds, infra item kinds) have no Icon Mode pictogram.
+ * System-view node kind → Icon Mode icon name. Mirrors the logical /
+ * infra base-kind rules of {@link ICON_THEME_STYLE_SOURCE}.
+ *
+ * Deliberately scoped to system-view kinds: deploy kinds (`oci`,
+ * `lambda`, …) and org kinds (`team`, `member`) have `ICON_THEME_STYLE_SOURCE`
+ * rules too, but `iconNameForNode`'s contract is to resolve only what the
+ * preview's Icon Mode — a system-view concept — draws. Those kinds, plus
+ * `system` and infra item kinds, resolve to `undefined`.
  *
  * NOTE: this map and `ICON_THEME_STYLE_SOURCE` are two representations of
  * the same vocabulary — adding a kind to one requires adding it to the
@@ -93,8 +98,6 @@ const BASE_KIND_ICON: Record<string, string> = {
   domain: "domain",
   usecase: "usecase",
   resource: "resource",
-  team: "team",
-  member: "member",
   database: "database",
   queue: "queue-node",
   storage: "cloud-node",
@@ -137,7 +140,9 @@ const CLIENT_SUBTYPE_ICON: Record<ClientSubtypeTag, string> = {
  *   first-match-wins on `tags` order (matching `applyClientSubtypeFirstMatch`
  *   in `resolver/style-resolver.ts`);
  * - a `resource` with a recognised variant tag → the variant icon,
- *   first-match-wins on `tags` order.
+ *   first-match-wins on `tags` order. (Icon Mode resolves `resource[...]`
+ *   through the CSS cascade; the two agree for the common single-variant
+ *   case, which is the only one karasu's vocabulary expects.)
  *
  * Returns `undefined` for kinds with no Icon Mode pictogram (`system`,
  * deploy / org kinds, infra item kinds).
