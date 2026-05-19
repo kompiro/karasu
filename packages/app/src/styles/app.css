@@ -1304,12 +1304,16 @@ body,
   border: none;
   text-align: left;
   cursor: pointer;
+  outline: none;
   transition:
     background 0.1s,
     color 0.1s;
 }
 
-.context-menu-item:hover {
+/* `:hover` covers the mouse; `[data-highlighted]` is Radix Menu's
+   keyboard-roving highlight (arrow keys / type-ahead). */
+.context-menu-item:hover,
+.context-menu-item[data-highlighted] {
   background: var(--bg-overlay);
   color: var(--text-primary);
 }
@@ -1359,12 +1363,17 @@ body,
   color: var(--text-tertiary, var(--text-secondary));
 }
 
-.context-menu-item:disabled {
+/* `:disabled` is the legacy button state; `[data-disabled]` is what Radix
+   Menu sets on a disabled `DropdownMenuItem` (a `div`, where `:disabled`
+   does not apply). */
+.context-menu-item:disabled,
+.context-menu-item[data-disabled] {
   opacity: 0.5;
   cursor: not-allowed;
 }
 
-.context-menu-item:disabled:hover {
+.context-menu-item:disabled:hover,
+.context-menu-item[data-disabled]:hover {
   background: transparent;
   color: var(--text-secondary);
 }
