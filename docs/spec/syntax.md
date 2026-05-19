@@ -537,8 +537,7 @@ usecase PlaceOrder {
 
 See [`docs/design/edge-id-selector.md`](../design/edge-id-selector.md)
 for how the id flows into the `edge#<id>` style selector. The selector
-itself will be documented in [`docs/spec/style.md`](style.md) once Phase
-B lands.
+itself is documented in [`docs/spec/style.md` — Edge ID selector](style.md#edge-id-selector-edgeid).
 
 #### Edges inside a domain block
 
