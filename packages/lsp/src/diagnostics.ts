@@ -2,12 +2,17 @@ import { Diagnostic, DiagnosticSeverity } from "vscode-languageserver/node";
 import {
   Parser,
   StyleParser,
-  formatDiagnostic,
-  formatWarning,
   warningSeverity,
   analyze,
   validateStyleValues,
 } from "@karasu-tools/core";
+import {
+  renderDiagnostic,
+  renderWarning,
+  translate,
+  type Locale,
+  type TranslateFn,
+} from "@karasu-tools/i18n";
 
 /** Core positions are 1-based; LSP positions are 0-based. */
 function toLspPosition(line: number, column: number) {
@@ -26,8 +31,21 @@ const DOC_START = { line: 0, character: 0 };
  *
  * Kept as a pure function — no `connection` dependency — so `validateDocument`
  * stays a thin wrapper and tests can assert the mapping directly.
+ *
+ * `locale` controls the language of diagnostic / warning messages; the
+ * server resolves it once from the `initialize` request. It defaults to
+ * English so non-LSP callers and tests need not pass it.
  */
-export function computeDiagnostics(text: string, isStyleDocument: boolean): Diagnostic[] {
+export function computeDiagnostics(
+  text: string,
+  isStyleDocument: boolean,
+  locale: Locale = "en",
+): Diagnostic[] {
+  // Bind the locale-aware translator once per pass. `renderDiagnostic` /
+  // `renderWarning` are pure formatters shared with the app and CLI.
+  const t = ((key: Parameters<TranslateFn>[0], params?: unknown) =>
+    translate(locale, key, params)) as TranslateFn;
+
   const parseResult = isStyleDocument ? StyleParser.parse(text) : Parser.parse(text);
 
   // Style documents go through an extra value-level validation pass. The
@@ -49,7 +67,7 @@ export function computeDiagnostics(text: string, isStyleDocument: boolean): Diag
       start: d.loc ? toLspPosition(d.loc.start.line, d.loc.start.column) : DOC_START,
       end: d.loc ? toLspPosition(d.loc.end.line, d.loc.end.column) : DOC_START,
     },
-    message: formatDiagnostic(d),
+    message: renderDiagnostic(d, t),
     source: "karasu",
   }));
 
@@ -71,7 +89,7 @@ export function computeDiagnostics(text: string, isStyleDocument: boolean): Diag
           start: w.loc ? toLspPosition(w.loc.start.line, w.loc.start.column) : DOC_START,
           end: w.loc ? toLspPosition(w.loc.end.line, w.loc.end.column) : DOC_START,
         },
-        message: formatWarning(w).message,
+        message: renderWarning(w, t).message,
         source: "karasu",
       });
     }

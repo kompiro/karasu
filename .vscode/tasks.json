@@ -15,6 +15,20 @@
       "problemMatcher": []
     },
     {
+      "label": "build:i18n",
+      "type": "shell",
+      "command": "pnpm run build",
+      "options": {
+        "cwd": "${workspaceFolder}/packages/i18n"
+      },
+      "group": "build",
+      "presentation": {
+        "reveal": "silent"
+      },
+      "problemMatcher": [],
+      "dependsOn": "build:core"
+    },
+    {
       "label": "build:lsp",
       "type": "shell",
       "command": "pnpm run build",
@@ -26,7 +40,7 @@
         "reveal": "silent"
       },
       "problemMatcher": [],
-      "dependsOn": "build:core"
+      "dependsOn": "build:i18n"
     },
     {
       "label": "build:vscode",

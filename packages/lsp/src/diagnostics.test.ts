@@ -10,8 +10,9 @@ describe("computeDiagnostics — resolver warnings (.krs)", () => {
 }`;
     const diagnostics = computeDiagnostics(src, false);
 
-    // `formatWarning` is the legacy compat bridge the LSP shares with the
-    // CLI; for domain-dispersal it renders the message in Japanese.
+    // Messages render in English by default (the tooling-output default
+    // from docs/spec/i18n.md). `renderWarning` is the shared i18n
+    // formatter — the same one the app and CLI use.
     const dispersal = diagnostics.find(
       (d) => d.message.includes("Order") && /service/.test(d.message),
     );
@@ -54,6 +55,36 @@ describe("computeDiagnostics — resolver warnings (.krs)", () => {
     const diagnostics = computeDiagnostics(src, false);
     expect(diagnostics.length).toBeGreaterThan(0);
     expect(diagnostics.every((d) => d.source === "karasu")).toBe(true);
+  });
+});
+
+describe("computeDiagnostics — locale", () => {
+  const dispersalSrc = `system EC {
+  service ECommerce { domain Order {} }
+  service Legacy { domain Order {} }
+}`;
+
+  it("renders warning messages in English by default", () => {
+    const diagnostics = computeDiagnostics(dispersalSrc, false);
+    const dispersal = diagnostics.find((d) => d.message.includes("Order"));
+    expect(dispersal!.message).toBe('Domain "Order" appears under multiple services');
+  });
+
+  it("renders warning messages in Japanese when locale is 'ja'", () => {
+    const diagnostics = computeDiagnostics(dispersalSrc, false, "ja");
+    const dispersal = diagnostics.find((d) => d.message.includes("Order"));
+    expect(dispersal!.message).toBe('domain "Order" は複数の service の配下に登場します');
+  });
+
+  it("renders parse-error (diagnostic) messages in the requested locale", () => {
+    // A parser diagnostic — exercises the renderDiagnostic path, not just
+    // renderWarning. `generic-text` aside, parser diagnostics are uniform
+    // English, so en and ja currently match; this asserts the locale is
+    // threaded through without throwing.
+    const en = computeDiagnostics("!!! not valid krs !!!", false, "en");
+    const ja = computeDiagnostics("!!! not valid krs !!!", false, "ja");
+    expect(en.some((d) => d.severity === DiagnosticSeverity.Error)).toBe(true);
+    expect(ja.some((d) => d.severity === DiagnosticSeverity.Error)).toBe(true);
   });
 });
 
