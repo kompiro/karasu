@@ -6,10 +6,9 @@ import {
   compileDeployDiff,
   compileOrgDiff,
   compileSystemDiff,
-  formatDiagnostic,
-  formatWarning,
 } from "@karasu-tools/core";
 import type { DiagramType } from "@karasu-tools/core";
+import { formatDiagnostic, formatWarning } from "./i18n.js";
 import { NodeFileSystemProvider } from "./render.js";
 
 interface DiffOptions {

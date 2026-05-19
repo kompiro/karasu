@@ -23,9 +23,9 @@
   },
   "scripts": {
     "prebuild": "tsx ../../scripts/ci/generate-third-party-notices.ts .",
-    "build": "esbuild src/index.ts --bundle --platform=node --format=esm --target=node20 --outfile=dist/index.js --alias:@karasu-tools/core=../core/src/index.ts --external:commander --external:chokidar --external:yaml",
+    "build": "esbuild src/index.ts --bundle --platform=node --format=esm --target=node20 --outfile=dist/index.js --alias:@karasu-tools/core=../core/src/index.ts --alias:@karasu-tools/i18n=../i18n/src/index.ts --external:commander --external:chokidar --external:yaml",
     "prepack": "pnpm run build",
-    "dev": "esbuild src/index.ts --bundle --platform=node --format=esm --target=node20 --outfile=dist/index.js --alias:@karasu-tools/core=../core/src/index.ts --external:commander --external:chokidar --external:yaml --watch",
+    "dev": "esbuild src/index.ts --bundle --platform=node --format=esm --target=node20 --outfile=dist/index.js --alias:@karasu-tools/core=../core/src/index.ts --alias:@karasu-tools/i18n=../i18n/src/index.ts --external:commander --external:chokidar --external:yaml --watch",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:coverage": "vitest run --coverage"
@@ -37,6 +37,7 @@
   },
   "devDependencies": {
     "@karasu-tools/core": "workspace:*",
+    "@karasu-tools/i18n": "workspace:*",
     "@types/node": "^25.6.0",
     "@vitest/coverage-v8": "^4.1.4",
     "esbuild": "^0.28.0",
