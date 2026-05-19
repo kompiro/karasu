@@ -1,6 +1,5 @@
 import type { StyleSheet } from "../types/style.js";
 import { StyleParser } from "../parser/style-parser.js";
-import { formatDiagnostic } from "../parser/diagnostic-format.js";
 
 /**
  * karasu built-in default theme.
@@ -251,7 +250,7 @@ export function getBuiltinStyleSheet(): StyleSheet {
     /* c8 ignore next 4 */
     if (result.diagnostics.length > 0) {
       throw new Error(
-        `Built-in stylesheet has parse errors: ${result.diagnostics.map((d) => formatDiagnostic(d)).join(", ")}`,
+        `Built-in stylesheet has parse errors: ${result.diagnostics.map((d) => d.code).join(", ")}`,
       );
     }
     _cachedSheet = result.value;
