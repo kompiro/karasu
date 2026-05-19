@@ -20,7 +20,7 @@ assumptions:
   - "file: packages/cli/src/lint-style.ts"
   - "symbol: packages/core/src/style/value-validator.ts :: validateStyleValues"
   - "symbol: packages/core/src/types/value-node.ts :: ValueNode"
-  - "grep: packages/lsp/src/server.ts :: validateStyleValues"
+  - "grep: packages/lsp/src/diagnostics.ts :: validateStyleValues"
 ---
 
 # ADR-20260511-03: `.krs.style` 値レベル診断 — 構造化 ValueNode AST と property schema による validator

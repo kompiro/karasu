@@ -1,0 +1,81 @@
+---
+id: ADR-20260519-02
+title: App キーボードショートカットはコマンドレジストリを基盤にする
+status: accepted
+date: 2026-05-19
+topic: app-ui
+related_to: [ADR-20260519-01]
+scope:
+  packages: [app]
+assumptions:
+  - "file: packages/app/src/keyboard/command-context.tsx"
+  - "symbol: packages/app/src/keyboard/KeyboardShortcutDispatcher.tsx :: KeyboardShortcutDispatcher"
+  - "symbol: packages/app/src/keyboard/use-command.ts :: useCommand"
+---
+
+# ADR-20260519-02: App キーボードショートカットはコマンドレジストリを基盤にする
+
+- **日付**: 2026-05-19
+- **ステータス**: 決定済み
+- **関連**:
+  - Issue #1411 — Add Ctrl/Cmd+B keyboard shortcut to toggle the App sidebar
+  - 関連 ADR: [ADR-20260519-01](20260519-01-app-outline-view.md) — Outline ビュー（Files/Outline 切替の対象）
+  - 関連 TPL: [TPL-20260519-01](../test-perspectives/TPL-20260519-01-global-shortcut-text-input-inhibition.md) —
+    グローバルショートカットのテキスト入力フォーカス契約
+  - 後続 Issue: コマンドパレット、Files/Outline ビュー切替ショートカット
+  - コード: `packages/app/src/keyboard/`、`packages/app/src/App.tsx`、
+    `packages/app/src/components/EditArea.tsx`
+
+## 背景
+
+Issue #1411 は VS Code 同様の `Ctrl/Cmd+B`（サイドバー開閉）を求めた。これ単体
+なら `EditArea` に `keydown` リスナーを 1 つ足せば済む。
+
+しかし今後、コマンドパレット（`Cmd+Shift+P` 相当）や Files/Outline ビュー切替
+など複数のショートカットを足したい。各機能が個別に `window` の keydown を撒くと、
+どのキーがどこで処理されるか分散し、二重ハンドルや取りこぼしが起き、コマンド
+パレットを後付けするとき「実行可能なアクション一覧」がどこにも無い、という
+問題が出る。そこで #1411 単体ではなく、ショートカットの基盤を先に設計した。
+
+## 決定
+
+キーボードショートカットは **コマンドレジストリ**を基盤にする。コンポーネントは
+`Command`（id / title / keybinding / `whenTextInputFocused` / run）を React
+context のレジストリに登録し、単一の `KeyboardShortcutDispatcher` が document の
+keydown をキー chord に正規化してレジストリと突き合わせ実行する。`Ctrl/Cmd+B`
+はこの基盤上の最初のコマンド（`view.toggleSidebar`）として実装する。
+
+## 理由
+
+- **入力経路の集約**: キー処理が単一ディスパッチャに集約され、把握・衝突検出が
+  容易。個別 keydown リスナーの増殖を防ぐ。
+- **コマンドパレットの土台**: レジストリの `Command[]` をパレットがそのまま
+  列挙できる。キーバインドのディスパッチとパレットが同じ基盤を共有するため、
+  後続 Issue が軽い（「フックのみ」案ではパレット用に作り直しになる）。
+- **状態の所在を変えない**: `sidebarCollapsed` のようなコンポーネントローカルな
+  状態を reducer に持ち上げず、コンポーネントが自分の setter を `run` に
+  閉じ込めて登録する。既存構造を壊さない。
+- **タイピングを妨げない**: 発火可否は `whenTextInputFocused`（既定 `"skip"`）で
+  コマンドごとに宣言する。テキスト入力／エディタにフォーカスがある間は `skip`
+  コマンドを発火させない。コマンドパレット起動のように入力中でも要るものは
+  `"allow"` を選べる。
+
+## 却下した案
+
+- **単発の keydown リスナーを `EditArea` に足すだけ**: #1411 だけなら最小だが
+  基盤にならず、ショートカットを足すたびにリスナーが増殖する。
+- **`useKeyboardShortcut(chord, handler)` フック（レジストリ無し）**: 状態を
+  持ち上げずに済むが、キーバインドと handler の対しか持たず、コマンドの
+  メタデータ（id・表示名）が無い。コマンドパレットは実行可能アクション一覧を
+  必要とするため別途作り直しになる。
+- **タグ由来の `when` 句のような汎用条件式**: VS Code 風の `when` コンテキストは
+  karasu の規模には過剰。`whenTextInputFocused` の 2 値で当面足りる。
+
+## 補足 — 後続作業
+
+- コマンドパレット UI（`mod+shift+p`）はレジストリの `Command[]` を列挙・実行する
+  だけ。enumerate API はそのとき足す。
+- Files/Outline ビュー切替は `EditArea` が `view.showFiles` / `view.showOutline`
+  コマンドを追加登録するだけで済む。
+- 入力中も発火するショートカットを足す際は capture phase 購読の要否を再検討する
+  （現状の全コマンドは `skip` なので bubble phase で足りる）。
