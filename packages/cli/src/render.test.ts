@@ -95,7 +95,11 @@ describe("render — all-views (no --view)", () => {
     const filePath = join(tmpDir, "index.krs");
     await writeFile(filePath, "system { }", "utf-8");
 
-    mockBuildAllViewsSvgProject.mockResolvedValue({ svg: "<svg>all</svg>", diagnostics: [] });
+    mockBuildAllViewsSvgProject.mockResolvedValue({
+      svg: "<svg>all</svg>",
+      diagnostics: [],
+      warnings: [],
+    });
     const stdoutSpy = vi.spyOn(process.stdout, "write").mockImplementation(() => true);
 
     await render(filePath, {});
@@ -109,7 +113,11 @@ describe("render — all-views (no --view)", () => {
     const outputPath = join(tmpDir, "out.svg");
     await writeFile(filePath, "system { }", "utf-8");
 
-    mockBuildAllViewsSvgProject.mockResolvedValue({ svg: "<svg>all</svg>", diagnostics: [] });
+    mockBuildAllViewsSvgProject.mockResolvedValue({
+      svg: "<svg>all</svg>",
+      diagnostics: [],
+      warnings: [],
+    });
 
     await render(filePath, { output: outputPath });
 
@@ -126,6 +134,7 @@ describe("render — all-views (no --view)", () => {
       diagnostics: [
         { severity: "error", code: "generic-text", params: { text: "unexpected token" } },
       ],
+      warnings: [],
     });
 
     const stderrSpy = vi.spyOn(process.stderr, "write").mockImplementation(() => true);
@@ -149,6 +158,7 @@ describe("render — all-views (no --view)", () => {
       diagnostics: [
         { severity: "warning", code: "generic-text", params: { text: "circular import detected" } },
       ],
+      warnings: [],
     });
 
     const stderrSpy = vi.spyOn(process.stderr, "write").mockImplementation(() => true);
@@ -159,6 +169,48 @@ describe("render — all-views (no --view)", () => {
     expect(
       stderrSpy.mock.calls.some((args) => String(args[0]).includes("circular import detected")),
     ).toBe(true);
+  });
+
+  it("prints resolver warnings from the all-views path to stderr (Issue #1438)", async () => {
+    const filePath = join(tmpDir, "index.krs");
+    await writeFile(filePath, "system { }", "utf-8");
+
+    mockBuildAllViewsSvgProject.mockResolvedValue({
+      svg: "<svg>all</svg>",
+      diagnostics: [],
+      warnings: [{ kind: "unassigned-domain", params: { domainId: "Orphan" } }],
+    });
+
+    const stderrSpy = vi.spyOn(process.stderr, "write").mockImplementation(() => true);
+    vi.spyOn(process.stdout, "write").mockImplementation(() => true);
+
+    await render(filePath, {});
+
+    expect(
+      stderrSpy.mock.calls.some(
+        (args) => String(args[0]).startsWith("Warning:") && String(args[0]).includes("Orphan"),
+      ),
+    ).toBe(true);
+  });
+
+  it("prints info-severity warnings (domain-dispersal) with an `Info:` prefix on the all-views path (Issue #1438)", async () => {
+    const filePath = join(tmpDir, "index.krs");
+    await writeFile(filePath, "system { }", "utf-8");
+
+    mockBuildAllViewsSvgProject.mockResolvedValue({
+      svg: "<svg>all</svg>",
+      diagnostics: [],
+      warnings: [{ kind: "domain-dispersal", params: { domainId: "Order", services: ["A", "B"] } }],
+    });
+
+    const stderrSpy = vi.spyOn(process.stderr, "write").mockImplementation(() => true);
+    vi.spyOn(process.stdout, "write").mockImplementation(() => true);
+
+    await render(filePath, {});
+
+    const lines = stderrSpy.mock.calls.map((args) => String(args[0]));
+    expect(lines.some((l) => l.startsWith("Info:") && l.includes("Order"))).toBe(true);
+    expect(lines.some((l) => l.startsWith("Warning:") && l.includes("Order"))).toBe(false);
   });
 });
 

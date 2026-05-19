@@ -614,4 +614,28 @@ describe("buildAllViewsSvg", () => {
     expect(result.diagnostics.length).toBeGreaterThan(0);
     expect(result.svg).toContain("<svg");
   });
+
+  // Resolver warnings are a model-level fact, independent of which view is
+  // rendered — the all-views path must surface them too. See Issue #1438.
+  it("surfaces resolver warnings (unassigned + dispersed domain) — Issue #1438", () => {
+    const krsFile = Parser.parse(`
+domain Orphan {}
+
+system EC {
+  service ECommerce { domain Order {} }
+  service Legacy { domain Order {} }
+}
+`).value;
+    const result = buildAllViewsSvg(krsFile);
+
+    expect(result.warnings.some((w) => w.kind === "unassigned-domain")).toBe(true);
+    expect(result.warnings.some((w) => w.kind === "domain-dispersal")).toBe(true);
+  });
+
+  it("returns an empty warnings array for a clean model — Issue #1438", () => {
+    const krsFile = Parser.parse(SYSTEM_ONLY).value;
+    const result = buildAllViewsSvg(krsFile);
+
+    expect(result.warnings).toEqual([]);
+  });
 });

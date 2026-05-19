@@ -121,6 +121,32 @@ describe("AT-0042 karasu render — integration with real examples", () => {
     expect(exitSpy).not.toHaveBeenCalled();
   });
 
+  // Issue #1438: resolver warnings (`domain-dispersal`, `unassigned-*`, …)
+  // are a model-level fact and must surface on the all-views path (no
+  // `--view`) just as they do per-view.
+  it("default (no --view) surfaces resolver warnings, matching the per-view path — Issue #1438", async () => {
+    const { writeFileSync } = await import("node:fs");
+    const krsPath = join(tmpDir, "index.krs");
+    writeFileSync(
+      krsPath,
+      `domain Orphan {}
+
+system EC {
+  service ECommerce { domain Order {} }
+  service Legacy { domain Order {} }
+}
+`,
+      "utf-8",
+    );
+
+    await render(krsPath, {});
+    const allViewsStderr = streams.stderr();
+    // Dispersed domain prints as `Info:`, unassigned domain as `Warning:`.
+    expect(allViewsStderr).toContain('Domain "Order"');
+    expect(allViewsStderr).toContain('Domain "Orphan"');
+    expect(exitSpy).not.toHaveBeenCalled();
+  });
+
   it("nonexistent file writes a File not found error and exits with code 1", async () => {
     await render(join(REPO_ROOT, "examples/__nonexistent__.krs"), {});
 

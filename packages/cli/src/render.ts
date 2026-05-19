@@ -99,7 +99,7 @@ export async function render(filePath: string, options: RenderOptions): Promise<
     const result = await buildAllViewsSvgProject(absolutePath, fs);
     output = result.svg;
     diagnostics = result.diagnostics;
-    warnings = [];
+    warnings = result.warnings;
   }
 
   const errors = diagnostics.filter((d) => d.severity === "error");
