@@ -7,6 +7,7 @@ import {
   type FileSystemProvider,
   type NodeMetadata,
   type DeployBlockInfo,
+  type DeployBlock,
   type DisplayMode,
 } from "@karasu-tools/core";
 import { useEmptyStateLabels } from "../i18n/use-empty-state-labels.js";
@@ -18,6 +19,8 @@ interface DeployViewState {
   diagnostics: Diagnostic[];
   nodeMetadata: Map<string, NodeMetadata>;
   deployBlocks: DeployBlockInfo[];
+  /** All deploy blocks with their nodes — source for the App Outline. */
+  deployTree: DeployBlock[];
 }
 
 const DEBOUNCE_MS = 300;
@@ -36,6 +39,7 @@ export function useDeployView(
     diagnostics: [],
     nodeMetadata: new Map(),
     deployBlocks: [],
+    deployTree: [],
   });
 
   const lastValidSvg = useRef("");
@@ -90,6 +94,7 @@ export function useDeployView(
               diagnostics: diff.diagnostics,
               nodeMetadata: base.nodeMetadata,
               deployBlocks: base.deployBlocks,
+              deployTree: base.deployTree,
             });
           } else {
             const fingerprint = computeViewResultFingerprint({
@@ -108,6 +113,7 @@ export function useDeployView(
               diagnostics: diff.diagnostics,
               nodeMetadata: base.nodeMetadata,
               deployBlocks: base.deployBlocks,
+              deployTree: base.deployTree,
             });
           }
           return;
@@ -130,6 +136,7 @@ export function useDeployView(
             diagnostics: result.diagnostics,
             nodeMetadata: result.nodeMetadata,
             deployBlocks: result.deployBlocks,
+            deployTree: result.deployTree,
           });
         } else {
           const fingerprint = computeViewResultFingerprint({
@@ -148,6 +155,7 @@ export function useDeployView(
             diagnostics: result.diagnostics,
             nodeMetadata: result.nodeMetadata,
             deployBlocks: result.deployBlocks,
+            deployTree: result.deployTree,
           });
         }
       } catch {
