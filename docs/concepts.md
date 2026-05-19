@@ -4,6 +4,8 @@
 
 ## Three-dimensional structure: logical, physical, organizational
 
+<a id="three-dimensional-structure"></a>
+
 karasu describes a system's architecture across three dimensions — **logical, physical, and organizational**.
 This is the foundation of karasu's design.
 Each dimension can be written in a separate file, but all three are navigated together through the same drill-down.
@@ -88,9 +90,13 @@ a user writes it by hand in an editor, `karasu translate` extracts it from an ex
 Whichever path you take, the final product is `.krs` text, and diagrams are rendered from there.
 This "text as single source of truth" principle is explored in detail in the "Goals" section below.
 
+> Related ADR topics: `core-concepts`, `parser`, `project`
+
 ---
 
 ## Drill-down as the way to understand architecture
+
+<a id="drill-down"></a>
 
 This concept is also the origin of the tool's name "karasu" (鴉, raven).
 Like a raven that surveys the world from above to gather information and descends where needed, you understand the architecture by drilling down.
@@ -112,9 +118,13 @@ Rather than a single-page "at a glance" diagram that tries to show everything, k
 Why this direction is chosen is discussed in detail in the "Goals and non-goals" section below.
 When this document refers to "scoped glance" from here on, it means this principle.
 
+> Related ADR topics: `navigation`, `renderer`
+
 ---
 
 ## Edges — Expressing relationships and aggregating them
+
+<a id="edges"></a>
 
 Relationships between nodes are expressed as **edges**.
 karasu's edge model is made up of four mechanisms that work together, each an embodiment of the **scoped-glance + drill-down principle** at the edge layer:
@@ -192,9 +202,13 @@ Reference: ADR-20260405-06.
 The four mechanisms (explicit/implicit, aggregation, ghost, cyclic checks) are not independent features; they are different restatements of the same **scoped-glance + drill-down** principle at the edge layer.
 The writer records details; the reader receives a bounded field of view; boundaries survive as ghosts; and static checks keep the structural soundness.
 
+> Related ADR topics: `edges`
+
 ---
 
 ## What karasu visualizes vs. what it doesn't prescribe
+
+<a id="visualizes-vs-prescribes"></a>
 
 karasu **visualizes** architecture; it does not **prescribe** a particular style.
 The tool models *what exists* — not what *ought* to exist in some school's view of
@@ -249,7 +263,11 @@ still allowing the underlying facts to be modeled.
 
 > Related TPLs: TPL-20260514-08 — `Diagnostic register reflects "fact vs. style"`
 
+> Related ADR topics: `styling`
+
 ## Domain dispersal detection
+
+<a id="domain-dispersal-detection"></a>
 
 When the same `domain` id appears under multiple `service` blocks within a single `system`, karasu surfaces this as an **`info`-register** observation. Per the "What karasu visualizes vs. what it doesn't prescribe" section above, the diagnostic states the fact and leaves the judgment to the reader — it does not assert that the configuration is wrong.
 
@@ -284,9 +302,13 @@ system ECPlatform {
 
 Domain identity is determined by **`id`**. The `label` (display name) can be translated or abbreviated over time, so it is not used as the detection key.
 
+> Related ADR topics: `resolver`
+
 ---
 
 ## How karasu differs from C4 Model
+
+<a id="c4-comparison"></a>
 
 karasu is inspired by C4 Model but adopts its own vocabulary.
 
@@ -301,9 +323,13 @@ karasu is inspired by C4 Model but adopts its own vocabulary.
 
 C4 compatibility is not a goal in itself. See the "Goals and non-goals" section below for details.
 
+> Related ADR topics: _(none — comparison / onboarding section)_
+
 ---
 
 ## Goals and non-goals
+
+<a id="goals-and-non-goals"></a>
 
 What karasu aims for and what it does not.
 The value of this list is in the **rationale** behind individual rules more than in the rules themselves.
@@ -500,9 +526,13 @@ These goals and non-goals are not fixed; they are expected to be updated as real
 However, updates should happen at the **rationale layer**, not as isolated rules —
 when adding a new rule, verify that it does not contradict the existing reasons and that it aligns with the shared themes (stay at the right abstraction level, keep text as the single source of truth). Doing so is how karasu's consistency is maintained.
 
+> Related ADR topics: _(none — onboarding / rationale section)_
+
 ---
 
 ## karasu and AI — the DSL as a constrained intermediate language
+
+<a id="karasu-and-ai"></a>
 
 The property "natural affinity with AI" mentioned in the goals section leads to an insight that elevates karasu's positioning. This section expands on it.
 
@@ -576,3 +606,5 @@ Adopting this framing elevates how karasu is presented to the outside world.
 
 The latter does not present AI as an add-on feature; it puts the claim that **AI collaboration falls out of the DSL design itself** front and center.
 The AI story is not one item on karasu's feature list; it is a consequence of the core design decision.
+
+> Related ADR topics: `chat-ai`

@@ -50,3 +50,11 @@ pre-push:
       # changed without regenerating. Mirrors the CI step in ci.yml.
       glob: "{docs/spec/**,packages/core/src/builtins/reference-data.ts,scripts/reference/**}"
       run: pnpm exec tsx scripts/reference/gen-docs.ts --check
+    concept-adr-refs:
+      # The bidirectional reference layer between docs/concepts*.md and the
+      # ADR topic vocabulary (Issue #1389) — fail if a concept anchor or a
+      # `> Related ADR topics:` annotation drifts from a `> Derives from`
+      # back-ref in docs/adr/README.md. The vitest test
+      # (scripts/lint/concept-adr-refs.test.ts) mirrors this guard in CI.
+      glob: "{docs/concepts.md,docs/concepts.ja.md,docs/adr/README.md,adr.config.json,scripts/lint/concept-adr-refs.ts}"
+      run: pnpm run lint:concept-adr-refs
