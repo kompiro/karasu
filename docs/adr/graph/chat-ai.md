@@ -17,6 +17,7 @@ flowchart TD
   end
   ADR_20260324_01["ADR-20260324-01<br/>[testing] E2EテストよりQA手動確認を優先する"]
   ADR_20260425_01["ADR-20260425-01<br/>[app-ui] ユーザー向け文字列はデフォルトで i18n を通す"]
+  ADR_20260519_07["ADR-20260519-07<br/>[vscode] LSP / CLI の i18n — 互換ブリッジ廃止と @karasu-tools/i18n..."]
   ADR_20260409_01 --> ADR_20260409_08
   ADR_20260409_01 --> ADR_20260407_04
   ADR_20260409_08 --> ADR_20260407_04
@@ -26,6 +27,7 @@ flowchart TD
   ADR_20260422_02 --> ADR_20260409_08
   ADR_20260422_02 --> ADR_20260412_01
   ADR_20260425_01 --> ADR_20260420_03
+  ADR_20260519_07 --> ADR_20260420_03
   ADR_20260412_05 -.supersedes.-> ADR_20260324_01
 
   classDef accepted fill:#d4edda,stroke:#28a745,color:#155724
@@ -44,4 +46,5 @@ flowchart TD
   class ADR_20260422_02 accepted
   class ADR_20260324_01 ghost
   class ADR_20260425_01 ghost
+  class ADR_20260519_07 ghost
 ```

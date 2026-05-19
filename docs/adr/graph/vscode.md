@@ -1,6 +1,6 @@
 # ADR Topic: vscode
 
-5 ADRs in this topic. Solid nodes belong to `vscode`; gray dashed nodes are ghosts showing cross-topic references to help navigation.
+6 ADRs in this topic. Solid nodes belong to `vscode`; gray dashed nodes are ghosts showing cross-topic references to help navigation.
 
 Other topics: [overview](../graph.md).
 ```mermaid
@@ -11,15 +11,18 @@ flowchart TD
     ADR_20260401_05["ADR-20260401-05<br/>VSCode Phase 3.5 — Webview ドリルダウンナビゲーション"]
     ADR_20260404_07["ADR-20260404-07<br/>VSCode プレビュー Icon Mode トグル — Extension Host 管理 ..."]
     ADR_20260428_03["ADR-20260428-03<br/>VS Code 拡張ホスト向け smoke test harness"]
+    ADR_20260519_07["ADR-20260519-07<br/>LSP / CLI の i18n — 互換ブリッジ廃止と @karasu-tools/i18n..."]
   end
   ADR_20260320_01["ADR-20260320-01<br/>[renderer] インタラクティブ SVG レンダリングと NodeDetailPanel"]
   ADR_20260328_03["ADR-20260328-03<br/>[renderer] アイコンモード — SVG アイコンによるノード表示切り替え"]
   ADR_20260401_07["ADR-20260401-07<br/>[navigation] ノードクリック UX — ドリルダウンと Cmd/Ctrl+Click エディタジャンプ"]
+  ADR_20260420_03["ADR-20260420-03<br/>[chat-ai] i18n ロールアウト — 英語 / 日本語の UI・診断・Chat"]
   ADR_20260401_04 --> ADR_20260330_05
   ADR_20260401_05 --> ADR_20260401_04
   ADR_20260401_05 --> ADR_20260320_01
   ADR_20260404_07 --> ADR_20260328_03
   ADR_20260404_07 --> ADR_20260330_05
+  ADR_20260519_07 --> ADR_20260420_03
   ADR_20260401_07 --> ADR_20260320_01
   ADR_20260401_07 --> ADR_20260401_05
 
@@ -34,7 +37,9 @@ flowchart TD
   class ADR_20260401_05 accepted
   class ADR_20260404_07 accepted
   class ADR_20260428_03 accepted
+  class ADR_20260519_07 accepted
   class ADR_20260320_01 ghost
   class ADR_20260328_03 ghost
   class ADR_20260401_07 ghost
+  class ADR_20260420_03 ghost
 ```

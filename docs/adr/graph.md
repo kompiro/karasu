@@ -1,6 +1,6 @@
 # ADR Dependency Graph — Overview
 
-188 ADRs across 15 topics. Clusters group by `topic` frontmatter field. Edges crossing cluster borders are cross-topic dependencies.
+189 ADRs across 15 topics. Clusters group by `topic` frontmatter field. Edges crossing cluster borders are cross-topic dependencies.
 ```mermaid
 flowchart TD
   subgraph adr-tooling["adr-tooling"]
@@ -220,6 +220,7 @@ flowchart TD
     ADR_20260401_05["ADR-20260401-05<br/>VSCode Phase 3.5 — Webview ドリルダウンナビゲーション"]
     ADR_20260404_07["ADR-20260404-07<br/>VSCode プレビュー Icon Mode トグル — Extension Host 管理 ..."]
     ADR_20260428_03["ADR-20260428-03<br/>VS Code 拡張ホスト向け smoke test harness"]
+    ADR_20260519_07["ADR-20260519-07<br/>LSP / CLI の i18n — 互換ブリッジ廃止と @karasu-tools/i18n..."]
   end
   ADR_20260320_01 --> ADR_20260320_02
   ADR_20260320_01 --> ADR_20260317_01
@@ -307,6 +308,7 @@ flowchart TD
   ADR_20260511_03 --> ADR_20260509_02
   ADR_20260511_03 --> ADR_20260510_01
   ADR_20260512_03 --> ADR_20260322_01
+  ADR_20260519_07 --> ADR_20260420_03
   ADR_20260412_05 -.supersedes.-> ADR_20260324_01
   ADR_20260429_09 -.supersedes.-> ADR_20260428_05
   ADR_20260508_01 -.supersedes.-> ADR_20260506_01
@@ -505,6 +507,7 @@ flowchart TD
   class ADR_20260519_04 accepted
   class ADR_20260519_05 accepted
   class ADR_20260519_06 accepted
+  class ADR_20260519_07 accepted
 ```
 
 ## Per-topic detail
@@ -523,4 +526,4 @@ flowchart TD
 - [`resolver`](graph/resolver.md) — 5 ADRs
 - [`styling`](graph/styling.md) — 6 ADRs
 - [`testing`](graph/testing.md) — 11 ADRs
-- [`vscode`](graph/vscode.md) — 5 ADRs
+- [`vscode`](graph/vscode.md) — 6 ADRs
