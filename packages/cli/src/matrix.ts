@@ -6,12 +6,12 @@ import {
   formatMatrixAsMarkdown,
   formatMatrixAsCsv,
   renderMatrixAsSvg,
-  formatDiagnostic,
   type FileSystemProvider,
   type DirEntry,
   type CrudMatrixOptions,
   type InfraKind,
 } from "@karasu-tools/core";
+import { formatDiagnostic } from "./i18n.js";
 
 type MatrixFormat = "md" | "csv" | "svg";
 const VALID_INFRA: ReadonlySet<InfraKind> = new Set(["database", "queue", "storage"]);

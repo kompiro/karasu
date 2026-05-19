@@ -1,6 +1,7 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
-import { compile, buildAllViewsSvg, formatDiagnostic } from "@karasu-tools/core";
+import { compile, buildAllViewsSvg } from "@karasu-tools/core";
 import type { DiagramType } from "@karasu-tools/core";
+import { formatDiagnostic } from "./i18n.js";
 
 // ---------------------------------------------------------------------------
 // SSRF protection

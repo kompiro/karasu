@@ -158,6 +158,9 @@ importers:
       '@karasu-tools/core':
         specifier: workspace:*
         version: link:../core
+      '@karasu-tools/i18n':
+        specifier: workspace:*
+        version: link:../i18n
       '@types/node':
         specifier: ^25.6.0
         version: 25.6.0

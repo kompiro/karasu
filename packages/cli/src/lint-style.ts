@@ -1,11 +1,7 @@
 import * as fs from "fs";
 import * as path from "path";
-import {
-  StyleParser,
-  formatDiagnostic,
-  validateStyleValues,
-  type Diagnostic,
-} from "@karasu-tools/core";
+import { StyleParser, validateStyleValues, type Diagnostic } from "@karasu-tools/core";
+import { formatDiagnostic } from "./i18n.js";
 import { readStdin } from "./stdin.js";
 
 interface LintStyleOptions {

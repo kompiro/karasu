@@ -6,8 +6,6 @@ import {
   compileProject,
   extractCrudMatrix,
   renderMatrixAsSvg,
-  formatDiagnostic,
-  formatWarning,
   warningSeverity,
 } from "@karasu-tools/core";
 import type {
@@ -18,6 +16,7 @@ import type {
   DrawioViewSelection,
   Warning,
 } from "@karasu-tools/core";
+import { formatDiagnostic, formatWarning } from "./i18n.js";
 
 type RenderFormat = "svg" | "drawio";
 
