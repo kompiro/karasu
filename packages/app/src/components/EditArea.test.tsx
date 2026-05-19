@@ -181,6 +181,75 @@ describe("EditArea", () => {
     textarea.remove();
   });
 
+  it("switches the sidebar to the Outline view with the mod+shift+O shortcut", () => {
+    const { getByText, queryByText } = renderWithShortcuts(
+      <EditArea
+        {...defaultProps}
+        sidebarContent={<div>File Tree</div>}
+        outlineContent={<div>AST Outline</div>}
+      />,
+    );
+    expect(getByText("File Tree")).toBeTruthy();
+    fireEvent.keyDown(document, { key: "o", ctrlKey: true, shiftKey: true });
+    expect(getByText("AST Outline")).toBeTruthy();
+    expect(queryByText("File Tree")).toBeNull();
+  });
+
+  it("switches the sidebar back to the Files view with the mod+shift+E shortcut", () => {
+    const { getByRole, getByText, queryByText } = renderWithShortcuts(
+      <EditArea
+        {...defaultProps}
+        sidebarContent={<div>File Tree</div>}
+        outlineContent={<div>AST Outline</div>}
+      />,
+    );
+    fireEvent.click(getByRole("button", { name: /Show outline/ }));
+    expect(getByText("AST Outline")).toBeTruthy();
+    fireEvent.keyDown(document, { key: "e", ctrlKey: true, shiftKey: true });
+    expect(getByText("File Tree")).toBeTruthy();
+    expect(queryByText("AST Outline")).toBeNull();
+  });
+
+  it("expands a collapsed sidebar when a view shortcut fires", () => {
+    const { container, getByText } = renderWithShortcuts(
+      <EditArea
+        {...defaultProps}
+        sidebarContent={<div>File Tree</div>}
+        outlineContent={<div>AST Outline</div>}
+      />,
+    );
+    fireEvent.keyDown(document, { key: "b", ctrlKey: true });
+    expect(container.querySelector(".sidebar-area")).toBeNull();
+    fireEvent.keyDown(document, { key: "o", ctrlKey: true, shiftKey: true });
+    expect(container.querySelector(".sidebar-area")).toBeTruthy();
+    expect(getByText("AST Outline")).toBeTruthy();
+  });
+
+  // TPL-20260519-01: global shortcuts must not fire while a text input is focused.
+  it("ignores the view shortcuts while a text input is focused", () => {
+    const { getByText } = renderWithShortcuts(
+      <EditArea
+        {...defaultProps}
+        sidebarContent={<div>File Tree</div>}
+        outlineContent={<div>AST Outline</div>}
+      />,
+    );
+    const textarea = document.createElement("textarea");
+    document.body.appendChild(textarea);
+    textarea.focus();
+    fireEvent.keyDown(document, { key: "o", ctrlKey: true, shiftKey: true });
+    expect(getByText("File Tree")).toBeTruthy(); // unchanged
+    textarea.remove();
+  });
+
+  it("does not register the Outline shortcut when outlineContent is absent", () => {
+    const { getByText } = renderWithShortcuts(
+      <EditArea {...defaultProps} sidebarContent={<div>File Tree</div>} />,
+    );
+    fireEvent.keyDown(document, { key: "o", ctrlKey: true, shiftKey: true });
+    expect(getByText("File Tree")).toBeTruthy(); // no-op, no outline view to switch to
+  });
+
   it("restores the previously active sidebar view after a shortcut collapse/expand", () => {
     const { container, getByRole, getByText } = renderWithShortcuts(
       <EditArea

@@ -136,9 +136,30 @@ export function EditArea({
 
   const style = { "--sidebar-w": `${sidebarWidth}px` } as CSSProperties;
 
+  const showSidebarView = useCallback((view: SidebarView) => {
+    setSidebarView(view);
+    setSidebarCollapsed(false);
+  }, []);
+
   return (
     <div className={className} style={style}>
       {hasSidebar && <SidebarToggleCommand onToggle={() => setSidebarCollapsed((v) => !v)} />}
+      {hasSidebar && (
+        <SidebarViewCommand
+          id="view.showFiles"
+          title="Show Files"
+          keybinding="mod+shift+e"
+          onShow={() => showSidebarView("files")}
+        />
+      )}
+      {hasOutline && (
+        <SidebarViewCommand
+          id="view.showOutline"
+          title="Show Outline"
+          keybinding="mod+shift+o"
+          onShow={() => showSidebarView("outline")}
+        />
+      )}
       {hasSidebar && !previewFocused && (
         <nav className="activity-bar" aria-label="Activity Bar">
           <ActivityBarButton
@@ -231,6 +252,32 @@ function SidebarToggleCommand({ onToggle }: { onToggle: () => void }) {
     keybinding: "mod+b",
     whenTextInputFocused: "skip",
     run: onToggle,
+  });
+  return null;
+}
+
+/**
+ * Registers a keyboard command that focuses the sidebar on a given view,
+ * expanding it if collapsed. Rendered conditionally (Outline only when an
+ * outline exists), so the hook is never called conditionally. Renders nothing.
+ */
+function SidebarViewCommand({
+  id,
+  title,
+  keybinding,
+  onShow,
+}: {
+  id: string;
+  title: string;
+  keybinding: string;
+  onShow: () => void;
+}) {
+  useCommand({
+    id,
+    title,
+    keybinding,
+    whenTextInputFocused: "skip",
+    run: onShow,
   });
   return null;
 }
