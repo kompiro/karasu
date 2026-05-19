@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { ICON_THEME_STYLE_SOURCE, getIconThemeStyleSheet } from "./icon-theme.js";
+import { ICON_THEME_STYLE_SOURCE, getIconThemeStyleSheet, iconNameForNode } from "./icon-theme.js";
 
 describe("ICON_THEME_STYLE_SOURCE", () => {
   it("is a non-empty string", () => {
@@ -78,5 +78,58 @@ describe("ICON_THEME_STYLE_SOURCE", () => {
       expect(shape).toBeDefined();
       expect(shape).toMatch(/^url\(/);
     }
+  });
+});
+
+describe("iconNameForNode", () => {
+  it("resolves base node kinds to their Icon Mode icon", () => {
+    expect(iconNameForNode("service", [])).toBe("service");
+    expect(iconNameForNode("client", [])).toBe("client");
+    expect(iconNameForNode("resource", [])).toBe("resource");
+    expect(iconNameForNode("user", [])).toBe("user-card");
+    expect(iconNameForNode("queue", [])).toBe("queue-node");
+    expect(iconNameForNode("storage", [])).toBe("cloud-node");
+  });
+
+  it("resolves client subtype tags to the client-<tag> variant", () => {
+    expect(iconNameForNode("client", ["mobile"])).toBe("client-mobile");
+    expect(iconNameForNode("client", ["web"])).toBe("client-web");
+    expect(iconNameForNode("client", ["desktop"])).toBe("client-desktop");
+    expect(iconNameForNode("client", ["cli"])).toBe("client-cli");
+    expect(iconNameForNode("client", ["device"])).toBe("client-device");
+    expect(iconNameForNode("client", ["extension"])).toBe("client-extension");
+    expect(iconNameForNode("client", ["embed"])).toBe("client-embed");
+  });
+
+  it("resolves resource variant tags to the variant icon", () => {
+    expect(iconNameForNode("resource", ["table"])).toBe("table");
+    expect(iconNameForNode("resource", ["queue"])).toBe("queue-card");
+    expect(iconNameForNode("resource", ["api"])).toBe("api");
+    expect(iconNameForNode("resource", ["storage"])).toBe("cloud-card");
+  });
+
+  it("uses first-match-wins on tag order for a multi-subtype client", () => {
+    // Matches applyClientSubtypeFirstMatch in resolver/style-resolver.ts.
+    expect(iconNameForNode("client", ["web", "mobile"])).toBe("client-web");
+    expect(iconNameForNode("client", ["mobile", "web"])).toBe("client-mobile");
+  });
+
+  it("ignores tags that are not recognised variants", () => {
+    expect(iconNameForNode("client", ["legacy"])).toBe("client");
+    expect(iconNameForNode("resource", ["internal"])).toBe("resource");
+  });
+
+  it("only applies variant tags to their owning kind", () => {
+    // A `mobile` tag on a non-client kind does not pull a client variant.
+    expect(iconNameForNode("service", ["mobile"])).toBe("service");
+    // A `table` tag on a non-resource kind does not pull a resource variant.
+    expect(iconNameForNode("service", ["table"])).toBe("service");
+  });
+
+  it("returns undefined for kinds without an Icon Mode pictogram", () => {
+    expect(iconNameForNode("system", [])).toBeUndefined();
+    expect(iconNameForNode("deploy-block", [])).toBeUndefined();
+    expect(iconNameForNode("organization", [])).toBeUndefined();
+    expect(iconNameForNode("table", [])).toBeUndefined();
   });
 });
