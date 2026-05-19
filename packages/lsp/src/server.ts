@@ -18,7 +18,9 @@ import {
 } from "vscode-languageserver/node";
 import { TextDocument } from "vscode-languageserver-textdocument";
 import { Parser, format, FormatError, tidyStyleSheet } from "@karasu-tools/core";
+import type { Locale } from "@karasu-tools/i18n";
 import { computeDiagnostics } from "./diagnostics.js";
+import { resolveLspLocale } from "./locale.js";
 import {
   findNodeAtPosition,
   findRangeOfNode,
@@ -52,7 +54,13 @@ export const PositionOfNodeRequest = new RequestType<
 const connection = createConnection(ProposedFeatures.all);
 const documents = new TextDocuments(TextDocument);
 
-connection.onInitialize((_params: InitializeParams): InitializeResult => {
+// The editor's display language, resolved once from the `initialize`
+// request. Diagnostics are formatted in this locale; defaults to English
+// until `onInitialize` runs.
+let locale: Locale = "en";
+
+connection.onInitialize((params: InitializeParams): InitializeResult => {
+  locale = resolveLspLocale(params);
   return {
     capabilities: {
       textDocumentSync: TextDocumentSyncKind.Incremental,
@@ -335,7 +343,11 @@ connection.onDocumentSymbol((params) => {
 // ─── Diagnostics ─────────────────────────────────────────────────────────────
 
 function validateDocument(document: TextDocument): void {
-  const diagnostics = computeDiagnostics(document.getText(), document.languageId === "krs-style");
+  const diagnostics = computeDiagnostics(
+    document.getText(),
+    document.languageId === "krs-style",
+    locale,
+  );
   connection.sendDiagnostics({ uri: document.uri, diagnostics });
 }
 

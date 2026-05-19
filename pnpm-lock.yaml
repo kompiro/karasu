@@ -219,6 +219,9 @@ importers:
       '@karasu-tools/core':
         specifier: workspace:*
         version: link:../core
+      '@karasu-tools/i18n':
+        specifier: workspace:*
+        version: link:../i18n
       vscode-languageserver:
         specifier: ^9.0.1
         version: 9.0.1

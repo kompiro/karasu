@@ -12,6 +12,7 @@
   },
   "dependencies": {
     "@karasu-tools/core": "workspace:*",
+    "@karasu-tools/i18n": "workspace:*",
     "vscode-languageserver": "^9.0.1",
     "vscode-languageserver-textdocument": "^1.0.12"
   },
