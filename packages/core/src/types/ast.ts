@@ -416,10 +416,9 @@ export type DiagnosticSeverity = "error" | "warning" | "info";
  * to re-render the diagnostic message in any language; producers never build
  * user-visible strings.
  *
- * Consumers that need a localized string should call `formatDiagnostic(d)`
- * (the temporary compat bridge) or `t(\`diagnostic.\${d.code}\`, d.params)`
- * once the app's `useTranslation` infrastructure covers diagnostic keys
- * (Phase D).
+ * Consumers that need a localized string call `renderDiagnostic(d, t)`
+ * from `@karasu-tools/i18n`; the structured `Diagnostic` stays
+ * language-neutral.
  *
  * See `docs/design/i18n-support.md`.
  */
@@ -537,7 +536,7 @@ export interface DiagnosticParamsByCode {
   "app-org-parse-error": Record<string, never>;
   // Generic fallback for tests and ad-hoc callers that need a Diagnostic
   // without a specific structural shape — the `text` param carries a
-  // pre-built string that formatDiagnostic returns verbatim.
+  // pre-built string that the renderers return verbatim.
   "generic-text": { text: string };
 }
 

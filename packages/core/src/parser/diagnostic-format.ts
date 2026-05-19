@@ -1,15 +1,19 @@
 /**
- * Temporary compat bridge: reproduces the pre-Phase-B `message` string from
- * a structured `Diagnostic`. Exists so app / CLI / LSP consumers don't
- * regress during the i18n rollout (see `docs/design/i18n-support.md`
- * Phase B → Phase D).
+ * Core-internal English stringifier for a structured `Diagnostic`.
  *
- * Each branch intentionally outputs the same string that the producer used
- * to write inline. Once diagnostics are wired into `useTranslation`
- * (Phase D), this file can be deleted.
+ * User-facing diagnostic text in the app / lsp / cli is produced by
+ * `renderDiagnostic` in `@karasu-tools/i18n`, which is locale-aware.
+ * `@karasu-tools/i18n` depends on `@karasu-tools/core`, so core cannot
+ * import it back; this module stays in core for the two consumers that
+ * need a diagnostic string without that dependency:
  *
- * @deprecated Replaced by `useTranslation()` in Phase D. Do not add new
- *   callers — new consumers should read `d.code` / `d.params` directly.
+ *   - built-in stylesheet parse-error messages (`builtins/`), which are
+ *     internal invariant-violation `Error`s, not localized output;
+ *   - parser unit tests asserting on diagnostic text.
+ *
+ * It is *not* user-facing i18n. The English wording here must stay in
+ * lock-step with the `diagnostic.*` keys in `@karasu-tools/i18n`'s `en.ts`
+ * — see TPL-20260519-01.
  */
 
 import type { Diagnostic } from "../types/ast.js";

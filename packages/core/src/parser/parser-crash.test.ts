@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { Parser } from "./parser.js";
-import { formatDiagnostic } from "./diagnostic-legacy-format.js";
+import { formatDiagnostic } from "./diagnostic-format.js";
 import { compile, compileProject, InMemoryFileSystemProvider } from "../index.js";
 
 describe("Missing id - Parser", () => {

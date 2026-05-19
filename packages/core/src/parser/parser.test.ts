@@ -1,6 +1,6 @@
 import { describe, it, expect, assert } from "vitest";
 import { Parser } from "./parser.js";
-import { formatDiagnostic } from "./diagnostic-legacy-format.js";
+import { formatDiagnostic } from "./diagnostic-format.js";
 import { getReference } from "../builtins/reference.js";
 import type {
   ClientNode,

@@ -51,10 +51,9 @@ export type {
   WarningKind,
   WarningParamsByKind,
   WarningSeverity,
+  FormattedWarning,
 } from "./types/warnings.js";
 export { warningSeverity } from "./types/warnings.js";
-export { formatWarning, type FormattedWarning } from "./resolver/warning-legacy-format.js";
-export { formatDiagnostic } from "./parser/diagnostic-legacy-format.js";
 export { tidyStyleSheet, type TidyOptions, type TidyResult } from "./style/tidy.js";
 export { serializeStyleSheet } from "./style/serialize.js";
 export { validateStyleValues } from "./style/value-validator.js";
