@@ -36,9 +36,8 @@ export type WarningKind =
  * to re-render the warning message in any language; producers never build
  * user-visible strings.
  *
- * Consumers that need a localized string should call `formatWarning(w)` (the
- * temporary compat bridge) or `t(\`warning.\${w.kind}\`, w.params)` once the
- * app's `useTranslation` infrastructure covers warning keys (Phase D).
+ * Consumers that need a localized string call `renderWarning(w, t)` from
+ * `@karasu-tools/i18n`; the structured `Warning` stays language-neutral.
  */
 export interface WarningParamsByKind {
   "domain-dispersal": { domainId: string; services: string[] };
@@ -175,4 +174,15 @@ const INFO_WARNING_KINDS: ReadonlySet<WarningKind> = new Set<WarningKind>([
 
 export function warningSeverity(kind: WarningKind): WarningSeverity {
   return INFO_WARNING_KINDS.has(kind) ? "info" : "warning";
+}
+
+/**
+ * A `Warning` rendered to display strings. Produced by the i18n renderer
+ * (`renderWarning` in `@karasu-tools/i18n`) — the structured `Warning`
+ * itself stays language-neutral. Defined here so every renderer consumer
+ * (app, lsp, cli) shares one type.
+ */
+export interface FormattedWarning {
+  message: string;
+  details: string[];
 }

@@ -1,6 +1,6 @@
 import type { StyleSheet } from "../types/style.js";
 import { StyleParser } from "../parser/style-parser.js";
-import { formatDiagnostic } from "../parser/diagnostic-legacy-format.js";
+import { formatDiagnostic } from "../parser/diagnostic-format.js";
 
 /**
  * Recognised `client` form-factor subtype tags. The icon theme below maps
