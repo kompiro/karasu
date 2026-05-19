@@ -39,6 +39,7 @@ import {
   resolveStyleAppendTarget,
 } from "../lib/append-style-rule.js";
 import { DiffModeBanner } from "./DiffModeBanner.js";
+import { DiagramViewShortcuts } from "./DiagramViewShortcuts.js";
 
 interface AppShellProps {
   entryPath: string | null;
@@ -469,6 +470,7 @@ export function AppShell({
           hasParseErrors={hasParseErrors}
         />
       )}
+      <DiagramViewShortcuts onActiveViewChange={navigateActiveView} />
       <PreviewProvider value={previewContextValue}>
         {compareSource && (
           <DiffModeBanner
