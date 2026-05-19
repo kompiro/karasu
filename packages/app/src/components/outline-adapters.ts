@@ -24,6 +24,9 @@ function krsNodeToOutline(node: KrsNode): OutlineNode {
     id: node.id,
     label: node.label,
     kind: node.kind,
+    // Carried so `OutlineView` can resolve tag-driven icon variants
+    // (`client[mobile]`, `resource[table]`, …) — Issue #1415.
+    tags: node.tags,
     children: node.children.map(krsNodeToOutline),
   };
 }

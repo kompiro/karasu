@@ -5,7 +5,7 @@ import { toDeployOutline, toOrgOutline, toSystemOutline } from "./outline-adapte
 const LOC = { start: { line: 1, column: 1, offset: 0 }, end: { line: 1, column: 1, offset: 0 } };
 
 describe("toSystemOutline", () => {
-  it("maps a SystemNode tree to OutlineNode, preserving id/label/kind/children", () => {
+  it("maps a SystemNode tree to OutlineNode, preserving id/label/kind/tags/children", () => {
     const systems = [
       {
         kind: "system",
@@ -18,9 +18,9 @@ describe("toSystemOutline", () => {
         properties: { links: [] },
         children: [
           {
-            kind: "service",
+            kind: "client",
             id: "API",
-            tags: [],
+            tags: ["mobile"],
             annotations: [],
             edges: [],
             loc: LOC,
@@ -35,7 +35,8 @@ describe("toSystemOutline", () => {
         id: "Shop",
         label: "Online Shop",
         kind: "system",
-        children: [{ id: "API", label: undefined, kind: "service", children: [] }],
+        tags: [],
+        children: [{ id: "API", label: undefined, kind: "client", tags: ["mobile"], children: [] }],
       },
     ]);
   });

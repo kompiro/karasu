@@ -114,6 +114,53 @@ describe("OutlineView", () => {
     expect(apiItem?.querySelector(".outline-item__icon svg")).toBeTruthy();
   });
 
+  it("resolves a client subtype tag to the variant pictogram", () => {
+    // Register only the `client-mobile` variant icon — not the base `client`.
+    loadAndRegisterIcon(
+      "client-mobile",
+      `<svg viewBox="0 0 160 100"><g class="krs-pictogram">` +
+        `<rect class="marker-client-mobile" width="4" height="4" fill="{{color}}"/></g></svg>`,
+      true,
+    );
+    const { container } = renderView({
+      nodes: [
+        node("system", "Shop", [
+          { kind: "client", id: "Phone", tags: ["mobile"], children: [] },
+          { kind: "client", id: "Plain", tags: [], children: [] },
+        ]),
+      ],
+    });
+    const phone = [...container.querySelectorAll(".outline-item")].find((el) =>
+      el.textContent?.includes("Phone"),
+    );
+    const plain = [...container.querySelectorAll(".outline-item")].find((el) =>
+      el.textContent?.includes("Plain"),
+    );
+    // `client[mobile]` resolves to `client-mobile` and draws its pictogram.
+    expect(phone?.querySelector(".marker-client-mobile")).toBeTruthy();
+    // A plain `client` resolves to base `client`, which is unregistered → glyph.
+    expect(plain?.querySelector(".outline-item__icon--glyph")).toBeTruthy();
+  });
+
+  it("resolves a resource variant tag to the variant pictogram", () => {
+    loadAndRegisterIcon(
+      "table",
+      `<svg viewBox="0 0 160 100"><g class="krs-pictogram">` +
+        `<rect class="marker-table" width="4" height="4" fill="{{color}}"/></g></svg>`,
+      true,
+    );
+    const { container } = renderView({
+      nodes: [
+        node("system", "Shop", [{ kind: "resource", id: "Users", tags: ["table"], children: [] }]),
+      ],
+    });
+    const users = [...container.querySelectorAll(".outline-item")].find((el) =>
+      el.textContent?.includes("Users"),
+    );
+    // `resource[table]` resolves to the `table` pictogram, not base `resource`.
+    expect(users?.querySelector(".marker-table")).toBeTruthy();
+  });
+
   it("falls back to a glyph for kinds without a registered icon", () => {
     const { container } = renderView({ nodes: [node("system", "Shop")] });
     const systemItem = container.querySelector(".outline-item");
