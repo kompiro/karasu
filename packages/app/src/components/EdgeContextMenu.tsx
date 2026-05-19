@@ -1,5 +1,11 @@
 import type { EdgeDirection } from "@karasu-tools/core";
-import { Popover, PopoverAnchor, PopoverContent } from "@/components/ui/popover";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 const DIRECTION_VALUES: readonly EdgeDirection[] = ["auto", "up", "down", "left", "right"] as const;
 
@@ -28,19 +34,20 @@ interface EdgeContextMenuProps {
 }
 
 /**
- * Migrated to shadcn/ui `Popover` (Issue #1368, branch feat/shadcn-edge-context-menu).
+ * Migrated to shadcn/ui `DropdownMenu` (Issue #1400). The direction items are
+ * now real `DropdownMenuItem`s, so the menu gets Radix Menu's roving-tabindex
+ * focus, type-ahead, Home/End, and disabled-item skipping for free.
  *
- * Why Popover and not `ContextMenu`: Radix `ContextMenu` opens on the native
- * right-click event on a `Trigger` element. karasu opens this menu
- * programmatically at (x, y) coordinates taken from the diagram surface, so
- * the right-click trigger model doesn't fit. Popover supports a
- * `PopoverAnchor` that we position as a zero-size virtual element at the
- * click coordinates — Radix then handles outside-click dismissal,
- * Escape-to-close, focus return, and portal rendering.
+ * Why a virtual trigger: this menu opens programmatically at the (x, y) edge
+ * click coordinates, not from a clickable trigger element. `DropdownMenuTrigger`
+ * doubles as the anchor for `DropdownMenuContent`, so it is rendered here as a
+ * zero-size, `position: fixed` element pinned at the click point — the same
+ * virtual-anchor technique the previous `Popover` version used with
+ * `PopoverAnchor` (#1368).
  *
  * Behavioural contract preserved:
  * - Floating menu at the original (x, y) click position
- * - Esc and outside-click close the menu (now via Radix DismissableLayer)
+ * - Esc and outside-click close the menu (Radix DismissableLayer)
  * - Direction items become non-interactive when there is no writable
  *   `.krs.style` target; hint text appears
  *
@@ -64,25 +71,23 @@ export function EdgeContextMenu({
     : undefined;
 
   return (
-    <Popover open onOpenChange={(open) => !open && onClose()}>
-      {/* Virtual anchor: a zero-size element pinned at the click point. */}
-      <PopoverAnchor
+    <DropdownMenu open onOpenChange={(open) => !open && onClose()}>
+      {/* Virtual trigger: a zero-size element pinned at the click point that
+          also serves as the content's anchor. */}
+      <DropdownMenuTrigger
         style={{
           position: "fixed",
           left: x,
           top: y,
           width: 0,
           height: 0,
+          padding: 0,
+          border: 0,
+          background: "none",
           pointerEvents: "none",
         }}
       />
-      <PopoverContent
-        className="context-menu edge-context-menu"
-        role="menu"
-        onOpenAutoFocus={(e) => e.preventDefault()}
-        side="bottom"
-        align="start"
-      >
+      <DropdownMenuContent className="context-menu edge-context-menu" side="bottom" align="start">
         <div className="context-menu-header">
           <div className="context-menu-header__title">{displayLabel}</div>
           <div className="context-menu-header__subtitle">
@@ -94,33 +99,28 @@ export function EdgeContextMenu({
             </div>
           )}
         </div>
-        <div className="context-menu-separator" />
+        <DropdownMenuSeparator className="context-menu-separator" />
         <div className="context-menu-section-label">Direction</div>
         {DIRECTION_VALUES.map((direction) => (
-          <button
+          <DropdownMenuItem
             key={direction}
-            type="button"
-            role="menuitem"
             className="context-menu-item"
             disabled={!writable}
-            onClick={() => {
-              onPickDirection(direction);
-              onClose();
-            }}
+            onSelect={() => onPickDirection(direction)}
           >
             {DIRECTION_LABELS[direction]}
-          </button>
+          </DropdownMenuItem>
         ))}
         {!writable && (
           <>
-            <div className="context-menu-separator" />
+            <DropdownMenuSeparator className="context-menu-separator" />
             <div className="context-menu-hint">
               No <code>.krs.style</code> available to write to. Open a <code>.krs.style</code> file
               directly, or add an <code>@import</code> to the current <code>.krs</code> source.
             </div>
           </>
         )}
-      </PopoverContent>
-    </Popover>
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 }

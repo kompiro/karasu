@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { describe, it, expect, vi, beforeAll, afterEach } from "vitest";
 import { render as rtlRender, fireEvent, cleanup } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import type { ReactElement } from "react";
 import { PreviewPane } from "./PreviewPane.js";
 import { LocaleProvider } from "../i18n/index.js";
@@ -371,13 +372,16 @@ describe("PreviewPane", () => {
   });
 
   describe("edge context menu", () => {
-    // shadcn migration (#1368): EdgeContextMenu is now a Radix Popover and
-    // its content is rendered through a portal attached to `document.body`,
-    // so menu DOM is NOT inside `container`. Query the menu from document
-    // scope instead.
+    // shadcn migration (#1368, #1400): EdgeContextMenu is a Radix DropdownMenu
+    // and its content renders through a portal attached to `document.body`, so
+    // menu DOM is NOT inside `container`. Query the menu from document scope.
+    // Direction items are `DropdownMenuItem`s — `div[role="menuitem"]`, not
+    // `<button>`.
     const queryMenu = () => document.querySelector(".edge-context-menu");
     const queryItems = () =>
-      document.querySelectorAll<HTMLButtonElement>(".edge-context-menu button.context-menu-item");
+      document.querySelectorAll<HTMLElement>(
+        '.edge-context-menu [role="menuitem"].context-menu-item',
+      );
     const queryTarget = () => document.querySelector(".context-menu-header__target");
 
     it("opens the menu on right-click of an edge group with a canonical id", () => {
@@ -400,7 +404,8 @@ describe("PreviewPane", () => {
       expect(queryMenu()).toBeNull();
     });
 
-    it("calls onPickEdgeDirection when a direction is chosen", () => {
+    it("calls onPickEdgeDirection when a direction is chosen", async () => {
+      const user = userEvent.setup();
       const onPick = vi.fn<(id: string, direction: string) => void>();
       const svg = `<div data-edge-from="A" data-edge-to="B" data-edge-kind="sync" data-edge-canonical-id="criticalWrite"></div>`;
       const { container } = render(
@@ -413,10 +418,12 @@ describe("PreviewPane", () => {
       );
       const edge = container.querySelector("[data-edge-canonical-id]")!;
       fireEvent.contextMenu(edge, { clientX: 50, clientY: 60 });
-      const downBtn = Array.from(queryItems()).find((b) =>
+      const downItem = Array.from(queryItems()).find((b) =>
         b.textContent?.includes("Down"),
-      ) as HTMLButtonElement;
-      fireEvent.click(downBtn);
+      ) as HTMLElement;
+      // Radix DropdownMenuItem activates on the full pointer sequence — use
+      // userEvent, not fireEvent.click (.claude/rules/testing.md).
+      await user.click(downItem);
       expect(onPick).toHaveBeenCalledWith("criticalWrite", "down");
     });
 
@@ -427,8 +434,11 @@ describe("PreviewPane", () => {
       fireEvent.contextMenu(edge, { clientX: 50, clientY: 60 });
       const items = queryItems();
       expect(items.length).toBeGreaterThan(0);
-      for (const btn of items) {
-        expect(btn.disabled).toBe(true);
+      for (const item of items) {
+        // Radix marks a disabled DropdownMenuItem with aria-disabled +
+        // data-disabled (a `div` has no `.disabled` property).
+        expect(item.getAttribute("aria-disabled")).toBe("true");
+        expect(item.hasAttribute("data-disabled")).toBe(true);
       }
     });
 
