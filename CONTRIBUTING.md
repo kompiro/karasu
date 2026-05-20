@@ -33,6 +33,14 @@ Participation is governed by the [Contributor Covenant 2.1](CODE_OF_CONDUCT.md).
 Report concerns via GitHub's [private vulnerability reporting](https://github.com/kompiro/karasu/security/advisories/new)
 on this repository or by DMing [@kompiro](https://github.com/kompiro).
 
+## Security
+
+Found a security vulnerability? **Do not file a public Issue.** Use GitHub's
+[private vulnerability reporting](https://github.com/kompiro/karasu/security/advisories/new)
+instead. The full policy — supported versions, coordinated-disclosure
+expectations, and the best-effort response target — is in
+[`SECURITY.md`](SECURITY.md).
+
 ## How to file an Issue
 
 Issues are the **external contributor surface**. There are exactly two

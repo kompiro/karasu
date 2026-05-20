@@ -372,6 +372,10 @@ Inspired by C4 Model, but with its own vocabulary and an explicit separation bet
 
 See [`CONTRIBUTING.md`](CONTRIBUTING.md) for how to file issues, the maintainer's "best-effort, no SLA" stance, local setup, and the PR flow. Participation is governed by the [Contributor Covenant 2.1](CODE_OF_CONDUCT.md).
 
+## Security
+
+Found a vulnerability? Please **do not file a public issue** — use GitHub's [private vulnerability reporting](https://github.com/kompiro/karasu/security/advisories/new). See [`SECURITY.md`](SECURITY.md) for the full policy: supported versions, coordinated-disclosure expectations, and the best-effort response target.
+
 ## License
 
 Licensed under the [Apache License, Version 2.0](./LICENSE).
