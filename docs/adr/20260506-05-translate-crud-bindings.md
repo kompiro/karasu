@@ -12,13 +12,14 @@ related_to:
   - ADR-20260419-01
 scope:
   packages:
+    - core
     - cli
 assumptions:
-  - "file: packages/cli/src/translate/openapi.ts"
-  - "file: packages/cli/src/translate/db.ts"
-  - "file: packages/cli/src/translate/translator.ts"
-  - "file: packages/cli/src/translate/bindings.test.ts"
-  - "symbol: packages/cli/src/translate/translator.ts :: TranslatorContext"
+  - "file: packages/core/src/translate/openapi.ts"
+  - "file: packages/core/src/translate/db.ts"
+  - "file: packages/core/src/translate/translator.ts"
+  - "file: packages/core/src/translate/bindings.test.ts"
+  - "symbol: packages/core/src/translate/translator.ts :: TranslatorContext"
   - "grep: packages/cli/src/index.ts :: --emit-bindings"
   - "grep: packages/cli/src/index.ts :: --emit-crud-decoration"
 ---
