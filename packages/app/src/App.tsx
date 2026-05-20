@@ -7,6 +7,7 @@ import { AppProvider } from "./state/app-context.js";
 import { CommandProvider } from "./keyboard/command-context.js";
 import { KeyboardShortcutDispatcher } from "./keyboard/KeyboardShortcutDispatcher.js";
 import { CommandPalette } from "./components/CommandPalette.js";
+import { TranslateFeature } from "./components/TranslateFeature.js";
 import { OpfsFileSystemProvider } from "./fs/opfs-provider.js";
 import { ObservableFileSystemProvider } from "./fs/observable-provider.js";
 import { detectAppMode, type AppMode } from "./fs/detect-storage-mode.js";
@@ -36,6 +37,7 @@ function ModeWrapper({ mode }: { mode: AppMode }) {
       <CommandProvider>
         <KeyboardShortcutDispatcher />
         <CommandPalette />
+        <TranslateFeature />
         {mode === "serve" && <ServeModeApp />}
         {mode === "memory" && <MemoryModeApp />}
         {mode === "opfs" && <ProjectModeApp />}
