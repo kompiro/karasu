@@ -7,6 +7,8 @@ import type { Diagnostic, Warning } from "@karasu-tools/core";
 import { PreviewColumn } from "./PreviewColumn.js";
 import { PreviewProvider, type PreviewContextValue } from "../state/preview-context.js";
 import { LocaleProvider } from "../i18n/index.js";
+import { CommandProvider, useCommandRegistry } from "../keyboard/command-context.js";
+import { KeyboardShortcutDispatcher } from "../keyboard/KeyboardShortcutDispatcher.js";
 
 afterEach(cleanup);
 
@@ -19,6 +21,18 @@ function renderPreview(value: PreviewContextValue) {
     <PreviewProvider value={value}>
       <PreviewColumn />
     </PreviewProvider>,
+  );
+}
+
+/** Renders PreviewColumn under the keyboard command registry + dispatcher. */
+function renderPreviewWithShortcuts(value: PreviewContextValue) {
+  return render(
+    <CommandProvider>
+      <KeyboardShortcutDispatcher />
+      <PreviewProvider value={value}>
+        <PreviewColumn />
+      </PreviewProvider>
+    </CommandProvider>,
   );
 }
 
@@ -253,6 +267,49 @@ describe("PreviewColumn", () => {
         expect(getByRole("button", { name: /Open reference/ })).toBeTruthy();
         unmount();
       }
+    });
+  });
+
+  describe("Reference keyboard shortcut", () => {
+    it("opens the References panel on mod+shift+? (Ctrl/Cmd+Shift+/)", () => {
+      const { container } = renderPreviewWithShortcuts(makeProps());
+      expect(container.querySelector(".reference-panel-overlay")).toBeNull();
+      fireEvent.keyDown(document, { key: "?", ctrlKey: true, shiftKey: true });
+      expect(container.querySelector(".reference-panel-overlay")).toBeTruthy();
+    });
+
+    it("is ignored while a text input is focused (TPL-20260519-01)", () => {
+      const { container } = renderPreviewWithShortcuts(makeProps());
+      const input = document.createElement("textarea");
+      document.body.appendChild(input);
+      input.focus();
+      fireEvent.keyDown(document, { key: "?", ctrlKey: true, shiftKey: true });
+      expect(container.querySelector(".reference-panel-overlay")).toBeNull();
+      input.remove();
+    });
+
+    it("unregisters the command when PreviewColumn unmounts (TPL-20260519-01)", () => {
+      let registry!: ReturnType<typeof useCommandRegistry>;
+      function Probe() {
+        registry = useCommandRegistry();
+        return null;
+      }
+      function Tree({ show }: { show: boolean }) {
+        return (
+          <CommandProvider>
+            <Probe />
+            {show && (
+              <PreviewProvider value={makeProps()}>
+                <PreviewColumn />
+              </PreviewProvider>
+            )}
+          </CommandProvider>
+        );
+      }
+      const { rerender } = render(<Tree show />);
+      expect(registry.resolveChord("mod+shift+?")).toBeTruthy();
+      rerender(<Tree show={false} />);
+      expect(registry.resolveChord("mod+shift+?")).toBeUndefined();
     });
   });
 

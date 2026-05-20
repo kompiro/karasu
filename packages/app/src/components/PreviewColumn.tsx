@@ -8,6 +8,7 @@ import { CrudMatrixPanel } from "./CrudMatrixPanel.js";
 import { buildSvgExportFilename } from "../utils/build-svg-export-filename.js";
 import { usePreview } from "../state/preview-context.js";
 import { useTranslation } from "../i18n/index.js";
+import { useCommand } from "../keyboard/use-command.js";
 import { Button } from "@/components/ui/button";
 
 const EXPORT_ERROR_AUTO_DISMISS_MS = 6000;
@@ -50,6 +51,17 @@ export function PreviewColumn() {
   const [refOpen, setRefOpen] = useState(false);
   const [exportMenuOpen, setExportMenuOpen] = useState(false);
   const [exportError, setExportError] = useState<string | null>(null);
+
+  // `Ctrl/Cmd+Shift+/` opens the References panel — an accelerator for the
+  // "? Reference" toolbar button. `skip` so it never fires while the editor
+  // is focused (ADR-20260519-02). No-ops when no CommandProvider is mounted.
+  useCommand({
+    id: "view.showReference",
+    title: "Show Reference",
+    keybinding: "mod+shift+?",
+    whenTextInputFocused: "skip",
+    run: () => setRefOpen(true),
+  });
 
   useEffect(() => {
     if (!exportError) return undefined;
