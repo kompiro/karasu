@@ -8,6 +8,7 @@ import { CrudMatrixPanel } from "./CrudMatrixPanel.js";
 import { buildSvgExportFilename } from "../utils/build-svg-export-filename.js";
 import { usePreview } from "../state/preview-context.js";
 import { useTranslation } from "../i18n/index.js";
+import { useCommand } from "../keyboard/use-command.js";
 import { Button } from "@/components/ui/button";
 
 const EXPORT_ERROR_AUTO_DISMISS_MS = 6000;
@@ -50,6 +51,16 @@ export function PreviewColumn() {
   const [refOpen, setRefOpen] = useState(false);
   const [exportMenuOpen, setExportMenuOpen] = useState(false);
   const [exportError, setExportError] = useState<string | null>(null);
+
+  // Register "Toggle Reference" as a command so the References panel is
+  // reachable from the command palette. Palette-only — no dedicated
+  // keybinding. No-ops when no CommandProvider is mounted (e.g. in
+  // isolated unit tests).
+  useCommand({
+    id: "view.toggleReference",
+    title: "Toggle Reference",
+    run: () => setRefOpen((open) => !open),
+  });
 
   useEffect(() => {
     if (!exportError) return undefined;

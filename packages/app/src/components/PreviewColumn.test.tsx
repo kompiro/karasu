@@ -1,12 +1,13 @@
 // @vitest-environment jsdom
 import { describe, it, expect, vi, afterEach } from "vitest";
-import { render as rtlRender, fireEvent, cleanup } from "@testing-library/react";
+import { render as rtlRender, fireEvent, cleanup, act } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { ReactElement } from "react";
 import type { Diagnostic, Warning } from "@karasu-tools/core";
 import { PreviewColumn } from "./PreviewColumn.js";
 import { PreviewProvider, type PreviewContextValue } from "../state/preview-context.js";
 import { LocaleProvider } from "../i18n/index.js";
+import { CommandProvider, useCommandRegistry } from "../keyboard/command-context.js";
 
 afterEach(cleanup);
 
@@ -20,6 +21,24 @@ function renderPreview(value: PreviewContextValue) {
       <PreviewColumn />
     </PreviewProvider>,
   );
+}
+
+/** Renders PreviewColumn under the command registry, exposing the registry. */
+function renderPreviewWithRegistry(value: PreviewContextValue) {
+  let registry!: ReturnType<typeof useCommandRegistry>;
+  function RegistryProbe() {
+    registry = useCommandRegistry();
+    return null;
+  }
+  const result = render(
+    <CommandProvider>
+      <RegistryProbe />
+      <PreviewProvider value={value}>
+        <PreviewColumn />
+      </PreviewProvider>
+    </CommandProvider>,
+  );
+  return { ...result, getRegistry: () => registry };
 }
 
 const noop = () => {};
@@ -253,6 +272,52 @@ describe("PreviewColumn", () => {
         expect(getByRole("button", { name: /Open reference/ })).toBeTruthy();
         unmount();
       }
+    });
+  });
+
+  describe("Reference command", () => {
+    const findToggleReference = (registry: ReturnType<typeof useCommandRegistry>) =>
+      registry.getCommands().find((c) => c.id === "view.toggleReference");
+
+    it("registers a palette-only 'Toggle Reference' command (no keybinding)", () => {
+      const { getRegistry } = renderPreviewWithRegistry(makeProps());
+      const command = findToggleReference(getRegistry());
+      expect(command?.title).toBe("Toggle Reference");
+      expect(command?.keybinding).toBeUndefined();
+    });
+
+    it("toggles the References panel open and closed on successive runs", () => {
+      const { container, getRegistry } = renderPreviewWithRegistry(makeProps());
+      const run = () => act(() => findToggleReference(getRegistry())?.run());
+      expect(container.querySelector(".reference-panel-overlay")).toBeNull();
+      run();
+      expect(container.querySelector(".reference-panel-overlay")).toBeTruthy();
+      run();
+      expect(container.querySelector(".reference-panel-overlay")).toBeNull();
+    });
+
+    it("unregisters the command when PreviewColumn unmounts", () => {
+      let registry!: ReturnType<typeof useCommandRegistry>;
+      function RegistryProbe() {
+        registry = useCommandRegistry();
+        return null;
+      }
+      function Tree({ show }: { show: boolean }) {
+        return (
+          <CommandProvider>
+            <RegistryProbe />
+            {show && (
+              <PreviewProvider value={makeProps()}>
+                <PreviewColumn />
+              </PreviewProvider>
+            )}
+          </CommandProvider>
+        );
+      }
+      const { rerender } = render(<Tree show />);
+      expect(findToggleReference(registry)).toBeTruthy();
+      rerender(<Tree show={false} />);
+      expect(findToggleReference(registry)).toBeUndefined();
     });
   });
 
