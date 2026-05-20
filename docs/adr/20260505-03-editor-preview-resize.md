@@ -9,8 +9,8 @@ assumptions:
   - "file: packages/app/src/hooks/useEditorWidth.ts"
   - "symbol: packages/app/src/hooks/useEditorWidth.ts :: useEditorWidth"
   - "file: packages/app/src/components/AppShell.tsx"
-  - "grep: packages/app/src/styles/app.css :: \\.editor-preview-handle"
-  - "grep: packages/app/src/styles/app.css :: \\.app-shell\\.has-editor-width"
+  - "grep: packages/app/src/styles/layout.css :: \\.editor-preview-handle"
+  - "grep: packages/app/src/styles/layout.css :: \\.app-shell\\.has-editor-width"
 ---
 
 # ADR-20260505-03: エディタ・プレビュー間のドラッグハンドル

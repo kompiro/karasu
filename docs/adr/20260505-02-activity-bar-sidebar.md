@@ -8,7 +8,7 @@ related_to: [ADR-20260405-02]
 assumptions:
   - "file: packages/app/src/components/EditArea.tsx"
   - "symbol: packages/app/src/components/EditArea.tsx :: EditArea"
-  - "grep: packages/app/src/styles/app.css :: \\.activity-bar"
+  - "grep: packages/app/src/styles/components/navigation.css :: \\.activity-bar"
 ---
 
 # ADR-20260505-02: アクティビティバー + サイドバー構造の導入

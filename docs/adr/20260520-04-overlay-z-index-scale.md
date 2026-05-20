@@ -8,7 +8,7 @@ related_to: [ADR-20260515-01]
 scope:
   packages: [app]
 assumptions:
-  - "grep: packages/app/src/styles/app.css :: --z-dialog"
+  - "grep: packages/app/src/styles/tokens.css :: --z-dialog"
   - "grep: packages/app/src/components/ui/dialog.tsx :: z-\\[var\\(--z-dialog\\)\\]"
 ---
 
