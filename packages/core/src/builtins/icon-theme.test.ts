@@ -1,7 +1,21 @@
 import { describe, it, expect } from "vitest";
-import { ICON_THEME_STYLE_SOURCE, getIconThemeStyleSheet, iconNameForNode } from "./icon-theme.js";
+import {
+  ICON_RULES,
+  ICON_THEME_STYLE_SOURCE,
+  CLIENT_SUBTYPE_TAGS,
+  getIconThemeStyleSheet,
+  iconNameForNode,
+} from "./icon-theme.js";
 
-describe("ICON_THEME_STYLE_SOURCE", () => {
+/** Scopes whose rules `iconNameForNode` resolves (the rest return `undefined`). */
+const SYSTEM_VIEW_SCOPES = new Set(["logical", "infra", "resource-variant", "client-variant"]);
+
+/** Stable key for an ICON_RULES entry / a parsed selector. */
+function ruleKey(kind: string, tag?: string): string {
+  return tag ? `${kind}[${tag}]` : kind;
+}
+
+describe("ICON_THEME_STYLE_SOURCE (generated from ICON_RULES)", () => {
   it("is a non-empty string", () => {
     expect(typeof ICON_THEME_STYLE_SOURCE).toBe("string");
     expect(ICON_THEME_STYLE_SOURCE.length).toBeGreaterThan(0);
@@ -11,101 +25,73 @@ describe("ICON_THEME_STYLE_SOURCE", () => {
     expect(() => getIconThemeStyleSheet()).not.toThrow();
   });
 
-  it("contains rules for all logical node types", () => {
-    for (const nodeType of ["service", "user", "domain", "usecase", "resource", "team", "member"]) {
-      expect(ICON_THEME_STYLE_SOURCE).toContain(`${nodeType}`);
+  it("emits exactly one CSS rule per ICON_RULES entry", () => {
+    expect(getIconThemeStyleSheet().rules.length).toBe(ICON_RULES.length);
+  });
+
+  it("every ICON_RULES entry has a matching CSS rule with the expected url() shape", () => {
+    // Parity: the generated CSS is a faithful projection of ICON_RULES.
+    const byKey = new Map<string, string>();
+    for (const rule of getIconThemeStyleSheet().rules) {
+      const { nodeType, tags } = rule.selector;
+      byKey.set(ruleKey(nodeType ?? "", tags[0]), rule.properties["shape"]);
     }
-  });
-
-  it("contains rules for infra node types", () => {
-    expect(ICON_THEME_STYLE_SOURCE).toContain("database");
-    expect(ICON_THEME_STYLE_SOURCE).toContain("queue");
-    expect(ICON_THEME_STYLE_SOURCE).toContain("storage");
-  });
-
-  it("contains rules for resource tag variants", () => {
-    expect(ICON_THEME_STYLE_SOURCE).toContain("resource[table]");
-    expect(ICON_THEME_STYLE_SOURCE).toContain("resource[queue]");
-    expect(ICON_THEME_STYLE_SOURCE).toContain("resource[api]");
-    expect(ICON_THEME_STYLE_SOURCE).toContain("resource[storage]");
-  });
-
-  it("resource[table] uses url(table) not url(database)", () => {
-    expect(ICON_THEME_STYLE_SOURCE).toContain(`resource[table]   { shape: url("table");`);
-  });
-
-  it("resource[queue] uses url(queue-card)", () => {
-    expect(ICON_THEME_STYLE_SOURCE).toContain(`resource[queue]   { shape: url("queue-card");`);
-  });
-
-  it("resource[storage] uses url(cloud-card)", () => {
-    expect(ICON_THEME_STYLE_SOURCE).toContain(`resource[storage] { shape: url("cloud-card");`);
-  });
-
-  it("queue infra node uses url(queue-node) to avoid overwriting geometric queue shape", () => {
-    expect(ICON_THEME_STYLE_SOURCE).toContain(`queue    { shape: url("queue-node"); }`);
-  });
-
-  it("storage infra node uses url(cloud-node) to avoid overwriting geometric cloud shape", () => {
-    expect(ICON_THEME_STYLE_SOURCE).toContain(`storage  { shape: url("cloud-node"); }`);
-  });
-
-  it("usecase uses distinct url(usecase) not url(domain)", () => {
-    expect(ICON_THEME_STYLE_SOURCE).toContain(`usecase  { shape: url("usecase");  }`);
-    expect(ICON_THEME_STYLE_SOURCE).not.toContain(`usecase  { shape: url("domain")`);
-  });
-
-  it("contains rules for all deploy node types", () => {
-    for (const deployType of [
-      "oci",
-      "lambda",
-      "jar",
-      "war",
-      "function",
-      "assets",
-      "job",
-      "artifact",
-    ]) {
-      expect(ICON_THEME_STYLE_SOURCE).toContain(`${deployType}`);
+    for (const r of ICON_RULES) {
+      expect(byKey.get(ruleKey(r.kind, r.tag))).toBe(`url("${r.icon}")`);
     }
   });
 
   it("all rules use url() shape syntax", () => {
-    const sheet = getIconThemeStyleSheet();
-    for (const rule of sheet.rules) {
-      const shape = rule.properties["shape"];
-      // Every rule in icon theme should use url() for shape
-      expect(shape).toBeDefined();
-      expect(shape).toMatch(/^url\(/);
+    for (const rule of getIconThemeStyleSheet().rules) {
+      expect(rule.properties["shape"]).toMatch(/^url\(/);
     }
   });
 });
 
-describe("iconNameForNode", () => {
-  it("resolves base node kinds to their Icon Mode icon", () => {
-    expect(iconNameForNode("service", [])).toBe("service");
-    expect(iconNameForNode("client", [])).toBe("client");
-    expect(iconNameForNode("resource", [])).toBe("resource");
-    expect(iconNameForNode("user", [])).toBe("user-card");
-    expect(iconNameForNode("queue", [])).toBe("queue-node");
-    expect(iconNameForNode("storage", [])).toBe("cloud-node");
+describe("ICON_RULES data sanity", () => {
+  it("infra queue / storage use distinct icons from the geometric shapes", () => {
+    // Regression guard: infra nodes must not overwrite the geometric
+    // queue / cloud shape icons (see #1415-era bugs).
+    const icon = (kind: string) => ICON_RULES.find((r) => r.kind === kind && !r.tag)?.icon;
+    expect(icon("queue")).toBe("queue-node");
+    expect(icon("storage")).toBe("cloud-node");
   });
 
-  it("resolves client subtype tags to the client-<tag> variant", () => {
-    expect(iconNameForNode("client", ["mobile"])).toBe("client-mobile");
-    expect(iconNameForNode("client", ["web"])).toBe("client-web");
-    expect(iconNameForNode("client", ["desktop"])).toBe("client-desktop");
-    expect(iconNameForNode("client", ["cli"])).toBe("client-cli");
-    expect(iconNameForNode("client", ["device"])).toBe("client-device");
-    expect(iconNameForNode("client", ["extension"])).toBe("client-extension");
-    expect(iconNameForNode("client", ["embed"])).toBe("client-embed");
+  it("usecase resolves to a distinct icon from domain", () => {
+    const icon = (kind: string) => ICON_RULES.find((r) => r.kind === kind && !r.tag)?.icon;
+    expect(icon("usecase")).toBe("usecase");
+    expect(icon("usecase")).not.toBe(icon("domain"));
   });
 
-  it("resolves resource variant tags to the variant icon", () => {
-    expect(iconNameForNode("resource", ["table"])).toBe("table");
-    expect(iconNameForNode("resource", ["queue"])).toBe("queue-card");
-    expect(iconNameForNode("resource", ["api"])).toBe("api");
-    expect(iconNameForNode("resource", ["storage"])).toBe("cloud-card");
+  it("resource tag variants are distinct from the infra node icons", () => {
+    const variant = (tag: string) =>
+      ICON_RULES.find((r) => r.kind === "resource" && r.tag === tag)?.icon;
+    expect(variant("table")).toBe("table");
+    expect(variant("queue")).toBe("queue-card");
+    expect(variant("storage")).toBe("cloud-card");
+  });
+});
+
+describe("CLIENT_SUBTYPE_TAGS", () => {
+  it("mirrors the client-variant entries of ICON_RULES in declaration order", () => {
+    const fromRules = ICON_RULES.filter((r) => r.scope === "client-variant").map((r) => r.tag);
+    expect([...CLIENT_SUBTYPE_TAGS]).toEqual(fromRules);
+  });
+});
+
+describe("iconNameForNode (parity with ICON_RULES)", () => {
+  it("resolves every system-view rule to its icon", () => {
+    for (const r of ICON_RULES) {
+      if (!SYSTEM_VIEW_SCOPES.has(r.scope)) continue;
+      expect(iconNameForNode(r.kind, r.tag ? [r.tag] : [])).toBe(r.icon);
+    }
+  });
+
+  it("returns undefined for org / deploy kinds even though icon-theme has rules for them", () => {
+    for (const r of ICON_RULES) {
+      if (SYSTEM_VIEW_SCOPES.has(r.scope) || r.tag) continue;
+      expect(iconNameForNode(r.kind, [])).toBeUndefined();
+    }
   });
 
   it("uses first-match-wins on tag order for a multi-subtype client", () => {
@@ -120,27 +106,13 @@ describe("iconNameForNode", () => {
   });
 
   it("only applies variant tags to their owning kind", () => {
-    // A `mobile` tag on a non-client kind does not pull a client variant.
     expect(iconNameForNode("service", ["mobile"])).toBe("service");
-    // A `table` tag on a non-resource kind does not pull a resource variant.
     expect(iconNameForNode("service", ["table"])).toBe("service");
   });
 
   it("returns undefined for kinds without an Icon Mode pictogram", () => {
     expect(iconNameForNode("system", [])).toBeUndefined();
     expect(iconNameForNode("table", [])).toBeUndefined();
-  });
-
-  it("returns undefined for deploy kinds (not a system-view concept)", () => {
     expect(iconNameForNode("deploy-block", [])).toBeUndefined();
-    expect(iconNameForNode("lambda", [])).toBeUndefined();
-    expect(iconNameForNode("job", [])).toBeUndefined();
-  });
-
-  it("returns undefined for org kinds even though icon-theme has team/member rules", () => {
-    // iconNameForNode resolves only what the system-view Icon Mode draws.
-    expect(iconNameForNode("organization", [])).toBeUndefined();
-    expect(iconNameForNode("team", [])).toBeUndefined();
-    expect(iconNameForNode("member", [])).toBeUndefined();
   });
 });
