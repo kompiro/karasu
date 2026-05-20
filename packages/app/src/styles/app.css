@@ -89,6 +89,21 @@
   --sidebar-w: 210px;
   --topbar-h: 38px;
 
+  /* Z-index scale — stacking order for overlay & portal surfaces (low → high).
+   * Every overlay/portal rule picks a token; never a bare magic number, so
+   * the relative order of any two surfaces stays legible in one place.
+   * shadcn primitives (Dialog/DropdownMenu/Tooltip) reference these via
+   * Tailwind arbitrary values, e.g. `z-[var(--z-dialog)]`.
+   * Local intra-component stacking contexts (e.g. a sticky table header)
+   * keep a literal `z-index: 1` — they are not part of this scale. */
+  --z-handle: 50; /* split / sidebar drag handles */
+  --z-dropdown: 100; /* inline toolbar dropdown menu (export mode) */
+  --z-panel: 200; /* slide-in side panels (Reference panel) */
+  --z-context-menu: 1000; /* canvas right-click context menus */
+  --z-dialog: 2000; /* modal dialogs — legacy .dialog-overlay + shadcn Dialog */
+  --z-menu: 3000; /* portalled menus — shadcn DropdownMenu (above dialogs so in-dialog menus work) */
+  --z-tooltip: 4000; /* tooltips — always topmost */
+
   /* Typography */
   --font-ui: "Figtree", -apple-system, "Helvetica Neue", sans-serif;
   --font-mono: "JetBrains Mono", "Fira Code", "Consolas", monospace;
@@ -1269,7 +1284,7 @@ body,
 /* ── Context Menu ───────────────────────────────────────────────── */
 .context-menu {
   position: fixed;
-  z-index: 1000;
+  z-index: var(--z-context-menu);
   background: var(--bg-raised);
   border: 1px solid var(--border-strong);
   border-radius: var(--radius-md);
@@ -1454,7 +1469,7 @@ body,
   width: 6px;
   margin-right: -3px;
   cursor: col-resize;
-  z-index: 50;
+  z-index: var(--z-handle);
   background: transparent;
   transition: background 0.15s;
 }
@@ -1526,7 +1541,7 @@ body,
   width: 6px;
   height: 100%;
   cursor: col-resize;
-  z-index: 50;
+  z-index: var(--z-handle);
   background: transparent;
   transition: background 0.15s;
 }
@@ -2082,7 +2097,7 @@ body,
   border: 1px solid var(--border-strong);
   border-radius: var(--radius-sm);
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
-  z-index: 100;
+  z-index: var(--z-dropdown);
   min-width: 160px;
   padding: 4px;
   display: flex;
@@ -2174,7 +2189,7 @@ body,
 .reference-panel-overlay {
   position: absolute;
   inset: 0;
-  z-index: 200;
+  z-index: var(--z-panel);
   background: rgba(7, 9, 15, 0.55);
   display: flex;
   justify-content: flex-end;
@@ -2521,7 +2536,7 @@ body,
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 1000;
+  z-index: var(--z-dialog);
 }
 
 .dialog {
