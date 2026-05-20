@@ -3,13 +3,18 @@ import type { Command } from "./command-types.js";
 
 /**
  * Central registry of `Command`s. The keyboard dispatcher resolves chords
- * against it; a future command palette will enumerate it.
+ * against it; the command palette enumerates it.
  */
 interface CommandRegistry {
   /** Add a command; returns an unregister function for cleanup. */
   register: (command: Command) => () => void;
   /** Find the command bound to a chord string, if any. */
   resolveChord: (chord: string) => Command | undefined;
+  /**
+   * Snapshot of every registered command, in registration order. The command
+   * palette enumerates this when it opens.
+   */
+  getCommands: () => Command[];
 }
 
 const CommandContext = createContext<CommandRegistry | null>(null);
@@ -53,9 +58,11 @@ export function CommandProvider({ children }: { children: ReactNode }) {
     return undefined;
   }, []);
 
+  const getCommands = useCallback(() => [...commandsRef.current.values()], []);
+
   const registry = useMemo<CommandRegistry>(
-    () => ({ register, resolveChord }),
-    [register, resolveChord],
+    () => ({ register, resolveChord, getCommands }),
+    [register, resolveChord, getCommands],
   );
 
   return <CommandContext.Provider value={registry}>{children}</CommandContext.Provider>;
