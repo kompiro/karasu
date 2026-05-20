@@ -1355,3 +1355,13 @@ function diagnosticToWarning(d: Diagnostic): Warning | null {
       return null;
   }
 }
+
+// ─── translate (infra config / API spec → .krs scaffold) ──────────────────────
+// Shared by the `karasu translate` CLI and the App's translate UI.
+export { translateInfraConfig, wrapInSystem, SYSTEM_NAME_PATTERN } from "./translate/translate.js";
+export type {
+  TranslateFormat,
+  TranslateInfraOptions,
+  TranslateResult,
+} from "./translate/translate.js";
+export type { Translator, TranslatorContext } from "./translate/translator.js";

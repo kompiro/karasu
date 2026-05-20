@@ -30,7 +30,7 @@ karasu/
 ├── docs/
 ├── examples/          ← サンプル .krs ファイル（Getting Started・テーマ別シナリオ）
 ├── packages/
-│   ├── core/          ← パーサー・スタイル解決・SVGレンダラー（Pure TS）
+│   ├── core/          ← パーサー・スタイル解決・SVGレンダラー・translate（Pure TS）
 │   ├── app/           ← Vite + React のプレビューUI
 │   ├── cli/           ← karasu serve / render コマンド
 │   ├── lsp/           ← Language Server Protocol 実装

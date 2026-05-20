@@ -49,8 +49,45 @@ export type Translations = {
   "projectSelector.export.button": string;
   "projectSelector.import.title": string;
   "projectSelector.import.button": string;
+  "projectSelector.translate.title": string;
+  "projectSelector.translate.button": string;
   "projectSelector.ok": string;
   "projectSelector.cancel": string;
+
+  // Translate dialog
+  "translateDialog.title": string;
+  "translateDialog.description": string;
+  "translateDialog.format.label": string;
+  "translateDialog.format.compose": string;
+  "translateDialog.format.k8s": string;
+  "translateDialog.format.openapi": string;
+  "translateDialog.format.db": string;
+  "translateDialog.loadHint": string;
+  "translateDialog.loadFile": string;
+  "translateDialog.loadFile.aria": string;
+  "translateDialog.sourceContent": string;
+  "translateDialog.advanced": string;
+  "translateDialog.sourceName.label": string;
+  "translateDialog.sourceName.aria": string;
+  "translateDialog.service.label": string;
+  "translateDialog.service.aria": string;
+  "translateDialog.database": string;
+  "translateDialog.granularity.label": string;
+  "translateDialog.granularity.resourceDefault": string;
+  "translateDialog.granularity.operation": string;
+  "translateDialog.granularity.aggregateDefault": string;
+  "translateDialog.granularity.table": string;
+  "translateDialog.emitBindings": string;
+  "translateDialog.emitCrudDecoration": string;
+  "translateDialog.system.label": string;
+  "translateDialog.system.aria": string;
+  "translateDialog.mapFile.label": string;
+  "translateDialog.mapFile.aria": string;
+  "translateDialog.result": string;
+  "translateDialog.close": string;
+  "translateDialog.download": string;
+  "translateDialog.copy": string;
+  "translateDialog.translate": string;
 
   // Chat pane (Phase C4)
   "chat.newSession.button": string;

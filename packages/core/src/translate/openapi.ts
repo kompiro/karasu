@@ -1,4 +1,3 @@
-import { basename, extname } from "node:path";
 import { parse as parseYaml } from "yaml";
 import type { Translator, TranslatorContext } from "./translator.js";
 
@@ -63,10 +62,9 @@ function deriveServiceName(title: string): string {
   return toPascalCase(title);
 }
 
-/** Derive a service name from the input file path when info.title is absent. */
-function deriveServiceNameFromPath(inputPath: string): string {
-  const name = basename(inputPath, extname(inputPath));
-  return toPascalCase(name);
+/** Derive a service name from the input name when info.title is absent. */
+function deriveServiceNameFromInputName(inputName: string | undefined): string {
+  return toPascalCase(inputName ?? "Service");
 }
 
 /**
@@ -242,7 +240,7 @@ export class OpenApiTranslator implements Translator {
       context.service ??
       (doc.info?.title
         ? deriveServiceName(doc.info.title)
-        : deriveServiceNameFromPath(context.inputPath));
+        : deriveServiceNameFromInputName(context.inputName));
 
     const paths = doc.paths ?? {};
     const operations = collectOperations(paths);

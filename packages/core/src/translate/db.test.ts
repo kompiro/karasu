@@ -3,7 +3,7 @@ import { DbTranslator } from "./db.js";
 import type { TranslatorContext } from "./translator.js";
 
 const ctx: TranslatorContext = {
-  inputPath: "/project/schema.sql",
+  inputName: "schema",
 };
 
 describe("DbTranslator", () => {
@@ -38,7 +38,7 @@ CREATE TABLE payments (
     it("derives database name from file path when --database is not provided", async () => {
       const input = `CREATE TABLE users (id BIGINT PRIMARY KEY);`;
       const result = await translator.translate(input, {
-        inputPath: "/project/order_db.sql",
+        inputName: "order_db",
         granularity: "table",
       });
       expect(result).toContain("database OrderDb {");
@@ -79,7 +79,7 @@ CREATE TABLE payments (
     it("uses --database flag over file name", async () => {
       const input = `CREATE TABLE items (id BIGINT PRIMARY KEY);`;
       const result = await translator.translate(input, {
-        inputPath: "/project/schema.sql",
+        inputName: "schema",
         database: "InventoryDB",
         granularity: "table",
       });

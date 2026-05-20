@@ -11,6 +11,7 @@ interface ProjectSelectorProps {
   onDeleteProject: (id: string) => void;
   onExportProject: () => void;
   onImportProject: (file: File) => void;
+  onTranslate: () => void;
 }
 
 export function ProjectSelector({
@@ -22,6 +23,7 @@ export function ProjectSelector({
   onDeleteProject,
   onExportProject,
   onImportProject,
+  onTranslate,
 }: ProjectSelectorProps) {
   const { t } = useTranslation();
   const [isCreating, setIsCreating] = useState(false);
@@ -247,6 +249,13 @@ export function ProjectSelector({
             title={t("projectSelector.import.title")}
           >
             {t("projectSelector.import.button")}
+          </button>
+          <button
+            onClick={onTranslate}
+            className="project-selector-btn project-selector-btn--translate"
+            title={t("projectSelector.translate.title")}
+          >
+            {t("projectSelector.translate.button")}
           </button>
         </div>
       )}

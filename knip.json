@@ -13,6 +13,10 @@
     "packages/app": {
       "project": ["src/**/*.{ts,tsx}", "!src/**/*.test.{ts,tsx}"]
     },
+    "packages/cli": {
+      "project": ["src/**/*.ts"],
+      "ignoreDependencies": ["yaml"]
+    },
     "packages/lsp": {
       "project": ["src/**/*.ts"]
     },

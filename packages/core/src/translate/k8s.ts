@@ -1,5 +1,5 @@
 import { parseAllDocuments } from "yaml";
-import { loadMapFile, resolveMapPath, resolveRealizes, realizesLines } from "./realizes.js";
+import { parseMapFile, resolveRealizes, realizesLines } from "./realizes.js";
 import type { Translator, TranslatorContext } from "./translator.js";
 
 const WORKLOAD_KINDS = new Set(["Deployment", "StatefulSet", "DaemonSet", "Job", "CronJob"]);
@@ -63,8 +63,7 @@ export class K8sTranslator implements Translator {
     }
 
     const namespace = workloads[0]?.metadata?.namespace ?? "default";
-    const mapFilePath = resolveMapPath(context.inputPath, context.mapPath);
-    const mapFile = loadMapFile(mapFilePath);
+    const mapFile = parseMapFile(context.mapFile);
 
     const lines: string[] = [`deploy "${namespace}" {`];
 
@@ -83,7 +82,7 @@ export class K8sTranslator implements Translator {
       if (resource.kind === "CronJob" && resource.spec?.schedule) {
         lines.push(`    schedule "${resource.spec.schedule}"`);
       }
-      lines.push(...realizesLines(name, realizesResult));
+      lines.push(...realizesLines(name, realizesResult, context.onWarning));
       lines.push(`  }`);
     }
 

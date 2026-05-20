@@ -2,9 +2,9 @@ import { describe, it, expect } from "vitest";
 import { K8sTranslator } from "./k8s.js";
 import type { TranslatorContext } from "./translator.js";
 
-const ctx: TranslatorContext = {
-  inputPath: "/project/manifests/deployment.yaml",
-};
+// The k8s translator derives the deploy name from `metadata.namespace`, not
+// from the input name — an empty context exercises that path.
+const ctx: TranslatorContext = {};
 
 describe("K8sTranslator", () => {
   const translator = new K8sTranslator();

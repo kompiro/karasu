@@ -1,4 +1,3 @@
-import { basename, extname } from "node:path";
 import type { Translator, TranslatorContext } from "./translator.js";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -14,9 +13,8 @@ function toTableId(tableName: string): string {
   return `${toPascalCase(tableName)}Table`;
 }
 
-function deriveDbName(inputPath: string): string {
-  const name = basename(inputPath, extname(inputPath));
-  return toPascalCase(name);
+function deriveDbName(inputName: string | undefined): string {
+  return toPascalCase(inputName ?? "Database");
 }
 
 function stripIdentQuotes(s: string): string {
@@ -349,7 +347,7 @@ function emitServiceBindings(dbName: string, rootTables: Table[], decorated: boo
 
 export class DbTranslator implements Translator {
   async translate(input: string, context: TranslatorContext): Promise<string> {
-    const dbName = context.database ?? deriveDbName(context.inputPath);
+    const dbName = context.database ?? deriveDbName(context.inputName);
     const tables = parseTables(input);
     const granularity = context.granularity ?? "aggregate";
     const emitCrudDecoration = context.emitCrudDecoration ?? false;
