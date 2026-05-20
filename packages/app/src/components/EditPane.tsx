@@ -3,6 +3,7 @@ import type { editor } from "monaco-editor";
 import type { SystemNode } from "@karasu-tools/core";
 import { EditorPane } from "./EditorPane.js";
 import { EditTabBar, type EditTab } from "./EditTabBar.js";
+import { EditTabShortcuts } from "./EditTabShortcuts.js";
 import { EditPaneToolbar } from "./EditPaneToolbar.js";
 import { ChatPane } from "./ChatPane.js";
 import { SettingsPane } from "./SettingsPane.js";
@@ -56,6 +57,7 @@ export function EditPane({
 
   return (
     <div className="edit-pane">
+      <EditTabShortcuts onSelectTab={setActiveTab} />
       <EditTabBar activeTab={activeTab} onTabChange={setActiveTab} />
       <EditPaneToolbar
         activeTab={activeTab}
