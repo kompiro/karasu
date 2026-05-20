@@ -42,6 +42,7 @@
 | `--diff-*` トークン | diff セクション内の後続 `:root` で `--diff-color-added` 等を定義（定義が分散） |
 | テーマ切替 | 存在しない。dark 固定 |
 | 設定の永続化 | API key は `utils/api-key-storage.ts`、locale は i18n の `LocaleProvider` が担当。`localStorage` 利用パターンは既存 |
+| Monaco エディタ | `EditorPane.tsx` が `karasu-dark` テーマ（`base: "vs-dark"`、`editor.background: #0f172a`、構文色 8 種）をハードコード定義し、`theme="karasu-dark"` 固定で渡す。エディタは左ペインのほぼ全面を占める大面積 |
 | SVG 図のレンダラ | `packages/core` のレンダラが約 35 個の hex 色をハードコード。app の CSS 変数とは独立 |
 
 ## 制約・前提
@@ -53,13 +54,16 @@
   `var(--bg-base)` 等を inline 参照しているのは「実行時に解決させる」ためであり、
   テーマ切替と相性が良い（ビルド時に dark 値で焼き付かない）。
 - **FOUC を出さない**: 初回ペイント前にテーマが確定していること。
+- **in scope（Issue #1470 上で確定）**:
+  - Monaco エディタのテーマ連動。`karasu-light` テーマを新規定義し、app の
+    実効テーマに応じて `karasu-dark` / `karasu-light` を切り替える。エディタは
+    大面積のため、未連動だとライトテーマが半端に見えるため。
+  - プレビューキャンバス（背景・グリッド）はトークン経由でテーマに追従する。
 - **out of scope**:
   - **SVG 図そのものの再テーマ化**。`packages/core` のレンダラの色見直しは
-    影響範囲が広く別 Issue とする。ライトテーマでは app の chrome（パネル・
-    ツールバー・サイドバー・エディタ枠）のみが切り替わり、プレビュー内の図は
-    現状のまま（暗い図がライトなキャンバスに乗る）。プレビューキャンバスの
-    背景・グリッドは app トークン経由なので追従する。
-  - Monaco エディタのテーマ連動（別途検討。今回はエディタ自体のテーマは固定）。
+    影響範囲が広く（CLI / VS Code の export SVG にも波及）別 Issue とする。
+    ライトテーマでは明るいキャンバスの上に現状の（暗い）図が乗る。これは
+    core レンダラがテーマ化されるまでの既知の暫定状態。
   - 既存 `.dialog__*` / `.toolbar-btn*` のレガシー CSS の除去（別の cleanup pass）。
 
 ## 検討した選択肢
@@ -135,20 +139,20 @@ packages/app/src/styles/
   - `tokens.css` … 非色の primitive（`--radius-*`, `--font-*`, `--sidebar-w`,
     `--topbar-h`）。テーマ非依存。
   - `themes.css` … 色トークン。**意味トークン名は dark / light で共通**、値だけ
-    差し替える。既定（属性なし）は dark。
+    差し替える。既定（属性なし）は dark。全 hex は「確定したライトパレット」節。
     ```css
     :root {
       /* dark — 既定 */
       --bg-base: #0c0f1a;
       --text-primary: #dce8ff;
-      --shadow-overlay: 0 16px 48px rgba(0, 0, 0, 0.65);
+      --shadow-overlay: 0 16px 48px rgba(0, 0, 0, 0.65), 0 4px 16px rgba(0, 0, 0, 0.4);
       /* … */
       color-scheme: dark;
     }
     :root[data-theme="light"] {
-      --bg-base: #f5f7fa;
-      --text-primary: #1a2233;
-      --shadow-overlay: 0 16px 48px rgba(15, 23, 42, 0.18);
+      --bg-base: #f4f6fa;
+      --text-primary: #1b2536;
+      --shadow-overlay: 0 16px 48px rgba(15, 23, 42, 0.18), 0 4px 16px rgba(15, 23, 42, 0.1);
       /* … 同じトークン名を light 値で上書き … */
       color-scheme: light;
     }
@@ -166,6 +170,127 @@ packages/app/src/styles/
 - **`color-scheme`** を各テーマで宣言し、ネイティブ UI（スクロールバー、
   `<select>` のドロップダウン）をテーマに追従させる。
 - **適用先**: `data-theme` 属性を `<html>`（`document.documentElement`）に置く。
+
+### 確定したライトパレット
+
+Onyx Cartographer（dark）に対応するライトパレット。**トークン名は dark / light
+共通**で、`themes.css` の `:root[data-theme="light"]` が値を上書きする。
+非色トークン（`--radius-*` / `--font-*` / `--sidebar-w` / `--topbar-h`）は
+`tokens.css` にあり、テーマ非依存（light 値なし）。
+
+設計方針:
+
+- **depth の反転**: dark は「奥＝暗い / 手前＝明るい」。light は「奥＝淡いグレー /
+  手前＝白」。`void`（最も奥のパネル）→ `overlay`（ポップオーバ）の順に白へ近づく。
+- **border の反転**: dark の `rgba(255,255,255,α)` を light では
+  `rgba(15,23,42,α)`（slate）に。
+- **影の反転**: dark の `rgba(0,0,0,α)` を light では薄い `rgba(15,23,42,α)` に。
+- **ブランド色の保持**: electric blue / feather purple を踏襲。ただし白背景での
+  コントラスト確保のため accent は `#4d8fff → #2563eb`（白文字 5.2:1）に深める。
+
+**サーフェス**
+
+| トークン | dark | light |
+| --- | --- | --- |
+| `--bg-void` | `#07090f` | `#e9edf3` |
+| `--bg-base` | `#0c0f1a` | `#f4f6fa` |
+| `--bg-surface` | `#111827` | `#fbfcfe` |
+| `--bg-raised` | `#172035` | `#ffffff` |
+| `--bg-overlay` | `#1d2840` | `#ffffff` |
+| `--bg-selected` | `#1a3050` | `#d8e6ff` |
+| `--bg-elevated` *(新)* | `#172035` | `#ffffff` |
+
+**ボーダー**
+
+| トークン | dark | light |
+| --- | --- | --- |
+| `--border-faint` | `rgba(255,255,255,0.03)` | `rgba(15,23,42,0.05)` |
+| `--border-subtle` | `rgba(255,255,255,0.055)` | `rgba(15,23,42,0.08)` |
+| `--border-default` | `rgba(255,255,255,0.09)` | `rgba(15,23,42,0.12)` |
+| `--border-strong` | `rgba(255,255,255,0.15)` | `rgba(15,23,42,0.20)` |
+| `--border-active` | `#3d5a8a` | `#7d9bc8` |
+
+**テキスト**
+
+| トークン | dark | light | 白背景コントラスト |
+| --- | --- | --- | --- |
+| `--text-primary` | `#dce8ff` | `#1b2536` | ~13:1 ✓ |
+| `--text-secondary` | `#7b92b4` | `#4d5e78` | ~6.5:1 ✓ |
+| `--text-tertiary` *(新)* | `var(--text-secondary)` | `#5f7088` | ~4.9:1 ✓ |
+| `--text-muted` | `#3d5068` | `#6f7e95` | ~4.0:1（dark baseline 同等以上） |
+| `--text-link` | `#5ba4f5` | `#2563eb` | ~5.2:1 ✓ |
+| `--text-link-hover` | `#82beff` | `#1d4ed8` | ~6.3:1 ✓ |
+
+**アクセント / feather**
+
+| トークン | dark | light |
+| --- | --- | --- |
+| `--accent` | `#4d8fff` | `#2563eb` |
+| `--accent-hover` | `#6aaeff` | `#1d4ed8` |
+| `--accent-dim` | `rgba(77,143,255,0.10)` | `rgba(37,99,235,0.10)` |
+| `--accent-glow` | `rgba(77,143,255,0.22)` | `rgba(37,99,235,0.18)` |
+| `--feather` | `#8b7cf6` | `#7c5cf0` |
+| `--feather-dim` | `rgba(139,124,246,0.07)` | `rgba(124,92,240,0.08)` |
+| `--feather-glow` | `rgba(139,124,246,0.18)` | `rgba(124,92,240,0.20)` |
+
+**セマンティック状態**
+
+| トークン | dark | light |
+| --- | --- | --- |
+| `--error` | `#f87171` | `#dc2626` |
+| `--error-dim` | `rgba(248,113,113,0.10)` | `rgba(220,38,38,0.09)` |
+| `--warning` | `#fbbf24` | `#b45309` |
+| `--warning-dim` | `rgba(251,191,36,0.08)` | `rgba(180,83,9,0.10)` |
+| `--warning-border` *(新)* | `rgba(245,158,11,0.25)` | `rgba(180,83,9,0.30)` |
+| `--warning-bg` *(新)* | `rgba(245,158,11,0.06)` | `rgba(180,83,9,0.08)` |
+| `--success` | `#34d399` | `#15803d` |
+| `--info` *(新)* | `#93c5fd` | `#1d6fd4` |
+
+**影 / ハイライト / diff**
+
+| トークン | dark | light |
+| --- | --- | --- |
+| `--shadow-sm` *(新)* | `0 2px 8px rgba(0,0,0,0.45)` | `0 2px 8px rgba(15,23,42,0.12)` |
+| `--shadow-md` *(新)* | `0 8px 28px rgba(0,0,0,0.55)` | `0 8px 28px rgba(15,23,42,0.14)` |
+| `--shadow-overlay` *(新)* | `0 16px 48px rgba(0,0,0,0.65), 0 4px 16px rgba(0,0,0,0.4)` | `0 16px 48px rgba(15,23,42,0.18), 0 4px 16px rgba(15,23,42,0.10)` |
+| `--highlight-edge` *(新)* | `rgba(255,255,255,0.04)` | `transparent` |
+| `--diff-color-added` | `#22c55e` | `#15803d` |
+| `--diff-bg-added` | `rgba(34,197,94,0.12)` | `rgba(34,197,94,0.16)` |
+
+> `--highlight-edge` は dark のみ意味を持つ「上端の白い inset ハイライト」。
+> light では白パネル上で不可視なため `transparent` にして無効化する。
+> `--diff-*` の `removed` / `changed` も added と同じパターンで light 値を与える
+> （dark の現行値は実装時に既存 CSS から読み取って併記）。
+
+### Monaco エディタのテーマ連動
+
+`EditorPane.tsx` の `karasu-dark` に対をなす `karasu-light` を新規定義する
+（`base: "vs"`）。`EditorPane` は `useTheme()` の `effectiveTheme` を読み、
+`theme={effectiveTheme === "light" ? "karasu-light" : "karasu-dark"}` を渡す。
+
+```ts
+monaco.editor.defineTheme("karasu-light", {
+  base: "vs",
+  inherit: true,
+  rules: [
+    { token: "keyword", foreground: "0369a1", fontStyle: "bold" }, // dark: 7dd3fc
+    { token: "annotation", foreground: "b45309" },                 // dark: fbbf24
+    { token: "string", foreground: "15803d" },                     // dark: 86efac
+    { token: "comment", foreground: "64748b" },                    // dark と共通
+    { token: "operator", foreground: "db2777" },                   // dark: f472b6
+    { token: "identifier", foreground: "1e293b" },                 // dark: e2e8f0
+    { token: "delimiter.bracket", foreground: "64748b" },
+    { token: "delimiter.curly", foreground: "64748b" },
+  ],
+  colors: {
+    "editor.background": "#ffffff",            // dark: #0f172a
+    "editor.foreground": "#1e293b",            // dark: #e2e8f0
+    "editor.lineHighlightBackground": "#eef2f7", // dark: #1e293b
+    "editorCursor.foreground": "#2563eb",      // dark: #38bdf8
+    "editor.selectionBackground": "#cfe0ff",   // dark: #334155
+  },
+});
+```
 
 ### テーマ解決とロジック
 
@@ -191,14 +316,19 @@ packages/app/src/styles/
    `index.css` 内（`@import` 群の後）に置く。カスケード順は現状を保つ。
 2. 分割と同時に、`:root` 外のハードコード色を新規トークンへ巻き取る（上記
    「ハードコード色の撤去」）。この段階では値は dark のみ＝**見た目は不変**。
-3. `themes.css` に `:root[data-theme="light"]` を追加し、全色トークンの light 値を
-   与える。コントラスト比は WCAG AA（本文 4.5:1 / UI 3:1）を目安に決める。
+3. `themes.css` に `:root[data-theme="light"]` を追加し、「確定したライトパレット」
+   節の light 値を入れる。実装 PR では実機確認の上、明度の微調整のみ可
+   （トークン名・構造は変えない）。
 4. `index.html` に no-FOUC インラインスクリプトを追加。
 5. `packages/app/src/theme/`（`theme-storage.ts` + `ThemeProvider.tsx` +
    `useTheme`）を新設。`main.tsx` で `LocaleProvider` の内側に `ThemeProvider` を
    配置。
-6. `SettingsPane` にテーマセレクタを追加。i18n 文字列を追加。
-7. AT: `docs/acceptance/` に新規ファイル。TC は:
+6. `EditorPane.tsx` に `karasu-light` テーマを定義（「Monaco エディタのテーマ
+   連動」節）。`EditorPane` を `useTheme()` の `effectiveTheme` 購読に変え、
+   `theme` prop を切り替える。`registerKrsLanguage` 内の theme 定義は両テーマを
+   登録するよう拡張。
+7. `SettingsPane` にテーマセレクタを追加。i18n 文字列を追加。
+8. AT: `docs/acceptance/` に新規ファイル。TC は:
    - 既定（`localStorage` 空・OS が dark）で dark 表示になる
    - OS を light にすると（stored なし）初回 light で表示される
    - Settings で Light を選ぶと即座に切り替わり、リロード後も保持される
@@ -206,7 +336,9 @@ packages/app/src/styles/
    - 初回ロードでテーマのちらつき（FOUC）がない
    - ライトテーマで主要パネル（サイドバー / ツールバー / チャット / 設定 /
      コンテキストメニュー / ノード詳細 / Reference Panel）の文字が判読できる
-8. ADR 昇格: 実装完了後 `docs/adr/YYYYMMDD-NN-app-css-modularization-and-light-theme.md`
+   - ライトテーマで Monaco エディタが `karasu-light` になり、構文ハイライトが
+     判読できる
+9. ADR 昇格: 実装完了後 `docs/adr/YYYYMMDD-NN-app-css-modularization-and-light-theme.md`
    として昇格し、本 Design Doc は同 PR で削除する。
 
 ### テスト方針（TPL の反映）
@@ -240,14 +372,28 @@ packages/app/src/styles/
 - CI: `app.css` 分割後も lint / format / typecheck / knip / check:cycles / build
   が通ること。`@import` 解決は Vite が担う。
 
+## 決着した問い（#1470 で確定）
+
+検討初期に挙がった 4 つの未解決の問いは Issue #1470 上で決着した。
+
+| 問い | 決定 | 反映先 |
+| --- | --- | --- |
+| Monaco エディタのテーマ連動 | **連動する**。`karasu-light` を新規定義し `effectiveTheme` で切替 | 「Monaco エディタのテーマ連動」節・実装の指針 6 |
+| light パレットの確定タイミング | **本 Design Doc で全 hex を確定** | 「確定したライトパレット」節 |
+| プレビューキャンバス | **テーマに追従**（light 時は明るいキャンバス。トークン経由なので追加実装不要） | 制約・前提（in scope） |
+| 切替 UI | **Settings 内の `<select>` のみ**（System / Light / Dark） | テーマ解決とロジック・実装の指針 7 |
+
 ## 未解決の問い / 決めないこと
 
-- **light パレットの具体値**: 本 Design Doc では「意味トークン名は共通、
-  `themes.css` で light 値を与える」方針のみ決め、各色の最終 hex は実装 PR で
-  決定する（コントラスト比 AA を満たすことを条件とする）。
-- **Monaco エディタのテーマ連動**: 今回は対象外。app が light のときエディタを
-  light テーマにするかは別 Issue。
-- **SVG 図の再テーマ化**: out of scope（`packages/core` レンダラの色見直し）。
-  別 Issue を起こす想定。
-- **テーマ切替のクイックトグル**: 今回は Settings 内のセレクタのみ。ツールバー
-  等への即時トグル配置は将来検討。
+意図的にスコープ外とするもののみ残る。
+
+- **SVG 図の再テーマ化**: out of scope。`packages/core` のレンダラが約 35 個の
+  色をハードコードしており、CLI / VS Code の export SVG にも波及するため別 Issue
+  とする。ライトテーマでは明るいキャンバスの上に現状の（暗い）図が乗る。これは
+  core レンダラがテーマ化されるまでの既知の暫定状態。
+- **テーマのクイックトグル**: 今回は Settings 内のセレクタのみ。activity-bar 等
+  への即時トグル配置は将来の小改善として残す。
+- **light パレットの微調整**: 「確定したライトパレット」節の hex を確定値とするが、
+  実装 PR で実機確認の上 ±数% の明度調整はあり得る（トークン名・構造は変えない）。
+- **`--diff-*` の removed / changed の dark 現行値**: 既存 CSS に分散定義されて
+  いるため、実装時に読み取って `themes.css` へ集約する（値そのものは不変）。
