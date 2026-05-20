@@ -39,9 +39,9 @@ overlay や portal を持つ UI surface（modal dialog・slide-in panel・contex
 
 新しい overlay/portal surface を足す、または既存 surface の `z-index` を触るとき:
 
-- [ ] その surface の `z-index` を、リポジトリの z-index スケール（`app.css :root` の `--z-*` トークン）から選んだか。バレなマジックナンバーを新規に置いていないか
+- [ ] その surface の `z-index` を、リポジトリの z-index スケール（`app.css :root` の `--z-*` トークン）から選んだか。ベタ書きのマジックナンバーを新規に置いていないか
 - [ ] スケールに当てはまる層が無い場合、新しいトークンを追加し、コメントで「何の上・何の下に居るべきか」を明記したか
-- [ ] 外部ライブラリの portal primitive を導入したとき、そのライブラリ既定の `z-index` を rep の overlay スケールに合わせて上書きしたか（既定値をそのまま採用していないか）
+- [ ] 外部ライブラリの portal primitive を導入したとき、そのライブラリ既定の `z-index` を repo の overlay スケールに合わせて上書きしたか（既定値をそのまま採用していないか）
 - [ ] 重なり順を、computed stacking が見える層（E2E / `elementFromPoint`）で検証したか。単体テストの className assert だけで済ませていないか
 
 ## 既知の対処パターン
