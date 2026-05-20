@@ -3,8 +3,8 @@ import { DbTranslator } from "./db.js";
 import { OpenApiTranslator } from "./openapi.js";
 import type { TranslatorContext } from "./translator.js";
 
-const openapiCtx: TranslatorContext = { inputPath: "/project/api.yaml" };
-const dbCtx: TranslatorContext = { inputPath: "/project/schema.sql" };
+const openapiCtx: TranslatorContext = { inputName: "api" };
+const dbCtx: TranslatorContext = { inputName: "schema" };
 
 describe("OpenApiTranslator — usecase → resource bindings", () => {
   const translator = new OpenApiTranslator();
@@ -206,7 +206,7 @@ CREATE TABLE products (id BIGINT PRIMARY KEY);
 
 describe("Bindings output is parser-clean", () => {
   it("AT-8: emitted output parses without errors", async () => {
-    const { Parser } = await import("@karasu-tools/core");
+    const { Parser } = await import("../index.js");
 
     const openapi = await new OpenApiTranslator().translate(
       `
@@ -220,14 +220,14 @@ paths:
   /orders/{id}:
     delete: {}
 `,
-      { inputPath: "/project/api.yaml", service: "ECommerce", emitCrudDecoration: true },
+      { inputName: "api", service: "ECommerce", emitCrudDecoration: true },
     );
     const openapiParsed = Parser.parse(openapi);
     const openapiErrors = openapiParsed.diagnostics.filter((d) => d.severity === "error");
     expect(openapiErrors).toEqual([]);
 
     const db = await new DbTranslator().translate(`CREATE TABLE orders (id BIGINT PRIMARY KEY);`, {
-      inputPath: "/project/schema.sql",
+      inputName: "schema",
       database: "OrderDB",
       emitCrudDecoration: true,
     });

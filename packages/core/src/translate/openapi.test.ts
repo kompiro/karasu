@@ -3,7 +3,7 @@ import { OpenApiTranslator } from "./openapi.js";
 import type { TranslatorContext } from "./translator.js";
 
 const ctx: TranslatorContext = {
-  inputPath: "/project/api.yaml",
+  inputName: "api",
 };
 
 describe("OpenApiTranslator — resource granularity (default)", () => {
@@ -170,7 +170,7 @@ paths:
     get:
       operationId: ping
 `;
-    const result = await translator.translate(input, { inputPath: "/project/my_api.yaml" });
+    const result = await translator.translate(input, { inputName: "my_api" });
     expect(result).toContain("service MyApi {");
   });
 

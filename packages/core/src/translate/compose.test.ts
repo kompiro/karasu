@@ -3,7 +3,7 @@ import { ComposeTranslator } from "./compose.js";
 import type { TranslatorContext } from "./translator.js";
 
 const ctx: TranslatorContext = {
-  inputPath: "/project/docker-compose.yml",
+  inputName: "docker-compose",
 };
 
 describe("ComposeTranslator", () => {

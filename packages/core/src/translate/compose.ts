@@ -1,5 +1,5 @@
 import { parse as parseYaml } from "yaml";
-import { loadMapFile, resolveMapPath, resolveRealizes, realizesLines } from "./realizes.js";
+import { parseMapFile, resolveRealizes, realizesLines } from "./realizes.js";
 import type { Translator, TranslatorContext } from "./translator.js";
 
 interface ComposeService {
@@ -42,9 +42,8 @@ export class ComposeTranslator implements Translator {
     }
 
     const services = doc.services ?? {};
-    const envName = doc.name ?? inputFileName(context.inputPath);
-    const mapFilePath = resolveMapPath(context.inputPath, context.mapPath);
-    const mapFile = loadMapFile(mapFilePath);
+    const envName = doc.name ?? context.inputName ?? "compose";
+    const mapFile = parseMapFile(context.mapFile);
 
     const lines: string[] = [`deploy "${envName}" {`];
 
@@ -56,16 +55,11 @@ export class ComposeTranslator implements Translator {
 
       lines.push(`  oci "${name}" {`);
       if (image) lines.push(`    image "${image}"`);
-      lines.push(...realizesLines(name, realizesResult));
+      lines.push(...realizesLines(name, realizesResult, context.onWarning));
       lines.push(`  }`);
     }
 
     lines.push(`}`);
     return lines.join("\n") + "\n";
   }
-}
-
-function inputFileName(inputPath: string): string {
-  const base = inputPath.split("/").pop() ?? inputPath;
-  return base.replace(/\.[^.]+$/, "");
 }

@@ -1,16 +1,14 @@
-import { readFileSync, existsSync } from "node:fs";
-import { dirname, resolve } from "node:path";
 import { parse as parseYaml } from "yaml";
 
 /**
- * Loads karasu.map.yaml from the given path.
- * Returns a map from deploy unit name → service name(s).
- * Returns an empty map if the file does not exist.
+ * Parses `karasu.map.yaml` content into a map from deploy unit name →
+ * service name(s). Returns an empty map when the content is missing or not a
+ * YAML object. Locating and reading the file is the host's responsibility —
+ * this function only parses already-read text so it stays browser-portable.
  */
-export function loadMapFile(mapFilePath: string): Map<string, string[]> {
+export function parseMapFile(content: string | undefined): Map<string, string[]> {
   const result = new Map<string, string[]>();
-  if (!existsSync(mapFilePath)) return result;
-  const content = readFileSync(mapFilePath, "utf-8");
+  if (!content) return result;
   const doc = parseYaml(content) as Record<string, unknown>;
   if (!doc || typeof doc !== "object") return result;
   for (const [key, value] of Object.entries(doc)) {
@@ -24,16 +22,6 @@ export function loadMapFile(mapFilePath: string): Map<string, string[]> {
     }
   }
   return result;
-}
-
-/**
- * Resolves karasu.map.yaml path from a TranslatorContext.
- * If mapPath is set, use it directly.
- * Otherwise look for karasu.map.yaml in the same directory as the input file.
- */
-export function resolveMapPath(inputPath: string, mapPath?: string): string {
-  if (mapPath) return resolve(mapPath);
-  return resolve(dirname(inputPath), "karasu.map.yaml");
 }
 
 /**
@@ -95,13 +83,18 @@ export function resolveRealizes(
 
 /**
  * Emits `realizes` lines for a resolved result, or a TODO comment.
- * Writes a stderr warning when unresolved.
+ * Reports a warning through `onWarning` when unresolved — the CLI routes it to
+ * stderr, the App surfaces it in the UI.
  */
-export function realizesLines(unitName: string, result: RealizesResult): string[] {
+export function realizesLines(
+  unitName: string,
+  result: RealizesResult,
+  onWarning?: (message: string) => void,
+): string[] {
   if (result.resolved) {
     return result.services.map((s) => `    realizes ${s}`);
   }
-  process.stderr.write(`Warning: Could not resolve realizes for "${unitName}"\n`);
+  onWarning?.(`Could not resolve realizes for "${unitName}"`);
   return [
     `    // TODO: realizes ? — could not resolve from naming convention`,
     `    // Add karasu/realizes label or karasu.map.yaml entry`,
