@@ -1,6 +1,6 @@
 # ADR Topic: app-ui
 
-37 ADRs in this topic. Solid nodes belong to `app-ui`; gray dashed nodes are ghosts showing cross-topic references to help navigation.
+38 ADRs in this topic. Solid nodes belong to `app-ui`; gray dashed nodes are ghosts showing cross-topic references to help navigation.
 
 Other topics: [overview](../graph.md).
 ```mermaid
@@ -43,6 +43,7 @@ flowchart TD
     ADR_20260520_02["ADR-20260520-02<br/>translate を core に移設し App でクライアントサイド変換として提供する"]
     ADR_20260520_03["ADR-20260520-03<br/>コマンドパレットのコマンド名は当面 i18n せず、解説追加時にまとめて対応する"]
     ADR_20260520_04["ADR-20260520-04<br/>overlay/portal surface の z-index を文書化されたトークンスケー..."]
+    ADR_20260520_06["ADR-20260520-06<br/>app.css をモジュール分割し、トークン層でライトテーマを提供する"]
   end
   ADR_20260317_01["ADR-20260317-01<br/>[renderer] 2 レイヤレンダリングとドリルダウンナビゲーション"]
   ADR_20260317_02["ADR-20260317-02<br/>[project] プロジェクトとファイルシステム抽象化 — `FileSystemProvider` + OPFS"]
@@ -121,6 +122,7 @@ flowchart TD
   class ADR_20260520_02 accepted
   class ADR_20260520_03 accepted
   class ADR_20260520_04 accepted
+  class ADR_20260520_06 accepted
   class ADR_20260317_01 ghost
   class ADR_20260317_02 ghost
   class ADR_20260320_01 ghost
