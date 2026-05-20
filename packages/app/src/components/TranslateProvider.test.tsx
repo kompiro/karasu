@@ -3,6 +3,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import { render, fireEvent, cleanup, screen } from "@testing-library/react";
 import { CommandProvider } from "../keyboard/command-context.js";
 import { KeyboardShortcutDispatcher } from "../keyboard/KeyboardShortcutDispatcher.js";
+import { LocaleProvider } from "../i18n/index.js";
 import { CommandPalette } from "./CommandPalette.js";
 import { TranslateProvider, useOpenTranslateDialog } from "./TranslateProvider.js";
 
@@ -16,11 +17,13 @@ const DIALOG_TITLE = /Translate infra config to \.krs/;
 describe("TranslateProvider", () => {
   it("registers a command palette entry that opens the translate dialog", () => {
     render(
-      <CommandProvider>
-        <KeyboardShortcutDispatcher />
-        <CommandPalette />
-        <TranslateProvider />
-      </CommandProvider>,
+      <LocaleProvider initialLocale="en">
+        <CommandProvider>
+          <KeyboardShortcutDispatcher />
+          <CommandPalette />
+          <TranslateProvider />
+        </CommandProvider>
+      </LocaleProvider>,
     );
 
     // The dialog stays closed (no DOM) until the command runs.
@@ -43,11 +46,13 @@ describe("TranslateProvider", () => {
     }
 
     render(
-      <CommandProvider>
-        <TranslateProvider>
-          <Opener />
-        </TranslateProvider>
-      </CommandProvider>,
+      <LocaleProvider initialLocale="en">
+        <CommandProvider>
+          <TranslateProvider>
+            <Opener />
+          </TranslateProvider>
+        </CommandProvider>
+      </LocaleProvider>,
     );
 
     expect(screen.queryByText(DIALOG_TITLE)).toBeNull();

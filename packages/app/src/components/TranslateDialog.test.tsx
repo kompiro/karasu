@@ -1,12 +1,20 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { render, fireEvent, cleanup, screen } from "@testing-library/react";
+import { render as rtlRender, fireEvent, cleanup, screen } from "@testing-library/react";
+import type { ReactElement } from "react";
+import { LocaleProvider } from "../i18n/index.js";
 import { TranslateDialog } from "./TranslateDialog.js";
 
 afterEach(() => {
   cleanup();
   document.body.innerHTML = "";
 });
+
+// TranslateDialog calls useTranslation, so every render needs a LocaleProvider.
+// Default to English — the assertions below match the `en` strings.
+function render(ui: ReactElement, initialLocale: "en" | "ja" = "en") {
+  return rtlRender(<LocaleProvider initialLocale={initialLocale}>{ui}</LocaleProvider>);
+}
 
 /** Sets the source textarea content. */
 function typeSource(text: string) {
@@ -246,5 +254,23 @@ describe("TranslateDialog — Download button", () => {
     expect(revokeObjectURL).toHaveBeenCalledOnce();
 
     vi.unstubAllGlobals();
+  });
+});
+
+describe("TranslateDialog — i18n", () => {
+  it("renders English strings under the 'en' locale", () => {
+    render(<TranslateDialog open onClose={() => {}} />, "en");
+    expect(screen.getByText("⇄ Translate infra config to .krs")).not.toBeNull();
+    expect(screen.getByRole("button", { name: "⇄ Translate" })).not.toBeNull();
+    expect(screen.getByText("Advanced options")).not.toBeNull();
+  });
+
+  it("renders Japanese strings under the 'ja' locale", () => {
+    render(<TranslateDialog open onClose={() => {}} />, "ja");
+    expect(screen.getByText("⇄ インフラ設定を .krs に変換")).not.toBeNull();
+    expect(screen.getByRole("button", { name: "⇄ 変換" })).not.toBeNull();
+    expect(screen.getByText("詳細オプション")).not.toBeNull();
+    // The localized aria-label is queryable.
+    expect(screen.getByLabelText("変換元の内容")).not.toBeNull();
   });
 });

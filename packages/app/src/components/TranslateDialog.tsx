@@ -13,6 +13,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { useTranslation } from "../i18n/index.js";
 
 /**
  * In-App equivalent of the `karasu translate` CLI command (Issue #1463).
@@ -26,13 +27,16 @@ import {
  * analogue of the CLI writing to stdout / `--output`.
  */
 
-const FORMAT_LABELS: Record<TranslateFormat, string> = {
-  compose: "Docker Compose",
-  k8s: "Kubernetes manifest",
-  openapi: "OpenAPI spec",
-  db: "DB schema (SQL)",
-};
+/** Translation key for each format's display label. */
+const FORMAT_LABEL_KEY = {
+  compose: "translateDialog.format.compose",
+  k8s: "translateDialog.format.k8s",
+  openapi: "translateDialog.format.openapi",
+  db: "translateDialog.format.db",
+} as const satisfies Record<TranslateFormat, string>;
 
+// Placeholder source snippets are sample code (YAML / SQL), not natural
+// language, so they stay as literals rather than going through i18n.
 const FORMAT_PLACEHOLDERS: Record<TranslateFormat, string> = {
   compose: "services:\n  order-service:\n    image: order-service:1.0.0",
   k8s: "apiVersion: apps/v1\nkind: Deployment\nmetadata:\n  name: order-service",
@@ -54,6 +58,7 @@ const TEXT_INPUT_CLASS =
   "rounded border border-[color:var(--border-strong)] bg-transparent px-2 py-1 text-sm text-[color:var(--text-primary)] outline-none";
 
 export function TranslateDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
+  const { t } = useTranslation();
   const [format, setFormat] = useState<TranslateFormat>("compose");
   const [inputText, setInputText] = useState("");
   const [sourceName, setSourceName] = useState("");
@@ -144,14 +149,14 @@ export function TranslateDialog({ open, onClose }: { open: boolean; onClose: () 
     () =>
       format === "openapi"
         ? [
-            { value: "", label: "resource (default)" },
-            { value: "operation", label: "operation" },
+            { value: "", label: t("translateDialog.granularity.resourceDefault") },
+            { value: "operation", label: t("translateDialog.granularity.operation") },
           ]
         : [
-            { value: "", label: "aggregate (default)" },
-            { value: "table", label: "table" },
+            { value: "", label: t("translateDialog.granularity.aggregateDefault") },
+            { value: "table", label: t("translateDialog.granularity.table") },
           ],
-    [format],
+    [format, t],
   );
 
   return (
@@ -162,24 +167,22 @@ export function TranslateDialog({ open, onClose }: { open: boolean; onClose: () 
         aria-labelledby="translate-dialog-title"
       >
         <DialogHeader>
-          <DialogTitle id="translate-dialog-title">⇄ Translate infra config to .krs</DialogTitle>
-          <DialogDescription>
-            Convert a Docker Compose, Kubernetes, OpenAPI, or DB schema file into a .krs scaffold.
-          </DialogDescription>
+          <DialogTitle id="translate-dialog-title">{t("translateDialog.title")}</DialogTitle>
+          <DialogDescription>{t("translateDialog.description")}</DialogDescription>
         </DialogHeader>
 
         <div className="flex max-h-[60vh] flex-col gap-3 overflow-y-auto">
           <label className={FIELD_LABEL_CLASS}>
-            Input format
+            {t("translateDialog.format.label")}
             <select
               className={TEXT_INPUT_CLASS}
               value={format}
               onChange={(e) => handleFormatChange(e.target.value as TranslateFormat)}
-              aria-label="Input format"
+              aria-label={t("translateDialog.format.label")}
             >
-              {(Object.keys(FORMAT_LABELS) as TranslateFormat[]).map((f) => (
+              {(Object.keys(FORMAT_LABEL_KEY) as TranslateFormat[]).map((f) => (
                 <option key={f} value={f}>
-                  {FORMAT_LABELS[f]}
+                  {t(FORMAT_LABEL_KEY[f])}
                 </option>
               ))}
             </select>
@@ -187,16 +190,18 @@ export function TranslateDialog({ open, onClose }: { open: boolean; onClose: () 
 
           <div className="flex items-center justify-between gap-2">
             <span className="text-xs text-[color:var(--text-secondary)]">
-              Paste the source below, or load a file:
+              {t("translateDialog.loadHint")}
             </span>
             <input
               ref={fileInputRef}
               type="file"
               className="hidden"
               onChange={handleFileChosen}
-              aria-label="Load a file"
+              aria-label={t("translateDialog.loadFile.aria")}
             />
-            <Button onClick={() => fileInputRef.current?.click()}>📂 Load file…</Button>
+            <Button onClick={() => fileInputRef.current?.click()}>
+              {t("translateDialog.loadFile")}
+            </Button>
           </div>
 
           <textarea
@@ -209,45 +214,47 @@ export function TranslateDialog({ open, onClose }: { open: boolean; onClose: () 
             }}
             placeholder={FORMAT_PLACEHOLDERS[format]}
             spellCheck={false}
-            aria-label="Source content"
+            aria-label={t("translateDialog.sourceContent")}
           />
 
           <details className="text-xs text-[color:var(--text-secondary)]">
-            <summary className="cursor-pointer select-none">Advanced options</summary>
+            <summary className="cursor-pointer select-none">
+              {t("translateDialog.advanced")}
+            </summary>
             <div className="mt-2 flex flex-col gap-2">
               <label className={FIELD_LABEL_CLASS}>
-                Source name (used to derive the deploy / service / database name)
+                {t("translateDialog.sourceName.label")}
                 <input
                   className={TEXT_INPUT_CLASS}
                   value={sourceName}
                   onChange={(e) => setSourceName(e.target.value)}
                   placeholder={format === "db" ? "OrderDB" : "production"}
-                  aria-label="Source name"
+                  aria-label={t("translateDialog.sourceName.aria")}
                 />
               </label>
 
               {format === "openapi" && (
                 <label className={FIELD_LABEL_CLASS}>
-                  Service name (overrides info.title)
+                  {t("translateDialog.service.label")}
                   <input
                     className={TEXT_INPUT_CLASS}
                     value={service}
                     onChange={(e) => setService(e.target.value)}
                     placeholder="ECommerce"
-                    aria-label="Service name"
+                    aria-label={t("translateDialog.service.aria")}
                   />
                 </label>
               )}
 
               {format === "db" && (
                 <label className={FIELD_LABEL_CLASS}>
-                  Database name
+                  {t("translateDialog.database")}
                   <input
                     className={TEXT_INPUT_CLASS}
                     value={database}
                     onChange={(e) => setDatabase(e.target.value)}
                     placeholder="OrderDB"
-                    aria-label="Database name"
+                    aria-label={t("translateDialog.database")}
                   />
                 </label>
               )}
@@ -255,12 +262,12 @@ export function TranslateDialog({ open, onClose }: { open: boolean; onClose: () 
               {logical && (
                 <>
                   <label className={FIELD_LABEL_CLASS}>
-                    Granularity
+                    {t("translateDialog.granularity.label")}
                     <select
                       className={TEXT_INPUT_CLASS}
                       value={granularity}
                       onChange={(e) => setGranularity(e.target.value)}
-                      aria-label="Granularity"
+                      aria-label={t("translateDialog.granularity.label")}
                     >
                       {granularityOptions.map((o) => (
                         <option key={o.value} value={o.value}>
@@ -276,7 +283,7 @@ export function TranslateDialog({ open, onClose }: { open: boolean; onClose: () 
                       checked={emitBindings}
                       onChange={(e) => setEmitBindings(e.target.checked)}
                     />
-                    Emit usecase → resource bindings
+                    {t("translateDialog.emitBindings")}
                   </label>
 
                   <label className="flex items-center gap-2">
@@ -285,17 +292,17 @@ export function TranslateDialog({ open, onClose }: { open: boolean; onClose: () 
                       checked={emitCrudDecoration}
                       onChange={(e) => setEmitCrudDecoration(e.target.checked)}
                     />
-                    Decorate operations with &lt;verb&gt;:&lt;crud&gt;
+                    {t("translateDialog.emitCrudDecoration")}
                   </label>
 
                   <label className={FIELD_LABEL_CLASS}>
-                    Wrap in system block (optional)
+                    {t("translateDialog.system.label")}
                     <input
                       className={TEXT_INPUT_CLASS}
                       value={system}
                       onChange={(e) => setSystem(e.target.value)}
                       placeholder="Orders"
-                      aria-label="System name"
+                      aria-label={t("translateDialog.system.aria")}
                     />
                   </label>
                 </>
@@ -303,7 +310,7 @@ export function TranslateDialog({ open, onClose }: { open: boolean; onClose: () 
 
               {!logical && (
                 <label className={FIELD_LABEL_CLASS}>
-                  karasu.map.yaml content (optional — resolves `realizes`)
+                  {t("translateDialog.mapFile.label")}
                   <textarea
                     className={TEXTAREA_CLASS}
                     rows={3}
@@ -311,7 +318,7 @@ export function TranslateDialog({ open, onClose }: { open: boolean; onClose: () 
                     onChange={(e) => setMapFile(e.target.value)}
                     placeholder="order-service: OrderService"
                     spellCheck={false}
-                    aria-label="karasu.map.yaml content"
+                    aria-label={t("translateDialog.mapFile.aria")}
                   />
                 </label>
               )}
@@ -326,14 +333,16 @@ export function TranslateDialog({ open, onClose }: { open: boolean; onClose: () 
 
           {result && (
             <div className="flex flex-col gap-1">
-              <span className="text-xs text-[color:var(--text-secondary)]">Generated .krs</span>
+              <span className="text-xs text-[color:var(--text-secondary)]">
+                {t("translateDialog.result")}
+              </span>
               <textarea
                 className={TEXTAREA_CLASS}
                 rows={10}
                 value={result.krs}
                 readOnly
                 spellCheck={false}
-                aria-label="Generated .krs"
+                aria-label={t("translateDialog.result")}
               />
               {result.warnings.length > 0 && (
                 <ul className="mt-1 list-disc pl-5 text-xs text-[color:var(--warning,#b45309)]">
@@ -347,12 +356,12 @@ export function TranslateDialog({ open, onClose }: { open: boolean; onClose: () 
         </div>
 
         <DialogFooter>
-          <Button onClick={onClose}>Close</Button>
+          <Button onClick={onClose}>{t("translateDialog.close")}</Button>
           {result ? (
             <>
-              <Button onClick={handleDownload}>↓ Download .krs</Button>
+              <Button onClick={handleDownload}>{t("translateDialog.download")}</Button>
               <Button variant="actionable" onClick={handleCopy}>
-                ⧉ Copy .krs
+                {t("translateDialog.copy")}
               </Button>
             </>
           ) : (
@@ -361,7 +370,7 @@ export function TranslateDialog({ open, onClose }: { open: boolean; onClose: () 
               onClick={() => void handleTranslate()}
               disabled={!inputText.trim()}
             >
-              ⇄ Translate
+              {t("translateDialog.translate")}
             </Button>
           )}
         </DialogFooter>
