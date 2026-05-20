@@ -41,6 +41,7 @@ import {
 } from "../lib/append-style-rule.js";
 import { DiffModeBanner } from "./DiffModeBanner.js";
 import { DiagramViewShortcuts } from "./DiagramViewShortcuts.js";
+import { PreviewFocusShortcut } from "./PreviewFocusShortcut.js";
 
 interface AppShellProps {
   entryPath: string | null;
@@ -513,6 +514,7 @@ export function AppShell({
         />
       )}
       <DiagramViewShortcuts onActiveViewChange={navigateActiveView} />
+      <PreviewFocusShortcut onToggle={togglePreviewFocus} />
       <PreviewProvider value={previewContextValue}>
         {compareSource && (
           <DiffModeBanner
