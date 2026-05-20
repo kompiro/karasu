@@ -1,0 +1,64 @@
+/* ================================================================
+   karasu — app styles entry point
+   A precision theme with raven-wing iridescence. Named for Huginn &
+   Muninn — thought and memory surveying the world.
+
+   This file is the single stylesheet `main.tsx` imports. It only wires
+   things together; real rules live in the imported modules.
+
+   Load order matters — it is the CSS cascade for equal-specificity
+   rules. Tokens first, then themes, then base, layout, components.
+   ================================================================ */
+
+@import url("https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap");
+
+/* Tailwind v4 — shadcn/ui (ADR-20260515-01).
+ * Loaded before our own modules so our unlayered rules still win over
+ * Tailwind's `@layer base` preflight. preflight is left enabled per ADR;
+ * conflicts are fixed case-by-case. */
+@import "tailwindcss";
+
+/* Design tokens — non-color primitives, then themed color tokens. */
+@import "./tokens.css";
+@import "./themes.css";
+
+/* Document reset, then layout, then per-feature component styles. */
+@import "./base.css";
+@import "./layout.css";
+@import "./components/navigation.css";
+@import "./components/chat.css";
+@import "./components/settings.css";
+@import "./components/preview.css";
+@import "./components/panels.css";
+@import "./components/dialogs.css";
+@import "./components/diff.css";
+@import "./components/crud-matrix.css";
+@import "./components/misc.css";
+
+/* Tailwind v4 auto-detection misses arbitrary-value classes (e.g.
+ * `max-w-[640px]`, `w-[180px]`) in this monorepo + workspace-alias
+ * setup — point the scanner at our source tree explicitly so those
+ * utilities are actually emitted. Without this, tailwind-merge correctly
+ * drops the base `max-w-lg` in favor of the user-supplied
+ * `max-w-[640px]`, but the latter has no CSS rule and the element ends
+ * up unbounded (#1379 follow-up). */
+@source "../**/*.{ts,tsx}";
+
+/* shadcn/ui theme bridge — map Tailwind theme tokens to karasu's CSS
+ * variables so shadcn primitives (Dialog, ContextMenu) pick up the
+ * karasu palette without re-declaring colors. The `inline` keyword keeps
+ * the var() references unresolved, so they re-resolve per theme at
+ * runtime. Only tokens shadcn primitives actually consume are bridged. */
+@theme inline {
+  --color-background: var(--bg-base);
+  --color-foreground: var(--text-primary);
+  --color-popover: var(--bg-overlay);
+  --color-popover-foreground: var(--text-primary);
+  --color-border: var(--border-strong);
+  --color-ring: var(--accent);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--text-on-accent);
+  --color-muted: var(--bg-raised);
+  --color-muted-foreground: var(--text-secondary);
+  --radius: 8px;
+}

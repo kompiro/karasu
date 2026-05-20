@@ -1,0 +1,36 @@
+/* ================================================================
+   Design tokens — theme-independent primitives.
+   Color tokens live in themes.css; everything here is the same in
+   light and dark.
+   ================================================================ */
+
+:root {
+  /* Geometry — corner radii */
+  --radius-xs: 3px;
+  --radius-sm: 5px;
+  --radius-md: 7px;
+  --radius-lg: 10px;
+
+  /* Layout — fixed chrome dimensions */
+  --sidebar-w: 210px;
+  --topbar-h: 38px;
+
+  /* Z-index scale — stacking order for overlay & portal surfaces (low → high).
+   * Every overlay/portal rule picks a token; never a bare magic number, so
+   * the relative order of any two surfaces stays legible in one place.
+   * shadcn primitives (Dialog/DropdownMenu/Tooltip) reference these via
+   * Tailwind arbitrary values, e.g. `z-[var(--z-dialog)]`.
+   * Local intra-component stacking contexts (e.g. a sticky table header)
+   * keep a literal `z-index: 1` — they are not part of this scale. */
+  --z-handle: 50; /* split / sidebar drag handles */
+  --z-dropdown: 100; /* inline toolbar dropdown menu (export mode) */
+  --z-panel: 200; /* slide-in side panels (Reference panel) */
+  --z-context-menu: 1000; /* canvas right-click context menus */
+  --z-dialog: 2000; /* modal dialogs — legacy .dialog-overlay + shadcn Dialog */
+  --z-menu: 3000; /* portalled menus — shadcn DropdownMenu (above dialogs so in-dialog menus work) */
+  --z-tooltip: 4000; /* tooltips — always topmost */
+
+  /* Typography */
+  --font-ui: "Figtree", -apple-system, "Helvetica Neue", sans-serif;
+  --font-mono: "JetBrains Mono", "Fira Code", "Consolas", monospace;
+}

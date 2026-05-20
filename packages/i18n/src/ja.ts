@@ -13,6 +13,12 @@ export const ja: Partial<Translations> = {
   "languageSelector.english": "英語",
   "languageSelector.japanese": "日本語",
 
+  // Theme selector
+  "theme.label": "テーマ",
+  "theme.system": "システム",
+  "theme.light": "ライト",
+  "theme.dark": "ダーク",
+
   // Settings pane
   "settings.ai.title": "⚙ AI 設定",
   "settings.security.heading": "⚠ セキュリティについて",

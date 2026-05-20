@@ -8,6 +8,7 @@ import {
 } from "../utils/api-key-storage.js";
 import { useTranslation } from "../i18n/index.js";
 import type { Locale } from "../i18n/locale.js";
+import { useTheme, type ThemePreference } from "../theme/index.js";
 import { Button } from "@/components/ui/button";
 
 interface SettingsPaneProps {
@@ -16,6 +17,7 @@ interface SettingsPaneProps {
 
 export function SettingsPane({ onApiKeyChange }: SettingsPaneProps) {
   const { t, locale, setLocale } = useTranslation();
+  const { theme, setTheme } = useTheme();
   const [apiKey, setApiKey] = useState(() => getStoredApiKey() ?? "");
   const [persist, setPersist] = useState<PersistSetting>(() => getPersistSetting());
   const [saved, setSaved] = useState(false);
@@ -50,6 +52,24 @@ export function SettingsPane({ onApiKeyChange }: SettingsPaneProps) {
           >
             <option value="en">{t("languageSelector.english")}</option>
             <option value="ja">{t("languageSelector.japanese")}</option>
+          </select>
+        </div>
+      </section>
+
+      <section className="settings-section">
+        <h2 className="settings-section__title">🎨 {t("theme.label")}</h2>
+
+        <div className="settings-field">
+          <select
+            id="settings-theme"
+            className="settings-field__input"
+            value={theme}
+            onChange={(e) => setTheme(e.target.value as ThemePreference)}
+            aria-label={t("theme.label")}
+          >
+            <option value="system">{t("theme.system")}</option>
+            <option value="light">{t("theme.light")}</option>
+            <option value="dark">{t("theme.dark")}</option>
           </select>
         </div>
       </section>

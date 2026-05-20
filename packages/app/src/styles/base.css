@@ -1,0 +1,39 @@
+/* base — document reset & scrollbars
+   Part of karasu app styles — see index.css for load order. */
+
+/* Base reset is provided by Tailwind v4's preflight (`@layer base`):
+ * `*, ::before, ::after, ::backdrop { box-sizing: border-box; margin: 0;
+ * padding: 0 }`. A second *unlayered* `* {}` reset here would beat every
+ * Tailwind utility (unlayered CSS always wins over @layer rules), so
+ * `p-5`, `gap-3`, etc. on shadcn primitives would silently resolve to 0.
+ * The legacy reset is therefore removed — preflight covers it exactly. */
+
+html,
+body,
+#root {
+  height: 100%;
+  width: 100%;
+  overflow: hidden;
+  font-family: var(--font-ui);
+  background: var(--bg-base);
+  color: var(--text-primary);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+/* Refined scrollbars */
+::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--border-strong);
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--border-active);
+}

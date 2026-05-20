@@ -50,11 +50,20 @@ vi.mock("@monaco-editor/react", () => {
 });
 
 import { EditorPane } from "./EditorPane.js";
+import { ThemeProvider } from "../theme/index.js";
+
+function renderEditor(onChange: (value: string) => void) {
+  return render(
+    <ThemeProvider initialTheme="dark">
+      <EditorPane value="" onChange={onChange} />
+    </ThemeProvider>,
+  );
+}
 
 describe("EditorPane IME composition gating", () => {
   it("propagates changes when not composing", () => {
     const onChange = vi.fn<(value: string) => void>();
-    render(<EditorPane value="" onChange={onChange} />);
+    renderEditor(onChange);
 
     lastChange?.("hello");
     expect(onChange).toHaveBeenCalledWith("hello");
@@ -62,7 +71,7 @@ describe("EditorPane IME composition gating", () => {
 
   it("buffers changes during composition and flushes once on compositionEnd", () => {
     const onChange = vi.fn<(value: string) => void>();
-    render(<EditorPane value="" onChange={onChange} />);
+    renderEditor(onChange);
 
     compositionStartListener?.();
     lastChange?.("k");
@@ -77,7 +86,7 @@ describe("EditorPane IME composition gating", () => {
 
   it("does not flush a stale value if composition ends without intermediate changes", () => {
     const onChange = vi.fn<(value: string) => void>();
-    render(<EditorPane value="" onChange={onChange} />);
+    renderEditor(onChange);
 
     compositionStartListener?.();
     compositionEndListener?.();
@@ -86,7 +95,7 @@ describe("EditorPane IME composition gating", () => {
 
   it("resumes propagating after composition ends", () => {
     const onChange = vi.fn<(value: string) => void>();
-    render(<EditorPane value="" onChange={onChange} />);
+    renderEditor(onChange);
 
     compositionStartListener?.();
     lastChange?.("a");

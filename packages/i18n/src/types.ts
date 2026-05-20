@@ -23,6 +23,12 @@ export type Translations = {
   "languageSelector.english": string;
   "languageSelector.japanese": string;
 
+  // Theme selector
+  "theme.label": string;
+  "theme.system": string;
+  "theme.light": string;
+  "theme.dark": string;
+
   // Settings pane (Phase C2)
   "settings.ai.title": string;
   "settings.security.heading": string;
