@@ -57,6 +57,16 @@ jobs:
       - name: License allowlist
         run: pnpm run check:licenses
 
+      # `adr check-assumptions` validates ADR `assumptions:` entries against
+      # the real working tree — a code↔ADR consistency check. The companion
+      # `adr-validate.yml` runs it too, but is path-filtered to `docs/adr/**`,
+      # so it never runs on the code PRs most likely to break an assumption
+      # (a code change can invalidate an existing assumption without touching
+      # any ADR — see PR #1477). Running it here, in the already-Required
+      # `Check` job that fires on code changes, closes that gap. Issue #1480.
+      - name: Check ADR assumptions against the working tree
+        run: pnpm exec adr check-assumptions --quiet
+
       # The reference-docs drift guard lives in its own workflow
       # (`reference-docs-check.yml`), mirroring the ADR setup, so it also runs
       # on docs-only PRs that `ci.yml`'s `paths-ignore` filters out. Issue #1342.

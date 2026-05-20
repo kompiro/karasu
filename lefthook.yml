@@ -35,7 +35,12 @@ pre-push:
       glob: "{docs/adr/**,adr.config.json}"
       run: pnpm exec adr regenerate --check
     adr-check-assumptions:
-      glob: "{docs/adr/**,adr.config.json}"
+      # No `glob` on purpose: a code change can invalidate an ADR
+      # `assumptions:` entry without touching `docs/adr/**`, so gating this
+      # on ADR paths would skip the very pushes most likely to break an
+      # assumption. It is a fast grep-based check, so it runs on every push
+      # alongside format / lint / typecheck. Mirrors the step in ci.yml's
+      # Check job. Issue #1480.
       run: pnpm exec adr check-assumptions --quiet
     tpl-validate:
       glob: "{docs/test-perspectives/**,adr.config.json}"
