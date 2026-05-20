@@ -1,5 +1,11 @@
-import { describe, it, expect } from "vitest";
-import { kebabToPascal, resolveRealizes, splitRealizes, realizesLines } from "./realizes.js";
+import { describe, it, expect, vi } from "vitest";
+import {
+  kebabToPascal,
+  resolveRealizes,
+  splitRealizes,
+  realizesLines,
+  parseMapFile,
+} from "./realizes.js";
 
 describe("kebabToPascal", () => {
   it("converts single segment", () => {
@@ -93,5 +99,83 @@ describe("realizesLines", () => {
   it("emits TODO comment for unresolved result", () => {
     const lines = realizesLines("app", { resolved: false });
     expect(lines[0]).toContain("TODO: realizes ?");
+  });
+
+  it("calls onWarning with the unit name when unresolved", () => {
+    const onWarning = vi.fn<(message: string) => void>();
+    realizesLines("monolith", { resolved: false }, onWarning);
+    expect(onWarning).toHaveBeenCalledOnce();
+    expect(onWarning).toHaveBeenCalledWith('Could not resolve realizes for "monolith"');
+  });
+
+  it("does not call onWarning when resolved", () => {
+    const onWarning = vi.fn<(message: string) => void>();
+    realizesLines("order-service", { resolved: true, services: ["OrderService"] }, onWarning);
+    expect(onWarning).not.toHaveBeenCalled();
+  });
+
+  it("does not throw when onWarning is undefined and unresolved", () => {
+    expect(() => realizesLines("app", { resolved: false })).not.toThrow();
+  });
+});
+
+describe("parseMapFile", () => {
+  it("returns an empty map for undefined content", () => {
+    expect(parseMapFile(undefined).size).toBe(0);
+  });
+
+  it("returns an empty map for empty string", () => {
+    expect(parseMapFile("").size).toBe(0);
+  });
+
+  it("returns an empty map for non-object YAML (plain scalar)", () => {
+    expect(parseMapFile("just a string").size).toBe(0);
+  });
+
+  it("treats YAML array-at-root items as string values (via Object.entries on array)", () => {
+    // Arrays in JS are objects, so Object.entries iterates over index keys.
+    // The parseMapFile implementation does not specifically guard against this —
+    // it processes any object-like document. An array-root YAML produces numeric
+    // string keys; this test documents the actual behavior.
+    const map = parseMapFile("- item1\n- item2\n");
+    // String items under numeric keys are treated as comma-separated realizes.
+    expect(map.get("0")).toEqual(["item1"]);
+    expect(map.get("1")).toEqual(["item2"]);
+  });
+
+  it("returns an empty map for null YAML document", () => {
+    expect(parseMapFile("null").size).toBe(0);
+  });
+
+  it("parses a single string value as a single-element array", () => {
+    const map = parseMapFile("app: ECommerce\n");
+    expect(map.get("app")).toEqual(["ECommerce"]);
+  });
+
+  it("parses comma-separated string value into multiple services", () => {
+    const map = parseMapFile("app: OrderService,InventoryService\n");
+    expect(map.get("app")).toEqual(["OrderService", "InventoryService"]);
+  });
+
+  it("parses an array value", () => {
+    const map = parseMapFile("app:\n  - OrderService\n  - InventoryService\n");
+    expect(map.get("app")).toEqual(["OrderService", "InventoryService"]);
+  });
+
+  it("filters non-string items out of array values", () => {
+    const map = parseMapFile("app:\n  - OrderService\n  - 42\n");
+    expect(map.get("app")).toEqual(["OrderService"]);
+  });
+
+  it("parses multiple entries", () => {
+    const map = parseMapFile("order-service: OrderService\napp: ECommerce\n");
+    expect(map.get("order-service")).toEqual(["OrderService"]);
+    expect(map.get("app")).toEqual(["ECommerce"]);
+  });
+
+  it("ignores keys whose value is neither string nor array", () => {
+    // YAML object value — should be skipped (not string, not array)
+    const map = parseMapFile("key:\n  nested: value\n");
+    expect(map.has("key")).toBe(false);
   });
 });

@@ -88,4 +88,163 @@ describe("TranslateDialog", () => {
     typeSource("services:\n  api:\n    image: api:2.0.0\n");
     expect(screen.queryByLabelText("Generated .krs")).toBeNull();
   });
+
+  it("calls onClose when the Close button is clicked", () => {
+    const onClose = vi.fn<() => void>();
+    render(<TranslateDialog open onClose={onClose} />);
+    fireEvent.click(screen.getByRole("button", { name: /Close/ }));
+    expect(onClose).toHaveBeenCalledOnce();
+  });
+});
+
+describe("TranslateDialog — format-specific advanced options", () => {
+  /** Open the <details> Advanced options panel. */
+  function openAdvanced() {
+    fireEvent.click(screen.getByText("Advanced options"));
+  }
+
+  it("shows karasu.map.yaml field for compose format (not logical format)", () => {
+    render(<TranslateDialog open onClose={() => {}} />);
+    // compose is the default format
+    openAdvanced();
+    expect(screen.getByLabelText("karasu.map.yaml content")).not.toBeNull();
+    expect(screen.queryByLabelText("Service name (overrides info.title)")).toBeNull();
+    expect(screen.queryByLabelText("Database name")).toBeNull();
+    expect(screen.queryByLabelText("Granularity")).toBeNull();
+  });
+
+  it("shows karasu.map.yaml field for k8s format (not logical format)", () => {
+    render(<TranslateDialog open onClose={() => {}} />);
+    fireEvent.change(screen.getByLabelText("Input format"), { target: { value: "k8s" } });
+    openAdvanced();
+    expect(screen.getByLabelText("karasu.map.yaml content")).not.toBeNull();
+    expect(screen.queryByLabelText("Granularity")).toBeNull();
+  });
+
+  it("hides karasu.map.yaml field and shows logical options for openapi format", () => {
+    render(<TranslateDialog open onClose={() => {}} />);
+    fireEvent.change(screen.getByLabelText("Input format"), { target: { value: "openapi" } });
+    openAdvanced();
+    expect(screen.queryByLabelText("karasu.map.yaml content")).toBeNull();
+    expect(screen.getByLabelText("Service name (overrides info.title)")).not.toBeNull();
+    expect(screen.getByLabelText("Granularity")).not.toBeNull();
+    expect(screen.queryByLabelText("Database name")).toBeNull();
+  });
+
+  it("hides karasu.map.yaml field and shows logical options for db format", () => {
+    render(<TranslateDialog open onClose={() => {}} />);
+    fireEvent.change(screen.getByLabelText("Input format"), { target: { value: "db" } });
+    openAdvanced();
+    expect(screen.queryByLabelText("karasu.map.yaml content")).toBeNull();
+    expect(screen.getByLabelText("Database name")).not.toBeNull();
+    expect(screen.getByLabelText("Granularity")).not.toBeNull();
+    expect(screen.queryByLabelText("Service name (overrides info.title)")).toBeNull();
+  });
+
+  it("shows emit-bindings and emit-crud-decoration checkboxes for openapi", () => {
+    render(<TranslateDialog open onClose={() => {}} />);
+    fireEvent.change(screen.getByLabelText("Input format"), { target: { value: "openapi" } });
+    openAdvanced();
+    expect(screen.getByLabelText(/Emit usecase.*resource bindings/)).not.toBeNull();
+    expect(screen.getByLabelText(/Decorate operations with/)).not.toBeNull();
+  });
+
+  it("shows emit-bindings and emit-crud-decoration checkboxes for db", () => {
+    render(<TranslateDialog open onClose={() => {}} />);
+    fireEvent.change(screen.getByLabelText("Input format"), { target: { value: "db" } });
+    openAdvanced();
+    expect(screen.getByLabelText(/Emit usecase.*resource bindings/)).not.toBeNull();
+    expect(screen.getByLabelText(/Decorate operations with/)).not.toBeNull();
+  });
+
+  it("hides emit-bindings and emit-crud-decoration for compose format", () => {
+    render(<TranslateDialog open onClose={() => {}} />);
+    openAdvanced();
+    expect(screen.queryByLabelText(/Emit usecase.*resource bindings/)).toBeNull();
+    expect(screen.queryByLabelText(/Decorate operations with/)).toBeNull();
+  });
+
+  it("shows System name field only for logical formats (openapi)", () => {
+    render(<TranslateDialog open onClose={() => {}} />);
+    fireEvent.change(screen.getByLabelText("Input format"), { target: { value: "openapi" } });
+    openAdvanced();
+    expect(screen.getByLabelText("System name")).not.toBeNull();
+  });
+
+  it("does not show System name field for compose format", () => {
+    render(<TranslateDialog open onClose={() => {}} />);
+    openAdvanced();
+    expect(screen.queryByLabelText("System name")).toBeNull();
+  });
+
+  it("clears stale result when format changes", async () => {
+    render(<TranslateDialog open onClose={() => {}} />);
+    fireEvent.change(screen.getByLabelText("Source content"), {
+      target: { value: "services:\n  api:\n    image: api:1.0.0\n" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: /Translate/ }));
+    await screen.findByLabelText("Generated .krs");
+
+    fireEvent.change(screen.getByLabelText("Input format"), { target: { value: "openapi" } });
+    expect(screen.queryByLabelText("Generated .krs")).toBeNull();
+  });
+});
+
+describe("TranslateDialog — karasu.map.yaml resolves realizes", () => {
+  it("uses karasu.map.yaml content to resolve realizes for compose", async () => {
+    render(<TranslateDialog open onClose={() => {}} />);
+    // Open advanced options and paste the map file content
+    fireEvent.click(screen.getByText("Advanced options"));
+    fireEvent.change(screen.getByLabelText("karasu.map.yaml content"), {
+      target: { value: "app: ECommerce\n" },
+    });
+    fireEvent.change(screen.getByLabelText("Source content"), {
+      target: { value: "services:\n  app:\n    image: app:1.0.0\n" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: /Translate/ }));
+
+    const output = (await screen.findByLabelText("Generated .krs")) as HTMLTextAreaElement;
+    expect(output.value).toContain("realizes ECommerce");
+    // No warnings because realizes was resolved
+    expect(screen.queryByText(/Could not resolve realizes/)).toBeNull();
+  });
+});
+
+describe("TranslateDialog — Download button", () => {
+  it("shows Download button after a successful translation", async () => {
+    render(<TranslateDialog open onClose={() => {}} />);
+    fireEvent.change(screen.getByLabelText("Source content"), {
+      target: { value: "services:\n  api:\n    image: api:1.0.0\n" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: /Translate/ }));
+    await screen.findByLabelText("Generated .krs");
+
+    expect(screen.getByRole("button", { name: /Download/ })).not.toBeNull();
+  });
+
+  it("does not show Download button before translation", () => {
+    render(<TranslateDialog open onClose={() => {}} />);
+    expect(screen.queryByRole("button", { name: /Download/ })).toBeNull();
+  });
+
+  it("triggers URL.createObjectURL when Download is clicked", async () => {
+    // Stub URL APIs used by handleDownload
+    const createObjectURL = vi.fn<(obj: object) => string>().mockReturnValue("blob:mock");
+    const revokeObjectURL = vi.fn<(url: string) => void>();
+    vi.stubGlobal("URL", { createObjectURL, revokeObjectURL });
+
+    render(<TranslateDialog open onClose={() => {}} />);
+    fireEvent.change(screen.getByLabelText("Source content"), {
+      target: { value: "services:\n  order-service:\n    image: order-service:1.0.0\n" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: /Translate/ }));
+    await screen.findByLabelText("Generated .krs");
+
+    fireEvent.click(screen.getByRole("button", { name: /Download/ }));
+    expect(createObjectURL).toHaveBeenCalledOnce();
+    // revokeObjectURL is called after click to free the blob URL
+    expect(revokeObjectURL).toHaveBeenCalledOnce();
+
+    vi.unstubAllGlobals();
+  });
 });

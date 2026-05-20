@@ -255,6 +255,16 @@ spec:
 });
 
 describe("translate E2E — error handling", () => {
+  let tmpDir: string;
+
+  beforeEach(() => {
+    tmpDir = mkdtempSync(join(tmpdir(), "karasu-e2e-err-"));
+  });
+
+  afterEach(() => {
+    rmSync(tmpDir, { recursive: true, force: true });
+  });
+
   it("AT-0050-10: exits with code 1 and error message for missing file", async () => {
     const exitSpy = vi.spyOn(process, "exit").mockImplementation(() => {
       throw new Error("process.exit called");
@@ -287,6 +297,100 @@ describe("translate E2E — error handling", () => {
 
     capture.restore();
     exitSpy.mockRestore();
+  });
+
+  it("exits with code 1 and error message for invalid compose YAML (parse error path)", async () => {
+    const inputPath = join(tmpDir, "docker-compose.yml");
+    writeFileSync(inputPath, "{ invalid yaml: [unclosed\n");
+
+    const exitSpy = vi.spyOn(process, "exit").mockImplementation(() => {
+      throw new Error("process.exit called");
+    });
+    const capture = captureOutput();
+
+    await expect(translate(inputPath, { from: "compose" })).rejects.toThrow("process.exit called");
+
+    expect(exitSpy).toHaveBeenCalledWith(1);
+    expect(capture.stderr()).toContain("Error: Failed to parse");
+
+    capture.restore();
+    exitSpy.mockRestore();
+  });
+
+  it("exits with code 1 for invalid OpenAPI YAML (parse error path)", async () => {
+    const inputPath = join(tmpDir, "api.yaml");
+    writeFileSync(inputPath, "{ not: [valid yaml\n");
+
+    const exitSpy = vi.spyOn(process, "exit").mockImplementation(() => {
+      throw new Error("process.exit called");
+    });
+    const capture = captureOutput();
+
+    await expect(translate(inputPath, { from: "openapi", service: "Foo" })).rejects.toThrow(
+      "process.exit called",
+    );
+
+    expect(exitSpy).toHaveBeenCalledWith(1);
+    expect(capture.stderr()).toContain("Error: Failed to parse");
+
+    capture.restore();
+    exitSpy.mockRestore();
+  });
+
+  it("writes warnings to stderr for each unresolvable realizes", async () => {
+    const inputPath = join(tmpDir, "docker-compose.yml");
+    writeFileSync(
+      inputPath,
+      `
+name: prod
+services:
+  app:
+    image: app:1.0.0
+  monolith:
+    image: monolith:2.0.0
+`,
+    );
+
+    const capture = captureOutput();
+    await translate(inputPath, { from: "compose" });
+    capture.restore();
+
+    const stderr = capture.stderr();
+    expect(stderr).toContain('Warning: Could not resolve realizes for "app"');
+    expect(stderr).toContain('Warning: Could not resolve realizes for "monolith"');
+  });
+
+  it("does not write to stderr when all realizes are resolved via naming heuristic", async () => {
+    const inputPath = join(tmpDir, "docker-compose.yml");
+    writeFileSync(
+      inputPath,
+      `
+name: prod
+services:
+  order-service:
+    image: order-service:1.0.0
+`,
+    );
+
+    const capture = captureOutput();
+    await translate(inputPath, { from: "compose" });
+    capture.restore();
+
+    expect(capture.stderr()).toBe("");
+  });
+
+  it("auto-discovers karasu.map.yaml beside the input when --map is not given", async () => {
+    const inputPath = join(tmpDir, "docker-compose.yml");
+    writeFileSync(inputPath, "services:\n  app:\n    image: app:1.0.0\n");
+    writeFileSync(join(tmpDir, "karasu.map.yaml"), "app: ECommerce\n");
+
+    const capture = captureOutput();
+    await translate(inputPath, { from: "compose" });
+    capture.restore();
+
+    // Warning should be gone because mapFile resolved "app"
+    expect(capture.stderr()).toBe("");
+    expect(capture.stdout()).toContain("realizes ECommerce");
   });
 });
 
