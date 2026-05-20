@@ -102,10 +102,6 @@ h2 {
   text-decoration: none;
 }
 
-.nav-repo {
-  color: var(--text) !important;
-}
-
 /* Layout sections */
 main {
   max-width: var(--content-width);
@@ -315,19 +311,6 @@ section:last-of-type {
   margin-top: 0;
 }
 
-.doc-links {
-  margin-top: 2rem;
-  display: flex;
-  gap: 1.2rem;
-  flex-wrap: wrap;
-  align-items: center;
-  font-size: 0.95rem;
-}
-
-.doc-links span {
-  color: var(--text-dim);
-}
-
 /* Footer */
 .site-footer {
   max-width: var(--content-width);
@@ -350,7 +333,7 @@ section:last-of-type {
     grid-template-columns: 1fr;
   }
 
-  .site-nav a:not(.nav-repo) {
+  .site-nav {
     display: none;
   }
 
