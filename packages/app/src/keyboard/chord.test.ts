@@ -26,6 +26,23 @@ describe("eventToChord", () => {
   it("serializes an unmodified key as just the key", () => {
     expect(eventToChord(new KeyboardEvent("keydown", { key: "Escape" }))).toBe("escape");
   });
+
+  it("normalizes a digit-row key via `code`, so shift does not yield a symbol", () => {
+    // Ctrl+Shift+1 reports `key` as the layout-dependent shifted character
+    // (`!` on a US keyboard); `code` stays `Digit1`. The chord must be
+    // `mod+shift+1` regardless, or a `mod+shift+1` keybinding never matches.
+    const e = new KeyboardEvent("keydown", {
+      key: "!",
+      code: "Digit1",
+      ctrlKey: true,
+      shiftKey: true,
+    });
+    expect(eventToChord(e)).toBe("mod+shift+1");
+  });
+
+  it("falls back to `key` for digits when `code` is absent", () => {
+    expect(eventToChord(new KeyboardEvent("keydown", { key: "1", ctrlKey: true }))).toBe("mod+1");
+  });
 });
 
 describe("isTextInputFocused", () => {

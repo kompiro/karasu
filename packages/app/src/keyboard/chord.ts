@@ -8,9 +8,24 @@ function isMacPlatform(): boolean {
 }
 
 /**
+ * The chord's key segment. Digit-row keys are taken from `event.code`
+ * (`Digit0`–`Digit9`) rather than `event.key`, so that `shift` does not turn
+ * `1` into a layout-dependent symbol (`!` on a US keyboard) — without this a
+ * `mod+shift+1` keybinding would never match. Everything else uses the
+ * lower-cased `event.key`. `code` is absent in some synthetic events (e.g. a
+ * jsdom `fireEvent` with no `code`), so the fallback keeps bare-digit chords
+ * like `mod+1` resolving there too.
+ */
+function chordKey(event: KeyboardEvent): string {
+  const digit = /^Digit([0-9])$/.exec(event.code);
+  if (digit) return digit[1];
+  return event.key.toLowerCase();
+}
+
+/**
  * Serialize a keydown event into a chord string, e.g. `"mod+shift+b"`.
  * `mod` is Cmd on macOS, Ctrl elsewhere. Modifier order is fixed:
- * `mod`, `alt`, `shift`, then the lower-cased key.
+ * `mod`, `alt`, `shift`, then the key.
  */
 export function eventToChord(event: KeyboardEvent): string {
   const parts: string[] = [];
@@ -18,7 +33,7 @@ export function eventToChord(event: KeyboardEvent): string {
   if (mod) parts.push("mod");
   if (event.altKey) parts.push("alt");
   if (event.shiftKey) parts.push("shift");
-  parts.push(event.key.toLowerCase());
+  parts.push(chordKey(event));
   return parts.join("+");
 }
 
