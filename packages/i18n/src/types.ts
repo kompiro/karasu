@@ -49,6 +49,8 @@ export type Translations = {
   "projectSelector.export.button": string;
   "projectSelector.import.title": string;
   "projectSelector.import.button": string;
+  "projectSelector.translate.title": string;
+  "projectSelector.translate.button": string;
   "projectSelector.ok": string;
   "projectSelector.cancel": string;
 

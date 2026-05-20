@@ -41,6 +41,8 @@ export const ja: Partial<Translations> = {
   "projectSelector.export.button": "↓ エクスポート",
   "projectSelector.import.title": "ZIPからインポート",
   "projectSelector.import.button": "↑ インポート",
+  "projectSelector.translate.title": "インフラ設定を .krs に変換",
+  "projectSelector.translate.button": "⇄ 変換",
   "projectSelector.ok": "OK",
   "projectSelector.cancel": "キャンセル",
 

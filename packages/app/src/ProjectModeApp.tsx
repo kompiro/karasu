@@ -3,6 +3,7 @@ import { ProjectSelector } from "./components/ProjectSelector.js";
 import { FileTree } from "./components/FileTree.js";
 import { AppShell } from "./components/AppShell.js";
 import { PasteCompareDialog } from "./components/PasteCompareDialog.js";
+import { useOpenTranslateDialog } from "./components/TranslateProvider.js";
 import { SnapshotPickerModal } from "./components/SnapshotPickerModal.js";
 import { useAppContext } from "./state/app-context.js";
 import { ProjectManager } from "./fs/project-manager.js";
@@ -43,6 +44,7 @@ export function ProjectModeApp() {
     { mode: "edit"; initial: string } | { mode: "view"; content: string } | null
   >(null);
   const [pickerFilePath, setPickerFilePath] = useState<string | null>(null);
+  const openTranslate = useOpenTranslateDialog();
 
   // Hidden file path within the project used to hold a pasted .krs blob while
   // diff mode is active (Issue #739). The file-tree loader hides dot-prefixed
@@ -225,6 +227,7 @@ export function ProjectModeApp() {
       onDeleteProject={handleDeleteProject}
       onExportProject={handleExportProject}
       onImportProject={handleImportProject}
+      onTranslate={openTranslate}
     />
   );
 

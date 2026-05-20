@@ -36,6 +36,7 @@ function baseProps(currentProject: Project | null = makeProject()) {
     onDeleteProject: vi.fn<(id: string) => void>(),
     onExportProject: vi.fn<() => void>(),
     onImportProject: vi.fn<(file: File) => void>(),
+    onTranslate: vi.fn<() => void>(),
   };
 }
 
@@ -239,6 +240,25 @@ describe("ProjectSelector — Import button", () => {
   it("Import button label contains ↑", () => {
     const { getByRole } = render(<ProjectSelector {...baseProps()} />);
     expect(getByRole("button", { name: /Import/ }).textContent).toContain("↑");
+  });
+});
+
+describe("ProjectSelector — Translate button", () => {
+  it("shows the Translate button next to Import", () => {
+    const { getByRole } = render(<ProjectSelector {...baseProps()} />);
+    expect(getByRole("button", { name: /Translate/ })).toBeTruthy();
+  });
+
+  it("stays enabled even when no project is selected", () => {
+    const { getByRole } = render(<ProjectSelector {...baseProps(null)} />);
+    expect(getByRole("button", { name: /Translate/ })).toHaveProperty("disabled", false);
+  });
+
+  it("calls onTranslate when clicked", () => {
+    const props = baseProps();
+    const { getByRole } = render(<ProjectSelector {...props} />);
+    fireEvent.click(getByRole("button", { name: /Translate/ }));
+    expect(props.onTranslate).toHaveBeenCalledOnce();
   });
 });
 

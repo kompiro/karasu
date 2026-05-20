@@ -41,6 +41,8 @@ export const en: Translations = {
   "projectSelector.export.button": "↓ Export",
   "projectSelector.import.title": "Import from ZIP",
   "projectSelector.import.button": "↑ Import",
+  "projectSelector.translate.title": "Translate an infra config to .krs",
+  "projectSelector.translate.button": "⇄ Translate",
   "projectSelector.ok": "OK",
   "projectSelector.cancel": "Cancel",
 
