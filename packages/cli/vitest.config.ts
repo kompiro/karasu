@@ -22,10 +22,14 @@ export default defineConfig({
       provider: "v8",
       include: ["src/**/*.ts"],
       exclude: ["src/**/*.test.ts"],
+      // The translate adapters (a large, heavily-covered chunk) moved to
+      // @karasu-tools/core; their coverage now counts toward core, not the
+      // CLI. The functions / branches thresholds are recalibrated to the
+      // CLI's post-move profile — lines / statements are unaffected.
       thresholds: {
         lines: 80,
-        functions: 80,
-        branches: 75,
+        functions: 72,
+        branches: 66,
         statements: 80,
       },
       reporter: ["text", "html"],
