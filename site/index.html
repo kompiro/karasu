@@ -1,0 +1,160 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>karasu — text-based architecture modeling</title>
+    <meta
+      name="description"
+      content="karasu is a text-based DSL for describing the logical, physical, and organizational dimensions of a system in one language."
+    />
+    <meta property="og:title" content="karasu — text-based architecture modeling" />
+    <meta
+      property="og:description"
+      content="A text-based DSL for the logical, physical, and organizational dimensions of a system."
+    />
+    <meta property="og:type" content="website" />
+    <link rel="icon" type="image/svg+xml" href="assets/logo.svg" />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <header class="site-header">
+      <a class="brand" href="#top">
+        <img src="assets/logo.svg" alt="" width="32" height="32" />
+        <span>karasu <span class="brand-kanji">鴉</span></span>
+      </a>
+      <nav class="site-nav">
+        <a href="#concepts">Concepts</a>
+        <a href="#example">Example</a>
+        <a href="#start">Get started</a>
+        <a class="nav-repo" href="https://github.com/kompiro/karasu">GitHub</a>
+      </nav>
+    </header>
+
+    <main id="top">
+      <section class="hero">
+        <p class="eyebrow">Text-based architecture modeling</p>
+        <h1>
+          Describe your system's <em>logical</em>, <em>physical</em>, and
+          <em>organizational</em> structure in one language.
+        </h1>
+        <p class="lede">
+          karasu (鴉) is a text-based DSL inspired by the C4 Model — built so teams
+          and architecture can be co-designed at the same table.
+        </p>
+        <div class="cta-row">
+          <a class="btn btn-primary" href="https://karasu.pages.dev/">Try it in your browser</a>
+          <a class="btn btn-ghost" href="#start">Get started</a>
+        </div>
+        <p class="hero-note">
+          Personal learning project · maintained best-effort · Apache-2.0
+        </p>
+      </section>
+
+      <section id="concepts" class="concepts">
+        <h2>What makes karasu different</h2>
+        <div class="card-grid">
+          <article class="card">
+            <h3>Three-dimensional structure</h3>
+            <p>
+              Logical relationships between services and domains, the physical
+              artifacts that get deployed, and the teams that own them — all in
+              one <code>.krs</code> language. Conway's Law becomes part of the
+              architecture conversation.
+            </p>
+          </article>
+          <article class="card">
+            <h3>Scoped glance &amp; drill-down</h3>
+            <p>
+              Progressive disclosure: limit how much is shown at once and descend
+              into any node when detail is needed — instead of cramming a whole
+              system into one bird's-eye diagram.
+            </p>
+          </article>
+          <article class="card">
+            <h3>Human- and AI-co-authored</h3>
+            <p>
+              <code>.krs</code> stands on its own as a language humans read and
+              write. That independence is what makes it bidirectional — AI can
+              draft it, humans can hand-edit it, and back again.
+            </p>
+          </article>
+        </div>
+      </section>
+
+      <section id="example" class="example">
+        <h2>See it in action</h2>
+        <p class="section-lede">
+          A few lines of <code>.krs</code> describe the model; karasu renders the
+          diagram.
+        </p>
+        <div class="example-grid">
+          <pre class="code"><code>system ECPlatform {
+  label "EC Platform"
+
+  user Customer [human] {
+    label "Customer"
+  }
+
+  service ECommerce {
+    label "EC Site"
+  }
+  service Payment [external] {
+    label "Payment"
+  }
+  service Inventory [external] {
+    label "Inventory"
+  }
+
+  Customer  -> ECommerce "Place an order"
+  ECommerce -> Payment   "Process payment"
+  ECommerce -> Inventory "Sync inventory"
+}</code></pre>
+          <figure class="diagram">
+            <img src="assets/example.svg" alt="Rendered system diagram of the EC Platform example" />
+            <figcaption>Rendered system view</figcaption>
+          </figure>
+        </div>
+      </section>
+
+      <section id="start" class="start">
+        <h2>Get started</h2>
+        <div class="start-grid">
+          <article class="start-card">
+            <h3>In your browser</h3>
+            <p>
+              No install. A staged tutorial loads on first launch — edit, preview,
+              drill down, and export SVG right away.
+            </p>
+            <a class="btn btn-primary" href="https://karasu.pages.dev/">Open the app</a>
+          </article>
+          <article class="start-card">
+            <h3>On the command line</h3>
+            <p>Render <code>.krs</code> files to SVG or serve a live preview locally.</p>
+            <pre class="code code-sm"><code>npm install -g @kompiro/karasu-tools
+karasu render index.krs -o arch.svg
+karasu serve index.krs</code></pre>
+          </article>
+        </div>
+        <div class="doc-links">
+          <span>Learn more:</span>
+          <a href="https://github.com/kompiro/karasu/blob/main/docs/concepts.md">Core concepts</a>
+          <a href="https://github.com/kompiro/karasu/blob/main/docs/spec/syntax.md">.krs syntax</a>
+          <a href="https://github.com/kompiro/karasu/tree/main/examples">Examples</a>
+        </div>
+      </section>
+    </main>
+
+    <footer class="site-footer">
+      <p>
+        karasu 鴉 — a personal learning project, developed in the open with
+        <a href="https://claude.com/claude-code">Claude Code</a>.
+      </p>
+      <p>
+        <a href="https://github.com/kompiro/karasu">Repository</a>
+        ·
+        <a href="https://github.com/kompiro/karasu/blob/main/LICENSE">Apache-2.0</a>
+      </p>
+    </footer>
+  </body>
+</html>
