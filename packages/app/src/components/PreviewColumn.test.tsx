@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, it, expect, vi, afterEach } from "vitest";
-import { render as rtlRender, fireEvent, cleanup } from "@testing-library/react";
+import { render as rtlRender, fireEvent, cleanup, act } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { ReactElement } from "react";
 import type { Diagnostic, Warning } from "@karasu-tools/core";
@@ -8,7 +8,6 @@ import { PreviewColumn } from "./PreviewColumn.js";
 import { PreviewProvider, type PreviewContextValue } from "../state/preview-context.js";
 import { LocaleProvider } from "../i18n/index.js";
 import { CommandProvider, useCommandRegistry } from "../keyboard/command-context.js";
-import { KeyboardShortcutDispatcher } from "../keyboard/KeyboardShortcutDispatcher.js";
 
 afterEach(cleanup);
 
@@ -24,16 +23,22 @@ function renderPreview(value: PreviewContextValue) {
   );
 }
 
-/** Renders PreviewColumn under the keyboard command registry + dispatcher. */
-function renderPreviewWithShortcuts(value: PreviewContextValue) {
-  return render(
+/** Renders PreviewColumn under the command registry, exposing the registry. */
+function renderPreviewWithRegistry(value: PreviewContextValue) {
+  let registry!: ReturnType<typeof useCommandRegistry>;
+  function RegistryProbe() {
+    registry = useCommandRegistry();
+    return null;
+  }
+  const result = render(
     <CommandProvider>
-      <KeyboardShortcutDispatcher />
+      <RegistryProbe />
       <PreviewProvider value={value}>
         <PreviewColumn />
       </PreviewProvider>
     </CommandProvider>,
   );
+  return { ...result, getRegistry: () => registry };
 }
 
 const noop = () => {};
@@ -270,34 +275,34 @@ describe("PreviewColumn", () => {
     });
   });
 
-  describe("Reference keyboard shortcut", () => {
-    it("opens the References panel on mod+shift+? (Ctrl/Cmd+Shift+/)", () => {
-      const { container } = renderPreviewWithShortcuts(makeProps());
+  describe("Reference command", () => {
+    const findShowReference = (registry: ReturnType<typeof useCommandRegistry>) =>
+      registry.getCommands().find((c) => c.id === "view.showReference");
+
+    it("registers a palette-only 'Show Reference' command (no keybinding)", () => {
+      const { getRegistry } = renderPreviewWithRegistry(makeProps());
+      const command = findShowReference(getRegistry());
+      expect(command?.title).toBe("Show Reference");
+      expect(command?.keybinding).toBeUndefined();
+    });
+
+    it("opens the References panel when the command runs", () => {
+      const { container, getRegistry } = renderPreviewWithRegistry(makeProps());
       expect(container.querySelector(".reference-panel-overlay")).toBeNull();
-      fireEvent.keyDown(document, { key: "?", ctrlKey: true, shiftKey: true });
+      act(() => findShowReference(getRegistry())?.run());
       expect(container.querySelector(".reference-panel-overlay")).toBeTruthy();
     });
 
-    it("is ignored while a text input is focused (TPL-20260519-01)", () => {
-      const { container } = renderPreviewWithShortcuts(makeProps());
-      const input = document.createElement("textarea");
-      document.body.appendChild(input);
-      input.focus();
-      fireEvent.keyDown(document, { key: "?", ctrlKey: true, shiftKey: true });
-      expect(container.querySelector(".reference-panel-overlay")).toBeNull();
-      input.remove();
-    });
-
-    it("unregisters the command when PreviewColumn unmounts (TPL-20260519-01)", () => {
+    it("unregisters the command when PreviewColumn unmounts", () => {
       let registry!: ReturnType<typeof useCommandRegistry>;
-      function Probe() {
+      function RegistryProbe() {
         registry = useCommandRegistry();
         return null;
       }
       function Tree({ show }: { show: boolean }) {
         return (
           <CommandProvider>
-            <Probe />
+            <RegistryProbe />
             {show && (
               <PreviewProvider value={makeProps()}>
                 <PreviewColumn />
@@ -307,9 +312,9 @@ describe("PreviewColumn", () => {
         );
       }
       const { rerender } = render(<Tree show />);
-      expect(registry.resolveChord("mod+shift+?")).toBeTruthy();
+      expect(findShowReference(registry)).toBeTruthy();
       rerender(<Tree show={false} />);
-      expect(registry.resolveChord("mod+shift+?")).toBeUndefined();
+      expect(findShowReference(registry)).toBeUndefined();
     });
   });
 

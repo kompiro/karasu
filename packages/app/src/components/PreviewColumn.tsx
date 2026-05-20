@@ -52,14 +52,13 @@ export function PreviewColumn() {
   const [exportMenuOpen, setExportMenuOpen] = useState(false);
   const [exportError, setExportError] = useState<string | null>(null);
 
-  // `Ctrl/Cmd+Shift+/` opens the References panel — an accelerator for the
-  // "? Reference" toolbar button. `skip` so it never fires while the editor
-  // is focused (ADR-20260519-02). No-ops when no CommandProvider is mounted.
+  // Register "Show Reference" as a command so the References panel is
+  // reachable from the command palette. Palette-only — no dedicated
+  // keybinding. No-ops when no CommandProvider is mounted (e.g. in
+  // isolated unit tests).
   useCommand({
     id: "view.showReference",
     title: "Show Reference",
-    keybinding: "mod+shift+?",
-    whenTextInputFocused: "skip",
     run: () => setRefOpen(true),
   });
 
