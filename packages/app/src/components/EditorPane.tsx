@@ -1,6 +1,7 @@
 import KarasuEditor, { type Monaco } from "@monaco-editor/react";
 import type { editor } from "monaco-editor";
 import { useCallback, useEffect, useRef } from "react";
+import { useTheme } from "../theme/index.js";
 
 interface EditorPaneProps {
   value: string;
@@ -102,9 +103,35 @@ function registerKrsLanguage(monaco: Monaco): void {
       "editor.selectionBackground": "#334155",
     },
   });
+
+  // Light counterpart of karasu-dark — selected when the app theme is
+  // light (see EditorPane below). Syntax hues mirror karasu-dark but
+  // darkened for contrast on a white editor background.
+  monaco.editor.defineTheme("karasu-light", {
+    base: "vs",
+    inherit: true,
+    rules: [
+      { token: "keyword", foreground: "0369a1", fontStyle: "bold" },
+      { token: "annotation", foreground: "b45309" },
+      { token: "string", foreground: "15803d" },
+      { token: "comment", foreground: "64748b" },
+      { token: "operator", foreground: "db2777" },
+      { token: "identifier", foreground: "1e293b" },
+      { token: "delimiter.bracket", foreground: "64748b" },
+      { token: "delimiter.curly", foreground: "64748b" },
+    ],
+    colors: {
+      "editor.background": "#ffffff",
+      "editor.foreground": "#1e293b",
+      "editor.lineHighlightBackground": "#eef2f7",
+      "editorCursor.foreground": "#2563eb",
+      "editor.selectionBackground": "#cfe0ff",
+    },
+  });
 }
 
 export function EditorPane({ value, onChange, onEditorReady, onFormat }: EditorPaneProps) {
+  const { effectiveTheme } = useTheme();
   const monacoRef = useRef<Monaco | null>(null);
   // Keep a ref so the Shift+Alt+F keybinding always calls the latest onFormat,
   // even after re-renders update the prop (addCommand is only called once at mount).
@@ -177,7 +204,7 @@ export function EditorPane({ value, onChange, onEditorReady, onFormat }: EditorP
       <KarasuEditor
         height="100%"
         language={KRS_LANGUAGE_ID}
-        theme="karasu-dark"
+        theme={effectiveTheme === "light" ? "karasu-light" : "karasu-dark"}
         value={value}
         onChange={handleChange}
         beforeMount={handleBeforeMount}

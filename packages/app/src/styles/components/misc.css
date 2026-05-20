@@ -1,0 +1,26 @@
+/* misc — OPFS banner, loading state
+   Part of karasu app styles — see index.css for load order. */
+
+/* ── OPFS Banner ────────────────────────────────────────────────── */
+.opfs-banner {
+  grid-column: 1 / -1;
+  background: var(--opfs-banner-bg);
+  border-bottom: 1px solid var(--opfs-banner-border);
+  padding: 5px 14px;
+  font-size: 12px;
+  font-family: var(--font-mono);
+  color: var(--opfs-banner-text);
+  text-align: center;
+}
+
+/* ── Loading ────────────────────────────────────────────────────── */
+.app-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: var(--text-muted);
+  font-size: 13px;
+  font-family: var(--font-ui);
+  letter-spacing: 0.08em;
+}

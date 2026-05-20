@@ -13,6 +13,12 @@ export const en: Translations = {
   "languageSelector.english": "English",
   "languageSelector.japanese": "Japanese",
 
+  // Theme selector
+  "theme.label": "Theme",
+  "theme.system": "System",
+  "theme.light": "Light",
+  "theme.dark": "Dark",
+
   // Settings pane
   "settings.ai.title": "⚙ AI settings",
   "settings.security.heading": "⚠ About security",

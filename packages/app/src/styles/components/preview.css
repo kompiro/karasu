@@ -1,0 +1,400 @@
+/* preview — warning panel, nav highlight, diagnostic banner, error state, edge hover, preview toolbar
+   Part of karasu app styles — see index.css for load order. */
+
+/* ── Warning Panel ──────────────────────────────────────────────── */
+.warning-panel {
+  grid-row: 2;
+  grid-column: 1 / -1;
+  background: var(--bg-void);
+  border-top: 1px solid var(--border-default);
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.warning-panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 5px 14px;
+  cursor: pointer;
+  user-select: none;
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  transition:
+    background 0.15s,
+    color 0.15s;
+}
+
+.warning-panel-header:hover {
+  background: var(--bg-surface);
+  color: var(--text-secondary);
+}
+
+.warning-list {
+  list-style: none;
+  padding: 2px 8px 8px;
+}
+
+.warning-item {
+  padding: 3px 8px 3px 10px;
+  font-size: 12px;
+  font-family: var(--font-mono);
+  color: var(--text-secondary);
+  border-radius: 0;
+  cursor: pointer;
+  transition: background 0.1s;
+  border-left: 2px solid transparent;
+  margin: 1px 0;
+}
+
+.warning-item:hover {
+  background: var(--bg-surface);
+  border-left-color: var(--border-strong);
+}
+
+.warning-icon {
+  margin-right: 6px;
+}
+.warning-icon.error {
+  color: var(--error);
+}
+.warning-icon.warning {
+  color: var(--warning);
+}
+
+.warning-details {
+  margin-left: 20px;
+  font-size: 11px;
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+}
+/* ── Cross-navigation highlight ─────────────────────────────────── */
+.karasu-highlighted {
+  filter: drop-shadow(0 0 4px var(--accent)) drop-shadow(0 0 12px var(--accent-glow));
+}
+/* ── Diagnostic Banner ──────────────────────────────────────────── */
+.diagnostic-banner {
+  position: absolute;
+  bottom: 14px;
+  left: 14px;
+  right: 14px;
+  background: var(--bg-raised);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-md);
+  padding: 8px 12px;
+  font-size: 12px;
+  font-family: var(--font-mono);
+  max-height: 120px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  box-shadow: var(--shadow-banner);
+  backdrop-filter: blur(6px);
+}
+
+.diagnostic-banner__item--error {
+  color: var(--error);
+}
+.diagnostic-banner__item--warning {
+  color: var(--warning);
+}
+.diagnostic-banner__item--info {
+  /* `info` is for structural facts karasu visualizes but does not
+     prescribe (e.g. shared databases across services). Use a calm blue
+     (the IDE convention for "informational") that is clearly
+     distinguishable from warning yellow and error red, while still being
+     less attention-grabbing than warning thanks to lower saturation.
+     See design doc karasu-position-on-style-prescriptions. */
+  color: var(--info);
+}
+
+/* Severity glyph prefixes — applied uniformly to all three registers so the
+   row's level is identifiable at a glance even before color is perceived,
+   and so info doesn't stand out as the only one with an icon. */
+.diagnostic-banner__item--error::before,
+.diagnostic-banner__item--warning::before,
+.diagnostic-banner__item--info::before {
+  display: inline-block;
+  margin-right: 6px;
+  font-weight: 600;
+}
+.diagnostic-banner__item--error::before {
+  content: "✕";
+}
+.diagnostic-banner__item--warning::before {
+  content: "⚠";
+}
+.diagnostic-banner__item--info::before {
+  content: "ℹ";
+}
+
+/* ── Error State Overlay ────────────────────────────────────────── */
+.preview-pane--has-errors .preview-container svg {
+  opacity: 0.45;
+}
+
+.error-state-overlay {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding-top: 14px;
+  background: var(--error-dim);
+}
+
+.error-state-badge {
+  padding: 4px 12px;
+  background: var(--error);
+  color: var(--error-badge-text);
+  border-radius: var(--radius-sm);
+  font-size: 12px;
+  font-weight: 600;
+  font-family: var(--font-mono);
+  letter-spacing: 0.02em;
+  box-shadow: var(--shadow-badge);
+}
+/* ── Edge hover affordance ─────────────────────────────────────────
+   Edges with a canonical id are right-clickable. The renderer adds a
+   wide transparent hit-line behind the visible stroke; the cursor and
+   hover-tinted stroke advertise the interactive surface.
+
+   Only the SVG-internal `g.krs-edge--interactive` is targeted so the
+   styling is scoped to the rendered diagram. The hit-line itself
+   stays transparent — only its stroke widens the click target. */
+.preview-container svg .krs-edge--interactive {
+  cursor: context-menu;
+}
+
+.preview-container svg .krs-edge--interactive:hover line:not(.krs-edge__hitline),
+.preview-container svg .krs-edge--interactive:hover polyline:not(.krs-edge__hitline) {
+  stroke-width: 3;
+  filter: brightness(1.4);
+}
+
+.preview-container svg .krs-edge--interactive:hover text {
+  filter: brightness(1.4);
+}
+
+/* Progressive disclosure (#1186): when an interactive edge is hovered, dim
+   the other edges so the focused one stands out. Pure CSS — no React state,
+   no DOM mutation — so it survives SVG re-renders and does not race with
+   useSystemView debouncing (see #1171).
+
+   Trigger is gated to `.krs-edge--interactive:hover` so hovering a
+   non-interactive edge (one without a canonical id, e.g. system-internal
+   edges with no domain meaning) does not dim its peers.
+
+   `!important` is used on both the focused-edge lift and the peer-dim so
+   the rules win against the diff-mode opacity rules below
+   (`[data-diff-state="unchanged"] { opacity: 0.55 }` and
+   `[data-diff-state="added"|"removed"|"changed"] { opacity: 1 !important }`).
+   Without this, hovering an unchanged edge in diff mode would leave it at
+   0.55 (focused edge fails to stand out), and added/removed/changed peers
+   would resist dimming — the focus effect would only partially work. */
+.preview-container svg .krs-edge {
+  transition: opacity 0.15s ease;
+}
+
+.preview-container svg .krs-edge--interactive:hover {
+  opacity: 1 !important;
+}
+
+.preview-container svg:has(.krs-edge--interactive:hover) .krs-edge:not(:hover) {
+  opacity: 0.25 !important;
+}
+/* ── Preview Toolbar ────────────────────────────────────────────── */
+.preview-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 3px;
+  padding: 4px 10px;
+  background: var(--bg-surface);
+  border-bottom: 1px solid var(--border-default);
+  flex-shrink: 0;
+}
+
+.toolbar-btn {
+  background: transparent;
+  color: var(--text-muted);
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  padding: 3px 9px;
+  font-size: 11px;
+  font-weight: 500;
+  font-family: var(--font-ui);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+  white-space: nowrap;
+  letter-spacing: 0.01em;
+  transition: all 0.12s;
+}
+
+.toolbar-btn:hover {
+  background: var(--bg-raised);
+  color: var(--text-primary);
+  border-color: var(--border-default);
+}
+
+.toolbar-btn.active {
+  background: var(--accent-dim);
+  color: var(--accent-hover);
+  border-color: var(--accent-border);
+}
+
+/* Tier 1 — Actionable buttons: always look interactive (see ADR 0022) */
+.toolbar-btn--actionable {
+  background: var(--bg-raised);
+  color: var(--text-secondary);
+  border-color: var(--border-strong);
+}
+
+.toolbar-btn--actionable:hover {
+  background: var(--accent-dim);
+  color: var(--accent-hover);
+  border-color: var(--accent-border-strong);
+}
+
+/* Per-button placeholders — add overrides here when a button needs to differ from --actionable */
+.toolbar-btn--icon-mode {
+}
+.toolbar-btn--org-tree {
+}
+.toolbar-btn--all-layers {
+}
+.toolbar-btn--all-views {
+}
+.toolbar-btn--focus {
+}
+.toolbar-btn--format {
+}
+.toolbar-btn--format:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+.toolbar-btn--tidy-style {
+}
+
+/* Split export button group */
+.toolbar-btn-group {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.toolbar-btn--export-main {
+  border-radius: var(--radius-sm) 0 0 var(--radius-sm);
+  border-right: none;
+}
+
+.toolbar-btn--export-toggle {
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+  padding: 3px 6px;
+}
+
+/* Export mode dropdown menu */
+.export-menu {
+  position: absolute;
+  top: calc(100% + 4px);
+  right: 0;
+  background: var(--bg-raised);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow-dropdown);
+  z-index: var(--z-dropdown);
+  min-width: 160px;
+  padding: 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.export-menu-item {
+  background: transparent;
+  border: none;
+  border-radius: calc(var(--radius-sm) - 2px);
+  color: var(--text-secondary);
+  font-family: var(--font-ui);
+  font-size: 11px;
+  font-weight: 500;
+  padding: 5px 10px;
+  text-align: left;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.1s;
+}
+
+.export-menu-item:hover:not(:disabled) {
+  background: var(--accent-dim);
+  color: var(--accent-hover);
+}
+
+.export-menu-item.active {
+  color: var(--accent-hover);
+}
+
+.export-menu-item:disabled {
+  color: var(--text-muted);
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+/* Inline banner surfaced below the preview toolbar when an export action
+   fails. Auto-dismisses after a few seconds; the X button dismisses
+   immediately. */
+.export-error {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 12px;
+  background: var(--export-error-bg);
+  border-bottom: 1px solid var(--export-error-border);
+  color: var(--export-error-text);
+  font-size: 13px;
+}
+
+.export-error-message {
+  flex: 1;
+}
+
+/* Rendered as a shadcn <Button> (#1399); these unlayered rules override the
+   ghost variant so the control keeps the light error-banner appearance
+   instead of the dark-theme ghost styling. */
+.export-error-dismiss {
+  background: transparent;
+  border: none;
+  color: inherit;
+  cursor: pointer;
+  font-size: 14px;
+  padding: 2px 6px;
+}
+
+.export-error-dismiss:hover {
+  color: var(--export-error-text-hover);
+  background: transparent;
+}
+
+/* Reference button — bolder weight to stand out as a persistent entry point */
+.toolbar-btn--reference {
+  font-weight: 600;
+}
+
+.view-kind-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  padding: 4px 10px;
+  background: var(--bg-surface);
+  border-bottom: 1px solid var(--border-default);
+  flex-shrink: 0;
+}

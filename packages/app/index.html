@@ -5,6 +5,27 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>karasu — Architecture Modeler</title>
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <!-- Resolve the theme before first paint so there is no flash of the
+         wrong theme. Mirrors packages/app/src/theme/theme-storage.ts —
+         keep the two in sync. ThemeProvider takes over once React mounts. -->
+    <script>
+      (function () {
+        try {
+          var stored = localStorage.getItem("karasu-theme");
+          var pref =
+            stored === "light" || stored === "dark" || stored === "system" ? stored : "system";
+          var effective =
+            pref !== "system"
+              ? pref
+              : window.matchMedia && window.matchMedia("(prefers-color-scheme: light)").matches
+                ? "light"
+                : "dark";
+          document.documentElement.dataset.theme = effective;
+        } catch (e) {
+          document.documentElement.dataset.theme = "dark";
+        }
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>

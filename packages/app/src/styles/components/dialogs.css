@@ -1,0 +1,145 @@
+/* dialogs — legacy dialog base, paste-compare, snapshot picker
+   Part of karasu app styles — see index.css for load order. */
+
+/* ==========================================================================
+   DIALOGS — shared base (see .claude/rules/dialog.md)
+   Every modal dialog uses .dialog-overlay + .dialog. Per-dialog modifier
+   classes (.dialog--<name>) carry only what differs from the base.
+   ========================================================================== */
+.dialog-overlay {
+  position: fixed;
+  inset: 0;
+  background: var(--overlay-scrim);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: var(--z-dialog);
+}
+
+.dialog {
+  background: var(--bg-overlay);
+  border: 1px solid var(--border-strong);
+  border-radius: 8px;
+  padding: 20px;
+  width: min(640px, 90vw);
+  max-height: 80vh;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  box-shadow: var(--shadow-dialog);
+  color: var(--text-primary);
+}
+
+.dialog__title {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.dialog__subtitle {
+  margin: 0;
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.dialog__body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.dialog__footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+/* Paste-compare dialog (Issue #739) */
+.paste-compare-dialog__textarea {
+  flex: 1;
+  min-height: 260px;
+  padding: 10px;
+  font-family: var(--font-mono);
+  font-size: 13px;
+  background: var(--bg-base);
+  color: var(--text-primary);
+  border: 1px solid var(--border-default);
+  border-radius: 4px;
+  resize: vertical;
+}
+
+.paste-compare-dialog__textarea:focus {
+  outline: none;
+  border-color: var(--border-active);
+}
+
+.paste-compare-dialog__textarea::placeholder {
+  color: var(--text-muted);
+}
+
+/* Snapshot picker dialog (Issue #740) */
+.dialog--snapshot-picker {
+  width: min(480px, 90vw);
+}
+
+.snapshot-picker-empty {
+  padding: 24px;
+  text-align: center;
+  color: var(--text-secondary);
+  font-size: 13px;
+}
+
+.snapshot-picker-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  text-align: left;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 13px;
+  color: inherit;
+  font-family: inherit;
+  /* The button now sits inside a role="listitem" wrapper (#1399); it must
+     still span the full row width the way it did as a direct flex child. */
+  width: 100%;
+}
+
+.snapshot-picker-item:hover {
+  background: var(--bg-surface);
+  border-color: var(--border-default);
+}
+
+.snapshot-picker-item-time {
+  flex: 1;
+  font-variant-numeric: tabular-nums;
+}
+
+.snapshot-picker-item-trigger {
+  font-size: 11px;
+  padding: 1px 6px;
+  border-radius: 3px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.snapshot-picker-item-trigger--auto {
+  background: var(--bg-surface);
+  color: var(--text-secondary);
+}
+
+.snapshot-picker-item-trigger--manual {
+  background: var(--accent-dim);
+  color: var(--text-primary);
+}
+
+.snapshot-picker-item-label {
+  color: var(--text-secondary);
+  font-style: italic;
+}

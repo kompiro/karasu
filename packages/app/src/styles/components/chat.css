@@ -1,0 +1,339 @@
+/* chat — chat pane, chat states, ApiKeySetup
+   Part of karasu app styles — see index.css for load order. */
+
+/* ── Chat Pane ──────────────────────────────────────────────────── */
+.chat-pane {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: var(--bg-base);
+}
+
+.chat-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 12px;
+  background: var(--bg-surface);
+  border-bottom: 1px solid var(--border-default);
+  flex-shrink: 0;
+}
+
+.chat-scope-indicator {
+  font-size: 11px;
+  font-family: var(--font-mono);
+  color: var(--text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.toolbar-btn--new-session {
+  font-size: 11px;
+  flex-shrink: 0;
+}
+
+.chat-messages {
+  flex: 1;
+  overflow-y: auto;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.chat-empty {
+  font-size: 12px;
+  color: var(--text-muted);
+  text-align: center;
+  margin-top: 24px;
+  font-family: var(--font-ui);
+}
+
+.chat-empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  margin-top: 32px;
+  font-family: var(--font-ui);
+}
+
+.chat-empty-state__actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.chat-empty-state__hint {
+  font-size: 11px;
+  color: var(--text-muted);
+  text-align: center;
+  margin: 0;
+}
+
+.toolbar-btn--start-interview {
+  font-size: 12px;
+  padding: 6px 14px;
+}
+
+.toolbar-btn--start-review {
+  font-size: 12px;
+  padding: 6px 14px;
+}
+
+.chat-message {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  max-width: 90%;
+}
+
+.chat-message--user {
+  align-self: flex-end;
+}
+
+.chat-message--assistant {
+  align-self: flex-start;
+}
+
+.chat-message-role {
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-family: var(--font-ui);
+}
+
+.chat-message--user .chat-message-role {
+  text-align: right;
+}
+
+.chat-message-content {
+  margin: 0;
+  padding: 8px 12px;
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  line-height: 1.5;
+  font-family: var(--font-ui);
+  color: var(--text-primary);
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.chat-message--user .chat-message-content {
+  background: var(--bg-raised);
+  border: 1px solid var(--border-strong);
+}
+
+.chat-message--assistant .chat-message-content {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-default);
+}
+
+.chat-message-content--markdown {
+  white-space: normal;
+}
+.chat-message-content--markdown p {
+  margin-bottom: 8px;
+}
+.chat-message-content--markdown p:last-child {
+  margin-bottom: 0;
+}
+.chat-message-content--markdown h1,
+.chat-message-content--markdown h2,
+.chat-message-content--markdown h3 {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin: 8px 0 4px;
+}
+.chat-message-content--markdown code {
+  background: var(--bg-void);
+  padding: 1px 4px;
+  border-radius: var(--radius-xs);
+  font-size: 11.5px;
+  font-family: var(--font-mono);
+  color: var(--accent-hover);
+}
+.chat-message-content--markdown pre {
+  background: var(--bg-void);
+  padding: 8px 10px;
+  border-radius: var(--radius-sm);
+  overflow-x: auto;
+  margin-bottom: 8px;
+}
+.chat-message-content--markdown pre code {
+  background: none;
+  padding: 0;
+  font-size: 12px;
+}
+.chat-message-content--markdown ul,
+.chat-message-content--markdown ol {
+  padding-left: 20px;
+  margin-bottom: 8px;
+}
+.chat-message-content--markdown a {
+  color: var(--accent-hover);
+  text-decoration: underline;
+}
+
+.chat-input-form {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px 12px;
+  border-top: 1px solid var(--border-default);
+  background: var(--bg-surface);
+  flex-shrink: 0;
+}
+
+.chat-input {
+  width: 100%;
+  background: var(--bg-base);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-sm);
+  color: var(--text-primary);
+  font-size: 13px;
+  font-family: var(--font-ui);
+  line-height: 1.5;
+  padding: 8px 10px;
+  resize: none;
+  box-sizing: border-box;
+  transition: border-color 0.15s;
+}
+
+.chat-input:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.chat-input::placeholder {
+  color: var(--text-muted);
+}
+
+.toolbar-btn--send {
+  align-self: flex-end;
+}
+
+/* ── Chat Phase 2: loading / error / patch ──────────────────────── */
+
+.chat-message--loading {
+  padding: 8px 12px;
+  color: var(--text-muted);
+  font-size: 12.5px;
+  font-style: italic;
+}
+
+.chat-loading-indicator::after {
+  content: "";
+  animation: loading-dots 1.2s steps(3, end) infinite;
+}
+
+@keyframes loading-dots {
+  0% {
+    content: "";
+  }
+  33% {
+    content: ".";
+  }
+  66% {
+    content: "..";
+  }
+  100% {
+    content: "...";
+  }
+}
+
+.chat-message--error {
+  border-left: 2px solid var(--warning);
+  padding: 8px 12px;
+  background: var(--warning-bg);
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+  margin-bottom: 8px;
+}
+
+.chat-message--error .chat-message-content {
+  color: var(--warning);
+  font-size: 13px;
+  margin: 0 0 8px;
+}
+
+.toolbar-btn--retry,
+.toolbar-btn--go-to-settings {
+  font-size: 12px;
+  padding: 3px 10px;
+}
+
+/* Patch proposal */
+
+.chat-patch-proposal {
+  margin-top: 8px;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+}
+
+.chat-patch-proposal__description {
+  padding: 8px 12px;
+  font-size: 13px;
+  color: var(--text-secondary);
+  background: var(--bg-raised);
+  margin: 0;
+  border-bottom: 1px solid var(--border-faint);
+}
+
+.chat-patch-proposal__code {
+  padding: 10px 12px;
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--text-primary);
+  background: var(--bg-void);
+  overflow-x: auto;
+  white-space: pre;
+}
+
+.chat-patch-proposal__actions {
+  display: flex;
+  gap: 6px;
+  padding: 8px 12px;
+  background: var(--bg-raised);
+  border-top: 1px solid var(--border-faint);
+}
+
+.toolbar-btn--apply-patch {
+  color: var(--accent);
+}
+
+.toolbar-btn--reject-patch {
+  color: var(--text-muted);
+}
+
+/* ApiKeySetup */
+
+.api-key-setup {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  height: 100%;
+  padding: 32px 20px;
+  text-align: center;
+}
+
+.api-key-setup__message {
+  color: var(--text-secondary);
+  font-size: 13.5px;
+  margin: 0;
+  line-height: 1.6;
+}
+
+.toolbar-btn--go-to-settings {
+  font-size: 13px;
+}

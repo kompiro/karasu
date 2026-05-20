@@ -2,12 +2,15 @@
 import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { LocaleProvider } from "../i18n/index.js";
+import { ThemeProvider } from "../theme/index.js";
 import { SettingsPane } from "./SettingsPane.js";
 
 function renderWithLocale(initialLocale: "en" | "ja" = "en") {
   return render(
     <LocaleProvider initialLocale={initialLocale}>
-      <SettingsPane onApiKeyChange={() => undefined} />
+      <ThemeProvider initialTheme="dark">
+        <SettingsPane onApiKeyChange={() => undefined} />
+      </ThemeProvider>
     </LocaleProvider>,
   );
 }
@@ -15,6 +18,45 @@ function renderWithLocale(initialLocale: "en" | "ja" = "en") {
 afterEach(() => {
   cleanup();
   localStorage.clear();
+  document.documentElement.removeAttribute("data-theme");
+});
+
+describe("SettingsPane — theme selector", () => {
+  beforeEach(() => {
+    localStorage.clear();
+  });
+
+  it("renders the theme section heading", () => {
+    renderWithLocale("en");
+    expect(screen.getByRole("heading", { name: /Theme/i })).toBeTruthy();
+  });
+
+  it("offers System, Light and Dark options", () => {
+    renderWithLocale("en");
+    const select = screen.getByLabelText(/Theme/i) as HTMLSelectElement;
+    expect(Array.from(select.options).map((o) => o.value)).toEqual(["system", "light", "dark"]);
+  });
+
+  it("reflects the active theme preference in the select value", () => {
+    // renderWithLocale wraps in <ThemeProvider initialTheme="dark">.
+    renderWithLocale("en");
+    expect((screen.getByLabelText(/Theme/i) as HTMLSelectElement).value).toBe("dark");
+  });
+
+  it("applies and persists the chosen theme when switched", () => {
+    renderWithLocale("en");
+    const select = screen.getByLabelText(/Theme/i) as HTMLSelectElement;
+    act(() => {
+      fireEvent.change(select, { target: { value: "light" } });
+    });
+    expect(document.documentElement.dataset.theme).toBe("light");
+    expect(localStorage.getItem("karasu-theme")).toBe("light");
+  });
+
+  it("labels the select for assistive tech (TPL-20260516-01)", () => {
+    renderWithLocale("ja");
+    expect(screen.getByLabelText("テーマ")).toBeTruthy();
+  });
 });
 
 describe("SettingsPane — language selector", () => {

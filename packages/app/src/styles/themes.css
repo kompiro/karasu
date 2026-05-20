@@ -1,0 +1,218 @@
+/* ================================================================
+   Themes — every themed color token.
+
+   Two value sets share one token vocabulary; component CSS only ever
+   references the names, never raw colors (enforced by
+   styles-no-raw-color.test.ts). The dark set is the default `:root`
+   ("Onyx Cartographer"); the light set overrides it under
+   `:root[data-theme="light"]`.
+
+   The boot script in index.html sets `data-theme` before first paint;
+   ThemeProvider keeps it in sync afterwards. No `data-theme` at all
+   still yields a valid (dark) UI.
+   ================================================================ */
+
+/* ── Dark — default ─────────────────────────────────────────────── */
+:root {
+  color-scheme: dark;
+
+  /* Surface depths — from void to raised */
+  --bg-void: #07090f;
+  --bg-base: #0c0f1a;
+  --bg-surface: #111827;
+  --bg-raised: #172035;
+  --bg-overlay: #1d2840;
+  --bg-selected: #1a3050;
+  --bg-elevated: #172035;
+
+  /* Borders — from barely-there to visible */
+  --border-faint: rgba(255, 255, 255, 0.03);
+  --border-subtle: rgba(255, 255, 255, 0.055);
+  --border-default: rgba(255, 255, 255, 0.09);
+  --border-strong: rgba(255, 255, 255, 0.15);
+  --border-active: #3d5a8a;
+
+  /* Text hierarchy */
+  --text-primary: #dce8ff;
+  --text-secondary: #7b92b4;
+  --text-tertiary: #7b92b4;
+  --text-muted: #3d5068;
+  --text-link: #5ba4f5;
+  --text-link-hover: #82beff;
+  --text-on-accent: #ffffff;
+
+  /* Accent — electric blue */
+  --accent: #4d8fff;
+  --accent-hover: #6aaeff;
+  --accent-dim: rgba(77, 143, 255, 0.1);
+  --accent-glow: rgba(77, 143, 255, 0.22);
+  --accent-border: rgba(77, 143, 255, 0.3);
+  --accent-border-strong: rgba(77, 143, 255, 0.4);
+
+  /* Raven iridescence — purple shimmer like a crow's feather in light */
+  --feather: #8b7cf6;
+  --feather-dim: rgba(139, 124, 246, 0.07);
+  --feather-glow: rgba(139, 124, 246, 0.18);
+
+  /* Semantic states */
+  --error: #f87171;
+  --error-dim: rgba(248, 113, 113, 0.1);
+  --error-badge-text: #0f0f0f;
+  --warning: #fbbf24;
+  --warning-dim: rgba(251, 191, 36, 0.08);
+  --warning-bg: rgba(245, 158, 11, 0.06);
+  --warning-border: rgba(245, 158, 11, 0.25);
+  --success: #34d399;
+  /* `info` — calm blue for structural facts karasu visualizes but does
+     not prescribe; distinct from warning yellow / error red. */
+  --info: #93c5fd;
+
+  /* Raised-surface top highlight — a hairline of light along the top edge */
+  --highlight-edge: rgba(255, 255, 255, 0.04);
+
+  /* Elevation shadows — one token per elevation role */
+  --shadow-context-menu:
+    0 10px 30px rgba(0, 0, 0, 0.65), 0 2px 8px rgba(0, 0, 0, 0.4),
+    inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  --shadow-node-detail:
+    0 16px 48px rgba(0, 0, 0, 0.65), 0 4px 16px rgba(0, 0, 0, 0.4),
+    inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  --shadow-dialog: 0 10px 40px rgba(0, 0, 0, 0.5);
+  --shadow-dropdown: 0 4px 12px rgba(0, 0, 0, 0.4);
+  --shadow-banner: 0 8px 28px rgba(0, 0, 0, 0.55);
+  --shadow-badge: 0 2px 8px rgba(0, 0, 0, 0.45);
+  --shadow-reference-panel: -12px 0 40px rgba(0, 0, 0, 0.6);
+  --shadow-diagram-color: rgba(0, 0, 0, 0.5);
+
+  /* Scrims behind modal / slide-in surfaces */
+  --overlay-scrim: rgba(0, 0, 0, 0.4);
+  --reference-scrim: rgba(7, 9, 15, 0.55);
+
+  /* Graphical diff viewer (Issue #650) */
+  --diff-color-added: #22c55e;
+  --diff-color-removed: #ef4444;
+  --diff-color-changed: #f59e0b;
+  --diff-bg-added: rgba(34, 197, 94, 0.12);
+  --diff-bg-removed: rgba(239, 68, 68, 0.1);
+  --diff-bg-changed: rgba(245, 158, 11, 0.1);
+
+  /* Diff-mode banner — amber chrome */
+  --diff-banner-bg: rgba(245, 158, 11, 0.12);
+  --diff-banner-border: rgba(245, 158, 11, 0.4);
+  --diff-banner-hover-bg: rgba(245, 158, 11, 0.15);
+  --diff-banner-active-bg: rgba(245, 158, 11, 0.25);
+  --diff-banner-active-border: rgba(245, 158, 11, 0.7);
+
+  /* Node detail cross-navigation button */
+  --nav-btn-border: #334155;
+  --nav-btn-text: #60a5fa;
+  --nav-btn-hover-bg: #1e3a5f;
+  --nav-btn-hover-border: #3b82f6;
+
+  /* Export error banner — intentionally a light banner in both themes */
+  --export-error-bg: #fdecea;
+  --export-error-border: #f5c2c0;
+  --export-error-text: #8a1f18;
+  --export-error-text-hover: #5a110c;
+
+  /* OPFS unavailable banner */
+  --opfs-banner-bg: linear-gradient(90deg, #2d1700, #1e1000);
+  --opfs-banner-border: rgba(251, 191, 36, 0.4);
+  --opfs-banner-text: #fde68a;
+}
+
+/* ── Light — overrides ──────────────────────────────────────────────
+   Same token vocabulary, light values. Depth inverts: in light, the
+   recessed surfaces are pale grey and the forward surfaces are white;
+   borders and shadows switch from white-alpha to slate-alpha. Brand
+   blue/purple are preserved but darkened where needed for AA contrast
+   on white. See docs/design (promoted to ADR) for the rationale. */
+:root[data-theme="light"] {
+  color-scheme: light;
+
+  --bg-void: #e9edf3;
+  --bg-base: #f4f6fa;
+  --bg-surface: #fbfcfe;
+  --bg-raised: #ffffff;
+  --bg-overlay: #ffffff;
+  --bg-selected: #d8e6ff;
+  --bg-elevated: #ffffff;
+
+  --border-faint: rgba(15, 23, 42, 0.05);
+  --border-subtle: rgba(15, 23, 42, 0.08);
+  --border-default: rgba(15, 23, 42, 0.12);
+  --border-strong: rgba(15, 23, 42, 0.2);
+  --border-active: #7d9bc8;
+
+  --text-primary: #1b2536;
+  --text-secondary: #4d5e78;
+  --text-tertiary: #5f7088;
+  --text-muted: #6f7e95;
+  --text-link: #2563eb;
+  --text-link-hover: #1d4ed8;
+  --text-on-accent: #ffffff;
+
+  --accent: #2563eb;
+  --accent-hover: #1d4ed8;
+  --accent-dim: rgba(37, 99, 235, 0.1);
+  --accent-glow: rgba(37, 99, 235, 0.18);
+  --accent-border: rgba(37, 99, 235, 0.3);
+  --accent-border-strong: rgba(37, 99, 235, 0.45);
+
+  --feather: #7c5cf0;
+  --feather-dim: rgba(124, 92, 240, 0.08);
+  --feather-glow: rgba(124, 92, 240, 0.2);
+
+  --error: #dc2626;
+  --error-dim: rgba(220, 38, 38, 0.09);
+  --error-badge-text: #ffffff;
+  --warning: #b45309;
+  --warning-dim: rgba(180, 83, 9, 0.1);
+  --warning-bg: rgba(180, 83, 9, 0.08);
+  --warning-border: rgba(180, 83, 9, 0.3);
+  --success: #15803d;
+  --info: #1d6fd4;
+
+  --highlight-edge: transparent;
+
+  --shadow-context-menu:
+    0 10px 30px rgba(15, 23, 42, 0.16), 0 2px 8px rgba(15, 23, 42, 0.1), inset 0 1px 0 transparent;
+  --shadow-node-detail:
+    0 16px 48px rgba(15, 23, 42, 0.18), 0 4px 16px rgba(15, 23, 42, 0.1), inset 0 1px 0 transparent;
+  --shadow-dialog: 0 10px 40px rgba(15, 23, 42, 0.18);
+  --shadow-dropdown: 0 4px 12px rgba(15, 23, 42, 0.14);
+  --shadow-banner: 0 8px 28px rgba(15, 23, 42, 0.16);
+  --shadow-badge: 0 2px 8px rgba(15, 23, 42, 0.12);
+  --shadow-reference-panel: -12px 0 40px rgba(15, 23, 42, 0.16);
+  --shadow-diagram-color: rgba(15, 23, 42, 0.22);
+
+  --overlay-scrim: rgba(15, 23, 42, 0.35);
+  --reference-scrim: rgba(15, 23, 42, 0.3);
+
+  --diff-color-added: #15803d;
+  --diff-color-removed: #dc2626;
+  --diff-color-changed: #b45309;
+  --diff-bg-added: rgba(34, 197, 94, 0.16);
+  --diff-bg-removed: rgba(239, 68, 68, 0.13);
+  --diff-bg-changed: rgba(245, 158, 11, 0.16);
+
+  --diff-banner-bg: rgba(180, 83, 9, 0.1);
+  --diff-banner-border: rgba(180, 83, 9, 0.35);
+  --diff-banner-hover-bg: rgba(180, 83, 9, 0.13);
+  --diff-banner-active-bg: rgba(180, 83, 9, 0.2);
+  --diff-banner-active-border: rgba(180, 83, 9, 0.55);
+
+  --nav-btn-border: #c5d0e0;
+  --nav-btn-text: #2563eb;
+  --nav-btn-hover-bg: #e8f0ff;
+  --nav-btn-hover-border: #2563eb;
+
+  --export-error-bg: #fdecea;
+  --export-error-border: #f5c2c0;
+  --export-error-text: #8a1f18;
+  --export-error-text-hover: #5a110c;
+
+  --opfs-banner-bg: linear-gradient(90deg, #fff4d6, #ffe9b3);
+  --opfs-banner-border: rgba(180, 83, 9, 0.4);
+  --opfs-banner-text: #7a4f00;
+}

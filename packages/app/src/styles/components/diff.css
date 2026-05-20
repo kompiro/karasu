@@ -1,0 +1,159 @@
+/* diff — diff-mode banner, SVG diff-state rules
+   Part of karasu app styles — see index.css for load order. */
+
+.diff-mode-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 6px 14px;
+  background: var(--diff-banner-bg);
+  border-bottom: 1px solid var(--diff-banner-border);
+  color: var(--text-primary);
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.diff-mode-banner__before {
+  color: var(--diff-color-removed);
+}
+
+.diff-mode-banner__after {
+  color: var(--diff-color-added);
+}
+
+.toolbar-btn--diff-exit {
+  background: transparent;
+  border: 1px solid var(--diff-banner-border);
+  color: var(--text-primary);
+  font-size: 12px;
+  padding: 2px 10px;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.toolbar-btn--diff-exit:hover {
+  background: var(--diff-banner-hover-bg);
+}
+
+.diff-mode-banner__actions {
+  display: flex;
+  gap: 8px;
+}
+
+.toolbar-btn--diff-view-pasted {
+  background: transparent;
+  border: 1px solid var(--diff-banner-border);
+  color: var(--text-primary);
+  font-size: 12px;
+  padding: 2px 10px;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.toolbar-btn--diff-view-pasted:hover {
+  background: var(--diff-banner-hover-bg);
+}
+
+.toolbar-btn--diff-swap {
+  background: transparent;
+  border: 1px solid var(--diff-banner-border);
+  color: var(--text-primary);
+  font-size: 12px;
+  padding: 2px 10px;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.toolbar-btn--diff-swap:hover {
+  background: var(--diff-banner-hover-bg);
+}
+
+.toolbar-btn--diff-swap[aria-pressed="true"] {
+  background: var(--diff-banner-active-bg);
+  border-color: var(--diff-banner-active-border);
+}
+
+.diff-mode-banner__pasted {
+  color: var(--diff-color-removed);
+  font-style: italic;
+}
+/* When diff state is set on any group, dim everything else slightly so changes
+   stand out. Selectors target only nodes/edges inside the rendered SVG. */
+.preview-pane svg [data-diff-state="unchanged"] {
+  opacity: 0.55;
+}
+
+/* Belt-and-suspenders: diff-tagged elements should never inherit a dimming
+   ancestor's opacity. The renderer promotes diff-tagged ghost nodes/edges out
+   of the ghost wrappers, but this rule keeps them visible even if a future
+   refactor reintroduces a dimming ancestor. */
+.preview-pane svg [data-diff-state="added"],
+.preview-pane svg [data-diff-state="removed"],
+.preview-pane svg [data-diff-state="changed"] {
+  opacity: 1 !important;
+}
+
+.preview-pane svg [data-diff-state="added"] rect,
+.preview-pane svg [data-diff-state="added"] path,
+.preview-pane svg [data-diff-state="added"] circle,
+.preview-pane svg [data-diff-state="added"] polygon {
+  stroke: var(--diff-color-added) !important;
+  stroke-width: 2.5 !important;
+}
+
+.preview-pane svg [data-diff-state="added"] line {
+  stroke: var(--diff-color-added) !important;
+}
+
+.preview-pane svg [data-diff-state="removed"] rect,
+.preview-pane svg [data-diff-state="removed"] path,
+.preview-pane svg [data-diff-state="removed"] circle,
+.preview-pane svg [data-diff-state="removed"] polygon {
+  stroke: var(--diff-color-removed) !important;
+  stroke-width: 2 !important;
+  stroke-dasharray: 6 4;
+  opacity: 0.7;
+}
+
+.preview-pane svg [data-diff-state="removed"] line {
+  stroke: var(--diff-color-removed) !important;
+  stroke-dasharray: 6 4;
+}
+
+.preview-pane svg [data-diff-state="changed"] rect,
+.preview-pane svg [data-diff-state="changed"] path,
+.preview-pane svg [data-diff-state="changed"] circle,
+.preview-pane svg [data-diff-state="changed"] polygon {
+  stroke: var(--diff-color-changed) !important;
+  stroke-width: 2.5 !important;
+}
+
+.preview-pane svg [data-diff-state="changed"] line {
+  stroke: var(--diff-color-changed) !important;
+}
+
+/* Annotation badge diff (Issue #738 / design doc D-2).
+   A node whose only change is its annotation set keeps data-diff-state="unchanged"
+   on the main group so the body stays readable; the merged badge itself carries
+   data-diff-state="added|removed|changed" and gets a per-state ring. The rules
+   below override the ancestor-unchanged opacity so the badge still pops. */
+.preview-pane svg [data-node-badge] {
+  opacity: 1;
+}
+
+.preview-pane svg [data-node-badge][data-diff-state="added"] circle {
+  stroke: var(--diff-color-added) !important;
+  stroke-width: 2 !important;
+}
+
+.preview-pane svg [data-node-badge][data-diff-state="removed"] circle {
+  stroke: var(--diff-color-removed) !important;
+  stroke-width: 2 !important;
+  stroke-dasharray: 3 2;
+}
+
+.preview-pane svg [data-node-badge][data-diff-state="changed"] circle {
+  stroke: var(--diff-color-changed) !important;
+  stroke-width: 2 !important;
+}
