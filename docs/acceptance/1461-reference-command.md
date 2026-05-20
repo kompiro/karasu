@@ -1,4 +1,4 @@
-# AT: References パネルをコマンドパレットから開く
+# AT: References パネルをコマンドパレットから開閉する
 
 - **日付**: 2026-05-20
 - **関連 Issue**: [#1461](https://github.com/kompiro/karasu/issues/1461)
@@ -9,13 +9,13 @@
 
 `packages/app/src/components/PreviewColumn.test.tsx` でカバーされる。
 
-- [x] `Show Reference` コマンドがコマンドパレット用に登録される（専用キーバインドなし）
+- [x] `Toggle Reference` コマンドがコマンドパレット用に登録される（専用キーバインドなし）
 
-  > ✅ Automated — `packages/app/src/components/PreviewColumn.test.tsx` › `registers a palette-only 'Show Reference' command (no keybinding)`
+  > ✅ Automated — `packages/app/src/components/PreviewColumn.test.tsx` › `registers a palette-only 'Toggle Reference' command (no keybinding)`
 
-- [x] コマンドを実行すると References パネルが開く
+- [x] コマンドを実行するたびに References パネルが開閉する
 
-  > ✅ Automated — `packages/app/src/components/PreviewColumn.test.tsx` › `opens the References panel when the command runs`
+  > ✅ Automated — `packages/app/src/components/PreviewColumn.test.tsx` › `toggles the References panel open and closed on successive runs`
 
 - [x] `PreviewColumn` のアンマウントでコマンドが登録解除される
 
@@ -29,7 +29,7 @@
 
 `examples/getting-started/index.krs` を Preview UI（Project モード）で開いて確認する。
 
-- [ ] `Ctrl/Cmd+Shift+P` でコマンドパレットを開くと、一覧に `Show Reference` が表示される
-- [ ] `Show Reference` を選択すると References パネルが開く
+- [ ] `Ctrl/Cmd+Shift+P` でコマンドパレットを開くと、一覧に `Toggle Reference` が表示される
+- [ ] `Toggle Reference` を選択すると References パネルが開き、もう一度実行すると閉じる
 - [ ] `? Reference` ツールバーボタンを押しても従来どおりパネルが開く
 - [ ] 開いた References パネルが Esc キー・`×` ボタン・パネル外側クリックのいずれでも閉じる

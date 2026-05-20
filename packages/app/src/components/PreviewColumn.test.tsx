@@ -276,21 +276,24 @@ describe("PreviewColumn", () => {
   });
 
   describe("Reference command", () => {
-    const findShowReference = (registry: ReturnType<typeof useCommandRegistry>) =>
-      registry.getCommands().find((c) => c.id === "view.showReference");
+    const findToggleReference = (registry: ReturnType<typeof useCommandRegistry>) =>
+      registry.getCommands().find((c) => c.id === "view.toggleReference");
 
-    it("registers a palette-only 'Show Reference' command (no keybinding)", () => {
+    it("registers a palette-only 'Toggle Reference' command (no keybinding)", () => {
       const { getRegistry } = renderPreviewWithRegistry(makeProps());
-      const command = findShowReference(getRegistry());
-      expect(command?.title).toBe("Show Reference");
+      const command = findToggleReference(getRegistry());
+      expect(command?.title).toBe("Toggle Reference");
       expect(command?.keybinding).toBeUndefined();
     });
 
-    it("opens the References panel when the command runs", () => {
+    it("toggles the References panel open and closed on successive runs", () => {
       const { container, getRegistry } = renderPreviewWithRegistry(makeProps());
+      const run = () => act(() => findToggleReference(getRegistry())?.run());
       expect(container.querySelector(".reference-panel-overlay")).toBeNull();
-      act(() => findShowReference(getRegistry())?.run());
+      run();
       expect(container.querySelector(".reference-panel-overlay")).toBeTruthy();
+      run();
+      expect(container.querySelector(".reference-panel-overlay")).toBeNull();
     });
 
     it("unregisters the command when PreviewColumn unmounts", () => {
@@ -312,9 +315,9 @@ describe("PreviewColumn", () => {
         );
       }
       const { rerender } = render(<Tree show />);
-      expect(findShowReference(registry)).toBeTruthy();
+      expect(findToggleReference(registry)).toBeTruthy();
       rerender(<Tree show={false} />);
-      expect(findShowReference(registry)).toBeUndefined();
+      expect(findToggleReference(registry)).toBeUndefined();
     });
   });
 

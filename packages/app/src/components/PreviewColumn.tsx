@@ -52,14 +52,14 @@ export function PreviewColumn() {
   const [exportMenuOpen, setExportMenuOpen] = useState(false);
   const [exportError, setExportError] = useState<string | null>(null);
 
-  // Register "Show Reference" as a command so the References panel is
+  // Register "Toggle Reference" as a command so the References panel is
   // reachable from the command palette. Palette-only — no dedicated
   // keybinding. No-ops when no CommandProvider is mounted (e.g. in
   // isolated unit tests).
   useCommand({
-    id: "view.showReference",
-    title: "Show Reference",
-    run: () => setRefOpen(true),
+    id: "view.toggleReference",
+    title: "Toggle Reference",
+    run: () => setRefOpen((open) => !open),
   });
 
   useEffect(() => {
