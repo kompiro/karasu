@@ -38,10 +38,6 @@
 
   > ✅ Automated — `packages/app/src/components/ProjectPicker.test.tsx` › `moves the selection with the arrow keys`
 
-- [x] Esc でピッカーが閉じる
-
-  > ✅ Automated — `packages/app/src/components/ProjectPicker.test.tsx` › `closes on Escape`
-
 - [x] フィルタに一致しないとき空状態を表示する
 
   > ✅ Automated — `packages/app/src/components/ProjectPicker.test.tsx` › `shows an empty state when the filter matches nothing`

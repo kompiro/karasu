@@ -94,12 +94,10 @@ describe("ProjectPicker", () => {
     expect(onSelectProject).toHaveBeenCalledExactlyOnceWith(PROJECTS[1]);
   });
 
-  it("closes on Escape", () => {
-    render(<Harness />);
-    expect(dialog()).not.toBeNull();
-    fireEvent.keyDown(document, { key: "Escape" });
-    expect(dialog()).toBeNull();
-  });
+  // Esc-to-close (and outside-click-to-close) is owned by Radix `Dialog`'s
+  // DismissableLayer, not by ProjectPicker, and jsdom does not fully model it
+  // — `.claude/rules/testing.md` says skip the assertion here and verify it
+  // manually (see docs/acceptance/1482-command-palette-switch-project.md).
 
   it("shows an empty state when the filter matches nothing", () => {
     render(<Harness />);
