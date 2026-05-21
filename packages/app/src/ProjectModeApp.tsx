@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ProjectSelector } from "./components/ProjectSelector.js";
+import { SwitchProjectCommand } from "./components/SwitchProjectCommand.js";
 import { FileTree } from "./components/FileTree.js";
 import { AppShell } from "./components/AppShell.js";
 import { PasteCompareDialog } from "./components/PasteCompareDialog.js";
@@ -260,6 +261,11 @@ export function ProjectModeApp() {
         sidebarContent={sidebarContent}
         onViewPasted={compareSource?.kind === "pasted" ? handleViewPasted : undefined}
         onFileChange={selectFile}
+      />
+      <SwitchProjectCommand
+        projects={projects}
+        currentProject={currentProject}
+        onSelectProject={handleSelectProject}
       />
       {pasteDialog?.mode === "edit" && (
         <PasteCompareDialog
