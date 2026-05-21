@@ -1,5 +1,13 @@
 import * as vscode from "vscode";
 import { compileProject, type DiagramTheme, type NodeMetadata } from "@karasu-tools/core";
+import { marked } from "marked";
+import {
+  type ViewType,
+  isAllowedExternalUrl,
+  isValidNavIndex,
+  isViewType,
+} from "./message-validation.js";
+import { VsCodeFileSystemProvider } from "./vscode-fs-provider.js";
 
 /**
  * Map the active VS Code editor color theme to a karasu `DiagramTheme` so
@@ -11,14 +19,6 @@ function diagramThemeFromColorTheme(kind: vscode.ColorThemeKind): DiagramTheme {
     ? "light"
     : "dark";
 }
-import { marked } from "marked";
-import {
-  type ViewType,
-  isAllowedExternalUrl,
-  isValidNavIndex,
-  isViewType,
-} from "./message-validation.js";
-import { VsCodeFileSystemProvider } from "./vscode-fs-provider.js";
 
 /** Subset of NodeMetadata serialized as JSON for the webview. */
 interface SerializedNodeMeta {

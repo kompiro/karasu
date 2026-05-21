@@ -45,8 +45,10 @@ import {
   compileSystemDiff,
   compileDeployDiff,
   compileOrgDiff,
+  renderOrgTreeView,
   InMemoryFileSystemProvider,
   type DiagramTheme,
+  type OrgCompileResult,
   type SvgResult,
 } from "./index.js";
 
@@ -233,6 +235,20 @@ const THEME_CONSUMERS: ThemeConsumer[] = [
         theme,
       });
       return result.svg;
+    },
+  },
+  {
+    // The org-tree view is reachable only via this entry point — no
+    // high-level builder routes into it — so it must be registered
+    // here explicitly (Issue #1479, cf. useOrgView in the app).
+    name: "renderOrgTreeView",
+    invoke: async (theme) => {
+      const fs = new InMemoryFileSystemProvider();
+      await fs.writeFile(ENTRY_PATH, FIXTURE);
+      const result = (await compileProject(ENTRY_PATH, fs, {
+        diagramType: "org",
+      })) as OrgCompileResult;
+      return renderOrgTreeView(result.organizations, new Set(), { theme });
     },
   },
   {

@@ -617,8 +617,8 @@ export function renderOrgView(
         "org",
         options.styleSheets ?? [],
         totalWidth,
-        options.legendUsage,
         palette,
+        options.legendUsage,
       );
       if (footer) {
         extra.push(el("g", { transform: `translate(0,${totalHeight})` }, footer.svg));

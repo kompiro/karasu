@@ -305,8 +305,8 @@ export function renderFromLayout(
       options.viewScope,
       options.styleSheets ?? [],
       width,
-      options.legendUsage,
       palette,
+      options.legendUsage,
     );
     if (footer) {
       parts.push(el("g", { transform: `translate(0,${height})` }, footer.svg));

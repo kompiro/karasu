@@ -10,7 +10,7 @@
 import type { LegendBlock, LegendEntry, LegendRefTarget, LegendViewScope } from "../types/ast.js";
 import type { StyleRule, StyleSelector, StyleSheet } from "../types/style.js";
 import { type LegendUsage, legendRefHasUsage } from "../legend/usage.js";
-import { type DiagramPalette, resolvePalette } from "./palette.js";
+import type { DiagramPalette } from "./palette.js";
 
 type AttrValue = string | number | undefined | null | false;
 type Attrs = Record<string, AttrValue>;
@@ -256,8 +256,8 @@ export function buildLegendFooter(
   scope: LegendViewScope,
   sheets: StyleSheet[],
   width: number,
+  palette: DiagramPalette,
   usage?: LegendUsage,
-  palette: DiagramPalette = resolvePalette(),
 ): LegendFooter | null {
   const applicable = legends.filter((l) => l.scope === undefined || l.scope === scope);
   if (applicable.length === 0) return null;

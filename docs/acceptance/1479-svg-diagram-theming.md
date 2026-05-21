@@ -41,11 +41,11 @@
 
 ### theme の全描画面貫通（TPL-20260510-06）— `packages/core/src/theme-meta.test.ts`
 
-- [x] 15 個の SVG 生成エントリポイントすべてで theme 省略時の出力が `theme:"dark"` と byte 一致する（既存スナップショット不変）
+- [x] すべての SVG 生成エントリポイント（org-tree view を含む）で theme 省略時の出力が `theme:"dark"` と byte 一致する（既存スナップショット不変）
 
   > ✅ Automated — `theme-meta.test.ts` › `default invocation is byte-identical to theme:'dark'`
 
-- [x] 同じ 15 エントリポイントで `dark` と `light` の出力が異なる（theme が全描画面まで届く）
+- [x] 同じエントリポイントで `dark` と `light` の出力が異なる（theme が全描画面まで届く）
 
   > ✅ Automated — `theme-meta.test.ts` › `produces different SVG for dark vs light`
 

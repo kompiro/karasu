@@ -113,6 +113,12 @@ export function AppShell({
   const [previewFocused, setPreviewFocused] = useState(false);
   const [isOrgTreeViewOpen, setIsOrgTreeViewOpen] = useState(false);
 
+  // The SVG diagram follows the app's effective theme so the rendered
+  // diagram matches the chrome (ADR-20260520-06 left SVG out of scope;
+  // Issue #1479 closes that gap). `effectiveTheme` is the concrete
+  // light/dark — `ThemeProvider` has already resolved `"system"`.
+  const { effectiveTheme } = useTheme();
+
   const views = useAppViews({
     entryPath,
     fs,
@@ -121,6 +127,7 @@ export function AppShell({
     selectedDeployBlockId,
     highlightedNodeId,
     displayMode,
+    theme: effectiveTheme,
     currentFilePath,
     dispatch,
     isOrgTreeViewOpen,
@@ -329,11 +336,6 @@ export function AppShell({
     },
     [currentFilePath, fileContent, fs, handleEditorChange, recompile],
   );
-  // The SVG diagram follows the app's effective theme so the rendered
-  // diagram matches the chrome (ADR-20260520-06 left SVG out of scope;
-  // Issue #1479 closes that gap). `effectiveTheme` is the concrete
-  // light/dark — `ThemeProvider` has already resolved `"system"`.
-  const { effectiveTheme } = useTheme();
   const { drillDownSvg, allLayersSvg, orgAllLayersSvg, orgDrillDownSvg, allViewsSvg } = useViewSvg(
     fileContent,
     displayMode,

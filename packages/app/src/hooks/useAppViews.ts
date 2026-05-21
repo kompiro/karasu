@@ -1,5 +1,6 @@
 import { useCallback, useMemo, type Dispatch, type SetStateAction } from "react";
 import type {
+  DiagramTheme,
   DisplayMode,
   FileSystemProvider,
   TeamNode,
@@ -31,6 +32,8 @@ interface UseAppViewsArgs {
   selectedDeployBlockId: string | null;
   highlightedNodeId: string | null;
   displayMode: DisplayMode;
+  /** Effective diagram theme; the org-tree view follows it (Issue #1479). */
+  theme: DiagramTheme;
   currentFilePath: string | null;
   dispatch: Dispatch<AppAction>;
   isOrgTreeViewOpen: boolean;
@@ -127,6 +130,7 @@ export function useAppViews(args: UseAppViewsArgs): UseAppViewsResult {
     selectedDeployBlockId,
     highlightedNodeId,
     displayMode,
+    theme,
     currentFilePath,
     dispatch,
     isOrgTreeViewOpen,
@@ -200,7 +204,15 @@ export function useAppViews(args: UseAppViewsArgs): UseAppViewsResult {
     toggleTeamExpand,
     orgTreeSvg,
     orgTreeExportSvg,
-  } = useOrgView(effEntryPath, effFs, viewPath, displayMode, effCompareEntryPath, effCompareFs);
+  } = useOrgView(
+    effEntryPath,
+    effFs,
+    viewPath,
+    displayMode,
+    effCompareEntryPath,
+    effCompareFs,
+    theme,
+  );
 
   const teamPathIndex = useMemo(() => {
     const index = new Map<string, string[]>();

@@ -9,6 +9,7 @@ import {
   type ViewPath,
   type FileSystemProvider,
   type DisplayMode,
+  type DiagramTheme,
   type OrganizationBlock,
   type ResolvedStyles,
 } from "@karasu-tools/core";
@@ -33,6 +34,7 @@ export function useOrgView(
   displayMode?: DisplayMode,
   compareEntryPath: string | null = null,
   compareFs: FileSystemProvider | null = null,
+  theme?: DiagramTheme,
 ): OrgViewState & {
   recompile: () => void;
   expandedTeamIds: Set<string>;
@@ -176,7 +178,7 @@ export function useOrgView(
 
   const orgTreeSvg =
     state.organizations.length > 0
-      ? renderOrgTreeView(state.organizations, expandedTeamIds, { styles: state.styles })
+      ? renderOrgTreeView(state.organizations, expandedTeamIds, { styles: state.styles, theme })
       : "";
 
   const orgTreeExportSvg =
@@ -184,6 +186,7 @@ export function useOrgView(
       ? renderOrgTreeView(state.organizations, new Set(collectAllTeamIds(state.organizations)), {
           forExport: true,
           styles: state.styles,
+          theme,
         })
       : "";
 
