@@ -217,12 +217,19 @@ karasu render index.krs > docs/arch.svg
 # Render a specific view only
 karasu render index.krs --view deploy --output deploy.svg
 
+# Render with the light color theme (default: dark)
+karasu render index.krs --theme light --output arch-light.svg
+
 # Pipe through svgo for optimization
 karasu render index.krs | svgo - -o docs/arch.svg
 
 # Export to draw.io (mxGraph XML) as a layout escape hatch for pixel-perfect polishing
 karasu render index.krs --format drawio --output arch.drawio
 ```
+
+`--theme <dark|light>` selects the diagram color theme (default `dark`).
+It drives both the renderer chrome (canvas background, legend, breadcrumb,
+tab bars) and the built-in node/edge color stylesheet. `svg` format only.
 
 ### Formatting
 

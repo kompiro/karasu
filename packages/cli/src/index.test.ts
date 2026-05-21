@@ -53,6 +53,7 @@ describe("CLI program", () => {
       output: undefined,
       view: undefined,
       format: "svg",
+      theme: "dark",
     });
   });
 
@@ -62,6 +63,7 @@ describe("CLI program", () => {
       output: "out.svg",
       view: undefined,
       format: "svg",
+      theme: "dark",
     });
   });
 
@@ -71,6 +73,7 @@ describe("CLI program", () => {
       output: "out.svg",
       view: undefined,
       format: "svg",
+      theme: "dark",
     });
   });
 
@@ -80,6 +83,7 @@ describe("CLI program", () => {
       output: undefined,
       view: "deploy",
       format: "svg",
+      theme: "dark",
     });
   });
 
@@ -89,6 +93,17 @@ describe("CLI program", () => {
       output: undefined,
       view: undefined,
       format: "drawio",
+      theme: "dark",
+    });
+  });
+
+  it("render passes --theme light option (Issue #1479)", async () => {
+    await program.parseAsync(["node", "karasu", "render", "index.krs", "--theme", "light"]);
+    expect(mockRender).toHaveBeenCalledWith("index.krs", {
+      output: undefined,
+      view: undefined,
+      format: "svg",
+      theme: "light",
     });
   });
 });

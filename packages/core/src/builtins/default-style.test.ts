@@ -1,5 +1,9 @@
 import { describe, it, expect } from "vitest";
-import { getBuiltinStyleSheet, BUILTIN_STYLE_SOURCE } from "./default-style.js";
+import {
+  getBuiltinStyleSheet,
+  BUILTIN_STYLE_SOURCE,
+  BUILTIN_STYLE_SOURCE_LIGHT,
+} from "./default-style.js";
 
 describe("BUILTIN_STYLE_SOURCE", () => {
   it("is a non-empty string", () => {
@@ -131,5 +135,45 @@ describe("getBuiltinStyleSheet", () => {
       (r) => r.selector.nodeType === "storage" && r.properties["shape"] === "cloud",
     );
     expect(rule).toBeDefined();
+  });
+});
+
+describe("getBuiltinStyleSheet — light theme (Issue #1479)", () => {
+  it("parses the light variant without errors", () => {
+    const sheet = getBuiltinStyleSheet("light");
+    expect(sheet.rules.length).toBeGreaterThan(0);
+  });
+
+  it("defaults to the dark sheet (backward compatible)", () => {
+    expect(getBuiltinStyleSheet()).toBe(getBuiltinStyleSheet("dark"));
+  });
+
+  it("caches the dark and light variants separately", () => {
+    expect(getBuiltinStyleSheet("light")).toBe(getBuiltinStyleSheet("light"));
+    expect(getBuiltinStyleSheet("dark")).toBe(getBuiltinStyleSheet("dark"));
+    expect(getBuiltinStyleSheet("light")).not.toBe(getBuiltinStyleSheet("dark"));
+  });
+
+  it("the light variant uses different node colors than the dark variant", () => {
+    expect(BUILTIN_STYLE_SOURCE_LIGHT).not.toBe(BUILTIN_STYLE_SOURCE);
+    const dark = getBuiltinStyleSheet("dark");
+    const light = getBuiltinStyleSheet("light");
+    const darkService = dark.rules.find((r) => r.selector.nodeType === "service");
+    const lightService = light.rules.find((r) => r.selector.nodeType === "service");
+    expect(darkService?.properties["background-color"]).toBeDefined();
+    expect(lightService?.properties["background-color"]).toBeDefined();
+    expect(lightService?.properties["background-color"]).not.toBe(
+      darkService?.properties["background-color"],
+    );
+  });
+
+  it("the light variant keeps the same rule structure (selectors / shapes)", () => {
+    const dark = getBuiltinStyleSheet("dark");
+    const light = getBuiltinStyleSheet("light");
+    expect(light.rules.length).toBe(dark.rules.length);
+    // Structural properties (shape) must not differ between themes.
+    const darkUser = dark.rules.find((r) => r.selector.nodeType === "user");
+    const lightUser = light.rules.find((r) => r.selector.nodeType === "user");
+    expect(lightUser?.properties["shape"]).toBe(darkUser?.properties["shape"]);
   });
 });

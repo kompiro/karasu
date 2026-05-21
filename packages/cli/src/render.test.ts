@@ -125,6 +125,28 @@ describe("render — all-views (no --view)", () => {
     expect(await readFile(outputPath, "utf-8")).toBe("<svg>all</svg>");
   });
 
+  it("passes --theme light through to buildAllViewsSvgProject (Issue #1479)", async () => {
+    const filePath = join(tmpDir, "index.krs");
+    await writeFile(filePath, "system { }", "utf-8");
+
+    mockBuildAllViewsSvgProject.mockResolvedValue({
+      svg: "<svg>all light</svg>",
+      diagnostics: [],
+      warnings: [],
+    });
+    vi.spyOn(process.stdout, "write").mockImplementation(() => true);
+
+    await render(filePath, { theme: "light" });
+
+    expect(mockBuildAllViewsSvgProject).toHaveBeenCalledWith(
+      expect.any(String),
+      expect.any(Object),
+      undefined,
+      undefined,
+      "light",
+    );
+  });
+
   it("exits with code 1 when error-severity diagnostics are present", async () => {
     const filePath = join(tmpDir, "index.krs");
     await writeFile(filePath, "system { }", "utf-8");
@@ -236,6 +258,25 @@ describe("render — --view system", () => {
       { diagramType: "system" },
     );
     expect(stdoutSpy).toHaveBeenCalledWith("<svg>system</svg>");
+  });
+
+  it("passes --theme light through to compileProject (Issue #1479)", async () => {
+    const filePath = join(tmpDir, "index.krs");
+    await writeFile(filePath, "system { }", "utf-8");
+
+    mockCompileProject.mockResolvedValue({
+      svg: "<svg>system light</svg>",
+      diagnostics: [],
+      warnings: [],
+    });
+    vi.spyOn(process.stdout, "write").mockImplementation(() => true);
+
+    await render(filePath, { view: "system", theme: "light" });
+
+    expect(mockCompileProject).toHaveBeenCalledWith(expect.any(String), expect.any(Object), {
+      diagramType: "system",
+      theme: "light",
+    });
   });
 
   it("calls compileProject with diagramType deploy", async () => {

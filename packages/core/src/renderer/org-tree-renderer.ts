@@ -12,12 +12,12 @@ import type { OrganizationBlock, TeamNode, MemberNode } from "../types/ast.js";
 import type { ResolvedStyles, ResolvedNodeStyle, ResolvedEdgeStyle } from "../types/style.js";
 import { el, escapeXml, diffStateAttr } from "./svg-builder.js";
 import { ownsEdgeKey } from "../diff/org-view-diff.js";
+import { type DiagramPalette, type DiagramTheme, resolvePalette } from "./palette.js";
 
 // ---------------------------------------------------------------------------
 // Layout constants
 // ---------------------------------------------------------------------------
 
-const BG_COLOR = "#0F172A";
 const TEAM_W = 180;
 const TEAM_H = 64;
 const MEMBER_W = 140;
@@ -157,15 +157,33 @@ function treeBounds(nodes: TreeNode[]): { width: number; height: number } {
 // SVG rendering helpers
 // ---------------------------------------------------------------------------
 
-const DEFAULT_TEAM_FILL = "#1E293B";
-const DEFAULT_TEAM_STROKE = "#475569";
-const DEFAULT_MEMBER_FILL = "#0F172A";
-const DEFAULT_MEMBER_STROKE = "#334155";
-const TEXT_COLOR = "#E2E8F0";
-const SUB_TEXT_COLOR = "#94A3B8";
+// Org-tree chrome defaults are theme-driven (see renderer/palette.ts).
+// `treeDefaults(palette)` maps each card role onto a palette field so the
+// whole tree follows the active theme.
 const FONT = "system-ui, sans-serif";
-const DEFAULT_EDGE_STROKE = DEFAULT_TEAM_STROKE;
 const DEFAULT_EDGE_WIDTH = 1.5;
+
+interface OrgTreeDefaults {
+  teamFill: string;
+  teamStroke: string;
+  memberFill: string;
+  memberStroke: string;
+  textColor: string;
+  subTextColor: string;
+  edgeStroke: string;
+}
+
+function treeDefaults(palette: DiagramPalette): OrgTreeDefaults {
+  return {
+    teamFill: palette.surfaceBg,
+    teamStroke: palette.mutedBorder,
+    memberFill: palette.canvasBg,
+    memberStroke: palette.border,
+    textColor: palette.textPrimary,
+    subTextColor: palette.textSubtle,
+    edgeStroke: palette.mutedBorder,
+  };
+}
 
 // ---------------------------------------------------------------------------
 // Style resolution helpers
@@ -194,6 +212,7 @@ function renderTreeTeamCard(
   isExpanded: boolean,
   styles: ResolvedStyles | undefined,
   diffState: string | undefined,
+  defaults: OrgTreeDefaults,
 ): string {
   const { team, x, y } = node;
   const label = escapeXml(team.label ?? team.id);
@@ -202,11 +221,11 @@ function renderTreeTeamCard(
   const countLabel = memberCount > 0 ? `${memberCount} member${memberCount !== 1 ? "s" : ""}` : "";
 
   const s = resolveTeamStyle(team.id, styles);
-  const fill = s?.backgroundColor ?? DEFAULT_TEAM_FILL;
-  const stroke = s?.borderColor ?? DEFAULT_TEAM_STROKE;
+  const fill = s?.backgroundColor ?? defaults.teamFill;
+  const stroke = s?.borderColor ?? defaults.teamStroke;
   const strokeWidth = s?.borderWidth ?? 1.5;
   const rx = s?.borderRadius ?? 8;
-  const textColor = s?.color ?? TEXT_COLOR;
+  const textColor = s?.color ?? defaults.textColor;
   const fontFamily = s?.fontFamily ?? FONT;
   const fontSize = s?.fontSize ?? 13;
   const fontWeight = s?.fontWeight ?? "bold";
@@ -245,7 +264,7 @@ function renderTreeTeamCard(
           x: TEAM_W / 2,
           y: 44,
           "text-anchor": "middle",
-          fill: SUB_TEXT_COLOR,
+          fill: defaults.subTextColor,
           "font-family": fontFamily,
           "font-size": 11,
         },
@@ -273,16 +292,17 @@ function renderTreeMemberCard(
   y: number,
   styles: ResolvedStyles | undefined,
   diffState: string | undefined,
+  defaults: OrgTreeDefaults,
 ): string {
   const label = escapeXml(member.label ?? member.id);
   const details = [member.properties.slack, member.properties.github].filter(Boolean).join(" · ");
 
   const s = resolveMemberStyle(member.id, styles);
-  const fill = s?.backgroundColor ?? DEFAULT_MEMBER_FILL;
-  const stroke = s?.borderColor ?? DEFAULT_MEMBER_STROKE;
+  const fill = s?.backgroundColor ?? defaults.memberFill;
+  const stroke = s?.borderColor ?? defaults.memberStroke;
   const strokeWidth = s?.borderWidth ?? 1;
   const rx = s?.borderRadius ?? 6;
-  const textColor = s?.color ?? TEXT_COLOR;
+  const textColor = s?.color ?? defaults.textColor;
   const fontFamily = s?.fontFamily ?? FONT;
   const fontSize = s?.fontSize ?? 12;
 
@@ -318,7 +338,7 @@ function renderTreeMemberCard(
           x: MEMBER_W / 2,
           y: 38,
           "text-anchor": "middle",
-          fill: SUB_TEXT_COLOR,
+          fill: defaults.subTextColor,
           "font-family": fontFamily,
           "font-size": 10,
         },
@@ -342,13 +362,21 @@ function renderMemberGrid(
   grid: MemberGridNode,
   styles: ResolvedStyles | undefined,
   options: RenderOrgTreeOptions,
+  defaults: OrgTreeDefaults,
 ): string {
   const cards = grid.members.map((member, i) => {
     const col = i % MEMBERS_PER_ROW;
     const row = Math.floor(i / MEMBERS_PER_ROW);
     const mx = grid.x + col * (MEMBER_W + MEMBER_COL_GAP);
     const my = grid.y + row * (MEMBER_H + MEMBER_ROW_GAP);
-    return renderTreeMemberCard(member, mx, my, styles, options.nodeDiffState?.get(member.id));
+    return renderTreeMemberCard(
+      member,
+      mx,
+      my,
+      styles,
+      options.nodeDiffState?.get(member.id),
+      defaults,
+    );
   });
   return cards.join("");
 }
@@ -359,13 +387,14 @@ function bezierConnector(
   x2: number,
   y2: number,
   styles: ResolvedStyles | undefined,
+  defaults: OrgTreeDefaults,
 ): string {
   const e = resolveEdgeStyle(styles);
   const midX = (x1 + x2) / 2;
   return el("path", {
     d: `M ${x1} ${y1} C ${midX} ${y1}, ${midX} ${y2}, ${x2} ${y2}`,
     fill: "none",
-    stroke: e?.color ?? DEFAULT_EDGE_STROKE,
+    stroke: e?.color ?? defaults.edgeStroke,
     "stroke-width": e?.strokeWidth ?? DEFAULT_EDGE_WIDTH,
   });
 }
@@ -380,6 +409,7 @@ function renderTreeNode(
   elements: string[],
   styles: ResolvedStyles | undefined,
   options: RenderOrgTreeOptions,
+  defaults: OrgTreeDefaults,
 ): void {
   const isExpanded = expandedIds.has(node.team.id);
 
@@ -389,7 +419,7 @@ function renderTreeNode(
     const y1 = node.y + TEAM_H / 2;
     const x2 = child.x;
     const y2 = child.y + TEAM_H / 2;
-    elements.push(bezierConnector(x1, y1, x2, y2, styles));
+    elements.push(bezierConnector(x1, y1, x2, y2, styles, defaults));
   }
 
   // Connector to member grid
@@ -398,12 +428,18 @@ function renderTreeNode(
     const y1 = node.y + TEAM_H / 2;
     const x2 = node.memberGrid.x;
     const y2 = node.memberGrid.y + node.memberGrid.height / 2;
-    elements.push(bezierConnector(x1, y1, x2, y2, styles));
+    elements.push(bezierConnector(x1, y1, x2, y2, styles, defaults));
   }
 
   // Team card
   elements.push(
-    renderTreeTeamCard(node, isExpanded, styles, options.nodeDiffState?.get(node.team.id)),
+    renderTreeTeamCard(
+      node,
+      isExpanded,
+      styles,
+      options.nodeDiffState?.get(node.team.id),
+      defaults,
+    ),
   );
 
   // Owns-edge badges (invisible but carrying data-diff-state for diff mode).
@@ -425,12 +461,12 @@ function renderTreeNode(
 
   // Member grid
   if (node.memberGrid) {
-    elements.push(renderMemberGrid(node.memberGrid, styles, options));
+    elements.push(renderMemberGrid(node.memberGrid, styles, options, defaults));
   }
 
   // Recurse into sub-teams
   for (const child of node.children) {
-    renderTreeNode(child, expandedIds, elements, styles, options);
+    renderTreeNode(child, expandedIds, elements, styles, options, defaults);
   }
 }
 
@@ -467,6 +503,8 @@ export interface RenderOrgTreeOptions {
   nodeDiffState?: Map<string, string>;
   /** Diff state per `ownsEdgeKey(teamId, serviceId)` — rendered as invisible marker `<g>` elements. */
   edgeDiffState?: Map<string, string>;
+  /** Diagram theme. Drives the chrome palette. Defaults to `"dark"`. */
+  theme?: DiagramTheme;
 }
 
 /**
@@ -483,6 +521,8 @@ export function renderOrgTreeView(
   options: RenderOrgTreeOptions = {},
 ): string {
   const { styles } = options;
+  const palette = resolvePalette(options.theme);
+  const defaults = treeDefaults(palette);
   // Collect all top-level teams across all organization blocks
   const allTopTeams: TeamNode[] = organizations.flatMap((org) => org.teams);
 
@@ -490,14 +530,14 @@ export function renderOrgTreeView(
     return el(
       "svg",
       { xmlns: "http://www.w3.org/2000/svg", viewBox: "0 0 200 100", width: 200, height: 100 },
-      el("rect", { width: 200, height: 100, fill: BG_COLOR }),
+      el("rect", { width: 200, height: 100, fill: palette.canvasBg }),
       el(
         "text",
         {
           x: 100,
           y: 50,
           "text-anchor": "middle",
-          fill: "#9CA3AF",
+          fill: palette.emptyStateText,
           "font-family": FONT,
           "font-size": 13,
         },
@@ -520,7 +560,7 @@ export function renderOrgTreeView(
   const totalHeight = curY + CANVAS_PADDING;
 
   const elements: string[] = [
-    el("rect", { width: totalWidth, height: totalHeight, fill: BG_COLOR }),
+    el("rect", { width: totalWidth, height: totalHeight, fill: palette.canvasBg }),
   ];
 
   // Render the effective expandedIds (for export, treat all as expanded)
@@ -542,10 +582,10 @@ export function renderOrgTreeView(
     const exportHeight = exportY + CANVAS_PADDING;
 
     const exportElements: string[] = [
-      el("rect", { width: exportWidth, height: exportHeight, fill: BG_COLOR }),
+      el("rect", { width: exportWidth, height: exportHeight, fill: palette.canvasBg }),
     ];
     for (const root of roots) {
-      renderTreeNode(root, effectiveExpandedIds, exportElements, styles, options);
+      renderTreeNode(root, effectiveExpandedIds, exportElements, styles, options, defaults);
     }
 
     return el(
@@ -561,7 +601,7 @@ export function renderOrgTreeView(
   }
 
   for (const root of roots) {
-    renderTreeNode(root, expandedTeamIds, elements, styles, options);
+    renderTreeNode(root, expandedTeamIds, elements, styles, options, defaults);
   }
 
   return el(

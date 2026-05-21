@@ -12,6 +12,7 @@ import type {
   FileSystemProvider,
   DirEntry,
   DiagramType,
+  DiagramTheme,
   Diagnostic,
   DrawioViewSelection,
   Warning,
@@ -65,6 +66,8 @@ interface RenderOptions {
   output?: string;
   view?: DiagramType;
   format?: RenderFormat;
+  /** Diagram color theme. Defaults to "dark" (svg format only). */
+  theme?: DiagramTheme;
   includeMatrix?: boolean;
 }
 
@@ -91,12 +94,21 @@ export async function render(filePath: string, options: RenderOptions): Promise<
     diagnostics = result.diagnostics;
     warnings = result.warnings;
   } else if (options.view) {
-    const result = await compileProject(absolutePath, fs, { diagramType: options.view });
+    const result = await compileProject(absolutePath, fs, {
+      diagramType: options.view,
+      theme: options.theme,
+    });
     output = result.svg;
     diagnostics = result.diagnostics;
     warnings = result.warnings;
   } else {
-    const result = await buildAllViewsSvgProject(absolutePath, fs);
+    const result = await buildAllViewsSvgProject(
+      absolutePath,
+      fs,
+      undefined,
+      undefined,
+      options.theme,
+    );
     output = result.svg;
     diagnostics = result.diagnostics;
     warnings = result.warnings;

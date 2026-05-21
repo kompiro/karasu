@@ -103,7 +103,18 @@ export {
   validateProjectEdgeIdUniqueness,
 } from "./resolver/canonical-id.js";
 export { resolveStyles } from "./resolver/style-resolver.js";
-export { getBuiltinStyleSheet, BUILTIN_STYLE_SOURCE } from "./builtins/default-style.js";
+export {
+  getBuiltinStyleSheet,
+  BUILTIN_STYLE_SOURCE,
+  BUILTIN_STYLE_SOURCE_LIGHT,
+} from "./builtins/default-style.js";
+export {
+  type DiagramTheme,
+  type DiagramPalette,
+  darkPalette,
+  lightPalette,
+  resolvePalette,
+} from "./renderer/palette.js";
 export {
   getIconThemeStyleSheet,
   ICON_THEME_STYLE_SOURCE,
@@ -220,6 +231,7 @@ import {
 } from "./renderer/all-layers-svg.js";
 
 import type { DisplayMode } from "./renderer/layout.js";
+import { type DiagramTheme, resolvePalette } from "./renderer/palette.js";
 import { renderOrgView as _renderOrgView } from "./renderer/org-renderer.js";
 import { collectLegendUsage } from "./legend/usage.js";
 import { renderDeploy } from "./renderer/deploy-renderer.js";
@@ -293,6 +305,12 @@ export interface CompileOptions {
   displayMode?: DisplayMode;
   /** Translated labels for renderer-embedded empty-state messages. */
   emptyStateLabels?: EmptyStateLabels;
+  /**
+   * Diagram theme. Drives both the renderer chrome palette and which
+   * built-in `.krs.style` variant sits at the bottom of the cascade.
+   * Defaults to `"dark"` so existing output is unchanged.
+   */
+  theme?: DiagramTheme;
 }
 
 export interface SystemCompileResult {
@@ -378,6 +396,7 @@ function _compileFromPreparedInput(
     selectedDeployId,
     displayMode,
     emptyStateLabels,
+    theme,
   } = opts;
 
   // Project-wide edge author-id uniqueness. Runs once before view extraction
@@ -443,6 +462,7 @@ function _compileFromPreparedInput(
       legends: krsFile.legends,
       styleSheets: resolveSheets,
       legendUsage: collectLegendUsage(krsFile),
+      theme,
     });
     return {
       diagramType: "org",
@@ -487,6 +507,7 @@ function _compileFromPreparedInput(
       styleSheets: resolveSheets,
       legendUsage: collectLegendUsage(krsFile),
       viewScope: "deploy",
+      theme,
     });
     const nodeMetadata = buildDeployNodeMetadata(deploySliceForStyle);
     return {
@@ -527,6 +548,7 @@ function _compileFromPreparedInput(
     styleSheets: resolveSheets,
     legendUsage: collectLegendUsage(krsFile),
     viewScope: "system",
+    theme,
   });
   const nodeMetadata = buildNodeMetadata(
     viewSlice,
@@ -554,9 +576,9 @@ function _compileCore(krsSource: string, opts: CompileOptions): CompileResult {
   const parseResult: ParseResult<KrsFile> = Parser.parse(krsSource);
   const diagnostics = [...parseResult.diagnostics];
 
-  // Build sheets for conflict analysis: [builtin, ...userSheets]
+  // Build sheets for conflict analysis: [builtin(theme), ...userSheets]
   // Icon theme is intentionally excluded from analysis to avoid false style-conflict warnings.
-  const sheets: StyleSheet[] = [getBuiltinStyleSheet()];
+  const sheets: StyleSheet[] = [getBuiltinStyleSheet(opts.theme)];
   if (styleSource) {
     const styleResult = StyleParser.parse(styleSource);
     diagnostics.push(...styleResult.diagnostics);
@@ -581,9 +603,9 @@ async function _compileProjectCore(
   const resolved = await resolver.resolve(entryPath);
   const diagnostics = [...resolved.diagnostics];
 
-  // Build sheets for conflict analysis: [builtin, ...userSheets]
+  // Build sheets for conflict analysis: [builtin(theme), ...userSheets]
   // Icon theme is intentionally excluded from analysis to avoid false style-conflict warnings.
-  const sheets = [getBuiltinStyleSheet(), ...resolved.styleSheets];
+  const sheets = [getBuiltinStyleSheet(opts.theme), ...resolved.styleSheets];
   // Value-level validation runs inside `_compileFromPreparedInput` so
   // its output joins the existing `warnings` channel (not `diagnostics`)
   // and shows up in the App's WarningPanel.
@@ -832,9 +854,16 @@ export function buildDrillDownSvg(
   styleSource?: string,
   displayMode?: DisplayMode,
   emptyStateLabels?: EmptyStateLabels,
+  theme?: DiagramTheme,
 ): SvgResult {
   const parseResult: ParseResult<KrsFile> = Parser.parse(krsSource);
-  const result = _buildDrillDownSvg(parseResult.value, styleSource, displayMode, emptyStateLabels);
+  const result = _buildDrillDownSvg(
+    parseResult.value,
+    styleSource,
+    displayMode,
+    emptyStateLabels,
+    theme,
+  );
   return { svg: result.svg, diagnostics: [...parseResult.diagnostics, ...result.diagnostics] };
 }
 
@@ -847,9 +876,16 @@ export function buildAllLayersSvg(
   styleSource?: string,
   displayMode?: DisplayMode,
   emptyStateLabels?: EmptyStateLabels,
+  theme?: DiagramTheme,
 ): SvgResult {
   const parseResult: ParseResult<KrsFile> = Parser.parse(krsSource);
-  const result = _buildAllLayersSvg(parseResult.value, styleSource, displayMode, emptyStateLabels);
+  const result = _buildAllLayersSvg(
+    parseResult.value,
+    styleSource,
+    displayMode,
+    emptyStateLabels,
+    theme,
+  );
   return { svg: result.svg, diagnostics: [...parseResult.diagnostics, ...result.diagnostics] };
 }
 
@@ -862,6 +898,7 @@ export function buildAllLayersSvgOrg(
   styleSource?: string,
   displayMode?: DisplayMode,
   emptyStateLabels?: EmptyStateLabels,
+  theme?: DiagramTheme,
 ): SvgResult {
   const parseResult: ParseResult<KrsFile> = Parser.parse(krsSource);
   const result = _buildAllLayersSvgOrg(
@@ -869,6 +906,7 @@ export function buildAllLayersSvgOrg(
     styleSource,
     displayMode,
     emptyStateLabels,
+    theme,
   );
   return { svg: result.svg, diagnostics: [...parseResult.diagnostics, ...result.diagnostics] };
 }
@@ -882,6 +920,7 @@ export function buildDrillDownSvgOrg(
   styleSource?: string,
   displayMode?: DisplayMode,
   emptyStateLabels?: EmptyStateLabels,
+  theme?: DiagramTheme,
 ): SvgResult {
   const parseResult: ParseResult<KrsFile> = Parser.parse(krsSource);
   const result = _buildDrillDownSvgOrg(
@@ -889,6 +928,7 @@ export function buildDrillDownSvgOrg(
     styleSource,
     displayMode,
     emptyStateLabels,
+    theme,
   );
   return { svg: result.svg, diagnostics: [...parseResult.diagnostics, ...result.diagnostics] };
 }
@@ -902,9 +942,16 @@ export function buildAllViewsSvg(
   styleSource?: string,
   displayMode?: DisplayMode,
   emptyStateLabels?: EmptyStateLabels,
+  theme?: DiagramTheme,
 ): AllViewsSvgResult {
   const parseResult: ParseResult<KrsFile> = Parser.parse(krsSource);
-  const result = _buildAllViewsSvg(parseResult.value, styleSource, displayMode, emptyStateLabels);
+  const result = _buildAllViewsSvg(
+    parseResult.value,
+    styleSource,
+    displayMode,
+    emptyStateLabels,
+    theme,
+  );
   return {
     svg: result.svg,
     diagnostics: [...parseResult.diagnostics, ...result.diagnostics],
@@ -927,10 +974,11 @@ export async function buildAllViewsSvgProject(
   fs: FileSystemProvider,
   styleSource?: string,
   displayMode?: DisplayMode,
+  theme?: DiagramTheme,
 ): Promise<AllViewsSvgResult> {
   const resolver = new ImportResolver(fs);
   const resolved = await resolver.resolve(entryPath);
-  const result = _buildAllViewsSvg(resolved.krsFile, styleSource, displayMode);
+  const result = _buildAllViewsSvg(resolved.krsFile, styleSource, displayMode, undefined, theme);
   return {
     svg: result.svg,
     diagnostics: [...resolved.diagnostics, ...result.diagnostics],
@@ -973,6 +1021,8 @@ export interface CompileSystemDiffOptions {
   displayMode?: DisplayMode;
   /** Translated labels for renderer-embedded empty-state messages. */
   emptyStateLabels?: EmptyStateLabels;
+  /** Diagram theme. Defaults to `"dark"`. */
+  theme?: DiagramTheme;
 }
 
 /**
@@ -986,7 +1036,8 @@ export interface CompileSystemDiffOptions {
 export async function compileSystemDiff(
   options: CompileSystemDiffOptions,
 ): Promise<SystemDiffCompileResult> {
-  const { beforeEntryPath, afterEntryPath, fs, viewPath, displayMode, emptyStateLabels } = options;
+  const { beforeEntryPath, afterEntryPath, fs, viewPath, displayMode, emptyStateLabels, theme } =
+    options;
 
   const resolver = new ImportResolver(fs);
   const [beforeResolved, afterResolved] = await Promise.all([
@@ -1011,7 +1062,7 @@ export async function compileSystemDiff(
   // any removed nodes — the union slice's childNodes will be styled via
   // the same fallback path used for ghost nodes).
   const sheets = [
-    getBuiltinStyleSheet(),
+    getBuiltinStyleSheet(theme),
     ...beforeResolved.styleSheets,
     ...afterResolved.styleSheets,
   ];
@@ -1046,6 +1097,7 @@ export async function compileSystemDiff(
       edgeDiffState: edgeDiffStateMap,
       nodeDiffMeta: diffed.nodes,
       emptyLabels: emptyStateLabels,
+      theme,
     },
   );
 
@@ -1075,6 +1127,8 @@ export interface CompileDeployDiffOptions {
   displayMode?: DisplayMode;
   /** Translated labels for renderer-embedded empty-state messages. */
   emptyStateLabels?: EmptyStateLabels;
+  /** Diagram theme. Defaults to `"dark"`. */
+  theme?: DiagramTheme;
 }
 
 /**
@@ -1088,8 +1142,15 @@ export interface CompileDeployDiffOptions {
 export async function compileDeployDiff(
   options: CompileDeployDiffOptions,
 ): Promise<DeployDiffCompileResult> {
-  const { beforeEntryPath, afterEntryPath, fs, selectedDeployId, displayMode, emptyStateLabels } =
-    options;
+  const {
+    beforeEntryPath,
+    afterEntryPath,
+    fs,
+    selectedDeployId,
+    displayMode,
+    emptyStateLabels,
+    theme,
+  } = options;
 
   const resolver = new ImportResolver(fs);
   const [beforeResolved, afterResolved] = await Promise.all([
@@ -1114,7 +1175,7 @@ export async function compileDeployDiff(
   const diffed = diffDeployViewSlices(beforeSlice, afterSlice);
 
   const sheets = [
-    getBuiltinStyleSheet(),
+    getBuiltinStyleSheet(theme),
     ...beforeResolved.styleSheets,
     ...afterResolved.styleSheets,
   ];
@@ -1146,6 +1207,7 @@ export async function compileDeployDiff(
     edgeDiffState: edgeDiffStateMap,
     containerDiffState: containerDiffStateMap,
     emptyLabels: emptyStateLabels,
+    theme,
   });
 
   return {
@@ -1175,6 +1237,8 @@ export interface CompileOrgDiffOptions {
   displayMode?: DisplayMode;
   /** Translated labels for renderer-embedded empty-state messages. */
   emptyStateLabels?: EmptyStateLabels;
+  /** Diagram theme. Defaults to `"dark"`. */
+  theme?: DiagramTheme;
 }
 
 /**
@@ -1188,7 +1252,8 @@ export interface CompileOrgDiffOptions {
 export async function compileOrgDiff(
   options: CompileOrgDiffOptions,
 ): Promise<OrgDiffCompileResult> {
-  const { beforeEntryPath, afterEntryPath, fs, viewPath, displayMode, emptyStateLabels } = options;
+  const { beforeEntryPath, afterEntryPath, fs, viewPath, displayMode, emptyStateLabels, theme } =
+    options;
 
   const resolver = new ImportResolver(fs);
   const [beforeResolved, afterResolved] = await Promise.all([
@@ -1203,7 +1268,7 @@ export async function compileOrgDiff(
   const diffed = diffOrgViewSlices(beforeSlice, afterSlice);
 
   const sheets = [
-    getBuiltinStyleSheet(),
+    getBuiltinStyleSheet(theme),
     ...beforeResolved.styleSheets,
     ...afterResolved.styleSheets,
   ];
@@ -1224,6 +1289,7 @@ export async function compileOrgDiff(
     nodeDiffState: nodeDiffStateMap,
     edgeDiffState: edgeDiffStateMap,
     emptyLabels: emptyStateLabels,
+    theme,
   });
 
   return {
@@ -1241,6 +1307,8 @@ export interface CompileBundledDiffOptions {
   fs: FileSystemProvider;
   displayMode?: DisplayMode;
   emptyStateLabels?: EmptyStateLabels;
+  /** Diagram theme. Defaults to `"dark"`. */
+  theme?: DiagramTheme;
 }
 
 export interface BundledDiffCompileResult {
@@ -1270,7 +1338,7 @@ export interface BundledDiffCompileResult {
 export async function buildAllViewsSvgDiffProject(
   options: CompileBundledDiffOptions,
 ): Promise<BundledDiffCompileResult> {
-  const { beforeEntryPath, afterEntryPath, fs, displayMode, emptyStateLabels } = options;
+  const { beforeEntryPath, afterEntryPath, fs, displayMode, emptyStateLabels, theme } = options;
 
   const resolver = new ImportResolver(fs);
   const [beforeResolved, afterResolved] = await Promise.all([
@@ -1294,7 +1362,7 @@ export async function buildAllViewsSvgDiffProject(
     (before.organizations?.flatMap((o) => o.teams).length ?? 0) > 0 ||
     (after.organizations?.flatMap((o) => o.teams).length ?? 0) > 0;
 
-  const compileOpts = { beforeEntryPath, afterEntryPath, fs, displayMode, emptyStateLabels };
+  const compileOpts = { beforeEntryPath, afterEntryPath, fs, displayMode, emptyStateLabels, theme };
 
   const [systemResult, deployResult, orgResult] = await Promise.all([
     hasSystem ? compileSystemDiff(compileOpts) : Promise.resolve(undefined),
@@ -1312,18 +1380,21 @@ export async function buildAllViewsSvgDiffProject(
   // diagnostics from the upfront resolver pass (which is the same data).
   const diagnostics = resolverDiagnostics;
 
-  const bundled = bundleSingleLevelViews({
-    system: systemResult?.svg,
-    deploy: deployResult?.svg,
-    org: orgResult?.svg,
-  });
+  const bundled = bundleSingleLevelViews(
+    {
+      system: systemResult?.svg,
+      deploy: deployResult?.svg,
+      org: orgResult?.svg,
+    },
+    theme,
+  );
 
   if (bundled === null) {
     // Nothing applicable — emit a placeholder consistent with non-diff
     // bundled output.
-    const placeholder = `<svg xmlns="http://www.w3.org/2000/svg" width="200" height="100" viewBox="0 0 200 100"><text x="100" y="50" text-anchor="middle" fill="#9CA3AF" font-family="sans-serif">${
-      emptyStateLabels?.systemNoDiagram ?? "No diagram"
-    }</text></svg>`;
+    const placeholder = `<svg xmlns="http://www.w3.org/2000/svg" width="200" height="100" viewBox="0 0 200 100"><text x="100" y="50" text-anchor="middle" fill="${
+      resolvePalette(theme).emptyStateText
+    }" font-family="sans-serif">${emptyStateLabels?.systemNoDiagram ?? "No diagram"}</text></svg>`;
     return { svg: placeholder, diagnostics, views };
   }
 

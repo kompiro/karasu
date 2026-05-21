@@ -18,6 +18,7 @@ import { DEFAULT_EMPTY_STATE_LABELS, type EmptyStateLabels } from "./empty-state
 import type { LegendBlock, LegendViewScope } from "../types/ast.js";
 import type { LegendUsage } from "../legend/usage.js";
 import type { StyleSheet } from "../types/style.js";
+import { type DiagramPalette, type DiagramTheme, resolvePalette } from "./palette.js";
 
 const GHOST_OPACITY = 0.3;
 
@@ -77,6 +78,13 @@ export interface RenderOptions {
    * a `legend deploy "..."` block does not leak into the system view.
    */
   viewScope?: LegendViewScope;
+  /**
+   * Diagram theme. Drives the chrome palette (canvas background, legend
+   * band, empty-state text, diff indicators, …). Defaults to `"dark"` so
+   * existing output is unchanged. The matching built-in `.krs.style`
+   * variant is selected by the caller (see `index.ts`).
+   */
+  theme?: DiagramTheme;
 }
 
 export function render(
@@ -123,6 +131,7 @@ export function renderFromLayout(
   childLevelLinks?: Map<string, string>,
   options?: RenderOptions,
 ): string {
+  const palette = resolvePalette(options?.theme);
   if (layoutResult.nodes.size === 0 && layoutResult.containers.length === 0) {
     return el(
       "svg",
@@ -138,7 +147,7 @@ export function renderFromLayout(
           x: 100,
           y: 50,
           "text-anchor": "middle",
-          fill: "#9CA3AF",
+          fill: palette.emptyStateText,
           "font-family": "sans-serif",
         },
         escapeXml(options?.emptyLabels?.systemNoNodes ?? DEFAULT_EMPTY_STATE_LABELS.systemNoNodes),
@@ -174,7 +183,7 @@ export function renderFromLayout(
   parts.push(el("defs", {}, ...defParts));
 
   // Background
-  parts.push(el("rect", { width, height, fill: "#0F172A", rx: 0 }));
+  parts.push(el("rect", { width, height, fill: palette.canvasBg, rx: 0 }));
 
   // Title label (when no containers — e.g., system-level view)
   if (title) {
@@ -184,7 +193,7 @@ export function renderFromLayout(
         {
           x: padding / 2,
           y: padding / 2 + 4,
-          fill: "#64748B",
+          fill: palette.textMuted,
           "font-size": "14px",
           "font-family": "sans-serif",
           "font-weight": "bold",
@@ -265,6 +274,7 @@ export function renderFromLayout(
       layoutNode,
       nodeStyle,
       nodeId,
+      palette,
       serviceIdsWithDeploy,
       displayMode,
       childLevelLinks,
@@ -296,6 +306,7 @@ export function renderFromLayout(
       options.styleSheets ?? [],
       width,
       options.legendUsage,
+      palette,
     );
     if (footer) {
       parts.push(el("g", { transform: `translate(0,${height})` }, footer.svg));
@@ -366,6 +377,7 @@ function renderNode(
   node: LayoutNode,
   style: ResolvedNodeStyle,
   nodeId: string,
+  palette: DiagramPalette,
   serviceIdsWithDeploy?: Set<string>,
   displayMode?: DisplayMode,
   childLevelLinks?: Map<string, string>,
@@ -642,7 +654,7 @@ function renderNode(
       const metaAttrs = {
         "text-anchor": "middle" as const,
         "dominant-baseline": "central" as const,
-        fill: "#94A3B8",
+        fill: palette.textSubtle,
         "font-size": metaFontSize,
         "font-family": style.fontFamily,
       };
@@ -726,7 +738,7 @@ function renderNode(
 
   if (hasCurrentBadge) {
     const badgeChildren: string[] = [];
-    const badgeColor = style.badgeColor ?? "#EF4444";
+    const badgeColor = style.badgeColor ?? palette.badgeFallback;
     badgeChildren.push(el("circle", { cx: badgeX, cy: badgeY, r: 10, fill: badgeColor }));
     if (style.badgeIcon) {
       badgeChildren.push(
@@ -775,7 +787,7 @@ function renderNode(
     // Ghost "removed" badge — all annotations were removed, so there is no
     // current style badge. Render a neutral placeholder with a strike so the
     // user still sees *something was removed*.
-    const ghostColor = "#94A3B8";
+    const ghostColor = palette.textSubtle;
     children.push(
       el(
         "g",
@@ -855,7 +867,7 @@ function renderNode(
           cy: btnY,
           r: 8,
           fill: "transparent",
-          stroke: "#64748B",
+          stroke: palette.textMuted,
           "stroke-width": 1,
         }),
         el(
@@ -865,7 +877,7 @@ function renderNode(
             y: btnY,
             "text-anchor": "middle",
             "dominant-baseline": "central",
-            fill: "#64748B",
+            fill: palette.textMuted,
             "font-size": "10px",
             "font-family": "sans-serif",
             "font-style": "italic",
@@ -887,7 +899,7 @@ function renderNode(
           cy: btnY,
           r: 8,
           fill: "transparent",
-          stroke: "#3B82F6",
+          stroke: palette.accent,
           "stroke-width": 1,
         }),
         el(
@@ -897,7 +909,7 @@ function renderNode(
             y: btnY,
             "text-anchor": "middle",
             "dominant-baseline": "central",
-            fill: "#3B82F6",
+            fill: palette.accent,
             "font-size": "9px",
             "font-family": "sans-serif",
             "font-weight": "bold",
