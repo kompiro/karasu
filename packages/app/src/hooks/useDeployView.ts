@@ -9,6 +9,7 @@ import {
   type DeployBlockInfo,
   type DeployBlock,
   type DisplayMode,
+  type DiagramTheme,
 } from "@karasu-tools/core";
 import { useEmptyStateLabels } from "../i18n/use-empty-state-labels.js";
 import { computeViewResultFingerprint } from "./result-fingerprint.js";
@@ -32,6 +33,7 @@ export function useDeployView(
   displayMode?: DisplayMode,
   compareEntryPath: string | null = null,
   compareFs: FileSystemProvider | null = null,
+  theme?: DiagramTheme,
 ): DeployViewState & { recompile: () => void } {
   const [state, setState] = useState<DeployViewState>({
     svg: "",
@@ -74,6 +76,7 @@ export function useDeployView(
               selectedDeployId: selectedDeployBlockId ?? undefined,
               displayMode,
               emptyStateLabels,
+              theme,
             }),
             compileDeployDiff({
               beforeEntryPath: compareEntryPath,
@@ -82,6 +85,7 @@ export function useDeployView(
               selectedDeployId: selectedDeployBlockId ?? undefined,
               displayMode,
               emptyStateLabels,
+              theme,
             }),
           ]);
           if (base.diagramType !== "deploy") return;
@@ -124,6 +128,7 @@ export function useDeployView(
           selectedDeployId: selectedDeployBlockId ?? undefined,
           displayMode,
           emptyStateLabels,
+          theme,
         });
         if (result.diagramType !== "deploy") return;
         const hasErrors = result.diagnostics.some((d) => d.severity === "error");
@@ -181,6 +186,7 @@ export function useDeployView(
     fs,
     selectedDeployBlockId,
     displayMode,
+    theme,
     compareEntryPath,
     compareFs,
     emptyStateLabels,

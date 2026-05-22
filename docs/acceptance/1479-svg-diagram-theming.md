@@ -59,6 +59,12 @@
 
   > ✅ Automated — `render.test.ts`
 
+### app の view フックが theme を転送する — `packages/app/src/hooks/useSystemView.test.tsx`
+
+- [x] システムビュー（既定のプレビュー面）の hook が theme を compileProject に渡し、light / dark で SVG が変わる
+
+  > ✅ Automated — `useSystemView.test.tsx` › `threads the theme into the rendered system-view SVG`
+
 ## 受け入れ条件（手動 / 目視）
 
 > 図の見た目はブラウザ / VS Code での目視確認が必要で、自動化対象外。

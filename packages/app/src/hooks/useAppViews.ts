@@ -175,7 +175,15 @@ export function useAppViews(args: UseAppViewsArgs): UseAppViewsResult {
     systems: resolvedSystems,
     nodeFileIndex,
     nodeDiff: systemNodeDiff,
-  } = useSystemView(effEntryPath, effFs, viewPath, displayMode, effCompareEntryPath, effCompareFs);
+  } = useSystemView(
+    effEntryPath,
+    effFs,
+    viewPath,
+    displayMode,
+    effCompareEntryPath,
+    effCompareFs,
+    theme,
+  );
 
   const {
     svg: deploySvg,
@@ -192,6 +200,7 @@ export function useAppViews(args: UseAppViewsArgs): UseAppViewsResult {
     displayMode,
     effCompareEntryPath,
     effCompareFs,
+    theme,
   );
 
   const {

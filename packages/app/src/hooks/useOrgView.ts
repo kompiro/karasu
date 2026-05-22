@@ -98,6 +98,7 @@ export function useOrgView(
         viewPath,
         displayMode,
         emptyStateLabels,
+        theme,
       });
       const task = compareEntryPath
         ? Promise.all([
@@ -109,6 +110,7 @@ export function useOrgView(
               viewPath,
               displayMode,
               emptyStateLabels,
+              theme,
             }),
           ]).then(([base, diff]) => {
             if (base.diagramType !== "org") return base;
@@ -169,6 +171,7 @@ export function useOrgView(
     fs,
     viewPathKey,
     displayMode,
+    theme,
     compareEntryPath,
     compareFs,
     emptyStateLabels,

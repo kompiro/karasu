@@ -60,6 +60,27 @@ describe("useSystemView", () => {
     vi.useRealTimers();
   });
 
+  it("threads the theme into the rendered system-view SVG (Issue #1479)", async () => {
+    // Regression: the system view is the default preview surface. Its hook
+    // must forward `theme` into compileProject, or switching the app theme
+    // re-skins the chrome but leaves the diagram dark.
+    vi.useFakeTimers();
+    const fs = makeFs(SOURCE_A);
+    const dark = renderHook(() => useSystemView(ENTRY, fs, [], "shape", null, null, "dark"));
+    const light = renderHook(() => useSystemView(ENTRY, fs, [], "shape", null, null, "light"));
+    await act(() => vi.advanceTimersByTimeAsync(300));
+
+    const darkSvg = dark.result.current.svg;
+    const lightSvg = light.result.current.svg;
+    expect(darkSvg).not.toBe("");
+    expect(lightSvg).not.toBe("");
+    // The canvas background rect follows the theme palette.
+    expect(darkSvg).toContain("#0F172A");
+    expect(lightSvg).toContain("#FFFFFF");
+    expect(lightSvg).not.toBe(darkSvg);
+    vi.useRealTimers();
+  });
+
   it("hasOrgDiagram tracks the source's organization blocks (Issue #923)", async () => {
     vi.useFakeTimers();
     // Start with a source that has an organization block. After the editor is
