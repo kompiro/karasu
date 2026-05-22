@@ -9,6 +9,7 @@ import {
   type FileSystemProvider,
   type NodeMetadata,
   type DisplayMode,
+  type DiagramTheme,
   type SystemNode,
   type NodeDiffMeta,
 } from "@karasu-tools/core";
@@ -109,6 +110,7 @@ export function useSystemView(
   displayMode: DisplayMode = "shape",
   compareEntryPath: string | null = null,
   compareFs: FileSystemProvider | null = null,
+  theme?: DiagramTheme,
 ): SystemViewState & { recompile: () => void } {
   const [state, setState] = useState<SystemViewState>({
     svg: "",
@@ -165,6 +167,7 @@ export function useSystemView(
               viewPath,
               displayMode,
               emptyStateLabels,
+              theme,
             }),
             compileSystemDiff({
               beforeEntryPath: compareEntryPath,
@@ -173,6 +176,7 @@ export function useSystemView(
               viewPath,
               displayMode,
               emptyStateLabels,
+              theme,
             }),
           ]);
           if (base.diagramType !== "system") return;
@@ -223,6 +227,7 @@ export function useSystemView(
           viewPath,
           displayMode,
           emptyStateLabels,
+          theme,
         });
         if (result.diagramType !== "system") return;
         const hasErrors = result.diagnostics.some((d) => d.severity === "error");
@@ -286,6 +291,7 @@ export function useSystemView(
     fs,
     viewPathKey,
     displayMode,
+    theme,
     compareEntryPath,
     compareFs,
     emptyStateLabels,

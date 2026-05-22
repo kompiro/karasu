@@ -10,6 +10,7 @@
 import type { LegendBlock, LegendEntry, LegendRefTarget, LegendViewScope } from "../types/ast.js";
 import type { StyleRule, StyleSelector, StyleSheet } from "../types/style.js";
 import { type LegendUsage, legendRefHasUsage } from "../legend/usage.js";
+import type { DiagramPalette } from "./palette.js";
 
 type AttrValue = string | number | undefined | null | false;
 type Attrs = Record<string, AttrValue>;
@@ -222,15 +223,11 @@ const LEGEND_TITLE_HEIGHT = 22;
 const LEGEND_ENTRY_HEIGHT = 22;
 const LEGEND_SWATCH_SIZE = 16;
 const LEGEND_LABEL_GAP = 12;
-const LEGEND_BG = "#1F2937";
-const LEGEND_BORDER = "#334155";
-const LEGEND_TEXT = "#E5E7EB";
-// Neutral muted color, used both for legend block titles and as the
-// fallback swatch for refs whose target appears on a real node but no
-// `.krs.style` rule paints them — e.g. semantic-only annotations like
-// `[human]` (Issue #999). Sharing the constant keeps both uses in sync
-// if the palette ever changes.
-const LEGEND_MUTED = "#9CA3AF";
+// Legend chrome colors are theme-driven (see renderer/palette.ts):
+//   palette.legendBg / legendBorder / legendText / legendMuted.
+// `legendMuted` doubles as the fallback swatch for refs whose target
+// appears on a real node but no `.krs.style` rule paints them — e.g.
+// semantic-only annotations like `[human]` (Issue #999).
 
 interface LegendFooter {
   /** SVG group positioned at y=0 in its own local coordinate space. */
@@ -259,6 +256,7 @@ export function buildLegendFooter(
   scope: LegendViewScope,
   sheets: StyleSheet[],
   width: number,
+  palette: DiagramPalette,
   usage?: LegendUsage,
 ): LegendFooter | null {
   const applicable = legends.filter((l) => l.scope === undefined || l.scope === scope);
@@ -270,7 +268,7 @@ export function buildLegendFooter(
   for (const legend of applicable) {
     const rows: { color: string; label: string }[] = [];
     for (const entry of legend.entries) {
-      const color = resolveLegendEntryColor(entry, sheets, usage);
+      const color = resolveLegendEntryColor(entry, sheets, usage, palette);
       if (color === null) continue;
       rows.push({ color, label: entry.label });
     }
@@ -296,7 +294,7 @@ export function buildLegendFooter(
       y: 0,
       width,
       height: innerHeight,
-      fill: LEGEND_BG,
+      fill: palette.legendBg,
     }),
   );
   parts.push(
@@ -305,7 +303,7 @@ export function buildLegendFooter(
       y1: 0,
       x2: width,
       y2: 0,
-      stroke: LEGEND_BORDER,
+      stroke: palette.legendBorder,
       "stroke-width": 1,
     }),
   );
@@ -320,7 +318,7 @@ export function buildLegendFooter(
           {
             x: LEGEND_LEFT_PAD,
             y: cursor + LEGEND_TITLE_HEIGHT - 6,
-            fill: LEGEND_MUTED,
+            fill: palette.legendMuted,
             "font-size": "12px",
             "font-family": "sans-serif",
             "font-weight": "bold",
@@ -339,7 +337,7 @@ export function buildLegendFooter(
           width: LEGEND_SWATCH_SIZE,
           height: LEGEND_SWATCH_SIZE,
           fill: row.color,
-          stroke: LEGEND_BORDER,
+          stroke: palette.legendBorder,
           "stroke-width": 1,
           rx: 3,
         }),
@@ -350,7 +348,7 @@ export function buildLegendFooter(
           {
             x: LEGEND_LEFT_PAD + LEGEND_SWATCH_SIZE + LEGEND_LABEL_GAP,
             y: cursor + LEGEND_ENTRY_HEIGHT - 7,
-            fill: LEGEND_TEXT,
+            fill: palette.legendText,
             "font-size": "12px",
             "font-family": "sans-serif",
           },
@@ -372,15 +370,17 @@ function resolveLegendEntryColor(
   entry: LegendEntry,
   sheets: StyleSheet[],
   usage: LegendUsage | undefined,
+  palette: DiagramPalette,
 ): string | null {
   if (entry.kind === "swatch") return entry.color;
-  return resolveLegendRefColor(entry.target, sheets, usage);
+  return resolveLegendRefColor(entry.target, sheets, usage, palette);
 }
 
 function resolveLegendRefColor(
   target: LegendRefTarget,
   sheets: StyleSheet[],
   usage: LegendUsage | undefined,
+  palette: DiagramPalette,
 ): string | null {
   // Per-property cascade merge across every matching rule, mirroring
   // `mergeMatchingProperties` in resolver/style-resolver.ts. Picking a
@@ -414,7 +414,7 @@ function resolveLegendRefColor(
   // emit a neutral fallback swatch rather than silently dropping the
   // entry. If the target is unused, the resolver has already emitted
   // `legend-ref-unresolved`; we drop it here too.
-  if (usage && legendRefHasUsage(target, usage)) return LEGEND_MUTED;
+  if (usage && legendRefHasUsage(target, usage)) return palette.legendMuted;
   return null;
 }
 

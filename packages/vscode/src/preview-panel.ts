@@ -1,5 +1,5 @@
 import * as vscode from "vscode";
-import { compileProject, type NodeMetadata } from "@karasu-tools/core";
+import { compileProject, type DiagramTheme, type NodeMetadata } from "@karasu-tools/core";
 import { marked } from "marked";
 import {
   type ViewType,
@@ -8,6 +8,17 @@ import {
   isViewType,
 } from "./message-validation.js";
 import { VsCodeFileSystemProvider } from "./vscode-fs-provider.js";
+
+/**
+ * Map the active VS Code editor color theme to a karasu `DiagramTheme` so
+ * the rendered SVG matches the editor chrome. Light and high-contrast
+ * light themes render the light diagram; everything else renders dark.
+ */
+function diagramThemeFromColorTheme(kind: vscode.ColorThemeKind): DiagramTheme {
+  return kind === vscode.ColorThemeKind.Light || kind === vscode.ColorThemeKind.HighContrastLight
+    ? "light"
+    : "dark";
+}
 
 /** Subset of NodeMetadata serialized as JSON for the webview. */
 interface SerializedNodeMeta {
@@ -30,6 +41,7 @@ export class PreviewPanel {
   private readonly _panel: vscode.WebviewPanel;
   private _viewType: ViewType = "system";
   private _displayMode: "icon" | "shape" = "shape";
+  private _theme: DiagramTheme = diagramThemeFromColorTheme(vscode.window.activeColorTheme.kind);
   private _viewPath: string[] = [];
   private _viewLabels: string[] = [];
   private _lastNodeMetadata: Map<string, NodeMetadata> | undefined;
@@ -115,6 +127,22 @@ export class PreviewPanel {
       null,
       this._disposables,
     );
+
+    // Re-render when the editor color theme changes so the diagram's
+    // light/dark variant stays in sync with the editor chrome (mirrors
+    // how a `_displayMode` toggle triggers a re-render).
+    vscode.window.onDidChangeActiveColorTheme(
+      (colorTheme) => {
+        const next = diagramThemeFromColorTheme(colorTheme.kind);
+        if (next === this._theme) return;
+        this._theme = next;
+        if (this._currentDocument) {
+          void this._render(this._currentDocument);
+        }
+      },
+      null,
+      this._disposables,
+    );
   }
 
   static create(onDispose: () => void, onNavigate: (nodeId: string) => void): PreviewPanel {
@@ -152,6 +180,7 @@ export class PreviewPanel {
       const result = await compileProject(document.uri.fsPath, new VsCodeFileSystemProvider(), {
         diagramType: this._viewType,
         displayMode: this._displayMode,
+        theme: this._theme,
         ...viewPathOpts,
       });
       svg = result.svg;

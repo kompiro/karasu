@@ -33,6 +33,9 @@
  * operationalizes that enumeration.
  *
  * See Issue #1247 and TPL-20260510-06.
+ *
+ * The `theme` argument (Issue #1479) has its own sibling meta-test —
+ * `theme-meta.test.ts` — applying the same enumeration pattern.
  */
 import { describe, it, expect } from "vitest";
 import {

@@ -21,6 +21,7 @@ import { DEFAULT_EMPTY_STATE_LABELS, type EmptyStateLabels } from "./empty-state
 import type { LegendBlock } from "../types/ast.js";
 import type { LegendUsage } from "../legend/usage.js";
 import type { StyleSheet } from "../types/style.js";
+import { type DiagramPalette, type DiagramTheme, resolvePalette } from "./palette.js";
 
 interface RenderOrgOptions {
   /** Diff state per team / member id. */
@@ -35,6 +36,8 @@ interface RenderOrgOptions {
   styleSheets?: StyleSheet[];
   /** Tag/annotation/id/kind usage for legend fallback resolution (Issue #999). */
   legendUsage?: LegendUsage;
+  /** Diagram theme. Drives the chrome palette. Defaults to `"dark"`. */
+  theme?: DiagramTheme;
 }
 
 // Shape mode constants
@@ -44,7 +47,6 @@ const CARD_GAP = 20;
 const CARDS_PER_ROW = 3;
 const PADDING = 40;
 const HEADER_HEIGHT = 36;
-const BG_COLOR = "#0F172A";
 
 // Icon mode constants
 const ICON_CARD_WIDTH = 160;
@@ -436,6 +438,7 @@ type OrgIconItem =
 function renderOrgViewIconMode(
   slice: OrgViewSlice,
   styles: ResolvedStyles,
+  palette: DiagramPalette,
   childLevelLinks?: Map<string, string>,
   options?: RenderOrgOptions,
 ): string {
@@ -446,14 +449,14 @@ function renderOrgViewIconMode(
       return el(
         "svg",
         { xmlns: "http://www.w3.org/2000/svg", viewBox: "0 0 200 100", width: 200, height: 100 },
-        el("rect", { width: 200, height: 100, fill: BG_COLOR }),
+        el("rect", { width: 200, height: 100, fill: palette.canvasBg }),
         el(
           "text",
           {
             x: 100,
             y: 50,
             "text-anchor": "middle",
-            fill: "#9CA3AF",
+            fill: palette.emptyStateText,
             "font-family": "sans-serif",
           },
           escapeXml(options?.emptyLabels?.orgNoTeams ?? DEFAULT_EMPTY_STATE_LABELS.orgNoTeams),
@@ -491,7 +494,7 @@ function renderOrgViewIconMode(
         width: totalWidth,
         height: totalHeight,
       },
-      el("rect", { width: totalWidth, height: totalHeight, fill: BG_COLOR }),
+      el("rect", { width: totalWidth, height: totalHeight, fill: palette.canvasBg }),
       ...cards,
     );
   }
@@ -522,14 +525,14 @@ function renderOrgViewIconMode(
         width: totalWidth,
         height: totalHeight,
       },
-      el("rect", { width: totalWidth, height: totalHeight, fill: BG_COLOR }),
+      el("rect", { width: totalWidth, height: totalHeight, fill: palette.canvasBg }),
       el(
         "text",
         {
           x: totalWidth / 2,
           y: 50,
           "text-anchor": "middle",
-          fill: "#9CA3AF",
+          fill: palette.emptyStateText,
           "font-family": "sans-serif",
         },
         "No members",
@@ -555,7 +558,7 @@ function renderOrgViewIconMode(
       width: totalWidth,
       height: totalHeight,
     },
-    el("rect", { width: totalWidth, height: totalHeight, fill: BG_COLOR }),
+    el("rect", { width: totalWidth, height: totalHeight, fill: palette.canvasBg }),
     ...cards,
   );
 }
@@ -567,8 +570,9 @@ export function renderOrgView(
   childLevelLinks?: Map<string, string>,
   options?: RenderOrgOptions,
 ): string {
+  const palette = resolvePalette(options?.theme);
   if (displayMode === "icon") {
-    return renderOrgViewIconMode(slice, styles, childLevelLinks, options);
+    return renderOrgViewIconMode(slice, styles, palette, childLevelLinks, options);
   }
 
   if (slice.focusedTeam === null) {
@@ -579,14 +583,14 @@ export function renderOrgView(
       return el(
         "svg",
         { xmlns: "http://www.w3.org/2000/svg", viewBox: "0 0 200 100", width: 200, height: 100 },
-        el("rect", { width: 200, height: 100, fill: BG_COLOR }),
+        el("rect", { width: 200, height: 100, fill: palette.canvasBg }),
         el(
           "text",
           {
             x: 100,
             y: 50,
             "text-anchor": "middle",
-            fill: "#9CA3AF",
+            fill: palette.emptyStateText,
             "font-family": "sans-serif",
           },
           escapeXml(options?.emptyLabels?.orgNoTeams ?? DEFAULT_EMPTY_STATE_LABELS.orgNoTeams),
@@ -613,6 +617,7 @@ export function renderOrgView(
         "org",
         options.styleSheets ?? [],
         totalWidth,
+        palette,
         options.legendUsage,
       );
       if (footer) {
@@ -629,7 +634,7 @@ export function renderOrgView(
         width: totalWidth,
         height: outerHeight,
       },
-      el("rect", { width: totalWidth, height: outerHeight, fill: BG_COLOR }),
+      el("rect", { width: totalWidth, height: outerHeight, fill: palette.canvasBg }),
       ...cards,
       ...extra,
     );
@@ -679,14 +684,14 @@ export function renderOrgView(
         width: totalWidth,
         height: totalHeight,
       },
-      el("rect", { width: totalWidth, height: totalHeight, fill: BG_COLOR }),
+      el("rect", { width: totalWidth, height: totalHeight, fill: palette.canvasBg }),
       el(
         "text",
         {
           x: totalWidth / 2,
           y: 50,
           "text-anchor": "middle",
-          fill: "#9CA3AF",
+          fill: palette.emptyStateText,
           "font-family": "sans-serif",
         },
         "No members",
@@ -708,7 +713,7 @@ export function renderOrgView(
       width: totalWidth,
       height: totalHeight,
     },
-    el("rect", { width: totalWidth, height: totalHeight, fill: BG_COLOR }),
+    el("rect", { width: totalWidth, height: totalHeight, fill: palette.canvasBg }),
     ...renderedItems,
   );
 }

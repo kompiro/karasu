@@ -20,16 +20,19 @@ import {
   type AllViewsSvgResult,
 } from "./all-layers-svg.js";
 import { DEFAULT_EMPTY_STATE_LABELS, type EmptyStateLabels } from "./empty-state-labels.js";
+import { type DiagramPalette, type DiagramTheme, resolvePalette } from "./palette.js";
 import "../renderer/shapes.js"; // ensure built-in shapes are registered
 
-const DRILL_DOWN_CSS = `
+function buildDrillDownCss(palette: DiagramPalette): string {
+  return `
   .krs-view { display: none; }
   svg:not(:has(.krs-view:target)) .krs-root-level { display: block; }
   .krs-view:target { display: block; }
-  .krs-back-button rect { fill: #334155; stroke: #64748B; stroke-width: 1; }
-  .krs-back-button text { fill: #E2E8F0; font-family: sans-serif; font-size: 13px; }
+  .krs-back-button rect { fill: ${palette.border}; stroke: ${palette.textMuted}; stroke-width: 1; }
+  .krs-back-button text { fill: ${palette.textPrimary}; font-family: sans-serif; font-size: 13px; }
   .krs-back-button { cursor: pointer; }
 `.trim();
+}
 
 function renderBackButton(parentViewId: string, viewPrefix: string): string {
   return `<a href="#krs-${viewPrefix}-${parentViewId}" tabindex="0"><g class="krs-back-button" transform="translate(20, 10)"><rect x="0" y="0" width="80" height="26" rx="4"/><text x="40" y="17" text-anchor="middle">&#x2190; Back</text></g></a>`;
@@ -83,17 +86,18 @@ export function buildDrillDownSvg(
   styleSource?: string,
   displayMode?: DisplayMode,
   emptyStateLabels?: EmptyStateLabels,
+  theme?: DiagramTheme,
 ): SvgResult {
   const effectiveSystems = withUnassignedSystem(krsFile);
   const rootSlice = extractView(effectiveSystems, []);
   if (rootSlice.childNodes.length === 0) {
     return {
-      svg: buildNoDiagramSvg(emptyStateLabels, true),
+      svg: buildNoDiagramSvg(emptyStateLabels, true, theme),
       diagnostics: [],
     };
   }
 
-  const { sheets, diagnostics } = buildStyles(displayMode, styleSource);
+  const { sheets, diagnostics } = buildStyles(displayMode, styleSource, theme);
   const styles = resolveStyles(effectiveSystems, sheets, []);
   const ownerIndex = krsFile.ownerIndex ?? new Map();
 
@@ -108,7 +112,8 @@ export function buildDrillDownSvg(
       // we fall back to the container's direct children.
       getChildren: (slice) =>
         slice.systems.length > 0 ? slice.systems.flatMap((s) => s.children) : slice.childNodes,
-      render: (slice, links) => render(slice, styles, undefined, ownerIndex, displayMode, links),
+      render: (slice, links) =>
+        render(slice, styles, undefined, ownerIndex, displayMode, links, { theme }),
     },
     [],
     "root",
@@ -118,7 +123,7 @@ export function buildDrillDownSvg(
   );
 
   return {
-    svg: `<svg xmlns="http://www.w3.org/2000/svg" width="100%" height="100%"><style>${DRILL_DOWN_CSS}</style>${levels.join("")}</svg>`,
+    svg: `<svg xmlns="http://www.w3.org/2000/svg" width="100%" height="100%"><style>${buildDrillDownCss(resolvePalette(theme))}</style>${levels.join("")}</svg>`,
     diagnostics,
   };
 }
@@ -134,19 +139,21 @@ export function buildDrillDownSvgOrg(
   styleSource?: string,
   displayMode?: DisplayMode,
   emptyStateLabels?: EmptyStateLabels,
+  theme?: DiagramTheme,
 ): SvgResult {
   const topLevelTeams = krsFile.organizations.flatMap((o) => o.teams);
   if (topLevelTeams.length === 0) {
     const text = escapeXml(
       emptyStateLabels?.orgPlaceholder ?? DEFAULT_EMPTY_STATE_LABELS.orgPlaceholder,
     );
+    const palette = resolvePalette(theme);
     return {
-      svg: `<svg xmlns="http://www.w3.org/2000/svg" width="100%" height="100%" viewBox="0 0 200 100"><text x="100" y="50" text-anchor="middle" fill="#9CA3AF" font-family="sans-serif">${text}</text></svg>`,
+      svg: `<svg xmlns="http://www.w3.org/2000/svg" width="100%" height="100%" viewBox="0 0 200 100"><text x="100" y="50" text-anchor="middle" fill="${palette.emptyStateText}" font-family="sans-serif">${text}</text></svg>`,
       diagnostics: [],
     };
   }
 
-  const { sheets, diagnostics } = buildStyles(displayMode, styleSource);
+  const { sheets, diagnostics } = buildStyles(displayMode, styleSource, theme);
   const styles = resolveStyles(krsFile.systems, sheets, [], krsFile.organizations);
 
   const levels: string[] = [];
@@ -158,7 +165,7 @@ export function buildDrillDownSvgOrg(
         slice.focusedTeam !== null
           ? slice.focusedTeam.children.filter((c): c is TeamNode => c.kind === "team")
           : slice.teams,
-      render: (slice, links) => renderOrgView(slice, styles, displayMode, links),
+      render: (slice, links) => renderOrgView(slice, styles, displayMode, links, { theme }),
     },
     [],
     "root",
@@ -168,7 +175,7 @@ export function buildDrillDownSvgOrg(
   );
 
   return {
-    svg: `<svg xmlns="http://www.w3.org/2000/svg" width="100%" height="100%"><style>${DRILL_DOWN_CSS}</style>${levels.join("")}</svg>`,
+    svg: `<svg xmlns="http://www.w3.org/2000/svg" width="100%" height="100%"><style>${buildDrillDownCss(resolvePalette(theme))}</style>${levels.join("")}</svg>`,
     diagnostics,
   };
 }
@@ -244,7 +251,7 @@ function renderTabBar(enabledViews: Set<ViewType>): string {
   return `<g class="krs-tab-bar">${tabs.join("")}</g>`;
 }
 
-function buildAllViewsCss(): string {
+function buildAllViewsCss(palette: DiagramPalette): string {
   return `
   .krs-pane { display: none; }
   .krs-view { display: none; }
@@ -256,19 +263,19 @@ function buildAllViewsCss(): string {
   :has([id^="krs-org-"]:target) .krs-pane--system { display: none; }
   :has([id^="krs-org-"]:target) .krs-pane--org { display: block; }
   :has([id^="krs-system-"]:target) .krs-pane--system { display: block; }
-  .krs-tab-bar rect { fill: #1E293B; stroke: #334155; stroke-width: 1; }
-  .krs-tab-bar text { fill: #94A3B8; font-family: sans-serif; font-size: 12px; }
-  .krs-tab--disabled rect { fill: #0F172A; }
-  .krs-tab--disabled text { fill: #475569; }
+  .krs-tab-bar rect { fill: ${palette.surfaceBg}; stroke: ${palette.border}; stroke-width: 1; }
+  .krs-tab-bar text { fill: ${palette.textSubtle}; font-family: sans-serif; font-size: 12px; }
+  .krs-tab--disabled rect { fill: ${palette.canvasBg}; }
+  .krs-tab--disabled text { fill: ${palette.mutedBorder}; }
   .krs-tab:not(.krs-tab--disabled) { cursor: pointer; }
-  .krs-tab:not(.krs-tab--disabled) rect { fill: #1E293B; }
-  .krs-tab:not(.krs-tab--disabled) text { fill: #E2E8F0; }
+  .krs-tab:not(.krs-tab--disabled) rect { fill: ${palette.surfaceBg}; }
+  .krs-tab:not(.krs-tab--disabled) text { fill: ${palette.textPrimary}; }
   :has([id^="krs-system-"]:target) .krs-tab--system rect,
-  .krs-pane--system:not([style*="display: none"]) ~ * .krs-tab--system rect { fill: #334155; }
-  :has([id^="krs-deploy-"]:target) .krs-tab--deploy rect { fill: #334155; }
-  :has([id^="krs-org-"]:target) .krs-tab--org rect { fill: #334155; }
-  .krs-back-button rect { fill: #334155; stroke: #64748B; stroke-width: 1; }
-  .krs-back-button text { fill: #E2E8F0; font-family: sans-serif; font-size: 13px; }
+  .krs-pane--system:not([style*="display: none"]) ~ * .krs-tab--system rect { fill: ${palette.border}; }
+  :has([id^="krs-deploy-"]:target) .krs-tab--deploy rect { fill: ${palette.border}; }
+  :has([id^="krs-org-"]:target) .krs-tab--org rect { fill: ${palette.border}; }
+  .krs-back-button rect { fill: ${palette.border}; stroke: ${palette.textMuted}; stroke-width: 1; }
+  .krs-back-button text { fill: ${palette.textPrimary}; font-family: sans-serif; font-size: 13px; }
   .krs-back-button { cursor: pointer; }
 `.trim();
 }
@@ -277,6 +284,7 @@ function collectDeployLevel(
   krsFile: KrsFile,
   sheets: StyleSheet[],
   displayMode?: DisplayMode,
+  theme?: DiagramTheme,
 ): BundledLevel | null {
   const deployBlocks = krsFile.deploys;
   if (deployBlocks.length === 0) return null;
@@ -288,7 +296,7 @@ function collectDeployLevel(
 
   const deployNodes = deployBlocks.flatMap((b) => b.nodes);
   const styles = resolveStyles(krsFile.systems, sheets, deployNodes);
-  const svg = renderDeploy(deployView, styles, displayMode);
+  const svg = renderDeploy(deployView, styles, displayMode, { theme });
   const { viewBox, innerContent, width, height } = extractSvgParts(svg);
 
   const innerSvg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${viewBox}" width="100%" height="100%">${innerContent}</svg>`;
@@ -305,8 +313,9 @@ export function buildAllViewsSvg(
   styleSource?: string,
   displayMode?: DisplayMode,
   emptyStateLabels?: EmptyStateLabels,
+  theme?: DiagramTheme,
 ): AllViewsSvgResult {
-  const { sheets, diagnostics } = buildStyles(displayMode, styleSource);
+  const { sheets, diagnostics } = buildStyles(displayMode, styleSource, theme);
   // Resolver warnings are a model-level fact, independent of which view is
   // rendered — surface them on the all-views path too (Issue #1438).
   const warnings = analyze(krsFile, sheets);
@@ -324,7 +333,8 @@ export function buildAllViewsSvg(
         hasContent: (slice) => slice.childNodes.length > 0 || slice.systems.length > 0,
         getChildren: (slice) =>
           slice.systems.length > 0 ? slice.systems.flatMap((s) => s.children) : slice.childNodes,
-        render: (slice, links) => render(slice, styles, undefined, ownerIndex, displayMode, links),
+        render: (slice, links) =>
+          render(slice, styles, undefined, ownerIndex, displayMode, links, { theme }),
       },
       [],
       "root",
@@ -335,7 +345,7 @@ export function buildAllViewsSvg(
   }
 
   // Collect deploy level
-  const deployLevel = collectDeployLevel(krsFile, sheets, displayMode);
+  const deployLevel = collectDeployLevel(krsFile, sheets, displayMode, theme);
 
   // Collect org levels
   const orgLevels: BundledLevel[] = [];
@@ -350,7 +360,7 @@ export function buildAllViewsSvg(
           slice.focusedTeam !== null
             ? slice.focusedTeam.children.filter((c): c is TeamNode => c.kind === "team")
             : slice.teams,
-        render: (slice, links) => renderOrgView(slice, styles, displayMode, links),
+        render: (slice, links) => renderOrgView(slice, styles, displayMode, links, { theme }),
       },
       [],
       "root",
@@ -368,7 +378,7 @@ export function buildAllViewsSvg(
 
   if (enabledViews.size === 0) {
     return {
-      svg: buildNoDiagramSvg(emptyStateLabels, true),
+      svg: buildNoDiagramSvg(emptyStateLabels, true, theme),
       diagnostics,
       warnings,
     };
@@ -395,7 +405,7 @@ export function buildAllViewsSvg(
       : "";
 
   const tabBar = renderTabBar(enabledViews);
-  const css = buildAllViewsCss();
+  const css = buildAllViewsCss(resolvePalette(theme));
 
   return {
     svg: `<svg xmlns="http://www.w3.org/2000/svg" width="${totalWidth}" height="${totalHeight}"><style>${css}</style>${tabBar}${systemPane}${deployPane}${orgPane}</svg>`,
@@ -413,11 +423,14 @@ export function buildAllViewsSvg(
  *
  * Returns null if no panes are provided.
  */
-export function bundleSingleLevelViews(panes: {
-  system?: string;
-  deploy?: string;
-  org?: string;
-}): string | null {
+export function bundleSingleLevelViews(
+  panes: {
+    system?: string;
+    deploy?: string;
+    org?: string;
+  },
+  theme?: DiagramTheme,
+): string | null {
   const enabledViews = new Set<ViewType>();
   if (panes.system !== undefined) enabledViews.add("system");
   if (panes.deploy !== undefined) enabledViews.add("deploy");
@@ -445,7 +458,7 @@ export function bundleSingleLevelViews(panes: {
   const totalHeight = TAB_HEIGHT + maxHeight;
 
   const tabBar = renderTabBar(enabledViews);
-  const css = buildAllViewsCss();
+  const css = buildAllViewsCss(resolvePalette(theme));
   const panesXml = built.map((b) => b.element).join("");
 
   return `<svg xmlns="http://www.w3.org/2000/svg" width="${totalWidth}" height="${totalHeight}"><style>${css}</style>${tabBar}${panesXml}</svg>`;

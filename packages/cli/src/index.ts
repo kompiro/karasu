@@ -39,6 +39,11 @@ program
     "svg",
   )
   .option(
+    "--theme <theme>",
+    "Diagram color theme: dark | light (default: dark). svg format only.",
+    "dark",
+  )
+  .option(
     "--include-matrix",
     "Also write a CRUD matrix SVG (<output-stem>.matrix.svg) alongside --output. Requires --format svg and --output.",
   )
@@ -66,7 +71,13 @@ Examples:
   .action(
     (
       file: string,
-      options: { output?: string; view?: string; format?: string; includeMatrix?: boolean },
+      options: {
+        output?: string;
+        view?: string;
+        format?: string;
+        theme?: string;
+        includeMatrix?: boolean;
+      },
     ) => {
       if (options.format && options.format !== "svg" && options.format !== "drawio") {
         process.stderr.write(
@@ -74,10 +85,15 @@ Examples:
         );
         process.exit(1);
       }
+      if (options.theme && options.theme !== "dark" && options.theme !== "light") {
+        process.stderr.write(`Error: unknown --theme "${options.theme}" (expected dark | light)\n`);
+        process.exit(1);
+      }
       render(file, {
         output: options.output,
         view: options.view as "system" | "deploy" | "org" | undefined,
         format: options.format as "svg" | "drawio" | undefined,
+        theme: options.theme as "dark" | "light" | undefined,
         includeMatrix: options.includeMatrix,
       });
     },

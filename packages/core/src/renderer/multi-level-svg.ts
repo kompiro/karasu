@@ -1,6 +1,7 @@
 import type { KrsNode } from "../types/ast.js";
 import type { ViewPath } from "../view/view-extract.js";
 import { el, escapeXml } from "./svg-builder.js";
+import { type DiagramPalette, type DiagramTheme, resolvePalette } from "./palette.js";
 
 const BREADCRUMB_HEIGHT = 40;
 
@@ -59,6 +60,7 @@ function assembleBreadcrumbSvg(
   breadcrumb: { id: string; label: string }[],
   currentIdx: number,
   totalWidth: number,
+  palette: DiagramPalette,
 ): string {
   const PADDING = 16;
   const SEP = " › ";
@@ -74,7 +76,7 @@ function assembleBreadcrumbSvg(
       y: 0,
       width: totalWidth,
       height: BREADCRUMB_HEIGHT,
-      fill: "#1E293B",
+      fill: palette.surfaceBg,
     }),
   );
 
@@ -93,7 +95,7 @@ function assembleBreadcrumbSvg(
             x,
             y: BREADCRUMB_HEIGHT / 2,
             "dominant-baseline": "central",
-            fill: "#64748B",
+            fill: palette.textMuted,
             "font-size": `${FONT_SIZE}px`,
             "font-family": "sans-serif",
           },
@@ -111,7 +113,7 @@ function assembleBreadcrumbSvg(
             x,
             y: BREADCRUMB_HEIGHT / 2,
             "dominant-baseline": "central",
-            fill: "#E2E8F0",
+            fill: palette.textPrimary,
             "font-size": `${FONT_SIZE}px`,
             "font-family": "sans-serif",
             "font-weight": "bold",
@@ -130,7 +132,7 @@ function assembleBreadcrumbSvg(
               x,
               y: BREADCRUMB_HEIGHT / 2,
               "dominant-baseline": "central",
-              fill: "#60A5FA",
+              fill: palette.link,
               "font-size": `${FONT_SIZE}px`,
               "font-family": "sans-serif",
             },
@@ -151,7 +153,8 @@ function assembleBreadcrumbSvg(
  * All levels are visible simultaneously, stacked vertically.
  * Breadcrumb links and drillable-node links scroll to the target level (HTML anchor).
  */
-export function assembleMultiLevelSvg(levels: ExportLevel[]): string {
+export function assembleMultiLevelSvg(levels: ExportLevel[], theme?: DiagramTheme): string {
+  const palette = resolvePalette(theme);
   if (levels.length === 0) {
     return el(
       "svg",
@@ -162,7 +165,7 @@ export function assembleMultiLevelSvg(levels: ExportLevel[]): string {
           x: 100,
           y: 50,
           "text-anchor": "middle",
-          fill: "#9CA3AF",
+          fill: palette.emptyStateText,
           "font-family": "sans-serif",
         },
         "No levels to display",
@@ -188,6 +191,7 @@ export function assembleMultiLevelSvg(levels: ExportLevel[]): string {
       level.breadcrumb,
       level.breadcrumb.length - 1,
       maxWidth,
+      palette,
     );
 
     // Re-embed as nested <svg> positioned below the breadcrumb bar within this level.

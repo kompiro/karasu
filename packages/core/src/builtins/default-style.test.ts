@@ -1,5 +1,9 @@
 import { describe, it, expect } from "vitest";
-import { getBuiltinStyleSheet, BUILTIN_STYLE_SOURCE } from "./default-style.js";
+import {
+  getBuiltinStyleSheet,
+  BUILTIN_STYLE_SOURCE,
+  BUILTIN_STYLE_SOURCE_LIGHT,
+} from "./default-style.js";
 
 describe("BUILTIN_STYLE_SOURCE", () => {
   it("is a non-empty string", () => {
@@ -131,5 +135,71 @@ describe("getBuiltinStyleSheet", () => {
       (r) => r.selector.nodeType === "storage" && r.properties["shape"] === "cloud",
     );
     expect(rule).toBeDefined();
+  });
+});
+
+describe("getBuiltinStyleSheet — light theme (Issue #1479)", () => {
+  it("parses the light variant without errors", () => {
+    const sheet = getBuiltinStyleSheet("light");
+    expect(sheet.rules.length).toBeGreaterThan(0);
+  });
+
+  it("defaults to the dark sheet (backward compatible)", () => {
+    expect(getBuiltinStyleSheet()).toBe(getBuiltinStyleSheet("dark"));
+  });
+
+  it("caches the dark and light variants separately", () => {
+    expect(getBuiltinStyleSheet("light")).toBe(getBuiltinStyleSheet("light"));
+    expect(getBuiltinStyleSheet("dark")).toBe(getBuiltinStyleSheet("dark"));
+    expect(getBuiltinStyleSheet("light")).not.toBe(getBuiltinStyleSheet("dark"));
+  });
+
+  it("the light variant uses different node colors than the dark variant", () => {
+    expect(BUILTIN_STYLE_SOURCE_LIGHT).not.toBe(BUILTIN_STYLE_SOURCE);
+    const dark = getBuiltinStyleSheet("dark");
+    const light = getBuiltinStyleSheet("light");
+    const darkService = dark.rules.find((r) => r.selector.nodeType === "service");
+    const lightService = light.rules.find((r) => r.selector.nodeType === "service");
+    expect(darkService?.properties["background-color"]).toBeDefined();
+    expect(lightService?.properties["background-color"]).toBeDefined();
+    expect(lightService?.properties["background-color"]).not.toBe(
+      darkService?.properties["background-color"],
+    );
+  });
+
+  it("the light variant keeps the same rule structure (selectors + non-color properties)", () => {
+    // The two sheets are parsed from parallel sources kept in lock-step
+    // by hand. This guards against silent drift: the only differences
+    // allowed between the dark and light sheets are color properties.
+    const colorProps = new Set(["background-color", "color", "border-color", "badge-color"]);
+    const dark = getBuiltinStyleSheet("dark");
+    const light = getBuiltinStyleSheet("light");
+
+    expect(light.rules.length).toBe(dark.rules.length);
+
+    // Selector identity ignoring `loc` — source offsets differ because
+    // the two sheets are distinct source strings.
+    const selectorKey = (s: (typeof dark.rules)[number]["selector"]) =>
+      JSON.stringify({ nodeType: s.nodeType, tags: s.tags, annotations: s.annotations });
+
+    dark.rules.forEach((darkRule, i) => {
+      const lightRule = light.rules[i];
+      // Same selector, in the same order — a renamed / added / removed
+      // selector in one sheet only would surface here.
+      expect(selectorKey(lightRule.selector)).toBe(selectorKey(darkRule.selector));
+      // Every non-color property must be identical between themes;
+      // structural properties (shape, border-width, font-*) drive layout
+      // and must not diverge.
+      for (const [prop, value] of Object.entries(darkRule.properties)) {
+        if (colorProps.has(prop)) continue;
+        expect(lightRule.properties[prop]).toBe(value);
+      }
+      // The light sheet must not introduce non-color properties the dark
+      // sheet lacks either.
+      for (const prop of Object.keys(lightRule.properties)) {
+        if (colorProps.has(prop)) continue;
+        expect(darkRule.properties).toHaveProperty(prop);
+      }
+    });
   });
 });

@@ -223,12 +223,20 @@ karasu render index.krs > docs/arch.svg
 # 特定のビューのみ出力
 karasu render index.krs --view deploy --output deploy.svg
 
+# ライトテーマで出力（デフォルトは dark）
+karasu render index.krs --theme light --output arch-light.svg
+
 # svgo でパイプ最適化
 karasu render index.krs | svgo - -o docs/arch.svg
 
 # draw.io (mxGraph XML) に書き出して細部までレイアウト調整する
 karasu render index.krs --format drawio --output arch.drawio
 ```
+
+`--theme <dark|light>` は図のカラーテーマを選ぶ（デフォルト `dark`）。
+レンダラの chrome（キャンバス背景・凡例・パンくず・タブバー）と
+built-in のノード / エッジ色スタイルシートの両方を切り替える。`svg`
+フォーマットのみ対応。
 
 ### フォーマット
 
