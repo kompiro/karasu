@@ -39,6 +39,13 @@ export default defineConfig({
     // pasted via the clipboard to avoid auto-indent compounding on every
     // newline.
     permissions: ["clipboard-read", "clipboard-write"],
+    // App theme defaults to `system`, which resolves via prefers-color-scheme.
+    // Playwright Chromium has no OS preference, so `system` falls through to
+    // "light". AT-0053 hardcodes the dark-theme amber edge color (#F59E0B);
+    // under the light palette the implicit-edge color is #D97706 and the
+    // selectors find nothing. Pin colorScheme so the app renders the dark
+    // palette every run. See #1487.
+    colorScheme: "dark",
   },
   projects: [
     {
