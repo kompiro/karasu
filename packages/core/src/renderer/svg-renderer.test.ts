@@ -194,7 +194,7 @@ system Test {
     expect(svg).toContain('opacity="0.6"');
   });
 
-  it("default @deprecated badge label is 廃止予定", () => {
+  it("default @deprecated badge label is Deprecated", () => {
     const svg = renderFromSource(`
 system Test {
   service Legacy @deprecated {
@@ -202,7 +202,7 @@ system Test {
   }
 }
     `);
-    expect(svg).toContain("廃止予定");
+    expect(svg).toContain("Deprecated");
     expect(svg).not.toContain("非推奨");
   });
 
@@ -232,15 +232,15 @@ system OrderSystem {
     const legacyStyles = resolveStyles(parseResult.value.systems, sheets);
     const legacySlice = extractView(parseResult.value.systems, ["OrderSystem", "LegacyService"]);
     const legacySvg = render(legacySlice, legacyStyles);
-    expect(legacySvg).toContain("廃止予定");
-    expect(legacySvg).not.toContain("移行先");
+    expect(legacySvg).toContain("Deprecated");
+    expect(legacySvg).not.toContain("Migration target");
 
     // Render NewService view: should show @migration_target badge
     const newStyles = resolveStyles(parseResult.value.systems, sheets);
     const newSlice = extractView(parseResult.value.systems, ["OrderSystem", "NewService"]);
     const newSvg = render(newSlice, newStyles);
-    expect(newSvg).toContain("移行先");
-    expect(newSvg).not.toContain("廃止予定");
+    expect(newSvg).toContain("Migration target");
+    expect(newSvg).not.toContain("Deprecated");
   });
 
   it("renders async edges as dashed", () => {

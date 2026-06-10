@@ -189,7 +189,7 @@ artifact {
 @deprecated {
   badge-color: #EF4444;
   badge-icon: "⚠";
-  badge-label: "廃止予定";
+  badge-label: "Deprecated";
   opacity: 0.6;
 }
 
@@ -202,13 +202,13 @@ artifact {
 @experimental {
   badge-color: #F59E0B;
   badge-icon: "⚗";
-  badge-label: "実験的";
+  badge-label: "Experimental";
 }
 
 @migration_target {
   badge-color: #3B82F6;
   badge-icon: "→";
-  badge-label: "移行先";
+  badge-label: "Migration target";
 }
 
 /* ── エッジ ── */
@@ -435,7 +435,7 @@ artifact {
 @deprecated {
   badge-color: #DC2626;
   badge-icon: "⚠";
-  badge-label: "廃止予定";
+  badge-label: "Deprecated";
   opacity: 0.6;
 }
 
@@ -448,13 +448,13 @@ artifact {
 @experimental {
   badge-color: #D97706;
   badge-icon: "⚗";
-  badge-label: "実験的";
+  badge-label: "Experimental";
 }
 
 @migration_target {
   badge-color: #2563EB;
   badge-icon: "→";
-  badge-label: "移行先";
+  badge-label: "Migration target";
 }
 
 /* ── エッジ ── */
