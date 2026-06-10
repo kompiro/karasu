@@ -91,3 +91,8 @@ scope:
 - `packages/app/src/hooks/useSystemView.test.tsx` — consumer-layer regression fence for #1479 (`theme` threading from the view hook into `compileProject`)
 - `packages/core/src/displaymode-meta.test.ts` — curated meta-test enumerating every public SVG-producing entry point that consumes `displayMode`. **Adding a new SVG-producing entry to the public API requires registering it in `DISPLAY_MODE_CONSUMERS`** so the next #183-style missed surface is caught at code review
 - `packages/core/src/theme-meta.test.ts` — the same curated meta-test for the `theme` toggle (`THEME_CONSUMERS`). NOTE: both meta-tests fence the **library** layer only — they prove `core` threads the toggle, not that each app / CLI / extension call site forwards it (the #1479 gap)
+- `packages/core/src/badge-labels-meta.test.ts` — the same curated meta-test for `annotationBadgeLabels` (`BADGE_LABEL_CONSUMERS`, #1508)
+
+## 派生元 spec
+
+- [`docs/spec/i18n.md`](../spec/i18n.md) — core 節「組み込みアノテーションバッジのラベル」（locale は theme と同様の全描画面横断スイッチで、注入オプションが全エントリポイントに通っていることを本 TPL の meta-test パターンで検証する）
