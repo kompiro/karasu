@@ -181,7 +181,11 @@ export function useOrgView(
 
   const orgTreeSvg =
     state.organizations.length > 0
-      ? renderOrgTreeView(state.organizations, expandedTeamIds, { styles: state.styles, theme })
+      ? renderOrgTreeView(state.organizations, expandedTeamIds, {
+          styles: state.styles,
+          theme,
+          emptyStateLabels,
+        })
       : "";
 
   const orgTreeExportSvg =
@@ -190,6 +194,7 @@ export function useOrgView(
           forExport: true,
           styles: state.styles,
           theme,
+          emptyStateLabels,
         })
       : "";
 

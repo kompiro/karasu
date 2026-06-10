@@ -85,6 +85,21 @@ describe("renderOrgTreeView", () => {
     expect(svg).toContain("No teams defined");
   });
 
+  // TPL-20260510-11: renderOrgTreeView must accept the same EmptyStateLabels
+  // injection as its sibling renderers (deploy / org / all-layers). #1494
+  it("renders the injected orgNoTeams label in the empty state", () => {
+    const svg = renderOrgTreeView([], new Set(), {
+      emptyStateLabels: { orgNoTeams: "チーム未定義 <>" },
+    });
+    expect(svg).toContain("チーム未定義 &lt;&gt;");
+    expect(svg).not.toContain("No teams defined");
+  });
+
+  it("falls back to the default label when emptyStateLabels omits orgNoTeams", () => {
+    const svg = renderOrgTreeView([], new Set(), { emptyStateLabels: {} });
+    expect(svg).toContain("No teams defined");
+  });
+
   it("renders an SVG element with xmlns", () => {
     const orgs = [org("o1", [team("eng")])];
     const svg = renderOrgTreeView(orgs, new Set());
