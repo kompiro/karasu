@@ -13,6 +13,7 @@ import type { ResolvedStyles, ResolvedNodeStyle, ResolvedEdgeStyle } from "../ty
 import { el, escapeXml, diffStateAttr } from "./svg-builder.js";
 import { ownsEdgeKey } from "../diff/org-view-diff.js";
 import { type DiagramPalette, type DiagramTheme, resolvePalette } from "./palette.js";
+import { DEFAULT_EMPTY_STATE_LABELS, type EmptyStateLabels } from "./empty-state-labels.js";
 
 // ---------------------------------------------------------------------------
 // Layout constants
@@ -505,6 +506,8 @@ export interface RenderOrgTreeOptions {
   edgeDiffState?: Map<string, string>;
   /** Diagram theme. Drives the chrome palette. Defaults to `"dark"`. */
   theme?: DiagramTheme;
+  /** Locale-dependent empty-state labels, injected by the caller (docs/spec/i18n.md). */
+  emptyStateLabels?: EmptyStateLabels;
 }
 
 /**
@@ -541,7 +544,7 @@ export function renderOrgTreeView(
           "font-family": FONT,
           "font-size": 13,
         },
-        "No teams defined",
+        escapeXml(options.emptyStateLabels?.orgNoTeams ?? DEFAULT_EMPTY_STATE_LABELS.orgNoTeams),
       ),
     );
   }
