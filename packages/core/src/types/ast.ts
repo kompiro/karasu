@@ -437,6 +437,7 @@ export interface DiagnosticParamsByCode {
     nodeKind: string;
   };
   "infra-not-in-context": { infraKind: string; parentKind: string };
+  "legend-not-top-level": { parentKind: string };
   "expected-id-or-string": { context: string };
   "expected-node-id": { kind: string };
   "invalid-node-kind": { kind: string };

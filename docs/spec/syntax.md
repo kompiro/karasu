@@ -704,7 +704,7 @@ A `legend` block declares color → meaning pairs that the renderer paints as a 
 
 ### Top-level placement
 
-`legend` blocks live at the top level of a `.krs` file — alongside `system`, `deploy`, and `organization`. Nesting inside `system`, `service`, or `domain` is a parse error. Multiple `legend` blocks are allowed and stack vertically in declaration order on each view that contains them.
+`legend` blocks live at the top level of a `.krs` file — alongside `system`, `deploy`, and `organization`. Nesting inside any block (`system`, `service`, `domain`, `deploy`, `organization`, `team`, ...) is a parse error (`legend-not-top-level`); the parser reports it once and skips the whole nested legend block. Multiple `legend` blocks are allowed and stack vertically in declaration order on each view that contains them.
 
 ### Grammar
 

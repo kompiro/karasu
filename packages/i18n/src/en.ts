@@ -254,6 +254,8 @@ export const en: Translations = {
   "diagnostic.propertyNotForNodeKind.operations": `"operations" property is only valid for resource declarations inside a usecase`,
   "diagnostic.infraNotInContext.message": ({ infraKind, parentKind }) =>
     `"${infraKind}" is only valid as a direct child of system, not inside "${parentKind}"`,
+  "diagnostic.legendNotTopLevel.message": ({ parentKind }) =>
+    `legend blocks are only allowed at the top level of a file, not inside "${parentKind}"`,
   "diagnostic.expectedIdOrString.message": ({ context }) =>
     `Expected identifier or string literal after "${context}"`,
   "diagnostic.expectedNodeId.message": ({ kind }) =>
