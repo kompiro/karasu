@@ -424,3 +424,5 @@ DesignDoc が proactive TPL を引用したら、実装 PR で次をやる:
 | [TPL-20260519-02](TPL-20260519-02-shared-vocabulary-dual-representation.md) | 同一語彙を複数の表現で持つときは片方更新による静かな drift を検証する | renderer | #1415 |
 | [TPL-20260520-01](TPL-20260520-01-overlay-z-index-scale.md) | overlay/portal surface の重なり順はマジックナンバーではなく文書化された z-index スケールから選ぶ | app-ui | #1468 |
 | [TPL-20260520-02](TPL-20260520-02-consistency-check-triggers-on-both-sides.md) | 2 つの成果物の整合性を検証するチェックは、両方の変更で起動させる | build | #1480 |
+| [TPL-20260610-01](TPL-20260610-01-accepted-vocabulary-must-have-effect.md) | 受理される語彙は「効果を持つ」「警告される」「open set と明文化」のいずれかに属する | styling | property-schema.ts, parser.ts |
+| [TPL-20260610-02](TPL-20260610-02-spec-promised-diagnostics-implemented.md) | spec が約束する診断は専用の診断コードとして実装されていることを検証する | parser | docs/spec/style.md, docs/spec/syntax.md |
