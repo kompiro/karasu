@@ -28,6 +28,21 @@ describe("validateStyleValues — ident-of", () => {
     expect(diags).toHaveLength(1);
     expect(diags[0].code).toBe("style-invalid-enum-value");
   });
+
+  // ADR-20260610-01 / #1492: stroke-style is an official edge property.
+  it("accepts stroke-style with a line-style keyword", () => {
+    expect(validate(`edge { stroke-style: dotted; }`)).toEqual([]);
+  });
+
+  it("rejects an invalid stroke-style value", () => {
+    const diags = validate(`edge { stroke-style: wavy; }`);
+    expect(diags).toHaveLength(1);
+    expect(diags[0].code).toBe("style-invalid-enum-value");
+    expect(diags[0].params).toMatchObject({
+      property: "stroke-style",
+      allowed: ["solid", "dashed", "dotted"],
+    });
+  });
 });
 
 describe("validateStyleValues — hex / color union", () => {

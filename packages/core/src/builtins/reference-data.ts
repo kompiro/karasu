@@ -562,6 +562,16 @@ export const REFERENCE_DATA = {
       description: { en: "Edge line width", ja: "エッジ線の太さ" },
     },
     {
+      name: "stroke-style",
+      appliesTo: "edge",
+      valueType: "keyword",
+      keywords: ["solid", "dashed", "dotted"],
+      description: {
+        en: "Edge line style. Canonical name; border-style is the edge alias",
+        ja: "エッジ線のスタイル。正準名（border-style はエッジでのエイリアス）",
+      },
+    },
+    {
       name: "direction",
       appliesTo: "edge",
       valueType: "keyword",

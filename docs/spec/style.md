@@ -104,7 +104,8 @@ opacity:          0.6;
 color:            #94A3B8;
 stroke-width:     1.5px;
 font-size:        11px;
-border-style:     solid;         /* solid | dashed | dotted */
+stroke-style:     solid;         /* solid | dashed | dotted (canonical, see below) */
+border-style:     solid;         /* solid | dashed | dotted (edge alias of stroke-style) */
 direction:        auto;          /* up | down | left | right | auto (hint, see below) */
 label-position:   middle;        /* start | middle | end | <0.0..1.0> */
 label-offset:     0 0;            /* <dy>px or <dx>px <dy>px (screen-axis) */
@@ -117,6 +118,37 @@ badge-color:      #EF4444;
 badge-icon:       "⚠";
 badge-label:      "Deprecated";
 ```
+
+---
+
+## stroke-style property (edges)
+
+`stroke-style` is the **canonical** name for an edge's line style
+(`solid | dashed | dotted`), matching the SVG-flavored `stroke-*`
+vocabulary edges already use (`stroke-width`). `border-style` remains
+supported on edges as an alias for backward compatibility — existing
+stylesheets keep working unchanged.
+
+```css
+edge[async]  { stroke-style: dashed; }   /* preferred */
+edge[legacy] { border-style: dashed; }   /* alias, same effect */
+```
+
+When **both** are declared for the same edge after the cascade,
+`stroke-style` wins regardless of declaration order:
+
+```css
+edge { border-style: dotted; stroke-style: dashed; }  /* → dashed */
+```
+
+On nodes, `border-style` is the only line-style property —
+`stroke-style` has no effect on node shapes.
+
+> Related TPLs: [TPL-20260511-02](../test-perspectives/TPL-20260511-02-spec-doc-reference-data-sync.md)
+> — every property declared in this document's `css` fences must exist in
+> the in-app reference data, and every `PROPERTY_SCHEMAS` entry must be
+> documented here (`stroke-style` was a schema-only ghost before being
+> formalized — see ADR-20260610-01 / #1492).
 
 ---
 

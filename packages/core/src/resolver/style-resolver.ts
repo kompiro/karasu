@@ -484,6 +484,13 @@ function toResolvedEdgeStyle(props: Record<string, string>): ResolvedEdgeStyle {
     const value = props["border-style"] as ResolvedEdgeStyle["strokeStyle"];
     if (EDGE_STROKE_STYLES.has(value)) style.strokeStyle = value;
   }
+  // `stroke-style` is the canonical edge-side name (ADR-20260610-01);
+  // `border-style` stays supported for back-compat. When both are
+  // declared, the canonical name wins regardless of declaration order.
+  if (props["stroke-style"]) {
+    const value = props["stroke-style"] as ResolvedEdgeStyle["strokeStyle"];
+    if (EDGE_STROKE_STYLES.has(value)) style.strokeStyle = value;
+  }
   if (props["direction"]) {
     const value = props["direction"];
     if (EDGE_DIRECTION_VALUES.has(value)) {

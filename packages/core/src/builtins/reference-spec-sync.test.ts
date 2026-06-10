@@ -4,6 +4,7 @@ import { readFileSync } from "node:fs";
 import { resolve, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { getReference } from "./reference.js";
+import { PROPERTY_SCHEMAS } from "../style/property-schema.js";
 
 // Reference-data ↔ spec-doc agreement smoke test.
 //
@@ -18,6 +19,12 @@ import { getReference } from "./reference.js";
 // (The reverse — every reference entry is documented — is intentionally
 // NOT asserted; the reference may carry entries the prose docs have not
 // caught up on yet, and that is a separate, doc-side gap.)
+//
+// Exception: for the *validator* schema (`PROPERTY_SCHEMAS`) the reverse
+// direction IS asserted. A schema entry the spec does not document means
+// the validator silently accepts input no documentation explains and no
+// resolver may consume — exactly the `stroke-style` ghost-property bug
+// (#1492). Reference data may lead the docs; the validator must not.
 //
 // See docs/test-perspectives/TPL-20260511-02-spec-doc-reference-data-sync.md.
 
@@ -92,6 +99,20 @@ describe("Reference data ↔ docs/spec agreement (TPL-20260511-02)", () => {
     const known = new Set(ref.styleProperties.map((p) => p.name));
     const missing = [...documented].filter((p) => !known.has(p)).sort();
     expect(missing).toEqual([]);
+  });
+
+  it("style.md: every PROPERTY_SCHEMAS entry is documented in the spec (#1492)", () => {
+    const styleMd = readSpec("style.md");
+    const documented = new Set<string>();
+    for (const block of fencedBlocks(styleMd, "css")) {
+      for (const m of block.matchAll(/(^|[\s{;])([a-z][a-z-]+)\s*:/g)) {
+        documented.add(m[2]);
+      }
+    }
+    const undocumented = Object.keys(PROPERTY_SCHEMAS)
+      .filter((p) => !documented.has(p))
+      .sort();
+    expect(undocumented).toEqual([]);
   });
 
   it("style.md: every documented shape keyword is in getReference().shapes", () => {

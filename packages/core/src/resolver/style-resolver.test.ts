@@ -850,6 +850,78 @@ describe("resolveStyles", () => {
     const result = resolveStyles([system], [getBuiltinStyleSheet(), userSheet]);
     expect(result.nodes.get("DB")!.shape).toBe("hexagon");
   });
+
+  // ADR-20260610-01 / #1492: `stroke-style` is the canonical edge-side
+  // line-style property; `border-style` stays as the edge alias.
+  describe("stroke-style property (edges)", () => {
+    function resolveEdgeWith(rules: StyleRule[]) {
+      const system = makeNode({
+        kind: "system",
+        id: "Test",
+        children: [
+          makeNode({ kind: "service", id: "A", label: "A" }),
+          makeNode({ kind: "service", id: "B", label: "B" }),
+        ],
+        edges: [{ from: "A", to: "B", kind: "sync" as const, tags: [], loc: dummyLoc }],
+      });
+      const result = resolveStyles([system], [getBuiltinStyleSheet(), { rules }]);
+      return result.edges.get("A->B")!;
+    }
+
+    it("stroke-style sets the edge line style", () => {
+      const edgeStyle = resolveEdgeWith([
+        makeRule(
+          { nodeType: "edge", tags: [], annotations: [] },
+          { "stroke-style": "dotted" },
+          1,
+          0,
+        ),
+      ]);
+      expect(edgeStyle.strokeStyle).toBe("dotted");
+    });
+
+    it("stroke-style wins over border-style in the same rule", () => {
+      const edgeStyle = resolveEdgeWith([
+        makeRule(
+          { nodeType: "edge", tags: [], annotations: [] },
+          { "border-style": "dotted", "stroke-style": "dashed" },
+          1,
+          0,
+        ),
+      ]);
+      expect(edgeStyle.strokeStyle).toBe("dashed");
+    });
+
+    it("stroke-style wins even when border-style is declared later in the cascade", () => {
+      const edgeStyle = resolveEdgeWith([
+        makeRule(
+          { nodeType: "edge", tags: [], annotations: [] },
+          { "stroke-style": "dashed" },
+          1,
+          0,
+        ),
+        makeRule(
+          { nodeType: "edge", tags: [], annotations: [] },
+          { "border-style": "dotted" },
+          1,
+          1,
+        ),
+      ]);
+      expect(edgeStyle.strokeStyle).toBe("dashed");
+    });
+
+    it("an invalid stroke-style value is ignored and border-style applies", () => {
+      const edgeStyle = resolveEdgeWith([
+        makeRule(
+          { nodeType: "edge", tags: [], annotations: [] },
+          { "border-style": "dotted", "stroke-style": "wavy" },
+          1,
+          0,
+        ),
+      ]);
+      expect(edgeStyle.strokeStyle).toBe("dotted");
+    });
+  });
 });
 
 describe("analyze", () => {

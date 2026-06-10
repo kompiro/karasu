@@ -95,6 +95,8 @@ opacity:          0.6;
 color:            #94A3B8;
 stroke-width:     1.5px;
 font-size:        11px;
+stroke-style:     solid;         /* solid | dashed | dotted（正準名、後述） */
+border-style:     solid;         /* solid | dashed | dotted（stroke-style のエイリアス） */
 direction:        auto;          /* up | down | left | right | auto（ヒント、後述） */
 label-position:   middle;        /* start | middle | end | <0.0..1.0> */
 label-offset:     0 0;            /* <dy>px or <dx>px <dy>px（screen-axis） */
@@ -107,6 +109,37 @@ badge-color:      #EF4444;
 badge-icon:       "⚠";
 badge-label:      "非推奨";
 ```
+
+---
+
+## stroke-style プロパティ（エッジ）
+
+`stroke-style` はエッジの線スタイル（`solid | dashed | dotted`）の
+**正準名**である。エッジが既に使っている SVG 系の `stroke-*` 語彙
+（`stroke-width`）と揃えている。`border-style` は後方互換のための
+エイリアスとしてエッジでも引き続き使える — 既存のスタイルシートは
+そのまま動作する。
+
+```css
+edge[async]  { stroke-style: dashed; }   /* 推奨 */
+edge[legacy] { border-style: dashed; }   /* エイリアス、同じ効果 */
+```
+
+カスケード後に同一エッジへ**両方**が宣言されている場合は、宣言順に
+かかわらず `stroke-style` が勝つ:
+
+```css
+edge { border-style: dotted; stroke-style: dashed; }  /* → dashed */
+```
+
+ノードの線スタイルは `border-style` のみ — `stroke-style` はノード
+シェイプには効果を持たない。
+
+> Related TPLs: [TPL-20260511-02](../test-perspectives/TPL-20260511-02-spec-doc-reference-data-sync.md)
+> — 本ドキュメントの `css` フェンスに宣言されたプロパティはアプリ内
+> reference データに存在しなければならず、`PROPERTY_SCHEMAS` の全エントリは
+> 本ドキュメントに記載されていなければならない（`stroke-style` は正式化前は
+> スキーマのみのゴーストだった — ADR-20260610-01 / #1492 参照）。
 
 ---
 
