@@ -424,7 +424,8 @@ function nodeSelectorMatches(node: KrsNode, selector: StyleSelector): boolean {
 }
 
 function edgeSelectorMatches(edge: KrsEdge, selector: StyleSelector): boolean {
-  if (selector.nodeType !== "edge" && selector.nodeType !== undefined) return false;
+  // Edge selectors require the explicit `edge` type; tag-only selectors
+  // (nodeType === undefined) never match edges.
   if (selector.nodeType !== "edge") return false;
   if (selector.edgeId !== undefined) {
     if (edge.canonicalId === undefined) return false;
