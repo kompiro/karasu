@@ -7,7 +7,7 @@
   - 関連 ADR: [ADR-20260425-01](../adr/20260425-01-i18n-default-policy.md)（i18n 既定ポリシー）, [ADR-20260522-01](../adr/20260522-01-svg-diagram-theming.md)（theme threading の前例）
   - 関連 TPL: [TPL-20260519-02](../test-perspectives/TPL-20260519-02-shared-vocabulary-dual-representation.md), [TPL-20260510-06](../test-perspectives/TPL-20260510-06-display-mode-cross-surface.md), [TPL-20260510-11](../test-perspectives/TPL-20260510-11-parallel-function-parity.md)
   - コード: `packages/core/src/builtins/default-style.ts`, `packages/core/src/builtins/reference-data.ts`, `packages/app/src/i18n/use-empty-state-labels.ts`
-- **PR**: （作成後に記入）
+- **PR**: [#1510](https://github.com/kompiro/karasu/pull/1510)
 
 ## 背景・課題
 
