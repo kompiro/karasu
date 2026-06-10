@@ -137,6 +137,12 @@ export type Translations = {
   "emptyState.org.placeholder": string;
   "emptyState.system.noDiagram": string;
 
+  // Built-in annotation badge labels (rendered inside SVG by core renderers)
+  "badge.deprecated": string;
+  "badge.new": string;
+  "badge.experimental": string;
+  "badge.migrationTarget": string;
+
   // ReferencePanel (Phase C5)
   "referencePanel.unsupportedMessage": string;
   "referencePanel.builtin.description": string;

@@ -88,8 +88,8 @@ organization Org {
   });
 
   describe("Part B: inherited service annotations propagate through to descendant rendering", () => {
-    const deprecatedBadgeLabel = "廃止予定"; // builtin style for @deprecated
-    const experimentalBadgeLabel = "実験的"; // builtin style for @experimental
+    const deprecatedBadgeLabel = "Deprecated"; // builtin style for @deprecated
+    const experimentalBadgeLabel = "Experimental"; // builtin style for @experimental
 
     const inheritedDeprecated = `
 system S {

@@ -1,9 +1,11 @@
 import { describe, it, expect } from "vitest";
 import {
   getBuiltinStyleSheet,
+  buildBuiltinStyleSource,
   BUILTIN_STYLE_SOURCE,
   BUILTIN_STYLE_SOURCE_LIGHT,
 } from "./default-style.js";
+import { REFERENCE_DATA } from "./reference-data.js";
 
 describe("BUILTIN_STYLE_SOURCE", () => {
   it("is a non-empty string", () => {
@@ -167,6 +169,15 @@ describe("getBuiltinStyleSheet — light theme (Issue #1479)", () => {
     );
   });
 
+  it("the light annotation badge colors differ from dark (legibility on light cards)", () => {
+    const dark = getBuiltinStyleSheet("dark");
+    const light = getBuiltinStyleSheet("light");
+    const darkDeprecated = dark.rules.find((r) => r.selector.annotations.includes("deprecated"));
+    const lightDeprecated = light.rules.find((r) => r.selector.annotations.includes("deprecated"));
+    expect(darkDeprecated?.properties["badge-color"]).toBe("#EF4444");
+    expect(lightDeprecated?.properties["badge-color"]).toBe("#DC2626");
+  });
+
   it("the light variant keeps the same rule structure (selectors + non-color properties)", () => {
     // The two sheets are parsed from parallel sources kept in lock-step
     // by hand. This guards against silent drift: the only differences
@@ -201,5 +212,73 @@ describe("getBuiltinStyleSheet — light theme (Issue #1479)", () => {
         expect(darkRule.properties).toHaveProperty(prop);
       }
     });
+  });
+});
+
+describe("getBuiltinStyleSheet — annotation badge labels (#1508)", () => {
+  const annotationRule = (sheet: ReturnType<typeof getBuiltinStyleSheet>, name: string) =>
+    sheet.rules.find((r) => r.selector.annotations.includes(name));
+
+  it("default labels match the reference-data en labels (single source, TPL-20260519-02)", () => {
+    for (const theme of ["dark", "light"] as const) {
+      const sheet = getBuiltinStyleSheet(theme);
+      for (const a of REFERENCE_DATA.annotations) {
+        const rule = annotationRule(sheet, a.name);
+        expect(rule?.properties["badge-label"]).toBe(`"${a.defaultBadge.label.en}"`);
+        expect(rule?.properties["badge-icon"]).toBe(`"${a.defaultBadge.icon}"`);
+      }
+    }
+  });
+
+  it("dark badge colors come from reference-data defaultBadge.color", () => {
+    const sheet = getBuiltinStyleSheet("dark");
+    for (const a of REFERENCE_DATA.annotations) {
+      expect(annotationRule(sheet, a.name)?.properties["badge-color"]).toBe(a.defaultBadge.color);
+    }
+  });
+
+  it("injected labels replace the defaults for all four annotations", () => {
+    const sheet = getBuiltinStyleSheet("dark", {
+      deprecated: "非推奨",
+      new: "新規",
+      experimental: "実験的",
+      migrationTarget: "移行先",
+    });
+    expect(annotationRule(sheet, "deprecated")?.properties["badge-label"]).toBe('"非推奨"');
+    expect(annotationRule(sheet, "new")?.properties["badge-label"]).toBe('"新規"');
+    expect(annotationRule(sheet, "experimental")?.properties["badge-label"]).toBe('"実験的"');
+    expect(annotationRule(sheet, "migration_target")?.properties["badge-label"]).toBe('"移行先"');
+  });
+
+  it("partially injected labels fall back to en for the omitted keys", () => {
+    const sheet = getBuiltinStyleSheet("dark", { deprecated: "非推奨" });
+    expect(annotationRule(sheet, "deprecated")?.properties["badge-label"]).toBe('"非推奨"');
+    expect(annotationRule(sheet, "experimental")?.properties["badge-label"]).toBe('"Experimental"');
+  });
+
+  it("caches per (theme, label set) without cross-contamination", () => {
+    const labels = { deprecated: "非推奨" };
+    const jaDark = getBuiltinStyleSheet("dark", labels);
+    const jaDark2 = getBuiltinStyleSheet("dark", { deprecated: "非推奨" });
+    const enDark = getBuiltinStyleSheet("dark");
+    const jaLight = getBuiltinStyleSheet("light", labels);
+    expect(jaDark).toBe(jaDark2);
+    expect(jaDark).not.toBe(enDark);
+    expect(jaDark).not.toBe(jaLight);
+    // The default sheet is untouched by injected-label requests.
+    expect(annotationRule(enDark, "deprecated")?.properties["badge-label"]).toBe('"Deprecated"');
+  });
+
+  it("escapes quotes and backslashes in injected labels", () => {
+    const sheet = getBuiltinStyleSheet("dark", { deprecated: 'say "no" \\ stop' });
+    expect(annotationRule(sheet, "deprecated")?.properties["badge-label"]).toBe(
+      '"say "no" \\ stop"',
+    );
+  });
+
+  it("buildBuiltinStyleSource leaves no placeholder behind", () => {
+    for (const theme of ["dark", "light"] as const) {
+      expect(buildBuiltinStyleSource(theme)).not.toContain("__ANNOTATION_RULES__");
+    }
   });
 });

@@ -45,6 +45,7 @@ import assetsSvg from "@karasu-tools/core/icons/assets.svg?raw";
 import jobSvg from "@karasu-tools/core/icons/job.svg?raw";
 import artifactSvg from "@karasu-tools/core/icons/artifact.svg?raw";
 import { useEmptyStateLabels } from "../i18n/use-empty-state-labels.js";
+import { useAnnotationBadgeLabels } from "../i18n/use-annotation-badge-labels.js";
 import { computeViewResultFingerprint } from "./result-fingerprint.js";
 
 interface SystemViewState {
@@ -131,6 +132,7 @@ export function useSystemView(
   const recompileCounter = useRef(0);
 
   const emptyStateLabels = useEmptyStateLabels();
+  const annotationBadgeLabels = useAnnotationBadgeLabels();
 
   const recompile = useCallback(() => {
     recompileCounter.current++;
@@ -167,6 +169,7 @@ export function useSystemView(
               viewPath,
               displayMode,
               emptyStateLabels,
+              annotationBadgeLabels,
               theme,
             }),
             compileSystemDiff({
@@ -176,6 +179,7 @@ export function useSystemView(
               viewPath,
               displayMode,
               emptyStateLabels,
+              annotationBadgeLabels,
               theme,
             }),
           ]);
@@ -227,6 +231,7 @@ export function useSystemView(
           viewPath,
           displayMode,
           emptyStateLabels,
+          annotationBadgeLabels,
           theme,
         });
         if (result.diagramType !== "system") return;
@@ -295,6 +300,7 @@ export function useSystemView(
     compareEntryPath,
     compareFs,
     emptyStateLabels,
+    annotationBadgeLabels,
     recompileCounter.current,
   ]);
   /* eslint-enable react-hooks/exhaustive-deps */
