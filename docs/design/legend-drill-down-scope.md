@@ -4,6 +4,7 @@
 - **ステータス**: 検討中
 - **関連**:
   - 引き金 Issue: [#1513](https://github.com/kompiro/karasu/issues/1513)
+  - **PR**: [#1514](https://github.com/kompiro/karasu/pull/1514)
   - 関連 ADR: [ADR-20260428-07](../adr/20260428-07-diagram-legend-syntax.md)（legend 構文の導入）
   - 関連 ADR: [ADR-20260429-03](../adr/20260429-03-legend-in-use-fallback.md)（in-use fallback）
   - 関連 Issue/PR: #1495 / #1512（`legend-not-top-level` — ネスト legend は parse error）
