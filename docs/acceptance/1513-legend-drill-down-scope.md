@@ -2,7 +2,7 @@
 
 - **日付**: 2026-06-11
 - **関連 Issue**: [#1513](https://github.com/kompiro/karasu/issues/1513)
-- **関連 Design Doc**: [legend-drill-down-scope](../design/legend-drill-down-scope.md)
+- **関連 ADR**: [ADR-20260611-02](../adr/20260611-02-legend-drill-down-scope.md)
 - **関連 TPL**: [TPL-20260510-21](../test-perspectives/TPL-20260510-21-scoped-glance-drill-down.md), [TPL-20260510-11](../test-perspectives/TPL-20260510-11-parallel-function-parity.md), [TPL-20260511-02](../test-perspectives/TPL-20260511-02-spec-doc-reference-data-sync.md)
 - **対象ファイル**: `packages/core/src/parser/parser.ts`,
   `packages/core/src/types/ast.ts`, `packages/core/src/renderer/svg-builder.ts`,
