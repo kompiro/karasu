@@ -5,7 +5,7 @@ import type { DisplayMode } from "./layout-types.js";
 import { extractView } from "../view/view-extract.js";
 import { withUnassignedSystem } from "../view/unassigned-system.js";
 import { extractOrgView } from "../view/org-view-extract.js";
-import { render, legendScopeForLogicalSlice } from "./svg-renderer.js";
+import { render, legendScopeForLogicalSlice, type RenderOptions } from "./svg-renderer.js";
 import { renderOrgView } from "./org-renderer.js";
 import { escapeXml } from "./svg-builder.js";
 import { resolveStyles } from "../resolver/style-resolver.js";
@@ -109,6 +109,27 @@ export interface DrillDownCallbacks<S> {
   render(slice: S, childLevelLinks?: Map<string, string>): string;
 }
 
+/** Legend plumbing shared by every multi-level render path (Issue #1513). */
+export type LegendRenderOptions = Pick<RenderOptions, "legends" | "styleSheets" | "legendUsage">;
+
+/**
+ * Builds the legend slice of the render options once per multi-level build.
+ * Every builder spreads this into its render calls so a render path cannot
+ * accidentally lose the legend wiring (TPL-20260510-11), and the model walk
+ * in `collectLegendUsage` runs once per build instead of once per pane.
+ * The per-level `viewScope` stays at the call site.
+ */
+export function buildLegendRenderOptions(
+  krsFile: KrsFile,
+  sheets: StyleSheet[],
+): LegendRenderOptions {
+  return {
+    legends: krsFile.legends,
+    styleSheets: sheets,
+    legendUsage: collectLegendUsage(krsFile),
+  };
+}
+
 // ─── All Layers SVG (all levels stacked vertically) ──────────────────────────
 
 const ALL_LAYERS_PADDING = 16;
@@ -209,8 +230,7 @@ export function buildAllLayersSvg(
   const rootNode = effectiveSystems[0];
   const rootLabel = rootNode.label ?? rootNode.id;
   const ownerIndex = krsFile.ownerIndex ?? new Map();
-  const legends = krsFile.legends;
-  const legendUsage = collectLegendUsage(krsFile);
+  const legendOptions = buildLegendRenderOptions(krsFile, sheets);
 
   const levels: AllLayersLevel[] = [];
   collectAllLayersLevelsGeneric(
@@ -225,9 +245,7 @@ export function buildAllLayersSvg(
       render: (slice, links) =>
         render(slice, styles, undefined, ownerIndex, displayMode, links, {
           theme,
-          legends,
-          styleSheets: sheets,
-          legendUsage,
+          ...legendOptions,
           viewScope: legendScopeForLogicalSlice(slice),
         }),
     },
@@ -265,8 +283,7 @@ export function buildAllLayersSvgOrg(
   const { sheets, diagnostics } = buildStyles(displayMode, styleSource, theme, badgeLabels);
   const styles = resolveStyles(krsFile.systems, sheets, [], organizations);
   const rootLabel = organizations[0].label ?? organizations[0].id;
-  const legends = krsFile.legends;
-  const legendUsage = collectLegendUsage(krsFile);
+  const legendOptions = buildLegendRenderOptions(krsFile, sheets);
 
   const levels: AllLayersLevel[] = [];
   collectAllLayersLevelsGeneric(
@@ -278,12 +295,7 @@ export function buildAllLayersSvgOrg(
           ? slice.focusedTeam.children.filter((c): c is TeamNode => c.kind === "team")
           : slice.teams,
       render: (slice, links) =>
-        renderOrgView(slice, styles, displayMode, links, {
-          theme,
-          legends,
-          styleSheets: sheets,
-          legendUsage,
-        }),
+        renderOrgView(slice, styles, displayMode, links, { theme, ...legendOptions }),
     },
     [],
     [rootLabel],

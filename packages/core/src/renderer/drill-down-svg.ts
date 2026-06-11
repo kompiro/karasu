@@ -11,11 +11,12 @@ import { renderDeploy } from "./deploy-renderer.js";
 import { escapeXml } from "./svg-builder.js";
 import { resolveStyles } from "../resolver/style-resolver.js";
 import { analyze } from "../resolver/warnings.js";
-import { collectLegendUsage } from "../legend/usage.js";
 import {
   extractSvgParts,
   buildStyles,
   buildNoDiagramSvg,
+  buildLegendRenderOptions,
+  type LegendRenderOptions,
   type DrillDownCallbacks,
   type SvgResult,
   type AllViewsSvgResult,
@@ -103,8 +104,7 @@ export function buildDrillDownSvg(
   const { sheets, diagnostics } = buildStyles(displayMode, styleSource, theme, badgeLabels);
   const styles = resolveStyles(effectiveSystems, sheets, []);
   const ownerIndex = krsFile.ownerIndex ?? new Map();
-  const legends = krsFile.legends;
-  const legendUsage = collectLegendUsage(krsFile);
+  const legendOptions = buildLegendRenderOptions(krsFile, sheets);
 
   const levels: string[] = [];
   collectDrillDownLevelsGeneric(
@@ -120,9 +120,7 @@ export function buildDrillDownSvg(
       render: (slice, links) =>
         render(slice, styles, undefined, ownerIndex, displayMode, links, {
           theme,
-          legends,
-          styleSheets: sheets,
-          legendUsage,
+          ...legendOptions,
           viewScope: legendScopeForLogicalSlice(slice),
         }),
     },
@@ -167,8 +165,7 @@ export function buildDrillDownSvgOrg(
 
   const { sheets, diagnostics } = buildStyles(displayMode, styleSource, theme, badgeLabels);
   const styles = resolveStyles(krsFile.systems, sheets, [], krsFile.organizations);
-  const legends = krsFile.legends;
-  const legendUsage = collectLegendUsage(krsFile);
+  const legendOptions = buildLegendRenderOptions(krsFile, sheets);
 
   const levels: string[] = [];
   collectDrillDownLevelsGeneric(
@@ -182,12 +179,7 @@ export function buildDrillDownSvgOrg(
       // renderOrgView paints the legend footer on its top-level branch only,
       // so drilled team levels stay legend-free (org has no depth vocabulary).
       render: (slice, links) =>
-        renderOrgView(slice, styles, displayMode, links, {
-          theme,
-          legends,
-          styleSheets: sheets,
-          legendUsage,
-        }),
+        renderOrgView(slice, styles, displayMode, links, { theme, ...legendOptions }),
     },
     [],
     "root",
@@ -305,6 +297,7 @@ function buildAllViewsCss(palette: DiagramPalette): string {
 function collectDeployLevel(
   krsFile: KrsFile,
   sheets: StyleSheet[],
+  legendOptions: LegendRenderOptions,
   displayMode?: DisplayMode,
   theme?: DiagramTheme,
 ): BundledLevel | null {
@@ -320,9 +313,7 @@ function collectDeployLevel(
   const styles = resolveStyles(krsFile.systems, sheets, deployNodes);
   const svg = renderDeploy(deployView, styles, displayMode, {
     theme,
-    legends: krsFile.legends,
-    styleSheets: sheets,
-    legendUsage: collectLegendUsage(krsFile),
+    ...legendOptions,
     viewScope: "deploy",
   });
   const { viewBox, innerContent, width, height } = extractSvgParts(svg);
@@ -351,8 +342,7 @@ export function buildAllViewsSvg(
   const effectiveSystems = withUnassignedSystem(krsFile);
 
   // Collect system levels
-  const legends = krsFile.legends;
-  const legendUsage = collectLegendUsage(krsFile);
+  const legendOptions = buildLegendRenderOptions(krsFile, sheets);
   const systemLevels: BundledLevel[] = [];
   const systemRootSlice = extractView(effectiveSystems, []);
   if (systemRootSlice.childNodes.length > 0) {
@@ -367,9 +357,7 @@ export function buildAllViewsSvg(
         render: (slice, links) =>
           render(slice, styles, undefined, ownerIndex, displayMode, links, {
             theme,
-            legends,
-            styleSheets: sheets,
-            legendUsage,
+            ...legendOptions,
             viewScope: legendScopeForLogicalSlice(slice),
           }),
       },
@@ -382,7 +370,7 @@ export function buildAllViewsSvg(
   }
 
   // Collect deploy level
-  const deployLevel = collectDeployLevel(krsFile, sheets, displayMode, theme);
+  const deployLevel = collectDeployLevel(krsFile, sheets, legendOptions, displayMode, theme);
 
   // Collect org levels
   const orgLevels: BundledLevel[] = [];
@@ -398,12 +386,7 @@ export function buildAllViewsSvg(
             ? slice.focusedTeam.children.filter((c): c is TeamNode => c.kind === "team")
             : slice.teams,
         render: (slice, links) =>
-          renderOrgView(slice, styles, displayMode, links, {
-            theme,
-            legends,
-            styleSheets: sheets,
-            legendUsage,
-          }),
+          renderOrgView(slice, styles, displayMode, links, { theme, ...legendOptions }),
       },
       [],
       "root",

@@ -348,8 +348,10 @@ organization Acme {
 describe("legendScopeMatches (Issue #1513)", () => {
   // The full display matrix from the design doc: rows are declared scopes,
   // columns are render scopes; exact match only, omitted = top levels.
-  const renderScopes = ["system", "service", "domain", "deploy", "org"] as const;
-  const matrix: Record<string, Record<(typeof renderScopes)[number], boolean>> = {
+  // Rows and columns are keyed by the LegendViewScope union so that adding
+  // a scope keyword fails compilation here until the matrix grows with it.
+  const renderScopes: readonly LegendViewScope[] = ["system", "service", "domain", "deploy", "org"];
+  const matrix: Record<LegendViewScope | "(omitted)", Record<LegendViewScope, boolean>> = {
     "(omitted)": { system: true, service: false, domain: false, deploy: true, org: true },
     system: { system: true, service: false, domain: false, deploy: false, org: false },
     service: { system: false, service: true, domain: false, deploy: false, org: false },
