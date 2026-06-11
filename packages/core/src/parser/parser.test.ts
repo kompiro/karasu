@@ -2527,6 +2527,126 @@ organization Corp {
   });
 });
 
+// #1495: a nested legend gets ONE dedicated diagnostic and the whole
+// block is skipped — no per-token unexpected-token-in-block cascade.
+describe("legend nested in a block (legend-not-top-level)", () => {
+  function expectSingleNestedLegendError(source: string, parentKind: string) {
+    const result = Parser.parse(source);
+    expect(result.diagnostics).toHaveLength(1);
+    expect(result.diagnostics[0].code).toBe("legend-not-top-level");
+    expect(result.diagnostics[0].params).toEqual({ parentKind });
+    return result;
+  }
+
+  it("system: reports once and keeps parsing siblings", () => {
+    const result = expectSingleNestedLegendError(
+      `
+system Test {
+  legend "Nested" {
+    swatch #2563EB "Color"
+  }
+  service Svc { }
+}
+      `,
+      "system",
+    );
+    const system = result.value.systems[0];
+    expect(system.children.map((c) => c.id)).toEqual(["Svc"]);
+    expect(result.value.legends).toHaveLength(0);
+  });
+
+  it("service: reports once", () => {
+    expectSingleNestedLegendError(
+      `
+system Test {
+  service Svc {
+    legend { swatch #FFF "x" }
+  }
+}
+      `,
+      "service",
+    );
+  });
+
+  it("domain: reports once", () => {
+    expectSingleNestedLegendError(
+      `
+system Test {
+  service Svc {
+    domain Order {
+      legend org "O" { swatch #333 "c" }
+    }
+  }
+}
+      `,
+      "domain",
+    );
+  });
+
+  it("infra block: reports once", () => {
+    expectSingleNestedLegendError(
+      `
+database OrderDB {
+  legend { swatch #111 "a" }
+}
+      `,
+      "database",
+    );
+  });
+
+  it("deploy block: reports once and keeps parsing nodes", () => {
+    const result = expectSingleNestedLegendError(
+      `
+deploy Prod {
+  legend { swatch #111 "a" }
+  oci app { }
+}
+      `,
+      "deploy",
+    );
+    expect(result.value.deploys[0].nodes.map((n) => n.id)).toEqual(["app"]);
+  });
+
+  it("organization block: reports once and keeps parsing teams", () => {
+    const result = expectSingleNestedLegendError(
+      `
+organization Acme {
+  legend { swatch #111 "a" }
+  team Backend { }
+}
+      `,
+      "organization",
+    );
+    expect(result.value.organizations[0].teams.map((t) => t.id)).toEqual(["Backend"]);
+  });
+
+  it("team block: reports once", () => {
+    expectSingleNestedLegendError(
+      `
+organization Acme {
+  team Backend {
+    legend { swatch #111 "a" }
+  }
+}
+      `,
+      "team",
+    );
+  });
+
+  it("malformed nested legend without a body does not eat the enclosing brace", () => {
+    const result = Parser.parse(`
+system Test {
+  legend "No body"
+}
+service After { }
+    `);
+    expect(result.diagnostics.map((d) => d.code)).toEqual(["legend-not-top-level"]);
+    // The enclosing system closed normally and the next top-level node parsed.
+    expect(result.value.systems[0].id).toBe("Test");
+    expect(result.value.services.map((s) => s.id)).toEqual(["After"]);
+  });
+});
+
 describe("legend block", () => {
   it("parses a top-level legend with a swatch entry", () => {
     const result = Parser.parse(`

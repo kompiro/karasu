@@ -691,7 +691,10 @@ team の直下に `member` を宣言して個人を記述する。
 ### 配置
 
 `legend` はトップレベルに置く（`system` / `deploy` / `organization` と同列）。
-`system` / `service` / `domain` 内へのネストは parse error。同じビューが対象の
+あらゆるブロック（`system` / `service` / `domain` / `deploy` /
+`organization` / `team` など）内へのネストは parse error
+（`legend-not-top-level`）。パーサーは 1 件だけ報告し、ネストされた
+legend ブロック全体をスキップする。同じビューが対象の
 `legend` ブロックは複数書けて、宣言順に縦に並ぶ。
 
 ### 文法

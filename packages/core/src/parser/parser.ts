@@ -524,6 +524,11 @@ export class Parser {
         continue;
       }
 
+      if (token.type === TokenType.Legend) {
+        this.handleNestedLegend(kind);
+        continue;
+      }
+
       this.error("unexpected-token-in-block", {
         blockKind: "",
         tokenType: String(token.type),
@@ -1162,6 +1167,11 @@ export class Parser {
         continue;
       }
 
+      if (token.type === TokenType.Legend) {
+        this.handleNestedLegend(parentKind);
+        continue;
+      }
+
       this.error("unexpected-token-in-block", {
         blockKind: parentKind,
         tokenType: String(token.type),
@@ -1404,6 +1414,8 @@ export class Parser {
         }
       } else if (DEPLOY_KEYWORDS.has(this.peek().value)) {
         nodes.push(this.parseDeployNode());
+      } else if (this.peek().type === TokenType.Legend) {
+        this.handleNestedLegend("deploy");
       } else {
         this.error("unexpected-token-in-block", {
           blockKind: "deploy",
@@ -1466,6 +1478,8 @@ export class Parser {
         } else {
           this.error("expected-property-value", { propName });
         }
+      } else if (this.peek().type === TokenType.Legend) {
+        this.handleNestedLegend(kind);
       } else {
         this.error("unexpected-token-in-block", {
           blockKind: "deploy node",
@@ -1518,6 +1532,8 @@ export class Parser {
         properties.links.push(this.parseLink());
       } else if (token.type === TokenType.Team) {
         teams.push(this.parseTeamBlock());
+      } else if (token.type === TokenType.Legend) {
+        this.handleNestedLegend("organization");
       } else {
         this.error("unexpected-token-in-block", {
           blockKind: "organization",
@@ -1584,6 +1600,8 @@ export class Parser {
         children.push(this.parseMemberBlock());
       } else if (token.type === TokenType.Team) {
         children.push(this.parseTeamBlock());
+      } else if (token.type === TokenType.Legend) {
+        this.handleNestedLegend("team");
       } else {
         this.error("unexpected-token-in-block", {
           blockKind: "team",
@@ -1646,6 +1664,8 @@ export class Parser {
         } else {
           this.error("expected-string-after", { property: "github" });
         }
+      } else if (token.type === TokenType.Legend) {
+        this.handleNestedLegend("member");
       } else {
         this.error("unexpected-token-in-block", {
           blockKind: "member",
@@ -1867,6 +1887,36 @@ export class Parser {
   //   ref        ::= "ref" ("@" id | "[" id "]" | "." id | "#" id | id) <string>
   //
   // Reference: docs/design/diagram-legend.md.
+
+  /**
+   * `legend` is only valid at the top level of a file (docs/spec/syntax.md
+   * § Legend). When it appears inside a block, emit a single dedicated
+   * diagnostic and skip the whole legend block so its contents do not
+   * cascade into per-token `unexpected-token-in-block` errors.
+   */
+  private handleNestedLegend(parentKind: string): void {
+    this.error("legend-not-top-level", { parentKind });
+    this.advance(); // legend
+
+    // Skip the optional view scope / title up to the legend's opening brace.
+    // Stop early at `}` / EOF so a malformed legend (no body) does not eat
+    // the enclosing block's closing brace.
+    while (
+      this.peek().type !== TokenType.LeftBrace &&
+      this.peek().type !== TokenType.RightBrace &&
+      this.peek().type !== TokenType.EOF
+    ) {
+      this.advance();
+    }
+    if (this.peek().type !== TokenType.LeftBrace) return;
+
+    let depth = 0;
+    while (this.peek().type !== TokenType.EOF) {
+      const t = this.advance();
+      if (t.type === TokenType.LeftBrace) depth++;
+      else if (t.type === TokenType.RightBrace && --depth === 0) break;
+    }
+  }
 
   private parseLegendBlock(): LegendBlock {
     const start = this.advance(); // legend

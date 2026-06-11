@@ -253,6 +253,8 @@ export const ja: Partial<Translations> = {
   "diagnostic.propertyNotForNodeKind.operations": `"operations" プロパティは usecase 内の resource 宣言でのみ有効です`,
   "diagnostic.infraNotInContext.message": ({ infraKind, parentKind }) =>
     `"${infraKind}" は system の直接の子としてのみ有効です。"${parentKind}" の内側には配置できません`,
+  "diagnostic.legendNotTopLevel.message": ({ parentKind }) =>
+    `legend ブロックはファイルのトップレベルにのみ書けます。"${parentKind}" の内側には配置できません`,
   "diagnostic.expectedIdOrString.message": ({ context }) =>
     `"${context}" の後に識別子または文字列リテラルを期待しました`,
   "diagnostic.expectedNodeId.message": ({ kind }) =>
