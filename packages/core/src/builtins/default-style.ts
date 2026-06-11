@@ -530,13 +530,15 @@ export const BUILTIN_STYLE_SOURCE_LIGHT: string = buildBuiltinStyleSource("light
 const _sheetCache = new Map<string, StyleSheet>();
 
 function sheetCacheKey(theme: DiagramTheme, badgeLabels?: AnnotationBadgeLabels): string {
-  return [
+  // JSON.stringify gives an unambiguous key — a join() separator could
+  // collide with a separator-containing label from an external caller.
+  return JSON.stringify([
     theme,
     badgeLabels?.deprecated ?? "",
     badgeLabels?.new ?? "",
     badgeLabels?.experimental ?? "",
     badgeLabels?.migrationTarget ?? "",
-  ].join("\\u0000");
+  ]);
 }
 
 /**

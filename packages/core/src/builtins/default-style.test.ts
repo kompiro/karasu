@@ -269,6 +269,15 @@ describe("getBuiltinStyleSheet — annotation badge labels (#1508)", () => {
     expect(annotationRule(enDark, "deprecated")?.properties["badge-label"]).toBe('"Deprecated"');
   });
 
+  it("label sets that would collide under naive key joining stay distinct", () => {
+    // {deprecated: "a b"} vs {deprecated: "a", new: "b"} — a join()-based
+    // cache key with a separator could conflate these for an external caller.
+    const a = getBuiltinStyleSheet("dark", { deprecated: "a b" });
+    const b = getBuiltinStyleSheet("dark", { deprecated: "a", new: "b" });
+    expect(a).not.toBe(b);
+    expect(annotationRule(b, "new")?.properties["badge-label"]).toBe('"b"');
+  });
+
   it("escapes quotes and backslashes in injected labels", () => {
     const sheet = getBuiltinStyleSheet("dark", { deprecated: 'say "no" \\ stop' });
     expect(annotationRule(sheet, "deprecated")?.properties["badge-label"]).toBe(
