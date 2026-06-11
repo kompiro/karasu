@@ -144,6 +144,28 @@ style spec が tag セレクタ（分類追従）を常用とし `edge#<id>` を
 共通ケースの authoring コストと実装コストが最小で、文法は後から
 ノード指定へ後方互換に拡張できる。
 
+### 確定した表示セマンティクス（レビューで確定）
+
+scope は**深さ対称**に解釈し、各深さは自分の scope に正確にマッチする
+legend だけを表示する（切り替えセマンティクス）:
+
+| legend ヘッダ | 表示される場所 |
+| --- | --- |
+| （省略） | 各ビューのトップレベルのみ（現行どおり全ビュー横断） |
+| `legend system` | 論理ビューのトップレベル（system 一覧）のみ |
+| `legend service` | service を root にしたドリルダウンレベルのみ |
+| `legend domain` | domain を root にしたドリルダウンレベルのみ |
+| `legend deploy` / `legend org` | 各ビュー（深さ概念なし = ビュー全体） |
+
+- **深さをまたぐ重ね合わせはしない**。domain レベルに `legend system` は
+  現れない（最も specific な scope だけが表示される、の徹底形）
+- **同一深さ内**では現行どおり、マッチした legend を宣言順に積む
+- 既存ファイル（省略 / system / deploy / org のみ使用）の見え方は
+  Phase 0 後も**完全に不変** — ドリルダウン先の凡例は `legend service` /
+  `legend domain` を書いた著者だけが opt-in で得る
+- all-layers ビューは**レベル帯ごと**に、そのレベルの scope の凡例を
+  帯直下に表示する
+
 ### 実装の指針
 
 1. **Phase 0**: `drill-down-svg.ts` / all-layers の render callbacks に
@@ -151,7 +173,7 @@ style spec が tag セレクタ（分類追従）を常用とし `edge#<id>` を
    マッチングは renderer 側のフィルタに集約
 2. `parseLegendScope` に `service` / `domain` を追加し、
    `LegendViewScope` 型を拡張
-3. 表示マトリクス（未解決の問い 1 の回答で確定）を renderer の
+3. 上記「確定した表示セマンティクス」の表を renderer の
    scope フィルタに実装 + 単体テスト
 4. spec 更新: `docs/spec/syntax.md` / `syntax.ja.md` の Legend 節
    （view-scope 文法と表示マトリクス）、reference データ同期
@@ -164,26 +186,18 @@ style spec が tag セレクタ（分類追従）を常用とし `edge#<id>` を
 
 ### 影響範囲・マイグレーション
 
-- 既存ユーザーへの影響: Phase 0 により「ドリルダウンで legend が
-  出ない」状態から「出る」状態に変わる（未解決の問い 1 の決定次第で
-  既定の見え方が決まる）。既存トップレベル表示は不変
+- 既存ユーザーへの影響: **なし**。深さ対称セマンティクスにより、既存の
+  scope（省略 / system / deploy / org）はすべて「そのビューのトップ
+  レベル」の意味を保ち、ドリルダウン先の凡例は新しい scope を書いた
+  著者だけが opt-in で得る
 - ドキュメント更新: `docs/spec/syntax.md` / `syntax.ja.md` Legend 節
-- テスト・examples への影響: legend.krs 拡張、drill-down スナップショット
-  系テストに凡例帯が追加される
+- テスト・examples への影響: legend.krs 拡張、`legend service` /
+  `legend domain` を使った場合のみ drill-down スナップショットに
+  凡例帯が追加される
 
-## 未解決の問い
+## 決めないこと
 
-1. **`legend system`（および scope 省略）の深さ方向の意味**:
-   - (a) `legend system` = 論理ビューの全レベルに表示（system ビューと
-     いう「ビュー種別」解釈。Phase 0 後の自然なデフォルト）
-   - (b) `legend system` = トップレベル（system 一覧）のみに表示
-     （「深さ」解釈で service / domain と対称）
-   - scope 省略は現行「全ビュー」なので (a) と同様に全レベル表示が自然
-2. **深さ scope は置換か重ね合わせか**: domain レベルで
-   `legend system`（全レベル）と `legend domain` が両方マッチする場合、
-   両方積む（現行スタッキングの自然な拡張）か、最も specific な scope
-   だけ表示するか
-3. **all-layers ビュー**: 各レベル帯ごとにそのレベルの凡例を出すか、
-   最下部にまとめて出すか
-4. **deploy のレベル**: deploy ビューに深さ概念が将来できた場合の
-   語彙予約（今回は決めない、で良いか）
+- **ノード指定 legend（`legend #<id>`）**: 需要が観測されてから別 Issue で
+  検討する。深さ scope の文法とは衝突しないことのみ確認済み
+- **deploy ビューの深さ語彙**: deploy ビューに階層遷移が将来できた場合に
+  あらためて検討する。今回は語彙を予約しない
