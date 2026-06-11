@@ -801,13 +801,13 @@ The following are deferred (see [`docs/design/diagram-legend.md`](../design/diag
 - Shape / icon / pattern legends (only color today).
 - Interactive legends (click to filter, etc.).
 - Node-targeted legends (`legend #OrderService "..."`) — depth scopes cover the common case; per-node targeting waits for observed demand (Issue #1513).
+- Auto-generation from used annotations / tags.
+- Rendering on diff views (`compileSystemDiff` / `compileDeployDiff`) and on org focused-team / icon-mode return paths.
 
 > **Related TPLs**:
 > - [TPL-20260510-21](../test-perspectives/TPL-20260510-21-scoped-glance-drill-down.md) — scoped glance: each drill-down level shows only its own vocabulary (exact-match legend switching applies this to legends)
 > - [TPL-20260510-11](../test-perspectives/TPL-20260510-11-parallel-function-parity.md) — top-level / drill-down / all-layers render paths must carry the same legend options
 > - [TPL-20260511-02](../test-perspectives/TPL-20260511-02-spec-doc-reference-data-sync.md) — the view-scope vocabulary here must stay in sync with the built-in reference data
-- Auto-generation from used annotations / tags.
-- Rendering on diff views (`compileSystemDiff` / `compileDeployDiff`) and on org drill-down / focused-team / icon-mode return paths.
 
 ---
 

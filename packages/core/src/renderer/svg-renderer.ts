@@ -90,7 +90,7 @@ export interface RenderOptions {
 /**
  * Derives the legend render scope for a logical-view slice (Issue #1513).
  *
- * - The root view (`slice.systems` populated — the system 一覧) is scope
+ * - The root view (`slice.systems` populated — the system list) is scope
  *   `system`.
  * - Drill-down levels take the scope named after their root node's kind:
  *   `service` / `domain`.
