@@ -144,7 +144,7 @@ They can be referenced and overridden via tag selectors in `.krs.style`.
 | `[sync]` | An edge declared with `->` | Solid |
 | `[cyclic]` | Detected as part of a cyclic dependency | Red (`#EF4444`) solid |
 | `[write]` | A synthesized usecase→resource edge whose target resource declares any of `create` / `update` / `delete` in its `operations` | `stroke-width: 2`, label `"W"` |
-| `[read]` | A synthesized usecase→resource edge classified as read-only (no write verbs, or `operations` omitted) | `stroke-width: 1.5` (default), label `"R"` |
+| `[read]` | A synthesized usecase→resource edge classified as read-only (no write verbs, or `operations` omitted) | `stroke-width: 1.5`, label `"R"` |
 
 > `[implicit]` uses color (amber) to signal "derived," while the line style distinguishes sync from async.
 > When both sync and async domain edges exist between the same service pair, they are derived as separate implicit edges, one per kind.

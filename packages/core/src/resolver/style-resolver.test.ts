@@ -829,11 +829,41 @@ describe("resolveStyles", () => {
     const readStyle = result.edges.get("RU->RR")!;
     // edge[write] from default-style picks up stroke-width: 2.
     expect(writeStyle.strokeWidth).toBe(2);
-    // edge default (read tag has no rule) keeps strokeWidth: 1.5.
+    // edge[read] from default-style pins stroke-width: 1.5 explicitly.
     expect(readStyle.strokeWidth).toBe(1.5);
     // Hierarchy: read (1.5) < write (2) < cyclic (2.5).
     expect(readStyle.strokeWidth).toBeLessThan(writeStyle.strokeWidth);
     expect(writeStyle.strokeWidth).toBeLessThan(2.5);
+  });
+
+  it("keeps read < write hierarchy when a user theme overrides the global edge width", () => {
+    const system = makeNode({
+      kind: "system",
+      id: "Sys",
+      children: [
+        makeNode({ kind: "usecase", id: "U", label: "U" }),
+        makeNode({ kind: "resource", id: "RR", label: "RR" }),
+        makeNode({ kind: "resource", id: "WR", label: "WR" }),
+      ],
+      edges: [
+        { from: "U", to: "RR", label: "R", kind: "sync", tags: ["read"], loc: dummyLoc },
+        { from: "U", to: "WR", label: "W", kind: "sync", tags: ["write"], loc: dummyLoc },
+      ],
+    });
+    // A plain `edge { stroke-width: 3; }` user rule (specificity 1) must not
+    // outrank the builtin tag rules (specificity 10); without an explicit
+    // edge[read] rule the hierarchy would invert (read → 3 while write stays 2).
+    const userSheet: StyleSheet = {
+      rules: [
+        makeRule({ nodeType: "edge", tags: [], annotations: [] }, { "stroke-width": "3" }, 1, 0),
+      ],
+    };
+    const result = resolveStyles([system], [getBuiltinStyleSheet(), userSheet]);
+    const readStyle = result.edges.get("U->RR")!;
+    const writeStyle = result.edges.get("U->WR")!;
+    expect(readStyle.strokeWidth).toBe(1.5);
+    expect(writeStyle.strokeWidth).toBe(2);
+    expect(readStyle.strokeWidth).toBeLessThan(writeStyle.strokeWidth);
   });
 
   it("user stylesheet overrides builtin", () => {
