@@ -1,5 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { compile } from "../index.js";
+import { legendScopeMatches } from "./svg-builder.js";
+import type { LegendViewScope } from "../types/ast.js";
 
 /**
  * End-to-end coverage for the legend footer (Issue #887).
@@ -318,5 +320,98 @@ legend "Owner" {
     const result = compile(krs, { diagramType: "org" });
     expect(result.svg).toContain("legend-footer");
     expect(result.svg).toContain("Backend");
+  });
+});
+
+// ─── Drill-down scope switching (Issue #1513) ────────────────────────────────
+
+const SCOPED_KRS = `
+legend "U" { swatch #111111 "unscoped-entry" }
+legend system "S" { swatch #222222 "system-entry" }
+legend service "Sv" { swatch #333333 "service-entry" }
+legend domain "Dm" { swatch #444444 "domain-entry" }
+system Shop {
+  service Order {
+    domain Billing {
+      usecase Pay
+    }
+  }
+}
+deploy Production {
+  oci "api" { realizes Order }
+}
+organization Acme {
+  team Backend { label "Backend" }
+}
+`;
+
+describe("legendScopeMatches (Issue #1513)", () => {
+  // The full display matrix from the design doc: rows are declared scopes,
+  // columns are render scopes; exact match only, omitted = top levels.
+  const renderScopes = ["system", "service", "domain", "deploy", "org"] as const;
+  const matrix: Record<string, Record<(typeof renderScopes)[number], boolean>> = {
+    "(omitted)": { system: true, service: false, domain: false, deploy: true, org: true },
+    system: { system: true, service: false, domain: false, deploy: false, org: false },
+    service: { system: false, service: true, domain: false, deploy: false, org: false },
+    domain: { system: false, service: false, domain: true, deploy: false, org: false },
+    deploy: { system: false, service: false, domain: false, deploy: true, org: false },
+    org: { system: false, service: false, domain: false, deploy: false, org: true },
+  };
+
+  for (const [declared, row] of Object.entries(matrix)) {
+    for (const renderScope of renderScopes) {
+      it(`scope ${declared} on a ${renderScope} render: ${row[renderScope]}`, () => {
+        const scope = declared === "(omitted)" ? undefined : (declared as LegendViewScope);
+        expect(legendScopeMatches(scope, renderScope)).toBe(row[renderScope]);
+      });
+    }
+  }
+});
+
+describe("legend scope switching across drill-down levels (Issue #1513)", () => {
+  it("shows unscoped + system legends at the system top level only", () => {
+    const result = compile(SCOPED_KRS, { diagramType: "system", viewPath: [] });
+    expect(result.svg).toContain("unscoped-entry");
+    expect(result.svg).toContain("system-entry");
+    expect(result.svg).not.toContain("service-entry");
+    expect(result.svg).not.toContain("domain-entry");
+  });
+
+  it("shows no legend on a system-rooted drill-down level (no scope keyword for it)", () => {
+    const result = compile(SCOPED_KRS, { diagramType: "system", viewPath: ["Shop"] });
+    expect(result.svg).not.toContain("legend-footer");
+  });
+
+  it("shows only `legend service` on a service-rooted drill-down level", () => {
+    const result = compile(SCOPED_KRS, { diagramType: "system", viewPath: ["Shop", "Order"] });
+    expect(result.svg).toContain("service-entry");
+    expect(result.svg).not.toContain("unscoped-entry");
+    expect(result.svg).not.toContain("system-entry");
+    expect(result.svg).not.toContain("domain-entry");
+  });
+
+  it("shows only `legend domain` on a domain-rooted drill-down level", () => {
+    const result = compile(SCOPED_KRS, {
+      diagramType: "system",
+      viewPath: ["Shop", "Order", "Billing"],
+    });
+    expect(result.svg).toContain("domain-entry");
+    expect(result.svg).not.toContain("unscoped-entry");
+    expect(result.svg).not.toContain("system-entry");
+    expect(result.svg).not.toContain("service-entry");
+  });
+
+  it("keeps depth scopes out of the deploy view", () => {
+    const result = compile(SCOPED_KRS, { diagramType: "deploy" });
+    expect(result.svg).toContain("unscoped-entry");
+    expect(result.svg).not.toContain("service-entry");
+    expect(result.svg).not.toContain("domain-entry");
+  });
+
+  it("keeps depth scopes out of the org view", () => {
+    const result = compile(SCOPED_KRS, { diagramType: "org" });
+    expect(result.svg).toContain("unscoped-entry");
+    expect(result.svg).not.toContain("service-entry");
+    expect(result.svg).not.toContain("domain-entry");
   });
 });

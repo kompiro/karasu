@@ -5,12 +5,13 @@ import { extractView } from "../view/view-extract.js";
 import { withUnassignedSystem } from "../view/unassigned-system.js";
 import { extractOrgView } from "../view/org-view-extract.js";
 import { extractDeployView } from "../view/deploy-view-extract.js";
-import { render, sanitizeId } from "./svg-renderer.js";
+import { render, sanitizeId, legendScopeForLogicalSlice } from "./svg-renderer.js";
 import { renderOrgView } from "./org-renderer.js";
 import { renderDeploy } from "./deploy-renderer.js";
 import { escapeXml } from "./svg-builder.js";
 import { resolveStyles } from "../resolver/style-resolver.js";
 import { analyze } from "../resolver/warnings.js";
+import { collectLegendUsage } from "../legend/usage.js";
 import {
   extractSvgParts,
   buildStyles,
@@ -102,6 +103,8 @@ export function buildDrillDownSvg(
   const { sheets, diagnostics } = buildStyles(displayMode, styleSource, theme, badgeLabels);
   const styles = resolveStyles(effectiveSystems, sheets, []);
   const ownerIndex = krsFile.ownerIndex ?? new Map();
+  const legends = krsFile.legends;
+  const legendUsage = collectLegendUsage(krsFile);
 
   const levels: string[] = [];
   collectDrillDownLevelsGeneric(
@@ -115,7 +118,13 @@ export function buildDrillDownSvg(
       getChildren: (slice) =>
         slice.systems.length > 0 ? slice.systems.flatMap((s) => s.children) : slice.childNodes,
       render: (slice, links) =>
-        render(slice, styles, undefined, ownerIndex, displayMode, links, { theme }),
+        render(slice, styles, undefined, ownerIndex, displayMode, links, {
+          theme,
+          legends,
+          styleSheets: sheets,
+          legendUsage,
+          viewScope: legendScopeForLogicalSlice(slice),
+        }),
     },
     [],
     "root",
@@ -158,6 +167,8 @@ export function buildDrillDownSvgOrg(
 
   const { sheets, diagnostics } = buildStyles(displayMode, styleSource, theme, badgeLabels);
   const styles = resolveStyles(krsFile.systems, sheets, [], krsFile.organizations);
+  const legends = krsFile.legends;
+  const legendUsage = collectLegendUsage(krsFile);
 
   const levels: string[] = [];
   collectDrillDownLevelsGeneric(
@@ -168,7 +179,15 @@ export function buildDrillDownSvgOrg(
         slice.focusedTeam !== null
           ? slice.focusedTeam.children.filter((c): c is TeamNode => c.kind === "team")
           : slice.teams,
-      render: (slice, links) => renderOrgView(slice, styles, displayMode, links, { theme }),
+      // renderOrgView paints the legend footer on its top-level branch only,
+      // so drilled team levels stay legend-free (org has no depth vocabulary).
+      render: (slice, links) =>
+        renderOrgView(slice, styles, displayMode, links, {
+          theme,
+          legends,
+          styleSheets: sheets,
+          legendUsage,
+        }),
     },
     [],
     "root",
@@ -299,7 +318,13 @@ function collectDeployLevel(
 
   const deployNodes = deployBlocks.flatMap((b) => b.nodes);
   const styles = resolveStyles(krsFile.systems, sheets, deployNodes);
-  const svg = renderDeploy(deployView, styles, displayMode, { theme });
+  const svg = renderDeploy(deployView, styles, displayMode, {
+    theme,
+    legends: krsFile.legends,
+    styleSheets: sheets,
+    legendUsage: collectLegendUsage(krsFile),
+    viewScope: "deploy",
+  });
   const { viewBox, innerContent, width, height } = extractSvgParts(svg);
 
   const innerSvg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${viewBox}" width="100%" height="100%">${innerContent}</svg>`;
@@ -326,6 +351,8 @@ export function buildAllViewsSvg(
   const effectiveSystems = withUnassignedSystem(krsFile);
 
   // Collect system levels
+  const legends = krsFile.legends;
+  const legendUsage = collectLegendUsage(krsFile);
   const systemLevels: BundledLevel[] = [];
   const systemRootSlice = extractView(effectiveSystems, []);
   if (systemRootSlice.childNodes.length > 0) {
@@ -338,7 +365,13 @@ export function buildAllViewsSvg(
         getChildren: (slice) =>
           slice.systems.length > 0 ? slice.systems.flatMap((s) => s.children) : slice.childNodes,
         render: (slice, links) =>
-          render(slice, styles, undefined, ownerIndex, displayMode, links, { theme }),
+          render(slice, styles, undefined, ownerIndex, displayMode, links, {
+            theme,
+            legends,
+            styleSheets: sheets,
+            legendUsage,
+            viewScope: legendScopeForLogicalSlice(slice),
+          }),
       },
       [],
       "root",
@@ -364,7 +397,13 @@ export function buildAllViewsSvg(
           slice.focusedTeam !== null
             ? slice.focusedTeam.children.filter((c): c is TeamNode => c.kind === "team")
             : slice.teams,
-        render: (slice, links) => renderOrgView(slice, styles, displayMode, links, { theme }),
+        render: (slice, links) =>
+          renderOrgView(slice, styles, displayMode, links, {
+            theme,
+            legends,
+            styleSheets: sheets,
+            legendUsage,
+          }),
       },
       [],
       "root",

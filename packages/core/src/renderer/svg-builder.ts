@@ -236,6 +236,27 @@ interface LegendFooter {
 }
 
 /**
+ * Render scopes that are the top level of a view type. An unscoped legend
+ * (`legend { ... }`) appears exactly there — never on drill-down levels,
+ * whose scopes (`service` / `domain`) must be opted into explicitly.
+ */
+const TOP_LEVEL_SCOPES: ReadonlySet<LegendViewScope> = new Set(["system", "deploy", "org"]);
+
+/**
+ * Exact-match scope switching (Issue #1513): each render depth shows only
+ * the legends declared for precisely that scope — no cross-depth stacking.
+ * `legend system` does not appear on a service drill-down, and
+ * `legend service` does not appear at the system top level.
+ */
+export function legendScopeMatches(
+  scope: LegendViewScope | undefined,
+  renderScope: LegendViewScope,
+): boolean {
+  if (scope === undefined) return TOP_LEVEL_SCOPES.has(renderScope);
+  return scope === renderScope;
+}
+
+/**
  * Render a legend footer band that lists every legend block applicable to
  * `scope`. Caller is responsible for positioning the returned `svg` group
  * at y=mainHeight and extending its outer `<svg>` viewBox by `height`.
@@ -259,7 +280,7 @@ export function buildLegendFooter(
   palette: DiagramPalette,
   usage?: LegendUsage,
 ): LegendFooter | null {
-  const applicable = legends.filter((l) => l.scope === undefined || l.scope === scope);
+  const applicable = legends.filter((l) => legendScopeMatches(l.scope, scope));
   if (applicable.length === 0) return null;
 
   const blocks: { title?: string; rows: { color: string; label: string }[] }[] = [];

@@ -350,7 +350,17 @@ export interface ImportDeclaration {
   loc: SourceRange;
 }
 
-export type LegendViewScope = "system" | "deploy" | "org";
+/**
+ * View scope a legend block can declare. The vocabulary mixes view types
+ * and logical drill-down depths, interpreted depth-symmetrically:
+ *
+ * - `system` / `deploy` / `org` — the top level of that view type.
+ * - `service` / `domain` — drill-down views whose root node is of that kind.
+ *
+ * Scope matching is exact (no cross-depth stacking); an omitted scope means
+ * "the top level of every view". See `legendScopeMatches` in svg-builder.
+ */
+export type LegendViewScope = "system" | "service" | "domain" | "deploy" | "org";
 
 /**
  * A `ref` entry in a `legend` block resolves to a color via the existing
@@ -370,7 +380,7 @@ export type LegendEntry =
   | { kind: "ref"; target: LegendRefTarget; label: string; loc: SourceRange };
 
 export interface LegendBlock {
-  /** Optional view scope. When omitted, the legend is shown on every view. */
+  /** Optional view scope. When omitted, the legend is shown on the top level of every view. */
   scope?: LegendViewScope;
   /** Optional title rendered above the entries. */
   title?: string;

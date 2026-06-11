@@ -1965,6 +1965,14 @@ export class Parser {
       this.advance();
       return "system";
     }
+    if (next.type === TokenType.Service) {
+      this.advance();
+      return "service";
+    }
+    if (next.type === TokenType.Domain) {
+      this.advance();
+      return "domain";
+    }
     if (next.type === TokenType.Deploy) {
       this.advance();
       return "deploy";

@@ -5,10 +5,11 @@ import type { DisplayMode } from "./layout-types.js";
 import { extractView } from "../view/view-extract.js";
 import { withUnassignedSystem } from "../view/unassigned-system.js";
 import { extractOrgView } from "../view/org-view-extract.js";
-import { render } from "./svg-renderer.js";
+import { render, legendScopeForLogicalSlice } from "./svg-renderer.js";
 import { renderOrgView } from "./org-renderer.js";
 import { escapeXml } from "./svg-builder.js";
 import { resolveStyles } from "../resolver/style-resolver.js";
+import { collectLegendUsage } from "../legend/usage.js";
 import { getBuiltinStyleSheet, type AnnotationBadgeLabels } from "../builtins/default-style.js";
 import { getIconThemeStyleSheet } from "../builtins/icon-theme.js";
 import { StyleParser } from "../parser/style-parser.js";
@@ -208,6 +209,8 @@ export function buildAllLayersSvg(
   const rootNode = effectiveSystems[0];
   const rootLabel = rootNode.label ?? rootNode.id;
   const ownerIndex = krsFile.ownerIndex ?? new Map();
+  const legends = krsFile.legends;
+  const legendUsage = collectLegendUsage(krsFile);
 
   const levels: AllLayersLevel[] = [];
   collectAllLayersLevelsGeneric(
@@ -216,8 +219,17 @@ export function buildAllLayersSvg(
       hasContent: (slice) => slice.childNodes.length > 0 || slice.systems.length > 0,
       getChildren: (slice) =>
         slice.systems.length > 0 ? slice.systems.flatMap((s) => s.children) : slice.childNodes,
+      // Each stacked band carries the legends for its own depth scope
+      // (Issue #1513): top band = system / unscoped, service bands =
+      // `legend service`, domain bands = `legend domain`.
       render: (slice, links) =>
-        render(slice, styles, undefined, ownerIndex, displayMode, links, { theme }),
+        render(slice, styles, undefined, ownerIndex, displayMode, links, {
+          theme,
+          legends,
+          styleSheets: sheets,
+          legendUsage,
+          viewScope: legendScopeForLogicalSlice(slice),
+        }),
     },
     [],
     [rootLabel],
@@ -253,6 +265,8 @@ export function buildAllLayersSvgOrg(
   const { sheets, diagnostics } = buildStyles(displayMode, styleSource, theme, badgeLabels);
   const styles = resolveStyles(krsFile.systems, sheets, [], organizations);
   const rootLabel = organizations[0].label ?? organizations[0].id;
+  const legends = krsFile.legends;
+  const legendUsage = collectLegendUsage(krsFile);
 
   const levels: AllLayersLevel[] = [];
   collectAllLayersLevelsGeneric(
@@ -263,7 +277,13 @@ export function buildAllLayersSvgOrg(
         slice.focusedTeam !== null
           ? slice.focusedTeam.children.filter((c): c is TeamNode => c.kind === "team")
           : slice.teams,
-      render: (slice, links) => renderOrgView(slice, styles, displayMode, links, { theme }),
+      render: (slice, links) =>
+        renderOrgView(slice, styles, displayMode, links, {
+          theme,
+          legends,
+          styleSheets: sheets,
+          legendUsage,
+        }),
     },
     [],
     [rootLabel],
