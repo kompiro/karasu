@@ -1,6 +1,6 @@
 # ADR Dependency Graph — Overview
 
-197 ADRs across 15 topics. Clusters group by `topic` frontmatter field. Edges crossing cluster borders are cross-topic dependencies.
+198 ADRs across 15 topics. Clusters group by `topic` frontmatter field. Edges crossing cluster borders are cross-topic dependencies.
 ```mermaid
 flowchart TD
   subgraph adr-tooling["adr-tooling"]
@@ -208,6 +208,7 @@ flowchart TD
     ADR_20260415_01["ADR-20260415-01<br/>親サービスのアノテーションを子ノードに継承する"]
     ADR_20260429_03["ADR-20260429-03<br/>凡例 ref のフォールバック swatch（in-use なら描画する）"]
     ADR_20260429_04["ADR-20260429-04<br/>`.krs.style` 側の `column` で layer 内 x 配置を上書きする e..."]
+    ADR_20260611_01["ADR-20260611-01<br/>組み込みアノテーションバッジラベルは reference-data から生成し locale ..."]
   end
   subgraph testing["testing"]
     ADR_20260324_01["ADR-20260324-01<br/>E2EテストよりQA手動確認を優先する"]
@@ -524,6 +525,7 @@ flowchart TD
   class ADR_20260520_06 accepted
   class ADR_20260522_01 accepted
   class ADR_20260610_01 accepted
+  class ADR_20260611_01 accepted
 ```
 
 ## Per-topic detail
@@ -540,6 +542,6 @@ flowchart TD
 - [`project`](graph/project.md) — 4 ADRs
 - [`renderer`](graph/renderer.md) — 23 ADRs
 - [`resolver`](graph/resolver.md) — 5 ADRs
-- [`styling`](graph/styling.md) — 6 ADRs
+- [`styling`](graph/styling.md) — 7 ADRs
 - [`testing`](graph/testing.md) — 11 ADRs
 - [`vscode`](graph/vscode.md) — 6 ADRs

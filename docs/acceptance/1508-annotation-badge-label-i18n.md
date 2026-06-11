@@ -2,7 +2,7 @@
 
 - **日付**: 2026-06-10
 - **関連 Issue**: [#1508](https://github.com/kompiro/karasu/issues/1508)（前段: [#1496](https://github.com/kompiro/karasu/issues/1496)）
-- **関連 Design Doc**: [annotation-badge-label-i18n](../design/annotation-badge-label-i18n.md)
+- **関連 ADR**: [ADR-20260611-01](../adr/20260611-01-annotation-badge-label-i18n.md)
 - **関連 TPL**: [TPL-20260519-02](../test-perspectives/TPL-20260519-02-shared-vocabulary-dual-representation.md), [TPL-20260510-06](../test-perspectives/TPL-20260510-06-display-mode-cross-surface.md), [TPL-20260510-11](../test-perspectives/TPL-20260510-11-parallel-function-parity.md)
 - **対象ファイル**: `packages/core/src/builtins/default-style.ts`,
   `packages/core/src/index.ts`, `packages/core/src/renderer/{all-layers-svg,drill-down-svg}.ts`,
