@@ -15,8 +15,11 @@ on:
     types: [opened, synchronize, reopened]
     paths-ignore:
       - "docs/spec/**"
+      - "docs/concepts.md"
+      - "docs/concepts.ja.md"
       - "packages/core/src/builtins/reference-data.ts"
       - "scripts/reference/**"
+      - "scripts/lint/spec-structure-sync.ts"
       - ".github/workflows/reference-docs-check.yml"
 
 concurrency:

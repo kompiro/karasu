@@ -55,6 +55,14 @@ pre-push:
       # changed without regenerating. Mirrors the CI step in ci.yml.
       glob: "{docs/spec/**,packages/core/src/builtins/reference-data.ts,scripts/reference/**}"
       run: pnpm exec tsx scripts/reference/gen-docs.ts --check
+    spec-structure-sync:
+      # Each en/ja spec pair (docs/spec/{syntax,style,tags-annotations} and
+      # docs/concepts) must keep an identical heading structure — fail if a
+      # section is added/removed/re-leveled on one side only (Issue #1501).
+      # The vitest test (scripts/lint/spec-structure-sync.test.ts) mirrors
+      # this guard in CI; reference-docs-check.yml runs it on docs-only PRs.
+      glob: "{docs/spec/**,docs/concepts.md,docs/concepts.ja.md,scripts/lint/spec-structure-sync.ts}"
+      run: pnpm run lint:spec-structure-sync
     concept-adr-refs:
       # The bidirectional reference layer between docs/concepts*.md and the
       # ADR topic vocabulary (Issue #1389) — fail if a concept anchor or a
