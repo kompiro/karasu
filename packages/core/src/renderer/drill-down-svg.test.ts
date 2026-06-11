@@ -639,3 +639,134 @@ system EC {
     expect(result.warnings).toEqual([]);
   });
 });
+
+// ─── Legend plumbing for drill-down levels (Issue #1513) ─────────────────────
+//
+// Phase 0 + scope switching: every level of the single-SVG builders gets the
+// legend options, and the renderer's exact-match filter decides which legends
+// each level shows. Parity across the three logical render paths (top-level
+// compile / drill-down / all-layers) is pinned per TPL-20260510-11.
+
+const LEGEND_SCOPED = `
+legend "U" { swatch #111111 "unscoped-entry" }
+legend system "S" { swatch #222222 "system-entry" }
+legend service "Sv" { swatch #333333 "service-entry" }
+legend domain "Dm" { swatch #444444 "domain-entry" }
+system Shop {
+  service Order {
+    label "Order"
+    domain Billing {
+      label "Billing"
+      usecase Pay { label "Pay" }
+    }
+  }
+}
+`;
+
+/**
+ * Splits a multi-level SVG into per-level chunks keyed by their view id.
+ * Chunks end at the next `<g id="krs-...">` of any view prefix so a trailing
+ * system level does not swallow the deploy / org panes that follow it.
+ */
+function levelChunks(svg: string, prefix: string): Map<string, string> {
+  const marker = '<g id="krs-';
+  const idStart = '<g id="'.length;
+  const chunks = new Map<string, string>();
+  let from = svg.indexOf(marker);
+  while (from !== -1) {
+    const next = svg.indexOf(marker, from + marker.length);
+    const chunk = next === -1 ? svg.slice(from) : svg.slice(from, next);
+    const id = chunk.slice(idStart, chunk.indexOf('"', idStart));
+    if (id.startsWith(prefix)) chunks.set(id, chunk);
+    from = next;
+  }
+  return chunks;
+}
+
+describe("buildDrillDownSvg legend scope switching (Issue #1513)", () => {
+  it("each level shows exactly the legends scoped to its depth", () => {
+    const krsFile = Parser.parse(LEGEND_SCOPED).value;
+    const { svg } = buildDrillDownSvg(krsFile);
+    const chunks = levelChunks(svg, "krs-system-");
+
+    const root = chunks.get("krs-system-root");
+    expect(root).toBeDefined();
+    expect(root).toContain("unscoped-entry");
+    expect(root).toContain("system-entry");
+    expect(root).not.toContain("service-entry");
+    expect(root).not.toContain("domain-entry");
+
+    const service = chunks.get("krs-system-Order");
+    expect(service).toBeDefined();
+    expect(service).toContain("service-entry");
+    expect(service).not.toContain("unscoped-entry");
+    expect(service).not.toContain("system-entry");
+    expect(service).not.toContain("domain-entry");
+
+    const domain = chunks.get("krs-system-Billing");
+    expect(domain).toBeDefined();
+    expect(domain).toContain("domain-entry");
+    expect(domain).not.toContain("unscoped-entry");
+    expect(domain).not.toContain("service-entry");
+  });
+
+  it("keeps drill-down levels legend-free for files using only pre-#1513 scopes", () => {
+    const krsFile = Parser.parse(`
+legend "U" { swatch #111111 "unscoped-entry" }
+legend system "S" { swatch #222222 "system-entry" }
+${TWO_LEVEL}
+`).value;
+    const { svg } = buildDrillDownSvg(krsFile);
+    const chunks = levelChunks(svg, "krs-system-");
+
+    expect(chunks.get("krs-system-root")).toContain("legend-footer");
+    const offendingLevels = [...chunks.entries()]
+      .filter(([id, chunk]) => id !== "krs-system-root" && chunk.includes("legend-footer"))
+      .map(([id]) => id);
+    expect(offendingLevels).toEqual([]);
+  });
+});
+
+describe("buildAllViewsSvg legend scope switching (Issue #1513)", () => {
+  it("renders the deploy-scoped legend on the bundled deploy pane", () => {
+    const krsFile = Parser.parse(`
+legend deploy "Dp" { swatch #666666 "deploy-entry" }
+legend service "Sv" { swatch #333333 "service-entry" }
+system Shop {
+  service Order { label "Order" domain Billing {} }
+}
+deploy Production {
+  oci "api" { realizes Order }
+}
+`).value;
+    const { svg } = buildAllViewsSvg(krsFile);
+    const deployChunk = levelChunks(svg, "krs-deploy-").get("krs-deploy-root");
+    expect(deployChunk).toBeDefined();
+    expect(deployChunk).toContain("deploy-entry");
+    expect(deployChunk).not.toContain("service-entry");
+
+    const serviceChunk = levelChunks(svg, "krs-system-").get("krs-system-Order");
+    expect(serviceChunk).toContain("service-entry");
+    expect(serviceChunk).not.toContain("deploy-entry");
+  });
+});
+
+describe("logical render path parity for legends (TPL-20260510-11)", () => {
+  it("drill-down and all-layers carry the same legends as the top-level compile", () => {
+    const krsFile = Parser.parse(LEGEND_SCOPED).value;
+    const drillDown = buildDrillDownSvg(krsFile).svg;
+    const allLayers = buildAllLayersSvg(krsFile).svg;
+    const allViews = buildAllViewsSvg(krsFile).svg;
+
+    // Every legend declared for a logical depth must surface in all three
+    // multi-level outputs; a missing one means a render path lost the
+    // legend options again (parity drift).
+    const entries = ["unscoped-entry", "system-entry", "service-entry", "domain-entry"];
+    const lost = [
+      ["drill-down", drillDown],
+      ["all-layers", allLayers],
+      ["all-views", allViews],
+    ].flatMap(([path, svg]) => entries.filter((e) => !svg.includes(e)).map((e) => `${path}:${e}`));
+    expect(lost).toEqual([]);
+  });
+});

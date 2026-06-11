@@ -87,6 +87,24 @@ export interface RenderOptions {
   theme?: DiagramTheme;
 }
 
+/**
+ * Derives the legend render scope for a logical-view slice (Issue #1513).
+ *
+ * - The root view (`slice.systems` populated — the system list) is scope
+ *   `system`.
+ * - Drill-down levels take the scope named after their root node's kind:
+ *   `service` / `domain`.
+ * - Other drill roots (a system frame, a usecase, …) have no scope keyword
+ *   in the legend vocabulary — `undefined` suppresses the footer there.
+ */
+export function legendScopeForLogicalSlice(slice: ViewSlice): LegendViewScope | undefined {
+  if (slice.systems.length > 0) return "system";
+  const kind = slice.containerNode?.kind;
+  if (kind === "service") return "service";
+  if (kind === "domain") return "domain";
+  return undefined;
+}
+
 export function render(
   viewSlice: ViewSlice,
   styles: ResolvedStyles,

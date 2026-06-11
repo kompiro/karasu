@@ -2680,11 +2680,30 @@ legend {
   it("parses each view-scope variant", () => {
     const result = Parser.parse(`
 legend system "S" { swatch #111 "a" }
+legend service "Sv" { swatch #444 "d" }
+legend domain "Dm" { swatch #555 "e" }
 legend deploy "D" { swatch #222 "b" }
 legend org "O" { swatch #333 "c" }
     `);
     expect(result.diagnostics).toHaveLength(0);
-    expect(result.value.legends.map((l) => l.scope)).toEqual(["system", "deploy", "org"]);
+    expect(result.value.legends.map((l) => l.scope)).toEqual([
+      "system",
+      "service",
+      "domain",
+      "deploy",
+      "org",
+    ]);
+  });
+
+  it("treats a scope-less legend starting with a string title as unscoped", () => {
+    // `service` / `domain` joined the scope vocabulary; make sure a title
+    // that happens to follow `legend` directly is still parsed as a title.
+    const result = Parser.parse(`
+legend "service catalog" { swatch #111 "a" }
+    `);
+    expect(result.diagnostics).toHaveLength(0);
+    expect(result.value.legends[0].scope).toBeUndefined();
+    expect(result.value.legends[0].title).toBe("service catalog");
   });
 
   it("parses every ref target kind", () => {

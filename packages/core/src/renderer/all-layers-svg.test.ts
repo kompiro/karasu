@@ -168,3 +168,41 @@ describe("buildAllLayersSvgOrg", () => {
     expect(withStyle.diagnostics).toEqual([]);
   });
 });
+
+// ─── Per-band legends (Issue #1513) ──────────────────────────────────────────
+
+describe("buildAllLayersSvg per-band legends (Issue #1513)", () => {
+  it("each stacked band carries only the legends for its own depth scope", () => {
+    const krsFile = Parser.parse(`
+legend "U" { swatch #111111 "unscoped-entry" }
+legend service "Sv" { swatch #333333 "service-entry" }
+legend domain "Dm" { swatch #444444 "domain-entry" }
+system Shop {
+  service Order {
+    label "Order"
+    domain Billing {
+      label "Billing"
+      usecase Pay { label "Pay" }
+    }
+  }
+}
+`).value;
+    const { svg } = buildAllLayersSvg(krsFile);
+
+    // Bands are nested `<svg x=...>` chunks stacked vertically.
+    const bands = svg.split('<svg x="').slice(1);
+    const bandWith = (entry: string) => bands.filter((b) => b.includes(entry));
+
+    expect(bandWith("unscoped-entry")).toHaveLength(1);
+    expect(bandWith("service-entry")).toHaveLength(1);
+    expect(bandWith("domain-entry")).toHaveLength(1);
+
+    const serviceBand = bandWith("service-entry")[0];
+    expect(serviceBand).not.toContain("unscoped-entry");
+    expect(serviceBand).not.toContain("domain-entry");
+
+    const domainBand = bandWith("domain-entry")[0];
+    expect(domainBand).not.toContain("unscoped-entry");
+    expect(domainBand).not.toContain("service-entry");
+  });
+});

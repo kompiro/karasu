@@ -218,7 +218,7 @@ import {
 } from "./resolver/canonical-id.js";
 import { resolveStyles } from "./resolver/style-resolver.js";
 import { analyze } from "./resolver/warnings.js";
-import { render } from "./renderer/svg-renderer.js";
+import { render, legendScopeForLogicalSlice } from "./renderer/svg-renderer.js";
 import {
   buildDrillDownSvg as _buildDrillDownSvg,
   buildDrillDownSvgOrg as _buildDrillDownSvgOrg,
@@ -556,7 +556,9 @@ function _compileFromPreparedInput(
     legends: krsFile.legends,
     styleSheets: resolveSheets,
     legendUsage: collectLegendUsage(krsFile),
-    viewScope: "system",
+    // Exact-match scope switching (Issue #1513): drill-down levels show only
+    // legends whose scope names their root kind, not the top-level set.
+    viewScope: legendScopeForLogicalSlice(viewSlice),
     theme,
   });
   const nodeMetadata = buildNodeMetadata(
