@@ -12,6 +12,7 @@ import {
   type DiagramTheme,
 } from "@karasu-tools/core";
 import { useEmptyStateLabels } from "../i18n/use-empty-state-labels.js";
+import { useAnnotationBadgeLabels } from "../i18n/use-annotation-badge-labels.js";
 import { computeViewResultFingerprint } from "./result-fingerprint.js";
 
 interface DeployViewState {
@@ -56,6 +57,7 @@ export function useDeployView(
   }, []);
 
   const emptyStateLabels = useEmptyStateLabels();
+  const annotationBadgeLabels = useAnnotationBadgeLabels();
 
   useEffect(() => {
     if (!entryPath || !fs) return;
@@ -76,6 +78,7 @@ export function useDeployView(
               selectedDeployId: selectedDeployBlockId ?? undefined,
               displayMode,
               emptyStateLabels,
+              annotationBadgeLabels,
               theme,
             }),
             compileDeployDiff({
@@ -85,6 +88,7 @@ export function useDeployView(
               selectedDeployId: selectedDeployBlockId ?? undefined,
               displayMode,
               emptyStateLabels,
+              annotationBadgeLabels,
               theme,
             }),
           ]);
@@ -128,6 +132,7 @@ export function useDeployView(
           selectedDeployId: selectedDeployBlockId ?? undefined,
           displayMode,
           emptyStateLabels,
+          annotationBadgeLabels,
           theme,
         });
         if (result.diagramType !== "deploy") return;
@@ -190,6 +195,7 @@ export function useDeployView(
     compareEntryPath,
     compareFs,
     emptyStateLabels,
+    annotationBadgeLabels,
     // eslint-disable-next-line react-hooks/exhaustive-deps
     recompileCounter.current,
   ]);

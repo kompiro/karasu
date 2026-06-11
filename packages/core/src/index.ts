@@ -105,8 +105,10 @@ export {
 export { resolveStyles } from "./resolver/style-resolver.js";
 export {
   getBuiltinStyleSheet,
+  buildBuiltinStyleSource,
   BUILTIN_STYLE_SOURCE,
   BUILTIN_STYLE_SOURCE_LIGHT,
+  type AnnotationBadgeLabels,
 } from "./builtins/default-style.js";
 export {
   type DiagramTheme,
@@ -240,7 +242,7 @@ import { withUnassignedSystem } from "./view/unassigned-system.js";
 import { extractOrgView, type OrgViewPath } from "./view/org-view-extract.js";
 import { extractDeployView } from "./view/deploy-view-extract.js";
 import { ImportResolver } from "./fs/import-resolver.js";
-import { getBuiltinStyleSheet } from "./builtins/default-style.js";
+import { getBuiltinStyleSheet, type AnnotationBadgeLabels } from "./builtins/default-style.js";
 import { getIconThemeStyleSheet } from "./builtins/icon-theme.js";
 import "./renderer/shapes.js"; // ensure built-in shapes are registered
 import type {
@@ -311,6 +313,13 @@ export interface CompileOptions {
    * Defaults to `"dark"` so existing output is unchanged.
    */
   theme?: DiagramTheme;
+  /**
+   * Translated labels for the built-in annotation badges (@deprecated /
+   * @new / @experimental / @migration_target). Omitted keys fall back to
+   * the reference-data en labels. User `.krs.style` badge-label rules
+   * still override these (cascade is unchanged).
+   */
+  annotationBadgeLabels?: AnnotationBadgeLabels;
 }
 
 export interface SystemCompileResult {
@@ -578,7 +587,7 @@ function _compileCore(krsSource: string, opts: CompileOptions): CompileResult {
 
   // Build sheets for conflict analysis: [builtin(theme), ...userSheets]
   // Icon theme is intentionally excluded from analysis to avoid false style-conflict warnings.
-  const sheets: StyleSheet[] = [getBuiltinStyleSheet(opts.theme)];
+  const sheets: StyleSheet[] = [getBuiltinStyleSheet(opts.theme, opts.annotationBadgeLabels)];
   if (styleSource) {
     const styleResult = StyleParser.parse(styleSource);
     diagnostics.push(...styleResult.diagnostics);
@@ -605,7 +614,10 @@ async function _compileProjectCore(
 
   // Build sheets for conflict analysis: [builtin(theme), ...userSheets]
   // Icon theme is intentionally excluded from analysis to avoid false style-conflict warnings.
-  const sheets = [getBuiltinStyleSheet(opts.theme), ...resolved.styleSheets];
+  const sheets = [
+    getBuiltinStyleSheet(opts.theme, opts.annotationBadgeLabels),
+    ...resolved.styleSheets,
+  ];
   // Value-level validation runs inside `_compileFromPreparedInput` so
   // its output joins the existing `warnings` channel (not `diagnostics`)
   // and shows up in the App's WarningPanel.
@@ -855,6 +867,7 @@ export function buildDrillDownSvg(
   displayMode?: DisplayMode,
   emptyStateLabels?: EmptyStateLabels,
   theme?: DiagramTheme,
+  annotationBadgeLabels?: AnnotationBadgeLabels,
 ): SvgResult {
   const parseResult: ParseResult<KrsFile> = Parser.parse(krsSource);
   const result = _buildDrillDownSvg(
@@ -863,6 +876,7 @@ export function buildDrillDownSvg(
     displayMode,
     emptyStateLabels,
     theme,
+    annotationBadgeLabels,
   );
   return { svg: result.svg, diagnostics: [...parseResult.diagnostics, ...result.diagnostics] };
 }
@@ -877,6 +891,7 @@ export function buildAllLayersSvg(
   displayMode?: DisplayMode,
   emptyStateLabels?: EmptyStateLabels,
   theme?: DiagramTheme,
+  annotationBadgeLabels?: AnnotationBadgeLabels,
 ): SvgResult {
   const parseResult: ParseResult<KrsFile> = Parser.parse(krsSource);
   const result = _buildAllLayersSvg(
@@ -885,6 +900,7 @@ export function buildAllLayersSvg(
     displayMode,
     emptyStateLabels,
     theme,
+    annotationBadgeLabels,
   );
   return { svg: result.svg, diagnostics: [...parseResult.diagnostics, ...result.diagnostics] };
 }
@@ -899,6 +915,7 @@ export function buildAllLayersSvgOrg(
   displayMode?: DisplayMode,
   emptyStateLabels?: EmptyStateLabels,
   theme?: DiagramTheme,
+  annotationBadgeLabels?: AnnotationBadgeLabels,
 ): SvgResult {
   const parseResult: ParseResult<KrsFile> = Parser.parse(krsSource);
   const result = _buildAllLayersSvgOrg(
@@ -907,6 +924,7 @@ export function buildAllLayersSvgOrg(
     displayMode,
     emptyStateLabels,
     theme,
+    annotationBadgeLabels,
   );
   return { svg: result.svg, diagnostics: [...parseResult.diagnostics, ...result.diagnostics] };
 }
@@ -921,6 +939,7 @@ export function buildDrillDownSvgOrg(
   displayMode?: DisplayMode,
   emptyStateLabels?: EmptyStateLabels,
   theme?: DiagramTheme,
+  annotationBadgeLabels?: AnnotationBadgeLabels,
 ): SvgResult {
   const parseResult: ParseResult<KrsFile> = Parser.parse(krsSource);
   const result = _buildDrillDownSvgOrg(
@@ -929,6 +948,7 @@ export function buildDrillDownSvgOrg(
     displayMode,
     emptyStateLabels,
     theme,
+    annotationBadgeLabels,
   );
   return { svg: result.svg, diagnostics: [...parseResult.diagnostics, ...result.diagnostics] };
 }
@@ -943,6 +963,7 @@ export function buildAllViewsSvg(
   displayMode?: DisplayMode,
   emptyStateLabels?: EmptyStateLabels,
   theme?: DiagramTheme,
+  annotationBadgeLabels?: AnnotationBadgeLabels,
 ): AllViewsSvgResult {
   const parseResult: ParseResult<KrsFile> = Parser.parse(krsSource);
   const result = _buildAllViewsSvg(
@@ -951,6 +972,7 @@ export function buildAllViewsSvg(
     displayMode,
     emptyStateLabels,
     theme,
+    annotationBadgeLabels,
   );
   return {
     svg: result.svg,
@@ -975,10 +997,18 @@ export async function buildAllViewsSvgProject(
   styleSource?: string,
   displayMode?: DisplayMode,
   theme?: DiagramTheme,
+  annotationBadgeLabels?: AnnotationBadgeLabels,
 ): Promise<AllViewsSvgResult> {
   const resolver = new ImportResolver(fs);
   const resolved = await resolver.resolve(entryPath);
-  const result = _buildAllViewsSvg(resolved.krsFile, styleSource, displayMode, undefined, theme);
+  const result = _buildAllViewsSvg(
+    resolved.krsFile,
+    styleSource,
+    displayMode,
+    undefined,
+    theme,
+    annotationBadgeLabels,
+  );
   return {
     svg: result.svg,
     diagnostics: [...resolved.diagnostics, ...result.diagnostics],
@@ -1023,6 +1053,8 @@ export interface CompileSystemDiffOptions {
   emptyStateLabels?: EmptyStateLabels;
   /** Diagram theme. Defaults to `"dark"`. */
   theme?: DiagramTheme;
+  /** Translated labels for the built-in annotation badges. */
+  annotationBadgeLabels?: AnnotationBadgeLabels;
 }
 
 /**
@@ -1062,7 +1094,7 @@ export async function compileSystemDiff(
   // any removed nodes — the union slice's childNodes will be styled via
   // the same fallback path used for ghost nodes).
   const sheets = [
-    getBuiltinStyleSheet(theme),
+    getBuiltinStyleSheet(theme, options.annotationBadgeLabels),
     ...beforeResolved.styleSheets,
     ...afterResolved.styleSheets,
   ];
@@ -1129,6 +1161,8 @@ export interface CompileDeployDiffOptions {
   emptyStateLabels?: EmptyStateLabels;
   /** Diagram theme. Defaults to `"dark"`. */
   theme?: DiagramTheme;
+  /** Translated labels for the built-in annotation badges. */
+  annotationBadgeLabels?: AnnotationBadgeLabels;
 }
 
 /**
@@ -1175,7 +1209,7 @@ export async function compileDeployDiff(
   const diffed = diffDeployViewSlices(beforeSlice, afterSlice);
 
   const sheets = [
-    getBuiltinStyleSheet(theme),
+    getBuiltinStyleSheet(theme, options.annotationBadgeLabels),
     ...beforeResolved.styleSheets,
     ...afterResolved.styleSheets,
   ];
@@ -1239,6 +1273,8 @@ export interface CompileOrgDiffOptions {
   emptyStateLabels?: EmptyStateLabels;
   /** Diagram theme. Defaults to `"dark"`. */
   theme?: DiagramTheme;
+  /** Translated labels for the built-in annotation badges. */
+  annotationBadgeLabels?: AnnotationBadgeLabels;
 }
 
 /**
@@ -1268,7 +1304,7 @@ export async function compileOrgDiff(
   const diffed = diffOrgViewSlices(beforeSlice, afterSlice);
 
   const sheets = [
-    getBuiltinStyleSheet(theme),
+    getBuiltinStyleSheet(theme, options.annotationBadgeLabels),
     ...beforeResolved.styleSheets,
     ...afterResolved.styleSheets,
   ];
@@ -1309,6 +1345,8 @@ export interface CompileBundledDiffOptions {
   emptyStateLabels?: EmptyStateLabels;
   /** Diagram theme. Defaults to `"dark"`. */
   theme?: DiagramTheme;
+  /** Translated labels for the built-in annotation badges. */
+  annotationBadgeLabels?: AnnotationBadgeLabels;
 }
 
 export interface BundledDiffCompileResult {
@@ -1362,7 +1400,15 @@ export async function buildAllViewsSvgDiffProject(
     (before.organizations?.flatMap((o) => o.teams).length ?? 0) > 0 ||
     (after.organizations?.flatMap((o) => o.teams).length ?? 0) > 0;
 
-  const compileOpts = { beforeEntryPath, afterEntryPath, fs, displayMode, emptyStateLabels, theme };
+  const compileOpts = {
+    beforeEntryPath,
+    afterEntryPath,
+    fs,
+    displayMode,
+    emptyStateLabels,
+    theme,
+    annotationBadgeLabels: options.annotationBadgeLabels,
+  };
 
   const [systemResult, deployResult, orgResult] = await Promise.all([
     hasSystem ? compileSystemDiff(compileOpts) : Promise.resolve(undefined),

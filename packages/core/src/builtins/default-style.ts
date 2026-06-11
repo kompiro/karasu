@@ -1,13 +1,78 @@
 import type { StyleSheet } from "../types/style.js";
 import { StyleParser } from "../parser/style-parser.js";
 import type { DiagramTheme } from "../renderer/palette.js";
+import { REFERENCE_DATA } from "./reference-data.js";
 
 /**
- * karasu built-in default theme (dark).
+ * Translated labels for the built-in annotation badges, injected by the
+ * caller per docs/spec/i18n.md (same pattern as EmptyStateLabels). Omitted
+ * keys fall back to the `reference-data.ts` en labels, so the builtin
+ * sheet and the Reference panel can never drift (TPL-20260519-02).
+ */
+export interface AnnotationBadgeLabels {
+  deprecated?: string;
+  new?: string;
+  experimental?: string;
+  migrationTarget?: string;
+}
+
+/** reference-data annotation name → AnnotationBadgeLabels key. */
+const ANNOTATION_LABEL_KEYS: Record<string, keyof AnnotationBadgeLabels> = {
+  deprecated: "deprecated",
+  new: "new",
+  experimental: "experimental",
+  migration_target: "migrationTarget",
+};
+
+/**
+ * Light-theme badge colors. The dark colors are the canonical
+ * `reference-data.ts` `defaultBadge.color` values; light uses slightly
+ * darker variants that stay legible on light cards (ADR-20260522-01).
+ */
+const LIGHT_BADGE_COLORS: Record<string, string> = {
+  deprecated: "#DC2626",
+  new: "#059669",
+  experimental: "#D97706",
+  migration_target: "#2563EB",
+};
+
+/** Escape a label for embedding in a double-quoted style string literal. */
+function escapeStyleString(s: string): string {
+  return s.replace(/\\/g, "\\\\").replace(/"/g, '\\"');
+}
+
+/**
+ * Generate the `@deprecated` / `@new` / `@experimental` /
+ * `@migration_target` rule blocks from `reference-data.ts` (colors /
+ * icons / en label defaults) plus optional injected labels.
+ */
+function buildAnnotationRules(theme: DiagramTheme, badgeLabels?: AnnotationBadgeLabels): string {
+  return REFERENCE_DATA.annotations
+    .map((a) => {
+      const label = badgeLabels?.[ANNOTATION_LABEL_KEYS[a.name]] ?? a.defaultBadge.label.en;
+      const color =
+        theme === "light"
+          ? (LIGHT_BADGE_COLORS[a.name] ?? a.defaultBadge.color)
+          : a.defaultBadge.color;
+      const extra = a.name === "deprecated" ? "\n  opacity: 0.6;" : "";
+      return `@${a.name} {
+  badge-color: ${color};
+  badge-icon: "${a.defaultBadge.icon}";
+  badge-label: "${escapeStyleString(label)}";${extra}
+}`;
+    })
+    .join("\n\n");
+}
+
+const ANNOTATION_RULES_PLACEHOLDER = "/* __ANNOTATION_RULES__ */";
+
+/**
+ * karasu built-in default theme (dark) — template whose annotation section
+ * is a placeholder filled by {@link buildBuiltinStyleSource}.
  * This is the single source of truth for all default styling.
  * Applied as the lowest-priority cascade layer — user stylesheets override these.
  */
-export const BUILTIN_STYLE_SOURCE: string = `/* karasu built-in default theme */
+const BUILTIN_STYLE_TEMPLATE: string = `/* karasu built-in default theme */
 
 /* ── ノード種別 ── */
 user {
@@ -186,30 +251,7 @@ artifact {
 }
 
 /* ── アノテーション ── */
-@deprecated {
-  badge-color: #EF4444;
-  badge-icon: "⚠";
-  badge-label: "廃止予定";
-  opacity: 0.6;
-}
-
-@new {
-  badge-color: #10B981;
-  badge-icon: "✦";
-  badge-label: "NEW";
-}
-
-@experimental {
-  badge-color: #F59E0B;
-  badge-icon: "⚗";
-  badge-label: "実験的";
-}
-
-@migration_target {
-  badge-color: #3B82F6;
-  badge-icon: "→";
-  badge-label: "移行先";
-}
+/* __ANNOTATION_RULES__ */
 
 /* ── エッジ ── */
 edge {
@@ -243,17 +285,18 @@ edge[delivers] {
 `;
 
 /**
- * karasu built-in theme — light variant.
+ * karasu built-in theme — light variant (template, see
+ * {@link BUILTIN_STYLE_TEMPLATE}).
  *
- * Mirrors {@link BUILTIN_STYLE_SOURCE} rule-for-rule but with node/edge
- * colors that read well on a light canvas: lighter, less saturated
- * backgrounds, dark text, and slightly darker borders. Badge / accent
- * colors stay saturated so badges remain legible on light cards.
+ * Mirrors the dark template rule-for-rule but with node/edge colors that
+ * read well on a light canvas: lighter, less saturated backgrounds, dark
+ * text, and slightly darker borders. Badge / accent colors stay saturated
+ * so badges remain legible on light cards.
  *
  * Cascade position is identical to the dark sheet (lowest layer); user
- * `.krs.style` still wins. See `docs/design/svg-diagram-theming.md`.
+ * `.krs.style` still wins. See ADR-20260522-01.
  */
-export const BUILTIN_STYLE_SOURCE_LIGHT: string = `/* karasu built-in default theme (light) */
+const BUILTIN_STYLE_TEMPLATE_LIGHT: string = `/* karasu built-in default theme (light) */
 
 /* ── ノード種別 ── */
 user {
@@ -432,30 +475,7 @@ artifact {
 }
 
 /* ── アノテーション ── */
-@deprecated {
-  badge-color: #DC2626;
-  badge-icon: "⚠";
-  badge-label: "廃止予定";
-  opacity: 0.6;
-}
-
-@new {
-  badge-color: #059669;
-  badge-icon: "✦";
-  badge-label: "NEW";
-}
-
-@experimental {
-  badge-color: #D97706;
-  badge-icon: "⚗";
-  badge-label: "実験的";
-}
-
-@migration_target {
-  badge-color: #2563EB;
-  badge-icon: "→";
-  badge-label: "移行先";
-}
+/* __ANNOTATION_RULES__ */
 
 /* ── エッジ ── */
 edge {
@@ -488,27 +508,55 @@ edge[delivers] {
 }
 `;
 
-// Cache both theme variants separately so neither path re-parses on every
-// call and the dark cache (the legacy fast path) is never invalidated by a
-// light-theme request.
-let _cachedSheetDark: StyleSheet | null = null;
-let _cachedSheetLight: StyleSheet | null = null;
+/** Assemble the full builtin sheet source for a theme + injected labels. */
+export function buildBuiltinStyleSource(
+  theme: DiagramTheme = "dark",
+  badgeLabels?: AnnotationBadgeLabels,
+): string {
+  const template = theme === "light" ? BUILTIN_STYLE_TEMPLATE_LIGHT : BUILTIN_STYLE_TEMPLATE;
+  return template.replace(ANNOTATION_RULES_PLACEHOLDER, buildAnnotationRules(theme, badgeLabels));
+}
 
 /**
- * Return the built-in `.krs.style` sheet for the given theme. `"dark"` is
- * the default; existing callers that pass nothing get the legacy sheet.
+ * Full builtin sheet text with the default (reference-data en) badge
+ * labels. Kept as exported constants for the Reference panel
+ * (`reference.ts`) and tests that inspect the sheet text.
  */
-export function getBuiltinStyleSheet(theme: DiagramTheme = "dark"): StyleSheet {
-  if (theme === "light") {
-    if (!_cachedSheetLight) {
-      _cachedSheetLight = parseBuiltinSheet(BUILTIN_STYLE_SOURCE_LIGHT);
-    }
-    return _cachedSheetLight;
+export const BUILTIN_STYLE_SOURCE: string = buildBuiltinStyleSource("dark");
+export const BUILTIN_STYLE_SOURCE_LIGHT: string = buildBuiltinStyleSource("light");
+
+// Parsed-sheet cache keyed by (theme, badge label set). The label space is
+// the caller's locale table, so the cache stays tiny (themes × locales).
+const _sheetCache = new Map<string, StyleSheet>();
+
+function sheetCacheKey(theme: DiagramTheme, badgeLabels?: AnnotationBadgeLabels): string {
+  // JSON.stringify gives an unambiguous key — a join() separator could
+  // collide with a separator-containing label from an external caller.
+  return JSON.stringify([
+    theme,
+    badgeLabels?.deprecated ?? "",
+    badgeLabels?.new ?? "",
+    badgeLabels?.experimental ?? "",
+    badgeLabels?.migrationTarget ?? "",
+  ]);
+}
+
+/**
+ * Return the built-in `.krs.style` sheet for the given theme and optional
+ * injected annotation badge labels. `"dark"` + default labels is the
+ * legacy fast path; existing callers that pass nothing are unchanged.
+ */
+export function getBuiltinStyleSheet(
+  theme: DiagramTheme = "dark",
+  badgeLabels?: AnnotationBadgeLabels,
+): StyleSheet {
+  const key = sheetCacheKey(theme, badgeLabels);
+  let sheet = _sheetCache.get(key);
+  if (!sheet) {
+    sheet = parseBuiltinSheet(buildBuiltinStyleSource(theme, badgeLabels));
+    _sheetCache.set(key, sheet);
   }
-  if (!_cachedSheetDark) {
-    _cachedSheetDark = parseBuiltinSheet(BUILTIN_STYLE_SOURCE);
-  }
-  return _cachedSheetDark;
+  return sheet;
 }
 
 function parseBuiltinSheet(source: string): StyleSheet {

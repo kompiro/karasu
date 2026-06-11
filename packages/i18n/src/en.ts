@@ -130,6 +130,12 @@ export const en: Translations = {
   "emptyState.org.placeholder": "No org diagram",
   "emptyState.system.noDiagram": "No diagram",
 
+  // Built-in annotation badge labels (must match reference-data en labels)
+  "badge.deprecated": "Deprecated",
+  "badge.new": "NEW",
+  "badge.experimental": "Experimental",
+  "badge.migrationTarget": "Migration target",
+
   // ReferencePanel
   "referencePanel.unsupportedMessage": "Tags & Annotations are not available for this diagram.",
   "referencePanel.builtin.description":

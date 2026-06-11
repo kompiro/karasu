@@ -20,6 +20,7 @@ import {
   type AllViewsSvgResult,
 } from "./all-layers-svg.js";
 import { DEFAULT_EMPTY_STATE_LABELS, type EmptyStateLabels } from "./empty-state-labels.js";
+import type { AnnotationBadgeLabels } from "../builtins/default-style.js";
 import { type DiagramPalette, type DiagramTheme, resolvePalette } from "./palette.js";
 import "../renderer/shapes.js"; // ensure built-in shapes are registered
 
@@ -87,6 +88,7 @@ export function buildDrillDownSvg(
   displayMode?: DisplayMode,
   emptyStateLabels?: EmptyStateLabels,
   theme?: DiagramTheme,
+  badgeLabels?: AnnotationBadgeLabels,
 ): SvgResult {
   const effectiveSystems = withUnassignedSystem(krsFile);
   const rootSlice = extractView(effectiveSystems, []);
@@ -97,7 +99,7 @@ export function buildDrillDownSvg(
     };
   }
 
-  const { sheets, diagnostics } = buildStyles(displayMode, styleSource, theme);
+  const { sheets, diagnostics } = buildStyles(displayMode, styleSource, theme, badgeLabels);
   const styles = resolveStyles(effectiveSystems, sheets, []);
   const ownerIndex = krsFile.ownerIndex ?? new Map();
 
@@ -140,6 +142,7 @@ export function buildDrillDownSvgOrg(
   displayMode?: DisplayMode,
   emptyStateLabels?: EmptyStateLabels,
   theme?: DiagramTheme,
+  badgeLabels?: AnnotationBadgeLabels,
 ): SvgResult {
   const topLevelTeams = krsFile.organizations.flatMap((o) => o.teams);
   if (topLevelTeams.length === 0) {
@@ -153,7 +156,7 @@ export function buildDrillDownSvgOrg(
     };
   }
 
-  const { sheets, diagnostics } = buildStyles(displayMode, styleSource, theme);
+  const { sheets, diagnostics } = buildStyles(displayMode, styleSource, theme, badgeLabels);
   const styles = resolveStyles(krsFile.systems, sheets, [], krsFile.organizations);
 
   const levels: string[] = [];
@@ -314,8 +317,9 @@ export function buildAllViewsSvg(
   displayMode?: DisplayMode,
   emptyStateLabels?: EmptyStateLabels,
   theme?: DiagramTheme,
+  badgeLabels?: AnnotationBadgeLabels,
 ): AllViewsSvgResult {
-  const { sheets, diagnostics } = buildStyles(displayMode, styleSource, theme);
+  const { sheets, diagnostics } = buildStyles(displayMode, styleSource, theme, badgeLabels);
   // Resolver warnings are a model-level fact, independent of which view is
   // rendered — surface them on the all-views path too (Issue #1438).
   const warnings = analyze(krsFile, sheets);

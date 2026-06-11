@@ -9,7 +9,7 @@ import { render } from "./svg-renderer.js";
 import { renderOrgView } from "./org-renderer.js";
 import { escapeXml } from "./svg-builder.js";
 import { resolveStyles } from "../resolver/style-resolver.js";
-import { getBuiltinStyleSheet } from "../builtins/default-style.js";
+import { getBuiltinStyleSheet, type AnnotationBadgeLabels } from "../builtins/default-style.js";
 import { getIconThemeStyleSheet } from "../builtins/icon-theme.js";
 import { StyleParser } from "../parser/style-parser.js";
 import { DEFAULT_EMPTY_STATE_LABELS, type EmptyStateLabels } from "./empty-state-labels.js";
@@ -86,10 +86,11 @@ export function buildStyles(
   displayMode: DisplayMode | undefined,
   styleSource?: string,
   theme?: DiagramTheme,
+  badgeLabels?: AnnotationBadgeLabels,
 ): { sheets: StyleSheet[]; diagnostics: Diagnostic[] } {
   // Build sheets for conflict analysis: [builtin(theme), ...userSheets]
   // Icon theme is appended last in resolveSheets so it takes highest priority for `shape`.
-  const sheets: StyleSheet[] = [getBuiltinStyleSheet(theme)];
+  const sheets: StyleSheet[] = [getBuiltinStyleSheet(theme, badgeLabels)];
   const diagnostics: Diagnostic[] = [];
   if (styleSource) {
     const styleResult = StyleParser.parse(styleSource);
@@ -191,6 +192,7 @@ export function buildAllLayersSvg(
   displayMode?: DisplayMode,
   emptyStateLabels?: EmptyStateLabels,
   theme?: DiagramTheme,
+  badgeLabels?: AnnotationBadgeLabels,
 ): SvgResult {
   const effectiveSystems = withUnassignedSystem(krsFile);
   const rootSlice = extractView(effectiveSystems, []);
@@ -201,7 +203,7 @@ export function buildAllLayersSvg(
     };
   }
 
-  const { sheets, diagnostics } = buildStyles(displayMode, styleSource, theme);
+  const { sheets, diagnostics } = buildStyles(displayMode, styleSource, theme, badgeLabels);
   const styles = resolveStyles(effectiveSystems, sheets, []);
   const rootNode = effectiveSystems[0];
   const rootLabel = rootNode.label ?? rootNode.id;
@@ -237,6 +239,7 @@ export function buildAllLayersSvgOrg(
   displayMode?: DisplayMode,
   emptyStateLabels?: EmptyStateLabels,
   theme?: DiagramTheme,
+  badgeLabels?: AnnotationBadgeLabels,
 ): SvgResult {
   const organizations = krsFile.organizations;
   const topLevelTeams = organizations.flatMap((o) => o.teams);
@@ -247,7 +250,7 @@ export function buildAllLayersSvgOrg(
     };
   }
 
-  const { sheets, diagnostics } = buildStyles(displayMode, styleSource, theme);
+  const { sheets, diagnostics } = buildStyles(displayMode, styleSource, theme, badgeLabels);
   const styles = resolveStyles(krsFile.systems, sheets, [], organizations);
   const rootLabel = organizations[0].label ?? organizations[0].id;
 

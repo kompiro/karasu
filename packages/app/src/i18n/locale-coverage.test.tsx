@@ -21,6 +21,38 @@ describe("i18n locale coverage — empty-state pipeline", () => {
     expect(ja["emptyState.org.placeholder"]).toBeDefined();
     expect(ja["emptyState.system.noDiagram"]).toBeDefined();
   });
+
+  it("ja provides all badge keys covered by AnnotationBadgeLabels", () => {
+    expect(ja["badge.deprecated"]).toBeDefined();
+    expect(ja["badge.new"]).toBeDefined();
+    expect(ja["badge.experimental"]).toBeDefined();
+    expect(ja["badge.migrationTarget"]).toBeDefined();
+  });
+});
+
+// Built-in annotation badge labels follow the locale via
+// annotationBadgeLabels (#1508). en defaults come from reference-data.
+describe("i18n locale coverage — annotation badge pipeline", () => {
+  const krs = `system S {\n  service Legacy @deprecated {}\n}\n`;
+
+  it("ja compile renders the ja @deprecated badge, not the en default", () => {
+    const result = compile(krs, {
+      diagramType: "system",
+      annotationBadgeLabels: { deprecated: translate("ja", "badge.deprecated") },
+    });
+    expect(result.svg).toContain(translate("ja", "badge.deprecated"));
+    expect(result.svg).not.toContain("Deprecated");
+  });
+
+  it("user .krs.style badge-label still wins over the injected label", () => {
+    const result = compile(krs, {
+      diagramType: "system",
+      styleSource: `@deprecated { badge-label: "LEGACY"; }`,
+      annotationBadgeLabels: { deprecated: translate("ja", "badge.deprecated") },
+    });
+    expect(result.svg).toContain("LEGACY");
+    expect(result.svg).not.toContain(translate("ja", "badge.deprecated"));
+  });
 });
 
 // Regression guard for ja-locale renders. As each follow-up i18n-izes a

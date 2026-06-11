@@ -129,6 +129,12 @@ export const ja: Partial<Translations> = {
   "emptyState.org.placeholder": "org 図がありません",
   "emptyState.system.noDiagram": "図がありません",
 
+  // Built-in annotation badge labels (must match reference-data ja labels)
+  "badge.deprecated": "非推奨",
+  "badge.new": "NEW",
+  "badge.experimental": "実験的",
+  "badge.migrationTarget": "移行先",
+
   // ReferencePanel
   "referencePanel.unsupportedMessage": "Tags & Annotations はこのダイアグラムでは未対応です。",
   "referencePanel.builtin.description":

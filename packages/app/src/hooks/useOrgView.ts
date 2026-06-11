@@ -14,6 +14,7 @@ import {
   type ResolvedStyles,
 } from "@karasu-tools/core";
 import { useEmptyStateLabels } from "../i18n/use-empty-state-labels.js";
+import { useAnnotationBadgeLabels } from "../i18n/use-annotation-badge-labels.js";
 import { computeViewResultFingerprint } from "./result-fingerprint.js";
 
 interface OrgViewState {
@@ -78,6 +79,7 @@ export function useOrgView(
   }, []);
 
   const emptyStateLabels = useEmptyStateLabels();
+  const annotationBadgeLabels = useAnnotationBadgeLabels();
 
   // Structural key for `viewPath` so a fresh `[]` from `SET_ACTIVE_VIEW` does
   // not cancel the in-flight debounce when the previous value was also empty.
@@ -98,6 +100,7 @@ export function useOrgView(
         viewPath,
         displayMode,
         emptyStateLabels,
+        annotationBadgeLabels,
         theme,
       });
       const task = compareEntryPath
@@ -110,6 +113,7 @@ export function useOrgView(
               viewPath,
               displayMode,
               emptyStateLabels,
+              annotationBadgeLabels,
               theme,
             }),
           ]).then(([base, diff]) => {
@@ -175,6 +179,7 @@ export function useOrgView(
     compareEntryPath,
     compareFs,
     emptyStateLabels,
+    annotationBadgeLabels,
     recompileCounter.current,
   ]);
   /* eslint-enable react-hooks/exhaustive-deps */
