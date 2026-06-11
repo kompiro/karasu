@@ -1267,7 +1267,7 @@ export const FEATURE_SAMPLES_PROJECT: ExampleProject = {
 //   users.krs                 [human] / [ai] user nodes with role + description
 //   external-nodes.krs        [external] tag on service / resource nodes
 //   annotations.krs           @deprecated / @new / @experimental / @migration_target
-//   legend.krs                legend blocks (swatch / ref, view scoping)
+//   legend.krs                legend blocks (swatch / ref, view & drill-down scoping)
 //   domain-drill.krs          full hierarchy: system -> service -> domain -> usecase -> resource
 //   domain-drift.krs          domain-to-domain edges (cross-service + intra-service)
 //   resource-operations.krs   usecase resource CRUD operations + read/write edges
@@ -1675,7 +1675,7 @@ system ExternalSample {
     },
     {
       path: "legend.krs",
-      content: `// Diagram legend syntax (Issue #833).
+      content: `// Diagram legend syntax (Issue #833, #1513).
 //
 // \`legend\` blocks declare color-meaning pairs that render as a footer band
 // below each diagram view. Two entry primitives exist:
@@ -1683,14 +1683,21 @@ system ExternalSample {
 //   ref <target>  "label"   — color from the .krs.style cascade for the
 //                              given annotation / tag / id / type
 //
-// View scope is optional. When omitted, the legend appears on every view.
-// Otherwise it is filtered to \`system\`, \`deploy\`, or \`org\`.
+// View scope is optional. When omitted, the legend appears on the top level
+// of every view. \`system\` / \`deploy\` / \`org\` target a view type; \`service\` /
+// \`domain\` target drill-down views rooted at that node kind (Issue #1513).
+// Matching is exact — each level shows only the legends for its own scope.
 
 system ECPlatform {
   label "EC Platform"
 
   service ECommerce {
     label "EC Site"
+
+    domain Order {
+      label "Order"
+      usecase PlaceOrder { label "Place Order" }
+    }
   }
   service Payment [external] {
     label "Payment"
@@ -1711,7 +1718,7 @@ organization Acme {
   }
 }
 
-// Shown on every view (system / deploy / org).
+// Shown on the top level of every view (system / deploy / org).
 legend "Owner team" {
   swatch #2563EB "Team Backend"
   swatch #16A34A "Team Frontend"
@@ -1727,6 +1734,16 @@ legend "Owner team" {
 legend deploy "Hosting tier" {
   swatch #0EA5E9 "Cloud Run"
   swatch #F59E0B "On-prem"
+}
+
+// Shown only on drill-down views rooted at a service (e.g. ECommerce).
+legend service "Service internals" {
+  swatch #8B5CF6 "Domain"
+}
+
+// Shown only on drill-down views rooted at a domain (e.g. Order).
+legend domain "Domain vocabulary" {
+  swatch #3B82F6 "Usecase"
 }
 `,
     },
