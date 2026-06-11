@@ -847,6 +847,47 @@ system ECPlatform {
 }
 ```
 
+### パス構文 — `system` ブロック内にネストしたノードへの到達
+
+別ファイルの `system` の直接の子よりも深い位置に定義された `service` / `domain` / `usecase` に到達するには、**ドット区切りパス**形式を使う:
+
+```
+import { ECPlatform.ECommerce.Order } from "./services.krs"
+```
+
+各セグメントは、直前に解決されたノードの `children` 配列に対して id で照合される（kind は強制されない）。パス解決は import 先ファイルのトップレベル `system` から始まる。
+
+import 側に取り込まれるのは要求したチェーンだけ: 上の例では、merge 後のファイルに `ECPlatform` のスタブとその下の `ECommerce` のスタブが生まれ、`ECommerce` の子は解決された `Order` のみになる（`Order` のサブツリーは完全に保持される）。`ECommerce` 配下の兄弟 domain は自動では import されない。必要なら同じ import に列挙するか、ファイル全体を wildcard import する。
+
+#### パス構文を使うべき場面
+
+パス構文は同じ id が複数の system に現れるときに真価を発揮する — system 移行が典型例:
+
+```
+// services.krs
+system OrderSystemV1 {
+  service OrderService { domain Legacy {} }
+}
+system OrderSystemV2 {
+  service OrderService { domain Modern {} }
+}
+
+// migration.krs — リネームせずに V2 だけを取り込む
+import { OrderSystemV2.OrderService } from "./services.krs"
+```
+
+素の id（`import { ECommerce }`）も引き続き機能する — id が一意に定まる場合は最も簡潔な形式であり続ける。
+
+#### 失敗時の挙動
+
+解決できないパスは `import-path-not-found` 診断を発行し、失敗したセグメントと最後に正常にたどれたノードを示す:
+
+```
+import { ECPlatform.NotThere.Order } from "./services.krs"
+// → Import path "ECPlatform.NotThere.Order" failed at segment "NotThere" (#1):
+//   no child with that id under "ECPlatform"
+```
+
 ---
 
 ## マルチファイル import の意味論

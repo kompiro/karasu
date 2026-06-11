@@ -1,8 +1,9 @@
 name: Reference docs check
 
 # Companion of `reference-docs-check-skip.yml`. This workflow runs the real
-# reference-docs drift guard (`gen-docs.ts --check`) on PRs that touch the
-# reference single-source paths. The skip workflow emits a no-op
+# reference-docs drift guard (`gen-docs.ts --check`) plus the en/ja spec
+# structure guard (`spec-structure-sync.ts`, Issue #1501) on PRs that touch
+# the reference single-source paths. The skip workflow emits a no-op
 # `Reference docs` job for all other PRs so a Required status named
 # `Reference docs` stays green repository-wide.
 #
@@ -20,15 +21,21 @@ on:
     branches: [main]
     paths:
       - "docs/spec/**"
+      - "docs/concepts.md"
+      - "docs/concepts.ja.md"
       - "packages/core/src/builtins/reference-data.ts"
       - "scripts/reference/**"
+      - "scripts/lint/spec-structure-sync.ts"
       - ".github/workflows/reference-docs-check.yml"
   push:
     branches: [main]
     paths:
       - "docs/spec/**"
+      - "docs/concepts.md"
+      - "docs/concepts.ja.md"
       - "packages/core/src/builtins/reference-data.ts"
       - "scripts/reference/**"
+      - "scripts/lint/spec-structure-sync.ts"
       - ".github/workflows/reference-docs-check.yml"
 
 concurrency:
@@ -59,3 +66,6 @@ jobs:
 
       - name: Reference docs in sync
         run: pnpm exec tsx scripts/reference/gen-docs.ts --check
+
+      - name: en/ja spec heading structure in sync
+        run: pnpm run lint:spec-structure-sync
