@@ -1,5 +1,7 @@
-import { resolve } from "node:path";
-import { describe, expect, it } from "vitest";
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join, resolve } from "node:path";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import { check, comparePair, extractHeadings, SPEC_PAIRS } from "./spec-structure-sync";
 
@@ -18,6 +20,33 @@ describe("spec-structure-sync validator", () => {
       "docs/spec/tags-annotations.md",
       "docs/concepts.md",
     ]);
+  });
+});
+
+describe("check with missing pair files", () => {
+  let dir: string;
+
+  beforeEach(() => {
+    dir = mkdtempSync(join(tmpdir(), "spec-structure-sync-"));
+  });
+
+  afterEach(() => {
+    rmSync(dir, { recursive: true, force: true });
+  });
+
+  it("reports a missing pair file as a problem instead of throwing", () => {
+    const problems = check(dir);
+    expect(problems.length).toBeGreaterThan(0);
+    expect(problems[0].message).toContain("pair file missing:");
+    expect(problems[0].message).toContain("docs/spec/syntax.md");
+  });
+
+  it("names only the missing side when one twin exists", () => {
+    mkdirSync(join(dir, "docs", "spec"), { recursive: true });
+    writeFileSync(join(dir, "docs", "spec", "syntax.md"), "# T\n");
+    const problems = check(dir);
+    const syntax = problems.find((p) => p.en === "docs/spec/syntax.md");
+    expect(syntax?.message).toBe("pair file missing: docs/spec/syntax.ja.md");
   });
 });
 
@@ -40,6 +69,32 @@ describe("extractHeadings", () => {
     expect(headings.map((h) => h.text)).toEqual(["Real", "Real 2"]);
   });
 
+  it("does not close a backtick fence with a tilde line or vice versa", () => {
+    const headings = extractHeadings(["```", "~~~", "# still fenced", "```", "## Real"].join("\n"));
+    expect(headings.map((h) => h.text)).toEqual(["Real"]);
+  });
+
+  it("requires the closing fence to be at least as long as the opener", () => {
+    const headings = extractHeadings(
+      ["````markdown", "```", "# fenced example", "```", "````", "## Real"].join("\n"),
+    );
+    expect(headings.map((h) => h.text)).toEqual(["Real"]);
+  });
+
+  it("does not treat a fence with an info string as a closer", () => {
+    const headings = extractHeadings(
+      ["```", "# fenced", "``` not-a-closer", "# still fenced", "```", "## Real"].join("\n"),
+    );
+    expect(headings.map((h) => h.text)).toEqual(["Real"]);
+  });
+
+  it("recognizes fences indented up to three spaces", () => {
+    const headings = extractHeadings(
+      ["- item", "   ```", "   # fenced in list", "   ```", "## Real"].join("\n"),
+    );
+    expect(headings.map((h) => h.text)).toEqual(["Real"]);
+  });
+
   it("ignores #hashtag lines without a space", () => {
     expect(extractHeadings("#anchor\n#### H4")).toEqual([{ level: 4, text: "H4", line: 2 }]);
   });
@@ -54,21 +109,30 @@ describe("comparePair", () => {
     expect(comparePair(pair, en, ja)).toBeNull();
   });
 
-  it("reports a missing trailing section", () => {
+  it("reports a missing trailing subsection", () => {
     const en = "# Title\n## A\n### A-1";
     const ja = "# タイトル\n## A";
     const problem = comparePair(pair, en, ja);
-    expect(problem?.message).toContain("diverges at heading #3");
-    expect(problem?.message).toContain("en has 3, ja has 2");
+    expect(problem?.message).toContain("diverges in section #2 at heading #2");
     expect(problem?.message).toContain("### A-1");
   });
 
-  it("reports a level mismatch at the first divergence", () => {
-    const en = "# T\n## A\n## B";
-    const ja = "# T\n### A\n## B";
+  it("reports a level mismatch", () => {
+    const en = "# T\n## A\n### A-1\n## B";
+    const ja = "# T\n## A\n#### A-1\n## B";
     const problem = comparePair(pair, en, ja);
-    expect(problem?.message).toContain("diverges at heading #2");
-    expect(problem?.message).toContain("en.md:2 ## A");
-    expect(problem?.message).toContain("ja.md:2 ### A");
+    expect(problem?.message).toContain("diverges in section #2 at heading #2");
+    expect(problem?.message).toContain("en.md:3 ### A-1");
+    expect(problem?.message).toContain("ja.md:3 #### A-1");
+  });
+
+  it("catches equal-and-opposite edits in different sections", () => {
+    // Flat heading-level multisets are identical; only per-section grouping
+    // can tell these apart.
+    const en = "# T\n## A\n### extra\n## B";
+    const ja = "# T\n## A\n## B\n### extra";
+    const problem = comparePair(pair, en, ja);
+    expect(problem).not.toBeNull();
+    expect(problem?.message).toContain("section: A");
   });
 });
