@@ -711,7 +711,7 @@ A `legend` block declares color → meaning pairs that the renderer paints as a 
 ```
 legend ::= "legend" view-scope? title? "{" entry* "}"
 
-view-scope ::= "system" | "deploy" | "org"
+view-scope ::= "system" | "service" | "domain" | "deploy" | "org"
 title      ::= <string-literal>
 entry      ::= swatch-entry | ref-entry
 
@@ -727,12 +727,18 @@ ref-target ::= "@" identifier      ; annotation
 
 ### View scope
 
+The scope vocabulary mixes view types (`system` / `deploy` / `org`) and logical drill-down depths (`service` / `domain`). Matching is **exact** — each rendered level shows only the legends declared for precisely that scope, with no cross-depth stacking (a `legend system` block does not follow you into a service drill-down, and a `legend service` block never appears at the top level).
+
 | `<view-scope>` | Where the legend appears |
 |-----------|--------------------------|
-| omitted   | system, deploy, and org views |
-| `system`  | system view only |
+| omitted   | the top level of the system, deploy, and org views |
+| `system`  | the top level of the system view only |
+| `service` | drill-down views whose root is a `service` only |
+| `domain`  | drill-down views whose root is a `domain` only |
 | `deploy`  | deploy view only |
 | `org`     | org view only |
+
+Drill-down levels rooted at a node with no scope keyword of its own (for example a system frame or a usecase) render no legend. In the all-layers view, each stacked level band carries the legends for its own depth scope directly below the band. Legends on drill-down levels are opt-in: a file that only uses the pre-existing scopes (omitted / `system` / `deploy` / `org`) renders no legend below the top level.
 
 ### Example
 
@@ -764,6 +770,12 @@ legend deploy "Hosting tier" {
   swatch #0EA5E9 "Cloud Run"
   swatch #F59E0B "On-prem"
 }
+
+// Shown only on drill-down views rooted at a domain.
+legend domain "Data access" {
+  swatch #3B82F6 "Read path"
+  swatch #F97316 "Write path"
+}
 ```
 
 ### Color resolution
@@ -788,6 +800,12 @@ The following are deferred (see [`docs/design/diagram-legend.md`](../design/diag
 
 - Shape / icon / pattern legends (only color today).
 - Interactive legends (click to filter, etc.).
+- Node-targeted legends (`legend #OrderService "..."`) — depth scopes cover the common case; per-node targeting waits for observed demand (Issue #1513).
+
+> **Related TPLs**:
+> - [TPL-20260510-21](../test-perspectives/TPL-20260510-21-scoped-glance-drill-down.md) — scoped glance: each drill-down level shows only its own vocabulary (exact-match legend switching applies this to legends)
+> - [TPL-20260510-11](../test-perspectives/TPL-20260510-11-parallel-function-parity.md) — top-level / drill-down / all-layers render paths must carry the same legend options
+> - [TPL-20260511-02](../test-perspectives/TPL-20260511-02-spec-doc-reference-data-sync.md) — the view-scope vocabulary here must stay in sync with the built-in reference data
 - Auto-generation from used annotations / tags.
 - Rendering on diff views (`compileSystemDiff` / `compileDeployDiff`) and on org drill-down / focused-team / icon-mode return paths.
 

@@ -702,7 +702,7 @@ legend ブロック全体をスキップする。同じビューが対象の
 ```
 legend ::= "legend" view-scope? title? "{" entry* "}"
 
-view-scope ::= "system" | "deploy" | "org"
+view-scope ::= "system" | "service" | "domain" | "deploy" | "org"
 title      ::= <文字列リテラル>
 entry      ::= swatch-entry | ref-entry
 
@@ -718,12 +718,26 @@ ref-target ::= "@" identifier      ; annotation
 
 ### ビュースコープ
 
-| `<view-scope>` | 描画されるビュー |
+スコープ語彙はビュー種別（`system` / `deploy` / `org`）と論理ドリルダウン深度
+（`service` / `domain`）の混成。マッチングは**完全一致** — 各描画レベルは
+自分のスコープに正確に一致する凡例だけを表示し、深さをまたぐ重ね合わせは
+しない（`legend system` は service ドリルダウンに現れず、`legend service` は
+トップレベルに現れない）。
+
+| `<view-scope>` | 描画される場所 |
 |----------------|------------------|
-| 省略           | system / deploy / org すべて |
-| `system`       | system 図のみ |
+| 省略           | system / deploy / org 各ビューのトップレベル |
+| `system`       | system 図のトップレベルのみ |
+| `service`      | service を root にしたドリルダウンビューのみ |
+| `domain`       | domain を root にしたドリルダウンビューのみ |
 | `deploy`       | deploy 図のみ |
 | `org`          | org 図のみ |
+
+スコープ語彙を持たないノード（system フレームや usecase 等）を root にした
+ドリルダウンレベルには凡例は描画されない。all-layers ビューでは、各レベル帯の
+直下にそのレベルのスコープの凡例が表示される。ドリルダウンレベルの凡例は
+opt-in — 既存スコープ（省略 / `system` / `deploy` / `org`）のみを使うファイルは
+トップレベルより下に凡例を描画しない。
 
 ### 例
 
@@ -754,6 +768,12 @@ legend "オーナーチーム" {
 legend deploy "ホスティング層" {
   swatch #0EA5E9 "Cloud Run"
   swatch #F59E0B "On-prem"
+}
+
+// domain を root にしたドリルダウンビューだけに表示
+legend domain "データアクセス" {
+  swatch #3B82F6 "Read 経路"
+  swatch #F97316 "Write 経路"
 }
 ```
 
@@ -789,7 +809,14 @@ legend deploy "ホスティング層" {
 - インタラクティブ凡例（クリックでハイライト 等）
 - 使用中アノテーション / タグからの自動生成
 - diff ビュー（`compileSystemDiff` / `compileDeployDiff`）と
-  org のドリルダウン / focused-team / icon-mode 経路への描画
+  org の focused-team / icon-mode 経路への描画
+- ノード指定凡例（`legend #OrderService "..."`）— 深度スコープが共通ケースを
+  カバーするため、ノード単位の出し分けは需要が観測されてから（Issue #1513）
+
+> **Related TPLs**:
+> - [TPL-20260510-21](../test-perspectives/TPL-20260510-21-scoped-glance-drill-down.md) — scoped glance: 各ドリルダウンレベルは自分の語彙だけを見せる（完全一致の凡例切り替えはこの原則の凡例への適用）
+> - [TPL-20260510-11](../test-perspectives/TPL-20260510-11-parallel-function-parity.md) — トップレベル / drill-down / all-layers の各レンダーパスに同じ legend オプションが渡ること
+> - [TPL-20260511-02](../test-perspectives/TPL-20260511-02-spec-doc-reference-data-sync.md) — view-scope 語彙は built-in リファレンスデータと同期すること
 
 ---
 
