@@ -79,7 +79,12 @@ scope:
 
 - `packages/core/src/style/property-schema.test.ts` — スキーマの受理 / 拒否挙動
   （ghost 検出の subset チェックは未整備 — 本 TPL 起点の追加候補）
+- `packages/core/src/resolver/warnings.test.ts`（`annotation-possible-typo hint`）—
+  open set 明文化 + 組み込み名近傍の info ヒント（チェックリスト最終 2 項の実装、#1499）
 
 ## 派生元 spec
 
 - `docs/spec/style.md` — Property list（エッジ線種の正典が `border-style` であること）
+- `docs/spec/tags-annotations.md` — Annotation names are an open set（アノテーション名の
+  open set 明文化と `annotation-possible-typo` ヒント、#1499。本 TPL の「open set と明文化」
+  状態を annotation 名前空間に適用したもの）

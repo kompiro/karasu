@@ -164,6 +164,15 @@ export function renderWarning(w: Warning, t: TranslateFn): FormattedWarning {
         }),
         details: [],
       };
+    case "annotation-possible-typo":
+      return {
+        message: t("warning.annotationPossibleTypo.message", {
+          nodeId: w.params.nodeId,
+          annotation: w.params.annotation,
+          suggestion: w.params.suggestion,
+        }),
+        details: [t("warning.annotationPossibleTypo.openSetNote")],
+      };
     case "legend-ref-unresolved":
       return {
         message: t("warning.legendRefUnresolved.message", {

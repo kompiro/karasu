@@ -115,6 +115,11 @@ function makeWarning(kind: Warning["kind"]): Warning {
       return { kind, params: { property: "color2" } };
     case "client-capability-duplicate":
       return { kind, params: { clientId: "test-client", name: "camera" } };
+    case "annotation-possible-typo":
+      return {
+        kind,
+        params: { nodeId: "test-node", annotation: "depracated", suggestion: "deprecated" },
+      };
   }
 }
 

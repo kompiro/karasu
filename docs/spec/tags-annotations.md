@@ -86,6 +86,19 @@ system OrderSystem {
 > Duplication is tolerated as long as at least one side carries `@deprecated` alone, or `@migration_target` alone.
 > If neither annotation is present, the duplicate remains an error.
 
+### Annotation names are an open set
+
+The annotation name set is **open** — `@<identifier>` accepts any identifier, and no warning is emitted for names outside the built-in set. Only the four built-ins above carry default semantics and badge rendering; user-defined annotations have no default rendering but are legitimate targets for annotation selectors in `.krs.style` (see [`docs/spec/style.md`](./style.md#selector-types)).
+
+Because unknown names are accepted silently, a typo in a built-in name (e.g. `@depracated`) would otherwise surface only as "my badge did not appear". karasu therefore emits an **info-level hint** (`annotation-possible-typo`) when an annotation name is not a built-in but sits within a small edit distance of one. The hint is suppressed for any name that appears in a stylesheet annotation selector — defining a selector marks the name as intentionally user-defined.
+
+```krs
+service Billing @team-alpha   // fine: user-defined annotation, no hint
+service Legacy  @depracated   // info hint: did you mean "@deprecated"?
+```
+
+> Related TPLs: [TPL-20260610-01](../test-perspectives/TPL-20260610-01-accepted-vocabulary-must-have-effect.md)
+
 ---
 
 ## Client capabilities
