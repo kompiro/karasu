@@ -259,6 +259,14 @@ export interface KrsEdge {
    *     no author ID disambiguates them (a warning is emitted instead)
    */
   canonicalId?: string;
+  /**
+   * True when `label` is machine-generated (the `W`/`R` markers on
+   * synthesized usecase→resource edges, the `N domain edges` count on
+   * aggregated implicit edges) rather than authored in `.krs`. Synthetic
+   * labels are still drawn on the canvas, but the renderer omits them from
+   * `data-edge-label`, which carries authored label text only.
+   */
+  syntheticLabel?: boolean;
 }
 
 // ─── 階層型 ──────────────────────────────────────

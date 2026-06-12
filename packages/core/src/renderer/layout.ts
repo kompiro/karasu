@@ -1286,6 +1286,7 @@ function computeEdgePoints(
     toPoint,
     cyclic: edge.cyclic,
     ...(edge.canonicalId !== undefined ? { canonicalId: edge.canonicalId } : {}),
+    ...(edge.syntheticLabel ? { syntheticLabel: true } : {}),
   };
 }
 

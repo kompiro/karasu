@@ -87,6 +87,32 @@ describe("buildDrillDownSvg", () => {
     expect(backHref).toBeGreaterThan(domainIdx);
   });
 
+  it("omits data-edge-label for synthesized W/R usecase→resource edges", () => {
+    const krs = `
+system ECPlatform {
+  database OrderDB {
+    table OrderTable {}
+  }
+  service OrderService {
+    domain Order {
+      usecase PlaceOrder {
+        resource OrderDB.OrderTable {
+          operations create
+        }
+      }
+    }
+  }
+}
+`;
+    const krsFile = Parser.parse(krs).value;
+    const { svg } = buildDrillDownSvg(krsFile);
+
+    // The W marker is still drawn on the canvas...
+    expect(svg).toContain(">W</text>");
+    // ...but is not exported as an authored label.
+    expect(svg).not.toContain("data-edge-label");
+  });
+
   it("includes CSS :target rules", () => {
     const krsFile = Parser.parse(TWO_LEVEL).value;
     const { svg } = buildDrillDownSvg(krsFile);

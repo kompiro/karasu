@@ -63,6 +63,9 @@
 
 .context-menu-header {
   padding: 6px 13px 4px;
+  /* Long authored edge labels (and long node ids) must wrap instead of
+     widening the menu past .edge-context-menu's max-width. */
+  overflow-wrap: anywhere;
 }
 
 .context-menu-header__title {
@@ -128,6 +131,7 @@
 
 .edge-context-menu {
   min-width: 200px;
+  max-width: 320px;
 }
 /* ── Node Detail Panel ──────────────────────────────────────────── */
 .node-detail-panel {

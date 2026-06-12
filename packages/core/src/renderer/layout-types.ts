@@ -54,6 +54,8 @@ export interface LayoutEdge {
   cyclic?: boolean;
   /** Constituent domain edges for aggregated "N domain edges" implicit service edges. */
   domainEdges?: DomainEdgeDetail[];
+  /** Mirrors `KrsEdge.syntheticLabel`: `label` is machine-generated (W/R markers, aggregation counts), not authored. */
+  syntheticLabel?: boolean;
   /**
    * Optional intermediate points for orthogonal routing (skip-layer edges).
    * When set, the edge renders as a polyline `fromPoint → ...waypoints → toPoint`.

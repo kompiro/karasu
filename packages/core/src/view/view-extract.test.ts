@@ -854,6 +854,8 @@ system ECPlatform {
       expect(writeEdge).toBeDefined();
       expect(writeEdge!.tags).toContain("write");
       expect(writeEdge!.label).toBe("W");
+      // W/R markers are machine-generated, not authored .krs labels.
+      expect(writeEdge!.syntheticLabel).toBe(true);
 
       const readEdge = view.childEdges.find(
         (e) => e.from === "QueryOrder" && e.to === "OrderDB.OrderTable",
@@ -861,6 +863,7 @@ system ECPlatform {
       expect(readEdge).toBeDefined();
       expect(readEdge!.tags).toContain("read");
       expect(readEdge!.label).toBe("R");
+      expect(readEdge!.syntheticLabel).toBe(true);
     });
 
     it("propagates the resource row #<id> to the synthesized edge as authorId", () => {
@@ -1154,6 +1157,31 @@ system ECPlatform {
       );
       expect(implicit).toHaveLength(1);
       expect(implicit[0].label).toBe("2 domain edges");
+      // The count label is machine-generated.
+      expect(implicit[0].syntheticLabel).toBe(true);
+    });
+
+    it("keeps the authored label (no syntheticLabel) when a single domain edge passes through", () => {
+      const krs = `
+system ECPlatform {
+  service ECommerce {
+    domain Contract {}
+  }
+  service BillingService {
+    domain Billing {
+      Billing -> Contract "from contract"
+    }
+  }
+}
+`;
+      const systems = parseSystem(krs);
+      const view = extractView(systems, []);
+      const implicit = view.childEdges.filter(
+        (e) => e.from === "BillingService" && e.to === "ECommerce" && e.tags.includes("implicit"),
+      );
+      expect(implicit).toHaveLength(1);
+      expect(implicit[0].label).toBe("from contract");
+      expect(implicit[0].syntheticLabel).toBeUndefined();
     });
 
     it("populates implicitEdgeDetails with DomainEdgeDetail for aggregated edges", () => {

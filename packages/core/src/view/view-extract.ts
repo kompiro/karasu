@@ -68,6 +68,7 @@ function deriveUsecaseResourceNodes(
         kind: "sync",
         tags: [isWrite ? "write" : "read"],
         label: isWrite ? "W" : "R",
+        syntheticLabel: true,
         loc: resource.loc,
         ...(resNode.authorId !== undefined ? { authorId: resNode.authorId } : {}),
       });
@@ -168,6 +169,9 @@ function deriveImplicitServiceEdges(
   const edges = Array.from(grouped.entries()).map(([, { edge, count, label }]) => ({
     ...edge,
     label: count === 1 ? label : `${count} domain edges`,
+    // The count label is machine-generated; a single passthrough keeps the
+    // authored domain-edge label.
+    ...(count > 1 ? { syntheticLabel: true } : {}),
   }));
 
   // Only include detail map entries for aggregated (multi-edge) pairs
