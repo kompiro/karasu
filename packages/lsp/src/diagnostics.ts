@@ -76,8 +76,13 @@ export function computeDiagnostics(
   // editor matches the in-app preview (ADR-20260514-02 — the info register is
   // intended for App / LSP / CLI alike). `analyze()` needs a `KrsFile`, so this
   // applies to `.krs` documents only. Style sheets are not available in the
-  // single-document LSP context: style-dependent warnings (`style-conflict`,
-  // `legend-ref-unresolved`) simply do not fire here.
+  // single-document LSP context, which cuts both ways: style-dependent
+  // warnings (`style-conflict`, `legend-ref-unresolved`) simply do not fire
+  // here, and style-*suppressed* hints fire without their suppression —
+  // `annotation-possible-typo` still flags a near-builtin name even when the
+  // user defined a stylesheet annotation selector for it (the app, which has
+  // the sheets, stays silent). Accepted asymmetry: the hint is info-register
+  // and the intentional-name case is rare (#1522).
   if (!isStyleDocument && !("rules" in parseResult.value)) {
     for (const w of analyze(parseResult.value, [])) {
       diagnostics.push({
