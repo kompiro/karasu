@@ -550,6 +550,10 @@ export class PreviewPanel {
         html += '<ul class="dp-links">';
         for (var i = 0; i < meta.links.length; i++) {
           var link = meta.links[i];
+          // Defense in depth (#1525): the parser already drops non-http(s)/
+          // mailto links, but a javascript: href in the webview must never
+          // depend on that alone — escapeAttr does not validate schemes.
+          if (!/^(https?:|mailto:)/i.test(link.url.trim())) continue;
           html += '<li><a href="' + escapeAttr(link.url) + '">'
             + escapeHtml(link.label || link.url) + ' \\u2197</a></li>';
         }

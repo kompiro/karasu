@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import { marked } from "marked";
 import DOMPurify from "dompurify";
-import { renderPictogram } from "@karasu-tools/core";
+import { renderPictogram, isSafeLinkUrl } from "@karasu-tools/core";
 import type { NodeMetadata } from "@karasu-tools/core";
 import { useTranslation } from "../i18n/index.js";
 
@@ -121,13 +121,19 @@ export function NodeDetailPanel({
         <div className="node-detail-section">
           <div className="node-detail-section-title">{t("nodeDetail.links.title")}</div>
           <ul className="node-detail-links">
-            {metadata.links.map((link) => (
-              <li key={link.url}>
-                <a href={link.url} target="_blank" rel="noopener noreferrer">
-                  {link.label || link.url} ↗
-                </a>
-              </li>
-            ))}
+            {/* The parser drops links with disallowed schemes (#1525), so only
+                http/https/mailto reach this metadata. The render-side filter is
+                defense in depth: React does not block javascript: hrefs, so a
+                future path that bypasses the parser must not become an XSS. */}
+            {metadata.links
+              .filter((link) => isSafeLinkUrl(link.url))
+              .map((link) => (
+                <li key={link.url}>
+                  <a href={link.url} target="_blank" rel="noopener noreferrer">
+                    {link.label || link.url} ↗
+                  </a>
+                </li>
+              ))}
           </ul>
         </div>
       )}

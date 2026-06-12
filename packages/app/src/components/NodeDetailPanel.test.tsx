@@ -170,6 +170,30 @@ describe("NodeDetailPanel", () => {
     expect(getByText("🔗 Links")).not.toBeNull();
   });
 
+  // Defense in depth for #1525: the parser drops unsafe links, but if one ever
+  // reaches the panel (older compiled metadata, future bypass) it must not be
+  // rendered as a clickable href — React does not block javascript: URLs.
+  it("does not render a link whose URL has a disallowed scheme (#1525)", () => {
+    const dummyLoc = {
+      start: { line: 1, column: 1, offset: 0 },
+      end: { line: 1, column: 30, offset: 29 },
+    };
+    const { container, queryByText, getByText } = render(
+      <NodeDetailPanel
+        {...baseProps({
+          links: [
+            { url: "https://example.com", label: "safe", loc: dummyLoc },
+            { url: "javascript:alert(1)", label: "evil", loc: dummyLoc },
+          ],
+        })}
+      />,
+    );
+    expect(getByText(/safe/)).not.toBeNull();
+    expect(queryByText(/evil/)).toBeNull();
+    const hrefs = Array.from(container.querySelectorAll("a")).map((a) => a.getAttribute("href"));
+    expect(hrefs.some((h) => h?.startsWith("javascript:"))).toBe(false);
+  });
+
   it("renders 'Jump to editor' button when onJumpToEditor is provided", () => {
     const onJumpToEditor = vi.fn<() => void>();
     const { getByText } = render(
