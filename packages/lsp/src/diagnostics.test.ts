@@ -47,6 +47,22 @@ describe("computeDiagnostics — resolver warnings (.krs)", () => {
     expect(computeDiagnostics(src, false)).toHaveLength(0);
   });
 
+  it("surfaces annotation-possible-typo without stylesheet suppression (sheetless context)", () => {
+    // TPL-20260612-01: the LSP runs analyze() with no sheets, so the
+    // style-*suppressed* hint fires here even when the user's .krs.style
+    // defines a selector for the name (the app, which has the sheets,
+    // would stay silent). This test pins the accepted asymmetry (#1522).
+    const src = `system S {
+  service Legacy @depracated {}
+}`;
+    const diagnostics = computeDiagnostics(src, false);
+
+    const hint = diagnostics.find((d) => d.message.includes("@depracated"));
+    expect(hint).toBeDefined();
+    expect(hint!.message).toContain("@deprecated");
+    expect(hint!.severity).toBe(DiagnosticSeverity.Information);
+  });
+
   it("tags every karasu diagnostic with source 'karasu'", () => {
     const src = `system EC {
   service A { domain Dup {} }
