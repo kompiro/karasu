@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
 import {
   getStoredApiKey,
   setStoredApiKey,
@@ -6,6 +6,7 @@ import {
   getPersistSetting,
   type PersistSetting,
 } from "../utils/api-key-storage.js";
+import { useTransientFlag } from "../hooks/useTransientFlag.js";
 import { useTranslation } from "../i18n/index.js";
 import type { Locale } from "../i18n/locale.js";
 import { useTheme, type ThemePreference } from "../theme/index.js";
@@ -20,24 +21,14 @@ export function SettingsPane({ onApiKeyChange }: SettingsPaneProps) {
   const { theme, setTheme } = useTheme();
   const [apiKey, setApiKey] = useState(() => getStoredApiKey() ?? "");
   const [persist, setPersist] = useState<PersistSetting>(() => getPersistSetting());
-  const [saved, setSaved] = useState(false);
-  const savedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  // Clear the "Saved" indicator timer on unmount so it never fires into a
-  // dead component, and re-arm cleanly when Save is pressed twice (#1539).
-  useEffect(
-    () => () => {
-      if (savedTimerRef.current !== null) clearTimeout(savedTimerRef.current);
-    },
-    [],
-  );
+  // The "Saved" affordance auto-resets after 2s; useTransientFlag owns the
+  // timer lifecycle (unmount cleanup + clean re-arm on rapid re-save, #1539).
+  const [saved, markSaved] = useTransientFlag(2000);
 
   const handleSave = () => {
     if (!apiKey.trim()) return;
     setStoredApiKey(apiKey.trim(), persist);
-    setSaved(true);
-    if (savedTimerRef.current !== null) clearTimeout(savedTimerRef.current);
-    savedTimerRef.current = setTimeout(() => setSaved(false), 2000);
+    markSaved();
     onApiKeyChange();
   };
 
