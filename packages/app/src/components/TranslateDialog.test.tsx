@@ -257,6 +257,36 @@ describe("TranslateDialog — Download button", () => {
   });
 });
 
+describe("TranslateDialog — failure surfacing (#1538)", () => {
+  it("surfaces an inline error when the clipboard write rejects", async () => {
+    const writeText = vi
+      .fn<(text: string) => Promise<void>>()
+      .mockRejectedValue(new Error("denied"));
+    vi.stubGlobal("navigator", { clipboard: { writeText } });
+    render(<TranslateDialog open onClose={() => {}} />);
+    typeSource("services:\n  api:\n    image: api:1.0.0\n");
+    clickTranslate();
+    await screen.findByLabelText("Generated .krs");
+
+    fireEvent.click(screen.getByRole("button", { name: /Copy/ }));
+    expect(writeText).toHaveBeenCalledOnce();
+    expect(await screen.findByText(/Couldn't copy to the clipboard/)).not.toBeNull();
+    vi.unstubAllGlobals();
+  });
+
+  it("surfaces an inline error when the chosen file cannot be read", async () => {
+    render(<TranslateDialog open onClose={() => {}} />);
+    const fileInput = screen.getByLabelText("Load a file");
+    const unreadable = {
+      name: "broken.yaml",
+      text: () => Promise.reject(new Error("read failed")),
+    };
+    fireEvent.change(fileInput, { target: { files: [unreadable] } });
+
+    expect(await screen.findByText(/Couldn't read the selected file/)).not.toBeNull();
+  });
+});
+
 describe("TranslateDialog — i18n", () => {
   it("renders English strings under the 'en' locale", () => {
     render(<TranslateDialog open onClose={() => {}} />, "en");

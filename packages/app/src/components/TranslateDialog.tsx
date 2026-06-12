@@ -90,12 +90,21 @@ export function TranslateDialog({ open, onClose }: { open: boolean; onClose: () 
     [reset],
   );
 
-  const handleFileChosen = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
-    setSourceName(file.name.replace(/\.[^.]+$/, ""));
-    void file.text().then((text) => setInputText(text));
-  }, []);
+  const handleFileChosen = useCallback(
+    (event: React.ChangeEvent<HTMLInputElement>) => {
+      const file = event.target.files?.[0];
+      if (!file) return;
+      setSourceName(file.name.replace(/\.[^.]+$/, ""));
+      file.text().then(
+        (text) => {
+          setInputText(text);
+          reset();
+        },
+        () => setError(t("translateDialog.loadFailed")),
+      );
+    },
+    [reset, t],
+  );
 
   const handleTranslate = useCallback(async () => {
     reset();
@@ -131,8 +140,11 @@ export function TranslateDialog({ open, onClose }: { open: boolean; onClose: () 
   ]);
 
   const handleCopy = useCallback(() => {
-    if (result) void navigator.clipboard.writeText(result.krs);
-  }, [result]);
+    if (!result) return;
+    navigator.clipboard.writeText(result.krs).catch(() => {
+      setError(t("translateDialog.copyFailed"));
+    });
+  }, [result, t]);
 
   const handleDownload = useCallback(() => {
     if (!result) return;
