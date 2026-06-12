@@ -57,6 +57,7 @@ interface EdgeContextMenuState {
   y: number;
   canonicalId: string;
   displayLabel: string;
+  edgeLabel?: string;
 }
 
 type DetailPanelState =
@@ -109,6 +110,7 @@ export function PreviewPane({
       y: e.clientY,
       canonicalId,
       displayLabel: `${from} ${arrow} ${to}`,
+      edgeLabel: edgeGroup.getAttribute("data-edge-label") ?? undefined,
     });
   }, []);
 
@@ -393,6 +395,7 @@ export function PreviewPane({
             y={edgeMenu.y}
             canonicalId={edgeMenu.canonicalId}
             displayLabel={edgeMenu.displayLabel}
+            edgeLabel={edgeMenu.edgeLabel}
             styleTargetPath={styleTargetPath}
             onPickDirection={handlePickDirection}
             onClose={() => setEdgeMenu(null)}

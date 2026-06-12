@@ -875,6 +875,22 @@ system S {
       expect(svg).toContain('data-edge-canonical-id="criticalWrite"');
     });
 
+    it("emits data-edge-label only for labelled edges", () => {
+      const krs = `
+system S {
+  service A {}
+  service B {}
+  service C {}
+  A -> B "Process payment"
+  A -> C
+}
+`;
+      const svg = renderWithDiff(krs, new Map(), new Map());
+      expect(svg).toContain('data-edge-label="Process payment"');
+      // The unlabelled A -> C edge must not carry an empty data-edge-label.
+      expect(svg.match(/data-edge-label=/g)).toHaveLength(1);
+    });
+
     it("marks edges with a canonical id as interactive and emits a wide transparent hitline", () => {
       const krs = `
 system S {

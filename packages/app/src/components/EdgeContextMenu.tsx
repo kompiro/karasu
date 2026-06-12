@@ -25,6 +25,12 @@ interface EdgeContextMenuProps {
   /** Display label shown in the menu header (typically `from → to`). */
   displayLabel: string;
   /**
+   * The edge's authored label text (from `data-edge-label`). Shown under the
+   * title so the label stays readable even when the on-canvas text is not.
+   * `undefined` for unlabelled edges — the row is omitted entirely.
+   */
+  edgeLabel?: string;
+  /**
    * `undefined` when no `.krs.style` import is configured. When undefined the
    * Direction items are shown disabled with a hint instead of writing.
    */
@@ -58,6 +64,7 @@ export function EdgeContextMenu({
   y,
   canonicalId,
   displayLabel,
+  edgeLabel,
   styleTargetPath,
   onPickDirection,
   onClose,
@@ -90,6 +97,7 @@ export function EdgeContextMenu({
       <DropdownMenuContent className="context-menu edge-context-menu" side="bottom" align="start">
         <div className="context-menu-header">
           <div className="context-menu-header__title">{displayLabel}</div>
+          {edgeLabel && <div className="context-menu-header__label">“{edgeLabel}”</div>}
           <div className="context-menu-header__subtitle">
             edge#<code>{canonicalId}</code>
           </div>

@@ -396,6 +396,29 @@ describe("PreviewPane", () => {
       expect(menu!.textContent).toContain("A->B");
     });
 
+    it("shows the edge's authored label when data-edge-label is present", () => {
+      const svg = `<div data-edge-from="A" data-edge-to="B" data-edge-kind="sync" data-edge-canonical-id="A->B" data-edge-label="Process payment"></div>`;
+      const { container } = render(
+        <PreviewPane {...baseProps()} svg={svg} styleTargetPath="/style.krs.style" />,
+      );
+      const edge = container.querySelector("[data-edge-canonical-id]")!;
+      fireEvent.contextMenu(edge, { clientX: 50, clientY: 60 });
+      const label = document.querySelector(".context-menu-header__label");
+      expect(label).not.toBeNull();
+      expect(label!.textContent).toContain("Process payment");
+    });
+
+    it("omits the label row for unlabelled edges (no data-edge-label)", () => {
+      const svg = `<div data-edge-from="A" data-edge-to="B" data-edge-kind="sync" data-edge-canonical-id="A->B"></div>`;
+      const { container } = render(
+        <PreviewPane {...baseProps()} svg={svg} styleTargetPath="/style.krs.style" />,
+      );
+      const edge = container.querySelector("[data-edge-canonical-id]")!;
+      fireEvent.contextMenu(edge, { clientX: 50, clientY: 60 });
+      expect(queryMenu()).not.toBeNull();
+      expect(document.querySelector(".context-menu-header__label")).toBeNull();
+    });
+
     it("does not open the menu on right-click outside an edge", () => {
       const svg = `<div data-node-id="svc"></div>`;
       const { container } = render(<PreviewPane {...baseProps()} svg={svg} />);

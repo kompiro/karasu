@@ -71,6 +71,13 @@
   color: var(--text-primary);
 }
 
+.context-menu-header__label {
+  font-size: 11px;
+  font-family: var(--font-ui);
+  color: var(--text-secondary);
+  margin-top: 2px;
+}
+
 .context-menu-header__subtitle {
   font-size: 11px;
   font-family: var(--font-mono, monospace);
