@@ -29,7 +29,8 @@ export const ja: Partial<Translations> = {
   "settings.security.linkLabel": "→ console.anthropic.com でキーを管理",
   "settings.apiKey.label": "Claude API キー",
   "settings.persist.label": "セッションをまたいで保存する（localStorage に保存）",
-  "settings.persist.hint": "オフの場合、タブを閉じると API キーは削除されます（推奨）。",
+  "settings.persist.hint":
+    "オフの場合、タブを閉じると API キーは削除されます（推奨）。オンにするとセッションを跨いでこのページ上のスクリプトからキーが読める状態が続くため、万一 XSS が成立した場合の露出期間が大幅に長くなります。",
   "settings.save.saved": "✓ 保存しました",
   "settings.save.label": "💾 保存する",
   "settings.clear.label": "🗑 削除する",

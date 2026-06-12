@@ -29,7 +29,8 @@ export const en: Translations = {
   "settings.security.linkLabel": "→ Manage keys on console.anthropic.com",
   "settings.apiKey.label": "Claude API key",
   "settings.persist.label": "Persist across sessions (save to localStorage)",
-  "settings.persist.hint": "When off, the API key is cleared when the tab closes (recommended).",
+  "settings.persist.hint":
+    "When off, the API key is cleared when the tab closes (recommended). Persisting keeps the key readable by any script running on this page across sessions — if the page is ever compromised (XSS), a persisted key is exposed for far longer.",
   "settings.save.saved": "✓ Saved",
   "settings.save.label": "💾 Save",
   "settings.clear.label": "🗑 Clear",
