@@ -97,6 +97,79 @@ describe("parseZipForImport — detectedName", () => {
   });
 });
 
+describe("parseZipForImport — zip-slip path traversal (#1526)", () => {
+  it("drops an entry that escapes the root via ../ segments", () => {
+    const zip = makeZip({ "../../evil.krs": "system Evil {}" });
+    const { files } = parseZipForImport(zip);
+    expect(files).toHaveLength(0);
+  });
+
+  it("keeps safe entries but drops a traversal entry in the same archive", () => {
+    const zip = makeZip({
+      "proj/index.krs": "system S {}",
+      "proj/../../evil.krs": "system Evil {}",
+    });
+    const { files } = parseZipForImport(zip);
+    expect(files.map((f) => f.path)).toEqual(["index.krs"]);
+    expect(files.every((f) => !f.path.includes(".."))).toBe(true);
+    expect(files.some((f) => f.content.includes("Evil"))).toBe(false);
+  });
+
+  it("drops an absolute-path entry", () => {
+    const zip = makeZip({ "/etc/evil.krs": "system Evil {}" });
+    const { files } = parseZipForImport(zip);
+    expect(files).toHaveLength(0);
+  });
+
+  it("drops an entry using backslash separators", () => {
+    const zip = makeZip({ "..\\..\\evil.krs": "system Evil {}" });
+    const { files } = parseZipForImport(zip);
+    expect(files).toHaveLength(0);
+  });
+});
+
+describe("parseZipForImport — decompression-bomb / entry-count guards (#1527)", () => {
+  const generous = { maxEntries: 1000, maxFileSize: 1024 * 1024, maxTotalSize: 1024 * 1024 };
+
+  it("throws when the entry count exceeds the limit", () => {
+    const zip = makeZip({ "a.krs": "x", "b.krs": "y" });
+    expect(() => parseZipForImport(zip, { ...generous, maxEntries: 1 })).toThrow(
+      /too many entries/i,
+    );
+  });
+
+  it("throws when a single entry exceeds the per-file size limit", () => {
+    const zip = makeZip({ "big.krs": "x".repeat(100) });
+    expect(() => parseZipForImport(zip, { ...generous, maxFileSize: 10 })).toThrow(
+      /per-file size/i,
+    );
+  });
+
+  it("throws when the total uncompressed size exceeds the limit", () => {
+    const zip = makeZip({ "a.krs": "x".repeat(100), "b.krs": "y".repeat(100) });
+    expect(() => parseZipForImport(zip, { ...generous, maxTotalSize: 150 })).toThrow(
+      /total uncompressed size/i,
+    );
+  });
+
+  it("does not count skipped (non-.krs) entries against the size caps", () => {
+    // A large non-.krs entry is filtered out before its size is tallied.
+    const zip = makeZip({ "index.krs": "system S {}", "huge.bin": "z".repeat(5000) });
+    const { files } = parseZipForImport(zip, {
+      maxEntries: 10,
+      maxFileSize: 1000,
+      maxTotalSize: 1000,
+    });
+    expect(files.map((f) => f.path)).toEqual(["index.krs"]);
+  });
+
+  it("accepts a normal archive under the default limits", () => {
+    const zip = makeZip({ "proj/index.krs": "system S {}" });
+    expect(() => parseZipForImport(zip)).not.toThrow();
+    expect(parseZipForImport(zip).files).toHaveLength(1);
+  });
+});
+
 // ── disambiguateName ───────────────────────────────────────────────────────
 
 describe("disambiguateName", () => {
