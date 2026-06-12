@@ -265,6 +265,10 @@ edge[async] {
   border-style: dashed;
 }
 
+edge[read] {
+  stroke-width: 1.5;
+}
+
 edge[write] {
   stroke-width: 2;
 }
@@ -487,6 +491,10 @@ edge {
 
 edge[async] {
   border-style: dashed;
+}
+
+edge[read] {
+  stroke-width: 1.5;
 }
 
 edge[write] {
