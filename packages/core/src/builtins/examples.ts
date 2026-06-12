@@ -66,6 +66,10 @@ system ECPlatform {
           operations create
         }
       }
+
+      // ドメイン間の依存は domain ブロック内のエッジで表現する。
+      // service にドリルダウンすると依存の矢印が表示される。
+      Catalog --> Order "注文実績をランキングに反映する"
     }
     domain Order {
       label "受注"
@@ -92,6 +96,9 @@ system ECPlatform {
           operations read
         }
       }
+
+      Order -> Catalog "商品情報を参照する"
+      Order -> Member "会員情報を参照する"
     }
     domain Member {
       label "会員"
@@ -301,6 +308,10 @@ system ECPlatform {
           operations create
         }
       }
+
+      // Express domain-to-domain dependencies as edges inside a domain block.
+      // Drill down into the service to see the dependency arrows.
+      Catalog --> Order "Feed order stats into rankings"
     }
     domain Order {
       label "Orders"
@@ -327,6 +338,9 @@ system ECPlatform {
           operations read
         }
       }
+
+      Order -> Catalog "Look up product details"
+      Order -> Member "Look up member info"
     }
     domain Member {
       label "Members"
