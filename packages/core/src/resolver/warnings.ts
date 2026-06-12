@@ -6,6 +6,10 @@ import { REFERENCE_DATA } from "../builtins/reference-data.js";
 
 export function analyze(file: KrsFile, sheets: StyleSheet[], systemSheetCount = 1): Warning[] {
   const warnings: Warning[] = [];
+  // Built once per pass: detectAnnotationPossibleTypos and
+  // detectUnresolvedLegendRefs both consume the same selector index, and
+  // analyze() runs per keystroke (app) / per document change (LSP).
+  const stylesIndex = indexStyleSelectors(sheets);
 
   warnings.push(...detectDomainDispersal(file));
   warnings.push(...detectUnassignedDomains(file));
@@ -25,8 +29,8 @@ export function analyze(file: KrsFile, sheets: StyleSheet[], systemSheetCount = 
   warnings.push(...detectCyclicDependencies(file));
   warnings.push(...detectDeliversTargetNotClient(file));
   warnings.push(...detectDuplicateClientCapabilities(file));
-  warnings.push(...detectAnnotationPossibleTypos(file, sheets));
-  warnings.push(...detectUnresolvedLegendRefs(file, sheets));
+  warnings.push(...detectAnnotationPossibleTypos(file, stylesIndex));
+  warnings.push(...detectUnresolvedLegendRefs(file, stylesIndex));
 
   return warnings;
 }
@@ -36,14 +40,13 @@ export function analyze(file: KrsFile, sheets: StyleSheet[], systemSheetCount = 
  * style cascade. Emit a warning when the target is not present in any
  * node (annotations / tags / ids / kinds) or style rule selector.
  */
-function detectUnresolvedLegendRefs(file: KrsFile, sheets: StyleSheet[]): Warning[] {
+function detectUnresolvedLegendRefs(file: KrsFile, stylesIndex: StyleSelectorIndex): Warning[] {
   if (file.legends.length === 0) return [];
 
   // Single source of truth for "is this ref's target in use". The renderer
   // consumes the same helper (see legend/usage.ts and svg-builder.ts) so
   // both layers agree on what "resolved" means.
   const usage = collectLegendUsage(file);
-  const stylesIndex = indexStyleSelectors(sheets);
 
   const warnings: Warning[] = [];
   for (const legend of file.legends) {
@@ -192,9 +195,9 @@ function detectDuplicateClientCapabilities(file: KrsFile): Warning[] {
  * intentionally user-defined and is never hinted, even when it sits close
  * to a built-in.
  */
-function detectAnnotationPossibleTypos(file: KrsFile, sheets: StyleSheet[]): Warning[] {
+function detectAnnotationPossibleTypos(file: KrsFile, stylesIndex: StyleSelectorIndex): Warning[] {
   const builtins = REFERENCE_DATA.annotations.map((a) => a.name);
-  const styledAnnotations = indexStyleSelectors(sheets).annotations;
+  const styledAnnotations = stylesIndex.annotations;
   const warnings: Warning[] = [];
 
   const visit = (node: KrsNode): void => {
