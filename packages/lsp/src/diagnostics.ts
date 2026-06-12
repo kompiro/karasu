@@ -82,7 +82,9 @@ export function computeDiagnostics(
   // `annotation-possible-typo` still flags a near-builtin name even when the
   // user defined a stylesheet annotation selector for it (the app, which has
   // the sheets, stays silent). Accepted asymmetry: the hint is info-register
-  // and the intentional-name case is rare (#1522).
+  // and the intentional-name case is rare (#1522). New style-coupled
+  // diagnostics must decide and record their side of this split here
+  // (TPL-20260612-01).
   if (!isStyleDocument && !("rules" in parseResult.value)) {
     for (const w of analyze(parseResult.value, [])) {
       diagnostics.push({
