@@ -141,7 +141,16 @@ export function TranslateDialog({ open, onClose }: { open: boolean; onClose: () 
 
   const handleCopy = useCallback(() => {
     if (!result) return;
-    navigator.clipboard.writeText(result.krs).catch(() => {
+    // `navigator.clipboard` is undefined in non-secure contexts (e.g. `karasu
+    // serve` over plain http on a LAN), where `.writeText` would throw
+    // synchronously — outside any `.catch`. Guard so the failure still surfaces
+    // in the error banner instead of an uncaught exception (#1538).
+    const clipboard = navigator.clipboard;
+    if (!clipboard) {
+      setError(t("translateDialog.copyFailed"));
+      return;
+    }
+    clipboard.writeText(result.krs).catch(() => {
       setError(t("translateDialog.copyFailed"));
     });
   }, [result, t]);

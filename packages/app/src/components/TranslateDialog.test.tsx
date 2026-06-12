@@ -274,6 +274,26 @@ describe("TranslateDialog — failure surfacing (#1538)", () => {
     vi.unstubAllGlobals();
   });
 
+  it("surfaces an error (not an uncaught throw) when the clipboard API is unavailable", async () => {
+    // Non-secure context (e.g. `karasu serve` over http on a LAN): no
+    // navigator.clipboard, so writeText would throw synchronously outside the
+    // .catch. The guard must route this into the error banner instead.
+    const original = Object.getOwnPropertyDescriptor(navigator, "clipboard");
+    Object.defineProperty(navigator, "clipboard", { value: undefined, configurable: true });
+    try {
+      render(<TranslateDialog open onClose={() => {}} />);
+      typeSource("services:\n  api:\n    image: api:1.0.0\n");
+      clickTranslate();
+      await screen.findByLabelText("Generated .krs");
+
+      fireEvent.click(screen.getByRole("button", { name: /Copy/ }));
+      expect(await screen.findByText(/Couldn't copy to the clipboard/)).not.toBeNull();
+    } finally {
+      if (original) Object.defineProperty(navigator, "clipboard", original);
+      else Reflect.deleteProperty(navigator, "clipboard");
+    }
+  });
+
   it("surfaces an inline error when the chosen file cannot be read", async () => {
     render(<TranslateDialog open onClose={() => {}} />);
     const fileInput = screen.getByLabelText("Load a file");
