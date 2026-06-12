@@ -80,6 +80,10 @@ const SAMPLES: Record<WarningKind, Warning> = {
     kind: "client-capability-duplicate",
     params: { clientId: "WebApp", name: "camera" },
   },
+  "annotation-possible-typo": {
+    kind: "annotation-possible-typo",
+    params: { nodeId: "Legacy", annotation: "depracated", suggestion: "deprecated" },
+  },
   "legend-ref-unresolved": {
     kind: "legend-ref-unresolved",
     params: { target: "@missing", legendTitle: "Tags" },
@@ -142,6 +146,7 @@ const IDENTIFIERS: Record<WarningKind, string[]> = {
   "cyclic-dependency": ["A", "B"],
   "delivers-target-not-client": ["BFF", "OrderService"],
   "client-capability-duplicate": ["WebApp", "camera"],
+  "annotation-possible-typo": ["Legacy", "@depracated", "@deprecated"],
   "legend-ref-unresolved": ["@missing"],
   "style-column-invalid-value": ["OrderService", "centre"],
   "style-column-ignored-non-system-view": ["OrderUnit"],

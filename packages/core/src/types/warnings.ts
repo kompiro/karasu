@@ -21,6 +21,7 @@ export type WarningKind =
   | "cyclic-dependency"
   | "delivers-target-not-client"
   | "client-capability-duplicate"
+  | "annotation-possible-typo"
   | "legend-ref-unresolved"
   | "style-column-invalid-value"
   | "style-column-ignored-non-system-view"
@@ -85,6 +86,23 @@ export interface WarningParamsByKind {
    * duplicate.
    */
   "client-capability-duplicate": { clientId: string; name: string };
+  /**
+   * An annotation name is not one of the built-ins but is within a small
+   * edit distance of one (e.g. `@depracated`). Annotation names are an
+   * open set (docs/spec/tags-annotations.md § Annotation names are an
+   * open set), so unknown names are never an error — this hint only fires
+   * on near-misses of a built-in, where a typo is the likely intent.
+   * Names that appear in a stylesheet annotation selector are treated as
+   * intentional and never hinted.
+   */
+  "annotation-possible-typo": {
+    /** id of the node carrying the suspicious annotation */
+    nodeId: string;
+    /** the annotation name as written, without the `@` sigil */
+    annotation: string;
+    /** the closest built-in annotation name, without the `@` sigil */
+    suggestion: string;
+  };
   /**
    * A `ref` entry inside a `legend` block points at a target
    * (annotation / tag / class / id / type) that does not match anything
@@ -170,6 +188,10 @@ const INFO_WARNING_KINDS: ReadonlySet<WarningKind> = new Set<WarningKind>([
   // the ℹ icon via the old `WARNING_ICONS` map; preserve that register.
   "missing-runtime",
   "missing-realizes",
+  // Low-confidence hint: annotation names are an open set, so a near-miss
+  // of a built-in is only *probably* a typo — never a defect karasu can
+  // assert (#1499).
+  "annotation-possible-typo",
 ]);
 
 export function warningSeverity(kind: WarningKind): WarningSeverity {

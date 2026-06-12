@@ -203,6 +203,10 @@ export const ja: Partial<Translations> = {
     `service "${serviceId}" の delivers 先 "${targetId}" は client ノードではありません`,
   "warning.clientCapabilityDuplicate.message": ({ clientId, name }) =>
     `client "${clientId}" は capability "${name}" を複数回宣言しています`,
+  "warning.annotationPossibleTypo.message": ({ nodeId, annotation, suggestion }) =>
+    `${nodeId} の "@${annotation}" — "@${suggestion}" の誤記ではありませんか？`,
+  "warning.annotationPossibleTypo.openSetNote":
+    "アノテーション名はオープンセットであり、独自の名前も有効です。このヒントは組み込み名に近い名前にのみ表示されます。",
   "warning.legendRefUnresolved.message": ({ target, legendTitle }) =>
     legendTitle
       ? `legend "${legendTitle}": ref ${target} はどのノード・スタイル規則にも一致しません`

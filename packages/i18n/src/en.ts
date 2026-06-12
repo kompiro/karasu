@@ -204,6 +204,10 @@ export const en: Translations = {
     `service "${serviceId}" delivers target "${targetId}" is not a client node`,
   "warning.clientCapabilityDuplicate.message": ({ clientId, name }) =>
     `client "${clientId}" declares capability "${name}" more than once`,
+  "warning.annotationPossibleTypo.message": ({ nodeId, annotation, suggestion }) =>
+    `"@${annotation}" on ${nodeId} — did you mean "@${suggestion}"?`,
+  "warning.annotationPossibleTypo.openSetNote":
+    "Annotation names are an open set; custom names are fine. This hint only fires for names close to a built-in.",
   "warning.legendRefUnresolved.message": ({ target, legendTitle }) =>
     legendTitle
       ? `legend "${legendTitle}": ref ${target} does not match any node or style rule`

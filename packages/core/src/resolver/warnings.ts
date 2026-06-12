@@ -2,6 +2,7 @@ import type { KrsNode, KrsEdge, KrsFile, TeamNode, LegendRefTarget } from "../ty
 import type { StyleSheet, StyleSelector } from "../types/style.js";
 import type { Warning } from "../types/warnings.js";
 import { collectLegendUsage, legendRefHasUsage } from "../legend/usage.js";
+import { REFERENCE_DATA } from "../builtins/reference-data.js";
 
 export function analyze(file: KrsFile, sheets: StyleSheet[], systemSheetCount = 1): Warning[] {
   const warnings: Warning[] = [];
@@ -24,6 +25,7 @@ export function analyze(file: KrsFile, sheets: StyleSheet[], systemSheetCount = 
   warnings.push(...detectCyclicDependencies(file));
   warnings.push(...detectDeliversTargetNotClient(file));
   warnings.push(...detectDuplicateClientCapabilities(file));
+  warnings.push(...detectAnnotationPossibleTypos(file, sheets));
   warnings.push(...detectUnresolvedLegendRefs(file, sheets));
 
   return warnings;
@@ -176,6 +178,92 @@ function detectDuplicateClientCapabilities(file: KrsFile): Warning[] {
   for (const client of file.clients) visit(client);
   for (const service of file.services) visit(service);
   return warnings;
+}
+
+/**
+ * Annotation names are an open set (docs/spec/tags-annotations.md
+ * § Annotation names are an open set): any identifier is accepted and
+ * user-defined annotations are legitimate stylesheet targets. The only
+ * thing worth surfacing is a *near-miss* of a built-in name — `@depracated`
+ * silently losing its badge is the failure mode this hint exists for
+ * (#1499). Fires as `info`, never `warning`.
+ *
+ * A name that appears in any stylesheet annotation selector is treated as
+ * intentionally user-defined and is never hinted, even when it sits close
+ * to a built-in.
+ */
+function detectAnnotationPossibleTypos(file: KrsFile, sheets: StyleSheet[]): Warning[] {
+  const builtins = REFERENCE_DATA.annotations.map((a) => a.name);
+  const styledAnnotations = indexStyleSelectors(sheets).annotations;
+  const warnings: Warning[] = [];
+
+  const visit = (node: KrsNode): void => {
+    for (const annotation of node.annotations) {
+      if (builtins.includes(annotation) || styledAnnotations.has(annotation)) continue;
+      const suggestion = closestBuiltinAnnotation(annotation, builtins);
+      if (suggestion !== undefined) {
+        warnings.push({
+          kind: "annotation-possible-typo",
+          params: { nodeId: node.id, annotation, suggestion },
+          loc: node.loc,
+        });
+      }
+    }
+    for (const child of node.children) visit(child);
+  };
+
+  for (const system of file.systems) visit(system);
+  for (const client of file.clients) visit(client);
+  for (const service of file.services) visit(service);
+  for (const domain of file.domains) visit(domain);
+  for (const database of file.databases) visit(database);
+  for (const queue of file.queues) visit(queue);
+  for (const storage of file.storages) visit(storage);
+  return warnings;
+}
+
+/**
+ * Return the built-in annotation name within typo distance of `name`, or
+ * undefined when none is close enough. The budget scales with the
+ * built-in's length so short names like `new` only match single-edit
+ * slips while `migration_target` tolerates two.
+ */
+function closestBuiltinAnnotation(name: string, builtins: string[]): string | undefined {
+  let best: { builtin: string; distance: number } | undefined;
+  for (const builtin of builtins) {
+    const budget = builtin.length <= 4 ? 1 : 2;
+    const distance = levenshtein(name, builtin);
+    if (distance <= budget && (best === undefined || distance < best.distance)) {
+      best = { builtin, distance };
+    }
+  }
+  return best?.builtin;
+}
+
+/**
+ * Optimal-string-alignment distance (Levenshtein + adjacent transposition).
+ * Transpositions count as one edit so the classic slip `@nwe` sits at
+ * distance 1 from `new`, inside the short-name budget.
+ */
+function levenshtein(a: string, b: string): number {
+  let prevPrev: number[] = [];
+  let prev = Array.from({ length: b.length + 1 }, (_, j) => j);
+  for (let i = 1; i <= a.length; i++) {
+    const curr = [i];
+    for (let j = 1; j <= b.length; j++) {
+      curr[j] = Math.min(
+        prev[j] + 1,
+        curr[j - 1] + 1,
+        prev[j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1),
+      );
+      if (i > 1 && j > 1 && a[i - 1] === b[j - 2] && a[i - 2] === b[j - 1]) {
+        curr[j] = Math.min(curr[j], prevPrev[j - 2] + 1);
+      }
+    }
+    prevPrev = prev;
+    prev = curr;
+  }
+  return prev[b.length];
 }
 
 function detectDomainDispersal(file: KrsFile): Warning[] {

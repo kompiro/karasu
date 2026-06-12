@@ -208,6 +208,12 @@ export type Translations = {
     clientId: string;
     name: string;
   }) => string;
+  "warning.annotationPossibleTypo.message": (params: {
+    nodeId: string;
+    annotation: string;
+    suggestion: string;
+  }) => string;
+  "warning.annotationPossibleTypo.openSetNote": string;
   "warning.legendRefUnresolved.message": (params: {
     target: string;
     legendTitle?: string;

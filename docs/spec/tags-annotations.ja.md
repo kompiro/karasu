@@ -87,6 +87,19 @@ system OrderSystem {
 > `@deprecated` 単独、または `@migration_target` 単独、どちらか一方が付いていれば重複を許容する。
 > どちらにも付いていない場合はエラーのまま。
 
+### アノテーション名はオープンセット
+
+アノテーション名の集合は**オープン** — `@<identifier>` は任意の識別子を受け付け、組み込みセット外の名前に警告は出さない。デフォルトのセマンティクスとバッジ描画を持つのは上記 4 つの組み込みのみで、ユーザー定義アノテーションにはデフォルト描画はないが、`.krs.style` のアノテーションセレクタの正当なターゲットになる（[`docs/spec/style.ja.md`](./style.ja.md#セレクタの種類) を参照）。
+
+未知の名前を黙って受け付ける以上、組み込み名のタイポ（例: `@depracated`）は「バッジが出ない」という形でしか表面化しない。そのため karasu は、組み込みではないが組み込み名と編集距離が近いアノテーション名に対して **info レベルのヒント**（`annotation-possible-typo`）を出す。スタイルシートのアノテーションセレクタに現れる名前についてはヒントを抑制する — セレクタの定義はその名前が意図的なユーザー定義であることの表明とみなす。
+
+```krs
+service Billing @team-alpha   // OK: ユーザー定義アノテーション、ヒントなし
+service Legacy  @depracated   // info ヒント: "@deprecated" の誤記では？
+```
+
+> Related TPLs: [TPL-20260610-01](../test-perspectives/TPL-20260610-01-accepted-vocabulary-must-have-effect.md)
+
 ---
 
 ## client capability

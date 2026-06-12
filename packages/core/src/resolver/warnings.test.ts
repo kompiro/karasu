@@ -431,6 +431,92 @@ system S {
   });
 });
 
+describe("annotation-possible-typo hint", () => {
+  function typoHints(krs: string, userStyle?: string) {
+    const file = Parser.parse(krs).value;
+    const sheets = [getBuiltinStyleSheet()];
+    if (userStyle) sheets.push(StyleParser.parse(userStyle).value);
+    return analyze(file, sheets).filter((w) => w.kind === "annotation-possible-typo");
+  }
+
+  it("hints a near-miss of a built-in annotation", () => {
+    const hints = typoHints(`
+system S {
+  service Legacy @depracated {}
+}
+    `);
+    expect(hints).toHaveLength(1);
+    if (hints[0].kind !== "annotation-possible-typo") throw new Error("kind mismatch");
+    expect(hints[0].params).toEqual({
+      nodeId: "Legacy",
+      annotation: "depracated",
+      suggestion: "deprecated",
+    });
+  });
+
+  it("catches an adjacent transposition of a short built-in (@nwe → @new)", () => {
+    const hints = typoHints(`
+system S {
+  service Api @nwe {}
+}
+    `);
+    expect(hints).toHaveLength(1);
+    if (hints[0].kind !== "annotation-possible-typo") throw new Error("kind mismatch");
+    expect(hints[0].params.suggestion).toBe("new");
+  });
+
+  it("renders as info, not warning — annotation names are an open set", () => {
+    expect(warningSeverity("annotation-possible-typo")).toBe("info");
+  });
+
+  it("stays silent for exact built-in names", () => {
+    expect(
+      typoHints(`
+system S {
+  service Legacy @deprecated @migration_target {}
+}
+    `),
+    ).toHaveLength(0);
+  });
+
+  it("stays silent for user-defined names far from any built-in", () => {
+    expect(
+      typoHints(`
+system S {
+  service Billing @internal @team-alpha {}
+}
+    `),
+    ).toHaveLength(0);
+  });
+
+  it("treats a name targeted by a stylesheet annotation selector as intentional", () => {
+    const krs = `
+system S {
+  service Legacy @deprecate {}
+}
+    `;
+    // Without a stylesheet the near-miss is hinted...
+    expect(typoHints(krs)).toHaveLength(1);
+    // ...but a user selector for the name marks it user-defined.
+    expect(typoHints(krs, `service@deprecate { opacity: 0.5; }`)).toHaveLength(0);
+  });
+
+  it("walks annotations on systems and nested resources", () => {
+    const hints = typoHints(`
+system S @experimentl {
+  service Svc {
+    domain Orders {
+      usecase Do {
+        resource OrderDB @deprecatd {}
+      }
+    }
+  }
+}
+    `);
+    expect(hints.map((h) => h.params.suggestion).sort()).toEqual(["deprecated", "experimental"]);
+  });
+});
+
 describe("unresolved-handles warning", () => {
   function unresolved(krs: string) {
     const file = Parser.parse(krs).value;
@@ -1307,6 +1393,9 @@ describe("warningSeverity — exhaustive register map", () => {
     "domain-dispersal": "info",
     "missing-runtime": "info",
     "missing-realizes": "info",
+    // Low-confidence hint on an open name set — never a defect karasu can
+    // assert (#1499).
+    "annotation-possible-typo": "info",
     "style-conflict": "warning",
     "unresolved-realizes": "warning",
     "invalid-owns": "warning",
