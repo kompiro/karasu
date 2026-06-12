@@ -427,3 +427,4 @@ DesignDoc が proactive TPL を引用したら、実装 PR で次をやる:
 | [TPL-20260610-01](TPL-20260610-01-accepted-vocabulary-must-have-effect.md) | 受理される語彙は「効果を持つ」「警告される」「open set と明文化」のいずれかに属する | styling | property-schema.ts, parser.ts |
 | [TPL-20260610-02](TPL-20260610-02-spec-promised-diagnostics-implemented.md) | spec が約束する診断は専用の診断コードとして実装されていることを検証する | parser | docs/spec/style.md, docs/spec/syntax.md |
 | [TPL-20260612-01](TPL-20260612-01-style-coupled-diagnostics-sheetless-context.md) | style 連動の diagnostic はシート不在の文脈（LSP 単一ドキュメント）での挙動を仕様化する | core-concepts | #1522 |
+| [TPL-20260612-02](TPL-20260612-02-react-passive-event-preventdefault-noop.md) | React の synthetic onWheel / onTouchMove では preventDefault が no-op になる | app-ui | #1537 |

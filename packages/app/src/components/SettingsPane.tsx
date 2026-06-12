@@ -6,6 +6,7 @@ import {
   getPersistSetting,
   type PersistSetting,
 } from "../utils/api-key-storage.js";
+import { useTransientFlag } from "../hooks/useTransientFlag.js";
 import { useTranslation } from "../i18n/index.js";
 import type { Locale } from "../i18n/locale.js";
 import { useTheme, type ThemePreference } from "../theme/index.js";
@@ -20,13 +21,14 @@ export function SettingsPane({ onApiKeyChange }: SettingsPaneProps) {
   const { theme, setTheme } = useTheme();
   const [apiKey, setApiKey] = useState(() => getStoredApiKey() ?? "");
   const [persist, setPersist] = useState<PersistSetting>(() => getPersistSetting());
-  const [saved, setSaved] = useState(false);
+  // The "Saved" affordance auto-resets after 2s; useTransientFlag owns the
+  // timer lifecycle (unmount cleanup + clean re-arm on rapid re-save, #1539).
+  const [saved, markSaved] = useTransientFlag(2000);
 
   const handleSave = () => {
     if (!apiKey.trim()) return;
     setStoredApiKey(apiKey.trim(), persist);
-    setSaved(true);
-    setTimeout(() => setSaved(false), 2000);
+    markSaved();
     onApiKeyChange();
   };
 

@@ -94,6 +94,8 @@ export type Translations = {
   "translateDialog.download": string;
   "translateDialog.copy": string;
   "translateDialog.translate": string;
+  "translateDialog.copyFailed": string;
+  "translateDialog.loadFailed": string;
 
   // Chat pane (Phase C4)
   "chat.newSession.button": string;

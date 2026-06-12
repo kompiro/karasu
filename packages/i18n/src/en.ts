@@ -88,6 +88,9 @@ export const en: Translations = {
   "translateDialog.download": "↓ Download .krs",
   "translateDialog.copy": "⧉ Copy .krs",
   "translateDialog.translate": "⇄ Translate",
+  "translateDialog.copyFailed":
+    "Couldn't copy to the clipboard. Select the text and copy it manually.",
+  "translateDialog.loadFailed": "Couldn't read the selected file.",
 
   // Chat pane
   "chat.newSession.button": "↺ New Session",

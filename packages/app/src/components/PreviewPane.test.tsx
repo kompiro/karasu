@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, it, expect, vi, beforeAll, afterEach } from "vitest";
-import { render as rtlRender, fireEvent, cleanup } from "@testing-library/react";
+import { render as rtlRender, fireEvent, cleanup, act } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { ReactElement } from "react";
 import { PreviewPane } from "./PreviewPane.js";
@@ -462,6 +462,90 @@ describe("PreviewPane", () => {
       const edge = container.querySelector("[data-edge-canonical-id]")!;
       fireEvent.contextMenu(edge, { clientX: 50, clientY: 60 });
       expect(queryTarget()).toBeNull();
+    });
+  });
+
+  // #1537: the zoom handler must be a native, non-passive wheel listener so
+  // preventDefault actually suppresses page/ancestor scroll. React's synthetic
+  // onWheel is passive (React 17+) and would silently drop the preventDefault.
+  describe("wheel zoom (#1537)", () => {
+    function dispatchWheel(el: Element, deltaY: number) {
+      const event = new WheelEvent("wheel", { deltaY, cancelable: true, bubbles: true });
+      act(() => {
+        el.dispatchEvent(event);
+      });
+      return event;
+    }
+
+    it("calls preventDefault on the wheel event (listener is non-passive)", () => {
+      const { container } = render(<PreviewPane {...baseProps()} svg="<div></div>" />);
+      const previewContainer = container.querySelector(".preview-container")!;
+      const event = dispatchWheel(previewContainer, 100);
+      expect(event.defaultPrevented).toBe(true);
+    });
+
+    it("zooms out on scroll down and in on scroll up", () => {
+      const { container } = render(<PreviewPane {...baseProps()} svg="<div></div>" />);
+      const previewContainer = container.querySelector(".preview-container")!;
+      const zoomLayer = () => previewContainer.querySelector(":scope > div") as HTMLElement;
+
+      dispatchWheel(previewContainer, 100); // scroll down → 0.9×
+      expect(zoomLayer().style.transform).toContain("scale(0.9)");
+
+      dispatchWheel(previewContainer, -100); // scroll up → back to ~1×
+      expect(zoomLayer().style.transform).toContain("scale(0.99");
+    });
+
+    it("removes the wheel listener on unmount", () => {
+      const { container, unmount } = render(<PreviewPane {...baseProps()} svg="<div></div>" />);
+      const previewContainer = container.querySelector(".preview-container")!;
+      unmount();
+      // After unmount the detached node no longer mutates state; a dispatched
+      // wheel event is simply not prevented (the listener was cleaned up).
+      const event = new WheelEvent("wheel", { deltaY: 100, cancelable: true });
+      previewContainer.dispatchEvent(event);
+      expect(event.defaultPrevented).toBe(false);
+    });
+
+    // Regression guard: a native ancestor listener can't be stopped by a
+    // descendant's React synthetic stopPropagation, so detail panels opt out
+    // via data-wheel-zoom-ignore. Wheeling over a panel must scroll it, not
+    // zoom the diagram (and must not preventDefault, which would cancel the
+    // panel's own scroll).
+    it("does not zoom when the wheel originates inside a detail panel (#1537)", () => {
+      const svg = `<div data-node-id="leaf" data-has-children="false"></div>`;
+      const metadata: NodeMetadata = {
+        kind: "service",
+        label: "Leaf",
+        description: "",
+        links: [],
+        tags: [],
+        annotations: [],
+        hasChildren: false,
+      };
+      const { container } = render(
+        <PreviewPane {...baseProps()} svg={svg} nodeMetadata={new Map([["leaf", metadata]])} />,
+      );
+      const previewContainer = container.querySelector(".preview-container")!;
+      // Open the node detail panel by clicking the leaf node.
+      click(
+        previewContainer as HTMLElement,
+        () => container.querySelector("[data-node-id='leaf']")!,
+      );
+
+      const panel = container.querySelector("[data-wheel-zoom-ignore]");
+      expect(panel).not.toBeNull();
+      const zoomLayer = () => previewContainer.querySelector(":scope > div") as HTMLElement;
+      const before = zoomLayer().style.transform;
+
+      const event = new WheelEvent("wheel", { deltaY: 100, cancelable: true, bubbles: true });
+      act(() => {
+        panel!.dispatchEvent(event);
+      });
+
+      // Listener bailed: scroll not cancelled, scale unchanged.
+      expect(event.defaultPrevented).toBe(false);
+      expect(zoomLayer().style.transform).toBe(before);
     });
   });
 });

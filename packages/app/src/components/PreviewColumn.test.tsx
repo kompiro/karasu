@@ -627,15 +627,37 @@ describe("PreviewColumn", () => {
       );
     });
 
-    it("calls window.open with a blob URL when clicked", () => {
+    it("calls window.open with a blob URL and noopener when clicked (#1529)", () => {
       const openSpy = vi.spyOn(window, "open").mockReturnValue(null);
       vi.spyOn(URL, "createObjectURL").mockReturnValue("blob:mock-url");
       const props = makeProps({ allViewsSvg: "<svg>all-views</svg>" });
       const { getByRole } = renderPreview(props);
       fireEvent.click(getByRole("button", { name: /Open all views in new window/ }));
       expect(URL.createObjectURL).toHaveBeenCalled();
-      expect(openSpy).toHaveBeenCalledWith("blob:mock-url", "_blank");
+      // noopener severs the opened tab's window.opener back-reference.
+      expect(openSpy).toHaveBeenCalledWith("blob:mock-url", "_blank", "noopener");
       openSpy.mockRestore();
+    });
+
+    it("revokes the blob URL after the grace period so it is not pinned (#1529)", () => {
+      vi.useFakeTimers();
+      const openSpy = vi.spyOn(window, "open").mockReturnValue(null);
+      const createSpy = vi.spyOn(URL, "createObjectURL").mockReturnValue("blob:mock-url");
+      const revokeSpy = vi.spyOn(URL, "revokeObjectURL").mockImplementation(() => {});
+      try {
+        const props = makeProps({ allViewsSvg: "<svg>all-views</svg>" });
+        const { getByRole } = renderPreview(props);
+        fireEvent.click(getByRole("button", { name: /Open all views in new window/ }));
+        // Not revoked synchronously — the new tab still needs the blob to load.
+        expect(revokeSpy).not.toHaveBeenCalled();
+        vi.advanceTimersByTime(10_000);
+        expect(revokeSpy).toHaveBeenCalledWith("blob:mock-url");
+      } finally {
+        vi.useRealTimers();
+        openSpy.mockRestore();
+        createSpy.mockRestore();
+        revokeSpy.mockRestore();
+      }
     });
 
     it("does not call window.open when allViewsSvg is undefined", () => {

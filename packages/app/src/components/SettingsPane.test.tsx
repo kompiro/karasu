@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { LocaleProvider } from "../i18n/index.js";
 import { ThemeProvider } from "../theme/index.js";
 import { SettingsPane } from "./SettingsPane.js";
@@ -200,6 +200,88 @@ describe("SettingsPane — AI settings localization (Phase C2)", () => {
     // Button label text varies by locale but the distinction between the two
     // states is the emoji prefix; verify the pre-save label exists.
     expect(screen.getByRole("button", { name: /Save/i })).toBeTruthy();
+  });
+});
+
+describe("SettingsPane — Saved indicator timer (#1539)", () => {
+  beforeEach(() => {
+    localStorage.clear();
+  });
+
+  function typeKey(value: string) {
+    // fireEvent.change goes through React's native value setter so the
+    // controlled input's value tracker actually registers the change — a bare
+    // `input.value = …; dispatchEvent("input")` is deduped by React and lost.
+    const input = screen.getByLabelText(/Claude API key/i) as HTMLInputElement;
+    act(() => {
+      fireEvent.change(input, { target: { value } });
+    });
+  }
+
+  it("reverts the Saved indicator after the 2s window", () => {
+    vi.useFakeTimers();
+    try {
+      renderWithLocale("en");
+      typeKey("sk-ant-test");
+      act(() => {
+        fireEvent.click(screen.getByRole("button", { name: /Save/i }));
+      });
+      expect(screen.getByRole("button", { name: /Saved/i })).toBeTruthy();
+      act(() => {
+        vi.advanceTimersByTime(2000);
+      });
+      expect(screen.queryByRole("button", { name: /Saved/i })).toBeNull();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("re-arms the timer on a second save instead of reverting early", () => {
+    vi.useFakeTimers();
+    try {
+      renderWithLocale("en");
+      typeKey("sk-ant-test");
+      const save = () =>
+        act(() => {
+          fireEvent.click(screen.getByRole("button", { name: /Save|Saved/i }));
+        });
+
+      save();
+      act(() => {
+        vi.advanceTimersByTime(1500); // first window almost elapsed
+      });
+      save(); // re-arm — must reset the countdown, not let the first timer win
+      act(() => {
+        vi.advanceTimersByTime(1500); // 1500ms since re-arm — still inside the window
+      });
+      expect(screen.getByRole("button", { name: /Saved/i })).toBeTruthy();
+      act(() => {
+        vi.advanceTimersByTime(500); // now 2000ms since re-arm
+      });
+      expect(screen.queryByRole("button", { name: /Saved/i })).toBeNull();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("does not throw if unmounted before the timer fires", () => {
+    vi.useFakeTimers();
+    try {
+      const { unmount } = renderWithLocale("en");
+      typeKey("sk-ant-test");
+      act(() => {
+        fireEvent.click(screen.getByRole("button", { name: /Save/i }));
+      });
+      unmount();
+      // Cleanup cleared the timer; advancing time must not call a dead setter.
+      expect(() => {
+        act(() => {
+          vi.advanceTimersByTime(2000);
+        });
+      }).not.toThrow();
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });
 

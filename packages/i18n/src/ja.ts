@@ -87,6 +87,9 @@ export const ja: Partial<Translations> = {
   "translateDialog.download": "↓ .krs をダウンロード",
   "translateDialog.copy": "⧉ .krs をコピー",
   "translateDialog.translate": "⇄ 変換",
+  "translateDialog.copyFailed":
+    "クリップボードにコピーできませんでした。テキストを選択して手動でコピーしてください。",
+  "translateDialog.loadFailed": "選択したファイルを読み込めませんでした。",
 
   // Chat pane
   "chat.newSession.button": "↺ 新しい会話",

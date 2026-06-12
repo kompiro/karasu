@@ -81,6 +81,11 @@ export function NodeDetailPanel({
   return (
     <div
       className="node-detail-panel"
+      // Opt this subtree out of the diagram's native wheel-zoom listener so the
+      // panel's own overflow region scrolls instead of zooming the diagram. A
+      // React synthetic stopPropagation can't stop a native listener on the
+      // ancestor container, so the container reads this attribute instead (#1537).
+      data-wheel-zoom-ignore
       style={{
         position: "absolute",
         left: anchorX,
@@ -92,7 +97,6 @@ export function NodeDetailPanel({
       onClick={(e) => e.stopPropagation()}
       onMouseDown={(e) => e.stopPropagation()}
       onMouseUp={(e) => e.stopPropagation()}
-      onWheel={(e) => e.stopPropagation()}
     >
       <div className="node-detail-header">
         {pictogramSvg ? (
