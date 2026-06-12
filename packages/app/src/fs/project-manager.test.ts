@@ -44,6 +44,24 @@ describe("ProjectManager", () => {
       expect(barKrs).toBe("service Bar {}");
     });
 
+    // Write-boundary guard (#1526): even if a caller skips the ZIP importer's
+    // sanitization, createProject must refuse paths that would escape the
+    // project root (the in-memory provider's normalizePath collapses "..").
+    it("rejects file paths that would escape the project root", async () => {
+      await expect(
+        pm.createProject("Evil", [{ path: "../../escape.krs", content: "system X {}" }]),
+      ).rejects.toThrow(/unsafe project file path/i);
+      // Nothing escaped to the parent of /projects/<id>/
+      expect(await fs.exists("/escape.krs")).toBe(false);
+      expect(await fs.exists("/projects/escape.krs")).toBe(false);
+    });
+
+    it("rejects absolute file paths", async () => {
+      await expect(
+        pm.createProject("Evil", [{ path: "/etc/evil.krs", content: "" }]),
+      ).rejects.toThrow(/unsafe project file path/i);
+    });
+
     it("adds project to metadata", async () => {
       await pm.createProject("Project A");
       await pm.createProject("Project B");

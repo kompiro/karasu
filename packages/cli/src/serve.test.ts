@@ -113,6 +113,10 @@ describe("resolveKrsFile", () => {
     expect(await resolveKrsFile(tmpDir, "/etc/passwd")).toBeNull();
   });
 
+  it("returns null for backslash-separated traversal (shared segment check, #1526)", async () => {
+    expect(await resolveKrsFile(tmpDir, "..\\..\\etc\\passwd")).toBeNull();
+  });
+
   it("returns null for traversal through a subdirectory prefix", async () => {
     expect(await resolveKrsFile(tmpDir, "sub/../../etc/passwd")).toBeNull();
   });

@@ -1,3 +1,4 @@
+import { isSafeRelativePath } from "@karasu-tools/core";
 import type { FileSystemProvider, Project } from "@karasu-tools/core";
 
 const META_PATH = "/meta/projects.json";
@@ -77,6 +78,14 @@ export class ProjectManager {
     // ファイルを書き込む（指定がなければデフォルト）
     const filesToWrite = files ?? [{ path: "index.krs", content: DEFAULT_KRS }];
     for (const file of filesToWrite) {
+      // Write-boundary guard (#1526 / TPL-20260510-17): callers are expected to
+      // pre-sanitize (the ZIP importer does), but every importer reaches this
+      // write, and the in-memory provider's normalizePath collapses "..", so an
+      // unvetted path could escape rootPath. Throw rather than silently skip —
+      // an unsafe path reaching this layer is a caller bug or an attack.
+      if (!isSafeRelativePath(file.path)) {
+        throw new Error(`Unsafe project file path: "${file.path}"`);
+      }
       await this.fs.writeFile(`${project.rootPath}/${file.path}`, file.content);
     }
 

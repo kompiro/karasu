@@ -1,5 +1,12 @@
 import { describe, it, expect } from "vitest";
-import { normalizePath, resolvePath, dirname, basename, extname } from "./path-utils";
+import {
+  normalizePath,
+  resolvePath,
+  dirname,
+  basename,
+  extname,
+  isSafeRelativePath,
+} from "./path-utils";
 
 describe("normalizePath", () => {
   it("removes . segments", () => {
@@ -101,5 +108,41 @@ describe("extname", () => {
 
   it("returns empty for dotfile", () => {
     expect(extname(".gitignore")).toBe("");
+  });
+});
+
+describe("isSafeRelativePath", () => {
+  it("accepts plain and nested relative paths", () => {
+    expect(isSafeRelativePath("index.krs")).toBe(true);
+    expect(isSafeRelativePath("services/app.krs")).toBe(true);
+    expect(isSafeRelativePath("a/b/c.krs.style")).toBe(true);
+  });
+
+  it("accepts paths with harmless '.' or empty segments (normalize stays inside root)", () => {
+    expect(isSafeRelativePath("./index.krs")).toBe(true);
+    expect(isSafeRelativePath("a//b.krs")).toBe(true);
+  });
+
+  it("rejects the empty path", () => {
+    expect(isSafeRelativePath("")).toBe(false);
+  });
+
+  it("rejects absolute paths", () => {
+    expect(isSafeRelativePath("/etc/passwd")).toBe(false);
+  });
+
+  it("rejects any '..' segment (traversal)", () => {
+    expect(isSafeRelativePath("../x.krs")).toBe(false);
+    expect(isSafeRelativePath("a/../../x.krs")).toBe(false);
+    expect(isSafeRelativePath("..")).toBe(false);
+  });
+
+  it("rejects backslash separators", () => {
+    expect(isSafeRelativePath("..\\..\\x.krs")).toBe(false);
+    expect(isSafeRelativePath("a\\b.krs")).toBe(false);
+  });
+
+  it("does not reject '..' appearing inside a segment name", () => {
+    expect(isSafeRelativePath("a..b/file.krs")).toBe(true);
   });
 });

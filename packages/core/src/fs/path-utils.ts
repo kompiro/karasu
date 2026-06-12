@@ -28,6 +28,24 @@ export function normalizePath(p: string): string {
   return isAbsolute ? "/" + normalized : normalized || ".";
 }
 
+/**
+ * untrusted な相対パスが、ある root 配下への書き込みに安全かを判定する。
+ *
+ * `normalizePath` は `..` を畳むため、`<root>/<p>` の組み立て前に検証しないと
+ * root の外（path traversal / zip-slip）へ書き込める。空文字・絶対パス・
+ * バックスラッシュ区切り・`..` セグメントを含むパスを拒否する。
+ * `..` セグメントの全面拒否は normalizePath が root を脱出できる経路の
+ * 厳密な上位集合なので、これを通れば `normalizePath(root + "/" + p)` は
+ * 必ず root 配下に留まる（TPL-20260510-17）。
+ *
+ * 文字列レベルの検証であり、symlink は解決しない。実 OS パスを扱う場合は
+ * resolve + startsWith の境界チェックを併用すること。
+ */
+export function isSafeRelativePath(p: string): boolean {
+  if (p === "" || p.startsWith("/") || p.includes("\\")) return false;
+  return !p.split("/").includes("..");
+}
+
 /** base ファイルのディレクトリを基準に relative パスを解決する */
 export function resolvePath(base: string, relative: string): string {
   if (relative.startsWith("/")) {

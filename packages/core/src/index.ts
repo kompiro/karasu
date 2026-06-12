@@ -202,7 +202,14 @@ export type { FileSystemProvider, DirEntry, FsEvent, Disposable } from "./fs/typ
 export { InMemoryFileSystemProvider } from "./fs/in-memory-provider.js";
 export { ImportResolver, type ResolvedProject } from "./fs/import-resolver.js";
 export type { Project } from "./fs/project.js";
-export { normalizePath, resolvePath, dirname, basename, extname } from "./fs/path-utils.js";
+export {
+  normalizePath,
+  resolvePath,
+  dirname,
+  basename,
+  extname,
+  isSafeRelativePath,
+} from "./fs/path-utils.js";
 
 import type { ParseResult, OrganizationBlock, SystemNode, DeployBlock } from "./types/ast.js";
 import type { KrsFile } from "./types/ast.js";

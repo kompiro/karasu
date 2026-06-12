@@ -10,15 +10,20 @@ applicable_to:
 known_consumers:
   - karasu-serve
   - vscode-extension
+  - project-zip-import
 related_to: []
 discovered_from:
   - issue: "#168"
   - root_cause_file: "packages/cli/src/serve.ts:41"
+  - issue: "#1526"
+  - issue: "#1527"
+  - root_cause_file: "packages/app/src/utils/import-project-zip.ts"
 topic: cli
 scope:
   packages:
     - cli
     - vscode
+    - app
 ---
 
 # TPL-20260510-17: 外部から来る input は trust boundary を越える前に validate / canonicalize する
@@ -30,6 +35,8 @@ karasu の `karasu serve` のような HTTP API、VS Code 拡張の message hand
 「内部実装の都合上 path がそのまま使える形になっている」「`.krs` 拡張子を後付けするから traversal は限定的」のような **副次的緩和** を理由に validation を省くと、後で実装が変わったときに脆弱性が顕在化する。**validation は payload の意味（path らしい / id らしい）に依らず、trust boundary を越える時点で機械的に行う** のが原則。
 
 #168 では `GET /api/file/:name` の `name` が `join(dir, name + ".krs")` にそのまま渡され、`../../etc/passwd` のような入力が外側のディレクトリに resolve できる構造になっていた。`.krs` 拡張子付与により実害は限定的だったが、validation の不在自体が security smell。修正は `resolve` してから `startsWith(safeDir + sep)` で外に出ないことを確認する形（`packages/cli/src/serve.ts:41` の現在の実装）。
+
+#1526 / #1527 で同じ観点が **app の ZIP インポート** で再観測された。アップロードされた `.zip` も trust boundary の外の input である。エントリ名（`../../x.krs` / 絶対パス / バックスラッシュ）を `/projects/<id>/<path>` にそのまま書くと、in-memory provider の `normalizePath` が `..` を畳んでプロジェクト外へ脱出する（zip-slip）。さらに **アーカイブは「巨大入力」の一形態**であり、`unzipSync` が全エントリをメモリ展開する前に **エントリ名のサニタイズ** と **解凍前のサイズ/件数キャップ**（解凍爆弾対策）を境界で機械的に行う必要がある（`packages/app/src/utils/import-project-zip.ts`）。
 
 ## 想定される失敗モード
 
@@ -59,7 +66,9 @@ karasu の `karasu serve` のような HTTP API、VS Code 拡張の message hand
 - HTTP handler は **入力 schema validator**（zod 等）を境界で挟む。schema を通らない入力は handler 本体に届かない構造を維持
 - 仕様書 / OpenAPI / API doc に **「trust boundary はここ」** を明示する。consumer 側が「ここから先は信用できる値」を理解できる
 - security review チェックリストに「新しい handler は negative test を持っているか」を加え、PR レビュー時に機械的に確認
+- **アーカイブ（ZIP 等）を取り込む経路** では、(1) 各エントリ名を「相対・`..` を含まない・絶対でない・バックスラッシュを含まない」と検証してから書き込み先を組み立て、(2) **解凍前に** ヘッダの uncompressed size とエントリ数で per-file / total / count キャップを当てて解凍爆弾を弾く（fflate なら `unzipSync(data, { filter })` で展開前に判定できる）。`#1526` / `#1527` の実装パターン
 
 ## 関連テスト
 
 - `packages/cli/src/serve.test.ts`（path traversal の negative test を含む）
+- `packages/app/src/utils/import-project-zip.test.ts`（zip-slip / 解凍爆弾・エントリ数キャップの negative test を含む — #1526 / #1527）
