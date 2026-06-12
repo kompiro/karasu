@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, it, expect, vi, beforeAll, afterEach } from "vitest";
-import { render as rtlRender, fireEvent, cleanup } from "@testing-library/react";
+import { render as rtlRender, fireEvent, cleanup, act } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { ReactElement } from "react";
 import { PreviewPane } from "./PreviewPane.js";
@@ -462,6 +462,49 @@ describe("PreviewPane", () => {
       const edge = container.querySelector("[data-edge-canonical-id]")!;
       fireEvent.contextMenu(edge, { clientX: 50, clientY: 60 });
       expect(queryTarget()).toBeNull();
+    });
+  });
+
+  // #1537: the zoom handler must be a native, non-passive wheel listener so
+  // preventDefault actually suppresses page/ancestor scroll. React's synthetic
+  // onWheel is passive (React 17+) and would silently drop the preventDefault.
+  describe("wheel zoom (#1537)", () => {
+    function dispatchWheel(el: Element, deltaY: number) {
+      const event = new WheelEvent("wheel", { deltaY, cancelable: true, bubbles: true });
+      act(() => {
+        el.dispatchEvent(event);
+      });
+      return event;
+    }
+
+    it("calls preventDefault on the wheel event (listener is non-passive)", () => {
+      const { container } = render(<PreviewPane {...baseProps()} svg="<div></div>" />);
+      const previewContainer = container.querySelector(".preview-container")!;
+      const event = dispatchWheel(previewContainer, 100);
+      expect(event.defaultPrevented).toBe(true);
+    });
+
+    it("zooms out on scroll down and in on scroll up", () => {
+      const { container } = render(<PreviewPane {...baseProps()} svg="<div></div>" />);
+      const previewContainer = container.querySelector(".preview-container")!;
+      const zoomLayer = () => previewContainer.querySelector(":scope > div") as HTMLElement;
+
+      dispatchWheel(previewContainer, 100); // scroll down → 0.9×
+      expect(zoomLayer().style.transform).toContain("scale(0.9)");
+
+      dispatchWheel(previewContainer, -100); // scroll up → back to ~1×
+      expect(zoomLayer().style.transform).toContain("scale(0.99");
+    });
+
+    it("removes the wheel listener on unmount", () => {
+      const { container, unmount } = render(<PreviewPane {...baseProps()} svg="<div></div>" />);
+      const previewContainer = container.querySelector(".preview-container")!;
+      unmount();
+      // After unmount the detached node no longer mutates state; a dispatched
+      // wheel event is simply not prevented (the listener was cleaned up).
+      const event = new WheelEvent("wheel", { deltaY: 100, cancelable: true });
+      previewContainer.dispatchEvent(event);
+      expect(event.defaultPrevented).toBe(false);
     });
   });
 });

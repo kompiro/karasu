@@ -1,4 +1,4 @@
-import { useRef, useState, useCallback, useEffect, type WheelEvent, type MouseEvent } from "react";
+import { useRef, useState, useCallback, useEffect, type MouseEvent } from "react";
 import type {
   Diagnostic,
   EdgeDirection,
@@ -129,13 +129,22 @@ export function PreviewPane({
   );
   const hasErrors = diagnostics.some((d) => d.severity === "error");
 
-  const handleWheel = useCallback((e: WheelEvent) => {
-    e.preventDefault();
-    const delta = e.deltaY > 0 ? 0.9 : 1.1;
-    setTransform((prev) => ({
-      ...prev,
-      scale: Math.max(0.1, Math.min(5, prev.scale * delta)),
-    }));
+  // Attach the zoom handler as a native, non-passive wheel listener. React's
+  // synthetic onWheel is registered passively (React 17+), so a preventDefault
+  // there is a no-op and the page/ancestor scrolls while zooming (#1537).
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+    const onWheel = (e: globalThis.WheelEvent) => {
+      e.preventDefault();
+      const delta = e.deltaY > 0 ? 0.9 : 1.1;
+      setTransform((prev) => ({
+        ...prev,
+        scale: Math.max(0.1, Math.min(5, prev.scale * delta)),
+      }));
+    };
+    el.addEventListener("wheel", onWheel, { passive: false });
+    return () => el.removeEventListener("wheel", onWheel);
   }, []);
 
   const handleMouseDown = useCallback(
@@ -358,7 +367,6 @@ export function PreviewPane({
       <div
         ref={containerRef}
         className="preview-container"
-        onWheel={handleWheel}
         onMouseDown={handleMouseDown}
         onMouseMove={handleMouseMove}
         onMouseUp={handleMouseUp}
