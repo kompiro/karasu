@@ -151,16 +151,25 @@ export function ProjectModeApp() {
 
   const handleImportProject = useCallback(
     async (file: File) => {
-      const buffer = await file.arrayBuffer();
-      const { files, detectedName } = parseZipForImport(new Uint8Array(buffer));
-      const baseName = detectedName ?? file.name.replace(/\.zip$/i, "");
-      const finalName = disambiguateName(
-        baseName,
-        projects.map((p) => p.name),
-      );
-      const project = await pm.createProject(finalName, files);
-      dispatch({ type: "ADD_PROJECT", project });
-      navigateToProject(project);
+      try {
+        const buffer = await file.arrayBuffer();
+        const { files, detectedName } = parseZipForImport(new Uint8Array(buffer));
+        const baseName = detectedName ?? file.name.replace(/\.zip$/i, "");
+        const finalName = disambiguateName(
+          baseName,
+          projects.map((p) => p.name),
+        );
+        const project = await pm.createProject(finalName, files);
+        dispatch({ type: "ADD_PROJECT", project });
+        navigateToProject(project);
+      } catch (err) {
+        // parseZipForImport throws on corrupt archives and on the #1526/#1527
+        // hardening limits (decompression bomb, entry-count cap). Keep the
+        // rejection handled so it can't surface as an uncaught error; a
+        // user-facing error banner for import failures is tracked by #1532.
+        // eslint-disable-next-line no-console
+        console.error("Project import failed:", err);
+      }
     },
     [pm, dispatch, projects, navigateToProject],
   );
