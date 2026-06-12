@@ -196,6 +196,13 @@ Properties are written inside the body block `{ }`. Properties come before child
 All properties are optional. `link` may appear multiple times within the same node.
 Using a property on a kind that does not support it produces an error.
 
+A `link` URL must be an absolute `http:` / `https:` / `mailto:` URL. Any other
+scheme (e.g. `javascript:`) or a relative path is rejected: the parser emits a
+`link-url-scheme-not-allowed` warning and drops the link, so it never reaches a
+rendered `<a href>` (preview panels render link URLs as clickable anchors).
+
+> Related TPLs: TPL-20260510-17 — `外部から来る input は trust boundary を越える前に validate / canonicalize する`
+
 ### user node example
 
 ```
