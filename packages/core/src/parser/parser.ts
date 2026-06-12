@@ -1,4 +1,5 @@
 import { TokenType, type Token, type SourceRange, type SourceLocation } from "../types/tokens.js";
+import { ALLOWED_LINK_SCHEMES, parseUrlScheme } from "./link-url.js";
 import type {
   KrsFile,
   KrsNode,
@@ -358,7 +359,8 @@ export class Parser {
       // Property: link
       if (token.type === TokenType.Link) {
         this.advance();
-        properties.links.push(this.parseLink());
+        const link = this.parseLink();
+        if (link) properties.links.push(link);
         continue;
       }
 
@@ -632,7 +634,7 @@ export class Parser {
     };
   }
 
-  private parseLink(): LinkEntry {
+  private parseLink(): LinkEntry | null {
     const start = this.peek().loc;
     const url = this.expect(TokenType.StringLiteral);
     let label: string | undefined;
@@ -642,7 +644,25 @@ export class Parser {
       label = labelToken.value;
       end = labelToken.loc;
     }
-    return { url: url.value, label, loc: this.range(start, end) };
+    const loc = this.range(start, end);
+    // Trust-boundary scheme allowlist (#1525 / TPL-20260510-17): link URLs come
+    // from untrusted .krs content and are rendered as <a href> in the app and
+    // the VS Code webview, where a javascript: URL executes in the app origin.
+    // Validate once at parse time so every render surface is protected. The
+    // WHATWG URL parser matches browser href semantics (case folding, tab/
+    // newline stripping), so scheme tricks like "JaVaScRiPt:" normalize before
+    // the check; anything unparseable (incl. relative paths) is rejected too.
+    const scheme = parseUrlScheme(url.value);
+    if (scheme === null || !ALLOWED_LINK_SCHEMES.has(scheme)) {
+      this.diagnostics.push({
+        severity: "warning",
+        code: "link-url-scheme-not-allowed",
+        params: { url: url.value, scheme: scheme ?? "" },
+        loc,
+      });
+      return null;
+    }
+    return { url: url.value, label, loc };
   }
 
   /**
@@ -1147,7 +1167,8 @@ export class Parser {
 
       if (token.type === TokenType.Link) {
         this.advance();
-        properties.links.push(this.parseLink());
+        const link = this.parseLink();
+        if (link) properties.links.push(link);
         continue;
       }
 
@@ -1214,7 +1235,8 @@ export class Parser {
 
       if (token.type === TokenType.Link) {
         this.advance();
-        properties.links.push(this.parseLink());
+        const link = this.parseLink();
+        if (link) properties.links.push(link);
         continue;
       }
 
@@ -1529,7 +1551,8 @@ export class Parser {
         properties.description = this.parseDescriptionValue();
       } else if (token.type === TokenType.Link) {
         this.advance();
-        properties.links.push(this.parseLink());
+        const link = this.parseLink();
+        if (link) properties.links.push(link);
       } else if (token.type === TokenType.Team) {
         teams.push(this.parseTeamBlock());
       } else if (token.type === TokenType.Legend) {
@@ -1585,7 +1608,8 @@ export class Parser {
         properties.description = this.parseDescriptionValue();
       } else if (token.type === TokenType.Link) {
         this.advance();
-        properties.links.push(this.parseLink());
+        const link = this.parseLink();
+        if (link) properties.links.push(link);
       } else if (token.type === TokenType.Owns) {
         this.advance();
         if (
@@ -1649,7 +1673,8 @@ export class Parser {
         properties.description = this.parseDescriptionValue();
       } else if (token.type === TokenType.Link) {
         this.advance();
-        properties.links.push(this.parseLink());
+        const link = this.parseLink();
+        if (link) properties.links.push(link);
       } else if (token.type === TokenType.Slack) {
         this.advance();
         if (this.peek().type === TokenType.StringLiteral) {

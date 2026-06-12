@@ -96,6 +96,7 @@ export type { PatchOperation } from "./patch/krs-patch.js";
 
 export { format, FormatError } from "./formatter/formatter.js";
 export { Parser } from "./parser/parser.js";
+export { isSafeLinkUrl } from "./parser/link-url.js";
 export { StyleParser } from "./parser/style-parser.js";
 export {
   assignEdgeCanonicalIds,

@@ -278,6 +278,10 @@ export const ja: Partial<Translations> = {
   "diagnostic.expectedIdAfter.message": ({ property }) =>
     `"${property}" の後に識別子または文字列リテラルを期待しました`,
   "diagnostic.teamPropertyDeprecated.message": `"team" プロパティは非推奨です。organization ブロックで "owns" を使ってください`,
+  "diagnostic.linkUrlSchemeNotAllowed.message": ({ url, scheme }) =>
+    scheme
+      ? `link URL "${url}" は許可されていないスキーム "${scheme}" を使用しています（許可: http, https, mailto）。このリンクは無視されます`
+      : `link URL "${url}" は http / https / mailto の絶対 URL ではありません。このリンクは無視されます`,
   "diagnostic.edgeSourceMismatch.message": ({ from, parentId }) =>
     `エッジ source "${from}" は所属するブロック id "${parentId}" と一致する必要があります`,
   "diagnostic.unassignedResource.message": ({ resourceId }) =>

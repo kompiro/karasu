@@ -460,6 +460,7 @@ export interface DiagnosticParamsByCode {
 
   // ── Parser semantic diagnostics ─────────────────────────────────────────
   "team-property-deprecated": Record<string, never>;
+  "link-url-scheme-not-allowed": { url: string; scheme: string };
   "edge-source-mismatch": { from: string; parentId: string };
   "unassigned-resource": { resourceId: string };
   "client-resource-invalid-kind": { kind: string; name: string };

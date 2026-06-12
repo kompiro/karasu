@@ -825,6 +825,76 @@ system Test {
     expect(service.properties.links[1].url).toBe("https://figma.com/file/xxx");
   });
 
+  // #1525 / TPL-20260510-17: link URLs are untrusted input rendered as
+  // <a href> in the app and the VS Code webview. Disallowed schemes must be
+  // dropped at parse time with a dedicated warning so no render surface can
+  // turn them into an XSS.
+  describe("link URL scheme allowlist (#1525)", () => {
+    function parseServiceLink(url: string) {
+      return Parser.parse(`
+system Test {
+  service ECommerce {
+    link "${url}" "doc"
+  }
+}
+      `);
+    }
+
+    it("accepts mailto links", () => {
+      const result = parseServiceLink("mailto:team@example.com");
+      expect(result.diagnostics).toHaveLength(0);
+      const service = result.value.systems[0].children[0] as ServiceNode;
+      expect(service.properties.links).toHaveLength(1);
+    });
+
+    it("drops a javascript: link with a warning and keeps parsing", () => {
+      const result = parseServiceLink("javascript:alert(1)");
+      expect(result.diagnostics).toHaveLength(1);
+      expect(result.diagnostics[0].severity).toBe("warning");
+      expect(result.diagnostics[0].code).toBe("link-url-scheme-not-allowed");
+      expect(result.diagnostics[0].params).toEqual({
+        url: "javascript:alert(1)",
+        scheme: "javascript:",
+      });
+      const service = result.value.systems[0].children[0] as ServiceNode;
+      expect(service.properties.links).toHaveLength(0);
+    });
+
+    it("normalizes scheme case before the check (JaVaScRiPt:)", () => {
+      const result = parseServiceLink("JaVaScRiPt:alert(1)");
+      expect(result.diagnostics[0]?.code).toBe("link-url-scheme-not-allowed");
+      const service = result.value.systems[0].children[0] as ServiceNode;
+      expect(service.properties.links).toHaveLength(0);
+    });
+
+    it("rejects other absolute schemes (data:)", () => {
+      const result = parseServiceLink("data:text/html,<script>alert(1)</script>");
+      expect(result.diagnostics[0]?.code).toBe("link-url-scheme-not-allowed");
+    });
+
+    it("rejects relative paths (not an absolute URL)", () => {
+      const result = parseServiceLink("docs/readme.md");
+      expect(result.diagnostics).toHaveLength(1);
+      expect(result.diagnostics[0].code).toBe("link-url-scheme-not-allowed");
+      expect(result.diagnostics[0].params).toEqual({ url: "docs/readme.md", scheme: "" });
+    });
+
+    it("keeps safe links while dropping unsafe ones in the same node", () => {
+      const result = Parser.parse(`
+system Test {
+  service ECommerce {
+    link "https://wiki.example.com/ec" "wiki"
+    link "javascript:alert(1)" "evil"
+  }
+}
+      `);
+      expect(result.diagnostics).toHaveLength(1);
+      const service = result.value.systems[0].children[0] as ServiceNode;
+      expect(service.properties.links).toHaveLength(1);
+      expect(service.properties.links[0].url).toBe("https://wiki.example.com/ec");
+    });
+  });
+
   it("parses user with role and link", () => {
     const result = Parser.parse(`
 system Test {

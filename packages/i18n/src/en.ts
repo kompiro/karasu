@@ -279,6 +279,10 @@ export const en: Translations = {
   "diagnostic.expectedIdAfter.message": ({ property }) =>
     `Expected identifier or string literal after "${property}"`,
   "diagnostic.teamPropertyDeprecated.message": `"team" property is deprecated; use an organization block with "owns" instead`,
+  "diagnostic.linkUrlSchemeNotAllowed.message": ({ url, scheme }) =>
+    scheme
+      ? `link URL "${url}" uses a disallowed scheme "${scheme}" (allowed: http, https, mailto); the link is ignored`
+      : `link URL "${url}" is not an absolute http / https / mailto URL; the link is ignored`,
   "diagnostic.edgeSourceMismatch.message": ({ from, parentId }) =>
     `Edge source "${from}" must match the enclosing block id "${parentId}"`,
   "diagnostic.unassignedResource.message": ({ resourceId }) =>

@@ -301,6 +301,7 @@ export type Translations = {
   "diagnostic.expectedPropertyValue.message": (params: { propName: string }) => string;
   "diagnostic.expectedIdAfter.message": (params: { property: string }) => string;
   "diagnostic.teamPropertyDeprecated.message": string;
+  "diagnostic.linkUrlSchemeNotAllowed.message": (params: { url: string; scheme: string }) => string;
   "diagnostic.edgeSourceMismatch.message": (params: { from: string; parentId: string }) => string;
   "diagnostic.unassignedResource.message": (params: { resourceId: string }) => string;
   "diagnostic.clientResourceInvalidKind.message": (params: {
