@@ -160,7 +160,11 @@ export function PreviewColumn() {
     if (!allViewsSvg) return;
     const blob = new Blob([allViewsSvg], { type: "image/svg+xml" });
     const url = URL.createObjectURL(blob);
-    window.open(url, "_blank");
+    window.open(url, "_blank", "noopener");
+    // The blob only needs to outlive the new tab's initial load. Revoke after a
+    // grace period so we don't pin a full multi-diagram SVG for the tab's whole
+    // lifetime (#1529).
+    setTimeout(() => URL.revokeObjectURL(url), 10_000);
   }
 
   if (activeView === "matrix") {
