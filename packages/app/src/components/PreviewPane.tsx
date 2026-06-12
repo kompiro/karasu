@@ -136,6 +136,11 @@ export function PreviewPane({
     const el = containerRef.current;
     if (!el) return;
     const onWheel = (e: globalThis.WheelEvent) => {
+      // Subtrees that own their scrolling (e.g. the detail panels) opt out via
+      // data-wheel-zoom-ignore. We can't rely on their React synthetic
+      // stopPropagation here because this is a native listener on the ancestor
+      // container, which fires first during the bubble phase (#1537).
+      if ((e.target as Element | null)?.closest?.("[data-wheel-zoom-ignore]")) return;
       e.preventDefault();
       const delta = e.deltaY > 0 ? 0.9 : 1.1;
       setTransform((prev) => ({

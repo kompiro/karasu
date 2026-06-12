@@ -506,5 +506,46 @@ describe("PreviewPane", () => {
       previewContainer.dispatchEvent(event);
       expect(event.defaultPrevented).toBe(false);
     });
+
+    // Regression guard: a native ancestor listener can't be stopped by a
+    // descendant's React synthetic stopPropagation, so detail panels opt out
+    // via data-wheel-zoom-ignore. Wheeling over a panel must scroll it, not
+    // zoom the diagram (and must not preventDefault, which would cancel the
+    // panel's own scroll).
+    it("does not zoom when the wheel originates inside a detail panel (#1537)", () => {
+      const svg = `<div data-node-id="leaf" data-has-children="false"></div>`;
+      const metadata: NodeMetadata = {
+        kind: "service",
+        label: "Leaf",
+        description: "",
+        links: [],
+        tags: [],
+        annotations: [],
+        hasChildren: false,
+      };
+      const { container } = render(
+        <PreviewPane {...baseProps()} svg={svg} nodeMetadata={new Map([["leaf", metadata]])} />,
+      );
+      const previewContainer = container.querySelector(".preview-container")!;
+      // Open the node detail panel by clicking the leaf node.
+      click(
+        previewContainer as HTMLElement,
+        () => container.querySelector("[data-node-id='leaf']")!,
+      );
+
+      const panel = container.querySelector("[data-wheel-zoom-ignore]");
+      expect(panel).not.toBeNull();
+      const zoomLayer = () => previewContainer.querySelector(":scope > div") as HTMLElement;
+      const before = zoomLayer().style.transform;
+
+      const event = new WheelEvent("wheel", { deltaY: 100, cancelable: true, bubbles: true });
+      act(() => {
+        panel!.dispatchEvent(event);
+      });
+
+      // Listener bailed: scroll not cancelled, scale unchanged.
+      expect(event.defaultPrevented).toBe(false);
+      expect(zoomLayer().style.transform).toBe(before);
+    });
   });
 });

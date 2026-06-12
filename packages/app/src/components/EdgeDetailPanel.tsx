@@ -11,6 +11,9 @@ export function EdgeDetailPanel({ domainEdges, anchorX, anchorY, onClose }: Edge
   return (
     <div
       className="node-detail-panel"
+      // See NodeDetailPanel: opt out of the diagram's native wheel-zoom listener
+      // so the panel scrolls instead of zooming the diagram (#1537).
+      data-wheel-zoom-ignore
       style={{
         position: "absolute",
         left: anchorX,
@@ -22,7 +25,6 @@ export function EdgeDetailPanel({ domainEdges, anchorX, anchorY, onClose }: Edge
       onClick={(e) => e.stopPropagation()}
       onMouseDown={(e) => e.stopPropagation()}
       onMouseUp={(e) => e.stopPropagation()}
-      onWheel={(e) => e.stopPropagation()}
     >
       <div className="node-detail-header">
         <span className="node-detail-icon">↔</span>

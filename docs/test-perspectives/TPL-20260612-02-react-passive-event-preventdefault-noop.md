@@ -33,6 +33,7 @@ React 17 以降、ルートに委譲される `wheel` / `touchstart` / `touchmov
 - ピンチ／スワイプ操作でカスタムジェスチャを実装したつもりが、ブラウザの既定スクロール／ズームも併発する
 - 「ハンドラは呼ばれているのに preventDefault だけ効いていない」ため、ロジックのテストはパスするのに UX 不具合だけ残る
 - マウス／タッチ実機でしか再現せず、合成イベントの単体テストでは気付けない
+- **（native へ移行した副作用）** これまで子要素が React の `onWheel={(e)=>e.stopPropagation()}` で祖先のズーム／パンを抑止していた場合、祖先を native リスナーに変えると **その stopPropagation が効かなくなる**。React synthetic の stopPropagation は React のルート委譲（`.preview-container` より上）で動くため、`.preview-container` に張った native リスナーが bubble 経路で **先に** 発火してしまう。結果、子のスクロール領域（`overflow-y:auto` な detail panel 等）がスクロールせず、代わりに図がズームする（#1537 のレビューで検出）
 
 ## チェックリスト
 
@@ -42,12 +43,14 @@ React 17 以降、ルートに委譲される `wheel` / `touchstart` / `touchmov
 - [ ] そのネイティブリスナーに **cleanup（`removeEventListener`）** があるか
 - [ ] テストで `cancelable: true` のネイティブイベントを `dispatchEvent` し、`event.defaultPrevented === true` を assert しているか（ハンドラの副作用だけでなく preventDefault が効いていることを直接検証する）
 - [ ] unmount 後にイベントを投げて `defaultPrevented` が `false` のまま（＝リスナーが外れている）ことを確認しているか
+- [ ] その native リスナーの子に、これまで React synthetic の `onWheel`/`onTouchMove` で `stopPropagation` してジェスチャを **opt-out** していた要素はないか。あるなら、native ハンドラ側で opt-out 属性（例 `data-wheel-zoom-ignore`）を `e.target.closest(...)` で見て早期 return しているか。子のスクロール領域上で「スクロールせずズームする」回帰のテストがあるか
 
 ## 既知の対処パターン
 
 - `ref` で対象要素を取り、`useEffect` で `addEventListener("wheel", handler, { passive: false })` を張り、return で `removeEventListener` する。これが React 17+ で preventDefault を効かせる正攻法
 - `onScroll` は preventDefault しても意味がない（スクロールは既に起きた後の通知）。抑止したいなら `wheel` / `touchmove` 段階で止める
 - 「ハンドラが呼ばれること」と「default action が止まること」は別物。テストは後者（`defaultPrevented`）まで踏み込む
+- 子要素にジェスチャを **opt-out** させたいときは、React synthetic の `stopPropagation` ではなく **DOM 属性**（例 `data-wheel-zoom-ignore`）でマークし、native 祖先ハンドラの先頭で `if ((e.target as Element)?.closest("[data-...]")) return;` する。synthetic と native はイベントシステムが別なので、片方の stopPropagation はもう片方を止められない
 
 ## 派生元 spec
 
