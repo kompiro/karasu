@@ -12,6 +12,9 @@ import { useCommand } from "../keyboard/use-command.js";
 import { Button } from "@/components/ui/button";
 
 const EXPORT_ERROR_AUTO_DISMISS_MS = 6000;
+// Unlike anchor downloads (which revoke at 0), the "Open All Views" blob must
+// outlive the new tab's initial load, so we defer the revoke (#1529).
+const ALL_VIEWS_BLOB_REVOKE_DELAY_MS = 10_000;
 
 export function PreviewColumn() {
   const {
@@ -161,10 +164,9 @@ export function PreviewColumn() {
     const blob = new Blob([allViewsSvg], { type: "image/svg+xml" });
     const url = URL.createObjectURL(blob);
     window.open(url, "_blank", "noopener");
-    // The blob only needs to outlive the new tab's initial load. Revoke after a
-    // grace period so we don't pin a full multi-diagram SVG for the tab's whole
-    // lifetime (#1529).
-    setTimeout(() => URL.revokeObjectURL(url), 10_000);
+    // Revoke after a grace period so we don't pin a full multi-diagram SVG for
+    // the tab's whole lifetime (#1529).
+    setTimeout(() => URL.revokeObjectURL(url), ALL_VIEWS_BLOB_REVOKE_DELAY_MS);
   }
 
   if (activeView === "matrix") {
