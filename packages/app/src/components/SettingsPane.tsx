@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   getStoredApiKey,
   setStoredApiKey,
@@ -21,12 +21,23 @@ export function SettingsPane({ onApiKeyChange }: SettingsPaneProps) {
   const [apiKey, setApiKey] = useState(() => getStoredApiKey() ?? "");
   const [persist, setPersist] = useState<PersistSetting>(() => getPersistSetting());
   const [saved, setSaved] = useState(false);
+  const savedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Clear the "Saved" indicator timer on unmount so it never fires into a
+  // dead component, and re-arm cleanly when Save is pressed twice (#1539).
+  useEffect(
+    () => () => {
+      if (savedTimerRef.current !== null) clearTimeout(savedTimerRef.current);
+    },
+    [],
+  );
 
   const handleSave = () => {
     if (!apiKey.trim()) return;
     setStoredApiKey(apiKey.trim(), persist);
     setSaved(true);
-    setTimeout(() => setSaved(false), 2000);
+    if (savedTimerRef.current !== null) clearTimeout(savedTimerRef.current);
+    savedTimerRef.current = setTimeout(() => setSaved(false), 2000);
     onApiKeyChange();
   };
 
