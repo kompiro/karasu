@@ -2,6 +2,7 @@ import { createServer, type IncomingMessage, type ServerResponse, type Server } 
 import { readFile, readdir, stat } from "node:fs/promises";
 import { join, resolve, extname, relative, sep } from "node:path";
 import { fileURLToPath } from "node:url";
+import { isSafeRelativePath } from "@karasu-tools/core";
 import { FileWatcher } from "./watcher.js";
 import { handleRender } from "./render-endpoint.js";
 
@@ -39,7 +40,13 @@ export async function collectKrsFiles(dir: string): Promise<string[]> {
 }
 
 export async function resolveKrsFile(dir: string, name: string): Promise<string | null> {
-  // Normalise dir so a trailing sep never causes startsWith to fail.
+  // Shared trust-boundary segment check (TPL-20260510-17): rejects absolute
+  // paths, backslashes and ".." segments before any path is assembled.
+  if (!isSafeRelativePath(name)) {
+    return null;
+  }
+  // Normalise dir so a trailing sep never causes startsWith to fail. Kept as
+  // OS-level defense in depth on top of the segment check above.
   // Note: this guard is a string-level check and does not resolve symlinks;
   // a symlink inside dir that points outside would bypass it.
   const safeDir = resolve(dir);

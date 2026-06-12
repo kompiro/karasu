@@ -1,4 +1,5 @@
 import { unzipSync, strFromU8, type UnzipFileInfo } from "fflate";
+import { isSafeRelativePath } from "@karasu-tools/core";
 
 const ALLOWED_EXTENSIONS = [".krs", ".krs.style"];
 
@@ -32,17 +33,10 @@ function isAllowed(path: string): boolean {
   return ALLOWED_EXTENSIONS.some((ext) => path.endsWith(ext));
 }
 
-/**
- * Reject ZIP entry paths that would escape the project root once written under
- * `/projects/<id>/<path>` (zip-slip, #1526). In the in-memory storage provider
- * `normalizePath` collapses `..` segments, so an unguarded `../../x.krs` would
- * write outside the project. We drop any path that is absolute, contains a
- * backslash, or has a `..` segment.
- */
-function isSafeRelativePath(path: string): boolean {
-  if (path === "" || path.startsWith("/") || path.includes("\\")) return false;
-  return !path.split("/").includes("..");
-}
+// Zip-slip (#1526): entry paths are vetted with core's isSafeRelativePath
+// before they can become write targets — in the in-memory storage provider
+// `normalizePath` collapses `..` segments, so an unguarded `../../x.krs`
+// would write outside the project root.
 
 /**
  * Detect a single common top-level directory shared by all file entries.
