@@ -341,6 +341,10 @@ export interface DeployBlock {
  * - Path id `A.B.C` parses to `["A", "B", "C"]` and is walked by the
  *   resolver one segment at a time through each parent's `children`
  *   array (id-only matching, no kind whitelist). See ADR / Issue #927.
+ *
+ * Note: path resolution and validation (file existence, segment lookup,
+ * ambiguity, cycles) are deferred to `fs/import-resolver.ts` — the parser
+ * only records the path structurally.
  */
 export type ImportIdPath = string[];
 
