@@ -225,6 +225,30 @@ karasu detects circular dependencies over **sync edges (`->`) only**, tagging th
 
 When the same `domain id` appears in multiple services within one system, `domain-dispersal` (info) fires. When you notice mid-reading "wait, `Payment` logic is scattered across two services," you can record — as a fact — whether that's intentional dispersal or a design distortion.
 
+### 4.4 Listing "what touches what" with a CRUD matrix
+
+As you fill in `operations` (create/read/update/delete) on a usecase's `resource`s, `karasu matrix` can emit a **usecase × resource CRUD matrix.** It's a powerful comprehension lens for tabulating "which operation reads/writes which data" mid-reading.
+
+```console
+$ karasu matrix index.krs --format md
+```
+
+```
+| usecase \ resource | Orders | CatalogAPI [external] | ΣC | ΣR | ΣU | ΣD |
+| --- | --- | --- | --- | --- | --- | --- |
+| CancelOrder | U |  | 0 | 0 | 1 | 0 |
+| PlaceOrder | CR | R | 1 | 2 | 0 | 0 |
+| ΣC | 1 | 0 |  |  |  |  |
+| ΣR | 1 | 1 |  |  |  |  |
+| ΣU | 1 | 0 |  |  |  |  |
+| ΣD | 0 | 0 |  |  |  |  |
+```
+
+- Output is `md` / `csv` / `svg`. The md pastes straight into a PR or onboarding note.
+- `--writes-only` drops read-only cells, surfacing **only the write paths** — "which usecases mutate state" at a glance.
+- Narrow with `--service` to a specific service, `--infra database` to restrict columns to one infra kind, etc.
+- A resource with high column totals (ΣC/R/U/D) is a **hotspot touched by many usecases**, indicating reading priority and points of concentrated coupling.
+
 ---
 
 ## 5. Honestly drawing "what you don't know yet"
@@ -325,7 +349,8 @@ Don't aim for perfection — treat **reducing warnings one at a time** as the wo
 
 ## Further reading
 
-- Companion guide (the design direction): [Service/Team Boundary Design Guide](service-team-design.md)
+- Companion guides: [Boundary Design](service-team-design.md) (design) / [Evolution & Migration](evolution.md) (change) / [Communicating Diagrams](communicating-diagrams.md) (style, legend, CI) / [Access Paths & Clients](access-paths.md)
+- Map of all guides: [`docs/guide/README.md`](README.md)
 - Precise syntax spec: [`docs/spec/syntax.md`](../spec/syntax.md)
 - Design philosophy (three faces, scoped glance, translate's asymmetry): [`docs/concepts.md`](../concepts.md)
 - Step-by-step tutorial: [`examples/ec-platform/`](../../examples/ec-platform/) (start at `01-system.krs`)

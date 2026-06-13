@@ -182,6 +182,22 @@ karasu validates the boundaries you drew with two static signals. Both are "obse
 
 > When evaluating a split, you can treat **"no cycles, no domain dispersal"** as one finish line. But this is not "the right answer" — it is "health from one school's point of view." There are legitimate cases for a shared DB or intentional domain sharing. Read the context the diagnostic links to, and judge against your project's constraints.
 
+### 1.5 Quantifying coupling with a CRUD matrix
+
+Edges show "who calls whom," but **data coupling** (which usecase reads/writes which resource) is a finer-grained coupling signal. As you fill in `operations` on a usecase's `resource`s, `karasu matrix` can emit a usecase × resource CRUD matrix.
+
+```console
+$ karasu matrix index.krs --format md --writes-only
+```
+
+What to look at from a service-split perspective:
+
+- **Usecases from multiple services writing to the same resource (a column with high ΣC/U/D)** — write contention is a strong coupling signal. If you're writing the same data across a boundary, consider concentrating ownership of that resource in one service and having the others request via API.
+- **A write-dominated resource** — a resource where writes dominate is a candidate for clear ownership, rather than being shared read-only.
+- Narrowing with `--service` to one service shows how much it depends on external resources (the `[external]` columns).
+
+The matrix is the "data-face" corroboration of a boundary; viewed together with edges (the call face), it lets you judge a split in three dimensions. For how to read it, see [Onboarding Guide §4.4](onboarding.md#44-listing-what-touches-what-with-a-crud-matrix).
+
 ---
 
 ## 2. The inverse Conway maneuver — designing teams to fit the architecture
@@ -402,7 +418,8 @@ Read `info`-level diagnostics as **"karasu noticed something — read it if it m
 
 ## Further reading
 
-- Companion guide (the comprehension direction): [Onboarding Guide](onboarding.md) — reading down an existing system into diagrams
+- Companion guides: [Onboarding](onboarding.md) (comprehension) / [Evolution & Migration](evolution.md) (change) / [Communicating Diagrams](communicating-diagrams.md) (style, legend, CI) / [Access Paths & Clients](access-paths.md)
+- Map of all guides: [`docs/guide/README.md`](README.md)
 - Precise syntax spec: [`docs/spec/syntax.md`](../spec/syntax.md)
 - Style (`.krs.style`): [`docs/spec/style.md`](../spec/style.md)
 - Tags and annotations: [`docs/spec/tags-annotations.md`](../spec/tags-annotations.md)
