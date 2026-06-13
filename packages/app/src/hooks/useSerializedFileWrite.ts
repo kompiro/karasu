@@ -1,4 +1,4 @@
-import { useCallback, useRef } from "react";
+import { useCallback, useEffect, useRef } from "react";
 import type { FileSystemProvider } from "@karasu-tools/core";
 import { SerialQueue } from "../fs/serial-queue.js";
 
@@ -30,10 +30,23 @@ interface SerializedFileWrite {
  * value) and records each written value; `isOwnWrite` reports whether a value
  * just read from disk is one we wrote, so the watcher can skip our own echoes
  * (including intermediate ones) while still honoring genuine external writes.
+ *
+ * The recorded values are scoped to `currentFilePath` — they are cleared on a
+ * file switch so a value typed in one file can't suppress a genuine external
+ * refresh in another (the set holds whole-file contents, not fragments).
  */
-export function useSerializedFileWrite(fs: FileSystemProvider): SerializedFileWrite {
+export function useSerializedFileWrite(
+  fs: FileSystemProvider,
+  currentFilePath: string | null,
+): SerializedFileWrite {
   const queueRef = useRef(new SerialQueue());
   const recentRef = useRef<Set<string>>(new Set());
+
+  // Reset the echo set when the open file changes, so isOwnWrite only matches
+  // writes to the file currently being watched (#1535 review).
+  useEffect(() => {
+    recentRef.current.clear();
+  }, [currentFilePath]);
 
   const write = useCallback(
     (path: string, content: string): Promise<void> => {

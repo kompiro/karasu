@@ -33,7 +33,7 @@ describe("useSerializedFileWrite", () => {
       },
     );
     const fs = makeFs(writeFile);
-    const { result } = renderHook(() => useSerializedFileWrite(fs));
+    const { result } = renderHook(() => useSerializedFileWrite(fs, "/a.krs"));
 
     await act(async () => {
       await Promise.all([
@@ -49,7 +49,7 @@ describe("useSerializedFileWrite", () => {
 
   it("recognizes recently written values as own writes", async () => {
     const fs = makeFs(vi.fn<(path: string, content: string) => Promise<void>>(async () => {}));
-    const { result } = renderHook(() => useSerializedFileWrite(fs));
+    const { result } = renderHook(() => useSerializedFileWrite(fs, "/a.krs"));
 
     await act(async () => {
       await result.current.write("/a.krs", "hello");
@@ -61,7 +61,7 @@ describe("useSerializedFileWrite", () => {
 
   it("recognizes intermediate self-writes, not just the latest", async () => {
     const fs = makeFs(vi.fn<(path: string, content: string) => Promise<void>>(async () => {}));
-    const { result } = renderHook(() => useSerializedFileWrite(fs));
+    const { result } = renderHook(() => useSerializedFileWrite(fs, "/a.krs"));
 
     await act(async () => {
       await result.current.write("/a.krs", "step1");
@@ -75,7 +75,7 @@ describe("useSerializedFileWrite", () => {
 
   it("bounds the remembered set so it does not grow without limit", async () => {
     const fs = makeFs(vi.fn<(path: string, content: string) => Promise<void>>(async () => {}));
-    const { result } = renderHook(() => useSerializedFileWrite(fs));
+    const { result } = renderHook(() => useSerializedFileWrite(fs, "/a.krs"));
 
     await act(async () => {
       for (let i = 0; i < 60; i++) {
@@ -86,5 +86,25 @@ describe("useSerializedFileWrite", () => {
     // The cap is 50, so the very first writes are evicted while recent ones stay.
     expect(result.current.isOwnWrite("v0")).toBe(false);
     expect(result.current.isOwnWrite("v59")).toBe(true);
+  });
+
+  // #1535 review: the echo set is scoped to the open file. A value typed in
+  // file A must not be reported as a self-write after switching to file B,
+  // or it would suppress a genuine external refresh on B.
+  it("clears the self-write set when the open file changes", async () => {
+    const fs = makeFs(vi.fn<(path: string, content: string) => Promise<void>>(async () => {}));
+    const { result, rerender } = renderHook(
+      ({ path }: { path: string }) => useSerializedFileWrite(fs, path),
+      { initialProps: { path: "/a.krs" } },
+    );
+
+    await act(async () => {
+      await result.current.write("/a.krs", "typed-in-A");
+    });
+    expect(result.current.isOwnWrite("typed-in-A")).toBe(true);
+
+    // Switch to file B — A's recorded values must no longer count as own writes.
+    rerender({ path: "/b.krs" });
+    expect(result.current.isOwnWrite("typed-in-A")).toBe(false);
   });
 });

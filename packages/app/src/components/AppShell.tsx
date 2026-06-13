@@ -257,7 +257,7 @@ export function AppShell({
   // Auto-save writes are serialized so per-keystroke writes can't reorder on
   // disk, and tracked so the external-refresh watcher recognizes them as
   // echoes (#1535).
-  const { write: saveCurrentFile, isOwnWrite } = useSerializedFileWrite(fs);
+  const { write: saveCurrentFile, isOwnWrite } = useSerializedFileWrite(fs, currentFilePath);
 
   const handleEditorChange = useCallback(
     async (value: string) => {
