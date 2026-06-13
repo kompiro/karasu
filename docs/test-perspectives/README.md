@@ -428,3 +428,4 @@ DesignDoc が proactive TPL を引用したら、実装 PR で次をやる:
 | [TPL-20260610-02](TPL-20260610-02-spec-promised-diagnostics-implemented.md) | spec が約束する診断は専用の診断コードとして実装されていることを検証する | parser | docs/spec/style.md, docs/spec/syntax.md |
 | [TPL-20260612-01](TPL-20260612-01-style-coupled-diagnostics-sheetless-context.md) | style 連動の diagnostic はシート不在の文脈（LSP 単一ドキュメント）での挙動を仕様化する | core-concepts | #1522 |
 | [TPL-20260612-02](TPL-20260612-02-react-passive-event-preventdefault-noop.md) | React の synthetic onWheel / onTouchMove では preventDefault が no-op になる | app-ui | #1537 |
+| [TPL-20260613-01](TPL-20260613-01-persistent-store-init-and-mutation-resilience.md) | 永続ストアの初期化・更新は fail-closed に — RMW は直列化し、not-found と read error を区別する | app-ui | #1530 / #1531 |
