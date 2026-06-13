@@ -1,12 +1,12 @@
 # Onboarding Guide: Reading Down an Existing System into karasu Diagrams
 
-> **English**（this file） · [日本語](onboarding.ja.md)
+> **English**（this file） · [日本語](02-onboarding.ja.md)
 >
-> 📚 Guide series — Part 2 of 5 ｜ ← Prev: [Boundary Design](service-team-design.md) ｜ Next: [Evolution](evolution.md) →
+> 📚 Guide series — Part 2 of 5 ｜ ← Prev: [Boundary Design](01-service-team-design.md) ｜ Next: [Evolution](03-evolution.md) →
 
 This guide is for **people joining an existing system midway** (new hires, internal transfers, hand-offs) who need to read down the code and operational assets and assemble an architecture map in karasu. It assumes the typical situation: architecture docs are missing, stale, or fragmentary.
 
-Where the companion [Service/Team Boundary Design Guide](service-team-design.md) covers karasu as a **forward** (designing-from-scratch) tool, this guide covers the **reverse** use — **making sense of what already exists.** The direction of information flow is reversed: in design you push from abstract down to concrete; in comprehension you lift from concrete up to abstract.
+Where the companion [Service/Team Boundary Design Guide](01-service-team-design.md) covers karasu as a **forward** (designing-from-scratch) tool, this guide covers the **reverse** use — **making sense of what already exists.** The direction of information flow is reversed: in design you push from abstract down to concrete; in comprehension you lift from concrete up to abstract.
 
 For the precise syntax spec, see [`docs/spec/syntax.md`](../spec/syntax.md); for the design philosophy, see [`docs/concepts.md`](../concepts.md). This guide shows the operational procedure — what to read and in what order from day one, and what to capture in the diagram.
 
@@ -290,7 +290,7 @@ system Shop {
 }
 ```
 
-- Unlike the four builtins (`@deprecated` / `@new` / `@experimental` / `@migration_target`), custom annotations have **no default rendering.** But they are valid targets for `.krs.style` annotation selectors, so you can make "low-confidence areas" visible at a glance with color or badges (same approach as [Communicating Diagrams Guide §3](communicating-diagrams.md#3-showing-lifecycle-state-with-color-and-badges)).
+- Unlike the four builtins (`@deprecated` / `@new` / `@experimental` / `@migration_target`), custom annotations have **no default rendering.** But they are valid targets for `.krs.style` annotation selectors, so you can make "low-confidence areas" visible at a glance with color or badges (same approach as [Communicating Diagrams Guide §3](05-communicating-diagrams.md#3-showing-lifecycle-state-with-color-and-badges)).
 
   ```css
   /* theme.krs.style — make guessed areas stand out with a dashed border + badge */
@@ -331,7 +331,7 @@ organization Shop {
 - **`member` + `slack` / `github`** capture contact info. For an onboarding map, this is exactly the information you want.
 - A service owned by no team surfaces as **ownerless** in the org view. The classic just-joined question "who even looks after this service?" becomes visible.
 
-For details, see [Service/Team Boundary Design Guide §2](service-team-design.md#2-the-inverse-conway-maneuver--designing-teams-to-fit-the-architecture) and the complete example at [`examples/org/system.krs`](../../examples/org/system.krs).
+For details, see [Service/Team Boundary Design Guide §2](01-service-team-design.md#2-the-inverse-conway-maneuver--designing-teams-to-fit-the-architecture) and the complete example at [`examples/org/system.krs`](../../examples/org/system.krs).
 
 ---
 
@@ -356,7 +356,7 @@ $ karasu render index.krs --format drawio --output arch.drawio
 
 ### File splitting
 
-If the system is large and you want to divide reading scope per team, you can split one `system` across multiple files (whole-file import + system reopen). Each person holds the file for their reading scope, consolidated into one picture by an orchestrator `index.krs`. See [Service/Team Boundary Design Guide §3](service-team-design.md#3-splitting-files-for-per-team-operation) and [`examples/multi-file-system/`](../../examples/multi-file-system/).
+If the system is large and you want to divide reading scope per team, you can split one `system` across multiple files (whole-file import + system reopen). Each person holds the file for their reading scope, consolidated into one picture by an orchestrator `index.krs`. See [Service/Team Boundary Design Guide §3](01-service-team-design.md#3-splitting-files-for-per-team-operation) and [`examples/multi-file-system/`](../../examples/multi-file-system/).
 
 ---
 
@@ -379,7 +379,7 @@ Don't aim for perfection — treat **reducing warnings one at a time** as the wo
 
 ## Further reading
 
-- Related guides: [Boundary Design](service-team-design.md) (design) / [Evolution & Migration](evolution.md) (change) / [Communicating Diagrams](communicating-diagrams.md) (style, legend, CI) / [Access Paths & Clients](access-paths.md)
+- Related guides: [Boundary Design](01-service-team-design.md) (design) / [Evolution & Migration](03-evolution.md) (change) / [Communicating Diagrams](05-communicating-diagrams.md) (style, legend, CI) / [Access Paths & Clients](04-access-paths.md)
 - Map of all guides: [`docs/guide/README.md`](README.md)
 - Precise syntax spec: [`docs/spec/syntax.md`](../spec/syntax.md)
 - Design philosophy (three faces, scoped glance, translate's asymmetry): [`docs/concepts.md`](../concepts.md)

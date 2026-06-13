@@ -1,12 +1,12 @@
 # 中途入社者向けガイド: 既存システムを読み下して karasu の図にまとめる
 
-> [English](onboarding.md) · **日本語**（このファイル）
+> [English](02-onboarding.md) · **日本語**（このファイル）
 >
-> 📚 ガイドシリーズ 第2章 / 全5章 ｜ ← 前章: [境界設計](service-team-design.ja.md) ｜ 次章 →: [進化・移行](evolution.ja.md)
+> 📚 ガイドシリーズ 第2章 / 全5章 ｜ ← 前章: [境界設計](01-service-team-design.ja.md) ｜ 次章 →: [進化・移行](03-evolution.ja.md)
 
 このガイドは、**既存のシステムに途中から加わった人**（中途入社・チーム異動・引き継ぎ）が、コードと運用資産を読み下しながら karasu でアーキテクチャの地図を組み立てるためのものです。アーキテクチャドキュメントが無い・古い・断片的、という典型的な状況を前提にします。
 
-関連ガイドの [サービス/チーム境界設計ガイド](service-team-design.ja.md) が「これから設計する（前向き）」道具としての使い方なら、こちらは **「既に在るものを読み解く（逆向き）」** 使い方です。情報の流れる向きが逆になります — 設計では抽象から具体へ降ろし、読解では具体から抽象へ上げます。
+関連ガイドの [サービス/チーム境界設計ガイド](01-service-team-design.ja.md) が「これから設計する（前向き）」道具としての使い方なら、こちらは **「既に在るものを読み解く（逆向き）」** 使い方です。情報の流れる向きが逆になります — 設計では抽象から具体へ降ろし、読解では具体から抽象へ上げます。
 
 構文の正確な仕様は [`docs/spec/syntax.ja.md`](../spec/syntax.ja.md)、設計思想は [`docs/concepts.ja.md`](../concepts.ja.md) を参照してください。このガイドは「初日から何をどの順で読み、何を図に落とすか」の運用手順を示します。
 
@@ -290,7 +290,7 @@ system Shop {
 }
 ```
 
-- 組み込みの 4 つ（`@deprecated` / `@new` / `@experimental` / `@migration_target`）と違い、独自アノテーションに **デフォルト描画は付きません**。ただし `.krs.style` のアノテーションセレクタの正当な対象になるので、色やバッジで「確度の低い領域」を一目化できます（[伝達ガイド §3](communicating-diagrams.ja.md#3-ライフサイクル状態を色バッジで示す) と同じ要領）。
+- 組み込みの 4 つ（`@deprecated` / `@new` / `@experimental` / `@migration_target`）と違い、独自アノテーションに **デフォルト描画は付きません**。ただし `.krs.style` のアノテーションセレクタの正当な対象になるので、色やバッジで「確度の低い領域」を一目化できます（[伝達ガイド §3](05-communicating-diagrams.ja.md#3-ライフサイクル状態を色バッジで示す) と同じ要領）。
 
   ```css
   /* theme.krs.style — 推測中の領域を点線＋バッジで目立たせる */
@@ -331,7 +331,7 @@ organization Shop {
 - **`member` + `slack` / `github`** で連絡先を残せます。オンボーディング地図としては、まさにこれが欲しい情報です。
 - どの team も所有していない service は組織ビューで **オーナー不在** として浮かびます。「このサービス、誰が見てるんだ？」という、入社直後によくある疑問が可視化されます。
 
-詳細は関連ガイドの [サービス/チーム境界設計ガイド §2](service-team-design.ja.md#2-逆コンウェイ戦略--アーキテクチャに合わせてチームを設計する) と、完全例の [`examples/org/system.krs`](../../examples/org/system.krs) を参照してください。
+詳細は関連ガイドの [サービス/チーム境界設計ガイド §2](01-service-team-design.ja.md#2-逆コンウェイ戦略--アーキテクチャに合わせてチームを設計する) と、完全例の [`examples/org/system.krs`](../../examples/org/system.krs) を参照してください。
 
 ---
 
@@ -356,7 +356,7 @@ $ karasu render index.krs --format drawio --output arch.drawio
 
 ### ファイル分割
 
-システムが大きく、チームごとに読解範囲を分けるなら、1 つの `system` を複数ファイルに分割できます（whole-file import + system 再オープン）。各自が自分の読解範囲のファイルを持ち、orchestrator の `index.krs` で 1 枚に統合します。詳しくは [サービス/チーム境界設計ガイド §3](service-team-design.ja.md#3-チームごとに運用するためのファイル分割) と [`examples/multi-file-system/`](../../examples/multi-file-system/) を参照してください。
+システムが大きく、チームごとに読解範囲を分けるなら、1 つの `system` を複数ファイルに分割できます（whole-file import + system 再オープン）。各自が自分の読解範囲のファイルを持ち、orchestrator の `index.krs` で 1 枚に統合します。詳しくは [サービス/チーム境界設計ガイド §3](01-service-team-design.ja.md#3-チームごとに運用するためのファイル分割) と [`examples/multi-file-system/`](../../examples/multi-file-system/) を参照してください。
 
 ---
 
@@ -379,7 +379,7 @@ $ karasu render index.krs --format drawio --output arch.drawio
 
 ## さらに学ぶ
 
-- 関連ガイド: [境界設計](service-team-design.ja.md)（設計）/ [進化・移行](evolution.ja.md)（変更）/ [伝達](communicating-diagrams.ja.md)（スタイル・凡例・CI）/ [アクセス経路とクライアント](access-paths.ja.md)
+- 関連ガイド: [境界設計](01-service-team-design.ja.md)（設計）/ [進化・移行](03-evolution.ja.md)（変更）/ [伝達](05-communicating-diagrams.ja.md)（スタイル・凡例・CI）/ [アクセス経路とクライアント](04-access-paths.ja.md)
 - ガイド全体の地図: [`docs/guide/README.md`](README.md)
 - 構文の正確な仕様: [`docs/spec/syntax.ja.md`](../spec/syntax.ja.md)
 - 設計思想（三面構造・scoped glance・translate の非対称性）: [`docs/concepts.ja.md`](../concepts.ja.md)

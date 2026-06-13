@@ -1,8 +1,8 @@
 # Architect's Guide: Designing Service and Team Boundaries with karasu
 
-> **English**（this file） · [日本語](service-team-design.ja.md)
+> **English**（this file） · [日本語](01-service-team-design.ja.md)
 >
-> 📚 Guide series — Part 1 of 5 ｜ Next: [Onboarding](onboarding.md) →
+> 📚 Guide series — Part 1 of 5 ｜ Next: [Onboarding](02-onboarding.md) →
 
 This guide is for architects who want to use karasu not as a diagramming tool but as **a tool for designing service boundaries and team boundaries**. It walks through how to answer three questions in karasu's vocabulary:
 
@@ -198,7 +198,7 @@ What to look at from a service-split perspective:
 - **A write-dominated resource** — a resource where writes dominate is a candidate for clear ownership, rather than being shared read-only.
 - Narrowing with `--service` to one service shows how much it depends on external resources (the `[external]` columns).
 
-The matrix is the "data-face" corroboration of a boundary; viewed together with edges (the call face), it lets you judge a split in three dimensions. For how to read it, see [Onboarding Guide §4.4](onboarding.md#44-listing-what-touches-what-with-a-crud-matrix).
+The matrix is the "data-face" corroboration of a boundary; viewed together with edges (the call face), it lets you judge a split in three dimensions. For how to read it, see [Onboarding Guide §4.4](02-onboarding.md#44-listing-what-touches-what-with-a-crud-matrix).
 
 ---
 
@@ -420,7 +420,7 @@ Read `info`-level diagnostics as **"karasu noticed something — read it if it m
 
 ## Further reading
 
-- Related guides: [Onboarding](onboarding.md) (comprehension) / [Evolution & Migration](evolution.md) (change) / [Communicating Diagrams](communicating-diagrams.md) (style, legend, CI) / [Access Paths & Clients](access-paths.md)
+- Related guides: [Onboarding](02-onboarding.md) (comprehension) / [Evolution & Migration](03-evolution.md) (change) / [Communicating Diagrams](05-communicating-diagrams.md) (style, legend, CI) / [Access Paths & Clients](04-access-paths.md)
 - Map of all guides: [`docs/guide/README.md`](README.md)
 - Precise syntax spec: [`docs/spec/syntax.md`](../spec/syntax.md)
 - Style (`.krs.style`): [`docs/spec/style.md`](../spec/style.md)

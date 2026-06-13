@@ -1,12 +1,12 @@
 # Guide: Communicating Diagrams — Style, Legend, and CI
 
-> **English**（this file） · [日本語](communicating-diagrams.ja.md)
+> **English**（this file） · [日本語](05-communicating-diagrams.ja.md)
 >
-> 📚 Guide series — Part 5 of 5 ｜ ← Prev: [Access Paths & Clients](access-paths.md)
+> 📚 Guide series — Part 5 of 5 ｜ ← Prev: [Access Paths & Clients](04-access-paths.md)
 
 The `.krs` text is the single source of truth for the model, but turning it into a **diagram that communicates to the reader** in reviews and exports takes one more layer of effort. Show ownership and state with color, bake "what does this color mean" into the diagram with a legend, keep diagrams always fresh with CI — this guide covers the layer that makes karasu diagrams **a shared team asset.**
 
-Where the other guides ([Boundary Design](service-team-design.md) / [Onboarding](onboarding.md) / [Evolution](evolution.md)) are about "what to write in the model," this one is about "how to communicate the model you wrote."
+Where the other guides ([Boundary Design](01-service-team-design.md) / [Onboarding](02-onboarding.md) / [Evolution](03-evolution.md)) are about "what to write in the model," this one is about "how to communicate the model you wrote."
 
 For the precise style spec, see [`docs/spec/style.md`](../spec/style.md); for legends, see [`docs/spec/syntax.md`](../spec/syntax.md). The `.krs` / `.krs.style` snippets below have been verified.
 
@@ -52,13 +52,13 @@ Showing ownership with color makes the overview communicate "whose area is this"
 service[external] { color: #374151; background-color: #f3f4f6; }  /* external — neutral gray */
 ```
 
-Symmetric to recording ownership **as structure** with `owns` in [Boundary Design Guide §2](service-team-design.md#2-the-inverse-conway-maneuver--designing-teams-to-fit-the-architecture), color communicates the same ownership **as vision.** Full example: [`examples/payment-platform/`](../../examples/payment-platform/) (`@import`s `theme.krs.style`).
+Symmetric to recording ownership **as structure** with `owns` in [Boundary Design Guide §2](01-service-team-design.md#2-the-inverse-conway-maneuver--designing-teams-to-fit-the-architecture), color communicates the same ownership **as vision.** Full example: [`examples/payment-platform/`](../../examples/payment-platform/) (`@import`s `theme.krs.style`).
 
 ---
 
 ## 3. Showing lifecycle state with color and badges
 
-The lifecycle annotations from the [Evolution Guide](evolution.md) (`@deprecated`, etc.) can be reflected visually with style selectors. Dim with `opacity`, attach a badge with `badge-label` / `badge-icon` / `badge-color`, and make migration state visible at a glance on the diagram.
+The lifecycle annotations from the [Evolution Guide](03-evolution.md) (`@deprecated`, etc.) can be reflected visually with style selectors. Dim with `opacity`, attach a badge with `badge-label` / `badge-icon` / `badge-color`, and make migration state visible at a glance on the diagram.
 
 ```css
 @deprecated    { opacity: 0.55; badge-label: "deprecated"; badge-color: #9ca3af; }
@@ -66,7 +66,7 @@ The lifecycle annotations from the [Evolution Guide](evolution.md) (`@deprecated
 @new           { badge-label: "new"; badge-color: #16a34a; }
 ```
 
-Because annotations are inherited parent-to-child ([Evolution Guide §2](evolution.md#2-annotation-inheritance--context-isnt-lost-on-drill-down)), the same style applies to nodes under a `@deprecated` service when you drill in.
+Because annotations are inherited parent-to-child ([Evolution Guide §2](03-evolution.md#2-annotation-inheritance--context-isnt-lost-on-drill-down)), the same style applies to nodes under a `@deprecated` service when you drill in.
 
 ---
 
@@ -119,7 +119,7 @@ Because `.krs` is text, you can run `karasu render` in CI to generate and commit
 - `@import` resolves **relative to the entry file**, so in CI you specify one top-level `index.krs` and all imported files resolve.
 - Prefer a **pinned version** (`karasu@0.1.0`) over `karasu@latest` to avoid unexpected breakage.
 
-To show the diagram diff in a PR, pair this with `karasu diff` from [Evolution Guide §4](evolution.md#4-karasu-diff--visualizing-architecture-change).
+To show the diagram diff in a PR, pair this with `karasu diff` from [Evolution Guide §4](03-evolution.md#4-karasu-diff--visualizing-architecture-change).
 
 ---
 
@@ -148,7 +148,7 @@ draw.io (mxGraph XML) emits one page per view and per drill-down level. This bal
 
 ## Further reading
 
-- Related guides: [Boundary Design](service-team-design.md) / [Onboarding](onboarding.md) / [Evolution](evolution.md)
+- Related guides: [Boundary Design](01-service-team-design.md) / [Onboarding](02-onboarding.md) / [Evolution](03-evolution.md)
 - Precise style spec: [`docs/spec/style.md`](../spec/style.md)
 - Legend spec: [`docs/spec/syntax.md`](../spec/syntax.md)
 - Tags and annotations: [`docs/spec/tags-annotations.md`](../spec/tags-annotations.md)

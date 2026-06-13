@@ -1,27 +1,29 @@
-# karasu ガイド
+# karasu Guides
 
-タスク指向の how-to ガイド集（全5章）。構文の正確な仕様は [`docs/spec/`](../spec/)、設計思想は [`docs/concepts.md`](../concepts.md) を参照してください。各ガイドは英語版（`.md`）と日本語版（`.ja.md`）を持ちます。
+> **English**（this file） · [日本語](README.ja.md)
 
-## 推奨の読む順番
+Task-oriented how-to guides (5 chapters). For the precise syntax spec see [`docs/spec/`](../spec/); for the design philosophy see [`docs/concepts.md`](../concepts.md). Each guide has an English version (`.md`) and a Japanese version (`.ja.md`).
 
-通して読むと、アーキテクチャを karasu で「設計し → 読み解き → 変えていき → 伝える」までを一周できます。後の章は前の章の語彙を前提にするため、初めての場合は上から順に読むのがおすすめです。各ガイド冒頭に前章 / 次章へのリンクがあります。
+## Recommended reading order
 
-| 章 | ガイド | 対象 | 内容 |
-|----|--------|------|------|
-| 第1章 | [サービス/チーム境界設計](service-team-design.ja.md)（[EN](service-team-design.md)） | アーキテクト | ドメイン依存からのサービス分割、逆コンウェイ戦略、チーム別ファイル分割、CRUD マトリクス |
-| 第2章 | [オンボーディング](onboarding.ja.md)（[EN](onboarding.md)） | 中途入社・引き継ぎ | `translate` で既存資産から骨格を起こし、読み下しながら図にまとめる |
-| 第3章 | [進化・移行](evolution.ja.md)（[EN](evolution.md)） | 変更を進める人 | ライフサイクルアノテーション・継承、`karasu diff`、段階的移行（Strangler Fig） |
-| 第4章 | [アクセス経路とクライアント](access-paths.ja.md)（[EN](access-paths.md)） | プロダクトアーキテクト | `user → client → service`、`handles` / `delivers`、form-factor / capability |
-| 第5章 | [伝達（スタイル・凡例・CI）](communicating-diagrams.ja.md)（[EN](communicating-diagrams.md)） | 全員 | `.krs.style` のテーマ、`legend`、CI で図を最新に保つ、draw.io エクスポート |
+Read end to end and you traverse the full loop of working with architecture in karasu: **design it → read it → evolve it → communicate it.** Later chapters build on the vocabulary of earlier ones, so on a first pass, read top to bottom. Each guide links to its previous / next chapter at the top.
 
-## 章の流れ
+| Ch. | Guide | Audience | Contents |
+|-----|-------|----------|----------|
+| 1 | [Service/Team Boundary Design](01-service-team-design.md) ([JA](01-service-team-design.ja.md)) | Architects | service splits from domain dependencies, the inverse Conway maneuver, per-team file splitting, CRUD matrix |
+| 2 | [Onboarding](02-onboarding.md) ([JA](02-onboarding.ja.md)) | New hires / hand-offs | scaffold from existing assets with `translate`, read a system down into diagrams |
+| 3 | [Evolution & Migration](03-evolution.md) ([JA](03-evolution.ja.md)) | People driving change | lifecycle annotations & inheritance, `karasu diff`, staged migration (Strangler Fig) |
+| 4 | [Access Paths & Clients](04-access-paths.md) ([JA](04-access-paths.ja.md)) | Product architects | `user → client → service`, `handles` / `delivers`, form-factors / capabilities |
+| 5 | [Communicating Diagrams (style, legend, CI)](05-communicating-diagrams.md) ([JA](05-communicating-diagrams.ja.md)) | Everyone | `.krs.style` theming, `legend`, keeping diagrams fresh in CI, draw.io export |
+
+## Chapter flow
 
 ```
-第1章 境界設計 → 第2章 オンボーディング → 第3章 進化・移行 → 第4章 アクセス経路 → 第5章 伝達
-（設計）          （読解）                 （変更）            （プロダクトの面）    （図を共有物に）
+Ch.1 Boundary Design → Ch.2 Onboarding → Ch.3 Evolution → Ch.4 Access Paths → Ch.5 Communicating
+(design)               (comprehension)    (change)         (product surfaces)   (sharing diagrams)
 ```
 
-- **第1〜3章** はアーキテクチャのライフサイクル（設計 → 読解 → 進化）に沿う。第1章で土台となる語彙（ドメイン / サービス / implicit edge / owns / ファイル分割）を学び、第2章でそれを使って既存システムを読み下し、第3章で変えていく。
-- **第4・5章** はどの段階にも効く横串の観点だが、前章までの語彙の上に乗るため後半に置いた。第4章でプロダクトの「面」（アクセス経路）を、第5章で図を共有物にする方法（スタイル・凡例・CI）を扱う。
+- **Chapters 1–3** follow the architecture lifecycle (design → comprehension → evolution). Ch.1 teaches the foundational vocabulary (domains / services / implicit edges / `owns` / file splitting), Ch.2 uses it to read an existing system down, and Ch.3 changes it over time.
+- **Chapters 4–5** are cross-cutting perspectives useful at any stage, placed later because they build on the earlier vocabulary. Ch.4 covers a product's surfaces (access paths); Ch.5 covers making diagrams shareable (style / legend / CI).
 
-特定の課題だけ知りたい場合は、各章は単独でも読めます（必要な前提には章内からリンクしています）。
+If you only need one topic, each chapter also stands alone — in-chapter links point to any prerequisites.

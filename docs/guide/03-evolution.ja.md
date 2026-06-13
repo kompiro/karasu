@@ -1,10 +1,10 @@
 # アーキテクチャの進化・移行を記録するガイド
 
-> [English](evolution.md) · **日本語**（このファイル）
+> [English](03-evolution.md) · **日本語**（このファイル）
 >
-> 📚 ガイドシリーズ 第3章 / 全5章 ｜ ← 前章: [オンボーディング](onboarding.ja.md) ｜ 次章 →: [アクセス経路とクライアント](access-paths.ja.md)
+> 📚 ガイドシリーズ 第3章 / 全5章 ｜ ← 前章: [オンボーディング](02-onboarding.ja.md) ｜ 次章 →: [アクセス経路とクライアント](04-access-paths.ja.md)
 
-設計（[境界設計ガイド](service-team-design.ja.md)）と理解（[オンボーディングガイド](onboarding.ja.md)）の次に来るのは、**既に在るものを変えていく** 段階です。サービスを分割する、レガシーを廃止する、モノリスをマイクロサービスへ移行する — これらは一度きりの作業ではなく、**複数の中間状態を経て進む** プロセスです。
+設計（[境界設計ガイド](01-service-team-design.ja.md)）と理解（[オンボーディングガイド](02-onboarding.ja.md)）の次に来るのは、**既に在るものを変えていく** 段階です。サービスを分割する、レガシーを廃止する、モノリスをマイクロサービスへ移行する — これらは一度きりの作業ではなく、**複数の中間状態を経て進む** プロセスです。
 
 このガイドは、その「動いている途中」を karasu で正直に描き、変更の意図と進捗をチームで共有するための使い方を示します。karasu には移行を表現するためのアノテーション・継承・差分機構が揃っています。
 
@@ -60,7 +60,7 @@ system ECPlatform {
 アノテーションは複合できます。「廃止予定だが、同時に移行の受け皿でもあるブリッジ」は `@deprecated @migration_target` のように並べます。
 
 - `description` に **廃止時期や移行先** を一文で添えると、図だけで移行計画が読めます。`link` で移行 RFC / チケットの URL を指すとさらに良いです。
-- アノテーションは `.krs.style` のセレクタ（`@deprecated` など）でスタイルを反応させられます。色やバッジで状態を一目化する方法は [伝達ガイド](communicating-diagrams.ja.md) を参照してください。
+- アノテーションは `.krs.style` のセレクタ（`@deprecated` など）でスタイルを反応させられます。色やバッジで状態を一目化する方法は [伝達ガイド](05-communicating-diagrams.ja.md) を参照してください。
 
 ---
 
@@ -168,7 +168,7 @@ $ karasu diff old.krs new.krs --view deploy --output deploy.svg
 
 ## さらに学ぶ
 
-- 関連ガイド: [境界設計](service-team-design.ja.md) / [オンボーディング](onboarding.ja.md) / [伝達（スタイル・凡例・CI）](communicating-diagrams.ja.md)
+- 関連ガイド: [境界設計](01-service-team-design.ja.md) / [オンボーディング](02-onboarding.ja.md) / [伝達（スタイル・凡例・CI）](05-communicating-diagrams.ja.md)
 - ライフサイクルアノテーションの一覧: [`docs/spec/tags-annotations.ja.md`](../spec/tags-annotations.ja.md)
 - 移行の完全例: [`examples/migration/system.krs`](../../examples/migration/system.krs)
 - 設計思想（アノテーション継承・diff の動機）: [`docs/concepts.ja.md`](../concepts.ja.md)

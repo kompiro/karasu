@@ -1,10 +1,10 @@
 # Guide: Recording Architecture Evolution and Migration
 
-> **English**（this file） · [日本語](evolution.ja.md)
+> **English**（this file） · [日本語](03-evolution.ja.md)
 >
-> 📚 Guide series — Part 3 of 5 ｜ ← Prev: [Onboarding](onboarding.md) ｜ Next: [Access Paths](access-paths.md) →
+> 📚 Guide series — Part 3 of 5 ｜ ← Prev: [Onboarding](02-onboarding.md) ｜ Next: [Access Paths](04-access-paths.md) →
 
-After design (the [Boundary Design Guide](service-team-design.md)) and comprehension (the [Onboarding Guide](onboarding.md)) comes the stage of **changing what already exists.** Splitting a service, decommissioning a legacy system, migrating a monolith to microservices — these are not one-shot operations but processes that **proceed through several intermediate states.**
+After design (the [Boundary Design Guide](01-service-team-design.md)) and comprehension (the [Onboarding Guide](02-onboarding.md)) comes the stage of **changing what already exists.** Splitting a service, decommissioning a legacy system, migrating a monolith to microservices — these are not one-shot operations but processes that **proceed through several intermediate states.**
 
 This guide shows how to honestly draw "the in-flight middle" in karasu and share the intent and progress of a change with the team. karasu has the annotations, inheritance, and diff machinery to express migration.
 
@@ -60,7 +60,7 @@ system ECPlatform {
 Annotations compose. A "bridge that is deprecated yet also the migration target" is written `@deprecated @migration_target`.
 
 - Adding the **removal date or migration target** in one line of `description` lets the migration plan be read from the diagram alone. A `link` to the migration RFC / ticket URL is even better.
-- Annotations can drive styling via `.krs.style` selectors (`@deprecated`, etc.). For making state visible at a glance with color or badges, see the [Communicating Diagrams Guide](communicating-diagrams.md).
+- Annotations can drive styling via `.krs.style` selectors (`@deprecated`, etc.). For making state visible at a glance with color or badges, see the [Communicating Diagrams Guide](05-communicating-diagrams.md).
 
 ---
 
@@ -168,7 +168,7 @@ Put each stage in a separate PR and attach the `karasu diff` to the description,
 
 ## Further reading
 
-- Related guides: [Boundary Design](service-team-design.md) / [Onboarding](onboarding.md) / [Communicating Diagrams (style, legend, CI)](communicating-diagrams.md)
+- Related guides: [Boundary Design](01-service-team-design.md) / [Onboarding](02-onboarding.md) / [Communicating Diagrams (style, legend, CI)](05-communicating-diagrams.md)
 - Lifecycle annotation reference: [`docs/spec/tags-annotations.md`](../spec/tags-annotations.md)
 - Complete migration example: [`examples/migration/system.krs`](../../examples/migration/system.krs)
 - Design philosophy (annotation inheritance, the motivation for diff): [`docs/concepts.md`](../concepts.md)
