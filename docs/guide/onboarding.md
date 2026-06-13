@@ -205,7 +205,9 @@ system Shop {
 }
 ```
 
-When multiple services share one DB, karasu reports it **as a fact** with an `info`-level diagnostic (e.g. `infra-redeclared-across-files`). It does not say "fix it" — from a microservices Database-per-Service lens this is a smell, but sharing is legitimate in some cases. You record the "structural fact" you found mid-reading while deferring judgment.
+karasu **draws this sharing but does not forbid it** — from a microservices Database-per-Service lens it's a smell, but sharing is legitimate in some cases. You record the "structural fact" you found mid-reading while deferring judgment.
+
+> **On diagnostics**: re-declaring the same `database` / `queue` / `storage` id **across multiple files** emits `infra-redeclared-across-files` (info). The **fan-in itself** — one DB referenced by multiple services, as above — currently emits no diagnostic; the sharing is simply drawn (a fan-in diagnostic is under consideration — issue #1570).
 
 ---
 

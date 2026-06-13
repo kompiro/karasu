@@ -205,7 +205,9 @@ system Shop {
 }
 ```
 
-複数 service が同じ DB を共有していると karasu は `info` 段の診断（`infra-redeclared-across-files` など）で **事実として** 通知します。「直せ」とは言いません — マイクロサービスの Database-per-Service 観点では smell ですが、共有が正当な場面もあるからです。読解中のあなたが見つけた「構造的事実」を、判断を保留したまま地図に残せます。
+karasu はこの共有を **描くが禁止しません** — マイクロサービスの Database-per-Service 観点では smell ですが、共有が正当な場面もあるからです。読解中のあなたが見つけた「構造的事実」を、判断を保留したまま地図に残せます。
+
+> **診断との対応**: 同名の `database` / `queue` / `storage` を **複数ファイルで再宣言** した場合は `infra-redeclared-across-files`(info) が出ます。一方、上の例のように 1 つの DB を複数 service が参照する **fan-in 自体** への診断は現状なく、共有は図に描かれるだけです（fan-in 診断は検討中 — Issue #1570）。
 
 ---
 
