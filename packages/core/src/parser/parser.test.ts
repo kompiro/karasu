@@ -826,9 +826,10 @@ system Test {
   });
 
   // #1525 / TPL-20260510-17: link URLs are untrusted input rendered as
-  // <a href> in the app and the VS Code webview. Disallowed schemes must be
-  // dropped at parse time with a dedicated warning so no render surface can
-  // turn them into an XSS.
+  // <a href> in the app and the VS Code webview. A disallowed scheme must be
+  // reported with a dedicated warning at the parse boundary, but the link is
+  // KEPT in the AST so Format / round-trip never silently deletes the user's
+  // source — the href-render surfaces filter it out with isSafeLinkUrl.
   describe("link URL scheme allowlist (#1525)", () => {
     function parseServiceLink(url: string) {
       return Parser.parse(`
@@ -840,14 +841,14 @@ system Test {
       `);
     }
 
-    it("accepts mailto links", () => {
+    it("accepts mailto links without a warning", () => {
       const result = parseServiceLink("mailto:team@example.com");
       expect(result.diagnostics).toHaveLength(0);
       const service = result.value.systems[0].children[0] as ServiceNode;
       expect(service.properties.links).toHaveLength(1);
     });
 
-    it("drops a javascript: link with a warning and keeps parsing", () => {
+    it("warns on a javascript: link but keeps it in the AST", () => {
       const result = parseServiceLink("javascript:alert(1)");
       expect(result.diagnostics).toHaveLength(1);
       expect(result.diagnostics[0].severity).toBe("warning");
@@ -856,30 +857,32 @@ system Test {
         url: "javascript:alert(1)",
         scheme: "javascript:",
       });
+      // Kept so Format does not delete the user's line; renderers filter it.
       const service = result.value.systems[0].children[0] as ServiceNode;
-      expect(service.properties.links).toHaveLength(0);
+      expect(service.properties.links).toHaveLength(1);
+      expect(service.properties.links[0].url).toBe("javascript:alert(1)");
     });
 
     it("normalizes scheme case before the check (JaVaScRiPt:)", () => {
       const result = parseServiceLink("JaVaScRiPt:alert(1)");
       expect(result.diagnostics[0]?.code).toBe("link-url-scheme-not-allowed");
-      const service = result.value.systems[0].children[0] as ServiceNode;
-      expect(service.properties.links).toHaveLength(0);
     });
 
-    it("rejects other absolute schemes (data:)", () => {
+    it("warns on other absolute schemes (data:)", () => {
       const result = parseServiceLink("data:text/html,<script>alert(1)</script>");
       expect(result.diagnostics[0]?.code).toBe("link-url-scheme-not-allowed");
     });
 
-    it("rejects relative paths (not an absolute URL)", () => {
+    it("warns on relative paths (not an absolute URL) but keeps them", () => {
       const result = parseServiceLink("docs/readme.md");
       expect(result.diagnostics).toHaveLength(1);
       expect(result.diagnostics[0].code).toBe("link-url-scheme-not-allowed");
       expect(result.diagnostics[0].params).toEqual({ url: "docs/readme.md", scheme: "" });
+      const service = result.value.systems[0].children[0] as ServiceNode;
+      expect(service.properties.links).toHaveLength(1);
     });
 
-    it("keeps safe links while dropping unsafe ones in the same node", () => {
+    it("warns only on the unsafe link when a node mixes safe and unsafe", () => {
       const result = Parser.parse(`
 system Test {
   service ECommerce {
@@ -889,9 +892,31 @@ system Test {
 }
       `);
       expect(result.diagnostics).toHaveLength(1);
+      expect(result.diagnostics[0].code).toBe("link-url-scheme-not-allowed");
+      // Both links survive parsing; only the rendered surfaces drop the unsafe one.
+      const service = result.value.systems[0].children[0] as ServiceNode;
+      expect(service.properties.links.map((l) => l.url)).toEqual([
+        "https://wiki.example.com/ec",
+        "javascript:alert(1)",
+      ]);
+    });
+  });
+
+  // Round-trip safety (#1525 review): an authored link with a disallowed scheme
+  // must survive Format, not be silently deleted from the user's source.
+  describe("link with disallowed scheme is preserved in the AST for round-trip", () => {
+    it("keeps a relative-path link so the formatter can re-emit it", () => {
+      const result = Parser.parse(`
+system Test {
+  service ECommerce {
+    link "./architecture.md" "diagram"
+  }
+}
+      `);
       const service = result.value.systems[0].children[0] as ServiceNode;
       expect(service.properties.links).toHaveLength(1);
-      expect(service.properties.links[0].url).toBe("https://wiki.example.com/ec");
+      expect(service.properties.links[0].url).toBe("./architecture.md");
+      expect(service.properties.links[0].label).toBe("diagram");
     });
   });
 

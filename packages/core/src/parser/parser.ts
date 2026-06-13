@@ -359,8 +359,7 @@ export class Parser {
       // Property: link
       if (token.type === TokenType.Link) {
         this.advance();
-        const link = this.parseLink();
-        if (link) properties.links.push(link);
+        properties.links.push(this.parseLink());
         continue;
       }
 
@@ -634,7 +633,7 @@ export class Parser {
     };
   }
 
-  private parseLink(): LinkEntry | null {
+  private parseLink(): LinkEntry {
     const start = this.peek().loc;
     const url = this.expect(TokenType.StringLiteral);
     let label: string | undefined;
@@ -645,13 +644,15 @@ export class Parser {
       end = labelToken.loc;
     }
     const loc = this.range(start, end);
-    // Trust-boundary scheme allowlist (#1525 / TPL-20260510-17): link URLs come
-    // from untrusted .krs content and are rendered as <a href> in the app and
-    // the VS Code webview, where a javascript: URL executes in the app origin.
-    // Validate once at parse time so every render surface is protected. The
-    // WHATWG URL parser matches browser href semantics (case folding, tab/
-    // newline stripping), so scheme tricks like "JaVaScRiPt:" normalize before
-    // the check; anything unparseable (incl. relative paths) is rejected too.
+    // Trust-boundary scheme allowlist (#1525 / TPL-20260510-17): link URLs are
+    // untrusted .krs content rendered as <a href> in the app and the VS Code
+    // webview, where a javascript: URL executes in the app origin. We WARN here
+    // (validate once at the boundary) but keep the link in the AST so Format /
+    // round-trip never silently deletes the user's source. The href-rendering
+    // surfaces filter with isSafeLinkUrl before creating an anchor. The WHATWG
+    // URL parser matches browser href semantics (case folding, tab/newline
+    // stripping), so tricks like "JaVaScRiPt:" normalize before the check;
+    // anything unparseable (incl. relative paths) is reported too.
     const scheme = parseUrlScheme(url.value);
     if (scheme === null || !ALLOWED_LINK_SCHEMES.has(scheme)) {
       this.diagnostics.push({
@@ -660,7 +661,6 @@ export class Parser {
         params: { url: url.value, scheme: scheme ?? "" },
         loc,
       });
-      return null;
     }
     return { url: url.value, label, loc };
   }
@@ -1167,8 +1167,7 @@ export class Parser {
 
       if (token.type === TokenType.Link) {
         this.advance();
-        const link = this.parseLink();
-        if (link) properties.links.push(link);
+        properties.links.push(this.parseLink());
         continue;
       }
 
@@ -1235,8 +1234,7 @@ export class Parser {
 
       if (token.type === TokenType.Link) {
         this.advance();
-        const link = this.parseLink();
-        if (link) properties.links.push(link);
+        properties.links.push(this.parseLink());
         continue;
       }
 
@@ -1551,8 +1549,7 @@ export class Parser {
         properties.description = this.parseDescriptionValue();
       } else if (token.type === TokenType.Link) {
         this.advance();
-        const link = this.parseLink();
-        if (link) properties.links.push(link);
+        properties.links.push(this.parseLink());
       } else if (token.type === TokenType.Team) {
         teams.push(this.parseTeamBlock());
       } else if (token.type === TokenType.Legend) {
@@ -1608,8 +1605,7 @@ export class Parser {
         properties.description = this.parseDescriptionValue();
       } else if (token.type === TokenType.Link) {
         this.advance();
-        const link = this.parseLink();
-        if (link) properties.links.push(link);
+        properties.links.push(this.parseLink());
       } else if (token.type === TokenType.Owns) {
         this.advance();
         if (
@@ -1673,8 +1669,7 @@ export class Parser {
         properties.description = this.parseDescriptionValue();
       } else if (token.type === TokenType.Link) {
         this.advance();
-        const link = this.parseLink();
-        if (link) properties.links.push(link);
+        properties.links.push(this.parseLink());
       } else if (token.type === TokenType.Slack) {
         this.advance();
         if (this.peek().type === TokenType.StringLiteral) {
