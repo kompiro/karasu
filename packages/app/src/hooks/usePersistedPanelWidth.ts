@@ -29,6 +29,14 @@ interface PersistedPanelWidthOptions {
    * first drag, where width starts null). Receives the mousedown event.
    */
   measureStart: (e: MouseEvent) => number;
+  /**
+   * Clamp the persisted value on hydration. Use when `clamp` is
+   * viewport-independent (fixed min/max), so an out-of-range stored value never
+   * renders unclamped before the first interaction. Leave off when `clamp`
+   * depends on a container that isn't measurable at first render (the editor
+   * defers its viewport clamp to its resize listener). Default false.
+   */
+  clampInitial?: boolean;
 }
 
 interface PersistedPanelWidthResult {
@@ -59,10 +67,17 @@ export function usePersistedPanelWidth({
   defaultWidth,
   clamp,
   measureStart,
+  clampInitial = false,
 }: PersistedPanelWidthOptions): PersistedPanelWidthResult {
-  const [width, setWidth] = useState<number | null>(
-    () => readPersistedWidth(storageKey) ?? defaultWidth,
-  );
+  const [width, setWidth] = useState<number | null>(() => {
+    const persisted = readPersistedWidth(storageKey);
+    if (persisted == null) return defaultWidth;
+    // Clamp on hydration only when the clamp is viewport-independent, so an
+    // out-of-range stored value can't render unclamped before the first drag
+    // (restores the sidebar's prior read-time clamp). The editor opts out and
+    // re-clamps via its resize listener after the container mounts.
+    return clampInitial ? clamp(persisted) : persisted;
+  });
   const [isDragging, setIsDragging] = useState(false);
   const dragStateRef = useRef<{ startX: number; startWidth: number } | null>(null);
 

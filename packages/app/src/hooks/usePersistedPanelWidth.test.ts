@@ -55,6 +55,47 @@ describe("usePersistedPanelWidth", () => {
     expect(result.current.width).toBe(300);
   });
 
+  // Review of #1543: the prior sidebar readPersistedWidth clamped on read, so an
+  // out-of-range stored value must not render unclamped on hydration.
+  it("clamps an out-of-range persisted value on hydration when clampInitial is set", () => {
+    localStorage.setItem("k", "700"); // above max 480
+    const over = renderHook(() =>
+      usePersistedPanelWidth({
+        storageKey: "k",
+        defaultWidth: 210,
+        clamp: fixedClamp(180, 480),
+        measureStart: () => 210,
+        clampInitial: true,
+      }),
+    );
+    expect(over.result.current.width).toBe(480);
+
+    localStorage.setItem("k", "50"); // below min 180
+    const under = renderHook(() =>
+      usePersistedPanelWidth({
+        storageKey: "k",
+        defaultWidth: 210,
+        clamp: fixedClamp(180, 480),
+        measureStart: () => 210,
+        clampInitial: true,
+      }),
+    );
+    expect(under.result.current.width).toBe(180);
+  });
+
+  it("leaves the persisted value unclamped on hydration by default (editor defers to resize)", () => {
+    localStorage.setItem("k", "700");
+    const { result } = renderHook(() =>
+      usePersistedPanelWidth({
+        storageKey: "k",
+        defaultWidth: null,
+        clamp: fixedClamp(320, 480),
+        measureStart: () => 400,
+      }),
+    );
+    expect(result.current.width).toBe(700);
+  });
+
   it("drags from the current width, clamps, and persists", () => {
     const { result } = renderHook(() =>
       usePersistedPanelWidth({

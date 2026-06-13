@@ -72,6 +72,9 @@ export function EditArea({
     defaultWidth: SIDEBAR_DEFAULT_WIDTH,
     clamp: clampSidebarWidth,
     measureStart: measureSidebarStart,
+    // Fixed min/max — safe to clamp the persisted value on hydration (matches
+    // the prior read-time clamp).
+    clampInitial: true,
   });
   // defaultWidth is a number, so width is never null here.
   const sidebarWidth = sidebarWidthRaw ?? SIDEBAR_DEFAULT_WIDTH;
