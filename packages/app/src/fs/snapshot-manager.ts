@@ -1,4 +1,5 @@
 import type { FileSystemProvider } from "@karasu-tools/core";
+import { SerialQueue } from "./serial-queue.js";
 
 /**
  * Per-project `.snapshots/` layout:
@@ -41,6 +42,14 @@ function fnv1a(input: string): string {
 }
 
 export class SnapshotManager {
+  /**
+   * Serializes the index read-modify-write (#1531, same class as ProjectManager):
+   * auto-capture (debounce + beforeunload) can race a manual capture against the
+   * same `index.json`, and the later writeIndex would otherwise clobber the
+   * earlier one and silently drop a snapshot record.
+   */
+  private queue = new SerialQueue();
+
   constructor(
     private fs: FileSystemProvider,
     private projectRoot: string,
@@ -93,48 +102,59 @@ export class SnapshotManager {
     content: string,
     opts: { trigger: SnapshotTrigger; label?: string },
   ): Promise<SnapshotRecord | null> {
-    const contentHash = fnv1a(content);
-    const index = await this.readIndex(relPath);
+    // Serialized so a concurrent capture/delete can't lose this record (#1531).
+    // gcIfNeeded runs inside this critical section, so it must NOT re-enter the
+    // queue (that would deadlock).
+    return this.queue.run(async () => {
+      const contentHash = fnv1a(content);
+      const index = await this.readIndex(relPath);
 
-    if (opts.trigger === "auto" && index.records.length > 0) {
-      const latest = index.records.reduce((a, b) => (a.createdAt > b.createdAt ? a : b));
-      if (latest.contentHash === contentHash) return null;
-    }
+      if (opts.trigger === "auto" && index.records.length > 0) {
+        const latest = index.records.reduce((a, b) => (a.createdAt > b.createdAt ? a : b));
+        if (latest.contentHash === contentHash) return null;
+      }
 
-    const id = crypto.randomUUID();
-    const record: SnapshotRecord = {
-      id,
-      filePath: relPath,
-      createdAt: new Date().toISOString(),
-      label: opts.label,
-      trigger: opts.trigger,
-      sizeBytes: content.length,
-      contentHash,
-    };
+      const id = crypto.randomUUID();
+      const record: SnapshotRecord = {
+        id,
+        filePath: relPath,
+        createdAt: new Date().toISOString(),
+        label: opts.label,
+        trigger: opts.trigger,
+        sizeBytes: content.length,
+        contentHash,
+      };
 
-    await this.fs.writeFile(this.contentPath(relPath, id), content);
-    index.records.push(record);
-    await this.writeIndex(relPath, index);
+      await this.fs.writeFile(this.contentPath(relPath, id), content);
+      index.records.push(record);
+      await this.writeIndex(relPath, index);
 
-    await this.gcIfNeeded(relPath);
-    return record;
+      await this.gcIfNeeded(relPath);
+      return record;
+    });
   }
 
   async delete(relPath: string, snapshotId: string): Promise<void> {
-    const index = await this.readIndex(relPath);
-    const next: SnapshotIndex = {
-      version: INDEX_VERSION,
-      records: index.records.filter((r) => r.id !== snapshotId),
-    };
-    try {
-      await this.fs.delete(this.contentPath(relPath, snapshotId));
-    } catch {
-      // content already gone — keep going so the index stays consistent
-    }
-    await this.writeIndex(relPath, next);
+    await this.queue.run(async () => {
+      const index = await this.readIndex(relPath);
+      const next: SnapshotIndex = {
+        version: INDEX_VERSION,
+        records: index.records.filter((r) => r.id !== snapshotId),
+      };
+      try {
+        await this.fs.delete(this.contentPath(relPath, snapshotId));
+      } catch {
+        // content already gone — keep going so the index stays consistent
+      }
+      await this.writeIndex(relPath, next);
+    });
   }
 
-  /** Drop oldest auto snapshots once the per-file cap is exceeded. Manual snapshots are kept. */
+  /**
+   * Drop oldest auto snapshots once the per-file cap is exceeded. Manual
+   * snapshots are kept. Internal-only: always invoked from inside the queue
+   * (capture), so it must not re-enter it.
+   */
   private async gcIfNeeded(relPath: string): Promise<void> {
     const index = await this.readIndex(relPath);
     const autos = index.records

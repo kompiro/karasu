@@ -10,6 +10,7 @@ applicable_to:
 known_consumers:
   - project-manager
   - project-bootstrap
+  - snapshot-manager
 discovered_from:
   - issue: "#1530"
   - issue: "#1531"
@@ -53,7 +54,7 @@ scope:
 
 ## 既知の対処パターン
 
-- mutation を `private queue: Promise<unknown>` にチェーンし、各 CRUD を `enqueue(() => readModifyWrite())` で直列化する。rejection で後続が止まらないよう、チェーンは成否を握りつぶして繋ぐ（`packages/app/src/fs/project-manager.ts` の `enqueue`）
+- mutation を直列化キューにチェーンし、各 CRUD を `queue.run(() => readModifyWrite())` で順番に流す。rejection で後続が止まらないよう、チェーンは成否を握りつぶして繋ぐ。**同一パターンが複数 manager に出たら共有プリミティブに抽出する**（`packages/app/src/fs/serial-queue.ts` を `ProjectManager` と `SnapshotManager` で共用）。内側から呼ぶ helper（gc 等）はすでにロック内なので二重に enqueue しない（deadlock 回避）
 - `list()` は `if (!(await fs.exists(META_PATH))) return []` で not-found を先に弾き、それ以外の read/parse 失敗は throw させる
 - bootstrap effect は `try { ... } catch (e) { dispatch(SET_INIT_ERROR) } finally { dispatch(SET_LOADING false) }`、かつ `const started = useRef(false)` で二重実行をガード
 - TPL-20260510-17（trust boundary）と地続き: **外部・永続の境界はどちらも「未検証/不確実な入力」として扱い、fail-closed にする**
@@ -66,3 +67,5 @@ scope:
 
 - `packages/app/src/fs/project-manager.test.ts`（corrupt metadata → throw / 並行 create で lost update しない）
 - `packages/app/src/hooks/useProjectInitialization.test.ts`（bootstrap throw → SET_INIT_ERROR + loading 解除 / StrictMode 二重実行で seed 一回）
+- `packages/app/src/fs/serial-queue.test.ts`（直列実行・rejection 非伝播の単体テスト）
+- `packages/app/src/fs/snapshot-manager.test.ts`（並行 capture / capture×delete レースで record を落とさない）

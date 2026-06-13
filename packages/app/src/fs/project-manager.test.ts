@@ -91,6 +91,17 @@ describe("ProjectManager", () => {
     });
   });
 
+  // #1531 (review): if the metadata commit fails after the files are written,
+  // createProject must roll back the directory rather than leak an orphan.
+  describe("createProject rollback", () => {
+    it("removes the project directory when the metadata commit fails", async () => {
+      await fs.writeFile("/meta/projects.json", "{ corrupt");
+      await expect(pm.createProject("Doomed")).rejects.toThrow(SyntaxError);
+      const entries = await fs.readDir("/projects").catch(() => []);
+      expect(entries).toHaveLength(0);
+    });
+  });
+
   describe("concurrent mutations (#1531)", () => {
     it("does not lose updates when creates race (serialized read-modify-write)", async () => {
       // Fire many creates without awaiting between them: each does a
