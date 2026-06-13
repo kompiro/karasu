@@ -193,6 +193,14 @@ describe("format()", () => {
     expectAstRoundTrip(src);
   });
 
+  // #1525 review: scheme validation warns but must NOT delete the user's link
+  // on Format. A disallowed-scheme / relative link round-trips unchanged.
+  it("preserves a disallowed-scheme link across formatting (does not delete it)", () => {
+    const src = `system S { link "./architecture.md" "diagram" }`;
+    expect(fmt(src)).toContain(`  link "./architecture.md" "diagram"`);
+    expectIdempotent(fmt(src));
+  });
+
   it("formats service node with delivers property", () => {
     const src = `system S { service BFF { delivers WebApp, Admin } client WebApp [web] client Admin [desktop] }`;
     const out = fmt(src);

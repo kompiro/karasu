@@ -29,7 +29,8 @@ export const en: Translations = {
   "settings.security.linkLabel": "→ Manage keys on console.anthropic.com",
   "settings.apiKey.label": "Claude API key",
   "settings.persist.label": "Persist across sessions (save to localStorage)",
-  "settings.persist.hint": "When off, the API key is cleared when the tab closes (recommended).",
+  "settings.persist.hint":
+    "When off, the API key is cleared when the tab closes (recommended). Persisting keeps the key readable by any script running on this page across sessions — if the page is ever compromised (XSS), a persisted key is exposed for far longer.",
   "settings.save.saved": "✓ Saved",
   "settings.save.label": "💾 Save",
   "settings.clear.label": "🗑 Clear",
@@ -279,6 +280,10 @@ export const en: Translations = {
   "diagnostic.expectedIdAfter.message": ({ property }) =>
     `Expected identifier or string literal after "${property}"`,
   "diagnostic.teamPropertyDeprecated.message": `"team" property is deprecated; use an organization block with "owns" instead`,
+  "diagnostic.linkUrlSchemeNotAllowed.message": ({ url, scheme }) =>
+    scheme
+      ? `link URL "${url}" uses a disallowed scheme "${scheme}" (allowed: http, https, mailto); the link is ignored`
+      : `link URL "${url}" is not an absolute http / https / mailto URL; the link is ignored`,
   "diagnostic.edgeSourceMismatch.message": ({ from, parentId }) =>
     `Edge source "${from}" must match the enclosing block id "${parentId}"`,
   "diagnostic.unassignedResource.message": ({ resourceId }) =>

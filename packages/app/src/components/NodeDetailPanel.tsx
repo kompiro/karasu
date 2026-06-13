@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import { marked } from "marked";
 import DOMPurify from "dompurify";
-import { renderPictogram } from "@karasu-tools/core";
+import { renderPictogram, isSafeLinkUrl } from "@karasu-tools/core";
 import type { NodeMetadata } from "@karasu-tools/core";
 import { useTranslation } from "../i18n/index.js";
 
@@ -121,13 +121,20 @@ export function NodeDetailPanel({
         <div className="node-detail-section">
           <div className="node-detail-section-title">{t("nodeDetail.links.title")}</div>
           <ul className="node-detail-links">
-            {metadata.links.map((link) => (
-              <li key={link.url}>
-                <a href={link.url} target="_blank" rel="noopener noreferrer">
-                  {link.label || link.url} ↗
-                </a>
-              </li>
-            ))}
+            {/* The parser keeps disallowed-scheme links in the AST (so Format
+                doesn't delete the user's source) but warns; the href-render
+                surface is where they must be excluded. React does not block
+                javascript: hrefs, so this scheme filter is the actual XSS
+                gate, not just defense in depth (#1525). */}
+            {metadata.links
+              .filter((link) => isSafeLinkUrl(link.url))
+              .map((link) => (
+                <li key={link.url}>
+                  <a href={link.url} target="_blank" rel="noopener noreferrer">
+                    {link.label || link.url} ↗
+                  </a>
+                </li>
+              ))}
           </ul>
         </div>
       )}

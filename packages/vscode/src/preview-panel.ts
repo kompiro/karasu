@@ -1,5 +1,10 @@
 import * as vscode from "vscode";
-import { compileProject, type DiagramTheme, type NodeMetadata } from "@karasu-tools/core";
+import {
+  compileProject,
+  isSafeLinkUrl,
+  type DiagramTheme,
+  type NodeMetadata,
+} from "@karasu-tools/core";
 import { marked } from "marked";
 import {
   type ViewType,
@@ -213,7 +218,12 @@ export class PreviewPanel {
           descriptionHtml: meta.description
             ? (marked.parse(meta.description, { async: false }) as string)
             : "",
-          links: meta.links,
+          // Filter disallowed-scheme links host-side (#1525) using core's
+          // canonical allowlist, so an unsafe URL never reaches the webview
+          // string at all. The webview can't import core (serialized IIFE), so
+          // doing it here keeps a single source of truth instead of a second,
+          // drift-prone regex inside the webview.
+          links: meta.links.filter((l) => isSafeLinkUrl(l.url)),
           team: meta.team,
           role: meta.role,
           runtime: meta.runtime,
@@ -550,6 +560,8 @@ export class PreviewPanel {
         html += '<ul class="dp-links">';
         for (var i = 0; i < meta.links.length; i++) {
           var link = meta.links[i];
+          // Links are already scheme-filtered host-side (#1525, see _buildHtml),
+          // so meta.links contains only http/https/mailto URLs here.
           html += '<li><a href="' + escapeAttr(link.url) + '">'
             + escapeHtml(link.label || link.url) + ' \\u2197</a></li>';
         }

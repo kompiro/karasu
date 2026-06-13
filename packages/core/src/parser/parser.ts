@@ -1,4 +1,5 @@
 import { TokenType, type Token, type SourceRange, type SourceLocation } from "../types/tokens.js";
+import { ALLOWED_LINK_SCHEMES, parseUrlScheme } from "./link-url.js";
 import type {
   KrsFile,
   KrsNode,
@@ -642,7 +643,26 @@ export class Parser {
       label = labelToken.value;
       end = labelToken.loc;
     }
-    return { url: url.value, label, loc: this.range(start, end) };
+    const loc = this.range(start, end);
+    // Trust-boundary scheme allowlist (#1525 / TPL-20260510-17): link URLs are
+    // untrusted .krs content rendered as <a href> in the app and the VS Code
+    // webview, where a javascript: URL executes in the app origin. We WARN here
+    // (validate once at the boundary) but keep the link in the AST so Format /
+    // round-trip never silently deletes the user's source. The href-rendering
+    // surfaces filter with isSafeLinkUrl before creating an anchor. The WHATWG
+    // URL parser matches browser href semantics (case folding, tab/newline
+    // stripping), so tricks like "JaVaScRiPt:" normalize before the check;
+    // anything unparseable (incl. relative paths) is reported too.
+    const scheme = parseUrlScheme(url.value);
+    if (scheme === null || !ALLOWED_LINK_SCHEMES.has(scheme)) {
+      this.diagnostics.push({
+        severity: "warning",
+        code: "link-url-scheme-not-allowed",
+        params: { url: url.value, scheme: scheme ?? "" },
+        loc,
+      });
+    }
+    return { url: url.value, label, loc };
   }
 
   /**

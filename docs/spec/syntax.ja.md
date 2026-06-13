@@ -196,6 +196,16 @@ system ECPlatform {
 すべてのプロパティは省略可。`link` は同一ノード内に複数記述できる。
 使用可能な種別以外で記述した場合はエラーを出す。
 
+`link` の URL は `http:` / `https:` / `mailto:` の絶対 URL を推奨する。
+それ以外のスキーム（例: `javascript:`）や相対パスは
+`link-url-scheme-not-allowed` 警告の対象になる。リンク自体はモデルに保持
+される（フォーマットしても元ソースから消えない）が、リンク URL を
+クリック可能な `<a href>` として描画するプレビューパネルは `http:` /
+`https:` / `mailto:` のリンクのみを表示する（`javascript:` href は
+アプリの origin で実行されてしまうため）。
+
+> Related TPLs: TPL-20260510-17 — `外部から来る input は trust boundary を越える前に validate / canonicalize する`
+
 ### user ノードの例
 
 ```

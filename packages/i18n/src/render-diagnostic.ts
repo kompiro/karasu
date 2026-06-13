@@ -73,6 +73,8 @@ export function renderDiagnostic(d: Diagnostic, t: TranslateFn): string {
       return t("diagnostic.expectedIdAfter.message", d.params);
     case "team-property-deprecated":
       return t("diagnostic.teamPropertyDeprecated.message");
+    case "link-url-scheme-not-allowed":
+      return t("diagnostic.linkUrlSchemeNotAllowed.message", d.params);
     case "edge-source-mismatch":
       return t("diagnostic.edgeSourceMismatch.message", d.params);
     case "unassigned-resource":
