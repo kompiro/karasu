@@ -270,7 +270,33 @@ The crux of onboarding is **being able to express a partially-understood state a
 - **`[external]` and ghosts** — place uninvestigated boundaries as "outside" and defer drilling in.
 - **Warn, don't error** — unspecified `runtime`, unspecified `realizes`, orphan resources — every incomplete point stays a warning. The map keeps rendering, unbroken.
 
-This "tolerate incompleteness" stance is the heart of karasu's fit with onboarding. You commit without waiting for perfect understanding, and knock out warnings one at a time as understanding grows. The warning panel becomes your **remaining-homework list.**
+### 5.1 Marking reading confidence with custom annotations
+
+Sometimes you want to record the middle ground between "undecided" and "confirmed" — **a guess you still want to draw.** karasu's annotation names are an **open set** (any `@<identifier>` is accepted, no warning for non-builtins), so you can define custom annotations like `@unverified` / `@assumed` and keep reading confidence as a first-class mark.
+
+```krs
+// This domain's existence is a guess — not yet confirmed in the code
+domain Promotion @unverified { label "Promotion (guessed)" }
+
+system Shop {
+  service OrderService @assumed {
+    label "Order service"
+    description "Access path is a guess. Confirm in Slack #team-order"
+  }
+}
+```
+
+- Unlike the four builtins (`@deprecated` / `@new` / `@experimental` / `@migration_target`), custom annotations have **no default rendering.** But they are valid targets for `.krs.style` annotation selectors, so you can make "low-confidence areas" visible at a glance with color or badges (same approach as [Communicating Diagrams Guide §3](communicating-diagrams.md#3-showing-lifecycle-state-with-color-and-badges)).
+
+  ```css
+  /* theme.krs.style — make guessed areas stand out with a dashed border + badge */
+  @unverified { border-style: dashed; opacity: 0.7; badge-label: "verify"; badge-icon: "❓"; }
+  ```
+
+- A typo close to a builtin name (e.g. `@depracated`) gets an `annotation-possible-typo` info hint, but a distant name like `@unverified` does not.
+- When understanding firms up, just remove the annotation. Grepping for nodes that still carry `@unverified` gives you a **list of unconfirmed homework.**
+
+This "tolerate incompleteness" stance is the heart of karasu's fit with onboarding. You commit without waiting for perfect understanding, and knock out warnings and `@unverified` marks one at a time as understanding grows. The warning panel and your custom annotations become your **remaining-homework list.**
 
 ---
 
