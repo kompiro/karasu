@@ -1,6 +1,8 @@
 # アーキテクチャの進化・移行を記録するガイド
 
 > [English](evolution.md) · **日本語**（このファイル）
+>
+> 📚 ガイドシリーズ 第3章 / 全5章 ｜ ← 前章: [オンボーディング](onboarding.ja.md) ｜ 次章 →: [アクセス経路とクライアント](access-paths.ja.md)
 
 設計（[境界設計ガイド](service-team-design.ja.md)）と理解（[オンボーディングガイド](onboarding.ja.md)）の次に来るのは、**既に在るものを変えていく** 段階です。サービスを分割する、レガシーを廃止する、モノリスをマイクロサービスへ移行する — これらは一度きりの作業ではなく、**複数の中間状態を経て進む** プロセスです。
 
@@ -166,7 +168,7 @@ $ karasu diff old.krs new.krs --view deploy --output deploy.svg
 
 ## さらに学ぶ
 
-- 姉妹ガイド: [境界設計](service-team-design.ja.md) / [オンボーディング](onboarding.ja.md) / [伝達（スタイル・凡例・CI）](communicating-diagrams.ja.md)
+- 関連ガイド: [境界設計](service-team-design.ja.md) / [オンボーディング](onboarding.ja.md) / [伝達（スタイル・凡例・CI）](communicating-diagrams.ja.md)
 - ライフサイクルアノテーションの一覧: [`docs/spec/tags-annotations.ja.md`](../spec/tags-annotations.ja.md)
 - 移行の完全例: [`examples/migration/system.krs`](../../examples/migration/system.krs)
 - 設計思想（アノテーション継承・diff の動機）: [`docs/concepts.ja.md`](../concepts.ja.md)

@@ -1,6 +1,8 @@
 # Onboarding Guide: Reading Down an Existing System into karasu Diagrams
 
 > **English**（this file） · [日本語](onboarding.ja.md)
+>
+> 📚 Guide series — Part 2 of 5 ｜ ← Prev: [Boundary Design](service-team-design.md) ｜ Next: [Evolution](evolution.md) →
 
 This guide is for **people joining an existing system midway** (new hires, internal transfers, hand-offs) who need to read down the code and operational assets and assemble an architecture map in karasu. It assumes the typical situation: architecture docs are missing, stale, or fragmentary.
 
@@ -377,7 +379,7 @@ Don't aim for perfection — treat **reducing warnings one at a time** as the wo
 
 ## Further reading
 
-- Companion guides: [Boundary Design](service-team-design.md) (design) / [Evolution & Migration](evolution.md) (change) / [Communicating Diagrams](communicating-diagrams.md) (style, legend, CI) / [Access Paths & Clients](access-paths.md)
+- Related guides: [Boundary Design](service-team-design.md) (design) / [Evolution & Migration](evolution.md) (change) / [Communicating Diagrams](communicating-diagrams.md) (style, legend, CI) / [Access Paths & Clients](access-paths.md)
 - Map of all guides: [`docs/guide/README.md`](README.md)
 - Precise syntax spec: [`docs/spec/syntax.md`](../spec/syntax.md)
 - Design philosophy (three faces, scoped glance, translate's asymmetry): [`docs/concepts.md`](../concepts.md)

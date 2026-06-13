@@ -1,6 +1,8 @@
 # アクセス経路とクライアントのモデリングガイド
 
 > [English](access-paths.md) · **日本語**（このファイル）
+>
+> 📚 ガイドシリーズ 第4章 / 全5章 ｜ ← 前章: [進化・移行](evolution.ja.md) ｜ 次章 →: [伝達](communicating-diagrams.ja.md)
 
 プロダクトのアーキテクチャを描くとき、サービスの内部構造（`service → domain → usecase`）と同じくらい重要なのが **アクセス経路** — 「誰が、どの面（クライアント）を介して、何（サービス）に到達するか」です。エンドユーザーは普通サービスを直接叩きません。モバイルアプリや Web フロントを経由します。この **`user → client → service`** の系統を、karasu は専用の語彙でモデル化します。
 
@@ -184,7 +186,7 @@ client MobileApp [mobile] {
 
 ## さらに学ぶ
 
-- 姉妹ガイド: [境界設計](service-team-design.ja.md) / [オンボーディング](onboarding.ja.md) / [進化](evolution.ja.md) / [伝達](communicating-diagrams.ja.md)
+- 関連ガイド: [境界設計](service-team-design.ja.md) / [オンボーディング](onboarding.ja.md) / [進化](evolution.ja.md) / [伝達](communicating-diagrams.ja.md)
 - 正確な構文（user / client / handles / delivers）: [`docs/spec/syntax.ja.md`](../spec/syntax.ja.md)
 - client を独立 kind にした理由: [ADR-20260428-06](../adr/20260428-06-client-mcp-modeling.md)
 - クライアント例: [`examples/ec-platform/02.5-clients.krs`](../../examples/ec-platform/02.5-clients.krs)、[`examples/client-mcp/`](../../examples/client-mcp/)

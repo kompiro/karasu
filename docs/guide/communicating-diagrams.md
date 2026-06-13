@@ -1,6 +1,8 @@
 # Guide: Communicating Diagrams — Style, Legend, and CI
 
 > **English**（this file） · [日本語](communicating-diagrams.ja.md)
+>
+> 📚 Guide series — Part 5 of 5 ｜ ← Prev: [Access Paths & Clients](access-paths.md)
 
 The `.krs` text is the single source of truth for the model, but turning it into a **diagram that communicates to the reader** in reviews and exports takes one more layer of effort. Show ownership and state with color, bake "what does this color mean" into the diagram with a legend, keep diagrams always fresh with CI — this guide covers the layer that makes karasu diagrams **a shared team asset.**
 
@@ -146,7 +148,7 @@ draw.io (mxGraph XML) emits one page per view and per drill-down level. This bal
 
 ## Further reading
 
-- Companion guides: [Boundary Design](service-team-design.md) / [Onboarding](onboarding.md) / [Evolution](evolution.md)
+- Related guides: [Boundary Design](service-team-design.md) / [Onboarding](onboarding.md) / [Evolution](evolution.md)
 - Precise style spec: [`docs/spec/style.md`](../spec/style.md)
 - Legend spec: [`docs/spec/syntax.md`](../spec/syntax.md)
 - Tags and annotations: [`docs/spec/tags-annotations.md`](../spec/tags-annotations.md)

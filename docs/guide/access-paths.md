@@ -1,6 +1,8 @@
 # Guide: Modeling Access Paths and Clients
 
 > **English**（this file） · [日本語](access-paths.ja.md)
+>
+> 📚 Guide series — Part 4 of 5 ｜ ← Prev: [Evolution](evolution.md) ｜ Next: [Communicating Diagrams](communicating-diagrams.md) →
 
 When drawing a product's architecture, the **access path** — "who reaches what (a service) through which surface (a client)" — matters as much as the internal structure of services (`service → domain → usecase`). End users don't usually hit a service directly; they go through a mobile app or a web frontend. karasu models this **`user → client → service`** lineage with dedicated vocabulary.
 
@@ -184,7 +186,7 @@ For complete examples, see [`examples/ec-platform/02.5-clients.krs`](../../examp
 
 ## Further reading
 
-- Companion guides: [Boundary Design](service-team-design.md) / [Onboarding](onboarding.md) / [Evolution](evolution.md) / [Communicating Diagrams](communicating-diagrams.md)
+- Related guides: [Boundary Design](service-team-design.md) / [Onboarding](onboarding.md) / [Evolution](evolution.md) / [Communicating Diagrams](communicating-diagrams.md)
 - Precise syntax (user / client / handles / delivers): [`docs/spec/syntax.md`](../spec/syntax.md)
 - Why client is its own kind: [ADR-20260428-06](../adr/20260428-06-client-mcp-modeling.md)
 - Client examples: [`examples/ec-platform/02.5-clients.krs`](../../examples/ec-platform/02.5-clients.krs), [`examples/client-mcp/`](../../examples/client-mcp/)

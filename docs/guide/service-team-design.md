@@ -1,6 +1,8 @@
 # Architect's Guide: Designing Service and Team Boundaries with karasu
 
 > **English**（this file） · [日本語](service-team-design.ja.md)
+>
+> 📚 Guide series — Part 1 of 5 ｜ Next: [Onboarding](onboarding.md) →
 
 This guide is for architects who want to use karasu not as a diagramming tool but as **a tool for designing service boundaries and team boundaries**. It walks through how to answer three questions in karasu's vocabulary:
 
@@ -418,7 +420,7 @@ Read `info`-level diagnostics as **"karasu noticed something — read it if it m
 
 ## Further reading
 
-- Companion guides: [Onboarding](onboarding.md) (comprehension) / [Evolution & Migration](evolution.md) (change) / [Communicating Diagrams](communicating-diagrams.md) (style, legend, CI) / [Access Paths & Clients](access-paths.md)
+- Related guides: [Onboarding](onboarding.md) (comprehension) / [Evolution & Migration](evolution.md) (change) / [Communicating Diagrams](communicating-diagrams.md) (style, legend, CI) / [Access Paths & Clients](access-paths.md)
 - Map of all guides: [`docs/guide/README.md`](README.md)
 - Precise syntax spec: [`docs/spec/syntax.md`](../spec/syntax.md)
 - Style (`.krs.style`): [`docs/spec/style.md`](../spec/style.md)

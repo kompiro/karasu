@@ -1,10 +1,12 @@
 # 中途入社者向けガイド: 既存システムを読み下して karasu の図にまとめる
 
 > [English](onboarding.md) · **日本語**（このファイル）
+>
+> 📚 ガイドシリーズ 第2章 / 全5章 ｜ ← 前章: [境界設計](service-team-design.ja.md) ｜ 次章 →: [進化・移行](evolution.ja.md)
 
 このガイドは、**既存のシステムに途中から加わった人**（中途入社・チーム異動・引き継ぎ）が、コードと運用資産を読み下しながら karasu でアーキテクチャの地図を組み立てるためのものです。アーキテクチャドキュメントが無い・古い・断片的、という典型的な状況を前提にします。
 
-姉妹ガイドの [サービス/チーム境界設計ガイド](service-team-design.ja.md) が「これから設計する（前向き）」道具としての使い方なら、こちらは **「既に在るものを読み解く（逆向き）」** 使い方です。情報の流れる向きが逆になります — 設計では抽象から具体へ降ろし、読解では具体から抽象へ上げます。
+関連ガイドの [サービス/チーム境界設計ガイド](service-team-design.ja.md) が「これから設計する（前向き）」道具としての使い方なら、こちらは **「既に在るものを読み解く（逆向き）」** 使い方です。情報の流れる向きが逆になります — 設計では抽象から具体へ降ろし、読解では具体から抽象へ上げます。
 
 構文の正確な仕様は [`docs/spec/syntax.ja.md`](../spec/syntax.ja.md)、設計思想は [`docs/concepts.ja.md`](../concepts.ja.md) を参照してください。このガイドは「初日から何をどの順で読み、何を図に落とすか」の運用手順を示します。
 
@@ -329,7 +331,7 @@ organization Shop {
 - **`member` + `slack` / `github`** で連絡先を残せます。オンボーディング地図としては、まさにこれが欲しい情報です。
 - どの team も所有していない service は組織ビューで **オーナー不在** として浮かびます。「このサービス、誰が見てるんだ？」という、入社直後によくある疑問が可視化されます。
 
-詳細は姉妹ガイドの [サービス/チーム境界設計ガイド §2](service-team-design.ja.md#2-逆コンウェイ戦略--アーキテクチャに合わせてチームを設計する) と、完全例の [`examples/org/system.krs`](../../examples/org/system.krs) を参照してください。
+詳細は関連ガイドの [サービス/チーム境界設計ガイド §2](service-team-design.ja.md#2-逆コンウェイ戦略--アーキテクチャに合わせてチームを設計する) と、完全例の [`examples/org/system.krs`](../../examples/org/system.krs) を参照してください。
 
 ---
 
@@ -377,7 +379,7 @@ $ karasu render index.krs --format drawio --output arch.drawio
 
 ## さらに学ぶ
 
-- 姉妹ガイド: [境界設計](service-team-design.ja.md)（設計）/ [進化・移行](evolution.ja.md)（変更）/ [伝達](communicating-diagrams.ja.md)（スタイル・凡例・CI）/ [アクセス経路とクライアント](access-paths.ja.md)
+- 関連ガイド: [境界設計](service-team-design.ja.md)（設計）/ [進化・移行](evolution.ja.md)（変更）/ [伝達](communicating-diagrams.ja.md)（スタイル・凡例・CI）/ [アクセス経路とクライアント](access-paths.ja.md)
 - ガイド全体の地図: [`docs/guide/README.md`](README.md)
 - 構文の正確な仕様: [`docs/spec/syntax.ja.md`](../spec/syntax.ja.md)
 - 設計思想（三面構造・scoped glance・translate の非対称性）: [`docs/concepts.ja.md`](../concepts.ja.md)

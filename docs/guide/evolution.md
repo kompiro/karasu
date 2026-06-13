@@ -1,6 +1,8 @@
 # Guide: Recording Architecture Evolution and Migration
 
 > **English**（this file） · [日本語](evolution.ja.md)
+>
+> 📚 Guide series — Part 3 of 5 ｜ ← Prev: [Onboarding](onboarding.md) ｜ Next: [Access Paths](access-paths.md) →
 
 After design (the [Boundary Design Guide](service-team-design.md)) and comprehension (the [Onboarding Guide](onboarding.md)) comes the stage of **changing what already exists.** Splitting a service, decommissioning a legacy system, migrating a monolith to microservices — these are not one-shot operations but processes that **proceed through several intermediate states.**
 
@@ -166,7 +168,7 @@ Put each stage in a separate PR and attach the `karasu diff` to the description,
 
 ## Further reading
 
-- Companion guides: [Boundary Design](service-team-design.md) / [Onboarding](onboarding.md) / [Communicating Diagrams (style, legend, CI)](communicating-diagrams.md)
+- Related guides: [Boundary Design](service-team-design.md) / [Onboarding](onboarding.md) / [Communicating Diagrams (style, legend, CI)](communicating-diagrams.md)
 - Lifecycle annotation reference: [`docs/spec/tags-annotations.md`](../spec/tags-annotations.md)
 - Complete migration example: [`examples/migration/system.krs`](../../examples/migration/system.krs)
 - Design philosophy (annotation inheritance, the motivation for diff): [`docs/concepts.md`](../concepts.md)
