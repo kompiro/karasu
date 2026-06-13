@@ -28,6 +28,12 @@ export interface AppState {
   isAllLayersOpen: boolean;
   loading: boolean;
   /**
+   * Set when ProjectMode bootstrap fails (e.g. OPFS unavailable in private
+   * browsing, quota exceeded, corrupt project metadata). Surfaces an error
+   * screen instead of an indefinite "Loading…" hang (#1530).
+   */
+  initError: string | null;
+  /**
    * Source to compare the current file against in diff mode
    * (Issue #650 file source, #739 pasted source, #740 snapshot source).
    * When non-null, diff views render a graphical diff between the current entry
@@ -56,6 +62,7 @@ export const initialState: AppState = {
   displayMode: "shape",
   isAllLayersOpen: false,
   loading: true,
+  initError: null,
   compareSource: null,
   diffSwapped: false,
 };
@@ -78,6 +85,7 @@ export type AppAction =
   | { type: "SET_ACTIVE_VIEW"; activeView: ActiveView; highlightNodeId?: string | null }
   | { type: "SET_HIGHLIGHTED_NODE"; nodeId: string | null }
   | { type: "SET_LOADING"; loading: boolean }
+  | { type: "SET_INIT_ERROR"; error: string | null }
   | { type: "SET_SELECTED_DEPLOY_BLOCK"; id: string | null }
   | { type: "ADD_PROJECT"; project: Project }
   | { type: "REMOVE_PROJECT"; id: string }
@@ -143,6 +151,9 @@ export function appReducer(state: AppState, action: AppAction): AppState {
 
     case "SET_LOADING":
       return { ...state, loading: action.loading };
+
+    case "SET_INIT_ERROR":
+      return { ...state, initError: action.error };
 
     case "SET_SELECTED_DEPLOY_BLOCK":
       return { ...state, selectedDeployBlockId: action.id };

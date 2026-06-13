@@ -1,4 +1,4 @@
-import { useEffect, type Dispatch } from "react";
+import { useEffect, useRef, type Dispatch } from "react";
 import {
   CLIENT_MCP_PROJECT,
   EC_PLATFORM_PROJECTS,
@@ -71,48 +71,65 @@ export function useProjectInitialization({
   currentProject,
   selectFile,
 }: UseProjectInitializationArgs): void {
+  // Guards against re-seeding when the effect runs twice (React StrictMode
+  // double-invokes effects in dev, and both runs would otherwise observe an
+  // empty list and seed the defaults twice). Survives the double-invoke because
+  // a ref persists across it (#1530).
+  const bootstrapStarted = useRef(false);
+
   // Bootstrap: load the project list. If empty, seed the default projects.
   useEffect(() => {
+    if (bootstrapStarted.current) return;
+    bootstrapStarted.current = true;
+
     (async () => {
-      const projectList = await pm.listProjects();
+      try {
+        const projectList = await pm.listProjects();
 
-      if (projectList.length === 0) {
-        const initialProjects: Project[] = [];
-        // Pick the locale-matching Getting Started content at seed time.
-        // Once seeded it is user content — we do not re-seed when the
-        // locale changes later. Users whose browser is Japanese get the
-        // Japanese tutorial; everyone else gets English.
-        const gsTemplate =
-          resolveLocale() === "ja" ? GETTING_STARTED_PROJECT : GETTING_STARTED_PROJECT_EN;
-        const gsProject = await pm.createProject(gsTemplate.name, gsTemplate.files);
-        initialProjects.push(gsProject);
-        for (const example of EC_PLATFORM_PROJECTS) {
-          const project = await pm.createProject(example.name, example.files);
-          initialProjects.push(project);
+        if (projectList.length === 0) {
+          const initialProjects: Project[] = [];
+          // Pick the locale-matching Getting Started content at seed time.
+          // Once seeded it is user content — we do not re-seed when the
+          // locale changes later. Users whose browser is Japanese get the
+          // Japanese tutorial; everyone else gets English.
+          const gsTemplate =
+            resolveLocale() === "ja" ? GETTING_STARTED_PROJECT : GETTING_STARTED_PROJECT_EN;
+          const gsProject = await pm.createProject(gsTemplate.name, gsTemplate.files);
+          initialProjects.push(gsProject);
+          for (const example of EC_PLATFORM_PROJECTS) {
+            const project = await pm.createProject(example.name, example.files);
+            initialProjects.push(project);
+          }
+          const clientMcpProject = await pm.createProject(
+            CLIENT_MCP_PROJECT.name,
+            CLIENT_MCP_PROJECT.files,
+          );
+          initialProjects.push(clientMcpProject);
+          const multiFileSystemProject = await pm.createProject(
+            MULTI_FILE_SYSTEM_PROJECT.name,
+            MULTI_FILE_SYSTEM_PROJECT.files,
+          );
+          initialProjects.push(multiFileSystemProject);
+          const featureSamplesProject = await pm.createProject(
+            FEATURE_SAMPLES_PROJECT.name,
+            FEATURE_SAMPLES_PROJECT.files,
+          );
+          initialProjects.push(featureSamplesProject);
+          dispatch({ type: "SET_PROJECTS", projects: initialProjects });
+        } else {
+          dispatch({ type: "SET_PROJECTS", projects: projectList });
+          // `useProjectNavigation` initialization reads URL / localStorage to restore the selection.
+          await cleanupPasteCompareTempFiles(fs, projectList);
         }
-        const clientMcpProject = await pm.createProject(
-          CLIENT_MCP_PROJECT.name,
-          CLIENT_MCP_PROJECT.files,
-        );
-        initialProjects.push(clientMcpProject);
-        const multiFileSystemProject = await pm.createProject(
-          MULTI_FILE_SYSTEM_PROJECT.name,
-          MULTI_FILE_SYSTEM_PROJECT.files,
-        );
-        initialProjects.push(multiFileSystemProject);
-        const featureSamplesProject = await pm.createProject(
-          FEATURE_SAMPLES_PROJECT.name,
-          FEATURE_SAMPLES_PROJECT.files,
-        );
-        initialProjects.push(featureSamplesProject);
-        dispatch({ type: "SET_PROJECTS", projects: initialProjects });
-      } else {
-        dispatch({ type: "SET_PROJECTS", projects: projectList });
-        // `useProjectNavigation` initialization reads URL / localStorage to restore the selection.
-        await cleanupPasteCompareTempFiles(fs, projectList);
+      } catch (err) {
+        // Without this, a throw (OPFS unavailable / quota exceeded / corrupt
+        // metadata) would leave SET_LOADING unfired and the app stuck on
+        // "Loading…" forever (#1530). Surface an error screen instead.
+        const message = err instanceof Error ? err.message : String(err);
+        dispatch({ type: "SET_INIT_ERROR", error: message });
+      } finally {
+        dispatch({ type: "SET_LOADING", loading: false });
       }
-
-      dispatch({ type: "SET_LOADING", loading: false });
     })();
   }, [pm, fs, dispatch]);
 

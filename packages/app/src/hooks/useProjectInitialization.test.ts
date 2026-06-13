@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+import { StrictMode, createElement } from "react";
 import { describe, it, expect, vi, afterEach, beforeEach } from "vitest";
 import { renderHook, cleanup, waitFor } from "@testing-library/react";
 import {
@@ -175,6 +176,55 @@ describe("useProjectInitialization — bootstrap", () => {
     expect(await fs.exists("/projects/xyz/.karasu-paste-compare.krs")).toBe(false);
     // Untouched: non-paste files in the project remain.
     expect(await fs.exists("/projects/abc/index.krs")).toBe(true);
+  });
+
+  // #1530: a throw during bootstrap (OPFS unavailable, quota, corrupt metadata)
+  // must surface an error and still clear loading — never hang on "Loading…".
+  it("dispatches SET_INIT_ERROR and clears loading when listProjects throws", async () => {
+    const pm = makePm([]);
+    (pm.listProjects as ReturnType<typeof vi.fn>).mockRejectedValue(new Error("OPFS unavailable"));
+    const dispatch = vi.fn<(action: unknown) => void>();
+    const selectFile = vi.fn<(path: string) => Promise<void>>(async () => {});
+
+    renderHook(() =>
+      useProjectInitialization({
+        pm,
+        fs: new InMemoryFileSystemProvider(),
+        dispatch,
+        currentProject: null,
+        selectFile,
+      }),
+    );
+
+    await waitFor(() =>
+      expect(dispatch).toHaveBeenCalledWith({
+        type: "SET_INIT_ERROR",
+        error: "OPFS unavailable",
+      }),
+    );
+    // Loading is always cleared (finally), so the app cannot hang.
+    expect(dispatch).toHaveBeenCalledWith({ type: "SET_LOADING", loading: false });
+    expect(pm.createProject).not.toHaveBeenCalled();
+  });
+
+  // #1530: React StrictMode double-invokes effects in dev; the guard must keep
+  // the defaults from being seeded twice.
+  it("seeds only once under StrictMode's double effect invocation", async () => {
+    const pm = makePm([]);
+    const dispatch = vi.fn<(action: unknown) => void>();
+    const selectFile = vi.fn<(path: string) => Promise<void>>(async () => {});
+    const fs = new InMemoryFileSystemProvider();
+
+    renderHook(
+      () => useProjectInitialization({ pm, fs, dispatch, currentProject: null, selectFile }),
+      { wrapper: ({ children }) => createElement(StrictMode, null, children) },
+    );
+
+    await waitFor(() =>
+      expect(dispatch).toHaveBeenCalledWith({ type: "SET_LOADING", loading: false }),
+    );
+    const expectedSeedCalls = 1 + EC_PLATFORM_PROJECTS.length + 3;
+    expect(pm.createProject).toHaveBeenCalledTimes(expectedSeedCalls);
   });
 });
 

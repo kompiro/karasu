@@ -31,6 +31,7 @@ export function ProjectModeApp() {
     currentFilePath,
     fileContent,
     loading,
+    initError,
     compareSource,
     lastKrsFilePath,
   } = state;
@@ -222,6 +223,19 @@ export function ProjectModeApp() {
   const handleCompareWithSnapshot = useCallback((path: string) => {
     setPickerFilePath(path);
   }, []);
+
+  if (initError) {
+    return (
+      <div className="app-loading" role="alert">
+        <p>Failed to load your projects.</p>
+        <p className="app-loading__detail">{initError}</p>
+        <p className="app-loading__hint">
+          This can happen if browser storage (OPFS) is unavailable — e.g. in private browsing or
+          when storage is full. Check your browser settings and reload.
+        </p>
+      </div>
+    );
+  }
 
   if (loading || !currentProject) {
     return <div className="app-loading">Loading...</div>;

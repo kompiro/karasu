@@ -186,6 +186,22 @@ describe("appReducer — activeView / highlightedNodeId", () => {
       expect(initialState.isAllLayersOpen).toBe(false);
     });
   });
+
+  describe("SET_INIT_ERROR (#1530)", () => {
+    it("initialState has initError=null", () => {
+      expect(initialState.initError).toBeNull();
+    });
+
+    it("sets and clears the init error", () => {
+      const errored = appReducer(initialState, {
+        type: "SET_INIT_ERROR",
+        error: "OPFS unavailable",
+      });
+      expect(errored.initError).toBe("OPFS unavailable");
+      const cleared = appReducer(errored, { type: "SET_INIT_ERROR", error: null });
+      expect(cleared.initError).toBeNull();
+    });
+  });
 });
 
 describe("appReducer — diff swap (Issue #765)", () => {
