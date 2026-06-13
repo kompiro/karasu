@@ -12,6 +12,39 @@ describe("SnapshotManager", () => {
     sm = new SnapshotManager(fs, projectRoot);
   });
 
+  // #1531 (review): auto-capture (debounce + beforeunload) can race a manual
+  // capture against the same index.json; the index RMW must be serialized so a
+  // record is never silently dropped by a clobbering write.
+  describe("concurrent captures (#1531)", () => {
+    it("keeps every record when captures race", async () => {
+      const captures = Array.from({ length: 6 }, (_, i) =>
+        sm.capture("index.krs", `v${i}`, { trigger: "manual" }),
+      );
+      const results = await Promise.all(captures);
+      expect(results.every((r) => r !== null)).toBe(true);
+      const recorded = await sm.list("index.krs");
+      expect(recorded).toHaveLength(6);
+      expect(new Set(recorded.map((r) => r.id)).size).toBe(6);
+    });
+
+    it("does not drop the survivor when a capture and a delete race", async () => {
+      const first = await sm.capture("index.krs", "keep", { trigger: "manual" });
+      const [, second] = await Promise.all([
+        sm.capture("index.krs", "another", { trigger: "manual" }),
+        sm.capture("index.krs", "doomed", { trigger: "manual" }),
+      ]);
+      await Promise.all([
+        sm.capture("index.krs", "late", { trigger: "manual" }),
+        sm.delete("index.krs", second!.id),
+      ]);
+      const recorded = await sm.list("index.krs");
+      const ids = recorded.map((r) => r.id);
+      expect(ids).toContain(first!.id);
+      expect(ids).not.toContain(second!.id);
+      expect(recorded).toHaveLength(3);
+    });
+  });
+
   describe("capture", () => {
     it("creates a snapshot with content and index entry", async () => {
       const record = await sm.capture("index.krs", "system A {}", {

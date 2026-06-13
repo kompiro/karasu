@@ -77,6 +77,57 @@ describe("ProjectManager", () => {
       const projects = await pm.listProjects();
       expect(projects).toEqual([]);
     });
+
+    // #1531: a corrupt/partial metadata file must NOT be swallowed as [], or the
+    // next create/import would overwrite it and wipe every other project.
+    it("throws on corrupt metadata instead of returning an empty list", async () => {
+      await fs.writeFile("/meta/projects.json", "{ this is not json");
+      await expect(pm.listProjects()).rejects.toThrow(SyntaxError);
+    });
+
+    it("throws when metadata is valid JSON but not an array", async () => {
+      await fs.writeFile("/meta/projects.json", JSON.stringify({ not: "an array" }));
+      await expect(pm.listProjects()).rejects.toThrow(/corrupt/i);
+    });
+  });
+
+  // #1531 (review): if the metadata commit fails after the files are written,
+  // createProject must roll back the directory rather than leak an orphan.
+  describe("createProject rollback", () => {
+    it("removes the project directory when the metadata commit fails", async () => {
+      await fs.writeFile("/meta/projects.json", "{ corrupt");
+      await expect(pm.createProject("Doomed")).rejects.toThrow(SyntaxError);
+      const entries = await fs.readDir("/projects").catch(() => []);
+      expect(entries).toHaveLength(0);
+    });
+  });
+
+  describe("concurrent mutations (#1531)", () => {
+    it("does not lose updates when creates race (serialized read-modify-write)", async () => {
+      // Fire many creates without awaiting between them: each does a
+      // read-modify-write of the metadata file. Without serialization the
+      // later saveProjects clobbers the earlier ones.
+      const created = await Promise.all(
+        Array.from({ length: 8 }, (_, i) => pm.createProject(`P${i}`)),
+      );
+      const projects = await pm.listProjects();
+      expect(projects).toHaveLength(8);
+      expect(new Set(projects.map((p) => p.id))).toEqual(new Set(created.map((p) => p.id)));
+    });
+
+    it("does not drop the survivor when a create and a delete race", async () => {
+      const keep = await pm.createProject("Keep");
+      const [, doomed] = await Promise.all([
+        pm.createProject("Another"),
+        pm.createProject("Doomed"),
+      ]);
+      await Promise.all([pm.createProject("Late"), pm.deleteProject(doomed.id)]);
+
+      const projects = await pm.listProjects();
+      const names = projects.map((p) => p.name).sort();
+      expect(names).toEqual(["Another", "Keep", "Late"]);
+      expect(projects.some((p) => p.id === keep.id)).toBe(true);
+    });
   });
 
   describe("deleteProject", () => {

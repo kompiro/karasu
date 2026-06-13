@@ -1,5 +1,6 @@
 import { isSafeRelativePath } from "@karasu-tools/core";
 import type { FileSystemProvider, Project } from "@karasu-tools/core";
+import { SerialQueue } from "./serial-queue.js";
 
 const META_PATH = "/meta/projects.json";
 
@@ -45,14 +46,28 @@ organization Team {
 export class ProjectManager {
   constructor(private fs: FileSystemProvider) {}
 
+  /**
+   * Serializes the metadata read-modify-write (#1531). Without it, two
+   * concurrent mutations (a create during an import, or React StrictMode's
+   * double bootstrap) let the later `saveProjects` clobber the earlier one and
+   * silently drop projects.
+   */
+  private queue = new SerialQueue();
+
   /** メタデータファイルからプロジェクト一覧を読み込む */
   async listProjects(): Promise<Project[]> {
-    try {
-      const content = await this.fs.readFile(META_PATH);
-      return JSON.parse(content) as Project[];
-    } catch {
+    // Distinguish "no metadata yet" (first run → empty list) from a real read /
+    // parse failure (#1531). Swallowing the latter as `[]` would make the next
+    // create/import overwrite the metadata file and wipe every other project.
+    if (!(await this.fs.exists(META_PATH))) {
       return [];
     }
+    const content = await this.fs.readFile(META_PATH);
+    const parsed: unknown = JSON.parse(content);
+    if (!Array.isArray(parsed)) {
+      throw new Error("Project metadata is corrupt: expected an array");
+    }
+    return parsed as Project[];
   }
 
   /** メタデータファイルにプロジェクト一覧を保存する */
@@ -89,43 +104,51 @@ export class ProjectManager {
       await this.fs.writeFile(`${project.rootPath}/${file.path}`, file.content);
     }
 
-    // メタデータ更新
-    const projects = await this.listProjects();
-    projects.push(project);
-    await this.saveProjects(projects);
+    // メタデータの read-modify-write は直列化して lost update を防ぐ。
+    try {
+      await this.queue.run(async () => {
+        const projects = await this.listProjects();
+        projects.push(project);
+        await this.saveProjects(projects);
+      });
+    } catch (err) {
+      // The files are already on disk but the metadata commit failed (e.g.
+      // listProjects threw on corrupt metadata). Roll back the now-orphaned
+      // directory so a failed create leaves nothing behind.
+      await this.fs.delete(project.rootPath).catch(() => {});
+      throw err;
+    }
 
     return project;
   }
 
   /** プロジェクトを削除する */
   async deleteProject(id: string): Promise<void> {
-    const projects = await this.listProjects();
-    const project = projects.find((p) => p.id === id);
-    if (!project) {
-      throw new Error(`Project not found: ${id}`);
-    }
-
-    // ディレクトリ削除
-    await this.fs.delete(project.rootPath);
-
-    // メタデータ更新
-    const remaining = projects.filter((p) => p.id !== id);
-    await this.saveProjects(remaining);
+    await this.queue.run(async () => {
+      const projects = await this.listProjects();
+      const project = projects.find((p) => p.id === id);
+      if (!project) {
+        throw new Error(`Project not found: ${id}`);
+      }
+      await this.fs.delete(project.rootPath);
+      const remaining = projects.filter((p) => p.id !== id);
+      await this.saveProjects(remaining);
+    });
   }
 
   /** プロジェクトをリネームする */
   async renameProject(id: string, newName: string): Promise<Project> {
-    const projects = await this.listProjects();
-    const project = projects.find((p) => p.id === id);
-    if (!project) {
-      throw new Error(`Project not found: ${id}`);
-    }
-
-    project.name = newName;
-    project.updatedAt = new Date().toISOString();
-    await this.saveProjects(projects);
-
-    return project;
+    return this.queue.run(async () => {
+      const projects = await this.listProjects();
+      const project = projects.find((p) => p.id === id);
+      if (!project) {
+        throw new Error(`Project not found: ${id}`);
+      }
+      project.name = newName;
+      project.updatedAt = new Date().toISOString();
+      await this.saveProjects(projects);
+      return project;
+    });
   }
 
   /** ID でプロジェクトを取得する */

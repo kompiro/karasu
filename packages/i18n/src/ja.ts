@@ -35,6 +35,11 @@ export const ja: Partial<Translations> = {
   "settings.save.label": "💾 保存する",
   "settings.clear.label": "🗑 削除する",
 
+  // ProjectMode bootstrap error screen (#1530)
+  "projectInit.error.title": "プロジェクトの読み込みに失敗しました。",
+  "projectInit.error.hint":
+    "ブラウザのストレージ (OPFS) が使用できない場合に発生することがあります（プライベートブラウジング、ストレージ容量超過など）。ブラウザの設定を確認して再読み込みしてください。",
+
   // Project selector
   "projectSelector.namePlaceholder": "プロジェクト名",
   "projectSelector.new.title": "新規プロジェクト",

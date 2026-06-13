@@ -7,6 +7,7 @@ import { PasteCompareDialog } from "./components/PasteCompareDialog.js";
 import { useOpenTranslateDialog } from "./components/TranslateProvider.js";
 import { SnapshotPickerModal } from "./components/SnapshotPickerModal.js";
 import { useAppContext } from "./state/app-context.js";
+import { useTranslation } from "./i18n/index.js";
 import { ProjectManager } from "./fs/project-manager.js";
 import { SnapshotManager } from "./fs/snapshot-manager.js";
 import { useProjectNavigation } from "./hooks/useProjectNavigation.js";
@@ -22,6 +23,7 @@ import { parseZipForImport, disambiguateName } from "./utils/import-project-zip.
  */
 export function ProjectModeApp() {
   const { state, dispatch, fs } = useAppContext();
+  const { t } = useTranslation();
   const pmRef = useRef(new ProjectManager(fs));
   const pm = pmRef.current;
 
@@ -31,6 +33,7 @@ export function ProjectModeApp() {
     currentFilePath,
     fileContent,
     loading,
+    initError,
     compareSource,
     lastKrsFilePath,
   } = state;
@@ -222,6 +225,16 @@ export function ProjectModeApp() {
   const handleCompareWithSnapshot = useCallback((path: string) => {
     setPickerFilePath(path);
   }, []);
+
+  if (initError) {
+    return (
+      <div className="app-loading" role="alert">
+        <p>{t("projectInit.error.title")}</p>
+        <p className="app-loading__detail">{initError}</p>
+        <p className="app-loading__hint">{t("projectInit.error.hint")}</p>
+      </div>
+    );
+  }
 
   if (loading || !currentProject) {
     return <div className="app-loading">Loading...</div>;
