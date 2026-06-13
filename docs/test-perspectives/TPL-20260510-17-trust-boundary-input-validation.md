@@ -42,7 +42,7 @@ karasu の `karasu serve` のような HTTP API、VS Code 拡張の message hand
 
 #1526 / #1527 で同じ観点が **app の ZIP インポート** で再観測された。アップロードされた `.zip` も trust boundary の外の input である。エントリ名（`../../x.krs` / 絶対パス / バックスラッシュ）を `/projects/<id>/<path>` にそのまま書くと、in-memory provider の `normalizePath` が `..` を畳んでプロジェクト外へ脱出する（zip-slip）。さらに **アーカイブは「巨大入力」の一形態**であり、`unzipSync` が全エントリをメモリ展開する前に **エントリ名のサニタイズ** と **解凍前のサイズ/件数キャップ**（解凍爆弾対策）を境界で機械的に行う必要がある（`packages/app/src/utils/import-project-zip.ts`）。
 
-#1525 では **ユーザー由来の URL を `<a href>` に描画する経路** で同じ観点が再観測された。`.krs` の `link` URL がスキーム未検証のまま app / VS Code webview の `href` に渡っており、`javascript:` URL がクリックで実行可能だった（React は javascript: href をブロックしない。dev 警告のみ）。修正はパース時のスキーム allowlist（http/https/mailto、`link-url-scheme-not-allowed` 警告で除外）+ 各レンダラーの多層防御（`packages/core/src/parser/link-url.ts`）。
+#1525 では **ユーザー由来の URL を `<a href>` に描画する経路** で同じ観点が再観測された。`.krs` の `link` URL がスキーム未検証のまま app / VS Code webview の `href` に渡っており、`javascript:` URL がクリックで実行可能だった（React は javascript: href をブロックしない。dev 警告のみ）。修正は **パース時にスキーム allowlist（http/https/mailto）で警告を出すが link は AST に保持し（Format でユーザーのソースを消さない）、`<a href>` を出す各レンダラー（app の detail panel / VS Code webview の host 側）で `isSafeLinkUrl` フィルタを掛けて除外する**（`packages/core/src/parser/link-url.ts`）。「parse で落とす」とソースが消える破壊的編集になるため、**サニタイズは「描画の境界」で行い、モデルは faithful に保つ**のが定石。
 
 ## 想定される失敗モード
 
