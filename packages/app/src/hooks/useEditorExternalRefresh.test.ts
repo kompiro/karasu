@@ -82,6 +82,55 @@ describe("useEditorExternalRefresh", () => {
     expect(dispatch).not.toHaveBeenCalled();
   });
 
+  // #1535: an intermediate self-write (an older keystroke that committed after
+  // a newer one) differs from the current buffer, so the `fresh === fileContent`
+  // guard alone would refresh to it and revert the editor. isOwnWrite must
+  // suppress it.
+  it("suppresses an intermediate self-write that differs from the buffer", async () => {
+    const fs = makeFs();
+    await fs.writeFile("/doc.krs", "latest\n");
+    const dispatch = vi.fn<(a: AppAction) => void>();
+    // The editor's buffer is "latest", but disk momentarily holds an older
+    // self-write "older" that isOwnWrite recognizes.
+    renderHook(() =>
+      useEditorExternalRefresh({
+        fs,
+        currentFilePath: "/doc.krs",
+        fileContent: "latest\n",
+        dispatch,
+        isOwnWrite: (c) => c === "older\n" || c === "latest\n",
+      }),
+    );
+
+    await fs.writeFile("/doc.krs", "older\n"); // stale self-write lands on disk
+    await new Promise((resolve) => setTimeout(resolve, 10));
+    // Must NOT revert the editor to the older self-write.
+    expect(dispatch).not.toHaveBeenCalled();
+  });
+
+  it("still refreshes for a genuine external write that is not a self-write", async () => {
+    const fs = makeFs();
+    await fs.writeFile("/doc.krs", "mine\n");
+    const dispatch = vi.fn<(a: AppAction) => void>();
+    renderHook(() =>
+      useEditorExternalRefresh({
+        fs,
+        currentFilePath: "/doc.krs",
+        fileContent: "mine\n",
+        dispatch,
+        isOwnWrite: (c) => c === "mine\n", // only our own write
+      }),
+    );
+
+    await fs.writeFile("/doc.krs", "external append\n");
+    await waitFor(() => {
+      expect(dispatch).toHaveBeenCalledWith({
+        type: "UPDATE_FILE_CONTENT",
+        content: "external append\n",
+      });
+    });
+  });
+
   it("ignores writes to other files", async () => {
     const fs = makeFs();
     await fs.writeFile("/open.krs.style", "open\n");

@@ -33,6 +33,7 @@ import { useViewSvg } from "../hooks/useViewSvg.js";
 import { useTheme } from "../theme/index.js";
 import { useStyleSource } from "../hooks/useStyleSource.js";
 import { useEditorExternalRefresh } from "../hooks/useEditorExternalRefresh.js";
+import { useSerializedFileWrite } from "../hooks/useSerializedFileWrite.js";
 import {
   upsertEdgeDirectionRule,
   deriveStyleFilePath,
@@ -253,33 +254,32 @@ export function AppShell({
     [activeView, dispatch, navigateViewPath, systemNodeMetadata, orgPathIndex],
   );
 
+  // Auto-save writes are serialized so per-keystroke writes can't reorder on
+  // disk, and tracked so the external-refresh watcher recognizes them as
+  // echoes (#1535).
+  const { write: saveCurrentFile, isOwnWrite } = useSerializedFileWrite(fs);
+
   const handleEditorChange = useCallback(
     async (value: string) => {
-      // eslint-disable-next-line no-console
-      console.log("[AppShell] handleEditorChange", { currentFilePath, valueLength: value.length });
       dispatch({ type: "UPDATE_FILE_CONTENT", content: value });
-      if (currentFilePath) {
-        await fs.writeFile(currentFilePath, value);
-        recompile();
-      } else {
-        // eslint-disable-next-line no-console
-        console.warn(
-          "[AppShell] handleEditorChange: currentFilePath is null — skipping writeFile and recompile",
-        );
-      }
+      if (!currentFilePath) return;
+      await saveCurrentFile(currentFilePath, value);
+      recompile();
     },
-    [currentFilePath, fs, dispatch, recompile],
+    [currentFilePath, saveCurrentFile, dispatch, recompile],
   );
 
   // External writes (GUI direction append, AI translate, snapshot writes,
   // …) reach the editor via the ObservableFileSystemProvider. Refresh
-  // Monaco's buffer when disk diverges from state.
+  // Monaco's buffer when disk diverges from state — but not for our own
+  // serialized auto-save echoes (#1535).
   useEditorExternalRefresh({
     fs,
     currentFilePath,
     fileContent,
     dispatch,
     onRefresh: recompile,
+    isOwnWrite,
   });
 
   const hasParseErrors = views.system.diagnostics.some((d) => d.severity === "error");
