@@ -402,6 +402,7 @@ Read `info`-level diagnostics as **"karasu noticed something — read it if it m
 
 ## Further reading
 
+- Companion guide (the comprehension direction): [Onboarding Guide](onboarding.md) — reading down an existing system into diagrams
 - Precise syntax spec: [`docs/spec/syntax.md`](../spec/syntax.md)
 - Style (`.krs.style`): [`docs/spec/style.md`](../spec/style.md)
 - Tags and annotations: [`docs/spec/tags-annotations.md`](../spec/tags-annotations.md)
