@@ -15,6 +15,15 @@ interface UseEditorExternalRefreshArgs {
    * other channels can omit it.
    */
   onRefresh?: () => void;
+  /**
+   * Reports whether disk content just read back was written by the editor's
+   * own auto-save (#1535). The `fresh === fileContent` guard below only
+   * suppresses echoes equal to the *current* buffer; an intermediate
+   * self-write (an older keystroke that committed after a newer one) differs
+   * from the buffer and would otherwise revert the editor. Optional — modes
+   * without editor auto-save can omit it.
+   */
+  isOwnWrite?: (content: string) => boolean;
 }
 
 /**
@@ -42,6 +51,7 @@ export function useEditorExternalRefresh({
   fileContent,
   dispatch,
   onRefresh,
+  isOwnWrite,
 }: UseEditorExternalRefreshArgs): void {
   useEffect(() => {
     if (!currentFilePath || !fs.watch) return;
@@ -64,9 +74,14 @@ export function useEditorExternalRefresh({
         }
         if (cancelled) return;
         // Diff guard: skip our own writes. Comparing against the latest
-        // `fileContent` (closure-captured below) is enough because state
-        // is updated before the write completes.
+        // `fileContent` suppresses the steady-state echo (disk == buffer).
         if (fresh === fileContent) return;
+        // Intermediate-self-write guard (#1535): an older keystroke that
+        // committed after a newer one differs from the buffer, but it is still
+        // our own write — refreshing to it would revert the editor. Genuine
+        // external writes (GUI direction append, AI translate, snapshots) are
+        // not in the self-write set and fall through to the refresh.
+        if (isOwnWrite?.(fresh)) return;
         dispatch({ type: "UPDATE_FILE_CONTENT", content: fresh });
         onRefresh?.();
       })();
@@ -75,5 +90,5 @@ export function useEditorExternalRefresh({
       cancelled = true;
       disposable?.dispose();
     };
-  }, [fs, currentFilePath, fileContent, dispatch, onRefresh]);
+  }, [fs, currentFilePath, fileContent, dispatch, onRefresh, isOwnWrite]);
 }
