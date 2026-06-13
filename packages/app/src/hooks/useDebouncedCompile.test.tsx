@@ -11,7 +11,7 @@ interface S {
   diagnostics: Diagnostic[];
 }
 
-const ERR: Diagnostic = { severity: "error", code: "x", params: {} };
+const ERR: Diagnostic = { severity: "error", code: "app-project-compile-error", params: {} };
 
 describe("useDebouncedCompile", () => {
   it("publishes the compile result after the 300ms debounce, not before", async () => {

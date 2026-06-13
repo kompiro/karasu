@@ -430,3 +430,4 @@ DesignDoc が proactive TPL を引用したら、実装 PR で次をやる:
 | [TPL-20260612-02](TPL-20260612-02-react-passive-event-preventdefault-noop.md) | React の synthetic onWheel / onTouchMove では preventDefault が no-op になる | app-ui | #1537 |
 | [TPL-20260613-01](TPL-20260613-01-persistent-store-init-and-mutation-resilience.md) | 永続ストアの初期化・更新は fail-closed に — RMW は直列化し、not-found と read error を区別する | app-ui | #1530 / #1531 |
 | [TPL-20260613-02](TPL-20260613-02-edit-and-watch-same-store.md) | 自分で書き込みつつ監視するストアでは、書き込みを直列化し自己エコーと非同期 read レースを処理する | app-ui | #1535 / #1536 |
+| [TPL-20260613-03](TPL-20260613-03-cancel-stale-async-effect-results.md) | 非同期 effect は入力変化・unmount で in-flight 結果を破棄してから publish する | app-ui | #1534 / #1540 |
