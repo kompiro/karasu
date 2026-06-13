@@ -1,6 +1,7 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useState, type MouseEvent } from "react";
 import { EditPane } from "./EditPane.js";
 import { useCommand } from "../keyboard/use-command.js";
+import { usePersistedPanelWidth } from "../hooks/usePersistedPanelWidth.js";
 
 import type { CSSProperties, ReactNode } from "react";
 import type { editor } from "monaco-editor";
@@ -34,14 +35,8 @@ const SIDEBAR_DEFAULT_WIDTH = 210;
 const SIDEBAR_MIN_WIDTH = 180;
 const SIDEBAR_MAX_WIDTH = 480;
 
-function readPersistedWidth(): number {
-  if (typeof window === "undefined") return SIDEBAR_DEFAULT_WIDTH;
-  const raw = window.localStorage?.getItem(SIDEBAR_WIDTH_STORAGE_KEY);
-  if (!raw) return SIDEBAR_DEFAULT_WIDTH;
-  const parsed = Number.parseInt(raw, 10);
-  if (!Number.isFinite(parsed)) return SIDEBAR_DEFAULT_WIDTH;
-  return Math.min(SIDEBAR_MAX_WIDTH, Math.max(SIDEBAR_MIN_WIDTH, parsed));
-}
+const clampSidebarWidth = (width: number): number =>
+  Math.min(SIDEBAR_MAX_WIDTH, Math.max(SIDEBAR_MIN_WIDTH, width));
 
 export function EditArea({
   sidebarContent,
@@ -62,7 +57,27 @@ export function EditArea({
 }: EditAreaProps) {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [sidebarView, setSidebarView] = useState<SidebarView>("files");
-  const [sidebarWidth, setSidebarWidth] = useState<number>(readPersistedWidth);
+  const measureSidebarStart = useCallback(
+    (e: MouseEvent) =>
+      e.currentTarget.parentElement?.getBoundingClientRect().width ?? SIDEBAR_DEFAULT_WIDTH,
+    [],
+  );
+  const {
+    width: sidebarWidthRaw,
+    isDragging,
+    onMouseDown: handleResizeStart,
+    onDoubleClick: handleResizeReset,
+  } = usePersistedPanelWidth({
+    storageKey: SIDEBAR_WIDTH_STORAGE_KEY,
+    defaultWidth: SIDEBAR_DEFAULT_WIDTH,
+    clamp: clampSidebarWidth,
+    measureStart: measureSidebarStart,
+    // Fixed min/max — safe to clamp the persisted value on hydration (matches
+    // the prior read-time clamp).
+    clampInitial: true,
+  });
+  // defaultWidth is a number, so width is never null here.
+  const sidebarWidth = sidebarWidthRaw ?? SIDEBAR_DEFAULT_WIDTH;
   const hasSidebar = !!sidebarContent;
   const hasOutline = !!outlineContent;
 
@@ -79,51 +94,6 @@ export function EditArea({
     },
     [sidebarView],
   );
-
-  const dragStateRef = useRef<{ startX: number; startWidth: number } | null>(null);
-  const [isDragging, setIsDragging] = useState(false);
-
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    window.localStorage?.setItem(SIDEBAR_WIDTH_STORAGE_KEY, String(sidebarWidth));
-  }, [sidebarWidth]);
-
-  const handleResizeStart = useCallback((e: React.MouseEvent) => {
-    e.preventDefault();
-    dragStateRef.current = {
-      startX: e.clientX,
-      startWidth:
-        e.currentTarget.parentElement?.getBoundingClientRect().width ?? SIDEBAR_DEFAULT_WIDTH,
-    };
-    setIsDragging(true);
-  }, []);
-
-  useEffect(() => {
-    if (!isDragging) return;
-    const onMove = (e: MouseEvent) => {
-      const state = dragStateRef.current;
-      if (!state) return;
-      const next = Math.min(
-        SIDEBAR_MAX_WIDTH,
-        Math.max(SIDEBAR_MIN_WIDTH, state.startWidth + (e.clientX - state.startX)),
-      );
-      setSidebarWidth(next);
-    };
-    const onUp = () => {
-      dragStateRef.current = null;
-      setIsDragging(false);
-    };
-    window.addEventListener("mousemove", onMove);
-    window.addEventListener("mouseup", onUp);
-    return () => {
-      window.removeEventListener("mousemove", onMove);
-      window.removeEventListener("mouseup", onUp);
-    };
-  }, [isDragging]);
-
-  const handleResizeReset = useCallback(() => {
-    setSidebarWidth(SIDEBAR_DEFAULT_WIDTH);
-  }, []);
 
   const className = [
     "edit-area",

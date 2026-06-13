@@ -1,17 +1,9 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, type MouseEvent, type RefObject } from "react";
+import { usePersistedPanelWidth } from "./usePersistedPanelWidth.js";
 
 export const EDITOR_WIDTH_STORAGE_KEY = "karasu:editor:width";
 export const EDITOR_MIN_WIDTH = 320;
 export const PREVIEW_MIN_WIDTH = 320;
-
-function readPersistedWidth(): number | null {
-  if (typeof window === "undefined") return null;
-  const raw = window.localStorage?.getItem(EDITOR_WIDTH_STORAGE_KEY);
-  if (!raw) return null;
-  const parsed = Number.parseInt(raw, 10);
-  if (!Number.isFinite(parsed)) return null;
-  return parsed;
-}
 
 function clampToViewport(width: number, viewportWidth: number): number {
   const max = Math.max(EDITOR_MIN_WIDTH, viewportWidth - PREVIEW_MIN_WIDTH);
@@ -21,84 +13,52 @@ function clampToViewport(width: number, viewportWidth: number): number {
 interface UseEditorWidthResult {
   editorWidth: number | null;
   isDragging: boolean;
-  onMouseDown: (e: React.MouseEvent) => void;
+  onMouseDown: (e: MouseEvent) => void;
   onDoubleClick: () => void;
 }
 
-export function useEditorWidth(
-  containerRef: React.RefObject<HTMLElement | null>,
-): UseEditorWidthResult {
-  const [editorWidth, setEditorWidth] = useState<number | null>(readPersistedWidth);
-  const [isDragging, setIsDragging] = useState(false);
-  const dragStateRef = useRef<{ startX: number; startWidth: number } | null>(null);
-
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    if (editorWidth == null) {
-      window.localStorage?.removeItem(EDITOR_WIDTH_STORAGE_KEY);
-    } else {
-      window.localStorage?.setItem(EDITOR_WIDTH_STORAGE_KEY, String(editorWidth));
-    }
-  }, [editorWidth]);
-
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    const onResize = () => {
+/**
+ * Editor/preview split width. Built on {@link usePersistedPanelWidth} (#1543)
+ * with the editor-specific policy: a nullable width (null = unconstrained
+ * default), a viewport-relative clamp (editor min vs viewport − preview min),
+ * and a window-resize listener that re-clamps when the viewport shrinks.
+ */
+export function useEditorWidth(containerRef: RefObject<HTMLElement | null>): UseEditorWidthResult {
+  const clamp = useCallback(
+    (width: number) => {
       const container = containerRef.current;
-      if (!container) return;
-      setEditorWidth((current) => {
-        if (current == null) return current;
-        const viewport = container.getBoundingClientRect().width;
-        const clamped = clampToViewport(current, viewport);
-        return clamped === current ? current : clamped;
-      });
-    };
-    window.addEventListener("resize", onResize);
-    return () => window.removeEventListener("resize", onResize);
-  }, [containerRef]);
-
-  const onMouseDown = useCallback(
-    (e: React.MouseEvent) => {
-      e.preventDefault();
-      const container = containerRef.current;
-      if (!container) return;
-      const rect = container.getBoundingClientRect();
-      const startWidth =
-        editorWidth ??
-        (e.currentTarget instanceof HTMLElement
-          ? e.currentTarget.getBoundingClientRect().left - rect.left
-          : rect.width / 2);
-      dragStateRef.current = { startX: e.clientX, startWidth };
-      setIsDragging(true);
+      if (!container) return Math.max(EDITOR_MIN_WIDTH, width);
+      return clampToViewport(width, container.getBoundingClientRect().width);
     },
-    [editorWidth, containerRef],
+    [containerRef],
   );
 
-  useEffect(() => {
-    if (!isDragging) return;
-    const onMove = (e: MouseEvent) => {
-      const state = dragStateRef.current;
+  const measureStart = useCallback(
+    (e: MouseEvent) => {
       const container = containerRef.current;
-      if (!state || !container) return;
-      const viewport = container.getBoundingClientRect().width;
-      const next = clampToViewport(state.startWidth + (e.clientX - state.startX), viewport);
-      setEditorWidth(next);
-    };
-    const onUp = () => {
-      dragStateRef.current = null;
-      setIsDragging(false);
-    };
-    window.addEventListener("mousemove", onMove);
-    window.addEventListener("mouseup", onUp);
-    return () => {
-      window.removeEventListener("mousemove", onMove);
-      window.removeEventListener("mouseup", onUp);
-    };
-  }, [isDragging, containerRef]);
+      const rect = container?.getBoundingClientRect();
+      if (rect && e.currentTarget instanceof HTMLElement) {
+        return e.currentTarget.getBoundingClientRect().left - rect.left;
+      }
+      return rect ? rect.width / 2 : EDITOR_MIN_WIDTH;
+    },
+    [containerRef],
+  );
 
-  const onDoubleClick = useCallback(() => {
-    setEditorWidth(null);
-  }, []);
+  const { width, isDragging, onMouseDown, onDoubleClick, reclamp } = usePersistedPanelWidth({
+    storageKey: EDITOR_WIDTH_STORAGE_KEY,
+    defaultWidth: null,
+    clamp,
+    measureStart,
+  });
 
-  return { editorWidth, isDragging, onMouseDown, onDoubleClick };
+  // Re-clamp when the viewport shrinks so the editor never exceeds
+  // viewport − preview-min.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    window.addEventListener("resize", reclamp);
+    return () => window.removeEventListener("resize", reclamp);
+  }, [reclamp]);
+
+  return { editorWidth: width, isDragging, onMouseDown, onDoubleClick };
 }

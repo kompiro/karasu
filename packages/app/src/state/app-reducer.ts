@@ -25,7 +25,6 @@ export interface AppState {
   highlightedNodeId: string | null;
   // UI
   displayMode: DisplayMode;
-  isAllLayersOpen: boolean;
   loading: boolean;
   /**
    * Set when ProjectMode bootstrap fails (e.g. OPFS unavailable in private
@@ -60,7 +59,6 @@ export const initialState: AppState = {
   selectedDeployBlockId: null,
   highlightedNodeId: null,
   displayMode: "shape",
-  isAllLayersOpen: false,
   loading: true,
   initError: null,
   compareSource: null,
@@ -74,6 +72,22 @@ export const initialState: AppState = {
 function isKrsFile(path: string): boolean {
   return path.endsWith(".krs");
 }
+
+/**
+ * View-state fields reset whenever the preview root changes (project switch or
+ * file selection). Kept in one place so adding a view-state field can't drift
+ * between SET_CURRENT_PROJECT and SELECT_FILE. The `[]` is never mutated (state
+ * is treated immutably), so sharing the reference is safe.
+ */
+const VIEW_RESET: Pick<
+  AppState,
+  "viewPath" | "activeView" | "selectedDeployBlockId" | "highlightedNodeId"
+> = {
+  viewPath: [],
+  activeView: "system",
+  selectedDeployBlockId: null,
+  highlightedNodeId: null,
+};
 
 export type AppAction =
   | { type: "SET_PROJECTS"; projects: Project[] }
@@ -91,7 +105,6 @@ export type AppAction =
   | { type: "REMOVE_PROJECT"; id: string }
   | { type: "RENAME_PROJECT"; id: string; name: string }
   | { type: "SET_DISPLAY_MODE"; displayMode: DisplayMode }
-  | { type: "SET_ALL_LAYERS_OPEN"; isAllLayersOpen: boolean }
   | { type: "SET_COMPARE_SOURCE"; source: CompareSource | null }
   | { type: "TOGGLE_DIFF_SWAPPED" };
 
@@ -103,15 +116,12 @@ export function appReducer(state: AppState, action: AppAction): AppState {
     case "SET_CURRENT_PROJECT":
       return {
         ...state,
+        ...VIEW_RESET,
         currentProject: action.project,
         currentFilePath: null,
         fileContent: "",
         fileTree: [],
         lastKrsFilePath: null,
-        viewPath: [],
-        activeView: "system",
-        selectedDeployBlockId: null,
-        highlightedNodeId: null,
         compareSource: null,
         diffSwapped: false,
       };
@@ -119,14 +129,11 @@ export function appReducer(state: AppState, action: AppAction): AppState {
     case "SELECT_FILE":
       return {
         ...state,
+        ...VIEW_RESET,
         currentFilePath: action.path,
         fileContent: action.content,
         lastKrsFilePath:
           action.path === "" ? null : isKrsFile(action.path) ? action.path : state.lastKrsFilePath,
-        viewPath: [],
-        activeView: "system",
-        selectedDeployBlockId: null,
-        highlightedNodeId: null,
       };
 
     case "UPDATE_FILE_CONTENT":
@@ -183,9 +190,6 @@ export function appReducer(state: AppState, action: AppAction): AppState {
 
     case "SET_DISPLAY_MODE":
       return { ...state, displayMode: action.displayMode };
-
-    case "SET_ALL_LAYERS_OPEN":
-      return { ...state, isAllLayersOpen: action.isAllLayersOpen };
 
     case "SET_COMPARE_SOURCE":
       return { ...state, compareSource: action.source, diffSwapped: false };

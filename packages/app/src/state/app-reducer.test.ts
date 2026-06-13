@@ -163,27 +163,36 @@ describe("appReducer — activeView / highlightedNodeId", () => {
     });
   });
 
-  describe("SET_ALL_LAYERS_OPEN", () => {
-    it("sets isAllLayersOpen to true", () => {
-      const next = appReducer(initialState, { type: "SET_ALL_LAYERS_OPEN", isAllLayersOpen: true });
-      expect(next.isAllLayersOpen).toBe(true);
+  // SET_ALL_LAYERS_OPEN / AppState.isAllLayersOpen were dead — AppShell owns
+  // the "show all layers" toggle in local state and fed it through
+  // preview-context; the reducer field was never dispatched or read (#1544).
+  // Removed; "show all layers" coverage lives in PreviewColumn tests.
+
+  describe("view-state reset on project switch / file selection (#1544)", () => {
+    const dirty = stateWith({
+      viewPath: ["A", "B"],
+      activeView: "org",
+      selectedDeployBlockId: "block-1",
+      highlightedNodeId: "node-1",
     });
 
-    it("sets isAllLayersOpen to false", () => {
-      const state = stateWith({ isAllLayersOpen: true });
-      const next = appReducer(state, { type: "SET_ALL_LAYERS_OPEN", isAllLayersOpen: false });
-      expect(next.isAllLayersOpen).toBe(false);
+    it("SELECT_FILE resets the shared view-reset fields", () => {
+      const next = appReducer(dirty, { type: "SELECT_FILE", path: "/x.krs", content: "" });
+      expect(next.viewPath).toEqual([]);
+      expect(next.activeView).toBe("system");
+      expect(next.selectedDeployBlockId).toBeNull();
+      expect(next.highlightedNodeId).toBeNull();
     });
 
-    it("does not affect other state fields", () => {
-      const state = stateWith({ activeView: "org", viewPath: ["A"] });
-      const next = appReducer(state, { type: "SET_ALL_LAYERS_OPEN", isAllLayersOpen: true });
-      expect(next.activeView).toBe("org");
-      expect(next.viewPath).toEqual(["A"]);
-    });
-
-    it("initialState has isAllLayersOpen=false", () => {
-      expect(initialState.isAllLayersOpen).toBe(false);
+    it("SET_CURRENT_PROJECT resets the same view-reset fields", () => {
+      const next = appReducer(dirty, {
+        type: "SET_CURRENT_PROJECT",
+        project: PROJECT,
+      });
+      expect(next.viewPath).toEqual([]);
+      expect(next.activeView).toBe("system");
+      expect(next.selectedDeployBlockId).toBeNull();
+      expect(next.highlightedNodeId).toBeNull();
     });
   });
 
