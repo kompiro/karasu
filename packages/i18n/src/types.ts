@@ -43,6 +43,8 @@ export type Translations = {
   "settings.clear.label": string;
 
   // Project selector (Phase C3)
+  "projectInit.error.title": string;
+  "projectInit.error.hint": string;
   "projectSelector.namePlaceholder": string;
   "projectSelector.new.title": string;
   "projectSelector.new.button": string;

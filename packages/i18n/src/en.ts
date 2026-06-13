@@ -35,6 +35,11 @@ export const en: Translations = {
   "settings.save.label": "💾 Save",
   "settings.clear.label": "🗑 Clear",
 
+  // ProjectMode bootstrap error screen (#1530)
+  "projectInit.error.title": "Failed to load your projects.",
+  "projectInit.error.hint":
+    "This can happen if browser storage (OPFS) is unavailable — e.g. in private browsing or when storage is full. Check your browser settings and reload.",
+
   // Project selector
   "projectSelector.namePlaceholder": "Project name",
   "projectSelector.new.title": "New project",
