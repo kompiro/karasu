@@ -151,6 +151,7 @@ export function renderEdge(
       "data-edge-to": edge.to,
       "data-edge-kind": edge.kind,
       "data-edge-canonical-id": edge.canonicalId,
+      "data-edge-label": edge.syntheticLabel ? undefined : edge.label || undefined,
       "data-diff-state": diffState,
       class: interactive ? "krs-edge krs-edge--interactive" : "krs-edge",
     },
