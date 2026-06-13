@@ -1,4 +1,3 @@
-import { useState, useEffect, useRef, useCallback } from "react";
 import {
   compileProject,
   compileDeployDiff,
@@ -14,6 +13,7 @@ import {
 import { useEmptyStateLabels } from "../i18n/use-empty-state-labels.js";
 import { useAnnotationBadgeLabels } from "../i18n/use-annotation-badge-labels.js";
 import { computeViewResultFingerprint } from "./result-fingerprint.js";
+import { useDebouncedCompile, type CompileOutcome } from "./useDebouncedCompile.js";
 
 interface DeployViewState {
   svg: string;
@@ -25,8 +25,6 @@ interface DeployViewState {
   deployTree: DeployBlock[];
 }
 
-const DEBOUNCE_MS = 300;
-
 export function useDeployView(
   entryPath: string | null,
   fs: FileSystemProvider | null,
@@ -36,169 +34,118 @@ export function useDeployView(
   compareFs: FileSystemProvider | null = null,
   theme?: DiagramTheme,
 ): DeployViewState & { recompile: () => void } {
-  const [state, setState] = useState<DeployViewState>({
-    svg: "",
-    warnings: [],
-    diagnostics: [],
-    nodeMetadata: new Map(),
-    deployBlocks: [],
-    deployTree: [],
-  });
-
-  const lastValidSvg = useRef("");
-  const lastValidSvgKey = useRef("");
-  const lastResultFingerprint = useRef<string | null>(null);
-  const timerRef = useRef<ReturnType<typeof setTimeout>>(undefined);
-  const recompileCounter = useRef(0);
-
-  const recompile = useCallback(() => {
-    recompileCounter.current++;
-    setState((prev) => ({ ...prev }));
-  }, []);
-
   const emptyStateLabels = useEmptyStateLabels();
   const annotationBadgeLabels = useAnnotationBadgeLabels();
 
-  useEffect(() => {
-    if (!entryPath || !fs) return;
+  const currentKey = `${entryPath}:deploy:${selectedDeployBlockId ?? ""}:cmp=${compareEntryPath ?? ""}`;
 
-    if (timerRef.current) clearTimeout(timerRef.current);
+  const compile = async (): Promise<CompileOutcome<DeployViewState> | null> => {
+    if (!entryPath || !fs) return null;
 
-    const currentKey = `${entryPath}:deploy:${selectedDeployBlockId ?? ""}:cmp=${compareEntryPath ?? ""}`;
-
-    timerRef.current = setTimeout(async () => {
-      try {
-        if (compareEntryPath) {
-          // Diff-mode: render compareEntryPath (before) → entryPath (after).
-          // Need a baseline compileProject result for nodeMetadata / deployBlocks
-          // used by surrounding UI (block selector, NodeDetailPanel).
-          const [base, diff] = await Promise.all([
-            compileProject(entryPath, fs, {
-              diagramType: "deploy",
-              selectedDeployId: selectedDeployBlockId ?? undefined,
-              displayMode,
-              emptyStateLabels,
-              annotationBadgeLabels,
-              theme,
-            }),
-            compileDeployDiff({
-              beforeEntryPath: compareEntryPath,
-              afterEntryPath: entryPath,
-              fs: compareFs ?? fs,
-              selectedDeployId: selectedDeployBlockId ?? undefined,
-              displayMode,
-              emptyStateLabels,
-              annotationBadgeLabels,
-              theme,
-            }),
-          ]);
-          if (base.diagramType !== "deploy") return;
-          const hasErrors = diff.diagnostics.some((d) => d.severity === "error");
-          if (hasErrors) {
-            const svgToShow = lastValidSvgKey.current === currentKey ? lastValidSvg.current : "";
-            setState({
-              svg: svgToShow,
-              warnings: base.warnings,
-              diagnostics: diff.diagnostics,
-              nodeMetadata: base.nodeMetadata,
-              deployBlocks: base.deployBlocks,
-              deployTree: base.deployTree,
-            });
-          } else {
-            const fingerprint = computeViewResultFingerprint({
-              svg: diff.svg,
-              warnings: base.warnings,
-              diagnostics: diff.diagnostics,
-              nodeMetadata: base.nodeMetadata,
-            });
-            if (fingerprint === lastResultFingerprint.current) return;
-            lastValidSvg.current = diff.svg;
-            lastValidSvgKey.current = currentKey;
-            lastResultFingerprint.current = fingerprint;
-            setState({
-              svg: diff.svg,
-              warnings: base.warnings,
-              diagnostics: diff.diagnostics,
-              nodeMetadata: base.nodeMetadata,
-              deployBlocks: base.deployBlocks,
-              deployTree: base.deployTree,
-            });
-          }
-          return;
-        }
-
-        const result = await compileProject(entryPath, fs, {
+    if (compareEntryPath) {
+      // Diff-mode: render compareEntryPath (before) → entryPath (after). Need a
+      // baseline compileProject result for nodeMetadata / deployBlocks used by
+      // surrounding UI (block selector, NodeDetailPanel).
+      const [base, diff] = await Promise.all([
+        compileProject(entryPath, fs, {
           diagramType: "deploy",
           selectedDeployId: selectedDeployBlockId ?? undefined,
           displayMode,
           emptyStateLabels,
           annotationBadgeLabels,
           theme,
-        });
-        if (result.diagramType !== "deploy") return;
-        const hasErrors = result.diagnostics.some((d) => d.severity === "error");
+        }),
+        compileDeployDiff({
+          beforeEntryPath: compareEntryPath,
+          afterEntryPath: entryPath,
+          fs: compareFs ?? fs,
+          selectedDeployId: selectedDeployBlockId ?? undefined,
+          displayMode,
+          emptyStateLabels,
+          annotationBadgeLabels,
+          theme,
+        }),
+      ]);
+      if (base.diagramType !== "deploy") return null;
+      const toState = (svg: string): DeployViewState => ({
+        svg,
+        warnings: base.warnings,
+        diagnostics: diff.diagnostics,
+        nodeMetadata: base.nodeMetadata,
+        deployBlocks: base.deployBlocks,
+        deployTree: base.deployTree,
+      });
+      return {
+        diagnostics: diff.diagnostics,
+        svg: diff.svg,
+        fingerprint: computeViewResultFingerprint({
+          svg: diff.svg,
+          warnings: base.warnings,
+          diagnostics: diff.diagnostics,
+          nodeMetadata: base.nodeMetadata,
+        }),
+        errorState: (svgToShow) => toState(svgToShow),
+        okState: () => toState(diff.svg),
+      };
+    }
 
-        if (hasErrors) {
-          const svgToShow = lastValidSvgKey.current === currentKey ? lastValidSvg.current : "";
-          setState({
-            svg: svgToShow,
-            warnings: result.warnings,
-            diagnostics: result.diagnostics,
-            nodeMetadata: result.nodeMetadata,
-            deployBlocks: result.deployBlocks,
-            deployTree: result.deployTree,
-          });
-        } else {
-          const fingerprint = computeViewResultFingerprint({
-            svg: result.svg,
-            warnings: result.warnings,
-            diagnostics: result.diagnostics,
-            nodeMetadata: result.nodeMetadata,
-          });
-          if (fingerprint === lastResultFingerprint.current) return;
-          lastValidSvg.current = result.svg;
-          lastValidSvgKey.current = currentKey;
-          lastResultFingerprint.current = fingerprint;
-          setState({
-            svg: result.svg,
-            warnings: result.warnings,
-            diagnostics: result.diagnostics,
-            nodeMetadata: result.nodeMetadata,
-            deployBlocks: result.deployBlocks,
-            deployTree: result.deployTree,
-          });
-        }
-      } catch {
-        setState((prev) => ({
-          ...prev,
-          diagnostics: [
-            {
-              severity: "error",
-              code: "app-project-compile-error",
-              params: {},
-            },
-          ],
-        }));
-      }
-    }, DEBOUNCE_MS);
-
-    return () => {
-      if (timerRef.current) clearTimeout(timerRef.current);
+    const result = await compileProject(entryPath, fs, {
+      diagramType: "deploy",
+      selectedDeployId: selectedDeployBlockId ?? undefined,
+      displayMode,
+      emptyStateLabels,
+      annotationBadgeLabels,
+      theme,
+    });
+    if (result.diagramType !== "deploy") return null;
+    const toState = (svg: string): DeployViewState => ({
+      svg,
+      warnings: result.warnings,
+      diagnostics: result.diagnostics,
+      nodeMetadata: result.nodeMetadata,
+      deployBlocks: result.deployBlocks,
+      deployTree: result.deployTree,
+    });
+    return {
+      diagnostics: result.diagnostics,
+      svg: result.svg,
+      fingerprint: computeViewResultFingerprint({
+        svg: result.svg,
+        warnings: result.warnings,
+        diagnostics: result.diagnostics,
+        nodeMetadata: result.nodeMetadata,
+      }),
+      errorState: (svgToShow) => toState(svgToShow),
+      okState: () => toState(result.svg),
     };
-    // recompileCounter.current is intentionally read on each render to bump on demand
-  }, [
-    entryPath,
-    fs,
-    selectedDeployBlockId,
-    displayMode,
-    theme,
-    compareEntryPath,
-    compareFs,
-    emptyStateLabels,
-    annotationBadgeLabels,
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    recompileCounter.current,
-  ]);
+  };
 
-  return { ...state, recompile };
+  return useDebouncedCompile<DeployViewState>({
+    active: !!entryPath && !!fs,
+    currentKey,
+    initialState: {
+      svg: "",
+      warnings: [],
+      diagnostics: [],
+      nodeMetadata: new Map(),
+      deployBlocks: [],
+      deployTree: [],
+    },
+    compile,
+    onError: (prev) => ({
+      ...prev,
+      diagnostics: [{ severity: "error", code: "app-project-compile-error", params: {} }],
+    }),
+    deps: [
+      entryPath,
+      fs,
+      selectedDeployBlockId,
+      displayMode,
+      theme,
+      compareEntryPath,
+      compareFs,
+      emptyStateLabels,
+      annotationBadgeLabels,
+    ],
+  });
 }
