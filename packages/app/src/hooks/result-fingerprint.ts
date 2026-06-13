@@ -20,12 +20,12 @@ import type { Diagnostic, NodeMetadata, Warning } from "@karasu-tools/core";
  * cryptographic hash is unnecessary — the only consumer is `===`
  * inside the same JS realm.
  *
- * Failure-path semantics: callers do **not** reset the stored
- * fingerprint on the error path. That is safe because (a) hooks that
- * track `hadErrors` gate the success-branch fingerprint check on
- * `!hadErrors.current`, and (b) hooks that don't track `hadErrors`
- * (e.g. `useDeployView`) rely on `diagnostics` differing between
- * error and clean states, which the fingerprint captures.
+ * Failure-path semantics: the shared `useDebouncedCompile` does **not** reset
+ * the stored fingerprint on the error path. That is safe because it gates the
+ * success-branch fingerprint check on `!hadErrors.current` for every view, so
+ * an error that recovers to byte-identical pre-error content still re-publishes
+ * (#1540 unified this guard across system / deploy / org — previously
+ * `useDeployView` lacked it).
  */
 export function computeViewResultFingerprint(args: {
   svg: string;

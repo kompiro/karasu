@@ -8,6 +8,11 @@ const DEBOUNCE_MS = 300;
  * callback so the shared scaffold can apply the common publish logic.
  */
 export interface CompileOutcome<TState> {
+  // NOTE: `svg` and `diagnostics` are read by the scaffold (to cache the last
+  // valid SVG and to detect errors) but are ALSO embedded in what
+  // `okState`/`errorState` return. Keep the two consistent — the scaffold can't
+  // enforce it. Collapsing this dual-channel into selectors over the builder
+  // output is tracked as a follow-up.
   /** Diagnostics — used to detect whether the compile errored. */
   diagnostics: readonly Diagnostic[];
   /** Rendered SVG — the subject of the keep-stale-on-error and fingerprint logic. */
@@ -51,6 +56,12 @@ interface DebouncedCompileArgs<TState> {
    * Effect dependency list — the inputs that should restart the debounce
    * (entryPath, fs, view key, displayMode, theme, compare, i18n labels, …).
    * `recompile()` is wired in by the hook itself.
+   *
+   * IMPORTANT: `compile` is read through a ref so the linter can't check it —
+   * this list MUST contain (by value, or via a structural key like
+   * `viewPath.join("/")`) every input `compile()` reads. Forgetting one means
+   * the compile keeps using a stale value until another dep restarts the
+   * debounce.
    */
   deps: DependencyList;
 }

@@ -42,19 +42,24 @@ export function useDeployView(
   const compile = async (): Promise<CompileOutcome<DeployViewState> | null> => {
     if (!entryPath || !fs) return null;
 
+    // The baseline compileProject result supplies nodeMetadata / deployBlocks /
+    // deployTree for surrounding UI (block selector, NodeDetailPanel, outline);
+    // diff-mode replaces only the rendered svg + diagnostics.
+    const basePromise = compileProject(entryPath, fs, {
+      diagramType: "deploy",
+      selectedDeployId: selectedDeployBlockId ?? undefined,
+      displayMode,
+      emptyStateLabels,
+      annotationBadgeLabels,
+      theme,
+    });
+
+    let base: Awaited<typeof basePromise>;
+    let svg: string;
+    let diagnostics: Diagnostic[];
     if (compareEntryPath) {
-      // Diff-mode: render compareEntryPath (before) → entryPath (after). Need a
-      // baseline compileProject result for nodeMetadata / deployBlocks used by
-      // surrounding UI (block selector, NodeDetailPanel).
-      const [base, diff] = await Promise.all([
-        compileProject(entryPath, fs, {
-          diagramType: "deploy",
-          selectedDeployId: selectedDeployBlockId ?? undefined,
-          displayMode,
-          emptyStateLabels,
-          annotationBadgeLabels,
-          theme,
-        }),
+      const [b, diff] = await Promise.all([
+        basePromise,
         compileDeployDiff({
           beforeEntryPath: compareEntryPath,
           afterEntryPath: entryPath,
@@ -66,57 +71,36 @@ export function useDeployView(
           theme,
         }),
       ]);
-      if (base.diagramType !== "deploy") return null;
-      const toState = (svg: string): DeployViewState => ({
-        svg,
-        warnings: base.warnings,
-        diagnostics: diff.diagnostics,
-        nodeMetadata: base.nodeMetadata,
-        deployBlocks: base.deployBlocks,
-        deployTree: base.deployTree,
-      });
-      return {
-        diagnostics: diff.diagnostics,
-        svg: diff.svg,
-        fingerprint: computeViewResultFingerprint({
-          svg: diff.svg,
-          warnings: base.warnings,
-          diagnostics: diff.diagnostics,
-          nodeMetadata: base.nodeMetadata,
-        }),
-        errorState: (svgToShow) => toState(svgToShow),
-        okState: () => toState(diff.svg),
-      };
+      base = b;
+      svg = diff.svg;
+      diagnostics = diff.diagnostics;
+    } else {
+      base = await basePromise;
+      svg = base.svg;
+      diagnostics = base.diagnostics;
     }
+    if (base.diagramType !== "deploy") return null;
+    const deployBase = base;
 
-    const result = await compileProject(entryPath, fs, {
-      diagramType: "deploy",
-      selectedDeployId: selectedDeployBlockId ?? undefined,
-      displayMode,
-      emptyStateLabels,
-      annotationBadgeLabels,
-      theme,
-    });
-    if (result.diagramType !== "deploy") return null;
-    const toState = (svg: string): DeployViewState => ({
-      svg,
-      warnings: result.warnings,
-      diagnostics: result.diagnostics,
-      nodeMetadata: result.nodeMetadata,
-      deployBlocks: result.deployBlocks,
-      deployTree: result.deployTree,
+    const toState = (s: string): DeployViewState => ({
+      svg: s,
+      warnings: deployBase.warnings,
+      diagnostics,
+      nodeMetadata: deployBase.nodeMetadata,
+      deployBlocks: deployBase.deployBlocks,
+      deployTree: deployBase.deployTree,
     });
     return {
-      diagnostics: result.diagnostics,
-      svg: result.svg,
+      diagnostics,
+      svg,
       fingerprint: computeViewResultFingerprint({
-        svg: result.svg,
-        warnings: result.warnings,
-        diagnostics: result.diagnostics,
-        nodeMetadata: result.nodeMetadata,
+        svg,
+        warnings: deployBase.warnings,
+        diagnostics,
+        nodeMetadata: deployBase.nodeMetadata,
       }),
       errorState: (svgToShow) => toState(svgToShow),
-      okState: () => toState(result.svg),
+      okState: () => toState(svg),
     };
   };
 

@@ -124,20 +124,26 @@ export function useSystemView(
   const compile = async (): Promise<CompileOutcome<SystemViewState> | null> => {
     if (!entryPath || !fs) return null;
 
+    // The baseline compileProject result supplies nodeMetadata / systems / the
+    // deploy & org presence flags for surrounding UI (breadcrumbs,
+    // NodeDetailPanel). In diff-mode the diff replaces only svg + diagnostics
+    // and contributes per-node `nodeDiff`.
+    const basePromise = compileProject(entryPath, fs, {
+      diagramType: "system",
+      viewPath,
+      displayMode,
+      emptyStateLabels,
+      annotationBadgeLabels,
+      theme,
+    });
+
+    let base: Awaited<typeof basePromise>;
+    let svg: string;
+    let diagnostics: Diagnostic[];
+    let nodeDiff: Map<string, NodeDiffMeta> | undefined;
     if (compareEntryPath) {
-      // Diff-mode: render the union of `compareEntryPath` (before) vs `entryPath`
-      // (after). We still need a baseline compileProject result for nodeMetadata
-      // / systems used by surrounding UI (breadcrumbs, NodeDetailPanel). The diff
-      // SVG replaces only `svg`.
-      const [base, diff] = await Promise.all([
-        compileProject(entryPath, fs, {
-          diagramType: "system",
-          viewPath,
-          displayMode,
-          emptyStateLabels,
-          annotationBadgeLabels,
-          theme,
-        }),
+      const [b, diff] = await Promise.all([
+        basePromise,
         compileSystemDiff({
           beforeEntryPath: compareEntryPath,
           afterEntryPath: entryPath,
@@ -149,62 +155,40 @@ export function useSystemView(
           theme,
         }),
       ]);
-      if (base.diagramType !== "system") return null;
-      const toState = (svg: string): SystemViewState => ({
-        svg,
-        warnings: base.warnings,
-        diagnostics: diff.diagnostics,
-        nodeMetadata: base.nodeMetadata,
-        hasDeployDiagram: base.hasDeployDiagram,
-        hasOrgDiagram: base.hasOrgDiagram,
-        systems: base.systems,
-        nodeFileIndex: base.nodeFileIndex,
-        nodeDiff: diff.nodeDiff,
-      });
-      return {
-        diagnostics: diff.diagnostics,
-        svg: diff.svg,
-        fingerprint: computeViewResultFingerprint({
-          svg: diff.svg,
-          warnings: base.warnings,
-          diagnostics: diff.diagnostics,
-          nodeMetadata: base.nodeMetadata,
-        }),
-        errorState: (svgToShow) => toState(svgToShow),
-        okState: () => toState(diff.svg),
-      };
+      base = b;
+      svg = diff.svg;
+      diagnostics = diff.diagnostics;
+      nodeDiff = diff.nodeDiff;
+    } else {
+      base = await basePromise;
+      svg = base.svg;
+      diagnostics = base.diagnostics;
     }
+    if (base.diagramType !== "system") return null;
+    const sysBase = base;
 
-    const result = await compileProject(entryPath, fs, {
-      diagramType: "system",
-      viewPath,
-      displayMode,
-      emptyStateLabels,
-      annotationBadgeLabels,
-      theme,
-    });
-    if (result.diagramType !== "system") return null;
-    const toState = (svg: string): SystemViewState => ({
-      svg,
-      warnings: result.warnings,
-      diagnostics: result.diagnostics,
-      nodeMetadata: result.nodeMetadata,
-      hasDeployDiagram: result.hasDeployDiagram,
-      hasOrgDiagram: result.hasOrgDiagram,
-      systems: result.systems,
-      nodeFileIndex: result.nodeFileIndex,
+    const toState = (s: string): SystemViewState => ({
+      svg: s,
+      warnings: sysBase.warnings,
+      diagnostics,
+      nodeMetadata: sysBase.nodeMetadata,
+      hasDeployDiagram: sysBase.hasDeployDiagram,
+      hasOrgDiagram: sysBase.hasOrgDiagram,
+      systems: sysBase.systems,
+      nodeFileIndex: sysBase.nodeFileIndex,
+      nodeDiff,
     });
     return {
-      diagnostics: result.diagnostics,
-      svg: result.svg,
+      diagnostics,
+      svg,
       fingerprint: computeViewResultFingerprint({
-        svg: result.svg,
-        warnings: result.warnings,
-        diagnostics: result.diagnostics,
-        nodeMetadata: result.nodeMetadata,
+        svg,
+        warnings: sysBase.warnings,
+        diagnostics,
+        nodeMetadata: sysBase.nodeMetadata,
       }),
       errorState: (svgToShow) => toState(svgToShow),
-      okState: () => toState(result.svg),
+      okState: () => toState(svg),
     };
   };
 
