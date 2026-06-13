@@ -121,10 +121,11 @@ export function NodeDetailPanel({
         <div className="node-detail-section">
           <div className="node-detail-section-title">{t("nodeDetail.links.title")}</div>
           <ul className="node-detail-links">
-            {/* The parser drops links with disallowed schemes (#1525), so only
-                http/https/mailto reach this metadata. The render-side filter is
-                defense in depth: React does not block javascript: hrefs, so a
-                future path that bypasses the parser must not become an XSS. */}
+            {/* The parser keeps disallowed-scheme links in the AST (so Format
+                doesn't delete the user's source) but warns; the href-render
+                surface is where they must be excluded. React does not block
+                javascript: hrefs, so this scheme filter is the actual XSS
+                gate, not just defense in depth (#1525). */}
             {metadata.links
               .filter((link) => isSafeLinkUrl(link.url))
               .map((link) => (
