@@ -7,6 +7,7 @@ import { ReferencePanel } from "./ReferencePanel.js";
 import { CrudMatrixPanel } from "./CrudMatrixPanel.js";
 import { buildSvgExportFilename } from "../utils/build-svg-export-filename.js";
 import { usePreview } from "../state/preview-context.js";
+import { useActiveViewData } from "../state/active-view-data.js";
 import { useTranslation } from "../i18n/index.js";
 import { useCommand } from "../keyboard/use-command.js";
 import { Button } from "@/components/ui/button";
@@ -21,7 +22,6 @@ export function PreviewColumn() {
     activeView,
     onActiveViewChange,
     systemView,
-    deployView,
     orgView,
     nodeMetadata,
     deployBlocks,
@@ -32,10 +32,6 @@ export function PreviewColumn() {
     onExportSvg,
     isAllLayersOpen,
     onAllLayersToggle,
-    allLayersSvg,
-    orgAllLayersSvg,
-    drillDownSvg,
-    orgDrillDownSvg,
     allViewsSvg,
     previewFocused,
     onPreviewFocusToggle,
@@ -46,9 +42,9 @@ export function PreviewColumn() {
     onTeamToggle,
     orgTreeExportSvg,
     onExportDrawio,
-    styleTargetPath,
-    onPickEdgeDirection,
   } = usePreview();
+  // Normalized active-view slice — collapses the per-view ternary chains (#1542).
+  const view = useActiveViewData();
 
   const { t } = useTranslation();
   const [refOpen, setRefOpen] = useState(false);
@@ -71,43 +67,20 @@ export function PreviewColumn() {
     return () => window.clearTimeout(id);
   }, [exportError]);
 
-  const svg =
-    activeView === "system"
-      ? systemView.svg
-      : activeView === "deploy"
-        ? deployView.svg
-        : orgView.svg;
-  const diagnostics =
-    activeView === "system"
-      ? systemView.diagnostics
-      : activeView === "deploy"
-        ? deployView.diagnostics
-        : orgView.diagnostics;
-  const viewPath =
-    activeView === "system" ? systemView.viewPath : activeView === "org" ? orgView.viewPath : [];
-  const onDrillDown =
-    activeView === "system"
-      ? systemView.onBreadcrumbNavigate
-      : activeView === "org"
-        ? orgView.onBreadcrumbNavigate
-        : undefined;
+  const svg = view.svg;
+  const diagnostics = view.diagnostics;
+  const viewPath = view.viewPath;
+  const onDrillDown = view.onBreadcrumbNavigate;
 
   const exportFilename = buildSvgExportFilename(activeView, {
-    breadcrumbItems:
-      activeView === "system"
-        ? systemView.breadcrumbItems
-        : activeView === "org"
-          ? orgView.breadcrumbItems
-          : [],
+    breadcrumbItems: view.breadcrumbItems,
     deployBlocks,
     selectedDeployBlockId,
   });
 
-  const activeAllLayersSvg =
-    activeView === "system" ? allLayersSvg : activeView === "org" ? orgAllLayersSvg : undefined;
+  const activeAllLayersSvg = view.allLayersSvg;
   const allLayersAvailable = activeView !== "deploy" && !!activeAllLayersSvg;
-  const activedrillDownSvg =
-    activeView === "system" ? drillDownSvg : activeView === "org" ? orgDrillDownSvg : undefined;
+  const activedrillDownSvg = view.drillDownSvg;
   const drillDownAvailable =
     (activeView === "system" || activeView === "org") && !!activedrillDownSvg;
   const showAllLayersIframe = isAllLayersOpen && allLayersAvailable;
@@ -343,40 +316,20 @@ export function PreviewColumn() {
           diagnostics={diagnostics}
           viewPath={viewPath}
           nodeMetadata={nodeMetadata}
-          onDrillDown={activeView !== "deploy" ? onDrillDown : undefined}
-          onContainerClick={activeView === "deploy" ? deployView.onContainerClick : undefined}
-          onDeployButtonClick={activeView === "system" ? systemView.onDeployButtonClick : undefined}
-          onTeamButtonClick={activeView === "system" ? systemView.onTeamButtonClick : undefined}
-          onOwnedServiceClick={activeView === "org" ? orgView.onOwnedServiceClick : undefined}
-          highlightedNodeId={
-            activeView === "deploy"
-              ? deployView.highlightedNodeId
-              : activeView === "org"
-                ? orgView.highlightedNodeId
-                : systemView.highlightedNodeId
-          }
-          onClearHighlight={
-            activeView === "deploy"
-              ? deployView.onClearHighlight
-              : activeView === "org"
-                ? orgView.onClearHighlight
-                : systemView.onClearHighlight
-          }
+          onDrillDown={onDrillDown}
+          onContainerClick={view.onContainerClick}
+          onDeployButtonClick={view.onDeployButtonClick}
+          onTeamButtonClick={view.onTeamButtonClick}
+          onOwnedServiceClick={view.onOwnedServiceClick}
+          highlightedNodeId={view.highlightedNodeId}
+          onClearHighlight={view.onClearHighlight}
           onJumpToEditor={onJumpToEditor}
-          nodeDiff={activeView === "system" ? systemView.nodeDiff : undefined}
-          styleTargetPath={activeView === "system" ? styleTargetPath : undefined}
-          onPickEdgeDirection={activeView === "system" ? onPickEdgeDirection : undefined}
+          nodeDiff={view.nodeDiff}
+          styleTargetPath={view.styleTargetPath}
+          onPickEdgeDirection={view.onPickEdgeDirection}
         />
       )}
-      <WarningPanel
-        warnings={
-          activeView === "org"
-            ? orgView.warnings
-            : activeView === "deploy"
-              ? deployView.warnings
-              : systemView.warnings
-        }
-      />
+      <WarningPanel warnings={view.warnings} />
     </div>
   );
 }
