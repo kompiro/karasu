@@ -6,6 +6,7 @@ import type { ProjectManager } from "../fs/project-manager.js";
 import { useTranslation } from "../i18n/index.js";
 import { exportProjectAsZip } from "../utils/export-project-zip.js";
 import { parseZipForImport, disambiguateName } from "../utils/import-project-zip.js";
+import { errorDetail } from "../utils/error-detail.js";
 
 interface UseProjectActionsArgs {
   pm: ProjectManager;
@@ -25,8 +26,6 @@ interface ProjectActions {
   exportProject: () => Promise<void>;
   importProject: (file: File) => Promise<void>;
 }
-
-const detailOf = (err: unknown): string => (err instanceof Error ? err.message : String(err));
 
 /**
  * Project lifecycle actions (create / rename / delete / export / import)
@@ -53,7 +52,7 @@ export function useProjectActions({
         dispatch({ type: "ADD_PROJECT", project });
         navigateToProject(project);
       } catch (err) {
-        reportError(t("project.error.create", { detail: detailOf(err) }));
+        reportError(t("project.error.create", { detail: errorDetail(err) }));
       }
     },
     [pm, dispatch, navigateToProject, reportError, t],
@@ -65,7 +64,7 @@ export function useProjectActions({
         const updated = await pm.renameProject(id, newName);
         dispatch({ type: "RENAME_PROJECT", id, name: updated.name });
       } catch (err) {
-        reportError(t("project.error.rename", { detail: detailOf(err) }));
+        reportError(t("project.error.rename", { detail: errorDetail(err) }));
       }
     },
     [pm, dispatch, reportError, t],
@@ -82,7 +81,7 @@ export function useProjectActions({
           navigateToProject(remaining[0]);
         }
       } catch (err) {
-        reportError(t("project.error.delete", { detail: detailOf(err) }));
+        reportError(t("project.error.delete", { detail: errorDetail(err) }));
       }
     },
     [pm, dispatch, projects, navigateToProject, reportError, t],
@@ -93,7 +92,7 @@ export function useProjectActions({
     try {
       await exportProjectAsZip(fs, currentProject.rootPath, currentProject.name);
     } catch (err) {
-      reportError(t("project.error.export", { detail: detailOf(err) }));
+      reportError(t("project.error.export", { detail: errorDetail(err) }));
     }
   }, [fs, currentProject, reportError, t]);
 
@@ -113,7 +112,7 @@ export function useProjectActions({
       } catch (err) {
         // parseZipForImport throws on corrupt archives and on the #1526/#1527
         // hardening limits (decompression bomb, entry-count cap).
-        reportError(t("project.error.import", { detail: detailOf(err) }));
+        reportError(t("project.error.import", { detail: errorDetail(err) }));
       }
     },
     [pm, dispatch, projects, navigateToProject, reportError, t],

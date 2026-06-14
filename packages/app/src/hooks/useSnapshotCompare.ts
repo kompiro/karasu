@@ -2,6 +2,7 @@ import { useCallback, useState } from "react";
 import type { FileSystemProvider } from "@karasu-tools/core";
 import type { SnapshotManager } from "../fs/snapshot-manager.js";
 import { useTranslation } from "../i18n/index.js";
+import { errorDetail } from "../utils/error-detail.js";
 
 interface UseSnapshotCompareArgs {
   snapshotManager: SnapshotManager | null;
@@ -24,8 +25,6 @@ interface SnapshotCompare {
   compareWithSnapshot: (path: string) => void;
   closePicker: () => void;
 }
-
-const detailOf = (err: unknown): string => (err instanceof Error ? err.message : String(err));
 
 /**
  * Manual snapshot capture + the compare-with-snapshot picker, extracted from
@@ -56,7 +55,7 @@ export function useSnapshotCompare({
           label: label || undefined,
         });
       } catch (err) {
-        reportError(t("project.error.snapshot", { detail: detailOf(err) }));
+        reportError(t("project.error.snapshot", { detail: errorDetail(err) }));
       }
     },
     [snapshotManager, projectRoot, currentFilePath, fileContent, fs, reportError, t],

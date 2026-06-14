@@ -77,29 +77,52 @@ describe("useProjectActions — success", () => {
     expect(dispatch).toHaveBeenCalledWith({ type: "REMOVE_PROJECT", id: "p1" });
     expect(navigateToProject).toHaveBeenCalledWith(proj("p2"));
   });
+
+  it("importProject parses the ZIP, creates the project, dispatches, and navigates", async () => {
+    const { result, pm, dispatch, navigateToProject, reportError } = setup();
+    parseMock.mockReturnValue({
+      files: [{ path: "index.krs", content: "system S {}" }],
+      detectedName: "Imported",
+    });
+    pm.createProject.mockResolvedValue(proj("Imported"));
+    const file = new File([new Uint8Array([1, 2, 3])], "Imported.zip");
+    await act(async () => await result.current.importProject(file));
+    expect(pm.createProject).toHaveBeenCalledWith("Imported", [
+      { path: "index.krs", content: "system S {}" },
+    ]);
+    expect(dispatch).toHaveBeenCalledWith({ type: "ADD_PROJECT", project: proj("Imported") });
+    expect(navigateToProject).toHaveBeenCalledWith(proj("Imported"));
+    expect(reportError).not.toHaveBeenCalled();
+  });
 });
 
 describe("useProjectActions — failures surface via reportError (#1532)", () => {
-  it("createProject failure reports an error and does not dispatch", async () => {
+  // The message asserts BOTH the interpolated detail AND the action-specific
+  // wording, so a wrong-key copy-paste (e.g. create using the rename string)
+  // is caught rather than silently passing on the shared detail.
+  it("createProject failure reports a create-specific error and does not dispatch", async () => {
     const { result, pm, dispatch, reportError } = setup();
     pm.createProject.mockRejectedValue(new Error("quota exceeded"));
     await act(async () => await result.current.createProject("x"));
     expect(dispatch).not.toHaveBeenCalled();
     expect(reportError).toHaveBeenCalledTimes(1);
+    expect(reportError.mock.calls[0][0]).toContain("create project");
     expect(reportError.mock.calls[0][0]).toContain("quota exceeded");
   });
 
-  it("renameProject failure reports an error", async () => {
+  it("renameProject failure reports a rename-specific error", async () => {
     const { result, pm, reportError } = setup();
     pm.renameProject.mockRejectedValue(new Error("name taken"));
     await act(async () => await result.current.renameProject("p1", "dup"));
+    expect(reportError.mock.calls[0][0]).toContain("rename project");
     expect(reportError.mock.calls[0][0]).toContain("name taken");
   });
 
-  it("exportProject failure reports an error", async () => {
+  it("exportProject failure reports an export-specific error", async () => {
     const { result, reportError } = setup();
     exportMock.mockRejectedValue(new Error("OPFS read failed"));
     await act(async () => await result.current.exportProject());
+    expect(reportError.mock.calls[0][0]).toContain("export project");
     expect(reportError.mock.calls[0][0]).toContain("OPFS read failed");
   });
 
@@ -112,6 +135,7 @@ describe("useProjectActions — failures surface via reportError (#1532)", () =>
     await act(async () => await result.current.importProject(file));
     expect(dispatch).not.toHaveBeenCalled();
     expect(reportError).toHaveBeenCalledTimes(1);
+    expect(reportError.mock.calls[0][0]).toContain("Import failed");
     expect(reportError.mock.calls[0][0]).toContain("not a zip");
   });
 

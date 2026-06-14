@@ -47,6 +47,16 @@ describe("useSnapshotCompare — snapshotNow", () => {
     expect(reportError).not.toHaveBeenCalled();
   });
 
+  it("reads from disk for a file other than the open one", async () => {
+    const { result, capture } = setup();
+    await act(async () => await result.current.snapshotNow("/p1/other.krs"));
+    // Not the open file → content comes from fs.readFile, not the in-memory buffer.
+    expect(capture).toHaveBeenCalledWith("other.krs", "file body", {
+      trigger: "manual",
+      label: "my label",
+    });
+  });
+
   it("is a no-op for a path outside the project root", async () => {
     const { result, capture } = setup();
     await act(async () => await result.current.snapshotNow("/other/x.krs"));
