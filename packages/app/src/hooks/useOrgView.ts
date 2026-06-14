@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useCallback } from "react";
 import {
   compileProject,
   compileOrgDiff,
@@ -16,6 +16,7 @@ import {
 import { useEmptyStateLabels } from "../i18n/use-empty-state-labels.js";
 import { useAnnotationBadgeLabels } from "../i18n/use-annotation-badge-labels.js";
 import { computeViewResultFingerprint } from "./result-fingerprint.js";
+import { useDebouncedCompile, type CompileOutcome } from "./useDebouncedCompile.js";
 
 interface OrgViewState {
   orgSvg: string;
@@ -25,8 +26,6 @@ interface OrgViewState {
   organizations: OrganizationBlock[];
   styles: ResolvedStyles | undefined;
 }
-
-const DEBOUNCE_MS = 300;
 
 export function useOrgView(
   entryPath: string | null,
@@ -43,15 +42,6 @@ export function useOrgView(
   orgTreeSvg: string;
   orgTreeExportSvg: string;
 } {
-  const [state, setState] = useState<OrgViewState>({
-    orgSvg: "",
-    orgDiagnostics: [],
-    orgWarnings: [],
-    nodePathIndex: new Map(),
-    organizations: [],
-    styles: undefined,
-  });
-
   const [expandedTeamIds, setExpandedTeamIds] = useState<Set<string>>(new Set());
 
   const toggleTeamExpand = useCallback((teamId: string) => {
@@ -66,123 +56,112 @@ export function useOrgView(
     });
   }, []);
 
-  const lastValidSvg = useRef("");
-  const lastValidSvgKey = useRef("");
-  const lastResultFingerprint = useRef<string | null>(null);
-  const hadErrors = useRef(false);
-  const timerRef = useRef<ReturnType<typeof setTimeout>>(undefined);
-  const recompileCounter = useRef(0);
-
-  const recompile = useCallback(() => {
-    recompileCounter.current++;
-    setState((prev) => ({ ...prev }));
-  }, []);
-
   const emptyStateLabels = useEmptyStateLabels();
   const annotationBadgeLabels = useAnnotationBadgeLabels();
 
   // Structural key for `viewPath` so a fresh `[]` from `SET_ACTIVE_VIEW` does
-  // not cancel the in-flight debounce when the previous value was also empty.
+  // not restart the in-flight debounce when the previous value was also empty.
   // Mirrors the same fix in `useSystemView`. See #1171.
   const viewPathKey = viewPath.join("/");
+  const currentKey = `${entryPath}:org:${viewPathKey}:cmp=${compareEntryPath ?? ""}`;
 
-  /* eslint-disable react-hooks/exhaustive-deps */
-  useEffect(() => {
-    if (!entryPath || !fs) return;
+  const compile = async (): Promise<CompileOutcome<OrgViewState> | null> => {
+    if (!entryPath || !fs) return null;
 
-    if (timerRef.current) clearTimeout(timerRef.current);
+    const basePromise = compileProject(entryPath, fs, {
+      diagramType: "org",
+      viewPath,
+      displayMode,
+      emptyStateLabels,
+      annotationBadgeLabels,
+      theme,
+    });
 
-    const currentKey = `${entryPath}:org:${viewPathKey}:cmp=${compareEntryPath ?? ""}`;
+    // Diff-mode replaces only the SVG and diagnostics; the org metadata
+    // (organizations / nodePathIndex / styles / warnings) comes from the base.
+    let base: Awaited<typeof basePromise>;
+    let svg: string;
+    let diagnostics: Diagnostic[];
+    if (compareEntryPath) {
+      const [b, diff] = await Promise.all([
+        basePromise,
+        compileOrgDiff({
+          beforeEntryPath: compareEntryPath,
+          afterEntryPath: entryPath,
+          fs: compareFs ?? fs,
+          viewPath,
+          displayMode,
+          emptyStateLabels,
+          annotationBadgeLabels,
+          theme,
+        }),
+      ]);
+      base = b;
+      svg = diff.svg;
+      diagnostics = diff.diagnostics;
+    } else {
+      base = await basePromise;
+      svg = base.svg;
+      diagnostics = base.diagnostics;
+    }
+    if (base.diagramType !== "org") return null;
+    const orgBase = base;
 
-    timerRef.current = setTimeout(() => {
-      const baseTask = compileProject(entryPath, fs, {
-        diagramType: "org",
-        viewPath,
-        displayMode,
-        emptyStateLabels,
-        annotationBadgeLabels,
-        theme,
-      });
-      const task = compareEntryPath
-        ? Promise.all([
-            baseTask,
-            compileOrgDiff({
-              beforeEntryPath: compareEntryPath,
-              afterEntryPath: entryPath,
-              fs: compareFs ?? fs,
-              viewPath,
-              displayMode,
-              emptyStateLabels,
-              annotationBadgeLabels,
-              theme,
-            }),
-          ]).then(([base, diff]) => {
-            if (base.diagramType !== "org") return base;
-            return { ...base, svg: diff.svg, diagnostics: diff.diagnostics };
-          })
-        : baseTask;
-      task
-        .then((result) => {
-          if (result.diagramType !== "org") return;
-          const hasErrors = result.diagnostics.some((d) => d.severity === "error");
-
-          if (hasErrors) {
-            hadErrors.current = true;
-            const svgToShow = lastValidSvgKey.current === currentKey ? lastValidSvg.current : "";
-            setState((prev) => ({
-              orgSvg: svgToShow,
-              orgDiagnostics: result.diagnostics,
-              orgWarnings: prev.orgWarnings,
-              nodePathIndex: prev.nodePathIndex,
-              organizations: prev.organizations,
-              styles: prev.styles,
-            }));
-          } else {
-            const fingerprint = computeViewResultFingerprint({
-              svg: result.svg,
-              warnings: result.warnings,
-              diagnostics: result.diagnostics,
-            });
-            if (fingerprint === lastResultFingerprint.current && !hadErrors.current) return;
-            hadErrors.current = false;
-            lastValidSvg.current = result.svg;
-            lastValidSvgKey.current = currentKey;
-            lastResultFingerprint.current = fingerprint;
-            setState({
-              orgSvg: result.svg,
-              orgDiagnostics: result.diagnostics,
-              orgWarnings: result.warnings,
-              nodePathIndex: result.nodePathIndex,
-              organizations: result.organizations,
-              styles: result.styles,
-            });
-          }
-        })
-        .catch(() => {
-          hadErrors.current = true;
-          setState((prev) => ({
-            ...prev,
-            orgDiagnostics: [{ severity: "error", code: "app-org-parse-error", params: {} }],
-          }));
-        });
-    }, DEBOUNCE_MS);
-
-    return () => {
-      if (timerRef.current) clearTimeout(timerRef.current);
+    return {
+      diagnostics,
+      svg,
+      // Org's fingerprint intentionally omits nodeMetadata (it carries none).
+      fingerprint: computeViewResultFingerprint({ svg, warnings: orgBase.warnings, diagnostics }),
+      // On error keep the prior org metadata (only swap in the stale SVG +
+      // fresh diagnostics), matching the prior per-hook behavior.
+      errorState: (svgToShow, prev) => ({
+        orgSvg: svgToShow,
+        orgDiagnostics: diagnostics,
+        orgWarnings: prev.orgWarnings,
+        nodePathIndex: prev.nodePathIndex,
+        organizations: prev.organizations,
+        styles: prev.styles,
+      }),
+      okState: () => ({
+        orgSvg: svg,
+        orgDiagnostics: diagnostics,
+        orgWarnings: orgBase.warnings,
+        nodePathIndex: orgBase.nodePathIndex,
+        organizations: orgBase.organizations,
+        styles: orgBase.styles,
+      }),
     };
-  }, [
-    entryPath,
-    fs,
-    viewPathKey,
-    displayMode,
-    theme,
-    compareEntryPath,
-    compareFs,
-    emptyStateLabels,
-    annotationBadgeLabels,
-    recompileCounter.current,
-  ]);
-  /* eslint-enable react-hooks/exhaustive-deps */
+  };
+
+  const state = useDebouncedCompile<OrgViewState>({
+    active: !!entryPath && !!fs,
+    currentKey,
+    initialState: {
+      orgSvg: "",
+      orgDiagnostics: [],
+      orgWarnings: [],
+      nodePathIndex: new Map(),
+      organizations: [],
+      styles: undefined,
+    },
+    compile,
+    onError: (prev) => ({
+      ...prev,
+      orgDiagnostics: [{ severity: "error", code: "app-org-parse-error", params: {} }],
+    }),
+    deps: [
+      entryPath,
+      fs,
+      viewPathKey,
+      displayMode,
+      theme,
+      compareEntryPath,
+      compareFs,
+      emptyStateLabels,
+      annotationBadgeLabels,
+    ],
+  });
+  const { recompile } = state;
 
   const orgTreeSvg =
     state.organizations.length > 0

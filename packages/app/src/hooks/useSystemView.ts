@@ -1,4 +1,3 @@
-import { useState, useEffect, useRef, useCallback } from "react";
 import {
   compileProject,
   compileSystemDiff,
@@ -47,6 +46,7 @@ import artifactSvg from "@karasu-tools/core/icons/artifact.svg?raw";
 import { useEmptyStateLabels } from "../i18n/use-empty-state-labels.js";
 import { useAnnotationBadgeLabels } from "../i18n/use-annotation-badge-labels.js";
 import { computeViewResultFingerprint } from "./result-fingerprint.js";
+import { useDebouncedCompile, type CompileOutcome } from "./useDebouncedCompile.js";
 
 interface SystemViewState {
   svg: string;
@@ -102,8 +102,6 @@ resolveIconManifest(
   true,
 );
 
-const DEBOUNCE_MS = 300;
-
 export function useSystemView(
   entryPath: string | null,
   fs: FileSystemProvider | null,
@@ -113,197 +111,115 @@ export function useSystemView(
   compareFs: FileSystemProvider | null = null,
   theme?: DiagramTheme,
 ): SystemViewState & { recompile: () => void } {
-  const [state, setState] = useState<SystemViewState>({
-    svg: "",
-    warnings: [],
-    diagnostics: [],
-    nodeMetadata: new Map(),
-    hasDeployDiagram: false,
-    hasOrgDiagram: false,
-    systems: [],
-    nodeFileIndex: new Map(),
-  });
-
-  const lastValidSvg = useRef("");
-  const lastValidSvgKey = useRef("");
-  const lastResultFingerprint = useRef<string | null>(null);
-  const hadErrors = useRef(false);
-  const timerRef = useRef<ReturnType<typeof setTimeout>>(undefined);
-  const recompileCounter = useRef(0);
-
   const emptyStateLabels = useEmptyStateLabels();
   const annotationBadgeLabels = useAnnotationBadgeLabels();
 
-  const recompile = useCallback(() => {
-    recompileCounter.current++;
-    setState((prev) => ({ ...prev }));
-  }, []);
-
   // Structural key for `viewPath` so that a fresh `[]` from `SET_ACTIVE_VIEW`
-  // does not cancel the in-flight debounce when the previous value was also
-  // empty. Without this, a user (or a fast e2e test) that switches view tabs
-  // while the initial compile is still pending will keep restarting the 300ms
-  // timer and never see a rendered SVG. See #1171.
+  // does not restart the in-flight debounce when the previous value was also
+  // empty. Without this, switching view tabs while the initial compile is
+  // pending keeps resetting the 300ms timer and never renders an SVG. See #1171.
   const viewPathKey = viewPath.join("/");
+  const currentKey = `${entryPath}:system:${viewPathKey}:cmp=${compareEntryPath ?? ""}`;
 
-  // The exhaustive-deps rule asks for `viewPath` in the dep array because we
-  // read it inside, but the whole point of `viewPathKey` is to avoid keying
-  // on the array reference. Suppressed for the entire effect.
-  /* eslint-disable react-hooks/exhaustive-deps */
-  useEffect(() => {
-    if (!entryPath || !fs) return;
+  const compile = async (): Promise<CompileOutcome<SystemViewState> | null> => {
+    if (!entryPath || !fs) return null;
 
-    if (timerRef.current) clearTimeout(timerRef.current);
+    // The baseline compileProject result supplies nodeMetadata / systems / the
+    // deploy & org presence flags for surrounding UI (breadcrumbs,
+    // NodeDetailPanel). In diff-mode the diff replaces only svg + diagnostics
+    // and contributes per-node `nodeDiff`.
+    const basePromise = compileProject(entryPath, fs, {
+      diagramType: "system",
+      viewPath,
+      displayMode,
+      emptyStateLabels,
+      annotationBadgeLabels,
+      theme,
+    });
 
-    const currentKey = `${entryPath}:system:${viewPathKey}:cmp=${compareEntryPath ?? ""}`;
-
-    timerRef.current = setTimeout(async () => {
-      try {
-        if (compareEntryPath) {
-          // Diff-mode: render the union of `compareEntryPath` (before) vs `entryPath` (after).
-          // We still need a baseline compileProject result for nodeMetadata / systems used by
-          // surrounding UI (breadcrumbs, NodeDetailPanel). The diff SVG replaces only `svg`.
-          const [base, diff] = await Promise.all([
-            compileProject(entryPath, fs, {
-              diagramType: "system",
-              viewPath,
-              displayMode,
-              emptyStateLabels,
-              annotationBadgeLabels,
-              theme,
-            }),
-            compileSystemDiff({
-              beforeEntryPath: compareEntryPath,
-              afterEntryPath: entryPath,
-              fs: compareFs ?? fs,
-              viewPath,
-              displayMode,
-              emptyStateLabels,
-              annotationBadgeLabels,
-              theme,
-            }),
-          ]);
-          if (base.diagramType !== "system") return;
-          const hasErrors = diff.diagnostics.some((d) => d.severity === "error");
-          if (hasErrors) {
-            hadErrors.current = true;
-            const svgToShow = lastValidSvgKey.current === currentKey ? lastValidSvg.current : "";
-            setState({
-              svg: svgToShow,
-              warnings: base.warnings,
-              diagnostics: diff.diagnostics,
-              nodeMetadata: base.nodeMetadata,
-              hasDeployDiagram: base.hasDeployDiagram,
-              hasOrgDiagram: base.hasOrgDiagram,
-              systems: base.systems,
-              nodeFileIndex: base.nodeFileIndex,
-              nodeDiff: diff.nodeDiff,
-            });
-          } else {
-            const fingerprint = computeViewResultFingerprint({
-              svg: diff.svg,
-              warnings: base.warnings,
-              diagnostics: diff.diagnostics,
-              nodeMetadata: base.nodeMetadata,
-            });
-            if (fingerprint === lastResultFingerprint.current && !hadErrors.current) return;
-            hadErrors.current = false;
-            lastValidSvg.current = diff.svg;
-            lastValidSvgKey.current = currentKey;
-            lastResultFingerprint.current = fingerprint;
-            setState({
-              svg: diff.svg,
-              warnings: base.warnings,
-              diagnostics: diff.diagnostics,
-              nodeMetadata: base.nodeMetadata,
-              hasDeployDiagram: base.hasDeployDiagram,
-              hasOrgDiagram: base.hasOrgDiagram,
-              systems: base.systems,
-              nodeFileIndex: base.nodeFileIndex,
-              nodeDiff: diff.nodeDiff,
-            });
-          }
-          return;
-        }
-
-        const result = await compileProject(entryPath, fs, {
-          diagramType: "system",
+    let base: Awaited<typeof basePromise>;
+    let svg: string;
+    let diagnostics: Diagnostic[];
+    let nodeDiff: Map<string, NodeDiffMeta> | undefined;
+    if (compareEntryPath) {
+      const [b, diff] = await Promise.all([
+        basePromise,
+        compileSystemDiff({
+          beforeEntryPath: compareEntryPath,
+          afterEntryPath: entryPath,
+          fs: compareFs ?? fs,
           viewPath,
           displayMode,
           emptyStateLabels,
           annotationBadgeLabels,
           theme,
-        });
-        if (result.diagramType !== "system") return;
-        const hasErrors = result.diagnostics.some((d) => d.severity === "error");
+        }),
+      ]);
+      base = b;
+      svg = diff.svg;
+      diagnostics = diff.diagnostics;
+      nodeDiff = diff.nodeDiff;
+    } else {
+      base = await basePromise;
+      svg = base.svg;
+      diagnostics = base.diagnostics;
+    }
+    if (base.diagramType !== "system") return null;
+    const sysBase = base;
 
-        if (hasErrors) {
-          hadErrors.current = true;
-          const svgToShow = lastValidSvgKey.current === currentKey ? lastValidSvg.current : "";
-          setState({
-            svg: svgToShow,
-            warnings: result.warnings,
-            diagnostics: result.diagnostics,
-            nodeMetadata: result.nodeMetadata,
-            hasDeployDiagram: result.hasDeployDiagram,
-            hasOrgDiagram: result.hasOrgDiagram,
-            systems: result.systems,
-            nodeFileIndex: result.nodeFileIndex,
-          });
-        } else {
-          const fingerprint = computeViewResultFingerprint({
-            svg: result.svg,
-            warnings: result.warnings,
-            diagnostics: result.diagnostics,
-            nodeMetadata: result.nodeMetadata,
-          });
-          if (fingerprint === lastResultFingerprint.current && !hadErrors.current) return;
-          hadErrors.current = false;
-          lastValidSvg.current = result.svg;
-          lastValidSvgKey.current = currentKey;
-          lastResultFingerprint.current = fingerprint;
-          setState({
-            svg: result.svg,
-            warnings: result.warnings,
-            diagnostics: result.diagnostics,
-            nodeMetadata: result.nodeMetadata,
-            hasDeployDiagram: result.hasDeployDiagram,
-            hasOrgDiagram: result.hasOrgDiagram,
-            systems: result.systems,
-            nodeFileIndex: result.nodeFileIndex,
-          });
-        }
-      } catch {
-        hadErrors.current = true;
-        setState((prev) => ({
-          ...prev,
-          diagnostics: [
-            {
-              severity: "error",
-              code: "app-project-compile-error",
-              params: {},
-            },
-          ],
-        }));
-      }
-    }, DEBOUNCE_MS);
-
-    return () => {
-      if (timerRef.current) clearTimeout(timerRef.current);
+    const toState = (s: string): SystemViewState => ({
+      svg: s,
+      warnings: sysBase.warnings,
+      diagnostics,
+      nodeMetadata: sysBase.nodeMetadata,
+      hasDeployDiagram: sysBase.hasDeployDiagram,
+      hasOrgDiagram: sysBase.hasOrgDiagram,
+      systems: sysBase.systems,
+      nodeFileIndex: sysBase.nodeFileIndex,
+      nodeDiff,
+    });
+    return {
+      diagnostics,
+      svg,
+      fingerprint: computeViewResultFingerprint({
+        svg,
+        warnings: sysBase.warnings,
+        diagnostics,
+        nodeMetadata: sysBase.nodeMetadata,
+      }),
+      errorState: (svgToShow) => toState(svgToShow),
+      okState: () => toState(svg),
     };
-  }, [
-    entryPath,
-    fs,
-    viewPathKey,
-    displayMode,
-    theme,
-    compareEntryPath,
-    compareFs,
-    emptyStateLabels,
-    annotationBadgeLabels,
-    recompileCounter.current,
-  ]);
-  /* eslint-enable react-hooks/exhaustive-deps */
+  };
 
-  return { ...state, recompile };
+  return useDebouncedCompile<SystemViewState>({
+    active: !!entryPath && !!fs,
+    currentKey,
+    initialState: {
+      svg: "",
+      warnings: [],
+      diagnostics: [],
+      nodeMetadata: new Map(),
+      hasDeployDiagram: false,
+      hasOrgDiagram: false,
+      systems: [],
+      nodeFileIndex: new Map(),
+    },
+    compile,
+    onError: (prev) => ({
+      ...prev,
+      diagnostics: [{ severity: "error", code: "app-project-compile-error", params: {} }],
+    }),
+    deps: [
+      entryPath,
+      fs,
+      viewPathKey,
+      displayMode,
+      theme,
+      compareEntryPath,
+      compareFs,
+      emptyStateLabels,
+      annotationBadgeLabels,
+    ],
+  });
 }
