@@ -122,7 +122,7 @@ error 診断は出すが `team?: string` フィールドと格納は残す（for
 5. **i18n**（`packages/i18n`）: `deprecated-team-property` 警告（en/ja + render-warning case）を削除。`diagnostic.teamPropertyDeprecated` を `teamPropertyRemoved`（en/ja + render-diagnostic case）に置換。メッセージ例: `"team" property has been removed; declare ownership with an organization block and "owns"`。
 6. **examples**: `feature-samples/domain-drill.krs` の `team "Order Team"` 2 行を削除（drill-down demo に所有は不要）。feature-samples は `packages/core/src/builtins/examples.ts` と同期する。
 7. **docs/spec**: `syntax.{ja,}.md` のプロパティ表から `team` 行と例の `team "..."` 行を削除。`tags-annotations.{ja,}.md` の「team 連絡先コンベンション」節を、所有チームは `organization`/`owns` から導出・連絡先は `link`、に書き換え。
-8. **AT**: `0007` の deprecation 期待を removal-error に更新。`0039` / `0053` のセットアップを `organization`/`owns` に移行（または検証本質に不要なら行削除）。
+8. **AT**: `0007` の deprecation 期待を removal-error に更新。`0039` / `0053` のセットアップを `organization`/`owns` に書き換える（Q3 決定）。
 9. **tests**: `parser.test.ts`（team property → removed error）、`layout.test.ts`（property フォールバックのテストを ownerIndex ベースに整理）。
 10. ADR 昇格: 実装完了後、本 Design Doc を `docs/adr/1564-remove-team-property.md`（番号は Issue 番号ベース、`.claude/rules/adr.md`）として昇格し、本ファイルを同 PR で削除する。`depends_on: [ADR-20260323-03]`。
 
@@ -133,8 +133,10 @@ error 診断は出すが `team?: string` フィールドと格納は残す（for
 - テスト・examples への影響: `domain-drill.krs`（+ examples.ts 同期）、parser/layout テスト。
 - changeset: 公開 CLI（`karasu`）の挙動変更のため `pnpm changeset`（0.x なので minor）。
 
-## 未解決の問い / 決めないこと
+## 決定事項（レビュー反映）
 
-- **Q1（posture の最終確認）**: 案A（ハードエラー）でよいか。それとも error ではなく warning のまま「フィールドだけ削除して値を無視」（実質案B寄り）にしたいか。TPL-20260610-01 の観点では error 推奨。
-- **Q2（renderer の挙動）**: `organization` ブロックを持たない図で `service.team "X"` だけで owner ラベルを出していたユーザーは、移行するまでラベルが消える。これを許容してよいか（移行を促す方針）。それとも何らかの猶予表示を設けるか。
-- **Q3（AT 0039 / 0053 の扱い）**: セットアップの `team "..."` を `organization`/`owns` に書き換えるか、AT の検証本質に不要なら単に削除するか。
+- **Q1（posture）→ 案A**: ハードエラー化（`team-property-removed`）+ AST フィールド削除。owner 表示は `organization`/`owns` のみ。
+- **Q2（renderer 挙動）→ 許容**: `organization` ブロックを持たない図で `service.team "X"` だけに依存していた owner ラベルは、移行するまで描画されなくなる。error 診断が移行先を明示するため、移行を促す方針として許容する。猶予表示は設けない。
+- **Q3（AT 0039 / 0053）→ 書き換え**: セットアップの `team "..."` を `organization`/`owns` に書き換える。
+
+以上で本設計の論点は確定。次段は ADR 昇格（実装 PR のクリーンアップ時）。
