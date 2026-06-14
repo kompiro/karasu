@@ -80,6 +80,8 @@ function makeWarning(kind: Warning["kind"]): Warning {
       };
     case "cross-system-ref-unresolved":
       return { kind, params: { ref: "A.B" } };
+    case "unresolved-edge-endpoint":
+      return { kind, params: { from: "A", to: "B", unresolvedId: "B" } };
     case "cyclic-dependency":
       return { kind, params: { cyclePath: ["A", "B", "A"] } };
     case "delivers-target-not-client":

@@ -25,6 +25,7 @@ export function analyze(file: KrsFile, sheets: StyleSheet[], systemSheetCount = 
   warnings.push(...detectUnresolvedRealizes(file));
   warnings.push(...detectInvalidOwns(file));
   warnings.push(...detectCrossSystemRefs(file));
+  warnings.push(...detectUnresolvedEdgeEndpoints(file));
   warnings.push(...detectCyclicDependencies(file));
   warnings.push(...detectDeliversTargetNotClient(file));
   warnings.push(...detectDuplicateClientCapabilities(file));
@@ -782,6 +783,77 @@ function detectCrossSystemRefs(file: KrsFile): Warning[] {
         });
       }
     }
+  }
+
+  return warnings;
+}
+
+/**
+ * §S6: an authored edge whose endpoint id exists nowhere in the merged model
+ * is dropped during view extraction (the resolved endpoint node is kept —
+ * TPL-20260514-05). This surfaces that otherwise-silent drop as a warning.
+ *
+ * Only authored edges are inspected: synthetic edges (implicit service edges,
+ * usecase→resource edges) are produced during view extraction and never appear
+ * on `KrsFile`. Cross-system dotted refs (`Sys.Svc`) are skipped — they carry a
+ * "." and are handled by `detectCrossSystemRefs`.
+ */
+function detectUnresolvedEdgeEndpoints(file: KrsFile): Warning[] {
+  const warnings: Warning[] = [];
+
+  // Universe of every node id in the merged model, all kinds, all depths.
+  // `nodePathIndex` can't be reused here — it only indexes service / domain.
+  const allIds = new Set<string>();
+  const collectIds = (node: KrsNode): void => {
+    allIds.add(node.id);
+    for (const child of node.children) collectIds(child);
+  };
+  for (const system of file.systems) {
+    for (const child of system.children) collectIds(child);
+  }
+  for (const node of [
+    ...file.services,
+    ...file.domains,
+    ...file.clients,
+    ...file.databases,
+    ...file.queues,
+    ...file.storages,
+  ]) {
+    collectIds(node);
+  }
+
+  const checkEdges = (edges: KrsEdge[]): void => {
+    for (const edge of edges) {
+      for (const endpoint of [edge.from, edge.to]) {
+        // Cross-system dotted refs are validated by detectCrossSystemRefs.
+        if (endpoint.includes(".")) continue;
+        if (!allIds.has(endpoint)) {
+          warnings.push({
+            kind: "unresolved-edge-endpoint",
+            params: { from: edge.from, to: edge.to, unresolvedId: endpoint },
+            loc: edge.loc,
+          });
+        }
+      }
+    }
+  };
+  const walkEdges = (node: KrsNode): void => {
+    checkEdges(node.edges);
+    for (const child of node.children) walkEdges(child);
+  };
+  for (const system of file.systems) {
+    checkEdges(system.edges);
+    for (const child of system.children) walkEdges(child);
+  }
+  for (const node of [
+    ...file.services,
+    ...file.domains,
+    ...file.clients,
+    ...file.databases,
+    ...file.queues,
+    ...file.storages,
+  ]) {
+    walkEdges(node);
   }
 
   return warnings;

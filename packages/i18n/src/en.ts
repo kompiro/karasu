@@ -198,6 +198,8 @@ export const en: Translations = {
     `Team "${teamId}" owns "${ownedId}" but no service or domain with that id exists`,
   "warning.crossSystemRefUnresolved.message": ({ ref }) =>
     `"${ref}" could not be resolved — rendered as an unresolved external node`,
+  "warning.unresolvedEdgeEndpoint.message": ({ from, to, unresolvedId }) =>
+    `Edge "${from} → ${to}" references unknown node "${unresolvedId}"; the edge is dropped (the resolved endpoint is kept)`,
   "warning.crossSystemRefImplicitExternal.message": ({ ref, sourceSystemId, sourceNodeId }) =>
     `"${ref}" is referenced from ${sourceSystemId}.${sourceNodeId} but is not explicitly annotated as @external`,
   "warning.crossSystemRefImplicitExternal.suppressHint": ({ targetSystemId, sourceSystemId }) =>

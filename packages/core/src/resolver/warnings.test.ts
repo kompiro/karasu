@@ -837,6 +837,80 @@ system PaymentGateway {
   });
 });
 
+describe("unresolved-edge-endpoint warning", () => {
+  const find = (krs: string) =>
+    analyze(Parser.parse(krs).value, []).filter((w) => w.kind === "unresolved-edge-endpoint");
+
+  it("warns when a system-level edge targets an id that exists nowhere", () => {
+    const warnings = find(`
+system Shop {
+  service OrderService {}
+  OrderService -> Ghost
+}
+`);
+    expect(warnings).toHaveLength(1);
+    expect(warnings[0].params).toMatchObject({
+      from: "OrderService",
+      to: "Ghost",
+      unresolvedId: "Ghost",
+    });
+  });
+
+  it("does not warn when both endpoints resolve", () => {
+    expect(
+      find(`
+system Shop {
+  service A {}
+  service B {}
+  A -> B
+}
+`),
+    ).toHaveLength(0);
+  });
+
+  it("does not warn for a domain edge to a domain owned by another service (ghost)", () => {
+    expect(
+      find(`
+system Shop {
+  service OrderSvc {
+    domain Ordering {
+      Ordering -> Catalog
+    }
+  }
+  service CatalogSvc {
+    domain Catalog {}
+  }
+}
+`),
+    ).toHaveLength(0);
+  });
+
+  it("warns when a domain edge targets an unknown domain", () => {
+    const warnings = find(`
+system Shop {
+  service OrderSvc {
+    domain Ordering {
+      Ordering -> Nonexistent
+    }
+  }
+}
+`);
+    expect(warnings).toHaveLength(1);
+    expect(warnings[0].params.unresolvedId).toBe("Nonexistent");
+  });
+
+  it("does not fire for cross-system dotted refs (handled by cross-system-ref)", () => {
+    expect(
+      find(`
+system Shop {
+  service A {}
+  A -> Other.Svc
+}
+`),
+    ).toHaveLength(0);
+  });
+});
+
 describe("cyclic-dependency warning", () => {
   it("detects self-reference (A -> A)", () => {
     const krs = `
@@ -1360,6 +1434,7 @@ describe("warningSeverity — exhaustive register map", () => {
     "unassigned-usecase": "warning",
     "cross-system-ref-implicit-external": "warning",
     "cross-system-ref-unresolved": "warning",
+    "unresolved-edge-endpoint": "warning",
     "cyclic-dependency": "warning",
     "delivers-target-not-client": "warning",
     "client-capability-duplicate": "warning",
