@@ -187,7 +187,6 @@ system ECPlatform {
 | `label` | `label "<表示名>"` | 全種別 | 図上の表示名。省略時は id をそのまま表示する |
 | `description` | `description "<説明>"` | 全種別 | ノードの説明文（複数行は `"""..."""` 形式） |
 | `role` | `role "<ロール名>"` | user | actor archetype、または「この user が何をするか」の一行要約。**authz primitive ではない**（`requires role = ...` 述語も RBAC permission bundle も存在しない） — [ADR-20260511-02](../adr/20260511-02-no-runtime-authz-modeling.md) と [ADR-20260511-04](../adr/20260511-04-user-role-keyword-clarification.md) 参照 |
-| `team` | `team "<チーム名>"` | service, domain | オーナーチーム |
 | `delivers` | `delivers <ClientId>[, <ClientId>...]` | service | この service が配布する client（BFF / SSR パターン）。レンダラーは各エントリを service から参照先 `client` への破線エッジとして描画する |
 | `link` | `link "<URL>" "<ラベル>"` | 全種別 | 関連ドキュメントへのリンク（複数可）。ラベルは省略可 |
 | `resource` | `resource <storageKind> "<name>"` | client | client 上の操作と紐づくローカルストレージ。複数可。client resource storage kinds は下記参照 |
@@ -225,13 +224,11 @@ user <id> [<human|ai>] {
 ```
 service <id> {
   label "<表示名>"
-  team "<チーム名>"
   link "<URL>" "<ラベル>"
   link "<URL>" "<ラベル>"
 
   domain <domainId> {
     label "<ドメイン名>"
-    team "<チーム名>"
     ...
   }
 }

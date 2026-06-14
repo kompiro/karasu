@@ -286,9 +286,6 @@ class Printer {
     if ("role" in node.properties && node.properties.role !== undefined) {
       lines.push(`${indent}role "${node.properties.role}"`);
     }
-    if ("team" in node.properties && node.properties.team !== undefined) {
-      lines.push(`${indent}team "${node.properties.team}"`);
-    }
     if (
       "delivers" in node.properties &&
       Array.isArray(node.properties.delivers) &&

@@ -119,16 +119,6 @@ export function renderWarning(w: Warning, t: TranslateFn): FormattedWarning {
         }),
         details: [],
       };
-    case "deprecated-team-property":
-      return {
-        message: t("warning.deprecatedTeamProperty.message", { nodeId: w.params.nodeId }),
-        details: [
-          t("warning.deprecatedTeamProperty.assignedBy", {
-            ownerTeamId: w.params.ownerTeamId,
-          }),
-          t("warning.deprecatedTeamProperty.recommendation"),
-        ],
-      };
     case "cross-system-ref-unresolved":
       return {
         message: t("warning.crossSystemRefUnresolved.message", { ref: w.params.ref }),

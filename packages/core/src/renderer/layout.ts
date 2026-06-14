@@ -720,9 +720,7 @@ export function layout(
     for (const nid of nodesInLayer) {
       const krsNode = nodeMap.get(nid)!;
       const resolvedTeam =
-        krsNode.kind === "service" || krsNode.kind === "domain"
-          ? (ownerIndex?.get(nid) ?? krsNode.properties.team)
-          : undefined;
+        krsNode.kind === "service" || krsNode.kind === "domain" ? ownerIndex?.get(nid) : undefined;
       const dims = measureNode(krsNode, resolvedTeam, displayMode);
       const y = layerBaselineY;
 
@@ -909,9 +907,7 @@ function layoutGhostSystem(
   let y = originY + CONTAINER_LABEL_HEIGHT + CONTAINER_PADDING;
 
   for (const svc of gs.visibleServices) {
-    const svcTeam =
-      svc.kind === "service" || svc.kind === "domain" ? svc.properties.team : undefined;
-    const dims = measureNode(svc, ownerIndex?.get(svc.id) ?? svcTeam, displayMode);
+    const dims = measureNode(svc, ownerIndex?.get(svc.id), displayMode);
     const x = originX + CONTAINER_PADDING;
     const qualifiedId = `${gs.systemNode.id}.${svc.id}`;
     nodes.set(qualifiedId, {
@@ -1068,7 +1064,7 @@ function layoutMultipleSystems(
         const krsNode = nodeMap.get(nid)!;
         const resolvedTeam =
           krsNode.kind === "service" || krsNode.kind === "domain"
-            ? (ownerIndex?.get(nid) ?? krsNode.properties.team)
+            ? ownerIndex?.get(nid)
             : undefined;
         const dims = measureNode(krsNode, resolvedTeam, displayMode);
 

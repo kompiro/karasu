@@ -19,55 +19,6 @@ const MINIMAL_ICON_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1
   <text class="krs-description" x="8" y="44" text-anchor="start"/>
 </svg>`;
 
-describe("deprecated-team-property warning", () => {
-  it("warns when service has explicit team property covered by owns", () => {
-    const krs = `
-system MySystem {
-  service MyService {
-    team "backend"
-  }
-}
-organization Corp {
-  team backend {
-    owns MyService
-  }
-}
-`;
-    const result = compile(krs);
-    const w = result.warnings.find((warning) => warning.kind === "deprecated-team-property");
-    expect(w).toBeDefined();
-    expect(w?.params.nodeId).toBe("MyService");
-    expect(w?.params.ownerTeamId).toBe("backend");
-  });
-
-  it("does not warn when service has team property but no owns coverage", () => {
-    const krs = `
-system MySystem {
-  service MyService {
-    team "backend"
-  }
-}
-`;
-    const result = compile(krs);
-    expect(result.warnings.filter((w) => w.kind === "deprecated-team-property")).toHaveLength(0);
-  });
-
-  it("does not warn when service has no team property but owns coverage exists", () => {
-    const krs = `
-system MySystem {
-  service MyService {}
-}
-organization Corp {
-  team backend {
-    owns MyService
-  }
-}
-`;
-    const result = compile(krs);
-    expect(result.warnings.filter((w) => w.kind === "deprecated-team-property")).toHaveLength(0);
-  });
-});
-
 describe("invalid-owns warning", () => {
   it("warns when owns references a non-existent ID (no system block)", () => {
     const krs = `
@@ -1399,7 +1350,6 @@ describe("warningSeverity — exhaustive register map", () => {
     "style-conflict": "warning",
     "unresolved-realizes": "warning",
     "invalid-owns": "warning",
-    "deprecated-team-property": "warning",
     "unassigned-domain": "warning",
     "unassigned-service": "warning",
     "unassigned-client": "warning",

@@ -49,8 +49,6 @@ function makeWarning(kind: Warning["kind"]): Warning {
       };
     case "invalid-owns":
       return { kind, params: { teamId: "test-team", ownedId: "test-owned" } };
-    case "deprecated-team-property":
-      return { kind, params: { nodeId: "test-node", ownerTeamId: "test-team" } };
     case "unassigned-domain":
       return { kind, params: { domainId: "test-domain" } };
     case "unassigned-service":
@@ -192,10 +190,8 @@ describe("WarningPanel", () => {
   });
 
   it("renders details from the compat bridge when the warning kind has them", () => {
-    // deprecated-team-property emits 2 detail lines via formatWarning
-    const { container } = render(
-      <WarningPanel warnings={[makeWarning("deprecated-team-property")]} />,
-    );
+    // domain-dispersal emits detail lines (the dispersed services + a cohesion note)
+    const { container } = render(<WarningPanel warnings={[makeWarning("domain-dispersal")]} />);
     const details = container.querySelectorAll(".warning-details > div");
     expect(details.length).toBeGreaterThan(0);
   });

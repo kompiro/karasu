@@ -348,16 +348,20 @@ system Test {
     expect(svg).not.toContain('data-deploy-button="Payment"');
   });
 
-  it("renders clickable team button when service has team property", () => {
+  it("renders clickable team button when service is owned by a team", () => {
     const svg = renderFromSource(`
 system Test {
   service ECommerce {
     label "ECサイト"
-    team "ec-team"
+  }
+}
+organization Corp {
+  team ecTeam {
+    owns ECommerce
   }
 }
     `);
-    expect(svg).toContain('data-team-button="ec-team"');
+    expect(svg).toContain('data-team-button="ecTeam"');
     expect(svg).toContain("👥");
   });
 
@@ -448,8 +452,12 @@ system Test {
 system Test {
   service ECommerce {
     label "ECサイト"
-    team "ec-team"
     link "https://example.com" "Wiki"
+  }
+}
+organization Corp {
+  team ecTeam {
+    owns ECommerce
   }
 }
     `);

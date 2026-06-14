@@ -28,10 +28,6 @@ const SAMPLES: Record<WarningKind, Warning> = {
     kind: "invalid-owns",
     params: { teamId: "Platform", ownedId: "MissingSvc" },
   },
-  "deprecated-team-property": {
-    kind: "deprecated-team-property",
-    params: { nodeId: "OrderService", ownerTeamId: "Platform" },
-  },
   "unassigned-domain": {
     kind: "unassigned-domain",
     params: { domainId: "Orders", label: "Orders Domain" },
@@ -132,7 +128,6 @@ const IDENTIFIERS: Record<WarningKind, string[]> = {
   "missing-realizes": ["ApiUnit"],
   "unresolved-realizes": ["ApiUnit", "MissingSvc"],
   "invalid-owns": ["Platform", "MissingSvc"],
-  "deprecated-team-property": ["OrderService"],
   "unassigned-domain": ["Orders Domain"],
   "unassigned-service": ["OrderService"],
   "unassigned-client": ["WebApp"],

@@ -50,7 +50,6 @@ system ECommerce {
     }
     link "Design Wiki" "https://wiki.example.com/order"
     link "API Docs" "https://api.example.com/order"
-    team "Order Team"
 
     domain OrderManagement {}
     domain Inventory {}
@@ -59,8 +58,6 @@ system ECommerce {
     description {
       User authentication and profile management.
     }
-    team "User Team"
-
     domain Auth {}
   }
   user Customer {
@@ -68,6 +65,16 @@ system ECommerce {
   }
   OrderService -> UserService
   Customer -> OrderService
+}
+organization Corp {
+  team orderTeam {
+    label "Order Team"
+    owns OrderService
+  }
+  team userTeam {
+    label "User Team"
+    owns UserService
+  }
 }
 ```
 

@@ -140,7 +140,7 @@ Verify that the organization diagram feature renders correctly, supports drill-d
 
 ---
 
-### TC-07: Deprecated `team` Property Warning
+### TC-07: Removed `team` Property Error
 
 **Steps:**
 1. Click the **⬡ System** tab in the diagram tab bar to switch to logical view
@@ -154,8 +154,8 @@ Verify that the organization diagram feature renders correctly, supports drill-d
    ```
 
 **Expected:**
-- Diagnostic warning: `"team" property is deprecated; use an organization block with "owns" instead`
-- Service still renders normally in logical view
+- Diagnostic error: `"team" property has been removed; declare ownership with an organization block and "owns"`
+- Service still renders in logical view (the removed property is ignored)
 
 ---
 
@@ -199,5 +199,5 @@ Verify that the organization diagram feature renders correctly, supports drill-d
 | OrgViewExtract drill-down | `packages/core/src/view/org-view-extract.test.ts` |
 | Duplicate ID error | `parser.test.ts` |
 | Duplicate owns error | `parser.test.ts` |
-| Deprecation warning | `parser.test.ts` |
+| Removed-property error | `parser.test.ts` |
 | Invalid owns warning | `packages/core/src/resolver/warnings.test.ts` |

@@ -7,7 +7,6 @@ export type WarningKind =
   | "missing-realizes"
   | "unresolved-realizes"
   | "invalid-owns"
-  | "deprecated-team-property"
   | "unassigned-domain"
   | "unassigned-service"
   | "unassigned-client"
@@ -54,7 +53,6 @@ export interface WarningParamsByKind {
     target: string;
   };
   "invalid-owns": { teamId: string; ownedId: string };
-  "deprecated-team-property": { nodeId: string; ownerTeamId: string };
   "unassigned-domain": { domainId: string; label?: string };
   "unassigned-service": { serviceId: string; label?: string };
   "unassigned-client": { clientId: string; label?: string };

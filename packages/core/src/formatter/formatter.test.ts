@@ -209,13 +209,6 @@ describe("format()", () => {
     expectAstRoundTrip(src);
   });
 
-  it("formats service node with team property", () => {
-    const src = `system S { service A { team "Backend" } }`;
-    expect(fmt(src)).toContain(`    team "Backend"`);
-    expectIdempotent(fmt(src));
-    expectAstRoundTrip(src);
-  });
-
   // ── Tags and annotations ─────────────────────────────────────────────────
 
   it("formats tags", () => {

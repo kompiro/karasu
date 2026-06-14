@@ -774,8 +774,8 @@ function buildNodeMetadata(
     const id = node.id;
     const description = node.properties.description;
     const isServiceOrDomain = node.kind === "service" || node.kind === "domain";
-    // Resolve team: ownerIndex (from org.team.owns) takes precedence over service.team property
-    const team = isServiceOrDomain ? (ownerIndex?.get(id) ?? node.properties.team) : undefined;
+    // Resolve owner team from the organization graph (org.team.owns).
+    const team = isServiceOrDomain ? ownerIndex?.get(id) : undefined;
     map.set(id, {
       kind: node.kind,
       label: node.label ?? node.id,
