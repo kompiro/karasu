@@ -52,6 +52,24 @@ interface RunTurnOptions {
   navigateMode?: "followup" | "side_effect" | "ignore";
   /** When false, apply_krs_patch blocks are silently dropped. */
   extractPatch?: boolean;
+  /** Aborts the API request(s) when the session is reset mid-flight (#1533). */
+  signal?: AbortSignal;
+  /**
+   * True once this turn's session has been superseded (project switch / New
+   * Session / a newer operation). When stale, the `navigate_view` side effect
+   * is suppressed so a reply for the old session can't move the new view.
+   */
+  isStale?: () => boolean;
+}
+
+/**
+ * Handle for one async operation: the {@link AbortSignal} to pass to the API
+ * and an `isStale()` guard, both tied to the generation captured when the
+ * operation began. See {@link useChatSession}'s `beginOperation` (#1533).
+ */
+interface Operation {
+  signal: AbortSignal;
+  isStale: () => boolean;
 }
 
 // Marks the assistant message that carried the tool_use as resolved (so the
@@ -120,7 +138,30 @@ export function useChatSession({
   const apiKeyRef = useRef(apiKey);
   apiKeyRef.current = apiKey;
 
+  // Generation guard (#1533). `resetSession` (project switch / New Session) and
+  // each new operation bump the generation and abort the in-flight request, so
+  // an earlier turn's reply — its `setMessages`/`setPhase` writes AND its
+  // `navigate_view` side effect — is dropped instead of leaking into the
+  // freshly-cleared session.
+  const generationRef = useRef(0);
+  const abortRef = useRef<AbortController | null>(null);
+
+  const beginOperation = useCallback((): Operation => {
+    abortRef.current?.abort();
+    generationRef.current++;
+    const controller = new AbortController();
+    abortRef.current = controller;
+    const generation = generationRef.current;
+    return {
+      signal: controller.signal,
+      isStale: () => generation !== generationRef.current,
+    };
+  }, []);
+
   const resetSession = useCallback(() => {
+    generationRef.current++;
+    abortRef.current?.abort();
+    abortRef.current = null;
     setMessages([]);
     setPhase({ kind: "idle" });
   }, []);
@@ -141,7 +182,7 @@ export function useChatSession({
       apiMessages: Anthropic.Messages.MessageParam[],
       options: RunTurnOptions = {},
     ): Promise<{ text: string; patchProposal?: PatchProposal }> => {
-      const { navigateMode = "followup", extractPatch = true } = options;
+      const { navigateMode = "followup", extractPatch = true, signal, isStale } = options;
 
       const key = apiKeyRef.current;
       if (!key) return { text: "" };
@@ -156,13 +197,16 @@ export function useChatSession({
         locale,
       });
 
-      const response = await client.messages.create({
-        model: MODEL,
-        max_tokens: 4096,
-        system,
-        tools,
-        messages: apiMessages,
-      });
+      const response = await client.messages.create(
+        {
+          model: MODEL,
+          max_tokens: 4096,
+          system,
+          tools,
+          messages: apiMessages,
+        },
+        { signal },
+      );
 
       let text = "";
       let patchProposal: PatchProposal | undefined;
@@ -172,7 +216,7 @@ export function useChatSession({
         if (block.type === "text") {
           text += block.text;
         } else if (block.type === "tool_use") {
-          if (block.name === "navigate_view" && navigateMode !== "ignore") {
+          if (block.name === "navigate_view" && navigateMode !== "ignore" && !isStale?.()) {
             const input = block.input as { path: string[] };
             onNavigateViewPath(input.path);
             if (navigateMode === "followup") navigateToolUseId = block.id;
@@ -207,13 +251,16 @@ export function useChatSession({
             ],
           },
         ];
-        const followup = await client.messages.create({
-          model: MODEL,
-          max_tokens: 4096,
-          system,
-          tools,
-          messages: followupMessages,
-        });
+        const followup = await client.messages.create(
+          {
+            model: MODEL,
+            max_tokens: 4096,
+            system,
+            tools,
+            messages: followupMessages,
+          },
+          { signal },
+        );
         for (const fb of followup.content) {
           if (fb.type === "text") text += fb.text;
         }
@@ -227,12 +274,18 @@ export function useChatSession({
   // ── callApi ────────────────────────────────────────────────────────────────
 
   const callApi = useCallback(
-    async (history: ChatMessage[], retryUserMsgId?: string): Promise<void> => {
+    async (history: ChatMessage[], op: Operation, retryUserMsgId?: string): Promise<void> => {
       if (!apiKeyRef.current) return;
       const apiMessages = buildApiMessages(history);
 
       try {
-        const { text, patchProposal } = await runTurn(apiMessages);
+        const { text, patchProposal } = await runTurn(apiMessages, {
+          signal: op.signal,
+          isStale: op.isStale,
+        });
+        // The session was reset (or superseded) while awaiting — drop this
+        // reply so it can't append to the new session (#1533).
+        if (op.isStale()) return;
 
         const assistantMsg: AssistantChatMessage = {
           id: crypto.randomUUID(),
@@ -248,6 +301,10 @@ export function useChatSession({
           setPhase({ kind: "idle" });
         }
       } catch (err) {
+        // The reset aborts the request, which surfaces here as an error — a
+        // superseded failure is dropped rather than logged into the new
+        // session (#1533).
+        if (op.isStale()) return;
         // eslint-disable-next-line no-console
         console.error(
           "[useChatSession] API error:",
@@ -274,6 +331,7 @@ export function useChatSession({
 
   const sendMessage = useCallback(
     async (text: string): Promise<void> => {
+      const op = beginOperation();
       const currentPhase = phaseRef.current;
       let baseMessages = messages;
 
@@ -299,11 +357,15 @@ export function useChatSession({
           const { text: autoText } = await runTurn(followupMessages, {
             navigateMode: "side_effect",
             extractPatch: false,
+            signal: op.signal,
+            isStale: op.isStale,
           });
           baseMessages = markPatchResolved(messages, proposal, "User declined.", autoText);
         } catch {
           // Silently ignore auto-reject errors — user's new message will proceed regardless
         }
+        // A reset during the auto-reject supersedes this send entirely (#1533).
+        if (op.isStale()) return;
         setMessages(baseMessages);
         setPhase({ kind: "idle" });
       }
@@ -316,9 +378,9 @@ export function useChatSession({
       const nextMessages = [...baseMessages, userMsg];
       setMessages(nextMessages);
       setPhase({ kind: "loading" });
-      await callApi(nextMessages, userMsg.id);
+      await callApi(nextMessages, op, userMsg.id);
     },
-    [messages, callApi, runTurn],
+    [messages, callApi, runTurn, beginOperation],
   );
 
   // ── retryMessage ───────────────────────────────────────────────────────────
@@ -327,12 +389,13 @@ export function useChatSession({
     async (userMessageId: string): Promise<void> => {
       const idx = messages.findIndex((m) => m.id === userMessageId);
       if (idx === -1) return;
+      const op = beginOperation();
       const trimmed = messages.slice(0, idx + 1);
       setMessages(trimmed);
       setPhase({ kind: "loading" });
-      await callApi(trimmed, userMessageId);
+      await callApi(trimmed, op, userMessageId);
     },
-    [messages, callApi],
+    [messages, callApi, beginOperation],
   );
 
   // ── applyPatch ─────────────────────────────────────────────────────────────
@@ -382,6 +445,7 @@ export function useChatSession({
 
       if (!apiKeyRef.current) return;
 
+      const op = beginOperation();
       const followupMessages: Anthropic.Messages.MessageParam[] = [
         ...buildApiMessages(messages),
         {
@@ -394,10 +458,14 @@ export function useChatSession({
         const { text } = await runTurn(followupMessages, {
           navigateMode: "ignore",
           extractPatch: false,
+          signal: op.signal,
+          isStale: op.isStale,
         });
+        if (op.isStale()) return;
         setMessages((prev) => markPatchResolved(prev, proposal, "Applied.", text));
         setPhase({ kind: "idle" });
       } catch (err) {
+        if (op.isStale()) return;
         const errorType = classifyError(err);
         setMessages((prev) => [
           ...prev,
@@ -411,7 +479,7 @@ export function useChatSession({
         setPhase({ kind: "idle" });
       }
     },
-    [messages, onEditorChange, runTurn],
+    [messages, onEditorChange, runTurn, beginOperation],
   );
 
   // ── rejectPatch ────────────────────────────────────────────────────────────
@@ -423,6 +491,7 @@ export function useChatSession({
         setPhase({ kind: "idle" });
         return;
       }
+      const op = beginOperation();
       const followupMessages: Anthropic.Messages.MessageParam[] = [
         ...buildApiMessages(messages),
         {
@@ -437,10 +506,14 @@ export function useChatSession({
         const { text } = await runTurn(followupMessages, {
           navigateMode: "ignore",
           extractPatch: false,
+          signal: op.signal,
+          isStale: op.isStale,
         });
+        if (op.isStale()) return;
         setMessages((prev) => markPatchResolved(prev, proposal, "User declined.", text));
         setPhase({ kind: "idle" });
       } catch (err) {
+        if (op.isStale()) return;
         const errorType = classifyError(err);
         setMessages((prev) => [
           ...prev,
@@ -454,13 +527,14 @@ export function useChatSession({
         setPhase({ kind: "idle" });
       }
     },
-    [messages, runTurn],
+    [messages, runTurn, beginOperation],
   );
 
   // ── startReview ────────────────────────────────────────────────────────────
 
   const startReview = useCallback(async (): Promise<void> => {
     if (!apiKeyRef.current) return;
+    const op = beginOperation();
     setPhase({ kind: "loading" });
 
     // Trigger message is NOT stored in the messages state — only the AI's response is shown.
@@ -469,7 +543,11 @@ export function useChatSession({
     ];
 
     try {
-      const { text, patchProposal } = await runTurn(triggerMessages);
+      const { text, patchProposal } = await runTurn(triggerMessages, {
+        signal: op.signal,
+        isStale: op.isStale,
+      });
+      if (op.isStale()) return;
 
       if (text || patchProposal) {
         setMessages([
@@ -487,6 +565,7 @@ export function useChatSession({
         setPhase({ kind: "idle" });
       }
     } catch (err) {
+      if (op.isStale()) return;
       const errorType = classifyError(err);
       setMessages([
         {
@@ -498,12 +577,13 @@ export function useChatSession({
       ]);
       setPhase({ kind: "idle" });
     }
-  }, [runTurn, locale]);
+  }, [runTurn, locale, beginOperation]);
 
   // ── startInterview ─────────────────────────────────────────────────────────
 
   const startInterview = useCallback(async (): Promise<void> => {
     if (!apiKeyRef.current) return;
+    const op = beginOperation();
     setPhase({ kind: "loading" });
 
     // Trigger message is NOT stored in the messages state — only the AI's opening response is shown.
@@ -512,12 +592,18 @@ export function useChatSession({
     ];
 
     try {
-      const { text } = await runTurn(triggerMessages, { extractPatch: false });
+      const { text } = await runTurn(triggerMessages, {
+        extractPatch: false,
+        signal: op.signal,
+        isStale: op.isStale,
+      });
+      if (op.isStale()) return;
       if (text) {
         setMessages([{ id: crypto.randomUUID(), role: "assistant", content: text }]);
       }
       setPhase({ kind: "idle" });
     } catch (err) {
+      if (op.isStale()) return;
       const errorType = classifyError(err);
       setMessages([
         {
@@ -529,7 +615,7 @@ export function useChatSession({
       ]);
       setPhase({ kind: "idle" });
     }
-  }, [runTurn, locale]);
+  }, [runTurn, locale, beginOperation]);
 
   return {
     messages,
