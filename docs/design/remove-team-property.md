@@ -4,6 +4,7 @@
 - **ステータス**: 検討中
 - **関連**:
   - 引き金 Issue: [#1564](https://github.com/kompiro/karasu/issues/1564)
+  - PR: [#1576](https://github.com/kompiro/karasu/pull/1576)
   - 関連 ADR: [ADR-20260323-03](../adr/20260323-03-organization-diagram.md)（`team` プロパティを deprecate した決定。本設計はその廃止計画を完了させる）
   - 関連 TPL: [TPL-20260610-01](../test-perspectives/TPL-20260610-01-accepted-vocabulary-must-have-effect.md)（受理語彙は「効果を持つ / 警告される / open set と明文化」のいずれか）、[TPL-20260511-01](../test-perspectives/TPL-20260511-01-keyword-lexical-ambiguity-fence-vs-deprecate.md)（fence か deprecate か）
   - コード: `packages/core/src/parser/parser.ts`, `packages/core/src/resolver/warnings.ts`, `packages/core/src/types/ast.ts`, `packages/core/src/renderer/{svg-renderer,layout}.ts`, `packages/core/src/index.ts`, `packages/i18n/src/{render-warning,render-diagnostic,en,ja}.ts`
