@@ -61,6 +61,13 @@ export type Translations = {
   "projectSelector.translate.button": string;
   "projectSelector.ok": string;
   "projectSelector.cancel": string;
+  "project.error.create": (params: { detail: string }) => string;
+  "project.error.rename": (params: { detail: string }) => string;
+  "project.error.delete": (params: { detail: string }) => string;
+  "project.error.export": (params: { detail: string }) => string;
+  "project.error.import": (params: { detail: string }) => string;
+  "project.error.snapshot": (params: { detail: string }) => string;
+  "project.error.dismiss": string;
 
   // Translate dialog
   "translateDialog.title": string;

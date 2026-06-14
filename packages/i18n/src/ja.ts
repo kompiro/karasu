@@ -57,6 +57,13 @@ export const ja: Partial<Translations> = {
   "projectSelector.translate.button": "⇄ 変換",
   "projectSelector.ok": "OK",
   "projectSelector.cancel": "キャンセル",
+  "project.error.create": ({ detail }) => `⚠ プロジェクトの作成に失敗しました: ${detail}`,
+  "project.error.rename": ({ detail }) => `⚠ プロジェクト名の変更に失敗しました: ${detail}`,
+  "project.error.delete": ({ detail }) => `⚠ プロジェクトの削除に失敗しました: ${detail}`,
+  "project.error.export": ({ detail }) => `⚠ プロジェクトのエクスポートに失敗しました: ${detail}`,
+  "project.error.import": ({ detail }) => `⚠ インポートに失敗しました: ${detail}`,
+  "project.error.snapshot": ({ detail }) => `⚠ スナップショットの取得に失敗しました: ${detail}`,
+  "project.error.dismiss": "✕ 閉じる",
 
   // Translate dialog
   "translateDialog.title": "⇄ インフラ設定を .krs に変換",
