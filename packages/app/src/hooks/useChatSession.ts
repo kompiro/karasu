@@ -170,6 +170,12 @@ export function useChatSession({
     resetSession();
   }, [sessionResetKey, resetSession]);
 
+  // Abort any in-flight request when the hook unmounts — ChatPane is unmounted
+  // when the user switches to the Editor tab, and without this the request runs
+  // to completion against a torn-down session (wasted work + a setState the
+  // generation guard can't catch, since unmount doesn't bump it) (#1533).
+  useEffect(() => () => abortRef.current?.abort(), []);
+
   // ── Core turn ──────────────────────────────────────────────────────────────
 
   // Single turn of the Anthropic conversation: sends apiMessages, then collects

@@ -129,4 +129,24 @@ describe("useChatSession — in-flight cancellation (#1533)", () => {
     expect(result.current.messages).toHaveLength(0);
     expect(result.current.phase).toEqual({ kind: "idle" });
   });
+
+  // startReview / startInterview / applyPatch / rejectPatch call runTurn
+  // directly (not via callApi), so they carry their own isStale guard. Fence
+  // that path too — not just the callApi path that sendMessage uses.
+  it("drops a startReview reply and suppresses its navigation when reset mid-flight", async () => {
+    const { result, onNavigateViewPath } = setup();
+
+    createMock.mockImplementation(async () => {
+      result.current.resetSession();
+      return replyWithNavigation;
+    });
+
+    await act(async () => {
+      await result.current.startReview();
+    });
+
+    expect(result.current.messages).toHaveLength(0);
+    expect(onNavigateViewPath).not.toHaveBeenCalled();
+    expect(result.current.phase).toEqual({ kind: "idle" });
+  });
 });
