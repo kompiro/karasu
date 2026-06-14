@@ -40,8 +40,13 @@ type: feature
 - [ ] AT-G（manual）: `karasu render examples/multi-file-system/index.krs --view deploy` および `--view org` で 4 container / 3 team が描画されていることを目視確認する
   > 🧑 Manual — SVG を目視
 
+- [ ] AT-H: merged モデルに存在しない id を指すエッジは drop され（解決できた側のノードは残る — TPL-20260514-05）、`unresolved-edge-endpoint` 警告が出る (S6)。cross-system dotted ref（`Sys.Svc`）はこの警告の対象外（`cross-system-ref-*` が担当）。単一ドキュメントの LSP 文脈では import 未解決のため抑制される
+  > ✅ Automated — `warnings.test.ts` の `"unresolved-edge-endpoint warning"` describe（dangling / resolved / ghost-domain / cross-system / domain-edge ケース）
+
 ## 関連
 
 - ADR: `docs/adr/20260514-01-multi-file-import-semantics.md`
 - 仕様化 PR: #1383 (merged)
 - 実装 PR: 本 PR
+- AT-H（S6 警告）実装: #1569
+- 関連 TPL: [TPL-20260514-05](../test-perspectives/TPL-20260514-05-dangling-edge-preserves-node.md)（ノード保持の半分。本 AT で警告の半分も担保）

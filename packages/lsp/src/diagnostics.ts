@@ -87,6 +87,14 @@ export function computeDiagnostics(
   // (TPL-20260612-01).
   if (!isStyleDocument && !("rules" in parseResult.value)) {
     for (const w of analyze(parseResult.value, [])) {
+      // `unresolved-edge-endpoint` is import-coupled, not style-coupled: it only
+      // means "this id exists nowhere in the *merged* model" (§S6). The LSP
+      // analyzes a single document with imports unresolved, so a routine
+      // cross-file edge (the canonical system-reopen pattern) would false-positive
+      // here. Suppress it in the single-document context; the App / CLI run
+      // `analyze()` over the import-merged file where it is accurate
+      // (TPL-20260612-01 — new import/style-coupled diagnostics record their side).
+      if (w.kind === "unresolved-edge-endpoint") continue;
       diagnostics.push({
         severity:
           warningSeverity(w.kind) === "info"

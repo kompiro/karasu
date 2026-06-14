@@ -124,6 +124,15 @@ export function renderWarning(w: Warning, t: TranslateFn): FormattedWarning {
         message: t("warning.crossSystemRefUnresolved.message", { ref: w.params.ref }),
         details: [],
       };
+    case "unresolved-edge-endpoint":
+      return {
+        message: t("warning.unresolvedEdgeEndpoint.message", {
+          from: w.params.from,
+          to: w.params.to,
+          unresolvedId: w.params.unresolvedId,
+        }),
+        details: [],
+      };
     case "cross-system-ref-implicit-external":
       return {
         message: t("warning.crossSystemRefImplicitExternal.message", {

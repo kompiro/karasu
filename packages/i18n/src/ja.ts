@@ -197,6 +197,8 @@ export const ja: Partial<Translations> = {
     `team "${teamId}" が "${ownedId}" を owns していますが、その id を持つ service または domain が存在しません`,
   "warning.crossSystemRefUnresolved.message": ({ ref }) =>
     `"${ref}" を解決できませんでした — 未解決の外部ノードとして描画されます`,
+  "warning.unresolvedEdgeEndpoint.message": ({ from, to, unresolvedId }) =>
+    `エッジ "${from} → ${to}" が未定義のノード "${unresolvedId}" を参照しています。このエッジは描画されません（解決できた側のノードは保持されます）`,
   "warning.crossSystemRefImplicitExternal.message": ({ ref, sourceSystemId, sourceNodeId }) =>
     `"${ref}" は ${sourceSystemId}.${sourceNodeId} から参照されていますが、@external として明示されていません`,
   "warning.crossSystemRefImplicitExternal.suppressHint": ({ targetSystemId, sourceSystemId }) =>

@@ -64,6 +64,10 @@ const SAMPLES: Record<WarningKind, Warning> = {
     kind: "cross-system-ref-unresolved",
     params: { ref: "Missing.Svc" },
   },
+  "unresolved-edge-endpoint": {
+    kind: "unresolved-edge-endpoint",
+    params: { from: "OrderService", to: "Missing", unresolvedId: "Missing" },
+  },
   "cyclic-dependency": {
     kind: "cyclic-dependency",
     params: { cyclePath: ["A", "B", "A"] },
@@ -138,6 +142,7 @@ const IDENTIFIERS: Record<WarningKind, string[]> = {
   "unassigned-usecase": ["PlaceOrder"],
   "cross-system-ref-implicit-external": ["Other.Svc"],
   "cross-system-ref-unresolved": ["Missing.Svc"],
+  "unresolved-edge-endpoint": ["OrderService", "Missing"],
   "cyclic-dependency": ["A", "B"],
   "delivers-target-not-client": ["BFF", "OrderService"],
   "client-capability-duplicate": ["WebApp", "camera"],

@@ -17,6 +17,7 @@ export type WarningKind =
   | "unassigned-usecase"
   | "cross-system-ref-implicit-external"
   | "cross-system-ref-unresolved"
+  | "unresolved-edge-endpoint"
   | "cyclic-dependency"
   | "delivers-target-not-client"
   | "client-capability-duplicate"
@@ -75,6 +76,14 @@ export interface WarningParamsByKind {
     targetSystemId: string;
   };
   "cross-system-ref-unresolved": { ref: string };
+  /**
+   * An authored edge references a node id that exists nowhere in the merged
+   * model. The edge is dropped during view extraction (the resolved endpoint
+   * node is preserved — see §S6 / TPL-20260514-05); this warning surfaces the
+   * silent drop. Cross-system dotted refs (`Sys.Svc`) are excluded — those are
+   * handled by `cross-system-ref-*`.
+   */
+  "unresolved-edge-endpoint": { from: string; to: string; unresolvedId: string };
   "cyclic-dependency": { cyclePath: string[] };
   "delivers-target-not-client": { serviceId: string; targetId: string };
   /**

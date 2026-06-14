@@ -191,6 +191,11 @@ export type Translations = {
   }) => string;
   "warning.invalidOwns.message": (params: { teamId: string; ownedId: string }) => string;
   "warning.crossSystemRefUnresolved.message": (params: { ref: string }) => string;
+  "warning.unresolvedEdgeEndpoint.message": (params: {
+    from: string;
+    to: string;
+    unresolvedId: string;
+  }) => string;
   "warning.crossSystemRefImplicitExternal.message": (params: {
     ref: string;
     sourceSystemId: string;
