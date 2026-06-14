@@ -8,22 +8,15 @@ import {
   type RefObject,
 } from "react";
 import { useEditorWidth } from "../hooks/useEditorWidth.js";
-import {
-  basename,
-  format,
-  FormatError,
-  tidyStyleSheet,
-  type EdgeDirection,
-} from "@karasu-tools/core";
 import { SnapshotManager } from "../fs/snapshot-manager.js";
 import { EditArea } from "./EditArea.js";
-import { OutlineView, type OutlineNode } from "./OutlineView.js";
-import { toDeployOutline, toOrgOutline, toSystemOutline } from "./outline-adapters.js";
+import { EditPane } from "./EditPane.js";
+import { OutlineView } from "./OutlineView.js";
 import { PreviewColumn } from "./PreviewColumn.js";
 import { downloadSvg } from "../utils/download-svg.js";
 import { downloadDrawio } from "../utils/download-drawio.js";
 import { useAppContext } from "../state/app-context.js";
-import { PreviewProvider, type PreviewContextValue } from "../state/preview-context.js";
+import { PreviewProvider } from "../state/preview-context.js";
 import { useAppViews } from "../hooks/useAppViews.js";
 import { useSnapshotAutoCapture } from "../hooks/useSnapshotAutoCapture.js";
 import { useBreadcrumbs } from "../hooks/useBreadcrumbs.js";
@@ -32,15 +25,10 @@ import { useCrossNavigation } from "../hooks/useCrossNavigation.js";
 import { useViewSvg } from "../hooks/useViewSvg.js";
 import { useTheme } from "../theme/index.js";
 import { useStyleSource } from "../hooks/useStyleSource.js";
-import { useEditorExternalRefresh } from "../hooks/useEditorExternalRefresh.js";
-import { useSerializedFileWrite } from "../hooks/useSerializedFileWrite.js";
-import {
-  upsertEdgeDirectionRule,
-  deriveStyleFilePath,
-  injectStyleImport,
-  resolveOrDeriveStyleAppendTarget,
-  resolveStyleAppendTarget,
-} from "../lib/append-style-rule.js";
+import { useEditorDocument } from "../hooks/useEditorDocument.js";
+import { useEdgeDirectionWriter } from "../hooks/useEdgeDirectionWriter.js";
+import { useOutline } from "../hooks/useOutline.js";
+import { usePreviewContextValue } from "../hooks/usePreviewContextValue.js";
 import { DiffModeBanner } from "./DiffModeBanner.js";
 import { DiagramViewShortcuts } from "./DiagramViewShortcuts.js";
 import { PreviewFocusShortcut } from "./PreviewFocusShortcut.js";
@@ -75,8 +63,11 @@ interface AppShellProps {
  *
  * View compilation, navigation, breadcrumbs, editor-jump, and cross-view
  * navigation live in dedicated hooks (`useAppViews`, `useBreadcrumbs`,
- * `useJumpToEditor`, `useCrossNavigation`). AppShell is a thin orchestrator
- * that wires them to `PreviewColumn` and `EditArea`.
+ * `useJumpToEditor`, `useCrossNavigation`). The editor document lifecycle,
+ * GUI edge-direction writes, the outline, and the preview-context assembly are
+ * likewise extracted (`useEditorDocument`, `useEdgeDirectionWriter`,
+ * `useOutline`, `usePreviewContextValue` — #1541). AppShell is a thin
+ * orchestrator that wires them to `PreviewColumn` and `EditArea`.
  *
  * Mode-specific concerns (initialization, project management, sidebar content)
  * are handled by the parent wrapper components.
@@ -175,167 +166,37 @@ export function AppShell({
   const nodeMetadata =
     activeView === "deploy" ? views.deploy.nodeMetadata : views.system.nodeMetadata;
 
-  // The Outline reflects the active view's AST (Issue #1410): the system AST
-  // for system/matrix, the deploy block tree for deploy, the org AST for org.
-  const outlineNodes = useMemo<OutlineNode[]>(() => {
-    switch (activeView) {
-      case "deploy":
-        return toDeployOutline(views.deploy.deployTree);
-      case "org":
-        return toOrgOutline(views.org.organizations);
-      default:
-        // system and matrix both outline the system AST.
-        return toSystemOutline(views.system.resolvedSystems);
-    }
-  }, [activeView, views.deploy.deployTree, views.org.organizations, views.system.resolvedSystems]);
+  const outline = useOutline({
+    activeView,
+    deployTree: views.deploy.deployTree,
+    organizations: views.org.organizations,
+    resolvedSystems: views.system.resolvedSystems,
+    systemNodeMetadata: views.system.nodeMetadata,
+    orgPathIndex: views.orgPathIndex,
+    dispatch,
+    navigateViewPath,
+  });
 
-  const systemNodeMetadata = views.system.nodeMetadata;
-  const orgPathIndex = views.orgPathIndex;
-
-  // Single click — highlight the node in the preview (no navigation). The
-  // Outline already reflects the active view, so the highlight stays in it.
-  // matrix is the exception: it has no per-node highlight, so a click drops
-  // to the system view it derives from.
-  const handleOutlineSelect = useCallback(
-    (nodeId: string) => {
-      if (activeView === "matrix") {
-        dispatch({ type: "SET_ACTIVE_VIEW", activeView: "system", highlightNodeId: nodeId });
-      } else {
-        dispatch({ type: "SET_HIGHLIGHTED_NODE", nodeId });
-      }
-    },
-    [activeView, dispatch],
-  );
-
-  // Double click — drill the preview down to reveal the node, then highlight
-  // it. Drill resolution is per view: system/matrix walk `nodeMetadata.viewPath`
-  // (leaf nodes fall back to the nearest ancestor that carries one), org walks
-  // `orgPathIndex`; deploy has no drill path — it switches the selected block.
-  const handleOutlineActivate = useCallback(
-    (nodeId: string, ancestorIds: string[]) => {
-      if (activeView === "deploy") {
-        // The node's deploy block is the top-level ancestor, or the node
-        // itself when a block row is activated.
-        const blockId = ancestorIds[0] ?? nodeId;
-        dispatch({ type: "SET_SELECTED_DEPLOY_BLOCK", id: blockId });
-        dispatch({ type: "SET_HIGHLIGHTED_NODE", nodeId });
-        return;
-      }
-      const candidates = [nodeId, ...[...ancestorIds].reverse()];
-      if (activeView === "org") {
-        let drillPath: string[] = [];
-        for (const id of candidates) {
-          const vp = orgPathIndex.get(id);
-          if (vp) {
-            drillPath = vp;
-            break;
-          }
-        }
-        dispatch({ type: "SET_HIGHLIGHTED_NODE", nodeId });
-        navigateViewPath(drillPath);
-        return;
-      }
-      // system / matrix
-      if (activeView === "matrix") {
-        dispatch({ type: "SET_ACTIVE_VIEW", activeView: "system", highlightNodeId: nodeId });
-      } else {
-        dispatch({ type: "SET_HIGHLIGHTED_NODE", nodeId });
-      }
-      let drillPath: string[] = [];
-      for (const id of candidates) {
-        const vp = systemNodeMetadata.get(id)?.viewPath;
-        if (vp) {
-          drillPath = vp;
-          break;
-        }
-      }
-      navigateViewPath(drillPath);
-    },
-    [activeView, dispatch, navigateViewPath, systemNodeMetadata, orgPathIndex],
-  );
-
-  // Auto-save writes are serialized so per-keystroke writes can't reorder on
-  // disk, and tracked so the external-refresh watcher recognizes them as
-  // echoes (#1535).
-  const { write: saveCurrentFile, isOwnWrite } = useSerializedFileWrite(fs, currentFilePath);
-
-  const handleEditorChange = useCallback(
-    async (value: string) => {
-      dispatch({ type: "UPDATE_FILE_CONTENT", content: value });
-      if (!currentFilePath) return;
-      await saveCurrentFile(currentFilePath, value);
-      recompile();
-    },
-    [currentFilePath, saveCurrentFile, dispatch, recompile],
-  );
-
-  // External writes (GUI direction append, AI translate, snapshot writes,
-  // …) reach the editor via the ObservableFileSystemProvider. Refresh
-  // Monaco's buffer when disk diverges from state — but not for our own
-  // serialized auto-save echoes (#1535).
-  useEditorExternalRefresh({
+  const { handleEditorChange, handleFormat, handleTidyStyle, isStyleFile } = useEditorDocument({
     fs,
     currentFilePath,
     fileContent,
     dispatch,
-    onRefresh: recompile,
-    isOwnWrite,
+    recompile,
   });
 
   const hasParseErrors = views.system.diagnostics.some((d) => d.severity === "error");
 
-  const handleFormat = useCallback(() => {
-    if (!fileContent) return;
-    let formatted: string;
-    try {
-      formatted = format(fileContent);
-    } catch (e) {
-      if (e instanceof FormatError) return;
-      throw e;
-    }
-    if (formatted !== fileContent) {
-      handleEditorChange(formatted);
-    }
-  }, [fileContent, handleEditorChange]);
-
-  const isStyleFile = currentFilePath?.endsWith(".krs.style") ?? false;
-
-  const handleTidyStyle = useCallback(() => {
-    if (!fileContent) return;
-    const result = tidyStyleSheet(fileContent);
-    if (result.changed) {
-      handleEditorChange(result.output);
-    }
-  }, [fileContent, handleEditorChange]);
-
   const styleSource = useStyleSource(fileContent, currentFilePath ?? undefined, fs);
 
-  const styleTargetPath = useMemo(
-    () => resolveOrDeriveStyleAppendTarget(fileContent, currentFilePath ?? undefined),
-    [fileContent, currentFilePath],
-  );
+  const { onPickEdgeDirection, styleTargetPath } = useEdgeDirectionWriter({
+    fs,
+    currentFilePath,
+    fileContent,
+    handleEditorChange,
+    recompile,
+  });
 
-  const handlePickEdgeDirection = useCallback(
-    async (canonicalId: string, direction: EdgeDirection) => {
-      if (!currentFilePath) return;
-      const activeContent = fileContent ?? "";
-      let targetPath = resolveStyleAppendTarget(activeContent, currentFilePath);
-      if (!targetPath) {
-        // Bootstrap: no `@import` yet. Derive `<basename>.krs.style` next to
-        // the source, inject the directive at line 1 of the `.krs`, and let
-        // upsertEdgeDirectionRule create the style file on its first write.
-        targetPath = deriveStyleFilePath(currentFilePath);
-        const styleFileName = basename(targetPath);
-        const updated = injectStyleImport(activeContent, styleFileName);
-        if (updated !== activeContent) {
-          await handleEditorChange(updated);
-        }
-      }
-      await upsertEdgeDirectionRule(fs, targetPath, canonicalId, direction);
-      recompile();
-    },
-    [currentFilePath, fileContent, fs, handleEditorChange, recompile],
-  );
   const { drillDownSvg, allLayersSvg, orgAllLayersSvg, orgDrillDownSvg, allViewsSvg } = useViewSvg(
     fileContent,
     displayMode,
@@ -367,119 +228,64 @@ export function AppShell({
   const togglePreviewFocus = useCallback(() => setPreviewFocused((v) => !v), []);
   const toggleOrgTreeView = useCallback(() => setIsOrgTreeViewOpen((v) => !v), []);
 
-  const previewContextValue = useMemo<PreviewContextValue>(
-    () => ({
-      activeView,
-      hasDeployDiagram: views.system.hasDeployDiagram,
-      onActiveViewChange: navigateActiveView,
-      systemView: {
-        svg: views.system.svg,
-        diagnostics: views.system.diagnostics,
-        viewPath,
-        breadcrumbItems,
-        warnings: views.system.warnings,
-        onBreadcrumbNavigate: navigateViewPath,
-        onDeployButtonClick: nav.handleDeployButtonClick,
-        onTeamButtonClick: nav.handleTeamButtonClick,
-        highlightedNodeId,
-        onClearHighlight: nav.clearHighlight,
-        nodeDiff: views.system.nodeDiff,
-        systems: views.system.resolvedSystems,
-      },
-      deployView: {
-        svg: views.deploy.svg,
-        diagnostics: views.deploy.diagnostics,
-        warnings: views.deploy.warnings,
-        highlightedNodeId,
-        onClearHighlight: nav.clearHighlight,
-        onContainerClick: nav.handleContainerClick,
-      },
-      orgView: {
-        svg: views.org.svg,
-        diagnostics: views.org.diagnostics,
-        viewPath,
-        breadcrumbItems: orgBreadcrumbItems,
-        warnings: views.org.warnings,
-        onBreadcrumbNavigate: navigateViewPath,
-        highlightedNodeId,
-        onClearHighlight: nav.clearHighlight,
-        onOwnedServiceClick: nav.handleOwnedServiceClick,
-      },
-      nodeMetadata,
-      deployBlocks: views.deploy.deployBlocks,
-      selectedDeployBlockId,
-      onDeployBlockChange: nav.handleDeployBlockChange,
-      displayMode,
-      onDisplayModeChange: nav.handleDisplayModeChange,
-      onExportSvg: downloadSvg,
-      onExportDrawio: entryPath
-        ? (filename: string) => downloadDrawio(entryPath, fs, filename)
-        : undefined,
-      isAllLayersOpen,
-      onAllLayersToggle: toggleAllLayers,
-      drillDownSvg,
-      allLayersSvg,
-      orgAllLayersSvg,
-      orgDrillDownSvg,
-      allViewsSvg,
-      previewFocused,
-      onPreviewFocusToggle: togglePreviewFocus,
-      onJumpToEditor: !hideEditor ? handleJumpToEditor : undefined,
-      isOrgTreeViewOpen,
-      onOrgTreeViewToggle: toggleOrgTreeView,
-      orgTreeSvg: views.org.orgTreeSvg,
-      onTeamToggle: views.org.toggleTeamExpand,
-      orgTreeExportSvg: views.org.orgTreeExportSvg,
-      styleTargetPath,
-      onPickEdgeDirection: handlePickEdgeDirection,
-    }),
-    [
-      activeView,
-      navigateActiveView,
-      navigateViewPath,
-      views.system.hasDeployDiagram,
-      views.system.svg,
-      views.system.diagnostics,
-      views.system.warnings,
-      views.system.nodeDiff,
-      views.system.resolvedSystems,
-      views.deploy.svg,
-      views.deploy.diagnostics,
-      views.deploy.warnings,
-      views.deploy.deployBlocks,
-      views.org.svg,
-      views.org.diagnostics,
-      views.org.warnings,
-      views.org.orgTreeSvg,
-      views.org.toggleTeamExpand,
-      views.org.orgTreeExportSvg,
-      viewPath,
-      breadcrumbItems,
-      orgBreadcrumbItems,
-      highlightedNodeId,
-      nodeMetadata,
-      selectedDeployBlockId,
-      displayMode,
-      nav,
-      isAllLayersOpen,
-      toggleAllLayers,
-      drillDownSvg,
-      allLayersSvg,
-      orgAllLayersSvg,
-      orgDrillDownSvg,
-      allViewsSvg,
-      previewFocused,
-      togglePreviewFocus,
-      hideEditor,
-      handleJumpToEditor,
-      isOrgTreeViewOpen,
-      toggleOrgTreeView,
-      entryPath,
-      fs,
-      styleTargetPath,
-      handlePickEdgeDirection,
-    ],
+  // Stable identity so it doesn't bust the preview-context memo every render
+  // (the original kept this inside the memo, keyed on entryPath/fs).
+  const onExportDrawio = useMemo(
+    () => (entryPath ? (filename: string) => downloadDrawio(entryPath, fs, filename) : undefined),
+    [entryPath, fs],
   );
+
+  const previewContextValue = usePreviewContextValue({
+    activeView,
+    viewPath,
+    selectedDeployBlockId,
+    displayMode,
+    highlightedNodeId,
+    nodeMetadata,
+    system: {
+      svg: views.system.svg,
+      diagnostics: views.system.diagnostics,
+      warnings: views.system.warnings,
+      hasDeployDiagram: views.system.hasDeployDiagram,
+      nodeDiff: views.system.nodeDiff,
+      resolvedSystems: views.system.resolvedSystems,
+    },
+    deploy: {
+      svg: views.deploy.svg,
+      diagnostics: views.deploy.diagnostics,
+      warnings: views.deploy.warnings,
+      deployBlocks: views.deploy.deployBlocks,
+    },
+    org: {
+      svg: views.org.svg,
+      diagnostics: views.org.diagnostics,
+      warnings: views.org.warnings,
+      orgTreeSvg: views.org.orgTreeSvg,
+      orgTreeExportSvg: views.org.orgTreeExportSvg,
+      toggleTeamExpand: views.org.toggleTeamExpand,
+    },
+    breadcrumbItems,
+    orgBreadcrumbItems,
+    nav,
+    navigateActiveView,
+    navigateViewPath,
+    isAllLayersOpen,
+    toggleAllLayers,
+    drillDownSvg,
+    allLayersSvg,
+    orgAllLayersSvg,
+    orgDrillDownSvg,
+    allViewsSvg,
+    previewFocused,
+    togglePreviewFocus,
+    onJumpToEditor: !hideEditor ? handleJumpToEditor : undefined,
+    isOrgTreeViewOpen,
+    toggleOrgTreeView,
+    styleTargetPath,
+    onPickEdgeDirection,
+    onExportSvg: downloadSvg,
+    onExportDrawio,
+  });
 
   return (
     <div className={className} style={shellStyle} ref={shellRef}>
@@ -500,26 +306,30 @@ export function AppShell({
           outlineContent={
             sidebarContent ? (
               <OutlineView
-                nodes={outlineNodes}
+                nodes={outline.nodes}
                 highlightedNodeId={highlightedNodeId}
-                onSelectNode={handleOutlineSelect}
-                onActivateNode={handleOutlineActivate}
+                onSelectNode={outline.onSelectNode}
+                onActivateNode={outline.onActivateNode}
               />
             ) : undefined
           }
           previewFocused={previewFocused}
-          value={fileContent}
-          currentFilePath={currentFilePath}
-          onChange={handleEditorChange}
-          onEditorReady={handleEditorReady}
-          scopeLabel={scopeLabel}
-          viewPath={viewPath}
-          currentProjectId={currentProject?.id ?? null}
-          resolvedSystems={views.system.resolvedSystems}
-          onNavigateViewPath={navigateViewPath}
-          onFormat={isStyleFile ? undefined : handleFormat}
-          onTidyStyle={isStyleFile ? handleTidyStyle : undefined}
-          hasParseErrors={hasParseErrors}
+          editorContent={
+            <EditPane
+              value={fileContent}
+              currentFilePath={currentFilePath}
+              onChange={handleEditorChange}
+              onEditorReady={handleEditorReady}
+              scopeLabel={scopeLabel}
+              viewPath={viewPath}
+              currentProjectId={currentProject?.id ?? null}
+              resolvedSystems={views.system.resolvedSystems}
+              onNavigateViewPath={navigateViewPath}
+              onFormat={isStyleFile ? undefined : handleFormat}
+              onTidyStyle={isStyleFile ? handleTidyStyle : undefined}
+              hasParseErrors={hasParseErrors}
+            />
+          }
         />
       )}
       <DiagramViewShortcuts onActiveViewChange={navigateActiveView} />

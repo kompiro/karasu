@@ -1,14 +1,9 @@
 // @vitest-environment jsdom
-import { describe, it, expect, vi, afterEach } from "vitest";
+import { describe, it, expect, afterEach } from "vitest";
 import { render, fireEvent, cleanup } from "@testing-library/react";
 import type { ReactElement } from "react";
 
 afterEach(cleanup);
-
-// Mock EditPane to avoid heavy Monaco Editor dependency
-vi.mock("./EditPane.js", () => ({
-  EditPane: ({ value }: { value: string }) => <div data-testid="edit-pane">{value}</div>,
-}));
 
 import { EditArea } from "./EditArea.js";
 import { CommandProvider } from "../keyboard/command-context.js";
@@ -24,16 +19,11 @@ function renderWithShortcuts(ui: ReactElement) {
   );
 }
 
+// EditArea now composes the editor pane via `editorContent` rather than
+// threading EditPane's props (#1545); a stand-in stub stands for it.
 const defaultProps = {
   previewFocused: false,
-  value: "",
-  currentFilePath: null,
-  onChange: vi.fn<(value: string) => void>(),
-  scopeLabel: "Root",
-  viewPath: [] as string[],
-  currentProjectId: null,
-  resolvedSystems: [],
-  onNavigateViewPath: vi.fn<(path: string[]) => void>(),
+  editorContent: <div data-testid="edit-pane" />,
 };
 
 describe("EditArea", () => {

@@ -1,11 +1,8 @@
 import { useCallback, useState, type MouseEvent } from "react";
-import { EditPane } from "./EditPane.js";
 import { useCommand } from "../keyboard/use-command.js";
 import { usePersistedPanelWidth } from "../hooks/usePersistedPanelWidth.js";
 
 import type { CSSProperties, ReactNode } from "react";
-import type { editor } from "monaco-editor";
-import type { SystemNode } from "@karasu-tools/core";
 
 type SidebarView = "files" | "outline";
 
@@ -15,19 +12,12 @@ interface EditAreaProps {
   /** Outline view content (the AST outline). Enables the Outline activity-bar button. */
   outlineContent?: ReactNode;
   previewFocused: boolean;
-  // EditPane props
-  value: string;
-  currentFilePath: string | null;
-  onChange: (value: string) => void;
-  onEditorReady?: (editor: editor.IStandaloneCodeEditor) => void;
-  scopeLabel: string;
-  viewPath: string[];
-  currentProjectId: string | null;
-  resolvedSystems: SystemNode[];
-  onNavigateViewPath: (path: string[]) => void;
-  onFormat?: () => void;
-  onTidyStyle?: () => void;
-  hasParseErrors?: boolean;
+  /**
+   * The editor pane (`<EditPane />`), composed by the host. EditArea only owns
+   * the sidebar / activity-bar / resize chrome and renders this in the main
+   * column — it does not thread editor or chat props (#1545).
+   */
+  editorContent: ReactNode;
 }
 
 const SIDEBAR_WIDTH_STORAGE_KEY = "karasu:sidebar:width";
@@ -42,18 +32,7 @@ export function EditArea({
   sidebarContent,
   outlineContent,
   previewFocused,
-  value,
-  currentFilePath,
-  onChange,
-  onEditorReady,
-  scopeLabel,
-  viewPath,
-  currentProjectId,
-  resolvedSystems,
-  onNavigateViewPath,
-  onFormat,
-  onTidyStyle,
-  hasParseErrors,
+  editorContent,
 }: EditAreaProps) {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [sidebarView, setSidebarView] = useState<SidebarView>("files");
@@ -192,20 +171,7 @@ export function EditArea({
           )}
         </div>
       )}
-      <EditPane
-        value={value}
-        currentFilePath={currentFilePath}
-        onChange={onChange}
-        onEditorReady={onEditorReady}
-        scopeLabel={scopeLabel}
-        viewPath={viewPath}
-        currentProjectId={currentProjectId}
-        resolvedSystems={resolvedSystems}
-        onNavigateViewPath={onNavigateViewPath}
-        onFormat={onFormat}
-        onTidyStyle={onTidyStyle}
-        hasParseErrors={hasParseErrors}
-      />
+      {editorContent}
     </div>
   );
 }

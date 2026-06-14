@@ -9,7 +9,7 @@ interface UseCrossNavigationArgs {
   navigateViewPath: (path: string[]) => void;
 }
 
-interface UseCrossNavigationResult {
+export interface UseCrossNavigationResult {
   /** Click a container (group) in the system view → highlight it as a system node. */
   handleContainerClick: (containerId: string) => void;
   /** Click the deploy-badge button on a service → switch to deploy view with it highlighted. */
