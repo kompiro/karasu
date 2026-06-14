@@ -1,4 +1,4 @@
-# Onboarding Guide: Reading Down an Existing System into karasu Diagrams
+# Reading Down an Existing System into karasu Diagrams
 
 > **English**（this file） · [日本語](02-onboarding.ja.md)
 >

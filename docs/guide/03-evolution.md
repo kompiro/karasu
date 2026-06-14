@@ -1,4 +1,4 @@
-# Guide: Recording Architecture Evolution and Migration
+# Recording Architecture Evolution and Migration
 
 > **English**（this file） · [日本語](03-evolution.ja.md)
 >

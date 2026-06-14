@@ -1,4 +1,4 @@
-# Guide: Modeling Access Paths and Clients
+# Modeling Access Paths and Clients
 
 > **English**（this file） · [日本語](04-access-paths.ja.md)
 >

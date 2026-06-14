@@ -1,4 +1,4 @@
-# Architect's Guide: Designing Service and Team Boundaries with karasu
+# Designing Service and Team Boundaries with karasu
 
 > **English**（this file） · [日本語](01-service-team-design.ja.md)
 >

@@ -1,4 +1,4 @@
-# Guide: Communicating Diagrams — Style, Legend, and CI
+# Communicating Diagrams — Style, Legend, and CI
 
 > **English**（this file） · [日本語](05-communicating-diagrams.ja.md)
 >

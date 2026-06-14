@@ -1,4 +1,4 @@
-# 図を伝えるガイド — スタイル・凡例・CI
+# 図を伝える — スタイル・凡例・CI
 
 > [English](05-communicating-diagrams.md) · **日本語**（このファイル）
 >
