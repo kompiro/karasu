@@ -75,8 +75,10 @@ export function selectActiveViewData(ctx: PreviewContextValue): ActiveViewData {
         drillDownSvg: ctx.orgDrillDownSvg,
         onOwnedServiceClick: orgView.onOwnedServiceClick,
       };
-    // system / matrix
-    default:
+    // system / matrix — explicit (no `default`) so a new ActiveView member
+    // becomes a compile error here instead of silently getting this projection.
+    case "system":
+    case "matrix":
       return {
         svg: systemView.svg,
         diagnostics: systemView.diagnostics,
