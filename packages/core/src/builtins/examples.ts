@@ -1582,11 +1582,9 @@ system ECommerce {
 
   service OrderService {
     label "Order Service"
-    team "Order Team"
 
     domain OrderDomain {
       label "Order Domain"
-      team "Order Team"
 
       usecase PlaceOrder {
         label "Place Order"

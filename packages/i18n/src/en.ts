@@ -196,12 +196,6 @@ export const en: Translations = {
     `Deploy node "${deployNodeId}" realizes "${target}" but no service or domain with that id exists`,
   "warning.invalidOwns.message": ({ teamId, ownedId }) =>
     `Team "${teamId}" owns "${ownedId}" but no service or domain with that id exists`,
-  "warning.deprecatedTeamProperty.message": ({ nodeId }) =>
-    `"${nodeId}" has an explicit team property but team is already assigned via org.team.owns`,
-  "warning.deprecatedTeamProperty.assignedBy": ({ ownerTeamId }) =>
-    `Team assigned by owns: "${ownerTeamId}"`,
-  "warning.deprecatedTeamProperty.recommendation":
-    'Remove the "team" property and use org { team { owns } } instead',
   "warning.crossSystemRefUnresolved.message": ({ ref }) =>
     `"${ref}" could not be resolved — rendered as an unresolved external node`,
   "warning.crossSystemRefImplicitExternal.message": ({ ref, sourceSystemId, sourceNodeId }) =>
@@ -267,7 +261,6 @@ export const en: Translations = {
   "diagnostic.expectedStringAfter.message": ({ property }) =>
     `Expected string literal after "${property}"`,
   "diagnostic.propertyNotForNodeKind.role": `"role" property is only valid for user nodes`,
-  "diagnostic.propertyNotForNodeKind.team": `"team" property is only valid for service and domain nodes`,
   "diagnostic.propertyNotForNodeKind.handles": `"handles" property is only valid for client and service nodes`,
   "diagnostic.propertyNotForNodeKind.delivers": `"delivers" property is only valid for service nodes`,
   "diagnostic.propertyNotForNodeKind.operations": `"operations" property is only valid for resource declarations inside a usecase`,
@@ -284,7 +277,7 @@ export const en: Translations = {
     `Expected value for property "${propName}"`,
   "diagnostic.expectedIdAfter.message": ({ property }) =>
     `Expected identifier or string literal after "${property}"`,
-  "diagnostic.teamPropertyDeprecated.message": `"team" property is deprecated; use an organization block with "owns" instead`,
+  "diagnostic.teamPropertyRemoved.message": `"team" property has been removed; declare ownership with an organization block and "owns"`,
   "diagnostic.linkUrlSchemeNotAllowed.message": ({ url, scheme }) =>
     scheme
       ? `link URL "${url}" uses a disallowed scheme "${scheme}" (allowed: http, https, mailto); the link is ignored`

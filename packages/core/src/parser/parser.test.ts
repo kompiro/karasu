@@ -763,7 +763,7 @@ system S {
     });
   });
 
-  it("parses team property on service (deprecated)", () => {
+  it("rejects the removed team property on service", () => {
     const result = Parser.parse(`
 system Test {
   service ECommerce {
@@ -772,11 +772,10 @@ system Test {
 }
     `);
     expect(result.diagnostics).toHaveLength(1);
-    expect(result.diagnostics[0].severity).toBe("warning");
-    expect(result.diagnostics[0].code).toBe("team-property-deprecated");
+    expect(result.diagnostics[0].severity).toBe("error");
+    expect(result.diagnostics[0].code).toBe("team-property-removed");
     const service = result.value.systems[0].children[0] as ServiceNode;
     expect(service.kind).toBe("service");
-    expect(service.properties.team).toBe("EC開発チーム");
   });
 
   it("parses link property", () => {
@@ -980,10 +979,7 @@ system Test {
 }
     `);
     expect(result.diagnostics.length).toBeGreaterThanOrEqual(1);
-    expect(result.diagnostics[0]).toMatchObject({
-      code: "property-not-for-node-kind",
-      params: { property: "team" },
-    });
+    expect(result.diagnostics[0].code).toBe("team-property-removed");
   });
 
   it("parses triple-quoted description", () => {
@@ -1014,15 +1010,14 @@ service Monitoring {
 }
     `);
     expect(result.diagnostics).toHaveLength(1);
-    expect(result.diagnostics[0].severity).toBe("warning");
-    expect(result.diagnostics[0].code).toBe("team-property-deprecated");
+    expect(result.diagnostics[0].severity).toBe("error");
+    expect(result.diagnostics[0].code).toBe("team-property-removed");
     expect(result.value.services).toHaveLength(1);
     const service = result.value.services[0];
     expect(service.kind).toBe("service");
     expect(service.id).toBe("Monitoring");
     expect(service.label).toBe("監視サービス");
     expect(service.properties.description).toBe("配置先のシステムが未定");
-    expect(service.properties.team).toBe("SRE チーム");
   });
 
   it("parses property block mixed with child nodes", () => {
@@ -1039,12 +1034,12 @@ system Test {
   }
 }
     `);
-    // team emits a deprecation warning
+    // team is a removed property → error diagnostic
     expect(result.diagnostics).toHaveLength(1);
-    expect(result.diagnostics[0].severity).toBe("warning");
+    expect(result.diagnostics[0].severity).toBe("error");
+    expect(result.diagnostics[0].code).toBe("team-property-removed");
     const service = result.value.systems[0].children[0] as ServiceNode;
     expect(service.properties.description).toBe("商品管理");
-    expect(service.properties.team).toBe("ECチーム");
     expect(service.properties.links).toHaveLength(1);
     expect(service.children).toHaveLength(1);
     expect(service.children[0].kind).toBe("domain");

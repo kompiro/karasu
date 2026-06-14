@@ -70,15 +70,19 @@ Set a valid Claude API key in the Settings tab before running these tests.
 
 **Steps**:
 
-1. Add `team` and `link` properties to services in the test model:
+1. Declare teams that `owns` the services, with contact `link`s, in the test model:
    ```krs
-   service ECommerce {
-     team "ECチーム"
-     link "https://slack.com/archives/C123" "ECチーム Slack"
-   }
-   service Payment {
-     team "Fintechチーム"
-     link "https://notion.so/fintech"       "チームページ"
+   organization Corp {
+     team ec {
+       label "ECチーム"
+       owns ECommerce
+       link "https://slack.com/archives/C123" "ECチーム Slack"
+     }
+     team fintech {
+       label "Fintechチーム"
+       owns Payment
+       link "https://notion.so/fintech"       "チームページ"
+     }
    }
    ```
 2. Open the Chat tab

@@ -190,9 +190,6 @@ export type Translations = {
     target: string;
   }) => string;
   "warning.invalidOwns.message": (params: { teamId: string; ownedId: string }) => string;
-  "warning.deprecatedTeamProperty.message": (params: { nodeId: string }) => string;
-  "warning.deprecatedTeamProperty.assignedBy": (params: { ownerTeamId: string }) => string;
-  "warning.deprecatedTeamProperty.recommendation": string;
   "warning.crossSystemRefUnresolved.message": (params: { ref: string }) => string;
   "warning.crossSystemRefImplicitExternal.message": (params: {
     ref: string;
@@ -288,7 +285,6 @@ export type Translations = {
   "diagnostic.expectedIdentifier.message": (params: { got: string; value: string }) => string;
   "diagnostic.expectedStringAfter.message": (params: { property: string }) => string;
   "diagnostic.propertyNotForNodeKind.role": string;
-  "diagnostic.propertyNotForNodeKind.team": string;
   "diagnostic.propertyNotForNodeKind.handles": string;
   "diagnostic.propertyNotForNodeKind.delivers": string;
   "diagnostic.propertyNotForNodeKind.operations": string;
@@ -302,7 +298,7 @@ export type Translations = {
   "diagnostic.invalidNodeKind.message": (params: { kind: string }) => string;
   "diagnostic.expectedPropertyValue.message": (params: { propName: string }) => string;
   "diagnostic.expectedIdAfter.message": (params: { property: string }) => string;
-  "diagnostic.teamPropertyDeprecated.message": string;
+  "diagnostic.teamPropertyRemoved.message": string;
   "diagnostic.linkUrlSchemeNotAllowed.message": (params: { url: string; scheme: string }) => string;
   "diagnostic.edgeSourceMismatch.message": (params: { from: string; parentId: string }) => string;
   "diagnostic.unassignedResource.message": (params: { resourceId: string }) => string;

@@ -24,7 +24,6 @@ export function analyze(file: KrsFile, sheets: StyleSheet[], systemSheetCount = 
   warnings.push(...detectMissingProperties(file));
   warnings.push(...detectUnresolvedRealizes(file));
   warnings.push(...detectInvalidOwns(file));
-  warnings.push(...detectDeprecatedTeamProperty(file));
   warnings.push(...detectCrossSystemRefs(file));
   warnings.push(...detectCyclicDependencies(file));
   warnings.push(...detectDeliversTargetNotClient(file));
@@ -740,45 +739,6 @@ function detectInvalidOwns(file: KrsFile): Warning[] {
 
   for (const org of file.organizations) {
     checkTeams(org.teams);
-  }
-
-  return warnings;
-}
-
-function detectDeprecatedTeamProperty(file: KrsFile): Warning[] {
-  const warnings: Warning[] = [];
-  const ownerIndex = file.ownerIndex;
-
-  function walk(node: KrsNode): void {
-    if (
-      (node.kind === "service" || node.kind === "domain") &&
-      node.properties.team &&
-      ownerIndex.has(node.id)
-    ) {
-      warnings.push({
-        kind: "deprecated-team-property",
-        params: {
-          nodeId: node.id,
-          ownerTeamId: ownerIndex.get(node.id)!,
-        },
-        loc: node.loc,
-      });
-    }
-    for (const child of node.children) {
-      walk(child);
-    }
-  }
-
-  for (const system of file.systems) {
-    for (const child of system.children) {
-      walk(child);
-    }
-  }
-  for (const service of file.services) {
-    walk(service);
-  }
-  for (const domain of file.domains) {
-    walk(domain);
   }
 
   return warnings;

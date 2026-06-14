@@ -366,19 +366,16 @@ system S {
     expect(node.properties.team).toBe("platform-team");
   });
 
-  it("falls back to node.properties.team when ownerIndex does not contain the service", () => {
+  it("leaves team undefined when ownerIndex does not contain the service", () => {
     const slice = parseAndExtract(`
 system S {
-  service A {
-    label "Service A"
-    team "my-team"
-  }
+  service A { label "Service A" }
 }
     `);
     const ownerIndex = new Map<string, string>();
     const result = layout(slice, ownerIndex);
     const node = result.nodes.get("A")!;
-    expect(node.properties.team).toBe("my-team");
+    expect(node.properties.team).toBeUndefined();
   });
 });
 

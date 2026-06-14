@@ -44,8 +44,6 @@ export function renderDiagnostic(d: Diagnostic, t: TranslateFn): string {
       switch (d.params.property) {
         case "role":
           return t("diagnostic.propertyNotForNodeKind.role");
-        case "team":
-          return t("diagnostic.propertyNotForNodeKind.team");
         case "handles":
           return t("diagnostic.propertyNotForNodeKind.handles");
         case "delivers":
@@ -71,8 +69,8 @@ export function renderDiagnostic(d: Diagnostic, t: TranslateFn): string {
       return t("diagnostic.expectedPropertyValue.message", d.params);
     case "expected-id-after":
       return t("diagnostic.expectedIdAfter.message", d.params);
-    case "team-property-deprecated":
-      return t("diagnostic.teamPropertyDeprecated.message");
+    case "team-property-removed":
+      return t("diagnostic.teamPropertyRemoved.message");
     case "link-url-scheme-not-allowed":
       return t("diagnostic.linkUrlSchemeNotAllowed.message", d.params);
     case "edge-source-mismatch":

@@ -195,12 +195,6 @@ export const ja: Partial<Translations> = {
     `デプロイノード "${deployNodeId}" の realizes "${target}" を解決できる service / domain が見つかりません`,
   "warning.invalidOwns.message": ({ teamId, ownedId }) =>
     `team "${teamId}" が "${ownedId}" を owns していますが、その id を持つ service または domain が存在しません`,
-  "warning.deprecatedTeamProperty.message": ({ nodeId }) =>
-    `"${nodeId}" に team プロパティが直接指定されていますが、org.team.owns 経由で既に割り当て済みです`,
-  "warning.deprecatedTeamProperty.assignedBy": ({ ownerTeamId }) =>
-    `owns による team 割り当て: "${ownerTeamId}"`,
-  "warning.deprecatedTeamProperty.recommendation":
-    '"team" プロパティを削除し、org { team { owns } } 側に寄せてください',
   "warning.crossSystemRefUnresolved.message": ({ ref }) =>
     `"${ref}" を解決できませんでした — 未解決の外部ノードとして描画されます`,
   "warning.crossSystemRefImplicitExternal.message": ({ ref, sourceSystemId, sourceNodeId }) =>
@@ -266,7 +260,6 @@ export const ja: Partial<Translations> = {
   "diagnostic.expectedStringAfter.message": ({ property }) =>
     `"${property}" の後に文字列リテラルを期待しました`,
   "diagnostic.propertyNotForNodeKind.role": `"role" プロパティは user ノードでのみ有効です`,
-  "diagnostic.propertyNotForNodeKind.team": `"team" プロパティは service / domain ノードでのみ有効です`,
   "diagnostic.propertyNotForNodeKind.handles": `"handles" プロパティは client / service ノードでのみ有効です`,
   "diagnostic.propertyNotForNodeKind.delivers": `"delivers" プロパティは service ノードでのみ有効です`,
   "diagnostic.propertyNotForNodeKind.operations": `"operations" プロパティは usecase 内の resource 宣言でのみ有効です`,
@@ -283,7 +276,7 @@ export const ja: Partial<Translations> = {
     `プロパティ "${propName}" の値を期待しました`,
   "diagnostic.expectedIdAfter.message": ({ property }) =>
     `"${property}" の後に識別子または文字列リテラルを期待しました`,
-  "diagnostic.teamPropertyDeprecated.message": `"team" プロパティは非推奨です。organization ブロックで "owns" を使ってください`,
+  "diagnostic.teamPropertyRemoved.message": `"team" プロパティは削除されました。organization ブロックと "owns" で所有を宣言してください`,
   "diagnostic.linkUrlSchemeNotAllowed.message": ({ url, scheme }) =>
     scheme
       ? `link URL "${url}" は許可されていないスキーム "${scheme}" を使用しています（許可: http, https, mailto）。このリンクは無視されます`

@@ -63,7 +63,6 @@ export interface SystemNode extends BaseNodeFields {
 export interface ServiceNode extends BaseNodeFields {
   kind: "service";
   properties: CommonProperties & {
-    team?: string;
     /**
      * Domain ids this service exposes to its callers.
      *
@@ -86,9 +85,7 @@ export interface ServiceNode extends BaseNodeFields {
 
 export interface DomainNode extends BaseNodeFields {
   kind: "domain";
-  properties: CommonProperties & {
-    team?: string;
-  };
+  properties: CommonProperties;
 }
 
 export interface UsecaseNode extends BaseNodeFields {
@@ -452,10 +449,10 @@ export interface DiagnosticParamsByCode {
   "expected-brace-or-string": { got: string; value: string };
   "expected-identifier": { got: string; value: string };
   "expected-string-after": {
-    property: "label" | "role" | "team" | "description" | "slack" | "github";
+    property: "label" | "role" | "description" | "slack" | "github";
   };
   "property-not-for-node-kind": {
-    property: "role" | "team" | "handles" | "delivers" | "operations";
+    property: "role" | "handles" | "delivers" | "operations";
     nodeKind: string;
   };
   "infra-not-in-context": { infraKind: string; parentKind: string };
@@ -467,7 +464,7 @@ export interface DiagnosticParamsByCode {
   "expected-id-after": { property: string };
 
   // ── Parser semantic diagnostics ─────────────────────────────────────────
-  "team-property-deprecated": Record<string, never>;
+  "team-property-removed": Record<string, never>;
   "link-url-scheme-not-allowed": { url: string; scheme: string };
   "edge-source-mismatch": { from: string; parentId: string };
   "unassigned-resource": { resourceId: string };

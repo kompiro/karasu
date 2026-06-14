@@ -176,33 +176,35 @@ edge[implicit] {
 
 ---
 
-## チーム連絡先コンベンション（`team` + `link`）
+## チーム連絡先コンベンション（`owns` + `link`）
 
 組織クエリ（「このサービスのオーナーチームは？」「影響するチームに連絡したい」）を AI チャットで利用するには、
-`service` や `domain` ノードに `team` プロパティと `link` プロパティを追加する。
+`organization` ブロックでチームを宣言し、`owns` でサービス / ドメインを所有させ、`team` ブロックに連絡先 `link` を添える。
+
+> 旧仕様の `service` / `domain` に直接書く `team "..."` プロパティは **削除された**（[ADR-20260323-03](../adr/20260323-03-organization-diagram.md) の廃止計画に基づく）。オーナーチームは `organization` / `owns` から導出する。
 
 ```krs
-service ECommerce {
-  label "ECサイト"
-  team "ECチーム"
-  link "https://slack.com/archives/C..." "ECチーム Slack"
-  link "https://notion.so/..."          "チームページ"
+organization Corp {
+  team fintech {
+    label "Fintechチーム"
+    owns Payment
+    link "https://slack.com/archives/C..." "Fintechチーム Slack"
+    link "https://notion.so/..."          "チームページ"
+  }
+}
+
+system Shop {
+  service Payment { label "決済" }
 }
 ```
 
-### `team` プロパティ
+### オーナーシップ（`owns`）
 
-チーム名を文字列で記述する。AI はこの値を組織クエリの回答で使用する。
-
-```krs
-service Payment {
-  team "Fintechチーム"
-}
-```
+`team` が `owns` で所有する service / domain を列挙する。AI はこの所有関係（パース時に構築される ownerIndex）を組織クエリの回答に使う。
 
 ### `link` プロパティ（チーム連絡先）
 
-`link "<url>" "<label>"` の形式で連絡先 URL を追加する。
+`team` ブロックに `link "<url>" "<label>"` を添える。
 ラベルに以下のキーワードが含まれる場合、AI はチーム連絡先として認識する：
 
 | キーワード例 | 用途 |

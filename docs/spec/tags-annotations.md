@@ -175,32 +175,34 @@ edge[implicit] {
 
 ---
 
-## Team contact convention (`team` + `link`)
+## Team contact convention (`owns` + `link`)
 
-To support organizational queries in the AI chat ("who is the owner team of this service?", "I want to contact the affected teams"), add `team` and `link` properties to `service` or `domain` nodes.
+To support organizational queries in the AI chat ("who is the owner team of this service?", "I want to contact the affected teams"), declare teams in an `organization` block, have them `owns` the services / domains, and add contact `link`s to the `team` block.
+
+> The old `team "..."` string property on `service` / `domain` has been **removed** (per the deprecation plan of [ADR-20260323-03](../adr/20260323-03-organization-diagram.md)). The owner team is derived from `organization` / `owns`.
 
 ```krs
-service ECommerce {
-  label "EC Site"
-  team "EC Team"
-  link "https://slack.com/archives/C..." "EC Team Slack"
-  link "https://notion.so/..."          "Team page"
+organization Corp {
+  team fintech {
+    label "Fintech Team"
+    owns Payment
+    link "https://slack.com/archives/C..." "Fintech Team Slack"
+    link "https://notion.so/..."          "Team page"
+  }
+}
+
+system Shop {
+  service Payment { label "Payment" }
 }
 ```
 
-### `team` property
+### Ownership (`owns`)
 
-Specify the team name as a string. The AI uses this value when answering organizational queries.
-
-```krs
-service Payment {
-  team "Fintech Team"
-}
-```
+A `team` lists the services / domains it `owns`. The AI uses this ownership relation (the ownerIndex built at parse time) when answering organizational queries.
 
 ### `link` property (team contact)
 
-Add contact URLs in the form `link "<url>" "<label>"`.
+Add contact URLs to the `team` block in the form `link "<url>" "<label>"`.
 When the label contains any of the following keywords, the AI recognizes the link as a team contact:
 
 | Keyword examples | Purpose |

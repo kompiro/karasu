@@ -414,23 +414,19 @@ export class Parser {
         continue;
       }
 
-      // Property: team (service and domain) — deprecated
+      // Property: team — removed. Was deprecated (ADR-20260323-03); ownership is
+      // now declared with an `organization` block + `owns`. The `team` keyword
+      // itself stays valid as the organization team-block keyword (parsed elsewhere).
       if (token.type === TokenType.Team) {
-        if (kind === "service" || kind === "domain") {
-          this.diagnostics.push({
-            severity: "warning",
-            code: "team-property-deprecated",
-            params: {},
-            loc: this.range(token.loc),
-          });
-          this.advance();
-          if (this.peek().type === TokenType.StringLiteral) {
-            properties.team = this.advance().value;
-          } else {
-            this.error("expected-string-after", { property: "team" });
-          }
-        } else {
-          this.error("property-not-for-node-kind", { property: "team", nodeKind: kind });
+        this.diagnostics.push({
+          severity: "error",
+          code: "team-property-removed",
+          params: {},
+          loc: this.range(token.loc),
+        });
+        this.advance();
+        // Consume the value string (if any) so the rest of the block still parses.
+        if (this.peek().type === TokenType.StringLiteral) {
           this.advance();
         }
         continue;
@@ -880,7 +876,6 @@ export class Parser {
           properties: {
             description: properties.description,
             links: properties.links,
-            team: properties.team,
             ...(properties.handles ? { handles: properties.handles } : {}),
             ...(properties.delivers && properties.delivers.length > 0
               ? { delivers: properties.delivers }
