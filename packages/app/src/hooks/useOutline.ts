@@ -85,18 +85,20 @@ export function useOutline({
         dispatch({ type: "SET_HIGHLIGHTED_NODE", nodeId });
         return;
       }
+      // Resolve to the view path of the first candidate (the node, then its
+      // ancestors nearest-first) that carries one; empty path otherwise.
       const candidates = [nodeId, ...[...ancestorIds].reverse()];
-      if (activeView === "org") {
-        let drillPath: string[] = [];
+      const resolveDrillPath = (lookup: (id: string) => string[] | undefined): string[] => {
         for (const id of candidates) {
-          const vp = orgPathIndex.get(id);
-          if (vp) {
-            drillPath = vp;
-            break;
-          }
+          const vp = lookup(id);
+          if (vp) return vp;
         }
+        return [];
+      };
+
+      if (activeView === "org") {
         dispatch({ type: "SET_HIGHLIGHTED_NODE", nodeId });
-        navigateViewPath(drillPath);
+        navigateViewPath(resolveDrillPath((id) => orgPathIndex.get(id)));
         return;
       }
       // system / matrix
@@ -105,15 +107,7 @@ export function useOutline({
       } else {
         dispatch({ type: "SET_HIGHLIGHTED_NODE", nodeId });
       }
-      let drillPath: string[] = [];
-      for (const id of candidates) {
-        const vp = systemNodeMetadata.get(id)?.viewPath;
-        if (vp) {
-          drillPath = vp;
-          break;
-        }
-      }
-      navigateViewPath(drillPath);
+      navigateViewPath(resolveDrillPath((id) => systemNodeMetadata.get(id)?.viewPath));
     },
     [activeView, dispatch, navigateViewPath, systemNodeMetadata, orgPathIndex],
   );

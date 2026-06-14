@@ -1,4 +1,4 @@
-import { useCallback, useMemo } from "react";
+import { useCallback } from "react";
 import { format, FormatError, tidyStyleSheet } from "@karasu-tools/core";
 import type { FileSystemProvider } from "@karasu-tools/core";
 import type { AppAction } from "../state/app-reducer.js";
@@ -88,10 +88,7 @@ export function useEditorDocument({
     }
   }, [fileContent, handleEditorChange]);
 
-  const isStyleFile = useMemo(
-    () => currentFilePath?.endsWith(".krs.style") ?? false,
-    [currentFilePath],
-  );
+  const isStyleFile = currentFilePath?.endsWith(".krs.style") ?? false;
 
   return { handleEditorChange, handleFormat, handleTidyStyle, isStyleFile };
 }

@@ -228,6 +228,13 @@ export function AppShell({
   const togglePreviewFocus = useCallback(() => setPreviewFocused((v) => !v), []);
   const toggleOrgTreeView = useCallback(() => setIsOrgTreeViewOpen((v) => !v), []);
 
+  // Stable identity so it doesn't bust the preview-context memo every render
+  // (the original kept this inside the memo, keyed on entryPath/fs).
+  const onExportDrawio = useMemo(
+    () => (entryPath ? (filename: string) => downloadDrawio(entryPath, fs, filename) : undefined),
+    [entryPath, fs],
+  );
+
   const previewContextValue = usePreviewContextValue({
     activeView,
     viewPath,
@@ -277,9 +284,7 @@ export function AppShell({
     styleTargetPath,
     onPickEdgeDirection,
     onExportSvg: downloadSvg,
-    onExportDrawio: entryPath
-      ? (filename: string) => downloadDrawio(entryPath, fs, filename)
-      : undefined,
+    onExportDrawio,
   });
 
   return (
