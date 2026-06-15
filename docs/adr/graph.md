@@ -1,6 +1,6 @@
 # ADR Dependency Graph — Overview
 
-202 ADRs across 15 topics. Clusters group by `topic` frontmatter field. Edges crossing cluster borders are cross-topic dependencies.
+203 ADRs across 15 topics. Clusters group by `topic` frontmatter field. Edges crossing cluster borders are cross-topic dependencies.
 ```mermaid
 flowchart TD
   subgraph adr-tooling["adr-tooling"]
@@ -204,6 +204,7 @@ flowchart TD
     ADR_20260405_06["ADR-20260405-06<br/>循環依存の検出と `KrsEdge.cyclic` フラグによる視覚化"]
     ADR_20260411_02["ADR-20260411-02<br/>移行期における重複ドメイン ID の共存を `@deprecated` + `@migrati..."]
     ADR_20260514_01["ADR-20260514-01<br/>マルチファイル import の意味論 — whole-file import / syste..."]
+    ADR_20260615_02["ADR-20260615-02<br/>共有 infra fan-in を info 診断として通知する"]
   end
   subgraph styling["styling"]
     ADR_20260312_04["ADR-20260312-04<br/>CSSインスパイアのスタイリングシステム"]
@@ -535,6 +536,7 @@ flowchart TD
   class ADR_20260613_01 accepted
   class ADR_20260614_01 accepted
   class ADR_20260615_01 accepted
+  class ADR_20260615_02 accepted
 ```
 
 ## Per-topic detail
@@ -550,7 +552,7 @@ flowchart TD
 - [`parser`](graph/parser.md) — 16 ADRs
 - [`project`](graph/project.md) — 4 ADRs
 - [`renderer`](graph/renderer.md) — 24 ADRs
-- [`resolver`](graph/resolver.md) — 5 ADRs
+- [`resolver`](graph/resolver.md) — 6 ADRs
 - [`styling`](graph/styling.md) — 7 ADRs
 - [`testing`](graph/testing.md) — 11 ADRs
 - [`vscode`](graph/vscode.md) — 6 ADRs
