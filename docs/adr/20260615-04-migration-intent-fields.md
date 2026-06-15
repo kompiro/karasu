@@ -1,5 +1,5 @@
 ---
-id: ADR-20260615-02
+id: ADR-20260615-04
 title: "ライフサイクルアノテーションに移行 intent パラメータを持たせる"
 status: accepted
 date: 2026-06-15
@@ -14,7 +14,7 @@ assumptions:
   - "grep: packages/i18n/src/en.ts :: annotationParamUnsupported"
 ---
 
-# ADR-20260615-02: ライフサイクルアノテーションに移行 intent パラメータを持たせる
+# ADR-20260615-04: ライフサイクルアノテーションに移行 intent パラメータを持たせる
 
 - **日付**: 2026-06-15
 - **ステータス**: 決定済み

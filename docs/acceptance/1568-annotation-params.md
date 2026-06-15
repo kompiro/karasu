@@ -1,6 +1,6 @@
 # AT-1568: アノテーションパラメータ（移行 intent フィールド）
 
-組み込みライフサイクルアノテーションに `@name(key: "value")` パラメータを持たせる言語層機能の受け入れ基準。設計は [ADR-20260615-02](../adr/20260615-02-migration-intent-fields.md)。値解釈・表示の消費者は [#1595](https://github.com/kompiro/karasu/issues/1595) で後続。
+組み込みライフサイクルアノテーションに `@name(key: "value")` パラメータを持たせる言語層機能の受け入れ基準。設計は [ADR-20260615-04](../adr/20260615-04-migration-intent-fields.md)。値解釈・表示の消費者は [#1595](https://github.com/kompiro/karasu/issues/1595) で後続。
 
 ## 受け入れ条件（自動）
 
