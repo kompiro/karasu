@@ -195,4 +195,56 @@ describe("Reference data ↔ docs/spec agreement (TPL-20260511-02)", () => {
       expect(documented).toContain(t);
     }
   });
+
+  // The Reference panel's Syntax / Styles snippets moved out of the app into
+  // this payload (#1586). They are illustrative — so the reverse direction
+  // (every spec keyword appears in a snippet) is NOT asserted — but a snippet
+  // referencing a property/selector the spec has dropped IS a drift, so the
+  // two checks below fence the moved data forward to the docs.
+
+  it("every CSS property used in styleSelectorExamplesByView is a known style property (#1586)", () => {
+    const known = new Set(ref.styleProperties.map((p) => p.name));
+    const used = new Set<string>();
+    for (const example of Object.values(ref.styleSelectorExamplesByView)) {
+      // strip /* … */ comments so commented-out hints aren't mistaken for declarations
+      const code = example.replace(/\/\*[\s\S]*?\*\//g, "");
+      for (const m of code.matchAll(/([a-z][a-z-]+)\s*:/g)) used.add(m[1]);
+    }
+    // sanity: the extractor actually found the declarations
+    expect(used).toContain("background-color");
+    expect(used.size).toBeGreaterThan(3);
+
+    const unknown = [...used].filter((p) => !known.has(p)).sort();
+    expect(unknown).toEqual([]);
+  });
+
+  it("style.md: every selectorSpecificity row matches the documented cascade score (#1586)", () => {
+    const styleMd = readSpec("style.md");
+    // Parse the `## Specificity rules (cascade)` table into example → score.
+    // Each row's first column is `Label (\`example\`)`; the score column may
+    // carry a parenthetical note (e.g. `101 (100 for the id + 1 …)`).
+    const documented = new Map<string, number>();
+    for (const line of sectionLines(styleMd, /^## Specificity rules/)) {
+      const m = line.match(/^\|\s*[^(|]*\(`([^`]+)`\)\s*\|\s*(\d+)/);
+      if (m) documented.set(m[1], Number(m[2]));
+    }
+    expect(documented.get("service")).toBe(1);
+    expect(documented.get("edge#criticalWrite")).toBe(101);
+
+    // Every reference row whose example the spec table documents must agree.
+    // (Forms the spec omits — e.g. `edge`, `edge[async]` — are intentionally
+    // not in that table; they are covered by the `## Selector types` table.)
+    const mismatches = ref.selectorSpecificity
+      .filter((row) => documented.has(row.example))
+      .filter((row) => documented.get(row.example) !== row.specificity)
+      .map((row) => `${row.example}: ref=${row.specificity} doc=${documented.get(row.example)}`);
+    expect(mismatches).toEqual([]);
+
+    // The id-bearing rows are the load-bearing ones — make sure the join
+    // against the spec table actually matched them, not silently skipped all.
+    const matched = ref.selectorSpecificity.filter((row) => documented.has(row.example));
+    expect(matched.map((r) => r.example)).toEqual(
+      expect.arrayContaining(["service", "#ECommerce", "edge#criticalWrite"]),
+    );
+  });
 });

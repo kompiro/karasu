@@ -744,3 +744,202 @@ export const REFERENCE_DATA = {
     },
   ],
 } satisfies ReferenceData;
+
+// ── Reference-panel snippets (locale-independent) ───────────────────────────
+//
+// The Reference panel's Syntax / Styles tabs show code snippets and a
+// specificity table that the app used to hold as branched JSX (#1548 / #1585).
+// They are illustrative `.krs` / `.krs.style` templates whose inline comments
+// mix EN/JA on purpose, so — unlike the locale-split `REFERENCE_DATA` above —
+// they are single strings, not `LocalizedString`s. Keeping them here next to
+// the rest of the reference data means the app can no longer drift them from
+// the spec, and `reference-spec-sync.test.ts` can fence them against
+// `docs/spec/*.md` (#1586, TPL-20260511-02).
+
+/** The diagram families the reference content is keyed on (matrix → system). */
+export type RefView = "system" | "deploy" | "org";
+
+/** A Syntax-tab section: a literal code snippet, or the per-view kind table the
+ *  app renders from `nodeKinds` / `deployUnitKinds` / `orgKinds`. */
+export type SyntaxSection =
+  | { heading: string; code: string }
+  | { heading: string; kindTable: true };
+
+export type SyntaxByView = Record<RefView, SyntaxSection[]>;
+export type StyleSelectorExamplesByView = Record<RefView, string>;
+
+/** One row of the Styles-tab "Selector Specificity" table. Mirrors
+ *  `docs/spec/style.md` § "Specificity rules (cascade)". */
+export interface SelectorSpecificityRow {
+  /** Human label for the selector form (e.g. "Type", "Edge ID"). */
+  label: string;
+  /** A concrete selector that takes this form (e.g. `service`, `edge#criticalWrite`). */
+  example: string;
+  /** The cascade specificity score. */
+  specificity: number;
+}
+
+export const SYNTAX_SECTIONS: SyntaxByView = {
+  system: [
+    {
+      heading: "Block Declaration",
+      code: `system "<name>" {
+  // services, users, edges
+}`,
+    },
+    { heading: "Node Kinds", kindTable: true },
+    {
+      heading: "Edge Syntax",
+      code: `A ->  B "label"   // sync (solid arrow)
+A --> B "label"   // async (dashed arrow)
+A ->  B "label" #criticalWrite   // optional edge id (#<id>) — targetable via edge#<id> in .krs.style
+// omitting #<id> → canonical id = <from><arrow><to>  (e.g. A->B / A-->B)`,
+    },
+    {
+      heading: "Node Declaration",
+      code: `// minimal (id only)
+<kind> <id>
+
+// with tags and annotations
+<kind> <id> [<tags>] @<annotations>
+
+// with block (properties and/or children)
+<kind> <id> [<tags>] @<annotations> {
+  label "<表示名>"        // display name; id used if omitted
+  description "<説明>"    // free-form description
+  // kind-specific properties (team, role, link, …)
+}`,
+    },
+    {
+      heading: "Resource Operations (CRUD)",
+      code: `// Inside a usecase, a resource may declare the CRUD verbs the usecase
+// performs on it: create | read | update | delete.
+usecase PlaceOrder {
+  resource OrderDB.OrderTable {
+    operations create, read
+  }
+  // verb-decoration (1:N CRUD mapping): keep a domain verb, declare its CRUD intent
+  resource OrderEvents.OrderPlaced {
+    operations enqueue:create, dequeue:delete
+  }
+}`,
+    },
+    {
+      heading: "Legend (footer)",
+      code: `// Top-level. Renders as a footer band below each diagram view.
+// Scope ("system" | "deploy" | "org") is optional — omit to show on all views.
+legend "<title>"? {
+  swatch <#hex> "<label>"           // explicit color
+  ref @<annotation> "<label>"        // color from .krs.style cascade
+  ref [<tag>]       "<label>"        // ditto, by tag
+  ref <type>        "<label>"        // ditto, by node-kind type selector
+  ref #<id>         "<label>"        // ditto, by node id
+}
+
+legend deploy "Hosting tier" {       // scope to a single view
+  swatch #0EA5E9 "Cloud Run"
+}`,
+    },
+  ],
+  deploy: [
+    {
+      heading: "Block Declaration",
+      code: `deploy "<name>" {
+  // deploy units
+}`,
+    },
+    { heading: "Deploy Unit Kinds", kindTable: true },
+    {
+      heading: "Unit Declaration",
+      code: `<kind> <id> {
+  label "<表示名>"
+  runtime "<runtime>"   // ⚠ 省略可（警告）
+  realizes <serviceId>  // ⚠ 省略可（警告）
+}
+
+// oci のみ image を指定可
+oci <id> {
+  image "<image:tag>"
+  runtime "<runtime>"
+  realizes <serviceId>
+}
+
+// job のみ schedule を指定可
+job <id> {
+  schedule "0 0 * * *"  // cron 形式。省略で単発実行
+  runtime "<runtime>"
+  realizes <serviceId>
+}
+
+// artifact は任意種別の逃げ弁
+artifact <id> {
+  type "<custom-type>"
+  runtime "<runtime>"
+  realizes <serviceId>
+}`,
+    },
+  ],
+  org: [
+    {
+      heading: "Block Declaration",
+      code: `organization "<name>" {
+  // teams
+}`,
+    },
+    { heading: "Org Kinds", kindTable: true },
+    {
+      heading: "Node Declaration",
+      code: `organization <id> {
+  label "<表示名>"
+
+  team <id> {
+    label "<チーム名>"
+    owns <serviceId>    // 対応サービス・ドメインを宣言
+    owns <domainId>
+
+    member <id> {
+      label "<名前>"
+      slack  "@handle"  // 省略可
+      github "username" // 省略可
+    }
+
+    team <id> { ... }   // サブチームのネスト可
+  }
+}`,
+    },
+  ],
+};
+
+/** Per-view `.krs.style` selector examples (the only `<pre>` in the Styles tab). */
+export const STYLE_SELECTOR_EXAMPLES: StyleSelectorExamplesByView = {
+  system: `/* system diagram selectors */
+service { background-color: #0369A1; }
+domain[external] { border-style: dashed; }
+user[human] { shape: user; }
+edge[async] { border-style: dashed; }
+edge[write] { direction: down; }       /* layout-direction hint: up | down | left | right | auto */
+edge#criticalWrite { color: #EF4444; } /* target one edge by id */
+#ECommerce { background-color: #1D4ED8; }`,
+  deploy: `/* deploy diagram selectors */
+oci { background-color: #0369A1; }
+jar { border-color: #075985; }
+war { opacity: 0.8; }
+#myUnit { background-color: #1D4ED8; }`,
+  org: `/* org diagram selectors */
+team { background-color: #0369A1; }
+member { border-color: #075985; }
+#myTeam { background-color: #1D4ED8; }`,
+};
+
+/** The Styles-tab "Selector Specificity" table — mirrors
+ *  `docs/spec/style.md` § "Specificity rules (cascade)". */
+export const SELECTOR_SPECIFICITY: SelectorSpecificityRow[] = [
+  { label: "Type", example: "service", specificity: 1 },
+  { label: "Tag", example: "[external]", specificity: 10 },
+  { label: "Annotation", example: "@deprecated", specificity: 10 },
+  { label: "Type+Tag", example: "service[external]", specificity: 11 },
+  { label: "ID", example: "#ECommerce", specificity: 100 },
+  { label: "Edge", example: "edge", specificity: 1 },
+  { label: "Edge+Tag", example: "edge[async]", specificity: 11 },
+  { label: "Edge ID", example: "edge#criticalWrite", specificity: 101 },
+];

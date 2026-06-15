@@ -1,5 +1,17 @@
 import { BUILTIN_STYLE_SOURCE } from "./default-style.js";
-import { REFERENCE_DATA } from "./reference-data.js";
+import {
+  REFERENCE_DATA,
+  SYNTAX_SECTIONS,
+  STYLE_SELECTOR_EXAMPLES,
+  SELECTOR_SPECIFICITY,
+} from "./reference-data.js";
+import type {
+  RefView,
+  SyntaxSection,
+  SyntaxByView,
+  StyleSelectorExamplesByView,
+  SelectorSpecificityRow,
+} from "./reference-data.js";
 import {
   GETTING_STARTED_PROJECT,
   GETTING_STARTED_PROJECT_EN,
@@ -54,6 +66,17 @@ export interface OrgKindInfo {
   properties: string[];
 }
 
+// Re-export the snippet types (defined alongside the data in reference-data.ts,
+// since — unlike the locale-split reference entries — they have no en/ja split)
+// so consumers import the whole reference surface from one place.
+export type {
+  RefView,
+  SyntaxSection,
+  SyntaxByView,
+  StyleSelectorExamplesByView,
+  SelectorSpecificityRow,
+};
+
 export interface KarasuReference {
   nodeKinds: NodeKindInfo[];
   deployUnitKinds: DeployUnitKindInfo[];
@@ -71,6 +94,16 @@ export interface KarasuReference {
    * examples. Sourced from `examples/` so they can't drift (#1548).
    */
   samplesByView: SamplesByView;
+  /**
+   * Reference-panel Syntax-tab sections per view (literal `.krs` snippets +
+   * a marker for the per-view kind table). Moved out of the app so the
+   * snippets can't drift from `docs/spec/syntax.md` (#1586).
+   */
+  syntaxByView: SyntaxByView;
+  /** Reference-panel Styles-tab `.krs.style` selector examples per view (#1586). */
+  styleSelectorExamplesByView: StyleSelectorExamplesByView;
+  /** Reference-panel "Selector Specificity" table — mirrors `docs/spec/style.md` (#1586). */
+  selectorSpecificity: SelectorSpecificityRow[];
 }
 
 export interface SamplesByView {
@@ -153,6 +186,9 @@ export function getReference(locale: ReferenceLocale = "en"): KarasuReference {
       deploy: indexKrs(DEPLOY_ONLY_PROJECT),
       org: indexKrs(ORG_ONLY_PROJECT),
     },
+    syntaxByView: SYNTAX_SECTIONS,
+    styleSelectorExamplesByView: STYLE_SELECTOR_EXAMPLES,
+    selectorSpecificity: SELECTOR_SPECIFICITY,
   };
 
   _cache.set(locale, ref);

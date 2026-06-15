@@ -15,6 +15,7 @@ discovered_from:
   - issue: "#1296"
   - issue: "#1327"
   - issue: "#1492"
+  - issue: "#1586"
 related_to:
   - TPL-20260510-11
   - TPL-20260510-12
@@ -29,9 +30,11 @@ scope:
 
 ## 観点
 
-karasu には「同じ仕様を 2 箇所で手書きしている」構造がある。`docs/spec/{syntax,style,tags-annotations}.md` が人間向けの正典、`packages/core/src/builtins/reference.ts`（`getReference()`）+ `packages/app/src/components/ReferencePanel.tsx` がアプリ内 Reference パネルの再掲。片方（多くは spec doc）に新しい style プロパティ / shape / タグ / アノテーション / ノード種別が landed しても、もう一方は更新されず、パネルが静かに古くなる。
+karasu には「同じ仕様を 2 箇所で手書きしている」構造がある。`docs/spec/{syntax,style,tags-annotations}.md` が人間向けの正典、`packages/core/src/builtins/reference.ts`（`getReference()`）+ `packages/app/src/components/ReferenceContent.tsx` がアプリ内 Reference パネルの再掲。片方（多くは spec doc）に新しい style プロパティ / shape / タグ / アノテーション / ノード種別が landed しても、もう一方は更新されず、パネルが静かに古くなる。
 
 この種の drift は **「正典から再掲側への片方向 subset チェック」を smoke test で固定する** ことで防げる。すなわち「spec doc が記述している keyword は、すべて reference データに存在する」を assert する（`docs/spec/style.md` の `css` fence のプロパティ宣言、各テーブルの第 1 列コードスパンを抽出して `getReference()` と突き合わせる）。逆向き（reference の全エントリが doc に記述されている）は assert しない — reference が doc より先行している（あるいは doc 側が追いついていない）ことは別系統の gap で、片方向に絞ると test が脆くならない。
+
+この縛りは **再掲側が「キーワードの表」だけでなく「コードスニペット / 派生表」のときも同じ** 。#1586 で Reference パネルの Syntax / Styles タブのコードスニペットと Selector Specificity 表を、アプリの branched JSX から `getReference()` ペイロード（`syntaxByView` / `styleSelectorExamplesByView` / `selectorSpecificity`）へ移した。スニペットは *例示* なので逆向き（spec の全 keyword がスニペットに登場する）は縛らないが、(1) スニペットが参照する style プロパティはすべて `styleProperties` に存在する、(2) `selectorSpecificity` の各行のスコアは `docs/spec/style.md`「Specificity rules (cascade)」表と一致する、の 2 つを `reference-spec-sync.test.ts` で前向きに縛る。スニペットが spec から落ちたプロパティ / セレクタを参照し続ける drift を検出するため。
 
 **例外: 入力を受理する validator スキーマ（`PROPERTY_SCHEMAS`）は逆向きも縛る。** reference データが doc に先行するのは過渡期の gap で済むが、validator スキーマが doc に先行すると「警告なしで受理されるのに、どこにも文書化されておらず、resolver も消費しない」入力が生まれる — `stroke-style` がスキーマにだけ存在した #1492 のゴーストプロパティがこれ。スキーマのエントリは「受理する」という対外的な約束なので、`PROPERTY_SCHEMAS ⊆ spec doc` の subset チェックを assert してよい（`reference-spec-sync.test.ts` の `every PROPERTY_SCHEMAS entry is documented` テスト）。
 

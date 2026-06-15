@@ -157,6 +157,11 @@ export {
   type ShapeInfo,
   type DeployUnitKindInfo,
   type OrgKindInfo,
+  type RefView,
+  type SyntaxSection,
+  type SyntaxByView,
+  type StyleSelectorExamplesByView,
+  type SelectorSpecificityRow,
 } from "./builtins/reference.js";
 export { analyze } from "./resolver/warnings.js";
 export type { DisplayMode } from "./renderer/layout.js";
