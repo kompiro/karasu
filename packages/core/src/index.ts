@@ -403,6 +403,8 @@ export interface OrgCompileResult {
   warnings: Warning[];
   nodePathIndex: Map<string, string[]>;
   organizations: OrganizationBlock[];
+  /** Maps each owned service/domain id to its resolved primary owner team id. */
+  ownerIndex: Map<string, string>;
   /** Resolved node/edge styles for use in tree view rendering. */
   styles: ResolvedStyles;
 }
@@ -512,6 +514,7 @@ function _compileFromPreparedInput(
       warnings,
       nodePathIndex: krsFile.nodePathIndex,
       organizations: krsFile.organizations,
+      ownerIndex: krsFile.ownerIndex,
       styles,
     };
   }

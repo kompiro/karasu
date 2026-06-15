@@ -41,6 +41,8 @@ function setup() {
         scopeLabel: "Root",
         viewPath: [],
         resolvedSystems: [],
+        organizations: [],
+        ownerIndex: new Map(),
         apiKey: "test-key",
         onNavigateViewPath,
         onEditorChange,

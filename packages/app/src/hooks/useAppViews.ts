@@ -89,6 +89,7 @@ interface OrgViewBundle {
   diagnostics: Diagnostic[];
   nodePathIndex: Map<string, string[]>;
   organizations: OrganizationBlock[];
+  ownerIndex: Map<string, string>;
   toggleTeamExpand: (teamId: string) => void;
   orgTreeSvg: string;
   orgTreeExportSvg: string;
@@ -209,6 +210,7 @@ export function useAppViews(args: UseAppViewsArgs): UseAppViewsResult {
     orgWarnings,
     nodePathIndex,
     organizations,
+    ownerIndex,
     recompile: recompileOrg,
     toggleTeamExpand,
     orgTreeSvg,
@@ -313,6 +315,7 @@ export function useAppViews(args: UseAppViewsArgs): UseAppViewsResult {
       diagnostics: orgDiagnostics,
       nodePathIndex,
       organizations,
+      ownerIndex,
       toggleTeamExpand,
       orgTreeSvg,
       orgTreeExportSvg,

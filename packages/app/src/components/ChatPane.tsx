@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { marked } from "marked";
 import DOMPurify from "dompurify";
-import type { SystemNode } from "@karasu-tools/core";
+import type { SystemNode, OrganizationBlock } from "@karasu-tools/core";
 import { ApiKeySetup } from "./ApiKeySetup.js";
 import { useChatSession, type PatchProposal } from "../hooks/useChatSession.js";
 import { useTranslation } from "../i18n/index.js";
@@ -14,6 +14,8 @@ interface ChatPaneProps {
   fileContent: string;
   currentFilePath: string | null;
   resolvedSystems: SystemNode[];
+  organizations: OrganizationBlock[];
+  ownerIndex: Map<string, string>;
   apiKey: string | null;
   onNavigateViewPath: (path: string[]) => void;
   onEditorChange: (value: string) => void;
@@ -27,6 +29,8 @@ export function ChatPane({
   fileContent,
   currentFilePath,
   resolvedSystems,
+  organizations,
+  ownerIndex,
   apiKey,
   onNavigateViewPath,
   onEditorChange,
@@ -49,6 +53,8 @@ export function ChatPane({
     scopeLabel,
     viewPath,
     resolvedSystems,
+    organizations,
+    ownerIndex,
     apiKey,
     onNavigateViewPath,
     onEditorChange,

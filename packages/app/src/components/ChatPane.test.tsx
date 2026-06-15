@@ -58,6 +58,8 @@ const defaultProps = {
   fileContent: "",
   currentFilePath: null,
   resolvedSystems: [],
+  organizations: [],
+  ownerIndex: new Map<string, string>(),
   apiKey: "sk-test-key",
   onNavigateViewPath: vi.fn<(path: string[]) => void>(),
   onEditorChange: vi.fn<(value: string) => void>(),
