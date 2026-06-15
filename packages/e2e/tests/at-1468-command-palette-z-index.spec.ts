@@ -19,19 +19,23 @@ test.describe("AT-1468 Command palette z-index", () => {
     await opfs.reset();
     await opfs.gotoApp();
 
-    // Open the References panel.
+    // Open the References panel (now itself a shadcn Dialog, #1548 — keyed by
+    // the `.reference-dialog` class to tell it apart from the palette dialog).
     await page.getByRole("button", { name: "Open reference" }).click();
-    await expect(page.locator(".reference-panel")).toBeVisible();
+    await expect(page.locator(".reference-dialog")).toBeVisible();
 
     // Open the command palette while the panel is still open.
     await page.keyboard.press("Control+Shift+P");
     const search = page.getByRole("combobox", { name: "Search commands" });
     await expect(search).toBeVisible();
 
-    // The palette must win the stacking order over the panel overlay.
+    // The palette must win the stacking order over the References panel.
     const stacking = await page.evaluate(() => {
-      const palette = document.querySelector('[role="dialog"]') as HTMLElement | null;
-      const panel = document.querySelector(".reference-panel") as HTMLElement | null;
+      const panel = document.querySelector(".reference-dialog") as HTMLElement | null;
+      // The palette is the other dialog — the one holding the search combobox.
+      const palette = Array.from(document.querySelectorAll('[role="dialog"]')).find(
+        (d) => d !== panel && d.querySelector('[role="combobox"]'),
+      ) as HTMLElement | null;
       if (!palette || !panel) return { ready: false } as const;
 
       const pr = palette.getBoundingClientRect();
@@ -45,7 +49,7 @@ test.describe("AT-1468 Command palette z-index", () => {
       return {
         ready: true,
         overlapsPanel: x >= nr.left && x <= nr.right,
-        topIsPalette: !!top?.closest('[role="dialog"]'),
+        topIsPalette: top != null && palette.contains(top),
       } as const;
     });
 

@@ -236,9 +236,11 @@ for (const mode of MODES) {
 
       await page.getByRole("button", { name: "Open reference" }).click();
 
-      const samplesTab = page.locator(".reference-panel-tab", { hasText: "Samples" });
+      // ReferencePanel migrated to shadcn Tabs (#1548): tabs are Radix
+      // triggers (role="tab", data-state="active"), not the legacy class list.
+      const samplesTab = page.getByRole("tab", { name: "Samples" });
       await samplesTab.click();
-      await expect(samplesTab).toHaveClass(/active/);
+      await expect(samplesTab).toHaveAttribute("data-state", "active");
 
       // The samples tab body shows the sampleKrs source covering all three blocks.
       const content = page.locator(".reference-panel-content");
