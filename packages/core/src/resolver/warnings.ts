@@ -405,8 +405,14 @@ function detectSharedInfraFanIn(file: KrsFile): Warning[] {
   for (const system of file.systems) {
     detectInScope(system.children);
   }
+  // Top-level (system-less) scope: services live in `file.services`, but
+  // top-level infra is bucketed separately in `file.databases` / `queues` /
+  // `storages` (not under any service subtree), so feed both in. Without the
+  // infra buckets the canonical "top-level store shared by several services"
+  // idiom (docs/spec/syntax.md) would never be collected. Each system's own
+  // scope already has both, since infra and services are alike `system.children`.
   if (file.services.length > 0) {
-    detectInScope(file.services);
+    detectInScope([...file.services, ...file.databases, ...file.queues, ...file.storages]);
   }
 
   return warnings;

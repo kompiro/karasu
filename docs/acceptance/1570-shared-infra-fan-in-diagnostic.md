@@ -38,6 +38,10 @@
 
   > ✅ Automated — `warnings.test.ts` › `does not warn across system boundaries (cross-system sharing is intentional)`
 
+- [x] system でラップされていないトップレベルの store（`file.databases` 等）を 2 つのトップレベル service が共有する場合も検出する
+
+  > ✅ Automated — `warnings.test.ts` › `detects fan-in for a top-level (system-less) store shared by top-level services`
+
 - [x] severity register は `info`（`Record<WarningKind, WarningSeverity>` のフェンスで kind 追加時に明示を強制）
 
   > ✅ Automated — `warnings.test.ts` › `EXPECTED_SEVERITY`

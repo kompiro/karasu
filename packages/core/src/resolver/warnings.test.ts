@@ -374,6 +374,25 @@ system Shop {
     expect(kinds).toEqual(["queue", "storage"]);
   });
 
+  it("detects fan-in for a top-level (system-less) store shared by top-level services", () => {
+    // Top-level infra is bucketed in `file.databases`, not under a service
+    // subtree — the canonical "shared store" idiom must still be detected.
+    const krs = `
+service OrderService {
+  domain Ordering { usecase PlaceOrder { resource OrderDB.Orders { operations create } } }
+}
+service ReportService {
+  domain Reporting { usecase BuildReport { resource OrderDB.Orders { operations read } } }
+}
+database OrderDB { table Orders }
+`;
+    const result = compile(krs);
+    const fanIn = result.warnings.filter((w) => w.kind === "shared-infra-fan-in");
+    expect(fanIn).toHaveLength(1);
+    expect(fanIn[0].params.infraId).toBe("OrderDB");
+    expect(fanIn[0].params.services).toHaveLength(2);
+  });
+
   it("does not warn across system boundaries (cross-system sharing is intentional)", () => {
     const krs = `
 system A {
