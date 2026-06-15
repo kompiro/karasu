@@ -1,7 +1,13 @@
 import { Fragment, useState } from "react";
 import { getReference } from "@karasu-tools/core";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useClipboardCopy } from "../hooks/useClipboardCopy.js";
 import type { ActiveView } from "../state/app-reducer.js";
@@ -197,6 +203,9 @@ export function ReferencePanel({ isOpen, onClose, activeView = "system" }: Refer
       <DialogContent className="reference-dialog flex max-h-[85vh] max-w-[760px] flex-col">
         <DialogHeader>
           <DialogTitle>Reference</DialogTitle>
+          <DialogDescription>
+            .krs / .krs.style syntax, styles, tags, the built-in theme, and sample sources.
+          </DialogDescription>
         </DialogHeader>
 
         <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as Tab)}>

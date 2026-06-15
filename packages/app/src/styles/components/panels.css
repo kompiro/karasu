@@ -345,115 +345,14 @@
   opacity: 0.75;
 }
 /* ── Reference Panel ────────────────────────────────────────────── */
-.reference-panel-overlay {
-  position: absolute;
-  inset: 0;
-  z-index: var(--z-panel);
-  background: var(--reference-scrim);
-  display: flex;
-  justify-content: flex-end;
-  backdrop-filter: blur(3px);
-  animation: overlayFadeIn 0.16s ease-out;
-}
-
-@keyframes overlayFadeIn {
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 1;
-  }
-}
-
-.reference-panel {
-  width: min(480px, 100%);
-  height: 100%;
-  background: var(--bg-raised);
-  border-left: 1px solid var(--border-strong);
-  display: flex;
-  flex-direction: column;
-  box-shadow:
-    var(--shadow-reference-panel),
-    -1px 0 0 var(--feather-dim);
-  animation: panelSlideIn 0.2s cubic-bezier(0.25, 0.46, 0.45, 0.94);
-}
-
-@keyframes panelSlideIn {
-  from {
-    transform: translateX(24px);
-    opacity: 0;
-  }
-  to {
-    transform: translateX(0);
-    opacity: 1;
-  }
-}
-
-.reference-panel-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 11px 16px;
-  border-bottom: 1px solid var(--border-default);
-  background: linear-gradient(to bottom, var(--bg-overlay) 0%, var(--bg-raised) 100%);
-  flex-shrink: 0;
-}
-
-.reference-panel-title {
-  font-weight: 700;
-  font-size: 13px;
-  color: var(--text-primary);
-  letter-spacing: -0.01em;
-}
-
-.reference-panel-close {
-  background: none;
-  border: none;
-  color: var(--text-muted);
-  font-size: 15px;
-  cursor: pointer;
-  padding: 2px 5px;
-  line-height: 1;
-  border-radius: var(--radius-xs);
-  transition: all 0.12s;
-}
-
-.reference-panel-close:hover {
-  color: var(--text-primary);
-  background: var(--bg-overlay);
-}
-
+/* The panel chrome (overlay, slide-in, header, close, tab buttons) migrated to
+   the shadcn Dialog + Tabs primitives (#1548); only the tab-bar container and
+   the content/body styles below remain in CSS. */
 .reference-panel-tabs {
   display: flex;
   border-bottom: 1px solid var(--border-default);
   flex-shrink: 0;
   background: var(--bg-surface);
-}
-
-.reference-panel-tab {
-  flex: 1;
-  background: transparent;
-  border: none;
-  border-bottom: 2px solid transparent;
-  color: var(--text-muted);
-  padding: 8px 4px;
-  font-size: 11.5px;
-  font-weight: 500;
-  font-family: var(--font-ui);
-  cursor: pointer;
-  text-align: center;
-  letter-spacing: 0.01em;
-  transition: all 0.12s;
-}
-
-.reference-panel-tab:hover {
-  color: var(--text-secondary);
-  background: var(--bg-raised);
-}
-
-.reference-panel-tab.active {
-  color: var(--accent-hover);
-  border-bottom-color: var(--accent);
 }
 
 .reference-panel-content {
