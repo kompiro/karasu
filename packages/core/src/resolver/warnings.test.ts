@@ -243,6 +243,173 @@ system NewPlatform {
   });
 });
 
+describe("shared-infra-fan-in warning", () => {
+  it("warns when one database is shared by two services in a single file (#1570)", () => {
+    // The key case the issue calls out: one declaration, referenced by N
+    // services — no `infra-redeclared-across-files` fires (single file), but the
+    // fan-in is the actual Database-per-Service smell signal.
+    const krs = `
+system Shop {
+  service OrderService {
+    domain Ordering {
+      usecase PlaceOrder {
+        resource OrderDB.Orders { operations create }
+      }
+    }
+  }
+  service ReportService {
+    domain Reporting {
+      usecase BuildReport {
+        resource OrderDB.Orders { operations read }
+      }
+    }
+  }
+  database OrderDB { table Orders }
+}
+`;
+    const result = compile(krs);
+    const fanIn = result.warnings.filter((w) => w.kind === "shared-infra-fan-in");
+    expect(fanIn).toHaveLength(1);
+    expect(fanIn[0].params.infraId).toBe("OrderDB");
+    expect(fanIn[0].params.infraKind).toBe("database");
+    expect(fanIn[0].params.services).toContain("OrderService");
+    expect(fanIn[0].params.services).toContain("ReportService");
+    expect(fanIn[0].params.services).toHaveLength(2);
+    // No multi-file redeclaration here.
+    expect(
+      result.diagnostics.filter((d) => d.code === "infra-redeclared-across-files"),
+    ).toHaveLength(0);
+  });
+
+  it("is registered as info and does not block rendering (ADR-20260514-02)", () => {
+    const krs = `
+system Shop {
+  service A { domain Da { usecase Ua { resource DB.t { operations read } } } }
+  service B { domain Db { usecase Ub { resource DB.t { operations read } } } }
+  database DB { table t }
+}
+`;
+    const result = compile(krs);
+    const w = result.warnings.find((x) => x.kind === "shared-infra-fan-in");
+    expect(w).toBeDefined();
+    expect(warningSeverity(w!.kind)).toBe("info");
+    expect(result.diagnostics.filter((d) => d.severity === "error")).toHaveLength(0);
+    expect(result.svg.length).toBeGreaterThan(0);
+  });
+
+  it("does not warn when only one service depends on the store", () => {
+    const krs = `
+system Shop {
+  service OrderService {
+    domain Ordering {
+      usecase PlaceOrder {
+        resource OrderDB.Orders { operations create }
+      }
+    }
+  }
+  database OrderDB { table Orders }
+}
+`;
+    const result = compile(krs);
+    expect(result.warnings.filter((w) => w.kind === "shared-infra-fan-in")).toHaveLength(0);
+  });
+
+  it("counts a service that references the store from multiple usecases only once", () => {
+    const krs = `
+system Shop {
+  service OrderService {
+    domain Ordering {
+      usecase PlaceOrder { resource OrderDB.Orders { operations create } }
+      usecase CancelOrder { resource OrderDB.Orders { operations update } }
+    }
+  }
+  database OrderDB { table Orders }
+}
+`;
+    const result = compile(krs);
+    // Only one service touches it (twice) → not a fan-in.
+    expect(result.warnings.filter((w) => w.kind === "shared-infra-fan-in")).toHaveLength(0);
+  });
+
+  it("excludes [external] stores — sharing a managed third-party store is not the smell", () => {
+    const krs = `
+system Shop {
+  service A { domain Da { usecase Ua { resource ExtDB.t { operations read } } } }
+  service B { domain Db { usecase Ub { resource ExtDB.t { operations read } } } }
+  database ExtDB [external] { table t }
+}
+`;
+    const result = compile(krs);
+    expect(result.warnings.filter((w) => w.kind === "shared-infra-fan-in")).toHaveLength(0);
+  });
+
+  it("detects shared queue and storage, not just database", () => {
+    const krs = `
+system Shop {
+  service A {
+    domain Da {
+      usecase Ua {
+        resource Events.Placed { operations create }
+        resource Files.images { operations create }
+      }
+    }
+  }
+  service B {
+    domain Db {
+      usecase Ub {
+        resource Events.Placed { operations read }
+        resource Files.images { operations read }
+      }
+    }
+  }
+  queue Events { queue Placed }
+  storage Files { bucket images }
+}
+`;
+    const result = compile(krs);
+    const kinds = result.warnings
+      .filter((w) => w.kind === "shared-infra-fan-in")
+      .map((w) => w.params.infraKind)
+      .sort();
+    expect(kinds).toEqual(["queue", "storage"]);
+  });
+
+  it("detects fan-in for a top-level (system-less) store shared by top-level services", () => {
+    // Top-level infra is bucketed in `file.databases`, not under a service
+    // subtree — the canonical "shared store" idiom must still be detected.
+    const krs = `
+service OrderService {
+  domain Ordering { usecase PlaceOrder { resource OrderDB.Orders { operations create } } }
+}
+service ReportService {
+  domain Reporting { usecase BuildReport { resource OrderDB.Orders { operations read } } }
+}
+database OrderDB { table Orders }
+`;
+    const result = compile(krs);
+    const fanIn = result.warnings.filter((w) => w.kind === "shared-infra-fan-in");
+    expect(fanIn).toHaveLength(1);
+    expect(fanIn[0].params.infraId).toBe("OrderDB");
+    expect(fanIn[0].params.services).toHaveLength(2);
+  });
+
+  it("does not warn across system boundaries (cross-system sharing is intentional)", () => {
+    const krs = `
+system A {
+  service Sa { domain Da { usecase Ua { resource SharedDB.t { operations read } } } }
+  database SharedDB { table t }
+}
+system B {
+  service Sb { domain Db { usecase Ub { resource SharedDB.t { operations read } } } }
+}
+`;
+    const result = compile(krs);
+    // The store is declared only in system A; system B's reference resolves to
+    // nothing in its own scope → no fan-in (one service per scope).
+    expect(result.warnings.filter((w) => w.kind === "shared-infra-fan-in")).toHaveLength(0);
+  });
+});
+
 describe("unassigned-domain warning", () => {
   it("warns for each top-level domain", () => {
     const krs = `
@@ -1416,6 +1583,10 @@ describe("warningSeverity — exhaustive register map", () => {
   // inheriting the `warning` default.
   const EXPECTED_SEVERITY: Record<WarningKind, WarningSeverity> = {
     "domain-dispersal": "info",
+    // Shared-store fan-in is a style-school smell (Database-per-Service), a
+    // fact karasu surfaces but does not prescribe fixing — info, symmetric
+    // with domain-dispersal (#1570).
+    "shared-infra-fan-in": "info",
     "missing-runtime": "info",
     "missing-realizes": "info",
     // Low-confidence hint on an open name set — never a defect karasu can

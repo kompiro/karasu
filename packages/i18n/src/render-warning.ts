@@ -29,6 +29,15 @@ export function renderWarning(w: Warning, t: TranslateFn): FormattedWarning {
         message: t("warning.domainDispersal.message", { domainId: w.params.domainId }),
         details: [...w.params.services, t("warning.domainDispersal.checkCohesion")],
       };
+    case "shared-infra-fan-in":
+      return {
+        message: t("warning.sharedInfraFanIn.message", {
+          infraKind: w.params.infraKind,
+          infraId: w.params.infraId,
+          count: w.params.services.length,
+        }),
+        details: [...w.params.services, t("warning.sharedInfraFanIn.checkDatabasePerService")],
+      };
     case "unassigned-domain": {
       const display = w.params.label ?? w.params.domainId;
       return {

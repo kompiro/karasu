@@ -14,6 +14,10 @@ const SAMPLES: Record<WarningKind, Warning> = {
     kind: "domain-dispersal",
     params: { domainId: "Orders", services: ["ServiceA", "ServiceB"] },
   },
+  "shared-infra-fan-in": {
+    kind: "shared-infra-fan-in",
+    params: { infraId: "OrderDB", infraKind: "database", services: ["ServiceA", "ServiceB"] },
+  },
   "style-conflict": {
     kind: "style-conflict",
     params: { selector: ".node", sheetIndices: [0, 1] },
@@ -127,6 +131,7 @@ const SAMPLES: Record<WarningKind, Warning> = {
 // id/target the user needs to find in their source must be present.
 const IDENTIFIERS: Record<WarningKind, string[]> = {
   "domain-dispersal": ["Orders"],
+  "shared-infra-fan-in": ["OrderDB", "database"],
   "style-conflict": [".node"],
   "missing-runtime": ["ApiUnit"],
   "missing-realizes": ["ApiUnit"],

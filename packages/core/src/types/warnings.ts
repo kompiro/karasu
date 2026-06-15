@@ -2,6 +2,7 @@ import type { SourceRange } from "./tokens.js";
 
 export type WarningKind =
   | "domain-dispersal"
+  | "shared-infra-fan-in"
   | "style-conflict"
   | "missing-runtime"
   | "missing-realizes"
@@ -42,6 +43,24 @@ export type WarningKind =
  */
 export interface WarningParamsByKind {
   "domain-dispersal": { domainId: string; services: string[] };
+  /**
+   * Two or more services have a resolved `resource` dependency on the same
+   * `database` / `queue` / `storage` node within one system scope. This is
+   * the actual "shared store / Database-per-Service smell" fan-in signal —
+   * keyed on real sharing, independent of how many files declared the store
+   * (cf. `infra-redeclared-across-files`, which keys on declaration
+   * redundancy). `[external]` stores are excluded: the smell is about owning
+   * a store, not depending on a managed third-party one. Info-register per
+   * ADR-20260514-02 (fact, not a defect).
+   */
+  "shared-infra-fan-in": {
+    /** id of the shared infra node (e.g. "OrderDB") */
+    infraId: string;
+    /** kind of the shared infra node */
+    infraKind: "database" | "queue" | "storage";
+    /** ids of the services that depend on it (≥ 2) */
+    services: string[];
+  };
   "style-conflict": { selector: string; sheetIndices: number[] };
   "missing-runtime": { nodeId: string };
   "missing-realizes": { nodeId: string };
@@ -191,6 +210,10 @@ export type WarningSeverity = "warning" | "info";
 
 const INFO_WARNING_KINDS: ReadonlySet<WarningKind> = new Set<WarningKind>([
   "domain-dispersal",
+  // Shared-store fan-in is a style-school smell (Database-per-Service), not a
+  // defect karasu prescribes fixing — same register as domain-dispersal
+  // (ADR-20260514-02 / TPL-20260514-08).
+  "shared-infra-fan-in",
   // Pre-existing informational kinds: the UI already rendered these with
   // the ℹ icon via the old `WARNING_ICONS` map; preserve that register.
   "missing-runtime",

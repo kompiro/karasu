@@ -176,6 +176,12 @@ export type Translations = {
   // kinds that carry multi-line or repeated detail rows.
   "warning.domainDispersal.message": (params: { domainId: string }) => string;
   "warning.domainDispersal.checkCohesion": string;
+  "warning.sharedInfraFanIn.message": (params: {
+    infraKind: string;
+    infraId: string;
+    count: number;
+  }) => string;
+  "warning.sharedInfraFanIn.checkDatabasePerService": string;
   "warning.unassignedDomain.message": (params: { display: string }) => string;
   "warning.unassignedUsecase.message": (params: { usecaseId: string }) => string;
   "warning.unassignedService.message": (params: { display: string }) => string;
