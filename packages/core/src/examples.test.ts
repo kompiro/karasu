@@ -1,7 +1,13 @@
 /// <reference types="node" />
 import { describe, it, expect } from "vitest";
 import { Parser } from "./parser/parser.js";
-import { compile, FEATURE_SAMPLES_PROJECT, MULTI_FILE_SYSTEM_PROJECT } from "./index.js";
+import {
+  compile,
+  FEATURE_SAMPLES_PROJECT,
+  MULTI_FILE_SYSTEM_PROJECT,
+  DEPLOY_ONLY_PROJECT,
+  ORG_ONLY_PROJECT,
+} from "./index.js";
 import { readFileSync, readdirSync } from "fs";
 import { resolve, dirname } from "path";
 import { fileURLToPath } from "url";
@@ -109,5 +115,20 @@ describe("getting-started: column hint affects rendered x positions (#969)", () 
     const inventoryX = extractRectX(result.svg, "Inventory");
     expect(notificationX).toBeLessThan(paymentX);
     expect(notificationX).toBeLessThan(inventoryX);
+  });
+});
+
+// Drift guard (#1548): the reference window's per-view Samples tab bundles
+// examples/deploy-only/ and examples/org-only/ via the reference payload, so
+// the bundled content must stay byte-equal to the files on disk.
+describe("deploy-only / org-only: bundled content matches examples/", () => {
+  it.each([
+    ["deploy-only", DEPLOY_ONLY_PROJECT],
+    ["org-only", ORG_ONLY_PROJECT],
+  ])("%s index.krs is byte-identical to the bundled entry", (name, project) => {
+    const onDisk = readFileSync(resolve(__dirname, `../../../examples/${name}/index.krs`), "utf8");
+    const entry = project.files.find((f) => f.path === "index.krs");
+    expect(entry).toBeDefined();
+    expect(entry?.content).toBe(onDisk);
   });
 });

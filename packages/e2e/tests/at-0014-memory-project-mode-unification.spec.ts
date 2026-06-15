@@ -234,14 +234,19 @@ for (const mode of MODES) {
     }) => {
       await bootApp(page, opfs, mode, KRS_WITH_ALL_VIEWS);
 
-      await page.getByRole("button", { name: "Open reference" }).click();
+      // Reference opens in a separate window so it can stay open beside the
+      // editor (#1548). Capture the popup and assert on it.
+      const popupPromise = page.waitForEvent("popup");
+      await page.getByRole("button", { name: /Open reference/ }).click();
+      const popup = await popupPromise;
 
-      const samplesTab = page.locator(".reference-panel-tab", { hasText: "Samples" });
+      // Tabs are Radix triggers (role="tab", data-state="active").
+      const samplesTab = popup.getByRole("tab", { name: "Samples" });
       await samplesTab.click();
-      await expect(samplesTab).toHaveClass(/active/);
+      await expect(samplesTab).toHaveAttribute("data-state", "active");
 
       // The samples tab body shows the sampleKrs source covering all three blocks.
-      const content = page.locator(".reference-panel-content");
+      const content = popup.locator(".reference-panel-content");
       await expect(content).toContainText("system");
       await expect(content).toContainText("deploy");
       await expect(content).toContainText("organization");
@@ -251,6 +256,7 @@ for (const mode of MODES) {
       // because the headless Chromium clipboard permission is environment-
       // dependent).
       await expect(content.locator(".reference-copy-btn")).toBeVisible();
+      await popup.close();
     });
   });
 }
