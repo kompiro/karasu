@@ -4,6 +4,8 @@
 - **ステータス**: 検討中
 - **関連**:
   - 引き金 Issue: [#1566](https://github.com/kompiro/karasu/issues/1566)
+  - PR: [#1584](https://github.com/kompiro/karasu/pull/1584)
+  - 派生 Issue: [#1583](https://github.com/kompiro/karasu/issues/1583)（@migration_target 優先 / team アノテーション）
   - 関連 ADR: [ADR-20260323-03](../adr/20260323-03-organization-diagram.md)（organization / owns 導入。§6 で本診断の severity を規定）
   - 関連 TPL: [TPL-20260514-08](../test-perspectives/TPL-20260514-08-diagnostic-register-fact-vs-style.md)（診断 register は「事実か流派判断か」で決める）
   - コード: `packages/core/src/parser/parser.ts`（`indexTeams` / `buildOwnerIndex`）, `packages/core/src/types/ast.ts`
