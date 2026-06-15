@@ -492,14 +492,21 @@ describe("PreviewColumn", () => {
       expect(onExportSvg).toHaveBeenCalledWith(allLayersSvg, expect.stringContaining("all-layers"));
     });
 
-    it("clicking toggle button opens export options menu with drill-down item", () => {
+    // The options menu is a shadcn `DropdownMenu` (#1549): the toggle is a
+    // Radix trigger and the items are `div[role="menuitem"]`s, so interactions
+    // go through `userEvent` (not `fireEvent.click`) and disabled state is read
+    // from `aria-disabled` / `data-disabled` rather than a `<button>.disabled`
+    // property. See `.claude/rules/testing.md`.
+    it("clicking toggle button opens export options menu with drill-down item", async () => {
+      const user = userEvent.setup();
       const props = makeProps({ activeView: "system" });
       const { getByRole, getByText } = renderPreview(props);
-      fireEvent.click(getByRole("button", { name: /Export options/ }));
+      await user.click(getByRole("button", { name: /Export options/ }));
       expect(getByText("Export Drill-down SVG")).toBeTruthy();
     });
 
-    it("Export Drill-down SVG calls onExportSvg with -drilldown suffix", () => {
+    it("Export Drill-down SVG calls onExportSvg with -drilldown suffix", async () => {
+      const user = userEvent.setup();
       const onExportSvg = vi.fn<() => void>();
       const drillDownSvg = "<svg>drilldown</svg>";
       const props = makeProps({
@@ -508,22 +515,26 @@ describe("PreviewColumn", () => {
         onExportSvg,
       });
       const { getByRole, getByText } = renderPreview(props);
-      fireEvent.click(getByRole("button", { name: /Export options/ }));
-      fireEvent.click(getByText("Export Drill-down SVG"));
+      await user.click(getByRole("button", { name: /Export options/ }));
+      await user.click(getByText("Export Drill-down SVG"));
       expect(onExportSvg).toHaveBeenCalledWith(drillDownSvg, expect.stringContaining("drilldown"));
     });
 
-    it("Export Drill-down SVG is disabled on deploy tab", () => {
+    it("Export Drill-down SVG is disabled on deploy tab", async () => {
+      const user = userEvent.setup();
       const props = makeProps({
         activeView: "deploy",
         drillDownSvg: "<svg>drilldown</svg>",
       });
       const { getByRole, getByText } = renderPreview(props);
-      fireEvent.click(getByRole("button", { name: /Export options/ }));
-      expect(getByText("Export Drill-down SVG").closest("button")).toHaveProperty("disabled", true);
+      await user.click(getByRole("button", { name: /Export options/ }));
+      const item = getByText("Export Drill-down SVG");
+      expect(item.getAttribute("aria-disabled")).toBe("true");
+      expect(item.hasAttribute("data-disabled")).toBe(true);
     });
 
-    it("Export Drill-down SVG calls onExportSvg with -drilldown suffix on org tab", () => {
+    it("Export Drill-down SVG calls onExportSvg with -drilldown suffix on org tab", async () => {
+      const user = userEvent.setup();
       const onExportSvg = vi.fn<() => void>();
       const orgDrillDownSvg = "<svg>org-drilldown</svg>";
       const props = makeProps({
@@ -532,63 +543,66 @@ describe("PreviewColumn", () => {
         onExportSvg,
       });
       const { getByRole, getByText } = renderPreview(props);
-      fireEvent.click(getByRole("button", { name: /Export options/ }));
-      fireEvent.click(getByText("Export Drill-down SVG"));
+      await user.click(getByRole("button", { name: /Export options/ }));
+      await user.click(getByText("Export Drill-down SVG"));
       expect(onExportSvg).toHaveBeenCalledWith(
         orgDrillDownSvg,
         expect.stringContaining("drilldown"),
       );
     });
 
-    it("Export All Diagrams SVG is disabled when allViewsSvg is undefined", () => {
+    it("Export All Diagrams SVG is disabled when allViewsSvg is undefined", async () => {
+      const user = userEvent.setup();
       const props = makeProps({ activeView: "system", allViewsSvg: undefined });
       const { getByRole, getByText } = renderPreview(props);
-      fireEvent.click(getByRole("button", { name: /Export options/ }));
-      expect(getByText("Export All Diagrams SVG").closest("button")).toHaveProperty(
-        "disabled",
-        true,
-      );
+      await user.click(getByRole("button", { name: /Export options/ }));
+      const item = getByText("Export All Diagrams SVG");
+      expect(item.getAttribute("aria-disabled")).toBe("true");
+      expect(item.hasAttribute("data-disabled")).toBe(true);
     });
 
-    it("Export All Diagrams SVG calls onExportSvg with all-diagrams.svg filename", () => {
+    it("Export All Diagrams SVG calls onExportSvg with all-diagrams.svg filename", async () => {
+      const user = userEvent.setup();
       const onExportSvg = vi.fn<() => void>();
       const allViewsSvg = "<svg>all-views</svg>";
       const props = makeProps({ activeView: "system", allViewsSvg, onExportSvg });
       const { getByRole, getByText } = renderPreview(props);
-      fireEvent.click(getByRole("button", { name: /Export options/ }));
-      fireEvent.click(getByText("Export All Diagrams SVG"));
+      await user.click(getByRole("button", { name: /Export options/ }));
+      await user.click(getByText("Export All Diagrams SVG"));
       expect(onExportSvg).toHaveBeenCalledWith(allViewsSvg, "all-diagrams.svg");
     });
 
-    it("Export draw.io menu item is disabled when no onExportDrawio is wired", () => {
+    it("Export draw.io menu item is disabled when no onExportDrawio is wired", async () => {
+      const user = userEvent.setup();
       const props = makeProps({ activeView: "system", onExportDrawio: undefined });
       const { getByRole, getByText } = renderPreview(props);
-      fireEvent.click(getByRole("button", { name: /Export options/ }));
-      expect(getByText("Export draw.io (mxGraph XML)").closest("button")).toHaveProperty(
-        "disabled",
-        true,
-      );
+      await user.click(getByRole("button", { name: /Export options/ }));
+      const item = getByText("Export draw.io (mxGraph XML)");
+      expect(item.getAttribute("aria-disabled")).toBe("true");
+      expect(item.hasAttribute("data-disabled")).toBe(true);
     });
 
-    it("Export draw.io menu item calls onExportDrawio with a .drawio filename", () => {
+    it("Export draw.io menu item calls onExportDrawio with a .drawio filename", async () => {
+      const user = userEvent.setup();
       const onExportDrawio = vi
         .fn<(filename: string) => Promise<void>>()
         .mockResolvedValue(undefined);
       const props = makeProps({ activeView: "system", onExportDrawio });
       const { getByRole, getByText } = renderPreview(props);
-      fireEvent.click(getByRole("button", { name: /Export options/ }));
-      fireEvent.click(getByText("Export draw.io (mxGraph XML)"));
+      await user.click(getByRole("button", { name: /Export options/ }));
+      await user.click(getByText("Export draw.io (mxGraph XML)"));
       expect(onExportDrawio).toHaveBeenCalledWith(expect.stringMatching(/\.drawio$/));
     });
 
     it("surfaces draw.io export failures in an inline error banner", async () => {
+      const user = userEvent.setup();
       const onExportDrawio = vi
         .fn<(filename: string) => Promise<void>>()
         .mockRejectedValue(new Error("disk full"));
       const props = makeProps({ activeView: "system", onExportDrawio });
       const { getByRole, getByText, findByRole, queryByRole } = renderPreview(props);
-      fireEvent.click(getByRole("button", { name: /Export options/ }));
-      fireEvent.click(getByText("Export draw.io (mxGraph XML)"));
+      await user.click(getByRole("button", { name: /Export options/ }));
+      await user.click(getByText("Export draw.io (mxGraph XML)"));
       const banner = await findByRole("alert");
       expect(banner.textContent).toContain("disk full");
       // a11y contract (#1399 / TPL-20260516-01): the dismiss control is a

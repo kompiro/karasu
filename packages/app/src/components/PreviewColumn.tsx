@@ -11,6 +11,12 @@ import { useActiveViewData } from "../state/active-view-data.js";
 import { useTranslation } from "../i18n/index.js";
 import { useCommand } from "../keyboard/use-command.js";
 import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 const EXPORT_ERROR_AUTO_DISMISS_MS = 6000;
 // Unlike anchor downloads (which revoke at 0), the "Open All Views" blob must
@@ -214,47 +220,43 @@ export function PreviewColumn() {
           >
             {t("preview.export.svg.label")}
           </Button>
-          <Button
-            variant="actionable"
-            className="rounded-l-none px-1.5"
-            aria-pressed={exportMenuOpen}
-            onClick={() => setExportMenuOpen((v) => !v)}
-            aria-label={t("preview.export.options.ariaLabel")}
-            aria-haspopup="menu"
-            aria-expanded={exportMenuOpen}
-            disabled={!exportAvailable}
-          >
-            ▾
-          </Button>
-          {exportMenuOpen && (
-            <div className="export-menu" role="menu" onMouseLeave={() => setExportMenuOpen(false)}>
-              <button
-                role="menuitem"
+          <DropdownMenu open={exportMenuOpen} onOpenChange={setExportMenuOpen}>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="actionable"
+                className="rounded-l-none px-1.5"
+                aria-pressed={exportMenuOpen}
+                aria-label={t("preview.export.options.ariaLabel")}
+                disabled={!exportAvailable}
+              >
+                ▾
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="export-menu">
+              <DropdownMenuItem
                 className="export-menu-item"
-                onClick={handleExportDrillDown}
+                onSelect={handleExportDrillDown}
                 disabled={!drillDownAvailable}
               >
                 {t("preview.export.drillDown.label")}
-              </button>
-              <button
-                role="menuitem"
+              </DropdownMenuItem>
+              <DropdownMenuItem
                 className="export-menu-item"
-                onClick={handleExportAllDiagrams}
+                onSelect={handleExportAllDiagrams}
                 disabled={!allViewsSvg}
               >
                 {t("preview.export.allDiagrams.label")}
-              </button>
-              <button
-                role="menuitem"
+              </DropdownMenuItem>
+              <DropdownMenuItem
                 className="export-menu-item"
-                onClick={handleExportDrawio}
+                onSelect={handleExportDrawio}
                 disabled={!onExportDrawio}
                 title={t("preview.export.drawio.title")}
               >
                 {t("preview.export.drawio.label")}
-              </button>
-            </div>
-          )}
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
 
         <Button variant="actionable" onClick={() => setRefOpen(true)} aria-label="Open reference">

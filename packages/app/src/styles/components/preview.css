@@ -302,26 +302,19 @@
   padding: 3px 6px;
 }
 
-/* Export mode dropdown menu */
+/* Export mode dropdown menu.
+   Migrated to shadcn/ui `DropdownMenu` (#1549): positioning, background,
+   border, shadow and z-index now come from the `DropdownMenuContent`
+   primitive, so `.export-menu` only carries the gap between items. The items
+   are Radix `div[role="menuitem"]`s — drive highlight/disabled with
+   `[data-highlighted]` / `[data-disabled]`, not `:hover` / `:disabled`. */
 .export-menu {
-  position: absolute;
-  top: calc(100% + 4px);
-  right: 0;
-  background: var(--bg-raised);
-  border: 1px solid var(--border-strong);
-  border-radius: var(--radius-sm);
-  box-shadow: var(--shadow-dropdown);
-  z-index: var(--z-dropdown);
-  min-width: 160px;
-  padding: 4px;
   display: flex;
   flex-direction: column;
   gap: 2px;
 }
 
 .export-menu-item {
-  background: transparent;
-  border: none;
   border-radius: calc(var(--radius-sm) - 2px);
   color: var(--text-secondary);
   font-family: var(--font-ui);
@@ -334,16 +327,13 @@
   transition: all 0.1s;
 }
 
-.export-menu-item:hover:not(:disabled) {
+.export-menu-item:hover,
+.export-menu-item[data-highlighted] {
   background: var(--accent-dim);
   color: var(--accent-hover);
 }
 
-.export-menu-item.active {
-  color: var(--accent-hover);
-}
-
-.export-menu-item:disabled {
+.export-menu-item[data-disabled] {
   color: var(--text-muted);
   cursor: not-allowed;
   opacity: 0.5;
