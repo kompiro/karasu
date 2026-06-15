@@ -209,7 +209,7 @@ system Shop {
 
 karasu はこの共有を **描くが禁止しません** — マイクロサービスの Database-per-Service 観点では smell ですが、共有が正当な場面もあるからです。読解中のあなたが見つけた「構造的事実」を、判断を保留したまま地図に残せます。
 
-> **診断との対応**: 同名の `database` / `queue` / `storage` を **複数ファイルで再宣言** した場合は `infra-redeclared-across-files`(info) が出ます。一方、上の例のように 1 つの DB を複数 service が参照する **fan-in 自体** への診断は現状なく、共有は図に描かれるだけです（fan-in 診断は検討中 — Issue #1570）。
+> **診断との対応**: 上の例のように 1 つの store を 2 つ以上の service が参照する **fan-in 自体** には `shared-infra-fan-in`(info) が出て、store と参照元 service を列挙します。これは何ファイルで宣言したかに依らず実際の共有で判定します（`[external]` ストアは除外）。これとは別に、同名の `database` / `queue` / `storage` を **複数ファイルで再宣言** した場合は `infra-redeclared-across-files`(info) が出ますが、こちらが観察するのは共有ではなく宣言の冗長性です。
 
 ---
 
