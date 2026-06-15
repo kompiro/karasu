@@ -4,6 +4,7 @@
 - **ステータス**: 検討中
 - **関連**:
   - 引き金 Issue: [#1570](https://github.com/kompiro/karasu/issues/1570)
+  - 設計 PR: [#1588](https://github.com/kompiro/karasu/pull/1588)
   - 統治 ADR: [ADR-20260514-02](../adr/20260514-02-style-prescription-stance.md)（流派が smell と呼ぶ構造は `info` で事実通知）
   - 関連 TPL: [TPL-20260514-08](../test-perspectives/TPL-20260514-08-diagnostic-register-fact-vs-style.md)（新規 diagnostic の register は事実か流派判断かで決める）, [TPL-20260514-07](../test-perspectives/TPL-20260514-07-infra-redeclared-across-files.md)
   - コード: `packages/core/src/resolver/warnings.ts`, `packages/core/src/types/warnings.ts`, `packages/i18n/src/render-warning.ts`
