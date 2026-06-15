@@ -49,6 +49,68 @@ describe("ObservableFileSystemProvider", () => {
     });
   });
 
+  describe("update (serialized read-modify-write)", () => {
+    it("reads current content, applies transform, and writes it back", async () => {
+      const { fs } = setup();
+      await fs.writeFile("/a.krs.style", "edge { color: red; }\n");
+      await fs.update("/a.krs.style", (current) => current + "service { shape: box; }\n");
+      expect(await fs.readFile("/a.krs.style")).toBe(
+        "edge { color: red; }\nservice { shape: box; }\n",
+      );
+    });
+
+    it("treats a missing file as empty and emits `create`", async () => {
+      const { fs, events } = setup();
+      await fs.update("/new.krs.style", (current) => current + "edge { color: red; }\n");
+      expect(await fs.readFile("/new.krs.style")).toBe("edge { color: red; }\n");
+      expect(events).toEqual([{ type: "create", path: "/new.krs.style" }]);
+    });
+
+    // #1563 (TPL-20260613-02): a read-modify-write must be atomic per path so a
+    // concurrent writer can't clobber it. Two appends fired together must BOTH
+    // land — without serialization they'd both read the same base and the later
+    // write would drop the earlier append (a lost update).
+    it("serializes concurrent updates to the same path (no lost update)", async () => {
+      const { fs } = setup();
+      await fs.writeFile("/a.krs.style", "");
+      await Promise.all([
+        fs.update("/a.krs.style", (c) => c + "X\n"),
+        fs.update("/a.krs.style", (c) => c + "Y\n"),
+      ]);
+      const result = await fs.readFile("/a.krs.style");
+      expect(result).toContain("X\n");
+      expect(result).toContain("Y\n");
+      expect(result.length).toBe(4); // both 2-char lines present; neither clobbered
+    });
+
+    // A plain writeFile fired alongside an update must not interleave between
+    // the update's read and write: the editor's auto-save (writeFile) and the
+    // GUI append (update) on the same open .krs.style file (#1563).
+    it("serializes a writeFile against an update on the same path", async () => {
+      const { fs } = setup();
+      await fs.writeFile("/a.krs.style", "base\n");
+      await Promise.all([
+        fs.writeFile("/a.krs.style", "editor-save\n"),
+        fs.update("/a.krs.style", (c) => c + "appended\n"),
+      ]);
+      const result = await fs.readFile("/a.krs.style");
+      // Either order is a valid serial outcome; the buggy lost-update result
+      // ("appended\n" built on the pre-save base, dropping the editor save) must
+      // NOT occur.
+      expect(["editor-save\nappended\n", "editor-save\n"]).toContain(result);
+    });
+
+    it("does not serialize updates to different paths", async () => {
+      const { fs } = setup();
+      await Promise.all([
+        fs.update("/a.krs.style", () => "a\n"),
+        fs.update("/b.krs.style", () => "b\n"),
+      ]);
+      expect(await fs.readFile("/a.krs.style")).toBe("a\n");
+      expect(await fs.readFile("/b.krs.style")).toBe("b\n");
+    });
+  });
+
   describe("read ops pass through without emitting", () => {
     it("readFile / readDir / exists are silent", async () => {
       const { fs, events } = setup();
