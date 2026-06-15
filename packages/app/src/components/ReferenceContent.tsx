@@ -1,23 +1,10 @@
 import { Fragment, useState } from "react";
 import { getReference } from "@karasu-tools/core";
 import { Button } from "@/components/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useClipboardCopy } from "../hooks/useClipboardCopy.js";
 import type { ActiveView } from "../state/app-reducer.js";
 import { useTranslation } from "../i18n/index.js";
-
-interface ReferencePanelProps {
-  isOpen: boolean;
-  onClose: () => void;
-  activeView?: ActiveView;
-}
 
 type Tab = "syntax" | "styles" | "tags" | "builtin" | "samples";
 
@@ -193,50 +180,47 @@ member { border-color: #075985; }
 #myTeam { background-color: #1D4ED8; }`,
 };
 
-export function ReferencePanel({ isOpen, onClose, activeView = "system" }: ReferencePanelProps) {
+/**
+ * The reference body — tab bar + per-view content. Rendered standalone in the
+ * pop-out reference window (see {@link ReferenceWindow}) so the user can consult
+ * it while editing in the main window (#1548 follow-up: the modal Dialog trapped
+ * focus and blocked the editor).
+ */
+export function ReferenceContent({ activeView = "system" }: { activeView?: ActiveView }) {
   const [activeTab, setActiveTab] = useState<Tab>("syntax");
   const { locale } = useTranslation();
   const ref = getReference(locale);
 
   return (
-    <Dialog open={isOpen} onOpenChange={(v) => !v && onClose()}>
-      <DialogContent className="reference-dialog flex max-h-[85vh] max-w-[760px] flex-col">
-        <DialogHeader>
-          <DialogTitle>Reference</DialogTitle>
-          <DialogDescription>
-            .krs / .krs.style syntax, styles, tags, the built-in theme, and sample sources.
-          </DialogDescription>
-        </DialogHeader>
+    <div className="reference-content-root">
+      <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as Tab)}>
+        <TabsList className="reference-panel-tabs">
+          {(Object.keys(TAB_LABELS) as Tab[]).map((tab) => (
+            <TabsTrigger key={tab} value={tab}>
+              {TAB_LABELS[tab]}
+            </TabsTrigger>
+          ))}
+        </TabsList>
+      </Tabs>
 
-        <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as Tab)}>
-          <TabsList className="reference-panel-tabs">
-            {(Object.keys(TAB_LABELS) as Tab[]).map((tab) => (
-              <TabsTrigger key={tab} value={tab}>
-                {TAB_LABELS[tab]}
-              </TabsTrigger>
-            ))}
-          </TabsList>
-        </Tabs>
-
-        <div className="reference-panel-content">
-          {activeTab === "syntax" && <SyntaxTab activeView={activeView} />}
-          {activeTab === "styles" && <StylesTab activeView={activeView} />}
-          {activeTab === "tags" && <TagsTab activeView={activeView} />}
-          {activeTab === "builtin" && (
-            <CopyableSourceTab
-              descriptionKey="referencePanel.builtin.description"
-              source={ref.builtinStyleSource}
-            />
-          )}
-          {activeTab === "samples" && (
-            <CopyableSourceTab
-              descriptionKey="referencePanel.samples.description"
-              source={ref.sampleKrs}
-            />
-          )}
-        </div>
-      </DialogContent>
-    </Dialog>
+      <div className="reference-panel-content">
+        {activeTab === "syntax" && <SyntaxTab activeView={activeView} />}
+        {activeTab === "styles" && <StylesTab activeView={activeView} />}
+        {activeTab === "tags" && <TagsTab activeView={activeView} />}
+        {activeTab === "builtin" && (
+          <CopyableSourceTab
+            descriptionKey="referencePanel.builtin.description"
+            source={ref.builtinStyleSource}
+          />
+        )}
+        {activeTab === "samples" && (
+          <CopyableSourceTab
+            descriptionKey="referencePanel.samples.description"
+            source={ref.sampleKrs}
+          />
+        )}
+      </div>
+    </div>
   );
 }
 

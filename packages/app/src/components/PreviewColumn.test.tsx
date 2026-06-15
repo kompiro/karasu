@@ -276,26 +276,29 @@ describe("PreviewColumn", () => {
   });
 
   describe("Reference command", () => {
-    const findToggleReference = (registry: ReturnType<typeof useCommandRegistry>) =>
-      registry.getCommands().find((c) => c.id === "view.toggleReference");
+    const findOpenReference = (registry: ReturnType<typeof useCommandRegistry>) =>
+      registry.getCommands().find((c) => c.id === "view.openReference");
 
-    it("registers a palette-only 'Toggle Reference' command (no keybinding)", () => {
+    it("registers a palette-only 'Open Reference' command (no keybinding)", () => {
       const { getRegistry } = renderPreviewWithRegistry(makeProps());
-      const command = findToggleReference(getRegistry());
-      expect(command?.title).toBe("Toggle Reference");
+      const command = findOpenReference(getRegistry());
+      expect(command?.title).toBe("Open Reference");
       expect(command?.keybinding).toBeUndefined();
     });
 
-    it("toggles the References panel open and closed on successive runs", () => {
-      const { getRegistry } = renderPreviewWithRegistry(makeProps());
-      const run = () => act(() => findToggleReference(getRegistry())?.run());
-      // ReferencePanel is now a shadcn Dialog — its content portals to
-      // document.body, so query the document, not the render container.
-      expect(document.querySelector('[role="dialog"]')).toBeNull();
-      run();
-      expect(document.querySelector('[role="dialog"]')).toBeTruthy();
-      run();
-      expect(document.querySelector('[role="dialog"]')).toBeNull();
+    it("opens the reference in a new window seeded with the active view", () => {
+      const openSpy = vi
+        .spyOn(window, "open")
+        .mockReturnValue({ focus: vi.fn<() => void>() } as unknown as Window);
+      const { getRegistry } = renderPreviewWithRegistry(makeProps({ activeView: "deploy" }));
+      act(() => findOpenReference(getRegistry())?.run());
+      expect(openSpy).toHaveBeenCalledOnce();
+      const url = openSpy.mock.calls[0][0] as string;
+      expect(url).toContain("reference=1");
+      expect(url).toContain("view=deploy");
+      // Stable window name so re-opening reuses/focuses the same window.
+      expect(openSpy.mock.calls[0][1]).toBe("karasu-reference");
+      openSpy.mockRestore();
     });
 
     it("unregisters the command when PreviewColumn unmounts", () => {
@@ -317,9 +320,9 @@ describe("PreviewColumn", () => {
         );
       }
       const { rerender } = render(<Tree show />);
-      expect(findToggleReference(registry)).toBeTruthy();
+      expect(findOpenReference(registry)).toBeTruthy();
       rerender(<Tree show={false} />);
-      expect(findToggleReference(registry)).toBeUndefined();
+      expect(findOpenReference(registry)).toBeUndefined();
     });
   });
 
