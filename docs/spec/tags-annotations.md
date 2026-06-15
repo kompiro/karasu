@@ -99,6 +99,29 @@ service Legacy  @depracated   // info hint: did you mean "@deprecated"?
 
 > Related TPLs: [TPL-20260610-01](../test-perspectives/TPL-20260610-01-accepted-vocabulary-must-have-effect.md)
 
+### Annotation parameters
+
+A built-in lifecycle annotation can carry **parameters** that record migration intent, with `@name(key: "value"[, key: "value"]*)`:
+
+```krs
+service Legacy @deprecated(until: "2026-Q3")
+service NewSvc @migration_target(from: LegacyMonolith)
+```
+
+Recognized keys (built-ins only):
+
+| Annotation | Key | Meaning |
+|------------|-----|---------|
+| `@deprecated` / `@experimental` | `until` | When the node is expected to be removed / stabilized |
+| `@migration_target` | `from` | The node this one is migrating away from |
+
+- **Graceful degradation by precision**: a `until` value that parses as a date (`YYYY-MM-DD`), year-month (`YYYY-MM`), or quarter (`YYYY-Qn`) is machine-usable (sortable / filterable); any other string (e.g. `"sometime next year"`) is kept verbatim as an opaque, display-only value. No validation error is raised for opaque values.
+- **No runtime evaluation**: `until` is recorded **intent**, not a deadline — karasu never compares it to the current date (no "overdue" diagnostic). Consistent with `job.schedule` (stored, not simulated) and the warn-don't-error stance.
+- **Unsupported parameters warn, not silently ignored**: a parameter on any other annotation, or with an unrecognized key, is dropped with an `annotation-param-unsupported` warning (TPL-20260610-01 — accepted vocabulary must have an effect or be warned). Custom annotations are param-less for now.
+- The annotation **name list** is unchanged by parameters, so `.krs.style` annotation selectors (`@deprecated`) and annotation inheritance are unaffected.
+
+> Related TPLs: [TPL-20260610-01](../test-perspectives/TPL-20260610-01-accepted-vocabulary-must-have-effect.md) — an `@name(key: …)` with an unrecognized key/annotation is warned, never silently accepted.
+
 ---
 
 ## Client capabilities
