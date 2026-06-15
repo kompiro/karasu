@@ -348,6 +348,35 @@ describe("render — --view system", () => {
     expect(lines.some((l) => l.startsWith("Info:") && l.includes("Order"))).toBe(true);
     expect(lines.some((l) => l.startsWith("Warning:") && l.includes("Order"))).toBe(false);
   });
+
+  it("prints info-severity parser diagnostics (duplicate-owner-assignment) with an `Info:` prefix", async () => {
+    const filePath = join(tmpDir, "index.krs");
+    await writeFile(filePath, "system { }", "utf-8");
+
+    mockCompileProject.mockResolvedValue({
+      svg: "<svg>system</svg>",
+      diagnostics: [
+        {
+          severity: "info",
+          code: "duplicate-owner-assignment",
+          params: { nodeId: "ECommerce", existingTeam: "teamA" },
+        },
+      ],
+      warnings: [],
+    });
+    const stderrSpy = vi.spyOn(process.stderr, "write").mockImplementation(() => true);
+    const exitSpy = vi.spyOn(process, "exit").mockImplementation(() => undefined as never);
+    vi.spyOn(process.stdout, "write").mockImplementation(() => true);
+
+    await render(filePath, { view: "system" });
+
+    // An info-severity parser diagnostic must surface (with `Info:`), not be
+    // dropped, and must not exit non-zero (ADR-20260615-01).
+    const lines = stderrSpy.mock.calls.map((args) => String(args[0]));
+    expect(lines.some((l) => l.startsWith("Info:") && l.includes("ECommerce"))).toBe(true);
+    expect(lines.some((l) => l.startsWith("Warning:") && l.includes("ECommerce"))).toBe(false);
+    expect(exitSpy).not.toHaveBeenCalled();
+  });
 });
 
 // ── render: --format drawio ───────────────────────────────────────────────────

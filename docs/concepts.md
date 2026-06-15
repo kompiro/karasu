@@ -237,6 +237,7 @@ it matters in your context, ignore if it doesn't"**:
 |---|---|---|
 | `domain-dispersal` (info) | Same domain id under ≥ 2 services in one system | DDD considers same-domain dispersal a cohesion warning |
 | `infra-redeclared-across-files` (info) | Same `database` / `queue` / `storage` id declared in multiple files | Microservices Database-per-Service treats shared DB as a smell |
+| `duplicate-owner-assignment` (info) | The same node is `owns`ed by more than one `team` (the first declaration is kept as primary owner) | Org models that assume single ownership treat duplicate ownership as a smell; it is a legitimate transient state during an inverse-Conway migration |
 
 This list will grow over time. The criterion for adding to it is:
 
