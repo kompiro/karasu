@@ -12,6 +12,7 @@ export function analyze(file: KrsFile, sheets: StyleSheet[], systemSheetCount = 
   const stylesIndex = indexStyleSelectors(sheets);
 
   warnings.push(...detectDomainDispersal(file));
+  warnings.push(...detectSharedInfraFanIn(file));
   warnings.push(...detectUnassignedDomains(file));
   warnings.push(...detectUnassignedServices(file));
   warnings.push(...detectUnassignedClients(file));
@@ -309,6 +310,93 @@ function detectDomainDispersal(file: KrsFile): Warning[] {
           kind: "domain-dispersal",
           params: { domainId, services: Array.from(services) },
           loc: domainToLoc.get(domainId),
+        });
+      }
+    }
+  }
+
+  for (const system of file.systems) {
+    detectInScope(system.children);
+  }
+  if (file.services.length > 0) {
+    detectInScope(file.services);
+  }
+
+  return warnings;
+}
+
+const INFRA_FAN_IN_KINDS = new Set<KrsNode["kind"]>(["database", "queue", "storage"]);
+
+/**
+ * Surface the shared-store "fan-in": ≥2 services with a resolved `resource`
+ * dependency on the same `database` / `queue` / `storage` within one system
+ * scope. Symmetric with `detectDomainDispersal` (same id under ≥2 services),
+ * info-register per ADR-20260514-02 — it states a fact (the Database-per-Service
+ * smell), it is not a defect.
+ *
+ * Keyed on *actual sharing*, so — unlike `infra-redeclared-across-files`, which
+ * keys on multi-file declaration redundancy — detection is independent of how
+ * many files declared the store: `analyze()` runs on the merged `KrsFile`.
+ * `[external]` stores are excluded: depending on a managed third-party store is
+ * not the Database-per-Service smell.
+ */
+function detectSharedInfraFanIn(file: KrsFile): Warning[] {
+  const warnings: Warning[] = [];
+
+  // Each system is an organizational boundary; cross-system sharing of a store
+  // is intentional and not surfaced. Top-level services form their own scope.
+  function detectInScope(nodes: KrsNode[]): void {
+    // Infra ids declared in this scope, excluding `[external]` stores.
+    const infraInScope = new Map<
+      string,
+      { kind: "database" | "queue" | "storage"; loc: KrsNode["loc"] }
+    >();
+    const infraToServices = new Map<string, Set<string>>();
+
+    function collectInfra(node: KrsNode): void {
+      if (INFRA_FAN_IN_KINDS.has(node.kind) && !node.tags.includes("external")) {
+        infraInScope.set(node.id, {
+          kind: node.kind as "database" | "queue" | "storage",
+          loc: node.loc,
+        });
+      }
+      for (const child of node.children) {
+        collectInfra(child);
+      }
+    }
+
+    function collectRefs(node: KrsNode, parentServiceId?: string): void {
+      if (node.kind === "service") {
+        parentServiceId = node.id;
+      }
+      if (node.kind === "resource" && node.ref && parentServiceId) {
+        const targetId = node.ref.parent;
+        if (infraInScope.has(targetId)) {
+          if (!infraToServices.has(targetId)) {
+            infraToServices.set(targetId, new Set());
+          }
+          infraToServices.get(targetId)!.add(parentServiceId);
+        }
+      }
+      for (const child of node.children) {
+        collectRefs(child, parentServiceId);
+      }
+    }
+
+    for (const node of nodes) {
+      collectInfra(node);
+    }
+    for (const node of nodes) {
+      collectRefs(node);
+    }
+
+    for (const [infraId, services] of infraToServices) {
+      if (services.size > 1) {
+        const entry = infraInScope.get(infraId)!;
+        warnings.push({
+          kind: "shared-infra-fan-in",
+          params: { infraId, infraKind: entry.kind, services: Array.from(services) },
+          loc: entry.loc,
         });
       }
     }
