@@ -8,15 +8,6 @@ const DEBOUNCE_MS = 300;
  * callback so the shared scaffold can apply the common publish logic.
  */
 export interface CompileOutcome<TState> {
-  // NOTE: `svg` and `diagnostics` are read by the scaffold (to cache the last
-  // valid SVG and to detect errors) but are ALSO embedded in what
-  // `okState`/`errorState` return. Keep the two consistent — the scaffold can't
-  // enforce it. Collapsing this dual-channel into selectors over the builder
-  // output is tracked as a follow-up.
-  /** Diagnostics — used to detect whether the compile errored. */
-  diagnostics: readonly Diagnostic[];
-  /** Rendered SVG — the subject of the keep-stale-on-error and fingerprint logic. */
-  svg: string;
   /**
    * Fingerprint over the user-visible result. The caller computes it (so it can
    * decide whether to fold `nodeMetadata` in), letting the scaffold stay
@@ -33,6 +24,15 @@ export interface CompileOutcome<TState> {
   errorState: (svgToShow: string, prev: TState) => TState;
   /** Build the view state on success. */
   okState: () => TState;
+  // `getSvg` / `getDiagnostics` are selectors the scaffold applies to the
+  // builder output (`okState()`) rather than standalone fields, so the
+  // rendered SVG/diagnostics and the values the scaffold keys off (keep-stale
+  // cache, error detection) come from one source of truth — there is no second
+  // channel that could silently drift from what is rendered.
+  /** Read the rendered SVG out of a built state — feeds the keep-stale cache. */
+  getSvg: (state: TState) => string;
+  /** Read the diagnostics out of a built state — used to detect errors. */
+  getDiagnostics: (state: TState) => readonly Diagnostic[];
 }
 
 interface DebouncedCompileArgs<TState> {
@@ -134,7 +134,12 @@ export function useDebouncedCompile<TState>(
         if (cancelled) return;
         if (!outcome) return;
 
-        const hasErrors = outcome.diagnostics.some((d) => d.severity === "error");
+        // Build the success state once and read svg/diagnostics back out of it
+        // via the outcome's selectors — one source of truth shared with what
+        // gets rendered. (Cheap, side-effect-free object construction, so doing
+        // it even on the error path is harmless.)
+        const okState = outcome.okState();
+        const hasErrors = outcome.getDiagnostics(okState).some((d) => d.severity === "error");
         if (hasErrors) {
           hadErrors.current = true;
           const svgToShow = lastValidSvgKey.current === key ? lastValidSvg.current : "";
@@ -142,10 +147,10 @@ export function useDebouncedCompile<TState>(
         } else {
           if (outcome.fingerprint === lastResultFingerprint.current && !hadErrors.current) return;
           hadErrors.current = false;
-          lastValidSvg.current = outcome.svg;
+          lastValidSvg.current = outcome.getSvg(okState);
           lastValidSvgKey.current = key;
           lastResultFingerprint.current = outcome.fingerprint;
-          setState(outcome.okState());
+          setState(okState);
         }
       } catch {
         if (cancelled) return;

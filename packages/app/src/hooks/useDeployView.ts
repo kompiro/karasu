@@ -91,8 +91,6 @@ export function useDeployView(
       deployTree: deployBase.deployTree,
     });
     return {
-      diagnostics,
-      svg,
       fingerprint: computeViewResultFingerprint({
         svg,
         warnings: deployBase.warnings,
@@ -101,6 +99,8 @@ export function useDeployView(
       }),
       errorState: (svgToShow) => toState(svgToShow),
       okState: () => toState(svg),
+      getSvg: (s) => s.svg,
+      getDiagnostics: (s) => s.diagnostics,
     };
   };
 

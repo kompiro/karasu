@@ -22,11 +22,11 @@ describe("useDebouncedCompile", () => {
         currentKey: "k",
         initialState: { label: "init", diagnostics: [] },
         compile: async () => ({
-          diagnostics: [],
-          svg: "svg",
           fingerprint: "fp",
           errorState: (s) => ({ label: s, diagnostics: [] }),
           okState: () => ({ label: "compiled", diagnostics: [] }),
+          getSvg: () => "svg",
+          getDiagnostics: (s) => s.diagnostics,
         }),
         onError: (p) => p,
         deps: ["k"],
@@ -74,11 +74,11 @@ describe("useDebouncedCompile", () => {
           new Promise<CompileOutcome<S>>((resolve) => {
             resolvers.push(() =>
               resolve({
-                diagnostics: [],
-                svg: `svg-${tick}`,
                 fingerprint: `fp-${tick}`,
                 errorState: (s) => ({ label: s, diagnostics: [] }),
                 okState: () => ({ label: `tick-${tick}`, diagnostics: [] }),
+                getSvg: () => `svg-${tick}`,
+                getDiagnostics: (s) => s.diagnostics,
               }),
             );
           }),
@@ -124,18 +124,20 @@ describe("useDebouncedCompile", () => {
         compile: async () =>
           mode === "ok"
             ? {
-                diagnostics: [],
-                svg: "stable",
                 fingerprint: "fp-stable", // identical before and after the error
                 errorState: (s) => ({ label: s, diagnostics: [] }),
                 okState: () => ({ label: "ok", diagnostics: [] }),
+                getSvg: () => "stable",
+                getDiagnostics: (s) => s.diagnostics,
               }
             : {
-                diagnostics: [ERR],
-                svg: "stable",
                 fingerprint: "fp-error",
                 errorState: (s) => ({ label: s, diagnostics: [ERR] }),
-                okState: () => ({ label: "ok", diagnostics: [] }),
+                // Error-path diagnostics now live in the builder output, which
+                // the scaffold reads via getDiagnostics to detect the error.
+                okState: () => ({ label: "ok", diagnostics: [ERR] }),
+                getSvg: () => "stable",
+                getDiagnostics: (s) => s.diagnostics,
               },
         onError: (p) => p,
         deps: [],
