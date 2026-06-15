@@ -178,6 +178,33 @@ describe("getReference", () => {
     }
   });
 
+  it("exposes per-view syntax sections with a kind-table marker (#1586)", () => {
+    for (const view of ["system", "deploy", "org"] as const) {
+      const sections = ref.syntaxByView[view];
+      expect(sections.length).toBeGreaterThan(0);
+      // each view leads with a Block Declaration snippet and includes a kind table
+      expect(sections[0]).toMatchObject({ heading: "Block Declaration" });
+      expect(sections.some((s) => "kindTable" in s && s.kindTable)).toBe(true);
+    }
+    // the resource-operations / edge-id syntax the app suite asserts lives here now
+    const systemCode = ref.syntaxByView.system.map((s) => ("code" in s ? s.code : "")).join("\n");
+    expect(systemCode).toContain("operations create, read");
+    expect(systemCode).toContain("#criticalWrite");
+  });
+
+  it("exposes per-view style selector examples (#1586)", () => {
+    expect(ref.styleSelectorExamplesByView.system).toContain("system diagram selectors");
+    expect(ref.styleSelectorExamplesByView.deploy).toContain("deploy diagram selectors");
+    expect(ref.styleSelectorExamplesByView.org).toContain("org diagram selectors");
+  });
+
+  it("exposes the selector-specificity table (#1586)", () => {
+    const byExample = new Map(ref.selectorSpecificity.map((r) => [r.example, r.specificity]));
+    expect(byExample.get("service")).toBe(1);
+    expect(byExample.get("#ECommerce")).toBe(100);
+    expect(byExample.get("edge#criticalWrite")).toBe(101);
+  });
+
   it("returns the same cached instance on second call (cache hit branch)", () => {
     const ref1 = getReference();
     const ref2 = getReference();
