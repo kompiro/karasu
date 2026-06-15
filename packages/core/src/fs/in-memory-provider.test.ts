@@ -133,4 +133,17 @@ describe("InMemoryFileSystemProvider", () => {
       expect(await fs.exists("/dir")).toBe(true);
     });
   });
+
+  describe("update", () => {
+    it("applies the transform to existing content", async () => {
+      await fs.writeFile("/a.txt", "hello");
+      await fs.update("/a.txt", (current) => current + " world");
+      expect(await fs.readFile("/a.txt")).toBe("hello world");
+    });
+
+    it("treats a missing file as empty", async () => {
+      await fs.update("/new.txt", (current) => `${current}seed`);
+      expect(await fs.readFile("/new.txt")).toBe("seed");
+    });
+  });
 });

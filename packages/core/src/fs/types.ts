@@ -27,4 +27,13 @@ export interface FileSystemProvider {
   delete(path: string): Promise<void>;
   mkdir(path: string): Promise<void>;
   watch?(path: string, callback: (event: FsEvent) => void): Disposable;
+  /**
+   * Atomic read-modify-write of a single file: read the current content
+   * (treating a missing file as ""), apply `transform`, and write the result.
+   * Providers that back a shared store (e.g. `ObservableFileSystemProvider`)
+   * serialize the whole read→write per path so concurrent writers — the
+   * editor's auto-save and a GUI style append — can't clobber each other
+   * (#1563). Optional; callers fall back to a plain read+write when absent.
+   */
+  update?(path: string, transform: (current: string) => string | Promise<string>): Promise<void>;
 }
