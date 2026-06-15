@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { describe, it, expect, vi, beforeAll, afterEach } from "vitest";
+import { describe, it, expect, vi, afterEach } from "vitest";
 import { render as rtlRender, fireEvent, cleanup, act } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { ReactElement } from "react";
@@ -21,14 +21,6 @@ function render(ui: ReactElement, initialLocale: "en" | "ja" = "en") {
     rerender: (next: ReactElement) => result.rerender(wrap(next)),
   };
 }
-
-// jsdom does not implement CSS.escape
-beforeAll(() => {
-  if (!globalThis.CSS) (globalThis as unknown as Record<string, unknown>).CSS = {};
-  if (!CSS.escape) {
-    CSS.escape = (value: string) => value.replace(/[^\w-]/g, (ch) => `\\${ch}`);
-  }
-});
 
 function baseProps() {
   return {
