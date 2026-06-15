@@ -203,7 +203,8 @@ describe("renderOrgView", () => {
       const svg = renderOrgView(slice, makeStyles(styleMap));
       expect(svg).toContain('data-node-badge="modern"');
       expect(svg).toContain("→");
-      expect(svg).toContain("Migration target");
+      // Org cards render an icon-only badge (no label) to stay inside the card.
+      expect(svg).not.toContain("Migration target");
     });
 
     it("renders no badge when the team style has none", () => {

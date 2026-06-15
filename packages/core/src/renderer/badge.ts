@@ -16,12 +16,18 @@ interface BadgeStyle {
  * children in its own `<g>` — the system renderer adds diff-state metadata, the
  * org renderer wraps them plainly. Keeping the shape here is the single source
  * of truth for badge geometry across both renderers (#1583).
+ *
+ * `iconOnly` renders just the colored glyph (no trailing label) so the badge
+ * stays inside a compact, grid-packed card — the label would otherwise extend
+ * past the card's right edge into its neighbor. The system diagram, which has
+ * margin to the right of a node, keeps the label.
  */
 export function badgeChildren(
   style: BadgeStyle,
   badgeX: number,
   badgeY: number,
   fallbackColor: string,
+  iconOnly = false,
 ): string[] {
   if (!style.badgeIcon && !style.badgeLabel) return [];
   const children: string[] = [];
@@ -43,7 +49,7 @@ export function badgeChildren(
       ),
     );
   }
-  if (style.badgeLabel) {
+  if (!iconOnly && style.badgeLabel) {
     children.push(
       el(
         "text",

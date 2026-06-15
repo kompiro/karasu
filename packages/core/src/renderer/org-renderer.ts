@@ -239,6 +239,7 @@ function renderTeamCard(
     CARD_WIDTH - 12,
     12,
     resolvePalette(options?.theme).badgeFallback,
+    true,
   );
   if (badgeParts.length > 0) {
     parts.push(el("g", { "data-node-badge": id }, ...badgeParts));
@@ -402,6 +403,7 @@ function renderTeamIconCard(
     ICON_CARD_WIDTH - 12,
     12,
     resolvePalette(options?.theme).badgeFallback,
+    true,
   );
   const overlay =
     badgeParts.length > 0

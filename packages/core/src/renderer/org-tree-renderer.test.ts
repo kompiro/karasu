@@ -302,7 +302,8 @@ describe("renderOrgTreeView — styles option", () => {
     const svg = renderOrgTreeView(orgs, new Set(), { styles });
     expect(svg).toContain('data-node-badge="eng"');
     expect(svg).toContain("→");
-    expect(svg).toContain("Migration target");
+    // Tree cards render an icon-only badge (no label) to stay inside the card.
+    expect(svg).not.toContain("Migration target");
   });
 
   it("renders no badge for an unannotated team", () => {

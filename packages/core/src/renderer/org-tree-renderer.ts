@@ -260,7 +260,7 @@ function renderTreeTeamCard(
 
   // Migration / deprecation badge (top-right), driven by the team's annotations
   // resolved into the team style — mirrors the system-diagram node badge (#1583).
-  const badgeParts = badgeChildren(s ?? {}, TEAM_W - 12, 12, defaults.badgeFallback);
+  const badgeParts = badgeChildren(s ?? {}, TEAM_W - 12, 12, defaults.badgeFallback, true);
   if (badgeParts.length > 0) {
     parts.push(el("g", { "data-node-badge": escapeXml(team.id) }, ...badgeParts));
   }
