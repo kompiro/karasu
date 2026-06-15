@@ -22,17 +22,22 @@
 
 ## Specificity rules (cascade)
 
-| Selector | Score |
-|----------|-------|
-| Kind (`service`) | 1 |
-| Tag (`[external]`) | 10 |
-| Annotation (`@deprecated`) | 10 |
-| Kind + tag (`service[external]`) | 11 |
-| Tag + annotation (`[external]@deprecated`) | 20 |
-| Kind + tag + annotation | 21 |
-| ID (`#ECommerce`) | 100 |
-| Edge ID (`edge#criticalWrite`) | 101 (100 for the id + 1 for the `edge` kind) |
+<!-- gen:reference:selector-specificity — DO NOT EDIT. Generated from packages/core/src/builtins/reference-data.ts; run `pnpm gen:reference`. -->
+| Selector | Example | Score |
+|----------|---------|-------|
+| Kind | `service` | 1 |
+| Tag | `[external]` | 10 |
+| Annotation | `@deprecated` | 10 |
+| Kind + tag | `service[external]` | 11 |
+| Tag + annotation | `[external]@deprecated` | 20 |
+| Kind + tag + annotation | `service[external]@deprecated` | 21 |
+| ID | `#ECommerce` | 100 |
+| Edge | `edge` | 1 |
+| Edge + tag | `edge[async]` | 11 |
+| Edge ID | `edge#criticalWrite` | 101 |
+<!-- /gen:reference:selector-specificity -->
 
+`edge#criticalWrite` scores 101 = 100 for the id + 1 for the `edge` kind.
 When scores are equal, the later declaration wins (same as CSS).
 
 ---

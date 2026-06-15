@@ -768,14 +768,31 @@ export type SyntaxSection =
 export type SyntaxByView = Record<RefView, SyntaxSection[]>;
 export type StyleSelectorExamplesByView = Record<RefView, string>;
 
-/** One row of the Styles-tab "Selector Specificity" table. Mirrors
- *  `docs/spec/style.md` § "Specificity rules (cascade)". */
+/**
+ * One row of the Styles-tab "Selector Specificity" table, as exposed by
+ * `getReference(locale)` — the `label` already resolved to one locale.
+ */
 export interface SelectorSpecificityRow {
-  /** Human label for the selector form (e.g. "Type", "Edge ID"). */
+  /** Human label for the selector form (e.g. "Kind", "Edge ID"). */
   label: string;
   /** A concrete selector that takes this form (e.g. `service`, `edge#criticalWrite`). */
   example: string;
   /** The cascade specificity score. */
+  specificity: number;
+}
+
+/**
+ * Source row of `SELECTOR_SPECIFICITY`. The `label` carries both locales
+ * because this table is also generated into `docs/spec/style.md` (and
+ * `.ja.md`) via `scripts/reference/gen-docs.ts`; `getReference` resolves it to
+ * one locale to produce a {@link SelectorSpecificityRow}. `specificity` is the
+ * score `computeSpecificity` assigns to `example` — `reference-data.test.ts`
+ * parses each `example` and asserts the parser agrees, locking this data to the
+ * implementation.
+ */
+interface SelectorSpecificityData {
+  label: LocalizedString;
+  example: string;
   specificity: number;
 }
 
@@ -931,15 +948,31 @@ member { border-color: #075985; }
 #myTeam { background-color: #1D4ED8; }`,
 };
 
-/** The Styles-tab "Selector Specificity" table — mirrors
- *  `docs/spec/style.md` § "Specificity rules (cascade)". */
-export const SELECTOR_SPECIFICITY: SelectorSpecificityRow[] = [
-  { label: "Type", example: "service", specificity: 1 },
-  { label: "Tag", example: "[external]", specificity: 10 },
-  { label: "Annotation", example: "@deprecated", specificity: 10 },
-  { label: "Type+Tag", example: "service[external]", specificity: 11 },
-  { label: "ID", example: "#ECommerce", specificity: 100 },
-  { label: "Edge", example: "edge", specificity: 1 },
-  { label: "Edge+Tag", example: "edge[async]", specificity: 11 },
-  { label: "Edge ID", example: "edge#criticalWrite", specificity: 101 },
+/**
+ * The Styles-tab "Selector Specificity" table — the single source for both the
+ * app panel and the generated `docs/spec/style.md` § "Specificity rules
+ * (cascade)" table. The row set is the algorithm-complete union of the selector
+ * forms (kind / tag / annotation and their combinations, id, edge variants);
+ * labels use the same vocabulary as the doc's "Selector types" table (`Kind`,
+ * not `Type`).
+ */
+export const SELECTOR_SPECIFICITY: SelectorSpecificityData[] = [
+  { label: { en: "Kind", ja: "種別" }, example: "service", specificity: 1 },
+  { label: { en: "Tag", ja: "タグ" }, example: "[external]", specificity: 10 },
+  { label: { en: "Annotation", ja: "アノテーション" }, example: "@deprecated", specificity: 10 },
+  { label: { en: "Kind + tag", ja: "種別 + タグ" }, example: "service[external]", specificity: 11 },
+  {
+    label: { en: "Tag + annotation", ja: "タグ + アノテーション" },
+    example: "[external]@deprecated",
+    specificity: 20,
+  },
+  {
+    label: { en: "Kind + tag + annotation", ja: "種別 + タグ + アノテーション" },
+    example: "service[external]@deprecated",
+    specificity: 21,
+  },
+  { label: { en: "ID", ja: "ID" }, example: "#ECommerce", specificity: 100 },
+  { label: { en: "Edge", ja: "エッジ" }, example: "edge", specificity: 1 },
+  { label: { en: "Edge + tag", ja: "エッジ + タグ" }, example: "edge[async]", specificity: 11 },
+  { label: { en: "Edge ID", ja: "エッジ ID" }, example: "edge#criticalWrite", specificity: 101 },
 ];

@@ -218,33 +218,10 @@ describe("Reference data ↔ docs/spec agreement (TPL-20260511-02)", () => {
     expect(unknown).toEqual([]);
   });
 
-  it("style.md: every selectorSpecificity row matches the documented cascade score (#1586)", () => {
-    const styleMd = readSpec("style.md");
-    // Parse the `## Specificity rules (cascade)` table into example → score.
-    // Each row's first column is `Label (\`example\`)`; the score column may
-    // carry a parenthetical note (e.g. `101 (100 for the id + 1 …)`).
-    const documented = new Map<string, number>();
-    for (const line of sectionLines(styleMd, /^## Specificity rules/)) {
-      const m = line.match(/^\|\s*[^(|]*\(`([^`]+)`\)\s*\|\s*(\d+)/);
-      if (m) documented.set(m[1], Number(m[2]));
-    }
-    expect(documented.get("service")).toBe(1);
-    expect(documented.get("edge#criticalWrite")).toBe(101);
-
-    // Every reference row whose example the spec table documents must agree.
-    // (Forms the spec omits — e.g. `edge`, `edge[async]` — are intentionally
-    // not in that table; they are covered by the `## Selector types` table.)
-    const mismatches = ref.selectorSpecificity
-      .filter((row) => documented.has(row.example))
-      .filter((row) => documented.get(row.example) !== row.specificity)
-      .map((row) => `${row.example}: ref=${row.specificity} doc=${documented.get(row.example)}`);
-    expect(mismatches).toEqual([]);
-
-    // The id-bearing rows are the load-bearing ones — make sure the join
-    // against the spec table actually matched them, not silently skipped all.
-    const matched = ref.selectorSpecificity.filter((row) => documented.has(row.example));
-    expect(matched.map((r) => r.example)).toEqual(
-      expect.arrayContaining(["service", "#ECommerce", "edge#criticalWrite"]),
-    );
-  });
+  // The `## Specificity rules (cascade)` table is now GENERATED from
+  // `SELECTOR_SPECIFICITY` (#1610) via `scripts/reference/gen-docs.ts`, so a
+  // doc↔data parse-and-compare here would be circular. The two stronger guards
+  // that replace it: `pnpm gen:reference --check` (doc == data, run in CI +
+  // pre-push) and the `computeSpecificity` lock in `reference-data.test.ts`
+  // (data == implementation).
 });

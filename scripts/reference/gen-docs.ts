@@ -18,7 +18,10 @@
 import { readFileSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { pathToFileURL } from "node:url";
-import { REFERENCE_DATA } from "../../packages/core/src/builtins/reference-data.ts";
+import {
+  REFERENCE_DATA,
+  SELECTOR_SPECIFICITY,
+} from "../../packages/core/src/builtins/reference-data.ts";
 
 export type Locale = "en" | "ja";
 
@@ -96,6 +99,16 @@ export const TABLES: TableSpec[] = [
     },
     rows: (locale) =>
       REFERENCE_DATA.shapes.map((s) => [code(s.name), s.description[locale], s.typicalUse[locale]]),
+  },
+  {
+    id: "selector-specificity",
+    file: { en: "docs/spec/style.md", ja: "docs/spec/style.ja.md" },
+    headers: {
+      en: ["Selector", "Example", "Score"],
+      ja: ["セレクタ", "例", "スコア"],
+    },
+    rows: (locale) =>
+      SELECTOR_SPECIFICITY.map((s) => [s.label[locale], code(s.example), String(s.specificity)]),
   },
   {
     id: "tags",
