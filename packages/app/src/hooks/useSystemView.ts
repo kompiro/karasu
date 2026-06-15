@@ -179,8 +179,6 @@ export function useSystemView(
       nodeDiff,
     });
     return {
-      diagnostics,
-      svg,
       fingerprint: computeViewResultFingerprint({
         svg,
         warnings: sysBase.warnings,
@@ -189,6 +187,8 @@ export function useSystemView(
       }),
       errorState: (svgToShow) => toState(svgToShow),
       okState: () => toState(svg),
+      getSvg: (s) => s.svg,
+      getDiagnostics: (s) => s.diagnostics,
     };
   };
 

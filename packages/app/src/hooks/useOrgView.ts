@@ -108,8 +108,6 @@ export function useOrgView(
     const orgBase = base;
 
     return {
-      diagnostics,
-      svg,
       // Org's fingerprint intentionally omits nodeMetadata (it carries none).
       fingerprint: computeViewResultFingerprint({ svg, warnings: orgBase.warnings, diagnostics }),
       // On error keep the prior org metadata (only swap in the stale SVG +
@@ -130,6 +128,10 @@ export function useOrgView(
         organizations: orgBase.organizations,
         styles: orgBase.styles,
       }),
+      // Org names its state fields differently (orgSvg / orgDiagnostics); the
+      // selectors bridge that, so the scaffold needs no per-view field names.
+      getSvg: (s) => s.orgSvg,
+      getDiagnostics: (s) => s.orgDiagnostics,
     };
   };
 
