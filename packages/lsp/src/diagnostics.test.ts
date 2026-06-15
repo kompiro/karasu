@@ -25,6 +25,24 @@ describe("computeDiagnostics — resolver warnings (.krs)", () => {
     expect(dispersal!.range.start.line).toBeGreaterThan(0);
   });
 
+  it("surfaces shared-infra-fan-in at Information severity (#1570)", () => {
+    // Two services in one document sharing one database — the fan-in is
+    // detectable single-document, so the LSP surfaces it like the app.
+    const src = `system Shop {
+  service A { domain Da { usecase Ua { resource DB.t { operations read } } } }
+  service B { domain Db { usecase Ub { resource DB.t { operations read } } } }
+  database DB { table t }
+}`;
+    const diagnostics = computeDiagnostics(src, false);
+
+    const fanIn = diagnostics.find((d) => d.message.includes("DB") && /service/.test(d.message));
+    expect(fanIn).toBeDefined();
+    expect(fanIn!.severity).toBe(DiagnosticSeverity.Information);
+    expect(diagnostics.some((d) => d.severity === DiagnosticSeverity.Error)).toBe(false);
+    // Anchored on the store declaration, not collapsed to the document start.
+    expect(fanIn!.range.start.line).toBeGreaterThan(0);
+  });
+
   it("surfaces a resolver warning kind at Warning severity", () => {
     // A top-level domain with no owning service is `unassigned-domain` —
     // a model-internal fact, so it stays at the warning register.

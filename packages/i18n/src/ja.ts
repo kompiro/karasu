@@ -175,6 +175,10 @@ export const ja: Partial<Translations> = {
     `domain "${domainId}" は複数の service の配下に登場します`,
   "warning.domainDispersal.checkCohesion":
     "DDD では同じドメインが複数 service にまたがる状態を凝集性のシグナルとみなすことがあります",
+  "warning.sharedInfraFanIn.message": ({ infraKind, infraId, count }) =>
+    `${infraKind} "${infraId}" は ${count} 個の service から参照されています`,
+  "warning.sharedInfraFanIn.checkDatabasePerService":
+    "マイクロサービスの Database-per-Service は共有された store を smell とみなすことがあります",
   "warning.unassignedDomain.message": ({ display }) =>
     `domain "${display}" はどの service にも割り当てられていません`,
   "warning.unassignedUsecase.message": ({ usecaseId }) =>
