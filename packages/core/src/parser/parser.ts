@@ -1715,8 +1715,14 @@ export class Parser {
     for (const team of teams) {
       for (const ownedId of team.properties.owns) {
         if (index.has(ownedId)) {
+          // Co-ownership is a structural fact, not an integrity error: an
+          // inverse-Conway handoff legitimately has two teams own a node
+          // mid-migration. Surface it in the fact-vs-style register (info),
+          // like domain-dispersal. ownerIndex is 1:1, so the first team stays
+          // the primary owner (first-wins); @migration_target priority is
+          // tracked in #1583. See ADR-1566.
           this.diagnostics.push({
-            severity: "error",
+            severity: "info",
             code: "duplicate-owner-assignment",
             params: { nodeId: ownedId, existingTeam: index.get(ownedId)! },
             loc: team.loc,

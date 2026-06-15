@@ -1145,7 +1145,7 @@ organization Corp {
     expect(result.value.ownerIndex.get("Payment")).toBe("backend");
   });
 
-  it("errors on duplicate owns across teams", () => {
+  it("reports duplicate owns across teams as info, keeping the first team as primary owner", () => {
     const result = Parser.parse(`
 organization Corp {
   team teamA {
@@ -1156,9 +1156,14 @@ organization Corp {
   }
 }
     `);
-    const errors = result.diagnostics.filter((d) => d.severity === "error");
-    expect(errors.length).toBeGreaterThanOrEqual(1);
-    expect(JSON.stringify(errors[0].params)).toContain("ECommerce");
+    // Co-ownership is a fact, not an integrity error (ADR-1566): info register,
+    // not error. Both teams parse; ownerIndex keeps the first (first-wins).
+    const dup = result.diagnostics.filter((d) => d.code === "duplicate-owner-assignment");
+    expect(dup).toHaveLength(1);
+    expect(dup[0].severity).toBe("info");
+    expect(JSON.stringify(dup[0].params)).toContain("ECommerce");
+    expect(result.diagnostics.filter((d) => d.severity === "error")).toHaveLength(0);
+    expect(result.value.ownerIndex.get("ECommerce")).toBe("teamA");
   });
 
   it("errors on duplicate team IDs", () => {

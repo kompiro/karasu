@@ -308,7 +308,7 @@ export const en: Translations = {
   "diagnostic.duplicateCrudDecorationTarget.message": ({ operation, value, resourceId }) =>
     `Duplicate CRUD verb "${value}" in decoration of "${operation}" on resource "${resourceId}"`,
   "diagnostic.duplicateOwnerAssignment.message": ({ nodeId, existingTeam }) =>
-    `"${nodeId}" is already owned by team "${existingTeam}"; multiple teams cannot own the same service or domain`,
+    `"${nodeId}" is owned by more than one team; "${existingTeam}" is kept as its primary owner`,
   "diagnostic.duplicateTeamId.message": ({ teamId }) => `Duplicate team id "${teamId}"`,
   "diagnostic.nodeIdMultipleLocations.message": ({ nodeId }) =>
     `Node id "${nodeId}" appears in multiple locations; first path is used for navigation`,

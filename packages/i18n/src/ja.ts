@@ -307,7 +307,7 @@ export const ja: Partial<Translations> = {
   "diagnostic.duplicateCrudDecorationTarget.message": ({ operation, value, resourceId }) =>
     `resource "${resourceId}" の operation "${operation}" の装飾内に CRUD verb "${value}" が重複しています`,
   "diagnostic.duplicateOwnerAssignment.message": ({ nodeId, existingTeam }) =>
-    `"${nodeId}" はすでに team "${existingTeam}" によって所有されています。複数の team が同じ service / domain を所有することはできません`,
+    `"${nodeId}" は複数の team が owns しています。主オーナーとして "${existingTeam}" を採用します`,
   "diagnostic.duplicateTeamId.message": ({ teamId }) => `team id "${teamId}" が重複しています`,
   "diagnostic.nodeIdMultipleLocations.message": ({ nodeId }) =>
     `ノード id "${nodeId}" が複数箇所に出現しています。ナビゲーションには最初のパスが使われます`,
