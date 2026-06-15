@@ -223,28 +223,16 @@ export function useAppViews(args: UseAppViewsArgs): UseAppViewsResult {
     theme,
   );
 
-  const teamPathIndex = useMemo(() => {
-    const index = new Map<string, string[]>();
-    function traverse(team: TeamNode, parentPath: string[]) {
-      index.set(team.id, parentPath);
-      const subTeams = team.children.filter((c): c is TeamNode => c.kind === "team");
-      for (const sub of subTeams) {
-        traverse(sub, [...parentPath, team.id]);
-      }
-    }
-    for (const org of organizations) {
-      for (const team of org.teams) {
-        traverse(team, []);
-      }
-    }
-    return index;
-  }, [organizations]);
-
-  const orgPathIndex = useMemo(() => {
-    const index = new Map<string, string[]>();
+  // One traversal builds both team-path maps: `teamPathIndex` maps a team to
+  // its ancestor path (excluding itself), `orgPathIndex` maps it to its full
+  // path (including itself). They differ only by that trailing id.
+  const { teamPathIndex, orgPathIndex } = useMemo(() => {
+    const teamPaths = new Map<string, string[]>();
+    const orgPaths = new Map<string, string[]>();
     function traverse(team: TeamNode, ancestorPath: string[]) {
       const myPath = [...ancestorPath, team.id];
-      index.set(team.id, myPath);
+      teamPaths.set(team.id, ancestorPath);
+      orgPaths.set(team.id, myPath);
       const subTeams = team.children.filter((c): c is TeamNode => c.kind === "team");
       for (const sub of subTeams) {
         traverse(sub, myPath);
@@ -255,7 +243,7 @@ export function useAppViews(args: UseAppViewsArgs): UseAppViewsResult {
         traverse(team, []);
       }
     }
-    return index;
+    return { teamPathIndex: teamPaths, orgPathIndex: orgPaths };
   }, [organizations]);
 
   const { navigateActiveView, navigateViewPath } = useHistoryNavigation({
