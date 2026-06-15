@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { describe, it, expect, vi, afterEach, beforeEach } from "vitest";
-import { render as rtlRender, fireEvent, cleanup, act } from "@testing-library/react";
+import { render as rtlRender, screen, cleanup, act, fireEvent } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import type { ReactElement } from "react";
 import { ReferencePanel } from "./ReferencePanel.js";
 import { LocaleProvider } from "../i18n/index.js";
@@ -18,49 +19,59 @@ beforeEach(() => {
   defaultProps.onClose = vi.fn<() => void>();
 });
 
+// Dialog/Tabs are shadcn (Radix) primitives: content is portalled to
+// document.body (query via `screen`, not the render container) and tabs
+// activate on the full pointer sequence (use `userEvent`). See
+// `.claude/rules/testing.md`.
+
+/** The portalled `.reference-tab-body` text content. */
+function bodyText(): string {
+  return document.querySelector(".reference-tab-body")?.textContent ?? "";
+}
+
+async function clickTab(name: string) {
+  await userEvent.click(screen.getByRole("tab", { name }));
+}
+
 describe("ReferencePanel", () => {
-  it("renders nothing when isOpen is false", () => {
-    const { container } = render(<ReferencePanel isOpen={false} onClose={vi.fn<() => void>()} />);
-    expect(container.firstChild).toBeNull();
+  it("renders no dialog when isOpen is false", () => {
+    render(<ReferencePanel isOpen={false} onClose={vi.fn<() => void>()} />);
+    expect(screen.queryByRole("dialog")).toBeNull();
   });
 
-  it("clicking a tab shows that tab's content", () => {
-    const { container } = render(<ReferencePanel {...defaultProps} />);
-    // Default tab is "Syntax" — switch to "Styles"
-    const stylesTab = Array.from(container.querySelectorAll(".reference-panel-tab")).find(
-      (el) => el.textContent === "Styles",
-    )!;
-    fireEvent.click(stylesTab);
-    // Styles tab renders a "Style Properties" heading
-    expect(container.querySelector(".reference-tab-body")?.textContent).toContain(
-      "Style Properties",
-    );
+  it("renders the dialog with the Syntax tab active by default", () => {
+    render(<ReferencePanel {...defaultProps} />);
+    expect(screen.getByRole("dialog")).toBeTruthy();
+    expect(bodyText()).toContain("Node Kinds");
+  });
+
+  it("clicking a tab shows that tab's content", async () => {
+    render(<ReferencePanel {...defaultProps} />);
+    await clickTab("Styles");
+    expect(bodyText()).toContain("Style Properties");
     // Syntax-only content is gone
-    expect(container.querySelector(".reference-tab-body")?.textContent).not.toContain("Node Kinds");
+    expect(bodyText()).not.toContain("Node Kinds");
   });
 
-  it("clicking the overlay calls onClose", () => {
-    const { container } = render(<ReferencePanel {...defaultProps} />);
-    fireEvent.click(container.querySelector(".reference-panel-overlay")!);
+  // Esc / outside-click close is owned by Radix's DismissableLayer and is not
+  // reliably modelled in jsdom — verified manually. We fence the Close button
+  // wiring instead (the X in DialogContent maps onOpenChange(false) → onClose).
+  it("clicking the Close button calls onClose", async () => {
+    render(<ReferencePanel {...defaultProps} />);
+    await userEvent.click(screen.getByRole("button", { name: /Close/ }));
     expect(defaultProps.onClose).toHaveBeenCalledOnce();
   });
 
-  it("clicking inside the panel does not call onClose", () => {
-    const { container } = render(<ReferencePanel {...defaultProps} />);
-    fireEvent.click(container.querySelector(".reference-panel")!);
-    expect(defaultProps.onClose).not.toHaveBeenCalled();
-  });
-
   it("Syntax tab shows system node kinds by default", () => {
-    const { container } = render(<ReferencePanel {...defaultProps} />);
-    const body = container.querySelector(".reference-tab-body")?.textContent ?? "";
+    render(<ReferencePanel {...defaultProps} />);
+    const body = bodyText();
     expect(body).toContain("system");
     expect(body).toContain("service");
   });
 
   it("Syntax tab documents resource operations (CRUD) and the optional edge id", () => {
-    const { container } = render(<ReferencePanel {...defaultProps} />);
-    const body = container.querySelector(".reference-tab-body")?.textContent ?? "";
+    render(<ReferencePanel {...defaultProps} />);
+    const body = bodyText();
     expect(body).toContain("Resource Operations");
     expect(body).toContain("operations create, read");
     expect(body).toContain("enqueue:create"); // verb-decoration
@@ -68,144 +79,109 @@ describe("ReferencePanel", () => {
   });
 
   it("Syntax tab shows deploy unit kinds when activeView=deploy", () => {
-    const { container } = render(<ReferencePanel {...defaultProps} activeView="deploy" />);
-    const body = container.querySelector(".reference-tab-body")?.textContent ?? "";
+    render(<ReferencePanel {...defaultProps} activeView="deploy" />);
+    const body = bodyText();
     expect(body).toContain("oci");
     expect(body).toContain("jar");
     expect(body).toContain("lambda");
   });
 
   it("Syntax tab shows org kinds when activeView=org", () => {
-    const { container } = render(<ReferencePanel {...defaultProps} activeView="org" />);
-    const body = container.querySelector(".reference-tab-body")?.textContent ?? "";
+    render(<ReferencePanel {...defaultProps} activeView="org" />);
+    const body = bodyText();
     expect(body).toContain("organization");
     expect(body).toContain("team");
     expect(body).toContain("member");
   });
 
-  it("Tags tab shows tags list for system view", () => {
-    const { container } = render(<ReferencePanel {...defaultProps} />);
-    const tagsTab = Array.from(container.querySelectorAll(".reference-panel-tab")).find(
-      (el) => el.textContent === "Tags & Annotations",
-    )!;
-    fireEvent.click(tagsTab);
-    const body = container.querySelector(".reference-tab-body")?.textContent ?? "";
+  it("Tags tab shows tags list for system view", async () => {
+    render(<ReferencePanel {...defaultProps} />);
+    await clickTab("Tags & Annotations");
+    const body = bodyText();
     expect(body).toContain("external");
     expect(body).toContain("deprecated");
   });
 
-  it("Tags tab shows unsupported message for deploy view", () => {
-    const { container } = render(<ReferencePanel {...defaultProps} activeView="deploy" />);
-    const tagsTab = Array.from(container.querySelectorAll(".reference-panel-tab")).find(
-      (el) => el.textContent === "Tags & Annotations",
-    )!;
-    fireEvent.click(tagsTab);
-    expect(container.querySelector(".reference-unsupported")).toBeTruthy();
+  it("Tags tab shows unsupported message for deploy view", async () => {
+    render(<ReferencePanel {...defaultProps} activeView="deploy" />);
+    await clickTab("Tags & Annotations");
+    expect(document.querySelector(".reference-unsupported")).toBeTruthy();
   });
 
-  it("Tags tab shows unsupported message for org view", () => {
-    const { container } = render(<ReferencePanel {...defaultProps} activeView="org" />);
-    const tagsTab = Array.from(container.querySelectorAll(".reference-panel-tab")).find(
-      (el) => el.textContent === "Tags & Annotations",
-    )!;
-    fireEvent.click(tagsTab);
-    expect(container.querySelector(".reference-unsupported")).toBeTruthy();
+  it("Tags tab shows unsupported message for org view", async () => {
+    render(<ReferencePanel {...defaultProps} activeView="org" />);
+    await clickTab("Tags & Annotations");
+    expect(document.querySelector(".reference-unsupported")).toBeTruthy();
   });
 
-  it("Styles tab lists the edge / layout style properties from the spec", () => {
-    const { container } = render(<ReferencePanel {...defaultProps} />);
-    const stylesTab = Array.from(container.querySelectorAll(".reference-panel-tab")).find(
-      (el) => el.textContent === "Styles",
-    )!;
-    fireEvent.click(stylesTab);
-    const body = container.querySelector(".reference-tab-body")?.textContent ?? "";
+  it("Styles tab lists the edge / layout style properties from the spec", async () => {
+    render(<ReferencePanel {...defaultProps} />);
+    await clickTab("Styles");
+    const body = bodyText();
     for (const prop of ["direction", "label-position", "label-offset", "column"]) {
       expect(body).toContain(prop);
     }
   });
 
-  it("Styles tab includes the edge#<id> selector (specificity 101) and a direction example", () => {
-    const { container } = render(<ReferencePanel {...defaultProps} />);
-    const stylesTab = Array.from(container.querySelectorAll(".reference-panel-tab")).find(
-      (el) => el.textContent === "Styles",
-    )!;
-    fireEvent.click(stylesTab);
-    const edgeIdRow = Array.from(container.querySelectorAll(".reference-table tr")).find(
+  it("Styles tab includes the edge#<id> selector (specificity 101) and a direction example", async () => {
+    render(<ReferencePanel {...defaultProps} />);
+    await clickTab("Styles");
+    const edgeIdRow = Array.from(document.querySelectorAll(".reference-table tr")).find(
       (tr) => tr.querySelector("td")?.textContent === "Edge ID",
     );
     expect(edgeIdRow?.textContent).toContain("edge#criticalWrite");
     expect(edgeIdRow?.textContent).toContain("101");
-    const body = container.querySelector(".reference-tab-body")?.textContent ?? "";
-    expect(body).toContain("direction: down"); // layout-direction hint example
+    expect(bodyText()).toContain("direction: down"); // layout-direction hint example
   });
 
-  it("Styles tab shows deploy selector examples when activeView=deploy", () => {
-    const { container } = render(<ReferencePanel {...defaultProps} activeView="deploy" />);
-    const stylesTab = Array.from(container.querySelectorAll(".reference-panel-tab")).find(
-      (el) => el.textContent === "Styles",
-    )!;
-    fireEvent.click(stylesTab);
-    const body = container.querySelector(".reference-tab-body")?.textContent ?? "";
-    expect(body).toContain("deploy diagram selectors");
+  it("Styles tab shows deploy selector examples when activeView=deploy", async () => {
+    render(<ReferencePanel {...defaultProps} activeView="deploy" />);
+    await clickTab("Styles");
+    expect(bodyText()).toContain("deploy diagram selectors");
   });
 
-  it("Styles tab shows org selector examples when activeView=org", () => {
-    const { container } = render(<ReferencePanel {...defaultProps} activeView="org" />);
-    const stylesTab = Array.from(container.querySelectorAll(".reference-panel-tab")).find(
-      (el) => el.textContent === "Styles",
-    )!;
-    fireEvent.click(stylesTab);
-    const body = container.querySelector(".reference-tab-body")?.textContent ?? "";
-    expect(body).toContain("org diagram selectors");
+  it("Styles tab shows org selector examples when activeView=org", async () => {
+    render(<ReferencePanel {...defaultProps} activeView="org" />);
+    await clickTab("Styles");
+    expect(bodyText()).toContain("org diagram selectors");
   });
 
-  it("Built-in Theme tab notes it applies to all diagram types", () => {
-    const { container } = render(<ReferencePanel {...defaultProps} activeView="deploy" />);
-    const builtinTab = Array.from(container.querySelectorAll(".reference-panel-tab")).find(
-      (el) => el.textContent === "Built-in Theme",
-    )!;
-    fireEvent.click(builtinTab);
-    const body = container.querySelector(".reference-tab-body")?.textContent ?? "";
-    expect(body).toContain("all diagram types");
+  it("Built-in Theme tab notes it applies to all diagram types", async () => {
+    render(<ReferencePanel {...defaultProps} activeView="deploy" />);
+    await clickTab("Built-in Theme");
+    expect(bodyText()).toContain("all diagram types");
   });
 
-  it("Samples tab shows system+deploy+org content", () => {
-    const { container } = render(<ReferencePanel {...defaultProps} />);
-    const samplesTab = Array.from(container.querySelectorAll(".reference-panel-tab")).find(
-      (el) => el.textContent === "Samples",
-    )!;
-    expect(samplesTab).toBeTruthy();
-    fireEvent.click(samplesTab);
-    const body = container.querySelector(".reference-tab-body")?.textContent ?? "";
+  it("Samples tab shows system+deploy+org content", async () => {
+    render(<ReferencePanel {...defaultProps} />);
+    await clickTab("Samples");
+    const body = bodyText();
     expect(body).toContain("system");
     expect(body).toContain("deploy");
     expect(body).toContain("organization");
   });
 
   it("Copy button shows 'Copied!' after click and reverts after 2 seconds", async () => {
-    vi.useFakeTimers();
-    // Mock clipboard API
-    const writeText = vi.fn<() => void>().mockResolvedValue(undefined);
+    const writeText = vi.fn<() => Promise<void>>().mockResolvedValue(undefined);
     Object.defineProperty(navigator, "clipboard", {
       value: { writeText },
       writable: true,
       configurable: true,
     });
 
-    const { container } = render(<ReferencePanel {...defaultProps} />);
+    render(<ReferencePanel {...defaultProps} />);
+    // Navigate to the tab with real timers (Radix Tabs + userEvent don't mix
+    // with fake timers); the revert-after-2s logic is exercised under fake
+    // timers below.
+    await userEvent.click(screen.getByRole("tab", { name: "Built-in Theme" }));
 
-    // Switch to "Built-in Theme" tab which has the Copy button
-    const builtinTab = Array.from(container.querySelectorAll(".reference-panel-tab")).find(
-      (el) => el.textContent === "Built-in Theme",
-    )!;
-    fireEvent.click(builtinTab);
-
-    const copyBtn = container.querySelector(".reference-copy-btn")!;
+    const copyBtn = document.querySelector(".reference-copy-btn")!;
     expect(copyBtn.textContent).toBe("Copy");
 
+    vi.useFakeTimers();
+    // The copy control is a plain shadcn Button (not Radix), so fireEvent is fine.
     fireEvent.click(copyBtn);
-    // Flush the resolved clipboard promise
-    await act(async () => {});
+    await act(async () => {}); // flush the resolved clipboard promise
     expect(copyBtn.textContent).toBe("Copied!");
 
     act(() => vi.advanceTimersByTime(2000));

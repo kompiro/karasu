@@ -458,6 +458,9 @@
 
 .reference-panel-content {
   flex: 1;
+  /* Allow the scroll area to shrink below its content height inside the
+     flex-column Dialog so it scrolls instead of overflowing the viewport. */
+  min-height: 0;
   overflow-y: auto;
   padding: 0;
 }

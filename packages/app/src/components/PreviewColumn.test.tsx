@@ -287,13 +287,15 @@ describe("PreviewColumn", () => {
     });
 
     it("toggles the References panel open and closed on successive runs", () => {
-      const { container, getRegistry } = renderPreviewWithRegistry(makeProps());
+      const { getRegistry } = renderPreviewWithRegistry(makeProps());
       const run = () => act(() => findToggleReference(getRegistry())?.run());
-      expect(container.querySelector(".reference-panel-overlay")).toBeNull();
+      // ReferencePanel is now a shadcn Dialog — its content portals to
+      // document.body, so query the document, not the render container.
+      expect(document.querySelector('[role="dialog"]')).toBeNull();
       run();
-      expect(container.querySelector(".reference-panel-overlay")).toBeTruthy();
+      expect(document.querySelector('[role="dialog"]')).toBeTruthy();
       run();
-      expect(container.querySelector(".reference-panel-overlay")).toBeNull();
+      expect(document.querySelector('[role="dialog"]')).toBeNull();
     });
 
     it("unregisters the command when PreviewColumn unmounts", () => {

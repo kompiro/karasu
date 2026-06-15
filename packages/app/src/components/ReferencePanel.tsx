@@ -1,5 +1,8 @@
-import { useState, useCallback } from "react";
+import { Fragment, useState } from "react";
 import { getReference } from "@karasu-tools/core";
+import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useClipboardCopy } from "../hooks/useClipboardCopy.js";
 import type { ActiveView } from "../state/app-reducer.js";
 import { useTranslation } from "../i18n/index.js";
@@ -20,105 +23,91 @@ const TAB_LABELS: Record<Tab, string> = {
   samples: "Samples",
 };
 
-export function ReferencePanel({ isOpen, onClose, activeView = "system" }: ReferencePanelProps) {
-  const [activeTab, setActiveTab] = useState<Tab>("syntax");
-  const { copy: copyBuiltin, copied } = useClipboardCopy();
-  const { copy: copySample, copied: sampleCopied } = useClipboardCopy();
-  const { locale } = useTranslation();
+/** The diagram families the reference content is keyed on (matrix → system). */
+type RefView = "system" | "deploy" | "org";
+const refViewOf = (v: ActiveView): RefView =>
+  v === "deploy" ? "deploy" : v === "org" ? "org" : "system";
 
-  const ref = getReference(locale);
+// ── Syntax tab content (data-driven) ────────────────────────────────────────
+// A code snippet, or the per-view kind table sourced from `getReference`. Moving
+// these snippets out of branched JSX keeps them in one place (#1548). A future
+// step could push them into core's reference payload next to `nodeKinds`.
 
-  const handleCopy = useCallback(() => {
-    copyBuiltin(ref.builtinStyleSource);
-  }, [copyBuiltin, ref.builtinStyleSource]);
+type SyntaxSection = { heading: string; code: string } | { heading: string; kindTable: true };
 
-  const handleSampleCopy = useCallback(() => {
-    copySample(ref.sampleKrs);
-  }, [copySample, ref.sampleKrs]);
+const SYNTAX_CONTENT: Record<RefView, SyntaxSection[]> = {
+  system: [
+    {
+      heading: "Block Declaration",
+      code: `system "<name>" {
+  // services, users, edges
+}`,
+    },
+    { heading: "Node Kinds", kindTable: true },
+    {
+      heading: "Edge Syntax",
+      code: `A ->  B "label"   // sync (solid arrow)
+A --> B "label"   // async (dashed arrow)
+A ->  B "label" #criticalWrite   // optional edge id (#<id>) — targetable via edge#<id> in .krs.style
+// omitting #<id> → canonical id = <from><arrow><to>  (e.g. A->B / A-->B)`,
+    },
+    {
+      heading: "Node Declaration",
+      code: `// minimal (id only)
+<kind> <id>
 
-  if (!isOpen) return null;
+// with tags and annotations
+<kind> <id> [<tags>] @<annotations>
 
-  return (
-    <div className="reference-panel-overlay" onClick={onClose}>
-      <div className="reference-panel" onClick={(e) => e.stopPropagation()}>
-        <div className="reference-panel-header">
-          <span className="reference-panel-title">Reference</span>
-          <button className="reference-panel-close" onClick={onClose} aria-label="Close">
-            ×
-          </button>
-        </div>
-
-        <div className="reference-panel-tabs">
-          {(Object.keys(TAB_LABELS) as Tab[]).map((tab) => (
-            <button
-              key={tab}
-              className={`reference-panel-tab ${activeTab === tab ? "active" : ""}`}
-              onClick={() => setActiveTab(tab)}
-            >
-              {TAB_LABELS[tab]}
-            </button>
-          ))}
-        </div>
-
-        <div className="reference-panel-content">
-          {activeTab === "syntax" && <SyntaxTab activeView={activeView} />}
-          {activeTab === "styles" && <StylesTab activeView={activeView} />}
-          {activeTab === "tags" && <TagsTab activeView={activeView} />}
-          {activeTab === "builtin" && (
-            <BuiltinTab source={ref.builtinStyleSource} onCopy={handleCopy} copied={copied} />
-          )}
-          {activeTab === "samples" && (
-            <SamplesTab source={ref.sampleKrs} onCopy={handleSampleCopy} copied={sampleCopied} />
-          )}
-        </div>
-      </div>
-    </div>
-  );
+// with block (properties and/or children)
+<kind> <id> [<tags>] @<annotations> {
+  label "<表示名>"        // display name; id used if omitted
+  description "<説明>"    // free-form description
+  // kind-specific properties (team, role, link, …)
+}`,
+    },
+    {
+      heading: "Resource Operations (CRUD)",
+      code: `// Inside a usecase, a resource may declare the CRUD verbs the usecase
+// performs on it: create | read | update | delete.
+usecase PlaceOrder {
+  resource OrderDB.OrderTable {
+    operations create, read
+  }
+  // verb-decoration (1:N CRUD mapping): keep a domain verb, declare its CRUD intent
+  resource OrderEvents.OrderPlaced {
+    operations enqueue:create, dequeue:delete
+  }
+}`,
+    },
+    {
+      heading: "Legend (footer)",
+      code: `// Top-level. Renders as a footer band below each diagram view.
+// Scope ("system" | "deploy" | "org") is optional — omit to show on all views.
+legend "<title>"? {
+  swatch <#hex> "<label>"           // explicit color
+  ref @<annotation> "<label>"        // color from .krs.style cascade
+  ref [<tag>]       "<label>"        // ditto, by tag
+  ref <type>        "<label>"        // ditto, by node-kind type selector
+  ref #<id>         "<label>"        // ditto, by node id
 }
 
-function SyntaxTab({ activeView }: { activeView: ActiveView }) {
-  const { locale } = useTranslation();
-  const ref = getReference(locale);
-
-  if (activeView === "deploy") {
-    return (
-      <div className="reference-tab-body">
-        <h3>Block Declaration</h3>
-        <div className="reference-code-block">
-          <pre>{`deploy "<name>" {
+legend deploy "Hosting tier" {       // scope to a single view
+  swatch #0EA5E9 "Cloud Run"
+}`,
+    },
+  ],
+  deploy: [
+    {
+      heading: "Block Declaration",
+      code: `deploy "<name>" {
   // deploy units
-}`}</pre>
-        </div>
-
-        <h3>Deploy Unit Kinds</h3>
-        <table className="reference-table">
-          <thead>
-            <tr>
-              <th>Kind</th>
-              <th>Description</th>
-              <th>Properties</th>
-            </tr>
-          </thead>
-          <tbody>
-            {ref.deployUnitKinds.map((k) => (
-              <tr key={k.kind}>
-                <td>
-                  <code>{k.kind}</code>
-                </td>
-                <td>{k.description}</td>
-                <td>
-                  {k.properties.map((p) => (
-                    <code key={p}>{p}</code>
-                  ))}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-
-        <h3>Unit Declaration</h3>
-        <div className="reference-code-block">
-          <pre>{`<kind> <id> {
+}`,
+    },
+    { heading: "Deploy Unit Kinds", kindTable: true },
+    {
+      heading: "Unit Declaration",
+      code: `<kind> <id> {
   label "<表示名>"
   runtime "<runtime>"   // ⚠ 省略可（警告）
   realizes <serviceId>  // ⚠ 省略可（警告）
@@ -143,57 +132,20 @@ artifact <id> {
   type "<custom-type>"
   runtime "<runtime>"
   realizes <serviceId>
-}`}</pre>
-        </div>
-      </div>
-    );
-  }
-
-  if (activeView === "org") {
-    return (
-      <div className="reference-tab-body">
-        <h3>Block Declaration</h3>
-        <div className="reference-code-block">
-          <pre>{`organization "<name>" {
+}`,
+    },
+  ],
+  org: [
+    {
+      heading: "Block Declaration",
+      code: `organization "<name>" {
   // teams
-}`}</pre>
-        </div>
-
-        <h3>Org Kinds</h3>
-        <table className="reference-table">
-          <thead>
-            <tr>
-              <th>Kind</th>
-              <th>Description</th>
-              <th>Contains</th>
-              <th>Properties</th>
-            </tr>
-          </thead>
-          <tbody>
-            {ref.orgKinds.map((k) => (
-              <tr key={k.kind}>
-                <td>
-                  <code>{k.kind}</code>
-                </td>
-                <td>{k.description}</td>
-                <td>
-                  {k.canContain.length > 0
-                    ? k.canContain.map((c) => <code key={c}>{c}</code>)
-                    : "—"}
-                </td>
-                <td>
-                  {k.properties.map((p) => (
-                    <code key={p}>{p}</code>
-                  ))}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-
-        <h3>Node Declaration</h3>
-        <div className="reference-code-block">
-          <pre>{`organization <id> {
+}`,
+    },
+    { heading: "Org Kinds", kindTable: true },
+    {
+      heading: "Node Declaration",
+      code: `organization <id> {
   label "<表示名>"
 
   team <id> {
@@ -209,109 +161,143 @@ artifact <id> {
 
     team <id> { ... }   // サブチームのネスト可
   }
-}`}</pre>
-        </div>
-      </div>
-    );
-  }
+}`,
+    },
+  ],
+};
 
-  // system (default)
+// Per-view `.krs.style` selector examples (the only `<pre>` in the Styles tab).
+const STYLE_SELECTOR_EXAMPLES: Record<RefView, string> = {
+  system: `/* system diagram selectors */
+service { background-color: #0369A1; }
+domain[external] { border-style: dashed; }
+user[human] { shape: user; }
+edge[async] { border-style: dashed; }
+edge[write] { direction: down; }       /* layout-direction hint: up | down | left | right | auto */
+edge#criticalWrite { color: #EF4444; } /* target one edge by id */
+#ECommerce { background-color: #1D4ED8; }`,
+  deploy: `/* deploy diagram selectors */
+oci { background-color: #0369A1; }
+jar { border-color: #075985; }
+war { opacity: 0.8; }
+#myUnit { background-color: #1D4ED8; }`,
+  org: `/* org diagram selectors */
+team { background-color: #0369A1; }
+member { border-color: #075985; }
+#myTeam { background-color: #1D4ED8; }`,
+};
+
+export function ReferencePanel({ isOpen, onClose, activeView = "system" }: ReferencePanelProps) {
+  const [activeTab, setActiveTab] = useState<Tab>("syntax");
+  const { locale } = useTranslation();
+  const ref = getReference(locale);
+
   return (
-    <div className="reference-tab-body">
-      <h3>Block Declaration</h3>
-      <div className="reference-code-block">
-        <pre>{`system "<name>" {
-  // services, users, edges
-}`}</pre>
-      </div>
+    <Dialog open={isOpen} onOpenChange={(v) => !v && onClose()}>
+      <DialogContent className="reference-dialog flex max-h-[85vh] max-w-[760px] flex-col">
+        <DialogHeader>
+          <DialogTitle>Reference</DialogTitle>
+        </DialogHeader>
 
-      <h3>Node Kinds</h3>
-      <table className="reference-table">
-        <thead>
-          <tr>
-            <th>Kind</th>
-            <th>Description</th>
-            <th>Contains</th>
-            <th>Properties</th>
-          </tr>
-        </thead>
-        <tbody>
-          {ref.nodeKinds.map((k) => (
-            <tr key={k.kind}>
-              <td>
-                <code>{k.kind}</code>
-              </td>
-              <td>{k.description}</td>
-              <td>
-                {k.canContain.length > 0 ? k.canContain.map((c) => <code key={c}>{c}</code>) : "—"}
-              </td>
-              <td>
-                {k.properties.map((p) => (
-                  <code key={p}>{p}</code>
-                ))}
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+        <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as Tab)}>
+          <TabsList className="reference-panel-tabs">
+            {(Object.keys(TAB_LABELS) as Tab[]).map((tab) => (
+              <TabsTrigger key={tab} value={tab}>
+                {TAB_LABELS[tab]}
+              </TabsTrigger>
+            ))}
+          </TabsList>
+        </Tabs>
 
-      <h3>Edge Syntax</h3>
-      <div className="reference-code-block">
-        <pre>
-          {`A ->  B "label"   // sync (solid arrow)
-A --> B "label"   // async (dashed arrow)
-A ->  B "label" #criticalWrite   // optional edge id (#<id>) — targetable via edge#<id> in .krs.style
-// omitting #<id> → canonical id = <from><arrow><to>  (e.g. A->B / A-->B)`}
-        </pre>
-      </div>
-
-      <h3>Node Declaration</h3>
-      <div className="reference-code-block">
-        <pre>{`// minimal (id only)
-<kind> <id>
-
-// with tags and annotations
-<kind> <id> [<tags>] @<annotations>
-
-// with block (properties and/or children)
-<kind> <id> [<tags>] @<annotations> {
-  label "<表示名>"        // display name; id used if omitted
-  description "<説明>"    // free-form description
-  // kind-specific properties (team, role, link, …)
-}`}</pre>
-      </div>
-
-      <h3>Resource Operations (CRUD)</h3>
-      <div className="reference-code-block">
-        <pre>{`// Inside a usecase, a resource may declare the CRUD verbs the usecase
-// performs on it: create | read | update | delete.
-usecase PlaceOrder {
-  resource OrderDB.OrderTable {
-    operations create, read
-  }
-  // verb-decoration (1:N CRUD mapping): keep a domain verb, declare its CRUD intent
-  resource OrderEvents.OrderPlaced {
-    operations enqueue:create, dequeue:delete
-  }
-}`}</pre>
-      </div>
-
-      <h3>Legend (footer)</h3>
-      <div className="reference-code-block">
-        <pre>{`// Top-level. Renders as a footer band below each diagram view.
-// Scope ("system" | "deploy" | "org") is optional — omit to show on all views.
-legend "<title>"? {
-  swatch <#hex> "<label>"           // explicit color
-  ref @<annotation> "<label>"        // color from .krs.style cascade
-  ref [<tag>]       "<label>"        // ditto, by tag
-  ref <type>        "<label>"        // ditto, by node-kind type selector
-  ref #<id>         "<label>"        // ditto, by node id
+        <div className="reference-panel-content">
+          {activeTab === "syntax" && <SyntaxTab activeView={activeView} />}
+          {activeTab === "styles" && <StylesTab activeView={activeView} />}
+          {activeTab === "tags" && <TagsTab activeView={activeView} />}
+          {activeTab === "builtin" && (
+            <CopyableSourceTab
+              descriptionKey="referencePanel.builtin.description"
+              source={ref.builtinStyleSource}
+            />
+          )}
+          {activeTab === "samples" && (
+            <CopyableSourceTab
+              descriptionKey="referencePanel.samples.description"
+              source={ref.sampleKrs}
+            />
+          )}
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
 }
 
-legend deploy "Hosting tier" {       // scope to a single view
-  swatch #0EA5E9 "Cloud Run"
-}`}</pre>
-      </div>
+interface KindRow {
+  kind: string;
+  description: string;
+  canContain?: string[];
+  properties: string[];
+}
+
+/** Kind table shared by the system / deploy / org syntax tabs. Deploy units
+ *  have no containment, so the "Contains" column is omitted for them. */
+function KindTable({ kinds, showContains }: { kinds: KindRow[]; showContains: boolean }) {
+  return (
+    <table className="reference-table">
+      <thead>
+        <tr>
+          <th>Kind</th>
+          <th>Description</th>
+          {showContains && <th>Contains</th>}
+          <th>Properties</th>
+        </tr>
+      </thead>
+      <tbody>
+        {kinds.map((k) => (
+          <tr key={k.kind}>
+            <td>
+              <code>{k.kind}</code>
+            </td>
+            <td>{k.description}</td>
+            {showContains && (
+              <td>
+                {k.canContain && k.canContain.length > 0
+                  ? k.canContain.map((c) => <code key={c}>{c}</code>)
+                  : "—"}
+              </td>
+            )}
+            <td>
+              {k.properties.map((p) => (
+                <code key={p}>{p}</code>
+              ))}
+            </td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  );
+}
+
+function SyntaxTab({ activeView }: { activeView: ActiveView }) {
+  const { locale } = useTranslation();
+  const ref = getReference(locale);
+  const view = refViewOf(activeView);
+  const kinds: KindRow[] =
+    view === "deploy" ? ref.deployUnitKinds : view === "org" ? ref.orgKinds : ref.nodeKinds;
+
+  return (
+    <div className="reference-tab-body">
+      {SYNTAX_CONTENT[view].map((section) => (
+        <Fragment key={section.heading}>
+          <h3>{section.heading}</h3>
+          {"code" in section ? (
+            <div className="reference-code-block">
+              <pre>{section.code}</pre>
+            </div>
+          ) : (
+            <KindTable kinds={kinds} showContains={view !== "deploy"} />
+          )}
+        </Fragment>
+      ))}
     </div>
   );
 }
@@ -320,32 +306,11 @@ function StylesTab({ activeView }: { activeView: ActiveView }) {
   const { locale } = useTranslation();
   const ref = getReference(locale);
 
-  const selectorExamples =
-    activeView === "deploy"
-      ? `/* deploy diagram selectors */
-oci { background-color: #0369A1; }
-jar { border-color: #075985; }
-war { opacity: 0.8; }
-#myUnit { background-color: #1D4ED8; }`
-      : activeView === "org"
-        ? `/* org diagram selectors */
-team { background-color: #0369A1; }
-member { border-color: #075985; }
-#myTeam { background-color: #1D4ED8; }`
-        : `/* system diagram selectors */
-service { background-color: #0369A1; }
-domain[external] { border-style: dashed; }
-user[human] { shape: user; }
-edge[async] { border-style: dashed; }
-edge[write] { direction: down; }       /* layout-direction hint: up | down | left | right | auto */
-edge#criticalWrite { color: #EF4444; } /* target one edge by id */
-#ECommerce { background-color: #1D4ED8; }`;
-
   return (
     <div className="reference-tab-body">
       <h3>Selector Examples</h3>
       <div className="reference-code-block">
-        <pre>{selectorExamples}</pre>
+        <pre>{STYLE_SELECTOR_EXAMPLES[refViewOf(activeView)]}</pre>
       </div>
 
       <h3>Selector Specificity</h3>
@@ -534,48 +499,27 @@ function TagsTab({ activeView }: { activeView: ActiveView }) {
   );
 }
 
-function BuiltinTab({
+/**
+ * A tab that shows a copyable source block — the single component the
+ * previously character-for-character-identical `BuiltinTab` / `SamplesTab`
+ * collapse into (#1548). The only per-tab difference is the description key.
+ */
+function CopyableSourceTab({
+  descriptionKey,
   source,
-  onCopy,
-  copied,
 }: {
+  descriptionKey: "referencePanel.builtin.description" | "referencePanel.samples.description";
   source: string;
-  onCopy: () => void;
-  copied: boolean;
 }) {
   const { t } = useTranslation();
+  const { copy, copied } = useClipboardCopy();
   return (
     <div className="reference-tab-body">
       <div className="reference-builtin-header">
-        <span>{t("referencePanel.builtin.description")}</span>
-        <button className="reference-copy-btn" onClick={onCopy}>
+        <span>{t(descriptionKey)}</span>
+        <Button className="reference-copy-btn" onClick={() => copy(source)}>
           {copied ? t("referencePanel.copy.copied") : t("referencePanel.copy.label")}
-        </button>
-      </div>
-      <div className="reference-code-block">
-        <pre>{source}</pre>
-      </div>
-    </div>
-  );
-}
-
-function SamplesTab({
-  source,
-  onCopy,
-  copied,
-}: {
-  source: string;
-  onCopy: () => void;
-  copied: boolean;
-}) {
-  const { t } = useTranslation();
-  return (
-    <div className="reference-tab-body">
-      <div className="reference-builtin-header">
-        <span>{t("referencePanel.samples.description")}</span>
-        <button className="reference-copy-btn" onClick={onCopy}>
-          {copied ? t("referencePanel.copy.copied") : t("referencePanel.copy.label")}
-        </button>
+        </Button>
       </div>
       <div className="reference-code-block">
         <pre>{source}</pre>
