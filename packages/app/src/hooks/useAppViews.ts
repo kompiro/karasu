@@ -223,28 +223,17 @@ export function useAppViews(args: UseAppViewsArgs): UseAppViewsResult {
     theme,
   );
 
-  const teamPathIndex = useMemo(() => {
-    const index = new Map<string, string[]>();
+  // `teamPathIndex` maps a team id → its ancestor path (excluding itself);
+  // `orgPathIndex` maps a team id → its full path (including itself). They are
+  // the same tree walk differing only by whether the node's own id is appended,
+  // so build both in a single traversal: orgPath = [...parentPath, id].
+  const { teamPathIndex, orgPathIndex } = useMemo(() => {
+    const teamIndex = new Map<string, string[]>();
+    const orgIndex = new Map<string, string[]>();
     function traverse(team: TeamNode, parentPath: string[]) {
-      index.set(team.id, parentPath);
-      const subTeams = team.children.filter((c): c is TeamNode => c.kind === "team");
-      for (const sub of subTeams) {
-        traverse(sub, [...parentPath, team.id]);
-      }
-    }
-    for (const org of organizations) {
-      for (const team of org.teams) {
-        traverse(team, []);
-      }
-    }
-    return index;
-  }, [organizations]);
-
-  const orgPathIndex = useMemo(() => {
-    const index = new Map<string, string[]>();
-    function traverse(team: TeamNode, ancestorPath: string[]) {
-      const myPath = [...ancestorPath, team.id];
-      index.set(team.id, myPath);
+      const myPath = [...parentPath, team.id];
+      teamIndex.set(team.id, parentPath);
+      orgIndex.set(team.id, myPath);
       const subTeams = team.children.filter((c): c is TeamNode => c.kind === "team");
       for (const sub of subTeams) {
         traverse(sub, myPath);
@@ -255,7 +244,7 @@ export function useAppViews(args: UseAppViewsArgs): UseAppViewsResult {
         traverse(team, []);
       }
     }
-    return index;
+    return { teamPathIndex: teamIndex, orgPathIndex: orgIndex };
   }, [organizations]);
 
   const { navigateActiveView, navigateViewPath } = useHistoryNavigation({
