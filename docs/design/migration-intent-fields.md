@@ -4,6 +4,7 @@
 - **ステータス**: 検討中
 - **関連**:
   - 引き金 Issue: [#1568](https://github.com/kompiro/karasu/issues/1568)（gap B / 親 [#1567](https://github.com/kompiro/karasu/issues/1567)）
+  - PR: [#1589](https://github.com/kompiro/karasu/pull/1589)
   - 非目標の境界: [#23](https://github.com/kompiro/karasu/issues/23)（sequence / 時間軸モデリングはスコープ外）
   - 外部 fence の先例: [ADR-20260511-02](../adr/20260511-02-no-runtime-authz-modeling.md)（runtime authz を語彙に入れず散文＋link 規約に逃がす）
   - 既存パターン: `operations` の verb-decoration、open annotation set、`job` の `schedule`（`docs/spec/syntax.md`）
