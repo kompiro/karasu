@@ -1,5 +1,5 @@
 ---
-id: TPL-20260519-01
+id: TPL-20260519-03
 title: "構造化メッセージ（Warning / Diagnostic）の文字列化は単一の renderer に集約する"
 status: active
 date: 2026-05-19
@@ -22,7 +22,7 @@ scope:
     - cli
 ---
 
-# TPL-20260519-01: 構造化メッセージ（Warning / Diagnostic）の文字列化は単一の renderer に集約する
+# TPL-20260519-03: 構造化メッセージ（Warning / Diagnostic）の文字列化は単一の renderer に集約する
 
 ## 観点
 
