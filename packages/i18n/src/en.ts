@@ -137,6 +137,9 @@ export const en: Translations = {
   "nodeDetail.annotationDiff.title": "⇄ Annotation diff",
   "nodeDetail.resources.title": "📦 Storage resources",
   "nodeDetail.capabilities.title": "🔐 Capabilities",
+  "nodeDetail.migration.title": "🕒 Migration intent",
+  "nodeDetail.migration.until": "until",
+  "nodeDetail.migration.from": "from",
 
   // Empty-state placeholders (rendered inside SVG by core renderers)
   "emptyState.deploy.title": "No deploy block defined",

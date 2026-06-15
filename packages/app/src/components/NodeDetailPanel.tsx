@@ -198,6 +198,26 @@ export function NodeDetailPanel({
         </div>
       )}
 
+      {metadata.migrationIntent &&
+        (metadata.migrationIntent.until || metadata.migrationIntent.from) && (
+          <div className="node-detail-section node-detail-migration">
+            <div className="node-detail-section-title">{t("nodeDetail.migration.title")}</div>
+            {metadata.migrationIntent.until && (
+              <div
+                className="node-detail-prop node-detail-migration-until"
+                data-until-kind={metadata.migrationIntent.until.kind}
+              >
+                {t("nodeDetail.migration.until")}: <code>{metadata.migrationIntent.until.raw}</code>
+              </div>
+            )}
+            {metadata.migrationIntent.from && (
+              <div className="node-detail-prop node-detail-migration-from">
+                {t("nodeDetail.migration.from")}: <code>{metadata.migrationIntent.from}</code>
+              </div>
+            )}
+          </div>
+        )}
+
       {(metadata.team || metadata.role || metadata.tags.length > 0) && (
         <div className="node-detail-section">
           {metadata.team &&
