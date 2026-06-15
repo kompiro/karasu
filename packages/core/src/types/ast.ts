@@ -307,6 +307,8 @@ export interface TeamNode {
   kind: "team";
   id: string;
   label?: string;
+  annotations: string[];
+  annotationParams?: Record<string, Record<string, string>>;
   properties: CommonProperties & {
     owns: string[];
   };

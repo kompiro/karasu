@@ -299,9 +299,15 @@ function orgNodeSelectorMatches(node: OrgNodeDescriptor, sel: StyleSelector): bo
   if (sel.id) return sel.id === node.id;
   if (sel.nodeType === "edge") return false;
   if (sel.nodeType && sel.nodeType !== node.kind) return false;
+  // Org nodes carry no tags, so tag selectors never match.
   if (sel.tags.length > 0) return false;
-  if (sel.annotations.length > 0) return false;
-  if (!sel.nodeType && !sel.id) return false;
+  // Annotation selectors (e.g. the default-style `@migration_target` / `@deprecated`
+  // badge rules) match a team carrying every required annotation — same semantics
+  // as nodeSelectorMatches, so org teams get migration/deprecation badges too (#1583).
+  if (sel.annotations.length > 0) {
+    if (!sel.annotations.every((a) => node.annotations.includes(a))) return false;
+  }
+  if (!sel.nodeType && !sel.id && sel.annotations.length === 0) return false;
   return true;
 }
 
@@ -376,16 +382,17 @@ function deployNodeSelectorMatches(unit: DeployNode, sel: StyleSelector): boolea
 interface OrgNodeDescriptor {
   id: string;
   kind: "team" | "member";
+  annotations: string[];
 }
 
 function collectOrgNodes(organizations: OrganizationBlock[]): OrgNodeDescriptor[] {
   const nodes: OrgNodeDescriptor[] = [];
 
   function walk(team: TeamNode): void {
-    nodes.push({ id: team.id, kind: "team" });
+    nodes.push({ id: team.id, kind: "team", annotations: team.annotations });
     for (const child of team.children) {
       if (child.kind === "member") {
-        nodes.push({ id: child.id, kind: "member" });
+        nodes.push({ id: child.id, kind: "member", annotations: [] });
       } else {
         walk(child);
       }

@@ -23,11 +23,17 @@ function member(id: string, label?: string): MemberNode {
   };
 }
 
-function team(id: string, label?: string, children: (TeamNode | MemberNode)[] = []): TeamNode {
+function team(
+  id: string,
+  label?: string,
+  children: (TeamNode | MemberNode)[] = [],
+  annotations: string[] = [],
+): TeamNode {
   return {
     kind: "team",
     id,
     label,
+    annotations,
     properties: { links: [], owns: [] },
     children,
     loc: EMPTY_LOC,
@@ -286,6 +292,25 @@ describe("renderOrgTreeView — styles option", () => {
     const orgs = [org("o1", [team("eng", "Engineering")])];
     const svg = renderOrgTreeView(orgs, new Set(), { styles });
     expect(svg).toContain('stroke="#FF6B6B"');
+  });
+
+  it("renders a migration badge when the team style carries one (#1583)", () => {
+    const styles = makeStyles(
+      new Map([["eng", { badgeIcon: "→", badgeLabel: "Migration target", badgeColor: "#3B82F6" }]]),
+    );
+    const orgs = [org("o1", [team("eng", "Engineering", [], ["migration_target"])])];
+    const svg = renderOrgTreeView(orgs, new Set(), { styles });
+    expect(svg).toContain('data-node-badge="eng"');
+    expect(svg).toContain("→");
+    // Tree cards render an icon-only badge (no label) to stay inside the card.
+    expect(svg).not.toContain("Migration target");
+  });
+
+  it("renders no badge for an unannotated team", () => {
+    const styles = makeStyles(new Map([["eng", { backgroundColor: "#123456" }]]));
+    const orgs = [org("o1", [team("eng", "Engineering")])];
+    const svg = renderOrgTreeView(orgs, new Set(), { styles });
+    expect(svg).not.toContain("data-node-badge");
   });
 
   it("falls back to hardcoded defaults when styles not provided", () => {

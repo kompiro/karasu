@@ -432,3 +432,4 @@ DesignDoc が proactive TPL を引用したら、実装 PR で次をやる:
 | [TPL-20260613-01](TPL-20260613-01-persistent-store-init-and-mutation-resilience.md) | 永続ストアの初期化・更新は fail-closed に — RMW は直列化し、not-found と read error を区別する | app-ui | #1530 / #1531 |
 | [TPL-20260613-02](TPL-20260613-02-edit-and-watch-same-store.md) | 自分で書き込みつつ監視するストアでは、書き込みを直列化し自己エコーと非同期 read レースを処理する | app-ui | #1535 / #1536 |
 | [TPL-20260613-03](TPL-20260613-03-cancel-stale-async-effect-results.md) | 非同期 effect は入力変化・unmount で in-flight 結果を破棄してから publish する | app-ui | #1534 / #1540 |
+| [TPL-20260615-01](TPL-20260615-01-migration-priority-index-winner.md) | 1:1 index は migration 共存の重複から @migration_target を勝者に選ぶ — 全 index で一貫させる | core-concepts | docs/spec/tags-annotations.md, ADR-20260411-02 / ADR-20260615-01, #1583 |

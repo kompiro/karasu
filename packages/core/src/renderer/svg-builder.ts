@@ -152,6 +152,8 @@ interface IconCardOptions {
   descX?: number;
   descY?: number;
   descAttrs?: Attrs;
+  /** Pre-rendered SVG appended last (drawn on top), e.g. an annotation badge */
+  overlay?: string;
 }
 
 /**
@@ -181,6 +183,7 @@ export function renderIconCard(opts: IconCardOptions): string {
     descX,
     descY,
     descAttrs,
+    overlay,
   } = opts;
 
   const parts: string[] = [
@@ -201,6 +204,8 @@ export function renderIconCard(opts: IconCardOptions): string {
   if (descText) {
     parts.push(el("text", { x: descX, y: descY, ...descAttrs }, escapeXml(descText)));
   }
+
+  if (overlay) parts.push(overlay);
 
   return el(
     "g",

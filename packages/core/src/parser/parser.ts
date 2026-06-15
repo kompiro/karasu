@@ -79,6 +79,16 @@ const ANNOTATION_PARAM_KEYS: Record<string, ReadonlySet<string>> = {
   migration_target: new Set(["from"]),
 };
 
+// Migration-coexistence priority for picking the single winner of a 1:1 index
+// when a node is reachable from more than one place during an inverse-Conway
+// handoff. The destination (@migration_target) wins, the source (@deprecated)
+// loses, and an unmarked entry sits in between. Shared by buildNodePathIndex
+// (domain → nodePathIndex) and indexTeams (team → ownerIndex) so both 1:1
+// indices resolve duplicates the same way. Ties keep the first occurrence.
+function migrationPriority(annotations: readonly string[]): number {
+  return annotations.includes("migration_target") ? 2 : annotations.includes("deprecated") ? 0 : 1;
+}
+
 const DEPLOY_KEYWORDS = new Set<string>([
   "war",
   "jar",
@@ -1638,6 +1648,7 @@ export class Parser {
     if (this.peek().type === TokenType.StringLiteral) {
       label = this.advance().value;
     }
+    const { names: annotations, params: annotationParams } = this.parseAnnotations();
     this.expect(TokenType.LeftBrace);
 
     const properties: CommonProperties & { owns: string[] } = { links: [], owns: [] };
@@ -1690,6 +1701,8 @@ export class Parser {
       kind: "team" as const,
       id: idToken.value,
       label,
+      annotations,
+      ...(Object.keys(annotationParams).length > 0 ? { annotationParams } : {}),
       properties,
       children,
       loc: this.range(start.loc, end.loc),
@@ -1762,22 +1775,36 @@ export class Parser {
 
   private buildOwnerIndex(organizations: OrganizationBlock[]): Map<string, string> {
     const index = new Map<string, string>();
+    // Priority of the team currently stored as the primary owner of each node,
+    // so a later @migration_target team can take over the 1:1 ownerIndex slot.
+    const priority = new Map<string, number>();
     for (const org of organizations) {
-      this.indexTeams(org.teams, index);
+      this.indexTeams(org.teams, index, priority);
     }
     return index;
   }
 
-  private indexTeams(teams: TeamNode[], index: Map<string, string>): void {
+  private indexTeams(
+    teams: TeamNode[],
+    index: Map<string, string>,
+    priority: Map<string, number>,
+  ): void {
     for (const team of teams) {
+      const teamPriority = migrationPriority(team.annotations);
       for (const ownedId of team.properties.owns) {
         if (index.has(ownedId)) {
           // Co-ownership is a structural fact, not an integrity error: an
           // inverse-Conway handoff legitimately has two teams own a node
           // mid-migration. Surface it in the fact-vs-style register (info),
-          // like domain-dispersal. ownerIndex is 1:1, so the first team stays
-          // the primary owner (first-wins); @migration_target priority is
-          // tracked in #1583. See ADR-1566.
+          // like domain-dispersal (ADR-20260615-01). ownerIndex is 1:1, so a
+          // single primary owner must be chosen: the @migration_target team
+          // (the migration destination) wins, mirroring buildNodePathIndex's
+          // domain logic; ties keep the first declaration (#1583). The
+          // diagnostic names the *resolved* primary after any swap.
+          if (teamPriority > priority.get(ownedId)!) {
+            index.set(ownedId, team.id);
+            priority.set(ownedId, teamPriority);
+          }
           this.diagnostics.push({
             severity: "info",
             code: "duplicate-owner-assignment",
@@ -1786,11 +1813,13 @@ export class Parser {
           });
         } else {
           index.set(ownedId, team.id);
+          priority.set(ownedId, teamPriority);
         }
       }
       this.indexTeams(
         team.children.filter((c): c is TeamNode => c.kind === "team"),
         index,
+        priority,
       );
     }
   }
@@ -1854,11 +1883,7 @@ export class Parser {
         if (node.kind === "domain") {
           const effective =
             node.annotations.length > 0 ? node.annotations : parentServiceAnnotations;
-          const priority = effective.includes("migration_target")
-            ? 2
-            : effective.includes("deprecated")
-              ? 0
-              : 1;
+          const priority = migrationPriority(effective);
           if (seenDomainIds.has(node.id)) {
             const existingPriority = seenDomainIds.get(node.id)!;
             // A domain id shared by multiple services within one system is a
