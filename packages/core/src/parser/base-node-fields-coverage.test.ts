@@ -37,7 +37,15 @@ import type {
 type Equal<X, Y> =
   (<T>() => T extends X ? 1 : 2) extends <T>() => T extends Y ? 1 : 2 ? true : false;
 
-type ExpectedKeys = "id" | "label" | "tags" | "annotations" | "children" | "edges" | "loc";
+type ExpectedKeys =
+  | "id"
+  | "label"
+  | "tags"
+  | "annotations"
+  | "annotationParams"
+  | "children"
+  | "edges"
+  | "loc";
 
 // If a key is added to BaseNodeFields, this assignment fails — see the file
 // header for the required decision (structural vs. user-facing).
@@ -48,6 +56,11 @@ void _baseNodeFieldsKeyContract;
 // Structural fields (id, children, edges, loc) are excluded: id is required and
 // covered by existing parser tests; children/edges/loc are not user-input
 // scalars but composed by the parser.
+// `annotationParams` is also excluded from this uniform per-kind probe: unlike
+// the label/tags/annotations scalars it is a conditional per-annotation map
+// (default `undefined`, present only when a builtin annotation carries a
+// recognized param), and is covered by the dedicated annotation-param parser
+// tests in parser.test.ts (#1568).
 type UserFacingField = "label" | "tags" | "annotations";
 const USER_FACING_FIELDS = [
   "label",

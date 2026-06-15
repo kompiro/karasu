@@ -287,6 +287,8 @@ export const en: Translations = {
   "diagnostic.expectedIdAfter.message": ({ property }) =>
     `Expected identifier or string literal after "${property}"`,
   "diagnostic.teamPropertyRemoved.message": `"team" property has been removed; declare ownership with an organization block and "owns"`,
+  "diagnostic.annotationParamUnsupported.message": ({ annotation, key }) =>
+    `"@${annotation}" does not support the "${key}" parameter; it is ignored`,
   "diagnostic.linkUrlSchemeNotAllowed.message": ({ url, scheme }) =>
     scheme
       ? `link URL "${url}" uses a disallowed scheme "${scheme}" (allowed: http, https, mailto); the link is ignored`

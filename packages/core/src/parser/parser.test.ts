@@ -162,6 +162,50 @@ system Test {
     expect(service.annotations).toEqual(["deprecated"]);
   });
 
+  it("parses recognized annotation params (until / from) and keeps the name list (#1568)", () => {
+    const result = Parser.parse(`
+system Test {
+  service Legacy @deprecated(until: "2026-Q3")
+  service NewSvc @migration_target(from: Legacy)
+}
+    `);
+    expect(result.diagnostics.filter((d) => d.severity !== "info")).toHaveLength(0);
+    const legacy = result.value.systems[0].children[0];
+    const newSvc = result.value.systems[0].children[1];
+    // The name list is unchanged (existing consumers unaffected)...
+    expect(legacy.annotations).toEqual(["deprecated"]);
+    expect(newSvc.annotations).toEqual(["migration_target"]);
+    // ...and params are captured per annotation name.
+    expect(legacy.annotationParams).toEqual({ deprecated: { until: "2026-Q3" } });
+    expect(newSvc.annotationParams).toEqual({ migration_target: { from: "Legacy" } });
+  });
+
+  it("accepts an opaque (non-date) until value without a warning (graceful degradation)", () => {
+    const result = Parser.parse(`
+system Test {
+  service Legacy @deprecated(until: "sometime next year")
+}
+    `);
+    expect(result.diagnostics).toHaveLength(0);
+    const legacy = result.value.systems[0].children[0];
+    expect(legacy.annotationParams).toEqual({ deprecated: { until: "sometime next year" } });
+  });
+
+  it("warns and drops an unsupported annotation param, leaving annotationParams unset", () => {
+    const result = Parser.parse(`
+system Test {
+  service Beta @new(until: "2026-Q3")
+}
+    `);
+    const warns = result.diagnostics.filter((d) => d.code === "annotation-param-unsupported");
+    expect(warns).toHaveLength(1);
+    expect(warns[0].severity).toBe("warning");
+    expect(JSON.stringify(warns[0].params)).toContain("until");
+    const beta = result.value.systems[0].children[0];
+    expect(beta.annotations).toEqual(["new"]);
+    expect(beta.annotationParams).toBeUndefined();
+  });
+
   it("parses sync edges", () => {
     const result = Parser.parse(`
 system Test {

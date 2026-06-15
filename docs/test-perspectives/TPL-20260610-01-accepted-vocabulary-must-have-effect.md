@@ -88,3 +88,6 @@ scope:
 - `docs/spec/tags-annotations.md` — Annotation names are an open set（アノテーション名の
   open set 明文化と `annotation-possible-typo` ヒント、#1499。本 TPL の「open set と明文化」
   状態を annotation 名前空間に適用したもの）
+- `docs/spec/tags-annotations.md` — Annotation parameters（`@name(key: …)` の未認識キー/
+  アノテーションは `annotation-param-unsupported` で警告し黙殺しない、#1568。本 TPL の
+  「効果を持つ／警告される」を annotation パラメータに適用したもの）

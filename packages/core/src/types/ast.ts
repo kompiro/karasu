@@ -43,6 +43,18 @@ export interface BaseNodeFields {
   label?: string;
   tags: string[];
   annotations: string[];
+  /**
+   * Optional parameters on lifecycle annotations, keyed by annotation name
+   * (e.g. `{ deprecated: { until: "2026-Q3" } }` from
+   * `@deprecated(until: "2026-Q3")`). Only recognized builtin keys are stored
+   * — `until` (on `@deprecated` / `@experimental`) and `from` (on
+   * `@migration_target`); unsupported params are dropped with a warning.
+   * `annotations` (the name list) is unchanged, so existing consumers
+   * (style selectors, inheritance, rendering) are unaffected. Values follow
+   * graceful degradation: a parseable date is machine-usable, anything else
+   * is an opaque display-only string. See ADR (#1568).
+   */
+  annotationParams?: Record<string, Record<string, string>>;
   children: KrsNode[];
   edges: KrsEdge[];
   loc: SourceRange;
@@ -465,6 +477,7 @@ export interface DiagnosticParamsByCode {
 
   // ── Parser semantic diagnostics ─────────────────────────────────────────
   "team-property-removed": Record<string, never>;
+  "annotation-param-unsupported": { annotation: string; key: string };
   "link-url-scheme-not-allowed": { url: string; scheme: string };
   "edge-source-mismatch": { from: string; parentId: string };
   "unassigned-resource": { resourceId: string };

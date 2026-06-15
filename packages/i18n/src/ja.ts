@@ -286,6 +286,8 @@ export const ja: Partial<Translations> = {
   "diagnostic.expectedIdAfter.message": ({ property }) =>
     `"${property}" の後に識別子または文字列リテラルを期待しました`,
   "diagnostic.teamPropertyRemoved.message": `"team" プロパティは削除されました。organization ブロックと "owns" で所有を宣言してください`,
+  "diagnostic.annotationParamUnsupported.message": ({ annotation, key }) =>
+    `"@${annotation}" は "${key}" パラメータをサポートしていません。無視されます`,
   "diagnostic.linkUrlSchemeNotAllowed.message": ({ url, scheme }) =>
     scheme
       ? `link URL "${url}" は許可されていないスキーム "${scheme}" を使用しています（許可: http, https, mailto）。このリンクは無視されます`

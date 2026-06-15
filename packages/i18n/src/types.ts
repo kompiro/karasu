@@ -311,6 +311,10 @@ export type Translations = {
   "diagnostic.expectedPropertyValue.message": (params: { propName: string }) => string;
   "diagnostic.expectedIdAfter.message": (params: { property: string }) => string;
   "diagnostic.teamPropertyRemoved.message": string;
+  "diagnostic.annotationParamUnsupported.message": (params: {
+    annotation: string;
+    key: string;
+  }) => string;
   "diagnostic.linkUrlSchemeNotAllowed.message": (params: { url: string; scheme: string }) => string;
   "diagnostic.edgeSourceMismatch.message": (params: { from: string; parentId: string }) => string;
   "diagnostic.unassignedResource.message": (params: { resourceId: string }) => string;

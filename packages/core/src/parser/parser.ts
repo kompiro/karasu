@@ -70,6 +70,15 @@ const LOGICAL_KEYWORDS = new Set<string>([
 // Infra block kinds that can appear as system-level children
 const INFRA_BLOCK_KINDS = new Set<string>(["database", "queue", "storage"]);
 
+// Recognized parameter keys per builtin lifecycle annotation (#1568). A param
+// on any other annotation, or with another key, is dropped with an
+// `annotation-param-unsupported` warning. Custom annotations stay param-less.
+const ANNOTATION_PARAM_KEYS: Record<string, ReadonlySet<string>> = {
+  deprecated: new Set(["until"]),
+  experimental: new Set(["until"]),
+  migration_target: new Set(["from"]),
+};
+
 const DEPLOY_KEYWORDS = new Set<string>([
   "war",
   "jar",
@@ -822,7 +831,7 @@ export class Parser {
     const tags = this.parseTags();
 
     // Optional annotations
-    const annotations = this.parseAnnotations();
+    const { names: annotations, params: annotationParams } = this.parseAnnotations();
 
     // Properties (label is now a property inside the block)
     const properties: CommonProperties & {
@@ -854,6 +863,7 @@ export class Parser {
       label: properties.label,
       tags,
       annotations,
+      ...(Object.keys(annotationParams).length > 0 ? { annotationParams } : {}),
       children,
       edges,
       loc: this.range(start.loc, end.loc),
@@ -964,7 +974,7 @@ export class Parser {
     }
 
     const tags = this.parseTags();
-    const annotations = this.parseAnnotations();
+    const { names: annotations, params: annotationParams } = this.parseAnnotations();
     const authorId = this.parseAuthorIdSuffix();
 
     const properties: CommonProperties & { label?: string; operations?: ParsedOperation[] } = {
@@ -1072,6 +1082,7 @@ export class Parser {
       label: properties.label,
       tags,
       annotations,
+      ...(Object.keys(annotationParams).length > 0 ? { annotationParams } : {}),
       children,
       edges,
       loc: this.range(start.loc, end.loc),
@@ -1105,7 +1116,7 @@ export class Parser {
     }
 
     const tags = this.parseTags();
-    const annotations = this.parseAnnotations();
+    const { names: annotations, params: annotationParams } = this.parseAnnotations();
     const properties: CommonProperties & { label?: string } = { links: [] };
     const children: KrsNode[] = [];
     const edges: KrsEdge[] = [];
@@ -1122,6 +1133,7 @@ export class Parser {
       label: properties.label,
       tags,
       annotations,
+      ...(Object.keys(annotationParams).length > 0 ? { annotationParams } : {}),
       children,
       edges,
       loc: this.range(start.loc, end.loc),
@@ -1283,7 +1295,7 @@ export class Parser {
     }
 
     const tags = this.parseTags();
-    const annotations = this.parseAnnotations();
+    const { names: annotations, params: annotationParams } = this.parseAnnotations();
     const properties: CommonProperties & { label?: string } = { links: [] };
     const children: KrsNode[] = [];
     const edges: KrsEdge[] = [];
@@ -1303,6 +1315,7 @@ export class Parser {
       label: properties.label,
       tags,
       annotations,
+      ...(Object.keys(annotationParams).length > 0 ? { annotationParams } : {}),
       children,
       edges,
       loc: this.range(start.loc, end.loc),
@@ -1334,15 +1347,59 @@ export class Parser {
     return tags;
   }
 
-  private parseAnnotations(): string[] {
-    const annotations: string[] = [];
+  private parseAnnotations(): {
+    names: string[];
+    params: Record<string, Record<string, string>>;
+  } {
+    const names: string[] = [];
+    const params: Record<string, Record<string, string>> = {};
     while (this.peek().type === TokenType.At) {
       this.advance(); // @
-      if (this.peek().type === TokenType.Identifier) {
-        annotations.push(this.advance().value);
+      if (this.peek().type !== TokenType.Identifier) continue;
+      const name = this.advance().value;
+      names.push(name);
+      // Optional parameters: `@name(key: "value"[, key: "value"]*)`.
+      if (this.peek().type === TokenType.LeftParen) {
+        this.advance(); // (
+        while (this.peek().type !== TokenType.RightParen && this.peek().type !== TokenType.EOF) {
+          // Skip separators between pairs.
+          if (this.peek().type === TokenType.Comma || this.peek().type === TokenType.Colon) {
+            this.advance();
+            continue;
+          }
+          // Key name: an identifier, or a keyword that doubles as a key
+          // (e.g. `from`, which the lexer tokenizes as a keyword). Read by
+          // value so keyword-keys aren't mistaken for missing.
+          const keyToken = this.advance();
+          const key = keyToken.value;
+          if (this.peek().type === TokenType.Colon) this.advance();
+          // Value may be a quoted string (`until: "2026-Q3"`) or a bare
+          // identifier referencing a node (`from: LegacyMonolith`).
+          const valueType = this.peek().type;
+          const value =
+            valueType === TokenType.StringLiteral || valueType === TokenType.Identifier
+              ? this.advance().value
+              : "";
+          const allowed = ANNOTATION_PARAM_KEYS[name];
+          if (allowed?.has(key)) {
+            (params[name] ??= {})[key] = value;
+          } else {
+            // Accepted-vocabulary rule (TPL-20260610-01): a param with no
+            // effect is warned, not silently kept. Only builtin keys have an
+            // effect; custom annotations stay param-less for now (#1568).
+            this.diagnostics.push({
+              severity: "warning",
+              code: "annotation-param-unsupported",
+              params: { annotation: name, key },
+              loc: this.range(keyToken.loc),
+            });
+          }
+          if (this.peek().type === TokenType.Comma) this.advance();
+        }
+        if (this.peek().type === TokenType.RightParen) this.advance();
       }
     }
-    return annotations;
+    return { names, params };
   }
 
   private parseEdge(implicitFrom?: string): KrsEdge {
