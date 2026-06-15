@@ -9,11 +9,11 @@
 
 shadcn の portal primitive（`Dialog` / `DropdownMenu` / `Tooltip`）が一律 `z-50` だったため、`z-index: 200` の `.reference-panel-overlay` を始めとする既存の手書き overlay の裏に潜り込んでいた。z-index を `app.css :root` の `--z-*` トークンスケールに集約して解消する。
 
+> **更新（#1548）**: References はモーダル overlay から**別ウィンドウのポップアウト**に移行したため、「コマンドパレット vs References パネルの重なり順」という具体ケースは構造的に発生しなくなった（別ウィンドウなので重ならない）。専用 e2e（`at-1468-command-palette-z-index.spec.ts`）は削除。重なり順の一般則は引き続き `--z-*` トークンスケールで担保し、他の overlay（`Dialog` / `DropdownMenu` / `Tooltip` / context menu）で観測する。
+
 ## 受け入れ条件
 
-- [x] References パネルを開いた状態でコマンドパレットを開くと、パレットがパネルより前面に描画される
-
-  > ✅ Automated — `packages/e2e/tests/at-1468-command-palette-z-index.spec.ts` › `renders the command palette above the open References panel`
+> ~~References パネルを開いた状態でコマンドパレットを開くと、パレットがパネルより前面に描画される~~ — **Superseded（#1548）**: References が別ウィンドウになり overlay の重なりが発生しないため対象外（専用 e2e は削除）。
 
 - [x] z-index は `app.css :root` の `--z-*` トークンを参照し、overlay ルールにマジックナンバーを残さない
 
@@ -23,7 +23,5 @@ shadcn の portal primitive（`Dialog` / `DropdownMenu` / `Tooltip`）が一律 
 
 `examples/getting-started/index.krs` を Preview UI（Project モード）で開いて確認する。
 
-- [ ] `? Reference` でパネルを開き、`Ctrl/Cmd+Shift+P` でコマンドパレットを開くと、パレットがパネルの dimming/blur 層より手前に完全に表示される
-- [ ] パレットの背後の dimming 層が References パネルを含む画面全体を覆っている（パネルだけ明るく浮いて見えない）
-- [ ] パレットを Esc で閉じると References パネルが従来どおり操作できる
+- [ ] 開いている overlay（`Snapshot` / `Paste compare` ダイアログ等）の上に `Ctrl/Cmd+Shift+P` のコマンドパレットが完全に前面表示される
 - [ ] ツールバーボタンの tooltip、エッジ右クリックの context menu が引き続き正しい重なり順で表示される
