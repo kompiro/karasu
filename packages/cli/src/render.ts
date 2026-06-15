@@ -116,6 +116,7 @@ export async function render(filePath: string, options: RenderOptions): Promise<
 
   const errors = diagnostics.filter((d) => d.severity === "error");
   const diagWarnings = diagnostics.filter((d) => d.severity === "warning");
+  const diagInfos = diagnostics.filter((d) => d.severity === "info");
 
   for (const d of errors) {
     const loc = d.loc ? `${filePath}:${d.loc.start.line + 1}:${d.loc.start.column + 1}` : filePath;
@@ -124,6 +125,13 @@ export async function render(filePath: string, options: RenderOptions): Promise<
   for (const d of diagWarnings) {
     const loc = d.loc ? `${filePath}:${d.loc.start.line + 1}:${d.loc.start.column + 1}` : filePath;
     process.stderr.write(`Warning: ${loc}: ${formatDiagnostic(d)}\n`);
+  }
+  // Info-severity parser diagnostics (e.g. duplicate-owner-assignment) honour
+  // their register with an `Info:` prefix — mirroring the info-warning loop
+  // below — instead of being dropped (ADR-20260615-01 / ADR-20260514-02).
+  for (const d of diagInfos) {
+    const loc = d.loc ? `${filePath}:${d.loc.start.line + 1}:${d.loc.start.column + 1}` : filePath;
+    process.stderr.write(`Info: ${loc}: ${formatDiagnostic(d)}\n`);
   }
   for (const w of warnings) {
     // Honour the warning's register: info-severity kinds (e.g.
