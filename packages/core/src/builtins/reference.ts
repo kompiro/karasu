@@ -54,6 +54,29 @@ export interface OrgKindInfo {
   properties: string[];
 }
 
+/** A diagram family the per-view reference content is keyed on. */
+export type ReferenceView = "system" | "deploy" | "org";
+
+/**
+ * One section of the Syntax tab: a literal `.krs` snippet (`code`), or a marker
+ * (`kindTable`) that the per-view kind table is rendered in its place.
+ */
+export interface SyntaxSection {
+  heading: string;
+  code?: string;
+  kindTable?: true;
+}
+
+/** One row of the Styles tab's selector-specificity reference. */
+export interface SelectorSpecificityRow {
+  /** Localized label for the selector form (e.g. "Kind + tag"). */
+  selector: string;
+  /** A concrete example selector (e.g. `service[external]`). */
+  example: string;
+  /** Specificity score per `computeSpecificity`. */
+  score: number;
+}
+
 export interface KarasuReference {
   nodeKinds: NodeKindInfo[];
   deployUnitKinds: DeployUnitKindInfo[];
@@ -62,6 +85,12 @@ export interface KarasuReference {
   annotations: AnnotationInfo[];
   styleProperties: StylePropertyInfo[];
   shapes: ShapeInfo[];
+  /** Per-view Syntax-tab snippets (locale-independent; the panel is English). */
+  syntaxSnippets: Record<ReferenceView, SyntaxSection[]>;
+  /** Per-view `.krs.style` selector examples for the Styles tab. */
+  styleSelectorExamples: Record<ReferenceView, string>;
+  /** Selector-specificity rows for the Styles tab (`selector` follows `locale`). */
+  selectorSpecificity: SelectorSpecificityRow[];
   builtinStyleSource: string;
   /** The canonical all-views Getting Started sample (also seeds Memory mode). */
   sampleKrs: string;
@@ -145,6 +174,14 @@ export function getReference(locale: ReferenceLocale = "en"): KarasuReference {
       name: sh.name,
       description: sh.description[locale],
       ...(sh.defaultFor !== undefined ? { defaultFor: sh.defaultFor } : {}),
+    })),
+    // Snippets are locale-independent literals — passed through unchanged.
+    syntaxSnippets: data.syntaxSnippets,
+    styleSelectorExamples: data.styleSelectorExamples,
+    selectorSpecificity: data.selectorSpecificity.map((s) => ({
+      selector: s.selector[locale],
+      example: s.example,
+      score: s.score,
     })),
     builtinStyleSource: BUILTIN_STYLE_SOURCE,
     sampleKrs: indexKrs(locale === "ja" ? GETTING_STARTED_PROJECT : GETTING_STARTED_PROJECT_EN),

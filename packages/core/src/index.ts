@@ -148,8 +148,11 @@ export {
 export {
   getReference,
   type ReferenceLocale,
+  type ReferenceView,
   type KarasuReference,
   type SamplesByView,
+  type SyntaxSection,
+  type SelectorSpecificityRow,
   type NodeKindInfo,
   type TagInfo,
   type AnnotationInfo,

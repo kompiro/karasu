@@ -86,6 +86,42 @@ interface ShapeData {
   defaultFor?: string;
 }
 
+/** A diagram family the Reference panel's per-view content is keyed on. */
+type ReferenceView = "system" | "deploy" | "org";
+
+/**
+ * One section of a per-view syntax reference: either a literal `.krs` code
+ * snippet, or a marker (`kindTable`) that the per-view kind table
+ * (`nodeKinds` / `deployUnitKinds` / `orgKinds`) is rendered in its place.
+ *
+ * Locale-independent on purpose: the headings are short English UI labels and
+ * the code is language-neutral `.krs` source — the Reference panel that
+ * consumes these is English-only. (Contrast `selectorSpecificity` below, whose
+ * labels also feed the bilingual `docs/spec/style.md` and so carry both
+ * locales.)
+ */
+interface SyntaxSectionData {
+  heading: string;
+  /** A literal `.krs` snippet. Mutually exclusive with `kindTable`. */
+  code?: string;
+  /** Render the per-view kind table here instead of a code block. */
+  kindTable?: true;
+}
+
+/**
+ * One row of the `.krs.style` selector-specificity reference. `score` is the
+ * value `computeSpecificity` (in `parser/style-parser.ts`) assigns to `example`
+ * — the `reference-data.test.ts` suite parses each `example` and asserts the
+ * parser agrees, so this data can't drift from the implementation. The `selector`
+ * label is localized because this table is generated into `docs/spec/style.md`
+ * (and `.ja.md`) via `scripts/reference/gen-docs.ts`.
+ */
+interface SelectorSpecificityData {
+  selector: LocalizedString;
+  example: string;
+  score: number;
+}
+
 interface ReferenceData {
   nodeKinds: NodeKindData[];
   deployUnitKinds: DeployUnitKindData[];
@@ -94,6 +130,12 @@ interface ReferenceData {
   annotations: AnnotationData[];
   styleProperties: StylePropertyData[];
   shapes: ShapeData[];
+  /** Per-view `.krs` syntax snippets shown in the Reference panel's Syntax tab. */
+  syntaxSnippets: Record<ReferenceView, SyntaxSectionData[]>;
+  /** Per-view `.krs.style` selector examples shown in the Styles tab. */
+  styleSelectorExamples: Record<ReferenceView, string>;
+  /** Selector-specificity reference shown in the Styles tab and `docs/spec/style.md`. */
+  selectorSpecificity: SelectorSpecificityData[];
 }
 
 export const REFERENCE_DATA = {
@@ -742,5 +784,186 @@ export const REFERENCE_DATA = {
       typicalUse: { en: "external cloud services", ja: "外部クラウド" },
       defaultFor: "resource[storage]",
     },
+  ],
+
+  // ── Reference panel: per-view Syntax tab snippets ──────────────────────────
+  // A `kindTable: true` section is replaced by the per-view kind table at
+  // render time; every other section is a literal `.krs` snippet.
+  syntaxSnippets: {
+    system: [
+      {
+        heading: "Block Declaration",
+        code: `system "<name>" {
+  // services, users, edges
+}`,
+      },
+      { heading: "Node Kinds", kindTable: true },
+      {
+        heading: "Edge Syntax",
+        code: `A ->  B "label"   // sync (solid arrow)
+A --> B "label"   // async (dashed arrow)
+A ->  B "label" #criticalWrite   // optional edge id (#<id>) — targetable via edge#<id> in .krs.style
+// omitting #<id> → canonical id = <from><arrow><to>  (e.g. A->B / A-->B)`,
+      },
+      {
+        heading: "Node Declaration",
+        code: `// minimal (id only)
+<kind> <id>
+
+// with tags and annotations
+<kind> <id> [<tags>] @<annotations>
+
+// with block (properties and/or children)
+<kind> <id> [<tags>] @<annotations> {
+  label "<表示名>"        // display name; id used if omitted
+  description "<説明>"    // free-form description
+  // kind-specific properties (team, role, link, …)
+}`,
+      },
+      {
+        heading: "Resource Operations (CRUD)",
+        code: `// Inside a usecase, a resource may declare the CRUD verbs the usecase
+// performs on it: create | read | update | delete.
+usecase PlaceOrder {
+  resource OrderDB.OrderTable {
+    operations create, read
+  }
+  // verb-decoration (1:N CRUD mapping): keep a domain verb, declare its CRUD intent
+  resource OrderEvents.OrderPlaced {
+    operations enqueue:create, dequeue:delete
+  }
+}`,
+      },
+      {
+        heading: "Legend (footer)",
+        code: `// Top-level. Renders as a footer band below each diagram view.
+// Scope ("system" | "deploy" | "org") is optional — omit to show on all views.
+legend "<title>"? {
+  swatch <#hex> "<label>"           // explicit color
+  ref @<annotation> "<label>"        // color from .krs.style cascade
+  ref [<tag>]       "<label>"        // ditto, by tag
+  ref <type>        "<label>"        // ditto, by node-kind type selector
+  ref #<id>         "<label>"        // ditto, by node id
+}
+
+legend deploy "Hosting tier" {       // scope to a single view
+  swatch #0EA5E9 "Cloud Run"
+}`,
+      },
+    ],
+    deploy: [
+      {
+        heading: "Block Declaration",
+        code: `deploy "<name>" {
+  // deploy units
+}`,
+      },
+      { heading: "Deploy Unit Kinds", kindTable: true },
+      {
+        heading: "Unit Declaration",
+        code: `<kind> <id> {
+  label "<表示名>"
+  runtime "<runtime>"   // ⚠ 省略可（警告）
+  realizes <serviceId>  // ⚠ 省略可（警告）
+}
+
+// oci のみ image を指定可
+oci <id> {
+  image "<image:tag>"
+  runtime "<runtime>"
+  realizes <serviceId>
+}
+
+// job のみ schedule を指定可
+job <id> {
+  schedule "0 0 * * *"  // cron 形式。省略で単発実行
+  runtime "<runtime>"
+  realizes <serviceId>
+}
+
+// artifact は任意種別の逃げ弁
+artifact <id> {
+  type "<custom-type>"
+  runtime "<runtime>"
+  realizes <serviceId>
+}`,
+      },
+    ],
+    org: [
+      {
+        heading: "Block Declaration",
+        code: `organization "<name>" {
+  // teams
+}`,
+      },
+      { heading: "Org Kinds", kindTable: true },
+      {
+        heading: "Node Declaration",
+        code: `organization <id> {
+  label "<表示名>"
+
+  team <id> {
+    label "<チーム名>"
+    owns <serviceId>    // 対応サービス・ドメインを宣言
+    owns <domainId>
+
+    member <id> {
+      label "<名前>"
+      slack  "@handle"  // 省略可
+      github "username" // 省略可
+    }
+
+    team <id> { ... }   // サブチームのネスト可
+  }
+}`,
+      },
+    ],
+  },
+
+  // ── Reference panel: per-view Styles tab selector examples ─────────────────
+  styleSelectorExamples: {
+    system: `/* system diagram selectors */
+service { background-color: #0369A1; }
+domain[external] { border-style: dashed; }
+user[human] { shape: user; }
+edge[async] { border-style: dashed; }
+edge[write] { direction: down; }       /* layout-direction hint: up | down | left | right | auto */
+edge#criticalWrite { color: #EF4444; } /* target one edge by id */
+#ECommerce { background-color: #1D4ED8; }`,
+    deploy: `/* deploy diagram selectors */
+oci { background-color: #0369A1; }
+jar { border-color: #075985; }
+war { opacity: 0.8; }
+#myUnit { background-color: #1D4ED8; }`,
+    org: `/* org diagram selectors */
+team { background-color: #0369A1; }
+member { border-color: #075985; }
+#myTeam { background-color: #1D4ED8; }`,
+  },
+
+  // ── Reference panel + docs/spec/style.md: selector specificity ─────────────
+  // Scores are the values `computeSpecificity` assigns (id +100, edgeId +100,
+  // each tag/annotation +10, nodeType +1); `reference-data.test.ts` parses each
+  // `example` and asserts the parser agrees. The row set is the algorithm-complete
+  // union of what the app panel and the spec table previously listed separately.
+  selectorSpecificity: [
+    { selector: { en: "Kind", ja: "種別" }, example: "service", score: 1 },
+    { selector: { en: "Tag", ja: "タグ" }, example: "[external]", score: 10 },
+    { selector: { en: "Annotation", ja: "アノテーション" }, example: "@deprecated", score: 10 },
+    { selector: { en: "Kind + tag", ja: "種別 + タグ" }, example: "service[external]", score: 11 },
+    {
+      selector: { en: "Tag + annotation", ja: "タグ + アノテーション" },
+      example: "[external]@deprecated",
+      score: 20,
+    },
+    {
+      selector: { en: "Kind + tag + annotation", ja: "種別 + タグ + アノテーション" },
+      example: "service[external]@deprecated",
+      score: 21,
+    },
+    { selector: { en: "ID", ja: "ID" }, example: "#ECommerce", score: 100 },
+    { selector: { en: "Edge", ja: "エッジ" }, example: "edge", score: 1 },
+    { selector: { en: "Edge + tag", ja: "エッジ + タグ" }, example: "edge[async]", score: 11 },
+    { selector: { en: "Edge ID", ja: "エッジ ID" }, example: "edge#criticalWrite", score: 101 },
   ],
 } satisfies ReferenceData;

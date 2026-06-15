@@ -158,6 +158,20 @@ export const TABLES: TableSpec[] = [
       ),
   },
   {
+    id: "selector-specificity",
+    file: { en: "docs/spec/style.md", ja: "docs/spec/style.ja.md" },
+    headers: {
+      en: ["Selector", "Example", "Score"],
+      ja: ["セレクタ", "例", "スコア"],
+    },
+    rows: (locale) =>
+      REFERENCE_DATA.selectorSpecificity.map((s) => [
+        s.selector[locale],
+        code(s.example),
+        String(s.score),
+      ]),
+  },
+  {
     id: "node-kinds-infra",
     file: { en: "docs/spec/syntax.md", ja: "docs/spec/syntax.ja.md" },
     headers: {

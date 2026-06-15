@@ -1,5 +1,8 @@
 import { describe, it, expect } from "vitest";
 import { REFERENCE_DATA } from "./reference-data.js";
+import { StyleParser, computeSpecificity } from "../parser/style-parser.js";
+
+const REFERENCE_VIEWS = ["system", "deploy", "org"] as const;
 
 // `REFERENCE_DATA` is the single source of truth behind `getReference()`.
 // These tests guard the invariant the adapter relies on: every entry
@@ -48,6 +51,58 @@ describe("REFERENCE_DATA", () => {
     for (const entries of Object.values(categories)) {
       const list = ids(entries);
       expect(new Set(list).size).toBe(list.length);
+    }
+  });
+});
+
+describe("REFERENCE_DATA.syntaxSnippets / styleSelectorExamples", () => {
+  for (const view of REFERENCE_VIEWS) {
+    it(`${view}: has snippet sections, each a code block or a kind table`, () => {
+      const sections = REFERENCE_DATA.syntaxSnippets[view];
+      expect(sections.length).toBeGreaterThan(0);
+      for (const s of sections) {
+        // Exactly one of `code` / `kindTable` — the app's render branch keys on it.
+        const hasCode = typeof s.code === "string" && s.code.length > 0;
+        const isTable = s.kindTable === true;
+        expect(hasCode !== isTable).toBe(true);
+        expect(s.heading.length).toBeGreaterThan(0);
+      }
+    });
+
+    it(`${view}: has a non-empty selector-example block`, () => {
+      expect(REFERENCE_DATA.styleSelectorExamples[view].length).toBeGreaterThan(0);
+    });
+  }
+});
+
+describe("REFERENCE_DATA.selectorSpecificity", () => {
+  it("every row's score matches what the style parser computes for its example", () => {
+    // Parse each example as a real `.krs.style` rule and compare against the
+    // parser's own specificity — locks this data to `computeSpecificity` so the
+    // app panel and `docs/spec/style.md` can't drift from the implementation.
+    const computed = REFERENCE_DATA.selectorSpecificity.map((row) => {
+      const rule = StyleParser.parse(`${row.example} { color: #000000; }`).value.rules[0];
+      return {
+        example: row.example,
+        expected: row.score,
+        actual: computeSpecificity(rule.selector),
+      };
+    });
+    for (const c of computed) {
+      expect({ example: c.example, score: c.actual }).toEqual({
+        example: c.example,
+        score: c.expected,
+      });
+    }
+  });
+
+  it("every row has a non-empty en + ja selector label and a unique example", () => {
+    const examples = REFERENCE_DATA.selectorSpecificity.map((s) => s.example);
+    expect(new Set(examples).size).toBe(examples.length);
+    for (const row of REFERENCE_DATA.selectorSpecificity) {
+      for (const locale of LOCALES) {
+        expect(row.selector[locale].length).toBeGreaterThan(0);
+      }
     }
   });
 });

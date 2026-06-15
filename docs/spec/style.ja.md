@@ -22,17 +22,22 @@
 
 ## 詳細度ルール（カスケード）
 
-| セレクタ | スコア |
-|---------|-------|
-| 種別（`service`） | 1 |
-| タグ（`[external]`） | 10 |
-| アノテーション（`@deprecated`） | 10 |
-| 種別+タグ（`service[external]`） | 11 |
-| タグ+アノテーション（`[external]@deprecated`） | 20 |
-| 種別+タグ+アノテーション | 21 |
-| ID（`#ECommerce`） | 100 |
-| エッジ ID（`edge#criticalWrite`） | 101（ID 100 + `edge` 種別 1） |
+<!-- gen:reference:selector-specificity — DO NOT EDIT. Generated from packages/core/src/builtins/reference-data.ts; run `pnpm gen:reference`. -->
+| セレクタ | 例 | スコア |
+|----------|----|--------|
+| 種別 | `service` | 1 |
+| タグ | `[external]` | 10 |
+| アノテーション | `@deprecated` | 10 |
+| 種別 + タグ | `service[external]` | 11 |
+| タグ + アノテーション | `[external]@deprecated` | 20 |
+| 種別 + タグ + アノテーション | `service[external]@deprecated` | 21 |
+| ID | `#ECommerce` | 100 |
+| エッジ | `edge` | 1 |
+| エッジ + タグ | `edge[async]` | 11 |
+| エッジ ID | `edge#criticalWrite` | 101 |
+<!-- /gen:reference:selector-specificity -->
 
+`edge#criticalWrite` は 101（ID 100 + `edge` 種別 1）。
 同スコアなら後に書いた方が優先（CSS同様）。
 
 ---

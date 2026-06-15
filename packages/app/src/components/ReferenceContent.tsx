@@ -21,165 +21,6 @@ type RefView = "system" | "deploy" | "org";
 const refViewOf = (v: ActiveView): RefView =>
   v === "deploy" ? "deploy" : v === "org" ? "org" : "system";
 
-// ── Syntax tab content (data-driven) ────────────────────────────────────────
-// A code snippet, or the per-view kind table sourced from `getReference`. Moving
-// these snippets out of branched JSX keeps them in one place (#1548). A future
-// step could push them into core's reference payload next to `nodeKinds`.
-
-type SyntaxSection = { heading: string; code: string } | { heading: string; kindTable: true };
-
-const SYNTAX_CONTENT: Record<RefView, SyntaxSection[]> = {
-  system: [
-    {
-      heading: "Block Declaration",
-      code: `system "<name>" {
-  // services, users, edges
-}`,
-    },
-    { heading: "Node Kinds", kindTable: true },
-    {
-      heading: "Edge Syntax",
-      code: `A ->  B "label"   // sync (solid arrow)
-A --> B "label"   // async (dashed arrow)
-A ->  B "label" #criticalWrite   // optional edge id (#<id>) — targetable via edge#<id> in .krs.style
-// omitting #<id> → canonical id = <from><arrow><to>  (e.g. A->B / A-->B)`,
-    },
-    {
-      heading: "Node Declaration",
-      code: `// minimal (id only)
-<kind> <id>
-
-// with tags and annotations
-<kind> <id> [<tags>] @<annotations>
-
-// with block (properties and/or children)
-<kind> <id> [<tags>] @<annotations> {
-  label "<表示名>"        // display name; id used if omitted
-  description "<説明>"    // free-form description
-  // kind-specific properties (team, role, link, …)
-}`,
-    },
-    {
-      heading: "Resource Operations (CRUD)",
-      code: `// Inside a usecase, a resource may declare the CRUD verbs the usecase
-// performs on it: create | read | update | delete.
-usecase PlaceOrder {
-  resource OrderDB.OrderTable {
-    operations create, read
-  }
-  // verb-decoration (1:N CRUD mapping): keep a domain verb, declare its CRUD intent
-  resource OrderEvents.OrderPlaced {
-    operations enqueue:create, dequeue:delete
-  }
-}`,
-    },
-    {
-      heading: "Legend (footer)",
-      code: `// Top-level. Renders as a footer band below each diagram view.
-// Scope ("system" | "deploy" | "org") is optional — omit to show on all views.
-legend "<title>"? {
-  swatch <#hex> "<label>"           // explicit color
-  ref @<annotation> "<label>"        // color from .krs.style cascade
-  ref [<tag>]       "<label>"        // ditto, by tag
-  ref <type>        "<label>"        // ditto, by node-kind type selector
-  ref #<id>         "<label>"        // ditto, by node id
-}
-
-legend deploy "Hosting tier" {       // scope to a single view
-  swatch #0EA5E9 "Cloud Run"
-}`,
-    },
-  ],
-  deploy: [
-    {
-      heading: "Block Declaration",
-      code: `deploy "<name>" {
-  // deploy units
-}`,
-    },
-    { heading: "Deploy Unit Kinds", kindTable: true },
-    {
-      heading: "Unit Declaration",
-      code: `<kind> <id> {
-  label "<表示名>"
-  runtime "<runtime>"   // ⚠ 省略可（警告）
-  realizes <serviceId>  // ⚠ 省略可（警告）
-}
-
-// oci のみ image を指定可
-oci <id> {
-  image "<image:tag>"
-  runtime "<runtime>"
-  realizes <serviceId>
-}
-
-// job のみ schedule を指定可
-job <id> {
-  schedule "0 0 * * *"  // cron 形式。省略で単発実行
-  runtime "<runtime>"
-  realizes <serviceId>
-}
-
-// artifact は任意種別の逃げ弁
-artifact <id> {
-  type "<custom-type>"
-  runtime "<runtime>"
-  realizes <serviceId>
-}`,
-    },
-  ],
-  org: [
-    {
-      heading: "Block Declaration",
-      code: `organization "<name>" {
-  // teams
-}`,
-    },
-    { heading: "Org Kinds", kindTable: true },
-    {
-      heading: "Node Declaration",
-      code: `organization <id> {
-  label "<表示名>"
-
-  team <id> {
-    label "<チーム名>"
-    owns <serviceId>    // 対応サービス・ドメインを宣言
-    owns <domainId>
-
-    member <id> {
-      label "<名前>"
-      slack  "@handle"  // 省略可
-      github "username" // 省略可
-    }
-
-    team <id> { ... }   // サブチームのネスト可
-  }
-}`,
-    },
-  ],
-};
-
-// Per-view `.krs.style` selector examples (the only `<pre>` in the Styles tab).
-const STYLE_SELECTOR_EXAMPLES: Record<RefView, string> = {
-  system: `/* system diagram selectors */
-service { background-color: #0369A1; }
-domain[external] { border-style: dashed; }
-user[human] { shape: user; }
-edge[async] { border-style: dashed; }
-edge[write] { direction: down; }       /* layout-direction hint: up | down | left | right | auto */
-edge#criticalWrite { color: #EF4444; } /* target one edge by id */
-#ECommerce { background-color: #1D4ED8; }`,
-  deploy: `/* deploy diagram selectors */
-oci { background-color: #0369A1; }
-jar { border-color: #075985; }
-war { opacity: 0.8; }
-#myUnit { background-color: #1D4ED8; }`,
-  org: `/* org diagram selectors */
-team { background-color: #0369A1; }
-member { border-color: #075985; }
-#myTeam { background-color: #1D4ED8; }`,
-};
-
 /**
  * The reference body — tab bar + per-view content. Rendered standalone in the
  * pop-out reference window (see {@link ReferenceWindow}) so the user can consult
@@ -279,10 +120,10 @@ function SyntaxTab({ activeView }: { activeView: ActiveView }) {
 
   return (
     <div className="reference-tab-body">
-      {SYNTAX_CONTENT[view].map((section) => (
+      {ref.syntaxSnippets[view].map((section) => (
         <Fragment key={section.heading}>
           <h3>{section.heading}</h3>
-          {"code" in section ? (
+          {section.code !== undefined ? (
             <div className="reference-code-block">
               <pre>{section.code}</pre>
             </div>
@@ -303,7 +144,7 @@ function StylesTab({ activeView }: { activeView: ActiveView }) {
     <div className="reference-tab-body">
       <h3>Selector Examples</h3>
       <div className="reference-code-block">
-        <pre>{STYLE_SELECTOR_EXAMPLES[refViewOf(activeView)]}</pre>
+        <pre>{ref.styleSelectorExamples[refViewOf(activeView)]}</pre>
       </div>
 
       <h3>Selector Specificity</h3>
@@ -316,62 +157,15 @@ function StylesTab({ activeView }: { activeView: ActiveView }) {
           </tr>
         </thead>
         <tbody>
-          <tr>
-            <td>Type</td>
-            <td>
-              <code>service</code>
-            </td>
-            <td>1</td>
-          </tr>
-          <tr>
-            <td>Tag</td>
-            <td>
-              <code>[external]</code>
-            </td>
-            <td>10</td>
-          </tr>
-          <tr>
-            <td>Annotation</td>
-            <td>
-              <code>@deprecated</code>
-            </td>
-            <td>10</td>
-          </tr>
-          <tr>
-            <td>Type+Tag</td>
-            <td>
-              <code>service[external]</code>
-            </td>
-            <td>11</td>
-          </tr>
-          <tr>
-            <td>ID</td>
-            <td>
-              <code>#ECommerce</code>
-            </td>
-            <td>100</td>
-          </tr>
-          <tr>
-            <td>Edge</td>
-            <td>
-              <code>edge</code>
-            </td>
-            <td>1</td>
-          </tr>
-          <tr>
-            <td>Edge+Tag</td>
-            <td>
-              <code>edge[async]</code>
-            </td>
-            <td>11</td>
-          </tr>
-          <tr>
-            <td>Edge ID</td>
-            <td>
-              <code>edge#criticalWrite</code>
-            </td>
-            <td>101</td>
-          </tr>
+          {ref.selectorSpecificity.map((s) => (
+            <tr key={s.example}>
+              <td>{s.selector}</td>
+              <td>
+                <code>{s.example}</code>
+              </td>
+              <td>{s.score}</td>
+            </tr>
+          ))}
         </tbody>
       </table>
 
