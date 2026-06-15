@@ -223,6 +223,27 @@ system Shop {
 
 A `team` lists the services / domains it `owns`. The AI uses this ownership relation (the ownerIndex built at parse time) when answering organizational queries.
 
+### Team annotations and primary owner during a handoff
+
+A `team` block accepts annotations the same way services and domains do, written before the `{`:
+
+```krs
+organization Corp {
+  team legacy @deprecated {
+    owns Payment
+  }
+  team payments @migration_target(from: "legacy") {
+    owns Payment
+  }
+}
+```
+
+`@migration_target` and `@deprecated` render as a badge on the team in the organization view, mirroring the node badges in the system diagram.
+
+A node can legitimately be `owns`-ed by more than one team during an inverse-Conway handoff. `ownerIndex` is 1:1, so a single **primary owner** is chosen by migration priority — `@migration_target` (the destination) wins, an unmarked team is next, and `@deprecated` (the source) loses. Ties keep the first declaration. This mirrors the domain migration-coexistence rule (see *Migration annotations* above, where the `@migration_target` domain wins the navigation target). Co-ownership itself stays a tolerated fact, surfaced through the `duplicate-owner-assignment` **info** diagnostic — it is never an error.
+
+> Related TPLs: [TPL-20260615-01](../test-perspectives/TPL-20260615-01-migration-priority-index-winner.md) (the `@migration_target`-wins / first-wins rule must be consistent across every 1:1 index), [TPL-20260514-08](../test-perspectives/TPL-20260514-08-diagnostic-register-fact-vs-style.md) (co-ownership is a fact, kept in the info register).
+
 ### `link` property (team contact)
 
 Add contact URLs to the `team` block in the form `link "<url>" "<label>"`.

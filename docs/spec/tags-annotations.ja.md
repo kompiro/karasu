@@ -225,6 +225,27 @@ system Shop {
 
 `team` が `owns` で所有する service / domain を列挙する。AI はこの所有関係（パース時に構築される ownerIndex）を組織クエリの回答に使う。
 
+### チームアノテーションと移行中の主オーナー
+
+`team` ブロックは、service / domain と同じく `{` の前にアノテーションを書ける。
+
+```krs
+organization Corp {
+  team legacy @deprecated {
+    owns Payment
+  }
+  team payments @migration_target(from: "legacy") {
+    owns Payment
+  }
+}
+```
+
+`@migration_target` / `@deprecated` は組織ビューでチームのバッジとして描画される（システム図のノードバッジと同じ仕組み）。
+
+逆コンウェイの引き継ぎ中は、1 つのノードを複数の team が `owns` することが正当に起こりうる。`ownerIndex` は 1:1 なので、**主オーナー**を 1 つだけ移行優先度で選ぶ — `@migration_target`（移行先）が勝ち、無印が次、`@deprecated`（移行元）が負ける。同優先度の場合は最初の宣言を保持する。これは domain の移行共存ルール（上記 *Migration annotations* で `@migration_target` ドメインがナビゲーション先になる）と対称である。共同所有そのものは許容される事実で、`duplicate-owner-assignment` の **info** 診断で surface される — error にはならない。
+
+> Related TPLs: [TPL-20260615-01](../test-perspectives/TPL-20260615-01-migration-priority-index-winner.md)（`@migration_target` 優先 / first-wins の規則は全 1:1 index で一貫させる）、[TPL-20260514-08](../test-perspectives/TPL-20260514-08-diagnostic-register-fact-vs-style.md)（共同所有は事実、info register に置く）。
+
 ### `link` プロパティ（チーム連絡先）
 
 `team` ブロックに `link "<url>" "<label>"` を添える。
