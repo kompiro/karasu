@@ -1,4 +1,4 @@
-import type { PatchOperation } from "../../utils/krs-patch.js";
+import type { PatchOperation } from "@karasu-tools/core";
 
 export interface PatchProposal {
   toolUseId: string;
