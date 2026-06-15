@@ -1,6 +1,6 @@
 # ADR Topic: resolver
 
-5 ADRs in this topic. Solid nodes belong to `resolver`; gray dashed nodes are ghosts showing cross-topic references to help navigation.
+6 ADRs in this topic. Solid nodes belong to `resolver`; gray dashed nodes are ghosts showing cross-topic references to help navigation.
 
 Other topics: [overview](../graph.md).
 ```mermaid
@@ -11,6 +11,7 @@ flowchart TD
     ADR_20260405_06["ADR-20260405-06<br/>循環依存の検出と `KrsEdge.cyclic` フラグによる視覚化"]
     ADR_20260411_02["ADR-20260411-02<br/>移行期における重複ドメイン ID の共存を `@deprecated` + `@migrati..."]
     ADR_20260514_01["ADR-20260514-01<br/>マルチファイル import の意味論 — whole-file import / syste..."]
+    ADR_20260615_02["ADR-20260615-02<br/>共有 infra fan-in を info 診断として通知する"]
   end
   ADR_20260312_03["ADR-20260312-03<br/>[core-concepts] 論理構造と物理構造の分離"]
   ADR_20260407_02["ADR-20260407-02<br/>[renderer] resource shape 自動推論とインフラノード Icon Mode 対応"]
@@ -34,6 +35,7 @@ flowchart TD
   class ADR_20260405_06 accepted
   class ADR_20260411_02 accepted
   class ADR_20260514_01 accepted
+  class ADR_20260615_02 accepted
   class ADR_20260312_03 ghost
   class ADR_20260407_02 ghost
   class ADR_20260412_04 ghost
