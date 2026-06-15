@@ -216,7 +216,7 @@ export function ReferenceContent({ activeView = "system" }: { activeView?: Activ
         {activeTab === "samples" && (
           <CopyableSourceTab
             descriptionKey="referencePanel.samples.description"
-            source={ref.sampleKrs}
+            source={ref.samplesByView[refViewOf(activeView)]}
           />
         )}
       </div>

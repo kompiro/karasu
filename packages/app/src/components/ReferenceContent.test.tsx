@@ -109,13 +109,30 @@ describe("ReferenceContent", () => {
     expect(bodyText()).toContain("org diagram selectors");
   });
 
-  it("Samples tab shows system+deploy+org content", async () => {
+  it("Samples tab shows the all-views Getting Started sample for the system view", async () => {
     render(<ReferenceContent />);
     await clickTab("Samples");
     const body = bodyText();
     expect(body).toContain("system");
     expect(body).toContain("deploy");
     expect(body).toContain("organization");
+  });
+
+  it("Samples tab follows the active view (deploy → deploy-only, org → org-only)", async () => {
+    const deploy = render(<ReferenceContent activeView="deploy" />);
+    await clickTab("Samples");
+    let body = bodyText();
+    expect(body).toContain("deploy-only/index.krs");
+    expect(body).toContain("order-handler");
+    expect(body).not.toContain("organization Acme");
+    deploy.unmount();
+
+    render(<ReferenceContent activeView="org" />);
+    await clickTab("Samples");
+    body = bodyText();
+    expect(body).toContain("org-only/index.krs");
+    expect(body).toContain("organization Acme");
+    expect(body).not.toContain("deploy Production");
   });
 
   it("Copy button shows 'Copied!' after click and reverts after 2 seconds", async () => {
