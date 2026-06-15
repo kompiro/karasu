@@ -1210,6 +1210,70 @@ organization Corp {
     expect(result.value.ownerIndex.get("ECommerce")).toBe("teamA");
   });
 
+  it("parses annotations and annotation params on a team block", () => {
+    const result = Parser.parse(`
+organization Corp {
+  team newOwner @migration_target(from: "legacy") {
+    owns Payment
+  }
+}
+    `);
+    expect(result.diagnostics.filter((d) => d.severity === "error")).toHaveLength(0);
+    const team = result.value.organizations[0].teams[0];
+    expect(team.annotations).toEqual(["migration_target"]);
+    expect(team.annotationParams).toEqual({ migration_target: { from: "legacy" } });
+  });
+
+  it("prefers the @migration_target team as primary owner on duplicate ownership", () => {
+    const result = Parser.parse(`
+organization Corp {
+  team legacy @deprecated {
+    owns Payment
+  }
+  team modern @migration_target {
+    owns Payment
+  }
+}
+    `);
+    // ownerIndex is 1:1; the migration destination (@migration_target) wins,
+    // mirroring the domain nodePathIndex coexistence rule (#1583).
+    expect(result.value.ownerIndex.get("Payment")).toBe("modern");
+    const dup = result.diagnostics.filter((d) => d.code === "duplicate-owner-assignment");
+    expect(dup).toHaveLength(1);
+    expect(dup[0].severity).toBe("info");
+    // The diagnostic names the resolved primary after the swap.
+    expect(JSON.stringify(dup[0].params)).toContain("modern");
+  });
+
+  it("@migration_target team wins even when it is declared first", () => {
+    const result = Parser.parse(`
+organization Corp {
+  team modern @migration_target {
+    owns Payment
+  }
+  team legacy @deprecated {
+    owns Payment
+  }
+}
+    `);
+    expect(result.value.ownerIndex.get("Payment")).toBe("modern");
+  });
+
+  it("keeps first-wins when neither duplicate owner carries a migration annotation", () => {
+    const result = Parser.parse(`
+organization Corp {
+  team teamA {
+    owns Payment
+  }
+  team teamB @deprecated {
+    owns Payment
+  }
+}
+    `);
+    // teamA (unmarked, priority 1) outranks teamB (@deprecated, priority 0).
+    expect(result.value.ownerIndex.get("Payment")).toBe("teamA");
+  });
+
   it("errors on duplicate team IDs", () => {
     const result = Parser.parse(`
 organization Corp {

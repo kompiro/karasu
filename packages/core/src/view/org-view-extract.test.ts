@@ -26,6 +26,7 @@ function makeTeam(
   return {
     kind: "team",
     id,
+    annotations: [],
     properties: { links: [], owns: opts.owns ?? [] },
     children,
     loc: mockLoc,

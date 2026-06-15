@@ -10,6 +10,7 @@ import {
   renderIconCard,
   diffStateAttr,
 } from "./svg-builder.js";
+import { badgeChildren } from "./badge.js";
 import { getIconDef } from "../shapes/shape-registry.js";
 import { ownsEdgeKey } from "../diff/org-view-diff.js";
 import {
@@ -149,6 +150,7 @@ function renderOrgIconCardCommon(
   opts: {
     iconName: string;
     descText: string;
+    overlay?: string;
     wrapperAttrs?: Record<string, string | number | undefined | null | false>;
   },
 ): string {
@@ -158,6 +160,7 @@ function renderOrgIconCardCommon(
     x,
     y,
     nodeId: node.id,
+    overlay: opts.overlay,
     wrapperAttrs: opts.wrapperAttrs,
     width: ICON_CARD_WIDTH,
     height: cardHeight,
@@ -228,6 +231,18 @@ function renderTeamCard(
       label,
     ),
   ];
+
+  // Migration / deprecation badge (top-right), driven by the team's annotations
+  // resolved into the team style — mirrors the system-diagram node badge (#1583).
+  const badgeParts = badgeChildren(
+    style,
+    CARD_WIDTH - 12,
+    12,
+    resolvePalette(options?.theme).badgeFallback,
+  );
+  if (badgeParts.length > 0) {
+    parts.push(el("g", { "data-node-badge": id }, ...badgeParts));
+  }
 
   visibleOwns.forEach((serviceId, i) => {
     const ownsDiff = options?.edgeDiffState?.get(ownsEdgeKey(team.id, serviceId));
@@ -382,9 +397,20 @@ function renderTeamIconCard(
   const descText = formatTeamCountText(memberCount, subTeamCount);
 
   const teamDiff = options?.nodeDiffState?.get(team.id);
+  const badgeParts = badgeChildren(
+    style,
+    ICON_CARD_WIDTH - 12,
+    12,
+    resolvePalette(options?.theme).badgeFallback,
+  );
+  const overlay =
+    badgeParts.length > 0
+      ? el("g", { "data-node-badge": escapeXml(team.id) }, ...badgeParts)
+      : undefined;
   return renderOrgIconCardCommon(team, x, y, style, {
     iconName: "team",
     descText,
+    overlay,
     wrapperAttrs: {
       ...(hasChildren ? { "data-has-children": "true" } : {}),
       ...diffStateAttr(teamDiff),

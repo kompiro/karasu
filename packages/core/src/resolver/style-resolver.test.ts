@@ -1147,10 +1147,16 @@ describe("resolveStyles with deployNodes", () => {
 });
 
 describe("resolveStyles with organizations", () => {
-  function makeTeam(id: string, members: string[] = [], subTeams: TeamNode[] = []): TeamNode {
+  function makeTeam(
+    id: string,
+    members: string[] = [],
+    subTeams: TeamNode[] = [],
+    annotations: string[] = [],
+  ): TeamNode {
     return {
       kind: "team",
       id,
+      annotations,
       properties: { links: [], owns: [] },
       children: [
         ...members.map(
@@ -1221,6 +1227,24 @@ describe("resolveStyles with organizations", () => {
     const result = resolveStyles([], [builtin, userSheet], undefined, [org]);
     // member should keep its own builtin color, not the team override
     expect(result.nodes.get("alice")!.backgroundColor).toBe("#1E3A5F");
+  });
+
+  it("resolves a migration badge for a @migration_target team", () => {
+    const builtin = getBuiltinStyleSheet();
+    const org = makeOrg("Corp", [makeTeam("modern", [], [], ["migration_target"])]);
+    const result = resolveStyles([], [builtin], undefined, [org]);
+    const style = result.nodes.get("modern")!;
+    // The builtin `@migration_target { badge-icon: "→"; ... }` rule must reach
+    // org teams now that orgNodeSelectorMatches honors annotation selectors (#1583).
+    expect(style.badgeIcon).toBe("→");
+    expect(style.badgeLabel).toBeTruthy();
+  });
+
+  it("does not resolve a badge for an unannotated team", () => {
+    const builtin = getBuiltinStyleSheet();
+    const org = makeOrg("Corp", [makeTeam("plain")]);
+    const result = resolveStyles([], [builtin], undefined, [org]);
+    expect(result.nodes.get("plain")!.badgeIcon).toBeUndefined();
   });
 
   it("does not include org nodes when organizations is omitted", () => {
@@ -1573,6 +1597,7 @@ describe("resolveStyles — column layout hint (#969)", () => {
       kind: "team",
       id: "platform",
       label: "Platform",
+      annotations: [],
       children: [],
       properties: { owns: [], links: [] },
       loc: dummyLoc,

@@ -13,6 +13,7 @@ import type { ResolvedStyles, ResolvedNodeStyle, ResolvedEdgeStyle } from "../ty
 import { el, escapeXml, diffStateAttr } from "./svg-builder.js";
 import { ownsEdgeKey } from "../diff/org-view-diff.js";
 import { type DiagramPalette, type DiagramTheme, resolvePalette } from "./palette.js";
+import { badgeChildren } from "./badge.js";
 import { DEFAULT_EMPTY_STATE_LABELS, type EmptyStateLabels } from "./empty-state-labels.js";
 
 // ---------------------------------------------------------------------------
@@ -172,6 +173,7 @@ interface OrgTreeDefaults {
   textColor: string;
   subTextColor: string;
   edgeStroke: string;
+  badgeFallback: string;
 }
 
 function treeDefaults(palette: DiagramPalette): OrgTreeDefaults {
@@ -183,6 +185,7 @@ function treeDefaults(palette: DiagramPalette): OrgTreeDefaults {
     textColor: palette.textPrimary,
     subTextColor: palette.textSubtle,
     edgeStroke: palette.mutedBorder,
+    badgeFallback: palette.badgeFallback,
   };
 }
 
@@ -254,6 +257,13 @@ function renderTreeTeamCard(
       label,
     ),
   ];
+
+  // Migration / deprecation badge (top-right), driven by the team's annotations
+  // resolved into the team style — mirrors the system-diagram node badge (#1583).
+  const badgeParts = badgeChildren(s ?? {}, TEAM_W - 12, 12, defaults.badgeFallback);
+  if (badgeParts.length > 0) {
+    parts.push(el("g", { "data-node-badge": escapeXml(team.id) }, ...badgeParts));
+  }
 
   if (countLabel) {
     // Show expand/collapse indicator

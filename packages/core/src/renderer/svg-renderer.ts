@@ -4,6 +4,7 @@ import { layout } from "./layout.js";
 import type { ContainerRect, DisplayMode, LayoutNode, LayoutResult } from "./layout-types.js";
 import { renderShape } from "./shapes.js";
 import { renderEdge, renderArrowMarker } from "./edge-routing.js";
+import { badgeChildren } from "./badge.js";
 import { buildLegendFooter, el, escapeXml, truncateToWidth, wrapToWidth } from "./svg-builder.js";
 import { getIconDef } from "../shapes/shape-registry.js";
 import {
@@ -755,42 +756,7 @@ function renderNode(
   const hasCurrentBadge = !!(style.badgeIcon || style.badgeLabel);
 
   if (hasCurrentBadge) {
-    const badgeChildren: string[] = [];
-    const badgeColor = style.badgeColor ?? palette.badgeFallback;
-    badgeChildren.push(el("circle", { cx: badgeX, cy: badgeY, r: 10, fill: badgeColor }));
-    if (style.badgeIcon) {
-      badgeChildren.push(
-        el(
-          "text",
-          {
-            x: badgeX,
-            y: badgeY,
-            "text-anchor": "middle",
-            "dominant-baseline": "central",
-            fill: "white",
-            "font-size": "10px",
-          },
-          escapeXml(style.badgeIcon),
-        ),
-      );
-    }
-    if (style.badgeLabel) {
-      badgeChildren.push(
-        el(
-          "text",
-          {
-            x: badgeX + 14,
-            y: badgeY,
-            "dominant-baseline": "central",
-            fill: badgeColor,
-            "font-size": "9px",
-            "font-weight": "bold",
-            "font-family": "sans-serif",
-          },
-          escapeXml(style.badgeLabel),
-        ),
-      );
-    }
+    const badgeParts = badgeChildren(style, badgeX, badgeY, palette.badgeFallback);
     // Classify badge diff state. With a single merged badge, direction is:
     //   added.length > 0 → "added" (new annotation produced the current badge)
     //   removed.length > 0 (and none added) → "changed" (swap/rewrite)
@@ -799,7 +765,7 @@ function renderNode(
     if (annotationsAdded.length > 0) badgeDiffState = "added";
     else if (annotationsRemoved.length > 0) badgeDiffState = "changed";
     children.push(
-      el("g", { "data-node-badge": nodeId, "data-diff-state": badgeDiffState }, ...badgeChildren),
+      el("g", { "data-node-badge": nodeId, "data-diff-state": badgeDiffState }, ...badgeParts),
     );
   } else if (annotationsRemoved.length > 0) {
     // Ghost "removed" badge — all annotations were removed, so there is no

@@ -58,6 +58,7 @@ function makeTeam(
     }[];
     teams?: TeamNode[];
     owns?: string[];
+    annotations?: string[];
   } = {},
 ): TeamNode {
   const children: OrgNode[] = [
@@ -82,6 +83,7 @@ function makeTeam(
     kind: "team",
     id,
     label: opts.label,
+    annotations: opts.annotations ?? [],
     properties: { links: [], owns: opts.owns ?? [] },
     children,
     loc: mockLoc,
@@ -186,6 +188,29 @@ describe("renderOrgView", () => {
       const slice: OrgViewSlice = { teams: [team], focusedTeam: null, ancestorChain: [] };
       const svg = renderOrgView(slice, makeStyles(styleMap));
       expect(svg).toContain("#FF0000");
+    });
+
+    it("renders a migration badge when the team style carries one (#1583)", () => {
+      const team = makeTeam("modern", { annotations: ["migration_target"] });
+      const badgeStyle: ResolvedNodeStyle = {
+        ...DEFAULT_STYLE,
+        badgeIcon: "→",
+        badgeLabel: "Migration target",
+        badgeColor: "#3B82F6",
+      };
+      const styleMap = new Map([["modern", badgeStyle]]);
+      const slice: OrgViewSlice = { teams: [team], focusedTeam: null, ancestorChain: [] };
+      const svg = renderOrgView(slice, makeStyles(styleMap));
+      expect(svg).toContain('data-node-badge="modern"');
+      expect(svg).toContain("→");
+      expect(svg).toContain("Migration target");
+    });
+
+    it("renders no badge when the team style has none", () => {
+      const team = makeTeam("plain");
+      const slice: OrgViewSlice = { teams: [team], focusedTeam: null, ancestorChain: [] };
+      const svg = renderOrgView(slice, makeStyles());
+      expect(svg).not.toContain("data-node-badge");
     });
   });
 
