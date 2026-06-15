@@ -109,8 +109,8 @@ ADR-20260323-03 §6 のとおり warning にする。
 
 ### 実装の指針（案A 前提）
 
-1. parser `indexTeams`（`parser.ts`）: `duplicate-owner-assignment` の severity を `error` → 方針確定後の値に変更。メッセージを事実先行に（主 owner を明示）。
-2. severity を info/warning register に載せるか: 現状 parser diagnostic なので severity フィールド直変更で足りる。fact-vs-style register（resolver の `warningSeverity`）と概念上揃えるため、必要なら resolver warning への移設も検討（ただし parser 構築時に検出している事情があるため、diagnostic のまま severity だけ下げる案を優先）。
+1. parser `indexTeams`（`parser.ts`）: `duplicate-owner-assignment` の severity を `error` → **`info`** に変更。メッセージを事実先行に（主 owner を明示）。owner index の勝者は **first-wins を維持**（移行先優先は #1583）。
+2. 実装箇所は parser diagnostic のまま（Q3）。resolver warning への移設はしない（owner index は parser 構築時に作るため）。
 3. i18n: `diagnostic.duplicateOwnerAssignment.message`（en/ja）を事実先行に更新。
 4. `docs/concepts.md` / `concepts.ja.md` の fact-vs-style 表に `duplicate-owner-assignment` を 1 行追加（流派の文脈: 「単一所有を前提とする組織論では重複所有を smell とする」）。
 5. tests: `parser.test.ts:1148` を新 severity に更新。重複許容で両 team がパースされ、ownerIndex は主 owner を保持することを assert。
@@ -123,8 +123,10 @@ ADR-20260323-03 §6 のとおり warning にする。
 - ドキュメント: `docs/concepts*.md` の fact-vs-style 表、ADR-20260323-03 の §6 を上書きする新 ADR。
 - ownerIndex の主 owner 選択（first-wins）は維持。
 
-## 未解決の問い
+## 決定事項（レビュー反映）
 
-- **Q1**: severity は **info**（案A・domain-dispersal と対称）か **warning**（案B・lossy さを強調 / ADR 準拠）か。
-- **Q2**: `ownerIndex` の勝者選択を first-wins のままにするか、`domain` の移行共存に倣って **`@migration_target` 優先**（移行先チームを主 owner にする）に揃えるか。後者は対称性が上がるが scope が増える。
-- **Q3**: parser diagnostic のまま severity を下げるか、resolver warning（fact-vs-style register 機構）へ移設するか。
+- **Q1 → info（案A）**: `duplicate-owner-assignment` を info にし、fact-vs-style register に載せる。`domain-dispersal` と対称。lossy さ（2 つ目の owner 不表示）はメッセージで明示する。ADR-20260323-03 §6（warning 規定）は新 ADR で上書き。
+- **Q2 → 別 Issue に分離（[#1583](https://github.com/kompiro/karasu/issues/1583)）**: `@migration_target` 優先の勝者選択は `team` ブロックのアノテーション対応が前提（現状 `TeamNode` は annotation 非対応）。本 PR は **first-wins を維持**し、移行先優先は #1583 で後続実装。
+- **Q3 → parser diagnostic のまま severity 変更**: 検出は parser の `indexTeams` のまま、severity フィールドを `error` → `info` に変更（resolver warning への移設はしない — owner index は parser 構築時に作るため）。
+
+以上で本設計の論点は確定。次段は ADR 昇格（実装 PR のクリーンアップ時）。
