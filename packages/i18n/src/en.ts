@@ -57,6 +57,13 @@ export const en: Translations = {
   "projectSelector.translate.button": "⇄ Translate",
   "projectSelector.ok": "OK",
   "projectSelector.cancel": "Cancel",
+  "project.error.create": ({ detail }) => `⚠ Failed to create project: ${detail}`,
+  "project.error.rename": ({ detail }) => `⚠ Failed to rename project: ${detail}`,
+  "project.error.delete": ({ detail }) => `⚠ Failed to delete project: ${detail}`,
+  "project.error.export": ({ detail }) => `⚠ Failed to export project: ${detail}`,
+  "project.error.import": ({ detail }) => `⚠ Import failed: ${detail}`,
+  "project.error.snapshot": ({ detail }) => `⚠ Failed to capture snapshot: ${detail}`,
+  "project.error.dismiss": "✕ Dismiss",
 
   // Translate dialog
   "translateDialog.title": "⇄ Translate infra config to .krs",

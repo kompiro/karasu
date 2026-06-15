@@ -1,9 +1,10 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useMemo, useRef } from "react";
 import { ProjectSelector } from "./components/ProjectSelector.js";
 import { SwitchProjectCommand } from "./components/SwitchProjectCommand.js";
 import { FileTree } from "./components/FileTree.js";
 import { AppShell } from "./components/AppShell.js";
 import { PasteCompareDialog } from "./components/PasteCompareDialog.js";
+import { ErrorBanner } from "./components/ErrorBanner.js";
 import { useOpenTranslateDialog } from "./components/TranslateProvider.js";
 import { SnapshotPickerModal } from "./components/SnapshotPickerModal.js";
 import { useAppContext } from "./state/app-context.js";
@@ -13,13 +14,21 @@ import { SnapshotManager } from "./fs/snapshot-manager.js";
 import { useProjectNavigation } from "./hooks/useProjectNavigation.js";
 import { useFileSelection } from "./hooks/useFileSelection.js";
 import { useProjectInitialization } from "./hooks/useProjectInitialization.js";
+import { useProjectActions } from "./hooks/useProjectActions.js";
+import { usePasteCompare } from "./hooks/usePasteCompare.js";
+import { useSnapshotCompare } from "./hooks/useSnapshotCompare.js";
+import { useTransientError } from "./hooks/useTransientError.js";
 import { type Project } from "@karasu-tools/core";
-import { exportProjectAsZip } from "./utils/export-project-zip.js";
-import { parseZipForImport, disambiguateName } from "./utils/import-project-zip.js";
+
+const ACTION_ERROR_DISMISS_MS = 6000;
 
 /**
  * ProjectModeApp — OPFS モードのアプリケーションシェル。
  * プロジェクト管理 + サイドバーを AppShell に注入する。
+ *
+ * 機能クラスタ（プロジェクト操作 / ペースト比較 / スナップショット比較）は
+ * それぞれ専用フックに切り出してあり、本コンポーネントは配線に徹する（#1547）。
+ * 各操作の失敗は `useTransientError` 経由で `ErrorBanner` に表示する（#1532）。
  */
 export function ProjectModeApp() {
   const { state, dispatch, fs } = useAppContext();
@@ -44,28 +53,12 @@ export function ProjectModeApp() {
     [fs, projectRoot],
   );
 
-  const [pasteDialog, setPasteDialog] = useState<
-    { mode: "edit"; initial: string } | { mode: "view"; content: string } | null
-  >(null);
-  const [pickerFilePath, setPickerFilePath] = useState<string | null>(null);
   const openTranslate = useOpenTranslateDialog();
-
-  // Hidden file path within the project used to hold a pasted .krs blob while
-  // diff mode is active (Issue #739). The file-tree loader hides dot-prefixed
-  // entries so it does not surface to the user.
-  const pastedPath = projectRoot ? `${projectRoot}/.karasu-paste-compare.krs` : null;
-
-  // Clean up the temp pasted file whenever diff mode exits (or the source is
-  // no longer "pasted"). Keeps the OPFS clean across project switches.
-  useEffect(() => {
-    if (!pastedPath) return;
-    if (compareSource?.kind === "pasted" && compareSource.path === pastedPath) return;
-    void (async () => {
-      if (await fs.exists(pastedPath)) {
-        await fs.delete(pastedPath);
-      }
-    })();
-  }, [fs, pastedPath, compareSource]);
+  const {
+    error: actionError,
+    reportError,
+    clearError,
+  } = useTransientError(ACTION_ERROR_DISMISS_MS);
 
   // Preview entry: the last `.krs` the user opened, falling back to
   // `${project}/index.krs` (Issue #811). Editing a non-`.krs` file (e.g.
@@ -79,6 +72,27 @@ export function ProjectModeApp() {
   const { selectFile } = useFileSelection(fs, dispatch);
 
   useProjectInitialization({ pm, fs, dispatch, currentProject, selectFile });
+
+  const { createProject, renameProject, deleteProject, exportProject, importProject } =
+    useProjectActions({
+      pm,
+      fs,
+      projects,
+      currentProject,
+      dispatch,
+      navigateToProject,
+      reportError,
+    });
+
+  const paste = usePasteCompare({ fs, projectRoot, compareSource, dispatch });
+  const snapshot = useSnapshotCompare({
+    snapshotManager,
+    projectRoot,
+    currentFilePath,
+    fileContent,
+    fs,
+    reportError,
+  });
 
   // ── ファイル選択 ────────────────────────────────────────────────
 
@@ -107,74 +121,11 @@ export function ProjectModeApp() {
     [currentFilePath, selectFile],
   );
 
-  // ── プロジェクト操作 ────────────────────────────────────────────
-
   const handleSelectProject = useCallback(
     (project: Project) => {
       navigateToProject(project);
     },
     [navigateToProject],
-  );
-
-  const handleCreateProject = useCallback(
-    async (name: string) => {
-      const project = await pm.createProject(name);
-      dispatch({ type: "ADD_PROJECT", project });
-      navigateToProject(project);
-    },
-    [pm, dispatch, navigateToProject],
-  );
-
-  const handleRenameProject = useCallback(
-    async (id: string, newName: string) => {
-      const updated = await pm.renameProject(id, newName);
-      dispatch({ type: "RENAME_PROJECT", id, name: updated.name });
-    },
-    [pm, dispatch],
-  );
-
-  const handleDeleteProject = useCallback(
-    async (id: string) => {
-      await pm.deleteProject(id);
-      dispatch({ type: "REMOVE_PROJECT", id });
-
-      // 残りのプロジェクトがあれば先頭を選択
-      const remaining = projects.filter((p) => p.id !== id);
-      if (remaining.length > 0) {
-        navigateToProject(remaining[0]);
-      }
-    },
-    [pm, dispatch, projects, navigateToProject],
-  );
-
-  const handleExportProject = useCallback(() => {
-    if (!currentProject) return;
-    void exportProjectAsZip(fs, currentProject.rootPath, currentProject.name);
-  }, [fs, currentProject]);
-
-  const handleImportProject = useCallback(
-    async (file: File) => {
-      try {
-        const buffer = await file.arrayBuffer();
-        const { files, detectedName } = parseZipForImport(new Uint8Array(buffer));
-        const baseName = detectedName ?? file.name.replace(/\.zip$/i, "");
-        const finalName = disambiguateName(
-          baseName,
-          projects.map((p) => p.name),
-        );
-        const project = await pm.createProject(finalName, files);
-        dispatch({ type: "ADD_PROJECT", project });
-        navigateToProject(project);
-      } catch (err) {
-        // parseZipForImport throws on corrupt archives and on the #1526/#1527
-        // hardening limits (decompression bomb, entry-count cap). Keep the
-        // rejection handled so it can't surface as an uncaught error; a
-        // user-facing error banner for import failures is tracked by #1532.
-        // eslint-disable-next-line no-console
-        console.error("Project import failed:", err);
-      }
-    },
-    [pm, dispatch, projects, navigateToProject],
   );
 
   const handleCompareWithCurrent = useCallback(
@@ -183,48 +134,6 @@ export function ProjectModeApp() {
     },
     [dispatch],
   );
-
-  const handleOpenPasteDialog = useCallback(() => {
-    setPasteDialog({ mode: "edit", initial: "" });
-  }, []);
-
-  const handleViewPasted = useCallback(async () => {
-    if (!pastedPath) return;
-    const content = await fs.readFile(pastedPath);
-    setPasteDialog({ mode: "view", content });
-  }, [fs, pastedPath]);
-
-  const handlePasteConfirm = useCallback(
-    async (content: string) => {
-      if (!pastedPath) return;
-      await fs.writeFile(pastedPath, content);
-      dispatch({
-        type: "SET_COMPARE_SOURCE",
-        source: { kind: "pasted", path: pastedPath },
-      });
-      setPasteDialog(null);
-    },
-    [fs, pastedPath, dispatch],
-  );
-
-  const handleSnapshotNow = useCallback(
-    async (path: string) => {
-      if (!snapshotManager || !projectRoot || !path.startsWith(`${projectRoot}/`)) return;
-      const relPath = path.slice(projectRoot.length + 1);
-      const label = window.prompt("Label this snapshot (optional):") ?? undefined;
-      const content =
-        path === currentFilePath ? fileContent : await fs.readFile(path).catch(() => "");
-      await snapshotManager.capture(relPath, content, {
-        trigger: "manual",
-        label: label || undefined,
-      });
-    },
-    [snapshotManager, projectRoot, currentFilePath, fileContent, fs],
-  );
-
-  const handleCompareWithSnapshot = useCallback((path: string) => {
-    setPickerFilePath(path);
-  }, []);
 
   if (initError) {
     return (
@@ -245,11 +154,11 @@ export function ProjectModeApp() {
       projects={projects}
       currentProject={currentProject}
       onSelectProject={handleSelectProject}
-      onCreateProject={handleCreateProject}
-      onRenameProject={handleRenameProject}
-      onDeleteProject={handleDeleteProject}
-      onExportProject={handleExportProject}
-      onImportProject={handleImportProject}
+      onCreateProject={createProject}
+      onRenameProject={renameProject}
+      onDeleteProject={deleteProject}
+      onExportProject={exportProject}
+      onImportProject={importProject}
       onTranslate={openTranslate}
     />
   );
@@ -264,24 +173,20 @@ export function ProjectModeApp() {
       onFileDeleted={handleFileDeleted}
       onFileRenamed={handleFileRenamed}
       onCompareWithCurrent={handleCompareWithCurrent}
-      onCompareWithPaste={handleOpenPasteDialog}
-      onSnapshotNow={handleSnapshotNow}
-      onCompareWithSnapshot={handleCompareWithSnapshot}
+      onCompareWithPaste={paste.openPasteDialog}
+      onSnapshotNow={snapshot.snapshotNow}
+      onCompareWithSnapshot={snapshot.compareWithSnapshot}
     />
   ) : undefined;
 
-  const pickerRelPath =
-    pickerFilePath && projectRoot && pickerFilePath.startsWith(`${projectRoot}/`)
-      ? pickerFilePath.slice(projectRoot.length + 1)
-      : null;
-
   return (
     <>
+      {actionError && <ErrorBanner message={actionError} onDismiss={clearError} />}
       <AppShell
         entryPath={entryPath}
         sidebarHeaderContent={sidebarHeader}
         sidebarContent={sidebarContent}
-        onViewPasted={compareSource?.kind === "pasted" ? handleViewPasted : undefined}
+        onViewPasted={compareSource?.kind === "pasted" ? paste.viewPasted : undefined}
         onFileChange={selectFile}
       />
       <SwitchProjectCommand
@@ -289,33 +194,36 @@ export function ProjectModeApp() {
         currentProject={currentProject}
         onSelectProject={handleSelectProject}
       />
-      {pasteDialog?.mode === "edit" && (
+      {paste.pasteDialog?.mode === "edit" && (
         <PasteCompareDialog
-          initialValue={pasteDialog.initial}
-          onConfirm={handlePasteConfirm}
-          onCancel={() => setPasteDialog(null)}
+          initialValue={paste.pasteDialog.initial}
+          onConfirm={paste.confirmPaste}
+          onCancel={paste.closePasteDialog}
         />
       )}
-      {pasteDialog?.mode === "view" && (
+      {paste.pasteDialog?.mode === "view" && (
         <PasteCompareDialog
-          initialValue={pasteDialog.content}
+          initialValue={paste.pasteDialog.content}
           readOnly
-          onCancel={() => setPasteDialog(null)}
+          onCancel={paste.closePasteDialog}
         />
       )}
-      {pickerFilePath && pickerRelPath && snapshotManager && (
+      {snapshot.pickerFilePath && snapshot.pickerRelPath && snapshotManager && (
         <SnapshotPickerModal
           snapshots={snapshotManager}
-          filePath={pickerRelPath}
-          fileBasename={pickerRelPath.split("/").pop() ?? pickerRelPath}
+          filePath={snapshot.pickerRelPath}
+          fileBasename={snapshot.pickerRelPath.split("/").pop() ?? snapshot.pickerRelPath}
           onSelect={(record) => {
-            dispatch({
-              type: "SET_COMPARE_SOURCE",
-              source: { kind: "snapshot", filePath: pickerRelPath, snapshotId: record.id },
-            });
-            setPickerFilePath(null);
+            const relPath = snapshot.pickerRelPath;
+            if (relPath) {
+              dispatch({
+                type: "SET_COMPARE_SOURCE",
+                source: { kind: "snapshot", filePath: relPath, snapshotId: record.id },
+              });
+            }
+            snapshot.closePicker();
           }}
-          onClose={() => setPickerFilePath(null)}
+          onClose={snapshot.closePicker}
         />
       )}
     </>
