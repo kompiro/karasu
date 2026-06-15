@@ -422,6 +422,7 @@ DesignDoc が proactive TPL を引用したら、実装 PR で次をやる:
 | [TPL-20260518-01](TPL-20260518-01-involutive-toggle-renders-both-states.md) | involutive な toggle は両方の結果状態を end-to-end でレンダリング検証する | app-ui | #1402 |
 | [TPL-20260519-01](TPL-20260519-01-global-shortcut-text-input-inhibition.md) | グローバルキーボードショートカットはテキスト入力フォーカス下での挙動を契約として検証する | app-ui | packages/app/src/keyboard/KeyboardShortcutDispatcher.tsx |
 | [TPL-20260519-02](TPL-20260519-02-shared-vocabulary-dual-representation.md) | 同一語彙を複数の表現で持つときは片方更新による静かな drift を検証する | renderer | #1415 |
+| [TPL-20260519-03](TPL-20260519-03-single-renderer-for-structured-messages.md) | 構造化メッセージ（Warning / Diagnostic）の文字列化は単一の renderer に集約する | core-concepts | ADR-20260420-03 |
 | [TPL-20260520-01](TPL-20260520-01-overlay-z-index-scale.md) | overlay/portal surface の重なり順はマジックナンバーではなく文書化された z-index スケールから選ぶ | app-ui | #1468 |
 | [TPL-20260520-02](TPL-20260520-02-consistency-check-triggers-on-both-sides.md) | 2 つの成果物の整合性を検証するチェックは、両方の変更で起動させる | build | #1480 |
 | [TPL-20260610-01](TPL-20260610-01-accepted-vocabulary-must-have-effect.md) | 受理される語彙は「効果を持つ」「警告される」「open set と明文化」のいずれかに属する | styling | property-schema.ts, parser.ts |
