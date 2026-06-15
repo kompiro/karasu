@@ -81,16 +81,32 @@
 
 （新規 proactive TPL は方針確定後に要否判断。語彙拡張＝文法変更を伴うため、確定時に「spec 改訂時の proactive TPL 同梱」ルールの対象になりうる。）
 
+## 決定事項（レビュー反映）
+
+- **Q1 → (b) 保持・表示・軽い filter/style を core に入れる**。日付/移行先を保持・詳細表示し、「期限の近いものを色分け」「廃止予定だけ表示」程度の軽い filter/style まで。**export（日付付きグラフ）と PERT/クリティカルパスは本スコープ外**（PERT は非目標 #23。export 需要が観測されたら別途 — `job.schedule`/draw.io と同じ escape-hatch 思想）。
+- **Q2 → 案1 graceful degradation**: 値は date-or-string。ISO 日付/四半期としてパース可なら machine-usable（filter/style）、不可なら opaque 文字列で表示のみ。既存パターン（verb-decoration / open annotation / job.schedule）と同系。
+- **Q5 → 純粋な注記（warn しない）**: `until` を過ぎても診断は出さない。`until` は意図の記録であり、"現在時刻" を評価軸に持ち込まない（warn-don't-error / runtime 非追従と整合）。
+
+### 実装時に確定する細部（推奨付き・ADR/実装 PR で最終化）
+
+- **Q3（構文）→ パラメータ形式 `@name(key: "value")` を推奨**: アノテーションは `@name` なので `@deprecated(until: "2026-Q3")` / `@migration_target(from: LegacyMonolith)` が自然。`operations` の `<verb>:<crud>` 装飾はリスト用で不適。annotation パーサに `(key: value)` 拡張を足す。
+- **Q4（キー集合 / 二層化）→ 組み込みの限定キーのみを推奨**: `until`（`@deprecated` / `@experimental`）、`from`（`@migration_target`）に限定。**独自アノテーションは当面パラメータ非対応**（裸フラグのまま）にして二層化を最小に抑える。独自アノテーションへの param は将来拡張の余地として残す。
+
 ## 現時点の方針
 
-**消費者の需要（Q1）が全体のゲート。** machine-readable の利得は、それを読む側（期限色分け・"Q3 前廃止"クエリ・export feed）が実在して初めて生まれる。消費者が無ければ案3（散文規約）で十分で、構造化は「厳しい構文の散文」に過ぎない。
+**案1（graceful degradation）+ scope (b)** を採用する。日付/移行先を構造化フィールドで保持し、保持・表示・軽い filter/style まで core で提供。値は date-or-string で曖昧な時期も壊さず書ける。drift は純粋な注記（warn しない）。**PERT/クリティカルパスと export は非目標/将来課題として core 外**に置く。
 
-需要があるなら **案1（graceful degradation）+ scope b/c（保持・表示・軽い filter / export）** を推す。karasu の既存パターンに最も整合し、曖昧な時期も壊さず書ける。**PERT/クリティカルパスは非目標として core 外（export）に置く。**
+### 実装の指針
 
-## 未解決の問い
+1. parser: annotation の `@name(key: "value")` パラメータ構文を追加（まず組み込みの `until` / `from` キー）。AST にアノテーション params を保持。
+2. 値の解釈: `until` を ISO 日付/四半期としてパース試行 → 成否で machine-usable / opaque を分岐（graceful degradation）。不正な日付っぽい値は info ヒント（`annotation-possible-typo` 式）。
+3. filter/style: 期限の近さ等で `.krs.style` セレクタ or App の軽い絞り込みに供する最小経路（具体 UI はスコープ最小で）。
+4. spec/docs: `docs/spec/tags-annotations.md` にアノテーション params を明文化（spec 改訂時の proactive TPL 同梱ルールに従い、TPL-20260610-01 への back-ref か新規 proactive TPL を検討）。
+5. AT・tests。
+6. ADR 昇格: 本 Design Doc を `docs/adr/<date>-NN-migration-intent-fields.md` に集約、同 PR で削除。Q3/Q4 の最終形を ADR に確定。
+7. changeset（公開 CLI に新構文が surface するため）。
 
-- **Q1（最重要・ゲート）**: machine-readable 側の消費者をどこに置くか。(a) 当面なし＝案3 据え置き / (b) 軽い filter・style（期限色分け等）/ (c) 日付付きグラフの export。
-- **Q2**: 値の形は **案1（date-or-string graceful degradation）** でよいか、案2（strict）か案3（prose）か。
-- **Q3**: 構文。`@deprecated(until: "...")` のパラメータ形式か、`operations` に倣った装飾形式か。文法をどう拡張するか。
-- **Q4**: 二層化（組み込み4つだけ param 対応）を許容するか、param は特定キー（`until` / `from`）に限定するか。
-- **Q5**: drift（`until` が過ぎても自動では何もしない）— warn しない（純粋な注記）か、期限超過を info で surface するか。
+### 影響範囲・マイグレーション
+
+- 後方互換: 既存の裸フラグ（`@deprecated` 等）はそのまま有効。params は opt-in。
+- 非目標境界の明文化: export / PERT は入れない（#23）。需要が出たら別 Issue。
