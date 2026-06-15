@@ -3,6 +3,8 @@ import { REFERENCE_DATA } from "./reference-data.js";
 import {
   GETTING_STARTED_PROJECT,
   GETTING_STARTED_PROJECT_EN,
+  DEPLOY_ONLY_PROJECT,
+  ORG_ONLY_PROJECT,
   type ExampleProject,
 } from "./examples.js";
 
@@ -61,7 +63,20 @@ export interface KarasuReference {
   styleProperties: StylePropertyInfo[];
   shapes: ShapeInfo[];
   builtinStyleSource: string;
+  /** The canonical all-views Getting Started sample (also seeds Memory mode). */
   sampleKrs: string;
+  /**
+   * Per-view starter samples for the reference's Samples tab: `system` is the
+   * all-views Getting Started, `deploy` / `org` are the minimal single-block
+   * examples. Sourced from `examples/` so they can't drift (#1548).
+   */
+  samplesByView: SamplesByView;
+}
+
+export interface SamplesByView {
+  system: string;
+  deploy: string;
+  org: string;
 }
 
 /**
@@ -133,6 +148,11 @@ export function getReference(locale: ReferenceLocale = "en"): KarasuReference {
     })),
     builtinStyleSource: BUILTIN_STYLE_SOURCE,
     sampleKrs: indexKrs(locale === "ja" ? GETTING_STARTED_PROJECT : GETTING_STARTED_PROJECT_EN),
+    samplesByView: {
+      system: indexKrs(locale === "ja" ? GETTING_STARTED_PROJECT : GETTING_STARTED_PROJECT_EN),
+      deploy: indexKrs(DEPLOY_ONLY_PROJECT),
+      org: indexKrs(ORG_ONLY_PROJECT),
+    },
   };
 
   _cache.set(locale, ref);

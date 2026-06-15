@@ -176,6 +176,10 @@ export const en: Translations = {
     `Domain "${domainId}" appears under multiple services`,
   "warning.domainDispersal.checkCohesion":
     "DDD sometimes calls cross-service domain reuse a cohesion smell",
+  "warning.sharedInfraFanIn.message": ({ infraKind, infraId, count }) =>
+    `${infraKind} "${infraId}" is shared by ${count} services`,
+  "warning.sharedInfraFanIn.checkDatabasePerService":
+    "Microservices Database-per-Service sometimes calls a shared store a smell",
   "warning.unassignedDomain.message": ({ display }) =>
     `Domain "${display}" is not assigned to any service`,
   "warning.unassignedUsecase.message": ({ usecaseId }) =>

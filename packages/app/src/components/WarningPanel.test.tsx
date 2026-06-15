@@ -32,6 +32,11 @@ function makeWarning(kind: Warning["kind"]): Warning {
         kind,
         params: { domainId: "test-domain", services: ["svc1", "svc2"] },
       };
+    case "shared-infra-fan-in":
+      return {
+        kind,
+        params: { infraId: "test-db", infraKind: "database", services: ["svc1", "svc2"] },
+      };
     case "style-conflict":
       return { kind, params: { selector: "test-selector", sheetIndices: [0, 1] } };
     case "missing-runtime":

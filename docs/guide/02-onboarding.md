@@ -209,7 +209,7 @@ system Shop {
 
 karasu **draws this sharing but does not forbid it** — from a microservices Database-per-Service lens it's a smell, but sharing is legitimate in some cases. You record the "structural fact" you found mid-reading while deferring judgment.
 
-> **On diagnostics**: re-declaring the same `database` / `queue` / `storage` id **across multiple files** emits `infra-redeclared-across-files` (info). The **fan-in itself** — one DB referenced by multiple services, as above — currently emits no diagnostic; the sharing is simply drawn (a fan-in diagnostic is under consideration — issue #1570).
+> **On diagnostics**: the **fan-in itself** — one store referenced by ≥ 2 services, as above — emits `shared-infra-fan-in` (info), naming the store and the depending services. This is keyed on actual sharing, independent of how many files declared the store (`[external]` stores are excluded). Separately, re-declaring the same `database` / `queue` / `storage` id **across multiple files** emits `infra-redeclared-across-files` (info), which observes declaration redundancy rather than sharing.
 
 ---
 

@@ -1,6 +1,6 @@
 # ADR Dependency Graph — Overview
 
-203 ADRs across 15 topics. Clusters group by `topic` frontmatter field. Edges crossing cluster borders are cross-topic dependencies.
+204 ADRs across 15 topics. Clusters group by `topic` frontmatter field. Edges crossing cluster borders are cross-topic dependencies.
 ```mermaid
 flowchart TD
   subgraph adr-tooling["adr-tooling"]
@@ -83,6 +83,7 @@ flowchart TD
     ADR_20260513_05["ADR-20260513-05<br/>ユーザー作成 worktree は `.claude/worktrees/<branch>` ..."]
     ADR_20260519_05["ADR-20260519-05<br/>Dependabot Batch Triage (2026-05-19) — `pnpm/ac..."]
     ADR_20260520_05["ADR-20260520-05<br/>Dependabot security update — transitive 依存を pnp..."]
+    ADR_20260615_03["ADR-20260615-03<br/>Dependabot security update — transitive 依存を pnp..."]
   end
   subgraph chat-ai["chat-ai"]
     ADR_20260407_04["ADR-20260407-04<br/>Cloudflare Pages デプロイ基盤と BYOK AI 連携"]
@@ -120,7 +121,6 @@ flowchart TD
     ADR_20260514_02["ADR-20260514-02<br/>karasu はスタイル流派を規定せず、流派が smell と呼ぶ構造は `info` 診断で..."]
     ADR_20260614_01["ADR-20260614-01<br/>service / domain の `team` プロパティを削除する"]
     ADR_20260615_01["ADR-20260615-01<br/>`duplicate-owner-assignment` を info（fact-vs-sty..."]
-    ADR_20260615_02["ADR-20260615-02<br/>ライフサイクルアノテーションに移行 intent パラメータを持たせる"]
   end
   subgraph edges["edges"]
     ADR_20260404_09["ADR-20260404-09<br/>クロスシステムサービス参照 — ドット記法（`SystemId.ServiceId`）"]
@@ -205,6 +205,7 @@ flowchart TD
     ADR_20260405_06["ADR-20260405-06<br/>循環依存の検出と `KrsEdge.cyclic` フラグによる視覚化"]
     ADR_20260411_02["ADR-20260411-02<br/>移行期における重複ドメイン ID の共存を `@deprecated` + `@migrati..."]
     ADR_20260514_01["ADR-20260514-01<br/>マルチファイル import の意味論 — whole-file import / syste..."]
+    ADR_20260615_02["ADR-20260615-02<br/>共有 infra fan-in を info 診断として通知する"]
   end
   subgraph styling["styling"]
     ADR_20260312_04["ADR-20260312-04<br/>CSSインスパイアのスタイリングシステム"]
@@ -537,22 +538,23 @@ flowchart TD
   class ADR_20260614_01 accepted
   class ADR_20260615_01 accepted
   class ADR_20260615_02 accepted
+  class ADR_20260615_03 accepted
 ```
 
 ## Per-topic detail
 
 - [`adr-tooling`](graph/adr-tooling.md) — 5 ADRs
 - [`app-ui`](graph/app-ui.md) — 38 ADRs
-- [`build`](graph/build.md) — 32 ADRs
+- [`build`](graph/build.md) — 33 ADRs
 - [`chat-ai`](graph/chat-ai.md) — 8 ADRs
 - [`cli`](graph/cli.md) — 11 ADRs
-- [`core-concepts`](graph/core-concepts.md) — 13 ADRs
+- [`core-concepts`](graph/core-concepts.md) — 12 ADRs
 - [`edges`](graph/edges.md) — 14 ADRs
 - [`navigation`](graph/navigation.md) — 9 ADRs
 - [`parser`](graph/parser.md) — 16 ADRs
 - [`project`](graph/project.md) — 4 ADRs
 - [`renderer`](graph/renderer.md) — 24 ADRs
-- [`resolver`](graph/resolver.md) — 5 ADRs
+- [`resolver`](graph/resolver.md) — 6 ADRs
 - [`styling`](graph/styling.md) — 7 ADRs
 - [`testing`](graph/testing.md) — 11 ADRs
 - [`vscode`](graph/vscode.md) — 6 ADRs

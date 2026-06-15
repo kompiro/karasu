@@ -15,7 +15,9 @@ paths:
 
 `packages/core/src/builtins/examples.ts` は `examples/` 配下のうち **`examples.ts` に登録済みのファイル**の内容を文字列として保持しており、ProjectMode の初回起動時に使用される。
 
-現在 `examples.ts` に登録されているのは `examples/getting-started/`、`examples/getting-started-en/`、`examples/ec-platform/`、`examples/client-mcp/`、`examples/multi-file-system/`、`examples/feature-samples/`。他のディレクトリ（`hr-tool/` など）は登録されていないため、それらを変更しても `examples.ts` の更新は不要。
+現在 `examples.ts` に登録されているのは `examples/getting-started/`、`examples/getting-started-en/`、`examples/ec-platform/`、`examples/client-mcp/`、`examples/multi-file-system/`、`examples/feature-samples/`、`examples/deploy-only/`、`examples/org-only/`。他のディレクトリ（`hr-tool/` など）は登録されていないため、それらを変更しても `examples.ts` の更新は不要。
+
+> `deploy-only/` と `org-only/` は Reference ウィンドウの Samples タブ（ビュー別サンプル, #1548）で参照される。drift は `packages/core/src/examples.test.ts` の byte 一致ガードで検証。
 
 `examples/feature-samples/` は ProjectMode で 1 プロジェクト（`FEATURE_SAMPLES_PROJECT`、name: `feature-samples`）として束ねられる。アプリは project 切替時に `index.krs` を自動で開くため、ディレクトリには 14 個の単機能サンプルに加えてカタログ役の `index.krs`（各サンプルへの索引コメント + 最小の `system`）が含まれる。**`examples/feature-samples/` のファイルは `examples.ts` の対応エントリと byte 単位で一致させること**（`packages/core/src/examples.test.ts` の drift ガードで検証）。新しいサンプルを追加したら 14 → 15... と `index.krs` のカタログにも 1 行追記する。
 
@@ -43,6 +45,8 @@ paths:
 | `getting-started-en/index.krs` | `GETTING_STARTED_PROJECT_EN.files[0].content` |
 | `getting-started-en/default.krs.style` | `GETTING_STARTED_PROJECT_EN.files[1].content` |
 | `client-mcp/index.krs` | `CLIENT_MCP_PROJECT.files[0].content` |
+| `deploy-only/index.krs` | `DEPLOY_ONLY_PROJECT.files[0].content` |
+| `org-only/index.krs` | `ORG_ONLY_PROJECT.files[0].content` |
 | `ec-platform/01-system.krs` | `EC_PLATFORM_PROJECTS[0].files[0].content` (name: `01-system`) |
 | `ec-platform/02-users.krs` | `EC_PLATFORM_PROJECTS[1].files[0].content` (name: `02-users`) |
 | `ec-platform/02.5-clients.krs` | `EC_PLATFORM_PROJECTS[2].files[0].content` (name: `02.5-clients`) |

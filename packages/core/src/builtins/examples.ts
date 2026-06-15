@@ -495,6 +495,88 @@ service[external] {
   ],
 };
 
+// Per-view reference samples (#1548): the reference window's Samples tab shows
+// a view-appropriate starter. Bundled (byte-equal to examples/deploy-only/ and
+// examples/org-only/, governed by .claude/rules/examples-sync.md) so they can't
+// drift — see docs/adr/20260512-03-reference-data-single-source.md.
+export const DEPLOY_ONLY_PROJECT: ExampleProject = {
+  name: "deploy-only",
+  files: [
+    {
+      path: "index.krs",
+      content: `// deploy-only/index.krs
+// Minimal example: a .krs file with only a deploy block (no system).
+// Used to demonstrate that the preview auto-selects the Deploy tab
+// when the file has no system block (Issue #766).
+
+deploy Production {
+  label "本番環境"
+
+  oci "web" {
+    label "Web フロント"
+    image "web:1.0.0"
+    runtime "Node.js 22 / Next.js"
+    realizes Storefront
+  }
+
+  lambda "order-handler" {
+    label "注文ハンドラ"
+    runtime "Node.js 22"
+    realizes OrderAPI
+  }
+
+  assets "static-assets" {
+    label "静的アセット"
+    runtime "CloudFront / S3"
+  }
+}
+`,
+    },
+  ],
+};
+
+export const ORG_ONLY_PROJECT: ExampleProject = {
+  name: "org-only",
+  files: [
+    {
+      path: "index.krs",
+      content: `// org-only/index.krs
+// Minimal example: a .krs file with only an organization block (no system,
+// no deploy). Used to demonstrate that the preview auto-selects the Org tab
+// when the file has no system block and no deploy block (Issue #817).
+
+organization Acme {
+  label "Acme Engineering"
+
+  team "platform-team" {
+    label "プラットフォームチーム"
+    description "共通基盤の開発・運用"
+
+    member alice {
+      label "Alice"
+      description "テックリード"
+    }
+    member bob {
+      label "Bob"
+      description "SRE"
+    }
+  }
+
+  team "product-team" {
+    label "プロダクトチーム"
+    description "プロダクト機能の開発"
+
+    member carol {
+      label "Carol"
+      description "プロダクトエンジニア"
+    }
+  }
+}
+`,
+    },
+  ],
+};
+
 export const CLIENT_MCP_PROJECT: ExampleProject = {
   name: "client-mcp",
   files: [

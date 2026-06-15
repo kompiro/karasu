@@ -95,6 +95,12 @@ export function computeDiagnostics(
       // `analyze()` over the import-merged file where it is accurate
       // (TPL-20260612-01 — new import/style-coupled diagnostics record their side).
       if (w.kind === "unresolved-edge-endpoint") continue;
+      // `shared-infra-fan-in` is *not* suppressed (TPL-20260612-01 — recording
+      // its side): it benefits from the import-merge (cross-file sharing is only
+      // seen in the App / CLI), but in the single-document context it can only
+      // *under-report* — it fires only when both the store and ≥2 referencing
+      // services are present in this one document, so it never false-positives.
+      // Same property as `domain-dispersal`, which is likewise left to fire.
       diagnostics.push({
         severity:
           warningSeverity(w.kind) === "info"

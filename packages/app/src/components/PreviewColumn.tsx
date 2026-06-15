@@ -3,7 +3,7 @@ import { DiagramTabBar } from "./DiagramTabBar.js";
 import { BreadcrumbBar } from "./BreadcrumbBar.js";
 import { PreviewPane } from "./PreviewPane.js";
 import { WarningPanel } from "./WarningPanel.js";
-import { ReferencePanel } from "./ReferencePanel.js";
+import { openReferenceWindow } from "../utils/open-reference-window.js";
 import { CrudMatrixPanel } from "./CrudMatrixPanel.js";
 import { buildSvgExportFilename } from "../utils/build-svg-export-filename.js";
 import { usePreview } from "../state/preview-context.js";
@@ -47,18 +47,17 @@ export function PreviewColumn() {
   const view = useActiveViewData();
 
   const { t } = useTranslation();
-  const [refOpen, setRefOpen] = useState(false);
   const [exportMenuOpen, setExportMenuOpen] = useState(false);
   const [exportError, setExportError] = useState<string | null>(null);
 
-  // Register "Toggle Reference" as a command so the References panel is
-  // reachable from the command palette. Palette-only — no dedicated
-  // keybinding. No-ops when no CommandProvider is mounted (e.g. in
-  // isolated unit tests).
+  // Register "Open Reference" as a command so the reference is reachable from
+  // the command palette. Palette-only — no dedicated keybinding. No-ops when no
+  // CommandProvider is mounted (e.g. in isolated unit tests). Opens a separate
+  // window so it can stay open beside the editor (#1548).
   useCommand({
-    id: "view.toggleReference",
-    title: "Toggle Reference",
-    run: () => setRefOpen((open) => !open),
+    id: "view.openReference",
+    title: "Open Reference",
+    run: () => openReferenceWindow(activeView),
   });
 
   useEffect(() => {
@@ -257,8 +256,12 @@ export function PreviewColumn() {
           )}
         </div>
 
-        <Button variant="actionable" onClick={() => setRefOpen(true)} aria-label="Open reference">
-          ? Reference
+        <Button
+          variant="actionable"
+          onClick={() => openReferenceWindow(activeView)}
+          aria-label="Open reference in a new window"
+        >
+          ↗ Reference
         </Button>
 
         <Button
@@ -282,7 +285,6 @@ export function PreviewColumn() {
           </Button>
         </div>
       )}
-      <ReferencePanel isOpen={refOpen} onClose={() => setRefOpen(false)} activeView={activeView} />
       {activeView === "system" && !showAllLayersIframe && (
         <BreadcrumbBar
           items={systemView.breadcrumbItems}
