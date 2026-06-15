@@ -111,18 +111,18 @@ export function PreviewColumn() {
     }
   }
 
+  // These run via DropdownMenuItem onSelect; the controlled DropdownMenu closes
+  // itself through onOpenChange on select, so no explicit setExportMenuOpen here.
   function handleExportDrillDown() {
     if (activedrillDownSvg) {
       onExportSvg(activedrillDownSvg, exportFilename.replace(/\.svg$/, "-drilldown.svg"));
     }
-    setExportMenuOpen(false);
   }
 
   function handleExportAllDiagrams() {
     if (allViewsSvg) {
       onExportSvg(allViewsSvg, "all-diagrams.svg");
     }
-    setExportMenuOpen(false);
   }
 
   function handleExportDrawio() {
@@ -135,7 +135,6 @@ export function PreviewColumn() {
       const detail = err instanceof Error ? err.message : String(err);
       setExportError(t("preview.export.drawio.failed", { detail }));
     });
-    setExportMenuOpen(false);
   }
 
   function handleOpenAllViews() {
