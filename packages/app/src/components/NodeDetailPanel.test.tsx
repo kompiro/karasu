@@ -472,4 +472,58 @@ describe("NodeDetailPanel — pictogram icon", () => {
       expect(items[1].querySelector(".node-detail-capability-title")?.textContent).toBe("camera");
     });
   });
+
+  // #1595 — surface interpreted migration-intent params (until / from).
+  describe("migration intent", () => {
+    it("shows a machine-usable until value with its kind", () => {
+      const { container } = render(
+        <NodeDetailPanel
+          {...baseProps({
+            migrationIntent: {
+              until: {
+                kind: "machine",
+                precision: "quarter",
+                sortKey: "2026-07-01",
+                raw: "2026-Q3",
+              },
+              untilAnnotation: "deprecated",
+            },
+          })}
+        />,
+      );
+      const until = container.querySelector(".node-detail-migration-until");
+      expect(until).not.toBeNull();
+      expect(until?.getAttribute("data-until-kind")).toBe("machine");
+      expect(until?.querySelector("code")?.textContent).toBe("2026-Q3");
+    });
+
+    it("shows an opaque until value verbatim and marks it opaque", () => {
+      const { container } = render(
+        <NodeDetailPanel
+          {...baseProps({
+            migrationIntent: {
+              until: { kind: "opaque", raw: "sometime next year" },
+              untilAnnotation: "deprecated",
+            },
+          })}
+        />,
+      );
+      const until = container.querySelector(".node-detail-migration-until");
+      expect(until?.getAttribute("data-until-kind")).toBe("opaque");
+      expect(until?.querySelector("code")?.textContent).toBe("sometime next year");
+    });
+
+    it("shows the migration source (from)", () => {
+      const { container } = render(
+        <NodeDetailPanel {...baseProps({ migrationIntent: { from: "LegacyMonolith" } })} />,
+      );
+      const from = container.querySelector(".node-detail-migration-from");
+      expect(from?.querySelector("code")?.textContent).toBe("LegacyMonolith");
+    });
+
+    it("renders no migration section when the node carries no intent", () => {
+      const { container } = render(<NodeDetailPanel {...baseProps()} />);
+      expect(container.querySelector(".node-detail-migration")).toBeNull();
+    });
+  });
 });

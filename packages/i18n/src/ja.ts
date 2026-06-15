@@ -136,6 +136,9 @@ export const ja: Partial<Translations> = {
   "nodeDetail.annotationDiff.title": "⇄ アノテーション差分",
   "nodeDetail.resources.title": "📦 ストレージリソース",
   "nodeDetail.capabilities.title": "🔐 ケイパビリティ",
+  "nodeDetail.migration.title": "🕒 移行 intent",
+  "nodeDetail.migration.until": "until",
+  "nodeDetail.migration.from": "from",
 
   // Empty-state placeholders (rendered inside SVG by core renderers)
   "emptyState.deploy.title": "deploy ブロックが定義されていません",
