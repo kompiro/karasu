@@ -181,12 +181,22 @@ export async function upsertEdgeDirectionRule(
   canonicalId: string,
   direction: EdgeDirection,
 ): Promise<void> {
+  const transform = (current: string): string =>
+    upsertStyleProperty(current, `edge#${canonicalId}`, "direction", direction);
+
+  // Prefer the provider's serialized read-modify-write so this append can't
+  // race the editor's auto-save on the same open `.krs.style` file (#1563).
+  if (fs.update) {
+    await fs.update(styleFilePath, transform);
+    return;
+  }
+
+  // Fallback for providers without a serialized RMW (no concurrency guarantee).
   let existing = "";
   try {
     existing = await fs.readFile(styleFilePath);
   } catch {
     existing = "";
   }
-  const updated = upsertStyleProperty(existing, `edge#${canonicalId}`, "direction", direction);
-  await fs.writeFile(styleFilePath, updated);
+  await fs.writeFile(styleFilePath, transform(existing));
 }

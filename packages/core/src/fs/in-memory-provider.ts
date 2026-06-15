@@ -25,6 +25,17 @@ export class InMemoryFileSystemProvider implements FileSystemProvider {
     this.files.set(p, content);
   }
 
+  async update(
+    path: string,
+    transform: (current: string) => string | Promise<string>,
+  ): Promise<void> {
+    // No real concurrency in the in-memory store, so a plain read-modify-write
+    // suffices; the serialized variant lives in ObservableFileSystemProvider.
+    const p = normalizePath(path);
+    const current = this.files.get(p) ?? "";
+    await this.writeFile(p, await transform(current));
+  }
+
   async readDir(path: string): Promise<DirEntry[]> {
     const p = normalizePath(path);
     if (!this.dirs.has(p)) {

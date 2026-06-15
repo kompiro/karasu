@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { InMemoryFileSystemProvider } from "@karasu-tools/core";
+import { ObservableFileSystemProvider } from "../fs/observable-provider.js";
 import {
   deriveStyleFilePath,
   injectStyleImport,
@@ -101,6 +102,25 @@ describe("upsertEdgeDirectionRule", () => {
     expect(await fs.readFile("/site.krs.style")).toBe(
       "edge#flow2 { direction: down; }\nedge#flow { direction: up; }\n",
     );
+  });
+
+  // #1563 (TPL-20260613-02): the GUI append's read-modify-write must not lose
+  // the editor's concurrent auto-save on the same open .krs.style. Through the
+  // ObservableFileSystemProvider both go through the per-path queue, so the
+  // editor's write is preserved and the rule is appended to it — not to a stale
+  // pre-save read.
+  it("does not clobber a concurrent editor save when run through the serialized provider", async () => {
+    const fs = new ObservableFileSystemProvider(new InMemoryFileSystemProvider());
+    await fs.writeFile("/site.krs.style", "edge { color: red; }\n");
+    await Promise.all([
+      fs.writeFile("/site.krs.style", "edge { color: red; }\nuser { shape: user; }\n"),
+      upsertEdgeDirectionRule(fs, "/site.krs.style", "criticalWrite", "down"),
+    ]);
+    const result = await fs.readFile("/site.krs.style");
+    // The editor's save is preserved (not dropped by the append's stale read),
+    // and the direction rule is present.
+    expect(result).toContain("user { shape: user; }");
+    expect(result).toContain("edge#criticalWrite { direction: down; }");
   });
 });
 
