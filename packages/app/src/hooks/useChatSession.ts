@@ -1,7 +1,6 @@
 import { useState, useCallback, useEffect, useMemo, useRef } from "react";
 import Anthropic, { APIError } from "@anthropic-ai/sdk";
-import { applyKrsPatch, type PatchOperation } from "../utils/krs-patch.js";
-import type { SystemNode } from "@karasu-tools/core";
+import { applyKrsPatch, type PatchOperation, type SystemNode } from "@karasu-tools/core";
 import { resolveLocale } from "../i18n/locale.js";
 import { useTranslation } from "../i18n/index.js";
 import {

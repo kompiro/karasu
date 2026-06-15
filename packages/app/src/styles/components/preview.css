@@ -302,52 +302,8 @@
   padding: 3px 6px;
 }
 
-/* Export mode dropdown menu */
-.export-menu {
-  position: absolute;
-  top: calc(100% + 4px);
-  right: 0;
-  background: var(--bg-raised);
-  border: 1px solid var(--border-strong);
-  border-radius: var(--radius-sm);
-  box-shadow: var(--shadow-dropdown);
-  z-index: var(--z-dropdown);
-  min-width: 160px;
-  padding: 4px;
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-
-.export-menu-item {
-  background: transparent;
-  border: none;
-  border-radius: calc(var(--radius-sm) - 2px);
-  color: var(--text-secondary);
-  font-family: var(--font-ui);
-  font-size: 11px;
-  font-weight: 500;
-  padding: 5px 10px;
-  text-align: left;
-  cursor: pointer;
-  white-space: nowrap;
-  transition: all 0.1s;
-}
-
-.export-menu-item:hover:not(:disabled) {
-  background: var(--accent-dim);
-  color: var(--accent-hover);
-}
-
-.export-menu-item.active {
-  color: var(--accent-hover);
-}
-
-.export-menu-item:disabled {
-  color: var(--text-muted);
-  cursor: not-allowed;
-  opacity: 0.5;
-}
+/* The export mode dropdown migrated to the shadcn DropdownMenu primitive
+   (#1549); the menu chrome is owned by `ui/dropdown-menu.tsx`. */
 
 /* Inline banner surfaced below the preview toolbar when an export action
    fails. Auto-dismisses after a few seconds; the X button dismisses

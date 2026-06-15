@@ -11,6 +11,12 @@ import { useActiveViewData } from "../state/active-view-data.js";
 import { useTranslation } from "../i18n/index.js";
 import { useCommand } from "../keyboard/use-command.js";
 import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+} from "@/components/ui/dropdown-menu";
 
 const EXPORT_ERROR_AUTO_DISMISS_MS = 6000;
 // Unlike anchor downloads (which revoke at 0), the "Open All Views" blob must
@@ -47,7 +53,6 @@ export function PreviewColumn() {
   const view = useActiveViewData();
 
   const { t } = useTranslation();
-  const [exportMenuOpen, setExportMenuOpen] = useState(false);
   const [exportError, setExportError] = useState<string | null>(null);
 
   // Register "Open Reference" as a command so the reference is reachable from
@@ -104,18 +109,18 @@ export function PreviewColumn() {
     }
   }
 
+  // The export menu is a shadcn DropdownMenu — Radix closes it on select, so
+  // these handlers no longer manage open state.
   function handleExportDrillDown() {
     if (activedrillDownSvg) {
       onExportSvg(activedrillDownSvg, exportFilename.replace(/\.svg$/, "-drilldown.svg"));
     }
-    setExportMenuOpen(false);
   }
 
   function handleExportAllDiagrams() {
     if (allViewsSvg) {
       onExportSvg(allViewsSvg, "all-diagrams.svg");
     }
-    setExportMenuOpen(false);
   }
 
   function handleExportDrawio() {
@@ -128,7 +133,6 @@ export function PreviewColumn() {
       const detail = err instanceof Error ? err.message : String(err);
       setExportError(t("preview.export.drawio.failed", { detail }));
     });
-    setExportMenuOpen(false);
   }
 
   function handleOpenAllViews() {
@@ -213,47 +217,33 @@ export function PreviewColumn() {
           >
             {t("preview.export.svg.label")}
           </Button>
-          <Button
-            variant="actionable"
-            className="rounded-l-none px-1.5"
-            aria-pressed={exportMenuOpen}
-            onClick={() => setExportMenuOpen((v) => !v)}
-            aria-label={t("preview.export.options.ariaLabel")}
-            aria-haspopup="menu"
-            aria-expanded={exportMenuOpen}
-            disabled={!exportAvailable}
-          >
-            ▾
-          </Button>
-          {exportMenuOpen && (
-            <div className="export-menu" role="menu" onMouseLeave={() => setExportMenuOpen(false)}>
-              <button
-                role="menuitem"
-                className="export-menu-item"
-                onClick={handleExportDrillDown}
-                disabled={!drillDownAvailable}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="actionable"
+                className="rounded-l-none px-1.5"
+                aria-label={t("preview.export.options.ariaLabel")}
+                disabled={!exportAvailable}
               >
+                ▾
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onSelect={handleExportDrillDown} disabled={!drillDownAvailable}>
                 {t("preview.export.drillDown.label")}
-              </button>
-              <button
-                role="menuitem"
-                className="export-menu-item"
-                onClick={handleExportAllDiagrams}
-                disabled={!allViewsSvg}
-              >
+              </DropdownMenuItem>
+              <DropdownMenuItem onSelect={handleExportAllDiagrams} disabled={!allViewsSvg}>
                 {t("preview.export.allDiagrams.label")}
-              </button>
-              <button
-                role="menuitem"
-                className="export-menu-item"
-                onClick={handleExportDrawio}
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onSelect={handleExportDrawio}
                 disabled={!onExportDrawio}
                 title={t("preview.export.drawio.title")}
               >
                 {t("preview.export.drawio.label")}
-              </button>
-            </div>
-          )}
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
 
         <Button
