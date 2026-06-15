@@ -97,6 +97,15 @@ export type { PatchOperation } from "./patch/krs-patch.js";
 export { format, FormatError } from "./formatter/formatter.js";
 export { Parser } from "./parser/parser.js";
 export { isSafeLinkUrl } from "./parser/link-url.js";
+export {
+  interpretUntil,
+  getMigrationIntent,
+  type UntilPrecision,
+  type MachineUntil,
+  type OpaqueUntil,
+  type InterpretedUntil,
+  type MigrationIntent,
+} from "./annotations/migration-intent.js";
 export { StyleParser } from "./parser/style-parser.js";
 export {
   assignEdgeCanonicalIds,
@@ -222,6 +231,7 @@ import type { Warning } from "./types/warnings.js";
 import type { FileSystemProvider } from "./fs/types.js";
 import { Parser } from "./parser/parser.js";
 import { StyleParser } from "./parser/style-parser.js";
+import { getMigrationIntent, type MigrationIntent } from "./annotations/migration-intent.js";
 import { validateStyleValues } from "./style/value-validator.js";
 import {
   assignEdgeCanonicalIds,
@@ -279,6 +289,12 @@ export interface NodeMetadata {
   realizes?: string[];
   tags: string[];
   annotations: string[];
+  /**
+   * Interpreted migration-intent params (`@deprecated(until:…)` /
+   * `@experimental(until:…)` / `@migration_target(from:…)`), when the node
+   * carries any. Omitted otherwise so consumers can guard cheaply (#1595).
+   */
+  migrationIntent?: MigrationIntent;
   hasChildren: boolean;
   /** Client-only: operation-tied storage resources, in declaration order. */
   resources?: ClientResourceImpl[];
@@ -789,6 +805,7 @@ function buildNodeMetadata(
       role: node.kind === "user" ? node.properties.role : undefined,
       tags: [...node.tags],
       annotations: [...node.annotations],
+      migrationIntent: getMigrationIntent(node.annotationParams),
       hasChildren: node.children.length > 0,
       resources:
         node.kind === "client" && node.properties.resources.length > 0
