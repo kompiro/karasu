@@ -125,6 +125,7 @@ By default (`--granularity aggregate`), related tables are **folded into their a
 
 With a skeleton in hand, draw the **top-level map** first. Following the drill-down principle ([`docs/concepts.md`](../concepts.md)), don't cram everything onto one canvas — build only the `system`-level overview.
 
+<!-- render: system id=02-overview -->
 ```krs
 system Shop {
   label "Online shop (under analysis)"
@@ -146,6 +147,11 @@ system Shop {
 }
 ```
 
+<!-- gen:guide-diagram:02-overview — DO NOT EDIT. Generated from the snippet above; run `pnpm gen:guide-diagrams`. -->
+![system view — 02-overview](diagrams/02-overview.svg)
+<!-- /gen:guide-diagram:02-overview -->
+
+
 - **`[external]`** marks things "outside the system boundary" / "not owned by us." Marking legacy or third-party systems you haven't read yet as `[external]` makes explicit "I'm not drilling into this right now."
 - **Use `description` as a notepad** — leave a one-liner for "who knows this" and "where the unknowns are." You can later replace it with a `link` to a doc URL.
 - **Edges carry direction and kind** — sync `->`, async `-->`. Early in your reading, leave it sync if unsure, and switch to `-->` once you learn it's event-driven.
@@ -154,14 +160,20 @@ system Shop {
 
 You can draw an edge to another system (out of your scope, or not yet investigated) with the `SystemId.ServiceId` dotted notation. The target renders semi-transparently as a **ghost system**, expressing "the boundary's existence is visible, but its internals are not."
 
+<!-- render: system id=02-ghosts -->
 ```krs
 system Shop {
   service OrderService { label "Order service" }
+
 
   // Cross-system reference — PaymentGW is drawn as a ghost
   OrderService -> PaymentGW.PaymentService "request payment"
 }
 ```
+
+<!-- gen:guide-diagram:02-ghosts — DO NOT EDIT. Generated from the snippet above; run `pnpm gen:guide-diagrams`. -->
+![system view — 02-ghosts](diagrams/02-ghosts.svg)
+<!-- /gen:guide-diagram:02-ghosts -->
 
 Ghosts are a realization of scoped glance. You keep a dependency that's out of view at the edge of the map without carrying its detail. You can honestly draw "payments go to another team's PaymentGW; I don't need to know the internals yet."
 
@@ -308,6 +320,7 @@ This "tolerate incompleteness" stance is the heart of karasu's fit with onboardi
 
 For a new joiner, a **map of people** matters as much as the technical structure. karasu's org view lets you overlay this onto the same diagram as the architecture.
 
+<!-- render: org id=02-org -->
 ```krs
 organization Shop {
   team orderTeam {
@@ -326,6 +339,11 @@ organization Shop {
   }
 }
 ```
+
+<!-- gen:guide-diagram:02-org — DO NOT EDIT. Generated from the snippet above; run `pnpm gen:guide-diagrams`. -->
+![org view — 02-org](diagrams/02-org.svg)
+<!-- /gen:guide-diagram:02-org -->
+
 
 - **`owns`** maps "who owns this service/DB." When you learn mid-reading "ask the Order team about OrderService," record it with `owns`.
 - **`member` + `slack` / `github`** capture contact info. For an onboarding map, this is exactly the information you want.

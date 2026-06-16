@@ -50,7 +50,8 @@
     "tpl:review:body": "tpl review-body --repo kompiro/karasu",
     "at:check-coverage": "tsx scripts/acceptance/check-coverage.ts",
     "at:test": "vitest run scripts/acceptance",
-    "gen:reference": "tsx scripts/reference/gen-docs.ts"
+    "gen:reference": "tsx scripts/reference/gen-docs.ts",
+    "gen:guide-diagrams": "tsx scripts/guide/gen-guide-diagrams.ts"
   },
   "devDependencies": {
     "@changesets/cli": "^2.31.0",

@@ -1,0 +1,40 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 784" width="760" height="784"><defs><marker id="arrow-default" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#64748B"/></marker>
+<marker id="arrow-0" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#D97706"/></marker></defs>
+<rect width="760" height="784" fill="#FFFFFF" rx="0"/>
+<text x="20" y="24" fill="#64748B" font-size="14px" font-family="sans-serif" font-weight="bold">オンラインショップ</text>
+<g class="edges"><g data-edge-from="Customer" data-edge-to="ShoppingService" data-edge-kind="sync" data-edge-canonical-id="Customer-&gt;ShoppingService" data-edge-label="買い物をする" class="krs-edge krs-edge--interactive"><line x1="360" y1="126" x2="250" y2="246" stroke="transparent" stroke-width="14" stroke-linecap="butt" class="krs-edge__hitline"/>
+<line x1="360" y1="126" x2="250" y2="246" stroke="#64748B" stroke-width="1.5" marker-end="url(#arrow-default)"/>
+<text x="305" y="180" text-anchor="middle" fill="#64748B" font-size="11px" font-family="sans-serif">買い物をする</text></g>
+<g data-edge-from="ShoppingService" data-edge-to="CatalogService" data-edge-kind="sync" data-edge-canonical-id="ShoppingService-&gt;CatalogService" data-edge-label="商品を引く" class="krs-edge krs-edge--interactive"><line x1="250" y1="312" x2="113.33333333333333" y2="432" stroke="transparent" stroke-width="14" stroke-linecap="butt" class="krs-edge__hitline"/>
+<line x1="250" y1="312" x2="113.33333333333333" y2="432" stroke="#D97706" stroke-width="1.5" marker-end="url(#arrow-0)"/>
+<text x="181.66666666666666" y="366" text-anchor="middle" fill="#D97706" font-size="11px" font-family="sans-serif">商品を引く</text></g>
+<g data-edge-from="OrderService" data-edge-to="CatalogService" data-edge-kind="sync" data-edge-canonical-id="OrderService-&gt;CatalogService" data-edge-label="商品情報を引く" class="krs-edge krs-edge--interactive"><line x1="422" y1="312" x2="166.66666666666666" y2="432" stroke="transparent" stroke-width="14" stroke-linecap="butt" class="krs-edge__hitline"/>
+<line x1="422" y1="312" x2="166.66666666666666" y2="432" stroke="#D97706" stroke-width="1.5" marker-end="url(#arrow-0)"/>
+<text x="294.3333333333333" y="366" text-anchor="middle" fill="#D97706" font-size="11px" font-family="sans-serif">商品情報を引く</text></g>
+<g data-edge-from="OrderService" data-edge-to="InventoryService" data-edge-kind="sync" data-edge-canonical-id="OrderService-&gt;InventoryService" data-edge-label="在庫を引き当てる" class="krs-edge krs-edge--interactive"><line x1="454" y1="312" x2="360" y2="432" stroke="transparent" stroke-width="14" stroke-linecap="butt" class="krs-edge__hitline"/>
+<line x1="454" y1="312" x2="360" y2="432" stroke="#D97706" stroke-width="1.5" marker-end="url(#arrow-0)"/>
+<text x="407" y="366" text-anchor="middle" fill="#D97706" font-size="11px" font-family="sans-serif">在庫を引き当てる</text></g>
+<g data-edge-from="OrderService" data-edge-to="PaymentService" data-edge-kind="sync" data-edge-canonical-id="OrderService-&gt;PaymentService" data-edge-label="決済を依頼する" class="krs-edge krs-edge--interactive"><line x1="518" y1="312" x2="580" y2="432" stroke="transparent" stroke-width="14" stroke-linecap="butt" class="krs-edge__hitline"/>
+<line x1="518" y1="312" x2="580" y2="432" stroke="#D97706" stroke-width="1.5" marker-end="url(#arrow-0)"/>
+<text x="549" y="366" text-anchor="middle" fill="#D97706" font-size="11px" font-family="sans-serif">決済を依頼する</text></g>
+<g data-edge-from="OrderService" data-edge-to="NotificationService" data-edge-kind="async" data-edge-canonical-id="OrderService--&gt;NotificationService" data-edge-label="注文確定を通知する" class="krs-edge krs-edge--interactive"><polyline points="486,312 486,558 333.3333333333333,558 333.3333333333333,618" fill="none" stroke="transparent" stroke-width="14" stroke-linecap="butt" class="krs-edge__hitline"/>
+<polyline points="486,312 486,558 333.3333333333333,558 333.3333333333333,618" fill="none" stroke="#D97706" stroke-width="1.5" stroke-dasharray="8 4" marker-end="url(#arrow-0)"/>
+<text x="486" y="429" text-anchor="middle" fill="#D97706" font-size="11px" font-family="sans-serif">注文確定を通知する</text></g>
+<g data-edge-from="PaymentService" data-edge-to="NotificationService" data-edge-kind="async" data-edge-canonical-id="PaymentService--&gt;NotificationService" data-edge-label="決済結果を通知する" class="krs-edge krs-edge--interactive"><line x1="580" y1="498" x2="386.66666666666663" y2="618" stroke="transparent" stroke-width="14" stroke-linecap="butt" class="krs-edge__hitline"/>
+<line x1="580" y1="498" x2="386.66666666666663" y2="618" stroke="#D97706" stroke-width="1.5" stroke-dasharray="8 4" marker-end="url(#arrow-0)"/>
+<text x="483.3333333333333" y="552" text-anchor="middle" fill="#D97706" font-size="11px" font-family="sans-serif">決済結果を通知する</text></g></g>
+<g class="nodes"><g data-node-id="Customer" data-node-kind="user" data-has-children="false" data-has-description="false"><circle cx="360" cy="70.58" r="8.58" fill="#DBEAFE" stroke="#93C5FD" stroke-width="2"/>
+<path d="M324 82.16 L396 82.16 L416 93.12 L416 122 Q416 126 412 126 L308 126 Q304 126 304 122 L304 93.12 Z" fill="#DBEAFE" stroke="#93C5FD" stroke-width="2"/>
+<text x="360" y="93" text-anchor="middle" dominant-baseline="central" fill="#1E3A8A" font-size="13px" font-weight="bold" font-family="sans-serif">購入者</text></g>
+<g data-node-id="ShoppingService" data-node-kind="service" data-has-children="true" data-has-description="false" style="cursor: pointer"><rect x="170" y="246" width="160" height="66" rx="8" ry="8" fill="#E0F2FE" stroke="#7DD3FC" stroke-width="2"/>
+<text x="250" y="279" text-anchor="middle" dominant-baseline="central" fill="#0C4A6E" font-size="13px" font-weight="bold" font-family="sans-serif">買い物体験</text></g>
+<g data-node-id="OrderService" data-node-kind="service" data-has-children="true" data-has-description="false" style="cursor: pointer"><rect x="390" y="246" width="160" height="66" rx="8" ry="8" fill="#E0F2FE" stroke="#7DD3FC" stroke-width="2"/>
+<text x="470" y="279" text-anchor="middle" dominant-baseline="central" fill="#0C4A6E" font-size="13px" font-weight="bold" font-family="sans-serif">受注・配送</text></g>
+<g data-node-id="CatalogService" data-node-kind="service" data-has-children="true" data-has-description="false" style="cursor: pointer"><rect x="60" y="432" width="160" height="66" rx="8" ry="8" fill="#E0F2FE" stroke="#7DD3FC" stroke-width="2"/>
+<text x="140" y="465" text-anchor="middle" dominant-baseline="central" fill="#0C4A6E" font-size="13px" font-weight="bold" font-family="sans-serif">カタログ</text></g>
+<g data-node-id="InventoryService" data-node-kind="service" data-has-children="true" data-has-description="false" style="cursor: pointer"><rect x="280" y="432" width="160" height="66" rx="8" ry="8" fill="#E0F2FE" stroke="#7DD3FC" stroke-width="2"/>
+<text x="360" y="465" text-anchor="middle" dominant-baseline="central" fill="#0C4A6E" font-size="13px" font-weight="bold" font-family="sans-serif">在庫</text></g>
+<g data-node-id="PaymentService" data-node-kind="service" data-has-children="true" data-has-description="false" style="cursor: pointer"><rect x="500" y="432" width="160" height="66" rx="8" ry="8" fill="#E0F2FE" stroke="#7DD3FC" stroke-width="2"/>
+<text x="580" y="465" text-anchor="middle" dominant-baseline="central" fill="#0C4A6E" font-size="13px" font-weight="bold" font-family="sans-serif">決済</text></g>
+<g data-node-id="NotificationService" data-node-kind="service" data-has-children="true" data-has-description="false" style="cursor: pointer"><rect x="280" y="618" width="160" height="66" rx="8" ry="8" fill="#E0F2FE" stroke="#7DD3FC" stroke-width="2"/>
+<text x="360" y="651" text-anchor="middle" dominant-baseline="central" fill="#0C4A6E" font-size="13px" font-weight="bold" font-family="sans-serif">通知</text></g></g></svg>

@@ -17,8 +17,10 @@ on:
       - "docs/spec/**"
       - "docs/concepts.md"
       - "docs/concepts.ja.md"
+      - "docs/guide/**"
       - "packages/core/src/builtins/reference-data.ts"
       - "scripts/reference/**"
+      - "scripts/guide/**"
       - "scripts/lint/spec-structure-sync.ts"
       - ".github/workflows/reference-docs-check.yml"
 

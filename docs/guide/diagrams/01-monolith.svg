@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 321 412" width="321" height="412"><defs><marker id="arrow-default" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#64748B"/></marker></defs>
+<rect width="321" height="412" fill="#FFFFFF" rx="0"/>
+<text x="20" y="24" fill="#64748B" font-size="14px" font-family="sans-serif" font-weight="bold">Online shop</text>
+<g class="edges"><g data-edge-from="Customer" data-edge-to="Monolith" data-edge-kind="sync" data-edge-canonical-id="Customer-&gt;Monolith" data-edge-label="shop" class="krs-edge krs-edge--interactive"><line x1="140.5" y1="126" x2="140.5" y2="246" stroke="transparent" stroke-width="14" stroke-linecap="butt" class="krs-edge__hitline"/>
+<line x1="140.5" y1="126" x2="140.5" y2="246" stroke="#64748B" stroke-width="1.5" marker-end="url(#arrow-default)"/>
+<text x="140.5" y="180" text-anchor="middle" fill="#64748B" font-size="11px" font-family="sans-serif">shop</text></g></g>
+<g class="nodes"><g data-node-id="Customer" data-node-kind="user" data-has-children="false" data-has-description="false"><circle cx="140.5" cy="70.58" r="8.58" fill="#DBEAFE" stroke="#93C5FD" stroke-width="2"/>
+<path d="M104.5 82.16 L176.5 82.16 L196.5 93.12 L196.5 122 Q196.5 126 192.5 126 L88.5 126 Q84.5 126 84.5 122 L84.5 93.12 Z" fill="#DBEAFE" stroke="#93C5FD" stroke-width="2"/>
+<text x="140.5" y="93" text-anchor="middle" dominant-baseline="central" fill="#1E3A8A" font-size="13px" font-weight="bold" font-family="sans-serif">Shopper</text></g>
+<g data-node-id="Monolith" data-node-kind="service" data-has-children="true" data-has-description="false" style="cursor: pointer"><rect x="60" y="246" width="161" height="66" rx="8" ry="8" fill="#E0F2FE" stroke="#7DD3FC" stroke-width="2"/>
+<text x="140.5" y="279" text-anchor="middle" dominant-baseline="central" fill="#0C4A6E" font-size="13px" font-weight="bold" font-family="sans-serif">Shop core</text></g></g></svg>

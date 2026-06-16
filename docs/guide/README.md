@@ -27,3 +27,10 @@ Ch.1 Boundary Design → Ch.2 Onboarding → Ch.3 Evolution → Ch.4 Access Path
 - **Chapters 4–5** are cross-cutting perspectives useful at any stage, placed later because they build on the earlier vocabulary. Ch.4 covers a product's surfaces (access paths); Ch.5 covers making diagrams shareable (style / legend / CI).
 
 If you only need one topic, each chapter also stands alone — in-chapter links point to any prerequisites.
+
+## Rendered diagrams (generated — do not hand-edit)
+
+Selected "hero" `.krs` snippets carry a rendered SVG right below the code, so you see karasu's actual auto-layout output next to the source. The fenced ```krs block stays the single source of truth: an HTML-comment marker above the block (e.g. `<!-- render: system id=01-monolith -->`) tells the generator which snippet to render and which view (`system` / `deploy` / `org`) to use. The SVG and the `![](diagrams/…)` image reference are generated — the image lives in a `<!-- gen:guide-diagram:<id> -->` region; don't hand-edit it.
+
+- Regenerate after changing a marked snippet: `pnpm gen:guide-diagrams`
+- CI runs `pnpm gen:guide-diagrams --check` (and lefthook on push); it fails if a committed SVG or image ref is stale. Snippets render to `diagrams/<id>.svg` (English) and `diagrams/<id>.ja.svg` (Japanese), with the `light` theme for GitHub's white background.

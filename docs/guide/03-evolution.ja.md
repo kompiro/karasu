@@ -31,6 +31,7 @@ karasu は **warn, don't error** ポリシーと**ライフサイクルアノテ
 | `@experimental` | 開発中・API 不安定 | フィーチャーフラグ下の試験的サービス |
 | `@migration_target` | 移行の受け皿となるノード | 旧から責務を引き取る新サービス |
 
+<!-- render: system id=03-lifecycle -->
 ```krs
 system ECPlatform {
   service ECommerce { label "ECサイト" }
@@ -56,6 +57,10 @@ system ECPlatform {
   ECommerce -> NewPayment    "決済（新）"
 }
 ```
+
+<!-- gen:guide-diagram:03-lifecycle — DO NOT EDIT. Generated from the snippet above; run `pnpm gen:guide-diagrams`. -->
+![system view — 03-lifecycle](diagrams/03-lifecycle.ja.svg)
+<!-- /gen:guide-diagram:03-lifecycle -->
 
 アノテーションは複合できます。「廃止予定だが、同時に移行の受け皿でもあるブリッジ」は `@deprecated @migration_target` のように並べます。
 
@@ -86,6 +91,7 @@ service LegacyMonolith @deprecated {
 
 モノリスからの切り出しでは、**同じビジネスドメインが一時的に新旧 2 つの service に所属する** 期間が生まれます。karasu はこれを禁止せず、`domain-dispersal`（ドメインドリフト）の診断で「移行が未完了である」と通知します。
 
+<!-- render: system id=03-migration -->
 ```krs
 system ECommercePlatform {
   label "ECプラットフォーム（移行中）"
@@ -114,6 +120,10 @@ system ECommercePlatform {
   Customer -> OrderService   "購入する（新フロー）"
 }
 ```
+
+<!-- gen:guide-diagram:03-migration — DO NOT EDIT. Generated from the snippet above; run `pnpm gen:guide-diagrams`. -->
+![system view — 03-migration](diagrams/03-migration.ja.svg)
+<!-- /gen:guide-diagram:03-migration -->
 
 ここで出る `domain-dispersal`（info）は **バグではなく、移行のステータスインジケータ** です。同じ `Order` ドメインが 2 つの service に居る = まだ切り出しが完了していない。移行が完了して旧 service から `domain Order` を削除すれば、この警告は自然に消えます。**警告が消えること自体が移行完了の判定基準** になります（完全な例は [`examples/migration/system.krs`](../../examples/migration/system.krs)）。
 

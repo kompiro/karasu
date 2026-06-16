@@ -31,6 +31,7 @@ Attach `@<annotation>` to a node to declare its lifecycle state. Four are provid
 | `@experimental` | Under development, unstable API | a trial service behind a feature flag |
 | `@migration_target` | The node receiving a migration | the new service taking over responsibilities |
 
+<!-- render: system id=03-lifecycle -->
 ```krs
 system ECPlatform {
   service ECommerce { label "E-commerce" }
@@ -56,6 +57,11 @@ system ECPlatform {
   ECommerce -> NewPayment    "pay (new)"
 }
 ```
+
+<!-- gen:guide-diagram:03-lifecycle — DO NOT EDIT. Generated from the snippet above; run `pnpm gen:guide-diagrams`. -->
+![system view — 03-lifecycle](diagrams/03-lifecycle.svg)
+<!-- /gen:guide-diagram:03-lifecycle -->
+
 
 Annotations compose. A "bridge that is deprecated yet also the migration target" is written `@deprecated @migration_target`.
 
@@ -86,6 +92,7 @@ This keeps the context "this service is scheduled for removal" at any depth of d
 
 When carving out of a monolith, a period arises where **the same business domain temporarily belongs to two services, old and new.** karasu does not forbid this; it reports "migration is incomplete" with the `domain-dispersal` (domain drift) diagnostic.
 
+<!-- render: system id=03-migration -->
 ```krs
 system ECommercePlatform {
   label "E-commerce platform (migrating)"
@@ -110,10 +117,15 @@ system ECommercePlatform {
   }
 
   // Draw the fact that old and new flows run in parallel, as edges
+
   Customer -> LegacyMonolith "buy (old flow)"
   Customer -> OrderService   "buy (new flow)"
 }
 ```
+
+<!-- gen:guide-diagram:03-migration — DO NOT EDIT. Generated from the snippet above; run `pnpm gen:guide-diagrams`. -->
+![system view — 03-migration](diagrams/03-migration.svg)
+<!-- /gen:guide-diagram:03-migration -->
 
 The `domain-dispersal` (info) here is **not a bug but a migration status indicator.** The same `Order` domain living in two services = the carve-out is not yet complete. Once migration finishes and you delete `domain Order` from the old service, this warning disappears on its own. **The warning disappearing is itself the completion criterion** (full example: [`examples/migration/system.krs`](../../examples/migration/system.krs)).
 

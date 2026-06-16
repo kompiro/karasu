@@ -16,6 +16,7 @@
 
 論理モデル（`.krs`）とは別のファイル（`.krs.style`）にスタイルを書き、`.krs` の先頭で `@import` します。スタイルはファイル全体に適用される **グローバルスコープ** で、同じセレクタが複数定義されたら後勝ち（警告つき）です。
 
+<!-- render: system id=05-styled style -->
 ```krs
 // system.krs
 @import "theme.krs.style"
@@ -35,6 +36,10 @@ service[external]      { background-color: #f3f4f6; color: #374151; }  /* 複合
 @deprecated            { opacity: 0.6; badge-label: "非推奨"; }         /* アノテーション */
 edge[async]            { stroke-style: dashed; }                       /* エッジ+タグ */
 ```
+
+<!-- gen:guide-diagram:05-styled — DO NOT EDIT. Generated from the snippet above; run `pnpm gen:guide-diagrams`. -->
+![system view — 05-styled](diagrams/05-styled.ja.svg)
+<!-- /gen:guide-diagram:05-styled -->
 
 セレクタは **種別 / タグ / アノテーション / ID / 複合 / エッジ** が使え、CSS と同じく詳細度（種別 1 < タグ・アノテ 10 < ID 100）でカスケードします。論理モデルとスタイルが別ファイルに分かれているので、**同じモデルに複数のテーマ**（レビュー用・印刷用など）を当てられます。
 

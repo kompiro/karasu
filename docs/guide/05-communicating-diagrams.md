@@ -16,6 +16,7 @@ For the precise style spec, see [`docs/spec/style.md`](../spec/style.md); for le
 
 Write styles in a file (`.krs.style`) separate from the logical model (`.krs`), and `@import` it at the top of the `.krs`. Styles apply with **global scope** to the whole file; if the same selector is defined more than once, last wins (with a warning).
 
+<!-- render: system id=05-styled style -->
 ```krs
 // system.krs
 @import "theme.krs.style"
@@ -35,6 +36,11 @@ service[external]      { background-color: #f3f4f6; color: #374151; }  /* compou
 @deprecated            { opacity: 0.6; badge-label: "deprecated"; }     /* annotation */
 edge[async]            { stroke-style: dashed; }                       /* edge + tag */
 ```
+
+<!-- gen:guide-diagram:05-styled — DO NOT EDIT. Generated from the snippet above; run `pnpm gen:guide-diagrams`. -->
+![system view — 05-styled](diagrams/05-styled.svg)
+<!-- /gen:guide-diagram:05-styled -->
+
 
 Selectors can be **type / tag / annotation / ID / compound / edge**, and cascade by specificity just like CSS (type 1 < tag·annotation 10 < ID 100). Because the logical model and styles live in separate files, you can apply **multiple themes to the same model** (one for review, one for print, etc.).
 
