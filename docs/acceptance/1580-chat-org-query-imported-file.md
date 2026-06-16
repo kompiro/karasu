@@ -77,11 +77,54 @@ API key and a human reading the AI's answer, so they are recorded here rather th
 
 ## AC-3: Ownership still resolves when the open file is import-only
 
+This is the strongest form of AC-1: the open file's text carries **no** structure or
+ownership at all. Both the owned `service` and the `organization` block live in imported
+files, and `index.krs` only re-opens the system as an empty shell (spec S3 — same-id
+`system` blocks merge; see `examples/multi-file-system/`).
+
+**Fixture (three files):**
+
+`system.krs` — the owned service lives here, not in the entry file:
+```krs
+system ECPlatform {
+  service ECommerce { label "EC Site" }
+}
+```
+
+`org.krs` — the organization block:
+```krs
+organization TechCorp {
+  label "TechCorp Engineering"
+  team "ec-team" {
+    label "EC Team"
+    owns ECommerce
+    link "https://slack.example.com/ec" "EC Team Slack"
+    member alice {
+      label "Alice"
+      slack "@alice"
+    }
+  }
+}
+```
+
+`index.krs` — import-only + a minimal system reopen (no service, no org in the body):
+```krs
+import "system.krs"
+import "org.krs"
+
+system ECPlatform {
+  label "EC Platform"
+}
+```
+
 **Steps:**
-1. Reduce `index.krs` to only its `import "org.krs"` line plus a minimal system reopen
+1. Open **`index.krs`** (its body mentions neither `ECommerce`, `organization`, nor `owns`)
 2. Click **↺ New Session** in the Chat tab
-3. Ask: `ECommerce のオーナーは誰？`
+3. Ask: `ECommerce のオーナーは誰？` (or `Who owns ECommerce?`)
 
 **Expected:**
-- The AI still resolves the owner to **EC Team** from the merged model graph (the serialized
-  `organizations` section), not from the open file's text
+- The AI resolves the owner to **EC Team** (`ec-team`) from the merged model graph (the
+  serialized `organizations` section), even though the open file's text carries no ownership
+  cue at all
+- It does **not** answer "unknown" / "not in this file" — that would mean it is still reading
+  the file body rather than the serialized graph (regression)
