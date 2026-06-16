@@ -1,6 +1,6 @@
 # ADR Dependency Graph — Overview
 
-210 ADRs across 15 topics. Clusters group by `topic` frontmatter field. Edges crossing cluster borders are cross-topic dependencies.
+212 ADRs across 15 topics. Clusters group by `topic` frontmatter field. Edges crossing cluster borders are cross-topic dependencies.
 ```mermaid
 flowchart TD
   subgraph adr-tooling["adr-tooling"]
@@ -127,6 +127,7 @@ flowchart TD
     ADR_20260615_01["ADR-20260615-01<br/>`duplicate-owner-assignment` を info（fact-vs-sty..."]
     ADR_20260615_04["ADR-20260615-04<br/>ライフサイクルアノテーションに移行 intent パラメータを持たせる"]
     ADR_20260615_05["ADR-20260615-05<br/>team アノテーション対応と `@migration_target` による primary..."]
+    ADR_20260616_05["ADR-20260616-05<br/>user は system-scoped とする（identity ではなく relation..."]
   end
   subgraph edges["edges"]
     ADR_20260404_09["ADR-20260404-09<br/>クロスシステムサービス参照 — ドット記法（`SystemId.ServiceId`）"]
@@ -172,6 +173,7 @@ flowchart TD
     ADR_20260510_01["ADR-20260510-01<br/>Tidy Style コマンド — `.krs.style` に trivia 保持と軸グルー..."]
     ADR_20260511_03["ADR-20260511-03<br/>`.krs.style` 値レベル診断 — 構造化 ValueNode AST と prope..."]
     ADR_20260513_03["ADR-20260513-03<br/>system にネストした service / domain の Named Import は..."]
+    ADR_20260616_04["ADR-20260616-04<br/>規則と診断を分離し、診断カタログで完全性を担保する"]
   end
   subgraph project["project"]
     ADR_20260317_02["ADR-20260317-02<br/>プロジェクトとファイルシステム抽象化 — `FileSystemProvider` + OPFS"]
@@ -553,6 +555,8 @@ flowchart TD
   class ADR_20260616_01 accepted
   class ADR_20260616_02 accepted
   class ADR_20260616_03 accepted
+  class ADR_20260616_04 accepted
+  class ADR_20260616_05 accepted
 ```
 
 ## Per-topic detail
@@ -562,10 +566,10 @@ flowchart TD
 - [`build`](graph/build.md) — 36 ADRs
 - [`chat-ai`](graph/chat-ai.md) — 9 ADRs
 - [`cli`](graph/cli.md) — 11 ADRs
-- [`core-concepts`](graph/core-concepts.md) — 14 ADRs
+- [`core-concepts`](graph/core-concepts.md) — 15 ADRs
 - [`edges`](graph/edges.md) — 14 ADRs
 - [`navigation`](graph/navigation.md) — 9 ADRs
-- [`parser`](graph/parser.md) — 16 ADRs
+- [`parser`](graph/parser.md) — 17 ADRs
 - [`project`](graph/project.md) — 4 ADRs
 - [`renderer`](graph/renderer.md) — 24 ADRs
 - [`resolver`](graph/resolver.md) — 6 ADRs
