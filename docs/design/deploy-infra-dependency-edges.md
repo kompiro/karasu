@@ -4,7 +4,7 @@
 - **ステータス**: 検討中
 - **関連**:
   - 引き金 Issue: [#1658](https://github.com/kompiro/karasu/issues/1658)
-  - PR: #（このあと採番）
+  - PR: [#1661](https://github.com/kompiro/karasu/pull/1661)
   - 関連 ADR: [ADR-20260616-09](../adr/20260616-09-infra-physical-realize.md)（deploy unit が infra を realize / `store` kind）, [ADR-20260405-05](../adr/20260405-05-database-as-first-class-node.md)（infra を論理層の first-class node へ）
   - 関連 Issue: [#423](https://github.com/kompiro/karasu/issues/423)（deploy diagram restructure — 根本モデル探索）
   - 関連 TPL: [TPL-20260519-02](../test-perspectives/TPL-20260519-02-shared-vocabulary-dual-representation.md)（同一導出を2表現で持つときの drift）
