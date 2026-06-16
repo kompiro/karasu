@@ -255,11 +255,7 @@ export class Parser {
         default:
           // A top-level edge (`A -> B`) is likewise only valid inside a
           // `system`; surface the same dedicated diagnostic and consume it.
-          if (
-            (token.type === TokenType.Identifier || token.type === TokenType.StringLiteral) &&
-            (this.peekAt(1).type === TokenType.Arrow ||
-              this.peekAt(1).type === TokenType.DashedArrow)
-          ) {
+          if (this.isEdgeStart(token)) {
             this.error("top-level-declaration", { construct: "edge" });
             this.parseEdge();
             break;
@@ -505,10 +501,7 @@ export class Parser {
       }
 
       // Check for edge: Identifier/StringLiteral -> or -->
-      if (
-        (token.type === TokenType.Identifier || token.type === TokenType.StringLiteral) &&
-        (this.peekAt(1).type === TokenType.Arrow || this.peekAt(1).type === TokenType.DashedArrow)
-      ) {
+      if (this.isEdgeStart(token)) {
         const edge = this.parseEdge();
         if (parentId && edge.from !== parentId) {
           this.diagnostics.push({
@@ -803,6 +796,17 @@ export class Parser {
 
   private isLogicalKeyword(token: Token): boolean {
     return LOGICAL_KEYWORDS.has(token.value) && this.isNodeKeywordType(token.type);
+  }
+
+  /**
+   * True when `token` (the current token) begins an explicit edge: an
+   * identifier or string literal followed by `->` (sync) or `-->` (async).
+   */
+  private isEdgeStart(token: Token): boolean {
+    return (
+      (token.type === TokenType.Identifier || token.type === TokenType.StringLiteral) &&
+      (this.peekAt(1).type === TokenType.Arrow || this.peekAt(1).type === TokenType.DashedArrow)
+    );
   }
 
   private isNodeKeywordType(type: TokenType): boolean {
@@ -1207,10 +1211,7 @@ export class Parser {
       }
 
       // Edge
-      if (
-        (token.type === TokenType.Identifier || token.type === TokenType.StringLiteral) &&
-        (this.peekAt(1).type === TokenType.Arrow || this.peekAt(1).type === TokenType.DashedArrow)
-      ) {
+      if (this.isEdgeStart(token)) {
         edges.push(this.parseEdge());
         continue;
       }
@@ -1273,10 +1274,7 @@ export class Parser {
         continue;
       }
 
-      if (
-        (token.type === TokenType.Identifier || token.type === TokenType.StringLiteral) &&
-        (this.peekAt(1).type === TokenType.Arrow || this.peekAt(1).type === TokenType.DashedArrow)
-      ) {
+      if (this.isEdgeStart(token)) {
         edges.push(this.parseEdge());
         continue;
       }
