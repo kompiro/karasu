@@ -5,7 +5,10 @@
 
 import fs from "node:fs";
 import path from "node:path";
+import { GALLERY_PAGES } from "./lib/examples-manifest.ts";
+import { examplePageMarkdown, indexPageMarkdown } from "./lib/gallery-pages.ts";
 import { extractTitle } from "./lib/markdown.ts";
+import { renderDiagram, type RenderedDiagram } from "./lib/render-examples.ts";
 import { rewriteBody } from "./lib/rewrite.ts";
 import { contentPathOf, slugOf } from "./lib/site-map.ts";
 import { CONTENT_DIR, listSources, PKG_ROOT, publishedSet } from "./sources.ts";
@@ -37,7 +40,31 @@ function yamlQuote(value: string): string {
   return `"${value.replace(/\\/g, "\\\\").replace(/"/g, '\\"')}"`;
 }
 
-function main(): void {
+function writeContent(relPath: string, content: string): void {
+  const dest = path.join(CONTENT_DIR, relPath);
+  fs.mkdirSync(path.dirname(dest), { recursive: true });
+  fs.writeFileSync(dest, content);
+}
+
+/**
+ * Render every gallery example at build time and write its en/ja pages plus the
+ * index. examples/ stays the single source of truth; the SVGs are derived here
+ * (never committed). The same render is reused for both locales.
+ */
+async function generateGallery(): Promise<number> {
+  writeContent("examples.md", indexPageMarkdown("en"));
+  writeContent("ja/examples.md", indexPageMarkdown("ja"));
+
+  for (const page of GALLERY_PAGES) {
+    const rendered: RenderedDiagram[] = [];
+    for (const diagram of page.diagrams) rendered.push(await renderDiagram(diagram.entry));
+    writeContent(`examples/${page.slug}.md`, examplePageMarkdown(page, rendered, "en"));
+    writeContent(`ja/examples/${page.slug}.md`, examplePageMarkdown(page, rendered, "ja"));
+  }
+  return GALLERY_PAGES.length;
+}
+
+async function main(): Promise<void> {
   const sources = listSources();
   const published = publishedSet(sources);
 
@@ -48,17 +75,20 @@ function main(): void {
     const { title, body } = extractTitle(raw);
     const rewritten = rewriteBody(body, { srcDocsRel: docsRel, published });
     const frontmatter = `---\ntitle: ${yamlQuote(title ?? fallbackTitle(docsRel))}\n---\n\n`;
-
-    const outPath = path.join(CONTENT_DIR, contentPathOf(docsRel));
-    fs.mkdirSync(path.dirname(outPath), { recursive: true });
-    fs.writeFileSync(outPath, frontmatter + rewritten.replace(/\s*$/, "") + "\n");
+    writeContent(contentPathOf(docsRel), frontmatter + rewritten.replace(/\s*$/, "") + "\n");
   }
 
   copyHomePages();
+  const galleryCount = await generateGallery();
 
   process.stdout.write(
-    `✓ Synced ${sources.length} pages + ${HOME_PAGES.length} home pages from docs/ into the docs site.\n`,
+    `✓ Synced ${sources.length} pages + ${HOME_PAGES.length} home pages + ${galleryCount} example pages from docs/ into the docs site.\n`,
   );
 }
 
-main();
+main().catch((error: unknown) => {
+  process.stderr.write(
+    `${error instanceof Error ? (error.stack ?? error.message) : String(error)}\n`,
+  );
+  process.exitCode = 1;
+});
