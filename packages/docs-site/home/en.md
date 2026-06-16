@@ -9,10 +9,13 @@ hero:
     # deeper at ja/index.md, so home/ja.md needs one extra ../).
     file: ../../assets/karasu-logo.png
   actions:
+    - text: Try it in your browser
+      link: https://karasu.pages.dev/
+      icon: rocket
+      variant: primary
     - text: Read the guides
       link: guide/
       icon: right-arrow
-      variant: primary
     - text: Syntax reference
       link: spec/syntax/
       icon: open-book
