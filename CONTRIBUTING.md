@@ -117,7 +117,7 @@ pnpm run check:cycles # madge --circular over the production packages
 
 `packages/cli/` builds with `esbuild` into a self-contained ESM bundle
 (`packages/cli/dist/index.js`), so `node packages/cli/dist/index.js render
-examples/getting-started/index.krs` works as a smoke test after `pnpm build`.
+examples/ja/getting-started/index.krs` works as a smoke test after `pnpm build`.
 
 ## Branch and commit conventions
 

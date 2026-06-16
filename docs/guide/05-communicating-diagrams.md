@@ -58,7 +58,7 @@ Showing ownership with color makes the overview communicate "whose area is this"
 service[external] { color: #374151; background-color: #f3f4f6; }  /* external — neutral gray */
 ```
 
-Symmetric to recording ownership **as structure** with `owns` in [Boundary Design Guide §2](01-service-team-design.md#2-the-inverse-conway-maneuver--designing-teams-to-fit-the-architecture), color communicates the same ownership **as vision.** Full example: [`examples/payment-platform/`](../../examples/payment-platform/) (`@import`s `theme.krs.style`).
+Symmetric to recording ownership **as structure** with `owns` in [Boundary Design Guide §2](01-service-team-design.md#2-the-inverse-conway-maneuver--designing-teams-to-fit-the-architecture), color communicates the same ownership **as vision.** Full example: [`examples/ja/payment-platform/`](../../examples/ja/payment-platform/) (`@import`s `theme.krs.style`).
 
 ---
 
@@ -92,7 +92,7 @@ legend "Owner / State" {
 - **`ref <target> "description"`** resolves the color from the `.krs.style` cascade. The target can be a tag `[external]`, an annotation `@deprecated`, a node id `#Order`, or a type `service`.
 - Place `legend` at the top level. Add a **view scope** like `legend deploy` / `legend org` to show it only in that view. Exact-match scoping shows the right legend at each drill-down level (details in [`docs/spec/syntax.md`](../spec/syntax.md)).
 
-Legend labels are strings written directly by the author and are exempt from i18n. Sample: [`examples/feature-samples/legend.krs`](../../examples/feature-samples/legend.krs).
+Legend labels are strings written directly by the author and are exempt from i18n. Sample: [`examples/en/feature-samples/legend.krs`](../../examples/en/feature-samples/legend.krs).
 
 ---
 
@@ -159,4 +159,4 @@ draw.io (mxGraph XML) emits one page per view and per drill-down level. This bal
 - Legend spec: [`docs/spec/syntax.md`](../spec/syntax.md)
 - Tags and annotations: [`docs/spec/tags-annotations.md`](../spec/tags-annotations.md)
 - CI integration: [`docs/github-actions.md`](../github-actions.md)
-- Team-color example: [`examples/payment-platform/`](../../examples/payment-platform/)
+- Team-color example: [`examples/ja/payment-platform/`](../../examples/ja/payment-platform/)

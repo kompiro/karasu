@@ -41,7 +41,7 @@ alias karasu="node $(pwd)/packages/cli/dist/index.js"
 > ✅ Automated — `packages/cli/src/render.e2e.test.ts` › `default (no --view) writes a bundled all-views SVG to stdout`
 
 ```bash
-karasu render examples/ec-platform/01-system.krs
+karasu render examples/ja/ec-platform/01-system.krs
 ```
 
 - [ ] Output is a valid SVG (starts with `<svg`)
@@ -52,7 +52,7 @@ karasu render examples/ec-platform/01-system.krs
 > ✅ Automated — `packages/cli/src/render.e2e.test.ts` › `--output writes the SVG to disk and leaves stdout empty`
 
 ```bash
-karasu render examples/ec-platform/01-system.krs --output /tmp/ec-platform.svg
+karasu render examples/ja/ec-platform/01-system.krs --output /tmp/ec-platform.svg
 ```
 
 - [ ] File `/tmp/ec-platform.svg` is created
@@ -63,7 +63,7 @@ karasu render examples/ec-platform/01-system.krs --output /tmp/ec-platform.svg
 > ✅ Automated — `packages/cli/src/render.e2e.test.ts` › `--view system produces a single-view system SVG without tab markers`
 
 ```bash
-karasu render examples/ec-platform/01-system.krs --view system
+karasu render examples/ja/ec-platform/01-system.krs --view system
 ```
 
 - [ ] Output is SVG containing system diagram nodes (Frontend, Backend など)
@@ -74,7 +74,7 @@ karasu render examples/ec-platform/01-system.krs --view system
 > ✅ Automated — `packages/cli/src/render.e2e.test.ts` › `--view deploy produces a single-view deploy SVG`
 
 ```bash
-karasu render examples/ec-platform/06-deploy/deploy.krs --view deploy
+karasu render examples/ja/ec-platform/06-deploy/deploy.krs --view deploy
 ```
 
 - [ ] Output is a valid SVG showing deploy containers and units
@@ -84,7 +84,7 @@ karasu render examples/ec-platform/06-deploy/deploy.krs --view deploy
 > ✅ Automated — `packages/cli/src/render.e2e.test.ts` › `--view org produces a single-view org SVG`
 
 ```bash
-karasu render examples/org/system.krs --view org
+karasu render examples/ja/org/system.krs --view org
 ```
 
 - [ ] Output is a valid SVG showing org structure
@@ -94,7 +94,7 @@ karasu render examples/org/system.krs --view org
 > ✅ Automated — `packages/cli/src/render.e2e.test.ts` › `multi-file project resolves imports without error`
 
 ```bash
-karasu render examples/ec-platform/05-multifile/system.krs
+karasu render examples/ja/ec-platform/05-multifile/system.krs
 ```
 
 - [ ] Output SVG contains nodes from all imported files
@@ -103,7 +103,7 @@ karasu render examples/ec-platform/05-multifile/system.krs
 ### 7. Deploy diagram with all-views (default)
 
 ```bash
-karasu render examples/ec-platform/06-deploy/deploy.krs
+karasu render examples/ja/ec-platform/06-deploy/deploy.krs
 ```
 
 - [ ] SVG contains both system and deploy tabs
@@ -125,7 +125,7 @@ echo "exit code: $?"
 
 ```bash
 # requires: npm install -g svgo
-karasu render examples/ec-platform/01-system.krs | svgo - -o /tmp/ec-optimized.svg
+karasu render examples/ja/ec-platform/01-system.krs | svgo - -o /tmp/ec-optimized.svg
 ```
 
 - [ ] `/tmp/ec-optimized.svg` is created and is a smaller valid SVG

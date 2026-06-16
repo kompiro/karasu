@@ -25,7 +25,7 @@ type: product
 - [x] AT-D: hover dim は `:has()` を使った **CSS のみ** で実現される（React state も DOM mutation も伴わない）。SVG の re-inject や useSystemView の debounce と race しない
   > ✅ Automated — 実装が CSS のみで完結することは PR の差分（`packages/app/src/styles/app.css` のみ変更）で担保される
 
-- [ ] AT-E（manual）: 多数 edge の system view（例: `examples/ec-platform/`）を Preview で開き、edge を順番に hover して **focused edge が視認しやすく**、関係ない edge が背景に沈むことを目視確認する
+- [ ] AT-E（manual）: 多数 edge の system view（例: `examples/ja/ec-platform/`）を Preview で開き、edge を順番に hover して **focused edge が視認しやすく**、関係ない edge が背景に沈むことを目視確認する
   > 🧑 Manual — UX 体験の主観的評価。CI では検証できない
 
 - [ ] AT-F（manual）: 既存の右クリック → direction menu（#1129）と label-click → edge detail panel（ADR-20260422-03）が引き続き機能する。具体的には: (1) edge を右クリックして Direction ▸ Up/Down/Left/Right が選べる、(2) edge label をクリックして detail panel が開く

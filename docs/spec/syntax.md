@@ -845,7 +845,7 @@ Legend labels are author-supplied strings, treated the same way as `name` and `l
 
 ### Sample file
 
-`examples/feature-samples/legend.krs` exercises every primitive in one self-contained file (paste into the app to try).
+`examples/en/feature-samples/legend.krs` exercises every primitive in one self-contained file (paste into the app to try).
 
 ### What's not in v1
 

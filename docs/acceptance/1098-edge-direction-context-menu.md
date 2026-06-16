@@ -51,7 +51,7 @@ type: product
   > ✅ Automated — `packages/core/src/renderer/svg-renderer.test.ts` › `diff state attributes › marks edges with a canonical id as interactive and emits a wide transparent hitline`
 
 - [ ] AT-K（manual）: 実際の Preview で edge を右クリック → Direction ▸ Down を選び、`.krs.style` に rule が増えていることをエディタ側で確認する
-  > 🧑 Manual — `pnpm --filter @karasu-tools/app dev` で Preview を起動。`examples/getting-started/index.krs` を開き、いずれかの edge を右クリックして direction を選択 → `.krs.style` のテキストが更新されることを目視
+  > 🧑 Manual — `pnpm --filter @karasu-tools/app dev` で Preview を起動。`examples/ja/getting-started/index.krs` を開き、いずれかの edge を右クリックして direction を選択 → `.krs.style` のテキストが更新されることを目視
 
 - [ ] AT-L（manual）: edge の上にマウスを乗せるとカーソルが `context-menu` に変わり、stroke が太く・明るくなる（hover フィードバック）。1.5px の細い edge でも 14px 幅の透明 hitline で右クリックが容易に当たる
   > 🧑 Manual — Preview 上で edge を狙う動作を試し、ヒット範囲とカーソル変化を目視

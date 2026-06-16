@@ -13,8 +13,8 @@ type: product
   - `packages/core/src/view/view-extract.test.ts`
   - `packages/core/src/builtins/default-style.ts`
   - `docs/spec/tags-annotations.md`
-  - `examples/getting-started/index.krs`, `examples/getting-started-en/index.krs`
-  - `examples/feature-samples/resource-operations.krs`, `packages/core/src/builtins/examples.ts`
+  - `examples/ja/getting-started/index.krs`, `examples/en/getting-started/index.krs`
+  - `examples/en/feature-samples/resource-operations.krs`, `packages/core/src/builtins/examples.ts`
 - **関連 Design Doc**: [resource-edge-read-write-differentiation.md](../design/resource-edge-read-write-differentiation.md)
 - **関連 ADR**: [ADR-20260430-03](../adr/20260430-03-resource-crud-operations.md)（`operations` 構文）
 
@@ -32,13 +32,13 @@ type: product
 - [x] AT-D: `default-style.ts` に `edge[write] { stroke-width: 2; }` が含まれ、`edge[cyclic]` の `stroke-width: 2.5` よりも細く、デフォルト edge の `stroke-width: 1.5` よりも太い（width 階層 `read < write < cyclic`）
   > ✅ Automated — `packages/core/src/builtins/default-style.test.ts` の既存スタイル解決スモーク + `view-extract.test.ts` の AT-B/C で生成タグを検証
 
-- [x] AT-E: `examples/getting-started/index.krs` および `examples/getting-started-en/index.krs` が diagnostics ゼロで parse でき、bundled `examples.ts` の内容と一致している
+- [x] AT-E: `examples/ja/getting-started/index.krs` および `examples/en/getting-started/index.krs` が diagnostics ゼロで parse でき、bundled `examples.ts` の内容と一致している
   > ✅ Automated — `packages/core/src/builtins/examples.test.ts`
 
-- [x] AT-F: `examples/feature-samples/resource-operations.krs` が write / read / 多行 operations / `[external]` 併用 / 省略形 の各ケースを含み、diagnostics ゼロで parse できる
+- [x] AT-F: `examples/en/feature-samples/resource-operations.krs` が write / read / 多行 operations / `[external]` 併用 / 省略形 の各ケースを含み、diagnostics ゼロで parse できる
   > ✅ Automated — examples スモーク
 
-- [ ] AT-G（manual）: Preview で `examples/getting-started/index.krs` を開き、`PlaceOrder` の usecase view ドリルダウンで `OrderEvents.OrderPlaced`（write）と `InventoryAPI`（read）に向かう edge が太さ + ラベル "W" / "R" で区別できる
+- [ ] AT-G（manual）: Preview で `examples/ja/getting-started/index.krs` を開き、`PlaceOrder` の usecase view ドリルダウンで `OrderEvents.OrderPlaced`（write）と `InventoryAPI`（read）に向かう edge が太さ + ラベル "W" / "R" で区別できる
   > 🧑 Manual — Preview で目視確認。`R` / `W` のラベルが edge midpoint に出ること、write が read より太いこと、cyclic edge（仮にあれば）が write よりさらに太いこと（または別色）を確認
 
 - [ ] AT-H（manual）: Preview で `RegisterProduct`（write 中心）と `SearchProducts`（read 中心）の usecase view を比較し、レイアウト崩れ・ラベル重なりが許容範囲内であることを目視確認する

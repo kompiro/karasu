@@ -192,7 +192,7 @@ client MobileApp [mobile] {
 
 The access path (`user → client → service`) draws the **map of a product's entrances**, and the service hierarchy (`service → domain → usecase`) draws the **internal structure** of each service. karasu's design holds both within the same `system` and lets you switch which lineage you view via drill-down.
 
-For complete examples, see [`examples/ec-platform/02.5-clients.krs`](../../examples/ec-platform/02.5-clients.krs) (client + handles + delivers + resource) and [`examples/client-mcp/`](../../examples/client-mcp/), which includes MCP / AI agents.
+For complete examples, see [`examples/ja/ec-platform/02.5-clients.krs`](../../examples/ja/ec-platform/02.5-clients.krs) (client + handles + delivers + resource) and [`examples/en/client-mcp/`](../../examples/en/client-mcp/), which includes MCP / AI agents.
 
 ---
 
@@ -201,4 +201,4 @@ For complete examples, see [`examples/ec-platform/02.5-clients.krs`](../../examp
 - Related guides: [Boundary Design](01-service-team-design.md) / [Onboarding](02-onboarding.md) / [Evolution](03-evolution.md) / [Communicating Diagrams](05-communicating-diagrams.md)
 - Precise syntax (user / client / handles / delivers): [`docs/spec/syntax.md`](../spec/syntax.md)
 - Why client is its own kind: [ADR-20260428-06](../adr/20260428-06-client-mcp-modeling.md)
-- Client examples: [`examples/ec-platform/02.5-clients.krs`](../../examples/ec-platform/02.5-clients.krs), [`examples/client-mcp/`](../../examples/client-mcp/)
+- Client examples: [`examples/ja/ec-platform/02.5-clients.krs`](../../examples/ja/ec-platform/02.5-clients.krs), [`examples/en/client-mcp/`](../../examples/en/client-mcp/)

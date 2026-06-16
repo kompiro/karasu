@@ -36,7 +36,7 @@ type: product
   > ✅ Automated — `packages/app/src/lib/append-style-rule.test.ts` › `appendEdgeDirectionRule › creates the file with the rule when it does not exist`
 
 - [ ] AT-H（manual）: brand-new な `.krs`（`@import` 無し）を `pnpm --filter @karasu-tools/app dev` の Preview で開き、edge を右クリック → Direction ▸ Down を選ぶ。`.krs` の先頭に `@import "<basename>.krs.style"` が挿入され、隣に `.krs.style` ファイルが作られて 1 ルール書かれていることを確認する
-  > 🧑 Manual — Preview で `examples/getting-started/index.krs` の `.krs.style` を一旦消した状態を作り、右クリック→Direction を試す
+  > 🧑 Manual — Preview で `examples/ja/getting-started/index.krs` の `.krs.style` を一旦消した状態を作り、右クリック→Direction を試す
 
 - [ ] AT-I（manual）: 同じ操作をもう一度行うと、`@import` 行は重複せず、`.krs.style` には新しい rule だけが追記される（idempotent な bootstrap）
   > 🧑 Manual — 上記 AT-H と同じ Preview で再度 Direction を選び、`.krs` の頭が変わらないこと・`.krs.style` だけが伸びることを目視

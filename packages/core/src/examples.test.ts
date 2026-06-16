@@ -13,7 +13,7 @@ import { resolve, dirname } from "path";
 import { fileURLToPath } from "url";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const dir = resolve(__dirname, "../../../examples/feature-samples");
+const dir = resolve(__dirname, "../../../examples/en/feature-samples");
 
 const files = readdirSync(dir).filter((f: string) => f.endsWith(".krs"));
 
@@ -26,11 +26,11 @@ describe("feature-samples: all files parse without errors", () => {
   });
 });
 
-// Drift guard (Issue #1344): FEATURE_SAMPLES_PROJECT bundles examples/feature-samples/
+// Drift guard (Issue #1344): FEATURE_SAMPLES_PROJECT bundles examples/en/feature-samples/
 // for ProjectMode. The bundled `content` strings must stay byte-identical to the
 // on-disk files. The `.claude/rules/examples-sync.md` mapping and `/update-examples`
 // skill keep them in sync; this test fails if a hand edit lands on only one side.
-describe("feature-samples: bundled examples.ts content matches examples/feature-samples/", () => {
+describe("feature-samples: bundled examples.ts content matches examples/en/feature-samples/", () => {
   it("registers index.krs plus every .krs file in the directory, and nothing else", () => {
     const bundledPaths = FEATURE_SAMPLES_PROJECT.files.map((f) => f.path).sort();
     const expectedPaths = ["index.krs", ...files.filter((f) => f !== "index.krs")].sort();
@@ -49,8 +49,8 @@ describe("feature-samples: bundled examples.ts content matches examples/feature-
 // FEATURE_SAMPLES_PROJECT above. ProjectMode seeds this on first launch
 // (`useProjectInitialization`) so the App's preview matches what users see
 // when they open the directory on disk.
-describe("multi-file-system: bundled examples.ts content matches examples/multi-file-system/", () => {
-  const mfsDir = resolve(__dirname, "../../../examples/multi-file-system");
+describe("multi-file-system: bundled examples.ts content matches examples/ja/multi-file-system/", () => {
+  const mfsDir = resolve(__dirname, "../../../examples/ja/multi-file-system");
   const mfsFiles = readdirSync(mfsDir).filter((f: string) => f.endsWith(".krs"));
 
   it("registers every .krs file in the directory, and nothing else", () => {
@@ -103,7 +103,7 @@ describe("getting-started: column hint affects rendered x positions (#969)", () 
   }
 
   it("places Payment / Inventory to the right of Notification", () => {
-    const exampleDir = resolve(__dirname, "../../../examples/getting-started-en");
+    const exampleDir = resolve(__dirname, "../../../examples/en/getting-started");
     let krs = readFileSync(resolve(exampleDir, "index.krs"), "utf8");
     const styleSrc = readFileSync(resolve(exampleDir, "default.krs.style"), "utf8");
     // Strip `@import` since compile() takes the style source directly.
@@ -119,14 +119,17 @@ describe("getting-started: column hint affects rendered x positions (#969)", () 
 });
 
 // Drift guard (#1548): the reference window's per-view Samples tab bundles
-// examples/deploy-only/ and examples/org-only/ via the reference payload, so
+// examples/ja/deploy-only/ and examples/ja/org-only/ via the reference payload, so
 // the bundled content must stay byte-equal to the files on disk.
 describe("deploy-only / org-only: bundled content matches examples/", () => {
   it.each([
     ["deploy-only", DEPLOY_ONLY_PROJECT],
     ["org-only", ORG_ONLY_PROJECT],
   ])("%s index.krs is byte-identical to the bundled entry", (name, project) => {
-    const onDisk = readFileSync(resolve(__dirname, `../../../examples/${name}/index.krs`), "utf8");
+    const onDisk = readFileSync(
+      resolve(__dirname, `../../../examples/ja/${name}/index.krs`),
+      "utf8",
+    );
     const entry = project.files.find((f) => f.path === "index.krs");
     expect(entry).toBeDefined();
     expect(entry?.content).toBe(onDisk);

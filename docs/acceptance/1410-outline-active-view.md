@@ -34,7 +34,7 @@
 
 ## 手動確認チェックリスト
 
-`examples/deploy-org/index.krs` を `index.krs` として Preview UI（Project モード）
+`examples/ja/deploy-org/index.krs` を `index.krs` として Preview UI（Project モード）
 で開き、サイドバーの Outline ビューを表示して確認する。
 
 - [ ] system ビュー表示中、Outline が system AST（system/service/domain …）を描画する

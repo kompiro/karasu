@@ -28,7 +28,7 @@ type: product
 
 ### 1. BFF サンプルが描画される
 
-`examples/feature-samples/bff-delivers.krs` を ProjectMode で開き、system 図に以下が表示されることを目視確認する。
+`examples/en/feature-samples/bff-delivers.krs` を ProjectMode で開き、system 図に以下が表示されることを目視確認する。
 
 1. `Customer`（user）/ `NextServer`（service）/ `WebApp`（client）/ `OrderService`（service）の 4 ノードが見える
 2. `Customer → WebApp` / `WebApp → NextServer` / `NextServer → OrderService` の通信エッジが描かれる

@@ -80,7 +80,7 @@ API key and a human reading the AI's answer, so they are recorded here rather th
 This is the strongest form of AC-1: the open file's text carries **no** structure or
 ownership at all. Both the owned `service` and the `organization` block live in imported
 files, and `index.krs` only re-opens the system as an empty shell (spec S3 — same-id
-`system` blocks merge; see `examples/multi-file-system/`).
+`system` blocks merge; see `examples/ja/multi-file-system/`).
 
 **Fixture (three files):**
 

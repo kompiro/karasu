@@ -290,7 +290,7 @@ Practicing the inverse Conway maneuver is the work of "finding, for the service 
 
 ### 2.4 Nested teams for org hierarchy
 
-`team`s can nest, letting you place child teams (squads, on-call rotations, etc.) under a parent. Use `member` for individuals and `slack` / `github` for contact info. See [`examples/org/system.krs`](../../examples/org/system.krs) for a complete example.
+`team`s can nest, letting you place child teams (squads, on-call rotations, etc.) under a parent. Use `member` for individuals and `slack` / `github` for contact info. See [`examples/ja/org/system.krs`](../../examples/ja/org/system.krs) for a complete example.
 
 ---
 
@@ -384,7 +384,7 @@ A setup where `index.krs` whole-file imports both `discovery.krs` and `fulfillme
 
 ### 3.4 Shared infra: declared once in a dedicated file
 
-A `database` / `queue` / `storage` shared by multiple slices is canonically declared once in a dedicated infra file, with each consuming slice pulling it in via `import "infra.krs"`. This lets each slice resolve its datastore references even standalone, and removes ambiguity about "where shared infra lives." For a complete working example, see [`examples/multi-file-system/`](../../examples/multi-file-system/) (`infra.krs` plus the reader / editor / moderation slices) — it demonstrates all of §3 end-to-end.
+A `database` / `queue` / `storage` shared by multiple slices is canonically declared once in a dedicated infra file, with each consuming slice pulling it in via `import "infra.krs"`. This lets each slice resolve its datastore references even standalone, and removes ambiguity about "where shared infra lives." For a complete working example, see [`examples/ja/multi-file-system/`](../../examples/ja/multi-file-system/) (`infra.krs` plus the reader / editor / moderation slices) — it demonstrates all of §3 end-to-end.
 
 ---
 
@@ -444,6 +444,6 @@ Read `info`-level diagnostics as **"karasu noticed something — read it if it m
 - Style (`.krs.style`): [`docs/spec/style.md`](../spec/style.md)
 - Tags and annotations: [`docs/spec/tags-annotations.md`](../spec/tags-annotations.md)
 - Design philosophy (three faces, scoped glance, inverse-Conway motivation): [`docs/concepts.md`](../concepts.md)
-- Working multi-file example: [`examples/multi-file-system/`](../../examples/multi-file-system/)
-- Complete org-chart example: [`examples/org/system.krs`](../../examples/org/system.krs)
-- Step-by-step tutorial: [`examples/ec-platform/`](../../examples/ec-platform/) (start at `01-system.krs`)
+- Working multi-file example: [`examples/ja/multi-file-system/`](../../examples/ja/multi-file-system/)
+- Complete org-chart example: [`examples/ja/org/system.krs`](../../examples/ja/org/system.krs)
+- Step-by-step tutorial: [`examples/ja/ec-platform/`](../../examples/ja/ec-platform/) (start at `01-system.krs`)

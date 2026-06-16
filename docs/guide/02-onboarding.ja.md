@@ -346,7 +346,7 @@ organization Shop {
 - **`member` + `slack` / `github`** で連絡先を残せます。オンボーディング地図としては、まさにこれが欲しい情報です。
 - どの team も所有していない service は組織ビューで **オーナー不在** として浮かびます。「このサービス、誰が見てるんだ？」という、入社直後によくある疑問が可視化されます。
 
-詳細は関連ガイドの [サービス/チーム境界設計ガイド §2](01-service-team-design.ja.md#2-逆コンウェイ戦略--アーキテクチャに合わせてチームを設計する) と、完全例の [`examples/org/system.krs`](../../examples/org/system.krs) を参照してください。
+詳細は関連ガイドの [サービス/チーム境界設計ガイド §2](01-service-team-design.ja.md#2-逆コンウェイ戦略--アーキテクチャに合わせてチームを設計する) と、完全例の [`examples/ja/org/system.krs`](../../examples/ja/org/system.krs) を参照してください。
 
 ---
 
@@ -371,7 +371,7 @@ $ karasu render index.krs --format drawio --output arch.drawio
 
 ### ファイル分割
 
-システムが大きく、チームごとに読解範囲を分けるなら、1 つの `system` を複数ファイルに分割できます（whole-file import + system 再オープン）。各自が自分の読解範囲のファイルを持ち、orchestrator の `index.krs` で 1 枚に統合します。詳しくは [サービス/チーム境界設計ガイド §3](01-service-team-design.ja.md#3-チームごとに運用するためのファイル分割) と [`examples/multi-file-system/`](../../examples/multi-file-system/) を参照してください。
+システムが大きく、チームごとに読解範囲を分けるなら、1 つの `system` を複数ファイルに分割できます（whole-file import + system 再オープン）。各自が自分の読解範囲のファイルを持ち、orchestrator の `index.krs` で 1 枚に統合します。詳しくは [サービス/チーム境界設計ガイド §3](01-service-team-design.ja.md#3-チームごとに運用するためのファイル分割) と [`examples/ja/multi-file-system/`](../../examples/ja/multi-file-system/) を参照してください。
 
 ---
 
@@ -398,6 +398,6 @@ $ karasu render index.krs --format drawio --output arch.drawio
 - ガイド全体の地図: [`docs/guide/README.md`](README.md)
 - 構文の正確な仕様: [`docs/spec/syntax.ja.md`](../spec/syntax.ja.md)
 - 設計思想（三面構造・scoped glance・translate の非対称性）: [`docs/concepts.ja.md`](../concepts.ja.md)
-- 段階的チュートリアル: [`examples/ec-platform/`](../../examples/ec-platform/)（`01-system.krs` から順に）
-- クロスシステム / ghost の例: [`examples/ec-platform/07-cross-system/`](../../examples/ec-platform/07-cross-system/)
-- 動く複数ファイル例: [`examples/multi-file-system/`](../../examples/multi-file-system/)
+- 段階的チュートリアル: [`examples/ja/ec-platform/`](../../examples/ja/ec-platform/)（`01-system.krs` から順に）
+- クロスシステム / ghost の例: [`examples/ja/ec-platform/07-cross-system/`](../../examples/ja/ec-platform/07-cross-system/)
+- 動く複数ファイル例: [`examples/ja/multi-file-system/`](../../examples/ja/multi-file-system/)

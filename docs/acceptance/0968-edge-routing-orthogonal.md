@@ -26,7 +26,7 @@
   > ✅ Automated — `packages/core/src/` の全 snapshot/unit テストが変更なしで通過することで担保（waypoints が空のときは従来の `<line>` レンダリングを維持）
 
 - [ ] EC Platform の例を `pnpm dev` のプレビューで開き、`Admin → ECSite` のエッジが目視で MobileApp カードを横断していないこと、エッジ全体が L 字に折れて見やすくなっていることを確認する
-  > 🧑 Manual — Preview URL（`https://feat-edge-routing-impl.karasu.pages.dev`）または `pnpm dev` でローカル起動して `examples/ec-platform/02.5-clients.krs` を読み込み、視覚的に確認する。
+  > 🧑 Manual — Preview URL（`https://feat-edge-routing-impl.karasu.pages.dev`）または `pnpm dev` でローカル起動して `examples/ja/ec-platform/02.5-clients.krs` を読み込み、視覚的に確認する。
 
 ## スコープ外（follow-up）
 

@@ -12,7 +12,7 @@ type: product
   - `packages/core/src/renderer/edge-routing.ts`
   - `packages/core/src/renderer/layout.ts`、`packages/core/src/renderer/layout.test.ts`
   - `packages/core/src/renderer/layout-types.ts`
-  - `examples/feature-samples/parallel-edges.krs`
+  - `examples/en/feature-samples/parallel-edges.krs`
 
 ## 受け入れ条件
 
@@ -40,14 +40,14 @@ type: product
 - [x] AT-H: バンドル内エッジの SVG ラベル位置は `t = (bundleIndex + 1) / (bundleSize + 1)` でエッジに沿ってスライドする（ユーザが `label-position` を設定していない場合のみ）
   > ✅ Automated — `packages/core/src/renderer/edge-routing.ts` で `style.labelPosition === 0.5` かつ `bundleSize >= 2` のときのみ slide を適用する分岐。AT-A 〜 AT-D の bundle 検出と AT-1184 の `label-position` 上書き挙動の組み合わせでカバー
 
-- [ ] AT-I（manual）: `examples/feature-samples/parallel-edges.krs` を Preview で開き、
+- [ ] AT-I（manual）: `examples/en/feature-samples/parallel-edges.krs` を Preview で開き、
   - `Client -> API` の `create` / `update` ラベルが両方読める（重なっていない）
   - `API -> C` の sync 線（実線）と async 線（破線）が両方視認できる
   - すべての矢印頭が見える
   > 🧑 Manual — `pnpm --filter @karasu-tools/app dev` で Preview を起動し、左ペインで `parallel-edges.krs` の内容を貼り付けて確認する
 
-- [ ] AT-J（manual / regression）: 並列エッジを含まない既存の図（`examples/getting-started/index.krs` 等）の SVG が、本変更後も視覚的に変わらない
-  > 🧑 Manual — Preview で `examples/getting-started/index.krs` を開き、merge 前後の screenshot 差分を目視で確認
+- [ ] AT-J（manual / regression）: 並列エッジを含まない既存の図（`examples/ja/getting-started/index.krs` 等）の SVG が、本変更後も視覚的に変わらない
+  > 🧑 Manual — Preview で `examples/ja/getting-started/index.krs` を開き、merge 前後の screenshot 差分を目視で確認
 
 ## 補足
 

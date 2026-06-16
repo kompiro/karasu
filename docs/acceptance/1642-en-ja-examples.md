@@ -27,14 +27,22 @@ docs gallery の en ページが日本語ラベルの図を出していた問題
 
 - [x] `localized()` ページは en エントリ `examples/en/<name>` / ja エントリ `examples/<name>` を持ち、`githubDir` も per-locale
   > ✅ Automated — `packages/docs-site/scripts/lib/gallery-pages.test.ts` › `single-example page embeds the view as a data-URI img with a source fence`（en ページの GitHub リンクが `examples/en/payment-platform` を指す）
-- [ ] `/examples/payment-platform/` 等の en ページが**英語ラベルの図**を、`/ja/examples/...` が**日本語ラベルの図**を表示する（目視）
+- [ ] `/examples/ja/payment-platform/` 等の en ページが**英語ラベルの図**を、`/ja/examples/...` が**日本語ラベルの図**を表示する（目視）
 
 ### AC-3: 既に英語の example は重複させない
 
-- [x] `client-mcp`（元から英語）は `single()` の共有エントリのままで、`examples/en/client-mcp` を作らない
-  > ✅ Automated — `examples-manifest.ts` 上 `client-mcp` のみ `single(`（他 9 件は `localized(`）。`examples/en/` に `client-mcp` は存在しない
+- [x] `client-mcp`（元から英語）は `single()` の共有エントリで `examples/en/client-mcp` に置く（ja 版は作らない）
+  > ✅ Automated — `examples-manifest.ts` 上 `client-mcp` のみ `single(`（他 9 件は `localized(`）
+
+### AC-4: 完全対称化（Phase B — `examples/<lang>/<name>/`）
+
+- [x] 全 example が `examples/ja/<name>/`（日本語著者）/ `examples/en/<name>/`（英語著者）へ移行し、root 直下は `en/` `ja/` `github-actions/` `README.md` のみ
+  > ✅ Automated — `packages/core/src/examples.test.ts` の byte 一致ガードが移行後パス（`examples/en/feature-samples` / `examples/ja/multi-file-system` / `examples/ja/{deploy-only,org-only}`）で通る
+- [x] bundled example の移動後も `examples.ts` 同梱内容と on-disk が byte 一致し、ADR の `assumptions:` file パスも実在を維持する
+  > ✅ Automated — `pnpm --filter @karasu-tools/core run test`（examples.test）+ `pnpm exec adr check-assumptions`（移動した 4 件の assumption パスを更新済み）
+- 注: `docs/adr/*` の決定本文は不変（immutability 規約）。移動で stale になる本文中のパス参照は意図的に残し、`assumptions:` の live check のみ更新した。
 
 ## 検証方法
 
-- 自動: `pnpm --filter @karasu-tools/docs-site run test`（render smoke が ja/en 両エントリを描画、PR CI に乗る）。
+- 自動: `pnpm --filter @karasu-tools/docs-site run test`（render smoke が ja/en 両エントリを描画）/ `pnpm --filter @karasu-tools/core run test`（byte 一致）/ `pnpm exec adr check-assumptions`。すべて PR CI に乗る。
 - 手動: `pnpm --filter @karasu-tools/docs-site run build && … run preview` で `/examples/` の各シナリオを en/ja 目視（AC-2）。

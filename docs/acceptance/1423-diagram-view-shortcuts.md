@@ -35,7 +35,7 @@
 
 ## 手動確認チェックリスト
 
-`examples/getting-started/index.krs` を Preview UI（Project モード）で開いて確認する。
+`examples/ja/getting-started/index.krs` を Preview UI（Project モード）で開いて確認する。
 
 - [ ] エディタ・サイドバー以外（プレビュー等）にフォーカスがある状態で `Ctrl/Cmd+1〜4` を押すと、それぞれ System / Deploy / Org / CRUD タブに切り替わる
 - [ ] Monaco エディタにフォーカスを置いた状態で `Ctrl/Cmd+1〜4` を押してもビューは切り替わらず、エディタの入力／キーバインドを妨げない

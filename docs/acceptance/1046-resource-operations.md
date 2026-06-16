@@ -15,8 +15,8 @@ type: product
   - `packages/core/src/spec/operations.ts`
   - `packages/app/src/i18n/{types,en,ja,format-diagnostic}.ts`
   - `docs/spec/syntax.md`, `docs/spec/syntax.ja.md`
-  - `examples/feature-samples/resource-operations.krs`
-  - `examples/ec-platform/03-domains.krs`, `packages/core/src/builtins/examples.ts`
+  - `examples/en/feature-samples/resource-operations.krs`
+  - `examples/ja/ec-platform/03-domains.krs`, `packages/core/src/builtins/examples.ts`
 - **関連 Design Doc**: [resource-crud-operations.md](../design/resource-crud-operations.md)（マージ後 ADR に昇格予定）
 
 ## 受け入れ条件
@@ -42,13 +42,13 @@ type: product
 - [x] AT-G: `[external]` タグ付き resource と `operations` を併用しても `unassigned-resource` warning は出ない（既存挙動を壊さない）
   > ✅ Automated — `packages/core/src/parser/parser.test.ts` › `accepts CRUD verbs on a resource inside a usecase`（[external] 併用ケースを使用）
 
-- [x] AT-H: `examples/feature-samples/resource-operations.krs` と `examples/ec-platform/03-domains.krs` が diagnostics ゼロで parse できる
+- [x] AT-H: `examples/en/feature-samples/resource-operations.krs` と `examples/ja/ec-platform/03-domains.krs` が diagnostics ゼロで parse できる
   > ✅ Automated — `packages/core/src/builtins/examples.test.ts`（既存の examples スモーク）
 
 - [ ] AT-I（manual）: `docs/spec/syntax.md` および `syntax.ja.md` に `operations` の構文・認識セット・省略時セマンティクスが追加されている
   > 🧑 Manual — 本 PR の spec 差分をレビューして、recognized table と omission 説明が ja/en で一致しているかを目視確認
 
-- [ ] AT-J（manual）: Preview で `examples/ec-platform/03-domains.krs` を開いたとき、`OrderTable` 等を選んだ `NodeDetailPanel` の Properties セクションに `operations` が表示される（または、表示されないなら follow-up issue を起票する）
+- [ ] AT-J（manual）: Preview で `examples/ja/ec-platform/03-domains.krs` を開いたとき、`OrderTable` 等を選んだ `NodeDetailPanel` の Properties セクションに `operations` が表示される（または、表示されないなら follow-up issue を起票する）
   > 🧑 Manual — 現状 NodeDetailPanel が `properties.operations` をどう表示するかを観察し、表示が無ければ v2 の renderer 拡張で扱う旨を確認する（design doc の "renderer は無変更" 方針との整合）
 
 ## 補足

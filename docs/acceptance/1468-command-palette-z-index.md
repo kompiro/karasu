@@ -21,7 +21,7 @@ shadcn の portal primitive（`Dialog` / `DropdownMenu` / `Tooltip`）が一律 
 
 ## 手動確認チェックリスト
 
-`examples/getting-started/index.krs` を Preview UI（Project モード）で開いて確認する。
+`examples/ja/getting-started/index.krs` を Preview UI（Project モード）で開いて確認する。
 
 - [ ] 開いている overlay（`Snapshot` / `Paste compare` ダイアログ等）の上に `Ctrl/Cmd+Shift+P` のコマンドパレットが完全に前面表示される
 - [ ] ツールバーボタンの tooltip、エッジ右クリックの context menu が引き続き正しい重なり順で表示される

@@ -24,7 +24,7 @@ type: product
   > ✅ Automated — `packages/core/src/index.test.ts` › `compile — edge direction hint reaches the layered layout > \`direction: down\` pushes the source above the target under the forced kind-based layout`
 
 - [ ] AT-D（manual）: 実際の Preview で service → client などの back-edge を右クリック → Direction ▸ Down を選び、service が client の上に移動して描画されることを確認する
-  > 🧑 Manual — `pnpm --filter @karasu-tools/app dev` で Preview を起動。`examples/getting-started/index.krs` または同等の system view で操作し、`.krs.style` に rule が増え、配置が変わることを目視
+  > 🧑 Manual — `pnpm --filter @karasu-tools/app dev` で Preview を起動。`examples/ja/getting-started/index.krs` または同等の system view で操作し、`.krs.style` に rule が増え、配置が変わることを目視
 
 ## 補足
 
