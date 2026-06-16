@@ -1960,6 +1960,48 @@ domain Payment {
   });
 });
 
+describe("top-level-declaration diagnostic (#1624)", () => {
+  it("errors on a top-level user with code top-level-declaration", () => {
+    const result = Parser.parse(`
+user Customer [human] {
+  description "A general user"
+}
+    `);
+    const errs = result.diagnostics.filter((d) => d.code === "top-level-declaration");
+    expect(errs).toHaveLength(1);
+    expect(errs[0].severity).toBe("error");
+    expect(errs[0].params).toEqual({ construct: "user" });
+    // The construct is consumed, so no generic unexpected-token-root follows.
+    expect(result.diagnostics.some((d) => d.code === "unexpected-token-root")).toBe(false);
+  });
+
+  it("errors on a top-level sync edge with code top-level-declaration", () => {
+    const result = Parser.parse(`A -> B "delegates"`);
+    const errs = result.diagnostics.filter((d) => d.code === "top-level-declaration");
+    expect(errs).toHaveLength(1);
+    expect(errs[0].params).toEqual({ construct: "edge" });
+  });
+
+  it("errors on a top-level async edge with code top-level-declaration", () => {
+    const result = Parser.parse(`A --> B`);
+    const errs = result.diagnostics.filter((d) => d.code === "top-level-declaration");
+    expect(errs).toHaveLength(1);
+    expect(errs[0].params).toEqual({ construct: "edge" });
+  });
+
+  it("does not fire for a user or edge inside a system block", () => {
+    const result = Parser.parse(`
+system S {
+  user Customer [human]
+  service A
+  service B
+  A -> B
+}
+    `);
+    expect(result.diagnostics.some((d) => d.code === "top-level-declaration")).toBe(false);
+  });
+});
+
 describe("cross-system edge references", () => {
   it("parses fully qualified edge target (System.Service) at system level", () => {
     const result = Parser.parse(`

@@ -21,6 +21,8 @@ export function renderDiagnostic(d: Diagnostic, t: TranslateFn): string {
       return t("diagnostic.tokenTypeMismatch.message", d.params);
     case "unexpected-token-root":
       return t("diagnostic.unexpectedTokenRoot.message", d.params);
+    case "top-level-declaration":
+      return t("diagnostic.topLevelDeclaration.message", d.params);
     case "unexpected-token-in-block": {
       const { blockKind, tokenType, value } = d.params;
       if (blockKind === "sub-resource") {

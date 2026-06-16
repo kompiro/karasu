@@ -60,6 +60,7 @@ cycle.
 | `service-outside-system` | warning | A `service` is declared outside any `system`. |
 | `infra-not-in-context` | error | An infra block (`database` / `queue` / `storage`) is not a direct child of `system`. |
 | `legend-not-top-level` | error | A `legend` block is declared somewhere other than the top level. |
+| `top-level-declaration` | error | A `user` or an edge is declared at the top level instead of inside a `system` block. |
 | `system-property-conflict` | warning | A `system` `label` / `description` conflicts between merged imports. |
 | `cyclic-dependency` | warning | Sync edges (`->`) form a dependency cycle. |
 

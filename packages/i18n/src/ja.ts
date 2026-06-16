@@ -261,6 +261,8 @@ export const ja: Partial<Translations> = {
     `${expected} を期待しましたが ${got} ("${value}") が見つかりました`,
   "diagnostic.unexpectedTokenRoot.message": ({ tokenType, value }) =>
     `予期しないトークン: ${tokenType} ("${value}")`,
+  "diagnostic.topLevelDeclaration.message": ({ construct }) =>
+    `トップレベルの ${construct} は許可されていません — system ブロックの内側で宣言してください`,
   "diagnostic.unexpectedTokenInBlock.subResource": ({ tokenType, value }) =>
     `sub-resource ブロック内で予期しないトークン: ${tokenType} ("${value}")。sub-resource ノード（table, queue-item, bucket）は子宣言を含められません。`,
   "diagnostic.unexpectedTokenInBlock.generic": ({ tokenType, value }) =>

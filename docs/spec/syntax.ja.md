@@ -335,6 +335,25 @@ system ECPlatform {
 }
 ```
 
+#### トップレベルへの配置
+
+`user` 宣言とエッジは `system` ブロックの **内側** にのみ書ける — `user` という
+アクターも関係（エッジ）も、ある system の境界に属するものだからである。どちらも
+ファイルのトップレベルに書くと parse error（`top-level-declaration`）になり、
+パーサはそれを報告して該当構文をスキップする。（一方で `domain` とインフラ
+ブロック `database` / `queue` / `storage` は *トップレベルにも置ける* — 各節を
+参照。）この規則は[診断と規則のリファレンス](diagnostics.md)にカタログ化されている。
+
+トップレベルのインフラとの非対称は意図的である: 共有インフラは多数の system から
+参照される 1 つの **モノ**（top-level の単一 identity）だが、`user` は特定の
+system との **アクターの関係** をモデル化し、その `role` はその system 内で定義
+される。したがって同一人物が 2 つの system に関わる場合は 2 つの `user` ノードに
+なり、共有 id による規約でのみ結びつく。system をまたぐ共有 actor / persona は
+post-v1.0 の拡張余地として意図的に残しており、ここではスコープ外とする
+（[#1639](https://github.com/kompiro/karasu/issues/1639) 参照）。
+
+> Related TPLs: [TPL-20260610-02](../test-perspectives/TPL-20260610-02-spec-promised-diagnostics-implemented.md) — spec が約束する配置規則は、汎用 parse error に落とさず専用の診断コードを持つこと。
+
 ### service ブロック
 
 service の内部を domain に分解して記述する。

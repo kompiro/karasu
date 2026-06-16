@@ -285,6 +285,7 @@ export type Translations = {
     tokenType: string;
     value: string;
   }) => string;
+  "diagnostic.topLevelDeclaration.message": (params: { construct: "user" | "edge" }) => string;
   "diagnostic.unexpectedTokenInBlock.subResource": (params: {
     tokenType: string;
     value: string;
