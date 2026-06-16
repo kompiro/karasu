@@ -513,6 +513,14 @@ Use cases:
 
 Edges can be written inside `system`, `service`, and `domain` blocks.
 
+**Edge origin scope.** An edge declared inside a `service` or `domain` block
+originates from that block. The implicit form `-> <to_id>` takes the enclosing
+block id as its source, and an explicit `<from_id> -> <to_id>` must name that
+same enclosing id; naming any other source raises an `edge-source-mismatch`
+error (for both `->` and `-->`). Edges inside a `system` block may use any
+declared node as their source. This rule and its diagnostic are catalogued in
+the [diagnostics & rules reference](diagnostics.md).
+
 #### Optional edge id (`#<id>`)
 
 A trailing `#<id>` gives an edge a stable, author-defined identifier that

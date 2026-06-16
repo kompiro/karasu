@@ -317,6 +317,22 @@ system Test {
     expect(JSON.stringify(errors[0].params)).toContain("Contract");
   });
 
+  it("errors on async (-->) explicit edge source mismatch in service/domain block (#1623)", () => {
+    const result = Parser.parse(`
+system Test {
+  service S {
+    domain Contract {
+      OtherDomain --> Billing
+    }
+  }
+}
+    `);
+    const errors = result.diagnostics.filter((d) => d.severity === "error");
+    expect(errors.some((d) => d.code === "edge-source-mismatch")).toBe(true);
+    expect(JSON.stringify(errors[0].params)).toContain("OtherDomain");
+    expect(JSON.stringify(errors[0].params)).toContain("Contract");
+  });
+
   it("allows explicit edge with matching source in service/domain block", () => {
     const result = Parser.parse(`
 system Test {

@@ -507,6 +507,14 @@ system ECPlatform {
 
 エッジは `system`・`service`・`domain` ブロックの内部に記述できる。
 
+**エッジの起点スコープ（edge origin scope）。** `service` または `domain` ブロック
+内に宣言したエッジは、そのブロックを起点とする。implicit な `-> <to_id>` は所属
+ブロックの id を起点に取り、explicit な `<from_id> -> <to_id>` はその同じ所属
+ブロック id を指さなければならない。別の起点を指すと `edge-source-mismatch`
+エラーになる（`->`・`-->` の両方）。`system` ブロック内のエッジは任意の宣言済み
+ノードを起点にできる。この規則と診断は
+[診断と規則のリファレンス](diagnostics.md)にカタログ化されている。
+
 #### 任意のエッジ id（`#<id>`）
 
 末尾に `#<id>` を付けると、エッジに著者定義の安定した識別子を与えられる。`.krs.style` のリゾルバが `edge#<id>` セレクタで指せるようになる。
