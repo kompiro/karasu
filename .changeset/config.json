@@ -9,7 +9,6 @@
   "updateInternalDependencies": "patch",
   "ignore": [
     "@karasu-tools/app",
-    "@karasu-tools/core",
     "@karasu-tools/lsp",
     "@karasu-tools/e2e",
     "@karasu-tools/vscode-e2e",

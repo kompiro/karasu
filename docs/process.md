@@ -246,9 +246,9 @@ npm への公開は **changesets** で管理する。設計の経緯は `docs/de
 
 ### 対象パッケージ
 
-現状 npm に公開しているのは `karasu`（CLI、`packages/cli`）のみ。CLI は esbuild で `@karasu-tools/core` を内包した単一 ESM バンドルとしてビルドする（`packages/cli` の `build` スクリプト）。`@karasu-tools/app` / `@karasu-tools/core` / `@karasu-tools/lsp` / `@karasu-tools/e2e` / `@karasu-tools/vscode-e2e` と `karasu-vscode` は `.changeset/config.json` の `ignore` に入っており公開対象外（VS Code 拡張の配布は Marketplace 経由で別管理 — Issue #1316）。
+公開対象は `karasu`（CLI、`packages/cli`）と `@karasu-tools/core`（ライブラリ）。CLI は esbuild で `@karasu-tools/core` を内包した単一 ESM バンドルとしてビルドする（`packages/cli` の `build` スクリプト。公開 core への依存には切り替えない）。`@karasu-tools/app` / `@karasu-tools/lsp` / `@karasu-tools/e2e` / `@karasu-tools/vscode-e2e` と `karasu-vscode` は `.changeset/config.json` の `ignore` に入っており公開対象外（VS Code 拡張の配布は Marketplace 経由で別管理 — Issue #1316）。
 
-> `@karasu-tools/core` を「v0.x の TS API」として独立公開する話（#1302）は別タスク。`exports` エントリの整理・API surface のレビュー・互換ポリシー策定が必要なため、本フローには含めていない。
+> **`@karasu-tools/core` は v0.x（TS API、無保証）**。`.krs` / `.krs.style` 言語は v1.0 だが、TS API は minor で破壊的変更を許す（[ADR-20260616-06](adr/20260616-06-krs-spec-v1-freeze.md)）。`exports` は公開先に `dist`（types + ESM）を指し、`development` 条件で repo 内は TS ソースを解決する（root tsconfig `customConditions: ["development"]`）ため `pnpm typecheck` は build 非依存のまま。**実 publish と `@karasu-tools` npm org 予約は公開ローンチ（#1317）ゲート**で、本フローでは「公開可能な状態を保つ」までを担う（#1363）。
 
 ### 変更を加えるとき
 
