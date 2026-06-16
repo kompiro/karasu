@@ -1,5 +1,5 @@
 ---
-id: ADR-20260616-07
+id: ADR-20260616-08
 title: "example を examples/<lang>/<name>/ に揃え、docs gallery を en/ja 完全対応にする（アプリは最小シード）"
 status: accepted
 date: 2026-06-16
@@ -18,7 +18,7 @@ assumptions:
   - "grep: packages/docs-site/scripts/lib/examples-manifest.ts :: localized"
 ---
 
-# ADR-20260616-07: example を examples/<lang>/<name>/ に揃え、docs gallery を en/ja 完全対応にする（アプリは最小シード）
+# ADR-20260616-08: example を examples/<lang>/<name>/ に揃え、docs gallery を en/ja 完全対応にする（アプリは最小シード）
 
 - **日付**: 2026-06-16
 - **ステータス**: 決定済み
