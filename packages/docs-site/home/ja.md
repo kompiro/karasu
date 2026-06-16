@@ -3,6 +3,11 @@ title: karasu
 template: splash
 hero:
   tagline: 論理構造と物理構造を分離して表現する、テキストベースのアーキテクチャモデリングツール。C4 Model に触発されつつ独自の語彙を持つ。
+  image:
+    alt: karasu
+    # Relative to the synced location src/content/docs/ja/index.md (one level
+    # deeper than the en home, hence the extra ../ vs home/en.md).
+    file: ../../../assets/karasu-logo.png
   actions:
     - text: ガイドを読む
       link: guide/
