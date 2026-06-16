@@ -436,4 +436,3 @@ DesignDoc が proactive TPL を引用したら、実装 PR で次をやる:
 | [TPL-20260615-02](TPL-20260615-02-diagnostic-absence-assertion-scope-severity.md) | 診断の不在を assert するテストは severity でスコープする（info register は open set） | testing | #1608 |
 | [TPL-20260616-01](TPL-20260616-01-docs-pipeline-link-anchor-resolution.md) | docs/ を別系統へ取り込むパイプラインは repo-relative リンクと明示アンカーの未解決をビルド時に fail させる | build | ADR-20260616-03 |
 | [TPL-20260616-02](TPL-20260616-02-diagnostics-catalog-completeness.md) | 全診断コードは規則カタログに 1 件の項目を持つ（規則 ↔ 診断の双方向完全性） | parser | #1623 / docs/spec/diagnostics.md |
-| [TPL-20260616-03](TPL-20260616-03-surface-token-shared-distinct-roles.md) | 表層トークンを共有するが役割が異なる語彙は、互いに silent に coerce されず別の役割を保つことを検証する | parser | docs/spec/tags-annotations.md, #1626 |

@@ -30,9 +30,9 @@
 
 > `client` 用の 7 つの form-factor タグは karasu が **認識** している。将来的に kind 固有のアイコン（#823 Phase 2）やレイアウトヒント（Phase 6）に反応する予定。リスト外のタグも `client` に付与可能で、その場合は通常のユーザー定義タグとして扱われる。
 
-> **shape タグと infra ブロックキーワードの違い。** `[table]` / `[queue]` / `[storage]` は `usecase` 内の `resource` に付ける **shape ヒント**であり、そのノードの描画（cylinder / queue / cloud）を変えるだけで、それ自体はノードもエッジも作らない。同名の infra ブロック **キーワード** `table` / `queue` / `storage`（および `database`）とは **別物**で、後者は system 図上で service が依存する **構造ノード（共有ストア）を宣言**する（[syntax.md](./syntax.md) の *Infra layer* 節を参照）。両者は位置も役割も異なるため衝突しない: キーワードは **宣言の先頭**に立ってノードの *kind* を決め、タグは `[...]` の **接尾辞**で *shape* だけを決める。**共有データストアを first-class ノードとして** モデリングしたいときは infra キーワードを、**usecase ローカルの `resource`** をストア風の形で描きたいだけのときは shape タグを使う。
+> **shape タグは infra ブロックキーワードをミラーする — 別物ではなく対応関係にある。** infra ブロックの **キーワード**（`database` 配下の `table`、`queue` 配下の `queue-item`、`storage` 配下の `bucket`）は、system 図上の **共有ストアノード（実体）を宣言**する。usecase の `resource` は、その usecase が読み書きする対象への **操作参照**であり、`resource` が dot 記法で infra leaf を参照する（`resource OrderDB.OrderTable`）と、karasu は **参照先 infra sub-resource の kind から対応する shape タグを推論**する（`table` → `[table]`/cylinder, `queue-item` → `[queue]`, `bucket` → `[storage]`）。つまり参照は、指し示すストアと同じ形で描画される。だから shape タグ `[table]` / `[queue]` / `[storage]` は infra sub-resource kind を**意図的にミラー**している。参照する infra leaf が無い `resource` には、純粋な shape ヒントとして手書きで付けることもできる。`[api]`（hexagon）だけは infra 側に対応 kind が無く、API 系 resource 用の手書き専用 shape。同じ語が 2 つの位置に現れても **衝突しない**: キーワードは **宣言の先頭**でノードの *kind* を決め、`[...]` タグは `resource` への **接尾辞**で *shape* だけを決める — 両者は resource 参照で結ばれた相補的なレイヤーである。[syntax.md](./syntax.md) の *Infra layer* 節も参照。
 >
-> Related TPLs: [TPL-20260616-03](../test-perspectives/TPL-20260616-03-surface-token-shared-distinct-roles.md) — 表層トークンを共有しつつ役割が異なる語彙は、互いに silent に coerce されず別の役割を保つことを検証する。
+> Related TPLs: [TPL-20260519-02](../test-perspectives/TPL-20260519-02-shared-vocabulary-dual-representation.md) — infra sub-kind → shape タグの推論（`INFRA_SUB_KIND_TO_TAG`）と shape タグ表は、同じ語彙の 2 つの表現であり整合し続けなければならない。
 
 ### 記述例
 
