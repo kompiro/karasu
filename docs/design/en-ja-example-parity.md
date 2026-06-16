@@ -29,11 +29,21 @@ en/ja のユーザーがそれぞれ自言語の図を見られるよう、**シ
 
 ## 制約・前提
 
-- **構造は `examples/<lang>/<name>/`**（決定済み）。英語版は `examples/en/<name>/`。`getting-started-en` も `examples/en/getting-started` へ移行して統一する。
-- **ja 版は当面 `examples/<name>/`（root）のまま**。ja を `examples/ja/` へ動かすと、`examples-sync` マッピング表・全 docs リンク・アプリ同梱パス・テストに広範な ripple が出るため、本 PR では対象外（非対称を許容。完全対称化は将来の別作業）。
+- **構造は `examples/<lang>/<name>/`（ja / en とも、完全対称）**。ja は `examples/<name>/`（root）から `examples/ja/<name>/` へ移行、en は `examples/en/<name>/`。`getting-started-en` → `examples/en/getting-started`、`getting-started` → `examples/ja/getting-started`。
+- **language-neutral な集合は lang セグメントを付けず据え置く**: `feature-samples`（英語ラベルの構文デモ + byte 一致ガード）は `examples/feature-samples/` のまま、`ec-platform`（段階チュートリアル）も既存運用を尊重（移行対象は「ロケール対訳を持つ／持たせる example」に限る。詳細は実装の指針）。
 - en/ja は **構造を同一**に保つ（ペアの drift を避ける）。各 example が ja/en の対になり、編集時に両方の同期が要る（`getting-started` ペアと同じ保守コストの拡大）。
-- 新規 `.krs` は diagnostics-clean。`examples/feature-samples/` には触れない（既に英語 + byte 一致ガード）。
-- docs gallery は #1640 の per-locale 機構をそのまま使う（manifest の en `entry`/`githubDir` を `examples/en/...` に向ける）。
+- 新規 `.krs` は diagnostics-clean。`examples/feature-samples/` の中身には触れない（既に英語 + byte 一致ガード）。
+- docs gallery は #1640 の per-locale 機構をそのまま使う（manifest の ja/en `entry`/`githubDir` を `examples/ja|en/...` に向ける）。
+
+### 影響範囲（ja を動かす ripple — 大きい）
+
+ja を `examples/ja/` へ動かすのは repo 横断のリネームで、以下すべての張り替えが要る。**レビュー容易性のため「ja 移行」は独立したコミット（理想的には独立 PR）に分ける**ことを推奨:
+
+- `.claude/rules/examples-sync.md` のマッピング表（全パス）
+- `packages/core/src/builtins/examples.ts` の path / コメント、`packages/core/src/examples.test.ts` の参照パス
+- `docs/guide/**`・`docs/spec/**`・`docs/concepts*`・`README*` 内の `../../examples/<name>/...` リンク多数
+- docs-site gallery manifest（#1640）と `githubDir`
+- アプリ同梱・シードのパス参照
 
 ## 検討した選択肢
 
@@ -65,22 +75,18 @@ client-mcp / multi-file-system のシードも en 化。網羅的だが、シー
 
 ## 現時点の方針
 
-- **docs gallery**: シナリオ 10 例すべてを `examples/en/<name>/` で英語化し、manifest の en エントリを向ける（gallery は en/ja 完全対応）。
-- **アプリ**: **案1** を採用。`deploy-only` / `org-only` に `_EN` を足し `samplesByView` をロケール切替（`getting-started` は対応済み）。シードプロジェクト（client-mcp / multi-file-system）の en 化は当面見送る（未解決の問い参照）。
-- `getting-started-en` → `examples/en/getting-started` へ移行し、`examples-sync.md` マッピング表・`examples.ts`・docs manifest・参照を更新。
-- `examples.ts` への追加・移動は `examples-sync` ルールに従い byte 一致を保つ（`/update-examples` または同等手順）。
+- **構造**: `examples/<lang>/<name>/`（ja / en 完全対称）。`feature-samples` 等の language-neutral 集合は据え置き。
+- **docs gallery**: シナリオ 10 例を ja/en 両方で `examples/ja|en/<name>/` 化し、manifest の ja/en エントリを向ける（gallery は en/ja 完全対応）。
+- **アプリ**: Samples タブの locale 切替を完成（`deploy-only` / `org-only` に `_EN`、`samplesByView` を locale 切替）し、**シードプロジェクト（client-mcp / multi-file-system）も `_EN` を用意して locale 切替**（getting-started は対応済み）。
+- `examples.ts` への追加・移動・パス変更は `examples-sync` ルールに従い byte 一致を保つ（`/update-examples` または同等手順）。
 
-### 実装の指針
+### 実装の指針（フェーズ分け推奨）
 
-1. `git mv examples/getting-started-en examples/en/getting-started`。参照（manifest / examples.ts コメント・パス / docs リンク）を grep して張り替え。
-2. `examples/en/<name>/` を 10 シナリオ分作成（ja から構造コピー + ラベル英訳）。multi-file は dir 内で import 完結。
-3. docs-site manifest: 各シナリオページの en `entry`/`githubDir` を `examples/en/<name>` に。
-4. `examples.ts`: `DEPLOY_ONLY_PROJECT_EN` / `ORG_ONLY_PROJECT_EN` を追加し `reference.ts` の `samplesByView` で `locale` 切替。`examples-sync.md` マッピング表に追記。
-5. テスト: gallery render smoke（per-locale で `examples/en` を拾う）/ `examples.test.ts` の byte 一致 / `reference.ts` の Samples タブ locale テスト（`ReferenceContent.test.tsx` を en deploy/org に拡張）。
-6. AT: `docs/acceptance/1642-en-ja-examples.md`。
-7. ADR 昇格: 実装完了後に昇格、本 Design Doc は同 PR で削除。
+レビュー容易性のため、できれば以下を分けてコミット／PR する:
 
-## 未解決の問い
-
-- **シードプロジェクト（client-mcp / multi-file-system）の en 化**: ProjectMode の起動シードまで en/ja 切替するか。当面は見送り（案1）でよいか、それとも揃えるか。
-- **ja の `examples/ja/` への移行**: 完全対称（lang/name を ja にも適用）を将来やるか。今回は ripple 回避で root 据え置き。
+- **Phase A — en 版の追加 + 反映**（ripple 小）:
+  1. `examples/en/<name>/` を 10 シナリオ分作成（構造コピー + ラベル英訳）。`getting-started-en` → `examples/en/getting-started`。multi-file は dir 内で import 完結。
+  2. docs-site manifest の en `entry`/`githubDir` を `examples/en/...` に。
+  3. `examples.ts`: `DEPLOY_ONLY_PROJECT_EN` / `ORG_ONLY_PROJECT_EN` と、シードの `CLIENT_MCP_PROJECT_EN` / `MULTI_FILE_SYSTEM_PROJECT_EN` を追加。`reference.ts` の `samplesByView` と `useProjectInitialization` を locale 切替。`examples-sync.md` に追記。
+- **Phase B — ja を `examples/ja/` へ移行**（ripple 大、上記「影響範囲」の全張り替え）。`getting-started` → `examples/ja/getting-started`。docs リンク・manifest・examples.ts・テストを一括更新。
+- **共通**: テスト（gallery render smoke は per-locale で `examples/ja|en` を拾う / `examples.test.ts` byte 一致 / `ReferenceContent.test.tsx` を en deploy/org・seed に拡張）、AT `docs/acceptance/1642-en-ja-examples.md`、実装完了後に ADR 昇格（本 Design Doc は同 PR で削除）。
