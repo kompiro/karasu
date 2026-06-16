@@ -35,9 +35,11 @@ function main(): void {
   }
 
   const failures: Failure[] = [];
-  const hasAnchor = (route: string, fragment: string): boolean => {
-    if (fragment === "") return true;
-    const id = decodeURIComponent(fragment.replace(/^#/, ""));
+  // `suffix` is the `?query#fragment` tail; only the fragment (if any) is an anchor.
+  const hasAnchor = (route: string, suffix: string): boolean => {
+    const hashIdx = suffix.indexOf("#");
+    if (hashIdx < 0) return true;
+    const id = decodeURIComponent(suffix.slice(hashIdx + 1));
     return anchorsByRoute.get(route)?.has(id) ?? false;
   };
 
@@ -52,19 +54,19 @@ function main(): void {
             target,
             reason: `route /${resolved.route} is not a published page`,
           });
-        } else if (!hasAnchor(resolved.route, resolved.fragment)) {
+        } else if (!hasAnchor(resolved.route, resolved.suffix)) {
           failures.push({
             docsRel,
             target,
-            reason: `anchor ${resolved.fragment} not found on /${resolved.route}`,
+            reason: `anchor ${resolved.suffix} not found on /${resolved.route}`,
           });
         }
       } else if (resolved.kind === "in-page") {
-        if (!hasAnchor(selfRoute, resolved.fragment)) {
+        if (!hasAnchor(selfRoute, resolved.suffix)) {
           failures.push({
             docsRel,
             target,
-            reason: `in-page anchor ${resolved.fragment} not found`,
+            reason: `in-page anchor ${resolved.suffix} not found`,
           });
         }
       }

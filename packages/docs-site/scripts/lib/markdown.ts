@@ -3,23 +3,7 @@
 // (and therefore Starlight) uses, so validation matches the rendered page exactly.
 
 import GithubSlugger from "github-slugger";
-
-const FENCE_RE = /^(\s*)(`{3,}|~{3,})/;
-
-/** Run a callback over body lines outside fenced code blocks. */
-function forEachContentLine(body: string, fn: (line: string) => void): void {
-  let fence: string | null = null;
-  for (const line of body.split("\n")) {
-    const m = line.match(FENCE_RE);
-    if (m) {
-      const marker = m[2][0];
-      if (fence === null) fence = marker;
-      else if (fence === marker) fence = null;
-      continue;
-    }
-    if (fence === null) fn(line);
-  }
-}
+import { eachLine } from "./fences.ts";
 
 /**
  * Strip the first level-1 heading from the body and return it as the page title.
@@ -59,14 +43,16 @@ export function collectAnchors(body: string, title: string | null): Set<string> 
   const slugger = new GithubSlugger();
   if (title) slugger.slug(headingText(title));
 
-  forEachContentLine(body, (line) => {
+  for (const { line, isProse } of eachLine(body)) {
+    if (!isProse) continue;
+
     const heading = line.match(/^#{1,6}\s+(.+?)\s*$/);
     if (heading) anchors.add(slugger.slug(headingText(heading[1])));
 
     for (const m of line.matchAll(/<a\s+[^>]*?(?:id|name)="([^"]+)"/g)) {
       anchors.add(m[1]);
     }
-  });
+  }
 
   return anchors;
 }

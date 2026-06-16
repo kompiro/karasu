@@ -87,6 +87,13 @@ describe("rewriteLinkTarget", () => {
     expect(rewriteLinkTarget("#top", ctx)).toBe("#top");
     expect(rewriteLinkTarget("mailto:a@b.com", ctx)).toBe("mailto:a@b.com");
   });
+
+  it("keeps a query string out of the resolved path", () => {
+    expect(rewriteLinkTarget("../spec/style.md?v=1#sec", ctx)).toBe("../../spec/style/?v=1#sec");
+    expect(rewriteLinkTarget("../github-actions.md?v=1", ctx)).toBe(
+      "https://github.com/kompiro/karasu/blob/main/docs/github-actions.md?v=1",
+    );
+  });
 });
 
 describe("rewriteBody", () => {
@@ -106,6 +113,25 @@ describe("rewriteBody", () => {
     expect(out).toContain("[style](../../spec/style/)");
     expect(out).toContain("// not a [link](../spec/style.md)"); // untouched inside fence
     expect(out).toContain("[concepts](../../concepts/#goals-and-non-goals)");
+  });
+
+  it("does not let a shorter inner fence close a longer code block", () => {
+    const body = [
+      "````krs",
+      "```",
+      "a [link](../spec/style.md) still inside the block",
+      "````",
+      "",
+      "Out: [style](../spec/style.md).",
+    ].join("\n");
+    const out = rewriteBody(body, ctx);
+    expect(out).toContain("a [link](../spec/style.md) still inside the block"); // untouched
+    expect(out).toContain("Out: [style](../../spec/style/).");
+  });
+
+  it("rewrites angle-bracketed reference-style definitions", () => {
+    const out = rewriteBody('[ref]: <../spec/style.md> "Style"', ctx);
+    expect(out).toBe('[ref]: ../../spec/style/ "Style"');
   });
 });
 
