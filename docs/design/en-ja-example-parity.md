@@ -1,7 +1,7 @@
 # en/ja で example を揃える（docs gallery + アプリの Samples）
 
 - **Issue**: [#1642](https://github.com/kompiro/karasu/issues/1642)
-- **PR**: #（作成後に記入）
+- **PR**: [#1644](https://github.com/kompiro/karasu/pull/1644)
 - **日付**: 2026-06-16
 - **ステータス**: 検討中
 
