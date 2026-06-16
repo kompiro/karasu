@@ -1,0 +1,70 @@
+// migration/system.krs
+// Demonstrates: @deprecated, @migration_target, @experimental annotations
+// Also intentionally triggers a domain drift WARNING:
+//   domain "Order" appears in both LegacyMonolith and OrderService within the same system.
+//
+// This pattern models a system mid-migration where the same business domain
+// is temporarily owned by two services. The warning signals that migration is incomplete.
+
+system ECommercePlatform {
+  label "EC Platform (migrating)"
+
+  user Customer [human] {
+    label "Buyer"
+    role "General user who purchases products"
+  }
+
+  // @deprecated: scheduled for decommission after migration completes
+  service LegacyMonolith @deprecated {
+    label "Legacy Monolith"
+    description "The old monolithic application. Scheduled for decommission in 2026 Q3"
+
+    domain Order {
+      label "Orders (old)"
+      usecase PlaceOrder { label "Accept an order" }
+      usecase QueryOrder { label "Look up order status" }
+    }
+
+    domain Catalog {
+      label "Product Catalog (old)"
+      usecase SearchProducts { label "Search products" }
+    }
+  }
+
+  // @migration_target: the new service that will take over from LegacyMonolith
+  service OrderService @migration_target {
+    label "Order Service"
+    description "Microservice carved out of the orders domain"
+
+    // Same domain id "Order" as in LegacyMonolith → triggers domain drift warning
+    domain Order {
+      label "Orders (new)"
+      usecase PlaceOrder { label "Accept an order" }
+      usecase CancelOrder { label "Cancel an order" }
+      usecase QueryOrder { label "Look up order status" }
+    }
+  }
+
+  // @experimental: new service, API not yet stable
+  service CatalogService @experimental {
+    label "Catalog Service"
+    description "Microservice carved out of the product catalog. API may change"
+
+    domain Catalog {
+      label "Product Catalog (new)"
+      usecase SearchProducts { label "Search products" }
+      usecase UpdateProduct { label "Update product details" }
+    }
+  }
+
+  service Payment {
+    label "Payment"
+    description "Credit card payment processing"
+  }
+
+  Customer        ->  LegacyMonolith  "Purchase (old flow)"
+  Customer        ->  OrderService    "Purchase (new flow)"
+  LegacyMonolith  ->  Payment         "Process payments"
+  OrderService    ->  Payment         "Process payments"
+  OrderService    ->  CatalogService  "Fetch product details"
+}

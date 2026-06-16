@@ -70,6 +70,24 @@ const single = (
   diagrams: [{ entry: `examples/${dir}/${entry}` }],
 });
 
+// A Japanese-authored example with a matched English variant under examples/en/.
+// en renders the English labels, ja the original (#1642 Phase A).
+const localized = (
+  slug: string,
+  group: GroupKey,
+  dir: string,
+  entry: string,
+  title: LocalizedString,
+  blurb: LocalizedString,
+): GalleryPage => ({
+  slug,
+  group,
+  title,
+  blurb,
+  githubDir: { en: `examples/en/${dir}`, ja: `examples/${dir}` },
+  diagrams: [{ entry: { en: `examples/en/${dir}/${entry}`, ja: `examples/${dir}/${entry}` } }],
+});
+
 export const GALLERY_PAGES: readonly GalleryPage[] = [
   {
     // Getting started — the EC platform full drill-down. en and ja are matched
@@ -91,7 +109,7 @@ export const GALLERY_PAGES: readonly GalleryPage[] = [
       },
     ],
   },
-  single(
+  localized(
     "multi-file-system",
     "getting-started",
     "multi-file-system",
@@ -102,7 +120,7 @@ export const GALLERY_PAGES: readonly GalleryPage[] = [
       ja: "1 つの `system` ブロックを whole-file `import` で複数ファイルに分割。deploy / organization も伝播。",
     },
   ),
-  single(
+  localized(
     "payment-platform",
     "scenarios",
     "payment-platform",
@@ -113,7 +131,7 @@ export const GALLERY_PAGES: readonly GalleryPage[] = [
       ja: "外部プロバイダや複数サービスにまたがる決済システム。",
     },
   ),
-  single(
+  localized(
     "hr-tool",
     "scenarios",
     "hr-tool",
@@ -121,7 +139,7 @@ export const GALLERY_PAGES: readonly GalleryPage[] = [
     { en: "HR tool", ja: "HR ツール" },
     { en: "A human-resources tool modeled end to end.", ja: "人事ツールを一通りモデル化した例。" },
   ),
-  single(
+  localized(
     "migration",
     "scenarios",
     "migration",
@@ -132,7 +150,7 @@ export const GALLERY_PAGES: readonly GalleryPage[] = [
       ja: "`@deprecated` / `@migration_target` で新旧ドメインを並置。",
     },
   ),
-  single(
+  localized(
     "deploy",
     "scenarios",
     "deploy",
@@ -143,7 +161,7 @@ export const GALLERY_PAGES: readonly GalleryPage[] = [
       ja: "`realizes` でデプロイ単位を論理サービスに対応づけ。",
     },
   ),
-  single(
+  localized(
     "org",
     "scenarios",
     "org",
@@ -154,7 +172,7 @@ export const GALLERY_PAGES: readonly GalleryPage[] = [
       ja: "サービスを所有するチーム、メンバー、連絡先リンク。",
     },
   ),
-  single(
+  localized(
     "deploy-org",
     "scenarios",
     "deploy-org",
@@ -165,7 +183,7 @@ export const GALLERY_PAGES: readonly GalleryPage[] = [
       ja: "物理（deploy）と組織の両ビューを持つプロジェクト。",
     },
   ),
-  single(
+  localized(
     "deploy-only",
     "scenarios",
     "deploy-only",
@@ -176,7 +194,7 @@ export const GALLERY_PAGES: readonly GalleryPage[] = [
       ja: "`deploy` ブロックだけを持つファイル。",
     },
   ),
-  single(
+  localized(
     "org-only",
     "scenarios",
     "org-only",

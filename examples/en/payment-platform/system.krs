@@ -1,0 +1,155 @@
+// payment-platform/system.krs
+// Demonstrates: multiple [external] services, complex service topology, deploy diagram
+// A payment processing platform integrating with card networks and banks.
+
+@import "theme.krs.style"
+
+system PaymentPlatform {
+  label "Payment Platform"
+
+  user Merchant {
+    label "Merchant"
+    role "Online shops and physical stores using the payment API"
+  }
+
+  user PlatformAdmin [human] {
+    label "Platform Admin"
+    role "Operator handling merchant management and payment monitoring"
+  }
+
+  service Gateway {
+    label "Payment Gateway"
+    description "Accepts payment requests from merchants and controls the processing flow"
+
+    domain Authorization {
+      label "Authorization"
+      usecase Authorize { label "Authorize a payment" }
+      usecase Capture { label "Capture funds" }
+      usecase Void { label "Void an authorization" }
+    }
+
+    domain Refund {
+      label "Refund"
+      usecase RequestRefund { label "Request a refund" }
+      usecase ProcessRefund { label "Process a refund" }
+    }
+  }
+
+  service RiskEngine {
+    label "Risk Engine"
+    description "Fraud detection and transaction scoring"
+
+    domain FraudDetection {
+      label "Fraud Detection"
+      usecase ScoreTransaction { label "Score a transaction" }
+      usecase BlockSuspicious { label "Block suspicious transactions" }
+    }
+  }
+
+  service Ledger {
+    label "Ledger Service"
+    description "Records sales, fees, and settlements"
+
+    domain Settlement {
+      label "Settlement"
+      usecase RecordTransaction { label "Record a transaction" }
+      usecase CalculateFee { label "Calculate fees" }
+      usecase SettleToMerchant { label "Pay out to the merchant" }
+    }
+  }
+
+  // External card networks
+  service VisaNet [external] {
+    label "Visa Net"
+    description "Visa card payment network"
+  }
+
+  service MasterNet [external] {
+    label "Mastercard Network"
+    description "Mastercard card payment network"
+  }
+
+  // External banking partner
+  service BankAPI [external] {
+    label "Bank API"
+    description "Partner bank handling payouts to merchants"
+  }
+
+  // External compliance service
+  service ThreeDSecure [external] {
+    label "3-D Secure"
+    description "3-D Secure authentication service for cardholder verification"
+  }
+
+  Merchant       ->  Gateway       "Send a payment request"
+  PlatformAdmin  ->  Gateway       "Monitor payment status"
+  PlatformAdmin  ->  Ledger        "Review settlement reports"
+  Gateway        ->  RiskEngine    "Retrieve a fraud score"
+  Gateway        ->  ThreeDSecure  "Verify the cardholder"
+  Gateway        ->  VisaNet       "Process Visa payments"
+  Gateway        ->  MasterNet     "Process Mastercard payments"
+  Gateway       --> Ledger         "Record transactions"
+  Ledger        --> BankAPI        "Pay out to merchants"
+}
+
+deploy Production {
+  label "Production (AWS)"
+
+  // Gateway as an executable JAR (Spring Boot)
+  jar "gateway-service" {
+    label "Payment Gateway"
+    runtime "Java 21 / Spring Boot 3"
+    realizes Gateway
+  }
+
+  // Risk engine as a container (GPU-enabled scoring)
+  oci "risk-engine" {
+    label "Risk Engine"
+    image "risk-engine:2.0.4"
+    runtime "Python 3.12 / FastAPI"
+    realizes RiskEngine
+  }
+
+  // Lightweight fraud check as a serverless function
+  lambda "fraud-check" {
+    label "Fraud Check Function"
+    runtime "Node.js 22"
+    realizes RiskEngine
+  }
+
+  // Ledger as a container
+  oci "ledger-service" {
+    label "Ledger Service"
+    image "ledger:1.8.2"
+    runtime "Go 1.22"
+    realizes Ledger
+  }
+
+  // Admin dashboard as a static SPA
+  assets "admin-dashboard" {
+    label "Admin Dashboard"
+    runtime "CloudFront / S3"
+  }
+
+  // One-off migration job (no schedule = single run)
+  job "ledger-migration" {
+    label "Ledger Data Migration"
+    runtime "Python 3.12"
+  }
+
+  // Daily settlement batch (runs every night at 2am JST)
+  job "daily-settlement" {
+    label "Daily Settlement Batch"
+    schedule "0 17 * * *"
+    runtime "Java 21"
+    realizes Ledger
+  }
+
+  // Monthly fee report
+  job "monthly-fee-report" {
+    label "Monthly Fee Report"
+    schedule "0 2 1 * *"
+    runtime "Python 3.12"
+    realizes Ledger
+  }
+}

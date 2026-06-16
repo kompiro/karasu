@@ -1,0 +1,61 @@
+// multi-file-system/reader.krs
+// Reader-facing slice of the Blog system, plus the deploy and organization
+// views (S4: whole-file import propagates `deploy` / `organization`).
+//
+// Pulls shared databases from infra.krs so this file renders standalone
+// in the App (canonical infra-file pattern).
+
+import "infra.krs"
+
+system Blog {
+  label "Reader slice"  // overridden by index.krs (S3)
+
+  user Reader [human] {
+    label "Reader"
+    description "End users who browse published articles"
+  }
+
+  client ReaderApp {
+    label "Reader frontend"
+    description "Public pages, article details, and search"
+  }
+
+  service ArticleDelivery {
+    label "Article Delivery"
+    description "Delivery and caching of published articles"
+
+    domain "Delivery" {
+      usecase "Fetch an article" {
+        resource ArticleDB.articles
+      }
+      usecase "Full-text search" {
+        resource SearchIndex.documents
+      }
+    }
+  }
+
+  Reader -> ReaderApp "Read articles"
+  ReaderApp -> ArticleDelivery "Fetch articles"
+  ArticleDelivery -> Search "Forward queries"
+}
+
+deploy Production {
+  label "Production"
+  oci readerContainer {
+    label "reader-container"
+    runtime "Docker"
+    realizes ArticleDelivery
+  }
+}
+
+organization Editorial {
+  label "Editorial"
+  team platform {
+    label "Platform"
+    owns ArticleDelivery
+    member alice {
+      label "Alice"
+      description "Tech lead"
+    }
+  }
+}
