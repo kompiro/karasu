@@ -2,7 +2,7 @@
 title: karasu
 template: splash
 hero:
-  tagline: Text-based architecture modeling that separates logical and physical structure — inspired by the C4 model, with its own vocabulary.
+  tagline: A text-based DSL for describing the logical, physical, and organizational dimensions of a system in one language — built to co-design teams and architecture together.
   image:
     alt: karasu
     # Relative to the synced location src/content/docs/index.md (ja is one level
@@ -23,10 +23,12 @@ hero:
 
 ## What is karasu?
 
-karasu (鴉) is a text-based architecture modeling tool. You describe systems,
-domains, teams, and deployments in `.krs` files and karasu renders SVG diagrams —
-keeping the **logical** structure (what exists and how it relates) separate from
-the **physical** structure (where it runs).
+karasu (鴉) is a text-based DSL for architecture. In one `.krs` language you describe
+a system's three dimensions — the **logical** structure (services and domains and how
+they relate), the **physical** structure (the deployment units that realize them), and
+the **organizational** structure (the teams that own them) — so teams and architecture
+can be co-designed together. karasu renders each dimension as an SVG diagram you can
+drill down into.
 
 - **[Guides](guide/)** — designing service and team boundaries, onboarding, evolution.
 - **[Reference](spec/syntax/)** — the `.krs` / `.krs.style` syntax, tags, and annotations.
