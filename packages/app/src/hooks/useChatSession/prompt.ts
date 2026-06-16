@@ -191,14 +191,15 @@ function serializeModelGraph(
   organizations: OrganizationBlock[],
   ownerIndex: Map<string, string>,
 ): string {
+  // Systems are never owned: `ownerIndex` is keyed only by service/domain ids
+  // (the parser's INDEXED_KINDS), so the `owner` annotation lives on the child
+  // nodes via serializeNode, not here.
   const serialized = systems.map((sys) => {
     const links = serializeLinks(sys.properties.links);
-    const owner = ownerIndex.get(sys.id);
     return {
       id: sys.id,
       kind: "system",
       ...(sys.label ? { label: sys.label } : {}),
-      ...(owner ? { owner } : {}),
       ...(links ? { links } : {}),
       children: sys.children.map((c) => serializeNode(c, ownerIndex)),
       edges: serializeEdges(sys.edges),
