@@ -9,10 +9,13 @@ hero:
     # deeper than the en home, hence the extra ../ vs home/en.md).
     file: ../../../assets/karasu-logo.png
   actions:
+    - text: ブラウザで試す
+      link: https://karasu.pages.dev/
+      icon: rocket
+      variant: primary
     - text: ガイドを読む
       link: guide/
       icon: right-arrow
-      variant: primary
     - text: 構文リファレンス
       link: spec/syntax/
       icon: open-book
