@@ -8,7 +8,7 @@ import { PUBLISHED_EN_FILES } from "./lib/site-map.ts";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 export const PKG_ROOT = path.resolve(here, "..");
-const REPO_ROOT = path.resolve(PKG_ROOT, "../..");
+export const REPO_ROOT = path.resolve(PKG_ROOT, "../..");
 const DOCS_DIR = path.join(REPO_ROOT, "docs");
 export const CONTENT_DIR = path.join(PKG_ROOT, "src", "content", "docs");
 
