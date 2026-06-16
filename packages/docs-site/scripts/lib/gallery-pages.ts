@@ -9,12 +9,12 @@ import {
   GROUP_LABELS,
   GROUP_ORDER,
   type GalleryPage,
+  type Locale,
   type LocalizedString,
+  resolveGithubDir,
 } from "./examples-manifest.ts";
 import type { RenderedDiagram } from "./render-examples.ts";
 import { REPO_BRANCH, REPO_SLUG } from "./site-map.ts";
-
-type Locale = "en" | "ja";
 
 const VIEW_LABEL: Record<DiagramType, LocalizedString> = {
   system: { en: "System view", ja: "System ビュー" },
@@ -50,7 +50,8 @@ function sourceFence(source: string): string {
 
 function githubLink(page: GalleryPage, locale: Locale): string {
   const text = locale === "ja" ? "GitHub でソースを見る" : "View the source on GitHub";
-  return `[${text}](https://github.com/${REPO_SLUG}/tree/${REPO_BRANCH}/${page.githubDir})`;
+  const dir = resolveGithubDir(page, locale);
+  return `[${text}](https://github.com/${REPO_SLUG}/tree/${REPO_BRANCH}/${dir})`;
 }
 
 /** Markdown for a single example page (one diagram), or the feature-samples page (many). */

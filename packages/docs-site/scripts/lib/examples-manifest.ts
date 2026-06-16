@@ -11,9 +11,15 @@ export interface LocalizedString {
 
 export type GroupKey = "getting-started" | "scenarios" | "feature-samples";
 
+/**
+ * A repo-relative `.krs` entry path. Most examples are language-neutral enough to
+ * share one source across locales; some (e.g. getting started) have matched en/ja
+ * variants with localized labels, so the entry can differ per locale.
+ */
+export type LocalizedEntry = string | LocalizedString;
+
 export interface GalleryDiagram {
-  /** Entry `.krs` path relative to the repo root. */
-  entry: string;
+  entry: LocalizedEntry;
   /** Per-diagram heading (used on multi-diagram pages like feature-samples). */
   caption?: LocalizedString;
 }
@@ -24,10 +30,20 @@ export interface GalleryPage {
   group: GroupKey;
   title: LocalizedString;
   blurb: LocalizedString;
-  /** examples/ subdir for the "view on GitHub" link. */
-  githubDir: string;
+  /** examples/ subdir for the "view on GitHub" link (per-locale when sources differ). */
+  githubDir: string | LocalizedString;
   /** One diagram for single-example pages; many for the feature-samples page. */
   diagrams: GalleryDiagram[];
+}
+
+export type Locale = "en" | "ja";
+
+export function resolveEntry(entry: LocalizedEntry, locale: Locale): string {
+  return typeof entry === "string" ? entry : entry[locale];
+}
+
+export function resolveGithubDir(page: GalleryPage, locale: Locale): string {
+  return typeof page.githubDir === "string" ? page.githubDir : page.githubDir[locale];
 }
 
 export const GROUP_LABELS: Record<GroupKey, LocalizedString> = {
@@ -55,17 +71,26 @@ const single = (
 });
 
 export const GALLERY_PAGES: readonly GalleryPage[] = [
-  single(
-    "ec-platform",
-    "getting-started",
-    "ec-platform",
-    "03-domains.krs",
-    { en: "EC Platform — full drill-down", ja: "EC Platform — フル drill-down" },
-    {
-      en: "The Getting Started EC platform at the domain step: system → service → domain → usecase → resource.",
-      ja: "Getting Started の EC プラットフォーム（ドメインまで）。system → service → domain → usecase → resource のフル階層。",
+  {
+    // Getting started — the EC platform full drill-down. en and ja are matched
+    // variants (same structure, localized labels), so the diagram is localized.
+    slug: "getting-started",
+    group: "getting-started",
+    title: { en: "Getting started — EC platform", ja: "Getting started — EC プラットフォーム" },
+    blurb: {
+      en: "The full drill-down: system → service → domain → usecase → resource.",
+      ja: "フル drill-down: system → service → domain → usecase → resource。",
     },
-  ),
+    githubDir: { en: "examples/getting-started-en", ja: "examples/getting-started" },
+    diagrams: [
+      {
+        entry: {
+          en: "examples/getting-started-en/index.krs",
+          ja: "examples/getting-started/index.krs",
+        },
+      },
+    ],
+  },
   single(
     "multi-file-system",
     "getting-started",

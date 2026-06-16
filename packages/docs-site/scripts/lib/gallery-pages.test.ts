@@ -3,8 +3,8 @@ import { GALLERY_PAGES } from "./examples-manifest.ts";
 import { examplePageMarkdown, indexPageMarkdown } from "./gallery-pages.ts";
 import type { RenderedDiagram } from "./render-examples.ts";
 
-const stub = (entry: string): RenderedDiagram => ({
-  entry,
+const stub = (): RenderedDiagram => ({
+  entry: "example.krs",
   source: "system Demo {}",
   views: [{ type: "system", svg: "<svg>x</svg>" }],
 });
@@ -20,7 +20,7 @@ describe("gallery-pages", () => {
   it("single-example page embeds the view as a data-URI img with a source fence", () => {
     const page = GALLERY_PAGES.find((p) => p.slug === "payment-platform");
     if (!page) throw new Error("fixture missing");
-    const md = examplePageMarkdown(page, [stub(page.diagrams[0].entry)], "en");
+    const md = examplePageMarkdown(page, [stub()], "en");
     expect(md).toContain('src="data:image/svg+xml,');
     expect(md).toContain("<figcaption>System view</figcaption>");
     expect(md).toContain("```krs");
@@ -31,7 +31,7 @@ describe("gallery-pages", () => {
     const page = GALLERY_PAGES.find((p) => p.slug === "payment-platform");
     if (!page) throw new Error("fixture missing");
     const withBackticks: RenderedDiagram = {
-      entry: page.diagrams[0].entry,
+      entry: "example.krs",
       source: 'system Demo { description "```" }',
       views: [{ type: "system", svg: "<svg>x</svg>" }],
     };
@@ -45,7 +45,7 @@ describe("gallery-pages", () => {
     if (!page) throw new Error("fixture missing");
     const md = examplePageMarkdown(
       page,
-      page.diagrams.map((d) => stub(d.entry)),
+      page.diagrams.map(() => stub()),
       "ja",
     );
     for (const d of page.diagrams) expect(md).toContain(`## ${d.caption?.ja}`);
