@@ -1,6 +1,6 @@
 # ADR Topic: build
 
-37 ADRs in this topic. Solid nodes belong to `build`; gray dashed nodes are ghosts showing cross-topic references to help navigation.
+38 ADRs in this topic. Solid nodes belong to `build`; gray dashed nodes are ghosts showing cross-topic references to help navigation.
 
 Other topics: [overview](../graph.md).
 ```mermaid
@@ -43,6 +43,7 @@ flowchart TD
     ADR_20260616_02["ADR-20260616-02<br/>docs/guide の hero スニペットを正典として、レンダリング済み SVG を生成・..."]
     ADR_20260616_03["ADR-20260616-03<br/>docs/ を single source of truth として Astro Starli..."]
     ADR_20260616_06["ADR-20260616-06<br/>.krs / .krs.style を v1.0 として凍結する（ハイブリッド版管理）"]
+    ADR_20260616_07["ADR-20260616-07<br/>Dependabot security update — transitive 依存を pnp..."]
   end
   ADR_20260322_01["ADR-20260322-01<br/>[styling] ビルトインスタイルの一元化と構造化リファレンス"]
   ADR_20260512_03 --> ADR_20260322_01
@@ -90,5 +91,6 @@ flowchart TD
   class ADR_20260616_02 accepted
   class ADR_20260616_03 accepted
   class ADR_20260616_06 accepted
+  class ADR_20260616_07 accepted
   class ADR_20260322_01 ghost
 ```
