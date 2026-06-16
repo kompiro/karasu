@@ -750,7 +750,7 @@ function detectUnresolvedRealizes(file: KrsFile): Warning[] {
   // Build the set of all valid realize-target IDs: services / domains and the
   // system-level infra nodes (database / queue / storage). A deploy unit may
   // realize a shared store to record its physical form (e.g. a `store` unit
-  // realizing a `database`); see ADR-20260616-07. Leaf
+  // realizing a `database`); see ADR-20260616-09. Leaf
   // sub-resources (table / queue-item / bucket) are NOT valid targets, so only
   // the three top-level infra kinds are added.
   const validIds = new Set<string>();

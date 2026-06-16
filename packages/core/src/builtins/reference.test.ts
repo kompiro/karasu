@@ -158,7 +158,7 @@ describe("getReference", () => {
   it("all deploy unit kinds carry a runtime form except `store`", () => {
     // `store` is a managed data store realizing an infra node; it has no
     // runtime form (its concrete tech is the free-text `type`), so it is the
-    // sole exception to the runtime invariant. See ADR-20260616-07.
+    // sole exception to the runtime invariant. See ADR-20260616-09.
     const runtimeKinds = ref.deployUnitKinds.filter((k) => k.kind !== "store");
     for (const kind of runtimeKinds) {
       expect(kind.properties).toContain("runtime");
