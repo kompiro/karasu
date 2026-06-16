@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useRef } from "react";
+import { useCallback, useEffect, useMemo, useRef } from "react";
 import { ProjectSelector } from "./components/ProjectSelector.js";
 import { SwitchProjectCommand } from "./components/SwitchProjectCommand.js";
 import { FileTree } from "./components/FileTree.js";
@@ -73,7 +73,7 @@ export function ProjectModeApp() {
 
   useProjectInitialization({ pm, fs, dispatch, currentProject, selectFile });
 
-  const { createProject, renameProject, deleteProject, exportProject, importProject } =
+  const { createProject, renameProject, deleteProject, exportProject, importProject, openExample } =
     useProjectActions({
       pm,
       fs,
@@ -83,6 +83,19 @@ export function ProjectModeApp() {
       navigateToProject,
       reportError,
     });
+
+  // Deep-link (#1646): `?example=<slug>&lang=<lang>` opens a gallery example once
+  // on load (the gallery's "Open in the app" button builds this link). slug/lang
+  // are validated inside openExample; an unknown one surfaces an error banner.
+  const exampleDeepLinkHandled = useRef(false);
+  useEffect(() => {
+    if (exampleDeepLinkHandled.current) return;
+    const params = new URLSearchParams(window.location.search);
+    const slug = params.get("example");
+    if (!slug) return;
+    exampleDeepLinkHandled.current = true;
+    void openExample(slug, params.get("lang") ?? "en");
+  }, [openExample]);
 
   const paste = usePasteCompare({ fs, projectRoot, compareSource, dispatch });
   const snapshot = useSnapshotCompare({

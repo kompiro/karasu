@@ -6,6 +6,7 @@ import type { ProjectManager } from "../fs/project-manager.js";
 import { useTranslation } from "../i18n/index.js";
 import { exportProjectAsZip } from "../utils/export-project-zip.js";
 import { parseZipForImport, disambiguateName } from "../utils/import-project-zip.js";
+import { fetchExampleProject } from "../utils/fetch-example.js";
 import { errorDetail } from "../utils/error-detail.js";
 
 interface UseProjectActionsArgs {
@@ -25,6 +26,8 @@ interface ProjectActions {
   deleteProject: (id: string) => Promise<void>;
   exportProject: () => Promise<void>;
   importProject: (file: File) => Promise<void>;
+  /** Open a gallery example (#1646) by slug + lang, fetched from the fixed origin. */
+  openExample: (slug: string, lang: string) => Promise<void>;
 }
 
 /**
@@ -118,5 +121,32 @@ export function useProjectActions({
     [pm, dispatch, projects, navigateToProject, reportError, t],
   );
 
-  return { createProject, renameProject, deleteProject, exportProject, importProject };
+  const openExample = useCallback(
+    async (slug: string, lang: string) => {
+      try {
+        const { files, name } = await fetchExampleProject(slug, lang);
+        const finalName = disambiguateName(
+          name,
+          projects.map((p) => p.name),
+        );
+        const project = await pm.createProject(finalName, files);
+        dispatch({ type: "ADD_PROJECT", project });
+        navigateToProject(project);
+      } catch (err) {
+        // fetchExampleProject throws on an unknown slug, fetch failure, redirect,
+        // or the size/count caps; surface it instead of failing silently.
+        reportError(t("project.error.openExample", { detail: errorDetail(err) }));
+      }
+    },
+    [pm, dispatch, projects, navigateToProject, reportError, t],
+  );
+
+  return {
+    createProject,
+    renameProject,
+    deleteProject,
+    exportProject,
+    importProject,
+    openExample,
+  };
 }

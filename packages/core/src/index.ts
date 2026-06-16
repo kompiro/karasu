@@ -147,6 +147,12 @@ export {
   MULTI_FILE_SYSTEM_PROJECT,
 } from "./builtins/examples.js";
 export {
+  type ExampleLang,
+  type OpenableExample,
+  OPENABLE_EXAMPLES,
+  findOpenableExample,
+} from "./builtins/openable-examples.js";
+export {
   getReference,
   type ReferenceLocale,
   type KarasuReference,
