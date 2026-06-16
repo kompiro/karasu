@@ -14,7 +14,7 @@ Phase 2 のスコープは「単一の汎用 client icon」。サブタイプタ
 ## 前提条件
 
 - Phase 1 (#849) が main にマージされている
-- `examples/getting-started/` を新規プロジェクトで開ける状態
+- `examples/ja/getting-started/` を新規プロジェクトで開ける状態
 
 ## 受け入れ条件
 

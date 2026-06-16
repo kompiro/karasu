@@ -32,7 +32,7 @@
 
 ## 手動確認チェックリスト
 
-`examples/getting-started/index.krs` を Preview UI（Project モード）で開いて確認する。
+`examples/ja/getting-started/index.krs` を Preview UI（Project モード）で開いて確認する。
 
 - [ ] Monaco エディタにフォーカスを置いた状態で `Ctrl/Cmd+Shift+2` を押すと、エディットペインが Chat タブに切替わる（エディタの入力は妨げられない）
 - [ ] Chat タブの入力欄にフォーカスを置いた状態で `Ctrl/Cmd+Shift+1` を押すと、Editor タブに戻る

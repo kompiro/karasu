@@ -53,7 +53,7 @@ infra block (`database` / `queue` / `storage`) が複数ファイルで宣言さ
 
 ## 既知の対処パターン
 
-- 専用 infra ファイル (例: `examples/multi-file-system/infra.krs`) に 1 度だけ宣言し、使う側のスライスから `import "infra.krs"` で取り込む。S2 (whole-file completeness) + S5 (DAG memoization) によりこのパターンでは info 診断が出ない。
+- 専用 infra ファイル (例: `examples/ja/multi-file-system/infra.krs`) に 1 度だけ宣言し、使う側のスライスから `import "infra.krs"` で取り込む。S2 (whole-file completeness) + S5 (DAG memoization) によりこのパターンでは info 診断が出ない。
 - info 診断は既存の `error` / `warning` と別管理。`error` の存在で「描画不可」と判定する箇所では `info` を含めない（`PreviewPane` の `hasErrors` 判定が precedent）。
 - 流派系 diagnostic を新規追加する際は、まず info で出して `docs/concepts*.md` から原理を再導出できるようにする。warning に「昇格」したくなったら、それ自体が prescription なので慎重に。
 

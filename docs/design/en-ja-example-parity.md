@@ -15,7 +15,7 @@ en/ja のユーザーがそれぞれ自言語の図を見られるよう、**シ
 
 | 観点 | 現状 |
 | --- | --- |
-| examples 構造 | ja 版は `examples/<name>/`（root 直下）。英語は `examples/getting-started-en/` だけが例外的に存在 |
+| examples 構造 | ja 版は `examples/<name>/`（root 直下）。英語は `examples/en/getting-started/` だけが例外的に存在 |
 | ja ラベルのシナリオ | `payment-platform`(42) `org`(44) `client-mcp`(27) `hr-tool`(26) `deploy`(24) `migration`(23) `org-only`(11) `multi-file-system`(11) `deploy-org`(5) `deploy-only`(4)。`feature-samples` は既に英語ラベル |
 | docs gallery | #1640 で per-locale の `entry`/`githubDir`（`resolveEntry`）に対応済み。`getting-started` ページのみ en/ja 別ソースを描画 |
 | アプリ bundling | `packages/core/src/builtins/examples.ts` が一部を文字列同梱（`getting-started`(+`_EN`), `ec-platform`, `client-mcp`, `deploy-only`, `org-only`, `multi-file-system`, `feature-samples`）。`hr-tool` 等 gallery 専用のものは非同梱 |
@@ -30,9 +30,9 @@ en/ja のユーザーがそれぞれ自言語の図を見られるよう、**シ
 ## 制約・前提
 
 - **構造は `examples/<lang>/<name>/`（ja / en とも、完全対称）**。ja は `examples/<name>/`（root）から `examples/ja/<name>/` へ移行、en は `examples/en/<name>/`。`getting-started-en` → `examples/en/getting-started`、`getting-started` → `examples/ja/getting-started`。
-- **language-neutral な集合は lang セグメントを付けず据え置く**: `feature-samples`（英語ラベルの構文デモ + byte 一致ガード）は `examples/feature-samples/` のまま、`ec-platform`（段階チュートリアル）も既存運用を尊重（移行対象は「ロケール対訳を持つ／持たせる example」に限る。詳細は実装の指針）。
+- **language-neutral な集合は lang セグメントを付けず据え置く**: `feature-samples`（英語ラベルの構文デモ + byte 一致ガード）は `examples/en/feature-samples/` のまま、`ec-platform`（段階チュートリアル）も既存運用を尊重（移行対象は「ロケール対訳を持つ／持たせる example」に限る。詳細は実装の指針）。
 - en/ja は **構造を同一**に保つ（ペアの drift を避ける）。各 example が ja/en の対になり、編集時に両方の同期が要る（`getting-started` ペアと同じ保守コストの拡大）。
-- 新規 `.krs` は diagnostics-clean。`examples/feature-samples/` の中身には触れない（既に英語 + byte 一致ガード）。
+- 新規 `.krs` は diagnostics-clean。`examples/en/feature-samples/` の中身には触れない（既に英語 + byte 一致ガード）。
 - docs gallery は #1640 の per-locale 機構をそのまま使う（manifest の ja/en `entry`/`githubDir` を `examples/ja|en/...` に向ける）。
 
 ### 影響範囲（ja を動かす ripple — 大きい）

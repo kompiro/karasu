@@ -65,7 +65,7 @@
 
 ## 手動確認チェックリスト
 
-`examples/deploy/system.krs` を Preview UI で開いて確認する。
+`examples/ja/deploy/system.krs` を Preview UI で開いて確認する。
 
 ### レイアウト構造
 

@@ -35,7 +35,7 @@
 > Manual / visual review — the bullets below are not automated; AI / human
 > reviewer confirms edge readability after layout changes.
 
-**Given**: Open `examples/deploy/system.krs` in the karasu preview UI.
+**Given**: Open `examples/ja/deploy/system.krs` in the karasu preview UI.
 
 **Verify**:
 
@@ -45,7 +45,7 @@
 
 **How to check**: Visually confirm that edges between `OrderAPI` and its downstream containers do not cross each other.
 
-Expected layer order for `examples/deploy/system.krs`:
+Expected layer order for `examples/ja/deploy/system.krs`:
 
 ```
 Layer 0: [Storefront]

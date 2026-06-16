@@ -15,7 +15,7 @@ AT-0063（deploy-only）と並列の構成。両機能の優先度ルール
 
 ## 前提条件
 
-`examples/org-only/index.krs` に以下のような org のみのファイルが存在する。
+`examples/ja/org-only/index.krs` に以下のような org のみのファイルが存在する。
 
 ```krs
 organization Acme {
@@ -38,7 +38,7 @@ organization Acme {
 
 ### 1. org-only ファイルを開くと Org タブが自動で選ばれる
 
-- **操作**: `examples/org-only/index.krs` をプレビューに読み込ませる。
+- **操作**: `examples/ja/org-only/index.krs` をプレビューに読み込ませる。
 - **期待**:
   - タブバーの `Org` がアクティブ状態になっている。
   - プレビューキャンバスに 2 つのチーム（`プラットフォームチーム`, `プロダクトチーム`）と各メンバーが描画されている。
@@ -68,13 +68,13 @@ organization Acme {
 
 ### 5. system + organization のファイルでは自動選択されない
 
-- **操作**: `examples/getting-started/index.krs` のような system と organization 両方を含むファイルを開く。
+- **操作**: `examples/ja/getting-started/index.krs` のような system と organization 両方を含むファイルを開く。
 - **期待**:
   - 既存挙動どおり、初期タブは `System` のままで自動スイッチされない。
 
 ### 6. deploy + organization の優先度（regression check）
 
-- **操作**: `examples/deploy-org/index.krs` を開く（`system` 無し、`deploy` と `organization` の両方を含む）。
+- **操作**: `examples/ja/deploy-org/index.krs` を開く（`system` 無し、`deploy` と `organization` の両方を含む）。
 - **期待**:
   - Deploy タブが自動で選択される（org ではなく deploy が優先）。
   - Org タブをクリックすれば組織図が描画される。

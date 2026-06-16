@@ -54,6 +54,8 @@ export const GROUP_LABELS: Record<GroupKey, LocalizedString> = {
 
 export const GROUP_ORDER: readonly GroupKey[] = ["getting-started", "scenarios", "feature-samples"];
 
+// An English-authored example with no Japanese counterpart (e.g. client-mcp);
+// it lives under examples/en/ and is shared across locales.
 const single = (
   slug: string,
   group: GroupKey,
@@ -66,12 +68,12 @@ const single = (
   group,
   title,
   blurb,
-  githubDir: `examples/${dir}`,
-  diagrams: [{ entry: `examples/${dir}/${entry}` }],
+  githubDir: `examples/en/${dir}`,
+  diagrams: [{ entry: `examples/en/${dir}/${entry}` }],
 });
 
-// A Japanese-authored example with a matched English variant under examples/en/.
-// en renders the English labels, ja the original (#1642 Phase A).
+// A Japanese-authored example with a matched English variant; examples live under
+// examples/<lang>/<dir>. en renders the English labels, ja the original.
 const localized = (
   slug: string,
   group: GroupKey,
@@ -84,8 +86,8 @@ const localized = (
   group,
   title,
   blurb,
-  githubDir: { en: `examples/en/${dir}`, ja: `examples/${dir}` },
-  diagrams: [{ entry: { en: `examples/en/${dir}/${entry}`, ja: `examples/${dir}/${entry}` } }],
+  githubDir: { en: `examples/en/${dir}`, ja: `examples/ja/${dir}` },
+  diagrams: [{ entry: { en: `examples/en/${dir}/${entry}`, ja: `examples/ja/${dir}/${entry}` } }],
 });
 
 export const GALLERY_PAGES: readonly GalleryPage[] = [
@@ -99,12 +101,12 @@ export const GALLERY_PAGES: readonly GalleryPage[] = [
       en: "The full drill-down: system → service → domain → usecase → resource.",
       ja: "フル drill-down: system → service → domain → usecase → resource。",
     },
-    githubDir: { en: "examples/getting-started-en", ja: "examples/getting-started" },
+    githubDir: { en: "examples/en/getting-started", ja: "examples/ja/getting-started" },
     diagrams: [
       {
         entry: {
-          en: "examples/getting-started-en/index.krs",
-          ja: "examples/getting-started/index.krs",
+          en: "examples/en/getting-started/index.krs",
+          ja: "examples/ja/getting-started/index.krs",
         },
       },
     ],
@@ -224,7 +226,7 @@ export const GALLERY_PAGES: readonly GalleryPage[] = [
       en: "Small single-purpose snippets, each demonstrating one feature.",
       ja: "1 機能ずつを示す小さなスニペット集。",
     },
-    githubDir: "examples/feature-samples",
+    githubDir: "examples/en/feature-samples",
     diagrams: (
       [
         ["minimal", "Minimal valid input", "最小の有効な入力"],
@@ -239,7 +241,7 @@ export const GALLERY_PAGES: readonly GalleryPage[] = [
         ["resource-operations", "resource operations (CRUD)", "resource の operations（CRUD）"],
       ] as const
     ).map(([file, en, ja]) => ({
-      entry: `examples/feature-samples/${file}.krs`,
+      entry: `examples/en/feature-samples/${file}.krs`,
       caption: { en, ja },
     })),
   },

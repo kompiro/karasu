@@ -32,7 +32,7 @@ type: product
   > ✅ Automated — `packages/core/src/renderer/layout.test.ts` › `layout > edge direction hint > honors direction:up in the forced kind-based layout (system top view)` & `... > only perturbs the source endpoint ...`
 
 - [ ] AT-F（manual）: 実際の Preview で edge を右クリック → Direction ▸ Up を選び、対象エッジが上下に flip して描画されることを確認する。drill-down view と top-level system view どちらでも有効
-  > 🧑 Manual — `pnpm --filter @karasu-tools/app dev` で Preview を起動。`examples/getting-started/index.krs` の service 内 domain edge と top-level の user → service edge の両方で配置変化を目視
+  > 🧑 Manual — `pnpm --filter @karasu-tools/app dev` で Preview を起動。`examples/ja/getting-started/index.krs` の service 内 domain edge と top-level の user → service edge の両方で配置変化を目視
 
 ## 補足
 

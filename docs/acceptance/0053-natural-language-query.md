@@ -8,7 +8,7 @@
 
 ## Setup
 
-Use `examples/ec-platform/01-system.krs` (or any `.krs` file with multiple services and edges) as the test model.
+Use `examples/ja/ec-platform/01-system.krs` (or any `.krs` file with multiple services and edges) as the test model.
 Set a valid Claude API key in the Settings tab before running these tests.
 
 ---

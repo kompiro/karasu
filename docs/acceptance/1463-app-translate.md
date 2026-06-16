@@ -45,7 +45,7 @@
 
 ## 手動確認チェックリスト
 
-`examples/getting-started/index.krs` を Preview UI（Project モード）で開き、
+`examples/ja/getting-started/index.krs` を Preview UI（Project モード）で開き、
 `Ctrl/Cmd+Shift+P` → 「Translate Infra Config to .krs…」でダイアログを開いて確認する。
 jsdom では描画やファイルダウンロードを検証できないため、実ブラウザで確認する。
 

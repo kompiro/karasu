@@ -9,7 +9,7 @@
   - `packages/core/src/resolver/warnings.ts`
   - `packages/core/src/renderer/svg-renderer.ts`
   - `packages/core/src/renderer/layout.ts`
-  - `examples/getting-started/index.krs`, `examples/getting-started-en/index.krs`, `examples/client-mcp/index.krs`
+  - `examples/ja/getting-started/index.krs`, `examples/en/getting-started/index.krs`, `examples/en/client-mcp/index.krs`
   - `docs/spec/syntax.md`, `docs/spec/tags-annotations.md`
 - **関連 Design Doc**: [client-capability-modeling.md](../design/client-capability-modeling.md)
 - **関連 ADR**: [ADR-20260428-06](../adr/20260428-06-client-mcp-modeling.md) (`client` kind / `resource <storageKind>`)
@@ -28,11 +28,11 @@
 - [x] AT-D: 同 capability の重複宣言で `client-capability-duplicate` warning を発行する
   > ✅ Automated — `packages/core/src/resolver/warnings.test.ts` › `warns when a client declares the same capability twice`
 
-- [x] AT-E: `examples/getting-started/` と `examples/getting-started-en/` の MobileApp client に `capability notification` が追加され、render 結果に capability badge が出る
+- [x] AT-E: `examples/ja/getting-started/` と `examples/en/getting-started/` の MobileApp client に `capability notification` が追加され、render 結果に capability badge が出る
   > ✅ Automated — `packages/core/src/renderer/svg-renderer.test.ts` › `renders a capability count badge on the client card`、および両 examples の Parser.parse() による diagnostics-zero スモーク
 
-- [x] AT-F: `examples/client-mcp/` にブロック形式の capability（`camera { label "..." description "..." }`）を含むクライアントが追加される
-  > ✅ Automated — `examples/client-mcp/index.krs` の Parser.parse() による diagnostics-zero スモーク（既存 examples テストでカバー）
+- [x] AT-F: `examples/en/client-mcp/` にブロック形式の capability（`camera { label "..." description "..." }`）を含むクライアントが追加される
+  > ✅ Automated — `examples/en/client-mcp/index.krs` の Parser.parse() による diagnostics-zero スモーク（既存 examples テストでカバー）
 
 - [x] AT-J: NodeDetailPanel が `🔐 Capabilities` セクションを表示し、`capability` の `name` / `label` / `description` がフルリストで読める
   > ✅ Automated — `packages/app/src/components/NodeDetailPanel.test.tsx` › `lists every client.capability entry with optional label and description` / `omits the section when the client has no capabilities` / `omits the section for non-client kinds`

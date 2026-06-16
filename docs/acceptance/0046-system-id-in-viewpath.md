@@ -17,7 +17,7 @@ drill-down navigation when multiple systems exist.
 
 > ✅ Automated — `packages/e2e/tests/at-0046-system-id-in-viewpath.spec.ts` › `single-system breadcrumb includes the system label and restores root on click (AC1)`
 
-**Setup**: Open `examples/getting-started.krs` (single system).
+**Setup**: Open `examples/ja/getting-started.krs` (single system).
 
 **Steps**:
 1. App opens to the root system view.

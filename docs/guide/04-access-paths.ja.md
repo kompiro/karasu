@@ -190,7 +190,7 @@ client MobileApp [mobile] {
 
 アクセス経路（`user → client → service`）はプロダクトの **入口の地図** を、サービス階層（`service → domain → usecase`）は各サービスの **内部構造** を描きます。両者を同じ `system` の中に持ちつつ、ドリルダウンで見る系統を切り替えられるのが karasu の設計です。
 
-完全な例は [`examples/ec-platform/02.5-clients.krs`](../../examples/ec-platform/02.5-clients.krs)（client + handles + delivers + resource）と、MCP / AI エージェントを含む [`examples/client-mcp/`](../../examples/client-mcp/) を参照してください。
+完全な例は [`examples/ja/ec-platform/02.5-clients.krs`](../../examples/ja/ec-platform/02.5-clients.krs)（client + handles + delivers + resource）と、MCP / AI エージェントを含む [`examples/en/client-mcp/`](../../examples/en/client-mcp/) を参照してください。
 
 ---
 
@@ -199,4 +199,4 @@ client MobileApp [mobile] {
 - 関連ガイド: [境界設計](01-service-team-design.ja.md) / [オンボーディング](02-onboarding.ja.md) / [進化](03-evolution.ja.md) / [伝達](05-communicating-diagrams.ja.md)
 - 正確な構文（user / client / handles / delivers）: [`docs/spec/syntax.ja.md`](../spec/syntax.ja.md)
 - client を独立 kind にした理由: [ADR-20260428-06](../adr/20260428-06-client-mcp-modeling.md)
-- クライアント例: [`examples/ec-platform/02.5-clients.krs`](../../examples/ec-platform/02.5-clients.krs)、[`examples/client-mcp/`](../../examples/client-mcp/)
+- クライアント例: [`examples/ja/ec-platform/02.5-clients.krs`](../../examples/ja/ec-platform/02.5-clients.krs)、[`examples/en/client-mcp/`](../../examples/en/client-mcp/)

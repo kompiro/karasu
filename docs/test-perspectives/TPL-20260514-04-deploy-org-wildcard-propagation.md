@@ -50,7 +50,7 @@ karasu は論理 (`system`)・物理 (`deploy`)・組織 (`organization`) の三
 
 ## 関連テスト
 
-未確立（spec PR 後の実装 PR で `examples/multi-file-system/` を使った AT を追加予定）。
+未確立（spec PR 後の実装 PR で `examples/ja/multi-file-system/` を使った AT を追加予定）。
 
 ## 派生元 spec
 

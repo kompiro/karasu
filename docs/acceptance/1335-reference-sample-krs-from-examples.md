@@ -13,13 +13,13 @@ type: product
 
 ## 受け入れ条件
 
-- [ ] AT-A: `getReference("en").sampleKrs` が `examples/getting-started-en/index.krs` の内容（= `GETTING_STARTED_PROJECT_EN.files[index.krs]`）と一致し、`getReference("ja").sampleKrs` が `examples/getting-started/index.krs` の内容と一致する
+- [ ] AT-A: `getReference("en").sampleKrs` が `examples/en/getting-started/index.krs` の内容（= `GETTING_STARTED_PROJECT_EN.files[index.krs]`）と一致し、`getReference("ja").sampleKrs` が `examples/ja/getting-started/index.krs` の内容と一致する
   > ✅ Automated — `packages/core/src/builtins/reference.test.ts`（`sample KRS demonstrates the user → client → service access path` / `includes sampleKrs with system, deploy, and organization blocks` / `includes a legend block with ref entries` / 各ロケールの `label` チェックが getting-started の内容を確認）
 
 - [ ] AT-B: `getReference(locale).sampleKrs` が両ロケールでパースエラーなく解析できる
   > ✅ Automated — `packages/core/src/builtins/reference.test.ts` › `sampleKrs parses without errors for both locales`
 
-- [ ] AT-C: `reference.ts` から `SAMPLE_KRS_*` のインライン定義が消え、`examples/getting-started/` が `sampleKrs` の唯一の真実の源になっている（重複コピーの除去）
+- [ ] AT-C: `reference.ts` から `SAMPLE_KRS_*` のインライン定義が消え、`examples/ja/getting-started/` が `sampleKrs` の唯一の真実の源になっている（重複コピーの除去）
   > ✅ Automated — knip / typecheck（`SAMPLE_KRS` への参照が残っていればビルドが壊れる）。`examples/ ↔ examples.ts` の同期は既存の `.claude/rules/examples-sync.md` と `/update-examples` スキルが担保
 
 - [ ] AT-D（manual）: アプリ（`pnpm dev`）で Reference パネル → Samples タブを開き、現行の Getting Started サンプル（`@import "default.krs.style"` 行・`operations` CRUD・`capability` 等を含む）が表示されること、コピーボタンが動くこと、locale を `ja` / `en` で切り替えて内容が切り替わることを目視確認する

@@ -52,7 +52,7 @@
 
 ## 手動確認チェックリスト
 
-`examples/getting-started/index.krs` を Preview UI（Project モード）で開いて確認する。
+`examples/ja/getting-started/index.krs` を Preview UI（Project モード）で開いて確認する。
 jsdom では描画の見た目・遷移を検証できないため、実ブラウザで確認する。
 
 - [ ] `Ctrl/Cmd+Shift+P` でコマンドパレットを開き、`Switch Project…` を選ぶとプロジェクトピッカーが開く（パレットは閉じる）

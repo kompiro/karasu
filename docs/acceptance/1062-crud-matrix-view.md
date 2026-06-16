@@ -23,8 +23,8 @@ type: product
   - `packages/app/src/state/app-reducer.ts` (`ActiveView` += `"matrix"`)
   - `packages/app/src/state/preview-context.tsx` (`SystemViewData.systems`)
   - `packages/app/src/components/AppShell.tsx` (passes `resolvedSystems`)
-  - `examples/feature-samples/crud-matrix.krs`
-  - `examples/getting-started/index.krs`, `examples/getting-started-en/index.krs`
+  - `examples/en/feature-samples/crud-matrix.krs`
+  - `examples/ja/getting-started/index.krs`, `examples/en/getting-started/index.krs`
   - `packages/core/src/builtins/examples.ts`
 - **関連 ADR**: [ADR-20260502-01](../adr/20260502-01-crud-matrix-view.md)（本機能の決定）, [ADR-20260430-03](../adr/20260430-03-resource-crud-operations.md)（`operations` 構文）, [ADR-20260430-04](../adr/20260430-04-resource-edge-read-write-differentiation.md)（read/write edge 差別化）
 
@@ -63,16 +63,16 @@ type: product
 - [x] AT-J2: app の `DiagramTabBar` に Matrix タブが出て、選択すると `CrudMatrixPanel` が描画される（preview-toolbar は隠れる）
   > ✅ Automated — `packages/app/src/components/PreviewColumn.test.tsx` › `matrix tab`
 
-- [ ] AT-K（manual）: `karasu matrix examples/getting-started/index.krs --format=md` を実行し、`OrderTable` 列を眺めたとき、書き込む usecase（`PlaceOrder` / `RegisterProduct`）と read だけの usecase（`ShowOrderHistory` / `SearchProducts`）が verb 文字列で識別でき、行末・列末の Σ 集計セルが描画されていることを目視確認する
+- [ ] AT-K（manual）: `karasu matrix examples/ja/getting-started/index.krs --format=md` を実行し、`OrderTable` 列を眺めたとき、書き込む usecase（`PlaceOrder` / `RegisterProduct`）と read だけの usecase（`ShowOrderHistory` / `SearchProducts`）が verb 文字列で識別でき、行末・列末の Σ 集計セルが描画されていることを目視確認する
   > 🧑 Manual — terminal で出力を確認
 
-- [ ] AT-L（manual）: `karasu matrix examples/feature-samples/crud-matrix.krs --format=svg -o /tmp/m.svg` を生成しブラウザで開き、grid layout が読めること、`R?`（`SearchOrders`）と単独 `?`（`ReplayOrderEvents`）が正しく描かれていること、unknown verb 脚注が表示されることを確認する
+- [ ] AT-L（manual）: `karasu matrix examples/en/feature-samples/crud-matrix.krs --format=svg -o /tmp/m.svg` を生成しブラウザで開き、grid layout が読めること、`R?`（`SearchOrders`）と単独 `?`（`ReplayOrderEvents`）が正しく描かれていること、unknown verb 脚注が表示されることを確認する
   > 🧑 Manual — SVG をブラウザで目視確認
 
-- [ ] AT-M（manual）: `karasu render examples/getting-started/index.krs --include-matrix --output /tmp/out.svg` を実行し、`/tmp/out.svg` と `/tmp/out.matrix.svg` が同じディレクトリに出力されることを確認する
+- [ ] AT-M（manual）: `karasu render examples/ja/getting-started/index.krs --include-matrix --output /tmp/out.svg` を実行し、`/tmp/out.svg` と `/tmp/out.matrix.svg` が同じディレクトリに出力されることを確認する
   > 🧑 Manual — シェル実行で確認
 
-- [ ] AT-N（manual）: `--omit-empty` を付けたときに未宣言の行・列が消え、付けないとき（default）に未宣言の行・列も出ることを `examples/feature-samples/crud-matrix.krs` で目視比較する
+- [ ] AT-N（manual）: `--omit-empty` を付けたときに未宣言の行・列が消え、付けないとき（default）に未宣言の行・列も出ることを `examples/en/feature-samples/crud-matrix.krs` で目視比較する
   > 🧑 Manual — `karasu matrix --omit-empty` と無し版を比較
 
 ## 補足

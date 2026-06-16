@@ -125,7 +125,7 @@ system ECommercePlatform {
 ![system view — 03-migration](diagrams/03-migration.ja.svg)
 <!-- /gen:guide-diagram:03-migration -->
 
-ここで出る `domain-dispersal`（info）は **バグではなく、移行のステータスインジケータ** です。同じ `Order` ドメインが 2 つの service に居る = まだ切り出しが完了していない。移行が完了して旧 service から `domain Order` を削除すれば、この警告は自然に消えます。**警告が消えること自体が移行完了の判定基準** になります（完全な例は [`examples/migration/system.krs`](../../examples/migration/system.krs)）。
+ここで出る `domain-dispersal`（info）は **バグではなく、移行のステータスインジケータ** です。同じ `Order` ドメインが 2 つの service に居る = まだ切り出しが完了していない。移行が完了して旧 service から `domain Order` を削除すれば、この警告は自然に消えます。**警告が消えること自体が移行完了の判定基準** になります（完全な例は [`examples/ja/migration/system.krs`](../../examples/ja/migration/system.krs)）。
 
 > ドメインエッジの解決やナビゲーションは、ドリフト時に移行アノテーション（`@migration_target` 等）を持つ側を優先します。新旧が同名で衝突しても、移行先に寄せて解決されます。
 
@@ -180,5 +180,5 @@ $ karasu diff old.krs new.krs --view deploy --output deploy.svg
 
 - 関連ガイド: [境界設計](01-service-team-design.ja.md) / [オンボーディング](02-onboarding.ja.md) / [伝達（スタイル・凡例・CI）](05-communicating-diagrams.ja.md)
 - ライフサイクルアノテーションの一覧: [`docs/spec/tags-annotations.ja.md`](../spec/tags-annotations.ja.md)
-- 移行の完全例: [`examples/migration/system.krs`](../../examples/migration/system.krs)
+- 移行の完全例: [`examples/ja/migration/system.krs`](../../examples/ja/migration/system.krs)
 - 設計思想（アノテーション継承・diff の動機）: [`docs/concepts.ja.md`](../concepts.ja.md)

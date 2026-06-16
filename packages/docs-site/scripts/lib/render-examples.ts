@@ -51,7 +51,7 @@ export interface RenderedView {
 }
 
 export interface RenderedDiagram {
-  /** repo-relative entry path, e.g. "examples/payment-platform/system.krs" */
+  /** repo-relative entry path, e.g. "examples/ja/payment-platform/system.krs" */
   entry: string;
   /** the entry file's source (shown in a `krs` fence) */
   source: string;

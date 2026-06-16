@@ -55,7 +55,7 @@ type: product
   > ✅ Automated — `index.test.ts` › `... > default label-position keeps the historical longest-segment heuristic byte-stable`
 
 - [ ] AT-K（manual）: 実際の Preview で `.krs.style` に `edge#X { label-position: end; }` を追加し、target 端に label が寄ることを目視
-  > 🧑 Manual — `pnpm --filter @karasu-tools/app dev` で Preview を起動。`examples/getting-started/index.krs` のいずれかの edge id を狙ってルールを追加し、変化を確認
+  > 🧑 Manual — `pnpm --filter @karasu-tools/app dev` で Preview を起動。`examples/ja/getting-started/index.krs` のいずれかの edge id を狙ってルールを追加し、変化を確認
 
 ## 補足
 

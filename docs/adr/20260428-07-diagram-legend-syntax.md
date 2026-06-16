@@ -17,7 +17,7 @@ scope:
     - i18n
 assumptions:
   - "file: docs/spec/syntax.md"
-  - "file: examples/feature-samples/legend.krs"
+  - "file: examples/en/feature-samples/legend.krs"
   - "file: packages/core/src/renderer/svg-builder.ts"
   - "symbol: packages/core/src/renderer/svg-builder.ts :: buildLegendFooter"
   - "symbol: packages/core/src/types/ast.ts :: LegendBlock"

@@ -47,7 +47,7 @@ type: product
   > ✅ Automated — `packages/core/src/index.test.ts` › `compile — edge#<id> style selector (end-to-end) › targets an edge by computed base id when no author id is present`
 
 - [ ] AT-J（manual）: 実際の Preview で、`.krs` で `A -> B "primary" #criticalWrite` を書き、`.krs.style` で `edge#criticalWrite { color: #ef4444; stroke-width: 3px; }` を書くと、当該 edge だけが赤く太くなることを確認する
-  > 🧑 Manual — `pnpm --filter @karasu-tools/app run dev` で Preview を起動し、複数 edge を含むサンプル（例: `examples/getting-started/index.krs`）に上記 author id を追加して目視確認する
+  > 🧑 Manual — `pnpm --filter @karasu-tools/app run dev` で Preview を起動し、複数 edge を含むサンプル（例: `examples/ja/getting-started/index.krs`）に上記 author id を追加して目視確認する
 
 - [ ] AT-K（manual）: `usecase` 内の `resource <ref> #<id> { operations ... }` で付けた author id が、合成された usecase→resource edge に伝搬し、`edge#<id>` で個別スタイルが当たることを確認する
   > 🧑 Manual — usecase view ドリルダウンで対象エッジを絞り込んで上書きが反映されているかを確認

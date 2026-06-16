@@ -72,7 +72,7 @@
 
 ### AC-4: app preview でのドリルダウン凡例切り替え（TPL-20260510-21）
 
-`examples/feature-samples/legend.krs` の内容を `index.krs` として app で開いて確認する。
+`examples/en/feature-samples/legend.krs` の内容を `index.krs` として app で開いて確認する。
 
 - [ ] トップレベルで「Owner team」凡例（省略スコープ）が図の下に表示される
 - [ ] EC Site サービスへドリルダウンすると凡例が「Service internals」に切り替わる（「Owner team」は消える）
@@ -94,6 +94,6 @@
 # 自動テスト
 pnpm --filter @karasu-tools/core test
 
-# 人間確認: app を起動して examples/feature-samples/legend.krs を index.krs として開く
+# 人間確認: app を起動して examples/en/feature-samples/legend.krs を index.krs として開く
 pnpm --filter @karasu-tools/app dev
 ```

@@ -851,7 +851,7 @@ legend domain "データアクセス" {
 
 ### サンプル
 
-`examples/feature-samples/legend.krs` に v1 の全プリミティブを盛り込んだ
+`examples/en/feature-samples/legend.krs` に v1 の全プリミティブを盛り込んだ
 サンプルがあるので、アプリにペーストして動作を確認できる。
 
 ### v1 で扱わないこと

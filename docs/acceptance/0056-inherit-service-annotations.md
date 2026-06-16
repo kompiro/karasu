@@ -10,7 +10,7 @@ Verify that when a `service` carries lifecycle annotations (`@deprecated`, `@mig
 
 ## Setup
 
-Use the bundled example `examples/migration/system.krs`. The relevant subset:
+Use the bundled example `examples/ja/migration/system.krs`. The relevant subset:
 
 ```krs
 system ECommercePlatform {
@@ -39,7 +39,7 @@ system ECommercePlatform {
 > ✅ Automated — `packages/core/src/integration/cross-view-rendering.test.ts` › `a @deprecated service propagates the deprecated badge to its descendants (AT-0056 case 1)` （integration; asserts the inherited `@deprecated` badge on the child domain and the transitively-inherited usecase. Manual run still confirms the opacity treatment.）
 
 **Steps:**
-1. Open `examples/migration/system.krs` in the preview UI.
+1. Open `examples/ja/migration/system.krs` in the preview UI.
 2. Drill down into `LegacyMonolith`.
 
 **Expected:**
@@ -80,7 +80,7 @@ system ECommercePlatform {
 
 > ✅ Automated — `packages/core/src/integration/cross-view-rendering.test.ts` › `an explicit child annotation overrides the inherited one and re-propagates (AT-0056 case 5)` （integration; a `domain @experimental` inside a `service @deprecated` renders the experimental badge, and its own children re-inherit `@experimental` rather than `@deprecated`. The "sibling un-annotated domains stay `@deprecated`" half is still manual.）
 
-**Setup:** Edit `examples/migration/system.krs` (or use a scratch `.krs` file) so that one domain inside `LegacyMonolith @deprecated` carries its own annotation, e.g.:
+**Setup:** Edit `examples/ja/migration/system.krs` (or use a scratch `.krs` file) so that one domain inside `LegacyMonolith @deprecated` carries its own annotation, e.g.:
 
 ```krs
 service LegacyMonolith @deprecated {

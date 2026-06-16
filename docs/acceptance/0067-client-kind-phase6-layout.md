@@ -141,7 +141,7 @@ system Demo {
 
 ### 7. Getting Started への影響
 
-`examples/getting-started/index.krs` を開いたとき、上から順に
+`examples/ja/getting-started/index.krs` を開いたとき、上から順に
 `Customer / Seller / Admin`（user 段）→ `MobileApp`（client 段）→ `ECommerce / Notification`（internal 段）→ `Payment / Inventory`（dep 段、`[external]`）の順に並ぶ。エッジの矢印が下方向に流れている。
 
 ## 自動化された検証

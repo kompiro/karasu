@@ -349,7 +349,7 @@ organization Shop {
 - **`member` + `slack` / `github`** capture contact info. For an onboarding map, this is exactly the information you want.
 - A service owned by no team surfaces as **ownerless** in the org view. The classic just-joined question "who even looks after this service?" becomes visible.
 
-For details, see [Service/Team Boundary Design Guide §2](01-service-team-design.md#2-the-inverse-conway-maneuver--designing-teams-to-fit-the-architecture) and the complete example at [`examples/org/system.krs`](../../examples/org/system.krs).
+For details, see [Service/Team Boundary Design Guide §2](01-service-team-design.md#2-the-inverse-conway-maneuver--designing-teams-to-fit-the-architecture) and the complete example at [`examples/ja/org/system.krs`](../../examples/ja/org/system.krs).
 
 ---
 
@@ -374,7 +374,7 @@ $ karasu render index.krs --format drawio --output arch.drawio
 
 ### File splitting
 
-If the system is large and you want to divide reading scope per team, you can split one `system` across multiple files (whole-file import + system reopen). Each person holds the file for their reading scope, consolidated into one picture by an orchestrator `index.krs`. See [Service/Team Boundary Design Guide §3](01-service-team-design.md#3-splitting-files-for-per-team-operation) and [`examples/multi-file-system/`](../../examples/multi-file-system/).
+If the system is large and you want to divide reading scope per team, you can split one `system` across multiple files (whole-file import + system reopen). Each person holds the file for their reading scope, consolidated into one picture by an orchestrator `index.krs`. See [Service/Team Boundary Design Guide §3](01-service-team-design.md#3-splitting-files-for-per-team-operation) and [`examples/ja/multi-file-system/`](../../examples/ja/multi-file-system/).
 
 ---
 
@@ -401,6 +401,6 @@ Don't aim for perfection — treat **reducing warnings one at a time** as the wo
 - Map of all guides: [`docs/guide/README.md`](README.md)
 - Precise syntax spec: [`docs/spec/syntax.md`](../spec/syntax.md)
 - Design philosophy (three faces, scoped glance, translate's asymmetry): [`docs/concepts.md`](../concepts.md)
-- Step-by-step tutorial: [`examples/ec-platform/`](../../examples/ec-platform/) (start at `01-system.krs`)
-- Cross-system / ghost example: [`examples/ec-platform/07-cross-system/`](../../examples/ec-platform/07-cross-system/)
-- Working multi-file example: [`examples/multi-file-system/`](../../examples/multi-file-system/)
+- Step-by-step tutorial: [`examples/ja/ec-platform/`](../../examples/ja/ec-platform/) (start at `01-system.krs`)
+- Cross-system / ghost example: [`examples/ja/ec-platform/07-cross-system/`](../../examples/ja/ec-platform/07-cross-system/)
+- Working multi-file example: [`examples/ja/multi-file-system/`](../../examples/ja/multi-file-system/)

@@ -20,11 +20,11 @@ import { render } from "./render.js";
  */
 
 const REPO_ROOT = resolve(__dirname, "../../..");
-const ECPLATFORM_ROOT = join(REPO_ROOT, "examples/ec-platform");
+const ECPLATFORM_ROOT = join(REPO_ROOT, "examples/ja/ec-platform");
 const EC_SYSTEM_KRS = join(ECPLATFORM_ROOT, "01-system.krs");
 const DEPLOY_KRS = join(ECPLATFORM_ROOT, "06-deploy/deploy.krs");
 const MULTIFILE_ROOT = join(ECPLATFORM_ROOT, "05-multifile/system.krs");
-const ORG_KRS = join(REPO_ROOT, "examples/org/system.krs");
+const ORG_KRS = join(REPO_ROOT, "examples/ja/org/system.krs");
 
 function captureStreams() {
   let stdout = "";

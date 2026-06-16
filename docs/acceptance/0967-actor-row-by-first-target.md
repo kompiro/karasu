@@ -18,9 +18,9 @@
 
   > ✅ Automated — `packages/core/src/renderer/layout.test.ts` › `places an actor that bypasses the client tier in the client row, not the top row`（Admin の検証）
 
-- [ ] EC Platform の例（`examples/ec-platform/02.5-clients.krs`）をプレビューで開いたとき、actor → client → service の流れが視覚的に綺麗に並び、エッジが他のノードカードを貫通しない
+- [ ] EC Platform の例（`examples/ja/ec-platform/02.5-clients.krs`）をプレビューで開いたとき、actor → client → service の流れが視覚的に綺麗に並び、エッジが他のノードカードを貫通しない
 
-  > 🧑 Manual — `pnpm dev` でアプリを起動し、`examples/ec-platform/02.5-clients.krs` を読み込んで目視確認する。
+  > 🧑 Manual — `pnpm dev` でアプリを起動し、`examples/ja/ec-platform/02.5-clients.krs` を読み込んで目視確認する。
 
 ## 補足
 

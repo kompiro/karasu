@@ -23,7 +23,7 @@
 
 ## 手動確認チェックリスト
 
-`examples/getting-started/index.krs` を Preview UI（Project モード）で開いて確認する。
+`examples/ja/getting-started/index.krs` を Preview UI（Project モード）で開いて確認する。
 
 - [ ] エディタ・サイドバー以外（プレビュー等）にフォーカスがある状態で `Ctrl/Cmd+Shift+F` を押すと、エディタが畳まれてプレビューが全幅表示になる（ツールバーの `↗ Focus` ボタンを押したときと同じ挙動）
 - [ ] Focus モード中にもう一度 `Ctrl/Cmd+Shift+F` を押すと、元のレイアウト（エディタ＋サイドバー）に戻る
