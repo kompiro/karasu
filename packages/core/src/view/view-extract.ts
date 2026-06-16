@@ -192,7 +192,7 @@ function deriveImplicitServiceEdges(
  * Exported as the single source of truth for the service→infra dependency: the
  * system view consumes it to draw `service → database` edges, and the deploy view
  * (`extractDeployView`) reuses it so both views agree on the dependency set
- * (see docs/design/deploy-infra-dependency-edges.md, TPL-20260519-02).
+ * (see ADR-20260616-11, TPL-20260519-02).
  */
 export function deriveInfraEdges(children: KrsNode[]): KrsEdge[] {
   const infraIds = new Set(children.filter((n) => INFRA_KIND_SET.has(n.kind)).map((n) => n.id));

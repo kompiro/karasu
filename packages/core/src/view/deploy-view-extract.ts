@@ -114,9 +114,16 @@ export function extractDeployView(
     for (const edge of system.edges) {
       pushGhost({ from: edge.from, to: edge.to, label: edge.label, kind: edge.kind });
     }
-    for (const edge of deriveInfraEdges(system.children)) {
-      pushGhost({ from: edge.from, to: edge.to, kind: edge.kind });
-    }
+  }
+  // Derive service→infra dependencies over ALL systems' children at once, not
+  // per-system: shared infra is commonly declared at the top level (a dedicated
+  // infra file) and referenced by services inside a `system`, so the service and
+  // the infra node live in different `children` lists. A merged list lets that
+  // canonical pattern resolve. The deploy view is flat (not per-system), so
+  // merging is appropriate here.
+  const allChildren = systems.flatMap((s) => s.children);
+  for (const edge of deriveInfraEdges(allChildren)) {
+    pushGhost({ from: edge.from, to: edge.to, kind: edge.kind });
   }
 
   return {

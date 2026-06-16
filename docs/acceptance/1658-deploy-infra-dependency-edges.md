@@ -15,6 +15,10 @@
 
   > ✅ Automated — `packages/core/src/view/deploy-view-extract.test.ts` › `does not emit the service→infra edge when the depending service is not realized`
 
+- [x] scope をまたぐ依存（service が `system` 内、infra が top-level — 専用 infra ファイルの定番パターン）でも edge が描かれる
+
+  > ✅ Automated — `packages/core/src/view/deploy-view-extract.test.ts` › `emits the edge across scopes: service inside a system, infra at top level (#1658)`
+
 - [x] service→infra 依存の導出は system view と deploy view で同一のヘルパー（`deriveInfraEdges`）を使い、依存集合が一致する（drift しない）
 
   > ✅ Automated（構造的保証）— 両 view が `packages/core/src/view/view-extract.ts` の export された `deriveInfraEdges` を呼ぶ単一情報源。別実装が無いため drift は構造的に発生しない（[TPL-20260519-02]）。
