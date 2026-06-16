@@ -118,6 +118,7 @@ Some data stores are shared by several services rather than owned by a single `u
 - A `usecase` ties one of its `resource`s to a shared sub-resource with dot-notation — `resource <InfraId>.<SubResourceId>` (e.g. `resource OrderDB.OrderTable`). The resolver aggregates these references to derive the `service → database` (and `service → queue` / `service → storage`) edges shown on the system view, and may synthesize `[read]` / `[write]` tags on the usecase→resource edges — see [docs/spec/tags-annotations.md](./tags-annotations.md#system-assigned-tags).
 - `[external]` may be applied to `database` / `queue` / `storage` for a store that lives outside the system boundary (a managed third-party DB, an external event bus, …).
 - Writing `resource OrderTable` *without* a matching `database` block is allowed (warning only, rendered as an orphan node) so you can discover resources bottom-up while sketching a `usecase`, then group them into a `database` block and switch to the dot-notation reference.
+- The infra-block **keyword** `table` (a `database` leaf, declaring the shared node) and the shape **tag** `[table]` (a usecase `resource`'s draw-shape) are related, not the same. A usecase references an infra leaf with a `resource` via the dot-notation above, and karasu **infers the shape tag from the referenced infra sub-resource kind** — `table` → `[table]`/cylinder, `queue-item` → `[queue]`, `bucket` → `[storage]` — so the reference is drawn in the same shape as the store it points to. The keyword declares the node's *kind*; the `[...]` tag is a suffix that sets only a `resource`'s *shape* (and may also be written by hand). The same word in two positions never collides. See [tags-annotations.md](./tags-annotations.md) for the full guidance.
 
 ```krs
 system ECPlatform {
@@ -136,6 +137,8 @@ system ECPlatform {
   }
 }
 ```
+
+> Related TPLs: [TPL-20260519-02](../test-perspectives/TPL-20260519-02-shared-vocabulary-dual-representation.md) — the infra-sub-kind → shape-tag inference (`INFRA_SUB_KIND_TO_TAG`) and the shape-tag table are two representations of one vocabulary that must stay in sync.
 
 ### Organizational structure (who owns what) — rendered as a separate diagram
 

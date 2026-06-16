@@ -118,6 +118,7 @@ client C [web] {
 - `usecase` は自身の `resource` を共有サブリソースにドット記法で紐づける — `resource <InfraId>.<SubResourceId>`（例: `resource OrderDB.OrderTable`）。resolver はこれらの参照を集約して system 図上の `service → database`（および `service → queue` / `service → storage`）エッジを導出し、usecase→resource エッジに `[read]` / `[write]` タグを合成することがある（[docs/spec/tags-annotations.ja.md](./tags-annotations.ja.md) の「システム自動付与タグ」節を参照）。
 - `[external]` はシステム境界の外にあるストア（マネージドなサードパーティ DB、外部イベントバス等）を表すために `database` / `queue` / `storage` に付けられる。
 - `database` ブロックがないまま `resource OrderTable` と書くことも許容される（警告のみ、孤立ノードとして描画）。`usecase` を書きながらボトムアップに resource を発見し、後で `database` ブロックにグループ化してドット記法の参照に切り替えればよい。
+- infra ブロックの **キーワード** `table`（`database` の leaf、共有ノードの宣言）と、shape **タグ** `[table]`（usecase の `resource` の描画 shape）は別物ではなく対応関係にある。usecase は上記 dot 記法の `resource` で infra leaf を参照し、karasu は **参照先 infra sub-resource の kind から shape タグを推論**する — `table` → `[table]`/cylinder, `queue-item` → `[queue]`, `bucket` → `[storage]` — ので、参照は指し示すストアと同じ形で描画される。キーワードはノードの *kind* を宣言し、`[...]` タグは `resource` の *shape* だけを決める接尾辞（手書きも可）。同じ語が 2 つの位置に現れても衝突しない。詳しい使い分けは [tags-annotations.ja.md](./tags-annotations.ja.md) を参照。
 
 ```krs
 system ECPlatform {
@@ -136,6 +137,8 @@ system ECPlatform {
   }
 }
 ```
+
+> Related TPLs: [TPL-20260519-02](../test-perspectives/TPL-20260519-02-shared-vocabulary-dual-representation.md) — infra sub-kind → shape タグの推論（`INFRA_SUB_KIND_TO_TAG`）と shape タグ表は、同じ語彙の 2 つの表現であり整合し続けなければならない。
 
 ### 組織構造（誰が所有するか）— 別図で表現
 
