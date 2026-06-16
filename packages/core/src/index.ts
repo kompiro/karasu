@@ -292,6 +292,12 @@ export interface NodeMetadata {
   team?: string;
   role?: string;
   runtime?: string;
+  /** Deploy-only: the `store` unit's managed-store tech, or an `artifact`'s type. */
+  type?: string;
+  /** Deploy-only: an `oci` unit's container image reference. */
+  image?: string;
+  /** Deploy-only: a `job` unit's cron schedule. */
+  schedule?: string;
   realizes?: string[];
   tags: string[];
   annotations: string[];
@@ -869,6 +875,9 @@ function buildDeployNodeMetadata(deploySlice: DeployViewSlice): Map<string, Node
       annotations: [],
       hasChildren: false,
       runtime: unit.properties.runtime,
+      type: unit.properties.type,
+      image: unit.properties.image,
+      schedule: unit.properties.schedule,
       realizes: unit.properties.realizes,
     };
   }

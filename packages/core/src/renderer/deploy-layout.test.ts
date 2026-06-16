@@ -160,6 +160,32 @@ describe("layoutDeploy", () => {
     expect(node.hasDescription).toBe(true);
   });
 
+  it("falls back to `type` as description for a runtime-less `store` unit", () => {
+    const slice: DeployViewSlice = {
+      deployLabel: "本番環境",
+      containers: [
+        {
+          serviceId: "OrderDB",
+          serviceLabel: "注文DB",
+          units: [
+            {
+              kind: "store" as const,
+              id: "orderStore",
+              properties: { type: "Aurora PostgreSQL 15" },
+              loc: LOC,
+            },
+          ],
+        },
+      ],
+      unclassifiedUnits: [],
+      ghostEdges: [],
+    };
+    const result = layoutDeploy(slice);
+    const node = result.nodes.get("OrderDB::orderStore")!;
+    expect(node.properties.description).toBe("Aurora PostgreSQL 15");
+    expect(node.hasDescription).toBe(true);
+  });
+
   it("uses unit label as display text when set", () => {
     const slice: DeployViewSlice = {
       deployLabel: "本番環境",

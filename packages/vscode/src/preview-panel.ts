@@ -34,6 +34,9 @@ interface SerializedNodeMeta {
   team?: string;
   role?: string;
   runtime?: string;
+  type?: string;
+  image?: string;
+  schedule?: string;
   realizes?: string[];
   tags: string[];
   hasChildren: boolean;
@@ -227,6 +230,9 @@ export class PreviewPanel {
           team: meta.team,
           role: meta.role,
           runtime: meta.runtime,
+          type: meta.type,
+          image: meta.image,
+          schedule: meta.schedule,
           realizes: meta.realizes,
           tags: meta.tags,
           hasChildren: meta.hasChildren,
@@ -568,10 +574,13 @@ export class PreviewPanel {
         html += '</ul></div>';
       }
 
-      // Runtime / realizes (own section, matching app layout)
-      if (meta.runtime || meta.realizes?.length) {
+      // Runtime / type / image / schedule / realizes (own section, matching app layout)
+      if (meta.runtime || meta.type || meta.image || meta.schedule || meta.realizes?.length) {
         html += '<div class="dp-section">';
         if (meta.runtime) html += '<div class="dp-prop">\\ud83d\\udda5 runtime: ' + escapeHtml(meta.runtime) + '</div>';
+        if (meta.type) html += '<div class="dp-prop">\\ud83c\\udff7 type: ' + escapeHtml(meta.type) + '</div>';
+        if (meta.image) html += '<div class="dp-prop">\\ud83d\\udce6 image: ' + escapeHtml(meta.image) + '</div>';
+        if (meta.schedule) html += '<div class="dp-prop">\\u23f1 schedule: ' + escapeHtml(meta.schedule) + '</div>';
         if (meta.realizes?.length) html += '<div class="dp-prop">\\ud83d\\udd17 realizes: ' + escapeHtml(meta.realizes.join(', ')) + '</div>';
         html += '</div>';
       }

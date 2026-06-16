@@ -45,8 +45,18 @@
 
   > ✅ Automated — `packages/core/src/view/deploy-view-extract.test.ts` › `resolves the label of a top-level (unassigned) infra realize target`
 
+### type の表示
+
+- [x] runtime を持たない `store` ユニットは SVG カードの説明行に `type` をフォールバック表示する（`runtime ?? type ?? image ?? schedule`）
+
+  > ✅ Automated — `packages/core/src/renderer/deploy-layout.test.ts` › `falls back to \`type\` as description for a runtime-less \`store\` unit`
+
+- [x] detail panel が `store` の `type` を表示し、runtime 行は出さない
+
+  > ✅ Automated — `packages/app/src/components/NodeDetailPanel.test.tsx` › `renders a \`store\` deploy unit's type (and not a runtime line)`
+
 ### 手動確認
 
-- [ ] app で `index.krs` に `database OrderDB {}` と `deploy { store OrderStore { type "Aurora PostgreSQL 15"; realizes OrderDB } }` を書き、deploy view で `OrderStore` が `OrderDB` のコンテナ内に store アイコン（cylinder 系）+ `store` バッジで描画されることを目視確認する
+- [ ] app で `index.krs` に `database OrderDB {}` と `deploy { store OrderStore { type "Aurora PostgreSQL 15"; realizes OrderDB } }` を書き、deploy view で `OrderStore` が `OrderDB` のコンテナ内に store アイコン（cylinder 系）+ `store` バッジ + 説明行 `Aurora PostgreSQL 15` で描画されることを目視確認する
 
   > ⏳ Manual — SVG 描画の見た目（アイコン / バッジ / コンテナ内配置）はレンダラの結合結果のため目視で確認する

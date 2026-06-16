@@ -170,10 +170,19 @@ export function NodeDetailPanel({
         </div>
       )}
 
-      {(metadata.runtime || metadata.realizes?.length) && (
+      {(metadata.runtime ||
+        metadata.type ||
+        metadata.image ||
+        metadata.schedule ||
+        metadata.realizes?.length) && (
         <div className="node-detail-section">
           {metadata.runtime && (
             <div className="node-detail-prop">🖥 runtime: {metadata.runtime}</div>
+          )}
+          {metadata.type && <div className="node-detail-prop">🏷 type: {metadata.type}</div>}
+          {metadata.image && <div className="node-detail-prop">📦 image: {metadata.image}</div>}
+          {metadata.schedule && (
+            <div className="node-detail-prop">⏱ schedule: {metadata.schedule}</div>
           )}
           {metadata.realizes?.length && (
             <div className="node-detail-prop">🔗 realizes: {metadata.realizes.join(", ")}</div>
