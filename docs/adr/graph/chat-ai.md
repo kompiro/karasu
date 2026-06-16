@@ -1,6 +1,6 @@
 # ADR Topic: chat-ai
 
-8 ADRs in this topic. Solid nodes belong to `chat-ai`; gray dashed nodes are ghosts showing cross-topic references to help navigation.
+9 ADRs in this topic. Solid nodes belong to `chat-ai`; gray dashed nodes are ghosts showing cross-topic references to help navigation.
 
 Other topics: [overview](../graph.md).
 ```mermaid
@@ -14,10 +14,12 @@ flowchart TD
     ADR_20260418_01["ADR-20260418-01<br/>Chat システムプロンプトの i18n — ロケール検出とプロンプト選択"]
     ADR_20260420_03["ADR-20260420-03<br/>i18n ロールアウト — 英語 / 日本語の UI・診断・Chat"]
     ADR_20260422_02["ADR-20260422-02<br/>Chat UI AI 設計レビュー — プロンプト駆動 + トリガー二系統"]
+    ADR_20260616_01["ADR-20260616-01<br/>組織グラフと解決済み ownerIndex を AI チャットプロンプトにシリアライズする"]
   end
   ADR_20260324_01["ADR-20260324-01<br/>[testing] E2EテストよりQA手動確認を優先する"]
   ADR_20260425_01["ADR-20260425-01<br/>[app-ui] ユーザー向け文字列はデフォルトで i18n を通す"]
   ADR_20260519_07["ADR-20260519-07<br/>[vscode] LSP / CLI の i18n — 互換ブリッジ廃止と @karasu-tools/i18n..."]
+  ADR_20260615_05["ADR-20260615-05<br/>[core-concepts] team アノテーション対応と `@migration_target` による primary..."]
   ADR_20260409_01 --> ADR_20260409_08
   ADR_20260409_01 --> ADR_20260407_04
   ADR_20260409_08 --> ADR_20260407_04
@@ -26,6 +28,7 @@ flowchart TD
   ADR_20260420_03 --> ADR_20260418_01
   ADR_20260422_02 --> ADR_20260409_08
   ADR_20260422_02 --> ADR_20260412_01
+  ADR_20260616_01 --> ADR_20260615_05
   ADR_20260425_01 --> ADR_20260420_03
   ADR_20260519_07 --> ADR_20260420_03
   ADR_20260412_05 -.supersedes.-> ADR_20260324_01
@@ -44,7 +47,9 @@ flowchart TD
   class ADR_20260418_01 accepted
   class ADR_20260420_03 accepted
   class ADR_20260422_02 accepted
+  class ADR_20260616_01 accepted
   class ADR_20260324_01 ghost
   class ADR_20260425_01 ghost
   class ADR_20260519_07 ghost
+  class ADR_20260615_05 ghost
 ```

@@ -1,6 +1,6 @@
 # ADR Dependency Graph — Overview
 
-207 ADRs across 15 topics. Clusters group by `topic` frontmatter field. Edges crossing cluster borders are cross-topic dependencies.
+208 ADRs across 15 topics. Clusters group by `topic` frontmatter field. Edges crossing cluster borders are cross-topic dependencies.
 ```mermaid
 flowchart TD
   subgraph adr-tooling["adr-tooling"]
@@ -95,6 +95,7 @@ flowchart TD
     ADR_20260418_01["ADR-20260418-01<br/>Chat システムプロンプトの i18n — ロケール検出とプロンプト選択"]
     ADR_20260420_03["ADR-20260420-03<br/>i18n ロールアウト — 英語 / 日本語の UI・診断・Chat"]
     ADR_20260422_02["ADR-20260422-02<br/>Chat UI AI 設計レビュー — プロンプト駆動 + トリガー二系統"]
+    ADR_20260616_01["ADR-20260616-01<br/>組織グラフと解決済み ownerIndex を AI チャットプロンプトにシリアライズする"]
   end
   subgraph cli["cli"]
     ADR_20260328_04["ADR-20260328-04<br/>CLI `karasu serve` モード — ローカル `.krs` のリアルタイムプレビュー"]
@@ -329,6 +330,7 @@ flowchart TD
   ADR_20260519_07 --> ADR_20260420_03
   ADR_20260614_01 --> ADR_20260323_03
   ADR_20260615_05 --> ADR_20260615_01
+  ADR_20260616_01 --> ADR_20260615_05
   ADR_20260412_05 -.supersedes.-> ADR_20260324_01
   ADR_20260429_09 -.supersedes.-> ADR_20260428_05
   ADR_20260508_01 -.supersedes.-> ADR_20260506_01
@@ -546,6 +548,7 @@ flowchart TD
   class ADR_20260615_04 accepted
   class ADR_20260615_05 accepted
   class ADR_20260615_06 accepted
+  class ADR_20260616_01 accepted
 ```
 
 ## Per-topic detail
@@ -553,7 +556,7 @@ flowchart TD
 - [`adr-tooling`](graph/adr-tooling.md) — 5 ADRs
 - [`app-ui`](graph/app-ui.md) — 38 ADRs
 - [`build`](graph/build.md) — 34 ADRs
-- [`chat-ai`](graph/chat-ai.md) — 8 ADRs
+- [`chat-ai`](graph/chat-ai.md) — 9 ADRs
 - [`cli`](graph/cli.md) — 11 ADRs
 - [`core-concepts`](graph/core-concepts.md) — 14 ADRs
 - [`edges`](graph/edges.md) — 14 ADRs
