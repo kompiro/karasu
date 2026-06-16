@@ -2,7 +2,7 @@
 
 - **日付**: 2026-06-16
 - **関連 Issue**: [#1642](https://github.com/kompiro/karasu/issues/1642)
-- **関連設計 / ADR**: `docs/design/en-ja-example-parity.md`（#1644 でマージ）、[ADR-20260616-03](../adr/20260616-03-docs-site-ssg.md)
+- **関連 ADR**: [ADR-20260616-08](../adr/20260616-08-en-ja-example-parity.md)（en/ja example parity）、[ADR-20260616-03](../adr/20260616-03-docs-site-ssg.md)
 - **Related TPLs**: [TPL-20260616-01](../test-perspectives/TPL-20260616-01-docs-pipeline-link-anchor-resolution.md), [TPL-20260511-02](../test-perspectives/TPL-20260511-02-spec-doc-reference-data-sync.md)
 - **対象**:
   - `examples/en/<name>/`（9 シナリオの英語版）
@@ -27,7 +27,7 @@ docs gallery の en ページが日本語ラベルの図を出していた問題
 
 - [x] `localized()` ページは en エントリ `examples/en/<name>` / ja エントリ `examples/<name>` を持ち、`githubDir` も per-locale
   > ✅ Automated — `packages/docs-site/scripts/lib/gallery-pages.test.ts` › `single-example page embeds the view as a data-URI img with a source fence`（en ページの GitHub リンクが `examples/en/payment-platform` を指す）
-- [ ] `/examples/ja/payment-platform/` 等の en ページが**英語ラベルの図**を、`/ja/examples/...` が**日本語ラベルの図**を表示する（目視）
+- [ ] `/examples/payment-platform/` 等の en ページが**英語ラベルの図**を、`/ja/examples/...` が**日本語ラベルの図**を表示する（目視。gallery のルートは en=`/examples/<slug>/` / ja=`/ja/examples/<slug>/`）
 
 ### AC-3: 既に英語の example は重複させない
 
