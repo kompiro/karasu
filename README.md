@@ -28,7 +28,7 @@ karasu is a **personal learning project** — not a commercial product. It is de
 
 That said, it is built to be safe to start adopting now:
 
-- **`.krs` / `.krs.style` language spec — v1.0 (stable).** Backward compatibility is a commitment; a breaking change to the language would mean a v2.
+- **`.krs` / `.krs.style` language spec — v1.0 (planned at launch).** The freeze scope and compatibility commitment are decided in [ADR-20260616-06](docs/adr/20260616-06-krs-spec-v1-freeze.md); the v1.0 designation itself is finalized at the public launch. Backward compatibility is the commitment — a breaking change to the language would mean a v2.
 - **`packages/core` TypeScript API — v0.x (no stability commitment).** The programmatic API may change between minor releases.
 - **Maintainer response — best-effort, no SLA.**
 
