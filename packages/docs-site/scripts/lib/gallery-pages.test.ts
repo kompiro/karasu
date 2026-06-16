@@ -41,6 +41,24 @@ describe("gallery-pages", () => {
     expect(md).toContain('description "```"'); // source preserved, fence not closed early
   });
 
+  it("adds an 'Open in the app' link only for openable examples", () => {
+    const payment = GALLERY_PAGES.find((p) => p.slug === "payment-platform");
+    if (!payment) throw new Error("fixture missing");
+    expect(examplePageMarkdown(payment, [stub()], "en")).toContain(
+      "karasu.pages.dev/?example=payment-platform&lang=en",
+    );
+
+    const fs = GALLERY_PAGES.find((p) => p.slug === "feature-samples");
+    if (!fs) throw new Error("fixture missing");
+    expect(
+      examplePageMarkdown(
+        fs,
+        fs.diagrams.map(() => stub()),
+        "en",
+      ),
+    ).not.toContain("karasu.pages.dev/?example=");
+  });
+
   it("feature-samples page renders one section per sample", () => {
     const page = GALLERY_PAGES.find((p) => p.slug === "feature-samples");
     if (!page) throw new Error("fixture missing");

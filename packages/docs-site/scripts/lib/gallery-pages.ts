@@ -3,7 +3,7 @@
 // <img> so the (id-bearing) SVGs never collide when several share a page, and so
 // the markup is base-path independent. Pure (no fs) — unit tested.
 
-import type { DiagramType } from "../../../core/src/index.ts";
+import { type DiagramType, findOpenableExample } from "../../../core/src/index.ts";
 import {
   GALLERY_PAGES,
   GROUP_LABELS,
@@ -54,6 +54,15 @@ function githubLink(page: GalleryPage, locale: Locale): string {
   return `[${text}](https://github.com/${REPO_SLUG}/tree/${REPO_BRANCH}/${dir})`;
 }
 
+const APP_URL = "https://karasu.pages.dev";
+
+/** "Open in the app" deep-link, only when this example is openable in this locale (#1646). */
+function openInAppLink(page: GalleryPage, locale: Locale): string | null {
+  if (!findOpenableExample(page.slug, locale)) return null;
+  const text = locale === "ja" ? "アプリで開く" : "Open in the app";
+  return `[${text}](${APP_URL}/?example=${page.slug}&lang=${locale})`;
+}
+
 /** Markdown for a single example page (one diagram), or the feature-samples page (many). */
 export function examplePageMarkdown(
   page: GalleryPage,
@@ -61,7 +70,8 @@ export function examplePageMarkdown(
   locale: Locale,
 ): string {
   const out = [`---\ntitle: ${yamlQuote(page.title[locale])}\n---\n`, page.blurb[locale], ""];
-  out.push(githubLink(page, locale), "");
+  const openLink = openInAppLink(page, locale);
+  out.push([githubLink(page, locale), openLink].filter(Boolean).join(" · "), "");
 
   if (page.diagrams.length === 1) {
     out.push(figures(rendered[0], locale), "");
