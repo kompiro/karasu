@@ -4,7 +4,7 @@
 - **ステータス**: 検討中（案B + kind 設計 B-2 で方針確定、実装 PR で ADR 昇格予定）
 - **関連**:
   - 引き金 Issue: [#1632](https://github.com/kompiro/karasu/issues/1632)
-  - PR: #（このあと採番）
+  - PR: [#1645](https://github.com/kompiro/karasu/pull/1645)
   - 関連 ADR: [ADR-20260405-05](../adr/20260405-05-database-as-first-class-node.md)（database/queue/storage を論理層の first-class node に昇格）
   - 関連 TPL: [TPL-20260519-02](../test-perspectives/TPL-20260519-02-shared-vocabulary-dual-representation.md)（共有語彙の dual representation）
   - 関連 Issue: [#423](https://github.com/kompiro/karasu/issues/423)（deploy diagram restructure）, [#1626](https://github.com/kompiro/karasu/issues/1626)（infra keyword vs shape tag）, [#1314](https://github.com/kompiro/karasu/issues/1314)（Syntax v1.0 spec freeze）
