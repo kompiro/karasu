@@ -1,7 +1,7 @@
 # karasu ロードマップ
 
 - **ステータス**: living（随時更新する。決定は ADR、実行・進捗は GitHub Issues で管理し、本書は**全体方針**を保持する）
-- **現在のフォーカス**: Syntax v1.0 readiness
+- **現在のフォーカス**: Syntax v1.0 readiness — **freeze 方針確定済み**（[ADR-20260616-06](adr/20260616-06-krs-spec-v1-freeze.md)）。残るは公開ローンチ（[#1317](https://github.com/kompiro/karasu/issues/1317)）。
 - **関連**:
   - [#1567](https://github.com/kompiro/karasu/issues/1567) — notation gap stocktaking（本ロードマップの起点）
   - [#1314](https://github.com/kompiro/karasu/issues/1314) — OSS launch Phase 2: `.krs` / `.krs.style` v1.0 spec freeze の ADR（本ロードマップが入力になる）
@@ -82,7 +82,7 @@ freeze する = 後方互換を約束する。
 - **lifecycle annotation の parameter 構文**（[ADR-20260615-04](adr/20260615-04-migration-intent-fields.md)、
   `@name(key: "value")` + graceful degradation by precision）。
 - **CRUD verb-decoration**（1:N 含む。付録の判断に基づく）。
-- 下記「freeze 前タスク」で新設する 2 つの scope 診断。
+- 配置 scope の診断 `edge-source-mismatch`（既存）/ `top-level-declaration`（新設、#1624）。
 
 **freeze に含めない（post-v1.0 watch — 明示的に約束しない）:**
 
@@ -118,18 +118,20 @@ are not fixed" の精神に沿う）。
 小さく完結度が大きく上がる。案3 は #1567 の deferred 方針と衝突し #1314 を無期限に
 塞ぐ。本ロードマップ自体が roadmap-first の代替（interim roadmap）を務める。
 
-### 実行計画（GitHub Issues で管理）
+### 実行計画（GitHub Issues で管理）— ✅ 完了
 
-freeze 前タスクを Issue 化し、すべて閉じてから [#1314](https://github.com/kompiro/karasu/issues/1314)
-で freeze ADR を起こす。
+freeze 前タスクはすべて完了し、[#1314](https://github.com/kompiro/karasu/issues/1314) で
+freeze ADR（[ADR-20260616-06](adr/20260616-06-krs-spec-v1-freeze.md)）を確定した。
+**凍結方針は決定済み**で、v1.0 の公開確定は launch（[#1317](https://github.com/kompiro/karasu/issues/1317)）で行う。
 
-| # | タスク | 種別 | Issue |
-| --- | --- | --- | --- |
-| 1 | edge 起点 scope の spec 明文化（規則名 = edge origin scope）。診断は既存の `edge-source-mismatch` を back-ref（rename しない） | spec + AT | [#1623](https://github.com/kompiro/karasu/issues/1623) |
-| 2 | top-level `user`/edge 禁止の spec 明文化 + 名前付き診断（例: `top-level-declaration`）新設 | core + spec + AT | [#1624](https://github.com/kompiro/karasu/issues/1624) |
-| 3 | **G** `client` sub-language の structure vs implementation 境界注記を `docs/concepts.md` に追加 | docs | [#1625](https://github.com/kompiro/karasu/issues/1625) |
-| 4 | **I** infra block keyword と shape tag の使い分け意図を spec に注記 | docs | [#1626](https://github.com/kompiro/karasu/issues/1626) |
-| 5 | v1.0 spec freeze ADR | adr | [#1314](https://github.com/kompiro/karasu/issues/1314) |
+| # | タスク | 種別 | Issue | 状態 |
+| --- | --- | --- | --- | --- |
+| 1 | edge 起点 scope の spec 明文化（規則名 = edge origin scope）。診断は既存の `edge-source-mismatch` を back-ref（rename しない） | spec + AT | [#1623](https://github.com/kompiro/karasu/issues/1623) | ✅ #1630 |
+| 2 | top-level `user`/edge 禁止の spec 明文化 + 名前付き診断 `top-level-declaration` 新設 | core + spec + AT | [#1624](https://github.com/kompiro/karasu/issues/1624) | ✅ #1637（user scoping: [ADR-20260616-05](adr/20260616-05-user-system-scoped.md)） |
+| 3 | **G** `client` sub-language の structure vs implementation 境界注記を `docs/concepts.md` に追加 | docs | [#1625](https://github.com/kompiro/karasu/issues/1625) | ✅ #1643 |
+| 4 | **I** infra block keyword と shape tag の使い分け意図を spec に注記 | docs | [#1626](https://github.com/kompiro/karasu/issues/1626) | ✅ #1636 |
+| 5 | v1.0 spec freeze ADR | adr | [#1314](https://github.com/kompiro/karasu/issues/1314) | ✅ [ADR-20260616-06](adr/20260616-06-krs-spec-v1-freeze.md)（#1647） |
+| — | 規則↔診断の分離 + 診断カタログ | adr | — | ✅ [ADR-20260616-04](adr/20260616-04-rule-diagnostic-separation-and-catalog.md)（#1629/#1641） |
 
 > **proactive TPL 同梱の義務**: タスク 1〜4 は `docs/spec/` / `docs/concepts*.md` への
 > 新規セクション追加を含むため、CLAUDE.md / `docs/process.md`「spec / concepts 改訂時の
