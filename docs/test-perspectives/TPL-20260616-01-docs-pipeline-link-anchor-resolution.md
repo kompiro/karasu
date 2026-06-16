@@ -67,4 +67,4 @@ scope:
 
 ## 派生元 spec
 
-- なし（spec / concepts の新規セクションではなく、`docs/` 取り込みパイプラインの構造的リスクに対する proactive TPL）。原典の設計判断は [docs-site SSG 選定の Design Doc](../design/docs-site-ssg.md)（#1575）、同期観点の親は [TPL-20260511-02](TPL-20260511-02-spec-doc-reference-data-sync.md)。
+- なし（spec / concepts の新規セクションではなく、`docs/` 取り込みパイプラインの構造的リスクに対する proactive TPL）。原典の設計判断は [ADR-20260616-03](../adr/20260616-03-docs-site-ssg.md)（#1575）、同期観点の親は [TPL-20260511-02](TPL-20260511-02-spec-doc-reference-data-sync.md)。

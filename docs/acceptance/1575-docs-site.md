@@ -2,7 +2,7 @@
 
 - **日付**: 2026-06-16
 - **関連 Issue**: [#1575](https://github.com/kompiro/karasu/issues/1575)
-- **関連 Design Doc / ADR**: [docs-site SSG 選定](../design/docs-site-ssg.md)（Astro Starlight 採用）
+- **関連 ADR**: [ADR-20260616-03](../adr/20260616-03-docs-site-ssg.md)（SSG = Astro Starlight 採用）
 - **Related TPLs**: [TPL-20260616-01](../test-perspectives/TPL-20260616-01-docs-pipeline-link-anchor-resolution.md)（link/anchor 未解決をビルドで fail）, [TPL-20260511-02](../test-perspectives/TPL-20260511-02-spec-doc-reference-data-sync.md)（doc ↔ source 片方向同期）
 - **対象**:
   - `packages/docs-site/`（`astro.config.mjs`, `src/content.config.ts`, `scripts/sync.ts`, `scripts/check-links.ts`, `scripts/lib/{site-map,rewrite,markdown}.ts`, `home/{en,ja}.md`）
