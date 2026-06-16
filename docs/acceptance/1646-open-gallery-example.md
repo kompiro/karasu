@@ -2,7 +2,7 @@
 
 - **日付**: 2026-06-16
 - **関連 Issue**: [#1646](https://github.com/kompiro/karasu/issues/1646)
-- **関連設計 / ADR**: `docs/design/app-open-gallery-example.md`（#1660 でマージ）、[ADR-20260616-08](../adr/20260616-08-en-ja-example-parity.md)（最小シード方針）
+- **関連 ADR**: [ADR-20260616-11](../adr/20260616-11-open-gallery-example-in-app.md)（id 指定・固定 origin）、[ADR-20260616-08](../adr/20260616-08-en-ja-example-parity.md)（最小シード方針）
 - **Related TPLs**: [TPL-20260510-17](../test-perspectives/TPL-20260510-17-trust-boundary-input-validation.md)（信頼境界での入力検証）
 - **対象**:
   - `packages/core/src/builtins/openable-examples.ts`（manifest + `findOpenableExample`）
