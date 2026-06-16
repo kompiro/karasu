@@ -302,5 +302,94 @@ deploy Prod {
       expect(container).toBeDefined();
       expect(container!.serviceLabel).toBe("注文DB");
     });
+
+    it("emits a service→infra ghost edge when both the service and the store are realized (#1658)", () => {
+      const krs = `
+system EC {
+  service ECommerce {
+    domain Order {
+      usecase PlaceOrder {
+        resource OrderDB.OrderTable
+      }
+    }
+  }
+  database OrderDB {
+    table OrderTable {}
+  }
+}
+deploy Prod {
+  oci ecommerceApp {
+    runtime "Node.js 20"
+    realizes ECommerce
+  }
+  store orderStore {
+    type "Aurora PostgreSQL 15"
+    realizes OrderDB
+  }
+}
+`;
+      const file = Parser.parse(krs).value;
+      const slice = extractDeployView(file.deploys, withUnassignedSystem(file));
+      const edge = slice.ghostEdges.find((e) => e.from === "ECommerce" && e.to === "OrderDB");
+      expect(edge).toBeDefined();
+    });
+
+    it("emits the edge across scopes: service inside a system, infra at top level (#1658)", () => {
+      // The canonical shared-infra pattern: OrderDB declared at the top level (a
+      // dedicated infra file) and referenced by a service inside a `system`.
+      const krs = `
+database OrderDB { table OrderTable {} }
+system EC {
+  service ECommerce {
+    domain Order {
+      usecase PlaceOrder {
+        resource OrderDB.OrderTable
+      }
+    }
+  }
+}
+deploy Prod {
+  oci ecommerceApp {
+    runtime "Node.js 20"
+    realizes ECommerce
+  }
+  store orderStore {
+    type "Aurora PostgreSQL 15"
+    realizes OrderDB
+  }
+}
+`;
+      const file = Parser.parse(krs).value;
+      const slice = extractDeployView(file.deploys, withUnassignedSystem(file));
+      const edge = slice.ghostEdges.find((e) => e.from === "ECommerce" && e.to === "OrderDB");
+      expect(edge).toBeDefined();
+    });
+
+    it("does not emit the service→infra edge when the depending service is not realized", () => {
+      const krs = `
+system EC {
+  service ECommerce {
+    domain Order {
+      usecase PlaceOrder {
+        resource OrderDB.OrderTable
+      }
+    }
+  }
+  database OrderDB {
+    table OrderTable {}
+  }
+}
+deploy Prod {
+  store orderStore {
+    type "Aurora PostgreSQL 15"
+    realizes OrderDB
+  }
+}
+`;
+      const file = Parser.parse(krs).value;
+      const slice = extractDeployView(file.deploys, withUnassignedSystem(file));
+      // OrderDB is realized but ECommerce is not, so no ghost edge into the store.
+      expect(slice.ghostEdges.filter((e) => e.to === "OrderDB")).toHaveLength(0);
+    });
   });
 });

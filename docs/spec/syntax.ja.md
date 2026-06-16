@@ -686,6 +686,10 @@ deploy "production" {
 ランタイム形態の概念が無いため。推奨スタイル: マネージドストアは `store` で書く。他の kind（`oci` 等）でも
 infra を realize できるが、`store` を使うと意図が明確になる。
 
+service が realize 済みの infra ノードに依存し（usecase が `resource <Infra>.<Sub>` で参照）、その service と
+store の両方が realize されているとき、deploy 図は service のコンテナから realize 先 store のコンテナへ依存エッジを
+描く（[ADR-20260616-12](../adr/20260616-12-deploy-infra-dependency-edges.md)）。
+
 > スコープ: これは `deploy` の **ランタイム契約層**（どの concrete な形態がストアを裏付けるか）に収まる。
 > インフラのトポロジ（リージョン・AZ・クラスタ・ノード）は依然として対象外（[concepts.ja.md](../concepts.ja.md) 参照）。
 > 決定は [ADR-20260616-09](../adr/20260616-09-infra-physical-realize.md)。

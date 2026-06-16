@@ -188,8 +188,13 @@ function deriveImplicitServiceEdges(
  * Derive synthetic service→database/queue/storage edges from resource references.
  * For each service, walks all descendant resource nodes with dot-notation refs and
  * creates one edge per unique (service, infra) pair.
+ *
+ * Exported as the single source of truth for the service→infra dependency: the
+ * system view consumes it to draw `service → database` edges, and the deploy view
+ * (`extractDeployView`) reuses it so both views agree on the dependency set
+ * (see ADR-20260616-12, TPL-20260519-02).
  */
-function deriveInfraEdges(children: KrsNode[]): KrsEdge[] {
+export function deriveInfraEdges(children: KrsNode[]): KrsEdge[] {
   const infraIds = new Set(children.filter((n) => INFRA_KIND_SET.has(n.kind)).map((n) => n.id));
   if (infraIds.size === 0) return [];
 
