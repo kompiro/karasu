@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
-import { REFERENCE_DATA } from "./reference-data.js";
+import { REFERENCE_DATA, SELECTOR_SPECIFICITY } from "./reference-data.js";
+import { StyleParser, computeSpecificity } from "../parser/style-parser.js";
 
 // `REFERENCE_DATA` is the single source of truth behind `getReference()`.
 // These tests guard the invariant the adapter relies on: every entry
@@ -48,6 +49,40 @@ describe("REFERENCE_DATA", () => {
     for (const entries of Object.values(categories)) {
       const list = ids(entries);
       expect(new Set(list).size).toBe(list.length);
+    }
+  });
+});
+
+describe("SELECTOR_SPECIFICITY", () => {
+  it("every row's score matches what the style parser computes for its example", () => {
+    // Parse each example as a real `.krs.style` rule and compare against the
+    // parser's own specificity — locks this data to `computeSpecificity` so the
+    // app panel and the generated `docs/spec/style.md` table can't drift from
+    // the implementation. (Replaces the doc-parse check #1604 put in
+    // reference-spec-sync.test.ts, which is circular now the table is generated.)
+    const computed = SELECTOR_SPECIFICITY.map((row) => {
+      const rule = StyleParser.parse(`${row.example} { color: #000000; }`).value.rules[0];
+      return {
+        example: row.example,
+        expected: row.specificity,
+        actual: computeSpecificity(rule.selector),
+      };
+    });
+    for (const c of computed) {
+      expect({ example: c.example, score: c.actual }).toEqual({
+        example: c.example,
+        score: c.expected,
+      });
+    }
+  });
+
+  it("every row has a non-empty en + ja label and a unique example", () => {
+    const examples = SELECTOR_SPECIFICITY.map((s) => s.example);
+    expect(new Set(examples).size).toBe(examples.length);
+    for (const row of SELECTOR_SPECIFICITY) {
+      for (const locale of LOCALES) {
+        expect(row.label[locale].length).toBeGreaterThan(0);
+      }
     }
   });
 });

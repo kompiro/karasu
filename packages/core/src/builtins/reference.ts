@@ -188,7 +188,11 @@ export function getReference(locale: ReferenceLocale = "en"): KarasuReference {
     },
     syntaxByView: SYNTAX_SECTIONS,
     styleSelectorExamplesByView: STYLE_SELECTOR_EXAMPLES,
-    selectorSpecificity: SELECTOR_SPECIFICITY,
+    selectorSpecificity: SELECTOR_SPECIFICITY.map((row) => ({
+      label: row.label[locale],
+      example: row.example,
+      specificity: row.specificity,
+    })),
   };
 
   _cache.set(locale, ref);
