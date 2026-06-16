@@ -24,6 +24,7 @@ interface OrgViewState {
   orgWarnings: Warning[];
   nodePathIndex: Map<string, string[]>;
   organizations: OrganizationBlock[];
+  ownerIndex: Map<string, string>;
   styles: ResolvedStyles | undefined;
 }
 
@@ -118,6 +119,7 @@ export function useOrgView(
         orgWarnings: prev.orgWarnings,
         nodePathIndex: prev.nodePathIndex,
         organizations: prev.organizations,
+        ownerIndex: prev.ownerIndex,
         styles: prev.styles,
       }),
       okState: () => ({
@@ -126,6 +128,7 @@ export function useOrgView(
         orgWarnings: orgBase.warnings,
         nodePathIndex: orgBase.nodePathIndex,
         organizations: orgBase.organizations,
+        ownerIndex: orgBase.ownerIndex,
         styles: orgBase.styles,
       }),
       // Org names its state fields differently (orgSvg / orgDiagnostics); the
@@ -144,6 +147,7 @@ export function useOrgView(
       orgWarnings: [],
       nodePathIndex: new Map(),
       organizations: [],
+      ownerIndex: new Map(),
       styles: undefined,
     },
     compile,

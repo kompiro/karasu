@@ -1,6 +1,6 @@
 import { useState, useCallback } from "react";
 import type { editor } from "monaco-editor";
-import type { SystemNode } from "@karasu-tools/core";
+import type { SystemNode, OrganizationBlock } from "@karasu-tools/core";
 import { EditorPane } from "./EditorPane.js";
 import { EditTabBar, type EditTab } from "./EditTabBar.js";
 import { EditTabShortcuts } from "./EditTabShortcuts.js";
@@ -18,6 +18,8 @@ interface EditPaneProps {
   viewPath: string[];
   currentProjectId: string | null;
   resolvedSystems: SystemNode[];
+  organizations: OrganizationBlock[];
+  ownerIndex: Map<string, string>;
   onNavigateViewPath: (path: string[]) => void;
   /** Called when the user clicks Format or presses Shift+Alt+F */
   onFormat?: () => void;
@@ -39,6 +41,8 @@ export function EditPane({
   viewPath,
   currentProjectId,
   resolvedSystems,
+  organizations,
+  ownerIndex,
   onNavigateViewPath,
   onFormat,
   onTidyStyle,
@@ -81,6 +85,8 @@ export function EditPane({
           fileContent={value}
           currentFilePath={currentFilePath}
           resolvedSystems={resolvedSystems}
+          organizations={organizations}
+          ownerIndex={ownerIndex}
           apiKey={apiKey}
           onNavigateViewPath={onNavigateViewPath}
           onEditorChange={onChange}

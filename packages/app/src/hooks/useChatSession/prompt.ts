@@ -1,5 +1,13 @@
 import type Anthropic from "@anthropic-ai/sdk";
-import type { SystemNode, KrsNode, KrsEdge, LinkEntry } from "@karasu-tools/core";
+import type {
+  SystemNode,
+  KrsNode,
+  KrsEdge,
+  LinkEntry,
+  OrganizationBlock,
+  TeamNode,
+  MemberNode,
+} from "@karasu-tools/core";
 import type { Locale } from "../../i18n/locale";
 
 // ── Drill-down level detection ────────────────────────────────────────────────
@@ -85,9 +93,39 @@ interface SerializedNode {
   id: string;
   kind: string;
   label?: string;
+  /** Resolved primary owner team id (from ownerIndex), if any. */
+  owner?: string;
   links?: Array<{ url: string; label?: string }>;
   children?: SerializedNode[];
   edges?: SerializedEdge[];
+}
+
+interface SerializedMember {
+  id: string;
+  label?: string;
+  slack?: string;
+  github?: string;
+}
+
+interface SerializedTeam {
+  id: string;
+  label?: string;
+  owns: string[];
+  annotations?: string[];
+  links?: Array<{ url: string; label?: string }>;
+  members?: SerializedMember[];
+  subteams?: SerializedTeam[];
+}
+
+interface SerializedOrganization {
+  id: string;
+  label?: string;
+  teams: SerializedTeam[];
+}
+
+function serializeLinks(links: LinkEntry[]): Array<{ url: string; label?: string }> | undefined {
+  if (!links.length) return undefined;
+  return links.map((l) => ({ url: l.url, ...(l.label ? { label: l.label } : {}) }));
 }
 
 function serializeEdges(edges: KrsEdge[]): SerializedEdge[] {
@@ -100,36 +138,81 @@ function serializeEdges(edges: KrsEdge[]): SerializedEdge[] {
   }));
 }
 
-function serializeNode(node: KrsNode): SerializedNode {
+function serializeNode(node: KrsNode, ownerIndex: Map<string, string>): SerializedNode {
+  const owner = ownerIndex.get(node.id);
   const out: SerializedNode = {
     id: node.id,
     kind: node.kind,
     ...(node.label ? { label: node.label } : {}),
+    ...(owner ? { owner } : {}),
   };
   const props = node.properties as { links: LinkEntry[] };
-  if (props.links.length) {
-    out.links = props.links.map((l) => ({ url: l.url, ...(l.label ? { label: l.label } : {}) }));
-  }
-  if (node.children.length) out.children = node.children.map(serializeNode);
+  const links = serializeLinks(props.links);
+  if (links) out.links = links;
+  if (node.children.length) out.children = node.children.map((c) => serializeNode(c, ownerIndex));
   if (node.edges.length) out.edges = serializeEdges(node.edges);
   return out;
 }
 
-function serializeModelGraph(systems: SystemNode[]): string {
+function serializeTeam(team: TeamNode): SerializedTeam {
+  const members = team.children.filter((c): c is MemberNode => c.kind === "member");
+  const subteams = team.children.filter((c): c is TeamNode => c.kind === "team");
+  const links = serializeLinks(team.properties.links);
+  return {
+    id: team.id,
+    ...(team.label ? { label: team.label } : {}),
+    owns: team.properties.owns,
+    ...(team.annotations.length ? { annotations: team.annotations } : {}),
+    ...(links ? { links } : {}),
+    ...(members.length
+      ? {
+          members: members.map((m) => ({
+            id: m.id,
+            ...(m.label ? { label: m.label } : {}),
+            ...(m.properties.slack ? { slack: m.properties.slack } : {}),
+            ...(m.properties.github ? { github: m.properties.github } : {}),
+          })),
+        }
+      : {}),
+    ...(subteams.length ? { subteams: subteams.map(serializeTeam) } : {}),
+  };
+}
+
+function serializeOrganizations(organizations: OrganizationBlock[]): SerializedOrganization[] {
+  return organizations.map((org) => ({
+    id: org.id,
+    ...(org.label ? { label: org.label } : {}),
+    teams: org.teams.map(serializeTeam),
+  }));
+}
+
+function serializeModelGraph(
+  systems: SystemNode[],
+  organizations: OrganizationBlock[],
+  ownerIndex: Map<string, string>,
+): string {
+  // Systems are never owned: `ownerIndex` is keyed only by service/domain ids
+  // (the parser's INDEXED_KINDS), so the `owner` annotation lives on the child
+  // nodes via serializeNode, not here.
   const serialized = systems.map((sys) => {
-    const links = sys.properties.links;
+    const links = serializeLinks(sys.properties.links);
     return {
       id: sys.id,
       kind: "system",
       ...(sys.label ? { label: sys.label } : {}),
-      ...(links.length
-        ? { links: links.map((l) => ({ url: l.url, ...(l.label ? { label: l.label } : {}) })) }
-        : {}),
-      children: sys.children.map(serializeNode),
+      ...(links ? { links } : {}),
+      children: sys.children.map((c) => serializeNode(c, ownerIndex)),
       edges: serializeEdges(sys.edges),
     };
   });
-  return JSON.stringify({ systems: serialized }, null, 2);
+  return JSON.stringify(
+    {
+      systems: serialized,
+      ...(organizations.length ? { organizations: serializeOrganizations(organizations) } : {}),
+    },
+    null,
+    2,
+  );
 }
 
 // ── Content hash ──────────────────────────────────────────────────────────────
@@ -252,6 +335,10 @@ export interface BuildSystemPromptArgs {
   fileContent: string;
   currentFilePath: string | null;
   resolvedSystems: SystemNode[];
+  /** Merged organization graph across all files (teams / owns / members / links). */
+  organizations: OrganizationBlock[];
+  /** Resolved primary owner per service/domain id, merged across all files. */
+  ownerIndex: Map<string, string>;
   locale: Locale;
 }
 
@@ -260,15 +347,23 @@ export function buildSystemPrompt(args: BuildSystemPromptArgs): string {
 }
 
 function buildSystemPromptJa(args: BuildSystemPromptArgs): string {
-  const { scopeLabel, viewPath, fileContent, currentFilePath, resolvedSystems } = args;
+  const {
+    scopeLabel,
+    viewPath,
+    fileContent,
+    currentFilePath,
+    resolvedSystems,
+    organizations,
+    ownerIndex,
+  } = args;
 
   const fileSection = currentFilePath
     ? `## 編集対象ファイル\n${currentFilePath}\n\n## ファイルの内容\n${fileContent}`
     : `## ファイルの内容\n${fileContent}`;
 
-  const modelGraph = serializeModelGraph(resolvedSystems);
+  const modelGraph = serializeModelGraph(resolvedSystems, organizations, ownerIndex);
   const modelSection =
-    resolvedSystems.length > 0
+    resolvedSystems.length > 0 || organizations.length > 0
       ? `## アーキテクチャモデル全体（全ファイルを統合したグラフ）\n\`\`\`json\n${modelGraph}\n\`\`\``
       : "";
 
@@ -306,9 +401,12 @@ id の候補が曖昧な場合は英語 PascalCase で提案し、ユーザー�
 - 回答には node の id と label を含め、ダイアグラムで見たい場合は navigate_view ツールを使う
 
 ### 組織クエリ
-organization ブロックの owns（team → サービス / ドメインの所有）と team の links（Slack / Teams / チームページ等）を使って組織情報を返す：
-- 「X に依存しているチームは？」→ X に依存するサービスを owns で所有する team と、その team の links を収集する
-- 「オンボーディングで最初に会うべき人は？」→ エッジ数が多いサービスを owns する team と、その links / member を返す
+上記「アーキテクチャモデル全体」JSON の \`organizations\` セクション（全ファイルを統合した組織グラフ）を使って組織情報を返す。各 team は \`owns\`（所有するサービス / ドメイン）・\`links\`（Slack / Teams / チームページ等）・\`members\`（\`slack\` / \`github\`）・\`subteams\` を持ち、各サービス / ドメインノードには解決済みの主オーナーが \`owner\`（team の id）として注記される：
+- 「X のオーナーチームは？」「X の連絡先は？」→ X ノードの \`owner\` から team を引き、その team の \`links\` / \`members\` を返す
+- 「X に依存しているチームは？」→ X に依存するサービス（edges を逆引き）の \`owner\` team と、その team の \`links\` を収集する
+- 「オンボーディングで最初に会うべき人は？」→ エッジ数が多いサービスの \`owner\` team と、その \`links\` / \`members\` を返す
+
+組織グラフは \`organizations\` セクションに統合済みなので、organization ブロックが import 元の別ファイルで宣言されていても解決できる。ファイル内容（現在のファイルのみ）に依存しないこと。
 
 ## org 図（organization ブロック）の構文
 
@@ -378,15 +476,23 @@ organization ブロックの owns（team → サービス / ドメインの所�
 }
 
 function buildSystemPromptEn(args: BuildSystemPromptArgs): string {
-  const { scopeLabel, viewPath, fileContent, currentFilePath, resolvedSystems } = args;
+  const {
+    scopeLabel,
+    viewPath,
+    fileContent,
+    currentFilePath,
+    resolvedSystems,
+    organizations,
+    ownerIndex,
+  } = args;
 
   const fileSection = currentFilePath
     ? `## File being edited\n${currentFilePath}\n\n## File contents\n${fileContent}`
     : `## File contents\n${fileContent}`;
 
-  const modelGraph = serializeModelGraph(resolvedSystems);
+  const modelGraph = serializeModelGraph(resolvedSystems, organizations, ownerIndex);
   const modelSection =
-    resolvedSystems.length > 0
+    resolvedSystems.length > 0 || organizations.length > 0
       ? `## Full architecture model (merged graph across all files)\n\`\`\`json\n${modelGraph}\n\`\`\``
       : "";
 
@@ -424,9 +530,12 @@ Use the "Full architecture model" JSON above to analyze dependencies:
 - Include the node's \`id\` and \`label\` in your answer. When the user wants to see it on the diagram, use the \`navigate_view\` tool
 
 ### Organizational queries
-Use the organization block's \`owns\` (team → service/domain ownership) and the team \`links\` (Slack / Teams / team page, etc.) to answer organizational questions:
-- "Which teams depend on X?" → Collect the teams that \`owns\` the services depending on X, plus those teams' \`links\`
-- "Who should I meet first during onboarding?" → Return the team that \`owns\` the service with the most edges, plus its \`links\` / \`member\`s
+Use the \`organizations\` section of the "Full architecture model" JSON above (the org graph merged across all files) to answer organizational questions. Each team carries \`owns\` (services/domains it owns), \`links\` (Slack / Teams / team page, etc.), \`members\` (\`slack\` / \`github\`), and \`subteams\`; every service/domain node is annotated with its resolved primary owner as \`owner\` (a team id):
+- "Which team owns X?" / "Who do I contact for X?" → Look up X's \`owner\` to find the team, then return that team's \`links\` / \`members\`
+- "Which teams depend on X?" → Collect the \`owner\` teams of the services that depend on X (reverse-lookup the edges), plus those teams' \`links\`
+- "Who should I meet first during onboarding?" → Return the \`owner\` team of the service with the most edges, plus its \`links\` / \`members\`
+
+Because the org graph is merged into the \`organizations\` section, ownership resolves even when the \`organization\` block is declared in an imported file. Do not rely on the file contents (which only carry the current file).
 
 ## org diagram (organization block) syntax
 

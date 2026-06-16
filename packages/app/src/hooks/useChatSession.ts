@@ -1,6 +1,11 @@
 import { useState, useCallback, useEffect, useMemo, useRef } from "react";
 import Anthropic, { APIError } from "@anthropic-ai/sdk";
-import { applyKrsPatch, type PatchOperation, type SystemNode } from "@karasu-tools/core";
+import {
+  applyKrsPatch,
+  type PatchOperation,
+  type SystemNode,
+  type OrganizationBlock,
+} from "@karasu-tools/core";
 import { resolveLocale } from "../i18n/locale.js";
 import { useTranslation } from "../i18n/index.js";
 import {
@@ -32,6 +37,8 @@ interface UseChatSessionParams {
   scopeLabel: string;
   viewPath: string[];
   resolvedSystems: SystemNode[];
+  organizations: OrganizationBlock[];
+  ownerIndex: Map<string, string>;
   apiKey: string | null;
   onNavigateViewPath: (path: string[]) => void;
   onEditorChange: (value: string) => void;
@@ -97,6 +104,8 @@ export function useChatSession({
   scopeLabel,
   viewPath,
   resolvedSystems,
+  organizations,
+  ownerIndex,
   apiKey,
   onNavigateViewPath,
   onEditorChange,
@@ -134,6 +143,10 @@ export function useChatSession({
   viewPathRef.current = viewPath;
   const resolvedSystemsRef = useRef(resolvedSystems);
   resolvedSystemsRef.current = resolvedSystems;
+  const organizationsRef = useRef(organizations);
+  organizationsRef.current = organizations;
+  const ownerIndexRef = useRef(ownerIndex);
+  ownerIndexRef.current = ownerIndex;
   const apiKeyRef = useRef(apiKey);
   apiKeyRef.current = apiKey;
 
@@ -199,6 +212,8 @@ export function useChatSession({
         fileContent: fileContentRef.current,
         currentFilePath: currentFilePathRef.current,
         resolvedSystems: resolvedSystemsRef.current,
+        organizations: organizationsRef.current,
+        ownerIndex: ownerIndexRef.current,
         locale,
       });
 

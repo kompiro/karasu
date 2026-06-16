@@ -324,6 +324,8 @@ export function AppShell({
               viewPath={viewPath}
               currentProjectId={currentProject?.id ?? null}
               resolvedSystems={views.system.resolvedSystems}
+              organizations={views.org.organizations}
+              ownerIndex={views.org.ownerIndex}
               onNavigateViewPath={navigateViewPath}
               onFormat={isStyleFile ? undefined : handleFormat}
               onTidyStyle={isStyleFile ? handleTidyStyle : undefined}
