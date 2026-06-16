@@ -54,6 +54,8 @@ oci "order-service" {
 
 UMLのRealization関係に対応。「このデプロイ単位がこのサービスを実現している」という宣言。
 
+デプロイ単位は **共有 infra ノード**（`database` / `queue` / `storage`）も realize できる — 通常は専用の `store` kind を使う — ことで、論理データストアを裏付ける concrete なマネージドストアを記録する（例: `store "order-db" { type "Aurora PostgreSQL 15"; realizes OrderDB }`）。これは `deploy` のランタイム契約層に収まり、インフラのトポロジ（リージョン・AZ・ノード）は対象外のまま。
+
 ### 組織構造（Who）
 
 **誰が所有するか** を記述する。

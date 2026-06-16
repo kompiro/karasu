@@ -84,6 +84,7 @@ export const ICON_RULES: readonly IconRule[] = [
   { kind: "assets", icon: "assets", scope: "deploy" },
   { kind: "job", icon: "job", scope: "deploy" },
   { kind: "artifact", icon: "artifact", scope: "deploy" },
+  { kind: "store", icon: "database", scope: "deploy" },
 ];
 
 /** CSS selector for a rule: `kind` for a base rule, `kind[tag]` for a variant. */

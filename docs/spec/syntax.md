@@ -167,6 +167,7 @@ All properties are optional. When omitted, a warning is emitted rather than an e
 | `assets` | Static files / SPA (served via CDN) | `runtime`, `realizes` |
 | `job` | Batch job. Without schedule: one-shot; with schedule: recurring | `runtime`, `schedule`, `realizes` |
 | `artifact` | Any kind not covered above | `type`, `runtime`, `realizes` |
+| `store` | Managed data store realizing a logical infra node (Aurora PostgreSQL, Amazon SQS, S3, …) | `type`, `realizes` |
 <!-- /gen:reference:deploy-unit-kinds -->
 
 ---
@@ -676,6 +677,35 @@ oci "monolith" {
   realizes InventoryService
 }
 ```
+
+### Realizing shared infra (the `store` kind)
+
+`realizes` can also point at a **shared infra node** (`database` / `queue` / `storage`), not just a
+`service` / `domain`. This records the *physical form* of a logical data store — which managed service
+or engine actually backs it — symmetrically to how an `oci` unit realizes a service. Use the dedicated
+**`store`** kind for managed data stores; its free-text `type` names the concrete technology.
+
+```
+deploy "production" {
+  store "order-db" {
+    type     "Aurora PostgreSQL 15"
+    realizes OrderDB        // realizes the logical `database OrderDB`
+  }
+  store "order-events" {
+    type     "Amazon SQS"
+    realizes OrderEvents    // realizes the logical `queue OrderEvents`
+  }
+}
+```
+
+The unit is drawn inside the realized infra node's container on the deploy diagram, the same way a
+service-realizing unit is. `store` carries `type` and `realizes` but no `runtime` / `schedule` — a
+managed store has no runtime form of its own. Recommended style: model managed stores with `store`;
+other kinds (`oci`, …) *may* realize an infra node too, but `store` keeps the intent explicit.
+
+> Scope: this stays within `deploy`'s **runtime-contract** layer (which concrete form backs the store).
+> Infrastructure topology — regions, AZs, clusters, nodes — remains out of scope (see [concepts.md](../concepts.md)).
+> Decided in [ADR-20260616-09](../adr/20260616-09-infra-physical-realize.md).
 
 ---
 

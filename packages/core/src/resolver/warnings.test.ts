@@ -891,6 +891,85 @@ deploy Production {
     expect(unresolved(krs)).toHaveLength(0);
   });
 
+  it("resolves a `store` realizing system-nested infra (database / queue / storage)", () => {
+    const krs = `
+system S {
+  database OrderDB {}
+  queue OrderEvents {}
+  storage MediaStore {}
+}
+deploy Production {
+  store orderStore {
+    type "Aurora PostgreSQL 15"
+    realizes OrderDB
+  }
+  store eventBus {
+    type "Amazon SQS"
+    realizes OrderEvents
+  }
+  store mediaBucket {
+    type "Amazon S3"
+    realizes MediaStore
+  }
+}
+    `;
+    expect(unresolved(krs)).toHaveLength(0);
+  });
+
+  it("resolves a `store` realizing a top-level (unassigned) infra node", () => {
+    const krs = `
+database OrderDB {}
+deploy Production {
+  store orderStore {
+    type "Aurora PostgreSQL 15"
+    realizes OrderDB
+  }
+}
+    `;
+    expect(unresolved(krs)).toHaveLength(0);
+  });
+
+  it("warns when a `store` realizes a non-existent infra id", () => {
+    const krs = `
+system S {
+  database OrderDB {}
+}
+deploy Production {
+  store orderStore {
+    type "Aurora PostgreSQL 15"
+    realizes OrderDb
+  }
+}
+    `;
+    const w = unresolved(krs);
+    expect(w).toHaveLength(1);
+    if (w[0].kind !== "unresolved-realizes") throw new Error("kind mismatch");
+    expect(w[0].params).toEqual({
+      deployNodeId: "orderStore",
+      deployBlockId: "Production",
+      target: "OrderDb",
+    });
+  });
+
+  it("does not resolve a leaf infra sub-resource (table) as a realize target", () => {
+    const krs = `
+system S {
+  database OrderDB {
+    table Orders {}
+  }
+}
+deploy Production {
+  store t {
+    type "Aurora PostgreSQL 15"
+    realizes Orders
+  }
+}
+    `;
+    // Only top-level database/queue/storage are valid targets; a leaf `table`
+    // is not, so realizing it is unresolved.
+    expect(unresolved(krs)).toHaveLength(1);
+  });
+
   it("warns once per typoed entry on a single deploy node", () => {
     const krs = `
 system S {

@@ -28,7 +28,8 @@ export type DeployNodeKind =
   | "function"
   | "assets"
   | "job"
-  | "artifact";
+  | "artifact"
+  | "store";
 
 // ─── 共通 ─────────────────────────────────────────
 

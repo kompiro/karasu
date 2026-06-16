@@ -1,5 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { extractDeployView } from "./deploy-view-extract.js";
+import { withUnassignedSystem } from "./unassigned-system.js";
+import { Parser } from "../parser/parser.js";
 import type { DeployBlock, SystemNode } from "../types/ast.js";
 
 const LOC = { start: { line: 1, column: 0, offset: 0 }, end: { line: 1, column: 0, offset: 0 } };
@@ -260,6 +262,45 @@ describe("extractDeployView", () => {
       const result = extractDeployView([prod], [makeSystem()], "nonexistent");
       expect(result.deployLabel).toBe("本番環境");
       expect(result.containers[0].units[0].id).toBe("prod-api");
+    });
+  });
+
+  describe("infra realize targets (store kind)", () => {
+    it("forms a container for a `store` realizing a system-nested database, with the label resolved", () => {
+      const krs = `
+system EC {
+  database OrderDB { label "注文DB" }
+}
+deploy Prod {
+  store orderStore {
+    type "Aurora PostgreSQL 15"
+    realizes OrderDB
+  }
+}
+`;
+      const file = Parser.parse(krs).value;
+      const slice = extractDeployView(file.deploys, withUnassignedSystem(file));
+      const container = slice.containers.find((c) => c.serviceId === "OrderDB");
+      expect(container).toBeDefined();
+      expect(container!.serviceLabel).toBe("注文DB");
+      expect(container!.units.map((u) => u.id)).toEqual(["orderStore"]);
+    });
+
+    it("resolves the label of a top-level (unassigned) infra realize target", () => {
+      const krs = `
+database OrderDB { label "注文DB" }
+deploy Prod {
+  store orderStore {
+    type "Aurora PostgreSQL 15"
+    realizes OrderDB
+  }
+}
+`;
+      const file = Parser.parse(krs).value;
+      const slice = extractDeployView(file.deploys, withUnassignedSystem(file));
+      const container = slice.containers.find((c) => c.serviceId === "OrderDB");
+      expect(container).toBeDefined();
+      expect(container!.serviceLabel).toBe("注文DB");
     });
   });
 });

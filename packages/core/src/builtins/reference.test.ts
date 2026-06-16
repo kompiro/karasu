@@ -136,14 +136,36 @@ describe("getReference", () => {
 
   it("includes all deploy unit kinds", () => {
     const kinds = ref.deployUnitKinds.map((k) => k.kind);
-    expect(kinds).toEqual(["war", "jar", "oci", "lambda", "function", "assets", "job", "artifact"]);
+    expect(kinds).toEqual([
+      "war",
+      "jar",
+      "oci",
+      "lambda",
+      "function",
+      "assets",
+      "job",
+      "artifact",
+      "store",
+    ]);
   });
 
-  it("all deploy unit kinds include runtime and realizes as properties", () => {
+  it("every deploy unit kind can realize a logical node", () => {
     for (const kind of ref.deployUnitKinds) {
-      expect(kind.properties).toContain("runtime");
       expect(kind.properties).toContain("realizes");
     }
+  });
+
+  it("all deploy unit kinds carry a runtime form except `store`", () => {
+    // `store` is a managed data store realizing an infra node; it has no
+    // runtime form (its concrete tech is the free-text `type`), so it is the
+    // sole exception to the runtime invariant. See ADR-20260616-06.
+    const runtimeKinds = ref.deployUnitKinds.filter((k) => k.kind !== "store");
+    for (const kind of runtimeKinds) {
+      expect(kind.properties).toContain("runtime");
+    }
+    const store = ref.deployUnitKinds.find((k) => k.kind === "store");
+    expect(store?.properties).toContain("type");
+    expect(store?.properties).not.toContain("runtime");
   });
 
   it("includes all org kinds", () => {

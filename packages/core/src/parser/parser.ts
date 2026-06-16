@@ -98,6 +98,7 @@ const DEPLOY_KEYWORDS = new Set<string>([
   "assets",
   "job",
   "artifact",
+  "store",
 ]);
 
 const DEPLOY_PROPERTY_KEYWORDS = new Set<string>([
