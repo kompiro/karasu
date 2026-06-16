@@ -3,6 +3,11 @@ title: karasu
 template: splash
 hero:
   tagline: Text-based architecture modeling that separates logical and physical structure — inspired by the C4 model, with its own vocabulary.
+  image:
+    alt: karasu
+    # Relative to the synced location src/content/docs/index.md (ja is one level
+    # deeper at ja/index.md, so home/ja.md needs one extra ../).
+    file: ../../assets/karasu-logo.png
   actions:
     - text: Read the guides
       link: guide/
