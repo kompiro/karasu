@@ -127,7 +127,7 @@ service NewSvc @migration_target(from: LegacyMonolith)
 
 ## client capability
 
-`capability <name>` は client が利用許可を要求する **デバイス / ブラウザの capability** を宣言する。構文は [`docs/spec/syntax.ja.md`](./syntax.ja.md#client-capability) を参照。
+`capability <name>` は client が利用許可を要求する **デバイス / ブラウザの capability** を宣言する。構文は [`docs/spec/syntax.ja.md`](./syntax.ja.md#client-の-capability) を参照。
 
 identifier セットは **オープン** — 任意の kebab-case 識別子を受け付け、推奨セット外の名前でも警告は出さない。これにより業界固有デバイスや社内専用機能など、ドメイン固有の capability も自由に表現できる。下記の推奨セットは、バリデータやエディタツールが想定する最も典型的なケースを網羅する。
 
