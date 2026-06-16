@@ -48,6 +48,15 @@ jobs:
         env:
           NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+      # Build the workspace first so the extension's own build can resolve the
+      # `@karasu-tools/*` dist outputs. `pnpm run build` builds core → i18n →
+      # lsp (the order the extension's bundled LSP server needs); the vscode
+      # extension is not part of it (see ci.yml), so it is packaged separately
+      # below. Without this step the package step's lsp build fails to resolve
+      # `@karasu-tools/core` / `@karasu-tools/i18n` on a clean checkout.
+      - name: Build workspace
+        run: pnpm run build
+
       # Build + package always, so the run validates esbuild bundling
       # (out/server.js present — assert-server-bundled) and `.vscodeignore`
       # even when no PAT is configured.
