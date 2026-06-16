@@ -12,7 +12,7 @@ Deploy タブが自動で選択され、deploy 図が正しく描画されるこ
 
 ## 前提条件
 
-`examples/deploy-only/index.krs` に以下の内容が存在する。
+`examples/ja/deploy-only/index.krs` に以下の内容が存在する。
 
 ```krs
 deploy Production {
@@ -42,7 +42,7 @@ deploy Production {
 
 ### 1. deploy-only ファイルを開くと Deploy タブが自動で選ばれる
 
-- **操作**: `examples/deploy-only/index.krs` をプレビューに読み込ませる。
+- **操作**: `examples/ja/deploy-only/index.krs` をプレビューに読み込ませる。
 - **期待**:
   - タブバーの `Deploy` がアクティブ状態になっている。
   - プレビューキャンバスに 3 つのコンテナ（`Storefront`, `OrderAPI`, そして `Unclassified`）が描画されている。
@@ -72,7 +72,7 @@ deploy Production {
 
 ### 5. system + deploy のファイルでは自動選択されない（regression check）
 
-- **操作**: `examples/deploy/system.krs` のような `system` と `deploy` 両方を含むファイルを開く。
+- **操作**: `examples/ja/deploy/system.krs` のような `system` と `deploy` 両方を含むファイルを開く。
 - **期待**:
   - 既存挙動どおり、初期タブは `System` のままで自動スイッチされない。
 

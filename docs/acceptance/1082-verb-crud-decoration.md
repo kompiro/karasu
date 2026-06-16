@@ -20,7 +20,7 @@ type: product
   - `packages/core/src/formatter/formatter.test.ts`
   - `packages/app/src/i18n/{en,ja,types,format-diagnostic}.ts`
   - `docs/spec/syntax.md` § Verb-decoration syntax
-  - `examples/feature-samples/crud-matrix.krs`
+  - `examples/en/feature-samples/crud-matrix.krs`
 - **関連 ADR**: [ADR-20260503-01](../adr/20260503-01-verb-crud-decoration.md)（本機能の決定）, [ADR-20260430-03](../adr/20260430-03-resource-crud-operations.md)（`operations` プロパティ — 本機能はその syntax 拡張）, [ADR-20260502-01](../adr/20260502-01-crud-matrix-view.md)（CRUD マトリクスビューが consumer）
 
 ## 受け入れ条件
@@ -55,11 +55,11 @@ type: product
 - [x] AT-J: `karasu fmt` が装飾を `verb:c,d`（スペースなし）形式で emit し、idempotent（再 format で diff なし）
   > ✅ Automated — `formatter.test.ts` › `resource operations` 内 2 ケース
 
-- [ ] AT-K（manual）: `karasu matrix examples/feature-samples/crud-matrix.krs --format=md` を実行し、`SearchOrders` の cell が `R`（`R?` ではない）であること、`ReplaceOrderSnapshot` の cell が `CD` で OrderTable の ΣC / ΣD カラムにそれぞれ +1 されていることを目視確認する
+- [ ] AT-K（manual）: `karasu matrix examples/en/feature-samples/crud-matrix.krs --format=md` を実行し、`SearchOrders` の cell が `R`（`R?` ではない）であること、`ReplaceOrderSnapshot` の cell が `CD` で OrderTable の ΣC / ΣD カラムにそれぞれ +1 されていることを目視確認する
   > 🧑 Manual — terminal 出力で確認
 
-- [ ] AT-L（manual）: `examples/feature-samples/crud-matrix.krs` を `karasu fmt` にかけて、装飾済み行（`operations read, list:read` / `operations replace:create,delete`）が形を保ったまま戻ってくることを目視確認する
-  > 🧑 Manual — `karasu fmt examples/feature-samples/crud-matrix.krs` を `--check` 付きで diff ゼロを確認
+- [ ] AT-L（manual）: `examples/en/feature-samples/crud-matrix.krs` を `karasu fmt` にかけて、装飾済み行（`operations read, list:read` / `operations replace:create,delete`）が形を保ったまま戻ってくることを目視確認する
+  > 🧑 Manual — `karasu fmt examples/en/feature-samples/crud-matrix.krs` を `--check` 付きで diff ゼロを確認
 
 - [ ] AT-M（manual）: app の preview で `feature-samples/crud-matrix.krs` を開き、CRUD タブで `ReplaceOrderSnapshot` の cell が write 強調背景になっていること、unknown verbs 脚注が消えていることを目視確認する
   > 🧑 Manual — preview の Matrix タブで確認

@@ -13,7 +13,7 @@ scope:
 assumptions:
   - "file: docs/spec/syntax.md"
   - "file: docs/acceptance/1513-legend-drill-down-scope.md"
-  - "file: examples/feature-samples/legend.krs"
+  - "file: examples/en/feature-samples/legend.krs"
   - "symbol: packages/core/src/renderer/svg-builder.ts :: legendScopeMatches"
   - "symbol: packages/core/src/renderer/svg-renderer.ts :: legendScopeForLogicalSlice"
   - "symbol: packages/core/src/renderer/all-layers-svg.ts :: buildLegendRenderOptions"

@@ -105,7 +105,7 @@ system EC {
       expect(childIds).toContain("Payment");
     });
 
-    // Regression coverage for #412 — `examples/ec-platform/05-multifile/` was
+    // Regression coverage for #412 — `examples/ja/ec-platform/05-multifile/` was
     // the originating reproduction (top-level `service` in one file, named-
     // imported and stub-referenced from a `system` in another). TPL-20260510-01
     // checklist item 5 ("top-level 宣言を named import で `system` 内に取り込む
@@ -997,7 +997,7 @@ system ECPlatform {
   // example fails CI before #412 reappears.
   describe("ec-platform/05-multifile end-to-end (#412 / TPL-20260510-01)", () => {
     it("merges both ECommerce and Payment into ECPlatform with full content preserved", async () => {
-      const exampleDir = resolve(__dirname, "../../../../examples/ec-platform/05-multifile");
+      const exampleDir = resolve(__dirname, "../../../../examples/ja/ec-platform/05-multifile");
       const provider = new InMemoryFileSystemProvider();
       await provider.writeFile(
         "/project/system.krs",
@@ -1334,10 +1334,10 @@ system ECPlatform {
       expect(usersLeaves[0].label).toBe("from a");
     });
 
-    it("S2 + S4: end-to-end on the examples/multi-file-system fixture", async () => {
+    it("S2 + S4: end-to-end on the examples/ja/multi-file-system fixture", async () => {
       // Drives the actual on-disk example so the spec & the impl are
       // exercised against the same fixture users will read.
-      const exampleDir = resolve(__dirname, "../../../../examples/multi-file-system");
+      const exampleDir = resolve(__dirname, "../../../../examples/ja/multi-file-system");
       for (const name of ["index.krs", "reader.krs", "editor.krs", "moderation.krs", "infra.krs"]) {
         await fs.writeFile(`/proj/${name}`, readFileSync(resolve(exampleDir, name), "utf-8"));
       }

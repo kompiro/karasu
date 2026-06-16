@@ -18,8 +18,8 @@ assumptions:
   - "symbol: packages/core/src/fs/import-resolver.ts :: reconcileLabel"
   - "grep: packages/core/src/types/ast.ts :: system-property-conflict"
   - "grep: docs/spec/syntax.md :: Multi-file import semantics"
-  - "file: examples/multi-file-system/index.krs"
-  - "file: examples/multi-file-system/infra.krs"
+  - "file: examples/ja/multi-file-system/index.krs"
+  - "file: examples/ja/multi-file-system/infra.krs"
 ---
 
 # ADR-20260514-01: マルチファイル import の意味論 — whole-file import / system 再オープン / DAG 再到達

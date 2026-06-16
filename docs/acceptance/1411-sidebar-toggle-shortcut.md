@@ -48,7 +48,7 @@
 
 ## 手動確認チェックリスト
 
-`examples/getting-started/index.krs` を Preview UI（Project モード）で開いて確認する。
+`examples/ja/getting-started/index.krs` を Preview UI（Project モード）で開いて確認する。
 
 - [ ] エディタ・サイドバー以外（プレビュー等）にフォーカスがある状態で `Ctrl+B`（macOS は `Cmd+B`）を押すとサイドバーが閉じる
 - [ ] もう一度 `Ctrl/Cmd+B` を押すとサイドバーが開く

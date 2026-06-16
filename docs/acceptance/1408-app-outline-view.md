@@ -47,7 +47,7 @@
 
 ## 手動確認チェックリスト
 
-`examples/getting-started/index.krs` を Preview UI（Project モード）で開いて確認する。
+`examples/ja/getting-started/index.krs` を Preview UI（Project モード）で開いて確認する。
 
 ### ActivityBar とビュー切り替え
 

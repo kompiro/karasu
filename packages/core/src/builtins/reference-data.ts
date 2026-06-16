@@ -7,7 +7,7 @@
 // `STRINGS_JA` half-update failure mode (one locale left `undefined`) is
 // structurally impossible, and `scripts/reference/gen-docs.ts` derives the
 // `docs/spec/*.md` tables from this same module. The Reference panel's
-// "Samples" tab content comes from `examples/getting-started/` (via
+// "Samples" tab content comes from `examples/ja/getting-started/` (via
 // `./examples.ts`), not from here. See
 // docs/adr/20260512-03-reference-data-single-source.md.
 

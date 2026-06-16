@@ -11,8 +11,8 @@ type: product
 
 Phase 7 では既存の `getting-started`（Phase 1 で更新済）に加えて、以下の 2 つを追加する:
 
-1. **`examples/client-mcp/`** — `client` + `delivers` + `handles`（再エクスポート）+ `resource` + `[external]` + MCP 風 service を盛った独立サンプル
-2. **`examples/ec-platform/02.5-clients.krs`** — `02-users` と `03-domains` の間に挟むチュートリアルステップ
+1. **`examples/en/client-mcp/`** — `client` + `delivers` + `handles`（再エクスポート）+ `resource` + `[external]` + MCP 風 service を盛った独立サンプル
+2. **`examples/ja/ec-platform/02.5-clients.krs`** — `02-users` と `03-domains` の間に挟むチュートリアルステップ
 
 ## 前提条件
 
@@ -63,8 +63,8 @@ const expect = (label, file, content) => {
   const disk = fs.readFileSync(file, 'utf8');
   if (disk !== content) { console.error('MISMATCH:', label); process.exit(1); }
 };
-expect('client-mcp', 'examples/client-mcp/index.krs', ex.CLIENT_MCP_PROJECT.files[0].content);
-expect('02.5-clients', 'examples/ec-platform/02.5-clients.krs', ex.EC_PLATFORM_PROJECTS[2].files[0].content);
+expect('client-mcp', 'examples/en/client-mcp/index.krs', ex.CLIENT_MCP_PROJECT.files[0].content);
+expect('02.5-clients', 'examples/ja/ec-platform/02.5-clients.krs', ex.EC_PLATFORM_PROJECTS[2].files[0].content);
 console.log('ok');
 "
 ```

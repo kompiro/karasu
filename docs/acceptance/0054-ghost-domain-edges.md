@@ -27,7 +27,7 @@ edge exists without returning to the system view.
 
 ### Setup
 
-Open the preview with `examples/feature-samples/domain-drift.krs`:
+Open the preview with `examples/en/feature-samples/domain-drift.krs`:
 
 ```krs
 system DriftSample {

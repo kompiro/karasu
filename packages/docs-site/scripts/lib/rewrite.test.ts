@@ -66,8 +66,8 @@ describe("rewriteLinkTarget", () => {
   });
 
   it("rewrites examples/ links to GitHub tree URLs", () => {
-    expect(rewriteLinkTarget("../../examples/payment-platform/", ctx)).toBe(
-      "https://github.com/kompiro/karasu/tree/main/examples/payment-platform/",
+    expect(rewriteLinkTarget("../../examples/ja/payment-platform/", ctx)).toBe(
+      "https://github.com/kompiro/karasu/tree/main/examples/ja/payment-platform/",
     );
   });
 

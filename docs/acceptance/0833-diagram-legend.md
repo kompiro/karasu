@@ -12,13 +12,13 @@ type: product
 （Issue [#833](https://github.com/kompiro/karasu/issues/833)、
 設計は `docs/design/diagram-legend.md`）。
 
-Phase 5 の deliverable として `examples/feature-samples/legend.krs` を追加した。
+Phase 5 の deliverable として `examples/en/feature-samples/legend.krs` を追加した。
 
 ## 前提条件
 
 - main または PR ブランチに Phase 1〜4 がマージされている（#881 / #932 / #937 / #943）
 - ブラウザでアプリが起動できる状態
-- `examples/feature-samples/legend.krs` をエディタにペーストできる状態
+- `examples/en/feature-samples/legend.krs` をエディタにペーストできる状態
 
 ## 受け入れ条件
 
@@ -57,7 +57,7 @@ describe（Phase 3、#937）と `legend-footer.test.ts` の以下が担保:
 
 ### AT-0833-5: viewBox がフッターぶん拡張され、ノードと重ならない（手動）
 
-1. `examples/feature-samples/legend.krs` をアプリの新しいプロジェクトにペースト
+1. `examples/en/feature-samples/legend.krs` をアプリの新しいプロジェクトにペースト
 2. **System** タブを開く
 3. ECPlatform の system 図とその下に区切り線つきのフッター帯が見える
 4. 図のノード（ECommerce / Payment / Legacy）はフッター帯と重なっていない

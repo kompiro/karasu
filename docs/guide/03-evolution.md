@@ -127,7 +127,7 @@ system ECommercePlatform {
 ![system view — 03-migration](diagrams/03-migration.svg)
 <!-- /gen:guide-diagram:03-migration -->
 
-The `domain-dispersal` (info) here is **not a bug but a migration status indicator.** The same `Order` domain living in two services = the carve-out is not yet complete. Once migration finishes and you delete `domain Order` from the old service, this warning disappears on its own. **The warning disappearing is itself the completion criterion** (full example: [`examples/migration/system.krs`](../../examples/migration/system.krs)).
+The `domain-dispersal` (info) here is **not a bug but a migration status indicator.** The same `Order` domain living in two services = the carve-out is not yet complete. Once migration finishes and you delete `domain Order` from the old service, this warning disappears on its own. **The warning disappearing is itself the completion criterion** (full example: [`examples/ja/migration/system.krs`](../../examples/ja/migration/system.krs)).
 
 > Domain-edge resolution and navigation prefer the side carrying a migration annotation (`@migration_target`, etc.) during drift. Even when old and new collide by name, resolution leans toward the migration target.
 
@@ -182,5 +182,5 @@ Put each stage in a separate PR and attach the `karasu diff` to the description,
 
 - Related guides: [Boundary Design](01-service-team-design.md) / [Onboarding](02-onboarding.md) / [Communicating Diagrams (style, legend, CI)](05-communicating-diagrams.md)
 - Lifecycle annotation reference: [`docs/spec/tags-annotations.md`](../spec/tags-annotations.md)
-- Complete migration example: [`examples/migration/system.krs`](../../examples/migration/system.krs)
+- Complete migration example: [`examples/ja/migration/system.krs`](../../examples/ja/migration/system.krs)
 - Design philosophy (annotation inheritance, the motivation for diff): [`docs/concepts.md`](../concepts.md)
