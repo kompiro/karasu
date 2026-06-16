@@ -19,6 +19,7 @@ export const SPEC_PAIRS = [
   { en: "docs/spec/syntax.md", ja: "docs/spec/syntax.ja.md" },
   { en: "docs/spec/style.md", ja: "docs/spec/style.ja.md" },
   { en: "docs/spec/tags-annotations.md", ja: "docs/spec/tags-annotations.ja.md" },
+  { en: "docs/spec/diagnostics.md", ja: "docs/spec/diagnostics.ja.md" },
   { en: "docs/concepts.md", ja: "docs/concepts.ja.md" },
 ] as const;
 
