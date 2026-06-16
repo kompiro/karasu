@@ -267,6 +267,56 @@ still allowing the underlying facts to be modeled.
 
 > Related ADR topics: `styling`
 
+## Structure, not implementation — the `client` sub-language as the test case
+
+<a id="structure-not-implementation-client"></a>
+
+The Non-goals filter draws a line: karasu models a **slowly-changing structural
+context** — what exists, how things relate, who owns them — and **implementation
+detail or runtime state sits outside**. Most primitives sit comfortably far from
+that line. The `client` sub-language is where karasu comes **closest** to it: it
+is the most detailed corner of the vocabulary (form-factor tags, `handles`,
+`delivers`, `resource`, `capability`), and each addition invites the question
+"isn't this drifting into implementation?"
+
+It is not — and the reason is a single test. **Each `client` feature names a
+participant or a relationship in the access path (who reaches what, through what
+surface, holding what kind of state); none of them names a framework, a schema, a
+payload, or a runtime value.** That is the structure side of the line:
+
+- **Form-factor tags** (`[web]` / `[mobile]` / `[desktop]` / …) classify the
+  *kind of surface* a user reaches the system through. They do **not** record the
+  framework or stack (React vs. SwiftUI), which is implementation. The recognized
+  set is closed only for built-in treatment; the tag system itself stays open.
+- **`handles`** declares which domains a client (or service) **exposes to its
+  callers** — a *validated structural cross-reference* (the domain must be
+  reachable via the one-hop expose rule). It is about reachability in the access
+  path, not the API's request/response payloads.
+- **`delivers`** declares which client(s) a service **ships** (the BFF / SSR
+  pattern) — an ownership-and-shipping relationship between two structural nodes,
+  not the build or deploy pipeline that produces the bundle.
+- **`resource`** on a client names the *kind* of local persistence it holds, from
+  a small **reserved set** (`localStorage` / `sessionStorage` / `indexedDB` /
+  `opfs` / `file` / `keychain`). This is the feature nearest the line — it names
+  storage — but it records only **which kind of state lives on the surface**,
+  never the schema, the contents, or any runtime value. The reserved set is the
+  boundary made executable: anything outside it (raw credentials, cookies, device
+  capabilities) is **rejected** with `client-resource-invalid-kind` precisely so
+  that stronger-modeling concerns do not silently leak into the structural list.
+- **`capability`** is an open-set label for *what the client can do* in the
+  architecture — a structural capability, not its implementation.
+
+When you feel pressure to record something a `client` feature deliberately omits
+— the data inside an `indexedDB`, the contract of a `handle`d domain, the bundler
+behind a `deliver` — that detail belongs in the node's `description` and a `link`
+to external documentation, **not** in new vocabulary. This is the same escape
+hatch the Non-goals use: keep the model at the structural altitude, and let
+implementation detail live where it can change without touching the architecture.
+
+> Related TPLs: [TPL-20260616-03](test-perspectives/TPL-20260616-03-client-vocabulary-structure-not-implementation.md) — `client` vocabulary names access-path structure, never implementation detail.
+
+> Related ADR topics: _(none — boundary clarification section; the client kind itself is covered by ADR-20260428-06)_
+
 ## Domain dispersal detection
 
 <a id="domain-dispersal-detection"></a>
