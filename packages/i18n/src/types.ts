@@ -66,6 +66,7 @@ export type Translations = {
   "project.error.delete": (params: { detail: string }) => string;
   "project.error.export": (params: { detail: string }) => string;
   "project.error.import": (params: { detail: string }) => string;
+  "project.error.openExample": (params: { detail: string }) => string;
   "project.error.snapshot": (params: { detail: string }) => string;
   "project.error.dismiss": string;
 

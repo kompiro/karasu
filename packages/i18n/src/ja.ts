@@ -62,6 +62,7 @@ export const ja: Partial<Translations> = {
   "project.error.delete": ({ detail }) => `⚠ プロジェクトの削除に失敗しました: ${detail}`,
   "project.error.export": ({ detail }) => `⚠ プロジェクトのエクスポートに失敗しました: ${detail}`,
   "project.error.import": ({ detail }) => `⚠ インポートに失敗しました: ${detail}`,
+  "project.error.openExample": ({ detail }) => `⚠ example を開けませんでした: ${detail}`,
   "project.error.snapshot": ({ detail }) => `⚠ スナップショットの取得に失敗しました: ${detail}`,
   "project.error.dismiss": "✕ 閉じる",
 

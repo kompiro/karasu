@@ -62,6 +62,7 @@ export const en: Translations = {
   "project.error.delete": ({ detail }) => `⚠ Failed to delete project: ${detail}`,
   "project.error.export": ({ detail }) => `⚠ Failed to export project: ${detail}`,
   "project.error.import": ({ detail }) => `⚠ Import failed: ${detail}`,
+  "project.error.openExample": ({ detail }) => `⚠ Could not open the example: ${detail}`,
   "project.error.snapshot": ({ detail }) => `⚠ Failed to capture snapshot: ${detail}`,
   "project.error.dismiss": "✕ Dismiss",
 
