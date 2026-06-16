@@ -2,6 +2,7 @@
 
 - **日付**: 2026-06-16
 - **ステータス**: 検討中
+- **PR**: [#1664](https://github.com/kompiro/karasu/pull/1664)
 - **関連**:
   - 引き金 Issue: [#1316](https://github.com/kompiro/karasu/issues/1316)（OSS launch Phase 2 — Marketplace publish under publisher `karasu`）
   - 親 Issue: [#1302](https://github.com/kompiro/karasu/issues/1302)（OSS 化ブレインストーミング）, [#1317](https://github.com/kompiro/karasu/issues/1317)（hard launch）
