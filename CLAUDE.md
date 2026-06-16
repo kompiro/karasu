@@ -10,6 +10,7 @@ C4 Modelに触発されつつも独自の語彙を持ち、論理構造と物理
 | .krs 構文リファレンス                               | `docs/spec/syntax.md`           |
 | .krs.style 構文リファレンス                         | `docs/spec/style.md`            |
 | タグ・アノテーション一覧                            | `docs/spec/tags-annotations.md` |
+| 診断と規則のリファレンス（規則 ↔ 診断コードの対応）  | `docs/spec/diagnostics.md`      |
 | i18n ポリシー（ユーザー向け文字列）                  | `docs/spec/i18n.md`             |
 | コアコンセプト（論理/物理分離など）                 | `docs/concepts.md`              |
 | ガイド（境界設計・オンボーディング）— how-to       | `docs/guide/` |
