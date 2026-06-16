@@ -1,0 +1,26 @@
+# Controls what ships in the .vsix. The extension is bundled with esbuild into
+# out/extension.js (+ out/server.js, the LSP server), so source and dev tooling
+# do not need to ship. See docs/adr (vscode-marketplace-publish) and
+# TPL-20260510-15 (dev vs packaged mode parity): the AT asserts out/server.js +
+# README ship and src/ does not.
+
+# Source — bundled into out/, not needed at runtime
+src/**
+**/*.ts
+**/*.map
+**/tsconfig.json
+tsconfig*.json
+
+# Tests and test config
+**/*.test.*
+vitest.config.ts
+
+# Build / repo tooling
+scripts/**
+.vscode/**
+.gitignore
+.eslintrc*
+.npmrc
+
+# Keep (shipped): out/**, icon.png, images/**, syntaxes/**,
+# language-configuration.json, package.json, README.md, THIRD_PARTY_NOTICES.md
