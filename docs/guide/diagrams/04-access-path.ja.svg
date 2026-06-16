@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 554.5 598" width="554.5" height="598"><defs><marker id="arrow-default" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#64748B"/></marker></defs>
+<rect width="554.5" height="598" fill="#FFFFFF" rx="0"/>
+<text x="20" y="24" fill="#64748B" font-size="14px" font-family="sans-serif" font-weight="bold">Shop</text>
+<g class="edges"><g data-edge-from="Customer" data-edge-to="MobileApp" data-edge-kind="sync" data-edge-canonical-id="Customer-&gt;MobileApp" data-edge-label="アプリを使う" class="krs-edge krs-edge--interactive"><line x1="230.58333333333331" y1="126" x2="147.25" y2="246" stroke="transparent" stroke-width="14" stroke-linecap="butt" class="krs-edge__hitline"/>
+<line x1="230.58333333333331" y1="126" x2="147.25" y2="246" stroke="#64748B" stroke-width="1.5" marker-end="url(#arrow-default)"/>
+<text x="188.91666666666666" y="180" text-anchor="middle" fill="#64748B" font-size="11px" font-family="sans-serif">アプリを使う</text></g>
+<g data-edge-from="Customer" data-edge-to="WebApp" data-edge-kind="sync" data-edge-canonical-id="Customer-&gt;WebApp" data-edge-label="ブラウザで使う" class="krs-edge krs-edge--interactive"><line x1="283.91666666666663" y1="126" x2="374.5" y2="246" stroke="transparent" stroke-width="14" stroke-linecap="butt" class="krs-edge__hitline"/>
+<line x1="283.91666666666663" y1="126" x2="374.5" y2="246" stroke="#64748B" stroke-width="1.5" marker-end="url(#arrow-default)"/>
+<text x="329.2083333333333" y="180" text-anchor="middle" fill="#64748B" font-size="11px" font-family="sans-serif">ブラウザで使う</text></g>
+<g data-edge-from="MobileApp" data-edge-to="Backend" data-edge-kind="sync" data-edge-canonical-id="MobileApp-&gt;Backend" data-edge-label="API 呼び出し" class="krs-edge krs-edge--interactive"><line x1="147.25" y1="312" x2="230.41666666666666" y2="432" stroke="transparent" stroke-width="14" stroke-linecap="butt" class="krs-edge__hitline"/>
+<line x1="147.25" y1="312" x2="230.41666666666666" y2="432" stroke="#64748B" stroke-width="1.5" marker-end="url(#arrow-default)"/>
+<text x="188.83333333333331" y="366" text-anchor="middle" fill="#64748B" font-size="11px" font-family="sans-serif">API 呼び出し</text></g>
+<g data-edge-from="WebApp" data-edge-to="Backend" data-edge-kind="sync" data-edge-canonical-id="WebApp-&gt;Backend" data-edge-label="API 呼び出し" class="krs-edge krs-edge--interactive"><line x1="374.5" y1="312" x2="284.0833333333333" y2="432" stroke="transparent" stroke-width="14" stroke-linecap="butt" class="krs-edge__hitline"/>
+<line x1="374.5" y1="312" x2="284.0833333333333" y2="432" stroke="#64748B" stroke-width="1.5" marker-end="url(#arrow-default)"/>
+<text x="329.29166666666663" y="366" text-anchor="middle" fill="#64748B" font-size="11px" font-family="sans-serif">API 呼び出し</text></g></g>
+<g class="nodes"><g data-node-id="Customer" data-node-kind="user" data-has-children="false" data-has-description="false"><circle cx="257.25" cy="70.58" r="8.58" fill="#DBEAFE" stroke="#93C5FD" stroke-width="2"/>
+<path d="M221.25 82.16 L293.25 82.16 L313.25 93.12 L313.25 122 Q313.25 126 309.25 126 L205.25 126 Q201.25 126 201.25 122 L201.25 93.12 Z" fill="#DBEAFE" stroke="#93C5FD" stroke-width="2"/>
+<text x="257.25" y="93" text-anchor="middle" dominant-baseline="central" fill="#1E3A8A" font-size="13px" font-weight="bold" font-family="sans-serif">購入者</text></g>
+<g data-node-id="MobileApp" data-node-kind="client" data-has-children="false" data-has-description="false"><rect x="60" y="246" width="174.5" height="66" rx="8" ry="8" fill="#EDE9FE" stroke="#C4B5FD" stroke-width="2"/>
+<text x="147.25" y="279" text-anchor="middle" dominant-baseline="central" fill="#4C1D95" font-size="13px" font-weight="bold" font-family="sans-serif">モバイルアプリ</text></g>
+<g data-node-id="WebApp" data-node-kind="client" data-has-children="false" data-has-description="false"><rect x="294.5" y="246" width="160" height="66" rx="8" ry="8" fill="#EDE9FE" stroke="#C4B5FD" stroke-width="2"/>
+<text x="374.5" y="279" text-anchor="middle" dominant-baseline="central" fill="#4C1D95" font-size="13px" font-weight="bold" font-family="sans-serif">Web アプリ</text></g>
+<g data-node-id="Backend" data-node-kind="service" data-has-children="true" data-has-description="false" style="cursor: pointer"><rect x="176.75" y="432" width="161" height="66" rx="8" ry="8" fill="#E0F2FE" stroke="#7DD3FC" stroke-width="2"/>
+<text x="257.25" y="465" text-anchor="middle" dominant-baseline="central" fill="#0C4A6E" font-size="13px" font-weight="bold" font-family="sans-serif">バックエンド</text></g></g></svg>

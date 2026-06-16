@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 632 412" width="632" height="412"><defs><marker id="arrow-default" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#64748B"/></marker></defs>
+<rect width="632" height="412" fill="#FFFFFF" rx="0"/>
+<text x="20" y="24" fill="#64748B" font-size="14px" font-family="sans-serif" font-weight="bold">E-commerce platform (migrating)</text>
+<g class="edges"><g data-edge-from="Customer" data-edge-to="LegacyMonolith" data-edge-kind="sync" data-edge-canonical-id="Customer-&gt;LegacyMonolith" data-edge-label="buy (old flow)" class="krs-edge krs-edge--interactive"><line x1="269.3333333333333" y1="126" x2="167.5" y2="246" stroke="transparent" stroke-width="14" stroke-linecap="butt" class="krs-edge__hitline"/>
+<line x1="269.3333333333333" y1="126" x2="167.5" y2="246" stroke="#64748B" stroke-width="1.5" marker-end="url(#arrow-default)"/>
+<text x="218.41666666666666" y="180" text-anchor="middle" fill="#64748B" font-size="11px" font-family="sans-serif">buy (old flow)</text></g>
+<g data-edge-from="Customer" data-edge-to="OrderService" data-edge-kind="sync" data-edge-canonical-id="Customer-&gt;OrderService" data-edge-label="buy (new flow)" class="krs-edge krs-edge--interactive"><line x1="322.66666666666663" y1="126" x2="433.5" y2="246" stroke="transparent" stroke-width="14" stroke-linecap="butt" class="krs-edge__hitline"/>
+<line x1="322.66666666666663" y1="126" x2="433.5" y2="246" stroke="#64748B" stroke-width="1.5" marker-end="url(#arrow-default)"/>
+<text x="378.0833333333333" y="180" text-anchor="middle" fill="#64748B" font-size="11px" font-family="sans-serif">buy (new flow)</text></g></g>
+<g class="nodes"><g data-node-id="Customer" data-node-kind="user" data-has-children="false" data-has-description="false"><circle cx="296" cy="70.58" r="8.58" fill="#DBEAFE" stroke="#93C5FD" stroke-width="2"/>
+<path d="M260 82.16 L332 82.16 L352 93.12 L352 122 Q352 126 348 126 L244 126 Q240 126 240 122 L240 93.12 Z" fill="#DBEAFE" stroke="#93C5FD" stroke-width="2"/>
+<text x="296" y="93" text-anchor="middle" dominant-baseline="central" fill="#1E3A8A" font-size="13px" font-weight="bold" font-family="sans-serif">Shopper</text></g>
+<g data-node-id="LegacyMonolith" data-node-kind="service" data-has-children="true" data-has-description="false" style="cursor: pointer" opacity="0.6"><rect x="60" y="246" width="215" height="66" rx="8" ry="8" fill="#E0F2FE" stroke="#7DD3FC" stroke-width="2"/>
+<text x="167.5" y="279" text-anchor="middle" dominant-baseline="central" fill="#0C4A6E" font-size="13px" font-weight="bold" font-family="sans-serif">Legacy monolith</text>
+<g data-node-badge="LegacyMonolith"><circle cx="265" cy="240" r="10" fill="#DC2626"/>
+<text x="265" y="240" text-anchor="middle" dominant-baseline="central" fill="white" font-size="10px">⚠</text>
+<text x="279" y="240" dominant-baseline="central" fill="#DC2626" font-size="9px" font-weight="bold" font-family="sans-serif">Deprecated</text></g></g>
+<g data-node-id="OrderService" data-node-kind="service" data-has-children="true" data-has-description="false" style="cursor: pointer"><rect x="335" y="246" width="197" height="66" rx="8" ry="8" fill="#E0F2FE" stroke="#7DD3FC" stroke-width="2"/>
+<text x="433.5" y="279" text-anchor="middle" dominant-baseline="central" fill="#0C4A6E" font-size="13px" font-weight="bold" font-family="sans-serif">Order service</text>
+<g data-node-badge="OrderService"><circle cx="522" cy="240" r="10" fill="#2563EB"/>
+<text x="522" y="240" text-anchor="middle" dominant-baseline="central" fill="white" font-size="10px">→</text>
+<text x="536" y="240" dominant-baseline="central" fill="#2563EB" font-size="9px" font-weight="bold" font-family="sans-serif">Migration target</text></g></g></g></svg>

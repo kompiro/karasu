@@ -40,6 +40,7 @@ Instead of "decide the boxes first, then fill them in," karasu lets you follow t
 
 Start from a monolith where all domains live in one service. Write dependencies between domains as **edges originating from the source domain**, inside that domain's block (`->` for sync, `-->` for async).
 
+<!-- render: system id=01-monolith -->
 ```krs
 system Shop {
   label "Online shop"
@@ -77,6 +78,11 @@ system Shop {
 }
 ```
 
+<!-- gen:guide-diagram:01-monolith — DO NOT EDIT. Generated from the snippet above; run `pnpm gen:guide-diagrams`. -->
+![system view — 01-monolith](diagrams/01-monolith.svg)
+<!-- /gen:guide-diagram:01-monolith -->
+
+
 > **Syntax note**: a domain-to-domain edge goes **inside the source domain's `domain` block**. Writing `Cart -> Catalog` directly under the `service` block is an error (an edge's source must match the enclosing block id). Write `Cart -> Catalog` inside the `Cart` block.
 
 Drilling into `service Monolith` now shows seven domains and their dependency arrows. What you want to read off is the **dependency clusters**:
@@ -100,6 +106,7 @@ Once you have observed the clusters, **cut where the coupling is thin** and assi
 - `PaymentService` … `Payment` (high specialization — isolate it)
 - `NotificationService` … `Notification` (a shared leaf capability)
 
+<!-- render: system id=01-services -->
 ```krs
 system Shop {
   label "Online shop"
@@ -155,6 +162,11 @@ system Shop {
   Customer -> ShoppingService "shop"
 }
 ```
+
+<!-- gen:guide-diagram:01-services — DO NOT EDIT. Generated from the snippet above; run `pnpm gen:guide-diagrams`. -->
+![system view — 01-services](diagrams/01-services.svg)
+<!-- /gen:guide-diagram:01-services -->
+
 
 ### 1.3 Implicit edges — domain dependencies surface as the service-boundary overview
 
@@ -212,6 +224,7 @@ For karasu, the org chart is not documentation but **a subject of design decisio
 
 Declare `team`s nested under an `organization` root, and have each team list the logical nodes (service / domain) it `owns`. Map teams onto the service boundaries drawn in §1.2.
 
+<!-- render: org id=01-org -->
 ```krs
 organization Shop {
   label "Shop Engineering"
@@ -250,6 +263,11 @@ organization Shop {
   }
 }
 ```
+
+<!-- gen:guide-diagram:01-org — DO NOT EDIT. Generated from the snippet above; run `pnpm gen:guide-diagrams`. -->
+![org view — 01-org](diagrams/01-org.svg)
+<!-- /gen:guide-diagram:01-org -->
+
 
 `owns` is the relation linking organization to logical/physical, symmetric to `realizes` (which links physical to logical). This way the three faces can be written independently, yet the correspondences always appear in the diagram.
 

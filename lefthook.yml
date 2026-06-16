@@ -63,6 +63,14 @@ pre-push:
       # this guard in CI; reference-docs-check.yml runs it on docs-only PRs.
       glob: "{docs/spec/**,docs/concepts.md,docs/concepts.ja.md,scripts/lint/spec-structure-sync.ts}"
       run: pnpm run lint:spec-structure-sync
+    guide-diagrams-check:
+      # The hero-snippet SVGs in docs/guide/diagrams/ (and the image refs in
+      # docs/guide/*.md) are generated from the marked ```krs blocks — fail if
+      # a snippet changed without regenerating, or a committed SVG drifted
+      # (Issue #1574). Mirrors the CI step in reference-docs-check.yml; the
+      # vitest test (scripts/guide/gen-guide-diagrams.test.ts) mirrors it too.
+      glob: "{docs/guide/**,scripts/guide/**}"
+      run: pnpm exec tsx scripts/guide/gen-guide-diagrams.ts --check
     concept-adr-refs:
       # The bidirectional reference layer between docs/concepts*.md and the
       # ADR topic vocabulary (Issue #1389) — fail if a concept anchor or a

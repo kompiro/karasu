@@ -79,6 +79,7 @@ client WebApp [web] {
 
 `user -> client -> service` をエッジで繋ぎ、到達経路を描きます。
 
+<!-- render: system id=04-access-path -->
 ```krs
 system Shop {
   user Customer [human] { label "購入者" }
@@ -98,6 +99,10 @@ system Shop {
 }
 ```
 
+<!-- gen:guide-diagram:04-access-path — DO NOT EDIT. Generated from the snippet above; run `pnpm gen:guide-diagrams`. -->
+![system view — 04-access-path](diagrams/04-access-path.ja.svg)
+<!-- /gen:guide-diagram:04-access-path -->
+
 これで「購入者はモバイルと Web の 2 つの面からバックエンドに到達する」が俯瞰で読めます。クライアントとサービスの間の通常の API 呼び出しは普通の `->` で書きます。
 
 ---
@@ -106,6 +111,7 @@ system Shop {
 
 `client` と `service` は `handles` で **呼び出し側に公開するドメイン id** を宣言できます。これは検証付きクロスリファレンスで、公開するドメインが 1 ホップの expose ルールで到達可能でなければ `unresolved-handles` 警告が出ます。
 
+<!-- render: system id=04-handles -->
 ```krs
 system Shop {
   service Backend {
@@ -122,6 +128,10 @@ system Shop {
   Bff -> Backend
 }
 ```
+
+<!-- gen:guide-diagram:04-handles — DO NOT EDIT. Generated from the snippet above; run `pnpm gen:guide-diagrams`. -->
+![system view — 04-handles](diagrams/04-handles.ja.svg)
+<!-- /gen:guide-diagram:04-handles -->
 
 **expose ルール**: ノード N がドメイン D を expose するのは、(1) N が `domain D` を子に持つ（自身が所有）、または (2) N が `handles D` を宣言し、かつ少なくとも 1 本の outgoing 通信エッジの宛先も D を expose しているとき。ルールは 1 ホップずつ展開されるので、`client → BFF → backend` の各リンクを明示的に宣言する必要があります（暗黙の auto-passthrough はありません）。
 

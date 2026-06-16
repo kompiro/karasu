@@ -79,6 +79,7 @@ client WebApp [web] {
 
 Connect `user -> client -> service` with edges to draw the reach path.
 
+<!-- render: system id=04-access-path -->
 ```krs
 system Shop {
   user Customer [human] { label "Shopper" }
@@ -98,6 +99,11 @@ system Shop {
 }
 ```
 
+<!-- gen:guide-diagram:04-access-path — DO NOT EDIT. Generated from the snippet above; run `pnpm gen:guide-diagrams`. -->
+![system view — 04-access-path](diagrams/04-access-path.svg)
+<!-- /gen:guide-diagram:04-access-path -->
+
+
 Now "the shopper reaches the backend through two surfaces, mobile and web" reads off the overview. Normal API calls between client and service are written with a plain `->`.
 
 ---
@@ -106,6 +112,7 @@ Now "the shopper reaches the backend through two surfaces, mobile and web" reads
 
 A `client` and a `service` can declare the **domain ids they expose to callers** with `handles`. This is a validated cross-reference: the exposed domain must be reachable by a one-hop expose rule, or an `unresolved-handles` warning fires.
 
+<!-- render: system id=04-handles -->
 ```krs
 system Shop {
   service Backend {
@@ -118,10 +125,15 @@ system Shop {
     handles Order        // expose Order to end users via the BFF
   }
 
+
   WebApp -> Bff
   Bff -> Backend
 }
 ```
+
+<!-- gen:guide-diagram:04-handles — DO NOT EDIT. Generated from the snippet above; run `pnpm gen:guide-diagrams`. -->
+![system view — 04-handles](diagrams/04-handles.svg)
+<!-- /gen:guide-diagram:04-handles -->
 
 **The expose rule**: a node N exposes domain D when (1) N has `domain D` as a child (owns it), or (2) N declares `handles D` and at least one outgoing communication edge's target also exposes D. The rule expands one hop at a time, so each link in `client → BFF → backend` must be declared explicitly (there is no implicit auto-passthrough).
 

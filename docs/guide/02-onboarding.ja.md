@@ -125,6 +125,7 @@ database OrderDB {
 
 骨格ができたら、まず **一番上の地図** から描きます。ドリルダウンの原則（[`docs/concepts.ja.md`](../concepts.ja.md)）に従い、最初から全部を 1 枚に詰め込まず、`system` レベルの俯瞰だけを作ります。
 
+<!-- render: system id=02-overview -->
 ```krs
 system Shop {
   label "オンラインショップ（読解中）"
@@ -146,6 +147,10 @@ system Shop {
 }
 ```
 
+<!-- gen:guide-diagram:02-overview — DO NOT EDIT. Generated from the snippet above; run `pnpm gen:guide-diagrams`. -->
+![system view — 02-overview](diagrams/02-overview.ja.svg)
+<!-- /gen:guide-diagram:02-overview -->
+
 - **`[external]`** は「システム境界の外」「自分たちが所有していない」ものに付けます。まだ読めていないレガシーやサードパーティを `[external]` にしておくと、「ここは今は深掘りしない」境界を明示できます。
 - **`description` をメモ帳に使う** — 「誰が詳しいか」「どこに不明点があるか」を一文で残せます。これは後で `link` でドキュメント URL に置き換えられます。
 - **エッジは矢印の向きと種別を持つ** — 同期 `->`、非同期 `-->`。読解の初期は分からなければ同期で置いておき、イベント駆動だと分かったら `-->` に直します。
@@ -154,6 +159,7 @@ system Shop {
 
 別システム（自分の担当外、あるいは未調査）への依存は、`SystemId.ServiceId` のドット記法でエッジを引けます。参照先は **ghost system** として半透明に描画され、「境界の存在は見えるが中身は見えない」状態を表せます。
 
+<!-- render: system id=02-ghosts -->
 ```krs
 system Shop {
   service OrderService { label "受注サービス" }
@@ -162,6 +168,10 @@ system Shop {
   OrderService -> PaymentGW.PaymentService "決済を依頼する"
 }
 ```
+
+<!-- gen:guide-diagram:02-ghosts — DO NOT EDIT. Generated from the snippet above; run `pnpm gen:guide-diagrams`. -->
+![system view — 02-ghosts](diagrams/02-ghosts.ja.svg)
+<!-- /gen:guide-diagram:02-ghosts -->
 
 ghost は scoped glance の具現化です。視野の外にあるが依存している相手を、詳細を背負わずに地図の縁に残せます。「決済は別チームの PaymentGW に投げている。中身は今は知らなくていい」を正直に描けます。
 
@@ -308,6 +318,7 @@ system Shop {
 
 中途入社者にとって、技術構造と同じくらい重要なのが **人の地図** です。karasu の組織ビューは、これをアーキテクチャと同じ図の中に重ねられます。
 
+<!-- render: org id=02-org -->
 ```krs
 organization Shop {
   team orderTeam {
@@ -326,6 +337,10 @@ organization Shop {
   }
 }
 ```
+
+<!-- gen:guide-diagram:02-org — DO NOT EDIT. Generated from the snippet above; run `pnpm gen:guide-diagrams`. -->
+![org view — 02-org](diagrams/02-org.ja.svg)
+<!-- /gen:guide-diagram:02-org -->
 
 - **`owns`** で「このサービス/DB は誰の担当か」を地図化します。読解中に「OrderService のことは受注チームに聞けばいい」が分かったら、`owns` で記録します。
 - **`member` + `slack` / `github`** で連絡先を残せます。オンボーディング地図としては、まさにこれが欲しい情報です。
