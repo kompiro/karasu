@@ -521,6 +521,22 @@ error (for both `->` and `-->`). Edges inside a `system` block may use any
 declared node as their source. This rule and its diagnostic are catalogued in
 the [diagnostics & rules reference](diagnostics.md).
 
+**Cross-boundary dependencies.** The rule binds the *source*, not the *target*,
+so a block can still depend on things it does not own:
+
+- **On another service's domain** — keep your block as the source:
+  `Billing -> Contract`, where `Contract` is a domain of a different service
+  (see [Edges inside a domain block](#edges-inside-a-domain-block)).
+- **On an external service** — declare it `[external]` and draw the edge to it:
+  `ECommerce -> Payment` with `service Payment [external]`.
+- **On something not modelled** — the edge is kept and the dangling endpoint is
+  reported (`unresolved-edge-endpoint`, see §S6), rather than rejected.
+
+To express an **inbound** dependency whose source you do not own (an external or
+other-team service pointing *into* your block), model that source as an
+`[external]` node and declare the edge at `system` scope, where any source is
+allowed — the edge stays co-located with its source.
+
 #### Optional edge id (`#<id>`)
 
 A trailing `#<id>` gives an edge a stable, author-defined identifier that

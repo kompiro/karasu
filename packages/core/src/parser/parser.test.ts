@@ -362,6 +362,26 @@ system Test {
     expect(result.value.systems[0].edges[0].from).toBe("A");
   });
 
+  it("allows a domain edge whose target is another service's domain (source = enclosing) (#1623)", () => {
+    const result = Parser.parse(`
+system Test {
+  service ECommerce {
+    domain Contract { label "Contract" }
+  }
+  service BillingService {
+    domain Billing {
+      Billing -> Contract "Created from a contract"
+    }
+  }
+}
+    `);
+    const errors = result.diagnostics.filter((d) => d.severity === "error");
+    expect(errors).toHaveLength(0);
+    const billing = result.value.systems[0].children[1].children[0];
+    expect(billing.edges[0].from).toBe("Billing");
+    expect(billing.edges[0].to).toBe("Contract");
+  });
+
   it("parses nested nodes with full hierarchy", () => {
     const result = Parser.parse(`
 system Test {
