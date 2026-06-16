@@ -434,4 +434,4 @@ DesignDoc が proactive TPL を引用したら、実装 PR で次をやる:
 | [TPL-20260613-03](TPL-20260613-03-cancel-stale-async-effect-results.md) | 非同期 effect は入力変化・unmount で in-flight 結果を破棄してから publish する | app-ui | #1534 / #1540 |
 | [TPL-20260615-01](TPL-20260615-01-migration-priority-index-winner.md) | 1:1 index は migration 共存の重複から @migration_target を勝者に選ぶ — 全 index で一貫させる | core-concepts | docs/spec/tags-annotations.md, ADR-20260411-02 / ADR-20260615-01, #1583 |
 | [TPL-20260615-02](TPL-20260615-02-diagnostic-absence-assertion-scope-severity.md) | 診断の不在を assert するテストは severity でスコープする（info register は open set） | testing | #1608 |
-| [TPL-20260616-01](TPL-20260616-01-docs-pipeline-link-anchor-resolution.md) | docs/ を別系統へ取り込むパイプラインは repo-relative リンクと明示アンカーの未解決をビルド時に fail させる | build | docs/design/docs-site-ssg.md |
+| [TPL-20260616-01](TPL-20260616-01-docs-pipeline-link-anchor-resolution.md) | docs/ を別系統へ取り込むパイプラインは repo-relative リンクと明示アンカーの未解決をビルド時に fail させる | build | ADR-20260616-03 |
