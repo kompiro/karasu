@@ -262,6 +262,8 @@ export const en: Translations = {
     `Expected ${expected} but got ${got} ("${value}")`,
   "diagnostic.unexpectedTokenRoot.message": ({ tokenType, value }) =>
     `Unexpected token: ${tokenType} ("${value}")`,
+  "diagnostic.topLevelDeclaration.message": ({ construct }) =>
+    `A top-level ${construct} is not allowed — declare it inside a system block`,
   "diagnostic.unexpectedTokenInBlock.subResource": ({ tokenType, value }) =>
     `Unexpected token in sub-resource block: ${tokenType} ("${value}"). Sub-resource nodes (table, queue-item, bucket) cannot contain child declarations.`,
   "diagnostic.unexpectedTokenInBlock.generic": ({ tokenType, value }) =>

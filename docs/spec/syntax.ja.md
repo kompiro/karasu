@@ -335,6 +335,17 @@ system ECPlatform {
 }
 ```
 
+#### トップレベルへの配置
+
+`user` 宣言とエッジは `system` ブロックの **内側** にのみ書ける — `user` という
+アクターも関係（エッジ）も、ある system の境界に属するものだからである。どちらも
+ファイルのトップレベルに書くと parse error（`top-level-declaration`）になり、
+パーサはそれを報告して該当構文をスキップする。（一方で `domain` とインフラ
+ブロック `database` / `queue` / `storage` は *トップレベルにも置ける* — 各節を
+参照。）この規則は[診断と規則のリファレンス](diagnostics.md)にカタログ化されている。
+
+> Related TPLs: [TPL-20260610-02](../test-perspectives/TPL-20260610-02-spec-promised-diagnostics-implemented.md) — spec が約束する配置規則は、汎用 parse error に落とさず専用の診断コードを持つこと。
+
 ### service ブロック
 
 service の内部を domain に分解して記述する。

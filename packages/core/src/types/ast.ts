@@ -459,6 +459,7 @@ export interface DiagnosticParamsByCode {
   // ── Token / parse structure ─────────────────────────────────────────────
   "token-type-mismatch": { expected: string; got: string; value: string };
   "unexpected-token-root": { tokenType: string; value: string };
+  "top-level-declaration": { construct: "user" | "edge" };
   "unexpected-token-in-block": { blockKind: string; tokenType: string; value: string };
   "expected-brace-or-string": { got: string; value: string };
   "expected-identifier": { got: string; value: string };

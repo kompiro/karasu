@@ -334,6 +334,18 @@ system ECPlatform {
 }
 ```
 
+#### Top-level placement
+
+`user` declarations and edges are only valid **inside** a `system` block — a
+`user` actor and a relationship both belong to a system's boundary. Writing
+either at the top level of a file is a parse error (`top-level-declaration`);
+the parser reports it and skips the offending construct. (By contrast,
+`domain` and the infra blocks `database` / `queue` / `storage` *may* sit at the
+top level — see their sections.) This rule is catalogued in the
+[diagnostics & rules reference](diagnostics.md).
+
+> Related TPLs: [TPL-20260610-02](../test-perspectives/TPL-20260610-02-spec-promised-diagnostics-implemented.md) — a spec-promised placement rule must have a dedicated diagnostic code, not fall through to a generic parse error.
+
 ### service block
 
 The internals of a service are decomposed into domains.

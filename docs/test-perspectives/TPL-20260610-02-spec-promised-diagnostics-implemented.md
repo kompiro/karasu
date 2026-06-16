@@ -99,3 +99,4 @@ spec に診断の約束を書く / 約束済み領域の実装を変更すると
 
 - `docs/spec/style.md` — 「@import scope and conflicts」節（セレクタ重複警告の約束 — `style-conflict` 警告として実装済み）
 - `docs/spec/syntax.md` — 「Diagram legend > Top-level placement」節（ネストは parse error の約束）
+- `docs/spec/syntax.md` — 「system block > Top-level placement」節（top-level の `user` / edge は parse error の約束 — `top-level-declaration` 診断として実装、#1624）

@@ -245,7 +245,25 @@ export class Parser {
         case TokenType.Legend:
           file.legends.push(this.parseLegendBlock());
           break;
+        case TokenType.User:
+          // A `user` is only valid inside a `system`. Report it with a
+          // dedicated code (not a generic unexpected-token) and consume the
+          // declaration so parsing recovers cleanly.
+          this.error("top-level-declaration", { construct: "user" });
+          this.parseNodeDecl();
+          break;
         default:
+          // A top-level edge (`A -> B`) is likewise only valid inside a
+          // `system`; surface the same dedicated diagnostic and consume it.
+          if (
+            (token.type === TokenType.Identifier || token.type === TokenType.StringLiteral) &&
+            (this.peekAt(1).type === TokenType.Arrow ||
+              this.peekAt(1).type === TokenType.DashedArrow)
+          ) {
+            this.error("top-level-declaration", { construct: "edge" });
+            this.parseEdge();
+            break;
+          }
           this.error("unexpected-token-root", {
             tokenType: String(token.type),
             value: token.value,
