@@ -30,6 +30,9 @@ export default defineConfig({
   integrations: [
     starlight({
       title: "karasu",
+      // The 鴉 brand mark, kept alongside the "karasu" title text.
+      logo: { src: "./src/assets/logo.svg", alt: "karasu" },
+      favicon: "/favicon.svg",
       defaultLocale: "root",
       locales: {
         root: { label: "English", lang: "en" },
