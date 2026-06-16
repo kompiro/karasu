@@ -1,0 +1,131 @@
+// org/system.krs
+// Demonstrates: organization, team, member, owns, slack, github
+// Shows team ownership of services/domains alongside the system structure.
+
+system ECPlatform {
+  label "EC Platform"
+
+  service ECommerce {
+    label "EC Site"
+    domain Order { label "Orders" }
+    domain Catalog { label "Product Catalog" }
+  }
+
+  service Payment {
+    label "Payment Service"
+    domain Billing { label "Billing" }
+  }
+
+  service Inventory {
+    label "Inventory Management"
+    domain Stock { label "Stock" }
+  }
+
+  service Platform {
+    label "Platform Foundation"
+    description "Cross-cutting foundation such as auth, logging, and CI/CD"
+  }
+
+  ECommerce -> Payment   "Process payments"
+  ECommerce -> Inventory "Check inventory"
+}
+
+organization TechCorp {
+  label "TechCorp Engineering"
+
+  team "ec-team" {
+    label "EC Team"
+    description "Team responsible for developing and operating the EC site"
+
+    owns ECommerce
+    owns Order
+    owns Catalog
+
+    member alice {
+      label "Alice Yamamoto"
+      description "Tech lead of the EC team"
+      slack "@alice"
+      github "alice-yamamoto"
+    }
+
+    member bob {
+      label "Bob Tanaka"
+      description "Backend engineer"
+      slack "@bob"
+      github "bob-tanaka"
+    }
+
+    member carol {
+      label "Carol Sato"
+      description "Frontend engineer"
+      github "carol-sato"
+    }
+  }
+
+  team "payment-team" {
+    label "Payment Team"
+    description "Responsible for the security and reliability of the payment service"
+
+    owns Payment
+    owns Billing
+
+    member dave {
+      label "Dave Suzuki"
+      description "Payment team lead. Owns PCI DSS"
+      slack "@dave"
+      github "dave-suzuki"
+    }
+
+    member eve {
+      label "Eve Nakamura"
+      description "SRE"
+      slack "@eve"
+      github "eve-nakamura"
+    }
+  }
+
+  team "inventory-team" {
+    label "Inventory Team"
+    description "Responsible for developing and maintaining the inventory service"
+
+    owns Inventory
+    owns Stock
+
+    member frank {
+      label "Frank Kobayashi"
+      description "Engineering manager of the inventory team"
+      slack "@frank"
+      github "frank-kobayashi"
+    }
+  }
+
+  team "platform-team" {
+    label "Platform Team"
+    description "Enabling team that owns the foundation used by all teams"
+
+    owns Platform
+
+    member grace {
+      label "Grace Ito"
+      description "Infrastructure and CI/CD"
+      slack "@grace"
+      github "grace-ito"
+    }
+
+    member henry {
+      label "Henry Watanabe"
+      description "Security and auth foundation"
+      slack "@henry"
+      github "henry-watanabe"
+    }
+
+    // Sub-team for on-call rotation management
+    team oncall {
+      label "On-call Rotation"
+      description "24/7 on-call rotation"
+
+      member grace {}
+      member henry {}
+    }
+  }
+}

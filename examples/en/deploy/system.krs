@@ -1,0 +1,119 @@
+// deploy/system.krs
+// Demonstrates: all artifact types — war, jar, oci, lambda, function, assets, job, artifact
+// Each type is suited to a different workload. See artifact comments for when to use each.
+
+system RetailPlatform {
+  label "Retail Platform"
+
+  service Storefront {
+    label "Storefront"
+    description "Customer-facing shopping UI (SPA)"
+  }
+
+  service OrderAPI {
+    label "Order API"
+    description "Order intake and management"
+  }
+
+  service PaymentService {
+    label "Payment Service"
+    description "Payment processing and refunds"
+  }
+
+  service InventoryService {
+    label "Inventory Service"
+    description "Inventory management and allocation"
+  }
+
+  service ReportingService {
+    label "Reporting Service"
+    description "Sales and inventory report aggregation"
+  }
+
+  service LegacyERP {
+    label "Legacy ERP System"
+    description "Legacy core system (mainframe)"
+  }
+
+  Storefront       ->  OrderAPI         "Submit an order"
+  OrderAPI         ->  PaymentService   "Process a payment"
+  OrderAPI         ->  InventoryService "Allocate inventory"
+  OrderAPI        --> ReportingService  "Feed order data"
+  InventoryService --> LegacyERP        "Sync the inventory master"
+}
+
+deploy Production {
+  label "Production environment"
+
+  // assets: static files / SPA delivered via CDN
+  assets storefront {
+    label "Storefront SPA"
+    runtime "CloudFront / S3"
+    realizes Storefront
+  }
+
+  // oci: container image (most common for modern services)
+  oci "order-api" {
+    label "Order API container"
+    image "order-api:4.1.2"
+    runtime "Node.js 22 / Fastify"
+    realizes OrderAPI
+  }
+
+  // jar: executable JAR (Spring Boot etc.)
+  jar "payment-service" {
+    label "Payment Service JAR"
+    runtime "Java 21 / Spring Boot 3"
+    realizes PaymentService
+  }
+
+  // war: WAR/EAR deployed to a servlet container
+  war "inventory-service" {
+    label "Inventory Service WAR"
+    runtime "Tomcat 10 / Jakarta EE"
+    realizes InventoryService
+  }
+
+  // lambda: AWS Lambda function
+  lambda "order-event-handler" {
+    label "Order event handler"
+    runtime "Node.js 22"
+    realizes OrderAPI
+  }
+
+  // function: Azure Functions / Google Cloud Functions
+  function "payment-webhook" {
+    label "Payment webhook handler"
+    runtime "Python 3.12"
+    realizes PaymentService
+  }
+
+  // job: one-off run (no schedule)
+  job "data-backfill" {
+    label "Data backfill job"
+    runtime "Python 3.12"
+  }
+
+  // job: scheduled batch (cron)
+  job "daily-sales-report" {
+    label "Daily sales report"
+    schedule "0 2 * * *"
+    runtime "Java 21"
+    realizes ReportingService
+  }
+
+  job "monthly-inventory-snapshot" {
+    label "Monthly inventory snapshot"
+    schedule "0 3 1 * *"
+    runtime "Python 3.12"
+    realizes ReportingService
+  }
+
+  // artifact: catch-all for types not covered above
+  artifact "legacy-erp-connector" {
+    label "Legacy ERP connector"
+    type "mainframe-batch"
+    runtime "COBOL / z/OS"
+    realizes LegacyERP
+  }
+}

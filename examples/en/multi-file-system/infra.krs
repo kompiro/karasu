@@ -1,0 +1,39 @@
+// multi-file-system/infra.krs
+// Shared infrastructure — databases and external dependencies referenced
+// by services across reader / editor / moderation slices. Declared once
+// here, inside a reopened `system Blog` block (S3), and pulled into each
+// slice via `import "infra.krs"`. This is the canonical pattern for
+// cross-file shared infra:
+//
+//   - Each slice that uses a shared resource imports infra.krs, so it
+//     renders standalone in the App without unresolved-edge warnings.
+//   - DAG re-arrival (S5) memoizes the resolved infra.krs, so being
+//     reached through reader / editor / moderation doesn't duplicate work.
+//   - The merged model has one canonical declaration per resource — no
+//     ambiguity about where shared infra "lives".
+//   - Declaring inside `system Blog { ... }` (rather than at file root)
+//     lets the system-reopen merge in S3 attach the infra to the system,
+//     so the `unassigned-database` warning doesn't fire.
+
+system Blog {
+  database ArticleDB {
+    table articles
+  }
+
+  database DraftStore {
+    table drafts
+  }
+
+  database SearchIndex {
+    table documents
+  }
+
+  database ModerationLog {
+    table decisions
+  }
+
+  service Search [external] {
+    label "Full-text search engine"
+    description "Externally hosted search service, queried directly by Delivery"
+  }
+}

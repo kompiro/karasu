@@ -1,0 +1,27 @@
+// payment-platform/theme.krs.style
+// Demonstrates: team-based color theming via .krs.style
+// Override colors per service to reflect team ownership at a glance.
+
+// Gateway team — blue
+#Gateway {
+  color: #1e40af;
+  background-color: #dbeafe;
+}
+
+// Risk team — amber (signals caution / security focus)
+#RiskEngine {
+  color: #92400e;
+  background-color: #fef3c7;
+}
+
+// Ledger team — green (financial / trusted)
+#Ledger {
+  color: #065f46;
+  background-color: #d1fae5;
+}
+
+// External services — neutral gray
+service[external] {
+  color: #374151;
+  background-color: #f3f4f6;
+}

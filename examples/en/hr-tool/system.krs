@@ -1,0 +1,72 @@
+// hr-tool/system.krs
+// Demonstrates: shallow domain structure, [human] and [ai] users side by side
+// A simple internal HR attendance tool — contrasts with the deeper ec-platform hierarchy.
+
+system HRTool {
+  label "Attendance Management System"
+
+  user Employee [human] {
+    label "Employee"
+    role "General staff who submit and review attendance"
+  }
+
+  user HRManager [human] {
+    label "HR Manager"
+    role "Staff who approve attendance and verify payroll"
+  }
+
+  user AttendanceBot [ai] {
+    label "Attendance Assistant"
+    role "AI agent that detects missing punches and notifies employees"
+  }
+
+  service Auth {
+    label "Auth Service"
+    description "SSO and session management"
+
+    domain Identity {
+      label "Identity"
+      usecase Login { label "Log in" }
+      usecase Logout { label "Log out" }
+    }
+  }
+
+  service Attendance {
+    label "Attendance"
+    description "Recording, requesting, and approving clock-in/out"
+
+    domain Timesheet {
+      label "Timesheet"
+      usecase ClockIn { label "Clock in" }
+      usecase ClockOut { label "Clock out" }
+      usecase ApplyLeave { label "Request leave" }
+      usecase ApproveLeave { label "Approve leave" }
+    }
+  }
+
+  service Payroll {
+    label "Payroll"
+    description "Calculate salary based on working hours"
+
+    domain Calculation {
+      label "Salary Calculation"
+      usecase CalculateSalary { label "Calculate monthly salary" }
+      usecase GeneratePayslip { label "Issue payslip" }
+    }
+  }
+
+  service Notification {
+    label "Notification Service"
+    description "Send email and Slack notifications"
+  }
+
+  Employee       ->  Auth         "Log in"
+  HRManager      ->  Auth         "Log in"
+  Employee       ->  Attendance   "Submit attendance"
+  HRManager      ->  Attendance   "Approve attendance"
+  HRManager      ->  Payroll      "Review payslip"
+  AttendanceBot  ->  Attendance   "Check punch status"
+  AttendanceBot --> Notification  "Notify of missing punch"
+  Attendance    --> Payroll       "Feed working-time data"
+  Payroll       --> Notification  "Notify of payslip issuance"
+}

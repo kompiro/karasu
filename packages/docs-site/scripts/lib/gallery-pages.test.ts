@@ -24,7 +24,8 @@ describe("gallery-pages", () => {
     expect(md).toContain('src="data:image/svg+xml,');
     expect(md).toContain("<figcaption>System view</figcaption>");
     expect(md).toContain("```krs");
-    expect(md).toContain("github.com/kompiro/karasu/tree/main/examples/payment-platform");
+    // payment-platform is localized: the en page links to the en source dir.
+    expect(md).toContain("github.com/kompiro/karasu/tree/main/examples/en/payment-platform");
   });
 
   it("uses a fence longer than any backtick run in the source", () => {

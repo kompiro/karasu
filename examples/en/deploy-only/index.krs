@@ -1,0 +1,26 @@
+// deploy-only/index.krs
+// Minimal example: a .krs file with only a deploy block (no system).
+// Used to demonstrate that the preview auto-selects the Deploy tab
+// when the file has no system block (Issue #766).
+
+deploy Production {
+  label "Production environment"
+
+  oci "web" {
+    label "Web frontend"
+    image "web:1.0.0"
+    runtime "Node.js 22 / Next.js"
+    realizes Storefront
+  }
+
+  lambda "order-handler" {
+    label "Order handler"
+    runtime "Node.js 22"
+    realizes OrderAPI
+  }
+
+  assets "static-assets" {
+    label "Static assets"
+    runtime "CloudFront / S3"
+  }
+}
