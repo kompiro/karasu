@@ -40,7 +40,12 @@ function figures(rendered: RenderedDiagram, locale: Locale): string {
 }
 
 function sourceFence(source: string): string {
-  return `\`\`\`krs\n${source.replace(/\s+$/, "")}\n\`\`\``;
+  const body = source.replace(/\s+$/, "");
+  // CommonMark variable-length fence: use more backticks than the longest run in
+  // the source, so a ``` inside a comment/string can't close the fence early.
+  const longestRun = Math.max(0, ...[...body.matchAll(/`+/g)].map((m) => m[0].length));
+  const fence = "`".repeat(Math.max(3, longestRun + 1));
+  return `${fence}krs\n${body}\n${fence}`;
 }
 
 function githubLink(page: GalleryPage, locale: Locale): string {
@@ -62,7 +67,8 @@ export function examplePageMarkdown(
     out.push(locale === "ja" ? "## ソース" : "## Source", "", sourceFence(rendered[0].source));
   } else {
     page.diagrams.forEach((diagram, i) => {
-      out.push(`## ${diagram.caption?.[locale] ?? ""}`, "");
+      const caption = diagram.caption?.[locale];
+      if (caption) out.push(`## ${caption}`, "");
       out.push(figures(rendered[i], locale), "");
       out.push(sourceFence(rendered[i].source), "");
     });

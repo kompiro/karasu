@@ -27,6 +27,19 @@ describe("gallery-pages", () => {
     expect(md).toContain("github.com/kompiro/karasu/tree/main/examples/payment-platform");
   });
 
+  it("uses a fence longer than any backtick run in the source", () => {
+    const page = GALLERY_PAGES.find((p) => p.slug === "payment-platform");
+    if (!page) throw new Error("fixture missing");
+    const withBackticks: RenderedDiagram = {
+      entry: page.diagrams[0].entry,
+      source: 'system Demo { description "```" }',
+      views: [{ type: "system", svg: "<svg>x</svg>" }],
+    };
+    const md = examplePageMarkdown(page, [withBackticks], "en");
+    expect(md).toContain("````krs"); // 4 backticks > the 3 in the source
+    expect(md).toContain('description "```"'); // source preserved, fence not closed early
+  });
+
   it("feature-samples page renders one section per sample", () => {
     const page = GALLERY_PAGES.find((p) => p.slug === "feature-samples");
     if (!page) throw new Error("fixture missing");
