@@ -1,7 +1,7 @@
 # gallery の example を app で開く（id 指定・固定 origin fetch）
 
 - **Issue**: [#1646](https://github.com/kompiro/karasu/issues/1646)
-- **PR**: #（作成後に記入）
+- **PR**: [#1660](https://github.com/kompiro/karasu/pull/1660)
 - **日付**: 2026-06-16
 - **ステータス**: 検討中
 
