@@ -4,7 +4,7 @@
 - **ステータス**: 検討中
 - **PR**: [#1664](https://github.com/kompiro/karasu/pull/1664)
 - **関連**:
-  - 引き金 Issue: [#1316](https://github.com/kompiro/karasu/issues/1316)（OSS launch Phase 2 — Marketplace publish under publisher `karasu`）
+  - 引き金 Issue: [#1316](https://github.com/kompiro/karasu/issues/1316)（OSS launch Phase 2 — Marketplace publish under publisher `karasu-tools`）
   - 親 Issue: [#1302](https://github.com/kompiro/karasu/issues/1302)（OSS 化ブレインストーミング）, [#1317](https://github.com/kompiro/karasu/issues/1317)（hard launch）
   - 関連 ADR: [ADR-20260512-05](../adr/20260512-05-release-automation-changesets.md)（changesets を採用、当面 `karasu`(CLI) のみ npm 公開。`karasu-vscode` の version 管理と Marketplace publish は **#1316 に委譲**と明記）, [ADR-20260330-05](../adr/20260330-05-vscode-extension-lsp-first.md)（LSP server を esbuild バンドルする先例）
   - 関連 TPL: [TPL-20260510-15](../test-perspectives/TPL-20260510-15-dev-vs-packaged-mode-parity.md)（dev tree のパスに依存する成果物は packaged/installed モードでも動くか確認）, [TPL-20260520-02](../test-perspectives/TPL-20260520-02-consistency-check-triggers-on-both-sides.md)（成果物 A↔B の整合チェックは両側の変更で起動させる）
@@ -13,10 +13,13 @@
 ## 背景・課題
 
 hard launch（#1317）で karasu が discoverable になるよう、`packages/vscode` 拡張を
-VS Code Marketplace に publisher **`karasu`** で掲載したい（#1316）。
+VS Code Marketplace に publisher **`karasu-tools`** で掲載したい（#1316）。
+publisher ID `karasu` は取得済みだったため、フォールバックとして `karasu-tools` を登録した
+（#1316 のフォールバック方針。`kompiro` よりプロジェクト名に近く `@karasu-tools/*` の npm
+scope とも揃う）。Marketplace 上の拡張 ID は `<publisher>.<name>` ＝ **`karasu-tools.karasu-vscode`**。
 
 #1316 のタスクのうち、**publisher の作成・Azure DevOps PAT の発行・実 publish・
-publisher ID `karasu` の空き確認・スクリーンショット撮影**は marketplace.visualstudio.com
+publisher ID の空き確認・スクリーンショット撮影**は marketplace.visualstudio.com
 上の人手作業であり、リポジトリ側では完結しない。本 Design Doc は **リポジトリ側で今
 やれる準備**と、**`vsce publish` の自動化をどう配線するか**の設計判断を扱う。
 
@@ -29,7 +32,7 @@ Marketplace publish は #1316 に委ねる」と明記している。つまり *
 
 | 観点 | 現状 |
 | --- | --- |
-| `publisher` | `package.json` は既に `"publisher": "karasu"`。空き確認・作成は人手（未実施） |
+| `publisher` | `package.json` は `"publisher": "karasu"`。`karasu` は取得済みだったため publisher は **`karasu-tools`** で登録済み → 実装 PR で `package.json` の `publisher` を `karasu-tools` に変更する。拡張 ID は `karasu-tools.karasu-vscode` |
 | `version` | `0.1.0`（CLI の `0.0.0` プレースホルダとは異なり実バージョン） |
 | Marketplace README | **存在しない**。Marketplace は GitHub/npm とは別の README をレンダリングするため専用ファイルが要る |
 | discoverability metadata | `categories: ["Programming Languages"]` のみ。`keywords` / `repository` / `homepage` / `bugs` / `galleryBanner` が無い。Acceptance が要求する "karasu" / "C4" / "architecture diagram" 検索に必要 |
@@ -46,15 +49,15 @@ Marketplace publish は #1316 に委ねる」と明記している。つまり *
 
 - **changesets フローに `karasu-vscode` を戻さない**（ADR-20260512-05 の決定。npm CLI 公開とは
   cadence・配布先・認証が全く異なるため独立配線にする）。
-- **実 publish は人手の前提条件にゲートされる**: publisher `karasu` の作成と `VSCE_PAT`
-  secret の設定が済むまで publish は実行できない。workflow は secret 不在で安全に no-op する
-  こと（release.yml の `NPM_TOKEN` guard と同じ思想）。
+- **実 publish は人手の前提条件にゲートされる**: publisher `karasu-tools` は登録済みだが、
+  `VSCE_PAT` secret の設定が済むまで publish は実行できない。workflow は secret 不在で安全に
+  no-op すること（release.yml の `NPM_TOKEN` guard と同じ思想）。
 - **packaged/installed モード parity**（TPL-20260510-15）: `.vsix` に同梱されない / dev tree の
   相対パスに依存するコードは installed 環境で壊れる。README・icon・`out/server.js` が
   `.vsix` に確実に入り、`src/` 等の不要物が入らないことを保証する。
-- **out of scope（人手 / 別 Issue）**: publisher ID `karasu` の空き確認と作成、Azure DevOps
+- **out of scope（人手 / 別 Issue）**: publisher 登録（`karasu-tools` で完了済み）、Azure DevOps
   PAT 発行、`VSCE_PAT` secret 登録、実 publish、スクリーンショット撮影、launch 告知（#1317）。
-  本 PR では「人手が揃えば動く」状態まで配線する。
+  本 PR では「人手（PAT + secret）が揃えば動く」状態まで配線する。
 
 ## 検討した選択肢
 
@@ -155,11 +158,12 @@ Marketplace README・discoverability metadata・`.vscodeignore`・root README cr
    `inputs.pre_release`（boolean, default false）を用意し、true なら `vsce publish --pre-release`
    とする（hard launch 前のテスト配布などで使える）。
 6. **root README cross-link**: `README.md` の「VS Code extension」節に Marketplace install
-   リンク（`code --install-extension karasu.karasu` と Marketplace URL `karasu.karasu`）を
-   **今 追記する**。publisher 未作成のうちは listing が live でないため、「launch 時に有効化
-   される（coming soon）」旨を 1 行添える。URL は予測可能（`karasu.karasu`）なので先に置く。
+   リンク（`code --install-extension karasu-tools.karasu-vscode` と Marketplace URL
+   `itemName=karasu-tools.karasu-vscode`）を **今 追記する**。publisher は登録済みだが listing
+   は実 publish まで live でないため、「launch 時に有効化される（coming soon）」旨を 1 行添える。
+   拡張 ID は確定（`karasu-tools.karasu-vscode`）なので先に置く。
 7. **AT**: `docs/acceptance/` に新規ファイル。TC は:
-   - `package.json` に `keywords`/`repository`/`galleryBanner` があり、`publisher` が `karasu`
+   - `package.json` に `keywords`/`repository`/`galleryBanner` があり、`publisher` が `karasu-tools`
    - `.vsix`（または `vsce ls`）に `out/extension.js` / `out/server.js` / `README.md` /
      `icon.png` が含まれ、`src/` / `node_modules/` / `*.test.ts` が含まれない（TPL-20260510-15）
    - `vscode-release.yml` の publish step が `VSCE_PAT` secret に gate されている（TPL-20260520-02：
@@ -185,8 +189,10 @@ Marketplace README・discoverability metadata・`.vscodeignore`・root README cr
 
 ## 決めたこと（旧 未解決の問い）
 
-- **root README の Marketplace リンク**: 今 追記する。URL は予測可能（`karasu.karasu`）なので
-  先に置き、「launch 時に有効化（coming soon）」を 1 行明記する。
+- **publisher ID**: `karasu` は取得済みのため **`karasu-tools`** で登録。実装 PR で
+  `package.json` の `publisher` を `karasu-tools` に変更する（拡張 ID `karasu-tools.karasu-vscode`）。
+- **root README の Marketplace リンク**: 今 追記する。拡張 ID は確定（`karasu-tools.karasu-vscode`）
+  なので先に置き、「launch 時に有効化（coming soon）」を 1 行明記する。
 - **publish チャネル**: 初回は **stable**。`workflow_dispatch.inputs.pre_release` は将来用に
   用意しておくが default は false。
 
