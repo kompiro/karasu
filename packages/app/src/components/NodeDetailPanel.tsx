@@ -47,6 +47,7 @@ export const KIND_TO_ICON_NAME: Record<string, string> = {
   assets: "assets",
   job: "job",
   artifact: "artifact",
+  store: "database",
 };
 
 // Fallback emoji icons for kinds without a registered SVG pictogram.

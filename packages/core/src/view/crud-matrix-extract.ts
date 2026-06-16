@@ -1,14 +1,15 @@
 import type { KrsNode, SystemNode, ResourceNode } from "../types/ast.js";
+import { INFRA_KIND_SET, type InfraKind } from "../types/ast.js";
 import {
   isWriteOperation,
   isRecognizedResourceOperation,
   type ResourceOperation,
 } from "../spec/operations.js";
 
-export type CrudVerb = "create" | "read" | "update" | "delete";
-export type InfraKind = "database" | "queue" | "storage";
+export type { InfraKind };
 
-const INFRA_KINDS: ReadonlySet<InfraKind> = new Set(["database", "queue", "storage"]);
+export type CrudVerb = "create" | "read" | "update" | "delete";
+
 const CRUD_VERBS: readonly CrudVerb[] = ["create", "read", "update", "delete"];
 
 export interface CrudMatrixRow {
@@ -104,7 +105,7 @@ function buildInfraIndex(systems: readonly SystemNode[]): Map<string, InfraColum
   const map = new Map<string, InfraColumnSeed>();
   for (const sys of systems) {
     for (const node of sys.children) {
-      if (!INFRA_KINDS.has(node.kind as InfraKind)) continue;
+      if (!INFRA_KIND_SET.has(node.kind)) continue;
       for (const sub of node.children) {
         const id = `${node.id}.${sub.id}`;
         map.set(id, {

@@ -916,6 +916,30 @@ deploy Production {
     expect(unresolved(krs)).toHaveLength(0);
   });
 
+  it("does not emit `missing-runtime` for a `store` unit (it has no runtime form)", () => {
+    const krs = `
+system S {
+  database OrderDB {}
+}
+deploy Production {
+  store orderStore {
+    type "Aurora PostgreSQL 15"
+    realizes OrderDB
+  }
+  oci api {
+    realizes OrderDB
+  }
+}
+    `;
+    const file = Parser.parse(krs).value;
+    const warnings = analyze(file, [getBuiltinStyleSheet()]);
+    const missingRuntime = warnings.filter((w) => w.kind === "missing-runtime");
+    // `store` is exempt; the runtime-less `oci api` still fires it.
+    expect(
+      missingRuntime.map((w) => (w.kind === "missing-runtime" ? w.params.nodeId : null)),
+    ).toEqual(["api"]);
+  });
+
   it("resolves a `store` realizing a top-level (unassigned) infra node", () => {
     const krs = `
 database OrderDB {}

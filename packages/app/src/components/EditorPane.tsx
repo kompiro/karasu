@@ -43,6 +43,7 @@ function registerKrsLanguage(monaco: Monaco): void {
       "assets",
       "job",
       "artifact",
+      "store",
       "runtime",
       "realizes",
       "schedule",

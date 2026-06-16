@@ -18,6 +18,19 @@ export type LogicalNodeKind =
   | "queue-item"
   | "bucket";
 
+/**
+ * The three system-level infra **block** kinds (shared data stores). The single
+ * source of truth for "is this an infra block?" across parser, resolver, view,
+ * renderer, and CLI — import {@link INFRA_KIND_SET} instead of re-declaring the
+ * triple. Leaf sub-resources (`table` / `queue-item` / `bucket`) are NOT here.
+ */
+export const INFRA_BLOCK_KINDS = ["database", "queue", "storage"] as const;
+
+export type InfraKind = (typeof INFRA_BLOCK_KINDS)[number];
+
+/** Membership set over {@link INFRA_BLOCK_KINDS}; typed as `string` so any node kind can be tested. */
+export const INFRA_KIND_SET: ReadonlySet<string> = new Set(INFRA_BLOCK_KINDS);
+
 export type EdgeKind = "sync" | "async";
 
 export type DeployNodeKind =

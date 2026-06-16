@@ -34,6 +34,7 @@ import type {
   ClientResource as ClientResourceImpl,
   ClientCapability as ClientCapabilityImpl,
 } from "./types/ast.js";
+export { INFRA_BLOCK_KINDS, INFRA_KIND_SET } from "./types/ast.js";
 
 export type {
   StyleSheet,
