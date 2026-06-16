@@ -1,9 +1,10 @@
 # infra block keyword を物理層の要素として表現できるようにすべきか
 
 - **日付**: 2026-06-16
-- **ステータス**: 検討中
+- **ステータス**: 検討中（案B + kind 設計 B-2 で方針確定、実装 PR で ADR 昇格予定）
 - **関連**:
   - 引き金 Issue: [#1632](https://github.com/kompiro/karasu/issues/1632)
+  - PR: [#1645](https://github.com/kompiro/karasu/pull/1645)
   - 関連 ADR: [ADR-20260405-05](../adr/20260405-05-database-as-first-class-node.md)（database/queue/storage を論理層の first-class node に昇格）
   - 関連 TPL: [TPL-20260519-02](../test-perspectives/TPL-20260519-02-shared-vocabulary-dual-representation.md)（共有語彙の dual representation）
   - 関連 Issue: [#423](https://github.com/kompiro/karasu/issues/423)（deploy diagram restructure）, [#1626](https://github.com/kompiro/karasu/issues/1626)（infra keyword vs shape tag）, [#1314](https://github.com/kompiro/karasu/issues/1314)（Syntax v1.0 spec freeze）
@@ -129,7 +130,7 @@ deploy 側に「概念的に managed なデータストア実体」を表す kin
 | 対応表の非対称解消 | × | ◎ | ◎ | × |
 | v1.0 freeze への収まり | ◎ | ○ | △ | ◎ |
 
-## 現時点の方針
+## 確定した方針
 
 **案B（`realizes` の対象を infra node に拡張）を採る。** deploy unit が `realizes <infraId>` を
 書けるようにする。中心的な論拠:
@@ -148,49 +149,107 @@ deploy 側に「概念的に managed なデータストア実体」を表す kin
 3. **`[external]`（案D）では不足。** `[external]` は boundary の内外という boolean しか表せず、
    「RDS か Aurora か」までは書けない。ユーザーが表現したいのはこの具体度なので案D 単独では要件を満たさない。
 
-> 壁打ちの結論として案B を方針とする。残る論点は「物理 unit の kind 設計」（下記・未解決の問い）であり、
-> ここは案C（store 専用 kind）を案B の *実装詳細* として取り込むか、既存 kind を流用するかの選択になる。
+**kind 設計は (B-2)（store 専用 kind の新設）で確定。** 成果物 kind（`war` / `oci` …）に managed store を
+混ぜず、kind で区別する。具体は下記「確定した設計」。
 
-### kind 設計の論点（案B の実装詳細 — 要レビュー）
+## 確定した設計（B-2）
 
-deploy unit が infra を realize するとき、その unit を **どの kind で書くか**:
+### 文法
 
-- **(B-1) 既存 kind を流用** — `artifact` に `type "Aurora PostgreSQL 15"` / `runtime "..."` を書いて
-  `realizes OrderDB`。文法追加ゼロだが、「コード成果物」寄りの既存 kind 群（`war` / `oci` …）に
-  managed store が混じり意味が薄まる。
-- **(B-2) store 専用 kind を追加（案C 相当）** — `managed`（あるいは `db` / `bucket` の物理版）等を新設し、
-  「これは deploy される成果物ではなく managed な実体だ」と kind で区別する。意味は明快だが freeze 直前の
-  語彙追加コストがかかる。
+- 新しい deploy unit kind **`store`**（managed data store の物理実体）を追加する。`store` は
+  `database` / `queue` / `storage` の論理 infra node を `realizes` する。
+- プロパティは `["label", "type", "realizes"]`。`type` は具体技術の**自由記述**
+  （`"Aurora PostgreSQL 15"` / `"Amazon SQS"` / `"S3"` …）。controlled vocabulary は設けない
+  （列挙を始めるとトポロジ寄りの構成記述に滑るため。`@deprecated(until:)` の
+  graceful degradation と同じく自由記述で受ける）。`runtime` / `schedule` は持たない
+  （managed store にコード成果物のランタイム形態の概念は薄い）。
 
-現時点では **(B-2) を推す**（成果物と managed store を kind で分けるほうが deploy diagram の説明力が高い）が、
-ここはレビューで決めたい。
+```krs
+deploy "production" {
+  store OrderStore {
+    type "Aurora PostgreSQL 15"
+    realizes OrderDB        // 論理 infra `database OrderDB` を realize
+  }
+  store EventBus {
+    type "Amazon SQS"
+    realizes OrderEvents    // `queue OrderEvents` を realize
+  }
+}
+```
 
-### 実装の指針（案B を採る場合）
+- 既存 kind（`oci` 等）も `realizes <infraId>` を書けるようにはする（valid 化のみ）。ただし
+  「managed store は `store` で書く」のが推奨スタイルで、spec にそう記す。
 
-1. resolver: `detectUnresolvedRealizes` の valid-id 集合に infra node id（`database` / `queue` / `storage`）を追加。
-   `realizes <infraId>` を valid 化する。
-2. deploy view: `extractDeployView` が infra node を realize 先として解決し、物理 unit を infra container 内に
-   描けるようにする（service の realize と同じ描画経路）。
-3. kind: (B-1)/(B-2) の決定に応じて `packages/core/src/builtins/reference-data.ts` の deploy kind 定義を更新
-   （(B-2) なら新 kind 追加 + `gen:reference` 再生成）。
-4. spec: `docs/spec/syntax.md`（+ja）の deploy / infra 節に「deploy unit は infra node も realize できる」ことと
-   kind の使い分けを追記。`docs/concepts.md`（+ja）の物理層の説明に infra realize を反映。
-5. proactive TPL: `realizes` の対象拡大に伴い「realize 先 kind の解決が service/domain/infra の全種別で一貫する」
-   観点の TPL を同 PR で起こす（[TPL-20260519-02] 系の cross-reference 整合の派生）。AT を `docs/acceptance/` に追加。
-6. ADR 昇格: 決定後、`docs/adr/YYYYMMDD-NN-infra-physical-layer.md` として昇格し本 Design Doc を同 PR で削除。
+### セマンティクス・描画
 
-### 影響範囲・マイグレーション
+- `realizes <infraId>` は valid（現状の `unresolved-realizes` warning を出さない）。
+- deploy view で、infra node を realize 先とする `store`（や他 unit）を、その infra の container 内に
+  描く。service の realize と同じ描画経路を使う。
+- アイコンは既存の `database` アイコン（cylinder 系）を流用し、新規 SVG asset は追加しない。
 
-- 既存ユーザーへの影響: 前方互換（これまで warning だった `realizes <infraId>` が valid になる）。
-  既存ファイルは壊れない。infra を realize していなかったファイルの描画は不変。
-- ドキュメント更新: `docs/spec/syntax.md`（+ja）, `docs/concepts.md`（+ja）, `docs/spec/diagnostics.md`
-  （`unresolved-realizes` の対象記述）。
-- テスト・examples への影響: deploy 周りの resolver / view テストを追加・更新。
-  ec-platform 等の examples に infra realize の実例を足すか検討。
+### 後方互換
 
-## 未解決の問い / 決めないこと
+前方互換。これまで warning だった `realizes <infraId>` が valid になるだけで、既存ファイルは壊れない。
+infra を realize していなかったファイルの描画・診断は不変。
 
-- **kind 設計**: (B-1) 既存 kind 流用 か (B-2) store 専用 kind 追加 か（上記「kind 設計の論点」）。
-- v1.0 freeze（#1314）に含めるか v1.x に送るか。`realizes` のセマンティクス拡張は freeze 前に入れるのが望ましい。
-- DBMS / managed 形態を `type` 等の自由記述プロパティで持つか、controlled vocabulary を設けるか
-  （後者はトポロジ寄りに滑るリスクがあるので自由記述が無難か）。
+## 実装の指針（コード調査済みの確定リスト）
+
+新 kind `store` は **deploy kind を列挙する全 6 箇所**を同時更新する（enum member addition）:
+
+1. `packages/core/src/types/ast.ts` — `DeployNodeKind` union に `"store"`（`DeployNodeProperties` の `type?` は既存）
+2. `packages/core/src/parser/parser.ts` — `DEPLOY_KEYWORDS` に `"store"`（`DEPLOY_PROPERTY_KEYWORDS` の `type` は既存・変更不要）
+3. `packages/core/src/builtins/reference-data.ts` — `deployUnitKinds` に `store`（`properties: ["label","type","realizes"]`）
+4. `packages/core/src/builtins/icon-theme.ts` — `{ kind: "store", icon: "database", scope: "deploy" }`（既存アイコン流用）
+5. `packages/core/src/builtins/default-style.ts` — `store {}` スタイルブロック（badge-label + 色、light/dark の 2 箇所）
+6. `packages/core/src/exporter/drawio/drawio-style.ts` — `store` の色 override
+
+`realizes` の infra 拡張:
+
+7. `packages/core/src/resolver/warnings.ts` `detectUnresolvedRealizes` — valid-id 集合に infra を追加。
+   `collectIds` の kind 判定に `database` / `queue` / `storage` を加え、かつ top-level の
+   `file.databases` / `file.queues` / `file.storages` バケットを明示ループで追加する
+   （top-level infra は `system.children` ではなくこれらのバケットに入るため両方必要）。
+8. `packages/core/src/view/deploy-view-extract.ts` — `serviceLabelMap` に infra node のラベルを追加し、
+   infra を realize する unit が infra container 配下に描画されるようにする。
+
+> renderer / layout / `translate/k8s.ts` / `translate/compose.ts` は container id にポリモーフィックで
+> **変更不要**（translate は `store` kind を生成しない）。
+
+ドキュメント:
+
+9. `pnpm gen:reference` で `docs/spec/syntax.md`（+ja）の `deploy-unit-kinds` 表を再生成（`store` 行が自動追加）。
+10. `docs/spec/syntax.md`（+ja）の deploy / realizes 節に「deploy unit は infra node も realize できる」「`store` kind の用途と推奨」を加筆。
+11. `docs/concepts.md`（+ja）の物理層の説明に infra realize を反映（**ランタイム契約層の範囲内**であり、トポロジは依然 out of scope と明記）。
+
+テスト / TPL / AT:
+
+12. unit: `warnings.test.ts`（`store` → infra realize で warning 0 / typo は warning）、
+    `deploy-view-extract.test.ts`（infra container 生成）、parser deploy test（`store` 受理）、
+    `reference-data` / `icon-theme` の既存 parity テストが新 kind を拾うこと。
+13. TPL（back-ref）: 新 deploy kind 追加は「enum member を全表現で同時更新」リスクなので
+    [TPL-20260510-03](../test-perspectives/TPL-20260510-03-enum-member-addition.md) を spec に back-ref。
+    `realizes` の対象種別拡大は [TPL-20260510-10](../test-perspectives/TPL-20260510-10-cross-reference-validation.md) も該当 → 併記（双方向）。
+14. AT: `docs/acceptance/1632-infra-physical-realize.md` — `store` が `database` を realize する `index.krs` で
+    (a) `unresolved-realizes` 警告ゼロ、(b) deploy view に infra container として描画。
+
+ADR 昇格:
+
+15. 実装 PR で `docs/adr/1632-infra-physical-realize.md` に昇格し（B-2 決定を記録）、本 Design Doc を同 PR で削除する。
+
+## Related TPLs
+
+- [TPL-20260510-03](../test-perspectives/TPL-20260510-03-enum-member-addition.md) — enum メンバー（deploy kind）追加時は全表現を同時更新する。`store` 追加で 6 箇所を同期。
+- [TPL-20260510-10](../test-perspectives/TPL-20260510-10-cross-reference-validation.md) — クロス参照（`realizes`）の解決対象を拡張するとき、全 valid kind を網羅して検証する。
+- [TPL-20260519-02](../test-perspectives/TPL-20260519-02-shared-vocabulary-dual-representation.md) — `reference-data` の deploy kind と icon-theme / default-style の整合（既存 parity テストでフェンス）。
+
+## 影響範囲・マイグレーション
+
+- 既存ユーザーへの影響: 前方互換（これまで warning だった `realizes <infraId>` が valid になる）。既存ファイルは壊れない。
+- ドキュメント更新: `docs/spec/syntax.md`（+ja）, `docs/concepts.md`（+ja）, `docs/spec/diagnostics.md`（`unresolved-realizes` の対象記述）。
+- テスト・examples への影響: deploy 周りの resolver / view テストを追加。ec-platform 等の examples への infra realize 実例追加は**任意**（別 PR 可）。
+
+## 決めないこと（実装後の判断に送る）
+
+- v1.0 freeze（#1314）に本機能を含めるか v1.x に送るかは**ロードマップ判断**。`realizes` の
+  セマンティクス拡張なので freeze 前に入れるのが望ましいが、実装完了後に #1314 / `docs/roadmap.md` 側で確定する。
+- examples（ec-platform）への `store` 実例追加の要否・タイミング。
