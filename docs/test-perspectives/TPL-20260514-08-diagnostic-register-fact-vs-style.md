@@ -10,7 +10,8 @@ applicable_to:
 discovered_from:
   - issue: "#1386"
   - root_cause_file: "docs/concepts.md"
-related_to: []
+related_to:
+  - TPL-20260615-02
 topic: core-concepts
 scope:
   packages:
