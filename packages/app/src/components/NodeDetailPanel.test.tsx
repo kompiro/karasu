@@ -118,6 +118,21 @@ describe("NodeDetailPanel", () => {
     expect(props.onClose).toHaveBeenCalledOnce();
   });
 
+  it("renders a `store` deploy unit's type (and not a runtime line)", () => {
+    const { container } = render(
+      <NodeDetailPanel
+        {...baseProps({
+          kind: "store" as NodeMetadata["kind"],
+          type: "Aurora PostgreSQL 15",
+          realizes: ["OrderDB"],
+        })}
+      />,
+    );
+    expect(container.textContent).toContain("type: Aurora PostgreSQL 15");
+    expect(container.textContent).toContain("realizes: OrderDB");
+    expect(container.textContent).not.toContain("runtime:");
+  });
+
   it("renders deploy navigation button when hasDeployContainer is true", () => {
     const onNavigateToDeploy = vi.fn<() => void>();
     const onClose = vi.fn<() => void>();

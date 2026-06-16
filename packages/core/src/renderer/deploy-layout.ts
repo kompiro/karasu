@@ -26,11 +26,22 @@ function estimateTextWidth(text: string): number {
   return width;
 }
 
+/**
+ * The single description line shown under a deploy unit. `runtime` is the
+ * primary form for code artifacts; kinds without a runtime fall back to their
+ * defining property so e.g. a `store` shows its `type` ("Aurora PostgreSQL 15")
+ * instead of an empty card.
+ */
+function deployUnitDescription(unit: DeployNode): string | undefined {
+  const p = unit.properties;
+  return p.runtime ?? p.type ?? p.image ?? p.schedule;
+}
+
 function measureDeployUnit(unit: DeployNode): { width: number; height: number } {
   const labelWidth = estimateTextWidth(unit.label ?? unit.id);
   const width = Math.max(labelWidth, 80) + NODE_PADDING_X * 2;
   let height = NODE_PADDING_Y * 2 + LINE_HEIGHT;
-  if (unit.properties.runtime) height += LINE_HEIGHT;
+  if (deployUnitDescription(unit)) height += LINE_HEIGHT;
   return { width, height };
 }
 
@@ -235,13 +246,13 @@ export function layoutDeploy(slice: DeployViewSlice): LayoutResult {
           id: unit.id,
           label: unit.label ?? unit.id,
           properties: {
-            description: unit.properties.runtime,
+            description: deployUnitDescription(unit),
             links: [],
           },
           descriptionSummary: undefined,
           linkCount: 0,
           hasChildren: false,
-          hasDescription: !!unit.properties.runtime,
+          hasDescription: !!deployUnitDescription(unit),
           x: currentX + CONTAINER_PADDING_X,
           y: unitY,
           width: dims.width,
@@ -282,13 +293,13 @@ export function layoutDeploy(slice: DeployViewSlice): LayoutResult {
         id: unit.id,
         label: unit.label ?? unit.id,
         properties: {
-          description: unit.properties.runtime,
+          description: deployUnitDescription(unit),
           links: [],
         },
         descriptionSummary: undefined,
         linkCount: 0,
         hasChildren: false,
-        hasDescription: !!unit.properties.runtime,
+        hasDescription: !!deployUnitDescription(unit),
         x: OUTER_PADDING + CONTAINER_PADDING_X,
         y: unitY,
         width: dims.width,

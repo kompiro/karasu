@@ -152,6 +152,7 @@ const KRS_KEYWORDS = [
   "assets",
   "job",
   "artifact",
+  "store",
   "organization",
   "member",
   "label",

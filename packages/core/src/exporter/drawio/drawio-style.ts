@@ -43,6 +43,7 @@ const KIND_OVERRIDES: Partial<Record<NodeKind, DrawioStyle>> = {
   assets: { fillColor: "#e1f5fe", strokeColor: "#01579b" },
   job: { fillColor: "#eceff1", strokeColor: "#455a64" },
   artifact: { fillColor: "#ede7f6", strokeColor: "#4527a0" },
+  store: { _shape: "shape=cylinder3;boundedLbl=1", fillColor: "#e0f2f1", strokeColor: "#00695c" },
 };
 
 interface CellValueInput {

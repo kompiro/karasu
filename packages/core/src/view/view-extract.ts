@@ -1,7 +1,6 @@
 import type { KrsNode, KrsEdge, ResourceNode } from "../types/ast.js";
+import { INFRA_KIND_SET } from "../types/ast.js";
 import { isWriteOperation } from "../spec/operations.js";
-
-const INFRA_KINDS = new Set(["database", "queue", "storage"] as const);
 
 /**
  * A single constituent domain edge that was aggregated into an implicit service edge.
@@ -191,11 +190,7 @@ function deriveImplicitServiceEdges(
  * creates one edge per unique (service, infra) pair.
  */
 function deriveInfraEdges(children: KrsNode[]): KrsEdge[] {
-  const infraIds = new Set(
-    children
-      .filter((n) => INFRA_KINDS.has(n.kind as "database" | "queue" | "storage"))
-      .map((n) => n.id),
-  );
+  const infraIds = new Set(children.filter((n) => INFRA_KIND_SET.has(n.kind)).map((n) => n.id));
   if (infraIds.size === 0) return [];
 
   const syntheticEdges: KrsEdge[] = [];
@@ -354,7 +349,7 @@ function buildResourceInferredTagsMap(systems: KrsNode[]): Map<string, string> {
   const map = new Map<string, string>();
   for (const system of systems) {
     for (const node of system.children) {
-      if (!INFRA_KINDS.has(node.kind as "database" | "queue" | "storage")) continue;
+      if (!INFRA_KIND_SET.has(node.kind)) continue;
       for (const sub of node.children) {
         const tag = KIND_TO_INFERRED_TAG[sub.kind];
         if (tag) map.set(`${node.id}.${sub.id}`, tag);
@@ -409,7 +404,7 @@ function buildResourceLabelMap(systems: KrsNode[]): Map<string, string> {
   const map = new Map<string, string>();
   for (const system of systems) {
     for (const node of system.children) {
-      if (!INFRA_KINDS.has(node.kind as "database" | "queue" | "storage")) continue;
+      if (!INFRA_KIND_SET.has(node.kind)) continue;
       for (const sub of node.children) {
         const key = `${node.id}.${sub.id}`;
         map.set(key, sub.label ?? sub.id);

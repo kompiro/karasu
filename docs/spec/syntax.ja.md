@@ -167,6 +167,7 @@ system ECPlatform {
 | `assets` | 静的ファイル・SPA（CDN配信） | `runtime`, `realizes` |
 | `job` | バッチ処理。schedule 省略で単発実行、指定で定期実行 | `runtime`, `schedule`, `realizes` |
 | `artifact` | 上記に該当しない任意種別 | `type`, `runtime`, `realizes` |
+| `store` | 論理 infra ノードを realize するマネージド型データストア（Aurora PostgreSQL、Amazon SQS、S3 等） | `type`, `realizes` |
 <!-- /gen:reference:deploy-unit-kinds -->
 
 ---
@@ -659,6 +660,35 @@ oci "monolith" {
   realizes InventoryService
 }
 ```
+
+### 共有 infra を realize する（`store` kind）
+
+`realizes` は `service` / `domain` だけでなく、**共有 infra ノード**（`database` / `queue` / `storage`）も
+指せる。これは論理データストアの *物理的な実体* — 実際にどのマネージドサービス / エンジンが裏で動くか — を
+記録するもので、`oci` ユニットが service を realize するのと対称。マネージドデータストアには専用の
+**`store`** kind を使い、具体技術は自由記述の `type` で書く。
+
+```
+deploy "production" {
+  store "order-db" {
+    type     "Aurora PostgreSQL 15"
+    realizes OrderDB        // 論理 `database OrderDB` を realize
+  }
+  store "order-events" {
+    type     "Amazon SQS"
+    realizes OrderEvents    // 論理 `queue OrderEvents` を realize
+  }
+}
+```
+
+このユニットは、service を realize するユニットと同様に、realize 先 infra ノードのコンテナ内に描画される。
+`store` は `type` と `realizes` を持つが `runtime` / `schedule` は持たない — マネージドストアにはコード成果物の
+ランタイム形態の概念が無いため。推奨スタイル: マネージドストアは `store` で書く。他の kind（`oci` 等）でも
+infra を realize できるが、`store` を使うと意図が明確になる。
+
+> スコープ: これは `deploy` の **ランタイム契約層**（どの concrete な形態がストアを裏付けるか）に収まる。
+> インフラのトポロジ（リージョン・AZ・クラスタ・ノード）は依然として対象外（[concepts.ja.md](../concepts.ja.md) 参照）。
+> 決定は [ADR-20260616-09](../adr/20260616-09-infra-physical-realize.md)。
 
 ---
 

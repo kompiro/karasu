@@ -6,6 +6,7 @@ import type {
   OrganizationBlock,
   TeamNode,
 } from "../types/ast.js";
+import { INFRA_KIND_SET } from "../types/ast.js";
 import { hasShape } from "../shapes/shape-registry.js";
 import { CLIENT_SUBTYPE_TAGS, type ClientSubtypeTag } from "../builtins/icon-theme.js";
 import type {
@@ -58,8 +59,6 @@ const LABEL_POSITION_KEYWORDS: Record<string, number> = {
 
 const SHAPE_KEYWORDS = new Set<string>(["box", "user", "cylinder", "queue", "hexagon", "cloud"]);
 
-/** Infra block kinds whose sub-resources can have a tag inferred from their kind. */
-const INFRA_KINDS = new Set(["database", "queue", "storage"]);
 /** Maps infra sub-resource AST kind → the style tag used in resource[tag] selectors. */
 const INFRA_SUB_KIND_TO_TAG: Record<string, string> = {
   table: "table",
@@ -76,7 +75,7 @@ function buildInferredTagMap(systems: KrsNode[]): Map<string, string> {
   const map = new Map<string, string>();
   for (const system of systems) {
     for (const node of system.children) {
-      if (!INFRA_KINDS.has(node.kind)) continue;
+      if (!INFRA_KIND_SET.has(node.kind)) continue;
       for (const sub of node.children) {
         const tag = INFRA_SUB_KIND_TO_TAG[sub.kind];
         if (tag) map.set(`${node.id}.${sub.id}`, tag);

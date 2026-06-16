@@ -492,6 +492,25 @@ deploy Production {
     expect(job.properties.realizes).toEqual(["Billing"]);
   });
 
+  it("parses a `store` deploy unit with type + realizes", () => {
+    const result = Parser.parse(`
+deploy Production {
+  store orderStore {
+    label "Order DB"
+    type "Aurora PostgreSQL 15"
+    realizes OrderDB
+  }
+}
+    `);
+    expect(result.value.deploys).toHaveLength(1);
+    const store = result.value.deploys[0].nodes[0];
+    expect(store.kind).toBe("store");
+    expect(store.id).toBe("orderStore");
+    expect(store.label).toBe("Order DB");
+    expect(store.properties.type).toBe("Aurora PostgreSQL 15");
+    expect(store.properties.realizes).toEqual(["OrderDB"]);
+  });
+
   it("parses deploy node with multiple realizes lines into an array", () => {
     const result = Parser.parse(`
 deploy Production {

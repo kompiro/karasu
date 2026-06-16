@@ -1,4 +1,5 @@
 import type { KrsNode, KrsEdge } from "../types/ast.js";
+import { INFRA_KIND_SET } from "../types/ast.js";
 import type { ViewSlice, GhostSystem } from "../view/view-extract.js";
 import type { EdgeDirection, ResolvedLayoutHints } from "../types/style.js";
 import { buildInheritedAnnotations } from "../resolver/inherited-annotations.js";
@@ -1300,12 +1301,10 @@ function computeEdgePoints(
  * differentiation between "we own this DB" and "this is a third-party SaaS"
  * is left to styling (border / color via the `[external]` tag selector).
  */
-const INFRA_KINDS = new Set<KrsNode["kind"]>(["database", "queue", "storage"]);
-
 function systemTier(node: KrsNode): 0 | 1 | 2 | 3 {
   if (node.kind === "user") return 0;
   if (node.kind === "client") return 1;
-  if (node.tags.includes("external") || INFRA_KINDS.has(node.kind)) return 3;
+  if (node.tags.includes("external") || INFRA_KIND_SET.has(node.kind)) return 3;
   return 2;
 }
 

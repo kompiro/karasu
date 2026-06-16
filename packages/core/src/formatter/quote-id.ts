@@ -31,6 +31,7 @@ const RESERVED_KEYWORDS = new Set([
   "assets",
   "job",
   "artifact",
+  "store",
   "runtime",
   "realizes",
   "handles",

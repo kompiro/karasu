@@ -36,6 +36,7 @@ import type {
   LegendRefTarget,
   LegendViewScope,
 } from "../types/ast.js";
+import { INFRA_KIND_SET } from "../types/ast.js";
 import { Lexer } from "../lexer/lexer.js";
 import { isRecognizedResourceOperation, type CrudVerb } from "../spec/operations.js";
 import type { ResourceOperation } from "../spec/operations.js";
@@ -68,7 +69,6 @@ const LOGICAL_KEYWORDS = new Set<string>([
 ]);
 
 // Infra block kinds that can appear as system-level children
-const INFRA_BLOCK_KINDS = new Set<string>(["database", "queue", "storage"]);
 
 // Recognized parameter keys per builtin lifecycle annotation (#1568). A param
 // on any other annotation, or with another key, is dropped with an
@@ -98,6 +98,7 @@ const DEPLOY_KEYWORDS = new Set<string>([
   "assets",
   "job",
   "artifact",
+  "store",
 ]);
 
 const DEPLOY_PROPERTY_KEYWORDS = new Set<string>([
@@ -539,7 +540,7 @@ export class Parser {
       // Check for logical node
       // Infra block kinds (database/queue/storage) are only valid as direct children of system.
       if (this.isLogicalKeyword(token)) {
-        if (INFRA_BLOCK_KINDS.has(token.value) && kind !== "system") {
+        if (INFRA_KIND_SET.has(token.value) && kind !== "system") {
           this.error("infra-not-in-context", {
             infraKind: token.value,
             parentKind: kind,
@@ -838,7 +839,7 @@ export class Parser {
     const kind = start.value as LogicalNodeKind;
 
     // Delegate infra block parsing to dedicated methods
-    if (INFRA_BLOCK_KINDS.has(kind)) {
+    if (INFRA_KIND_SET.has(kind)) {
       return this.parseInfraBlock(start, kind as "database" | "queue" | "storage");
     }
 

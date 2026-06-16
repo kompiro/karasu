@@ -6,6 +6,7 @@ import {
   formatMatrixAsMarkdown,
   formatMatrixAsCsv,
   renderMatrixAsSvg,
+  INFRA_KIND_SET,
   type FileSystemProvider,
   type DirEntry,
   type CrudMatrixOptions,
@@ -14,7 +15,6 @@ import {
 import { formatDiagnostic } from "./i18n.js";
 
 type MatrixFormat = "md" | "csv" | "svg";
-const VALID_INFRA: ReadonlySet<InfraKind> = new Set(["database", "queue", "storage"]);
 
 interface MatrixCliOptions {
   output?: string;
@@ -73,7 +73,7 @@ export async function matrix(filePath: string, options: MatrixCliOptions): Promi
     process.exit(1);
   }
 
-  const infra = options.infra?.filter((k): k is InfraKind => VALID_INFRA.has(k as InfraKind));
+  const infra = options.infra?.filter((k): k is InfraKind => INFRA_KIND_SET.has(k));
   if (options.infra && infra && infra.length !== options.infra.length) {
     process.stderr.write(`Error: --infra values must be one of: database, queue, storage\n`);
     process.exit(1);

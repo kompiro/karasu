@@ -244,6 +244,13 @@ artifact {
   badge-color: #9CA3AF;
 }
 
+store {
+  background-color: #14302B;
+  border-color: #14B8A6;
+  badge-label: "store";
+  badge-color: #14B8A6;
+}
+
 /* ── タグ ── */
 [external] {
   background-color: #1F2937;
@@ -470,6 +477,13 @@ artifact {
   border-color: #9CA3AF;
   badge-label: "artifact";
   badge-color: #9CA3AF;
+}
+
+store {
+  background-color: #CCFBF1;
+  border-color: #0D9488;
+  badge-label: "store";
+  badge-color: #0D9488;
 }
 
 /* ── タグ ── */

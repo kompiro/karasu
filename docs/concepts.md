@@ -53,6 +53,8 @@ oci "order-service" {
 
 This corresponds to UML's Realization relationship. It is a declaration: "this deployment unit realizes this service."
 
+A deployment unit may also realize a **shared infra node** (`database` / `queue` / `storage`) — typically with the dedicated `store` kind — to record which concrete managed store backs the logical data store (e.g. `store "order-db" { type "Aurora PostgreSQL 15"; realizes OrderDB }`). This stays within `deploy`'s runtime-contract layer; infrastructure topology (regions, AZs, nodes) remains out of scope.
+
 ### Organizational structure (Who)
 
 Describes **who owns what**.

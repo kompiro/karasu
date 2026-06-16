@@ -681,6 +681,14 @@ export const REFERENCE_DATA = {
       description: { en: "Any kind not covered above", ja: "上記に該当しない任意種別" },
       properties: ["label", "type", "runtime", "realizes"],
     },
+    {
+      kind: "store",
+      description: {
+        en: "Managed data store realizing a logical infra node (Aurora PostgreSQL, Amazon SQS, S3, …)",
+        ja: "論理 infra ノードを realize するマネージド型データストア（Aurora PostgreSQL、Amazon SQS、S3 等）",
+      },
+      properties: ["label", "type", "realizes"],
+    },
   ],
   orgKinds: [
     {
