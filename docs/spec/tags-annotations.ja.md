@@ -30,6 +30,10 @@
 
 > `client` 用の 7 つの form-factor タグは karasu が **認識** している。将来的に kind 固有のアイコン（#823 Phase 2）やレイアウトヒント（Phase 6）に反応する予定。リスト外のタグも `client` に付与可能で、その場合は通常のユーザー定義タグとして扱われる。
 
+> **shape タグと infra ブロックキーワードの違い。** `[table]` / `[queue]` / `[storage]` は `usecase` 内の `resource` に付ける **shape ヒント**であり、そのノードの描画（cylinder / queue / cloud）を変えるだけで、それ自体はノードもエッジも作らない。同名の infra ブロック **キーワード** `table` / `queue` / `storage`（および `database`）とは **別物**で、後者は system 図上で service が依存する **構造ノード（共有ストア）を宣言**する（[syntax.md](./syntax.md) の *Infra layer* 節を参照）。両者は位置も役割も異なるため衝突しない: キーワードは **宣言の先頭**に立ってノードの *kind* を決め、タグは `[...]` の **接尾辞**で *shape* だけを決める。**共有データストアを first-class ノードとして** モデリングしたいときは infra キーワードを、**usecase ローカルの `resource`** をストア風の形で描きたいだけのときは shape タグを使う。
+>
+> Related TPLs: [TPL-20260616-03](../test-perspectives/TPL-20260616-03-surface-token-shared-distinct-roles.md) — 表層トークンを共有しつつ役割が異なる語彙は、互いに silent に coerce されず別の役割を保つことを検証する。
+
 ### 記述例
 
 ```

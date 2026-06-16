@@ -30,6 +30,10 @@ A tag is a semantic declaration, not a direct appearance override. Visual contro
 
 > The seven `client` form-factor tags are **recognized** by karasu — future versions trigger kind-specific icons (Phase 2 of #823) and layout hints (Phase 6). Tags outside this list are still allowed on `client` and behave as ordinary user-defined tags.
 
+> **Shape tags vs. infra-block keywords.** `[table]` / `[queue]` / `[storage]` are **shape hints** on a `resource` inside a `usecase`: they only change how that node is drawn (cylinder / queue / cloud) and create no node or edge on their own. They are *not* the same as the same-named infra-block **keywords** `table` / `queue` / `storage` (and `database`), which **declare structural shared-store nodes** on the system view that services depend on — see the *Infra layer* section of [syntax.md](./syntax.md). The two never collide because they sit in different positions and play different roles: a keyword **starts a declaration** and sets a node's *kind*; a tag is a `[...]` **suffix** and sets only its *shape*. Use the infra keyword when you are modeling a **shared data store as a first-class node**; use the shape tag when you only want a **usecase-local `resource`** drawn in a store-like shape.
+>
+> Related TPLs: [TPL-20260616-03](../test-perspectives/TPL-20260616-03-surface-token-shared-distinct-roles.md) — surface-token-sharing vocabularies with distinct roles must stay distinct (one must never be silently coerced into the other).
+
 ### Example
 
 ```

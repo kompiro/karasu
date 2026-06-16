@@ -118,6 +118,7 @@ Some data stores are shared by several services rather than owned by a single `u
 - A `usecase` ties one of its `resource`s to a shared sub-resource with dot-notation — `resource <InfraId>.<SubResourceId>` (e.g. `resource OrderDB.OrderTable`). The resolver aggregates these references to derive the `service → database` (and `service → queue` / `service → storage`) edges shown on the system view, and may synthesize `[read]` / `[write]` tags on the usecase→resource edges — see [docs/spec/tags-annotations.md](./tags-annotations.md#system-assigned-tags).
 - `[external]` may be applied to `database` / `queue` / `storage` for a store that lives outside the system boundary (a managed third-party DB, an external event bus, …).
 - Writing `resource OrderTable` *without* a matching `database` block is allowed (warning only, rendered as an orphan node) so you can discover resources bottom-up while sketching a `usecase`, then group them into a `database` block and switch to the dot-notation reference.
+- The infra-block **keyword** `table` (a structural node declaration) is distinct from the shape **tag** `[table]` (a draw-shape hint on a usecase `resource`); the same holds for `queue` / `storage` vs `[queue]` / `[storage]`. They share a word but never collide — a keyword starts a declaration and sets a node's *kind*, a `[...]` tag is a suffix that sets only its *shape*. See [tags-annotations.md](./tags-annotations.md) for when to use which.
 
 ```krs
 system ECPlatform {
@@ -136,6 +137,8 @@ system ECPlatform {
   }
 }
 ```
+
+> Related TPLs: [TPL-20260616-03](../test-perspectives/TPL-20260616-03-surface-token-shared-distinct-roles.md) — the infra keyword vs same-named shape tag is the canonical case of surface-token-sharing vocabularies that must stay in distinct roles.
 
 ### Organizational structure (who owns what) — rendered as a separate diagram
 

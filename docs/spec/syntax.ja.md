@@ -118,6 +118,7 @@ client C [web] {
 - `usecase` は自身の `resource` を共有サブリソースにドット記法で紐づける — `resource <InfraId>.<SubResourceId>`（例: `resource OrderDB.OrderTable`）。resolver はこれらの参照を集約して system 図上の `service → database`（および `service → queue` / `service → storage`）エッジを導出し、usecase→resource エッジに `[read]` / `[write]` タグを合成することがある（[docs/spec/tags-annotations.ja.md](./tags-annotations.ja.md) の「システム自動付与タグ」節を参照）。
 - `[external]` はシステム境界の外にあるストア（マネージドなサードパーティ DB、外部イベントバス等）を表すために `database` / `queue` / `storage` に付けられる。
 - `database` ブロックがないまま `resource OrderTable` と書くことも許容される（警告のみ、孤立ノードとして描画）。`usecase` を書きながらボトムアップに resource を発見し、後で `database` ブロックにグループ化してドット記法の参照に切り替えればよい。
+- infra ブロックの **キーワード** `table`（構造ノードの宣言）と、shape **タグ** `[table]`（usecase の `resource` への描画 shape ヒント）は別物。`queue` / `storage` と `[queue]` / `[storage]` も同様。同じ語を共有するが衝突しない — キーワードは宣言の先頭でノードの *kind* を決め、`[...]` タグは接尾辞で *shape* だけを決める。使い分けは [tags-annotations.ja.md](./tags-annotations.ja.md) を参照。
 
 ```krs
 system ECPlatform {
@@ -136,6 +137,8 @@ system ECPlatform {
   }
 }
 ```
+
+> Related TPLs: [TPL-20260616-03](../test-perspectives/TPL-20260616-03-surface-token-shared-distinct-roles.md) — infra キーワードと同名 shape タグは、表層トークンを共有しつつ別の役割を保つべき語彙の代表例。
 
 ### 組織構造（誰が所有するか）— 別図で表現
 
