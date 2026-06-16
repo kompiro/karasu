@@ -65,8 +65,11 @@ docs-site の sync 時に manifest を辿り、各 example を `compileProject` 
 
 ### 実装の指針
 
-1. **manifest**（`packages/docs-site/scripts/examples-manifest.ts`）: example ごとに `{ dir, entry, views, group, title{en,ja}, blurb{en,ja} }` を列挙。`github-actions` は載せない。`ec-platform` の扱い（段階ファイルで単一エントリ無し）は manifest で「`01-system.krs` を代表として system ビューのみ」等に固定する（未解決の問い参照）。
-2. **レンダラ**（sync から呼ぶ）: `NodeFileSystemProvider`（`matrix.ts` の実装を `packages/core` か docs-site 内に共有化して再利用）+ `compileProject` / `buildAllViewsSvgProject` で manifest の各 example を SVG 化。空ビュー（内容の無い view）は出さない。
+1. **manifest**（`packages/docs-site/scripts/examples-manifest.ts`）: example ごとに `{ dir, entry, views, group, title{en,ja}, blurb{en,ja} }` を列挙。`github-actions` は載せない。確定事項:
+   - **`ec-platform`**: `03-domains.krs`（フル drill-down の system ビュー）を代表として **1 ページ**にする（素の `01-system.krs` より見栄えが良い）。
+   - **`feature-samples`**: **1 ページにまとめ**、各サンプルを section（見出し + コード + 小さな図）で縦並びにする（`examples/README.md` の表と整合）。
+   - **どのビューを出すか**は example ごとに manifest で明示（`deploy-only` は deploy、`org-only` は org 等）。
+2. **レンダラ**（sync から呼ぶ）: **read-only な FileSystemProvider**（`readFile` / `readDir` / `exists` のみ。`matrix.ts` の実装を参考に **docs-site 内に複製**する。core は `node:*` 非依存の Pure TS を保つため core には置かない — `FileSystemProvider` interface が core にあるのは実装を環境別パッケージに置くため）+ `compileProject` / `buildAllViewsSvgProject` で manifest の各 example を SVG 化。空ビュー（内容の無い view）は出さない。
 3. **ページ生成**: sync 時に gallery ページを content collection へ生成。
    - index `/examples/`（en）/ `/ja/examples/`: README の 3 群でグルーピングした一覧。サイドバーに "Examples" 群を追加。
    - 各 example `/examples/<name>/`: タイトル + blurb、該当ビューの SVG、entry ファイルのソース（`krs` ハイライト）、multi-file は「全ファイルを GitHub で見る」リンク、`examples/<dir>/` への GitHub リンク。
@@ -81,10 +84,12 @@ docs-site の sync 時に manifest を辿り、各 example を `compileProject` 
 - ドキュメント更新: 必要なら `docs/process.md` に gallery の生成手順を 1 行追記。
 - テスト・examples への影響: examples の `.krs` は変更しない。新規 smoke test を追加。
 
+## 決定済み（当初の未解決を確定）
+
+- **`ec-platform`**: `03-domains.krs`（フル drill-down の system ビュー）で 1 ページ。
+- **`feature-samples`**: 1 ページにまとめ、各サンプルを section（コード + 図）で縦並び。
+- **`NodeFileSystemProvider` の置き場所**: docs-site 内に read-only 複製（core の Pure TS 方針を壊さないため core には置かない）。
+
 ## 未解決の問い / 決めないこと
 
-- **`ec-platform` の扱い**: 段階チュートリアルで単一エントリが無い。(a) 代表ステップ 1 つを 1 ページにする / (b) gallery から外し guides に委ねる / (c) ステップごとにページ化、のどれか。manifest 確定時に決める（暫定: (a) `01-system.krs` の system ビュー）。
-- **`feature-samples` の粒度**: 10 個の小ファイル。1 ファイル 1 ページは過剰。1 ページにまとめて各サンプルの図 + コードを縦に並べる案を採る見込み（manifest で表現）。
-- **どのビューを出すか**: example ごとに system/deploy/org のどれを出すかは manifest で明示（`deploy-only` は deploy、`org-only` は org 等）。
-- **`NodeFileSystemProvider` の置き場所**: `matrix.ts` の実装を `packages/core/src/fs/` 等へ共有化するか、docs-site 内に複製するか（実装時に判断。共有化が望ましい）。
 - search 強化・versioned docs・playground 埋め込みは本 Design Doc では決めない（#1628 の別項目）。
