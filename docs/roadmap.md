@@ -125,7 +125,7 @@ freeze 前タスクを Issue 化し、すべて閉じてから [#1314](https://g
 
 | # | タスク | 種別 | Issue |
 | --- | --- | --- | --- |
-| 1 | edge 起点 scope の spec 明文化 + 名前付き診断（例: `edge-origin-scope`）新設 | core + spec + AT | [#1623](https://github.com/kompiro/karasu/issues/1623) |
+| 1 | edge 起点 scope の spec 明文化（規則名 = edge origin scope）。診断は既存の `edge-source-mismatch` を back-ref（rename しない） | spec + AT | [#1623](https://github.com/kompiro/karasu/issues/1623) |
 | 2 | top-level `user`/edge 禁止の spec 明文化 + 名前付き診断（例: `top-level-declaration`）新設 | core + spec + AT | [#1624](https://github.com/kompiro/karasu/issues/1624) |
 | 3 | **G** `client` sub-language の structure vs implementation 境界注記を `docs/concepts.md` に追加 | docs | [#1625](https://github.com/kompiro/karasu/issues/1625) |
 | 4 | **I** infra block keyword と shape tag の使い分け意図を spec に注記 | docs | [#1626](https://github.com/kompiro/karasu/issues/1626) |

@@ -317,6 +317,22 @@ system Test {
     expect(JSON.stringify(errors[0].params)).toContain("Contract");
   });
 
+  it("errors on async (-->) explicit edge source mismatch in service/domain block (#1623)", () => {
+    const result = Parser.parse(`
+system Test {
+  service S {
+    domain Contract {
+      OtherDomain --> Billing
+    }
+  }
+}
+    `);
+    const errors = result.diagnostics.filter((d) => d.severity === "error");
+    expect(errors.some((d) => d.code === "edge-source-mismatch")).toBe(true);
+    expect(JSON.stringify(errors[0].params)).toContain("OtherDomain");
+    expect(JSON.stringify(errors[0].params)).toContain("Contract");
+  });
+
   it("allows explicit edge with matching source in service/domain block", () => {
     const result = Parser.parse(`
 system Test {
@@ -344,6 +360,26 @@ system Test {
     const errors = result.diagnostics.filter((d) => d.severity === "error");
     expect(errors).toHaveLength(0);
     expect(result.value.systems[0].edges[0].from).toBe("A");
+  });
+
+  it("allows a domain edge whose target is another service's domain (source = enclosing) (#1623)", () => {
+    const result = Parser.parse(`
+system Test {
+  service ECommerce {
+    domain Contract { label "Contract" }
+  }
+  service BillingService {
+    domain Billing {
+      Billing -> Contract "Created from a contract"
+    }
+  }
+}
+    `);
+    const errors = result.diagnostics.filter((d) => d.severity === "error");
+    expect(errors).toHaveLength(0);
+    const billing = result.value.systems[0].children[1].children[0];
+    expect(billing.edges[0].from).toBe("Billing");
+    expect(billing.edges[0].to).toBe("Contract");
   });
 
   it("parses nested nodes with full hierarchy", () => {
