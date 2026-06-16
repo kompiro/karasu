@@ -344,6 +344,14 @@ the parser reports it and skips the offending construct. (By contrast,
 top level — see their sections.) This rule is catalogued in the
 [diagnostics & rules reference](diagnostics.md).
 
+The asymmetry with top-level infra is deliberate: shared infra is a single
+**thing** referenced by many systems (one top-level identity), whereas a `user`
+models an **actor's relationship** with a particular system — its `role` is
+defined *within that system*. So the same person interacting with two systems
+is two `user` nodes, linked only by a shared id (by convention). A cross-system
+shared actor / persona is intentionally left as a possible post-v1.0 extension,
+out of scope here (see [#1639](https://github.com/kompiro/karasu/issues/1639)).
+
 > Related TPLs: [TPL-20260610-02](../test-perspectives/TPL-20260610-02-spec-promised-diagnostics-implemented.md) — a spec-promised placement rule must have a dedicated diagnostic code, not fall through to a generic parse error.
 
 ### service block
