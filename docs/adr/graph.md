@@ -212,6 +212,7 @@ flowchart TD
     ADR_20260430_04["ADR-20260430-04<br/>usecase→resource edge を read/write で視覚的に区別する"]
     ADR_20260522_01["ADR-20260522-01<br/>SVG 図のライト / ダークテーマ対応（パレット引数 + 解決済み色の埋め込み）"]
     ADR_20260611_02["ADR-20260611-02<br/>ドリルダウン深度スコープによる凡例の完全一致切り替え"]
+    ADR_20260616_11["ADR-20260616-11<br/>deploy view に service→infra 依存エッジを描く（導出は共有ヘルパーで..."]
   end
   subgraph resolver["resolver"]
     ADR_20260401_06["ADR-20260401-06<br/>Domain Drift Detection — 検出スコープと検出キー"]
@@ -583,7 +584,7 @@ flowchart TD
 - [`navigation`](graph/navigation.md) — 9 ADRs
 - [`parser`](graph/parser.md) — 17 ADRs
 - [`project`](graph/project.md) — 4 ADRs
-- [`renderer`](graph/renderer.md) — 24 ADRs
+- [`renderer`](graph/renderer.md) — 25 ADRs
 - [`resolver`](graph/resolver.md) — 6 ADRs
 - [`styling`](graph/styling.md) — 7 ADRs
 - [`testing`](graph/testing.md) — 11 ADRs

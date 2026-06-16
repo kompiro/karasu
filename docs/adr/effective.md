@@ -220,6 +220,7 @@ See also: [dependency graph](graph.md), per-topic detail under [graph/](graph/).
 - [ADR-20260430-04](20260430-04-resource-rw-edges.md) — usecase→resource edge を read/write で視覚的に区別する
 - [ADR-20260522-01](20260522-01-svg-diagram-theming.md) — SVG 図のライト / ダークテーマ対応（パレット引数 + 解決済み色の埋め込み）
 - [ADR-20260611-02](20260611-02-legend-drill-down-scope.md) — ドリルダウン深度スコープによる凡例の完全一致切り替え
+- [ADR-20260616-11](20260616-11-deploy-infra-dependency-edges.md) — deploy view に service→infra 依存エッジを描く（導出は共有ヘルパーで単一情報源化）
 
 ## resolver
 

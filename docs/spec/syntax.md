@@ -703,6 +703,10 @@ service-realizing unit is. `store` carries `type` and `realizes` but no `runtime
 managed store has no runtime form of its own. Recommended style: model managed stores with `store`;
 other kinds (`oci`, …) *may* realize an infra node too, but `store` keeps the intent explicit.
 
+When a service depends on a realized infra node (a usecase references it via `resource <Infra>.<Sub>`)
+and both the service and the store are realized, the deploy diagram draws a dependency edge from the
+service's container to the realized store's container ([ADR-20260616-11](../adr/20260616-11-deploy-infra-dependency-edges.md)).
+
 > Scope: this stays within `deploy`'s **runtime-contract** layer (which concrete form backs the store).
 > Infrastructure topology — regions, AZs, clusters, nodes — remains out of scope (see [concepts.md](../concepts.md)).
 > Decided in [ADR-20260616-09](../adr/20260616-09-infra-physical-realize.md).

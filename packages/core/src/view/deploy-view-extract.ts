@@ -1,5 +1,6 @@
 import type { DeployBlock, DeployNode, SystemNode } from "../types/ast.js";
 import type { EdgeKind } from "../types/ast.js";
+import { deriveInfraEdges } from "./view-extract.js";
 
 export interface DeployContainer {
   /** The service id that these units realize */
@@ -89,21 +90,32 @@ export function extractDeployView(
     });
   }
 
-  // Build ghost edges from system-level edges between realized services.
-  // Only top-level system.edges are considered; edges nested inside service children are not.
+  // Build ghost edges between realized targets. Two sources are merged:
+  //   1. raw top-level `system.edges` (service→service communication), and
+  //   2. synthesized `service → infra` dependency edges (`deriveInfraEdges`,
+  //      from usecase `resource <Infra>.<Sub>` refs) — so a service container
+  //      connects to the realized store's container (#1658). The same helper
+  //      backs the system view, keeping both views' dependency sets in sync.
+  // Edges nested inside service children are not considered. Both endpoints must
+  // be realized (have a deploy unit); dedup by `from->to`.
   const realizesTargets = new Set(groupedByRealizes.keys());
   const ghostEdges: DeployGhostEdge[] = [];
+  const seenGhost = new Set<string>();
+
+  const pushGhost = (edge: { from: string; to: string; label?: string; kind: EdgeKind }): void => {
+    if (!realizesTargets.has(edge.from) || !realizesTargets.has(edge.to)) return;
+    const key = `${edge.from}->${edge.to}`;
+    if (seenGhost.has(key)) return;
+    seenGhost.add(key);
+    ghostEdges.push({ from: edge.from, to: edge.to, label: edge.label, kind: edge.kind });
+  };
 
   for (const system of systems) {
     for (const edge of system.edges) {
-      if (realizesTargets.has(edge.from) && realizesTargets.has(edge.to)) {
-        ghostEdges.push({
-          from: edge.from,
-          to: edge.to,
-          label: edge.label,
-          kind: edge.kind,
-        });
-      }
+      pushGhost({ from: edge.from, to: edge.to, label: edge.label, kind: edge.kind });
+    }
+    for (const edge of deriveInfraEdges(system.children)) {
+      pushGhost({ from: edge.from, to: edge.to, kind: edge.kind });
     }
   }
 
