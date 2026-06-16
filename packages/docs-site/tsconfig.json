@@ -1,0 +1,12 @@
+{
+  "extends": "astro/tsconfigs/strict",
+  "compilerOptions": {
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "allowImportingTsExtensions": true,
+    "noEmit": true,
+    "types": ["node"]
+  },
+  "include": ["scripts/**/*.ts", "src/**/*.ts", "*.mjs", ".astro/types.d.ts"],
+  "exclude": ["dist", "node_modules", "src/content/docs"]
+}
