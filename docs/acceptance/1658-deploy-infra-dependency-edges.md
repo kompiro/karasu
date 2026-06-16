@@ -2,7 +2,7 @@
 
 - **日付**: 2026-06-16
 - **関連 Issue**: [#1658](https://github.com/kompiro/karasu/issues/1658)
-- **関連 ADR**: [ADR-20260616-11](../adr/20260616-11-deploy-infra-dependency-edges.md)
+- **関連 ADR**: [ADR-20260616-12](../adr/20260616-12-deploy-infra-dependency-edges.md)
 - **対象ファイル**: `packages/core/src/view/deploy-view-extract.ts`, `packages/core/src/view/view-extract.ts`
 
 ## 受け入れ条件

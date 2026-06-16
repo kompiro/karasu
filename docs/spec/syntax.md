@@ -705,7 +705,7 @@ other kinds (`oci`, …) *may* realize an infra node too, but `store` keeps the 
 
 When a service depends on a realized infra node (a usecase references it via `resource <Infra>.<Sub>`)
 and both the service and the store are realized, the deploy diagram draws a dependency edge from the
-service's container to the realized store's container ([ADR-20260616-11](../adr/20260616-11-deploy-infra-dependency-edges.md)).
+service's container to the realized store's container ([ADR-20260616-12](../adr/20260616-12-deploy-infra-dependency-edges.md)).
 
 > Scope: this stays within `deploy`'s **runtime-contract** layer (which concrete form backs the store).
 > Infrastructure topology — regions, AZs, clusters, nodes — remains out of scope (see [concepts.md](../concepts.md)).

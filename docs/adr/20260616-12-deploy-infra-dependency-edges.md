@@ -1,5 +1,5 @@
 ---
-id: ADR-20260616-11
+id: ADR-20260616-12
 title: deploy view に service→infra 依存エッジを描く（導出は共有ヘルパーで単一情報源化）
 status: accepted
 date: 2026-06-16
@@ -14,7 +14,7 @@ assumptions:
   - "grep: packages/core/src/view/deploy-view-extract.ts :: deriveInfraEdges"
 ---
 
-# ADR-20260616-11: deploy view に service→infra 依存エッジを描く（導出は共有ヘルパーで単一情報源化）
+# ADR-20260616-12: deploy view に service→infra 依存エッジを描く（導出は共有ヘルパーで単一情報源化）
 
 - **日付**: 2026-06-16
 - **ステータス**: 決定済み
