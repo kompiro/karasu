@@ -1,20 +1,37 @@
 {
   "name": "@karasu-tools/core",
   "version": "0.0.0",
-  "private": true,
+  "description": "Compile and render .krs architecture diagrams — the core engine behind karasu (parser, style resolver, SVG renderer, translate).",
+  "homepage": "https://github.com/kompiro/karasu#readme",
   "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/kompiro/karasu.git",
+    "directory": "packages/core"
+  },
+  "files": [
+    "dist",
+    "icons"
+  ],
   "type": "module",
-  "main": "./src/index.ts",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
   "exports": {
     ".": {
-      "types": "./src/index.ts",
+      "development": "./src/index.ts",
+      "types": "./dist/index.d.ts",
       "import": "./dist/index.js",
-      "default": "./src/index.ts"
+      "default": "./dist/index.js"
     },
     "./icons/*": "./icons/*"
   },
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
+  },
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
+    "prepack": "pnpm run build",
     "test": "vitest run",
     "test:coverage": "vitest run --coverage",
     "typecheck": "tsc --noEmit"
@@ -27,5 +44,8 @@
     "@vitest/coverage-v8": "^4.1.4",
     "typescript": "^6.0.3",
     "vitest": "^4.1.4"
+  },
+  "engines": {
+    "node": ">=20"
   }
 }
