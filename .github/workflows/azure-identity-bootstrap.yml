@@ -1,0 +1,55 @@
+name: Azure Marketplace Identity Bootstrap
+
+# One-time / diagnostic helper for #1316. The VS Code Marketplace publisher
+# "Members" page identifies a service principal / managed identity by its
+# Azure DevOps *Identity ID* (a GUID) — not by client id, object id, or
+# resource id. That GUID only exists after the identity authenticates to Azure
+# DevOps once ("materialization"). A managed identity can't authenticate
+# locally, so this workflow logs in as it via GitHub OIDC (no secret) and prints
+# the Identity ID. Copy the printed GUID into:
+#   marketplace.visualstudio.com/manage -> karasu-tools -> Members -> Add
+# Then `vscode-release.yml` can publish. Safe to delete once membership is set
+# (kept as a diagnostic to re-fetch the id if needed).
+#
+# Must run on `main`: the identity's federated credential trusts the subject
+# `repo:kompiro/karasu:ref:refs/heads/main`.
+
+on:
+  workflow_dispatch:
+
+concurrency:
+  group: azure-identity-bootstrap
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  id-token: write # required for the GitHub OIDC token azure/login exchanges
+
+jobs:
+  identity:
+    name: Print Azure DevOps Identity ID
+    runs-on: ubuntu-latest
+    steps:
+      - name: Azure login (Entra ID via OIDC)
+        uses: azure/login@532459ea530d8321f2fb9bb10d1e0bcf23869a43 # v3.0.0
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          allow-no-subscriptions: true
+
+      - name: Materialize the identity and print its Azure DevOps Identity ID
+        run: |
+          # 499b84ac-1321-427f-aa17-267ca6975798 is the Azure DevOps resource.
+          # Calling profiles/me as this identity both materializes it and
+          # returns its profile `id` (the Identity ID the publisher expects).
+          id=$(az rest \
+            --resource 499b84ac-1321-427f-aa17-267ca6975798 \
+            --uri "https://app.vssps.visualstudio.com/_apis/profile/profiles/me?api-version=7.1" \
+            --query id -o tsv)
+          if [ -z "$id" ]; then
+            echo "::error::Could not read the Azure DevOps profile id. Check that AZURE_CLIENT_ID / AZURE_TENANT_ID are set and the federated credential subject matches this ref."
+            exit 1
+          fi
+          echo "::notice::Azure DevOps Identity ID = $id"
+          echo "Paste this GUID into marketplace.visualstudio.com/manage -> karasu-tools -> Members -> Add:"
+          echo "    $id"
