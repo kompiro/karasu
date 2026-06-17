@@ -82,9 +82,18 @@ describe("vscode-release workflow (TPL-20260520-02)", () => {
     expect(releaseWorkflow).not.toMatch(/^\s*push:/m);
   });
 
-  it("gates the publish step on the VSCE_PAT secret", () => {
+  it("authenticates with Entra ID via OIDC (no PAT) and gates publish on it", () => {
+    // Future-proof auth: Azure DevOps PATs retire 2026-12-01. Uses GitHub OIDC
+    // (id-token: write) + azure/login + `vsce publish --azure-credential`.
+    expect(releaseWorkflow).toMatch(/id-token:\s*write/);
+    expect(releaseWorkflow).toContain("azure/login@");
+    expect(releaseWorkflow).toContain("--azure-credential");
+    expect(releaseWorkflow).not.toContain("VSCE_PAT");
+  });
+
+  it("gates the publish path on the AZURE_CLIENT_ID variable", () => {
     expect(releaseWorkflow).toContain("can_publish");
-    expect(releaseWorkflow).toContain("secrets.VSCE_PAT");
+    expect(releaseWorkflow).toContain("vars.AZURE_CLIENT_ID");
     expect(releaseWorkflow).toMatch(/if:\s*steps\.prereqs\.outputs\.can_publish == 'true'/);
   });
 

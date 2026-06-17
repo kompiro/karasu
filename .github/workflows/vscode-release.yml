@@ -9,11 +9,18 @@ name: VS Code Extension Release
 # ADR-20260512-05). The version published is whatever is in
 # `packages/vscode/package.json`.
 #
-# Like `release.yml` guards npm publish on `NPM_TOKEN`, the publish step here is
-# guarded on the `VSCE_PAT` secret: without it the job builds and packages the
-# .vsix (so the run still validates bundling + `.vscodeignore`) but skips the
-# actual publish. This keeps the workflow safe before the human prerequisites
-# (publisher created + `VSCE_PAT` configured) are in place.
+# Auth: Microsoft Entra ID via GitHub OIDC (no stored secret, nothing to expire
+# — Azure DevOps long-lived PATs retire 2026-12-01). `azure/login` exchanges the
+# GitHub OIDC token for an Entra token via a federated credential, then
+# `vsce publish --azure-credential` (vsce >= 2.26.1) acquires the Marketplace
+# token from that Azure CLI session. Prerequisites (human, see #1316): an Entra
+# app registration with a federated credential trusting this repo, its
+# service principal added as a member of the `karasu-tools` publisher, and the
+# `AZURE_CLIENT_ID` / `AZURE_TENANT_ID` repo *variables* (public identifiers,
+# not secrets) set. Like `release.yml` guards npm publish on `NPM_TOKEN`, the
+# publish step here is guarded on `AZURE_CLIENT_ID`: until it is set the job
+# still builds and packages the .vsix (validating bundling + `.vscodeignore`)
+# but skips the actual publish.
 
 on:
   workflow_dispatch:
@@ -29,6 +36,7 @@ concurrency:
 
 permissions:
   contents: read
+  id-token: write # required for the GitHub OIDC token azure/login exchanges
 
 jobs:
   release:
@@ -59,33 +67,43 @@ jobs:
 
       # Build + package always, so the run validates esbuild bundling
       # (out/server.js present — assert-server-bundled) and `.vscodeignore`
-      # even when no PAT is configured.
+      # even before the Entra identity is configured.
       - name: Package extension
         run: pnpm --filter karasu-vscode run package
 
       - name: Check publish prerequisites
         id: prereqs
         env:
-          VSCE_PAT: ${{ secrets.VSCE_PAT }}
+          AZURE_CLIENT_ID: ${{ vars.AZURE_CLIENT_ID }}
         run: |
-          if [ -n "$VSCE_PAT" ]; then
+          if [ -n "$AZURE_CLIENT_ID" ]; then
             echo "can_publish=true" >> "$GITHUB_OUTPUT"
           else
-            echo "::notice::VSCE_PAT secret is not set — built and packaged the .vsix but skipping publish (expected pre-launch; see #1316)."
+            echo "::notice::AZURE_CLIENT_ID variable is not set — built and packaged the .vsix but skipping publish (expected pre-launch; see #1316)."
             echo "can_publish=false" >> "$GITHUB_OUTPUT"
           fi
 
-      # `vsce` reads the PAT from the VSCE_PAT env var. The extension is already
-      # bundled into out/, so publish with --no-dependencies and skip the
-      # rebuild (the package step above already ran the build).
+      # Exchange the GitHub OIDC token for an Entra token via the federated
+      # credential. No subscription is involved — the Marketplace is an Azure
+      # DevOps resource, not an Azure subscription resource — so log in with
+      # allow-no-subscriptions.
+      - name: Azure login (Entra ID via OIDC)
+        if: steps.prereqs.outputs.can_publish == 'true'
+        uses: azure/login@532459ea530d8321f2fb9bb10d1e0bcf23869a43 # v3.0.0
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          allow-no-subscriptions: true
+
+      # `vsce --azure-credential` picks up the Azure CLI session from the login
+      # step (no PAT). The extension is already bundled into out/, so publish
+      # with --no-dependencies; the package step above already built it.
       - name: Publish to Marketplace
         if: steps.prereqs.outputs.can_publish == 'true'
         working-directory: packages/vscode
-        env:
-          VSCE_PAT: ${{ secrets.VSCE_PAT }}
         run: |
           if [ "${{ inputs.pre_release }}" = "true" ]; then
-            pnpm exec vsce publish --no-dependencies --pre-release
+            pnpm exec vsce publish --azure-credential --no-dependencies --pre-release
           else
-            pnpm exec vsce publish --no-dependencies
+            pnpm exec vsce publish --azure-credential --no-dependencies
           fi

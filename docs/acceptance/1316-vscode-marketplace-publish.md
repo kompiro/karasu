@@ -46,9 +46,13 @@
 
   > ✅ Automated — `packages/vscode/src/marketplace-manifest.test.ts` › `is manual-only (workflow_dispatch, not push)`
 
-- [x] publish step が `VSCE_PAT` secret に gate され、不在時は build/package のみで no-op する
+- [x] Entra ID（OIDC + `vsce publish --azure-credential`、PAT 不使用）で認証する
 
-  > ✅ Automated — `packages/vscode/src/marketplace-manifest.test.ts` › `gates the publish step on the VSCE_PAT secret`
+  > ✅ Automated — `packages/vscode/src/marketplace-manifest.test.ts` › `authenticates with Entra ID via OIDC (no PAT) and gates publish on it`
+
+- [x] publish path が `AZURE_CLIENT_ID` variable に gate され、未設定時は build/package のみで no-op する
+
+  > ✅ Automated — `packages/vscode/src/marketplace-manifest.test.ts` › `gates the publish path on the AZURE_CLIENT_ID variable`
 
 - [x] `pre_release` input を持つが default は false（初回は stable チャネル）
 
@@ -62,8 +66,12 @@
 
 ### 手動確認（人手の前提条件 / 実 publish）
 
+Entra ID + GitHub OIDC（PAT 不使用 — Azure DevOps PAT は 2026-12-01 廃止）:
+
 - [ ] publisher `karasu-tools` の登録（marketplace.visualstudio.com）— 完了済み
-- [ ] Azure DevOps PAT（scope: Marketplace → Manage、Organization: All accessible）を発行し、repo secret `VSCE_PAT` に登録する
+- [ ] Entra ID app registration を作成し、federated credential（issuer `https://token.actions.githubusercontent.com`、subject `repo:kompiro/karasu:ref:refs/heads/main`、audience `api://AzureADTokenExchange`）を追加する
+- [ ] その service principal を `karasu-tools` publisher の member（Contributor）として追加する（marketplace.visualstudio.com → Manage Publishers → Members）
+- [ ] repo variables（secret ではない）に `AZURE_CLIENT_ID`（app の client id）と `AZURE_TENANT_ID`（tenant id）を設定する
 - [ ] `vscode-release.yml` を `workflow_dispatch` で起動し、初回 `0.1.0` が stable チャネルに publish されることを確認する
 - [ ] Marketplace 検索で "karasu" / "C4" / "architecture diagram" でヒットすることを確認する（#1316 の Acceptance）
 - [ ] スクリーンショット（three-face 構造 + editor/preview ワークフロー）を撮影し README に差し込む
