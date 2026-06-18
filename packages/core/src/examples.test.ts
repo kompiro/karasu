@@ -58,7 +58,7 @@ describe.each([
   ["ja", MULTI_FILE_SYSTEM_PROJECT] as const,
   ["en", MULTI_FILE_SYSTEM_PROJECT_EN] as const,
 ])(
-  "multi-file-system (%s): bundled content matches examples/%s/multi-file-system/",
+  "multi-file-system (%s): bundled content matches its on-disk examples/ source",
   (lang, project) => {
     const mfsDir = resolve(__dirname, `../../../examples/${lang}/multi-file-system`);
     const mfsFiles = readdirSync(mfsDir).filter((f: string) => f.endsWith(".krs"));
