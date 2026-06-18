@@ -37,6 +37,39 @@ The first run downloads VS Code (~200 MB) into
 `vscode-e2e`. The VS Code download is cached at `~/.vscode-test/` keyed on the
 workflow file hash.
 
+## Marketplace screenshots
+
+`capture-screenshots.mjs` is an on-demand generator (Issue #1671) — **not** a
+regression test. It drives the real extension via ExTester and saves full-window
+PNGs of the preview's three faces (System / Deploy / Org) to
+`packages/vscode/images/screenshots/`. The System shot doubles as the
+editor ↔ preview workflow image embedded in `packages/vscode/README.md`.
+
+**Generate via CI (recommended).** ExTester needs an x86_64 chromedriver
+(`chrome-for-testing` ships no linux-arm64 build), so the capture cannot run on
+Apple-silicon / ARM machines — the browser launch crashes with `SIGTRAP`. Run
+the **VS Code Screenshots** workflow (`.github/workflows/vscode-screenshots.yml`,
+`workflow_dispatch`) from the Actions tab; it captures on ubuntu-latest and
+uploads the PNGs as the `vscode-marketplace-screenshots` artifact.
+
+**Generate locally** (only on x86_64 Linux with a display / xvfb):
+
+```sh
+xvfb-run -a pnpm --filter @karasu-tools/vscode-e2e run capture:screenshots
+```
+
+The capture spec lives at `tests/capture/screenshots.capture.ts`. It is kept
+out of the `*.test.ts` glob on purpose so it never runs in the gated
+`vscode-webview-e2e` suite (see `.claude/rules/vscode-webview-tests.md` rule 2:
+each extra spawn of the `File: Open File...` simple-dialog raises xvfb flake
+risk). The runner points its own glob at `out/capture/*.capture.js`.
+
+Either way, **review the PNGs by eye** before committing — they ship on a public
+Marketplace listing. Download the CI artifact (or use the locally generated
+files), commit them under `packages/vscode/images/screenshots/`, bump
+`packages/vscode/package.json` `version`, and re-publish via `vscode-release.yml`
+so the refreshed README + images appear on the listing.
+
 ## Adding tests
 
 Tests live under `tests/suite/` and follow Mocha's BDD style

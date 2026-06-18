@@ -21,6 +21,13 @@ live SVG preview you can drill into.
 - **Standard editor smarts** — hover and go-to-definition over your model.
 - **Node detail panel** — inspect a node and jump across diagrams.
 
+<!-- TODO(screenshots): embed the Marketplace screenshots (editor ↔ preview
+     workflow + the three faces) here once captured. Generate them by running
+     the "VS Code Screenshots" workflow (.github/workflows/vscode-screenshots.yml),
+     downloading the artifact, reviewing the PNGs, and committing them under
+     images/screenshots/. See packages/vscode-e2e/README.md → "Marketplace
+     screenshots" and Issue #1671. -->
+
 ## Getting started
 
 1. Install the extension (see below).
@@ -66,6 +73,3 @@ Issues and ideas are welcome at
 [github.com/kompiro/karasu/issues](https://github.com/kompiro/karasu/issues).
 
 Licensed under [Apache-2.0](https://github.com/kompiro/karasu/blob/main/LICENSE).
-
-<!-- TODO(screenshots): add Marketplace screenshots showing the three-face
-     structure and the editor + preview workflow once captured (Issue #1316). -->
