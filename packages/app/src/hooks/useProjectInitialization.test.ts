@@ -10,6 +10,7 @@ import {
   GETTING_STARTED_PROJECT_EN,
   InMemoryFileSystemProvider,
   MULTI_FILE_SYSTEM_PROJECT,
+  MULTI_FILE_SYSTEM_PROJECT_EN,
   type Project,
 } from "@karasu-tools/core";
 import { useProjectInitialization } from "./useProjectInitialization.js";
@@ -102,7 +103,7 @@ describe("useProjectInitialization — bootstrap", () => {
     expect(dispatch).toHaveBeenCalledWith({ type: "SET_LOADING", loading: false });
   });
 
-  it("seeds the English Getting Started when locale is 'en'", async () => {
+  it("seeds the English Getting Started + multi-file-system when locale is 'en'", async () => {
     localStorage.setItem("karasu-locale", "en");
     const pm = makePm([]);
     const dispatch = vi.fn<(action: unknown) => void>();
@@ -126,6 +127,12 @@ describe("useProjectInitialization — bootstrap", () => {
       1,
       GETTING_STARTED_PROJECT_EN.name,
       GETTING_STARTED_PROJECT_EN.files,
+    );
+    // #1642: the multi-file-system seed is locale-matched like Getting Started.
+    expect(pm.createProject).toHaveBeenNthCalledWith(
+      1 + EC_PLATFORM_PROJECTS.length + 2,
+      MULTI_FILE_SYSTEM_PROJECT_EN.name,
+      MULTI_FILE_SYSTEM_PROJECT_EN.files,
     );
   });
 

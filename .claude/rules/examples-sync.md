@@ -15,9 +15,11 @@ paths:
 
 `packages/core/src/builtins/examples.ts` は `examples/` 配下のうち **`examples.ts` に登録済みのファイル**の内容を文字列として保持しており、ProjectMode の初回起動時に使用される。
 
-現在 `examples.ts` に登録されているのは `examples/ja/getting-started/`、`examples/en/getting-started/`、`examples/ja/ec-platform/`、`examples/en/client-mcp/`、`examples/ja/multi-file-system/`、`examples/en/feature-samples/`、`examples/ja/deploy-only/`、`examples/ja/org-only/`。他のディレクトリ（`hr-tool/` など）は登録されていないため、それらを変更しても `examples.ts` の更新は不要。
+現在 `examples.ts` に登録されているのは `examples/ja/getting-started/`、`examples/en/getting-started/`、`examples/ja/ec-platform/`、`examples/en/client-mcp/`、`examples/ja/multi-file-system/`、`examples/en/multi-file-system/`、`examples/en/feature-samples/`、`examples/ja/deploy-only/`、`examples/en/deploy-only/`、`examples/ja/org-only/`、`examples/en/org-only/`。他のディレクトリ（`hr-tool/` など）は登録されていないため、それらを変更しても `examples.ts` の更新は不要。
 
-> `deploy-only/` と `org-only/` は Reference ウィンドウの Samples タブ（ビュー別サンプル, #1548）で参照される。drift は `packages/core/src/examples.test.ts` の byte 一致ガードで検証。
+> `deploy-only/` と `org-only/` は Reference ウィンドウの Samples タブ（ビュー別サンプル, #1548）で参照される。en ロケールでは `*_EN` 変種（`examples/en/...`）が、`ja` では元の `examples/ja/...` が表示される（#1642）。drift は `packages/core/src/examples.test.ts` の byte 一致ガードで両ロケール分検証。
+>
+> `multi-file-system/` も同様に ProjectMode の seed で en/ja のロケール一致版が投入される（#1642）。`MULTI_FILE_SYSTEM_PROJECT`（ja）/ `MULTI_FILE_SYSTEM_PROJECT_EN`（en）の両方を `examples/<lang>/multi-file-system/` と byte 一致させること。
 
 `examples/en/feature-samples/` は ProjectMode で 1 プロジェクト（`FEATURE_SAMPLES_PROJECT`、name: `feature-samples`）として束ねられる。アプリは project 切替時に `index.krs` を自動で開くため、ディレクトリには 14 個の単機能サンプルに加えてカタログ役の `index.krs`（各サンプルへの索引コメント + 最小の `system`）が含まれる。**`examples/en/feature-samples/` のファイルは `examples.ts` の対応エントリと byte 単位で一致させること**（`packages/core/src/examples.test.ts` の drift ガードで検証）。新しいサンプルを追加したら 14 → 15... と `index.krs` のカタログにも 1 行追記する。
 
@@ -45,8 +47,10 @@ paths:
 | `getting-started-en/index.krs` | `GETTING_STARTED_PROJECT_EN.files[0].content` |
 | `getting-started-en/default.krs.style` | `GETTING_STARTED_PROJECT_EN.files[1].content` |
 | `client-mcp/index.krs` | `CLIENT_MCP_PROJECT.files[0].content` |
-| `deploy-only/index.krs` | `DEPLOY_ONLY_PROJECT.files[0].content` |
-| `org-only/index.krs` | `ORG_ONLY_PROJECT.files[0].content` |
+| `ja/deploy-only/index.krs` | `DEPLOY_ONLY_PROJECT.files[0].content` |
+| `en/deploy-only/index.krs` | `DEPLOY_ONLY_PROJECT_EN.files[0].content` |
+| `ja/org-only/index.krs` | `ORG_ONLY_PROJECT.files[0].content` |
+| `en/org-only/index.krs` | `ORG_ONLY_PROJECT_EN.files[0].content` |
 | `ec-platform/01-system.krs` | `EC_PLATFORM_PROJECTS[0].files[0].content` (name: `01-system`) |
 | `ec-platform/02-users.krs` | `EC_PLATFORM_PROJECTS[1].files[0].content` (name: `02-users`) |
 | `ec-platform/02.5-clients.krs` | `EC_PLATFORM_PROJECTS[2].files[0].content` (name: `02.5-clients`) |
@@ -77,8 +81,13 @@ paths:
 | `feature-samples/resource-operations.krs` | `FEATURE_SAMPLES_PROJECT.files[12].content` |
 | `feature-samples/usecase-authorization.krs` | `FEATURE_SAMPLES_PROJECT.files[13].content` |
 | `feature-samples/users.krs` | `FEATURE_SAMPLES_PROJECT.files[14].content` |
-| `multi-file-system/index.krs` | `MULTI_FILE_SYSTEM_PROJECT.files[0].content` |
-| `multi-file-system/reader.krs` | `MULTI_FILE_SYSTEM_PROJECT.files[1].content` |
-| `multi-file-system/editor.krs` | `MULTI_FILE_SYSTEM_PROJECT.files[2].content` |
-| `multi-file-system/moderation.krs` | `MULTI_FILE_SYSTEM_PROJECT.files[3].content` |
-| `multi-file-system/infra.krs` | `MULTI_FILE_SYSTEM_PROJECT.files[4].content` |
+| `ja/multi-file-system/index.krs` | `MULTI_FILE_SYSTEM_PROJECT.files[0].content` |
+| `ja/multi-file-system/reader.krs` | `MULTI_FILE_SYSTEM_PROJECT.files[1].content` |
+| `ja/multi-file-system/editor.krs` | `MULTI_FILE_SYSTEM_PROJECT.files[2].content` |
+| `ja/multi-file-system/moderation.krs` | `MULTI_FILE_SYSTEM_PROJECT.files[3].content` |
+| `ja/multi-file-system/infra.krs` | `MULTI_FILE_SYSTEM_PROJECT.files[4].content` |
+| `en/multi-file-system/index.krs` | `MULTI_FILE_SYSTEM_PROJECT_EN.files[0].content` |
+| `en/multi-file-system/reader.krs` | `MULTI_FILE_SYSTEM_PROJECT_EN.files[1].content` |
+| `en/multi-file-system/editor.krs` | `MULTI_FILE_SYSTEM_PROJECT_EN.files[2].content` |
+| `en/multi-file-system/moderation.krs` | `MULTI_FILE_SYSTEM_PROJECT_EN.files[3].content` |
+| `en/multi-file-system/infra.krs` | `MULTI_FILE_SYSTEM_PROJECT_EN.files[4].content` |

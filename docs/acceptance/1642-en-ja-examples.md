@@ -42,7 +42,19 @@ docs gallery の en ページが日本語ラベルの図を出していた問題
   > ✅ Automated — `pnpm --filter @karasu-tools/core run test`（examples.test）+ `pnpm exec adr check-assumptions`（移動した 4 件の assumption パスを更新済み）
 - 注: `docs/adr/*` の決定本文は不変（immutability 規約）。移動で stale になる本文中のパス参照は意図的に残し、`assumptions:` の live check のみ更新した。
 
+### AC-5: アプリ同梱もロケール別に出し分ける（Phase C — app reflection）
+
+> Phase A の注（line 15）では「アプリ同梱は対象外」としていたが、Issue scope #2（"Reference → Samples tab, seeds"）を満たすため本 Phase で同梱もロケール対応にする。`examples.ts` に `DEPLOY_ONLY_PROJECT_EN` / `ORG_ONLY_PROJECT_EN` / `MULTI_FILE_SYSTEM_PROJECT_EN` を追加し、各 `examples/en/...` と byte 一致。`ec-platform` は英語版が無い（scope 外）ため ja のまま据え置く。
+
+- [x] 追加した 3 つの `*_EN` 同梱が `examples/en/{deploy-only,org-only,multi-file-system}` と byte 一致する
+  > ✅ Automated — `packages/core/src/examples.test.ts`（deploy-only / org-only / multi-file-system を ja/en 両ロケールで byte ガード）
+- [x] Reference の Samples タブ（deploy / org ビュー）が locale に応じて英語/日本語の図を返す
+  > ✅ Automated — `packages/core/src/builtins/reference.test.ts` › "serves locale-appropriate deploy / org samples"
+- [x] ProjectMode の初回シードが locale に応じて multi-file-system の en/ja を投入する
+  > ✅ Automated — `packages/app/src/hooks/useProjectInitialization.test.ts` › "seeds the English Getting Started + multi-file-system when locale is 'en'"
+- [ ] ブラウザ locale=en でアプリ初回起動 → Reference → Samples タブの **Deploy / Org** ビューが英語ラベル、seed された `multi-file-system` プロジェクトが英語ラベルで描画される。locale=ja では両方とも日本語のまま（目視）
+
 ## 検証方法
 
-- 自動: `pnpm --filter @karasu-tools/docs-site run test`（render smoke が ja/en 両エントリを描画）/ `pnpm --filter @karasu-tools/core run test`（byte 一致）/ `pnpm exec adr check-assumptions`。すべて PR CI に乗る。
-- 手動: `pnpm --filter @karasu-tools/docs-site run build && … run preview` で `/examples/` の各シナリオを en/ja 目視（AC-2）。
+- 自動: `pnpm --filter @karasu-tools/docs-site run test`（render smoke が ja/en 両エントリを描画）/ `pnpm --filter @karasu-tools/core run test`（byte 一致 + Samples locale）/ `pnpm --filter @karasu-tools/app run test`（seed locale）/ `pnpm exec adr check-assumptions`。すべて PR CI に乗る。
+- 手動: `pnpm --filter @karasu-tools/docs-site run build && … run preview` で `/examples/` の各シナリオを en/ja 目視（AC-2）。アプリは OPFS を空にした状態で en ロケールで起動し、Samples タブと seed プロジェクトのラベルを目視（AC-5）。
