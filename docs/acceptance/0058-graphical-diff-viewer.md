@@ -68,7 +68,7 @@ Open `index.krs` so it is the current file.
 - [ ] `Payments` service node is rendered with a **green** border
 - [ ] The `Orders → Payments` edge is rendered in **green**
 
-> manual / visual review — green vs default border tone is a colour-perception check on the live SVG render.
+> 🟡 Partially automated — `packages/e2e/tests/at-0058-graphical-diff-viewer.spec.ts` › `file-picker compare renders the diff on the system view (AT-0058 TC-1)` covers the right-click compare flow, the diff banner (`before.krs` → `index.krs`), and the `data-diff-state="added"` state on `Payments`. The green-vs-default border tone remains a manual colour-perception check on the live SVG.
 
 ### TC-2: Removed node still appears, in red
 
@@ -110,11 +110,11 @@ Open `index.krs` so it is the current file.
 
 ### TC-6: Exit diff mode
 
-- [ ] Click **✕ Exit diff** in the diff banner
-- [ ] Banner disappears, diagram returns to its non-diff rendering
-- [ ] Non-diff styling (no `data-diff-state` attribute) is restored on all nodes
+> ✅ Automated by `packages/e2e/tests/at-0058-graphical-diff-viewer.spec.ts` (suite-wide)
 
-> manual / visual review — diff-mode exit cleans up state across the banner and SVG; visual confirmation of restoration.
+- [x] Click **✕ Exit diff** in the diff banner
+- [x] Banner disappears, diagram returns to its non-diff rendering
+- [x] Non-diff styling (no `data-diff-state` attribute) is restored on all nodes
 
 ### TC-7: Existing interactions still work in diff mode
 
