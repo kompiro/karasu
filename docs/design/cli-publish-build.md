@@ -3,7 +3,7 @@
 - **日付**: 2026-06-18
 - **ステータス**: 検討中
 - **Issue**: #1681
-- **PR**: #<未採番>
+- **PR**: #1687
 - **関連**:
   - 引き金 Issue: [#1681](https://github.com/kompiro/karasu/issues/1681)（published `karasu@0.0.1` ships no build）
   - 関連 ADR: [ADR-20260512-05](../adr/20260512-05-release-automation-changesets.md)（changesets リリース自動化・publish-only mode）、[ADR-20260616-10](../adr/20260616-10-publish-core-package.md)（`@karasu-tools/core` 公開は launch まで gate）
