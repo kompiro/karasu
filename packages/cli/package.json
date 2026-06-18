@@ -13,7 +13,7 @@
     "karasu": "./dist/index.js"
   },
   "files": [
-    "dist",
+    "dist/index.js",
     "THIRD_PARTY_NOTICES.md"
   ],
   "type": "module",
