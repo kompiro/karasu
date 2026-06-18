@@ -1,4 +1,4 @@
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 
@@ -57,6 +57,12 @@ describe("Marketplace manifest", () => {
     expect(manifest.scripts.package).toContain("vsce package");
     expect(manifest.scripts.package).toContain("--no-dependencies");
     expect(manifest.scripts.publish).toContain("vsce publish");
+  });
+
+  it("ships a LICENSE file so vsce stops warning and the Marketplace shows the license", () => {
+    const license = fileURLToPath(new URL("../LICENSE", import.meta.url));
+    expect(existsSync(license)).toBe(true);
+    expect(readFileSync(license, "utf8")).toContain("Apache License");
   });
 });
 
