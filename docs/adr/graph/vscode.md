@@ -1,6 +1,6 @@
 # ADR Topic: vscode
 
-6 ADRs in this topic. Solid nodes belong to `vscode`; gray dashed nodes are ghosts showing cross-topic references to help navigation.
+7 ADRs in this topic. Solid nodes belong to `vscode`; gray dashed nodes are ghosts showing cross-topic references to help navigation.
 
 Other topics: [overview](../graph.md).
 ```mermaid
@@ -12,6 +12,7 @@ flowchart TD
     ADR_20260404_07["ADR-20260404-07<br/>VSCode プレビュー Icon Mode トグル — Extension Host 管理 ..."]
     ADR_20260428_03["ADR-20260428-03<br/>VS Code 拡張ホスト向け smoke test harness"]
     ADR_20260519_07["ADR-20260519-07<br/>LSP / CLI の i18n — 互換ブリッジ廃止と @karasu-tools/i18n..."]
+    ADR_20260618_01["ADR-20260618-01<br/>VS Code 拡張を Entra ID + GitHub OIDC（managed iden..."]
   end
   ADR_20260320_01["ADR-20260320-01<br/>[renderer] インタラクティブ SVG レンダリングと NodeDetailPanel"]
   ADR_20260328_03["ADR-20260328-03<br/>[renderer] アイコンモード — SVG アイコンによるノード表示切り替え"]
@@ -38,6 +39,7 @@ flowchart TD
   class ADR_20260404_07 accepted
   class ADR_20260428_03 accepted
   class ADR_20260519_07 accepted
+  class ADR_20260618_01 accepted
   class ADR_20260320_01 ghost
   class ADR_20260328_03 ghost
   class ADR_20260401_07 ghost

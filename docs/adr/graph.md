@@ -1,6 +1,6 @@
 # ADR Dependency Graph — Overview
 
-219 ADRs across 15 topics. Clusters group by `topic` frontmatter field. Edges crossing cluster borders are cross-topic dependencies.
+220 ADRs across 15 topics. Clusters group by `topic` frontmatter field. Edges crossing cluster borders are cross-topic dependencies.
 ```mermaid
 flowchart TD
   subgraph adr-tooling["adr-tooling"]
@@ -251,6 +251,7 @@ flowchart TD
     ADR_20260404_07["ADR-20260404-07<br/>VSCode プレビュー Icon Mode トグル — Extension Host 管理 ..."]
     ADR_20260428_03["ADR-20260428-03<br/>VS Code 拡張ホスト向け smoke test harness"]
     ADR_20260519_07["ADR-20260519-07<br/>LSP / CLI の i18n — 互換ブリッジ廃止と @karasu-tools/i18n..."]
+    ADR_20260618_01["ADR-20260618-01<br/>VS Code 拡張を Entra ID + GitHub OIDC（managed iden..."]
   end
   ADR_20260320_01 --> ADR_20260320_02
   ADR_20260320_01 --> ADR_20260317_01
@@ -571,6 +572,7 @@ flowchart TD
   class ADR_20260616_10 accepted
   class ADR_20260616_11 accepted
   class ADR_20260616_12 accepted
+  class ADR_20260618_01 accepted
 ```
 
 ## Per-topic detail
@@ -589,4 +591,4 @@ flowchart TD
 - [`resolver`](graph/resolver.md) — 6 ADRs
 - [`styling`](graph/styling.md) — 7 ADRs
 - [`testing`](graph/testing.md) — 11 ADRs
-- [`vscode`](graph/vscode.md) — 6 ADRs
+- [`vscode`](graph/vscode.md) — 7 ADRs
