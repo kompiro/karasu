@@ -1,6 +1,11 @@
 import { describe, it, expect, beforeAll } from "vitest";
+import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
+import { dirname, resolve } from "node:path";
 import { renderDeploy } from "./deploy-renderer.js";
 import { getBuiltinStyleSheet } from "../builtins/default-style.js";
+import { getIconThemeStyleSheet } from "../builtins/icon-theme.js";
+import { loadAndRegisterIcon } from "./svg-icon-loader.js";
 import { resolveStyles } from "../resolver/style-resolver.js";
 import "../renderer/shapes.js";
 import type { DeployViewSlice } from "../view/deploy-view-extract.js";
@@ -147,6 +152,31 @@ describe("renderDeploy", () => {
     it("accepts displayMode without error", () => {
       expect(() => renderDeploy(makeSlice(), styles, "icon")).not.toThrow();
       expect(() => renderDeploy(makeSlice(), styles, "shape")).not.toThrow();
+    });
+
+    // Regression for #1666: deploy units are stored in resolved styles under the
+    // bare unit id (`order-api`), but the deploy layout keys nodes as
+    // `containerId::unitId`. The render lookup used to miss and fall back to the
+    // default (box) style, so Icon Mode drew no icon. With the fallback to
+    // `layoutNode.id`, the unit picks up its `shape: url("oci")` and the
+    // registered icon glyph is drawn.
+    it("draws the registered icon glyph for a unit in Icon Mode (#1666)", () => {
+      const iconsDir = resolve(dirname(fileURLToPath(import.meta.url)), "../../icons");
+      loadAndRegisterIcon("oci", readFileSync(resolve(iconsDir, "oci.svg"), "utf8"));
+      const slice = makeSlice();
+      const units = [...slice.containers.flatMap((c) => c.units), ...slice.unclassifiedUnits];
+      // Icon Mode injects the icon theme (shape: url(...)); shape mode does not.
+      const iconStyles = resolveStyles(
+        [],
+        [getBuiltinStyleSheet(), getIconThemeStyleSheet()],
+        units,
+      );
+      const shapeStyles = resolveStyles([], [getBuiltinStyleSheet()], units);
+
+      // The icon glyph is emitted by registerIcon as `<g transform="translate(...) scale(...)">`.
+      const ICON_GLYPH = /transform="translate\([^)]*\) scale\(/;
+      expect(renderDeploy(slice, iconStyles, "icon")).toMatch(ICON_GLYPH);
+      expect(renderDeploy(slice, shapeStyles, "shape")).not.toMatch(ICON_GLYPH);
     });
   });
 });

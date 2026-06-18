@@ -277,8 +277,17 @@ export function renderFromLayout(
   const normalNodeParts: string[] = [];
   for (const [nodeId, layoutNode] of layoutResult.nodes) {
     const styleKey = nodeStyleKey(nodeId, layoutNode.annotations);
+    // The deploy layout keys nodes as `containerId::unitId`, but resolved styles
+    // are stored under the bare unit id (Issue #735 / #1666). Fall back to
+    // `layoutNode.id` (the original AST id) so deploy units pick up their
+    // resolved style — notably the Icon Mode `shape: url(...)` (without it they
+    // hit `defaultNodeStyle` and never render an icon). For system-view nodes
+    // `layoutNode.id === nodeId`, so this fallback is a no-op there.
     const nodeStyle =
-      styles.nodes.get(styleKey) ?? styles.nodes.get(nodeId) ?? styles.defaultNodeStyle;
+      styles.nodes.get(styleKey) ??
+      styles.nodes.get(nodeId) ??
+      styles.nodes.get(layoutNode.id) ??
+      styles.defaultNodeStyle;
     // Use layoutNode.id (the original AST id) as the primary lookup key. The
     // deploy layout encodes per-container instances as `containerId::unitId`,
     // and diff metadata is keyed by the bare unit id (Issue #735). Fall back
