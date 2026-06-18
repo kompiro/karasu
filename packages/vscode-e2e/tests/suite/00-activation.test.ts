@@ -1,7 +1,7 @@
 import * as assert from "node:assert";
 import * as vscode from "vscode";
 
-const EXTENSION_ID = "karasu.karasu-vscode";
+const EXTENSION_ID = "karasu-tools.karasu-vscode";
 
 describe("karasu activation", () => {
   it("activates and registers the openPreview command when a .krs file is opened", async () => {

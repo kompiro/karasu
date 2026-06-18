@@ -1,7 +1,7 @@
 import * as path from "node:path";
 import * as vscode from "vscode";
 
-const EXTENSION_ID = "karasu.karasu-vscode";
+const EXTENSION_ID = "karasu-tools.karasu-vscode";
 const POLL_INTERVAL_MS = 50;
 const DEFAULT_TIMEOUT_MS = 15_000;
 
