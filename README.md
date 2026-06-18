@@ -313,6 +313,17 @@ Located under `packages/vscode/`. What currently works:
 - Standard LSP features: hover, go-to-definition
 - Node detail panel (with cross-diagram navigation)
 
+### Install
+
+Once published, install from the VS Code Marketplace
+([`karasu-tools.karasu-vscode`](https://marketplace.visualstudio.com/items?itemName=karasu-tools.karasu-vscode)):
+
+```sh
+code --install-extension karasu-tools.karasu-vscode
+```
+
+> The Marketplace listing goes live with the launch ([#1316](https://github.com/kompiro/karasu/issues/1316)); the link and command above are not active until then.
+
 ## GitHub Actions
 
 A workflow template is provided for automatically rendering `.krs` files into SVG in CI.

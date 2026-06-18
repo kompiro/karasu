@@ -16,6 +16,9 @@ docs/review/
 # Draw.io export output (generated via `karasu render --format drawio`)
 *.drawio
 
+# VS Code extension packages (produced by `vsce package` / `pnpm --filter karasu-vscode run package`)
+*.vsix
+
 # ExTester runtime artifacts (downloaded VS Code, vsix, screenshots, logs)
 packages/vscode-e2e/test-resources/
 packages/vscode-e2e/screenshots/

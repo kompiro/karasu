@@ -1,0 +1,109 @@
+name: VS Code Extension Release
+
+# Publishes the `packages/vscode` extension to the VS Code Marketplace under
+# publisher `karasu-tools` (extension id `karasu-tools.karasu-vscode`).
+#
+# Manual-only (`workflow_dispatch`) — the extension is released on its own
+# cadence, separate from the changesets-driven npm release of the `karasu` CLI
+# (`karasu-vscode` is in `.changeset/config.json` `ignore`; see Issue #1316 and
+# ADR-20260512-05). The version published is whatever is in
+# `packages/vscode/package.json`.
+#
+# Auth: Microsoft Entra ID via GitHub OIDC (no stored secret, nothing to expire
+# — Azure DevOps long-lived PATs retire 2026-12-01). `azure/login` exchanges the
+# GitHub OIDC token for an Entra token via a federated credential, then
+# `vsce publish --azure-credential` (vsce >= 2.26.1) acquires the Marketplace
+# token from that Azure CLI session. Prerequisites (human, see #1316): an Entra
+# app registration with a federated credential trusting this repo, its
+# service principal added as a member of the `karasu-tools` publisher, and the
+# `AZURE_CLIENT_ID` / `AZURE_TENANT_ID` repo *variables* (public identifiers,
+# not secrets) set. Like `release.yml` guards npm publish on `NPM_TOKEN`, the
+# publish step here is guarded on `AZURE_CLIENT_ID`: until it is set the job
+# still builds and packages the .vsix (validating bundling + `.vscodeignore`)
+# but skips the actual publish.
+
+on:
+  workflow_dispatch:
+    inputs:
+      pre_release:
+        description: "Publish to the VS Code pre-release channel"
+        type: boolean
+        default: false
+
+concurrency:
+  group: vscode-release
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  id-token: write # required for the GitHub OIDC token azure/login exchanges
+
+jobs:
+  release:
+    name: Publish VS Code extension
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+
+      - uses: pnpm/action-setup@0e279bb959325dab635dd2c09392533439d90093 # v6.0.8
+
+      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
+        with:
+          node-version: "22"
+          cache: "pnpm"
+
+      - run: pnpm install --frozen-lockfile
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # Build the workspace first so the extension's own build can resolve the
+      # `@karasu-tools/*` dist outputs. `pnpm run build` builds core → i18n →
+      # lsp (the order the extension's bundled LSP server needs); the vscode
+      # extension is not part of it (see ci.yml), so it is packaged separately
+      # below. Without this step the package step's lsp build fails to resolve
+      # `@karasu-tools/core` / `@karasu-tools/i18n` on a clean checkout.
+      - name: Build workspace
+        run: pnpm run build
+
+      # Build + package always, so the run validates esbuild bundling
+      # (out/server.js present — assert-server-bundled) and `.vscodeignore`
+      # even before the Entra identity is configured.
+      - name: Package extension
+        run: pnpm --filter karasu-vscode run package
+
+      - name: Check publish prerequisites
+        id: prereqs
+        env:
+          AZURE_CLIENT_ID: ${{ vars.AZURE_CLIENT_ID }}
+        run: |
+          if [ -n "$AZURE_CLIENT_ID" ]; then
+            echo "can_publish=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "::notice::AZURE_CLIENT_ID variable is not set — built and packaged the .vsix but skipping publish (expected pre-launch; see #1316)."
+            echo "can_publish=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      # Exchange the GitHub OIDC token for an Entra token via the federated
+      # credential. No subscription is involved — the Marketplace is an Azure
+      # DevOps resource, not an Azure subscription resource — so log in with
+      # allow-no-subscriptions.
+      - name: Azure login (Entra ID via OIDC)
+        if: steps.prereqs.outputs.can_publish == 'true'
+        uses: azure/login@532459ea530d8321f2fb9bb10d1e0bcf23869a43 # v3.0.0
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          allow-no-subscriptions: true
+
+      # `vsce --azure-credential` picks up the Azure CLI session from the login
+      # step (no PAT). The extension is already bundled into out/, so publish
+      # with --no-dependencies; the package step above already built it.
+      - name: Publish to Marketplace
+        if: steps.prereqs.outputs.can_publish == 'true'
+        working-directory: packages/vscode
+        run: |
+          if [ "${{ inputs.pre_release }}" = "true" ]; then
+            pnpm exec vsce publish --azure-credential --no-dependencies --pre-release
+          else
+            pnpm exec vsce publish --azure-credential --no-dependencies
+          fi

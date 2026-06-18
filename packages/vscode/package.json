@@ -5,15 +5,37 @@
   "private": true,
   "description": "Syntax highlighting and tooling for .krs architecture files",
   "categories": [
-    "Programming Languages"
+    "Programming Languages",
+    "Visualization"
   ],
+  "keywords": [
+    "C4",
+    "architecture",
+    "architecture diagram",
+    "diagram",
+    "karasu",
+    "krs",
+    "modeling"
+  ],
+  "homepage": "https://github.com/kompiro/karasu#readme",
+  "bugs": {
+    "url": "https://github.com/kompiro/karasu/issues"
+  },
   "license": "Apache-2.0",
-  "publisher": "karasu",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/kompiro/karasu.git",
+    "directory": "packages/vscode"
+  },
+  "qna": "marketplace",
+  "publisher": "karasu-tools",
   "main": "./out/extension.js",
   "scripts": {
     "prebuild": "tsx ../../scripts/ci/generate-third-party-notices.ts .",
     "build": "pnpm --filter @karasu-tools/lsp run build && esbuild src/extension.ts --bundle --platform=node --format=cjs --outfile=out/extension.js --external:vscode && node -e \"require('node:fs').cpSync('../lsp/out/server.js', 'out/server.js')\"",
     "postbuild": "node scripts/assert-server-bundled.mjs",
+    "package": "pnpm run build && vsce package --no-dependencies",
+    "publish": "pnpm run build && vsce publish --no-dependencies",
     "test": "vitest run",
     "typecheck": "tsc --noEmit"
   },
@@ -24,6 +46,7 @@
   },
   "devDependencies": {
     "@types/vscode": "^1.111.0",
+    "@vscode/vsce": "^3.6.2",
     "esbuild": "^0.28.0",
     "typescript": "^6.0.3",
     "vitest": "^4.1.4"
@@ -94,6 +117,10 @@
     "onLanguage:krs-style"
   ],
   "icon": "icon.png",
+  "galleryBanner": {
+    "color": "#1F2430",
+    "theme": "dark"
+  },
   "engines": {
     "vscode": "^1.111.0"
   }
