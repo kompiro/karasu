@@ -42,11 +42,16 @@ fs.mkdirSync(fixtureDir, { recursive: true });
 fs.mkdirSync(outDir, { recursive: true });
 
 // A showcase model with content in all three faces: services + nested domains
-// (System), deploy units that realize services (Deploy), and teams (Org).
+// (System), deploy units that realize services (Deploy), and an organization
+// with teams that own the services/domains (Org). Team ownership uses the
+// top-level `organization` block — the inline `team` property was removed in
+// ADR-20260614-01, so it must NOT appear inside services (it would render error
+// squiggles in the screenshots). Keep this fixture diagnostic-clean.
 fs.writeFileSync(
   fixtureKrs,
   `system "Shop" {
   service Storefront {
+    label "Storefront"
     description """
 The customer-facing **web storefront**.
 
@@ -54,20 +59,15 @@ The customer-facing **web storefront**.
 - Browse the catalog
 - Place orders
 """
-    team "Web Team"
-
     domain Catalog {}
     domain Cart {}
   }
   service OrderService {
     description "Processes orders and coordinates payment."
-    team "Order Team"
-
     domain OrderManagement {}
     domain Payment {}
   }
   service UserService {
-    team "Identity Team"
     domain Auth {}
   }
   user Customer [human] {
@@ -95,6 +95,31 @@ deploy "production" {
     image "user:1.0"
     runtime "Node 20"
     realizes UserService
+  }
+}
+
+organization Shop {
+  label "Shop Engineering"
+
+  team "web-team" {
+    label "Web Team"
+    owns Storefront
+    owns Catalog
+    owns Cart
+    member alice { label "Alice Yamamoto" }
+  }
+  team "order-team" {
+    label "Order Team"
+    owns OrderService
+    owns OrderManagement
+    owns Payment
+    member bob { label "Bob Tanaka" }
+  }
+  team "identity-team" {
+    label "Identity Team"
+    owns UserService
+    owns Auth
+    member carol { label "Carol Sato" }
   }
 }
 `,
