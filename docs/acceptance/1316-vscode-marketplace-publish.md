@@ -2,7 +2,7 @@
 
 - **日付**: 2026-06-16
 - **関連 Issue**: [#1316](https://github.com/kompiro/karasu/issues/1316)
-- **関連 Design Doc**: `docs/design/vscode-marketplace-publish.md`（実装完了後 ADR 昇格予定）
+- **関連 ADR**: [ADR-20260618-01](../adr/20260618-01-vscode-marketplace-publish.md)（旧 `docs/design/vscode-marketplace-publish.md` を昇格・集約）
 - **関連 TPL**: [TPL-20260510-15](../test-perspectives/TPL-20260510-15-dev-vs-packaged-mode-parity.md), [TPL-20260520-02](../test-perspectives/TPL-20260520-02-consistency-check-triggers-on-both-sides.md)
 - **対象ファイル**: `packages/vscode/package.json`, `packages/vscode/README.md`, `packages/vscode/.vscodeignore`, `.github/workflows/vscode-release.yml`, `README.md`
 
