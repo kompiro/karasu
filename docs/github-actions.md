@@ -91,17 +91,22 @@ Actions from re-triggering the workflow on the bot's own commit:
 git commit -m "chore: update architecture diagram [skip ci]"
 ```
 
-## Future: GitHub Marketplace Action
+## The karasu-action
 
-A dedicated `karasu-action` for GitHub Marketplace is planned, which will
-simplify setup further:
+A dedicated GitHub Action — [**kompiro/karasu-action**](https://github.com/kompiro/karasu-action) —
+wraps the render step so you can replace the templates above with a single
+`uses:` line:
 
 ```yaml
-# planned — not yet available
 - uses: kompiro/karasu-action@v1
   with:
     input: docs/architecture.krs
     output: docs/architecture.svg
 ```
 
-Follow [kompiro/karasu](https://github.com/kompiro/karasu) for updates.
+Inputs: `input` / `output` (required), plus optional `version` and `view`. See
+the action's README for details and a migration guide.
+
+> Both the templates and the action invoke `npx karasu render`, so they need a
+> working published `karasu` CLI. The current `karasu@0.0.1` on npm is missing
+> its build (#1681) — once a fixed version ships, both paths work.
