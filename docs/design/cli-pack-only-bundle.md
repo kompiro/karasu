@@ -2,6 +2,7 @@
 
 - **日付**: 2026-06-18
 - **ステータス**: 検討中
+- **PR**: [#1690](https://github.com/kompiro/karasu/pull/1690)
 - **関連**:
   - 引き金 Issue: [#1681](https://github.com/kompiro/karasu/issues/1681)
   - 関連 ADR: [ADR-20260512-05](../adr/20260512-05-release-automation-changesets.md)（changesets による OSS リリース自動化）
