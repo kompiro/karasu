@@ -21,12 +21,18 @@ live SVG preview you can drill into.
 - **Standard editor smarts** — hover and go-to-definition over your model.
 - **Node detail panel** — inspect a node and jump across diagrams.
 
-<!-- TODO(screenshots): embed the Marketplace screenshots (editor ↔ preview
-     workflow + the three faces) here once captured. Generate them by running
-     the "VS Code Screenshots" workflow (.github/workflows/vscode-screenshots.yml),
-     downloading the artifact, reviewing the PNGs, and committing them under
-     images/screenshots/. See packages/vscode-e2e/README.md → "Marketplace
-     screenshots" and Issue #1671. -->
+## Screenshots
+
+Edit `.krs` on the left, explore the live preview on the right:
+
+![Editing a .krs model beside the live System preview](images/screenshots/01-system-view.png)
+
+karasu separates a system into three faces — switch between them from the
+preview toolbar:
+
+![Deploy view — physical units that realize the logical services](images/screenshots/02-deploy-view.png)
+
+![Org view — the teams that own each service](images/screenshots/03-org-view.png)
 
 ## Getting started
 
