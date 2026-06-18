@@ -275,14 +275,20 @@ export function renderFromLayout(
   // normal group so the diff colors are not flattened by the wrapper opacity.
   const ghostNodeParts: string[] = [];
   const normalNodeParts: string[] = [];
+  // The deploy layout encodes per-container instances as `containerId::unitId`
+  // (the map `nodeId`), but both resolved styles and diff metadata are keyed by
+  // the bare unit id — `layoutNode.id`, the original AST id (Issue #735 / #1666).
+  // So the lookups below fall back to `layoutNode.id`, which lets deploy units
+  // pick up their resolved style — notably the Icon Mode `shape: url(...)`,
+  // without which they hit `defaultNodeStyle` and never render an icon. For
+  // system-view nodes `layoutNode.id === nodeId`, so the fallback is a no-op.
   for (const [nodeId, layoutNode] of layoutResult.nodes) {
     const styleKey = nodeStyleKey(nodeId, layoutNode.annotations);
     const nodeStyle =
-      styles.nodes.get(styleKey) ?? styles.nodes.get(nodeId) ?? styles.defaultNodeStyle;
-    // Use layoutNode.id (the original AST id) as the primary lookup key. The
-    // deploy layout encodes per-container instances as `containerId::unitId`,
-    // and diff metadata is keyed by the bare unit id (Issue #735). Fall back
-    // to the map key for system-view nodes where they coincide.
+      styles.nodes.get(styleKey) ??
+      styles.nodes.get(nodeId) ??
+      styles.nodes.get(layoutNode.id) ??
+      styles.defaultNodeStyle;
     const diffMeta =
       options?.nodeDiffMeta?.get(layoutNode.id) ?? options?.nodeDiffMeta?.get(nodeId);
     const diffState =
