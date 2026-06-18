@@ -259,6 +259,18 @@ describe("getReference — locale", () => {
     expect(en1).not.toBe(ja1);
   });
 
+  // #1642: the Samples tab's deploy / org starters are locale-appropriate, like
+  // the system starter — en gets the English variants, ja the Japanese ones.
+  it("serves locale-appropriate deploy / org samples", () => {
+    const en = getReference("en");
+    expect(en.samplesByView.deploy).toContain('label "Production environment"');
+    expect(en.samplesByView.org).toContain('label "Platform team"');
+
+    const ja = getReference("ja");
+    expect(ja.samplesByView.deploy).toContain('label "本番環境"');
+    expect(ja.samplesByView.org).toContain('label "プラットフォームチーム"');
+  });
+
   it("preserves non-translatable identifiers in both locales", () => {
     const en = getReference("en");
     const ja = getReference("ja");

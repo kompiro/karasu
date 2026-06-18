@@ -5,8 +5,11 @@ import {
   compile,
   FEATURE_SAMPLES_PROJECT,
   MULTI_FILE_SYSTEM_PROJECT,
+  MULTI_FILE_SYSTEM_PROJECT_EN,
   DEPLOY_ONLY_PROJECT,
+  DEPLOY_ONLY_PROJECT_EN,
   ORG_ONLY_PROJECT,
+  ORG_ONLY_PROJECT_EN,
 } from "./index.js";
 import { readFileSync, readdirSync } from "fs";
 import { resolve, dirname } from "path";
@@ -48,24 +51,32 @@ describe("feature-samples: bundled examples.ts content matches examples/en/featu
 // Drift guard for MULTI_FILE_SYSTEM_PROJECT — same byte-equal contract as
 // FEATURE_SAMPLES_PROJECT above. ProjectMode seeds this on first launch
 // (`useProjectInitialization`) so the App's preview matches what users see
-// when they open the directory on disk.
-describe("multi-file-system: bundled examples.ts content matches examples/ja/multi-file-system/", () => {
-  const mfsDir = resolve(__dirname, "../../../examples/ja/multi-file-system");
-  const mfsFiles = readdirSync(mfsDir).filter((f: string) => f.endsWith(".krs"));
+// when they open the directory on disk. The seed is locale-matched: ja gets
+// MULTI_FILE_SYSTEM_PROJECT, en gets MULTI_FILE_SYSTEM_PROJECT_EN (#1642), and
+// both must stay byte-equal to their examples/<lang>/ source.
+describe.each([
+  ["ja", MULTI_FILE_SYSTEM_PROJECT] as const,
+  ["en", MULTI_FILE_SYSTEM_PROJECT_EN] as const,
+])(
+  "multi-file-system (%s): bundled content matches examples/%s/multi-file-system/",
+  (lang, project) => {
+    const mfsDir = resolve(__dirname, `../../../examples/${lang}/multi-file-system`);
+    const mfsFiles = readdirSync(mfsDir).filter((f: string) => f.endsWith(".krs"));
 
-  it("registers every .krs file in the directory, and nothing else", () => {
-    const bundledPaths = MULTI_FILE_SYSTEM_PROJECT.files.map((f) => f.path).sort();
-    const expectedPaths = [...mfsFiles].sort();
-    expect(bundledPaths).toEqual(expectedPaths);
-  });
+    it("registers every .krs file in the directory, and nothing else", () => {
+      const bundledPaths = project.files.map((f) => f.path).sort();
+      const expectedPaths = [...mfsFiles].sort();
+      expect(bundledPaths).toEqual(expectedPaths);
+    });
 
-  it.each(mfsFiles)("%s content is byte-identical to the bundled entry", (file) => {
-    const onDisk = readFileSync(resolve(mfsDir, file), "utf8");
-    const entry = MULTI_FILE_SYSTEM_PROJECT.files.find((f) => f.path === file);
-    expect(entry).toBeDefined();
-    expect(entry?.content).toBe(onDisk);
-  });
-});
+    it.each(mfsFiles)("%s content is byte-identical to the bundled entry", (file) => {
+      const onDisk = readFileSync(resolve(mfsDir, file), "utf8");
+      const entry = project.files.find((f) => f.path === file);
+      expect(entry).toBeDefined();
+      expect(entry?.content).toBe(onDisk);
+    });
+  },
+);
 
 describe("feature-samples: domain-drift.krs demonstrates domain-to-domain edges", () => {
   it("parses without errors and has a domain edge", () => {
@@ -119,18 +130,21 @@ describe("getting-started: column hint affects rendered x positions (#969)", () 
 });
 
 // Drift guard (#1548): the reference window's per-view Samples tab bundles
-// examples/ja/deploy-only/ and examples/ja/org-only/ via the reference payload, so
-// the bundled content must stay byte-equal to the files on disk.
+// deploy-only / org-only via the reference payload, so the bundled content must
+// stay byte-equal to the files on disk. The tab serves the ja projects for `ja`
+// and the _EN variants otherwise (#1642); both sides are guarded here.
 describe("deploy-only / org-only: bundled content matches examples/", () => {
   it.each([
-    ["deploy-only", DEPLOY_ONLY_PROJECT],
-    ["org-only", ORG_ONLY_PROJECT],
-  ])("%s index.krs is byte-identical to the bundled entry", (name, project) => {
+    ["ja", "deploy-only", DEPLOY_ONLY_PROJECT],
+    ["ja", "org-only", ORG_ONLY_PROJECT],
+    ["en", "deploy-only", DEPLOY_ONLY_PROJECT_EN],
+    ["en", "org-only", ORG_ONLY_PROJECT_EN],
+  ])("%s/%s index.krs is byte-identical to the bundled entry", (lang, name, project) => {
     const onDisk = readFileSync(
-      resolve(__dirname, `../../../examples/ja/${name}/index.krs`),
+      resolve(__dirname, `../../../examples/${lang}/${name}/index.krs`),
       "utf8",
     );
-    const entry = project.files.find((f) => f.path === "index.krs");
+    const entry = (project as typeof DEPLOY_ONLY_PROJECT).files.find((f) => f.path === "index.krs");
     expect(entry).toBeDefined();
     expect(entry?.content).toBe(onDisk);
   });

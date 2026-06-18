@@ -535,6 +535,45 @@ deploy Production {
   ],
 };
 
+// English variant of DEPLOY_ONLY_PROJECT (byte-equal to examples/en/deploy-only/,
+// governed by .claude/rules/examples-sync.md). The reference window's Samples tab
+// serves this for non-`ja` locales so en users see English deploy diagrams (#1642).
+export const DEPLOY_ONLY_PROJECT_EN: ExampleProject = {
+  name: "deploy-only",
+  files: [
+    {
+      path: "index.krs",
+      content: `// deploy-only/index.krs
+// Minimal example: a .krs file with only a deploy block (no system).
+// Used to demonstrate that the preview auto-selects the Deploy tab
+// when the file has no system block (Issue #766).
+
+deploy Production {
+  label "Production environment"
+
+  oci "web" {
+    label "Web frontend"
+    image "web:1.0.0"
+    runtime "Node.js 22 / Next.js"
+    realizes Storefront
+  }
+
+  lambda "order-handler" {
+    label "Order handler"
+    runtime "Node.js 22"
+    realizes OrderAPI
+  }
+
+  assets "static-assets" {
+    label "Static assets"
+    runtime "CloudFront / S3"
+  }
+}
+`,
+    },
+  ],
+};
+
 export const ORG_ONLY_PROJECT: ExampleProject = {
   name: "org-only",
   files: [
@@ -569,6 +608,51 @@ organization Acme {
     member carol {
       label "Carol"
       description "プロダクトエンジニア"
+    }
+  }
+}
+`,
+    },
+  ],
+};
+
+// English variant of ORG_ONLY_PROJECT (byte-equal to examples/en/org-only/,
+// governed by .claude/rules/examples-sync.md). Served by the reference Samples
+// tab for non-`ja` locales (#1642).
+export const ORG_ONLY_PROJECT_EN: ExampleProject = {
+  name: "org-only",
+  files: [
+    {
+      path: "index.krs",
+      content: `// org-only/index.krs
+// Minimal example: a .krs file with only an organization block (no system,
+// no deploy). Used to demonstrate that the preview auto-selects the Org tab
+// when the file has no system block and no deploy block (Issue #817).
+
+organization Acme {
+  label "Acme Engineering"
+
+  team "platform-team" {
+    label "Platform team"
+    description "Develops and operates the shared platform"
+
+    member alice {
+      label "Alice"
+      description "Tech lead"
+    }
+    member bob {
+      label "Bob"
+      description "SRE"
+    }
+  }
+
+  team "product-team" {
+    label "Product team"
+    description "Develops product features"
+
+    member carol {
+      label "Carol"
+      description "Product engineer"
     }
   }
 }
@@ -2316,6 +2400,283 @@ system Blog {
   service Search [external] {
     label "全文検索エンジン"
     description "外部ホスト型の検索サービス。Delivery が直接クエリする"
+  }
+}
+`,
+    },
+  ],
+};
+
+// English variant of MULTI_FILE_SYSTEM_PROJECT (byte-equal to
+// examples/en/multi-file-system/, governed by .claude/rules/examples-sync.md).
+// ProjectMode seeds this on first launch for non-`ja` locales (#1642).
+export const MULTI_FILE_SYSTEM_PROJECT_EN: ExampleProject = {
+  name: "multi-file-system",
+  files: [
+    {
+      path: "index.krs",
+      content: `// multi-file-system/index.krs
+// Demonstrates: splitting one \`system\` block across multiple files
+// (system reopen, whole-file import, deploy + organization propagation).
+// See docs/spec/syntax.md §"Multi-file import semantics".
+
+import "reader.krs"
+import "editor.krs"
+import "moderation.krs"
+
+// The system body declared here wins over the same-id declarations in the
+// imported files (S3: root entry preference). Open reader.krs / editor.krs /
+// moderation.krs directly to see the same system labeled differently.
+system Blog {
+  label "Blog Platform Demo"
+  description "Example splitting the Reader / Editor / Moderation facets across separate files"
+}
+`,
+    },
+    {
+      path: "reader.krs",
+      content: `// multi-file-system/reader.krs
+// Reader-facing slice of the Blog system, plus the deploy and organization
+// views (S4: whole-file import propagates \`deploy\` / \`organization\`).
+//
+// Pulls shared databases from infra.krs so this file renders standalone
+// in the App (canonical infra-file pattern).
+
+import "infra.krs"
+
+system Blog {
+  label "Reader slice"  // overridden by index.krs (S3)
+
+  user Reader [human] {
+    label "Reader"
+    description "End users who browse published articles"
+  }
+
+  client ReaderApp {
+    label "Reader frontend"
+    description "Public pages, article details, and search"
+  }
+
+  service ArticleDelivery {
+    label "Article Delivery"
+    description "Delivery and caching of published articles"
+
+    domain "Delivery" {
+      usecase "Fetch an article" {
+        resource ArticleDB.articles
+      }
+      usecase "Full-text search" {
+        resource SearchIndex.documents
+      }
+    }
+  }
+
+  Reader -> ReaderApp "Read articles"
+  ReaderApp -> ArticleDelivery "Fetch articles"
+  ArticleDelivery -> Search "Forward queries"
+}
+
+deploy Production {
+  label "Production"
+  oci readerContainer {
+    label "reader-container"
+    runtime "Docker"
+    realizes ArticleDelivery
+  }
+}
+
+organization Editorial {
+  label "Editorial"
+  team platform {
+    label "Platform"
+    owns ArticleDelivery
+    member alice {
+      label "Alice"
+      description "Tech lead"
+    }
+  }
+}
+`,
+    },
+    {
+      path: "editor.krs",
+      content: `// multi-file-system/editor.krs
+// Authoring slice — editors write drafts, publish articles, and ask
+// Moderation for approval. Single \`Authoring\` service owns the whole
+// write-side lifecycle (drafting → publishing) rather than splitting
+// each step into its own microservice — both responsibilities are one
+// team's purview and share the same DB.
+//
+// Reaches moderation.krs via a named import; moderation.krs is also
+// brought in whole-file by index.krs (DAG re-arrival — no circular
+// warning per S5). Pulls shared databases from infra.krs.
+
+import "infra.krs"
+import { Moderation } from "moderation.krs"
+
+system Blog {
+  label "Editor slice"  // overridden by index.krs (S3)
+
+  user Editor [human] {
+    label "Editor"
+    description "Writes and publishes articles"
+  }
+
+  client EditorApp {
+    label "Editor frontend"
+    description "Draft editing, preview, and publishing actions"
+  }
+
+  service Authoring {
+    label "Authoring"
+    description "Article lifecycle from drafting to publishing"
+
+    domain "Editing" {
+      usecase "Edit a draft" {
+        resource DraftStore.drafts
+      }
+      usecase "Generate a preview" {
+        resource DraftStore.drafts
+      }
+    }
+
+    domain "Publishing" {
+      usecase "Publish an article" {
+        resource ArticleDB.articles
+      }
+    }
+  }
+
+  Editor -> EditorApp "Write articles"
+  EditorApp -> Authoring "Save draft / publish"
+  Authoring -> Moderation "Request pre-publish review"
+}
+
+// Same-id \`deploy\` / \`organization\` blocks merge with the ones in
+// reader.krs and moderation.krs (S4 union).
+deploy Production {
+  oci authoringContainer {
+    label "authoring-container"
+    runtime "Docker"
+    realizes Authoring
+  }
+}
+
+organization Editorial {
+  team editorial {
+    label "Editorial"
+    owns Authoring
+    member bob {
+      label "Bob"
+      description "Editor-in-chief"
+    }
+  }
+}
+`,
+    },
+    {
+      path: "moderation.krs",
+      content: `// multi-file-system/moderation.krs
+// Trust & Safety slice — owns moderation review and surfaces the external
+// search service that delivery relies on. Reached via two paths: named
+// import from editor.krs (Authoring asks Moderation for approval before
+// publishing) and whole-file import from index.krs. Not a cycle (S5).
+// Pulls shared databases from infra.krs (canonical infra-file pattern).
+
+import "infra.krs"
+
+system Blog {
+  // No label here — S3 leaves index.krs's label intact.
+
+  user Moderator [human] {
+    label "Moderator"
+    description "Reviews submitted content and decides whether to publish"
+  }
+
+  client AdminApp [internal] {
+    label "Admin console"
+    description "Moderation and publish-queue operations"
+  }
+
+  service Moderation {
+    label "Moderation"
+    description "Pre-publish review and handling of abuse reports"
+
+    domain "Review" {
+      usecase "Decide whether to publish" {
+        resource ModerationLog.decisions
+      }
+      usecase "Handle an abuse report" {
+        resource ModerationLog.decisions
+      }
+    }
+  }
+
+  Moderator -> AdminApp "Moderation actions"
+  AdminApp -> Moderation "Record decisions"
+}
+
+// Same-id \`deploy\` / \`organization\` blocks merge with the ones in
+// reader.krs and editor.krs (S4 union).
+deploy Production {
+  oci moderationContainer {
+    label "moderation-container"
+    runtime "Docker"
+    realizes Moderation
+  }
+}
+
+organization Editorial {
+  team trustSafety {
+    label "Trust & Safety"
+    owns Moderation
+    member carol {
+      label "Carol"
+      description "Trust & Safety lead"
+    }
+  }
+}
+`,
+    },
+    {
+      path: "infra.krs",
+      content: `// multi-file-system/infra.krs
+// Shared infrastructure — databases and external dependencies referenced
+// by services across reader / editor / moderation slices. Declared once
+// here, inside a reopened \`system Blog\` block (S3), and pulled into each
+// slice via \`import "infra.krs"\`. This is the canonical pattern for
+// cross-file shared infra:
+//
+//   - Each slice that uses a shared resource imports infra.krs, so it
+//     renders standalone in the App without unresolved-edge warnings.
+//   - DAG re-arrival (S5) memoizes the resolved infra.krs, so being
+//     reached through reader / editor / moderation doesn't duplicate work.
+//   - The merged model has one canonical declaration per resource — no
+//     ambiguity about where shared infra "lives".
+//   - Declaring inside \`system Blog { ... }\` (rather than at file root)
+//     lets the system-reopen merge in S3 attach the infra to the system,
+//     so the \`unassigned-database\` warning doesn't fire.
+
+system Blog {
+  database ArticleDB {
+    table articles
+  }
+
+  database DraftStore {
+    table drafts
+  }
+
+  database SearchIndex {
+    table documents
+  }
+
+  database ModerationLog {
+    table decisions
+  }
+
+  service Search [external] {
+    label "Full-text search engine"
+    description "Externally hosted search service, queried directly by Delivery"
   }
 }
 `,

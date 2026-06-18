@@ -6,6 +6,7 @@ import {
   GETTING_STARTED_PROJECT,
   GETTING_STARTED_PROJECT_EN,
   MULTI_FILE_SYSTEM_PROJECT,
+  MULTI_FILE_SYSTEM_PROJECT_EN,
   type FileSystemProvider,
   type Project,
 } from "@karasu-tools/core";
@@ -88,12 +89,13 @@ export function useProjectInitialization({
 
         if (projectList.length === 0) {
           const initialProjects: Project[] = [];
-          // Pick the locale-matching Getting Started content at seed time.
-          // Once seeded it is user content — we do not re-seed when the
-          // locale changes later. Users whose browser is Japanese get the
-          // Japanese tutorial; everyone else gets English.
-          const gsTemplate =
-            resolveLocale() === "ja" ? GETTING_STARTED_PROJECT : GETTING_STARTED_PROJECT_EN;
+          // Pick the locale-matching content (Getting Started, multi-file-system)
+          // at seed time. Once seeded it is user content — we do not re-seed when
+          // the locale changes later. Users whose browser is Japanese get the
+          // Japanese variants; everyone else gets English. (ec-platform has no
+          // English variant, so it is seeded as-is — see #1642.)
+          const isJa = resolveLocale() === "ja";
+          const gsTemplate = isJa ? GETTING_STARTED_PROJECT : GETTING_STARTED_PROJECT_EN;
           const gsProject = await pm.createProject(gsTemplate.name, gsTemplate.files);
           initialProjects.push(gsProject);
           for (const example of EC_PLATFORM_PROJECTS) {
@@ -105,9 +107,10 @@ export function useProjectInitialization({
             CLIENT_MCP_PROJECT.files,
           );
           initialProjects.push(clientMcpProject);
+          const mfsTemplate = isJa ? MULTI_FILE_SYSTEM_PROJECT : MULTI_FILE_SYSTEM_PROJECT_EN;
           const multiFileSystemProject = await pm.createProject(
-            MULTI_FILE_SYSTEM_PROJECT.name,
-            MULTI_FILE_SYSTEM_PROJECT.files,
+            mfsTemplate.name,
+            mfsTemplate.files,
           );
           initialProjects.push(multiFileSystemProject);
           const featureSamplesProject = await pm.createProject(

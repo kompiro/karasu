@@ -16,7 +16,9 @@ import {
   GETTING_STARTED_PROJECT,
   GETTING_STARTED_PROJECT_EN,
   DEPLOY_ONLY_PROJECT,
+  DEPLOY_ONLY_PROJECT_EN,
   ORG_ONLY_PROJECT,
+  ORG_ONLY_PROJECT_EN,
   type ExampleProject,
 } from "./examples.js";
 
@@ -183,8 +185,8 @@ export function getReference(locale: ReferenceLocale = "en"): KarasuReference {
     sampleKrs: indexKrs(locale === "ja" ? GETTING_STARTED_PROJECT : GETTING_STARTED_PROJECT_EN),
     samplesByView: {
       system: indexKrs(locale === "ja" ? GETTING_STARTED_PROJECT : GETTING_STARTED_PROJECT_EN),
-      deploy: indexKrs(DEPLOY_ONLY_PROJECT),
-      org: indexKrs(ORG_ONLY_PROJECT),
+      deploy: indexKrs(locale === "ja" ? DEPLOY_ONLY_PROJECT : DEPLOY_ONLY_PROJECT_EN),
+      org: indexKrs(locale === "ja" ? ORG_ONLY_PROJECT : ORG_ONLY_PROJECT_EN),
     },
     syntaxByView: SYNTAX_SECTIONS,
     styleSelectorExamplesByView: STYLE_SELECTOR_EXAMPLES,
