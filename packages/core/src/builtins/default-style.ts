@@ -425,6 +425,7 @@ resource[storage] { shape: cloud; }
 /* ── デプロイノード種別 ── */
 oci {
   background-color: #DBEAFE;
+  color: #1E3A8A;
   border-color: #3B82F6;
   badge-label: "oci";
   badge-color: #3B82F6;
@@ -432,6 +433,7 @@ oci {
 
 lambda {
   background-color: #F3E8FF;
+  color: #4C1D95;
   border-color: #A855F7;
   badge-label: "lambda";
   badge-color: #A855F7;
@@ -439,6 +441,7 @@ lambda {
 
 jar {
   background-color: #DCFCE7;
+  color: #14532D;
   border-color: #22C55E;
   badge-label: "jar";
   badge-color: #22C55E;
@@ -446,6 +449,7 @@ jar {
 
 war {
   background-color: #FFEDD5;
+  color: #7C2D12;
   border-color: #F97316;
   badge-label: "war";
   badge-color: #F97316;
@@ -453,6 +457,7 @@ war {
 
 function {
   background-color: #FEF9C3;
+  color: #713F12;
   border-color: #EAB308;
   badge-label: "function";
   badge-color: #EAB308;
@@ -460,6 +465,7 @@ function {
 
 assets {
   background-color: #CFFAFE;
+  color: #155E75;
   border-color: #06B6D4;
   badge-label: "assets";
   badge-color: #06B6D4;
@@ -467,6 +473,7 @@ assets {
 
 job {
   background-color: #FEE2E2;
+  color: #7F1D1D;
   border-color: #EF4444;
   badge-label: "job";
   badge-color: #EF4444;
@@ -474,6 +481,7 @@ job {
 
 artifact {
   background-color: #F3F4F6;
+  color: #1F2937;
   border-color: #9CA3AF;
   badge-label: "artifact";
   badge-color: #9CA3AF;
@@ -481,6 +489,7 @@ artifact {
 
 store {
   background-color: #CCFBF1;
+  color: #115E59;
   border-color: #0D9488;
   badge-label: "store";
   badge-color: #0D9488;

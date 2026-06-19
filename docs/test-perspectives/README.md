@@ -439,3 +439,4 @@ DesignDoc が proactive TPL を引用したら、実装 PR で次をやる:
 | [TPL-20260616-03](TPL-20260616-03-client-vocabulary-structure-not-implementation.md) | client の語彙はアクセスパスの構造を名指し、実装の詳細を名指さない | core-concepts | #1625 / docs/concepts.md |
 | [TPL-20260618-01](TPL-20260618-01-style-lookup-matches-layout-id-form.md) | ノード style/metadata の lookup は layout が使う id 形（bare / 修飾）をすべて試す | renderer | #1666 |
 | [TPL-20260618-02](TPL-20260618-02-publishable-tarball-completeness.md) | publish する tarball は実行に必要な build 成果物だけを含み、テスト・型・sourcemap を除外する | build | #1681 |
+| [TPL-20260618-03](TPL-20260618-03-kind-style-sets-text-color-per-theme.md) | ノード kind ルールで background-color を設定したら、対になる text color も設定する（テーマごと） | styling | #1697 |
