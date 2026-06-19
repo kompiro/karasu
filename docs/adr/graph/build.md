@@ -1,6 +1,6 @@
 # ADR Topic: build
 
-43 ADRs in this topic. Solid nodes belong to `build`; gray dashed nodes are ghosts showing cross-topic references to help navigation.
+44 ADRs in this topic. Solid nodes belong to `build`; gray dashed nodes are ghosts showing cross-topic references to help navigation.
 
 Other topics: [overview](../graph.md).
 ```mermaid
@@ -49,6 +49,7 @@ flowchart TD
     ADR_20260618_02["ADR-20260618-02<br/>js-yaml transitive 脆弱性（alert #24）を read-yaml-fi..."]
     ADR_20260618_03["ADR-20260618-03<br/>karasu CLI の publish 成果物を単一バンドル `dist/index.js`..."]
     ADR_20260619_01["ADR-20260619-01<br/>Dependabot security alert（undici #37/#38, dompu..."]
+    ADR_20260619_02["ADR-20260619-02<br/>npm publish を Trusted Publishing（GitHub OIDC）に移..."]
   end
   ADR_20260322_01["ADR-20260322-01<br/>[styling] ビルトインスタイルの一元化と構造化リファレンス"]
   ADR_20260512_03 --> ADR_20260322_01
@@ -102,5 +103,6 @@ flowchart TD
   class ADR_20260618_02 accepted
   class ADR_20260618_03 accepted
   class ADR_20260619_01 accepted
+  class ADR_20260619_02 accepted
   class ADR_20260322_01 ghost
 ```

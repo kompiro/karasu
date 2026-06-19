@@ -1,29 +1,26 @@
 name: Release
 
-# Changesets-driven release pipeline (publish-only mode).
+# Changesets-driven release pipeline (publish-only mode, OIDC trusted publishing).
 #
-# On every push to `main`, if there are NO pending changesets (i.e. a
-# maintainer has already merged a Version Packages PR that consumed them),
-# publish the bumped public packages to npm. When changesets are still
-# pending, this workflow is a no-op — the maintainer is expected to run
-# `pnpm changeset version` locally and open a regular release PR.
+# On every push to `main`, `changeset publish` publishes any public package
+# whose `package.json` version is not yet on npm. It is a no-op until a
+# maintainer merges a "Version Packages" PR (`pnpm changeset version` run
+# locally — we keep GitHub Actions' "create and approve pull requests"
+# setting OFF, see Issue #1370), so it is safe to run on every push.
 #
-# We call `changeset publish` directly rather than using changesets/action.
-# The action always runs `changeset version` first (even with `version:`
-# omitted) and then tries to open or list a "Version Packages" PR, which
-# requires the repo-wide "Allow GitHub Actions to create and approve pull
-# requests" setting we keep OFF (see Issue #1370). `changeset publish`
-# alone is a no-op when no versions have been bumped, so this step is safe
-# to run on every push. When changeset-bot is introduced post-public
-# (Issue #1315), we can switch back to the bot-PR flow.
+# Authentication is **npm Trusted Publishing via GitHub OIDC** — no
+# `NPM_TOKEN`. npm exchanges the workflow's OIDC token (`id-token: write`)
+# for a short-lived publish credential, provided a Trusted Publisher is
+# configured for each package on npmjs.com (org `kompiro`, repo `karasu`,
+# workflow file `release.yml`). Requires npm >= 11.5.1 and Node >= 22.14.0,
+# so we upgrade npm explicitly below. Provenance is generated automatically
+# under trusted publishing — no `--provenance` flag / `NPM_CONFIG_PROVENANCE`
+# needed. See ADR-20260619-02 (OIDC migration; follows up the token-based
+# auth of ADR-20260512-05) and docs/process.md "リリース運用".
 #
-# Currently the only public package is `karasu` (the CLI). `@karasu-tools/*`
-# and `karasu-vscode` are listed in `.changeset/config.json` `ignore` — the
-# VS Code extension is released separately (see Issue #1316).
-#
-# Follow-ups intentionally out of scope here (tracked on #1315 / docs/process.md):
-#   - changeset-bot GitHub App (enable once the repo is public);
-#   - npm Trusted Publishing via OIDC (migrate after the first token-based publish).
+# Public packages: `karasu` (CLI) and `@karasu-tools/core`. `@karasu-tools/*`
+# others, `@karasu-tools/i18n` (private), and `karasu-vscode` are not
+# published here (the VS Code extension ships via its own workflow — #1316).
 
 on:
   push:
@@ -36,7 +33,7 @@ concurrency:
 
 permissions:
   contents: read
-  id-token: write
+  id-token: write # required for npm OIDC trusted publishing
   packages: read
 
 jobs:
@@ -52,47 +49,24 @@ jobs:
 
       - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
         with:
-          node-version: "22"
+          node-version: "22" # resolves to the latest 22.x (>= 22.14.0, required for OIDC)
           cache: "pnpm"
 
-      # The repo `.npmrc` already points the `@kompiro` scope at GitHub Packages
-      # (authenticated via NODE_AUTH_TOKEN). Add the npmjs.org auth line so
-      # `changeset publish` can push the public `karasu` package; the token is
-      # interpolated from $NPM_AUTH_TOKEN at runtime.
-      - name: Configure npm registry auth
-        run: echo '//registry.npmjs.org/:_authToken=${NPM_AUTH_TOKEN}' >> "$HOME/.npmrc"
+      # npm Trusted Publishing requires npm >= 11.5.1; Node 22 ships npm 10.x.
+      # `changeset publish` shells out to this `npm` for the actual publish.
+      - name: Upgrade npm to an OIDC-capable version
+        run: npm install -g npm@latest
 
+      # The repo `.npmrc` points the `@kompiro` scope at GitHub Packages
+      # (authenticated via NODE_AUTH_TOKEN) for the `@kompiro/adr-tools`
+      # dev dependency. Publishing to npmjs.org needs no token — it uses OIDC.
       - run: pnpm install --frozen-lockfile
         env:
           NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      # Skip the publish step until the OSS launch prerequisites are in place
-      # (npm name reserved + `NPM_TOKEN` secret configured — see Issue #1315
-      # and docs/process.md "未対応のフォローアップ"). Without this guard,
-      # every push to `main` would fail with `ENEEDAUTH` from `changeset
-      # publish`, because the current `packages/cli/package.json` version
-      # (0.0.0) is not yet on the registry and `changeset publish` will
-      # attempt to push it.
-      - name: Check publish prerequisites
-        id: prereqs
-        env:
-          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
-        run: |
-          if [ -n "$NPM_TOKEN" ]; then
-            echo "can_publish=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "::notice::NPM_TOKEN secret is not set — skipping publish (expected pre-launch; see #1315)."
-            echo "can_publish=false" >> "$GITHUB_OUTPUT"
-          fi
-
-      # `pnpm run release` runs `pnpm build && changeset publish`. `changeset
-      # publish` will publish any package whose `package.json` version is not
-      # yet on npm, so it only does real work after a maintainer merges a
-      # `pnpm changeset version` PR.
+      # `pnpm run release` runs `pnpm build && changeset publish`. With a
+      # Trusted Publisher configured and `id-token: write` set, npm publishes
+      # tokenless via OIDC and attaches provenance automatically. Publishes
+      # only versions not already on npm, so this is a no-op between releases.
       - name: Publish to npm
-        if: steps.prereqs.outputs.can_publish == 'true'
         run: pnpm run release
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          NPM_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-          NPM_CONFIG_PROVENANCE: "true"
