@@ -179,4 +179,21 @@ describe("renderDeploy", () => {
       expect(renderDeploy(slice, shapeStyles, "shape")).not.toMatch(ICON_GLYPH);
     });
   });
+
+  describe("light theme", () => {
+    // Regression for #1697: the deploy-kind rules in the light template set
+    // background / border / badge but used to omit `color`, so node labels fell
+    // back to the default white (#F9FAFB) and were unreadable on the light cards.
+    it("renders dark, readable node text (not the white default)", () => {
+      const slice = makeSlice();
+      const units = [...slice.containers.flatMap((c) => c.units), ...slice.unclassifiedUnits];
+      const lightStyles = resolveStyles([], [getBuiltinStyleSheet("light")], units);
+      const svg = renderDeploy(slice, lightStyles, "shape");
+      // `order-api` is an `oci` unit → dark blue text in the light theme, not the
+      // white default (#F9FAFB) that was unreadable on the light card.
+      const ociNode = svg.slice(svg.indexOf('data-node-id="ECommerce::order-api"'));
+      expect(ociNode).toMatch(/<text[^>]*fill="#1E3A8A"/);
+      expect(ociNode).not.toMatch(/<text[^>]*fill="#F9FAFB"/);
+    });
+  });
 });
