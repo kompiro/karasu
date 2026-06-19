@@ -2,6 +2,7 @@
 
 - **日付**: 2026-06-19
 - **ステータス**: 検討中
+- **PR**: [#1701](https://github.com/kompiro/karasu/pull/1701)
 - **関連**:
   - 関連 ADR: [ADR-20260512-05](../adr/20260512-05-release-automation-changesets.md)（changesets 採用・publish-only）, [ADR-20260619-02](../adr/20260619-02-npm-trusted-publishing-oidc.md)（OIDC trusted publishing。本ドキュメントと同じ release.yml を扱う PR #1699 で導入中）
   - 関連 Issue: [#1370](https://github.com/kompiro/karasu/issues/1370)（Actions の PR 作成権限を OFF にした経緯）
