@@ -102,8 +102,9 @@ Actions に PR 作成を許可し、標準の changesets ボットで "Version P
 2. **`.github/workflows/release-prepare.yml`（新規, `workflow_dispatch`）**
    - `permissions: contents: write`。
    - checkout → pnpm/setup-node(22) → `pnpm install`（`@kompiro` GH Packages 取得のため `NODE_AUTH_TOKEN: GITHUB_TOKEN`）。
+   - `concurrency: release-prepare`（`cancel-in-progress: false`）で直列化し、未マージの release ブランチがある間の二重起動を防ぐ。
    - **ガード**: pending changeset が無ければ何もせず終了（`pnpm changeset status`、または `changeset version` 後に `git status --porcelain` が空なら push せず notice で終了）。
-   - `pnpm version-packages` 実行 → `chore/release-<karasu version>` ブランチを作成・push。
+   - `pnpm version-packages` 実行 → `chore/release-<karasu version>` ブランチを作成・push（命名は karasu 版を代表名とし、`@karasu-tools/core` 等の版が分岐しても全 bump は PR 本文 / CHANGELOG が示す）。
    - 完了時に `::notice::` で「ブランチから PR を開いてマージすると publish される」旨を出す。
 3. **`docs/process.md` 「リリースの流れ」更新**: 「ローカルで `changeset version`」を「"Release — Prepare" を `workflow_dispatch` で起動 → 生成された `chore/release-*` ブランチから PR を開きレビュー → squash マージ → publish 自動発火」に書き換える。
 4. **AT**: `docs/acceptance/` に新規。TC は:
@@ -118,8 +119,8 @@ Actions に PR 作成を許可し、標準の changesets ボットで "Version P
 - fork / 外部コントリビューターへの影響なし（Prepare は maintainer が起動）。
 - 実装は PR #1699（OIDC）に畳み込む想定。#1699 マージ時に本 Design Doc を ADR に昇格して削除する。
 
-## 未解決の問い / 決めないこと
+## 確定した事項（レビューで決定）
 
-- **必須レビュー承認数を 0 のままにするか**: 現 ruleset は `required_approving_review_count: 0`。ソロメンテナでは self-merge を可能にするため 0 が妥当だが、release PR だけでも目視確認を強制したいなら運用で「マージ前に必ず CHANGELOG を読む」をルール化する（承認強制は別アカウントが要るため見送り）。→ 現状維持（0）でよいか確認したい。
-- **Prepare のブランチ命名**: `chore/release-<karasu version>` を基本とする。`karasu` と `@karasu-tools/core` の版が将来分岐した場合もブランチ名は karasu 版を代表とし、PR 本文で全 bump を示す（changeset 生成の CHANGELOG がそれを担う）。
-- **Prepare 起動の同時実行**: `concurrency` で直列化し、未マージの release ブランチがある間の二重起動を避ける（実装時に `concurrency: release-prepare`）。
+- **必須レビュー承認数は 0 のまま維持**する。ソロメンテナでは self-merge を可能にするため 0 が妥当（承認強制は別アカウント / bypass actor が要るため見送り）。代わりに「**release PR はマージ前に必ず版番号と CHANGELOG を読む**」を運用ルールとし、`docs/process.md` のリリースの流れに明記する。
+- **Prepare のブランチ命名は `chore/release-<karasu version>`**。`@karasu-tools/core` 等の版が将来分岐してもブランチ名は karasu 版を代表とし、全 bump は PR 本文 / changeset 生成の CHANGELOG が示す。
+- **Prepare の同時実行は `concurrency: release-prepare`（`cancel-in-progress: false`）で直列化**し、未マージの release ブランチがある間の二重起動を避ける。
