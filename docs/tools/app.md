@@ -21,10 +21,10 @@ Run `serve` from a directory that contains one or more `.krs` files:
 
 ```bash
 # from a directory with .krs files
-npx @kompiro/karasu serve
+npx --yes karasu@latest serve
 
 # or point it at a directory and pick a port
-npx @kompiro/karasu serve ./architecture --port 4000
+npx --yes karasu@latest serve ./architecture --port 4000
 ```
 
 ```

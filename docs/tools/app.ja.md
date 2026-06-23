@@ -21,10 +21,10 @@ karasu には、`.krs` ファイルをリアルタイムで操作可能な図に
 
 ```bash
 # .krs ファイルのあるディレクトリで
-npx @kompiro/karasu serve
+npx --yes karasu@latest serve
 
 # ディレクトリとポートを指定する場合
-npx @kompiro/karasu serve ./architecture --port 4000
+npx --yes karasu@latest serve ./architecture --port 4000
 ```
 
 ```
