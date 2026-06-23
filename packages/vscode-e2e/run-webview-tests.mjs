@@ -42,10 +42,17 @@ fs.mkdirSync(at0038FixtureDir, { recursive: true });
 // is absolute + writable in the CI sandbox. The content mirrors the
 // AT-0039 spec fixture and is also reused by AT-0042-vscode (cross-
 // diagram navigation): OrderService has a Markdown description block,
-// links, and a team (AT-0039 TC-02) plus a matching deploy unit
-// (AT-0042 TC-1 / TC-2). UserService has a team but no deploy block
-// (AT-0042 TC-5). Customer is a leaf user with a role (AT-0039 TC-01
-// / TC-03 / TC-04 / TC-08).
+// links, and is owned by `order-team` (AT-0039 TC-02) plus a matching
+// deploy unit (AT-0042 TC-1 / TC-2). UserService is owned by `user-team`
+// but has no deploy block (AT-0042 TC-5). Customer is a leaf user with a
+// role (AT-0039 TC-01 / TC-03 / TC-04 / TC-08).
+//
+// Team ownership lives in a top-level `organization { team { owns … } }`
+// block: the inline `team "…"` property on service/domain was removed in
+// ADR-20260614-01 (it now emits a `team-property-removed` error). The
+// detail panel's Org navigation button is keyed on the *resolved owner
+// team id* (`ownerIndex`), so the AT-0042 assertions look for
+// `data-nav-node="order-team"` rather than the old team label.
 fs.writeFileSync(
   fixtureKrs,
   `system Demo {
@@ -59,14 +66,11 @@ Handles **order processing** and payment.
 """
     link "https://wiki.example.com/order" "Design Wiki"
     link "https://api.example.com/order" "API Docs"
-    team "Order Team"
 
     domain OrderManagement {}
     domain Inventory {}
   }
-  service UserService {
-    team "User Team"
-  }
+  service UserService {}
   user Customer [human] {
     description "A customer who purchases products."
     role "Buyer"
@@ -79,6 +83,17 @@ deploy "production" {
     image "order:1.0"
     runtime "Node 20"
     realizes OrderService
+  }
+}
+
+organization Demo {
+  team "order-team" {
+    label "Order Team"
+    owns OrderService
+  }
+  team "user-team" {
+    label "User Team"
+    owns UserService
   }
 }
 `,
