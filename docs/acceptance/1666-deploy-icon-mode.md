@@ -38,11 +38,17 @@ without the icon theme) it does not.
 **Expected:** `compile(orgKrs, { diagramType: "org", displayMode: "icon" })`
 renders team/member pictograms (more icon glyphs than `displayMode: "shape"`).
 
-## AC-3 (manual): the app deploy view shows icons in Icon Mode
+## AC-3: the app deploy view shows icons in Icon Mode (automated)
+
+> ✅ Automated (e2e: at-1666) — `packages/e2e/tests/at-1666-deploy-icon-mode.spec.ts` ›
+> `toggling Icon Mode re-renders deploy unit nodes with icon markup`.
 
 **Steps:**
 1. Open a `.krs` with a `deploy { ... }` block (e.g. `oci`, `lambda`, `store`).
 2. Switch to the deploy view and toggle **Icon Mode**.
 
 **Expected:** deploy nodes render as the kind's icon card (oci / lambda / … icon),
-matching how the system view responds to Icon Mode — not plain shape cards.
+matching how the system view responds to Icon Mode — not plain shape cards. The
+e2e spec asserts deploy unit nodes (`oci` / `lambda`) stay present and the SVG
+markup changes when Icon Mode is toggled (the #1669 regression was a silent
+no-op); exact icon graphics / colors remain manual visual review.

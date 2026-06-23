@@ -29,6 +29,6 @@
 
 ## 手動確認
 
-- [ ] app で `index.krs` に「`service ECommerce`（usecase が `resource OrderDB.OrderTable` を参照）/ `database OrderDB { table OrderTable }` / `deploy { oci realizes ECommerce; store realizes OrderDB }`」を書き、deploy view で `ECommerce` コンテナから `OrderDB` コンテナへの ghost edge が下方向に描かれることを目視確認する
+- [x] app で `index.krs` に「`service ECommerce`（usecase が `resource OrderDB.OrderTable` を参照）/ `database OrderDB { table OrderTable }` / `deploy { oci realizes ECommerce; store realizes OrderDB }`」を書き、deploy view で `ECommerce` コンテナから `OrderDB` コンテナへの ghost edge が下方向に描かれることを確認する
 
-  > ⏳ Manual — ghost edge の SVG 描画位置（下層配置・線の接続点）はレイアウトの結合結果のため目視で確認する
+  > ✅ Automated (e2e: at-1658) — `packages/e2e/tests/at-1658-deploy-infra-dependency-edges.spec.ts` › `renders a ghost edge from the service container down to the realized infra container`。`data-edge-from="ECommerce"`/`data-edge-to="OrderDB"` の存在と、infra コンテナが service コンテナより下に配置される（下方向ルーティング）ことを `boundingBox` で検証する。線の正確な接続点・geometry のみ目視レビュー対象。
