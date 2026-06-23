@@ -4,6 +4,7 @@
 - **ステータス**: 検討中
 - **関連**:
   - 引き金 Issue: [#1724](https://github.com/kompiro/karasu/issues/1724)（system view が横に広がりすぎる）
+  - 実装 PR: [#1736](https://github.com/kompiro/karasu/pull/1736)
   - 派生 Issue: [#1728](https://github.com/kompiro/karasu/issues/1728)（エッジ交差の低減 — 本 Doc の scope 外）
   - 関連 ADR:
     - [ADR-20260429-02](../adr/20260429-02-infra-row-by-deepest-consumer.md)（#974 dep pull-up。本変更で **amend が必要**）
