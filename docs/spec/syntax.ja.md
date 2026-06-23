@@ -650,6 +650,10 @@ deploy "本番環境" {
 
 `realizes` はUMLのRealization（実現）関係。矢印は物理（具象）→ 論理（抽象）の向き。
 
+`realizes` の対象は `service` / `domain` に加えて **`client`** も指定できる。client（SPA・モバイルアプリ）は
+デプロイ対象となる論理ノードなので、それを realize する `war` / `assets` 等は、`oci` がサービスを realize するのと
+同じく client の物理形態を記録する（`database` / `queue` / `storage` を対象とする場合は後述の _共有 infra の realize_ を参照）。
+
 複数の `realizes` を並べることで、1つのデプロイ単位が複数のサービスを実現することを表せる。
 その場合、デプロイダイアグラム上では各サービスのコンテナに同じノードが描画される。
 
@@ -743,7 +747,7 @@ organization TechCorp {
 
 ### team ノード
 
-- `owns <id>` は team が所有する論理ノード（service / domain 等）を宣言する。同じ `id` を複数の team が `owns` することはできず、重複するとエラーになる。
+- `owns <id>` は team が所有する論理ノード（`service` / `domain` / `client` 等）を宣言する。同じ `id` を複数の team が `owns` することはできず、重複するとエラーになる。
 - team は入れ子にでき、親 team の下に子 team を並べると組織階層を表現できる。
 - team ID は同一 organization 内で一意。重複するとエラーになる。
 - パース時に `ownerIndex`（`node id → team id`）が構築され、論理図のノードから所有チームを逆引きできる。

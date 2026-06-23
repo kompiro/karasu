@@ -274,6 +274,7 @@ export class Parser {
       ...file.databases,
       ...file.queues,
       ...file.storages,
+      ...file.clients,
     ]);
     if (file.nodePathIndex.size > 0 && file.organizations.length > 0) {
       this.validateOwnsReferences(file.organizations, file.nodePathIndex);
@@ -1866,14 +1867,15 @@ export class Parser {
     topLevelInfra: KrsNode[] = [],
   ): Map<string, string[]> {
     const index = new Map<string, string[]>();
-    // INDEXED_KINDS governs the recursive walk() pass: service and domain are
-    // the only kinds tracked here because they appear in `owns` declarations,
+    // INDEXED_KINDS governs the recursive walk() pass: service, domain, and
+    // client are tracked here because they appear in `owns` declarations,
     // require migration-annotation priority logic, and need cross-system
     // duplicate detection. resource / usecase / user are intentionally
     // excluded so shared resources across usecases don't generate warnings.
-    // Top-level infra nodes (database/queue/storage) are indexed separately
-    // via the topLevelInfra loop below, which does not apply these filters.
-    const INDEXED_KINDS = new Set(["service", "domain"]);
+    // Top-level infra nodes (database/queue/storage) and top-level clients are
+    // indexed separately via the topLevelInfra loop below, which does not apply
+    // these filters.
+    const INDEXED_KINDS = new Set(["service", "domain", "client"]);
     // seenDomainIds is reset per system so that the same domain ID in different
     // systems does not trigger an error (cross-system parallel modelling is allowed).
     // The map value is the index priority of the already-stored domain:

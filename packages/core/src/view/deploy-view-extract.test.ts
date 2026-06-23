@@ -303,6 +303,25 @@ deploy Prod {
       expect(container!.serviceLabel).toBe("注文DB");
     });
 
+    it("forms a container for a deploy unit realizing a client, with the label resolved (#1720)", () => {
+      const krs = `
+system EC {
+  client Web [web] { label "Web PWA" }
+}
+deploy Prod {
+  assets webBundle {
+    realizes Web
+  }
+}
+`;
+      const file = Parser.parse(krs).value;
+      const slice = extractDeployView(file.deploys, withUnassignedSystem(file));
+      const container = slice.containers.find((c) => c.serviceId === "Web");
+      expect(container).toBeDefined();
+      expect(container!.serviceLabel).toBe("Web PWA");
+      expect(container!.units.map((u) => u.id)).toEqual(["webBundle"]);
+    });
+
     it("emits a service→infra ghost edge when both the service and the store are realized (#1658)", () => {
       const krs = `
 system EC {

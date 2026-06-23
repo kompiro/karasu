@@ -747,16 +747,22 @@ function detectMissingProperties(file: KrsFile): Warning[] {
 function detectUnresolvedRealizes(file: KrsFile): Warning[] {
   const warnings: Warning[] = [];
 
-  // Build the set of all valid realize-target IDs: services / domains and the
-  // system-level infra nodes (database / queue / storage). A deploy unit may
-  // realize a shared store to record its physical form (e.g. a `store` unit
-  // realizing a `database`); see ADR-20260616-09. Leaf
-  // sub-resources (table / queue-item / bucket) are NOT valid targets, so only
-  // the three top-level infra kinds are added.
+  // Build the set of all valid realize-target IDs: services / domains / clients
+  // and the system-level infra nodes (database / queue / storage). A deploy unit
+  // may realize a shared store to record its physical form (e.g. a `store` unit
+  // realizing a `database`); see ADR-20260616-09. A client is also a deployable
+  // logical node (a `war` / `assets` bundle realizes a `client` SPA), so it is a
+  // valid target too; see ADR-20260623-02. Leaf sub-resources
+  // (table / queue-item / bucket) are NOT valid targets.
   const validIds = new Set<string>();
   function collectIds(nodes: KrsNode[]): void {
     for (const node of nodes) {
-      if (node.kind === "service" || node.kind === "domain" || INFRA_KIND_SET.has(node.kind)) {
+      if (
+        node.kind === "service" ||
+        node.kind === "domain" ||
+        node.kind === "client" ||
+        INFRA_KIND_SET.has(node.kind)
+      ) {
         validIds.add(node.id);
       }
       collectIds(node.children);
@@ -772,6 +778,10 @@ function detectUnresolvedRealizes(file: KrsFile): Warning[] {
   for (const domain of file.domains) {
     validIds.add(domain.id);
     collectIds(domain.children);
+  }
+  for (const client of file.clients) {
+    validIds.add(client.id);
+    collectIds(client.children);
   }
   // Top-level infra blocks live in their own KrsFile buckets, not in
   // system.children, so add their ids explicitly.
@@ -805,11 +815,13 @@ function detectUnresolvedRealizes(file: KrsFile): Warning[] {
 function detectInvalidOwns(file: KrsFile): Warning[] {
   const warnings: Warning[] = [];
 
-  // Build the set of all valid service/domain IDs
+  // Build the set of all valid owns-target IDs: services / domains / clients.
+  // A team can own a client (a deployable SPA / mobile app) just as it owns a
+  // service or domain; see ADR-20260623-02.
   const validIds = new Set<string>();
   function collectIds(nodes: KrsNode[]): void {
     for (const node of nodes) {
-      if (node.kind === "service" || node.kind === "domain") {
+      if (node.kind === "service" || node.kind === "domain" || node.kind === "client") {
         validIds.add(node.id);
       }
       collectIds(node.children);
@@ -825,6 +837,10 @@ function detectInvalidOwns(file: KrsFile): Warning[] {
   for (const domain of file.domains) {
     validIds.add(domain.id);
     collectIds(domain.children);
+  }
+  for (const client of file.clients) {
+    validIds.add(client.id);
+    collectIds(client.children);
   }
 
   // Check each owns reference
