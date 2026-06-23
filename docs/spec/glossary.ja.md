@@ -200,6 +200,28 @@ karasu のコアな語彙のクイックリファレンスです。karasu は
   1 つのブロックに merge される（衝突時はルートに近いファイルのプロパティが勝つ）。
   [Syntax](syntax.ja.md#s3-同名-system-ブロックの-mergesystem-再オープン)
 
+## プロジェクト運営の語彙
+
+これらはモデリング言語ではなく、karasu **プロジェクトの運営** に関する用語です。
+コントリビュート時に役立ちます。出典はサイトではなくリポジトリにあります。
+
+- **Design Doc（設計ドキュメント）** — 「どう作るか」の詳細設計（制約・代替案・
+  実装方針）。決定が下りるまで `docs/design/` に置く。決定後は ADR に昇格させ、
+  Design Doc は削除する。 [process.md](../process.md)
+- **ADR（Architecture Decision Record）** — *確定した* 設計判断（採用・見送り）の
+  簡潔な記録、すなわち「なぜそうしたか」。`docs/adr/` に置く。
+  [docs/adr/](../adr/)
+- **TPL（Test Perspective Library / テスト観点ライブラリ）** — 再発しうる失敗
+  パターンを検証可能な観点として構造化した記録。`docs/test-perspectives/` に置く。
+  各観点は **proactive（原則・非目標から事前に予測）** か
+  **retrospective（過去の bug から事後に一般化）**。ADR が *過去の判断* を残すのに
+  対し、TPL は *未来の検証* を促す。
+  [docs/test-perspectives/](../test-perspectives/README.md)
+- **受け入れテスト（AT）** — 変更の受け入れ基準の記録。`docs/acceptance/` に置き、
+  どの基準が自動化済みか / 手動確認かを示す。 [process.md](../process.md)
+- **ロードマップ** — karasu の全体方針と Syntax v1.0 readiness を記す living
+  ドキュメント。`docs/roadmap.md` に置く。 [roadmap.md](../roadmap.md)
+
 ## 関連項目
 
 - [コアコンセプト](../concepts.ja.md) — 語彙の背後にある面と原則。

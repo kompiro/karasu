@@ -216,6 +216,31 @@ the source wins — follow the link.
   than treated as a duplicate.
   [Syntax](syntax.md#s3-same-id-system-blocks-merge-system-reopen)
 
+## Project & process vocabulary
+
+These terms are about how the karasu **project** is run, not the modeling
+language. They are useful when contributing; their sources live in the
+repository (not on this site).
+
+- **Design Doc** — a detailed "how to build it" exploration (constraints,
+  alternatives, approach) kept in `docs/design/` while a decision is open. Once
+  decided it is promoted to an ADR and the Design Doc is deleted.
+  [process.md](../process.md)
+- **ADR (Architecture Decision Record)** — a concise record of a *settled*
+  design decision (adopted or rejected) — the "why we decided this", kept in
+  `docs/adr/`. [docs/adr/](../adr/)
+- **TPL (Test Perspective Library)** — a structured, reusable record of a
+  recurring failure pattern to verify against, kept in `docs/test-perspectives/`.
+  Each entry is **proactive** (predicted from a principle / non-goal) or
+  **retrospective** (generalized from a past bug). Where an ADR records a *past
+  decision*, a TPL prompts *future verification*.
+  [docs/test-perspectives/](../test-perspectives/README.md)
+- **Acceptance Test (AT)** — an acceptance-criteria record for a change, kept in
+  `docs/acceptance/`, marking which criteria are automated vs. verified by hand.
+  [process.md](../process.md)
+- **Roadmap** — the living document of karasu's overall direction and Syntax
+  v1.0 readiness, kept in `docs/roadmap.md`. [roadmap.md](../roadmap.md)
+
 ## See also
 
 - [Core Concepts](../concepts.md) — the dimensions and principles behind the
