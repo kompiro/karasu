@@ -24,7 +24,6 @@ concurrency:
 permissions:
   contents: read
   issues: write
-  packages: read
 
 jobs:
   open-review-issue:
@@ -41,8 +40,6 @@ jobs:
           cache: "pnpm"
 
       - run: pnpm install --frozen-lockfile
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Generate review Issue body
         env:

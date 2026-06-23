@@ -20,7 +20,6 @@ concurrency:
 
 permissions:
   contents: read
-  packages: read
 
 jobs:
   check:
@@ -37,8 +36,6 @@ jobs:
           cache: "pnpm"
 
       - run: pnpm install --frozen-lockfile
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Run AT coverage tests
         run: pnpm run at:test

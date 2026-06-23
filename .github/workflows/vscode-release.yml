@@ -53,8 +53,6 @@ jobs:
           cache: "pnpm"
 
       - run: pnpm install --frozen-lockfile
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       # Build the workspace first so the extension's own build can resolve the
       # `@karasu-tools/*` dist outputs. `pnpm run build` builds core → i18n →

@@ -41,7 +41,6 @@ concurrency:
 permissions:
   contents: read
   id-token: write # required for npm OIDC trusted publishing
-  packages: read
 
 jobs:
   release:
@@ -64,12 +63,9 @@ jobs:
       - name: Upgrade npm to an OIDC-capable version
         run: npm install -g npm@latest
 
-      # The repo `.npmrc` points the `@kompiro` scope at GitHub Packages
-      # (authenticated via NODE_AUTH_TOKEN) for the `@kompiro/adr-tools`
-      # dev dependency. Publishing to npmjs.org needs no token — it uses OIDC.
+      # All dependencies (incl. `@kompiro/*`) install from the public npm
+      # registry — no token needed. Publishing uses OIDC (see header).
       - run: pnpm install --frozen-lockfile
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       # `pnpm run release` runs `pnpm build && changeset publish`. With a
       # Trusted Publisher configured and `id-token: write` set, npm publishes

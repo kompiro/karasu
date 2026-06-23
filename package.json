@@ -61,8 +61,8 @@
   },
   "devDependencies": {
     "@changesets/cli": "^2.31.0",
-    "@kompiro/adr-tools": "^0.0.2",
-    "@kompiro/tpl-tools": "^0.0.1",
+    "@kompiro/adr-tools": "^0.0.6",
+    "@kompiro/tpl-tools": "^0.0.6",
     "@types/node": "^25.6.0",
     "knip": "^6.6.0",
     "lefthook": "^2.1.6",
