@@ -44,6 +44,7 @@ export default defineConfig({
       },
       sidebar: [
         { label: "Guides", items: [{ autogenerate: { directory: "guide" } }] },
+        { label: "Tools", items: [{ autogenerate: { directory: "tools" } }] },
         { label: "Reference", items: [{ autogenerate: { directory: "spec" } }] },
         { label: "Concepts", link: "/concepts/" },
         {

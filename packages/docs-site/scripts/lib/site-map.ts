@@ -14,6 +14,7 @@ export const REPO_BRANCH = "main";
  */
 export const PUBLISHED_EN_FILES: readonly string[] = [
   "concepts.md",
+  "tools/app.md",
   "guide/README.md",
   "guide/01-service-team-design.md",
   "guide/02-onboarding.md",
