@@ -667,6 +667,11 @@ deploy "production" {
 
 `realizes` corresponds to UML's Realization relationship. The arrow points from physical (concrete) to logical (abstract).
 
+A `realizes` target may be a `service`, a `domain`, or a **`client`** — a client (SPA / mobile app)
+is a deployable logical node, so a `war` / `assets` bundle that realizes it records the client's
+physical form, symmetrically to how an `oci` unit realizes a service (see also _Realizing shared infra_
+below for `database` / `queue` / `storage` targets).
+
 Multiple `realizes` entries can be listed to express that a single deployment unit realizes more than one service.
 In that case, the same node is drawn inside each service's container on the deploy diagram.
 
@@ -760,10 +765,12 @@ organization TechCorp {
 
 ### team node
 
-- `owns <id>` declares a logical node (service / domain, etc.) that the team owns. The same `id` cannot be `owns`-ed by multiple teams; duplicates produce an error.
+- `owns <id>` declares a logical node (`service` / `domain` / `client`, etc.) that the team owns. The same `id` cannot be `owns`-ed by multiple teams; duplicates produce an error.
 - Teams can be nested — placing child teams under a parent team expresses organizational hierarchy.
 - Team IDs must be unique within the same organization. Duplicates produce an error.
 - During parsing, an `ownerIndex` (`node id → team id`) is built so that a logical-diagram node can look up its owner team.
+
+> Related TPLs: [TPL-20260623-02](../test-perspectives/TPL-20260623-02-validation-target-set-enumerates-all-kinds.md) — `realizes` / `owns` の valid-target set は spec が許す全 kind（service / domain / client / infra）を列挙し、parser・resolver の重複した集合を同期させる。
 
 ### member node
 

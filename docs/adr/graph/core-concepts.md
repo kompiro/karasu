@@ -1,6 +1,6 @@
 # ADR Topic: core-concepts
 
-16 ADRs in this topic. Solid nodes belong to `core-concepts`; gray dashed nodes are ghosts showing cross-topic references to help navigation.
+17 ADRs in this topic. Solid nodes belong to `core-concepts`; gray dashed nodes are ghosts showing cross-topic references to help navigation.
 
 Other topics: [overview](../graph.md).
 ```mermaid
@@ -22,6 +22,7 @@ flowchart TD
     ADR_20260615_05["ADR-20260615-05<br/>team アノテーション対応と `@migration_target` による primary..."]
     ADR_20260616_05["ADR-20260616-05<br/>user は system-scoped とする（identity ではなく relation..."]
     ADR_20260616_09["ADR-20260616-09<br/>deploy unit は共有 infra ノードを realize できる（store ki..."]
+    ADR_20260623_02["ADR-20260623-02<br/>client は realizes / owns の対象になれる（valid-target に..."]
   end
   ADR_20260323_02["ADR-20260323-02<br/>[app-ui] ツールバーボタンはアイコン+テキストラベル必須"]
   ADR_20260401_06["ADR-20260401-06<br/>[resolver] Domain Drift Detection — 検出スコープと検出キー"]
@@ -56,6 +57,7 @@ flowchart TD
   class ADR_20260615_05 accepted
   class ADR_20260616_05 accepted
   class ADR_20260616_09 accepted
+  class ADR_20260623_02 accepted
   class ADR_20260323_02 ghost
   class ADR_20260401_06 ghost
   class ADR_20260616_01 ghost
