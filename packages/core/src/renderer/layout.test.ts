@@ -789,7 +789,7 @@ system Other {
     expect(c1.x).toBeLessThan(c2.x);
   });
 
-  it("places dep tier (infra + external) below internal services", () => {
+  it("splits the dep tier into an infra row above an external row (#1724)", () => {
     const slice = parseAndExtract(`
 system S {
   user Customer [human]
@@ -815,16 +815,21 @@ system S {
     expect(customer.y).toBeLessThan(app.y);
     expect(app.y).toBeLessThan(backend.y);
     expect(backend.y).toBeLessThan(postgres.y);
-    // No edges among dep nodes → all share one sub-row
+    // Infra (database/queue/storage) shares one row...
     expect(postgres.y).toBe(jobs.y);
     expect(jobs.y).toBe(blobs.y);
-    expect(postgres.y).toBe(stripe.y);
+    // ...and the external service sits on a *separate row below* the infra
+    // row (the #1724 split), not merged with it.
+    expect(stripe.y).toBeGreaterThan(postgres.y);
   });
 
-  it("places database [external] in the dep tier alongside infra (tag does not change tier here)", () => {
-    // Both infra-kind and `[external]` collapse into the same dep tier.
-    // Without intra-dep edges, OurDb and SaaSDb share a sub-row; visual
-    // distinction comes from the [external] style, not from layout.
+  it("keeps a database [external] on the infra row, not the external row (kind wins over tag) (#1724)", () => {
+    // Infra kinds (database/queue/storage) are always *inside* the system
+    // boundary, so an `[external]` tag does not promote them to the external
+    // row. `systemTier` checks the infra kind before the `external` tag. A
+    // `database [external]` is a modeling contradiction (an in-boundary store
+    // tagged as another boundary); we keep it on the infra row. See
+    // TPL-20260519-02 (shared-vocabulary dual representation).
     const slice = parseAndExtract(`
 system S {
   service Backend {}
@@ -837,7 +842,50 @@ system S {
     const ourDb = result.nodes.get("OurDb")!;
     const saasDb = result.nodes.get("SaaSDb")!;
     expect(backend.y).toBeLessThan(ourDb.y);
+    // Both stay on the infra row — the tag changes styling, not the tier.
     expect(ourDb.y).toBe(saasDb.y);
+  });
+
+  it("separates infra and external onto distinct rows when one service uses both (#1724)", () => {
+    // The hato pattern in miniature: a single service reads/writes infra and
+    // calls an external SaaS. Both are consumed at the same depth, so the old
+    // combined dep tier put all four on one wide row. The split must place
+    // infra on one row and external strictly below it.
+    const slice = parseAndExtract(`
+system S {
+  service Api {}
+  database Db {}
+  queue Q {}
+  service Stripe [external] {}
+  service Twilio [external] {}
+  Api -> Stripe
+  Api -> Twilio
+}
+`);
+    const result = layout(slice);
+    const db = result.nodes.get("Db")!;
+    const q = result.nodes.get("Q")!;
+    const stripe = result.nodes.get("Stripe")!;
+    const twilio = result.nodes.get("Twilio")!;
+    expect(db.y).toBe(q.y); // infra share a row
+    expect(stripe.y).toBe(twilio.y); // externals share a row
+    expect(stripe.y).toBeGreaterThan(db.y); // external row below infra row
+  });
+
+  it("does not add an empty infra band when a model has only external deps (#1724)", () => {
+    // External-only model: external must sit directly below the service tier,
+    // with no phantom gap where the (empty) infra row would be.
+    const slice = parseAndExtract(`
+system S {
+  service Api {}
+  service Stripe [external] {}
+  Api -> Stripe
+}
+`);
+    const result = layout(slice);
+    const api = result.nodes.get("Api")!;
+    const stripe = result.nodes.get("Stripe")!;
+    expect(stripe.y).toBeGreaterThan(api.y);
   });
 
   it("forces internal-vs-dep split even without user/client", () => {

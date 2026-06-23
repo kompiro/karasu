@@ -1288,23 +1288,34 @@ function computeEdgePoints(
 }
 
 /**
- * Bucket a system-view node into one of four ordered tiers.
+ * Bucket a system-view node into one of five ordered tiers.
  * Lower index → upper row group.
  *
  *   0: user       — actor at the top of the access path
  *   1: client     — user-facing surface (mobile / web / desktop / etc.)
  *   2: internal   — services we own (and any other non-infra logical kinds)
- *   3: dep        — infra (database/queue/storage) and `[external]` services;
- *                    the things internal services depend on
+ *   3: infra      — owned data stores (database/queue/storage) the services read/write
+ *   4: external   — services that run in *another system* (`[external]`)
  *
- * `[external]` and infra kinds collapse into the same dep tier; visual
- * differentiation between "we own this DB" and "this is a third-party SaaS"
- * is left to styling (border / color via the `[external]` tag selector).
+ * Splitting the former combined "dep" tier (#1724): infra sits directly under
+ * the internal services it backs (most read/write edges are short), and
+ * external systems form a separate row below. This roughly halves the widest
+ * bottom row when a model has many of both.
+ *
+ * Boundary rule: infra kinds (database/queue/storage) are always *inside* the
+ * system boundary, so they stay in the infra tier regardless of an `[external]`
+ * tag — the kind check comes before the tag check. The external tier is only
+ * for nodes that genuinely live in another system (e.g. `service [external]`).
+ * A `database [external]` is a modeling contradiction (an in-boundary store
+ * tagged as another boundary); we keep it on the infra row rather than promote
+ * it. See docs/design/system-view-infra-external-tier-split.md.
  */
-function systemTier(node: KrsNode): 0 | 1 | 2 | 3 {
+const SYSTEM_TIER_COUNT = 5;
+function systemTier(node: KrsNode): 0 | 1 | 2 | 3 | 4 {
   if (node.kind === "user") return 0;
   if (node.kind === "client") return 1;
-  if (node.tags.includes("external") || INFRA_KIND_SET.has(node.kind)) return 3;
+  if (INFRA_KIND_SET.has(node.kind)) return 3;
+  if (node.tags.includes("external")) return 4;
   return 2;
 }
 
@@ -1312,7 +1323,7 @@ function systemTier(node: KrsNode): 0 | 1 | 2 | 3 {
  * Force a kind-based layered placement for the system-view (Phase 6 of #823).
  *
  * Two-step layering:
- *   1. Bucket each node into one of four tiers (`systemTier`).
+ *   1. Bucket each node into one of five tiers (`systemTier`).
  *   2. Within each tier, run a fresh topological sort on the intra-tier
  *      edges to assign sub-rows. Cross-tier edges don't influence sub-rows
  *      (the tier order already pins them).
@@ -1322,14 +1333,14 @@ function systemTier(node: KrsNode): 0 | 1 | 2 | 3 {
  * and a single `database D` yields A at row 0, B at row 1, C at row 2,
  * D at row 3 — the call chain flows top-to-bottom and the dep sits below.
  *
- * Returns `null` when no `user`, `client`, or dep node appears — in that
- * case there is no kind-based separation to enforce, so the caller falls
- * back to top-level topological layering. This keeps service drill-down
+ * Returns `null` when no `user`, `client`, infra, or external node appears —
+ * in that case there is no kind-based separation to enforce, so the caller
+ * falls back to top-level topological layering. This keeps service drill-down
  * views (domains / usecases / resources) on the existing topo path.
  */
 function assignForcedSystemLayers(nodes: KrsNode[], edges: KrsEdge[]): Map<string, number> | null {
-  const occupied = [false, false, false, false] as [boolean, boolean, boolean, boolean];
-  const byTier: KrsNode[][] = [[], [], [], []];
+  const occupied: boolean[] = new Array(SYSTEM_TIER_COUNT).fill(false);
+  const byTier: KrsNode[][] = Array.from({ length: SYSTEM_TIER_COUNT }, () => []);
   for (const n of nodes) {
     const t = systemTier(n);
     occupied[t] = true;
@@ -1337,7 +1348,7 @@ function assignForcedSystemLayers(nodes: KrsNode[], edges: KrsEdge[]): Map<strin
   }
 
   // No system-view signal beyond plain internal services → let topo handle it.
-  if (!occupied[0] && !occupied[1] && !occupied[3]) return null;
+  if (!occupied[0] && !occupied[1] && !occupied[3] && !occupied[4]) return null;
 
   // Per-tier sub-layer assignment via topological sort on intra-tier edges.
   const subLayers: Map<string, number>[] = byTier.map((tierNodes) => {
@@ -1353,7 +1364,7 @@ function assignForcedSystemLayers(nodes: KrsNode[], edges: KrsEdge[]): Map<strin
   // (max sub-layer + 1) when occupied, 0 when empty).
   const tierBase: number[] = [];
   let acc = 0;
-  for (let t = 0; t < 4; t++) {
+  for (let t = 0; t < SYSTEM_TIER_COUNT; t++) {
     tierBase.push(acc);
     if (occupied[t]) {
       let maxSub = 0;
@@ -1370,12 +1381,85 @@ function assignForcedSystemLayers(nodes: KrsNode[], edges: KrsEdge[]): Map<strin
     layers.set(n.id, tierBase[t] + (subLayers[t].get(n.id) ?? 0));
   }
 
+  // Post-pass: mirror of the user pull-down for the infra tier (Issue #974).
+  // An infra node used only by a service that sits above the deepest internal
+  // service would otherwise be forced to the global bottom, with a long edge
+  // cutting through several intermediate rows. Pull each infra node up to one
+  // row below its deepest source. Strictly upward — never push a node down.
+  // Infra with no incoming edges keeps the bottom-tier default.
+  //
+  // Iterate to a fixed point so that infra-on-infra chains propagate
+  // regardless of `byTier[3]` order: when an upstream node gets pulled up,
+  // its downstream consumers see the updated layer on the next pass.
+  // Bounded by `byTier[3].length` iterations (each pass either pulls at
+  // least one node up or terminates), so the cost stays linear.
+  //
+  // NB: this pull-up runs only on the infra tier (3), not on external (4).
+  // External is the *upper* dep tier's sibling sitting strictly below it, so
+  // pulling external up would let it collide with the infra row and undo the
+  // infra/external split that narrows the diagram (#1724). External placement
+  // is handled separately below.
+  const infraIds = new Set(byTier[3].map((n) => n.id));
+  const inByInfra = new Map<string, string[]>();
+  for (const e of edges) {
+    if (!infraIds.has(e.to)) continue;
+    const list = inByInfra.get(e.to) ?? [];
+    list.push(e.from);
+    inByInfra.set(e.to, list);
+  }
+  for (let pass = 0; pass < byTier[3].length; pass++) {
+    let changed = false;
+    for (const d of byTier[3]) {
+      const sources = inByInfra.get(d.id);
+      if (!sources || sources.length === 0) continue;
+      let maxSourceLayer = -Infinity;
+      for (const sid of sources) {
+        const sl = layers.get(sid);
+        if (sl === undefined) continue;
+        if (sl > maxSourceLayer) maxSourceLayer = sl;
+      }
+      if (!Number.isFinite(maxSourceLayer)) continue;
+      const desired = maxSourceLayer + 1;
+      const current = layers.get(d.id) ?? 0;
+      if (desired < current) {
+        layers.set(d.id, desired);
+        changed = true;
+      }
+    }
+    if (!changed) break;
+  }
+
+  // External tier (4): place it as a fresh band strictly below every other
+  // node (services, domains, and infra after their pull-up). Third-party SaaS
+  // reads as the outermost dependency, and keeping it on its own bottom band
+  // — rather than merged with infra — is what halves the widest row (#1724).
+  // We intentionally do NOT pull external up toward shallow consumers: that
+  // would reintroduce the infra/external overlap. The resulting skip-layer
+  // edges to external are rescued by orthogonal routing (ADR-20260429-01).
+  if (byTier[4].length > 0) {
+    const externalIds = new Set(byTier[4].map((n) => n.id));
+    let maxOtherLayer = 0;
+    for (const [id, l] of layers) {
+      if (externalIds.has(id)) continue;
+      if (l > maxOtherLayer) maxOtherLayer = l;
+    }
+    const externalBase = maxOtherLayer + 1;
+    for (const n of byTier[4]) {
+      layers.set(n.id, externalBase + (subLayers[4].get(n.id) ?? 0));
+    }
+  }
+
   // Post-pass: an actor that bypasses the client tier (e.g. an admin that
   // connects directly to a backend service) would otherwise sit in the top
   // row and have its edge cut through any intermediate client card. Pull
   // each user whose outgoing edges all target a deeper row down to one row
   // above its closest target. Users with no outgoing edges keep the tier-0
   // placement.
+  //
+  // Runs last, after the infra pull-up and the external band, so a user
+  // whose only target is an external node is pulled down relative to that
+  // node's *final* bottom-band row — not its provisional pre-band row, which
+  // would leave the actor floating several rows above its sole target.
   const outByUser = new Map<string, string[]>();
   for (const e of edges) {
     const fromNode = nodes.find((n) => n.id === e.from);
@@ -1399,49 +1483,6 @@ function assignForcedSystemLayers(nodes: KrsNode[], edges: KrsEdge[]): Map<strin
     if (desired > current) layers.set(u.id, desired);
   }
 
-  // Post-pass: mirror of the user pull-down for the dep tier (Issue #974).
-  // A dep node (infra/external) used only by a service that sits above the
-  // deepest internal service would otherwise be forced to the global bottom,
-  // with a long edge cutting through several intermediate rows. Pull each
-  // dep up to one row below its deepest source. Strictly upward — never
-  // push a dep down. Deps with no incoming edges keep the bottom-tier
-  // default.
-  //
-  // Iterate to a fixed point so that dep-on-dep chains propagate
-  // regardless of `byTier[3]` order: when an upstream dep gets pulled up,
-  // its downstream consumers see the updated layer on the next pass.
-  // Bounded by `byTier[3].length` iterations (each pass either pulls at
-  // least one dep up or terminates), so the cost stays linear in the
-  // number of deps.
-  const depIds = new Set(byTier[3].map((n) => n.id));
-  const inByDep = new Map<string, string[]>();
-  for (const e of edges) {
-    if (!depIds.has(e.to)) continue;
-    const list = inByDep.get(e.to) ?? [];
-    list.push(e.from);
-    inByDep.set(e.to, list);
-  }
-  for (let pass = 0; pass < byTier[3].length; pass++) {
-    let changed = false;
-    for (const d of byTier[3]) {
-      const sources = inByDep.get(d.id);
-      if (!sources || sources.length === 0) continue;
-      let maxSourceLayer = -Infinity;
-      for (const sid of sources) {
-        const sl = layers.get(sid);
-        if (sl === undefined) continue;
-        if (sl > maxSourceLayer) maxSourceLayer = sl;
-      }
-      if (!Number.isFinite(maxSourceLayer)) continue;
-      const desired = maxSourceLayer + 1;
-      const current = layers.get(d.id) ?? 0;
-      if (desired < current) {
-        layers.set(d.id, desired);
-        changed = true;
-      }
-    }
-    if (!changed) break;
-  }
   return layers;
 }
 
