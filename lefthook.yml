@@ -48,6 +48,13 @@ pre-push:
     at-check-coverage:
       glob: "{docs/acceptance/**,scripts/acceptance/**}"
       run: pnpm exec tsx scripts/acceptance/check-coverage.ts --strict
+    app-shortcut-docs-sync:
+      # Every `keybinding` chord registered in packages/app must be documented
+      # in docs/tools/app.md and its .ja twin (Issue #1715). Catches a shortcut
+      # added without a docs update — the kind of drift that shipped the page
+      # without `mod+shift+p`. The vitest mirror in scripts/lint runs it in CI.
+      glob: "{packages/app/src/**,docs/tools/**,scripts/lint/app-shortcut-docs-sync.ts}"
+      run: pnpm run lint:app-shortcut-docs-sync
     reference-docs-check:
       # The machine-derived tables in docs/spec/*.md (and the .ja.md
       # counterparts) are generated from reference-data.ts — fail if a hand

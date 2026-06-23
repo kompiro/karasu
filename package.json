@@ -51,6 +51,7 @@
     "lint:e2e-page-goto": "tsx scripts/lint/no-direct-page-goto.ts",
     "lint:concept-adr-refs": "tsx scripts/lint/concept-adr-refs.ts",
     "lint:spec-structure-sync": "tsx scripts/lint/spec-structure-sync.ts",
+    "lint:app-shortcut-docs-sync": "tsx scripts/lint/app-shortcut-docs-sync.ts",
     "tpl:validate": "tpl validate --config adr.config.json --packages-root packages",
     "tpl:related": "tpl related --config adr.config.json",
     "tpl:review:body": "tpl review-body --repo kompiro/karasu",

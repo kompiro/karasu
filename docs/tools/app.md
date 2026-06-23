@@ -135,7 +135,7 @@ assisted by:
   For `.krs.style` files a **✨ Tidy** button merges duplicate rules instead.
 - A **live preview** that re-renders as you type — no save required.
 - A collapsible **sidebar** (`Ctrl/Cmd+B`) that switches between a **Files** tree
-  (`Ctrl+Shift+E`) and an **Outline** of the current model (`Ctrl+Shift+O`).
+  (`Ctrl/Cmd+Shift+E`) and an **Outline** of the current model (`Ctrl/Cmd+Shift+O`).
   Selecting an outline node highlights it in the diagram.
 
 The edit pane also has **Chat** and **Settings** tabs. Chat is an optional AI
@@ -150,8 +150,8 @@ Settings first.
 | `Ctrl/Cmd+1` … `Ctrl/Cmd+4` | Switch to System / Deploy / Org / CRUD view |
 | `Ctrl/Cmd+Shift+F` | Toggle preview focus (full width) |
 | `Ctrl/Cmd+B` | Toggle the sidebar (playground) |
-| `Ctrl+Shift+E` | Show the Files tree (playground) |
-| `Ctrl+Shift+O` | Show the Outline (playground) |
+| `Ctrl/Cmd+Shift+E` | Show the Files tree (playground) |
+| `Ctrl/Cmd+Shift+O` | Show the Outline (playground) |
 | `Shift+Alt+F` | Format the current `.krs` file (playground) |
 
 ## See also
