@@ -146,6 +146,7 @@ Settings first.
 
 | Shortcut | Action |
 | --- | --- |
+| `Ctrl/Cmd+Shift+P` | Open the command palette — search and run any command |
 | `Ctrl/Cmd+1` … `Ctrl/Cmd+4` | Switch to System / Deploy / Org / CRUD view |
 | `Ctrl/Cmd+Shift+F` | Toggle preview focus (full width) |
 | `Ctrl/Cmd+B` | Toggle the sidebar (playground) |

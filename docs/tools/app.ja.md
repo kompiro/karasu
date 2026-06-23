@@ -145,6 +145,7 @@ System / Deploy / Org が表す 3 つの次元については
 
 | ショートカット | 動作 |
 | --- | --- |
+| `Ctrl/Cmd+Shift+P` | コマンドパレットを開く — 全コマンドを検索して実行 |
 | `Ctrl/Cmd+1` … `Ctrl/Cmd+4` | System / Deploy / Org / CRUD ビューへ切り替え |
 | `Ctrl/Cmd+Shift+F` | プレビューフォーカス（全幅）を切り替え |
 | `Ctrl/Cmd+B` | サイドバーを切り替え（プレイグラウンド） |
