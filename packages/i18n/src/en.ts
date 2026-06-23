@@ -175,6 +175,10 @@ export const en: Translations = {
     "Export to draw.io (mxGraph XML) — a layout escape hatch you can polish in diagrams.net",
   "preview.export.drawio.failed": ({ detail }) => `⚠ draw.io export failed: ${detail}`,
 
+  // Link to the documentation site (opens in a new tab)
+  "preview.docs.label": "📖 Docs",
+  "preview.docs.ariaLabel": "Open the documentation site in a new tab",
+
   // Warnings (rendered in the WarningPanel)
   "warning.domainDispersal.message": ({ domainId }) =>
     `Domain "${domainId}" appears under multiple services`,

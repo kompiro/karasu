@@ -174,6 +174,10 @@ export const ja: Partial<Translations> = {
     "draw.io (mxGraph XML) にエクスポート — diagrams.net でレイアウトを仕上げるための逃げ道です",
   "preview.export.drawio.failed": ({ detail }) => `⚠ draw.io エクスポートに失敗しました: ${detail}`,
 
+  // ドキュメントサイトへのリンク（新しいタブで開く）
+  "preview.docs.label": "📖 Docs",
+  "preview.docs.ariaLabel": "ドキュメントサイトを新しいタブで開く",
+
   // Warnings (rendered in the WarningPanel)
   "warning.domainDispersal.message": ({ domainId }) =>
     `domain "${domainId}" は複数の service の配下に登場します`,

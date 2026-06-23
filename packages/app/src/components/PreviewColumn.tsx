@@ -10,7 +10,7 @@ import { usePreview } from "../state/preview-context.js";
 import { useActiveViewData } from "../state/active-view-data.js";
 import { useTranslation } from "../i18n/index.js";
 import { useCommand } from "../keyboard/use-command.js";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuTrigger,
@@ -22,6 +22,11 @@ const EXPORT_ERROR_AUTO_DISMISS_MS = 6000;
 // Unlike anchor downloads (which revoke at 0), the "Open All Views" blob must
 // outlive the new tab's initial load, so we defer the revoke (#1529).
 const ALL_VIEWS_BLOB_REVOKE_DELAY_MS = 10_000;
+
+// The published documentation site (GitHub Pages). Opened in a new tab from the
+// Preview toolbar — distinct from `↗ Reference`, which pops out the in-app
+// reference for the active view.
+const DOCS_SITE_URL = "https://kompiro.github.io/karasu/";
 
 export function PreviewColumn() {
   const {
@@ -245,6 +250,16 @@ export function PreviewColumn() {
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
+
+        <a
+          className={buttonVariants({ variant: "actionable" })}
+          href={DOCS_SITE_URL}
+          target="_blank"
+          rel="noopener noreferrer"
+          aria-label={t("preview.docs.ariaLabel")}
+        >
+          {t("preview.docs.label")}
+        </a>
 
         <Button
           variant="actionable"

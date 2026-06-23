@@ -275,6 +275,27 @@ describe("PreviewColumn", () => {
     });
   });
 
+  describe("Docs link", () => {
+    it("links to the documentation site, opening in a new tab", () => {
+      const { getByRole } = renderPreview(makeProps());
+      const link = getByRole("link", { name: /documentation site/i });
+      expect(link.getAttribute("href")).toBe("https://kompiro.github.io/karasu/");
+      expect(link.getAttribute("target")).toBe("_blank");
+      // noopener/noreferrer guards the new tab against window.opener access.
+      expect(link.getAttribute("rel")).toBe("noopener noreferrer");
+    });
+
+    it("uses the Japanese aria-label when locale=ja", () => {
+      const { getByRole } = render(
+        <PreviewProvider value={makeProps()}>
+          <PreviewColumn />
+        </PreviewProvider>,
+        "ja",
+      );
+      expect(getByRole("link", { name: /ドキュメントサイト/ })).toBeTruthy();
+    });
+  });
+
   describe("Reference command", () => {
     const findOpenReference = (registry: ReturnType<typeof useCommandRegistry>) =>
       registry.getCommands().find((c) => c.id === "view.openReference");
