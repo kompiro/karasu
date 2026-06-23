@@ -134,7 +134,7 @@ System / Deploy / Org が表す 3 つの次元については
   `.krs.style` ファイルでは代わりに **✨ Tidy** ボタンが重複ルールをまとめる。
 - 入力に追従して再描画される**ライブプレビュー**（保存不要）。
 - 折りたたみ可能な**サイドバー**（`Ctrl/Cmd+B`）。**ファイル**ツリー
-  （`Ctrl+Shift+E`）と現在のモデルの**アウトライン**（`Ctrl+Shift+O`）を
+  （`Ctrl/Cmd+Shift+E`）と現在のモデルの**アウトライン**（`Ctrl/Cmd+Shift+O`）を
   切り替えられる。アウトラインのノードを選択すると図中でハイライトされる。
 
 編集ペインには **Chat** と **Settings** タブもあります。Chat は `.krs` の下書きや
@@ -149,8 +149,8 @@ System / Deploy / Org が表す 3 つの次元については
 | `Ctrl/Cmd+1` … `Ctrl/Cmd+4` | System / Deploy / Org / CRUD ビューへ切り替え |
 | `Ctrl/Cmd+Shift+F` | プレビューフォーカス（全幅）を切り替え |
 | `Ctrl/Cmd+B` | サイドバーを切り替え（プレイグラウンド） |
-| `Ctrl+Shift+E` | ファイルツリーを表示（プレイグラウンド） |
-| `Ctrl+Shift+O` | アウトラインを表示（プレイグラウンド） |
+| `Ctrl/Cmd+Shift+E` | ファイルツリーを表示（プレイグラウンド） |
+| `Ctrl/Cmd+Shift+O` | アウトラインを表示（プレイグラウンド） |
 | `Shift+Alt+F` | 現在の `.krs` をフォーマット（プレイグラウンド） |
 
 ## 関連項目
