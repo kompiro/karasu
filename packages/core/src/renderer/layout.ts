@@ -1323,7 +1323,7 @@ function systemTier(node: KrsNode): 0 | 1 | 2 | 3 | 4 {
  * Force a kind-based layered placement for the system-view (Phase 6 of #823).
  *
  * Two-step layering:
- *   1. Bucket each node into one of four tiers (`systemTier`).
+ *   1. Bucket each node into one of five tiers (`systemTier`).
  *   2. Within each tier, run a fresh topological sort on the intra-tier
  *      edges to assign sub-rows. Cross-tier edges don't influence sub-rows
  *      (the tier order already pins them).
@@ -1333,9 +1333,9 @@ function systemTier(node: KrsNode): 0 | 1 | 2 | 3 | 4 {
  * and a single `database D` yields A at row 0, B at row 1, C at row 2,
  * D at row 3 — the call chain flows top-to-bottom and the dep sits below.
  *
- * Returns `null` when no `user`, `client`, or dep node appears — in that
- * case there is no kind-based separation to enforce, so the caller falls
- * back to top-level topological layering. This keeps service drill-down
+ * Returns `null` when no `user`, `client`, infra, or external node appears —
+ * in that case there is no kind-based separation to enforce, so the caller
+ * falls back to top-level topological layering. This keeps service drill-down
  * views (domains / usecases / resources) on the existing topo path.
  */
 function assignForcedSystemLayers(nodes: KrsNode[], edges: KrsEdge[]): Map<string, number> | null {
@@ -1379,35 +1379,6 @@ function assignForcedSystemLayers(nodes: KrsNode[], edges: KrsEdge[]): Map<strin
   for (const n of nodes) {
     const t = systemTier(n);
     layers.set(n.id, tierBase[t] + (subLayers[t].get(n.id) ?? 0));
-  }
-
-  // Post-pass: an actor that bypasses the client tier (e.g. an admin that
-  // connects directly to a backend service) would otherwise sit in the top
-  // row and have its edge cut through any intermediate client card. Pull
-  // each user whose outgoing edges all target a deeper row down to one row
-  // above its closest target. Users with no outgoing edges keep the tier-0
-  // placement.
-  const outByUser = new Map<string, string[]>();
-  for (const e of edges) {
-    const fromNode = nodes.find((n) => n.id === e.from);
-    if (!fromNode || fromNode.kind !== "user") continue;
-    const list = outByUser.get(e.from) ?? [];
-    list.push(e.to);
-    outByUser.set(e.from, list);
-  }
-  for (const u of byTier[0]) {
-    const targets = outByUser.get(u.id);
-    if (!targets || targets.length === 0) continue;
-    let minTargetLayer = Infinity;
-    for (const tid of targets) {
-      const tl = layers.get(tid);
-      if (tl === undefined) continue;
-      if (tl < minTargetLayer) minTargetLayer = tl;
-    }
-    if (!Number.isFinite(minTargetLayer)) continue;
-    const desired = Math.max(0, minTargetLayer - 1);
-    const current = layers.get(u.id) ?? 0;
-    if (desired > current) layers.set(u.id, desired);
   }
 
   // Post-pass: mirror of the user pull-down for the infra tier (Issue #974).
@@ -1476,6 +1447,40 @@ function assignForcedSystemLayers(nodes: KrsNode[], edges: KrsEdge[]): Map<strin
     for (const n of byTier[4]) {
       layers.set(n.id, externalBase + (subLayers[4].get(n.id) ?? 0));
     }
+  }
+
+  // Post-pass: an actor that bypasses the client tier (e.g. an admin that
+  // connects directly to a backend service) would otherwise sit in the top
+  // row and have its edge cut through any intermediate client card. Pull
+  // each user whose outgoing edges all target a deeper row down to one row
+  // above its closest target. Users with no outgoing edges keep the tier-0
+  // placement.
+  //
+  // Runs last, after the infra pull-up and the external band, so a user
+  // whose only target is an external node is pulled down relative to that
+  // node's *final* bottom-band row — not its provisional pre-band row, which
+  // would leave the actor floating several rows above its sole target.
+  const outByUser = new Map<string, string[]>();
+  for (const e of edges) {
+    const fromNode = nodes.find((n) => n.id === e.from);
+    if (!fromNode || fromNode.kind !== "user") continue;
+    const list = outByUser.get(e.from) ?? [];
+    list.push(e.to);
+    outByUser.set(e.from, list);
+  }
+  for (const u of byTier[0]) {
+    const targets = outByUser.get(u.id);
+    if (!targets || targets.length === 0) continue;
+    let minTargetLayer = Infinity;
+    for (const tid of targets) {
+      const tl = layers.get(tid);
+      if (tl === undefined) continue;
+      if (tl < minTargetLayer) minTargetLayer = tl;
+    }
+    if (!Number.isFinite(minTargetLayer)) continue;
+    const desired = Math.max(0, minTargetLayer - 1);
+    const current = layers.get(u.id) ?? 0;
+    if (desired > current) layers.set(u.id, desired);
   }
 
   return layers;
