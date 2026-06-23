@@ -11,7 +11,6 @@ on:
 
 permissions:
   contents: read
-  packages: read
   pages: write
   id-token: write
 
@@ -37,8 +36,6 @@ jobs:
           cache: "pnpm"
 
       - run: pnpm install --frozen-lockfile
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       # Generates the Starlight content collection from docs/, fails on any
       # unresolved in-site link/anchor (check-links), then builds the static site.

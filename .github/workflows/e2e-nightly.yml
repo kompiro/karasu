@@ -17,7 +17,6 @@ concurrency:
 
 permissions:
   contents: read
-  packages: read
   issues: write
 
 jobs:
@@ -38,8 +37,6 @@ jobs:
           cache: "pnpm"
 
       - run: pnpm install --frozen-lockfile
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Cache Playwright browsers
         uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
@@ -90,7 +87,6 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
-      packages: read
       issues: write
     steps:
       - name: Open / update / close tracking issue

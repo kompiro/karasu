@@ -23,7 +23,6 @@ concurrency:
 
 permissions:
   contents: write # push the chore/release-* branch
-  packages: read # install @kompiro/* dev deps from GitHub Packages
 
 jobs:
   prepare:
@@ -42,15 +41,11 @@ jobs:
           cache: "pnpm"
 
       - run: pnpm install --frozen-lockfile
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       # `pnpm version-packages` = `changeset version && pnpm install
       # --lockfile-only`. If no changesets are pending the tree stays clean
       # and we stop without pushing an empty release branch.
       - name: Version and push release branch
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"

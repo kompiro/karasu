@@ -26,7 +26,6 @@ concurrency:
 
 permissions:
   contents: read
-  packages: read
 
 jobs:
   validate:
@@ -43,8 +42,6 @@ jobs:
           cache: "pnpm"
 
       - run: pnpm install --frozen-lockfile
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Validate TPL frontmatter and README index
         run: pnpm run tpl:validate

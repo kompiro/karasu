@@ -29,7 +29,6 @@ concurrency:
 
 permissions:
   contents: read
-  packages: read
 
 jobs:
   validate:
@@ -46,8 +45,6 @@ jobs:
           cache: "pnpm"
 
       - run: pnpm install --frozen-lockfile
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Validate ADR frontmatter
         run: pnpm run adr:validate
