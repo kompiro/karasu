@@ -53,6 +53,10 @@ view にしか実装されておらず、これは
 - 宣言順を壊さない: forced layer 内は宣言順保持（既存方針 Q11）。grid 化は
   row-major で宣言順を保つ。
 - forced kind-based layering / barycenter / edge 方向制御を壊さない。
+- **適用範囲（v1）**: 兄弟が並ぶ全コンテナに一律適用する。論理 view
+  （system→service / service→domain / domain→usecase / usecase→resource）に
+  加えて org（team 一覧）・deploy（deploy ノード）も含める。経路を統一する
+  以上、特定コンテナだけ除外する方が不整合を生むため。
 - out of scope（v1）: span of control 過多を知らせる info 診断（follow-up 候補）。
 
 ## 検討した選択肢
@@ -61,12 +65,14 @@ view にしか実装されておらず、これは
 
 メイン経路の配置ループに、兄弟数に応じた格子折り返しを入れる。
 
-- **既定（style 未指定）**: 列数 = `ceil(sqrt(n))` を目安に、row-major・宣言順で
-  畳む。例: 2 → そのまま 1 行、9 → 3×3、10 → 4×3。≈ 正方形に近づけることで
-  横長 1 行も縦長 1 列も避ける。
-- **著者オーバーライド**: `.krs.style` で列数を明示でき、指定時はそれを優先。
-  既存の `column: left/center/right`（単数）と同じ「自動既定 + 著者上書き」の作法。
-  既存 `layoutHints` / `bucketByColumn` を足場にできる。
+- **既定（style 未指定）**: 列数 = `min(ceil(sqrt(n)), 5)`。≈ 正方形に近づけつつ
+  7±2 由来で最大 5 列にキャップし、横幅が広がりすぎる前に下へ伸ばす。row-major・
+  宣言順で畳む。例: 2 → 1 行、9 → 3×3、10 → 4×3、25 → 5×5、30 → 5×6。
+- **著者オーバーライド**: `.krs.style` の `grid-columns: N` で列数を明示でき、指定時は
+  それを優先（自動キャップより上の値も許可）。既存の `column: left/center/right`
+  （単数 = x 方向バケツ）と紛れないよう **複数形 + `grid-` 接頭辞**で命名し、
+  「自動既定 + 著者上書き」の作法に乗せる。既存 `layoutHints` / `bucketByColumn` を
+  足場にできる。
 - **`MAX_LAYER_WIDTH` は上限の安全弁として残す**: 自動でも著者指定でも、grid の
   1 行が `MAX_LAYER_WIDTH` を超える場合はさらに折り返す。
 - **2 経路の統一**: メイン経路と `layoutMultipleSystems` の sub-row ロジックを
@@ -128,20 +134,25 @@ view にしか実装されておらず、これは
 案3 も不十分。決定的なバランス grid を既定にしつつ `.krs.style` で上書きでき、
 かつ 2 経路を統一することで、可読性・決定性・parity を同時に満たす。
 スナップショット影響は大きいが、出力の改善が目的そのものなので許容する。
+確定した詳細: style 名 `grid-columns: N`、自動列数 `min(ceil(sqrt(n)), 5)`、
+適用範囲は org / deploy を含む全コンテナ。
 
 ### 実装の指針
 
 1. 兄弟パッキングを行う共通関数を切り出す（入力: ノード寸法列・列数方針・
    `MAX_LAYER_WIDTH`、出力: 各ノードの行・列・座標）。決定的・row-major・宣言順。
-2. 列数の決定: style 指定があればその値、なければ `ceil(sqrt(n))`。いずれも
-   1 行が `MAX_LAYER_WIDTH` を超える場合はさらに折り返す。
+2. 列数の決定: `grid-columns` 指定があればその値、なければ `min(ceil(sqrt(n)), 5)`。
+   いずれも 1 行が `MAX_LAYER_WIDTH` を超える場合はさらに折り返す。
 3. メイン経路（`layout()` の配置ループ `layout.ts:721-750`）をこの共通関数に
-   置き換える。`layoutMultipleSystems` の sub-row 部分も同関数へ寄せる。
-4. forced kind-based layering との関係: 各 forced layer の**中で**兄弟が多い場合に
-   その layer 内を grid 化する（layer 構造自体は壊さない）。barycenter / edge 方向
-   制御との順序関係を定義する。
-5. `.krs.style` の列数プロパティを追加（命名は未解決、下記参照）。style パーサ /
-   resolver / `ResolvedLayoutHints` を拡張。
+   置き換える。`layoutMultipleSystems` の sub-row 部分も同関数へ寄せ、org / deploy
+   のコンテナ配置も同関数を通す。
+4. forced kind-based layering との関係: layer 分割を**先に**行い、各 forced layer の
+   **中で**兄弟数に応じて grid 化する（layer 構造自体は壊さない）。barycenter /
+   edge 方向制御で順序を確定した**後**に row-major で grid へ畳む。
+5. `.krs.style` に `grid-columns: N`（正の整数）を追加。style パーサ / resolver /
+   `ResolvedLayoutHints` を拡張。`docs/spec/style.md` / `style.ja.md` に規定を追記し、
+   その章末尾の `> Related TPLs:` 注釈で本件の TPL に back-ref する（spec 改訂時の
+   proactive TPL 同梱ルール; 今回は既存 TPL-20260510-21 への紐付けで満たす）。
 6. AT: `docs/acceptance/` に新規ファイル。TC は:
    - 子 N 個（N = 1,2,9,10,17…）で期待する行×列に畳まれる（決定的）
    - `MAX_LAYER_WIDTH` を超える幅では style 指定があってもさらに折り返す
@@ -158,20 +169,16 @@ view にしか実装されておらず、これは
 
 - 既存ユーザーへの影響: 既存モデルの**描画結果が変わる**（横並びが格子化）。
   破壊的変更ではない（テキストは不変、SVG のレイアウトのみ）。
-- ドキュメント更新: `docs/spec/style.md` / `style.ja.md`（列数プロパティ追加）、
-  `docs/concepts*.md`（scoped glance がレイアウトでも担保される旨）、必要なら
-  `docs/spec/diagnostics.md` は変更なし（診断は起こさない）。
+- ドキュメント更新: `docs/spec/style.md` / `style.ja.md`（`grid-columns` 追加 +
+  Related TPLs 注釈）、`docs/concepts*.md`（scoped glance がレイアウトでも
+  担保される旨）。`docs/spec/diagnostics.md` は変更なし（診断は起こさない）。
 - テスト・examples への影響: renderer のスナップショットを広範に再生成。
-  `examples/` の見た目が変わりうる（`update-examples` skill で同期）。
+  論理 view に加え org / deploy view の出力も変わりうる。`examples/` の見た目が
+  変わりうる（`update-examples` skill で同期）。
 
-## 未解決の問い / 決めないこと
+## 決めないこと（v1 では扱わない）
 
-- **style プロパティ名**: 単数 `column`（left/center/right、既存）と紛らわしい。
-  複数 `columns: N` か `grid-columns: N` か別案か。
-- **列数の正確な式**: `ceil(sqrt(n))` を基本としつつ、上限（例: 7±2 由来で最大
-  5〜6 列）を設けるか。縦に伸びすぎるのを許容するか。
-- **forced layering との順序**: layer 分割が先か grid 化が先か、両立のルール。
-- **resource 行・org / deploy コンテナ**を同じ grid 規則に含めるか（v1 で含める
-  か後続にするか）。
 - **info 診断（span of control 過多の気づき）**: 本 Doc では起こさない。レイアウトで
   救えた後に、なお別途「気づき」を出す価値があるかを follow-up で再評価する。
+- **`grid-columns` の view 別オーバーライド**（例: drill-down だけ別列数）: v1 は
+  ノードに対する単一指定のみ。view 別の出し分けが要るとわかった時点で再検討。
