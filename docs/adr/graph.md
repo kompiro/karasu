@@ -1,6 +1,6 @@
 # ADR Dependency Graph — Overview
 
-226 ADRs across 15 topics. Clusters group by `topic` frontmatter field. Edges crossing cluster borders are cross-topic dependencies.
+228 ADRs across 15 topics. Clusters group by `topic` frontmatter field. Edges crossing cluster borders are cross-topic dependencies.
 ```mermaid
 flowchart TD
   subgraph adr-tooling["adr-tooling"]
@@ -97,6 +97,7 @@ flowchart TD
     ADR_20260619_01["ADR-20260619-01<br/>Dependabot security alert（undici #37/#38, dompu..."]
     ADR_20260619_02["ADR-20260619-02<br/>npm publish を Trusted Publishing（GitHub OIDC）に移..."]
     ADR_20260623_01["ADR-20260623-01<br/>リリースを workflow_dispatch 起動の Prepare → release P..."]
+    ADR_20260623_03["ADR-20260623-03<br/>Dependabot Batch Triage (2026-06-23) — `pnpm/ac..."]
   end
   subgraph chat-ai["chat-ai"]
     ADR_20260407_04["ADR-20260407-04<br/>Cloudflare Pages デプロイ基盤と BYOK AI 連携"]
@@ -140,6 +141,7 @@ flowchart TD
     ADR_20260616_05["ADR-20260616-05<br/>user は system-scoped とする（identity ではなく relation..."]
     ADR_20260616_09["ADR-20260616-09<br/>deploy unit は共有 infra ノードを realize できる（store ki..."]
     ADR_20260623_02["ADR-20260623-02<br/>client は realizes / owns の対象になれる（valid-target に..."]
+    ADR_20260623_04["ADR-20260623-04<br/>vector store / search index は `database` の `[in..."]
   end
   subgraph edges["edges"]
     ADR_20260404_09["ADR-20260404-09<br/>クロスシステムサービス参照 — ドット記法（`SystemId.ServiceId`）"]
@@ -585,16 +587,18 @@ flowchart TD
   class ADR_20260619_02 accepted
   class ADR_20260623_01 accepted
   class ADR_20260623_02 accepted
+  class ADR_20260623_03 accepted
+  class ADR_20260623_04 accepted
 ```
 
 ## Per-topic detail
 
 - [`adr-tooling`](graph/adr-tooling.md) — 5 ADRs
 - [`app-ui`](graph/app-ui.md) — 39 ADRs
-- [`build`](graph/build.md) — 45 ADRs
+- [`build`](graph/build.md) — 46 ADRs
 - [`chat-ai`](graph/chat-ai.md) — 9 ADRs
 - [`cli`](graph/cli.md) — 11 ADRs
-- [`core-concepts`](graph/core-concepts.md) — 17 ADRs
+- [`core-concepts`](graph/core-concepts.md) — 18 ADRs
 - [`edges`](graph/edges.md) — 14 ADRs
 - [`navigation`](graph/navigation.md) — 9 ADRs
 - [`parser`](graph/parser.md) — 17 ADRs

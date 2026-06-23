@@ -270,6 +270,18 @@ export const REFERENCE_DATA = {
       },
     },
     {
+      name: "index",
+      appliesTo: ["database"],
+      description: {
+        en: "A derived index for fast search over the system of record — a role, not the SoR itself (omit on a vector DB / ElasticSearch that is itself the SoR)",
+        ja: "正本を高速に検索するために導出された二次インデックス（役割。正本そのものには付けない — vector DB / ElasticSearch でも正本なら不要）",
+      },
+      defaultEffect: {
+        en: "Adds an `index` badge to the database node",
+        ja: "database ノードに `index` バッジを付与",
+      },
+    },
+    {
       name: "async",
       appliesTo: ["edge"],
       description: { en: "Asynchronous communication (for edges)", ja: "非同期通信（エッジ用）" },
