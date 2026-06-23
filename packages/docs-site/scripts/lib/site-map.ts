@@ -10,7 +10,7 @@ export const REPO_BRANCH = "main";
 /**
  * docs-relative paths (POSIX) of the English base files published on the site.
  * Each `.ja.md` sibling, when it exists on disk, is published as the `ja` locale
- * page. Phase 1 scope: guides + syntax/style/tags reference + concepts.
+ * page. Scope: guides + syntax/style/tags/diagnostics reference + concepts + tools.
  */
 export const PUBLISHED_EN_FILES: readonly string[] = [
   "concepts.md",
@@ -25,6 +25,7 @@ export const PUBLISHED_EN_FILES: readonly string[] = [
   "spec/syntax.md",
   "spec/style.md",
   "spec/tags-annotations.md",
+  "spec/diagnostics.md",
 ];
 
 type Locale = "en" | "ja";
