@@ -62,6 +62,36 @@ organization Corp {
     const ownsWarnings = result.warnings.filter((w) => w.kind === "invalid-owns");
     expect(ownsWarnings).toHaveLength(2);
   });
+
+  it("does not warn when owns references a client ID (ADR-20260623-02)", () => {
+    const krs = `
+system MySystem {
+  client Web [web] {}
+  service Api {}
+}
+organization Corp {
+  team frontend {
+    owns Web
+    owns Api
+  }
+}
+`;
+    const result = compile(krs);
+    expect(result.warnings.filter((w) => w.kind === "invalid-owns")).toHaveLength(0);
+  });
+
+  it("does not warn when owns references a top-level client ID", () => {
+    const krs = `
+client Web [web] {}
+organization Corp {
+  team frontend {
+    owns Web
+  }
+}
+`;
+    const result = compile(krs);
+    expect(result.warnings.filter((w) => w.kind === "invalid-owns")).toHaveLength(0);
+  });
 });
 
 describe("icon mode style-conflict suppression", () => {
@@ -910,6 +940,37 @@ deploy Production {
   store mediaBucket {
     type "Amazon S3"
     realizes MediaStore
+  }
+}
+    `;
+    expect(unresolved(krs)).toHaveLength(0);
+  });
+
+  it("resolves a deploy unit realizing a system-nested client (ADR-20260623-02)", () => {
+    const krs = `
+system S {
+  client Web [web] {}
+  service Api {}
+}
+deploy Production {
+  assets webBundle {
+    realizes Web
+  }
+  oci apiApp {
+    runtime "Kubernetes"
+    realizes Api
+  }
+}
+    `;
+    expect(unresolved(krs)).toHaveLength(0);
+  });
+
+  it("resolves a deploy unit realizing a top-level (unassigned) client", () => {
+    const krs = `
+client Web [web] {}
+deploy Production {
+  assets webBundle {
+    realizes Web
   }
 }
     `;

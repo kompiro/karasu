@@ -2824,6 +2824,40 @@ organization Corp {
       );
       expect(warnings).toHaveLength(0);
     });
+
+    it("does not emit owns-target-not-found when owns references a client (ADR-20260623-02)", () => {
+      const result = Parser.parse(`
+system S {
+  client Web [web] {}
+}
+
+organization Corp {
+  team frontend {
+    owns Web
+  }
+}
+      `);
+      const warnings = result.diagnostics.filter(
+        (d) => d.severity === "warning" && d.code === "owns-target-not-found",
+      );
+      expect(warnings).toHaveLength(0);
+    });
+
+    it("does not emit owns-target-not-found when owns references a top-level client", () => {
+      const result = Parser.parse(`
+client Web [web] {}
+
+organization Corp {
+  team frontend {
+    owns Web
+  }
+}
+      `);
+      const warnings = result.diagnostics.filter(
+        (d) => d.severity === "warning" && d.code === "owns-target-not-found",
+      );
+      expect(warnings).toHaveLength(0);
+    });
   });
 });
 
