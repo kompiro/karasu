@@ -23,6 +23,14 @@ const EXPORT_ERROR_AUTO_DISMISS_MS = 6000;
 // outlive the new tab's initial load, so we defer the revoke (#1529).
 const ALL_VIEWS_BLOB_REVOKE_DELAY_MS = 10_000;
 
+// The published documentation site (GitHub Pages). Reached from the Preview
+// toolbar's "📖 Docs" dropdown, alongside the in-app Reference pop-out. Starlight
+// serves the Japanese docs under the `/ja/` locale prefix, so the link follows
+// the active app locale.
+const DOCS_SITE_BASE_URL = "https://kompiro.github.io/karasu/";
+const docsSiteUrl = (locale: string) =>
+  locale === "ja" ? `${DOCS_SITE_BASE_URL}ja/` : DOCS_SITE_BASE_URL;
+
 export function PreviewColumn() {
   const {
     activeView,
@@ -52,7 +60,7 @@ export function PreviewColumn() {
   // Normalized active-view slice — collapses the per-view ternary chains (#1542).
   const view = useActiveViewData();
 
-  const { t } = useTranslation();
+  const { t, locale } = useTranslation();
   const [exportError, setExportError] = useState<string | null>(null);
 
   // Register "Open Reference" as a command so the reference is reachable from
@@ -246,13 +254,30 @@ export function PreviewColumn() {
           </DropdownMenu>
         </div>
 
-        <Button
-          variant="actionable"
-          onClick={() => openReferenceWindow(activeView)}
-          aria-label="Open reference in a new window"
-        >
-          ↗ Reference
-        </Button>
+        {/* Documentation links: the in-app Reference pop-out and the external
+            docs site, grouped since both point at documentation. */}
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="actionable" aria-label={t("preview.docs.ariaLabel")}>
+              {t("preview.docs.label")} ▾
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuItem onSelect={() => openReferenceWindow(activeView)}>
+              {t("preview.docs.reference.label")}
+            </DropdownMenuItem>
+            <DropdownMenuItem asChild>
+              <a
+                href={docsSiteUrl(locale)}
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label={t("preview.docs.site.ariaLabel")}
+              >
+                {t("preview.docs.site.label")}
+              </a>
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
 
         <Button
           variant="actionable"

@@ -265,13 +265,47 @@ describe("PreviewColumn", () => {
     });
   });
 
-  describe("Reference button", () => {
-    it("shows Reference button for all active views", () => {
-      for (const activeView of ["system", "deploy", "org"] as const) {
-        const { getByRole, unmount } = renderPreview(makeProps({ activeView }));
-        expect(getByRole("button", { name: /Open reference/ })).toBeTruthy();
-        unmount();
-      }
+  describe("Docs dropdown", () => {
+    it("groups the Reference and documentation-site links under a Docs menu", async () => {
+      const user = userEvent.setup();
+      const { getByRole } = renderPreview(makeProps());
+      await user.click(getByRole("button", { name: /Documentation links/ }));
+      // Both items live in the portalled menu (queried from document scope).
+      expect(screen.getByRole("menuitem", { name: /Reference/ })).toBeTruthy();
+      const siteLink = screen.getByRole("menuitem", { name: /documentation site/i });
+      expect(siteLink.getAttribute("href")).toBe("https://kompiro.github.io/karasu/");
+      expect(siteLink.getAttribute("target")).toBe("_blank");
+      // noopener/noreferrer guards the new tab against window.opener access.
+      expect(siteLink.getAttribute("rel")).toBe("noopener noreferrer");
+    });
+
+    it("opens the in-app reference when the Reference item is selected", async () => {
+      const user = userEvent.setup();
+      const openSpy = vi
+        .spyOn(window, "open")
+        .mockReturnValue({ focus: vi.fn<() => void>() } as unknown as Window);
+      const { getByRole } = renderPreview(makeProps({ activeView: "deploy" }));
+      await user.click(getByRole("button", { name: /Documentation links/ }));
+      await user.click(screen.getByRole("menuitem", { name: /Reference/ }));
+      expect(openSpy).toHaveBeenCalledOnce();
+      const url = openSpy.mock.calls[0][0] as string;
+      expect(url).toContain("reference=1");
+      expect(url).toContain("view=deploy");
+      openSpy.mockRestore();
+    });
+
+    it("uses the Japanese trigger label and the /ja/ docs URL when locale=ja", async () => {
+      const user = userEvent.setup();
+      const { getByRole } = render(
+        <PreviewProvider value={makeProps()}>
+          <PreviewColumn />
+        </PreviewProvider>,
+        "ja",
+      );
+      await user.click(getByRole("button", { name: /ドキュメントリンク/ }));
+      const siteLink = screen.getByRole("menuitem", { name: /ドキュメントサイト/ });
+      // Starlight serves the Japanese docs under the /ja/ locale prefix.
+      expect(siteLink.getAttribute("href")).toBe("https://kompiro.github.io/karasu/ja/");
     });
   });
 
