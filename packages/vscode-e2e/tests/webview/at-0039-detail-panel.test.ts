@@ -2,15 +2,22 @@ import * as assert from "node:assert";
 import {
   By,
   EditorView,
-  InputBox,
-  Key,
-  TextEditor,
+  type TextEditor,
   VSBrowser,
   type WebDriver,
-  WebView,
   Workbench,
   until,
 } from "vscode-extension-tester";
+import {
+  ELEMENT_TIMEOUT_MS,
+  type FrameContext,
+  ensureWebViewFrame,
+  isViewActive,
+  openFixtureWithRetry,
+  openPreviewAndEnterFrame,
+  reacquireFrame,
+  switchToView,
+} from "./harness";
 
 /**
  * AT-0039 / AT-0042-vscode (WebView E2E — Phase 6 detail panel +
@@ -64,13 +71,10 @@ import {
  * always provides the team navigation button when team is set).
  *
  * The "File: Open File..." simple-dialog stalls intermittently under
- * xvfb (see the retry pattern shared with AT-0038); we keep the
- * 3-attempt retry here too.
+ * xvfb (the shared `openFixtureWithRetry` 3-attempt retry handles it).
  */
 
-const PREVIEW_TITLE = "karasu Preview";
 const FIXTURE_NAME = "at-0039.krs";
-const ELEMENT_TIMEOUT_MS = 15_000;
 
 // Lines (1-indexed) match `TextEditor.getCoordinates()`. The Customer
 // node identifier in the AT-0039 fixture lives on line 17 (OrderService
@@ -86,17 +90,7 @@ describe("AT-0039 / AT-0042-vscode (WebView) — detail panel + cross-diagram na
   this.timeout(240_000);
 
   let driver: WebDriver;
-  let webview: WebView;
-  let inWebViewFrame = false;
-
-  async function ensureWebViewFrame(): Promise<void> {
-    if (!inWebViewFrame) {
-      await new EditorView().openEditor(PREVIEW_TITLE, 1);
-      await driver.sleep(300);
-      await webview.switchToFrame();
-      inWebViewFrame = true;
-    }
-  }
+  let ctx: FrameContext;
 
   async function dispatchClickOnSelector(
     selector: string,
@@ -173,39 +167,6 @@ describe("AT-0039 / AT-0042-vscode (WebView) — detail panel + cross-diagram na
     }
   }
 
-  async function isViewActive(view: "system" | "deploy" | "org"): Promise<boolean> {
-    return (await driver.executeScript(
-      `const btn = document.querySelector('[data-view="${view}"]');` +
-        "const style = btn ? (btn.getAttribute('style') || '') : '';" +
-        "return style.includes('background');",
-    )) as boolean;
-  }
-
-  // Click a toolbar view button (`system` / `deploy` / `org`) and wait
-  // for the WebView to rebuild. The switchView postMessage causes the
-  // extension to reassign `webview.html`, invalidating the current
-  // frame context — handle that the same way as the drill click.
-  async function switchToView(view: "system" | "deploy" | "org"): Promise<void> {
-    if (await isViewActive(view)) return;
-    await driver.executeScript(
-      `const btn = document.querySelector('[data-view="${view}"]');` +
-        "if (!btn) throw new Error('toolbar view button not found: ' + " +
-        JSON.stringify(view) +
-        ");" +
-        "btn.click();",
-    );
-    await webview.switchBack();
-    inWebViewFrame = false;
-    await driver.sleep(800);
-    await webview.switchToFrame();
-    inWebViewFrame = true;
-    await driver.wait(
-      async () => await isViewActive(view),
-      ELEMENT_TIMEOUT_MS,
-      `${view} view did not become active after toolbar click`,
-    );
-  }
-
   before(async () => {
     const fixturePath = process.env.KARASU_E2E_FIXTURE_KRS;
     if (!fixturePath) {
@@ -216,72 +177,22 @@ describe("AT-0039 / AT-0042-vscode (WebView) — detail panel + cross-diagram na
     const editorView = new EditorView();
     const workbench = new Workbench();
 
-    // Open the fixture via "File: Open File..." with a 3-attempt retry —
-    // the simple-dialog stalls intermittently under xvfb.
-    let opened = false;
-    let lastErr: unknown;
-    for (let attempt = 0; attempt < 3 && !opened; attempt++) {
-      try {
-        if (attempt > 0) {
-          try {
-            await driver.actions().sendKeys(Key.ESCAPE).perform();
-            await driver.actions().sendKeys(Key.ESCAPE).perform();
-          } catch {
-            // best-effort dismissal
-          }
-          await driver.sleep(500);
-        }
-        await workbench.executeCommand("File: Open File...");
-        const openInput = await InputBox.create();
-        await openInput.setText(fixturePath);
-        await openInput.confirm();
-        await driver.wait(
-          async () => {
-            const titles = await editorView.getOpenEditorTitles();
-            return titles.some((t) => t.includes(FIXTURE_NAME));
-          },
-          7_000,
-          "fixture .krs file did not appear as an open editor",
-        );
-        opened = true;
-      } catch (err) {
-        lastErr = err;
-      }
-    }
-    if (!opened) {
-      throw new Error(
-        `failed to open ${FIXTURE_NAME} after 3 attempts; last error: ${(lastErr as Error)?.message ?? lastErr}`,
-        { cause: lastErr },
-      );
-    }
-
-    await workbench.executeCommand("karasu: Open Preview");
-    await driver.wait(
-      async () => (await editorView.getEditorGroups()).length >= 2,
-      ELEMENT_TIMEOUT_MS,
-      "preview WebView did not open in a second editor group",
-    );
-
-    await editorView.openEditor(PREVIEW_TITLE, 1);
-    await driver.sleep(500);
-
-    webview = new WebView();
-    await webview.switchToFrame();
-    inWebViewFrame = true;
+    await openFixtureWithRetry(driver, workbench, editorView, fixturePath, FIXTURE_NAME);
+    ctx = await openPreviewAndEnterFrame(driver, workbench, editorView);
   });
 
   beforeEach(async () => {
-    await ensureWebViewFrame();
+    await ensureWebViewFrame(ctx);
   });
 
   after(async () => {
-    if (inWebViewFrame) {
+    if (ctx.inWebViewFrame) {
       try {
-        await webview.switchBack();
+        await ctx.webview.switchBack();
       } catch {
         // already detached
       }
-      inWebViewFrame = false;
+      ctx.inWebViewFrame = false;
     }
     await new EditorView().closeAllEditors();
   });
@@ -459,7 +370,7 @@ describe("AT-0039 / AT-0042-vscode (WebView) — detail panel + cross-diagram na
     );
   });
 
-  // NOTE: TC-03 leaves `inWebViewFrame = false` (focusing the .krs
+  // NOTE: TC-03 leaves `ctx.inWebViewFrame = false` (focusing the .krs
   // editor rebuilds the WebView). The AT-0042 tests below recover via
   // `beforeEach`'s `ensureWebViewFrame()` and call `switchToView` to
   // restore System view, since the TC-03 rebuild also resets state.
@@ -498,8 +409,8 @@ describe("AT-0039 / AT-0042-vscode (WebView) — detail panel + cross-diagram na
     // Switch out of the WebView frame to read the editor's coordinates.
     // Bringing the .krs editor to focus rebuilds the preview, which is
     // why the visibility assertion above runs first.
-    await webview.switchBack();
-    inWebViewFrame = false;
+    await ctx.webview.switchBack();
+    ctx.inWebViewFrame = false;
 
     let lastLine = 0;
     await driver.wait(
@@ -516,7 +427,7 @@ describe("AT-0039 / AT-0042-vscode (WebView) — detail panel + cross-diagram na
   });
 
   it("AT-0042-5: detail panel for a service without a deploy block does NOT show the deploy nav button", async () => {
-    await switchToView("system");
+    await switchToView(ctx, "system");
     await closePanelIfOpen();
 
     // UserService is owned by `user-team` (organization block) but has no
@@ -547,7 +458,7 @@ describe("AT-0039 / AT-0042-vscode (WebView) — detail panel + cross-diagram na
   });
 
   it("AT-0042-1: clicking the team nav button switches the preview to the Org diagram", async () => {
-    await switchToView("system");
+    await switchToView(ctx, "system");
     await closePanelIfOpen();
 
     await driver.wait(
@@ -576,26 +487,22 @@ describe("AT-0039 / AT-0042-vscode (WebView) — detail panel + cross-diagram na
         "if (!btn) throw new Error('org nav button not found');" +
         "btn.click();",
     );
-    await webview.switchBack();
-    inWebViewFrame = false;
-    await driver.sleep(800);
-    await webview.switchToFrame();
-    inWebViewFrame = true;
+    await reacquireFrame(ctx);
 
     await driver.wait(
-      async () => await isViewActive("org"),
+      async () => await isViewActive(driver, "org"),
       ELEMENT_TIMEOUT_MS,
       "org view did not become active after clicking the team nav button",
     );
     assert.strictEqual(
-      await isViewActive("org"),
+      await isViewActive(driver, "org"),
       true,
       "Org toolbar button should carry the active style after team nav click",
     );
   });
 
   it("AT-0042-2: clicking the deploy nav button switches the preview to the Deploy diagram", async () => {
-    await switchToView("system");
+    await switchToView(ctx, "system");
     await closePanelIfOpen();
 
     await driver.wait(
@@ -621,19 +528,15 @@ describe("AT-0039 / AT-0042-vscode (WebView) — detail panel + cross-diagram na
         "if (!btn) throw new Error('deploy nav button not found');" +
         "btn.click();",
     );
-    await webview.switchBack();
-    inWebViewFrame = false;
-    await driver.sleep(800);
-    await webview.switchToFrame();
-    inWebViewFrame = true;
+    await reacquireFrame(ctx);
 
     await driver.wait(
-      async () => await isViewActive("deploy"),
+      async () => await isViewActive(driver, "deploy"),
       ELEMENT_TIMEOUT_MS,
       "deploy view did not become active after clicking the deploy nav button",
     );
     assert.strictEqual(
-      await isViewActive("deploy"),
+      await isViewActive(driver, "deploy"),
       true,
       "Deploy toolbar button should carry the active style after deploy nav click",
     );

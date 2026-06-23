@@ -7,49 +7,44 @@
  * `packages/vscode/images/screenshots/`. The System shot doubles as the
  * editor ↔ preview workflow image embedded in `packages/vscode/README.md`.
  *
- * This is a manual, on-demand generator — NOT part of the gated
- * `test:webview` suite. It uses its own mocha glob (`out/capture/*.capture.js`)
- * so the capture spec never runs in CI. After running, review the generated
- * PNGs by eye before committing them to a public Marketplace listing, then
- * bump `packages/vscode/package.json` `version` and re-publish via
+ * This is a manual, on-demand generator — NOT part of the gated `test:webview`
+ * suite. It uses its own mocha glob (`out/capture/*.capture.js`) so the capture
+ * spec never runs in CI. After running, review the generated PNGs by eye before
+ * committing them to a public Marketplace listing, then bump
+ * `packages/vscode/package.json` `version` and re-publish via
  * `vscode-release.yml`.
  *
- * Mirrors `run-webview-tests.mjs`: it drives ExTester programmatically and
- * tells vsce to skip dependency validation (`dependencies: false`), because
- * vsce's default `npm list --production` check does not understand pnpm
- * `workspace:*` references in this monorepo.
+ * Shares the vsix + runTests bootstrap with `run-webview-tests.mjs` via
+ * `extester-bootstrap.mjs`; this file only owns the capture glob, the showcase
+ * fixture, and the output directory.
  */
 
-import { ExTester } from "vscode-extension-tester";
-import * as path from "node:path";
 import * as fs from "node:fs";
-import { fileURLToPath } from "node:url";
-import * as vsce from "@vscode/vsce";
+import * as path from "node:path";
+import { packageRoot, runExtester } from "./extester-bootstrap.mjs";
 
-const here = path.dirname(fileURLToPath(import.meta.url));
-const repoRoot = path.resolve(here, "..", "..");
-const vscodePkg = path.join(repoRoot, "packages", "vscode");
-const storage = path.join(here, "test-resources");
-const mochaConfig = path.join(here, "tests", "webview", ".mocharc.json");
-const testGlob = path.join(here, "out", "capture", "*.capture.js");
-const codeSettings = path.join(here, "tests", "webview", "settings.json");
-const fixtureDir = path.join(storage, "capture-fixture");
-const fixtureKrs = path.join(fixtureDir, "karasu-showcase.krs");
-const outDir = path.join(vscodePkg, "images", "screenshots");
+const repoRoot = path.resolve(packageRoot, "..", "..");
+const outDir = path.join(repoRoot, "packages", "vscode", "images", "screenshots");
 
-fs.mkdirSync(storage, { recursive: true });
-fs.mkdirSync(fixtureDir, { recursive: true });
-fs.mkdirSync(outDir, { recursive: true });
+const exitCode = await runExtester({
+  testGlob: path.join(packageRoot, "out", "capture", "*.capture.js"),
+  seedFixtures({ storage }) {
+    const fixtureDir = path.join(storage, "capture-fixture");
+    const fixtureKrs = path.join(fixtureDir, "karasu-showcase.krs");
 
-// A showcase model with content in all three faces: services + nested domains
-// (System), deploy units that realize services (Deploy), and an organization
-// with teams that own the services/domains (Org). Team ownership uses the
-// top-level `organization` block — the inline `team` property was removed in
-// ADR-20260614-01, so it must NOT appear inside services (it would render error
-// squiggles in the screenshots). Keep this fixture diagnostic-clean.
-fs.writeFileSync(
-  fixtureKrs,
-  `system "Shop" {
+    fs.mkdirSync(fixtureDir, { recursive: true });
+    fs.mkdirSync(outDir, { recursive: true });
+
+    // A showcase model with content in all three faces: services + nested
+    // domains (System), deploy units that realize services (Deploy), and an
+    // organization with teams that own the services/domains (Org). Team
+    // ownership uses the top-level `organization` block — the inline `team`
+    // property was removed in ADR-20260614-01, so it must NOT appear inside
+    // services (it would render error squiggles in the screenshots). Keep this
+    // fixture diagnostic-clean.
+    fs.writeFileSync(
+      fixtureKrs,
+      `system "Shop" {
   service Storefront {
     label "Storefront"
     description """
@@ -123,30 +118,10 @@ organization Shop {
   }
 }
 `,
-);
-process.env.KARASU_E2E_CAPTURE_FIXTURE_KRS = fixtureKrs;
-process.env.KARASU_E2E_CAPTURE_OUT_DIR = outDir;
-
-// Pre-package the extension into a vsix without dependency validation.
-const vsixOut = path.join(storage, "karasu-vscode.vsix");
-await vsce.createVSIX({
-  cwd: vscodePkg,
-  packagePath: vsixOut,
-  dependencies: false,
-  skipLicense: true,
-});
-
-const extester = new ExTester(storage);
-await extester.downloadCode("max");
-await extester.downloadChromeDriver("max");
-await extester.installVsix({ vsixFile: vsixOut, useYarn: false });
-
-const exitCode = await extester.runTests(testGlob, {
-  config: mochaConfig,
-  resources: [],
-  settings: codeSettings,
-  cleanup: false,
-  logLevel: "Info",
+    );
+    process.env.KARASU_E2E_CAPTURE_FIXTURE_KRS = fixtureKrs;
+    process.env.KARASU_E2E_CAPTURE_OUT_DIR = outDir;
+  },
 });
 
 // Screenshots are written to packages/vscode/images/screenshots/ (outDir) by

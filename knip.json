@@ -32,7 +32,12 @@
       "project": ["tests/**/*.ts"]
     },
     "packages/vscode-e2e": {
-      "entry": [".vscode-test.mjs", "tests/suite/**/*.test.ts", "tests/capture/**/*.capture.ts"],
+      "entry": [
+        ".vscode-test.mjs",
+        "extester-bootstrap.mjs",
+        "tests/suite/**/*.test.ts",
+        "tests/capture/**/*.capture.ts"
+      ],
       "project": ["tests/**/*.ts"],
       "ignoreDependencies": ["@vscode/test-electron"]
     }
