@@ -4,6 +4,7 @@
 - **ステータス**: 検討中
 - **関連**:
   - 引き金 Issue: [#1718](https://github.com/kompiro/karasu/issues/1718)
+  - PR: [#1719](https://github.com/kompiro/karasu/pull/1719)
   - 関連 ADR: [ADR-20260405-05](../adr/20260405-05-database-as-first-class-node.md)（`database` / `queue` / `storage` を system 直下のファーストクラスノードに昇格）
   - 関連 TPL: [TPL-20260519-02](../test-perspectives/TPL-20260519-02-shared-vocabulary-dual-representation.md), [TPL-20260511-02](../test-perspectives/TPL-20260511-02-spec-doc-reference-data-sync.md), [TPL-20260610-01](../test-perspectives/TPL-20260610-01-accepted-vocabulary-must-have-effect.md)
   - コード: `packages/core/src/types/ast.ts`（`INFRA_BLOCK_KINDS`）, `packages/core/src/builtins/reference-data.ts`, `packages/core/src/renderer/shapes.ts`
