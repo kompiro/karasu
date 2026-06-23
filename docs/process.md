@@ -262,14 +262,15 @@ npm への公開は **changesets** で管理し、認証は **npm Trusted Publis
 
 ### リリースの流れ
 
-`release.yml` は **publish-only** で運用する。GitHub Actions に PR 作成権限を与えなくて済むよう、bot による "Version Packages" PR は使わない（経緯は Issue #1370）。
+リリースは **GitHub Actions 起動**で行う。ローカルで `changeset version` は実行しない。Actions に PR 作成権限を与えなくて済むよう、bot による "Version Packages" PR は使わない（経緯は Issue #1370）。配線の決定は [ADR-20260623-01](adr/20260623-01-release-flow-actions-driven.md) を参照。
 
 リリース手順は以下のとおり:
 
-1. メンテナがローカルで `pnpm changeset version` を実行する（バージョン bump + `CHANGELOG.md` 生成 + lockfile 更新）。
-2. その差分を通常の PR（例: `chore: release X.Y.Z`）として上げ、レビュー後に `main` にマージする。
-3. `main` への push をトリガに `release.yml` が走り、pending changeset が無い状態なので `changeset publish` が bump 済みパッケージを npm に公開する。
-4. 認証は **GitHub OIDC（Trusted Publishing）** — `release.yml` の `id-token: write` を npm が短命クレデンシャルに交換する。`NPM_TOKEN` は不要（保持しない）。provenance は trusted publishing で**自動付与**される（`--provenance` 不要）。要件は npm >= 11.5.1 / Node >= 22.14.0 で、workflow が `npm i -g npm@latest` で満たす。
+1. **"Release — Prepare"**（`release-prepare.yml`）を Actions タブから `workflow_dispatch` で起動する。`changeset version`（版 bump + `CHANGELOG.md` 生成 + lockfile 更新）を実行し、`chore/release-<version>` ブランチを push する。pending changeset が無ければ何もせず終了する。
+2. その push されたブランチから **PR を開く**（Actions は PR を作れないので「Compare & pull request」を 1 クリック。人が開くことで必須チェックも走る）。
+3. **マージ前に版番号と `CHANGELOG.md` を必ず読む**（main ruleset の必須承認数は 0 = self-merge 可。目視確認はこの運用ルールで担保する）。問題なければ **squash マージ**する。
+4. マージで `main` の `packages/**/CHANGELOG.md` が変わり、`release.yml`（`paths` filter）が発火 → `changeset publish` が bump 済みパッケージを npm に公開する（`workflow_dispatch` での手動再実行も可）。
+5. 認証は **GitHub OIDC（Trusted Publishing）** — `release.yml` の `id-token: write` を npm が短命クレデンシャルに交換する。`NPM_TOKEN` は不要（保持しない）。provenance は trusted publishing で**自動付与**される（`--provenance` 不要）。要件は npm >= 11.5.1 / Node >= 22.14.0 で、workflow が `npm i -g npm@latest` で満たす。
 
 > 前提: 公開対象パッケージごとに npmjs.com で **Trusted Publisher**（org `kompiro` / repo `karasu` / workflow `release.yml`）を登録しておくこと。未登録のパッケージは OIDC publish が失敗する。新規パッケージは Trusted Publisher を設定できる前に一度存在している必要があるため、**初回だけローカルから手動 publish**（`pnpm publish`、provenance off + OTP）してから登録する。
 >

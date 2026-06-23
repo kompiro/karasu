@@ -6,6 +6,7 @@ date: 2026-06-19
 topic: build
 related_to:
   - ADR-20260512-05
+  - ADR-20260623-01
 scope:
   concerns:
     - ci

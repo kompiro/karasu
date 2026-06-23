@@ -1,12 +1,17 @@
 name: Release
 
-# Changesets-driven release pipeline (publish-only mode, OIDC trusted publishing).
+# Publish stage of the release pipeline (OIDC trusted publishing).
 #
-# On every push to `main`, `changeset publish` publishes any public package
-# whose `package.json` version is not yet on npm. It is a no-op until a
-# maintainer merges a "Version Packages" PR (`pnpm changeset version` run
-# locally — we keep GitHub Actions' "create and approve pull requests"
-# setting OFF, see Issue #1370), so it is safe to run on every push.
+# Fires when a release PR lands: `changeset version` only ever rewrites
+# package CHANGELOG.md files, so the `paths` filter makes this run on the
+# release merge — not on every push to `main` (which would waste a full
+# build to no-op). `workflow_dispatch` is kept as a manual re-run fallback.
+# Prepare a release with the "Release — Prepare" workflow
+# (release-prepare.yml), which runs `changeset version` and pushes a
+# `chore/release-*` branch for review. See ADR-20260623-01.
+#
+# `changeset publish` publishes any public package whose `package.json`
+# version is not yet on npm, so this is a no-op between releases.
 #
 # Authentication is **npm Trusted Publishing via GitHub OIDC** — no
 # `NPM_TOKEN`. npm exchanges the workflow's OIDC token (`id-token: write`)
@@ -25,6 +30,8 @@ name: Release
 on:
   push:
     branches: [main]
+    paths:
+      - "packages/**/CHANGELOG.md" # release PRs (changeset version) touch these
   workflow_dispatch:
 
 concurrency:
