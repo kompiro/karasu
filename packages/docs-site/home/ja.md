@@ -22,6 +22,9 @@ hero:
     - text: GitHub
       link: https://github.com/kompiro/karasu
       icon: external
+    - text: DeepWiki
+      link: https://deepwiki.com/kompiro/karasu
+      icon: open-book
 ---
 
 ## karasu とは
@@ -35,3 +38,7 @@ karasu（鴉）はアーキテクチャのためのテキストベース DSL で
 - **[ガイド](guide/)** — サービス境界・チーム境界の設計、オンボーディング、進化。
 - **[リファレンス](spec/syntax/)** — `.krs` / `.krs.style` の構文・タグ・アノテーション。
 - **[コンセプト](concepts/)** — karasu の設計思想。
+
+コードベースを AI が生成した対話型 wiki として DeepWiki で閲覧できます:
+
+[![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/kompiro/karasu)
