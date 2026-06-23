@@ -442,4 +442,4 @@ DesignDoc が proactive TPL を引用したら、実装 PR で次をやる:
 | [TPL-20260618-03](TPL-20260618-03-kind-style-sets-text-color-per-theme.md) | ノード kind ルールで background-color を設定したら、対になる text color も設定する（テーマごと） | styling | #1697 |
 | [TPL-20260623-01](TPL-20260623-01-user-facing-surface-docs-sync.md) | user-facing な app/CLI surface の変更は docs/tools の両ロケール + reference に反映する | build | #1715 |
 | [TPL-20260623-02](TPL-20260623-02-validation-target-set-enumerates-all-kinds.md) | cross-reference 検証の valid-target set は spec が許す全 kind を列挙し、重複する集合は同期させる | resolver | #1720 |
-| [TPL-20260623-03](TPL-20260623-03-tier-split-no-edge-penetration.md) | system-view のティアを分割/挿入したら、新たに段を跨ぐエッジが中間カードを貫通しないことを確認する | renderer | ADR-20260429-02, #1724 |
+| [TPL-20260623-04](TPL-20260623-04-tier-split-no-edge-penetration.md) | system-view のティアを分割/挿入したら、新たに段を跨ぐエッジが中間カードを貫通しないことを確認する | renderer | ADR-20260429-02, #1724 |

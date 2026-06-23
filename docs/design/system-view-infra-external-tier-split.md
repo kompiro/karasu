@@ -11,7 +11,7 @@
     - [ADR-20260429-01](../adr/20260429-01-orthogonal-edge-routing-skip-layer.md)（skip-layer 直交ルーティング）
     - [ADR-20260428-10](../adr/20260428-10-auto-layout-actor-row-by-target.md)（actor pull-down — dep pull-up の対称ミラー）
   - 関連 TPL:
-    - [TPL-20260623-03](../test-perspectives/TPL-20260623-03-tier-split-no-edge-penetration.md)（本 PR で起こした proactive TPL — ティア分割で段跨ぎエッジが中間カードを貫通しないこと）
+    - [TPL-20260623-04](../test-perspectives/TPL-20260623-04-tier-split-no-edge-penetration.md)（本 PR で起こした proactive TPL — ティア分割で段跨ぎエッジが中間カードを貫通しないこと）
     - [TPL-20260519-02](../test-perspectives/TPL-20260519-02-shared-vocabulary-dual-representation.md)（`database` 語彙と `[external]` タグの二重表現 — `database [external]` の所属判断に back-ref）
   - コード: `packages/core/src/renderer/layout.ts`（`systemTier` / `assignForcedSystemLayers`）
   - PoC: ブランチ `feat/system-view-split-dep-tier`
@@ -43,7 +43,7 @@ dep ティアは infra と外部サービスを **同一の最下段** に詰め
 
 ### PoC 計測結果（ブランチ `feat/system-view-split-dep-tier`）
 
-`systemTier` を 5 ティア化（`user → client → service → infra → external`、infra を service 寄り）し、dep pull-up を両段に拡張して各段の tier base を下限にクランプ:
+`systemTier` を 5 ティア化（`user → client → service → infra → external`、infra を service 寄り）し、infra は従来の #974 pull-up を温存、external は最下段の固定バンドに配置（採用案の最終形。当初 floor クランプ案は #974 を壊したため却下 — 「実装の指針」参照）:
 
 | | width | height | アスペクト比 | エッジ交差 |
 | --- | --- | --- | --- | --- |
@@ -66,7 +66,7 @@ dep ティアは infra と外部サービスを **同一の最下段** に詰め
 
 ### 案A: dep ティアを infra 行 + external 行に 2 分割（採用）
 
-`systemTier` を 5 値化し、`service(2) → infra(3) → external(4)` の縦順にする。infra を service 直下に置く（read/write エッジが短くなる「内→外」配置）。dep pull-up は両段に拡張し、**各段の tier base を引き上げの下限**にして external が infra 行へ吸い上げられないようにする。
+`systemTier` を 5 値化し、`service(2) → infra(3) → external(4)` の縦順にする。infra を service 直下に置く（read/write エッジが短くなる「内→外」配置）。infra は従来の #974 pull-up を温存し、external は **pull-up させず最下段の固定バンド**に置いて infra との分離を保つ（floor クランプ案は #974 を壊すため不採用 — 「実装の指針」参照）。
 
 **メリット**
 
@@ -134,7 +134,7 @@ infra kind（`database`/`queue`/`storage`）は **タグに関係なく常に in
 5. AT: `docs/acceptance/` に新規。TC は:
    - infra と external が別行に分離される（縦に infra → external の順）。
    - infra のみ／external のみのモデルで段が縮退し高さが増えない。
-   - `database [external]` が external 行に出る。
+   - `database [external]` は infra 行に留まる（境界ルール: タグはティアを変えない）。
    - shape / icon 両モードで分離が成立する。
 6. proactive TPL（下記「未解決の問い」で判断）。
 7. ADR 昇格: 実装完了後、本 Doc を `docs/adr/YYYYMMDD-NN-system-view-infra-external-tier-split.md` に昇格し同 PR で削除。**[ADR-20260429-02] の amend**（`systemTier` が 4→5 ティア、`byTier[3]` 前提の更新）を同 ADR 内に明記する。

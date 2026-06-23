@@ -4,7 +4,7 @@
 - **Issue**: #1724
 - **PR**: [#1736](https://github.com/kompiro/karasu/pull/1736)
 - **関連ADR**: ADR-20260429-02（dep pull-up — 本変更で amend）, ADR-20260429-01（skip-layer 直交ルーティング）
-- **Related TPLs**: [TPL-20260623-03](../test-perspectives/TPL-20260623-03-tier-split-no-edge-penetration.md)（proactive — ティア分割で段跨ぎエッジが中間カードを貫通しないこと）, [TPL-20260519-02](../test-perspectives/TPL-20260519-02-shared-vocabulary-dual-representation.md)（`database` 語彙と `[external]` タグの二重表現）
+- **Related TPLs**: [TPL-20260623-04](../test-perspectives/TPL-20260623-04-tier-split-no-edge-penetration.md)（proactive — ティア分割で段跨ぎエッジが中間カードを貫通しないこと）, [TPL-20260519-02](../test-perspectives/TPL-20260519-02-shared-vocabulary-dual-representation.md)（`database` 語彙と `[external]` タグの二重表現）
 - **対象**: `packages/core/src/renderer/layout.ts`（`systemTier` / `assignForcedSystemLayers`）
 
 ## 概要
@@ -35,13 +35,13 @@ system view の dep ティア（infra + `[external]` を 1 行に詰め込む）
 - [x] 既存の dep pull-up（#974）が温存される: 上位サービスだけが使う infra は consumer 直下に引き上げられる（`pulls a dep used only by an upper service…` / `places a shared dep just below its deepest consumer`）
 - [x] column-hint（#969）の x 位置契約が無変更で通る
 
-### AC-4: ティア分割で段跨ぎエッジが中間カードを貫通しない（TPL-20260623-03）
+### AC-4: ティア分割で段跨ぎエッジが中間カードを貫通しない（TPL-20260623-04）
 
-- [x] external を infra の下段に分けても、新たに段を跨ぐ `service → external` エッジは中間カードを直線貫通せず、直交チャネルルーティング（ADR-20260429-01）で救済される（TPL-20260623-03）
+- [x] external を infra の下段に分けても、新たに段を跨ぐ `service → external` エッジは中間カードを直線貫通せず、直交チャネルルーティング（ADR-20260429-01）で救済される（TPL-20260623-04）
 > ✅ Automated — `packages/core/src/renderer/edge-routing-channels.test.ts`（skip-layer 直交ルーティング）
-- [x] external 用の固定バンドが既存 infra の #974 pull-up を抑止していない（TPL-20260623-03）
+- [x] external 用の固定バンドが既存 infra の #974 pull-up を抑止していない（TPL-20260623-04）
 > ✅ Automated — `packages/core/src/renderer/layout.test.ts` › `pulls a dep used only by an upper service up to one row below its consumer (Issue #974)`
-- [ ] shape / icon 両 displayMode でティア構造が成立する（TPL-20260623-03 / TPL-20260510-06）
+- [ ] shape / icon 両 displayMode でティア構造が成立する（TPL-20260623-04 / TPL-20260510-06）
 
 ### AC-5: 幅削減（実モデル）
 
