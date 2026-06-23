@@ -140,8 +140,6 @@ git clone https://github.com/kompiro/hane.git     /workspaces/hane
 
 karasu 側のセッション内で `/workspaces/adr-tools` / `/workspaces/tpl-tools` / `/workspaces/hane` の編集・コミット・PR 作成が可能。書き込み権限は image build 時に Dockerfile で `/workspaces` を `node:node` 所有に設定しているため、devcontainer を作り直した直後から有効。
 
-karasu は ADR / TPL ツールを外部パッケージ（`@kompiro/adr-tools`, `@kompiro/tpl-tools`）として GitHub Packages から install する。`.npmrc` は `@kompiro:registry=https://npm.pkg.github.com` を指定済みで、CI は `secrets.GITHUB_TOKEN` 経由で読み取る（各 package の "Manage Actions access" に `kompiro/karasu` を `Read` で追加してある）。ローカル install には `NODE_AUTH_TOKEN` に `read:packages` 権限を持つ token を渡す。fine-grained PAT を使う場合は Repository permissions の **Packages: Read-only** が必要。
-
 ### 循環依存チェック
 
 `pnpm check:cycles` で `madge --circular` を 5 つのプロダクションパッケージ（core / app / cli / lsp / vscode）の `src/` に対して実行し、モジュール間の循環依存を検出する。
