@@ -1,9 +1,22 @@
 name: E2E
 
+# Triggered by path filter, not by an `e2e` label (ADR-20260623-05). The label
+# was an opt-in that created a detection blind spot: a PR changing a surface the
+# E2E suite asserts on but missing the label could merge with stale selectors
+# undetected (TPL-20260623-03, #1725 / #1548). Mirrors the Preview workflow's
+# label->path migration (ADR-20260413-01). nightly (e2e-nightly.yml) remains the
+# final safety net.
 on:
   pull_request:
     branches: [main]
-    types: [opened, synchronize, reopened, labeled]
+    types: [opened, synchronize, reopened]
+    paths:
+      - "packages/app/**"
+      - "packages/core/**"
+      - "packages/e2e/**"
+      - "pnpm-lock.yaml"
+      - "package.json"
+      - ".github/workflows/e2e.yml"
 
 concurrency:
   group: e2e-${{ github.ref }}
@@ -15,7 +28,6 @@ permissions:
 jobs:
   e2e:
     name: Playwright
-    if: contains(github.event.pull_request.labels.*.name, 'e2e')
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
