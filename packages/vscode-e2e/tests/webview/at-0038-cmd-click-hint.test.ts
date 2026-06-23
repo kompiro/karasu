@@ -2,15 +2,20 @@ import * as assert from "node:assert";
 import {
   By,
   EditorView,
-  InputBox,
-  Key,
-  TextEditor,
+  type TextEditor,
   VSBrowser,
   type WebDriver,
-  WebView,
   Workbench,
   until,
 } from "vscode-extension-tester";
+import {
+  ELEMENT_TIMEOUT_MS,
+  type FrameContext,
+  ensureWebViewFrame,
+  openFixtureWithRetry,
+  openPreviewAndEnterFrame,
+  reacquireFrame,
+} from "./harness";
 
 /**
  * AT-0037-9 / AT-0038 (WebView E2E — Phase 3, bidirectional editor ↔
@@ -56,8 +61,9 @@ import {
  *      extension host, replacing the iframe document and invalidating
  *      Selenium's current frame context. After a drill click we
  *      `switchBack` and `switchToFrame` again before reading post-
- *      drill state. The Cmd/Ctrl+Click navigate path does NOT rebuild
- *      the WebView, so it does not need this dance.
+ *      drill state (the shared `reacquireFrame` helper). The
+ *      Cmd/Ctrl+Click navigate path does NOT rebuild the WebView, so
+ *      it does not need this dance.
  *   3. Reading the .krs editor's cursor needs the .krs editor to be
  *      active. After clicking inside the WebView the preview panel is
  *      active, so `editorView.openEditor("at-0038.krs", 0)` returns
@@ -75,10 +81,11 @@ import {
  * so the CI output still reads cleanly.
  */
 
-const PREVIEW_TITLE = "karasu Preview";
 const FIXTURE_NAME = "at-0038.krs";
-const ELEMENT_TIMEOUT_MS = 15_000;
 const HINT_TEXT = "Cmd/Ctrl+Click to jump";
+// Re-acquiring the frame after the TC-02 drill needs a longer settle than the
+// default view-switch reacquire (the drill rebuilds more of the SVG).
+const DRILL_REACQUIRE_SLEEP_MS = 1000;
 
 // Identifiers in the AT-0038 fixture (see run-webview-tests.mjs). Lines
 // are 1-indexed to match what `TextEditor.getCoordinates()` returns.
@@ -91,8 +98,7 @@ describe("AT-0037-9 / AT-0038 (WebView) — bidirectional editor ↔ SVG preview
   this.timeout(240_000);
 
   let driver: WebDriver;
-  let webview: WebView;
-  let inWebViewFrame = false;
+  let ctx: FrameContext;
 
   async function readBreadcrumb(): Promise<string> {
     return (await driver.executeScript(
@@ -120,23 +126,14 @@ describe("AT-0037-9 / AT-0038 (WebView) — bidirectional editor ↔ SVG preview
   }
 
   async function readEditorLine(): Promise<number> {
-    if (inWebViewFrame) {
-      await webview.switchBack();
-      inWebViewFrame = false;
+    if (ctx.inWebViewFrame) {
+      await ctx.webview.switchBack();
+      ctx.inWebViewFrame = false;
     }
     const editor = (await new EditorView().openEditor(FIXTURE_NAME, 0)) as TextEditor;
     await driver.sleep(150);
     const [line] = await editor.getCoordinates();
     return line;
-  }
-
-  async function ensureWebViewFrame(): Promise<void> {
-    if (!inWebViewFrame) {
-      await new EditorView().openEditor(PREVIEW_TITLE, 1);
-      await driver.sleep(300);
-      await webview.switchToFrame();
-      inWebViewFrame = true;
-    }
   }
 
   // Dispatch a Cmd/Ctrl+Click at `selector` and poll the .krs editor
@@ -154,7 +151,7 @@ describe("AT-0037-9 / AT-0038 (WebView) — bidirectional editor ↔ SVG preview
     try {
       await driver.wait(
         async () => {
-          await ensureWebViewFrame();
+          await ensureWebViewFrame(ctx);
           await dispatchClick(selector, true);
           await driver.sleep(200);
           lastLine = await readEditorLine();
@@ -169,7 +166,7 @@ describe("AT-0037-9 / AT-0038 (WebView) — bidirectional editor ↔ SVG preview
         { cause: err },
       );
     } finally {
-      await ensureWebViewFrame();
+      await ensureWebViewFrame(ctx);
     }
   }
 
@@ -183,74 +180,22 @@ describe("AT-0037-9 / AT-0038 (WebView) — bidirectional editor ↔ SVG preview
     const editorView = new EditorView();
     const workbench = new Workbench();
 
-    // The "File: Open File..." simple-dialog occasionally stalls on
-    // confirm() under xvfb — the dialog stays open with the typed path
-    // but the editor never appears. Retry up to 3 times, dismissing any
-    // lingering dialog with ESC between attempts.
-    let opened = false;
-    let lastErr: unknown;
-    for (let attempt = 0; attempt < 3 && !opened; attempt++) {
-      try {
-        if (attempt > 0) {
-          try {
-            await driver.actions().sendKeys(Key.ESCAPE).perform();
-            await driver.actions().sendKeys(Key.ESCAPE).perform();
-          } catch {
-            // best-effort dismissal
-          }
-          await driver.sleep(500);
-        }
-        await workbench.executeCommand("File: Open File...");
-        const openInput = await InputBox.create();
-        await openInput.setText(fixturePath);
-        await openInput.confirm();
-        await driver.wait(
-          async () => {
-            const titles = await editorView.getOpenEditorTitles();
-            return titles.some((t) => t.includes(FIXTURE_NAME));
-          },
-          7_000,
-          "fixture .krs file did not appear as an open editor",
-        );
-        opened = true;
-      } catch (err) {
-        lastErr = err;
-      }
-    }
-    if (!opened) {
-      throw new Error(
-        `failed to open ${FIXTURE_NAME} after 3 attempts; last error: ${(lastErr as Error)?.message ?? lastErr}`,
-        { cause: lastErr },
-      );
-    }
-
-    await workbench.executeCommand("karasu: Open Preview");
-    await driver.wait(
-      async () => (await editorView.getEditorGroups()).length >= 2,
-      ELEMENT_TIMEOUT_MS,
-      "preview WebView did not open in a second editor group",
-    );
-
-    await editorView.openEditor(PREVIEW_TITLE, 1);
-    await driver.sleep(500);
-
-    webview = new WebView();
-    await webview.switchToFrame();
-    inWebViewFrame = true;
+    await openFixtureWithRetry(driver, workbench, editorView, fixturePath, FIXTURE_NAME);
+    ctx = await openPreviewAndEnterFrame(driver, workbench, editorView);
   });
 
   beforeEach(async () => {
-    await ensureWebViewFrame();
+    await ensureWebViewFrame(ctx);
   });
 
   after(async () => {
-    if (inWebViewFrame) {
+    if (ctx.inWebViewFrame) {
       try {
-        await webview.switchBack();
+        await ctx.webview.switchBack();
       } catch {
         // already detached
       }
-      inWebViewFrame = false;
+      ctx.inWebViewFrame = false;
     }
     await new EditorView().closeAllEditors();
   });
@@ -260,15 +205,15 @@ describe("AT-0037-9 / AT-0038 (WebView) — bidirectional editor ↔ SVG preview
     // The cursor watcher in extension.ts debounces by 150 ms, asks the
     // LSP for the node id, and posts a `highlight` message that adds
     // `karasu-highlighted` to the matching `<g data-node-id>`.
-    if (inWebViewFrame) {
-      await webview.switchBack();
-      inWebViewFrame = false;
+    if (ctx.inWebViewFrame) {
+      await ctx.webview.switchBack();
+      ctx.inWebViewFrame = false;
     }
     const editorView = new EditorView();
     const editor = (await editorView.openEditor(FIXTURE_NAME, 0)) as TextEditor;
     await editor.moveCursor(FIXTURE_LINE.OrderService, 11);
 
-    await ensureWebViewFrame();
+    await ensureWebViewFrame(ctx);
 
     let lastClass = "";
     await driver.wait(
@@ -324,11 +269,7 @@ describe("AT-0037-9 / AT-0038 (WebView) — bidirectional editor ↔ SVG preview
     await dispatchClick('[data-node-id="OrderService"][data-has-children="true"]', false);
 
     // Drill rebuilds webview.html — re-acquire the frame.
-    await webview.switchBack();
-    inWebViewFrame = false;
-    await driver.sleep(1000);
-    await webview.switchToFrame();
-    inWebViewFrame = true;
+    await reacquireFrame(ctx, DRILL_REACQUIRE_SLEEP_MS);
 
     let lastBreadcrumb = "";
     try {
