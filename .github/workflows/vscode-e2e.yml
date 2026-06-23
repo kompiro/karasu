@@ -1,9 +1,25 @@
 name: VS Code E2E
 
+# Triggered by path filter, not by `vscode-e2e` / `vscode-webview-e2e` labels
+# (ADR-20260623-06, extending ADR-20260623-05 to the VS Code suites). The labels
+# were an opt-in that created a detection blind spot (TPL-20260623-03): a PR
+# changing a surface these suites assert on but missing the label could merge
+# with stale assertions undetected. Both jobs share the same build chain
+# (core / i18n / lsp / vscode), so a single workflow-level `paths` union is
+# precise. nightly (e2e-nightly.yml) remains the final safety net.
 on:
   pull_request:
     branches: [main]
-    types: [opened, synchronize, reopened, labeled]
+    types: [opened, synchronize, reopened]
+    paths:
+      - "packages/core/**"
+      - "packages/i18n/**"
+      - "packages/lsp/**"
+      - "packages/vscode/**"
+      - "packages/vscode-e2e/**"
+      - "pnpm-lock.yaml"
+      - "package.json"
+      - ".github/workflows/vscode-e2e.yml"
 
 concurrency:
   group: vscode-e2e-${{ github.ref }}
@@ -15,7 +31,6 @@ permissions:
 jobs:
   vscode-e2e:
     name: VS Code extension host
-    if: contains(github.event.pull_request.labels.*.name, 'vscode-e2e')
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -60,7 +75,6 @@ jobs:
 
   vscode-webview-e2e:
     name: VS Code WebView (ExTester)
-    if: contains(github.event.pull_request.labels.*.name, 'vscode-webview-e2e')
     runs-on: ubuntu-latest
     timeout-minutes: 25
     steps:
