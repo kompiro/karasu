@@ -54,7 +54,23 @@ The `[skip ci]` tag in the commit message prevents an infinite workflow loop.
 Once SVGs are committed to your repository, they render natively in GitHub's
 Markdown preview and file browser — no tools required for readers.
 
-## Next steps
+## The karasu-action
 
-A dedicated `karasu-action` GitHub Action for Marketplace distribution is planned.
-Follow [kompiro/karasu](https://github.com/kompiro/karasu) for updates.
+A dedicated GitHub Action — [**kompiro/karasu-action**](https://github.com/kompiro/karasu-action) —
+wraps the render step so you can drop the templates above and integrate with a
+single `uses:` line:
+
+```yaml
+- uses: kompiro/karasu-action@v1
+  with:
+    input: docs/architecture.krs
+    output: docs/architecture.svg
+```
+
+It takes `input` / `output` (required), plus optional `version` and `view`. See
+the action's README for the inputs table and a migration guide from these
+templates.
+
+> Both the templates above and the action invoke `npx karasu render`, so they
+> need a working published `karasu` CLI. The current `karasu@0.0.1` on npm is
+> missing its build (#1681) — once a fixed version ships, both paths work.
