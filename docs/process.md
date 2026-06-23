@@ -242,13 +242,13 @@ Dependabot security update は alert 検知時に即時起票され、`schedule`
 
 ## リリース運用
 
-npm への公開は **changesets** で管理する。設計の経緯は `docs/design/release-automation.md`（実装後 ADR 化予定）を参照。
+npm への公開は **changesets** で管理し、認証は **npm Trusted Publishing（GitHub OIDC）** で行う（token レス）。設計の経緯は [ADR-20260512-05](adr/20260512-05-release-automation-changesets.md)（changesets 採用）と [ADR-20260619-02](adr/20260619-02-npm-trusted-publishing-oidc.md)（OIDC 移行）を参照。
 
 ### 対象パッケージ
 
 公開対象は `karasu`（CLI、`packages/cli`）と `@karasu-tools/core`（ライブラリ）。CLI は esbuild で `@karasu-tools/core` を内包した単一 ESM バンドルとしてビルドする（`packages/cli` の `build` スクリプト。公開 core への依存には切り替えない）。`@karasu-tools/app` / `@karasu-tools/lsp` / `@karasu-tools/e2e` / `@karasu-tools/vscode-e2e` と `karasu-vscode` は `.changeset/config.json` の `ignore` に入っており公開対象外（VS Code 拡張の配布は Marketplace 経由で別管理 — Issue #1316）。
 
-> **`@karasu-tools/core` は v0.x（TS API、無保証）**。`.krs` / `.krs.style` 言語は v1.0 だが、TS API は minor で破壊的変更を許す（[ADR-20260616-06](adr/20260616-06-krs-spec-v1-freeze.md)）。`exports` は公開先に `dist`（types + ESM）を指し、`development` 条件で repo 内は TS ソースを解決する（root tsconfig `customConditions: ["development"]`）ため `pnpm typecheck` は build 非依存のまま。**実 publish と `@karasu-tools` npm org 予約は公開ローンチ（#1317）ゲート**で、本フローでは「公開可能な状態を保つ」までを担う（#1363）。
+> **`@karasu-tools/core` は v0.x（TS API、無保証）**。`.krs` / `.krs.style` 言語は v1.0 だが、TS API は minor で破壊的変更を許す（[ADR-20260616-06](adr/20260616-06-krs-spec-v1-freeze.md)）。`exports` は公開先に `dist`（types + ESM）を指し、`development` 条件で repo 内は TS ソースを解決する（root tsconfig `customConditions: ["development"]`）ため `pnpm typecheck` は build 非依存のまま。`karasu` / `@karasu-tools/core` とも 0.1.0 を初回公開済み（`@karasu-tools` npm org 確保済み）。
 
 ### 変更を加えるとき
 
@@ -262,19 +262,20 @@ npm への公開は **changesets** で管理する。設計の経緯は `docs/de
 
 ### リリースの流れ
 
-`release.yml` は **publish-only** で運用する。GitHub Actions に PR 作成権限を与えなくて済むよう、bot による "Version Packages" PR は使わない（経緯は Issue #1370）。
+リリースは **GitHub Actions 起動**で行う。ローカルで `changeset version` は実行しない。Actions に PR 作成権限を与えなくて済むよう、bot による "Version Packages" PR は使わない（経緯は Issue #1370）。配線の決定は [ADR-20260623-01](adr/20260623-01-release-flow-actions-driven.md) を参照。
 
 リリース手順は以下のとおり:
 
-1. メンテナがローカルで `pnpm changeset version` を実行する（バージョン bump + `CHANGELOG.md` 生成 + lockfile 更新）。
-2. その差分を通常の PR（例: `chore: release X.Y.Z`）として上げ、レビュー後に `main` にマージする。
-3. `main` への push をトリガに `release.yml` が走り、pending changeset が無い状態なので `changeset publish` が bump 済みパッケージを npm に公開する。
-4. publish 時に npm provenance（`--provenance`）を付与する。
+1. **"Release — Prepare"**（`release-prepare.yml`）を Actions タブから `workflow_dispatch` で起動する。`changeset version`（版 bump + `CHANGELOG.md` 生成 + lockfile 更新）を実行し、`chore/release-<version>` ブランチを push する。pending changeset が無ければ何もせず終了する。
+2. その push されたブランチから **PR を開く**（Actions は PR を作れないので「Compare & pull request」を 1 クリック。人が開くことで必須チェックも走る）。
+3. **マージ前に版番号と `CHANGELOG.md` を必ず読む**（main ruleset の必須承認数は 0 = self-merge 可。目視確認はこの運用ルールで担保する）。問題なければ **squash マージ**する。
+4. マージで `main` の `packages/**/CHANGELOG.md` が変わり、`release.yml`（`paths` filter）が発火 → `changeset publish` が bump 済みパッケージを npm に公開する（`workflow_dispatch` での手動再実行も可）。
+5. 認証は **GitHub OIDC（Trusted Publishing）** — `release.yml` の `id-token: write` を npm が短命クレデンシャルに交換する。`NPM_TOKEN` は不要（保持しない）。provenance は trusted publishing で**自動付与**される（`--provenance` 不要）。要件は npm >= 11.5.1 / Node >= 22.14.0 で、workflow が `npm i -g npm@latest` で満たす。
 
+> 前提: 公開対象パッケージごとに npmjs.com で **Trusted Publisher**（org `kompiro` / repo `karasu` / workflow `release.yml`）を登録しておくこと。未登録のパッケージは OIDC publish が失敗する。新規パッケージは Trusted Publisher を設定できる前に一度存在している必要があるため、**初回だけローカルから手動 publish**（`pnpm publish`、provenance off + OTP）してから登録する。
+>
 > changeset-bot（GitHub App、後述）を導入したらこのフローは bot-PR ベースに戻せる。
 
 ### 未対応のフォローアップ
 
-- **changeset-bot**（GitHub App）— PR に changeset の有無をコメントしてくれる。リポジトリを public 化（#1302 Phase 1）したあとに有効化する。
-- **npm Trusted Publishing（OIDC）** — トークンレス publish へ移行する。npm 側はパッケージ作成後に設定する必要があるため、初回はリポジトリ Secrets の `NPM_TOKEN` で publish し、その後 OIDC に切り替える。`release.yml` には `id-token: write` と provenance を最初から付けてある。
-- **npm 上の名前確保** — `karasu`（unscoped）と `@karasu-tools` org を npm で確保する（launch 前チェック項目）。確保前は `release.yml` の publish が失敗するため、実 publish はそれ以降。
+- **changeset-bot**（GitHub App）— PR に changeset の有無をコメントしてくれる。リポジトリを public 化したので有効化を検討する。
