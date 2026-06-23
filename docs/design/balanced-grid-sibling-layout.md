@@ -4,6 +4,7 @@
 - **ステータス**: 検討中
 - **関連**:
   - 引き金 Issue: [#1737](https://github.com/kompiro/karasu/issues/1737)
+  - PR: [#1744](https://github.com/kompiro/karasu/pull/1744)
   - 関連 TPL: [TPL-20260510-21](../test-perspectives/TPL-20260510-21-scoped-glance-drill-down.md)（一度に見せる範囲を限定する）, [TPL-20260510-11](../test-perspectives/TPL-20260510-11-parallel-function-parity.md)（並列関数のパリティ）
   - コード: `packages/core/src/renderer/layout.ts`
 
