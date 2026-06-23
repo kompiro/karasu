@@ -24,8 +24,12 @@ const EXPORT_ERROR_AUTO_DISMISS_MS = 6000;
 const ALL_VIEWS_BLOB_REVOKE_DELAY_MS = 10_000;
 
 // The published documentation site (GitHub Pages). Reached from the Preview
-// toolbar's "📖 Docs" dropdown, alongside the in-app Reference pop-out.
-const DOCS_SITE_URL = "https://kompiro.github.io/karasu/";
+// toolbar's "📖 Docs" dropdown, alongside the in-app Reference pop-out. Starlight
+// serves the Japanese docs under the `/ja/` locale prefix, so the link follows
+// the active app locale.
+const DOCS_SITE_BASE_URL = "https://kompiro.github.io/karasu/";
+const docsSiteUrl = (locale: string) =>
+  locale === "ja" ? `${DOCS_SITE_BASE_URL}ja/` : DOCS_SITE_BASE_URL;
 
 export function PreviewColumn() {
   const {
@@ -56,7 +60,7 @@ export function PreviewColumn() {
   // Normalized active-view slice — collapses the per-view ternary chains (#1542).
   const view = useActiveViewData();
 
-  const { t } = useTranslation();
+  const { t, locale } = useTranslation();
   const [exportError, setExportError] = useState<string | null>(null);
 
   // Register "Open Reference" as a command so the reference is reachable from
@@ -264,7 +268,7 @@ export function PreviewColumn() {
             </DropdownMenuItem>
             <DropdownMenuItem asChild>
               <a
-                href={DOCS_SITE_URL}
+                href={docsSiteUrl(locale)}
                 target="_blank"
                 rel="noopener noreferrer"
                 aria-label={t("preview.docs.site.ariaLabel")}

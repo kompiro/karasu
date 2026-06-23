@@ -26,9 +26,11 @@ Japanese trigger label and site item when locale=ja).
 **Steps:** render `PreviewColumn`, open the `📖 Docs` menu, query the
 "documentation site" item.
 
-**Expected:** an `<a>` menu item with
-`href="https://kompiro.github.io/karasu/"`, `target="_blank"`, and
-`rel="noopener noreferrer"`.
+**Expected:** an `<a>` menu item with `target="_blank"` and
+`rel="noopener noreferrer"`. The `href` follows the active app locale —
+`https://kompiro.github.io/karasu/` under `en`, and
+`https://kompiro.github.io/karasu/ja/` under `ja` (Starlight serves the
+Japanese docs under the `/ja/` locale prefix).
 
 ## AC-2: the Reference item still pops out the in-app reference (automated)
 

@@ -294,7 +294,7 @@ describe("PreviewColumn", () => {
       openSpy.mockRestore();
     });
 
-    it("uses the Japanese trigger label and site item when locale=ja", async () => {
+    it("uses the Japanese trigger label and the /ja/ docs URL when locale=ja", async () => {
       const user = userEvent.setup();
       const { getByRole } = render(
         <PreviewProvider value={makeProps()}>
@@ -303,7 +303,9 @@ describe("PreviewColumn", () => {
         "ja",
       );
       await user.click(getByRole("button", { name: /ドキュメントリンク/ }));
-      expect(screen.getByRole("menuitem", { name: /ドキュメントサイト/ })).toBeTruthy();
+      const siteLink = screen.getByRole("menuitem", { name: /ドキュメントサイト/ });
+      // Starlight serves the Japanese docs under the /ja/ locale prefix.
+      expect(siteLink.getAttribute("href")).toBe("https://kompiro.github.io/karasu/ja/");
     });
   });
 
