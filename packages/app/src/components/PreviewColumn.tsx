@@ -10,7 +10,7 @@ import { usePreview } from "../state/preview-context.js";
 import { useActiveViewData } from "../state/active-view-data.js";
 import { useTranslation } from "../i18n/index.js";
 import { useCommand } from "../keyboard/use-command.js";
-import { Button, buttonVariants } from "@/components/ui/button";
+import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuTrigger,
@@ -23,9 +23,8 @@ const EXPORT_ERROR_AUTO_DISMISS_MS = 6000;
 // outlive the new tab's initial load, so we defer the revoke (#1529).
 const ALL_VIEWS_BLOB_REVOKE_DELAY_MS = 10_000;
 
-// The published documentation site (GitHub Pages). Opened in a new tab from the
-// Preview toolbar — distinct from `↗ Reference`, which pops out the in-app
-// reference for the active view.
+// The published documentation site (GitHub Pages). Reached from the Preview
+// toolbar's "📖 Docs" dropdown, alongside the in-app Reference pop-out.
 const DOCS_SITE_URL = "https://kompiro.github.io/karasu/";
 
 export function PreviewColumn() {
@@ -251,23 +250,30 @@ export function PreviewColumn() {
           </DropdownMenu>
         </div>
 
-        <a
-          className={buttonVariants({ variant: "actionable" })}
-          href={DOCS_SITE_URL}
-          target="_blank"
-          rel="noopener noreferrer"
-          aria-label={t("preview.docs.ariaLabel")}
-        >
-          {t("preview.docs.label")}
-        </a>
-
-        <Button
-          variant="actionable"
-          onClick={() => openReferenceWindow(activeView)}
-          aria-label="Open reference in a new window"
-        >
-          ↗ Reference
-        </Button>
+        {/* Documentation links: the in-app Reference pop-out and the external
+            docs site, grouped since both point at documentation. */}
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="actionable" aria-label={t("preview.docs.ariaLabel")}>
+              {t("preview.docs.label")} ▾
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuItem onSelect={() => openReferenceWindow(activeView)}>
+              {t("preview.docs.reference.label")}
+            </DropdownMenuItem>
+            <DropdownMenuItem asChild>
+              <a
+                href={DOCS_SITE_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label={t("preview.docs.site.ariaLabel")}
+              >
+                {t("preview.docs.site.label")}
+              </a>
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
 
         <Button
           variant="actionable"

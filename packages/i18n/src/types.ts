@@ -175,9 +175,12 @@ export type Translations = {
   "preview.export.drawio.title": string;
   "preview.export.drawio.failed": (params: { detail: string }) => string;
 
-  // Preview toolbar — link to the external documentation site
+  // Preview toolbar — documentation links dropdown (in-app Reference + docs site)
   "preview.docs.label": string;
   "preview.docs.ariaLabel": string;
+  "preview.docs.reference.label": string;
+  "preview.docs.site.label": string;
+  "preview.docs.site.ariaLabel": string;
 
   // Warning messages (Phase D.1) — rendered in the WarningPanel.
   // One `message` key per WarningKind, plus optional `details` keys for

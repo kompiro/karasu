@@ -1,7 +1,7 @@
 ---
 type: acceptance-test
 issue: "#1707"
-feature: "Preview toolbar links to the documentation site"
+feature: "Preview toolbar Docs dropdown links to the documentation site"
 date: 2026-06-23
 ---
 
@@ -11,35 +11,47 @@ date: 2026-06-23
 
 The app previously had no in-product path to the documentation site
 (https://kompiro.github.io/karasu/). The Preview toolbar now hosts a `📖 Docs`
-link that opens the docs site in a new tab. It sits next to the existing
-`↗ Reference` button — the two are deliberately distinguished: `📖 Docs` is the
-external documentation site, while `↗ Reference` pops out the in-app reference
-for the active view.
+dropdown that groups the two documentation links: the in-app **Reference**
+pop-out for the active view, and the external **Documentation site** (opened in
+a new tab). Grouping them keeps the toolbar compact and reflects that both point
+at documentation.
 
 Automated coverage: `packages/app/src/components/PreviewColumn.test.tsx`
-(`Docs link` › links to the documentation site, opening in a new tab / uses the
-Japanese aria-label when locale=ja).
+(`Docs dropdown` › groups the Reference and documentation-site links under a Docs
+menu / opens the in-app reference when the Reference item is selected / uses the
+Japanese trigger label and site item when locale=ja).
 
-## AC-1: the Docs link targets the docs site and opens in a new tab (automated)
+## AC-1: the docs-site item targets the site and opens in a new tab (automated)
 
-**Steps:** render `PreviewColumn` and query the link named "documentation site".
+**Steps:** render `PreviewColumn`, open the `📖 Docs` menu, query the
+"documentation site" item.
 
-**Expected:** an `<a>` with `href="https://kompiro.github.io/karasu/"`,
-`target="_blank"`, and `rel="noopener noreferrer"`.
+**Expected:** an `<a>` menu item with
+`href="https://kompiro.github.io/karasu/"`, `target="_blank"`, and
+`rel="noopener noreferrer"`.
 
-## AC-2: the label is localized (automated)
+## AC-2: the Reference item still pops out the in-app reference (automated)
 
-**Expected:** the aria-label is English ("Open the documentation site in a new
-tab") under `locale=en` and Japanese ("ドキュメントサイトを新しいタブで開く")
-under `locale=ja`. The visible label is `📖 Docs` in both.
+**Steps:** open the `📖 Docs` menu and select the Reference item with
+`activeView=deploy`.
 
-## AC-3 (manual): the link is distinguishable from Reference and actually opens the docs
+**Expected:** `window.open` is called once with a URL containing `reference=1`
+and `view=deploy`.
+
+## AC-3: the labels are localized (automated)
+
+**Expected:** the trigger reads `📖 Docs` with aria-label "Documentation links"
+(en) / "ドキュメントリンク" (ja); the site item reads "↗ Documentation site" (en)
+/ "↗ ドキュメントサイト" (ja).
+
+## AC-4 (manual): the dropdown reads well and actually opens the docs
 
 **Steps:**
 1. Open the app (`https://karasu.pages.dev/` or a local `pnpm --filter @karasu-tools/app dev`).
-2. Look at the Preview toolbar.
-3. Click `📖 Docs`.
+2. Click `📖 Docs` in the Preview toolbar.
+3. Click **Documentation site**.
 
-**Expected:** `📖 Docs` and `↗ Reference` read as two distinct actions (book vs
-pop-out arrow); clicking `📖 Docs` opens https://kompiro.github.io/karasu/ in a
-new browser tab, leaving the app tab intact.
+**Expected:** the menu lists **Reference** and **Documentation site** as two
+clear entries; clicking **Documentation site** opens
+https://kompiro.github.io/karasu/ in a new browser tab, leaving the app tab
+intact; clicking **Reference** still pops out the in-app reference window.
