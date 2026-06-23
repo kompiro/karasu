@@ -6,6 +6,8 @@
 
 > **English** (this file) · [日本語](README.ja.md)
 
+[![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/kompiro/karasu)
+
 **A text-based DSL for describing the logical, physical, and organizational dimensions of a system in one language — built to co-design teams and architecture together.**
 
 ## What makes karasu different
@@ -353,6 +355,7 @@ The name comes from Huginn and Muninn — the ravens of Odin in Norse mythology,
 | Development process (lifecycle / PR flow) | `docs/process.md` |
 | GitHub Actions integration guide | `docs/github-actions.md` |
 | Sample `.krs` files | `examples/` |
+| AI-generated codebase wiki | [DeepWiki](https://deepwiki.com/kompiro/karasu) |
 
 ## Repository layout
 

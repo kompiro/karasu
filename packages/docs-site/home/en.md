@@ -22,6 +22,9 @@ hero:
     - text: GitHub
       link: https://github.com/kompiro/karasu
       icon: external
+    - text: DeepWiki
+      link: https://deepwiki.com/kompiro/karasu
+      icon: open-book
 ---
 
 ## What is karasu?
@@ -36,3 +39,7 @@ drill down into.
 - **[Guides](guide/)** — designing service and team boundaries, onboarding, evolution.
 - **[Reference](spec/syntax/)** — the `.krs` / `.krs.style` syntax, tags, and annotations.
 - **[Concepts](concepts/)** — the design philosophy behind karasu.
+
+Browse the codebase as an AI-generated, conversational wiki on DeepWiki:
+
+[![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/kompiro/karasu)
