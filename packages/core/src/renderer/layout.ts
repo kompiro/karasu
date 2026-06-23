@@ -1308,7 +1308,7 @@ function computeEdgePoints(
  * for nodes that genuinely live in another system (e.g. `service [external]`).
  * A `database [external]` is a modeling contradiction (an in-boundary store
  * tagged as another boundary); we keep it on the infra row rather than promote
- * it. See docs/design/system-view-infra-external-tier-split.md.
+ * it. See ADR-20260623-06 (docs/adr/20260623-06-system-view-infra-external-tier-split.md).
  */
 const SYSTEM_TIER_COUNT = 5;
 function systemTier(node: KrsNode): 0 | 1 | 2 | 3 | 4 {
