@@ -91,3 +91,7 @@ scope:
 - `docs/spec/tags-annotations.md` — Annotation parameters（`@name(key: …)` の未認識キー/
   アノテーションは `annotation-param-unsupported` で警告し黙殺しない、#1568。本 TPL の
   「効果を持つ／警告される」を annotation パラメータに適用したもの）
+- `docs/spec/tags-annotations.md` — Tags（`database [index]` タグ、#1718。受理されるタグは
+  効果を伴う必要があるという本 TPL を新タグに適用したもの。`[index]` は `REFERENCE_DATA.tags`
+  への登録 + `default-style.ts` の `database[index]` バッジで効果を持つ。登録 / スタイル /
+  生成ドキュメントの 3 表現の同期は [[TPL-20260519-02]] を参照）

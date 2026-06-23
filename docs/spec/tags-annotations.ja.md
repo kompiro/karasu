@@ -11,6 +11,7 @@
 | タグ | 意味 | デフォルト描画への影響 |
 |------|------|------------------------|
 | `[external]` | システム境界の外側 | 枠線を破線、色をグレー系に |
+| `[index]` | 正本を高速に検索するために導出された二次インデックス（役割。正本そのものには付けない — vector DB / ElasticSearch でも正本なら不要） | database ノードに `index` バッジを付与 |
 | `[async]` | 非同期通信（エッジ用） | 破線矢印 |
 | `[sync]` | 同期通信（エッジ用、デフォルト） | 実線矢印（デフォルト） |
 | `[human]` | 人間の利用者 | user ノードにのみ使用。デフォルトスタイルへの影響なし |
@@ -33,6 +34,10 @@
 > **shape タグは infra ブロックキーワードをミラーする — 別物ではなく対応関係にある。** infra ブロックの **キーワード**（`database` 配下の `table`、`queue` 配下の `queue-item`、`storage` 配下の `bucket`）は、system 図上の **共有ストアノード（実体）を宣言**する。usecase の `resource` は、その usecase が読み書きする対象への **操作参照**であり、`resource` が dot 記法で infra leaf を参照する（`resource OrderDB.OrderTable`）と、karasu は **参照先 infra sub-resource の kind から対応する shape タグを推論**する（`table` → `[table]`/cylinder, `queue-item` → `[queue]`, `bucket` → `[storage]`）。つまり参照は、指し示すストアと同じ形で描画される。だから shape タグ `[table]` / `[queue]` / `[storage]` は infra sub-resource kind を**意図的にミラー**している。参照する infra leaf が無い `resource` には、純粋な shape ヒントとして手書きで付けることもできる。`[api]`（hexagon）だけは infra 側に対応 kind が無く、API 系 resource 用の手書き専用 shape。同じ語が 2 つの位置に現れても **衝突しない**: キーワードは **宣言の先頭**でノードの *kind* を決め、`[...]` タグは `resource` への **接尾辞**で *shape* だけを決める — 両者は resource 参照で結ばれた相補的なレイヤーである。[syntax.md](./syntax.md) の *Infra layer* 節も参照。
 >
 > Related TPLs: [TPL-20260519-02](../test-perspectives/TPL-20260519-02-shared-vocabulary-dual-representation.md) — infra sub-kind → shape タグの推論（`INFRA_SUB_KIND_TO_TAG`）と shape タグ表は、同じ語彙の 2 つの表現であり整合し続けなければならない。
+
+> **`database [index]`** は `database` ノードを、正本（system of record）ではなく **派生の検索 / 二次インデックス** — ElasticSearch / OpenSearch クラスタ、あるいは pgvector / Pinecone / Weaviate などの vector store — として印付ける。cylinder はそのままに `index` バッジを付与する。**具体的な技術は物理層**の `store { type "ElasticSearch 8"; realizes SearchIndex }` に置き、エンジンを載せ替えても論理モデルが揺れないようにする。同じストアが正本かつ index を兼ねる場合（例: Postgres + pgvector）は `[index]` タグを付けないだけでよい。**`[index]` は技術ではなく役割を表す**: 正本（system of record）を高速に検索するための index として導出した二次ストアにタグ付けする。Vector DB / ElasticSearch 等を使っている場合でも、それが正本なら `[index]` は付けない。背景: [ADR-20260405-05](../adr/20260405-05-database-as-first-class-node.md), Issue #1718。
+>
+> Related TPLs: [TPL-20260610-01](../test-perspectives/TPL-20260610-01-accepted-vocabulary-must-have-effect.md) — `[index]` はラベルだけでなく効果（`index` バッジ）を伴う必要がある、受理されるタグである。
 
 ### 記述例
 

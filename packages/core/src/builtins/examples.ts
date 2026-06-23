@@ -2389,7 +2389,9 @@ system Blog {
     table drafts
   }
 
-  database SearchIndex {
+  // 正本ではない派生の検索インデックス。エンジン（例: ElasticSearch）は
+  // 物理層の store { type ... } で表す。
+  database SearchIndex [index] {
     table documents
   }
 
@@ -2666,7 +2668,9 @@ system Blog {
     table drafts
   }
 
-  database SearchIndex {
+  // Derived search index (not the system of record). The engine, e.g.
+  // ElasticSearch, lives in the physical layer via a store { type ... }.
+  database SearchIndex [index] {
     table documents
   }
 
