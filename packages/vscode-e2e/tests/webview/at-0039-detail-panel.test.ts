@@ -31,12 +31,13 @@ import {
  *
  * AT-0042 coverage (co-located here to share the WebView/fixture):
  *   AT-0042-1: detail panel renders a `data-nav-view="org"` button for
- *              a node with a `team` property; clicking it switches the
+ *              a node owned by a team (resolved via the organization
+ *              `owns` block → `ownerIndex`); clicking it switches the
  *              preview to the Org diagram.
  *   AT-0042-2: detail panel renders a `data-nav-view="deploy"` button
  *              for a node with `hasDeployContainer=true`; clicking it
  *              switches the preview to the Deploy diagram.
- *   AT-0042-5: detail panel for a service with `team` but no deploy
+ *   AT-0042-5: detail panel for a team-owned service with no deploy
  *              container does NOT render the deploy navigation button.
  *
  * TC-05 of AT-0039 (Cmd/Ctrl+Click → editor jump, no panel) is automated
@@ -72,10 +73,13 @@ const FIXTURE_NAME = "at-0039.krs";
 const ELEMENT_TIMEOUT_MS = 15_000;
 
 // Lines (1-indexed) match `TextEditor.getCoordinates()`. The Customer
-// node identifier in the AT-0039 fixture lives on line 20 (after the
-// AT-0042 fixture extension added a UserService block above it).
+// node identifier in the AT-0039 fixture lives on line 17 (OrderService
+// with its description/links/domains, then a one-line UserService, then
+// Customer). Team ownership moved to a top-level `organization` block at
+// the end of the fixture (ADR-20260614-01 removed the inline property),
+// which does not shift the in-system node lines.
 const FIXTURE_LINE = {
-  Customer: 20,
+  Customer: 17,
 } as const;
 
 describe("AT-0039 / AT-0042-vscode (WebView) — detail panel + cross-diagram navigation", function () {
@@ -332,7 +336,9 @@ describe("AT-0039 / AT-0042-vscode (WebView) — detail panel + cross-diagram na
     assert.match(html, /<li>Accept new orders<\/li>/i, "description should render the bullet list");
     assert.match(text, /Design Wiki/, "panel should mention the Design Wiki link");
     assert.match(text, /API Docs/, "panel should mention the API Docs link");
-    assert.match(text, /Order Team/, "panel should mention the team property");
+    // The Org nav button is keyed on the resolved owner team id (ownerIndex),
+    // which is `order-team` for OrderService (owned via the organization block).
+    assert.match(text, /order-team/, "panel should mention the owning team");
   });
 
   it("TC-04: × close button dismisses the panel; click-outside also dismisses it", async () => {
@@ -513,9 +519,9 @@ describe("AT-0039 / AT-0042-vscode (WebView) — detail panel + cross-diagram na
     await switchToView("system");
     await closePanelIfOpen();
 
-    // UserService has `team "User Team"` but no matching deploy block,
-    // so `meta.hasDeployContainer === false` and the deploy nav button
-    // must not be rendered.
+    // UserService is owned by `user-team` (organization block) but has no
+    // matching deploy block, so `meta.hasDeployContainer === false` and the
+    // deploy nav button must not be rendered (the org nav button still is).
     await driver.wait(
       until.elementLocated(By.css('[data-info-button="UserService"]')),
       ELEMENT_TIMEOUT_MS,
@@ -558,8 +564,8 @@ describe("AT-0039 / AT-0042-vscode (WebView) — detail panel + cross-diagram na
     const html = await detailPanelHtml();
     assert.match(
       html,
-      /data-nav-view="org"[^>]*data-nav-node="Order Team"/,
-      `panel should render an org nav button for "Order Team"; saw HTML: ${html.slice(0, 600)}`,
+      /data-nav-view="org"[^>]*data-nav-node="order-team"/,
+      `panel should render an org nav button for "order-team"; saw HTML: ${html.slice(0, 600)}`,
     );
 
     // Click the team nav button. The handler postMessages

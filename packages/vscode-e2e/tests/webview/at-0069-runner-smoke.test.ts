@@ -38,9 +38,10 @@ describe("AT-0069 (WebView E2E Phase 1) — runner smoke", function () {
 
     const installedSection = sections[0];
     const items = (await installedSection.getVisibleItems()) as ExtensionsViewItem[];
-    // Match on (displayName, publisher) from packages/vscode/package.json.
-    // Both must be exact "karasu" — testing against substring would falsely
-    // accept a hypothetical sibling like "karasu-style" if it ever ships.
+    // Match on (displayName, publisher) from packages/vscode/package.json:
+    // displayName "karasu", publisher "karasu-tools". Both must be exact —
+    // testing against substring would falsely accept a hypothetical sibling
+    // like "karasu-style" if it ever ships.
     const entries = await Promise.all(
       items.map(async (item) => ({
         title: await item.getTitle(),
@@ -48,8 +49,8 @@ describe("AT-0069 (WebView E2E Phase 1) — runner smoke", function () {
       })),
     );
     assert.ok(
-      entries.some((e) => e.title === "karasu" && e.author === "karasu"),
-      `extension karasu (publisher: karasu) should appear among installed extensions; saw: ${entries
+      entries.some((e) => e.title === "karasu" && e.author === "karasu-tools"),
+      `extension karasu (publisher: karasu-tools) should appear among installed extensions; saw: ${entries
         .map((e) => `${e.author}/${e.title}`)
         .join(", ")}`,
     );
