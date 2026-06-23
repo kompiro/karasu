@@ -270,6 +270,18 @@ export const REFERENCE_DATA = {
       },
     },
     {
+      name: "index",
+      appliesTo: ["database"],
+      description: {
+        en: "A derived search / secondary index, not the system of record (ElasticSearch, a vector store, …)",
+        ja: "正本ではない、検索用 / 二次インデックス（ElasticSearch、vector store など）",
+      },
+      defaultEffect: {
+        en: "Adds an `index` badge to the database node",
+        ja: "database ノードに `index` バッジを付与",
+      },
+    },
+    {
       name: "async",
       appliesTo: ["edge"],
       description: { en: "Asynchronous communication (for edges)", ja: "非同期通信（エッジ用）" },

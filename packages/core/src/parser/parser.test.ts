@@ -2164,6 +2164,21 @@ system ECPlatform {
       expect(db.children[1].id).toBe("InventoryTable");
     });
 
+    it("parses the [index] tag on a database block (#1718)", () => {
+      const result = Parser.parse(`
+system ECPlatform {
+  database ProductSearch [index] {
+    table Products { label "Indexed products" }
+  }
+}
+      `);
+      expect(result.diagnostics).toHaveLength(0);
+      const db = result.value.systems[0].children[0];
+      expect(db.kind).toBe("database");
+      expect(db.id).toBe("ProductSearch");
+      expect(db.tags).toEqual(["index"]);
+    });
+
     it("parses a database block with label property", () => {
       const result = Parser.parse(`
 system ECPlatform {

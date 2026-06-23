@@ -181,6 +181,15 @@ storage {
   font-size: 13;
 }
 
+/* database[index]: a derived search / secondary index (not the system of
+   record). Keeps the database cylinder; an index badge marks the derived role.
+   The concrete technology (ElasticSearch, a vector store) belongs in the
+   physical layer via the store kind. See Issue #1718. */
+database[index] {
+  badge-label: "index";
+  badge-color: #F59E0B;
+}
+
 /* ── リソースタグ → シェイプ ── */
 resource[table]   { shape: cylinder; }
 resource[queue]   { shape: queue; }
@@ -414,6 +423,12 @@ storage {
   shape: cloud;
   font-weight: bold;
   font-size: 13;
+}
+
+/* database[index]: derived search / secondary index. See Issue #1718. */
+database[index] {
+  badge-label: "index";
+  badge-color: #B45309;
 }
 
 /* ── リソースタグ → シェイプ ── */

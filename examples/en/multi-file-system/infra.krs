@@ -24,7 +24,9 @@ system Blog {
     table drafts
   }
 
-  database SearchIndex {
+  // Derived search index (not the system of record). The engine, e.g.
+  // ElasticSearch, lives in the physical layer via a store { type ... }.
+  database SearchIndex [index] {
     table documents
   }
 

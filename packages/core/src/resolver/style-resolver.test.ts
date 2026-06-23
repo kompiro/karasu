@@ -129,6 +129,24 @@ describe("resolveStyles", () => {
     expect(result.nodes.get("Pay")!.borderStyle).toBe("dashed");
   });
 
+  it("gives `database [index]` an `index` badge from the builtin stylesheet (#1718)", () => {
+    const system = makeNode({
+      kind: "system",
+      id: "Test",
+      children: [
+        makeNode({ kind: "database", id: "SearchIdx", label: "Search", tags: ["index"] }),
+        makeNode({ kind: "database", id: "OrderDB", label: "Orders" }),
+      ],
+    });
+    const result = resolveStyles([system], [getBuiltinStyleSheet()]);
+    const indexed = result.nodes.get("SearchIdx")!;
+    // The [index] tag adds a badge but keeps the database cylinder.
+    expect(indexed.badgeLabel).toBe("index");
+    expect(indexed.shape).toBe("cylinder");
+    // A plain database (system of record) carries no index badge.
+    expect(result.nodes.get("OrderDB")!.badgeLabel).toBeUndefined();
+  });
+
   it("applies annotation selector styles", () => {
     const system = makeNode({
       kind: "system",
