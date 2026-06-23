@@ -345,7 +345,12 @@ function detectSharedInfraFanIn(file: KrsFile): Warning[] {
   // Each system is an organizational boundary; cross-system sharing of a store
   // is intentional and not surfaced. Top-level services form their own scope.
   function detectInScope(nodes: KrsNode[]): void {
-    // Infra ids declared in this scope, excluding `[external]` stores.
+    // Infra ids declared in this scope, excluding `[external]` and `[index]`
+    // stores. `[external]`: the smell is about owning a shared store, not
+    // depending on a managed third-party one. `[index]`: a derived search /
+    // secondary index (a read model built from the system of record) is a
+    // legitimate shared read surface, not the database-per-service smell that
+    // a shared system-of-record store would be (Issue #1733).
     const infraInScope = new Map<
       string,
       { kind: "database" | "queue" | "storage"; loc: KrsNode["loc"] }
@@ -353,7 +358,11 @@ function detectSharedInfraFanIn(file: KrsFile): Warning[] {
     const infraToServices = new Map<string, Set<string>>();
 
     function collectInfra(node: KrsNode): void {
-      if (INFRA_KIND_SET.has(node.kind) && !node.tags.includes("external")) {
+      if (
+        INFRA_KIND_SET.has(node.kind) &&
+        !node.tags.includes("external") &&
+        !node.tags.includes("index")
+      ) {
         infraInScope.set(node.id, {
           kind: node.kind as "database" | "queue" | "storage",
           loc: node.loc,
