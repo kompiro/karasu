@@ -104,18 +104,41 @@ kind は `database` のまま、「派生 index」を示す修飾を足す。例
 | ユーザ直感との一致 | △ | ◎ | ○ |
 | TPL-20260610-01「効果を持つ」 | 該当せず | 効果の設計が要る | 効果の設計が要る |
 
-## 現時点の方針（たたき台）
+## 現時点の方針
 
-**判断基準を先に決めるべき**、というのが本 Doc の主結論。提案する原則:
+**判断基準を採用する**:
 
 > karasu が論理 infra kind を増やすのは、それが **system 図に描くべき固有の「相互作用の形（interaction shape）」** を表すときに限る（`database`=ランダムアクセスのストア、`queue`=pub/sub、`storage`=blob のように）。**技術の違い**（ElasticSearch か pgvector か）や、**同じストアの役割違い**（正本か派生 index か）は、それぞれ物理層 `store { type }`・構造/修飾で表すのが karasu 流。
 
-この原則に「vector / search index」を当てると:
+この原則に「vector / search index」を当てた結論:
 
-- 「ElasticSearch である」= 技術 → **物理層で解決済み**（新語彙不要）。
-- 「派生 index である」= 役割 → 固有の interaction shape というより `database` のサブ区分。**案 A（構造で表現）か案 C（修飾）が原則に整合**。案 B は境界クリープと論理/物理混同のコストが、得られる「専用 shape」の価値を上回りやすい。
+- 「ElasticSearch である」= 技術 → **物理層 `store { type }` で解決済み**（新語彙不要）。
+- 「派生 index である」= 役割 → 固有の interaction shape ではなく `database` のサブ区分。
 
-ユーザの直感「別物に見える」は **役割の区別としては正しい**。ただし karasu 的には「別の論理 kind」ではなく「物理技術 ＋ 派生という役割修飾」で表すのが、語彙を絞ったまま直感を満たす道、というのが現時点の見立て。最終決定（A / B / C と、上の原則の採否）はレビューで詰める。
+**案 C（`database` への役割修飾）を採用する。** 案 B（新 kind）は境界クリープ（cache / graph / time-series が連鎖）と「同一 DB が正本かつ index（pgvector）」を分割で壊すコストが、専用 shape の価値を上回る。案 A（無語彙）は分離原則に最忠実だが役割が一切可視化されない。C は **新 top-level kind を増やさず**に役割を可視化でき、原則と整合する。
+
+ユーザの直感「正本と検索 index は別物」は **役割の区別としては正しい**。ただし karasu 的には「別の論理 kind」ではなく「**物理技術（`store { type }`）＋ `database` の派生役割修飾**」で表すのが、語彙を 3 kind に絞ったまま直感を満たす道。
+
+### 実装の指針（案 C の具体化 — ADR/実装フェーズで確定）
+
+推奨は、既存の `[external]` タグと同じ機構に乗せた **`[index]`（仮）タグ**を `database` ブロックに付与する形:
+
+```krs
+database SearchIndex [index] {
+  table Documents
+}
+store "search" { type "ElasticSearch 8"; realizes SearchIndex }  // 技術は物理層
+```
+
+- **「効果」の最低ライン**（[TPL-20260610-01](../test-perspectives/TPL-20260610-01-accepted-vocabulary-must-have-effect.md) を満たすため、ラベル差だけにしない）:
+  1. **描画差分** — 派生 index を system 図で正本 `database` と区別（badge か shape variant）。`packages/core/src/renderer/shapes.ts`。
+  2. **診断（任意・検討）** — 派生 index が正本（feed 元）を持たないときの info 診断。これにより「正本→index」の構造が言語に意味を持つ。
+- 修飾の形は **tag（`[index]`）と property（`role: index`）の二択**。tag は `[external]` との一貫性で優位だが、property は値の拡張余地で優位。ここは ADR で確定する。
+- spec 改訂（`docs/spec/{syntax,tags-annotations}.md` + `reference-data.ts`）を伴うため、**proactive TPL を同 PR で同梱**（`docs/process.md` 「spec / concepts 改訂時の proactive TPL 同梱」）。drift 対象は [TPL-20260519-02](../test-perspectives/TPL-20260519-02-shared-vocabulary-dual-representation.md) / [TPL-20260511-02](../test-perspectives/TPL-20260511-02-spec-doc-reference-data-sync.md)。
+
+### ADR 昇格
+
+実装に進む段で、本 Doc を `docs/adr/YYYYMMDD-NN-vector-store-vs-database.md` として昇格し、同 PR で本 Design Doc を削除する（`.claude/rules/adr.md`）。
 
 ### 影響範囲・マイグレーション
 
@@ -124,7 +147,9 @@ kind は `database` のまま、「派生 index」を示す修飾を足す。例
 
 ## 未解決の問い / 決めないこと
 
-1. 上の **判断基準（「固有の interaction shape のときだけ論理 kind を足す」）を採用するか**。
-2. 採用するなら本件は A / C のどちらか（A=完全に構造表現、C=`database` 修飾）。C なら修飾の形（tag か property か）と「効果」（描画差分 or 診断）。
-3. 「正本 → index」の再構築依存を karasu が語彙として持つ価値はあるか（持つなら案 B も再評価対象に戻る）。
-4. 具体 shape デザイン・leaf 名は本 Doc では決めない。
+方向性（判断基準の採用 + 案 C）はレビューで合意済み。残るのは実装/ADR フェーズで詰める設計詳細:
+
+1. **修飾の形**: tag（`[index]`）か property（`role: index`）か。tag は `[external]` との一貫性、property は拡張余地。ADR で確定。
+2. **「効果」の範囲**: 描画差分のみか、「派生 index が正本を持たない」info 診断まで踏み込むか。
+3. **「正本 → index」の再構築依存**を語彙として明示的に持つか（持つ設計まで踏み込むなら案 B も再評価対象に戻りうる — 本 Doc では C の範囲に留める）。
+4. 具体 shape デザイン・修飾の最終名は本 Doc では決めない。
