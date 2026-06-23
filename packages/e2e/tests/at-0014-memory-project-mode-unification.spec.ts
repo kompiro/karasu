@@ -235,9 +235,13 @@ for (const mode of MODES) {
       await bootApp(page, opfs, mode, KRS_WITH_ALL_VIEWS);
 
       // Reference opens in a separate window so it can stay open beside the
-      // editor (#1548). Capture the popup and assert on it.
+      // editor (#1548). It is reached from the "Documentation links" dropdown —
+      // the standalone "Open reference" button was removed in #1548, which left
+      // this assertion stale (the e2e suite is label-gated, so it never ran on
+      // that PR). Open the dropdown, click the Reference item, capture the popup.
       const popupPromise = page.waitForEvent("popup");
-      await page.getByRole("button", { name: /Open reference/ }).click();
+      await page.getByRole("button", { name: "Documentation links" }).click();
+      await page.getByRole("menuitem", { name: "↗ Reference" }).click();
       const popup = await popupPromise;
 
       // Tabs are Radix triggers (role="tab", data-state="active").
