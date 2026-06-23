@@ -273,8 +273,8 @@ export const REFERENCE_DATA = {
       name: "index",
       appliesTo: ["database"],
       description: {
-        en: "A derived search / secondary index, not the system of record (ElasticSearch, a vector store, …)",
-        ja: "正本ではない、検索用 / 二次インデックス（ElasticSearch、vector store など）",
+        en: "A derived index for fast search over the system of record — a role, not the SoR itself (omit on a vector DB / ElasticSearch that is itself the SoR)",
+        ja: "正本を高速に検索するために導出された二次インデックス（役割。正本そのものには付けない — vector DB / ElasticSearch でも正本なら不要）",
       },
       defaultEffect: {
         en: "Adds an `index` badge to the database node",
