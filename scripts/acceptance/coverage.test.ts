@@ -1,9 +1,11 @@
 import { describe, it, expect } from "vitest";
 import {
   analyzeFile,
+  analyzeLinkage,
   analyzeRepo,
   hasTokenOverlap,
   slugTokens,
+  type SpecDocRef,
   type SpecLookup,
 } from "./coverage.ts";
 
@@ -243,5 +245,100 @@ describe("analyzeRepo cross-reference", () => {
       file: "docs/acceptance/0042-foo.md",
       specPaths: ["packages/e2e/tests/at-0042-foo.spec.ts"],
     });
+  });
+});
+
+describe("analyzeLinkage (exact e2e guards)", () => {
+  const exists = (paths: string[]) => (p: string) => paths.includes(p);
+
+  it("passes when every at-spec is named in a doc and every ref resolves", () => {
+    const specs = ["packages/e2e/tests/at-0099-foo.spec.ts"];
+    const refs: SpecDocRef[] = [
+      { file: "docs/acceptance/0099-foo.md", specPath: "packages/e2e/tests/at-0099-foo.spec.ts" },
+    ];
+    expect(analyzeLinkage(specs, refs, exists(specs))).toEqual({
+      orphanSpecs: [],
+      staleSpecRefs: [],
+    });
+  });
+
+  it("flags an at-spec that no AT doc names (orphan)", () => {
+    const specs = [
+      "packages/e2e/tests/at-0099-foo.spec.ts",
+      "packages/e2e/tests/at-0100-bar.spec.ts",
+    ];
+    const refs: SpecDocRef[] = [
+      { file: "docs/acceptance/0099-foo.md", specPath: "packages/e2e/tests/at-0099-foo.spec.ts" },
+    ];
+    expect(analyzeLinkage(specs, refs, exists(specs)).orphanSpecs).toEqual([
+      "packages/e2e/tests/at-0100-bar.spec.ts",
+    ]);
+  });
+
+  it("flags a doc reference to a spec that does not exist (stale ref)", () => {
+    const specs = ["packages/e2e/tests/at-0099-foo.spec.ts"];
+    const refs: SpecDocRef[] = [
+      { file: "docs/acceptance/0099-foo.md", specPath: "packages/e2e/tests/at-0099-foo.spec.ts" },
+      // slug drift: doc still cites the old filename after a rename
+      {
+        file: "docs/acceptance/0033-drill-down.md",
+        specPath: "packages/e2e/tests/at-0033-drilldown.spec.ts",
+      },
+    ];
+    expect(analyzeLinkage(specs, refs, exists(specs)).staleSpecRefs).toEqual([
+      {
+        file: "docs/acceptance/0033-drill-down.md",
+        specPath: "packages/e2e/tests/at-0033-drilldown.spec.ts",
+      },
+    ]);
+  });
+
+  it("deduplicates repeated stale references to the same path in the same doc", () => {
+    const refs: SpecDocRef[] = [
+      { file: "docs/acceptance/0099.md", specPath: "packages/e2e/tests/at-0099-gone.spec.ts" },
+      { file: "docs/acceptance/0099.md", specPath: "packages/e2e/tests/at-0099-gone.spec.ts" },
+    ];
+    expect(analyzeLinkage([], refs, () => false).staleSpecRefs).toHaveLength(1);
+  });
+
+  it("integrates with analyzeRepo over a temp repo (orphan + stale)", async () => {
+    const { mkdtempSync, mkdirSync, writeFileSync } = await import("node:fs");
+    const { tmpdir } = await import("node:os");
+    const { join } = await import("node:path");
+    const root = mkdtempSync(join(tmpdir(), "at-linkage-"));
+    mkdirSync(join(root, "docs/acceptance"), { recursive: true });
+    mkdirSync(join(root, "packages/e2e/tests"), { recursive: true });
+
+    // linked spec — named in its doc → no finding
+    writeFileSync(join(root, "packages/e2e/tests/at-0099-foo.spec.ts"), "");
+    writeFileSync(
+      join(root, "docs/acceptance/0099-foo.md"),
+      [
+        "# AT-0099",
+        "- [x] works",
+        "> ✅ Automated by `packages/e2e/tests/at-0099-foo.spec.ts` (suite-wide)",
+      ].join("\n"),
+    );
+    // orphan spec — exists on disk but no doc names it
+    writeFileSync(join(root, "packages/e2e/tests/at-0100-orphan.spec.ts"), "");
+    // smoke spec — must be ignored by the orphan guard
+    writeFileSync(join(root, "packages/e2e/tests/opfs.smoke.spec.ts"), "");
+    // stale ref — doc cites a spec that does not exist
+    writeFileSync(
+      join(root, "docs/acceptance/0033-drill-down.md"),
+      [
+        "# AT-0033",
+        "> ✅ Automated by `packages/e2e/tests/at-0033-drilldown.spec.ts` (suite-wide)",
+      ].join("\n"),
+    );
+
+    const { linkage } = analyzeRepo({ repoRoot: root });
+    expect(linkage.orphanSpecs).toEqual(["packages/e2e/tests/at-0100-orphan.spec.ts"]);
+    expect(linkage.staleSpecRefs).toEqual([
+      {
+        file: "docs/acceptance/0033-drill-down.md",
+        specPath: "packages/e2e/tests/at-0033-drilldown.spec.ts",
+      },
+    ]);
   });
 });

@@ -46,7 +46,10 @@ pre-push:
       glob: "{docs/test-perspectives/**,adr.config.json}"
       run: pnpm run tpl:validate
     at-check-coverage:
-      glob: "{docs/acceptance/**,scripts/acceptance/**}"
+      # Also globs packages/e2e/tests/** so the exact e2e linkage guards
+      # (orphan-spec / stale-spec-ref, Issue #1680) fire when a spec is added
+      # or renamed without updating its AT doc — not just on docs/ edits.
+      glob: "{docs/acceptance/**,scripts/acceptance/**,packages/e2e/tests/**}"
       run: pnpm exec tsx scripts/acceptance/check-coverage.ts --strict
     app-shortcut-docs-sync:
       # Every `keybinding` chord registered in packages/app must be documented
