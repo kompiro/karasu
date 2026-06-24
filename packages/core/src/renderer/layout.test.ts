@@ -803,38 +803,60 @@ system Other {
     expect(c1.x).toBeLessThan(c2.x);
   });
 
-  it("keeps infra in a row below services and moves external to a side column (#1728)", () => {
+  it("keeps infra in a row and moves externals to side columns when >=2 hubs fan out (#1728)", () => {
+    // Two hubs (Web, Api) each call an external → cross-hub fan-out, so the
+    // side placement engages. Infra (database/queue) stays in a row below the
+    // services; the externals move to side columns.
     const slice = parseAndExtract(`
 system S {
   user Customer [human]
   client App [web]
-  service Backend {}
+  service Web {}
+  service Api {}
   database Postgres {}
   queue Jobs {}
-  storage Blobs {}
   service Stripe [external] {}
+  service Twilio [external] {}
   Customer -> App
-  App -> Backend
-  Backend -> Stripe
+  App -> Web
+  Web -> Api
+  Web -> Stripe
+  Api -> Twilio
 }
 `);
     const result = layout(slice);
-    const customer = result.nodes.get("Customer")!;
-    const app = result.nodes.get("App")!;
-    const backend = result.nodes.get("Backend")!;
+    const web = result.nodes.get("Web")!;
+    const api = result.nodes.get("Api")!;
     const postgres = result.nodes.get("Postgres")!;
     const jobs = result.nodes.get("Jobs")!;
-    const blobs = result.nodes.get("Blobs")!;
     const stripe = result.nodes.get("Stripe")!;
-    expect(customer.y).toBeLessThan(app.y);
-    expect(app.y).toBeLessThan(backend.y);
-    // Infra (database/queue/storage) shares one row below the services.
-    expect(backend.y).toBeLessThan(postgres.y);
+    const twilio = result.nodes.get("Twilio")!;
+    // Infra (database/queue) shares one row.
     expect(postgres.y).toBe(jobs.y);
-    expect(jobs.y).toBe(blobs.y);
-    // The external service is moved to a side column (#1728) — its x lies
-    // outside the horizontal span of the in-boundary nodes, not in a row below.
-    expectOnSide(stripe, backend, postgres, jobs, blobs);
+    // Both externals move to side columns, outside the in-boundary span.
+    expectOnSide(stripe, web, api, postgres, jobs);
+    expectOnSide(twilio, web, api, postgres, jobs);
+  });
+
+  it("keeps a single-hub external in the bottom band, not a side column (gate, #1728)", () => {
+    // Only one hub (Api) fans out → no cross-hub crossings to fix, so the
+    // gate leaves the external in the compact bottom band (below the infra
+    // row), not a side column.
+    const slice = parseAndExtract(`
+system S {
+  service Api {}
+  database Db {}
+  service Stripe [external] {}
+  Api -> Stripe
+}
+`);
+    const result = layout(slice);
+    const api = result.nodes.get("Api")!;
+    const db = result.nodes.get("Db")!;
+    const stripe = result.nodes.get("Stripe")!;
+    // External sits in a row below (bottom band), below the infra row.
+    expect(api.y).toBeLessThan(db.y);
+    expect(db.y).toBeLessThan(stripe.y);
   });
 
   it("assigns each external to the side of its consuming hub (#1728)", () => {
@@ -887,6 +909,32 @@ system S {
     expect(extB.x).toBeGreaterThanOrEqual(api.x + api.width - 0.5); // forced right
   });
 
+  it("anchors side-external edges on the external's inner side, arrowhead inward (#1728)", () => {
+    // ExtA (← Alpha) lands on the left, ExtB (← Beta) on the right. The
+    // service→external edge must terminate on the external's inner edge so the
+    // arrowhead points inward: a left external is entered from its right side,
+    // a right external from its left side.
+    const slice = parseAndExtract(`
+system S {
+  service Alpha {}
+  service Beta {}
+  service ExtA [external] {}
+  service ExtB [external] {}
+  Alpha -> ExtA
+  Beta -> ExtB
+}
+`);
+    const result = layout(slice);
+    const extA = result.nodes.get("ExtA")!;
+    const extB = result.nodes.get("ExtB")!;
+    const eA = result.edges.find((e) => e.to === "ExtA")!;
+    const eB = result.edges.find((e) => e.to === "ExtB")!;
+    // Left external → arrowhead (toPoint) on its right edge.
+    expect(eA.toPoint.x).toBeCloseTo(extA.x + extA.width, 0);
+    // Right external → arrowhead on its left edge.
+    expect(eB.toPoint.x).toBeCloseTo(extB.x, 0);
+  });
+
   it("keeps a database [external] on the infra row, not the external row (kind wins over tag) (#1724)", () => {
     // Infra kinds (database/queue/storage) are always *inside* the system
     // boundary, so an `[external]` tag does not promote them to the external
@@ -908,50 +956,6 @@ system S {
     expect(backend.y).toBeLessThan(ourDb.y);
     // Both stay on the infra row — the tag changes styling, not the tier.
     expect(ourDb.y).toBe(saasDb.y);
-  });
-
-  it("keeps infra in a row and moves external to side columns when one service uses both (#1728)", () => {
-    // The hato pattern in miniature: a single service reads/writes infra and
-    // calls external SaaS. Infra stays in a row below the service; the
-    // externals move to side columns (#1728).
-    const slice = parseAndExtract(`
-system S {
-  service Api {}
-  database Db {}
-  queue Q {}
-  service Stripe [external] {}
-  service Twilio [external] {}
-  Api -> Stripe
-  Api -> Twilio
-}
-`);
-    const result = layout(slice);
-    const api = result.nodes.get("Api")!;
-    const db = result.nodes.get("Db")!;
-    const q = result.nodes.get("Q")!;
-    const stripe = result.nodes.get("Stripe")!;
-    const twilio = result.nodes.get("Twilio")!;
-    expect(db.y).toBe(q.y); // infra share a row
-    // Both externals move to a side column (both consumed only by Api → same
-    // side), outside the in-boundary horizontal span.
-    expectOnSide(stripe, api, db, q);
-    expectOnSide(twilio, api, db, q);
-  });
-
-  it("moves external to a side column even when there is no infra (#1728)", () => {
-    // External-only model (no infra): the external service goes to a side
-    // column beside the service, not a row below it.
-    const slice = parseAndExtract(`
-system S {
-  service Api {}
-  service Stripe [external] {}
-  Api -> Stripe
-}
-`);
-    const result = layout(slice);
-    const api = result.nodes.get("Api")!;
-    const stripe = result.nodes.get("Stripe")!;
-    expectOnSide(stripe, api);
   });
 
   it("forces internal-vs-dep split even without user/client", () => {
@@ -1029,29 +1033,6 @@ system S {
     // A and Backend on the same internal sub-row
     expect(a.y).toBe(backend.y);
     expect(backend.y).toBeLessThan(db.y);
-  });
-
-  it("places external services in a side column, not a row below internal services (#1728)", () => {
-    const slice = parseAndExtract(`
-system S {
-  user Customer [human]
-  client App [web]
-  service Backend {}
-  service Stripe [external] {}
-  Customer -> App
-  App -> Backend
-  Backend -> Stripe
-}
-`);
-    const result = layout(slice);
-    const customer = result.nodes.get("Customer")!;
-    const app = result.nodes.get("App")!;
-    const backend = result.nodes.get("Backend")!;
-    const stripe = result.nodes.get("Stripe")!;
-    expect(customer.y).toBeLessThan(app.y);
-    expect(app.y).toBeLessThan(backend.y);
-    // Stripe is on a side column beside the access path, not below it.
-    expectOnSide(stripe, customer, app, backend);
   });
 
   it("pulls a dep used only by an upper service up to one row below its consumer (Issue #974)", () => {
@@ -1166,25 +1147,6 @@ system S {
     const auth = result.nodes.get("Auth")!;
     expect(backend.y).toBeLessThan(cache.y);
     expect(cache.y).toBeLessThan(auth.y);
-  });
-
-  it("moves external to a side column even without user/client (#1728)", () => {
-    // No user, no client: the internal service stays at the top row and the
-    // external service goes to a side column (not a row below).
-    const slice = parseAndExtract(`
-system S {
-  service Backend {}
-  service Stripe [external] {}
-  Backend -> Stripe
-}
-`);
-    const result = layout(slice);
-    const backend = result.nodes.get("Backend")!;
-    const stripe = result.nodes.get("Stripe")!;
-    // Backend stays at the top row.
-    expect(backend.y).toBeLessThan(200);
-    // Stripe is on a side column.
-    expectOnSide(stripe, backend);
   });
 
   it("compacts to two rows when only client (no user) is declared", () => {

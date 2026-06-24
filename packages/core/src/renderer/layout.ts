@@ -388,12 +388,13 @@ function computeLayoutEdges(
   layers: Map<string, number>,
   containers: ContainerRect[],
   allEdges: KrsEdge[],
+  sideExternals?: Map<string, "left" | "right">,
 ): LayoutEdge[] {
   const layoutEdges: LayoutEdge[] = [];
 
   // Regular edges
   for (const edge of allEdges) {
-    const le = computeEdgePoints(edge, layoutNodes, layers);
+    const le = computeEdgePoints(edge, layoutNodes, layers, sideExternals);
     if (!le) continue;
     const edgeKey = `${edge.from}->${edge.to}#${edge.kind}`;
     const domainEdges = viewSlice.implicitEdgeDetails.get(edgeKey);
@@ -621,16 +622,30 @@ function placeExternalServicesOnSides(
   containers: ContainerRect[],
   allEdges: KrsEdge[],
   layoutHints?: Map<string, ResolvedLayoutHints>,
-): void {
-  if (viewSlice.systems.length === 0) return;
+): Map<string, "left" | "right"> {
+  const sides = new Map<string, "left" | "right">();
+  if (viewSlice.systems.length === 0) return sides;
   const extIds = new Set<string>();
   for (const sys of viewSlice.systems) {
     for (const c of sys.children) if (systemTier(c) === 4) extIds.add(c.id);
   }
-  if (extIds.size === 0) return;
+  if (extIds.size === 0) return sides;
   const ext = [...layoutNodes.values()].filter((n) => extIds.has(n.id) && !n.ghost);
   const others = [...layoutNodes.values()].filter((n) => !extIds.has(n.id) && !n.ghost);
-  if (ext.length === 0 || others.length === 0) return;
+  if (ext.length === 0 || others.length === 0) return sides;
+
+  // Gate: side placement only pays off when ≥2 distinct hubs fan out to
+  // externals — the condition that produces cross-hub edge crossings (#1728).
+  // A single-hub fan does not cross itself, so a simple diagram keeps the
+  // compact bottom band (ADR-20260623-06) rather than spreading wide. An
+  // explicit `column: left|right` on any external still forces side placement.
+  const hubs = new Set<string>();
+  for (const ed of allEdges) if (extIds.has(ed.to)) hubs.add(ed.from);
+  const hasExplicitSide = ext.some((n) => {
+    const c = layoutHints?.get(n.id)?.column;
+    return c === "left" || c === "right";
+  });
+  if (hubs.size < 2 && !hasExplicitSide) return sides;
 
   // Consuming-hub barycenter x per external (from explicit edges into it).
   const hubX = new Map<string, number>();
@@ -677,6 +692,8 @@ function placeExternalServicesOnSides(
   const right = ext.filter((n) => sideOf(n) === "right");
   place(left, minX - EXTERNAL_SIDE_GAP - colW);
   place(right, maxX + EXTERNAL_SIDE_GAP);
+  for (const n of left) sides.set(n.id, "left");
+  for (const n of right) sides.set(n.id, "right");
 
   // Grow the system container(s) to wrap the populated side columns.
   const sysIds = new Set(viewSlice.systems.map((s) => s.id));
@@ -691,6 +708,7 @@ function placeExternalServicesOnSides(
     c.x = nx;
     c.width = nr - nx;
   }
+  return sides;
 }
 
 export function layout(
@@ -986,10 +1004,23 @@ export function layout(
 
   // Move [external] services to side columns before edges are computed, so
   // anchors re-pick sides from the new positions (#1728).
-  placeExternalServicesOnSides(viewSlice, layoutNodes, containers, allEdges, layoutHints);
+  const sideExternals = placeExternalServicesOnSides(
+    viewSlice,
+    layoutNodes,
+    containers,
+    allEdges,
+    layoutHints,
+  );
 
   // Compute all edges (regular + ghost)
-  const layoutEdges = computeLayoutEdges(viewSlice, layoutNodes, layers, containers, allEdges);
+  const layoutEdges = computeLayoutEdges(
+    viewSlice,
+    layoutNodes,
+    layers,
+    containers,
+    allEdges,
+    sideExternals,
+  );
 
   // Phase 3: distribute ports across each node side that hosts ≥ 2 edges,
   // so labels separate horizontally / vertically instead of stacking. Must
@@ -1392,6 +1423,7 @@ function computeEdgePoints(
   edge: KrsEdge,
   layoutNodes: Map<string, LayoutNode>,
   layers: Map<string, number>,
+  sideExternals?: Map<string, "left" | "right">,
 ): LayoutEdge | null {
   const fromNode = layoutNodes.get(edge.from);
   const toNode = layoutNodes.get(edge.to);
@@ -1405,6 +1437,44 @@ function computeEdgePoints(
     x: toNode.x + toNode.width / 2,
     y: toNode.y,
   };
+
+  // Side-placed external endpoints (#1728): anchor on the external's *inner*
+  // side so the connector runs horizontally and the arrowhead points inward —
+  // a left-side external is entered from its right edge, a right-side external
+  // from its left edge. The opposite endpoint anchors on the side that faces
+  // the external. This overrides the layer-based vertical anchoring below
+  // (external is still on a deeper tier index, which would otherwise pick a
+  // top/bottom anchor).
+  const toSide = sideExternals?.get(edge.to);
+  const fromSide = sideExternals?.get(edge.from);
+  if (toSide || fromSide) {
+    if (toSide === "left") {
+      toPoint.x = toNode.x + toNode.width;
+      fromPoint.x = fromNode.x;
+    } else if (toSide === "right") {
+      toPoint.x = toNode.x;
+      fromPoint.x = fromNode.x + fromNode.width;
+    } else if (fromSide === "left") {
+      fromPoint.x = fromNode.x + fromNode.width;
+      toPoint.x = toNode.x;
+    } else if (fromSide === "right") {
+      fromPoint.x = fromNode.x;
+      toPoint.x = toNode.x + toNode.width;
+    }
+    toPoint.y = toNode.y + toNode.height / 2;
+    fromPoint.y = fromNode.y + fromNode.height / 2;
+    return {
+      from: edge.from,
+      to: edge.to,
+      label: edge.label,
+      kind: edge.kind,
+      fromPoint,
+      toPoint,
+      cyclic: edge.cyclic,
+      ...(edge.canonicalId !== undefined ? { canonicalId: edge.canonicalId } : {}),
+      ...(edge.syntheticLabel ? { syntheticLabel: true } : {}),
+    };
+  }
 
   const fromLayer = layers.get(edge.from) ?? 0;
   const toLayer = layers.get(edge.to) ?? 0;
