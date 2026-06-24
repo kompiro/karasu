@@ -168,6 +168,9 @@ export class StyleLexer {
       case ";":
         this.advance();
         return { type: TokenType.Semicolon, value: ";", loc };
+      case "=":
+        this.advance();
+        return { type: TokenType.Equals, value: "=", loc };
       case "#":
         // Distinguish hex color (#ABC123) from ID selector (#MyId)
         // Hex colors: all following chars are hex digits and count is 3,4,6,8

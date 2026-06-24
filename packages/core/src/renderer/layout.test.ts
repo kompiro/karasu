@@ -2,10 +2,24 @@ import { describe, it, expect } from "vitest";
 import { layout } from "./layout.js";
 import { extractView } from "../view/view-extract.js";
 import { Parser } from "../parser/parser.js";
+import type { ResolvedLayoutHints } from "../types/style.js";
 
 function parseAndExtract(krs: string, path: string[] = []) {
   const result = Parser.parse(krs);
   return extractView(result.value.systems, path);
+}
+
+/**
+ * Assert that `node` sits in a left/right side column (#1728): its x-range is
+ * entirely outside the horizontal span of the given in-boundary nodes.
+ */
+function expectOnSide(
+  node: { x: number; width: number },
+  ...inBoundary: { x: number; width: number }[]
+) {
+  const left = Math.min(...inBoundary.map((n) => n.x));
+  const right = Math.max(...inBoundary.map((n) => n.x + n.width));
+  expect(node.x >= right - 0.5 || node.x + node.width <= left + 0.5).toBe(true);
 }
 
 describe("layout > empty view", () => {
@@ -789,38 +803,161 @@ system Other {
     expect(c1.x).toBeLessThan(c2.x);
   });
 
-  it("splits the dep tier into an infra row above an external row (#1724)", () => {
+  it("keeps infra in a row and moves externals to side columns when >=2 hubs fan out (#1728)", () => {
+    // Two hubs (Web, Api) each call an external → cross-hub fan-out, so the
+    // side placement engages. Infra (database/queue) stays in a row below the
+    // services; the externals move to side columns.
     const slice = parseAndExtract(`
 system S {
   user Customer [human]
   client App [web]
-  service Backend {}
+  service Web {}
+  service Api {}
   database Postgres {}
   queue Jobs {}
-  storage Blobs {}
   service Stripe [external] {}
+  service Twilio [external] {}
   Customer -> App
-  App -> Backend
-  Backend -> Stripe
+  App -> Web
+  Web -> Api
+  Web -> Stripe
+  Api -> Twilio
 }
 `);
     const result = layout(slice);
-    const customer = result.nodes.get("Customer")!;
-    const app = result.nodes.get("App")!;
-    const backend = result.nodes.get("Backend")!;
+    const web = result.nodes.get("Web")!;
+    const api = result.nodes.get("Api")!;
     const postgres = result.nodes.get("Postgres")!;
     const jobs = result.nodes.get("Jobs")!;
-    const blobs = result.nodes.get("Blobs")!;
     const stripe = result.nodes.get("Stripe")!;
-    expect(customer.y).toBeLessThan(app.y);
-    expect(app.y).toBeLessThan(backend.y);
-    expect(backend.y).toBeLessThan(postgres.y);
-    // Infra (database/queue/storage) shares one row...
+    const twilio = result.nodes.get("Twilio")!;
+    // Infra (database/queue) shares one row.
     expect(postgres.y).toBe(jobs.y);
-    expect(jobs.y).toBe(blobs.y);
-    // ...and the external service sits on a *separate row below* the infra
-    // row (the #1724 split), not merged with it.
-    expect(stripe.y).toBeGreaterThan(postgres.y);
+    // Both externals move to side columns, outside the in-boundary span.
+    expectOnSide(stripe, web, api, postgres, jobs);
+    expectOnSide(twilio, web, api, postgres, jobs);
+  });
+
+  it("keeps a single-hub external in the bottom band, not a side column (gate, #1728)", () => {
+    // Only one hub (Api) fans out → no cross-hub crossings to fix, so the
+    // gate leaves the external in the compact bottom band (below the infra
+    // row), not a side column.
+    const slice = parseAndExtract(`
+system S {
+  service Api {}
+  database Db {}
+  service Stripe [external] {}
+  Api -> Stripe
+}
+`);
+    const result = layout(slice);
+    const api = result.nodes.get("Api")!;
+    const db = result.nodes.get("Db")!;
+    const stripe = result.nodes.get("Stripe")!;
+    // External sits in a row below (bottom band), below the infra row.
+    expect(api.y).toBeLessThan(db.y);
+    expect(db.y).toBeLessThan(stripe.y);
+  });
+
+  it("does not pull a user down toward a side-placed external (#1728 fix #1)", () => {
+    // Gate engages (2 hubs). Before the fix the user was pulled down to the
+    // external's old tier-4 (bottom-band) layer, then the external moved to
+    // the side — stranding the user in an empty row. Now the user pull-down
+    // skips tier-4 targets and the user stays at its default tier-0 position.
+    const slice = parseAndExtract(`
+system S {
+  user Admin [human]
+  service Alpha {}
+  service Beta {}
+  service ExtIdp [external] {}
+  service ExtSaas [external] {}
+  Admin -> ExtIdp
+  Alpha -> ExtIdp
+  Beta -> ExtSaas
+}
+`);
+    const result = layout(slice);
+    const admin = result.nodes.get("Admin")!;
+    const alpha = result.nodes.get("Alpha")!;
+    // Admin must sit above (or at the same height as) the internal services —
+    // not pulled into a deep bottom row by the former external tier-4 layer.
+    expect(admin.y).toBeLessThanOrEqual(alpha.y);
+  });
+
+  it("assigns each external to the side of its consuming hub (#1728)", () => {
+    // Two independent services share one internal row (Alpha left, Beta right
+    // by declaration order). Each external is consumed by one of them, so the
+    // consuming-hub barycenter split sends ExtA (← Alpha) left and ExtB (←
+    // Beta) right — keeping each hub's fan on its own side.
+    const slice = parseAndExtract(`
+system S {
+  service Alpha {}
+  service Beta {}
+  service ExtA [external] {}
+  service ExtB [external] {}
+  Alpha -> ExtA
+  Beta -> ExtB
+}
+`);
+    const result = layout(slice);
+    const alpha = result.nodes.get("Alpha")!;
+    const beta = result.nodes.get("Beta")!;
+    const extA = result.nodes.get("ExtA")!;
+    const extB = result.nodes.get("ExtB")!;
+    const innerLeft = Math.min(alpha.x, beta.x);
+    const innerRight = Math.max(alpha.x + alpha.width, beta.x + beta.width);
+    expect(extA.x + extA.width).toBeLessThanOrEqual(innerLeft + 0.5); // left side
+    expect(extB.x).toBeGreaterThanOrEqual(innerRight - 0.5); // right side
+  });
+
+  it("honors column:left/right to override the auto side assignment (#1728)", () => {
+    // Both externals are consumed only by Api (same hub → same auto side).
+    // Explicit column hints force them onto opposite sides.
+    const slice = parseAndExtract(`
+system S {
+  service Api {}
+  service ExtA [external] {}
+  service ExtB [external] {}
+  Api -> ExtA
+  Api -> ExtB
+}
+`);
+    const hints = new Map<string, ResolvedLayoutHints>([
+      ["ExtA", { column: "left" }],
+      ["ExtB", { column: "right" }],
+    ]);
+    const result = layout(slice, undefined, undefined, hints);
+    const api = result.nodes.get("Api")!;
+    const extA = result.nodes.get("ExtA")!;
+    const extB = result.nodes.get("ExtB")!;
+    expect(extA.x + extA.width).toBeLessThanOrEqual(api.x + 0.5); // forced left
+    expect(extB.x).toBeGreaterThanOrEqual(api.x + api.width - 0.5); // forced right
+  });
+
+  it("anchors side-external edges on the external's inner side, arrowhead inward (#1728)", () => {
+    // ExtA (← Alpha) lands on the left, ExtB (← Beta) on the right. The
+    // service→external edge must terminate on the external's inner edge so the
+    // arrowhead points inward: a left external is entered from its right side,
+    // a right external from its left side.
+    const slice = parseAndExtract(`
+system S {
+  service Alpha {}
+  service Beta {}
+  service ExtA [external] {}
+  service ExtB [external] {}
+  Alpha -> ExtA
+  Beta -> ExtB
+}
+`);
+    const result = layout(slice);
+    const extA = result.nodes.get("ExtA")!;
+    const extB = result.nodes.get("ExtB")!;
+    const eA = result.edges.find((e) => e.to === "ExtA")!;
+    const eB = result.edges.find((e) => e.to === "ExtB")!;
+    // Left external → arrowhead (toPoint) on its right edge.
+    expect(eA.toPoint.x).toBeCloseTo(extA.x + extA.width, 0);
+    // Right external → arrowhead on its left edge.
+    expect(eB.toPoint.x).toBeCloseTo(extB.x, 0);
   });
 
   it("keeps a database [external] on the infra row, not the external row (kind wins over tag) (#1724)", () => {
@@ -844,48 +981,6 @@ system S {
     expect(backend.y).toBeLessThan(ourDb.y);
     // Both stay on the infra row — the tag changes styling, not the tier.
     expect(ourDb.y).toBe(saasDb.y);
-  });
-
-  it("separates infra and external onto distinct rows when one service uses both (#1724)", () => {
-    // The hato pattern in miniature: a single service reads/writes infra and
-    // calls an external SaaS. Both are consumed at the same depth, so the old
-    // combined dep tier put all four on one wide row. The split must place
-    // infra on one row and external strictly below it.
-    const slice = parseAndExtract(`
-system S {
-  service Api {}
-  database Db {}
-  queue Q {}
-  service Stripe [external] {}
-  service Twilio [external] {}
-  Api -> Stripe
-  Api -> Twilio
-}
-`);
-    const result = layout(slice);
-    const db = result.nodes.get("Db")!;
-    const q = result.nodes.get("Q")!;
-    const stripe = result.nodes.get("Stripe")!;
-    const twilio = result.nodes.get("Twilio")!;
-    expect(db.y).toBe(q.y); // infra share a row
-    expect(stripe.y).toBe(twilio.y); // externals share a row
-    expect(stripe.y).toBeGreaterThan(db.y); // external row below infra row
-  });
-
-  it("does not add an empty infra band when a model has only external deps (#1724)", () => {
-    // External-only model: external must sit directly below the service tier,
-    // with no phantom gap where the (empty) infra row would be.
-    const slice = parseAndExtract(`
-system S {
-  service Api {}
-  service Stripe [external] {}
-  Api -> Stripe
-}
-`);
-    const result = layout(slice);
-    const api = result.nodes.get("Api")!;
-    const stripe = result.nodes.get("Stripe")!;
-    expect(stripe.y).toBeGreaterThan(api.y);
   });
 
   it("forces internal-vs-dep split even without user/client", () => {
@@ -965,28 +1060,6 @@ system S {
     expect(backend.y).toBeLessThan(db.y);
   });
 
-  it("places external services in a row below internal services", () => {
-    const slice = parseAndExtract(`
-system S {
-  user Customer [human]
-  client App [web]
-  service Backend {}
-  service Stripe [external] {}
-  Customer -> App
-  App -> Backend
-  Backend -> Stripe
-}
-`);
-    const result = layout(slice);
-    const customer = result.nodes.get("Customer")!;
-    const app = result.nodes.get("App")!;
-    const backend = result.nodes.get("Backend")!;
-    const stripe = result.nodes.get("Stripe")!;
-    expect(customer.y).toBeLessThan(app.y);
-    expect(app.y).toBeLessThan(backend.y);
-    expect(backend.y).toBeLessThan(stripe.y);
-  });
-
   it("pulls a dep used only by an upper service up to one row below its consumer (Issue #974)", () => {
     // Mirror of the actor-bypass test: A → B → C is a deep service chain;
     // Cache is consumed only by A. Without the dep pull-up, Cache would sit
@@ -1058,68 +1131,47 @@ system S {
     expect(cache.y).toBe(c.y);
   });
 
-  it("does not push a dep down when its source is below it (Issue #974, downward-safe)", () => {
-    // External service Stripe is consumed by Backend; with the pull-up,
-    // Stripe sits one row below Backend. A second external Other has no
-    // incoming edges — it must stay at the existing dep-tier row, not be
-    // pushed up or down by the post-pass.
+  it("does not push an infra dep down when its source is below it (Issue #974, downward-safe)", () => {
+    // Infra Cache is consumed by Backend → pulled up one row below Backend. A
+    // second infra Spare has no incoming edges → stays at the default dep row.
+    // (External services no longer participate in the dep pull-up — they go to
+    // side columns per #1728 — so this downward-safe property is exercised with
+    // infra, which still uses the pull-up.)
     const slice = parseAndExtract(`
 system S {
   service Backend {}
-  service Stripe [external] {}
-  service Other [external] {}
-  Backend -> Stripe
+  database Cache {}
+  database Spare {}
+  Backend -> Cache
 }
 `);
     const result = layout(slice);
     const backend = result.nodes.get("Backend")!;
-    const stripe = result.nodes.get("Stripe")!;
-    const other = result.nodes.get("Other")!;
-    // Stripe is pulled up to the row immediately below Backend.
-    expect(backend.y).toBeLessThan(stripe.y);
-    // Other has no incoming edges → keeps the default dep-tier row, which
-    // (because Stripe was pulled up) is the same row as Stripe in this
-    // two-row layout.
-    expect(other.y).toBe(stripe.y);
+    const cache = result.nodes.get("Cache")!;
+    const spare = result.nodes.get("Spare")!;
+    expect(backend.y).toBeLessThan(cache.y);
+    expect(spare.y).toBe(cache.y);
   });
 
-  it("propagates pull-up through a dep-on-dep chain regardless of declaration order (Issue #974)", () => {
-    // External Auth is consumed only by Stripe; Stripe is consumed only by
-    // Backend. The pull-up must place Auth one row below Stripe, even when
-    // Auth happens to be declared before Stripe (so the naive single-pass
-    // version would process Auth before Stripe is updated).
+  it("propagates infra pull-up through a dep-on-dep chain regardless of declaration order (Issue #974)", () => {
+    // Infra Auth is consumed only by Cache; Cache only by Backend. The pull-up
+    // must place Auth one row below Cache, even when Auth is declared before
+    // Cache (so a naive single pass would process Auth before Cache updates).
     const slice = parseAndExtract(`
 system S {
   service Backend {}
-  service Auth [external] {}
-  service Stripe [external] {}
-  Backend -> Stripe
-  Stripe -> Auth
+  database Auth {}
+  database Cache {}
+  Backend -> Cache
+  Cache -> Auth
 }
 `);
     const result = layout(slice);
     const backend = result.nodes.get("Backend")!;
-    const stripe = result.nodes.get("Stripe")!;
+    const cache = result.nodes.get("Cache")!;
     const auth = result.nodes.get("Auth")!;
-    expect(backend.y).toBeLessThan(stripe.y);
-    expect(stripe.y).toBeLessThan(auth.y);
-  });
-
-  it("compacts to two rows when only internal and external services are declared", () => {
-    // No user, no client: internal moves up to row 0, external to row 1.
-    const slice = parseAndExtract(`
-system S {
-  service Backend {}
-  service Stripe [external] {}
-  Backend -> Stripe
-}
-`);
-    const result = layout(slice);
-    const backend = result.nodes.get("Backend")!;
-    const stripe = result.nodes.get("Stripe")!;
-    expect(backend.y).toBeLessThan(stripe.y);
-    // Row 0 means y starts near NODE_GAP (60).
-    expect(backend.y).toBeLessThan(200);
+    expect(backend.y).toBeLessThan(cache.y);
+    expect(cache.y).toBeLessThan(auth.y);
   });
 
   it("compacts to two rows when only client (no user) is declared", () => {
@@ -1434,6 +1486,45 @@ system S {
     for (const id of ["A", "B", "C", "DB"]) {
       expect(explicitEmpty.nodes.get(id)!.x).toBe(baseline.nodes.get(id)!.x);
     }
+  });
+
+  it("applies external-on-sides in the multi-system root path (#1728 fix #2)", () => {
+    // Two systems forces layoutMultipleSystems(). Each system has ≥2 hubs
+    // fanning out to externals, so the gate engages per system.
+    const slice = parseAndExtract(`
+system A {
+  service Hub1 {}
+  service Hub2 {}
+  service ExtA [external] {}
+  service ExtB [external] {}
+  Hub1 -> ExtA
+  Hub2 -> ExtB
+}
+system B {
+  service Hub3 {}
+  service Hub4 {}
+  service ExtC [external] {}
+  service ExtD [external] {}
+  Hub3 -> ExtC
+  Hub4 -> ExtD
+}
+`);
+    const result = layout(slice);
+    const sysA = result.containers.find((c) => c.id === "A")!;
+    const sysB = result.containers.find((c) => c.id === "B")!;
+    // System B's externals must be placed relative to B's own container, not
+    // the global figure (regression guard: `others` must be scoped per-system,
+    // else B's external lands at the global left edge over system A).
+    for (const id of ["ExtC", "ExtD"]) {
+      const e = result.nodes.get(id)!;
+      expect(e.x).toBeGreaterThanOrEqual(sysB.x - 0.5);
+      expect(e.x + e.width).toBeLessThanOrEqual(sysB.x + sysB.width + 0.5);
+    }
+    // System containers must not overlap after side columns widen them.
+    expect(sysA.x + sysA.width <= sysB.x + 0.5 || sysB.x + sysB.width <= sysA.x + 0.5).toBe(true);
+    // All coordinates non-negative (multi-system path must normalize the
+    // first system's negative-x left column).
+    for (const [, m] of result.nodes) expect(m.x).toBeGreaterThanOrEqual(0);
   });
 
   it("applies bucketing in the multi-system root path", () => {

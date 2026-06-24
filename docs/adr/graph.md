@@ -1,6 +1,6 @@
 # ADR Dependency Graph — Overview
 
-234 ADRs across 15 topics. Clusters group by `topic` frontmatter field. Edges crossing cluster borders are cross-topic dependencies.
+236 ADRs across 15 topics. Clusters group by `topic` frontmatter field. Edges crossing cluster borders are cross-topic dependencies.
 ```mermaid
 flowchart TD
   subgraph adr-tooling["adr-tooling"]
@@ -197,6 +197,7 @@ flowchart TD
     ADR_20260411_06["ADR-20260411-06<br/>Export Project as ZIP — `fflate` による OPFS エクスポート"]
     ADR_20260412_03["ADR-20260412-03<br/>Import Project from ZIP — `fflate` 再利用 + トップレベル除去"]
     ADR_20260422_07["ADR-20260422-07<br/>OPFS 履歴スナップショットを diff 比較ソースにする"]
+    ADR_20260624_05["ADR-20260624-05<br/>Private vulnerability reporting を有効化する"]
   end
   subgraph renderer["renderer"]
     ADR_20260316_01["ADR-20260316-01<br/>SVGアイコンファイルの外部インポート方式"]
@@ -244,6 +245,7 @@ flowchart TD
     ADR_20260429_03["ADR-20260429-03<br/>凡例 ref のフォールバック swatch（in-use なら描画する）"]
     ADR_20260429_04["ADR-20260429-04<br/>`.krs.style` 側の `column` で layer 内 x 配置を上書きする e..."]
     ADR_20260611_01["ADR-20260611-01<br/>組み込みアノテーションバッジラベルは reference-data から生成し locale ..."]
+    ADR_20260624_04["ADR-20260624-04<br/>`.krs.style` に始点 / 終点エッジセレクタ `edge[from=<id>]` ..."]
   end
   subgraph testing["testing"]
     ADR_20260324_01["ADR-20260324-01<br/>E2EテストよりQA手動確認を優先する"]
@@ -601,6 +603,8 @@ flowchart TD
   class ADR_20260624_01 accepted
   class ADR_20260624_02 accepted
   class ADR_20260624_03 accepted
+  class ADR_20260624_04 accepted
+  class ADR_20260624_05 accepted
 ```
 
 ## Per-topic detail
@@ -614,9 +618,9 @@ flowchart TD
 - [`edges`](graph/edges.md) — 14 ADRs
 - [`navigation`](graph/navigation.md) — 9 ADRs
 - [`parser`](graph/parser.md) — 17 ADRs
-- [`project`](graph/project.md) — 4 ADRs
+- [`project`](graph/project.md) — 5 ADRs
 - [`renderer`](graph/renderer.md) — 28 ADRs
 - [`resolver`](graph/resolver.md) — 6 ADRs
-- [`styling`](graph/styling.md) — 7 ADRs
+- [`styling`](graph/styling.md) — 8 ADRs
 - [`testing`](graph/testing.md) — 11 ADRs
 - [`vscode`](graph/vscode.md) — 7 ADRs

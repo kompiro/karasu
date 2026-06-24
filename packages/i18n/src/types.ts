@@ -389,6 +389,7 @@ export type Translations = {
   }) => string;
   "diagnostic.expectedStylePropertyName.message": (params: { got: string }) => string;
   "diagnostic.expectedSemicolonBetweenProperties.message": (params: { property: string }) => string;
+  "diagnostic.unknownEdgeSelectorAttribute.message": (params: { attribute: string }) => string;
   "diagnostic.styleInvalidEnumValue.message": (params: {
     property: string;
     value: string;

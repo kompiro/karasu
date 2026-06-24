@@ -239,12 +239,34 @@ export class StyleParser {
       }
     }
 
-    // Tag selectors [tag]
+    // Tag selectors `[tag]` and edge endpoint selectors `[from=<id>]` /
+    // `[to=<id>]`. The two share the `[...]` bracket; an `=` after the inner
+    // identifier distinguishes an endpoint predicate from a plain tag (a tag
+    // is always `[ident]` with no `=`, so this never shadows tag parsing).
     while (this.peek().type === TokenType.LeftBracket) {
       this.advance(); // [
-      const tag = this.expect(TokenType.Identifier);
-      lastToken = this.expect(TokenType.RightBracket);
-      selector.tags.push(tag.value);
+      const inner = this.expect(TokenType.Identifier);
+      if (this.peek().type === TokenType.Equals) {
+        this.advance(); // =
+        // `<id>` may be a dot-notation endpoint (e.g. `OrderDB.OrderTable`),
+        // which the lexer already folds into a single Identifier.
+        const value = this.expect(TokenType.Identifier);
+        if (inner.value === "from") {
+          selector.edgeFrom = value.value;
+        } else if (inner.value === "to") {
+          selector.edgeTo = value.value;
+        } else {
+          this.diagnostics.push({
+            severity: "error",
+            code: "unknown-edge-selector-attribute",
+            params: { attribute: inner.value },
+          });
+        }
+        lastToken = this.expect(TokenType.RightBracket);
+      } else {
+        lastToken = this.expect(TokenType.RightBracket);
+        selector.tags.push(inner.value);
+      }
     }
 
     // Annotation selectors @annotation
@@ -528,6 +550,10 @@ export function computeSpecificity(selector: Omit<StyleSelector, "loc">): number
   if (selector.edgeId) score += 100;
   score += selector.tags.length * 10;
   score += selector.annotations.length * 10;
+  // `from=` / `to=` endpoint predicates score like a tag (10 each), so
+  // `edge[from=X]` lands at 11 — same tier as `edge[tag]`.
+  if (selector.edgeFrom !== undefined) score += 10;
+  if (selector.edgeTo !== undefined) score += 10;
   if (selector.nodeType) score += 1;
   return score;
 }

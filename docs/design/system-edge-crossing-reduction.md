@@ -79,6 +79,14 @@ PoC で**残り交差はサイドの左右割り当てに強く依存する**こ
 
 > **`placement: bottom`（個別 external を最下段へ戻す）は v1 では入れない（後追い）**。v1 は `column` によるサイド指定のみ。「サイドではなく最下段に置きたい」という実需要が出てから別途追加する。スコープを小さく保つ。
 
+### 2b. サイド external のエッジは「内側アンカー」にする（実装で追加）
+
+サイドに置いた external へのエッジは、external の**内側の辺**（左サイドなら右辺、右サイドなら左辺）に着地させ、矢印の頂点が内向きになるようにする。`computeEdgePoints` は tier index で上下アンカーを選ぶため、放置すると external は深い tier 扱いで**上辺**に着地してしまう（矢印が下向き）。side 配置の external は水平の内側アンカーに上書きする。これにより connector が水平になり、斜めの交差も解消する（hato 実測: 4 → **0** 交差）。
+
+### 2c. ≥2 ハブのときだけ sides にする（gate、実装で追加）
+
+external サイド化は **external エッジを持つ hub が ≥2 のときだけ**適用する。単一ハブの fan は自身と交差しないので、簡素な図ではサイド化が無益かつ図を横に広げるだけ（ガイド図 02-overview で確認）。単一ハブ図は従来の最下段バンド（[ADR-20260623-06]）を維持する。明示 `column: left/right` があれば gate を迂回して常に sides。
+
 ### 3. overflow: サイドに縦積みを続ける
 
 external が多くてサイドが詰まる場合も、上限を設けず**サイドに縦積みを続ける**（多いと縦長になる。最下段への自動フォールバックはしない）。詰まりは作者が 2 のヒントで個別に最下段へ逃がす。
@@ -119,6 +127,10 @@ external が多くてサイドが詰まる場合も、上限を設けず**サイ
 - **source selector（案2）**: 別 Issue [#1755](https://github.com/kompiro/karasu/issues/1755) に分離。#1728 は配置に集中。確定。
 - **tie-break（自動振り分けの決定性）**: median 分割で `hubX == median` は左。同側内は hub-x → consuming-hub-y → 宣言順で安定ソート。複数 hub が consume する external は consuming-hub の barycenter（平均 x）。hub が同 x の場合は宣言順で安定。確定（PoC 実装と一致）。
 - **幅トレードオフ**: サイド化で横長になる（hato 2323×892）点は許容（交差最小優先の帰結）。確定。
+
+## 既知の制限
+
+- **multi-system のクロスシステムエッジ**: multi-system root view では external サイド化は各システム単位で適用される（`layoutMultipleSystems` が system ごとに `placeExternalServicesOnSides` を呼ぶ）。一方 `viewSlice.crossSystemEdges`（`SystemA.svc -> SystemB.ext` のようなシステム間リンク）は per-system のループ後に独自の右→左アンカーで描画され、side 情報を受け取らない。クロスシステムエッジが side 配置された external を指す稀なケースでは内側アンカーにならないが、システム間リンクは横方向の system-flow 規約で描くのが自然なので許容する。必要になれば per-system の side map を集約してクロスシステム描画に渡す。
 
 ## 残る確認（実装時）
 

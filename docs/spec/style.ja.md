@@ -16,6 +16,8 @@
 | ID | `#ECommerce` | 特定ノードのみ |
 | エッジ | `edge` | 全エッジ |
 | エッジ+タグ | `edge[async]` | 指定タグのエッジ |
+| エッジ 始点 | `edge[from=ApiGateway]` | 指定ノードを始点とする全エッジ |
+| エッジ 終点 | `edge[to=ApiGateway]` | 指定ノードを終点とする全エッジ |
 | エッジ ID | `edge#criticalWrite`、`edge#A->B`、`edge#A-->B` | 特定のエッジのみ |
 
 ---
@@ -34,6 +36,7 @@
 | ID | `#ECommerce` | 100 |
 | エッジ | `edge` | 1 |
 | エッジ + タグ | `edge[async]` | 11 |
+| エッジ 始点 / 終点 | `edge[from=ApiGateway]` | 11 |
 | エッジ ID | `edge#criticalWrite` | 101 |
 <!-- /gen:reference:selector-specificity -->
 
@@ -41,6 +44,39 @@
 同スコアなら後に書いた方が優先（CSS同様）。
 
 ---
+
+## 始点 / 終点エッジセレクタ（`edge[from=<id>]` / `edge[to=<id>]`）
+
+**あるノードを始点（または終点）とする全エッジ**を 1 ルールでまとめてスタイル
+できる。密な図で残った交差や束を見分ける「color-by-source」の最有力手段で、
+これが無いとハブの fan-out を `edge#Hub->Target` ルールの列挙でしか書けない。
+
+- `edge[from=<id>]` — **始点**がノード `<id>` の全エッジ
+- `edge[to=<id>]` — **終点**がノード `<id>` の全エッジ
+
+```css
+edge[from=ApiGateway] { color: #3B82F6; }   /* ApiGateway の fan-out をまとめて 1 色に */
+edge[from=Scheduler] { color: #10B981; }
+edge[to=AuthService] { color: #F59E0B; } /* AuthService を呼ぶ全エッジ */
+```
+
+`<id>` はノード id。usecase→resource 合成エッジ向けに **dot-notation の端点**
+（例: `edge[to=OrderDB.OrderTable]`）も使える。base 形式
+`edge#PlaceOrder->OrderDB.OrderTable` と同じ規則で、id はアクティブビュー上の
+エッジの `from` / `to` 端点と比較される。
+
+どちらも詳細度は **11**（`edge` 種別 1 + 端点述語 10）で `edge[<tag>]` と同格。
+タグと併用でき、1 本のエッジが `from=` と `to=` の両ルールに同時に一致しうる:
+
+```css
+edge[from=ApiGateway][async] { stroke-style: dashed; }  /* ApiGateway 発の async エッジ */
+```
+
+`from` / `to` 以外の属性（例: `edge[source=X]`）は `unknown-edge-selector-attribute`
+エラーになる。
+
+> Related TPLs: [TPL-20260624-04](../test-perspectives/TPL-20260624-03-edge-endpoint-selector-id-form.md)
+> （端点セレクタはビューが格納する id 形と同じ形で比較すること）。
 
 ## エッジ ID セレクタ（`edge#<id>`）
 
@@ -195,6 +231,25 @@ queue, database, storage { column: center; }
 を保持します。**layer（行）自体を動かす効果はありません**。行を変えたく
 なった場合はヒントを増やす前に auto-layout のヒューリスティクス改善 Issue
 を立ててください。
+
+#### 外部サービス（system view）: `column` で配置サイドを選ぶ
+
+system view では `[external]` サービスを既定で**左右のサイド列**に配置します
+（最下段の行ではありません）。これにより `service → external` のエッジが水平に
+走り、下向きの infra ファンアウトの間を縫わずに済みます。サイドは consume する
+サービスの位置から自動で決まります（各 external は、それを呼ぶサービスの側へ
+グルーピングされます）。external サービスに `column: left` / `column: right` を
+指定すると、その自動割り当てを**上書き**して指定した側に固定します:
+
+```css
+#LegacyBilling { column: left; }  /* この外部 SaaS を左側に固定する */
+```
+
+external サービスの `column: center` / 未指定は、サイドを自動割り当てに委ねます。
+（infra kind — `database` / `queue` / `storage` — は `[external]` タグの有無に
+関わらず最下段の行に残ります。Tags を参照。）
+
+> Related TPLs: [TPL-20260624-04](../test-perspectives/TPL-20260624-04-external-side-placement-invariant.md)
 
 ### 適用スコープ
 

@@ -89,6 +89,7 @@ export enum TokenType {
   Hash = "Hash", // #
   Colon = "Colon",
   Semicolon = "Semicolon",
+  Equals = "Equals", // = (edge[from=<id>] / edge[to=<id>] selectors)
 
   // Comments (only in tokenizeWithComments())
   LineComment = "LineComment", // // ...

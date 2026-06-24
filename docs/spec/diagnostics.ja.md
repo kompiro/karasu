@@ -172,6 +172,7 @@ annotation パラメータと、削除・非推奨になったプロパティ。
 | `style-token-type-mismatch` | error | スタイルの token が期待された型と一致しない。 |
 | `expected-style-property-name` | error | スタイルパーサがプロパティ名を期待した。 |
 | `expected-semicolon-between-properties` | error | スタイルパーサがプロパティ間の `;` を期待した。 |
+| `unknown-edge-selector-attribute` | error | エッジセレクタが `from` / `to` 以外の属性を使っている（例: `edge[source=X]`）。 |
 | `style-conflict` | warning | セレクタが複数のユーザースタイルシートで定義される。 |
 | `style-column-invalid-value` | warning | スタイル `column` 値が `left` / `center` / `right` でない。 |
 | `style-column-ignored-non-system-view` | warning | `column` ヒントが deploy / org ビューに適用される（無視）。 |

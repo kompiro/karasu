@@ -388,12 +388,13 @@ function computeLayoutEdges(
   layers: Map<string, number>,
   containers: ContainerRect[],
   allEdges: KrsEdge[],
+  sideExternals?: Map<string, "left" | "right">,
 ): LayoutEdge[] {
   const layoutEdges: LayoutEdge[] = [];
 
   // Regular edges
   for (const edge of allEdges) {
-    const le = computeEdgePoints(edge, layoutNodes, layers);
+    const le = computeEdgePoints(edge, layoutNodes, layers, sideExternals);
     if (!le) continue;
     const edgeKey = `${edge.from}->${edge.to}#${edge.kind}`;
     const domainEdges = viewSlice.implicitEdgeDetails.get(edgeKey);
@@ -597,6 +598,130 @@ function computeTotalDimensions(
     totalHeight = Math.max(totalHeight, node.y + node.height + NODE_GAP);
   }
   return { width: totalWidth, height: totalHeight };
+}
+
+const EXTERNAL_SIDE_GAP = 100;
+
+/**
+ * Place `[external]` service nodes (systemTier 4) into left/right side columns
+ * instead of the bottom band, so `service → external` edges run horizontally
+ * and stop weaving through the downward infra fan-out (#1728, refines
+ * ADR-20260623-06). Runs *before* edge computation so `computeEdgePoints`
+ * re-picks side anchors from the new relative positions.
+ *
+ * Side assignment: the consuming-hub barycenter x (median split, ties → left)
+ * keeps each hub's external fan on one side, which minimizes cross-hub
+ * crossings. An author can override per node with the `column: left|right`
+ * style hint. Overflow keeps stacking vertically on the side (no cap).
+ *
+ * Works for both single-system and multi-system root views: callers pass
+ * the raw node list for the system being laid out and the ids of the
+ * containers that should be widened to wrap the side columns.
+ */
+function placeExternalServicesOnSides(
+  sourceNodes: KrsNode[],
+  systemContainerIds: Set<string>,
+  layoutNodes: Map<string, LayoutNode>,
+  containers: ContainerRect[],
+  allEdges: KrsEdge[],
+  layoutHints?: Map<string, ResolvedLayoutHints>,
+): Map<string, "left" | "right"> {
+  const sides = new Map<string, "left" | "right">();
+  const extIds = new Set<string>();
+  for (const c of sourceNodes) if (systemTier(c) === 4) extIds.add(c.id);
+  if (extIds.size === 0) return sides;
+  // Scope to THIS system's nodes only. In the multi-system path `layoutNodes`
+  // accumulates every system placed so far, so without this scope the bbox
+  // (min/max) below would span all systems and place this system's externals
+  // at the global figure edge, overlapping its neighbours.
+  const sourceIds = new Set(sourceNodes.map((c) => c.id));
+  const ext = [...layoutNodes.values()].filter((n) => extIds.has(n.id) && !n.ghost);
+  const others = [...layoutNodes.values()].filter(
+    (n) => sourceIds.has(n.id) && !extIds.has(n.id) && !n.ghost,
+  );
+  if (ext.length === 0 || others.length === 0) return sides;
+
+  // Gate: side placement only pays off when ≥2 distinct hubs fan out to
+  // externals — the condition that produces cross-hub edge crossings (#1728).
+  // A single-hub fan does not cross itself, so a simple diagram keeps the
+  // compact bottom band (ADR-20260623-06) rather than spreading wide. An
+  // explicit `column: left|right` on any external still forces side placement.
+  const hubs = new Set<string>();
+  for (const ed of allEdges) if (extIds.has(ed.to)) hubs.add(ed.from);
+  const hasExplicitSide = ext.some((n) => {
+    const c = layoutHints?.get(n.id)?.column;
+    return c === "left" || c === "right";
+  });
+  if (hubs.size < 2 && !hasExplicitSide) return sides;
+
+  // Consuming-hub barycenter x per external (from explicit edges into it).
+  const hubX = new Map<string, number>();
+  for (const e of ext) {
+    const xs = allEdges
+      .filter((ed) => ed.to === e.id)
+      .map((ed) => layoutNodes.get(ed.from))
+      .filter((s): s is LayoutNode => !!s)
+      .map((s) => s.x + s.width / 2);
+    hubX.set(e.id, xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : e.x + e.width / 2);
+  }
+
+  // Median of the auto-assigned (non-hinted) externals' hub barycenters.
+  const autoVals = ext
+    .filter((n) => {
+      const col = layoutHints?.get(n.id)?.column;
+      return col !== "left" && col !== "right";
+    })
+    .map((n) => hubX.get(n.id) ?? 0)
+    .sort((a, b) => a - b);
+  const median = autoVals.length ? autoVals[Math.floor((autoVals.length - 1) / 2)] : 0;
+  const sideOf = (n: LayoutNode): "left" | "right" => {
+    const col = layoutHints?.get(n.id)?.column;
+    if (col === "left" || col === "right") return col;
+    return (hubX.get(n.id) ?? 0) <= median ? "left" : "right";
+  };
+
+  const minX = Math.min(...others.map((n) => n.x));
+  const maxX = Math.max(...others.map((n) => n.x + n.width));
+  const topY = Math.min(...others.map((n) => n.y));
+  const botY = Math.max(...others.map((n) => n.y + n.height));
+
+  const place = (group: LayoutNode[], x: number): void => {
+    // Stable order within a side: hub-x, then consuming-hub y, then existing y.
+    group.sort((a, b) => (hubX.get(a.id) ?? 0) - (hubX.get(b.id) ?? 0) || a.y - b.y);
+    const count = group.length;
+    group.forEach((node, i) => {
+      node.x = x;
+      node.y = topY + ((i + 1) * (botY - topY)) / (count + 1) - node.height / 2;
+    });
+  };
+  const left = ext.filter((n) => sideOf(n) === "left");
+  const right = ext.filter((n) => sideOf(n) === "right");
+  // Per-side column width so a narrow side does not reserve the wide side's
+  // gutter (each column hugs the system by its own widest member).
+  const leftColW = left.reduce((m, n) => Math.max(m, n.width), 0);
+  const rightColW = right.reduce((m, n) => Math.max(m, n.width), 0);
+  place(left, minX - EXTERNAL_SIDE_GAP - leftColW);
+  place(right, maxX + EXTERNAL_SIDE_GAP);
+  for (const n of left) sides.set(n.id, "left");
+  for (const n of right) sides.set(n.id, "right");
+
+  // Grow the system container(s) to wrap the populated side columns.
+  const leftEdge = left.length
+    ? minX - EXTERNAL_SIDE_GAP - leftColW - CONTAINER_PADDING
+    : undefined;
+  const rightEdge = right.length
+    ? maxX + EXTERNAL_SIDE_GAP + rightColW + CONTAINER_PADDING
+    : undefined;
+  for (const c of containers) {
+    if (!systemContainerIds.has(c.id)) continue;
+    let nx = c.x;
+    let nr = c.x + c.width;
+    if (leftEdge !== undefined) nx = Math.min(nx, leftEdge);
+    if (rightEdge !== undefined) nr = Math.max(nr, rightEdge);
+    c.x = nx;
+    c.width = nr - nx;
+  }
+  return sides;
 }
 
 export function layout(
@@ -890,8 +1015,26 @@ export function layout(
   placeCallerGhostSystems(viewSlice, layoutNodes, containers, ownerIndex, displayMode);
   placeOutgoingGhostSystems(viewSlice, layoutNodes, containers, ownerIndex, displayMode);
 
+  // Move [external] services to side columns before edges are computed, so
+  // anchors re-pick sides from the new positions (#1728).
+  const sideExternals = placeExternalServicesOnSides(
+    viewSlice.childNodes,
+    new Set(viewSlice.systems.map((s) => s.id)),
+    layoutNodes,
+    containers,
+    allEdges,
+    layoutHints,
+  );
+
   // Compute all edges (regular + ghost)
-  const layoutEdges = computeLayoutEdges(viewSlice, layoutNodes, layers, containers, allEdges);
+  const layoutEdges = computeLayoutEdges(
+    viewSlice,
+    layoutNodes,
+    layers,
+    containers,
+    allEdges,
+    sideExternals,
+  );
 
   // Phase 3: distribute ports across each node side that hosts ≥ 2 edges,
   // so labels separate horizontally / vertically instead of stacking. Must
@@ -1202,10 +1345,22 @@ function layoutMultipleSystems(
       allLayoutNodes.set(id, node);
     }
 
+    // Move [external] services to side columns for this system (#1728).
+    // Run per-system so each system's externals are placed relative to that
+    // system's own in-boundary nodes, not the global figure.
+    const sideExternals = placeExternalServicesOnSides(
+      rawNodes,
+      new Set([sys.id]),
+      allLayoutNodes,
+      allContainers,
+      sys.edges,
+      layoutHints,
+    );
+
     // Intra-system edges
     for (const edge of sys.edges) {
       if (idSet.has(edge.from) && idSet.has(edge.to)) {
-        const le = computeEdgePoints(edge, allLayoutNodes, layers);
+        const le = computeEdgePoints(edge, allLayoutNodes, layers, sideExternals);
         if (le) {
           if (isGhost) le.ghost = true;
           allEdges.push(le);
@@ -1213,7 +1368,8 @@ function layoutMultipleSystems(
       }
     }
 
-    offsetX += containerW + GHOST_MARGIN * 3;
+    // Use the container's final width (may have been widened by side columns).
+    offsetX += containerRect.width + GHOST_MARGIN * 3;
   }
 
   // Cross-system edges
@@ -1237,6 +1393,11 @@ function layoutMultipleSystems(
   }
 
   markParallelBundles(allEdges);
+
+  // The first system's left side column (#1728) can extend to negative x;
+  // shift everything back into the positive quadrant so it isn't clipped.
+  // No-op when nothing went negative (the common case without side columns).
+  normalizeCoordinates(allContainers, allLayoutNodes, allEdges);
 
   // Calculate total dimensions
   let totalWidth = 0;
@@ -1294,6 +1455,7 @@ function computeEdgePoints(
   edge: KrsEdge,
   layoutNodes: Map<string, LayoutNode>,
   layers: Map<string, number>,
+  sideExternals?: Map<string, "left" | "right">,
 ): LayoutEdge | null {
   const fromNode = layoutNodes.get(edge.from);
   const toNode = layoutNodes.get(edge.to);
@@ -1308,26 +1470,56 @@ function computeEdgePoints(
     y: toNode.y,
   };
 
-  const fromLayer = layers.get(edge.from) ?? 0;
-  const toLayer = layers.get(edge.to) ?? 0;
-  if (fromLayer === toLayer) {
-    // Same layer: horizontal edge
-    if (fromNode.x < toNode.x) {
-      fromPoint.x = fromNode.x + fromNode.width;
-      fromPoint.y = fromNode.y + fromNode.height / 2;
-      toPoint.x = toNode.x;
-      toPoint.y = toNode.y + toNode.height / 2;
-    } else {
-      fromPoint.x = fromNode.x;
-      fromPoint.y = fromNode.y + fromNode.height / 2;
+  // Side-placed external endpoints (#1728): anchor on the external's *inner*
+  // side so the connector runs horizontally and the arrowhead points inward —
+  // a left-side external is entered from its right edge, a right-side external
+  // from its left edge. The opposite endpoint anchors on the side that faces
+  // the external. This overrides the layer-based vertical anchoring below
+  // (external is still on a deeper tier index, which would otherwise pick a
+  // top/bottom anchor).
+  const toSide = sideExternals?.get(edge.to);
+  const fromSide = sideExternals?.get(edge.from);
+  if (toSide || fromSide) {
+    // Set horizontal inner-side anchors and fall through to the shared return
+    // below so any future LayoutEdge field is picked up in one place.
+    if (toSide === "left") {
       toPoint.x = toNode.x + toNode.width;
-      toPoint.y = toNode.y + toNode.height / 2;
+      fromPoint.x = fromNode.x;
+    } else if (toSide === "right") {
+      toPoint.x = toNode.x;
+      fromPoint.x = fromNode.x + fromNode.width;
+    } else if (fromSide === "left") {
+      fromPoint.x = fromNode.x + fromNode.width;
+      toPoint.x = toNode.x;
+    } else if (fromSide === "right") {
+      fromPoint.x = fromNode.x;
+      toPoint.x = toNode.x + toNode.width;
     }
-  } else if (fromLayer > toLayer) {
-    // Reverse edge
-    fromPoint.y = fromNode.y;
-    toPoint.y = toNode.y + toNode.height;
-  }
+    toPoint.y = toNode.y + toNode.height / 2;
+    fromPoint.y = fromNode.y + fromNode.height / 2;
+    // Skip layer-based adjustments below.
+  } else {
+    const fromLayer = layers.get(edge.from) ?? 0;
+    const toLayer = layers.get(edge.to) ?? 0;
+    if (fromLayer === toLayer) {
+      // Same layer: horizontal edge
+      if (fromNode.x < toNode.x) {
+        fromPoint.x = fromNode.x + fromNode.width;
+        fromPoint.y = fromNode.y + fromNode.height / 2;
+        toPoint.x = toNode.x;
+        toPoint.y = toNode.y + toNode.height / 2;
+      } else {
+        fromPoint.x = fromNode.x;
+        fromPoint.y = fromNode.y + fromNode.height / 2;
+        toPoint.x = toNode.x + toNode.width;
+        toPoint.y = toNode.y + toNode.height / 2;
+      }
+    } else if (fromLayer > toLayer) {
+      // Reverse edge
+      fromPoint.y = fromNode.y;
+      toPoint.y = toNode.y + toNode.height;
+    }
+  } // end of else branch (layer-based adjustments)
 
   return {
     from: edge.from,
@@ -1512,9 +1704,13 @@ function assignForcedSystemLayers(nodes: KrsNode[], edges: KrsEdge[]): Map<strin
   // placement.
   //
   // Runs last, after the infra pull-up and the external band, so a user
-  // whose only target is an external node is pulled down relative to that
-  // node's *final* bottom-band row — not its provisional pre-band row, which
-  // would leave the actor floating several rows above its sole target.
+  // whose only target is an in-boundary node is pulled down correctly.
+  // External services (tier 4) are intentionally excluded from this
+  // calculation: when the ≥2-hub gate engages they move to side columns
+  // at service-tier height, so pulling a user toward their former
+  // bottom-band layer index would strand the user in an empty row with a
+  // long diagonal edge to the side column.  A user that targets only
+  // externals keeps the default tier-0 placement.
   const outByUser = new Map<string, string[]>();
   for (const e of edges) {
     const fromNode = nodes.find((n) => n.id === e.from);
@@ -1523,11 +1719,14 @@ function assignForcedSystemLayers(nodes: KrsNode[], edges: KrsEdge[]): Map<strin
     list.push(e.to);
     outByUser.set(e.from, list);
   }
+  const nodeById = new Map(nodes.map((n) => [n.id, n]));
   for (const u of byTier[0]) {
     const targets = outByUser.get(u.id);
     if (!targets || targets.length === 0) continue;
     let minTargetLayer = Infinity;
     for (const tid of targets) {
+      const targetNode = nodeById.get(tid);
+      if (targetNode && systemTier(targetNode) === 4) continue; // skip externals
       const tl = layers.get(tid);
       if (tl === undefined) continue;
       if (tl < minTargetLayer) minTargetLayer = tl;

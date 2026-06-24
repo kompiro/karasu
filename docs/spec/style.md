@@ -16,6 +16,8 @@
 | ID | `#ECommerce` | A specific node only |
 | Edge | `edge` | All edges |
 | Edge + tag | `edge[async]` | Edges with the given tag |
+| Edge source | `edge[from=ApiGateway]` | All edges originating at the node |
+| Edge target | `edge[to=ApiGateway]` | All edges terminating at the node |
 | Edge ID | `edge#criticalWrite`, `edge#A->B`, `edge#A-->B` | A specific edge only |
 
 ---
@@ -34,6 +36,7 @@
 | ID | `#ECommerce` | 100 |
 | Edge | `edge` | 1 |
 | Edge + tag | `edge[async]` | 11 |
+| Edge source/target | `edge[from=ApiGateway]` | 11 |
 | Edge ID | `edge#criticalWrite` | 101 |
 <!-- /gen:reference:selector-specificity -->
 
@@ -41,6 +44,40 @@
 When scores are equal, the later declaration wins (same as CSS).
 
 ---
+
+## Source/target edge selectors (`edge[from=<id>]` / `edge[to=<id>]`)
+
+Style **all edges from (or to) a given node** in one rule — the most useful
+"color-by-source" aid for dense diagrams, where a hub's fan-out would
+otherwise need one `edge#Hub->Target` rule per target.
+
+- `edge[from=<id>]` — every edge whose **source** is the node `<id>`
+- `edge[to=<id>]` — every edge whose **target** is the node `<id>`
+
+```css
+edge[from=ApiGateway] { color: #3B82F6; }   /* whole ApiGateway fan-out in one color */
+edge[from=Scheduler] { color: #10B981; }
+edge[to=AuthService] { color: #F59E0B; } /* everything calling AuthService */
+```
+
+`<id>` is a node id. It may be a **dot-notation endpoint** (e.g.
+`edge[to=OrderDB.OrderTable]`) for synthesized usecase→resource edges,
+consistent with the base form `edge#PlaceOrder->OrderDB.OrderTable`. The id is
+compared against the edge's `from` / `to` endpoint in the active view.
+
+Both selectors score **11** (`edge` kind 1 + endpoint predicate 10) — the same
+tier as `edge[<tag>]`. They combine with tags and a single edge can match both
+a `from=` and a `to=` rule:
+
+```css
+edge[from=ApiGateway][async] { stroke-style: dashed; }  /* async edges out of ApiGateway */
+```
+
+Any attribute other than `from` / `to` (e.g. `edge[source=X]`) raises an
+`unknown-edge-selector-attribute` error.
+
+> Related TPLs: [TPL-20260624-04](../test-perspectives/TPL-20260624-03-edge-endpoint-selector-id-form.md)
+> (endpoint selectors must compare against the same id form the view stores).
 
 ## Edge ID selector (`edge#<id>`)
 
@@ -205,6 +242,26 @@ Within each bucket, the existing within-layer order is preserved
 (declaration order in system view; barycenter elsewhere). The hint does
 **not** move a node to a different layer (row); for that, file an
 auto-layout heuristic issue rather than reaching for a new hint.
+
+#### External services (system view): `column` picks the side
+
+In the system view, `[external]` services are placed in **left/right side
+columns** by default (not a bottom row), so `service → external` edges run
+horizontally and don't weave through the downward infra fan-out. The side is
+chosen automatically from the consuming service's position (each external is
+grouped to the side of the service that calls it). `column: left` / `column:
+right` on an external service **overrides** that auto-assignment and pins it to
+the named side:
+
+```css
+#LegacyBilling { column: left; }  /* pin this external SaaS to the left side */
+```
+
+`column: center` / unspecified on an external service leaves the side to the
+auto-assignment. (infra kinds — `database` / `queue` / `storage` — stay in the
+bottom row regardless of any `[external]` tag; see Tags.)
+
+> Related TPLs: [TPL-20260624-04](../test-perspectives/TPL-20260624-04-external-side-placement-invariant.md)
 
 ### Scope
 

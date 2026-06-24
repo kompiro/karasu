@@ -113,6 +113,8 @@ export function renderDiagnostic(d: Diagnostic, t: TranslateFn): string {
       return t("diagnostic.expectedStylePropertyName.message", d.params);
     case "expected-semicolon-between-properties":
       return t("diagnostic.expectedSemicolonBetweenProperties.message", d.params);
+    case "unknown-edge-selector-attribute":
+      return t("diagnostic.unknownEdgeSelectorAttribute.message", d.params);
     case "style-invalid-enum-value":
       return t("diagnostic.styleInvalidEnumValue.message", d.params);
     case "style-invalid-hex-color":

@@ -499,6 +499,94 @@ describe("resolveStyles", () => {
     });
   });
 
+  describe("edge[from=<id>] / edge[to=<id>] selector", () => {
+    const hubEdges = [
+      {
+        from: "Hub",
+        to: "B",
+        kind: "sync" as const,
+        tags: [],
+        loc: dummyLoc,
+        canonicalId: "Hub->B",
+      },
+      {
+        from: "Hub",
+        to: "C",
+        kind: "sync" as const,
+        tags: [],
+        loc: dummyLoc,
+        canonicalId: "Hub->C",
+      },
+      {
+        from: "Other",
+        to: "B",
+        kind: "sync" as const,
+        tags: [],
+        loc: dummyLoc,
+        canonicalId: "Other->B",
+      },
+    ];
+
+    it("colors every edge originating at the source node and leaves others untouched", () => {
+      const sheet: StyleSheet = {
+        rules: [
+          makeRule(
+            { nodeType: "edge", edgeFrom: "Hub", tags: [], annotations: [] },
+            { color: "#3B82F6" },
+            11,
+            0,
+          ),
+        ],
+      };
+      const result = resolveStyles([], [sheet], undefined, undefined, undefined, hubEdges);
+      expect(result.edges.get("Hub->B")!.color).toBe("#3B82F6");
+      expect(result.edges.get("Hub->C")!.color).toBe("#3B82F6");
+      expect(result.edges.get("Other->B")!.color).not.toBe("#3B82F6");
+    });
+
+    it("colors every edge terminating at the target node", () => {
+      const sheet: StyleSheet = {
+        rules: [
+          makeRule(
+            { nodeType: "edge", edgeTo: "B", tags: [], annotations: [] },
+            { color: "#10B981" },
+            11,
+            0,
+          ),
+        ],
+      };
+      const result = resolveStyles([], [sheet], undefined, undefined, undefined, hubEdges);
+      expect(result.edges.get("Hub->B")!.color).toBe("#10B981");
+      expect(result.edges.get("Other->B")!.color).toBe("#10B981");
+      expect(result.edges.get("Hub->C")!.color).not.toBe("#10B981");
+    });
+
+    it("matches a dot-notation endpoint (synthesized usecase->resource edge)", () => {
+      const synthEdges = [
+        {
+          from: "PlaceOrder",
+          to: "OrderDB.OrderTable",
+          kind: "sync" as const,
+          tags: [],
+          loc: dummyLoc,
+          canonicalId: "PlaceOrder->OrderDB.OrderTable",
+        },
+      ];
+      const sheet: StyleSheet = {
+        rules: [
+          makeRule(
+            { nodeType: "edge", edgeTo: "OrderDB.OrderTable", tags: [], annotations: [] },
+            { color: "#EF4444" },
+            11,
+            0,
+          ),
+        ],
+      };
+      const result = resolveStyles([], [sheet], undefined, undefined, undefined, synthEdges);
+      expect(result.edges.get("PlaceOrder->OrderDB.OrderTable")!.color).toBe("#EF4444");
+    });
+  });
+
   it("resolves async edge as dashed via builtin stylesheet", () => {
     const system = makeNode({
       kind: "system",

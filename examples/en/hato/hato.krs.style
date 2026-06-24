@@ -1,0 +1,9 @@
+// hato.krs.style
+// The hato API consumes most third-party SaaS, so the auto side-split (by
+// consuming-hub position) groups them all on one side. Pin the shared identity
+// proxy to the opposite side so the front-door auth dependency reads apart from
+// the data integrations (#1728: `column` picks the side for [external]).
+
+#CloudflareAccess {
+  column: right;
+}
