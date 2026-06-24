@@ -217,6 +217,37 @@ auto-layout heuristic issue rather than reaching for a new hint.
 Invalid values (anything other than `left` / `center` / `right`) emit a
 `style-column-invalid-value` warning and are dropped.
 
+### `grid-columns` — positive integer
+
+Sets how many columns a container's direct children wrap into. By default the
+layout already wraps many siblings into a **balanced grid** so a wide sibling
+set does not sprawl into one row that forces a zoom-out — keeping a view
+graspable at a glance (see Concepts, scoped glance / resolution axis). The
+default column count auto-balances toward a square: a small set (up to five)
+stays on one row, and a larger set uses `ceil(sqrt(n))` columns, capped at five,
+so it grows downward rather than sideways.
+
+`grid-columns` overrides that default for a specific container — set it on the
+node whose children you want to re-flow (the `system` for its services, a
+`service` for its domains, a `domain` for its usecases, a `team` for its member
+grid):
+
+```css
+#PlatformSystem { grid-columns: 3; }   /* its services wrap into 3 columns */
+#BillingDomain  { grid-columns: 2; }   /* its usecases wrap into 2 columns */
+```
+
+A row still wraps early if it would exceed the maximum layer width, so an
+oversized `grid-columns` cannot overflow the frame. Unlike `column`, this hint
+is honored across the system, drill-down, and deploy views, as well as the org
+member grid.
+
+Invalid values (anything that is not a positive integer, e.g. `0` or `2.5`) emit
+a `style-grid-columns-invalid-value` warning and are dropped; the layout
+auto-balances instead.
+
+> Related TPLs: [TPL-20260510-21](../test-perspectives/TPL-20260510-21-scoped-glance-drill-down.md) — limit how much is shown at once; a single view keeps a graspable resolution (the balanced grid keeps visual density bounded).
+
 ### `direction` — `auto | up | down | left | right`
 
 A layout hint on edges. Suggests the visual direction in which the edge

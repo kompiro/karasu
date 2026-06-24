@@ -175,6 +175,7 @@ annotation パラメータと、削除・非推奨になったプロパティ。
 | `style-conflict` | warning | セレクタが複数のユーザースタイルシートで定義される。 |
 | `style-column-invalid-value` | warning | スタイル `column` 値が `left` / `center` / `right` でない。 |
 | `style-column-ignored-non-system-view` | warning | `column` ヒントが deploy / org ビューに適用される（無視）。 |
+| `style-grid-columns-invalid-value` | warning | スタイル `grid-columns` 値が正の整数でない（ヒントは破棄され、レイアウトは自動バランスにフォールバック）。 |
 
 ### client・capability
 
