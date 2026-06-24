@@ -4,7 +4,7 @@ title: "`.krs.style` に始点 / 終点エッジセレクタ `edge[from=<id>]` /
 status: accepted
 date: 2026-06-24
 topic: styling
-related_to: [ADR-20260506-02, ADR-20260623-06]
+related_to: [ADR-20260506-02, ADR-20260623-06, ADR-20260624-06]
 assumptions:
   - "symbol: packages/core/src/parser/style-parser.ts :: computeSpecificity"
   - "symbol: packages/core/src/resolver/style-resolver.ts :: edgeSelectorMatches"
@@ -35,7 +35,7 @@ scope:
 
 この affordance は #1728（system view の交差削減）の議論で必要性が確認されたが、
 **配置の問題とは独立した styling 機能**なので #1755 として切り出した
-（`docs/design/system-edge-crossing-reduction.md` で確定）。
+（[ADR-20260624-06](./20260624-06-external-on-sides-layout.md) で確定）。
 
 ## 決定
 
