@@ -46,7 +46,7 @@
 
 - [x] 全 render path（単一 system / 複数 system root / drill-down / deploy / org member grid）が同一の grid 規則を通る（parity, [TPL-20260510-11](../test-perspectives/TPL-20260510-11-parallel-function-parity.md)）
 
-  > ✅ Automated — 共通ヘルパー `gridColumnCount` / `wrapLayerIntoRows` を `layout.ts`（単一 + 複数 system）・`deploy-layout.ts`・`org-tree-renderer.ts` が共有。既存の各 render path スナップショット（`drill-down-svg.test.ts` / `multi-level-svg.test.ts` / `deploy-layout.test.ts` / `org-renderer.test.ts`）が非退行で通過
+  > ✅ Automated — 列数の決定規則 `gridColumnCount`（`layer-layout-logics.ts`）を `layout.ts`（単一 + 複数 system）・`deploy-layout.ts` が共有（org member grid は既に bounded なため `memberCols` で既定 3・`grid-columns` 上書き）。行折り返しの配置は単一 system path が共有 `wrapLayerIntoRows` を用い、複数 system / deploy path は各々の座標系（barycenter / centerX 追跡・OUTER_PADDING）に合わせて同じ折り返し規則（列数 or `MAX_LAYER_WIDTH`）をインラインで適用する。既存の各 render path スナップショット（`drill-down-svg.test.ts` / `multi-level-svg.test.ts` / `deploy-layout.test.ts` / `org-renderer.test.ts`）が非退行で通過
 
 ### 手動確認
 

@@ -76,3 +76,4 @@ karasu の認知モデルは **scoped glance + drill-down**（`docs/concepts.ja.
 ## 派生元 spec
 
 - `docs/concepts.ja.md` 「一度に見せる範囲を限定し、ドリルダウンで詳細へ降りる（scoped glance）」節（英語版 `docs/concepts.md` "Limit what is shown at once; drill down for detail"）。同節は scoped glance が **ナビゲーションの深さだけでなく単一ビューの解像度・視覚的密度** までを含むことを規定しており、本 TPL のチェックリスト「単一ビュー内のレイアウトが一目で把握できる解像度を保つか」がその違反を検出する。
+- `docs/spec/style.md` `grid-columns` 節（英語版）/ `docs/spec/style.ja.md`（日本語版）。多数の兄弟ノードをバランス grid に畳んで単一ビューの視覚的密度を一定に保つレイアウト規定であり、本 TPL のチェックリスト「単一ビュー内のレイアウトが一目で把握できる解像度を保つか」がその回帰を検出する（#1737）。
