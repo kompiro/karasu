@@ -391,6 +391,7 @@ function renderContainer(
     "g",
     {
       "data-container-id": container.id,
+      "data-kind-band": container.kindBand,
       "data-diff-state": diffState,
       opacity: ghost ? GHOST_OPACITY : undefined,
     },

@@ -82,6 +82,12 @@ export interface ContainerRect {
   width: number;
   height: number;
   ghost: boolean;
+  /**
+   * Kind band marker (deploy view, #1738). Set on the job band wrapper and its
+   * member containers so the renderer can emit `data-kind-band` for styling /
+   * e2e hooks. `undefined` for ordinary containers.
+   */
+  kindBand?: "job";
 }
 
 export interface LayoutResult {

@@ -13,6 +13,12 @@ const OUTER_PADDING = 40;
 const ROW_GAP = 64; // vertical gap between layers (larger than CONTAINER_GAP to leave room for edges)
 const MAX_LAYER_WIDTH = 1200; // wrap containers to a new sub-row when a layer exceeds this width
 const UNCLASSIFIED_LABEL = "Unclassified";
+// Caption for the job band wrapper. Hardcoded English to match the sibling
+// `UNCLASSIFIED_LABEL` precedent (both are layout-level captions); i18n of these
+// diagram band labels is a separate follow-up.
+const JOB_BAND_LABEL = "Scheduled jobs";
+
+type Group = { id: string; label: string; units: DeployNode[]; kindBand?: "job" };
 
 function estimateTextWidth(text: string): number {
   let width = 0;
@@ -145,23 +151,116 @@ function ghostEdgePoints(
 }
 
 /**
+ * Place an ordered list of containers as one horizontal block, wrapping into
+ * grid sub-rows at the balanced-grid column cap or when `MAX_LAYER_WIDTH` would
+ * be exceeded (whichever comes first). Mutates `containers` / `layoutNodes` /
+ * `containerCenterX` in place and returns the block's bottom Y and right edge.
+ *
+ * Shared by both the DAG layers and the job band so the band grids identically
+ * (one source of truth for the wrap rule; balanced-grid #1748 lives here too).
+ * Callers sort `groups` beforehand (e.g. barycenter) — this only positions.
+ */
+function placeGroupBlock(
+  groups: Group[],
+  startX: number,
+  startY: number,
+  layoutNodes: Map<string, LayoutNode>,
+  containers: ContainerRect[],
+  containerCenterX: Map<string, number>,
+): { bottomY: number; maxRight: number } {
+  const columnCount = gridColumnCount(groups.length);
+  let colInRow = 0;
+  let currentX = startX;
+  let subRowY = startY;
+  let subRowMaxHeight = 0;
+  let maxRight = startX;
+
+  for (const group of groups) {
+    const containerW = measureContainerWidth(group.units, group.label);
+    const containerH = measureContainerHeight(group.units);
+
+    if (
+      currentX > startX &&
+      (colInRow >= columnCount || currentX + containerW > startX + MAX_LAYER_WIDTH)
+    ) {
+      subRowY += subRowMaxHeight + CONTAINER_GAP;
+      currentX = startX;
+      subRowMaxHeight = 0;
+      colInRow = 0;
+    }
+
+    containers.push({
+      id: group.id,
+      label: group.label,
+      x: currentX,
+      y: subRowY,
+      width: containerW,
+      height: containerH,
+      ghost: false,
+      kindBand: group.kindBand,
+    });
+
+    let unitY = subRowY + CONTAINER_PADDING_TOP;
+    for (const unit of group.units) {
+      const dims = measureDeployUnit(unit);
+      // Key is "${containerId}::${unit.id}" so the same unit can appear in multiple
+      // containers at different positions without overwriting its layout entry.
+      layoutNodes.set(`${group.id}::${unit.id}`, {
+        kind: unit.kind,
+        id: unit.id,
+        label: unit.label ?? unit.id,
+        properties: {
+          description: deployUnitDescription(unit),
+          links: [],
+        },
+        descriptionSummary: undefined,
+        linkCount: 0,
+        hasChildren: false,
+        hasDescription: !!deployUnitDescription(unit),
+        x: currentX + CONTAINER_PADDING_X,
+        y: unitY,
+        width: dims.width,
+        height: dims.height,
+      });
+      unitY += dims.height + NODE_GAP;
+    }
+
+    containerCenterX.set(group.id, currentX + containerW / 2);
+    subRowMaxHeight = Math.max(subRowMaxHeight, containerH);
+    currentX += containerW + CONTAINER_GAP;
+    colInRow += 1;
+    maxRight = Math.max(maxRight, currentX - CONTAINER_GAP);
+  }
+
+  return { bottomY: subRowY + subRowMaxHeight, maxRight };
+}
+
+/**
  * Layout a deploy diagram using a layered DAG layout (Longest Path Layering).
  *
  * Containers are grouped into layers based on service dependency edges (ghost edges).
  * Within each layer containers are arranged horizontally; layers are stacked vertically.
  * Containers within each layer are sorted by the barycenter heuristic to minimize edge crossings.
+ * Job-only containers are pulled out of the DAG into a dedicated job band below it (#1738).
  * Unclassified units (no realizes) are placed in a separate row at the bottom.
  */
 export function layoutDeploy(slice: DeployViewSlice): LayoutResult {
   const layoutNodes = new Map<string, LayoutNode>();
   const containers: ContainerRect[] = [];
 
-  type Group = { id: string; label: string; units: DeployNode[] };
   const classifiedGroups: Group[] = slice.containers.map((c) => ({
     id: c.serviceId,
     label: c.serviceLabel,
     units: c.units,
+    kindBand: c.kindBand,
   }));
+
+  // Job-only containers leave the dependency DAG and cluster into a dedicated
+  // job band below it (#1738). Their DAG position is accidental (the depth of
+  // the domain they realize), so banding them turns scattered jobs into one
+  // operational group. compute / mixed containers stay on the DAG.
+  const dagGroups = classifiedGroups.filter((g) => g.kindBand !== "job");
+  const jobBandGroups = classifiedGroups.filter((g) => g.kindBand === "job");
 
   const hasUnclassified = slice.unclassifiedUnits.length > 0;
 
@@ -169,13 +268,13 @@ export function layoutDeploy(slice: DeployViewSlice): LayoutResult {
     return { nodes: new Map(), edges: [], containers: [], width: 0, height: 0 };
   }
 
-  // --- Layer assignment ---
-  const classifiedIds = classifiedGroups.map((g) => g.id);
+  // --- Layer assignment (DAG groups only) ---
+  const classifiedIds = dagGroups.map((g) => g.id);
   const layerMap = assignLayers(classifiedIds, slice.ghostEdges);
 
   // Group containers by layer number
   const layerBuckets = new Map<number, Group[]>();
-  for (const group of classifiedGroups) {
+  for (const group of dagGroups) {
     const l = layerMap.get(group.id) ?? 0;
     if (!layerBuckets.has(l)) layerBuckets.set(l, []);
     layerBuckets.get(l)!.push(group);
@@ -210,75 +309,54 @@ export function layoutDeploy(slice: DeployViewSlice): LayoutResult {
         ? layerBuckets.get(layerIdx)!
         : sortByBarycenter(layerBuckets.get(layerIdx)!, predecessorsMap, containerCenterX);
 
-    // Place containers with sub-row wrapping. A new sub-row starts at the
-    // balanced-grid column cap or when the layer width would exceed
-    // MAX_LAYER_WIDTH (whichever comes first), so many deploy containers wrap
-    // into a grid instead of one wide row (scoped glance, resolution axis).
-    const columnCount = gridColumnCount(layerGroups.length);
-    let colInRow = 0;
-    let currentX = OUTER_PADDING;
-    let subRowY = currentY;
-    let subRowMaxHeight = 0;
+    const { bottomY, maxRight } = placeGroupBlock(
+      layerGroups,
+      OUTER_PADDING,
+      currentY,
+      layoutNodes,
+      containers,
+      containerCenterX,
+    );
+    totalWidth = Math.max(totalWidth, maxRight + OUTER_PADDING);
+    currentY = bottomY + ROW_GAP;
+  }
 
-    for (const group of layerGroups) {
-      const containerW = measureContainerWidth(group.units, group.label);
-      const containerH = measureContainerHeight(group.units);
+  // --- Job band: job-only containers, clustered below the DAG (#1738) ---
+  // Pulled out of the dependency DAG and grouped under a labelled ghost wrapper
+  // so scheduled jobs read as one operational group. The band reuses the same
+  // placeGroupBlock wrapping as the DAG layers, so it grids identically. Ghost
+  // wrapper containers render before non-ghost ones, so the wrapper sits behind
+  // its member containers (z-order). Ghost edges to/from these containers route
+  // across the band for free (the containers keep their real ids).
+  if (jobBandGroups.length > 0) {
+    const bandTop = currentY;
+    // Indent content so the wrapper has left/right padding and its caption (at
+    // the wrapper's top-left) does not collide with the first container label.
+    const contentTop = bandTop + CONTAINER_PADDING_TOP;
+    const { bottomY, maxRight } = placeGroupBlock(
+      jobBandGroups,
+      OUTER_PADDING + CONTAINER_PADDING_X,
+      contentTop,
+      layoutNodes,
+      containers,
+      containerCenterX,
+    );
 
-      // Wrap to a new sub-row at the column cap or when the container would
-      // exceed MAX_LAYER_WIDTH.
-      if (
-        currentX > OUTER_PADDING &&
-        (colInRow >= columnCount || currentX + containerW > OUTER_PADDING + MAX_LAYER_WIDTH)
-      ) {
-        subRowY += subRowMaxHeight + CONTAINER_GAP;
-        currentX = OUTER_PADDING;
-        subRowMaxHeight = 0;
-        colInRow = 0;
-      }
+    const bandWidth = maxRight - OUTER_PADDING + CONTAINER_PADDING_X;
+    const bandHeight = bottomY - bandTop + CONTAINER_PADDING_BOTTOM;
+    containers.push({
+      id: "__job_band__",
+      label: JOB_BAND_LABEL,
+      x: OUTER_PADDING,
+      y: bandTop,
+      width: bandWidth,
+      height: bandHeight,
+      ghost: true,
+      kindBand: "job",
+    });
 
-      containers.push({
-        id: group.id,
-        label: group.label,
-        x: currentX,
-        y: subRowY,
-        width: containerW,
-        height: containerH,
-        ghost: false,
-      });
-
-      let unitY = subRowY + CONTAINER_PADDING_TOP;
-      for (const unit of group.units) {
-        const dims = measureDeployUnit(unit);
-        // Key is "${containerId}::${unit.id}" so the same unit can appear in multiple
-        // containers at different positions without overwriting its layout entry.
-        layoutNodes.set(`${group.id}::${unit.id}`, {
-          kind: unit.kind,
-          id: unit.id,
-          label: unit.label ?? unit.id,
-          properties: {
-            description: deployUnitDescription(unit),
-            links: [],
-          },
-          descriptionSummary: undefined,
-          linkCount: 0,
-          hasChildren: false,
-          hasDescription: !!deployUnitDescription(unit),
-          x: currentX + CONTAINER_PADDING_X,
-          y: unitY,
-          width: dims.width,
-          height: dims.height,
-        });
-        unitY += dims.height + NODE_GAP;
-      }
-
-      containerCenterX.set(group.id, currentX + containerW / 2);
-      subRowMaxHeight = Math.max(subRowMaxHeight, containerH);
-      currentX += containerW + CONTAINER_GAP;
-      colInRow += 1;
-      totalWidth = Math.max(totalWidth, currentX - CONTAINER_GAP + OUTER_PADDING);
-    }
-
-    currentY = subRowY + subRowMaxHeight + ROW_GAP;
+    totalWidth = Math.max(totalWidth, OUTER_PADDING + bandWidth + OUTER_PADDING);
+    currentY = bandTop + bandHeight + ROW_GAP;
   }
 
   // --- Unclassified units: bottom row ---

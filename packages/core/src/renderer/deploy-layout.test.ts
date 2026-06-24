@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { layoutDeploy } from "./deploy-layout.js";
 import type { DeployViewSlice } from "../view/deploy-view-extract.js";
+import type { DeployNodeKind } from "../types/ast.js";
 
 const LOC = { start: { line: 1, column: 0, offset: 0 }, end: { line: 1, column: 0, offset: 0 } };
 
@@ -9,6 +10,10 @@ function makeSlice(
     serviceId: string;
     serviceLabel: string;
     unitIds: string[];
+    /** Unit kind for this container's units (defaults to `oci`). */
+    kind?: DeployNodeKind;
+    /** Kind band marker, as `extractDeployView` would compute it. */
+    kindBand?: "job";
   }>,
   unclassifiedIds: string[] = [],
   ghostEdges: Array<{ from: string; to: string }> = [],
@@ -19,11 +24,12 @@ function makeSlice(
       serviceId: c.serviceId,
       serviceLabel: c.serviceLabel,
       units: c.unitIds.map((id) => ({
-        kind: "oci" as const,
+        kind: c.kind ?? ("oci" as const),
         id,
         properties: { runtime: "Node.js 20" },
         loc: LOC,
       })),
+      ...(c.kindBand ? { kindBand: c.kindBand } : {}),
     })),
     unclassifiedUnits: unclassifiedIds.map((id) => ({
       kind: "job" as const,
@@ -467,5 +473,154 @@ describe("layoutDeploy", () => {
     expect(edge.fromPoint.y).toBe(cH.y + cH.height);
     // toPoint should hit top of I
     expect(edge.toPoint.y).toBe(cI.y);
+  });
+});
+
+describe("layoutDeploy job band (#1738)", () => {
+  it("clusters job-only containers below the compute DAG, above unclassified", () => {
+    const slice = makeSlice(
+      [
+        { serviceId: "Api", serviceLabel: "API", unitIds: ["api"], kind: "oci" },
+        {
+          serviceId: "Feedback",
+          serviceLabel: "Feedback",
+          unitIds: ["weekly"],
+          kind: "job",
+          kindBand: "job",
+        },
+        {
+          serviceId: "Memory",
+          serviceLabel: "Memory",
+          unitIds: ["daily"],
+          kind: "job",
+          kindBand: "job",
+        },
+      ],
+      ["loose"], // unclassified (bottom-most)
+    );
+    const result = layoutDeploy(slice);
+
+    const compute = result.containers.find((c) => c.id === "Api")!;
+    const job1 = result.containers.find((c) => c.id === "Feedback")!;
+    const job2 = result.containers.find((c) => c.id === "Memory")!;
+    const unclassified = result.containers.find((c) => c.id === "__unclassified__")!;
+
+    // Both job containers share one band, below compute and above unclassified.
+    expect(job1.y).toBeGreaterThan(compute.y);
+    expect(job2.y).toBeGreaterThan(compute.y);
+    expect(unclassified.y).toBeGreaterThan(job1.y);
+    expect(unclassified.y).toBeGreaterThan(job2.y);
+    // The two job containers sit on the same sub-row (one band).
+    expect(job1.y).toBe(job2.y);
+  });
+
+  it("wraps the job band in a ghost __job_band__ container marked kindBand job", () => {
+    const slice = makeSlice([
+      { serviceId: "Api", serviceLabel: "API", unitIds: ["api"], kind: "oci" },
+      {
+        serviceId: "Feedback",
+        serviceLabel: "Feedback",
+        unitIds: ["weekly"],
+        kind: "job",
+        kindBand: "job",
+      },
+    ]);
+    const result = layoutDeploy(slice);
+
+    const band = result.containers.find((c) => c.id === "__job_band__")!;
+    expect(band).toBeDefined();
+    expect(band.ghost).toBe(true);
+    expect(band.kindBand).toBe("job");
+    expect(band.label).toBe("Scheduled jobs");
+
+    // The wrapper encloses its member job container.
+    const job = result.containers.find((c) => c.id === "Feedback")!;
+    expect(job.x).toBeGreaterThanOrEqual(band.x);
+    expect(job.y).toBeGreaterThanOrEqual(band.y);
+    expect(job.x + job.width).toBeLessThanOrEqual(band.x + band.width);
+    expect(job.y + job.height).toBeLessThanOrEqual(band.y + band.height);
+    // Member container also carries the band marker for styling/e2e hooks.
+    expect(job.kindBand).toBe("job");
+  });
+
+  it("keeps a mixed job+compute container on the DAG (no band)", () => {
+    // kindBand is only set by extractDeployView when *every* unit is a job, so a
+    // mixed container arrives without it and must not be banded.
+    const slice = makeSlice([
+      { serviceId: "Api", serviceLabel: "API", unitIds: ["api", "cron"], kind: "oci" },
+    ]);
+    const result = layoutDeploy(slice);
+
+    expect(result.containers.find((c) => c.id === "__job_band__")).toBeUndefined();
+    expect(result.containers.find((c) => c.id === "Api")!.kindBand).toBeUndefined();
+  });
+
+  it("places every unit exactly once when a job band is present (no drop/dup)", () => {
+    const slice = makeSlice(
+      [
+        { serviceId: "Api", serviceLabel: "API", unitIds: ["api"], kind: "oci" },
+        {
+          serviceId: "Feedback",
+          serviceLabel: "Feedback",
+          unitIds: ["weekly", "monthly"],
+          kind: "job",
+          kindBand: "job",
+        },
+      ],
+      ["loose"],
+    );
+    const result = layoutDeploy(slice);
+
+    // api + weekly + monthly + loose = 4 nodes, each placed once.
+    expect(result.nodes.size).toBe(4);
+    expect(result.nodes.has("Api::api")).toBe(true);
+    expect(result.nodes.has("Feedback::weekly")).toBe(true);
+    expect(result.nodes.has("Feedback::monthly")).toBe(true);
+    expect(result.nodes.has("loose")).toBe(true);
+  });
+
+  it("routes a ghost edge across the band when a job container depends on a service", () => {
+    const slice = makeSlice(
+      [
+        { serviceId: "Api", serviceLabel: "API", unitIds: ["api"], kind: "oci" },
+        {
+          serviceId: "Feedback",
+          serviceLabel: "Feedback",
+          unitIds: ["weekly"],
+          kind: "job",
+          kindBand: "job",
+        },
+      ],
+      [],
+      [{ from: "Feedback", to: "Api" }], // job depends on a compute service
+    );
+    const result = layoutDeploy(slice);
+
+    // The edge still resolves both endpoints even though Feedback left the DAG.
+    const edge = result.edges.find((e) => e.from === "Feedback" && e.to === "Api");
+    expect(edge).toBeDefined();
+  });
+
+  it("renders only the job band (no DAG) when all containers are job-only", () => {
+    const slice = makeSlice([
+      {
+        serviceId: "Feedback",
+        serviceLabel: "Feedback",
+        unitIds: ["weekly"],
+        kind: "job",
+        kindBand: "job",
+      },
+      {
+        serviceId: "Memory",
+        serviceLabel: "Memory",
+        unitIds: ["daily"],
+        kind: "job",
+        kindBand: "job",
+      },
+    ]);
+    const result = layoutDeploy(slice);
+
+    expect(result.containers.find((c) => c.id === "__job_band__")).toBeDefined();
+    expect(result.nodes.size).toBe(2);
   });
 });

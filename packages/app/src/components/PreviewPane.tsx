@@ -299,7 +299,10 @@ export function PreviewPane({
       const containerGroup = target.closest("[data-container-id]");
       if (containerGroup && onContainerClick) {
         const containerId = containerGroup.getAttribute("data-container-id");
-        if (containerId && containerId !== "__unclassified__") {
+        // Synthetic deploy containers (`__unclassified__`, `__job_band__`) are
+        // not real services — clicking them must not cross-navigate to a
+        // non-existent system node.
+        if (containerId && containerId !== "__unclassified__" && containerId !== "__job_band__") {
           onContainerClick(containerId);
           return;
         }

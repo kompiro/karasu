@@ -411,4 +411,68 @@ deploy Prod {
       expect(slice.ghostEdges.filter((e) => e.to === "OrderDB")).toHaveLength(0);
     });
   });
+
+  describe("job band classification (#1738)", () => {
+    it("marks a container as kindBand job when every unit is a job", () => {
+      const krs = `
+system EC {
+  service Feedback { domain F { usecase Loop {} } }
+}
+deploy Prod {
+  job weeklyFeedback {
+    schedule "0 0 * * 1"
+    realizes Feedback
+  }
+  job dailyRetitle {
+    schedule "0 3 * * *"
+    realizes Feedback
+  }
+}
+`;
+      const file = Parser.parse(krs).value;
+      const slice = extractDeployView(file.deploys, withUnassignedSystem(file));
+      const feedback = slice.containers.find((c) => c.serviceId === "Feedback")!;
+      expect(feedback.kindBand).toBe("job");
+    });
+
+    it("does not mark a container that mixes a job with another kind", () => {
+      const krs = `
+system EC {
+  service Api { domain A { usecase Serve {} } }
+}
+deploy Prod {
+  oci apiServer {
+    runtime "Node.js 20"
+    realizes Api
+  }
+  job apiCron {
+    schedule "0 0 * * *"
+    realizes Api
+  }
+}
+`;
+      const file = Parser.parse(krs).value;
+      const slice = extractDeployView(file.deploys, withUnassignedSystem(file));
+      const api = slice.containers.find((c) => c.serviceId === "Api")!;
+      expect(api.kindBand).toBeUndefined();
+    });
+
+    it("does not mark a pure compute container", () => {
+      const krs = `
+system EC {
+  service Api { domain A { usecase Serve {} } }
+}
+deploy Prod {
+  oci apiServer {
+    runtime "Node.js 20"
+    realizes Api
+  }
+}
+`;
+      const file = Parser.parse(krs).value;
+      const slice = extractDeployView(file.deploys, withUnassignedSystem(file));
+      const api = slice.containers.find((c) => c.serviceId === "Api")!;
+      expect(api.kindBand).toBeUndefined();
+    });
+  });
 });

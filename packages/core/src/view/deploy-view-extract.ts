@@ -8,6 +8,15 @@ export interface DeployContainer {
   /** Human-readable label resolved from the system hierarchy */
   serviceLabel: string;
   units: DeployNode[];
+  /**
+   * Kind band this container belongs to, when every unit is the same terminal
+   * kind. Currently only `job`: a container whose units are all `kind: "job"`
+   * is pulled out of the dependency DAG and clustered into a dedicated job band
+   * (#1738), so scheduled jobs read as one operational group instead of
+   * scattering by the dependency depth of the domain they realize. `undefined`
+   * for ordinary (compute / mixed) containers that stay on the DAG.
+   */
+  kindBand?: "job";
 }
 
 export interface DeployGhostEdge {
@@ -83,10 +92,15 @@ export function extractDeployView(
   // Build containers
   const containers: DeployContainer[] = [];
   for (const [serviceId, units] of groupedByRealizes) {
+    // A container is a job band member only when *every* unit is a `job`. A
+    // mixed container (job + other kinds) stays on the dependency DAG so its
+    // `realizes`-labelled cluster is not split (#1738).
+    const isJobOnly = units.length > 0 && units.every((u) => u.kind === "job");
     containers.push({
       serviceId,
       serviceLabel: serviceLabelMap.get(serviceId) ?? serviceId,
       units,
+      ...(isJobOnly ? { kindBand: "job" as const } : {}),
     });
   }
 
