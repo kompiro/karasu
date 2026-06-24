@@ -76,7 +76,7 @@ edge[from=ApiGateway][async] { stroke-style: dashed; }  /* async edges out of Ap
 Any attribute other than `from` / `to` (e.g. `edge[source=X]`) raises an
 `unknown-edge-selector-attribute` error.
 
-> Related TPLs: [TPL-20260624-03](../test-perspectives/TPL-20260624-03-edge-endpoint-selector-id-form.md)
+> Related TPLs: [TPL-20260624-04](../test-perspectives/TPL-20260624-03-edge-endpoint-selector-id-form.md)
 > (endpoint selectors must compare against the same id form the view stores).
 
 ## Edge ID selector (`edge#<id>`)
@@ -242,6 +242,26 @@ Within each bucket, the existing within-layer order is preserved
 (declaration order in system view; barycenter elsewhere). The hint does
 **not** move a node to a different layer (row); for that, file an
 auto-layout heuristic issue rather than reaching for a new hint.
+
+#### External services (system view): `column` picks the side
+
+In the system view, `[external]` services are placed in **left/right side
+columns** by default (not a bottom row), so `service → external` edges run
+horizontally and don't weave through the downward infra fan-out. The side is
+chosen automatically from the consuming service's position (each external is
+grouped to the side of the service that calls it). `column: left` / `column:
+right` on an external service **overrides** that auto-assignment and pins it to
+the named side:
+
+```css
+#LegacyBilling { column: left; }  /* pin this external SaaS to the left side */
+```
+
+`column: center` / unspecified on an external service leaves the side to the
+auto-assignment. (infra kinds — `database` / `queue` / `storage` — stay in the
+bottom row regardless of any `[external]` tag; see Tags.)
+
+> Related TPLs: [TPL-20260624-04](../test-perspectives/TPL-20260624-04-external-side-placement-invariant.md)
 
 ### Scope
 
