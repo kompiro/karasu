@@ -5,7 +5,7 @@
 - **PR**: なし（実装 PR で追記）
 - **関連ADR**: [ADR-20260623-06](../adr/20260623-06-system-view-infra-external-tier-split.md)（本変更が refine）
 - **Related TPLs**: [TPL-20260624-03](../test-perspectives/TPL-20260624-03-external-side-placement-invariant.md)（external サイド配置の不変条件）, [TPL-20260623-04](../test-perspectives/TPL-20260623-04-tier-split-no-edge-penetration.md)
-- **対象**: `packages/core/src/renderer/layout.ts`（`placeExternalServicesOnSides`）, `docs/spec/style.md`（`column`）
+- **対象**: `packages/core/src/renderer/layout.ts`（`placeExternalServicesOnSides`）, `docs/spec/style.md`（`column`）, `examples/en/hato/`（実モデル測定用、`index.krs` + `hato.krs.style`）
 
 ## 概要
 
@@ -37,12 +37,19 @@ system view で `[external]` サービスを最下段バンドではなく左右
 
 ### AC-4: 交差削減（実モデル・決定性）
 
-- [ ] `hato` の `index.krs`（system view）でエッジ交差が baseline から大きく減る（実測: 35 → 7）
-> 🟡 Partially automated — `karasu render <hato>/index.krs --view system` の出力でエッジ交差を測定して確認（実測 7、baseline-grid 35）。視覚的可読性は人間レビュー。
-- [ ] 同一 `.krs` で配置が決定的（再レンダリングで変わらない）
+実モデルは `examples/en/hato/index.krs`（+ `hato.krs.style`）をコミットして測定対象にする。3 つの front/back hub（WebApp / HatoMcp / HatoApi）が owned infra と external SaaS にファンアウトする hato 構成。
+
+- [x] `examples/en/hato/index.krs`（system view）で `[external]` 6 件がすべてサイド列に置かれ（HatoApi が消費する 5 件は consuming-hub auto 振り分けで左、front-door 共有の `CloudflareAccess` は `#CloudflareAccess { column: right }` で右へ override）、external-on-sides + inner-side アンカーでエッジ交差が **0**（15 エッジ）。bottom-band baseline（Design Doc PoC の hato 計測で 33 交差）から解消
+> 🟡 Partially automated — 配置・側・アンカーの不変条件は `layout.test.ts` で自動化。`examples/en/hato/index.krs` 実モデルの交差数は `karasu render examples/en/hato/index.krs --view system` 出力で測定。視覚的可読性は人間レビュー。
+- [x] 同一 `.krs` で配置が決定的（再レンダリングで変わらない）
 > 🟡 Partially automated — レンダリングは決定的（`Math.random`/時刻非依存）。スナップショット安定性は guide 図の round-trip テストでも担保。
+
+### AC-5: サイド external のエッジは内側アンカーで矢印が内向き
+
+- [x] 左サイドの external へのエッジは external の**右辺**に着地（矢印頂点が右＝内向き）、右サイドは**左辺**に着地（矢印頂点が左＝内向き）
+> ✅ Automated — `packages/core/src/renderer/layout.test.ts` › `anchors side-external edges on the external's inner side, arrowhead inward (#1728)`
 
 ## 検証方法
 
-- 自動: `pnpm --filter @karasu-tools/core test -- layout`（AC-1〜AC-3）。
-- 手動 / 測定: `node packages/cli/dist/index.js render <hato>/index.krs --view system -o /tmp/out.svg` の出力で交差数・サイド配置を確認（AC-4）。
+- 自動: `pnpm --filter @karasu-tools/core test -- layout`（AC-1〜AC-3, AC-5）。
+- 手動 / 測定: `node packages/cli/dist/index.js render examples/en/hato/index.krs --view system -o /tmp/hato.svg` の出力で external のサイド配置・矢印の内向き・交差数を確認（AC-4。実測 0 交差、viewBox 1490×1060）。

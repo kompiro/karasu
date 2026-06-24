@@ -1,0 +1,126 @@
+// hato/index.krs
+// Demonstrates: multi-hub system view, external-on-sides layout (#1728).
+// Two front doors (Web BFF, MCP server) sit behind Cloudflare Access, while the
+// core API integrates a fan of data SaaS. With external-on-sides, each external
+// is grouped to the side of the service that calls it: the shared auth proxy
+// lands on the front-door side and the data integrations on the API side, so
+// the service→external edges run horizontally instead of weaving through the
+// downward infra fan-out.
+//
+// Render the system view to see the side columns:
+//   karasu render examples/en/hato/index.krs --view system -o hato-system.svg
+
+@import "hato.krs.style"
+
+system Hato {
+  label "hato"
+
+  user Athlete [human] {
+    label "Athlete"
+    role "Runner logging workouts and asking the coach for guidance"
+  }
+
+  client MobileApp [mobile] {
+    label "Mobile App"
+    description "Phone client the athlete uses day to day"
+  }
+
+  client McpClient [cli] {
+    label "MCP Client"
+    description "AI assistant talking to hato over the Model Context Protocol"
+  }
+
+  // --- Internal services (the three hubs) ---
+  // Declared front-door-first so the API (the heavy SaaS consumer) sits on the
+  // right; the auto side-split then keeps its data fan on the right column and
+  // the shared auth proxy on the left with the front doors.
+
+  service WebApp {
+    label "Web BFF"
+    description "Backend-for-frontend serving the mobile app"
+  }
+
+  service HatoMcp {
+    label "hato MCP Server"
+    description "Exposes goals/records/coaching as MCP tools for AI assistants"
+  }
+
+  service HatoApi {
+    label "hato API"
+    description "Core service: goals, records, training plans, and coaching"
+  }
+
+  // --- Owned infrastructure (stays in the row below the services) ---
+
+  database D1 {
+    label "D1 (SQLite)"
+    description "Athlete profiles, goals, and activity records"
+  }
+
+  storage R2 {
+    label "R2 Object Store"
+    description "Exported reports and uploaded activity files"
+  }
+
+  queue Tasks {
+    label "Task Queue"
+    description "Async ingestion of third-party activity data"
+  }
+
+  // --- External SaaS consumed by hato API (one hub's fan-out) ---
+
+  service Strava [external] {
+    label "Strava API"
+    description "Imports the athlete's activities and segments"
+  }
+
+  service Garmin [external] {
+    label "Garmin Connect"
+    description "Imports device-recorded workouts"
+  }
+
+  service OpenAI [external] {
+    label "OpenAI API"
+    description "Generates coaching narratives and plan summaries"
+  }
+
+  service Weather [external] {
+    label "Weather API"
+    description "Conditions used to adjust planned sessions"
+  }
+
+  service SendGrid [external] {
+    label "SendGrid"
+    description "Delivers weekly summary emails"
+  }
+
+  // --- External shared by the web and MCP front doors (other side) ---
+
+  service CloudflareAccess [external] {
+    label "Cloudflare Access"
+    description "Identity-aware proxy guarding the web and MCP entry points"
+  }
+
+  // Front doors
+  Athlete    -> MobileApp  "Logs workouts, checks the plan"
+  MobileApp  -> WebApp     "Calls the BFF"
+  McpClient  -> HatoMcp    "Invokes MCP tools"
+  WebApp     -> HatoApi    "Reads/writes domain data"
+  HatoMcp    -> HatoApi    "Reads/writes domain data"
+
+  // Identity-aware proxy in front of both entry points
+  WebApp   -> CloudflareAccess  "Verifies the session"
+  HatoMcp  -> CloudflareAccess  "Verifies the token"
+
+  // Owned infrastructure
+  HatoApi --> D1     "Stores goals and records"
+  HatoApi --> R2     "Stores exports"
+  HatoApi --> Tasks  "Enqueues ingestion jobs"
+
+  // hato API fan-out to external SaaS
+  HatoApi -> Strava   "Imports activities"
+  HatoApi -> Garmin   "Imports device workouts"
+  HatoApi -> OpenAI   "Requests coaching text"
+  HatoApi -> Weather  "Fetches conditions"
+  HatoApi -> SendGrid "Sends summary emails"
+}

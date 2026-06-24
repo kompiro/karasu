@@ -196,6 +196,25 @@ queue, database, storage { column: center; }
 なった場合はヒントを増やす前に auto-layout のヒューリスティクス改善 Issue
 を立ててください。
 
+#### 外部サービス（system view）: `column` で配置サイドを選ぶ
+
+system view では `[external]` サービスを既定で**左右のサイド列**に配置します
+（最下段の行ではありません）。これにより `service → external` のエッジが水平に
+走り、下向きの infra ファンアウトの間を縫わずに済みます。サイドは consume する
+サービスの位置から自動で決まります（各 external は、それを呼ぶサービスの側へ
+グルーピングされます）。external サービスに `column: left` / `column: right` を
+指定すると、その自動割り当てを**上書き**して指定した側に固定します:
+
+```css
+#LegacyBilling { column: left; }  /* この外部 SaaS を左側に固定する */
+```
+
+external サービスの `column: center` / 未指定は、サイドを自動割り当てに委ねます。
+（infra kind — `database` / `queue` / `storage` — は `[external]` タグの有無に
+関わらず最下段の行に残ります。Tags を参照。）
+
+> Related TPLs: [TPL-20260624-03](../test-perspectives/TPL-20260624-03-external-side-placement-invariant.md)
+
 ### 適用スコープ
 
 | View | 挙動 |

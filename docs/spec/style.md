@@ -217,7 +217,7 @@ right` on an external service **overrides** that auto-assignment and pins it to
 the named side:
 
 ```css
-service#LegacyBilling[external] { column: left; }  /* force this SaaS to the left */
+#LegacyBilling { column: left; }  /* pin this external SaaS to the left side */
 ```
 
 `column: center` / unspecified on an external service leaves the side to the
