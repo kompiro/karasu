@@ -60,12 +60,14 @@ PoC で**残り交差はサイドの左右割り当てに強く依存する**こ
 
 | 左右割り当て | 交差 |
 | --- | --- |
-| 宣言順で機械的に半々（当初 PoC） | 16 |
-| **consuming hub でグループ化（最適）** | **7** |
+| 宣言順で機械的に半々（当初 PoC、実レンダリング） | 14 |
+| 機械的半々（中心モデル） | 16 |
+| brute-force 最適（中心モデル） | 7 |
+| **consuming-hub barycenter ヒューリスティック（実レンダリング、PoC 検証済み）** | **8** |
 
-最適解は意味的だった — `CloudflareAccess`（WebApp / HatoMcp が consume）を右、`HatoApi` だけが使う 5 つを左。**各 external を「それを呼ぶサービス（hub）の x に近い側」へ寄せる**と、別ハブの束が左右に分かれて中央の cross-hub 交差が激減する。
+最適解は意味的だった — `CloudflareAccess`（WebApp / HatoMcp が consume）を右、`HatoApi` だけが使う 5 つを左。**各 external を「それを consume するハブの x 重心」で左右に振り分ける**と、別ハブの束が左右に分かれて中央の cross-hub 交差が激減する。consuming-hub ヒューリスティック（barycenter の median で左右分割、同側内は hub-x→y で整列）を実装して実レンダリングで **8 交差**を確認（brute-force 最適 7 に肉薄、機械的半々 14 から半減）。
 
-→ デフォルトのサイド振り分けは**机械的な半々ではなく、consuming hub の barycenter（x 重心）基準**にする。
+→ デフォルトのサイド振り分けは**机械的な半々ではなく、consuming hub の barycenter（x 重心）基準**にする（PoC 検証済み）。
 
 ### 2. external のサイド（左/右）を選べる style ヒント ＋ 最下段へ戻すヒント
 
