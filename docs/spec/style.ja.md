@@ -225,8 +225,10 @@ queue, database, storage { column: center; }
 ```
 
 1 行が最大レイヤー幅を超える場合は早めに折り返すため、過大な `grid-columns` でも
-フレームを溢れさせません。`column` と異なり、本ヒントは system / drill-down / deploy
-ビューおよび org の member grid で有効です。
+フレームを溢れさせません。`column`（system ビュー限定）と異なり、本ヒントは system /
+drill-down ビューおよび org の member grid で有効です。deploy ビューもグリッドを自動
+バランスしますが、コンテナを `realizes` 先でグループ化する都合上コンテナノードが無く、
+v1 では `grid-columns` による上書きはできません。
 
 正の整数でない値（`0` や `2.5` など）は `style-grid-columns-invalid-value` 警告とともに
 破棄され、レイアウトは自動バランスにフォールバックします。

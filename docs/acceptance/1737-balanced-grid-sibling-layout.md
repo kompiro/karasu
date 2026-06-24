@@ -36,9 +36,9 @@
 
   > ✅ Automated — `style-resolver.test.ts` › `grid-columns layout hint (#1737)` › `emits style-grid-columns-invalid-value and skips the hint for non-positive / non-integer`
 
-- [x] `grid-columns` は deploy ビューでも有効（`column` と異なり ignored 警告を出さず保存される）
+- [x] `grid-columns` は org の team ノード（member grid の列数）でも有効
 
-  > ✅ Automated — `style-resolver.test.ts` › `grid-columns layout hint (#1737)` › `is honored on deploy nodes (stored, no ignored-view warning)`
+  > ✅ Automated — `style-resolver.test.ts` › `grid-columns layout hint (#1737)` › `is honored on an org team node (member-grid override)`
 
 - [x] 出力は決定的（同じ入力で同じ座標）
 

@@ -238,9 +238,11 @@ grid):
 ```
 
 A row still wraps early if it would exceed the maximum layer width, so an
-oversized `grid-columns` cannot overflow the frame. Unlike `column`, this hint
-is honored across the system, drill-down, and deploy views, as well as the org
-member grid.
+oversized `grid-columns` cannot overflow the frame. Unlike `column` (system view
+only), this hint is honored on the system and drill-down views and the org
+member grid. The deploy view auto-balances its container grid as well, but it
+groups containers by `realizes` target rather than by a container node, so it
+has no per-container `grid-columns` override in v1.
 
 Invalid values (anything that is not a positive integer, e.g. `0` or `2.5`) emit
 a `style-grid-columns-invalid-value` warning and are dropped; the layout

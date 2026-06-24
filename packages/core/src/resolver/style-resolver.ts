@@ -195,10 +195,11 @@ export function resolveStyles(
   if (deployNodes) {
     for (const unit of deployNodes) {
       const merged = mergeMatchingPropertiesForDeploy(unit, allRules);
-      // `column` is a system-view-only signal — warn that it has no effect
-      // here (and so typo'd values still produce `style-column-invalid-value`
-      // rather than vanishing). `grid-columns`, by contrast, IS honored on the
-      // deploy view, so its resolved value is stored in `layoutHints`.
+      // Layout hints are surfaced only to warn that they have no effect here
+      // (and so typo'd values still produce their invalid-value warning rather
+      // than vanishing). The deploy view groups containers by `realizes`
+      // target, so there is no container node a `grid-columns` hint could
+      // attach to — the deploy grid auto-balances and is not author-overridable.
       const hint = finalizeLayoutHints(unit.id, merged, resolvedStyleWarnings);
       if (hint?.column) {
         resolvedStyleWarnings.push({
@@ -206,9 +207,6 @@ export function resolveStyles(
           nodeId: unit.id,
           viewType: "deploy",
         });
-      }
-      if (hint?.gridColumns !== undefined) {
-        layoutHints.set(unit.id, { gridColumns: hint.gridColumns });
       }
       nodeStyles.set(unit.id, toResolvedNodeStyle(merged));
     }

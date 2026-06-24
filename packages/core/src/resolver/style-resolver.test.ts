@@ -1668,16 +1668,26 @@ describe("resolveStyles — grid-columns layout hint (#1737)", () => {
     }
   });
 
-  it("is honored on deploy nodes (stored, no ignored-view warning)", () => {
+  it("is honored on an org team node (member-grid override)", () => {
     const system = makeNode({ kind: "system", id: "S", children: [] });
-    const deployNodes: DeployNode[] = [{ kind: "oci", id: "unit", properties: {}, loc: dummyLoc }];
-    const sheet: StyleSheet = {
-      rules: [makeRule({ id: "unit", tags: [], annotations: [] }, { "grid-columns": "4" }, 100)],
+    const team: TeamNode = {
+      kind: "team",
+      id: "platform",
+      label: "Platform",
+      annotations: [],
+      children: [],
+      properties: { owns: [], links: [] },
+      loc: dummyLoc,
     };
-    const result = resolveStyles([system], [sheet], deployNodes);
-    expect(result.layoutHints.get("unit")).toEqual({ gridColumns: 4 });
-    expect(result.warnings.some((w) => w.kind === "style-column-ignored-non-system-view")).toBe(
-      false,
-    );
+    const orgs: OrganizationBlock[] = [
+      { id: "Org", label: "Org", teams: [team], loc: dummyLoc, properties: { links: [] } },
+    ];
+    const sheet: StyleSheet = {
+      rules: [
+        makeRule({ id: "platform", tags: [], annotations: [] }, { "grid-columns": "4" }, 100),
+      ],
+    };
+    const result = resolveStyles([system], [sheet], undefined, orgs);
+    expect(result.layoutHints.get("platform")).toEqual({ gridColumns: 4 });
   });
 });
