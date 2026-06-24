@@ -1510,19 +1510,21 @@ system B {
 }
 `);
     const result = layout(slice);
-    const hub1 = result.nodes.get("Hub1")!;
-    const hub2 = result.nodes.get("Hub2")!;
-    const extA = result.nodes.get("ExtA")!;
-    const extB = result.nodes.get("ExtB")!;
-    const innerLeft = Math.min(hub1.x, hub2.x);
-    const innerRight = Math.max(hub1.x + hub1.width, hub2.x + hub2.width);
-    // At least one external must be on a side column for system A.
-    const aOnSide =
-      extA.x + extA.width <= innerLeft + 0.5 ||
-      extA.x >= innerRight - 0.5 ||
-      extB.x + extB.width <= innerLeft + 0.5 ||
-      extB.x >= innerRight - 0.5;
-    expect(aOnSide).toBe(true);
+    const sysA = result.containers.find((c) => c.id === "A")!;
+    const sysB = result.containers.find((c) => c.id === "B")!;
+    // System B's externals must be placed relative to B's own container, not
+    // the global figure (regression guard: `others` must be scoped per-system,
+    // else B's external lands at the global left edge over system A).
+    for (const id of ["ExtC", "ExtD"]) {
+      const e = result.nodes.get(id)!;
+      expect(e.x).toBeGreaterThanOrEqual(sysB.x - 0.5);
+      expect(e.x + e.width).toBeLessThanOrEqual(sysB.x + sysB.width + 0.5);
+    }
+    // System containers must not overlap after side columns widen them.
+    expect(sysA.x + sysA.width <= sysB.x + 0.5 || sysB.x + sysB.width <= sysA.x + 0.5).toBe(true);
+    // All coordinates non-negative (multi-system path must normalize the
+    // first system's negative-x left column).
+    for (const [, m] of result.nodes) expect(m.x).toBeGreaterThanOrEqual(0);
   });
 
   it("applies bucketing in the multi-system root path", () => {

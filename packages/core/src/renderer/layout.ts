@@ -630,8 +630,15 @@ function placeExternalServicesOnSides(
   const extIds = new Set<string>();
   for (const c of sourceNodes) if (systemTier(c) === 4) extIds.add(c.id);
   if (extIds.size === 0) return sides;
+  // Scope to THIS system's nodes only. In the multi-system path `layoutNodes`
+  // accumulates every system placed so far, so without this scope the bbox
+  // (min/max) below would span all systems and place this system's externals
+  // at the global figure edge, overlapping its neighbours.
+  const sourceIds = new Set(sourceNodes.map((c) => c.id));
   const ext = [...layoutNodes.values()].filter((n) => extIds.has(n.id) && !n.ghost);
-  const others = [...layoutNodes.values()].filter((n) => !extIds.has(n.id) && !n.ghost);
+  const others = [...layoutNodes.values()].filter(
+    (n) => sourceIds.has(n.id) && !extIds.has(n.id) && !n.ghost,
+  );
   if (ext.length === 0 || others.length === 0) return sides;
 
   // Gate: side placement only pays off when ≥2 distinct hubs fan out to
@@ -1379,6 +1386,11 @@ function layoutMultipleSystems(
   }
 
   markParallelBundles(allEdges);
+
+  // The first system's left side column (#1728) can extend to negative x;
+  // shift everything back into the positive quadrant so it isn't clipped.
+  // No-op when nothing went negative (the common case without side columns).
+  normalizeCoordinates(allContainers, allLayoutNodes, allEdges);
 
   // Calculate total dimensions
   let totalWidth = 0;
