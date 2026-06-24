@@ -568,6 +568,15 @@ export const REFERENCE_DATA = {
       },
     },
     {
+      name: "grid-columns",
+      appliesTo: "node",
+      valueType: "number",
+      description: {
+        en: "Number of columns to wrap this container's direct children into. Positive integer; overrides the auto-balanced grid (ceil(sqrt(n)), capped at 5)",
+        ja: "このコンテナの直接の子を畳むグリッドの列数。正の整数。自動バランス（ceil(sqrt(n))、最大5列）を上書きする",
+      },
+    },
+    {
       name: "stroke-width",
       appliesTo: "edge",
       valueType: "number",

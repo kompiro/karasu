@@ -2,18 +2,19 @@ import { expect, test } from "../fixtures/opfs.js";
 import { replaceEditorContent } from "../fixtures/editor.js";
 
 /**
- * AT-0049: Deploy diagram layer width wrapping.
+ * AT-0049: Deploy diagram sibling-grid wrapping.
  *
- * Verifies that when a single layer contains more oci containers than fit
- * inside `MAX_LAYER_WIDTH`, the overflow wraps to a second sub-row instead of
- * extending the diagram horizontally. Uses 8 isolated services to land every
- * container in layer 0, then inspects the rendered `<g data-node-kind="oci">`
- * bounding boxes via Playwright to confirm row-wrap behavior.
+ * Verifies that when a single layer contains many oci containers, they wrap
+ * into a balanced grid (gridColumnCount: ceil(sqrt(n)) columns, capped at 5)
+ * instead of extending the diagram horizontally, bounded by `MAX_LAYER_WIDTH`.
+ * Uses 8 isolated services to land every container in layer 0, then inspects
+ * the rendered `<g data-node-kind="oci">` bounding boxes via Playwright to
+ * confirm the grid: 8 containers -> 3 columns -> rows of 3, 3, 2.
  *
  * Out of scope:
  *  - Exact layout pixel dimensions — the layout math is already covered by
  *    `deploy-layout.test.ts`. This spec only asserts the observable
- *    wrap-into-sub-row contract.
+ *    wrap-into-grid contract.
  */
 
 const WRAP_KRS = `system WrapSample {
@@ -39,8 +40,11 @@ deploy "Production" {
 }
 `;
 
-test.describe("AT-0049 Deploy diagram layer width wrapping", () => {
-  test("8 isolated containers in a single layer wrap into two sub-rows", async ({ page, opfs }) => {
+test.describe("AT-0049 Deploy diagram sibling-grid wrapping", () => {
+  test("8 isolated containers in a single layer wrap into a balanced grid (3, 3, 2)", async ({
+    page,
+    opfs,
+  }) => {
     await opfs.seed({ mode: "memory" });
 
     await opfs.gotoApp();
@@ -61,28 +65,29 @@ test.describe("AT-0049 Deploy diagram layer width wrapping", () => {
       boxes.push(box);
     }
 
-    // Row 1 is defined by the y of the first container (S1). Row 2 nodes must
-    // sit below with a clear gap (> half the container height).
-    const row1Y = boxes[0].y;
-    const rowGap = boxes[0].height / 2;
+    // Group the containers into rows by their y (within half a container
+    // height), ordered top to bottom.
+    const rowHeight = boxes[0].height / 2;
+    const rowYs: number[] = [];
+    for (const b of boxes) {
+      if (!rowYs.some((y) => Math.abs(y - b.y) <= rowHeight)) rowYs.push(b.y);
+    }
+    rowYs.sort((a, b) => a - b);
+    const rows = rowYs.map((y) => boxes.filter((b) => Math.abs(b.y - y) <= rowHeight));
 
-    const row1 = boxes.filter((b) => Math.abs(b.y - row1Y) <= rowGap);
-    const row2 = boxes.filter((b) => b.y - row1Y > rowGap);
+    // 8 containers auto-balance into ceil(sqrt(8)) = 3 columns, so the grid is
+    // three sub-rows of 3, 3, 2 — not one wide row.
+    expect(rows.map((r) => r.length)).toEqual([3, 3, 2]);
 
-    // With the default MAX_LAYER_WIDTH (1200px) and ~200px container width,
-    // the first 5 containers fit on row 1 and the next 3 wrap to row 2.
-    expect(row1.length).toBe(5);
-    expect(row2.length).toBe(3);
+    // Every container is present across the rows (no drops).
+    expect(rows.reduce((sum, r) => sum + r.length, 0)).toBe(8);
 
-    // Every container on every row must be present (no drops).
-    expect(row1.length + row2.length).toBe(8);
-
-    // Wrapped row restarts from the left margin: the first row-2 container
-    // shares its x-position with the first row-1 container (within ~2px of
+    // Each wrapped row restarts from the same left margin (within ~2px of
     // Playwright's rounding).
-    const row1Leftmost = Math.min(...row1.map((b) => b.x));
-    const row2Leftmost = Math.min(...row2.map((b) => b.x));
-    expect(Math.abs(row2Leftmost - row1Leftmost)).toBeLessThanOrEqual(2);
+    const leftmosts = rows.map((r) => Math.min(...r.map((b) => b.x)));
+    for (const left of leftmosts) {
+      expect(Math.abs(left - leftmosts[0])).toBeLessThanOrEqual(2);
+    }
 
     // Diagram width does not exceed the MAX_LAYER_WIDTH budget (+ padding).
     const diagramRight = Math.max(...boxes.map((b) => b.x + b.width));

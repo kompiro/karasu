@@ -1,7 +1,12 @@
 import { describe, expect, it } from "vitest";
 import type { KrsEdge } from "../types/ast.js";
 import type { SourceRange } from "../types/tokens.js";
-import { applyEdgeDirectionWithinLayer } from "./layer-layout-logics.js";
+import {
+  applyEdgeDirectionWithinLayer,
+  gridColumnCount,
+  wrapLayerIntoRows,
+  GRID_COLUMN_CAP,
+} from "./layer-layout-logics.js";
 
 const loc: SourceRange = {
   start: { line: 1, column: 1, offset: 0 },
@@ -141,5 +146,71 @@ describe("applyEdgeDirectionWithinLayer", () => {
       layerOf,
     );
     expect(result).toEqual(["B", "C", "A"]);
+  });
+});
+
+describe("gridColumnCount", () => {
+  it("keeps small sets (<= cap) on a single row", () => {
+    expect(gridColumnCount(1)).toBe(1);
+    expect(gridColumnCount(2)).toBe(2);
+    expect(gridColumnCount(3)).toBe(3);
+    expect(gridColumnCount(GRID_COLUMN_CAP)).toBe(GRID_COLUMN_CAP); // 5 -> 5
+  });
+
+  it("auto-balances larger sets toward a square, capped at GRID_COLUMN_CAP", () => {
+    expect(gridColumnCount(6)).toBe(3); // ceil(sqrt(6)) = 3
+    expect(gridColumnCount(9)).toBe(3); // 3x3
+    expect(gridColumnCount(10)).toBe(4); // ceil(sqrt(10)) = 4 -> 4,4,2
+    expect(gridColumnCount(25)).toBe(5); // 5x5
+    expect(gridColumnCount(30)).toBe(5); // capped: 5x6
+  });
+
+  it("handles degenerate counts", () => {
+    expect(gridColumnCount(0)).toBe(1);
+    expect(gridColumnCount(-3)).toBe(1);
+  });
+
+  it("honors a positive-integer hint outright, even above the cap", () => {
+    expect(gridColumnCount(10, 2)).toBe(2);
+    expect(gridColumnCount(3, 8)).toBe(8); // above cap, deliberate author choice
+  });
+
+  it("ignores non-positive / non-integer hints and falls back to auto", () => {
+    expect(gridColumnCount(10, 0)).toBe(4);
+    expect(gridColumnCount(10, -1)).toBe(4);
+    expect(gridColumnCount(10, 2.5)).toBe(4);
+  });
+
+  it("is deterministic", () => {
+    for (let n = 0; n <= 40; n++) {
+      expect(gridColumnCount(n)).toBe(gridColumnCount(n));
+    }
+  });
+});
+
+describe("wrapLayerIntoRows", () => {
+  const w = () => 100; // uniform width
+
+  it("wraps at the column count, row-major in declaration order", () => {
+    const rows = wrapLayerIntoRows(["a", "b", "c", "d", "e"], w, 2, 10_000, 10);
+    expect(rows).toEqual([["a", "b"], ["c", "d"], ["e"]]);
+  });
+
+  it("wraps early when a row would exceed maxWidth, even under the column cap", () => {
+    // columnCount 5 would keep them on one row, but maxWidth forces a break:
+    // 3 nodes of width 100 with gap 10 = 320 > 250 -> break before the 3rd.
+    const rows = wrapLayerIntoRows(["a", "b", "c", "d"], w, 5, 250, 10);
+    expect(rows).toEqual([
+      ["a", "b"],
+      ["c", "d"],
+    ]);
+  });
+
+  it("keeps everything on one row when neither bound trips", () => {
+    expect(wrapLayerIntoRows(["a", "b", "c"], w, 5, 10_000, 10)).toEqual([["a", "b", "c"]]);
+  });
+
+  it("returns an empty array for no items", () => {
+    expect(wrapLayerIntoRows([], w, 3, 1000, 10)).toEqual([]);
   });
 });

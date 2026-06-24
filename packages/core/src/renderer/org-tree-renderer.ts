@@ -2,14 +2,20 @@
  * Org Tree View renderer — left-right tree layout with Bezier connectors.
  *
  * Each top-level team is a root node. Sub-teams appear as children to the right.
- * When a team is "expanded", its members appear as a 3-column grid leaf node
- * further to the right. Multiple teams can be expanded simultaneously.
+ * When a team is "expanded", its members appear as a grid leaf node further to
+ * the right (3 columns by default; overridable per team with `grid-columns`).
+ * Multiple teams can be expanded simultaneously.
  *
  * For SVG export, pass forExport:true to render all teams fully expanded.
  */
 
 import type { OrganizationBlock, TeamNode, MemberNode } from "../types/ast.js";
-import type { ResolvedStyles, ResolvedNodeStyle, ResolvedEdgeStyle } from "../types/style.js";
+import type {
+  ResolvedStyles,
+  ResolvedNodeStyle,
+  ResolvedEdgeStyle,
+  ResolvedLayoutHints,
+} from "../types/style.js";
 import { el, escapeXml, diffStateAttr } from "./svg-builder.js";
 import { ownsEdgeKey } from "../diff/org-view-diff.js";
 import { type DiagramPalette, type DiagramTheme, resolvePalette } from "./palette.js";
@@ -52,23 +58,41 @@ interface MemberGridNode {
   width: number;
   height: number;
   members: MemberNode[];
+  /** Resolved column count for this team's member grid. */
+  cols: number;
 }
 
 // ---------------------------------------------------------------------------
 // Subtree height calculation
 // ---------------------------------------------------------------------------
 
-function memberGridHeight(count: number): number {
-  const rows = Math.ceil(count / MEMBERS_PER_ROW);
+/**
+ * Resolve the member-grid column count for a team. The org member grid is
+ * already a bounded grid (default {@link MEMBERS_PER_ROW}), so unlike the
+ * logical / deploy views it does not auto-balance — the span-of-control "one
+ * wide row" symptom cannot occur here. Authors can still override the column
+ * count with `grid-columns` on the team (e.g. to widen a flat roster).
+ */
+function memberCols(team: TeamNode, layoutHints?: Map<string, ResolvedLayoutHints>): number {
+  const hint = layoutHints?.get(team.id)?.gridColumns;
+  return hint !== undefined && hint > 0 ? hint : MEMBERS_PER_ROW;
+}
+
+function memberGridHeight(count: number, cols: number): number {
+  const rows = Math.ceil(count / cols);
   return rows * MEMBER_H + Math.max(0, rows - 1) * MEMBER_ROW_GAP;
 }
 
-function memberGridWidth(count: number): number {
-  const cols = Math.min(count, MEMBERS_PER_ROW);
-  return cols * MEMBER_W + Math.max(0, cols - 1) * MEMBER_COL_GAP;
+function memberGridWidth(count: number, cols: number): number {
+  const c = Math.min(count, cols);
+  return c * MEMBER_W + Math.max(0, c - 1) * MEMBER_COL_GAP;
 }
 
-function calcSubtreeHeight(team: TeamNode, expandedIds: ReadonlySet<string>): number {
+function calcSubtreeHeight(
+  team: TeamNode,
+  expandedIds: ReadonlySet<string>,
+  layoutHints?: Map<string, ResolvedLayoutHints>,
+): number {
   const subTeams = team.children.filter((c): c is TeamNode => c.kind === "team");
   const members = team.children.filter((c): c is MemberNode => c.kind === "member");
 
@@ -78,12 +102,16 @@ function calcSubtreeHeight(team: TeamNode, expandedIds: ReadonlySet<string>): nu
 
   if (subTeams.length > 0) {
     childrenBlockHeight = subTeams.reduce((sum, st, i) => {
-      return sum + calcSubtreeHeight(st, expandedIds) + (i < subTeams.length - 1 ? V_GAP : 0);
+      return (
+        sum +
+        calcSubtreeHeight(st, expandedIds, layoutHints) +
+        (i < subTeams.length - 1 ? V_GAP : 0)
+      );
     }, 0);
   }
 
   if (isExpanded && members.length > 0) {
-    const mh = memberGridHeight(members.length);
+    const mh = memberGridHeight(members.length, memberCols(team, layoutHints));
     if (subTeams.length > 0) {
       childrenBlockHeight += V_GAP + mh;
     } else {
@@ -103,8 +131,9 @@ function layoutTree(
   x: number,
   topY: number,
   expandedIds: ReadonlySet<string>,
+  layoutHints?: Map<string, ResolvedLayoutHints>,
 ): TreeNode {
-  const subtreeHeight = calcSubtreeHeight(team, expandedIds);
+  const subtreeHeight = calcSubtreeHeight(team, expandedIds, layoutHints);
   const teamY = topY + (subtreeHeight - TEAM_H) / 2;
 
   const subTeams = team.children.filter((c): c is TeamNode => c.kind === "team");
@@ -118,16 +147,17 @@ function layoutTree(
   let curY = topY;
 
   for (let i = 0; i < subTeams.length; i++) {
-    const child = layoutTree(subTeams[i], childX, curY, expandedIds);
+    const child = layoutTree(subTeams[i], childX, curY, expandedIds, layoutHints);
     children.push(child);
     curY += child.subtreeHeight + (i < subTeams.length - 1 ? V_GAP : 0);
   }
 
   if (isExpanded && members.length > 0) {
-    const mh = memberGridHeight(members.length);
-    const mw = memberGridWidth(members.length);
+    const cols = memberCols(team, layoutHints);
+    const mh = memberGridHeight(members.length, cols);
+    const mw = memberGridWidth(members.length, cols);
     const gridY = subTeams.length > 0 ? curY + V_GAP : topY + (subtreeHeight - mh) / 2;
-    memberGrid = { x: childX, y: gridY, width: mw, height: mh, members };
+    memberGrid = { x: childX, y: gridY, width: mw, height: mh, members, cols };
   }
 
   return { team, x, y: teamY, subtreeHeight, children, memberGrid };
@@ -376,8 +406,8 @@ function renderMemberGrid(
   defaults: OrgTreeDefaults,
 ): string {
   const cards = grid.members.map((member, i) => {
-    const col = i % MEMBERS_PER_ROW;
-    const row = Math.floor(i / MEMBERS_PER_ROW);
+    const col = i % grid.cols;
+    const row = Math.floor(i / grid.cols);
     const mx = grid.x + col * (MEMBER_W + MEMBER_COL_GAP);
     const my = grid.y + row * (MEMBER_H + MEMBER_ROW_GAP);
     return renderTreeMemberCard(
@@ -563,7 +593,13 @@ export function renderOrgTreeView(
   const roots: TreeNode[] = [];
   let curY = CANVAS_PADDING;
   for (let i = 0; i < allTopTeams.length; i++) {
-    const root = layoutTree(allTopTeams[i], CANVAS_PADDING, curY, expandedTeamIds);
+    const root = layoutTree(
+      allTopTeams[i],
+      CANVAS_PADDING,
+      curY,
+      expandedTeamIds,
+      styles?.layoutHints,
+    );
     roots.push(root);
     curY += root.subtreeHeight + (i < allTopTeams.length - 1 ? V_GAP * 3 : 0);
   }
@@ -586,7 +622,13 @@ export function renderOrgTreeView(
     roots.length = 0;
     let exportY = CANVAS_PADDING;
     for (let i = 0; i < allTopTeams.length; i++) {
-      const root = layoutTree(allTopTeams[i], CANVAS_PADDING, exportY, effectiveExpandedIds);
+      const root = layoutTree(
+        allTopTeams[i],
+        CANVAS_PADDING,
+        exportY,
+        effectiveExpandedIds,
+        styles?.layoutHints,
+      );
       roots.push(root);
       exportY += root.subtreeHeight + (i < allTopTeams.length - 1 ? V_GAP * 3 : 0);
     }

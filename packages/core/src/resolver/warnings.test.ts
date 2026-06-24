@@ -1788,6 +1788,7 @@ describe("warningSeverity — exhaustive register map", () => {
     "legend-ref-unresolved": "warning",
     "style-column-invalid-value": "warning",
     "style-column-ignored-non-system-view": "warning",
+    "style-grid-columns-invalid-value": "warning",
     "style-invalid-enum-value": "warning",
     "style-invalid-hex-color": "warning",
     "style-missing-length-unit": "warning",

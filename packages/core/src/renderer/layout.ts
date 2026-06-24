@@ -9,6 +9,8 @@ import {
   sortByBarycenter,
   bucketByColumn,
   applyEdgeDirectionWithinLayer,
+  gridColumnCount,
+  wrapLayerIntoRows,
 } from "./layer-layout-logics.js";
 import { routeOrthogonalEdges } from "./edge-routing-channels.js";
 import { distributePorts } from "./edge-routing-ports.js";
@@ -604,7 +606,7 @@ export function layout(
   layoutHints?: Map<string, ResolvedLayoutHints>,
   edgeDirections?: Map<string, EdgeDirection>,
 ): LayoutResult {
-  const { LAYER_GAP, NODE_GAP } = getLayoutConstants(displayMode);
+  const { LAYER_GAP, NODE_GAP, MAX_LAYER_WIDTH } = getLayoutConstants(displayMode);
   // Build the inherited-annotations map from the focused container's subtree
   // (or all systems for the root view). Within a single drill-down view, IDs
   // are unique by construction, so this map can be safely keyed by id and
@@ -705,63 +707,103 @@ export function layout(
     orderedByLayer.set(layerIdx, ordered);
   }
 
+  // `grid-columns` hint lives on the focused container and governs how its
+  // direct children wrap. Absent a hint, the column count auto-balances
+  // (see `gridColumnCount`).
+  const containerGridHint = viewSlice.containerNode
+    ? layoutHints?.get(viewSlice.containerNode.id)?.gridColumns
+    : undefined;
+
   // Compute initial positions (will be offset later for container nesting).
-  // y is fixed per layer (max bottom of previously-placed layers + LAYER_GAP)
-  // so heterogeneous-height nodes share a top baseline. Without this,
+  // y is fixed per sub-row (max bottom of previously-placed rows) so
+  // heterogeneous-height nodes share a top baseline. Without this,
   // `y = layerIdx * (dims.height + LAYER_GAP)` would push the *tallest*
-  // node in a layer down — a service with a team chip would dive below
-  // its rowmate cylinders / clouds. Mirrors the multi-system path's
-  // `prevBottom` computation.
+  // node in a row down — a service with a team chip would dive below
+  // its rowmate cylinders / clouds. Mirrors the multi-system path.
+  //
+  // Within each layer, many siblings wrap into a balanced grid
+  // (`gridColumnCount` columns, or the author's `grid-columns`), bounded by
+  // `MAX_LAYER_WIDTH`, so a wide sibling set does not sprawl into one
+  // unreadable row that forces a zoom-out (scoped glance, resolution axis).
   let layerBaselineY = NODE_GAP;
   for (const layerIdx of sortedLayers) {
     const nodesInLayer = orderedByLayer.get(layerIdx)!;
-    let xOffset = NODE_GAP;
-    let layerMaxBottom = layerBaselineY;
-
+    const dimsById = new Map<string, { width: number; height: number }>();
     for (const nid of nodesInLayer) {
       const krsNode = nodeMap.get(nid)!;
       const resolvedTeam =
         krsNode.kind === "service" || krsNode.kind === "domain" ? ownerIndex?.get(nid) : undefined;
-      const dims = measureNode(krsNode, resolvedTeam, displayMode);
-      const y = layerBaselineY;
-
-      layoutNodes.set(nid, {
-        kind: krsNode.kind,
-        id: nid,
-        label: viewSlice.resourceLabelMap.get(nid) ?? krsNode.label ?? krsNode.id,
-        annotations: effectiveAnnotations(krsNode),
-        properties: extractLayoutProperties(krsNode, resolvedTeam),
-        descriptionSummary: krsNode.properties.description
-          ? summarizeDescription(krsNode.properties.description)
-          : undefined,
-        linkCount: krsNode.properties.links.length,
-        hasChildren: krsNode.children.length > 0,
-        hasDescription: !!krsNode.properties.description,
-        x: xOffset,
-        y,
-        width: dims.width,
-        height: dims.height,
-      });
-
-      xOffset += dims.width + NODE_GAP;
-      childMaxWidth = Math.max(childMaxWidth, xOffset);
-      childMaxHeight = Math.max(childMaxHeight, y + dims.height + NODE_GAP);
-      layerMaxBottom = Math.max(layerMaxBottom, y + dims.height);
+      dimsById.set(nid, measureNode(krsNode, resolvedTeam, displayMode));
     }
-    layerBaselineY = layerMaxBottom + LAYER_GAP;
+    const columnCount = gridColumnCount(nodesInLayer.length, containerGridHint);
+    const rows = wrapLayerIntoRows(
+      nodesInLayer,
+      (nid) => dimsById.get(nid)!.width,
+      columnCount,
+      MAX_LAYER_WIDTH,
+      NODE_GAP,
+    );
+
+    let rowY = layerBaselineY;
+    let layerBottom = layerBaselineY;
+    for (const row of rows) {
+      let xOffset = NODE_GAP;
+      let rowMaxHeight = 0;
+      for (const nid of row) {
+        const krsNode = nodeMap.get(nid)!;
+        const resolvedTeam =
+          krsNode.kind === "service" || krsNode.kind === "domain"
+            ? ownerIndex?.get(nid)
+            : undefined;
+        const dims = dimsById.get(nid)!;
+
+        layoutNodes.set(nid, {
+          kind: krsNode.kind,
+          id: nid,
+          label: viewSlice.resourceLabelMap.get(nid) ?? krsNode.label ?? krsNode.id,
+          annotations: effectiveAnnotations(krsNode),
+          properties: extractLayoutProperties(krsNode, resolvedTeam),
+          descriptionSummary: krsNode.properties.description
+            ? summarizeDescription(krsNode.properties.description)
+            : undefined,
+          linkCount: krsNode.properties.links.length,
+          hasChildren: krsNode.children.length > 0,
+          hasDescription: !!krsNode.properties.description,
+          x: xOffset,
+          y: rowY,
+          width: dims.width,
+          height: dims.height,
+        });
+
+        xOffset += dims.width + NODE_GAP;
+        childMaxWidth = Math.max(childMaxWidth, xOffset);
+        rowMaxHeight = Math.max(rowMaxHeight, dims.height);
+      }
+      layerBottom = rowY + rowMaxHeight;
+      childMaxHeight = Math.max(childMaxHeight, layerBottom + NODE_GAP);
+      rowY = layerBottom + NODE_GAP; // sub-row gap within the layer
+    }
+    layerBaselineY = layerBottom + LAYER_GAP;
   }
 
-  // Center each layer
-  for (const layerIdx of sortedLayers) {
-    const nodesInLayer = orderedByLayer.get(layerIdx)!;
-    const layerWidth = nodesInLayer.reduce((sum, id) => {
+  // Center each sub-row within the container. Rows are grouped by their Y
+  // (each wrapped grid row has a distinct baseline), then centered against
+  // the widest row so the grid reads as centered columns.
+  const rowGroups = new Map<number, string[]>();
+  for (const [id, node] of layoutNodes) {
+    if (!rowGroups.has(node.y)) rowGroups.set(node.y, []);
+    rowGroups.get(node.y)!.push(id);
+  }
+  for (const ids of rowGroups.values()) {
+    ids.sort((a, b) => layoutNodes.get(a)!.x - layoutNodes.get(b)!.x);
+    const rowWidth = ids.reduce((sum, id) => {
       const n = layoutNodes.get(id)!;
       return sum + n.width + NODE_GAP;
     }, -NODE_GAP);
-    const offset = Math.max(0, (childMaxWidth - layerWidth) / 2);
+    const offset = Math.max(0, (childMaxWidth - rowWidth) / 2);
 
     let xOffset = offset;
-    for (const id of nodesInLayer) {
+    for (const id of ids) {
       const n = layoutNodes.get(id)!;
       n.x = xOffset;
       xOffset += n.width + NODE_GAP;
@@ -1022,6 +1064,9 @@ function layoutMultipleSystems(
     let childMaxWidth = 0;
     let childMaxHeight = 0;
 
+    // `grid-columns` on this system governs how its direct children wrap.
+    const sysGridHint = layoutHints?.get(sys.id)?.gridColumns;
+
     for (let layerOrder = 0; layerOrder < sortedLayers.length; layerOrder++) {
       const layerIdx = sortedLayers[layerOrder];
       const rawLayer = nodesByLayer.get(layerIdx)!.map((id) => ({ id }));
@@ -1043,7 +1088,11 @@ function layoutMultipleSystems(
         layers,
       ).map((id) => ({ id }));
 
-      // Place nodes with sub-row wrapping when layer width exceeds MAX_LAYER_WIDTH
+      // Place nodes with sub-row wrapping. A new sub-row starts when either
+      // the balanced-grid column count is reached or the layer width would
+      // exceed MAX_LAYER_WIDTH (whichever comes first).
+      const columnCount = gridColumnCount(sortedLayer.length, sysGridHint);
+      let colInRow = 0;
       let currentX = NODE_GAP;
       let subRowY = layerOrder === 0 ? NODE_GAP : 0; // will be computed below
       let subRowMaxHeight = 0;
@@ -1069,11 +1118,16 @@ function layoutMultipleSystems(
             : undefined;
         const dims = measureNode(krsNode, resolvedTeam, displayMode);
 
-        // Wrap to a new sub-row when the node would exceed MAX_LAYER_WIDTH
-        if (currentX > NODE_GAP && currentX + dims.width > MAX_LAYER_WIDTH) {
+        // Wrap to a new sub-row at the column cap or when the node would
+        // exceed MAX_LAYER_WIDTH.
+        if (
+          currentX > NODE_GAP &&
+          (colInRow >= columnCount || currentX + dims.width > MAX_LAYER_WIDTH)
+        ) {
           subRowY += subRowMaxHeight + NODE_GAP;
           currentX = NODE_GAP;
           subRowMaxHeight = 0;
+          colInRow = 0;
         }
 
         localNodes.set(nid, {
@@ -1098,6 +1152,7 @@ function layoutMultipleSystems(
         nodeCenterX.set(nid, currentX + dims.width / 2);
         subRowMaxHeight = Math.max(subRowMaxHeight, dims.height);
         currentX += dims.width + NODE_GAP;
+        colInRow += 1;
         childMaxWidth = Math.max(childMaxWidth, currentX);
         childMaxHeight = Math.max(childMaxHeight, subRowY + dims.height + NODE_GAP);
       }

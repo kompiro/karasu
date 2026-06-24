@@ -195,10 +195,11 @@ export function resolveStyles(
   if (deployNodes) {
     for (const unit of deployNodes) {
       const merged = mergeMatchingPropertiesForDeploy(unit, allRules);
-      // Surface layout hints that target deploy nodes so authors are warned
-      // they have no effect there (and so typo'd values still produce
-      // `style-column-invalid-value` rather than vanishing). The hints are
-      // not stored — `layoutHints` remains a system-view-only signal.
+      // Layout hints are surfaced only to warn that they have no effect here
+      // (and so typo'd values still produce their invalid-value warning rather
+      // than vanishing). The deploy view groups containers by `realizes`
+      // target, so there is no container node a `grid-columns` hint could
+      // attach to — the deploy grid auto-balances and is not author-overridable.
       const hint = finalizeLayoutHints(unit.id, merged, resolvedStyleWarnings);
       if (hint?.column) {
         resolvedStyleWarnings.push({
@@ -221,6 +222,9 @@ export function resolveStyles(
           nodeId: node.id,
           viewType: "org",
         });
+      }
+      if (hint?.gridColumns !== undefined) {
+        layoutHints.set(node.id, { gridColumns: hint.gridColumns });
       }
       nodeStyles.set(node.id, toResolvedNodeStyle(merged));
     }
@@ -251,13 +255,28 @@ function finalizeLayoutHints(
   merged: Record<string, string>,
   warnings: ResolvedStyleWarning[],
 ): ResolvedLayoutHints | null {
-  const raw = merged["column"];
-  if (raw === undefined) return null;
-  if (!VALID_COLUMN_VALUES.has(raw)) {
-    warnings.push({ kind: "style-column-invalid-value", nodeId, value: raw });
-    return null;
+  const hints: ResolvedLayoutHints = {};
+
+  const rawColumn = merged["column"];
+  if (rawColumn !== undefined) {
+    if (VALID_COLUMN_VALUES.has(rawColumn)) {
+      hints.column = rawColumn as LayoutColumn;
+    } else {
+      warnings.push({ kind: "style-column-invalid-value", nodeId, value: rawColumn });
+    }
   }
-  return { column: raw as LayoutColumn };
+
+  const rawGrid = merged["grid-columns"];
+  if (rawGrid !== undefined) {
+    const n = Number(rawGrid);
+    if (Number.isInteger(n) && n > 0) {
+      hints.gridColumns = n;
+    } else {
+      warnings.push({ kind: "style-grid-columns-invalid-value", nodeId, value: rawGrid });
+    }
+  }
+
+  return hints.column === undefined && hints.gridColumns === undefined ? null : hints;
 }
 
 // NOTE: the legend resolver in renderer/svg-builder.ts uses an identical

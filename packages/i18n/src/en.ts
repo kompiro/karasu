@@ -243,6 +243,8 @@ export const en: Translations = {
     `column: "${value}" on #${nodeId} is not one of left / center / right — ignored`,
   "warning.styleColumnIgnoredNonSystemView.message": ({ nodeId, viewType }) =>
     `column hint on #${nodeId} is ignored in ${viewType} view (layout hints currently apply only to system view)`,
+  "warning.styleGridColumnsInvalidValue.message": ({ nodeId, value }) =>
+    `grid-columns: "${value}" on #${nodeId} is not a positive integer — ignored (layout auto-balances instead)`,
   "warning.styleInvalidEnumValue.message": ({ property, value, allowed }) =>
     `${property}: "${value}" is not one of ${allowed.join(" / ")} — ignored`,
   "warning.styleInvalidHexColor.message": ({ property, value }) =>

@@ -182,6 +182,7 @@ Validating `.krs.style` property names and values.
 | `style-conflict` | warning | A selector is defined in more than one user style sheet. |
 | `style-column-invalid-value` | warning | A style `column` value is not `left` / `center` / `right`. |
 | `style-column-ignored-non-system-view` | warning | A `column` hint is applied to a deploy / org view (ignored). |
+| `style-grid-columns-invalid-value` | warning | A style `grid-columns` value is not a positive integer (the hint is dropped; layout auto-balances). |
 
 ### Client & capability
 

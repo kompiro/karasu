@@ -1634,3 +1634,60 @@ describe("resolveStyles — column layout hint (#969)", () => {
     });
   });
 });
+
+describe("resolveStyles — grid-columns layout hint (#1737)", () => {
+  function systemWithGridColumns(value: string): { system: KrsNode; sheet: StyleSheet } {
+    const system = makeNode({
+      kind: "system",
+      id: "S",
+      children: [makeNode({ kind: "service", id: "Svc" })],
+    });
+    const sheet: StyleSheet = {
+      rules: [makeRule({ id: "S", tags: [], annotations: [] }, { "grid-columns": value }, 100)],
+    };
+    return { system, sheet };
+  }
+
+  it("populates layoutHints.gridColumns for a positive integer", () => {
+    const { system, sheet } = systemWithGridColumns("3");
+    const result = resolveStyles([system], [sheet]);
+    expect(result.layoutHints.get("S")).toEqual({ gridColumns: 3 });
+    expect(result.warnings).toEqual([]);
+  });
+
+  it("emits style-grid-columns-invalid-value and skips the hint for non-positive / non-integer", () => {
+    for (const value of ["0", "-2", "2.5", "abc"]) {
+      const { system, sheet } = systemWithGridColumns(value);
+      const result = resolveStyles([system], [sheet]);
+      expect(result.layoutHints.has("S")).toBe(false);
+      expect(result.warnings).toContainEqual({
+        kind: "style-grid-columns-invalid-value",
+        nodeId: "S",
+        value,
+      });
+    }
+  });
+
+  it("is honored on an org team node (member-grid override)", () => {
+    const system = makeNode({ kind: "system", id: "S", children: [] });
+    const team: TeamNode = {
+      kind: "team",
+      id: "platform",
+      label: "Platform",
+      annotations: [],
+      children: [],
+      properties: { owns: [], links: [] },
+      loc: dummyLoc,
+    };
+    const orgs: OrganizationBlock[] = [
+      { id: "Org", label: "Org", teams: [team], loc: dummyLoc, properties: { links: [] } },
+    ];
+    const sheet: StyleSheet = {
+      rules: [
+        makeRule({ id: "platform", tags: [], annotations: [] }, { "grid-columns": "4" }, 100),
+      ],
+    };
+    const result = resolveStyles([system], [sheet], undefined, orgs);
+    expect(result.layoutHints.get("platform")).toEqual({ gridColumns: 4 });
+  });
+});

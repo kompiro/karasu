@@ -1,8 +1,8 @@
-# AT-0049: Deploy Diagram Layer Width Wrapping
+# AT-0049: Deploy Diagram Sibling-Grid Wrapping
 
-**Feature**: When a single layer in the deploy diagram contains many containers that together exceed `MAX_LAYER_WIDTH` (1200px), the excess containers wrap to a new sub-row within the same logical layer.
+**Feature**: When a single layer in the deploy diagram contains many containers, they wrap into a balanced grid (`gridColumnCount`: `ceil(sqrt(n))` columns, capped at 5) instead of extending horizontally, still bounded by `MAX_LAYER_WIDTH` (1200px). Updated for #1737 — wrapping is now count-driven (balanced grid) with the width as a secondary upper bound; the original width-only behavior was introduced in #396.
 
-**Related**: Issue #396, `packages/core/src/renderer/deploy-layout.ts`
+**Related**: Issue #396, #1737, `packages/core/src/renderer/deploy-layout.ts`, `packages/core/src/renderer/layer-layout-logics.ts`
 
 ## Prerequisites
 
@@ -34,26 +34,24 @@ deploy "Production" {
 
 ## Acceptance Criteria
 
-> ✅ Automated — `packages/e2e/tests/at-0049-deploy-layer-wrap.spec.ts` › `8 isolated containers in a single layer wrap into two sub-rows`
+> ✅ Automated — `packages/e2e/tests/at-0049-deploy-layer-wrap.spec.ts` › `8 isolated containers in a single layer wrap into a balanced grid (3, 3, 2)`
 
-With the example above, each container renders at ~200px wide (unit width 160px + 2×20px padding dominates the label).
-After 5 containers, `currentX ≈ 1232px`; placing the 6th would reach `1432px > OUTER_PADDING + MAX_LAYER_WIDTH (1240px)`,
-so the 6th container wraps.
+With the example above, 8 containers all land in layer 0. The grid auto-balances
+to `ceil(sqrt(8)) = 3` columns, so they wrap into three sub-rows of 3, 3, 2
+(rather than one wide row). A row still breaks early if it would exceed
+`MAX_LAYER_WIDTH`, keeping the diagram within the width budget.
 
 | # | Check | Expected |
 |---|-------|----------|
 | 1 | Open the deploy diagram in the preview UI | Diagram renders without horizontal scrollbar beyond 1200px |
-| 2 | First 5 containers (S1–S5) | Arranged in a single horizontal row |
-| 3 | 6th–8th containers (S6–S8) | Wrapped to a second sub-row below the first |
-| 4 | Wrapped container X position | Starts from the left margin (aligned with S1) |
-| 5 | Diagram total width | Does not exceed ~1240px |
-| 6 | Diagram total height | Taller than a 5-container diagram (extra sub-row space) |
+| 2 | Containers per sub-row | Wrap into a balanced grid of 3 columns → rows of 3, 3, 2 |
+| 3 | Wrapped container X position | Each sub-row starts from the left margin (aligned with S1) |
+| 4 | Diagram total width | Does not exceed ~1300px |
+| 5 | Diagram total height | Taller than a single-row diagram (multiple sub-rows) |
 
 ## Automated Coverage
 
-The following scenarios are covered by unit tests in `deploy-layout.test.ts`:
+Layout math is covered by unit tests:
 
-- 8 isolated containers in layer 0 → 6th container wraps to a new sub-row (different Y); last container also on sub-row 2
-- Wrapped container restarts from `OUTER_PADDING` (x = 40)
-- Total height is greater when wrapping occurs
-- Ghost edge from a wrapped container routes correctly (bottom-center → top-center of next-layer container)
+- `layer-layout-logics.test.ts` — `gridColumnCount` (8 → 3 columns) and `wrapLayerIntoRows` (row-major wrap at the column count or `MAX_LAYER_WIDTH`)
+- `deploy-layout.test.ts` — isolated containers in layer 0 wrap to new sub-rows (different Y); wrapped rows restart from `OUTER_PADDING`; total height grows when wrapping occurs; ghost edges route correctly across sub-rows

@@ -205,6 +205,14 @@ export function renderWarning(w: Warning, t: TranslateFn): FormattedWarning {
         }),
         details: [],
       };
+    case "style-grid-columns-invalid-value":
+      return {
+        message: t("warning.styleGridColumnsInvalidValue.message", {
+          nodeId: w.params.nodeId,
+          value: w.params.value,
+        }),
+        details: [],
+      };
     case "style-invalid-enum-value":
       return {
         message: t("warning.styleInvalidEnumValue.message", w.params),

@@ -207,6 +207,34 @@ queue, database, storage { column: center; }
 `left` / `center` / `right` 以外の値は `style-column-invalid-value`
 警告とともに破棄されます。
 
+### `grid-columns` — 正の整数
+
+コンテナの直接の子を畳むグリッドの列数を指定します。既定でもレイアウトは多数の
+兄弟を**バランス grid** に畳み、横長の一行に潰れてズームアウトを強いる状態を避けます
+（一目で把握できる解像度を保つ。コンセプトの scoped glance / 解像度の軸を参照）。
+既定の列数は ≈ 正方形に自動バランスします: 少数（5 個まで）は 1 行のまま、より多い
+場合は `ceil(sqrt(n))` 列（最大 5 列）で横ではなく縦に伸ばします。
+
+`grid-columns` はこの既定を特定のコンテナで上書きします。子を再配置したいノード
+（services なら `system`、domains なら `service`、usecases なら `domain`、member grid
+なら `team`）に指定します:
+
+```css
+#PlatformSystem { grid-columns: 3; }   /* services を 3 列で折り返す */
+#BillingDomain  { grid-columns: 2; }   /* usecases を 2 列で折り返す */
+```
+
+1 行が最大レイヤー幅を超える場合は早めに折り返すため、過大な `grid-columns` でも
+フレームを溢れさせません。`column`（system ビュー限定）と異なり、本ヒントは system /
+drill-down ビューおよび org の member grid で有効です。deploy ビューもグリッドを自動
+バランスしますが、コンテナを `realizes` 先でグループ化する都合上コンテナノードが無く、
+v1 では `grid-columns` による上書きはできません。
+
+正の整数でない値（`0` や `2.5` など）は `style-grid-columns-invalid-value` 警告とともに
+破棄され、レイアウトは自動バランスにフォールバックします。
+
+> Related TPLs: [TPL-20260510-21](../test-perspectives/TPL-20260510-21-scoped-glance-drill-down.md) — 一度に見せる範囲を限定し、単一ビューが一目で把握できる解像度を保つ（バランス grid は視覚密度を一定に保つ）。
+
 ### `direction` — `auto | up | down | left | right`
 
 エッジに対するレイアウトヒント。エッジを視覚的にどの方向に流したいかを

@@ -1324,30 +1324,30 @@ system S {
 
 describe("layout > port distribution + orthogonal routing interaction", () => {
   it("distributed ports do not introduce new obstacle crossings (Phase 3 + Phase 2 cooperate)", () => {
-    // Hub fanning out across two rows: row 0 = top hub, row 1 = three
-    // siblings between (acting as potential obstacles), row 2 = three
-    // targets below. After port distribution spreads the hub's outgoing
-    // edges, each must either be obstacle-free or get routed orthogonally
-    // by Phase 2 — never silently cross an intermediate node.
+    // Hub fanning out to a single row of five same-layer siblings: two act as
+    // potential obstacles (Mid*), three are the routing targets (Bot*). The
+    // layer stays at five nodes (the grid column cap), so it does not wrap into
+    // sub-rows — this isolates the port-distribution + orthogonal-routing
+    // interaction from grid wrapping. After port distribution spreads the hub's
+    // outgoing edges, each target path must either be obstacle-free or get
+    // routed orthogonally by Phase 2 — never silently cross a sibling card.
     const slice = parseAndExtract(`
 system S {
   service Hub {}
   service Mid1 {}
   service Mid2 {}
-  service Mid3 {}
   service Bot1 {}
   service Bot2 {}
   service Bot3 {}
   Hub -> Mid1
   Hub -> Mid2
-  Hub -> Mid3
   Hub -> Bot1
   Hub -> Bot2
   Hub -> Bot3
 }
     `);
     const result = layout(slice);
-    const mids = ["Mid1", "Mid2", "Mid3"].map((id) => result.nodes.get(id)!);
+    const mids = ["Mid1", "Mid2"].map((id) => result.nodes.get(id)!);
     const targets = ["Bot1", "Bot2", "Bot3"];
 
     for (const targetId of targets) {
@@ -1548,5 +1548,42 @@ system S {
     const ab = result.edges.filter((e) => e.from === "A" && e.to === "B");
     expect(ab).toHaveLength(2);
     expect(ab.every((e) => e.bundleSize === 2)).toBe(true);
+  });
+});
+
+describe("layout > balanced grid wrapping (#1737)", () => {
+  const sysWith = (n: number) => {
+    const services = Array.from({ length: n }, (_, i) => `  service S${i} {}`).join("\n");
+    return `system Sys {\n${services}\n}`;
+  };
+  const distinctRows = (result: ReturnType<typeof layout>) =>
+    new Set([...result.nodes.values()].map((node) => node.y)).size;
+
+  it("keeps a small sibling set (<= cap) on one row", () => {
+    const result = layout(parseAndExtract(sysWith(5)));
+    expect(distinctRows(result)).toBe(1);
+  });
+
+  it("wraps many siblings into a balanced grid (multiple sub-rows)", () => {
+    // 7 services with no edges all land in one topological layer; the grid
+    // wraps them into ceil(sqrt(7)) = 3 columns -> rows of 3, 3, 1.
+    const result = layout(parseAndExtract(sysWith(7)));
+    expect(distinctRows(result)).toBe(3);
+  });
+
+  it("honors a grid-columns hint on the container, overriding the auto count", () => {
+    const slice = parseAndExtract(sysWith(7));
+    const hints = new Map([["Sys", { gridColumns: 2 }]]);
+    const result = layout(slice, undefined, undefined, hints);
+    // 7 nodes / 2 columns -> 4 sub-rows.
+    expect(distinctRows(result)).toBe(4);
+  });
+
+  it("is deterministic: identical input produces identical coordinates", () => {
+    const coords = () => {
+      const result = layout(parseAndExtract(sysWith(10)));
+      return [...result.nodes.entries()].map(([id, n]) => `${id}:${n.x},${n.y}`).join("|");
+    };
+    expect(coords()).toBe(coords());
   });
 });

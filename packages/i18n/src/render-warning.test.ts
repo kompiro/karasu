@@ -100,6 +100,10 @@ const SAMPLES: Record<WarningKind, Warning> = {
     kind: "style-column-ignored-non-system-view",
     params: { nodeId: "OrderUnit", viewType: "deploy" },
   },
+  "style-grid-columns-invalid-value": {
+    kind: "style-grid-columns-invalid-value",
+    params: { nodeId: "OrderService", value: "0" },
+  },
   "style-invalid-enum-value": {
     kind: "style-invalid-enum-value",
     params: { property: "direction", value: "dwon", allowed: ["auto", "up", "down"] },
@@ -155,6 +159,7 @@ const IDENTIFIERS: Record<WarningKind, string[]> = {
   "legend-ref-unresolved": ["@missing"],
   "style-column-invalid-value": ["OrderService", "centre"],
   "style-column-ignored-non-system-view": ["OrderUnit"],
+  "style-grid-columns-invalid-value": ["OrderService", "0"],
   "style-invalid-enum-value": ["direction", "dwon"],
   "style-invalid-hex-color": ["color", "#zzzz"],
   "style-missing-length-unit": ["stroke-width", "1.5"],
