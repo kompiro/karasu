@@ -147,6 +147,8 @@ export type Translations = {
   // Empty-state placeholders (rendered inside SVG by core renderers)
   "emptyState.deploy.title": string;
   "emptyState.deploy.hint": string;
+  "emptyState.deploy.jobBand": string;
+  "emptyState.deploy.unclassified": string;
   "emptyState.org.noTeams": string;
   "emptyState.system.noNodes": string;
   "emptyState.org.placeholder": string;

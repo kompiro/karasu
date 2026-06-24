@@ -244,16 +244,22 @@ npm への公開は **changesets** で管理し、認証は **npm Trusted Publis
 
 ### 対象パッケージ
 
-公開対象は `karasu`（CLI、`packages/cli`）と `@karasu-tools/core`（ライブラリ）。CLI は esbuild で `@karasu-tools/core` を内包した単一 ESM バンドルとしてビルドする（`packages/cli` の `build` スクリプト。公開 core への依存には切り替えない）。`@karasu-tools/app` / `@karasu-tools/lsp` / `@karasu-tools/e2e` / `@karasu-tools/vscode-e2e` と `karasu-vscode` は `.changeset/config.json` の `ignore` に入っており公開対象外（VS Code 拡張の配布は Marketplace 経由で別管理 — Issue #1316）。
+npm 公開対象は `karasu`（CLI、`packages/cli`）と `@karasu-tools/core`（ライブラリ）。CLI は esbuild で `@karasu-tools/core` を内包した単一 ESM バンドルとしてビルドする（`packages/cli` の `build` スクリプト。公開 core への依存には切り替えない）。`@karasu-tools/app` / `@karasu-tools/lsp` / `@karasu-tools/e2e` / `@karasu-tools/vscode-e2e` は `.changeset/config.json` の `ignore` に入っており版管理・公開とも対象外。
+
+`karasu-vscode`（VS Code 拡張）も changesets の**版管理対象**（`ignore` から除外）。ただし `private: true` のため `changeset publish` は npm へ publish せず（自動スキップ）、配布は Marketplace 経由で別管理（手動 — Issue #1316、後述「VS Code 拡張のリリース」）。changesets は version bump と `packages/vscode/CHANGELOG.md` 生成のみを担う。経緯は [docs/design/vscode-changeset-versioning.md](design/vscode-changeset-versioning.md)（ADR 昇格予定）を参照。
 
 > **`@karasu-tools/core` は v0.x（TS API、無保証）**。`.krs` / `.krs.style` 言語は v1.0 だが、TS API は minor で破壊的変更を許す（[ADR-20260616-06](adr/20260616-06-krs-spec-v1-freeze.md)）。`exports` は公開先に `dist`（types + ESM）を指し、`development` 条件で repo 内は TS ソースを解決する（root tsconfig `customConditions: ["development"]`）ため `pnpm typecheck` は build 非依存のまま。`karasu` / `@karasu-tools/core` とも 0.1.0 を初回公開済み（`@karasu-tools` npm org 確保済み）。
 
 ### 変更を加えるとき
 
-公開パッケージ（= `karasu`）に利用者から見える変更を入れる PR では、`pnpm changeset` を実行して `.changeset/<name>.md` を追加し、PR に含める。
+公開・配布対象パッケージ（`karasu` / `@karasu-tools/core` / `karasu-vscode`）に利用者から見える変更を入れる PR では、`pnpm changeset` を実行して `.changeset/<name>.md` を追加し、PR に含める。
 
-- bump レベルは semver に従う（破壊的変更 = major、機能追加 = minor、修正 = patch）。CLI はまだ 0.x なので、当面は破壊的変更も minor で扱ってよい。
-- 内部リファクタ・テスト・ドキュメントのみ・他パッケージのみの変更では changeset 不要。
+- bump レベルは semver に従う（破壊的変更 = major、機能追加 = minor、修正 = patch）。各パッケージとも 0.x なので、当面は破壊的変更も minor で扱ってよい。
+- **どのパッケージを名指すか**（依存の cascade 非対称性に注意 — 詳細は [docs/design/vscode-changeset-versioning.md](design/vscode-changeset-versioning.md)）:
+  - `packages/core` の利用者向け変更 → **`@karasu-tools/core` と `karasu` の両方**を名指す。`@karasu-tools/core` の bump は `karasu-vscode`（core を実 dependency に持つ）へ patch を自動 cascade するが、`karasu`（core を devDependency でバンドル）へは cascade しないため CLI は別途名指しが要る。
+  - `packages/cli` 固有の変更 → `karasu`
+  - `packages/vscode` 固有の変更 → `karasu-vscode`
+- 内部リファクタ・テスト・ドキュメントのみ・公開対象外パッケージのみの変更では changeset 不要。
 - `CHANGELOG.md` の文面は利用者向けに書く（コミット subject の流用ではなく）。
 
 `pnpm changeset status` で「未リリースの変更があるか」を確認できる。
@@ -273,6 +279,16 @@ npm への公開は **changesets** で管理し、認証は **npm Trusted Publis
 > 前提: 公開対象パッケージごとに npmjs.com で **Trusted Publisher**（org `kompiro` / repo `karasu` / workflow `release.yml`）を登録しておくこと。未登録のパッケージは OIDC publish が失敗する。新規パッケージは Trusted Publisher を設定できる前に一度存在している必要があるため、**初回だけローカルから手動 publish**（`pnpm publish`、provenance off + OTP）してから登録する。
 >
 > changeset-bot（GitHub App、後述）を導入したらこのフローは bot-PR ベースに戻せる。
+
+### VS Code 拡張のリリース
+
+`karasu-vscode` の**版 bump と `CHANGELOG.md` は上記 changesets フローで自動**化される（`changeset version` が `packages/vscode/package.json` の version を更新）。`private: true` なので `changeset publish`（`release.yml`）は npm へ publish しない。**Marketplace への公開は手動**で、版が bump された後に行う:
+
+1. リリース PR（`changeset version` 済み）をマージし、`packages/vscode/package.json` の version が確定した状態にする。
+2. **"VS Code Extension Release"**（`vscode-release.yml`）を Actions タブから `workflow_dispatch` で起動する。`package.json` の version をそのまま Marketplace（publisher `karasu-tools`）へ publish する（pre-release チャネルは `pre_release` input で選択）。
+3. 認証は **Microsoft Entra ID via GitHub OIDC**（`AZURE_CLIENT_ID` / `AZURE_TENANT_ID` 変数。未設定時は build + package のみで publish はスキップ）。前提セットアップは #1316 を参照。
+
+> 拡張は CLI とは独立した cadence で出す（マージのたびに自動公開はしない）。CHANGELOG 変更での自動 publish は重さ・cadence の観点から採らない（[docs/design/vscode-changeset-versioning.md](design/vscode-changeset-versioning.md) の却下案）。
 
 ### 未対応のフォローアップ
 

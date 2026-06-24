@@ -4,10 +4,15 @@ name: VS Code Extension Release
 # publisher `karasu-tools` (extension id `karasu-tools.karasu-vscode`).
 #
 # Manual-only (`workflow_dispatch`) — the extension is released on its own
-# cadence, separate from the changesets-driven npm release of the `karasu` CLI
-# (`karasu-vscode` is in `.changeset/config.json` `ignore`; see Issue #1316 and
-# ADR-20260512-05). The version published is whatever is in
-# `packages/vscode/package.json`.
+# cadence, separate from the changesets-driven npm release of the `karasu` CLI.
+# Versioning IS managed by changesets (`karasu-vscode` was removed from
+# `.changeset/config.json` `ignore`): `changeset version` bumps
+# `packages/vscode/package.json` + writes its CHANGELOG. But `karasu-vscode` is
+# `private: true`, so `changeset publish` (release.yml) never publishes it to
+# npm — Marketplace publish stays here, run manually after the version is
+# bumped. The version published is whatever is in `packages/vscode/package.json`.
+# See docs/design/vscode-changeset-versioning.md (refines ADR-20260512-05),
+# Issue #1316, and docs/process.md "VS Code 拡張のリリース".
 #
 # Auth: Microsoft Entra ID via GitHub OIDC (no stored secret, nothing to expire
 # — Azure DevOps long-lived PATs retire 2026-12-01). `azure/login` exchanges the

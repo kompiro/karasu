@@ -16,8 +16,7 @@ dependency DAG — each placed by the dependency depth of the domain it
 Longest Path Layering DAG and clusters them into a dedicated **job band** below
 the compute/store DAG and above the `__unclassified__` row. compute / mixed
 containers stay on the DAG; `store` already sinks to the DAG bottom and is
-untouched. Design: `docs/design/deploy-kind-band-job-lane.md` (promoted to an
-ADR after merge).
+untouched. Decision: [ADR-20260624-02](../adr/20260624-02-deploy-kind-band-job-lane.md).
 
 Related: ADR-20260408-02 (Longest Path Layering), ADR-20260327-01 (deploy
 design), ADR-20260616-12 (service→infra edges), [TPL-20260624-01].
@@ -44,6 +43,15 @@ the caption `Scheduled jobs`, and carries `kindBand: "job"`; the renderer emits
 > __job_band__ container marked kindBand job`; `deploy-renderer.test.ts` ›
 > `job band (#1738)` › `emits the job band wrapper with its caption and
 > data-kind-band`.
+
+The caption is localized: it falls back to English (`Scheduled jobs`) but is
+overridden via `EmptyStateLabels.deployJobBand` (the app's i18n pass-through,
+`emptyState.deploy.jobBand` — en/ja). The unclassified container caption is
+localized the same way (`EmptyStateLabels.deployUnclassified`).
+
+> ✅ Automated — `deploy-layout.test.ts` › `uses localized captions for the job
+> band and unclassified containers`; `deploy-renderer.test.ts` › `renders the
+> localized band caption from emptyLabels (i18n pass-through)`.
 
 ## AC-3: a mixed job+compute container stays on the DAG (automated)
 

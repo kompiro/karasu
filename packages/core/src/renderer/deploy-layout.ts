@@ -12,10 +12,10 @@ const CONTAINER_PADDING_BOTTOM = 20;
 const OUTER_PADDING = 40;
 const ROW_GAP = 64; // vertical gap between layers (larger than CONTAINER_GAP to leave room for edges)
 const MAX_LAYER_WIDTH = 1200; // wrap containers to a new sub-row when a layer exceeds this width
+// English fallbacks for the synthetic container captions. Callers pass localized
+// strings via `DeployBandLabels` (the app's EmptyStateLabels pass-through, per
+// docs/spec/i18n.md); these apply only when no label is supplied (CLI/tests).
 const UNCLASSIFIED_LABEL = "Unclassified";
-// Caption for the job band wrapper. Hardcoded English to match the sibling
-// `UNCLASSIFIED_LABEL` precedent (both are layout-level captions); i18n of these
-// diagram band labels is a separate follow-up.
 const JOB_BAND_LABEL = "Scheduled jobs";
 
 type Group = { id: string; label: string; units: DeployNode[]; kindBand?: "job" };
@@ -167,6 +167,10 @@ function placeGroupBlock(
   layoutNodes: Map<string, LayoutNode>,
   containers: ContainerRect[],
   containerCenterX: Map<string, number>,
+  // The unclassified row keys its nodes by the bare unit id (units there have no
+  // `realizes`, so they appear once); classified/banded containers prefix with
+  // the container id because a multi-`realizes` unit can appear in several.
+  bareNodeKeys = false,
 ): { bottomY: number; maxRight: number } {
   const columnCount = gridColumnCount(groups.length);
   let colInRow = 0;
@@ -205,7 +209,8 @@ function placeGroupBlock(
       const dims = measureDeployUnit(unit);
       // Key is "${containerId}::${unit.id}" so the same unit can appear in multiple
       // containers at different positions without overwriting its layout entry.
-      layoutNodes.set(`${group.id}::${unit.id}`, {
+      const nodeKey = bareNodeKeys ? unit.id : `${group.id}::${unit.id}`;
+      layoutNodes.set(nodeKey, {
         kind: unit.kind,
         id: unit.id,
         label: unit.label ?? unit.id,
@@ -244,7 +249,17 @@ function placeGroupBlock(
  * Job-only containers are pulled out of the DAG into a dedicated job band below it (#1738).
  * Unclassified units (no realizes) are placed in a separate row at the bottom.
  */
-export function layoutDeploy(slice: DeployViewSlice): LayoutResult {
+/** Localized captions for the synthetic deploy containers (#1738). */
+interface DeployBandLabels {
+  /** Caption for the job band wrapper. */
+  jobBand?: string;
+  /** Caption for the unclassified (no-`realizes`) container. */
+  unclassified?: string;
+}
+
+export function layoutDeploy(slice: DeployViewSlice, labels?: DeployBandLabels): LayoutResult {
+  const jobBandLabel = labels?.jobBand ?? JOB_BAND_LABEL;
+  const unclassifiedLabel = labels?.unclassified ?? UNCLASSIFIED_LABEL;
   const layoutNodes = new Map<string, LayoutNode>();
   const containers: ContainerRect[] = [];
 
@@ -346,7 +361,7 @@ export function layoutDeploy(slice: DeployViewSlice): LayoutResult {
     const bandHeight = bottomY - bandTop + CONTAINER_PADDING_BOTTOM;
     containers.push({
       id: "__job_band__",
-      label: JOB_BAND_LABEL,
+      label: jobBandLabel,
       x: OUTER_PADDING,
       y: bandTop,
       width: bandWidth,
@@ -359,46 +374,22 @@ export function layoutDeploy(slice: DeployViewSlice): LayoutResult {
     currentY = bandTop + bandHeight + ROW_GAP;
   }
 
-  // --- Unclassified units: bottom row ---
+  // --- Unclassified units: single container, bottom row ---
+  // Reuses placeGroupBlock (one group = one container) with bare node keys, so
+  // the container-push + unit-placement logic lives in one place. gridColumnCount(1)
+  // is 1, so the single container never wraps — same output as before.
   if (hasUnclassified) {
-    const containerW = measureContainerWidth(slice.unclassifiedUnits, UNCLASSIFIED_LABEL);
-    const containerH = measureContainerHeight(slice.unclassifiedUnits);
-
-    containers.push({
-      id: "__unclassified__",
-      label: UNCLASSIFIED_LABEL,
-      x: OUTER_PADDING,
-      y: currentY,
-      width: containerW,
-      height: containerH,
-      ghost: false,
-    });
-
-    let unitY = currentY + CONTAINER_PADDING_TOP;
-    for (const unit of slice.unclassifiedUnits) {
-      const dims = measureDeployUnit(unit);
-      layoutNodes.set(unit.id, {
-        kind: unit.kind,
-        id: unit.id,
-        label: unit.label ?? unit.id,
-        properties: {
-          description: deployUnitDescription(unit),
-          links: [],
-        },
-        descriptionSummary: undefined,
-        linkCount: 0,
-        hasChildren: false,
-        hasDescription: !!deployUnitDescription(unit),
-        x: OUTER_PADDING + CONTAINER_PADDING_X,
-        y: unitY,
-        width: dims.width,
-        height: dims.height,
-      });
-      unitY += dims.height + NODE_GAP;
-    }
-
-    totalWidth = Math.max(totalWidth, OUTER_PADDING + containerW + OUTER_PADDING);
-    currentY += containerH + OUTER_PADDING;
+    const { bottomY, maxRight } = placeGroupBlock(
+      [{ id: "__unclassified__", label: unclassifiedLabel, units: slice.unclassifiedUnits }],
+      OUTER_PADDING,
+      currentY,
+      layoutNodes,
+      containers,
+      containerCenterX,
+      true, // bareNodeKeys: unclassified units key by bare id
+    );
+    totalWidth = Math.max(totalWidth, maxRight + OUTER_PADDING);
+    currentY = bottomY + OUTER_PADDING;
   } else {
     // Replace last ROW_GAP with OUTER_PADDING
     currentY = currentY - ROW_GAP + OUTER_PADDING;

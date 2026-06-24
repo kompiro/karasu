@@ -144,6 +144,8 @@ export const ja: Partial<Translations> = {
   // Empty-state placeholders (rendered inside SVG by core renderers)
   "emptyState.deploy.title": "deploy ブロックが定義されていません",
   "emptyState.deploy.hint": ".krs ファイルに deploy ブロックを追加してください",
+  "emptyState.deploy.jobBand": "定期実行ジョブ",
+  "emptyState.deploy.unclassified": "未分類",
   "emptyState.org.noTeams": "team が定義されていません",
   "emptyState.system.noNodes": "表示するノードがありません",
   "emptyState.org.placeholder": "org 図がありません",

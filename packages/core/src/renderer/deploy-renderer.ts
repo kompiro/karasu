@@ -37,7 +37,10 @@ export function renderDeploy(
     );
     return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 100" width="200" height="100"><rect width="200" height="100" fill="${palette.canvasBg}"/><text x="100" y="46" text-anchor="middle" fill="${palette.emptyStateText}" font-family="sans-serif" font-size="12">${title}</text><text x="100" y="64" text-anchor="middle" fill="${palette.textMuted}" font-family="sans-serif" font-size="10">${hint}</text></svg>`;
   }
-  const layoutResult = layoutDeploy(slice);
+  const layoutResult = layoutDeploy(slice, {
+    jobBand: options?.emptyLabels?.deployJobBand,
+    unclassified: options?.emptyLabels?.deployUnclassified,
+  });
   return renderFromLayout(
     layoutResult,
     styles,
