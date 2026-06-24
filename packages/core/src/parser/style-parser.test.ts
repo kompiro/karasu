@@ -172,18 +172,18 @@ edge#OrderDB.OrderTable->Logger { color: #EF4444; }
 
   describe("edge[from=<id>] / edge[to=<id>] selector", () => {
     it("parses a source selector", () => {
-      const result = StyleParser.parse(`edge[from=HatoApi] { color: #3B82F6; }`);
+      const result = StyleParser.parse(`edge[from=ApiGateway] { color: #3B82F6; }`);
       const rule = result.value.rules[0];
       expect(rule.selector.nodeType).toBe("edge");
-      expect(rule.selector.edgeFrom).toBe("HatoApi");
+      expect(rule.selector.edgeFrom).toBe("ApiGateway");
       expect(rule.selector.edgeTo).toBeUndefined();
       expect(rule.selector.tags).toEqual([]);
     });
 
     it("parses a target selector", () => {
-      const result = StyleParser.parse(`edge[to=HatoApi] { color: #10B981; }`);
+      const result = StyleParser.parse(`edge[to=ApiGateway] { color: #10B981; }`);
       const rule = result.value.rules[0];
-      expect(rule.selector.edgeTo).toBe("HatoApi");
+      expect(rule.selector.edgeTo).toBe("ApiGateway");
       expect(rule.selector.edgeFrom).toBeUndefined();
     });
 
@@ -194,9 +194,9 @@ edge#OrderDB.OrderTable->Logger { color: #EF4444; }
     });
 
     it("combines a from predicate with a tag selector", () => {
-      const result = StyleParser.parse(`edge[from=HatoApi][async] { color: #3B82F6; }`);
+      const result = StyleParser.parse(`edge[from=ApiGateway][async] { color: #3B82F6; }`);
       const rule = result.value.rules[0];
-      expect(rule.selector.edgeFrom).toBe("HatoApi");
+      expect(rule.selector.edgeFrom).toBe("ApiGateway");
       expect(rule.selector.tags).toEqual(["async"]);
     });
 
@@ -209,7 +209,7 @@ edge#OrderDB.OrderTable->Logger { color: #EF4444; }
     });
 
     it("emits a diagnostic for an unknown attribute key", () => {
-      const result = StyleParser.parse(`edge[source=HatoApi] { color: #3B82F6; }`);
+      const result = StyleParser.parse(`edge[source=ApiGateway] { color: #3B82F6; }`);
       expect(result.diagnostics.some((d) => d.code === "unknown-edge-selector-attribute")).toBe(
         true,
       );
@@ -388,10 +388,10 @@ describe("computeSpecificity", () => {
 
   it("edge[from=X] / edge[to=X] = 11 (edge kind + endpoint predicate)", () => {
     expect(
-      computeSpecificity({ nodeType: "edge", edgeFrom: "HatoApi", tags: [], annotations: [] }),
+      computeSpecificity({ nodeType: "edge", edgeFrom: "ApiGateway", tags: [], annotations: [] }),
     ).toBe(11);
     expect(
-      computeSpecificity({ nodeType: "edge", edgeTo: "HatoApi", tags: [], annotations: [] }),
+      computeSpecificity({ nodeType: "edge", edgeTo: "ApiGateway", tags: [], annotations: [] }),
     ).toBe(11);
   });
 });

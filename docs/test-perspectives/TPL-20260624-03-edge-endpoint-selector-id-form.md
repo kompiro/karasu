@@ -28,7 +28,7 @@ selector、将来の端点ハイライトや集計）は、セレクタが持つ
 `KrsEdge.from` / `KrsEdge.to` と突き合わせる。ここで効いてくるのが
 **端点 id には複数の形がある**こと:
 
-- 通常ノードは **bare id**（`HatoApi`）。
+- 通常ノードは **bare id**（`ApiGateway`）。
 - usecase→resource 合成エッジの端点は **dot-notation**（`OrderDB.OrderTable`）。
   これは `edge#<from>-><to>` の canonical base id を組み立てるのに使う形と同じ。
 

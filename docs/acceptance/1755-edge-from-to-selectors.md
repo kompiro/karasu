@@ -31,7 +31,7 @@ type: product
 - [x] AT-C: dot-notation の端点（`edge[to=OrderDB.OrderTable]`）が 1 つの id として読まれる
   > ✅ Automated — `style-parser.test.ts` › `... › allows dot-notation endpoints (synthesized usecase->resource edges)`
 
-- [x] AT-D: 端点述語とタグの併用（`edge[from=HatoApi][async]`）で `edgeFrom` と `tags` の両方が設定される
+- [x] AT-D: 端点述語とタグの併用（`edge[from=ApiGateway][async]`）で `edgeFrom` と `tags` の両方が設定される
   > ✅ Automated — `style-parser.test.ts` › `... › combines a from predicate with a tag selector`
 
 - [x] AT-E: 通常のタグセレクタ（`edge[external]`）が端点述語と誤認されない
@@ -55,7 +55,7 @@ type: product
 - [x] AT-K: end-to-end で `edge[from=A]` 1 ルールがハブ A の fan-out 全体を着色する
   > ✅ Automated — `packages/core/src/index.test.ts` › `compile — edge#<id> style selector (end-to-end) › colors a hub's whole fan-out with one edge[from=<id>] rule`
 
-- [x] AT-L: specificity 表（`docs/spec/style.md` 生成部）に `edge[from=HatoApi]` 行（score 11）が載り、`reference-data.test.ts` の lock と整合する
+- [x] AT-L: specificity 表（`docs/spec/style.md` 生成部）に `edge[from=ApiGateway]` 行（score 11）が載り、`reference-data.test.ts` の lock と整合する
   > ✅ Automated — `packages/core/src/builtins/reference-data.test.ts` › `SELECTOR_SPECIFICITY › every row's score matches what the style parser computes for its example`
 
 - [ ] AT-M（manual）: 実際の Preview で、複数のエッジを持つハブ（例: `examples/ja/getting-started/index.krs` の中心ノード）に対し `.krs.style` で `edge[from=<Hub>] { color: #3B82F6; }` を書くと、当該ハブから出る全エッジだけが一括で青くなることを目視確認する

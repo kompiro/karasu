@@ -16,8 +16,8 @@
 | ID | `#ECommerce` | A specific node only |
 | Edge | `edge` | All edges |
 | Edge + tag | `edge[async]` | Edges with the given tag |
-| Edge source | `edge[from=HatoApi]` | All edges originating at the node |
-| Edge target | `edge[to=HatoApi]` | All edges terminating at the node |
+| Edge source | `edge[from=ApiGateway]` | All edges originating at the node |
+| Edge target | `edge[to=ApiGateway]` | All edges terminating at the node |
 | Edge ID | `edge#criticalWrite`, `edge#A->B`, `edge#A-->B` | A specific edge only |
 
 ---
@@ -36,7 +36,7 @@
 | ID | `#ECommerce` | 100 |
 | Edge | `edge` | 1 |
 | Edge + tag | `edge[async]` | 11 |
-| Edge source/target | `edge[from=HatoApi]` | 11 |
+| Edge source/target | `edge[from=ApiGateway]` | 11 |
 | Edge ID | `edge#criticalWrite` | 101 |
 <!-- /gen:reference:selector-specificity -->
 
@@ -55,8 +55,8 @@ otherwise need one `edge#Hub->Target` rule per target.
 - `edge[to=<id>]` — every edge whose **target** is the node `<id>`
 
 ```css
-edge[from=HatoApi] { color: #3B82F6; }   /* whole HatoApi fan-out in one color */
-edge[from=HatoMcp] { color: #10B981; }
+edge[from=ApiGateway] { color: #3B82F6; }   /* whole ApiGateway fan-out in one color */
+edge[from=Scheduler] { color: #10B981; }
 edge[to=AuthService] { color: #F59E0B; } /* everything calling AuthService */
 ```
 
@@ -70,7 +70,7 @@ tier as `edge[<tag>]`. They combine with tags and a single edge can match both
 a `from=` and a `to=` rule:
 
 ```css
-edge[from=HatoApi][async] { stroke-style: dashed; }  /* async edges out of HatoApi */
+edge[from=ApiGateway][async] { stroke-style: dashed; }  /* async edges out of ApiGateway */
 ```
 
 Any attribute other than `from` / `to` (e.g. `edge[source=X]`) raises an

@@ -16,8 +16,8 @@
 | ID | `#ECommerce` | 特定ノードのみ |
 | エッジ | `edge` | 全エッジ |
 | エッジ+タグ | `edge[async]` | 指定タグのエッジ |
-| エッジ 始点 | `edge[from=HatoApi]` | 指定ノードを始点とする全エッジ |
-| エッジ 終点 | `edge[to=HatoApi]` | 指定ノードを終点とする全エッジ |
+| エッジ 始点 | `edge[from=ApiGateway]` | 指定ノードを始点とする全エッジ |
+| エッジ 終点 | `edge[to=ApiGateway]` | 指定ノードを終点とする全エッジ |
 | エッジ ID | `edge#criticalWrite`、`edge#A->B`、`edge#A-->B` | 特定のエッジのみ |
 
 ---
@@ -36,7 +36,7 @@
 | ID | `#ECommerce` | 100 |
 | エッジ | `edge` | 1 |
 | エッジ + タグ | `edge[async]` | 11 |
-| エッジ 始点 / 終点 | `edge[from=HatoApi]` | 11 |
+| エッジ 始点 / 終点 | `edge[from=ApiGateway]` | 11 |
 | エッジ ID | `edge#criticalWrite` | 101 |
 <!-- /gen:reference:selector-specificity -->
 
@@ -55,8 +55,8 @@
 - `edge[to=<id>]` — **終点**がノード `<id>` の全エッジ
 
 ```css
-edge[from=HatoApi] { color: #3B82F6; }   /* HatoApi の fan-out をまとめて 1 色に */
-edge[from=HatoMcp] { color: #10B981; }
+edge[from=ApiGateway] { color: #3B82F6; }   /* ApiGateway の fan-out をまとめて 1 色に */
+edge[from=Scheduler] { color: #10B981; }
 edge[to=AuthService] { color: #F59E0B; } /* AuthService を呼ぶ全エッジ */
 ```
 
@@ -69,7 +69,7 @@ edge[to=AuthService] { color: #F59E0B; } /* AuthService を呼ぶ全エッジ */
 タグと併用でき、1 本のエッジが `from=` と `to=` の両ルールに同時に一致しうる:
 
 ```css
-edge[from=HatoApi][async] { stroke-style: dashed; }  /* HatoApi 発の async エッジ */
+edge[from=ApiGateway][async] { stroke-style: dashed; }  /* ApiGateway 発の async エッジ */
 ```
 
 `from` / `to` 以外の属性（例: `edge[source=X]`）は `unknown-edge-selector-attribute`
