@@ -62,6 +62,9 @@ function reportText(report: RepoReport): string {
   lines.push(
     `  ✓ ${summary.withCanonical} with canonical marker, ${summary.nonConforming} non-conforming, ${summary.missingMarkerWithSpec} missing marker despite a matching spec.`,
   );
+  lines.push(
+    `  ✓ e2e linkage: ${summary.orphanSpecs} orphan spec(s), ${summary.staleSpecRefs} stale spec reference(s).`,
+  );
 
   const nonConforming = report.reports.flatMap((r) => r.findings);
   if (nonConforming.length > 0) {
@@ -76,6 +79,22 @@ function reportText(report: RepoReport): string {
       "Missing markers despite a matching spec (cross-ref is heuristic — verify each manually):",
     );
     for (const f of report.crossRefFindings) lines.push(`  ⚠ ${describeFinding(f)}`);
+  }
+
+  if (report.linkage.orphanSpecs.length > 0) {
+    lines.push("");
+    lines.push(
+      "Orphan e2e specs (not named in any docs/acceptance/*.md — add a `> ✅ Automated by \\`<path>\\`` marker):",
+    );
+    for (const spec of report.linkage.orphanSpecs) lines.push(`  ✗ ${spec}`);
+  }
+
+  if (report.linkage.staleSpecRefs.length > 0) {
+    lines.push("");
+    lines.push("Stale e2e spec references (AT doc cites a spec path that no longer exists):");
+    for (const ref of report.linkage.staleSpecRefs) {
+      lines.push(`  ✗ ${ref.file} → ${ref.specPath}`);
+    }
   }
 
   if (summary.totalFindings === 0) {
@@ -102,6 +121,8 @@ function main(argv: string[]): number {
           summary,
           nonConforming: report.reports.flatMap((r) => r.findings),
           missingMarkerWithSpec: report.crossRefFindings,
+          orphanSpecs: report.linkage.orphanSpecs,
+          staleSpecRefs: report.linkage.staleSpecRefs,
         },
         null,
         2,

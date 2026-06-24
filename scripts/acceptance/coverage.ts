@@ -16,6 +16,21 @@ import { join, basename } from "node:path";
  *
  * The script never tries to autofix — phases C and B (#919 / #920) handle
  * the retrofit edits manually using this output as their work list.
+ *
+ * On top of the heuristic cross-ref above, two *exact* (non-heuristic) e2e
+ * linkage guards keep the AT ↔ e2e spec mapping from drifting (Issue #1680):
+ *
+ * - **orphan-spec**: every `packages/e2e/tests/at-*.spec.ts` must be named by
+ *   its full path in at least one AT doc — so a reader of the spec can find
+ *   the AT, and a reader of the AT can find the spec. Adding an AT-numbered
+ *   e2e spec without linking it from an AT doc fails the guard.
+ * - **stale-spec-ref**: every `packages/e2e/tests/*.spec.ts` path referenced
+ *   in an AT doc must resolve to a real file — so renaming or deleting a spec
+ *   (e.g. the `drilldown` → `drill-down` slug drift) cannot leave a dangling
+ *   reference behind.
+ *
+ * Both are exact filename/path checks (no slug-token heuristic), so they run
+ * under `--strict` without the "verify manually" caveat the cross-ref carries.
  */
 
 export type Finding =
@@ -56,6 +71,16 @@ const SUITE_WIDE_BLOCKQUOTE = /^\s*>\s*✅\s+Automated by\s+`[^`]+`\s*\(suite-wi
 const HEADING = /^#{1,6}\s/;
 
 const AT_FILENAME = /^(\d{4})-/;
+
+const E2E_TESTS_DIR = "packages/e2e/tests";
+// AT-numbered e2e specs follow the `at-<slug>.spec.ts` convention; the
+// `*.smoke.spec.ts` fixtures (anthropic-fixture, opfs) are test infrastructure
+// not bound to an AT, so the orphan guard skips them.
+const E2E_AT_SPEC_RE = /^at-.*\.spec\.ts$/;
+// Any e2e spec path mentioned in an AT doc — used by the stale-ref guard. Kept
+// deliberately broad (matches `.smoke.spec.ts` too) so a doc that cites any
+// e2e file by path is checked for existence.
+const E2E_SPEC_PATH_RE = /packages\/e2e\/tests\/[A-Za-z0-9._/-]+\.spec\.ts/g;
 
 /**
  * Parse a single AT file and return its report.
@@ -298,6 +323,79 @@ function walkTests(absDir: string, repoRoot: string, out: UnitTestEntry[]): void
   }
 }
 
+/** A reference from an AT doc to an e2e spec path (one per occurrence). */
+export interface SpecDocRef {
+  /** The AT doc the reference was found in (repo-relative). */
+  file: string;
+  /** The `packages/e2e/tests/*.spec.ts` path as written in the doc. */
+  specPath: string;
+}
+
+export interface LinkageReport {
+  /**
+   * AT-numbered e2e specs (`packages/e2e/tests/at-*.spec.ts`) whose path is not
+   * named in any AT doc. Sorted for deterministic output.
+   */
+  orphanSpecs: string[];
+  /**
+   * Doc references to e2e spec paths that do not exist on disk. Sorted by
+   * `(file, specPath)` for deterministic output.
+   */
+  staleSpecRefs: SpecDocRef[];
+}
+
+/**
+ * Pure core of the two exact e2e linkage guards — no filesystem access, so it
+ * unit-tests with plain fixtures.
+ *
+ * @param atSpecFiles repo-relative `packages/e2e/tests/at-*.spec.ts` paths that
+ *   currently exist (the orphan guard's universe).
+ * @param docRefs every `(doc, specPath)` reference parsed from the AT docs.
+ * @param specExists predicate: does this repo-relative spec path exist on disk?
+ */
+export function analyzeLinkage(
+  atSpecFiles: string[],
+  docRefs: SpecDocRef[],
+  specExists: (specPath: string) => boolean,
+): LinkageReport {
+  const referenced = new Set(docRefs.map((r) => r.specPath));
+  const orphanSpecs = atSpecFiles.filter((spec) => !referenced.has(spec)).sort();
+
+  const staleSeen = new Set<string>();
+  const staleSpecRefs: SpecDocRef[] = [];
+  for (const ref of docRefs) {
+    if (specExists(ref.specPath)) continue;
+    const key = `${ref.file} ${ref.specPath}`;
+    if (staleSeen.has(key)) continue;
+    staleSeen.add(key);
+    staleSpecRefs.push(ref);
+  }
+  staleSpecRefs.sort(
+    (a, b) => a.file.localeCompare(b.file) || a.specPath.localeCompare(b.specPath),
+  );
+
+  return { orphanSpecs, staleSpecRefs };
+}
+
+/** List repo-relative `packages/e2e/tests/at-*.spec.ts` paths (sorted). */
+function listAtSpecFiles(repoRoot: string): string[] {
+  const dir = join(repoRoot, E2E_TESTS_DIR);
+  if (!existsSync(dir)) return [];
+  return readdirSync(dir)
+    .filter((f) => E2E_AT_SPEC_RE.test(f))
+    .map((f) => `${E2E_TESTS_DIR}/${f}`)
+    .sort();
+}
+
+/** Parse every e2e spec path referenced in an AT doc's content. */
+function parseSpecRefs(docFile: string, content: string): SpecDocRef[] {
+  const refs: SpecDocRef[] = [];
+  for (const m of content.matchAll(E2E_SPEC_PATH_RE)) {
+    refs.push({ file: docFile, specPath: m[0] });
+  }
+  return refs;
+}
+
 interface AnalyzeRepoOptions {
   repoRoot: string;
   atDir?: string;
@@ -308,6 +406,8 @@ export interface RepoReport {
   reports: FileReport[];
   /** Cross-reference findings (kind === "missing-marker-with-spec") aggregated separately. */
   crossRefFindings: Finding[];
+  /** Exact e2e linkage guards (orphan specs, stale spec references). */
+  linkage: LinkageReport;
 }
 
 export function analyzeRepo(options: AnalyzeRepoOptions): RepoReport {
@@ -316,8 +416,10 @@ export function analyzeRepo(options: AnalyzeRepoOptions): RepoReport {
 
   const reports: FileReport[] = [];
   const crossRefFindings: Finding[] = [];
+  const docRefs: SpecDocRef[] = [];
 
-  if (!existsSync(atDir)) return { reports, crossRefFindings };
+  const emptyLinkage: LinkageReport = { orphanSpecs: [], staleSpecRefs: [] };
+  if (!existsSync(atDir)) return { reports, crossRefFindings, linkage: emptyLinkage };
 
   const files = readdirSync(atDir).filter((f) => f.endsWith(".md") && f !== "README.md");
   for (const filename of files.sort()) {
@@ -326,6 +428,7 @@ export function analyzeRepo(options: AnalyzeRepoOptions): RepoReport {
     const content = readFileSync(abs, "utf8");
     const report = analyzeFile(rel, content);
     reports.push(report);
+    docRefs.push(...parseSpecRefs(rel, content));
 
     if (!report.hasCanonicalMarker && report.atId) {
       const slug = extractSlug(filename);
@@ -340,7 +443,11 @@ export function analyzeRepo(options: AnalyzeRepoOptions): RepoReport {
     }
   }
 
-  return { reports, crossRefFindings };
+  const linkage = analyzeLinkage(listAtSpecFiles(options.repoRoot), docRefs, (specPath) =>
+    existsSync(join(options.repoRoot, specPath)),
+  );
+
+  return { reports, crossRefFindings, linkage };
 }
 
 interface SummaryCounts {
@@ -348,6 +455,8 @@ interface SummaryCounts {
   withCanonical: number;
   nonConforming: number;
   missingMarkerWithSpec: number;
+  orphanSpecs: number;
+  staleSpecRefs: number;
   totalFindings: number;
 }
 
@@ -358,11 +467,15 @@ export function summarize(report: RepoReport): SummaryCounts {
     if (r.findings.length > 0) nonConforming += 1;
     totalFindings += r.findings.length;
   }
+  const orphanSpecs = report.linkage.orphanSpecs.length;
+  const staleSpecRefs = report.linkage.staleSpecRefs.length;
   return {
     scanned: report.reports.length,
     withCanonical: report.reports.filter((r) => r.hasCanonicalMarker).length,
     nonConforming,
     missingMarkerWithSpec: report.crossRefFindings.length,
-    totalFindings: totalFindings + report.crossRefFindings.length,
+    orphanSpecs,
+    staleSpecRefs,
+    totalFindings: totalFindings + report.crossRefFindings.length + orphanSpecs + staleSpecRefs,
   };
 }
