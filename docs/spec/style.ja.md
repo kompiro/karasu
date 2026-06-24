@@ -16,6 +16,8 @@
 | ID | `#ECommerce` | 特定ノードのみ |
 | エッジ | `edge` | 全エッジ |
 | エッジ+タグ | `edge[async]` | 指定タグのエッジ |
+| エッジ 始点 | `edge[from=ApiGateway]` | 指定ノードを始点とする全エッジ |
+| エッジ 終点 | `edge[to=ApiGateway]` | 指定ノードを終点とする全エッジ |
 | エッジ ID | `edge#criticalWrite`、`edge#A->B`、`edge#A-->B` | 特定のエッジのみ |
 
 ---
@@ -34,6 +36,7 @@
 | ID | `#ECommerce` | 100 |
 | エッジ | `edge` | 1 |
 | エッジ + タグ | `edge[async]` | 11 |
+| エッジ 始点 / 終点 | `edge[from=ApiGateway]` | 11 |
 | エッジ ID | `edge#criticalWrite` | 101 |
 <!-- /gen:reference:selector-specificity -->
 
@@ -41,6 +44,39 @@
 同スコアなら後に書いた方が優先（CSS同様）。
 
 ---
+
+## 始点 / 終点エッジセレクタ（`edge[from=<id>]` / `edge[to=<id>]`）
+
+**あるノードを始点（または終点）とする全エッジ**を 1 ルールでまとめてスタイル
+できる。密な図で残った交差や束を見分ける「color-by-source」の最有力手段で、
+これが無いとハブの fan-out を `edge#Hub->Target` ルールの列挙でしか書けない。
+
+- `edge[from=<id>]` — **始点**がノード `<id>` の全エッジ
+- `edge[to=<id>]` — **終点**がノード `<id>` の全エッジ
+
+```css
+edge[from=ApiGateway] { color: #3B82F6; }   /* ApiGateway の fan-out をまとめて 1 色に */
+edge[from=Scheduler] { color: #10B981; }
+edge[to=AuthService] { color: #F59E0B; } /* AuthService を呼ぶ全エッジ */
+```
+
+`<id>` はノード id。usecase→resource 合成エッジ向けに **dot-notation の端点**
+（例: `edge[to=OrderDB.OrderTable]`）も使える。base 形式
+`edge#PlaceOrder->OrderDB.OrderTable` と同じ規則で、id はアクティブビュー上の
+エッジの `from` / `to` 端点と比較される。
+
+どちらも詳細度は **11**（`edge` 種別 1 + 端点述語 10）で `edge[<tag>]` と同格。
+タグと併用でき、1 本のエッジが `from=` と `to=` の両ルールに同時に一致しうる:
+
+```css
+edge[from=ApiGateway][async] { stroke-style: dashed; }  /* ApiGateway 発の async エッジ */
+```
+
+`from` / `to` 以外の属性（例: `edge[source=X]`）は `unknown-edge-selector-attribute`
+エラーになる。
+
+> Related TPLs: [TPL-20260624-03](../test-perspectives/TPL-20260624-03-edge-endpoint-selector-id-form.md)
+> （端点セレクタはビューが格納する id 形と同じ形で比較すること）。
 
 ## エッジ ID セレクタ（`edge#<id>`）
 

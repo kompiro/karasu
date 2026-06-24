@@ -516,6 +516,7 @@ export interface DiagnosticParamsByCode {
   "style-token-type-mismatch": { expected: string; got: string; value: string };
   "expected-style-property-name": { got: string };
   "expected-semicolon-between-properties": { property: string };
+  "unknown-edge-selector-attribute": { attribute: string };
 
   // ── Style value validator (Phase 3) ────────────────────────────────────
   "style-invalid-enum-value": { property: string; value: string; allowed: string[] };

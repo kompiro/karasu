@@ -26,6 +26,20 @@ export interface StyleSelector {
    * (`#A->B` / `#A-->B`). See `docs/design/edge-id-selector.md`.
    */
   edgeId?: string;
+  /**
+   * Source node id targeted by an `edge[from=<id>]` selector — matches every
+   * edge whose `KrsEdge.from` equals this id. `<id>` may be a dot-notation
+   * endpoint (e.g. `OrderDB.OrderTable`) for synthesized usecase→resource
+   * edges, consistent with the base form used by `edge#<from>-><to>`.
+   * See `docs/spec/style.md` §Source/target edge selectors.
+   */
+  edgeFrom?: string;
+  /**
+   * Target node id targeted by an `edge[to=<id>]` selector — matches every
+   * edge whose `KrsEdge.to` equals this id. Same dot-notation rules as
+   * {@link edgeFrom}.
+   */
+  edgeTo?: string;
   loc: SourceRange;
 }
 

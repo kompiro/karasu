@@ -29,3 +29,10 @@
 service[external] {
   column: right;
 }
+
+// Color by source (edge[from=<id>]) / by target (edge[to=<id>]).
+// All edges leaving ECommerce share one color in a single rule,
+// making the hub's fan-out easy to trace.
+edge[from=ECommerce] {
+  color: #2563eb;
+}

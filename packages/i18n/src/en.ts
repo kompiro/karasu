@@ -349,6 +349,8 @@ export const en: Translations = {
     `Expected property name but got ${got}`,
   "diagnostic.expectedSemicolonBetweenProperties.message": ({ property }) =>
     `Expected ";" after "${property}" but found ","; properties are separated by semicolons`,
+  "diagnostic.unknownEdgeSelectorAttribute.message": ({ attribute }) =>
+    `Unknown edge selector attribute "${attribute}"; only "from" and "to" are supported (e.g. edge[from=Hub])`,
   "diagnostic.styleInvalidEnumValue.message": ({ property, value, allowed }) =>
     `Invalid value for "${property}": "${value}". Allowed: ${allowed.join(", ")}`,
   "diagnostic.styleInvalidHexColor.message": ({ property, value }) =>

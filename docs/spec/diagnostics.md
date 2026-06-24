@@ -179,6 +179,7 @@ Validating `.krs.style` property names and values.
 | `style-token-type-mismatch` | error | A style token does not match the expected type. |
 | `expected-style-property-name` | error | The style parser expected a property name. |
 | `expected-semicolon-between-properties` | error | The style parser expected a `;` between properties. |
+| `unknown-edge-selector-attribute` | error | An edge selector uses an attribute other than `from` / `to` (e.g. `edge[source=X]`). |
 | `style-conflict` | warning | A selector is defined in more than one user style sheet. |
 | `style-column-invalid-value` | warning | A style `column` value is not `left` / `center` / `right`. |
 | `style-column-ignored-non-system-view` | warning | A `column` hint is applied to a deploy / org view (ignored). |
