@@ -1480,28 +1480,26 @@ function computeEdgePoints(
     fromPoint.y = fromNode.y + fromNode.height / 2;
     // Skip layer-based adjustments below.
   } else {
-
-  const fromLayer = layers.get(edge.from) ?? 0;
-  const toLayer = layers.get(edge.to) ?? 0;
-  if (fromLayer === toLayer) {
-    // Same layer: horizontal edge
-    if (fromNode.x < toNode.x) {
-      fromPoint.x = fromNode.x + fromNode.width;
-      fromPoint.y = fromNode.y + fromNode.height / 2;
-      toPoint.x = toNode.x;
-      toPoint.y = toNode.y + toNode.height / 2;
-    } else {
-      fromPoint.x = fromNode.x;
-      fromPoint.y = fromNode.y + fromNode.height / 2;
-      toPoint.x = toNode.x + toNode.width;
-      toPoint.y = toNode.y + toNode.height / 2;
+    const fromLayer = layers.get(edge.from) ?? 0;
+    const toLayer = layers.get(edge.to) ?? 0;
+    if (fromLayer === toLayer) {
+      // Same layer: horizontal edge
+      if (fromNode.x < toNode.x) {
+        fromPoint.x = fromNode.x + fromNode.width;
+        fromPoint.y = fromNode.y + fromNode.height / 2;
+        toPoint.x = toNode.x;
+        toPoint.y = toNode.y + toNode.height / 2;
+      } else {
+        fromPoint.x = fromNode.x;
+        fromPoint.y = fromNode.y + fromNode.height / 2;
+        toPoint.x = toNode.x + toNode.width;
+        toPoint.y = toNode.y + toNode.height / 2;
+      }
+    } else if (fromLayer > toLayer) {
+      // Reverse edge
+      fromPoint.y = fromNode.y;
+      toPoint.y = toNode.y + toNode.height;
     }
-  } else if (fromLayer > toLayer) {
-    // Reverse edge
-    fromPoint.y = fromNode.y;
-    toPoint.y = toNode.y + toNode.height;
-  }
-
   } // end of else branch (layer-based adjustments)
 
   return {
