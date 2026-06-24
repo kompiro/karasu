@@ -859,6 +859,31 @@ system S {
     expect(db.y).toBeLessThan(stripe.y);
   });
 
+  it("does not pull a user down toward a side-placed external (#1728 fix #1)", () => {
+    // Gate engages (2 hubs). Before the fix the user was pulled down to the
+    // external's old tier-4 (bottom-band) layer, then the external moved to
+    // the side — stranding the user in an empty row. Now the user pull-down
+    // skips tier-4 targets and the user stays at its default tier-0 position.
+    const slice = parseAndExtract(`
+system S {
+  user Admin [human]
+  service Alpha {}
+  service Beta {}
+  service ExtIdp [external] {}
+  service ExtSaas [external] {}
+  Admin -> ExtIdp
+  Alpha -> ExtIdp
+  Beta -> ExtSaas
+}
+`);
+    const result = layout(slice);
+    const admin = result.nodes.get("Admin")!;
+    const alpha = result.nodes.get("Alpha")!;
+    // Admin must sit above (or at the same height as) the internal services —
+    // not pulled into a deep bottom row by the former external tier-4 layer.
+    expect(admin.y).toBeLessThanOrEqual(alpha.y);
+  });
+
   it("assigns each external to the side of its consuming hub (#1728)", () => {
     // Two independent services share one internal row (Alpha left, Beta right
     // by declaration order). Each external is consumed by one of them, so the
@@ -1461,6 +1486,43 @@ system S {
     for (const id of ["A", "B", "C", "DB"]) {
       expect(explicitEmpty.nodes.get(id)!.x).toBe(baseline.nodes.get(id)!.x);
     }
+  });
+
+  it("applies external-on-sides in the multi-system root path (#1728 fix #2)", () => {
+    // Two systems forces layoutMultipleSystems(). Each system has ≥2 hubs
+    // fanning out to externals, so the gate engages per system.
+    const slice = parseAndExtract(`
+system A {
+  service Hub1 {}
+  service Hub2 {}
+  service ExtA [external] {}
+  service ExtB [external] {}
+  Hub1 -> ExtA
+  Hub2 -> ExtB
+}
+system B {
+  service Hub3 {}
+  service Hub4 {}
+  service ExtC [external] {}
+  service ExtD [external] {}
+  Hub3 -> ExtC
+  Hub4 -> ExtD
+}
+`);
+    const result = layout(slice);
+    const hub1 = result.nodes.get("Hub1")!;
+    const hub2 = result.nodes.get("Hub2")!;
+    const extA = result.nodes.get("ExtA")!;
+    const extB = result.nodes.get("ExtB")!;
+    const innerLeft = Math.min(hub1.x, hub2.x);
+    const innerRight = Math.max(hub1.x + hub1.width, hub2.x + hub2.width);
+    // At least one external must be on a side column for system A.
+    const aOnSide =
+      extA.x + extA.width <= innerLeft + 0.5 ||
+      extA.x >= innerRight - 0.5 ||
+      extB.x + extB.width <= innerLeft + 0.5 ||
+      extB.x >= innerRight - 0.5;
+    expect(aOnSide).toBe(true);
   });
 
   it("applies bucketing in the multi-system root path", () => {

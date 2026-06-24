@@ -614,21 +614,21 @@ const EXTERNAL_SIDE_GAP = 100;
  * crossings. An author can override per node with the `column: left|right`
  * style hint. Overflow keeps stacking vertically on the side (no cap).
  *
- * Root system-view only (`viewSlice.systems` non-empty); a no-op elsewhere.
+ * Works for both single-system and multi-system root views: callers pass
+ * the raw node list for the system being laid out and the ids of the
+ * containers that should be widened to wrap the side columns.
  */
 function placeExternalServicesOnSides(
-  viewSlice: ViewSlice,
+  sourceNodes: KrsNode[],
+  systemContainerIds: Set<string>,
   layoutNodes: Map<string, LayoutNode>,
   containers: ContainerRect[],
   allEdges: KrsEdge[],
   layoutHints?: Map<string, ResolvedLayoutHints>,
 ): Map<string, "left" | "right"> {
   const sides = new Map<string, "left" | "right">();
-  if (viewSlice.systems.length === 0) return sides;
   const extIds = new Set<string>();
-  for (const sys of viewSlice.systems) {
-    for (const c of sys.children) if (systemTier(c) === 4) extIds.add(c.id);
-  }
+  for (const c of sourceNodes) if (systemTier(c) === 4) extIds.add(c.id);
   if (extIds.size === 0) return sides;
   const ext = [...layoutNodes.values()].filter((n) => extIds.has(n.id) && !n.ghost);
   const others = [...layoutNodes.values()].filter((n) => !extIds.has(n.id) && !n.ghost);
@@ -696,11 +696,10 @@ function placeExternalServicesOnSides(
   for (const n of right) sides.set(n.id, "right");
 
   // Grow the system container(s) to wrap the populated side columns.
-  const sysIds = new Set(viewSlice.systems.map((s) => s.id));
   const leftEdge = left.length ? minX - EXTERNAL_SIDE_GAP - colW - CONTAINER_PADDING : undefined;
   const rightEdge = right.length ? maxX + EXTERNAL_SIDE_GAP + colW + CONTAINER_PADDING : undefined;
   for (const c of containers) {
-    if (!sysIds.has(c.id)) continue;
+    if (!systemContainerIds.has(c.id)) continue;
     let nx = c.x;
     let nr = c.x + c.width;
     if (leftEdge !== undefined) nx = Math.min(nx, leftEdge);
@@ -1005,7 +1004,8 @@ export function layout(
   // Move [external] services to side columns before edges are computed, so
   // anchors re-pick sides from the new positions (#1728).
   const sideExternals = placeExternalServicesOnSides(
-    viewSlice,
+    viewSlice.childNodes,
+    new Set(viewSlice.systems.map((s) => s.id)),
     layoutNodes,
     containers,
     allEdges,
@@ -1331,10 +1331,22 @@ function layoutMultipleSystems(
       allLayoutNodes.set(id, node);
     }
 
+    // Move [external] services to side columns for this system (#1728).
+    // Run per-system so each system's externals are placed relative to that
+    // system's own in-boundary nodes, not the global figure.
+    const sideExternals = placeExternalServicesOnSides(
+      rawNodes,
+      new Set([sys.id]),
+      allLayoutNodes,
+      allContainers,
+      sys.edges,
+      layoutHints,
+    );
+
     // Intra-system edges
     for (const edge of sys.edges) {
       if (idSet.has(edge.from) && idSet.has(edge.to)) {
-        const le = computeEdgePoints(edge, allLayoutNodes, layers);
+        const le = computeEdgePoints(edge, allLayoutNodes, layers, sideExternals);
         if (le) {
           if (isGhost) le.ghost = true;
           allEdges.push(le);
@@ -1342,7 +1354,8 @@ function layoutMultipleSystems(
       }
     }
 
-    offsetX += containerW + GHOST_MARGIN * 3;
+    // Use the container's final width (may have been widened by side columns).
+    offsetX += containerRect.width + GHOST_MARGIN * 3;
   }
 
   // Cross-system edges
@@ -1448,6 +1461,8 @@ function computeEdgePoints(
   const toSide = sideExternals?.get(edge.to);
   const fromSide = sideExternals?.get(edge.from);
   if (toSide || fromSide) {
+    // Set horizontal inner-side anchors and fall through to the shared return
+    // below so any future LayoutEdge field is picked up in one place.
     if (toSide === "left") {
       toPoint.x = toNode.x + toNode.width;
       fromPoint.x = fromNode.x;
@@ -1463,18 +1478,8 @@ function computeEdgePoints(
     }
     toPoint.y = toNode.y + toNode.height / 2;
     fromPoint.y = fromNode.y + fromNode.height / 2;
-    return {
-      from: edge.from,
-      to: edge.to,
-      label: edge.label,
-      kind: edge.kind,
-      fromPoint,
-      toPoint,
-      cyclic: edge.cyclic,
-      ...(edge.canonicalId !== undefined ? { canonicalId: edge.canonicalId } : {}),
-      ...(edge.syntheticLabel ? { syntheticLabel: true } : {}),
-    };
-  }
+    // Skip layer-based adjustments below.
+  } else {
 
   const fromLayer = layers.get(edge.from) ?? 0;
   const toLayer = layers.get(edge.to) ?? 0;
@@ -1496,6 +1501,8 @@ function computeEdgePoints(
     fromPoint.y = fromNode.y;
     toPoint.y = toNode.y + toNode.height;
   }
+
+  } // end of else branch (layer-based adjustments)
 
   return {
     from: edge.from,
@@ -1680,9 +1687,13 @@ function assignForcedSystemLayers(nodes: KrsNode[], edges: KrsEdge[]): Map<strin
   // placement.
   //
   // Runs last, after the infra pull-up and the external band, so a user
-  // whose only target is an external node is pulled down relative to that
-  // node's *final* bottom-band row — not its provisional pre-band row, which
-  // would leave the actor floating several rows above its sole target.
+  // whose only target is an in-boundary node is pulled down correctly.
+  // External services (tier 4) are intentionally excluded from this
+  // calculation: when the ≥2-hub gate engages they move to side columns
+  // at service-tier height, so pulling a user toward their former
+  // bottom-band layer index would strand the user in an empty row with a
+  // long diagonal edge to the side column.  A user that targets only
+  // externals keeps the default tier-0 placement.
   const outByUser = new Map<string, string[]>();
   for (const e of edges) {
     const fromNode = nodes.find((n) => n.id === e.from);
@@ -1691,11 +1702,14 @@ function assignForcedSystemLayers(nodes: KrsNode[], edges: KrsEdge[]): Map<strin
     list.push(e.to);
     outByUser.set(e.from, list);
   }
+  const nodeById = new Map(nodes.map((n) => [n.id, n]));
   for (const u of byTier[0]) {
     const targets = outByUser.get(u.id);
     if (!targets || targets.length === 0) continue;
     let minTargetLayer = Infinity;
     for (const tid of targets) {
+      const targetNode = nodeById.get(tid);
+      if (targetNode && systemTier(targetNode) === 4) continue; // skip externals
       const tl = layers.get(tid);
       if (tl === undefined) continue;
       if (tl < minTargetLayer) minTargetLayer = tl;
