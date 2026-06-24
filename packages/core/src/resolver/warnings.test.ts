@@ -373,6 +373,18 @@ system Shop {
     expect(result.warnings.filter((w) => w.kind === "shared-infra-fan-in")).toHaveLength(0);
   });
 
+  it("excludes [index] stores — a shared derived search index is not the smell (#1733)", () => {
+    const krs = `
+system Shop {
+  service A { domain Da { usecase Ua { resource SearchIdx.docs { operations read } } } }
+  service B { domain Db { usecase Ub { resource SearchIdx.docs { operations read } } } }
+  database SearchIdx [index] { table docs }
+}
+`;
+    const result = compile(krs);
+    expect(result.warnings.filter((w) => w.kind === "shared-infra-fan-in")).toHaveLength(0);
+  });
+
   it("detects shared queue and storage, not just database", () => {
     const krs = `
 system Shop {
