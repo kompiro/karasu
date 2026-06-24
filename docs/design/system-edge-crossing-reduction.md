@@ -69,20 +69,23 @@ PoC で**残り交差はサイドの左右割り当てに強く依存する**こ
 
 → デフォルトのサイド振り分けは**机械的な半々ではなく、consuming hub の barycenter（x 重心）基準**にする（PoC 検証済み）。
 
-### 2. external のサイド（左/右）を選べる style ヒント ＋ 最下段へ戻すヒント
+### 2. external のサイド（左/右）を選べる style ヒント — 既存 `column` を再利用（確定）
 
-意味的に最適なグループ化は作者が知っている（1a の例）。よって:
+意味的に最適なグループ化は作者が知っている（1a の例）。サイド指定は**既存の `column: left/center/right` ヒントを再利用する**（確定）:
 
-- **サイド指定**: external ノードに左右を指定するヒント（既存 `column: left/center/right` の再利用が第一候補。external 文脈では `column: left/right` ＝ サイド指定と解釈）。デフォルトは 1a の自動振り分け、作者が override。
-- **最下段へ戻す**: 特定 external をサイドではなく最下段バンドに置くヒント（例 `placement: bottom`）。デフォルト sides・個別 opt-out。
+- `docs/spec/style.md` は既に `service[external] { column: right }` を例示している。external-on-sides 下では `column: left/right` ＝ **サイド指定**と解釈する（external は今やサイドなので `column`＝水平位置の意味と自然に一致）。
+- デフォルトは 1a の consuming-hub 自動振り分け。`column: left/right` があれば**作者の指定で override**。`column: center` / 未指定はヒューリスティックに委ねる。
+- 新規プロパティは追加しない。
+
+> **`placement: bottom`（個別 external を最下段へ戻す）は v1 では入れない（後追い）**。v1 は `column` によるサイド指定のみ。「サイドではなく最下段に置きたい」という実需要が出てから別途追加する。スコープを小さく保つ。
 
 ### 3. overflow: サイドに縦積みを続ける
 
 external が多くてサイドが詰まる場合も、上限を設けず**サイドに縦積みを続ける**（多いと縦長になる。最下段への自動フォールバックはしない）。詰まりは作者が 2 のヒントで個別に最下段へ逃がす。
 
-### 4. 補助: source 単位のエッジ selector（案2、別軸の navigability）
+### 4. 補助: source 単位のエッジ selector（案2）→ 別 Issue に分離（確定）
 
-配置で減らせない残り 14 交差や、束の見分けには色分けが有効。`edge[from=X]` / `edge[to=X]` を追加し color-by-source を可能にする（現状 `edge#A->B` の列挙でしか書けない）。**本 Doc の主眼は配置（1〜3）**。selector は同 PR で入れるか別 Issue に切るかをスコープで決める（下記）。
+配置で減らせない残り交差や束の見分けには color-by-source が有効で、それには `edge[from=X]` / `edge[to=X]` selector が要る（現状 `edge#A->B` の列挙でしか書けない）。ただし**これは独立した styling 機能**なので、本 Doc / #1728 の scope からは外し**別 Issue [#1755](https://github.com/kompiro/karasu/issues/1755) に切り出す**（確定）。#1728 は external-on-sides 配置（1〜3）に集中する。
 
 ## 検討した選択肢（否定したものは PoC 節参照）
 
@@ -109,10 +112,16 @@ external が多くてサイドが詰まる場合も、上限を設けず**サイ
 - 既存 `.krs` は変更不要だが、**system view の見た目が変わる**（external がサイドへ）。examples の system view スナップショット / guide 図を再生成。
 - 幅が増える点を許容（高さは減る）。`docs/spec`・`docs/concepts` の system-view 説明に external 配置を追記。
 
-## 未解決の問い
+## 決定事項（レビューで確定）
 
-- **スコープ**: 案2（source selector）を本 PR に含めるか別 Issue か。
-- **style ヒント文法**: サイド指定に既存 `column: left/right` を再利用するか、新規 `side: left/right` を足すか（`column` の既存意味＝レイヤ内バケット との semantic 衝突を確認）。最下段戻しは `placement: bottom` か。
-- **自動サイド振り分けの安定性**: consuming hub barycenter 基準（1a）が、複数 hub が同一 external を consume する場合や hub が同 x の場合に決定的か。tie-break を決める。
-- **幅トレードオフ**: サイド化で横長になる。balanced-grid（[#1737]）と組み合わせた時の総寸法を PoC で確認。
-- actor/client もサイド周縁に置く案と競合しないか（将来）。
+- **サイド振り分けの方針**: バランス（左右の数）より**交差最小を優先**（5L/1R のような偏りを許容）。確定。
+- **サイド指定ヒント**: 既存 `column: left/right` を再利用（新規プロパティ無し）。確定。
+- **`placement: bottom`（個別 external を最下段へ）**: v1 では入れない。実需要が出たら後追い。確定。
+- **source selector（案2）**: 別 Issue [#1755](https://github.com/kompiro/karasu/issues/1755) に分離。#1728 は配置に集中。確定。
+- **tie-break（自動振り分けの決定性）**: median 分割で `hubX == median` は左。同側内は hub-x → consuming-hub-y → 宣言順で安定ソート。複数 hub が consume する external は consuming-hub の barycenter（平均 x）。hub が同 x の場合は宣言順で安定。確定（PoC 実装と一致）。
+- **幅トレードオフ**: サイド化で横長になる（hato 2323×892）点は許容（交差最小優先の帰結）。確定。
+
+## 残る確認（実装時）
+
+- balanced-grid（[#1737]/[#1744]）と組み合わせた時の総寸法は、両者がマージされた段階で実レンダリング確認（非ブロッキング）。
+- actor/client もサイド周縁に置く案との将来的な整合（本 Doc では out of scope）。
