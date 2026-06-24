@@ -9,6 +9,10 @@ export interface EmptyStateLabels {
   deployTitle?: string;
   /** Secondary hint text below the deploy empty-state title. */
   deployHint?: string;
+  /** Caption for the deploy view job band wrapper (#1738). */
+  deployJobBand?: string;
+  /** Caption for the deploy view container holding units with no `realizes`. */
+  deployUnclassified?: string;
   /** Text for the org view when no teams have been defined yet. */
   orgNoTeams?: string;
   /** Text for the system view when the layout has no nodes or containers. */
@@ -28,6 +32,8 @@ export interface EmptyStateLabels {
 export const DEFAULT_EMPTY_STATE_LABELS = {
   deployTitle: "No deploy block defined",
   deployHint: "Add a deploy block to your .krs file",
+  deployJobBand: "Scheduled jobs",
+  deployUnclassified: "Unclassified",
   orgNoTeams: "No teams defined",
   systemNoNodes: "No nodes to render",
   orgPlaceholder: "No org diagram",

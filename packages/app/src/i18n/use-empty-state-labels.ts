@@ -17,6 +17,8 @@ export function useEmptyStateLabels(): EmptyStateLabels {
     () => ({
       deployTitle: translate(locale, "emptyState.deploy.title"),
       deployHint: translate(locale, "emptyState.deploy.hint"),
+      deployJobBand: translate(locale, "emptyState.deploy.jobBand"),
+      deployUnclassified: translate(locale, "emptyState.deploy.unclassified"),
       orgNoTeams: translate(locale, "emptyState.org.noTeams"),
       systemNoNodes: translate(locale, "emptyState.system.noNodes"),
       orgPlaceholder: translate(locale, "emptyState.org.placeholder"),

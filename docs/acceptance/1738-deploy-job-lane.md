@@ -45,6 +45,15 @@ the caption `Scheduled jobs`, and carries `kindBand: "job"`; the renderer emits
 > `job band (#1738)` › `emits the job band wrapper with its caption and
 > data-kind-band`.
 
+The caption is localized: it falls back to English (`Scheduled jobs`) but is
+overridden via `EmptyStateLabels.deployJobBand` (the app's i18n pass-through,
+`emptyState.deploy.jobBand` — en/ja). The unclassified container caption is
+localized the same way (`EmptyStateLabels.deployUnclassified`).
+
+> ✅ Automated — `deploy-layout.test.ts` › `uses localized captions for the job
+> band and unclassified containers`; `deploy-renderer.test.ts` › `renders the
+> localized band caption from emptyLabels (i18n pass-through)`.
+
 ## AC-3: a mixed job+compute container stays on the DAG (automated)
 
 **Expected:** a container mixing a `job` unit with another kind is **not**

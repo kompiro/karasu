@@ -230,5 +230,13 @@ describe("renderDeploy", () => {
       expect(svg).not.toContain('data-kind-band="job"');
       expect(svg).not.toContain("Scheduled jobs");
     });
+
+    it("renders the localized band caption from emptyLabels (i18n pass-through)", () => {
+      const svg = renderDeploy(makeJobBandSlice(), styles, "shape", {
+        emptyLabels: { deployJobBand: "定期実行ジョブ" },
+      });
+      expect(svg).toContain("定期実行ジョブ");
+      expect(svg).not.toContain("Scheduled jobs");
+    });
   });
 });

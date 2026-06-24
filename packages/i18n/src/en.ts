@@ -145,6 +145,8 @@ export const en: Translations = {
   // Empty-state placeholders (rendered inside SVG by core renderers)
   "emptyState.deploy.title": "No deploy block defined",
   "emptyState.deploy.hint": "Add a deploy block to your .krs file",
+  "emptyState.deploy.jobBand": "Scheduled jobs",
+  "emptyState.deploy.unclassified": "Unclassified",
   "emptyState.org.noTeams": "No teams defined",
   "emptyState.system.noNodes": "No nodes to render",
   "emptyState.org.placeholder": "No org diagram",

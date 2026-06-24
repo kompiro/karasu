@@ -623,4 +623,44 @@ describe("layoutDeploy job band (#1738)", () => {
     expect(result.containers.find((c) => c.id === "__job_band__")).toBeDefined();
     expect(result.nodes.size).toBe(2);
   });
+
+  it("uses localized captions for the job band and unclassified containers", () => {
+    const slice = makeSlice(
+      [
+        {
+          serviceId: "Feedback",
+          serviceLabel: "Feedback",
+          unitIds: ["weekly"],
+          kind: "job",
+          kindBand: "job",
+        },
+      ],
+      ["loose"],
+    );
+    const result = layoutDeploy(slice, { jobBand: "定期実行ジョブ", unclassified: "未分類" });
+
+    expect(result.containers.find((c) => c.id === "__job_band__")!.label).toBe("定期実行ジョブ");
+    expect(result.containers.find((c) => c.id === "__unclassified__")!.label).toBe("未分類");
+  });
+
+  it("falls back to English captions and keeps bare unclassified node keys", () => {
+    const slice = makeSlice(
+      [
+        {
+          serviceId: "Feedback",
+          serviceLabel: "Feedback",
+          unitIds: ["weekly"],
+          kind: "job",
+          kindBand: "job",
+        },
+      ],
+      ["loose"],
+    );
+    const result = layoutDeploy(slice);
+
+    expect(result.containers.find((c) => c.id === "__job_band__")!.label).toBe("Scheduled jobs");
+    expect(result.containers.find((c) => c.id === "__unclassified__")!.label).toBe("Unclassified");
+    // Unclassified node keeps its bare-id layout key after the placeGroupBlock unification.
+    expect(result.nodes.has("loose")).toBe(true);
+  });
 });
