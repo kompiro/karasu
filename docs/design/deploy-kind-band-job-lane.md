@@ -5,7 +5,7 @@
 - **関連**:
   - 引き金 Issue: [#1738](https://github.com/kompiro/karasu/issues/1738)
   - 関連 ADR: [ADR-20260408-02](../adr/20260408-02-deploy-layout-hierarchical-dag.md)（Longest Path Layering）、[ADR-20260327-01](../adr/20260327-01-deployment-diagram-design.md)（deploy diagram design / flat container grouping / ghost edges）、[ADR-20260616-12](../adr/20260616-12-deploy-infra-dependency-edges.md)（service→infra ghost edges）
-  - 関連 Design Doc: [balanced-grid-sibling-layout](balanced-grid-sibling-layout.md)（#1737 — 同層内の格子化。本設計と直交・補完）
+  - 関連 ADR: [ADR-20260624-01](../adr/20260624-01-balanced-grid-sibling-layout.md)（#1737 — 同層内の格子化。本設計と直交・補完）
   - 関連 TPL: [TPL-20260510-06](../test-perspectives/TPL-20260510-06-display-mode-cross-surface.md)（display-mode cross-surface）、[TPL-20260510-21](../test-perspectives/TPL-20260510-21-scoped-glance-drill-down.md)（scoped glance）。実装 PR で proactive TPL を 1 件起こす予定（後述）
   - コード: `packages/core/src/renderer/deploy-layout.ts`, `packages/core/src/view/deploy-view-extract.ts`, `packages/core/src/renderer/layout-types.ts`
 
