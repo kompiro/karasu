@@ -100,12 +100,11 @@ external が多くてサイドが詰まる場合も、上限を設けず**サイ
 ## 実装の指針
 
 1. 配置 post-pass: `assignForcedSystemLayers` の結果に対し、`systemTier===4`（external service）のノードを左右サイド列へ再配置（`computeLayoutEdges` の前に行い、エッジ再アンカーを自動化）。**左右振り分けは consuming hub の barycenter 基準**（1a。機械的半々ではない）。同側内の縦順も consuming hub の y / barycenter で整える。`column` ヒントがあれば override。
-2. style ヒント: `placement: bottom`（ノード selector で external 個別を最下段バンドへ）。parser/style-resolver/spec に追加。**spec 改訂なので proactive TPL を 1 件同梱**（CLAUDE.md 規約）。配置の不変条件（external は side か bottom のいずれか、actor/client/service/infra を侵さない）を検出する観点。
+2. style ヒント: `column: left/right` を external のサイド指定として解釈する分岐を style-resolver / 配置 post-pass に追加（新規プロパティ無し）。`docs/spec/style.md` の `column` 節に external-on-sides での意味を追記。**spec 改訂なので proactive TPL を 1 件同梱**（CLAUDE.md 規約）— 観点例「external は必ず side（または overflow 時のサイド縦積み）に置かれ、infra/service/client/actor の配置帯を侵さない」。（`placement: bottom` は v1 では実装しない。）
 3. コンテナ/bbox: system コンテナをサイド列を含むよう拡張。`normalizeCoordinates` / `computeTotalDimensions` との整合。
 4. テスト: `layout.test.ts` に external-on-sides 配置（左右分離・service→external が水平アンカー・個別 placement:bottom ヒント・overflow 縦積み）。[#1724] の infra/service tier テストが**無変更で通る**こと（infra/service 配置不変の回帰ガード）。
-5. AT: `hato` 相当で交差数が減る（測定 AC）/ 個別ヒントで最下段に戻る。
-6. （案2 を含める場合）`edge[from=X]`/`edge[to=X]` selector + ガイド。
-7. ADR 昇格: 完了後 [ADR-20260623-06] を refine する ADR に。
+5. AT: `hato` 相当で交差数が減る（測定 AC）/ `column: left/right` でサイドが固定される。
+6. ADR 昇格: 完了後 [ADR-20260623-06] を refine する ADR に。（source selector は [#1755](https://github.com/kompiro/karasu/issues/1755) で別途。）
 
 ## 影響範囲・マイグレーション
 
