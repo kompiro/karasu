@@ -599,6 +599,100 @@ function computeTotalDimensions(
   return { width: totalWidth, height: totalHeight };
 }
 
+const EXTERNAL_SIDE_GAP = 100;
+
+/**
+ * Place `[external]` service nodes (systemTier 4) into left/right side columns
+ * instead of the bottom band, so `service → external` edges run horizontally
+ * and stop weaving through the downward infra fan-out (#1728, refines
+ * ADR-20260623-06). Runs *before* edge computation so `computeEdgePoints`
+ * re-picks side anchors from the new relative positions.
+ *
+ * Side assignment: the consuming-hub barycenter x (median split, ties → left)
+ * keeps each hub's external fan on one side, which minimizes cross-hub
+ * crossings. An author can override per node with the `column: left|right`
+ * style hint. Overflow keeps stacking vertically on the side (no cap).
+ *
+ * Root system-view only (`viewSlice.systems` non-empty); a no-op elsewhere.
+ */
+function placeExternalServicesOnSides(
+  viewSlice: ViewSlice,
+  layoutNodes: Map<string, LayoutNode>,
+  containers: ContainerRect[],
+  allEdges: KrsEdge[],
+  layoutHints?: Map<string, ResolvedLayoutHints>,
+): void {
+  if (viewSlice.systems.length === 0) return;
+  const extIds = new Set<string>();
+  for (const sys of viewSlice.systems) {
+    for (const c of sys.children) if (systemTier(c) === 4) extIds.add(c.id);
+  }
+  if (extIds.size === 0) return;
+  const ext = [...layoutNodes.values()].filter((n) => extIds.has(n.id) && !n.ghost);
+  const others = [...layoutNodes.values()].filter((n) => !extIds.has(n.id) && !n.ghost);
+  if (ext.length === 0 || others.length === 0) return;
+
+  // Consuming-hub barycenter x per external (from explicit edges into it).
+  const hubX = new Map<string, number>();
+  for (const e of ext) {
+    const xs = allEdges
+      .filter((ed) => ed.to === e.id)
+      .map((ed) => layoutNodes.get(ed.from))
+      .filter((s): s is LayoutNode => !!s)
+      .map((s) => s.x + s.width / 2);
+    hubX.set(e.id, xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : e.x + e.width / 2);
+  }
+
+  // Median of the auto-assigned (non-hinted) externals' hub barycenters.
+  const autoVals = ext
+    .filter((n) => {
+      const col = layoutHints?.get(n.id)?.column;
+      return col !== "left" && col !== "right";
+    })
+    .map((n) => hubX.get(n.id) ?? 0)
+    .sort((a, b) => a - b);
+  const median = autoVals.length ? autoVals[Math.floor((autoVals.length - 1) / 2)] : 0;
+  const sideOf = (n: LayoutNode): "left" | "right" => {
+    const col = layoutHints?.get(n.id)?.column;
+    if (col === "left" || col === "right") return col;
+    return (hubX.get(n.id) ?? 0) <= median ? "left" : "right";
+  };
+
+  const minX = Math.min(...others.map((n) => n.x));
+  const maxX = Math.max(...others.map((n) => n.x + n.width));
+  const topY = Math.min(...others.map((n) => n.y));
+  const botY = Math.max(...others.map((n) => n.y + n.height));
+  const colW = ext.reduce((m, n) => Math.max(m, n.width), 0);
+
+  const place = (group: LayoutNode[], x: number): void => {
+    // Stable order within a side: hub-x, then consuming-hub y, then existing y.
+    group.sort((a, b) => (hubX.get(a.id) ?? 0) - (hubX.get(b.id) ?? 0) || a.y - b.y);
+    const count = group.length;
+    group.forEach((node, i) => {
+      node.x = x;
+      node.y = topY + ((i + 1) * (botY - topY)) / (count + 1) - node.height / 2;
+    });
+  };
+  const left = ext.filter((n) => sideOf(n) === "left");
+  const right = ext.filter((n) => sideOf(n) === "right");
+  place(left, minX - EXTERNAL_SIDE_GAP - colW);
+  place(right, maxX + EXTERNAL_SIDE_GAP);
+
+  // Grow the system container(s) to wrap the populated side columns.
+  const sysIds = new Set(viewSlice.systems.map((s) => s.id));
+  const leftEdge = left.length ? minX - EXTERNAL_SIDE_GAP - colW - CONTAINER_PADDING : undefined;
+  const rightEdge = right.length ? maxX + EXTERNAL_SIDE_GAP + colW + CONTAINER_PADDING : undefined;
+  for (const c of containers) {
+    if (!sysIds.has(c.id)) continue;
+    let nx = c.x;
+    let nr = c.x + c.width;
+    if (leftEdge !== undefined) nx = Math.min(nx, leftEdge);
+    if (rightEdge !== undefined) nr = Math.max(nr, rightEdge);
+    c.x = nx;
+    c.width = nr - nx;
+  }
+}
+
 export function layout(
   viewSlice: ViewSlice,
   ownerIndex?: Map<string, string>,
@@ -889,6 +983,10 @@ export function layout(
   placeGhostDomains(viewSlice, layoutNodes, containers, effectiveAnnotations, displayMode);
   placeCallerGhostSystems(viewSlice, layoutNodes, containers, ownerIndex, displayMode);
   placeOutgoingGhostSystems(viewSlice, layoutNodes, containers, ownerIndex, displayMode);
+
+  // Move [external] services to side columns before edges are computed, so
+  // anchors re-pick sides from the new positions (#1728).
+  placeExternalServicesOnSides(viewSlice, layoutNodes, containers, allEdges, layoutHints);
 
   // Compute all edges (regular + ghost)
   const layoutEdges = computeLayoutEdges(viewSlice, layoutNodes, layers, containers, allEdges);
