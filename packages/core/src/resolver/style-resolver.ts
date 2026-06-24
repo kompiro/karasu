@@ -195,10 +195,10 @@ export function resolveStyles(
   if (deployNodes) {
     for (const unit of deployNodes) {
       const merged = mergeMatchingPropertiesForDeploy(unit, allRules);
-      // Surface layout hints that target deploy nodes so authors are warned
-      // they have no effect there (and so typo'd values still produce
-      // `style-column-invalid-value` rather than vanishing). The hints are
-      // not stored — `layoutHints` remains a system-view-only signal.
+      // `column` is a system-view-only signal — warn that it has no effect
+      // here (and so typo'd values still produce `style-column-invalid-value`
+      // rather than vanishing). `grid-columns`, by contrast, IS honored on the
+      // deploy view, so its resolved value is stored in `layoutHints`.
       const hint = finalizeLayoutHints(unit.id, merged, resolvedStyleWarnings);
       if (hint?.column) {
         resolvedStyleWarnings.push({
@@ -206,6 +206,9 @@ export function resolveStyles(
           nodeId: unit.id,
           viewType: "deploy",
         });
+      }
+      if (hint?.gridColumns !== undefined) {
+        layoutHints.set(unit.id, { gridColumns: hint.gridColumns });
       }
       nodeStyles.set(unit.id, toResolvedNodeStyle(merged));
     }
@@ -221,6 +224,9 @@ export function resolveStyles(
           nodeId: node.id,
           viewType: "org",
         });
+      }
+      if (hint?.gridColumns !== undefined) {
+        layoutHints.set(node.id, { gridColumns: hint.gridColumns });
       }
       nodeStyles.set(node.id, toResolvedNodeStyle(merged));
     }
@@ -251,13 +257,28 @@ function finalizeLayoutHints(
   merged: Record<string, string>,
   warnings: ResolvedStyleWarning[],
 ): ResolvedLayoutHints | null {
-  const raw = merged["column"];
-  if (raw === undefined) return null;
-  if (!VALID_COLUMN_VALUES.has(raw)) {
-    warnings.push({ kind: "style-column-invalid-value", nodeId, value: raw });
-    return null;
+  const hints: ResolvedLayoutHints = {};
+
+  const rawColumn = merged["column"];
+  if (rawColumn !== undefined) {
+    if (VALID_COLUMN_VALUES.has(rawColumn)) {
+      hints.column = rawColumn as LayoutColumn;
+    } else {
+      warnings.push({ kind: "style-column-invalid-value", nodeId, value: rawColumn });
+    }
   }
-  return { column: raw as LayoutColumn };
+
+  const rawGrid = merged["grid-columns"];
+  if (rawGrid !== undefined) {
+    const n = Number(rawGrid);
+    if (Number.isInteger(n) && n > 0) {
+      hints.gridColumns = n;
+    } else {
+      warnings.push({ kind: "style-grid-columns-invalid-value", nodeId, value: rawGrid });
+    }
+  }
+
+  return hints.column === undefined && hints.gridColumns === undefined ? null : hints;
 }
 
 // NOTE: the legend resolver in renderer/svg-builder.ts uses an identical

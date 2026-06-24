@@ -63,6 +63,7 @@ export const PROPERTY_SCHEMAS: Record<string, ValueSpec> = {
   // Layout (karasu-specific)
   direction: { kind: "ident-of", values: ["auto", "up", "down", "left", "right"] },
   column: { kind: "ident-of", values: ["left", "center", "right"] },
+  "grid-columns": { kind: "number", min: 1 },
   "label-position": {
     kind: "union",
     specs: [

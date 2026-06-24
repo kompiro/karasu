@@ -26,6 +26,7 @@ export type WarningKind =
   | "legend-ref-unresolved"
   | "style-column-invalid-value"
   | "style-column-ignored-non-system-view"
+  | "style-grid-columns-invalid-value"
   | "style-invalid-enum-value"
   | "style-invalid-hex-color"
   | "style-missing-length-unit"
@@ -163,6 +164,17 @@ export interface WarningParamsByKind {
     nodeId: string;
     /** "deploy" or "org" */
     viewType: "deploy" | "org";
+  };
+  /**
+   * A `grid-columns` hint resolved to something that is not a positive
+   * integer (e.g. `grid-columns: 0`, `grid-columns: 2.5`). The hint is
+   * dropped and the layout auto-balances instead.
+   */
+  "style-grid-columns-invalid-value": {
+    /** id of the node whose hint was rejected */
+    nodeId: string;
+    /** The invalid value as written in the source. */
+    value: string;
   };
   /**
    * Value-level diagnostics produced by `validateStyleValues` (Phase 3).

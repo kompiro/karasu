@@ -37,6 +37,74 @@ export function sortByBarycenter<T extends { id: string }>(
 }
 
 /**
+ * Default upper bound on the auto-balanced grid column count. Derived from
+ * the "7±2" span-of-control heuristic: keep a single view graspable at a
+ * glance instead of letting many siblings sprawl into one wide row that
+ * forces a zoom-out (`docs/concepts.md` scoped-glance, resolution axis).
+ */
+export const GRID_COLUMN_CAP = 5;
+
+/**
+ * Resolve how many columns a layer of `n` sibling nodes should wrap into.
+ *
+ * When the author pins `grid-columns: N` (a positive integer hint) on the
+ * container, that value wins outright — even above the cap, since it is a
+ * deliberate choice. Otherwise:
+ * - a small set (`n <= cap`) stays on a single row (`n` columns) — a handful
+ *   of siblings reads fine across, and wrapping it would only add churn;
+ * - a larger set auto-balances toward a square (`ceil(sqrt(n))`) capped at
+ *   {@link GRID_COLUMN_CAP} so it grows downward rather than sideways.
+ *
+ * Examples (cap 5): 3 → 3 (one row), 9 → 3 (3×3), 10 → 4 (4×3), 25 → 5 (5×5).
+ *
+ * Always returns at least 1. Deterministic — no width or pixel input.
+ */
+export function gridColumnCount(n: number, hint?: number, cap: number = GRID_COLUMN_CAP): number {
+  if (hint !== undefined && Number.isInteger(hint) && hint > 0) return hint;
+  if (n <= 1) return 1;
+  if (n <= cap) return n;
+  return Math.min(Math.ceil(Math.sqrt(n)), cap);
+}
+
+/**
+ * Wrap an ordered list of sibling items into grid rows, breaking to a new row
+ * whenever **either** the per-row column count is reached **or** the
+ * accumulated row width would exceed `maxWidth` (whichever comes first). The
+ * width bound keeps a forced large `grid-columns` from overflowing the frame.
+ *
+ * Pure and deterministic: declaration order is preserved (row-major), and the
+ * result depends only on the measured widths, `columnCount`, `maxWidth`, and
+ * `gap`. Callers position the returned rows (baseline Y, centering) themselves,
+ * so this helper is shared across the single-system, multi-system, deploy, and
+ * org member-grid paths without each re-implementing the wrap rule.
+ */
+export function wrapLayerIntoRows<T>(
+  items: readonly T[],
+  widthOf: (item: T) => number,
+  columnCount: number,
+  maxWidth: number,
+  gap: number,
+): T[][] {
+  const rows: T[][] = [];
+  let current: T[] = [];
+  let currentWidth = 0;
+  for (const item of items) {
+    const w = widthOf(item);
+    const wouldOverflowWidth = current.length > 0 && currentWidth + gap + w > maxWidth;
+    const reachedColumnCap = current.length >= columnCount;
+    if (current.length > 0 && (reachedColumnCap || wouldOverflowWidth)) {
+      rows.push(current);
+      current = [];
+      currentWidth = 0;
+    }
+    current.push(item);
+    currentWidth += current.length === 1 ? w : gap + w;
+  }
+  if (current.length > 0) rows.push(current);
+  return rows;
+}
+
+/**
  * Bucket items by their resolved `column` hint (`left` / unspecified-or-center / `right`),
  * preserving the relative input order within each bucket. Used to honor the
  * `.krs.style` `column` property in system view (see `docs/design/auto-layout-style-hints.md`).

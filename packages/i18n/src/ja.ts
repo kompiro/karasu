@@ -242,6 +242,8 @@ export const ja: Partial<Translations> = {
     `column: "${value}"（#${nodeId}）は left / center / right のいずれでもないため無視されました`,
   "warning.styleColumnIgnoredNonSystemView.message": ({ nodeId, viewType }) =>
     `#${nodeId} の column ヒントは ${viewType} ビューでは無視されます（layout hints は現状 system view のみ対応）`,
+  "warning.styleGridColumnsInvalidValue.message": ({ nodeId, value }) =>
+    `grid-columns: "${value}"（#${nodeId}）は正の整数ではないため無視されました（自動バランスにフォールバック）`,
   "warning.styleInvalidEnumValue.message": ({ property, value, allowed }) =>
     `${property}: "${value}" は ${allowed.join(" / ")} のいずれでもないため無視されました`,
   "warning.styleInvalidHexColor.message": ({ property, value }) =>

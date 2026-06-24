@@ -1634,3 +1634,50 @@ describe("resolveStyles — column layout hint (#969)", () => {
     });
   });
 });
+
+describe("resolveStyles — grid-columns layout hint (#1737)", () => {
+  function systemWithGridColumns(value: string): { system: KrsNode; sheet: StyleSheet } {
+    const system = makeNode({
+      kind: "system",
+      id: "S",
+      children: [makeNode({ kind: "service", id: "Svc" })],
+    });
+    const sheet: StyleSheet = {
+      rules: [makeRule({ id: "S", tags: [], annotations: [] }, { "grid-columns": value }, 100)],
+    };
+    return { system, sheet };
+  }
+
+  it("populates layoutHints.gridColumns for a positive integer", () => {
+    const { system, sheet } = systemWithGridColumns("3");
+    const result = resolveStyles([system], [sheet]);
+    expect(result.layoutHints.get("S")).toEqual({ gridColumns: 3 });
+    expect(result.warnings).toEqual([]);
+  });
+
+  it("emits style-grid-columns-invalid-value and skips the hint for non-positive / non-integer", () => {
+    for (const value of ["0", "-2", "2.5", "abc"]) {
+      const { system, sheet } = systemWithGridColumns(value);
+      const result = resolveStyles([system], [sheet]);
+      expect(result.layoutHints.has("S")).toBe(false);
+      expect(result.warnings).toContainEqual({
+        kind: "style-grid-columns-invalid-value",
+        nodeId: "S",
+        value,
+      });
+    }
+  });
+
+  it("is honored on deploy nodes (stored, no ignored-view warning)", () => {
+    const system = makeNode({ kind: "system", id: "S", children: [] });
+    const deployNodes: DeployNode[] = [{ kind: "oci", id: "unit", properties: {}, loc: dummyLoc }];
+    const sheet: StyleSheet = {
+      rules: [makeRule({ id: "unit", tags: [], annotations: [] }, { "grid-columns": "4" }, 100)],
+    };
+    const result = resolveStyles([system], [sheet], deployNodes);
+    expect(result.layoutHints.get("unit")).toEqual({ gridColumns: 4 });
+    expect(result.warnings.some((w) => w.kind === "style-column-ignored-non-system-view")).toBe(
+      false,
+    );
+  });
+});

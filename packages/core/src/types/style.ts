@@ -186,6 +186,14 @@ export type LayoutColumn = "left" | "center" | "right";
 
 export interface ResolvedLayoutHints {
   column?: LayoutColumn;
+  /**
+   * `grid-columns: N` — explicit column count for wrapping this container's
+   * direct children into a grid. A positive integer. Unlike {@link column},
+   * this hint is honored across all sibling-placement views (system,
+   * drill-down, deploy, org member grid), not just the system view. When
+   * absent, the layout auto-balances toward a square (see `gridColumnCount`).
+   */
+  gridColumns?: number;
 }
 
 export interface ResolvedStyles {
@@ -217,4 +225,5 @@ export type ResolvedStyleWarning =
       kind: "style-column-ignored-non-system-view";
       nodeId: string;
       viewType: "deploy" | "org";
-    };
+    }
+  | { kind: "style-grid-columns-invalid-value"; nodeId: string; value: string };

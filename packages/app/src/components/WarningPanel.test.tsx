@@ -97,6 +97,8 @@ function makeWarning(kind: Warning["kind"]): Warning {
       return { kind, params: { nodeId: "test-node", value: "wrong" } };
     case "style-column-ignored-non-system-view":
       return { kind, params: { nodeId: "test-node", viewType: "deploy" } };
+    case "style-grid-columns-invalid-value":
+      return { kind, params: { nodeId: "test-node", value: "0" } };
     case "style-invalid-enum-value":
       return {
         kind,

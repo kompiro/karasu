@@ -30,7 +30,7 @@ const VISUAL = new Set([
 
 const TYPOGRAPHY = new Set(["font-size", "font-weight", "font-family"]);
 
-const LAYOUT = new Set(["direction", "column"]);
+const LAYOUT = new Set(["direction", "column", "grid-columns"]);
 
 const KARASU = new Set(["shape", "badge-color", "badge-icon", "badge-label"]);
 

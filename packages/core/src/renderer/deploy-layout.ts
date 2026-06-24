@@ -2,7 +2,7 @@ import type { DeployNode } from "../types/ast.js";
 import type { LayoutResult, LayoutNode, ContainerRect, LayoutEdge } from "./layout-types.js";
 import type { DeployViewSlice } from "../view/deploy-view-extract.js";
 import { CHAR_WIDTH, NODE_PADDING_X, NODE_PADDING_Y } from "./rendering-constants.js";
-import { sortByBarycenter } from "./layer-layout-logics.js";
+import { sortByBarycenter, gridColumnCount } from "./layer-layout-logics.js";
 const LINE_HEIGHT = 18;
 const NODE_GAP = 16;
 const CONTAINER_GAP = 48;
@@ -210,7 +210,12 @@ export function layoutDeploy(slice: DeployViewSlice): LayoutResult {
         ? layerBuckets.get(layerIdx)!
         : sortByBarycenter(layerBuckets.get(layerIdx)!, predecessorsMap, containerCenterX);
 
-    // Place containers with sub-row wrapping when layer width exceeds MAX_LAYER_WIDTH
+    // Place containers with sub-row wrapping. A new sub-row starts at the
+    // balanced-grid column cap or when the layer width would exceed
+    // MAX_LAYER_WIDTH (whichever comes first), so many deploy containers wrap
+    // into a grid instead of one wide row (scoped glance, resolution axis).
+    const columnCount = gridColumnCount(layerGroups.length);
+    let colInRow = 0;
     let currentX = OUTER_PADDING;
     let subRowY = currentY;
     let subRowMaxHeight = 0;
@@ -219,11 +224,16 @@ export function layoutDeploy(slice: DeployViewSlice): LayoutResult {
       const containerW = measureContainerWidth(group.units, group.label);
       const containerH = measureContainerHeight(group.units);
 
-      // Wrap to a new sub-row when the container would exceed MAX_LAYER_WIDTH
-      if (currentX > OUTER_PADDING && currentX + containerW > OUTER_PADDING + MAX_LAYER_WIDTH) {
+      // Wrap to a new sub-row at the column cap or when the container would
+      // exceed MAX_LAYER_WIDTH.
+      if (
+        currentX > OUTER_PADDING &&
+        (colInRow >= columnCount || currentX + containerW > OUTER_PADDING + MAX_LAYER_WIDTH)
+      ) {
         subRowY += subRowMaxHeight + CONTAINER_GAP;
         currentX = OUTER_PADDING;
         subRowMaxHeight = 0;
+        colInRow = 0;
       }
 
       containers.push({
@@ -264,6 +274,7 @@ export function layoutDeploy(slice: DeployViewSlice): LayoutResult {
       containerCenterX.set(group.id, currentX + containerW / 2);
       subRowMaxHeight = Math.max(subRowMaxHeight, containerH);
       currentX += containerW + CONTAINER_GAP;
+      colInRow += 1;
       totalWidth = Math.max(totalWidth, currentX - CONTAINER_GAP + OUTER_PADDING);
     }
 

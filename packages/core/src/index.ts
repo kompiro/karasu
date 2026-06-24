@@ -498,6 +498,12 @@ function _compileFromPreparedInput(
             params: { nodeId: w.nodeId, viewType: w.viewType },
           });
           break;
+        case "style-grid-columns-invalid-value":
+          warnings.push({
+            kind: "style-grid-columns-invalid-value",
+            params: { nodeId: w.nodeId, value: w.value },
+          });
+          break;
         default: {
           // Exhaustiveness guard — adding a new ResolvedStyleWarning variant
           // without updating this switch will fail the build.
