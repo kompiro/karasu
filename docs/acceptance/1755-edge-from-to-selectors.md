@@ -18,7 +18,7 @@ type: product
   - `packages/core/src/builtins/reference-data.ts`
   - `packages/core/src/types/ast.ts`、`packages/i18n/src/{render-diagnostic,en,ja}.ts`
   - `docs/spec/style.md`、`docs/spec/style.ja.md`、`docs/spec/diagnostics.md`、`docs/spec/diagnostics.ja.md`
-- **関連 ADR / TPL**: [ADR-20260624-03](../adr/20260624-03-edge-from-to-selectors.md)、[TPL-20260624-03](../test-perspectives/TPL-20260624-03-edge-endpoint-selector-id-form.md)
+- **関連 ADR / TPL**: [ADR-20260624-04](../adr/20260624-04-edge-from-to-selectors.md)、[TPL-20260624-03](../test-perspectives/TPL-20260624-03-edge-endpoint-selector-id-form.md)
 
 ## 受け入れ条件
 

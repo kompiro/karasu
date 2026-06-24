@@ -1,5 +1,5 @@
 ---
-id: ADR-20260624-03
+id: ADR-20260624-04
 title: "`.krs.style` に始点 / 終点エッジセレクタ `edge[from=<id>]` / `edge[to=<id>]` を追加"
 status: accepted
 date: 2026-06-24
@@ -15,7 +15,7 @@ scope:
   packages: [core]
 ---
 
-# ADR-20260624-03: `.krs.style` に始点 / 終点エッジセレクタ `edge[from=<id>]` / `edge[to=<id>]` を追加
+# ADR-20260624-04: `.krs.style` に始点 / 終点エッジセレクタ `edge[from=<id>]` / `edge[to=<id>]` を追加
 
 - **日付**: 2026-06-24
 - **ステータス**: 決定済み
