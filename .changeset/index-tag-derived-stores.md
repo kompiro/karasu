@@ -1,4 +1,5 @@
 ---
+"@karasu-tools/core": minor
 "karasu": minor
 ---
 

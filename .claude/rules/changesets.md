@@ -17,34 +17,48 @@ paths:
 
 ## changeset が必要な変更
 
-`karasu` の**利用者から見える**変更を `packages/core` または `packages/cli` に
-入れる PR:
+版管理対象パッケージ（`karasu` / `@karasu-tools/core` / `karasu-vscode`）の
+**利用者から見える**変更を入れる PR:
 
 - 新しい構文・タグ・アノテーション、診断（diagnostic）の追加・変更
 - レンダリング／レイアウト／スタイル解決の挙動変更（見た目が変わるもの）
 - CLI のコマンド・出力・公開 API の変更
+- VS Code 拡張固有の挙動・UI 変更
 - 利用者に影響するバグ修正
 
 ## changeset が不要な変更
 
 - 内部リファクタ・テストのみ・コメント／docs のみ
-- 公開対象外パッケージのみの変更（`@karasu-tools/app` / `lsp` / `e2e` /
-  `vscode-e2e` / `karasu-vscode` — `.changeset/config.json` の `ignore`）
+- 版管理対象外パッケージのみの変更（`@karasu-tools/app` / `lsp` / `e2e` /
+  `vscode-e2e` — `.changeset/config.json` の `ignore`）
 - ADR / Design Doc のみ（`docs/**`）
 
-## 書き方
+## 書き方 — どのパッケージを名指すか
 
 ```
 pnpm changeset
 ```
 
-対話式で bump レベルとパッケージを選び、要約を書く。**このリポジトリの慣習は
-`"karasu"` を bump すること**（CLI が利用者向けサーフェスで、`@karasu-tools/core`
-を `devDependency` として esbuild でバンドルするため、core の変更も `karasu` 経由で
-出荷される）。`.changeset/*.md` の frontmatter は単一パッケージ:
+依存の **cascade 非対称性**に注意（実測・詳細は
+`docs/design/vscode-changeset-versioning.md`）。changesets は `dependencies` の
+dependent は版 bump するが、`devDependencies` は範囲更新のみで bump しない:
+
+| 変更箇所 | 名指すパッケージ | 自動 cascade |
+| --- | --- | --- |
+| `packages/core`（利用者向け） | **`@karasu-tools/core` と `karasu` の両方** | core → `karasu-vscode` に patch |
+| `packages/cli` 固有 | `karasu` | なし |
+| `packages/vscode` 固有 | `karasu-vscode` | なし |
+
+> core の変更を `"karasu"` だけに付けると、core を実 dependency に持つ
+> `karasu-vscode` が bump されず、拡張に core 変更が乗っても版が上がらない取り
+> こぼしになる。CLI は core を `devDependency`（esbuild バンドル）にしているため
+> `@karasu-tools/core` の bump が CLI に cascade せず、`karasu` の明示が別途要る。
+
+`.changeset/*.md` の frontmatter 例（core 変更）:
 
 ```markdown
 ---
+"@karasu-tools/core": minor
 "karasu": minor
 ---
 

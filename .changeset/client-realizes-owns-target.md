@@ -1,4 +1,5 @@
 ---
+"@karasu-tools/core": patch
 "karasu": patch
 ---
 
