@@ -254,6 +254,7 @@ See also: [dependency graph](graph.md), per-topic detail under [graph/](graph/).
 - [ADR-20260429-03](20260429-03-legend-in-use-fallback.md) — 凡例 ref のフォールバック swatch（in-use なら描画する）
 - [ADR-20260429-04](20260429-04-style-column-layout-hint.md) — `.krs.style` 側の `column` で layer 内 x 配置を上書きする escape hatch
 - [ADR-20260611-01](20260611-01-annotation-badge-label-i18n.md) — 組み込みアノテーションバッジラベルは reference-data から生成し locale 注入可能にする
+- [ADR-20260624-03](20260624-03-edge-from-to-selectors.md) — `.krs.style` に始点 / 終点エッジセレクタ `edge[from=<id>]` / `edge[to=<id>]` を追加
 
 ## testing
 

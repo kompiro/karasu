@@ -348,6 +348,8 @@ export const ja: Partial<Translations> = {
     `プロパティ名を期待しましたが ${got} が見つかりました`,
   "diagnostic.expectedSemicolonBetweenProperties.message": ({ property }) =>
     `"${property}" の後に ";" を期待しましたが "," が見つかりました。プロパティはセミコロンで区切ってください`,
+  "diagnostic.unknownEdgeSelectorAttribute.message": ({ attribute }) =>
+    `エッジセレクタの属性 "${attribute}" は不明です。"from" と "to" のみ指定できます（例: edge[from=Hub]）`,
   "diagnostic.styleInvalidEnumValue.message": ({ property, value, allowed }) =>
     `"${property}" の値 "${value}" は無効です。有効な値: ${allowed.join(", ")}`,
   "diagnostic.styleInvalidHexColor.message": ({ property, value }) =>

@@ -446,3 +446,4 @@ DesignDoc が proactive TPL を引用したら、実装 PR で次をやる:
 | [TPL-20260623-04](TPL-20260623-04-tier-split-no-edge-penetration.md) | system-view のティアを分割/挿入したら、新たに段を跨ぐエッジが中間カードを貫通しないことを確認する | renderer | ADR-20260429-02, #1724 |
 | [TPL-20260624-01](TPL-20260624-01-at-e2e-spec-linkage-no-drift.md) | AT ↔ e2e spec の linkage は machine guard で固定する（spec を足す/rename したら AT doc から辿れること） | testing | #1680 |
 | [TPL-20260624-02](TPL-20260624-02-relayout-into-group-preserves-placement-and-edges.md) | 要素を主構造から抜き出して別グループに再配置するとき、全要素ちょうど一度配置 + 参照エッジの端点保持を検証する | renderer | #1738 |
+| [TPL-20260624-03](TPL-20260624-03-edge-endpoint-selector-id-form.md) | エッジの端点で引くセレクタ / lookup は、ビューが格納する端点 id 形（bare / dot-notation）で比較する | styling | #1755 |

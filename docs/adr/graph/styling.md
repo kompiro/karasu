@@ -1,6 +1,6 @@
 # ADR Topic: styling
 
-7 ADRs in this topic. Solid nodes belong to `styling`; gray dashed nodes are ghosts showing cross-topic references to help navigation.
+8 ADRs in this topic. Solid nodes belong to `styling`; gray dashed nodes are ghosts showing cross-topic references to help navigation.
 
 Other topics: [overview](../graph.md).
 ```mermaid
@@ -13,6 +13,7 @@ flowchart TD
     ADR_20260429_03["ADR-20260429-03<br/>凡例 ref のフォールバック swatch（in-use なら描画する）"]
     ADR_20260429_04["ADR-20260429-04<br/>`.krs.style` 側の `column` で layer 内 x 配置を上書きする e..."]
     ADR_20260611_01["ADR-20260611-01<br/>組み込みアノテーションバッジラベルは reference-data から生成し locale ..."]
+    ADR_20260624_03["ADR-20260624-03<br/>`.krs.style` に始点 / 終点エッジセレクタ `edge[from=<id>]` ..."]
   end
   ADR_20260411_02["ADR-20260411-02<br/>[resolver] 移行期における重複ドメイン ID の共存を `@deprecated` + `@migrati..."]
   ADR_20260512_03["ADR-20260512-03<br/>[build] in-app Reference データを `reference-data.ts` に集約し、..."]
@@ -34,6 +35,7 @@ flowchart TD
   class ADR_20260429_03 accepted
   class ADR_20260429_04 accepted
   class ADR_20260611_01 accepted
+  class ADR_20260624_03 accepted
   class ADR_20260411_02 ghost
   class ADR_20260512_03 ghost
 ```

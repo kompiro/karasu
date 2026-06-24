@@ -244,6 +244,7 @@ flowchart TD
     ADR_20260429_03["ADR-20260429-03<br/>凡例 ref のフォールバック swatch（in-use なら描画する）"]
     ADR_20260429_04["ADR-20260429-04<br/>`.krs.style` 側の `column` で layer 内 x 配置を上書きする e..."]
     ADR_20260611_01["ADR-20260611-01<br/>組み込みアノテーションバッジラベルは reference-data から生成し locale ..."]
+    ADR_20260624_03["ADR-20260624-03<br/>`.krs.style` に始点 / 終点エッジセレクタ `edge[from=<id>]` ..."]
   end
   subgraph testing["testing"]
     ADR_20260324_01["ADR-20260324-01<br/>E2EテストよりQA手動確認を優先する"]
@@ -617,6 +618,6 @@ flowchart TD
 - [`project`](graph/project.md) — 4 ADRs
 - [`renderer`](graph/renderer.md) — 28 ADRs
 - [`resolver`](graph/resolver.md) — 6 ADRs
-- [`styling`](graph/styling.md) — 7 ADRs
+- [`styling`](graph/styling.md) — 8 ADRs
 - [`testing`](graph/testing.md) — 11 ADRs
 - [`vscode`](graph/vscode.md) — 7 ADRs

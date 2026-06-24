@@ -456,6 +456,12 @@ function edgeSelectorMatches(edge: KrsEdge, selector: StyleSelector): boolean {
     if (edge.canonicalId === undefined) return false;
     if (edge.canonicalId !== selector.edgeId) return false;
   }
+  // `edge[from=<id>]` / `edge[to=<id>]` match by endpoint id. `edge.from` /
+  // `edge.to` hold the same id form (bare, or dot-notation for synthesized
+  // usecase→resource edges) that the canonical base id is built from, so the
+  // comparison stays consistent with `edge#<from>-><to>`.
+  if (selector.edgeFrom !== undefined && edge.from !== selector.edgeFrom) return false;
+  if (selector.edgeTo !== undefined && edge.to !== selector.edgeTo) return false;
   if (selector.tags.length > 0) {
     const edgeTags = [...edge.tags];
     if (edge.kind === "async") edgeTags.push("async");
