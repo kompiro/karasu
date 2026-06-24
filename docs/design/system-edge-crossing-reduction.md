@@ -1,136 +1,117 @@
-# System-view: ハブの多層ファンアウトのエッジ交差を減らす
+# System-view: 密なファンアウトを「追える」ようにする（作者側ナビゲーション）
 
 - **日付**: 2026-06-24
 - **ステータス**: 検討中
 - **関連**:
   - 引き金 Issue: [#1728](https://github.com/kompiro/karasu/issues/1728)（system view のエッジが追いにくい）
   - 親の文脈: [#1724](https://github.com/kompiro/karasu/issues/1724) / [ADR-20260623-06](../adr/20260623-06-system-view-infra-external-tier-split.md)（infra/external ティア分割）
-  - 関連 ADR: [ADR-20260429-01](../adr/20260429-01-orthogonal-edge-routing-skip-layer.md)（skip-layer 直交ルーティング — 本変更で拡張）
-  - 関連 TPL: [TPL-20260623-04](../test-perspectives/TPL-20260623-04-tier-split-no-edge-penetration.md)（ティア分割で段跨ぎエッジが貫通しないこと — 本 Doc が扱う交差はこの観点の延長）
-  - 隣接ワーク: [#1737](https://github.com/kompiro/karasu/issues/1737) / PR [#1744](https://github.com/kompiro/karasu/pull/1744)（balanced-grid ノード配置。**本 Doc とは別軸 = ノード配置 vs エッジ経路**。下記「#1744 との調停」参照）
-  - コード: `packages/core/src/renderer/edge-routing-ports.ts` / `edge-routing-channels.ts` / `edge-routing-bundles.ts` / `layout.ts`
+  - 関連 ADR: [ADR-20260429-01](../adr/20260429-01-orthogonal-edge-routing-skip-layer.md)（skip-layer 直交ルーティング — 本件には効かないことを PoC で確認）
+  - 隣接ワーク: [#1737](https://github.com/kompiro/karasu/issues/1737) / PR [#1744](https://github.com/kompiro/karasu/pull/1744)（balanced-grid ノード配置）
+  - コード: `packages/core/src/renderer/edge-routing-*.ts` / `packages/core/src/resolver/style-resolver.ts` / `docs/spec/style.md`
 
 ## 背景・課題
 
-system view で、1 つのサービスが多数の infra/external ノードへ fan-out すると、エッジ（線）が放射状に重なって追えなくなる。`hato` の system view（[#1724] マージ後）で計測:
+system view で 1 サービスが多数の infra/external へ fan-out すると線が重なって追えない。`hato`（[#1724] 後）で **17 エッジ / 33 交差**。当初は「自動でエッジ経路を直して交差を消す」方向を検討したが、**PoC で否定された**（下記）。本 Doc は方針を「交差を消す」から「交差があっても**追える**ようにする（作者側ナビゲーション）」に転換する。
 
-- **17 エッジ / 33 交差**（すべて直線 `<line>`、直交 polyline は 0 本）
+## Phase 0 分析（実レイアウト instrument）と PoC
 
-[#1724] のティア分割は figure の**横幅**を半減したが、**エッジ交差は 33 → 33 で不変**。交差は別系統の問題であり本 Doc で扱う。
+`layout()` を直接呼んで `hato` の交差を実座標で分解した。
 
-## 現状（インベントリ） — Phase 0 分析
-
-`hato` の実レイアウトを instrument して交差の出所を特定した（`layout()` を直接呼び、エッジの from→to とノード tier を取得）。
-
-### ティアとハブ
-
-| tier | y | ノード |
-| --- | --- | --- |
-| 0 | 60 | Author |
-| 1 | 264 | ClaudeApp / WebApp |
-| 2 | 486 | **HatoApi** / HatoMcp |
-| 3 | 690 | D1 / Vectorize / Queues / R2（infra） |
-| 4 | 894 | CloudflareAccess / AnthropicAPI / WorkersAI / GoogleCalendar / Strava / GitHub（external） |
-
-**HatoApi が 10 エッジのハブ**。下向き 9 本が **2 つの tier に同時に fan-out** する:
-
-- tier 3（infra）: D1(x=235), Vectorize(579), Queues(923), R2(1240)
-- tier 4（external）: AnthropicAPI(470), WorkersAI(808), GoogleCalendar(1038), Strava(1313), GitHub(1533)
-
-x 順に並べると **infra と external が交互**（t3,t4,t3,t4,t3,t4,t3,t4,t4）。
-
-### 交差の内訳
+### 交差の真の内訳
 
 | 交差クラス | 件数 |
 | --- | --- |
-| ハブ fan-out 同士（下段への多数エッジが互いに交差） | **25 / 33** |
-| service→external × service→infra | 3 |
-| その他 | 5 |
+| 同一ハブ・同一ターゲット段（ポート順で可修正） | **0** |
+| 同一ハブ・別段（infra/external の interleave） | 6 |
+| **別ハブ同士（HatoApi × HatoMcp × WebApp のファンアウトが交差）** | **28** |
 
-**25/33 が単一クラス**＝ハブの fan-out エッジ同士の edge-vs-edge 交差。
+**支配的なのは cross-hub 交差（28/33）** — 別々のサービスが共有ターゲット（D1/Vectorize/CloudflareAccess）へ張る束が互いに交差する。
 
-### なぜ既存パスで解けないか（cheap レバーの棄却）
+> 補足: 当初ドラフトは「25/33 が単一ハブ fan-out」と書いたが、これは y バンドでの誤分類で**誤り**だった。実座標分解で cross-hub 支配と判明。
 
-- **L1 ノード並べ替え（barycenter）**: [#1724] で実測済みの **no-op**（infra エッジは implicit で並べ替え時点に存在せず、単一始点 fan-out は barycenter 同値）。
-- **L2 ポート x 順**: `distributePorts`（`edge-routing-ports.ts`）は既に「対向端点の x 順」でポートを並べている。だが **2 つの depth への fan-out は x 順だけでは planar にできない** — 遠い tier(external) へのエッジが近い tier(infra) のターゲットを「跨いで」しまう。計測でも 12 本の fan-out に 23 件の port-order×target-order inversion が残る。
-- **既存の直交ルーター `routeOrthogonalEdges`**: skip-layer エッジが**ノードカードを横切る**時だけ L 字化する（edge-vs-**card**）。HatoApi→external はカード間の隙間を通るため発火せず（polyline 0 本）。本件の **edge-vs-edge 交差は対象外**。
+### PoC 結果（直交ルーティング / ノード再配置はいずれも効かない）
 
-→ **edge-vs-edge のハブ多層 fan-out 交差を解消する既存パスは無い**。これが [TPL-20260623-04] が予見した「ティア分割で増える段跨ぎエッジ」の交差版。
+| 手法 | hato 交差数 |
+| --- | --- |
+| baseline（直線） | **33** |
+| 直交 L 字（`routeOrthogonalEdges` の trigger を多層 fan-out に緩和） | 33（全候補が infra カードに blocked = no-op） |
+| 直交トランク（素朴） | 52（悪化） |
+| 直交トランク（lane 分離 best-case モデル） | 53（悪化） |
+| barycenter 再配置（resolved edge でモデル化） | 33（不変） |
+
+**否定された理由**:
+
+1. 直交ルーティングは **cross-hub 交差（28/33）を対象にしない**。残る 6（interleave）も、ハブが infra 段の直上にあり external が infra 段の直下にあるため、external エッジは必ず infra 帯を縦断する → 直交化しても交差が帯の中に移るだけ。
+2. cross-hub 交差は **2 ハブが広く散ったターゲットを共有する bipartite 構造に内在**。ターゲット集合が laminar（入れ子/disjoint）でない限りノード順序では消せない。barycenter モデルでも 33→33。
+
+→ **この topology で自動的に交差を消すのは費用対効果が悪い／一部は原理的に不可能**。Issue の acceptance signal「33 を半減」は自動ルーティングでは満たせない。
 
 ## 制約・前提
 
-- **[#1724] のティアレイアウトを壊さない**: ノード配置（tier 割り当て・行）は不変。本変更は**エッジの経路のみ**。
-- **既存の直交ルーティング語彙と一貫**: [ADR-20260429-01] の L 字経路（waypoints）を踏襲し、新しい描画プリミティブを増やさない。
-- **個々の線が追えること**: 束化で重ねると個別エッジが辿れない（後述の代替案で棄却理由）。
-- **ラベル可読性**: エッジラベルの配置（`markParallelBundles`）を退行させない。
-- **scope 外**: ノード配置の wrap/grid（[#1737]/[#1744]）、エッジラベルの自動付与。
+- ノード配置（tier・行）は [#1724] のレイアウトを壊さない。
+- 既存のエッジ styling（[ADR-20260429-01] の直交 skip ルーティングや tag selector）を退行させない。
+- scope 外: 自動交差削減（PoC で否定）、ノード再配置の wrap/grid（[#1737]/[#1744]）。
 
-## 検討した選択肢
+## 方針転換 — 「消す」のではなく「追える」ようにする
 
-### 案A: 直交トランク/バス・ルーティング（採用）
+交差を消すのではなく、密な束の中で**個々の関係を作者が見分けられる**手段を提供する。Issue 本文の「Authoring-side mitigations」を正式な方針に格上げする。
 
-ハブから**垂直トランク**を下ろし、各 tier の手前の**水平チャネル（バス）**で分岐して各ターゲットへ落とす（L 字）。多層 fan-out が**構造的に planar** になる。`routeOrthogonalEdges` を「edge-vs-card のみ」から「ハブの多層 fan-out」にも発火するよう拡張する。
+### 現状で使える手段（エンジン変更不要）
 
-**メリット**
+| 手段 | selector / 構文 | 効果 |
+| --- | --- | --- |
+| 非同期/タグで区別 | `edge[async]` / `edge[<tag>]` | sync/async・種別を色や破線で分離 |
+| 個別エッジの強調 | `edge#A->B` / `edge#PlaceOrder->Db.Table`（合成エッジも可） | 特定の関係を色・太さ・ラベルで surgical に強調 |
+| 方向ヒント | `direction: down/left/right` | 局所的に経路を整える |
 
-- ハブ fan-out 同士の交差（25/33）を構造的に解消。
-- [ADR-20260429-01] の L 字語彙と一貫。新プリミティブ不要。
-- 個々の線が追える（束化と違い分離している）。
+### ギャップ（最小アフォーダンスの候補）
 
-**デメリット**
+**source 単位の一括 selector が無い**。`hato` の「HatoApi 由来の線を 1 色、HatoMcp 由来を別色」という最も効く色分けが、今は `edge#HatoApi->X` を**ターゲット数だけ列挙**しないと書けない（ハブは 9〜10 本）。これが cross-hub 交差を「追える」化する鍵なのに、表現コストが高い。
 
-- 直線より縦のチャネル領域が要る（高さ微増の可能性）。
-- ルーティングの複雑度が上がる（チャネル割り当て `distributeChannelLanes` との協調）。
+→ 提案: **source/target ベースのエッジ selector**（例 `edge[from=HatoApi]` / `edge[to=D1]`）。1 ルールでハブの fan-out 全体を着色でき、cross-hub の束を見分けられる。specificity は tag selector 相当で設計。
 
-### 案B: エッジバンドリング
+## 検討した選択肢（方針転換後）
 
-ハブの fan を 1 本の曲線トランクに束ね、ターゲット近くで分岐。
+### 案1: ドキュメント/ガイドのみ（既存手段の how-to）
 
-**メリット**: 視覚クラスター感は減る。
-**デメリット**: 束ねた線が重なり**個別エッジを辿れない**。「線のつながりを見やすく」という Issue の目的（個々の関係を読む）に反する。棄却。
+`docs/guide/` に「密な fan-out を読みやすくする」how-to（async/tag 着色・個別強調）を追加。examples も用意。
 
-### 案C: ポート順を (tier, x) にする
+**メリット**: エンジン変更ゼロ・即時。
+**デメリット**: 最も効く color-by-source が `edge#A->B` の列挙でしか書けず、ハブで非現実的。片手落ち。
 
-ポートを「近い tier を左、遠い tier を右」に segregate して x 順。
-**デメリット**: infra ターゲットは x 全域に散る（235..1240）のに左半分のポートに集約 → かえって external エッジと交差。planar にならない。部分対症で棄却。
+### 案2: source/target selector の最小追加 ＋ ガイド（推奨）
 
-## 比較
+`edge[from=X]` / `edge[to=X]` selector を追加し、ガイドで color-by-source を案内。
 
-| 観点 | 案A 直交トランク | 案B バンドリング | 案C (tier,x)ポート |
-| --- | --- | --- | --- |
-| 25-交差クラスの解消 | 構造的に planar | 視覚的に隠す（交差は残る） | 部分的・悪化し得る |
-| 個別エッジの追跡 | 可 | 困難 | 可 |
-| 既存語彙との一貫 | 高（L 字） | 低（曲線束） | 中 |
-| リスク | 中（routing 複雑度） | 中 | 低だが効果薄 |
+**メリット**: cross-hub の束を 1 ルールで色分け = 「追える」化の本命。小さく composable。
+**デメリット**: parser/style-resolver/spec/TPL に変更（小規模）。
+
+### 案3: 自動ルーティング（直交トランク等）
+
+**PoC で否定**（上表）。再検討しない。
 
 ## 現時点の方針
 
-**案A（直交トランク/バス）を採用する** — 25/33 を占めるハブ多層 fan-out の edge-vs-edge 交差を構造的に planar 化でき、[ADR-20260429-01] の L 字語彙と一貫し、個別エッジの追跡性も保つ。案B は追跡性を損ない Issue 目的に反する。案C は planar にならない。
+**案2 を推奨** — 自動で交差を消せない以上、「色で束を見分ける」のが現実解で、その本命 color-by-source には source selector が要る。案1 単独は本命が書けず片手落ち。案3 は無効。
 
-### PoC（実装前のゲート）
+> ただし案2 はエンジン拡張なので、**まず案1（ガイド）だけで v1 とし、source selector は別 Issue**という段階分けも可。スコープはレビューで決める（下記「未解決の問い」）。
 
-`routeOrthogonalEdges` を多層 fan-out に拡張した最小版で `hato` の交差数を計測し、**33 → 半減以下**（Issue の acceptance signal）を満たすか確認してから本実装に進む。満たさなければ案を見直す。
+### 実装の指針（案2 を採る場合）
 
-### 実装の指針（PoC 後）
-
-1. ハブ検出: あるノードの下向き out-edge が **2 つ以上の tier** にまたがる fan-out を検出（`layout.ts` のレイヤ情報を使う）。
-2. トランク/バス経路: ハブ下に垂直トランク、各ターゲット tier の手前に水平チャネルを確保し、L 字 waypoints を設定（`edge-routing-channels.ts` を拡張）。`distributeChannelLanes` と協調してチャネル内の lane を分離。
-3. 既存の `distributePorts` / `markParallelBundles` / 直交 skip ルーティングと**順序衝突しない**よう pass 順を設計（`layout.ts` L854-874 の pass パイプライン）。
-4. テスト: `edge-routing-channels.test.ts` に多層 fan-out の planar 化ケース。`layout.test.ts` の [#1724] tier テストが**無変更で通る**こと（ノード配置不変の回帰ガード）。
-5. AT: `hato` 相当モデルで交差数が半減すること（測定 AC）。
-6. proactive TPL: [TPL-20260623-04] のチェックリスト（段跨ぎエッジの救済）に「多層 fan-out は planar に経路付けする」を back-ref で追加するか検討。
-7. ADR 昇格: 完了後、[ADR-20260429-01] を refine する形で ADR 化。
-
-### #1744 との調停
-
-[#1744]/[#1737]（balanced-grid ノード配置）は**ノードの位置**を変える別軸。本 Doc は**エッジ経路のみ**で、ノード配置に依存しない waypoints 生成にする。grid が後で入ってノード x が変わっても、トランク/バスのロジックは tier とターゲット位置から再計算されるため共存する。実装順は #1728 先行（ユーザ決定）。
+1. selector 文法: `edge[from=<id>]` / `edge[to=<id>]` を `.krs.style` parser に追加。`<id>` はノード id（dot 記法の合成エッジ端点も許容）。
+2. style-resolver: `edgeSelectorMatches` に from/to マッチを追加。specificity は `edge[tag]` 相当（score 11）。
+3. spec: `docs/spec/style.md` の selector 表に追記。**spec 改訂なので proactive TPL を 1 件同梱**（CLAUDE.md 規約）。
+4. ガイド + examples: `hato` 風モデルで color-by-source を示す。
+5. AT: source selector で複数エッジが一括着色されること。
+6. ADR 昇格: 完了後、「自動交差削減は採らず作者側ナビゲーションで対応」という決定を ADR 化（[ADR-20260429-01] の限界も明記）。
 
 ### 影響範囲・マイグレーション
 
-- 既存ユーザー: 多層 fan-out のあるモデルでエッジが L 字経路になる。`.krs` 変更不要。
-- テスト・examples: エッジ経路を含む SVG スナップショット / guide 図があれば再生成。
+- 既存 `.krs` / `.krs.style` 影響なし（純粋な追加）。
+- ドキュメント: `docs/spec/style.md`、`docs/guide/`。
 
 ## 未解決の問い
 
-- トランクの **lane 割り当て**: 複数ハブ（HatoApi + HatoMcp）が同時に多層 fan-out する場合、トランク/チャネルをどう分離するか（`distributeChannelLanes` 拡張の範囲）。PoC で実データ（hato は 2 ハブ）を見て決める。
-- 高さへの影響: 水平チャネル分の縦余白が figure 高さをどれだけ増やすか。PoC で計測。
+- **スコープ**: 案2（source selector）まで本 Issue でやるか、案1（ガイド）を v1 にして selector を別 Issue に切るか。
+- **selector 文法**: `edge[from=X]` か `edge.from#X` か（既存 `edge#A->B` との一貫性）。
+- cross-hub 交差の一部が原理的に不可避である点を、ロードマップ（Syntax v1.0 readiness）に「非目標」として記録するか。
