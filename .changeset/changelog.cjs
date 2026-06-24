@@ -13,7 +13,10 @@
 // summary; a backfilled changeset should additionally lead with the real short
 // commit hash (`<hash>: …`).
 
-/** @type {import('@changesets/types').ChangelogFunctions} */
+// Implements `@changesets/types` ChangelogFunctions ({ getReleaseLine,
+// getDependencyReleaseLine }). The type-import annotation is intentionally
+// omitted so this file needs no devDependency (knip flags an unlisted
+// `@changesets/types` otherwise).
 const changelogFunctions = {
   getReleaseLine: async (changeset) => {
     const [firstLine, ...futureLines] = changeset.summary
