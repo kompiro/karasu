@@ -196,4 +196,39 @@ describe("renderDeploy", () => {
       expect(ociNode).not.toMatch(/<text[^>]*fill="#F9FAFB"/);
     });
   });
+
+  describe("job band (#1738)", () => {
+    function makeJobBandSlice(): DeployViewSlice {
+      return {
+        deployLabel: "Prod",
+        containers: [
+          {
+            serviceId: "Api",
+            serviceLabel: "API",
+            units: [{ kind: "oci", id: "api", properties: { runtime: "Node.js 20" }, loc: LOC }],
+          },
+          {
+            serviceId: "Feedback",
+            serviceLabel: "Feedback",
+            units: [{ kind: "job", id: "weekly", properties: { schedule: "0 0 * * 1" }, loc: LOC }],
+            kindBand: "job",
+          },
+        ],
+        unclassifiedUnits: [],
+        ghostEdges: [],
+      };
+    }
+
+    it("emits the job band wrapper with its caption and data-kind-band", () => {
+      const svg = renderDeploy(makeJobBandSlice(), styles);
+      expect(svg).toContain('data-kind-band="job"');
+      expect(svg).toContain("Scheduled jobs");
+    });
+
+    it("does not emit a job band when there are no job-only containers", () => {
+      const svg = renderDeploy(makeSlice(), styles);
+      expect(svg).not.toContain('data-kind-band="job"');
+      expect(svg).not.toContain("Scheduled jobs");
+    });
+  });
 });
