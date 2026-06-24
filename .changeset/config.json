@@ -9,9 +9,9 @@
   "updateInternalDependencies": "patch",
   "ignore": [
     "@karasu-tools/app",
+    "@karasu-tools/i18n",
     "@karasu-tools/lsp",
     "@karasu-tools/e2e",
-    "@karasu-tools/vscode-e2e",
-    "karasu-vscode"
+    "@karasu-tools/vscode-e2e"
   ]
 }

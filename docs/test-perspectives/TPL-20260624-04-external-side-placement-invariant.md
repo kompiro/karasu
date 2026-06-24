@@ -1,5 +1,5 @@
 ---
-id: TPL-20260624-03
+id: TPL-20260624-04
 title: "system-view で external をサイドに置く配置は、他 kind の配置帯を侵さず決定的で、column override を尊重する"
 status: active
 applicable_to:
@@ -17,7 +17,7 @@ scope:
   packages: [core]
 ---
 
-# TPL-20260624-03: system-view で external をサイドに置く配置は、他 kind の配置帯を侵さず決定的で、column override を尊重する
+# TPL-20260624-04: system-view で external をサイドに置く配置は、他 kind の配置帯を侵さず決定的で、column override を尊重する
 
 ## 観点
 

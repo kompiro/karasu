@@ -581,6 +581,20 @@ edge#A->C { color: #00FF00; }
     if (result.diagramType !== "system") throw new Error("expected system result");
     expect(result.svg).toContain("#00FF00");
   });
+
+  it("colors a hub's whole fan-out with one edge[from=<id>] rule", () => {
+    const result = compile(KRS, {
+      styleSource: `
+edge { color: #000000; }
+edge[from=A] { color: #3B82F6; }
+      `,
+    });
+    expect(result.diagnostics.filter((d) => d.severity === "error")).toHaveLength(0);
+    if (result.diagramType !== "system") throw new Error("expected system result");
+    // Both A->B and A->C originate at A, so a single `from=` rule recolors the
+    // whole fan-out (specificity 11 beats the base `edge` rule, score 1).
+    expect(result.svg).toContain("#3B82F6");
+  });
 });
 
 describe("compile — edge direction hint reaches the layered layout", () => {

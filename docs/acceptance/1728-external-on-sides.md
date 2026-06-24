@@ -4,7 +4,7 @@
 - **Issue**: #1728
 - **PR**: なし（実装 PR で追記）
 - **関連ADR**: [ADR-20260623-06](../adr/20260623-06-system-view-infra-external-tier-split.md)（本変更が refine）
-- **Related TPLs**: [TPL-20260624-03](../test-perspectives/TPL-20260624-03-external-side-placement-invariant.md)（external サイド配置の不変条件）, [TPL-20260623-04](../test-perspectives/TPL-20260623-04-tier-split-no-edge-penetration.md)
+- **Related TPLs**: [TPL-20260624-04](../test-perspectives/TPL-20260624-04-external-side-placement-invariant.md)（external サイド配置の不変条件）, [TPL-20260623-04](../test-perspectives/TPL-20260623-04-tier-split-no-edge-penetration.md)
 - **対象**: `packages/core/src/renderer/layout.ts`（`placeExternalServicesOnSides`）, `docs/spec/style.md`（`column`）, `examples/en/hato/`（実モデル測定用、`index.krs` + `hato.krs.style`）
 
 ## 概要

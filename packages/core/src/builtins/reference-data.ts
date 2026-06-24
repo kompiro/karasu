@@ -964,6 +964,7 @@ domain[external] { border-style: dashed; }
 user[human] { shape: user; }
 edge[async] { border-style: dashed; }
 edge[write] { direction: down; }       /* layout-direction hint: up | down | left | right | auto */
+edge[from=ApiGateway] { color: #3B82F6; } /* color a hub's whole fan-out */
 edge#criticalWrite { color: #EF4444; } /* target one edge by id */
 #ECommerce { background-color: #1D4ED8; }`,
   deploy: `/* deploy diagram selectors */
@@ -1003,5 +1004,10 @@ export const SELECTOR_SPECIFICITY: SelectorSpecificityData[] = [
   { label: { en: "ID", ja: "ID" }, example: "#ECommerce", specificity: 100 },
   { label: { en: "Edge", ja: "エッジ" }, example: "edge", specificity: 1 },
   { label: { en: "Edge + tag", ja: "エッジ + タグ" }, example: "edge[async]", specificity: 11 },
+  {
+    label: { en: "Edge source/target", ja: "エッジ 始点 / 終点" },
+    example: "edge[from=ApiGateway]",
+    specificity: 11,
+  },
   { label: { en: "Edge ID", ja: "エッジ ID" }, example: "edge#criticalWrite", specificity: 101 },
 ];

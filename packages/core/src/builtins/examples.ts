@@ -249,6 +249,13 @@ legend "凡例" {
 service[external] {
   column: right;
 }
+
+// Color by source (edge[from=<id>]) / by target (edge[to=<id>]).
+// ECommerce から出る全エッジを 1 ルールでまとめて色付けし、
+// ハブの fan-out をたどりやすくする。
+edge[from=ECommerce] {
+  color: #2563eb;
+}
 `,
     },
   ],
@@ -489,6 +496,13 @@ legend "Legend" {
 // Pin external services to the right side of the bottom row.
 service[external] {
   column: right;
+}
+
+// Color by source (edge[from=<id>]) / by target (edge[to=<id>]).
+// All edges leaving ECommerce share one color in a single rule,
+// making the hub's fan-out easy to trace.
+edge[from=ECommerce] {
+  color: #2563eb;
 }
 `,
     },
