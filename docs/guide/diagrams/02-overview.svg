@@ -1,24 +1,24 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 591 802" width="591" height="802"><defs><marker id="arrow-default" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#64748B"/></marker></defs>
-<rect width="591" height="802" fill="#FFFFFF" rx="0"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 886 616" width="886" height="616"><defs><marker id="arrow-default" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#64748B"/></marker></defs>
+<rect width="886" height="616" fill="#FFFFFF" rx="0"/>
 <text x="20" y="24" fill="#64748B" font-size="14px" font-family="sans-serif" font-weight="bold">Online shop (under analysis)</text>
-<g class="edges"><g data-edge-from="Customer" data-edge-to="OrderService" data-edge-kind="sync" data-edge-canonical-id="Customer-&gt;OrderService" data-edge-label="place an order" class="krs-edge krs-edge--interactive"><line x1="275.5" y1="126" x2="275.5" y2="246" stroke="transparent" stroke-width="14" stroke-linecap="butt" class="krs-edge__hitline"/>
-<line x1="275.5" y1="126" x2="275.5" y2="246" stroke="#64748B" stroke-width="1.5" marker-end="url(#arrow-default)"/>
-<text x="275.5" y="180" text-anchor="middle" fill="#64748B" font-size="11px" font-family="sans-serif">place an order</text></g>
-<g data-edge-from="OrderService" data-edge-to="CatalogService" data-edge-kind="sync" data-edge-canonical-id="OrderService-&gt;CatalogService" data-edge-label="look up products" class="krs-edge krs-edge--interactive"><line x1="242.66666666666666" y1="330" x2="275.5" y2="450" stroke="transparent" stroke-width="14" stroke-linecap="butt" class="krs-edge__hitline"/>
-<line x1="242.66666666666666" y1="330" x2="275.5" y2="450" stroke="#64748B" stroke-width="1.5" marker-end="url(#arrow-default)"/>
-<text x="259.0833333333333" y="384" text-anchor="middle" fill="#64748B" font-size="11px" font-family="sans-serif">look up products</text></g>
-<g data-edge-from="OrderService" data-edge-to="Legacy" data-edge-kind="sync" data-edge-canonical-id="OrderService-&gt;Legacy" data-edge-label="query stock (details unknown)" class="krs-edge krs-edge--interactive"><line x1="308.3333333333333" y1="330" x2="275.5" y2="636" stroke="transparent" stroke-width="14" stroke-linecap="butt" class="krs-edge__hitline"/>
-<line x1="308.3333333333333" y1="330" x2="275.5" y2="636" stroke="#64748B" stroke-width="1.5" marker-end="url(#arrow-default)"/>
-<text x="291.91666666666663" y="477" text-anchor="middle" fill="#64748B" font-size="11px" font-family="sans-serif">query stock (details unknown)</text></g></g>
-<g class="nodes"><g data-node-id="Customer" data-node-kind="user" data-has-children="false" data-has-description="false"><circle cx="275.5" cy="70.58" r="8.58" fill="#DBEAFE" stroke="#93C5FD" stroke-width="2"/>
-<path d="M239.5 82.16 L311.5 82.16 L331.5 93.12 L331.5 122 Q331.5 126 327.5 126 L223.5 126 Q219.5 126 219.5 122 L219.5 93.12 Z" fill="#DBEAFE" stroke="#93C5FD" stroke-width="2"/>
-<text x="275.5" y="93" text-anchor="middle" dominant-baseline="central" fill="#1E3A8A" font-size="13px" font-weight="bold" font-family="sans-serif">Shopper</text></g>
-<g data-node-id="OrderService" data-node-kind="service" data-has-children="false" data-has-description="true"><rect x="177" y="246" width="197" height="84" rx="8" ry="8" fill="#E0F2FE" stroke="#7DD3FC" stroke-width="2"/>
-<text x="275.5" y="279.5" text-anchor="middle" dominant-baseline="central" fill="#0C4A6E" font-size="13px" font-weight="bold" font-family="sans-serif">Order service</text>
-<text x="275.5" y="296.5" text-anchor="middle" dominant-baseline="central" fill="#0C4A6E" font-size="10px" font-family="sans-serif" opacity="0.7">Order processing…</text>
-<g data-info-button="OrderService" style="cursor: pointer" pointer-events="all"><circle cx="358" cy="260" r="8" fill="transparent" stroke="#64748B" stroke-width="1"/>
-<text x="358" y="260" text-anchor="middle" dominant-baseline="central" fill="#64748B" font-size="10px" font-family="sans-serif" font-style="italic">i</text></g></g>
-<g data-node-id="CatalogService" data-node-kind="service" data-has-children="false" data-has-description="false"><rect x="168" y="450" width="215" height="66" rx="8" ry="8" fill="#E0F2FE" stroke="#7DD3FC" stroke-width="2"/>
-<text x="275.5" y="483" text-anchor="middle" dominant-baseline="central" fill="#0C4A6E" font-size="13px" font-weight="bold" font-family="sans-serif">Catalog service</text></g>
-<g data-node-id="Legacy" data-node-kind="service" data-has-children="false" data-has-description="false"><rect x="60" y="636" width="431" height="66" rx="8" ry="8" fill="#F3F4F6" stroke="#7DD3FC" stroke-width="2" stroke-dasharray="8 4"/>
-<text x="275.5" y="669" text-anchor="middle" dominant-baseline="central" fill="#0C4A6E" font-size="13px" font-weight="bold" font-family="sans-serif">Old core (nobody knows the whole thing)</text></g></g></svg>
+<g class="edges"><g data-edge-from="Customer" data-edge-to="OrderService" data-edge-kind="sync" data-edge-canonical-id="Customer-&gt;OrderService" data-edge-label="place an order" class="krs-edge krs-edge--interactive"><line x1="678.5" y1="126" x2="678.5" y2="246" stroke="transparent" stroke-width="14" stroke-linecap="butt" class="krs-edge__hitline"/>
+<line x1="678.5" y1="126" x2="678.5" y2="246" stroke="#64748B" stroke-width="1.5" marker-end="url(#arrow-default)"/>
+<text x="678.5" y="180" text-anchor="middle" fill="#64748B" font-size="11px" font-family="sans-serif">place an order</text></g>
+<g data-edge-from="OrderService" data-edge-to="CatalogService" data-edge-kind="sync" data-edge-canonical-id="OrderService-&gt;CatalogService" data-edge-label="look up products" class="krs-edge krs-edge--interactive"><line x1="711.3333333333333" y1="330" x2="678.5" y2="450" stroke="transparent" stroke-width="14" stroke-linecap="butt" class="krs-edge__hitline"/>
+<line x1="711.3333333333333" y1="330" x2="678.5" y2="450" stroke="#64748B" stroke-width="1.5" marker-end="url(#arrow-default)"/>
+<text x="694.9166666666666" y="384" text-anchor="middle" fill="#64748B" font-size="11px" font-family="sans-serif">look up products</text></g>
+<g data-edge-from="OrderService" data-edge-to="Legacy" data-edge-kind="sync" data-edge-canonical-id="OrderService-&gt;Legacy" data-edge-label="query stock (details unknown)" class="krs-edge krs-edge--interactive"><line x1="645.6666666666666" y1="330" x2="255.5" y2="255" stroke="transparent" stroke-width="14" stroke-linecap="butt" class="krs-edge__hitline"/>
+<line x1="645.6666666666666" y1="330" x2="255.5" y2="255" stroke="#64748B" stroke-width="1.5" marker-end="url(#arrow-default)"/>
+<text x="450.5833333333333" y="286.5" text-anchor="middle" fill="#64748B" font-size="11px" font-family="sans-serif">query stock (details unknown)</text></g></g>
+<g class="nodes"><g data-node-id="Customer" data-node-kind="user" data-has-children="false" data-has-description="false"><circle cx="678.5" cy="70.58" r="8.58" fill="#DBEAFE" stroke="#93C5FD" stroke-width="2"/>
+<path d="M642.5 82.16 L714.5 82.16 L734.5 93.12 L734.5 122 Q734.5 126 730.5 126 L626.5 126 Q622.5 126 622.5 122 L622.5 93.12 Z" fill="#DBEAFE" stroke="#93C5FD" stroke-width="2"/>
+<text x="678.5" y="93" text-anchor="middle" dominant-baseline="central" fill="#1E3A8A" font-size="13px" font-weight="bold" font-family="sans-serif">Shopper</text></g>
+<g data-node-id="OrderService" data-node-kind="service" data-has-children="false" data-has-description="true"><rect x="580" y="246" width="197" height="84" rx="8" ry="8" fill="#E0F2FE" stroke="#7DD3FC" stroke-width="2"/>
+<text x="678.5" y="279.5" text-anchor="middle" dominant-baseline="central" fill="#0C4A6E" font-size="13px" font-weight="bold" font-family="sans-serif">Order service</text>
+<text x="678.5" y="296.5" text-anchor="middle" dominant-baseline="central" fill="#0C4A6E" font-size="10px" font-family="sans-serif" opacity="0.7">Order processing…</text>
+<g data-info-button="OrderService" style="cursor: pointer" pointer-events="all"><circle cx="761" cy="260" r="8" fill="transparent" stroke="#64748B" stroke-width="1"/>
+<text x="761" y="260" text-anchor="middle" dominant-baseline="central" fill="#64748B" font-size="10px" font-family="sans-serif" font-style="italic">i</text></g></g>
+<g data-node-id="CatalogService" data-node-kind="service" data-has-children="false" data-has-description="false"><rect x="571" y="450" width="215" height="66" rx="8" ry="8" fill="#E0F2FE" stroke="#7DD3FC" stroke-width="2"/>
+<text x="678.5" y="483" text-anchor="middle" dominant-baseline="central" fill="#0C4A6E" font-size="13px" font-weight="bold" font-family="sans-serif">Catalog service</text></g>
+<g data-node-id="Legacy" data-node-kind="service" data-has-children="false" data-has-description="false"><rect x="40" y="255" width="431" height="66" rx="8" ry="8" fill="#F3F4F6" stroke="#7DD3FC" stroke-width="2" stroke-dasharray="8 4"/>
+<text x="255.5" y="288" text-anchor="middle" dominant-baseline="central" fill="#0C4A6E" font-size="13px" font-weight="bold" font-family="sans-serif">Old core (nobody knows the whole thing)</text></g></g></svg>

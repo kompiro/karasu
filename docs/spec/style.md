@@ -206,6 +206,26 @@ Within each bucket, the existing within-layer order is preserved
 **not** move a node to a different layer (row); for that, file an
 auto-layout heuristic issue rather than reaching for a new hint.
 
+#### External services (system view): `column` picks the side
+
+In the system view, `[external]` services are placed in **left/right side
+columns** by default (not a bottom row), so `service → external` edges run
+horizontally and don't weave through the downward infra fan-out. The side is
+chosen automatically from the consuming service's position (each external is
+grouped to the side of the service that calls it). `column: left` / `column:
+right` on an external service **overrides** that auto-assignment and pins it to
+the named side:
+
+```css
+service#LegacyBilling[external] { column: left; }  /* force this SaaS to the left */
+```
+
+`column: center` / unspecified on an external service leaves the side to the
+auto-assignment. (infra kinds — `database` / `queue` / `storage` — stay in the
+bottom row regardless of any `[external]` tag; see Tags.)
+
+> Related TPLs: [TPL-20260624-03](../test-perspectives/TPL-20260624-03-external-side-placement-invariant.md)
+
 ### Scope
 
 | View | Behavior |
