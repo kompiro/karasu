@@ -1,6 +1,6 @@
 {
   "name": "@karasu-tools/core",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Compile and render .krs architecture diagrams — the core engine behind karasu (parser, style resolver, SVG renderer, translate).",
   "homepage": "https://github.com/kompiro/karasu#readme",
   "license": "Apache-2.0",
