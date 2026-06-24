@@ -57,6 +57,7 @@ karasu の認知モデルは **scoped glance + drill-down**（`docs/concepts.ja.
 - [ ] drill-down で視野が狭まったとき、**外部との境界**（ghost domain / ghost system 相当）が失われずに描画されるか
 - [ ] 「expand-all」「全表示モード」のような scope を解除する機能を入れる場合、**戻るパス** と **default は scoped 側** の両方が確保されているか
 - [ ] Chat / 検索 / AI 応答など view 外の経路が、現在のスコープと **整合的に振る舞う**（無関係なノードを文脈なしで噴出させない）か
+- [ ] 単一ビュー内のレイアウトが **一目で把握できる解像度** を保つか（多数の兄弟ノードを横一列に流して zoom-to-fit で全体が潰れる状態を default にしていないか。要素数だけでなく **視覚的密度・縦横比** にも上限の発想があるか）
 
 ## 既知の対処パターン
 
@@ -71,3 +72,7 @@ karasu の認知モデルは **scoped glance + drill-down**（`docs/concepts.ja.
 - `packages/app/src/` — view 構成（scope 境界の UI 表現）
 - `docs/concepts.ja.md` 「ドリルダウン型アーキテクチャ把握」節
 - TPL-20260510-07（書き手と読み手の非対称性をエッジ層で具現化する観点 — scoped glance のエッジ側の現れ）
+
+## 派生元 spec
+
+- `docs/concepts.ja.md` 「一度に見せる範囲を限定し、ドリルダウンで詳細へ降りる（scoped glance）」節（英語版 `docs/concepts.md` "Limit what is shown at once; drill down for detail"）。同節は scoped glance が **ナビゲーションの深さだけでなく単一ビューの解像度・視覚的密度** までを含むことを規定しており、本 TPL のチェックリスト「単一ビュー内のレイアウトが一目で把握できる解像度を保つか」がその違反を検出する。

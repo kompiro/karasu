@@ -450,6 +450,10 @@ This continuity has the advantage of letting the model express its own growth �
 A complementary overview that *hints* at what structures exist across the whole system — something like a "hint view" that shows structure but suppresses detail — could become a future consideration, as long as it **complements** drill-down rather than replacing it.
 What is first class, however, is "limited scope + drill-down"; any hint view would exist on top of that premise.
 
+**It is also a question of resolution, not only of how deep you drill.** "Limit how much is shown at once" is violated *within a single view* too. When many sibling nodes spread out along one long horizontal row, fitting the whole view on screen forces a zoom-out, and each node shrinks until the diagram drops below the **resolution a human can grasp at a glance**. The node *count* may belong to "one level," but a layout that sprawls sideways exceeds the cognitive bandwidth exactly the way an everything-on-one-page bird's-eye view does. So scoped glance covers not just navigation (how many levels you descend) but also **the layout keeping an appropriate, graspable resolution in a single glance**: many siblings should be packed into a grid of a reasonable aspect ratio rather than streamed into one wide row, so the visual density inside the view stays bounded. (This is the conceptual basis for the balanced-grid sibling layout — see issue #1737.)
+
+> Related TPLs: [TPL-20260510-21](test-perspectives/TPL-20260510-21-scoped-glance-drill-down.md) — limit how much is shown at once and keep drill-down first-class (single-view resolution / visual density is part of this principle).
+
 #### karasu captures structure across three dimensions: logical, physical, organizational
 
 When talking about architecture, many tools focus on "how the components are put together" (logical structure), or "where they run" (physical structure), or both.
