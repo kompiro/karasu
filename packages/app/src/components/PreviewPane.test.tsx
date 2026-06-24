@@ -116,6 +116,27 @@ describe("PreviewPane", () => {
       expect(onContainerClick).toHaveBeenCalledWith("zone-a");
       expect(onClearHighlight).not.toHaveBeenCalled();
     });
+
+    it.each(["__unclassified__", "__job_band__"])(
+      "does not cross-navigate when the synthetic %s container is clicked (#1738)",
+      (syntheticId) => {
+        const onContainerClick = vi.fn<() => void>();
+        const svg = `<div data-container-id="${syntheticId}"></div>`;
+
+        const { container } = render(
+          <PreviewPane {...baseProps()} svg={svg} onContainerClick={onContainerClick} />,
+        );
+
+        const previewContainer = container.querySelector(".preview-container")!;
+        click(
+          previewContainer as HTMLElement,
+          () => container.querySelector(`[data-container-id='${syntheticId}']`)!,
+        );
+
+        // Synthetic containers are not real services → no dead navigation.
+        expect(onContainerClick).not.toHaveBeenCalled();
+      },
+    );
   });
 
   describe("highlightedNodeId", () => {
