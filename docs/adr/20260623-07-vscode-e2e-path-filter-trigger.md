@@ -1,5 +1,5 @@
 ---
-id: ADR-20260623-06
+id: ADR-20260623-07
 title: VS Code E2E（extension host / WebView）もラベル駆動をやめ path filter で起動する
 status: accepted
 date: 2026-06-23
@@ -13,7 +13,7 @@ scope:
     - ci
 ---
 
-# ADR-20260623-06: VS Code E2E（extension host / WebView）もラベル駆動をやめ path filter で起動する
+# ADR-20260623-07: VS Code E2E（extension host / WebView）もラベル駆動をやめ path filter で起動する
 
 - **日付**: 2026-06-23
 - **ステータス**: 決定済み

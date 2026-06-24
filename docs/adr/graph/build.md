@@ -53,7 +53,7 @@ flowchart TD
     ADR_20260623_01["ADR-20260623-01<br/>リリースを workflow_dispatch 起動の Prepare → release P..."]
     ADR_20260623_03["ADR-20260623-03<br/>Dependabot Batch Triage (2026-06-23) — `pnpm/ac..."]
     ADR_20260623_05["ADR-20260623-05<br/>app E2E（Playwright）はラベル駆動をやめ path filter で起動する"]
-    ADR_20260623_06["ADR-20260623-06<br/>VS Code E2E（extension host / WebView）もラベル駆動をやめ ..."]
+    ADR_20260623_07["ADR-20260623-07<br/>VS Code E2E（extension host / WebView）もラベル駆動をやめ ..."]
   end
   ADR_20260322_01["ADR-20260322-01<br/>[styling] ビルトインスタイルの一元化と構造化リファレンス"]
   ADR_20260512_03 --> ADR_20260322_01
@@ -111,6 +111,6 @@ flowchart TD
   class ADR_20260623_01 accepted
   class ADR_20260623_03 accepted
   class ADR_20260623_05 accepted
-  class ADR_20260623_06 accepted
+  class ADR_20260623_07 accepted
   class ADR_20260322_01 ghost
 ```
