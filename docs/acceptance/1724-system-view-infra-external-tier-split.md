@@ -3,13 +3,13 @@
 - **日付**: 2026-06-23
 - **Issue**: #1724
 - **PR**: [#1736](https://github.com/kompiro/karasu/pull/1736)
-- **関連ADR**: ADR-20260429-02（dep pull-up — 本変更で amend）, ADR-20260429-01（skip-layer 直交ルーティング）
+- **関連ADR**: [ADR-20260623-06](../adr/20260623-06-system-view-infra-external-tier-split.md)（本変更の決定）, ADR-20260429-02（dep pull-up — 本 ADR が refine）, ADR-20260429-01（skip-layer 直交ルーティング）
 - **Related TPLs**: [TPL-20260623-04](../test-perspectives/TPL-20260623-04-tier-split-no-edge-penetration.md)（proactive — ティア分割で段跨ぎエッジが中間カードを貫通しないこと）, [TPL-20260519-02](../test-perspectives/TPL-20260519-02-shared-vocabulary-dual-representation.md)（`database` 語彙と `[external]` タグの二重表現）
 - **対象**: `packages/core/src/renderer/layout.ts`（`systemTier` / `assignForcedSystemLayers`）
 
 ## 概要
 
-system view の dep ティア（infra + `[external]` を 1 行に詰め込む）を、**infra 行**と**その下の external 行**の 2 段に分割する。ノード数の多いモデルで横幅が爆発する問題（#1724）を解消する。設計経緯は `docs/design/system-view-infra-external-tier-split.md`。
+system view の dep ティア（infra + `[external]` を 1 行に詰め込む）を、**infra 行**と**その下の external 行**の 2 段に分割する。ノード数の多いモデルで横幅が爆発する問題（#1724）を解消する。設計判断は [ADR-20260623-06](../adr/20260623-06-system-view-infra-external-tier-split.md)。
 
 ## 受け入れ条件
 
