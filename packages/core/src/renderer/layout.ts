@@ -684,7 +684,6 @@ function placeExternalServicesOnSides(
   const maxX = Math.max(...others.map((n) => n.x + n.width));
   const topY = Math.min(...others.map((n) => n.y));
   const botY = Math.max(...others.map((n) => n.y + n.height));
-  const colW = ext.reduce((m, n) => Math.max(m, n.width), 0);
 
   const place = (group: LayoutNode[], x: number): void => {
     // Stable order within a side: hub-x, then consuming-hub y, then existing y.
@@ -697,14 +696,22 @@ function placeExternalServicesOnSides(
   };
   const left = ext.filter((n) => sideOf(n) === "left");
   const right = ext.filter((n) => sideOf(n) === "right");
-  place(left, minX - EXTERNAL_SIDE_GAP - colW);
+  // Per-side column width so a narrow side does not reserve the wide side's
+  // gutter (each column hugs the system by its own widest member).
+  const leftColW = left.reduce((m, n) => Math.max(m, n.width), 0);
+  const rightColW = right.reduce((m, n) => Math.max(m, n.width), 0);
+  place(left, minX - EXTERNAL_SIDE_GAP - leftColW);
   place(right, maxX + EXTERNAL_SIDE_GAP);
   for (const n of left) sides.set(n.id, "left");
   for (const n of right) sides.set(n.id, "right");
 
   // Grow the system container(s) to wrap the populated side columns.
-  const leftEdge = left.length ? minX - EXTERNAL_SIDE_GAP - colW - CONTAINER_PADDING : undefined;
-  const rightEdge = right.length ? maxX + EXTERNAL_SIDE_GAP + colW + CONTAINER_PADDING : undefined;
+  const leftEdge = left.length
+    ? minX - EXTERNAL_SIDE_GAP - leftColW - CONTAINER_PADDING
+    : undefined;
+  const rightEdge = right.length
+    ? maxX + EXTERNAL_SIDE_GAP + rightColW + CONTAINER_PADDING
+    : undefined;
   for (const c of containers) {
     if (!systemContainerIds.has(c.id)) continue;
     let nx = c.x;

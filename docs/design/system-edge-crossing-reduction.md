@@ -128,6 +128,10 @@ external が多くてサイドが詰まる場合も、上限を設けず**サイ
 - **tie-break（自動振り分けの決定性）**: median 分割で `hubX == median` は左。同側内は hub-x → consuming-hub-y → 宣言順で安定ソート。複数 hub が consume する external は consuming-hub の barycenter（平均 x）。hub が同 x の場合は宣言順で安定。確定（PoC 実装と一致）。
 - **幅トレードオフ**: サイド化で横長になる（hato 2323×892）点は許容（交差最小優先の帰結）。確定。
 
+## 既知の制限
+
+- **multi-system のクロスシステムエッジ**: multi-system root view では external サイド化は各システム単位で適用される（`layoutMultipleSystems` が system ごとに `placeExternalServicesOnSides` を呼ぶ）。一方 `viewSlice.crossSystemEdges`（`SystemA.svc -> SystemB.ext` のようなシステム間リンク）は per-system のループ後に独自の右→左アンカーで描画され、side 情報を受け取らない。クロスシステムエッジが side 配置された external を指す稀なケースでは内側アンカーにならないが、システム間リンクは横方向の system-flow 規約で描くのが自然なので許容する。必要になれば per-system の side map を集約してクロスシステム描画に渡す。
+
 ## 残る確認（実装時）
 
 - balanced-grid（[#1737]/[#1744]）と組み合わせた時の総寸法は、両者がマージされた段階で実レンダリング確認（非ブロッキング）。
