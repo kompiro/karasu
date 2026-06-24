@@ -101,6 +101,7 @@ See also: [dependency graph](graph.md), per-topic detail under [graph/](graph/).
 - [ADR-20260623-01](20260623-01-release-flow-actions-driven.md) — リリースを workflow_dispatch 起動の Prepare → release PR → マージで publish にする
 - [ADR-20260623-03](20260623-03-dependabot-batch-2026-06-23.md) — Dependabot Batch Triage (2026-06-23) — `pnpm/action-setup` 6.0.9
 - [ADR-20260623-05](20260623-05-e2e-path-filter-trigger.md) — app E2E（Playwright）はラベル駆動をやめ path filter で起動する
+- [ADR-20260623-06](20260623-06-vscode-e2e-path-filter-trigger.md) — VS Code E2E（extension host / WebView）もラベル駆動をやめ path filter で起動する
 
 ## chat-ai
 
