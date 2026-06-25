@@ -75,11 +75,17 @@ export interface PreviewContextValue {
   onDisplayModeChange: (mode: DisplayMode) => void;
   onExportSvg: (svg: string, filename: string) => void;
   /**
-   * Current `.krs` source for the active file, used by the Share button to
-   * build an inline share URL (karasu-nest). `undefined` when the host shell
-   * has no editable source (disables Share).
+   * Whether the active file has shareable source — drives the Share button's
+   * enabled state. Kept as a boolean (not the source string) so it only flips
+   * when crossing empty↔non-empty, never on every keystroke.
    */
-  krsSource?: string;
+  hasKrsSource?: boolean;
+  /**
+   * Returns the current `.krs` source for building an inline share URL
+   * (karasu-nest). Stable identity (reads a ref), so threading it through the
+   * preview memo does not re-render the preview on every keystroke.
+   */
+  getKrsSource?: () => string;
   /**
    * Export the current project as a draw.io (mxGraph XML) file. Absent when
    * the active shell has no project available (e.g. editor-only modes).

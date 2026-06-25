@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
-import { describe, it, expect, afterEach } from "vitest";
-import { render, screen, cleanup } from "@testing-library/react";
+import { describe, it, expect, afterEach, vi } from "vitest";
+import { render, screen, cleanup, act } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { ShareDialog } from "./ShareDialog.js";
 import { LocaleProvider } from "../i18n/index.js";
@@ -33,6 +33,20 @@ describe("ShareDialog", () => {
 
     expect(await navigator.clipboard.readText()).toBe(URL);
     expect(await screen.findByText(/Copied to clipboard/)).toBeTruthy();
+  });
+
+  it("shows the copied confirmation on open then reverts to the Copy label", () => {
+    vi.useFakeTimers();
+    try {
+      renderDialog({ copiedOnOpen: true });
+      // Eager copy on open → confirmation shown initially.
+      expect(screen.getByRole("button", { name: /Copied to clipboard/ })).toBeTruthy();
+      // …but transiently: it must revert so the default Copy affordance is reachable.
+      act(() => vi.advanceTimersByTime(2000));
+      expect(screen.getByRole("button", { name: /^⧉ Copy$/ })).toBeTruthy();
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it("renders nothing when closed", () => {

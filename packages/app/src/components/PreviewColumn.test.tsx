@@ -715,7 +715,7 @@ describe("PreviewColumn — Share (karasu-nest inline URL)", () => {
   const SAMPLE = 'system Shop {\n  service Api { label "API" }\n}';
 
   it("disables Share when there is no source", () => {
-    const props = makeProps({ krsSource: "" });
+    const props = makeProps({ hasKrsSource: false, getKrsSource: () => "" });
     const { getByRole } = renderPreview(props);
     expect((getByRole("button", { name: /Share/ }) as HTMLButtonElement).disabled).toBe(true);
   });
@@ -724,7 +724,7 @@ describe("PreviewColumn — Share (karasu-nest inline URL)", () => {
     // userEvent.setup() installs its own navigator.clipboard stub; assert via
     // its readText() rather than a hand-rolled mock it would shadow.
     const user = userEvent.setup();
-    const props = makeProps({ krsSource: SAMPLE });
+    const props = makeProps({ hasKrsSource: true, getKrsSource: () => SAMPLE });
     renderPreview(props);
 
     await user.click(screen.getByRole("button", { name: /Share/ }));

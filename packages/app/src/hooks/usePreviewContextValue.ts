@@ -74,8 +74,10 @@ interface UsePreviewContextValueArgs {
   onExportSvg: (svg: string, filename: string) => void;
   /** Already built by the host (undefined when no project is available). */
   onExportDrawio?: (filename: string) => Promise<void>;
-  /** Current `.krs` source, forwarded to PreviewColumn's Share button. */
-  krsSource?: string;
+  /** Whether the active file has shareable source (Share button enabled state). */
+  hasKrsSource?: boolean;
+  /** Stable getter for the current `.krs` source (PreviewColumn's Share button). */
+  getKrsSource?: () => string;
 }
 
 /**
@@ -115,7 +117,8 @@ export function usePreviewContextValue(args: UsePreviewContextValueArgs): Previe
     onPickEdgeDirection,
     onExportSvg,
     onExportDrawio,
-    krsSource,
+    hasKrsSource,
+    getKrsSource,
   } = args;
 
   return useMemo<PreviewContextValue>(
@@ -181,7 +184,8 @@ export function usePreviewContextValue(args: UsePreviewContextValueArgs): Previe
       orgTreeExportSvg: org.orgTreeExportSvg,
       styleTargetPath,
       onPickEdgeDirection,
-      krsSource,
+      hasKrsSource,
+      getKrsSource,
     }),
     [
       activeView,
@@ -227,7 +231,8 @@ export function usePreviewContextValue(args: UsePreviewContextValueArgs): Previe
       onPickEdgeDirection,
       onExportSvg,
       onExportDrawio,
-      krsSource,
+      hasKrsSource,
+      getKrsSource,
     ],
   );
 }

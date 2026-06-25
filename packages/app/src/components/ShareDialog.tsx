@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -10,6 +10,10 @@ import {
 } from "@/components/ui/dialog";
 import { useClipboardCopy } from "../hooks/useClipboardCopy.js";
 import { useTranslation } from "../i18n/index.js";
+
+// Matches useClipboardCopy's reset window so the open-time and click-time
+// confirmations behave identically.
+const COPIED_RESET_MS = 2000;
 
 interface ShareDialogProps {
   open: boolean;
@@ -31,16 +35,30 @@ export function ShareDialog({ open, url, onClose, copiedOnOpen = false }: ShareD
   const { t } = useTranslation();
   const { copy, copied } = useClipboardCopy();
   const inputRef = useRef<HTMLInputElement>(null);
+  // The Share button copies eagerly on click, so on open we show the copied
+  // confirmation — but transiently, so the button reverts to its default
+  // "Copy" label (otherwise it would be stuck on "Copied" forever).
+  const [openedCopied, setOpenedCopied] = useState(false);
 
   // Select the URL when the dialog opens so a manual Cmd/Ctrl+C works too.
   // setTimeout lets Radix's focus-on-open settle first (dialog.md checklist).
   useEffect(() => {
-    if (!open) return;
-    const id = window.setTimeout(() => inputRef.current?.select(), 0);
-    return () => window.clearTimeout(id);
-  }, [open]);
+    if (!open) {
+      setOpenedCopied(false);
+      return;
+    }
+    setOpenedCopied(copiedOnOpen);
+    const selectId = window.setTimeout(() => inputRef.current?.select(), 0);
+    const resetId = copiedOnOpen
+      ? window.setTimeout(() => setOpenedCopied(false), COPIED_RESET_MS)
+      : undefined;
+    return () => {
+      window.clearTimeout(selectId);
+      if (resetId !== undefined) window.clearTimeout(resetId);
+    };
+  }, [open, copiedOnOpen]);
 
-  const showCopied = copied || copiedOnOpen;
+  const showCopied = copied || openedCopied;
 
   return (
     <Dialog open={open} onOpenChange={(v) => !v && onClose()}>

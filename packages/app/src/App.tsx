@@ -13,6 +13,7 @@ import { ObservableFileSystemProvider } from "./fs/observable-provider.js";
 import { detectAppMode, type AppMode } from "./fs/detect-storage-mode.js";
 import { readSharedKrsFromHash } from "./utils/inline-share.js";
 import { useTranslation } from "./i18n/index.js";
+import { Button } from "@/components/ui/button";
 
 export function App() {
   // A shared inline URL (`#s=…`, karasu-nest) is read once at mount. A valid
@@ -79,14 +80,9 @@ function RestoreFailedBanner() {
       className="flex items-center justify-between gap-2 bg-[color:var(--warning-bg,#5c4a00)] px-3 py-2 text-sm text-[color:var(--text-primary)]"
     >
       <span>{t("preview.share.restoreFailed")}</span>
-      <button
-        type="button"
-        className="shrink-0 opacity-70 hover:opacity-100"
-        onClick={() => setDismissed(true)}
-        aria-label={t("preview.share.dialog.close")}
-      >
-        ✕
-      </button>
+      <Button className="shrink-0" onClick={() => setDismissed(true)}>
+        ✕ {t("preview.share.dialog.close")}
+      </Button>
     </div>
   );
 }

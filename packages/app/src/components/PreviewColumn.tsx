@@ -59,7 +59,8 @@ export function PreviewColumn() {
     onTeamToggle,
     orgTreeExportSvg,
     onExportDrawio,
-    krsSource,
+    hasKrsSource,
+    getKrsSource,
   } = usePreview();
   // Normalized active-view slice — collapses the per-view ternary chains (#1542).
   const view = useActiveViewData();
@@ -72,11 +73,12 @@ export function PreviewColumn() {
   // gesture, so clipboard access is granted), and opens the dialog.
   const { copy: copyShareUrl } = useClipboardCopy();
   const [shareUrl, setShareUrl] = useState<string | null>(null);
-  const shareAvailable = !!krsSource && krsSource.trim() !== "";
+  const shareAvailable = !!hasKrsSource;
 
   function handleShare() {
-    if (!shareAvailable || !krsSource) return;
-    const url = buildShareUrl(krsSource, window.location);
+    const source = getKrsSource?.() ?? "";
+    if (source.trim() === "") return;
+    const url = buildShareUrl(source, window.location);
     copyShareUrl(url);
     setShareUrl(url);
   }
