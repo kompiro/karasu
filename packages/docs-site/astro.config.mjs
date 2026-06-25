@@ -39,6 +39,10 @@ export default defineConfig({
         ja: { label: "日本語", lang: "ja" },
       },
       social: [{ icon: "github", label: "GitHub", href: "https://github.com/kompiro/karasu" }],
+      components: {
+        // Append an Apache-2.0 license / copyright line below the default footer.
+        Footer: "./src/components/Footer.astro",
+      },
       expressiveCode: {
         shiki: { langs: [krs, krsStyle] },
       },

@@ -1,0 +1,32 @@
+---
+// Override of Starlight's default page footer to add a project license /
+// copyright line for OSS launch readiness. Renders the stock footer (edit
+// link, last-updated, pagination, "Built with Starlight") unchanged, then
+// appends a license notice that matches the repo LICENSE (Apache-2.0).
+import Default from "@astrojs/starlight/components/Footer.astro";
+---
+
+<Default />
+
+<div class="site-license sl-flex">
+  <p>
+    © 2026 <a href="https://github.com/kompiro">Hiroki Kondo</a> · Licensed under
+    <a href="https://github.com/kompiro/karasu/blob/main/LICENSE">Apache-2.0</a>
+  </p>
+</div>
+
+<style>
+  .site-license {
+    justify-content: center;
+    margin-block: 0.5rem 1rem;
+    font-size: var(--sl-text-xs);
+    color: var(--sl-color-gray-3);
+    text-align: center;
+  }
+  .site-license a {
+    color: var(--sl-color-gray-2);
+  }
+  .site-license a:hover {
+    color: var(--sl-color-white);
+  }
+</style>
