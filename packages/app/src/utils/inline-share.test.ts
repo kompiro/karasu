@@ -1,9 +1,10 @@
 import { describe, it, expect } from "vitest";
+import { deflateSync, strToU8 } from "fflate";
 import {
-  encodeKrsSource,
-  decodeKrsSource,
+  encodeShare,
+  decodeShare,
   buildShareUrl,
-  readSharedKrsFromHash,
+  readSharedProjectFromHash,
   SHARE_FRAGMENT_KEY,
 } from "./inline-share.js";
 
@@ -12,60 +13,78 @@ const SAMPLE = `system Shop {
   database Db { label "Postgres" }
   Api -> Db "reads"
 }`;
+const STYLE = `service { fill: #0a0; }`;
 
-describe("inline-share encode/decode", () => {
-  it("round-trips a .krs source", () => {
-    expect(decodeKrsSource(encodeKrsSource(SAMPLE))).toBe(SAMPLE);
+// Reproduces the first-release (PR1) payload: raw deflated .krs, base64url, no JSON.
+function legacyEncode(krs: string): string {
+  return btoa(String.fromCharCode(...deflateSync(strToU8(krs))))
+    .replace(/\+/g, "-")
+    .replace(/\//g, "_")
+    .replace(/=+$/, "");
+}
+
+describe("inline-share encode/decode (bundle)", () => {
+  it("round-trips a .krs-only payload", () => {
+    expect(decodeShare(encodeShare({ krs: SAMPLE }))).toEqual({ krs: SAMPLE });
+  });
+
+  it("round-trips a .krs + .krs.style bundle", () => {
+    expect(decodeShare(encodeShare({ krs: SAMPLE, style: STYLE }))).toEqual({
+      krs: SAMPLE,
+      style: STYLE,
+    });
   });
 
   it("round-trips multi-byte (Japanese) content", () => {
-    const jp = `system 店舗 {\n  service 注文 { label "注文サービス 🛒" }\n}`;
-    expect(decodeKrsSource(encodeKrsSource(jp))).toBe(jp);
+    const krs = `system 店舗 {\n  service 注文 { label "注文サービス 🛒" }\n}`;
+    expect(decodeShare(encodeShare({ krs }))).toEqual({ krs });
   });
 
   it("produces a URL-safe payload (no +, /, or =)", () => {
-    // Repeated content compresses well; use varied content to exercise base64.
-    const encoded = encodeKrsSource(SAMPLE.repeat(20) + "πλ∑≈ç√∫");
+    const encoded = encodeShare({ krs: SAMPLE.repeat(20) + "πλ∑≈ç√∫" });
     expect(encoded).not.toMatch(/[+/=]/);
   });
 
   it("returns null for corrupt payloads instead of throwing", () => {
-    expect(decodeKrsSource("not-a-valid-deflate-stream")).toBeNull();
-    expect(decodeKrsSource("")).toBeNull();
+    expect(decodeShare("not-a-valid-deflate-stream")).toBeNull();
+    expect(decodeShare("")).toBeNull();
+  });
+
+  it("decodes a first-release raw-.krs payload (backward compatible)", () => {
+    expect(decodeShare(legacyEncode(SAMPLE))).toEqual({ krs: SAMPLE });
   });
 });
 
 describe("buildShareUrl", () => {
-  it("embeds the source in the fragment under the s= key", () => {
-    const url = buildShareUrl(SAMPLE, {
-      origin: "https://karasu-nest.example",
-      pathname: "/",
-    });
+  it("embeds the payload in the fragment under the s= key", () => {
+    const url = buildShareUrl(
+      { krs: SAMPLE, style: STYLE },
+      { origin: "https://karasu-nest.example", pathname: "/" },
+    );
     expect(url.startsWith(`https://karasu-nest.example/#${SHARE_FRAGMENT_KEY}=`)).toBe(true);
-    // The source must live in the fragment, never the query (fragment is not
+    // The content must live in the fragment, never the query (fragment is not
     // sent to the server — statelessness/privacy).
     expect(url).not.toContain("?");
     const hash = url.slice(url.indexOf("#"));
-    const restored = readSharedKrsFromHash(hash);
-    expect(restored).toEqual({ source: SAMPLE });
+    expect(readSharedProjectFromHash(hash)).toEqual({ payload: { krs: SAMPLE, style: STYLE } });
   });
 });
 
-describe("readSharedKrsFromHash", () => {
+describe("readSharedProjectFromHash", () => {
   it("returns null when there is no share fragment", () => {
-    expect(readSharedKrsFromHash("")).toBeNull();
-    expect(readSharedKrsFromHash("#krs-system-root")).toBeNull();
-    expect(readSharedKrsFromHash("#krs-deploy")).toBeNull();
+    expect(readSharedProjectFromHash("")).toBeNull();
+    expect(readSharedProjectFromHash("#krs-system-root")).toBeNull();
+    expect(readSharedProjectFromHash("#krs-deploy")).toBeNull();
   });
 
   it("flags an error for an empty or corrupt share fragment", () => {
-    expect(readSharedKrsFromHash("#s=")).toEqual({ error: true });
-    expect(readSharedKrsFromHash("#s=@@@not-base64@@@")).toEqual({ error: true });
+    expect(readSharedProjectFromHash("#s=")).toEqual({ error: true });
+    expect(readSharedProjectFromHash("#s=@@@not-base64@@@")).toEqual({ error: true });
   });
 
   it("decodes a valid share fragment with or without leading #", () => {
-    const encoded = encodeKrsSource(SAMPLE);
-    expect(readSharedKrsFromHash(`#s=${encoded}`)).toEqual({ source: SAMPLE });
-    expect(readSharedKrsFromHash(`s=${encoded}`)).toEqual({ source: SAMPLE });
+    const encoded = encodeShare({ krs: SAMPLE });
+    expect(readSharedProjectFromHash(`#s=${encoded}`)).toEqual({ payload: { krs: SAMPLE } });
+    expect(readSharedProjectFromHash(`s=${encoded}`)).toEqual({ payload: { krs: SAMPLE } });
   });
 });

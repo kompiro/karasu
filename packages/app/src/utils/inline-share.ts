@@ -3,7 +3,8 @@ import { deflateSync, inflateSync, strToU8, strFromU8 } from "fflate";
 /**
  * Inline share encoding for karasu-nest (design: docs/design/karasu-nest-hosted-preview.md).
  *
- * A `.krs` source is deflate-compressed and base64url-encoded into the URL
+ * A share payload — a flattened `.krs` plus its optional merged `.krs.style` —
+ * is JSON-serialized, deflate-compressed, and base64url-encoded into the URL
  * *fragment* under the `s=` key (e.g. `https://host/#s=<encoded>`). The fragment
  * is never sent to the server, so sharing stays stateless and private.
  *
@@ -14,7 +15,13 @@ export const SHARE_FRAGMENT_KEY = "s";
 
 const SHARE_FRAGMENT_PREFIX = `${SHARE_FRAGMENT_KEY}=`;
 
-// Encode bytes in chunks so a large `.krs` does not blow the argument limit of
+/** A self-contained shared project: a single `.krs` plus its optional style. */
+export interface SharePayload {
+  krs: string;
+  style?: string;
+}
+
+// Encode bytes in chunks so a large payload does not blow the argument limit of
 // String.fromCharCode(...spread).
 const BTOA_CHUNK = 0x8000;
 
@@ -38,17 +45,11 @@ function base64UrlToBytes(encoded: string): Uint8Array {
   return bytes;
 }
 
-/** Compress a `.krs` source string into a URL-safe encoded payload. */
-export function encodeKrsSource(source: string): string {
-  return bytesToBase64Url(deflateSync(strToU8(source)));
+function compress(text: string): string {
+  return bytesToBase64Url(deflateSync(strToU8(text)));
 }
 
-/**
- * Decode a payload produced by {@link encodeKrsSource}. Returns `null` when the
- * payload is corrupt, truncated, or not a valid deflate stream — callers warn
- * the user and fall back rather than crash.
- */
-export function decodeKrsSource(encoded: string): string | null {
+function decompress(encoded: string): string | null {
   if (encoded === "") return null;
   try {
     return strFromU8(inflateSync(base64UrlToBytes(encoded)));
@@ -57,27 +58,56 @@ export function decodeKrsSource(encoded: string): string | null {
   }
 }
 
-/** Build a full shareable URL embedding `source` in the fragment. */
-export function buildShareUrl(
-  source: string,
-  locationLike: { origin: string; pathname: string },
-): string {
-  return `${locationLike.origin}${locationLike.pathname}#${SHARE_FRAGMENT_PREFIX}${encodeKrsSource(source)}`;
+/** Compress a share payload into a URL-safe encoded string. */
+export function encodeShare(payload: SharePayload): string {
+  return compress(JSON.stringify(payload));
 }
 
 /**
- * Read a shared `.krs` source from a location hash (e.g. `#s=<encoded>`).
+ * Decode an `encodeShare` payload. Returns `null` for corrupt/truncated input.
+ *
+ * Backward compatible with the first karasu-nest release, whose payload was the
+ * raw `.krs` text (not JSON): if the decompressed text is not a share-bundle
+ * object, it is treated as a style-less `.krs`.
+ */
+export function decodeShare(encoded: string): SharePayload | null {
+  const text = decompress(encoded);
+  if (text === null) return null;
+  try {
+    const obj: unknown = JSON.parse(text);
+    if (obj && typeof obj === "object" && typeof (obj as SharePayload).krs === "string") {
+      const { krs, style } = obj as SharePayload;
+      return typeof style === "string" ? { krs, style } : { krs };
+    }
+  } catch {
+    // Not JSON → first-release raw-.krs payload; fall through.
+  }
+  return { krs: text };
+}
+
+/** Build a full shareable URL embedding `payload` in the fragment. */
+export function buildShareUrl(
+  payload: SharePayload,
+  locationLike: { origin: string; pathname: string },
+): string {
+  return `${locationLike.origin}${locationLike.pathname}#${SHARE_FRAGMENT_PREFIX}${encodeShare(payload)}`;
+}
+
+/**
+ * Read a shared project from a location hash (e.g. `#s=<encoded>`).
  *
  * Returns:
- * - `{ source }` when a `#s=` fragment is present and decodes cleanly.
+ * - `{ payload }` when a `#s=` fragment is present and decodes cleanly.
  * - `{ error: true }` when a `#s=` fragment is present but cannot be restored.
  * - `null` when there is no share fragment at all (normal navigation).
  */
-export function readSharedKrsFromHash(hash: string): { source: string } | { error: true } | null {
+export function readSharedProjectFromHash(
+  hash: string,
+): { payload: SharePayload } | { error: true } | null {
   const raw = hash.startsWith("#") ? hash.slice(1) : hash;
   if (!raw.startsWith(SHARE_FRAGMENT_PREFIX)) return null;
-  const payload = raw.slice(SHARE_FRAGMENT_PREFIX.length);
-  if (payload === "") return { error: true };
-  const source = decodeKrsSource(payload);
-  return source === null ? { error: true } : { source };
+  const encoded = raw.slice(SHARE_FRAGMENT_PREFIX.length);
+  if (encoded === "") return { error: true };
+  const payload = decodeShare(encoded);
+  return payload === null ? { error: true } : { payload };
 }

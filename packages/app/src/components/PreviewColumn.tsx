@@ -60,7 +60,7 @@ export function PreviewColumn() {
     orgTreeExportSvg,
     onExportDrawio,
     hasKrsSource,
-    getKrsSource,
+    getShareBundle,
   } = usePreview();
   // Normalized active-view slice — collapses the per-view ternary chains (#1542).
   const view = useActiveViewData();
@@ -68,19 +68,24 @@ export function PreviewColumn() {
   const { t, locale } = useTranslation();
   const [exportError, setExportError] = useState<string | null>(null);
 
-  // Share (karasu-nest inline URL sharing). The Share button builds an inline
-  // URL from the current source, copies it eagerly (the click is a user
-  // gesture, so clipboard access is granted), and opens the dialog.
-  const { copy: copyShareUrl } = useClipboardCopy();
+  // Share (karasu-nest inline URL sharing). The Share button opens the dialog
+  // immediately (preserving the click gesture), flattens the project into a
+  // share payload — async because multi-file projects resolve from fs — then
+  // builds the URL and copies it eagerly. `copied` reflects the real clipboard
+  // result; the dialog's Copy button is the reliable cross-browser fallback.
+  const { copy: copyShareUrl, copied: shareCopied } = useClipboardCopy();
+  const [shareOpen, setShareOpen] = useState(false);
   const [shareUrl, setShareUrl] = useState<string | null>(null);
-  const shareAvailable = !!hasKrsSource;
+  const shareAvailable = !!hasKrsSource && !!getShareBundle;
 
-  function handleShare() {
-    const source = getKrsSource?.() ?? "";
-    if (source.trim() === "") return;
-    const url = buildShareUrl(source, window.location);
-    copyShareUrl(url);
+  async function handleShare() {
+    if (!getShareBundle) return;
+    setShareUrl(null); // generating
+    setShareOpen(true);
+    const payload = await getShareBundle();
+    const url = buildShareUrl(payload, window.location);
     setShareUrl(url);
+    copyShareUrl(url);
   }
 
   // Register "Open Reference" as a command so the reference is reachable from
@@ -377,10 +382,11 @@ export function PreviewColumn() {
       )}
       <WarningPanel warnings={view.warnings} />
       <ShareDialog
-        open={shareUrl !== null}
-        url={shareUrl ?? ""}
-        onClose={() => setShareUrl(null)}
-        copiedOnOpen
+        open={shareOpen}
+        url={shareUrl}
+        copied={shareCopied}
+        onCopy={() => shareUrl && copyShareUrl(shareUrl)}
+        onClose={() => setShareOpen(false)}
       />
     </div>
   );

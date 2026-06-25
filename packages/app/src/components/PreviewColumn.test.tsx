@@ -8,7 +8,7 @@ import { PreviewColumn } from "./PreviewColumn.js";
 import { PreviewProvider, type PreviewContextValue } from "../state/preview-context.js";
 import { LocaleProvider } from "../i18n/index.js";
 import { CommandProvider, useCommandRegistry } from "../keyboard/command-context.js";
-import { readSharedKrsFromHash } from "../utils/inline-share.js";
+import { readSharedProjectFromHash } from "../utils/inline-share.js";
 
 afterEach(cleanup);
 
@@ -715,30 +715,33 @@ describe("PreviewColumn — Share (karasu-nest inline URL)", () => {
   const SAMPLE = 'system Shop {\n  service Api { label "API" }\n}';
 
   it("disables Share when there is no source", () => {
-    const props = makeProps({ hasKrsSource: false, getKrsSource: () => "" });
+    const props = makeProps({ hasKrsSource: false });
     const { getByRole } = renderPreview(props);
     expect((getByRole("button", { name: /Share/ }) as HTMLButtonElement).disabled).toBe(true);
   });
 
-  it("copies an inline share URL and opens the dialog on click (round-trips)", async () => {
+  it("flattens the project, copies the URL, and opens the dialog (round-trips)", async () => {
     // userEvent.setup() installs its own navigator.clipboard stub; assert via
     // its readText() rather than a hand-rolled mock it would shadow.
     const user = userEvent.setup();
-    const props = makeProps({ hasKrsSource: true, getKrsSource: () => SAMPLE });
+    const props = makeProps({
+      hasKrsSource: true,
+      getShareBundle: async () => ({ krs: SAMPLE }),
+    });
     renderPreview(props);
 
     await user.click(screen.getByRole("button", { name: /Share/ }));
 
-    // Eager copy on click (the click is the user gesture).
-    const copied = await navigator.clipboard.readText();
+    // The URL is generated asynchronously (flatten); wait for the field.
+    const input = (await screen.findByLabelText("Shareable URL")) as HTMLInputElement;
+    const copied = input.value;
     expect(copied).toContain("/#s=");
 
-    // The copied URL round-trips back to the original source.
+    // The copied URL round-trips back to the original project.
     const hash = copied.slice(copied.indexOf("#"));
-    expect(readSharedKrsFromHash(hash)).toEqual({ source: SAMPLE });
+    expect(readSharedProjectFromHash(hash)).toEqual({ payload: { krs: SAMPLE } });
 
-    // The dialog shows the same URL in a read-only field.
-    expect(screen.getByRole("dialog")).toBeTruthy();
-    expect(screen.getByDisplayValue(copied)).toBeTruthy();
+    // Eager copy happened on the same gesture chain.
+    expect(await navigator.clipboard.readText()).toBe(copied);
   });
 });

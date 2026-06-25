@@ -7,7 +7,9 @@ import {
   type ReactNode,
   type RefObject,
 } from "react";
+import { synthesizeSharePayload } from "@karasu-tools/core";
 import { useEditorWidth } from "../hooks/useEditorWidth.js";
+import type { SharePayload } from "../utils/inline-share.js";
 import { SnapshotManager } from "../fs/snapshot-manager.js";
 import { EditArea } from "./EditArea.js";
 import { EditPane } from "./EditPane.js";
@@ -235,13 +237,25 @@ export function AppShell({
     [entryPath, fs],
   );
 
-  // Keep a ref to the latest source so the Share button can read it without
-  // threading the per-keystroke `fileContent` through the preview memo (that
-  // would re-render the preview on every keystroke). The getter is stable;
-  // `hasKrsSource` only flips on the empty↔non-empty boundary.
+  // Share (karasu-nest): flatten the whole project — resolving `import`s and
+  // merging styles from `fs` — into a single self-contained payload. This reads
+  // the same entry + fs the preview compiles from (auto-save keeps fs current),
+  // so the share reflects exactly what's rendered. The getter is stable and
+  // `hasKrsSource` only flips on the empty↔non-empty boundary, so neither
+  // re-renders the preview on every keystroke. Falls back to the live single
+  // file if synthesis fails (e.g. a transient parse error).
   const fileContentRef = useRef(fileContent);
   fileContentRef.current = fileContent;
-  const getKrsSource = useCallback(() => fileContentRef.current, []);
+  const getShareBundle = useCallback(async (): Promise<SharePayload> => {
+    if (entryPath) {
+      try {
+        return await synthesizeSharePayload(entryPath, fs);
+      } catch {
+        /* fall back to the live single-file content */
+      }
+    }
+    return { krs: fileContentRef.current };
+  }, [entryPath, fs]);
   const hasKrsSource = fileContent.trim() !== "";
 
   const previewContextValue = usePreviewContextValue({
@@ -295,7 +309,7 @@ export function AppShell({
     onExportSvg: downloadSvg,
     onExportDrawio,
     hasKrsSource,
-    getKrsSource,
+    getShareBundle,
   });
 
   return (

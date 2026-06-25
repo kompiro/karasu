@@ -183,6 +183,7 @@ export type Translations = {
   "preview.share.dialog.title": string;
   "preview.share.dialog.description": string;
   "preview.share.dialog.urlAriaLabel": string;
+  "preview.share.dialog.generating": string;
   "preview.share.dialog.copy": string;
   "preview.share.dialog.copied": string;
   "preview.share.dialog.close": string;

@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, it, expect, afterEach, vi } from "vitest";
-import { render, screen, cleanup, act } from "@testing-library/react";
+import { render, screen, cleanup } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { ShareDialog } from "./ShareDialog.js";
 import { LocaleProvider } from "../i18n/index.js";
@@ -12,7 +12,7 @@ const URL = "https://karasu-nest.example/#s=abc123";
 function renderDialog(props: Partial<Parameters<typeof ShareDialog>[0]> = {}) {
   return render(
     <LocaleProvider initialLocale="en">
-      <ShareDialog open url={URL} onClose={() => {}} {...props} />
+      <ShareDialog open url={URL} copied={false} onCopy={() => {}} onClose={() => {}} {...props} />
     </LocaleProvider>,
   );
 }
@@ -24,29 +24,23 @@ describe("ShareDialog", () => {
     expect(input.readOnly).toBe(true);
   });
 
-  it("re-copies the URL and shows confirmation when Copy is clicked", async () => {
-    // userEvent.setup() owns navigator.clipboard; read back via its stub.
-    const user = userEvent.setup();
-    renderDialog({ copiedOnOpen: false });
-
-    await user.click(screen.getByRole("button", { name: /Copy/ }));
-
-    expect(await navigator.clipboard.readText()).toBe(URL);
-    expect(await screen.findByText(/Copied to clipboard/)).toBeTruthy();
+  it("shows a generating state while the URL is being flattened", () => {
+    renderDialog({ url: null });
+    expect(screen.queryByDisplayValue(URL)).toBeNull();
+    expect(screen.getByText(/Generating link/)).toBeTruthy();
   });
 
-  it("shows the copied confirmation on open then reverts to the Copy label", () => {
-    vi.useFakeTimers();
-    try {
-      renderDialog({ copiedOnOpen: true });
-      // Eager copy on open → confirmation shown initially.
-      expect(screen.getByRole("button", { name: /Copied to clipboard/ })).toBeTruthy();
-      // …but transiently: it must revert so the default Copy affordance is reachable.
-      act(() => vi.advanceTimersByTime(2000));
-      expect(screen.getByRole("button", { name: /^⧉ Copy$/ })).toBeTruthy();
-    } finally {
-      vi.useRealTimers();
-    }
+  it("invokes onCopy when the Copy button is clicked", async () => {
+    const user = userEvent.setup();
+    const onCopy = vi.fn<() => void>();
+    renderDialog({ onCopy });
+    await user.click(screen.getByRole("button", { name: /Copy/ }));
+    expect(onCopy).toHaveBeenCalledTimes(1);
+  });
+
+  it("reflects the real copied state from the parent", () => {
+    renderDialog({ copied: true });
+    expect(screen.getByRole("button", { name: /Copied to clipboard/ })).toBeTruthy();
   });
 
   it("renders nothing when closed", () => {

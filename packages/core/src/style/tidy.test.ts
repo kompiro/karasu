@@ -234,3 +234,35 @@ describe("tidyStyleSheet — changed flag", () => {
     expect(result.changed).toBe(true);
   });
 });
+
+describe("tidyStyleSheet — edge endpoint selectors round-trip (#1755)", () => {
+  // Regression: formatSelector dropped edgeFrom/edgeTo, collapsing
+  // `edge[from=X]` to a universal `edge` selector. This both lost the
+  // source/target color and (worse) merged distinct endpoint rules. Surfaced
+  // by karasu-nest share, which round-trips the .krs.style.
+  it("preserves edge[from=<id>]", () => {
+    expect(tidyStyleSheet(`edge[from=ECommerce] { color: #2563eb; }\n`).output).toBe(
+      `edge[from=ECommerce] {\n  color: #2563eb;\n}\n`,
+    );
+  });
+
+  it("preserves edge[to=<id>]", () => {
+    expect(tidyStyleSheet(`edge[to=OrderDB] { color: #ff0000; }\n`).output).toBe(
+      `edge[to=OrderDB] {\n  color: #ff0000;\n}\n`,
+    );
+  });
+
+  it("preserves an endpoint + tag combo (edge[from=X][async])", () => {
+    expect(tidyStyleSheet(`edge[from=ApiGateway][async] { color: #00aa00; }\n`).output).toBe(
+      `edge[from=ApiGateway][async] {\n  color: #00aa00;\n}\n`,
+    );
+  });
+
+  it("does not merge edge[from=A] and edge[from=B] into one rule", () => {
+    const out = tidyStyleSheet(
+      `edge[from=A] { color: red; }\nedge[from=B] { color: blue; }\n`,
+    ).output;
+    expect(out).toContain("edge[from=A]");
+    expect(out).toContain("edge[from=B]");
+  });
+});
