@@ -1,4 +1,7 @@
 import { deflateSync, inflateSync, strToU8, strFromU8 } from "fflate";
+import type { SharePayload } from "@karasu-tools/core";
+
+export type { SharePayload };
 
 /**
  * Inline share encoding for karasu-nest (design: docs/design/karasu-nest-hosted-preview.md).
@@ -14,12 +17,6 @@ import { deflateSync, inflateSync, strToU8, strFromU8 } from "fflate";
 export const SHARE_FRAGMENT_KEY = "s";
 
 const SHARE_FRAGMENT_PREFIX = `${SHARE_FRAGMENT_KEY}=`;
-
-/** A self-contained shared project: a single `.krs` plus its optional style. */
-export interface SharePayload {
-  krs: string;
-  style?: string;
-}
 
 // Encode bytes in chunks so a large payload does not blow the argument limit of
 // String.fromCharCode(...spread).

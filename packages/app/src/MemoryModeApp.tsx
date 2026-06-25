@@ -1,14 +1,16 @@
 import { useEffect } from "react";
-import { getReference } from "@karasu-tools/core";
+import { getReference, SHARE_STYLE_IMPORT_PATH } from "@karasu-tools/core";
 import { AppShell } from "./components/AppShell.js";
 import { useAppContext } from "./state/app-context.js";
 import { useFileSelection } from "./hooks/useFileSelection.js";
 import { useTranslation } from "./i18n/index.js";
 
-const MEMORY_FILE_PATH = "/memory/index.krs";
+const MEMORY_DIR = "/memory";
+const MEMORY_FILE_PATH = `${MEMORY_DIR}/index.krs`;
 // A bundled share style is seeded here; the flattened `.krs` carries a single
-// `@import "index.krs.style"` (SHARE_STYLE_IMPORT_PATH) that resolves to it.
-const MEMORY_STYLE_PATH = "/memory/index.krs.style";
+// `@import "<SHARE_STYLE_IMPORT_PATH>"` that resolves to it. Derive the path
+// from the shared constant so the two sides can't drift.
+const MEMORY_STYLE_PATH = `${MEMORY_DIR}/${SHARE_STYLE_IMPORT_PATH}`;
 
 interface MemoryModeAppProps {
   /**
