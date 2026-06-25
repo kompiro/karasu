@@ -1,5 +1,10 @@
 import { describe, it, expect, beforeEach } from "vitest";
-import { buildDrillDownSvg, buildDrillDownSvgOrg, buildAllViewsSvg } from "./drill-down-svg.js";
+import {
+  buildDrillDownSvg,
+  buildDrillDownSvgOrg,
+  buildAllViewsSvg,
+  bundleSingleLevelViews,
+} from "./drill-down-svg.js";
 import { buildAllLayersSvg, buildAllLayersSvgOrg } from "./all-layers-svg.js";
 import { registerBuiltinShapes } from "./shapes.js";
 import { clearRegistry } from "../shapes/shape-registry.js";
@@ -578,6 +583,23 @@ describe("buildAllViewsSvg", () => {
     expect(matches.length).toBe(3);
   });
 
+  // Issue #1790 — the multi-view root <svg> must carry a viewBox matching its
+  // width/height. Without it the preview's `max-width/height: 100%` shrinks the
+  // viewport but cannot scale the content (no preserveAspectRatio mapping), so a
+  // diagram larger than the pane is cropped to its top-left corner instead of
+  // scaling to fit.
+  it("root svg has a viewBox matching width/height (#1790)", () => {
+    const krsFile = Parser.parse(ALL_THREE_VIEWS).value;
+    const { svg } = buildAllViewsSvg(krsFile);
+
+    const root = svg.match(/^<svg[^>]*>/)?.[0] ?? "";
+    const width = root.match(/\bwidth="([^"]+)"/)?.[1];
+    const height = root.match(/\bheight="([^"]+)"/)?.[1];
+    expect(width).toBeDefined();
+    expect(height).toBeDefined();
+    expect(root).toContain(`viewBox="0 0 ${width} ${height}"`);
+  });
+
   it("deploy is a single non-drillable level", () => {
     const krsFile = Parser.parse(SYSTEM_WITH_DEPLOY).value;
     const { svg } = buildAllViewsSvg(krsFile);
@@ -794,5 +816,32 @@ describe("logical render path parity for legends (TPL-20260510-11)", () => {
       ["all-views", allViews],
     ].flatMap(([path, svg]) => entries.filter((e) => !svg.includes(e)).map((e) => `${path}:${e}`));
     expect(lost).toEqual([]);
+  });
+});
+
+describe("bundleSingleLevelViews", () => {
+  const pane = (id: string, w: number, h: number) =>
+    `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${w} ${h}" width="${w}" height="${h}"><rect id="${id}" width="${w}" height="${h}"/></svg>`;
+
+  // Issue #1790 — same invariant as buildAllViewsSvg: the bundled root <svg>
+  // must carry a viewBox so it scales to fit the preview instead of being
+  // cropped to the top-left.
+  it("root svg has a viewBox matching width/height (#1790)", () => {
+    const svg = bundleSingleLevelViews({
+      system: pane("sys", 1600, 1200),
+      deploy: pane("dep", 800, 600),
+      org: pane("org", 400, 300),
+    });
+    expect(svg).not.toBeNull();
+    const root = svg!.match(/^<svg[^>]*>/)?.[0] ?? "";
+    const width = root.match(/\bwidth="([^"]+)"/)?.[1];
+    const height = root.match(/\bheight="([^"]+)"/)?.[1];
+    expect(width).toBeDefined();
+    expect(height).toBeDefined();
+    expect(root).toContain(`viewBox="0 0 ${width} ${height}"`);
+  });
+
+  it("returns null when no panes are provided", () => {
+    expect(bundleSingleLevelViews({})).toBeNull();
   });
 });

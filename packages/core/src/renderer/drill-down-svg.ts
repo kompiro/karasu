@@ -434,7 +434,7 @@ export function buildAllViewsSvg(
   const css = buildAllViewsCss(resolvePalette(theme));
 
   return {
-    svg: `<svg xmlns="http://www.w3.org/2000/svg" width="${totalWidth}" height="${totalHeight}"><style>${css}</style>${tabBar}${systemPane}${deployPane}${orgPane}</svg>`,
+    svg: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${totalWidth} ${totalHeight}" width="${totalWidth}" height="${totalHeight}"><style>${css}</style>${tabBar}${systemPane}${deployPane}${orgPane}</svg>`,
     diagnostics,
     warnings,
   };
@@ -487,5 +487,5 @@ export function bundleSingleLevelViews(
   const css = buildAllViewsCss(resolvePalette(theme));
   const panesXml = built.map((b) => b.element).join("");
 
-  return `<svg xmlns="http://www.w3.org/2000/svg" width="${totalWidth}" height="${totalHeight}"><style>${css}</style>${tabBar}${panesXml}</svg>`;
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${totalWidth} ${totalHeight}" width="${totalWidth}" height="${totalHeight}"><style>${css}</style>${tabBar}${panesXml}</svg>`;
 }

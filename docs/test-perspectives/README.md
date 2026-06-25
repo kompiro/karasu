@@ -448,3 +448,4 @@ DesignDoc が proactive TPL を引用したら、実装 PR で次をやる:
 | [TPL-20260624-02](TPL-20260624-02-relayout-into-group-preserves-placement-and-edges.md) | 要素を主構造から抜き出して別グループに再配置するとき、全要素ちょうど一度配置 + 参照エッジの端点保持を検証する | renderer | #1738 |
 | [TPL-20260624-03](TPL-20260624-03-edge-endpoint-selector-id-form.md) | エッジの端点で引くセレクタ / lookup は、ビューが格納する端点 id 形（bare / dot-notation）で比較する | styling | #1755 |
 | [TPL-20260624-04](TPL-20260624-04-external-side-placement-invariant.md) | system-view で external をサイドに置く配置は、他 kind の配置帯を侵さず決定的で、column override を尊重する | renderer | ADR-20260623-06, #1728 |
+| [TPL-20260625-01](TPL-20260625-01-root-svg-viewbox-responsive.md) | プレビューに渡す root SVG は viewBox を持ち、CSS 縮小時に左上クロップせず内容がスケールする — 全合成ビルダーで共有 | renderer | #1790 |
