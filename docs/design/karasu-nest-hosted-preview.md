@@ -4,6 +4,7 @@
 - **ステータス**: 検討中
 - **関連**:
   - 引き金 Issue: [#1783](https://github.com/kompiro/karasu/issues/1783)
+  - PR: [#1785](https://github.com/kompiro/karasu/pull/1785)
   - 関連 ADR: [ADR-20260616-03](../adr/20260616-03-docs-site-ssg.md)（docs-site SSG — ビルド時 headless レンダリングの先例）
   - 関連 Design Doc: [docs-site-examples-gallery](docs-site-examples-gallery.md)（同じ headless SVG レンダリング系統を使う）
   - 関連 TPL: [TPL-20260510-06](../test-perspectives/TPL-20260510-06-display-mode-cross-surface.md)（描画モード切替は全描画面の点検が必要 — karasu-nest は新しい描画 surface になる）
