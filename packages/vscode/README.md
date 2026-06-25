@@ -25,14 +25,14 @@ live SVG preview you can drill into.
 
 Edit `.krs` on the left, explore the live preview on the right:
 
-![Editing a .krs model beside the live System preview](images/screenshots/01-system-view.png)
+![Editing a .krs model beside the live System preview](https://raw.githubusercontent.com/kompiro/karasu/main/packages/vscode/images/screenshots/01-system-view.png)
 
 karasu separates a system into three faces — switch between them from the
 preview toolbar:
 
-![Deploy view — physical units that realize the logical services](images/screenshots/02-deploy-view.png)
+![Deploy view — physical units that realize the logical services](https://raw.githubusercontent.com/kompiro/karasu/main/packages/vscode/images/screenshots/02-deploy-view.png)
 
-![Org view — the teams that own each service](images/screenshots/03-org-view.png)
+![Org view — the teams that own each service](https://raw.githubusercontent.com/kompiro/karasu/main/packages/vscode/images/screenshots/03-org-view.png)
 
 ## Getting started
 
