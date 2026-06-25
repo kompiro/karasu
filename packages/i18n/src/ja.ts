@@ -176,6 +176,19 @@ export const ja: Partial<Translations> = {
     "draw.io (mxGraph XML) にエクスポート — diagrams.net でレイアウトを仕上げるための逃げ道です",
   "preview.export.drawio.failed": ({ detail }) => `⚠ draw.io エクスポートに失敗しました: ${detail}`,
 
+  // 共有（inline URL 共有、karasu-nest）
+  "preview.share.label": "🔗 Share",
+  "preview.share.ariaLabel": "この図を共有",
+  "preview.share.dialog.title": "この図を共有",
+  "preview.share.dialog.description":
+    "このリンクを知っている人は誰でもこの図を閲覧できます。内容は URL 自体に埋め込まれており、サーバーには何もアップロードされません。",
+  "preview.share.dialog.urlAriaLabel": "共有 URL",
+  "preview.share.dialog.copy": "⧉ コピー",
+  "preview.share.dialog.copied": "✓ クリップボードにコピーしました",
+  "preview.share.dialog.close": "閉じる",
+  "preview.share.restoreFailed":
+    "この共有リンクを復元できませんでした。代わりに新しいプロジェクトを開きます。",
+
   // ドキュメントリンクのドロップダウン（アプリ内 Reference + 外部ドキュメントサイト）
   "preview.docs.label": "📖 Docs",
   "preview.docs.ariaLabel": "ドキュメントリンク",

@@ -285,6 +285,7 @@ export function AppShell({
     onPickEdgeDirection,
     onExportSvg: downloadSvg,
     onExportDrawio,
+    krsSource: fileContent,
   });
 
   return (
