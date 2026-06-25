@@ -42,45 +42,45 @@ paths:
 
 | examples のパス | examples.ts 内のエントリ |
 |---|---|
-| `getting-started/index.krs` | `GETTING_STARTED_PROJECT.files[0].content` |
-| `getting-started/default.krs.style` | `GETTING_STARTED_PROJECT.files[1].content` |
-| `getting-started-en/index.krs` | `GETTING_STARTED_PROJECT_EN.files[0].content` |
-| `getting-started-en/default.krs.style` | `GETTING_STARTED_PROJECT_EN.files[1].content` |
-| `client-mcp/index.krs` | `CLIENT_MCP_PROJECT.files[0].content` |
+| `ja/getting-started/index.krs` | `GETTING_STARTED_PROJECT.files[0].content` |
+| `ja/getting-started/default.krs.style` | `GETTING_STARTED_PROJECT.files[1].content` |
+| `en/getting-started/index.krs` | `GETTING_STARTED_PROJECT_EN.files[0].content` |
+| `en/getting-started/default.krs.style` | `GETTING_STARTED_PROJECT_EN.files[1].content` |
+| `en/client-mcp/index.krs` | `CLIENT_MCP_PROJECT.files[0].content` |
 | `ja/deploy-only/index.krs` | `DEPLOY_ONLY_PROJECT.files[0].content` |
 | `en/deploy-only/index.krs` | `DEPLOY_ONLY_PROJECT_EN.files[0].content` |
 | `ja/org-only/index.krs` | `ORG_ONLY_PROJECT.files[0].content` |
 | `en/org-only/index.krs` | `ORG_ONLY_PROJECT_EN.files[0].content` |
-| `ec-platform/01-system.krs` | `EC_PLATFORM_PROJECTS[0].files[0].content` (name: `01-system`) |
-| `ec-platform/02-users.krs` | `EC_PLATFORM_PROJECTS[1].files[0].content` (name: `02-users`) |
-| `ec-platform/02.5-clients.krs` | `EC_PLATFORM_PROJECTS[2].files[0].content` (name: `02.5-clients`) |
-| `ec-platform/03-domains.krs` | `EC_PLATFORM_PROJECTS[3].files[0].content` (name: `03-domains`) |
-| `ec-platform/04-annotations.krs` | `EC_PLATFORM_PROJECTS[4].files[0].content` (name: `04-annotations`) |
-| `ec-platform/05-multifile/system.krs` | `EC_PLATFORM_PROJECTS[5].files[0].content` (path: `index.krs`) |
-| `ec-platform/05-multifile/ecommerce.krs` | `EC_PLATFORM_PROJECTS[5].files[1].content` |
-| `ec-platform/05-multifile/payment.krs` | `EC_PLATFORM_PROJECTS[5].files[2].content` |
-| `ec-platform/06-deploy/system.krs` | `EC_PLATFORM_PROJECTS[6].files[0].content` (path: `index.krs`) |
-| `ec-platform/06-deploy/ecommerce.krs` | `EC_PLATFORM_PROJECTS[6].files[1].content` |
-| `ec-platform/06-deploy/payment.krs` | `EC_PLATFORM_PROJECTS[6].files[2].content` |
-| `ec-platform/06-deploy/deploy.krs` | `EC_PLATFORM_PROJECTS[6].files[3].content` |
-| `ec-platform/07-cross-system/main.krs` | `EC_PLATFORM_PROJECTS[7].files[0].content` (path: `index.krs`) |
-| `ec-platform/07-cross-system/ec-platform.krs` | `EC_PLATFORM_PROJECTS[7].files[1].content` |
-| `ec-platform/07-cross-system/payment-gateway.krs` | `EC_PLATFORM_PROJECTS[7].files[2].content` |
-| `feature-samples/index.krs` | `FEATURE_SAMPLES_PROJECT.files[0].content` (path: `index.krs`; catalog) |
-| `feature-samples/annotations.krs` | `FEATURE_SAMPLES_PROJECT.files[1].content` |
-| `feature-samples/bff-delivers.krs` | `FEATURE_SAMPLES_PROJECT.files[2].content` |
-| `feature-samples/crud-matrix.krs` | `FEATURE_SAMPLES_PROJECT.files[3].content` |
-| `feature-samples/deploy-all.krs` | `FEATURE_SAMPLES_PROJECT.files[4].content` |
-| `feature-samples/domain-drift.krs` | `FEATURE_SAMPLES_PROJECT.files[5].content` |
-| `feature-samples/domain-drill.krs` | `FEATURE_SAMPLES_PROJECT.files[6].content` |
-| `feature-samples/edges.krs` | `FEATURE_SAMPLES_PROJECT.files[7].content` |
-| `feature-samples/external-nodes.krs` | `FEATURE_SAMPLES_PROJECT.files[8].content` |
-| `feature-samples/legend.krs` | `FEATURE_SAMPLES_PROJECT.files[9].content` |
-| `feature-samples/minimal.krs` | `FEATURE_SAMPLES_PROJECT.files[10].content` |
-| `feature-samples/parallel-edges.krs` | `FEATURE_SAMPLES_PROJECT.files[11].content` |
-| `feature-samples/resource-operations.krs` | `FEATURE_SAMPLES_PROJECT.files[12].content` |
-| `feature-samples/usecase-authorization.krs` | `FEATURE_SAMPLES_PROJECT.files[13].content` |
-| `feature-samples/users.krs` | `FEATURE_SAMPLES_PROJECT.files[14].content` |
+| `ja/ec-platform/01-system.krs` | `EC_PLATFORM_PROJECTS[0].files[0].content` (name: `01-system`) |
+| `ja/ec-platform/02-users.krs` | `EC_PLATFORM_PROJECTS[1].files[0].content` (name: `02-users`) |
+| `ja/ec-platform/02.5-clients.krs` | `EC_PLATFORM_PROJECTS[2].files[0].content` (name: `02.5-clients`) |
+| `ja/ec-platform/03-domains.krs` | `EC_PLATFORM_PROJECTS[3].files[0].content` (name: `03-domains`) |
+| `ja/ec-platform/04-annotations.krs` | `EC_PLATFORM_PROJECTS[4].files[0].content` (name: `04-annotations`) |
+| `ja/ec-platform/05-multifile/system.krs` | `EC_PLATFORM_PROJECTS[5].files[0].content` (path: `index.krs`) |
+| `ja/ec-platform/05-multifile/ecommerce.krs` | `EC_PLATFORM_PROJECTS[5].files[1].content` |
+| `ja/ec-platform/05-multifile/payment.krs` | `EC_PLATFORM_PROJECTS[5].files[2].content` |
+| `ja/ec-platform/06-deploy/system.krs` | `EC_PLATFORM_PROJECTS[6].files[0].content` (path: `index.krs`) |
+| `ja/ec-platform/06-deploy/ecommerce.krs` | `EC_PLATFORM_PROJECTS[6].files[1].content` |
+| `ja/ec-platform/06-deploy/payment.krs` | `EC_PLATFORM_PROJECTS[6].files[2].content` |
+| `ja/ec-platform/06-deploy/deploy.krs` | `EC_PLATFORM_PROJECTS[6].files[3].content` |
+| `ja/ec-platform/07-cross-system/main.krs` | `EC_PLATFORM_PROJECTS[7].files[0].content` (path: `index.krs`) |
+| `ja/ec-platform/07-cross-system/ec-platform.krs` | `EC_PLATFORM_PROJECTS[7].files[1].content` |
+| `ja/ec-platform/07-cross-system/payment-gateway.krs` | `EC_PLATFORM_PROJECTS[7].files[2].content` |
+| `en/feature-samples/index.krs` | `FEATURE_SAMPLES_PROJECT.files[0].content` (path: `index.krs`; catalog) |
+| `en/feature-samples/annotations.krs` | `FEATURE_SAMPLES_PROJECT.files[1].content` |
+| `en/feature-samples/bff-delivers.krs` | `FEATURE_SAMPLES_PROJECT.files[2].content` |
+| `en/feature-samples/crud-matrix.krs` | `FEATURE_SAMPLES_PROJECT.files[3].content` |
+| `en/feature-samples/deploy-all.krs` | `FEATURE_SAMPLES_PROJECT.files[4].content` |
+| `en/feature-samples/domain-drift.krs` | `FEATURE_SAMPLES_PROJECT.files[5].content` |
+| `en/feature-samples/domain-drill.krs` | `FEATURE_SAMPLES_PROJECT.files[6].content` |
+| `en/feature-samples/edges.krs` | `FEATURE_SAMPLES_PROJECT.files[7].content` |
+| `en/feature-samples/external-nodes.krs` | `FEATURE_SAMPLES_PROJECT.files[8].content` |
+| `en/feature-samples/legend.krs` | `FEATURE_SAMPLES_PROJECT.files[9].content` |
+| `en/feature-samples/minimal.krs` | `FEATURE_SAMPLES_PROJECT.files[10].content` |
+| `en/feature-samples/parallel-edges.krs` | `FEATURE_SAMPLES_PROJECT.files[11].content` |
+| `en/feature-samples/resource-operations.krs` | `FEATURE_SAMPLES_PROJECT.files[12].content` |
+| `en/feature-samples/usecase-authorization.krs` | `FEATURE_SAMPLES_PROJECT.files[13].content` |
+| `en/feature-samples/users.krs` | `FEATURE_SAMPLES_PROJECT.files[14].content` |
 | `ja/multi-file-system/index.krs` | `MULTI_FILE_SYSTEM_PROJECT.files[0].content` |
 | `ja/multi-file-system/reader.krs` | `MULTI_FILE_SYSTEM_PROJECT.files[1].content` |
 | `ja/multi-file-system/editor.krs` | `MULTI_FILE_SYSTEM_PROJECT.files[2].content` |

@@ -510,8 +510,8 @@ edge[from=ECommerce] {
 };
 
 // Per-view reference samples (#1548): the reference window's Samples tab shows
-// a view-appropriate starter. Bundled (byte-equal to examples/deploy-only/ and
-// examples/org-only/, governed by .claude/rules/examples-sync.md) so they can't
+// a view-appropriate starter. Bundled (byte-equal to examples/ja/deploy-only/ and
+// examples/ja/org-only/, governed by .claude/rules/examples-sync.md) so they can't
 // drift — see docs/adr/20260512-03-reference-data-single-source.md.
 export const DEPLOY_ONLY_PROJECT: ExampleProject = {
   name: "deploy-only",
@@ -2007,7 +2007,7 @@ system ParallelEdges {
 // Hierarchy: read (1.5) < write (2) < cyclic (2.5) keeps cyclic the
 // most attention-grabbing axis.
 //
-// This file is the AT-friendly minimal sample. See \`examples/ec-platform/\`
+// This file is the AT-friendly minimal sample. See \`examples/ja/ec-platform/\`
 // for the same property used in a realistic scenario.
 
 system Demo {
