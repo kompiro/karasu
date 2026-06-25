@@ -25,6 +25,9 @@ hero:
     - text: DeepWiki
       link: https://deepwiki.com/kompiro/karasu
       icon: open-book
+    - text: 開発ふりかえり
+      link: /karasu/retrospective/?lang=ja
+      icon: open-book
 ---
 
 ## karasu とは

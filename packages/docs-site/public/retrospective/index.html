@@ -1,0 +1,1190 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>karasu 1.0 — Development Retrospective</title>
+    <meta
+      name="description"
+      content="A retrospective of karasu's road to its 1.0 language spec — monthly and weekly summaries tracking commits, ADRs, and TPLs (snapshot as of 2026-06-25)."
+    />
+    <style>
+      :root {
+        --bg: #0f1115;
+        --bg-card: #181b22;
+        --bg-card2: #1f232c;
+        --ink: #e6e9ef;
+        --ink-dim: #98a2b3;
+        --line: #2a2f3a;
+        --crow: #c9a227;
+        --feat: #4f9cf9;
+        --docs: #9b8cff;
+        --fix: #f97362;
+        --chore: #6b7280;
+        --refactor: #34d399;
+        --test: #f0b429;
+        --ci: #14b8a6;
+        --adr: #c9a227;
+        --tpl: #ec5fa0;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      html {
+        scroll-behavior: smooth;
+      }
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--ink);
+        font-family:
+          -apple-system, BlinkMacSystemFont, "Segoe UI", "Hiragino Sans", "Noto Sans JP", sans-serif;
+        line-height: 1.7;
+        font-size: 15px;
+      }
+      a {
+        color: var(--feat);
+        text-decoration: none;
+      }
+      .wrap {
+        max-width: 1080px;
+        margin: 0 auto;
+        padding: 0 24px 96px;
+      }
+
+      /* lang toggle + back link */
+      .topbar {
+        position: sticky;
+        top: 0;
+        z-index: 50;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 10px 18px;
+        background: rgba(15, 17, 21, 0.86);
+        backdrop-filter: blur(8px);
+        border-bottom: 1px solid var(--line);
+      }
+      .topbar .back {
+        color: var(--ink-dim);
+        font-size: 13px;
+      }
+      .topbar .back:hover {
+        color: var(--ink);
+      }
+      .langtoggle {
+        display: inline-flex;
+        border: 1px solid var(--line);
+        border-radius: 20px;
+        overflow: hidden;
+      }
+      .langtoggle button {
+        background: transparent;
+        color: var(--ink-dim);
+        border: 0;
+        padding: 5px 14px;
+        font-size: 12.5px;
+        cursor: pointer;
+        font-weight: 600;
+      }
+      .langtoggle button.active {
+        background: var(--crow);
+        color: #1a1a1a;
+      }
+
+      header.hero {
+        text-align: center;
+        padding: 64px 24px 52px;
+        background: radial-gradient(
+          900px 400px at 50% -10%,
+          rgba(201, 162, 39, 0.16),
+          transparent 70%
+        );
+        border-bottom: 1px solid var(--line);
+      }
+      .crow-mark {
+        font-size: 56px;
+        line-height: 1;
+        filter: drop-shadow(0 4px 12px rgba(201, 162, 39, 0.4));
+      }
+      header.hero h1 {
+        font-size: 40px;
+        margin: 14px 0 6px;
+        letter-spacing: -0.02em;
+      }
+      header.hero .jp {
+        color: var(--crow);
+        font-weight: 700;
+      }
+      header.hero .sub {
+        color: var(--ink-dim);
+        font-size: 17px;
+        margin: 0;
+      }
+      header.hero .period {
+        margin-top: 18px;
+        font-variant-numeric: tabular-nums;
+        color: var(--ink-dim);
+        font-size: 14px;
+      }
+      header.hero .period b {
+        color: var(--ink);
+      }
+      .snapshot {
+        display: inline-block;
+        margin-top: 14px;
+        font-size: 12px;
+        color: var(--ink-dim);
+        border: 1px solid var(--line);
+        border-radius: 20px;
+        padding: 3px 12px;
+      }
+
+      .stats {
+        display: grid;
+        grid-template-columns: repeat(5, 1fr);
+        gap: 14px;
+        margin: 40px 0 8px;
+      }
+      .stat {
+        background: var(--bg-card);
+        border: 1px solid var(--line);
+        border-radius: 14px;
+        padding: 18px 14px;
+        text-align: center;
+      }
+      .stat .num {
+        font-size: 30px;
+        font-weight: 800;
+        letter-spacing: -0.02em;
+      }
+      .stat .lbl {
+        color: var(--ink-dim);
+        font-size: 12.5px;
+        margin-top: 4px;
+      }
+      .stat.c-commit .num {
+        color: var(--feat);
+      }
+      .stat.c-adr .num {
+        color: var(--adr);
+      }
+      .stat.c-tpl .num {
+        color: var(--tpl);
+      }
+      .stat.c-spec .num {
+        color: var(--refactor);
+      }
+      .stat.c-month .num {
+        color: var(--docs);
+      }
+
+      h2.section {
+        font-size: 24px;
+        margin: 64px 0 8px;
+        padding-bottom: 10px;
+        border-bottom: 1px solid var(--line);
+      }
+      .section-note {
+        color: var(--ink-dim);
+        margin: 0 0 24px;
+        font-size: 14px;
+      }
+
+      .card {
+        background: var(--bg-card);
+        border: 1px solid var(--line);
+        border-radius: 16px;
+        padding: 24px;
+        margin: 18px 0;
+      }
+      .card h3 {
+        margin: 0 0 4px;
+        font-size: 16px;
+      }
+      .card .hint {
+        color: var(--ink-dim);
+        font-size: 13px;
+        margin: 0 0 18px;
+      }
+      svg {
+        display: block;
+        width: 100%;
+        height: auto;
+        overflow: visible;
+      }
+      .legend {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 14px;
+        margin-top: 16px;
+        font-size: 12.5px;
+        color: var(--ink-dim);
+      }
+      .legend span {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+      }
+      .legend i {
+        width: 11px;
+        height: 11px;
+        border-radius: 3px;
+        display: inline-block;
+      }
+
+      .month {
+        background: var(--bg-card);
+        border: 1px solid var(--line);
+        border-radius: 18px;
+        padding: 28px;
+        margin: 22px 0;
+        position: relative;
+        overflow: hidden;
+      }
+      .month::before {
+        content: "";
+        position: absolute;
+        left: 0;
+        top: 0;
+        bottom: 0;
+        width: 5px;
+        background: var(--accent, var(--crow));
+      }
+      .month .mh {
+        display: flex;
+        align-items: baseline;
+        gap: 14px;
+        flex-wrap: wrap;
+      }
+      .month .mh .mname {
+        font-size: 26px;
+        font-weight: 800;
+      }
+      .month .mh .mst {
+        color: var(--ink-dim);
+        font-size: 15px;
+      }
+      .month .mini {
+        display: flex;
+        gap: 22px;
+        margin: 16px 0 18px;
+        flex-wrap: wrap;
+      }
+      .month .mini div {
+        font-variant-numeric: tabular-nums;
+        font-size: 14px;
+      }
+      .month .mini b {
+        font-size: 19px;
+      }
+      .month .narrative {
+        color: var(--ink);
+        font-size: 14.5px;
+        margin: 0 0 18px;
+      }
+      .month .narrative strong {
+        color: var(--crow);
+        font-weight: 700;
+      }
+      .month .typebar {
+        display: flex;
+        height: 26px;
+        border-radius: 7px;
+        overflow: hidden;
+        margin-bottom: 8px;
+      }
+      .month .typebar span {
+        display: block;
+      }
+      .month .typelabels {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+        font-size: 12px;
+        color: var(--ink-dim);
+        margin-bottom: 18px;
+      }
+      .month .typelabels i {
+        width: 9px;
+        height: 9px;
+        border-radius: 2px;
+        display: inline-block;
+        margin-right: 5px;
+      }
+      .month details {
+        border-top: 1px solid var(--line);
+        padding-top: 14px;
+      }
+      .month summary {
+        cursor: pointer;
+        color: var(--ink-dim);
+        font-size: 13.5px;
+        user-select: none;
+      }
+      .month summary:hover {
+        color: var(--ink);
+      }
+      .month ul.hl {
+        margin: 12px 0 0;
+        padding-left: 0;
+        list-style: none;
+      }
+      .month ul.hl li {
+        padding: 5px 0 5px 22px;
+        position: relative;
+        font-size: 13.5px;
+        border-bottom: 1px dashed var(--line);
+      }
+      .month ul.hl li::before {
+        content: "▸";
+        position: absolute;
+        left: 0;
+        color: var(--crow);
+      }
+
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 13.5px;
+      }
+      thead th {
+        text-align: left;
+        color: var(--ink-dim);
+        font-weight: 600;
+        padding: 10px 10px;
+        border-bottom: 1px solid var(--line);
+        font-size: 12.5px;
+      }
+      tbody td {
+        padding: 11px 10px;
+        border-bottom: 1px solid var(--line);
+        vertical-align: middle;
+      }
+      tbody tr:hover {
+        background: var(--bg-card2);
+      }
+      td.wk {
+        font-weight: 700;
+        color: var(--crow);
+        white-space: nowrap;
+      }
+      td.rng {
+        color: var(--ink-dim);
+        font-variant-numeric: tabular-nums;
+        white-space: nowrap;
+      }
+      td.note {
+        color: var(--ink-dim);
+        font-size: 12.5px;
+      }
+      .bartd {
+        width: 180px;
+      }
+      .minibar {
+        height: 9px;
+        border-radius: 5px;
+        background: var(--feat);
+        display: inline-block;
+        vertical-align: middle;
+      }
+      .num-cell {
+        font-variant-numeric: tabular-nums;
+        text-align: right;
+        font-weight: 600;
+      }
+      .badge-m {
+        display: inline-block;
+        font-size: 10.5px;
+        padding: 1px 7px;
+        border-radius: 20px;
+        background: var(--bg-card2);
+        color: var(--ink-dim);
+        border: 1px solid var(--line);
+      }
+      .hiatus-row td {
+        background: repeating-linear-gradient(
+          45deg,
+          transparent,
+          transparent 8px,
+          rgba(255, 255, 255, 0.02) 8px,
+          rgba(255, 255, 255, 0.02) 16px
+        );
+        color: var(--ink-dim);
+        font-style: italic;
+        text-align: center;
+        font-size: 12.5px;
+      }
+
+      .foot {
+        margin-top: 70px;
+        padding-top: 22px;
+        border-top: 1px solid var(--line);
+        color: var(--ink-dim);
+        font-size: 12.5px;
+        text-align: center;
+      }
+      .tag-pill {
+        display: inline-block;
+        background: rgba(52, 211, 153, 0.14);
+        color: var(--refactor);
+        border: 1px solid rgba(52, 211, 153, 0.4);
+        border-radius: 20px;
+        padding: 4px 14px;
+        font-weight: 700;
+        font-size: 13px;
+      }
+
+      @media (max-width: 720px) {
+        .stats {
+          grid-template-columns: repeat(2, 1fr);
+        }
+        header.hero h1 {
+          font-size: 30px;
+        }
+        .bartd {
+          display: none;
+        }
+        td.note {
+          display: none;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="topbar">
+      <a class="back" href="/karasu/" data-i="backHome">← karasu docs</a>
+      <span class="langtoggle">
+        <button data-lang="en" onclick="setLang('en')">English</button>
+        <button data-lang="ja" onclick="setLang('ja')">日本語</button>
+      </span>
+    </div>
+
+    <header class="hero">
+      <div class="crow-mark">🐦‍⬛</div>
+      <h1><span class="jp">karasu</span>（鴉）1.0</h1>
+      <p class="sub" data-i="sub"></p>
+      <p class="period"><b id="d0"></b> → <b id="d1"></b> ・ <b id="dweeks"></b></p>
+      <div class="snapshot" data-i="snapshot"></div>
+    </header>
+
+    <div class="wrap">
+      <div class="stats" id="stats"></div>
+
+      <h2 class="section" data-i="s1title"></h2>
+      <p class="section-note" data-i="s1note"></p>
+      <div class="card">
+        <h3 data-i="c1title"></h3>
+        <p class="hint" data-i="c1hint"></p>
+        <div id="weeklyChart"></div>
+        <div class="legend">
+          <span><i style="background: var(--feat)"></i><span data-i="lgCommits"></span></span>
+          <span><i style="background: var(--adr)"></i><span data-i="lgAdr"></span></span>
+          <span><i style="background: var(--tpl)"></i><span data-i="lgTpl"></span></span>
+        </div>
+      </div>
+      <div class="card">
+        <h3 data-i="c2title"></h3>
+        <p class="hint" data-i="c2hint"></p>
+        <div id="cumChart"></div>
+        <div class="legend">
+          <span><i style="background: var(--adr)"></i><span data-i="lgAdrCum"></span></span>
+          <span><i style="background: var(--tpl)"></i><span data-i="lgTplCum"></span></span>
+        </div>
+      </div>
+
+      <h2 class="section" data-i="s2title"></h2>
+      <p class="section-note" data-i="s2note"></p>
+      <div id="months"></div>
+
+      <h2 class="section" data-i="s3title"></h2>
+      <p class="section-note" data-i="s3note"></p>
+      <div class="card" style="padding: 8px 8px 4px">
+        <div style="overflow-x: auto">
+          <table id="weekTable">
+            <thead>
+              <tr>
+                <th data-i="thWeek"></th>
+                <th data-i="thPeriod"></th>
+                <th data-i="thMonth"></th>
+                <th class="num-cell">commit</th>
+                <th class="bartd">　</th>
+                <th class="num-cell">ADR</th>
+                <th class="num-cell">TPL</th>
+                <th class="note" data-i="thHighlight"></th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+
+      <h2 class="section" data-i="s4title"></h2>
+      <div class="card">
+        <p style="margin: 0 0 14px"><span class="tag-pill">🏁 krs-spec-v1.0</span></p>
+        <p style="margin: 0; font-size: 14.5px" data-i="s4body"></p>
+      </div>
+
+      <div class="foot" data-i="foot"></div>
+    </div>
+
+    <script>
+      /* ===== shared numeric dataset (language-independent) ===== */
+      const META = {
+        firstCommit: "2026-03-13",
+        lastCommit: "2026-06-25",
+        totalCommits: 1127,
+        totalADR: 237,
+        totalTPL: 64,
+        specV1Date: "2026-06-25",
+      };
+      const MONTHS_NUM = [
+        {
+          key: "2026-03",
+          accent: "#4f9cf9",
+          commits: 143,
+          adr: 33,
+          tpl: 0,
+          types: { docs: 29, feat: 37, chore: 46, fix: 15, refactor: 6, test: 7, ci: 2, style: 1 },
+        },
+        {
+          key: "2026-04",
+          accent: "#9b8cff",
+          commits: 544,
+          adr: 109,
+          tpl: 0,
+          types: {
+            docs: 196,
+            feat: 173,
+            chore: 61,
+            fix: 46,
+            refactor: 39,
+            test: 19,
+            ci: 8,
+            perf: 1,
+          },
+        },
+        {
+          key: "2026-05",
+          accent: "#ec5fa0",
+          commits: 261,
+          adr: 54,
+          tpl: 40,
+          types: { docs: 120, feat: 56, fix: 27, chore: 23, test: 19, refactor: 10, ci: 4 },
+        },
+        {
+          key: "2026-06",
+          accent: "#34d399",
+          commits: 179,
+          adr: 41,
+          tpl: 24,
+          types: { docs: 77, feat: 38, fix: 22, chore: 20, refactor: 16, test: 6 },
+        },
+      ];
+      const WEEKS_NUM = [
+        { w: "W11", range: "03/13–03/14", commits: 11, adr: 4, tpl: 0 },
+        { w: "W12", range: "03/17–03/22", commits: 32, adr: 6, tpl: 0 },
+        { w: "W13", range: "03/23–03/29", commits: 67, adr: 17, tpl: 0 },
+        { w: "W14", range: "03/30–04/05", commits: 111, adr: 32, tpl: 0 },
+        { w: "W15", range: "04/06–04/12", commits: 131, adr: 31, tpl: 0 },
+        { w: "W16", range: "04/13–04/19", commits: 109, adr: 10, tpl: 0 },
+        { w: "W17", range: "04/20–04/26", commits: 82, adr: 14, tpl: 0 },
+        { w: "W18", range: "04/27–05/03", commits: 159, adr: 32, tpl: 0 },
+        { w: "W19", range: "05/04–05/10", commits: 86, adr: 19, tpl: 23 },
+        { w: "W20", range: "05/11–05/16", commits: 98, adr: 17, tpl: 11 },
+        { w: "W21", range: "05/18–05/22", commits: 62, adr: 14, tpl: 6 },
+        { w: "HIATUS", range: "05/23–06/09", commits: 0, adr: 0, tpl: 0 },
+        { w: "W24", range: "06/10–06/14", commits: 34, adr: 5, tpl: 7 },
+        { w: "W25", range: "06/15–06/20", commits: 84, adr: 23, tpl: 8 },
+        { w: "W26", range: "06/23–06/25", commits: 61, adr: 13, tpl: 9 },
+      ];
+
+      /* ===== i18n content ===== */
+      const I18N = {
+        en: {
+          htmlLang: "en",
+          title: "karasu 1.0 — Development Retrospective",
+          backHome: "← karasu docs",
+          sub: "Development retrospective — a text-based architecture modeling tool",
+          period: (w) => `${w} weeks of work`,
+          snapshot:
+            "Snapshot as of 2026-06-25 · auto-extracted from git history, docs/adr, and docs/test-perspectives",
+          stats: [
+            { c: "c-commit", num: "1,127", lbl: "total commits" },
+            { c: "c-adr", num: "237", lbl: "ADRs (design decisions)" },
+            { c: "c-tpl", num: "64", lbl: "TPLs (test perspectives)" },
+            { c: "c-month", num: "4", lbl: "months (Mar–Jun)" },
+            { c: "c-spec", num: "v1.0", lbl: "language spec (stable)" },
+          ],
+          s1title: "① The journey — weekly activity",
+          s1note:
+            "Commit count (bars) overlaid with ADRs and TPLs filed that week (lines). W22–W23 (May 23 – Jun 9) was a pause.",
+          c1title: "Weekly activity",
+          c1hint: "Bars = commits / gold line = ADRs filed / pink line = TPLs filed",
+          lgCommits: "Commits",
+          lgAdr: "ADRs (design decisions)",
+          lgTpl: "TPLs (test perspectives)",
+          c2title: "Cumulative knowledge assets — ADRs and TPLs",
+          c2hint:
+            "How design decisions (ADRs) and test perspectives (TPLs) accumulated over time. TPLs take off once the practice began in May (ADR-20260509-04).",
+          lgAdrCum: "ADRs (cumulative)",
+          lgTplCum: "TPLs (cumulative)",
+          s2title: "② Monthly summary",
+          s2note:
+            "Each month's theme, volume, commit-type breakdown, and key design decisions (click to expand).",
+          s3title: "③ Weekly summary",
+          s3note:
+            "Details for all 14 active weeks — commit/ADR/TPL volume and that week's highlights.",
+          thWeek: "Week",
+          thPeriod: "Period",
+          thMonth: "Month",
+          thHighlight: "Highlight",
+          s4title: "④ Reaching 1.0",
+          s4body: `On <b>2026-06-25</b>, the <code>.krs</code> / <code>.krs.style</code> language spec was finalized as <strong style="color:var(--refactor)">v1.0 (stable)</strong> (#1780). Starting from the core idea of separating logical and physical structure, karasu built up two-layer rendering, multi-file imports, the client kind, a layout engine, a Chat UI, a suite of CLI tools, a diagnostics catalog, a documentation site, and OSS publishing infrastructure over roughly <b>15</b> weeks — leaving behind 237 design decisions (ADRs) and 64 test perspectives (TPLs) as knowledge assets.`,
+          foot: "This report is auto-extracted from the karasu repository's git history, <code>docs/adr/</code>, and <code>docs/test-perspectives/</code>.<br>Snapshot: 2026-06-25 · single self-contained HTML file (no external dependencies).",
+          hiatusRow: "⏸ Pause (W22–W23, May 23 – Jun 9) — no commits",
+          monthDetails: (n) => `Show key highlights and design decisions (${n})`,
+          months: [
+            {
+              name: "March",
+              subtitle: "Foundation — the language and two-layer structure are born",
+              narrative:
+                "Project kickoff. The first four ADRs locked in the monorepo layout, the name “karasu”, and the core ideas — <strong>separating logical from physical structure</strong> and CSS-inspired styling. Parser / style resolver / SVG renderer / preview UI were all stood up at once, followed by two-layer rendering with drill-down, OPFS-backed project management, deployment and organization diagrams, icon mode, SVG export, the CLI <code>karasu serve</code>, and VS Code extension Phase 1.",
+              highlights: [
+                "ADR-20260312-03: Separate logical and physical structure (karasu's core)",
+                "ADR-20260312-04: CSS-inspired styling system",
+                "ADR-20260317-01: Two-layer rendering with drill-down",
+                "ADR-20260317-02: FileSystemProvider + OPFS",
+                "ADR-20260324-01: Prefer manual QA over E2E",
+                "feat!: rename person to user with role and human/ai tags (#2)",
+                "feat: organization diagram (organization/team/member) (#39)",
+              ],
+            },
+            {
+              name: "April",
+              subtitle: "Expansion — a burst of features and design decisions",
+              narrative:
+                "The peak of development — <strong>544 commits and 109 ADRs in one month</strong>. Multi-file imports with wildcard resolution, cross-system references and Ghost Systems, and cyclic-dependency detection landed. The <strong>Chat UI (BYOK AI)</strong> was built across Phases 1–3. The CLI gained <code>translate</code>/<code>diff</code>/<code>apply</code> and a formatter. The layout engine was refined with barycenter ordering, orthogonal routing, and skip-layer channels, and the <strong>client kind shipped across Phases 1–7</strong>. Legend syntax, the i18n rollout, draw.io export, and the diff viewer all arrived. On the infrastructure side: the <strong>ADR knowledge graph</strong>, the feature-toggle policy, Cloudflare Pages deploy, and the VS Code Phase 3 Webview + ExTester harness.",
+              highlights: [
+                "ADR-20260408-01: Trunk-Based Development with release toggles",
+                "ADR-20260409-08: Chat UI Panel — overall architecture",
+                "ADR-20260424-01: ADR knowledge graph — frontmatter + tooling",
+                "ADR-20260427-01: Feature-toggle policy (short-lived, removed on graduation)",
+                "ADR-20260428-06: Introduce the client kind",
+                "feat(core): client kind — Phases 1–7 (#861–#896)",
+                "feat(cli): karasu diff / translate / apply",
+                "feat(app): ship the diff viewer by default (#840)",
+              ],
+            },
+            {
+              name: "May",
+              subtitle: "Consolidation — TPLs begin and the UI is refreshed",
+              narrative:
+                "A month of quality and regression prevention. <strong>ADR-20260509-04 started the Test Perspective Library (TPL) practice</strong> — 23 perspectives in the first week alone, 40 by month's end. The Tidy Style formatter and value-level <code>.krs.style</code> diagnostics were completed. The UI migrated to <strong>shadcn/ui + Tailwind v4</strong>, adding a command palette, keyboard shortcuts, an AST Outline view, and light/dark themes. <code>reference-data.ts</code> became the single source of truth for spec tables, changesets automated releases, and tpl-tools / the hane plugin were extracted into external packages. May 23 – Jun 10 was a pause.",
+              highlights: [
+                "ADR-20260509-04: Start the Test Perspective Library (TPL)",
+                "ADR-20260512-03: reference-data.ts as the single source of truth",
+                "ADR-20260512-05: changesets for OSS release automation",
+                "ADR-20260515-01: Adopt shadcn/ui and Tailwind v4",
+                "ADR-20260519-02: Command-registry-based keyboard shortcuts",
+                "TPL-20260510-01–23: 23 perspectives filed in one batch",
+                "feat(app): command palette / Outline view / light theme",
+              ],
+            },
+            {
+              name: "June",
+              subtitle: "1.0 Readiness — freeze, publish, documentation site",
+              narrative:
+                "The final polish toward release. The <strong>documentation site was built with Astro Starlight</strong> (docs/ as the single source of truth), and rules were separated from diagnostics to guarantee the diagnostics catalog's completeness. <strong>ADR-20260616-06 froze .krs / .krs.style as v1.0</strong>. Added: a <code>store</code> kind letting deploy units realize shared infra, migration-intent annotations, an infra/external row split in the system view, and balanced-grid layout. On the OSS-publishing side: npm publication of @karasu-tools/core, a move to Trusted Publishing (GitHub OIDC), VS Code Marketplace publishing, and karasu-nest sharing. And on <strong>2026-06-25, the language spec was finalized as v1.0 (stable)</strong>.",
+              highlights: [
+                "ADR-20260616-03: Astro Starlight documentation site",
+                "ADR-20260616-04: Separate rules from diagnostics; catalog completeness",
+                "ADR-20260616-06: Freeze .krs / .krs.style as v1.0 🔒",
+                "ADR-20260616-10: Make @karasu-tools/core a published package",
+                "ADR-20260619-02: Move npm publish to Trusted Publishing (OIDC)",
+                "ADR-20260618-01: Publish the VS Code extension to the Marketplace",
+                "🏁 krs-spec-v1.0: language spec v1.0 (stable) finalized (2026-06-25)",
+              ],
+            },
+          ],
+          weekNotes: {
+            W11: "First week — initial parser/renderer/preview implementation",
+            W12: "Two-layer rendering · OPFS · AST discriminated union",
+            W13: "deployment/org diagrams · icon mode · SVG export · CLI serve",
+            W14: "VSCode Phase 1 · wildcard import · cross-system references",
+            W15: "★Most commits — Chat UI · translate · formatter · patch",
+            W16: "Annotation inheritance · DOMPurify · translate defaults",
+            W17: "draw.io export · diff viewer · i18n · ADR knowledge graph",
+            W18: "★Most commits — client kind Phases 1–7 · legend · layout",
+            W19: "★TPL practice begins (23) · Tidy Style · label-position",
+            W20: "style value diagnostics · shadcn/ui migration · spec tables",
+            W21: "command palette · Outline view · light/dark theme",
+            W24: "Resumed — stroke-style · legend switching · remove team property",
+            W25: "★spec v1.0 freeze · docs site · store kind · OIDC publish",
+            W26: "1.0 polish — layout · karasu-nest sharing · spec v1.0 finalized 🏁",
+          },
+          monthShort: { "2026-03": "Mar", "2026-04": "Apr", "2026-05": "May", "2026-06": "Jun" },
+          weekMonth: {
+            W11: "Mar",
+            W12: "Mar",
+            W13: "Mar",
+            W14: "Mar–Apr",
+            W15: "Apr",
+            W16: "Apr",
+            W17: "Apr",
+            W18: "Apr–May",
+            W19: "May",
+            W20: "May",
+            W21: "May",
+            W24: "Jun",
+            W25: "Jun",
+            W26: "Jun",
+          },
+        },
+        ja: {
+          htmlLang: "ja",
+          title: "karasu 1.0 — 開発ふりかえり",
+          backHome: "← karasu ドキュメント",
+          sub: "開発記録ふりかえり — テキストベース・アーキテクチャモデリングツール",
+          period: (w) => `約 ${w} 週間の歩み`,
+          snapshot:
+            "2026-06-25 時点のスナップショット · git 履歴・docs/adr・docs/test-perspectives から自動抽出",
+          stats: [
+            { c: "c-commit", num: "1,127", lbl: "総コミット" },
+            { c: "c-adr", num: "237", lbl: "ADR（設計判断）" },
+            { c: "c-tpl", num: "64", lbl: "TPL（テスト観点）" },
+            { c: "c-month", num: "4", lbl: "開発月数 (3–6月)" },
+            { c: "c-spec", num: "v1.0", lbl: "言語仕様 (stable)" },
+          ],
+          s1title: "① 全体の歩み — 週ごとの活動量",
+          s1note:
+            "コミット数（棒）と、その週に起票された ADR・TPL（折れ線）を重ねて表示。W22–W23（5/23〜6/9）は一時中断期間。",
+          c1title: "週次アクティビティ",
+          c1hint: "棒 = コミット数 / 金線 = ADR 起票数 / 桃線 = TPL 起票数",
+          lgCommits: "コミット",
+          lgAdr: "ADR（設計判断）",
+          lgTpl: "TPL（テスト観点）",
+          c2title: "知識資産の累積成長 — ADR と TPL",
+          c2hint:
+            "設計判断（ADR）とテスト観点（TPL）が時間とともにどう積み上がったか。TPL は 5月の運用開始（ADR-20260509-04）から立ち上がる。",
+          lgAdrCum: "ADR 累計",
+          lgTplCum: "TPL 累計",
+          s2title: "② 月ごとのサマリ",
+          s2note: "各月のテーマ・物量・コミット種別の内訳・主要な設計判断（クリックで展開）。",
+          s3title: "③ 週ごとのサマリ",
+          s3note: "14 稼働週の詳細。コミット・ADR・TPL の物量と、その週のハイライト。",
+          thWeek: "週",
+          thPeriod: "期間",
+          thMonth: "月",
+          thHighlight: "ハイライト",
+          s4title: "④ 1.0 への到達点",
+          s4body: `<b>2026-06-25</b>、<code>.krs</code> / <code>.krs.style</code> 言語仕様を <strong style="color:var(--refactor)">v1.0 (stable)</strong> として確定（#1780）。論理/物理分離という核心思想から始まり、二層レンダリング、マルチファイル import、client kind、レイアウトエンジン、Chat UI、CLI ツール群、診断カタログ、ドキュメントサイト、OSS 公開基盤までを約 <b>15</b> 週で築き上げ、237 件の設計判断（ADR）と 64 件のテスト観点（TPL）を知識資産として残した。`,
+          foot: "このレポートは karasu リポジトリの git 履歴・<code>docs/adr/</code>・<code>docs/test-perspectives/</code> から自動抽出して生成されました。<br>スナップショット: 2026-06-25 · 単一ファイル自己完結 HTML（外部依存なし）。",
+          hiatusRow: "⏸ 一時中断期間（W22–W23, 5/23〜6/9）— コミットなし",
+          monthDetails: (n) => `主要なハイライト・設計判断を表示（${n} 件）`,
+          months: [
+            {
+              name: "3月",
+              subtitle: "Foundation — 言語と二層構造の誕生",
+              narrative:
+                "プロジェクト立ち上げ。モノレポ構成、ツール名「karasu」、そして核心思想である<strong>論理構造と物理構造の分離</strong>と CSS インスパイアのスタイリングを最初の4本の ADR で確定。パーサー / スタイル解決 / SVG レンダラー / プレビュー UI を一気に立ち上げ、二層レンダリングとドリルダウン、OPFS によるプロジェクト管理、Deployment 図・Organization 図、Icon Mode、SVG エクスポート、CLI <code>karasu serve</code>、VS Code 拡張 Phase 1 までを構築した。",
+              highlights: [
+                "ADR-20260312-03: 論理構造と物理構造の分離（karasu の核心）",
+                "ADR-20260312-04: CSS インスパイアのスタイリングシステム",
+                "ADR-20260317-01: 2 レイヤレンダリングとドリルダウン",
+                "ADR-20260317-02: FileSystemProvider + OPFS",
+                "ADR-20260324-01: E2E より QA 手動確認を優先",
+                "feat!: rename person to user with role and human/ai tags (#2)",
+                "feat: organization diagram (organization/team/member) (#39)",
+              ],
+            },
+            {
+              name: "4月",
+              subtitle: "Expansion — 機能爆発と設計判断の集中",
+              narrative:
+                "開発の最盛期。<strong>月 544 コミット・109 ADR</strong> という圧倒的密度。マルチファイル import とワイルドカード解決、クロスシステム参照と Ghost System、循環依存検出を実装。<strong>Chat UI（BYOK AI 連携）</strong>を Phase 1〜3 で構築。CLI に <code>translate</code>/<code>diff</code>/<code>apply</code>/フォーマッターを追加。レイアウトエンジンを barycenter・直交ルーティング・skip-layer で磨き込み、<strong>client kind を Phase 1〜7</strong> で導入。legend 構文、i18n ロールアウト、draw.io エクスポート、diff ビューアを投入。基盤面では <strong>ADR knowledge graph</strong>、feature toggle ポリシー、Cloudflare Pages デプロイ、VS Code Phase 3 Webview・ExTester を整備。",
+              highlights: [
+                "ADR-20260408-01: リリーストグルを伴う Trunk-Based Development",
+                "ADR-20260409-08: Chat UI Panel — 全体アーキテクチャ",
+                "ADR-20260424-01: ADR knowledge graph — frontmatter + tooling",
+                "ADR-20260427-01: Feature toggle ポリシー（短命・卒業時に削除）",
+                "ADR-20260428-06: client kind の導入",
+                "feat(core): client kind — Phase 1〜7 (#861〜#896)",
+                "feat(cli): karasu diff / translate / apply",
+                "feat(app): diff ビューアをデフォルト出荷 (#840)",
+              ],
+            },
+            {
+              name: "5月",
+              subtitle: "Consolidation — TPL 始動と UI 刷新",
+              narrative:
+                "品質と再発防止の月。<strong>ADR-20260509-04 でテスト観点ライブラリ（TPL）の運用を開始</strong>し、初週だけで 23 件、月内に 40 件を蓄積。Tidy Style フォーマッター、<code>.krs.style</code> の値レベル診断を完成。UI は <strong>shadcn/ui + Tailwind v4</strong> へ移行し、コマンドパレット・キーボードショートカット・AST Outline ビュー・ライト/ダークテーマを追加。<code>reference-data.ts</code> を単一の真実の源に、changesets でリリース自動化、tpl-tools / hane plugin を外部 package へ切り出した。5/22〜6/10 は一時中断期間。",
+              highlights: [
+                "ADR-20260509-04: テスト観点ライブラリ（TPL）の運用開始",
+                "ADR-20260512-03: reference-data.ts を単一の真実の源に",
+                "ADR-20260512-05: changesets による OSS リリース自動化",
+                "ADR-20260515-01: shadcn/ui と Tailwind v4 の採用",
+                "ADR-20260519-02: キーボードショートカットのコマンドレジストリ化",
+                "TPL-20260510-01〜23: 初回 23 観点を一括起票",
+                "feat(app): command palette / Outline view / light theme",
+              ],
+            },
+            {
+              name: "6月",
+              subtitle: "1.0 Readiness — 凍結・公開・ドキュメントサイト",
+              narrative:
+                "リリースに向けた仕上げ。<strong>Astro Starlight でドキュメントサイトを構築</strong>（docs/ を single source of truth に）、規則と診断を分離して診断カタログの完全性を担保。<strong>ADR-20260616-06 で .krs / .krs.style を v1.0 として凍結</strong>。deploy unit が共有 infra を realize できる <code>store</code> kind、migration intent アノテーション、system-view の infra/external 行分割、balanced-grid レイアウトを追加。OSS 公開面では @karasu-tools/core の npm 公開、Trusted Publishing（GitHub OIDC）への移行、VS Code Marketplace publish、karasu-nest 共有を整備。そして <strong>2026-06-25、言語仕様を v1.0 (stable) として確定</strong>。",
+              highlights: [
+                "ADR-20260616-03: Astro Starlight ドキュメントサイト",
+                "ADR-20260616-04: 規則と診断の分離・診断カタログの完全性",
+                "ADR-20260616-06: .krs / .krs.style を v1.0 として凍結 🔒",
+                "ADR-20260616-10: @karasu-tools/core を公開パッケージに",
+                "ADR-20260619-02: npm publish を Trusted Publishing(OIDC) へ",
+                "ADR-20260618-01: VS Code 拡張を Marketplace に publish",
+                "🏁 krs-spec-v1.0: 言語仕様 v1.0 (stable) 確定 (2026-06-25)",
+              ],
+            },
+          ],
+          weekNotes: {
+            W11: "初週 — parser/renderer/preview の最初の実装",
+            W12: "二層レンダリング・OPFS・AST discriminated union",
+            W13: "deployment/org 図・icon mode・SVG export・CLI serve",
+            W14: "VSCode Phase1・ワイルドカード import・cross-system 参照",
+            W15: "★最多コミット週 — Chat UI・translate・formatter・patch",
+            W16: "アノテーション継承・DOMPurify・translate デフォルト調整",
+            W17: "draw.io export・diff ビューア・i18n・ADR knowledge graph",
+            W18: "★最多コミット週 — client kind Phase1-7・legend・layout",
+            W19: "★TPL 運用開始（23観点）・Tidy Style・label-position",
+            W20: "style value 診断・shadcn/ui 移行・spec テーブル生成",
+            W21: "command palette・Outline view・light/dark theme",
+            W24: "再開 — stroke-style・legend 切替・team property 削除",
+            W25: "★spec v1.0 凍結・docs サイト・store kind・OIDC publish",
+            W26: "1.0 仕上げ — layout 改良・karasu-nest 共有・spec v1.0 確定 🏁",
+          },
+          monthShort: { "2026-03": "3月", "2026-04": "4月", "2026-05": "5月", "2026-06": "6月" },
+          weekMonth: {
+            W11: "3月",
+            W12: "3月",
+            W13: "3月",
+            W14: "3–4月",
+            W15: "4月",
+            W16: "4月",
+            W17: "4月",
+            W18: "4–5月",
+            W19: "5月",
+            W20: "5月",
+            W21: "5月",
+            W24: "6月",
+            W25: "6月",
+            W26: "6月",
+          },
+        },
+      };
+
+      const TYPE_COLORS = {
+        feat: "#4f9cf9",
+        docs: "#9b8cff",
+        fix: "#f97362",
+        chore: "#6b7280",
+        refactor: "#34d399",
+        test: "#f0b429",
+        ci: "#14b8a6",
+        style: "#8b949e",
+        perf: "#e879f9",
+      };
+      const SVGNS = "http://www.w3.org/2000/svg";
+      const el = (n, a = {}) => {
+        const e = document.createElementNS(SVGNS, n);
+        for (const k in a) e.setAttribute(k, a[k]);
+        return e;
+      };
+
+      function renderWeeklyChart() {
+        const host = document.getElementById("weeklyChart");
+        host.innerHTML = "";
+        const wk = WEEKS_NUM.filter((w) => w.w !== "HIATUS");
+        const W = 1000,
+          H = 320,
+          mL = 44,
+          mR = 44,
+          mB = 56,
+          mT = 16,
+          iw = W - mL - mR,
+          ih = H - mT - mB;
+        const maxC = Math.max(...wk.map((w) => w.commits)),
+          maxLine = Math.max(...wk.map((w) => Math.max(w.adr, w.tpl)));
+        const svg = el("svg", { viewBox: `0 0 ${W} ${H}` });
+        const n = wk.length,
+          slot = iw / n;
+        const x = (i) => mL + slot * i + slot / 2,
+          yC = (v) => mT + ih - (v / maxC) * ih,
+          yL = (v) => mT + ih - (v / maxLine) * ih;
+        for (let g = 0; g <= 4; g++) {
+          const yy = mT + ih * (g / 4);
+          const v = Math.round(maxC * (1 - g / 4));
+          svg.appendChild(el("line", { x1: mL, y1: yy, x2: W - mR, y2: yy, stroke: "#2a2f3a" }));
+          const t = el("text", {
+            x: mL - 8,
+            y: yy + 4,
+            fill: "#98a2b3",
+            "font-size": 11,
+            "text-anchor": "end",
+          });
+          t.textContent = v;
+          svg.appendChild(t);
+        }
+        const bw = slot * 0.5;
+        wk.forEach((w, i) => {
+          const h = (w.commits / maxC) * ih;
+          svg.appendChild(
+            el("rect", {
+              x: x(i) - bw / 2,
+              y: yC(w.commits),
+              width: bw,
+              height: h,
+              rx: 3,
+              fill: "#4f9cf9",
+              "fill-opacity": 0.78,
+            }),
+          );
+          const t = el("text", {
+            x: x(i),
+            y: yC(w.commits) - 6,
+            fill: "#cdd5e0",
+            "font-size": 10.5,
+            "text-anchor": "middle",
+          });
+          t.textContent = w.commits;
+          svg.appendChild(t);
+          const lab = el("text", {
+            x: x(i),
+            y: H - mB + 18,
+            fill: "#98a2b3",
+            "font-size": 11,
+            "text-anchor": "middle",
+          });
+          lab.textContent = w.w;
+          svg.appendChild(lab);
+          const lab2 = el("text", {
+            x: x(i),
+            y: H - mB + 33,
+            fill: "#5b6472",
+            "font-size": 9.5,
+            "text-anchor": "middle",
+          });
+          lab2.textContent = w.range;
+          svg.appendChild(lab2);
+        });
+        function poly(key, color) {
+          const pts = wk.map((w, i) => `${x(i)},${yL(w[key])}`).join(" ");
+          svg.appendChild(
+            el("polyline", {
+              points: pts,
+              fill: "none",
+              stroke: color,
+              "stroke-width": 2.5,
+              "stroke-linejoin": "round",
+              "stroke-linecap": "round",
+            }),
+          );
+          wk.forEach((w, i) => {
+            svg.appendChild(el("circle", { cx: x(i), cy: yL(w[key]), r: 3.5, fill: color }));
+            if (w[key] > 0) {
+              const t = el("text", {
+                x: x(i),
+                y: yL(w[key]) - 9,
+                fill: color,
+                "font-size": 10,
+                "text-anchor": "middle",
+                "font-weight": 700,
+              });
+              t.textContent = w[key];
+              svg.appendChild(t);
+            }
+          });
+        }
+        poly("adr", "#c9a227");
+        poly("tpl", "#ec5fa0");
+        host.appendChild(svg);
+      }
+      function renderCumChart() {
+        const host = document.getElementById("cumChart");
+        host.innerHTML = "";
+        const wk = WEEKS_NUM.filter((w) => w.w !== "HIATUS");
+        let ca = 0,
+          ct = 0;
+        const pts = wk.map((w) => {
+          ca += w.adr;
+          ct += w.tpl;
+          return { w: w.w, adr: ca, tpl: ct };
+        });
+        const W = 1000,
+          H = 300,
+          mL = 44,
+          mR = 20,
+          mB = 50,
+          mT = 16,
+          iw = W - mL - mR,
+          ih = H - mT - mB;
+        const maxV = Math.max(...pts.map((p) => p.adr));
+        const svg = el("svg", { viewBox: `0 0 ${W} ${H}` });
+        const n = pts.length,
+          x = (i) => mL + (iw / (n - 1)) * i,
+          y = (v) => mT + ih - (v / maxV) * ih;
+        for (let g = 0; g <= 4; g++) {
+          const yy = mT + ih * (g / 4);
+          const v = Math.round(maxV * (1 - g / 4));
+          svg.appendChild(el("line", { x1: mL, y1: yy, x2: W - mR, y2: yy, stroke: "#2a2f3a" }));
+          const t = el("text", {
+            x: mL - 8,
+            y: yy + 4,
+            fill: "#98a2b3",
+            "font-size": 11,
+            "text-anchor": "end",
+          });
+          t.textContent = v;
+          svg.appendChild(t);
+        }
+        const areaPts = pts.map((p, i) => `${x(i)},${y(p.adr)}`).join(" ");
+        svg.appendChild(
+          el("polygon", {
+            points: `${mL},${y(0)} ${areaPts} ${x(n - 1)},${y(0)}`,
+            fill: "#c9a227",
+            "fill-opacity": 0.1,
+          }),
+        );
+        function line(key, color) {
+          const pp = pts.map((p, i) => `${x(i)},${y(p[key])}`).join(" ");
+          svg.appendChild(
+            el("polyline", {
+              points: pp,
+              fill: "none",
+              stroke: color,
+              "stroke-width": 3,
+              "stroke-linejoin": "round",
+            }),
+          );
+          pts.forEach((p, i) =>
+            svg.appendChild(el("circle", { cx: x(i), cy: y(p[key]), r: 3, fill: color })),
+          );
+          const last = pts[n - 1];
+          const t = el("text", {
+            x: x(n - 1) - 4,
+            y: y(last[key]) - 10,
+            fill: color,
+            "font-size": 13,
+            "font-weight": 800,
+            "text-anchor": "end",
+          });
+          t.textContent = last[key];
+          svg.appendChild(t);
+        }
+        line("adr", "#c9a227");
+        line("tpl", "#ec5fa0");
+        pts.forEach((p, i) => {
+          const lab = el("text", {
+            x: x(i),
+            y: H - mB + 20,
+            fill: "#98a2b3",
+            "font-size": 10.5,
+            "text-anchor": "middle",
+          });
+          lab.textContent = p.w;
+          svg.appendChild(lab);
+        });
+        host.appendChild(svg);
+      }
+      function renderMonths(L) {
+        document.getElementById("months").innerHTML = MONTHS_NUM.map((m, idx) => {
+          const c = L.months[idx];
+          const total = Object.values(m.types).reduce((a, b) => a + b, 0);
+          const order = Object.entries(m.types).sort((a, b) => b[1] - a[1]);
+          const bar = order
+            .map(
+              ([k, v]) =>
+                `<span style="width:${((v / total) * 100).toFixed(2)}%;background:${TYPE_COLORS[k] || "#888"}" title="${k}: ${v}"></span>`,
+            )
+            .join("");
+          const labels = order
+            .map(
+              ([k, v]) =>
+                `<span><i style="background:${TYPE_COLORS[k] || "#888"}"></i>${k} ${v}</span>`,
+            )
+            .join("");
+          const hls = c.highlights.map((h) => `<li>${h}</li>`).join("");
+          return `<div class="month" style="--accent:${m.accent}">
+      <div class="mh"><span class="mname" style="color:${m.accent}">${c.name}</span><span class="mst">${c.subtitle}</span></div>
+      <div class="mini"><div><b style="color:var(--feat)">${m.commits}</b> commits</div><div><b style="color:var(--adr)">${m.adr}</b> ADR</div><div><b style="color:var(--tpl)">${m.tpl}</b> TPL</div></div>
+      <p class="narrative">${c.narrative}</p>
+      <div class="typebar">${bar}</div>
+      <div class="typelabels">${labels}</div>
+      <details><summary>${L.monthDetails(c.highlights.length)}</summary><ul class="hl">${hls}</ul></details>
+    </div>`;
+        }).join("");
+      }
+      function renderWeekTable(L) {
+        const maxC = Math.max(...WEEKS_NUM.map((w) => w.commits));
+        document.querySelector("#weekTable tbody").innerHTML = WEEKS_NUM.map((w) => {
+          if (w.w === "HIATUS")
+            return `<tr class="hiatus-row"><td colspan="8">${L.hiatusRow}</td></tr>`;
+          const bw = ((w.commits / maxC) * 100).toFixed(1);
+          return `<tr><td class="wk">${w.w}</td><td class="rng">${w.range}</td>
+      <td><span class="badge-m">${L.weekMonth[w.w]}</span></td>
+      <td class="num-cell">${w.commits}</td>
+      <td class="bartd"><span class="minibar" style="width:${bw}%"></span></td>
+      <td class="num-cell" style="color:var(--adr)">${w.adr}</td>
+      <td class="num-cell" style="color:var(--tpl)">${w.tpl || "–"}</td>
+      <td class="note">${L.weekNotes[w.w]}</td></tr>`;
+        }).join("");
+      }
+      function applyText(L) {
+        document.querySelectorAll("[data-i]").forEach((node) => {
+          const key = node.getAttribute("data-i");
+          if (typeof L[key] === "string") node.innerHTML = L[key];
+        });
+      }
+      function setLang(lang) {
+        const L = I18N[lang] || I18N.en;
+        document.documentElement.lang = L.htmlLang;
+        document.title = L.title;
+        try {
+          localStorage.setItem("karasu-retro-lang", lang);
+        } catch (e) {}
+        // toggle buttons
+        document
+          .querySelectorAll(".langtoggle button")
+          .forEach((b) => b.classList.toggle("active", b.dataset.lang === lang));
+        // dynamic header bits
+        document.getElementById("d0").textContent = META.firstCommit;
+        document.getElementById("d1").textContent = META.lastCommit;
+        document.getElementById("dweeks").textContent = L.period("14");
+        // stats
+        document.getElementById("stats").innerHTML = L.stats
+          .map(
+            (s) =>
+              `<div class="stat ${s.c}"><div class="num">${s.num}</div><div class="lbl">${s.lbl}</div></div>`,
+          )
+          .join("");
+        applyText(L);
+        renderMonths(L);
+        renderWeekTable(L);
+        // charts are language-independent but redraw to be safe
+        renderWeeklyChart();
+        renderCumChart();
+      }
+      (function init() {
+        const params = new URLSearchParams(location.search);
+        let lang = params.get("lang");
+        if (lang !== "en" && lang !== "ja") {
+          try {
+            lang = localStorage.getItem("karasu-retro-lang");
+          } catch (e) {}
+        }
+        if (lang !== "en" && lang !== "ja") {
+          lang = "en";
+        }
+        setLang(lang);
+      })();
+    </script>
+  </body>
+</html>
