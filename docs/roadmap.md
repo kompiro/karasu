@@ -1,7 +1,7 @@
 # karasu ロードマップ
 
 - **ステータス**: living（随時更新する。決定は ADR、実行・進捗は GitHub Issues で管理し、本書は**全体方針**を保持する）
-- **現在のフォーカス**: Syntax v1.0 readiness — **freeze 方針確定済み**（[ADR-20260616-06](adr/20260616-06-krs-spec-v1-freeze.md)）。残るは公開ローンチ（[#1317](https://github.com/kompiro/karasu/issues/1317)）。
+- **現在のフォーカス**: `.krs` / `.krs.style` **v1.0 確定済み** — [ADR-20260616-06](adr/20260616-06-krs-spec-v1-freeze.md) の freeze 方針を公開ローンチ（[#1317](https://github.com/kompiro/karasu/issues/1317) / [#1764](https://github.com/kompiro/karasu/issues/1764)）で発効した。今後の対象は post-v1.0 watch（finding C/D）と TS API（v0.x、無保証）。
 - **関連**:
   - [#1567](https://github.com/kompiro/karasu/issues/1567) — notation gap stocktaking（本ロードマップの起点）
   - [#1314](https://github.com/kompiro/karasu/issues/1314) — OSS launch Phase 2: `.krs` / `.krs.style` v1.0 spec freeze の ADR（本ロードマップが入力になる）
@@ -122,7 +122,8 @@ are not fixed" の精神に沿う）。
 
 freeze 前タスクはすべて完了し、[#1314](https://github.com/kompiro/karasu/issues/1314) で
 freeze ADR（[ADR-20260616-06](adr/20260616-06-krs-spec-v1-freeze.md)）を確定した。
-**凍結方針は決定済み**で、v1.0 の公開確定は launch（[#1317](https://github.com/kompiro/karasu/issues/1317)）で行う。
+**凍結方針は決定済み**で、v1.0 は公開ローンチ（[#1317](https://github.com/kompiro/karasu/issues/1317) /
+[#1764](https://github.com/kompiro/karasu/issues/1764)）で**確定・発効した**。
 
 | # | タスク | 種別 | Issue | 状態 |
 | --- | --- | --- | --- | --- |
