@@ -49,7 +49,10 @@ jobs:
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          command: pages deploy packages/app/dist --project-name=karasu --branch=${{ github.head_ref }}
+          # Run from packages/app so wrangler picks up packages/app/functions/
+          # (the /render Pages Function) alongside the dist output.
+          workingDirectory: packages/app
+          command: pages deploy dist --project-name=karasu --branch=${{ github.head_ref }}
           githubToken: ${{ secrets.GITHUB_TOKEN }}
 
   cleanup:
