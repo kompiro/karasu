@@ -95,7 +95,12 @@ export { extractDeployView } from "./view/deploy-view-extract.js";
 export { applyKrsPatch } from "./patch/krs-patch.js";
 export type { PatchOperation } from "./patch/krs-patch.js";
 
-export { format, FormatError } from "./formatter/formatter.js";
+export { format, FormatError, serializeKrsFile } from "./formatter/formatter.js";
+export {
+  synthesizeSharePayload,
+  SHARE_STYLE_IMPORT_PATH,
+  type SharePayload,
+} from "./share/synthesize.js";
 export { Parser } from "./parser/parser.js";
 export { isSafeLinkUrl } from "./parser/link-url.js";
 export {

@@ -183,6 +183,7 @@ export const ja: Partial<Translations> = {
   "preview.share.dialog.description":
     "このリンクを知っている人は誰でもこの図を閲覧できます。内容は URL 自体に埋め込まれており、サーバーには何もアップロードされません。",
   "preview.share.dialog.urlAriaLabel": "共有 URL",
+  "preview.share.dialog.generating": "リンクを生成中…",
   "preview.share.dialog.copy": "⧉ コピー",
   "preview.share.dialog.copied": "✓ クリップボードにコピーしました",
   "preview.share.dialog.close": "閉じる",

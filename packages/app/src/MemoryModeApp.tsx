@@ -6,6 +6,9 @@ import { useFileSelection } from "./hooks/useFileSelection.js";
 import { useTranslation } from "./i18n/index.js";
 
 const MEMORY_FILE_PATH = "/memory/index.krs";
+// A bundled share style is seeded here; the flattened `.krs` carries a single
+// `@import "index.krs.style"` (SHARE_STYLE_IMPORT_PATH) that resolves to it.
+const MEMORY_STYLE_PATH = "/memory/index.krs.style";
 
 interface MemoryModeAppProps {
   /**
@@ -13,13 +16,15 @@ interface MemoryModeAppProps {
    * inline URL (karasu-nest) as an ephemeral in-memory view — see App.tsx.
    */
   initialKrs?: string;
+  /** Bundled `.krs.style` to seed alongside `initialKrs` (karasu-nest share). */
+  initialStyle?: string;
 }
 
 /**
  * MemoryModeApp — OPFS 非対応ブラウザ向けの単一ファイル編集モード。
  * AppProvider は App.tsx で注入される。
  */
-export function MemoryModeApp({ initialKrs }: MemoryModeAppProps = {}) {
+export function MemoryModeApp({ initialKrs, initialStyle }: MemoryModeAppProps = {}) {
   const { dispatch, fs } = useAppContext();
   const { selectFileWithContent } = useFileSelection(fs, dispatch);
   const { locale } = useTranslation();
@@ -27,6 +32,9 @@ export function MemoryModeApp({ initialKrs }: MemoryModeAppProps = {}) {
   useEffect(() => {
     (async () => {
       const seed = initialKrs ?? getReference(locale).sampleKrs;
+      if (initialStyle !== undefined) {
+        await fs.writeFile(MEMORY_STYLE_PATH, initialStyle);
+      }
       await fs.writeFile(MEMORY_FILE_PATH, seed);
       selectFileWithContent(MEMORY_FILE_PATH, seed);
       dispatch({ type: "SET_LOADING", loading: false });

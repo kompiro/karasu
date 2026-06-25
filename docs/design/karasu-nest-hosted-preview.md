@@ -152,7 +152,7 @@ Phase 1 は機能が 5 つあり 1 PR では大きいので、以下の順で **
 | PR | スコープ | 依存 |
 | --- | --- | --- |
 | **PR 1 — inline share（単一ファイル）** | `.krs` を `fflate` deflate → base64url で URL fragment（キー `#s=`）に encode/decode。Share ボタン + 共有ダイアログ。復元経路（`MemoryModeApp` を decode 結果で seed、共有リンクは ephemeral な in-memory ビューで開く）。復元失敗時は警告して ProjectMode へフォールバック。**単一ファイルのみ** | なし |
-| **PR 2 — multi-file 合成** | `import` を跨ぐプロジェクトを `ImportResolver` の結果から **単一 `.krs` 文字列へ合成**してから encode。AST→source 化（core の `Printer` を公開する等）が必要 | PR 1 |
+| **PR 2 — multi-file 合成 + style バンドル** | `import` を跨ぐプロジェクトを `ImportResolver` の結果から **単一 `.krs` 文字列へ合成**（core `serializeKrsFile` / `synthesizeSharePayload`）。さらに `.krs.style` も**バンドル**（`{krs, style}` ペイロード）。`.krs` 単体ではスタイルが運べないため必須。PR1 の生 `.krs` 形式は後方互換でデコード | PR 1 |
 | **PR 3 — 静的 SVG/PNG エンドポイント** | Cloudflare Worker 上で `buildAllViewsSvg` を呼び全ビューを返す。PNG ラスタライズを含む。README 埋め込み・OGP 用 | PR 1 |
 | **PR 4 — ホスティング + reverse レシピ** | app の Cloudflare Pages/Worker デプロイ設定 + `syntax.md` 同梱の reverse レシピ docs ページ | PR 1（必要なら PR 3） |
 

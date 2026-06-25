@@ -46,6 +46,19 @@ export function format(src: string): string {
   return new Printer(commentTokens).printFile(parseResult.value);
 }
 
+/**
+ * Serialize an already-parsed (or merged) {@link KrsFile} AST back to `.krs`
+ * source text. Unlike {@link format}, which parses a source string first, this
+ * takes an AST directly — used to flatten a multi-file project (resolved by
+ * `ImportResolver`) into a single self-contained `.krs` for inline sharing.
+ *
+ * Comments are not preserved (no source/token stream is available for a merged
+ * AST); structural content round-trips faithfully.
+ */
+export function serializeKrsFile(file: KrsFile): string {
+  return new Printer([]).printFile(file);
+}
+
 // ---------------------------------------------------------------------------
 // Internal helpers
 // ---------------------------------------------------------------------------

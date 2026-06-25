@@ -11,7 +11,7 @@ import { TranslateProvider } from "./components/TranslateProvider.js";
 import { OpfsFileSystemProvider } from "./fs/opfs-provider.js";
 import { ObservableFileSystemProvider } from "./fs/observable-provider.js";
 import { detectAppMode, type AppMode } from "./fs/detect-storage-mode.js";
-import { readSharedKrsFromHash } from "./utils/inline-share.js";
+import { readSharedProjectFromHash } from "./utils/inline-share.js";
 import { useTranslation } from "./i18n/index.js";
 import { Button } from "@/components/ui/button";
 
@@ -20,19 +20,21 @@ export function App() {
   // payload opens as an ephemeral in-memory view regardless of the visitor's
   // browser storage, so it never touches their local (OPFS) project. A present
   // but unrestorable payload falls back to the normal app with a warning.
-  const [shared] = useState(() => readSharedKrsFromHash(window.location.hash));
-  const sharedSource = shared !== null && "source" in shared ? shared.source : null;
+  const [shared] = useState(() => readSharedProjectFromHash(window.location.hash));
+  const sharedPayload = shared !== null && "payload" in shared ? shared.payload : null;
   const restoreFailed = shared !== null && "error" in shared;
 
   const [mode, setMode] = useState<AppMode | null>(null);
 
   useEffect(() => {
-    if (sharedSource !== null) return;
+    if (sharedPayload !== null) return;
     detectAppMode().then(setMode);
-  }, [sharedSource]);
+  }, [sharedPayload]);
 
-  if (sharedSource !== null) {
-    return <ModeWrapper mode="memory" sharedKrs={sharedSource} />;
+  if (sharedPayload !== null) {
+    return (
+      <ModeWrapper mode="memory" sharedKrs={sharedPayload.krs} sharedStyle={sharedPayload.style} />
+    );
   }
   if (mode === null) return null;
   return <ModeWrapper mode={mode} restoreFailed={restoreFailed} />;
@@ -41,10 +43,12 @@ export function App() {
 function ModeWrapper({
   mode,
   sharedKrs,
+  sharedStyle,
   restoreFailed,
 }: {
   mode: AppMode;
   sharedKrs?: string;
+  sharedStyle?: string;
   restoreFailed?: boolean;
 }) {
   const fs = useMemo(() => {
@@ -61,7 +65,7 @@ function ModeWrapper({
         <TranslateProvider>
           {restoreFailed && <RestoreFailedBanner />}
           {mode === "serve" && <ServeModeApp />}
-          {mode === "memory" && <MemoryModeApp initialKrs={sharedKrs} />}
+          {mode === "memory" && <MemoryModeApp initialKrs={sharedKrs} initialStyle={sharedStyle} />}
           {mode === "opfs" && <ProjectModeApp />}
         </TranslateProvider>
       </CommandProvider>

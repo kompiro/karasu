@@ -11,6 +11,7 @@ import type {
 } from "@karasu-tools/core";
 import type { ActiveView } from "../state/app-reducer.js";
 import type { PreviewContextValue } from "../state/preview-context.js";
+import type { SharePayload } from "../utils/inline-share.js";
 import type { UseCrossNavigationResult } from "./useCrossNavigation.js";
 
 type BreadcrumbItems = { id: string; label: string }[];
@@ -76,8 +77,8 @@ interface UsePreviewContextValueArgs {
   onExportDrawio?: (filename: string) => Promise<void>;
   /** Whether the active file has shareable source (Share button enabled state). */
   hasKrsSource?: boolean;
-  /** Stable getter for the current `.krs` source (PreviewColumn's Share button). */
-  getKrsSource?: () => string;
+  /** Flattens the project into a share payload (PreviewColumn's Share button). */
+  getShareBundle?: () => Promise<SharePayload>;
 }
 
 /**
@@ -118,7 +119,7 @@ export function usePreviewContextValue(args: UsePreviewContextValueArgs): Previe
     onExportSvg,
     onExportDrawio,
     hasKrsSource,
-    getKrsSource,
+    getShareBundle,
   } = args;
 
   return useMemo<PreviewContextValue>(
@@ -185,7 +186,7 @@ export function usePreviewContextValue(args: UsePreviewContextValueArgs): Previe
       styleTargetPath,
       onPickEdgeDirection,
       hasKrsSource,
-      getKrsSource,
+      getShareBundle,
     }),
     [
       activeView,
@@ -232,7 +233,7 @@ export function usePreviewContextValue(args: UsePreviewContextValueArgs): Previe
       onExportSvg,
       onExportDrawio,
       hasKrsSource,
-      getKrsSource,
+      getShareBundle,
     ],
   );
 }

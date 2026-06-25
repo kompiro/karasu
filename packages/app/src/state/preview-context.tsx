@@ -10,6 +10,7 @@ import type {
   SystemNode,
 } from "@karasu-tools/core";
 import type { ActiveView } from "./app-reducer.js";
+import type { SharePayload } from "../utils/inline-share.js";
 
 export interface SystemViewData {
   svg: string;
@@ -81,11 +82,13 @@ export interface PreviewContextValue {
    */
   hasKrsSource?: boolean;
   /**
-   * Returns the current `.krs` source for building an inline share URL
-   * (karasu-nest). Stable identity (reads a ref), so threading it through the
-   * preview memo does not re-render the preview on every keystroke.
+   * Flatten the current project into a self-contained share payload (a single
+   * `.krs` + merged `.krs.style`) for an inline share URL (karasu-nest). Async
+   * because multi-file projects are resolved from the filesystem. Stable
+   * identity, so threading it through the preview memo doesn't re-render the
+   * preview on every keystroke.
    */
-  getKrsSource?: () => string;
+  getShareBundle?: () => Promise<SharePayload>;
   /**
    * Export the current project as a draw.io (mxGraph XML) file. Absent when
    * the active shell has no project available (e.g. editor-only modes).

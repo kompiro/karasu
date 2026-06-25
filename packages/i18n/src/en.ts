@@ -184,6 +184,7 @@ export const en: Translations = {
   "preview.share.dialog.description":
     "Anyone with this link can view this diagram. The content is encoded in the URL itself — nothing is uploaded to a server.",
   "preview.share.dialog.urlAriaLabel": "Shareable URL",
+  "preview.share.dialog.generating": "Generating link…",
   "preview.share.dialog.copy": "⧉ Copy",
   "preview.share.dialog.copied": "✓ Copied to clipboard",
   "preview.share.dialog.close": "Close",
