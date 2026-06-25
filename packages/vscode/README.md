@@ -53,6 +53,8 @@ preview toolbar:
 For the full `.krs` / `.krs.style` syntax, see the
 [syntax reference](https://github.com/kompiro/karasu/blob/main/docs/spec/syntax.md)
 and the [sample models](https://github.com/kompiro/karasu/tree/main/examples).
+The complete documentation lives on the **[karasu docs site](https://kompiro.github.io/karasu/)**,
+and you can try karasu straight from your browser at **[karasu.pages.dev](https://karasu.pages.dev/)**.
 
 ## Installation
 
@@ -69,9 +71,9 @@ code --install-extension karasu-tools.karasu-vscode
 
 The extension is intentionally a convenience for editing `.krs` locally;
 features such as completion, code actions, and rename are still minimal. For a
-fuller authoring experience, the web preview (`karasu serve`) is recommended.
-See the [project README](https://github.com/kompiro/karasu#readme) for the CLI
-and the hosted preview.
+fuller authoring experience, the web preview (`karasu serve`) or the
+[hosted app](https://karasu.pages.dev/) is recommended. See the
+[project README](https://github.com/kompiro/karasu#readme) for the CLI.
 
 ## Feedback
 
