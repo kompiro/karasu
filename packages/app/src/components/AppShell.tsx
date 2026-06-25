@@ -250,8 +250,13 @@ export function AppShell({
     if (entryPath) {
       try {
         return await synthesizeSharePayload(entryPath, fs);
-      } catch {
-        /* fall back to the live single-file content */
+      } catch (err) {
+        // ImportResolver collects missing/circular/parse issues as diagnostics
+        // rather than throwing, so this only fires on an unexpected synthesis
+        // failure. The single-file fallback is a best effort and may be broken
+        // for a multi-file project, so surface it rather than failing silently.
+        // eslint-disable-next-line no-console
+        console.warn("karasu-nest: share synthesis failed, sharing raw entry", err);
       }
     }
     return { krs: fileContentRef.current };
