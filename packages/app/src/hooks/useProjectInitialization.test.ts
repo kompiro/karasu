@@ -144,7 +144,7 @@ describe("useProjectInitialization — bootstrap", () => {
     );
     // #1642: the multi-file-system seed is locale-matched like Getting Started.
     expect(pm.createProject).toHaveBeenNthCalledWith(
-      1 + EC_PLATFORM_PROJECTS.length + 2,
+      1 + EC_PLATFORM_PROJECTS_EN.length + 2,
       MULTI_FILE_SYSTEM_PROJECT_EN.name,
       MULTI_FILE_SYSTEM_PROJECT_EN.files,
     );
