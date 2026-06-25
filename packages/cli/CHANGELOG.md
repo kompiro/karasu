@@ -1,6 +1,11 @@
 # karasu
 
-## 0.2.0
+## 0.6.0
+
+> Version note: the `karasu` npm package had a legacy 0.x line up to `0.5.2`
+> (2020–2021). The current architecture-tool incarnation restarted at `0.1.0`;
+> this release leaps past the legacy line to `0.6.0` so the published version is
+> free. `@karasu-tools/core` is versioned independently (`0.2.0`).
 
 ### Minor Changes
 
