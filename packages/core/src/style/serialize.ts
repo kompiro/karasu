@@ -88,6 +88,14 @@ export function formatSelector(selector: StyleSelector): string {
   if (selector.edgeId) {
     out += `#${selector.edgeId}`;
   }
+  // Endpoint predicates (edge[from=<id>] / edge[to=<id>], #1755). Emitted
+  // before tags so `edge[from=X][async]` round-trips in source order.
+  if (selector.edgeFrom) {
+    out += `[from=${selector.edgeFrom}]`;
+  }
+  if (selector.edgeTo) {
+    out += `[to=${selector.edgeTo}]`;
+  }
   for (const tag of selector.tags) {
     out += `[${tag}]`;
   }
