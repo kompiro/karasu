@@ -8,7 +8,7 @@
       name="description"
       content="A retrospective of karasu's road to its 1.0 language spec — monthly and weekly summaries tracking commits, ADRs, and TPLs (snapshot as of 2026-06-25)."
     />
-    <style>
+    <style is:global>
       :root {
         --bg: #0f1115;
         --bg-card: #181b22;
@@ -453,7 +453,7 @@
   </head>
   <body>
     <div class="topbar">
-      <a class="back" href="/karasu/" data-i="backHome">← karasu docs</a>
+      <a class="back" href="/karasu/retrospective/" data-i="backHome">← karasu docs</a>
       <span class="langtoggle">
         <button data-lang="en" onclick="setLang('en')">English</button>
         <button data-lang="ja" onclick="setLang('ja')">日本語</button>
@@ -528,7 +528,7 @@
       <div class="foot" data-i="foot"></div>
     </div>
 
-    <script>
+    <script is:inline>
       /* ===== shared numeric dataset (language-independent) ===== */
       const META = {
         firstCommit: "2026-03-13",
