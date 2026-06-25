@@ -1,0 +1,64 @@
+// ec-platform/02.5-clients.krs
+// Demonstrates: client kind with form-factor tags, service.delivers,
+// client.handles, and resource <storageKind> "<name>" lines.
+// Slots between 02-users (who) and 03-domains (what each domain does).
+//
+// User → Client → Service is the natural progression: the people in 02-users
+// don't talk to ECommerce directly — they go through a mobile or web client.
+
+system ECPlatform {
+  label "EC Platform"
+
+  user Customer [human] {
+    label "Customer"
+    role "End users who purchase products"
+  }
+
+  user Admin [human] {
+    label "Operator"
+    role "Staff who manage inventory, orders, and notifications"
+  }
+
+  // Clients we ship — sit between users and services.
+  client MobileApp [mobile] {
+    label "Mobile App"
+    description "Official iOS / Android app"
+    handles Order
+    resource localStorage "preferences"
+    resource indexedDB "outbox"
+  }
+
+  client WebApp [web] {
+    label "Web App"
+    description "Browser-based SPA"
+    handles Order
+    resource sessionStorage "view-state"
+  }
+
+  service ECommerce {
+    label "EC Site"
+    description "Product management and order processing"
+    // delivers links a service to the client(s) it ships to end users.
+    delivers MobileApp, WebApp
+
+    domain Order {
+      label "Orders"
+    }
+  }
+
+  service Payment {
+    label "Payment Service"
+  }
+
+  service Inventory {
+    label "Inventory"
+  }
+
+  Customer  -> MobileApp "Use the app"
+  Customer  -> WebApp    "Use via browser"
+  Admin     -> WebApp    "Use the admin console"
+  MobileApp -> ECommerce "Call the API"
+  WebApp    -> ECommerce "Call the API"
+  ECommerce -> Payment   "Process payment"
+  ECommerce -> Inventory "Check inventory"
+}

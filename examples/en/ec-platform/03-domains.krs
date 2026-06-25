@@ -1,0 +1,125 @@
+// ec-platform/03-domains.krs
+// Demonstrates: domain, usecase, resource — full drill-down hierarchy
+// Drill into ECommerce to see its internal domain structure.
+
+system ECPlatform {
+  label "EC Platform"
+
+  user Customer [human] {
+    label "Customer"
+    role "End users who purchase products"
+  }
+
+  service ECommerce {
+    label "EC Site"
+
+    domain Order {
+      label "Orders"
+      description "Accept, manage, and cancel orders"
+
+      usecase PlaceOrder {
+        label "Place an order"
+        resource OrderTable {
+          label "Order table"
+          operations create, read
+        }
+        resource InventoryAPI {
+          label "Inventory API"
+          operations read
+        }
+      }
+
+      usecase CancelOrder {
+        label "Cancel an order"
+        resource OrderTable {
+          label "Order table"
+          operations read, update
+        }
+      }
+
+      usecase QueryOrder {
+        label "Query order status"
+        resource OrderTable {
+          label "Order table"
+          operations read
+        }
+      }
+    }
+
+    domain Catalog {
+      label "Product Catalog"
+      description "Manage and search product information"
+
+      usecase SearchProducts {
+        label "Search products"
+        resource ProductTable {
+          label "Product table"
+          operations read
+        }
+      }
+
+      usecase UpdateProduct {
+        label "Update product information"
+        resource ProductTable {
+          label "Product table"
+          operations read, update
+        }
+        resource ImageStorage {
+          label "Image storage"
+          operations create, update, delete
+        }
+      }
+    }
+  }
+
+  service Payment {
+    label "Payment Service"
+
+    domain Billing {
+      label "Billing"
+
+      usecase Charge {
+        label "Execute payment"
+        resource PaymentGateway {
+          label "Payment gateway"
+        }
+        resource TransactionLog {
+          label "Transaction log"
+        }
+      }
+
+      usecase Refund {
+        label "Issue a refund"
+        resource PaymentGateway {
+          label "Payment gateway"
+        }
+      }
+    }
+  }
+
+  service Inventory {
+    label "Inventory"
+
+    domain Stock {
+      label "Stock"
+
+      usecase CheckStock {
+        label "Check stock"
+        resource StockTable {
+          label "Stock table"
+        }
+      }
+
+      usecase ReserveStock {
+        label "Reserve stock"
+        resource StockTable {
+          label "Stock table"
+        }
+      }
+    }
+  }
+
+  Customer  ->  ECommerce "Purchase products"
+  ECommerce ->  Payment   "Process payment"
+  ECommerce ->  Inventory "Check inventory"
+}

@@ -1,0 +1,20 @@
+// ec-platform/05-multifile/payment.krs
+// Payment service definition — imported by system.krs
+
+service Payment {
+  label "Payment Service"
+  description "Credit card payment processing"
+
+  domain Billing {
+    label "Billing"
+    usecase Charge {
+      label "Execute payment"
+      resource PaymentGateway { label "Payment gateway" }
+      resource TransactionLog { label "Transaction log" }
+    }
+    usecase Refund {
+      label "Issue a refund"
+      resource PaymentGateway { label "Payment gateway" }
+    }
+  }
+}
