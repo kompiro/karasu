@@ -13,11 +13,15 @@
 個々のタスクの実行・進捗は GitHub Issues で管理し、確定した設計判断は ADR に
 記録する。本書はそれらを束ねる「どこへ向かっているか」の全体像を提供する。
 
-> **process 注記（[#1567](https://github.com/kompiro/karasu/issues/1567) 本文より）**:
+> **process 注記（[#1567](https://github.com/kompiro/karasu/issues/1567) → [#1717](https://github.com/kompiro/karasu/issues/1717)）**:
 > 理想は roadmap-first（公開ロードマップを先に置き、それに対して notation を
-> 評価する）だが、現在の Syntax v1.0 セクションは 5 本のガイド執筆（#1561）と
-> spec 通読由来の hands-on な棚卸しを起点にしている。ここで定める v1.0 スコープは
-> **結論ではなく、再評価可能な候補**として扱う。本書が今後の再評価の基準点を兼ねる。
+> 評価する）。#1567 の棚卸しは 5 本のガイド執筆（#1561）と spec 通読由来の
+> hands-on な起点で、roadmap を欠いたまま走った **interim**（findings は結論では
+> なく候補）だった。**#1717 でその loop を閉じ**、本書を notation を再評価するための
+> **durable な driver** とする。以降の Syntax v1.0 セクションは、まず
+> [§syntax v1.0 の定義（criteria）](#syntax-v10-の定義criteria) と
+> [§guiding principle](#guiding-principle-structure-vs-implementation-境界) を
+> 基準として置き、#1567 の findings をその基準に対して評価した結果として読む。
 
 ---
 
@@ -26,6 +30,55 @@
 `.krs` / `.krs.style` の構文・タグ・アノテーション・診断 register を v1.0 として
 freeze（後方互換を約束）するための readiness と計画。最終的な freeze 判断は
 [#1314](https://github.com/kompiro/karasu/issues/1314) の ADR で行う。
+
+### syntax v1.0 の定義（criteria）
+
+「v1.0 として freeze する」とは、その notation feature の **後方互換を約束する**こと
+である。何を freeze し、何を freeze しないかを ad-hoc に決めないために、feature を
+次の 3 tier に分類する基準を置く。各 finding / 機能はこの基準に対して評価する
+（[棚卸し finding の決着状況](#棚卸し-finding-の決着状況) の disposition 列はこの
+分類の適用結果である）。
+
+| tier | 意味（互換保証） | 入る条件（すべて満たす） |
+| --- | --- | --- |
+| **v1.0-stable** | 後方互換を約束する。破壊的変更は major でしか入れない | (1) [structure-vs-implementation 境界](#guiding-principle-structure-vs-implementation-境界) の構造側にある（実装詳細を持ち込まない）／(2) spec に明文化済みで、規則 ↔ 診断が対応づいている（[ADR-20260616-04](adr/20260616-04-rule-diagnostic-separation-and-catalog.md)）／(3) 既存の `.krs` を壊さずに freeze できる（実装と spec が一致している）／(4) 削るより残すほうが利用者の表現コストが低い |
+| **experimental（post-v1.0 watch）** | in-core で使えるが互換は**明示的に約束しない**。実利用の pain を観察してから stable / 変更 / deprecate を決める | (1)〜(4) のいずれかが未充足だが、構文を変えずに当面運用できる。境界が灰色（構造か実装か判断保留）／実利用が不足し earn-its-keep が未確認、のいずれか |
+| **deprecated** | 段階的に外す。`@deprecated(until: …)` の graceful-degradation で移行猶予を与える（[ADR-20260615-04](adr/20260615-04-migration-intent-fields.md)） | 構造側にない、または redundant と確定し、後継が用意できている |
+
+補足:
+
+- **warn-don't-error が stable 判定の前提**: 未完成・in-flight なモデルでも render
+  できることが karasu の差別化要因であり、freeze する診断 register は fact vs style
+  の二分（[TPL-20260514-08](test-perspectives/TPL-20260514-08-diagnostic-register-fact-vs-style.md)）に従う。
+- **open annotation set は常に stable 側**: 未知の annotation は display-only で通る
+  ため、新語彙の追加が後方互換を壊さない。features を experimental に置くより、
+  open-set へ逃がせるものは逃がす（[ADR-20260615-04](adr/20260615-04-migration-intent-fields.md)）。
+- **experimental を明示することが目的**: 「観察してから決める」ものを早すぎる段階で
+  stable に硬直化させないため、freeze しないものを曖昧にせず experimental と名指す
+  （`docs/concepts.md` の "these goals and non-goals are not fixed" の精神）。
+
+### guiding principle: structure-vs-implementation 境界
+
+v1.0 criteria 条件 (1) の拠り所であり、棚卸しの watch item **D / G / H / I** が共有する
+緊張の正体でもある。karasu は **slowly-changing な構造的コンテキスト**（何が存在し、
+どう関係し、誰が所有するか）を語り、実装詳細・runtime 状態はその外に置く
+（`docs/concepts.md` [§Structure, not implementation](concepts.md#structure-not-implementation-client) / 同 §What karasu is not）。
+
+この境界が v1.0 スコープを切り分ける判定軸になる:
+
+- **構造側にある feature は v1.0-stable の候補**になりうる。
+- **境界に接近する feature は experimental に置く**か、構造側に留まる根拠を spec /
+  concepts に明文化してから stable に上げる。
+
+watch item をこの軸で読むと:
+
+| watch | 境界に対する位置 | criteria 上の扱い |
+| --- | --- | --- |
+| **G** `client` sub-language | 境界に**最も近い**が、各 feature が「アクセスパス構造」を名指し実装を名指さない test を通る | concepts に境界注記済み（[§Structure, not implementation](concepts.md#structure-not-implementation-client) / [TPL-20260616-03](test-perspectives/TPL-20260616-03-client-vocabulary-structure-not-implementation.md)）→ **stable** |
+| **H** CRUD verb-decoration 1:N | usecase の振る舞い（実装寄り）に接近するが、実在のデータ作用の**構造**を簡潔に表す | spec/parser 実装済み・削る互換コストが大きい → **stable**（[付録](#付録-finding-hcrud-verb-decoration-1nを-v10-で残す判断) で earn-its-keep を watch） |
+| **I** infra block keyword vs shape tag | どちらも構造側だが**語彙が二重化**（dual representation）し audience が混同しうる | spec に使い分け注記済み（#1626）→ **stable**（[TPL-20260519-02](test-perspectives/TPL-20260519-02-shared-vocabulary-dual-representation.md) で観察） |
+| **D** edge の protocol/cardinality | first-class 化は**実装詳細を edge に持ち込む**圧力になりうる（構造か実装か灰色） | 当面 tag + `description`/`link` の散文に逃がす → **experimental** |
+| **C** `translate` の domain 推論 | core 構文の問題ではなく adapter 側（scaffold → readable の手作業） | core spec に gap なし → **experimental（adapter 課題）** |
 
 ### readiness サマリ
 
@@ -41,6 +94,8 @@ freeze（後方互換を約束）するための readiness と計画。最終的
 ### 棚卸し finding の決着状況
 
 記号は [#1567](https://github.com/kompiro/karasu/issues/1567) 本文の見出しに対応。
+disposition 列は [§criteria](#syntax-v10-の定義criteria) の 3 tier を各 finding に
+適用した結果である（**確定** = v1.0-stable、**post-v1.0 watch** = experimental）。
 
 | ID | finding | 現状 | v1.0 disposition |
 | --- | --- | --- | --- |
@@ -53,8 +108,8 @@ freeze（後方互換を約束）するための readiness と計画。最終的
 | **H** | CRUD verb-decoration 1:N（`replace:create,delete`） | spec + parser 実装済み | **v1.0 で残す**（freeze 対象。判断根拠は付録参照） |
 | **G** | `client` sub-language の複雑さが実装詳細線に接近 | spec 上は文書化済み・gap なし | **freeze 前に concepts へ境界注記** |
 | **I** | infra block keyword（`database`/`queue`/…）vs shape tag（`[table]`/`[queue]`/…）の vocabulary overlap | 衝突強制なし。semantic overlap | **freeze 前に audience guidance** |
-| **C** | `translate` の抽象化が部分的（domain 推論なし） | core 構文に gap なし。translate adapter 側の課題 | **post-v1.0 watch** |
-| **D** | edge semantics が sync/async + tag のみ（protocol/cardinality が first-class でない） | protocol/cardinality は `description`/`link` の散文に逃がす | **post-v1.0 watch** |
+| **C** | `translate` の抽象化が部分的（domain 推論なし） | core 構文に gap なし。translate adapter 側の課題 | **post-v1.0 watch**（experimental — adapter 課題） |
+| **D** | edge semantics が sync/async + tag のみ（protocol/cardinality が first-class でない） | protocol/cardinality は `description`/`link` の散文に逃がす | **post-v1.0 watch**（experimental — 境界が灰色） |
 | **E** | reading-confidence / uncertainty | onboarding guide §5.1（#1561）で open-set annotation（`@unverified`/`@assumed`）+ `.krs.style` により対応済み | **対応済み（docs）** |
 
 ### ergonomic friction（学習コスト — 暗黙ルールの明文化）
