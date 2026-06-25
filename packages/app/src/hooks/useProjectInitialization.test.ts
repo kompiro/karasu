@@ -5,6 +5,7 @@ import { renderHook, cleanup, waitFor } from "@testing-library/react";
 import {
   CLIENT_MCP_PROJECT,
   EC_PLATFORM_PROJECTS,
+  EC_PLATFORM_PROJECTS_EN,
   FEATURE_SAMPLES_PROJECT,
   GETTING_STARTED_PROJECT,
   GETTING_STARTED_PROJECT_EN,
@@ -76,6 +77,12 @@ describe("useProjectInitialization — bootstrap", () => {
       GETTING_STARTED_PROJECT.name,
       GETTING_STARTED_PROJECT.files,
     );
+    // The ec-platform drill-down is seeded as the Japanese variant.
+    expect(pm.createProject).toHaveBeenNthCalledWith(
+      2,
+      EC_PLATFORM_PROJECTS[0].name,
+      EC_PLATFORM_PROJECTS[0].files,
+    );
     expect(pm.createProject).toHaveBeenNthCalledWith(
       1 + EC_PLATFORM_PROJECTS.length + 1,
       CLIENT_MCP_PROJECT.name,
@@ -103,7 +110,7 @@ describe("useProjectInitialization — bootstrap", () => {
     expect(dispatch).toHaveBeenCalledWith({ type: "SET_LOADING", loading: false });
   });
 
-  it("seeds the English Getting Started + multi-file-system when locale is 'en'", async () => {
+  it("seeds the English Getting Started + ec-platform + multi-file-system when locale is 'en'", async () => {
     localStorage.setItem("karasu-locale", "en");
     const pm = makePm([]);
     const dispatch = vi.fn<(action: unknown) => void>();
@@ -128,9 +135,16 @@ describe("useProjectInitialization — bootstrap", () => {
       GETTING_STARTED_PROJECT_EN.name,
       GETTING_STARTED_PROJECT_EN.files,
     );
+    // #1777: the ec-platform drill-down is locale-matched too — en gets the
+    // English variant (same stage names, English-labeled content).
+    expect(pm.createProject).toHaveBeenNthCalledWith(
+      2,
+      EC_PLATFORM_PROJECTS_EN[0].name,
+      EC_PLATFORM_PROJECTS_EN[0].files,
+    );
     // #1642: the multi-file-system seed is locale-matched like Getting Started.
     expect(pm.createProject).toHaveBeenNthCalledWith(
-      1 + EC_PLATFORM_PROJECTS.length + 2,
+      1 + EC_PLATFORM_PROJECTS_EN.length + 2,
       MULTI_FILE_SYSTEM_PROJECT_EN.name,
       MULTI_FILE_SYSTEM_PROJECT_EN.files,
     );

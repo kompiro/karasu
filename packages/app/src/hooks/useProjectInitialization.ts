@@ -2,6 +2,7 @@ import { useEffect, useRef, type Dispatch } from "react";
 import {
   CLIENT_MCP_PROJECT,
   EC_PLATFORM_PROJECTS,
+  EC_PLATFORM_PROJECTS_EN,
   FEATURE_SAMPLES_PROJECT,
   GETTING_STARTED_PROJECT,
   GETTING_STARTED_PROJECT_EN,
@@ -89,16 +90,16 @@ export function useProjectInitialization({
 
         if (projectList.length === 0) {
           const initialProjects: Project[] = [];
-          // Pick the locale-matching content (Getting Started, multi-file-system)
-          // at seed time. Once seeded it is user content — we do not re-seed when
-          // the locale changes later. Users whose browser is Japanese get the
-          // Japanese variants; everyone else gets English. (ec-platform has no
-          // English variant, so it is seeded as-is — see #1642.)
+          // Pick the locale-matching content (Getting Started, ec-platform,
+          // multi-file-system) at seed time. Once seeded it is user content — we
+          // do not re-seed when the locale changes later. Users whose browser is
+          // Japanese get the Japanese variants; everyone else gets English.
           const isJa = resolveLocale() === "ja";
           const gsTemplate = isJa ? GETTING_STARTED_PROJECT : GETTING_STARTED_PROJECT_EN;
           const gsProject = await pm.createProject(gsTemplate.name, gsTemplate.files);
           initialProjects.push(gsProject);
-          for (const example of EC_PLATFORM_PROJECTS) {
+          const ecPlatformProjects = isJa ? EC_PLATFORM_PROJECTS : EC_PLATFORM_PROJECTS_EN;
+          for (const example of ecPlatformProjects) {
             const project = await pm.createProject(example.name, example.files);
             initialProjects.push(project);
           }

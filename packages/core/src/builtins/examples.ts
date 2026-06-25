@@ -1444,6 +1444,673 @@ system PaymentGateway {
   },
 ];
 
+// English variant of EC_PLATFORM_PROJECTS (byte-equal to examples/en/ec-platform/,
+// governed by .claude/rules/examples-sync.md). Seeded for non-ja locales in
+// ProjectMode (`useProjectInitialization`) so English users get the full
+// getting-started drill-down in English (#1777).
+export const EC_PLATFORM_PROJECTS_EN: ExampleProject[] = [
+  {
+    name: "01-system",
+    files: [
+      {
+        path: "index.krs",
+        content: `// ec-platform/01-system.krs
+// Demonstrates: system, service, sync edge (->), async edge (-->)
+// This is the minimal building block of a karasu diagram.
+
+system ECPlatform {
+  label "EC Platform"
+
+  service ECommerce {
+    label "EC Site"
+    description "Product management and order processing"
+  }
+
+  service Payment {
+    label "Payment Service"
+    description "Credit card payment processing"
+  }
+
+  service Inventory {
+    label "Inventory"
+    description "Inventory data management"
+  }
+
+  service Notification {
+    label "Notification Service"
+    description "Sends email and push notifications"
+  }
+
+  ECommerce  ->  Payment      "Process payment"
+  ECommerce  ->  Inventory    "Check inventory"
+  ECommerce --> Notification  "Send order confirmation email"
+  Inventory --> Notification  "Send out-of-stock alert"
+}
+`,
+      },
+    ],
+  },
+  {
+    name: "02-users",
+    files: [
+      {
+        path: "index.krs",
+        content: `// ec-platform/02-users.krs
+// Demonstrates: user [human], user [ai], role property
+// Users can be human actors or AI agents interacting with the system.
+
+system ECPlatform {
+  label "EC Platform"
+
+  user Customer [human] {
+    label "Customer"
+    role "End users who purchase products"
+  }
+
+  user Admin [human] {
+    label "Operator"
+    role "Staff who manage inventory, orders, and notifications"
+  }
+
+  user RecommendationAgent [ai] {
+    label "Recommendation Agent"
+    role "AI agent that analyzes purchase history to recommend products"
+  }
+
+  service ECommerce {
+    label "EC Site"
+    description "Product management and order processing"
+  }
+
+  service Payment {
+    label "Payment Service"
+    description "Credit card payment processing"
+  }
+
+  service Inventory {
+    label "Inventory"
+    description "Inventory data management"
+  }
+
+  service Notification {
+    label "Notification Service"
+    description "Sends email and push notifications"
+  }
+
+  Customer            -> ECommerce    "Purchase products"
+  Admin               -> Inventory    "Manage inventory"
+  Admin               -> Notification "Change notification settings"
+  RecommendationAgent -> ECommerce    "Suggest recommended products"
+  ECommerce           -> Payment      "Process payment"
+  ECommerce           -> Inventory    "Check inventory"
+  ECommerce          --> Notification "Send order confirmation email"
+}
+`,
+      },
+    ],
+  },
+  {
+    name: "02.5-clients",
+    files: [
+      {
+        path: "index.krs",
+        content: `// ec-platform/02.5-clients.krs
+// Demonstrates: client kind with form-factor tags, service.delivers,
+// client.handles, and resource <storageKind> "<name>" lines.
+// Slots between 02-users (who) and 03-domains (what each domain does).
+//
+// User → Client → Service is the natural progression: the people in 02-users
+// don't talk to ECommerce directly — they go through a mobile or web client.
+
+system ECPlatform {
+  label "EC Platform"
+
+  user Customer [human] {
+    label "Customer"
+    role "End users who purchase products"
+  }
+
+  user Admin [human] {
+    label "Operator"
+    role "Staff who manage inventory, orders, and notifications"
+  }
+
+  // Clients we ship — sit between users and services.
+  client MobileApp [mobile] {
+    label "Mobile App"
+    description "Official iOS / Android app"
+    handles Order
+    resource localStorage "preferences"
+    resource indexedDB "outbox"
+  }
+
+  client WebApp [web] {
+    label "Web App"
+    description "Browser-based SPA"
+    handles Order
+    resource sessionStorage "view-state"
+  }
+
+  service ECommerce {
+    label "EC Site"
+    description "Product management and order processing"
+    // delivers links a service to the client(s) it ships to end users.
+    delivers MobileApp, WebApp
+
+    domain Order {
+      label "Orders"
+    }
+  }
+
+  service Payment {
+    label "Payment Service"
+  }
+
+  service Inventory {
+    label "Inventory"
+  }
+
+  Customer  -> MobileApp "Use the app"
+  Customer  -> WebApp    "Use via browser"
+  Admin     -> WebApp    "Use the admin console"
+  MobileApp -> ECommerce "Call the API"
+  WebApp    -> ECommerce "Call the API"
+  ECommerce -> Payment   "Process payment"
+  ECommerce -> Inventory "Check inventory"
+}
+`,
+      },
+    ],
+  },
+  {
+    name: "03-domains",
+    files: [
+      {
+        path: "index.krs",
+        content: `// ec-platform/03-domains.krs
+// Demonstrates: domain, usecase, resource — full drill-down hierarchy
+// Drill into ECommerce to see its internal domain structure.
+
+system ECPlatform {
+  label "EC Platform"
+
+  user Customer [human] {
+    label "Customer"
+    role "End users who purchase products"
+  }
+
+  service ECommerce {
+    label "EC Site"
+
+    domain Order {
+      label "Orders"
+      description "Accept, manage, and cancel orders"
+
+      usecase PlaceOrder {
+        label "Place an order"
+        resource OrderTable {
+          label "Order table"
+          operations create, read
+        }
+        resource InventoryAPI {
+          label "Inventory API"
+          operations read
+        }
+      }
+
+      usecase CancelOrder {
+        label "Cancel an order"
+        resource OrderTable {
+          label "Order table"
+          operations read, update
+        }
+      }
+
+      usecase QueryOrder {
+        label "Query order status"
+        resource OrderTable {
+          label "Order table"
+          operations read
+        }
+      }
+    }
+
+    domain Catalog {
+      label "Product Catalog"
+      description "Manage and search product information"
+
+      usecase SearchProducts {
+        label "Search products"
+        resource ProductTable {
+          label "Product table"
+          operations read
+        }
+      }
+
+      usecase UpdateProduct {
+        label "Update product information"
+        resource ProductTable {
+          label "Product table"
+          operations read, update
+        }
+        resource ImageStorage {
+          label "Image storage"
+          operations create, update, delete
+        }
+      }
+    }
+  }
+
+  service Payment {
+    label "Payment Service"
+
+    domain Billing {
+      label "Billing"
+
+      usecase Charge {
+        label "Execute payment"
+        resource PaymentGateway {
+          label "Payment gateway"
+        }
+        resource TransactionLog {
+          label "Transaction log"
+        }
+      }
+
+      usecase Refund {
+        label "Issue a refund"
+        resource PaymentGateway {
+          label "Payment gateway"
+        }
+      }
+    }
+  }
+
+  service Inventory {
+    label "Inventory"
+
+    domain Stock {
+      label "Stock"
+
+      usecase CheckStock {
+        label "Check stock"
+        resource StockTable {
+          label "Stock table"
+        }
+      }
+
+      usecase ReserveStock {
+        label "Reserve stock"
+        resource StockTable {
+          label "Stock table"
+        }
+      }
+    }
+  }
+
+  Customer  ->  ECommerce "Purchase products"
+  ECommerce ->  Payment   "Process payment"
+  ECommerce ->  Inventory "Check inventory"
+}
+`,
+      },
+    ],
+  },
+  {
+    name: "04-annotations",
+    files: [
+      {
+        path: "index.krs",
+        content: `// ec-platform/04-annotations.krs
+// Demonstrates: [external] tag, @deprecated, @new, @experimental annotations
+// Use annotations to communicate lifecycle state and ownership boundaries.
+
+system ECPlatform {
+  label "EC Platform"
+
+  user Customer [human] {
+    label "Customer"
+    role "End users who purchase products"
+  }
+
+  service ECommerce {
+    label "EC Site"
+    description "Product management and order processing"
+  }
+
+  // @deprecated: this service is being replaced by NewPayment
+  service LegacyPayment @deprecated {
+    label "Payment Service (legacy)"
+    description "Legacy payment service. Migrating to NewPayment"
+  }
+
+  // @new: recently introduced replacement service
+  service NewPayment @new {
+    label "Payment Service (new)"
+    description "New payment service. PCI DSS compliant"
+  }
+
+  // @experimental: under active development, API may change
+  service RecommendationEngine @experimental {
+    label "Recommendation Engine"
+    description "AI-driven product recommendation service"
+  }
+
+  // [external]: owned by a third party, not this team
+  service StripeAPI [external] {
+    label "Stripe API"
+    description "External provider for credit card payments"
+  }
+
+  service AmazonSES [external] {
+    label "Amazon SES"
+    description "External email delivery service"
+  }
+
+  Customer           ->  ECommerce             "Purchase products"
+  ECommerce          ->  LegacyPayment         "Process payment (migrating)"
+  ECommerce          ->  NewPayment            "Process payment (new)"
+  ECommerce          ->  RecommendationEngine  "Fetch recommended products"
+  LegacyPayment      ->  StripeAPI             "Card payment"
+  NewPayment         ->  StripeAPI             "Card payment"
+  ECommerce         --> AmazonSES              "Send order confirmation email"
+}
+`,
+      },
+    ],
+  },
+  {
+    name: "05-multifile",
+    files: [
+      {
+        path: "index.krs",
+        content: `// ec-platform/05-multifile/system.krs
+// Demonstrates: import { } from — splitting a large file into focused modules
+// Open this directory in VSCode Extension or use \`karasu serve\` in server mode.
+
+import { ECommerce } from "./ecommerce.krs"
+import { Payment } from "./payment.krs"
+
+system ECPlatform {
+  label "EC Platform"
+
+  user Customer [human] {
+    label "Customer"
+    role "End users who purchase products"
+  }
+
+  service Inventory {
+    label "Inventory"
+
+    domain Stock {
+      label "Stock"
+      usecase CheckStock { label "Check stock" }
+      usecase ReserveStock { label "Reserve stock" }
+    }
+  }
+
+  Customer  ->  ECommerce "Purchase products"
+  ECommerce ->  Payment   "Process payment"
+  ECommerce ->  Inventory "Check inventory"
+}
+`,
+      },
+      {
+        path: "ecommerce.krs",
+        content: `// ec-platform/05-multifile/ecommerce.krs
+// ECommerce service definition — imported by system.krs
+
+service ECommerce {
+  label "EC Site"
+  description "Product management and order processing"
+
+  domain Order {
+    label "Orders"
+    usecase PlaceOrder {
+      label "Place an order"
+      resource OrderTable { label "Order table" }
+    }
+    usecase CancelOrder { label "Cancel an order" }
+    usecase QueryOrder { label "Query order status" }
+  }
+
+  domain Catalog {
+    label "Product Catalog"
+    usecase SearchProducts {
+      label "Search products"
+      resource ProductTable { label "Product table" }
+    }
+  }
+}
+`,
+      },
+      {
+        path: "payment.krs",
+        content: `// ec-platform/05-multifile/payment.krs
+// Payment service definition — imported by system.krs
+
+service Payment {
+  label "Payment Service"
+  description "Credit card payment processing"
+
+  domain Billing {
+    label "Billing"
+    usecase Charge {
+      label "Execute payment"
+      resource PaymentGateway { label "Payment gateway" }
+      resource TransactionLog { label "Transaction log" }
+    }
+    usecase Refund {
+      label "Issue a refund"
+      resource PaymentGateway { label "Payment gateway" }
+    }
+  }
+}
+`,
+      },
+    ],
+  },
+  {
+    name: "06-deploy",
+    files: [
+      {
+        path: "index.krs",
+        content: `// ec-platform/06-deploy/system.krs
+// Logical structure — imported by deploy.krs via realizes
+// Open this directory in VSCode Extension or use \`karasu serve\` in server mode.
+
+import { ECommerce } from "./ecommerce.krs"
+import { Payment } from "./payment.krs"
+
+system ECPlatform {
+  label "EC Platform"
+
+  user Customer [human] {
+    label "Customer"
+    role "End users who purchase products"
+  }
+
+  service ECommerce
+  service Payment
+
+  service Inventory {
+    label "Inventory"
+    domain Stock {
+      label "Stock"
+      usecase CheckStock { label "Check stock" }
+    }
+  }
+
+  service Frontend {
+    label "Frontend"
+    description "SPA-based storefront"
+  }
+
+  Customer  ->  Frontend  "Access via browser"
+  Frontend  ->  ECommerce "Call the API"
+  ECommerce ->  Payment   "Process payment"
+  ECommerce ->  Inventory "Check inventory"
+}
+`,
+      },
+      {
+        path: "ecommerce.krs",
+        content: `// ec-platform/06-deploy/ecommerce.krs
+// ECommerce service definition — imported by system.krs
+
+service ECommerce {
+  label "EC Site"
+  domain Order {
+    label "Orders"
+    usecase PlaceOrder { label "Place an order" }
+    usecase QueryOrder { label "Query order status" }
+  }
+}
+`,
+      },
+      {
+        path: "payment.krs",
+        content: `// ec-platform/06-deploy/payment.krs
+// Payment service definition — imported by system.krs
+
+service Payment {
+  label "Payment Service"
+  domain Billing {
+    label "Billing"
+    usecase Charge { label "Execute payment" }
+    usecase Refund { label "Issue a refund" }
+  }
+}
+`,
+      },
+      {
+        path: "deploy.krs",
+        content: `// ec-platform/06-deploy/deploy.krs
+// Demonstrates: deploy block, oci, jar, job (with/without schedule), assets, realizes
+// Physical structure maps to logical services via \`realizes\`.
+
+deploy Production {
+  label "Production"
+
+  // SPA hosted on CDN
+  assets storefront {
+    label "EC Frontend"
+    runtime "CloudFront / S3"
+    realizes Frontend
+  }
+
+  // Main application server as a container
+  oci "ecommerce-app" {
+    label "EC Application"
+    image "ecommerce:3.2.1"
+    runtime "Node.js 22"
+    realizes ECommerce
+  }
+
+  // Payment service as an executable JAR
+  jar "payment-service" {
+    label "Payment Service"
+    runtime "Java 21 / Spring Boot 3"
+    realizes Payment
+  }
+
+  // Inventory as a container
+  oci "inventory-service" {
+    label "Inventory Service"
+    image "inventory:1.4.0"
+    runtime "Go 1.22"
+    realizes Inventory
+  }
+
+  // One-off data migration (no schedule = single run)
+  job "data-migration" {
+    label "Data migration job"
+    runtime "Python 3.12"
+  }
+
+  // Recurring billing report (cron schedule)
+  job "monthly-billing-report" {
+    label "Monthly billing report"
+    schedule "0 1 1 * *"
+    runtime "Java 21"
+    realizes Payment
+  }
+}
+`,
+      },
+    ],
+  },
+  {
+    name: "07-cross-system",
+    files: [
+      {
+        path: "index.krs",
+        content: `// ec-platform/07-cross-system/main.krs
+// Demonstrates: cross-system service references with fully qualified names (System.Service)
+// ECPlatform references PaymentGateway.PaymentService across system boundaries.
+// The referenced service appears as an [external] ghost node in ECPlatform's system view.
+
+import "ec-platform.krs"
+import "payment-gateway.krs"
+`,
+      },
+      {
+        path: "ec-platform.krs",
+        content: `// ec-platform/07-cross-system/ec-platform.krs
+// ECPlatform system — references PaymentGateway.PaymentService using dot notation.
+// To suppress the implicit-external warning, add: service PaymentService [external]
+
+system ECPlatform {
+  label "EC Platform"
+
+  user Customer {
+    label "Customer"
+    role "End users who purchase products"
+  }
+
+  service OrderService {
+    label "Order Service"
+    description "Handles order processing and payment requests"
+  }
+
+  service InventoryService {
+    label "Inventory Service"
+    description "Manages inventory data and provides a stock-check API"
+  }
+
+  Customer      -> OrderService                   "Place an order"
+  OrderService  -> InventoryService               "Check inventory"
+  OrderService  -> PaymentGateway.PaymentService  "Request payment"
+}
+`,
+      },
+      {
+        path: "payment-gateway.krs",
+        content: `// ec-platform/07-cross-system/payment-gateway.krs
+// PaymentGateway system — standalone payment processing platform.
+// This system can be rendered independently or composed with ECPlatform via main.krs.
+
+system PaymentGateway {
+  label "Payment Gateway"
+
+  service PaymentService {
+    label "Payment Service"
+    description "Handles payments such as credit card and bank transfer"
+  }
+
+  service FraudDetection {
+    label "Fraud Detection Service"
+    description "Performs fraud scoring on transactions"
+  }
+
+  PaymentService -> FraudDetection "Run fraud check"
+}
+`,
+      },
+    ],
+  },
+];
+
 export const FEATURE_SAMPLES_PROJECT: ExampleProject = {
   name: "feature-samples",
   files: [

@@ -1,0 +1,19 @@
+// ec-platform/07-cross-system/payment-gateway.krs
+// PaymentGateway system — standalone payment processing platform.
+// This system can be rendered independently or composed with ECPlatform via main.krs.
+
+system PaymentGateway {
+  label "Payment Gateway"
+
+  service PaymentService {
+    label "Payment Service"
+    description "Handles payments such as credit card and bank transfer"
+  }
+
+  service FraudDetection {
+    label "Fraud Detection Service"
+    description "Performs fraud scoring on transactions"
+  }
+
+  PaymentService -> FraudDetection "Run fraud check"
+}

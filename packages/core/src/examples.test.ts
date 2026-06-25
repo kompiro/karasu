@@ -3,6 +3,8 @@ import { describe, it, expect } from "vitest";
 import { Parser } from "./parser/parser.js";
 import {
   compile,
+  EC_PLATFORM_PROJECTS,
+  EC_PLATFORM_PROJECTS_EN,
   FEATURE_SAMPLES_PROJECT,
   MULTI_FILE_SYSTEM_PROJECT,
   MULTI_FILE_SYSTEM_PROJECT_EN,
@@ -75,6 +77,77 @@ describe.each([
       expect(entry).toBeDefined();
       expect(entry?.content).toBe(onDisk);
     });
+  },
+);
+
+// Drift guard for the ec-platform getting-started drill-down. ProjectMode seeds
+// these stage projects on first launch (`useProjectInitialization`), locale-matched:
+// ja gets EC_PLATFORM_PROJECTS, en gets EC_PLATFORM_PROJECTS_EN (#1777). The bundled
+// `content` must stay byte-equal to the on-disk examples/<lang>/ec-platform/ source.
+// Note: the entry file of each stage is renamed to index.krs when bundled
+// (system.krs / main.krs on disk), so the mapping is explicit rather than a readdir.
+const EC_PLATFORM_FILE_MAP: ReadonlyArray<
+  readonly [string, ReadonlyArray<readonly [string, string]>]
+> = [
+  ["01-system", [["01-system.krs", "index.krs"]]],
+  ["02-users", [["02-users.krs", "index.krs"]]],
+  ["02.5-clients", [["02.5-clients.krs", "index.krs"]]],
+  ["03-domains", [["03-domains.krs", "index.krs"]]],
+  ["04-annotations", [["04-annotations.krs", "index.krs"]]],
+  [
+    "05-multifile",
+    [
+      ["05-multifile/system.krs", "index.krs"],
+      ["05-multifile/ecommerce.krs", "ecommerce.krs"],
+      ["05-multifile/payment.krs", "payment.krs"],
+    ],
+  ],
+  [
+    "06-deploy",
+    [
+      ["06-deploy/system.krs", "index.krs"],
+      ["06-deploy/ecommerce.krs", "ecommerce.krs"],
+      ["06-deploy/payment.krs", "payment.krs"],
+      ["06-deploy/deploy.krs", "deploy.krs"],
+    ],
+  ],
+  [
+    "07-cross-system",
+    [
+      ["07-cross-system/main.krs", "index.krs"],
+      ["07-cross-system/ec-platform.krs", "ec-platform.krs"],
+      ["07-cross-system/payment-gateway.krs", "payment-gateway.krs"],
+    ],
+  ],
+];
+
+describe.each([["ja", EC_PLATFORM_PROJECTS] as const, ["en", EC_PLATFORM_PROJECTS_EN] as const])(
+  "ec-platform (%s): bundled content matches its on-disk examples/ source",
+  (lang, projects) => {
+    const ecDir = resolve(__dirname, `../../../examples/${lang}/ec-platform`);
+
+    it("registers the same stages with the same bundled paths", () => {
+      const actual = projects.map((p) => `${p.name}: ${p.files.map((f) => f.path).join(",")}`);
+      const expected = EC_PLATFORM_FILE_MAP.map(
+        ([name, stageFiles]) => `${name}: ${stageFiles.map(([, bundled]) => bundled).join(",")}`,
+      );
+      expect(actual).toEqual(expected);
+    });
+
+    const cases = EC_PLATFORM_FILE_MAP.flatMap(([name, stageFiles]) =>
+      stageFiles.map(([diskPath, bundledPath]) => [name, diskPath, bundledPath] as const),
+    );
+    it.each(cases)(
+      "%s/%s is byte-identical to the bundled entry",
+      (name, diskPath, bundledPath) => {
+        const onDisk = readFileSync(resolve(ecDir, diskPath), "utf8");
+        const entry = projects
+          .find((p) => p.name === name)
+          ?.files.find((f) => f.path === bundledPath);
+        expect(entry).toBeDefined();
+        expect(entry?.content).toBe(onDisk);
+      },
+    );
   },
 );
 

@@ -1,0 +1,11 @@
+// ec-platform/06-deploy/ecommerce.krs
+// ECommerce service definition — imported by system.krs
+
+service ECommerce {
+  label "EC Site"
+  domain Order {
+    label "Orders"
+    usecase PlaceOrder { label "Place an order" }
+    usecase QueryOrder { label "Query order status" }
+  }
+}

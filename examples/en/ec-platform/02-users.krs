@@ -1,0 +1,50 @@
+// ec-platform/02-users.krs
+// Demonstrates: user [human], user [ai], role property
+// Users can be human actors or AI agents interacting with the system.
+
+system ECPlatform {
+  label "EC Platform"
+
+  user Customer [human] {
+    label "Customer"
+    role "End users who purchase products"
+  }
+
+  user Admin [human] {
+    label "Operator"
+    role "Staff who manage inventory, orders, and notifications"
+  }
+
+  user RecommendationAgent [ai] {
+    label "Recommendation Agent"
+    role "AI agent that analyzes purchase history to recommend products"
+  }
+
+  service ECommerce {
+    label "EC Site"
+    description "Product management and order processing"
+  }
+
+  service Payment {
+    label "Payment Service"
+    description "Credit card payment processing"
+  }
+
+  service Inventory {
+    label "Inventory"
+    description "Inventory data management"
+  }
+
+  service Notification {
+    label "Notification Service"
+    description "Sends email and push notifications"
+  }
+
+  Customer            -> ECommerce    "Purchase products"
+  Admin               -> Inventory    "Manage inventory"
+  Admin               -> Notification "Change notification settings"
+  RecommendationAgent -> ECommerce    "Suggest recommended products"
+  ECommerce           -> Payment      "Process payment"
+  ECommerce           -> Inventory    "Check inventory"
+  ECommerce          --> Notification "Send order confirmation email"
+}

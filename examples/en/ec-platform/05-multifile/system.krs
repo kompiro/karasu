@@ -1,0 +1,29 @@
+// ec-platform/05-multifile/system.krs
+// Demonstrates: import { } from — splitting a large file into focused modules
+// Open this directory in VSCode Extension or use `karasu serve` in server mode.
+
+import { ECommerce } from "./ecommerce.krs"
+import { Payment } from "./payment.krs"
+
+system ECPlatform {
+  label "EC Platform"
+
+  user Customer [human] {
+    label "Customer"
+    role "End users who purchase products"
+  }
+
+  service Inventory {
+    label "Inventory"
+
+    domain Stock {
+      label "Stock"
+      usecase CheckStock { label "Check stock" }
+      usecase ReserveStock { label "Reserve stock" }
+    }
+  }
+
+  Customer  ->  ECommerce "Purchase products"
+  ECommerce ->  Payment   "Process payment"
+  ECommerce ->  Inventory "Check inventory"
+}

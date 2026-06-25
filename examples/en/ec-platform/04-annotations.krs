@@ -1,0 +1,54 @@
+// ec-platform/04-annotations.krs
+// Demonstrates: [external] tag, @deprecated, @new, @experimental annotations
+// Use annotations to communicate lifecycle state and ownership boundaries.
+
+system ECPlatform {
+  label "EC Platform"
+
+  user Customer [human] {
+    label "Customer"
+    role "End users who purchase products"
+  }
+
+  service ECommerce {
+    label "EC Site"
+    description "Product management and order processing"
+  }
+
+  // @deprecated: this service is being replaced by NewPayment
+  service LegacyPayment @deprecated {
+    label "Payment Service (legacy)"
+    description "Legacy payment service. Migrating to NewPayment"
+  }
+
+  // @new: recently introduced replacement service
+  service NewPayment @new {
+    label "Payment Service (new)"
+    description "New payment service. PCI DSS compliant"
+  }
+
+  // @experimental: under active development, API may change
+  service RecommendationEngine @experimental {
+    label "Recommendation Engine"
+    description "AI-driven product recommendation service"
+  }
+
+  // [external]: owned by a third party, not this team
+  service StripeAPI [external] {
+    label "Stripe API"
+    description "External provider for credit card payments"
+  }
+
+  service AmazonSES [external] {
+    label "Amazon SES"
+    description "External email delivery service"
+  }
+
+  Customer           ->  ECommerce             "Purchase products"
+  ECommerce          ->  LegacyPayment         "Process payment (migrating)"
+  ECommerce          ->  NewPayment            "Process payment (new)"
+  ECommerce          ->  RecommendationEngine  "Fetch recommended products"
+  LegacyPayment      ->  StripeAPI             "Card payment"
+  NewPayment         ->  StripeAPI             "Card payment"
+  ECommerce         --> AmazonSES              "Send order confirmation email"
+}

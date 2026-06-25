@@ -1,0 +1,51 @@
+// ec-platform/06-deploy/deploy.krs
+// Demonstrates: deploy block, oci, jar, job (with/without schedule), assets, realizes
+// Physical structure maps to logical services via `realizes`.
+
+deploy Production {
+  label "Production"
+
+  // SPA hosted on CDN
+  assets storefront {
+    label "EC Frontend"
+    runtime "CloudFront / S3"
+    realizes Frontend
+  }
+
+  // Main application server as a container
+  oci "ecommerce-app" {
+    label "EC Application"
+    image "ecommerce:3.2.1"
+    runtime "Node.js 22"
+    realizes ECommerce
+  }
+
+  // Payment service as an executable JAR
+  jar "payment-service" {
+    label "Payment Service"
+    runtime "Java 21 / Spring Boot 3"
+    realizes Payment
+  }
+
+  // Inventory as a container
+  oci "inventory-service" {
+    label "Inventory Service"
+    image "inventory:1.4.0"
+    runtime "Go 1.22"
+    realizes Inventory
+  }
+
+  // One-off data migration (no schedule = single run)
+  job "data-migration" {
+    label "Data migration job"
+    runtime "Python 3.12"
+  }
+
+  // Recurring billing report (cron schedule)
+  job "monthly-billing-report" {
+    label "Monthly billing report"
+    schedule "0 1 1 * *"
+    runtime "Java 21"
+    realizes Payment
+  }
+}
