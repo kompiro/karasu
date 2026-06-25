@@ -176,7 +176,7 @@ function assembleAllLayersSvg(levels: AllLayersLevel[], theme?: DiagramTheme): s
 
   yOffset += ALL_LAYERS_PADDING;
 
-  return `<svg xmlns="http://www.w3.org/2000/svg" width="${maxWidth}" height="${yOffset}" style="background:${palette.canvasBg}">${parts.join("")}</svg>`;
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${maxWidth} ${yOffset}" width="${maxWidth}" height="${yOffset}" style="background:${palette.canvasBg}">${parts.join("")}</svg>`;
 }
 
 function collectAllLayersLevelsGeneric<S>(

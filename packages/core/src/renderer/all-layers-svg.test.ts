@@ -117,6 +117,21 @@ describe("buildAllLayersSvg", () => {
     expect(svg).toMatch(/^<svg /);
     expect(svg).toContain('style="background:#0F172A"');
   });
+
+  // Issue #1790 — the root <svg> must carry a viewBox matching width/height so
+  // the preview's `max-width/height: 100%` scales it instead of cropping it to
+  // the top-left when the diagram is larger than the pane.
+  it("root svg has a viewBox matching width/height (#1790)", () => {
+    const krsFile = Parser.parse(THREE_LEVEL).value;
+    const { svg } = buildAllLayersSvg(krsFile);
+
+    const root = svg.match(/^<svg[^>]*>/)?.[0] ?? "";
+    const width = root.match(/\bwidth="([^"]+)"/)?.[1];
+    const height = root.match(/\bheight="([^"]+)"/)?.[1];
+    expect(width).toBeDefined();
+    expect(height).toBeDefined();
+    expect(root).toContain(`viewBox="0 0 ${width} ${height}"`);
+  });
 });
 
 describe("buildAllLayersSvgOrg", () => {
