@@ -8,6 +8,9 @@ import { CrudMatrixPanel } from "./CrudMatrixPanel.js";
 import { buildSvgExportFilename } from "../utils/build-svg-export-filename.js";
 import { usePreview } from "../state/preview-context.js";
 import { useActiveViewData } from "../state/active-view-data.js";
+import { ShareDialog } from "./ShareDialog.js";
+import { buildShareUrl } from "../utils/inline-share.js";
+import { useClipboardCopy } from "../hooks/useClipboardCopy.js";
 import { useTranslation } from "../i18n/index.js";
 import { useCommand } from "../keyboard/use-command.js";
 import { Button } from "@/components/ui/button";
@@ -56,12 +59,29 @@ export function PreviewColumn() {
     onTeamToggle,
     orgTreeExportSvg,
     onExportDrawio,
+    hasKrsSource,
+    getKrsSource,
   } = usePreview();
   // Normalized active-view slice — collapses the per-view ternary chains (#1542).
   const view = useActiveViewData();
 
   const { t, locale } = useTranslation();
   const [exportError, setExportError] = useState<string | null>(null);
+
+  // Share (karasu-nest inline URL sharing). The Share button builds an inline
+  // URL from the current source, copies it eagerly (the click is a user
+  // gesture, so clipboard access is granted), and opens the dialog.
+  const { copy: copyShareUrl } = useClipboardCopy();
+  const [shareUrl, setShareUrl] = useState<string | null>(null);
+  const shareAvailable = !!hasKrsSource;
+
+  function handleShare() {
+    const source = getKrsSource?.() ?? "";
+    if (source.trim() === "") return;
+    const url = buildShareUrl(source, window.location);
+    copyShareUrl(url);
+    setShareUrl(url);
+  }
 
   // Register "Open Reference" as a command so the reference is reachable from
   // the command palette. Palette-only — no dedicated keybinding. No-ops when no
@@ -254,6 +274,15 @@ export function PreviewColumn() {
           </DropdownMenu>
         </div>
 
+        <Button
+          variant="actionable"
+          onClick={handleShare}
+          aria-label={t("preview.share.ariaLabel")}
+          disabled={!shareAvailable}
+        >
+          {t("preview.share.label")}
+        </Button>
+
         {/* Documentation links: the in-app Reference pop-out and the external
             docs site, grouped since both point at documentation. */}
         <DropdownMenu>
@@ -347,6 +376,12 @@ export function PreviewColumn() {
         />
       )}
       <WarningPanel warnings={view.warnings} />
+      <ShareDialog
+        open={shareUrl !== null}
+        url={shareUrl ?? ""}
+        onClose={() => setShareUrl(null)}
+        copiedOnOpen
+      />
     </div>
   );
 }

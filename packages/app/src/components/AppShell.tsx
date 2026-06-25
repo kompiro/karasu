@@ -235,6 +235,15 @@ export function AppShell({
     [entryPath, fs],
   );
 
+  // Keep a ref to the latest source so the Share button can read it without
+  // threading the per-keystroke `fileContent` through the preview memo (that
+  // would re-render the preview on every keystroke). The getter is stable;
+  // `hasKrsSource` only flips on the empty↔non-empty boundary.
+  const fileContentRef = useRef(fileContent);
+  fileContentRef.current = fileContent;
+  const getKrsSource = useCallback(() => fileContentRef.current, []);
+  const hasKrsSource = fileContent.trim() !== "";
+
   const previewContextValue = usePreviewContextValue({
     activeView,
     viewPath,
@@ -285,6 +294,8 @@ export function AppShell({
     onPickEdgeDirection,
     onExportSvg: downloadSvg,
     onExportDrawio,
+    hasKrsSource,
+    getKrsSource,
   });
 
   return (

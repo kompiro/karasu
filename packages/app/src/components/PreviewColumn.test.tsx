@@ -8,6 +8,7 @@ import { PreviewColumn } from "./PreviewColumn.js";
 import { PreviewProvider, type PreviewContextValue } from "../state/preview-context.js";
 import { LocaleProvider } from "../i18n/index.js";
 import { CommandProvider, useCommandRegistry } from "../keyboard/command-context.js";
+import { readSharedKrsFromHash } from "../utils/inline-share.js";
 
 afterEach(cleanup);
 
@@ -707,5 +708,37 @@ describe("PreviewColumn", () => {
       // Toolbar (Icon Mode etc.) is hidden in matrix mode
       expect(container.querySelector(".preview-toolbar")).toBeNull();
     });
+  });
+});
+
+describe("PreviewColumn — Share (karasu-nest inline URL)", () => {
+  const SAMPLE = 'system Shop {\n  service Api { label "API" }\n}';
+
+  it("disables Share when there is no source", () => {
+    const props = makeProps({ hasKrsSource: false, getKrsSource: () => "" });
+    const { getByRole } = renderPreview(props);
+    expect((getByRole("button", { name: /Share/ }) as HTMLButtonElement).disabled).toBe(true);
+  });
+
+  it("copies an inline share URL and opens the dialog on click (round-trips)", async () => {
+    // userEvent.setup() installs its own navigator.clipboard stub; assert via
+    // its readText() rather than a hand-rolled mock it would shadow.
+    const user = userEvent.setup();
+    const props = makeProps({ hasKrsSource: true, getKrsSource: () => SAMPLE });
+    renderPreview(props);
+
+    await user.click(screen.getByRole("button", { name: /Share/ }));
+
+    // Eager copy on click (the click is the user gesture).
+    const copied = await navigator.clipboard.readText();
+    expect(copied).toContain("/#s=");
+
+    // The copied URL round-trips back to the original source.
+    const hash = copied.slice(copied.indexOf("#"));
+    expect(readSharedKrsFromHash(hash)).toEqual({ source: SAMPLE });
+
+    // The dialog shows the same URL in a read-only field.
+    expect(screen.getByRole("dialog")).toBeTruthy();
+    expect(screen.getByDisplayValue(copied)).toBeTruthy();
   });
 });

@@ -177,6 +177,17 @@ export type Translations = {
   "preview.export.drawio.title": string;
   "preview.export.drawio.failed": (params: { detail: string }) => string;
 
+  // Preview toolbar — Share (inline URL sharing, karasu-nest)
+  "preview.share.label": string;
+  "preview.share.ariaLabel": string;
+  "preview.share.dialog.title": string;
+  "preview.share.dialog.description": string;
+  "preview.share.dialog.urlAriaLabel": string;
+  "preview.share.dialog.copy": string;
+  "preview.share.dialog.copied": string;
+  "preview.share.dialog.close": string;
+  "preview.share.restoreFailed": string;
+
   // Preview toolbar — documentation links dropdown (in-app Reference + docs site)
   "preview.docs.label": string;
   "preview.docs.ariaLabel": string;

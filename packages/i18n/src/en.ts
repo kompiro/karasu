@@ -177,6 +177,19 @@ export const en: Translations = {
     "Export to draw.io (mxGraph XML) — a layout escape hatch you can polish in diagrams.net",
   "preview.export.drawio.failed": ({ detail }) => `⚠ draw.io export failed: ${detail}`,
 
+  // Share (inline URL sharing, karasu-nest)
+  "preview.share.label": "🔗 Share",
+  "preview.share.ariaLabel": "Share this diagram",
+  "preview.share.dialog.title": "Share this diagram",
+  "preview.share.dialog.description":
+    "Anyone with this link can view this diagram. The content is encoded in the URL itself — nothing is uploaded to a server.",
+  "preview.share.dialog.urlAriaLabel": "Shareable URL",
+  "preview.share.dialog.copy": "⧉ Copy",
+  "preview.share.dialog.copied": "✓ Copied to clipboard",
+  "preview.share.dialog.close": "Close",
+  "preview.share.restoreFailed":
+    "This shared link could not be restored. Opening a new project instead.",
+
   // Documentation links dropdown (in-app Reference + external docs site)
   "preview.docs.label": "📖 Docs",
   "preview.docs.ariaLabel": "Documentation links",
