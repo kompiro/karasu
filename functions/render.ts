@@ -1,4 +1,4 @@
-import { renderSharePayload } from "../src/render/share-render.js";
+import { renderSharePayload } from "../packages/app/src/render/share-render.js";
 
 /**
  * Cloudflare Pages Function: GET /render — static SVG for a karasu-nest share

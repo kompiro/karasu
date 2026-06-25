@@ -5,9 +5,9 @@
 - **関連 Design Doc**: [karasu-nest-hosted-preview](../design/karasu-nest-hosted-preview.md)（Phase 1 / PR 3）
 - **対象ファイル**:
   - `packages/app/src/render/share-render.ts`（フレームワーク非依存のレンダリングハンドラ）
-  - `packages/app/functions/render.ts`（Cloudflare Pages Function アダプタ）
+  - `functions/render.ts`（Cloudflare Pages Function アダプタ）
   - `.github/workflows/deploy.yml`、`.github/workflows/preview.yml`（Functions 配線）
-  - `packages/app/wrangler.toml`
+  - `wrangler.toml`
 
 > 共有 payload（`?s=<encoded {krs, style}>`）を SVG にレンダリングする静的エンドポイント。README 埋め込み / OGP 用。**SVG 先行**、PNG は別 PR。入力は inline-share の fragment と違い **query**（サーバに届く）。
 
