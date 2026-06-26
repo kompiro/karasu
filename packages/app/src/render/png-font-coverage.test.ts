@@ -21,9 +21,10 @@ import { describe, expect, it } from "vitest";
 
 // Non-ASCII glyphs the core SVG renderer emits as node markers / annotation
 // badges. Sources: packages/core/src/renderer/svg-renderer.ts & layout.ts
-// (👥 owner, 📦 resources, 🔗 link, 🔐 external) and the annotation badge icons
+// (👥 owner, 📦 resources, 🔗 link, 🔐 external), the annotation badge icons
 // from packages/core/src/builtins/reference-data.ts → default-style.ts:60
-// (⚠ deprecated, ✦ new, ⚗ experimental).
+// (⚠ deprecated, ✦ new, ⚗ experimental), and the diff ghost badge for a node
+// whose annotations were all removed (svg-renderer.ts:805 emits − U+2212).
 const MARKER_CODEPOINTS: ReadonlyArray<{ cp: number; label: string }> = [
   { cp: 0x1f465, label: "👥 owner team" },
   { cp: 0x1f4e6, label: "📦 resources" },
@@ -32,9 +33,12 @@ const MARKER_CODEPOINTS: ReadonlyArray<{ cp: number; label: string }> = [
   { cp: 0x26a0, label: "⚠ deprecated badge" },
   { cp: 0x2726, label: "✦ new badge" },
   { cp: 0x2697, label: "⚗ experimental badge" },
+  { cp: 0x2212, label: "− removed-annotation ghost badge" },
 ];
 
-// The fonts the PNG render path loads (must mirror functions/render.ts FONT_PATHS).
+// The fonts the PNG render path loads. The second test below asserts this set
+// is exactly the `/fonts/*` set wired in functions/render.ts, so the two can't
+// silently diverge (in either direction).
 const BUNDLED_FONTS = [
   "NotoSans-Regular.ttf",
   "NotoSansJP-Regular.otf",
@@ -131,8 +135,13 @@ describe("PNG raster font coverage (TPL-20260626-01, #1799)", () => {
     expect(missing).toEqual([]);
   });
 
-  it("the PNG render function wires every bundled font into its font set", () => {
+  it("BUNDLED_FONTS exactly mirrors the font set functions/render.ts loads", () => {
     const src = readFileSync(RENDER_FN_PATH, "utf8");
-    for (const file of BUNDLED_FONTS) expect(src).toContain(`/fonts/${file}`);
+    // Parse the `/fonts/<file>` entries from render.ts FONT_PATHS. Asserting set
+    // equality (not just ⊇) catches drift in BOTH directions: a font added to
+    // render.ts but not here (its glyphs would be absent from the coverage
+    // union, silently weakening the guard) and vice versa.
+    const wired = [...src.matchAll(/["'`]\/fonts\/([^"'`]+)["'`]/g)].map((m) => m[1]);
+    expect(new Set(wired)).toEqual(new Set(BUNDLED_FONTS));
   });
 });
