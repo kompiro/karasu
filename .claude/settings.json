@@ -41,7 +41,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "pkill -f 'vite' 2>/dev/null || true",
+            "command": "pkill -f '[v]ite' 2>/dev/null || true",
             "if": "Bash(git worktree remove:*)",
             "statusMessage": "Stopping dev server..."
           }
