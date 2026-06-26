@@ -2,7 +2,7 @@
 
 - **日付**: 2026-06-25
 - **関連 Issue**: [#1783](https://github.com/kompiro/karasu/issues/1783)（karasu-nest 壁打ち）
-- **関連 Design Doc**: [karasu-nest-hosted-preview](../design/karasu-nest-hosted-preview.md)（Phase 1 / PR 1）
+- **関連 ADR**: [ADR-20260626-01](../adr/20260626-01-karasu-nest-hosted-preview.md)（karasu-nest）（Phase 1 / PR 1）
 - **関連 TPL**: [TPL-20260510-06](../test-perspectives/TPL-20260510-06-display-mode-cross-surface.md)（共有ビューも新しい描画 surface）
 - **対象ファイル**:
   - `packages/app/src/utils/inline-share.ts`
