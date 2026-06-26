@@ -11,20 +11,46 @@ import resvgWasm from "@resvg/resvg-wasm/index_bg.wasm";
  * `format=png` additionally rasterizes that SVG with resvg-wasm — PNG lives
  * only here (the Workers runtime), keeping core/cli/app SVG-only per
  * ADR-20260404-03. Deployed alongside the SPA — see .github/workflows/deploy.yml.
+ *
+ * resvg has no system fonts in the Workers runtime, so fonts are shipped as
+ * static assets (packages/app/public/fonts) and fetched via env.ASSETS. Without
+ * them, text would not render. Noto Sans covers Latin; Noto Sans JP is the
+ * fallback for Japanese (and other CJK via the JP subset's coverage).
  */
 
-// initWasm must run exactly once per isolate; cache the promise at module scope
-// so the cold-start cost is paid once and shared across requests.
+interface Env {
+  ASSETS: { fetch(input: Request | string | URL): Promise<Response> };
+}
+
+const FONT_PATHS = ["/fonts/NotoSans-Regular.ttf", "/fonts/NotoSansJP-Regular.otf"];
+
+// init / font loading is cached at module scope so the cold-start cost (wasm
+// init + ~5MB font fetch+decode) is paid once per isolate, not per request.
 let wasmReady: Promise<unknown> | undefined;
+let fontsReady: Promise<Uint8Array[]> | undefined;
+
 function ensureWasm(): Promise<unknown> {
   if (!wasmReady) wasmReady = initWasm(resvgWasm);
   return wasmReady;
 }
 
-const ok = (status: number) =>
+function loadFonts(env: Env, origin: string): Promise<Uint8Array[]> {
+  if (!fontsReady) {
+    fontsReady = Promise.all(
+      FONT_PATHS.map(async (path) => {
+        const res = await env.ASSETS.fetch(new URL(path, origin));
+        if (!res.ok) throw new Error(`font fetch failed: ${path} (${res.status})`);
+        return new Uint8Array(await res.arrayBuffer());
+      }),
+    );
+  }
+  return fontsReady;
+}
+
+const cacheControl = (status: number) =>
   status === 200 ? "public, max-age=600, immutable" : "no-store";
 
-export async function onRequestGet(context: { request: Request }): Promise<Response> {
+export async function onRequestGet(context: { request: Request; env: Env }): Promise<Response> {
   const url = new URL(context.request.url);
   const result = renderSharePayload(url.searchParams);
 
@@ -34,20 +60,26 @@ export async function onRequestGet(context: { request: Request }): Promise<Respo
       status: result.status,
       headers: {
         "Content-Type": result.contentType,
-        "Cache-Control": ok(result.status),
+        "Cache-Control": cacheControl(result.status),
         "Access-Control-Allow-Origin": "*",
       },
     });
   }
 
   try {
-    await ensureWasm();
+    const [, fontBuffers] = await Promise.all([ensureWasm(), loadFonts(context.env, url.origin)]);
     const widthRaw = Number(url.searchParams.get("width"));
     const width = Number.isFinite(widthRaw) && widthRaw > 0 ? Math.min(widthRaw, 4096) : undefined;
     const background = url.searchParams.get("bg") ?? undefined;
     const png = new Resvg(result.body, {
       fitTo: width ? { mode: "width", value: width } : { mode: "original" },
       background,
+      font: {
+        loadSystemFonts: false,
+        fontBuffers,
+        defaultFontFamily: "Noto Sans",
+        sansSerifFamily: "Noto Sans",
+      },
     })
       .render()
       .asPng();

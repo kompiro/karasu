@@ -5,10 +5,13 @@
 - **関連 Design Doc**: [karasu-nest-hosted-preview](../design/karasu-nest-hosted-preview.md)（Phase 1 / PR 3 の続き）
 - **関連 ADR**: [ADR-20260404-03](../adr/20260404-03-png-export-not-adopted.md)（CLI/app の PNG は入れない）— 本 PR は **覆さない**。PNG は Worker（Pages Function）でのみ生成し、core/cli/app は SVG のまま
 - **対象ファイル**:
-  - `functions/render.ts`（`?format=png` → resvg-wasm でラスタライズ）
+  - `functions/render.ts`（`?format=png` → resvg-wasm でラスタライズ、フォントを env.ASSETS で読み込み）
+  - `packages/app/public/fonts/`（Noto Sans = Latin / Noto Sans JP = 日本語フォールバック / OFL.txt）
   - `package.json`（root に `@resvg/resvg-wasm`）、`knip.json`（root の ignoreDependencies）
 
 > `/render?format=png` で共有 payload を PNG にして返す。OGP / 画像埋め込み用。**Worker のみ**（resvg-wasm = WebAssembly）。SVG 経路は `renderSharePayload`（既存・テスト済み）で生成し、その SVG を Worker でラスタライズする。
+>
+> **フォント**: resvg は Worker にシステムフォントが無いため、Noto Sans（Latin, 570KB）と Noto Sans JP（日本語サブセット, 4.3MB, Latin も内包）を**静的アセット**として配信し、`env.ASSETS` 経由で取得して `fontBuffers` に渡す（module scope で1回キャッシュ）。`sansSerifFamily="Noto Sans"`＋日本語はフォールバックで Noto Sans JP。Node + resvg-wasm で英語・日本語の両描画を事前確認済み。
 
 ## 受け入れ条件
 
@@ -24,6 +27,8 @@
 
 - [ ] AT-B: `GET /render?s=<payload>&view=system&format=png` が **200 `image/png`** を返し、先頭が PNG マジックバイト（`\x89PNG`）
 - [ ] AT-C: バンドルされた `.krs.style`（`edge[from=…]` 等）が PNG 画像にも反映される（SVG→raster の一貫性）
+- [ ] AT-C2: **ラベルのテキストが描画される**（Latin = Noto Sans）。図にノード名・エッジラベルが見える
+- [ ] AT-C3: **日本語ラベルが描画される**（Noto Sans JP フォールバック。例: `店舗` / `注文サービス`）
 - [ ] AT-D: `?width=<N>` で出力解像度がスケールする（上限 4096）
 - [ ] AT-E: `?format=png` でも `view=deploy|org` が効く
 - [ ] AT-F: `format` 省略時は従来どおり `image/svg+xml`（PNG 化されない）
