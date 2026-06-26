@@ -26,11 +26,18 @@ const FONT_PATHS = ["/fonts/NotoSans-Regular.ttf", "/fonts/NotoSansJP-Regular.ot
 
 // init / font loading is cached at module scope so the cold-start cost (wasm
 // init + ~5MB font fetch+decode) is paid once per isolate, not per request.
+// On failure the cache is cleared so a transient error (e.g. an asset fetch
+// hiccup) doesn't permanently poison the isolate — the next request retries.
 let wasmReady: Promise<unknown> | undefined;
 let fontsReady: Promise<Uint8Array[]> | undefined;
 
 function ensureWasm(): Promise<unknown> {
-  if (!wasmReady) wasmReady = initWasm(resvgWasm);
+  if (!wasmReady) {
+    wasmReady = initWasm(resvgWasm).catch((err) => {
+      wasmReady = undefined;
+      throw err;
+    });
+  }
   return wasmReady;
 }
 
@@ -42,13 +49,16 @@ function loadFonts(env: Env, origin: string): Promise<Uint8Array[]> {
         if (!res.ok) throw new Error(`font fetch failed: ${path} (${res.status})`);
         return new Uint8Array(await res.arrayBuffer());
       }),
-    );
+    ).catch((err) => {
+      fontsReady = undefined;
+      throw err;
+    });
   }
   return fontsReady;
 }
 
-const cacheControl = (status: number) =>
-  status === 200 ? "public, max-age=600, immutable" : "no-store";
+const CACHE_OK = "public, max-age=600, immutable";
+const cacheControl = (status: number) => (status === 200 ? CACHE_OK : "no-store");
 
 export async function onRequestGet(context: { request: Request; env: Env }): Promise<Response> {
   const url = new URL(context.request.url);
@@ -78,6 +88,7 @@ export async function onRequestGet(context: { request: Request; env: Env }): Pro
   try {
     const [, fontBuffers] = await Promise.all([ensureWasm(), loadFonts(context.env, url.origin)]);
     const widthRaw = Number(url.searchParams.get("width"));
+    // Cap to a sane max so a huge `?width=` can't trigger a giant allocation.
     const width = Number.isFinite(widthRaw) && widthRaw > 0 ? Math.min(widthRaw, 4096) : undefined;
     const background = url.searchParams.get("bg") ?? undefined;
     const png = new Resvg(result.body, {
@@ -96,7 +107,7 @@ export async function onRequestGet(context: { request: Request; env: Env }): Pro
       status: 200,
       headers: {
         "Content-Type": "image/png",
-        "Cache-Control": "public, max-age=600, immutable",
+        "Cache-Control": CACHE_OK,
         "Access-Control-Allow-Origin": "*",
       },
     });
