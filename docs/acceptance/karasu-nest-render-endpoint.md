@@ -2,7 +2,7 @@
 
 - **日付**: 2026-06-25
 - **関連 Issue**: [#1783](https://github.com/kompiro/karasu/issues/1783)（karasu-nest 壁打ち）
-- **関連 Design Doc**: [karasu-nest-hosted-preview](../design/karasu-nest-hosted-preview.md)（Phase 1 / PR 3）
+- **関連 ADR**: [ADR-20260626-01](../adr/20260626-01-karasu-nest-hosted-preview.md)（karasu-nest）（Phase 1 / PR 3）
 - **対象ファイル**:
   - `packages/app/src/render/share-render.ts`（フレームワーク非依存のレンダリングハンドラ）
   - `functions/render.ts`（Cloudflare Pages Function アダプタ）
