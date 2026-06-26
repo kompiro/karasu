@@ -7,6 +7,7 @@
 > [English](README.md) · **日本語**（このファイル）
 
 [![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/kompiro/karasu)
+<a href="https://cloudflare.com"><img src="https://workers.cloudflare.com/built-with-cloudflare.svg" alt="Built with Cloudflare" height="20" /></a>
 
 **システムの論理・物理・組織を一つの言語で描き、
 チームとアーキテクチャを一緒に設計するためのテキストベース DSL。**
