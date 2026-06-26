@@ -28,6 +28,10 @@ describe("buildSharePage", () => {
     );
     expect(res.body).not.toContain(`&view=system`);
     expect(res.body).toContain('<meta property="og:image:height" content="630">');
+    // og:url is the page's own canonical URL — strict crawlers (LinkedIn)
+    // refuse the preview without it.
+    expect(res.body).toContain(`<meta property="og:url" content="${ORIGIN}/s?s=${s}">`);
+    expect(res.body).toContain('<meta property="og:image:type" content="image/png">');
     expect(res.body).toContain('<meta name="twitter:card" content="summary_large_image">');
     // Human visitors are bounced back to the unchanged #s= restore path.
     expect(res.body).toContain(`location.replace("${ORIGIN}/#s=${s}")`);
