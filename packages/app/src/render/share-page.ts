@@ -89,9 +89,13 @@ function renderHtml(s: string, origin: string): string {
   const { title, description } = extractMeta(s);
   const safeTitle = escapeHtml(title);
   const safeDescription = escapeHtml(description);
-  // `s` is base64url-validated, so it is safe in attribute / URL / script
-  // contexts without further escaping (no quote / angle-bracket / ampersand).
-  const imageUrl = `${origin}/render?s=${s}&view=system&format=png&width=1200`;
+  // `s` is base64url-validated (no quote / angle-bracket / ampersand), but the
+  // `&` query separators are NOT — they must be escaped to `&amp;` in the HTML
+  // attribute, or strict OGP crawlers truncate the image URL at the first `&`
+  // (dropping `format=png` → an SVG they can't preview, so no image unfurls).
+  const imageUrl = escapeHtml(`${origin}/render?s=${s}&view=system&format=png&width=1200`);
+  // In the `#s=` fragment URL there are no `&` separators, so it is attribute-
+  // and JS-safe as-is (the bounce uses JSON.stringify for the script context).
   const fragmentUrl = `${origin}/#s=${s}`;
 
   return `<!doctype html>
