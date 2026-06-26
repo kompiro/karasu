@@ -1,6 +1,6 @@
 # ADR Topic: renderer
 
-29 ADRs in this topic. Solid nodes belong to `renderer`; gray dashed nodes are ghosts showing cross-topic references to help navigation.
+30 ADRs in this topic. Solid nodes belong to `renderer`; gray dashed nodes are ghosts showing cross-topic references to help navigation.
 
 Other topics: [overview](../graph.md).
 ```mermaid
@@ -35,6 +35,7 @@ flowchart TD
     ADR_20260624_01["ADR-20260624-01<br/>多すぎる兄弟ノードをバランス grid で畳む"]
     ADR_20260624_02["ADR-20260624-02<br/>deploy view は job-only container を専用の job 帯にまとめ..."]
     ADR_20260624_06["ADR-20260624-06<br/>system-view の external サービスをサイド列に配置してエッジ交差を減らす"]
+    ADR_20260626_02["ADR-20260626-02<br/>karasu-nest の PNG ラスタライズに resvg-wasm を採用する"]
   end
   ADR_20260320_02["ADR-20260320-02<br/>[parser] AST 再構成 — Discriminated Union とプロパティブロック"]
   ADR_20260323_02["ADR-20260323-02<br/>[app-ui] ツールバーボタンはアイコン+テキストラベル必須"]
@@ -109,6 +110,7 @@ flowchart TD
   class ADR_20260624_01 accepted
   class ADR_20260624_02 accepted
   class ADR_20260624_06 accepted
+  class ADR_20260626_02 accepted
   class ADR_20260320_02 ghost
   class ADR_20260323_02 ghost
   class ADR_20260326_03 ghost
