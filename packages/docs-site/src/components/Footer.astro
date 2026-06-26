@@ -2,7 +2,8 @@
 // Override of Starlight's default page footer to add a project license /
 // copyright line for OSS launch readiness. Renders the stock footer (edit
 // link, last-updated, pagination, "Built with Starlight") unchanged, then
-// appends a license notice that matches the repo LICENSE (Apache-2.0).
+// appends a license notice that matches the repo LICENSE (Apache-2.0) and a
+// "Built with Cloudflare" badge (the site is hosted on Cloudflare).
 import Default from "@astrojs/starlight/components/Footer.astro";
 ---
 
@@ -13,6 +14,18 @@ import Default from "@astrojs/starlight/components/Footer.astro";
     © 2026 <a href="https://github.com/kompiro">Hiroki Kondo</a> · Licensed under
     <a href="https://github.com/kompiro/karasu/blob/main/LICENSE">Apache-2.0</a>
   </p>
+</div>
+
+<div class="site-cloudflare sl-flex">
+  <a href="https://cloudflare.com" rel="noopener noreferrer">
+    <img
+      src="https://workers.cloudflare.com/built-with-cloudflare.svg"
+      alt="Built with Cloudflare"
+      width="200"
+      height="33"
+      loading="lazy"
+    />
+  </a>
 </div>
 
 <style>
@@ -28,5 +41,9 @@ import Default from "@astrojs/starlight/components/Footer.astro";
   }
   .site-license a:hover {
     color: var(--sl-color-white);
+  }
+  .site-cloudflare {
+    justify-content: center;
+    margin-block: 0 1rem;
   }
 </style>

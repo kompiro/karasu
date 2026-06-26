@@ -7,6 +7,7 @@
 > **English** (this file) · [日本語](README.ja.md)
 
 [![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/kompiro/karasu)
+[![Built with Cloudflare](https://workers.cloudflare.com/built-with-cloudflare.svg)](https://cloudflare.com)
 
 **A text-based DSL for describing the logical, physical, and organizational dimensions of a system in one language — built to co-design teams and architecture together.**
 
