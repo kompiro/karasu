@@ -1,4 +1,5 @@
 import { renderSharePayload } from "../packages/app/src/render/share-render.js";
+import { wrapSvgForOgpFrame } from "../packages/app/src/render/ogp-frame.js";
 import { Resvg, initWasm } from "@resvg/resvg-wasm";
 // wrangler resolves the `.wasm` import to a WebAssembly.Module at bundle time.
 import resvgWasm from "@resvg/resvg-wasm/index_bg.wasm";
@@ -102,9 +103,25 @@ export async function onRequestGet(context: { request: Request; env: Env }): Pro
     const widthRaw = Number(url.searchParams.get("width"));
     // Cap to a sane max so a huge `?width=` can't trigger a giant allocation.
     const width = Number.isFinite(widthRaw) && widthRaw > 0 ? Math.min(widthRaw, 4096) : undefined;
+    const heightRaw = Number(url.searchParams.get("height"));
+    const height =
+      Number.isFinite(heightRaw) && heightRaw > 0 ? Math.min(heightRaw, 4096) : undefined;
     const background = url.searchParams.get("bg") ?? undefined;
-    const png = new Resvg(result.body, {
-      fitTo: width ? { mode: "width", value: width } : { mode: "original" },
+
+    // `fit=contain` (with width+height) letterboxes the whole diagram into a
+    // fixed frame — used for OGP, whose cards crop a width-fit portrait diagram
+    // to its top band. Other callers (README <img>) keep the width-fit default.
+    let svg = result.body;
+    let fitTo: { mode: "width"; value: number } | { mode: "original" } = width
+      ? { mode: "width", value: width }
+      : { mode: "original" };
+    if (url.searchParams.get("fit") === "contain" && width && height) {
+      svg = wrapSvgForOgpFrame(result.body, width, height, background ?? "#ffffff");
+      fitTo = { mode: "width", value: width };
+    }
+
+    const png = new Resvg(svg, {
+      fitTo,
       background,
       font: {
         loadSystemFonts: false,
@@ -128,7 +145,10 @@ export async function onRequestGet(context: { request: Request; env: Env }): Pro
       `PNG rasterization failed: ${err instanceof Error ? err.message : String(err)}`,
       {
         status: 500,
-        headers: { "Content-Type": "text/plain; charset=utf-8", "Access-Control-Allow-Origin": "*" },
+        headers: {
+          "Content-Type": "text/plain; charset=utf-8",
+          "Access-Control-Allow-Origin": "*",
+        },
       },
     );
   }

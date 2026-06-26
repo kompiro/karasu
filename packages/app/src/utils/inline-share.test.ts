@@ -4,6 +4,8 @@ import {
   encodeShare,
   decodeShare,
   buildShareUrl,
+  buildShareUrls,
+  MAX_UNFURL_PAYLOAD,
   readSharedProjectFromHash,
   SHARE_FRAGMENT_KEY,
 } from "./inline-share.js";
@@ -67,6 +69,42 @@ describe("buildShareUrl", () => {
     expect(url).not.toContain("?");
     const hash = url.slice(url.indexOf("#"));
     expect(readSharedProjectFromHash(hash)).toEqual({ payload: { krs: SAMPLE, style: STYLE } });
+  });
+});
+
+describe("buildShareUrls", () => {
+  const loc = { origin: "https://karasu-nest.example", pathname: "/" };
+
+  it("returns a fragment URL (private) and an unfurl URL (query) for a small payload", () => {
+    const { fragmentUrl, unfurlUrl } = buildShareUrls({ krs: SAMPLE, style: STYLE }, loc);
+    // Private link: payload in the fragment, never in the query.
+    expect(fragmentUrl).toContain(`/#${SHARE_FRAGMENT_KEY}=`);
+    expect(fragmentUrl).not.toContain("?");
+    // Unfurl link: server-visible /s?s= page.
+    expect(unfurlUrl).not.toBeNull();
+    expect(unfurlUrl!.startsWith(`https://karasu-nest.example/s?${SHARE_FRAGMENT_KEY}=`)).toBe(
+      true,
+    );
+  });
+
+  it("both URLs carry the same encoded payload (single encode)", () => {
+    const { fragmentUrl, unfurlUrl } = buildShareUrls({ krs: SAMPLE }, loc);
+    const fragEncoded = fragmentUrl.split(`#${SHARE_FRAGMENT_KEY}=`)[1];
+    const unfurlEncoded = new URL(unfurlUrl!).searchParams.get(SHARE_FRAGMENT_KEY);
+    expect(unfurlEncoded).toBe(fragEncoded);
+    expect(decodeShare(fragEncoded)).toEqual({ krs: SAMPLE });
+  });
+
+  it("drops the unfurl URL (oversize) but keeps the fragment URL when the payload is too large", () => {
+    // Random-ish content resists deflate so the encoded payload exceeds the cap.
+    let krs = "system Big {\n";
+    for (let i = 0; krs.length < MAX_UNFURL_PAYLOAD * 12; i++) {
+      krs += `  service S${i} { label "svc ${i} ${(i * 2654435761) % 1000000} αβγ" }\n`;
+    }
+    krs += "}";
+    const { fragmentUrl, unfurlUrl } = buildShareUrls({ krs }, loc);
+    expect(unfurlUrl).toBeNull();
+    expect(fragmentUrl).toContain(`/#${SHARE_FRAGMENT_KEY}=`);
   });
 });
 

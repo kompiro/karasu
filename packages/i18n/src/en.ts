@@ -182,8 +182,17 @@ export const en: Translations = {
   "preview.share.ariaLabel": "Share this diagram",
   "preview.share.dialog.title": "Share this diagram",
   "preview.share.dialog.description":
-    "Anyone with this link can view this diagram. The content is encoded in the URL itself — nothing is uploaded to a server.",
-  "preview.share.dialog.urlAriaLabel": "Shareable URL",
+    "Anyone with a link can view this diagram — the content is encoded in the URL itself. Pick the link that fits how you want to share.",
+  "preview.share.dialog.privateLabel": "Private link",
+  "preview.share.dialog.privateHint":
+    "Never sent to a server. But link previews (Slack, X, …) won't show the diagram.",
+  "preview.share.dialog.privateUrlAriaLabel": "Private shareable URL",
+  "preview.share.dialog.unfurlLabel": "Link with preview",
+  "preview.share.dialog.unfurlHint":
+    "Unfurls with the diagram in Slack, X, etc. The shared content is sent to the server (and may appear in logs).",
+  "preview.share.dialog.unfurlUrlAriaLabel": "Shareable URL with preview",
+  "preview.share.dialog.oversizeWarning":
+    "This project is too large for a preview link. The private link still works.",
   "preview.share.dialog.generating": "Generating link…",
   "preview.share.dialog.copy": "⧉ Copy",
   "preview.share.dialog.copied": "✓ Copied to clipboard",

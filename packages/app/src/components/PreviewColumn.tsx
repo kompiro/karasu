@@ -9,7 +9,7 @@ import { buildSvgExportFilename } from "../utils/build-svg-export-filename.js";
 import { usePreview } from "../state/preview-context.js";
 import { useActiveViewData } from "../state/active-view-data.js";
 import { ShareDialog } from "./ShareDialog.js";
-import { buildShareUrl } from "../utils/inline-share.js";
+import { buildShareUrls } from "../utils/inline-share.js";
 import { useClipboardCopy } from "../hooks/useClipboardCopy.js";
 import { useTranslation } from "../i18n/index.js";
 import { useCommand } from "../keyboard/use-command.js";
@@ -75,17 +75,28 @@ export function PreviewColumn() {
   // result; the dialog's Copy button is the reliable cross-browser fallback.
   const { copy: copyShareUrl, copied: shareCopied } = useClipboardCopy();
   const [shareOpen, setShareOpen] = useState(false);
-  const [shareUrl, setShareUrl] = useState<string | null>(null);
+  const [shareFragmentUrl, setShareFragmentUrl] = useState<string | null>(null);
+  const [shareUnfurlUrl, setShareUnfurlUrl] = useState<string | null>(null);
+  const [copiedShareUrl, setCopiedShareUrl] = useState<string | null>(null);
   const shareAvailable = !!hasKrsSource && !!getShareBundle;
+
+  function copyShare(url: string) {
+    setCopiedShareUrl(url);
+    copyShareUrl(url);
+  }
 
   async function handleShare() {
     if (!getShareBundle) return;
-    setShareUrl(null); // generating
+    setShareFragmentUrl(null); // generating
+    setShareUnfurlUrl(null);
+    setCopiedShareUrl(null);
     setShareOpen(true);
     const payload = await getShareBundle();
-    const url = buildShareUrl(payload, window.location);
-    setShareUrl(url);
-    copyShareUrl(url);
+    const { fragmentUrl, unfurlUrl } = buildShareUrls(payload, window.location);
+    setShareFragmentUrl(fragmentUrl);
+    setShareUnfurlUrl(unfurlUrl);
+    // Eagerly copy the private link (the default), preserving the click gesture.
+    copyShare(fragmentUrl);
   }
 
   // Register "Open Reference" as a command so the reference is reachable from
@@ -383,9 +394,10 @@ export function PreviewColumn() {
       <WarningPanel warnings={view.warnings} />
       <ShareDialog
         open={shareOpen}
-        url={shareUrl}
-        copied={shareCopied}
-        onCopy={() => shareUrl && copyShareUrl(shareUrl)}
+        fragmentUrl={shareFragmentUrl}
+        unfurlUrl={shareUnfurlUrl}
+        copiedUrl={shareCopied ? copiedShareUrl : null}
+        onCopy={copyShare}
         onClose={() => setShareOpen(false)}
       />
     </div>

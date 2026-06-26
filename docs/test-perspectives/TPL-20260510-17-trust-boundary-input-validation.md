@@ -12,6 +12,7 @@ known_consumers:
   - vscode-extension
   - project-zip-import
   - link-property-rendering
+  - karasu-nest-share-page
 related_to: []
 discovered_from:
   - issue: "#168"
