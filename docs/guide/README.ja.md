@@ -16,6 +16,14 @@
 | 第4章 | [アクセス経路とクライアント](04-access-paths.ja.md)（[EN](04-access-paths.md)） | プロダクトアーキテクト | `user → client → service`、`handles` / `delivers`、form-factor / capability |
 | 第5章 | [伝達（スタイル・凡例・CI）](05-communicating-diagrams.ja.md)（[EN](05-communicating-diagrams.md)） | 全員 | `.krs.style` のテーマ、`legend`、CI で図を最新に保つ、draw.io エクスポート |
 
+## レシピ
+
+章シリーズとは独立した単発の how-to:
+
+| レシピ | 対象 | 内容 |
+|--------|------|------|
+| [LLM でリバースする](reverse-engineering-with-ai.ja.md)（[EN](reverse-engineering-with-ai.md)） | 見慣れないプロジェクトを把握したい人 | `syntax.md` を Claude/ChatGPT に渡す → `.krs` 概要を得る → **Share** ボタンで共有 / `/render` で埋め込み |
+
 ## 章の流れ
 
 ```
