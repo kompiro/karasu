@@ -154,7 +154,7 @@ Phase 1 は機能が 5 つあり 1 PR では大きいので、以下の順で **
 | **PR 1 — inline share（単一ファイル）** | `.krs` を `fflate` deflate → base64url で URL fragment（キー `#s=`）に encode/decode。Share ボタン + 共有ダイアログ。復元経路（`MemoryModeApp` を decode 結果で seed、共有リンクは ephemeral な in-memory ビューで開く）。復元失敗時は警告して ProjectMode へフォールバック。**単一ファイルのみ** | なし |
 | **PR 2 — multi-file 合成 + style バンドル** | `import` を跨ぐプロジェクトを `ImportResolver` の結果から **単一 `.krs` 文字列へ合成**（core `serializeKrsFile` / `synthesizeSharePayload`）。さらに `.krs.style` も**バンドル**（`{krs, style}` ペイロード）。`.krs` 単体ではスタイルが運べないため必須。PR1 の生 `.krs` 形式は後方互換でデコード | PR 1 |
 | **PR 3 — 静的 SVG エンドポイント** | Cloudflare Pages Function（`functions/render.ts`）が `GET /render?s=<payload>&view=…` で共有 payload を SVG にレンダリング。ロジックは `packages/app/src/render/share-render.ts`（テスト済み）。入力は inline-share の fragment と違い **query**（サーバに届く）。README 埋め込み用 | PR 1 |
-| **PR 3.1 — PNG 出力（Worker のみ）** | `/render?format=png` で SVG を `@resvg/resvg-wasm`（WebAssembly）で PNG 化。**Worker でのみ**生成し core/cli/app は SVG のまま（[ADR-20260404-03](../adr/20260404-03-png-export-not-adopted.md) を尊重）。OGP 用。リスク: wasm ~2.4MB が Pages Functions のバンドル上限に収まるか実デプロイで検証 | PR 3 |
+| **PR 3.1 — PNG 出力（Worker のみ）** | `/render?format=png` で SVG を `@resvg/resvg-wasm`（WebAssembly）で PNG 化。**Worker でのみ**生成し core/cli/app は SVG のまま（[ADR-20260404-03](../adr/20260404-03-png-export-not-adopted.md) を尊重）。OGP 用。リスク: wasm ~2.4MB が Pages Functions のバンドル上限に収まるか実デプロイで検証。**フォントは vendored 静的アセット**（Noto Sans + Noto Sans JP）として配信し `env.ASSETS` 経由で resvg に渡す — CDN fetch / Cloudflare Fonts も検討したが、画像生成パイプラインに外部実行時依存を持ち込まず描画を決定的に保つため vendor を採用 | PR 3 |
 | **PR 4 — ホスティング + reverse レシピ** | app の Cloudflare Pages/Worker デプロイ設定 + `syntax.md` 同梱の reverse レシピ docs ページ | PR 1（必要なら PR 3） |
 
 決定事項（PR 1 で確定）:

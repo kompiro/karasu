@@ -12,6 +12,8 @@
 > `/render?format=png` で共有 payload を PNG にして返す。OGP / 画像埋め込み用。**Worker のみ**（resvg-wasm = WebAssembly）。SVG 経路は `renderSharePayload`（既存・テスト済み）で生成し、その SVG を Worker でラスタライズする。
 >
 > **フォント**: resvg は Worker にシステムフォントが無いため、Noto Sans（Latin, 570KB）と Noto Sans JP（日本語サブセット, 4.3MB, Latin も内包）を**静的アセット**として配信し、`env.ASSETS` 経由で取得して `fontBuffers` に渡す（module scope で1回キャッシュ）。`sansSerifFamily="Noto Sans"`＋日本語はフォールバックで Noto Sans JP。Node + resvg-wasm で英語・日本語の両描画を事前確認済み。
+>
+> **配給方針の根拠**: フォントは **vendor（静的アセット）** で固定する。CDN fetch / Cloudflare Fonts も検討したが、画像生成パイプラインに外部実行時依存を持ち込まず（jsDelivr 等のダウン/URL 変更で OGP 画像が壊れない）、描画を決定的に保つため。Noto は更新が稀で再取り込みコストはほぼゼロ。woff2 は resvg-wasm でも描画可だが CJK は CFF で圧縮が効きにくく削減は中程度のため TTF/OTF のまま。
 
 ## 受け入れ条件
 
