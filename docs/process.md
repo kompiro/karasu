@@ -38,6 +38,7 @@
 - 機能開発は `git worktree add` により worktree を作成して行う
 - worktree の作成先は必ず `.claude/worktrees/<branch-name>` とする（例: `git worktree add .claude/worktrees/feat/my-feature feat/my-feature`）
 - ブランチ命名規則: `feat/`, `fix/`, `docs/`, `chore/`, `refactor/` + kebab-case
+- **PR を出す前に main を取り込む — `rebase` は使わない。** `git fetch origin main` で main を最新化し、`git merge --no-edit origin/main` で作業ブランチに main を取り込んでから PR を作成する。rebase は事故になる（interactive rebase の todo 重複 / hook 干渉でスタックする、また main を取り込まないまま分岐の古い stale ブランチを squash すると他 PR のマージ済み成果を巻き添えで revert しうる）。merge なら乖離が通常のコンフリクトとして可視化され、履歴も非破壊。
 
 ### Issue・PR 記述ルール
 
@@ -95,11 +96,12 @@ ready → implementing → in-review → (close)
    - 受け入れテスト（docs/acceptance/）を計画に含める
 5. 実装する
 6. /hane:commit でコミットする（Conventional Commits 形式）
-7. PR を作成する（Closes #N で Issue と紐付ける）
-8. CI（test / lint / format / typecheck / knip / check:cycles / build）が通過することを確認する
-9. Issue ラベルを status: in-review に更新する
-10. 手動検証チェックリストを実施する
-11. レビュー → マージ → git worktree remove .claude/worktrees/<branch> でクリーンアップ
+7. PR 前に main を取り込む — git fetch origin main && git merge --no-edit origin/main（rebase は使わない。「ブランチ戦略」参照）。コンフリクトを解消し、lint / test を再確認する
+8. PR を作成する（Closes #N で Issue と紐付ける）
+9. CI（test / lint / format / typecheck / knip / check:cycles / build）が通過することを確認する
+10. Issue ラベルを status: in-review に更新する
+11. 手動検証チェックリストを実施する
+12. レビュー → マージ → git worktree remove .claude/worktrees/<branch> でクリーンアップ
 ```
 
 詳細な手順は `/hane:start-dev` スキル（[`kompiro/hane`](https://github.com/kompiro/hane) plugin）を参照。
