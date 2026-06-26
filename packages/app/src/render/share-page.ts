@@ -93,7 +93,12 @@ function renderHtml(s: string, origin: string): string {
   // `&` query separators are NOT — they must be escaped to `&amp;` in the HTML
   // attribute, or strict OGP crawlers truncate the image URL at the first `&`
   // (dropping `format=png` → an SVG they can't preview, so no image unfurls).
-  const imageUrl = escapeHtml(`${origin}/render?s=${s}&view=system&format=png&width=1200`);
+  // OGP cards crop to ~1.91:1 and karasu diagrams are often portrait, so
+  // `fit=contain` letterboxes the whole diagram into the 1200×630 frame —
+  // scaled to fit, nothing cropped.
+  const imageUrl = escapeHtml(
+    `${origin}/render?s=${s}&view=system&format=png&width=1200&height=630&fit=contain`,
+  );
   // In the `#s=` fragment URL there are no `&` separators, so it is attribute-
   // and JS-safe as-is (the bounce uses JSON.stringify for the script context).
   const fragmentUrl = `${origin}/#s=${s}`;
@@ -109,6 +114,7 @@ function renderHtml(s: string, origin: string): string {
 <meta property="og:description" content="${safeDescription}">
 <meta property="og:image" content="${imageUrl}">
 <meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="${safeTitle}">
 <meta name="twitter:description" content="${safeDescription}">

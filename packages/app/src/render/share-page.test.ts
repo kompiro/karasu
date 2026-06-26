@@ -24,9 +24,10 @@ describe("buildSharePage", () => {
     // query separators MUST be HTML-escaped (&amp;) or strict crawlers truncate
     // the URL at the first `&` and drop format=png (→ unpreviewable SVG).
     expect(res.body).toContain(
-      `<meta property="og:image" content="${ORIGIN}/render?s=${s}&amp;view=system&amp;format=png&amp;width=1200">`,
+      `<meta property="og:image" content="${ORIGIN}/render?s=${s}&amp;view=system&amp;format=png&amp;width=1200&amp;height=630&amp;fit=contain">`,
     );
     expect(res.body).not.toContain(`&view=system`);
+    expect(res.body).toContain('<meta property="og:image:height" content="630">');
     expect(res.body).toContain('<meta name="twitter:card" content="summary_large_image">');
     // Human visitors are bounced back to the unchanged #s= restore path.
     expect(res.body).toContain(`location.replace("${ORIGIN}/#s=${s}")`);

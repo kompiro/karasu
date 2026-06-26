@@ -49,12 +49,16 @@
 
   > ✅ Automated — `packages/app/src/components/ShareDialog.test.tsx` / `packages/app/src/components/PreviewColumn.test.tsx`
 
+- [x] AT-N: og:image は `&fit=contain&width=1200&height=630` を指す。`/render` の `fit=contain` は SVG を 1200×630 フレームに `preserveAspectRatio="xMidYMid meet"` で**全体を縮小して収め**（縦長の図でもクロップされない）、余白を背景で埋める
+
+  > ✅ Automated — `packages/app/src/render/ogp-frame.test.ts` / `packages/app/src/render/share-page.test.ts`
+
 ### 手動（プレビューデプロイで検証）
 
 > OGP の実 unfurl はクローラ挙動に依存するため CI では検証できない。Cloudflare プレビューデプロイで確認する。
 
 - [ ] AT-I: `GET /s?s=<payload>` をブラウザで開くと SPA に bounce し、共有プロジェクトが復元される（`<noscript>` のリンクからも辿れる）
-- [ ] AT-J: 同 URL を **Slack** に貼ると system 図のプレビュー画像が表示される
+- [ ] AT-J: 同 URL を **Slack** に貼ると system 図のプレビュー画像が表示され、**図全体が（クロップされず）収まっている**
 - [ ] AT-K: 同 URL を **Discord** / **X** に貼ってもプレビューが表示される（少なくとも 1 つ。各社のクローラ差は許容）
 - [ ] AT-L: og:title / og:description にプロジェクト名・説明が反映される（label / description を設定したモデルで確認）
 - [ ] AT-M: 大きいプロジェクトでは Share ダイアログが private リンクのみ + oversize 警告になり、private リンクで復元できる
