@@ -1,6 +1,6 @@
 # ADR Topic: project
 
-5 ADRs in this topic. Solid nodes belong to `project`; gray dashed nodes are ghosts showing cross-topic references to help navigation.
+6 ADRs in this topic. Solid nodes belong to `project`; gray dashed nodes are ghosts showing cross-topic references to help navigation.
 
 Other topics: [overview](../graph.md).
 ```mermaid
@@ -11,6 +11,7 @@ flowchart TD
     ADR_20260412_03["ADR-20260412-03<br/>Import Project from ZIP — `fflate` 再利用 + トップレベル除去"]
     ADR_20260422_07["ADR-20260422-07<br/>OPFS 履歴スナップショットを diff 比較ソースにする"]
     ADR_20260624_05["ADR-20260624-05<br/>Private vulnerability reporting を有効化する"]
+    ADR_20260626_01["ADR-20260626-01<br/>karasu-nest — URL で .krs を共有・プレビューするホスト型機能"]
   end
   ADR_20260328_04["ADR-20260328-04<br/>[cli] CLI `karasu serve` モード — ローカル `.krs` のリアルタイムプレビュー"]
   ADR_20260407_03["ADR-20260407-03<br/>[app-ui] ProjectSelector の Rename 操作 — インライン入力欄パターン"]
@@ -36,6 +37,7 @@ flowchart TD
   class ADR_20260412_03 accepted
   class ADR_20260422_07 accepted
   class ADR_20260624_05 accepted
+  class ADR_20260626_01 accepted
   class ADR_20260328_04 ghost
   class ADR_20260407_03 ghost
   class ADR_20260408_03 ghost

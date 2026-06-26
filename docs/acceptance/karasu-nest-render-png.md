@@ -2,7 +2,7 @@
 
 - **日付**: 2026-06-26
 - **関連 Issue**: [#1783](https://github.com/kompiro/karasu/issues/1783)（karasu-nest 壁打ち）
-- **関連 Design Doc**: [karasu-nest-hosted-preview](../design/karasu-nest-hosted-preview.md)（Phase 1 / PR 3 の続き）
+- **関連 ADR**: [ADR-20260626-01](../adr/20260626-01-karasu-nest-hosted-preview.md)（karasu-nest）（Phase 1 / PR 3 の続き）
 - **関連 ADR**: [ADR-20260404-03](../adr/20260404-03-png-export-not-adopted.md)（CLI/app の PNG は入れない）— 本 PR は **覆さない**。PNG は Worker（Pages Function）でのみ生成し、core/cli/app は SVG のまま
 - **対象ファイル**:
   - `functions/render.ts`（`?format=png` → resvg-wasm でラスタライズ、フォントを env.ASSETS で読み込み）
