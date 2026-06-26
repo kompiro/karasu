@@ -34,5 +34,6 @@
 - [ ] AT-D: `?width=<N>` で出力解像度がスケールする（上限 4096）
 - [ ] AT-E: `?format=png` でも `view=deploy|org` が効く
 - [ ] AT-F: `format` 省略時は従来どおり `image/svg+xml`（PNG 化されない）
+- [ ] AT-I: `?format=png` で **`view` 省略時は `system` にフォールバック**して単一ビューを描く（all-views 束ね SVG は CSS `:target` タブ前提で、PNG にするとタブバーのみ・本体空白になるため。all-views は SVG 専用）
 - [ ] AT-G: **コンパイル後 Worker のバンドルサイズ上限**に収まり、デプロイが成功する（resvg-wasm の wasm は ~2.4MB。Pages Functions の上限内で動くこと。超える場合はプラン/最適化を検討）
 - [ ] AT-H: `<img src="…/render?...&format=png">` で README / OGP に埋め込んで表示される

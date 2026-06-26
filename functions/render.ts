@@ -52,10 +52,19 @@ const cacheControl = (status: number) =>
 
 export async function onRequestGet(context: { request: Request; env: Env }): Promise<Response> {
   const url = new URL(context.request.url);
-  const result = renderSharePayload(url.searchParams);
+  const wantsPng = url.searchParams.get("format") === "png";
+
+  // The default (no `view`) SVG is the bundled all-views diagram, whose CSS
+  // `:target` tab navigation is interactive — rasterized to a static PNG it
+  // shows only the tab bar with an empty body. PNG needs one concrete view, so
+  // default to `system` when none is given. (SVG keeps the all-views default.)
+  const params = new URLSearchParams(url.search);
+  if (wantsPng && !params.get("view")) params.set("view", "system");
+
+  const result = renderSharePayload(params);
 
   // SVG, or any error from the shared handler, passes through unchanged.
-  if (url.searchParams.get("format") !== "png" || result.status !== 200) {
+  if (!wantsPng || result.status !== 200) {
     return new Response(result.body, {
       status: result.status,
       headers: {
