@@ -91,6 +91,44 @@ export function buildShareUrl(
 }
 
 /**
+ * Max encoded-payload length for the server-visible unfurl URL (`/s?s=`).
+ *
+ * The fragment URL has no practical limit, but the unfurl URL's payload travels
+ * in the query and is echoed again into the `/render?s=` image URL, so it must
+ * stay well under request-line / crawler limits. ~8000 leaves ample headroom
+ * below Cloudflare's ~16KB URL cap while covering every realistic project
+ * (a real reverse-engineered `.krs` compresses to ~5k chars — ADR-20260626-01).
+ */
+export const MAX_UNFURL_PAYLOAD = 8000;
+
+/** Path of the server-rendered share page (OGP unfurl). */
+const SHARE_PAGE_PATH = "/s";
+
+/**
+ * Build both share URLs from a single encode.
+ *
+ * - `fragmentUrl`: the private `#s=` link — never sent to the server, but no
+ *   OGP preview (crawlers can't see the fragment).
+ * - `unfurlUrl`: the server-visible `/s?s=` link that unfurls with the diagram
+ *   (OGP), or `null` when the encoded payload exceeds {@link MAX_UNFURL_PAYLOAD}
+ *   — oversized projects fall back to the fragment-only link.
+ *
+ * Encodes once and reuses the result for both URLs.
+ */
+export function buildShareUrls(
+  payload: SharePayload,
+  locationLike: { origin: string; pathname: string },
+): { fragmentUrl: string; unfurlUrl: string | null } {
+  const encoded = encodeShare(payload);
+  const fragmentUrl = `${locationLike.origin}${locationLike.pathname}#${SHARE_FRAGMENT_PREFIX}${encoded}`;
+  const unfurlUrl =
+    encoded.length > MAX_UNFURL_PAYLOAD
+      ? null
+      : `${locationLike.origin}${SHARE_PAGE_PATH}?${SHARE_FRAGMENT_PREFIX}${encoded}`;
+  return { fragmentUrl, unfurlUrl };
+}
+
+/**
  * Read a shared project from a location hash (e.g. `#s=<encoded>`).
  *
  * Returns:
