@@ -49,7 +49,7 @@ and `view=deploy`.
 ## AC-4 (manual): the dropdown reads well and actually opens the docs
 
 **Steps:**
-1. Open the app (`https://karasu.pages.dev/` or a local `pnpm --filter @karasu-tools/app dev`).
+1. Open the app (`https://karasu.kompiro.dev/` or a local `pnpm --filter @karasu-tools/app dev`).
 2. Click `📖 Docs` in the Preview toolbar.
 3. Click **Documentation site**.
 

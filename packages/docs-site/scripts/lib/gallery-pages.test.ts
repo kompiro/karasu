@@ -45,7 +45,7 @@ describe("gallery-pages", () => {
     const payment = GALLERY_PAGES.find((p) => p.slug === "payment-platform");
     if (!payment) throw new Error("fixture missing");
     expect(examplePageMarkdown(payment, [stub()], "en")).toContain(
-      "karasu.pages.dev/?example=payment-platform&lang=en",
+      "karasu.kompiro.dev/?example=payment-platform&lang=en",
     );
 
     const fs = GALLERY_PAGES.find((p) => p.slug === "feature-samples");
@@ -56,7 +56,7 @@ describe("gallery-pages", () => {
         fs.diagrams.map(() => stub()),
         "en",
       ),
-    ).not.toContain("karasu.pages.dev/?example=");
+    ).not.toContain("karasu.kompiro.dev/?example=");
   });
 
   it("feature-samples page renders one section per sample", () => {

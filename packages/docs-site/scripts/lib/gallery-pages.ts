@@ -54,7 +54,7 @@ function githubLink(page: GalleryPage, locale: Locale): string {
   return `[${text}](https://github.com/${REPO_SLUG}/tree/${REPO_BRANCH}/${dir})`;
 }
 
-const APP_URL = "https://karasu.pages.dev";
+const APP_URL = "https://karasu.kompiro.dev";
 
 /** "Open in the app" deep-link, only when this example is openable in this locale (#1646). */
 function openInAppLink(page: GalleryPage, locale: Locale): string | null {

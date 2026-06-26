@@ -8,7 +8,7 @@ diagrams. There are two ways to reach it:
 - **`karasu serve`** — a local, **preview-only** server that watches the `.krs`
   files in a directory and re-renders them in your browser every time you save.
   You keep editing in your own editor; the preview follows along.
-- **The in-browser playground** at **<https://karasu.pages.dev/>** — the full
+- **The in-browser playground** at **<https://karasu.kompiro.dev/>** — the full
   experience with a built-in editor, file tree, and live preview, running
   entirely in your browser. Nothing is installed and nothing leaves your machine.
 
@@ -60,7 +60,7 @@ If a file has syntax errors the last good diagram stays on screen with an
 
 ## The in-browser playground
 
-If you just want to try karasu, open **<https://karasu.pages.dev/>**. It is the
+If you just want to try karasu, open **<https://karasu.kompiro.dev/>**. It is the
 same app with the editor enabled:
 
 - A **Monaco** editor with `.krs` syntax highlighting (light and dark themes).

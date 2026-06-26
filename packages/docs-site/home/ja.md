@@ -10,7 +10,7 @@ hero:
     file: ../../../assets/karasu-logo.png
   actions:
     - text: ブラウザで試す
-      link: https://karasu.pages.dev/
+      link: https://karasu.kompiro.dev/
       icon: rocket
       variant: primary
     - text: ガイドを読む

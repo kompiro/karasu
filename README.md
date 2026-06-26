@@ -36,7 +36,7 @@ That said, it is built to be safe to start adopting now:
 
 ## Try it
 
-Run it in your browser: **<https://karasu.pages.dev/>**
+Run it in your browser: **<https://karasu.kompiro.dev/>**
 
 A staged `ec-platform` tutorial (including Getting Started) loads automatically on first launch — a locale-matched seed (English or Japanese) is picked so the tutorial reads naturally in your language. You can edit `.krs`, preview, drill down, and export SVG right away. To use the AI chat feature, enter a Claude API key (BYOK) under the Settings tab — the key is stored in the browser's `sessionStorage` and is never sent to any external server.
 
