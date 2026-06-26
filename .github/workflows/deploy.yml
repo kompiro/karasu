@@ -39,4 +39,6 @@ jobs:
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          # wrangler runs from the repo root and picks up the root `functions/`
+          # dir (the /render Pages Function) alongside the deployed assets.
           command: pages deploy packages/app/dist --project-name=karasu
