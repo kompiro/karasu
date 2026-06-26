@@ -25,6 +25,10 @@ overrides:
 importers:
 
   .:
+    dependencies:
+      '@resvg/resvg-wasm':
+        specifier: ^2.6.2
+        version: 2.6.2
     devDependencies:
       '@changesets/cli':
         specifier: ^2.31.0
@@ -1908,6 +1912,10 @@ packages:
     peerDependencies:
       selenium-webdriver: '>=4.6.1'
       typescript: '>=4.6.2'
+
+  '@resvg/resvg-wasm@2.6.2':
+    resolution: {integrity: sha512-FqALmHI8D4o6lk/LRWDnhw95z5eO+eAa6ORjVg09YRR7BkcM6oPHU9uyC0gtQG5vpFLvgpeU4+zEAz2H8APHNw==}
+    engines: {node: '>= 10'}
 
   '@rolldown/binding-android-arm64@1.0.3':
     resolution: {integrity: sha512-454rs7jHngixp/NMxd5srYD57OnzSlZ/eFTETjORQHLwJG1lRtmNOJcBerZlfu4GjKqeq8aCCIQrMdHyhI51Hw==}
@@ -7754,6 +7762,8 @@ snapshots:
       selenium-webdriver: 4.43.0
       type-fest: 4.41.0
       typescript: 6.0.3
+
+  '@resvg/resvg-wasm@2.6.2': {}
 
   '@rolldown/binding-android-arm64@1.0.3':
     optional: true
