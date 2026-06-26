@@ -15,17 +15,29 @@ import resvgWasm from "@resvg/resvg-wasm/index_bg.wasm";
  * resvg has no system fonts in the Workers runtime, so fonts are shipped as
  * static assets (packages/app/public/fonts) and fetched via env.ASSETS. Without
  * them, text would not render. Noto Sans covers Latin; Noto Sans JP is the
- * fallback for Japanese (and other CJK via the JP subset's coverage).
+ * fallback for Japanese (and other CJK via the JP subset's coverage); Noto Emoji
+ * (monochrome) covers the emoji node markers the SVG renderer emits (👥 owner,
+ * 📦 resources, 🔗 link, 🔐 external, and the ⚠ / ⚗ annotation badges); Noto Sans
+ * Symbols 2 covers the ✦ (U+2726) @new badge, a Dingbats symbol that Noto Emoji
+ * does NOT include. Without these, those glyphs rasterize as tofu (□) even though
+ * the browser SVG is fine (the OS supplies them there). resvg falls back across
+ * all provided buffers, so listing them here is enough; no per-family wiring.
+ * Coverage is guarded by packages/app/src/render/png-font-coverage.test.ts.
  */
 
 interface Env {
   ASSETS: { fetch(input: Request | string | URL): Promise<Response> };
 }
 
-const FONT_PATHS = ["/fonts/NotoSans-Regular.ttf", "/fonts/NotoSansJP-Regular.otf"];
+const FONT_PATHS = [
+  "/fonts/NotoSans-Regular.ttf",
+  "/fonts/NotoSansJP-Regular.otf",
+  "/fonts/NotoEmoji.ttf",
+  "/fonts/NotoSansSymbols2-Regular.ttf",
+];
 
 // init / font loading is cached at module scope so the cold-start cost (wasm
-// init + ~5MB font fetch+decode) is paid once per isolate, not per request.
+// init + ~8MB font fetch+decode) is paid once per isolate, not per request.
 // On failure the cache is cleared so a transient error (e.g. an asset fetch
 // hiccup) doesn't permanently poison the isolate — the next request retries.
 let wasmReady: Promise<unknown> | undefined;
