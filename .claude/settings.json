@@ -1,20 +1,8 @@
 {
   "permissions": {
     "allow": [
-      "Bash(rm /workspaces/karasu/*)",
-      "Bash(rmdir /workspaces/karasu/*)",
-      "Bash(npm install:*)",
-      "Bash(npx vitest:*)",
-      "Bash(npx tsc:*)",
-      "Bash(npx vite:*)",
       "Bash(git:*)",
-      "Bash(npm run:*)",
-      "Bash(node -e \":*)",
-      "Bash(npm test:*)",
-      "Bash(npx oxlint:*)",
-      "Bash(npx oxfmt:*)",
       "Bash(gh:*)",
-      "Bash(npm ci:*)",
       "Bash(cd /workspaces/karasu* && git:*)"
     ],
     "additionalDirectories": [

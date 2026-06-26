@@ -1,20 +1,3 @@
-Copyright notices for the bundled Noto fonts (Reserved Font Name "Noto"):
-
-  Noto Sans (NotoSans-Regular.ttf)
-    Copyright 2022 The Noto Project Authors
-    (https://github.com/notofonts/latin-greek-cyrillic)
-  Noto Sans JP (NotoSansJP-Regular.otf)
-    Copyright 2014-2021 Adobe (http://www.adobe.com/), with Reserved Font
-    Name 'Source'. Redistributed by the Noto Project Authors as Noto Sans JP.
-  Noto Emoji (NotoEmoji.ttf — monochrome)
-    Copyright 2022 The Noto Project Authors
-    (https://github.com/googlefonts/noto-emoji)
-  Noto Sans Symbols 2 (NotoSansSymbols2-Regular.ttf)
-    Copyright 2022 The Noto Project Authors
-    (https://github.com/notofonts/symbols)
-
------------------------------------------------------------
-
 This Font Software is licensed under the SIL Open Font License,
 Version 1.1.
 
