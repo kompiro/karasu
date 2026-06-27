@@ -1,7 +1,7 @@
 # karasu ロードマップ
 
 - **ステータス**: living（随時更新する。決定は ADR、実行・進捗は GitHub Issues で管理し、本書は**全体方針**を保持する）
-- **現在のフォーカス**: `.krs` / `.krs.style` **v1.0 確定済み** — [ADR-20260616-06](adr/20260616-06-krs-spec-v1-freeze.md) の freeze 方針を公開ローンチ（[#1317](https://github.com/kompiro/karasu/issues/1317) / [#1764](https://github.com/kompiro/karasu/issues/1764)）で発効した。今後の対象は post-v1.0 watch（finding C/D）と TS API（v0.x、無保証）。
+- **現在のフォーカス**: `.krs` / `.krs.style` **v1.0 確定済み** — [ADR-20260616-06](adr/20260616-06-krs-spec-v1-freeze.md) の freeze 方針を公開ローンチ（[#1317](https://github.com/kompiro/karasu/issues/1317) / [#1764](https://github.com/kompiro/karasu/issues/1764)）で発効した。次の地平は [§v2.0 horizon（post-v1.0 ロードマップ）](#v20-horizonpost-v10-ロードマップ) に集約する（notation watch round 2 / comprehension / karasu-nest ほか）。
 - **関連**:
   - [#1567](https://github.com/kompiro/karasu/issues/1567) — notation gap stocktaking（本ロードマップの起点）
   - [#1314](https://github.com/kompiro/karasu/issues/1314) — OSS launch Phase 2: `.krs` / `.krs.style` v1.0 spec freeze の ADR（本ロードマップが入力になる）
@@ -229,6 +229,91 @@ excess 候補（finding H）として挙げた。検討の結果、**v1.0 で残
 - v1.0 後、実利用で 1:N が earn its keep しているか（実際に使われ、誤用が少ないか）を
   観察する。問題が出れば post-v1.0 で deprecation を別途検討する（ADR-20260615-04 の
   `@deprecated` graceful-degradation の枠組みが使える）。
+
+---
+
+## v2.0 horizon（post-v1.0 ロードマップ）
+
+- **ステータス**: living。v1.0（[ADR-20260616-06](adr/20260616-06-krs-spec-v1-freeze.md)）で構文を freeze した後の次の地平を束ねる。実行・進捗は **GitHub Milestone**、根拠は本書と各 ADR、詳細経緯は parent Issue が持つ（[#1814](https://github.com/kompiro/karasu/issues/1814) が全体 planning の傘）。
+- **"v2.0" の含意**: ここでの v2.0 は**プロダクトの次の地平**を指し、必ずしも構文の major bump ではない。notation watch（round 2）は**後方互換を保ったまま**実利用で評価する営みで、昇格は v1.x 内で [§promotion gate](#promotion-gate-notation-評価の規律) を通す（破壊的変更を前提にしない）。
+- **動かさない非ゴール**: 時間軸 / sequence（[#23](https://github.com/kompiro/karasu/issues/23) / [#28](https://github.com/kompiro/karasu/issues/28)）・code generation・ER modeling・runtime metrics・infra topology・canvas editing は `docs/concepts.md` で確定済み。v2.0 horizon はこの線を動かさない。実利用で圧力が出たものは下記 [§非ゴール圧力 log](#非ゴール圧力-log) に記録のみする。
+
+### keystone: primary path と主 surface（未決）
+
+post-v1.0 の優先度は、この一つの決定に従属する。karasu を **誰の何のための道具**と置くか:
+
+| path | karasu の正体 | 既存の足場 | 投資先 |
+| --- | --- | --- | --- |
+| **A. authoring tool** | architect が書く道具 | editor app / VS Code / LSP / notation / cookbook | notation 深化・editor・補完 |
+| **B. AI-readable lens** | AI が生成し人が読むレンズ | nest reverse / translate CLI / Chat（[#638](https://github.com/kompiro/karasu/issues/638)） | reverse 品質・Chat・catalog（[#1786](https://github.com/kompiro/karasu/discussions/1786)） |
+| **C. shareable medium** | 図を URL で配るメディア | nest share / taka / OGP / `/render` | 短縮・OGP・埋め込み |
+
+直近の投資（nest・taka・OGP・comprehension）は **B/C 寄り**だが、**明示的な決定は未了**。叩き台は「**B primary / C を B の配布層 / A を B の品質下支え**」。この決定が固まると下記の candidate 群の優先度が確定する。**surface portfolio**（app / docs-site / VS Code / CLI / LSP / nest の6面をどれに寄せ、どれを維持/縮退するか）は keystone が主 surface を示した後の**独立判断**として切り出す。
+
+### 実行中の柱（Milestone 化済み）
+
+| 柱 | Milestone | parent | 中身 |
+| --- | --- | --- | --- |
+| **Notation watch (round 2)** | [milestone/3](https://github.com/kompiro/karasu/milestone/3) | [#1816](https://github.com/kompiro/karasu/issues/1816) | 実 OSS を書いて出た notation finding。[#1567](https://github.com/kompiro/karasu/issues/1567) の続編。既定 = experimental 据え置き |
+| **Comprehension / explorable viewer** | [milestone/2](https://github.com/kompiro/karasu/milestone/2) | [#1817](https://github.com/kompiro/karasu/issues/1817) | 大規模（AI 生成）図を認識可能にする。壁は**横の密度**（縦の深さは drill-down で足りる） |
+| **karasu-nest** | [milestone/4](https://github.com/kompiro/karasu/milestone/4) | [#1783](https://github.com/kompiro/karasu/issues/1783) | ホスト型の code+preview。share/render/OGP は出荷済み、Phase 2 catalog は [#1786](https://github.com/kompiro/karasu/discussions/1786)、URL 短縮 taka は [#1786 コメント](https://github.com/kompiro/karasu/discussions/1786) の統合 contract |
+| **OSS launch (Phase 3)** | [milestone/5](https://github.com/kompiro/karasu/milestone/5) | — | hard launch（v1.0 release / announcement / Pages 再開 / Discussions 判断） |
+
+#### Notation watch (round 2) の finding
+
+| # | finding | disposition | Issue |
+| --- | --- | --- | --- |
+| 1 | authoring AI に渡すのが `syntax.md`（文法）のみで **idiom/pattern** 資料が無い。KV store は **leaf-less `database`** + node 粒度参照 + physical layer の engine で**表現済み**（`@kv` は却下: annotation は lifecycle 標識） | **cookbook 新設**（KV を entry #1、LLM に同梱）。`[kv]` badge は watch | [#1818](https://github.com/kompiro/karasu/issues/1818) |
+| 2 | table を **domain** でまとめ、**cross-domain な store アクセス**を診断したい | logical=domain でグルーピング + 診断（`shared-infra-fan-in` 系）。physical=schema は 1:1 でなく**未決**（[#1632](https://github.com/kompiro/karasu/issues/1632) の infra realizes と地続き） | [#1819](https://github.com/kompiro/karasu/issues/1819) |
+| 3 | 大規模 multi-file 図の混雑。**file は grouping 単位として誤り**（サンプルは view 種別で分割）。本当の need = system 内の**意味的クラスタ宣言** | **comprehension 柱へ移設**（描画/密度の問題） | [#1822](https://github.com/kompiro/karasu/issues/1822) |
+| 4 | 残した experimental notation を**いつ評価するか**が未定義。後方互換ゆえ rename/廃止は高コスト | **promotion gate**（下記）を ADR + 本書に記録 | [#1820](https://github.com/kompiro/karasu/issues/1820) |
+
+#### Comprehension の構図
+
+縦（深さ）は drill-down（[#21](https://github.com/kompiro/karasu/issues/21)、replace-context）が既にカバー。壁は**ある階層での横の密度**（service/infra ノード数 + 越境 edge の混雑）。投資は横の密度制御に向ける。
+
+| 手 | コスト | Issue |
+| --- | --- | --- |
+| external/infra の**レイヤートグル**（第一手） | 低 | [#1821](https://github.com/kompiro/karasu/issues/1821) |
+| 意味的クラスタ + 枠線 | 中 | [#1822](https://github.com/kompiro/karasu/issues/1822) |
+| provenance / `[external]` スタブ・focus（[#1186](https://github.com/kompiro/karasu/issues/1186) 出荷済み）・progressive edges | 中 | （follow-up） |
+| **縦の残課題**: in-place 部分展開（兄弟と越境 edge を見せたまま1つ展開、mixed-LOD）。重く ROI 要検証 | 高 | [#1815](https://github.com/kompiro/karasu/issues/1815) |
+
+### promotion gate（notation 評価の規律）
+
+experimental notation を v1.0-stable へ昇格させる判断の規律（ADR 化は [#1820](https://github.com/kompiro/karasu/issues/1820)）:
+
+- **既定 = experimental 据え置き**。追加しない/据え置くコストは低く、削除コストは高い。昇格に渋く、open/既存構文での表現に寛容に、灰色は experimental に留める。問いは「**stable へ昇格するに足る実利用証拠があるか**」であって「廃止すべきか」ではない。
+- **トリガー**: (i) その notation に触れる v1.x minor の直前、(ii) 実利用データが溜まった時、(iii) 混乱/bug Issue の再発時。
+- **証拠源 = karasu-nest の共有 corpus**。実 OSS を書いた `.krs` が watch tier の必要とする「実利用 pain」の観測装置になる。
+- 配置は **ADR（決定）+ 本書（生きた適用状態）**。`docs/process.md`（日々の開発サイクル）には置かない。
+
+### 独立 candidate（未 Issue 化 — issue が生えたら Milestone 化）
+
+| candidate | 状態 | 依存 |
+| --- | --- | --- |
+| **surface portfolio** | 未着手。keystone が主 surface を示した後の独立判断 | keystone |
+| **interop**（draw.io / mermaid / C4 への入出力） | 未着手の戦略テーマ。physical realize（[#1632](https://github.com/kompiro/karasu/issues/1632)）とは切り離して単独管理 | keystone（B/C なら価値増） |
+| **AI authoring 深度 / Chat 去就** | **評価待ち**。Chat が出荷面か実験かは [#638](https://github.com/kompiro/karasu/issues/638) の user testing データで決める | keystone + #638 |
+
+### 既存に集約（新規スレッド不要）
+
+- **feedback loop 設計**（OSS 後に何を作るかをどう学ぶか）は新規に立てない。Discussions 判断は [#1317](https://github.com/kompiro/karasu/issues/1317)、nest corpus を証拠源にする件は promotion gate（[#1820](https://github.com/kompiro/karasu/issues/1820)）、定量検証は [#638](https://github.com/kompiro/karasu/issues/638) に既にある。
+
+### 非ゴール圧力 log
+
+非ゴールは動かさないが、実利用で圧力が出たものをここに**記録のみ**する（対応はしない）。Discussions 有効化（[#1317](https://github.com/kompiro/karasu/issues/1317)）時には「ゴールにしていないこと」の seed としても使える。
+
+| 非ゴール | 圧力の観測 | 備考 |
+| --- | --- | --- |
+| （現時点で記録なし） | — | — |
+
+### sequencing
+
+1. **keystone**（primary path + 主 surface）を決め、本書に記録 → surface portfolio と interop の優先度が確定。
+2. 実行中の2柱（notation watch r2 / comprehension）は keystone と並行で進む。comprehension の第一手は external/infra トグル（[#1821](https://github.com/kompiro/karasu/issues/1821)）。
+3. **AI authoring** は [#638](https://github.com/kompiro/karasu/issues/638) のデータ待ち、**interop** は keystone 後。
+4. **非ゴール圧力 log** は随時追記（安価）。
 
 ---
 
