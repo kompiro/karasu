@@ -96,6 +96,23 @@ radius with Tailwind utilities:
 5. Per-button tweaks (border radius, extra width) go through `className`
    — `cn()` inside `Button` merges them.
 
+## Keyboard shortcuts — keep `docs/tools` in sync
+
+Adding or changing a `keybinding` chord in `packages/app` is gated by a
+mechanical check (Issue #1715). `scripts/lint/app-shortcut-docs-sync.ts`
+collects every chord and verifies its `Ctrl/Cmd+...` display form appears
+in **both** `docs/tools/app.md` and `docs/tools/app.ja.md`. The check runs
+in the lefthook `app-shortcut-docs-sync` hook (glob covers
+`packages/app/src/**` + `docs/tools/**`) and in the `scripts` vitest, so a
+missing doc entry **fails the push / CI**.
+
+- When you add a new shortcut, document it in **both** `docs/tools/app.md`
+  and `docs/tools/app.ja.md` in the same PR.
+- Deliberately undocumented chords go in that script's `DOC_EXEMPT` list
+  with a reason (currently the `mod+shift+1/2` edit-tab toggles).
+- Toolbar / view / CLI-flag surfaces are *not* mechanically checked — they
+  rely on review (proactive TPL `TPL-20260623-01-user-facing-surface-docs-sync`).
+
 ## Legacy `toolbar-btn` CSS (deprecated)
 
 The `.toolbar-btn*` rules remain in `app.css` as dead-but-harmless CSS
