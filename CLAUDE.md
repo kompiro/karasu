@@ -37,8 +37,12 @@ karasu/
 │   ├── app/           ← Vite + React のプレビューUI
 │   ├── cli/           ← karasu serve / render コマンド
 │   ├── lsp/           ← Language Server Protocol 実装
-│   └── vscode/        ← VS Code 拡張
-├── package.json       ← npm workspaces 設定
+│   ├── vscode/        ← VS Code 拡張
+│   ├── i18n/          ← ユーザー向け文字列の i18n（warning メッセージ等）
+│   ├── docs-site/     ← ドキュメントサイト（GitHub Pages）
+│   ├── e2e/           ← Playwright E2E（app）
+│   └── vscode-e2e/    ← ExTester による VS Code 拡張 E2E
+├── package.json       ← pnpm workspaces 設定（pnpm-workspace.yaml）
 └── tsconfig.json
 ```
 
