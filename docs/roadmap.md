@@ -242,7 +242,7 @@ excess 候補（finding H）として挙げた。検討の結果、**v1.0 で残
 ### keystone: primary path と主 surface（決定済み 2026-06-28）
 
 post-v1.0 の優先度はこの決定に従属する。壁打ちの全容は PRD
-[`docs/design/keystone-primary-path.md`](design/keystone-primary-path.md)（[#1825](https://github.com/kompiro/karasu/pull/1825)）、
+[`docs/prd/keystone-primary-path.md`](prd/keystone-primary-path.md)（[#1825](https://github.com/kompiro/karasu/pull/1825)）、
 要件は Epic [#1826](https://github.com/kompiro/karasu/issues/1826) に展開した（ADR ではなく PRD → Issue）。
 
 **決定**:
