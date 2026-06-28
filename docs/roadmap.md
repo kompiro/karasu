@@ -235,7 +235,7 @@ excess 候補（finding H）として挙げた。検討の結果、**v1.0 で残
 ## post-v1.0 horizon（ロードマップ）
 
 - **ステータス**: living。v1.0（[ADR-20260616-06](adr/20260616-06-krs-spec-v1-freeze.md)）で構文を freeze した後の **rolling な次の地平**を束ねる。単一バージョンの release ではないので "v2.0" のような版では括らない。
-- **管理モデル**: GitHub Milestone は 1 Issue 1 個のフラット1軸なので、2軸を分けて持つ — **時間軸（いつ着手）= 日付 Milestone**（`2026-07` / `2026-09` / `2026-Q4` / `Backlog`）、**テーマ軸（何を）= parent Epic Issue + `epic:` ラベル**。日付は keystone（下記）後に確定する intent バケツ。根拠は本書と各 ADR、詳細経緯は parent Epic Issue が持つ（[#1814](https://github.com/kompiro/karasu/issues/1814) が全体 planning の傘）。
+- **管理モデル**: GitHub Milestone は 1 Issue 1 個のフラット1軸なので、2軸を分けて持つ — **時間軸（いつ着手）= 日付 Milestone**（`2026-07` / `2026-09` / `2026-12` / `Backlog`）、**テーマ軸（何を）= parent Epic Issue + `epic:` ラベル**。日付は keystone（下記）後に確定する intent バケツ。根拠は本書と各 ADR、詳細経緯は parent Epic Issue が持つ（[#1814](https://github.com/kompiro/karasu/issues/1814) が全体 planning の傘）。
 - **後方互換**: notation watch（round 2）は**後方互換を保ったまま**実利用で評価する営みで、昇格は v1.x 内で [§promotion gate](#promotion-gate-notation-評価の規律) を通す（破壊的変更を前提にしない）。
 - **動かさない非ゴール**: 時間軸 / sequence（[#23](https://github.com/kompiro/karasu/issues/23) / [#28](https://github.com/kompiro/karasu/issues/28)）・code generation・ER modeling・runtime metrics・infra topology・canvas editing は `docs/concepts.md` で確定済み。post-v1.0 horizon はこの線を動かさない。実利用で圧力が出たものは下記 [§非ゴール圧力 log](#非ゴール圧力-log) に記録のみする。
 
@@ -253,7 +253,7 @@ post-v1.0 の優先度は、この一つの決定に従属する。karasu を **
 
 ### 実行中の柱（テーマ = Epic Issue + `epic:` ラベル）
 
-着手タイミングは日付 Milestone（`2026-07` / `2026-09` / `2026-Q4` / `Backlog`）で別管理する。Epic 親 Issue 自体は複数 Milestone にまたがるため日付を持たせない。
+着手タイミングは日付 Milestone（`2026-07` / `2026-09` / `2026-12` / `Backlog`）で別管理する。Epic 親 Issue 自体は複数 Milestone にまたがるため日付を持たせない。
 
 | 柱 | Epic parent / label | 中身 | 着手 intent |
 | --- | --- | --- | --- |
