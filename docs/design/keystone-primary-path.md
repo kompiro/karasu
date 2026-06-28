@@ -28,7 +28,7 @@ A/B/C の「primary path」という枠は **adoption（採用を増やす）を
 | **learning**（Claude Code 等） | 学びの大きい題材を選ぶ | 技術的な新規性・実装の面白さ |
 | **personal-use** | 自分が使う道具を磨く | 自分の実利用頻度 |
 
-（現時点の暫定: 以下の A/B/C 評価は **adoption 目的**を仮置きして書く。目的が違えば差し替える。）
+**決定（2026-06-28）: adoption を主目的とする**（[project purpose] の learning より採用を優先）。以降は adoption 前提で評価する。
 
 ## 検討した選択肢（adoption 仮置き）
 
@@ -50,20 +50,38 @@ A/B/C の「primary path」という枠は **adoption（採用を増やす）を
   → 緩和策が **comprehension 柱（#1817）+ cookbook（#1818）+ render-existing-first** で、いずれも既に queue 済み（整合）。
 - **momentum**: 直近投資（nest/taka/OGP/comprehension）は B/C。ただし**意図的か drift か**の確認が必要。
 
-### 暫定 straw man
+### adoption の loop（supply → share → explore）と束縛条件
 
-**B primary / C を B の配布層 / A を B の品質下支え**。
+adoption 前提で B/C/A を「成長ループ」として並べ直すと、単純な「B primary」より解像度が上がる:
 
-- B = 中心動線（AI 生成 → nest で読む/drill-down → 書きにくい所だけ人が直す）。
-- C = 共有の誘い（短い URL/OGP で B へ送客。taka 統合 contract は discussion #1786 に記録済み）。
-- A = 品質の床（notation watch は「言語を伸ばす」のではなく「B の reverse 品質を支える」文脈に従属。promotion gate の据え置き規律と整合）。
+- **C = acquisition（獲得ループ）**: 共有された図が OGP unfurl で SNS に広がり、他人が click して入る。
+  C は単なる「B の配布層」ではなく**バイラルの入口**。taka 統合 contract は discussion #1786。
+- **B = retained core（保持される価値）**: 共有 model を drill-down で探索する中身。
+  ただし comprehension 柱（#1817）が land しないと「壁」のままで保持に至らない。
+- **A = supply（供給）**: 共有される `.krs` を誰かが作らないとループが回らない。
+
+**束縛条件 = supply（供給がボトルネック）**。`.krs` の供給源は3つ:
+
+1. 手書き（A — 高摩擦）
+2. **AI reverse**（nest の BYO + cookbook [#1818](https://github.com/kompiro/karasu/issues/1818) — 中摩擦、最有力）
+3. repo が `.krs` を commit（A の採用が先に要る — 鶏卵）
+
+→ adoption の最安の供給は **AI reverse**。よって **cookbook と reverse 品質・摩擦低減が実質の adoption レバー**。
+
+### sharpened straw man
+
+**B = product core / C = acquisition loop / A = supply の床**、束縛条件は **supply（reverse 品質 + 摩擦）**。
+notation watch は「言語を伸ばす」のではなく「B の reverse 品質を支える」文脈に従属（promotion gate 据え置きと整合）。
 
 ## 未解決の問い（壁打ちで詰める）
 
-1. **目的関数**は adoption / learning / personal-use のどれが主か（ゼロ番目の問い）。これで枠が変わる。
-2. momentum（B/C 寄り）は**意図的**か。A（手書き architect 像）を co-primary に残したいか。
-3. solo 運用前提で、VS Code / LSP / app を**保守モードに落として** nest+core に集中する覚悟はあるか（surface portfolio の含意）。
-4. 「B が効いている」と判定する**プロダクトバー**（#1783 の good-enough overview をテスト可能にしたもの）は何か。
+1. ~~目的関数~~ → **adoption に決定（2026-06-28）**。
+2. **retention（再訪の JTBD）**: nest で repo の overview を見た人が**なぜ戻ってくる**か。
+   一度きりの「便利な俯瞰」は習慣化しない。繰り返される仕事は何か。← adoption の最大の急所。
+3. **supply の賭け**: 主供給を AI reverse（BYO + cookbook）に置くか、nest が reverse の摩擦を
+   さらに下げる（guided reverse 等。LLM は載せない [ADR-20260626-01](../adr/20260626-01-karasu-nest-hosted-preview.md) の範囲で）か。
+4. **C を成長エンジンに**: バイラル共有ループ（C）を獲得の主役、B を保持の価値、と置く再ランクで良いか。
+5. **surface portfolio**: solo 前提で VS Code / LSP / app を保守モードに落として nest+core に集中する覚悟はあるか。
 
 ## 関連・前提
 
