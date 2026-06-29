@@ -1,7 +1,7 @@
 # layer toggles: external / infra カテゴリの interactive collapse/expand
 
 - **Issue**: [#1821](https://github.com/kompiro/karasu/issues/1821)（親 Epic [#1817](https://github.com/kompiro/karasu/issues/1817) comprehension）
-- **PR**: #（後で反映）
+- **PR**: [#1837](https://github.com/kompiro/karasu/pull/1837)
 - **日付**: 2026-06-28
 - **ステータス**: 検討中
 
