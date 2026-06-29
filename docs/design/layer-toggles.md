@@ -78,20 +78,22 @@ core が collapsed カテゴリにスタブ（⊕-circle + 件数 + `data-collap
 
 **案A を採用**（in-SVG affordance + app delegation + collapse-to-stub）。
 
-### 実装の指針
+用語: **stub** = 畳んだ状態の ⊕ プレースホルダ（カテゴリの実ノードを置き換える箱）。**group hover frame** = 開いた状態でグループ範囲を hover で輪郭表示する別 affordance（畳む前に対象を可視化）。
 
-- core: `RenderOptions`/`CompileOptions` に `collapsedCategories?: Set<CategoryId>`（`"external" | "infra"`）。`render()` 内 `layout()` 直前に `collapseCategoriesToStub(viewSlice, collapsedCategories)`（畳むカテゴリの実ノードを 1 スタブノードへ置換）。スタブは ⊕-circle + 件数、`data-collapse-category`。open グループ右上に ⊖-circle（`data-collapse-category`）。判定は `systemTier` 同規則を再利用。
-- legend: スタブ化後に usage を計算する順序を担保し、畳んだカテゴリが legend から落ちることを確認（[TPL-20260510-05]）。
-- app: `useSystemView` に `collapsedCategories: Set` + `toggleCategory`（`expandedTeamIds`/`toggleTeamExpand` と同型）→ `compileProject` へ。`PreviewPane` delegation に `[data-collapse-category]` 分岐を追加。
-- `/render`: `share-render.ts` が `collapsedCategories` query param を parse → compile option（スナップショット）。
+- core（collapse）: `RenderOptions`/`CompileOptions` に `collapsedCategories?: Set<CategoryId>`（`"external" | "infra"`）。`render()` 内 `layout()` 直前に `collapseCategoriesToStub(viewSlice, collapsedCategories)`（畳むカテゴリの実ノードを 1 stub ノードへ置換）。stub は **⊕-circle + 件数ラベル**（例 "Infra (4)"）、`data-collapse-category`。open グループ**右上に ⊖-circle**（`data-collapse-category`、node badge と同位置）。判定は `systemTier` 同規則を再利用。
+- core（group hover frame）: 開いているカテゴリのノード群を `data-category-group` で括り、**hover で輪郭枠を表示**（pure-CSS `:hover` + SVG `<style>`、JS 不要・export でも効く）。infra はティア行＝1 枠、external はサイド左右列＝各列を枠（bbox が全幅に広がらないよう領域別）。**枠の bbox 計算は #1822 クラスタ枠と machinery 共有**。
+- legend: stub 化後に usage を計算する順序を担保し、畳んだカテゴリが legend から落ちることを確認（[TPL-20260510-05]）。
+- app: `useSystemView` に `collapsedCategories: Set` + `toggleCategory`（`expandedTeamIds`/`toggleTeamExpand` と同型）→ `compileProject` へ。`PreviewPane` delegation に `[data-collapse-category]` 分岐を追加（click=collapse は app 駆動、hover=枠は pure-CSS）。
+- **out of scope（follow-up）**: `/render` の `collapsedCategories` query param（静止画スナップショットを畳んだ状態で出す用途。対話機能の本体は app 側で、TPL-20260510-06 の一貫性は「`/render` は option 未指定＝全展開で挙動不変」で満たす）。app Share ボタンへの状態埋め込みも follow-up。context menu 版の ⊖ も follow-up。
 
 ### 影響範囲・マイグレーション
 
 - 後方互換: option 未指定＝全展開で挙動不変。`.krs` 形式・既存スナップショットに影響なし。
 - 検証面（[TPL-20260510-06] known_consumers）: layout / svg-builder / legend-footer / node-detail-panel / full-view-svg / export-svg / useSystemView を横断確認。
 
-## 未解決の問い / 決めないこと
+## 決めたこと（壁打ち結果）
 
-1. **⊖ の出し方**: グループ右上の ⊖-circle（推奨・discoverable・node badge と同位置）で確定か、context menu も併設するか（context menu は menu コンポーネントを要するため follow-up 推奨）。
-2. **スタブの表現**: ⊕-circle + 「Infra (4)」のような件数ラベル、で良いか。external はサイド列、infra はティア行という配置差をスタブでどう見せるか（実装時に視覚調整）。
-3. **`/render` query param を v1 に含むか**: core option はスナップショット用に持つ。`/render` の param まで v1 で配線するか、follow-up か（[TPL-20260510-06] は option を渡した時の一貫性を要求、UI 露出は強制しない）。
+- ⊖ は**グループ右上の ⊖-circle**（context menu は follow-up）。
+- collapsed stub は **⊕-circle + 件数ラベル**。
+- 開状態の **group hover frame** を v1 に含む（pure-CSS `:hover`、#1822 と machinery 共有）。
+- **`/render` query param は out of scope**（follow-up）。v1 は app 上の対話 collapse/expand + hover frame。
