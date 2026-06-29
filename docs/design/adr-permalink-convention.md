@@ -4,6 +4,7 @@
 - **ステータス**: 検討中
 - **関連**:
   - 引き金 Issue: [#1829](https://github.com/kompiro/karasu/issues/1829)（taka-shortened inline snapshot を near-term ADR permalink にする — 残ゴール「ADR-authoring convention の文書化」）
+  - **PR**: [#1836](https://github.com/kompiro/karasu/pull/1836)
   - epic: [#1826](https://github.com/kompiro/karasu/issues/1826)（permalink layer）
   - 兄弟: [#1827](https://github.com/kompiro/karasu/issues/1827) / PR [#1833](https://github.com/kompiro/karasu/pull/1833)（deep permalink のエンコード — `target` を `SharePayload` 同梱）、[#1828](https://github.com/kompiro/karasu/issues/1828)（repo-backed / ref-pinned）、[#1830](https://github.com/kompiro/karasu/issues/1830)（`adr:check-assumptions` を permalink 検証へ拡張）
   - 関連 ADR: [ADR-20260626-04](../adr/20260626-04-karasu-nest-ogp-share-page.md)（`/s?s=` OGP 共有ページ）、[ADR-20260626-01](../adr/20260626-01-karasu-nest-hosted-preview.md)（nest stateless）
