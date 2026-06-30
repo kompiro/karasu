@@ -6,6 +6,7 @@ import {
   bundleSingleLevelViews,
 } from "./drill-down-svg.js";
 import { buildAllLayersSvg, buildAllLayersSvgOrg } from "./all-layers-svg.js";
+import { anchorId } from "./svg-renderer.js";
 import { registerBuiltinShapes } from "./shapes.js";
 import { clearRegistry } from "../shapes/shape-registry.js";
 import { Parser } from "../parser/parser.js";
@@ -61,6 +62,22 @@ describe("buildDrillDownSvg", () => {
     expect(svg).not.toContain('<g class="krs-back-button"');
     // No child levels — only root
     expect(svg).not.toContain('id="krs-system-OrderService"');
+  });
+
+  // The drill-down level id MUST come from the shared `anchorId` grammar so it
+  // stays portable with the SPA hash (TPL-20260630-01, docs/spec/permalink.md).
+  it("level id follows the anchorId grammar (id sanitized, not the label)", () => {
+    const krsFile = Parser.parse(`
+system ECommerce {
+  service "order/svc" {
+    label "Order"
+    domain D { label "D" }
+  }
+}
+`).value;
+    const { svg } = buildDrillDownSvg(krsFile);
+    expect(svg).toContain(`id="${anchorId("system", "order/svc")}"`);
+    expect(svg).toContain(`href="#${anchorId("system", "order/svc")}"`);
   });
 
   it("two-level: root + child view, <a> links in root", () => {

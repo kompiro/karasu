@@ -5,7 +5,7 @@ import { extractView } from "../view/view-extract.js";
 import { withUnassignedSystem } from "../view/unassigned-system.js";
 import { extractOrgView } from "../view/org-view-extract.js";
 import { extractDeployView } from "../view/deploy-view-extract.js";
-import { render, sanitizeId, legendScopeForLogicalSlice } from "./svg-renderer.js";
+import { render, sanitizeId, anchorId, legendScopeForLogicalSlice } from "./svg-renderer.js";
 import { renderOrgView } from "./org-renderer.js";
 import { renderDeploy } from "./deploy-renderer.js";
 import { escapeXml } from "./svg-builder.js";
@@ -38,7 +38,7 @@ function buildDrillDownCss(palette: DiagramPalette): string {
 }
 
 function renderBackButton(parentViewId: string, viewPrefix: string): string {
-  return `<a href="#krs-${viewPrefix}-${parentViewId}" tabindex="0"><g class="krs-back-button" transform="translate(20, 10)"><rect x="0" y="0" width="80" height="26" rx="4"/><text x="40" y="17" text-anchor="middle">&#x2190; Back</text></g></a>`;
+  return `<a href="#${anchorId(viewPrefix, parentViewId)}" tabindex="0"><g class="krs-back-button" transform="translate(20, 10)"><rect x="0" y="0" width="80" height="26" rx="4"/><text x="40" y="17" text-anchor="middle">&#x2190; Back</text></g></a>`;
 }
 
 // ─── Drill-down SVG (CSS :target navigation) ───────────────────────────────
@@ -56,9 +56,7 @@ function collectDrillDownLevelsGeneric<S>(
 
   const children = callbacks.getChildren(slice);
   const drillable = children.filter((c) => c.children.length > 0);
-  const childLevelLinks = new Map(
-    drillable.map((c) => [c.id, `krs-${viewPrefix}-${sanitizeId(c.id)}`]),
-  );
+  const childLevelLinks = new Map(drillable.map((c) => [c.id, anchorId(viewPrefix, c.id)]));
 
   const svg = callbacks.render(slice, childLevelLinks);
   const { viewBox, innerContent } = extractSvgParts(svg);
@@ -66,7 +64,7 @@ function collectDrillDownLevelsGeneric<S>(
   const backButton = parentViewId !== null ? renderBackButton(parentViewId, viewPrefix) : "";
   const innerSvg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${viewBox}" width="100%" height="100%">${backButton}${innerContent}</svg>`;
   const cssClass = parentViewId === null ? "krs-view krs-root-level" : "krs-view";
-  levels.push(`<g id="krs-${viewPrefix}-${viewId}" class="${cssClass}">${innerSvg}</g>`);
+  levels.push(`<g id="${anchorId(viewPrefix, viewId)}" class="${cssClass}">${innerSvg}</g>`);
 
   for (const child of drillable) {
     collectDrillDownLevelsGeneric(
@@ -224,9 +222,7 @@ function collectDrillDownLevelsWithDimensions<S>(
 
   const children = callbacks.getChildren(slice);
   const drillable = children.filter((c) => c.children.length > 0);
-  const childLevelLinks = new Map(
-    drillable.map((c) => [c.id, `krs-${viewPrefix}-${sanitizeId(c.id)}`]),
-  );
+  const childLevelLinks = new Map(drillable.map((c) => [c.id, anchorId(viewPrefix, c.id)]));
 
   const svg = callbacks.render(slice, childLevelLinks);
   const { viewBox, innerContent, width, height } = extractSvgParts(svg);
@@ -234,7 +230,7 @@ function collectDrillDownLevelsWithDimensions<S>(
   const backButton = parentViewId !== null ? renderBackButton(parentViewId, viewPrefix) : "";
   const innerSvg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${viewBox}" width="100%" height="100%">${backButton}${innerContent}</svg>`;
   const cssClass = parentViewId === null ? "krs-view krs-root-level" : "krs-view";
-  const element = `<g id="krs-${viewPrefix}-${viewId}" class="${cssClass}">${innerSvg}</g>`;
+  const element = `<g id="${anchorId(viewPrefix, viewId)}" class="${cssClass}">${innerSvg}</g>`;
   levels.push({ element, width, height });
 
   for (const child of drillable) {
@@ -260,7 +256,7 @@ function renderTabBar(enabledViews: Set<ViewType>): string {
     if (disabled) {
       return `<g class="${cssClass}">${inner}</g>`;
     }
-    return `<a href="#krs-${type}-root"><g class="${cssClass}">${inner}</g></a>`;
+    return `<a href="#${anchorId(type, "root")}"><g class="${cssClass}">${inner}</g></a>`;
   });
   return `<g class="krs-tab-bar">${tabs.join("")}</g>`;
 }

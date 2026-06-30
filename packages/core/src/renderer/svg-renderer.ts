@@ -36,6 +36,23 @@ export function sanitizeId(id: string): string {
   return id.replace(/[^a-zA-Z0-9_-]/g, "_");
 }
 
+/**
+ * Canonical deep-link anchor id for a structural element / view.
+ *
+ * Both surfaces that address a karasu element by URL fragment MUST go through
+ * this one function so the grammar can never drift (TPL-20260510-11):
+ *   - the static drill-down SVG (`<g id="…">` + `:target` CSS, this package)
+ *   - the SPA history hash (`buildHash` in `packages/app`, `#krs-…`)
+ *
+ * Shape: `krs-<viewPrefix>-<sanitizeId(nodeId)>`. `nodeId` is the author-given
+ * `id` (never a label — TPL-20260510-20) or the literal `"root"` for a view's
+ * top level. `sanitizeId` is idempotent, so passing an already-sanitized
+ * segment is safe. Contract: `docs/spec/permalink.md`.
+ */
+export function anchorId(viewPrefix: string, nodeId: string): string {
+  return `krs-${viewPrefix}-${sanitizeId(nodeId)}`;
+}
+
 export interface RenderOptions {
   /** Diff state per node id (and per edge key `from->to`) for diff-mode rendering. */
   nodeDiffState?: Map<string, string>;
