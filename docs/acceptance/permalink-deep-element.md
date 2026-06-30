@@ -2,7 +2,7 @@
 
 - **日付**: 2026-06-30
 - **関連 Issue**: [#1827](https://github.com/kompiro/karasu/issues/1827)（permalink layer epic [#1826](https://github.com/kompiro/karasu/issues/1826)）
-- **関連 ADR**: [ADR-20260626-01](../adr/20260626-01-karasu-nest-hosted-preview.md)（karasu-nest）/ Design Doc `docs/design/permalink-deep-element.md`（本 PR 完了後 ADR 昇格）
+- **関連 ADR**: [ADR-20260630-01](../adr/20260630-01-permalink-deep-element.md)（deep permalink — 設計判断）/ [ADR-20260626-01](../adr/20260626-01-karasu-nest-hosted-preview.md)（karasu-nest）
 - **関連 spec**: [`docs/spec/permalink.md`](../spec/permalink.md)（アンカー contract）
 - **関連 TPL**: [TPL-20260630-01](../test-perspectives/TPL-20260630-01-deep-link-anchor-cross-surface-parity.md)（deep-link アンカーの全サーフェス parity）
 - **対象ファイル**:
