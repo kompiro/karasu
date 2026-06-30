@@ -1,6 +1,7 @@
 import type { EdgeDirection, ResolvedNodeStyle, ResolvedStyles } from "../types/style.js";
 import type { ViewSlice } from "../view/view-extract.js";
 import { layout } from "./layout.js";
+import type { CategoryId } from "./category-collapse.js";
 import type { ContainerRect, DisplayMode, LayoutNode, LayoutResult } from "./layout-types.js";
 import { renderShape } from "./shapes.js";
 import { renderEdge, renderArrowMarker } from "./edge-routing.js";
@@ -86,6 +87,14 @@ export interface RenderOptions {
    * variant is selected by the caller (see `index.ts`).
    */
   theme?: DiagramTheme;
+  /**
+   * System-view node categories the viewer has collapsed (Issue #1821).
+   * Each collapsed category's nodes are replaced by a single ⊕ stub before
+   * layout, so the diagram reflows and edges to the hidden nodes drop. Omit
+   * (or empty) for the default fully-expanded render. Only meaningful on the
+   * system view; see `docs/design/layer-toggles.md`.
+   */
+  collapsedCategories?: ReadonlySet<CategoryId>;
 }
 
 /**
@@ -125,6 +134,7 @@ export function render(
     displayMode,
     styles.layoutHints,
     edgeDirections,
+    options?.collapsedCategories,
   );
   const title =
     layoutResult.containers.length === 0 && viewSlice.containerNode

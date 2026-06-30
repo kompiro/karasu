@@ -1,5 +1,6 @@
 import type { KrsNode, KrsEdge } from "../types/ast.js";
 import { INFRA_KIND_SET } from "../types/ast.js";
+import { collapseNodeList, type CategoryId } from "./category-collapse.js";
 import type { ViewSlice, GhostSystem } from "../view/view-extract.js";
 import type { EdgeDirection, ResolvedLayoutHints } from "../types/style.js";
 import { buildInheritedAnnotations } from "../resolver/inherited-annotations.js";
@@ -730,6 +731,7 @@ export function layout(
   displayMode?: DisplayMode,
   layoutHints?: Map<string, ResolvedLayoutHints>,
   edgeDirections?: Map<string, EdgeDirection>,
+  collapsedCategories?: ReadonlySet<CategoryId>,
 ): LayoutResult {
   const { LAYER_GAP, NODE_GAP, MAX_LAYER_WIDTH } = getLayoutConstants(displayMode);
   // Build the inherited-annotations map from the focused container's subtree
@@ -750,10 +752,17 @@ export function layout(
   const isUnassignedOnly =
     viewSlice.systems.length === 1 && viewSlice.systems[0].id === "__unassigned__";
   if (viewSlice.systems.length > 1 || isUnassignedOnly) {
-    return layoutMultipleSystems(viewSlice, ownerIndex, displayMode, layoutHints, edgeDirections);
+    return layoutMultipleSystems(
+      viewSlice,
+      ownerIndex,
+      displayMode,
+      layoutHints,
+      edgeDirections,
+      collapsedCategories,
+    );
   }
 
-  const allNodes = viewSlice.childNodes;
+  const allNodes = collapseNodeList(viewSlice.childNodes, collapsedCategories);
   const allEdges = viewSlice.childEdges;
 
   if (
@@ -1145,6 +1154,7 @@ function layoutMultipleSystems(
   displayMode?: DisplayMode,
   layoutHints?: Map<string, ResolvedLayoutHints>,
   edgeDirections?: Map<string, EdgeDirection>,
+  collapsedCategories?: ReadonlySet<CategoryId>,
 ): LayoutResult {
   const { LAYER_GAP, NODE_GAP, MAX_LAYER_WIDTH } = getLayoutConstants(displayMode);
   // Multi-system view places only services (one nesting level), and a system's
@@ -1165,7 +1175,10 @@ function layoutMultipleSystems(
     // For the primary system (si === 0), use viewSlice.childNodes which includes
     // unassigned top-level domains merged in by extractView (legacy back-compat
     // for direct callers that pre-date the "Unassigned" pseudo-system).
-    const rawNodes = si === 0 ? viewSlice.childNodes : sys.children;
+    const rawNodes = collapseNodeList(
+      si === 0 ? viewSlice.childNodes : sys.children,
+      collapsedCategories,
+    );
     const nodeIds = rawNodes.map((n) => n.id);
     const idSet = new Set(nodeIds);
     // Only include intra-system edges for layout ordering
