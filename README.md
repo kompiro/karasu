@@ -305,7 +305,7 @@ karasu matrix arch.krs --format csv --writes-only > writes.csv
 
 > **Status: experimental**
 >
-> The VS Code extension is intentionally a lower priority than the core parser, renderer, and web preview. It is offered as a convenience for VS Code users who want to edit `.krs` locally; features such as completion, code actions, and rename are still minimal. If you want a polished basic authoring experience, the web preview (`karasu serve` or the hosted browser version) is recommended.
+> The VS Code extension is intentionally a lower priority than the core parser, renderer, and web preview. It is offered as a convenience for VS Code users who want to edit `.krs` locally; completion is basic, and code actions and rename are not yet available. If you want a polished basic authoring experience, the web preview (`karasu serve` or the hosted browser version) is recommended.
 
 Located under `packages/vscode/`. What currently works:
 
@@ -318,14 +318,12 @@ Located under `packages/vscode/`. What currently works:
 
 ### Install
 
-Once published, install from the VS Code Marketplace
+Install from the VS Code Marketplace
 ([`karasu-tools.karasu-vscode`](https://marketplace.visualstudio.com/items?itemName=karasu-tools.karasu-vscode)):
 
 ```sh
 code --install-extension karasu-tools.karasu-vscode
 ```
-
-> The Marketplace listing goes live with the launch ([#1316](https://github.com/kompiro/karasu/issues/1316)); the link and command above are not active until then.
 
 ## GitHub Actions
 
