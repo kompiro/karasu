@@ -10,6 +10,7 @@ import { usePreview } from "../state/preview-context.js";
 import { useActiveViewData } from "../state/active-view-data.js";
 import { ShareDialog } from "./ShareDialog.js";
 import { buildShareUrls } from "../utils/inline-share.js";
+import type { SharePayload, ShareTarget } from "../utils/inline-share.js";
 import { useClipboardCopy } from "../hooks/useClipboardCopy.js";
 import { useTranslation } from "../i18n/index.js";
 import { useCommand } from "../keyboard/use-command.js";
@@ -78,11 +79,52 @@ export function PreviewColumn() {
   const [shareFragmentUrl, setShareFragmentUrl] = useState<string | null>(null);
   const [shareUnfurlUrl, setShareUnfurlUrl] = useState<string | null>(null);
   const [copiedShareUrl, setCopiedShareUrl] = useState<string | null>(null);
+  // The flattened bundle + the deep permalink target captured at share time, so
+  // the "link to current view" checkbox can re-encode without re-flattening.
+  const [sharePayload, setSharePayload] = useState<SharePayload | null>(null);
+  const [shareTarget, setShareTarget] = useState<ShareTarget | null>(null);
+  const [includeTarget, setIncludeTarget] = useState(false);
   const shareAvailable = !!hasKrsSource && !!getShareBundle;
 
   function copyShare(url: string) {
     setCopiedShareUrl(url);
     copyShareUrl(url);
+  }
+
+  /**
+   * Deep permalink target for the *current* view position (#1827), or `null`
+   * when the user is at the plain whole-model root (system view, not drilled,
+   * nothing highlighted) — there is nothing to deep-link to in that case.
+   */
+  function currentShareTarget(): ShareTarget | null {
+    const path = view.viewPath;
+    // Only the drillable views (system/org) encode a leaf node in the hash;
+    // deploy/matrix are single-level, so a node there would be dropped on
+    // decode (buildHash) — don't put it in the payload.
+    const drillable = activeView === "system" || activeView === "org";
+    const node = drillable && path.length > 0 ? path[path.length - 1] : undefined;
+    const highlight = view.highlightedNodeId;
+    const orgTree = activeView === "org" && isOrgTreeViewOpen;
+    const hasPosition = activeView !== "system" || !!node || !!highlight || orgTree;
+    if (!hasPosition) return null;
+    const target: ShareTarget = { view: activeView };
+    if (node) target.node = node;
+    if (highlight) target.highlight = highlight;
+    if (orgTree) target.orgTree = true;
+    return target;
+  }
+
+  /** Build + show both URLs for `payload`, optionally embedding `target`. */
+  function applyShareUrls(
+    payload: SharePayload,
+    target: ShareTarget | null,
+    include: boolean,
+  ): string {
+    const finalPayload = include && target ? { ...payload, target } : payload;
+    const { fragmentUrl, unfurlUrl } = buildShareUrls(finalPayload, window.location);
+    setShareFragmentUrl(fragmentUrl);
+    setShareUnfurlUrl(unfurlUrl);
+    return fragmentUrl;
   }
 
   async function handleShare() {
@@ -92,11 +134,22 @@ export function PreviewColumn() {
     setCopiedShareUrl(null);
     setShareOpen(true);
     const payload = await getShareBundle();
-    const { fragmentUrl, unfurlUrl } = buildShareUrls(payload, window.location);
-    setShareFragmentUrl(fragmentUrl);
-    setShareUnfurlUrl(unfurlUrl);
+    const target = currentShareTarget();
+    // Default the checkbox ON whenever there is a position worth linking to.
+    const include = target !== null;
+    setSharePayload(payload);
+    setShareTarget(target);
+    setIncludeTarget(include);
+    const fragmentUrl = applyShareUrls(payload, target, include);
     // Eagerly copy the private link (the default), preserving the click gesture.
     copyShare(fragmentUrl);
+  }
+
+  // Toggling the checkbox re-encodes from the captured bundle (no re-flatten).
+  // Does not re-copy — the user copies the regenerated URL via the Copy button.
+  function handleIncludeTargetChange(next: boolean) {
+    setIncludeTarget(next);
+    if (sharePayload) applyShareUrls(sharePayload, shareTarget, next);
   }
 
   // Register "Open Reference" as a command so the reference is reachable from
@@ -397,6 +450,9 @@ export function PreviewColumn() {
         fragmentUrl={shareFragmentUrl}
         unfurlUrl={shareUnfurlUrl}
         copiedUrl={shareCopied ? copiedShareUrl : null}
+        canIncludeTarget={shareTarget !== null}
+        includeTarget={includeTarget}
+        onIncludeTargetChange={handleIncludeTargetChange}
         onCopy={copyShare}
         onClose={() => setShareOpen(false)}
       />

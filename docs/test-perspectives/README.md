@@ -450,3 +450,4 @@ DesignDoc が proactive TPL を引用したら、実装 PR で次をやる:
 | [TPL-20260624-04](TPL-20260624-04-external-side-placement-invariant.md) | system-view で external をサイドに置く配置は、他 kind の配置帯を侵さず決定的で、column override を尊重する | renderer | ADR-20260623-06, #1728 |
 | [TPL-20260625-01](TPL-20260625-01-root-svg-viewbox-responsive.md) | プレビューに渡す root SVG は viewBox を持ち、CSS 縮小時に左上クロップせず内容がスケールする — 全合成ビルダーで共有 | renderer | #1790 |
 | [TPL-20260626-01](TPL-20260626-01-raster-pipeline-glyph-coverage.md) | 別ランタイムで再ラスタライズする経路は、ソースが出力しうる全グリフ/リソースをカバーする（PNG の絵文字フォント等） | renderer | #1799 |
+| [TPL-20260630-01](TPL-20260630-01-deep-link-anchor-cross-surface-parity.md) | deep-link アンカーは id ベースの単一文法を全サーフェス（静的 SVG / SPA hash）で共有する | navigation | #1827 |

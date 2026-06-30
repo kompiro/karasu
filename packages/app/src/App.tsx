@@ -12,15 +12,38 @@ import { OpfsFileSystemProvider } from "./fs/opfs-provider.js";
 import { ObservableFileSystemProvider } from "./fs/observable-provider.js";
 import { detectAppMode, type AppMode } from "./fs/detect-storage-mode.js";
 import { readSharedProjectFromHash } from "./utils/inline-share.js";
+import { shareTargetToHash } from "./hooks/useHistoryNavigation.js";
 import { useTranslation } from "./i18n/index.js";
 import { Button } from "@/components/ui/button";
+
+// Snapshot the entry hash at module load — *before* the deep-permalink
+// normalization in the `useState` initializer can rewrite it. React StrictMode
+// double-invokes lazy `useState` initializers in dev; reading live
+// `window.location.hash` there would make the second run see the already
+// rewritten `#krs-…` (no `#s=`) and lose the payload. Reading this stable
+// snapshot keeps the initializer pure and idempotent.
+const ENTRY_HASH = typeof window !== "undefined" ? window.location.hash : "";
 
 export function App() {
   // A shared inline URL (`#s=…`, karasu-nest) is read once at mount. A valid
   // payload opens as an ephemeral in-memory view regardless of the visitor's
   // browser storage, so it never touches their local (OPFS) project. A present
   // but unrestorable payload falls back to the normal app with a warning.
-  const [shared] = useState(() => readSharedProjectFromHash(window.location.hash));
+  const [shared] = useState(() => {
+    const result = readSharedProjectFromHash(ENTRY_HASH);
+    // When the shared payload carries a deep permalink target (#1827),
+    // normalize the URL to the canonical `#krs-<view>-<node>:highlight` anchor
+    // *here* — before AppShell (and its `useHistoryNavigation`) mounts, since
+    // child effects run before any parent effect. The history hook's existing
+    // mount-time parse + deferred node-path resolution then drills/focuses with
+    // no extra wiring. Mirrors how a plain `#s=` open is already rewritten to
+    // `#krs-system-root` by that same hook.
+    const target = result !== null && "payload" in result ? result.payload.target : undefined;
+    if (target) {
+      history.replaceState(null, "", shareTargetToHash(target));
+    }
+    return result;
+  });
   const sharedPayload = shared !== null && "payload" in shared ? shared.payload : null;
   const restoreFailed = shared !== null && "error" in shared;
 

@@ -25,6 +25,14 @@ interface ShareDialogProps {
   unfurlUrl: string | null;
   /** Which URL currently shows the "copied" feedback (owned by parent). */
   copiedUrl: string | null;
+  /**
+   * Whether the current view position can be deep-linked (#1827) — `false`
+   * at the plain whole-model root, where the checkbox is hidden.
+   */
+  canIncludeTarget: boolean;
+  /** Whether the deep permalink target is currently embedded in the links. */
+  includeTarget: boolean;
+  onIncludeTargetChange: (next: boolean) => void;
   onCopy: (url: string) => void;
   onClose: () => void;
 }
@@ -49,6 +57,9 @@ export function ShareDialog({
   fragmentUrl,
   unfurlUrl,
   copiedUrl,
+  canIncludeTarget,
+  includeTarget,
+  onIncludeTargetChange,
   onCopy,
   onClose,
 }: ShareDialogProps) {
@@ -105,6 +116,24 @@ export function ShareDialog({
           </p>
         ) : (
           <div className="flex flex-col gap-4">
+            {canIncludeTarget && (
+              <label className="flex items-start gap-2 text-xs text-[color:var(--text-primary)]">
+                <input
+                  type="checkbox"
+                  className="mt-0.5"
+                  checked={includeTarget}
+                  onChange={(e) => onIncludeTargetChange(e.currentTarget.checked)}
+                />
+                <span className="flex flex-col gap-0.5">
+                  <span className="font-medium">
+                    {t("preview.share.dialog.includeTargetLabel")}
+                  </span>
+                  <span className="text-[color:var(--text-secondary)]">
+                    {t("preview.share.dialog.includeTargetHint")}
+                  </span>
+                </span>
+              </label>
+            )}
             {renderField(
               fragmentUrl,
               t("preview.share.dialog.privateLabel"),
