@@ -28,3 +28,10 @@ THIRD_PARTY_NOTICES.md
 
 # Local screenshots shared in review conversations
 image.png
+.ds-sync/
+ds-bundle/
+.design-sync/.cache/
+.design-sync/learnings/
+.design-sync/node_modules
+packages/app/.ds-entry.tsx
+packages/app/dist/ds-theme.css

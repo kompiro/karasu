@@ -1,0 +1,41 @@
+{
+  "projectId": "d05b21a3-448e-4e0a-b9a1-5641fabaadc5",
+  "pkg": "@karasu-tools/app",
+  "globalName": "Karasu",
+  "shape": "package",
+  "srcDir": "src",
+  "tsconfig": "tsconfig.json",
+  "buildCmd": "pnpm -F @karasu-tools/app exec vite build && cp packages/app/dist/assets/index-*.css packages/app/dist/ds-theme.css",
+  "cssEntry": "dist/ds-theme.css",
+  "provider": { "component": "LocaleProvider", "inner": { "component": "TooltipProvider" } },
+  "componentSrcMap": {
+    "Button": "src/components/ui/button.tsx",
+    "Dialog": "src/components/ui/dialog.tsx",
+    "Tabs": "src/components/ui/tabs.tsx",
+    "DropdownMenu": "src/components/ui/dropdown-menu.tsx",
+    "Breadcrumb": "src/components/ui/breadcrumb.tsx",
+    "EditPaneToolbar": "src/components/EditPaneToolbar.tsx",
+    "DiagramTabBar": "src/components/DiagramTabBar.tsx",
+    "BreadcrumbBar": "src/components/BreadcrumbBar.tsx",
+    "ErrorBanner": "src/components/ErrorBanner.tsx",
+    "OutlineView": "src/components/OutlineView.tsx",
+    "FileTree": "src/components/FileTree.tsx"
+  },
+  "overrides": {
+    "Dialog": { "cardMode": "single", "viewport": "560x440", "primaryStory": "ShareDialog" },
+    "DropdownMenu": { "cardMode": "single", "viewport": "360x340", "primaryStory": "ContextMenu" }
+  },
+  "dtsPropsFor": {
+    "Button": "/** Tier-1 (actionable) or tier-2 (ghost) toolbar button. Caller supplies an icon + text label. */ variant?: \"actionable\" | \"ghost\"; size?: \"sm\" | \"md\"; disabled?: boolean; type?: \"button\" | \"submit\" | \"reset\"; \"aria-pressed\"?: boolean; onClick?: React.MouseEventHandler<HTMLButtonElement>; className?: string; children?: React.ReactNode;",
+    "Dialog": "/** Radix Dialog root. Compose with DialogContent / DialogHeader / DialogTitle / DialogDescription / DialogFooter. */ open?: boolean; defaultOpen?: boolean; onOpenChange?: (open: boolean) => void; modal?: boolean; children?: React.ReactNode;",
+    "Tabs": "/** Radix Tabs root. Compose with TabsList / TabsTrigger. */ value?: string; defaultValue?: string; onValueChange?: (value: string) => void; orientation?: \"horizontal\" | \"vertical\"; className?: string; children?: React.ReactNode;",
+    "DropdownMenu": "/** Radix DropdownMenu root. Compose with DropdownMenuTrigger / DropdownMenuContent / DropdownMenuItem / DropdownMenuSeparator. */ open?: boolean; defaultOpen?: boolean; onOpenChange?: (open: boolean) => void; modal?: boolean; children?: React.ReactNode;",
+    "Breadcrumb": "/** Breadcrumb nav wrapper. Compose with BreadcrumbList / BreadcrumbItem / BreadcrumbLink / BreadcrumbPage / BreadcrumbSeparator. */ className?: string; children?: React.ReactNode;",
+    "EditPaneToolbar": "/** Toolbar above the editor: Format / Tidy style actions. */ activeTab: \"editor\" | \"chat\" | \"settings\"; onFormat?: () => void; onTidyStyle?: () => void; hasParseErrors?: boolean;",
+    "DiagramTabBar": "/** Switches the preview between diagram views; deploy view adds a block selector. */ active: \"system\" | \"deploy\" | \"org\" | \"matrix\"; onChange: (view: \"system\" | \"deploy\" | \"org\" | \"matrix\") => void; deployBlocks?: { id: string; label: string }[]; selectedDeployBlockId?: string | null; onDeployBlockChange?: (id: string) => void;",
+    "BreadcrumbBar": "/** Drill-down breadcrumb for the active diagram view. */ items: { id: string; label: string }[]; onNavigate: (path: string[]) => void;",
+    "ErrorBanner": "/** Dismissible error banner (localized via LocaleProvider). */ message: string; onDismiss: () => void;",
+    "OutlineView": "/** Tree outline of the active view's nodes, with icons per node kind. */ nodes: { id: string; label?: string; kind: string; tags?: string[]; children: unknown[] }[]; highlightedNodeId: string | null; onSelectNode: (nodeId: string) => void; onActivateNode: (nodeId: string, ancestorIds: string[]) => void;",
+    "FileTree": "/** File sidebar backed by a FileSystemProvider. */ rootPath: string; fs: { readFile(path: string): Promise<string>; writeFile(path: string, content: string): Promise<void>; readDir(path: string): Promise<{ name: string; kind: \"file\" | \"directory\" }[]>; exists(path: string): Promise<boolean>; delete(path: string): Promise<void>; mkdir(path: string): Promise<void> }; currentFilePath: string | null; onSelectFile: (path: string) => void; onFileCreated?: (path: string) => void; onFileDeleted?: (path: string) => void; onFileRenamed?: (oldPath: string, newPath: string) => void; onCompareWithCurrent?: (path: string) => void; onSnapshotNow?: (path: string) => void; onCompareWithSnapshot?: (path: string) => void; onCompareWithPaste?: () => void;"
+  }
+}
