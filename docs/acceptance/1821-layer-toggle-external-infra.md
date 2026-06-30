@@ -2,7 +2,7 @@
 
 - **日付**: 2026-06-30
 - **Issue**: #1821（親 Epic #1817 comprehension）
-- **PR**: #（後で反映）
+- **PR**: [#1838](https://github.com/kompiro/karasu/pull/1838)
 - **設計**: [docs/design/layer-toggles.md](../design/layer-toggles.md)
 - **Related TPLs**: [TPL-20260510-06](../test-perspectives/TPL-20260510-06-display-mode-cross-surface.md)（全描画面の点検）, [TPL-20260510-05](../test-perspectives/TPL-20260510-05-implicit-data-filtering.md)（暗黙フィルタの legend/detail 点検）, [TPL-20260623-04](../test-perspectives/TPL-20260623-04-tier-split-no-edge-penetration.md)（段跨ぎ edge 貫通）, [TPL-20260510-02](../test-perspectives/TPL-20260510-02-round-trip-guarantee.md)（`.krs` 不変）
 - **対象**: `packages/core/src/renderer/category-collapse.ts` / `svg-renderer.ts` / `layout.ts`、`packages/app`（`useSystemView` / `PreviewPane` ほか）
