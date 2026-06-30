@@ -18,6 +18,9 @@ function renderDialog(props: Partial<Parameters<typeof ShareDialog>[0]> = {}) {
         fragmentUrl={FRAGMENT}
         unfurlUrl={UNFURL}
         copiedUrl={null}
+        canIncludeTarget={false}
+        includeTarget={false}
+        onIncludeTargetChange={() => {}}
         onCopy={() => {}}
         onClose={() => {}}
         {...props}
@@ -73,5 +76,26 @@ describe("ShareDialog", () => {
   it("renders nothing when closed", () => {
     renderDialog({ open: false });
     expect(screen.queryByRole("dialog")).toBeNull();
+  });
+
+  // Deep permalink "link to current view" toggle (#1827).
+  it("hides the deep-link checkbox when there is nothing to link to", () => {
+    renderDialog({ canIncludeTarget: false });
+    expect(screen.queryByRole("checkbox")).toBeNull();
+  });
+
+  it("shows the deep-link checkbox (reflecting includeTarget) when a target exists", () => {
+    renderDialog({ canIncludeTarget: true, includeTarget: true });
+    const checkbox = screen.getByRole("checkbox") as HTMLInputElement;
+    expect(checkbox.checked).toBe(true);
+    expect(screen.getByText(/Link to the current view/)).toBeTruthy();
+  });
+
+  it("notifies on toggling the deep-link checkbox", async () => {
+    const user = userEvent.setup();
+    const onIncludeTargetChange = vi.fn<(next: boolean) => void>();
+    renderDialog({ canIncludeTarget: true, includeTarget: true, onIncludeTargetChange });
+    await user.click(screen.getByRole("checkbox"));
+    expect(onIncludeTargetChange).toHaveBeenCalledWith(false);
   });
 });

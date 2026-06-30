@@ -192,6 +192,9 @@ export const ja: Partial<Translations> = {
   "preview.share.dialog.unfurlUrlAriaLabel": "プレビュー付き共有 URL",
   "preview.share.dialog.oversizeWarning":
     "このプロジェクトは大きすぎてプレビュー付きリンクを作成できません。プライベートリンクは利用できます。",
+  "preview.share.dialog.includeTargetLabel": "現在の表示位置にリンクする",
+  "preview.share.dialog.includeTargetHint":
+    "モデル全体ではなく、今いる位置までドリルした状態（フォーカス中の要素はハイライト）でリンクを開きます。",
   "preview.share.dialog.generating": "リンクを生成中…",
   "preview.share.dialog.copy": "⧉ コピー",
   "preview.share.dialog.copied": "✓ クリップボードにコピーしました",

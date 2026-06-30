@@ -189,6 +189,8 @@ export type Translations = {
   "preview.share.dialog.unfurlHint": string;
   "preview.share.dialog.unfurlUrlAriaLabel": string;
   "preview.share.dialog.oversizeWarning": string;
+  "preview.share.dialog.includeTargetLabel": string;
+  "preview.share.dialog.includeTargetHint": string;
   "preview.share.dialog.generating": string;
   "preview.share.dialog.copy": string;
   "preview.share.dialog.copied": string;

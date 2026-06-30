@@ -193,6 +193,9 @@ export const en: Translations = {
   "preview.share.dialog.unfurlUrlAriaLabel": "Shareable URL with preview",
   "preview.share.dialog.oversizeWarning":
     "This project is too large for a preview link. The private link still works.",
+  "preview.share.dialog.includeTargetLabel": "Link to the current view",
+  "preview.share.dialog.includeTargetHint":
+    "The link opens drilled to where you are now (and highlights the focused element), instead of the whole model.",
   "preview.share.dialog.generating": "Generating link…",
   "preview.share.dialog.copy": "⧉ Copy",
   "preview.share.dialog.copied": "✓ Copied to clipboard",

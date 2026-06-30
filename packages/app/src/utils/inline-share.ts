@@ -1,7 +1,30 @@
 import { deflateSync, inflateSync, strToU8, strFromU8 } from "fflate";
-import type { SharePayload } from "@karasu-tools/core";
+import type { SharePayload, ShareTarget, ShareTargetView } from "@karasu-tools/core";
 
-export type { SharePayload };
+export type { SharePayload, ShareTarget };
+
+/** The view values a deep permalink target may name (mirrors `ShareTargetView`). */
+const SHARE_TARGET_VIEWS = new Set<ShareTargetView>(["system", "deploy", "org", "matrix"]);
+
+/**
+ * Validate/canonicalize an untrusted `target` from a decoded payload
+ * (TPL-20260510-17 — the payload crosses a trust boundary). Returns a clean
+ * `ShareTarget` or `undefined` when the value is missing or its `view` is not
+ * one of the known views — an unrecognized target degrades to a whole-model
+ * open rather than throwing.
+ */
+function sanitizeTarget(value: unknown): ShareTarget | undefined {
+  if (!value || typeof value !== "object") return undefined;
+  const t = value as Record<string, unknown>;
+  if (typeof t.view !== "string" || !SHARE_TARGET_VIEWS.has(t.view as ShareTargetView)) {
+    return undefined;
+  }
+  const target: ShareTarget = { view: t.view as ShareTargetView };
+  if (typeof t.node === "string" && t.node !== "") target.node = t.node;
+  if (typeof t.highlight === "string" && t.highlight !== "") target.highlight = t.highlight;
+  if (t.orgTree === true) target.orgTree = true;
+  return target;
+}
 
 /**
  * Inline share encoding for karasu-nest (design: docs/design/karasu-nest-hosted-preview.md).
@@ -73,8 +96,10 @@ export function decodeShare(encoded: string): SharePayload | null {
   try {
     const obj: unknown = JSON.parse(text);
     if (obj && typeof obj === "object" && typeof (obj as SharePayload).krs === "string") {
-      const { krs, style } = obj as SharePayload;
-      return typeof style === "string" ? { krs, style } : { krs };
+      const { krs, style, target } = obj as SharePayload;
+      const base: SharePayload = typeof style === "string" ? { krs, style } : { krs };
+      const cleanTarget = sanitizeTarget(target);
+      return cleanTarget ? { ...base, target: cleanTarget } : base;
     }
   } catch {
     // Not JSON → first-release raw-.krs payload; fall through.

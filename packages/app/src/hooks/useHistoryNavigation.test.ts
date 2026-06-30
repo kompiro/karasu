@@ -1,9 +1,66 @@
 // @vitest-environment jsdom
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { renderHook, act, cleanup } from "@testing-library/react";
-import { buildHash, parseHash, useHistoryNavigation } from "./useHistoryNavigation.js";
+import {
+  buildHash,
+  parseHash,
+  shareTargetToHash,
+  useHistoryNavigation,
+} from "./useHistoryNavigation.js";
+import { anchorId } from "@karasu-tools/core";
 
 afterEach(cleanup);
+
+// ─── Cross-surface anchor parity (TPL-20260630-01, docs/spec/permalink.md) ─────
+// The SPA hash (`buildHash`) and the static drill-down SVG (`anchorId` in core)
+// must emit the SAME `krs-<view>-<sanitizeId(id)>` grammar so a deep permalink
+// is portable between the two surfaces. If these drift, a shared link resolves
+// on one surface and silently falls back to root on the other.
+describe("anchor parity: buildHash ↔ core anchorId", () => {
+  it.each([
+    ["system", "Payment"],
+    ["org", "ecTeam"],
+    ["system", "weird id/with.chars"],
+    ["org", "root"],
+  ])("buildHash(%s,[%s]) base matches #anchorId", (view, id) => {
+    const hash = buildHash(view as "system" | "org", [id]);
+    expect(hash).toBe(`#${anchorId(view, id)}`);
+  });
+
+  it("root-level system/org hashes match anchorId(view,'root')", () => {
+    expect(buildHash("system", [])).toBe(`#${anchorId("system", "root")}`);
+    expect(buildHash("org", [])).toBe(`#${anchorId("org", "root")}`);
+  });
+});
+
+// ─── shareTargetToHash (deep permalink → canonical hash, #1827) ────────────────
+describe("shareTargetToHash", () => {
+  it("maps a drilled node to #krs-<view>-<node>", () => {
+    expect(shareTargetToHash({ view: "system", node: "Payment" })).toBe("#krs-system-Payment");
+  });
+
+  it("maps a view-only target to the view root", () => {
+    expect(shareTargetToHash({ view: "deploy" })).toBe("#krs-deploy");
+    expect(shareTargetToHash({ view: "system" })).toBe("#krs-system-root");
+  });
+
+  it("appends the highlight suffix and honors orgTree", () => {
+    expect(shareTargetToHash({ view: "system", node: "Payment", highlight: "Api" })).toBe(
+      "#krs-system-Payment:Api",
+    );
+    expect(shareTargetToHash({ view: "org", orgTree: true })).toBe("#krs-org-tree");
+  });
+
+  it("round-trips back through parseHash (view + node + highlight)", () => {
+    const hash = shareTargetToHash({ view: "system", node: "Payment", highlight: "Api" });
+    const parsed = parseHash(hash);
+    expect(parsed).toMatchObject({
+      activeView: "system",
+      nodeId: "Payment",
+      highlightNodeId: "Api",
+    });
+  });
+});
 
 // ─── buildHash ────────────────────────────────────────────────────────────────
 
