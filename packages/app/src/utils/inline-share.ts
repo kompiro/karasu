@@ -3,8 +3,18 @@ import type { SharePayload, ShareTarget, ShareTargetView } from "@karasu-tools/c
 
 export type { SharePayload, ShareTarget };
 
-/** The view values a deep permalink target may name (mirrors `ShareTargetView`). */
-const SHARE_TARGET_VIEWS = new Set<ShareTargetView>(["system", "deploy", "org", "matrix"]);
+/**
+ * The view values a deep permalink target may name. `satisfies Record<…>` ties
+ * this runtime allow-list to the `ShareTargetView` union, so adding a member to
+ * the type without listing it here is a compile error (TPL-20260510-03) rather
+ * than a silent "unknown view → whole-model" degrade.
+ */
+const SHARE_TARGET_VIEWS = {
+  system: true,
+  deploy: true,
+  org: true,
+  matrix: true,
+} satisfies Record<ShareTargetView, true>;
 
 /**
  * Validate/canonicalize an untrusted `target` from a decoded payload
@@ -16,7 +26,7 @@ const SHARE_TARGET_VIEWS = new Set<ShareTargetView>(["system", "deploy", "org", 
 function sanitizeTarget(value: unknown): ShareTarget | undefined {
   if (!value || typeof value !== "object") return undefined;
   const t = value as Record<string, unknown>;
-  if (typeof t.view !== "string" || !SHARE_TARGET_VIEWS.has(t.view as ShareTargetView)) {
+  if (typeof t.view !== "string" || !Object.hasOwn(SHARE_TARGET_VIEWS, t.view)) {
     return undefined;
   }
   const target: ShareTarget = { view: t.view as ShareTargetView };

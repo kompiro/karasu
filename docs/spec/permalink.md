@@ -34,10 +34,16 @@ fragment you copy from a rendered SVG resolves in the app, and vice versa.
   element only), so this suffix is dropped there.
 
 The single source of the grammar is `anchorId(viewPrefix, id)` in
-`@karasu-tools/core` (`packages/core/src/renderer/svg-renderer.ts`). Every
-producer — the static SVG (`drill-down-svg.ts`) and the SPA hash builder
-(`buildHash` in `packages/app`) — MUST route through `anchorId` /
-`sanitizeId`, so the two surfaces can never drift.
+`@karasu-tools/core` (`packages/core/src/renderer/svg-renderer.ts`). The
+element-anchor producers — the static SVG (`drill-down-svg.ts`) and the SPA
+hash builder for the drillable system/org views (`buildHash` in `packages/app`)
+— route through `anchorId`, so the two surfaces can't drift (parity-tested).
+
+**Not every fragment is an element anchor.** The SPA also has single-level
+whole-view tabs (`#krs-deploy`, `#krs-matrix`) and an org Tree View mode
+(`#krs-org-tree`); these carry no `<id>` segment and are intentionally outside
+the `anchorId` grammar. A share `target` for one of those views opens the view
+itself (no leaf), so `target.node` is only meaningful for `system` / `org`.
 
 ## Carrying an anchor in a share URL
 

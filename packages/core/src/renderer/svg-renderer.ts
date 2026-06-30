@@ -37,17 +37,23 @@ export function sanitizeId(id: string): string {
 }
 
 /**
- * Canonical deep-link anchor id for a structural element / view.
+ * Canonical deep-link anchor id for a drillable structural element / view level.
  *
- * Both surfaces that address a karasu element by URL fragment MUST go through
- * this one function so the grammar can never drift (TPL-20260510-11):
+ * Both surfaces that address such an element by URL fragment route through this
+ * one function so the grammar can't drift (TPL-20260510-11 / TPL-20260630-01):
  *   - the static drill-down SVG (`<g id="…">` + `:target` CSS, this package)
- *   - the SPA history hash (`buildHash` in `packages/app`, `#krs-…`)
+ *   - the SPA history hash for the drillable system/org views (`buildHash` in
+ *     `packages/app`, `#krs-…`) — parity-tested
  *
  * Shape: `krs-<viewPrefix>-<sanitizeId(nodeId)>`. `nodeId` is the author-given
  * `id` (never a label — TPL-20260510-20) or the literal `"root"` for a view's
  * top level. `sanitizeId` is idempotent, so passing an already-sanitized
- * segment is safe. Contract: `docs/spec/permalink.md`.
+ * segment is safe.
+ *
+ * Not every fragment is an element anchor: the SPA's single-level whole-view
+ * tabs (deploy/matrix) use a bare `#krs-<view>` token and org Tree View is a
+ * mode (`#krs-org-tree`); those are intentionally outside this grammar. Full
+ * contract: `docs/spec/permalink.md`.
  */
 export function anchorId(viewPrefix: string, nodeId: string): string {
   return `krs-${viewPrefix}-${sanitizeId(nodeId)}`;

@@ -31,6 +31,15 @@ describe("anchor parity: buildHash ↔ core anchorId", () => {
     expect(buildHash("system", [])).toBe(`#${anchorId("system", "root")}`);
     expect(buildHash("org", [])).toBe(`#${anchorId("org", "root")}`);
   });
+
+  // Documented exception (docs/spec/permalink.md): deploy/matrix are single-level
+  // whole-view tabs with a bare `#krs-<view>` token, NOT element anchors — they
+  // intentionally do not share the `anchorId` leaf grammar.
+  it("deploy/matrix use a bare #krs-<view> token (not the anchorId grammar)", () => {
+    expect(buildHash("deploy", [])).toBe("#krs-deploy");
+    expect(buildHash("matrix", [])).toBe("#krs-matrix");
+    expect(buildHash("deploy", [])).not.toBe(`#${anchorId("deploy", "root")}`);
+  });
 });
 
 // ─── shareTargetToHash (deep permalink → canonical hash, #1827) ────────────────

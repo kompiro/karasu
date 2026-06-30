@@ -98,7 +98,11 @@ export function PreviewColumn() {
    */
   function currentShareTarget(): ShareTarget | null {
     const path = view.viewPath;
-    const node = path.length > 0 ? path[path.length - 1] : undefined;
+    // Only the drillable views (system/org) encode a leaf node in the hash;
+    // deploy/matrix are single-level, so a node there would be dropped on
+    // decode (buildHash) — don't put it in the payload.
+    const drillable = activeView === "system" || activeView === "org";
+    const node = drillable && path.length > 0 ? path[path.length - 1] : undefined;
     const highlight = view.highlightedNodeId;
     const orgTree = activeView === "org" && isOrgTreeViewOpen;
     const hasPosition = activeView !== "system" || !!node || !!highlight || orgTree;

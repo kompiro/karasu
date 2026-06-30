@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef } from "react";
-import { sanitizeId } from "@karasu-tools/core";
+import { anchorId } from "@karasu-tools/core";
 import type { Dispatch } from "react";
 import type { ShareTarget } from "@karasu-tools/core";
 import type { AppAction, ActiveView } from "../state/app-reducer.js";
@@ -38,18 +38,20 @@ export function buildHash(
     case "matrix":
       base = "#krs-matrix";
       break;
+    // system/org are drillable: their element anchors route through the shared
+    // `anchorId` grammar (core), so the SPA hash and the static drill-down SVG
+    // emit one form — the cross-surface parity guarded by TPL-20260630-01.
+    // (deploy/matrix above are single-level whole-view tabs with a bare
+    // `#krs-<view>` token, and org Tree View is a mode — these are not element
+    // anchors and intentionally do not share the leaf grammar; see
+    // docs/spec/permalink.md.)
     case "org":
       base = isOrgTreeView
         ? "#krs-org-tree"
-        : viewPath.length === 0
-          ? "#krs-org-root"
-          : `#krs-org-${sanitizeId(viewPath[viewPath.length - 1])}`;
+        : `#${anchorId("org", viewPath.length === 0 ? "root" : viewPath[viewPath.length - 1])}`;
       break;
     case "system":
-      base =
-        viewPath.length === 0
-          ? "#krs-system-root"
-          : `#krs-system-${sanitizeId(viewPath[viewPath.length - 1])}`;
+      base = `#${anchorId("system", viewPath.length === 0 ? "root" : viewPath[viewPath.length - 1])}`;
       break;
     default: {
       const _exhaustive: never = activeView;

@@ -33,10 +33,16 @@ SVG からコピーした fragment はアプリでも解決し、その逆も成
   この接尾は静的 SVG では落とす。
 
 文法の単一の出所は `@karasu-tools/core` の `anchorId(viewPrefix, id)`
-（`packages/core/src/renderer/svg-renderer.ts`）。すべての生成側 — 静的 SVG
-（`drill-down-svg.ts`）と SPA ハッシュ生成（`packages/app` の `buildHash`） —
-は `anchorId` / `sanitizeId` を経由しなければならず、2サーフェスが drift しない
-ことを保証する。
+（`packages/core/src/renderer/svg-renderer.ts`）。element アンカーの生成側 —
+静的 SVG（`drill-down-svg.ts`）と、ドリル可能な system/org ビューの SPA ハッシュ
+生成（`packages/app` の `buildHash`） — は `anchorId` を経由し、2サーフェスが
+drift しないことを保証する（parity test 済み）。
+
+**すべての fragment が element アンカーではない。** SPA には単一階層の
+whole-view タブ（`#krs-deploy`・`#krs-matrix`）と org Tree View モード
+（`#krs-org-tree`）もあり、これらは `<id>` セグメントを持たず、意図的に
+`anchorId` 文法の外にある。これらのビューの share `target` はビュー自体を開く
+（leaf なし）ため、`target.node` は `system` / `org` でのみ意味を持つ。
 
 ## share URL でアンカーを運ぶ
 
