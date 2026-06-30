@@ -23,6 +23,7 @@
 | レシピ | 対象 | 内容 |
 |--------|------|------|
 | [LLM でリバースする](reverse-engineering-with-ai.ja.md)（[EN](reverse-engineering-with-ai.md)） | 見慣れないプロジェクトを把握したい人 | `syntax.md` を Claude/ChatGPT に渡す → `.krs` 概要を得る → **Share** ボタンで共有 / `/render` で埋め込み |
+| [ADR から karasu 構造へリンクする](adr-permalinks.ja.md)（[EN](adr-permalinks.md)） | ADR で判断を記録する人 | 正は `/s?s=` payload・短縮は任意の別名・trust の trade-off |
 
 ## 章の流れ
 

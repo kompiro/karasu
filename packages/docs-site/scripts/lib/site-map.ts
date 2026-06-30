@@ -22,6 +22,7 @@ export const PUBLISHED_EN_FILES: readonly string[] = [
   "guide/03-evolution.md",
   "guide/04-access-paths.md",
   "guide/05-communicating-diagrams.md",
+  "guide/adr-permalinks.md",
   "spec/glossary.md",
   "spec/syntax.md",
   "spec/style.md",
