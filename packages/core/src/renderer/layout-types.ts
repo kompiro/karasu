@@ -20,6 +20,9 @@ export interface LayoutNode {
   kind: LogicalNodeKind | DeployNodeKind;
   id: string;
   label: string;
+  /** Source-node tags (e.g. `external`, the collapse-stub marker). Used by the
+   * renderer to detect collapsible categories and stubs (Issue #1821). */
+  tags?: string[];
   annotations?: string[];
   properties: LayoutNodeProperties;
   descriptionSummary?: string;

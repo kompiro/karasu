@@ -585,3 +585,36 @@ describe("PreviewPane", () => {
     });
   });
 });
+
+describe("PreviewPane category collapse controls (#1821)", () => {
+  it.each(["infra", "external"] as const)(
+    "calls onCategoryToggle('%s') when its control is clicked",
+    (category) => {
+      const onCategoryToggle = vi.fn<(c: string) => void>();
+      const svg = `<div data-collapse-category="${category}"></div>`;
+      const { container } = render(
+        <PreviewPane {...baseProps()} svg={svg} onCategoryToggle={onCategoryToggle} />,
+      );
+      const previewContainer = container.querySelector(".preview-container")!;
+      click(
+        previewContainer as HTMLElement,
+        () => container.querySelector(`[data-collapse-category='${category}']`)!,
+      );
+      expect(onCategoryToggle).toHaveBeenCalledWith(category);
+    },
+  );
+
+  it("ignores an unknown category value", () => {
+    const onCategoryToggle = vi.fn<(c: string) => void>();
+    const svg = `<div data-collapse-category="bogus"></div>`;
+    const { container } = render(
+      <PreviewPane {...baseProps()} svg={svg} onCategoryToggle={onCategoryToggle} />,
+    );
+    const previewContainer = container.querySelector(".preview-container")!;
+    click(
+      previewContainer as HTMLElement,
+      () => container.querySelector(`[data-collapse-category='bogus']`)!,
+    );
+    expect(onCategoryToggle).not.toHaveBeenCalled();
+  });
+});

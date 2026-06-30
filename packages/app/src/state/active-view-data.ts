@@ -1,4 +1,10 @@
-import type { Diagnostic, EdgeDirection, NodeDiffMeta, Warning } from "@karasu-tools/core";
+import type {
+  Diagnostic,
+  EdgeDirection,
+  NodeDiffMeta,
+  Warning,
+  CategoryId,
+} from "@karasu-tools/core";
 import { usePreview, type PreviewContextValue } from "./preview-context.js";
 
 type BreadcrumbItem = { id: string; label: string };
@@ -29,6 +35,8 @@ interface ActiveViewData {
   onDeployButtonClick?: (serviceId: string) => void;
   /** system: click a node's team badge → switch to org. */
   onTeamButtonClick?: (teamId: string) => void;
+  /** system: click a category control → collapse/expand it (#1821). */
+  onCategoryToggle?: (category: CategoryId) => void;
   /** deploy: click a container group → highlight it as a system node. */
   onContainerClick?: (containerId: string) => void;
   /** org: click an owned service → switch to system. */
@@ -92,6 +100,7 @@ export function selectActiveViewData(ctx: PreviewContextValue): ActiveViewData {
         drillDownSvg: ctx.drillDownSvg,
         onDeployButtonClick: systemView.onDeployButtonClick,
         onTeamButtonClick: systemView.onTeamButtonClick,
+        onCategoryToggle: systemView.onCategoryToggle,
         nodeDiff: systemView.nodeDiff,
         styleTargetPath: ctx.styleTargetPath,
         onPickEdgeDirection: ctx.onPickEdgeDirection,

@@ -1,5 +1,6 @@
 import type { KrsNode, KrsEdge } from "../types/ast.js";
 import { INFRA_KIND_SET } from "../types/ast.js";
+import { collapseNodeList, type CategoryId } from "./category-collapse.js";
 import type { ViewSlice, GhostSystem } from "../view/view-extract.js";
 import type { EdgeDirection, ResolvedLayoutHints } from "../types/style.js";
 import { buildInheritedAnnotations } from "../resolver/inherited-annotations.js";
@@ -212,6 +213,7 @@ function placeGhostUsers(
     const uid = userNode.id;
     const gNode: LayoutNode = {
       kind: userNode.kind,
+      tags: userNode.tags,
       id: uid,
       label: userNode.label ?? userNode.id,
       annotations: effectiveAnnotations(userNode),
@@ -268,6 +270,7 @@ function placeGhostDomains(
     const dims = measureNode(gd.node, undefined, displayMode);
     layoutNodes.set(gd.node.id, {
       kind: gd.node.kind,
+      tags: gd.node.tags,
       id: gd.node.id,
       label: gd.node.label ?? gd.node.id,
       annotations: effectiveAnnotations(gd.node),
@@ -730,6 +733,7 @@ export function layout(
   displayMode?: DisplayMode,
   layoutHints?: Map<string, ResolvedLayoutHints>,
   edgeDirections?: Map<string, EdgeDirection>,
+  collapsedCategories?: ReadonlySet<CategoryId>,
 ): LayoutResult {
   const { LAYER_GAP, NODE_GAP, MAX_LAYER_WIDTH } = getLayoutConstants(displayMode);
   // Build the inherited-annotations map from the focused container's subtree
@@ -750,10 +754,17 @@ export function layout(
   const isUnassignedOnly =
     viewSlice.systems.length === 1 && viewSlice.systems[0].id === "__unassigned__";
   if (viewSlice.systems.length > 1 || isUnassignedOnly) {
-    return layoutMultipleSystems(viewSlice, ownerIndex, displayMode, layoutHints, edgeDirections);
+    return layoutMultipleSystems(
+      viewSlice,
+      ownerIndex,
+      displayMode,
+      layoutHints,
+      edgeDirections,
+      collapsedCategories,
+    );
   }
 
-  const allNodes = viewSlice.childNodes;
+  const allNodes = collapseNodeList(viewSlice.childNodes, collapsedCategories);
   const allEdges = viewSlice.childEdges;
 
   if (
@@ -884,6 +895,7 @@ export function layout(
 
         layoutNodes.set(nid, {
           kind: krsNode.kind,
+          tags: krsNode.tags,
           id: nid,
           label: viewSlice.resourceLabelMap.get(nid) ?? krsNode.label ?? krsNode.id,
           annotations: effectiveAnnotations(krsNode),
@@ -1098,6 +1110,7 @@ function layoutGhostSystem(
     const qualifiedId = `${gs.systemNode.id}.${svc.id}`;
     nodes.set(qualifiedId, {
       kind: svc.kind,
+      tags: svc.tags,
       id: qualifiedId,
       label: svc.label ?? svc.id,
       annotations: svc.annotations,
@@ -1145,6 +1158,7 @@ function layoutMultipleSystems(
   displayMode?: DisplayMode,
   layoutHints?: Map<string, ResolvedLayoutHints>,
   edgeDirections?: Map<string, EdgeDirection>,
+  collapsedCategories?: ReadonlySet<CategoryId>,
 ): LayoutResult {
   const { LAYER_GAP, NODE_GAP, MAX_LAYER_WIDTH } = getLayoutConstants(displayMode);
   // Multi-system view places only services (one nesting level), and a system's
@@ -1165,7 +1179,10 @@ function layoutMultipleSystems(
     // For the primary system (si === 0), use viewSlice.childNodes which includes
     // unassigned top-level domains merged in by extractView (legacy back-compat
     // for direct callers that pre-date the "Unassigned" pseudo-system).
-    const rawNodes = si === 0 ? viewSlice.childNodes : sys.children;
+    const rawNodes = collapseNodeList(
+      si === 0 ? viewSlice.childNodes : sys.children,
+      collapsedCategories,
+    );
     const nodeIds = rawNodes.map((n) => n.id);
     const idSet = new Set(nodeIds);
     // Only include intra-system edges for layout ordering
@@ -1275,6 +1292,7 @@ function layoutMultipleSystems(
 
         localNodes.set(nid, {
           kind: krsNode.kind,
+          tags: krsNode.tags,
           id: nid,
           label: viewSlice.resourceLabelMap.get(nid) ?? krsNode.label ?? krsNode.id,
           annotations: effectiveAnnotations(krsNode),
