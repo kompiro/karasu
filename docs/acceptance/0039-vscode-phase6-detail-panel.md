@@ -5,7 +5,7 @@
 **Partial automation** — TC-01..TC-04, TC-06, TC-08 are automated in
 [`packages/vscode-e2e/tests/webview/at-0039-detail-panel.test.ts`](../../packages/vscode-e2e/tests/webview/at-0039-detail-panel.test.ts)
 under the WebView E2E harness
-([`docs/design/vscode-webview-e2e-harness.md`](../design/vscode-webview-e2e-harness.md)
+([`docs/adr/20260429-09-vscode-webview-e2e-automated.md`](../adr/20260429-09-vscode-webview-e2e-automated.md)
 / [AT-0071](./0071-vscode-webview-e2e-phase2.md) (TC-01),
 [AT-0075](./0075-vscode-webview-e2e-phase3-at-0039-rest.md) (the rest)).
 

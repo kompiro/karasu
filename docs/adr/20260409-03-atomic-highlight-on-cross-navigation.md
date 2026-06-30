@@ -17,7 +17,7 @@ scope:
 
 - **日付**: 2026-04-09
 - **ステータス**: 決定済み
-- **関連**: Issue #422, [ADR-20260320-01](20260320-01-interactive-svg-rendering.md), [node-click-ux.md](../design/node-click-ux.md)
+- **関連**: Issue #422, [ADR-20260320-01](20260320-01-interactive-svg-rendering.md), [ADR-20260401-07](20260401-07-node-click-ux.md)
 
 ## 背景
 

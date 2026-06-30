@@ -108,7 +108,7 @@ author id, the parser raises an `ambiguous-edge-base` warning and the
 `edge#<base>` selector matches **none** of them. To disambiguate, give
 one of the edges an `#<id>` in `.krs`. See
 [`docs/spec/syntax.md`](syntax.md#edge-declaration) and
-[`docs/design/edge-id-selector.md`](../design/edge-id-selector.md).
+[`docs/adr/20260506-02-edge-id-selector.md`](../adr/20260506-02-edge-id-selector.md).
 
 ### When to prefer tag selectors
 
@@ -353,7 +353,7 @@ karasu layered layout.
   source endpoint; the target's `column` stays in effect. Conflicts on
   the same source resolve **last-wins**, matching the cascade
   convention. See
-  [`docs/design/edge-direction-horizontal.md`](../design/edge-direction-horizontal.md).
+  [`docs/adr/20260506-04-edge-direction-horizontal.md`](../adr/20260506-04-edge-direction-horizontal.md).
 
 #### Cycle / forced-layer fallback
 
@@ -370,7 +370,7 @@ cases:
   kind are unaffected. The kind stratification is therefore only
   perturbed for the explicitly-flagged edge.
 
-See [`docs/design/edge-direction-style.md`](../design/edge-direction-style.md)
+See [`docs/adr/20260506-03-edge-direction-style.md`](../adr/20260506-03-edge-direction-style.md)
 for the rationale.
 
 Invalid values are silently dropped and `direction` falls back to `auto`.

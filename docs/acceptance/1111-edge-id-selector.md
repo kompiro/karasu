@@ -15,7 +15,7 @@ type: product
   - `packages/core/src/resolver/style-resolver.test.ts`
   - `packages/core/src/index.test.ts`
   - `docs/spec/style.md`、`docs/spec/style.ja.md`
-- **関連 Design Doc**: [`docs/design/edge-id-selector.md`](../design/edge-id-selector.md)
+- **関連 Design Doc**: [`docs/adr/20260506-02-edge-id-selector.md`](../adr/20260506-02-edge-id-selector.md)
 
 ## 受け入れ条件
 

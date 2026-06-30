@@ -9,7 +9,7 @@
   - `packages/core/src/renderer/layout.ts`（system view で bucket 適用）
   - `examples/ja/getting-started/default.krs.style` / `examples/en/getting-started/default.krs.style`
   - `docs/spec/style.md` / `docs/spec/style.ja.md`
-- **設計ドキュメント**: [auto-layout-style-hints.md](../design/auto-layout-style-hints.md)
+- **設計ドキュメント**: [ADR-20260429-04](../adr/20260429-04-style-column-layout-hint.md)
 
 ## 受け入れ条件
 

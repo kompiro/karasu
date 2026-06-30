@@ -5,7 +5,7 @@
 **Automated (TC-01..TC-04)** — all four TCs are automated in
 [`packages/vscode-e2e/tests/webview/at-0038-cmd-click-hint.test.ts`](../../packages/vscode-e2e/tests/webview/at-0038-cmd-click-hint.test.ts)
 under the WebView E2E harness
-([`docs/design/vscode-webview-e2e-harness.md`](../design/vscode-webview-e2e-harness.md)
+([`docs/adr/20260429-09-vscode-webview-e2e-automated.md`](../adr/20260429-09-vscode-webview-e2e-automated.md)
 / [AT-0072](./0072-vscode-webview-e2e-phase3-at-0038.md) (hint visibility),
 [AT-0073](./0073-vscode-webview-e2e-phase3-at-0038-jump.md) (editor jump)).
 

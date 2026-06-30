@@ -26,7 +26,7 @@ type: product
   - `examples/en/feature-samples/crud-matrix.krs`
   - `examples/ja/getting-started/index.krs`, `examples/en/getting-started/index.krs`
   - `packages/core/src/builtins/examples.ts`
-- **関連 ADR**: [ADR-20260502-01](../adr/20260502-01-crud-matrix-view.md)（本機能の決定）, [ADR-20260430-03](../adr/20260430-03-resource-crud-operations.md)（`operations` 構文）, [ADR-20260430-04](../adr/20260430-04-resource-edge-read-write-differentiation.md)（read/write edge 差別化）
+- **関連 ADR**: [ADR-20260502-01](../adr/20260502-01-crud-matrix-view.md)（本機能の決定）, [ADR-20260430-03](../adr/20260430-03-resource-crud-operations.md)（`operations` 構文）, [ADR-20260430-04](../adr/20260430-04-resource-rw-edges.md)（read/write edge 差別化）
 
 ## 受け入れ条件
 

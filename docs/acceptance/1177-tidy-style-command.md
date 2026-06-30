@@ -10,7 +10,7 @@ type: product
   - CLI: `packages/cli/src/tidy-style.ts`、`packages/cli/src/tidy-style.test.ts`、`packages/cli/src/index.ts`
   - App: `packages/app/src/components/EditPaneToolbar.tsx`、`packages/app/src/components/EditPane.tsx`、`packages/app/src/components/EditArea.tsx`、`packages/app/src/components/AppShell.tsx`、`packages/app/src/components/EditPaneToolbar.test.tsx`、`packages/app/src/styles/app.css`
   - VS Code: `packages/vscode/src/extension.ts`、`packages/vscode/package.json`、`packages/lsp/src/server.ts`（formatter のルーティング）
-- **関連 Design Doc**: [`docs/design/tidy-style-and-trivia.md`](../design/tidy-style-and-trivia.md)（Phase 2 計画 — 本 PR は step 3 of 3）
+- **関連 Design Doc**: [`docs/adr/20260510-01-tidy-style-and-trivia.md`](../adr/20260510-01-tidy-style-and-trivia.md)（Phase 2 計画 — 本 PR は step 3 of 3）
 - **依存**: [#1183](https://github.com/kompiro/karasu/pull/1183)（PR-A: AST trivia）、[#1188](https://github.com/kompiro/karasu/pull/1188)（PR-B: tidy core）
 
 ## 受け入れ条件

@@ -33,7 +33,7 @@ assumptions:
   - ADR-20260312-03 — 論理構造と物理構造の分離
   - ADR-20260327-01 — Deployment Diagram Design Decisions
   - ADR-20260404-10 — Org tree view
-  - 設計過程: [docs/design/deploy-only-render.md](../design/deploy-only-render.md)
+  - 設計過程: deploy-only-render.md（本 ADR へ昇格・削除済み）
 
 ## 背景
 

@@ -8,7 +8,7 @@
   - `packages/core/src/renderer/layout.test.ts`（icon-mode gap の assertion
     を追加）
 - **設計ドキュメント**:
-  [icon-mode-layout-tuning.md](../design/icon-mode-layout-tuning.md)
+  [ADR-20260429-05](../adr/20260429-05-icon-mode-layout-gap-tuning.md)
 
 ## 受け入れ条件
 

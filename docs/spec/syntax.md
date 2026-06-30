@@ -594,7 +594,7 @@ usecase PlaceOrder {
 }
 ```
 
-See [`docs/design/edge-id-selector.md`](../design/edge-id-selector.md)
+See [`docs/adr/20260506-02-edge-id-selector.md`](../adr/20260506-02-edge-id-selector.md)
 for how the id flows into the `edge#<id>` style selector. The selector
 itself is documented in [`docs/spec/style.md` — Edge ID selector](style.md#edge-id-selector-edgeid).
 
@@ -895,7 +895,7 @@ Legend labels are author-supplied strings, treated the same way as `name` and `l
 
 ### What's not in v1
 
-The following are deferred (see [`docs/design/diagram-legend.md`](../design/diagram-legend.md) for rationale):
+The following are deferred (see [`docs/adr/20260428-07-diagram-legend-syntax.md`](../adr/20260428-07-diagram-legend-syntax.md) for rationale):
 
 - Shape / icon / pattern legends (only color today).
 - Interactive legends (click to filter, etc.).
