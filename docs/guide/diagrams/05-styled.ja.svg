@@ -10,4 +10,8 @@
 <text x="140" y="279" text-anchor="middle" dominant-baseline="central" fill="#374151" font-size="13px" font-weight="bold" font-family="sans-serif">旧基幹</text>
 <g data-node-badge="Legacy"><circle cx="210" cy="240" r="10" fill="#DC2626"/>
 <text x="210" y="240" text-anchor="middle" dominant-baseline="central" fill="white" font-size="10px">⚠</text>
-<text x="224" y="240" dominant-baseline="central" fill="#DC2626" font-size="9px" font-weight="bold" font-family="sans-serif">非推奨</text></g></g></g></svg>
+<text x="224" y="240" dominant-baseline="central" fill="#DC2626" font-size="9px" font-weight="bold" font-family="sans-serif">非推奨</text></g></g></g>
+<g class="krs-category-controls"><style>.krs-cat-frame{opacity:0;transition:opacity .1s}.krs-cat-group:hover .krs-cat-frame{opacity:1}.krs-cat-collapse,.krs-category-stub{cursor:pointer}</style>
+<g class="krs-cat-group" data-category-group="external"><rect class="krs-cat-frame" x="52" y="238" width="176" height="82" rx="10" fill="transparent" stroke="#2563EB" stroke-width="1.5" stroke-dasharray="6 4" pointer-events="none"/>
+<g class="krs-cat-collapse" data-collapse-category="external" role="button" tabindex="0" transform="translate(226,240)"><circle cx="0" cy="0" r="9" fill="#F1F5F9" stroke="#2563EB" stroke-width="1.5"/>
+<line x1="-4" y1="0" x2="4" y2="0" stroke="#2563EB" stroke-width="1.5"/></g></g></g></svg>
