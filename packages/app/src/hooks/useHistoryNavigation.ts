@@ -205,6 +205,12 @@ export function useHistoryNavigation({
   const pendingNodeIdRef = useRef<string | null>(null);
   // activeView associated with the pending nodeId (determines which index to use)
   const pendingActiveViewRef = useRef<ActiveView>("system");
+  // highlight extracted from the initial hash, re-applied once the model-derived
+  // index is ready (Issue #1842). On a shared open, the project-seed effect's
+  // SELECT_FILE → VIEW_RESET runs *after* effect ① and wipes the highlight it
+  // dispatched on mount. This deferral mirrors the node re-resolution so the
+  // selected node stays focus-highlighted.
+  const pendingHighlightRef = useRef<string | null>(null);
 
   // Stable ref for onFileChange — referenced inside long-lived effects without re-running them.
   const onFileChangeRef = useRef(onFileChange);
@@ -238,6 +244,12 @@ export function useHistoryNavigation({
     if (parsed.filePath && parsed.filePath !== currentFilePath && onFileChangeRef.current) {
       void onFileChangeRef.current(parsed.filePath);
     }
+    // Stash the highlight for deferred re-application in effect ②. The immediate
+    // dispatch below sets it on mount, but the seed's VIEW_RESET wipes it; the
+    // pending ref restores it once the index is ready (Issue #1842).
+    if (parsed.highlightNodeId !== null) {
+      pendingHighlightRef.current = parsed.highlightNodeId;
+    }
     // Restore activeView from hash if different (include highlightNodeId in the transition)
     if (parsed.activeView !== activeViewRef.current) {
       dispatch({
@@ -262,18 +274,34 @@ export function useHistoryNavigation({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // ② Resolve pendingNodeId once the relevant path index is available
+  // ② Resolve pendingNodeId and re-apply the pending highlight once the
+  // relevant path index is available.
   useEffect(() => {
     const nodeId = pendingNodeIdRef.current;
-    if (nodeId === null) return;
-
     const isOrgPending = pendingActiveViewRef.current === "org";
     const index = isOrgPending ? orgPathIndex : nodePathIndex;
-    if (!index || index.size === 0) return;
 
-    const resolvedPath = index.get(nodeId) ?? [];
-    pendingNodeIdRef.current = null;
-    dispatch({ type: "SET_VIEW_PATH", path: resolvedPath });
+    if (nodeId !== null) {
+      if (!index || index.size === 0) return;
+      const resolvedPath = index.get(nodeId) ?? [];
+      pendingNodeIdRef.current = null;
+      dispatch({ type: "SET_VIEW_PATH", path: resolvedPath });
+    }
+
+    // Re-apply the highlight wiped by the seed's VIEW_RESET (Issue #1842).
+    // Gate on a populated index so this lands *after* the SELECT_FILE that
+    // cleared it — the index derives from the seeded file content, so a
+    // non-empty index proves the reset has already happened. This also covers
+    // the highlight-only-at-root case (no pending node), which effect ① could
+    // not defer on its own.
+    if (pendingHighlightRef.current !== null) {
+      const indexReady =
+        (!!nodePathIndex && nodePathIndex.size > 0) || (!!orgPathIndex && orgPathIndex.size > 0);
+      if (!indexReady) return;
+      const highlight = pendingHighlightRef.current;
+      pendingHighlightRef.current = null;
+      dispatch({ type: "SET_HIGHLIGHTED_NODE", nodeId: highlight });
+    }
   }, [nodePathIndex, orgPathIndex, dispatch]);
 
   // ③ Sync state changes → hash (Issue #811)
