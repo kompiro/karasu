@@ -158,6 +158,7 @@ export function useSystemView(
       annotationBadgeLabels,
       theme,
       collapsedCategories,
+      interactive: true,
     });
 
     let base: Awaited<typeof basePromise>;

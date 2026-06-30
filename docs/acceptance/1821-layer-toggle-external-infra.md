@@ -41,6 +41,10 @@ system view の **external**（`[external]` service）と **infra**（database/q
 
 - [x] collapse 状態は app の view-state で、`.krs` を変更しない（round-trip 保持）
 > ✅ Automated — collapse は compile option のみで AST/シリアライズに触れない（`category-collapse.test.ts` が SVG 差分のみを確認）
+- [x] 対話 controls（⊖ / hover 枠）は **`interactive` 指定時のみ**描画され、static 出力（SVG export / `/render` / CLI / guide 図）には出ない。⊕ stub は content として残る
+> ✅ Automated — `packages/core/src/renderer/category-collapse.test.ts`
+- [x] plain「Export SVG」はライブ svg を流用するため、download 時に `krs-category-controls` を除去する
+> ✅ Automated — `packages/app/src/utils/download-svg.test.ts`
 - [ ] `/render`・export は option 未指定で全展開のまま（挙動不変。collapsed 静止画の query param は本 PR では out of scope）
 > 🟡 Manual — `karasu render <index>.krs --view system` が従来どおり全表示で出力されることを目視
 

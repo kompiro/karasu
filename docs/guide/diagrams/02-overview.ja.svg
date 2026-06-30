@@ -21,8 +21,4 @@
 <g data-node-id="CatalogService" data-node-kind="service" data-has-children="false" data-has-description="false"><rect x="100.5" y="450" width="188" height="66" rx="8" ry="8" fill="#E0F2FE" stroke="#7DD3FC" stroke-width="2"/>
 <text x="194.5" y="483" text-anchor="middle" dominant-baseline="central" fill="#0C4A6E" font-size="13px" font-weight="bold" font-family="sans-serif">カタログサービス</text></g>
 <g data-node-id="Legacy" data-node-kind="service" data-has-children="false" data-has-description="false"><rect x="60" y="636" width="269" height="66" rx="8" ry="8" fill="#F3F4F6" stroke="#7DD3FC" stroke-width="2" stroke-dasharray="8 4"/>
-<text x="194.5" y="669" text-anchor="middle" dominant-baseline="central" fill="#0C4A6E" font-size="13px" font-weight="bold" font-family="sans-serif">旧基幹（誰も全容を知らない）</text></g></g>
-<g class="krs-category-controls"><style>.krs-cat-frame{opacity:0;transition:opacity .1s}.krs-cat-group:hover .krs-cat-frame{opacity:1}.krs-cat-collapse,.krs-category-stub{cursor:pointer}</style>
-<g class="krs-cat-group" data-category-group="external"><rect class="krs-cat-frame" x="52" y="628" width="285" height="82" rx="10" fill="transparent" stroke="#2563EB" stroke-width="1.5" stroke-dasharray="6 4" pointer-events="none"/>
-<g class="krs-cat-collapse" data-collapse-category="external" role="button" tabindex="0" transform="translate(335,630)"><circle cx="0" cy="0" r="9" fill="#F1F5F9" stroke="#2563EB" stroke-width="1.5"/>
-<line x1="-4" y1="0" x2="4" y2="0" stroke="#2563EB" stroke-width="1.5"/></g></g></g></svg>
+<text x="194.5" y="669" text-anchor="middle" dominant-baseline="central" fill="#0C4A6E" font-size="13px" font-weight="bold" font-family="sans-serif">旧基幹（誰も全容を知らない）</text></g></g></svg>

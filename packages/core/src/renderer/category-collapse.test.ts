@@ -73,8 +73,12 @@ system Shop {
 }
 `;
 
-function svgOf(collapsed?: Set<"external" | "infra">): string {
-  const result = compile(SYS, { diagramType: "system", collapsedCategories: collapsed });
+function svgOf(collapsed?: Set<"external" | "infra">, interactive = false): string {
+  const result = compile(SYS, {
+    diagramType: "system",
+    collapsedCategories: collapsed,
+    interactive,
+  });
   if (result.diagramType !== "system") throw new Error("expected system view");
   return result.svg;
 }
@@ -113,9 +117,9 @@ describe("compile() with collapsedCategories", () => {
   });
 });
 
-describe("category controls rendering", () => {
+describe("category controls rendering (interactive only)", () => {
   it("renders ⊖ controls + extent frames for open external/infra groups", () => {
-    const svg = svgOf();
+    const svg = svgOf(undefined, true);
     expect(svg).toContain('data-category-group="infra"');
     expect(svg).toContain('data-category-group="external"');
     expect(svg).toContain('class="krs-cat-collapse"');
@@ -127,11 +131,28 @@ describe("category controls rendering", () => {
   });
 
   it("renders the collapsed category as an expand stub, not an open group", () => {
-    const svg = svgOf(new Set(["infra"]));
+    const svg = svgOf(new Set(["infra"]), true);
     expect(svg).toContain('class="krs-category-stub"');
     expect(svg).toContain('data-node-id="__collapsed_infra__"');
     expect(svg).toContain('data-collapse-category="infra"'); // on the stub, to expand
     expect(svg).not.toContain('data-category-group="infra"'); // no longer an open group
     expect(svg).toContain('data-category-group="external"'); // external still open
+  });
+
+  it("omits the ⊖ controls + frames in a static (non-interactive) render", () => {
+    const svg = svgOf(); // default: interactive omitted
+    expect(svg).not.toContain("krs-category-controls");
+    expect(svg).not.toContain("krs-cat-collapse");
+    expect(svg).not.toContain("data-category-group");
+    // but normal node content is unaffected
+    expect(svg).toContain('data-node-id="ShopDB"');
+    expect(svg).toContain('data-node-id="ExtApi"');
+  });
+
+  it("still draws the ⊕ stub of a collapsed category in a static render (content, not chrome)", () => {
+    const svg = svgOf(new Set(["infra"])); // non-interactive
+    expect(svg).toContain('data-node-id="__collapsed_infra__"');
+    expect(svg).toContain("Infra (1)");
+    expect(svg).not.toContain("krs-cat-collapse"); // no ⊖ control
   });
 });

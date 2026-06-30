@@ -383,6 +383,11 @@ export interface CompileOptions {
    * render. System view only; see `docs/design/layer-toggles.md`.
    */
   collapsedCategories?: ReadonlySet<CategoryId>;
+  /**
+   * Draw the interactive category controls (⊖ / hover frame) for the live
+   * preview (Issue #1821). Defaults to false so static outputs stay clean.
+   */
+  interactive?: boolean;
 }
 
 export interface SystemCompileResult {
@@ -472,6 +477,7 @@ function _compileFromPreparedInput(
     emptyStateLabels,
     theme,
     collapsedCategories,
+    interactive,
   } = opts;
 
   // Project-wide edge author-id uniqueness. Runs once before view extraction
@@ -634,6 +640,7 @@ function _compileFromPreparedInput(
     viewScope: legendScopeForLogicalSlice(viewSlice),
     theme,
     collapsedCategories,
+    interactive,
   });
   const nodeMetadata = buildNodeMetadata(
     viewSlice,

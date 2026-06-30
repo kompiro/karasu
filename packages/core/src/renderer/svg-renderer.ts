@@ -95,6 +95,14 @@ export interface RenderOptions {
    * system view; see `docs/design/layer-toggles.md`.
    */
   collapsedCategories?: ReadonlySet<CategoryId>;
+  /**
+   * When true, draw the interactive category controls (the ⊖ collapse buttons
+   * and hover extent frames) for the live preview (Issue #1821). Defaults to
+   * false so static outputs — SVG export, `/render`, CLI, guide diagrams — stay
+   * clean. The ⊕ stub of an already-collapsed category is always drawn (it is
+   * content, not chrome).
+   */
+  interactive?: boolean;
 }
 
 /**
@@ -333,8 +341,11 @@ export function renderFromLayout(
 
   // Collapsible-category controls: a ⊖ button + hover-revealed extent frame for
   // each open `external` / `infra` group on the system view (Issue #1821).
-  const categoryControls = renderCategoryControls(layoutResult, palette);
-  if (categoryControls) parts.push(categoryControls);
+  // Interactive chrome only — omitted from static outputs (export / render / CLI).
+  if (options?.interactive) {
+    const categoryControls = renderCategoryControls(layoutResult, palette);
+    if (categoryControls) parts.push(categoryControls);
+  }
 
   // Legend footer (Issue #887) — rendered as a band below the diagram so
   // it survives panning and is preserved by single-file SVG exports.
