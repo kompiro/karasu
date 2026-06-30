@@ -15,7 +15,7 @@ scope:
 
 - **日付**: 2026-04-07
 - **ステータス**: 決定済み
-- **関連**: [AI Support Design](../../memory/project_ai_support.md)
+- **関連**: AI Support Design（設計メモ、本リポジトリ外）
 
 ## 背景
 

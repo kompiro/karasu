@@ -105,7 +105,7 @@ edge#PlaceOrder->OrderDB.OrderTable { direction: down; }
 パーサが `ambiguous-edge-base` warning を出し、`edge#<base>` セレクタは
 **どちらにも一致しない**。区別したい場合は `.krs` 側でいずれかに `#<id>` を
 付ける。詳細は [`docs/spec/syntax.md`](syntax.md#edge-declaration) と
-[`docs/design/edge-id-selector.md`](../design/edge-id-selector.md) を参照。
+[`docs/adr/20260506-02-edge-id-selector.md`](../adr/20260506-02-edge-id-selector.md) を参照。
 
 ### タグセレクタを優先すべきケース
 
@@ -332,7 +332,7 @@ edge#criticalWrite { direction: down; }
   ため、source endpoint については node `column` ヒントを上書きする
   （target の `column` は尊重）。同じ source への矛盾するヒントは
   **last-wins** で、cascade 規約と一貫する。詳細は
-  [`docs/design/edge-direction-horizontal.md`](../design/edge-direction-horizontal.md)
+  [`docs/adr/20260506-04-edge-direction-horizontal.md`](../adr/20260506-04-edge-direction-horizontal.md)
 
 #### サイクル / forced-layer フォールバック
 
@@ -348,7 +348,7 @@ edge#criticalWrite { direction: down; }
   動かない）。明示された該当エッジに限ってのみ kind stratification が
   乱れる
 
-詳細は [`docs/design/edge-direction-style.md`](../design/edge-direction-style.md)。
+詳細は [`docs/adr/20260506-03-edge-direction-style.md`](../adr/20260506-03-edge-direction-style.md)。
 
 不正値は黙って破棄され、`direction` は `auto` にフォールバックする。
 

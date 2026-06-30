@@ -17,7 +17,7 @@ related_to: [ADR-20260427-04]
   - 受け入れテスト: [AT-0050 Chat UI Phase 2 — BYOK + AI](../acceptance/0050-chat-ui-phase2-byok-ai.md)
   - 実装 PR: [#915](https://github.com/kompiro/karasu/pull/915)
   - Design Doc: [#911](https://github.com/kompiro/karasu/pull/911)（本 ADR の前段）
-  - 関連 ADR: [ADR-20260427-04](20260427-04-skip-secret-gated-ci-on-bot-prs.md)（bot PR で secret を流せない制約）
+  - 関連 ADR: [ADR-20260428-01](20260428-01-skip-secret-gated-jobs-on-bot-prs.md)（bot PR で secret を流せない制約）
 
 ## 背景
 

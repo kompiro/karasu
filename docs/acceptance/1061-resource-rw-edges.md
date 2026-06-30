@@ -15,7 +15,7 @@ type: product
   - `docs/spec/tags-annotations.md`
   - `examples/ja/getting-started/index.krs`, `examples/en/getting-started/index.krs`
   - `examples/en/feature-samples/resource-operations.krs`, `packages/core/src/builtins/examples.ts`
-- **関連 Design Doc**: [resource-edge-read-write-differentiation.md](../design/resource-edge-read-write-differentiation.md)
+- **関連 Design Doc**: [ADR-20260430-04](../adr/20260430-04-resource-rw-edges.md)
 - **関連 ADR**: [ADR-20260430-03](../adr/20260430-03-resource-crud-operations.md)（`operations` 構文）
 
 ## 受け入れ条件

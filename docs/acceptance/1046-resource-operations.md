@@ -17,7 +17,7 @@ type: product
   - `docs/spec/syntax.md`, `docs/spec/syntax.ja.md`
   - `examples/en/feature-samples/resource-operations.krs`
   - `examples/ja/ec-platform/03-domains.krs`, `packages/core/src/builtins/examples.ts`
-- **関連 Design Doc**: [resource-crud-operations.md](../design/resource-crud-operations.md)（マージ後 ADR に昇格予定）
+- **関連 Design Doc**: [ADR-20260430-03](../adr/20260430-03-resource-crud-operations.md)（昇格済み）
 
 ## 受け入れ条件
 

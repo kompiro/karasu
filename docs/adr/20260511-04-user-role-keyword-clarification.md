@@ -20,7 +20,7 @@ assumptions:
   - Issue [#1281](https://github.com/kompiro/karasu/issues/1281) — Re-examine the `user.role` keyword
   - 前提 ADR: [ADR-20260511-02](20260511-02-no-runtime-authz-modeling.md) — 実行時認可は karasu の語彙に取り込まない（本 ADR はその ADR が明示的に「別 Issue で扱う」と切り出した残課題を閉じる）
   - 関連 ADR: [ADR-20260428-06](20260428-06-client-mcp-modeling.md) — `role` / `license` / `group` / `plan` / `requires` / `allows` / `policy` を予約語として認識した ADR
-  - 関連 ADR: [ADR-20260312-03](20260312-03-three-axis-structure.md) — 論理／物理／組織の三面構造
+  - 関連 ADR: [ADR-20260312-03](20260312-03-logical-physical-separation.md) — 論理／物理／組織の三面構造
   - 旧 Design Doc: `docs/design/user-role-keyword-decision.md`（本 ADR の昇格に伴い削除。検討経緯は PR #1291 と本 ADR を参照）
 
 ## 背景

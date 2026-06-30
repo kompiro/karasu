@@ -574,7 +574,7 @@ usecase PlaceOrder {
 }
 ```
 
-`#<id>` が `edge#<id>` スタイルセレクタにどう流れるかは [`docs/design/edge-id-selector.md`](../design/edge-id-selector.md) を参照。セレクタ自体は [`docs/spec/style.ja.md` — エッジ ID セレクタ](style.ja.md#エッジ-id-セレクタedgeid) に記載されている。
+`#<id>` が `edge#<id>` スタイルセレクタにどう流れるかは [`docs/adr/20260506-02-edge-id-selector.md`](../adr/20260506-02-edge-id-selector.md) を参照。セレクタ自体は [`docs/spec/style.ja.md` — エッジ ID セレクタ](style.ja.md#エッジ-id-セレクタedgeid) に記載されている。
 
 #### domain ブロック内のエッジ
 
@@ -894,7 +894,7 @@ legend domain "データアクセス" {
 
 ### v1 で扱わないこと
 
-設計判断の経緯は [`docs/design/diagram-legend.md`](../design/diagram-legend.md) を参照。
+設計判断の経緯は [`docs/adr/20260428-07-diagram-legend-syntax.md`](../adr/20260428-07-diagram-legend-syntax.md) を参照。
 
 - shape / icon / pattern 凡例（v1 は色のみ）
 - インタラクティブ凡例（クリックでハイライト 等）
