@@ -1,6 +1,7 @@
 import { createContext, useContext, type ReactNode } from "react";
 import type {
   Diagnostic,
+  CategoryId,
   EdgeDirection,
   NodeMetadata,
   Warning,
@@ -23,6 +24,8 @@ export interface SystemViewData {
   onDeployButtonClick?: (serviceId: string) => void;
   /** Called when user clicks the team label on a service/domain node */
   onTeamButtonClick?: (teamId: string) => void;
+  /** Called when user clicks a category control to collapse/expand it (#1821). */
+  onCategoryToggle?: (category: CategoryId) => void;
   highlightedNodeId?: string | null;
   onClearHighlight?: () => void;
   /**

@@ -12,6 +12,7 @@ import type {
   Warning,
   Diagnostic,
   NodeDiffMeta,
+  CategoryId,
 } from "@karasu-tools/core";
 import type { AppAction, ActiveView } from "../state/app-reducer.js";
 import { useSystemView } from "./useSystemView.js";
@@ -71,6 +72,9 @@ interface SystemViewBundle {
   nodeFileIndex: Map<string, string>;
   /** Per-node diff metadata when diff mode is active. */
   nodeDiff?: Map<string, NodeDiffMeta>;
+  /** Collapsed external/infra categories on the system view (Issue #1821). */
+  collapsedCategories: ReadonlySet<CategoryId>;
+  toggleCategory: (category: CategoryId) => void;
 }
 
 interface DeployViewBundle {
@@ -175,6 +179,8 @@ export function useAppViews(args: UseAppViewsArgs): UseAppViewsResult {
     recompile: recompileSystem,
     systems: resolvedSystems,
     nodeFileIndex,
+    collapsedCategories,
+    toggleCategory,
     nodeDiff: systemNodeDiff,
   } = useSystemView(
     effEntryPath,
@@ -300,6 +306,8 @@ export function useAppViews(args: UseAppViewsArgs): UseAppViewsResult {
       resolvedSystems,
       nodeFileIndex,
       nodeDiff: systemNodeDiff,
+      collapsedCategories,
+      toggleCategory,
     },
     deploy: {
       svg: deploySvg,

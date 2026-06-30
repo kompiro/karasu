@@ -8,6 +8,7 @@ import type {
   NodeDiffMeta,
   DeployBlockInfo,
   SystemNode,
+  CategoryId,
 } from "@karasu-tools/core";
 import type { ActiveView } from "../state/app-reducer.js";
 import type { PreviewContextValue } from "../state/preview-context.js";
@@ -31,6 +32,7 @@ interface UsePreviewContextValueArgs {
     hasDeployDiagram: boolean;
     nodeDiff?: Map<string, NodeDiffMeta>;
     resolvedSystems: SystemNode[];
+    toggleCategory: (category: CategoryId) => void;
   };
   deploy: {
     svg: string;
@@ -136,6 +138,7 @@ export function usePreviewContextValue(args: UsePreviewContextValueArgs): Previe
         onBreadcrumbNavigate: navigateViewPath,
         onDeployButtonClick: nav.handleDeployButtonClick,
         onTeamButtonClick: nav.handleTeamButtonClick,
+        onCategoryToggle: system.toggleCategory,
         highlightedNodeId,
         onClearHighlight: nav.clearHighlight,
         nodeDiff: system.nodeDiff,
@@ -207,6 +210,7 @@ export function usePreviewContextValue(args: UsePreviewContextValueArgs): Previe
       org.warnings,
       org.orgTreeSvg,
       org.toggleTeamExpand,
+      system.toggleCategory,
       org.orgTreeExportSvg,
       viewPath,
       breadcrumbItems,
