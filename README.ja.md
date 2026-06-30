@@ -312,7 +312,7 @@ karasu matrix arch.krs --format csv --writes-only > writes.csv
 
 > **ステータス: experimental（実験的）**
 >
-> コア機能（パーサー・レンダラー・Web プレビュー）に比べて優先度は低く、VS Code ユーザーが `.krs` を手元で編集するための補助ツールとして提供しています。補完・コードアクション・リネームなど、モダンなエディタ拡張としての完成度はまだ低く、基本的な記述体験に集中したい場合は Web プレビュー（`karasu serve` またはブラウザ版）の利用を推奨します。
+> コア機能（パーサー・レンダラー・Web プレビュー）に比べて優先度は低く、VS Code ユーザーが `.krs` を手元で編集するための補助ツールとして提供しています。補完は基本的なもののみ、コードアクション・リネームは未提供です。基本的な記述体験に集中したい場合は Web プレビュー（`karasu serve` またはブラウザ版）の利用を推奨します。
 
 `packages/vscode/` に含まれています。現時点で動作する機能:
 
@@ -322,6 +322,15 @@ karasu matrix arch.krs --format csv --writes-only > writes.csv
 - エディタ ↔ プレビューの双方向ジャンプ（Cmd/Ctrl+Click）
 - ホバー・定義ジャンプなど標準 LSP 機能
 - ノード詳細パネル（クロスダイアグラムナビゲーション対応）
+
+### インストール
+
+VS Code Marketplace
+（[`karasu-tools.karasu-vscode`](https://marketplace.visualstudio.com/items?itemName=karasu-tools.karasu-vscode)）からインストールできます:
+
+```sh
+code --install-extension karasu-tools.karasu-vscode
+```
 
 ## GitHub Actions
 

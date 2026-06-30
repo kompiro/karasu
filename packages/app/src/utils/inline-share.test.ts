@@ -57,6 +57,51 @@ describe("inline-share encode/decode (bundle)", () => {
   });
 });
 
+describe("inline-share deep permalink target (#1827)", () => {
+  it("round-trips a full target (view + node + highlight + orgTree)", () => {
+    const payload = {
+      krs: SAMPLE,
+      target: { view: "org" as const, node: "ecTeam", highlight: "Api", orgTree: true },
+    };
+    expect(decodeShare(encodeShare(payload))).toEqual(payload);
+  });
+
+  it("round-trips a minimal target (view only)", () => {
+    const payload = { krs: SAMPLE, target: { view: "deploy" as const } };
+    expect(decodeShare(encodeShare(payload))).toEqual(payload);
+  });
+
+  it("keeps the whole-model payload when there is no target", () => {
+    expect(decodeShare(encodeShare({ krs: SAMPLE }))).toEqual({ krs: SAMPLE });
+  });
+
+  it("drops a target whose view is not one of the known views (degrade, no throw)", () => {
+    // Hand-craft a payload with an unknown `view` — sanitizeTarget must reject it.
+    const encoded = encodeShare({
+      krs: SAMPLE,
+      // @ts-expect-error — deliberately invalid view to exercise validation
+      target: { view: "galaxy", node: "x" },
+    });
+    expect(decodeShare(encoded)).toEqual({ krs: SAMPLE });
+  });
+
+  it("drops empty-string node/highlight and a non-true orgTree", () => {
+    const encoded = encodeShare({
+      krs: SAMPLE,
+      // Field-level canonicalization: empty strings and orgTree:false are dropped.
+      target: { view: "system", node: "", highlight: "", orgTree: false },
+    });
+    expect(decodeShare(encoded)).toEqual({ krs: SAMPLE, target: { view: "system" } });
+  });
+
+  it("readSharedProjectFromHash surfaces the target inside the payload", () => {
+    const encoded = encodeShare({ krs: SAMPLE, target: { view: "system", node: "Api" } });
+    expect(readSharedProjectFromHash(`#s=${encoded}`)).toEqual({
+      payload: { krs: SAMPLE, target: { view: "system", node: "Api" } },
+    });
+  });
+});
+
 describe("buildShareUrl", () => {
   it("embeds the payload in the fragment under the s= key", () => {
     const url = buildShareUrl(

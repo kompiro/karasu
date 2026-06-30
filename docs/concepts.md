@@ -29,7 +29,7 @@ system
 - `service`: an independent unit of business functionality
 - `domain`: a business-concern boundary inside a service (close to DDD's Bounded Context)
 - `usecase`: a business operation inside a domain
-- `resource`: what a usecase operates on (tables, external APIs, files, etc.); also reserved on `client` for operation-tied local storage (`localStorage` / `indexedDB` / `opfs` / `file` / `keychain`)
+- `resource`: what a usecase operates on (tables, external APIs, files, etc.); also reserved on `client` for operation-tied local storage (`localStorage` / `sessionStorage` / `indexedDB` / `opfs` / `file` / `keychain`)
 
 `database` / `queue` / `storage` may also live directly under `system` as shared infrastructure that services depend on (see [ADR-20260405-05](adr/20260405-05-database-as-first-class-node.md)).
 

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef } from "react";
-import { sanitizeId } from "@karasu-tools/core";
+import { anchorId } from "@karasu-tools/core";
 import type { Dispatch } from "react";
+import type { ShareTarget } from "@karasu-tools/core";
 import type { AppAction, ActiveView } from "../state/app-reducer.js";
 
 // ─── Utilities (exported for testing) ────────────────────────────────────────
@@ -37,18 +38,20 @@ export function buildHash(
     case "matrix":
       base = "#krs-matrix";
       break;
+    // system/org are drillable: their element anchors route through the shared
+    // `anchorId` grammar (core), so the SPA hash and the static drill-down SVG
+    // emit one form — the cross-surface parity guarded by TPL-20260630-01.
+    // (deploy/matrix above are single-level whole-view tabs with a bare
+    // `#krs-<view>` token, and org Tree View is a mode — these are not element
+    // anchors and intentionally do not share the leaf grammar; see
+    // docs/spec/permalink.md.)
     case "org":
       base = isOrgTreeView
         ? "#krs-org-tree"
-        : viewPath.length === 0
-          ? "#krs-org-root"
-          : `#krs-org-${sanitizeId(viewPath[viewPath.length - 1])}`;
+        : `#${anchorId("org", viewPath.length === 0 ? "root" : viewPath[viewPath.length - 1])}`;
       break;
     case "system":
-      base =
-        viewPath.length === 0
-          ? "#krs-system-root"
-          : `#krs-system-${sanitizeId(viewPath[viewPath.length - 1])}`;
+      base = `#${anchorId("system", viewPath.length === 0 ? "root" : viewPath[viewPath.length - 1])}`;
       break;
     default: {
       const _exhaustive: never = activeView;
@@ -57,6 +60,23 @@ export function buildHash(
   }
   const withHighlight = highlightNodeId ? `${base}:${highlightNodeId}` : base;
   return filePath ? `${withHighlight}?file=${encodeURIComponent(filePath)}` : withHighlight;
+}
+
+/**
+ * Convert a deep permalink {@link ShareTarget} (carried inside a shared
+ * `#s=` payload, #1827) into the canonical `#krs-<view>-<node>:highlight`
+ * hash. Reuses {@link buildHash} so the share path and the in-app navigation
+ * path emit one grammar. The leaf `node` becomes the single-segment viewPath;
+ * `useHistoryNavigation` reconstructs the full path from it via the node-path
+ * index on mount, exactly as a normal drill hash resolves.
+ */
+export function shareTargetToHash(target: ShareTarget): string {
+  return buildHash(
+    target.view,
+    target.node ? [target.node] : [],
+    target.orgTree ?? false,
+    target.highlight ?? null,
+  );
 }
 
 /**

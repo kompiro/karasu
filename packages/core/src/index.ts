@@ -100,6 +100,8 @@ export {
   synthesizeSharePayload,
   SHARE_STYLE_IMPORT_PATH,
   type SharePayload,
+  type ShareTarget,
+  type ShareTargetView,
 } from "./share/synthesize.js";
 export { Parser } from "./parser/parser.js";
 export { isSafeLinkUrl } from "./parser/link-url.js";
@@ -182,7 +184,7 @@ export {
 export { analyze } from "./resolver/warnings.js";
 export type { DisplayMode } from "./renderer/layout.js";
 export type { SvgResult, AllViewsSvgResult } from "./renderer/all-layers-svg.js";
-export { render, renderFromLayout, sanitizeId } from "./renderer/svg-renderer.js";
+export { render, renderFromLayout, sanitizeId, anchorId } from "./renderer/svg-renderer.js";
 export type { CategoryId } from "./renderer/category-collapse.js";
 
 export {
