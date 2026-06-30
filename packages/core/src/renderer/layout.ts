@@ -213,6 +213,7 @@ function placeGhostUsers(
     const uid = userNode.id;
     const gNode: LayoutNode = {
       kind: userNode.kind,
+      tags: userNode.tags,
       id: uid,
       label: userNode.label ?? userNode.id,
       annotations: effectiveAnnotations(userNode),
@@ -269,6 +270,7 @@ function placeGhostDomains(
     const dims = measureNode(gd.node, undefined, displayMode);
     layoutNodes.set(gd.node.id, {
       kind: gd.node.kind,
+      tags: gd.node.tags,
       id: gd.node.id,
       label: gd.node.label ?? gd.node.id,
       annotations: effectiveAnnotations(gd.node),
@@ -893,6 +895,7 @@ export function layout(
 
         layoutNodes.set(nid, {
           kind: krsNode.kind,
+          tags: krsNode.tags,
           id: nid,
           label: viewSlice.resourceLabelMap.get(nid) ?? krsNode.label ?? krsNode.id,
           annotations: effectiveAnnotations(krsNode),
@@ -1107,6 +1110,7 @@ function layoutGhostSystem(
     const qualifiedId = `${gs.systemNode.id}.${svc.id}`;
     nodes.set(qualifiedId, {
       kind: svc.kind,
+      tags: svc.tags,
       id: qualifiedId,
       label: svc.label ?? svc.id,
       annotations: svc.annotations,
@@ -1288,6 +1292,7 @@ function layoutMultipleSystems(
 
         localNodes.set(nid, {
           kind: krsNode.kind,
+          tags: krsNode.tags,
           id: nid,
           label: viewSlice.resourceLabelMap.get(nid) ?? krsNode.label ?? krsNode.id,
           annotations: effectiveAnnotations(krsNode),

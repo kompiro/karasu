@@ -1,7 +1,7 @@
 import type { EdgeDirection, ResolvedNodeStyle, ResolvedStyles } from "../types/style.js";
 import type { ViewSlice } from "../view/view-extract.js";
 import { layout } from "./layout.js";
-import type { CategoryId } from "./category-collapse.js";
+import { CATEGORY_STUB_TAG, categoryOf, type CategoryId } from "./category-collapse.js";
 import type { ContainerRect, DisplayMode, LayoutNode, LayoutResult } from "./layout-types.js";
 import { renderShape } from "./shapes.js";
 import { renderEdge, renderArrowMarker } from "./edge-routing.js";
@@ -305,17 +305,19 @@ export function renderFromLayout(
       diffMeta?.state ??
       options?.nodeDiffState?.get(layoutNode.id) ??
       options?.nodeDiffState?.get(nodeId);
-    const rendered = renderNode(
-      layoutNode,
-      nodeStyle,
-      nodeId,
-      palette,
-      serviceIdsWithDeploy,
-      displayMode,
-      childLevelLinks,
-      diffState,
-      diffMeta,
-    );
+    const rendered = layoutNode.tags?.includes(CATEGORY_STUB_TAG)
+      ? renderCategoryStub(layoutNode, palette)
+      : renderNode(
+          layoutNode,
+          nodeStyle,
+          nodeId,
+          palette,
+          serviceIdsWithDeploy,
+          displayMode,
+          childLevelLinks,
+          diffState,
+          diffMeta,
+        );
     const isDimmedGhost =
       layoutNode.ghost && (diffState === undefined || diffState === "unchanged");
     if (isDimmedGhost) {
@@ -328,6 +330,11 @@ export function renderFromLayout(
     parts.push(el("g", { class: "ghost-nodes", opacity: GHOST_OPACITY }, ...ghostNodeParts));
   }
   parts.push(el("g", { class: "nodes" }, ...normalNodeParts));
+
+  // Collapsible-category controls: a ⊖ button + hover-revealed extent frame for
+  // each open `external` / `infra` group on the system view (Issue #1821).
+  const categoryControls = renderCategoryControls(layoutResult, palette);
+  if (categoryControls) parts.push(categoryControls);
 
   // Legend footer (Issue #887) — rendered as a band below the diagram so
   // it survives panning and is preserved by single-file SVG exports.
@@ -359,6 +366,194 @@ export function renderFromLayout(
     },
     ...parts,
   );
+}
+
+/**
+ * The ⊕ placeholder a collapsed category folds to (Issue #1821). Drawn at the
+ * stub node's laid-out box. Carries `data-collapse-category` so the app's click
+ * delegation expands the category (toggling it out of `collapsedCategories`).
+ */
+function renderCategoryStub(node: LayoutNode, palette: DiagramPalette): string {
+  const cat = categoryOf(node) ?? "";
+  const cx = node.x + 18;
+  const cy = node.y + node.height / 2;
+  return el(
+    "g",
+    {
+      class: "krs-category-stub",
+      "data-node-id": escapeXml(node.id),
+      "data-collapse-category": cat,
+      role: "button",
+      tabindex: "0",
+    },
+    el("rect", {
+      x: node.x,
+      y: node.y,
+      width: node.width,
+      height: node.height,
+      rx: 8,
+      fill: palette.surfaceBg,
+      stroke: palette.mutedBorder,
+      "stroke-width": 1,
+      "stroke-dasharray": "4 3",
+    }),
+    el("circle", { cx, cy, r: 8, fill: "none", stroke: palette.accent, "stroke-width": 1.5 }),
+    el("line", {
+      x1: cx - 4,
+      y1: cy,
+      x2: cx + 4,
+      y2: cy,
+      stroke: palette.accent,
+      "stroke-width": 1.5,
+    }),
+    el("line", {
+      x1: cx,
+      y1: cy - 4,
+      x2: cx,
+      y2: cy + 4,
+      stroke: palette.accent,
+      "stroke-width": 1.5,
+    }),
+    el(
+      "text",
+      {
+        x: cx + 16,
+        y: cy + 4,
+        fill: palette.textMuted,
+        "font-family": "sans-serif",
+        "font-size": 12,
+      },
+      escapeXml(node.label),
+    ),
+  );
+}
+
+interface Bbox {
+  minX: number;
+  minY: number;
+  maxX: number;
+  maxY: number;
+}
+
+function bboxOf(nodes: LayoutNode[]): Bbox {
+  let minX = Infinity;
+  let minY = Infinity;
+  let maxX = -Infinity;
+  let maxY = -Infinity;
+  for (const n of nodes) {
+    minX = Math.min(minX, n.x);
+    minY = Math.min(minY, n.y);
+    maxX = Math.max(maxX, n.x + n.width);
+    maxY = Math.max(maxY, n.y + n.height);
+  }
+  return { minX, minY, maxX, maxY };
+}
+
+/**
+ * Split nodes into contiguous clusters along x, so a tier row (e.g. infra)
+ * yields one cluster while side columns (e.g. `[external]` placed left + right)
+ * yield one per side — avoiding a frame that spans the whole diagram.
+ */
+function clusterByXGap(nodes: LayoutNode[], gap: number): LayoutNode[][] {
+  const sorted = [...nodes].sort((a, b) => a.x - b.x);
+  const clusters: LayoutNode[][] = [];
+  let current: LayoutNode[] = [];
+  let rightEdge = -Infinity;
+  for (const n of sorted) {
+    if (current.length > 0 && n.x - rightEdge > gap) {
+      clusters.push(current);
+      current = [];
+    }
+    current.push(n);
+    rightEdge = Math.max(rightEdge, n.x + n.width);
+  }
+  if (current.length > 0) clusters.push(current);
+  return clusters;
+}
+
+/**
+ * ⊖ collapse buttons + hover-revealed extent frames for the open `external` /
+ * `infra` groups (Issue #1821). The ⊖ is always visible (the collapse control);
+ * hovering it reveals the group's dashed frame (`:hover` on the group; the frame
+ * is `pointer-events: none` so it never blocks node clicks). Each control carries
+ * `data-collapse-category` for the app's click delegation.
+ */
+function renderCategoryControls(layoutResult: LayoutResult, palette: DiagramPalette): string {
+  const byCat = new Map<CategoryId, LayoutNode[]>();
+  for (const [, node] of layoutResult.nodes) {
+    if (node.tags?.includes(CATEGORY_STUB_TAG)) continue; // already collapsed
+    const cat = categoryOf(node);
+    if (cat === null) continue;
+    const list = byCat.get(cat);
+    if (list) list.push(node);
+    else byCat.set(cat, [node]);
+  }
+  if (byCat.size === 0) return "";
+
+  const groups: string[] = [];
+  for (const [cat, nodes] of byCat) {
+    for (const cluster of clusterByXGap(nodes, 80)) {
+      const bb = bboxOf(cluster);
+      const pad = 8;
+      const fx = bb.minX - pad;
+      const fy = bb.minY - pad;
+      const fw = bb.maxX - bb.minX + pad * 2;
+      const fh = bb.maxY - bb.minY + pad * 2;
+      groups.push(
+        el(
+          "g",
+          { class: "krs-cat-group", "data-category-group": cat },
+          el("rect", {
+            class: "krs-cat-frame",
+            x: fx,
+            y: fy,
+            width: fw,
+            height: fh,
+            rx: 10,
+            fill: "transparent",
+            stroke: palette.accent,
+            "stroke-width": 1.5,
+            "stroke-dasharray": "6 4",
+            "pointer-events": "none",
+          }),
+          el(
+            "g",
+            {
+              class: "krs-cat-collapse",
+              "data-collapse-category": cat,
+              role: "button",
+              tabindex: "0",
+              transform: `translate(${fx + fw - 2},${fy + 2})`,
+            },
+            el("circle", {
+              cx: 0,
+              cy: 0,
+              r: 9,
+              fill: palette.surfaceBg,
+              stroke: palette.accent,
+              "stroke-width": 1.5,
+            }),
+            el("line", {
+              x1: -4,
+              y1: 0,
+              x2: 4,
+              y2: 0,
+              stroke: palette.accent,
+              "stroke-width": 1.5,
+            }),
+          ),
+        ),
+      );
+    }
+  }
+  const style = el(
+    "style",
+    {},
+    ".krs-cat-frame{opacity:0;transition:opacity .1s}" +
+      ".krs-cat-group:hover .krs-cat-frame{opacity:1}" +
+      ".krs-cat-collapse,.krs-category-stub{cursor:pointer}",
+  );
+  return el("g", { class: "krs-category-controls" }, style, ...groups);
 }
 
 function renderContainer(

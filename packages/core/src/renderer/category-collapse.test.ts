@@ -112,3 +112,26 @@ describe("compile() with collapsedCategories", () => {
     expect(svg).toContain('data-node-id="Web"'); // the plain service survives
   });
 });
+
+describe("category controls rendering", () => {
+  it("renders ⊖ controls + extent frames for open external/infra groups", () => {
+    const svg = svgOf();
+    expect(svg).toContain('data-category-group="infra"');
+    expect(svg).toContain('data-category-group="external"');
+    expect(svg).toContain('class="krs-cat-collapse"');
+    expect(svg).toContain('class="krs-cat-frame"');
+    expect(svg).toContain('data-collapse-category="infra"');
+    expect(svg).toContain('data-collapse-category="external"');
+    // the frame must never block node clicks
+    expect(svg).toContain('pointer-events="none"');
+  });
+
+  it("renders the collapsed category as an expand stub, not an open group", () => {
+    const svg = svgOf(new Set(["infra"]));
+    expect(svg).toContain('class="krs-category-stub"');
+    expect(svg).toContain('data-node-id="__collapsed_infra__"');
+    expect(svg).toContain('data-collapse-category="infra"'); // on the stub, to expand
+    expect(svg).not.toContain('data-category-group="infra"'); // no longer an open group
+    expect(svg).toContain('data-category-group="external"'); // external still open
+  });
+});

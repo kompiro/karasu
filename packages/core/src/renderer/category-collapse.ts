@@ -26,10 +26,14 @@ const ZERO_LOC: SourceRange = {
   end: { line: 0, column: 0, offset: 0 },
 };
 
-/** Which collapsible category a system-view node belongs to, or `null`. */
-export function categoryOf(node: KrsNode): CategoryId | null {
+/**
+ * Which collapsible category a system-view node belongs to, or `null`.
+ * Structural so it works on both `KrsNode` (pre-layout filtering) and
+ * `LayoutNode` (post-layout grouping for the ⊖ control and hover frame).
+ */
+export function categoryOf(node: { kind: string; tags?: readonly string[] }): CategoryId | null {
   if (INFRA_KIND_SET.has(node.kind)) return "infra";
-  if (node.tags.includes("external")) return "external";
+  if (node.tags?.includes("external")) return "external";
   return null;
 }
 
