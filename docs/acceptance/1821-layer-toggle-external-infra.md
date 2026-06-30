@@ -15,7 +15,7 @@ system view の **external**（`[external]` service）と **infra**（database/q
 
 ### AC-1: collapse-to-stub と reflow（core）
 
-> ✅ Automated — `packages/core/src/renderer/category-collapse.test.ts`
+> ✅ Automated by `packages/core/src/renderer/category-collapse.test.ts` (suite-wide)
 
 - [x] `collapsedCategories` に `infra` を渡すと infra ノード（と接続 edge）が消え、`Infra (N)` の stub に畳まれる
 - [x] `external` も同様（`External (N)` stub）。両カテゴリは独立に collapse できる
@@ -24,7 +24,7 @@ system view の **external**（`[external]` service）と **infra**（database/q
 
 ### AC-2: 描画 — stub ⊕ / ⊖ / hover frame（core）
 
-> ✅ Automated — `packages/core/src/renderer/category-collapse.test.ts`
+> ✅ Automated by `packages/core/src/renderer/category-collapse.test.ts` (suite-wide)
 
 - [x] open カテゴリごとに `data-category-group` の枠（`krs-cat-frame`）と ⊖ コントロール（`krs-cat-collapse` / `data-collapse-category`）が出る
 - [x] collapsed カテゴリは ⊕ stub（`krs-category-stub` / `data-collapse-category`）として描かれ、open group には出ない
@@ -32,7 +32,7 @@ system view の **external**（`[external]` service）と **infra**（database/q
 
 ### AC-3: app の対話配線
 
-> ✅ Automated — `packages/app/src/components/PreviewPane.test.tsx`
+> ✅ Automated by `packages/app/src/components/PreviewPane.test.tsx` (suite-wide)
 
 - [x] `[data-collapse-category="infra"|"external"]` のクリックで `onCategoryToggle(category)` が発火する
 - [x] 未知のカテゴリ値はトグルしない
