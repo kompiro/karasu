@@ -447,6 +447,84 @@ describe("useHistoryNavigation", () => {
     });
   });
 
+  // Regression for #1842: on a shared open, the project-seed effect's
+  // SELECT_FILE → VIEW_RESET runs after effect ① and wipes the highlight it
+  // dispatched on mount. Effect ② must re-apply the highlight once the
+  // model-derived index populates (which is guaranteed to be after that reset).
+  // The growing index simulates the seed having loaded the file content.
+  describe("pending highlight restoration (#1842)", () => {
+    it("re-applies the highlight when nodePathIndex becomes available (node + highlight)", async () => {
+      history.replaceState(null, "", "#krs-system-Payment:Api");
+      const dispatch = makeDispatch();
+      let nodePathIndex = new Map<string, string[]>();
+
+      const { rerender } = renderHook(() =>
+        useHistoryNavigation(makeOptions({ dispatch, nodePathIndex })),
+      );
+
+      // Effect ① fires the initial highlight; the seed's VIEW_RESET (not modeled
+      // here) would clear it. Drop those mount dispatches and assert the deferred
+      // re-application only.
+      dispatch.mockClear();
+
+      nodePathIndex = new Map([["Payment", ["Payment"]]]);
+      await act(async () => {
+        rerender();
+      });
+
+      expect(dispatch).toHaveBeenCalledWith({ type: "SET_VIEW_PATH", path: ["Payment"] });
+      expect(dispatch).toHaveBeenCalledWith({ type: "SET_HIGHLIGHTED_NODE", nodeId: "Api" });
+    });
+
+    it("re-applies a highlight-only-at-root hash once the index populates", async () => {
+      history.replaceState(null, "", "#krs-system-root:Api");
+      const dispatch = makeDispatch();
+      let nodePathIndex = new Map<string, string[]>();
+
+      const { rerender } = renderHook(() =>
+        useHistoryNavigation(makeOptions({ dispatch, nodePathIndex })),
+      );
+
+      // Empty index — no deferred re-application yet (would land before the
+      // seed's VIEW_RESET).
+      dispatch.mockClear();
+
+      nodePathIndex = new Map([["Api", ["Api"]]]);
+      await act(async () => {
+        rerender();
+      });
+
+      expect(dispatch).toHaveBeenCalledWith({ type: "SET_HIGHLIGHTED_NODE", nodeId: "Api" });
+    });
+
+    it("re-applies the highlight only once across further index changes", async () => {
+      history.replaceState(null, "", "#krs-system-Payment:Api");
+      const dispatch = makeDispatch();
+      let nodePathIndex = new Map([["Payment", ["Payment"]]]);
+
+      const { rerender } = renderHook(() =>
+        useHistoryNavigation(makeOptions({ dispatch, nodePathIndex })),
+      );
+
+      // Index already populated on mount — effect ② applies once. Clear, then
+      // recompute the index (e.g. user edits the file) and assert no re-fire.
+      await act(async () => {
+        rerender();
+      });
+      dispatch.mockClear();
+
+      nodePathIndex = new Map([
+        ["Payment", ["Payment"]],
+        ["Extra", ["Extra"]],
+      ]);
+      await act(async () => {
+        rerender();
+      });
+
+      expect(dispatch).not.toHaveBeenCalledWith({ type: "SET_HIGHLIGHTED_NODE", nodeId: "Api" });
+    });
+  });
+
   describe("state → hash sync", () => {
     it("pushes new hash when viewPath changes", async () => {
       const opts = makeOptions();

@@ -94,7 +94,7 @@ for the frontmatter schema. Validating the `permalink:` field (the `source` `.kr
 exists, the `short` link resolves) is tracked in
 [#1830](https://github.com/kompiro/karasu/issues/1830).
 
-> Related TPLs: [TPL-20260630-02](../test-perspectives/TPL-20260630-02-adr-permalink-records-source.md)
+> Related TPLs: [TPL-20260630-03](../test-perspectives/TPL-20260630-03-adr-permalink-records-source.md)
 > — an ADR permalink is a pointer, not the record; always record the in-repo `.krs`
 > `source` so the structure survives the shortener or URL form going away.
 

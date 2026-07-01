@@ -88,7 +88,7 @@ repo は、より厳密で機械検証可能な形を得る: taka `short` リン
 `.claude/rules/adr.md` を参照。`permalink:` の検証（`source` の `.krs` が実在するか・
 `short` が解決するか）は [#1830](https://github.com/kompiro/karasu/issues/1830) で追う。
 
-> Related TPLs: [TPL-20260630-02](../test-perspectives/TPL-20260630-02-adr-permalink-records-source.md)
+> Related TPLs: [TPL-20260630-03](../test-perspectives/TPL-20260630-03-adr-permalink-records-source.md)
 > — ADR permalink は record ではなく pointer。shortener や URL の形が消えても構造が
 > 残るよう、常に in-repo `.krs` の `source` を記録する。
 

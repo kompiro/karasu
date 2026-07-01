@@ -5,7 +5,7 @@
 - **関連 design doc**: `docs/design/adr-permalink-convention.md`（→ ADR 昇格予定。決定は B-4 → **B-3**（taka 短縮 + 必須 source）に改訂）
 - **関連 ADR**: [ADR-20260626-04](../adr/20260626-04-karasu-nest-ogp-share-page.md)（`/s?s=` OGP 共有ページ）/ [ADR-20260626-01](../adr/20260626-01-karasu-nest-hosted-preview.md)（karasu-nest stateless）
 - **関連 spec**: [`docs/spec/permalink.md`](../spec/permalink.md)（deep-permalink アンカー contract）
-- **関連 TPL**: [TPL-20260630-02](../test-perspectives/TPL-20260630-02-adr-permalink-records-source.md)（permalink は record ではなく pointer — 必須 `source` を記録）
+- **関連 TPL**: [TPL-20260630-03](../test-perspectives/TPL-20260630-03-adr-permalink-records-source.md)（permalink は record ではなく pointer — 必須 `source` を記録）
 - **対象ファイル**:
   - `docs/guide/adr-permalinks.md` / `docs/guide/adr-permalinks.ja.md`（L1 portable guide）
   - `.claude/rules/adr.md`（L2 adr-tools 実装規約 — `permalink:` frontmatter）
@@ -33,7 +33,7 @@
 
 - [x] AT-E: proactive TPL が同 PR で起こされ、guide / rules と双方向 back-ref している
 
-  > ✅ Automated（リンク） — `TPL-20260630-02` の `## 派生元 spec` ↔ guide の `> Related TPLs:` 注釈。TPL README index に登録され、`scripts/lint` のリンクチェックが切れリンクを検出する
+  > ✅ Automated（リンク） — `TPL-20260630-03` の `## 派生元 spec` ↔ guide の `> Related TPLs:` 注釈。TPL README index に登録され、`scripts/lint` のリンクチェックが切れリンクを検出する
 
 - [x] AT-F: guide の worked example が示す短縮宛先 `/s?s=` payload が decode して有効な `.krs` に戻る（短縮リンクの背後の構造が復元可能であることの裏付け）
 

@@ -55,7 +55,9 @@
 ### 手動確認（CI で検証できない項目）
 
 - [ ] M-1: あるサービスにドリルした状態で Share → チェック ON のリンクを別タブで開くと、そのサービス階層にドリルした状態で開くこと
-- [ ] M-2: ノードを選択（highlight）した状態で共有 → 開いたとき当該ノードがフォーカス強調されること
+- [x] M-2: ノードを選択（highlight）した状態で共有 → 開いたとき当該ノードがフォーカス強調されること
+
+  > 🟡 Partially automated — `packages/app/src/hooks/useHistoryNavigation.test.ts` › `pending highlight restoration (#1842)`（共有オープン時に highlight が seed の VIEW_RESET 後に再適用されることを検証。実ブラウザ上の視覚的フォーカス強調の確認は手動）
 - [ ] M-3: 共有後にモデルの当該 node `id` を rename → 古いリンクを開くと（クラッシュせず）view root にフォールバックすること
 - [ ] M-4: 静的にエクスポートした drill-down SVG を `<file>#krs-system-<id>` で直接開くと、CSS `:target` で当該階層が表示されること（JS 無効でも）
 - [ ] M-5: `/s?s=<target 付き>` を実ブラウザで開くと、人間訪問者が `#s=` に bounce され deep-link が効くこと（OGP 画像はモデル全体のまま＝想定内）

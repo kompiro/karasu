@@ -1,5 +1,5 @@
 ---
-id: TPL-20260630-02
+id: TPL-20260630-03
 title: "ADR permalink は record ではなく pointer — in-repo .krs source を必須で記録する"
 status: active
 date: 2026-06-30
@@ -24,7 +24,7 @@ scope:
     - docs-site
 ---
 
-# TPL-20260630-02: ADR permalink は record ではなく pointer — in-repo .krs source を必須で記録する
+# TPL-20260630-03: ADR permalink は record ではなく pointer — in-repo .krs source を必須で記録する
 
 ## 観点
 
