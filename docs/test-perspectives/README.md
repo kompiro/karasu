@@ -451,4 +451,4 @@ DesignDoc が proactive TPL を引用したら、実装 PR で次をやる:
 | [TPL-20260625-01](TPL-20260625-01-root-svg-viewbox-responsive.md) | プレビューに渡す root SVG は viewBox を持ち、CSS 縮小時に左上クロップせず内容がスケールする — 全合成ビルダーで共有 | renderer | #1790 |
 | [TPL-20260626-01](TPL-20260626-01-raster-pipeline-glyph-coverage.md) | 別ランタイムで再ラスタライズする経路は、ソースが出力しうる全グリフ/リソースをカバーする（PNG の絵文字フォント等） | renderer | #1799 |
 | [TPL-20260630-01](TPL-20260630-01-deep-link-anchor-cross-surface-parity.md) | deep-link アンカーは id ベースの単一文法を全サーフェス（静的 SVG / SPA hash）で共有する | navigation | #1827 |
-| [TPL-20260630-02](TPL-20260630-02-adr-permalink-payload-is-canonical.md) | ADR permalink の正は自己完結 `/s?s=` payload であり、短縮 URL を必須依存にしない | adr-tooling | #1829 |
+| [TPL-20260630-02](TPL-20260630-02-adr-permalink-records-source.md) | ADR permalink は record ではなく pointer — in-repo `.krs` source を必須で記録する | adr-tooling | #1829 |
