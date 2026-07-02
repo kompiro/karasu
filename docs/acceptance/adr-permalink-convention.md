@@ -27,7 +27,7 @@
 
   > ✅ Automated — `packages/docs-site/scripts/lib/site-map.ts` の `PUBLISHED_EN_FILES` に `guide/adr-permalinks.md` を含み、docs-site `build` が en/ja ページを生成する
 
-- [ ] AT-C: guide が `#s=`（fragment）を不可・短縮の宛先は `/s?s=`（query）と明記し、`source` を必須（＝リンクを単一障害点にしない）とし、trust note（短縮しない / 自前 shortener の選択）を含む（レビュー確認 — `docs/guide/adr-permalinks.md` の「The `.krs` source is the record」「Shorten the `/s?s=` share URL」「Trust note」節）
+- [ ] AT-C: guide が `#s=`（fragment）を不可・短縮の宛先は `/s?s=`（query）と明記し、`source` を必須（＝リンクを単一障害点にしない）とし、trust note（短縮しない / 自前 shortener の選択）と **L1/L2 のレイヤ分けの解説**（karasu はユーザー repo に配置を強制できない → L1 は「何を記録するか」だけ縛る baseline、L2 は adr-tools による強制手段）を含む（レビュー確認 — `docs/guide/adr-permalinks.md` の「The `.krs` source is the record」「Shorten the `/s?s=` share URL」「Trust note」「Two layers」節）
 
 - [ ] AT-D: L2 規約が `.claude/rules/adr.md` にあり、`permalink:` の `short`（taka）と `source`（必須）を定義し、生の payload を frontmatter にインラインしないこと・本文サマリ生成フォーマットを示す（レビュー確認 — `.claude/rules/adr.md`「ADR から karasu 構造へリンクする（permalink）」節）
 

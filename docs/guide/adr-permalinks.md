@@ -80,19 +80,32 @@ The `examples/en/feature-samples/minimal.krs` structure, shared:
 The short link is what a reader clicks; the `source` is what keeps the structure
 recoverable if the short link ever breaks.
 
-## If your repo uses `@kompiro/adr-tools`
+## Two layers: a portable convention (L1) and an adr-tools reference (L2)
 
-The above is the **portable** convention: it constrains only *what to record*, so it
-works with any ADR tool (adr-tools / Log4brains / plain Markdown / none) and any
-file layout. It does **not** dictate *where* in the ADR the link lives.
+Your ADRs live in **your** repo, under **your** conventions — karasu can't impose a
+file layout or a frontmatter schema on them. A karasu user might keep ADRs with
+adr-tools, Log4brains, or plain Markdown, each with its own idea of *where* a
+reference belongs. So the convention is split into two layers: one that every user
+can follow, and a stricter one for repos that opt into tooling.
 
-Repos that adopt [`@kompiro/adr-tools`](https://www.npmjs.com/package/@kompiro/adr-tools)
-get a stricter, machine-checkable form: a `permalink:` frontmatter field with the
-taka `short` link and a required `source`, plus a generated body summary. karasu's
-own `docs/adr/` uses it as the reference implementation — see `.claude/rules/adr.md`
-for the frontmatter schema. Validating the `permalink:` field (the `source` `.krs`
-exists, the `short` link resolves) is tracked in
-[#1830](https://github.com/kompiro/karasu/issues/1830).
+- **L1 — the portable convention (everything above).** It constrains only *what to
+  record*: a short permalink to the structure plus a **required `source`**. It says
+  nothing about *where* in the ADR the link goes, so it works with any ADR tool and
+  any layout. This is the baseline — follow it and your ADR link stays recoverable
+  regardless of tooling.
+- **L2 — the adr-tools reference implementation.** Repos that adopt
+  [`@kompiro/adr-tools`](https://www.npmjs.com/package/@kompiro/adr-tools) get a
+  stricter, machine-checkable form of L1: a `permalink:` frontmatter field (taka
+  `short` + required `source`) and a generated body summary, validated by the tool.
+  It fixes *where* the link lives and lets a linter enforce it. karasu's own
+  `docs/adr/` uses L2 as dogfooding and as L1's reference implementation — see
+  `.claude/rules/adr.md` for the frontmatter schema.
+
+In short: **L1 is the rule (record a short link + `source`); L2 is one enforced way
+to satisfy it.** If you don't use adr-tools, just apply L1 wherever your ADR format
+keeps references — you get the same durability without the tooling. Validating the
+L2 `permalink:` field (the `source` `.krs` exists, the `short` link resolves) is
+tracked in [#1830](https://github.com/kompiro/karasu/issues/1830).
 
 > Related TPLs: [TPL-20260630-03](../test-perspectives/TPL-20260630-03-adr-permalink-records-source.md)
 > — an ADR permalink is a pointer, not the record; always record the in-repo `.krs`
