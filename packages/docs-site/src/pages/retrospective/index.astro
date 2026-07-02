@@ -1,0 +1,317 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>karasu — Development Retrospectives</title>
+    <meta
+      name="description"
+      content="An index of karasu development retrospectives — periodic looks back at how the project grew, tracking commits, ADRs, and TPLs."
+    />
+    <style is:global>
+      :root {
+        --bg: #0f1115;
+        --bg-card: #181b22;
+        --bg-card2: #1f232c;
+        --ink: #e6e9ef;
+        --ink-dim: #98a2b3;
+        --line: #2a2f3a;
+        --crow: #c9a227;
+        --feat: #4f9cf9;
+        --adr: #c9a227;
+        --tpl: #ec5fa0;
+        --refactor: #34d399;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--ink);
+        font-family:
+          -apple-system, BlinkMacSystemFont, "Segoe UI", "Hiragino Sans", "Noto Sans JP", sans-serif;
+        line-height: 1.7;
+        font-size: 15px;
+      }
+      a {
+        color: var(--feat);
+        text-decoration: none;
+      }
+      .topbar {
+        position: sticky;
+        top: 0;
+        z-index: 50;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 10px 18px;
+        background: rgba(15, 17, 21, 0.86);
+        backdrop-filter: blur(8px);
+        border-bottom: 1px solid var(--line);
+      }
+      .topbar .back {
+        color: var(--ink-dim);
+        font-size: 13px;
+      }
+      .topbar .back:hover {
+        color: var(--ink);
+      }
+      .langtoggle {
+        display: inline-flex;
+        border: 1px solid var(--line);
+        border-radius: 20px;
+        overflow: hidden;
+      }
+      .langtoggle button {
+        background: transparent;
+        color: var(--ink-dim);
+        border: 0;
+        padding: 5px 14px;
+        font-size: 12.5px;
+        cursor: pointer;
+        font-weight: 600;
+      }
+      .langtoggle button.active {
+        background: var(--crow);
+        color: #1a1a1a;
+      }
+      header.hero {
+        text-align: center;
+        padding: 72px 24px 44px;
+        background: radial-gradient(900px 400px at 50% -10%, rgba(201, 162, 39, 0.16), transparent 70%);
+        border-bottom: 1px solid var(--line);
+      }
+      .crow-mark {
+        font-size: 52px;
+        line-height: 1;
+        filter: drop-shadow(0 4px 12px rgba(201, 162, 39, 0.4));
+      }
+      header.hero h1 {
+        font-size: 34px;
+        margin: 14px 0 6px;
+        letter-spacing: -0.02em;
+      }
+      header.hero h1 .jp {
+        color: var(--crow);
+        font-weight: 700;
+      }
+      header.hero .sub {
+        color: var(--ink-dim);
+        font-size: 16px;
+        margin: 0 auto;
+        max-width: 640px;
+      }
+      .wrap {
+        max-width: 860px;
+        margin: 0 auto;
+        padding: 40px 24px 96px;
+      }
+      .edition {
+        display: block;
+        background: var(--bg-card);
+        border: 1px solid var(--line);
+        border-radius: 16px;
+        padding: 26px 28px;
+        margin: 18px 0;
+        position: relative;
+        overflow: hidden;
+        transition:
+          border-color 0.15s,
+          transform 0.15s;
+      }
+      .edition::before {
+        content: "";
+        position: absolute;
+        left: 0;
+        top: 0;
+        bottom: 0;
+        width: 5px;
+        background: var(--accent, var(--crow));
+      }
+      .edition:hover {
+        border-color: var(--crow);
+        transform: translateY(-2px);
+      }
+      .edition .etag {
+        display: inline-block;
+        font-size: 11.5px;
+        font-weight: 700;
+        color: #1a1a1a;
+        background: var(--crow);
+        border-radius: 20px;
+        padding: 2px 12px;
+        margin-bottom: 10px;
+      }
+      .edition h2 {
+        margin: 0 0 4px;
+        font-size: 22px;
+        color: var(--ink);
+      }
+      .edition .period {
+        color: var(--ink-dim);
+        font-size: 13px;
+        font-variant-numeric: tabular-nums;
+        margin: 0 0 12px;
+      }
+      .edition .blurb {
+        color: var(--ink);
+        font-size: 14px;
+        margin: 0 0 16px;
+      }
+      .edition .stats {
+        display: flex;
+        gap: 22px;
+        flex-wrap: wrap;
+        font-variant-numeric: tabular-nums;
+        font-size: 13px;
+        color: var(--ink-dim);
+      }
+      .edition .stats b {
+        font-size: 17px;
+      }
+      .edition .more {
+        margin-top: 16px;
+        color: var(--crow);
+        font-weight: 600;
+        font-size: 13.5px;
+      }
+      .upcoming {
+        text-align: center;
+        color: var(--ink-dim);
+        font-size: 13px;
+        border: 1px dashed var(--line);
+        border-radius: 14px;
+        padding: 20px;
+        margin-top: 26px;
+      }
+      .foot {
+        margin-top: 56px;
+        padding-top: 22px;
+        border-top: 1px solid var(--line);
+        color: var(--ink-dim);
+        font-size: 12.5px;
+        text-align: center;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="topbar">
+      <a class="back" href="/karasu/" data-i="backHome">← karasu docs</a>
+      <span class="langtoggle">
+        <button data-lang="en" onclick="setLang('en')">English</button>
+        <button data-lang="ja" onclick="setLang('ja')">日本語</button>
+      </span>
+    </div>
+
+    <header class="hero">
+      <div class="crow-mark">🐦‍⬛</div>
+      <h1><span class="jp">karasu</span> <span data-i="title"></span></h1>
+      <p class="sub" data-i="sub"></p>
+    </header>
+
+    <div class="wrap">
+      <div id="editions"></div>
+      <div class="upcoming" data-i="upcoming"></div>
+      <div class="foot" data-i="foot"></div>
+    </div>
+
+    <script is:inline>
+      /* Each retrospective edition. Add a new entry here as future editions ship;
+         the page renders them newest-first as cards. */
+      const EDITIONS = [
+        {
+          href: "/karasu/retrospective/v1.0/",
+          accent: "#34d399",
+          tag: "v1.0",
+          en: {
+            title: "1.0 — The road to the language spec",
+            period: "2026-03-13 → 2026-06-25 · ~15 weeks",
+            blurb:
+              "From the core idea of separating logical and physical structure to a frozen .krs / .krs.style v1.0 (stable) spec — monthly and weekly summaries with the growth of ADRs and TPLs.",
+          },
+          ja: {
+            title: "1.0 — 言語仕様への道",
+            period: "2026-03-13 → 2026-06-25 · 約15週間",
+            blurb:
+              "論理／物理分離という核心思想から、凍結された .krs / .krs.style v1.0 (stable) 仕様まで — 月次・週次サマリと ADR・TPL の成長を追う。",
+          },
+          stats: [
+            { num: "1,127", en: "commits", ja: "コミット", color: "var(--feat)" },
+            { num: "237", en: "ADRs", ja: "ADR", color: "var(--adr)" },
+            { num: "64", en: "TPLs", ja: "TPL", color: "var(--tpl)" },
+          ],
+        },
+      ];
+
+      const I18N = {
+        en: {
+          htmlLang: "en",
+          title: "Development Retrospectives",
+          backHome: "← karasu docs",
+          sub: "Periodic looks back at how karasu grew — commits, design decisions (ADRs), and test perspectives (TPLs) over time.",
+          more: "Read the retrospective →",
+          upcoming: "More editions will be added here as the project reaches new milestones.",
+          foot: "Auto-extracted from the karasu repository's git history, docs/adr/, and docs/test-perspectives/.",
+        },
+        ja: {
+          htmlLang: "ja",
+          title: "開発ふりかえり",
+          backHome: "← karasu ドキュメント",
+          sub: "karasu がどう育ったかを定期的にふりかえる場 — コミット・設計判断（ADR）・テスト観点（TPL）の歩み。",
+          more: "ふりかえりを読む →",
+          upcoming: "今後マイルストーンを迎えるたびに、ここへエディションを追加していきます。",
+          foot: "karasu リポジトリの git 履歴・docs/adr/・docs/test-perspectives/ から自動抽出。",
+        },
+      };
+
+      function renderEditions(lang, L) {
+        document.getElementById("editions").innerHTML = EDITIONS.map((e) => {
+          const c = e[lang];
+          const stats = e.stats
+            .map(
+              (s) =>
+                `<div><b style="color:${s.color}">${s.num}</b> ${s[lang]}</div>`,
+            )
+            .join("");
+          return `<a class="edition" style="--accent:${e.accent}" href="${e.href}?lang=${lang}">
+            <span class="etag">${e.tag}</span>
+            <h2>${c.title}</h2>
+            <p class="period">${c.period}</p>
+            <p class="blurb">${c.blurb}</p>
+            <div class="stats">${stats}</div>
+            <div class="more">${L.more}</div>
+          </a>`;
+        }).join("");
+      }
+
+      function setLang(lang) {
+        const L = I18N[lang] || I18N.en;
+        document.documentElement.lang = L.htmlLang;
+        try {
+          localStorage.setItem("karasu-retro-lang", lang);
+        } catch (e) {}
+        document
+          .querySelectorAll(".langtoggle button")
+          .forEach((b) => b.classList.toggle("active", b.dataset.lang === lang));
+        document.querySelectorAll("[data-i]").forEach((node) => {
+          const key = node.getAttribute("data-i");
+          if (typeof L[key] === "string") node.innerHTML = L[key];
+        });
+        renderEditions(lang, L);
+      }
+
+      (function init() {
+        const params = new URLSearchParams(location.search);
+        let lang = params.get("lang");
+        if (lang !== "en" && lang !== "ja") {
+          try {
+            lang = localStorage.getItem("karasu-retro-lang");
+          } catch (e) {}
+        }
+        if (lang !== "en" && lang !== "ja") lang = "en";
+        setLang(lang);
+      })();
+    </script>
+  </body>
+</html>
