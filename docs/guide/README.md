@@ -23,6 +23,7 @@ Standalone how-tos, independent of the chapter series:
 | Recipe | For | Contents |
 |--------|-----|----------|
 | [Reverse-engineering with an LLM](reverse-engineering-with-ai.md) ([JA](reverse-engineering-with-ai.ja.md)) | Anyone exploring an unfamiliar project | feed `syntax.md` to Claude/ChatGPT → get a `.krs` overview → share via the **Share** button / embed via `/render` |
+| [Linking an ADR to a karasu structure](adr-permalinks.md) ([JA](adr-permalinks.ja.md)) | Anyone recording decisions in ADRs | the `/s?s=` payload as the canonical permalink, shortening as an optional alias, the trust trade-off |
 
 ## Chapter flow
 
