@@ -2,7 +2,7 @@
 
 - **日付**: 2026-06-30
 - **関連 Issue**: [#1829](https://github.com/kompiro/karasu/issues/1829)（near-term ADR permalink、permalink layer epic [#1826](https://github.com/kompiro/karasu/issues/1826)）
-- **関連 design doc**: `docs/design/adr-permalink-convention.md`（→ ADR 昇格予定。決定は B-4 → **B-3**（taka 短縮 + 必須 source）に改訂）
+- **関連 ADR（決定記録）**: [ADR-20260702-01](../adr/20260702-01-adr-permalink-convention.md)（規約の決定。B-4 → **B-3**（taka 短縮 + 必須 source）に改訂）
 - **関連 ADR**: [ADR-20260626-04](../adr/20260626-04-karasu-nest-ogp-share-page.md)（`/s?s=` OGP 共有ページ）/ [ADR-20260626-01](../adr/20260626-01-karasu-nest-hosted-preview.md)（karasu-nest stateless）
 - **関連 spec**: [`docs/spec/permalink.md`](../spec/permalink.md)（deep-permalink アンカー contract）
 - **関連 TPL**: [TPL-20260630-03](../test-perspectives/TPL-20260630-03-adr-permalink-records-source.md)（permalink は record ではなく pointer — 必須 `source` を記録）
