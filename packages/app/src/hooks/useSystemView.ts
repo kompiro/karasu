@@ -11,7 +11,9 @@ import {
   type DiagramTheme,
   type SystemNode,
   type NodeDiffMeta,
+  type CategoryId,
 } from "@karasu-tools/core";
+import { useCallback, useState } from "react";
 import iconManifest from "@karasu-tools/core/icons/icons.json";
 import serviceSvg from "@karasu-tools/core/icons/service.svg?raw";
 import clientSvg from "@karasu-tools/core/icons/client.svg?raw";
@@ -110,16 +112,36 @@ export function useSystemView(
   compareEntryPath: string | null = null,
   compareFs: FileSystemProvider | null = null,
   theme?: DiagramTheme,
-): SystemViewState & { recompile: () => void } {
+): SystemViewState & {
+  recompile: () => void;
+  collapsedCategories: ReadonlySet<CategoryId>;
+  toggleCategory: (category: CategoryId) => void;
+} {
   const emptyStateLabels = useEmptyStateLabels();
   const annotationBadgeLabels = useAnnotationBadgeLabels();
+
+  // Collapsed external/infra categories (Issue #1821). Owned here because a
+  // toggle recompiles the system view with the core `collapsedCategories`
+  // option (the collapse is a layout transform, not a client-side re-render).
+  const [collapsedCategories, setCollapsedCategories] = useState<ReadonlySet<CategoryId>>(
+    new Set(),
+  );
+  const toggleCategory = useCallback((category: CategoryId) => {
+    setCollapsedCategories((prev) => {
+      const next = new Set(prev);
+      if (next.has(category)) next.delete(category);
+      else next.add(category);
+      return next;
+    });
+  }, []);
+  const collapsedKey = [...collapsedCategories].sort().join(",");
 
   // Structural key for `viewPath` so that a fresh `[]` from `SET_ACTIVE_VIEW`
   // does not restart the in-flight debounce when the previous value was also
   // empty. Without this, switching view tabs while the initial compile is
   // pending keeps resetting the 300ms timer and never renders an SVG. See #1171.
   const viewPathKey = viewPath.join("/");
-  const currentKey = `${entryPath}:system:${viewPathKey}:cmp=${compareEntryPath ?? ""}`;
+  const currentKey = `${entryPath}:system:${viewPathKey}:cmp=${compareEntryPath ?? ""}:collapsed=${collapsedKey}`;
 
   const compile = async (): Promise<CompileOutcome<SystemViewState> | null> => {
     if (!entryPath || !fs) return null;
@@ -135,6 +157,8 @@ export function useSystemView(
       emptyStateLabels,
       annotationBadgeLabels,
       theme,
+      collapsedCategories,
+      interactive: true,
     });
 
     let base: Awaited<typeof basePromise>;
@@ -192,7 +216,7 @@ export function useSystemView(
     };
   };
 
-  return useDebouncedCompile<SystemViewState>({
+  const result = useDebouncedCompile<SystemViewState>({
     active: !!entryPath && !!fs,
     currentKey,
     initialState: {
@@ -220,6 +244,8 @@ export function useSystemView(
       compareFs,
       emptyStateLabels,
       annotationBadgeLabels,
+      collapsedKey,
     ],
   });
+  return { ...result, collapsedCategories, toggleCategory };
 }

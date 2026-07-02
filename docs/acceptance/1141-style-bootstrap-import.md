@@ -9,7 +9,7 @@ type: product
 - **対象ファイル**:
   - `packages/app/src/lib/append-style-rule.ts`、`packages/app/src/lib/append-style-rule.test.ts`
   - `packages/app/src/components/AppShell.tsx`
-- **関連 Design Doc**: [`docs/design/gui-driven-style-editing.md`](../design/gui-driven-style-editing.md)
+- **関連 Design Doc**: [`docs/adr/20260506-01-gui-driven-style-editing.md`](../adr/20260506-01-gui-driven-style-editing.md)
 - **依存**: AT-1098（edge direction context menu MVP）
 
 ## 受け入れ条件

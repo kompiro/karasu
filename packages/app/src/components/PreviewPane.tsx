@@ -5,6 +5,7 @@ import type {
   NodeMetadata,
   DomainEdgeDetail,
   NodeDiffMeta,
+  CategoryId,
 } from "@karasu-tools/core";
 import { NodeDetailPanel } from "./NodeDetailPanel.js";
 import { EdgeDetailPanel } from "./EdgeDetailPanel.js";
@@ -23,6 +24,8 @@ interface PreviewPaneProps {
   onDeployButtonClick?: (serviceId: string) => void;
   /** Called when user clicks the team label on a system node to cross-navigate to org view */
   onTeamButtonClick?: (teamId: string) => void;
+  /** Called when user clicks a category ⊖/⊕ control to collapse/expand it (#1821). */
+  onCategoryToggle?: (category: CategoryId) => void;
   /** Called when user clicks an owned service link on an org team node to cross-navigate to system view */
   onOwnedServiceClick?: (serviceId: string) => void;
   /** Node or container id to highlight after cross-navigation */
@@ -75,6 +78,7 @@ export function PreviewPane({
   onContainerClick,
   onDeployButtonClick,
   onTeamButtonClick,
+  onCategoryToggle,
   onOwnedServiceClick,
   highlightedNodeId,
   onClearHighlight,
@@ -282,6 +286,17 @@ export function PreviewPane({
         }
       }
 
+      // Category collapse/expand control (Issue #1821): ⊖ on an open group or
+      // ⊕ on a collapsed stub. The attribute carries the category to toggle.
+      const categoryControl = target.closest("[data-collapse-category]");
+      if (categoryControl && onCategoryToggle) {
+        const category = categoryControl.getAttribute("data-collapse-category");
+        if (category === "external" || category === "infra") {
+          onCategoryToggle(category);
+          return;
+        }
+      }
+
       // Explicitly non-interactive elements (e.g. "+N more" overflow label)
       if (target.closest("[data-noop]")) return;
 
@@ -342,6 +357,7 @@ export function PreviewPane({
       onContainerClick,
       onDeployButtonClick,
       onTeamButtonClick,
+      onCategoryToggle,
       onOwnedServiceClick,
       onClearHighlight,
     ],

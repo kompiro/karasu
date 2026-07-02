@@ -732,16 +732,20 @@ describe("PreviewColumn — Share (karasu-nest inline URL)", () => {
 
     await user.click(screen.getByRole("button", { name: /Share/ }));
 
-    // The URL is generated asynchronously (flatten); wait for the field.
-    const input = (await screen.findByLabelText("Shareable URL")) as HTMLInputElement;
-    const copied = input.value;
+    // The URLs are generated asynchronously (flatten); wait for the private field.
+    const priv = (await screen.findByLabelText("Private shareable URL")) as HTMLInputElement;
+    const copied = priv.value;
     expect(copied).toContain("/#s=");
 
-    // The copied URL round-trips back to the original project.
+    // The unfurlable (server-visible) link is offered alongside it.
+    const unfurl = screen.getByLabelText("Shareable URL with preview") as HTMLInputElement;
+    expect(unfurl.value).toContain("/s?s=");
+
+    // The private URL round-trips back to the original project.
     const hash = copied.slice(copied.indexOf("#"));
     expect(readSharedProjectFromHash(hash)).toEqual({ payload: { krs: SAMPLE } });
 
-    // Eager copy happened on the same gesture chain.
+    // Eager copy of the private link happened on the same gesture chain.
     expect(await navigator.clipboard.readText()).toBe(copied);
   });
 });

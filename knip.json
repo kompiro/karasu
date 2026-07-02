@@ -2,7 +2,8 @@
   "$schema": "https://unpkg.com/knip@latest/schema.json",
   "workspaces": {
     ".": {
-      "project": ["scripts/**/*.ts"]
+      "project": ["scripts/**/*.ts"],
+      "ignoreDependencies": ["@resvg/resvg-wasm"]
     },
     "packages/core": {
       "project": ["src/**/*.ts", "!src/**/*.test.ts"]

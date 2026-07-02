@@ -1,7 +1,40 @@
 import { deflateSync, inflateSync, strToU8, strFromU8 } from "fflate";
-import type { SharePayload } from "@karasu-tools/core";
+import type { SharePayload, ShareTarget, ShareTargetView } from "@karasu-tools/core";
 
-export type { SharePayload };
+export type { SharePayload, ShareTarget };
+
+/**
+ * The view values a deep permalink target may name. `satisfies Record<…>` ties
+ * this runtime allow-list to the `ShareTargetView` union, so adding a member to
+ * the type without listing it here is a compile error (TPL-20260510-03) rather
+ * than a silent "unknown view → whole-model" degrade.
+ */
+const SHARE_TARGET_VIEWS = {
+  system: true,
+  deploy: true,
+  org: true,
+  matrix: true,
+} satisfies Record<ShareTargetView, true>;
+
+/**
+ * Validate/canonicalize an untrusted `target` from a decoded payload
+ * (TPL-20260510-17 — the payload crosses a trust boundary). Returns a clean
+ * `ShareTarget` or `undefined` when the value is missing or its `view` is not
+ * one of the known views — an unrecognized target degrades to a whole-model
+ * open rather than throwing.
+ */
+function sanitizeTarget(value: unknown): ShareTarget | undefined {
+  if (!value || typeof value !== "object") return undefined;
+  const t = value as Record<string, unknown>;
+  if (typeof t.view !== "string" || !Object.hasOwn(SHARE_TARGET_VIEWS, t.view)) {
+    return undefined;
+  }
+  const target: ShareTarget = { view: t.view as ShareTargetView };
+  if (typeof t.node === "string" && t.node !== "") target.node = t.node;
+  if (typeof t.highlight === "string" && t.highlight !== "") target.highlight = t.highlight;
+  if (t.orgTree === true) target.orgTree = true;
+  return target;
+}
 
 /**
  * Inline share encoding for karasu-nest (design: docs/design/karasu-nest-hosted-preview.md).
@@ -73,8 +106,10 @@ export function decodeShare(encoded: string): SharePayload | null {
   try {
     const obj: unknown = JSON.parse(text);
     if (obj && typeof obj === "object" && typeof (obj as SharePayload).krs === "string") {
-      const { krs, style } = obj as SharePayload;
-      return typeof style === "string" ? { krs, style } : { krs };
+      const { krs, style, target } = obj as SharePayload;
+      const base: SharePayload = typeof style === "string" ? { krs, style } : { krs };
+      const cleanTarget = sanitizeTarget(target);
+      return cleanTarget ? { ...base, target: cleanTarget } : base;
     }
   } catch {
     // Not JSON → first-release raw-.krs payload; fall through.
@@ -88,6 +123,44 @@ export function buildShareUrl(
   locationLike: { origin: string; pathname: string },
 ): string {
   return `${locationLike.origin}${locationLike.pathname}#${SHARE_FRAGMENT_PREFIX}${encodeShare(payload)}`;
+}
+
+/**
+ * Max encoded-payload length for the server-visible unfurl URL (`/s?s=`).
+ *
+ * The fragment URL has no practical limit, but the unfurl URL's payload travels
+ * in the query and is echoed again into the `/render?s=` image URL, so it must
+ * stay well under request-line / crawler limits. ~8000 leaves ample headroom
+ * below Cloudflare's ~16KB URL cap while covering every realistic project
+ * (a real reverse-engineered `.krs` compresses to ~5k chars — ADR-20260626-01).
+ */
+export const MAX_UNFURL_PAYLOAD = 8000;
+
+/** Path of the server-rendered share page (OGP unfurl). */
+const SHARE_PAGE_PATH = "/s";
+
+/**
+ * Build both share URLs from a single encode.
+ *
+ * - `fragmentUrl`: the private `#s=` link — never sent to the server, but no
+ *   OGP preview (crawlers can't see the fragment).
+ * - `unfurlUrl`: the server-visible `/s?s=` link that unfurls with the diagram
+ *   (OGP), or `null` when the encoded payload exceeds {@link MAX_UNFURL_PAYLOAD}
+ *   — oversized projects fall back to the fragment-only link.
+ *
+ * Encodes once and reuses the result for both URLs.
+ */
+export function buildShareUrls(
+  payload: SharePayload,
+  locationLike: { origin: string; pathname: string },
+): { fragmentUrl: string; unfurlUrl: string | null } {
+  const encoded = encodeShare(payload);
+  const fragmentUrl = `${locationLike.origin}${locationLike.pathname}#${SHARE_FRAGMENT_PREFIX}${encoded}`;
+  const unfurlUrl =
+    encoded.length > MAX_UNFURL_PAYLOAD
+      ? null
+      : `${locationLike.origin}${SHARE_PAGE_PATH}?${SHARE_FRAGMENT_PREFIX}${encoded}`;
+  return { fragmentUrl, unfurlUrl };
 }
 
 /**

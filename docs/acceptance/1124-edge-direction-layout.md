@@ -11,7 +11,7 @@ type: product
   - `packages/core/src/renderer/svg-renderer.ts`（`render` で `edgeDirections` map を組み立てて伝搬）
   - `packages/core/src/renderer/layout.test.ts`、`packages/core/src/index.test.ts`
   - `docs/spec/style.md`、`docs/spec/style.ja.md`
-- **関連 Design Doc**: [`docs/design/edge-direction-style.md`](../design/edge-direction-style.md)、[`docs/design/gui-driven-style-editing.md`](../design/gui-driven-style-editing.md)
+- **関連 Design Doc**: [`docs/adr/20260506-03-edge-direction-style.md`](../adr/20260506-03-edge-direction-style.md)、[`docs/adr/20260506-01-gui-driven-style-editing.md`](../adr/20260506-01-gui-driven-style-editing.md)
 - **依存**: [#1110](https://github.com/kompiro/karasu/issues/1110)、[#1111](https://github.com/kompiro/karasu/issues/1111)（edge ID selector）、[#1125](https://github.com/kompiro/karasu/pull/1125)（`direction` プロパティ）、[#1129](https://github.com/kompiro/karasu/pull/1129)（GUI 右クリックメニュー）
 
 ## 受け入れ条件

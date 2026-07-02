@@ -11,7 +11,7 @@ type: product
   - `packages/core/src/renderer/layout.ts`（forced layer の単一 / 多 system 経路にフック）
   - `packages/core/src/renderer/layer-layout-logics.test.ts`（新規）、`packages/core/src/index.test.ts`
   - `docs/spec/style.md`、`docs/spec/style.ja.md`
-- **関連設計**: [`docs/design/edge-direction-horizontal.md`](../design/edge-direction-horizontal.md)
+- **関連設計**: [`docs/adr/20260506-04-edge-direction-horizontal.md`](../adr/20260506-04-edge-direction-horizontal.md)
 - **関連 ADR**: ADR-20260409-04（barycenter）、ADR-20260429-04（column hint）、ADR-20260430-04（last-wins）
 - **依存**: AT-1124（`direction: up` 実装）、AT-1134（`direction: down` 実装）
 

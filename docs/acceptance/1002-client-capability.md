@@ -11,7 +11,7 @@
   - `packages/core/src/renderer/layout.ts`
   - `examples/ja/getting-started/index.krs`, `examples/en/getting-started/index.krs`, `examples/en/client-mcp/index.krs`
   - `docs/spec/syntax.md`, `docs/spec/tags-annotations.md`
-- **関連 Design Doc**: [client-capability-modeling.md](../design/client-capability-modeling.md)
+- **関連 Design Doc**: [ADR-20260429-07](../adr/20260429-07-client-capability-modeling.md)
 - **関連 ADR**: [ADR-20260428-06](../adr/20260428-06-client-mcp-modeling.md) (`client` kind / `resource <storageKind>`)
 
 ## 受け入れ条件

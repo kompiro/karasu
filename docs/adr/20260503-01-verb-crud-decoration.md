@@ -25,7 +25,7 @@ assumptions:
 - **ステータス**: 決定済み
 - **実装**: PR #1100（Issue #1082）
 - **関連**:
-  - Design Doc: [verb-crud-decoration.md](../design/verb-crud-decoration.md)（昇格元）
+  - Design Doc: verb-crud-decoration.md（昇格元、削除済み）
   - ADR-20260430-03: usecase 内 resource の `operations` プロパティ — 本 ADR はその syntax 拡張
   - ADR-20260502-01: CRUD マトリクスビュー — 装飾済み verb を消費して `?` suffix を消す
   - 受け入れテスト: `docs/acceptance/1082-verb-crud-decoration.md`

@@ -182,7 +182,15 @@ export type Translations = {
   "preview.share.ariaLabel": string;
   "preview.share.dialog.title": string;
   "preview.share.dialog.description": string;
-  "preview.share.dialog.urlAriaLabel": string;
+  "preview.share.dialog.privateLabel": string;
+  "preview.share.dialog.privateHint": string;
+  "preview.share.dialog.privateUrlAriaLabel": string;
+  "preview.share.dialog.unfurlLabel": string;
+  "preview.share.dialog.unfurlHint": string;
+  "preview.share.dialog.unfurlUrlAriaLabel": string;
+  "preview.share.dialog.oversizeWarning": string;
+  "preview.share.dialog.includeTargetLabel": string;
+  "preview.share.dialog.includeTargetHint": string;
   "preview.share.dialog.generating": string;
   "preview.share.dialog.copy": string;
   "preview.share.dialog.copied": string;

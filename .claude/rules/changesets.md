@@ -3,6 +3,8 @@ paths:
   - "packages/core/**/*.ts"
   - "packages/core/**/*.tsx"
   - "packages/cli/**/*.ts"
+  - "packages/vscode/**/*.ts"
+  - "packages/vscode/**/*.tsx"
 ---
 
 # Changeset Rules
@@ -40,7 +42,7 @@ pnpm changeset
 ```
 
 依存の **cascade 非対称性**に注意（実測・詳細は
-`docs/design/vscode-changeset-versioning.md`）。changesets は `dependencies` の
+[ADR-20260624-03](../../docs/adr/20260624-03-vscode-changeset-versioning.md)）。changesets は `dependencies` の
 dependent は版 bump するが、`devDependencies` は範囲更新のみで bump しない:
 
 | 変更箇所 | 名指すパッケージ | 自動 cascade |

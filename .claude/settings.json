@@ -1,30 +1,8 @@
 {
   "permissions": {
     "allow": [
-      "Bash(git commit:*)",
-      "Bash(rm /workspaces/karasu/*)",
-      "Bash(rmdir /workspaces/karasu/*)",
-      "Bash(git add:*)",
-      "Bash(npm install:*)",
-      "Bash(npm audit:*)",
-      "Bash(npm show:*)",
-      "Bash(npx vitest:*)",
-      "Bash(npx tsc:*)",
-      "Bash(npx vite:*)",
       "Bash(git:*)",
-      "Bash(npm ls:*)",
-      "Bash(find:*)",
-      "Bash(npm run:*)",
-      "Bash(grep:*)",
-      "Bash(node -e \":*)",
-      "WebSearch",
-      "Bash(npm test:*)",
-      "Bash(wc -l /workspaces/karasu/packages/core/src/**/*.ts /workspaces/karasu/packages/app/src/**/*.ts*)",
-      "Bash(npx oxlint:*)",
-      "Bash(npx oxfmt:*)",
-      "Bash(ls /workspaces/karasu/.claude/skills/*/)",
       "Bash(gh:*)",
-      "Bash(npm ci:*)",
       "Bash(cd /workspaces/karasu* && git:*)"
     ],
     "additionalDirectories": [
@@ -35,19 +13,6 @@
     ]
   },
   "hooks": {
-    "PreToolUse": [
-      {
-        "matcher": "Bash",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "pkill -f 'vite' 2>/dev/null || true",
-            "if": "Bash(git worktree remove:*)",
-            "statusMessage": "Stopping dev server..."
-          }
-        ]
-      }
-    ],
     "Stop": [
       {
         "hooks": [

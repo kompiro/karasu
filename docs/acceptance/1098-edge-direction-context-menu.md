@@ -14,7 +14,7 @@ type: product
   - `packages/app/src/state/preview-context.tsx`
   - `packages/app/src/lib/append-style-rule.ts`
   - `packages/app/src/styles/app.css`
-- **関連 Design Doc**: [`docs/design/gui-driven-style-editing.md`](../design/gui-driven-style-editing.md)、[`docs/design/edge-direction-style.md`](../design/edge-direction-style.md)
+- **関連 Design Doc**: [`docs/adr/20260506-01-gui-driven-style-editing.md`](../adr/20260506-01-gui-driven-style-editing.md)、[`docs/adr/20260506-03-edge-direction-style.md`](../adr/20260506-03-edge-direction-style.md)
 - **依存**: [#1110](https://github.com/kompiro/karasu/issues/1110)、[#1111](https://github.com/kompiro/karasu/issues/1111)（edge author ID + canonical ID）、[#1125](https://github.com/kompiro/karasu/pull/1125)（`direction` プロパティ）
 - **フォロー**: [#1124](https://github.com/kompiro/karasu/issues/1124)（layout エンジンが `direction` を honor する作業）
 

@@ -1,9 +1,75 @@
 // @vitest-environment jsdom
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { renderHook, act, cleanup } from "@testing-library/react";
-import { buildHash, parseHash, useHistoryNavigation } from "./useHistoryNavigation.js";
+import {
+  buildHash,
+  parseHash,
+  shareTargetToHash,
+  useHistoryNavigation,
+} from "./useHistoryNavigation.js";
+import { anchorId } from "@karasu-tools/core";
 
 afterEach(cleanup);
+
+// ─── Cross-surface anchor parity (TPL-20260630-01, docs/spec/permalink.md) ─────
+// The SPA hash (`buildHash`) and the static drill-down SVG (`anchorId` in core)
+// must emit the SAME `krs-<view>-<sanitizeId(id)>` grammar so a deep permalink
+// is portable between the two surfaces. If these drift, a shared link resolves
+// on one surface and silently falls back to root on the other.
+describe("anchor parity: buildHash ↔ core anchorId", () => {
+  it.each([
+    ["system", "Payment"],
+    ["org", "ecTeam"],
+    ["system", "weird id/with.chars"],
+    ["org", "root"],
+  ])("buildHash(%s,[%s]) base matches #anchorId", (view, id) => {
+    const hash = buildHash(view as "system" | "org", [id]);
+    expect(hash).toBe(`#${anchorId(view, id)}`);
+  });
+
+  it("root-level system/org hashes match anchorId(view,'root')", () => {
+    expect(buildHash("system", [])).toBe(`#${anchorId("system", "root")}`);
+    expect(buildHash("org", [])).toBe(`#${anchorId("org", "root")}`);
+  });
+
+  // Documented exception (docs/spec/permalink.md): deploy/matrix are single-level
+  // whole-view tabs with a bare `#krs-<view>` token, NOT element anchors — they
+  // intentionally do not share the `anchorId` leaf grammar.
+  it("deploy/matrix use a bare #krs-<view> token (not the anchorId grammar)", () => {
+    expect(buildHash("deploy", [])).toBe("#krs-deploy");
+    expect(buildHash("matrix", [])).toBe("#krs-matrix");
+    expect(buildHash("deploy", [])).not.toBe(`#${anchorId("deploy", "root")}`);
+  });
+});
+
+// ─── shareTargetToHash (deep permalink → canonical hash, #1827) ────────────────
+describe("shareTargetToHash", () => {
+  it("maps a drilled node to #krs-<view>-<node>", () => {
+    expect(shareTargetToHash({ view: "system", node: "Payment" })).toBe("#krs-system-Payment");
+  });
+
+  it("maps a view-only target to the view root", () => {
+    expect(shareTargetToHash({ view: "deploy" })).toBe("#krs-deploy");
+    expect(shareTargetToHash({ view: "system" })).toBe("#krs-system-root");
+  });
+
+  it("appends the highlight suffix and honors orgTree", () => {
+    expect(shareTargetToHash({ view: "system", node: "Payment", highlight: "Api" })).toBe(
+      "#krs-system-Payment:Api",
+    );
+    expect(shareTargetToHash({ view: "org", orgTree: true })).toBe("#krs-org-tree");
+  });
+
+  it("round-trips back through parseHash (view + node + highlight)", () => {
+    const hash = shareTargetToHash({ view: "system", node: "Payment", highlight: "Api" });
+    const parsed = parseHash(hash);
+    expect(parsed).toMatchObject({
+      activeView: "system",
+      nodeId: "Payment",
+      highlightNodeId: "Api",
+    });
+  });
+});
 
 // ─── buildHash ────────────────────────────────────────────────────────────────
 
@@ -378,6 +444,84 @@ describe("useHistoryNavigation", () => {
       });
 
       expect(dispatch).toHaveBeenCalledWith({ type: "SET_VIEW_PATH", path: [] });
+    });
+  });
+
+  // Regression for #1842: on a shared open, the project-seed effect's
+  // SELECT_FILE → VIEW_RESET runs after effect ① and wipes the highlight it
+  // dispatched on mount. Effect ② must re-apply the highlight once the
+  // model-derived index populates (which is guaranteed to be after that reset).
+  // The growing index simulates the seed having loaded the file content.
+  describe("pending highlight restoration (#1842)", () => {
+    it("re-applies the highlight when nodePathIndex becomes available (node + highlight)", async () => {
+      history.replaceState(null, "", "#krs-system-Payment:Api");
+      const dispatch = makeDispatch();
+      let nodePathIndex = new Map<string, string[]>();
+
+      const { rerender } = renderHook(() =>
+        useHistoryNavigation(makeOptions({ dispatch, nodePathIndex })),
+      );
+
+      // Effect ① fires the initial highlight; the seed's VIEW_RESET (not modeled
+      // here) would clear it. Drop those mount dispatches and assert the deferred
+      // re-application only.
+      dispatch.mockClear();
+
+      nodePathIndex = new Map([["Payment", ["Payment"]]]);
+      await act(async () => {
+        rerender();
+      });
+
+      expect(dispatch).toHaveBeenCalledWith({ type: "SET_VIEW_PATH", path: ["Payment"] });
+      expect(dispatch).toHaveBeenCalledWith({ type: "SET_HIGHLIGHTED_NODE", nodeId: "Api" });
+    });
+
+    it("re-applies a highlight-only-at-root hash once the index populates", async () => {
+      history.replaceState(null, "", "#krs-system-root:Api");
+      const dispatch = makeDispatch();
+      let nodePathIndex = new Map<string, string[]>();
+
+      const { rerender } = renderHook(() =>
+        useHistoryNavigation(makeOptions({ dispatch, nodePathIndex })),
+      );
+
+      // Empty index — no deferred re-application yet (would land before the
+      // seed's VIEW_RESET).
+      dispatch.mockClear();
+
+      nodePathIndex = new Map([["Api", ["Api"]]]);
+      await act(async () => {
+        rerender();
+      });
+
+      expect(dispatch).toHaveBeenCalledWith({ type: "SET_HIGHLIGHTED_NODE", nodeId: "Api" });
+    });
+
+    it("re-applies the highlight only once across further index changes", async () => {
+      history.replaceState(null, "", "#krs-system-Payment:Api");
+      const dispatch = makeDispatch();
+      let nodePathIndex = new Map([["Payment", ["Payment"]]]);
+
+      const { rerender } = renderHook(() =>
+        useHistoryNavigation(makeOptions({ dispatch, nodePathIndex })),
+      );
+
+      // Index already populated on mount — effect ② applies once. Clear, then
+      // recompute the index (e.g. user edits the file) and assert no re-fire.
+      await act(async () => {
+        rerender();
+      });
+      dispatch.mockClear();
+
+      nodePathIndex = new Map([
+        ["Payment", ["Payment"]],
+        ["Extra", ["Extra"]],
+      ]);
+      await act(async () => {
+        rerender();
+      });
+
+      expect(dispatch).not.toHaveBeenCalledWith({ type: "SET_HIGHLIGHTED_NODE", nodeId: "Api" });
     });
   });
 

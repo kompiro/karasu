@@ -181,8 +181,20 @@ export const ja: Partial<Translations> = {
   "preview.share.ariaLabel": "この図を共有",
   "preview.share.dialog.title": "この図を共有",
   "preview.share.dialog.description":
-    "このリンクを知っている人は誰でもこの図を閲覧できます。内容は URL 自体に埋め込まれており、サーバーには何もアップロードされません。",
-  "preview.share.dialog.urlAriaLabel": "共有 URL",
+    "リンクを知っている人は誰でもこの図を閲覧できます（内容は URL 自体に埋め込まれます）。共有方法に合わせてリンクを選んでください。",
+  "preview.share.dialog.privateLabel": "プライベートリンク",
+  "preview.share.dialog.privateHint":
+    "サーバーには送信されません。ただし Slack や X などのリンクプレビューには図が表示されません。",
+  "preview.share.dialog.privateUrlAriaLabel": "プライベート共有 URL",
+  "preview.share.dialog.unfurlLabel": "プレビュー付きリンク",
+  "preview.share.dialog.unfurlHint":
+    "Slack や X などでこの図がプレビュー表示されます。共有内容はサーバーに送信されます（ログに残る場合があります）。",
+  "preview.share.dialog.unfurlUrlAriaLabel": "プレビュー付き共有 URL",
+  "preview.share.dialog.oversizeWarning":
+    "このプロジェクトは大きすぎてプレビュー付きリンクを作成できません。プライベートリンクは利用できます。",
+  "preview.share.dialog.includeTargetLabel": "現在の表示位置にリンクする",
+  "preview.share.dialog.includeTargetHint":
+    "モデル全体ではなく、今いる位置までドリルした状態（フォーカス中の要素はハイライト）でリンクを開きます。",
   "preview.share.dialog.generating": "リンクを生成中…",
   "preview.share.dialog.copy": "⧉ コピー",
   "preview.share.dialog.copied": "✓ クリップボードにコピーしました",

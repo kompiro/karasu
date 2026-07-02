@@ -12,34 +12,96 @@ import { useTranslation } from "../i18n/index.js";
 
 interface ShareDialogProps {
   open: boolean;
-  /** The share URL, or `null` while it is still being generated (flattening). */
-  url: string | null;
-  /** Whether the URL is currently on the clipboard (real result, owned by parent). */
-  copied: boolean;
-  onCopy: () => void;
+  /**
+   * The private `#s=` URL (never sent to the server), or `null` while it is
+   * still being generated (flattening).
+   */
+  fragmentUrl: string | null;
+  /**
+   * The server-visible `/s?s=` URL that unfurls with the diagram (OGP), or
+   * `null` when the payload is too large for a query URL (oversize fallback).
+   * Only meaningful once `fragmentUrl` is non-null (generation finished).
+   */
+  unfurlUrl: string | null;
+  /** Which URL currently shows the "copied" feedback (owned by parent). */
+  copiedUrl: string | null;
+  /**
+   * Whether the current view position can be deep-linked (#1827) — `false`
+   * at the plain whole-model root, where the checkbox is hidden.
+   */
+  canIncludeTarget: boolean;
+  /** Whether the deep permalink target is currently embedded in the links. */
+  includeTarget: boolean;
+  onIncludeTargetChange: (next: boolean) => void;
+  onCopy: (url: string) => void;
   onClose: () => void;
 }
 
 /**
  * Share dialog for karasu-nest inline sharing (design:
- * docs/design/karasu-nest-hosted-preview.md, UI section).
+ * docs/design/karasu-nest-ogp-share-page.md → ADR follow-up of
+ * ADR-20260626-01, Issue #1801).
  *
- * Shows the generated inline URL in a read-only field (selected on focus) with
- * a copy action. The Share button copies eagerly, but the dialog's Copy button
- * is the reliable cross-browser path (a fresh user gesture) and reflects the
- * real clipboard result via `copied`.
+ * Offers two links and spells out the trade-off so the user chooses
+ * deliberately:
+ * - **Private** (`#s=`): never reaches the server, but no link preview.
+ * - **Preview** (`/s?s=`): unfurls with the diagram in Slack/X/etc., at the
+ *   cost of the shared content being server-visible.
+ *
+ * When the project is too large to fit a query URL, the preview link is
+ * dropped (`unfurlUrl === null`) and an oversize note is shown — the private
+ * link still works.
  */
-export function ShareDialog({ open, url, copied, onCopy, onClose }: ShareDialogProps) {
+export function ShareDialog({
+  open,
+  fragmentUrl,
+  unfurlUrl,
+  copiedUrl,
+  canIncludeTarget,
+  includeTarget,
+  onIncludeTargetChange,
+  onCopy,
+  onClose,
+}: ShareDialogProps) {
   const { t } = useTranslation();
-  const inputRef = useRef<HTMLInputElement>(null);
+  const firstInputRef = useRef<HTMLInputElement>(null);
 
-  // Select the URL once it's ready so a manual Cmd/Ctrl+C works too. setTimeout
-  // lets Radix's focus-on-open settle first (dialog.md checklist).
+  // Select the first URL once it's ready so a manual Cmd/Ctrl+C works too.
+  // setTimeout lets Radix's focus-on-open settle first (dialog.md checklist).
   useEffect(() => {
-    if (!open || url === null) return;
-    const id = window.setTimeout(() => inputRef.current?.select(), 0);
+    if (!open || fragmentUrl === null) return;
+    const id = window.setTimeout(() => firstInputRef.current?.select(), 0);
     return () => window.clearTimeout(id);
-  }, [open, url]);
+  }, [open, fragmentUrl]);
+
+  function renderField(
+    url: string,
+    label: string,
+    hint: string,
+    ariaLabel: string,
+    ref?: React.Ref<HTMLInputElement>,
+  ) {
+    return (
+      <div className="flex flex-col gap-1">
+        <span className="text-xs font-medium text-[color:var(--text-primary)]">{label}</span>
+        <div className="flex items-center gap-2">
+          <input
+            ref={ref}
+            className="min-w-0 flex-1 rounded border border-[color:var(--border-strong)] bg-transparent px-2 py-1 font-mono text-xs text-[color:var(--text-primary)] outline-none"
+            type="text"
+            readOnly
+            value={url}
+            aria-label={ariaLabel}
+            onFocus={(e) => e.currentTarget.select()}
+          />
+          <Button variant="actionable" onClick={() => onCopy(url)} aria-live="polite">
+            {copiedUrl === url ? t("preview.share.dialog.copied") : t("preview.share.dialog.copy")}
+          </Button>
+        </div>
+        <span className="text-xs text-[color:var(--text-secondary)]">{hint}</span>
+      </div>
+    );
+  }
 
   return (
     <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
@@ -48,24 +110,49 @@ export function ShareDialog({ open, url, copied, onCopy, onClose }: ShareDialogP
           <DialogTitle>{t("preview.share.dialog.title")}</DialogTitle>
           <DialogDescription>{t("preview.share.dialog.description")}</DialogDescription>
         </DialogHeader>
-        {url === null ? (
+        {fragmentUrl === null ? (
           <p className="text-sm text-[color:var(--text-secondary)]">
             {t("preview.share.dialog.generating")}
           </p>
         ) : (
-          <div className="flex items-center gap-2">
-            <input
-              ref={inputRef}
-              className="min-w-0 flex-1 rounded border border-[color:var(--border-strong)] bg-transparent px-2 py-1 font-mono text-xs text-[color:var(--text-primary)] outline-none"
-              type="text"
-              readOnly
-              value={url}
-              aria-label={t("preview.share.dialog.urlAriaLabel")}
-              onFocus={(e) => e.currentTarget.select()}
-            />
-            <Button variant="actionable" onClick={onCopy} aria-live="polite">
-              {copied ? t("preview.share.dialog.copied") : t("preview.share.dialog.copy")}
-            </Button>
+          <div className="flex flex-col gap-4">
+            {canIncludeTarget && (
+              <label className="flex items-start gap-2 text-xs text-[color:var(--text-primary)]">
+                <input
+                  type="checkbox"
+                  className="mt-0.5"
+                  checked={includeTarget}
+                  onChange={(e) => onIncludeTargetChange(e.currentTarget.checked)}
+                />
+                <span className="flex flex-col gap-0.5">
+                  <span className="font-medium">
+                    {t("preview.share.dialog.includeTargetLabel")}
+                  </span>
+                  <span className="text-[color:var(--text-secondary)]">
+                    {t("preview.share.dialog.includeTargetHint")}
+                  </span>
+                </span>
+              </label>
+            )}
+            {renderField(
+              fragmentUrl,
+              t("preview.share.dialog.privateLabel"),
+              t("preview.share.dialog.privateHint"),
+              t("preview.share.dialog.privateUrlAriaLabel"),
+              firstInputRef,
+            )}
+            {unfurlUrl === null ? (
+              <p className="text-xs text-[color:var(--text-secondary)]">
+                {t("preview.share.dialog.oversizeWarning")}
+              </p>
+            ) : (
+              renderField(
+                unfurlUrl,
+                t("preview.share.dialog.unfurlLabel"),
+                t("preview.share.dialog.unfurlHint"),
+                t("preview.share.dialog.unfurlUrlAriaLabel"),
+              )
+            )}
           </div>
         )}
         <DialogFooter>

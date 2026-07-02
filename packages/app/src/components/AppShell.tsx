@@ -277,6 +277,7 @@ export function AppShell({
       hasDeployDiagram: views.system.hasDeployDiagram,
       nodeDiff: views.system.nodeDiff,
       resolvedSystems: views.system.resolvedSystems,
+      toggleCategory: views.system.toggleCategory,
     },
     deploy: {
       svg: views.deploy.svg,

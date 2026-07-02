@@ -30,7 +30,7 @@ assumptions:
 - **ステータス**: 決定済み
 - **実装**: PR #1073（Issue #1062）
 - **関連**:
-  - Design Doc: [crud-matrix-view.md](../design/crud-matrix-view.md)（昇格元）
+  - Design Doc: crud-matrix-view.md（昇格元、削除済み）
   - ADR-20260430-03: usecase 内 resource の `operations` プロパティ
   - ADR-20260430-04: usecase view edge の read/write 差別化
   - 受け入れテスト: `docs/acceptance/1062-crud-matrix-view.md`

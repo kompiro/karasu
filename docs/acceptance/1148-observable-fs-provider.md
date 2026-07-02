@@ -10,7 +10,7 @@ type: product
   - `packages/app/src/fs/observable-provider.ts`、`packages/app/src/fs/observable-provider.test.ts`
   - `packages/app/src/App.tsx`
   - `packages/app/src/components/FileTree.tsx`
-- **関連 Design Doc**: [`docs/design/file-tree-refresh-on-external-write.md`](../design/file-tree-refresh-on-external-write.md)
+- **関連 Design Doc**: [`docs/adr/20260507-01-observable-fs-provider.md`](../adr/20260507-01-observable-fs-provider.md)
 - **依存**: [#1145](https://github.com/kompiro/karasu/pull/1145)（GUI style bootstrap — 隣接 `.krs.style` を新規作成する経路）
 
 ## 受け入れ条件

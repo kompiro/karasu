@@ -7,6 +7,7 @@
 > **English** (this file) · [日本語](README.ja.md)
 
 [![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/kompiro/karasu)
+<a href="https://cloudflare.com"><img src="https://workers.cloudflare.com/built-with-cloudflare.svg" alt="Built with Cloudflare" height="20" /></a>
 
 **A text-based DSL for describing the logical, physical, and organizational dimensions of a system in one language — built to co-design teams and architecture together.**
 
@@ -36,7 +37,7 @@ That said, it is built to be safe to start adopting now:
 
 ## Try it
 
-Run it in your browser: **<https://karasu.pages.dev/>**
+Run it in your browser: **<https://karasu.kompiro.dev/>**
 
 A staged `ec-platform` tutorial (including Getting Started) loads automatically on first launch — a locale-matched seed (English or Japanese) is picked so the tutorial reads naturally in your language. You can edit `.krs`, preview, drill down, and export SVG right away. To use the AI chat feature, enter a Claude API key (BYOK) under the Settings tab — the key is stored in the browser's `sessionStorage` and is never sent to any external server.
 
@@ -304,7 +305,7 @@ karasu matrix arch.krs --format csv --writes-only > writes.csv
 
 > **Status: experimental**
 >
-> The VS Code extension is intentionally a lower priority than the core parser, renderer, and web preview. It is offered as a convenience for VS Code users who want to edit `.krs` locally; features such as completion, code actions, and rename are still minimal. If you want a polished basic authoring experience, the web preview (`karasu serve` or the hosted browser version) is recommended.
+> The VS Code extension is intentionally a lower priority than the core parser, renderer, and web preview. It is offered as a convenience for VS Code users who want to edit `.krs` locally; completion is basic, and code actions and rename are not yet available. If you want a polished basic authoring experience, the web preview (`karasu serve` or the hosted browser version) is recommended.
 
 Located under `packages/vscode/`. What currently works:
 
@@ -317,14 +318,12 @@ Located under `packages/vscode/`. What currently works:
 
 ### Install
 
-Once published, install from the VS Code Marketplace
+Install from the VS Code Marketplace
 ([`karasu-tools.karasu-vscode`](https://marketplace.visualstudio.com/items?itemName=karasu-tools.karasu-vscode)):
 
 ```sh
 code --install-extension karasu-tools.karasu-vscode
 ```
-
-> The Marketplace listing goes live with the launch ([#1316](https://github.com/kompiro/karasu/issues/1316)); the link and command above are not active until then.
 
 ## GitHub Actions
 

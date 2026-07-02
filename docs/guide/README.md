@@ -16,6 +16,14 @@ Read end to end and you traverse the full loop of working with architecture in k
 | 4 | [Access Paths & Clients](04-access-paths.md) ([JA](04-access-paths.ja.md)) | Product architects | `user → client → service`, `handles` / `delivers`, form-factors / capabilities |
 | 5 | [Communicating Diagrams (style, legend, CI)](05-communicating-diagrams.md) ([JA](05-communicating-diagrams.ja.md)) | Everyone | `.krs.style` theming, `legend`, keeping diagrams fresh in CI, draw.io export |
 
+## Recipes
+
+Standalone how-tos, independent of the chapter series:
+
+| Recipe | For | Contents |
+|--------|-----|----------|
+| [Reverse-engineering with an LLM](reverse-engineering-with-ai.md) ([JA](reverse-engineering-with-ai.ja.md)) | Anyone exploring an unfamiliar project | feed `syntax.md` to Claude/ChatGPT → get a `.krs` overview → share via the **Share** button / embed via `/render` |
+
 ## Chapter flow
 
 ```

@@ -9,7 +9,7 @@ type: product
 - **対象ファイル**:
   - `packages/app/src/hooks/useEditorExternalRefresh.ts`、`packages/app/src/hooks/useEditorExternalRefresh.test.ts`
   - `packages/app/src/components/AppShell.tsx`
-- **関連 Design Doc**: [`docs/design/editor-external-refresh.md`](../design/editor-external-refresh.md)
+- **関連 Design Doc**: [`docs/adr/20260507-02-editor-external-refresh.md`](../adr/20260507-02-editor-external-refresh.md)
 - **関連 ADR**: [ADR-20260506-01](../adr/20260506-01-gui-driven-style-editing.md)（cascade-tail-wins）、[ADR-20260506-06](../adr/20260506-06-krs-style-open-affordance.md)（`.krs.style` 直接編集の append target）
 - **依存実装**: [#1151](https://github.com/kompiro/karasu/pull/1151)（`ObservableFileSystemProvider`）
 

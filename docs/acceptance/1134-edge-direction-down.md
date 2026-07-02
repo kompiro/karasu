@@ -10,7 +10,7 @@ type: product
   - `packages/core/src/renderer/layout.ts`（`applyDirectionHintsToForcedLayers` を `up`/`down` 一元処理に拡張）
   - `packages/core/src/renderer/layout.test.ts`、`packages/core/src/index.test.ts`
   - `docs/spec/style.md`、`docs/spec/style.ja.md`
-- **関連**: [`docs/design/edge-direction-style.md`](../design/edge-direction-style.md)、AT-1124（`up` 実装）
+- **関連**: [`docs/adr/20260506-03-edge-direction-style.md`](../adr/20260506-03-edge-direction-style.md)、AT-1124（`up` 実装）
 
 ## 受け入れ条件
 

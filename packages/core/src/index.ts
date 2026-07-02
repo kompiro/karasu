@@ -100,6 +100,8 @@ export {
   synthesizeSharePayload,
   SHARE_STYLE_IMPORT_PATH,
   type SharePayload,
+  type ShareTarget,
+  type ShareTargetView,
 } from "./share/synthesize.js";
 export { Parser } from "./parser/parser.js";
 export { isSafeLinkUrl } from "./parser/link-url.js";
@@ -182,7 +184,8 @@ export {
 export { analyze } from "./resolver/warnings.js";
 export type { DisplayMode } from "./renderer/layout.js";
 export type { SvgResult, AllViewsSvgResult } from "./renderer/all-layers-svg.js";
-export { render, renderFromLayout, sanitizeId } from "./renderer/svg-renderer.js";
+export { render, renderFromLayout, sanitizeId, anchorId } from "./renderer/svg-renderer.js";
+export type { CategoryId } from "./renderer/category-collapse.js";
 
 export {
   exportDrawio,
@@ -261,6 +264,7 @@ import {
 import { resolveStyles } from "./resolver/style-resolver.js";
 import { analyze } from "./resolver/warnings.js";
 import { render, legendScopeForLogicalSlice } from "./renderer/svg-renderer.js";
+import type { CategoryId } from "./renderer/category-collapse.js";
 import {
   buildDrillDownSvg as _buildDrillDownSvg,
   buildDrillDownSvgOrg as _buildDrillDownSvgOrg,
@@ -374,6 +378,18 @@ export interface CompileOptions {
    * still override these (cascade is unchanged).
    */
   annotationBadgeLabels?: AnnotationBadgeLabels;
+  /**
+   * System-view node categories the viewer has collapsed (Issue #1821). Each
+   * collapsed category (`"infra"` / `"external"`) is folded to a single ⊕ stub
+   * before layout so the diagram reflows. Omit for the default fully-expanded
+   * render. System view only; see `docs/design/layer-toggles.md`.
+   */
+  collapsedCategories?: ReadonlySet<CategoryId>;
+  /**
+   * Draw the interactive category controls (⊖ / hover frame) for the live
+   * preview (Issue #1821). Defaults to false so static outputs stay clean.
+   */
+  interactive?: boolean;
 }
 
 export interface SystemCompileResult {
@@ -462,6 +478,8 @@ function _compileFromPreparedInput(
     displayMode,
     emptyStateLabels,
     theme,
+    collapsedCategories,
+    interactive,
   } = opts;
 
   // Project-wide edge author-id uniqueness. Runs once before view extraction
@@ -623,6 +641,8 @@ function _compileFromPreparedInput(
     // legends whose scope names their root kind, not the top-level set.
     viewScope: legendScopeForLogicalSlice(viewSlice),
     theme,
+    collapsedCategories,
+    interactive,
   });
   const nodeMetadata = buildNodeMetadata(
     viewSlice,

@@ -1,6 +1,6 @@
 # ADR Dependency Graph — Overview
 
-237 ADRs across 15 topics. Clusters group by `topic` frontmatter field. Edges crossing cluster borders are cross-topic dependencies.
+244 ADRs across 15 topics. Clusters group by `topic` frontmatter field. Edges crossing cluster borders are cross-topic dependencies.
 ```mermaid
 flowchart TD
   subgraph adr-tooling["adr-tooling"]
@@ -101,6 +101,7 @@ flowchart TD
     ADR_20260623_05["ADR-20260623-05<br/>app E2E（Playwright）はラベル駆動をやめ path filter で起動する"]
     ADR_20260623_07["ADR-20260623-07<br/>VS Code E2E（extension host / WebView）もラベル駆動をやめ ..."]
     ADR_20260624_03["ADR-20260624-03<br/>VS Code 拡張を changesets の版管理対象に含める"]
+    ADR_20260630_03["ADR-20260630-03<br/>Dependabot Triage (2026-06-30) — `actions/check..."]
   end
   subgraph chat-ai["chat-ai"]
     ADR_20260407_04["ADR-20260407-04<br/>Cloudflare Pages デプロイ基盤と BYOK AI 連携"]
@@ -172,6 +173,7 @@ flowchart TD
     ADR_20260409_07["ADR-20260409-07<br/>マルチファイルプロジェクトでのクロスファイルナビゲーション"]
     ADR_20260411_03["ADR-20260411-03<br/>ブラウザ履歴でのハイライト復元 — hash コロン拡張"]
     ADR_20260504_01["ADR-20260504-01<br/>ActiveView を追加するときは URL hash 対応もセットで行う"]
+    ADR_20260630_01["ADR-20260630-01<br/>Deep permalink — 構造要素 / view への深いパーマリンク"]
   end
   subgraph parser["parser"]
     ADR_20260320_02["ADR-20260320-02<br/>AST 再構成 — Discriminated Union とプロパティブロック"]
@@ -198,6 +200,9 @@ flowchart TD
     ADR_20260412_03["ADR-20260412-03<br/>Import Project from ZIP — `fflate` 再利用 + トップレベル除去"]
     ADR_20260422_07["ADR-20260422-07<br/>OPFS 履歴スナップショットを diff 比較ソースにする"]
     ADR_20260624_05["ADR-20260624-05<br/>Private vulnerability reporting を有効化する"]
+    ADR_20260626_01["ADR-20260626-01<br/>karasu-nest — URL で .krs を共有・プレビューするホスト型機能"]
+    ADR_20260626_03["ADR-20260626-03<br/>プレイグラウンドを karasu.kompiro.dev カスタムドメインで公開する"]
+    ADR_20260626_04["ADR-20260626-04<br/>karasu-nest — 共有リンクの OGP 画像（system 図 unfurl）"]
   end
   subgraph renderer["renderer"]
     ADR_20260316_01["ADR-20260316-01<br/>SVGアイコンファイルの外部インポート方式"]
@@ -229,6 +234,8 @@ flowchart TD
     ADR_20260624_01["ADR-20260624-01<br/>多すぎる兄弟ノードをバランス grid で畳む"]
     ADR_20260624_02["ADR-20260624-02<br/>deploy view は job-only container を専用の job 帯にまとめ..."]
     ADR_20260624_06["ADR-20260624-06<br/>system-view の external サービスをサイド列に配置してエッジ交差を減らす"]
+    ADR_20260626_02["ADR-20260626-02<br/>karasu-nest の PNG ラスタライズに resvg-wasm を採用する"]
+    ADR_20260630_02["ADR-20260630-02<br/>layer toggles — external/infra カテゴリの対話的 collaps..."]
   end
   subgraph resolver["resolver"]
     ADR_20260401_06["ADR-20260401-06<br/>Domain Drift Detection — 検出スコープと検出キー"]
@@ -607,21 +614,28 @@ flowchart TD
   class ADR_20260624_04 accepted
   class ADR_20260624_05 accepted
   class ADR_20260624_06 accepted
+  class ADR_20260626_01 accepted
+  class ADR_20260626_02 accepted
+  class ADR_20260626_03 accepted
+  class ADR_20260626_04 accepted
+  class ADR_20260630_01 accepted
+  class ADR_20260630_02 accepted
+  class ADR_20260630_03 accepted
 ```
 
 ## Per-topic detail
 
 - [`adr-tooling`](graph/adr-tooling.md) — 5 ADRs
 - [`app-ui`](graph/app-ui.md) — 39 ADRs
-- [`build`](graph/build.md) — 49 ADRs
+- [`build`](graph/build.md) — 50 ADRs
 - [`chat-ai`](graph/chat-ai.md) — 9 ADRs
 - [`cli`](graph/cli.md) — 11 ADRs
 - [`core-concepts`](graph/core-concepts.md) — 18 ADRs
 - [`edges`](graph/edges.md) — 14 ADRs
-- [`navigation`](graph/navigation.md) — 9 ADRs
+- [`navigation`](graph/navigation.md) — 10 ADRs
 - [`parser`](graph/parser.md) — 17 ADRs
-- [`project`](graph/project.md) — 5 ADRs
-- [`renderer`](graph/renderer.md) — 29 ADRs
+- [`project`](graph/project.md) — 8 ADRs
+- [`renderer`](graph/renderer.md) — 31 ADRs
 - [`resolver`](graph/resolver.md) — 6 ADRs
 - [`styling`](graph/styling.md) — 8 ADRs
 - [`testing`](graph/testing.md) — 11 ADRs
