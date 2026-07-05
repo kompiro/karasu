@@ -79,8 +79,8 @@ unfurl が要る共有では **`/s?s=`（query, server-visible）** を短縮の
 
 ## 既知の対処パターン
 
-- **記録は source・リンクは pointer**（design doc `adr-permalink-convention` の
-  改訂 B-3）— `permalink:` を構造化するなら `short`（taka）と `source`（in-repo
+- **記録は source・リンクは pointer**（[ADR-20260702-01](../adr/20260702-01-adr-permalink-convention.md)
+  の改訂 B-3）— `permalink:` を構造化するなら `short`（taka）と `source`（in-repo
   `.krs`）を持ち、`source` を必須にする（`.claude/rules/adr.md`）。検証は `source`
   の実在を必須とし、任意 `short` の解決チェックは外部依存をテストに持ち込むため
   温度を下げる（#1830 へ申し送り）。
