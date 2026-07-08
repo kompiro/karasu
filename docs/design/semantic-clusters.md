@@ -160,6 +160,136 @@ system ECPlatform {
 - ドキュメント更新: `docs/spec/tags-annotations.md`（experimental cluster タグ）、必要に応じて `docs/concepts.ja.md`（cluster ≒ bounded context と「ドメイン分散の検出」の関係を補足）。
 - テスト・examples への影響: なし（既存 examples は cluster タグを使わない）。新規 example はフォロー実装 PR で追加検討。
 
+## cluster 宣言の例（案C）
+
+案C（opt-in `[cluster: <id>]` タグ）で `.krs` が実際どう見えるかの worked example。
+**構文はまだ未実装**（parser 拡張はフォロー実装）なので、以下は spec 提案であり `examples/` には置けない（`examples.test.ts` が全ファイルの parse エラー0を強制するため）。実 example ファイルはフォロー実装 PR で追加する。
+
+### 例1: 最小 — 2 cluster をタグで宣言
+
+`[external]` と同じ位置（id の直後）に `[cluster: <id>]` を置く。
+
+```krs
+system ECPlatform {
+  label "EC Platform"
+
+  service Billing   [cluster: payments] { label "Billing" }
+  service Wallet    [cluster: payments] { label "Wallet" }
+  service Inventory [cluster: catalog]  { label "Inventory" }
+  service Search    [cluster: catalog]  { label "Search" }
+
+  Billing -> Wallet    "settle"      // cluster 内（payments）
+  Search  -> Inventory "read stock"  // cluster 内（catalog）
+  Billing -> Inventory "reserve"     // ← cluster をまたぐ（強調描画対象）
+}
+```
+
+renderer は同じ cluster id の service を 1 つの境界フレーム（`krs-cat-frame` 一般化）で囲み、`payments` と `catalog` の 2 枠を描く。`Billing -> Inventory` は両端点の cluster が異なるため cross-cluster edge として特別描画される。
+
+### 例2: 現実的な EC — 3 cluster + infra + external
+
+タグ無しの service / infra / `[external]` は従来どおり（opt-in）。cluster に属さない `Notification` はどのフレームにも入らない。
+
+```krs
+system ECPlatform {
+  label "EC Platform"
+
+  // --- payments cluster ---
+  service Billing [cluster: payments] {
+    label "Billing"
+    description "Charges and invoices"
+  }
+  service Wallet [cluster: payments] {
+    label "Wallet"
+    description "Stored balance"
+  }
+
+  // --- catalog cluster ---
+  service Inventory [cluster: catalog] {
+    label "Inventory"
+  }
+  service Search [cluster: catalog] {
+    label "Search"
+  }
+
+  // --- fulfillment cluster ---
+  service Shipping [cluster: fulfillment] {
+    label "Shipping"
+  }
+  service Warehouse [cluster: fulfillment] {
+    label "Warehouse"
+  }
+
+  // cluster に属さない横断サービス（フレーム外）
+  service Notification {
+    label "Notification"
+  }
+
+  // infra / external は従来どおり（cluster タグは service 専用）
+  database OrderDB {
+    label "Order DB"
+  }
+  service Stripe [external] {
+    label "Stripe"
+  }
+
+  // cluster 内エッジ
+  Search   -> Inventory "read stock"
+  Shipping -> Warehouse "pick"
+  Billing  -> Wallet    "debit"
+
+  // cross-cluster エッジ（際立たせたい線）
+  Inventory -> Shipping "reserve for order"   // catalog → fulfillment
+  Billing   -> Inventory "hold on charge"     // payments → catalog
+
+  // cluster ↔ 非cluster / external / infra
+  Billing -> Stripe       "authorize"
+  Billing -> Notification "receipt email"
+  Inventory -> OrderDB    "persist"
+}
+```
+
+読み方: 3 枠（payments / catalog / fulfillment）が描かれ、`Inventory -> Shipping` と `Billing -> Inventory` の 2 本が cross-cluster として強調される。`Notification` / `Stripe` / `OrderDB` は枠外に置かれる。
+
+### 例3: opt-in の効果（before / after）
+
+同じ 4 service を、cluster タグ **無し**（現状の描画）と **有り**で対比する。タグを外せば描画は現状に完全一致する（後方互換）。
+
+```krs
+// before（タグなし）— 現状どおり、フレームなし
+service Billing   { label "Billing" }
+service Wallet    { label "Wallet" }
+service Inventory { label "Inventory" }
+service Search    { label "Search" }
+```
+
+```krs
+// after（タグあり）— payments / catalog の 2 枠に分かれる
+service Billing   [cluster: payments] { label "Billing" }
+service Wallet    [cluster: payments] { label "Wallet" }
+service Inventory [cluster: catalog]  { label "Inventory" }
+service Search    [cluster: catalog]  { label "Search" }
+```
+
+### 参考: まとめ宣言（糖衣）は本 Doc では採らない
+
+タグを各 service に散らす代わりに、cluster をブロックで囲む糖衣も考えられる（下記）。ただしこれは containment 階層に近づき案B（first-class）寄りになるため、**本 Doc の案C では採用せず**「未解決の問い」に送る。案C 運用で得た使用実感をもとに #1820 gate で再評価する。
+
+```krs
+// 将来検討（案C では非採用）— cluster をブロックで束ねる糖衣
+system ECPlatform {
+  cluster payments {
+    service Billing { ... }
+    service Wallet  { ... }
+  }
+  cluster catalog {
+    service Inventory { ... }
+  }
+}
+```
+
+> タグ形（例1〜3）とブロック糖衣は表現力としては等価（同じ cluster 所属を表す）。案C はまず **文法構造を変えないタグ形**で experimental 出荷し、ブロック糖衣／first-class 化は evidence を見てから判断する。
+
 ## 未解決の問い / 決めないこと
 
 - **cluster のまとめ宣言（糖衣）** — service 側にタグを散らす代わりに `cluster payments { service ... }` のようなブロックを許すか。案B（first-class）寄りになるため、本 Doc では決めず案C 運用後に再評価。
