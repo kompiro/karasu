@@ -10,7 +10,8 @@
   "postCreateCommand": "curl -fsSL https://claude.ai/install.sh | bash",
   "mounts": [
     "source=${localEnv:HOME}/.claude,target=/home/node/.claude,type=bind,consistency=cached",
-    "source=${localEnv:HOME}/.config/git/,target=/home/node/.config/git/,type=bind,consistency=cached"
+    "source=${localEnv:HOME}/.config/git/,target=/home/node/.config/git/,type=bind,consistency=cached",
+    "source=gh-config,target=/home/node/.config/gh,type=volume"
   ],
   "containerEnv": {
     "CLAUDE_CONFIG_DIR": "/home/node/.claude",
