@@ -125,11 +125,42 @@ system view を**所有チーム単位**で囲み、開閉する。
 
 **したがって仮説「入れ物を作ると読みやすくなる」は、正確には偽である。** 読みやすくするのは**折り畳み**であり、**枠はその折り畳みを可能にする（発見可能にする）アフォーダンス**にすぎない。枠だけを実装しても目的（要素過多の解消）は達成されない。
 
-### 計測 3 — 代償: 依存レイヤの喪失
+### 計測 3 — 「依存レイヤ」の厳密な定義
 
-baseline では y が依存の深さを表し、読み手は上から下へ流れを追える。グループ配置では位置が**所属**を表すため、この情報が失われる。**位置は 1 つの意味しか担えない。**
+「グループ配置は依存レイヤを壊す」は不正確だった。`assignForcedSystemLayers()`（`layout.ts:1606`）が y をどう決めるかを厳密に書くと:
 
-緩和案（未検証）: ノードではなく**グループを topological に並べる**（group 単位の DAG で層化する）。グループ間の流れを保ちつつ、グループ内は所属で寄せる。
+```
+y = tierBase[systemTier(node)] + subRow(node)
+```
+
+- **`systemTier`** — kind による 5 段のバケツ（`user`=0 / `client`=1 / service=2 / infra=3 / external=4）。**依存ではなくカテゴリ**。
+- **`subRow`** — その tier 内の **intra-tier edge のみ**（`edges.filter(e => idSet.has(e.from) && idSet.has(e.to))`）による topological な longest-path 層化。**cross-tier edge は sub-row に一切影響しない。**
+- 加えて infra tier には pull-up の後処理（#974）。
+
+したがって:
+
+1. **grouping が触るのは tier 2（service）だけ**である。`user` / `client` / `infra` / `external` の 4 tier は純粋な kind バケツなので、グループ配置の影響を受けない（モックでも infra / external の帯はそのまま維持された）。
+2. 失われうるのは**ただ一つ** — **service → service edge が service tier 内に誘導する topological sub-order**。
+3. しかもこれは「グループを topological に並べ、グループ内も topological に並べる」**二段 topological sort** で保存できるはずである。group が 0 個ないし 1 個なら現行挙動に退化するので、**現行規則の厳密な一般化**になる。
+
+### 計測 4 — ただし集約は循環を生む
+
+二段 topological sort は「group 単位のグラフが DAG である」ことを前提にする。合成モデルで実測した:
+
+| | 結果 |
+| --- | --- |
+| service 単位のグラフ（service → service edge のみ） | 20 ノード / 24 edge / **非循環（DAG）** |
+| チーム単位に集約したグラフ | 5 group / 9 inter-group edge / **循環あり** |
+| 強連結成分 | **{ catalog, fulfillment, platform, payments }**（5 group 中 4 つが相互結合） |
+
+`payments → platform → fulfillment → payments` のような循環が、**非循環のサービスグラフを集約しただけで生まれる**。
+
+**したがって代償は次のように狭く、かつ正確に述べられる:**
+
+- **グループ内**の topological sub-order は保存できる（intra-group edge による）。
+- **グループ間**の topological order は、グループが相互結合しているときは**定義できない**。実測ではそれが常態だった（4/5 が 1 つの SCC）。SCC 内の順序はヒューリスティックにならざるをえない。
+
+一方で、この循環は**それ自体が観察に値する事実**である。karasu は既に node 単位の循環を `[cyclic]` として観測し（判断はしない）、`buildGraph` は循環時に reversal を捨てる guard を持つ（`layout.ts:90-96`）。group 単位の相互結合も同様に **info 診断**として surface できる — 「これらの group は相互に結合している」。Conway 的には「チーム境界が依存構造と一致していない」という所見であり、**任意 grouping（P2）ならより DAG に近い group グラフを作れる可能性がある**ことも示唆する。
 
 ### cross-group edge
 
@@ -196,7 +227,9 @@ P2 / P3 に着手するときに再利用するため、これまでの検討結
 
 ## 未解決の問い / 決めないこと
 
-- **依存レイヤとグループ局所性の調停**（P1 計測 3 で顕在化した最大の問い）— 位置は 1 つの意味しか担えない。グループを topological に層化して両立させる案は未検証。折り畳み時のみグループ配置に切り替える案もありうる。
+- **相互結合した group をどう並べるか**（P1 計測 4）— 二段 topological sort は group グラフが DAG のときのみ全順序を与える。実測では 5 group 中 4 つが 1 つの SCC に入った。SCC 内の順序をどう決めるか（edge 数最小の feedback arc set か、単純な宣言順か）は未決。
+- **group 間の相互結合を info 診断にするか** — `[cyclic]` / `duplicate-owner-assignment` と同じく「事実を述べ、判断は読み手に委ねる」形で surface できる。診断コードの新設は #1820 gate の対象か要検討。
+- **任意 grouping なら group グラフは DAG に近づくか**（P2 の動機の一つ）— チーム境界は依存構造と一致しないことが実測された。意味的 group ならより DAG に近い可能性があるが未検証。
 - **既定は展開か折り畳みか** — 価値が折り畳みにある以上、大規模モデルでは**既定で畳んでおく**方が良い可能性がある（#1821 の layer toggle は既定展開）。
 - **組織 group と任意 group の共存** — 両方のフレームを同時に描くと視覚的に破綻しうる。排他にするか、片方を hover 時のみにするか。
 - **`[external]` カテゴリと group の直交性** — ノードが external かつ group 所属のとき、どちらのフレームで描くか（`categoryOf` の precedence と同種の問題）。
