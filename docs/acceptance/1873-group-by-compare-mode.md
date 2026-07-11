@@ -19,7 +19,7 @@ after-slice を team フレームで囲めるようにする。Gap 2（Show All 
 
 ### AC-1: core — diff への group-by 配線
 
-> ✅ Automated by `packages/core/src/renderer/group-by-diff.test.ts`
+> ✅ Automated by `packages/core/src/renderer/group-by-diff.test.ts` (suite-wide)
 
 - [x] `compileSystemDiff({ groupBy: "team" })` は after-slice の `ownerIndex` を軸に team 境界フレーム
       （`data-container-id="__group_<team>__"` / `data-group="true"`）を出す
@@ -29,7 +29,7 @@ after-slice を team フレームで囲めるようにする。Gap 2（Show All 
 
 ### AC-2: app — compare モードのゲート緩和
 
-> ✅ Automated by app の既存 `useSystemView` / `PreviewColumn` スイート（`groupByAvailable` 分岐）
+> ✅ Automated by `packages/app/src/hooks/useAppViews.test.tsx` (suite-wide)
 
 - [x] `groupByAvailable` は `hasOrgDiagram` のみに依存し、compare モードでも真になる
 - [x] compare 中に「Group by: Team」を選ぶと `compileSystemDiff` が `groupBy` 付きで再コンパイルされる
