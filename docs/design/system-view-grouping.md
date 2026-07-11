@@ -252,14 +252,46 @@ P2 / P3 に着手するときに再利用するため、これまでの検討結
 | `#payments` | **不可**。`#` は karasu では **identity**（`readHashToken`、ID selector `#ECommerce`、edge id `#criticalWrite`）。CSS の `#id` に対応し、グループとは逆の意味 |
 | **参照宣言 `group X { contains … }`** | **P2 の推奨**。単一値・ファイル横断・`owns` の既存イディオムに乗る |
 
+## 確定した方針（2026-07-11 レビュー）
+
+P1 の計測を踏まえたレビューで、以下を確定した。
+
+### 1. group のメンバー範囲 = 全ノード種（著者意図優先）
+
+group に宣言されたノードは **kind を問わず枠内に描く**。`[external]` の Stripe を payments group に入れる宣言は、そのまま枠内配置になる（ノード自体のスタイル — 破線・シリンダー等 — は保つ）。
+
+- 実務的な境界: 対象は **system view に描画される top-level ノード**（user / client / service / infra / external）。domain 等 drill-down 内のノードは system view に現れないため対象外。
+- **precedence の整理**: Group by ビューでは **group 所属 > category（kind / tag）**。group 非所属の infra / external だけが従来 tier の帯に残る。枠内メンバーは #1821 のカテゴリ折り畳み（external / infra stub）の対象から除外する。
+- ADR-20260623-06 の「kind 優先」は**「Group by: なし」の既定ビューでは不変**。この override は Group by ビューに閉じた view-mode 局所の規則であり、既定ビューの tier 体系は変えない。
+- infra / external メンバーの枠内配置は intra-group layering にそのまま参加する（例: Stripe は Billing / Payout からの edge の sink として最下行に落ちる）。
+
+### 2. 組織境界と宣言 group の共存 = 排他（Group by セレクタ）
+
+「**なし / チーム（owns 由来）/ group（宣言）**」から 1 軸を選ぶピボット型。枠の重なりを構造的に排除する。#1821 の layer toggle は直交する機構としてそのまま共存できる（ただし方針 1 のとおり、枠内メンバーはカテゴリ stub の対象外）。
+
+### 3. 既定状態 = 常に展開
+
+#1821 layer toggle と同じ opt-in 折り畳み。おどろき最小を優先する。計測 5 の group DAG ビュー（全折り畳み）へは「**すべて畳む**」操作で到達できるようにする（P2a の UI に含める）。
+
+### 4. SCC 内の順序（実装方針）
+
+group 数 ≤ 8 は feedback arc set の**全探索**（8! = 40,320）、それ超は greedy（Eades–Lin–Smyth）。**同点は宣言順**で決着 — 決定的であり、著者が並びを制御できる。
+
+### 5. 実装フェーズ
+
+| フェーズ | 内容 | 文法変更 |
+| --- | --- | --- |
+| **P2a** | 二段 topological sort + 枠 + 折り畳み（+「すべて畳む」）。grouping 源は `ownerIndex`（チーム軸） | **ゼロ**（#1820 gate 不要） |
+| **P2b** | `group` 宣言構文 + `groupIndex`。レイアウト機構は P2a を流用 | あり（gate 経由） |
+| **P2c** | 直交ルーティング + 集約トランク + hop / junction（展開ビューの磨き込み） | ゼロ |
+
+### 6. 判定基準
+
+形式指標は立てない。karasu-nest corpus（#1816 / #1820）を maintainer が読んで判断し、定量プロキシ（要素数・edge 数・canvas 面積・交差数・**貫通数**）を添える。gate の evidence 要件と一致。
+
 ## 未解決の問い / 決めないこと
 
-- **相互結合した group をどう並べるか**（P1 計測 4 → 計測 5 で部分回答）— 5 group では feedback arc set の全探索（120 通り）で十分だった（逆行 2/11 本）。group 数が増えたときの近似ヒューリスティックと、宣言順を尊重するかは未決。
-- **実レンダラへの実装コスト** — 計測 5 はモック実証。`layout()` に二段 topological sort・直交ルーティング・集約トランクを載せるのが P2 実装の本体（既存 `assignForcedSystemLayers` / `krs-cat-frame` との整合を含む）。
+- **P2 のメンバー列挙キーワード** — `contains` / `includes` / `member` を候補として記録（参照系は動詞が karasu のイディオム: owns / realizes / delivers / handles）。**P2b 設計時に決める**。
 - **group 間の相互結合を info 診断にするか** — `[cyclic]` / `duplicate-owner-assignment` と同じく「事実を述べ、判断は読み手に委ねる」形で surface できる。診断コードの新設は #1820 gate の対象か要検討。
 - **任意 grouping なら group グラフは DAG に近づくか**（P2 の動機の一つ）— チーム境界は依存構造と一致しないことが実測された。意味的 group ならより DAG に近い可能性があるが未検証。
-- **既定は展開か折り畳みか** — 価値が折り畳みにある以上、大規模モデルでは**既定で畳んでおく**方が良い可能性がある（#1821 の layer toggle は既定展開）。
-- **組織 group と任意 group の共存** — 両方のフレームを同時に描くと視覚的に破綻しうる。排他にするか、片方を hover 時のみにするか。
-- **`[external]` カテゴリと group の直交性** — ノードが external かつ group 所属のとき、どちらのフレームで描くか（`categoryOf` の precedence と同種の問題）。
-- **P2 の `contains` というキーワード名** — `owns` との対比で妥当か、`members` 等が良いかは P2 着手時に決める。
-- **判定基準** — 「要素数が減った」は計測できたが、「構造の理解が速くなった」は未計測。karasu-nest corpus での主観評価に留めるか、指標を立てるか。
+- **Group by 状態・折り畳み状態の共有**（URL / Share payload への符号化）— #1838 の follow-up（`/render` query param・Share button state）と同じ枠で扱う。
