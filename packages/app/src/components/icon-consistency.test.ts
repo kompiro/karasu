@@ -16,10 +16,16 @@ import { KIND_TO_ICON_NAME } from "./NodeDetailPanel.js";
 // its own mock and never compares the resolved icon between the two.
 //
 // This integration-level test extracts the un-decorated `<kind> { shape:
-// url("<name>") }` rules from the style source, intersects them with
-// `KIND_TO_ICON_NAME`, and asserts the icon name is identical for every
-// shared kind. Adding a new kind to either map without the other gets
-// caught here (the intersection-only-coverage assertion at the bottom).
+// url("<name>") }` rules from the style source and reconciles them with
+// `KIND_TO_ICON_NAME` over the *union* of both key sets:
+//   - a kind in both maps must resolve to the same icon name;
+//   - a panel-only kind (claims a pictogram with no renderer rule) is drift
+//     and fails;
+//   - a renderer-only kind is a deliberate panel-coverage gap and must be
+//     enumerated in `KNOWN_PANEL_GAPS` — a *new* renderer-only kind fails
+//     until it is either added to the panel map or consciously listed there.
+// So adding a new kind to either map without the other gets caught here (the
+// union reconciliation at the bottom).
 
 /**
  * Parse the un-decorated kind→icon mappings out of `ICON_THEME_STYLE_SOURCE`.
@@ -60,28 +66,66 @@ describe("icon source consistency between NodeDetailPanel and icon-card renderer
     },
   );
 
-  it("every panel-claimed kind agrees with the renderer", () => {
-    // Iterate the panel side: any kind the panel maps to a pictogram is
-    // a claim that the panel and renderer will paint the same icon. The
-    // renderer maps more kinds than the panel (`database`, `queue`,
-    // `storage`, `client`, ...) — those are panel-coverage gaps, not
-    // contract violations, so they don't fail here. Adding a kind to
-    // `KIND_TO_ICON_NAME` whose renderer counterpart differs (or doesn't
-    // exist) does fail here.
-    const claimedKinds = Object.keys(KIND_TO_ICON_NAME);
-    expect(claimedKinds.length).toBeGreaterThanOrEqual(3);
+  // Renderer kinds the panel deliberately does not map to a pictogram. The
+  // renderer paints these on the diagram, but `NodeDetailPanel` intentionally
+  // falls through to its emoji/`■` fallback for them today. Each entry is a
+  // conscious coverage gap, not drift — a *new* renderer-only kind is NOT
+  // allowed to appear here silently: it fails the union check below until it
+  // is either added to `KIND_TO_ICON_NAME` or added to this list on purpose.
+  const KNOWN_PANEL_GAPS = ["client", "database", "queue", "storage"] as const;
 
-    const mismatches = claimedKinds
-      .filter(
-        (kind) =>
-          RENDERER_KIND_TO_ICON[kind] !== undefined &&
-          KIND_TO_ICON_NAME[kind] !== RENDERER_KIND_TO_ICON[kind],
-      )
-      .map((kind) => ({
-        kind,
-        panel: KIND_TO_ICON_NAME[kind],
-        renderer: RENDERER_KIND_TO_ICON[kind],
-      }));
-    expect(mismatches).toEqual([]);
+  it("panel and renderer icon maps reconcile over their union", () => {
+    // Reconcile the *union* of both key sets so that adding a kind to either
+    // map without the other is caught (the one-directional intersection check
+    // this replaced let renderer-only additions pass green — see #1856).
+    const panelKinds = Object.keys(KIND_TO_ICON_NAME);
+    const rendererKinds = Object.keys(RENDERER_KIND_TO_ICON);
+    expect(panelKinds.length).toBeGreaterThanOrEqual(3);
+
+    const gaps = new Set<string>(KNOWN_PANEL_GAPS);
+    const allKinds = new Set<string>([...panelKinds, ...rendererKinds]);
+
+    const problems: Array<{ kind: string; reason: string }> = [];
+    for (const kind of allKinds) {
+      const panel = KIND_TO_ICON_NAME[kind];
+      const renderer = RENDERER_KIND_TO_ICON[kind];
+      if (panel !== undefined && renderer !== undefined) {
+        // In both maps: icon names must be identical.
+        if (panel !== renderer) {
+          problems.push({
+            kind,
+            reason: `icon name differs (panel="${panel}", renderer="${renderer}")`,
+          });
+        }
+      } else if (panel !== undefined) {
+        // Panel-only: a pictogram claim with no renderer counterpart is drift.
+        problems.push({
+          kind,
+          reason: `panel maps "${kind}" to "${panel}" but the renderer has no rule for it`,
+        });
+      } else {
+        // Renderer-only: allowed only if enumerated as a known panel gap.
+        if (!gaps.has(kind)) {
+          problems.push({
+            kind,
+            reason: `renderer paints "${kind}" ("${renderer}") but the panel does not map it and it is not in KNOWN_PANEL_GAPS — add it to KIND_TO_ICON_NAME or to KNOWN_PANEL_GAPS`,
+          });
+        }
+      }
+    }
+    expect(problems).toEqual([]);
+  });
+
+  it("KNOWN_PANEL_GAPS has no stale entries", () => {
+    // A gap that has since gained a panel mapping must be removed from the
+    // allowlist, otherwise the list silently masks a kind that is now
+    // covered — and would keep masking a future renderer/panel divergence.
+    const stale = KNOWN_PANEL_GAPS.filter((kind) => KIND_TO_ICON_NAME[kind] !== undefined);
+    expect(stale).toEqual([]);
+
+    // Every listed gap must actually be a renderer kind — a typo or a kind
+    // removed from `ICON_RULES` should not linger here.
+    const unknown = KNOWN_PANEL_GAPS.filter((kind) => RENDERER_KIND_TO_ICON[kind] === undefined);
+    expect(unknown).toEqual([]);
   });
 });
