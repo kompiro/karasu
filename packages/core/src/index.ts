@@ -390,6 +390,14 @@ export interface CompileOptions {
    * preview (Issue #1821). Defaults to false so static outputs stay clean.
    */
   interactive?: boolean;
+  /**
+   * System-view grouping axis (Issue #1858, P2a). `"team"` stacks each node's
+   * owning team (resolved via the `organization`/`owns` block) as a
+   * dependency-ordered band with a boundary frame. Omit for the default
+   * un-grouped kind-tier layout. System view only; see
+   * `docs/design/system-view-grouping.md`.
+   */
+  groupBy?: "team";
 }
 
 export interface SystemCompileResult {
@@ -480,6 +488,7 @@ function _compileFromPreparedInput(
     theme,
     collapsedCategories,
     interactive,
+    groupBy,
   } = opts;
 
   // Project-wide edge author-id uniqueness. Runs once before view extraction
@@ -643,6 +652,7 @@ function _compileFromPreparedInput(
     theme,
     collapsedCategories,
     interactive,
+    groupBy,
   });
   const nodeMetadata = buildNodeMetadata(
     viewSlice,

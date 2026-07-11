@@ -22,13 +22,25 @@ function weights(pairs: [string, string, number][]): GroupEdgeWeights {
 
 describe("orderGroups", () => {
   it("returns declaration order for a clean chain a → b → c", () => {
-    const order = orderGroups(["a", "b", "c"], weights([["a", "b", 1], ["b", "c", 1]]));
+    const order = orderGroups(
+      ["a", "b", "c"],
+      weights([
+        ["a", "b", 1],
+        ["b", "c", 1],
+      ]),
+    );
     expect(order).toEqual(["a", "b", "c"]);
   });
 
   it("reorders so dependencies flow downward", () => {
     // declared c, b, a but edges say a → b → c
-    const order = orderGroups(["c", "b", "a"], weights([["a", "b", 1], ["b", "c", 1]]));
+    const order = orderGroups(
+      ["c", "b", "a"],
+      weights([
+        ["a", "b", 1],
+        ["b", "c", 1],
+      ]),
+    );
     expect(order).toEqual(["a", "b", "c"]);
   });
 
@@ -39,7 +51,13 @@ describe("orderGroups", () => {
 
   it("minimises backward-edge weight on a cyclic group graph (SCC still yields a total order)", () => {
     // a↔b cycle but a→b is heavier, so a→b should be forward and b→a the single back edge
-    const order = orderGroups(["b", "a"], weights([["a", "b", 3], ["b", "a", 1]]));
+    const order = orderGroups(
+      ["b", "a"],
+      weights([
+        ["a", "b", 3],
+        ["b", "a", 1],
+      ]),
+    );
     expect(order).toEqual(["a", "b"]);
   });
 
@@ -62,7 +80,11 @@ describe("orderGroups", () => {
   it("is deterministic (same input → same output) across the greedy branch (> 8 groups)", () => {
     const ids = Array.from({ length: 10 }, (_, i) => `g${i}`);
     const w = weights([
-      ["g0", "g1", 2], ["g1", "g2", 1], ["g9", "g0", 1], ["g5", "g3", 1], ["g3", "g8", 2],
+      ["g0", "g1", 2],
+      ["g1", "g2", 1],
+      ["g9", "g0", 1],
+      ["g5", "g3", 1],
+      ["g3", "g8", 2],
     ]);
     const a = orderGroups(ids, w);
     const b = orderGroups(ids, w);
@@ -87,13 +109,18 @@ describe("assignGroupedLayers", () => {
 
   it("places every node exactly once (TPL-20260624-02: totality & uniqueness)", () => {
     const nodes = [
-      node("Billing", "payments"), node("Wallet", "payments"),
-      node("Search", "catalog"), node("Catalog", "catalog"),
-      node("OrderDB", null, 0), node("Stripe", null, 1),
+      node("Billing", "payments"),
+      node("Wallet", "payments"),
+      node("Search", "catalog"),
+      node("Catalog", "catalog"),
+      node("OrderDB", null, 0),
+      node("Stripe", null, 1),
     ];
     const edges: GroupedEdge[] = [
-      { from: "Billing", to: "Wallet" }, { from: "Search", to: "Catalog" },
-      { from: "Billing", to: "OrderDB" }, { from: "Billing", to: "Stripe" },
+      { from: "Billing", to: "Wallet" },
+      { from: "Search", to: "Catalog" },
+      { from: "Billing", to: "OrderDB" },
+      { from: "Billing", to: "Stripe" },
     ];
     const res = assignGroupedLayers(nodes, edges, ["payments", "catalog"])!;
     expect(res.layers.size).toBe(nodes.length);
@@ -101,11 +128,11 @@ describe("assignGroupedLayers", () => {
   });
 
   it("gives each group a contiguous, non-overlapping row band (frames cannot overlap)", () => {
-    const nodes = [
-      node("a1", "A"), node("a2", "A"),
-      node("b1", "B"), node("b2", "B"),
+    const nodes = [node("a1", "A"), node("a2", "A"), node("b1", "B"), node("b2", "B")];
+    const edges: GroupedEdge[] = [
+      { from: "a1", to: "a2" },
+      { from: "b1", to: "b2" },
     ];
-    const edges: GroupedEdge[] = [{ from: "a1", to: "a2" }, { from: "b1", to: "b2" }];
     const res = assignGroupedLayers(nodes, edges, ["A", "B"])!;
     const A = res.groupBands.get("A")!;
     const B = res.groupBands.get("B")!;
@@ -122,18 +149,17 @@ describe("assignGroupedLayers", () => {
 
   it("lays a group's members out by intra-group longest path", () => {
     const nodes = [node("a", "G"), node("b", "G"), node("c", "G")];
-    const edges: GroupedEdge[] = [{ from: "a", to: "b" }, { from: "b", to: "c" }];
+    const edges: GroupedEdge[] = [
+      { from: "a", to: "b" },
+      { from: "b", to: "c" },
+    ];
     const res = assignGroupedLayers(nodes, edges, ["G"])!;
     expect(res.layers.get("a")).toBeLessThan(res.layers.get("b")!);
     expect(res.layers.get("b")).toBeLessThan(res.layers.get("c")!);
   });
 
   it("places un-grouped nodes in a trailing band below every group, ordered by rank", () => {
-    const nodes = [
-      node("svc", "G"),
-      node("infra", null, 0),
-      node("ext", null, 1),
-    ];
+    const nodes = [node("svc", "G"), node("infra", null, 0), node("ext", null, 1)];
     const res = assignGroupedLayers(nodes, [], ["G"])!;
     const G = res.groupBands.get("G")!;
     expect(res.layers.get("infra")!).toBeGreaterThan(G.max);

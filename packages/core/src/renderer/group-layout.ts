@@ -45,7 +45,7 @@ export interface GroupBand {
   max: number;
 }
 
-export interface GroupedLayerResult {
+interface GroupedLayerResult {
   /** Node id → row (layer) index, consumed by the existing placement pipeline. */
   layers: Map<string, number>;
   /** Group ids in vertical (top-to-bottom) order. */
