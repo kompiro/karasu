@@ -158,11 +158,35 @@ describe("assignGroupedLayers", () => {
     expect(res.layers.get("b")).toBeLessThan(res.layers.get("c")!);
   });
 
-  it("places un-grouped nodes in a trailing band below every group, ordered by rank", () => {
-    const nodes = [node("svc", "G"), node("infra", null, 0), node("ext", null, 1)];
+  it("keeps the user → client → service(team) → infra → external flow around the bands", () => {
+    // ranks mirror systemTier: user=0, client=1, service(grouped)=2, infra=3, external=4.
+    const nodes = [
+      node("user", null, 0),
+      node("client", null, 1),
+      node("Billing", "payments"),
+      node("infra", null, 3),
+      node("ext", null, 4),
+    ];
+    const res = assignGroupedLayers(nodes, [], ["payments"])!;
+    const band = res.groupBands.get("payments")!;
+    // actors / clients above the team band …
+    expect(res.layers.get("user")!).toBeLessThan(band.min);
+    expect(res.layers.get("client")!).toBeLessThan(band.min);
+    expect(res.layers.get("user")!).toBeLessThan(res.layers.get("client")!);
+    // … infra and external below it, in tier order.
+    expect(res.layers.get("infra")!).toBeGreaterThan(band.max);
+    expect(res.layers.get("ext")!).toBeGreaterThan(res.layers.get("infra")!);
+  });
+
+  it("puts un-owned service-tier nodes below the team bands, above infra", () => {
+    const nodes = [
+      node("Owned", "G"),
+      node("Unowned", null, 2), // service tier, no team
+      node("infra", null, 3),
+    ];
     const res = assignGroupedLayers(nodes, [], ["G"])!;
     const G = res.groupBands.get("G")!;
-    expect(res.layers.get("infra")!).toBeGreaterThan(G.max);
-    expect(res.layers.get("ext")!).toBeGreaterThan(res.layers.get("infra")!);
+    expect(res.layers.get("Unowned")!).toBeGreaterThan(G.max);
+    expect(res.layers.get("infra")!).toBeGreaterThan(res.layers.get("Unowned")!);
   });
 });
