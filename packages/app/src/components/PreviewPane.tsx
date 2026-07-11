@@ -26,6 +26,7 @@ interface PreviewPaneProps {
   onTeamButtonClick?: (teamId: string) => void;
   /** Called when user clicks a category ⊖/⊕ control to collapse/expand it (#1821). */
   onCategoryToggle?: (category: CategoryId) => void;
+  onGroupToggle?: (groupId: string) => void;
   /** Called when user clicks an owned service link on an org team node to cross-navigate to system view */
   onOwnedServiceClick?: (serviceId: string) => void;
   /** Node or container id to highlight after cross-navigation */
@@ -79,6 +80,7 @@ export function PreviewPane({
   onDeployButtonClick,
   onTeamButtonClick,
   onCategoryToggle,
+  onGroupToggle,
   onOwnedServiceClick,
   highlightedNodeId,
   onClearHighlight,
@@ -297,6 +299,17 @@ export function PreviewPane({
         }
       }
 
+      // Group collapse/expand control (Issue #1858): ⊖/⊕ on a team boundary
+      // frame. The attribute carries the team id to toggle.
+      const groupControl = target.closest("[data-collapse-group]");
+      if (groupControl && onGroupToggle) {
+        const groupId = groupControl.getAttribute("data-collapse-group");
+        if (groupId) {
+          onGroupToggle(groupId);
+          return;
+        }
+      }
+
       // Explicitly non-interactive elements (e.g. "+N more" overflow label)
       if (target.closest("[data-noop]")) return;
 
@@ -358,6 +371,7 @@ export function PreviewPane({
       onDeployButtonClick,
       onTeamButtonClick,
       onCategoryToggle,
+      onGroupToggle,
       onOwnedServiceClick,
       onClearHighlight,
     ],

@@ -278,6 +278,7 @@ export function AppShell({
       nodeDiff: views.system.nodeDiff,
       resolvedSystems: views.system.resolvedSystems,
       toggleCategory: views.system.toggleCategory,
+      toggleGroup: views.system.toggleGroup,
       groupBy: views.system.groupBy,
       setGroupBy: views.system.setGroupBy,
       groupByAvailable: views.system.groupByAvailable,

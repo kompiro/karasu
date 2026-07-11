@@ -29,6 +29,8 @@ export interface SystemViewData {
   onTeamButtonClick?: (teamId: string) => void;
   /** Called when user clicks a category control to collapse/expand it (#1821). */
   onCategoryToggle?: (category: CategoryId) => void;
+  /** Called when the user clicks a group ⊖/⊕ control to collapse/expand a team (#1858). */
+  onGroupToggle?: (groupId: string) => void;
   /** Current system-view grouping axis (#1858). */
   groupBy?: GroupByMode;
   /** Called when the user changes the Group-by selector (#1858). */

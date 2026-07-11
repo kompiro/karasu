@@ -33,6 +33,7 @@ interface UsePreviewContextValueArgs {
     nodeDiff?: Map<string, NodeDiffMeta>;
     resolvedSystems: SystemNode[];
     toggleCategory: (category: CategoryId) => void;
+    toggleGroup: (groupId: string) => void;
     groupBy: GroupByMode;
     setGroupBy: (mode: GroupByMode) => void;
     groupByAvailable: boolean;
@@ -142,6 +143,7 @@ export function usePreviewContextValue(args: UsePreviewContextValueArgs): Previe
         onDeployButtonClick: nav.handleDeployButtonClick,
         onTeamButtonClick: nav.handleTeamButtonClick,
         onCategoryToggle: system.toggleCategory,
+        onGroupToggle: system.toggleGroup,
         groupBy: system.groupBy,
         onGroupByChange: system.setGroupBy,
         groupByAvailable: system.groupByAvailable,
@@ -217,6 +219,7 @@ export function usePreviewContextValue(args: UsePreviewContextValueArgs): Previe
       org.orgTreeSvg,
       org.toggleTeamExpand,
       system.toggleCategory,
+      system.toggleGroup,
       system.groupBy,
       system.setGroupBy,
       system.groupByAvailable,

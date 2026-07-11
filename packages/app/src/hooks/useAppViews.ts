@@ -76,6 +76,7 @@ interface SystemViewBundle {
   /** Collapsed external/infra categories on the system view (Issue #1821). */
   collapsedCategories: ReadonlySet<CategoryId>;
   toggleCategory: (category: CategoryId) => void;
+  toggleGroup: (groupId: string) => void;
   /** System-view grouping axis and its setter (Issue #1858). */
   groupBy: GroupByMode;
   setGroupBy: (mode: GroupByMode) => void;
@@ -194,6 +195,7 @@ export function useAppViews(args: UseAppViewsArgs): UseAppViewsResult {
     toggleCategory,
     groupBy,
     setGroupBy,
+    toggleGroup,
     nodeDiff: systemNodeDiff,
   } = useSystemView(
     effEntryPath,
@@ -324,6 +326,7 @@ export function useAppViews(args: UseAppViewsArgs): UseAppViewsResult {
       groupBy,
       setGroupBy,
       groupByAvailable: hasOrgDiagram && effCompareEntryPath === null,
+      toggleGroup,
     },
     deploy: {
       svg: deploySvg,

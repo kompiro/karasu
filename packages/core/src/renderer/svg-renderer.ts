@@ -377,6 +377,8 @@ export function renderFromLayout(
   if (options?.interactive) {
     const categoryControls = renderCategoryControls(layoutResult, palette);
     if (categoryControls) parts.push(categoryControls);
+    const groupControls = renderGroupControls(layoutResult, palette, options?.collapsedGroups);
+    if (groupControls) parts.push(groupControls);
   }
 
   // Legend footer (Issue #887) — rendered as a band below the diagram so
@@ -597,6 +599,59 @@ function renderCategoryControls(layoutResult: LayoutResult, palette: DiagramPale
       ".krs-cat-collapse,.krs-category-stub{cursor:pointer}",
   );
   return el("g", { class: "krs-category-controls" }, style, ...groups);
+}
+
+/**
+ * A ⊖/⊕ toggle at the top-right of each team boundary frame (system-view Group
+ * by, #1858 slice B). Shows ⊖ when the group is expanded (click collapses it to
+ * its `<Team> (N)` stub) and ⊕ when collapsed (click expands). Carries
+ * `data-collapse-group` for the app's click delegation. Interactive chrome only.
+ */
+function renderGroupControls(
+  layoutResult: LayoutResult,
+  palette: DiagramPalette,
+  collapsedGroups: ReadonlySet<string> | undefined,
+): string {
+  const buttons: string[] = [];
+  for (const container of layoutResult.containers) {
+    if (!container.group || container.groupId === undefined) continue;
+    const collapsed = collapsedGroups?.has(container.groupId) ?? false;
+    const bx = container.x + container.width - 2;
+    const by = container.y + 2;
+    const lines = [
+      el("line", { x1: -4, y1: 0, x2: 4, y2: 0, stroke: palette.accent, "stroke-width": 1.5 }),
+    ];
+    if (collapsed) {
+      // ⊕ — add the vertical stroke.
+      lines.push(
+        el("line", { x1: 0, y1: -4, x2: 0, y2: 4, stroke: palette.accent, "stroke-width": 1.5 }),
+      );
+    }
+    buttons.push(
+      el(
+        "g",
+        {
+          class: "krs-group-collapse",
+          "data-collapse-group": container.groupId,
+          role: "button",
+          tabindex: "0",
+          transform: `translate(${bx},${by})`,
+        },
+        el("circle", {
+          cx: 0,
+          cy: 0,
+          r: 9,
+          fill: palette.surfaceBg,
+          stroke: palette.accent,
+          "stroke-width": 1.5,
+        }),
+        ...lines,
+      ),
+    );
+  }
+  if (buttons.length === 0) return "";
+  const style = el("style", {}, ".krs-group-collapse{cursor:pointer}");
+  return el("g", { class: "krs-group-controls" }, style, ...buttons);
 }
 
 function renderContainer(

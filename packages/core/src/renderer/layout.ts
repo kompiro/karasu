@@ -1109,6 +1109,7 @@ export function layout(
         height: maxY - minY + GROUP_FRAME_PAD_TOP + GROUP_FRAME_PAD_BOTTOM,
         ghost: false,
         group: true,
+        groupId,
       });
     }
   }

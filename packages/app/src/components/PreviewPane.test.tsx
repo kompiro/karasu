@@ -618,3 +618,19 @@ describe("PreviewPane category collapse controls (#1821)", () => {
     expect(onCategoryToggle).not.toHaveBeenCalled();
   });
 });
+
+describe("PreviewPane group collapse controls (#1858)", () => {
+  it("calls onGroupToggle with the team id when a group ⊖/⊕ control is clicked", () => {
+    const onGroupToggle = vi.fn<(g: string) => void>();
+    const svg = `<div data-collapse-group="payments"></div>`;
+    const { container } = render(
+      <PreviewPane {...baseProps()} svg={svg} onGroupToggle={onGroupToggle} />,
+    );
+    const previewContainer = container.querySelector(".preview-container")!;
+    click(
+      previewContainer as HTMLElement,
+      () => container.querySelector(`[data-collapse-group='payments']`)!,
+    );
+    expect(onGroupToggle).toHaveBeenCalledWith("payments");
+  });
+});

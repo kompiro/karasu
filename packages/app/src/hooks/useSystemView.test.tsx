@@ -114,6 +114,24 @@ describe("useSystemView", () => {
     vi.useRealTimers();
   });
 
+  it("toggleGroup collapses a team to a stub on recompile (#1858 slice B)", async () => {
+    vi.useFakeTimers();
+    const fs = makeFs(SOURCE_TWO_TEAMS);
+    const { result } = renderHook(() => useSystemView(ENTRY, fs, []));
+    await act(() => vi.advanceTimersByTimeAsync(300));
+    act(() => result.current.setGroupBy("team"));
+    await act(() => vi.advanceTimersByTimeAsync(300));
+    // Expanded: the owned service card is drawn.
+    expect(result.current.svg).toContain('data-node-id="Billing"');
+
+    // Collapse the payments team → recompile folds it to a stub.
+    act(() => result.current.toggleGroup("payments"));
+    await act(() => vi.advanceTimersByTimeAsync(300));
+    expect(result.current.svg).not.toContain('data-node-id="Billing"');
+    expect(result.current.svg).toContain('data-node-id="__group_collapsed_payments__"');
+    vi.useRealTimers();
+  });
+
   it("hasOrgDiagram tracks the source's organization blocks (Issue #923)", async () => {
     vi.useFakeTimers();
     // Start with a source that has an organization block. After the editor is
