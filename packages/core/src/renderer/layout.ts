@@ -1,6 +1,7 @@
 import type { KrsNode, KrsEdge } from "../types/ast.js";
 import { INFRA_KIND_SET } from "../types/ast.js";
 import { collapseNodeList, type CategoryId } from "./category-collapse.js";
+import { assignGroupedLayers, type GroupedNode, type GroupBand } from "./group-layout.js";
 import type { ViewSlice, GhostSystem } from "../view/view-extract.js";
 import type { EdgeDirection, ResolvedLayoutHints } from "../types/style.js";
 import { buildInheritedAnnotations } from "../resolver/inherited-annotations.js";
@@ -33,6 +34,15 @@ const DESCRIPTION_FONT_RATIO = 0.85;
 const CONTAINER_PADDING = 40;
 const CONTAINER_LABEL_HEIGHT = 30;
 const GHOST_MARGIN = 30;
+
+// System-view "Group by" boundary frames (#1858, P2a). Horizontal / bottom
+// padding around a group's members, and the space reserved above a group's
+// first row for its title. The inter-group vertical gap is derived from these
+// so a frame's bottom edge never touches the next frame's title.
+const GROUP_FRAME_PAD_X = 16;
+const GROUP_FRAME_PAD_TOP = CONTAINER_LABEL_HEIGHT;
+const GROUP_FRAME_PAD_BOTTOM = 16;
+const GROUP_FRAME_TITLE_GAP = GROUP_FRAME_PAD_TOP + GROUP_FRAME_PAD_BOTTOM;
 
 const ICON_CARD_WIDTH = 160;
 const ICON_CARD_HEIGHT_WITH_DESC = 100;
@@ -734,6 +744,7 @@ export function layout(
   layoutHints?: Map<string, ResolvedLayoutHints>,
   edgeDirections?: Map<string, EdgeDirection>,
   collapsedCategories?: ReadonlySet<CategoryId>,
+  groupBy?: "team",
 ): LayoutResult {
   const { LAYER_GAP, NODE_GAP, MAX_LAYER_WIDTH } = getLayoutConstants(displayMode);
   // Build the inherited-annotations map from the focused container's subtree
@@ -767,6 +778,36 @@ export function layout(
   const allNodes = collapseNodeList(viewSlice.childNodes, collapsedCategories);
   const allEdges = viewSlice.childEdges;
 
+  // System-view grouping (#1858, P2a): when the viewer picks "Group by: team",
+  // bucket nodes into their owning team instead of the kind tiers, stacking each
+  // team as a dependency-ordered band that a boundary frame can enclose. Falls
+  // back to the ungrouped layout when nothing is grouped (no org / no owns), so
+  // this only ever changes output for a model that both opts in and has owners.
+  let groupedLayers: Map<string, number> | null = null;
+  let groupBands: Map<string, GroupBand> | null = null;
+  let groupOrder: string[] = [];
+  if (groupBy === "team" && ownerIndex && ownerIndex.size > 0) {
+    const groupedNodes: GroupedNode[] = allNodes.map((n) => ({
+      id: n.id,
+      groupId: ownerIndex.get(n.id) ?? null,
+      ungroupedRank: systemTier(n),
+    }));
+    // Team declaration order = first-appearance order in `ownerIndex` (the parser
+    // inserts `owns` in declaration order), so the deterministic tie-break in
+    // `orderGroups` follows what the author wrote.
+    const declaredGroupOrder = [...new Set(ownerIndex.values())];
+    const grouped = assignGroupedLayers(
+      groupedNodes,
+      allEdges.map((e) => ({ from: e.from, to: e.to })),
+      declaredGroupOrder,
+    );
+    if (grouped) {
+      groupedLayers = grouped.layers;
+      groupBands = grouped.groupBands;
+      groupOrder = grouped.groupOrder;
+    }
+  }
+
   if (
     allNodes.length === 0 &&
     viewSlice.ghostUsers.length === 0 &&
@@ -795,7 +836,7 @@ export function layout(
   // here in the future, gate it on `forcedLayers === null` (Q11 of the design
   // doc requires declaration order within forced layers).
   const nodeIds = allNodes.map((n) => n.id);
-  const forcedLayers = assignForcedSystemLayers(allNodes, allEdges);
+  const forcedLayers = groupedLayers ?? assignForcedSystemLayers(allNodes, allEdges);
   let layers: Map<string, number>;
   if (forcedLayers) {
     layers = forcedLayers;
@@ -861,8 +902,16 @@ export function layout(
   // (`gridColumnCount` columns, or the author's `grid-columns`), bounded by
   // `MAX_LAYER_WIDTH`, so a wide sibling set does not sprawl into one
   // unreadable row that forces a zoom-out (scoped glance, resolution axis).
+  // Group-by mode: reserve a vertical gap above each group's first row for its
+  // boundary-frame title (keyed by the group's top layer). No-op when ungrouped.
+  const groupStartLayer = new Map<number, string>();
+  if (groupBands) {
+    for (const [gid, band] of groupBands) groupStartLayer.set(band.min, gid);
+  }
+
   let layerBaselineY = NODE_GAP;
   for (const layerIdx of sortedLayers) {
+    if (groupStartLayer.has(layerIdx)) layerBaselineY += GROUP_FRAME_TITLE_GAP;
     const nodesInLayer = orderedByLayer.get(layerIdx)!;
     const dimsById = new Map<string, { width: number; height: number }>();
     for (const nid of nodesInLayer) {
@@ -1021,6 +1070,32 @@ export function layout(
   // Reverse so outermost is first
   containers.reverse();
 
+  // Group boundary frames (#1858, P2a): one dashed titled frame enclosing each
+  // team's members. Members of a group occupy a contiguous row band (guaranteed
+  // by `assignGroupedLayers`), so the groups stack vertically and their frames
+  // are disjoint by construction — the overlap the flat layout could not avoid
+  // (design § P1 measurement 1). Built from final node positions.
+  if (groupBands && ownerIndex) {
+    for (const groupId of groupOrder) {
+      const members = [...layoutNodes.values()].filter((n) => ownerIndex.get(n.id) === groupId);
+      if (members.length === 0) continue;
+      const minX = Math.min(...members.map((n) => n.x));
+      const minY = Math.min(...members.map((n) => n.y));
+      const maxX = Math.max(...members.map((n) => n.x + n.width));
+      const maxY = Math.max(...members.map((n) => n.y + n.height));
+      containers.push({
+        id: `__group_${groupId}__`,
+        label: groupId,
+        x: minX - GROUP_FRAME_PAD_X,
+        y: minY - GROUP_FRAME_PAD_TOP,
+        width: maxX - minX + GROUP_FRAME_PAD_X * 2,
+        height: maxY - minY + GROUP_FRAME_PAD_TOP + GROUP_FRAME_PAD_BOTTOM,
+        ghost: false,
+        group: true,
+      });
+    }
+  }
+
   // Place ghost nodes
   placeGhostUsers(viewSlice, layoutNodes, containers, effectiveAnnotations, displayMode);
   placeGhostDomains(viewSlice, layoutNodes, containers, effectiveAnnotations, displayMode);
@@ -1028,15 +1103,19 @@ export function layout(
   placeOutgoingGhostSystems(viewSlice, layoutNodes, containers, ownerIndex, displayMode);
 
   // Move [external] services to side columns before edges are computed, so
-  // anchors re-pick sides from the new positions (#1728).
-  const sideExternals = placeExternalServicesOnSides(
-    viewSlice.childNodes,
-    new Set(viewSlice.systems.map((s) => s.id)),
-    layoutNodes,
-    containers,
-    allEdges,
-    layoutHints,
-  );
+  // anchors re-pick sides from the new positions (#1728). Skipped in group-by
+  // mode: externals belong to their group's frame (or the trailing un-grouped
+  // band), and pulling them to the canvas sides would break that placement.
+  const sideExternals = groupBands
+    ? new Map<string, "left" | "right">()
+    : placeExternalServicesOnSides(
+        viewSlice.childNodes,
+        new Set(viewSlice.systems.map((s) => s.id)),
+        layoutNodes,
+        containers,
+        allEdges,
+        layoutHints,
+      );
 
   // Compute all edges (regular + ghost)
   const layoutEdges = computeLayoutEdges(

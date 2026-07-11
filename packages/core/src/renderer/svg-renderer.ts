@@ -126,6 +126,12 @@ export interface RenderOptions {
    * content, not chrome).
    */
   interactive?: boolean;
+  /**
+   * System-view grouping axis (Issue #1858, P2a). `"team"` lays each node's
+   * owning team out as a dependency-ordered band with a boundary frame. Omit
+   * for the default un-grouped kind-tier layout.
+   */
+  groupBy?: "team";
 }
 
 /**
@@ -166,6 +172,7 @@ export function render(
     styles.layoutHints,
     edgeDirections,
     options?.collapsedCategories,
+    options?.groupBy,
   );
   const title =
     layoutResult.containers.length === 0 && viewSlice.containerNode
@@ -606,7 +613,7 @@ function renderContainer(
       fill: "transparent",
       stroke: style.borderColor,
       "stroke-width": style.borderWidth,
-      "stroke-dasharray": ghost ? "8 4" : undefined,
+      "stroke-dasharray": ghost || container.group ? "8 4" : undefined,
       rx: style.borderRadius,
     }),
   );
@@ -631,6 +638,7 @@ function renderContainer(
     {
       "data-container-id": container.id,
       "data-kind-band": container.kindBand,
+      "data-group": container.group ? "true" : undefined,
       "data-diff-state": diffState,
       opacity: ghost ? GHOST_OPACITY : undefined,
     },

@@ -91,6 +91,12 @@ export interface ContainerRect {
    * e2e hooks. `undefined` for ordinary containers.
    */
   kindBand?: "job";
+  /**
+   * Group boundary-frame marker (system-view Group by, #1858). When set, the
+   * renderer draws this container as a dashed group frame (full opacity, unlike
+   * a ghost) with the group label. `undefined` for ordinary containers.
+   */
+  group?: boolean;
 }
 
 export interface LayoutResult {

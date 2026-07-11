@@ -18,6 +18,7 @@
 //   usecase-authorization.krs authorization-as-prose convention (Access: + policy link)
 //   bff-delivers.krs          service.delivers <ClientId> for the BFF / SSR pattern
 //   deploy-all.krs            every deploy artifact type (war / jar / oci / lambda / ...)
+//   team-ownership.krs        organization / team / owns — the Group by: team axis
 
 system FeatureSamples {
   label "Feature samples"
