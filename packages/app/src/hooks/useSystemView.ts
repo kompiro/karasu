@@ -14,6 +14,7 @@ import {
   type CategoryId,
 } from "@karasu-tools/core";
 import { useCallback, useState } from "react";
+import type { GroupByMode } from "../state/preview-context.js";
 import iconManifest from "@karasu-tools/core/icons/icons.json";
 import serviceSvg from "@karasu-tools/core/icons/service.svg?raw";
 import clientSvg from "@karasu-tools/core/icons/client.svg?raw";
@@ -116,6 +117,8 @@ export function useSystemView(
   recompile: () => void;
   collapsedCategories: ReadonlySet<CategoryId>;
   toggleCategory: (category: CategoryId) => void;
+  groupBy: GroupByMode;
+  setGroupBy: (mode: GroupByMode) => void;
 } {
   const emptyStateLabels = useEmptyStateLabels();
   const annotationBadgeLabels = useAnnotationBadgeLabels();
@@ -136,12 +139,18 @@ export function useSystemView(
   }, []);
   const collapsedKey = [...collapsedCategories].sort().join(",");
 
+  // System-view grouping axis (Issue #1858). "team" recompiles with the core
+  // `groupBy` option so the diagram re-lays-out into team bands with boundary
+  // frames; "none" is the default kind-tier layout. A view-state option like
+  // `collapsedCategories` — the `.krs` is untouched.
+  const [groupBy, setGroupBy] = useState<GroupByMode>("none");
+
   // Structural key for `viewPath` so that a fresh `[]` from `SET_ACTIVE_VIEW`
   // does not restart the in-flight debounce when the previous value was also
   // empty. Without this, switching view tabs while the initial compile is
   // pending keeps resetting the 300ms timer and never renders an SVG. See #1171.
   const viewPathKey = viewPath.join("/");
-  const currentKey = `${entryPath}:system:${viewPathKey}:cmp=${compareEntryPath ?? ""}:collapsed=${collapsedKey}`;
+  const currentKey = `${entryPath}:system:${viewPathKey}:cmp=${compareEntryPath ?? ""}:collapsed=${collapsedKey}:groupBy=${groupBy}`;
 
   const compile = async (): Promise<CompileOutcome<SystemViewState> | null> => {
     if (!entryPath || !fs) return null;
@@ -158,6 +167,7 @@ export function useSystemView(
       annotationBadgeLabels,
       theme,
       collapsedCategories,
+      groupBy: groupBy === "team" ? "team" : undefined,
       interactive: true,
     });
 
@@ -245,7 +255,8 @@ export function useSystemView(
       emptyStateLabels,
       annotationBadgeLabels,
       collapsedKey,
+      groupBy,
     ],
   });
-  return { ...result, collapsedCategories, toggleCategory };
+  return { ...result, collapsedCategories, toggleCategory, groupBy, setGroupBy };
 }

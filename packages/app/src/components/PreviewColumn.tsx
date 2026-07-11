@@ -6,7 +6,7 @@ import { WarningPanel } from "./WarningPanel.js";
 import { openReferenceWindow } from "../utils/open-reference-window.js";
 import { CrudMatrixPanel } from "./CrudMatrixPanel.js";
 import { buildSvgExportFilename } from "../utils/build-svg-export-filename.js";
-import { usePreview } from "../state/preview-context.js";
+import { usePreview, type GroupByMode } from "../state/preview-context.js";
 import { useActiveViewData } from "../state/active-view-data.js";
 import { ShareDialog } from "./ShareDialog.js";
 import { buildShareUrls } from "../utils/inline-share.js";
@@ -275,6 +275,20 @@ export function PreviewColumn() {
         >
           ◇ Icon Mode
         </Button>
+        {activeView === "system" && (
+          <span className="group-by-selector-label">
+            ⑃ {t("preview.groupBy.label")}
+            <select
+              className="group-by-selector"
+              value={view.groupBy ?? "none"}
+              onChange={(e) => view.onGroupByChange?.(e.target.value as GroupByMode)}
+              aria-label={t("preview.groupBy.ariaLabel")}
+            >
+              <option value="none">{t("preview.groupBy.none")}</option>
+              <option value="team">{t("preview.groupBy.team")}</option>
+            </select>
+          </span>
+        )}
         {activeView === "org" && (
           <Button
             variant="actionable"

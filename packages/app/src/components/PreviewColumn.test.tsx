@@ -68,6 +68,8 @@ function makeProps(overrides: Partial<PreviewContextValue> = {}): PreviewContext
       warnings: emptyWarnings,
       onBreadcrumbNavigate: noop,
       systems: [],
+      groupBy: "none" as const,
+      onGroupByChange: vi.fn<() => void>(),
     },
     deployView: {
       svg: emptySvg,
@@ -382,6 +384,27 @@ describe("PreviewColumn", () => {
       const { getByRole } = renderPreview(props);
       fireEvent.click(getByRole("button", { name: /Toggle icon mode/ }));
       expect(props.onDisplayModeChange).toHaveBeenCalledWith("icon");
+    });
+  });
+
+  describe("Group-by selector (#1858)", () => {
+    it("shows the Group-by selector only on the system view", () => {
+      const sys = renderPreview(makeProps({ activeView: "system" }));
+      expect(sys.getByLabelText("Group the system view by")).toBeTruthy();
+      sys.unmount();
+      for (const activeView of ["deploy", "org"] as const) {
+        const { queryByLabelText, unmount } = renderPreview(makeProps({ activeView }));
+        expect(queryByLabelText("Group the system view by")).toBeNull();
+        unmount();
+      }
+    });
+
+    it("calls onGroupByChange with the picked axis", async () => {
+      const user = userEvent.setup();
+      const props = makeProps({ activeView: "system" });
+      const { getByLabelText } = renderPreview(props);
+      await user.selectOptions(getByLabelText("Group the system view by"), "team");
+      expect(props.systemView.onGroupByChange).toHaveBeenCalledWith("team");
     });
   });
 

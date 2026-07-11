@@ -177,6 +177,12 @@ export type Translations = {
   "preview.export.drawio.title": string;
   "preview.export.drawio.failed": (params: { detail: string }) => string;
 
+  // Preview toolbar — Group by (system-view team grouping, #1858)
+  "preview.groupBy.label": string;
+  "preview.groupBy.ariaLabel": string;
+  "preview.groupBy.none": string;
+  "preview.groupBy.team": string;
+
   // Preview toolbar — Share (inline URL sharing, karasu-nest)
   "preview.share.label": string;
   "preview.share.ariaLabel": string;

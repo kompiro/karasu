@@ -13,6 +13,9 @@ import type {
 import type { ActiveView } from "./app-reducer.js";
 import type { SharePayload } from "../utils/inline-share.js";
 
+/** System-view grouping axis (Issue #1858). `"team"` groups by owning team. */
+export type GroupByMode = "none" | "team";
+
 export interface SystemViewData {
   svg: string;
   diagnostics: Diagnostic[];
@@ -26,6 +29,10 @@ export interface SystemViewData {
   onTeamButtonClick?: (teamId: string) => void;
   /** Called when user clicks a category control to collapse/expand it (#1821). */
   onCategoryToggle?: (category: CategoryId) => void;
+  /** Current system-view grouping axis (#1858). */
+  groupBy?: GroupByMode;
+  /** Called when the user changes the Group-by selector (#1858). */
+  onGroupByChange?: (mode: GroupByMode) => void;
   highlightedNodeId?: string | null;
   onClearHighlight?: () => void;
   /**

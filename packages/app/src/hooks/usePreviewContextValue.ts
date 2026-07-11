@@ -11,7 +11,7 @@ import type {
   CategoryId,
 } from "@karasu-tools/core";
 import type { ActiveView } from "../state/app-reducer.js";
-import type { PreviewContextValue } from "../state/preview-context.js";
+import type { GroupByMode, PreviewContextValue } from "../state/preview-context.js";
 import type { SharePayload } from "../utils/inline-share.js";
 import type { UseCrossNavigationResult } from "./useCrossNavigation.js";
 
@@ -33,6 +33,8 @@ interface UsePreviewContextValueArgs {
     nodeDiff?: Map<string, NodeDiffMeta>;
     resolvedSystems: SystemNode[];
     toggleCategory: (category: CategoryId) => void;
+    groupBy: GroupByMode;
+    setGroupBy: (mode: GroupByMode) => void;
   };
   deploy: {
     svg: string;
@@ -139,6 +141,8 @@ export function usePreviewContextValue(args: UsePreviewContextValueArgs): Previe
         onDeployButtonClick: nav.handleDeployButtonClick,
         onTeamButtonClick: nav.handleTeamButtonClick,
         onCategoryToggle: system.toggleCategory,
+        groupBy: system.groupBy,
+        onGroupByChange: system.setGroupBy,
         highlightedNodeId,
         onClearHighlight: nav.clearHighlight,
         nodeDiff: system.nodeDiff,
@@ -211,6 +215,8 @@ export function usePreviewContextValue(args: UsePreviewContextValueArgs): Previe
       org.orgTreeSvg,
       org.toggleTeamExpand,
       system.toggleCategory,
+      system.groupBy,
+      system.setGroupBy,
       org.orgTreeExportSvg,
       viewPath,
       breadcrumbItems,

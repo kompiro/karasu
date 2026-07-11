@@ -20,6 +20,16 @@ const SOURCE_B = `system SysB {
     label "BackendB"
   }
 }`;
+// Two teams each owning a service — exercises the Group-by: team axis (#1858).
+const SOURCE_TWO_TEAMS = `system Shop {
+  service Billing { label "Billing" }
+  service Search { label "Search" }
+  Billing -> Search "lookup"
+}
+organization Org {
+  team "payments" { owns Billing }
+  team "catalog" { owns Search }
+}`;
 const INVALID_SOURCE = "!!! invalid krs !!!";
 
 // Duplicate node ID under the same parent — triggers a semantic error (not a
@@ -78,6 +88,29 @@ describe("useSystemView", () => {
     expect(darkSvg).toContain("#0F172A");
     expect(lightSvg).toContain("#FFFFFF");
     expect(lightSvg).not.toBe(darkSvg);
+    vi.useRealTimers();
+  });
+
+  it("recompiles into team boundary frames when groupBy is set to team (#1858)", async () => {
+    // The hook owns `groupBy` as view-state and threads it into compileProject
+    // (like `theme` / `collapsedCategories`), so flipping it re-lays-out the
+    // system view without touching the .krs.
+    vi.useFakeTimers();
+    const fs = makeFs(SOURCE_TWO_TEAMS);
+    const { result } = renderHook(() => useSystemView(ENTRY, fs, []));
+    await act(() => vi.advanceTimersByTimeAsync(300));
+
+    // Default: ungrouped, no group frames.
+    expect(result.current.groupBy).toBe("none");
+    expect(result.current.svg).not.toContain('data-group="true"');
+
+    // Switch to team grouping → recompile draws a boundary frame per team.
+    act(() => result.current.setGroupBy("team"));
+    await act(() => vi.advanceTimersByTimeAsync(300));
+
+    expect(result.current.groupBy).toBe("team");
+    expect(result.current.svg).toContain('data-group="true"');
+    expect(result.current.svg).toContain("__group_payments__");
     vi.useRealTimers();
   });
 
