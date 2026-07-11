@@ -35,6 +35,7 @@ interface UsePreviewContextValueArgs {
     toggleCategory: (category: CategoryId) => void;
     groupBy: GroupByMode;
     setGroupBy: (mode: GroupByMode) => void;
+    groupByAvailable: boolean;
   };
   deploy: {
     svg: string;
@@ -143,6 +144,7 @@ export function usePreviewContextValue(args: UsePreviewContextValueArgs): Previe
         onCategoryToggle: system.toggleCategory,
         groupBy: system.groupBy,
         onGroupByChange: system.setGroupBy,
+        groupByAvailable: system.groupByAvailable,
         highlightedNodeId,
         onClearHighlight: nav.clearHighlight,
         nodeDiff: system.nodeDiff,
@@ -217,6 +219,7 @@ export function usePreviewContextValue(args: UsePreviewContextValueArgs): Previe
       system.toggleCategory,
       system.groupBy,
       system.setGroupBy,
+      system.groupByAvailable,
       org.orgTreeExportSvg,
       viewPath,
       breadcrumbItems,

@@ -280,6 +280,7 @@ export function AppShell({
       toggleCategory: views.system.toggleCategory,
       groupBy: views.system.groupBy,
       setGroupBy: views.system.setGroupBy,
+      groupByAvailable: views.system.groupByAvailable,
     },
     deploy: {
       svg: views.deploy.svg,

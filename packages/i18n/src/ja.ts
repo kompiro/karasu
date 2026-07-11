@@ -178,7 +178,6 @@ export const ja: Partial<Translations> = {
 
   // グループ化（system view のチーム別グルーピング、#1858）
   "preview.groupBy.label": "グループ化",
-  "preview.groupBy.ariaLabel": "system view のグルーピング軸",
   "preview.groupBy.none": "なし",
   "preview.groupBy.team": "チーム",
 

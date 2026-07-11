@@ -61,7 +61,9 @@ system view の toolbar に「Group by: None / Team」セレクタを出し、`g
 - [x] system view で「Team」を選ぶと `groupBy: "team"` で再コンパイルされ、SVG に team 境界フレーム（`data-group="true"` / `__group_<team>__`）が出る
 > ✅ Automated by `packages/app/src/hooks/useSystemView.test.tsx` — `setGroupBy("team")` → 再コンパイルでフレーム出現
 - [x] セレクタは system view のみに表示され、deploy / org / matrix には出ない。変更で `onGroupByChange` が発火する
-> ✅ Automated by `packages/app/src/components/PreviewColumn.test.tsx` — view ゲート + `onGroupByChange("team")`
+> ✅ Automated by `packages/app/src/components/PreviewColumn.test.tsx` — view ゲート（deploy/org/matrix）+ `onGroupByChange("team")`
+- [x] grouping が無意味な状態（org 宣言なし / compare モード）ではセレクタを出さない（no-op 回避、`groupByAvailable`）
+> ✅ Automated by `packages/app/src/components/PreviewColumn.test.tsx` — `groupByAvailable: false` で非表示
 - [x] ラベルは i18n 経由（`preview.groupBy.*`、en/ja 両方）
 > ✅ Automated — `packages/i18n` の型で全ロケール網羅を強制（key 欠落は typecheck 失敗）
 - [ ] **手動**: app で `examples/en/feature-samples/team-ownership.krs` を開き system view で「Group by」を Team に切り替える → 3 チームがフレームで囲まれる。None に戻すと従来表示に戻る（折り畳み操作は slice B）

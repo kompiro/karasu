@@ -179,7 +179,6 @@ export type Translations = {
 
   // Preview toolbar — Group by (system-view team grouping, #1858)
   "preview.groupBy.label": string;
-  "preview.groupBy.ariaLabel": string;
   "preview.groupBy.none": string;
   "preview.groupBy.team": string;
 

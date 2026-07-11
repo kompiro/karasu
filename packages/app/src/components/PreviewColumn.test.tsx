@@ -70,6 +70,7 @@ function makeProps(overrides: Partial<PreviewContextValue> = {}): PreviewContext
       systems: [],
       groupBy: "none" as const,
       onGroupByChange: vi.fn<() => void>(),
+      groupByAvailable: true,
     },
     deployView: {
       svg: emptySvg,
@@ -390,20 +391,28 @@ describe("PreviewColumn", () => {
   describe("Group-by selector (#1858)", () => {
     it("shows the Group-by selector only on the system view", () => {
       const sys = renderPreview(makeProps({ activeView: "system" }));
-      expect(sys.getByLabelText("Group the system view by")).toBeTruthy();
+      expect(sys.getByLabelText("Group by")).toBeTruthy();
       sys.unmount();
-      for (const activeView of ["deploy", "org"] as const) {
+      // Never on deploy / org / matrix (matrix early-returns before the toolbar).
+      for (const activeView of ["deploy", "org", "matrix"] as const) {
         const { queryByLabelText, unmount } = renderPreview(makeProps({ activeView }));
-        expect(queryByLabelText("Group the system view by")).toBeNull();
+        expect(queryByLabelText("Group by")).toBeNull();
         unmount();
       }
+    });
+
+    it("hides the selector when grouping is not meaningful (no org / compare mode)", () => {
+      const props = makeProps({ activeView: "system" });
+      props.systemView.groupByAvailable = false;
+      const { queryByLabelText } = renderPreview(props);
+      expect(queryByLabelText("Group by")).toBeNull();
     });
 
     it("calls onGroupByChange with the picked axis", async () => {
       const user = userEvent.setup();
       const props = makeProps({ activeView: "system" });
       const { getByLabelText } = renderPreview(props);
-      await user.selectOptions(getByLabelText("Group the system view by"), "team");
+      await user.selectOptions(getByLabelText("Group by"), "team");
       expect(props.systemView.onGroupByChange).toHaveBeenCalledWith("team");
     });
   });

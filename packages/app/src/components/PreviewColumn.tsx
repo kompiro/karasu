@@ -275,14 +275,14 @@ export function PreviewColumn() {
         >
           ◇ Icon Mode
         </Button>
-        {activeView === "system" && (
+        {activeView === "system" && view.groupByAvailable && (
           <span className="group-by-selector-label">
-            ⑃ {t("preview.groupBy.label")}
+            <label htmlFor="group-by-select">{t("preview.groupBy.label")}</label>
             <select
+              id="group-by-select"
               className="group-by-selector"
               value={view.groupBy ?? "none"}
               onChange={(e) => view.onGroupByChange?.(e.target.value as GroupByMode)}
-              aria-label={t("preview.groupBy.ariaLabel")}
             >
               <option value="none">{t("preview.groupBy.none")}</option>
               <option value="team">{t("preview.groupBy.team")}</option>

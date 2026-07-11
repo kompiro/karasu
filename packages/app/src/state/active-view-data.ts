@@ -41,6 +41,8 @@ interface ActiveViewData {
   groupBy?: GroupByMode;
   /** system: change the Group-by axis (#1858). */
   onGroupByChange?: (mode: GroupByMode) => void;
+  /** system: whether the Group-by selector is meaningful (#1858). */
+  groupByAvailable?: boolean;
   /** deploy: click a container group → highlight it as a system node. */
   onContainerClick?: (containerId: string) => void;
   /** org: click an owned service → switch to system. */
@@ -107,6 +109,7 @@ export function selectActiveViewData(ctx: PreviewContextValue): ActiveViewData {
         onCategoryToggle: systemView.onCategoryToggle,
         groupBy: systemView.groupBy,
         onGroupByChange: systemView.onGroupByChange,
+        groupByAvailable: systemView.groupByAvailable,
         nodeDiff: systemView.nodeDiff,
         styleTargetPath: ctx.styleTargetPath,
         onPickEdgeDirection: ctx.onPickEdgeDirection,

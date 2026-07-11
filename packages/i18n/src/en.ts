@@ -179,7 +179,6 @@ export const en: Translations = {
 
   // Group by (system-view team grouping, #1858)
   "preview.groupBy.label": "Group by",
-  "preview.groupBy.ariaLabel": "Group the system view by",
   "preview.groupBy.none": "None",
   "preview.groupBy.team": "Team",
 

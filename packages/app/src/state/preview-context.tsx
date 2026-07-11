@@ -33,6 +33,8 @@ export interface SystemViewData {
   groupBy?: GroupByMode;
   /** Called when the user changes the Group-by selector (#1858). */
   onGroupByChange?: (mode: GroupByMode) => void;
+  /** Whether the Group-by selector is meaningful (has org, not comparing) (#1858). */
+  groupByAvailable?: boolean;
   highlightedNodeId?: string | null;
   onClearHighlight?: () => void;
   /**
