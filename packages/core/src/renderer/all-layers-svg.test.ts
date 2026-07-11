@@ -224,7 +224,10 @@ system Shop {
 
 // A system with two teams (payments owns Billing/Wallet, catalog owns
 // Search/Catalog), each service carrying a drill-down domain so the export
-// stacks a root band plus deeper bands.
+// stacks a root band plus deeper bands. `owns BillingDomain` deliberately
+// puts an *owned* node on a deeper band so the root-only guard is actually
+// fenced: if grouping leaked past the root, BillingDomain's band would draw
+// a third frame (see the "root band only" test).
 const GROUPED_TWO_LEVEL = `
 system Shop {
   service Billing {
@@ -243,6 +246,7 @@ organization Org {
   team "payments" {
     label "Payments"
     owns Billing
+    owns BillingDomain
     owns Wallet
   }
   team "catalog" {
@@ -316,10 +320,13 @@ describe("buildAllLayersSvg with groupBy: team (#1879)", () => {
       undefined,
       "team",
     );
-    // Two group frames total — one per team — all on the root system band.
-    // A drill-down band (Billing's domain) has no teams, so no extra frames.
+    // Exactly two group frames — one per team — all on the root system band.
+    // `BillingDomain` IS owned by payments, so it sits on a deeper band with a
+    // team-owned node; the root-only guard must still refuse to frame that
+    // band. Removing the guard would draw a third frame here, so this count
+    // fences the guard (not just the fact that deeper bands lack owners).
     expect(svg.match(/data-group="true"/g)?.length).toBe(2);
-    // The domain drill-down band is still present (full stack rendered).
+    // The owned domain node is still present on its (ungrouped) drill-down band.
     expect(svg).toContain('data-node-id="BillingDomain"');
   });
 });

@@ -864,7 +864,10 @@ describe("bundleSingleLevelViews", () => {
 });
 
 // Two teams (payments owns Billing/Wallet, catalog owns Search/Catalog);
-// Billing carries a drill-down domain so deeper levels exist.
+// Billing carries a drill-down domain so deeper levels exist. `owns
+// BillingDomain` puts an owned node on a deeper band so the root-only guard
+// is fenced: leaking grouping past the root would draw a frame there and
+// push the `data-group="true"` count past 2.
 const GROUPED = `
 system Shop {
   service Billing {
@@ -883,6 +886,7 @@ organization Org {
   team "payments" {
     label "Payments"
     owns Billing
+    owns BillingDomain
     owns Wallet
   }
   team "catalog" {
