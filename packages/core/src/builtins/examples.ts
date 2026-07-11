@@ -2136,6 +2136,7 @@ export const FEATURE_SAMPLES_PROJECT: ExampleProject = {
 //   usecase-authorization.krs authorization-as-prose convention (Access: + policy link)
 //   bff-delivers.krs          service.delivers <ClientId> for the BFF / SSR pattern
 //   deploy-all.krs            every deploy artifact type (war / jar / oci / lambda / ...)
+//   team-ownership.krs        organization / team / owns — the Group by: team axis
 
 system FeatureSamples {
   label "Feature samples"
@@ -2723,6 +2724,72 @@ system Demo {
         resource OrderDB.OrderTable
       }
     }
+  }
+}
+`,
+    },
+    {
+      path: "team-ownership.krs",
+      content: `// Team ownership via organization / owns (Issue #1358, #1858).
+//
+// An \`organization\` block declares \`team\`s, and each team \`owns\` the services
+// (or domains) it is responsible for. karasu derives a 1:1 owner index from
+// this — a service card shows its owning team, and organizational queries in
+// the AI chat ("who owns Billing?") resolve through it.
+//
+// This ownership is also the first grouping axis of the system view's
+// "Group by" mode (#1858): with \`groupBy: "team"\` the renderer stacks each
+// team as a dependency-ordered band and draws a boundary frame around it, so
+// the three teams below become three framed groups (Platform depends on
+// Payments and Catalog, which reads top-to-bottom). Un-owned nodes such as the
+// shared Order DB fall into a trailing band below the team frames.
+
+system Marketplace {
+  label "Marketplace"
+
+  // -- Payments team --
+  service Checkout { label "Checkout" }
+  service Billing { label "Billing" }
+
+  // -- Catalog team --
+  service Search { label "Search" }
+  service Inventory { label "Inventory" }
+
+  // -- Platform team --
+  service Gateway { label "API Gateway" }
+  service Notifications { label "Notifications" }
+
+  // -- Shared infra (un-owned) --
+  database OrderDB { label "Order DB" }
+
+  Gateway -> Search "route"
+  Gateway -> Checkout "route"
+  Checkout -> Billing "charge"
+  Checkout -> Inventory "reserve"
+  Search -> Inventory "read"
+  Checkout -> OrderDB "persist"
+  Checkout --> Notifications "order placed"
+}
+
+organization MarketplaceOrg {
+  label "Marketplace Engineering"
+
+  team "payments" {
+    label "Payments"
+    owns Checkout
+    owns Billing
+  }
+
+  team "catalog" {
+    label "Catalog"
+    owns Search
+    owns Inventory
+  }
+
+  team "platform" {
+    label "Platform"
+    owns Gateway
+    owns Notifications
   }
 }
 `,
