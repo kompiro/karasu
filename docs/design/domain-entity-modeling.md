@@ -225,21 +225,51 @@ domain drill-down の既存ビュー（usecase が並ぶ）に entity を混載�
 - entity 関連は上位ビューで domain 間エッジに畳み上げる（cross-service domain
   エッジ → `[implicit]` サービス間エッジの既存機構と同型）。境界設計の
   結合度シグナルとしても機能する
-- ビュー体系への追加は renderer・app のナビゲーション・permalink contract
-  （`docs/spec/permalink.md`）・CLI `render` の出力対象に波及する。
-  波及範囲の詳細設計は実装フェーズで行う
+- ビュー体系への追加は renderer・app のナビゲーション・CLI `render` の
+  出力対象に波及する。permalink contract への拡張は次節で本 Design Doc 時点で
+  確定する
+
+### permalink contract の拡張 — view token `entity` の追加
+
+`docs/spec/permalink.md` の anchor 文法 `#krs-<view>-<id>[:<highlight>]` に
+view token **`entity`** を追加する（現行: `system` · `deploy` · `org` · `matrix`）。
+
+```
+#krs-entity-<id>[:<highlight>]
+```
+
+- **`<id>` = domain の id**: そのドメインのエンティティビューを開く
+- **`<id>` = entity の id**: 所有 domain のエンティティビューを開き、当該 entity に
+  フォーカスする。leaf id から drill path を node-path index で復元する既存機構
+  （`SharePayload.target.node` の解決）をそのまま使う
+- `:<highlight>` は既存どおり SPA のみ
+- identity は author-given `id`（`label` 不可）・`sanitizeId` 通過・rename で
+  anchor が壊れる caveat — すべて既存規約のまま
+- `ShareTargetView`（`@karasu-tools/core`）に `entity` を追加する。
+  `SharePayload` の形は変えない（`target.node` が entity id を取れるようになるだけ）
+- 静的 SVG では domain ごとのエンティティビューを 1 level として描画し、
+  `#krs-entity-<domainId>` の CSS `:target` で表示する。entity id の anchor は
+  `:has()` で所属 level の表示に解決する（highlight channel がない既存制約と
+  同じ degrade）。両 surface とも `anchorId(viewPrefix, id)` を経由し、
+  cross-surface parity（TPL-20260630-01）を保つ
 
 ### `translate --from db` の拡張
 
 - 集約畳み込み後の**集約ルート = entity 粒度**でスキャフォールドを生成する
   （AR 文化圏でも出力はドメインモデル層の粒度になる）
+- entity スキャフォールドは **database 単位の暫定 domain** にまとめて吐く
+  （例: `domain OrderDB { entity Order ... }` + 暫定である旨の TODO コメント）。
+  テーブル → ドメインの対応は自動導出できないが、構文的に正しい状態で生成され、
+  手整理は「domain の改名・分割・entity の移動」という編集になる
 - 集約をまたぐ FK リンク（Explicit / Soft）から関連 edge を生成する。
   現在は畳み込み判定に使って捨てている情報の再利用
 - entity には `table` 物理対応を同時に吐く。「同じテーブルが 2 つの語彙に
   非連結に現れる」生成物を作らない
-- Soft FK 由来の関連 edge は生成物上で区別できるようにマーキングする
-  （ADR-20260419-01 が畳み込み理由を description に明記するのと同じ透明性原則。
-  具体形は未解決の問い 3）
+- Soft FK 由来の関連 edge には**システム自動付与タグ `[inferred]`** を付ける
+  （`[implicit]` と同じ「システム自動付与タグ」の流儀・ADR-20260419-01 が
+  畳み込み理由を明記するのと同じ透明性原則）。エンティティビューで推論由来
+  edge を視覚的に区別（破線等）でき、キュレーションで確認済みならタグ 1 個を
+  消すだけで確定 edge になる。`docs/spec/tags-annotations.md` に追加する
 - 生成 → 手整理のワークフロー: translate が entity + 関連 + 物理対応の
   スキャフォールドを吐き、人間がドメイン割当・関連の意味ラベル・
   ジャンクションの entity 昇格/維持を整理する
@@ -256,14 +286,17 @@ domain drill-down の既存ビュー（usecase が並ぶ）に entity を混載�
 4. translate --from db: entity + 関連 + 物理対応のスキャフォールド生成、
    Soft FK 由来マーキング
 5. spec / concepts 更新: 非目標節の改訂、syntax.md への entity 節追加、
-   role/kind 対応表。**spec 新設節への proactive TPL 同梱ルールが発動する**
+   role/kind 対応表、tags-annotations.md への `[inferred]` タグ追加、
+   permalink.md への view token `entity` 追加。
+   **spec 新設節への proactive TPL 同梱ルールが発動する**
 6. AT: `docs/acceptance/` に新規。TC 観点:
    - entity 宣言 → エンティティビューに描画される
    - 他ドメイン entity への関連が ghost 表示される
    - bare `resource Order` が entity 宣言追加で無編集解決される
    - 物理直参照と entity 経由参照の混在で service → database エッジが二重計上されない
-   - translate --from db が entity + 関連を生成し、Soft FK 由来がマーキングされる
+   - translate --from db が entity + 関連を生成し、Soft FK 由来に `[inferred]` が付く
    - 全列 FK ジャンクションが entity として生成される
+   - `#krs-entity-<id>` anchor が静的 SVG / SPA の両 surface で解決する
 
 **v2 — 需要実証後**:
 
@@ -305,13 +338,6 @@ domain drill-down の既存ビュー（usecase が並ぶ）に entity を混載�
   cross-reference 検証の valid-target set は spec が許す全 kind を列挙し、
   重複する集合は同期させる — `resource` の解決先に entity を追加する際、
   検証 target set の全箇所を同期させる観点
-
-## 未解決の問い
-
-1. **translate スキャフォールドの domain 割当**: テーブル → ドメインの対応は
-   自動導出できない。entity をどこに置いて吐くか
-   （TODO コメント付きでトップレベル / database 単位の暫定 domain / その他）
-2. **エンティティビューの permalink contract**: `docs/spec/permalink.md` への
-   追記内容（ビュー種別の表現・entity 要素の deep anchor）
-3. **Soft FK 由来マーキングの具体形**: タグ（`[inferred]` 的な新タグ、
-   tags-annotations への追加が必要）か、生成コメント / description か
+- [TPL-20260630-01](../test-perspectives/TPL-20260630-01-deep-link-anchor-cross-surface-parity.md)
+  静的 SVG と SPA hash の anchor は 1 つの id ベース文法を維持する —
+  view token `entity` 追加時の cross-surface parity 観点
