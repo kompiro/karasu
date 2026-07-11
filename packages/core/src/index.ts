@@ -1163,6 +1163,23 @@ export interface CompileSystemDiffOptions {
   theme?: DiagramTheme;
   /** Translated labels for the built-in annotation badges. */
   annotationBadgeLabels?: AnnotationBadgeLabels;
+  /**
+   * System-view grouping axis (Issue #1858, P2a). `"team"` groups the diff by
+   * the after-side owning team (its `ownerIndex`), so a compared system view
+   * gets the same team bands / boundary frames as the non-compare view. Omit
+   * for the default un-grouped layout.
+   */
+  groupBy?: "team";
+  /** Teams collapsed to a `<Team> (N)` stub in the diff (Issue #1858). Only with `groupBy: "team"`. */
+  collapsedGroups?: ReadonlySet<string>;
+  /**
+   * `external` / `infra` categories folded to a stub in the diff (Issue #1821).
+   * Mirrors the non-compare `compileSystemView` option so the ⊖ category
+   * controls that `interactive` draws are honoured in compare mode too.
+   */
+  collapsedCategories?: ReadonlySet<CategoryId>;
+  /** Draw the interactive Group-by / collapse controls in the diff preview (Issue #1858). */
+  interactive?: boolean;
 }
 
 /**
@@ -1176,8 +1193,19 @@ export interface CompileSystemDiffOptions {
 export async function compileSystemDiff(
   options: CompileSystemDiffOptions,
 ): Promise<SystemDiffCompileResult> {
-  const { beforeEntryPath, afterEntryPath, fs, viewPath, displayMode, emptyStateLabels, theme } =
-    options;
+  const {
+    beforeEntryPath,
+    afterEntryPath,
+    fs,
+    viewPath,
+    displayMode,
+    emptyStateLabels,
+    theme,
+    groupBy,
+    collapsedGroups,
+    collapsedCategories,
+    interactive,
+  } = options;
 
   const resolver = new ImportResolver(fs);
   const [beforeResolved, afterResolved] = await Promise.all([
@@ -1238,6 +1266,10 @@ export async function compileSystemDiff(
       nodeDiffMeta: diffed.nodes,
       emptyLabels: emptyStateLabels,
       theme,
+      groupBy,
+      collapsedGroups,
+      collapsedCategories,
+      interactive,
     },
   );
 
