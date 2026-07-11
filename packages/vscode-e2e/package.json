@@ -20,7 +20,7 @@
     "@vscode/test-electron": "^2.5.2",
     "@vscode/vsce": "^3.9.1",
     "mocha": "^11.7.4",
-    "typescript": "^6.0.3",
+    "typescript": "^7.0.2",
     "vscode-extension-tester": "^8.23.0"
   }
 }
