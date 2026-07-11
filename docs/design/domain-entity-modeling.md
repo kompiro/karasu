@@ -4,7 +4,7 @@
 - **ステータス**: 検討中
 - **関連**:
   - 引き金 Issue: なし（オンボーディング実体験からの壁打ち起点）
-  - PR: #TBD
+  - PR: [#1868](https://github.com/kompiro/karasu/pull/1868)
   - 関連 ADR: [ADR-20260419-01](../adr/20260419-01-translate-db-aggregate-grouping.md)（集約畳み込み・FK リンク 2 段階・ジャンクション検出）、[ADR-20260405-05](../adr/20260405-05-database-as-first-class-node.md)（database first-class ノード）
   - 関連ドキュメント: [`docs/concepts.ja.md`](../concepts.ja.md) 非目標節「データベーススキーマのモデリングはしない」、[`docs/guide/02-onboarding.ja.md`](../guide/02-onboarding.ja.md)
   - 関連 TPL: 本文末尾の「Related TPLs」節を参照
