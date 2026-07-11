@@ -227,6 +227,8 @@ export const ja: Partial<Translations> = {
     `domain "${display}" はどの service にも割り当てられていません`,
   "warning.unassignedUsecase.message": ({ usecaseId }) =>
     `usecase "${usecaseId}" はどの domain にも割り当てられていません`,
+  "warning.entityAnchorCollision.message": ({ id }) =>
+    `entity anchor id "${id}" が複数の domain / entity に使われています。#krs-entity-${id} の deep-link が曖昧になります`,
   "warning.unassignedService.message": ({ display }) =>
     `service "${display}" はどの system にも割り当てられていません`,
   "warning.unassignedClient.message": ({ display }) =>
@@ -326,6 +328,8 @@ export const ja: Partial<Translations> = {
   "diagnostic.propertyNotForNodeKind.operations": `"operations" プロパティは usecase 内の resource 宣言でのみ有効です`,
   "diagnostic.infraNotInContext.message": ({ infraKind, parentKind }) =>
     `"${infraKind}" は system の直接の子としてのみ有効です。"${parentKind}" の内側には配置できません`,
+  "diagnostic.entityNotInDomain.message": ({ parentKind }) =>
+    `"entity" は domain の子としてのみ有効です。"${parentKind}" の内側には配置できません`,
   "diagnostic.legendNotTopLevel.message": ({ parentKind }) =>
     `legend ブロックはファイルのトップレベルにのみ書けます。"${parentKind}" の内側には配置できません`,
   "diagnostic.expectedIdOrString.message": ({ context }) =>

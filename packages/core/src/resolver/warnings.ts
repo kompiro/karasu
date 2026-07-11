@@ -22,6 +22,7 @@ export function analyze(file: KrsFile, sheets: StyleSheet[], systemSheetCount = 
   warnings.push(...detectUnassignedQueues(file));
   warnings.push(...detectUnassignedStorages(file));
   warnings.push(...detectUnassignedUsecases(file));
+  warnings.push(...detectEntityAnchorCollisions(file));
   warnings.push(...detectStyleConflicts(sheets, systemSheetCount));
   warnings.push(...detectMissingProperties(file));
   warnings.push(...detectUnresolvedRealizes(file));
@@ -673,6 +674,47 @@ function detectUnassignedUsecases(file: KrsFile): Warning[] {
   }
   walkServiceChildren(file.services);
 
+  return warnings;
+}
+
+/**
+ * The `entity` deep-link view token addresses a model-wide namespace of
+ * {all domain ids} ∪ {all entity ids} (a domain id opens that domain's entity
+ * view; an entity id focuses that entity). An id claimed by two targets in
+ * that namespace makes `#krs-entity-<id>` ambiguous and produces duplicate DOM
+ * ids in the bundled static SVG. Flag it — but only when an entity is involved
+ * (two same-id domains across services are the existing domain-dispersal fact,
+ * addressed elsewhere).
+ */
+function detectEntityAnchorCollisions(file: KrsFile): Warning[] {
+  const domainIds = new Set<string>();
+  const entityCounts = new Map<string, number>();
+  const entityFirstLoc = new Map<string, KrsNode["loc"]>();
+
+  const visit = (node: KrsNode): void => {
+    if (node.kind === "domain") {
+      domainIds.add(node.id);
+    } else if (node.kind === "entity") {
+      entityCounts.set(node.id, (entityCounts.get(node.id) ?? 0) + 1);
+      if (!entityFirstLoc.has(node.id)) entityFirstLoc.set(node.id, node.loc);
+    }
+    for (const child of node.children) visit(child);
+  };
+
+  for (const system of file.systems) {
+    for (const child of system.children) visit(child);
+  }
+  for (const service of file.services) visit(service);
+  for (const domain of file.domains) visit(domain);
+
+  const warnings: Warning[] = [];
+  for (const [id, loc] of entityFirstLoc) {
+    const duplicateEntity = (entityCounts.get(id) ?? 0) > 1;
+    const clashesWithDomain = domainIds.has(id);
+    if (duplicateEntity || clashesWithDomain) {
+      warnings.push({ kind: "entity-anchor-collision", params: { id }, loc });
+    }
+  }
   return warnings;
 }
 

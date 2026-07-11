@@ -23,6 +23,7 @@ export type WarningKind =
   | "delivers-target-not-client"
   | "client-capability-duplicate"
   | "annotation-possible-typo"
+  | "entity-anchor-collision"
   | "legend-ref-unresolved"
   | "style-column-invalid-value"
   | "style-column-ignored-non-system-view"
@@ -129,6 +130,22 @@ export interface WarningParamsByKind {
     annotation: string;
     /** the closest built-in annotation name, without the `@` sigil */
     suggestion: string;
+  };
+  /**
+   * Two addressable targets in the `entity` deep-link namespace share one id.
+   * That namespace is model-wide {all domain ids} ∪ {all entity ids}: a
+   * `#krs-entity-<id>` anchor opens a domain's entity view (domain id) or
+   * focuses an entity (entity id). When an entity id collides with another
+   * entity id (under a different domain) or with a domain id, the anchor
+   * resolves ambiguously and the bundled static SVG emits duplicate DOM ids,
+   * silently breaking CSS `:target`. Warning register: the model still renders
+   * and resolves — only deep-link addressability degrades (warn-don't-error).
+   * `domain Billing` + a root `entity Billing` is a natural naming clash, so
+   * this is a warning, not an error. See `docs/design/domain-entity-modeling.md`.
+   */
+  "entity-anchor-collision": {
+    /** The id claimed by more than one target in the entity anchor namespace. */
+    id: string;
   };
   /**
    * A `ref` entry inside a `legend` block points at a target

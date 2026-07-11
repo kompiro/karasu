@@ -60,6 +60,7 @@ const LOGICAL_KEYWORDS = new Set<string>([
   "service",
   "domain",
   "usecase",
+  "entity",
   "resource",
   "user",
   "client",
@@ -367,6 +368,7 @@ export class Parser {
       handles?: string[];
       delivers?: string[];
       operations?: ParsedOperation[];
+      tableRef?: { parent: string; child: string };
     },
     parentId?: string,
   ): void {
@@ -444,6 +446,33 @@ export class Parser {
           }
         } else {
           this.error("property-not-for-node-kind", { property: "operations", nodeKind: kind });
+          this.advance();
+        }
+        continue;
+      }
+
+      // Property: table (entity only) — physical mapping `table <InfraId>.<subId>`
+      // to an infra sub-resource. Dot notation is required; the bare-id form is
+      // reserved. Unlike the infra-leaf `table` block (parsed inside
+      // parseInfraBlock), here `table` is a property keyword, so it never
+      // collides with infra-block parsing.
+      if (token.type === TokenType.Table) {
+        if (kind === "entity") {
+          this.advance();
+          const parentTok = this.parseIdOrString("entity table infra id");
+          if (this.peek().type === TokenType.Dot) {
+            this.advance(); // consume '.'
+            const childTok = this.parseIdOrString("entity table sub-resource id");
+            properties.tableRef = { parent: parentTok.value, child: childTok.value };
+          } else {
+            this.error("expected-id-after", { property: "table" });
+          }
+        } else {
+          this.error("unexpected-token-in-block", {
+            blockKind: kind,
+            tokenType: String(token.type),
+            value: token.value,
+          });
           this.advance();
         }
         continue;
@@ -547,6 +576,18 @@ export class Parser {
             parentKind: kind,
           });
           this.advance();
+          continue;
+        }
+        // `entity` is only valid as a `domain` child. Consume the full
+        // declaration for clean error recovery, then drop it.
+        if (token.value === "entity" && kind !== "domain") {
+          const node = this.parseNodeDecl();
+          this.diagnostics.push({
+            severity: "error",
+            code: "entity-not-in-domain",
+            params: { parentKind: kind },
+            loc: node.loc,
+          });
           continue;
         }
         children.push(this.parseNodeDecl());
@@ -817,6 +858,7 @@ export class Parser {
       type === TokenType.Service ||
       type === TokenType.Domain ||
       type === TokenType.Usecase ||
+      type === TokenType.Entity ||
       type === TokenType.Resource ||
       type === TokenType.User ||
       type === TokenType.Client ||
@@ -876,6 +918,7 @@ export class Parser {
       capabilities?: import("../types/ast.js").ClientCapability[];
       handles?: string[];
       delivers?: string[];
+      tableRef?: { parent: string; child: string };
     } = {
       links: [],
     };
@@ -887,7 +930,12 @@ export class Parser {
 
     if (this.peek().type === TokenType.LeftBrace) {
       this.advance();
-      const parentId = kind === "service" || kind === "domain" ? id : undefined;
+      // service / domain / entity own their edges' origin scope: an explicit
+      // edge inside the block must start at the block id (edge-source-mismatch
+      // otherwise). For entity this enforces the relation direction rule —
+      // origin = the reference-holding entity.
+      const parentId =
+        kind === "service" || kind === "domain" || kind === "entity" ? id : undefined;
       this.parseBlockContentsWithProperties(children, edges, kind, properties, parentId);
       end = this.expect(TokenType.RightBrace);
     }
@@ -965,6 +1013,16 @@ export class Parser {
             description: properties.description,
             links: properties.links,
           },
+        };
+      case "entity":
+        return {
+          ...base,
+          kind,
+          properties: {
+            description: properties.description,
+            links: properties.links,
+          },
+          ...(properties.tableRef ? { tableRef: properties.tableRef } : {}),
         };
     }
 

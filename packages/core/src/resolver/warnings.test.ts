@@ -489,6 +489,67 @@ system ECPlatform {
   });
 });
 
+describe("entity-anchor-collision warning (#1870)", () => {
+  const builtin = getBuiltinStyleSheet();
+
+  it("warns when two entities in different domains share an id", () => {
+    const krs = `
+system EC {
+  service OrderService {
+    domain Ordering {
+      entity Order {}
+    }
+  }
+  service ReportService {
+    domain Reporting {
+      entity Order {}
+    }
+  }
+}
+    `;
+    const file = Parser.parse(krs).value;
+    const collisions = analyze(file, [builtin]).filter((w) => w.kind === "entity-anchor-collision");
+    expect(collisions).toHaveLength(1);
+    expect(collisions[0].params.id).toBe("Order");
+  });
+
+  it("warns when an entity id equals a domain id", () => {
+    const krs = `
+system EC {
+  service OrderService {
+    domain Order {
+      entity Order {}
+    }
+  }
+}
+    `;
+    const file = Parser.parse(krs).value;
+    const collisions = analyze(file, [builtin]).filter((w) => w.kind === "entity-anchor-collision");
+    expect(collisions).toHaveLength(1);
+    expect(collisions[0].params.id).toBe("Order");
+  });
+
+  it("does not warn when entity ids are unique across the model", () => {
+    const krs = `
+system EC {
+  service OrderService {
+    domain Ordering {
+      entity Order {}
+      entity Customer {}
+    }
+  }
+}
+    `;
+    const file = Parser.parse(krs).value;
+    const collisions = analyze(file, [builtin]).filter((w) => w.kind === "entity-anchor-collision");
+    expect(collisions).toHaveLength(0);
+  });
+
+  it("is a warning-register diagnostic, not info", () => {
+    expect(warningSeverity("entity-anchor-collision")).toBe("warning");
+  });
+});
+
 describe("unassigned-service warning", () => {
   it("warns for each top-level service not wrapped in a system", () => {
     const krs = `
@@ -1779,6 +1840,9 @@ describe("warningSeverity — exhaustive register map", () => {
     "unassigned-queue": "warning",
     "unassigned-storage": "warning",
     "unassigned-usecase": "warning",
+    // Deep-link addressability degrades, but the model still renders and
+    // resolves — a defect worth surfacing, not a style-school fact.
+    "entity-anchor-collision": "warning",
     "cross-system-ref-implicit-external": "warning",
     "cross-system-ref-unresolved": "warning",
     "unresolved-edge-endpoint": "warning",
