@@ -2391,11 +2391,35 @@ system EC {
   }
 }
       `);
+      // A single clean recovery diagnostic, no cascade.
       const errs = result.diagnostics.filter((d) => d.code === "expected-id-or-string");
-      expect(errs.length).toBeGreaterThanOrEqual(1);
+      expect(errs).toHaveLength(1);
+      const unexpected = result.diagnostics.filter((d) => d.code === "unexpected-token-in-block");
+      expect(unexpected).toHaveLength(0);
       const entity = result.value.systems[0].children[0].children[0].children[0];
       assert(entity.kind === "entity");
       expect(entity.tableRef).toBeUndefined();
+    });
+
+    it("does not consume the closing brace as a sub-id when the sub-id is omitted", () => {
+      const result = Parser.parse(`
+system EC {
+  service OrderService {
+    domain Ordering {
+      entity Order {
+        table OrderDB.
+      }
+      entity Customer {}
+    }
+  }
+}
+      `);
+      const entity = result.value.systems[0].children[0].children[0].children[0];
+      assert(entity.kind === "entity");
+      // No bogus tableRef { child: "}" }, and the sibling entity still parses.
+      expect(entity.tableRef).toBeUndefined();
+      const domain = result.value.systems[0].children[0].children[0];
+      expect(domain.children.filter((c) => c.kind === "entity")).toHaveLength(2);
     });
 
     it("rejects a nested logical node child inside an entity and drops it", () => {
@@ -2435,6 +2459,19 @@ entity Order {
 domain Ordering {
   usecase Order {}
   entity Order {}
+}
+      `);
+      const dup = result.diagnostics.filter((d) => d.code === "duplicate-node-id-parent");
+      expect(dup).toHaveLength(1);
+    });
+
+    it("flags duplicate entities under a domain nested in a TOP-LEVEL (system-less) service", () => {
+      const result = Parser.parse(`
+service OrderService {
+  domain Ordering {
+    entity Order {}
+    entity Order {}
+  }
 }
       `);
       const dup = result.diagnostics.filter((d) => d.code === "duplicate-node-id-parent");

@@ -690,24 +690,26 @@ function detectUnassignedUsecases(file: KrsFile): Warning[] {
  */
 function detectEntityAnchorCollisions(file: KrsFile): Warning[] {
   const domainIds = new Set<string>();
-  // entity id -> set of distinct owning domain ids
-  const entityDomains = new Map<string, Set<string>>();
+  // entity id -> set of DISTINCT owning domain NODES (object identity, not id:
+  // the same domain id dispersed across systems is two distinct domain nodes,
+  // hence two distinct entity anchors).
+  const entityOwnerNodes = new Map<string, Set<KrsNode>>();
   const entityFirstLoc = new Map<string, KrsNode["loc"]>();
 
-  const visit = (node: KrsNode, parentDomainId: string | undefined): void => {
+  const visit = (node: KrsNode, parentDomain: KrsNode | undefined): void => {
     if (node.kind === "domain") {
       domainIds.add(node.id);
     } else if (node.kind === "entity") {
-      let owners = entityDomains.get(node.id);
+      let owners = entityOwnerNodes.get(node.id);
       if (!owners) {
-        owners = new Set<string>();
-        entityDomains.set(node.id, owners);
+        owners = new Set<KrsNode>();
+        entityOwnerNodes.set(node.id, owners);
         entityFirstLoc.set(node.id, node.loc);
       }
-      if (parentDomainId !== undefined) owners.add(parentDomainId);
+      if (parentDomain !== undefined) owners.add(parentDomain);
     }
-    const childDomainId = node.kind === "domain" ? node.id : parentDomainId;
-    for (const child of node.children) visit(child, childDomainId);
+    const childDomain = node.kind === "domain" ? node : parentDomain;
+    for (const child of node.children) visit(child, childDomain);
   };
 
   for (const system of file.systems) {
@@ -718,10 +720,10 @@ function detectEntityAnchorCollisions(file: KrsFile): Warning[] {
 
   const warnings: Warning[] = [];
   for (const [id, loc] of entityFirstLoc) {
-    // Two same-id entities under ONE domain are already a
-    // duplicate-node-id-parent error — count DISTINCT owning domains so we
-    // warn only on a genuine cross-domain / entity-vs-domain anchor clash.
-    const spansMultipleDomains = (entityDomains.get(id)?.size ?? 0) > 1;
+    // Two same-id entities under ONE domain node are already a
+    // duplicate-node-id-parent error — count DISTINCT owning domain nodes so
+    // we warn only on a genuine cross-domain / entity-vs-domain anchor clash.
+    const spansMultipleDomains = (entityOwnerNodes.get(id)?.size ?? 0) > 1;
     const clashesWithDomain = domainIds.has(id);
     if (spansMultipleDomains || clashesWithDomain) {
       warnings.push({ kind: "entity-anchor-collision", params: { id }, loc });

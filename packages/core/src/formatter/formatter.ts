@@ -296,6 +296,9 @@ class Printer {
     if (node.properties.description !== undefined) {
       lines.push(this.renderDescription(node.properties.description, indent));
     }
+    if (node.kind === "entity" && node.tableRef) {
+      lines.push(`${indent}table ${quoteId(node.tableRef.parent)}.${quoteId(node.tableRef.child)}`);
+    }
     if ("role" in node.properties && node.properties.role !== undefined) {
       lines.push(`${indent}role "${node.properties.role}"`);
     }

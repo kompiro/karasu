@@ -545,6 +545,28 @@ system EC {
     expect(collisions).toHaveLength(0);
   });
 
+  it("warns when a same-id domain is dispersed across systems and each holds a same-id entity", () => {
+    // domain D in two systems are two distinct domain NODES, so entity E under
+    // each produces two distinct #krs-entity-E anchors — a real collision that
+    // id-based domain counting would miss.
+    const krs = `
+system A {
+  domain D {
+    entity E {}
+  }
+}
+system B {
+  domain D {
+    entity E {}
+  }
+}
+    `;
+    const file = Parser.parse(krs).value;
+    const collisions = analyze(file, [builtin]).filter((w) => w.kind === "entity-anchor-collision");
+    expect(collisions).toHaveLength(1);
+    expect(collisions[0].params.id).toBe("E");
+  });
+
   it("does not double-report same-parent duplicate entities (that is a duplicate-node-id-parent error)", () => {
     const krs = `
 system EC {

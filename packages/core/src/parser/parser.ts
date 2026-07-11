@@ -284,6 +284,12 @@ export class Parser {
     }
 
     file.ownerIndex = this.buildOwnerIndex(file.organizations);
+    // Top-level (system-less) services get the same per-parent duplicate-child
+    // check as services nested in a system, so e.g. a usecase and entity
+    // sharing an id under a parked service's domain are caught.
+    for (const service of file.services) {
+      this.collectNodeIds(service.children, new Set<string>());
+    }
     file.nodePathIndex = this.buildNodePathIndex(file.systems, file.domains, [
       ...file.databases,
       ...file.queues,
@@ -472,23 +478,33 @@ export class Parser {
       if (token.type === TokenType.Table) {
         if (kind === "entity") {
           this.advance();
-          // Require the full `<InfraId>.<subId>` form. Guard each step so a
-          // malformed mapping (`table .orders`, `table orders`) leaves tableRef
-          // undefined instead of persisting a token like "." as an infra id.
-          if (
-            this.peek().type === TokenType.Identifier ||
-            this.peek().type === TokenType.StringLiteral
-          ) {
+          // Require the full `<InfraId>.<subId>` form. Guard BOTH sides so a
+          // malformed mapping (`table .orders`, `table OrderDB.`, `table orders`)
+          // leaves tableRef undefined, emits exactly one diagnostic, and never
+          // consumes a stray token (`.`, `}`) as an id.
+          const isId = (t: TokenType) =>
+            t === TokenType.Identifier || t === TokenType.StringLiteral;
+          if (isId(this.peek().type)) {
             const parentTok = this.advance();
             if (this.peek().type === TokenType.Dot) {
               this.advance(); // consume '.'
-              const childTok = this.parseIdOrString("entity table sub-resource id");
-              properties.tableRef = { parent: parentTok.value, child: childTok.value };
+              if (isId(this.peek().type)) {
+                const childTok = this.advance();
+                properties.tableRef = { parent: parentTok.value, child: childTok.value };
+              } else {
+                // Missing sub-id — do NOT consume the following token (`}`, etc.).
+                this.error("expected-id-after", { property: "table" });
+              }
             } else {
               this.error("expected-id-after", { property: "table" });
             }
           } else {
             this.error("expected-id-or-string", { context: "entity table infra id" });
+            // Consume a stray `.<id>` so we recover in one diagnostic, not three.
+            if (this.peek().type === TokenType.Dot) {
+              this.advance();
+              if (isId(this.peek().type)) this.advance();
+            }
           }
         } else {
           this.error("unexpected-token-in-block", {
