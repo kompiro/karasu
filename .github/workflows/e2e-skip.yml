@@ -1,0 +1,48 @@
+name: E2E (skip)
+
+# Companion of `e2e.yml`, following the paired-stub pattern (ADR-20260428-08,
+# `ci.yml` <-> `ci-skip.yml`). Once `Playwright` is a Required status check
+# (ADR-20260711-02), a PR that doesn't match `e2e.yml`'s `paths` (docs-only,
+# cli-only, lsp-only, ...) would never start the E2E workflow and the required
+# `Playwright` context would stay permanently pending. This stub fires on the
+# INVERSE path filter and emits a `Playwright` job that just exits 0, so the
+# required check is satisfied without paying for the full Playwright run.
+#
+# Keep the `paths-ignore` list below in exact sync with `e2e.yml`'s `paths`.
+# If a new E2E-relevant path is added there, mirror it here (TPL-20260520-02).
+
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, synchronize, reopened]
+    paths-ignore:
+      - "packages/app/**"
+      - "packages/core/**"
+      - "packages/e2e/**"
+      - "pnpm-lock.yaml"
+      - "package.json"
+      - ".github/workflows/e2e.yml"
+
+concurrency:
+  # Distinct from e2e.yml's `e2e-${{ github.ref }}` group on purpose: when a PR
+  # mixes an E2E-relevant path with an ignored one, both workflows fire
+  # (`paths` triggers on ANY match, `paths-ignore` filters only when EVERY
+  # changed path is ignored). Sharing a group would let one cancel the other.
+  # With separate groups both report `Playwright / success`, and branch
+  # protection AND-s same-named checks, so the real run's verdict governs.
+  group: e2e-skip-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  playwright:
+    name: Playwright
+    runs-on: ubuntu-latest
+    steps:
+      - name: No E2E-relevant change — skip Playwright
+        run: |
+          echo "No packages/app|core|e2e (or lockfile) change. Playwright is skipped."
+          echo "If your change touches those paths, ensure at least one falls"
+          echo "outside e2e-skip.yml's paths-ignore so the real E2E suite runs."
