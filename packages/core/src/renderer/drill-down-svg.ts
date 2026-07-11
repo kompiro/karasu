@@ -122,7 +122,7 @@ export function buildDrillDownSvg(
           ...legendOptions,
           viewScope: legendScopeForLogicalSlice(slice),
           // Root system-view level only (#1879); collapse off by design.
-          groupBy: slice.systems.length > 0 ? groupBy : undefined,
+          groupBy: legendScopeForLogicalSlice(slice) === "system" ? groupBy : undefined,
         }),
     },
     [],
@@ -360,7 +360,7 @@ export function buildAllViewsSvg(
             ...legendOptions,
             viewScope: legendScopeForLogicalSlice(slice),
             // Root system-view level only (#1879); collapse off by design.
-            groupBy: slice.systems.length > 0 ? groupBy : undefined,
+            groupBy: legendScopeForLogicalSlice(slice) === "system" ? groupBy : undefined,
           }),
       },
       [],

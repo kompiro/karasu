@@ -251,7 +251,7 @@ export function buildAllLayersSvg(
           // Group-by frames apply to the root system-view level only (#1879):
           // deeper drill-down levels have no teams. Collapse stays off by
           // design so the export reveals the full structure, grouped.
-          groupBy: slice.systems.length > 0 ? groupBy : undefined,
+          groupBy: legendScopeForLogicalSlice(slice) === "system" ? groupBy : undefined,
         }),
     },
     [],
