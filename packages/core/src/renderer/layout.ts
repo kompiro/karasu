@@ -2,7 +2,7 @@ import type { KrsNode, KrsEdge } from "../types/ast.js";
 import { INFRA_KIND_SET } from "../types/ast.js";
 import { collapseNodeList, type CategoryId } from "./category-collapse.js";
 import { assignGroupedLayers, type GroupedNode, type GroupBand } from "./group-layout.js";
-import { collapseGroups, groupStubId } from "./group-collapse.js";
+import { collapseGroups } from "./group-collapse.js";
 import type { ViewSlice, GhostSystem } from "../view/view-extract.js";
 import type { EdgeDirection, ResolvedLayoutHints } from "../types/style.js";
 import { buildInheritedAnnotations } from "../resolver/inherited-annotations.js";
@@ -402,14 +402,15 @@ function computeLayoutEdges(
   layers: Map<string, number>,
   containers: ContainerRect[],
   allEdges: KrsEdge[],
-  sideExternals?: Map<string, "left" | "right">,
+  sideExternals: Map<string, "left" | "right"> | undefined,
   // Re-target a ghost edge's internal endpoint onto its group's collapse stub
   // when that member was folded away (#1874). The regular edges in `allEdges`
-  // were already remapped by `collapseGroups`, but the ghost-edge lists on the
-  // ViewSlice still reference original member ids; without this they miss in
-  // `layoutNodes` and fall back to the main container border. No-op (identity)
-  // outside group-by-team collapse.
-  remapGhostEndpoint: (id: string) => string = (id) => id,
+  // were already remapped by `collapseGroups`; the ghost-edge lists on the
+  // ViewSlice still reference original member ids, so without this they miss in
+  // `layoutNodes` and fall back to the main container border. The caller passes
+  // the identity map outside group-by-team collapse, so the ghost loops are
+  // unaffected when nothing folds.
+  remapGhostEndpoint: (id: string) => string,
 ): LayoutEdge[] {
   const layoutEdges: LayoutEdge[] = [];
 
@@ -425,7 +426,13 @@ function computeLayoutEdges(
     layoutEdges.push(le);
   }
 
-  // Ghost system edges (outgoing)
+  // Ghost system edges (outgoing).
+  // NOTE: if two members of one collapsed group ever carried a ghost edge to the
+  // same external target, remapping both `from` onto the shared stub would emit
+  // two overlapping connectors. `collapseGroups` de-dupes its re-targeted edges
+  // by (from,to,kind); this ghost path does not. It is unreachable today (view
+  // extraction only puts container ids on the internal endpoint), so de-dup is
+  // deferred rather than risk dropping legitimately parallel ghost edges here.
   for (const edge of viewSlice.ghostSystemEdges) {
     const toNode = layoutNodes.get(edge.to);
     if (!toNode) continue;
@@ -496,8 +503,10 @@ function computeLayoutEdges(
   // Ghost user edges
   for (const edge of viewSlice.ghostUserEdges) {
     const containerId = viewSlice.containerNode ? viewSlice.containerNode.id : "";
+    const from = remapGhostEndpoint(edge.from);
+    const to = remapGhostEndpoint(edge.to);
     const mainContainer = containers.find((c) => !c.ghost);
-    const ghostNode = layoutNodes.get(edge.from === containerId ? edge.to : edge.from);
+    const ghostNode = layoutNodes.get(from === containerId ? to : from);
     if (!ghostNode || !mainContainer) continue;
 
     const fromPoint = {
@@ -510,8 +519,8 @@ function computeLayoutEdges(
     };
 
     layoutEdges.push({
-      from: edge.from,
-      to: edge.to,
+      from,
+      to,
       label: edge.label,
       fromPoint,
       toPoint,
@@ -519,16 +528,19 @@ function computeLayoutEdges(
     });
   }
 
-  // Ghost domain edges
+  // Ghost domain edges. A team can `owns` a domain (docs/spec), so a collapsed
+  // domain endpoint must re-anchor to its stub like the service ones (#1874).
   for (const edge of viewSlice.ghostDomainEdges) {
-    const fromNode = layoutNodes.get(edge.from);
-    const toNode = layoutNodes.get(edge.to);
+    const from = remapGhostEndpoint(edge.from);
+    const to = remapGhostEndpoint(edge.to);
+    const fromNode = layoutNodes.get(from);
+    const toNode = layoutNodes.get(to);
     if (!fromNode || !toNode) continue;
 
     const fromIsAbove = fromNode.y + fromNode.height / 2 < toNode.y + toNode.height / 2;
     layoutEdges.push({
-      from: edge.from,
-      to: edge.to,
+      from,
+      to,
       label: edge.label,
       fromPoint: {
         x: fromNode.x + fromNode.width / 2,
@@ -795,22 +807,19 @@ export function layout(
   // group-by mode with an ownerIndex; a no-op otherwise. `stubGroup` tells the
   // grouping code which group a stub stands in for.
   let stubGroup = new Map<string, string>();
+  // Ghost-edge lists on the ViewSlice are separate fields that `collapseGroups`
+  // does not rewrite (it only touches childNodes/childEdges), so re-anchor a
+  // collapsed member's ghost connectors onto its group stub with the *same*
+  // remap the collapse applied to the regular edges (#1874). Identity outside
+  // collapse, so the ghost loops below are unaffected when nothing folds.
+  let remapGhostEndpoint: (id: string) => string = (id) => id;
   if (groupBy === "team" && ownerIndex) {
     const collapsed = collapseGroups(allNodes, allEdges, ownerIndex, collapsedGroups);
     allNodes = collapsed.nodes;
     allEdges = collapsed.edges;
     stubGroup = collapsed.stubGroup;
+    remapGhostEndpoint = collapsed.remapEndpoint;
   }
-  // Ghost-edge lists on the ViewSlice are not touched by `collapseGroups` (which
-  // only remaps childNodes/childEdges), so re-anchor a collapsed member's ghost
-  // connectors onto its group stub here too (#1874). Identity outside collapse.
-  const remapGhostEndpoint =
-    groupBy === "team" && ownerIndex && collapsedGroups && collapsedGroups.size > 0
-      ? (id: string): string => {
-          const g = ownerIndex.get(id);
-          return g !== undefined && collapsedGroups.has(g) ? groupStubId(g) : id;
-        }
-      : (id: string): string => id;
   /** Group a node belongs to — its team owner, or the group a collapse stub stands in for. */
   const groupIdOf = (id: string): string | null => ownerIndex?.get(id) ?? stubGroup.get(id) ?? null;
 
