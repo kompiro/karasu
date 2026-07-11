@@ -37,10 +37,10 @@ system view の `groupBy: "team"` オプション（P2a・slice A / core のみ�
 
 ### AC-3: 既定パスの温存（回帰）
 
-> ✅ Automated — 既存 core スイート全体（2067 tests）が `groupBy` 追加後も無変更で通過。既存の layout / svg スナップショットが不変であることが `groupBy` 未指定パスの byte 不変を担保する（ADR-20260623-06 の tier 体系は既定ビューで不変）
-
-- [x] `assignForcedSystemLayers` / `systemTier` の既定ビュー挙動は無改変
+- [x] `assignForcedSystemLayers` / `systemTier` の既定ビュー挙動は無改変（ADR-20260623-06 の tier 体系は既定ビューで不変）
+> ✅ Automated by `packages/core/src/renderer/group-by-render.test.ts` — `groupBy` 未指定が option 無しと byte 一致
 - [x] Group-by は `groupBy` 指定時のみ分岐する view-mode 局所の override
+> ✅ Automated — 既存 core スイート全体（2067 tests）が `groupBy` 追加後も無変更で通過し、既存 layout / svg スナップショットが不変
 
 ### AC-4: 手動（描画の目視確認）
 
