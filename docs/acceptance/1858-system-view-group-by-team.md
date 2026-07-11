@@ -66,4 +66,18 @@ system view の toolbar に「Group by: None / Team」セレクタを出し、`g
 > ✅ Automated by `packages/app/src/components/PreviewColumn.test.tsx` — `groupByAvailable: false` で非表示
 - [x] ラベルは i18n 経由（`preview.groupBy.*`、en/ja 両方）
 > ✅ Automated — `packages/i18n` の型で全ロケール網羅を強制（key 欠落は typecheck 失敗）
-- [ ] **手動**: app で `examples/en/feature-samples/team-ownership.krs` を開き system view で「Group by」を Team に切り替える → 3 チームがフレームで囲まれる。None に戻すと従来表示に戻る（折り畳み操作は slice B）
+- [ ] **手動**: app で `examples/en/feature-samples/team-ownership.krs` を開き system view で「Group by」を Team に切り替える → 3 チームがフレームで囲まれる。None に戻すと従来表示に戻る
+
+### AC-6: per-group 折り畳み（slice B）
+
+Group-by: Team のとき、各 team 境界フレームに ⊖/⊕ トグルを出し、畳んだ team を `<Team> (N)` stub に折り畳む。cross-group エッジは stub に再ターゲット、全 team を畳むと group DAG ビューになる。`.krs` は不変。
+
+- [x] `collapsedGroups` を渡すと team が `<Team> (N)` stub に畳まれ、cross-group エッジが stub に再ターゲットされる。全 team 畳みで stub のみになる
+> ✅ Automated by `packages/core/src/renderer/group-collapse.test.ts` / `group-by-render.test.ts`
+- [x] 無関係な team を畳んでも、展開中ノード間の authored parallel edge / self-loop は消えない（retarget されたエッジのみ dedup）
+> ✅ Automated by `packages/core/src/renderer/group-collapse.test.ts`
+- [x] `interactive` 時のみ team フレームに ⊖/⊕（`data-collapse-group`）が描かれ、static 出力には出ない
+> ✅ Automated — `renderGroupControls` は `options.interactive` ゲート（`group-by-render.test.ts` の interactive 有無で確認）
+- [x] `[data-collapse-group]` クリックで `onGroupToggle(<team>)` が発火し、再コンパイルで畳まれる
+> ✅ Automated by `packages/app/src/components/PreviewPane.test.tsx`（delegation）/ `useSystemView.test.tsx`（`toggleGroup` → stub 化）
+- [ ] **手動**: app で team-ownership.krs を Group by: Team にし、フレームの ⊖ をクリック → その team が `Team (N)` に畳まれ図が詰まる。⊕ で戻る（「すべて畳む」ボタンは follow-up）

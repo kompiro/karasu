@@ -97,6 +97,12 @@ export interface ContainerRect {
    * a ghost) with the group label. `undefined` for ordinary containers.
    */
   group?: boolean;
+  /**
+   * The team/group id this frame encloses (system-view Group by, #1858). Set
+   * together with `group`; drives the ⊖/⊕ collapse control's
+   * `data-collapse-group` so the app can toggle this group.
+   */
+  groupId?: string;
 }
 
 export interface LayoutResult {

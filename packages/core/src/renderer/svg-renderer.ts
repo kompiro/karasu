@@ -377,6 +377,8 @@ export function renderFromLayout(
   if (options?.interactive) {
     const categoryControls = renderCategoryControls(layoutResult, palette);
     if (categoryControls) parts.push(categoryControls);
+    const groupControls = renderGroupControls(layoutResult, palette, options?.collapsedGroups);
+    if (groupControls) parts.push(groupControls);
   }
 
   // Legend footer (Issue #887) — rendered as a band below the diagram so
@@ -412,6 +414,52 @@ export function renderFromLayout(
 }
 
 /**
+ * The circle + ⊖/⊕ strokes shared by every collapse affordance — category
+ * controls / stubs (#1821) and group controls (#1858). `plus` adds the vertical
+ * stroke (⊕ = expand); omit it for ⊖ = collapse. Returns the child elements so
+ * the caller wraps them in its own `<g>` (with the right data-attributes).
+ */
+function collapseGlyph(
+  cx: number,
+  cy: number,
+  plus: boolean,
+  palette: DiagramPalette,
+  opts?: { radius?: number; fill?: string },
+): string[] {
+  const parts = [
+    el("circle", {
+      cx,
+      cy,
+      r: opts?.radius ?? 9,
+      fill: opts?.fill ?? palette.surfaceBg,
+      stroke: palette.accent,
+      "stroke-width": 1.5,
+    }),
+    el("line", {
+      x1: cx - 4,
+      y1: cy,
+      x2: cx + 4,
+      y2: cy,
+      stroke: palette.accent,
+      "stroke-width": 1.5,
+    }),
+  ];
+  if (plus) {
+    parts.push(
+      el("line", {
+        x1: cx,
+        y1: cy - 4,
+        x2: cx,
+        y2: cy + 4,
+        stroke: palette.accent,
+        "stroke-width": 1.5,
+      }),
+    );
+  }
+  return parts;
+}
+
+/**
  * The ⊕ placeholder a collapsed category folds to (Issue #1821). Drawn at the
  * stub node's laid-out box. Carries `data-collapse-category` so the app's click
  * delegation expands the category (toggling it out of `collapsedCategories`).
@@ -440,23 +488,7 @@ function renderCategoryStub(node: LayoutNode, palette: DiagramPalette): string {
       "stroke-width": 1,
       "stroke-dasharray": "4 3",
     }),
-    el("circle", { cx, cy, r: 8, fill: "none", stroke: palette.accent, "stroke-width": 1.5 }),
-    el("line", {
-      x1: cx - 4,
-      y1: cy,
-      x2: cx + 4,
-      y2: cy,
-      stroke: palette.accent,
-      "stroke-width": 1.5,
-    }),
-    el("line", {
-      x1: cx,
-      y1: cy - 4,
-      x2: cx,
-      y2: cy + 4,
-      stroke: palette.accent,
-      "stroke-width": 1.5,
-    }),
+    ...collapseGlyph(cx, cy, true, palette, { radius: 8, fill: "none" }),
     el(
       "text",
       {
@@ -568,22 +600,7 @@ function renderCategoryControls(layoutResult: LayoutResult, palette: DiagramPale
               tabindex: "0",
               transform: `translate(${fx + fw - 2},${fy + 2})`,
             },
-            el("circle", {
-              cx: 0,
-              cy: 0,
-              r: 9,
-              fill: palette.surfaceBg,
-              stroke: palette.accent,
-              "stroke-width": 1.5,
-            }),
-            el("line", {
-              x1: -4,
-              y1: 0,
-              x2: 4,
-              y2: 0,
-              stroke: palette.accent,
-              "stroke-width": 1.5,
-            }),
+            ...collapseGlyph(0, 0, false, palette),
           ),
         ),
       );
@@ -597,6 +614,43 @@ function renderCategoryControls(layoutResult: LayoutResult, palette: DiagramPale
       ".krs-cat-collapse,.krs-category-stub{cursor:pointer}",
   );
   return el("g", { class: "krs-category-controls" }, style, ...groups);
+}
+
+/**
+ * A ⊖/⊕ toggle at the top-right of each team boundary frame (system-view Group
+ * by, #1858 slice B). Shows ⊖ when the group is expanded (click collapses it to
+ * its `<Team> (N)` stub) and ⊕ when collapsed (click expands). Carries
+ * `data-collapse-group` for the app's click delegation. Interactive chrome only.
+ */
+function renderGroupControls(
+  layoutResult: LayoutResult,
+  palette: DiagramPalette,
+  collapsedGroups: ReadonlySet<string> | undefined,
+): string {
+  const buttons: string[] = [];
+  for (const container of layoutResult.containers) {
+    if (!container.group || container.groupId === undefined) continue;
+    // Collapsed → ⊕ (click expands); expanded → ⊖ (click collapses).
+    const collapsed = collapsedGroups?.has(container.groupId) ?? false;
+    const bx = container.x + container.width - 2;
+    const by = container.y + 2;
+    buttons.push(
+      el(
+        "g",
+        {
+          class: "krs-group-collapse",
+          "data-collapse-group": container.groupId,
+          role: "button",
+          tabindex: "0",
+          transform: `translate(${bx},${by})`,
+        },
+        ...collapseGlyph(0, 0, collapsed, palette),
+      ),
+    );
+  }
+  if (buttons.length === 0) return "";
+  const style = el("style", {}, ".krs-group-collapse{cursor:pointer}");
+  return el("g", { class: "krs-group-controls" }, style, ...buttons);
 }
 
 function renderContainer(
