@@ -641,6 +641,8 @@ karasu モデルの中で物理スキーマを **設計する**（entity から 
 引き続き対象外とする。カラム設計・インデックス設計には ER モデリング専用の
 ツールを使うべきである。
 
+> Related TPLs: [TPL-20260711-01](test-perspectives/TPL-20260711-01-entity-carries-no-attributes.md) — `entity` は名前・関連・物理対応のみを受け付け、属性的宣言（カラム・型）は拒否する。この線を保つ。
+
 #### C4 互換は目標ではない
 
 karasu は C4 Model に触発されているが、独自の語彙（system / service / domain / usecase / resource）と

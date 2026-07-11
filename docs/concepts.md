@@ -572,6 +572,8 @@ an entity, etc.) demands the opposite direction of information flow —
 it creates pressure to pull implementation details into the model, and stays out of scope.
 For column and index design, dedicated ER modeling tools exist, and those are what you should use.
 
+> Related TPLs: [TPL-20260711-01](test-perspectives/TPL-20260711-01-entity-carries-no-attributes.md) — an `entity` accepts only name / relations / physical mapping; attribute-like declarations (columns, types) must be rejected, holding this line.
+
 #### C4 compatibility is not a goal
 
 karasu is inspired by C4 Model but defines its own vocabulary (system / service / domain / usecase / resource) and its own drill-down semantics.

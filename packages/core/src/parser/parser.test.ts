@@ -2379,6 +2379,68 @@ system EC {
       expect(errs).toHaveLength(1);
     });
 
+    it("does not persist a malformed tableRef when the infra id is omitted before the dot", () => {
+      const result = Parser.parse(`
+system EC {
+  service OrderService {
+    domain Ordering {
+      entity Order {
+        table .orders
+      }
+    }
+  }
+}
+      `);
+      const errs = result.diagnostics.filter((d) => d.code === "expected-id-or-string");
+      expect(errs.length).toBeGreaterThanOrEqual(1);
+      const entity = result.value.systems[0].children[0].children[0].children[0];
+      assert(entity.kind === "entity");
+      expect(entity.tableRef).toBeUndefined();
+    });
+
+    it("rejects a nested logical node child inside an entity and drops it", () => {
+      const result = Parser.parse(`
+system EC {
+  service OrderService {
+    domain Ordering {
+      entity Order {
+        usecase Foo {}
+      }
+    }
+  }
+}
+      `);
+      const errs = result.diagnostics.filter((d) => d.code === "unexpected-token-in-block");
+      expect(errs).toHaveLength(1);
+      const entity = result.value.systems[0].children[0].children[0].children[0];
+      assert(entity.kind === "entity");
+      expect(entity.children).toHaveLength(0);
+    });
+
+    it("reports a top-level entity as entity-not-in-domain without an error cascade", () => {
+      const result = Parser.parse(`
+entity Order {
+  label "Order"
+}
+      `);
+      const notInDomain = result.diagnostics.filter((d) => d.code === "entity-not-in-domain");
+      expect(notInDomain).toHaveLength(1);
+      // No unexpected-token cascade from the entity body tokens.
+      const cascade = result.diagnostics.filter((d) => d.code === "unexpected-token-root");
+      expect(cascade).toHaveLength(0);
+    });
+
+    it("flags a usecase and entity sharing an id under a TOP-LEVEL domain", () => {
+      const result = Parser.parse(`
+domain Ordering {
+  usecase Order {}
+  entity Order {}
+}
+      `);
+      const dup = result.diagnostics.filter((d) => d.code === "duplicate-node-id-parent");
+      expect(dup).toHaveLength(1);
+    });
+
     it("parses a relation edge into the entity's edges (origin = the entity)", () => {
       const result = Parser.parse(`
 system EC {

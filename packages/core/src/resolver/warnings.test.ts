@@ -545,8 +545,65 @@ system EC {
     expect(collisions).toHaveLength(0);
   });
 
+  it("does not double-report same-parent duplicate entities (that is a duplicate-node-id-parent error)", () => {
+    const krs = `
+system EC {
+  service OrderService {
+    domain Ordering {
+      entity Order {}
+      entity Order {}
+    }
+  }
+}
+    `;
+    const file = Parser.parse(krs).value;
+    const collisions = analyze(file, [builtin]).filter((w) => w.kind === "entity-anchor-collision");
+    expect(collisions).toHaveLength(0);
+  });
+
   it("is a warning-register diagnostic, not info", () => {
     expect(warningSeverity("entity-anchor-collision")).toBe("warning");
+  });
+});
+
+describe("entity relations are excluded from cyclic-dependency detection (#1870)", () => {
+  const builtin = getBuiltinStyleSheet();
+
+  it("does not flag a self-referential entity relation as a cycle", () => {
+    const krs = `
+system EC {
+  service OrderService {
+    domain Ordering {
+      entity Category {
+        Category -> Category "parent"
+      }
+    }
+  }
+}
+    `;
+    const file = Parser.parse(krs).value;
+    const cycles = analyze(file, [builtin]).filter((w) => w.kind === "cyclic-dependency");
+    expect(cycles).toHaveLength(0);
+  });
+
+  it("does not flag mutually-referencing entities as a cycle", () => {
+    const krs = `
+system EC {
+  service OrderService {
+    domain Ordering {
+      entity Order {
+        Order -> Line "has"
+      }
+      entity Line {
+        Line -> Order "belongs to"
+      }
+    }
+  }
+}
+    `;
+    const file = Parser.parse(krs).value;
+    const cycles = analyze(file, [builtin]).filter((w) => w.kind === "cyclic-dependency");
+    expect(cycles).toHaveLength(0);
   });
 });
 

@@ -684,34 +684,46 @@ function detectUnassignedUsecases(file: KrsFile): Warning[] {
  * that namespace makes `#krs-entity-<id>` ambiguous and produces duplicate DOM
  * ids in the bundled static SVG. Flag it — but only when an entity is involved
  * (two same-id domains across services are the existing domain-dispersal fact,
- * addressed elsewhere).
+ * addressed elsewhere), and only for a genuine cross-domain clash: two same-id
+ * entities under ONE domain are already a `duplicate-node-id-parent` error, so
+ * they are not double-reported here.
  */
 function detectEntityAnchorCollisions(file: KrsFile): Warning[] {
   const domainIds = new Set<string>();
-  const entityCounts = new Map<string, number>();
+  // entity id -> set of distinct owning domain ids
+  const entityDomains = new Map<string, Set<string>>();
   const entityFirstLoc = new Map<string, KrsNode["loc"]>();
 
-  const visit = (node: KrsNode): void => {
+  const visit = (node: KrsNode, parentDomainId: string | undefined): void => {
     if (node.kind === "domain") {
       domainIds.add(node.id);
     } else if (node.kind === "entity") {
-      entityCounts.set(node.id, (entityCounts.get(node.id) ?? 0) + 1);
-      if (!entityFirstLoc.has(node.id)) entityFirstLoc.set(node.id, node.loc);
+      let owners = entityDomains.get(node.id);
+      if (!owners) {
+        owners = new Set<string>();
+        entityDomains.set(node.id, owners);
+        entityFirstLoc.set(node.id, node.loc);
+      }
+      if (parentDomainId !== undefined) owners.add(parentDomainId);
     }
-    for (const child of node.children) visit(child);
+    const childDomainId = node.kind === "domain" ? node.id : parentDomainId;
+    for (const child of node.children) visit(child, childDomainId);
   };
 
   for (const system of file.systems) {
-    for (const child of system.children) visit(child);
+    for (const child of system.children) visit(child, undefined);
   }
-  for (const service of file.services) visit(service);
-  for (const domain of file.domains) visit(domain);
+  for (const service of file.services) visit(service, undefined);
+  for (const domain of file.domains) visit(domain, undefined);
 
   const warnings: Warning[] = [];
   for (const [id, loc] of entityFirstLoc) {
-    const duplicateEntity = (entityCounts.get(id) ?? 0) > 1;
+    // Two same-id entities under ONE domain are already a
+    // duplicate-node-id-parent error — count DISTINCT owning domains so we
+    // warn only on a genuine cross-domain / entity-vs-domain anchor clash.
+    const spansMultipleDomains = (entityDomains.get(id)?.size ?? 0) > 1;
     const clashesWithDomain = domainIds.has(id);
-    if (duplicateEntity || clashesWithDomain) {
+    if (spansMultipleDomains || clashesWithDomain) {
       warnings.push({ kind: "entity-anchor-collision", params: { id }, loc });
     }
   }
@@ -1114,7 +1126,10 @@ function detectCyclicDependencies(file: KrsFile): Warning[] {
 
   function walkNodes(nodes: KrsNode[]): void {
     for (const node of nodes) {
-      detectInEdges(node.edges);
+      // Entity relation edges are associations, not dependencies. Self-loops
+      // (a self-referential FK) and mutual references are ordinary ER shapes,
+      // not architectural cycles — exclude them from cycle detection.
+      if (node.kind !== "entity") detectInEdges(node.edges);
       walkNodes(node.children);
     }
   }
