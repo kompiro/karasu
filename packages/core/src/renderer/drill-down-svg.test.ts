@@ -862,3 +862,106 @@ describe("bundleSingleLevelViews", () => {
     expect(bundleSingleLevelViews({})).toBeNull();
   });
 });
+
+// Two teams (payments owns Billing/Wallet, catalog owns Search/Catalog);
+// Billing carries a drill-down domain so deeper levels exist.
+const GROUPED = `
+system Shop {
+  service Billing {
+    label "Billing"
+    domain BillingDomain { label "Billing Domain" }
+  }
+  service Wallet { label "Wallet" }
+  service Search { label "Search" }
+  service Catalog { label "Catalog" }
+
+  Billing -> Wallet "debit"
+  Search -> Catalog "read"
+}
+
+organization Org {
+  team "payments" {
+    label "Payments"
+    owns Billing
+    owns Wallet
+  }
+  team "catalog" {
+    label "Catalog"
+    owns Search
+    owns Catalog
+  }
+}
+`;
+
+describe("buildDrillDownSvg with groupBy: team (#1879)", () => {
+  it("is a no-op when groupBy is omitted (opt-in; byte-identical)", () => {
+    const krsFile = Parser.parse(GROUPED).value;
+    const grouped = buildDrillDownSvg(
+      krsFile,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+    ).svg;
+    expect(grouped).toBe(buildDrillDownSvg(krsFile).svg);
+    expect(grouped).not.toContain('data-group="true"');
+  });
+
+  it("draws team frames at the root system level and keeps the full structure", () => {
+    const krsFile = Parser.parse(GROUPED).value;
+    const { svg } = buildDrillDownSvg(
+      krsFile,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      "team",
+    );
+    expect(svg).toContain('data-container-id="__group_payments__"');
+    expect(svg).toContain('data-container-id="__group_catalog__"');
+    expect(svg.match(/data-group="true"/g)?.length).toBe(2);
+    // Full structure — no collapse stub, every member drawn.
+    expect(svg).not.toContain("__group_collapsed_");
+    for (const id of ["Billing", "Wallet", "Search", "Catalog"]) {
+      expect(svg).toContain(`data-node-id="${id}"`);
+    }
+  });
+});
+
+describe("buildAllViewsSvg with groupBy: team (#1879)", () => {
+  it("is a no-op when groupBy is omitted (opt-in)", () => {
+    const krsFile = Parser.parse(GROUPED).value;
+    const grouped = buildAllViewsSvg(
+      krsFile,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+    ).svg;
+    expect(grouped).toBe(buildAllViewsSvg(krsFile).svg);
+    expect(grouped).not.toContain('data-group="true"');
+  });
+
+  it("frames the system-view root by team, leaving org/deploy panes untouched", () => {
+    const krsFile = Parser.parse(GROUPED).value;
+    const { svg } = buildAllViewsSvg(
+      krsFile,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      "team",
+    );
+    // Only the system root gets grouped — two team frames, no collapse.
+    expect(svg).toContain('data-container-id="__group_payments__"');
+    expect(svg).toContain('data-container-id="__group_catalog__"');
+    expect(svg.match(/data-group="true"/g)?.length).toBe(2);
+    expect(svg).not.toContain("__group_collapsed_");
+  });
+});

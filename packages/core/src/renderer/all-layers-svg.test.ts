@@ -221,3 +221,105 @@ system Shop {
     expect(domainBand).not.toContain("service-entry");
   });
 });
+
+// A system with two teams (payments owns Billing/Wallet, catalog owns
+// Search/Catalog), each service carrying a drill-down domain so the export
+// stacks a root band plus deeper bands.
+const GROUPED_TWO_LEVEL = `
+system Shop {
+  service Billing {
+    label "Billing"
+    domain BillingDomain { label "Billing Domain" }
+  }
+  service Wallet { label "Wallet" }
+  service Search { label "Search" }
+  service Catalog { label "Catalog" }
+
+  Billing -> Wallet "debit"
+  Search -> Catalog "read"
+}
+
+organization Org {
+  team "payments" {
+    label "Payments"
+    owns Billing
+    owns Wallet
+  }
+  team "catalog" {
+    label "Catalog"
+    owns Search
+    owns Catalog
+  }
+}
+`;
+
+describe("buildAllLayersSvg with groupBy: team (#1879)", () => {
+  it("is a no-op when groupBy is omitted (opt-in; byte-identical)", () => {
+    const krsFile = Parser.parse(GROUPED_TWO_LEVEL).value;
+    const withUndefined = buildAllLayersSvg(
+      krsFile,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+    ).svg;
+    const withoutOption = buildAllLayersSvg(krsFile).svg;
+    expect(withUndefined).toBe(withoutOption);
+    expect(withUndefined).not.toContain('data-group="true"');
+  });
+
+  it("draws team boundary frames on the root system band when grouped", () => {
+    const krsFile = Parser.parse(GROUPED_TWO_LEVEL).value;
+    const { svg } = buildAllLayersSvg(
+      krsFile,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      "team",
+    );
+    expect(svg).toContain('data-container-id="__group_payments__"');
+    expect(svg).toContain('data-container-id="__group_catalog__"');
+    expect(svg.match(/data-group="true"/g)?.length).toBe(2);
+  });
+
+  it("keeps the full structure — no collapse stub — every node drawn once", () => {
+    const krsFile = Parser.parse(GROUPED_TWO_LEVEL).value;
+    const { svg } = buildAllLayersSvg(
+      krsFile,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      "team",
+    );
+    // Grouping frames the members but never folds them (exports show the
+    // full structure by design — collapse is not threaded here).
+    for (const id of ["Billing", "Wallet", "Search", "Catalog"]) {
+      expect(svg.match(new RegExp(`data-node-id="${id}"`, "g"))?.length).toBe(1);
+    }
+    expect(svg).not.toContain("__group_collapsed_");
+  });
+
+  it("applies grouping to the root band only — deeper drill-down bands are ungrouped", () => {
+    const krsFile = Parser.parse(GROUPED_TWO_LEVEL).value;
+    const { svg } = buildAllLayersSvg(
+      krsFile,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      "team",
+    );
+    // Two group frames total — one per team — all on the root system band.
+    // A drill-down band (Billing's domain) has no teams, so no extra frames.
+    expect(svg.match(/data-group="true"/g)?.length).toBe(2);
+    // The domain drill-down band is still present (full stack rendered).
+    expect(svg).toContain('data-node-id="BillingDomain"');
+  });
+});

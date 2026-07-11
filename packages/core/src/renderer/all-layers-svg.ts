@@ -215,6 +215,7 @@ export function buildAllLayersSvg(
   emptyStateLabels?: EmptyStateLabels,
   theme?: DiagramTheme,
   badgeLabels?: AnnotationBadgeLabels,
+  groupBy?: "team",
 ): SvgResult {
   const effectiveSystems = withUnassignedSystem(krsFile);
   const rootSlice = extractView(effectiveSystems, []);
@@ -247,6 +248,10 @@ export function buildAllLayersSvg(
           theme,
           ...legendOptions,
           viewScope: legendScopeForLogicalSlice(slice),
+          // Group-by frames apply to the root system-view level only (#1879):
+          // deeper drill-down levels have no teams. Collapse stays off by
+          // design so the export reveals the full structure, grouped.
+          groupBy: slice.systems.length > 0 ? groupBy : undefined,
         }),
     },
     [],

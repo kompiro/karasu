@@ -976,6 +976,7 @@ export function buildDrillDownSvg(
   emptyStateLabels?: EmptyStateLabels,
   theme?: DiagramTheme,
   annotationBadgeLabels?: AnnotationBadgeLabels,
+  groupBy?: "team",
 ): SvgResult {
   const parseResult: ParseResult<KrsFile> = Parser.parse(krsSource);
   const result = _buildDrillDownSvg(
@@ -985,6 +986,7 @@ export function buildDrillDownSvg(
     emptyStateLabels,
     theme,
     annotationBadgeLabels,
+    groupBy,
   );
   return { svg: result.svg, diagnostics: [...parseResult.diagnostics, ...result.diagnostics] };
 }
@@ -1000,6 +1002,7 @@ export function buildAllLayersSvg(
   emptyStateLabels?: EmptyStateLabels,
   theme?: DiagramTheme,
   annotationBadgeLabels?: AnnotationBadgeLabels,
+  groupBy?: "team",
 ): SvgResult {
   const parseResult: ParseResult<KrsFile> = Parser.parse(krsSource);
   const result = _buildAllLayersSvg(
@@ -1009,6 +1012,7 @@ export function buildAllLayersSvg(
     emptyStateLabels,
     theme,
     annotationBadgeLabels,
+    groupBy,
   );
   return { svg: result.svg, diagnostics: [...parseResult.diagnostics, ...result.diagnostics] };
 }
@@ -1072,6 +1076,7 @@ export function buildAllViewsSvg(
   emptyStateLabels?: EmptyStateLabels,
   theme?: DiagramTheme,
   annotationBadgeLabels?: AnnotationBadgeLabels,
+  groupBy?: "team",
 ): AllViewsSvgResult {
   const parseResult: ParseResult<KrsFile> = Parser.parse(krsSource);
   const result = _buildAllViewsSvg(
@@ -1081,6 +1086,7 @@ export function buildAllViewsSvg(
     emptyStateLabels,
     theme,
     annotationBadgeLabels,
+    groupBy,
   );
   return {
     svg: result.svg,
