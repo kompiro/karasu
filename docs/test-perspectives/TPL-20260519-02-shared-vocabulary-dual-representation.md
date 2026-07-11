@@ -9,8 +9,10 @@ applicable_to:
   - "新しいメンバー（kind / variant / enum 値）の追加が複数ファイルの同時編集を必要とする構造"
 discovered_from:
   - issue: "#1415"
+  - issue: "#1856"
   - root_cause_file: "packages/core/src/builtins/icon-theme.ts"
   - root_cause_file: "packages/core/src/builtins/default-style.ts:192"
+  - root_cause_file: "packages/app/src/components/icon-consistency.test.ts"
 related_to:
   - TPL-20260510-03
   - TPL-20260510-06
@@ -59,6 +61,7 @@ CSS だけに新 variant を足すと Outline view が古いアイコンを出�
 - [ ] 表現が複数あること、どれが真実源（または相互ミラー）かをコメントで明示したか
 - [ ] 新メンバー追加時に「全表現を更新せよ」と分かる導線（コメント / TPL 参照）があるか
 - [ ] 全表現が同じ入力に対し同じ結果を返すことを検証するテストがあるか（理想は表現の網羅を 1 つのソースから駆動する parity テスト）
+- [ ] その parity テストが両表現の **key 集合の和（union）** を突き合わせているか — 片側の keys だけを反復し、もう片側にしか無い member を暗黙に除外すると、その member を足した drift が静かに通る（#1856: `icon-consistency.test.ts` が panel 側 keys のみ反復し、renderer にしか無い kind の追加を検出できなかった。既知の gap は明示的な allowlist に固定し、新規の片側追加は必ず落とす）
 - [ ] 解決順序（first-match-wins / cascade last-wins など）が表現間で一致しているか
 
 ## 既知の対処パターン
@@ -79,6 +82,12 @@ CSS だけに新 variant を足すと Outline view が古いアイコンを出�
   アノテーションバッジラベルが `reference-data.ts` の en ラベルと一致する
   parity テスト（#1508 で badge ルールを reference-data から生成する形に
   移行し、@deprecated の 3 表記問題を構造的に解消）。
+- `packages/app/src/components/icon-consistency.test.ts` — panel の
+  `KIND_TO_ICON_NAME` と renderer の `ICON_THEME_STYLE_SOURCE` を **両 key
+  集合の和** で突き合わせる cross-surface parity テスト。renderer-only kind
+  は `KNOWN_PANEL_GAPS` allowlist に明示したものだけ許容し、新規の片側追加
+  （panel-only / renderer-only いずれも）を落とす（#1856 で intersection-only
+  から union へ是正）。
 
 ## 派生元 spec
 
