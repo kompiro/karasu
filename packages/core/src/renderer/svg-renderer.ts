@@ -132,6 +132,7 @@ export interface RenderOptions {
    * for the default un-grouped kind-tier layout.
    */
   groupBy?: "team";
+  collapsedGroups?: ReadonlySet<string>;
 }
 
 /**
@@ -173,6 +174,7 @@ export function render(
     edgeDirections,
     options?.collapsedCategories,
     options?.groupBy,
+    options?.collapsedGroups,
   );
   const title =
     layoutResult.containers.length === 0 && viewSlice.containerNode

@@ -2,6 +2,7 @@ import type { KrsNode, KrsEdge } from "../types/ast.js";
 import { INFRA_KIND_SET } from "../types/ast.js";
 import { collapseNodeList, type CategoryId } from "./category-collapse.js";
 import { assignGroupedLayers, type GroupedNode, type GroupBand } from "./group-layout.js";
+import { collapseGroups } from "./group-collapse.js";
 import type { ViewSlice, GhostSystem } from "../view/view-extract.js";
 import type { EdgeDirection, ResolvedLayoutHints } from "../types/style.js";
 import { buildInheritedAnnotations } from "../resolver/inherited-annotations.js";
@@ -745,6 +746,7 @@ export function layout(
   edgeDirections?: Map<string, EdgeDirection>,
   collapsedCategories?: ReadonlySet<CategoryId>,
   groupBy?: "team",
+  collapsedGroups?: ReadonlySet<string>,
 ): LayoutResult {
   const { LAYER_GAP, NODE_GAP, MAX_LAYER_WIDTH } = getLayoutConstants(displayMode);
   // Build the inherited-annotations map from the focused container's subtree
@@ -775,8 +777,23 @@ export function layout(
     );
   }
 
-  const allNodes = collapseNodeList(viewSlice.childNodes, collapsedCategories);
-  const allEdges = viewSlice.childEdges;
+  let allNodes = collapseNodeList(viewSlice.childNodes, collapsedCategories);
+  let allEdges: KrsEdge[] = viewSlice.childEdges;
+
+  // Per-group collapse (#1858 slice B): when a team is collapsed, fold its
+  // members to a `<Team> (N)` stub and re-target cross-group edges onto it, so
+  // "collapse all" yields the group-dependency-DAG view. Only meaningful in
+  // group-by mode with an ownerIndex; a no-op otherwise. `stubGroup` tells the
+  // grouping code which group a stub stands in for.
+  const stubGroup = new Map<string, string>();
+  if (groupBy === "team" && ownerIndex) {
+    const collapsed = collapseGroups(allNodes, allEdges, ownerIndex, collapsedGroups);
+    allNodes = collapsed.nodes;
+    allEdges = collapsed.edges;
+    for (const [stub, gid] of collapsed.stubGroup) stubGroup.set(stub, gid);
+  }
+  /** Group a node belongs to — its team owner, or the group a collapse stub stands in for. */
+  const groupIdOf = (id: string): string | null => ownerIndex?.get(id) ?? stubGroup.get(id) ?? null;
 
   // System-view grouping (#1858, P2a): when the viewer picks "Group by: team",
   // bucket nodes into their owning team instead of the kind tiers, stacking each
@@ -789,7 +806,7 @@ export function layout(
   if (groupBy === "team" && ownerIndex && ownerIndex.size > 0) {
     const groupedNodes: GroupedNode[] = allNodes.map((n) => ({
       id: n.id,
-      groupId: ownerIndex.get(n.id) ?? null,
+      groupId: groupIdOf(n.id),
       ungroupedRank: systemTier(n),
     }));
     // Team declaration order = first-appearance order in `ownerIndex` (the parser
@@ -1077,7 +1094,7 @@ export function layout(
   // (design § P1 measurement 1). Built from final node positions.
   if (groupBands && ownerIndex) {
     for (const groupId of groupOrder) {
-      const members = [...layoutNodes.values()].filter((n) => ownerIndex.get(n.id) === groupId);
+      const members = [...layoutNodes.values()].filter((n) => groupIdOf(n.id) === groupId);
       if (members.length === 0) continue;
       const minX = Math.min(...members.map((n) => n.x));
       const minY = Math.min(...members.map((n) => n.y));
