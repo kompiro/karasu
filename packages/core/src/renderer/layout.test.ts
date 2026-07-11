@@ -572,7 +572,7 @@ system PaymentGateway {
 
   it("anchors the member's ghost edge on the member while its team is expanded", () => {
     const slice = groupedSliceWithMemberGhostEdge();
-    const result = layout(slice, ownerIndex, undefined, undefined, undefined, undefined, "team");
+    const result = layout(slice, { ownerIndex, groupBy: "team" });
     const ghostEdge = result.edges.find((e) => e.ghost);
     expect(ghostEdge).toBeDefined();
     expect(ghostEdge!.from).toBe("Billing");
@@ -582,16 +582,11 @@ system PaymentGateway {
 
   it("re-anchors the ghost edge onto the group stub when the team collapses", () => {
     const slice = groupedSliceWithMemberGhostEdge();
-    const result = layout(
-      slice,
+    const result = layout(slice, {
       ownerIndex,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      "team",
-      new Set(["payments"]),
-    );
+      groupBy: "team",
+      collapsedGroups: new Set(["payments"]),
+    });
     const stubId = "__group_collapsed_payments__";
     const stub = result.nodes.get(stubId);
     expect(stub).toBeDefined();
