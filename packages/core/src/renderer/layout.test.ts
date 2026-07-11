@@ -533,6 +533,85 @@ system PaymentGateway {
   });
 });
 
+describe("layout > group-collapse ghost-edge re-anchoring (#1874)", () => {
+  // A single system whose team-owned member `Billing` calls an external system,
+  // plus that external system so the ghost objects can be extracted. When the
+  // owning team collapses, `Billing` folds into a stub — the ghost connector
+  // must re-anchor onto the stub, not fall back to the main container border.
+  const KRS = `
+system ECPlatform {
+  service Billing {}
+  service Wallet {}
+  Billing -> Wallet "settle"
+  Billing -> PaymentGateway.PaymentService "charge"
+}
+system PaymentGateway {
+  service PaymentService {}
+}
+`;
+
+  // A grouped single-system slice whose outgoing ghost-edge list references a
+  // team member (`Billing`). Extraction never surfaces member-level ghost edges
+  // in the grouped system view today (they anchor on the container), so we graft
+  // the real ghost objects from the service drill-down onto the single-system
+  // slice to exercise the remap directly (the latent gap #1874 flagged).
+  function groupedSliceWithMemberGhostEdge() {
+    const parsed = Parser.parse(KRS);
+    const ecPlatform = parsed.value.systems.find((s) => s.id === "ECPlatform")!;
+    const rootSlice = extractView([ecPlatform], []); // single system → group-collapse path
+    const svcSlice = extractView(parsed.value.systems, ["ECPlatform", "Billing"]);
+    rootSlice.ghostSystems = svcSlice.ghostSystems;
+    rootSlice.ghostSystemEdges = svcSlice.ghostSystemEdges; // from = "Billing"
+    return rootSlice;
+  }
+
+  const ownerIndex = new Map([
+    ["Billing", "payments"],
+    ["Wallet", "payments"],
+  ]);
+
+  it("anchors the member's ghost edge on the member while its team is expanded", () => {
+    const slice = groupedSliceWithMemberGhostEdge();
+    const result = layout(slice, ownerIndex, undefined, undefined, undefined, undefined, "team");
+    const ghostEdge = result.edges.find((e) => e.ghost);
+    expect(ghostEdge).toBeDefined();
+    expect(ghostEdge!.from).toBe("Billing");
+    const billing = result.nodes.get("Billing")!;
+    expect(ghostEdge!.fromPoint.x).toBeCloseTo(billing.x + billing.width, 5);
+  });
+
+  it("re-anchors the ghost edge onto the group stub when the team collapses", () => {
+    const slice = groupedSliceWithMemberGhostEdge();
+    const result = layout(
+      slice,
+      ownerIndex,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      "team",
+      new Set(["payments"]),
+    );
+    const stubId = "__group_collapsed_payments__";
+    const stub = result.nodes.get(stubId);
+    expect(stub).toBeDefined();
+    // The member was folded away, so its ghost connector must move to the stub.
+    expect(result.nodes.has("Billing")).toBe(false);
+
+    const ghostEdge = result.edges.find((e) => e.ghost);
+    expect(ghostEdge).toBeDefined();
+    expect(ghostEdge!.from).toBe(stubId);
+    // fromPoint sits on the stub's right edge, not the surrounding container
+    // border — the imprecise anchor `computeLayoutEdges` fell back to (#1874).
+    expect(ghostEdge!.fromPoint.x).toBeCloseTo(stub!.x + stub!.width, 5);
+    const fallbackContainer = result.containers.find((c) => !c.ghost)!;
+    expect(ghostEdge!.fromPoint.x).not.toBeCloseTo(
+      fallbackContainer.x + fallbackContainer.width,
+      5,
+    );
+  });
+});
+
 describe("layout > caller ghost systems", () => {
   const CROSS_SYSTEM_KRS = `
 system ECPlatform {
