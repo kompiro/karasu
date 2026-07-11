@@ -181,6 +181,8 @@ export type Translations = {
   "preview.groupBy.label": string;
   "preview.groupBy.none": string;
   "preview.groupBy.team": string;
+  "preview.groupBy.collapseAll": string;
+  "preview.groupBy.expandAll": string;
 
   // Preview toolbar — Share (inline URL sharing, karasu-nest)
   "preview.share.label": string;

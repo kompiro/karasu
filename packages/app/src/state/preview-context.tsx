@@ -37,6 +37,12 @@ export interface SystemViewData {
   onGroupByChange?: (mode: GroupByMode) => void;
   /** Whether the Group-by selector is meaningful (has org, not comparing) (#1858). */
   groupByAvailable?: boolean;
+  /** Ids of every collapsible boundary frame in the current render (#1872). */
+  groupIds?: string[];
+  /** True when at least one frame exists and all are collapsed (#1872). */
+  allGroupsCollapsed?: boolean;
+  /** Collapse every frame if any is open, else expand all (#1872). */
+  onCollapseAllToggle?: () => void;
   highlightedNodeId?: string | null;
   onClearHighlight?: () => void;
   /**

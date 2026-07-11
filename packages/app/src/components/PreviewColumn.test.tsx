@@ -417,6 +417,57 @@ describe("PreviewColumn", () => {
     });
   });
 
+  describe("Collapse all / Expand all control (#1872)", () => {
+    // The control is gated on the presence of collapsible frames (groupIds),
+    // NOT on `groupBy === "team"` — so a future Group-by axis needs no change
+    // here. See docs/design/group-by-bulk-collapse.md.
+    const withGroups = (over: Partial<PreviewContextValue["systemView"]> = {}) =>
+      makeProps({
+        activeView: "system",
+        systemView: {
+          ...makeProps().systemView,
+          groupBy: "team" as const,
+          groupIds: ["payments", "catalog"],
+          allGroupsCollapsed: false,
+          onCollapseAllToggle: vi.fn<() => void>(),
+          ...over,
+        },
+      });
+
+    it("is hidden when there are no collapsible frames", () => {
+      const { queryByRole } = renderPreview(makeProps({ activeView: "system" }));
+      expect(queryByRole("button", { name: /Collapse all|Expand all/ })).toBeNull();
+    });
+
+    it("is hidden when grouping is not available even if frames exist", () => {
+      const props = withGroups();
+      props.systemView.groupByAvailable = false;
+      const { queryByRole } = renderPreview(props);
+      expect(queryByRole("button", { name: /Collapse all|Expand all/ })).toBeNull();
+    });
+
+    it("shows Collapse all when not all groups are collapsed", () => {
+      const { getByRole } = renderPreview(withGroups({ allGroupsCollapsed: false }));
+      const btn = getByRole("button", { name: /Collapse all/ });
+      expect(btn.textContent).toContain("⊖ Collapse all");
+      expect(btn.getAttribute("aria-pressed")).toBe("false");
+    });
+
+    it("shows Expand all with pressed state when all groups are collapsed", () => {
+      const { getByRole } = renderPreview(withGroups({ allGroupsCollapsed: true }));
+      const btn = getByRole("button", { name: /Expand all/ });
+      expect(btn.textContent).toContain("⊕ Expand all");
+      expect(btn.getAttribute("aria-pressed")).toBe("true");
+    });
+
+    it("calls onCollapseAllToggle when clicked", () => {
+      const props = withGroups();
+      const { getByRole } = renderPreview(props);
+      fireEvent.click(getByRole("button", { name: /Collapse all/ }));
+      expect(props.systemView.onCollapseAllToggle).toHaveBeenCalled();
+    });
+  });
+
   describe("hasDeployDiagram=false", () => {
     it("still renders Deploy tab as clickable", async () => {
       const user = userEvent.setup();

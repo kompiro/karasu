@@ -77,6 +77,12 @@ interface SystemViewBundle {
   collapsedCategories: ReadonlySet<CategoryId>;
   toggleCategory: (category: CategoryId) => void;
   toggleGroup: (groupId: string) => void;
+  /** Ids of every collapsible boundary frame in the current render (#1872). */
+  groupIds: string[];
+  /** True when at least one frame exists and all are collapsed (#1872). */
+  allGroupsCollapsed: boolean;
+  /** Collapse every frame if any is open, else expand all (#1872). */
+  onCollapseAllToggle: () => void;
   /** System-view grouping axis and its setter (Issue #1858). */
   groupBy: GroupByMode;
   setGroupBy: (mode: GroupByMode) => void;
@@ -196,6 +202,9 @@ export function useAppViews(args: UseAppViewsArgs): UseAppViewsResult {
     groupBy,
     setGroupBy,
     toggleGroup,
+    groupIds,
+    allGroupsCollapsed,
+    onCollapseAllToggle,
     nodeDiff: systemNodeDiff,
   } = useSystemView(
     effEntryPath,
@@ -327,6 +336,9 @@ export function useAppViews(args: UseAppViewsArgs): UseAppViewsResult {
       setGroupBy,
       groupByAvailable: hasOrgDiagram,
       toggleGroup,
+      groupIds,
+      allGroupsCollapsed,
+      onCollapseAllToggle,
     },
     deploy: {
       svg: deploySvg,

@@ -45,6 +45,12 @@ interface ActiveViewData {
   onGroupByChange?: (mode: GroupByMode) => void;
   /** system: whether the Group-by selector is meaningful (#1858). */
   groupByAvailable?: boolean;
+  /** system: ids of every collapsible boundary frame in the current render (#1872). */
+  groupIds?: string[];
+  /** system: true when at least one frame exists and all are collapsed (#1872). */
+  allGroupsCollapsed?: boolean;
+  /** system: collapse every frame if any is open, else expand all (#1872). */
+  onCollapseAllToggle?: () => void;
   /** deploy: click a container group → highlight it as a system node. */
   onContainerClick?: (containerId: string) => void;
   /** org: click an owned service → switch to system. */
@@ -113,6 +119,9 @@ export function selectActiveViewData(ctx: PreviewContextValue): ActiveViewData {
         groupBy: systemView.groupBy,
         onGroupByChange: systemView.onGroupByChange,
         groupByAvailable: systemView.groupByAvailable,
+        groupIds: systemView.groupIds,
+        allGroupsCollapsed: systemView.allGroupsCollapsed,
+        onCollapseAllToggle: systemView.onCollapseAllToggle,
         nodeDiff: systemView.nodeDiff,
         styleTargetPath: ctx.styleTargetPath,
         onPickEdgeDirection: ctx.onPickEdgeDirection,

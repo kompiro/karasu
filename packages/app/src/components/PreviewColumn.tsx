@@ -289,6 +289,22 @@ export function PreviewColumn() {
             </select>
           </span>
         )}
+        {activeView === "system" && view.groupByAvailable && (view.groupIds?.length ?? 0) > 0 && (
+          <Button
+            variant="actionable"
+            aria-pressed={view.allGroupsCollapsed}
+            onClick={() => view.onCollapseAllToggle?.()}
+            aria-label={
+              view.allGroupsCollapsed
+                ? t("preview.groupBy.expandAll")
+                : t("preview.groupBy.collapseAll")
+            }
+          >
+            {view.allGroupsCollapsed
+              ? `⊕ ${t("preview.groupBy.expandAll")}`
+              : `⊖ ${t("preview.groupBy.collapseAll")}`}
+          </Button>
+        )}
         {activeView === "org" && (
           <Button
             variant="actionable"

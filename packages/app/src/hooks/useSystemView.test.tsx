@@ -132,6 +132,55 @@ describe("useSystemView", () => {
     vi.useRealTimers();
   });
 
+  it("exposes group ids from the rendered SVG when grouped by team (#1872)", async () => {
+    // `groupIds` is read from the SVG's `data-collapse-group` frames, so it is
+    // axis-agnostic and matches the frames actually drawn.
+    vi.useFakeTimers();
+    const fs = makeFs(SOURCE_TWO_TEAMS);
+    const { result } = renderHook(() => useSystemView(ENTRY, fs, []));
+    await act(() => vi.advanceTimersByTimeAsync(300));
+
+    // Ungrouped: no boundary frames, so no group ids.
+    expect(result.current.groupIds).toEqual([]);
+    expect(result.current.allGroupsCollapsed).toBe(false);
+
+    act(() => result.current.setGroupBy("team"));
+    await act(() => vi.advanceTimersByTimeAsync(300));
+
+    expect([...result.current.groupIds].sort()).toEqual(["catalog", "payments"]);
+    // Nothing collapsed yet.
+    expect(result.current.allGroupsCollapsed).toBe(false);
+    vi.useRealTimers();
+  });
+
+  it("onCollapseAllToggle folds every team then expands them all (#1872)", async () => {
+    vi.useFakeTimers();
+    const fs = makeFs(SOURCE_TWO_TEAMS);
+    const { result } = renderHook(() => useSystemView(ENTRY, fs, []));
+    await act(() => vi.advanceTimersByTimeAsync(300));
+    act(() => result.current.setGroupBy("team"));
+    await act(() => vi.advanceTimersByTimeAsync(300));
+    // Expanded: owned service cards drawn.
+    expect(result.current.svg).toContain('data-node-id="Billing"');
+    expect(result.current.svg).toContain('data-node-id="Search"');
+
+    // Collapse all → every team folds to its stub (group-DAG view).
+    act(() => result.current.onCollapseAllToggle());
+    await act(() => vi.advanceTimersByTimeAsync(300));
+    expect(result.current.allGroupsCollapsed).toBe(true);
+    expect(result.current.svg).toContain('data-node-id="__group_collapsed_payments__"');
+    expect(result.current.svg).toContain('data-node-id="__group_collapsed_catalog__"');
+    expect(result.current.svg).not.toContain('data-node-id="Billing"');
+
+    // Toggle again → expand all, service cards return.
+    act(() => result.current.onCollapseAllToggle());
+    await act(() => vi.advanceTimersByTimeAsync(300));
+    expect(result.current.allGroupsCollapsed).toBe(false);
+    expect(result.current.svg).toContain('data-node-id="Billing"');
+    expect(result.current.svg).not.toContain('data-node-id="__group_collapsed_payments__"');
+    vi.useRealTimers();
+  });
+
   it("hasOrgDiagram tracks the source's organization blocks (Issue #923)", async () => {
     vi.useFakeTimers();
     // Start with a source that has an organization block. After the editor is

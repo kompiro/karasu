@@ -13,7 +13,7 @@ import {
   type NodeDiffMeta,
   type CategoryId,
 } from "@karasu-tools/core";
-import { useCallback, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import type { GroupByMode } from "../state/preview-context.js";
 import iconManifest from "@karasu-tools/core/icons/icons.json";
 import serviceSvg from "@karasu-tools/core/icons/service.svg?raw";
@@ -105,6 +105,28 @@ resolveIconManifest(
   true,
 );
 
+/**
+ * The team/group ids of every collapsible boundary frame in the rendered SVG,
+ * read from the `data-collapse-group` attributes the renderer stamps on each
+ * frame (`renderGroupControls`, `svg-renderer.ts`). This is the same contract
+ * the PreviewPane click delegation already relies on, and it is complete in
+ * both directions — a collapsed group keeps its `data-collapse-group` (so its
+ * `⊕` expand control still works), so the set is the full frame list whether a
+ * frame is open or folded.
+ *
+ * Deliberately axis-agnostic: it does not know or care which Group-by axis
+ * (team today, `group` in P2b) produced the frames. Bulk collapse is driven off
+ * this so a future axis needs no change here — see
+ * `docs/design/group-by-bulk-collapse.md`.
+ */
+function extractGroupIds(svg: string): string[] {
+  const ids = new Set<string>();
+  for (const m of svg.matchAll(/data-collapse-group="([^"]+)"/g)) {
+    ids.add(m[1]);
+  }
+  return [...ids];
+}
+
 export function useSystemView(
   entryPath: string | null,
   fs: FileSystemProvider | null,
@@ -120,6 +142,12 @@ export function useSystemView(
   groupBy: GroupByMode;
   setGroupBy: (mode: GroupByMode) => void;
   toggleGroup: (groupId: string) => void;
+  /** Ids of every collapsible boundary frame in the current render (#1872). */
+  groupIds: string[];
+  /** True when at least one frame exists and all are collapsed (#1872). */
+  allGroupsCollapsed: boolean;
+  /** Collapse every frame if any is open, else expand all (#1872). */
+  onCollapseAllToggle: () => void;
 } {
   const emptyStateLabels = useEmptyStateLabels();
   const annotationBadgeLabels = useAnnotationBadgeLabels();
@@ -182,6 +210,10 @@ export function useSystemView(
       annotationBadgeLabels,
       theme,
       collapsedCategories,
+      // P2b hand-off: when a second Group-by axis lands, invert this to
+      // `groupBy === "none" ? undefined : groupBy` (off-sentinel gate) and widen
+      // the core `groupBy` union, so a new axis is not silently dropped here.
+      // See docs/design/group-by-bulk-collapse.md (B2).
       groupBy: groupBy === "team" ? "team" : undefined,
       collapsedGroups: groupBy === "team" ? collapsedGroups : undefined,
       interactive: true,
@@ -279,6 +311,15 @@ export function useSystemView(
       groupsKey,
     ],
   });
+  // Bulk collapse (#1872). `groupIds` comes from the rendered SVG, so it is
+  // axis-agnostic and always matches the frames actually on screen. A single
+  // toggle: collapse every frame when any is open, else expand all.
+  const groupIds = useMemo(() => extractGroupIds(result.svg), [result.svg]);
+  const allGroupsCollapsed = groupIds.length > 0 && groupIds.every((id) => collapsedGroups.has(id));
+  const onCollapseAllToggle = useCallback(() => {
+    setCollapsedGroups(allGroupsCollapsed ? new Set() : new Set(groupIds));
+  }, [allGroupsCollapsed, groupIds]);
+
   return {
     ...result,
     collapsedCategories,
@@ -286,5 +327,8 @@ export function useSystemView(
     groupBy,
     setGroupBy,
     toggleGroup,
+    groupIds,
+    allGroupsCollapsed,
+    onCollapseAllToggle,
   };
 }
