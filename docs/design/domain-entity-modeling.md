@@ -253,6 +253,29 @@ view token **`entity`** を追加する（現行: `system` · `deploy` · `org` 
   同じ degrade）。両 surface とも `anchorId(viewPrefix, id)` を経由し、
   cross-surface parity（TPL-20260630-01）を保つ
 
+**anchor 名前空間の衝突検出 — 新診断 `entity-anchor-collision`（warning）**
+
+`entity` token のアドレス可能集合は **{全 domain id} ∪ {全 entity id}（model-wide）**
+になる。この集合内で id が衝突すると（例: `domain Billing` と別 service 配下の
+`entity Billing`、別 domain 下の同名 entity 同士）、anchor の解決が曖昧になり、
+静的 SVG（all-views bundle）では同一 DOM id の重複で CSS `:target` が静かに壊れる。
+これを新診断 **`entity-anchor-collision`（warning）** で検出する
+（`docs/spec/diagnostics.md` への追記は実装 PR。診断名は実装時に確定）。
+
+- **warning に留める理由**: モデルの意味論は壊れておらず（描画・参照解決は可能）、
+  劣化するのは deep-link のアドレス可能性のみ — warn-don't-error ポリシーに従う。
+  また `domain Billing` + 集約ルート `entity Billing` の同名は自然に起きうる命名
+  なので、error にすると常用パターンを弾いてしまう
+- **既存診断との分担**: 同一親スコープの重複（同じ domain 配下の entity と usecase の
+  同名等）は新診断ではなく、既存 `duplicate-node-id-parent`（error）の検査集合に
+  entity を加えてカバーする（TPL-20260623-02 の valid-target set 同期観点）。
+  usecase と entity は view token（`krs-system-` / `krs-entity-`）が異なるため
+  anchor 文字列としては衝突しない。親をまたぐ同名は既存診断のスコープ外であり、
+  そこがこの新診断の受け持ちになる
+- **`resource` 解決との整合**: bare `resource <id>` の entity 解決は unique match を
+  要求する。複数 match（別 domain 下の同名 entity）は解決せず既存の未解決警告に
+  落とし、根本原因は `entity-anchor-collision` が指す
+
 ### `translate --from db` の拡張
 
 - 集約畳み込み後の**集約ルート = entity 粒度**でスキャフォールドを生成する
@@ -280,8 +303,10 @@ view token **`entity`** を追加する（現行: `system` · `deploy` · `org` 
 
 1. parser: `entity` ブロック（domain 子）、`table` 物理対応プロパティ、
    entity ブロック内の関連 edge（既存 `->` 構文 + edge origin scope 規則の適用）
-2. resolver: bare id → entity 解決、推移的導出（usecase → entity → table）と
-   二重計上排除、entity 関連 → domain エッジ畳み上げ、ghost エンティティ
+2. resolver: bare id → entity 解決（unique match 要求）、推移的導出
+   （usecase → entity → table）と二重計上排除、entity 関連 → domain エッジ
+   畳み上げ、ghost エンティティ、`entity-anchor-collision` warning、
+   `duplicate-node-id-parent` の検査集合への entity 追加
 3. renderer + app: domain 配下のエンティティビュー（ユースケースビューと切り替え）
 4. translate --from db: entity + 関連 + 物理対応のスキャフォールド生成、
    Soft FK 由来マーキング
@@ -297,6 +322,8 @@ view token **`entity`** を追加する（現行: `system` · `deploy` · `org` 
    - translate --from db が entity + 関連を生成し、Soft FK 由来に `[inferred]` が付く
    - 全列 FK ジャンクションが entity として生成される
    - `#krs-entity-<id>` anchor が静的 SVG / SPA の両 surface で解決する
+   - domain と同名の entity（または別 domain 下の同名 entity）を持つモデルで
+     `entity-anchor-collision` warning が出る（静的 SVG の DOM id 重複の予防）
 
 **v2 — 需要実証後**:
 
@@ -316,7 +343,8 @@ view token **`entity`** を追加する（現行: `system` · `deploy` · `org` 
   概念レベルのエンティティと関連は domain の子として目標内。entity は属性を
   持たない」への線引き直し）、`docs/spec/syntax.md`、
   `docs/spec/tags-annotations.md`、`docs/guide/02-onboarding.md`
-  （エンティティビューを使うキャッチアップ手順の追加）、`docs/spec/permalink.md`
+  （エンティティビューを使うキャッチアップ手順の追加）、`docs/spec/permalink.md`、
+  `docs/spec/diagnostics.md`（`entity-anchor-collision` の追記）
 - テスト・examples への影響: `examples/` にエンティティビューのサンプル追加
 
 ## Related TPLs
