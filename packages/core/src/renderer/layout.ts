@@ -738,16 +738,33 @@ function placeExternalServicesOnSides(
   return sides;
 }
 
-export function layout(
-  viewSlice: ViewSlice,
-  ownerIndex?: Map<string, string>,
-  displayMode?: DisplayMode,
-  layoutHints?: Map<string, ResolvedLayoutHints>,
-  edgeDirections?: Map<string, EdgeDirection>,
-  collapsedCategories?: ReadonlySet<CategoryId>,
-  groupBy?: "team",
-  collapsedGroups?: ReadonlySet<string>,
-): LayoutResult {
+/**
+ * Optional render toggles for {@link layout}. Every field is optional; a bare
+ * `layout(viewSlice)` lays out with defaults. Grouped as an object (rather than
+ * trailing positionals) so new toggles append a named field instead of another
+ * comma-counted slot — and so the two adjacent `ReadonlySet` params
+ * (`collapsedCategories` / `collapsedGroups`) can't be slot-swapped. See #1875.
+ */
+interface LayoutOptions {
+  ownerIndex?: Map<string, string>;
+  displayMode?: DisplayMode;
+  layoutHints?: Map<string, ResolvedLayoutHints>;
+  edgeDirections?: Map<string, EdgeDirection>;
+  collapsedCategories?: ReadonlySet<CategoryId>;
+  groupBy?: "team";
+  collapsedGroups?: ReadonlySet<string>;
+}
+
+export function layout(viewSlice: ViewSlice, options: LayoutOptions = {}): LayoutResult {
+  const {
+    ownerIndex,
+    displayMode,
+    layoutHints,
+    edgeDirections,
+    collapsedCategories,
+    groupBy,
+    collapsedGroups,
+  } = options;
   const { LAYER_GAP, NODE_GAP, MAX_LAYER_WIDTH } = getLayoutConstants(displayMode);
   // Build the inherited-annotations map from the focused container's subtree
   // (or all systems for the root view). Within a single drill-down view, IDs

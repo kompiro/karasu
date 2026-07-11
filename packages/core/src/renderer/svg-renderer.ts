@@ -166,16 +166,15 @@ export function render(
   for (const [key, edgeStyle] of styles.edges) {
     if (edgeStyle.direction !== "auto") edgeDirections.set(key, edgeStyle.direction);
   }
-  const layoutResult = layout(
-    viewSlice,
+  const layoutResult = layout(viewSlice, {
     ownerIndex,
     displayMode,
-    styles.layoutHints,
+    layoutHints: styles.layoutHints,
     edgeDirections,
-    options?.collapsedCategories,
-    options?.groupBy,
-    options?.collapsedGroups,
-  );
+    collapsedCategories: options?.collapsedCategories,
+    groupBy: options?.groupBy,
+    collapsedGroups: options?.collapsedGroups,
+  });
   const title =
     layoutResult.containers.length === 0 && viewSlice.containerNode
       ? (viewSlice.containerNode.label ?? viewSlice.containerNode.id)
