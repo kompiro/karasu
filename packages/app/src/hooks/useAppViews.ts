@@ -82,9 +82,9 @@ interface SystemViewBundle {
   setGroupBy: (mode: GroupByMode) => void;
   /**
    * Whether the Group-by axis is meaningful for the current model/view — the
-   * source declares an `organization`/`owns` block and we are not in compare
-   * mode (the diff compile has no grouping). Gates the selector so it is not a
-   * visible no-op (Issue #1858).
+   * source declares an `organization`/`owns` block. Grouping works in compare
+   * mode too (the diff compile threads `groupBy`; Issue #1873). Gates the
+   * selector so it is not a visible no-op (Issue #1858).
    */
   groupByAvailable: boolean;
 }

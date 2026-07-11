@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, it, expect, afterEach } from "vitest";
-import { renderHook, cleanup, waitFor } from "@testing-library/react";
+import { renderHook, cleanup, waitFor, act } from "@testing-library/react";
 import { InMemoryFileSystemProvider } from "@karasu-tools/core";
 import { useAppViews } from "./useAppViews.js";
 import { SnapshotManager } from "../fs/snapshot-manager.js";
@@ -295,7 +295,7 @@ organization Org {
     expect(result.current.system.groupByAvailable).toBe(true);
 
     // Opting into team grouping re-compiles the diff with boundary frames.
-    result.current.system.setGroupBy("team");
+    act(() => result.current.system.setGroupBy("team"));
     await waitFor(() => expect(result.current.system.svg).toContain('data-group="true"'), {
       timeout: 2000,
     });

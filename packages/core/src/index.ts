@@ -1172,6 +1172,12 @@ export interface CompileSystemDiffOptions {
   groupBy?: "team";
   /** Teams collapsed to a `<Team> (N)` stub in the diff (Issue #1858). Only with `groupBy: "team"`. */
   collapsedGroups?: ReadonlySet<string>;
+  /**
+   * `external` / `infra` categories folded to a stub in the diff (Issue #1821).
+   * Mirrors the non-compare `compileSystemView` option so the ⊖ category
+   * controls that `interactive` draws are honoured in compare mode too.
+   */
+  collapsedCategories?: ReadonlySet<CategoryId>;
   /** Draw the interactive Group-by / collapse controls in the diff preview (Issue #1858). */
   interactive?: boolean;
 }
@@ -1197,6 +1203,7 @@ export async function compileSystemDiff(
     theme,
     groupBy,
     collapsedGroups,
+    collapsedCategories,
     interactive,
   } = options;
 
@@ -1261,6 +1268,7 @@ export async function compileSystemDiff(
       theme,
       groupBy,
       collapsedGroups,
+      collapsedCategories,
       interactive,
     },
   );
