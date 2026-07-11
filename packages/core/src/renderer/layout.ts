@@ -785,12 +785,12 @@ export function layout(
   // "collapse all" yields the group-dependency-DAG view. Only meaningful in
   // group-by mode with an ownerIndex; a no-op otherwise. `stubGroup` tells the
   // grouping code which group a stub stands in for.
-  const stubGroup = new Map<string, string>();
+  let stubGroup = new Map<string, string>();
   if (groupBy === "team" && ownerIndex) {
     const collapsed = collapseGroups(allNodes, allEdges, ownerIndex, collapsedGroups);
     allNodes = collapsed.nodes;
     allEdges = collapsed.edges;
-    for (const [stub, gid] of collapsed.stubGroup) stubGroup.set(stub, gid);
+    stubGroup = collapsed.stubGroup;
   }
   /** Group a node belongs to — its team owner, or the group a collapse stub stands in for. */
   const groupIdOf = (id: string): string | null => ownerIndex?.get(id) ?? stubGroup.get(id) ?? null;

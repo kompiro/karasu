@@ -97,6 +97,23 @@ describe("collapseGroups", () => {
     expect(res.edges[0].from).toBe(groupStubId("payments"));
   });
 
+  it("keeps authored parallel edges between two expanded nodes when an unrelated group collapses", () => {
+    // X->Y twice (both sync, different labels) are legitimate parallel edges.
+    // X and Y are un-owned (expanded); collapsing an unrelated team must not
+    // dedup them away.
+    const nodes = [svc("A"), svc("B"), svc("X"), svc("Y")];
+    const owner = new Map([
+      ["A", "payments"],
+      ["B", "payments"],
+    ]); // X, Y un-owned
+    const edges = [edge("X", "Y", "create"), edge("X", "Y", "update")];
+    const res = collapseGroups(nodes, edges, owner, new Set(["payments"]));
+    // Both X->Y edges survive with their labels — neither endpoint was collapsed.
+    const xy = res.edges.filter((e) => e.from === "X" && e.to === "Y");
+    expect(xy).toHaveLength(2);
+    expect(xy.map((e) => e.label).sort()).toEqual(["create", "update"]);
+  });
+
   it("collapsing every group yields stub→stub edges (the group DAG)", () => {
     // A(payments) -> C(catalog). Collapse both → paymentsStub -> catalogStub.
     const res = collapseGroups(
