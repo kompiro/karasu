@@ -398,6 +398,13 @@ export interface CompileOptions {
    * `docs/design/system-view-grouping.md`.
    */
   groupBy?: "team";
+  /**
+   * System-view team ids collapsed to a `<Team> (N)` stub (Issue #1858, P2a).
+   * Only meaningful with `groupBy: "team"`. Cross-group edges re-target onto the
+   * stub, so collapsing every team yields the group-dependency-DAG view. Omit
+   * for the default fully-expanded grouped render.
+   */
+  collapsedGroups?: ReadonlySet<string>;
 }
 
 export interface SystemCompileResult {
@@ -489,6 +496,7 @@ function _compileFromPreparedInput(
     collapsedCategories,
     interactive,
     groupBy,
+    collapsedGroups,
   } = opts;
 
   // Project-wide edge author-id uniqueness. Runs once before view extraction
@@ -653,6 +661,7 @@ function _compileFromPreparedInput(
     collapsedCategories,
     interactive,
     groupBy,
+    collapsedGroups,
   });
   const nodeMetadata = buildNodeMetadata(
     viewSlice,

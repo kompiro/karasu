@@ -93,4 +93,36 @@ system Shop {
     expect(grouped.svg).toBe(plain.svg);
     expect(grouped.svg).not.toContain('data-group="true"');
   });
+
+  it("collapses a team to a stub and re-targets its cross-group edges (#1858 slice B)", () => {
+    const collapsed = compile(SYS, {
+      diagramType: "system",
+      groupBy: "team",
+      collapsedGroups: new Set(["payments"]),
+    });
+    if (collapsed.diagramType !== "system") throw new Error("expected system view");
+    // payments' members (Billing, Wallet) are folded into one stub …
+    expect(collapsed.svg).not.toContain('data-node-id="Billing"');
+    expect(collapsed.svg).not.toContain('data-node-id="Wallet"');
+    expect(collapsed.svg).toContain('data-node-id="__group_collapsed_payments__"');
+    expect(collapsed.svg).toContain("payments (2)");
+    // … while the catalog team stays expanded and framed.
+    expect(collapsed.svg).toContain('data-node-id="Search"');
+    expect(collapsed.svg).toContain('data-container-id="__group_payments__"');
+  });
+
+  it("collapsing every team keeps a stub per team (the group-DAG view)", () => {
+    const allCollapsed = compile(SYS, {
+      diagramType: "system",
+      groupBy: "team",
+      collapsedGroups: new Set(["payments", "catalog"]),
+    });
+    if (allCollapsed.diagramType !== "system") throw new Error("expected system view");
+    expect(allCollapsed.svg).toContain('data-node-id="__group_collapsed_payments__"');
+    expect(allCollapsed.svg).toContain('data-node-id="__group_collapsed_catalog__"');
+    // No owned service card remains.
+    for (const id of ["Billing", "Wallet", "Search", "Catalog"]) {
+      expect(allCollapsed.svg).not.toContain(`data-node-id="${id}"`);
+    }
+  });
 });
