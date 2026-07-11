@@ -113,7 +113,10 @@
   font-size: 13px;
 }
 
-.deploy-block-selector {
+/* Native toolbar selects: the deploy-block picker and the system-view
+   Group-by selector (#1858) share one look. */
+.deploy-block-selector,
+.group-by-selector {
   align-self: center;
   margin-left: 4px;
   padding: 2px 6px;
@@ -127,7 +130,18 @@
   cursor: pointer;
 }
 
-.deploy-block-selector:focus {
+.deploy-block-selector:focus,
+.group-by-selector:focus {
   outline: none;
   border-color: var(--accent);
+}
+
+/* The Group-by control pairs a visible label with the select above. */
+.group-by-selector-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--text-secondary);
+  font-size: 11px;
+  font-family: var(--font-ui);
 }

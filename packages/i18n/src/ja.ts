@@ -176,6 +176,11 @@ export const ja: Partial<Translations> = {
     "draw.io (mxGraph XML) にエクスポート — diagrams.net でレイアウトを仕上げるための逃げ道です",
   "preview.export.drawio.failed": ({ detail }) => `⚠ draw.io エクスポートに失敗しました: ${detail}`,
 
+  // グループ化（system view のチーム別グルーピング、#1858）
+  "preview.groupBy.label": "グループ化",
+  "preview.groupBy.none": "なし",
+  "preview.groupBy.team": "チーム",
+
   // 共有（inline URL 共有、karasu-nest）
   "preview.share.label": "🔗 Share",
   "preview.share.ariaLabel": "この図を共有",

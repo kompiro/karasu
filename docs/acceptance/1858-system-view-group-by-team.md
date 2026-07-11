@@ -52,4 +52,18 @@ system view の `groupBy: "team"` オプション（P2a・slice A / core のみ�
 - [ ] 未所有の infra / external が最下段の帯に並ぶ
 - [ ] `groupBy` 無しの出力が従来と同一（フレームが出ない）
 
-> 注: 展開時のグループビューは縦に長くなる（設計 P1 の既知の性質 — 可読性の主利得は折り畳みで、slice B の collapse で解消する）。段跨ぎ edge の貫通削減の磨き込みは slice C（#1859）の直交ルーティングで扱う。
+> 注: 展開時のグループビューは縦に長くなる（設計 P1 の既知の性質 — 可読性の主利得は折り畳みで、slice B の collapse で解消する）。段跨ぎ edge の貫通削減の磨き込みは P2c（#1859）の直交ルーティングで扱う。
+
+### AC-5: app の Group-by セレクタ（slice C）
+
+system view の toolbar に「Group by: None / Team」セレクタを出し、`groupBy` を core に渡して再コンパイルする。`.krs` は変更しない view 操作（#1821 collapse と同じ view-state 配線）。
+
+- [x] system view で「Team」を選ぶと `groupBy: "team"` で再コンパイルされ、SVG に team 境界フレーム（`data-group="true"` / `__group_<team>__`）が出る
+> ✅ Automated by `packages/app/src/hooks/useSystemView.test.tsx` — `setGroupBy("team")` → 再コンパイルでフレーム出現
+- [x] セレクタは system view のみに表示され、deploy / org / matrix には出ない。変更で `onGroupByChange` が発火する
+> ✅ Automated by `packages/app/src/components/PreviewColumn.test.tsx` — view ゲート（deploy/org/matrix）+ `onGroupByChange("team")`
+- [x] grouping が無意味な状態（org 宣言なし / compare モード）ではセレクタを出さない（no-op 回避、`groupByAvailable`）
+> ✅ Automated by `packages/app/src/components/PreviewColumn.test.tsx` — `groupByAvailable: false` で非表示
+- [x] ラベルは i18n 経由（`preview.groupBy.*`、en/ja 両方）
+> ✅ Automated — `packages/i18n` の型で全ロケール網羅を強制（key 欠落は typecheck 失敗）
+- [ ] **手動**: app で `examples/en/feature-samples/team-ownership.krs` を開き system view で「Group by」を Team に切り替える → 3 チームがフレームで囲まれる。None に戻すと従来表示に戻る（折り畳み操作は slice B）

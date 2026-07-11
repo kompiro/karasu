@@ -177,6 +177,11 @@ export const en: Translations = {
     "Export to draw.io (mxGraph XML) — a layout escape hatch you can polish in diagrams.net",
   "preview.export.drawio.failed": ({ detail }) => `⚠ draw.io export failed: ${detail}`,
 
+  // Group by (system-view team grouping, #1858)
+  "preview.groupBy.label": "Group by",
+  "preview.groupBy.none": "None",
+  "preview.groupBy.team": "Team",
+
   // Share (inline URL sharing, karasu-nest)
   "preview.share.label": "🔗 Share",
   "preview.share.ariaLabel": "Share this diagram",

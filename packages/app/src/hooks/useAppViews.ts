@@ -15,6 +15,7 @@ import type {
   CategoryId,
 } from "@karasu-tools/core";
 import type { AppAction, ActiveView } from "../state/app-reducer.js";
+import type { GroupByMode } from "../state/preview-context.js";
 import { useSystemView } from "./useSystemView.js";
 import { useDeployView } from "./useDeployView.js";
 import { useOrgView } from "./useOrgView.js";
@@ -75,6 +76,16 @@ interface SystemViewBundle {
   /** Collapsed external/infra categories on the system view (Issue #1821). */
   collapsedCategories: ReadonlySet<CategoryId>;
   toggleCategory: (category: CategoryId) => void;
+  /** System-view grouping axis and its setter (Issue #1858). */
+  groupBy: GroupByMode;
+  setGroupBy: (mode: GroupByMode) => void;
+  /**
+   * Whether the Group-by axis is meaningful for the current model/view — the
+   * source declares an `organization`/`owns` block and we are not in compare
+   * mode (the diff compile has no grouping). Gates the selector so it is not a
+   * visible no-op (Issue #1858).
+   */
+  groupByAvailable: boolean;
 }
 
 interface DeployViewBundle {
@@ -181,6 +192,8 @@ export function useAppViews(args: UseAppViewsArgs): UseAppViewsResult {
     nodeFileIndex,
     collapsedCategories,
     toggleCategory,
+    groupBy,
+    setGroupBy,
     nodeDiff: systemNodeDiff,
   } = useSystemView(
     effEntryPath,
@@ -308,6 +321,9 @@ export function useAppViews(args: UseAppViewsArgs): UseAppViewsResult {
       nodeDiff: systemNodeDiff,
       collapsedCategories,
       toggleCategory,
+      groupBy,
+      setGroupBy,
+      groupByAvailable: hasOrgDiagram && effCompareEntryPath === null,
     },
     deploy: {
       svg: deploySvg,

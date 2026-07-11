@@ -5,7 +5,7 @@ import type {
   Warning,
   CategoryId,
 } from "@karasu-tools/core";
-import { usePreview, type PreviewContextValue } from "./preview-context.js";
+import { usePreview, type GroupByMode, type PreviewContextValue } from "./preview-context.js";
 
 type BreadcrumbItem = { id: string; label: string };
 
@@ -37,6 +37,12 @@ interface ActiveViewData {
   onTeamButtonClick?: (teamId: string) => void;
   /** system: click a category control → collapse/expand it (#1821). */
   onCategoryToggle?: (category: CategoryId) => void;
+  /** system: current Group-by axis (#1858). */
+  groupBy?: GroupByMode;
+  /** system: change the Group-by axis (#1858). */
+  onGroupByChange?: (mode: GroupByMode) => void;
+  /** system: whether the Group-by selector is meaningful (#1858). */
+  groupByAvailable?: boolean;
   /** deploy: click a container group → highlight it as a system node. */
   onContainerClick?: (containerId: string) => void;
   /** org: click an owned service → switch to system. */
@@ -101,6 +107,9 @@ export function selectActiveViewData(ctx: PreviewContextValue): ActiveViewData {
         onDeployButtonClick: systemView.onDeployButtonClick,
         onTeamButtonClick: systemView.onTeamButtonClick,
         onCategoryToggle: systemView.onCategoryToggle,
+        groupBy: systemView.groupBy,
+        onGroupByChange: systemView.onGroupByChange,
+        groupByAvailable: systemView.groupByAvailable,
         nodeDiff: systemView.nodeDiff,
         styleTargetPath: ctx.styleTargetPath,
         onPickEdgeDirection: ctx.onPickEdgeDirection,

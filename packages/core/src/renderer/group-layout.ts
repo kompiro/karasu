@@ -249,6 +249,13 @@ export function assignGroupedLayers(
   nodes: GroupedNode[],
   edges: GroupedEdge[],
   declaredGroupOrder: string[],
+  /**
+   * The tier the team bands occupy (the service tier, `systemTier` 2). Un-grouped
+   * nodes ranked *above* it (actors / clients) stay above the bands and those *at
+   * or below* it (un-owned services, infra, external) stay below — so the overall
+   * user → client → service → infra → external flow survives grouping.
+   */
+  groupTier = 2,
 ): GroupedLayerResult | null {
   const groupOf = new Map<string, string | null>(nodes.map((n) => [n.id, n.groupId]));
   const presentGroups = declaredGroupOrder.filter((g) => nodes.some((n) => n.groupId === g));
@@ -260,6 +267,28 @@ export function assignGroupedLayers(
   const groupBands = new Map<string, GroupBand>();
   let base = 0;
 
+  // Place un-grouped nodes one band per distinct rank (ascending), longest-path
+  // sub-layering within each so read/write chains still flow downward.
+  const placeRankBands = (subset: GroupedNode[]) => {
+    const ranks = [...new Set(subset.map((n) => n.ungroupedRank))].sort((a, b) => a - b);
+    for (const rank of ranks) {
+      const ids = subset.filter((n) => n.ungroupedRank === rank).map((n) => n.id);
+      const sub = longestPathLayers(ids, edges);
+      let maxSub = 0;
+      for (const id of ids) {
+        layers.set(id, base + (sub.get(id) ?? 0));
+        maxSub = Math.max(maxSub, sub.get(id) ?? 0);
+      }
+      base += maxSub + 1;
+    }
+  };
+
+  const ungrouped = nodes.filter((n) => n.groupId === null);
+
+  // Actors / clients (rank < groupTier) stay above the team bands.
+  placeRankBands(ungrouped.filter((n) => n.ungroupedRank < groupTier));
+
+  // Team bands occupy the service tier's slot, in dependency order.
   for (const groupId of groupOrder) {
     const memberIds = nodes.filter((n) => n.groupId === groupId).map((n) => n.id);
     const sub = longestPathLayers(memberIds, edges);
@@ -272,23 +301,8 @@ export function assignGroupedLayers(
     base += maxSub + 1;
   }
 
-  // Un-grouped nodes: a trailing band below every group. Order by `ungroupedRank`
-  // (e.g. infra above external), then longest-path within each rank so read/write
-  // chains among un-grouped nodes still flow downward.
-  const ungrouped = nodes.filter((n) => n.groupId === null);
-  if (ungrouped.length > 0) {
-    const ranks = [...new Set(ungrouped.map((n) => n.ungroupedRank))].sort((a, b) => a - b);
-    for (const rank of ranks) {
-      const ids = ungrouped.filter((n) => n.ungroupedRank === rank).map((n) => n.id);
-      const sub = longestPathLayers(ids, edges);
-      let maxSub = 0;
-      for (const id of ids) {
-        layers.set(id, base + (sub.get(id) ?? 0));
-        maxSub = Math.max(maxSub, sub.get(id) ?? 0);
-      }
-      base += maxSub + 1;
-    }
-  }
+  // Un-owned services, infra and external (rank >= groupTier) stay below.
+  placeRankBands(ungrouped.filter((n) => n.ungroupedRank >= groupTier));
 
   return { layers, groupOrder, groupBands };
 }

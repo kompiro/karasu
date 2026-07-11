@@ -213,6 +213,11 @@
   display: flex;
   align-items: center;
   justify-content: flex-end;
+  /* Wrap on overflow. Without this, the flex-end row lets the leftmost
+     control spill left past the column and under the edit pane's toolbar,
+     which then intercepts its clicks (#1858 added the Group-by selector,
+     tipping a narrow preview column over the edge). */
+  flex-wrap: wrap;
   gap: 3px;
   padding: 4px 10px;
   background: var(--bg-surface);
