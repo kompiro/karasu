@@ -414,6 +414,52 @@ export function renderFromLayout(
 }
 
 /**
+ * The circle + ⊖/⊕ strokes shared by every collapse affordance — category
+ * controls / stubs (#1821) and group controls (#1858). `plus` adds the vertical
+ * stroke (⊕ = expand); omit it for ⊖ = collapse. Returns the child elements so
+ * the caller wraps them in its own `<g>` (with the right data-attributes).
+ */
+function collapseGlyph(
+  cx: number,
+  cy: number,
+  plus: boolean,
+  palette: DiagramPalette,
+  opts?: { radius?: number; fill?: string },
+): string[] {
+  const parts = [
+    el("circle", {
+      cx,
+      cy,
+      r: opts?.radius ?? 9,
+      fill: opts?.fill ?? palette.surfaceBg,
+      stroke: palette.accent,
+      "stroke-width": 1.5,
+    }),
+    el("line", {
+      x1: cx - 4,
+      y1: cy,
+      x2: cx + 4,
+      y2: cy,
+      stroke: palette.accent,
+      "stroke-width": 1.5,
+    }),
+  ];
+  if (plus) {
+    parts.push(
+      el("line", {
+        x1: cx,
+        y1: cy - 4,
+        x2: cx,
+        y2: cy + 4,
+        stroke: palette.accent,
+        "stroke-width": 1.5,
+      }),
+    );
+  }
+  return parts;
+}
+
+/**
  * The ⊕ placeholder a collapsed category folds to (Issue #1821). Drawn at the
  * stub node's laid-out box. Carries `data-collapse-category` so the app's click
  * delegation expands the category (toggling it out of `collapsedCategories`).
@@ -442,23 +488,7 @@ function renderCategoryStub(node: LayoutNode, palette: DiagramPalette): string {
       "stroke-width": 1,
       "stroke-dasharray": "4 3",
     }),
-    el("circle", { cx, cy, r: 8, fill: "none", stroke: palette.accent, "stroke-width": 1.5 }),
-    el("line", {
-      x1: cx - 4,
-      y1: cy,
-      x2: cx + 4,
-      y2: cy,
-      stroke: palette.accent,
-      "stroke-width": 1.5,
-    }),
-    el("line", {
-      x1: cx,
-      y1: cy - 4,
-      x2: cx,
-      y2: cy + 4,
-      stroke: palette.accent,
-      "stroke-width": 1.5,
-    }),
+    ...collapseGlyph(cx, cy, true, palette, { radius: 8, fill: "none" }),
     el(
       "text",
       {
@@ -570,22 +600,7 @@ function renderCategoryControls(layoutResult: LayoutResult, palette: DiagramPale
               tabindex: "0",
               transform: `translate(${fx + fw - 2},${fy + 2})`,
             },
-            el("circle", {
-              cx: 0,
-              cy: 0,
-              r: 9,
-              fill: palette.surfaceBg,
-              stroke: palette.accent,
-              "stroke-width": 1.5,
-            }),
-            el("line", {
-              x1: -4,
-              y1: 0,
-              x2: 4,
-              y2: 0,
-              stroke: palette.accent,
-              "stroke-width": 1.5,
-            }),
+            ...collapseGlyph(0, 0, false, palette),
           ),
         ),
       );
@@ -615,18 +630,10 @@ function renderGroupControls(
   const buttons: string[] = [];
   for (const container of layoutResult.containers) {
     if (!container.group || container.groupId === undefined) continue;
+    // Collapsed → ⊕ (click expands); expanded → ⊖ (click collapses).
     const collapsed = collapsedGroups?.has(container.groupId) ?? false;
     const bx = container.x + container.width - 2;
     const by = container.y + 2;
-    const lines = [
-      el("line", { x1: -4, y1: 0, x2: 4, y2: 0, stroke: palette.accent, "stroke-width": 1.5 }),
-    ];
-    if (collapsed) {
-      // ⊕ — add the vertical stroke.
-      lines.push(
-        el("line", { x1: 0, y1: -4, x2: 0, y2: 4, stroke: palette.accent, "stroke-width": 1.5 }),
-      );
-    }
     buttons.push(
       el(
         "g",
@@ -637,15 +644,7 @@ function renderGroupControls(
           tabindex: "0",
           transform: `translate(${bx},${by})`,
         },
-        el("circle", {
-          cx: 0,
-          cy: 0,
-          r: 9,
-          fill: palette.surfaceBg,
-          stroke: palette.accent,
-          "stroke-width": 1.5,
-        }),
-        ...lines,
+        ...collapseGlyph(0, 0, collapsed, palette),
       ),
     );
   }

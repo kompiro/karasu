@@ -147,8 +147,7 @@ export function useSystemView(
   const [groupBy, setGroupBy] = useState<GroupByMode>("none");
 
   // Collapsed teams in Group-by mode (Issue #1858 slice B). Each folds to a
-  // `<Team> (N)` stub; toggled via the on-SVG ⊖/⊕ control (per group) or a
-  // collapse-all/expand-all toolbar action (bulk `setCollapsedGroups`). View
+  // `<Team> (N)` stub, toggled via the on-SVG ⊖/⊕ control (per group). View
   // state, like `collapsedCategories` — recompiles via the core option.
   const [collapsedGroups, setCollapsedGroups] = useState<ReadonlySet<string>>(new Set());
   const toggleGroup = useCallback((groupId: string) => {
