@@ -98,7 +98,7 @@ system S {
     expect(baselineA.y).toBeLessThan(baselineB.y);
 
     const directions = new Map([["A->B", "up" as const]]);
-    const flipped = layout(slice, undefined, undefined, undefined, directions);
+    const flipped = layout(slice, { edgeDirections: directions });
     const flippedA = flipped.nodes.get("A")!;
     const flippedB = flipped.nodes.get("B")!;
     // With direction:up, A is below B.
@@ -115,7 +115,7 @@ system S {
     `);
     const baseline = layout(slice);
     const directions = new Map([["A->B", "down" as const]]);
-    const downward = layout(slice, undefined, undefined, undefined, directions);
+    const downward = layout(slice, { edgeDirections: directions });
     expect(downward.nodes.get("A")!.y).toBe(baseline.nodes.get("A")!.y);
     expect(downward.nodes.get("B")!.y).toBe(baseline.nodes.get("B")!.y);
   });
@@ -140,7 +140,7 @@ system S {
     // node on layer 0). Adding a `direction: up` hint must not break anything
     // worse — in particular, the layout still produces a result.
     const directions = new Map([["A->B", "up" as const]]);
-    const result = layout(slice, undefined, undefined, undefined, directions);
+    const result = layout(slice, { edgeDirections: directions });
     expect(result.nodes.size).toBe(3);
   });
 
@@ -159,7 +159,7 @@ system S {
     expect(baselineU.y).toBeLessThan(baselineA.y);
 
     const directions = new Map([["U->A", "up" as const]]);
-    const flipped = layout(slice, undefined, undefined, undefined, directions);
+    const flipped = layout(slice, { edgeDirections: directions });
     const flippedU = flipped.nodes.get("U")!;
     const flippedA = flipped.nodes.get("A")!;
     // direction:up moves U below A while leaving A's row untouched.
@@ -189,7 +189,7 @@ system S {
     expect(baselineC.y).toBeLessThan(baselineA.y);
 
     const directions = new Map([["A->C", "down" as const]]);
-    const flipped = layout(slice, undefined, undefined, undefined, directions);
+    const flipped = layout(slice, { edgeDirections: directions });
     const flippedC = flipped.nodes.get("C")!;
     const flippedA = flipped.nodes.get("A")!;
     // direction:down on the push edge moves service A above client C.
@@ -208,7 +208,7 @@ system S {
     `);
     const baseline = layout(slice);
     const directions = new Map([["A->U", "down" as const]]);
-    const flipped = layout(slice, undefined, undefined, undefined, directions);
+    const flipped = layout(slice, { edgeDirections: directions });
     expect(flipped.nodes.get("U")!.y).toBe(baseline.nodes.get("U")!.y);
     expect(flipped.nodes.get("A")!.y).toBe(baseline.nodes.get("A")!.y);
   });
@@ -225,7 +225,7 @@ system S {
     `);
     const baseline = layout(slice);
     const directions = new Map([["U1->A", "up" as const]]);
-    const flipped = layout(slice, undefined, undefined, undefined, directions);
+    const flipped = layout(slice, { edgeDirections: directions });
     // U2 stays where it was; only U1 moves below the service.
     expect(flipped.nodes.get("U2")!.y).toBe(baseline.nodes.get("U2")!.y);
     expect(flipped.nodes.get("U1")!.y).toBeGreaterThan(flipped.nodes.get("A")!.y);
@@ -245,26 +245,18 @@ system S {
     const baseline = layout(slice);
     expect(baseline.nodes.get("A")!.y).toBeLessThan(baseline.nodes.get("B")!.y);
 
-    const right = layout(
-      slice,
-      undefined,
-      undefined,
-      undefined,
-      new Map([["A->B", "right" as const]]),
-    );
+    const right = layout(slice, {
+      edgeDirections: new Map([["A->B", "right" as const]]),
+    });
     // Source pulled into target's layer.
     expect(right.nodes.get("A")!.y).toBe(right.nodes.get("B")!.y);
     // direction:right names the arrow flow direction → arrow flows
     // rightward → A (source) lands to the left of B (target).
     expect(right.nodes.get("A")!.x).toBeLessThan(right.nodes.get("B")!.x);
 
-    const left = layout(
-      slice,
-      undefined,
-      undefined,
-      undefined,
-      new Map([["A->B", "left" as const]]),
-    );
+    const left = layout(slice, {
+      edgeDirections: new Map([["A->B", "left" as const]]),
+    });
     expect(left.nodes.get("A")!.y).toBe(left.nodes.get("B")!.y);
     // direction:left → arrow flows leftward → source on right of target.
     expect(left.nodes.get("A")!.x).toBeGreaterThan(left.nodes.get("B")!.x);
@@ -302,7 +294,7 @@ system S {
   }
 }
     `);
-    const result = layout(slice, undefined, "icon");
+    const result = layout(slice, { displayMode: "icon" });
     const node = result.nodes.get("A")!;
     expect(node.width).toBe(160);
     expect(node.height).toBe(100);
@@ -314,7 +306,7 @@ system S {
   service A { label "Service A" }
 }
     `);
-    const result = layout(slice, undefined, "icon");
+    const result = layout(slice, { displayMode: "icon" });
     const node = result.nodes.get("A")!;
     expect(node.width).toBe(160);
     expect(node.height).toBe(56);
@@ -330,7 +322,7 @@ system S {
   service B { label "B" }
 }
     `);
-    const result = layout(slice, undefined, "icon");
+    const result = layout(slice, { displayMode: "icon" });
     const a = result.nodes.get("A")!;
     const b = result.nodes.get("B")!;
     // Siblings without an edge land in the same layer; centred row → gap is B.x - (A.x + A.width).
@@ -346,7 +338,7 @@ system S {
   A -> B "calls"
 }
     `);
-    const result = layout(slice, undefined, "icon");
+    const result = layout(slice, { displayMode: "icon" });
     const a = result.nodes.get("A")!;
     const b = result.nodes.get("B")!;
     // A is in layer 0, B in layer 1 (edge A → B).
@@ -360,7 +352,7 @@ system S {
   service B { label "B" }
 }
     `);
-    const result = layout(slice, undefined, "shape");
+    const result = layout(slice, { displayMode: "shape" });
     const a = result.nodes.get("A")!;
     const b = result.nodes.get("B")!;
     expect(b.x - (a.x + a.width)).toBe(60);
@@ -375,7 +367,7 @@ system S {
 }
     `);
     const ownerIndex = new Map([["A", "platform-team"]]);
-    const result = layout(slice, ownerIndex);
+    const result = layout(slice, { ownerIndex: ownerIndex });
     const node = result.nodes.get("A")!;
     expect(node.properties.team).toBe("platform-team");
   });
@@ -387,7 +379,7 @@ system S {
 }
     `);
     const ownerIndex = new Map<string, string>();
-    const result = layout(slice, ownerIndex);
+    const result = layout(slice, { ownerIndex: ownerIndex });
     const node = result.nodes.get("A")!;
     expect(node.properties.team).toBeUndefined();
   });
@@ -926,7 +918,7 @@ system S {
       ["ExtA", { column: "left" }],
       ["ExtB", { column: "right" }],
     ]);
-    const result = layout(slice, undefined, undefined, hints);
+    const result = layout(slice, { layoutHints: hints });
     const api = result.nodes.get("Api")!;
     const extA = result.nodes.get("ExtA")!;
     const extB = result.nodes.get("ExtB")!;
@@ -1440,7 +1432,7 @@ system S {
       ["B", { column: "left" as const }],
       ["C", { column: "right" as const }],
     ]);
-    const result = layout(slice, undefined, undefined, hints);
+    const result = layout(slice, { layoutHints: hints });
     const a = result.nodes.get("A")!;
     const b = result.nodes.get("B")!;
     const c = result.nodes.get("C")!;
@@ -1456,7 +1448,7 @@ system S {
       ["A", { column: "left" as const }],
       ["C", { column: "left" as const }],
     ]);
-    const result = layout(slice, undefined, undefined, hints);
+    const result = layout(slice, { layoutHints: hints });
     const a = result.nodes.get("A")!;
     const b = result.nodes.get("B")!;
     const c = result.nodes.get("C")!;
@@ -1470,7 +1462,7 @@ system S {
       ["A", { column: "left" as const }],
       ["B", { column: "center" as const }],
     ]);
-    const result = layout(slice, undefined, undefined, hints);
+    const result = layout(slice, { layoutHints: hints });
     const a = result.nodes.get("A")!;
     const b = result.nodes.get("B")!;
     const c = result.nodes.get("C")!;
@@ -1482,7 +1474,7 @@ system S {
   it("layout output is unchanged when no hints are passed", () => {
     const slice = parseAndExtract(krs);
     const baseline = layout(slice);
-    const explicitEmpty = layout(slice, undefined, undefined, new Map());
+    const explicitEmpty = layout(slice, { layoutHints: new Map() });
     for (const id of ["A", "B", "C", "DB"]) {
       expect(explicitEmpty.nodes.get(id)!.x).toBe(baseline.nodes.get(id)!.x);
     }
@@ -1545,7 +1537,7 @@ system B {
 }
 `);
     const hints = new Map([["Y", { column: "left" as const }]]);
-    const result = layout(slice, undefined, undefined, hints);
+    const result = layout(slice, { layoutHints: hints });
     const x = result.nodes.get("X")!;
     const y = result.nodes.get("Y")!;
     expect(y.x).toBeLessThan(x.x);
@@ -1578,16 +1570,13 @@ system S {
   it("no-op when every node is in the same bucket (unspecified)", () => {
     const slice = parseAndExtract(krs);
     const baseline = layout(slice);
-    const allCenter = layout(
-      slice,
-      undefined,
-      undefined,
-      new Map([
+    const allCenter = layout(slice, {
+      layoutHints: new Map([
         ["A", { column: "center" as const }],
         ["B", { column: "center" as const }],
         ["C", { column: "center" as const }],
       ]),
-    );
+    });
     for (const id of ["A", "B", "C"]) {
       expect(allCenter.nodes.get(id)!.x).toBe(baseline.nodes.get(id)!.x);
     }
@@ -1665,7 +1654,7 @@ describe("layout > balanced grid wrapping (#1737)", () => {
   it("honors a grid-columns hint on the container, overriding the auto count", () => {
     const slice = parseAndExtract(sysWith(7));
     const hints = new Map([["Sys", { gridColumns: 2 }]]);
-    const result = layout(slice, undefined, undefined, hints);
+    const result = layout(slice, { layoutHints: hints });
     // 7 nodes / 2 columns -> 4 sub-rows.
     expect(distinctRows(result)).toBe(4);
   });

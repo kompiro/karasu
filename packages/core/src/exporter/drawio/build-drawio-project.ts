@@ -97,7 +97,7 @@ function buildSystemPages(krsFile: KrsFile): DrawioPage[] {
 
   const emit = (viewPath: string[]): void => {
     const slice = extractView(krsFile.systems, viewPath, krsFile.domains);
-    const layoutResult = layout(slice, krsFile.ownerIndex);
+    const layoutResult = layout(slice, { ownerIndex: krsFile.ownerIndex });
     if (layoutResult.nodes.size === 0 && layoutResult.containers.length === 0) return;
     const id = viewPath.length === 0 ? "system" : `system:${viewPath.join(".")}`;
     const name =
