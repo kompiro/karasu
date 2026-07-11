@@ -3,7 +3,7 @@
 - **日付**: 2026-07-11
 - **ステータス**: 検討中
 - **Issue**: #1872
-- **PR**: #<未採番>
+- **PR**: [#1887](https://github.com/kompiro/karasu/pull/1887)
 - **関連**:
   - 引き金 Issue: [#1872](https://github.com/kompiro/karasu/issues/1872)（Group by team: Collapse all / Expand all control [P2a follow-up]）
   - 親 Issue: [#1858](https://github.com/kompiro/karasu/issues/1858) / epic [#1817](https://github.com/kompiro/karasu/issues/1817)（comprehension）
