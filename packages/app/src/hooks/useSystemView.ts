@@ -203,6 +203,9 @@ export function useSystemView(
           emptyStateLabels,
           annotationBadgeLabels,
           theme,
+          groupBy: groupBy === "team" ? "team" : undefined,
+          collapsedGroups: groupBy === "team" ? collapsedGroups : undefined,
+          interactive: true,
         }),
       ]);
       base = b;

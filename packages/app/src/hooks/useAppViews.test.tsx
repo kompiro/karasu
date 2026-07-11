@@ -243,3 +243,65 @@ describe("useAppViews — diff swap", () => {
     ).toBe(false);
   });
 });
+
+// #1873 Gap 1: Group by: team must stay available in compare (diff) mode. The
+// selector was gated behind `effCompareEntryPath === null`, so grouping silently
+// vanished the moment a compare source was active.
+describe("useAppViews — group by in compare mode", () => {
+  afterEach(cleanup);
+
+  const ORG = `
+organization Org {
+  team "payments" { label "Payments" owns Billing }
+  team "catalog" { label "Catalog" owns Search }
+}`;
+  const AFTER_ORG = `system Shop {
+  service Billing { label "Billing" }
+  service Search { label "Search" }
+  Billing -> Search "read"
+}${ORG}`;
+  const BEFORE_ORG = `system Shop {
+  service Billing { label "Billing" }
+  service Search { label "Search" }
+}${ORG}`;
+
+  it("keeps groupByAvailable true and renders team frames while comparing", async () => {
+    const fs = new InMemoryFileSystemProvider();
+    await fs.writeFile(ENTRY, AFTER_ORG);
+    await fs.writeFile(COMPARE_FILE, BEFORE_ORG);
+    const compareSource: CompareSource = { kind: "file", path: COMPARE_FILE };
+
+    const { result } = renderHook(() =>
+      useAppViews({
+        entryPath: ENTRY,
+        fs,
+        viewPath: [],
+        activeView: "system",
+        selectedDeployBlockId: null,
+        highlightedNodeId: null,
+        displayMode: "shape",
+        theme: "dark",
+        currentFilePath: ENTRY,
+        dispatch: () => {},
+        isOrgTreeViewOpen: false,
+        setIsOrgTreeViewOpen: () => {},
+        compareSource,
+        swapped: false,
+      }),
+    );
+
+    await waitFor(() => expect(result.current.system.svg).toBeTruthy(), { timeout: 2000 });
+    // The selector is offered even though a compare source is active.
+    expect(result.current.system.groupByAvailable).toBe(true);
+
+    // Opting into team grouping re-compiles the diff with boundary frames.
+    result.current.system.setGroupBy("team");
+    await waitFor(() => expect(result.current.system.svg).toContain('data-group="true"'), {
+      timeout: 2000,
+    });
+    expect(result.current.system.svg).toContain('data-container-id="__group_payments__"');
+    expect(
+      result.current.system.diagnostics.some((d) => d.code === "app-project-compile-error"),
+    ).toBe(false);
+  });
+});

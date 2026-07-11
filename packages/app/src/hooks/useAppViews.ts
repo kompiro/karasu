@@ -325,7 +325,7 @@ export function useAppViews(args: UseAppViewsArgs): UseAppViewsResult {
       toggleCategory,
       groupBy,
       setGroupBy,
-      groupByAvailable: hasOrgDiagram && effCompareEntryPath === null,
+      groupByAvailable: hasOrgDiagram,
       toggleGroup,
     },
     deploy: {
