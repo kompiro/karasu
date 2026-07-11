@@ -1,6 +1,6 @@
 # ADR Topic: build
 
-52 ADRs in this topic. Solid nodes belong to `build`; gray dashed nodes are ghosts showing cross-topic references to help navigation.
+53 ADRs in this topic. Solid nodes belong to `build`; gray dashed nodes are ghosts showing cross-topic references to help navigation.
 
 Other topics: [overview](../graph.md).
 ```mermaid
@@ -58,6 +58,7 @@ flowchart TD
     ADR_20260630_03["ADR-20260630-03<br/>Dependabot Triage (2026-06-30) — `actions/check..."]
     ADR_20260708_01["ADR-20260708-01<br/>Dependabot Triage (2026-07-08) — `actions/cache..."]
     ADR_20260711_01["ADR-20260711-01<br/>TypeScript 7.0（native compiler）を採用する"]
+    ADR_20260711_02["ADR-20260711-02<br/>app E2E（Playwright）を Required status check にし、p..."]
   end
   ADR_20260322_01["ADR-20260322-01<br/>[styling] ビルトインスタイルの一元化と構造化リファレンス"]
   ADR_20260512_03 --> ADR_20260322_01
@@ -120,5 +121,6 @@ flowchart TD
   class ADR_20260630_03 accepted
   class ADR_20260708_01 accepted
   class ADR_20260711_01 accepted
+  class ADR_20260711_02 accepted
   class ADR_20260322_01 ghost
 ```

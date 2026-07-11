@@ -6,6 +6,11 @@ name: E2E
 # undetected (TPL-20260623-03, #1725 / #1548). Mirrors the Preview workflow's
 # label->path migration (ADR-20260413-01). nightly (e2e-nightly.yml) remains the
 # final safety net.
+#
+# `Playwright` is a Required status check (ADR-20260711-02). The paired stub
+# `e2e-skip.yml` reports it on PRs that don't match the `paths` below, so they
+# don't stay permanently pending. Keep `e2e-skip.yml`'s `paths-ignore` in exact
+# sync with the `paths` list here (TPL-20260520-02).
 on:
   pull_request:
     branches: [main]
