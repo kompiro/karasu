@@ -75,6 +75,14 @@ export interface LayoutEdge {
   bundleIndex?: number;
   /** Total number of edges in this edge's parallel bundle; ≥ 2 when set. */
   bundleSize?: number;
+  /**
+   * Set by the Group-by router (`routeGroupedEdges`, #1859) when an edge runs
+   * against the top-to-bottom group flow (its target band sits above its source
+   * band). The renderer dashes such edges — unless the author set an explicit
+   * `stroke-style` — so backward inter-group dependencies stand out (a Conway
+   * observation). See docs/design/system-view-grouping.md § "P2c 実装設計".
+   */
+  groupBackward?: boolean;
 }
 
 export interface ContainerRect {

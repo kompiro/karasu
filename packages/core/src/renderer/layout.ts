@@ -16,6 +16,7 @@ import {
   wrapLayerIntoRows,
 } from "./layer-layout-logics.js";
 import { routeOrthogonalEdges } from "./edge-routing-channels.js";
+import { routeGroupedEdges } from "./edge-routing-groups.js";
 import { distributePorts } from "./edge-routing-ports.js";
 import { distributeChannelLanes } from "./edge-routing-lanes.js";
 import { markParallelBundles } from "./edge-routing-bundles.js";
@@ -1197,10 +1198,21 @@ export function layout(viewSlice: ViewSlice, options: LayoutOptions = {}): Layou
   // See ADR-20260429-01 and Issue #996.
   distributePorts(layoutNodes, layoutEdges);
 
-  // Phase 2: orthogonal channel routing for skip-layer edges that would
-  // cross intermediate node cards. Sets `waypoints` only when needed.
-  // See ADR-20260429-01.
-  routeOrthogonalEdges(layoutNodes, layoutEdges);
+  // Orthogonal routing. In Group-by mode the two-level band layout adds group
+  // frames a straight edge would pierce, which the skip-layer router does not
+  // treat as obstacles; route through side gutters instead so no edge crosses a
+  // node or frame interior (#1859, P2c-A). Ungrouped keeps the skip-layer
+  // channel router unchanged, so "Group by: none" stays byte-identical.
+  // See ADR-20260429-01 and docs/design/system-view-grouping.md § "P2c 実装設計".
+  if (groupBands) {
+    routeGroupedEdges(
+      layoutNodes,
+      layoutEdges,
+      containers.filter((c) => c.group),
+    );
+  } else {
+    routeOrthogonalEdges(layoutNodes, layoutEdges);
+  }
 
   // Phase 3: stagger horizontal segments that share an inter-row channel
   // across distinct lanes. No-op when each channel hosts ≤ 1 edge.
