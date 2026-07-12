@@ -73,6 +73,8 @@ function makeWarning(kind: Warning["kind"]): Warning {
       return { kind, params: { storageId: "test-storage" } };
     case "unassigned-usecase":
       return { kind, params: { usecaseId: "test-usecase" } };
+    case "entity-anchor-collision":
+      return { kind, params: { id: "test-entity" } };
     case "cross-system-ref-implicit-external":
       return {
         kind,

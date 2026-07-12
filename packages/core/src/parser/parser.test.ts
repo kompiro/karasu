@@ -2318,6 +2318,253 @@ system ECPlatform {
     });
   });
 
+  describe("entity declarations (#1870)", () => {
+    it("parses an entity as a domain child with no attributes", () => {
+      const result = Parser.parse(`
+system EC {
+  service OrderService {
+    domain Ordering {
+      entity Order {
+        label "注文"
+      }
+    }
+  }
+}
+      `);
+      expect(result.diagnostics).toHaveLength(0);
+      const domain = result.value.systems[0].children[0].children[0];
+      expect(domain.kind).toBe("domain");
+      const entity = domain.children[0];
+      expect(entity.kind).toBe("entity");
+      expect(entity.id).toBe("Order");
+      expect(entity.label).toBe("注文");
+      assert(entity.kind === "entity");
+      expect(entity.tableRef).toBeUndefined();
+    });
+
+    it("parses a `table <Infra>.<sub>` physical mapping into tableRef", () => {
+      const result = Parser.parse(`
+system EC {
+  database OrderDB {
+    table orders { label "orders" }
+  }
+  service OrderService {
+    domain Ordering {
+      entity Order {
+        table OrderDB.orders
+      }
+    }
+  }
+}
+      `);
+      expect(result.diagnostics).toHaveLength(0);
+      const entity = result.value.systems[0].children[1].children[0].children[0];
+      assert(entity.kind === "entity");
+      expect(entity.tableRef).toEqual({ parent: "OrderDB", child: "orders" });
+    });
+
+    it("emits expected-id-after when the table mapping omits the dot form", () => {
+      const result = Parser.parse(`
+system EC {
+  service OrderService {
+    domain Ordering {
+      entity Order {
+        table orders
+      }
+    }
+  }
+}
+      `);
+      const errs = result.diagnostics.filter((d) => d.code === "expected-id-after");
+      expect(errs).toHaveLength(1);
+    });
+
+    it("does not persist a malformed tableRef when the infra id is omitted before the dot", () => {
+      const result = Parser.parse(`
+system EC {
+  service OrderService {
+    domain Ordering {
+      entity Order {
+        table .orders
+      }
+    }
+  }
+}
+      `);
+      // A single clean recovery diagnostic, no cascade.
+      const errs = result.diagnostics.filter((d) => d.code === "expected-id-or-string");
+      expect(errs).toHaveLength(1);
+      const unexpected = result.diagnostics.filter((d) => d.code === "unexpected-token-in-block");
+      expect(unexpected).toHaveLength(0);
+      const entity = result.value.systems[0].children[0].children[0].children[0];
+      assert(entity.kind === "entity");
+      expect(entity.tableRef).toBeUndefined();
+    });
+
+    it("does not consume the closing brace as a sub-id when the sub-id is omitted", () => {
+      const result = Parser.parse(`
+system EC {
+  service OrderService {
+    domain Ordering {
+      entity Order {
+        table OrderDB.
+      }
+      entity Customer {}
+    }
+  }
+}
+      `);
+      const entity = result.value.systems[0].children[0].children[0].children[0];
+      assert(entity.kind === "entity");
+      // No bogus tableRef { child: "}" }, and the sibling entity still parses.
+      expect(entity.tableRef).toBeUndefined();
+      const domain = result.value.systems[0].children[0].children[0];
+      expect(domain.children.filter((c) => c.kind === "entity")).toHaveLength(2);
+    });
+
+    it("rejects a nested logical node child inside an entity and drops it", () => {
+      const result = Parser.parse(`
+system EC {
+  service OrderService {
+    domain Ordering {
+      entity Order {
+        usecase Foo {}
+      }
+    }
+  }
+}
+      `);
+      const errs = result.diagnostics.filter((d) => d.code === "unexpected-token-in-block");
+      expect(errs).toHaveLength(1);
+      const entity = result.value.systems[0].children[0].children[0].children[0];
+      assert(entity.kind === "entity");
+      expect(entity.children).toHaveLength(0);
+    });
+
+    it("reports a top-level entity as entity-not-in-domain without an error cascade", () => {
+      const result = Parser.parse(`
+entity Order {
+  label "Order"
+}
+      `);
+      const notInDomain = result.diagnostics.filter((d) => d.code === "entity-not-in-domain");
+      expect(notInDomain).toHaveLength(1);
+      // No unexpected-token cascade from the entity body tokens.
+      const cascade = result.diagnostics.filter((d) => d.code === "unexpected-token-root");
+      expect(cascade).toHaveLength(0);
+    });
+
+    it("flags a usecase and entity sharing an id under a TOP-LEVEL domain", () => {
+      const result = Parser.parse(`
+domain Ordering {
+  usecase Order {}
+  entity Order {}
+}
+      `);
+      const dup = result.diagnostics.filter((d) => d.code === "duplicate-node-id-parent");
+      expect(dup).toHaveLength(1);
+    });
+
+    it("flags duplicate entities under a domain nested in a TOP-LEVEL (system-less) service", () => {
+      const result = Parser.parse(`
+service OrderService {
+  domain Ordering {
+    entity Order {}
+    entity Order {}
+  }
+}
+      `);
+      const dup = result.diagnostics.filter((d) => d.code === "duplicate-node-id-parent");
+      expect(dup).toHaveLength(1);
+    });
+
+    it("parses a relation edge into the entity's edges (origin = the entity)", () => {
+      const result = Parser.parse(`
+system EC {
+  service OrderService {
+    domain Ordering {
+      entity Order {
+        Order -> Customer "発注者"
+      }
+      entity Customer {}
+    }
+  }
+}
+      `);
+      expect(result.diagnostics).toHaveLength(0);
+      const order = result.value.systems[0].children[0].children[0].children[0];
+      assert(order.kind === "entity");
+      expect(order.edges).toHaveLength(1);
+      expect(order.edges[0].from).toBe("Order");
+      expect(order.edges[0].to).toBe("Customer");
+    });
+
+    it("accepts implicit-source relation edges (-> Customer) inside an entity", () => {
+      const result = Parser.parse(`
+system EC {
+  service OrderService {
+    domain Ordering {
+      entity Order {
+        -> Customer
+      }
+    }
+  }
+}
+      `);
+      expect(result.diagnostics).toHaveLength(0);
+      const order = result.value.systems[0].children[0].children[0].children[0];
+      assert(order.kind === "entity");
+      expect(order.edges[0].from).toBe("Order");
+      expect(order.edges[0].to).toBe("Customer");
+    });
+
+    it("emits edge-source-mismatch when a relation edge does not originate at the entity", () => {
+      const result = Parser.parse(`
+system EC {
+  service OrderService {
+    domain Ordering {
+      entity Order {
+        Customer -> Order
+      }
+    }
+  }
+}
+      `);
+      const mism = result.diagnostics.filter((d) => d.code === "edge-source-mismatch");
+      expect(mism).toHaveLength(1);
+    });
+
+    it("rejects an entity declared outside a domain (entity-not-in-domain)", () => {
+      const result = Parser.parse(`
+system EC {
+  service OrderService {
+    entity Order {}
+  }
+}
+      `);
+      const errs = result.diagnostics.filter((d) => d.code === "entity-not-in-domain");
+      expect(errs).toHaveLength(1);
+      // The stray entity is dropped, not attached to the service.
+      const service = result.value.systems[0].children[0];
+      expect(service.children.some((c) => c.kind === "entity")).toBe(false);
+    });
+
+    it("flags a usecase and entity sharing an id under one domain (duplicate-node-id-parent)", () => {
+      const result = Parser.parse(`
+system EC {
+  service OrderService {
+    domain Ordering {
+      usecase Order {}
+      entity Order {}
+    }
+  }
+}
+      `);
+      const dup = result.diagnostics.filter((d) => d.code === "duplicate-node-id-parent");
+      expect(dup).toHaveLength(1);
+    });
+  });
+
   describe("unassigned-resource warning", () => {
     it("emits warning for inline resource not assigned to a database", () => {
       const result = Parser.parse(`

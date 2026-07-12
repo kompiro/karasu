@@ -533,6 +533,66 @@ Use cases:
 - Listing domain concepts early in the design phase.
 - Temporarily "parking" domains during a service reorganization.
 
+### `entity` declaration — conceptual domain entities
+
+An `entity` is a conceptual data entity **owned by a `domain`** (declared as a
+`domain` child). It captures what onboarding readers want from a domain: which
+entities exist, how they relate, and who owns them (implied by the parent
+domain). It is deliberately **not** a schema: an entity carries a name,
+relations, and an optional physical mapping — **never attributes** (columns,
+types, indexes). This "no attributes" line is what keeps entities on the
+slowly-changing structural side of the DB-schema non-goal (see
+[`docs/concepts.md`](../concepts.md) → Non-goals). Physical schema stays out of
+scope; the conceptual entity–relationship layer comes in.
+
+```krs
+service OrderService {
+  domain Ordering {
+    entity Order {
+      label "Order"
+      table OrderDB.orders          // optional physical mapping (dot notation)
+      Order -> Customer "placed by"  // relation (Customer may be owned by another domain)
+      Order -> Product  "line item"
+    }
+    entity Payment {}
+  }
+}
+```
+
+**Physical mapping — `table <InfraId>.<subId>`.** An entity may map to one infra
+sub-resource with dot notation (`table OrderDB.orders`). The mapping is optional
+— an entity with no mapping is the legitimate forward-design / bottom-up state.
+Only the dot form is accepted in v1; a bare `table orders` raises
+`expected-id-after`.
+
+**Relations — one association, one edge.** Relations between entities use the
+existing edge syntax (`->` sync, `-->` async) declared inside the
+reference-holding entity's block. Unlike dependency edges between services /
+domains, an entity relation is a single fact read in both directions, so it is
+written **once**, on the side that holds the reference:
+
+- `Order -> Customer` means Order holds the reference (AR: `Order belongs_to
+  :customer`; physically `orders.customer_id`). The reverse navigation
+  (`Customer has_many :orders`) is implied — do **not** write a second edge.
+- The **edge origin scope** rule applies: an explicit relation inside
+  `entity Order { … }` must start at `Order`; writing `Customer -> Order` there
+  raises `edge-source-mismatch`. This is how the direction rule (origin = the
+  reference holder) is enforced.
+- Cardinality tags (`[n:1]`, `[n:m]`) and roll-up of entity relations into
+  domain-level edges are **out of scope for v1** — relations are label-only for
+  now.
+
+**Placement.** `entity` is valid **only** as a `domain` child. Declaring one
+elsewhere raises `entity-not-in-domain` and the stray entity is dropped.
+
+**Anchor namespace.** Entity ids and domain ids share one deep-link namespace
+(the `entity` view token). An id claimed by two of them — an entity id
+duplicated across domains, or an entity id equal to a domain id — raises the
+`entity-anchor-collision` warning (it degrades deep-link addressability but does
+not stop rendering). See [`docs/spec/diagnostics.md`](diagnostics.md).
+
+> Related TPLs: [TPL-20260711-01](../test-perspectives/TPL-20260711-01-entity-carries-no-attributes.md) — an `entity` accepts only name / relations / physical mapping; attribute-like declarations (columns, types) must be rejected, keeping the model on the structural side of the DB-schema non-goal.
+
 ### Edge declaration
 
 ```

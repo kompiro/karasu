@@ -22,7 +22,7 @@ describe("needsQuotes", () => {
     expect(needsQuotes(id)).toBe(true);
   });
 
-  it.each(["system", "service", "deploy", "team", "member", "import", "from"])(
+  it.each(["system", "service", "deploy", "team", "member", "import", "from", "entity", "usecase"])(
     "returns true for reserved keyword %s",
     (id) => {
       expect(needsQuotes(id)).toBe(true);

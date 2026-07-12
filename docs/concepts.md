@@ -549,15 +549,30 @@ and a karasu diagram and a sequence diagram answer different questions.
 Trying to express both in one file dilutes both of them.
 Adding sequence diagrams as a drill-down target was considered in Issue #23 and ruled out for the same reason.
 
-#### No database schema modeling
+#### No physical database schema modeling (conceptual entities *are* in scope)
 
-Tables, columns, indexes, foreign keys, and ER-level relationships are out of scope.
+**Physical schema** — columns, types, indexes, foreign-key constraint
+definitions — is out of scope. **Conceptual entities and their relations**
+(what exists, how it relates, who owns it) are in scope. The line between them
+is the shared non-goal filter itself: physical schema is an implementation
+detail (fast-changing), while aggregates / core entities and their relations
+are **slowly-changing structural facts**. The vocabulary for them is `entity`
+(a `domain` child carrying only name, relations, and a physical mapping —
+**never attributes**); see the "`entity` declaration" section in
+[`docs/spec/syntax.md`](spec/syntax.md) and
+`docs/design/domain-entity-modeling.md`. The "no attributes" line is the
+slippery-slope guard — it gives a consistent answer to the adjacent temptations
+("just the types", "just the primary key").
+
 Note the **asymmetry** with `translate --from db` here:
-taking in an existing schema and **abstracting** it into a domain *is* a goal
+taking in an existing schema and **abstracting** it into entities / domains *is* a goal
 (information flows toward a higher level of abstraction — details fall away),
-but **designing** a schema *inside* a karasu model demands the opposite direction of information flow —
-it creates pressure to pull implementation details into the model.
-Dedicated ER modeling tools exist, and those are what you should use.
+but **designing** a physical schema *inside* a karasu model (generating DDL from
+an entity, etc.) demands the opposite direction of information flow —
+it creates pressure to pull implementation details into the model, and stays out of scope.
+For column and index design, dedicated ER modeling tools exist, and those are what you should use.
+
+> Related TPLs: [TPL-20260711-01](test-perspectives/TPL-20260711-01-entity-carries-no-attributes.md) — an `entity` accepts only name / relations / physical mapping; attribute-like declarations (columns, types) must be rejected, holding this line.
 
 #### C4 compatibility is not a goal
 

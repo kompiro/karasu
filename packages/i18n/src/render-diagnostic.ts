@@ -59,6 +59,8 @@ export function renderDiagnostic(d: Diagnostic, t: TranslateFn): string {
       }
     case "infra-not-in-context":
       return t("diagnostic.infraNotInContext.message", d.params);
+    case "entity-not-in-domain":
+      return t("diagnostic.entityNotInDomain.message", d.params);
     case "legend-not-top-level":
       return t("diagnostic.legendNotTopLevel.message", d.params);
     case "expected-id-or-string":
