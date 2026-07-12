@@ -362,8 +362,9 @@ after の ownerIndex で所属チームを解決できず**、以下の 2 つの
    「team X がこの service を失った」ではなく、孤立した removed ボックスに見える。
 2. **畳んだ group の集約エッジが per-edge diff state を失う。** team を畳むと cross-group
    エッジは `<Team> (N)` stub に**再ターゲット**される（drop しない — 正しい）。しかし
-   `edgeDiffState` は**元の端点 id**でキーされ（`svg-renderer.ts:307` の
-   `edgeKey = \`${from}->${to}\``）、描画される stub エッジは stub id でキーされるので、
+   `edgeDiffState` は**元の端点 id**でキーされ（`svg-renderer.ts:298` の
+   `edgeKey = \`${from}->${to}\`` を `svg-renderer.ts:307` で lookup）、描画される stub
+   エッジは stub id でキーされるので、
    再ターゲット後のエッジは `data-diff-state` 装飾**なし**で描かれる。畳むと追加/削除された
    cross-team 依存が不可視になる。さらに 1 本の stub エッジが**複数の元エッジ**（別々の
    diff state を持ちうる）を集約するため、集約後の state をどう定めるかという意味論の問いもある。
@@ -413,6 +414,17 @@ render / layout / grouping 側の変更は不要（軸は既に単一の `Map<st
   render options に渡す。非畳み込みエッジは元キーのままなので既存挙動は不変。
 - fold は `unchanged` も明示的に state として扱う（全 unchanged → `unchanged` で装飾なし相当、
   混在に unchanged が混じれば `changed`）。
+- **kind をまたぐ集約の扱い**: `collapseGroups` の edge dedup は `(from,to,kind)` 鍵なので、
+  1 つの stub ペア間に **sync/async の 2 本の stub エッジ**が並存しうる。一方 render の diff
+  lookup（`svg-renderer.ts:298` の `edgeKey`）は **kind を含まない** `${from}->${to}` 形で、
+  既存の `edgeDiffState` 契約（`view-diff.ts` の diffed.edges も `#kind` を除いた形でキー、
+  `view-diff.ts:150-152`）もそもそも kind を区別しない。したがって diff-state の re-key も
+  `${from}->${to}`（kind なし）に**揃える** — この場合、同一ペアの sync/async 2 本は 1 つの
+  diff-state スロットを共有し、**両 kind の元エッジ群をまとめて 1 回 fold** する（sync だけ
+  `added`・async だけ `removed` でも「混在 → `changed`」に落ちる）。kind 別に diff-state を
+  持たせる（lookup も kind 付きに拡張する）のは既存契約の変更になるため本決定の範囲外とし、
+  必要になれば別 Issue。実装 AT で「同一 stub ペアに sync/async 両方があるケース」を退化ケース
+  として固定する。
 
 **却下した代替（決定 2）:**
 
