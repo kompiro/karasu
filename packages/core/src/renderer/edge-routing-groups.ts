@@ -151,7 +151,12 @@ function buildFrameOfNode(
   const out = new Map<string, string>();
   for (const n of layoutNodes.values()) {
     for (const f of frames) {
-      if (n.x >= f.x && n.x + n.width <= f.x + f.width && n.y >= f.y && n.y + n.height <= f.y + f.height) {
+      if (
+        n.x >= f.x &&
+        n.x + n.width <= f.x + f.width &&
+        n.y >= f.y &&
+        n.y + n.height <= f.y + f.height
+      ) {
         out.set(n.id, f.id);
         break;
       }

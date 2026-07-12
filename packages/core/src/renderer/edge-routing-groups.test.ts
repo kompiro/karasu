@@ -43,13 +43,21 @@ function layoutOf(krs: string, ownerIndex: Map<string, string>, groupBy?: "team"
 
 /** The group boundary frames in a layout result. */
 function framesOf(res: LayoutResult): (Rect & { id: string })[] {
-  return res.containers.filter((c) => c.group).map((c) => ({ id: c.id, x: c.x, y: c.y, width: c.width, height: c.height }));
+  return res.containers
+    .filter((c) => c.group)
+    .map((c) => ({ id: c.id, x: c.x, y: c.y, width: c.width, height: c.height }));
 }
 
 /** Frame id enclosing a node, or null. Frames are disjoint (P2a). */
 function frameOfNode(n: LayoutNode, frames: (Rect & { id: string })[]): string | null {
   for (const f of frames) {
-    if (n.x >= f.x && n.x + n.width <= f.x + f.width && n.y >= f.y && n.y + n.height <= f.y + f.height) return f.id;
+    if (
+      n.x >= f.x &&
+      n.x + n.width <= f.x + f.width &&
+      n.y >= f.y &&
+      n.y + n.height <= f.y + f.height
+    )
+      return f.id;
   }
   return null;
 }
@@ -121,7 +129,10 @@ function totalCrossings(res: LayoutResult): number {
 function segmentsCross(a: Point, b: Point, c: Point, d: Point): boolean {
   const o = (p: Point, q: Point, r: Point) =>
     Math.sign((q.x - p.x) * (r.y - p.y) - (q.y - p.y) * (r.x - p.x));
-  const o1 = o(a, b, c), o2 = o(a, b, d), o3 = o(c, d, a), o4 = o(c, d, b);
+  const o1 = o(a, b, c),
+    o2 = o(a, b, d),
+    o3 = o(c, d, a),
+    o4 = o(c, d, b);
   return o1 !== o2 && o3 !== o4 && o1 !== 0 && o2 !== 0 && o3 !== 0 && o4 !== 0;
 }
 
@@ -153,7 +164,11 @@ describe("routeGroupedEdges (#1859, P2c-A)", () => {
 
   it("reroutes cross-band edges through a side gutter (orthogonal waypoints)", () => {
     const res = layoutOf(SYS, OWNER, "team");
-    for (const [from, to] of [["Billing", "Catalog"], ["Billing", "ShopDB"], ["Billing", "Stripe"]] as const) {
+    for (const [from, to] of [
+      ["Billing", "Catalog"],
+      ["Billing", "ShopDB"],
+      ["Billing", "Stripe"],
+    ] as const) {
       const e = edge(res, from, to);
       expect(e.waypoints).toHaveLength(2);
       // Both waypoints share the gutter x (a vertical corridor), and it sits
@@ -167,7 +182,10 @@ describe("routeGroupedEdges (#1859, P2c-A)", () => {
   it("dashes against-flow (backward) edges and only those (AC-4)", () => {
     // Search (catalog band, below) → Wallet (payments band, above) runs against
     // the top-to-bottom flow with no return path (acyclic).
-    const withBack = SYS.replace('Search -> Catalog "read"', 'Search -> Catalog "read"\n  Search -> Wallet "notify"');
+    const withBack = SYS.replace(
+      'Search -> Catalog "read"',
+      'Search -> Catalog "read"\n  Search -> Wallet "notify"',
+    );
     const res = layoutOf(withBack, OWNER, "team");
     expect(edge(res, "Search", "Wallet").groupBackward).toBe(true);
     // Forward edges are not flagged.
@@ -176,7 +194,10 @@ describe("routeGroupedEdges (#1859, P2c-A)", () => {
   });
 
   it("keeps penetration == 0 with a single team (degenerate)", () => {
-    const oneTeam = new Map([["Billing", "payments"], ["Wallet", "payments"]]);
+    const oneTeam = new Map([
+      ["Billing", "payments"],
+      ["Wallet", "payments"],
+    ]);
     const res = layoutOf(SYS, oneTeam, "team");
     expect(totalPenetrations(res)).toBe(0);
   });
