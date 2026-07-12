@@ -174,6 +174,7 @@ export function render(
     collapsedCategories: options?.collapsedCategories,
     groupBy: options?.groupBy,
     collapsedGroups: options?.collapsedGroups,
+    edgeDiffState: options?.edgeDiffState,
   });
   const title =
     layoutResult.containers.length === 0 && viewSlice.containerNode
@@ -294,6 +295,17 @@ export function renderFromLayout(
   // are not washed out by the wrapper opacity.
   const ghostEdgeParts: string[] = [];
   const normalEdgeParts: string[] = [];
+  // A collapsed team's re-targeted stub edges are keyed by the stub id, which
+  // the original `edgeDiffState` (keyed on pre-collapse endpoints) cannot match;
+  // `layout` folds their diff state onto the stub key, so overlay it here so the
+  // stub edge keeps its `data-diff-state` (#1886). Stub keys use the reserved
+  // `__group_collapsed_*__` prefix, so they never collide with real edge keys.
+  const effectiveEdgeDiffState = layoutResult.foldedEdgeDiffState
+    ? new Map<string, string>([
+        ...(options?.edgeDiffState ?? new Map<string, string>()),
+        ...layoutResult.foldedEdgeDiffState,
+      ])
+    : options?.edgeDiffState;
   for (const edgeLayout of layoutResult.edges) {
     const edgeKey = `${edgeLayout.from}->${edgeLayout.to}`;
     // Prefer the kind-qualified style entry so parallel sync/async edges between
@@ -304,7 +316,7 @@ export function renderFromLayout(
       styles.edges.get(edgeKey) ??
       styles.defaultEdgeStyle;
     const markerId = colorToMarkerId.get(edgeStyle.color) ?? "arrow-default";
-    const diffState = options?.edgeDiffState?.get(edgeKey);
+    const diffState = effectiveEdgeDiffState?.get(edgeKey);
     const rendered = renderEdge(edgeLayout, edgeStyle, markerId, diffState);
     const isDimmedGhost =
       edgeLayout.ghost && (diffState === undefined || diffState === "unchanged");

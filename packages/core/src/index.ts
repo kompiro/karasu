@@ -1259,25 +1259,28 @@ export async function compileSystemDiff(
     edgeDiffStateMap.set(key, meta.state);
   }
 
-  const svg = render(
-    diffed.slice,
-    styles,
-    undefined,
-    afterResolved.krsFile.ownerIndex,
-    displayMode,
-    undefined,
-    {
-      nodeDiffState: nodeDiffStateMap,
-      edgeDiffState: edgeDiffStateMap,
-      nodeDiffMeta: diffed.nodes,
-      emptyLabels: emptyStateLabels,
-      theme,
-      groupBy,
-      collapsedGroups,
-      collapsedCategories,
-      interactive,
-    },
-  );
+  // Grouping axis for diff mode: merge the before ∪ after ownerIndex (after
+  // wins on conflict). `diffed.slice` is the union of both sides, so a node
+  // removed in the after-slice has no after-side owner — merging lets it
+  // resolve its former team frame and render `removed` inside it, instead of
+  // dropping to the trailing un-grouped band. See #1886 and
+  // docs/design/system-view-grouping.md § "差分モードの grouping".
+  const mergedOwnerIndex = new Map<string, string>([
+    ...beforeResolved.krsFile.ownerIndex,
+    ...afterResolved.krsFile.ownerIndex,
+  ]);
+
+  const svg = render(diffed.slice, styles, undefined, mergedOwnerIndex, displayMode, undefined, {
+    nodeDiffState: nodeDiffStateMap,
+    edgeDiffState: edgeDiffStateMap,
+    nodeDiffMeta: diffed.nodes,
+    emptyLabels: emptyStateLabels,
+    theme,
+    groupBy,
+    collapsedGroups,
+    collapsedCategories,
+    interactive,
+  });
 
   return {
     diagramType: "system",
