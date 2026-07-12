@@ -181,6 +181,38 @@ describe("useSystemView", () => {
     vi.useRealTimers();
   });
 
+  it("decodes XML-escaped group ids so collapse-all matches special-char team ids (#1872)", async () => {
+    // The renderer escapes `data-collapse-group` values; a team id with `&`
+    // (e.g. "R&D") is stamped as `R&amp;D`. `groupIds` must decode it back so
+    // collapse-all pushes the real id the core folds on — otherwise the
+    // group is silently never collapsed and `allGroupsCollapsed` never flips.
+    vi.useFakeTimers();
+    const SOURCE_AMP_TEAM = `system Shop {
+  service Billing { label "Billing" }
+  service Search { label "Search" }
+}
+organization Org {
+  team "R&D" { owns Billing }
+  team "catalog" { owns Search }
+}`;
+    const fs = makeFs(SOURCE_AMP_TEAM);
+    const { result } = renderHook(() => useSystemView(ENTRY, fs, []));
+    await act(() => vi.advanceTimersByTimeAsync(300));
+    act(() => result.current.setGroupBy("team"));
+    await act(() => vi.advanceTimersByTimeAsync(300));
+
+    // The raw id (not the escaped `R&amp;D`) is exposed.
+    expect(result.current.groupIds).toContain("R&D");
+
+    act(() => result.current.onCollapseAllToggle());
+    await act(() => vi.advanceTimersByTimeAsync(300));
+    // Every team — including "R&D" — is folded, so the toggle flips.
+    expect(result.current.allGroupsCollapsed).toBe(true);
+    expect(result.current.svg).toContain('data-node-id="__group_collapsed_R&amp;D__"');
+    expect(result.current.svg).not.toContain('data-node-id="Billing"');
+    vi.useRealTimers();
+  });
+
   it("hasOrgDiagram tracks the source's organization blocks (Issue #923)", async () => {
     vi.useFakeTimers();
     // Start with a source that has an organization block. After the editor is

@@ -122,7 +122,17 @@ resolveIconManifest(
 function extractGroupIds(svg: string): string[] {
   const ids = new Set<string>();
   for (const m of svg.matchAll(/data-collapse-group="([^"]+)"/g)) {
-    ids.add(m[1]);
+    // The renderer XML-escapes attribute values (`svg-builder.ts` `escapeXml`),
+    // so decode back to the raw id — otherwise a team whose id contains
+    // `&`/`<`/`>`/`"` (e.g. `R&D`) would be pushed to `collapsedGroups` in its
+    // escaped form and never match the real id the core / DOM-based per-group
+    // toggle use. Mirror escapeXml exactly; `&amp;` must be decoded last.
+    const id = m[1]
+      .replace(/&lt;/g, "<")
+      .replace(/&gt;/g, ">")
+      .replace(/&quot;/g, '"')
+      .replace(/&amp;/g, "&");
+    ids.add(id);
   }
   return [...ids];
 }
