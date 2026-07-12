@@ -55,10 +55,11 @@ cycle.
 
 | Code | Severity | Fires when |
 | --- | --- | --- |
-| `edge-source-mismatch` | error | An explicit edge source inside a `service` / `domain` block does not equal the enclosing block id (the **edge origin scope** rule). |
+| `edge-source-mismatch` | error | An explicit edge source inside a `service` / `domain` / `entity` block does not equal the enclosing block id (the **edge origin scope** rule; for an `entity` this enforces the relation direction — origin = the reference-holding entity). |
 | `ambiguous-edge-base` | warning | Multiple edges share the same `from → to` base with no distinguishing author id. |
 | `service-outside-system` | warning | A `service` is declared outside any `system`. |
 | `infra-not-in-context` | error | An infra block (`database` / `queue` / `storage`) is not a direct child of `system`. |
+| `entity-not-in-domain` | error | An `entity` is declared somewhere other than as a child of a `domain`. |
 | `legend-not-top-level` | error | A `legend` block is declared somewhere other than the top level. |
 | `top-level-declaration` | error | A `user` or an edge is declared at the top level instead of inside a `system` block. |
 | `system-property-conflict` | warning | A `system` `label` / `description` conflicts between merged imports. |
@@ -72,7 +73,8 @@ primary owner.
 | Code | Severity | Fires when |
 | --- | --- | --- |
 | `duplicate-edge-id` | error | An author-supplied edge id collides with another edge's id. |
-| `duplicate-node-id-parent` | error | A node id is duplicated within its immediate parent. |
+| `duplicate-node-id-parent` | error | A node id is duplicated within its immediate parent (covers a `usecase` and `entity` sharing an id under one `domain`). |
+| `entity-anchor-collision` | warning | An id is claimed by more than one target in the `entity` deep-link namespace ({all domain ids} ∪ {all entity ids}) — an entity id duplicated across domains, or an entity id equal to a domain id. Deep-links resolve ambiguously; the model still renders. |
 | `duplicate-node-in-system` | error | A node id is duplicated within a `system`. |
 | `duplicate-node-in-deploy` | error | A node id is duplicated within a `deploy` block. |
 | `duplicate-team-id` | error | A team id is duplicated. |

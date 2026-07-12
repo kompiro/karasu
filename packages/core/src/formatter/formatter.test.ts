@@ -457,6 +457,36 @@ describe("format()", () => {
     expect(() => format("system {")).toThrow(expect.objectContaining({ name: "FormatError" }));
   });
 
+  // ── Entity node (#1870) ─────────────────────────────────────────────────
+
+  describe("entity nodes", () => {
+    it("round-trips an entity with a table mapping and relations", () => {
+      const src = `system EC {
+  service OrderService {
+    domain Ordering {
+      entity Order {
+        label "Order"
+        table OrderDB.orders
+
+        Order -> Customer "placed by"
+      }
+
+      entity Customer {}
+    }
+  }
+}`;
+      expectAstRoundTrip(src);
+      expect(fmt(src)).toContain("table OrderDB.orders");
+    });
+
+    it("quotes a node id equal to the reserved word entity", () => {
+      const src = `system EC {\n  service "entity" {}\n}`;
+      const out = fmt(src);
+      expect(out).toContain(`service "entity"`);
+      expectAstRoundTrip(src);
+    });
+  });
+
   // ── Quoting of IDs that cannot be emitted bare (Issue #1058) ────────────
 
   describe("preserves quotes around IDs that need them", () => {

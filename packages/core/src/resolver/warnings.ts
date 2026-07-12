@@ -22,6 +22,7 @@ export function analyze(file: KrsFile, sheets: StyleSheet[], systemSheetCount = 
   warnings.push(...detectUnassignedQueues(file));
   warnings.push(...detectUnassignedStorages(file));
   warnings.push(...detectUnassignedUsecases(file));
+  warnings.push(...detectEntityAnchorCollisions(file));
   warnings.push(...detectStyleConflicts(sheets, systemSheetCount));
   warnings.push(...detectMissingProperties(file));
   warnings.push(...detectUnresolvedRealizes(file));
@@ -676,6 +677,61 @@ function detectUnassignedUsecases(file: KrsFile): Warning[] {
   return warnings;
 }
 
+/**
+ * The `entity` deep-link view token addresses a model-wide namespace of
+ * {all domain ids} ∪ {all entity ids} (a domain id opens that domain's entity
+ * view; an entity id focuses that entity). An id claimed by two targets in
+ * that namespace makes `#krs-entity-<id>` ambiguous and produces duplicate DOM
+ * ids in the bundled static SVG. Flag it — but only when an entity is involved
+ * (two same-id domains across services are the existing domain-dispersal fact,
+ * addressed elsewhere), and only for a genuine cross-domain clash: two same-id
+ * entities under ONE domain are already a `duplicate-node-id-parent` error, so
+ * they are not double-reported here.
+ */
+function detectEntityAnchorCollisions(file: KrsFile): Warning[] {
+  const domainIds = new Set<string>();
+  // entity id -> set of DISTINCT owning domain NODES (object identity, not id:
+  // the same domain id dispersed across systems is two distinct domain nodes,
+  // hence two distinct entity anchors).
+  const entityOwnerNodes = new Map<string, Set<KrsNode>>();
+  const entityFirstLoc = new Map<string, KrsNode["loc"]>();
+
+  const visit = (node: KrsNode, parentDomain: KrsNode | undefined): void => {
+    if (node.kind === "domain") {
+      domainIds.add(node.id);
+    } else if (node.kind === "entity") {
+      let owners = entityOwnerNodes.get(node.id);
+      if (!owners) {
+        owners = new Set<KrsNode>();
+        entityOwnerNodes.set(node.id, owners);
+        entityFirstLoc.set(node.id, node.loc);
+      }
+      if (parentDomain !== undefined) owners.add(parentDomain);
+    }
+    const childDomain = node.kind === "domain" ? node : parentDomain;
+    for (const child of node.children) visit(child, childDomain);
+  };
+
+  for (const system of file.systems) {
+    for (const child of system.children) visit(child, undefined);
+  }
+  for (const service of file.services) visit(service, undefined);
+  for (const domain of file.domains) visit(domain, undefined);
+
+  const warnings: Warning[] = [];
+  for (const [id, loc] of entityFirstLoc) {
+    // Two same-id entities under ONE domain node are already a
+    // duplicate-node-id-parent error — count DISTINCT owning domain nodes so
+    // we warn only on a genuine cross-domain / entity-vs-domain anchor clash.
+    const spansMultipleDomains = (entityOwnerNodes.get(id)?.size ?? 0) > 1;
+    const clashesWithDomain = domainIds.has(id);
+    if (spansMultipleDomains || clashesWithDomain) {
+      warnings.push({ kind: "entity-anchor-collision", params: { id }, loc });
+    }
+  }
+  return warnings;
+}
+
 function detectStyleConflicts(sheets: StyleSheet[], systemSheetCount = 1): Warning[] {
   // Skip system sheets (built-in + any injected theme sheets) — they are designed to be overridden.
   // Only detect conflicts among user sheets (index systemSheetCount+).
@@ -1072,7 +1128,10 @@ function detectCyclicDependencies(file: KrsFile): Warning[] {
 
   function walkNodes(nodes: KrsNode[]): void {
     for (const node of nodes) {
-      detectInEdges(node.edges);
+      // Entity relation edges are associations, not dependencies. Self-loops
+      // (a self-referential FK) and mutual references are ordinary ER shapes,
+      // not architectural cycles — exclude them from cycle detection.
+      if (node.kind !== "entity") detectInEdges(node.edges);
       walkNodes(node.children);
     }
   }

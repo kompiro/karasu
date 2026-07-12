@@ -19,7 +19,7 @@ scope:
   - 設計: `docs/design/system-view-grouping.md`（P2b/P2c は同 doc に継続）
   - 関連: [ADR-20260623-06](20260623-06-system-view-infra-external-tier-split.md)（kind ティア分割 — 既定ビューでは不変）, [ADR-20260630-02](20260630-02-layer-toggles.md)（#1821 category collapse — 本 ADR が machinery を共有）
   - notation promotion gate: [#1820](https://github.com/kompiro/karasu/issues/1820) / P2c: [#1859](https://github.com/kompiro/karasu/issues/1859)
-  - フォローアップ: #1872 / #1873 / #1874 / #1875 / #1876
+  - フォローアップ: #1872 / #1873 / #1874 / #1875 / #1876 / #1879
   - TPL: [TPL-20260624-02](../test-perspectives/TPL-20260624-02-relayout-into-group-preserves-placement-and-edges.md)（要素を別グループへ再配置 → 全要素ちょうど一度配置 + 参照エッジ端点保持）
   - コード: `packages/core/src/renderer/group-layout.ts` / `group-collapse.ts` / `layout.ts` / `svg-renderer.ts`、`packages/app`（`useSystemView` ほか）
 
@@ -41,6 +41,7 @@ system view に **view-mode の「Group by: team」** を実装する。所有�
 4. **既定は常に展開**。全折り畳み（group DAG ビュー）へは「すべて畳む」で到達（bulk 操作は #1872 で追加）。
 5. **順序** = min feedback-arc-set。group 数 ≤ 8 は全探索、超は greedy（Eades–Lin–Smyth）、同点は宣言順（決定的・著者制御可）。
 6. **折り畳み時のエッジ**は stub に**再ターゲット**（category collapse の drop と異なる）。intra-group は drop、stub エッジは dedup。retarget されたエッジのみ dedup し、展開ノード間の authored parallel edge / self-loop は保持する。
+7. **export / secondary サーフェスは「frame は描くが collapse は適用しない」**（#1879, 2026-07-11）。Show All Layers / drill-down export / Open&Export All Views（`buildAllLayersSvg` / `buildDrillDownSvg` / `buildAllViewsSvg`）に `groupBy` のみを **root system-view level に限って**渡す（drill-down の深い層にチームは無いため非適用）。`collapsedGroups` は渡さない — export は「畳んだ姿」ではなく**完全な構造**を見せる目的なので、team バンド＋境界フレームで束ねつつ全ノードを描画する。TPL-20260624-02（全要素ちょうど一度配置）を回帰の柵にした。
 
 ## 理由
 

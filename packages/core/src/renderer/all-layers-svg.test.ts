@@ -221,3 +221,112 @@ system Shop {
     expect(domainBand).not.toContain("service-entry");
   });
 });
+
+// A system with two teams (payments owns Billing/Wallet, catalog owns
+// Search/Catalog), each service carrying a drill-down domain so the export
+// stacks a root band plus deeper bands. `owns BillingDomain` deliberately
+// puts an *owned* node on a deeper band so the root-only guard is actually
+// fenced: if grouping leaked past the root, BillingDomain's band would draw
+// a third frame (see the "root band only" test).
+const GROUPED_TWO_LEVEL = `
+system Shop {
+  service Billing {
+    label "Billing"
+    domain BillingDomain { label "Billing Domain" }
+  }
+  service Wallet { label "Wallet" }
+  service Search { label "Search" }
+  service Catalog { label "Catalog" }
+
+  Billing -> Wallet "debit"
+  Search -> Catalog "read"
+}
+
+organization Org {
+  team "payments" {
+    label "Payments"
+    owns Billing
+    owns BillingDomain
+    owns Wallet
+  }
+  team "catalog" {
+    label "Catalog"
+    owns Search
+    owns Catalog
+  }
+}
+`;
+
+describe("buildAllLayersSvg with groupBy: team (#1879)", () => {
+  it("is a no-op when groupBy is omitted (opt-in; byte-identical)", () => {
+    const krsFile = Parser.parse(GROUPED_TWO_LEVEL).value;
+    const withUndefined = buildAllLayersSvg(
+      krsFile,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+    ).svg;
+    const withoutOption = buildAllLayersSvg(krsFile).svg;
+    expect(withUndefined).toBe(withoutOption);
+    expect(withUndefined).not.toContain('data-group="true"');
+  });
+
+  it("draws team boundary frames on the root system band when grouped", () => {
+    const krsFile = Parser.parse(GROUPED_TWO_LEVEL).value;
+    const { svg } = buildAllLayersSvg(
+      krsFile,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      "team",
+    );
+    expect(svg).toContain('data-container-id="__group_payments__"');
+    expect(svg).toContain('data-container-id="__group_catalog__"');
+    expect(svg.match(/data-group="true"/g)?.length).toBe(2);
+  });
+
+  it("keeps the full structure — no collapse stub — every node drawn once", () => {
+    const krsFile = Parser.parse(GROUPED_TWO_LEVEL).value;
+    const { svg } = buildAllLayersSvg(
+      krsFile,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      "team",
+    );
+    // Grouping frames the members but never folds them (exports show the
+    // full structure by design — collapse is not threaded here).
+    for (const id of ["Billing", "Wallet", "Search", "Catalog"]) {
+      expect(svg.match(new RegExp(`data-node-id="${id}"`, "g"))?.length).toBe(1);
+    }
+    expect(svg).not.toContain("__group_collapsed_");
+  });
+
+  it("applies grouping to the root band only — deeper drill-down bands are ungrouped", () => {
+    const krsFile = Parser.parse(GROUPED_TWO_LEVEL).value;
+    const { svg } = buildAllLayersSvg(
+      krsFile,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      "team",
+    );
+    // Exactly two group frames — one per team — all on the root system band.
+    // `BillingDomain` IS owned by payments, so it sits on a deeper band with a
+    // team-owned node; the root-only guard must still refuse to frame that
+    // band. Removing the guard would draw a third frame here, so this count
+    // fences the guard (not just the fact that deeper bands lack owners).
+    expect(svg.match(/data-group="true"/g)?.length).toBe(2);
+    // The owned domain node is still present on its (ungrouped) drill-down band.
+    expect(svg).toContain('data-node-id="BillingDomain"');
+  });
+});

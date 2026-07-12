@@ -50,6 +50,11 @@ export function renderWarning(w: Warning, t: TranslateFn): FormattedWarning {
         message: t("warning.unassignedUsecase.message", { usecaseId: w.params.usecaseId }),
         details: [],
       };
+    case "entity-anchor-collision":
+      return {
+        message: t("warning.entityAnchorCollision.message", { id: w.params.id }),
+        details: [],
+      };
     case "unassigned-service": {
       const display = w.params.label ?? w.params.serviceId;
       return {
