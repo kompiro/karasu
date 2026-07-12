@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { extractView } from "./view-extract.js";
+import { extractView, extractEntityView } from "./view-extract.js";
 import { Parser } from "../parser/parser.js";
 import type { KrsNode } from "../types/ast.js";
 
@@ -806,6 +806,71 @@ system EC {
       const view = extractView(systems, ["EC", "OrderService", "Ordering"]);
       const edgeKeys = view.childEdges.map((e) => `${e.from}->${e.to}`);
       expect(edgeKeys).not.toContain("Order->Customer");
+    });
+  });
+
+  describe("extractEntityView (#1870)", () => {
+    const KRS = `
+system EC {
+  service OrderService {
+    domain Ordering {
+      usecase PlaceOrder {}
+      entity Order {
+        Order -> LineItem "has"
+        Order -> Customer "placed by"
+      }
+      entity LineItem {}
+    }
+  }
+  service CustomerService {
+    domain Customers {
+      entity Customer {}
+    }
+  }
+}
+`;
+    it("returns the domain's entities and intra-domain relations", () => {
+      const systems = parseSystem(KRS);
+      const slice = extractEntityView(systems, ["EC", "OrderService", "Ordering"]);
+      expect(slice.containerNode?.id).toBe("Ordering");
+      const localIds = slice.childNodes.filter((n) => !n.tags.includes("ghost")).map((n) => n.id);
+      expect(localIds).toContain("Order");
+      expect(localIds).toContain("LineItem");
+      // usecases are not entities — excluded
+      expect(slice.childNodes.map((n) => n.id)).not.toContain("PlaceOrder");
+      const edgeKeys = slice.childEdges.map((e) => `${e.from}->${e.to}`);
+      expect(edgeKeys).toContain("Order->LineItem");
+    });
+
+    it("surfaces a cross-domain relation target as a ghost node + edge", () => {
+      const systems = parseSystem(KRS);
+      const slice = extractEntityView(systems, ["EC", "OrderService", "Ordering"]);
+      const ghost = slice.childNodes.find((n) => n.id === "Customer");
+      expect(ghost).toBeDefined();
+      expect(ghost!.tags).toContain("ghost");
+      const edgeKeys = slice.childEdges.map((e) => `${e.from}->${e.to}`);
+      expect(edgeKeys).toContain("Order->Customer");
+    });
+
+    it("returns an empty slice for a non-domain path", () => {
+      const systems = parseSystem(KRS);
+      const slice = extractEntityView(systems, ["EC", "OrderService"]);
+      expect(slice.containerNode).toBeNull();
+      expect(slice.childNodes).toHaveLength(0);
+    });
+
+    it("returns an empty slice for a domain with no entities", () => {
+      const systems = parseSystem(`
+system EC {
+  service S {
+    domain D {
+      usecase U {}
+    }
+  }
+}
+`);
+      const slice = extractEntityView(systems, ["EC", "S", "D"]);
+      expect(slice.childNodes).toHaveLength(0);
     });
   });
 

@@ -868,3 +868,101 @@ export function extractView(
     implicitEdgeDetails: new Map(),
   };
 }
+
+/**
+ * Extract the **entity view** of a domain: its `entity` children and their
+ * relation edges, an alternative drill-down to the domain's usecase view.
+ * A relation to an entity owned by another domain surfaces the foreign entity
+ * as a `[ghost]`-tagged node (mirroring cross-service ghost domains) so the
+ * domain boundary is visible; a relation whose target resolves to no entity is
+ * dropped. Returns an empty slice when the path does not resolve to a domain
+ * or the domain owns no entities.
+ */
+export function extractEntityView(systems: KrsNode[], path: ViewPath): ViewSlice {
+  const resourceLabelMap = buildResourceLabelMap(systems);
+  const resourceInferredTagsMap = buildResourceInferredTagsMap(systems);
+  const empty: ViewSlice = {
+    containerNode: null,
+    childNodes: [],
+    childEdges: [],
+    ancestorChain: [],
+    ghostUsers: [],
+    ghostUserEdges: [],
+    systems: [],
+    crossSystemEdges: [],
+    ghostSystems: [],
+    ghostSystemEdges: [],
+    callerGhostSystems: [],
+    callerGhostSystemEdges: [],
+    ghostDomains: [],
+    ghostDomainEdges: [],
+    resourceLabelMap,
+    resourceInferredTagsMap,
+    implicitEdgeDetails: new Map(),
+  };
+
+  if (systems.length === 0 || path.length === 0) return empty;
+
+  // Resolve the domain container via the same path walk as extractView.
+  const systemNode = systems.find((s) => s.id === path[0]);
+  let system: KrsNode;
+  let startIndex: number;
+  if (systemNode) {
+    system = systemNode;
+    startIndex = 1;
+  } else {
+    const owningSystem = systems.find((s) => s.children.some((c) => c.id === path[0]));
+    system = owningSystem ?? systems[0];
+    startIndex = 0;
+  }
+  const ancestorChain: KrsNode[] = [system];
+  let current: KrsNode = system;
+  for (let i = startIndex; i < path.length; i++) {
+    const child = current.children.find((c) => nodeId(c) === path[i]);
+    if (!child) return empty;
+    ancestorChain.push(child);
+    current = child;
+  }
+  const domain = ancestorChain.pop()!;
+  if (domain.kind !== "domain") return empty;
+
+  const entities = domain.children.filter((c) => c.kind === "entity");
+  if (entities.length === 0) return empty;
+  const localEntityIds = new Set(entities.map((e) => e.id));
+
+  // Index entities owned by other domains, to resolve cross-domain relations.
+  const foreignEntityById = new Map<string, KrsNode>();
+  const indexForeign = (node: KrsNode): void => {
+    if (node.kind === "entity" && !localEntityIds.has(node.id) && !foreignEntityById.has(node.id)) {
+      foreignEntityById.set(node.id, node);
+    }
+    for (const child of node.children) indexForeign(child);
+  };
+  for (const s of systems) for (const child of s.children) indexForeign(child);
+
+  const childNodes: KrsNode[] = [...entities];
+  const childEdges: KrsEdge[] = [];
+  const ghostAdded = new Set<string>();
+  for (const entity of entities) {
+    for (const edge of entity.edges) {
+      if (localEntityIds.has(edge.to)) {
+        childEdges.push(edge);
+      } else {
+        const foreign = foreignEntityById.get(edge.to);
+        if (!foreign) continue; // relation to a non-entity / unknown target — drop
+        if (!ghostAdded.has(foreign.id)) {
+          ghostAdded.add(foreign.id);
+          childNodes.push({
+            ...foreign,
+            tags: [...foreign.tags, "ghost"],
+            children: [],
+            edges: [],
+          } as KrsNode);
+        }
+        childEdges.push(edge);
+      }
+    }
+  }
+
+  return { ...empty, containerNode: domain, childNodes, childEdges, ancestorChain };
+}

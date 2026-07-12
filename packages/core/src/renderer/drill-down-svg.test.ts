@@ -547,6 +547,57 @@ system ECommerce {
 }
 `;
 
+describe("buildAllViewsSvg entity views (#1870)", () => {
+  const ENTITY_KRS = `
+system EC {
+  service OrderService {
+    domain Ordering {
+      usecase PlaceOrder {}
+      entity Order {
+        Order -> Customer "placed by"
+      }
+    }
+  }
+  service CustomerService {
+    domain Customers {
+      entity Customer {}
+    }
+  }
+}
+`;
+  it("emits a per-domain entity view level anchored #krs-entity-<domainId>", () => {
+    const krsFile = Parser.parse(ENTITY_KRS).value;
+    const { svg } = buildAllViewsSvg(krsFile);
+    expect(svg).toContain(`id="${anchorId("entity", "Ordering")}"`);
+    expect(svg).toContain(`id="${anchorId("entity", "Customers")}"`);
+  });
+
+  it("renders the domain's entities inside its entity view (Order + ghost Customer)", () => {
+    const krsFile = Parser.parse(ENTITY_KRS).value;
+    const { svg } = buildAllViewsSvg(krsFile);
+    // The Ordering entity view carries the local Order entity and the ghost
+    // Customer (relation target owned by another domain).
+    const start = svg.indexOf(`id="${anchorId("entity", "Ordering")}"`);
+    const segment = svg.slice(start, start + 4000);
+    expect(segment).toContain('data-node-id="Order"');
+    expect(segment).toContain('data-node-id="Customer"');
+  });
+
+  it("does not emit an entity view for a domain with no entities", () => {
+    const krsFile = Parser.parse(`
+system EC {
+  service S {
+    domain D {
+      usecase U {}
+    }
+  }
+}
+`).value;
+    const { svg } = buildAllViewsSvg(krsFile);
+    expect(svg).not.toContain(`id="${anchorId("entity", "D")}"`);
+  });
+});
+
 describe("buildAllViewsSvg", () => {
   it("returns placeholder for empty file", () => {
     const krsFile = Parser.parse("system Empty {}").value;

@@ -1,7 +1,7 @@
-import type { KrsFile, TeamNode } from "../types/ast.js";
+import type { KrsFile, KrsNode, TeamNode } from "../types/ast.js";
 import type { StyleSheet } from "../types/style.js";
 import type { DisplayMode } from "./layout-types.js";
-import { extractView } from "../view/view-extract.js";
+import { extractView, extractEntityView } from "../view/view-extract.js";
 import { withUnassignedSystem } from "../view/unassigned-system.js";
 import { extractOrgView } from "../view/org-view-extract.js";
 import { extractDeployView } from "../view/deploy-view-extract.js";
@@ -248,6 +248,61 @@ function collectDrillDownLevelsWithDimensions<S>(
   }
 }
 
+/**
+ * Collect the per-domain **entity view** levels for the all-views bundle. Each
+ * domain that owns entities gets one `<g id="krs-entity-<domainId>">` level (a
+ * flat view, no further drill), reachable via the `#krs-entity-<domainId>`
+ * fragment. Back navigation returns to the domain's usecase view
+ * (`#krs-system-<domainId>`). The interactive toggle that links to these
+ * levels lands with the app integration.
+ */
+function collectEntityLevels(
+  effectiveSystems: KrsNode[],
+  sheets: StyleSheet[],
+  ownerIndex: Map<string, string>,
+  displayMode: DisplayMode | undefined,
+  theme: DiagramTheme | undefined,
+  legendOptions: ReturnType<typeof buildLegendRenderOptions>,
+): BundledLevel[] {
+  const levels: BundledLevel[] = [];
+  const styles = resolveStyles(effectiveSystems, sheets, []);
+
+  const domainsWithPath: { domain: KrsNode; path: string[] }[] = [];
+  for (const system of effectiveSystems) {
+    for (const child of system.children) {
+      if (child.kind === "domain") {
+        domainsWithPath.push({ domain: child, path: [system.id, child.id] });
+      } else if (child.kind === "service") {
+        for (const grandchild of child.children) {
+          if (grandchild.kind === "domain") {
+            domainsWithPath.push({ domain: grandchild, path: [system.id, child.id, grandchild.id] });
+          }
+        }
+      }
+    }
+  }
+
+  for (const { domain, path } of domainsWithPath) {
+    const slice = extractEntityView(effectiveSystems, path);
+    if (slice.childNodes.length === 0) continue;
+    const svg = render(slice, styles, undefined, ownerIndex, displayMode, new Map(), {
+      theme,
+      ...legendOptions,
+      viewScope: legendScopeForLogicalSlice(slice),
+    });
+    const { viewBox, innerContent, width, height } = extractSvgParts(svg);
+    // Back to the domain's usecase view.
+    const backButton = renderBackButton(domain.id, "system");
+    const innerSvg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${viewBox}" width="100%" height="100%">${backButton}${innerContent}</svg>`;
+    levels.push({
+      element: `<g id="${anchorId("entity", domain.id)}" class="krs-view">${innerSvg}</g>`,
+      width,
+      height,
+    });
+  }
+  return levels;
+}
+
 function renderTabBar(enabledViews: Set<ViewType>): string {
   const tabs = VIEW_TYPES.map(({ type, label }, i) => {
     const x = i * TAB_WIDTH;
@@ -371,6 +426,17 @@ export function buildAllViewsSvg(
     );
   }
 
+  // Collect per-domain entity views (hidden levels reachable via
+  // #krs-entity-<domainId>; the interactive toggle lands with the app).
+  const entityLevels = collectEntityLevels(
+    effectiveSystems,
+    sheets,
+    krsFile.ownerIndex ?? new Map(),
+    displayMode,
+    theme,
+    legendOptions,
+  );
+
   // Collect deploy level
   const deployLevel = collectDeployLevel(krsFile, sheets, legendOptions, displayMode, theme);
 
@@ -413,16 +479,24 @@ export function buildAllViewsSvg(
   }
 
   // Compute SVG dimensions
-  const allLevels = [...systemLevels, ...(deployLevel ? [deployLevel] : []), ...orgLevels];
+  const allLevels = [
+    ...systemLevels,
+    ...entityLevels,
+    ...(deployLevel ? [deployLevel] : []),
+    ...orgLevels,
+  ];
   const maxWidth = Math.max(...allLevels.map((l) => l.width));
   const maxHeight = Math.max(...allLevels.map((l) => l.height));
   const totalWidth = maxWidth;
   const totalHeight = TAB_HEIGHT + maxHeight;
 
   // Build panes
+  // Entity views live inside the system pane — they are drilled from a domain
+  // in the system view, so they share its pane visibility.
+  const systemPaneLevels = [...systemLevels, ...entityLevels];
   const systemPane =
-    systemLevels.length > 0
-      ? `<g class="krs-pane krs-pane--system" transform="translate(0, ${TAB_HEIGHT})">${systemLevels.map((l) => l.element).join("")}</g>`
+    systemPaneLevels.length > 0
+      ? `<g class="krs-pane krs-pane--system" transform="translate(0, ${TAB_HEIGHT})">${systemPaneLevels.map((l) => l.element).join("")}</g>`
       : "";
   const deployPane = deployLevel
     ? `<g class="krs-pane krs-pane--deploy" transform="translate(0, ${TAB_HEIGHT})">${deployLevel.element}</g>`
