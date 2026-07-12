@@ -264,6 +264,84 @@ organization Org {
     );
   });
 
+  it("keeps `removed` diff decoration on a collapsed team's stub edge (#1886)", async () => {
+    // A cross-group dependency deleted in `after` (state removed) must still show
+    // its removed decoration once its target team folds — the mirror of the bug
+    // #1886 fixes (retargeted edge losing its state), for the removed direction.
+    const before = `system Shop {
+  service Billing { label "Billing" }
+  service Gateway { label "Gateway" }
+  Gateway -> Billing "call"
+}
+organization Org {
+  team "payments" { label "Payments" owns Billing }
+  team "edge" { label "Edge" owns Gateway }
+}`;
+    const after = `system Shop {
+  service Billing { label "Billing" }
+  service Gateway { label "Gateway" }
+}
+organization Org {
+  team "payments" { label "Payments" owns Billing }
+  team "edge" { label "Edge" owns Gateway }
+}`;
+    const fs = new InMemoryFileSystemProvider();
+    await fs.writeFile(BEFORE_PATH, before);
+    await fs.writeFile(AFTER_PATH, after);
+    const result = await compileSystemDiff({
+      beforeEntryPath: BEFORE_PATH,
+      afterEntryPath: AFTER_PATH,
+      fs,
+      groupBy: "team",
+      collapsedGroups: new Set(["payments"]),
+      interactive: true,
+    });
+    expect(result.svg).toMatch(
+      /data-edge-from="Gateway"[^>]*data-edge-to="__group_collapsed_payments__"[^>]*data-diff-state="removed"/,
+    );
+  });
+
+  // Merge is backfill-off-removed, not a blind before ∪ after union: a node that
+  // merely lost its `owns` (kept in `after`, now unowned) must NOT inherit its
+  // stale before team — otherwise a leak would frame it / badge it under a team
+  // the after state no longer assigns. This fences the after-authoritative rule.
+  it("does not leak a former team onto a kept node whose ownership was removed (#1886)", async () => {
+    const before = `system Shop {
+  service Billing { label "Billing" }
+  service Search { label "Search" }
+}
+organization Org {
+  team "payments" { label "Payments" owns Billing }
+  team "catalog" { label "Catalog" owns Search }
+}`;
+    // Billing survives but payments no longer owns it (owns line dropped).
+    const after = `system Shop {
+  service Billing { label "Billing" }
+  service Search { label "Search" }
+}
+organization Org {
+  team "payments" { label "Payments" }
+  team "catalog" { label "Catalog" owns Search }
+}`;
+    const fs = new InMemoryFileSystemProvider();
+    await fs.writeFile(BEFORE_PATH, before);
+    await fs.writeFile(AFTER_PATH, after);
+    const result = await compileSystemDiff({
+      beforeEntryPath: BEFORE_PATH,
+      afterEntryPath: AFTER_PATH,
+      fs,
+      groupBy: "team",
+      interactive: true,
+    });
+    const svg = result.svg;
+    // payments no longer owns anything → no payments frame; Billing is not inside it.
+    expect(svg).not.toContain('data-container-id="__group_payments__"');
+    // Catalog still owns Search → its frame exists and does not contain Billing.
+    const catalog = groupFrameRect(svg, "catalog");
+    expect(catalog).not.toBeNull();
+    expect(centerInside(nodeRect(svg, "Billing")!, catalog!)).toBe(false);
+  });
+
   it("folds mixed-state cross-group edges to `changed` on the stub edge (#1886)", async () => {
     // Gateway -> Billing stays unchanged; Gateway -> Wallet is added. Both cross
     // into payments, so collapsing payments folds them onto one stub edge

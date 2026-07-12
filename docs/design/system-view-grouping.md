@@ -369,23 +369,32 @@ after の ownerIndex で所属チームを解決できず**、以下の 2 つの
    cross-team 依存が不可視になる。さらに 1 本の stub エッジが**複数の元エッジ**（別々の
    diff state を持ちうる）を集約するため、集約後の state をどう定めるかという意味論の問いもある。
 
-### 決定 1 — 配置: before ∪ after のマージ ownerIndex（after 勝ち）
+### 決定 1 — 配置: after ownerIndex を基点に、除去ノードだけ before 所属を backfill
 
-diff 用の grouping 軸を、before と after の `ownerIndex` を**マージ**したもの（同一ノードが
-両側で別 team に所属替えされていたら **after 勝ち**）に切り替える。
+diff 用の grouping 軸を、**after の `ownerIndex` を基点**にしつつ、**diff 状態が `removed` の
+ノードにだけ before 側の所属を backfill** したものに切り替える。
 
-- 除去ノードは before 側の所属で解決され、**かつての team フレーム内**に `removed` 状態で
-  収まる（「team X がこの service を失った」が読める）。
-- 畳んだときの `(N)` カウントは before ∪ after のメンバー数を反映する（除去メンバーも数える）。
-- **after 勝ち**なので、所属替え（team A → team B）されたノードは現行 grouped view と同じく
-  after の team に置かれ、既定（非 diff）ビューとの一貫性を保つ。
+- 除去ノード（before-only）は before 側の所属で解決され、**かつての team フレーム内**に
+  `removed` 状態で収まる（「team X がこの service を失った」が読める）。
+- 畳んだときの `(N)` カウントは除去メンバーも数える。
+- 生存ノードは常に **after が正**。所属替え（team A → team B）は after の team に置かれ、
+  **所属剥奪（`owns` を消したが node は残る = A → 無所属）も after どおり無所属**になる。
+  既定（非 diff）ビューとの一貫性を保つ。
 
-実装は `index.ts` の `compileSystemDiff` で、`afterResolved.krsFile.ownerIndex` を
-`beforeResolved` と `afterResolved` のマージ（after を後勝ちで上書き）に差し替えるのみ。
-render / layout / grouping 側の変更は不要（軸は既に単一の `Map<string,string>` 契約）。
+> **なぜ単純な before ∪ after マージにしないか**: 素朴に 2 つの map を union（after 勝ち）すると、
+> 「removed した node」と「`owns` だけ消した生存 node」がどちらも「before にあり after に無い」
+> 形になり区別できず、後者に**古い所属が leak** する（`ownerIndex` は grouped フレームだけでなく
+> 非 grouped diff の service カードの team バッジにも使われる — `layout.ts:1000/1281/1290` — ので
+> leak は既定ビューにも波及する）。`removed` diff 状態を条件に backfill することで、剥奪ケースを
+> after どおり無所属に保ちつつ、除去ノードだけをフレームに戻す。
+
+実装は `index.ts` の `compileSystemDiff`: `new Map(afterResolved.krsFile.ownerIndex)` を基点に、
+`diffed.nodes` を走査して `state === "removed"` かつ未所属の node にだけ
+`beforeResolved.krsFile.ownerIndex` の team を set する。render / layout / grouping 側の変更は
+不要（軸は既に単一の `Map<string,string>` 契約）。
 
 > **副次: 消えた team のフレーム。** team 自体が after で消滅（before に team X、after に無し）した
-> 場合、マージ ownerIndex は before メンバーを team X に写し続けるため、**全メンバーが removed の
+> 場合、その全メンバーは `removed` なので before 所属が backfill され、**全メンバーが removed の
 > team X フレーム**が描かれる。これは「team X ごと（所有物も含め）除去された」の正しい表現であり、
 > 意図した挙動として受け入れる（AT で固定）。
 

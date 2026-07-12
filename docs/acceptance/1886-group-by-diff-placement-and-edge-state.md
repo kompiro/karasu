@@ -33,6 +33,8 @@ diff モードの Group by: team は grouping 軸に **after 側だけの `owner
       矩形内（中心座標が枠内）に `data-diff-state="removed"` で描かれる
 - [x] 全域性は維持（ちょうど一度描画）— TPL-20260624-02
 - [x] 別チーム所有ノードは当該フレーム内に入らない（配置の混線がない）
+- [x] **所属剥奪 ≠ 除去**: `owns` だけ消して node は残したケース（生存・無所属）は after どおり
+      無所属で、古い team フレームに leak しない（backfill は `removed` 状態のみが条件）
 
 ### AC-2: team ごと消滅すると全 removed の team フレームを描く
 
@@ -45,8 +47,8 @@ diff モードの Group by: team は grouping 軸に **after 側だけの `owner
 
 > ✅ Automated by `packages/core/src/renderer/group-by-diff.test.ts` (suite-wide) — "keeps single-state…" / "folds mixed-state…" / "carries diff state on both kinds…"
 
-- [x] 単一 state の cross-group エッジを畳んだ stub エッジは元 state（例 `added`）を `data-diff-state`
-      に保持する
+- [x] 単一 state の cross-group エッジを畳んだ stub エッジは元 state（`added` / `removed`）を
+      `data-diff-state` に保持する（追加・削除いずれの向きも）
 - [x] 追加＋不変が混在して 1 本の stub エッジに畳まれると `data-diff-state="changed"`
 - [x] 同一 stub ペア間の sync/async 2 本（kind-less な diff lookup を共有）は両方とも同じ diff 装飾を
       持つ（片方だけ bare にならない）— 設計 §「kind をまたぐ集約の扱い」の退化ケース
