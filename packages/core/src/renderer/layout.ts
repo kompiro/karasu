@@ -1,6 +1,6 @@
 import type { KrsNode, KrsEdge } from "../types/ast.js";
 import { INFRA_KIND_SET } from "../types/ast.js";
-import { collapseNodeList, type CategoryId } from "./category-collapse.js";
+import { collapseNodeList, collapseCategories, type CategoryId } from "./category-collapse.js";
 import { assignGroupedLayers, type GroupedNode, type GroupBand } from "./group-layout.js";
 import { collapseGroups } from "./group-collapse.js";
 import type { ViewSlice, GhostSystem } from "../view/view-extract.js";
@@ -815,8 +815,16 @@ export function layout(viewSlice: ViewSlice, options: LayoutOptions = {}): Layou
     );
   }
 
-  let allNodes = collapseNodeList(viewSlice.childNodes, collapsedCategories);
-  let allEdges: KrsEdge[] = viewSlice.childEdges;
+  // Category collapse (#1821): fold external/infra tiers to a `⊕ N` stub and
+  // **re-target** their boundary-crossing edges onto the stub (so "who depends
+  // on the external/infra layer" survives as aggregation trunks, not dropped).
+  const collapsedCat = collapseCategories(
+    viewSlice.childNodes,
+    viewSlice.childEdges,
+    collapsedCategories,
+  );
+  let allNodes = collapsedCat.nodes;
+  let allEdges: KrsEdge[] = collapsedCat.edges;
 
   // Per-group collapse (#1858 slice B): when a team is collapsed, fold its
   // members to a `<Team> (N)` stub and re-target cross-group edges onto it, so
@@ -824,18 +832,20 @@ export function layout(viewSlice: ViewSlice, options: LayoutOptions = {}): Layou
   // group-by mode with an ownerIndex; a no-op otherwise. `stubGroup` tells the
   // grouping code which group a stub stands in for.
   let stubGroup = new Map<string, string>();
-  // Ghost-edge lists on the ViewSlice are separate fields that `collapseGroups`
-  // does not rewrite (it only touches childNodes/childEdges), so re-anchor a
-  // collapsed member's ghost connectors onto its group stub with the *same*
-  // remap the collapse applied to the regular edges (#1874). Identity outside
-  // collapse, so the ghost loops below are unaffected when nothing folds.
-  let remapGhostEndpoint: (id: string) => string = (id) => id;
+  // Ghost-edge lists on the ViewSlice are separate fields that neither collapse
+  // pass rewrites (they only touch childNodes/childEdges), so re-anchor a
+  // collapsed member's ghost connectors onto its stub with the *same* remap the
+  // collapse applied to the regular edges (#1874). Category and group members
+  // are disjoint, so composing the two remaps (category first, then group) is
+  // order-independent in practice; identity outside collapse.
+  let remapGhostEndpoint: (id: string) => string = collapsedCat.remapEndpoint;
   if (groupBy === "team" && ownerIndex) {
     const collapsed = collapseGroups(allNodes, allEdges, ownerIndex, collapsedGroups);
     allNodes = collapsed.nodes;
     allEdges = collapsed.edges;
     stubGroup = collapsed.stubGroup;
-    remapGhostEndpoint = collapsed.remapEndpoint;
+    const groupRemap = collapsed.remapEndpoint;
+    remapGhostEndpoint = (id) => groupRemap(collapsedCat.remapEndpoint(id));
   }
   /** Group a node belongs to — its team owner, or the group a collapse stub stands in for. */
   const groupIdOf = (id: string): string | null => ownerIndex?.get(id) ?? stubGroup.get(id) ?? null;

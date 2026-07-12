@@ -1,4 +1,4 @@
-import { INFRA_KIND_SET, type KrsNode } from "../types/ast.js";
+import { INFRA_KIND_SET, type KrsNode, type KrsEdge } from "../types/ast.js";
 import type { SourceRange } from "../types/tokens.js";
 
 /**
@@ -70,25 +70,46 @@ function stubNode(category: CategoryId, count: number): KrsNode {
   };
 }
 
+interface CategoryCollapseResult {
+  nodes: KrsNode[];
+  edges: KrsEdge[];
+  /**
+   * The endpoint remap this collapse applied to `edges` (a collapsed-category
+   * member id → its category stub id; identity otherwise). Exposed so callers
+   * can re-anchor *other* id lists that reference the same members — e.g. the
+   * ghost-edge lists on the ViewSlice — the way `collapseGroups` does (#1874).
+   * Identity when nothing collapsed.
+   */
+  remapEndpoint: (id: string) => string;
+}
+
 /**
- * Replace each collapsed category's nodes with a single stub. Edges touching the
- * removed nodes are dropped downstream by `computeLayoutEdges` (their endpoint is
- * no longer in `layoutNodes`), so only the node list is transformed here, before
- * layout — the diagram reflows and the collapsed tier shrinks to its stub.
- *
- * Returns the input array unchanged when nothing is collapsed.
+ * Replace each collapsed category's nodes with a single stub and **re-target**
+ * every edge that crossed the category boundary onto the stub — mirroring
+ * `collapseGroups` (#1858). An endpoint in a collapsed category becomes that
+ * category's stub; edges fully inside one collapsed category fold to a self-loop
+ * and are dropped; the rest are de-duplicated per `(from, to, kind)`. So
+ * collapsing external/infra keeps the "who depends on the external/infra layer"
+ * edges as aggregation trunks to the stub, instead of dropping them (which is
+ * what folding the node list alone used to do). Returns the input unchanged when
+ * nothing collapses.
  */
-export function collapseNodeList(
+export function collapseCategories(
   nodes: readonly KrsNode[],
+  edges: readonly KrsEdge[],
   collapsed: ReadonlySet<CategoryId> | undefined,
-): KrsNode[] {
-  if (!collapsed || collapsed.size === 0) return nodes as KrsNode[];
+): CategoryCollapseResult {
+  if (!collapsed || collapsed.size === 0) {
+    return { nodes: nodes as KrsNode[], edges: edges as KrsEdge[], remapEndpoint: (id) => id };
+  }
+  const catOfId = new Map<string, CategoryId>();
   const kept: KrsNode[] = [];
   const counts = new Map<CategoryId, number>();
   for (const node of nodes) {
     const cat = categoryOf(node);
     if (cat !== null && collapsed.has(cat)) {
       counts.set(cat, (counts.get(cat) ?? 0) + 1);
+      catOfId.set(node.id, cat);
     } else {
       kept.push(node);
     }
@@ -97,5 +118,43 @@ export function collapseNodeList(
     const count = counts.get(cat) ?? 0;
     if (count > 0) kept.push(stubNode(cat, count));
   }
-  return kept;
+
+  const remap = (id: string): string => {
+    const cat = catOfId.get(id);
+    return cat !== undefined ? stubId(cat) : id;
+  };
+  const outEdges: KrsEdge[] = [];
+  const seen = new Set<string>();
+  for (const edge of edges) {
+    const from = remap(edge.from);
+    const to = remap(edge.to);
+    if (from === edge.from && to === edge.to) {
+      // Neither endpoint collapsed: pass through untouched so authored parallel
+      // edges between two surviving nodes all survive, along with self-loops.
+      outEdges.push(edge);
+      continue;
+    }
+    if (from === to) continue; // both endpoints folded into the same stub
+    const key = `${from} ${to} ${edge.kind}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    // A re-targeted edge stands for one-or-more real edges, so its authored
+    // label no longer describes it — drop the label but keep the sync/async kind.
+    outEdges.push({ ...edge, from, to, label: undefined });
+  }
+
+  return { nodes: kept, edges: outEdges, remapEndpoint: remap };
+}
+
+/**
+ * Node-only category collapse for call sites that lay out a node list without
+ * needing edge re-targeting (per-system layering). Delegates the folding to
+ * {@link collapseCategories}. Returns the input array unchanged when nothing
+ * is collapsed.
+ */
+export function collapseNodeList(
+  nodes: readonly KrsNode[],
+  collapsed: ReadonlySet<CategoryId> | undefined,
+): KrsNode[] {
+  return collapseCategories(nodes, [], collapsed).nodes;
 }
