@@ -15,7 +15,7 @@ Group by: team（P2a）の展開ビューのエッジを直交ルーティング
 
 ### AC-1: 貫通ゼロ（core, TPL-20260711-02 二重計測）
 
-> ✅ Automated by `packages/core/src/renderer/edge-routing-groups.test.ts`
+> ✅ Automated by `packages/core/src/renderer/edge-routing-groups.test.ts` (suite-wide)
 
 - [x] grouped 展開ビューで、どのエッジセグメントもノードカード / グループフレームの内部を貫通しない（貫通数 == 0 を厳密 assert）
 - [x] 同じ grouped ノード配置で直線 center-to-center に描くと貫通する（> 0）ことを確認 — fixture が実際にルータを起動していることの担保
@@ -24,7 +24,7 @@ Group by: team（P2a）の展開ビューのエッジを直交ルーティング
 
 ### AC-2: ルーティング挙動（core）
 
-> ✅ Automated by `packages/core/src/renderer/edge-routing-groups.test.ts`
+> ✅ Automated by `packages/core/src/renderer/edge-routing-groups.test.ts` (suite-wide)
 
 - [x] 障害物を跨がないバンド内隣接エッジは直線のまま（`waypoints` 無し）— 単純なエッジは単純に保つ
 - [x] バンドを跨いで貫通するエッジはサイドガター経由の直交経路（2 waypoints、同一 gutter x = 全カード外側の縦回廊）になる
@@ -32,7 +32,7 @@ Group by: team（P2a）の展開ビューのエッジを直交ルーティング
 
 ### AC-3: 逆流エッジの破線（core, compile e2e）
 
-> ✅ Automated by `packages/core/src/renderer/edge-routing-groups.test.ts` + `group-by-render.test.ts`
+> ✅ Automated by `packages/core/src/renderer/edge-routing-groups.test.ts` (suite-wide) — + `packages/core/src/renderer/group-by-render.test.ts` の backward-dash render test
 
 - [x] 対象バンドが起点バンドより上にある無循環エッジに `groupBackward` が付く。順方向エッジには付かない
 - [x] compile 出力で `groupBackward` エッジが破線（`stroke-dasharray="8 4"`）で描かれ、順方向エッジは破線にならない
@@ -41,7 +41,7 @@ Group by: team（P2a）の展開ビューのエッジを直交ルーティング
 
 ### AC-4: 退化ケース / 既定パス温存（回帰）
 
-> ✅ Automated by `edge-routing-groups.test.ts` + `group-by-render.test.ts`（byte-identity）
+> ✅ Automated by `packages/core/src/renderer/edge-routing-groups.test.ts` (suite-wide) — + `packages/core/src/renderer/group-by-render.test.ts`（byte-identity）
 
 - [x] チーム 1 つのモデルでも貫通ゼロ
 - [x] `groupBy` 未指定は option 無しと **byte 一致**（ungrouped は `routeOrthogonalEdges` のまま、`routeGroupedEdges` は `groupBands != null` の gate 内でのみ走る）
