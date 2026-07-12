@@ -4,7 +4,7 @@
 - **ステータス**: 検討中
 - **関連**:
   - 引き金 Issue: [#1890](https://github.com/kompiro/karasu/issues/1890)（当初は「Blacksmith を導入する」だったが、調査により方針を再定義）
-  - PR: （作成後に反映）
+  - PR: [#1893](https://github.com/kompiro/karasu/pull/1893)
   - 関連 ADR: なし（CI ランナー / プロバイダ選定に関する既存 ADR は存在しない）
   - コード: `.github/workflows/*.yml`（全 25 ジョブが `runs-on: ubuntu-latest`）
 
