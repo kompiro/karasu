@@ -105,53 +105,37 @@ resolveIconManifest(
   true,
 );
 
-/**
- * The team/group ids of every collapsible boundary frame in the rendered SVG,
- * read from the `data-collapse-group` attributes the renderer stamps on each
- * frame (`renderGroupControls`, `svg-renderer.ts`). This is the same contract
- * the PreviewPane click delegation already relies on, and it is complete in
- * both directions — a collapsed group keeps its `data-collapse-group` (so its
- * `⊕` expand control still works), so the set is the full frame list whether a
- * frame is open or folded.
- *
- * Deliberately axis-agnostic: it does not know or care which Group-by axis
- * (team today, `group` in P2b) produced the frames. Bulk collapse is driven off
- * this so a future axis needs no change here — see
- * `docs/design/group-by-bulk-collapse.md`.
- */
-function extractGroupIds(svg: string): string[] {
-  const ids = new Set<string>();
-  for (const m of svg.matchAll(/data-collapse-group="([^"]+)"/g)) {
-    // The renderer XML-escapes attribute values (`svg-builder.ts` `escapeXml`),
-    // so decode back to the raw id — otherwise a team whose id contains
-    // `&`/`<`/`>`/`"` (e.g. `R&D`) would be pushed to `collapsedGroups` in its
-    // escaped form and never match the real id the core / DOM-based per-group
-    // toggle use. Mirror escapeXml exactly; `&amp;` must be decoded last.
-    const id = m[1]
-      .replace(/&lt;/g, "<")
-      .replace(/&gt;/g, ">")
-      .replace(/&quot;/g, '"')
-      .replace(/&amp;/g, "&");
-    ids.add(id);
-  }
-  return [...ids];
+/** Reverse `svg-builder`'s `escapeXml` — the only 4 entities it emits, `&amp;` last. */
+function decodeXmlEntities(s: string): string {
+  return s
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&quot;/g, '"')
+    .replace(/&amp;/g, "&");
 }
 
 /**
- * The collapsible external/infra categories present in the rendered SVG, read
- * from the `data-collapse-category` attributes (`renderCategoryControls`). This
- * is the orthogonal category-collapse axis (#1821) — separate state / per-layer
- * controls — but the bulk "Collapse all" convenience spans both axes so its
- * label is honest ("all" = every collapsible thing in the current view). Only
- * the two known category ids are valid targets; category ids never carry
- * XML-special characters, so no decode is needed.
+ * Both collapse axes' ids in one pass over the rendered SVG:
+ *  - team/group boundary frames (`data-collapse-group`, #1858) — decoded from
+ *    the renderer's XML escaping (`svg-builder.ts` `escapeXml`) so a special-char
+ *    id (e.g. `R&D`) matches the real id the core / DOM-based per-group toggle
+ *    use, not its escaped `R&amp;D` form;
+ *  - external/infra category bands (`data-collapse-category`, #1821) — only the
+ *    two known category ids, which never carry XML-special characters.
+ *
+ * Both are complete in either direction (a collapsed frame/band keeps its
+ * attribute so its `⊕` expand control still works) and axis-agnostic — read
+ * from what is actually drawn, so the bulk toggle needs no change when a future
+ * Group-by axis lands. See `docs/design/group-by-bulk-collapse.md`.
  */
-function extractCategoryIds(svg: string): CategoryId[] {
-  const ids = new Set<CategoryId>();
-  for (const m of svg.matchAll(/data-collapse-category="([^"]+)"/g)) {
-    if (m[1] === "external" || m[1] === "infra") ids.add(m[1]);
+function extractCollapsibles(svg: string): { groupIds: string[]; categoryIds: CategoryId[] } {
+  const groupIds = new Set<string>();
+  const categoryIds = new Set<CategoryId>();
+  for (const m of svg.matchAll(/data-collapse-(group|category)="([^"]+)"/g)) {
+    if (m[1] === "group") groupIds.add(decodeXmlEntities(m[2]));
+    else if (m[2] === "external" || m[2] === "infra") categoryIds.add(m[2]);
   }
-  return [...ids];
+  return { groupIds: [...groupIds], categoryIds: [...categoryIds] };
 }
 
 export function useSystemView(
@@ -169,8 +153,14 @@ export function useSystemView(
   groupBy: GroupByMode;
   setGroupBy: (mode: GroupByMode) => void;
   toggleGroup: (groupId: string) => void;
-  /** Ids of every collapsible boundary frame in the current render (#1872). */
+  /** Ids of every collapsible team boundary frame in the current render (#1872). */
   groupIds: string[];
+  /**
+   * Whether anything is collapsible in the current view — at least one team
+   * frame OR one external/infra category band (#1872). Gates the bulk toggle so
+   * it shows even when the view is un-grouped but has category bands.
+   */
+  anyCollapsible: boolean;
   /**
    * True when everything collapsible in the current view — every team frame
    * AND every external/infra category band — is collapsed (#1872). Drives the
@@ -345,14 +335,14 @@ export function useSystemView(
       groupsKey,
     ],
   });
-  // Bulk collapse (#1872). Both id lists come from the rendered SVG, so they are
-  // axis-agnostic and always match what is actually on screen. "Collapse all"
-  // spans both collapse axes — team frames (#1858) and external/infra categories
-  // (#1821) — so its label ("all") is honest; the per-axis state / controls stay
-  // orthogonal (ADR-20260711-03 §3). A single toggle: collapse everything when
-  // anything is open, else expand everything.
-  const groupIds = useMemo(() => extractGroupIds(result.svg), [result.svg]);
-  const categoryIds = useMemo(() => extractCategoryIds(result.svg), [result.svg]);
+  // Bulk collapse (#1872). Both id lists come from the rendered SVG in one pass,
+  // so they are axis-agnostic and always match what is actually on screen.
+  // "Collapse all" spans both collapse axes — team frames (#1858) and
+  // external/infra categories (#1821) — so its label ("all") is honest, and it
+  // is offered whenever anything is collapsible (even an un-grouped view with
+  // only category bands). The per-axis state / controls stay orthogonal
+  // (ADR-20260711-03 §3); only this convenience toggle bridges them.
+  const { groupIds, categoryIds } = useMemo(() => extractCollapsibles(result.svg), [result.svg]);
   const anyCollapsible = groupIds.length > 0 || categoryIds.length > 0;
   const allCollapsed =
     anyCollapsible &&
@@ -376,6 +366,7 @@ export function useSystemView(
     setGroupBy,
     toggleGroup,
     groupIds,
+    anyCollapsible,
     allCollapsed,
     onCollapseAllToggle,
   };

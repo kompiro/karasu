@@ -45,8 +45,8 @@ interface ActiveViewData {
   onGroupByChange?: (mode: GroupByMode) => void;
   /** system: whether the Group-by selector is meaningful (#1858). */
   groupByAvailable?: boolean;
-  /** system: ids of every collapsible boundary frame in the current render (#1872). */
-  groupIds?: string[];
+  /** system: whether anything (a team frame or external/infra band) is collapsible (#1872). */
+  anyCollapsible?: boolean;
   /** system: true when every team frame AND external/infra category is collapsed (#1872). */
   allCollapsed?: boolean;
   /** system: collapse everything (frames + categories) if anything is open, else expand all (#1872). */
@@ -119,7 +119,7 @@ export function selectActiveViewData(ctx: PreviewContextValue): ActiveViewData {
         groupBy: systemView.groupBy,
         onGroupByChange: systemView.onGroupByChange,
         groupByAvailable: systemView.groupByAvailable,
-        groupIds: systemView.groupIds,
+        anyCollapsible: systemView.anyCollapsible,
         allCollapsed: systemView.allCollapsed,
         onCollapseAllToggle: systemView.onCollapseAllToggle,
         nodeDiff: systemView.nodeDiff,

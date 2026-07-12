@@ -37,8 +37,8 @@ export interface SystemViewData {
   onGroupByChange?: (mode: GroupByMode) => void;
   /** Whether the Group-by selector is meaningful (has org, not comparing) (#1858). */
   groupByAvailable?: boolean;
-  /** Ids of every collapsible boundary frame in the current render (#1872). */
-  groupIds?: string[];
+  /** Whether anything (a team frame or external/infra band) is collapsible (#1872). */
+  anyCollapsible?: boolean;
   /** True when every team frame AND external/infra category is collapsed (#1872). */
   allCollapsed?: boolean;
   /** Collapse everything (frames + categories) if anything is open, else expand all (#1872). */

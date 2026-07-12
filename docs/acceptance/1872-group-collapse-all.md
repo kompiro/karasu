@@ -12,7 +12,7 @@
 
 Group by: Team の system view に **Collapse all / Expand all** の一括操作を追加する。per-group ⊖/⊕（#1858 slice B）はあるが一括手段が無かった。ADR-20260711-03 の P1 検証が示すとおり「既定で畳んでおき必要な所だけ開く」（全折り畳み = group 依存 DAG ビュー）が最も読みやすく、そこへ 1 クリックで入る手段を用意する。
 
-ラベルが「all」なので、**ビュー内で畳めるものすべて** を対象にする — team 境界フレーム（#1858, `data-collapse-group`）**と** external / infra カテゴリ帯（#1821, `data-collapse-category`）の両軸。per-axis の状態（`collapsedGroups` / `collapsedCategories`）と個別コントロールは従来どおり直交（ADR-20260711-03 §3）で、束ねるのは bulk トグルだけ。team 側は SVG 由来の `groupIds` で駆動するため軸非依存で、将来 Group-by 軸が増えても（P2b `group`）無改修（設計 doc 参照）。`.krs` は不変・app のみの変更（core 不変につき changeset 不要）。
+ラベルが「all」なので、**ビュー内で畳めるものすべて** を対象にする — team 境界フレーム（#1858, `data-collapse-group`）**と** external / infra カテゴリ帯（#1821, `data-collapse-category`）の両軸。per-axis の状態（`collapsedGroups` / `collapsedCategories`）と個別コントロールは従来どおり直交（ADR-20260711-03 §3）で、束ねるのは bulk トグルだけ。ボタンの表示は `groupBy` ではなく **「畳めるものがあるか」（`anyCollapsible`）** で判定するため、グループ化していない（Group by: None・org 無し）ビューでも external / infra 帯があれば出る。team 側は SVG 由来の id で駆動するため軸非依存で、将来 Group-by 軸が増えても（P2b `group`）無改修（設計 doc 参照）。`.krs` は不変・app のみの変更（core 不変につき changeset 不要）。
 
 ## 受け入れ条件
 
@@ -20,8 +20,8 @@ Group by: Team の system view に **Collapse all / Expand all** の一括操作
 
 > ✅ Automated by `packages/app/src/hooks/useSystemView.test.tsx` (suite-wide)
 
-- [x] Group by: Team のとき、`groupIds` が描画済み SVG の `data-collapse-group` から全 team 分（展開・折り畳み双方）そろう
-- [x] ungrouped（Group by: None）では `groupIds` は空、`allCollapsed` は false
+- [x] Group by: Team のとき、`groupIds` が描画済み SVG の `data-collapse-group` から全 team 分（展開・折り畳み双方）そろい、`anyCollapsible` が true になる
+- [x] ungrouped かつカテゴリ無しでは `groupIds` 空・`anyCollapsible` false・`allCollapsed` false
 - [x] XML エスケープされた id（例 `R&D` → `R&amp;D`）を decode し、collapse-all が実 id にマッチする（未 decode だと当該 group が畳まれず `allCollapsed` も立たない）
 
 ### AC-2: 一括トグルの挙動（両軸・core 再コンパイル込み）
@@ -30,14 +30,15 @@ Group by: Team の system view に **Collapse all / Expand all** の一括操作
 
 - [x] `onCollapseAllToggle()` が全 team を stub に畳む（`__group_collapsed_<team>__` が全 team 分出る / 所有サービスカードが消える）→ `allCollapsed` が true
 - [x] `onCollapseAllToggle()` が **external / infra カテゴリ帯も畳む**（`collapsedCategories` に external / infra が入り、カテゴリメンバーが消える）
+- [x] **ungrouped（Group by: None・org 無し）でも** external / infra だけで `anyCollapsible` が true になり、collapse-all がカテゴリを畳む（groups は関与しない）
 - [x] 全折り畳み状態でもう一度呼ぶと **両軸とも**展開に戻る（サービスカード・カテゴリメンバーが復帰、stub が消える、`collapsedCategories` が空）→ `allCollapsed` が false
 
 ### AC-3: toolbar ボタンの表示・状態（app component）
 
 > ✅ Automated by `packages/app/src/components/PreviewColumn.test.tsx` (suite-wide)
 
-- [x] 折り畳み可能フレームが無いとき（`groupIds` 空）はボタンを出さない
-- [x] `groupByAvailable` が false のときはフレームがあってもボタンを出さない
+- [x] 畳めるものが何も無いとき（`anyCollapsible` false）はボタンを出さない
+- [x] **グループ化していなくても（`groupBy: none` / `groupByAvailable` false）**、畳めるもの（external / infra 帯）があればボタンを出す
 - [x] 未折り畳みでは **「⊖ Collapse all」**（`aria-pressed=false`）、全折り畳みでは **「⊕ Expand all」**（`aria-pressed=true`）を表示する（icon + text label、shadcn `Button`）
 - [x] クリックで `onCollapseAllToggle` が発火する
 - [x] ラベルは i18n 経由（`preview.groupBy.collapseAll` / `expandAll`、en/ja 両方 — 型で全ロケール網羅を強制）

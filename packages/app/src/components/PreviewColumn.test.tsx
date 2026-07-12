@@ -418,50 +418,52 @@ describe("PreviewColumn", () => {
   });
 
   describe("Collapse all / Expand all control (#1872)", () => {
-    // The control is gated on the presence of collapsible frames (groupIds),
-    // NOT on `groupBy === "team"` — so a future Group-by axis needs no change
-    // here. See docs/design/group-by-bulk-collapse.md.
-    const withGroups = (over: Partial<PreviewContextValue["systemView"]> = {}) =>
+    // The control is gated on `anyCollapsible` (a team frame OR an external/infra
+    // band exists), NOT on `groupBy === "team"` or `groupByAvailable` — so it
+    // shows for category-only un-grouped views too, and a future Group-by axis
+    // needs no change here. See docs/design/group-by-bulk-collapse.md.
+    const withCollapsibles = (over: Partial<PreviewContextValue["systemView"]> = {}) =>
       makeProps({
         activeView: "system",
         systemView: {
           ...makeProps().systemView,
           groupBy: "team" as const,
-          groupIds: ["payments", "catalog"],
+          anyCollapsible: true,
           allCollapsed: false,
           onCollapseAllToggle: vi.fn<() => void>(),
           ...over,
         },
       });
 
-    it("is hidden when there are no collapsible frames", () => {
+    it("is hidden when nothing is collapsible", () => {
       const { queryByRole } = renderPreview(makeProps({ activeView: "system" }));
       expect(queryByRole("button", { name: /Collapse all|Expand all/ })).toBeNull();
     });
 
-    it("is hidden when grouping is not available even if frames exist", () => {
-      const props = withGroups();
-      props.systemView.groupByAvailable = false;
-      const { queryByRole } = renderPreview(props);
-      expect(queryByRole("button", { name: /Collapse all|Expand all/ })).toBeNull();
+    it("shows even when un-grouped / grouping unavailable, as long as something is collapsible", () => {
+      // Un-grouped view (Group by: None, no org) that still has external/infra
+      // category bands: anyCollapsible is true, so the bulk control appears.
+      const props = withCollapsibles({ groupBy: "none", groupByAvailable: false });
+      const { getByRole } = renderPreview(props);
+      expect(getByRole("button", { name: /Collapse all/ })).toBeTruthy();
     });
 
-    it("shows Collapse all when not all groups are collapsed", () => {
-      const { getByRole } = renderPreview(withGroups({ allCollapsed: false }));
+    it("shows Collapse all when not everything is collapsed", () => {
+      const { getByRole } = renderPreview(withCollapsibles({ allCollapsed: false }));
       const btn = getByRole("button", { name: /Collapse all/ });
       expect(btn.textContent).toContain("⊖ Collapse all");
       expect(btn.getAttribute("aria-pressed")).toBe("false");
     });
 
-    it("shows Expand all with pressed state when all groups are collapsed", () => {
-      const { getByRole } = renderPreview(withGroups({ allCollapsed: true }));
+    it("shows Expand all with pressed state when everything is collapsed", () => {
+      const { getByRole } = renderPreview(withCollapsibles({ allCollapsed: true }));
       const btn = getByRole("button", { name: /Expand all/ });
       expect(btn.textContent).toContain("⊕ Expand all");
       expect(btn.getAttribute("aria-pressed")).toBe("true");
     });
 
     it("calls onCollapseAllToggle when clicked", () => {
-      const props = withGroups();
+      const props = withCollapsibles();
       const { getByRole } = renderPreview(props);
       fireEvent.click(getByRole("button", { name: /Collapse all/ }));
       expect(props.systemView.onCollapseAllToggle).toHaveBeenCalled();

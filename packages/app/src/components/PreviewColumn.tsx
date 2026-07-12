@@ -289,7 +289,7 @@ export function PreviewColumn() {
             </select>
           </span>
         )}
-        {activeView === "system" && view.groupByAvailable && (view.groupIds?.length ?? 0) > 0 && (
+        {activeView === "system" && view.anyCollapsible && (
           <Button
             variant="actionable"
             aria-pressed={view.allCollapsed}

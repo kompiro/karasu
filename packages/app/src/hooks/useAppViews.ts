@@ -77,8 +77,8 @@ interface SystemViewBundle {
   collapsedCategories: ReadonlySet<CategoryId>;
   toggleCategory: (category: CategoryId) => void;
   toggleGroup: (groupId: string) => void;
-  /** Ids of every collapsible boundary frame in the current render (#1872). */
-  groupIds: string[];
+  /** Whether anything (a team frame or external/infra band) is collapsible (#1872). */
+  anyCollapsible: boolean;
   /** True when every team frame AND external/infra category is collapsed (#1872). */
   allCollapsed: boolean;
   /** Collapse everything (frames + categories) if anything is open, else expand all (#1872). */
@@ -202,7 +202,7 @@ export function useAppViews(args: UseAppViewsArgs): UseAppViewsResult {
     groupBy,
     setGroupBy,
     toggleGroup,
-    groupIds,
+    anyCollapsible,
     allCollapsed,
     onCollapseAllToggle,
     nodeDiff: systemNodeDiff,
@@ -336,7 +336,7 @@ export function useAppViews(args: UseAppViewsArgs): UseAppViewsResult {
       setGroupBy,
       groupByAvailable: hasOrgDiagram,
       toggleGroup,
-      groupIds,
+      anyCollapsible,
       allCollapsed,
       onCollapseAllToggle,
     },

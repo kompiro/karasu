@@ -140,14 +140,16 @@ describe("useSystemView", () => {
     const { result } = renderHook(() => useSystemView(ENTRY, fs, []));
     await act(() => vi.advanceTimersByTimeAsync(300));
 
-    // Ungrouped: no boundary frames, so no group ids.
+    // Ungrouped and no categories in this source → nothing collapsible.
     expect(result.current.groupIds).toEqual([]);
+    expect(result.current.anyCollapsible).toBe(false);
     expect(result.current.allCollapsed).toBe(false);
 
     act(() => result.current.setGroupBy("team"));
     await act(() => vi.advanceTimersByTimeAsync(300));
 
     expect([...result.current.groupIds].sort()).toEqual(["catalog", "payments"]);
+    expect(result.current.anyCollapsible).toBe(true);
     // Nothing collapsed yet.
     expect(result.current.allCollapsed).toBe(false);
     vi.useRealTimers();
@@ -216,6 +218,44 @@ organization Org {
     expect(result.current.svg).not.toContain('data-node-id="ExtApi"');
 
     // Expand all → both axes reopen.
+    act(() => result.current.onCollapseAllToggle());
+    await act(() => vi.advanceTimersByTimeAsync(300));
+    expect(result.current.allCollapsed).toBe(false);
+    expect(result.current.collapsedCategories.size).toBe(0);
+    expect(result.current.svg).toContain('data-node-id="ExtApi"');
+    vi.useRealTimers();
+  });
+
+  it("collapse-all works in an un-grouped view with only external/infra categories (#1872)", async () => {
+    // No organization → Group by stays "none" and there are no team frames, but
+    // the external/infra category bands are still collapsible. `anyCollapsible`
+    // is true (so the toolbar button shows), and collapse-all folds the
+    // categories with no groups involved.
+    vi.useFakeTimers();
+    const SOURCE_CATEGORIES_ONLY = `system Shop {
+  service Web { label "Web" }
+  service ExtApi [external] { label "Ext API" }
+  database ShopDB { table Orders { label "Orders" } }
+}`;
+    const fs = makeFs(SOURCE_CATEGORIES_ONLY);
+    const { result } = renderHook(() => useSystemView(ENTRY, fs, []));
+    await act(() => vi.advanceTimersByTimeAsync(300));
+
+    // Un-grouped, but categories make it collapsible.
+    expect(result.current.groupBy).toBe("none");
+    expect(result.current.groupIds).toEqual([]);
+    expect(result.current.anyCollapsible).toBe(true);
+    expect(result.current.allCollapsed).toBe(false);
+    expect(result.current.svg).toContain('data-node-id="ExtApi"');
+
+    // Collapse all → categories fold (no groups touched), toggle flips.
+    act(() => result.current.onCollapseAllToggle());
+    await act(() => vi.advanceTimersByTimeAsync(300));
+    expect(result.current.allCollapsed).toBe(true);
+    expect([...result.current.collapsedCategories].sort()).toEqual(["external", "infra"]);
+    expect(result.current.svg).not.toContain('data-node-id="ExtApi"');
+
+    // Expand all restores.
     act(() => result.current.onCollapseAllToggle());
     await act(() => vi.advanceTimersByTimeAsync(300));
     expect(result.current.allCollapsed).toBe(false);
