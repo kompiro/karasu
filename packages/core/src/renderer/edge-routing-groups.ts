@@ -33,7 +33,7 @@
  * or DOM input, so snapshots stay stable.
  */
 import type { LayoutEdge, LayoutNode, ContainerRect } from "./layout-types.js";
-import { type Point, type Rect, segmentCrossesAnyRect } from "./edge-geometry.js";
+import { type Point, type Rect, segmentCrossesAnyRect, polylineClearOf } from "./edge-geometry.js";
 
 /** Horizontal gap between the outermost frame/node edge and a routing gutter. */
 const GUTTER_GAP = 28;
@@ -63,14 +63,6 @@ function obstaclesFor(
     ...nodes.filter((n) => n.id !== edge.from && n.id !== edge.to),
     ...frames.filter((f) => f.id !== fFrom && f.id !== fTo),
   ];
-}
-
-/** True if no segment of the polyline crosses any obstacle's interior. */
-function pathClear(path: Point[], obstacles: Rect[]): boolean {
-  for (let i = 0; i < path.length - 1; i++) {
-    if (segmentCrossesAnyRect(path[i], path[i + 1], obstacles)) return false;
-  }
-  return true;
 }
 
 /** Right-side anchor point (mid-height) of a node. */
@@ -154,7 +146,7 @@ function tryGutterRoute(
   const w0: Point = { x: gutter.x, y: sourcePort.y };
   const w1: Point = { x: gutter.x, y: targetPort.y };
 
-  if (!pathClear([sourcePort, w0, w1, targetPort], obstacles)) return false;
+  if (!polylineClearOf([sourcePort, w0, w1, targetPort], obstacles)) return false;
 
   edge.fromPoint = sourcePort;
   edge.toPoint = targetPort;
@@ -218,7 +210,7 @@ export function aggregateGroupTrunks(
       const from = layoutNodes.get(e.from);
       if (!from) return false;
       const path = trunkPath(from, target, nominalX);
-      return pathClear(path, obstaclesFor(e, nodes, frames, frameOfNode));
+      return polylineClearOf(path, obstaclesFor(e, nodes, frames, frameOfNode));
     });
     if (allClear) eligible.push({ target, edges });
   }
@@ -227,7 +219,10 @@ export function aggregateGroupTrunks(
   // own vertical lane so distinct targets' spines no longer overlap.
   eligible.sort((a, b) => a.target.y - b.target.y || (a.target.id < b.target.id ? -1 : 1));
   eligible.forEach(({ target, edges }, lane) => {
-    const trunkX = maxRight + GUTTER_GAP + lane * TRUNK_LANE_GAP;
+    // Lanes start one gap *beyond* the default gutter (`maxRight + GUTTER_GAP`),
+    // which `routeGroupedEdges` uses for non-trunked single edges — so a trunk
+    // spine never co-renders on top of a single-incoming edge's spine.
+    const trunkX = maxRight + GUTTER_GAP + (lane + 1) * TRUNK_LANE_GAP;
     const targetPort = rightPort(target);
     for (const edge of edges) {
       const from = layoutNodes.get(edge.from)!;

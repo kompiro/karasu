@@ -573,6 +573,17 @@ function normalizeCoordinates(
     minX = Math.min(minX, node.x);
     minY = Math.min(minY, node.y);
   }
+  // Edge geometry can reach beyond the nodes/frames — e.g. a Group-by left
+  // gutter or trunk lane (#1859) puts waypoints outside the content box. Fold
+  // them into the min so the shift keeps every point non-negative (an
+  // un-normalized waypoint would clip on the left). Skip-layer channel
+  // waypoints stay inside the node columns, so ungrouped views are unaffected.
+  for (const edge of layoutEdges) {
+    for (const p of [edge.fromPoint, edge.toPoint, ...(edge.waypoints ?? [])]) {
+      minX = Math.min(minX, p.x);
+      minY = Math.min(minY, p.y);
+    }
+  }
 
   const shiftX = minX < CONTAINER_PADDING ? CONTAINER_PADDING - minX : 0;
   const shiftY = minY < CONTAINER_PADDING ? CONTAINER_PADDING - minY : 0;
@@ -620,6 +631,7 @@ function normalizeCoordinates(
 function computeTotalDimensions(
   containers: ContainerRect[],
   layoutNodes: Map<string, LayoutNode>,
+  layoutEdges: LayoutEdge[],
   displayMode?: DisplayMode,
 ): { width: number; height: number } {
   const { NODE_GAP } = getLayoutConstants(displayMode);
@@ -632,6 +644,16 @@ function computeTotalDimensions(
   for (const [, node] of layoutNodes) {
     totalWidth = Math.max(totalWidth, node.x + node.width + NODE_GAP);
     totalHeight = Math.max(totalHeight, node.y + node.height + NODE_GAP);
+  }
+  // Include edge geometry so a Group-by trunk lane or side gutter (#1859) that
+  // extends past the content box is not clipped by the SVG viewport. `NODE_GAP`
+  // is the margin (never larger than a node's own margin), so ungrouped views —
+  // whose waypoints stay within the node columns — keep the same dimensions.
+  for (const edge of layoutEdges) {
+    for (const p of [edge.fromPoint, edge.toPoint, ...(edge.waypoints ?? [])]) {
+      totalWidth = Math.max(totalWidth, p.x + NODE_GAP);
+      totalHeight = Math.max(totalHeight, p.y + NODE_GAP);
+    }
   }
   return { width: totalWidth, height: totalHeight };
 }
@@ -1230,6 +1252,7 @@ export function layout(viewSlice: ViewSlice, options: LayoutOptions = {}): Layou
   const { width: totalWidth, height: totalHeight } = computeTotalDimensions(
     containers,
     layoutNodes,
+    layoutEdges,
     displayMode,
   );
 

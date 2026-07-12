@@ -35,6 +35,7 @@ Group by: team の P2c slice B。P2c-A は各 cross-band エッジをサイド�
 
 - [x] トランク化後も貫通数 == 0（トランクレーンは全カード/フレームの外側の右ガター域にあり、各エッジ経路は再検証する）
 - [x] target のエッジを全て clean に再ルートできない場合はトランク化せず P2c-A の経路を保持（never worse）
+- [x] 全トランク spine が layout width 内に収まる（`computeTotalDimensions` が waypoint を含めるので lane ≥ 1 が viewport でクリップされない）
 
 ### AC-4: 既定パス温存 / edge identity（回帰）
 

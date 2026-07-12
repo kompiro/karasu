@@ -264,6 +264,18 @@ describe("aggregateGroupTrunks (#1859, P2c-B)", () => {
     expect(totalPenetrations(res)).toBe(0);
   });
 
+  it("keeps every trunk spine inside the layout width (no viewport clipping)", () => {
+    // computeTotalDimensions must account for trunk-lane waypoints, else lane ≥ 1
+    // spines render past the SVG width and get clipped.
+    const res = layoutOf(TRUNKS, TRUNKS_OWNER, "team");
+    for (const e of res.edges) {
+      for (const wp of e.waypoints ?? []) {
+        expect(wp.x).toBeLessThanOrEqual(res.width);
+        expect(wp.x).toBeGreaterThanOrEqual(0);
+      }
+    }
+  });
+
   it("does not trunk a target with only one incoming edge", () => {
     // Only A → DB (single incoming); no trunk should form.
     const single = `
