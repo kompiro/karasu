@@ -37,11 +37,45 @@ import { type Point, type Rect, segmentCrossesAnyRect } from "./edge-geometry.js
 
 /** Horizontal gap between the outermost frame/node edge and a routing gutter. */
 const GUTTER_GAP = 28;
+/** Horizontal spacing between distinct aggregation-trunk lanes (P2c-B). */
+const TRUNK_LANE_GAP = 24;
 
 interface Gutter {
   x: number;
   /** Which node side the stubs attach to when using this gutter. */
   side: "left" | "right";
+}
+
+/**
+ * Obstacles an edge must not cross: every other node card, plus every group
+ * frame that encloses neither endpoint (an edge legitimately starts and ends
+ * inside its own team frame).
+ */
+function obstaclesFor(
+  edge: LayoutEdge,
+  nodes: LayoutNode[],
+  frames: ContainerRect[],
+  frameOfNode: Map<string, string>,
+): Rect[] {
+  const fFrom = frameOfNode.get(edge.from) ?? null;
+  const fTo = frameOfNode.get(edge.to) ?? null;
+  return [
+    ...nodes.filter((n) => n.id !== edge.from && n.id !== edge.to),
+    ...frames.filter((f) => f.id !== fFrom && f.id !== fTo),
+  ];
+}
+
+/** True if no segment of the polyline crosses any obstacle's interior. */
+function pathClear(path: Point[], obstacles: Rect[]): boolean {
+  for (let i = 0; i < path.length - 1; i++) {
+    if (segmentCrossesAnyRect(path[i], path[i + 1], obstacles)) return false;
+  }
+  return true;
+}
+
+/** Right-side anchor point (mid-height) of a node. */
+function rightPort(n: LayoutNode): Point {
+  return { x: n.x + n.width, y: n.y + n.height / 2 };
 }
 
 export function routeGroupedEdges(
@@ -80,15 +114,7 @@ export function routeGroupedEdges(
     // the edge needs rerouting; a clear backward edge is still dashed.
     if (to.y + to.height <= from.y) edge.groupBackward = true;
 
-    // Obstacles this edge must not cross: every other node card, and every
-    // frame that encloses neither endpoint (an edge legitimately starts/ends
-    // inside its own team frame).
-    const fFrom = frameOfNode.get(edge.from) ?? null;
-    const fTo = frameOfNode.get(edge.to) ?? null;
-    const obstacles: Rect[] = [
-      ...nodes.filter((n) => n.id !== edge.from && n.id !== edge.to),
-      ...frames.filter((f) => f.id !== fFrom && f.id !== fTo),
-    ];
+    const obstacles = obstaclesFor(edge, nodes, frames, frameOfNode);
 
     // Leave clear edges (adjacent, intra-band) exactly as the shared pipeline
     // placed them — keeps simple edges simple and snapshots minimal.
@@ -128,15 +154,109 @@ function tryGutterRoute(
   const w0: Point = { x: gutter.x, y: sourcePort.y };
   const w1: Point = { x: gutter.x, y: targetPort.y };
 
-  const path = [sourcePort, w0, w1, targetPort];
-  for (let i = 0; i < path.length - 1; i++) {
-    if (segmentCrossesAnyRect(path[i], path[i + 1], obstacles)) return false;
-  }
+  if (!pathClear([sourcePort, w0, w1, targetPort], obstacles)) return false;
 
   edge.fromPoint = sourcePort;
   edge.toPoint = targetPort;
   edge.waypoints = [w0, w1];
   return true;
+}
+
+/**
+ * Aggregation trunks (Issue #1859, P2c slice B). After `routeGroupedEdges` sends
+ * every cross-band edge out to a side gutter, edges that share an infra/external
+ * **target** still land on the one default gutter x, so two targets' spines
+ * overlap. This pass gives each shared target its own **trunk lane** and merges
+ * its incoming edges onto a single vertical spine that enters the target once —
+ * the grouping analogue of karasu's aggregation concept.
+ *
+ * Only fan-in targets (≥ 2 gutter-routed incoming edges) form a trunk. Each
+ * trunked edge is tagged `trunkId = <target id>`; the elbow where its horizontal
+ * stub meets the spine (`waypoints[0]`) is the merge point a junction dot marks
+ * in P2c-C. Edge identity is preserved — each `LayoutEdge` stays its own line
+ * sharing the spine geometry, not a single merged edge (ADR-20260511-01 stance).
+ *
+ * Penetration-safe: trunk lanes sit in the right gutter (x > every card/frame),
+ * so their verticals are clear by construction; each edge's candidate route is
+ * still verified, and a target whose edges cannot all be cleanly re-routed keeps
+ * the `routeGroupedEdges` result (never worse — AC-1 preserved).
+ */
+export function aggregateGroupTrunks(
+  layoutNodes: Map<string, LayoutNode>,
+  layoutEdges: LayoutEdge[],
+  frames: ContainerRect[],
+): void {
+  const nodes = [...layoutNodes.values()];
+  if (nodes.length === 0) return;
+
+  let maxRight = -Infinity;
+  for (const n of nodes) maxRight = Math.max(maxRight, n.x + n.width);
+  for (const f of frames) maxRight = Math.max(maxRight, f.x + f.width);
+
+  const frameOfNode = buildFrameOfNode(layoutNodes, frames);
+
+  // Group the gutter-routed edges (set by routeGroupedEdges) by their target.
+  const byTarget = new Map<string, LayoutEdge[]>();
+  for (const edge of layoutEdges) {
+    if (edge.ghost || edge.cyclic) continue;
+    if (!isVerticalGutterRoute(edge)) continue;
+    const list = byTarget.get(edge.to);
+    if (list) list.push(edge);
+    else byTarget.set(edge.to, [edge]);
+  }
+
+  // Eligible trunks: a shared target with ≥ 2 incoming edges, all of which can
+  // be cleanly re-routed onto a right-side spine. Clearance is lane-independent
+  // (any x beyond maxRight has a clear vertical), so probe with a nominal x.
+  const nominalX = maxRight + GUTTER_GAP;
+  const eligible: { target: LayoutNode; edges: LayoutEdge[] }[] = [];
+  for (const [targetId, edges] of byTarget) {
+    if (edges.length < 2) continue;
+    const target = layoutNodes.get(targetId);
+    if (!target) continue;
+    const allClear = edges.every((e) => {
+      const from = layoutNodes.get(e.from);
+      if (!from) return false;
+      const path = trunkPath(from, target, nominalX);
+      return pathClear(path, obstaclesFor(e, nodes, frames, frameOfNode));
+    });
+    if (allClear) eligible.push({ target, edges });
+  }
+
+  // Deterministic lane order: topmost target first, then id. Each trunk gets its
+  // own vertical lane so distinct targets' spines no longer overlap.
+  eligible.sort((a, b) => a.target.y - b.target.y || (a.target.id < b.target.id ? -1 : 1));
+  eligible.forEach(({ target, edges }, lane) => {
+    const trunkX = maxRight + GUTTER_GAP + lane * TRUNK_LANE_GAP;
+    const targetPort = rightPort(target);
+    for (const edge of edges) {
+      const from = layoutNodes.get(edge.from)!;
+      const sourcePort = rightPort(from);
+      edge.fromPoint = sourcePort;
+      edge.toPoint = targetPort;
+      edge.waypoints = [
+        { x: trunkX, y: sourcePort.y },
+        { x: trunkX, y: targetPort.y },
+      ];
+      edge.trunkId = target.id;
+    }
+  });
+}
+
+/** The right-side trunk polyline for one source→target edge at column `x`. */
+function trunkPath(from: LayoutNode, target: LayoutNode, x: number): Point[] {
+  const sourcePort = rightPort(from);
+  const targetPort = rightPort(target);
+  return [sourcePort, { x, y: sourcePort.y }, { x, y: targetPort.y }, targetPort];
+}
+
+/** A `routeGroupedEdges` gutter route: two waypoints forming a vertical corridor. */
+function isVerticalGutterRoute(edge: LayoutEdge): boolean {
+  return (
+    edge.waypoints !== undefined &&
+    edge.waypoints.length === 2 &&
+    edge.waypoints[0].x === edge.waypoints[1].x
+  );
 }
 
 /**

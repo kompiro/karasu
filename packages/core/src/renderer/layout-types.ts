@@ -83,6 +83,15 @@ export interface LayoutEdge {
    * observation). See docs/design/system-view-grouping.md § "P2c 実装設計".
    */
   groupBackward?: boolean;
+  /**
+   * Set by the aggregation-trunk pass (`aggregateGroupTrunks`, #1859 P2c-B) to
+   * the shared target's id when this edge is merged onto a target's trunk spine
+   * with ≥ 1 other edge. Edges sharing a `trunkId` run down one vertical lane
+   * and enter the target once; the elbow (`waypoints[0]`) where each stub meets
+   * the spine is the merge point P2c-C marks with a junction dot. Edge identity
+   * is preserved (the line is still its own `LayoutEdge`).
+   */
+  trunkId?: string;
 }
 
 export interface ContainerRect {

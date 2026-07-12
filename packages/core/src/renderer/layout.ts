@@ -16,7 +16,7 @@ import {
   wrapLayerIntoRows,
 } from "./layer-layout-logics.js";
 import { routeOrthogonalEdges } from "./edge-routing-channels.js";
-import { routeGroupedEdges } from "./edge-routing-groups.js";
+import { routeGroupedEdges, aggregateGroupTrunks } from "./edge-routing-groups.js";
 import { distributePorts } from "./edge-routing-ports.js";
 import { distributeChannelLanes } from "./edge-routing-lanes.js";
 import { markParallelBundles } from "./edge-routing-bundles.js";
@@ -1205,11 +1205,11 @@ export function layout(viewSlice: ViewSlice, options: LayoutOptions = {}): Layou
   // channel router unchanged, so "Group by: none" stays byte-identical.
   // See ADR-20260429-01 and docs/design/system-view-grouping.md § "P2c 実装設計".
   if (groupBands) {
-    routeGroupedEdges(
-      layoutNodes,
-      layoutEdges,
-      containers.filter((c) => c.group),
-    );
+    const groupFrames = containers.filter((c) => c.group);
+    routeGroupedEdges(layoutNodes, layoutEdges, groupFrames);
+    // Merge edges sharing an infra/external target onto one trunk lane per
+    // target so distinct targets' spines no longer overlap (#1859 P2c-B).
+    aggregateGroupTrunks(layoutNodes, layoutEdges, groupFrames);
   } else {
     routeOrthogonalEdges(layoutNodes, layoutEdges);
   }

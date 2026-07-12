@@ -202,3 +202,85 @@ describe("routeGroupedEdges (#1859, P2c-A)", () => {
     expect(totalPenetrations(res)).toBe(0);
   });
 });
+
+// Three single-service teams stacked over a shared infra store (DB) and external
+// service (EXT), so DB and EXT each have two *far* (gutter-routed) incoming
+// edges → each forms an aggregation trunk.
+const TRUNKS = `
+system Shop {
+  service A { label "A" }
+  service B { label "B" }
+  service C { label "C" }
+  database DB { label "DB" }
+  service EXT [external] { label "EXT" }
+  A -> DB "w"
+  B -> DB "w"
+  A -> EXT "call"
+  B -> EXT "call"
+}
+organization Org {
+  team "alpha" { label "Alpha" owns A }
+  team "beta" { label "Beta" owns B }
+  team "gamma" { label "Gamma" owns C }
+}`;
+
+const TRUNKS_OWNER = new Map([
+  ["A", "alpha"],
+  ["B", "beta"],
+  ["C", "gamma"],
+]);
+
+describe("aggregateGroupTrunks (#1859, P2c-B)", () => {
+  it("merges edges to a shared target onto one trunk lane and tags trunkId (AC-2)", () => {
+    const res = layoutOf(TRUNKS, TRUNKS_OWNER, "team");
+    for (const [from, to] of [
+      ["A", "DB"],
+      ["B", "DB"],
+    ] as const) {
+      const e = edge(res, from, to);
+      expect(e.trunkId).toBe("DB");
+      expect(e.waypoints).toHaveLength(2);
+    }
+    // Both DB edges share one vertical spine x and enter the target at one point.
+    const aDb = edge(res, "A", "DB");
+    const bDb = edge(res, "B", "DB");
+    expect(aDb.waypoints![0].x).toBe(bDb.waypoints![0].x); // same trunk lane
+    expect(aDb.toPoint).toEqual(bDb.toPoint); // one shared target entry
+    // The elbow where each stub meets the spine is that edge's merge point.
+    expect(aDb.waypoints![0].y).toBe(aDb.fromPoint.y);
+    expect(bDb.waypoints![0].y).toBe(bDb.fromPoint.y);
+  });
+
+  it("gives distinct shared targets distinct trunk lanes (no spine overlap)", () => {
+    const res = layoutOf(TRUNKS, TRUNKS_OWNER, "team");
+    const dbLane = edge(res, "A", "DB").waypoints![0].x;
+    const extLane = edge(res, "A", "EXT").waypoints![0].x;
+    expect(edge(res, "B", "EXT").trunkId).toBe("EXT");
+    expect(dbLane).not.toBe(extLane);
+  });
+
+  it("keeps penetration == 0 after trunking (AC-1 preserved)", () => {
+    const res = layoutOf(TRUNKS, TRUNKS_OWNER, "team");
+    expect(totalPenetrations(res)).toBe(0);
+  });
+
+  it("does not trunk a target with only one incoming edge", () => {
+    // Only A → DB (single incoming); no trunk should form.
+    const single = `
+system Shop {
+  service A { label "A" }
+  service B { label "B" }
+  service C { label "C" }
+  database DB { label "DB" }
+  A -> DB "w"
+}
+organization Org {
+  team "alpha" { label "Alpha" owns A }
+  team "beta" { label "Beta" owns B }
+  team "gamma" { label "Gamma" owns C }
+}`;
+    const res = layoutOf(single, TRUNKS_OWNER, "team");
+    expect(edge(res, "A", "DB").trunkId).toBeUndefined();
+    expect(totalPenetrations(res)).toBe(0);
+  });
+});
