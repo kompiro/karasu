@@ -267,22 +267,17 @@ function collectEntityLevels(
   const levels: BundledLevel[] = [];
   const styles = resolveStyles(effectiveSystems, sheets, []);
 
+  // Enumerate every domain at any depth (domain under system / service, or a
+  // nested sub-domain) with its full drill path, mirroring how the system view
+  // recurses into any child that has children.
   const domainsWithPath: { domain: KrsNode; path: string[] }[] = [];
+  const walk = (node: KrsNode, path: string[]): void => {
+    const here = [...path, node.id];
+    if (node.kind === "domain") domainsWithPath.push({ domain: node, path: here });
+    for (const child of node.children) walk(child, here);
+  };
   for (const system of effectiveSystems) {
-    for (const child of system.children) {
-      if (child.kind === "domain") {
-        domainsWithPath.push({ domain: child, path: [system.id, child.id] });
-      } else if (child.kind === "service") {
-        for (const grandchild of child.children) {
-          if (grandchild.kind === "domain") {
-            domainsWithPath.push({
-              domain: grandchild,
-              path: [system.id, child.id, grandchild.id],
-            });
-          }
-        }
-      }
-    }
+    for (const child of system.children) walk(child, [system.id]);
   }
 
   for (const { domain, path } of domainsWithPath) {
@@ -293,14 +288,25 @@ function collectEntityLevels(
       ...legendOptions,
       viewScope: legendScopeForLogicalSlice(slice),
     });
-    const { viewBox, innerContent, width, height } = extractSvgParts(svg);
-    // Back to the domain's usecase view.
-    const backButton = renderBackButton(domain.id, "system");
+    const { viewBox, innerContent } = extractSvgParts(svg);
+    // Back target: the domain's usecase view when it exists (the domain has
+    // non-entity children, so extractView emits a #krs-system-<domainId>
+    // level), otherwise the parent drill level (always emitted). This avoids a
+    // dead back-link for entity-only domains.
+    const hasUsecaseView = domain.children.some((c) => c.kind !== "entity");
+    const backTarget = hasUsecaseView
+      ? domain.id
+      : path.length >= 3
+        ? path[path.length - 2]
+        : "root";
+    const backButton = renderBackButton(backTarget, "system");
     const innerSvg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${viewBox}" width="100%" height="100%">${backButton}${innerContent}</svg>`;
     levels.push({
+      // Entity levels do not contribute to the shared canvas dimensions (they
+      // are fragment-only in v1); they scale to fit the bundle viewBox.
       element: `<g id="${anchorId("entity", domain.id)}" class="krs-view">${innerSvg}</g>`,
-      width,
-      height,
+      width: 0,
+      height: 0,
     });
   }
   return levels;
@@ -481,13 +487,10 @@ export function buildAllViewsSvg(
     };
   }
 
-  // Compute SVG dimensions
-  const allLevels = [
-    ...systemLevels,
-    ...entityLevels,
-    ...(deployLevel ? [deployLevel] : []),
-    ...orgLevels,
-  ];
+  // Compute SVG dimensions from the reachable tab views only. Entity views are
+  // fragment-only in v1 (no tab / toggle yet), so they must not inflate the
+  // shared canvas and rescale the system/deploy/org views.
+  const allLevels = [...systemLevels, ...(deployLevel ? [deployLevel] : []), ...orgLevels];
   const maxWidth = Math.max(...allLevels.map((l) => l.width));
   const maxHeight = Math.max(...allLevels.map((l) => l.height));
   const totalWidth = maxWidth;

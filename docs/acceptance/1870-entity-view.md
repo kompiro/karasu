@@ -10,13 +10,14 @@ date: 2026-07-12
 
 Verify that a domain owning `entity` nodes produces a dedicated **entity view**
 in the static all-views bundle — reachable via `#krs-entity-<domainId>` — that
-shows the domain's entities and their relations, with cross-domain relation
-targets rendered as ghost nodes. Entities do **not** leak into the domain's
-usecase (system) view.
+shows the domain's entities and their intra-domain relations. Entities do
+**not** leak into the domain's usecase (system) view, and the entity views do
+**not** rescale the shipped system/deploy/org views.
 
 Scope: this is PR 2a (core slice + static renderer). The interactive
-usecase/entity toggle, share-target sub-mode, and `resource` → entity resolution
-land in follow-up PRs, so there is no in-app toggle to exercise yet.
+usecase/entity toggle, cross-domain ghost entities, share-target sub-mode, and
+`resource` → entity resolution land in follow-up PRs, so there is no in-app
+toggle to exercise and cross-domain relation targets are not surfaced yet.
 
 ## Test Input
 
@@ -28,7 +29,6 @@ system EC {
       entity Order {
         label "Order"
         Order -> LineItem "has"
-        Order -> Customer "placed by"
       }
       entity LineItem { label "Line Item" }
     }
@@ -45,33 +45,22 @@ system EC {
 
 ### Entity view level emitted
 
-> ✅ Automated — `packages/core/src/renderer/drill-down-svg.test.ts` › `buildAllViewsSvg entity views (#1870)` › `emits a per-domain entity view level anchored #krs-entity-<domainId>`
+> ✅ Automated — `packages/core/src/renderer/drill-down-svg.test.ts` › `buildAllViewsSvg entity views (#1870)`
 
 - [ ] `buildAllViewsSvg` output contains a group `id="krs-entity-Ordering"`
-- [ ] It also contains `id="krs-entity-Customers"`
+- [ ] It also contains `id="krs-entity-Customers"` (a domain owning only entities)
 - [ ] A domain with no entities produces **no** `#krs-entity-<domainId>` level
+- [ ] A domain nested below another domain still gets its entity view level
 
 ### Entities and relations in the entity view
 
-> ✅ Automated — `packages/core/src/view/view-extract.test.ts` › `extractEntityView (#1870)` and `packages/core/src/renderer/drill-down-svg.test.ts` › `renders the domain's entities inside its entity view (Order + ghost Customer)`
+> ✅ Automated — `packages/core/src/view/view-extract.test.ts` › `extractEntityView (#1870)`
 
 Open `#krs-entity-Ordering`:
 
 - [ ] `Order` and `LineItem` appear as entity nodes (violet entity styling)
 - [ ] The relation `Order → LineItem "has"` is rendered
 - [ ] `PlaceOrder` (a usecase) does **not** appear — only entities
-
-### Cross-domain relation → ghost
-
-> ✅ Automated — `packages/core/src/view/view-extract.test.ts` › `extractEntityView (#1870)` › `surfaces a cross-domain relation target as a ghost node + edge`
-
-- [ ] `Customer` (owned by the `Customers` domain) appears in the `Ordering`
-      entity view as a **ghost** node carrying the `ghost` tag, rendered muted
-      / dashed
-- [ ] The relation `Order → Customer "placed by"` is rendered
-
-> manual / visual review — the ghost node reads as foreign (dashed, faded) so
-> the domain boundary is visible.
 
 ### Entities excluded from the usecase view
 
@@ -82,8 +71,25 @@ Open the usecase view `#krs-system-Ordering`:
 - [ ] `PlaceOrder` appears
 - [ ] `Order` / `LineItem` entity nodes do **not** appear in the usecase view
 
+### No regression to shipped views
+
+> ✅ Automated — `packages/core/src/renderer/drill-down-svg.test.ts` › `does not change the bundle canvas size vs the same model without entities`
+
+- [ ] Adding entities to a domain does not change the bundle's canvas
+      dimensions (the entity views are fragment-only and do not rescale the
+      system/deploy/org views)
+
+### Back navigation
+
+- [ ] The entity view's Back button targets a level that exists — the domain's
+      usecase view when the domain also has usecases, otherwise its parent drill
+      level — never a dead `#krs-system-<domainId>` for an entity-only domain
+
+> manual / visual review — from `out.svg#krs-entity-Customers` (entity-only
+> domain), Back returns to a real level, not the root.
+
 ### End-to-end render
 
 > manual / visual review — `karasu render entity-view.krs -o out.svg` produces
 > a bundle where navigating to `out.svg#krs-entity-Ordering` shows the entity
-> view with Order, LineItem, and the ghost Customer.
+> view with Order and LineItem.

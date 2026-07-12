@@ -275,13 +275,6 @@ store {
   border-style: dashed;
 }
 
-/* Ghost entity: a relation target owned by another domain, shown muted so the
-   domain boundary is visible in the entity view. */
-entity[ghost] {
-  border-style: dashed;
-  opacity: 0.6;
-}
-
 /* ── アノテーション ── */
 /* __ANNOTATION_RULES__ */
 
@@ -539,13 +532,6 @@ store {
 [external] {
   background-color: #F3F4F6;
   border-style: dashed;
-}
-
-/* Ghost entity: a relation target owned by another domain, shown muted so the
-   domain boundary is visible in the entity view. */
-entity[ghost] {
-  border-style: dashed;
-  opacity: 0.6;
 }
 
 /* ── アノテーション ── */

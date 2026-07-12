@@ -833,23 +833,37 @@ system EC {
       const systems = parseSystem(KRS);
       const slice = extractEntityView(systems, ["EC", "OrderService", "Ordering"]);
       expect(slice.containerNode?.id).toBe("Ordering");
-      const localIds = slice.childNodes.filter((n) => !n.tags.includes("ghost")).map((n) => n.id);
-      expect(localIds).toContain("Order");
-      expect(localIds).toContain("LineItem");
+      const ids = slice.childNodes.map((n) => n.id);
+      expect(ids).toContain("Order");
+      expect(ids).toContain("LineItem");
       // usecases are not entities — excluded
-      expect(slice.childNodes.map((n) => n.id)).not.toContain("PlaceOrder");
+      expect(ids).not.toContain("PlaceOrder");
       const edgeKeys = slice.childEdges.map((e) => `${e.from}->${e.to}`);
       expect(edgeKeys).toContain("Order->LineItem");
     });
 
-    it("surfaces a cross-domain relation target as a ghost node + edge", () => {
+    it("drops cross-domain relations in v1 (ghost surfacing lands with the toggle)", () => {
       const systems = parseSystem(KRS);
       const slice = extractEntityView(systems, ["EC", "OrderService", "Ordering"]);
-      const ghost = slice.childNodes.find((n) => n.id === "Customer");
-      expect(ghost).toBeDefined();
-      expect(ghost!.tags).toContain("ghost");
+      // The Customer entity lives in another domain — not pulled into this view.
+      expect(slice.childNodes.map((n) => n.id)).not.toContain("Customer");
       const edgeKeys = slice.childEdges.map((e) => `${e.from}->${e.to}`);
-      expect(edgeKeys).toContain("Order->Customer");
+      expect(edgeKeys).not.toContain("Order->Customer");
+    });
+
+    it("resolves a domain nested below a service→domain path (deep nesting)", () => {
+      const systems = parseSystem(`
+system EC {
+  domain Sales {
+    domain Ordering {
+      entity Order {}
+    }
+  }
+}
+`);
+      const slice = extractEntityView(systems, ["EC", "Sales", "Ordering"]);
+      expect(slice.containerNode?.id).toBe("Ordering");
+      expect(slice.childNodes.map((n) => n.id)).toContain("Order");
     });
 
     it("returns an empty slice for a non-domain path", () => {

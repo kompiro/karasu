@@ -572,15 +572,26 @@ system EC {
     expect(svg).toContain(`id="${anchorId("entity", "Customers")}"`);
   });
 
-  it("renders the domain's entities inside its entity view (Order + ghost Customer)", () => {
+  it("renders the domain's entities inside its entity view", () => {
     const krsFile = Parser.parse(ENTITY_KRS).value;
     const { svg } = buildAllViewsSvg(krsFile);
-    // The Ordering entity view carries the local Order entity and the ghost
-    // Customer (relation target owned by another domain).
     const start = svg.indexOf(`id="${anchorId("entity", "Ordering")}"`);
     const segment = svg.slice(start, start + 4000);
     expect(segment).toContain('data-node-id="Order"');
-    expect(segment).toContain('data-node-id="Customer"');
+  });
+
+  it("emits an entity view for a domain nested below another domain (deep nesting)", () => {
+    const krsFile = Parser.parse(`
+system EC {
+  domain Sales {
+    domain Ordering {
+      entity Order {}
+    }
+  }
+}
+`).value;
+    const { svg } = buildAllViewsSvg(krsFile);
+    expect(svg).toContain(`id="${anchorId("entity", "Ordering")}"`);
   });
 
   it("does not emit an entity view for a domain with no entities", () => {
@@ -595,6 +606,42 @@ system EC {
 `).value;
     const { svg } = buildAllViewsSvg(krsFile);
     expect(svg).not.toContain(`id="${anchorId("entity", "D")}"`);
+  });
+
+  it("does not change the bundle canvas size vs the same model without entities", () => {
+    // Entity views are fragment-only in v1 and must not rescale shipped views.
+    // The two models share an identical usecase/system view (entities are
+    // excluded from it), so only the entity levels differ.
+    const withEntities = Parser.parse(`
+system EC {
+  service OrderService {
+    domain Ordering {
+      usecase PlaceOrder {}
+      entity Order {
+        Order -> LineItem "has"
+      }
+      entity LineItem {}
+    }
+  }
+}
+`).value;
+    const withoutEntities = Parser.parse(`
+system EC {
+  service OrderService {
+    domain Ordering {
+      usecase PlaceOrder {}
+    }
+  }
+}
+`).value;
+    const dims = (svg: string) =>
+      svg
+        .match(/viewBox="0 0 (\d+) (\d+)"/)
+        ?.slice(1, 3)
+        .join("x");
+    expect(dims(buildAllViewsSvg(withEntities).svg)).toBe(
+      dims(buildAllViewsSvg(withoutEntities).svg),
+    );
   });
 });
 
