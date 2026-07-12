@@ -275,7 +275,10 @@ function collectEntityLevels(
       } else if (child.kind === "service") {
         for (const grandchild of child.children) {
           if (grandchild.kind === "domain") {
-            domainsWithPath.push({ domain: grandchild, path: [system.id, child.id, grandchild.id] });
+            domainsWithPath.push({
+              domain: grandchild,
+              path: [system.id, child.id, grandchild.id],
+            });
           }
         }
       }
