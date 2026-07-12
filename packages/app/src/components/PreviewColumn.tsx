@@ -292,15 +292,13 @@ export function PreviewColumn() {
         {activeView === "system" && view.groupByAvailable && (view.groupIds?.length ?? 0) > 0 && (
           <Button
             variant="actionable"
-            aria-pressed={view.allGroupsCollapsed}
+            aria-pressed={view.allCollapsed}
             onClick={() => view.onCollapseAllToggle?.()}
             aria-label={
-              view.allGroupsCollapsed
-                ? t("preview.groupBy.expandAll")
-                : t("preview.groupBy.collapseAll")
+              view.allCollapsed ? t("preview.groupBy.expandAll") : t("preview.groupBy.collapseAll")
             }
           >
-            {view.allGroupsCollapsed
+            {view.allCollapsed
               ? `⊕ ${t("preview.groupBy.expandAll")}`
               : `⊖ ${t("preview.groupBy.collapseAll")}`}
           </Button>

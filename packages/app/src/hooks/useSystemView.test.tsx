@@ -142,14 +142,14 @@ describe("useSystemView", () => {
 
     // Ungrouped: no boundary frames, so no group ids.
     expect(result.current.groupIds).toEqual([]);
-    expect(result.current.allGroupsCollapsed).toBe(false);
+    expect(result.current.allCollapsed).toBe(false);
 
     act(() => result.current.setGroupBy("team"));
     await act(() => vi.advanceTimersByTimeAsync(300));
 
     expect([...result.current.groupIds].sort()).toEqual(["catalog", "payments"]);
     // Nothing collapsed yet.
-    expect(result.current.allGroupsCollapsed).toBe(false);
+    expect(result.current.allCollapsed).toBe(false);
     vi.useRealTimers();
   });
 
@@ -167,7 +167,7 @@ describe("useSystemView", () => {
     // Collapse all → every team folds to its stub (group-DAG view).
     act(() => result.current.onCollapseAllToggle());
     await act(() => vi.advanceTimersByTimeAsync(300));
-    expect(result.current.allGroupsCollapsed).toBe(true);
+    expect(result.current.allCollapsed).toBe(true);
     expect(result.current.svg).toContain('data-node-id="__group_collapsed_payments__"');
     expect(result.current.svg).toContain('data-node-id="__group_collapsed_catalog__"');
     expect(result.current.svg).not.toContain('data-node-id="Billing"');
@@ -175,9 +175,52 @@ describe("useSystemView", () => {
     // Toggle again → expand all, service cards return.
     act(() => result.current.onCollapseAllToggle());
     await act(() => vi.advanceTimersByTimeAsync(300));
-    expect(result.current.allGroupsCollapsed).toBe(false);
+    expect(result.current.allCollapsed).toBe(false);
     expect(result.current.svg).toContain('data-node-id="Billing"');
     expect(result.current.svg).not.toContain('data-node-id="__group_collapsed_payments__"');
+    vi.useRealTimers();
+  });
+
+  it("collapse-all folds external/infra categories too, not just team frames (#1872)", async () => {
+    // "Collapse all" spans both collapse axes so its label is honest: team
+    // frames (#1858) AND the external/infra category bands (#1821). The two
+    // per-axis states stay separate; the bulk toggle drives both.
+    vi.useFakeTimers();
+    const SOURCE_TEAMS_AND_CATEGORIES = `system Shop {
+  service Billing { label "Billing" }
+  service ExtApi [external] { label "Ext API" }
+  database ShopDB { table Orders { label "Orders" } }
+}
+organization Org {
+  team "payments" { owns Billing }
+}`;
+    const fs = makeFs(SOURCE_TEAMS_AND_CATEGORIES);
+    const { result } = renderHook(() => useSystemView(ENTRY, fs, []));
+    await act(() => vi.advanceTimersByTimeAsync(300));
+    act(() => result.current.setGroupBy("team"));
+    await act(() => vi.advanceTimersByTimeAsync(300));
+    // A team frame plus both category bands are present and expanded.
+    expect(result.current.groupIds).toEqual(["payments"]);
+    expect(result.current.svg).toContain('data-collapse-category="external"');
+    expect(result.current.svg).toContain('data-collapse-category="infra"');
+    expect(result.current.collapsedCategories.size).toBe(0);
+
+    // Collapse all → the team AND both categories fold; the toggle flips only
+    // when every collapsible thing is folded.
+    act(() => result.current.onCollapseAllToggle());
+    await act(() => vi.advanceTimersByTimeAsync(300));
+    expect(result.current.allCollapsed).toBe(true);
+    expect([...result.current.collapsedCategories].sort()).toEqual(["external", "infra"]);
+    expect(result.current.svg).toContain('data-node-id="__group_collapsed_payments__"');
+    // Category members are dropped when their band is collapsed (#1821).
+    expect(result.current.svg).not.toContain('data-node-id="ExtApi"');
+
+    // Expand all → both axes reopen.
+    act(() => result.current.onCollapseAllToggle());
+    await act(() => vi.advanceTimersByTimeAsync(300));
+    expect(result.current.allCollapsed).toBe(false);
+    expect(result.current.collapsedCategories.size).toBe(0);
+    expect(result.current.svg).toContain('data-node-id="ExtApi"');
     vi.useRealTimers();
   });
 
@@ -185,7 +228,7 @@ describe("useSystemView", () => {
     // The renderer escapes `data-collapse-group` values; a team id with `&`
     // (e.g. "R&D") is stamped as `R&amp;D`. `groupIds` must decode it back so
     // collapse-all pushes the real id the core folds on — otherwise the
-    // group is silently never collapsed and `allGroupsCollapsed` never flips.
+    // group is silently never collapsed and `allCollapsed` never flips.
     vi.useFakeTimers();
     const SOURCE_AMP_TEAM = `system Shop {
   service Billing { label "Billing" }
@@ -207,7 +250,7 @@ organization Org {
     act(() => result.current.onCollapseAllToggle());
     await act(() => vi.advanceTimersByTimeAsync(300));
     // Every team — including "R&D" — is folded, so the toggle flips.
-    expect(result.current.allGroupsCollapsed).toBe(true);
+    expect(result.current.allCollapsed).toBe(true);
     expect(result.current.svg).toContain('data-node-id="__group_collapsed_R&amp;D__"');
     expect(result.current.svg).not.toContain('data-node-id="Billing"');
     vi.useRealTimers();

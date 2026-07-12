@@ -137,6 +137,23 @@ function extractGroupIds(svg: string): string[] {
   return [...ids];
 }
 
+/**
+ * The collapsible external/infra categories present in the rendered SVG, read
+ * from the `data-collapse-category` attributes (`renderCategoryControls`). This
+ * is the orthogonal category-collapse axis (#1821) — separate state / per-layer
+ * controls — but the bulk "Collapse all" convenience spans both axes so its
+ * label is honest ("all" = every collapsible thing in the current view). Only
+ * the two known category ids are valid targets; category ids never carry
+ * XML-special characters, so no decode is needed.
+ */
+function extractCategoryIds(svg: string): CategoryId[] {
+  const ids = new Set<CategoryId>();
+  for (const m of svg.matchAll(/data-collapse-category="([^"]+)"/g)) {
+    if (m[1] === "external" || m[1] === "infra") ids.add(m[1]);
+  }
+  return [...ids];
+}
+
 export function useSystemView(
   entryPath: string | null,
   fs: FileSystemProvider | null,
@@ -154,9 +171,16 @@ export function useSystemView(
   toggleGroup: (groupId: string) => void;
   /** Ids of every collapsible boundary frame in the current render (#1872). */
   groupIds: string[];
-  /** True when at least one frame exists and all are collapsed (#1872). */
-  allGroupsCollapsed: boolean;
-  /** Collapse every frame if any is open, else expand all (#1872). */
+  /**
+   * True when everything collapsible in the current view — every team frame
+   * AND every external/infra category band — is collapsed (#1872). Drives the
+   * bulk toggle's Collapse-all ⇄ Expand-all state.
+   */
+  allCollapsed: boolean;
+  /**
+   * Collapse everything (team frames + external/infra categories) when anything
+   * is open, else expand everything (#1872).
+   */
   onCollapseAllToggle: () => void;
 } {
   const emptyStateLabels = useEmptyStateLabels();
@@ -321,14 +345,28 @@ export function useSystemView(
       groupsKey,
     ],
   });
-  // Bulk collapse (#1872). `groupIds` comes from the rendered SVG, so it is
-  // axis-agnostic and always matches the frames actually on screen. A single
-  // toggle: collapse every frame when any is open, else expand all.
+  // Bulk collapse (#1872). Both id lists come from the rendered SVG, so they are
+  // axis-agnostic and always match what is actually on screen. "Collapse all"
+  // spans both collapse axes — team frames (#1858) and external/infra categories
+  // (#1821) — so its label ("all") is honest; the per-axis state / controls stay
+  // orthogonal (ADR-20260711-03 §3). A single toggle: collapse everything when
+  // anything is open, else expand everything.
   const groupIds = useMemo(() => extractGroupIds(result.svg), [result.svg]);
-  const allGroupsCollapsed = groupIds.length > 0 && groupIds.every((id) => collapsedGroups.has(id));
+  const categoryIds = useMemo(() => extractCategoryIds(result.svg), [result.svg]);
+  const anyCollapsible = groupIds.length > 0 || categoryIds.length > 0;
+  const allCollapsed =
+    anyCollapsible &&
+    groupIds.every((id) => collapsedGroups.has(id)) &&
+    categoryIds.every((c) => collapsedCategories.has(c));
   const onCollapseAllToggle = useCallback(() => {
-    setCollapsedGroups(allGroupsCollapsed ? new Set() : new Set(groupIds));
-  }, [allGroupsCollapsed, groupIds]);
+    if (allCollapsed) {
+      setCollapsedGroups(new Set());
+      setCollapsedCategories(new Set());
+    } else {
+      setCollapsedGroups(new Set(groupIds));
+      setCollapsedCategories(new Set(categoryIds));
+    }
+  }, [allCollapsed, groupIds, categoryIds]);
 
   return {
     ...result,
@@ -338,7 +376,7 @@ export function useSystemView(
     setGroupBy,
     toggleGroup,
     groupIds,
-    allGroupsCollapsed,
+    allCollapsed,
     onCollapseAllToggle,
   };
 }

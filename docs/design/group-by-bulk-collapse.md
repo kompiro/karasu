@@ -158,32 +158,34 @@ const GROUP_BY_OPTIONS: { value: GroupByMode; labelKey: MessageKey }[] = [
 
 ## 現時点の方針
 
-**#1872 では (A1) + (B1) を実装する。(B2) / (B3) は「軸を実際に増やす」P2b と同時に支払う**（本 doc に手順を残し、繰り越す）。
+**#1872 では (A1) + (B1) + (C) を実装する。(B2) / (B3) は「軸を実際に増やす」P2b と同時に支払う**（本 doc に手順を残し、繰り越す）。
 
-- **bulk collapse は `data-collapse-group` 由来の `groupIds` で駆動する（A1 + B1）** — #1872 で実装。`useSystemView` が `svg` から `groupIds: string[]` を導出し、`allGroupsCollapsed`（`groupIds.length > 0 && 全 id が collapsedGroups に含まれる`）と `onCollapseAllToggle()`（全畳み ⇄ 全開き）を公開する。UI の表示・対象判定は `groupBy === "team"` を**参照しない**。これで P2b 軸を足しても bulk collapse は無改修で有効になる — **拡張耐性の本体はここ**であり、A1/B1 だけで「軸が増えても bulk collapse が壊れない」は達成される。
-- **(B2) off センチネル基準への反転 / (B3) セレクタの配列化は P2b に繰り越す**。理由: どちらも「2 つ目の軸が実在してはじめて意味を持つ」防御であり、team 軸だけの現時点では機能差を生まない。#1872 の diff を最小に保ち、P2b で `GroupByMode` に軸を足す PR がこの 2 箇所を必ず通るようにする（下記「P2b への申し送り」）。ただし **silent fallback が存在する事実**を見失わないよう、#1872 では `useSystemView.ts` の該当行に **1 行のコメント**（「軸追加時は `none` 以外を素通しにし、core union を拡張すること。B2/B3 は本 doc 参照」）だけ残す。
+- **bulk collapse は `data-collapse-group` 由来の `groupIds` で駆動する（A1 + B1）** — #1872 で実装。`useSystemView` が `svg` から `groupIds: string[]` を導出し、`allCollapsed` と `onCollapseAllToggle()`（全畳み ⇄ 全開き）を公開する。UI の表示・対象判定は `groupBy === "team"` を**参照しない**。これで P2b 軸を足しても bulk collapse は無改修で有効になる — **拡張耐性の本体はここ**であり、A1/B1 だけで「軸が増えても bulk collapse が壊れない」は達成される。
+- **(C) label 正直性 — bulk collapse は 2 つの折り畳み軸をまたぐ**。ボタンのラベルは「Collapse all / Expand all」であり、ユーザーには team グループか external/infra カテゴリかを区別する情報がない。ラベルが「all」を名乗る以上、**ビュー内で畳めるものすべて**（team フレーム #1858 + external/infra カテゴリ帯 #1821）を対象にしないとラベルと挙動がずれる（レビュー指摘）。したがって `onCollapseAllToggle` は `collapsedGroups`（全 `groupIds`）と `collapsedCategories`（全 `data-collapse-category` = external/infra）を**両方**セットし、`allCollapsed` は両軸が畳まれたときだけ true にする。**per-axis の状態・個別 ⊖/⊕ コントロールは従来どおり直交**（ADR-20260711-03 §3）で、束ねるのは bulk トグル 1 つだけ — ADR §3 の「機構は直交」は保たれ、便宜操作だけが両軸を横断する。カテゴリ id も SVG（`data-collapse-category`）由来なので軸非依存性は保つ。
+- **(B2) off センチネル基準への反転 / (B3) セレクタの配列化は P2b に繰り越す**。理由: どちらも「2 つ目の Group-by 軸が実在してはじめて意味を持つ」防御であり、team 軸だけの現時点では機能差を生まない。#1872 の diff を最小に保ち、P2b で `GroupByMode` に軸を足す PR がこの 2 箇所を必ず通るようにする（下記「P2b への申し送り」）。ただし **silent fallback が存在する事実**を見失わないよう、#1872 では `useSystemView.ts` の該当行に **1 行のコメント**（「軸追加時は `none` 以外を素通しにし、core union を拡張すること。B2/B3 は本 doc 参照」）だけ残す。
 
 軸固有ロジックを最終的に**セレクタ 1 箇所に閉じ込め**、それ以外（core への受け渡し・折り畳み machinery・bulk 操作）を**軸非依存 or off センチネル基準**にする、というのが本 doc の到達点。これは「新しい軸 = `GroupByMode` に 1 メンバー追加 + セレクタ配列に 1 行 + core union 拡張」に作業を収斂させ、TPL-20260510-03 の失敗モード（追加漏れが silent になる）を構造的に避ける。#1872 はそのうち「bulk collapse を軸非依存にする」部分を先行実装する。
 
 ### 実装の指針（#1872 でやること）
 
 1. **`useSystemView.ts`**:
-   - `svg` から `groupIds: string[]` を `useMemo`（`/data-collapse-group="([^"]+)"/g` を走査、重複排除）。
-   - `allGroupsCollapsed = groupIds.length > 0 && groupIds.every((id) => collapsedGroups.has(id))`。
-   - `onCollapseAllToggle = useCallback(() => setCollapsedGroups(allGroupsCollapsed ? new Set() : new Set(groupIds)), [allGroupsCollapsed, groupIds])`。
-   - 返り値に `groupIds` / `allGroupsCollapsed` / `onCollapseAllToggle` を追加。
+   - `svg` から `groupIds: string[]` を `useMemo`（`/data-collapse-group="([^"]+)"/g` を走査、重複排除）。属性値は renderer が XML エスケープするので raw id に **decode**（`&amp;`/`&lt;`/`&gt;`/`&quot;` を戻す。`R&D` 対策）。
+   - `categoryIds: CategoryId[]` を `data-collapse-category` から同様に導出（external/infra のみ、特殊文字なしなので decode 不要）— (C) 用。
+   - `allCollapsed = (groupIds.length>0 || categoryIds.length>0) && 全 groupIds ∈ collapsedGroups && 全 categoryIds ∈ collapsedCategories`。
+   - `onCollapseAllToggle`: `allCollapsed` なら両 set を空に、そうでなければ `collapsedGroups=全 groupIds` / `collapsedCategories=全 categoryIds` をセット。
+   - 返り値に `groupIds` / `allCollapsed` / `onCollapseAllToggle` を追加。
    - option 受け渡し行（`groupBy === "team" ? … : undefined`）には **申し送りコメントのみ**追加（反転自体は B2 = P2b）。
 2. **配線**（`onGroupByChange` と同じ経路で 3 フィールドを貫通）: `useAppViews`（`SystemViewBundle`）→ `AppShell` system arg → `usePreviewContextValue`（param 型 + `systemView` mapping + memo deps）→ `preview-context.tsx`（`SystemPreviewData`）→ `active-view-data.ts`（`ActiveViewData` + system case）。
-3. **`PreviewColumn.tsx`**: セレクタ直後に shadcn `Button`（`variant="actionable"`, `aria-pressed={allGroupsCollapsed}`, icon+text）を追加。表示条件 `activeView === "system" && view.groupByAvailable && (view.groupIds?.length ?? 0) > 0`。ラベルは `allGroupsCollapsed ? "⊕ Expand all" : "⊖ Collapse all"`。**`<option>` の手書き列挙はこの PR では触らない**（配列化 = B3 = P2b）。
+3. **`PreviewColumn.tsx`**: セレクタ直後に shadcn `Button`（`variant="actionable"`, `aria-pressed={allCollapsed}`, icon+text）を追加。表示条件 `activeView === "system" && view.groupByAvailable && (view.groupIds?.length ?? 0) > 0`。ラベルは `allCollapsed ? "⊕ Expand all" : "⊖ Collapse all"`。**`<option>` の手書き列挙はこの PR では触らない**（配列化 = B3 = P2b）。
 4. **i18n**（`packages/i18n` en/ja/types）: `preview.groupBy.collapseAll` / `preview.groupBy.expandAll`。
-5. **docs/tools**（TPL-20260623-01）: toolbar action の追加なので `docs/tools/app.md` + `app.ja.md` に Collapse all / Expand all を記載する。Group-by セレクタ自体が未記載なら同 PR で最小の説明を backfill する。
+5. **docs/tools**（TPL-20260623-01）: toolbar action の追加なので `docs/tools/app.md` + `app.ja.md` に Collapse all / Expand all を記載する（team フレーム + external/infra を畳む旨も明記）。Group-by セレクタ自体が未記載なら同 PR で最小の説明を backfill する。
 6. **テスト**:
-   - `useSystemView.test.tsx`: `setGroupBy("team")` 後に `groupIds` が SVG から埋まる / `onCollapseAllToggle` で全畳み → 再度で全開き。
+   - `useSystemView.test.tsx`: `setGroupBy("team")` 後に `groupIds` が SVG から埋まる / `onCollapseAllToggle` で全畳み → 再度で全開き / **external/infra カテゴリも畳まれる**（(C) 用）/ `R&D` の escape decode 回帰。
    - `PreviewColumn.test.tsx`: team 軸 + フレーム有りのときだけ表示 / ラベルと `aria-pressed` が状態で反転 / クリックでハンドラ発火。
 7. AT: `docs/acceptance/1872-group-collapse-all.md`。TC:
    - `index.krs`（org モデル）を開き Group by → Team。
-   - **Collapse all** 1 クリックで全チームが stub に畳まれ group DAG ビューになる。
-   - **Expand all** で全展開に戻る。
+   - **Collapse all** 1 クリックで全チーム stub + external/infra 帯が畳まれ俯瞰ビューになる。
+   - **Expand all** で両軸とも展開に戻る。
 8. ADR 昇格: 実装完了後、本 doc は **P2b の防御（B2/B3）を未実装で保持する**ため、`docs/adr/` へ全面昇格はしない。bulk collapse（A1/B1）は ADR 決定 4 の実装なので **ADR-20260711-03 への軽い追記**で足り、本 doc は B2/B3 を抱えたまま P2b まで残す（親 doc の P2b/P2c と同じ「部分昇格」運用）。
 
 ### P2b への申し送り（軸を実際に増やす PR がやること）

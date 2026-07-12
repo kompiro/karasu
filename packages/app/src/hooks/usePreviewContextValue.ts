@@ -38,7 +38,7 @@ interface UsePreviewContextValueArgs {
     setGroupBy: (mode: GroupByMode) => void;
     groupByAvailable: boolean;
     groupIds: string[];
-    allGroupsCollapsed: boolean;
+    allCollapsed: boolean;
     onCollapseAllToggle: () => void;
   };
   deploy: {
@@ -151,7 +151,7 @@ export function usePreviewContextValue(args: UsePreviewContextValueArgs): Previe
         onGroupByChange: system.setGroupBy,
         groupByAvailable: system.groupByAvailable,
         groupIds: system.groupIds,
-        allGroupsCollapsed: system.allGroupsCollapsed,
+        allCollapsed: system.allCollapsed,
         onCollapseAllToggle: system.onCollapseAllToggle,
         highlightedNodeId,
         onClearHighlight: nav.clearHighlight,
@@ -230,7 +230,7 @@ export function usePreviewContextValue(args: UsePreviewContextValueArgs): Previe
       system.setGroupBy,
       system.groupByAvailable,
       system.groupIds,
-      system.allGroupsCollapsed,
+      system.allCollapsed,
       system.onCollapseAllToggle,
       org.orgTreeExportSvg,
       viewPath,

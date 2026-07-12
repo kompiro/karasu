@@ -283,7 +283,7 @@ export function AppShell({
       setGroupBy: views.system.setGroupBy,
       groupByAvailable: views.system.groupByAvailable,
       groupIds: views.system.groupIds,
-      allGroupsCollapsed: views.system.allGroupsCollapsed,
+      allCollapsed: views.system.allCollapsed,
       onCollapseAllToggle: views.system.onCollapseAllToggle,
     },
     deploy: {

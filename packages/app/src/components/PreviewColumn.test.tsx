@@ -428,7 +428,7 @@ describe("PreviewColumn", () => {
           ...makeProps().systemView,
           groupBy: "team" as const,
           groupIds: ["payments", "catalog"],
-          allGroupsCollapsed: false,
+          allCollapsed: false,
           onCollapseAllToggle: vi.fn<() => void>(),
           ...over,
         },
@@ -447,14 +447,14 @@ describe("PreviewColumn", () => {
     });
 
     it("shows Collapse all when not all groups are collapsed", () => {
-      const { getByRole } = renderPreview(withGroups({ allGroupsCollapsed: false }));
+      const { getByRole } = renderPreview(withGroups({ allCollapsed: false }));
       const btn = getByRole("button", { name: /Collapse all/ });
       expect(btn.textContent).toContain("⊖ Collapse all");
       expect(btn.getAttribute("aria-pressed")).toBe("false");
     });
 
     it("shows Expand all with pressed state when all groups are collapsed", () => {
-      const { getByRole } = renderPreview(withGroups({ allGroupsCollapsed: true }));
+      const { getByRole } = renderPreview(withGroups({ allCollapsed: true }));
       const btn = getByRole("button", { name: /Expand all/ });
       expect(btn.textContent).toContain("⊕ Expand all");
       expect(btn.getAttribute("aria-pressed")).toBe("true");

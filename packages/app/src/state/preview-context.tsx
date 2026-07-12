@@ -39,9 +39,9 @@ export interface SystemViewData {
   groupByAvailable?: boolean;
   /** Ids of every collapsible boundary frame in the current render (#1872). */
   groupIds?: string[];
-  /** True when at least one frame exists and all are collapsed (#1872). */
-  allGroupsCollapsed?: boolean;
-  /** Collapse every frame if any is open, else expand all (#1872). */
+  /** True when every team frame AND external/infra category is collapsed (#1872). */
+  allCollapsed?: boolean;
+  /** Collapse everything (frames + categories) if anything is open, else expand all (#1872). */
   onCollapseAllToggle?: () => void;
   highlightedNodeId?: string | null;
   onClearHighlight?: () => void;

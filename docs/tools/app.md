@@ -119,8 +119,9 @@ The preview toolbar offers:
 - **Group by** (System view, when the model has an `organization` block) —
   choose **Team** to wrap each owning team's services in a collapsible boundary
   frame. Each frame has a ⊖/⊕ toggle; a **Collapse all / Expand all** button
-  folds or unfolds every frame at once — collapsing all reaches the
-  team-dependency overview ("collapse by default, open what you need").
+  folds or unfolds everything collapsible in the view at once — every team frame
+  **and** the external / infra layer bands — reaching the team-dependency
+  overview ("collapse by default, open what you need").
 - **Show All Layers** — render every drill-down level stacked together.
 - **Export** — save the current view as **SVG**; the split-button menu also
   exports the drill-down tree, a single SVG bundling **all** views, or
