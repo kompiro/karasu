@@ -2,6 +2,7 @@
 
 - **日付**: 2026-07-13
 - **ステータス**: 検討中
+- **PR**: [#1914](https://github.com/kompiro/karasu/pull/1914)
 - **関連**:
   - 引き金 Issue: [#1895](https://github.com/kompiro/karasu/issues/1895)
   - 関連 Issue: AI authoring pillar（[#355](https://github.com/kompiro/karasu/issues/355) / [#356](https://github.com/kompiro/karasu/issues/356) `translate`, [#362](https://github.com/kompiro/karasu/issues/362)–[#364](https://github.com/kompiro/karasu/issues/364) Chat UI）、karasu-nest [#1783](https://github.com/kompiro/karasu/issues/1783)、notation watch r2 [#1816](https://github.com/kompiro/karasu/issues/1816)、cookbook [#1818](https://github.com/kompiro/karasu/issues/1818)、comprehension [#1817](https://github.com/kompiro/karasu/issues/1817)、定量検証 [#638](https://github.com/kompiro/karasu/issues/638)
