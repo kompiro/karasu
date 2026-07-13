@@ -46,6 +46,70 @@ const GROUP_FRAME_PAD_TOP = CONTAINER_LABEL_HEIGHT;
 const GROUP_FRAME_PAD_BOTTOM = 16;
 const GROUP_FRAME_TITLE_GAP = GROUP_FRAME_PAD_TOP + GROUP_FRAME_PAD_BOTTOM;
 
+/**
+ * Build one dashed titled boundary frame per team from final node positions and
+ * append them to `out`. Members of a group occupy a contiguous row band
+ * (guaranteed by `assignGroupedLayers`), so the frames are disjoint by
+ * construction. Shared by the single-system focus path and the multi-system
+ * root path (#1884) — both mint the same `__group_<team>__` frame, so the two
+ * grouping paths cannot drift on frame geometry (TPL-20260510-11).
+ */
+function buildGroupFrames(
+  nodes: readonly LayoutNode[],
+  groupOrder: readonly string[],
+  groupIdOf: (id: string) => string | null,
+  out: ContainerRect[],
+): void {
+  for (const groupId of groupOrder) {
+    const members = nodes.filter((n) => groupIdOf(n.id) === groupId);
+    if (members.length === 0) continue;
+    const minX = Math.min(...members.map((n) => n.x));
+    const minY = Math.min(...members.map((n) => n.y));
+    const maxX = Math.max(...members.map((n) => n.x + n.width));
+    const maxY = Math.max(...members.map((n) => n.y + n.height));
+    out.push({
+      id: `__group_${groupId}__`,
+      label: groupId,
+      x: minX - GROUP_FRAME_PAD_X,
+      y: minY - GROUP_FRAME_PAD_TOP,
+      width: maxX - minX + GROUP_FRAME_PAD_X * 2,
+      height: maxY - minY + GROUP_FRAME_PAD_TOP + GROUP_FRAME_PAD_BOTTOM,
+      ghost: false,
+      group: true,
+      groupId,
+    });
+  }
+}
+
+/**
+ * Rewrite collapse-stub ids consistently across a `collapseGroups` result. Used
+ * only in the multi-system path when a spanning team's collapsed stub id would
+ * collide with an identical stub already placed by an earlier system (#1884).
+ * Rewrites node ids, edge endpoints, the `stubGroup` map, the folded diff-state
+ * keys, and composes the endpoint remap so downstream lookups see the qualified
+ * ids. Identity for ids absent from `rename`.
+ */
+function qualifyStubIds(
+  collapsed: ReturnType<typeof collapseGroups>,
+  rename: ReadonlyMap<string, string>,
+): ReturnType<typeof collapseGroups> {
+  const r = (id: string): string => rename.get(id) ?? id;
+  return {
+    nodes: collapsed.nodes.map((n) => (rename.has(n.id) ? { ...n, id: r(n.id) } : n)),
+    edges: collapsed.edges.map((e) =>
+      rename.has(e.from) || rename.has(e.to) ? { ...e, from: r(e.from), to: r(e.to) } : e,
+    ),
+    stubGroup: new Map([...collapsed.stubGroup].map(([k, v]): [string, string] => [r(k), v])),
+    remapEndpoint: (id: string) => r(collapsed.remapEndpoint(id)),
+    foldedEdgeDiffState: new Map(
+      [...collapsed.foldedEdgeDiffState].map(([k, v]): [string, string] => {
+        const i = k.indexOf("->");
+        return i < 0 ? [k, v] : [`${r(k.slice(0, i))}->${r(k.slice(i + 2))}`, v];
+      }),
+    ),
+  };
+}
+
 const ICON_CARD_WIDTH = 160;
 const ICON_CARD_HEIGHT_WITH_DESC = 100;
 const ICON_CARD_HEIGHT_NO_DESC = 56;
@@ -1186,30 +1250,10 @@ export function layout(viewSlice: ViewSlice, options: LayoutOptions = {}): Layou
   containers.reverse();
 
   // Group boundary frames (#1858, P2a): one dashed titled frame enclosing each
-  // team's members. Members of a group occupy a contiguous row band (guaranteed
-  // by `assignGroupedLayers`), so the groups stack vertically and their frames
-  // are disjoint by construction — the overlap the flat layout could not avoid
-  // (design § P1 measurement 1). Built from final node positions.
+  // team's members (design § P1 measurement 1). Built from final node positions
+  // via the shared helper the multi-system path also uses (#1884).
   if (groupBands && ownerIndex) {
-    for (const groupId of groupOrder) {
-      const members = [...layoutNodes.values()].filter((n) => groupIdOf(n.id) === groupId);
-      if (members.length === 0) continue;
-      const minX = Math.min(...members.map((n) => n.x));
-      const minY = Math.min(...members.map((n) => n.y));
-      const maxX = Math.max(...members.map((n) => n.x + n.width));
-      const maxY = Math.max(...members.map((n) => n.y + n.height));
-      containers.push({
-        id: `__group_${groupId}__`,
-        label: groupId,
-        x: minX - GROUP_FRAME_PAD_X,
-        y: minY - GROUP_FRAME_PAD_TOP,
-        width: maxX - minX + GROUP_FRAME_PAD_X * 2,
-        height: maxY - minY + GROUP_FRAME_PAD_TOP + GROUP_FRAME_PAD_BOTTOM,
-        ghost: false,
-        group: true,
-        groupId,
-      });
-    }
+    buildGroupFrames([...layoutNodes.values()], groupOrder, groupIdOf, containers);
   }
 
   // Place ghost nodes
@@ -1382,6 +1426,11 @@ function layoutMultipleSystems(
   // Group-by-team (#1884): diff-state re-keyed onto collapsed-group stub edges,
   // accumulated across systems (empty unless a team collapses in diff mode).
   const foldedEdgeDiffState = new Map<string, string>();
+  // Endpoint id → collapse-stub id, accumulated across systems, so cross-system
+  // edges whose endpoint was folded into a collapsed team re-anchor onto the
+  // stub instead of being dropped (#1884; mirrors the single-system ghost-edge
+  // remap). Identity for un-collapsed endpoints.
+  const crossSystemRemap = new Map<string, string>();
 
   let offsetX = CONTAINER_PADDING;
   const offsetY = CONTAINER_PADDING;
@@ -1412,13 +1461,25 @@ function layoutMultipleSystems(
     let groupOrderS: string[] = [];
     let groupIdOf: (id: string) => string | null = () => null;
     if (groupBy === "team" && ownerIndex && ownerIndex.size > 0) {
-      const collapsed = collapseGroups(
+      let collapsed = collapseGroups(
         rawNodes,
         sys.edges,
         ownerIndex,
         collapsedGroups,
         edgeDiffState,
       );
+      // A team that owns members in ≥2 systems yields the *same*
+      // `__group_collapsed_<team>__` stub id in each system when collapsed; the
+      // later system would overwrite the earlier stub in `allLayoutNodes`,
+      // dropping a node (TPL-20260624-02 totality). System-qualify a stub id
+      // that already exists so each system keeps its own stub (#1884).
+      const rename = new Map<string, string>();
+      for (const stubId of collapsed.stubGroup.keys()) {
+        if (allLayoutNodes.has(stubId)) {
+          rename.set(stubId, `${stubId.replace(/__$/, "")}_${sys.id}__`);
+        }
+      }
+      if (rename.size > 0) collapsed = qualifyStubIds(collapsed, rename);
       const stubGroup = collapsed.stubGroup;
       const gidOf = (id: string): string | null => ownerIndex.get(id) ?? stubGroup.get(id) ?? null;
       const groupedNodes: GroupedNode[] = collapsed.nodes.map((n) => ({
@@ -1442,6 +1503,12 @@ function layoutMultipleSystems(
         groupOrderS = grouped.groupOrder;
         groupIdOf = gidOf;
         for (const [k, v] of collapsed.foldedEdgeDiffState) foldedEdgeDiffState.set(k, v);
+        // Record each folded member → stub so cross-system edges re-anchor onto
+        // the stub instead of dropping (#1884). Skip identity mappings.
+        for (const n of rawNodes) {
+          const mapped = collapsed.remapEndpoint(n.id);
+          if (mapped !== n.id) crossSystemRemap.set(n.id, mapped);
+        }
       }
     }
 
@@ -1635,30 +1702,13 @@ function layoutMultipleSystems(
     }
 
     // Group boundary frames (#1884): one dashed titled frame per team, enclosing
-    // that team's members *within this system's frame* (per-(system, team)). Band
-    // contiguity from `assignGroupedLayers` keeps each team's members in a
-    // contiguous row range, so frames are disjoint. Built from final (offset)
-    // node positions, mirroring the single-system path.
+    // that team's members *within this system's frame* (per-(system, team)),
+    // via the shared helper the single-system path also uses. Built from final
+    // (offset) node positions. A team that spans systems is framed once per
+    // system, so two frames intentionally share the same `__group_<team>__`
+    // container id (app collapse is keyed by team id → collapse-everywhere).
     if (groupBandsS) {
-      for (const groupId of groupOrderS) {
-        const members = [...localNodes.values()].filter((n) => groupIdOf(n.id) === groupId);
-        if (members.length === 0) continue;
-        const minX = Math.min(...members.map((n) => n.x));
-        const minY = Math.min(...members.map((n) => n.y));
-        const maxX = Math.max(...members.map((n) => n.x + n.width));
-        const maxY = Math.max(...members.map((n) => n.y + n.height));
-        allContainers.push({
-          id: `__group_${groupId}__`,
-          label: groupId,
-          x: minX - GROUP_FRAME_PAD_X,
-          y: minY - GROUP_FRAME_PAD_TOP,
-          width: maxX - minX + GROUP_FRAME_PAD_X * 2,
-          height: maxY - minY + GROUP_FRAME_PAD_TOP + GROUP_FRAME_PAD_BOTTOM,
-          ghost: false,
-          group: true,
-          groupId,
-        });
-      }
+      buildGroupFrames([...localNodes.values()], groupOrderS, groupIdOf, allContainers);
     }
 
     // Move [external] services to side columns for this system (#1728). Skipped
@@ -1691,15 +1741,35 @@ function layoutMultipleSystems(
     offsetX += containerRect.width + GHOST_MARGIN * 3;
   }
 
-  // Cross-system edges
+  // Cross-system edges. When a team is collapsed (#1884), an endpoint here may
+  // have been folded into that team's stub — re-anchor onto the stub via
+  // `crossSystemRemap` instead of silently dropping the edge (mirrors the
+  // single-system ghost-edge remap; TPL-20260624-02: a collapsed node's edges
+  // must resolve both endpoints). De-dupe *only* re-targeted edges (one stub can
+  // absorb several), so authored parallel cross-system edges between two
+  // expanded nodes are untouched and the un-collapsed path stays byte-identical.
+  const seenCrossStub = new Set<string>();
   for (const edge of viewSlice.crossSystemEdges) {
-    const fromNode = allLayoutNodes.get(edge.from);
-    const toNode = allLayoutNodes.get(edge.to.slice(edge.to.indexOf(".") + 1));
+    const fromId = crossSystemRemap.get(edge.from) ?? edge.from;
+    const dot = edge.to.indexOf(".");
+    const toService = edge.to.slice(dot + 1);
+    const toServiceRemapped = crossSystemRemap.get(toService) ?? toService;
+    const retargeted = fromId !== edge.from || toServiceRemapped !== toService;
+    const toField =
+      toServiceRemapped !== toService ? edge.to.slice(0, dot + 1) + toServiceRemapped : edge.to;
+    const fromNode = allLayoutNodes.get(fromId);
+    const toNode = allLayoutNodes.get(toServiceRemapped);
     if (!fromNode || !toNode) continue;
+    if (retargeted) {
+      const key = `${fromId}->${toField}`;
+      if (seenCrossStub.has(key)) continue;
+      seenCrossStub.add(key);
+    }
     allEdges.push({
-      from: edge.from,
-      to: edge.to,
-      label: edge.label,
+      from: fromId,
+      to: toField,
+      // A re-targeted edge stands for one-or-more real edges, so drop its label.
+      label: retargeted ? undefined : edge.label,
       fromPoint: {
         x: fromNode.x + fromNode.width,
         y: fromNode.y + fromNode.height / 2,

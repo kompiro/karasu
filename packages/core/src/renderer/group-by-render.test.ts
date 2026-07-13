@@ -261,4 +261,49 @@ organization Org {
     expect(svg.match(/data-node-id="Billing"/g)?.length).toBe(1);
     expect(svg.match(/data-node-id="PaymentService"/g)?.length).toBe(1);
   });
+
+  it("re-anchors a cross-system edge from a collapsed team onto its stub (TPL-20260624-02)", () => {
+    // `Search` (catalog) → `PaymentGateway.PaymentService` is a cross-system
+    // edge. Collapsing catalog folds Search into its stub; the edge must survive,
+    // re-anchored onto the stub — not silently dropped as before the fix.
+    const svg = grouped(MULTI, new Set(["catalog"]));
+    expect(svg).not.toContain('data-node-id="Search"');
+    expect(svg).toContain('data-node-id="__group_collapsed_catalog__"');
+    expect(svg).toContain('data-edge-from="__group_collapsed_catalog__"');
+    expect(svg).toContain('data-edge-to="PaymentGateway.PaymentService"');
+  });
+
+  it("keeps a distinct stub per system when a spanning team is collapsed (totality)", () => {
+    // payments owns Billing (Shop) + PaymentService (PaymentGateway). Collapsing
+    // it must yield one stub *per system* — the second system's stub is
+    // system-qualified so it does not overwrite the first (exactly-once).
+    const spanning = `
+system Shop {
+  service Billing { label "Billing" }
+  service Search { label "Search" }
+  Search -> PaymentGateway.PaymentService "charge"
+}
+
+system PaymentGateway {
+  service PaymentService { label "Payment Service" }
+}
+
+organization Org {
+  team "payments" {
+    label "Payments"
+    owns Billing
+    owns PaymentService
+  }
+}
+`;
+    const svg = grouped(spanning, new Set(["payments"]));
+    // Two distinct stubs, each present exactly once (no overwrite).
+    expect(svg.match(/data-node-id="__group_collapsed_payments__"/g)?.length).toBe(1);
+    expect(svg.match(/data-node-id="__group_collapsed_payments_PaymentGateway__"/g)?.length).toBe(
+      1,
+    );
+    // The folded members are gone (folded into their per-system stub).
+    expect(svg).not.toContain('data-node-id="Billing"');
+    expect(svg).not.toContain('data-node-id="PaymentService"');
+  });
 });

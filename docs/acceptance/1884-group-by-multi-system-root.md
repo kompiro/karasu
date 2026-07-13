@@ -58,7 +58,22 @@ fence する。team が複数 system をまたいで `owns` する場合、各 s
 - [x] `payments` が Shop.Billing と PaymentGateway.PaymentService を `owns` するとき、payments フレームが
       各 system フレーム内に 1 つずつ（計 2 つ、同一ラベル・disjoint）描かれ、両ノードはそれぞれ 1 回配置
 
-### AC-6: 手動（描画の目視確認）
+### AC-6: collapse した team の cross-system edge は stub に再アンカーされる（drop しない）
+
+> ✅ Automated by `packages/core/src/renderer/group-by-render.test.ts` (suite-wide) — "re-anchors a cross-system edge from a collapsed team onto its stub"
+
+- [x] cross-system edge の端点が collapse で stub に畳まれても、edge は drop されず stub に再アンカー
+      されて描かれる（`data-edge-from="__group_collapsed_<team>__"` → cross-system target）— TPL-20260624-02
+- [x] 非 collapse では従来どおり（`crossSystemRemap` 空 → byte-identical、authored parallel edge も温存）
+
+### AC-7: system をまたぐ team を collapse すると system ごとに独立した stub を保つ
+
+> ✅ Automated by `packages/core/src/renderer/group-by-render.test.ts` (suite-wide) — "keeps a distinct stub per system when a spanning team is collapsed"
+
+- [x] 複数 system に owns が跨る team を collapse すると、各 system に 1 つずつ stub が描かれ
+      （後段 system は `__group_collapsed_<team>_<sys>__` に修飾）、上書きで消えない（全域性）
+
+### AC-8: 手動（描画の目視確認）
 
 - [ ] **手動**: app で 2 つ以上の `system` と `organization`/`owns` を持つモデル（cross-system エッジあり）
       を開き、system view の Group by を Team に切替。root view で各 system フレームの内側に team 境界

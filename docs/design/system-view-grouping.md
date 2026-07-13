@@ -516,13 +516,24 @@ system フレームと**重なる**ため TPL-20260624-02 の「全要素ちょ�
 壊す。本 doc の scope 節（「out of scope: … cross-system group」）とも整合しない。よって大幅な
 re-architecture かつ規模・リスクが見合わないとして却下し、per-system フレームを採る。
 
+### 退化ケースの扱い（実装で fence 済み）
+
+- **collapsed かつ cross-system edge を持つ team** — collapse でメンバーが stub に畳まれると、その
+  メンバーを端点に持つ cross-system edge が `layoutMultipleSystems` の `crossSystemEdges` ループで
+  端点解決に失敗して**黙って drop** される。single-system の ghost-edge remap と同様、per-system の
+  collapse remap を全 system 分蓄積した `crossSystemRemap` で端点を stub に再アンカーし、drop を防ぐ
+  （TPL-20260624-02「畳んだノードの edge は両端点を解決」）。再ターゲットされた edge のみ dedup。
+- **collapsed かつ system をまたぐ team** — 各 system が同じ `__group_collapsed_<team>__` stub id を
+  生成し、後段 system の stub が前段を `allLayoutNodes` で上書きして 1 ノードを失う（全域性違反）。
+  既に配置済みの stub id と衝突する場合のみ、その system の stub id を system 名で修飾して
+  （`__group_collapsed_<team>_<sys>__`）各 system が独自 stub を保つ。frame id（`__group_<team>__`）は
+  team 単位で共有のまま（app collapse が team id キーで「全 system 一括 collapse」する意図どおり）。
+
 ### スコープ外（本決定に含めないこと）
 
 - **P2c ルーティング（直交・集約トランク・hop/junction）の multi-system への適用** — multi-system は
   そもそも orthogonal routing を使わず直線エッジ（`computeEdgePoints`）で描いており、本修正も直線の
   ままとする。root view の grouped エッジ磨き込みは必要なら別 Issue。
-- **collapsed かつ system をまたぐ team** — 各 system が同じ `__group_collapsed_<team>__` stub id を
-  生成しうる退化ケース。実運用では稀なため本修正では扱わず、必要になれば別 Issue。
 
 ### ADR 昇格
 
