@@ -22,7 +22,8 @@
 
 | レシピ | 対象 | 内容 |
 |--------|------|------|
-| [LLM でリバースする](reverse-engineering-with-ai.ja.md)（[EN](reverse-engineering-with-ai.md)） | 見慣れないプロジェクトを把握したい人 | `syntax.md` を Claude/ChatGPT に渡す → `.krs` 概要を得る → **Share** ボタンで共有 / `/render` で埋め込み |
+| [記法クックブック](notation-cookbook.ja.md)（[EN](notation-cookbook.md)） | 作者 & オーサリング LLM | worked **idiom**（「X をどう表現するか」）: KV ストア・`[index]`・`[external]`・共有インフラ fan-in・ドメイン越え参照・複数ファイル分割 — `syntax.md` と一緒に渡せる |
+| [LLM でリバースする](reverse-engineering-with-ai.ja.md)（[EN](reverse-engineering-with-ai.md)） | 見慣れないプロジェクトを把握したい人 | `syntax.md`（+ クックブック）を Claude/ChatGPT に渡す → `.krs` 概要を得る → **Share** ボタンで共有 / `/render` で埋め込み |
 | [ADR から karasu 構造へリンクする](adr-permalinks.ja.md)（[EN](adr-permalinks.md)） | ADR で判断を記録する人 | 正は `/s?s=` payload・短縮は任意の別名・trust の trade-off |
 
 ## 章の流れ
