@@ -33,7 +33,10 @@ permissions:
 jobs:
   e2e:
     name: Playwright
-    runs-on: ubuntu-latest
+    # Ubicloud runner pilot (#1890). Swapped from `ubuntu-latest`; `-ubuntu-2404`
+    # matches the image `ubuntu-latest` resolves to. Playwright installs its own
+    # browsers + deps below, so the runner image only needs a standard Ubuntu base.
+    runs-on: ubicloud-standard-4-ubuntu-2404
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
