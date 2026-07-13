@@ -289,6 +289,20 @@ export function PreviewColumn() {
             </select>
           </span>
         )}
+        {activeView === "system" && view.anyCollapsible && (
+          <Button
+            variant="actionable"
+            aria-pressed={view.allCollapsed}
+            onClick={() => view.onCollapseAllToggle?.()}
+            aria-label={
+              view.allCollapsed ? t("preview.groupBy.expandAll") : t("preview.groupBy.collapseAll")
+            }
+          >
+            {view.allCollapsed
+              ? `⊕ ${t("preview.groupBy.expandAll")}`
+              : `⊖ ${t("preview.groupBy.collapseAll")}`}
+          </Button>
+        )}
         {activeView === "org" && (
           <Button
             variant="actionable"

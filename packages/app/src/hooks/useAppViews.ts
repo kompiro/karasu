@@ -77,6 +77,12 @@ interface SystemViewBundle {
   collapsedCategories: ReadonlySet<CategoryId>;
   toggleCategory: (category: CategoryId) => void;
   toggleGroup: (groupId: string) => void;
+  /** Whether anything (a team frame or external/infra band) is collapsible (#1872). */
+  anyCollapsible: boolean;
+  /** True when every team frame AND external/infra category is collapsed (#1872). */
+  allCollapsed: boolean;
+  /** Collapse everything (frames + categories) if anything is open, else expand all (#1872). */
+  onCollapseAllToggle: () => void;
   /** System-view grouping axis and its setter (Issue #1858). */
   groupBy: GroupByMode;
   setGroupBy: (mode: GroupByMode) => void;
@@ -196,6 +202,9 @@ export function useAppViews(args: UseAppViewsArgs): UseAppViewsResult {
     groupBy,
     setGroupBy,
     toggleGroup,
+    anyCollapsible,
+    allCollapsed,
+    onCollapseAllToggle,
     nodeDiff: systemNodeDiff,
   } = useSystemView(
     effEntryPath,
@@ -327,6 +336,9 @@ export function useAppViews(args: UseAppViewsArgs): UseAppViewsResult {
       setGroupBy,
       groupByAvailable: hasOrgDiagram,
       toggleGroup,
+      anyCollapsible,
+      allCollapsed,
+      onCollapseAllToggle,
     },
     deploy: {
       svg: deploySvg,

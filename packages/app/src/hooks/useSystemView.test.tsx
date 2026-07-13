@@ -132,6 +132,170 @@ describe("useSystemView", () => {
     vi.useRealTimers();
   });
 
+  it("exposes group ids from the rendered SVG when grouped by team (#1872)", async () => {
+    // `groupIds` is read from the SVG's `data-collapse-group` frames, so it is
+    // axis-agnostic and matches the frames actually drawn.
+    vi.useFakeTimers();
+    const fs = makeFs(SOURCE_TWO_TEAMS);
+    const { result } = renderHook(() => useSystemView(ENTRY, fs, []));
+    await act(() => vi.advanceTimersByTimeAsync(300));
+
+    // Ungrouped and no categories in this source → nothing collapsible.
+    expect(result.current.groupIds).toEqual([]);
+    expect(result.current.anyCollapsible).toBe(false);
+    expect(result.current.allCollapsed).toBe(false);
+
+    act(() => result.current.setGroupBy("team"));
+    await act(() => vi.advanceTimersByTimeAsync(300));
+
+    expect([...result.current.groupIds].sort()).toEqual(["catalog", "payments"]);
+    expect(result.current.anyCollapsible).toBe(true);
+    // Nothing collapsed yet.
+    expect(result.current.allCollapsed).toBe(false);
+    vi.useRealTimers();
+  });
+
+  it("onCollapseAllToggle folds every team then expands them all (#1872)", async () => {
+    vi.useFakeTimers();
+    const fs = makeFs(SOURCE_TWO_TEAMS);
+    const { result } = renderHook(() => useSystemView(ENTRY, fs, []));
+    await act(() => vi.advanceTimersByTimeAsync(300));
+    act(() => result.current.setGroupBy("team"));
+    await act(() => vi.advanceTimersByTimeAsync(300));
+    // Expanded: owned service cards drawn.
+    expect(result.current.svg).toContain('data-node-id="Billing"');
+    expect(result.current.svg).toContain('data-node-id="Search"');
+
+    // Collapse all → every team folds to its stub (group-DAG view).
+    act(() => result.current.onCollapseAllToggle());
+    await act(() => vi.advanceTimersByTimeAsync(300));
+    expect(result.current.allCollapsed).toBe(true);
+    expect(result.current.svg).toContain('data-node-id="__group_collapsed_payments__"');
+    expect(result.current.svg).toContain('data-node-id="__group_collapsed_catalog__"');
+    expect(result.current.svg).not.toContain('data-node-id="Billing"');
+
+    // Toggle again → expand all, service cards return.
+    act(() => result.current.onCollapseAllToggle());
+    await act(() => vi.advanceTimersByTimeAsync(300));
+    expect(result.current.allCollapsed).toBe(false);
+    expect(result.current.svg).toContain('data-node-id="Billing"');
+    expect(result.current.svg).not.toContain('data-node-id="__group_collapsed_payments__"');
+    vi.useRealTimers();
+  });
+
+  it("collapse-all folds external/infra categories too, not just team frames (#1872)", async () => {
+    // "Collapse all" spans both collapse axes so its label is honest: team
+    // frames (#1858) AND the external/infra category bands (#1821). The two
+    // per-axis states stay separate; the bulk toggle drives both.
+    vi.useFakeTimers();
+    const SOURCE_TEAMS_AND_CATEGORIES = `system Shop {
+  service Billing { label "Billing" }
+  service ExtApi [external] { label "Ext API" }
+  database ShopDB { table Orders { label "Orders" } }
+}
+organization Org {
+  team "payments" { owns Billing }
+}`;
+    const fs = makeFs(SOURCE_TEAMS_AND_CATEGORIES);
+    const { result } = renderHook(() => useSystemView(ENTRY, fs, []));
+    await act(() => vi.advanceTimersByTimeAsync(300));
+    act(() => result.current.setGroupBy("team"));
+    await act(() => vi.advanceTimersByTimeAsync(300));
+    // A team frame plus both category bands are present and expanded.
+    expect(result.current.groupIds).toEqual(["payments"]);
+    expect(result.current.svg).toContain('data-collapse-category="external"');
+    expect(result.current.svg).toContain('data-collapse-category="infra"');
+    expect(result.current.collapsedCategories.size).toBe(0);
+
+    // Collapse all → the team AND both categories fold; the toggle flips only
+    // when every collapsible thing is folded.
+    act(() => result.current.onCollapseAllToggle());
+    await act(() => vi.advanceTimersByTimeAsync(300));
+    expect(result.current.allCollapsed).toBe(true);
+    expect([...result.current.collapsedCategories].sort()).toEqual(["external", "infra"]);
+    expect(result.current.svg).toContain('data-node-id="__group_collapsed_payments__"');
+    // Category members are dropped when their band is collapsed (#1821).
+    expect(result.current.svg).not.toContain('data-node-id="ExtApi"');
+
+    // Expand all → both axes reopen.
+    act(() => result.current.onCollapseAllToggle());
+    await act(() => vi.advanceTimersByTimeAsync(300));
+    expect(result.current.allCollapsed).toBe(false);
+    expect(result.current.collapsedCategories.size).toBe(0);
+    expect(result.current.svg).toContain('data-node-id="ExtApi"');
+    vi.useRealTimers();
+  });
+
+  it("collapse-all works in an un-grouped view with only external/infra categories (#1872)", async () => {
+    // No organization → Group by stays "none" and there are no team frames, but
+    // the external/infra category bands are still collapsible. `anyCollapsible`
+    // is true (so the toolbar button shows), and collapse-all folds the
+    // categories with no groups involved.
+    vi.useFakeTimers();
+    const SOURCE_CATEGORIES_ONLY = `system Shop {
+  service Web { label "Web" }
+  service ExtApi [external] { label "Ext API" }
+  database ShopDB { table Orders { label "Orders" } }
+}`;
+    const fs = makeFs(SOURCE_CATEGORIES_ONLY);
+    const { result } = renderHook(() => useSystemView(ENTRY, fs, []));
+    await act(() => vi.advanceTimersByTimeAsync(300));
+
+    // Un-grouped, but categories make it collapsible.
+    expect(result.current.groupBy).toBe("none");
+    expect(result.current.groupIds).toEqual([]);
+    expect(result.current.anyCollapsible).toBe(true);
+    expect(result.current.allCollapsed).toBe(false);
+    expect(result.current.svg).toContain('data-node-id="ExtApi"');
+
+    // Collapse all → categories fold (no groups touched), toggle flips.
+    act(() => result.current.onCollapseAllToggle());
+    await act(() => vi.advanceTimersByTimeAsync(300));
+    expect(result.current.allCollapsed).toBe(true);
+    expect([...result.current.collapsedCategories].sort()).toEqual(["external", "infra"]);
+    expect(result.current.svg).not.toContain('data-node-id="ExtApi"');
+
+    // Expand all restores.
+    act(() => result.current.onCollapseAllToggle());
+    await act(() => vi.advanceTimersByTimeAsync(300));
+    expect(result.current.allCollapsed).toBe(false);
+    expect(result.current.collapsedCategories.size).toBe(0);
+    expect(result.current.svg).toContain('data-node-id="ExtApi"');
+    vi.useRealTimers();
+  });
+
+  it("decodes XML-escaped group ids so collapse-all matches special-char team ids (#1872)", async () => {
+    // The renderer escapes `data-collapse-group` values; a team id with `&`
+    // (e.g. "R&D") is stamped as `R&amp;D`. `groupIds` must decode it back so
+    // collapse-all pushes the real id the core folds on — otherwise the
+    // group is silently never collapsed and `allCollapsed` never flips.
+    vi.useFakeTimers();
+    const SOURCE_AMP_TEAM = `system Shop {
+  service Billing { label "Billing" }
+  service Search { label "Search" }
+}
+organization Org {
+  team "R&D" { owns Billing }
+  team "catalog" { owns Search }
+}`;
+    const fs = makeFs(SOURCE_AMP_TEAM);
+    const { result } = renderHook(() => useSystemView(ENTRY, fs, []));
+    await act(() => vi.advanceTimersByTimeAsync(300));
+    act(() => result.current.setGroupBy("team"));
+    await act(() => vi.advanceTimersByTimeAsync(300));
+
+    // The raw id (not the escaped `R&amp;D`) is exposed.
+    expect(result.current.groupIds).toContain("R&D");
+
+    act(() => result.current.onCollapseAllToggle());
+    await act(() => vi.advanceTimersByTimeAsync(300));
+    // Every team — including "R&D" — is folded, so the toggle flips.
+    expect(result.current.allCollapsed).toBe(true);
+    expect(result.current.svg).toContain('data-node-id="__group_collapsed_R&amp;D__"');
+    expect(result.current.svg).not.toContain('data-node-id="Billing"');
+    vi.useRealTimers();
+  });
+
   it("hasOrgDiagram tracks the source's organization blocks (Issue #923)", async () => {
     vi.useFakeTimers();
     // Start with a source that has an organization block. After the editor is

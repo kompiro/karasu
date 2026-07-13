@@ -13,7 +13,7 @@ import {
   type NodeDiffMeta,
   type CategoryId,
 } from "@karasu-tools/core";
-import { useCallback, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import type { GroupByMode } from "../state/preview-context.js";
 import iconManifest from "@karasu-tools/core/icons/icons.json";
 import serviceSvg from "@karasu-tools/core/icons/service.svg?raw";
@@ -105,6 +105,39 @@ resolveIconManifest(
   true,
 );
 
+/** Reverse `svg-builder`'s `escapeXml` — the only 4 entities it emits, `&amp;` last. */
+function decodeXmlEntities(s: string): string {
+  return s
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&quot;/g, '"')
+    .replace(/&amp;/g, "&");
+}
+
+/**
+ * Both collapse axes' ids in one pass over the rendered SVG:
+ *  - team/group boundary frames (`data-collapse-group`, #1858) — decoded from
+ *    the renderer's XML escaping (`svg-builder.ts` `escapeXml`) so a special-char
+ *    id (e.g. `R&D`) matches the real id the core / DOM-based per-group toggle
+ *    use, not its escaped `R&amp;D` form;
+ *  - external/infra category bands (`data-collapse-category`, #1821) — only the
+ *    two known category ids, which never carry XML-special characters.
+ *
+ * Both are complete in either direction (a collapsed frame/band keeps its
+ * attribute so its `⊕` expand control still works) and axis-agnostic — read
+ * from what is actually drawn, so the bulk toggle needs no change when a future
+ * Group-by axis lands. See `docs/design/group-by-bulk-collapse.md`.
+ */
+function extractCollapsibles(svg: string): { groupIds: string[]; categoryIds: CategoryId[] } {
+  const groupIds = new Set<string>();
+  const categoryIds = new Set<CategoryId>();
+  for (const m of svg.matchAll(/data-collapse-(group|category)="([^"]+)"/g)) {
+    if (m[1] === "group") groupIds.add(decodeXmlEntities(m[2]));
+    else if (m[2] === "external" || m[2] === "infra") categoryIds.add(m[2]);
+  }
+  return { groupIds: [...groupIds], categoryIds: [...categoryIds] };
+}
+
 export function useSystemView(
   entryPath: string | null,
   fs: FileSystemProvider | null,
@@ -120,6 +153,25 @@ export function useSystemView(
   groupBy: GroupByMode;
   setGroupBy: (mode: GroupByMode) => void;
   toggleGroup: (groupId: string) => void;
+  /** Ids of every collapsible team boundary frame in the current render (#1872). */
+  groupIds: string[];
+  /**
+   * Whether anything is collapsible in the current view — at least one team
+   * frame OR one external/infra category band (#1872). Gates the bulk toggle so
+   * it shows even when the view is un-grouped but has category bands.
+   */
+  anyCollapsible: boolean;
+  /**
+   * True when everything collapsible in the current view — every team frame
+   * AND every external/infra category band — is collapsed (#1872). Drives the
+   * bulk toggle's Collapse-all ⇄ Expand-all state.
+   */
+  allCollapsed: boolean;
+  /**
+   * Collapse everything (team frames + external/infra categories) when anything
+   * is open, else expand everything (#1872).
+   */
+  onCollapseAllToggle: () => void;
 } {
   const emptyStateLabels = useEmptyStateLabels();
   const annotationBadgeLabels = useAnnotationBadgeLabels();
@@ -182,6 +234,10 @@ export function useSystemView(
       annotationBadgeLabels,
       theme,
       collapsedCategories,
+      // P2b hand-off: when a second Group-by axis lands, invert this to
+      // `groupBy === "none" ? undefined : groupBy` (off-sentinel gate) and widen
+      // the core `groupBy` union, so a new axis is not silently dropped here.
+      // See docs/design/group-by-bulk-collapse.md (B2).
       groupBy: groupBy === "team" ? "team" : undefined,
       collapsedGroups: groupBy === "team" ? collapsedGroups : undefined,
       interactive: true,
@@ -279,6 +335,29 @@ export function useSystemView(
       groupsKey,
     ],
   });
+  // Bulk collapse (#1872). Both id lists come from the rendered SVG in one pass,
+  // so they are axis-agnostic and always match what is actually on screen.
+  // "Collapse all" spans both collapse axes — team frames (#1858) and
+  // external/infra categories (#1821) — so its label ("all") is honest, and it
+  // is offered whenever anything is collapsible (even an un-grouped view with
+  // only category bands). The per-axis state / controls stay orthogonal
+  // (ADR-20260711-03 §3); only this convenience toggle bridges them.
+  const { groupIds, categoryIds } = useMemo(() => extractCollapsibles(result.svg), [result.svg]);
+  const anyCollapsible = groupIds.length > 0 || categoryIds.length > 0;
+  const allCollapsed =
+    anyCollapsible &&
+    groupIds.every((id) => collapsedGroups.has(id)) &&
+    categoryIds.every((c) => collapsedCategories.has(c));
+  const onCollapseAllToggle = useCallback(() => {
+    if (allCollapsed) {
+      setCollapsedGroups(new Set());
+      setCollapsedCategories(new Set());
+    } else {
+      setCollapsedGroups(new Set(groupIds));
+      setCollapsedCategories(new Set(categoryIds));
+    }
+  }, [allCollapsed, groupIds, categoryIds]);
+
   return {
     ...result,
     collapsedCategories,
@@ -286,5 +365,9 @@ export function useSystemView(
     groupBy,
     setGroupBy,
     toggleGroup,
+    groupIds,
+    anyCollapsible,
+    allCollapsed,
+    onCollapseAllToggle,
   };
 }

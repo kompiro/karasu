@@ -180,6 +180,8 @@ export const ja: Partial<Translations> = {
   "preview.groupBy.label": "グループ化",
   "preview.groupBy.none": "なし",
   "preview.groupBy.team": "チーム",
+  "preview.groupBy.collapseAll": "すべて畳む",
+  "preview.groupBy.expandAll": "すべて展開",
 
   // 共有（inline URL 共有、karasu-nest）
   "preview.share.label": "🔗 Share",

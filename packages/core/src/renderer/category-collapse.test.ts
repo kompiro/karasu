@@ -1,11 +1,25 @@
 import { describe, expect, it } from "vitest";
-import type { KrsNode } from "../types/ast.js";
+import type { KrsNode, KrsEdge } from "../types/ast.js";
 import { compile } from "../index.js";
-import { CATEGORY_STUB_TAG, categoryOf, collapseNodeList, stubId } from "./category-collapse.js";
+import {
+  CATEGORY_STUB_TAG,
+  categoryOf,
+  collapseCategories,
+  collapseNodeList,
+  stubId,
+} from "./category-collapse.js";
 
 // categoryOf / collapseNodeList only read `kind` and `tags`.
 function node(kind: string, tags: string[] = []): KrsNode {
   return { kind, tags } as unknown as KrsNode;
+}
+
+// collapseCategories reads id / kind / tags on nodes and from / to / kind on edges.
+function idNode(id: string, kind: string, tags: string[] = []): KrsNode {
+  return { id, kind, tags } as unknown as KrsNode;
+}
+function edge(from: string, to: string, label?: string): KrsEdge {
+  return { from, to, kind: "sync", label } as unknown as KrsEdge;
 }
 
 describe("categoryOf", () => {
@@ -114,6 +128,94 @@ describe("compile() with collapsedCategories", () => {
     expect(svg).not.toContain('data-node-id="ShopDB"');
     expect(svg).not.toContain('data-node-id="ExtApi"');
     expect(svg).toContain('data-node-id="Web"'); // the plain service survives
+  });
+});
+
+describe("collapseCategories edge re-targeting (#1872)", () => {
+  const nodes = [
+    idNode("Web", "service"),
+    idNode("ExtA", "service", ["external"]),
+    idNode("ExtB", "service", ["external"]),
+    idNode("Db", "database"),
+  ];
+
+  it("is a no-op (same refs) when nothing collapses", () => {
+    const edges = [edge("Web", "ExtA", "charge")];
+    const r = collapseCategories(nodes, edges, new Set());
+    expect(r.nodes).toBe(nodes);
+    expect(r.edges).toBe(edges);
+    expect(r.remapEndpoint("ExtA")).toBe("ExtA");
+  });
+
+  it("re-targets an edge from a surviving node onto the category stub", () => {
+    const r = collapseCategories(nodes, [edge("Web", "ExtA", "charge")], new Set(["external"]));
+    expect(r.edges).toHaveLength(1);
+    expect(r.edges[0].from).toBe("Web");
+    expect(r.edges[0].to).toBe(stubId("external"));
+    // A re-targeted edge stands for one-or-more real edges → label dropped.
+    expect(r.edges[0].label).toBeUndefined();
+  });
+
+  it("drops an edge that lives entirely inside one collapsed category", () => {
+    const r = collapseCategories(nodes, [edge("ExtA", "ExtB")], new Set(["external"]));
+    expect(r.edges).toHaveLength(0);
+  });
+
+  it("de-dupes parallel re-targeted edges but keeps distinct sources", () => {
+    const r = collapseCategories(
+      nodes,
+      [edge("Web", "ExtA"), edge("Web", "ExtB"), edge("Db", "ExtA")],
+      new Set(["external"]),
+    );
+    // Web→ExtA and Web→ExtB collapse to the same Web→extStub (deduped); Db→ExtA
+    // is a distinct source, so it survives.
+    expect(r.edges).toHaveLength(2);
+    const pairs = r.edges.map((e) => `${e.from}->${e.to}`).sort();
+    expect(pairs).toEqual([`Db->${stubId("external")}`, `Web->${stubId("external")}`]);
+  });
+
+  it("keeps a cross-category edge as a stub→stub trunk when both collapse", () => {
+    const r = collapseCategories(nodes, [edge("ExtA", "Db")], new Set(["external", "infra"]));
+    expect(r.edges).toHaveLength(1);
+    expect(r.edges[0].from).toBe(stubId("external"));
+    expect(r.edges[0].to).toBe(stubId("infra"));
+  });
+
+  it("passes through an edge between two surviving nodes untouched", () => {
+    const survivor = idNode("Api", "service");
+    const r = collapseCategories(
+      [...nodes, survivor],
+      [edge("Web", "Api", "call")],
+      new Set(["external"]),
+    );
+    expect(r.edges).toEqual([edge("Web", "Api", "call")]);
+  });
+});
+
+// End-to-end: a service→external edge survives as a trunk to the stub (#1872),
+// where node-only folding used to drop it.
+describe("compile(): edges to a collapsed category survive as trunks (#1872)", () => {
+  const SRC_WITH_EDGE = `system Shop {
+  service Web { label "Web" }
+  service ExtApi [external] { label "Ext API" }
+  Web -> ExtApi "charge"
+}`;
+  const arrows = (svg: string) => (svg.match(/marker-end/g) ?? []).length;
+
+  it("re-targets the Web→ExtApi edge onto the external stub instead of dropping it", () => {
+    const expanded = compile(SRC_WITH_EDGE, { diagramType: "system" });
+    const collapsed = compile(SRC_WITH_EDGE, {
+      diagramType: "system",
+      collapsedCategories: new Set(["external"]),
+    });
+    if (expanded.diagramType !== "system" || collapsed.diagramType !== "system") {
+      throw new Error("expected system view");
+    }
+    // The edge arrow survives the collapse (was 0 under the old drop behavior).
+    expect(arrows(expanded.svg)).toBe(1);
+    expect(arrows(collapsed.svg)).toBe(1);
+    expect(collapsed.svg).toContain('data-node-id="__collapsed_external__"');
+    expect(collapsed.svg).not.toContain('data-node-id="ExtApi"');
   });
 });
 

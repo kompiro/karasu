@@ -116,6 +116,14 @@ so a typo never blanks your screen.
 The preview toolbar offers:
 
 - **Icon mode** — toggle between service icons and plain shapes.
+- **Group by** (System view, when the model has an `organization` block) —
+  choose **Team** to wrap each owning team's services in a collapsible boundary
+  frame. Each frame has a ⊖/⊕ toggle.
+- **Collapse all / Expand all** (System view) — whenever the view has anything
+  collapsible — team boundary frames **or** the external / infra layer bands —
+  this button folds or unfolds all of them at once, reaching the compact overview
+  ("collapse by default, open what you need"). It appears even when you are not
+  grouping, as long as there are external / infra bands to fold.
 - **Show All Layers** — render every drill-down level stacked together.
 - **Export** — save the current view as **SVG**; the split-button menu also
   exports the drill-down tree, a single SVG bundling **all** views, or
