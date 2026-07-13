@@ -13,6 +13,7 @@ discovered_from:
   - root_cause_adr: "ADR-20260711-03"
   - root_cause_adr: "ADR-20260429-01"
   - root_cause_file: "packages/core/src/renderer/edge-routing-channels.ts"
+  - issue: "#1927"
 related_to:
   - TPL-20260623-04
   - TPL-20260624-02
@@ -40,6 +41,17 @@ system-view grouping の設計計測（`docs/design/system-view-grouping.md` § 
 - **交差は「表現」で無害化できる**（直交交差を hop アークで「非接続」と明示、トランク合流を junction dot で「接続」と明示）ので、幾何的な交差数が残っていても可読性上の害は消える。→ **交差の総数最小化は可読性の代理指標として弱い。**
 - **貫通は「表現」で無害化できない**（線がカード/枠の内部を突っ切っている時点で読めない）ので、**貫通数 == 0 を厳密 assert する**のが正しい柵。
 
+### 第3の計測軸: 別エッジの共線オーバーラップ（#1927 で追加）
+
+交差数・貫通数のどちらでも捕まらない**第3の失敗モード**が #1927 で判明した: **相異なる2エッジが同一 x 上に共線の縦回廊を敷き、正の長さで重なる**と、2本が1本の見分けのつかない線として描かれ、**存在しない接続に読める**。
+
+- 交差判定では捕まらない（2 セグメントが同一直線上で重なる場合、線分交差は「交差」と数えない）。
+- 貫通判定でも捕まらない（回廊はガター＝カード/枠の外側にあり、貫通ゼロのまま）。
+
+したがって **相異なるエッジ対で「同一 x かつ y 区間が正の長さで重なる縦セグメント」の数 == 0 を assert する**のが第3の柵。ただし**意図的な集約トランク（同一 `trunkId` の兄弟エッジが1本の spine を共有）は接続の明示**（junction dot）なので除外する — 除外対象は「偶然同じガター x に載っただけの無関係エッジ」。
+
+対処は**レーン分離**: 衝突する回廊に区間分割（interval partitioning）で別々のレーン x を割り当てる。既存のレーン割り当て（トランクレーン P2c-B / チャネルレーン）と x が衝突しないよう採番を協調させる。
+
 この観点は [TPL-20260623-04](TPL-20260623-04-tier-split-no-edge-penetration.md)（ティア分割で中間カードを貫通しない）を **2 点で拡張**する:
 
 1. 貫通の対象を**ノードカードだけでなく境界フレーム（グループ枠）の内部**にも広げる。grouped view ではフレームが obstacle であり、フレーム内部を横切るエッジも貫通である。
@@ -51,6 +63,7 @@ system-view grouping の設計計測（`docs/design/system-view-grouping.md` § 
 - 障害物集合に**ノードカードしか入れず、フレーム矩形を入れ忘れる**（既存 `routeOrthogonalEdges` がフレーム非対応なのが典型）。結果、エッジがグループ枠の内部を横切っても貫通判定に引っかからない。
 - hop/junction を「交差数を減らす」ものと誤解し、交差数の減少で評価してしまう（hop/junction は**数を減らさず表現で無害化**する手段）。
 - 集約トランクの spine を obstacle に入れ忘れ、別エッジが spine を貫通する。
+- **単一の計算済み x（共有ガター / デフォルトレーン）に複数の縦回廊を載せ**、相異なるエッジが共線オーバーラップして偽の接続に読める（#1927。交差・貫通のどちらでも検出できない）。fan-in 集約だけレーン分離し**単一 incoming のガターエッジのレーン分離を忘れる**のが典型。
 
 ## チェックリスト
 
@@ -58,6 +71,7 @@ system-view grouping の設計計測（`docs/design/system-view-grouping.md` § 
 
 - [ ] 可読性の検証で**交差数と貫通数を両方測る**テストを書いた（片方だけにしない）。
 - [ ] **ノード/フレーム貫通数 == 0** を厳密に assert した（「救済される」の定性確認で済ませない）。
+- [ ] **相異なるエッジの共線オーバーラップ数 == 0** を assert した（同一 x + y 区間の正長オーバーラップ。意図的な集約トランク兄弟は同一 `trunkId` で除外）。単一 x にレーンを共有させる実装では特に必須（#1927）。
 - [ ] 貫通判定の障害物集合に**ノードカードとフレーム矩形の両方**を含めた（grouped/framed view）。
 - [ ] 交差を hop/junction 等の**表現で無害化**する設計なら、交差数の残存を欠陥と誤認せず、代わりに「全交差が mark 付き（非接続/接続が明示）」を assert した。
 - [ ] 退化ケース（グループ 1 つ / 枠なし / infra・external なし）で貫通ゼロが保たれることを確認した。
@@ -69,11 +83,12 @@ system-view grouping の設計計測（`docs/design/system-view-grouping.md` § 
 - **最外ガターへのフォールバック**: 帯間チャネル・フレーム内回廊で貫通が残るエッジは、構成上必ず空く最外の左右ガターへ退避させ、貫通ゼロを構成的に保証する。
 - **交差は減らさず mark で無害化**: 直交ルーティングで全交差を直角にし、横 over 縦の hop アーク（非接続）とトランク junction dot（接続）で「接続か通過か」の曖昧さを消す。評価軸は「交差数」ではなく「全交差が mark 付きか」。
 - **二重計測ヘルパー**: テストに `countCrossings(edges)` と `countPenetrations(edges, obstacles)` の両方を用意し、後者は必ず 0 を assert する。
+- **共線オーバーラップのレーン分離**: 単一ガター x に載った複数回廊を、y 区間の interval partitioning で別レーン x に割り当てる（重ならない区間は同一レーン可＝幅とスナップショット差分を最小化）。トランクレーン等の既存レーン採番と x が衝突しないよう協調する（`distributeGutterLanes`, #1927）。第3計測ヘルパー `countCollinearOverlaps(edges)`（同一 `trunkId` 除外）で 0 を assert する。
 
 ## 関連テスト
 
 - `packages/core/src/renderer/edge-routing-channels.test.ts`（skip-layer 直交ルーティング — ノードカード貫通の既存ガード）
-- P2c 実装時に追加予定: grouped view のルーティングテスト（`routeGroupedEdges`）で貫通数 == 0 と全交差 mark 付きを assert（#1859）
+- `packages/core/src/renderer/edge-routing-groups.test.ts`（grouped view のルーティング — `totalPenetrations == 0` と `collinearVerticalOverlaps == 0` を assert。#1859 / #1927）
 
 ## 派生元 spec / 設計
 
