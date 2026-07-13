@@ -23,10 +23,19 @@ export function renderEdge(
   const points: Point[] = [fromPoint, ...(edge.waypoints ?? []), toPoint];
   const parts: string[] = [];
 
+  // Group-by against-flow edges are dashed (#1859) so backward inter-group
+  // dependencies stand out — but only when the author left `stroke-style` at
+  // its default, so an explicit style still wins (mirrors the label-position
+  // override precedence, ADR-20260511-01).
+  const dashArray =
+    edge.groupBackward && style.strokeStyle === "solid"
+      ? STROKE_DASHARRAY.dashed
+      : STROKE_DASHARRAY[style.strokeStyle];
+
   const strokeAttrs = {
     stroke: style.color,
     "stroke-width": style.strokeWidth,
-    "stroke-dasharray": STROKE_DASHARRAY[style.strokeStyle],
+    "stroke-dasharray": dashArray,
     "marker-end": `url(#${markerId})`,
     class: edge.cyclic ? "krs-edge--cyclic" : undefined,
   };

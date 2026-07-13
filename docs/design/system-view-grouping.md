@@ -263,7 +263,218 @@ P1 の計測を踏まえた 2026-07-11 レビューで確定した **P2a の 6 �
 | --- | --- | --- | --- |
 | **P2a** | 二段 topo + 枠 + 折り畳み（team=`ownerIndex` 軸） | ゼロ | ✅ 実装済み（ADR-20260711-03） |
 | **P2b** | `group`（または `boundary`）宣言構文 + `groupIndex` | あり（#1820 gate 経由） | 検討中 |
-| **P2c** | 直交ルーティング + 集約 + hop/junction（#1859） | ゼロ | 検討中 |
+| **P2c** | 直交ルーティング + 集約 + hop/junction（#1859） | ゼロ | 実装中（下記「P2c 実装設計」）— A: 直交ルーティング ✅ / B: 集約トランク / C: hop/junction |
+
+## P2c 実装設計（#1859）
+
+計測 5 の試作を**実レンダラーに実装する**ための設計。文法変更ゼロ（P2a と同じく view-mode 局所）。展開状態のグループビューのエッジは現在、既定 system レイアウトと同じ直線／skip-layer ルーティングを流用しており（`layout.ts` の共通パイプライン）、読みづらい。計測 5 の 3 つの手（直交ルーティング・集約トランク・hop/junction）を追加する。
+
+**受け入れ条件**（#1859）: (1) 展開ビューでエッジがノード/フレーム内部を貫通しない（貫通数 == 0）、(2) 同一 infra/external target への複数エッジが 1 トランク + junction dot に束ねられる、(3) 全交差が hop アークで描かれる、(4) 逆流エッジが破線、(5) Group by: none は不変。
+
+### 現状のパイプライン（インベントリ）
+
+`layout()` は grouped/ungrouped 共通で `computeLayoutEdges` → `distributePorts` → `routeOrthogonalEdges` → `distributeChannelLanes` → `markParallelBundles` を順に実行する。要点:
+
+- `routeOrthogonalEdges`（[ADR-20260429-01](../adr/20260429-01-orthogonal-edge-routing-skip-layer.md)）は **downward の skip-layer エッジが *ノードカード* を貫通する場合のみ** L 字 `waypoints` を付与する。**フレームは障害物集合に入っていない** — これが展開ビューの枠貫通の直接原因。
+- `markParallelBundles`（[ADR-20260511-01](../adr/20260511-01-parallel-edge-bundling.md)）は同一 `(from,to)` の**ラベル分離**用で、target を共有する別ソースの束ねではない。
+- `renderEdge`（`edge-routing.ts`）は `points = [fromPoint, ...waypoints, toPoint]` を 2 点なら `<line>`、3 点以上なら `<polyline>` で描く。`waypoints` は既存の直交抽象で **P2c-A はこれに乗る**（後方互換）。hop/junction に相当する描画は**現状ない**。
+- `assignGroupedLayers`（`group-layout.ts`）が既に `groupOrder`（帯順）と `groupBands`（各グループの row 範囲）を返し、`layout.ts` がフレーム矩形（`ContainerRect { group: true, groupId }`）を作る。**P2c はこの帯順・フレーム矩形を障害物／チャネル定義として消費する** — 新しいレイアウト情報は不要。
+
+### 再利用 vs 新設
+
+| 既存資産 | P2c での扱い | 理由 |
+| --- | --- | --- |
+| `routeOrthogonalEdges`（ADR-20260429-01） | **温存**（ungrouped 不変）。grouped では別パス `routeGroupedEdges` に置換 | 既存は「target 直前 row の単一 channel」前提で、フレーム回避・左右ガター迂回を表現できない。継ぎ足すと ungrouped の決定論 snapshot を壊すリスク。geometry helper（`segmentCrossesRect` 等）は共有ユーティリティに切り出す |
+| `markParallelBundles`（ADR-20260511-01） | **温存**。P2c-B のトランクは別パス `aggregateGroupTrunks` | 既存は per-`(from,to)`（ラベル分離）、P2c-B は per-`target`（別ソースを 1 spine に合流）で関心が直交。ADR-20260511-01 案 3 と同じく edge identity は保つ（トランクは描画の合流であって統合ではない） |
+| `LayoutEdge.waypoints` | **再利用** | 直交経路の既存抽象。P2c-A は set するだけ |
+| domain エッジ集約（ADR-20260410-01） | **概念の借用**のみ | あちらは domain→implicit service の畳み込み、P2c-B は service→infra/external の視覚トランク。別レイヤで実装は共有しない |
+
+**方針: grouped 専用の routing / trunk / marks パスを新設し、既存 ungrouped パイプラインは byte-identity で温存する。** 「Group by: none 不変」（AC-5）を構成的に保証する最も安全な形。3 パスは `groupBands != null` gate 内でのみ走る。
+
+### 3 つの追加パス
+
+1. **P2c-A `routeGroupedEdges`**（grouped で `routeOrthogonalEdges` の代わりに呼ぶ）
+   - 障害物集合 = 全ノードカード ∪ **全グループフレーム矩形**。
+   - エッジを「必ず空く」経路のみに通す: **帯間チャネル**（隣接帯の間の横帯）／**左右ガター**（canvas 端とフレーム外縁の間の縦列 — skip-band・逆流エッジの迂回先）／**フレーム内列回廊**（フレーム内のノード列間の縦ギャップ）。
+   - 候補経路を障害物に対し全セグメント再判定し、残れば**より外側のガターへ退避**（最外ガターは構成上必ず空くので**貫通ゼロを保証**）。
+   - **逆流（against-flow）エッジ = 破線**（AC-4）。`groupOrder` 上で「下の帯→上の帯」に向かうもの。実装案: `LayoutEdge.groupBackward?: boolean` を足し、`renderEdge` で **author が `stroke-style` 未指定のときのみ** dashed（ADR-20260511-01 の override 優先と同型）。
+   - 挿入位置: `distributePorts` の後、`distributeChannelLanes` の前（既存スロット）。
+2. **P2c-B `aggregateGroupTrunks`**（P2c-A の後）
+   - 束ね鍵 = **target ノード**（infra/external）。複数帯から同一 target に入るエッジを 1 本の縦 **trunk（spine）** に合流。各ソースは spine まで横 stub、spine が target に 1 本で到達。
+   - 合流点座標を出し（junction dot は P2c-C が描く）、edge identity は保つ（各 `LayoutEdge` を残し `waypoints` を spine 経由に書き換え + trunk メタを付与）。
+3. **P2c-C `computeCrossingMarks` + renderer**（最終ジオメトリ確定後）
+   - **hop（◠）**: 横セグメントが縦セグメントを直角で跨ぐ交点を検出し、横線側に跨ぎアークを描く（交差=非接続）。近接交点は 1 幅広 hop にクラスタ化。
+   - **junction（●）**: P2c-B のトランク合流点に接続ドット（合流=接続）。
+   - 描画: 交差 marks はエッジ横断的情報なので `svg-renderer.ts` に別レイヤ（`renderCrossingMarks()`）を足し、`<path>`（hop）/`<circle>`（junction）を edge レイヤ上に emit。座標のみから決定論的に導出（snapshot 安定）。
+
+### スライス分割（P2a に倣い独立 PR）
+
+各 PR 単独でも図が悪化しない（strictly monotonic）ように A→B→C で積む:
+
+| スライス | 内容 | 満たす AC | 単独価値 |
+| --- | --- | --- | --- |
+| **P2c-A** | `routeGroupedEdges` — フレーム障害物・帯チャネル・ガター・回廊・逆流破線 | AC-1, AC-4, AC-5 | 貫通ゼロ達成（最大の可読性改善） |
+| **P2c-B** | `aggregateGroupTrunks` — target 共有トランク | AC-2（トランク） | 交差の最大削減要因 |
+| **P2c-C** | `computeCrossingMarks` + renderer — hop/junction | AC-3, AC-2（junction dot） | 残る交差を「非接続」と明示し無害化 |
+
+各 PR に changeset（`@karasu-tools/core` + `karasu` minor）と AT を付す。
+
+### 正しさの柵
+
+[TPL-20260624-02](../test-perspectives/TPL-20260624-02-relayout-into-group-preserves-placement-and-edges.md) の不変条件を継承しつつ、P2c 固有の**二重計測**を柵にする（proactive [TPL-20260711-02](../test-perspectives/TPL-20260711-02-routing-measures-crossings-and-penetrations.md)）:
+
+- **交差数と貫通数を両方 assert する。** 計測 5 の所見「交差数だけでは貫通 38 を見逃す」を回帰防止観点にした。P2c-A の AT は **node/frame 貫通数 == 0** を厳密 assert。
+- 交差は hop/junction で無害化するので、交差数の残存を欠陥と誤認せず「全交差が mark 付き」を assert する。
+- 退化ケース（team 1 つ / 全 service 同一 team / team 未使用 / infra・external なし）で貫通ゼロ。
+- **AC-5**: ungrouped の既存 snapshot が byte-identical。新パスは gate 内でのみ走ることをテストで固定。
+
+### P2c 固有の却下案
+
+- **既存 `routeOrthogonalEdges` にフレーム対応を継ぎ足す**: ungrouped の決定論 snapshot を壊すリスク。ガター迂回を表現できず両モードのロジックが絡む。→ 専用パスに分離し geometry helper のみ共有。
+- **トランクを「1 論理エッジ + 複数ラベル」に統合**（ADR-20260511-01 案 3 と同型）: edge id selector / direction style / diff renderer が edge 単位で動くので identity が壊れる。→ 描画のみ共有。
+- **A\* / ELK による障害物回避**（ADR-20260429-01 案 B1/B3 と同型）: 帯構造では overkill。帯 + ガター + 回廊の stub-and-bend で貫通ゼロが構成的に取れる。
+- **交差数の最小化を追う**: 交差は表現で無害化できるので、総数最小化より直角交差 + 明示表現が費用対効果で優る（計測 5 所見）。
+
+### P2c の未解決の問い（各スライス PR で確定）
+
+- **逆流破線と `cyclic` / author `stroke-style` の優先順位** — P2c-A 実装時。
+- **hop アークの向き** — 横 over 縦で固定するか、トランク spine を主線にして横エッジを跨がせるか。第一候補は後者。P2c-C で確定。
+- **hop クラスタ化の近接閾値** — 座標由来で決定論に。P2c-C で確定。
+- **エクスポート面（Show All Layers / drill-down）への波及** — #1879（PR #1888）が grouping frames をエクスポートに通した follow-up。P2c ルーティング/marks をエクスポートに通すかは #1879 マージ後に別途判断（本 P2c の範囲外）。
+
+## 差分モードの grouping — 除去ノード配置と集約エッジ diff state（#1886）
+
+P2a を **compare/diff モード**（`compileSystemDiff`）で有効化した #1873（PR #1883）の
+レビューで、grouping と diff の噛み合わせに 2 つの残課題が切り出された（#1886）。どちらも
+「今日の柵（`group-by-diff.test.ts`）は成り立つ保証を pin しているが、理想の見え方は
+assert していない」状態。本節でその理想を確定する。
+
+### 背景・課題
+
+`compileSystemDiff` は grouping 軸を **after 側だけの `ownerIndex`**
+（`afterResolved.krsFile.ownerIndex`）で render に渡している（`index.ts:1266`）。
+`diffed.slice` は before ∪ after の和集合なので、**before にしか存在しないノード/エッジは
+after の ownerIndex で所属チームを解決できず**、以下の 2 つの誤表示を生む。
+
+1. **除去された team 所有ノードが末尾の非 group 帯に落ちる。** before で team が所有し
+   after で削除された service は `removed` 状態で描かれるが、after ownerIndex に無いため
+   grouping が `null` を返し、**全 team フレームの下**の未 group 帯に置かれる。レビュアーには
+   「team X がこの service を失った」ではなく、孤立した removed ボックスに見える。
+2. **畳んだ group の集約エッジが per-edge diff state を失う。** team を畳むと cross-group
+   エッジは `<Team> (N)` stub に**再ターゲット**される（drop しない — 正しい）。しかし
+   `edgeDiffState` は**元の端点 id**でキーされ（`svg-renderer.ts:298` の
+   `edgeKey = \`${from}->${to}\`` を `svg-renderer.ts:307` で lookup）、描画される stub
+   エッジは stub id でキーされるので、
+   再ターゲット後のエッジは `data-diff-state` 装飾**なし**で描かれる。畳むと追加/削除された
+   cross-team 依存が不可視になる。さらに 1 本の stub エッジが**複数の元エッジ**（別々の
+   diff state を持ちうる）を集約するため、集約後の state をどう定めるかという意味論の問いもある。
+
+### 決定 1 — 配置: after ownerIndex を基点に、除去ノードだけ before 所属を backfill
+
+diff 用の grouping 軸を、**after の `ownerIndex` を基点**にしつつ、**diff 状態が `removed` の
+ノードにだけ before 側の所属を backfill** したものに切り替える。
+
+- 除去ノード（before-only）は before 側の所属で解決され、**かつての team フレーム内**に
+  `removed` 状態で収まる（「team X がこの service を失った」が読める）。
+- 畳んだときの `(N)` カウントは除去メンバーも数える。
+- 生存ノードは常に **after が正**。所属替え（team A → team B）は after の team に置かれ、
+  **所属剥奪（`owns` を消したが node は残る = A → 無所属）も after どおり無所属**になる。
+  既定（非 diff）ビューとの一貫性を保つ。
+
+> **なぜ単純な before ∪ after マージにしないか**: 素朴に 2 つの map を union（after 勝ち）すると、
+> 「removed した node」と「`owns` だけ消した生存 node」がどちらも「before にあり after に無い」
+> 形になり区別できず、後者に**古い所属が leak** する（`ownerIndex` は grouped フレームだけでなく
+> 非 grouped diff の service カードの team バッジにも使われる — `layout.ts:1000/1281/1290` — ので
+> leak は既定ビューにも波及する）。`removed` diff 状態を条件に backfill することで、剥奪ケースを
+> after どおり無所属に保ちつつ、除去ノードだけをフレームに戻す。
+
+実装は `index.ts` の `compileSystemDiff`: `new Map(afterResolved.krsFile.ownerIndex)` を基点に、
+`diffed.nodes` を走査して `state === "removed"` かつ未所属の node にだけ
+`beforeResolved.krsFile.ownerIndex` の team を set する。render / layout / grouping 側の変更は
+不要（軸は既に単一の `Map<string,string>` 契約）。
+
+> **副次: 消えた team のフレーム。** team 自体が after で消滅（before に team X、after に無し）した
+> 場合、その全メンバーは `removed` なので before 所属が backfill され、**全メンバーが removed の
+> team X フレーム**が描かれる。これは「team X ごと（所有物も含め）除去された」の正しい表現であり、
+> 意図した挙動として受け入れる（AT で固定）。
+
+### 決定 2 — 集約 stub エッジの diff state: 単一なら踏襲・混在なら `changed`
+
+畳んだ group の stub エッジ（1 本が 1 本以上の元 cross-group エッジを集約）が担う diff state を、
+集約元の状態から導出して stub エッジのキーで引けるよう re-key する。
+
+- 集約元の全エッジが**同一 state**（すべて `added` / すべて `removed` / すべて `unchanged`）なら
+  その state を踏襲する。
+- 集約元が**混在**（例: `added` 1 本 + `unchanged` 1 本）なら **`changed`** を付与する
+  （「この依存関係は変化した」と読める）。
+
+`changed` は新設値ではなく既存の `DiffState`（`view-diff.ts:4`）の一員で、system view では
+既に**複数 domain エッジを 1 本に集約したエッジに `changed` を使う前例**がある
+（`view-diff.ts:194-196`）。集約したエッジに `changed` を与えるのはこの既存語彙・既存パターンと
+一貫する。
+
+実装スケッチ:
+
+- `collapseGroups`（`group-collapse.ts`）は既に元エッジを stub エッジへ dedup 集約している。ここに
+  **diff state 集約を追い込む**: `edgeDiffState` map（元端点キー）を任意入力として受け取り、
+  同一 `(from,to,kind)` に畳まれた元エッジ群の state を fold（単一→踏襲 / 混在→`changed`）して、
+  **stub エッジの `${from}->${to}` キー**で引ける diff state を返す。
+- `compileSystemDiff` はこの再キー済み map を（元の `edgeDiffStateMap` に**上書きマージ**して）
+  render options に渡す。非畳み込みエッジは元キーのままなので既存挙動は不変。
+- fold は `unchanged` も明示的に state として扱う（全 unchanged → `unchanged` で装飾なし相当、
+  混在に unchanged が混じれば `changed`）。
+- **kind をまたぐ集約の扱い**: `collapseGroups` の edge dedup は `(from,to,kind)` 鍵なので、
+  1 つの stub ペア間に **sync/async の 2 本の stub エッジ**が並存しうる。一方 render の diff
+  lookup（`svg-renderer.ts:298` の `edgeKey`）は **kind を含まない** `${from}->${to}` 形で、
+  既存の `edgeDiffState` 契約（`view-diff.ts` の diffed.edges も `#kind` を除いた形でキー、
+  `view-diff.ts:150-152`）もそもそも kind を区別しない。したがって diff-state の re-key も
+  `${from}->${to}`（kind なし）に**揃える** — この場合、同一ペアの sync/async 2 本は 1 つの
+  diff-state スロットを共有し、**両 kind の元エッジ群をまとめて 1 回 fold** する（sync だけ
+  `added`・async だけ `removed` でも「混在 → `changed`」に落ちる）。kind 別に diff-state を
+  持たせる（lookup も kind 付きに拡張する）のは既存契約の変更になるため本決定の範囲外とし、
+  必要になれば別 Issue。実装 AT で「同一 stub ペアに sync/async 両方があるケース」を退化ケース
+  として固定する。
+
+**却下した代替（決定 2）:**
+
+- **単一なら踏襲・混在は `unchanged`**: 追加と削除が混ざると変化が消え、#1886 point 2 が指摘する
+  「畳むと変化が不可視」がそのまま残る。
+- **非 unchanged 優先（`added` > `removed`）**: 変化は見えるが、追加と削除が同一 stub に同居すると
+  片方に誤って寄せる。`changed` の方が「混ざっている」を正しく述べる（karasu の「事実を述べ、
+  判断は読み手に委ねる」方針とも整合）。
+
+### 正しさの柵
+
+`group-by-diff.test.ts` の既存 pin（TPL-20260624-02 全域性: removed ノードちょうど一度・
+cross-group エッジ再ターゲットで非 drop）を**維持しつつ**、本決定で理想の見え方を追加 assert する。
+
+- **除去ノードの配置**: before で team 所有・after で削除されたノードが、末尾帯ではなく
+  **かつての team フレーム内**に `removed` 状態で描かれる（`data-container-id="__group_<team>__"`
+  の内側に居ることを構造で assert）。
+- **消えた team フレーム**: team ごと除去されたケースで、全 removed メンバーの team フレームが
+  描かれる（決定 1 の副次を固定）。
+- **集約エッジの diff state**: 単一 state の cross-group エッジを畳んだ stub エッジが元 state を
+  担う / 混在を畳んだ stub エッジが `changed` を担う（`data-diff-state` を stub エッジで assert）。
+- **退化ケース**: マージ ownerIndex が before だけ / after だけ / 両方に所属を持つノードで
+  破綻しない。
+
+この課題は **id を書き換える集約変換が、元 id にキーされた per-要素の装飾（diff state）を
+落とす**という、TPL-20260624-02（端点＝トポロジ保持）が**カバーしていない**失敗クラスなので、
+proactive [TPL-20260712-01](../test-perspectives/TPL-20260712-01-rekey-transform-preserves-per-element-decoration.md)
+を同 PR で起こした（装飾の再導出を柵にする）。
+
+### スコープ外（本決定に含めないこと）
+
+- **`changed` の視覚表現**（stroke パターン等）の新設 — 既存の diff スタイル（`diff-style.ts`）が
+  `changed` に持つ表現をそのまま使う。新しい見た目は導入しない。
+- deploy diff（`compileDeployDiff`）への同種修正 — deploy には team grouping 軸が無いため
+  対象外。必要になれば別 Issue。
+
+### 実装フェーズ
+
+ADR-20260711-03（P2a）への follow-up。実装は 1 PR（core: `index.ts` マージ ownerIndex +
+`group-collapse.ts` diff-state fold）＋ changeset（`@karasu-tools/core` + `karasu` patch）＋
+AT（`docs/acceptance/`）＋ proactive TPL の contract 化。実装完了 PR で `Closes #1886`。
 
 ## 未解決の問い / 決めないこと
 

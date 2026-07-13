@@ -17,6 +17,7 @@ discovered_from:
 related_to:
   - TPL-20260519-02
   - TPL-20260510-21
+  - TPL-20260712-01
 topic: renderer
 scope:
   packages:

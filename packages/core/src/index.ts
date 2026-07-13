@@ -1259,25 +1259,34 @@ export async function compileSystemDiff(
     edgeDiffStateMap.set(key, meta.state);
   }
 
-  const svg = render(
-    diffed.slice,
-    styles,
-    undefined,
-    afterResolved.krsFile.ownerIndex,
-    displayMode,
-    undefined,
-    {
-      nodeDiffState: nodeDiffStateMap,
-      edgeDiffState: edgeDiffStateMap,
-      nodeDiffMeta: diffed.nodes,
-      emptyLabels: emptyStateLabels,
-      theme,
-      groupBy,
-      collapsedGroups,
-      collapsedCategories,
-      interactive,
-    },
-  );
+  // Grouping axis for diff mode. `diffed.slice` is the union of both sides, so a
+  // node removed in the after-slice has no after-side owner and would fall into
+  // the trailing un-grouped band. Start from the after ownerIndex (authoritative
+  // for surviving nodes — it reflects re-ownership AND ownership removal) and
+  // backfill the before-side team ONLY for nodes that are actually `removed`, so
+  // they resolve their former team frame and render `removed` inside it. A node
+  // that merely lost its `owns` (kept, now unowned) must NOT inherit its stale
+  // before team — that is why this backfills off the removed diff state rather
+  // than blindly unioning the two maps. See #1886 and
+  // docs/design/system-view-grouping.md § "差分モードの grouping".
+  const mergedOwnerIndex = new Map<string, string>(afterResolved.krsFile.ownerIndex);
+  for (const [id, meta] of diffed.nodes) {
+    if (meta.state !== "removed" || mergedOwnerIndex.has(id)) continue;
+    const formerTeam = beforeResolved.krsFile.ownerIndex.get(id);
+    if (formerTeam !== undefined) mergedOwnerIndex.set(id, formerTeam);
+  }
+
+  const svg = render(diffed.slice, styles, undefined, mergedOwnerIndex, displayMode, undefined, {
+    nodeDiffState: nodeDiffStateMap,
+    edgeDiffState: edgeDiffStateMap,
+    nodeDiffMeta: diffed.nodes,
+    emptyLabels: emptyStateLabels,
+    theme,
+    groupBy,
+    collapsedGroups,
+    collapsedCategories,
+    interactive,
+  });
 
   return {
     diagramType: "system",
