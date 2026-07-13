@@ -16,13 +16,15 @@ import type { AppAction, ActiveView } from "../state/app-reducer.js";
  *   ("system", ["Payment"])                           → "#krs-system-Payment"
  *   ("org", ["a", "b"])                               → "#krs-org-b"  (last segment only)
  *   ("org", [], true)                                 → "#krs-org-tree"  (Tree View mode)
- *   ("org", [], false, "ecTeam")                      → "#krs-org-root:ecTeam"
- *   ("system", [], false, null, "/p/before.krs")      → "#krs-system-root?file=%2Fp%2Fbefore.krs"
+ *   ("org", [], false, false, "ecTeam")               → "#krs-org-root:ecTeam"
+ *   ("system", ["Ordering"], false, true)             → "#krs-entity-Ordering"  (entity sub-mode)
+ *   ("system", [], false, false, null, "/p/before.krs") → "#krs-system-root?file=%2Fp%2Fbefore.krs"
  */
 export function buildHash(
   activeView: ActiveView,
   viewPath: string[],
   isOrgTreeView = false,
+  isEntityView = false,
   highlightNodeId?: string | null,
   filePath?: string | null,
 ): string {
@@ -51,7 +53,14 @@ export function buildHash(
         : `#${anchorId("org", viewPath.length === 0 ? "root" : viewPath[viewPath.length - 1])}`;
       break;
     case "system":
-      base = `#${anchorId("system", viewPath.length === 0 ? "root" : viewPath[viewPath.length - 1])}`;
+      // Entity sub-mode: while drilled into a domain, the same drill path is
+      // addressed with the `entity` prefix (mirrors the static
+      // #krs-entity-<domainId> bundle level). The sub-mode has no meaning at the
+      // system root (no domain drilled), so it falls back to the system anchor.
+      base =
+        isEntityView && viewPath.length > 0
+          ? `#${anchorId("entity", viewPath[viewPath.length - 1])}`
+          : `#${anchorId("system", viewPath.length === 0 ? "root" : viewPath[viewPath.length - 1])}`;
       break;
     default: {
       const _exhaustive: never = activeView;
@@ -75,6 +84,7 @@ export function shareTargetToHash(target: ShareTarget): string {
     target.view,
     target.node ? [target.node] : [],
     target.orgTree ?? false,
+    target.entityView ?? false,
     target.highlight ?? null,
   );
 }
@@ -90,6 +100,7 @@ export function parseHash(hash: string): {
   activeView: ActiveView;
   nodeId: string | null;
   isOrgTreeView: boolean;
+  isEntityView: boolean;
   highlightNodeId: string | null;
   filePath: string | null;
 } | null {
@@ -129,26 +140,50 @@ type ParseResult = {
   activeView: ActiveView;
   nodeId: string | null;
   isOrgTreeView: boolean;
+  isEntityView: boolean;
 };
 
 const PARSE_DISPATCHERS = {
   deploy: (base) =>
-    base === "#krs-deploy" ? { activeView: "deploy", nodeId: null, isOrgTreeView: false } : null,
+    base === "#krs-deploy"
+      ? { activeView: "deploy", nodeId: null, isOrgTreeView: false, isEntityView: false }
+      : null,
   matrix: (base) =>
-    base === "#krs-matrix" ? { activeView: "matrix", nodeId: null, isOrgTreeView: false } : null,
+    base === "#krs-matrix"
+      ? { activeView: "matrix", nodeId: null, isOrgTreeView: false, isEntityView: false }
+      : null,
   org: (base) => {
-    if (base === "#krs-org-tree") return { activeView: "org", nodeId: null, isOrgTreeView: true };
+    if (base === "#krs-org-tree")
+      return { activeView: "org", nodeId: null, isOrgTreeView: true, isEntityView: false };
     const m = base.match(/^#krs-org-(.+)$/);
     if (!m) return null;
-    return { activeView: "org", nodeId: m[1] === "root" ? null : m[1], isOrgTreeView: false };
+    return {
+      activeView: "org",
+      nodeId: m[1] === "root" ? null : m[1],
+      isOrgTreeView: false,
+      isEntityView: false,
+    };
   },
   system: (base) => {
+    // The entity view is a system-view sub-mode keyed by the drilled domain id,
+    // so its #krs-entity-<domainId> hash resolves to activeView "system" with
+    // the entity sub-mode on. Checked before the plain system anchor.
+    const em = base.match(/^#krs-entity-(.+)$/);
+    if (em) {
+      return {
+        activeView: "system",
+        nodeId: em[1] === "root" ? null : em[1],
+        isOrgTreeView: false,
+        isEntityView: true,
+      };
+    }
     const m = base.match(/^#krs-system-(.+)$/);
     if (!m) return null;
     return {
       activeView: "system",
       nodeId: m[1] === "root" ? null : m[1],
       isOrgTreeView: false,
+      isEntityView: false,
     };
   },
 } satisfies Record<ActiveView, (base: string) => ParseResult | null>;
@@ -164,6 +199,8 @@ export function useHistoryNavigation({
   dispatch,
   isOrgTreeView,
   setIsOrgTreeView,
+  isEntityView,
+  setIsEntityView,
   highlightedNodeId,
   onFileChange,
 }: {
@@ -177,6 +214,9 @@ export function useHistoryNavigation({
   dispatch: Dispatch<AppAction>;
   isOrgTreeView: boolean;
   setIsOrgTreeView: (v: boolean) => void;
+  /** Entity sub-mode: system view drilled into a domain, showing its entity view. */
+  isEntityView: boolean;
+  setIsEntityView: (v: boolean) => void;
   highlightedNodeId: string | null;
   /**
    * Called when popstate (or initial-mount hash) requests a different file.
@@ -197,6 +237,10 @@ export function useHistoryNavigation({
   // Stable ref for setIsOrgTreeView to avoid re-running mount-only effects
   const setIsOrgTreeViewRef = useRef(setIsOrgTreeView);
   setIsOrgTreeViewRef.current = setIsOrgTreeView;
+
+  // Stable ref for setIsEntityView (same rationale as setIsOrgTreeView).
+  const setIsEntityViewRef = useRef(setIsEntityView);
+  setIsEntityViewRef.current = setIsEntityView;
 
   // When true, state changes are caused by popstate — skip pushing another history entry
   const isProgrammaticNavRef = useRef(false);
@@ -232,7 +276,7 @@ export function useHistoryNavigation({
       history.replaceState(
         null,
         "",
-        buildHash(activeView, viewPath, isOrgTreeView, null, currentFilePath),
+        buildHash(activeView, viewPath, isOrgTreeView, isEntityView, null, currentFilePath),
       );
       return;
     }
@@ -263,6 +307,10 @@ export function useHistoryNavigation({
     // Restore org tree view mode
     if (parsed.isOrgTreeView) {
       setIsOrgTreeViewRef.current(true);
+    }
+    // Restore entity sub-mode
+    if (parsed.isEntityView) {
+      setIsEntityViewRef.current(true);
     }
     if (parsed.nodeId === null) {
       dispatch({ type: "SET_VIEW_PATH", path: [] });
@@ -335,6 +383,7 @@ export function useHistoryNavigation({
       activeView,
       viewPath,
       isOrgTreeView,
+      isEntityView,
       highlightedNodeId,
       currentFilePath,
     );
@@ -347,7 +396,7 @@ export function useHistoryNavigation({
       }
     }
     prevFilePathRef.current = currentFilePath;
-  }, [activeView, viewPath, isOrgTreeView, highlightedNodeId, currentFilePath]);
+  }, [activeView, viewPath, isOrgTreeView, isEntityView, highlightedNodeId, currentFilePath]);
 
   // ④ popstate handler — browser back/forward
   useEffect(() => {
@@ -377,6 +426,7 @@ export function useHistoryNavigation({
         dispatch({ type: "SET_HIGHLIGHTED_NODE", nodeId: parsed.highlightNodeId });
       }
       setIsOrgTreeViewRef.current(parsed.isOrgTreeView);
+      setIsEntityViewRef.current(parsed.isEntityView);
 
       const path =
         parsed.nodeId === null

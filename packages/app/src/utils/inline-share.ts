@@ -33,6 +33,7 @@ function sanitizeTarget(value: unknown): ShareTarget | undefined {
   if (typeof t.node === "string" && t.node !== "") target.node = t.node;
   if (typeof t.highlight === "string" && t.highlight !== "") target.highlight = t.highlight;
   if (t.orgTree === true) target.orgTree = true;
+  if (t.entityView === true) target.entityView = true;
   return target;
 }
 

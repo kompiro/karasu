@@ -142,6 +142,14 @@ export interface PreviewContextValue {
   /** Fully-expanded org tree SVG for export */
   orgTreeExportSvg?: string;
 
+  /** Entity sub-mode: show the drilled domain's entity view (mirrors Org Tree View). */
+  isEntityViewOpen: boolean;
+  onEntityViewToggle: () => void;
+  /** Rendered entity view SVG for the currently drilled domain. */
+  entityViewSvg?: string;
+  /** Whether the drilled domain has an entity view (gates the toggle). */
+  hasEntityView: boolean;
+
   /**
    * Path of the `.krs.style` file the GUI append writer should target,
    * resolved from the active project (typically the last `@import` in the

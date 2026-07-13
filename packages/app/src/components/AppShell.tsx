@@ -106,6 +106,9 @@ export function AppShell({
   const [isAllLayersOpen, setIsAllLayersOpen] = useState(false);
   const [previewFocused, setPreviewFocused] = useState(false);
   const [isOrgTreeViewOpen, setIsOrgTreeViewOpen] = useState(false);
+  // Entity sub-mode: while drilled into a domain in the system view, swap the
+  // usecase view for the domain's entity view. Mirrors `isOrgTreeViewOpen`.
+  const [isEntityViewOpen, setIsEntityViewOpen] = useState(false);
 
   // The SVG diagram follows the app's effective theme so the rendered
   // diagram matches the chrome (ADR-20260520-06 left SVG out of scope;
@@ -126,6 +129,8 @@ export function AppShell({
     dispatch,
     isOrgTreeViewOpen,
     setIsOrgTreeViewOpen,
+    isEntityViewOpen,
+    setIsEntityViewOpen,
     compareSource,
     snapshotManager,
     projectRoot,
@@ -199,7 +204,15 @@ export function AppShell({
     recompile,
   });
 
-  const { drillDownSvg, allLayersSvg, orgAllLayersSvg, orgDrillDownSvg, allViewsSvg } = useViewSvg(
+  const {
+    drillDownSvg,
+    allLayersSvg,
+    orgAllLayersSvg,
+    orgDrillDownSvg,
+    allViewsSvg,
+    entityViewSvg,
+    hasEntityView,
+  } = useViewSvg(
     fileContent,
     displayMode,
     styleSource,
@@ -208,6 +221,7 @@ export function AppShell({
     // so team boundary frames reach those surfaces (#1879). Exports keep the
     // full structure (no collapse) by design.
     views.system.groupBy === "team" ? "team" : undefined,
+    viewPath,
   );
 
   const hasSidebar = !!(sidebarHeaderContent || sidebarContent);
@@ -233,6 +247,7 @@ export function AppShell({
   const toggleAllLayers = useCallback(() => setIsAllLayersOpen((v) => !v), []);
   const togglePreviewFocus = useCallback(() => setPreviewFocused((v) => !v), []);
   const toggleOrgTreeView = useCallback(() => setIsOrgTreeViewOpen((v) => !v), []);
+  const toggleEntityView = useCallback(() => setIsEntityViewOpen((v) => !v), []);
 
   // Stable identity so it doesn't bust the preview-context memo every render
   // (the original kept this inside the memo, keyed on entryPath/fs).
@@ -321,6 +336,10 @@ export function AppShell({
     onJumpToEditor: !hideEditor ? handleJumpToEditor : undefined,
     isOrgTreeViewOpen,
     toggleOrgTreeView,
+    isEntityViewOpen,
+    toggleEntityView,
+    entityViewSvg,
+    hasEntityView,
     styleTargetPath,
     onPickEdgeDirection,
     onExportSvg: downloadSvg,

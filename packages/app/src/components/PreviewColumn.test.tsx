@@ -102,6 +102,9 @@ function makeProps(overrides: Partial<PreviewContextValue> = {}): PreviewContext
     onPreviewFocusToggle: vi.fn<() => void>(),
     isOrgTreeViewOpen: false,
     onOrgTreeViewToggle: vi.fn<() => void>(),
+    isEntityViewOpen: false,
+    onEntityViewToggle: vi.fn<() => void>(),
+    hasEntityView: false,
     orgTreeSvg: undefined,
     onTeamToggle: vi.fn<() => void>(),
     orgTreeExportSvg: undefined,
@@ -266,6 +269,75 @@ describe("PreviewColumn", () => {
       const { container } = renderPreview(props);
       expect(container.querySelector('[data-testid="org"]')).toBeTruthy();
       expect(container.querySelector('[data-testid="sys"]')).toBeNull();
+    });
+  });
+
+  describe("Entity view sub-mode (#1907)", () => {
+    const entitySvg = '<svg xmlns="http://www.w3.org/2000/svg" data-testid="entity"></svg>';
+
+    it("hides the Entities toggle when the drilled node has no entity view", () => {
+      const { queryByRole } = renderPreview(
+        makeProps({ activeView: "system", hasEntityView: false }),
+      );
+      expect(queryByRole("button", { name: /toggle entity view/i })).toBeNull();
+    });
+
+    it("shows the Entities toggle when the drilled domain has an entity view", () => {
+      const { getByRole } = renderPreview(
+        makeProps({ activeView: "system", hasEntityView: true, entityViewSvg: entitySvg }),
+      );
+      const btn = getByRole("button", { name: /toggle entity view/i });
+      expect(btn.getAttribute("aria-pressed")).toBe("false");
+    });
+
+    it("does not show the Entities toggle outside the system view", () => {
+      const { queryByRole } = renderPreview(
+        makeProps({ activeView: "org", hasEntityView: true, entityViewSvg: entitySvg }),
+      );
+      expect(queryByRole("button", { name: /toggle entity view/i })).toBeNull();
+    });
+
+    it("calls onEntityViewToggle when the toggle is clicked", async () => {
+      const user = userEvent.setup();
+      const onEntityViewToggle = vi.fn<() => void>();
+      const { getByRole } = renderPreview(
+        makeProps({
+          activeView: "system",
+          hasEntityView: true,
+          entityViewSvg: entitySvg,
+          onEntityViewToggle,
+        }),
+      );
+      await user.click(getByRole("button", { name: /toggle entity view/i }));
+      expect(onEntityViewToggle).toHaveBeenCalledTimes(1);
+    });
+
+    it("renders the entity SVG (not the system svg) when the sub-mode is on", () => {
+      const sysSvg = '<svg xmlns="http://www.w3.org/2000/svg" data-testid="sys"></svg>';
+      const props = makeProps({
+        activeView: "system",
+        isEntityViewOpen: true,
+        hasEntityView: true,
+        entityViewSvg: entitySvg,
+        systemView: { ...makeProps().systemView, svg: sysSvg },
+      });
+      const { container } = renderPreview(props);
+      expect(container.querySelector('[data-testid="entity"]')).toBeTruthy();
+      expect(container.querySelector('[data-testid="sys"]')).toBeNull();
+    });
+
+    it("falls back to the system svg when the sub-mode is on but there is no entity view", () => {
+      const sysSvg = '<svg xmlns="http://www.w3.org/2000/svg" data-testid="sys"></svg>';
+      const props = makeProps({
+        activeView: "system",
+        isEntityViewOpen: true,
+        hasEntityView: false,
+        entityViewSvg: undefined,
+        systemView: { ...makeProps().systemView, svg: sysSvg },
+      });
+      const { container } = renderPreview(props);
+      expect(container.querySelector('[data-testid="sys"]')).toBeTruthy();
+      expect(container.querySelector('[data-testid="entity"]')).toBeNull();
     });
   });
 

@@ -32,6 +32,21 @@ describe("anchor parity: buildHash ↔ core anchorId", () => {
     expect(buildHash("org", [])).toBe(`#${anchorId("org", "root")}`);
   });
 
+  // The entity sub-mode (#1907) reuses the same `anchorId("entity", <domainId>)`
+  // grammar the core static bundle emits (drill-down-svg.ts), keyed by the
+  // drilled domain — so the interactive hash and the static #krs-entity level
+  // are one portable form.
+  it.each([["Ordering"], ["weird id/with.chars"]])(
+    "entity sub-mode buildHash matches #anchorId('entity', %s)",
+    (id) => {
+      expect(buildHash("system", [id], false, true)).toBe(`#${anchorId("entity", id)}`);
+    },
+  );
+
+  it("entity sub-mode falls back to the system anchor at the root (no domain drilled)", () => {
+    expect(buildHash("system", [], false, true)).toBe(`#${anchorId("system", "root")}`);
+  });
+
   // Documented exception (docs/spec/permalink.md): deploy/matrix are single-level
   // whole-view tabs with a bare `#krs-<view>` token, NOT element anchors — they
   // intentionally do not share the `anchorId` leaf grammar.
@@ -58,6 +73,12 @@ describe("shareTargetToHash", () => {
       "#krs-system-Payment:Api",
     );
     expect(shareTargetToHash({ view: "org", orgTree: true })).toBe("#krs-org-tree");
+  });
+
+  it("honors the entityView sub-mode flag (#1907)", () => {
+    expect(shareTargetToHash({ view: "system", node: "Ordering", entityView: true })).toBe(
+      "#krs-entity-Ordering",
+    );
   });
 
   it("round-trips back through parseHash (view + node + highlight)", () => {
@@ -111,7 +132,7 @@ describe("buildHash", () => {
   });
 
   it("appends :highlightNodeId to matrix hash when provided", () => {
-    expect(buildHash("matrix", [], false, "OrderTable")).toBe("#krs-matrix:OrderTable");
+    expect(buildHash("matrix", [], false, false, "OrderTable")).toBe("#krs-matrix:OrderTable");
   });
 
   it("returns #krs-org-tree when isOrgTreeView is true", () => {
@@ -123,35 +144,35 @@ describe("buildHash", () => {
   });
 
   it("appends :highlightNodeId to deploy hash when provided", () => {
-    expect(buildHash("deploy", [], false, "ECommerce")).toBe("#krs-deploy:ECommerce");
+    expect(buildHash("deploy", [], false, false, "ECommerce")).toBe("#krs-deploy:ECommerce");
   });
 
   it("appends :highlightNodeId to org root hash when provided", () => {
-    expect(buildHash("org", [], false, "ecTeam")).toBe("#krs-org-root:ecTeam");
+    expect(buildHash("org", [], false, false, "ecTeam")).toBe("#krs-org-root:ecTeam");
   });
 
   it("appends :highlightNodeId to system hash when provided", () => {
-    expect(buildHash("system", ["Payment"], false, "SomeNode")).toBe(
+    expect(buildHash("system", ["Payment"], false, false, "SomeNode")).toBe(
       "#krs-system-Payment:SomeNode",
     );
   });
 
   it("omits colon when highlightNodeId is null", () => {
-    expect(buildHash("deploy", [], false, null)).toBe("#krs-deploy");
+    expect(buildHash("deploy", [], false, false, null)).toBe("#krs-deploy");
   });
 
   it("omits colon when highlightNodeId is undefined", () => {
-    expect(buildHash("deploy", [], false, undefined)).toBe("#krs-deploy");
+    expect(buildHash("deploy", [], false, false, undefined)).toBe("#krs-deploy");
   });
 
   it("appends ?file= when filePath is provided (Issue #811)", () => {
-    expect(buildHash("system", [], false, null, "/projects/p/before.krs")).toBe(
+    expect(buildHash("system", [], false, false, null, "/projects/p/before.krs")).toBe(
       "#krs-system-root?file=%2Fprojects%2Fp%2Fbefore.krs",
     );
   });
 
   it("combines highlight and file segments", () => {
-    expect(buildHash("deploy", [], false, "ECommerce", "/p/index.krs")).toBe(
+    expect(buildHash("deploy", [], false, false, "ECommerce", "/p/index.krs")).toBe(
       "#krs-deploy:ECommerce?file=%2Fp%2Findex.krs",
     );
   });
@@ -165,6 +186,7 @@ describe("parseHash", () => {
       activeView: "deploy",
       nodeId: null,
       isOrgTreeView: false,
+      isEntityView: false,
       highlightNodeId: null,
       filePath: null,
     });
@@ -175,6 +197,7 @@ describe("parseHash", () => {
       activeView: "system",
       nodeId: null,
       isOrgTreeView: false,
+      isEntityView: false,
       highlightNodeId: null,
       filePath: null,
     });
@@ -185,6 +208,7 @@ describe("parseHash", () => {
       activeView: "org",
       nodeId: null,
       isOrgTreeView: false,
+      isEntityView: false,
       highlightNodeId: null,
       filePath: null,
     });
@@ -195,9 +219,29 @@ describe("parseHash", () => {
       activeView: "system",
       nodeId: "Payment",
       isOrgTreeView: false,
+      isEntityView: false,
       highlightNodeId: null,
       filePath: null,
     });
+  });
+
+  it("parses #krs-entity-<domain> as system view with the entity sub-mode on (#1907)", () => {
+    expect(parseHash("#krs-entity-Ordering")).toEqual({
+      activeView: "system",
+      nodeId: "Ordering",
+      isOrgTreeView: false,
+      isEntityView: true,
+      highlightNodeId: null,
+      filePath: null,
+    });
+  });
+
+  it("round-trips the entity sub-mode through buildHash → parseHash", () => {
+    const hash = buildHash("system", ["Ordering"], false, true);
+    const parsed = parseHash(hash);
+    expect(parsed?.activeView).toBe("system");
+    expect(parsed?.nodeId).toBe("Ordering");
+    expect(parsed?.isEntityView).toBe(true);
   });
 
   it("parses #krs-org-backend", () => {
@@ -205,6 +249,7 @@ describe("parseHash", () => {
       activeView: "org",
       nodeId: "backend",
       isOrgTreeView: false,
+      isEntityView: false,
       highlightNodeId: null,
       filePath: null,
     });
@@ -215,6 +260,7 @@ describe("parseHash", () => {
       activeView: "matrix",
       nodeId: null,
       isOrgTreeView: false,
+      isEntityView: false,
       highlightNodeId: null,
       filePath: null,
     });
@@ -225,6 +271,7 @@ describe("parseHash", () => {
       activeView: "matrix",
       nodeId: null,
       isOrgTreeView: false,
+      isEntityView: false,
       highlightNodeId: "OrderTable",
       filePath: null,
     });
@@ -235,6 +282,7 @@ describe("parseHash", () => {
       activeView: "matrix",
       nodeId: null,
       isOrgTreeView: false,
+      isEntityView: false,
       highlightNodeId: null,
       filePath: "/p/index.krs",
     });
@@ -245,6 +293,7 @@ describe("parseHash", () => {
       activeView: "matrix",
       nodeId: null,
       isOrgTreeView: false,
+      isEntityView: false,
       highlightNodeId: null,
       filePath: null,
     });
@@ -255,6 +304,7 @@ describe("parseHash", () => {
       activeView: "org",
       nodeId: null,
       isOrgTreeView: true,
+      isEntityView: false,
       highlightNodeId: null,
       filePath: null,
     });
@@ -265,6 +315,7 @@ describe("parseHash", () => {
       activeView: "deploy",
       nodeId: null,
       isOrgTreeView: false,
+      isEntityView: false,
       highlightNodeId: "ECommerce",
       filePath: null,
     });
@@ -275,6 +326,7 @@ describe("parseHash", () => {
       activeView: "org",
       nodeId: null,
       isOrgTreeView: false,
+      isEntityView: false,
       highlightNodeId: "ecTeam",
       filePath: null,
     });
@@ -285,6 +337,7 @@ describe("parseHash", () => {
       activeView: "system",
       nodeId: "Payment",
       isOrgTreeView: false,
+      isEntityView: false,
       highlightNodeId: "SomeNode",
       filePath: null,
     });
@@ -307,6 +360,7 @@ describe("parseHash", () => {
       activeView: "system",
       nodeId: null,
       isOrgTreeView: false,
+      isEntityView: false,
       highlightNodeId: null,
       filePath: "/p/before.krs",
     });
@@ -317,6 +371,7 @@ describe("parseHash", () => {
       activeView: "deploy",
       nodeId: null,
       isOrgTreeView: false,
+      isEntityView: false,
       highlightNodeId: "ECommerce",
       filePath: "/p/index.krs",
     });
@@ -340,6 +395,8 @@ function makeOptions(overrides: Partial<Parameters<typeof useHistoryNavigation>[
     dispatch: makeDispatch(),
     isOrgTreeView: false,
     setIsOrgTreeView: vi.fn<() => void>(),
+    isEntityView: false,
+    setIsEntityView: vi.fn<() => void>(),
     highlightedNodeId: null as string | null,
     ...overrides,
   };
