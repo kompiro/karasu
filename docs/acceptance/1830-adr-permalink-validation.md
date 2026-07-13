@@ -2,7 +2,7 @@
 
 - **日付**: 2026-07-13
 - **関連 Issue**: [#1830](https://github.com/kompiro/karasu/issues/1830)（permalink layer epic [#1826](https://github.com/kompiro/karasu/issues/1826) の子）
-- **関連 ADR（決定記録）**: [ADR-20260713-01](../adr/20260713-01-adr-permalink-validation.md)（karasu 側 validator）
+- **関連 ADR（決定記録）**: [ADR-20260713-02](../adr/20260713-02-adr-permalink-validation.md)（karasu 側 validator）
 - **前提 ADR**: [ADR-20260702-01](../adr/20260702-01-adr-permalink-convention.md)（`permalink:` 規約）／ [ADR-20260630-01](../adr/20260630-01-permalink-deep-element.md)（アンカー文法）
 - **関連 spec**: [`docs/spec/permalink.md`](../spec/permalink.md) § Stability caveat
 - **関連 TPL**: [TPL-20260520-02](../test-perspectives/TPL-20260520-02-consistency-check-triggers-on-both-sides.md)（両側トリガ）

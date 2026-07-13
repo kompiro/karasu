@@ -109,7 +109,7 @@ permalink:
 adr-tools 側（generic）が担うのは `.krs` を parse しない範囲だが、deep anchor 解決は
 core を要するため karasu 側にある。**本文サマリ表の生成**（frontmatter → クリック用 markdown）は
 まだ未実装で `@kompiro/adr-tools` への follow-up。当面サマリは手書きしてよい。
-経緯は [ADR-20260713-01](../../docs/adr/20260713-01-adr-permalink-validation.md) 参照。
+経緯は [ADR-20260713-02](../../docs/adr/20260713-02-adr-permalink-validation.md) 参照。
 
 ## 編集後のチェック
 

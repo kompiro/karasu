@@ -1,5 +1,5 @@
 ---
-id: ADR-20260713-01
+id: ADR-20260713-02
 title: ADR→karasu permalink の検証（karasu 側 validator `adr:check-permalinks`）
 status: accepted
 date: 2026-07-13
@@ -15,7 +15,7 @@ assumptions:
   - "file: docs/spec/permalink.md"
 ---
 
-# ADR-20260713-01: ADR→karasu permalink の検証（karasu 側 validator `adr:check-permalinks`）
+# ADR-20260713-02: ADR→karasu permalink の検証（karasu 側 validator `adr:check-permalinks`）
 
 - **日付**: 2026-07-13
 - **ステータス**: 決定済み
