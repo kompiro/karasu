@@ -1,4 +1,4 @@
-# Repo → karasu 逆生成ハーネス（multi-subagent + CLI）
+# アーキテクチャリバースハーネス（Architecture Reverse Harness, multi-subagent + CLI）
 
 - **日付**: 2026-07-13
 - **ステータス**: 検討中
@@ -27,15 +27,15 @@
 
 ## 現状（インベントリ）
 
-逆生成の「spine」に使える既存 CLI 面は既に揃っている。ハーネスが新規に作るべきものを最小化するため、
+アーキテクチャリバースの「spine」に使える既存 CLI 面は既に揃っている。ハーネスが新規に作るべきものを最小化するため、
 現状を整理する。
 
-| 面 | コマンド | 逆生成での役割 |
+| 面 | コマンド | アーキテクチャリバースでの役割 |
 | --- | --- | --- |
 | 物理層抽出 | `karasu translate --from compose\|k8s\|openapi\|db`（[translate.ts](../../packages/core/src/translate/translate.ts) `TranslateFormat`） | deploy.krs / service usecase / table を deterministic に生成。エージェントは *annotate* するだけで invent しない |
 | 差分・成長 | `karasu diff <before> <after>` / `karasu apply` | slice を incremental に merged モデルへ流し込む |
 | 検証 | `karasu lint-style` / `karasu render`（描けるか） | 各 subagent 出力を synthesis 前に機械チェック |
-| カバレッジ | `karasu matrix <file>` | 既に coverage 的な集計を持つ。逆生成の「thinned out」検出に転用できるか要確認 |
+| カバレッジ | `karasu matrix <file>` | 既に coverage 的な集計を持つ。アーキテクチャリバースの「thinned out」検出に転用できるか要確認 |
 | 構造化編集 | `karasu insert` / `append` / `remove` | skeleton へのノード追加を deterministic に行う |
 
 **不足している primitive**（本設計の焦点）:
@@ -52,7 +52,7 @@
   compose/k8s/openapi は canonicalize してからモデルに入れる。
 - **deterministic 部は principled API 経由**（[TPL-20260510-16](../test-perspectives/TPL-20260510-16-convenience-vs-principled-api.md)）。
   translate/diff/apply を CLI 越しに使い、core の内部 convenience API を叩かない。
-- **v1.0 syntax は freeze 済み**（ADR-20260616-06）。逆生成は**新 `.krs` 構文を導入しない** — 既存語彙で書ける範囲を対象にし、
+- **v1.0 syntax は freeze 済み**（ADR-20260616-06）。アーキテクチャリバースは**新 `.krs` 構文を導入しない** — 既存語彙で書ける範囲を対象にし、
   書けない idiom は notation watch r2（#1816）/ cookbook（#1818）へ観測結果として feed する（本設計では構文拡張しない）。
 - **out of scope**: 対話的 Chat authoring（#362–364 の counterpart。本設計は *bulk-reverse* 側）、format↔format interop（#1832）、
   大図の perceivability（#1817 は consumer 側）。
@@ -124,7 +124,7 @@ resource の所在は **物理宣言（translate 出力）を正準形とし、�
   node/edge recall を depth level 別に測る。
 
 **推奨: F2**。plausible ≠ correct を定量で区別する。これは定量検証 [#638](https://github.com/kompiro/karasu/issues/638) の
-延長線上 — corpus と metric を #638 に接続する。逆生成中に出た notation gap は #1816 / #1818 へ feed。
+延長線上 — corpus と metric を #638 に接続する。アーキテクチャリバース中に出た notation gap は #1816 / #1818 へ feed。
 
 ## 比較
 
@@ -161,7 +161,7 @@ validate/repair loop）を軸に、上記推奨（A1+A2+A3 fallback / B2 / C2 / 
 ### 影響範囲・マイグレーション
 
 - 既存ユーザーへの影響: **なし**（新 CLI primitive の追加のみ、既存構文・既存コマンドの挙動は不変）。
-- ドキュメント更新: 新 CLI サブコマンドを `docs/spec/` / CLI ヘルプに追記。逆生成 workflow の guide。
+- ドキュメント更新: 新 CLI サブコマンドを `docs/spec/` / CLI ヘルプに追記。アーキテクチャリバース workflow の guide。
 - テスト・examples への影響: eval corpus は repo 外または `examples/` 外の fixture として扱う（生成レポートは repo に commit しない — 分析生成物の扱いに準拠）。
 
 ## 未解決の問い / 決めないこと
