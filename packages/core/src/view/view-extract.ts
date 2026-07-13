@@ -830,12 +830,16 @@ export function extractView(
 
   // At domain level: promote resource nodes with dot-notation refs to sibling level
   // so they appear as connected nodes in the UseCase diagram.
-  let promotedChildNodes = applyInferredTags(containerNode.children, resourceInferredTagsMap);
+  // Entities are conceptual data nodes rendered only in the (deferred) entity
+  // view — exclude them here so they don't appear as stray unstyled boxes in
+  // the domain / usecase drill-down.
+  const renderableChildren = containerNode.children.filter((c) => c.kind !== "entity");
+  let promotedChildNodes = applyInferredTags(renderableChildren, resourceInferredTagsMap);
   let finalChildEdges = childEdges;
 
   if (containerNode.kind === "domain") {
     const { resourceNodes, edges: resourceEdges } = deriveUsecaseResourceNodes(
-      containerNode.children,
+      renderableChildren,
       resourceInferredTagsMap,
     );
     if (resourceNodes.length > 0) {

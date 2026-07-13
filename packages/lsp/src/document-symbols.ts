@@ -29,6 +29,7 @@ function krsNodeToSymbol(node: KrsNode): DocumentSymbol {
     service: SymbolKind.Class,
     domain: SymbolKind.Namespace,
     usecase: SymbolKind.Function,
+    entity: SymbolKind.Struct,
     resource: SymbolKind.Property,
     user: SymbolKind.Object,
     client: SymbolKind.Class,

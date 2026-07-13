@@ -1,0 +1,26 @@
+system PaymentPlatform {
+  label "決済プラットフォーム"
+
+  user Merchant       { label "加盟店" }
+  user PlatformAdmin  { label "プラットフォーム管理者" }
+
+  service Gateway {
+    label "決済ゲートウェイ"
+    domain Authorization {
+      usecase Authorize { label "決済を承認する" }
+      usecase Capture   { label "売上を確定する" }
+    }
+  }
+
+  service RiskEngine { label "リスク判定エンジン" }
+  service Ledger     { label "台帳サービス" }
+
+  service VisaNet [external] { label "Visa Net" }
+  service BankAPI [external] { label "銀行API" }
+
+  Merchant -> Gateway     "決済リクエストを送る"
+  Gateway  -> RiskEngine  "不正スコアを取得する"
+  Gateway  -> VisaNet     "Visa決済を処理する"
+  Gateway  --> Ledger     "取引を記録する"
+  Ledger   --> BankAPI    "加盟店へ振り込む"
+}

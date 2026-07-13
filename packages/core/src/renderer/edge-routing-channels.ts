@@ -26,18 +26,7 @@
  * anchor logic are not disturbed.
  */
 import type { LayoutEdge, LayoutNode } from "./layout-types.js";
-
-interface Rect {
-  x: number;
-  y: number;
-  width: number;
-  height: number;
-}
-
-interface Point {
-  x: number;
-  y: number;
-}
+import { type Point, segmentCrossesAnyRect } from "./edge-geometry.js";
 
 export function routeOrthogonalEdges(
   layoutNodes: Map<string, LayoutNode>,
@@ -124,46 +113,4 @@ function computeChannelY(from: LayoutNode, to: LayoutNode, nodes: LayoutNode[]):
   }
   if (upperBottom >= to.y) return null;
   return (upperBottom + to.y) / 2;
-}
-
-function segmentCrossesAnyRect(a: Point, b: Point, rects: Rect[]): boolean {
-  for (const r of rects) {
-    if (segmentCrossesRect(a, b, r)) return true;
-  }
-  return false;
-}
-
-/**
- * Liang-Barsky line clipping against an axis-aligned rectangle. Returns true
- * if the open segment (a, b) intersects the rectangle's interior. Touching an
- * edge does not count — endpoints sitting exactly on a node side are not
- * treated as crossings (they're the legitimate from/to anchors).
- */
-function segmentCrossesRect(a: Point, b: Point, r: Rect): boolean {
-  const dx = b.x - a.x;
-  const dy = b.y - a.y;
-  let t0 = 0;
-  let t1 = 1;
-  const p = [-dx, dx, -dy, dy];
-  const q = [a.x - r.x, r.x + r.width - a.x, a.y - r.y, r.y + r.height - a.y];
-  for (let i = 0; i < 4; i++) {
-    if (p[i] === 0) {
-      // Segment is parallel to this rect edge. If q[i] <= 0 the segment lies
-      // on or outside that edge — no strict-interior crossing on this axis,
-      // and a vertical/horizontal stub running along a node's side should
-      // not be flagged as a collision.
-      if (q[i] <= 0) return false;
-    } else {
-      const t = q[i] / p[i];
-      if (p[i] < 0) {
-        if (t > t1) return false;
-        if (t > t0) t0 = t;
-      } else {
-        if (t < t0) return false;
-        if (t < t1) t1 = t;
-      }
-    }
-  }
-  // Strict interior: require positive overlap (not just touching).
-  return t1 - t0 > 1e-6;
 }

@@ -12,7 +12,7 @@ discovered_from:
   - root_cause_adr: "ADR-20260429-02"
   - root_cause_adr: "ADR-20260429-01"
   - root_cause_file: "packages/core/src/renderer/layout.ts"
-related_to: [TPL-20260519-02]
+related_to: [TPL-20260519-02, TPL-20260711-02]
 topic: renderer
 scope:
   packages: [core]

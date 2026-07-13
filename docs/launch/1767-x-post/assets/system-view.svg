@@ -1,0 +1,83 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1466.8999999999999 652" width="1466.8999999999999" height="652"><defs><marker id="arrow-default" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#94A3B8"/></marker></defs>
+<rect width="1466.8999999999999" height="652" fill="#0F172A" rx="0"/>
+<text x="20" y="24" fill="#64748B" font-size="14px" font-family="sans-serif" font-weight="bold">決済プラットフォーム</text>
+<g class="edges"><g data-edge-from="Merchant" data-edge-to="Gateway" data-edge-kind="sync" data-edge-canonical-id="Merchant-&gt;Gateway" data-edge-label="決済リクエストを送る" class="krs-edge krs-edge--interactive"><line x1="548.2249999999999" y1="144" x2="709.1166666666666" y2="264" stroke="transparent" stroke-width="14" stroke-linecap="butt" class="krs-edge__hitline"/>
+<line x1="548.2249999999999" y1="144" x2="709.1166666666666" y2="264" stroke="#94A3B8" stroke-width="1.5" marker-end="url(#arrow-default)"/>
+<text x="628.6708333333332" y="198" text-anchor="middle" fill="#94A3B8" font-size="11px" font-family="sans-serif">決済リクエストを送る</text></g>
+<g data-edge-from="PlatformAdmin" data-edge-to="Gateway" data-edge-kind="sync" data-edge-canonical-id="PlatformAdmin-&gt;Gateway" data-edge-label="決済状況をモニタリングする" class="krs-edge krs-edge--interactive"><line x1="885.2666666666665" y1="144" x2="779.7833333333332" y2="264" stroke="transparent" stroke-width="14" stroke-linecap="butt" class="krs-edge__hitline"/>
+<line x1="885.2666666666665" y1="144" x2="779.7833333333332" y2="264" stroke="#94A3B8" stroke-width="1.5" marker-end="url(#arrow-default)"/>
+<text x="832.5249999999999" y="198" text-anchor="middle" fill="#94A3B8" font-size="11px" font-family="sans-serif">決済状況をモニタリングする</text></g>
+<g data-edge-from="PlatformAdmin" data-edge-to="Ledger" data-edge-kind="sync" data-edge-canonical-id="PlatformAdmin-&gt;Ledger" data-edge-label="精算レポートを確認する" class="krs-edge krs-edge--interactive"><line x1="996.0833333333331" y1="144" x2="918.0333333333333" y2="468" stroke="transparent" stroke-width="14" stroke-linecap="butt" class="krs-edge__hitline"/>
+<line x1="996.0833333333331" y1="144" x2="918.0333333333333" y2="468" stroke="#94A3B8" stroke-width="1.5" marker-end="url(#arrow-default)"/>
+<text x="957.0583333333332" y="300" text-anchor="middle" fill="#94A3B8" font-size="11px" font-family="sans-serif">精算レポートを確認する</text></g>
+<g data-edge-from="Gateway" data-edge-to="RiskEngine" data-edge-kind="sync" data-edge-canonical-id="Gateway-&gt;RiskEngine" data-edge-label="不正スコアを取得する" class="krs-edge krs-edge--interactive"><line x1="709.1166666666666" y1="348" x2="621.9499999999999" y2="468" stroke="transparent" stroke-width="14" stroke-linecap="butt" class="krs-edge__hitline"/>
+<line x1="709.1166666666666" y1="348" x2="621.9499999999999" y2="468" stroke="#94A3B8" stroke-width="1.5" marker-end="url(#arrow-default)"/>
+<text x="665.5333333333333" y="402" text-anchor="middle" fill="#94A3B8" font-size="11px" font-family="sans-serif">不正スコアを取得する</text></g>
+<g data-edge-from="Gateway" data-edge-to="ThreeDSecure" data-edge-kind="sync" data-edge-canonical-id="Gateway-&gt;ThreeDSecure" data-edge-label="本人確認を行う" class="krs-edge krs-edge--interactive"><line x1="638.4499999999999" y1="327" x2="210" y2="429" stroke="transparent" stroke-width="14" stroke-linecap="butt" class="krs-edge__hitline"/>
+<line x1="638.4499999999999" y1="327" x2="210" y2="429" stroke="#94A3B8" stroke-width="1.5" marker-end="url(#arrow-default)"/>
+<text x="424.22499999999997" y="372" text-anchor="middle" fill="#94A3B8" font-size="11px" font-family="sans-serif">本人確認を行う</text></g>
+<g data-edge-from="Gateway" data-edge-to="VisaNet" data-edge-kind="sync" data-edge-canonical-id="Gateway-&gt;VisaNet" data-edge-label="Visa決済を処理する" class="krs-edge krs-edge--interactive"><line x1="638.4499999999999" y1="285" x2="200" y2="183" stroke="transparent" stroke-width="14" stroke-linecap="butt" class="krs-edge__hitline"/>
+<line x1="638.4499999999999" y1="285" x2="200" y2="183" stroke="#94A3B8" stroke-width="1.5" marker-end="url(#arrow-default)"/>
+<text x="419.22499999999997" y="228" text-anchor="middle" fill="#94A3B8" font-size="11px" font-family="sans-serif">Visa決済を処理する</text></g>
+<g data-edge-from="Gateway" data-edge-to="MasterNet" data-edge-kind="sync" data-edge-canonical-id="Gateway-&gt;MasterNet" data-edge-label="Mastercard決済を処理する" class="krs-edge krs-edge--interactive"><line x1="638.4499999999999" y1="306" x2="282" y2="306" stroke="transparent" stroke-width="14" stroke-linecap="butt" class="krs-edge__hitline"/>
+<line x1="638.4499999999999" y1="306" x2="282" y2="306" stroke="#94A3B8" stroke-width="1.5" marker-end="url(#arrow-default)"/>
+<text x="460.22499999999997" y="300" text-anchor="middle" fill="#94A3B8" font-size="11px" font-family="sans-serif">Mastercard決済を処理する</text></g>
+<g data-edge-from="Gateway" data-edge-to="Ledger" data-edge-kind="async" data-edge-canonical-id="Gateway--&gt;Ledger" data-edge-label="取引を記録する" class="krs-edge krs-edge--interactive"><line x1="779.7833333333332" y1="348" x2="856.3666666666666" y2="468" stroke="transparent" stroke-width="14" stroke-linecap="butt" class="krs-edge__hitline"/>
+<line x1="779.7833333333332" y1="348" x2="856.3666666666666" y2="468" stroke="#94A3B8" stroke-width="1.5" stroke-dasharray="8 4" marker-end="url(#arrow-default)"/>
+<text x="818.0749999999998" y="402" text-anchor="middle" fill="#94A3B8" font-size="11px" font-family="sans-serif">取引を記録する</text></g>
+<g data-edge-from="Ledger" data-edge-to="BankAPI" data-edge-kind="async" data-edge-canonical-id="Ledger--&gt;BankAPI" data-edge-label="加盟店へ振り込む" class="krs-edge krs-edge--interactive"><line x1="979.6999999999999" y1="510" x2="1206.8999999999999" y2="306" stroke="transparent" stroke-width="14" stroke-linecap="butt" class="krs-edge__hitline"/>
+<line x1="979.6999999999999" y1="510" x2="1206.8999999999999" y2="306" stroke="#94A3B8" stroke-width="1.5" stroke-dasharray="8 4" marker-end="url(#arrow-default)"/>
+<text x="1093.3" y="402" text-anchor="middle" fill="#94A3B8" font-size="11px" font-family="sans-serif">加盟店へ振り込む</text></g></g>
+<g class="nodes"><g data-node-id="Merchant" data-node-kind="user" data-has-children="false" data-has-description="false"><circle cx="548.2249999999999" cy="72.92" r="10.92" fill="#1D4ED8" stroke="#1E40AF" stroke-width="2"/>
+<path d="M473.4237499999999 86.84 L623.0262499999999 86.84 L664.5824999999999 101.13 L664.5824999999999 140 Q664.5824999999999 144 660.5824999999999 144 L435.86749999999995 144 Q431.86749999999995 144 431.86749999999995 140 L431.86749999999995 101.13 Z" fill="#1D4ED8" stroke="#1E40AF" stroke-width="2"/>
+<text x="548.2249999999999" y="93.5" text-anchor="middle" dominant-baseline="central" fill="#FFFFFF" font-size="13px" font-weight="bold" font-family="sans-serif">加盟店</text>
+<text x="548.2249999999999" y="110.5" text-anchor="middle" dominant-baseline="central" fill="#FFFFFF" font-size="10px" font-family="sans-serif" font-style="italic" opacity="0.6">決済APIを利用するオンラインショップ・実店舗</text>
+<g data-info-button="Merchant" style="cursor: pointer" pointer-events="all"><circle cx="698.4499999999999" cy="74" r="8" fill="transparent" stroke="#64748B" stroke-width="1"/>
+<text x="698.4499999999999" y="74" text-anchor="middle" dominant-baseline="central" fill="#64748B" font-size="10px" font-family="sans-serif" font-style="italic">i</text></g></g>
+<g data-node-id="PlatformAdmin" data-node-kind="user" data-has-children="false" data-has-description="false"><circle cx="940.675" cy="72.92" r="10.92" fill="#1D4ED8" stroke="#1E40AF" stroke-width="2"/>
+<path d="M865.87375 86.84 L1015.4762499999999 86.84 L1057.0325 101.13 L1057.0325 140 Q1057.0325 144 1053.0325 144 L828.3175 144 Q824.3175 144 824.3175 140 L824.3175 101.13 Z" fill="#1D4ED8" stroke="#1E40AF" stroke-width="2"/>
+<text x="940.675" y="93.5" text-anchor="middle" dominant-baseline="central" fill="#FFFFFF" font-size="13px" font-weight="bold" font-family="sans-serif">プラットフォーム管理者</text>
+<text x="940.675" y="110.5" text-anchor="middle" dominant-baseline="central" fill="#FFFFFF" font-size="10px" font-family="sans-serif" font-style="italic" opacity="0.6">加盟店管理・決済モニタリングを担当する運用者</text>
+<g data-info-button="PlatformAdmin" style="cursor: pointer" pointer-events="all"><circle cx="1090.8999999999999" cy="74" r="8" fill="transparent" stroke="#64748B" stroke-width="1"/>
+<text x="1090.8999999999999" y="74" text-anchor="middle" dominant-baseline="central" fill="#64748B" font-size="10px" font-family="sans-serif" font-style="italic">i</text></g></g>
+<g data-node-id="Gateway" data-node-kind="service" data-has-children="true" data-has-description="true" style="cursor: pointer"><rect x="638.4499999999999" y="264" width="212" height="84" rx="8" ry="8" fill="#dbeafe" stroke="#075985" stroke-width="2"/>
+<text x="744.4499999999999" y="297.5" text-anchor="middle" dominant-baseline="central" fill="#1e40af" font-size="13px" font-weight="bold" font-family="sans-serif">決済ゲートウェイ</text>
+<text x="744.4499999999999" y="314.5" text-anchor="middle" dominant-baseline="central" fill="#1e40af" font-size="10px" font-family="sans-serif" opacity="0.7">加盟店からの決済リクエストを受け付け…</text>
+<g data-info-button="Gateway" style="cursor: pointer" pointer-events="all"><circle cx="834.4499999999999" cy="278" r="8" fill="transparent" stroke="#64748B" stroke-width="1"/>
+<text x="834.4499999999999" y="278" text-anchor="middle" dominant-baseline="central" fill="#64748B" font-size="10px" font-family="sans-serif" font-style="italic">i</text></g>
+<g data-deploy-button="Gateway" style="cursor: pointer" pointer-events="all"><circle cx="814.4499999999999" cy="278" r="8" fill="transparent" stroke="#3B82F6" stroke-width="1"/>
+<text x="814.4499999999999" y="278" text-anchor="middle" dominant-baseline="central" fill="#3B82F6" font-size="9px" font-family="sans-serif" font-weight="bold">D</text></g></g>
+<g data-node-id="RiskEngine" data-node-kind="service" data-has-children="true" data-has-description="true" style="cursor: pointer"><rect x="509.19999999999993" y="468" width="225.5" height="84" rx="8" ry="8" fill="#fef3c7" stroke="#075985" stroke-width="2"/>
+<text x="621.9499999999999" y="501.5" text-anchor="middle" dominant-baseline="central" fill="#92400e" font-size="13px" font-weight="bold" font-family="sans-serif">リスク判定エンジン</text>
+<text x="621.9499999999999" y="518.5" text-anchor="middle" dominant-baseline="central" fill="#92400e" font-size="10px" font-family="sans-serif" opacity="0.7">不正検知・トランザクションスコアリング</text>
+<g data-info-button="RiskEngine" style="cursor: pointer" pointer-events="all"><circle cx="718.6999999999999" cy="482" r="8" fill="transparent" stroke="#64748B" stroke-width="1"/>
+<text x="718.6999999999999" y="482" text-anchor="middle" dominant-baseline="central" fill="#64748B" font-size="10px" font-family="sans-serif" font-style="italic">i</text></g>
+<g data-deploy-button="RiskEngine" style="cursor: pointer" pointer-events="all"><circle cx="698.6999999999999" cy="482" r="8" fill="transparent" stroke="#3B82F6" stroke-width="1"/>
+<text x="698.6999999999999" y="482" text-anchor="middle" dominant-baseline="central" fill="#3B82F6" font-size="9px" font-family="sans-serif" font-weight="bold">D</text></g></g>
+<g data-node-id="Ledger" data-node-kind="service" data-has-children="true" data-has-description="true" style="cursor: pointer"><rect x="794.6999999999999" y="468" width="185" height="84" rx="8" ry="8" fill="#d1fae5" stroke="#075985" stroke-width="2"/>
+<text x="887.1999999999999" y="501.5" text-anchor="middle" dominant-baseline="central" fill="#065f46" font-size="13px" font-weight="bold" font-family="sans-serif">台帳サービス</text>
+<text x="887.1999999999999" y="518.5" text-anchor="middle" dominant-baseline="central" fill="#065f46" font-size="10px" font-family="sans-serif" opacity="0.7">売上・手数料・精算の記録管理</text>
+<g data-info-button="Ledger" style="cursor: pointer" pointer-events="all"><circle cx="963.6999999999999" cy="482" r="8" fill="transparent" stroke="#64748B" stroke-width="1"/>
+<text x="963.6999999999999" y="482" text-anchor="middle" dominant-baseline="central" fill="#64748B" font-size="10px" font-family="sans-serif" font-style="italic">i</text></g>
+<g data-deploy-button="Ledger" style="cursor: pointer" pointer-events="all"><circle cx="943.6999999999999" cy="482" r="8" fill="transparent" stroke="#3B82F6" stroke-width="1"/>
+<text x="943.6999999999999" y="482" text-anchor="middle" dominant-baseline="central" fill="#3B82F6" font-size="9px" font-family="sans-serif" font-weight="bold">D</text></g></g>
+<g data-node-id="VisaNet" data-node-kind="service" data-has-children="false" data-has-description="true"><rect x="40" y="141" width="160" height="84" rx="8" ry="8" fill="#f3f4f6" stroke="#075985" stroke-width="2" stroke-dasharray="8 4"/>
+<text x="120" y="174.5" text-anchor="middle" dominant-baseline="central" fill="#374151" font-size="13px" font-weight="bold" font-family="sans-serif">Visa Net</text>
+<text x="120" y="191.5" text-anchor="middle" dominant-baseline="central" fill="#374151" font-size="10px" font-family="sans-serif" opacity="0.7">Visaカード決済ネッ…</text>
+<g data-info-button="VisaNet" style="cursor: pointer" pointer-events="all"><circle cx="184" cy="155" r="8" fill="transparent" stroke="#64748B" stroke-width="1"/>
+<text x="184" y="155" text-anchor="middle" dominant-baseline="central" fill="#64748B" font-size="10px" font-family="sans-serif" font-style="italic">i</text></g></g>
+<g data-node-id="MasterNet" data-node-kind="service" data-has-children="false" data-has-description="true"><rect x="40" y="264" width="242" height="84" rx="8" ry="8" fill="#f3f4f6" stroke="#075985" stroke-width="2" stroke-dasharray="8 4"/>
+<text x="161" y="297.5" text-anchor="middle" dominant-baseline="central" fill="#374151" font-size="13px" font-weight="bold" font-family="sans-serif">Mastercard Network</text>
+<text x="161" y="314.5" text-anchor="middle" dominant-baseline="central" fill="#374151" font-size="10px" font-family="sans-serif" opacity="0.7">Mastercardカード決済ネットワーク</text>
+<g data-info-button="MasterNet" style="cursor: pointer" pointer-events="all"><circle cx="266" cy="278" r="8" fill="transparent" stroke="#64748B" stroke-width="1"/>
+<text x="266" y="278" text-anchor="middle" dominant-baseline="central" fill="#64748B" font-size="10px" font-family="sans-serif" font-style="italic">i</text></g></g>
+<g data-node-id="BankAPI" data-node-kind="service" data-has-children="false" data-has-description="true"><rect x="1206.8999999999999" y="264" width="160" height="84" rx="8" ry="8" fill="#f3f4f6" stroke="#075985" stroke-width="2" stroke-dasharray="8 4"/>
+<text x="1286.8999999999999" y="297.5" text-anchor="middle" dominant-baseline="central" fill="#374151" font-size="13px" font-weight="bold" font-family="sans-serif">銀行API</text>
+<text x="1286.8999999999999" y="314.5" text-anchor="middle" dominant-baseline="central" fill="#374151" font-size="10px" font-family="sans-serif" opacity="0.7">加盟店への精算振込を行…</text>
+<g data-info-button="BankAPI" style="cursor: pointer" pointer-events="all"><circle cx="1350.8999999999999" cy="278" r="8" fill="transparent" stroke="#64748B" stroke-width="1"/>
+<text x="1350.8999999999999" y="278" text-anchor="middle" dominant-baseline="central" fill="#64748B" font-size="10px" font-family="sans-serif" font-style="italic">i</text></g></g>
+<g data-node-id="ThreeDSecure" data-node-kind="service" data-has-children="false" data-has-description="true"><rect x="40" y="387" width="170" height="84" rx="8" ry="8" fill="#f3f4f6" stroke="#075985" stroke-width="2" stroke-dasharray="8 4"/>
+<text x="125" y="420.5" text-anchor="middle" dominant-baseline="central" fill="#374151" font-size="13px" font-weight="bold" font-family="sans-serif">3-D Secure</text>
+<text x="125" y="437.5" text-anchor="middle" dominant-baseline="central" fill="#374151" font-size="10px" font-family="sans-serif" opacity="0.7">本人確認のための3Dセキ…</text>
+<g data-info-button="ThreeDSecure" style="cursor: pointer" pointer-events="all"><circle cx="194" cy="401" r="8" fill="transparent" stroke="#64748B" stroke-width="1"/>
+<text x="194" y="401" text-anchor="middle" dominant-baseline="central" fill="#64748B" font-size="10px" font-family="sans-serif" font-style="italic">i</text></g></g></g></svg>

@@ -453,3 +453,6 @@ DesignDoc が proactive TPL を引用したら、実装 PR で次をやる:
 | [TPL-20260630-01](TPL-20260630-01-deep-link-anchor-cross-surface-parity.md) | deep-link アンカーは id ベースの単一文法を全サーフェス（静的 SVG / SPA hash）で共有する | navigation | #1827 |
 | [TPL-20260630-02](TPL-20260630-02-restore-state-survive-later-reset.md) | URL/共有から復元する state は、後発の seed reset を越えて再適用する | navigation | #1842 |
 | [TPL-20260630-03](TPL-20260630-03-adr-permalink-records-source.md) | ADR permalink は record ではなく pointer — in-repo `.krs` source を必須で記録する | adr-tooling | #1829 |
+| [TPL-20260711-01](TPL-20260711-01-entity-carries-no-attributes.md) | `entity` は名前・関連・物理対応のみを受け付け、属性（カラム・型・主キー）を持たせない | parser | #1870 |
+| [TPL-20260711-02](TPL-20260711-02-routing-measures-crossings-and-penetrations.md) | エッジルーティング/レイアウトの可読性を検証するときは、交差数だけでなくノード/フレーム貫通数も測る（貫通は 0 を assert） | renderer | ADR-20260711-03, #1859 |
+| [TPL-20260712-01](TPL-20260712-01-rekey-transform-preserves-per-element-decoration.md) | 端点 id を書き換える集約/畳み込み変換は、元 id にキーされた per-要素の装飾（diff state 等）を再導出する（retarget 後も装飾が残ることを assert） | renderer | #1886 |
