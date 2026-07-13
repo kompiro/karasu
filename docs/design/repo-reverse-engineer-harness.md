@@ -35,12 +35,12 @@
 | 物理層抽出 | `karasu translate --from compose\|k8s\|openapi\|db`（[translate.ts](../../packages/core/src/translate/translate.ts) `TranslateFormat`） | deploy.krs / service usecase / table を deterministic に生成。エージェントは *annotate* するだけで invent しない |
 | 差分・成長 | `karasu diff <before> <after>` / `karasu apply` | slice を incremental に merged モデルへ流し込む |
 | 検証 | `karasu lint-style` / `karasu render`（描けるか） | 各 subagent 出力を synthesis 前に機械チェック |
-| カバレッジ | `karasu matrix <file>` | 既に coverage 的な集計を持つ。アーキテクチャリバースの「thinned out」検出に転用できるか要確認 |
+| マトリクス | `karasu matrix <file>` | usecase↔resource マトリクスの集計。coverage とは責務が別（下記参照） |
 | 構造化編集 | `karasu insert` / `append` / `remove` | skeleton へのノード追加を deterministic に行う |
 
 **不足している primitive**（本設計の焦点）:
 - **slice の切り出し** — 「domain X の sub-tree だけを渡す」scope 取得（エージェントに全体を読ませない）。
-- **coverage accounting** — 「どの domain が薄いか」を eyeball ではなく定量で出す（`matrix` の拡張余地）。
+- **coverage accounting** — 「どの domain が薄いか」を eyeball ではなく定量で出す（新規 `karasu coverage`。`matrix` とは別責務）。
 
 ## 制約・前提
 
@@ -70,8 +70,11 @@
 
 **トレードオフ**: A1 は境界が deterministic で再現性が高いが、論理境界と物理境界がずれる repo（modular monolith 等）で
 seam を取り逃がす。A2 は本来欲しい単位だが、seam 発見自体が LLM judgement で不安定。A3 は ball-of-mud に強いが
-意味を持たない。→ **推奨: A1 を骨格に、A2 で refine、A3 を ball-of-mud fallback**。scout が物理 seam を第一候補にし、
-物理境界の内側が大きすぎる場合のみ bounded-context 分割、どちらも効かない塊は directory tree を size cap で割り、
+意味を持たない。→ **採用: A2（論理 domain / bounded-context を primary axis にする）**。karasu の中核テーゼが
+論理/物理の分離であり、痛点そのものが「domain interior が薄い」ことなので、fan-out の単位は本来欲しい論理境界に合わせる。
+A2 の唯一の弱点である **seam 発見の不安定さは、物理出力（`translate` の container/service）と directory/module tree を
+*ヒント* として scout に与えて安定化する** — 物理境界を「partition の軸」にはしないが、domain 候補を推定する裏付けに使う。
+どちらでも割り切れない ball-of-mud は directory tree を size cap で割る A3 に fallback し、
 **低確信 seam を明示的に log する**（[TPL-20260510-05](../test-perspectives/TPL-20260510-05-implicit-data-filtering.md) の
 「暗黙フィルタで黙って落とさない」に沿う）。
 
@@ -103,7 +106,8 @@ resource の所在は **物理宣言（translate 出力）を正準形とし、�
 - **Subagent 定義** = `scout` / `domain-deep-diver`（slice ごとに parameterize）/ `synthesizer` の 3 種。
 - **CLI（deterministic spine）** = 既存の translate/diff/apply/lint-style/render/matrix + **新規最小 primitive 2 つ**:
   1. **scope 切り出し**（`karasu subtree <node-id>` 相当）— subagent に slice だけ渡す。
-  2. **coverage report** — domain ごとの depth/カバレッジを定量化し「thinned out」を明示検出。
+  2. **`karasu coverage`（新規コマンド）** — domain ごとの depth/カバレッジを定量化し「thinned out」を明示検出。
+     `matrix` は既に別の集計責務（usecase↔resource マトリクス）を持つため、coverage は責務が異なる別コマンドとして立てる。
 
 **推奨**: この 3 分割。新規 CLI は上記 2 primitive に絞り、他はすべて既存面の再利用。CLI は principled API 越し
 （[TPL-20260510-16](../test-perspectives/TPL-20260510-16-convenience-vs-principled-api.md)）。
@@ -139,18 +143,20 @@ resource の所在は **物理宣言（translate 出力）を正準形とし、�
 ## 現時点の方針
 
 **fan-out + CLI-spine ハーネスを採用**する。4-phase pipeline（scout → domain-deep-dive fan-out → synthesis →
-validate/repair loop）を軸に、上記推奨（A1+A2+A3 fallback / B2 / C2 / D 3分割 / E2 / F2）で組む。CLI 新規追加は
-**scope 切り出し**と **coverage report** の 2 primitive に絞り、translate/diff/apply/lint-style/render/matrix は既存面を再利用する。
+validate/repair loop）を軸に、上記の採否（**A2 論理 domain primary**（物理出力を seam ヒントに、ball-of-mud は A3 fallback）/
+B2 / C2 / D 3分割 / E2 / F2）で組む。CLI 新規追加は **scope 切り出し**と **新規 `karasu coverage`** の 2 primitive に絞り、
+translate/diff/apply/lint-style/render/matrix は既存面を再利用する。
 
-### 実装の指針
+### 実装の指針（epic + 子 Issue に分割）
 
-1. **CLI primitive を先に landing**（他パッケージから独立して価値がある）:
+この設計は **epic 化し、以下の子 Issue に分割**して段階 landing する。CLI primitive は他パッケージ非依存で単体価値があるため先行させる。
+
+1. **子 Issue A — CLI primitive**（先行 landing）:
    - `karasu subtree <node-id> <file>` — 指定ノードの sub-tree を切り出して出力（scope 供給）。
-   - coverage report — `matrix` を拡張するか新規 `karasu coverage` として、domain ごとの node/edge 密度を出す。
-     まず `matrix` の現出力を調べ、拡張で足りるか判断する。
-2. **subagent 定義**（`scout` / `domain-deep-diver` / `synthesizer`）を用意する。
-3. **Agent Skill**（4-phase orchestration）を packaged prompt として用意する。
-4. **eval corpus**: Dify + 手検証可能な 1–2 repo を gold `.krs` 化し、structural recall metric を定義（#638 に接続）。
+   - `karasu coverage <file>` — domain ごとの node/edge 密度を出し「薄い domain」を定量検出。`matrix` とは別コマンド。
+2. **子 Issue B — subagent 定義**（`scout` / `domain-deep-diver` / `synthesizer`）。
+3. **子 Issue C — Agent Skill**（4-phase orchestration の packaged prompt）。
+4. **子 Issue D — eval corpus + metric**: Dify + 手検証可能な 1–2 repo を gold `.krs` 化し、structural recall metric を定義（#638 に接続）。
 5. AT: `docs/acceptance/` に新規ファイル。TC は:
    - `translate` 出力の物理層が gold と一致する（deterministic spine の回帰）
    - fan-out 後の合成モデルが単一エージェント baseline より domain node/edge recall が高い
@@ -164,10 +170,15 @@ validate/repair loop）を軸に、上記推奨（A1+A2+A3 fallback / B2 / C2 / 
 - ドキュメント更新: 新 CLI サブコマンドを `docs/spec/` / CLI ヘルプに追記。アーキテクチャリバース workflow の guide。
 - テスト・examples への影響: eval corpus は repo 外または `examples/` 外の fixture として扱う（生成レポートは repo に commit しない — 分析生成物の扱いに準拠）。
 
+## 決着した論点（レビュー合意）
+
+- **decomposition の primary axis** → **A2（論理 domain / bounded-context）**。物理出力・directory tree は seam 発見の
+  *ヒント*、ball-of-mud は A3 fallback。
+- **coverage primitive** → **新規 `karasu coverage` コマンド**（`matrix` とは責務が別）。
+- **実装展開** → **epic + 子 Issue**（CLI primitive / subagent / skill / eval corpus）。CLI primitive を先行 landing。
+
 ## 未解決の問い / 決めないこと
 
-- **decomposition の primary axis**（論点 A: 物理 seam 起点 vs 論理 domain 起点 vs ハイブリッド）— 推奨はハイブリッドだが要合意。
-- **coverage primitive**（論点 D-2）: `matrix` 拡張で足りるか、新規 `karasu coverage` を立てるか — 実コード確認後に確定。
-- **eval の metric 定義**（論点 F）: structural recall の具体式（node recall / edge recall / depth-level 別）と gold の作り方 — #638 と擦り合わせ。
-- **scope 供給の粒度**: `subtree` が返すのは merged model の sub-tree か、source repo の該当ファイル群か（両方あり得る）。
-- **本設計をどこまで実装 Issue に割るか**: CLI primitive / subagent 定義 / skill / eval corpus を別 Issue に分けるか epic 化するか。
+- **eval の metric 定義**（論点 F）: structural recall の具体式（node recall / edge recall / depth-level 別）と gold の作り方 — #638 と擦り合わせ（子 Issue D で確定）。
+- **scope 供給の粒度**: `subtree` が返すのは merged model の sub-tree か、source repo の該当ファイル群か（両方あり得る）— 子 Issue A の設計時に確定。
+- **`karasu coverage` の出力 schema**: どの密度指標（node/edge 数・depth・resource 参照率）をどの粒度で出すか — 子 Issue A で確定。
