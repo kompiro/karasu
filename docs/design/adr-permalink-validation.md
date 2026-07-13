@@ -1,16 +1,17 @@
 # ADR→karasu permalink の検証（`permalink:` frontmatter の機械検証）
 
 - **日付**: 2026-07-13
-- **ステータス**: 検討中
+- **ステータス**: 検討中（**実装は adr-tools へ転換** — [kompiro/adr-tools#17](https://github.com/kompiro/adr-tools/issues/17)。karasu 側 PR #1916 は close。詳細は「現時点の方針（改訂）」節）
 - **関連**:
   - 引き金 Issue: [#1830](https://github.com/kompiro/karasu/issues/1830)（permalink layer epic [#1826](https://github.com/kompiro/karasu/issues/1826) の子）
+  - 実装先: [kompiro/adr-tools#17](https://github.com/kompiro/adr-tools/issues/17)（built-in `krs` module）／ close した karasu 側 PR: [#1916](https://github.com/kompiro/karasu/pull/1916)
   - Design Doc PR: [#1913](https://github.com/kompiro/karasu/pull/1913)
   - governing ADR: [ADR-20260702-01](../adr/20260702-01-adr-permalink-convention.md)（permalink 規約 — taka 短縮 + 必須 `source`。本検証を #1830 に申し送り）
   - 前提 ADR: [ADR-20260630-01](../adr/20260630-01-permalink-deep-element.md)（deep permalink アンカー文法 `#krs-<view>-<id>`）
   - アンカー contract: `docs/spec/permalink.md`（+ `.ja.md`）
   - L2 規約: `.claude/rules/adr.md` §「ADR から karasu 構造へリンクする（permalink）」
   - 関連 TPL: [TPL-20260520-02](../test-perspectives/TPL-20260520-02-consistency-check-triggers-on-both-sides.md)、[TPL-20260630-03](../test-perspectives/TPL-20260630-03-adr-permalink-records-source.md)、[TPL-20260630-01](../test-perspectives/TPL-20260630-01-deep-link-anchor-cross-surface-parity.md)、[TPL-20260510-20](../test-perspectives/TPL-20260510-20-id-not-label-for-identity.md)
-  - コード: `scripts/`（新規 validator）、`packages/core`（`.krs` パース・アンカー列挙）
+  - コード: `@kompiro/adr-tools` `src/permalink/`（実装先）、`packages/core`（public npm — `.krs` パース・アンカー列挙を提供）
 
 ## 背景・課題
 
@@ -147,54 +148,51 @@ anchor 解決の薄い check だけ持つ。
 | 実装コスト | 低〜中 | 高 | 高 |
 | #1830 ゲート解除 | 即 | adr-tools 次第 | adr-tools 次第 |
 
-## 現時点の方針
+## 現時点の方針（改訂 — 案2 系へ転換）
 
-**案1 を採用する（v1）** — #1830 の中核は「壊れた ADR→karasu permalink を CI で落とす」
-ことであり、その要である **deep anchor 解決は karasu core を要するため karasu 側にしか
-置けない**。自己完結で near-term のゲートを即解除できる案1 が適切。`source` のファイル実在と
-本文サマリ生成という generic 部分を adr-tools に寄せる案2 は、**#1830 後の follow-up**
-（`@kompiro/adr-tools` への `permalink:` schema + 生成の追加）として申し送る — near-term の
-検証は案1 が二拠点を厭わず一括で担う。
+> **転換の経緯**: 初版は案1（karasu 側 validator）を採り実装まで進めた（PR #1916）。しかし
+> レビューで「**karasu 自身が ADR に `.krs` permalink を書くことはほとんど無い**」ことが決め手に
+> なった。本検証の実受益者は karasu 本体ではなく、**karasu でアーキテクチャをモデリングし ADR から
+> それを参照する下流 repo**であり、彼らが回すのは `@kompiro/adr-tools` であって karasu の
+> `scripts/` ではない。karasu 側 validator は *karasu 自身の `docs/adr/`* しか守らない＝守る
+> repo を間違える。加えて **`@karasu-tools/core` は npm public（0.2.0）** で、adr-tools が
+> `.krs` を解決するのに import できることが判明し、案1 の前提（「adr-tools は構造的に `.krs` を
+> parse できない」）が崩れた。よって **PR #1916 を close し、実装を adr-tools へ移す**。
 
-### 実装の指針
+**adr-tools に `permalink:` サポートを実装する（案2 の発展）** — [kompiro/adr-tools#17](https://github.com/kompiro/adr-tools/issues/17)。
+2 層で構成する:
 
-1. **core にアンカー列挙の口を用意**（無ければ）: `.krs` テキスト → 有効 deep anchor の集合
-   （`{view, id}` または正規化済み `#krs-<view>-<id>` 文字列）を返す純関数を
-   `packages/core` に。既存の `anchorId` と drill-down のノード列挙を再利用し、静的 SVG が
-   emit するアンカー集合と一致させる（TPL-20260630-01 の parity を崩さない）。
-2. **validator 本体**: `scripts/adr/check-permalinks.ts`。frontmatter パースは既存 ADR
-   スクリプトのユーティリティに合わせる。`source` 必須・`.krs` 実在・anchor 解決・`view`
-   妥当性を検査し、失敗を集約して非 0 終了。`--quiet` を `adr:check-assumptions` に揃える。
-3. **package.json script**: `"adr:check-permalinks": "tsx scripts/adr/check-permalinks.ts"`。
-4. **配線（両側トリガ, TPL-20260520-02）**: lefthook pre-push に glob 無しで追加、ci.yml
-   Check job に追加。発火集合が **ADR 側と `.krs`/examples 側の両方**を含むことを配線コメントに
-   明記（`adr-check-assumptions` の #1480 コメントに倣う）。
-5. **fixture テスト**（`test:scripts`）: (a) 正しい source+anchor → pass、(b) source 欠落
-   → fail、(c) source 実在せず → fail、(d) anchor が rename で解決不能 → fail、(e) 未知 view
-   → fail、(f) anchor 無し source のみ → pass。
-6. AT: `docs/acceptance/1830-adr-permalink-validation.md`。人手確認が要る TC のみ（下記）。
-7. ADR 昇格: 実装完了後、本 Design Doc を `docs/adr/1830-adr-permalink-validation.md`（または
-   host 規約の日付形式）へ昇格し、同 PR で本ファイルを削除。ADR-20260702-01 の申し送りを
-   解消（相互リンク）。
+1. **generic core（言語非依存）**: `permalink:` の schema（`source` 必須・`short` の URL 形/
+   `#s=` 禁止）＋ `source` ファイル実在＋本文サマリ表の生成。adr-tools 採用 repo すべてが裨益する。
+2. **built-in `krs` kind（決定した結合方式）**: deep anchor 解決は `.krs` の parse を要するため、
+   **config で有効化する `krs` モジュール**として実装し、**public `@karasu-tools/core` を遅延
+   import**（optional dependency — opt-in 時のみ load）する。`adr.config.json` に
+   `permalink: { kind: "krs" }`。`buildAllViewsSvgProject` の出力から `id="krs-…"` を集めて
+   `#krs-<view>-<id>` の membership を検証（whole-view アンカー `krs-deploy`/`krs-matrix`/
+   `krs-org-tree` は素通り）。CI では未解決を error にする（fail-closed）。
 
-### 影響範囲・マイグレーション
+karasu 側に残る作業（#1830）は **adr-tools の `krs` kind が出たら `adr.config.json` で有効化し
+`@kompiro/adr-tools` を bump するだけ**。#1830 は adr-tools#17 に blocked。
 
-- 既存ユーザーへの影響: なし（新しい CI/hook チェックの追加のみ。既存 ADR は `permalink:` を
-  持たないので即 green）。
-- ドキュメント更新: `.claude/rules/adr.md` の「検証（#1830 へ申し送り）」節を「検証済み・
-  コマンドは `pnpm adr:check-permalinks`」に更新。`docs/spec/permalink.md` § Stability caveat の
-  「#1830 で検証」の記述を実装済みに更新。
-- テスト・examples への影響: fixture 用の最小 `.krs` を `scripts/adr/__fixtures__/` 等に置く
-  （examples/ 本体は汚さない）。
+### 移植元（close した karasu 側 PR #1916）
 
-## 決めたこと（レビューで確定）
+PR #1916 の実装がそのまま adr-tools の実装素材になる: `permalink:` frontmatter パース、
+レンダー済み all-views SVG からのアンカー抽出、whole-view アンカー処理、offline `short` 検査、
+20 ケースのテスト。設計上の判断（レンダー出力を正にして parity 維持 = TPL-20260630-01、
+`source` を fail-closed に扱う）も引き継ぐ。
 
-1. **`short`（taka）はオフライン検証のみ** — URL 形の静的チェック（taka ドメインの `/s?s=`
-   短縮であること等）に留め、ネットワーク解決はしない。CI flakiness と機密構造の外部送信を
-   避けるため。`--online` opt-in は将来に残すが v1 では実装しない。
-2. **本文サマリ表の生成は #1830 では扱わない（検証のみ）** — ADR-20260702-01 が生成を
-   adr-tools に割り当てているため、生成は adr-tools follow-up に切り出す。`permalink:` の
-   本文サマリは当面手書き。
-3. **配線は glob 無し（毎 push）** — `adr:check-assumptions` に倣い、lefthook / ci.yml とも
-   path filter 無しで毎 push 実行し、ADR 側・`.krs` 側の両変更を確実に発火集合へ含める
-   （TPL-20260520-02）。
+### 決めたこと（レビューで確定）
+
+1. **`short`（taka）はオフライン検証のみ** — URL 形の静的チェックに留め、ネットワーク解決はしない
+   （CI flakiness と機密構造の外部送信を避ける。`--online` opt-in は将来）。
+2. **本文サマリ表の生成も adr-tools 側**（generic core）。二重メンテを避け frontmatter を単一ソースに。
+3. **両側トリガの原則は adr-tools 実装でも維持**（TPL-20260520-02） — 検証は ADR と `.krs` の
+   整合性なので、adr-tools 採用 repo の CI/hook 配線が **ADR 側・`.krs` 側の両変更**で発火する
+   よう guide する。
+
+### 却下した案（初版の案1）
+
+- **karasu 側 validator（`scripts/adr/check-permalinks.ts`, `pnpm adr:check-permalinks`）** —
+  自己完結で near-term のゲートを即解除できる利点はあったが、(1) 守る対象が karasu 自身の ADR
+  だけで実受益者（下流 repo）を守れない、(2) core が public npm である以上 adr-tools からも
+  `.krs` を解決でき「karasu 側にしか置けない」前提が不成立、の 2 点で却下（PR #1916 close）。
