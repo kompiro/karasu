@@ -524,9 +524,10 @@ re-architecture かつ規模・リスクが見合わないとして却下し、p
   collapse remap を全 system 分蓄積した `crossSystemRemap` で端点を stub に再アンカーし、drop を防ぐ
   （TPL-20260624-02「畳んだノードの edge は両端点を解決」）。再ターゲットされた edge のみ dedup。
 - **collapsed かつ system をまたぐ team** — 各 system が同じ `__group_collapsed_<team>__` stub id を
-  生成し、後段 system の stub が前段を `allLayoutNodes` で上書きして 1 ノードを失う（全域性違反）。
-  既に配置済みの stub id と衝突する場合のみ、その system の stub id を system 名で修飾して
-  （`__group_collapsed_<team>_<sys>__`）各 system が独自 stub を保つ。frame id（`__group_<team>__`）は
+  生成すると、後段 system の stub が前段を `allLayoutNodes` で上書きして 1 ノードを失う（全域性違反）。
+  `collapseGroups` に `stubScope`（= system id）を渡し、multi-system では stub id を
+  **生成時点で** `__group_collapsed_<sys>_<team>__` と system 単位に namespace する（single-system は
+  scope なしで従来 id）。衝突検出や後付け rewrite を持たず構造的に一意。frame id（`__group_<team>__`）は
   team 単位で共有のまま（app collapse が team id キーで「全 system 一括 collapse」する意図どおり）。
 
 ### スコープ外（本決定に含めないこと）
