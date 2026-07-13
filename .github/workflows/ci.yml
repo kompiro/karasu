@@ -26,7 +26,10 @@ permissions:
 jobs:
   check:
     name: Check
-    runs-on: ubuntu-latest
+    # Ubicloud runner pilot (#1890). Swapped from `ubuntu-latest` to measure
+    # wall-clock / cost vs. GitHub-hosted. `-ubuntu-2404` matches the image
+    # `ubuntu-latest` currently resolves to, keeping the comparison like-for-like.
+    runs-on: ubicloud-standard-4-ubuntu-2404
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
 
