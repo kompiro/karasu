@@ -84,4 +84,22 @@ describe("coverage CLI", () => {
     await coverage(join(tmpDir, "nope.krs"), {});
     expect(exitSpy).toHaveBeenCalledWith(1);
   });
+
+  it("exits 1 when the source has compile errors", async () => {
+    const bad = join(tmpDir, "bad.krs");
+    await writeFile(
+      bad,
+      `system EC { service S { domain D { usecase U { unknownprop } } } }`,
+      "utf-8",
+    );
+    await coverage(bad, {});
+    expect(exitSpy).toHaveBeenCalledWith(1);
+  });
+
+  it("writes markdown to a file with -o", async () => {
+    const outPath = join(tmpDir, "cov.md");
+    await coverage(krsPath, { output: outPath });
+    const content = await readFile(outPath, "utf-8");
+    expect(content).toContain("| domain | service |");
+  });
 });

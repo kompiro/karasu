@@ -1,12 +1,7 @@
-import { readFile, writeFile, readdir, stat } from "node:fs/promises";
+import { writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
-import {
-  compileProject,
-  extractCoverage,
-  type CoverageReport,
-  type FileSystemProvider,
-  type DirEntry,
-} from "@karasu-tools/core";
+import { compileProject, extractCoverage, type CoverageReport } from "@karasu-tools/core";
+import { NodeFileSystemProvider } from "./node-fs.js";
 import { formatDiagnostic } from "./i18n.js";
 
 type CoverageFormat = "md" | "json";
@@ -15,36 +10,6 @@ interface CoverageCliOptions {
   output?: string;
   format?: CoverageFormat;
   threshold?: string;
-}
-
-class NodeFileSystemProvider implements FileSystemProvider {
-  async readFile(path: string): Promise<string> {
-    return readFile(path, "utf-8");
-  }
-  async writeFile(path: string, content: string): Promise<void> {
-    await writeFile(path, content, "utf-8");
-  }
-  async readDir(path: string): Promise<DirEntry[]> {
-    const entries = await readdir(path, { withFileTypes: true });
-    return entries.map((e) => ({
-      name: e.name,
-      kind: e.isDirectory() ? ("directory" as const) : ("file" as const),
-    }));
-  }
-  async exists(path: string): Promise<boolean> {
-    try {
-      await stat(path);
-      return true;
-    } catch {
-      return false;
-    }
-  }
-  async delete(): Promise<void> {
-    throw new Error("delete not supported");
-  }
-  async mkdir(): Promise<void> {
-    throw new Error("mkdir not supported");
-  }
 }
 
 function formatAsMarkdown(report: CoverageReport): string {

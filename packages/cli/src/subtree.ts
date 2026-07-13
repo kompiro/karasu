@@ -1,16 +1,15 @@
-import { readFile, writeFile, readdir, stat } from "node:fs/promises";
+import { writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import {
   compileProject,
   serializeKrsFile,
-  type FileSystemProvider,
-  type DirEntry,
   type KrsFile,
   type KrsNode,
   type SystemNode,
   type ServiceNode,
   type DomainNode,
 } from "@karasu-tools/core";
+import { NodeFileSystemProvider } from "./node-fs.js";
 import { formatDiagnostic } from "./i18n.js";
 
 interface SubtreeCliOptions {
@@ -20,36 +19,6 @@ interface SubtreeCliOptions {
 
 /** Kinds that can stand as a top-level `.krs` block on their own. */
 const TOP_LEVEL_KINDS = new Set(["system", "service", "domain"]);
-
-class NodeFileSystemProvider implements FileSystemProvider {
-  async readFile(path: string): Promise<string> {
-    return readFile(path, "utf-8");
-  }
-  async writeFile(path: string, content: string): Promise<void> {
-    await writeFile(path, content, "utf-8");
-  }
-  async readDir(path: string): Promise<DirEntry[]> {
-    const entries = await readdir(path, { withFileTypes: true });
-    return entries.map((e) => ({
-      name: e.name,
-      kind: e.isDirectory() ? ("directory" as const) : ("file" as const),
-    }));
-  }
-  async exists(path: string): Promise<boolean> {
-    try {
-      await stat(path);
-      return true;
-    } catch {
-      return false;
-    }
-  }
-  async delete(): Promise<void> {
-    throw new Error("delete not supported");
-  }
-  async mkdir(): Promise<void> {
-    throw new Error("mkdir not supported");
-  }
-}
 
 interface Match {
   /** ancestor chain from a system root down to and including the target node */

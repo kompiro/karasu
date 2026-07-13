@@ -113,6 +113,31 @@ describe("subtree CLI", () => {
     expect(exitSpy).toHaveBeenCalledWith(1);
   });
 
+  it("exits 1 when the id is ambiguous across systems", async () => {
+    const dup = join(tmpDir, "dup.krs");
+    await writeFile(
+      dup,
+      `
+system A { service S { domain Dup { usecase U1 } } }
+system B { service T { domain Dup { usecase U2 } } }
+`,
+      "utf-8",
+    );
+    await subtree("Dup", dup, {});
+    expect(exitSpy).toHaveBeenCalledWith(1);
+  });
+
+  it("exits 1 when the source has compile errors", async () => {
+    const bad = join(tmpDir, "bad.krs");
+    await writeFile(
+      bad,
+      `system EC { service S { domain D { usecase U { unknownprop } } } }`,
+      "utf-8",
+    );
+    await subtree("D", bad, {});
+    expect(exitSpy).toHaveBeenCalledWith(1);
+  });
+
   it("exits 1 for a missing file", async () => {
     await subtree("Order", join(tmpDir, "nope.krs"), {});
     expect(exitSpy).toHaveBeenCalledWith(1);
