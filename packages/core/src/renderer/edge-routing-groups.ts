@@ -248,6 +248,126 @@ export function aggregateGroupTrunks(
   });
 }
 
+/**
+ * Lane-separate non-trunked gutter corridors (Issue #1927, follow-up to #1859
+ * P2c-B). `routeGroupedEdges` sends every non-trunked cross-band edge to *one*
+ * shared gutter x (`maxRight + GUTTER_GAP`), so two edges with overlapping
+ * y-ranges lay collinear vertical corridors on the identical x — they render as
+ * one indistinguishable line (and read as a false connection). `aggregateGroupTrunks`
+ * disambiguates only fan-in (≥ 2 incoming) targets; single-incoming gutter edges
+ * keep colliding on the default gutter x. Runs *after* `aggregateGroupTrunks`.
+ *
+ * Each colliding corridor gets its own lane x, allocated by greedy interval
+ * partitioning on the corridor y-range: corridors whose y-ranges are disjoint may
+ * share a lane (no visual overlap → minimal width and snapshot churn); overlapping
+ * ones get distinct lanes. Lane order is coordinate-derived (sorted by y then id),
+ * so snapshots stay stable.
+ *
+ * Right-side lanes are numbered clear of the trunk lanes (P2c-B): trunks occupy
+ * `maxRight + GUTTER_GAP + (1..T)·TRUNK_LANE_GAP`, so overflow single-edge lanes
+ * start *beyond* them at `+ (T + j)·TRUNK_LANE_GAP`. Lane 0 keeps the base gutter x
+ * (`maxRight + GUTTER_GAP`), which no trunk uses — so an edge that never collided
+ * does not move. Left-side lanes step further left (trunks are right-only).
+ *
+ * Penetration-safe by construction: every lane x lies beyond `maxRight` (or before
+ * `minLeft`), where no card or frame exists, so widening a corridor never crosses an
+ * obstacle — the horizontal stub only extends into already-empty territory, and the
+ * vertical stays outside all obstacles (AC-1 preserved, never worse).
+ */
+export function distributeGutterLanes(
+  layoutNodes: Map<string, LayoutNode>,
+  layoutEdges: LayoutEdge[],
+  frames: ContainerRect[],
+): void {
+  const nodes = [...layoutNodes.values()];
+  if (nodes.length === 0) return;
+
+  let minLeft = Infinity;
+  let maxRight = -Infinity;
+  for (const n of nodes) {
+    minLeft = Math.min(minLeft, n.x);
+    maxRight = Math.max(maxRight, n.x + n.width);
+  }
+  for (const f of frames) {
+    minLeft = Math.min(minLeft, f.x);
+    maxRight = Math.max(maxRight, f.x + f.width);
+  }
+  const rightBase = maxRight + GUTTER_GAP;
+  const leftBase = minLeft - GUTTER_GAP;
+
+  // Existing trunk lanes (right-only, P2c-B) so overflow single-edge lanes can be
+  // numbered clear of them — no lane-x collision between trunks and single edges.
+  const trunkXs = new Set<number>();
+  for (const e of layoutEdges) {
+    if (e.trunkId && e.waypoints && e.waypoints.length === 2) trunkXs.add(e.waypoints[0].x);
+  }
+  const trunkLanes = trunkXs.size;
+
+  // Collect non-trunked gutter corridors set by `routeGroupedEdges`, split by side.
+  const right: LayoutEdge[] = [];
+  const left: LayoutEdge[] = [];
+  for (const e of layoutEdges) {
+    if (e.ghost || e.cyclic) continue;
+    if (e.trunkId) continue;
+    if (!isVerticalGutterRoute(e)) continue;
+    const x = e.waypoints![0].x;
+    if (x > maxRight) right.push(e);
+    else if (x < minLeft) left.push(e);
+  }
+
+  assignGutterLanes(right, (lane) =>
+    lane === 0 ? rightBase : rightBase + (trunkLanes + lane) * TRUNK_LANE_GAP,
+  );
+  assignGutterLanes(left, (lane) => leftBase - lane * TRUNK_LANE_GAP);
+}
+
+/**
+ * Greedy interval partitioning of gutter corridors into lanes: corridors with
+ * overlapping y-ranges land on distinct lanes, disjoint ones may share. `laneX`
+ * maps a lane index to its gutter x. Rewrites each edge's two corridor waypoints
+ * to the assigned lane x (ports and corridor y are untouched).
+ */
+function assignGutterLanes(edges: LayoutEdge[], laneX: (lane: number) => number): void {
+  if (edges.length === 0) return;
+  const ranges = edges.map((e) => {
+    const y0 = e.waypoints![0].y;
+    const y1 = e.waypoints![1].y;
+    return { e, lo: Math.min(y0, y1), hi: Math.max(y0, y1) };
+  });
+  // Deterministic order: by corridor start, then end, then edge identity.
+  ranges.sort(
+    (a, b) =>
+      a.lo - b.lo ||
+      a.hi - b.hi ||
+      (a.e.from < b.e.from
+        ? -1
+        : a.e.from > b.e.from
+          ? 1
+          : a.e.to < b.e.to
+            ? -1
+            : a.e.to > b.e.to
+              ? 1
+              : 0),
+  );
+  const laneEnds: number[] = []; // last-assigned corridor `hi` per lane
+  for (const r of ranges) {
+    // First lane whose corridor ends at or before this one starts (no overlap;
+    // touching at a single point is not a visual overlap, so `<=`).
+    let lane = laneEnds.findIndex((end) => end <= r.lo);
+    if (lane === -1) {
+      lane = laneEnds.length;
+      laneEnds.push(r.hi);
+    } else {
+      laneEnds[lane] = r.hi;
+    }
+    const x = laneX(lane);
+    r.e.waypoints = [
+      { x, y: r.e.waypoints![0].y },
+      { x, y: r.e.waypoints![1].y },
+    ];
+  }
+}
+
 /** The right-side trunk polyline for one source→target edge at column `x`. */
 function trunkPath(from: LayoutNode, target: LayoutNode, x: number): Point[] {
   const sourcePort = rightPort(from);

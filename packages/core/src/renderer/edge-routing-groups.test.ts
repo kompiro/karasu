@@ -126,6 +126,50 @@ function totalCrossings(res: LayoutResult): number {
   return n;
 }
 
+/**
+ * #1927 metric: count pairs of *distinct* edges whose vertical segments are
+ * collinear (share an x) and whose y-ranges overlap on a sub-segment of positive
+ * length — i.e. two corridors drawn as one indistinguishable line. Must be 0.
+ *
+ * Trunk siblings (same `trunkId`) intentionally share one spine — that is the
+ * aggregation merge (marked by a junction dot in P2c-C), a *connection* not a
+ * false overlap — so they are excluded.
+ */
+function collinearVerticalOverlaps(res: LayoutResult): number {
+  interface VSeg {
+    edge: LayoutEdge;
+    x: number;
+    lo: number;
+    hi: number;
+  }
+  const verticals: VSeg[] = [];
+  for (const e of res.edges) {
+    if (e.ghost || e.cyclic) continue;
+    const pts: Point[] = [e.fromPoint, ...(e.waypoints ?? []), e.toPoint];
+    for (let i = 0; i < pts.length - 1; i++) {
+      const p = pts[i];
+      const q = pts[i + 1];
+      if (p.x === q.x && p.y !== q.y) {
+        verticals.push({ edge: e, x: p.x, lo: Math.min(p.y, q.y), hi: Math.max(p.y, q.y) });
+      }
+    }
+  }
+  let n = 0;
+  for (let i = 0; i < verticals.length; i++) {
+    for (let j = i + 1; j < verticals.length; j++) {
+      const a = verticals[i];
+      const b = verticals[j];
+      if (a.edge === b.edge) continue;
+      // Trunk siblings share one spine by design (aggregation merge, not a defect).
+      if (a.edge.trunkId && a.edge.trunkId === b.edge.trunkId) continue;
+      if (a.x !== b.x) continue;
+      // Positive-length overlap (touching endpoints do not count as overlap).
+      if (Math.min(a.hi, b.hi) - Math.max(a.lo, b.lo) > 0) n++;
+    }
+  }
+  return n;
+}
+
 function segmentsCross(a: Point, b: Point, c: Point, d: Point): boolean {
   const o = (p: Point, q: Point, r: Point) =>
     Math.sign((q.x - p.x) * (r.y - p.y) - (q.y - p.y) * (r.x - p.x));
@@ -282,6 +326,54 @@ describe("aggregateGroupTrunks (#1859, P2c-B)", () => {
         expect(wp.y).toBeGreaterThanOrEqual(0);
       }
     }
+  });
+
+  it("gives single-incoming gutter edges distinct lanes so no two share a collinear corridor (#1927, AC-1)", () => {
+    // Billing → {Catalog, ShopDB, Stripe} are three non-trunked gutter edges from
+    // one source (each target has only one incoming), so their corridors all start
+    // at Billing's center y and overlap in y-range — collinear if laid on one x.
+    const res = layoutOf(SYS, OWNER, "team");
+    const eCat = edge(res, "Billing", "Catalog");
+    const eDb = edge(res, "Billing", "ShopDB");
+    const eStr = edge(res, "Billing", "Stripe");
+    // None is trunked (each target is single-incoming among gutter routes).
+    for (const e of [eCat, eDb, eStr]) {
+      expect(e.trunkId).toBeUndefined();
+      expect(e.waypoints).toHaveLength(2);
+    }
+    // The overlap precondition: all three corridors start at the same source y.
+    expect(eCat.waypoints![0].y).toBe(eDb.waypoints![0].y);
+    expect(eCat.waypoints![0].y).toBe(eStr.waypoints![0].y);
+    // Fix: each colliding corridor gets its own lane x → three distinct columns.
+    const xs = new Set([eCat.waypoints![0].x, eDb.waypoints![0].x, eStr.waypoints![0].x]);
+    expect(xs.size).toBe(3);
+    // No two distinct edges render a collinear (overlapping) vertical corridor.
+    expect(collinearVerticalOverlaps(res)).toBe(0);
+    // AC-1 preserved: still zero node/frame penetrations after laning.
+    expect(totalPenetrations(res)).toBe(0);
+  });
+
+  it("keeps single-edge lanes distinct from trunk lanes — no lane-x collision (#1927, AC-3)", () => {
+    // Adding Wallet → ShopDB makes ShopDB fan-in (Billing + Wallet) → a trunk,
+    // while Billing → {Catalog, Stripe} stay single-incoming gutter edges — so a
+    // non-trunked corridor coexists with a trunk lane.
+    const mixed = SYS.replace(
+      'Billing -> ShopDB "persist"',
+      'Billing -> ShopDB "persist"\n  Wallet -> ShopDB "persist"',
+    );
+    const res = layoutOf(mixed, OWNER, "team");
+    expect(edge(res, "Billing", "ShopDB").trunkId).toBe("ShopDB"); // trunked
+    const bStripe = edge(res, "Billing", "Stripe");
+    // Billing → Stripe is a single-incoming gutter edge (not trunked).
+    expect(bStripe.trunkId).toBeUndefined();
+    expect(bStripe.waypoints).toHaveLength(2);
+    const singleLaneX = bStripe.waypoints![0].x;
+    // Collect every trunk lane x; the single-edge lane must not collide with any.
+    const trunkXs = new Set(res.edges.filter((e) => e.trunkId).map((e) => e.waypoints![0].x));
+    expect(trunkXs.size).toBeGreaterThanOrEqual(1);
+    expect(trunkXs.has(singleLaneX)).toBe(false);
+    expect(collinearVerticalOverlaps(res)).toBe(0);
+    expect(totalPenetrations(res)).toBe(0);
   });
 
   it("does not trunk a target with only one incoming edge", () => {
