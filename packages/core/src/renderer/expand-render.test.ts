@@ -48,6 +48,22 @@ describe("compile — in-place expansion end-to-end (#1921)", () => {
     expect(liveSvg).toContain('data-expand-node="ECommerce"');
   });
 
+  it("does not draw expand controls in a multi-system root", () => {
+    // Regression for #1921 review finding 2: expansion is only derived for the
+    // single-system root, so a multi-system view must not show a dead ⊕.
+    const MULTI = `
+system A {
+  service Svc { domain Dom { usecase U } }
+}
+system B {
+  service Other { domain D2 { usecase U2 } }
+}
+`;
+    const r = compile(MULTI, { diagramType: "system", interactive: true });
+    if (r.diagramType !== "system") throw new Error("expected system diagram");
+    expect(r.svg).not.toContain("data-expand-node");
+  });
+
   it("shows a ⊖ (collapse) control on the expanded frame and no ⊕ for it", () => {
     const liveSvg = systemSvg({
       diagramType: "system",

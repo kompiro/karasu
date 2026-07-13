@@ -97,4 +97,29 @@ system S {
     expect(edge!.fromPoint.x).toBeGreaterThanOrEqual(frame.x);
     expect(edge!.fromPoint.x).toBeLessThanOrEqual(frame.x + frame.width);
   });
+
+  it("anchors a top-tier edge into the expanded frame on its top border, not its side", () => {
+    // Regression for the frame-not-in-`layers` mis-route (#1921 review finding 1):
+    // a user→expanded-service edge must run top-to-bottom, landing on the frame top.
+    const KRS_USER = `
+system S {
+  user Actor [human] { label "Actor" }
+  service Gateway {
+    domain Authz { usecase Authorize }
+    domain Refund { usecase DoRefund }
+  }
+  Actor -> Gateway "uses"
+}
+`;
+    const systems = Parser.parse(KRS_USER).value.systems;
+    const slice = extractView(systems, [], [], [], new Set(["Gateway"]));
+    const result = layout(slice);
+    const frame = result.containers.find((c) => c.expanded)!;
+    const edge = result.edges.find((e) => e.from === "Actor" && e.to === "Gateway")!;
+    expect(edge).toBeDefined();
+    // The to-anchor lands on the frame's top edge, not a left/right side.
+    expect(edge.toPoint.y).toBeCloseTo(frame.y, 0);
+    expect(edge.toPoint.x).toBeGreaterThan(frame.x);
+    expect(edge.toPoint.x).toBeLessThan(frame.x + frame.width);
+  });
 });

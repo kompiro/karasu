@@ -133,6 +133,13 @@ export interface RenderOptions {
    */
   groupBy?: "team";
   collapsedGroups?: ReadonlySet<string>;
+  /**
+   * Whether the in-place expansion ⊕/⊖ controls may be drawn (Issue #1921).
+   * `render()` sets it from the slice's system count so the affordance only
+   * appears on the single-system root, where expansion is actually derived.
+   * Internal — set by `render()`, not a public compile option.
+   */
+  expandable?: boolean;
 }
 
 /**
@@ -187,7 +194,10 @@ export function render(
     serviceIdsWithDeploy,
     displayMode,
     childLevelLinks,
-    options,
+    // Expansion controls only make sense on the single-system root, where view
+    // extraction actually derives expansion (#1921). Drill-down levels have an
+    // empty `systems` list and no service nodes, so they never draw one either.
+    { ...options, expandable: viewSlice.systems.length <= 1 },
   );
 }
 
@@ -391,8 +401,11 @@ export function renderFromLayout(
     const groupControls = renderGroupControls(layoutResult, palette, options?.collapsedGroups);
     if (groupControls) parts.push(groupControls);
     // In-place expansion is orthogonal to Group by: team and Phase 1 targets the
-    // ungrouped system view, so the ⊕/⊖ controls only appear there (#1921).
-    if (!options?.groupBy) {
+    // ungrouped, single-system view (view extraction only derives expansion for
+    // the single-system root — #1921), so the ⊕/⊖ controls only appear there.
+    // `render()` sets `expandable` from the slice's system count; a multi-system
+    // root gets no expand affordance (the ⊕ would be a no-op there).
+    if (!options?.groupBy && options?.expandable) {
       const expandControls = renderExpandControls(layoutResult, palette);
       if (expandControls) parts.push(expandControls);
     }

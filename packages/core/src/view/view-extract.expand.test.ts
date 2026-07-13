@@ -102,6 +102,30 @@ describe("extractView — in-place expansion (#1921)", () => {
     expect(idList).toHaveLength(4);
   });
 
+  it("keeps an explicit service edge suppressing the domain-derived edge under expansion", () => {
+    // Regression for #1921 review finding 3: the explicit-edge suppression is
+    // keyed on the *service* pair, so expanding an endpoint must not resurrect a
+    // duplicate domain-anchored implicit edge for a pair the author drew explicitly.
+    const KRS_EXPLICIT = `
+system S {
+  service A {
+    domain Da {
+      Da -> Db "domain edge"
+    }
+  }
+  service B {
+    domain Db { label "Db" }
+  }
+  A -> B "explicit"
+}
+`;
+    const view = extractView(parseSystem(KRS_EXPLICIT), [], [], [], new Set(["A"]));
+    // The explicit service edge survives (A expanded → anchors to its frame).
+    expect(view.childEdges.some((e) => e.from === "A" && e.to === "B")).toBe(true);
+    // No domain-anchored implicit duplicate (Da -> B) for the same pair.
+    expect(view.childEdges.some((e) => e.from === "Da" && e.to === "B")).toBe(false);
+  });
+
   it("ignores an unknown / childless expand id (frame only for real domains)", () => {
     const nope = extractView(parseSystem(KRS), [], [], [], new Set(["DoesNotExist"]));
     expect(nope.expandedFrames).toEqual([]);

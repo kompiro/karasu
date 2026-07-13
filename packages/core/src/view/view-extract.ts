@@ -171,11 +171,14 @@ function deriveImplicitServiceEdges(
           if (expanded?.has(service.id)) internalEdges.push(edge);
           continue;
         }
+        // Suppression stays keyed on the *service* pair even under expansion:
+        // an authored explicit serviceA→serviceB edge should still hide the
+        // derived edge, whichever granularity the endpoints render at (#1921).
+        const servicePairKey = `${service.id}->${targetServiceId}`;
+        if (explicitKeys.has(servicePairKey)) continue;
         const fromEndpoint = endpointOf(domain.id, service.id);
         const toEndpoint = endpointOf(edge.to, targetServiceId);
-        const pairKey = `${fromEndpoint}->${toEndpoint}`;
-        if (explicitKeys.has(pairKey)) continue;
-        const groupKey = `${pairKey}#${edge.kind}`;
+        const groupKey = `${fromEndpoint}->${toEndpoint}#${edge.kind}`;
         const detail: DomainEdgeDetail = {
           fromDomainId: domain.id,
           fromDomainLabel: domainLabelMap.get(domain.id) ?? domain.id,

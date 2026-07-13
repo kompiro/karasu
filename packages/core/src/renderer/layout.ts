@@ -1314,6 +1314,16 @@ export function layout(viewSlice: ViewSlice, options: LayoutOptions = {}): Layou
           .map((c) => [c.nodeId!, c] as const),
       )
     : undefined;
+  // Give each expanded frame a layer (its band's top row) so `computeEdgePoints`
+  // picks the correct vertical anchor for edges touching it — otherwise the
+  // frame id is absent from `layers`, defaults to layer 0, and a top-tier→frame
+  // edge is mis-routed as same-layer (#1921).
+  if (isExpanding && groupBands) {
+    for (const frame of viewSlice.expandedFrames) {
+      const band = groupBands.get(frame.containerId);
+      if (band) layers.set(frame.containerId, band.min);
+    }
+  }
 
   // Compute all edges (regular + ghost)
   const layoutEdges = computeLayoutEdges(
