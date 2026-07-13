@@ -2,6 +2,7 @@ import type { KrsFile, KrsNode, TeamNode } from "../types/ast.js";
 import type { StyleSheet } from "../types/style.js";
 import type { DisplayMode } from "./layout-types.js";
 import { extractView, extractEntityView } from "../view/view-extract.js";
+import type { ViewPath } from "../view/view-extract.js";
 import { withUnassignedSystem } from "../view/unassigned-system.js";
 import { extractOrgView } from "../view/org-view-extract.js";
 import { extractDeployView } from "../view/deploy-view-extract.js";
@@ -158,6 +159,42 @@ export function buildDrillDownSvg(
     svg: `<svg xmlns="http://www.w3.org/2000/svg" width="100%" height="100%"><style>${buildDrillDownCss(resolvePalette(theme))}</style>${levels.join("")}</svg>`,
     diagnostics,
   };
+}
+
+/**
+ * Render the **live, single-level entity view** of the domain addressed by
+ * `viewPath` — the interactive counterpart to the static `#krs-entity-<id>`
+ * bundle level. Unlike {@link buildDrillDownSvg} it emits one plain `<svg>` (no
+ * CSS `:target` levels, no back button); the app drives view state itself and
+ * swaps this SVG in when the entity sub-mode is toggled on for a drilled
+ * domain. Returns the empty-diagram placeholder when the path does not resolve
+ * to a domain that owns entities. Mirrors {@link renderOrgTreeView}'s role for
+ * the org view.
+ */
+export function renderEntityView(
+  krsFile: KrsFile,
+  viewPath: ViewPath,
+  styleSource?: string,
+  displayMode?: DisplayMode,
+  emptyStateLabels?: EmptyStateLabels,
+  theme?: DiagramTheme,
+  badgeLabels?: AnnotationBadgeLabels,
+): SvgResult {
+  const effectiveSystems = withUnassignedSystem(krsFile);
+  const { sheets, diagnostics } = buildStyles(displayMode, styleSource, theme, badgeLabels);
+  const slice = extractEntityView(effectiveSystems, viewPath);
+  if (slice.childNodes.length === 0) {
+    return { svg: buildNoDiagramSvg(emptyStateLabels, true, theme), diagnostics };
+  }
+  const styles = resolveStyles(effectiveSystems, sheets, []);
+  const ownerIndex = krsFile.ownerIndex ?? new Map();
+  const legendOptions = buildLegendRenderOptions(krsFile, sheets);
+  const svg = render(slice, styles, undefined, ownerIndex, displayMode, new Map(), {
+    theme,
+    ...legendOptions,
+    viewScope: legendScopeForLogicalSlice(slice),
+  });
+  return { svg, diagnostics };
 }
 
 // ─── Org Drill-down SVG (CSS :target navigation) ─────────────────────────────

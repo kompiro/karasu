@@ -36,6 +36,12 @@ export interface ShareTarget {
   highlight?: string;
   /** Org Tree View mode (only meaningful when `view === "org"`). */
   orgTree?: boolean;
+  /**
+   * Entity sub-mode: show the drilled domain's entity view instead of its
+   * usecase view (only meaningful when `view === "system"` and `node` is a
+   * domain). Mirrors {@link orgTree}.
+   */
+  entityView?: boolean;
 }
 
 /** A self-contained share payload: a single `.krs` plus its optional merged style. */

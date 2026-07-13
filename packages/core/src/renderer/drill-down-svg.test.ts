@@ -4,6 +4,7 @@ import {
   buildDrillDownSvgOrg,
   buildAllViewsSvg,
   bundleSingleLevelViews,
+  renderEntityView,
 } from "./drill-down-svg.js";
 import { buildAllLayersSvg, buildAllLayersSvgOrg } from "./all-layers-svg.js";
 import { anchorId } from "./svg-renderer.js";
@@ -689,6 +690,60 @@ system EC {
     expect(dims(buildAllViewsSvg(withEntities).svg)).toBe(
       dims(buildAllViewsSvg(withoutEntities).svg),
     );
+  });
+});
+
+describe("renderEntityView (#1907)", () => {
+  const ENTITY_KRS = `
+system EC {
+  service OrderService {
+    domain Ordering {
+      usecase PlaceOrder {}
+      entity Order {
+        Order -> LineItem "has"
+      }
+      entity LineItem {}
+    }
+  }
+}
+`;
+
+  it("renders the drilled domain's entities and intra-domain relation, not usecases", () => {
+    const krsFile = Parser.parse(ENTITY_KRS).value;
+    const { svg } = renderEntityView(krsFile, ["OrderService", "Ordering"]);
+    expect(svg).toContain('data-node-id="Order"');
+    expect(svg).toContain('data-node-id="LineItem"');
+    // Usecases belong to the usecase view, not the entity view.
+    expect(svg).not.toContain('data-node-id="PlaceOrder"');
+  });
+
+  it("resolves the path with or without the leading system id", () => {
+    const krsFile = Parser.parse(ENTITY_KRS).value;
+    const withSystem = renderEntityView(krsFile, ["EC", "OrderService", "Ordering"]).svg;
+    const withoutSystem = renderEntityView(krsFile, ["OrderService", "Ordering"]).svg;
+    expect(withSystem).toContain('data-node-id="Order"');
+    expect(withoutSystem).toContain('data-node-id="Order"');
+  });
+
+  it("returns the empty-diagram placeholder for a domain with no entities", () => {
+    const krsFile = Parser.parse(`
+system EC {
+  service S {
+    domain D {
+      usecase U {}
+    }
+  }
+}
+`).value;
+    const { svg } = renderEntityView(krsFile, ["S", "D"]);
+    expect(svg).not.toContain('data-node-id="U"');
+  });
+
+  it("returns the placeholder when the path does not resolve to a domain", () => {
+    const krsFile = Parser.parse(ENTITY_KRS).value;
+    // Path points at a service, not a domain.
+    const { svg } = renderEntityView(krsFile, ["OrderService"]);
+    expect(svg).not.toContain('data-node-id="Order"');
   });
 });
 

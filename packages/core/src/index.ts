@@ -269,6 +269,7 @@ import {
   buildDrillDownSvg as _buildDrillDownSvg,
   buildDrillDownSvgOrg as _buildDrillDownSvgOrg,
   buildAllViewsSvg as _buildAllViewsSvg,
+  renderEntityView as _renderEntityView,
   bundleSingleLevelViews,
 } from "./renderer/drill-down-svg.js";
 import {
@@ -987,6 +988,38 @@ export function buildDrillDownSvg(
     theme,
     annotationBadgeLabels,
     groupBy,
+  );
+  return { svg: result.svg, diagnostics: [...parseResult.diagnostics, ...result.diagnostics] };
+}
+
+/**
+ * Renders the live, single-level **entity view** of the domain addressed by
+ * `viewPath` (its entities + intra-domain relations). The interactive
+ * counterpart to the static `#krs-entity-<id>` bundle level — the app swaps
+ * this SVG in when the entity sub-mode is toggled on for a drilled domain.
+ *
+ * @param krsSource   - Raw .krs source
+ * @param viewPath    - Drill path to the domain (same shape as the system view)
+ * @param styleSource - Optional .krs.style content
+ */
+export function renderEntityView(
+  krsSource: string,
+  viewPath: ViewPath,
+  styleSource?: string,
+  displayMode?: DisplayMode,
+  emptyStateLabels?: EmptyStateLabels,
+  theme?: DiagramTheme,
+  annotationBadgeLabels?: AnnotationBadgeLabels,
+): SvgResult {
+  const parseResult: ParseResult<KrsFile> = Parser.parse(krsSource);
+  const result = _renderEntityView(
+    parseResult.value,
+    viewPath,
+    styleSource,
+    displayMode,
+    emptyStateLabels,
+    theme,
+    annotationBadgeLabels,
   );
   return { svg: result.svg, diagnostics: [...parseResult.diagnostics, ...result.diagnostics] };
 }
