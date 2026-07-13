@@ -59,6 +59,10 @@ export function PreviewColumn() {
     orgTreeSvg,
     onTeamToggle,
     orgTreeExportSvg,
+    isEntityViewOpen,
+    onEntityViewToggle,
+    entityViewSvg,
+    hasEntityView,
     onExportDrawio,
     hasKrsSource,
     getShareBundle,
@@ -105,12 +109,16 @@ export function PreviewColumn() {
     const node = drillable && path.length > 0 ? path[path.length - 1] : undefined;
     const highlight = view.highlightedNodeId;
     const orgTree = activeView === "org" && isOrgTreeViewOpen;
-    const hasPosition = activeView !== "system" || !!node || !!highlight || orgTree;
+    // Entity sub-mode only encodes when a domain is actually drilled and it has
+    // an entity view to show (mirrors the toggle-visibility gate below).
+    const entityView = activeView === "system" && isEntityViewOpen && hasEntityView && !!node;
+    const hasPosition = activeView !== "system" || !!node || !!highlight || orgTree || entityView;
     if (!hasPosition) return null;
     const target: ShareTarget = { view: activeView };
     if (node) target.node = node;
     if (highlight) target.highlight = highlight;
     if (orgTree) target.orgTree = true;
+    if (entityView) target.entityView = true;
     return target;
   }
 
@@ -186,17 +194,26 @@ export function PreviewColumn() {
     (activeView === "system" || activeView === "org") && !!activedrillDownSvg;
   const showAllLayersIframe = isAllLayersOpen && allLayersAvailable;
   const showOrgTreeView = activeView === "org" && isOrgTreeViewOpen;
+  // Entity sub-mode: only while drilled into a domain that actually has an
+  // entity view (mirrors org Tree View, but scoped to the system view).
+  const showEntityView = activeView === "system" && isEntityViewOpen && hasEntityView;
 
-  // `handleExport` picks the tree-view SVG or the all-layers SVG over `svg`
-  // when those modes are active; keep the button's disabled state aligned
+  // `handleExport` picks the entity/tree-view SVG or the all-layers SVG over
+  // `svg` when those modes are active; keep the button's disabled state aligned
   // with what the click handler would actually export.
-  const exportAvailable = showOrgTreeView
-    ? !!orgTreeExportSvg
-    : showAllLayersIframe
-      ? !!activeAllLayersSvg
-      : !!svg;
+  const exportAvailable = showEntityView
+    ? !!entityViewSvg
+    : showOrgTreeView
+      ? !!orgTreeExportSvg
+      : showAllLayersIframe
+        ? !!activeAllLayersSvg
+        : !!svg;
 
   function handleExport() {
+    if (showEntityView && entityViewSvg) {
+      onExportSvg(entityViewSvg, exportFilename.replace(/\.svg$/, "-entity.svg"));
+      return;
+    }
     if (showOrgTreeView && orgTreeExportSvg) {
       onExportSvg(orgTreeExportSvg, exportFilename.replace(/\.svg$/, "-tree.svg"));
     } else if (showAllLayersIframe && activeAllLayersSvg) {
@@ -311,6 +328,16 @@ export function PreviewColumn() {
             aria-label="Toggle org tree view"
           >
             ⬡ Tree View
+          </Button>
+        )}
+        {activeView === "system" && hasEntityView && (
+          <Button
+            variant="actionable"
+            aria-pressed={isEntityViewOpen}
+            onClick={onEntityViewToggle}
+            aria-label="Toggle entity view"
+          >
+            ◇ Entities
           </Button>
         )}
         <Button
@@ -435,7 +462,13 @@ export function PreviewColumn() {
       {activeView === "org" && !showOrgTreeView && (
         <BreadcrumbBar items={orgView.breadcrumbItems} onNavigate={orgView.onBreadcrumbNavigate} />
       )}
-      {showOrgTreeView ? (
+      {showEntityView ? (
+        <div
+          className="preview-pane preview-pane--entity"
+          style={{ overflow: "auto", flex: 1 }}
+          dangerouslySetInnerHTML={{ __html: entityViewSvg ?? "" }}
+        />
+      ) : showOrgTreeView ? (
         <div
           className="preview-pane preview-pane--org-tree"
           style={{ overflow: "auto", flex: 1 }}

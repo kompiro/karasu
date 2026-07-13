@@ -184,6 +184,7 @@ export {
 export { analyze } from "./resolver/warnings.js";
 export type { DisplayMode } from "./renderer/layout.js";
 export type { SvgResult, AllViewsSvgResult } from "./renderer/all-layers-svg.js";
+export type { EntityViewResult } from "./renderer/drill-down-svg.js";
 export { render, renderFromLayout, sanitizeId, anchorId } from "./renderer/svg-renderer.js";
 export type { CategoryId } from "./renderer/category-collapse.js";
 
@@ -269,6 +270,8 @@ import {
   buildDrillDownSvg as _buildDrillDownSvg,
   buildDrillDownSvgOrg as _buildDrillDownSvgOrg,
   buildAllViewsSvg as _buildAllViewsSvg,
+  renderEntityView as _renderEntityView,
+  type EntityViewResult,
   bundleSingleLevelViews,
 } from "./renderer/drill-down-svg.js";
 import {
@@ -989,6 +992,42 @@ export function buildDrillDownSvg(
     groupBy,
   );
   return { svg: result.svg, diagnostics: [...parseResult.diagnostics, ...result.diagnostics] };
+}
+
+/**
+ * Renders the live, single-level **entity view** of the domain addressed by
+ * `viewPath` (its entities + intra-domain relations). The interactive
+ * counterpart to the static `#krs-entity-<id>` bundle level — the app swaps
+ * this SVG in when the entity sub-mode is toggled on for a drilled domain.
+ *
+ * @param krsSource   - Raw .krs source
+ * @param viewPath    - Drill path to the domain (same shape as the system view)
+ * @param styleSource - Optional .krs.style content
+ */
+export function renderEntityView(
+  krsSource: string,
+  viewPath: ViewPath,
+  styleSource?: string,
+  displayMode?: DisplayMode,
+  emptyStateLabels?: EmptyStateLabels,
+  theme?: DiagramTheme,
+  annotationBadgeLabels?: AnnotationBadgeLabels,
+): EntityViewResult {
+  const parseResult: ParseResult<KrsFile> = Parser.parse(krsSource);
+  const result = _renderEntityView(
+    parseResult.value,
+    viewPath,
+    styleSource,
+    displayMode,
+    emptyStateLabels,
+    theme,
+    annotationBadgeLabels,
+  );
+  return {
+    svg: result.svg,
+    diagnostics: [...parseResult.diagnostics, ...result.diagnostics],
+    hasContent: result.hasContent,
+  };
 }
 
 /**

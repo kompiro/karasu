@@ -71,6 +71,9 @@ function makeCtx(activeView: ActiveView): PreviewContextValue {
     onPreviewFocusToggle: noop,
     isOrgTreeViewOpen: false,
     onOrgTreeViewToggle: noop,
+    isEntityViewOpen: false,
+    onEntityViewToggle: noop,
+    hasEntityView: false,
     styleTargetPath: "/theme.krs.style",
     onPickEdgeDirection: noop,
   };

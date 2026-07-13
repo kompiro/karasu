@@ -27,11 +27,15 @@ SVG からコピーした fragment はアプリでも解決し、その逆も成
   `ActiveView`。`@karasu-tools/core` の `ShareTargetView` が対応する）に加えて
   `entity`。`entity` トークンは **ドメイン単位のエンティティビュー**を指す:
   `<id>` は domain id で、`#krs-entity-<domainId>` はそのドメインのエンティティ
-  ビュー（エンティティとドメイン内関連。他ドメイン先の ghost は対話的トグルで入る）
+  ビュー（エンティティとドメイン内関連。他ドメイン先の ghost は後続で入る）
   を開く。エンティティビューは
   静的 all-views バンドル（`drill-down-svg.ts`）に出力され、system ビューの
-  ドメインからドリルされるため system pane 内に置かれる。対話的なトグルと
-  `ShareTargetView` / SPA-hash 登録は app 統合で入る。
+  ドメインからドリルされるため system pane 内に置かれる。SPA では entity ビューは
+  **`system` ビューのサブモード**（独立した `ActiveView` ではない）: app は
+  ドメインにドリル（`activeView === "system"`、`viewPath` = 当該ドメイン）した状態で
+  entity サブモードを ON にし、`buildHash` が `#krs-system-<domainId>` の代わりに
+  `#krs-entity-<domainId>` を出力、`parseHash` が復元する。share `target` では
+  boolean の `entityView` フラグで運ぶ（`orgTree` を踏襲）。
 - **`<id>`** — ドリル先要素の**著者が付けた `id`**。`sanitizeId` を通す
   （`[A-Za-z0-9_-]` 以外は `_`）。リテラル `root` は view の最上位を表す。
   identity は常に `id` であり、`label` や翻訳 / 表示文字列は使わない。
@@ -57,7 +61,7 @@ nest インライン share URL（`#s=<payload>` / `/s?s=<payload>`）は deep ta
 エンコード済み `SharePayload` の**内側**に optional な `target` として運ぶ:
 
 ```ts
-target?: { view: ShareTargetView; node?: string; highlight?: string; orgTree?: boolean }
+target?: { view: ShareTargetView; node?: string; highlight?: string; orgTree?: boolean; entityView?: boolean }
 ```
 
 1つの opaque トークンで、private fragment URL・server 可視の `/s?s=` unfurl

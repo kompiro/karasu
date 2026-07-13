@@ -40,6 +40,8 @@ interface UseAppViewsArgs {
   dispatch: Dispatch<AppAction>;
   isOrgTreeViewOpen: boolean;
   setIsOrgTreeViewOpen: Dispatch<SetStateAction<boolean>>;
+  isEntityViewOpen: boolean;
+  setIsEntityViewOpen: Dispatch<SetStateAction<boolean>>;
   /**
    * Source to compare `entryPath` against in diff mode. Supports workspace files
    * and OPFS history snapshots.
@@ -158,6 +160,8 @@ export function useAppViews(args: UseAppViewsArgs): UseAppViewsResult {
     dispatch,
     isOrgTreeViewOpen,
     setIsOrgTreeViewOpen,
+    isEntityViewOpen,
+    setIsEntityViewOpen,
     compareSource = null,
     snapshotManager = null,
     projectRoot = null,
@@ -287,6 +291,8 @@ export function useAppViews(args: UseAppViewsArgs): UseAppViewsResult {
     dispatch,
     isOrgTreeView: isOrgTreeViewOpen,
     setIsOrgTreeView: setIsOrgTreeViewOpen,
+    isEntityView: isEntityViewOpen,
+    setIsEntityView: setIsEntityViewOpen,
     highlightedNodeId,
     onFileChange,
   });
