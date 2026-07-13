@@ -1,5 +1,5 @@
 import type { KrsNode, KrsEdge } from "../types/ast.js";
-import type { SourceRange } from "../types/tokens.js";
+import { makeStubNode } from "./collapse-stub.js";
 
 /**
  * Per-group collapse for the system-view "Group by: team" mode (Issue #1858,
@@ -21,23 +21,13 @@ export function groupStubId(groupId: string): string {
   return `__group_collapsed_${groupId}__`;
 }
 
-const ZERO_LOC: SourceRange = {
-  start: { line: 0, column: 0, offset: 0 },
-  end: { line: 0, column: 0, offset: 0 },
-};
-
 function stubNode(groupId: string, count: number): KrsNode {
-  return {
-    kind: "service",
+  return makeStubNode({
     id: groupStubId(groupId),
+    kind: "service",
     label: `${groupId} (${count})`,
     tags: [GROUP_STUB_TAG],
-    annotations: [],
-    children: [],
-    edges: [],
-    loc: ZERO_LOC,
-    properties: { links: [] },
-  };
+  });
 }
 
 interface GroupCollapseResult {
