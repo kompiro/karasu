@@ -2,6 +2,7 @@
 
 - **日付**: 2026-07-13
 - **ステータス**: 検討中
+- **PR**: [#1917](https://github.com/kompiro/karasu/pull/1917)
 - **関連**:
   - 引き金 Issue: [#1895](https://github.com/kompiro/karasu/issues/1895)
   - 上位（方向性）Design Doc: [repo-reverse-engineer-harness.md](./repo-reverse-engineer-harness.md)（PR #1914）
