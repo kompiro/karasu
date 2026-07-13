@@ -572,6 +572,20 @@ system EC {
     expect(svg).toContain(`id="${anchorId("entity", "Customers")}"`);
   });
 
+  it("emits the entity view in the standalone system drill-down export too", () => {
+    // The app exports a standalone system drill-down SVG (`-drilldown.svg`) via
+    // buildDrillDownSvg; the #krs-entity-<domainId> fragment must resolve there,
+    // not only in the all-views bundle.
+    const svg = buildDrillDownSvg(Parser.parse(ENTITY_KRS).value).svg;
+    const gIds = new Set([...svg.matchAll(/<g id="(krs-[A-Za-z0-9_-]+)"/g)].map((m) => m[1]));
+    expect(gIds.has(anchorId("entity", "Ordering"))).toBe(true);
+    // Back navigation target resolves within the same standalone SVG.
+    expect(gIds.has(anchorId("system", "Ordering"))).toBe(true);
+    // The entity nodes render inside the entity level.
+    const start = svg.indexOf(`id="${anchorId("entity", "Ordering")}"`);
+    expect(svg.slice(start, start + 6000)).toContain('data-node-id="Order"');
+  });
+
   it("renders the domain's entities inside its entity view", () => {
     const krsFile = Parser.parse(ENTITY_KRS).value;
     const { svg } = buildAllViewsSvg(krsFile);

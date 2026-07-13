@@ -88,8 +88,21 @@ Open the usecase view `#krs-system-Ordering`:
 > manual / visual review — from `out.svg#krs-entity-Customers` (entity-only
 > domain), Back returns to a real level, not the root.
 
+### Standalone system drill-down export
+
+> ✅ Automated — `packages/core/src/renderer/drill-down-svg.test.ts` › `emits the entity view in the standalone system drill-down export too`
+
+The app also exports a standalone system drill-down SVG (`<name>-drilldown.svg`,
+`buildDrillDownSvg`), separate from the all-views bundle.
+
+- [ ] `buildDrillDownSvg` output contains a group `id="krs-entity-Ordering"`
+- [ ] The entity view's Back target (`#krs-system-Ordering`) resolves within the
+      same standalone SVG
+- [ ] The entity nodes render inside the entity level
+
 ### End-to-end render
 
 > manual / visual review — `karasu render entity-view.krs -o out.svg` produces
 > a bundle where navigating to `out.svg#krs-entity-Ordering` shows the entity
-> view with Order and LineItem.
+> view with Order and LineItem. The same fragment resolves in the app's
+> `<name>-drilldown.svg` export.

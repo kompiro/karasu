@@ -139,6 +139,21 @@ export function buildDrillDownSvg(
     "system",
   );
 
+  // Per-domain entity views (#krs-entity-<domainId>): the same levels the
+  // all-views bundle emits, reachable in the standalone system drill-down
+  // export too (the app's "-drilldown.svg"). They share the system levels'
+  // CSS :target mechanism, stay hidden by default (class krs-view, not
+  // krs-root-level), and each carries its own back button.
+  const entityLevels = collectEntityLevels(
+    effectiveSystems,
+    sheets,
+    ownerIndex,
+    displayMode,
+    theme,
+    legendOptions,
+  );
+  for (const level of entityLevels) levels.push(level.element);
+
   return {
     svg: `<svg xmlns="http://www.w3.org/2000/svg" width="100%" height="100%"><style>${buildDrillDownCss(resolvePalette(theme))}</style>${levels.join("")}</svg>`,
     diagnostics,
