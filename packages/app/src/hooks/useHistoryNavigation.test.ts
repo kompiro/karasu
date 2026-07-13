@@ -39,12 +39,12 @@ describe("anchor parity: buildHash ↔ core anchorId", () => {
   it.each([["Ordering"], ["weird id/with.chars"]])(
     "entity sub-mode buildHash matches #anchorId('entity', %s)",
     (id) => {
-      expect(buildHash("system", [id], false, true)).toBe(`#${anchorId("entity", id)}`);
+      expect(buildHash("system", [id], { entityView: true })).toBe(`#${anchorId("entity", id)}`);
     },
   );
 
   it("entity sub-mode falls back to the system anchor at the root (no domain drilled)", () => {
-    expect(buildHash("system", [], false, true)).toBe(`#${anchorId("system", "root")}`);
+    expect(buildHash("system", [], { entityView: true })).toBe(`#${anchorId("system", "root")}`);
   });
 
   // Documented exception (docs/spec/permalink.md): deploy/matrix are single-level
@@ -132,47 +132,47 @@ describe("buildHash", () => {
   });
 
   it("appends :highlightNodeId to matrix hash when provided", () => {
-    expect(buildHash("matrix", [], false, false, "OrderTable")).toBe("#krs-matrix:OrderTable");
+    expect(buildHash("matrix", [], { highlight: "OrderTable" })).toBe("#krs-matrix:OrderTable");
   });
 
   it("returns #krs-org-tree when isOrgTreeView is true", () => {
-    expect(buildHash("org", [], true)).toBe("#krs-org-tree");
+    expect(buildHash("org", [], { orgTree: true })).toBe("#krs-org-tree");
   });
 
   it("ignores isOrgTreeView when activeView is not org", () => {
-    expect(buildHash("system", [], true)).toBe("#krs-system-root");
+    expect(buildHash("system", [], { orgTree: true })).toBe("#krs-system-root");
   });
 
   it("appends :highlightNodeId to deploy hash when provided", () => {
-    expect(buildHash("deploy", [], false, false, "ECommerce")).toBe("#krs-deploy:ECommerce");
+    expect(buildHash("deploy", [], { highlight: "ECommerce" })).toBe("#krs-deploy:ECommerce");
   });
 
   it("appends :highlightNodeId to org root hash when provided", () => {
-    expect(buildHash("org", [], false, false, "ecTeam")).toBe("#krs-org-root:ecTeam");
+    expect(buildHash("org", [], { highlight: "ecTeam" })).toBe("#krs-org-root:ecTeam");
   });
 
   it("appends :highlightNodeId to system hash when provided", () => {
-    expect(buildHash("system", ["Payment"], false, false, "SomeNode")).toBe(
+    expect(buildHash("system", ["Payment"], { highlight: "SomeNode" })).toBe(
       "#krs-system-Payment:SomeNode",
     );
   });
 
   it("omits colon when highlightNodeId is null", () => {
-    expect(buildHash("deploy", [], false, false, null)).toBe("#krs-deploy");
+    expect(buildHash("deploy", [], { highlight: null })).toBe("#krs-deploy");
   });
 
   it("omits colon when highlightNodeId is undefined", () => {
-    expect(buildHash("deploy", [], false, false, undefined)).toBe("#krs-deploy");
+    expect(buildHash("deploy", [], { highlight: undefined })).toBe("#krs-deploy");
   });
 
   it("appends ?file= when filePath is provided (Issue #811)", () => {
-    expect(buildHash("system", [], false, false, null, "/projects/p/before.krs")).toBe(
+    expect(buildHash("system", [], { file: "/projects/p/before.krs" })).toBe(
       "#krs-system-root?file=%2Fprojects%2Fp%2Fbefore.krs",
     );
   });
 
   it("combines highlight and file segments", () => {
-    expect(buildHash("deploy", [], false, false, "ECommerce", "/p/index.krs")).toBe(
+    expect(buildHash("deploy", [], { highlight: "ECommerce", file: "/p/index.krs" })).toBe(
       "#krs-deploy:ECommerce?file=%2Fp%2Findex.krs",
     );
   });
@@ -237,7 +237,7 @@ describe("parseHash", () => {
   });
 
   it("round-trips the entity sub-mode through buildHash → parseHash", () => {
-    const hash = buildHash("system", ["Ordering"], false, true);
+    const hash = buildHash("system", ["Ordering"], { entityView: true });
     const parsed = parseHash(hash);
     expect(parsed?.activeView).toBe("system");
     expect(parsed?.nodeId).toBe("Ordering");

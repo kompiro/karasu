@@ -108,6 +108,11 @@ export function AppShell({
   const [isOrgTreeViewOpen, setIsOrgTreeViewOpen] = useState(false);
   // Entity sub-mode: while drilled into a domain in the system view, swap the
   // usecase view for the domain's entity view. Mirrors `isOrgTreeViewOpen`.
+  // Intentionally sticky across drills (like Org Tree View): the flag is a
+  // display mode, and `PreviewColumn` gates the actual entity view on
+  // `hasEntityView`, so it is inert on domains/levels without an entity view.
+  // A sticky flag is also what lets the deep-permalink restore (`#krs-entity-…`)
+  // set it independently of the drill path without a reset racing the restore.
   const [isEntityViewOpen, setIsEntityViewOpen] = useState(false);
 
   // The SVG diagram follows the app's effective theme so the rendered

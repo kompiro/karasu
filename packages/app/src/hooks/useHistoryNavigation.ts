@@ -7,27 +7,47 @@ import type { AppAction, ActiveView } from "../state/app-reducer.js";
 // ─── Utilities (exported for testing) ────────────────────────────────────────
 
 /**
+ * Optional hash modifiers. An object (not positional args) so callers can't
+ * silently pass a value into the wrong slot — the failure mode where a
+ * highlight string landed where a mode boolean was expected (see the churn when
+ * the entity sub-mode was added, #1907).
+ */
+interface BuildHashOptions {
+  /** Org Tree View mode (only meaningful when `activeView === "org"`). */
+  orgTree?: boolean;
+  /** Entity sub-mode (only meaningful when `activeView === "system"` and drilled). */
+  entityView?: boolean;
+  /** Element id to focus-highlight on arrival. */
+  highlight?: string | null;
+  /** Open file to carry as `?file=` (Issue #811). */
+  file?: string | null;
+}
+
+/**
  * Encodes activeView + viewPath + open file into a URL hash string.
  *
  * Examples:
- *   ("deploy", [])                                    → "#krs-deploy"
- *   ("deploy", [], false, "ECommerce")                → "#krs-deploy:ECommerce"
- *   ("system", [])                                    → "#krs-system-root"
- *   ("system", ["Payment"])                           → "#krs-system-Payment"
- *   ("org", ["a", "b"])                               → "#krs-org-b"  (last segment only)
- *   ("org", [], true)                                 → "#krs-org-tree"  (Tree View mode)
- *   ("org", [], false, false, "ecTeam")               → "#krs-org-root:ecTeam"
- *   ("system", ["Ordering"], false, true)             → "#krs-entity-Ordering"  (entity sub-mode)
- *   ("system", [], false, false, null, "/p/before.krs") → "#krs-system-root?file=%2Fp%2Fbefore.krs"
+ *   ("deploy", [])                                          → "#krs-deploy"
+ *   ("deploy", [], { highlight: "ECommerce" })              → "#krs-deploy:ECommerce"
+ *   ("system", [])                                          → "#krs-system-root"
+ *   ("system", ["Payment"])                                → "#krs-system-Payment"
+ *   ("org", ["a", "b"])                                     → "#krs-org-b"  (last segment only)
+ *   ("org", [], { orgTree: true })                         → "#krs-org-tree"  (Tree View mode)
+ *   ("org", [], { highlight: "ecTeam" })                   → "#krs-org-root:ecTeam"
+ *   ("system", ["Ordering"], { entityView: true })         → "#krs-entity-Ordering"  (entity sub-mode)
+ *   ("system", [], { file: "/p/before.krs" })              → "#krs-system-root?file=%2Fp%2Fbefore.krs"
  */
 export function buildHash(
   activeView: ActiveView,
   viewPath: string[],
-  isOrgTreeView = false,
-  isEntityView = false,
-  highlightNodeId?: string | null,
-  filePath?: string | null,
+  options: BuildHashOptions = {},
 ): string {
+  const {
+    orgTree: isOrgTreeView = false,
+    entityView: isEntityView = false,
+    highlight: highlightNodeId = null,
+    file: filePath = null,
+  } = options;
   // Exhaustive dispatch on activeView — adding a new ActiveView member without
   // updating this switch fails the `never` assignment at compile time. Locks in
   // TPL-20260510-03 (the #1094 failure mode where a new tab silently fell into
@@ -80,13 +100,11 @@ export function buildHash(
  * index on mount, exactly as a normal drill hash resolves.
  */
 export function shareTargetToHash(target: ShareTarget): string {
-  return buildHash(
-    target.view,
-    target.node ? [target.node] : [],
-    target.orgTree ?? false,
-    target.entityView ?? false,
-    target.highlight ?? null,
-  );
+  return buildHash(target.view, target.node ? [target.node] : [], {
+    orgTree: target.orgTree ?? false,
+    entityView: target.entityView ?? false,
+    highlight: target.highlight ?? null,
+  });
 }
 
 /**
@@ -276,7 +294,11 @@ export function useHistoryNavigation({
       history.replaceState(
         null,
         "",
-        buildHash(activeView, viewPath, isOrgTreeView, isEntityView, null, currentFilePath),
+        buildHash(activeView, viewPath, {
+          orgTree: isOrgTreeView,
+          entityView: isEntityView,
+          file: currentFilePath,
+        }),
       );
       return;
     }
@@ -379,14 +401,12 @@ export function useHistoryNavigation({
       return;
     }
 
-    const newHash = buildHash(
-      activeView,
-      viewPath,
-      isOrgTreeView,
-      isEntityView,
-      highlightedNodeId,
-      currentFilePath,
-    );
+    const newHash = buildHash(activeView, viewPath, {
+      orgTree: isOrgTreeView,
+      entityView: isEntityView,
+      highlight: highlightedNodeId,
+      file: currentFilePath,
+    });
     if (location.hash !== newHash) {
       const isInitialLoad = prev === null && currentFilePath !== null;
       if (isInitialLoad) {

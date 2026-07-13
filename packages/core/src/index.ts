@@ -184,6 +184,7 @@ export {
 export { analyze } from "./resolver/warnings.js";
 export type { DisplayMode } from "./renderer/layout.js";
 export type { SvgResult, AllViewsSvgResult } from "./renderer/all-layers-svg.js";
+export type { EntityViewResult } from "./renderer/drill-down-svg.js";
 export { render, renderFromLayout, sanitizeId, anchorId } from "./renderer/svg-renderer.js";
 export type { CategoryId } from "./renderer/category-collapse.js";
 
@@ -270,6 +271,7 @@ import {
   buildDrillDownSvgOrg as _buildDrillDownSvgOrg,
   buildAllViewsSvg as _buildAllViewsSvg,
   renderEntityView as _renderEntityView,
+  type EntityViewResult,
   bundleSingleLevelViews,
 } from "./renderer/drill-down-svg.js";
 import {
@@ -1010,7 +1012,7 @@ export function renderEntityView(
   emptyStateLabels?: EmptyStateLabels,
   theme?: DiagramTheme,
   annotationBadgeLabels?: AnnotationBadgeLabels,
-): SvgResult {
+): EntityViewResult {
   const parseResult: ParseResult<KrsFile> = Parser.parse(krsSource);
   const result = _renderEntityView(
     parseResult.value,
@@ -1021,7 +1023,11 @@ export function renderEntityView(
     theme,
     annotationBadgeLabels,
   );
-  return { svg: result.svg, diagnostics: [...parseResult.diagnostics, ...result.diagnostics] };
+  return {
+    svg: result.svg,
+    diagnostics: [...parseResult.diagnostics, ...result.diagnostics],
+    hasContent: result.hasContent,
+  };
 }
 
 /**

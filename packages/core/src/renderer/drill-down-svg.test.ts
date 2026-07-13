@@ -710,11 +710,12 @@ system EC {
 
   it("renders the drilled domain's entities and intra-domain relation, not usecases", () => {
     const krsFile = Parser.parse(ENTITY_KRS).value;
-    const { svg } = renderEntityView(krsFile, ["OrderService", "Ordering"]);
-    expect(svg).toContain('data-node-id="Order"');
-    expect(svg).toContain('data-node-id="LineItem"');
+    const result = renderEntityView(krsFile, ["OrderService", "Ordering"]);
+    expect(result.hasContent).toBe(true);
+    expect(result.svg).toContain('data-node-id="Order"');
+    expect(result.svg).toContain('data-node-id="LineItem"');
     // Usecases belong to the usecase view, not the entity view.
-    expect(svg).not.toContain('data-node-id="PlaceOrder"');
+    expect(result.svg).not.toContain('data-node-id="PlaceOrder"');
   });
 
   it("resolves the path with or without the leading system id", () => {
@@ -735,15 +736,17 @@ system EC {
   }
 }
 `).value;
-    const { svg } = renderEntityView(krsFile, ["S", "D"]);
-    expect(svg).not.toContain('data-node-id="U"');
+    const result = renderEntityView(krsFile, ["S", "D"]);
+    expect(result.hasContent).toBe(false);
+    expect(result.svg).not.toContain('data-node-id="U"');
   });
 
-  it("returns the placeholder when the path does not resolve to a domain", () => {
+  it("returns the placeholder (hasContent false) when the path does not resolve to a domain", () => {
     const krsFile = Parser.parse(ENTITY_KRS).value;
     // Path points at a service, not a domain.
-    const { svg } = renderEntityView(krsFile, ["OrderService"]);
-    expect(svg).not.toContain('data-node-id="Order"');
+    const result = renderEntityView(krsFile, ["OrderService"]);
+    expect(result.hasContent).toBe(false);
+    expect(result.svg).not.toContain('data-node-id="Order"');
   });
 });
 
