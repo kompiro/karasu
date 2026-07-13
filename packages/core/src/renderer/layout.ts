@@ -775,6 +775,12 @@ interface LayoutOptions {
   collapsedCategories?: ReadonlySet<CategoryId>;
   groupBy?: "team";
   collapsedGroups?: ReadonlySet<string>;
+  /**
+   * Per-edge diff state keyed `${from}->${to}` (compare/diff mode). Passed
+   * through to `collapseGroups` so a collapsed team's re-targeted stub edges
+   * keep their diff decoration, re-keyed onto the stub id (#1886).
+   */
+  edgeDiffState?: ReadonlyMap<string, string>;
 }
 
 export function layout(viewSlice: ViewSlice, options: LayoutOptions = {}): LayoutResult {
@@ -786,6 +792,7 @@ export function layout(viewSlice: ViewSlice, options: LayoutOptions = {}): Layou
     collapsedCategories,
     groupBy,
     collapsedGroups,
+    edgeDiffState,
   } = options;
   const { LAYER_GAP, NODE_GAP, MAX_LAYER_WIDTH } = getLayoutConstants(displayMode);
   // Build the inherited-annotations map from the focused container's subtree
@@ -831,12 +838,22 @@ export function layout(viewSlice: ViewSlice, options: LayoutOptions = {}): Layou
   // remap the collapse applied to the regular edges (#1874). Identity outside
   // collapse, so the ghost loops below are unaffected when nothing folds.
   let remapGhostEndpoint: (id: string) => string = (id) => id;
+  // Diff state re-keyed onto collapsed-group stub edges (#1886). Empty unless a
+  // team collapses in compare/diff mode; merged into the render lookup below.
+  let foldedEdgeDiffState = new Map<string, string>();
   if (groupBy === "team" && ownerIndex) {
-    const collapsed = collapseGroups(allNodes, allEdges, ownerIndex, collapsedGroups);
+    const collapsed = collapseGroups(
+      allNodes,
+      allEdges,
+      ownerIndex,
+      collapsedGroups,
+      edgeDiffState,
+    );
     allNodes = collapsed.nodes;
     allEdges = collapsed.edges;
     stubGroup = collapsed.stubGroup;
     remapGhostEndpoint = collapsed.remapEndpoint;
+    foldedEdgeDiffState = collapsed.foldedEdgeDiffState;
   }
   /** Group a node belongs to — its team owner, or the group a collapse stub stands in for. */
   const groupIdOf = (id: string): string | null => ownerIndex?.get(id) ?? stubGroup.get(id) ?? null;
@@ -1239,6 +1256,7 @@ export function layout(viewSlice: ViewSlice, options: LayoutOptions = {}): Layou
     containers,
     width: totalWidth,
     height: totalHeight,
+    foldedEdgeDiffState: foldedEdgeDiffState.size > 0 ? foldedEdgeDiffState : undefined,
   };
 }
 

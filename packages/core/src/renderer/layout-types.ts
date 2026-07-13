@@ -119,6 +119,13 @@ export interface LayoutResult {
   containers: ContainerRect[];
   width: number;
   height: number;
+  /**
+   * Diff state re-keyed onto collapsed-group stub edges, keyed by the render
+   * lookup form `${from}->${to}` (#1886). Present only when a team collapses in
+   * compare/diff mode; `renderFromLayout` merges it over `options.edgeDiffState`
+   * so a re-targeted stub edge keeps its diff decoration.
+   */
+  foldedEdgeDiffState?: Map<string, string>;
 }
 
 export type DisplayMode = "shape" | "icon";
