@@ -106,7 +106,7 @@ flowchart TD
     ADR_20260708_01["ADR-20260708-01<br/>Dependabot Triage (2026-07-08) — `actions/cache..."]
     ADR_20260711_01["ADR-20260711-01<br/>TypeScript 7.0（native compiler）を採用する"]
     ADR_20260711_02["ADR-20260711-02<br/>app E2E（Playwright）を Required status check にし、p..."]
-    ADR_20260713_01["ADR-20260713-01<br/>notation promotion gate — experimental → v1.0-s..."]
+    ADR_20260713_01["ADR-20260713-01<br/>notation promotion gate — experimental notation..."]
   end
   subgraph chat-ai["chat-ai"]
     ADR_20260407_04["ADR-20260407-04<br/>Cloudflare Pages デプロイ基盤と BYOK AI 連携"]

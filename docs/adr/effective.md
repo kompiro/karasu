@@ -108,7 +108,7 @@ See also: [dependency graph](graph.md), per-topic detail under [graph/](graph/).
 - [ADR-20260708-01](20260708-01-dependabot-triage-2026-07-08.md) — Dependabot Triage (2026-07-08) — `actions/cache` 6.1.0
 - [ADR-20260711-01](20260711-01-typescript-7-native-compiler.md) — TypeScript 7.0（native compiler）を採用する
 - [ADR-20260711-02](20260711-02-e2e-required-status-check.md) — app E2E（Playwright）を Required status check にし、paired stub で永久 pending を防ぐ
-- [ADR-20260713-01](20260713-01-notation-promotion-gate.md) — notation promotion gate — experimental → v1.0-stable 昇格の規律
+- [ADR-20260713-01](20260713-01-notation-promotion-gate.md) — notation promotion gate — experimental notation を stable 層へ昇格させる規律
 
 ## chat-ai
 

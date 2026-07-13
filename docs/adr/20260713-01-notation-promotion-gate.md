@@ -1,6 +1,6 @@
 ---
 id: ADR-20260713-01
-title: notation promotion gate — experimental → v1.0-stable 昇格の規律
+title: notation promotion gate — experimental notation を stable 層へ昇格させる規律
 status: accepted
 date: 2026-07-13
 topic: build
@@ -11,7 +11,7 @@ related_to:
   - ADR-20260615-04
 ---
 
-# ADR-20260713-01: notation promotion gate — experimental → v1.0-stable 昇格の規律
+# ADR-20260713-01: notation promotion gate — experimental notation を stable 層へ昇格させる規律
 
 - **日付**: 2026-07-13
 - **ステータス**: 決定済み
@@ -31,16 +31,17 @@ related_to:
 
 ## 決定
 
-experimental notation の評価は **promotion gate** を通す。**既定は experimental 据え置き**とし、証拠に基づくトリガーが引かれたときにのみ「v1.0-stable へ昇格するに足るか」を評価する。gate の**決定**は本 ADR（ガバナンス）に、**生きた適用状態**（watch item ごとの昇格トリガー）は `docs/roadmap.md` に置く。`docs/process.md`（日々の開発サイクル）には置かない。
+experimental notation の評価は **promotion gate** を通す。**既定は experimental 据え置き**とし、証拠に基づくトリガーが引かれたときにのみ「freeze で定義した v1.0-stable 層（後方互換を約束する層）へ昇格するに足るか」を評価する。昇格すると決めた場合、**どのリリースに載せるか**も gate の判断に含める — v1.0 は既にリリース済みなので、昇格は既存 v1.0 への後付けではなく将来リリースへの搭載になる。既存構文への後方互換な追加なら **v1.x minor**、既存構文の変更・再設計を伴い破壊的になるなら **v2.0（major）** に載せ、「v2.0 とすべきか」を昇格判断とセットで問う。gate の**決定**は本 ADR（ガバナンス）に、**生きた適用状態**（watch item ごとの昇格トリガー）は `docs/roadmap.md` に置く。`docs/process.md`（日々の開発サイクル）には置かない。
 
 ## 理由
 
 - **非対称なコストに合わせた既定**: 追加しない／据え置くコストは低く、後方互換を約束したあとの削除コストは高い。ゆえに昇格に渋く、open／既存構文での表現に寛容に、灰色は experimental に留める。審査の問いは「**stable へ昇格するに足る実利用証拠があるか**」であって「廃止すべきか」ではない。滅多に昇格しなければ、滅多に除去せずに済む。
 - **証拠ベースのトリガー（カレンダーではない）**:
-  - (i) その notation に触れる v1.x minor の直前 — 互換約束を新たに背負う直前に一度立ち止まる。
+  - (i) その notation に触れるリリースの直前 — 互換約束を新たに背負う直前に一度立ち止まる。載せる版が v1.x minor（追加互換）か v2.0 major（破壊的変更を伴う昇格）かを選ぶタイミングでもある。
   - (ii) 実利用データが溜まった時 — earn-its-keep（使われているか・誤用が少ないか）を観測できるようになったタイミング。
   - (iii) その notation に対する混乱 / bug Issue が再発した時 — 痛みが surface したシグナル。
 - **証拠源 = karasu-nest の共有 corpus**: 実 OSS を書いた `.krs` が、watch tier の必要とする「実利用 pain」の観測装置になる。ホスト型サービス（#1783）を notation 評価の計測器として位置づける。
+- **昇格のリリース版も判断対象**: v1.0-stable は既にリリース済み（[#1317](https://github.com/kompiro/karasu/issues/1317) / [#1764](https://github.com/kompiro/karasu/issues/1764)）。ゆえに「stable 層へ昇格」は既存 v1.0 への後付けではなく、将来リリースへの搭載を意味する。gate は昇格の可否だけでなく **どの版で互換を約束するか**（後方互換な追加なら v1.x minor、既存構文の変更・再設計を伴うなら v2.0 major）も決める。この分岐を明示することで、破壊的な昇格が minor に紛れ込むのを防ぐ。
 - **配置の分離**: 決定（gate のセマンティクス・既定 experimental・証拠源）は不変度が高いので ADR。watch item ごとの昇格判断は状態が動くので roadmap（living）。両者は altitude が異なるため混ぜない。`process.md` は開発サイクルであって notation ガバナンスではない。
 
 ## 却下した案
