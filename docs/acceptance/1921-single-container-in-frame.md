@@ -43,17 +43,21 @@ system view で 1 つの service コンテナをその場で展開（in-place ex
 
 ### AC-4: app の対話配線と単一展開不変条件
 
-> ✅ Automated by `packages/app/src/components/PreviewPane.test.tsx` / `hooks/useCollapsibleSet.test.ts` (suite-wide)
-
 - [x] `[data-expand-node]` のクリックで `onExpandToggle(serviceId)` が発火する
+> ✅ Automated by `packages/app/src/components/PreviewPane.test.tsx`
 - [x] `useCollapsibleSet(single)` は高々 1 要素を保持（2 つ目を展開すると 1 つ目が畳まれる、C1）
+> ✅ Automated by `packages/app/src/hooks/useCollapsibleSet.test.ts`
 - [x] 展開状態は app の view-state で `.krs` を変更しない（round-trip 保持、TPL-20260510-02）
+> ✅ Automated — 展開は compile option のみで AST/シリアライズに触れない（`packages/core/src/renderer/expand-render.test.ts` が SVG 差分のみを確認）
 
 ### AC-5: scoped glance を壊さない（B1–B3、TPL-20260510-21）
 
-> ✅ Measured — `examples/ja/payment-platform` で `Gateway` 展開（design doc「Phase 1 計測結果」節）
+受け入れバーは `examples/ja/payment-platform` で `Gateway` を展開して実測した
+（design doc「Phase 1 計測結果」節）。数値: 1 画面ノード数 9 → 10（+1、上限内）、
+描画エッジ数 9 → 9（**drop ゼロ**）、兄弟（RiskEngine / Ledger / 外部群）はすべて残存。
 
-- [x] B1: 内部 domain と兄弟が同一フレームに共存し、Gateway の全エッジ（9 本）が drop せず残る
-- [x] B2: 兄弟（RiskEngine / Ledger / 外部群）がすべて残存
-- [x] B3: 1 画面ノード数 9 → 10（+1、上限内）。往復で俯瞰へ戻れる
-- [ ] **[人間確認]** live app で大きめの図の 1 service を ⊕ 展開し、「内部を兄弟との関係のなかで読めるか」の主観的可読性（受け入れバー B1）と、別 service を展開すると前の展開が畳まれること（C1）を確認する
+- [x] B1: 展開ノードの内部要素と兄弟が同一フレームに共存し、越境エッジが端点を保って drop せず描かれる
+> ✅ Automated by `packages/core/src/renderer/layout.expand.test.ts`
+- [x] B3: 全ノードちょうど一度だけ配置される（重複・drop なし、TPL-20260624-02）
+> ✅ Automated by `packages/core/src/view/view-extract.expand.test.ts`
+- [ ] **[人間確認]** live app で大きめの図の 1 service を ⊕ 展開し、「内部を兄弟との関係のなかで読めるか」の主観的可読性（受け入れバー B1/B2）と、別 service を展開すると前の展開が畳まれること（C1）を確認する

@@ -1,8 +1,16 @@
-import type { KrsNode, KrsEdge, KrsFile, TeamNode, LegendRefTarget } from "../types/ast.js";
+import type {
+  KrsNode,
+  KrsEdge,
+  KrsFile,
+  ResourceNode,
+  TeamNode,
+  LegendRefTarget,
+} from "../types/ast.js";
 import { INFRA_KIND_SET } from "../types/ast.js";
 import type { StyleSheet, StyleSelector } from "../types/style.js";
 import type { Warning } from "../types/warnings.js";
 import { collectLegendUsage, legendRefHasUsage } from "../legend/usage.js";
+import { buildEntityResolver } from "./resource-entity.js";
 import { REFERENCE_DATA } from "../builtins/reference-data.js";
 
 export function analyze(file: KrsFile, sheets: StyleSheet[], systemSheetCount = 1): Warning[] {
@@ -22,6 +30,7 @@ export function analyze(file: KrsFile, sheets: StyleSheet[], systemSheetCount = 
   warnings.push(...detectUnassignedQueues(file));
   warnings.push(...detectUnassignedStorages(file));
   warnings.push(...detectUnassignedUsecases(file));
+  warnings.push(...detectUnassignedResources(file));
   warnings.push(...detectEntityAnchorCollisions(file));
   warnings.push(...detectStyleConflicts(sheets, systemSheetCount));
   warnings.push(...detectMissingProperties(file));
@@ -358,6 +367,12 @@ function detectSharedInfraFanIn(file: KrsFile): Warning[] {
     >();
     const infraToServices = new Map<string, Set<string>>();
 
+    // Resolver over this scope's entities: a bare `resource Order` that resolves
+    // to `entity Order { table OrderDB.orders }` counts toward the fan-in on
+    // OrderDB just as a physical `resource OrderDB.orders` would (TPL-20260623-02
+    // — keep the resource→store target set synchronized across every consumer).
+    const resolver = buildEntityResolver(nodes);
+
     function collectInfra(node: KrsNode): void {
       if (
         INFRA_KIND_SET.has(node.kind) &&
@@ -378,9 +393,9 @@ function detectSharedInfraFanIn(file: KrsFile): Warning[] {
       if (node.kind === "service") {
         parentServiceId = node.id;
       }
-      if (node.kind === "resource" && node.ref && parentServiceId) {
-        const targetId = node.ref.parent;
-        if (infraInScope.has(targetId)) {
+      if (node.kind === "resource" && parentServiceId) {
+        const targetId = resolver.resolve(node as ResourceNode).infraParentId;
+        if (targetId !== undefined && infraInScope.has(targetId)) {
           if (!infraToServices.has(targetId)) {
             infraToServices.set(targetId, new Set());
           }
@@ -424,6 +439,47 @@ function detectSharedInfraFanIn(file: KrsFile): Warning[] {
     detectInScope([...file.services, ...file.databases, ...file.queues, ...file.storages]);
   }
 
+  return warnings;
+}
+
+/**
+ * Surface a bare `resource <id>` that resolves to no store: not physical
+ * dot-notation, not a unique `entity` (the canonical logical form), and not
+ * `[external]` (which intentionally has no store). Resolution is model-wide, so
+ * the warning is *promoted away* — with zero edits to the usecase — the moment a
+ * matching `entity` is declared anywhere (`docs/design/domain-entity-modeling.md`).
+ *
+ * Moved here from the parser (which only sees a single declaration): the
+ * entity a bare id resolves to may be declared in another domain / service.
+ * An ambiguous bare id (>1 matching entity) stays unresolved and warned here;
+ * its root-cause collision is reported separately by
+ * `detectEntityAnchorCollisions`.
+ */
+function detectUnassignedResources(file: KrsFile): Warning[] {
+  const resolver = buildEntityResolver([...file.systems, ...file.services, ...file.domains]);
+  const warnings: Warning[] = [];
+
+  function walk(node: KrsNode): void {
+    if (node.kind === "resource") {
+      const res = node as ResourceNode;
+      if (
+        !res.ref &&
+        !res.tags.includes("external") &&
+        resolver.resolve(res).entityId === undefined
+      ) {
+        warnings.push({
+          kind: "unassigned-resource",
+          params: { resourceId: res.id },
+          loc: res.loc,
+        });
+      }
+    }
+    for (const child of node.children) walk(child);
+  }
+
+  for (const root of [...file.systems, ...file.services, ...file.clients, ...file.domains]) {
+    walk(root);
+  }
   return warnings;
 }
 

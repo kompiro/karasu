@@ -71,6 +71,25 @@ describe("inline-share deep permalink target (#1827)", () => {
     expect(decodeShare(encodeShare(payload))).toEqual(payload);
   });
 
+  it("round-trips the entityView sub-mode flag (#1907)", () => {
+    const payload = {
+      krs: SAMPLE,
+      target: { view: "system" as const, node: "Ordering", entityView: true },
+    };
+    expect(decodeShare(encodeShare(payload))).toEqual(payload);
+  });
+
+  it("drops a non-true entityView flag", () => {
+    const encoded = encodeShare({
+      krs: SAMPLE,
+      target: { view: "system", node: "Ordering", entityView: false },
+    });
+    expect(decodeShare(encoded)).toEqual({
+      krs: SAMPLE,
+      target: { view: "system", node: "Ordering" },
+    });
+  });
+
   it("keeps the whole-model payload when there is no target", () => {
     expect(decodeShare(encodeShare({ krs: SAMPLE }))).toEqual({ krs: SAMPLE });
   });

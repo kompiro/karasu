@@ -591,7 +591,35 @@ duplicated across domains, or an entity id equal to a domain id — raises the
 `entity-anchor-collision` warning (it degrades deep-link addressability but does
 not stop rendering). See [`docs/spec/diagnostics.md`](diagnostics.md).
 
+**A usecase `resource` resolves to an entity — the canonical logical form.**
+A bare `resource <id>` inside a `usecase` resolves to the `entity` of the same
+id when exactly one such entity exists model-wide (ids form a flat namespace, so
+the match may live in another domain / service). This logical reference is the
+canonical form; the physical dot-notation (`resource OrderDB.orders`) stays
+valid as a bottom-up intermediate state.
+
+- **Zero-edit promotion.** A bare `resource Order` with no matching entity warns
+  `unassigned-resource`. Declaring `entity Order { table OrderDB.orders }`
+  anywhere in the model promotes the reference with **no edit** to the usecase —
+  the warning disappears. The check is model-wide (the resolver, not the
+  parser), which is what makes cross-declaration promotion possible.
+- **Transitive derivation.** The resolver follows `usecase → entity → table →
+  database` to derive the same `service → database` edge (and `[read]` /
+  `[write]` tag synthesis) it derives for a physical dot-notation reference. An
+  entity with no `table` mapping resolves logically but derives no store edge
+  (the forward-design state) — and still does not warn.
+- **No double counting.** A physical direct reference and an entity-mediated
+  reference that reach the **same** store are counted once — derivation keys on
+  the resolved store, the same exclusion class as an explicit edge suppressing
+  the derived one.
+- **Ambiguous stays unresolved.** A bare id matching more than one entity does
+  not resolve (it keeps the `unassigned-resource` warning); the root-cause
+  collision is reported by `entity-anchor-collision`.
+
 > Related TPLs: [TPL-20260711-01](../test-perspectives/TPL-20260711-01-entity-carries-no-attributes.md) — an `entity` accepts only name / relations / physical mapping; attribute-like declarations (columns, types) must be rejected, keeping the model on the structural side of the DB-schema non-goal.
+> [TPL-20260623-02](../test-perspectives/TPL-20260623-02-validation-target-set-enumerates-all-kinds.md) — the resource→store target set is consumed by several resolvers (`deriveInfraEdges`, `detectSharedInfraFanIn`, `detectUnassignedResources`); adding `entity` as a resolution target must be synchronized across all of them.
+> [TPL-20260514-05](../test-perspectives/TPL-20260514-05-dangling-edge-preserves-node.md) — an unresolved bare `resource` / a cross-domain entity relation must not drop the node that did resolve.
+> [TPL-20260510-07](../test-perspectives/TPL-20260510-07-derivation-tag-semantics.md) — read/write tag synthesis on the entity-mediated usecase→resource edge preserves the source resource's operation semantics.
 
 ### Edge declaration
 

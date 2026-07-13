@@ -1471,3 +1471,127 @@ system ECPlatform {
     });
   });
 });
+
+describe("resource → entity transitive derivation (#1908)", () => {
+  function systemEdges(krs: string): string[] {
+    const view = extractView(parseSystem(krs), []);
+    return view.childEdges.map((e) => `${e.from}->${e.to}`);
+  }
+
+  it("derives a service→database edge through usecase → entity → table → database", () => {
+    const edges = systemEdges(`
+system EC {
+  service OrderService {
+    domain Ordering {
+      entity Order { table OrderDB.orders }
+      usecase PlaceOrder {
+        resource Order
+      }
+    }
+  }
+  database OrderDB { table orders }
+}
+    `);
+    expect(edges).toContain("OrderService->OrderDB");
+  });
+
+  it("resolves an entity across service boundaries for the service→database edge", () => {
+    const edges = systemEdges(`
+system EC {
+  service OrderService {
+    domain Ordering {
+      usecase PlaceOrder {
+        resource Customer
+      }
+    }
+  }
+  service CustomerService {
+    domain Customers {
+      entity Customer { table CustomerDB.customers }
+    }
+  }
+  database CustomerDB { table customers }
+}
+    `);
+    expect(edges).toContain("OrderService->CustomerDB");
+  });
+
+  it("does not double-count a physical and an entity-mediated reference to the same store", () => {
+    const edges = systemEdges(`
+system EC {
+  service OrderService {
+    domain Ordering {
+      entity Order { table OrderDB.orders }
+      usecase PlaceOrder {
+        resource Order
+        resource OrderDB.orders
+      }
+    }
+  }
+  database OrderDB { table orders }
+}
+    `);
+    expect(edges.filter((e) => e === "OrderService->OrderDB")).toHaveLength(1);
+  });
+
+  it("derives no store edge when the resolved entity has no physical mapping", () => {
+    const edges = systemEdges(`
+system EC {
+  service OrderService {
+    domain Ordering {
+      entity Order {}
+      usecase PlaceOrder {
+        resource Order
+      }
+    }
+  }
+  database OrderDB { table orders }
+}
+    `);
+    expect(edges).not.toContain("OrderService->OrderDB");
+  });
+
+  it("does not duplicate a node id in a system-less domain drill-down (entity + bare resource share an id)", () => {
+    // No `system` block → the orphan drill-down branch. The domain owns both an
+    // `entity Order` and a `usecase` with `resource Order`; the entity must be
+    // filtered so it does not collide with the promoted resource of the same id.
+    const parsed = Parser.parse(`
+domain Ordering {
+  entity Order { table OrderDB.orders }
+  usecase PlaceOrder {
+    resource Order
+  }
+}
+    `).value;
+    const view = extractView(parsed.systems, ["Ordering"], parsed.domains, parsed.services);
+    const ids = view.childNodes.map((n) => n.id);
+    expect(new Set(ids).size).toBe(ids.length); // no duplicate node ids
+    // The entity is excluded from the usecase view; the resource is promoted.
+    expect(view.childNodes.filter((n) => n.id === "Order")).toHaveLength(1);
+    expect(view.childNodes.find((n) => n.id === "Order")?.kind).toBe("resource");
+  });
+
+  it("synthesizes a read/write usecase→resource edge for a bare entity-resolved resource", () => {
+    const systems = parseSystem(`
+system EC {
+  service OrderService {
+    domain Ordering {
+      entity Order { table OrderDB.orders }
+      usecase PlaceOrder {
+        resource Order {
+          operations create, read
+        }
+      }
+    }
+  }
+  database OrderDB { table orders }
+}
+    `);
+    // Domain drill-down promotes the resource and tags the edge write-dominant.
+    const view = extractView(systems, ["EC", "OrderService", "Ordering"]);
+    const edge = view.childEdges.find((e) => e.from === "PlaceOrder" && e.to === "Order");
+    expect(edge).toBeDefined();
+    expect(edge?.tags).toContain("write");
+    expect(edge?.label).toBe("W");
+  });
+});

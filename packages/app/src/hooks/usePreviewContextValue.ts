@@ -79,6 +79,11 @@ interface UsePreviewContextValueArgs {
   isOrgTreeViewOpen: boolean;
   toggleOrgTreeView: () => void;
 
+  isEntityViewOpen: boolean;
+  toggleEntityView: () => void;
+  entityViewSvg?: string;
+  hasEntityView: boolean;
+
   styleTargetPath?: string;
   onPickEdgeDirection?: (canonicalId: string, direction: EdgeDirection) => void;
 
@@ -124,6 +129,10 @@ export function usePreviewContextValue(args: UsePreviewContextValueArgs): Previe
     onJumpToEditor,
     isOrgTreeViewOpen,
     toggleOrgTreeView,
+    isEntityViewOpen,
+    toggleEntityView,
+    entityViewSvg,
+    hasEntityView,
     styleTargetPath,
     onPickEdgeDirection,
     onExportSvg,
@@ -202,6 +211,10 @@ export function usePreviewContextValue(args: UsePreviewContextValueArgs): Previe
       orgTreeSvg: org.orgTreeSvg,
       onTeamToggle: org.toggleTeamExpand,
       orgTreeExportSvg: org.orgTreeExportSvg,
+      isEntityViewOpen,
+      onEntityViewToggle: toggleEntityView,
+      entityViewSvg,
+      hasEntityView,
       styleTargetPath,
       onPickEdgeDirection,
       hasKrsSource,
@@ -256,6 +269,10 @@ export function usePreviewContextValue(args: UsePreviewContextValueArgs): Previe
       onJumpToEditor,
       isOrgTreeViewOpen,
       toggleOrgTreeView,
+      isEntityViewOpen,
+      toggleEntityView,
+      entityViewSvg,
+      hasEntityView,
       styleTargetPath,
       onPickEdgeDirection,
       onExportSvg,

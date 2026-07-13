@@ -230,6 +230,8 @@ export const en: Translations = {
     `Domain "${display}" is not assigned to any service`,
   "warning.unassignedUsecase.message": ({ usecaseId }) =>
     `Usecase "${usecaseId}" is not assigned to any domain`,
+  "warning.unassignedResource.message": ({ resourceId }) =>
+    `resource "${resourceId}" is not assigned to any database or entity`,
   "warning.entityAnchorCollision.message": ({ id }) =>
     `Entity anchor id "${id}" is claimed by more than one domain or entity; #krs-entity-${id} deep-links are ambiguous`,
   "warning.unassignedService.message": ({ display }) =>
@@ -353,8 +355,6 @@ export const en: Translations = {
       : `link URL "${url}" is not an absolute http / https / mailto URL; the link is ignored`,
   "diagnostic.edgeSourceMismatch.message": ({ from, parentId }) =>
     `Edge source "${from}" must match the enclosing block id "${parentId}"`,
-  "diagnostic.unassignedResource.message": ({ resourceId }) =>
-    `resource "${resourceId}" is not assigned to any database`,
   "diagnostic.clientResourceInvalidKind.message": ({ kind, name }) =>
     `Invalid client resource kind "${kind}" for resource "${name}". Allowed kinds: localStorage, sessionStorage, indexedDB, opfs, file, keychain`,
   "diagnostic.unknownResourceOperation.message": ({ operation, resourceId }) =>

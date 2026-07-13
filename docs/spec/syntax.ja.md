@@ -573,7 +573,32 @@ service / domain 間の依存 edge と異なり、entity の関連は両方向�
 `entity-anchor-collision` 警告を出す（deep-link のアドレス可能性は劣化するが
 描画は止まらない）。[`docs/spec/diagnostics.ja.md`](diagnostics.ja.md) を参照。
 
+**usecase の `resource` は entity に解決される — 正準形は論理参照。** `usecase`
+内の bare `resource <id>` は、同名の `entity` がモデル全体で一意に存在するとき
+その `entity` に解決される（id はフラットな名前空間なので、別 domain / service の
+一致でもよい）。この論理参照が正準形であり、物理 dot 記法（`resource
+OrderDB.orders`）はボトムアップの中間状態として引き続き有効。
+
+- **編集ゼロの昇格。** 一致する entity がない bare `resource Order` は
+  `unassigned-resource` 警告を出す。モデルのどこかに
+  `entity Order { table OrderDB.orders }` を宣言すると、usecase 側**無編集**で
+  参照が解決され警告は消える。検査は parser ではなく resolver がモデル全体で
+  行うため、宣言をまたいだ昇格が成立する。
+- **推移的導出。** resolver は `usecase → entity → table → database` を辿り、
+  物理 dot 記法参照と同じ `service → database` エッジ導出と `[read]` / `[write]`
+  タグ合成を行う。`table` 対応のない entity は論理的には解決されるが store
+  エッジは導出しない（前向き設計の状態）— それでも警告は出ない。
+- **二重計上しない。** 物理直参照と entity 経由参照が**同じ** store に到達する
+  場合は 1 本に数える。導出は解決後の store をキーにする（明示エッジが導出
+  エッジを抑制するのと同じ排除クラス）。
+- **曖昧なら未解決。** 複数の entity に一致する bare id は解決されず
+  （`unassigned-resource` 警告のまま）、衝突の根本原因は
+  `entity-anchor-collision` が指す。
+
 > Related TPLs: [TPL-20260711-01](../test-perspectives/TPL-20260711-01-entity-carries-no-attributes.md) — `entity` は名前・関連・物理対応のみを受け付け、属性的宣言（カラム・型）は拒否する。モデルを DB スキーマ非目標の構造側に保つ。
+> [TPL-20260623-02](../test-perspectives/TPL-20260623-02-validation-target-set-enumerates-all-kinds.md) — resource→store の target set は複数の resolver（`deriveInfraEdges` / `detectSharedInfraFanIn` / `detectUnassignedResources`）が消費する。解決先に `entity` を追加する際は全箇所を同期させる。
+> [TPL-20260514-05](../test-perspectives/TPL-20260514-05-dangling-edge-preserves-node.md) — 未解決の bare `resource` / 越境 entity 関連でも、解決できた側のノードは drop しない。
+> [TPL-20260510-07](../test-perspectives/TPL-20260510-07-derivation-tag-semantics.md) — entity 経由 usecase→resource エッジの read/write タグ合成は元 resource の operation semantics を保存する。
 
 ### エッジ宣言
 

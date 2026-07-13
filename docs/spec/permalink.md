@@ -28,11 +28,14 @@ fragment you copy from a rendered SVG resolves in the app, and vice versa.
   `entity`. The `entity` token addresses a **per-domain entity view**: `<id>` is
   a domain id and `#krs-entity-<domainId>` opens that domain's entity view (its
   entities and their intra-domain relations; cross-domain ghost targets land
-  with the interactive toggle). Entity views are
-  emitted into the static all-views bundle (`drill-down-svg.ts`) and live inside
-  the system pane, since they are drilled from a domain in the system view; the
-  interactive toggle and `ShareTargetView` / SPA-hash registration land with the
-  app integration.
+  later). Entity views are emitted into the static all-views bundle
+  (`drill-down-svg.ts`) and live inside the system pane, since they are drilled
+  from a domain in the system view. In the SPA the entity view is a **sub-mode
+  of the `system` view** (not a distinct `ActiveView`): the app drills into the
+  domain (`activeView === "system"`, `viewPath` = the domain) and toggles the
+  entity sub-mode on, so `buildHash` emits `#krs-entity-<domainId>` in place of
+  `#krs-system-<domainId>` and `parseHash` restores it. The share `target`
+  carries it as the boolean `entityView` flag (mirroring `orgTree`).
 - **`<id>`** — the **author-given `id`** of the element to drill to, passed
   through `sanitizeId` (non-`[A-Za-z0-9_-]` → `_`). The literal `root` denotes
   the view's top level. Identity is always the `id`, never a `label` or any
@@ -59,7 +62,7 @@ The nest inline-share URL (`#s=<payload>` / `/s?s=<payload>`) carries the deep
 target **inside** the encoded `SharePayload` as an optional `target`:
 
 ```ts
-target?: { view: ShareTargetView; node?: string; highlight?: string; orgTree?: boolean }
+target?: { view: ShareTargetView; node?: string; highlight?: string; orgTree?: boolean; entityView?: boolean }
 ```
 
 A single opaque token therefore deep-links identically across the private
