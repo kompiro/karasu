@@ -278,7 +278,7 @@ post-v1.0 の優先度はこの決定に従属する。壁打ちの全容は PRD
 | 1 | authoring AI に渡すのが `syntax.md`（文法）のみで **idiom/pattern** 資料が無い。KV store は **leaf-less `database`** + node 粒度参照 + physical layer の engine で**表現済み**（`@kv` は却下: annotation は lifecycle 標識） | **cookbook 新設**（KV を entry #1、LLM に同梱）。`[kv]` badge は watch | [#1818](https://github.com/kompiro/karasu/issues/1818) |
 | 2 | table を **domain** でまとめ、**cross-domain な store アクセス**を診断したい | logical=domain でグルーピング + 診断（`shared-infra-fan-in` 系）。physical=schema は 1:1 でなく**未決**（[#1632](https://github.com/kompiro/karasu/issues/1632) の infra realizes と地続き） | [#1819](https://github.com/kompiro/karasu/issues/1819) |
 | 3 | 大規模 multi-file 図の混雑。**file は grouping 単位として誤り**（サンプルは view 種別で分割）。本当の need = system 内の**意味的クラスタ宣言** | **comprehension 柱へ移設**（描画/密度の問題） | [#1822](https://github.com/kompiro/karasu/issues/1822) |
-| 4 | 残した experimental notation を**いつ評価するか**が未定義。後方互換ゆえ rename/廃止は高コスト | **promotion gate**（下記）を ADR + 本書に記録 | [#1820](https://github.com/kompiro/karasu/issues/1820) |
+| 4 | 残した experimental notation を**いつ評価するか**が未定義。後方互換ゆえ rename/廃止は高コスト | **promotion gate**（下記）を [ADR-20260713-01](adr/20260713-01-notation-promotion-gate.md) に記録・本書に生きた適用状態を保持 | [#1820](https://github.com/kompiro/karasu/issues/1820) |
 
 #### Comprehension の構図
 
@@ -293,7 +293,7 @@ post-v1.0 の優先度はこの決定に従属する。壁打ちの全容は PRD
 
 ### promotion gate（notation 評価の規律）
 
-experimental notation を v1.0-stable へ昇格させる判断の規律（ADR 化は [#1820](https://github.com/kompiro/karasu/issues/1820)）:
+experimental notation を v1.0-stable へ昇格させる判断の規律（決定は [ADR-20260713-01](adr/20260713-01-notation-promotion-gate.md)、本節はその生きた適用状態）:
 
 - **既定 = experimental 据え置き**。追加しない/据え置くコストは低く、削除コストは高い。昇格に渋く、open/既存構文での表現に寛容に、灰色は experimental に留める。問いは「**stable へ昇格するに足る実利用証拠があるか**」であって「廃止すべきか」ではない。
 - **トリガー**: (i) その notation に触れる v1.x minor の直前、(ii) 実利用データが溜まった時、(iii) 混乱/bug Issue の再発時。
