@@ -70,6 +70,28 @@ describe("distributeChannelLanes", () => {
     expect(e.waypoints).toBeUndefined();
   });
 
+  it("does not touch a vertical corridor whose two waypoints share x (Group-by gutter/trunk, #1859)", () => {
+    // A side-gutter / aggregation-trunk spine: both waypoints on one x. Its
+    // endpoints happen to share a mid-height y, so the y-delta test alone would
+    // mis-bucket it as a horizontal channel edge and shear the spine. The
+    // shared-x guard must skip it even alongside a real horizontal edge on the
+    // same y bucket.
+    const spine: LayoutEdge = {
+      from: "s",
+      to: "t",
+      fromPoint: { x: 500, y: 50 },
+      toPoint: { x: 500, y: 50 },
+      waypoints: [
+        { x: 500, y: 50 },
+        { x: 500, y: 50 },
+      ],
+    };
+    const horiz = edge("a", "b", 50, 0, 200); // same y bucket, genuinely horizontal
+    distributeChannelLanes([spine, horiz]);
+    expect(spine.waypoints![0]).toEqual({ x: 500, y: 50 });
+    expect(spine.waypoints![1]).toEqual({ x: 500, y: 50 });
+  });
+
   it("does not touch edges whose two waypoints have differing y", () => {
     // Atypical waypoint shape (not a flat L-shape) — leave it alone.
     const e: LayoutEdge = {

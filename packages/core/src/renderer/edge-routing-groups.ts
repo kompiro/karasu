@@ -206,13 +206,17 @@ export function aggregateGroupTrunks(
     if (edges.length < 2) continue;
     const target = layoutNodes.get(targetId);
     if (!target) continue;
-    const allClear = edges.every((e) => {
+    // Trunk the subset that can be cleanly re-routed onto the right spine. An
+    // edge whose stub is blocked keeps its `routeGroupedEdges` result instead of
+    // suppressing the trunk for every sibling — the resolvable edges still get
+    // merged, and the blocked one is never worse than before (AC-1 preserved).
+    const clear = edges.filter((e) => {
       const from = layoutNodes.get(e.from);
       if (!from) return false;
       const path = trunkPath(from, target, nominalX);
       return polylineClearOf(path, obstaclesFor(e, nodes, frames, frameOfNode));
     });
-    if (allClear) eligible.push({ target, edges });
+    if (clear.length >= 2) eligible.push({ target, edges: clear });
   }
 
   // Deterministic lane order: topmost target first, then id. Each trunk gets its
@@ -234,6 +238,12 @@ export function aggregateGroupTrunks(
         { x: trunkX, y: targetPort.y },
       ];
       edge.trunkId = target.id;
+      // A trunked edge runs down the shared spine, so an against-flow dash would
+      // stripe only its half of a spine it co-renders with forward siblings —
+      // a visibly inconsistent solid/dashed overlap. The trunk subsumes the
+      // backward signal, so clear it (the merge geometry, not the dash, conveys
+      // fan-in). P2c-C's junction dot marks the merge.
+      edge.groupBackward = false;
     }
   });
 }

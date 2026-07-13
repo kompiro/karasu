@@ -249,6 +249,10 @@ describe("aggregateGroupTrunks (#1859, P2c-B)", () => {
     // The elbow where each stub meets the spine is that edge's merge point.
     expect(aDb.waypoints![0].y).toBe(aDb.fromPoint.y);
     expect(bDb.waypoints![0].y).toBe(bDb.fromPoint.y);
+    // A trunked edge must not stay flagged `groupBackward`: it co-renders on the
+    // shared spine, so a dash would stripe only its half of that spine.
+    expect(aDb.groupBackward).toBeFalsy();
+    expect(bDb.groupBackward).toBeFalsy();
   });
 
   it("gives distinct shared targets distinct trunk lanes (no spine overlap)", () => {
@@ -269,9 +273,13 @@ describe("aggregateGroupTrunks (#1859, P2c-B)", () => {
     // spines render past the SVG width and get clipped.
     const res = layoutOf(TRUNKS, TRUNKS_OWNER, "team");
     for (const e of res.edges) {
-      for (const wp of e.waypoints ?? []) {
+      for (const wp of [e.fromPoint, e.toPoint, ...(e.waypoints ?? [])]) {
+        // Both axes: computeTotalDimensions folds edge y as well as x, so a
+        // downward trunk vertical must stay inside the height too.
         expect(wp.x).toBeLessThanOrEqual(res.width);
         expect(wp.x).toBeGreaterThanOrEqual(0);
+        expect(wp.y).toBeLessThanOrEqual(res.height);
+        expect(wp.y).toBeGreaterThanOrEqual(0);
       }
     }
   });
