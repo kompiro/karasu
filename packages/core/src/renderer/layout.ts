@@ -81,35 +81,6 @@ function buildGroupFrames(
   }
 }
 
-/**
- * Rewrite collapse-stub ids consistently across a `collapseGroups` result. Used
- * only in the multi-system path when a spanning team's collapsed stub id would
- * collide with an identical stub already placed by an earlier system (#1884).
- * Rewrites node ids, edge endpoints, the `stubGroup` map, the folded diff-state
- * keys, and composes the endpoint remap so downstream lookups see the qualified
- * ids. Identity for ids absent from `rename`.
- */
-function qualifyStubIds(
-  collapsed: ReturnType<typeof collapseGroups>,
-  rename: ReadonlyMap<string, string>,
-): ReturnType<typeof collapseGroups> {
-  const r = (id: string): string => rename.get(id) ?? id;
-  return {
-    nodes: collapsed.nodes.map((n) => (rename.has(n.id) ? { ...n, id: r(n.id) } : n)),
-    edges: collapsed.edges.map((e) =>
-      rename.has(e.from) || rename.has(e.to) ? { ...e, from: r(e.from), to: r(e.to) } : e,
-    ),
-    stubGroup: new Map([...collapsed.stubGroup].map(([k, v]): [string, string] => [r(k), v])),
-    remapEndpoint: (id: string) => r(collapsed.remapEndpoint(id)),
-    foldedEdgeDiffState: new Map(
-      [...collapsed.foldedEdgeDiffState].map(([k, v]): [string, string] => {
-        const i = k.indexOf("->");
-        return i < 0 ? [k, v] : [`${r(k.slice(0, i))}->${r(k.slice(i + 2))}`, v];
-      }),
-    ),
-  };
-}
-
 const ICON_CARD_WIDTH = 160;
 const ICON_CARD_HEIGHT_WITH_DESC = 100;
 const ICON_CARD_HEIGHT_NO_DESC = 56;
@@ -1461,25 +1432,17 @@ function layoutMultipleSystems(
     let groupOrderS: string[] = [];
     let groupIdOf: (id: string) => string | null = () => null;
     if (groupBy === "team" && ownerIndex && ownerIndex.size > 0) {
-      let collapsed = collapseGroups(
+      // Scope stub ids by system id so a team owning members in ≥2 systems gets
+      // a distinct `__group_collapsed_<sys>_<team>__` stub per system instead of
+      // one colliding id that would overwrite in `allLayoutNodes` (#1884).
+      const collapsed = collapseGroups(
         rawNodes,
         sys.edges,
         ownerIndex,
         collapsedGroups,
         edgeDiffState,
+        sys.id,
       );
-      // A team that owns members in ≥2 systems yields the *same*
-      // `__group_collapsed_<team>__` stub id in each system when collapsed; the
-      // later system would overwrite the earlier stub in `allLayoutNodes`,
-      // dropping a node (TPL-20260624-02 totality). System-qualify a stub id
-      // that already exists so each system keeps its own stub (#1884).
-      const rename = new Map<string, string>();
-      for (const stubId of collapsed.stubGroup.keys()) {
-        if (allLayoutNodes.has(stubId)) {
-          rename.set(stubId, `${stubId.replace(/__$/, "")}_${sys.id}__`);
-        }
-      }
-      if (rename.size > 0) collapsed = qualifyStubIds(collapsed, rename);
       const stubGroup = collapsed.stubGroup;
       const gidOf = (id: string): string | null => ownerIndex.get(id) ?? stubGroup.get(id) ?? null;
       const groupedNodes: GroupedNode[] = collapsed.nodes.map((n) => ({
@@ -1504,10 +1467,13 @@ function layoutMultipleSystems(
         groupIdOf = gidOf;
         for (const [k, v] of collapsed.foldedEdgeDiffState) foldedEdgeDiffState.set(k, v);
         // Record each folded member → stub so cross-system edges re-anchor onto
-        // the stub instead of dropping (#1884). Skip identity mappings.
-        for (const n of rawNodes) {
-          const mapped = collapsed.remapEndpoint(n.id);
-          if (mapped !== n.id) crossSystemRemap.set(n.id, mapped);
+        // the stub instead of dropping (#1884). Only when a team actually
+        // collapsed — `remapEndpoint` is identity otherwise.
+        if (collapsedGroups && collapsedGroups.size > 0) {
+          for (const n of rawNodes) {
+            const mapped = collapsed.remapEndpoint(n.id);
+            if (mapped !== n.id) crossSystemRemap.set(n.id, mapped);
+          }
         }
       }
     }

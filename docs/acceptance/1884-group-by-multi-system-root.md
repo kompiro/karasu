@@ -71,7 +71,7 @@ fence する。team が複数 system をまたいで `owns` する場合、各 s
 > ✅ Automated by `packages/core/src/renderer/group-by-render.test.ts` (suite-wide) — "keeps a distinct stub per system when a spanning team is collapsed"
 
 - [x] 複数 system に owns が跨る team を collapse すると、各 system に 1 つずつ stub が描かれ
-      （後段 system は `__group_collapsed_<team>_<sys>__` に修飾）、上書きで消えない（全域性）
+      （stub id は生成時点で `__group_collapsed_<sys>_<team>__` と system scope 化）、上書きで消えない（全域性）
 
 ### AC-8: 手動（描画の目視確認）
 

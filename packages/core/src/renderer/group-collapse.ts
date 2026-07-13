@@ -16,9 +16,16 @@ import type { SourceRange } from "../types/tokens.js";
 /** Marker tag on a synthesized group-collapse stub. */
 export const GROUP_STUB_TAG = "__group_stub__";
 
-/** Stable id of the stub that stands in for a collapsed group. */
-export function groupStubId(groupId: string): string {
-  return `__group_collapsed_${groupId}__`;
+/**
+ * Stable id of the stub that stands in for a collapsed group. `scope` (the
+ * enclosing system id, in the multi-system root view) namespaces the id so a
+ * team owning members in several systems yields a distinct stub per system
+ * instead of colliding on one id (#1884). Omitted in the single-system view.
+ */
+export function groupStubId(groupId: string, scope?: string): string {
+  return scope !== undefined
+    ? `__group_collapsed_${scope}_${groupId}__`
+    : `__group_collapsed_${groupId}__`;
 }
 
 const ZERO_LOC: SourceRange = {
@@ -26,10 +33,10 @@ const ZERO_LOC: SourceRange = {
   end: { line: 0, column: 0, offset: 0 },
 };
 
-function stubNode(groupId: string, count: number): KrsNode {
+function stubNode(groupId: string, count: number, scope?: string): KrsNode {
   return {
     kind: "service",
-    id: groupStubId(groupId),
+    id: groupStubId(groupId, scope),
     label: `${groupId} (${count})`,
     tags: [GROUP_STUB_TAG],
     annotations: [],
@@ -88,6 +95,12 @@ export function collapseGroups(
   ownerIndex: Map<string, string>,
   collapsed: ReadonlySet<string> | undefined,
   edgeDiffState?: ReadonlyMap<string, string>,
+  /**
+   * Namespaces the synthesized stub ids (the enclosing system id in the
+   * multi-system root view) so a team spanning systems gets one stub per system
+   * rather than a single colliding id (#1884). Omitted in the single-system view.
+   */
+  stubScope?: string,
 ): GroupCollapseResult {
   const stubGroup = new Map<string, string>();
   if (!collapsed || collapsed.size === 0) {
@@ -114,13 +127,13 @@ export function collapseGroups(
   }
   for (const [groupId, count] of counts) {
     // `counts` only ever holds ids seen at least once, so count >= 1 always.
-    kept.push(stubNode(groupId, count));
-    stubGroup.set(groupStubId(groupId), groupId);
+    kept.push(stubNode(groupId, count, stubScope));
+    stubGroup.set(groupStubId(groupId, stubScope), groupId);
   }
 
   const remap = (id: string): string => {
     const g = collapsedGroupOf(id);
-    return g !== null ? groupStubId(g) : id;
+    return g !== null ? groupStubId(g, stubScope) : id;
   };
   const outEdges: KrsEdge[] = [];
   const seen = new Set<string>();
