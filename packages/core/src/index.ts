@@ -405,6 +405,13 @@ export interface CompileOptions {
    * for the default fully-expanded grouped render.
    */
   collapsedGroups?: ReadonlySet<string>;
+  /**
+   * System-view service ids expanded in place (Issue #1921). Each named service
+   * is drawn with its domain children inside a boundary frame while siblings
+   * stay collapsed; cross-boundary edges re-anchor to the exact internal domain.
+   * Phase 1 honours at most one entry and only in the ungrouped system view.
+   */
+  expandedContainers?: ReadonlySet<string>;
 }
 
 export interface SystemCompileResult {
@@ -497,6 +504,7 @@ function _compileFromPreparedInput(
     interactive,
     groupBy,
     collapsedGroups,
+    expandedContainers,
   } = opts;
 
   // Project-wide edge author-id uniqueness. Runs once before view extraction
@@ -638,7 +646,7 @@ function _compileFromPreparedInput(
   // render in their own labeled frame rather than being merged into
   // systems[0]. extractView only needs the systems list; the legacy
   // unassigned* params are left empty for that reason.
-  const viewSlice = extractView(effectiveSystems, viewPath ?? []);
+  const viewSlice = extractView(effectiveSystems, viewPath ?? [], [], [], expandedContainers);
   diagnostics.push(...assignEdgeCanonicalIds(viewSlice.childEdges));
   const styles = resolveStyles(
     effectiveSystems,
@@ -1186,6 +1194,11 @@ export interface CompileSystemDiffOptions {
   collapsedCategories?: ReadonlySet<CategoryId>;
   /** Draw the interactive Group-by / collapse controls in the diff preview (Issue #1858). */
   interactive?: boolean;
+  /**
+   * System-view service ids expanded in place in the diff (Issue #1921). Mirrors
+   * the non-compare option so the ⊕/⊖ expansion controls work in compare mode.
+   */
+  expandedContainers?: ReadonlySet<string>;
 }
 
 /**
@@ -1211,6 +1224,7 @@ export async function compileSystemDiff(
     collapsedGroups,
     collapsedCategories,
     interactive,
+    expandedContainers,
   } = options;
 
   const resolver = new ImportResolver(fs);
@@ -1225,8 +1239,8 @@ export async function compileSystemDiff(
   const beforeSystems = withUnassignedSystem(beforeResolved.krsFile);
   const afterSystems = withUnassignedSystem(afterResolved.krsFile);
 
-  const beforeSlice = extractView(beforeSystems, viewPath ?? []);
-  const afterSlice = extractView(afterSystems, viewPath ?? []);
+  const beforeSlice = extractView(beforeSystems, viewPath ?? [], [], [], expandedContainers);
+  const afterSlice = extractView(afterSystems, viewPath ?? [], [], [], expandedContainers);
   diagnostics.push(...assignEdgeCanonicalIds(beforeSlice.childEdges));
   diagnostics.push(...assignEdgeCanonicalIds(afterSlice.childEdges));
 

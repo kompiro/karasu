@@ -465,6 +465,7 @@ export function PreviewColumn() {
           onTeamButtonClick={view.onTeamButtonClick}
           onCategoryToggle={view.onCategoryToggle}
           onGroupToggle={view.onGroupToggle}
+          onExpandToggle={view.onExpandToggle}
           onOwnedServiceClick={view.onOwnedServiceClick}
           highlightedNodeId={view.highlightedNodeId}
           onClearHighlight={view.onClearHighlight}

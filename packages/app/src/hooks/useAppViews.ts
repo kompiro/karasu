@@ -77,6 +77,9 @@ interface SystemViewBundle {
   collapsedCategories: ReadonlySet<CategoryId>;
   toggleCategory: (category: CategoryId) => void;
   toggleGroup: (groupId: string) => void;
+  /** In-place expanded service ids and their toggle (Issue #1921). */
+  expandedContainers: ReadonlySet<string>;
+  toggleExpand: (serviceId: string) => void;
   /** Whether anything (a team frame or external/infra band) is collapsible (#1872). */
   anyCollapsible: boolean;
   /** True when every team frame AND external/infra category is collapsed (#1872). */
@@ -202,6 +205,8 @@ export function useAppViews(args: UseAppViewsArgs): UseAppViewsResult {
     groupBy,
     setGroupBy,
     toggleGroup,
+    expandedContainers,
+    toggleExpand,
     anyCollapsible,
     allCollapsed,
     onCollapseAllToggle,
@@ -336,6 +341,8 @@ export function useAppViews(args: UseAppViewsArgs): UseAppViewsResult {
       setGroupBy,
       groupByAvailable: hasOrgDiagram,
       toggleGroup,
+      expandedContainers,
+      toggleExpand,
       anyCollapsible,
       allCollapsed,
       onCollapseAllToggle,

@@ -390,6 +390,12 @@ export function renderFromLayout(
     if (categoryControls) parts.push(categoryControls);
     const groupControls = renderGroupControls(layoutResult, palette, options?.collapsedGroups);
     if (groupControls) parts.push(groupControls);
+    // In-place expansion is orthogonal to Group by: team and Phase 1 targets the
+    // ungrouped system view, so the ⊕/⊖ controls only appear there (#1921).
+    if (!options?.groupBy) {
+      const expandControls = renderExpandControls(layoutResult, palette);
+      if (expandControls) parts.push(expandControls);
+    }
   }
 
   // Legend footer (Issue #887) — rendered as a band below the diagram so
@@ -641,6 +647,9 @@ function renderGroupControls(
   const buttons: string[] = [];
   for (const container of layoutResult.containers) {
     if (!container.group || container.groupId === undefined) continue;
+    // In-place expansion frames are their own control axis (`data-expand-node`,
+    // renderExpandControls) — never a team collapse target (#1921).
+    if (container.expanded) continue;
     // Collapsed → ⊕ (click expands); expanded → ⊖ (click collapses).
     const collapsed = collapsedGroups?.has(container.groupId) ?? false;
     const bx = container.x + container.width - 2;
@@ -662,6 +671,60 @@ function renderGroupControls(
   if (buttons.length === 0) return "";
   const style = el("style", {}, ".krs-group-collapse{cursor:pointer}");
   return el("g", { class: "krs-group-controls" }, style, ...buttons);
+}
+
+/**
+ * In-place expansion controls (#1921): a ⊕ on every collapsed service box that
+ * has domain children (click expands it in place) and a ⊖ on each expanded
+ * container's boundary frame (click collapses it back). Both carry
+ * `data-expand-node=<serviceId>` for the app's click delegation. Interactive
+ * chrome only — never emitted in static output (mirrors renderGroupControls).
+ */
+function renderExpandControls(layoutResult: LayoutResult, palette: DiagramPalette): string {
+  const buttons: string[] = [];
+  // ⊖ on expanded frames (click collapses).
+  for (const container of layoutResult.containers) {
+    if (!container.expanded || container.nodeId === undefined) continue;
+    const bx = container.x + container.width - 2;
+    const by = container.y + 2;
+    buttons.push(
+      el(
+        "g",
+        {
+          class: "krs-expand-control",
+          "data-expand-node": container.nodeId,
+          role: "button",
+          tabindex: "0",
+          transform: `translate(${bx},${by})`,
+        },
+        // expanded → ⊖
+        ...collapseGlyph(0, 0, false, palette),
+      ),
+    );
+  }
+  // ⊕ on collapsed, drillable service boxes (click expands).
+  for (const node of layoutResult.nodes.values()) {
+    if (node.kind !== "service" || !node.hasChildren) continue;
+    const bx = node.x + node.width - 2;
+    const by = node.y + 2;
+    buttons.push(
+      el(
+        "g",
+        {
+          class: "krs-expand-control",
+          "data-expand-node": node.id,
+          role: "button",
+          tabindex: "0",
+          transform: `translate(${bx},${by})`,
+        },
+        // collapsed → ⊕
+        ...collapseGlyph(0, 0, true, palette),
+      ),
+    );
+  }
+  if (buttons.length === 0) return "";
+  const style = el("style", {}, ".krs-expand-control{cursor:pointer}");
+  return el("g", { class: "krs-expand-controls" }, style, ...buttons);
 }
 
 function renderContainer(

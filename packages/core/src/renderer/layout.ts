@@ -59,6 +59,13 @@ function buildGroupFrames(
   groupOrder: readonly string[],
   groupIdOf: (id: string) => string | null,
   out: ContainerRect[],
+  /**
+   * Per-group frame metadata (#1921). Team frames use the group id as label; an
+   * expanded container instead titles its frame with the service label and sets
+   * `expanded`/`nodeId` so the renderer draws a ⊖ `data-expand-node` control.
+   * Omitted → the frame reuses the team defaults (label = group id).
+   */
+  metaOf?: (groupId: string) => { label?: string; expanded?: boolean; nodeId?: string } | undefined,
 ): void {
   for (const groupId of groupOrder) {
     const members = nodes.filter((n) => groupIdOf(n.id) === groupId);
@@ -67,9 +74,10 @@ function buildGroupFrames(
     const minY = Math.min(...members.map((n) => n.y));
     const maxX = Math.max(...members.map((n) => n.x + n.width));
     const maxY = Math.max(...members.map((n) => n.y + n.height));
+    const meta = metaOf?.(groupId);
     out.push({
       id: `__group_${groupId}__`,
-      label: groupId,
+      label: meta?.label ?? groupId,
       x: minX - GROUP_FRAME_PAD_X,
       y: minY - GROUP_FRAME_PAD_TOP,
       width: maxX - minX + GROUP_FRAME_PAD_X * 2,
@@ -77,6 +85,7 @@ function buildGroupFrames(
       ghost: false,
       group: true,
       groupId,
+      ...(meta?.expanded ? { expanded: true, nodeId: meta.nodeId ?? groupId } : {}),
     });
   }
 }
@@ -447,12 +456,16 @@ function computeLayoutEdges(
   // the identity map outside group-by-team collapse, so the ghost loops are
   // unaffected when nothing folds.
   remapGhostEndpoint: (id: string) => string,
+  // Boundary-frame boxes for in-place-expanded containers (#1921), so a
+  // service-level edge whose endpoint was expanded anchors on the frame border
+  // instead of dropping.
+  expandedFrames?: Map<string, { x: number; y: number; width: number; height: number }>,
 ): LayoutEdge[] {
   const layoutEdges: LayoutEdge[] = [];
 
   // Regular edges
   for (const edge of allEdges) {
-    const le = computeEdgePoints(edge, layoutNodes, layers, sideExternals);
+    const le = computeEdgePoints(edge, layoutNodes, layers, sideExternals, expandedFrames);
     if (!le) continue;
     const edgeKey = `${edge.from}->${edge.to}#${edge.kind}`;
     const domainEdges = viewSlice.implicitEdgeDetails.get(edgeKey);
@@ -926,7 +939,20 @@ export function layout(viewSlice: ViewSlice, options: LayoutOptions = {}): Layou
     foldedEdgeDiffState = collapsed.foldedEdgeDiffState;
   }
   /** Group a node belongs to — its team owner, or the group a collapse stub stands in for. */
-  const groupIdOf = (id: string): string | null => ownerIndex?.get(id) ?? stubGroup.get(id) ?? null;
+  // In-place expansion (#1921): map each expanded container's spliced domain
+  // members to their container id so the group-band machinery frames them.
+  // Orthogonal to Group by: team (Phase 1 targets the ungrouped system view),
+  // so it only ever engages when not grouping by team.
+  const expandMembership = new Map<string, string>();
+  if (groupBy !== "team") {
+    for (const frame of viewSlice.expandedFrames) {
+      for (const memberId of frame.memberIds) expandMembership.set(memberId, frame.containerId);
+    }
+  }
+  const isExpanding = expandMembership.size > 0;
+
+  const groupIdOf = (id: string): string | null =>
+    ownerIndex?.get(id) ?? stubGroup.get(id) ?? expandMembership.get(id) ?? null;
 
   // System-view grouping (#1858, P2a): when the viewer picks "Group by: team",
   // bucket nodes into their owning team instead of the kind tiers, stacking each
@@ -946,6 +972,28 @@ export function layout(viewSlice: ViewSlice, options: LayoutOptions = {}): Layou
     // inserts `owns` in declaration order), so the deterministic tie-break in
     // `orderGroups` follows what the author wrote.
     const declaredGroupOrder = [...new Set(ownerIndex.values())];
+    const grouped = assignGroupedLayers(
+      groupedNodes,
+      allEdges.map((e) => ({ from: e.from, to: e.to })),
+      declaredGroupOrder,
+    );
+    if (grouped) {
+      groupedLayers = grouped.layers;
+      groupBands = grouped.groupBands;
+      groupOrder = grouped.groupOrder;
+    }
+  }
+
+  // In-place expansion band (#1921): reuse the two-level group layout so an
+  // expanded container's domain children occupy a contiguous, framed band among
+  // the collapsed sibling boxes. Runs only when not already grouping by team.
+  if (isExpanding && !groupedLayers) {
+    const groupedNodes: GroupedNode[] = allNodes.map((n) => ({
+      id: n.id,
+      groupId: groupIdOf(n.id),
+      ungroupedRank: systemTier(n),
+    }));
+    const declaredGroupOrder = viewSlice.expandedFrames.map((f) => f.containerId);
     const grouped = assignGroupedLayers(
       groupedNodes,
       allEdges.map((e) => ({ from: e.from, to: e.to })),
@@ -1223,8 +1271,16 @@ export function layout(viewSlice: ViewSlice, options: LayoutOptions = {}): Layou
   // Group boundary frames (#1858, P2a): one dashed titled frame enclosing each
   // team's members (design § P1 measurement 1). Built from final node positions
   // via the shared helper the multi-system path also uses (#1884).
-  if (groupBands && ownerIndex) {
-    buildGroupFrames([...layoutNodes.values()], groupOrder, groupIdOf, containers);
+  if (groupBands && (ownerIndex || isExpanding)) {
+    const expandMeta = isExpanding
+      ? (groupId: string) => {
+          const frame = viewSlice.expandedFrames.find((f) => f.containerId === groupId);
+          return frame
+            ? { label: frame.label, expanded: true, nodeId: frame.containerId }
+            : undefined;
+        }
+      : undefined;
+    buildGroupFrames([...layoutNodes.values()], groupOrder, groupIdOf, containers, expandMeta);
   }
 
   // Place ghost nodes
@@ -1248,6 +1304,17 @@ export function layout(viewSlice: ViewSlice, options: LayoutOptions = {}): Layou
         layoutHints,
       );
 
+  // Boundary-frame boxes for in-place-expanded containers, keyed by the expanded
+  // service id, so a service-level edge whose endpoint was expanded anchors on
+  // the frame border instead of dropping (#1921).
+  const expandedFrameRects = isExpanding
+    ? new Map(
+        containers
+          .filter((c) => c.expanded && c.nodeId !== undefined)
+          .map((c) => [c.nodeId!, c] as const),
+      )
+    : undefined;
+
   // Compute all edges (regular + ghost)
   const layoutEdges = computeLayoutEdges(
     viewSlice,
@@ -1257,6 +1324,7 @@ export function layout(viewSlice: ViewSlice, options: LayoutOptions = {}): Layou
     allEdges,
     sideExternals,
     remapGhostEndpoint,
+    expandedFrameRects,
   );
 
   // Phase 3: distribute ports across each node side that hosts ≥ 2 edges,
@@ -1812,9 +1880,17 @@ function computeEdgePoints(
   layoutNodes: Map<string, LayoutNode>,
   layers: Map<string, number>,
   sideExternals?: Map<string, "left" | "right">,
+  /**
+   * Boundary-frame boxes for containers expanded in place (#1921), keyed by the
+   * expanded service id. An edge authored at the service level whose endpoint is
+   * an expanded container has no node to anchor to (the service was replaced by
+   * its domain children), so it anchors on the frame border here instead of
+   * being silently dropped — mirroring the ghost-edge container fallback.
+   */
+  expandedFrames?: Map<string, { x: number; y: number; width: number; height: number }>,
 ): LayoutEdge | null {
-  const fromNode = layoutNodes.get(edge.from);
-  const toNode = layoutNodes.get(edge.to);
+  const fromNode = layoutNodes.get(edge.from) ?? expandedFrames?.get(edge.from);
+  const toNode = layoutNodes.get(edge.to) ?? expandedFrames?.get(edge.to);
   if (!fromNode || !toNode) return null;
 
   const fromPoint = {

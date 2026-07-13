@@ -27,6 +27,8 @@ interface PreviewPaneProps {
   /** Called when user clicks a category ⊖/⊕ control to collapse/expand it (#1821). */
   onCategoryToggle?: (category: CategoryId) => void;
   onGroupToggle?: (groupId: string) => void;
+  /** Called when the user clicks a ⊕/⊖ in-place expansion control on a service (#1921). */
+  onExpandToggle?: (serviceId: string) => void;
   /** Called when user clicks an owned service link on an org team node to cross-navigate to system view */
   onOwnedServiceClick?: (serviceId: string) => void;
   /** Node or container id to highlight after cross-navigation */
@@ -81,6 +83,7 @@ export function PreviewPane({
   onTeamButtonClick,
   onCategoryToggle,
   onGroupToggle,
+  onExpandToggle,
   onOwnedServiceClick,
   highlightedNodeId,
   onClearHighlight,
@@ -310,6 +313,18 @@ export function PreviewPane({
         }
       }
 
+      // In-place expansion control (Issue #1921): ⊕ on a collapsed service box
+      // or ⊖ on an expanded container frame. The attribute carries the service
+      // id to expand/collapse.
+      const expandControl = target.closest("[data-expand-node]");
+      if (expandControl && onExpandToggle) {
+        const serviceId = expandControl.getAttribute("data-expand-node");
+        if (serviceId) {
+          onExpandToggle(serviceId);
+          return;
+        }
+      }
+
       // Explicitly non-interactive elements (e.g. "+N more" overflow label)
       if (target.closest("[data-noop]")) return;
 
@@ -372,6 +387,7 @@ export function PreviewPane({
       onTeamButtonClick,
       onCategoryToggle,
       onGroupToggle,
+      onExpandToggle,
       onOwnedServiceClick,
       onClearHighlight,
     ],

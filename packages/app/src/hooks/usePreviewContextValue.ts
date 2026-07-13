@@ -34,6 +34,7 @@ interface UsePreviewContextValueArgs {
     resolvedSystems: SystemNode[];
     toggleCategory: (category: CategoryId) => void;
     toggleGroup: (groupId: string) => void;
+    toggleExpand: (serviceId: string) => void;
     groupBy: GroupByMode;
     setGroupBy: (mode: GroupByMode) => void;
     groupByAvailable: boolean;
@@ -147,6 +148,7 @@ export function usePreviewContextValue(args: UsePreviewContextValueArgs): Previe
         onTeamButtonClick: nav.handleTeamButtonClick,
         onCategoryToggle: system.toggleCategory,
         onGroupToggle: system.toggleGroup,
+        onExpandToggle: system.toggleExpand,
         groupBy: system.groupBy,
         onGroupByChange: system.setGroupBy,
         groupByAvailable: system.groupByAvailable,
@@ -226,6 +228,7 @@ export function usePreviewContextValue(args: UsePreviewContextValueArgs): Previe
       org.toggleTeamExpand,
       system.toggleCategory,
       system.toggleGroup,
+      system.toggleExpand,
       system.groupBy,
       system.setGroupBy,
       system.groupByAvailable,

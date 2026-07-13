@@ -52,4 +52,16 @@ describe("useCollapsibleSet", () => {
     expect(result.current.toggle).toBe(toggle);
     expect(result.current.replace).toBe(replace);
   });
+
+  it("single mode keeps at most one member (toggling a new id clears the rest) (#1921)", () => {
+    const { result } = renderHook(() => useCollapsibleSet<string>(true));
+    act(() => result.current.toggle("a"));
+    expect([...result.current.set]).toEqual(["a"]);
+    // Expanding a second collapses the first.
+    act(() => result.current.toggle("b"));
+    expect([...result.current.set]).toEqual(["b"]);
+    // Toggling the current member off leaves the set empty.
+    act(() => result.current.toggle("b"));
+    expect(result.current.set.size).toBe(0);
+  });
 });
