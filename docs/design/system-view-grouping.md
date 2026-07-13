@@ -476,6 +476,70 @@ ADR-20260711-03（P2a）への follow-up。実装は 1 PR（core: `index.ts` マ
 `group-collapse.ts` diff-state fold）＋ changeset（`@karasu-tools/core` + `karasu` patch）＋
 AT（`docs/acceptance/`）＋ proactive TPL の contract 化。実装完了 PR で `Closes #1886`。
 
+## multi-system root view の grouping（#1884）
+
+P2a（ADR-20260711-03）は `layout()` の **single-system focus 分岐**に grouping 機構
+（`collapseGroups` + `assignGroupedLayers` + 境界フレーム）を実装したが、**multi-system
+root view 分岐**（`layoutMultipleSystems`）には渡していなかった。`layout()` は system が
+2 つ以上あると `layoutMultipleSystems` に dispatch するが、その呼び出しに `groupBy` /
+`collapsedGroups` を渡しておらず、`layoutMultipleSystems` の signature にも無かった。
+結果として **system を 2 つ以上宣言した瞬間**（= cross-system ghost エッジが存在する状況と
+一致する — ghost エッジは参照先の第 2 system を要求するため）root view の team 境界フレームと
+per-team collapse が黙って消え、利用者からは「ghost エッジがあると group-by-team が壊れる」
+ように見えていた。これは [TPL-20260510-11](../test-perspectives/TPL-20260510-11-parallel-function-parity.md)
+（並列関数ファミリの parameter parity）の失敗クラスそのもの — dispatch する分岐にも「兄弟」が
+あり、options は全分岐へ通す必要があった。
+
+### 決定 — per-(system, team) フレーム
+
+grouping を **各 system フレームの内側**に適用する。root view は各 system を独立に side-by-side
+で配置する（`layoutMultipleSystems` は system ごとに独自の tier layout + 座標オフセット + 枠を持つ）
+ので、grouping もその per-system の枠内で完結させる:
+
+- team が 1 つの system 内だけで `owns` するなら、その system フレーム内に境界フレームが 1 つ描かれる。
+- team が**複数 system をまたいで** `owns` する場合（`owns` の対象は system-scoped ではない）、
+  **各 system フレーム内に 1 つずつ**フレームが描かれる（同一ラベル・disjoint な複数フレーム）。
+  「Shop 内の payments チームのメンバー」と「PaymentGateway 内の payments チームのメンバー」は
+  視覚的に別枠だが、同じチーム名を共有する — 正直な表現。
+
+実装は `layoutMultipleSystems` の per-system ループに grouping を注入する（`groupBy === "team"`
+gate 内）: この system のノードに `collapseGroups`（`collapsedGroups` 対応）→ `assignGroupedLayers`
+→ 得た grouped layers で tier layers を置換 → 配置後に per-(system, team) の `__group_<team>__`
+ContainerRect を組む。single-system 分岐と同じヘルパを使うので見た目は一致する。ungrouped /
+single-system 出力は gate により byte-identical（回帰なし）。
+
+### 却下した案 — cross-system をまたぐ 1 枚のフレーム
+
+1 つの team フレームが複数の side-by-side system フレームを**またいで囲む**案。`layoutMultipleSystems`
+の「system は独立」という前提を崩し（system 同士が配置空間を共有することになる）、フレーム矩形が
+system フレームと**重なる**ため TPL-20260624-02 の「全要素ちょうど一度・枠は disjoint」不変条件を
+壊す。本 doc の scope 節（「out of scope: … cross-system group」）とも整合しない。よって大幅な
+re-architecture かつ規模・リスクが見合わないとして却下し、per-system フレームを採る。
+
+### 退化ケースの扱い（実装で fence 済み）
+
+- **collapsed かつ cross-system edge を持つ team** — collapse でメンバーが stub に畳まれると、その
+  メンバーを端点に持つ cross-system edge が `layoutMultipleSystems` の `crossSystemEdges` ループで
+  端点解決に失敗して**黙って drop** される。single-system の ghost-edge remap と同様、per-system の
+  collapse remap を全 system 分蓄積した `crossSystemRemap` で端点を stub に再アンカーし、drop を防ぐ
+  （TPL-20260624-02「畳んだノードの edge は両端点を解決」）。再ターゲットされた edge のみ dedup。
+- **collapsed かつ system をまたぐ team** — 各 system が同じ `__group_collapsed_<team>__` stub id を
+  生成し、後段 system の stub が前段を `allLayoutNodes` で上書きして 1 ノードを失う（全域性違反）。
+  既に配置済みの stub id と衝突する場合のみ、その system の stub id を system 名で修飾して
+  （`__group_collapsed_<team>_<sys>__`）各 system が独自 stub を保つ。frame id（`__group_<team>__`）は
+  team 単位で共有のまま（app collapse が team id キーで「全 system 一括 collapse」する意図どおり）。
+
+### スコープ外（本決定に含めないこと）
+
+- **P2c ルーティング（直交・集約トランク・hop/junction）の multi-system への適用** — multi-system は
+  そもそも orthogonal routing を使わず直線エッジ（`computeEdgePoints`）で描いており、本修正も直線の
+  ままとする。root view の grouped エッジ磨き込みは必要なら別 Issue。
+
+### ADR 昇格
+
+本決定は ADR-20260711-03（P2a）の follow-up。P2b / P2c 完了時に P2a follow-up 群とまとめて ADR へ
+昇格する（本 doc に検討として保持）。
+
 ## 未解決の問い / 決めないこと
 
 - **P2 のメンバー列挙キーワード** — `contains` / `includes` / `member` を候補として記録（参照系は動詞が karasu のイディオム: owns / realizes / delivers / handles）。**P2b 設計時に決める**。

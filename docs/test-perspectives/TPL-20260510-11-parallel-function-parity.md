@@ -12,15 +12,18 @@ known_consumers:
   - compile-project
   - compile-project-org-view
   - org-tree-renderer
+  - layout-single-vs-multi-system
 related_to:
   - TPL-20260510-06
 discovered_from:
   - issue: "#219"
   - issue: "#160"
   - issue: "#1273"
+  - issue: "#1884"
   - root_cause_file: "packages/core/src/renderer/drill-down-svg.ts"
   - root_cause_file: "packages/core/src/index.ts:480"
   - root_cause_file: "packages/core/src/renderer/org-tree-renderer.ts:544"
+  - root_cause_file: "packages/core/src/renderer/layout.ts"
 topic: build
 scope:
   packages:
@@ -46,6 +49,7 @@ karasu には「ビューごとに分かれた似た形の関数群」が複数�
 - 呼び出し側は parameter を渡しているのに、**特定の view / mode でだけ反映されない**
 - family の途中まで導入された optional parameter が、後から追加された / 見落とされた兄弟関数に渡らない。2026-06-10 の spec 適合性監査では、empty-state ラベル注入（`emptyStateLabels` — i18n ポリシーの core 側受け口）が `deploy-renderer` / `org-renderer` / `all-layers-svg` には実装済みなのに `renderOrgTreeView()` だけオプションを持たず、"No teams defined" が英語固定になっていた
 - 「system view では効くのに org view では効かない」「export SVG には反映されるが drill-down では反映されない」のような **view 種別依存の挙動差** が観測される
+- **同一関数の分岐でも起きる**（別関数とは限らない）。#1884 では `layout()` の single-system 分岐が `groupBy` / `collapsedGroups` を消費する一方、multi-system 分岐（`layoutMultipleSystems`）はそれらを**引数に受け取ってすらいなかった**。呼び出し側は options を渡しているのに、system が 2 つ以上（root view）になった瞬間 grouping が黙って無効化された。dispatch する分岐にも「兄弟」があると考え、options を **全分岐へ** 通す
 - TypeScript の型は通るので、PR レビューでも気づきにくい
 - `analyze()` のような共通 helper を呼ぶ関数群で、**system sheet 数のような cross-cutting な情報** を渡し忘れると、warning の精度が view ごとに違うという形で表面化する
 
