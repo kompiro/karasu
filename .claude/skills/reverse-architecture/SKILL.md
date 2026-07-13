@@ -12,88 +12,109 @@ description: >
 
 # Reverse Architecture Skill
 
-任意のリポジトリを karasu モデル（`.krs`）に**均一な深さで**リバースする。
-単一エージェントは top-level（system / container / 物理 shape）を復元できても、
-domain interior（usecase / entity / resource）が薄くなる。本 skill は **domain ごとに
-subagent を fan-out**して per-slice の attention budget を確保し、**karasu CLI を
-deterministic spine**（物理抽出・切り出し・測定・検証・描画）に使う。
+Reverse-engineer an arbitrary repository into a karasu model (`.krs`) at
+**uniform domain depth**. A single agent can recover the top level (system /
+container / physical shape) but the domain interior (usecases / entities /
+resources) thins out. This skill uses **per-domain subagent fan-out** to give
+each domain its own attention budget, and the **karasu CLI as a deterministic
+spine** (physical extraction, slicing, measurement, validation, rendering).
 
-設計根拠は `docs/design/reverse-architecture-skill.md` と `docs/design/repo-reverse-engineer-harness.md`。
+Design rationale: `docs/design/reverse-architecture-skill.md` and
+`docs/design/repo-reverse-engineer-harness.md`.
 
-## 前提
+## Prerequisites
 
-- 対象リポジトリのパスと、karasu CLI（`karasu` コマンド）が使えること。
-- 出力は 1 つの `.krs` プロジェクト（`index.krs` を推奨）に収束させる。**`.krs` が
-  single source of truth** — エージェントは常に `.krs` を読み、chat 履歴を state にしない。
-- **物理層は捏造しない**: compose / k8s / openapi / db があれば `karasu translate` で
-  deterministic に起こし、エージェントは *annotate* に徹する。
+- The target repository path, and the karasu CLI (`karasu`) available.
+- Converge output onto a single `.krs` project (`index.krs` recommended). The
+  **`.krs` file is the single source of truth** — agents always re-read the
+  `.krs`, never the chat history, for state.
+- **Never invent the physical layer**: if compose / k8s / openapi / db files
+  exist, extract them deterministically with `karasu translate` and let the
+  agents *annotate*, not fabricate.
 
-## 責務分離（重要）
+## Separation of concerns (important)
 
-| 層 | 何を扱うか | 誰が | 手段 |
+| Layer | What it handles | Who | How |
 | --- | --- | --- | --- |
-| 意味層 | source を読んで domain の usecase/entity/resource を**書く** | subagent（判断） | source 読解 |
-| 構造層 | 書かれた `.krs` を**切る・測る・描く・検証する** | CLI（決定的） | `translate` / `subtree` / `coverage` / `render` / `lint-style` |
+| Semantic | read source and **write** a domain's usecases / entities / resources | subagent (judgement) | source reading |
+| Structural | **slice / measure / render / validate** the produced `.krs` | CLI (deterministic) | `translate` / `subtree` / `coverage` / `render` / `lint-style` |
 
-`subtree` / `coverage` は source ではなく **生成済み `.krs` モデル**を静的解析する。
+`subtree` / `coverage` statically analyze the **produced `.krs` model**, not the
+source — that is why they are deterministic.
 
-## 手順（4-phase pipeline）
+## Procedure (4-phase pipeline)
 
-### Phase 1: Scout（1 パス）
+### Phase 1: Scout (one pass)
 
-1. リポジトリの top-level を把握する（言語・ビルド構成・エントリポイント・ディレクトリ構造）。
-2. 物理 spine を deterministic に起こす:
+1. Map the repo's top level (language, build setup, entry points, directory tree).
+2. Extract the physical spine deterministically:
    - `docker-compose*.yml` → `karasu translate --from compose <file>`
-   - k8s manifests → `karasu translate --from k8s <dir-or-file>`
-   - OpenAPI → `karasu translate --from openapi <file>`（service 直下の usecase）
-   - DB schema → `karasu translate --from db <file>`（database/table）
-3. **論理 domain を列挙する（primary axis）**。物理出力（container/service）と directory/module tree を
-   *seam ヒント*にして bounded-context を推定する。割り切れない ball-of-mud は directory tree を
-   size cap で分割し、**低確信の seam は明示的にメモする**（黙って落とさない）。
-4. canonical id を採番する（**英語 PascalCase**。`label` はユーザー言語）。id は以降 subagent が
-   invent せず踏襲する。
-5. 出力: `skeleton.krs`（system/service/domain の骨格 + 物理 spine）+ **domain work-list**。
+   - a k8s manifest → `karasu translate --from k8s <file>`
+   - OpenAPI → `karasu translate --from openapi <file>` (usecases under a service)
+   - DB schema → `karasu translate --from db <file>` (database / table blocks)
+3. **Enumerate the logical domains (primary axis).** Use the physical output
+   (containers / services) and the directory / module tree as *seam hints* to
+   infer bounded contexts. For a ball-of-mud that resists decomposition, split
+   the directory tree with a size cap and **record low-confidence seams
+   explicitly** (never drop them silently).
+4. Assign canonical ids (**English PascalCase**; `label` follows the user's
+   language). Subagents reuse these ids instead of inventing their own.
+5. Output: `skeleton.krs` (system / service / domain scaffold + physical spine)
+   and a **domain work-list**.
 
-### Phase 2: Deep-dive fan-out（domain ごとに subagent）
+### Phase 2: Deep-dive fan-out (one subagent per domain)
 
-domain work-list の各 domain について **subagent（Task ツール）を 1 つ起動**する。各 subagent は:
+For each domain in the work-list, **launch one subagent (Task tool)**. Each
+subagent:
 
-- 自分の domain に対応する **source slice だけを読む**（他 domain は読まない = 均一な深さ）。
-- その domain の `usecase` / `entity` / `resource` を `.krs` fragment に書く。
-  - `usecase` は触る `resource`（`resource InfraId.SubId { operations ... }`）を子に持つ。
-  - `entity` は関連を edge で表す（属性は書かない）。
-  - resource は**物理宣言を参照**する（論理側は参照が正準形）。
-- 自分の fragment を `karasu lint-style <fragment>` で検証してから返す。
+- reads **only the source slice for its domain** (not other domains — isolation
+  is what buys uniform depth);
+- writes that domain's `usecase` / `entity` / `resource` into a `.krs` fragment:
+  - a `usecase` holds the `resource`s it touches (`resource InfraId.SubId
+    { operations ... }`);
+  - an `entity` expresses relations as edges (no attributes);
+  - resources **reference the physical declaration** (the logical side is a
+    reference; the physical declaration is canonical);
+- validates its own fragment with `karasu lint-style <fragment>` before returning.
 
-並列で起動してよい（domain 間は独立）。
+Domains are independent, so launch the subagents in parallel.
 
-### Phase 3: Synthesis（1 パス）
+### Phase 3: Synthesis (one pass)
 
-1. 各 fragment を skeleton にマージして 1 つの `.krs` にする。
-2. **cross-domain edge** は両側 subagent が観測しうる。`(src-id, dst-id, kind)` の複合キーで
-   dedup する。方向は参照する側（FK 保持側）から。
-3. identity は `id` で判定する（`label` では判定しない）。
-4. resource の所在衝突は「物理宣言は 1 箇所・各 domain は参照」で構造的に解消する。
+1. Merge each fragment into the skeleton to form a single `.krs`.
+2. **Cross-domain edges** may be observed from both sides — dedup by the
+   `(src-id, dst-id, kind)` composite key. Direction follows the referencing
+   side (the FK holder).
+3. Match identity by `id`, never by `label`.
+4. Resolve resource-location conflicts structurally: the physical declaration
+   lives in one place; every domain references it.
 
 ### Phase 4: Validate & repair loop
 
-1. `karasu coverage index.krs --format json` で **薄い domain（`thin: true`）を定量検出**する。
-2. `karasu render index.krs` で**描けるか**確認する（描けない = 構造破綻）。
-3. 薄い domain があれば、その domain を再 dive する:
-   - `karasu subtree <DomainId> index.krs` で現状 slice を取り出し、subagent に渡して深掘りさせる。
-   - 追記して再度 `coverage` で確認する。
-4. **停止条件**: 全 domain が `thin: false`（＝ coverage 目標到達）になったら終了。数ラウンド回しても
-   解消しない domain は「source 側に実体が薄い」可能性としてメモに残す（無理に膨らませない）。
-5. モデリングできなかった idiom（notation gap）は cookbook（#1818）/ notation watch（#1816）へ観測として残す。
+1. Run `karasu coverage index.krs --format json` to **detect thin domains
+   quantitatively** (`thin: true`).
+2. Run `karasu render index.krs` to confirm the model **draws** (failure = a
+   structural break).
+3. For each thin domain, re-dive it:
+   - `karasu subtree <DomainId> index.krs` extracts the current slice to hand to
+     a subagent for a deeper pass;
+   - merge the additions and re-run `coverage`.
+4. **Stop condition**: every domain is `thin: false` (coverage target reached).
+   If a domain stays thin after a few rounds, note it as "the source is
+   genuinely thin here" rather than padding it.
+5. Record any un-modelable idioms (notation gaps) for the cookbook (#1818) /
+   notation watch (#1816).
 
-## 成果物
+## Deliverables
 
-- `index.krs`（+ 必要なら `deploy.krs` 等）。**`.krs` が source of truth**。
-- coverage レポート（どの domain がどれだけの深さで復元できたかの定量記録）。
-- notation gap のメモ（あれば）。
+- `index.krs` (plus e.g. `deploy.krs` if needed). The **`.krs` is the source of truth**.
+- A coverage report (a quantitative record of how deeply each domain was recovered).
+- Notes on any notation gaps encountered.
 
-## 注意
+## Notes
 
-- **物理層を捏造しない**（translate を使う）。**id で同一性**（label 不可）。**薄い domain を黙って落とさない**
-  （coverage で surface）。**新 `.krs` 構文を導入しない**（v1 freeze）。
-- subagent には「自分の domain の source slice だけ読む」ことを明示する（全体を読ませると均一な深さが崩れる）。
+- **Never fabricate the physical layer** (use `translate`). **Match identity by
+  `id`**, not `label`. **Never silently drop thin domains** (surface them via
+  `coverage`). **Do not introduce new `.krs` syntax** (v1 is frozen).
+- Tell each subagent explicitly to read **only its domain's source slice** —
+  letting it read the whole repo destroys the uniform depth.
