@@ -190,6 +190,35 @@ in-place expansion は本質的に「一度に見せる量を増やす」機能�
    - static 出力（export / render）には展開 affordance が出ない（C3）
    - **[人間確認]** 実際に大きめの生成図で「内部を兄弟との関係のなかで読めるか」の主観的可読性（受け入れバー B1）
 
+### Phase 1 計測結果（Phase 2 の gate）
+
+`examples/ja/payment-platform`（service 6 / うち `Gateway` は 2 domain、越境は
+**explicit service edge** のみ）で `Gateway` を展開した実測（PR #1921 実装）:
+
+| 指標 | baseline | Gateway 展開 | 評価 |
+| --- | --- | --- | --- |
+| 1 画面ノード数 | 9 | 10（`Gateway` 箱 → 内部 2 domain に置換、+1） | **B3 ✓** ノード数はほぼ不変・上限内 |
+| 描画エッジ数 | 9 | 9（**drop ゼロ**） | **B1 ✓** 展開しても連結が消えない |
+| canvas | 1467×652 | 1100×884（縦にフレーム帯が増える） | 妥当 |
+| 兄弟の可視性 | — | `RiskEngine`/`Ledger`/外部群すべて残存 | **B2 ✓** |
+
+得られた知見（Phase 2 へ申し送り）:
+
+- **越境エッジの再アンカーは 2 系統で足りる**: (1) domain 由来の implicit edge は
+  正確な内部 domain に、(2) **domain provenance を持たない explicit service edge /
+  infra edge はフレーム境界にアンカー**（`computeEdgePoints` の container-border
+  fallback を regular-edge にも拡張）。この 2 本立てで「展開して連結が消える」
+  失敗を防げた（payment-platform は explicit のみなので後者が効いた）。
+- **1 展開 = +1〜数ノード**に収まり、scoped glance を壊さない（C1 実証）。Phase 2
+  で複数同時展開を解禁するときは、この加算がノード予算を食う速度を見ながら
+  ソフト上限を決める（TPL-20260510-21）。
+- レイアウトは group-band 機構（`assignGroupedLayers`/`buildGroupFrames`）の
+  **完全再利用**で実現でき、専用レイアウトパスは不要だった。Phase 2 の複数展開も
+  同じ機構に複数 band を通すだけで拡張できる見込み。
+
+**gate 判断: 案3（Phase 1）は B1–B3 を満たし、レイアウト複雑度は許容範囲。案1
+（Phase 2, #1923）へ進んでよい。**
+
 ### 実装の指針（Phase 2 — 一般 true mixed-LOD / 案1）
 
 1. `expandedContainers` の **size ≤ 1 制約を外す**（複数コンテナを同時に in-frame 展開）。同一系列の展開ノードが複数あるときの band 配置・レイヤ割り当て・越境エッジ再ルートを一般化する。
