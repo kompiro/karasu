@@ -13,6 +13,17 @@ const ZERO_LOC: SourceRange = {
 };
 
 /**
+ * Node kinds a collapse stub may take. Restricted to the two whose node variant
+ * needs only a bare `{ links: [] }` for `properties`, so the `as KrsNode`
+ * construction below is well-formed: `database` (infra tier, category #1821) and
+ * `service` (external tier / group stub, #1858/#1821). A future stub kind with
+ * extra required `properties` must widen both this union and the constructed
+ * `properties`, surfacing the change here instead of silently producing a
+ * malformed node.
+ */
+type StubKind = "database" | "service";
+
+/**
  * Build a collapse-stub `KrsNode` — the ⊕ placeholder that stands in for a
  * folded category (#1821) or team group (#1858). Centralizes the empty-`KrsNode`
  * boilerplate (`annotations` / `children` / `edges` / `properties` + `ZERO_LOC`)
@@ -23,7 +34,7 @@ const ZERO_LOC: SourceRange = {
 export function makeStubNode(opts: {
   id: string;
   label: string;
-  kind: KrsNode["kind"];
+  kind: StubKind;
   tags: readonly string[];
 }): KrsNode {
   return {
