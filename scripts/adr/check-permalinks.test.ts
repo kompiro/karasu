@@ -148,6 +148,14 @@ describe("checkAdrFile", () => {
     expect(p[0].message).toMatch(/does not resolve/);
   });
 
+  it("accepts a bare whole-view anchor (deploy tab, no element id)", async () => {
+    expect(await check(adr(`permalink:\n  - source: ${SRC}#krs-deploy`))).toEqual([]);
+  });
+
+  it("accepts the org Tree View mode anchor", async () => {
+    expect(await check(adr(`permalink:\n  - source: ${SRC}#krs-org-tree`))).toEqual([]);
+  });
+
   it("fails an unknown view token in the anchor (case e)", async () => {
     const p = await check(adr(`permalink:\n  - source: ${SRC}#krs-bogus-Payments`));
     expect(p.some((x) => /unknown view/.test(x.message))).toBe(true);

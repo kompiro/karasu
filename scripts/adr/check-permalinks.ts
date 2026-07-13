@@ -37,6 +37,12 @@ import {
 // docs/spec/permalink.md § Anchor grammar (ShareTargetView + `entity`).
 const KNOWN_VIEWS = new Set(["system", "deploy", "org", "matrix", "entity"]);
 
+// Whole-view fragments that carry no `<id>` segment and are intentionally
+// outside the `anchorId` element-grammar (docs/spec/permalink.md): the
+// single-level deploy/matrix tabs and the org Tree View mode. They resolve to
+// the view itself, so they are accepted without an element-membership check.
+const WHOLE_VIEW_ANCHORS = new Set(["krs-deploy", "krs-matrix", "krs-org-tree"]);
+
 export interface Problem {
   file: string;
   message: string;
@@ -213,27 +219,33 @@ export async function checkAdrFile(
     if (anchor !== null) {
       const wanted = normalizeAnchor(anchor);
       const viewToken = wanted.split("-")[1];
-      if (viewToken && !KNOWN_VIEWS.has(viewToken)) {
+      if (!viewToken || !KNOWN_VIEWS.has(viewToken)) {
+        // Unknown view — can't resolve, and membership would just fail again.
         problems.push({
           file: relPath,
-          message: `${at} anchor \`#${anchor}\` uses unknown view \`${viewToken}\` (known: ${[...KNOWN_VIEWS].join(", ")})`,
+          message: `${at} anchor \`#${anchor}\` uses unknown view \`${viewToken ?? ""}\` (known: ${[...KNOWN_VIEWS].join(", ")})`,
         });
-      }
-      let valid: Set<string>;
-      try {
-        valid = await collectValidAnchors(krsAbs, fs);
-      } catch (e) {
-        problems.push({
-          file: relPath,
-          message: `${at} could not render \`source\` ${srcPath} to resolve anchor: ${(e as Error).message}`,
-        });
-        continue;
-      }
-      if (!valid.has(wanted)) {
-        problems.push({
-          file: relPath,
-          message: `${at} anchor \`#${anchor}\` does not resolve to any element in ${srcPath} (renamed or removed?)`,
-        });
+      } else if (wanted === `krs-${viewToken}` || WHOLE_VIEW_ANCHORS.has(wanted)) {
+        // A bare `krs-<view>` or a known whole-view fragment addresses the view
+        // itself, not an element — outside the anchorId grammar, so accept it
+        // without an element-membership check (docs/spec/permalink.md).
+      } else {
+        let valid: Set<string>;
+        try {
+          valid = await collectValidAnchors(krsAbs, fs);
+        } catch (e) {
+          problems.push({
+            file: relPath,
+            message: `${at} could not render \`source\` ${srcPath} to resolve anchor: ${(e as Error).message}`,
+          });
+          continue;
+        }
+        if (!valid.has(wanted)) {
+          problems.push({
+            file: relPath,
+            message: `${at} anchor \`#${anchor}\` does not resolve to any element in ${srcPath} (renamed or removed?)`,
+          });
+        }
       }
     }
 
