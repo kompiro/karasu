@@ -83,6 +83,12 @@ export {
   type CrudMatrixFormatOptions,
 } from "./view/crud-matrix-format.js";
 export { renderMatrixAsSvg, type MatrixSvgOptions } from "./render/matrix-svg.js";
+export {
+  extractCoverage,
+  type CoverageReport,
+  type DomainCoverage,
+  type CoverageOptions,
+} from "./view/coverage-extract.js";
 export type { OrgViewPath, OrgViewSlice } from "./view/org-view-extract.js";
 export { extractOrgView } from "./view/org-view-extract.js";
 export type {
