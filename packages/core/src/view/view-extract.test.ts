@@ -1551,6 +1551,26 @@ system EC {
     expect(edges).not.toContain("OrderService->OrderDB");
   });
 
+  it("does not duplicate a node id in a system-less domain drill-down (entity + bare resource share an id)", () => {
+    // No `system` block → the orphan drill-down branch. The domain owns both an
+    // `entity Order` and a `usecase` with `resource Order`; the entity must be
+    // filtered so it does not collide with the promoted resource of the same id.
+    const parsed = Parser.parse(`
+domain Ordering {
+  entity Order { table OrderDB.orders }
+  usecase PlaceOrder {
+    resource Order
+  }
+}
+    `).value;
+    const view = extractView(parsed.systems, ["Ordering"], parsed.domains, parsed.services);
+    const ids = view.childNodes.map((n) => n.id);
+    expect(new Set(ids).size).toBe(ids.length); // no duplicate node ids
+    // The entity is excluded from the usecase view; the resource is promoted.
+    expect(view.childNodes.filter((n) => n.id === "Order")).toHaveLength(1);
+    expect(view.childNodes.find((n) => n.id === "Order")?.kind).toBe("resource");
+  });
+
   it("synthesizes a read/write usecase→resource edge for a bare entity-resolved resource", () => {
     const systems = parseSystem(`
 system EC {

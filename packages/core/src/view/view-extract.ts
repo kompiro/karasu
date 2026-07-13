@@ -200,13 +200,18 @@ function deriveImplicitServiceEdges(
  * (`extractDeployView`) reuses it so both views agree on the dependency set
  * (see ADR-20260616-12, TPL-20260519-02).
  */
-export function deriveInfraEdges(children: KrsNode[]): KrsEdge[] {
+export function deriveInfraEdges(
+  children: KrsNode[],
+  // The resolver that maps a bare `resource <id>` to its entity's store. Callers
+  // with a model-wide resolver already built (`extractView`) pass it so resource→
+  // entity resolution matches the usecase-view promotion exactly (one namespace,
+  // not one scope per call). Defaults to a resolver over `children` for callers
+  // that don't have one (e.g. the deploy view, whose `children` is model-wide).
+  resolver: EntityResolver = buildEntityResolver(children),
+): KrsEdge[] {
   const infraIds = new Set(children.filter((n) => INFRA_KIND_SET.has(n.kind)).map((n) => n.id));
   if (infraIds.size === 0) return [];
 
-  // `children` is the whole model scope for this view, so its entities form the
-  // resolution namespace for bare `resource <id>` references.
-  const resolver = buildEntityResolver(children);
   const syntheticEdges: KrsEdge[] = [];
   const seen = new Set<string>();
 
@@ -626,7 +631,7 @@ export function extractView(
           orphans.filter((c) => c.kind === "service"),
           new Set(),
         );
-      const derivedEdges = deriveInfraEdges(orphans);
+      const derivedEdges = deriveInfraEdges(orphans, entityResolver);
       const deliversEdges = deriveDeliversEdges(orphans);
       return {
         ...empty,
@@ -669,11 +674,16 @@ export function extractView(
         }
       }
     }
-    let promoted = applyInferredTags(container.children, resourceInferredTagsMap);
+    // Entities render only in the (separate) entity view — exclude them from the
+    // domain / usecase drill-down so they neither appear as stray unstyled boxes
+    // nor collide with an entity-resolved bare `resource` promoted below (which
+    // shares the entity's id). Mirrors the systems-branch filter.
+    const renderableChildren = container.children.filter((c) => c.kind !== "entity");
+    let promoted = applyInferredTags(renderableChildren, resourceInferredTagsMap);
     let finalEdges = edges;
     if (container.kind === "domain") {
       const { resourceNodes, edges: resourceEdges } = deriveUsecaseResourceNodes(
-        container.children,
+        renderableChildren,
         resourceInferredTagsMap,
         entityResolver,
       );
@@ -697,7 +707,7 @@ export function extractView(
     const allChildren = [...system.children, ...unassignedServices, ...unassignedDomains];
     const childIds = new Set(allChildren.map(nodeId));
     const explicitEdges = system.edges.filter((e) => childIds.has(e.from) && childIds.has(e.to));
-    const derivedEdges = deriveInfraEdges(allChildren);
+    const derivedEdges = deriveInfraEdges(allChildren, entityResolver);
     // Merge derived edges, skipping any already covered by explicit edges
     const explicitKeys = new Set(explicitEdges.map((e) => `${e.from}->${e.to}`));
     const { edges: implicitServiceEdges, details: implicitEdgeDetails } =
