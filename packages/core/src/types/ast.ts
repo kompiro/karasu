@@ -160,7 +160,9 @@ export interface ResourceNode extends BaseNodeFields {
   /**
    * Set when the resource uses dot-notation reference syntax (e.g. `resource OrderDB.C`).
    * `parent` is the infra node id (e.g. "OrderDB"), `child` is the sub-resource id (e.g. "C").
-   * When undefined, the resource is an inline declaration (may trigger an "unassigned-resource" warning).
+   * When undefined, the resource is a bare declaration; the resolver resolves it
+   * to a unique `entity` of the same id, or raises `unassigned-resource` when it
+   * resolves to no store (see `resolver/resource-entity.ts`).
    */
   ref?: { parent: string; child: string };
   /**
@@ -521,7 +523,6 @@ export interface DiagnosticParamsByCode {
   "annotation-param-unsupported": { annotation: string; key: string };
   "link-url-scheme-not-allowed": { url: string; scheme: string };
   "edge-source-mismatch": { from: string; parentId: string };
-  "unassigned-resource": { resourceId: string };
   "client-resource-invalid-kind": { kind: string; name: string };
   "unknown-resource-operation": { operation: string; resourceId: string };
   "duplicate-resource-operation": { operation: string; resourceId: string };

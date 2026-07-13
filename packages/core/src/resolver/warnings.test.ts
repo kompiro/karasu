@@ -489,6 +489,153 @@ system ECPlatform {
   });
 });
 
+describe("unassigned-resource / entity resolution (#1908)", () => {
+  const builtin = getBuiltinStyleSheet();
+
+  function unassigned(krs: string): string[] {
+    const file = Parser.parse(krs).value;
+    return analyze(file, [builtin])
+      .filter((w) => w.kind === "unassigned-resource")
+      .map((w) => (w.params as { resourceId: string }).resourceId);
+  }
+
+  it("warns for a bare resource that resolves to no store (moved from the parser)", () => {
+    expect(
+      unassigned(`
+system EC {
+  service A {
+    domain X {
+      usecase B {
+        resource OrderTable { label "注文テーブル" }
+      }
+    }
+  }
+}
+      `),
+    ).toEqual(["OrderTable"]);
+  });
+
+  it("emits one warning per unassigned bare resource", () => {
+    expect(
+      unassigned(`
+system EC {
+  service A {
+    domain X {
+      usecase B {
+        resource TableA
+        resource TableB
+        resource TableC
+      }
+    }
+  }
+}
+      `),
+    ).toEqual(["TableA", "TableB", "TableC"]);
+  });
+
+  it("does not warn for dot-notation or [external] resources", () => {
+    expect(
+      unassigned(`
+system EC {
+  service A {
+    domain X {
+      usecase B {
+        resource OrderDB.orders
+        resource InventoryAPI [external]
+      }
+    }
+  }
+  database OrderDB { table orders }
+}
+      `),
+    ).toEqual([]);
+  });
+
+  it("promotes a bare resource with zero edits once the matching entity is declared", () => {
+    // Same usecase text; the only difference is that the entity now exists.
+    const before = unassigned(`
+system EC {
+  service OrderService {
+    domain Ordering {
+      usecase PlaceOrder {
+        resource Order
+      }
+    }
+  }
+}
+    `);
+    expect(before).toEqual(["Order"]);
+
+    const after = unassigned(`
+system EC {
+  service OrderService {
+    domain Ordering {
+      entity Order { table OrderDB.orders }
+      usecase PlaceOrder {
+        resource Order
+      }
+    }
+  }
+  database OrderDB { table orders }
+}
+    `);
+    expect(after).toEqual([]);
+  });
+
+  it("resolves logically even before a physical table mapping exists", () => {
+    // entity Order has no `table` yet — still resolved (forward-design state),
+    // so no unassigned-resource warning.
+    expect(
+      unassigned(`
+system EC {
+  service OrderService {
+    domain Ordering {
+      entity Order {}
+      usecase PlaceOrder {
+        resource Order
+      }
+    }
+  }
+}
+      `),
+    ).toEqual([]);
+  });
+
+  it("keeps an ambiguous bare resource unresolved and surfaces the collision root cause", () => {
+    const krs = `
+system EC {
+  service OrderService {
+    domain Ordering {
+      entity Order { table OrderDB.orders }
+      usecase PlaceOrder {
+        resource Order
+      }
+    }
+  }
+  service ArchiveService {
+    domain Archive {
+      entity Order { table ArchiveDB.orders }
+    }
+  }
+  database OrderDB { table orders }
+  database ArchiveDB { table orders }
+}
+    `;
+    const file = Parser.parse(krs).value;
+    const warnings = analyze(file, [builtin]);
+    // Still unresolved (ambiguous match does not promote)...
+    expect(
+      warnings.filter((w) => w.kind === "unassigned-resource").map((w) => w.params.resourceId),
+    ).toEqual(["Order"]);
+    // ...and the root cause is reported by entity-anchor-collision.
+    expect(warnings.filter((w) => w.kind === "entity-anchor-collision")).toHaveLength(1);
+  });
+
+  it("is a warning-register diagnostic, not info", () => {
+    expect(warningSeverity("unassigned-resource")).toBe("warning");
+  });
+});
+
 describe("entity-anchor-collision warning (#1870)", () => {
   const builtin = getBuiltinStyleSheet();
 
@@ -1919,6 +2066,7 @@ describe("warningSeverity — exhaustive register map", () => {
     "unassigned-queue": "warning",
     "unassigned-storage": "warning",
     "unassigned-usecase": "warning",
+    "unassigned-resource": "warning",
     // Deep-link addressability degrades, but the model still renders and
     // resolves — a defect worth surfacing, not a style-school fact.
     "entity-anchor-collision": "warning",

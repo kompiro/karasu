@@ -139,7 +139,7 @@ about how domains and deploy targets are wired.
 | `unassigned-database` | warning | A database sits at top level with no team assignment. |
 | `unassigned-queue` | warning | A queue sits at top level with no team assignment. |
 | `unassigned-storage` | warning | A storage sits at top level with no team assignment. |
-| `unassigned-resource` | warning | A resource is declared inline without a dot-notation assignment. |
+| `unassigned-resource` | warning | A bare `resource <id>` resolves to no store: not dot-notation, not `[external]`, and not a unique `entity`. Model-wide (resolver, not parser), so it is promoted away — with zero edits — once a matching `entity` is declared. An ambiguous bare id (>1 matching entity) stays unresolved; the collision is reported by `entity-anchor-collision`. |
 | `domain-dispersal` | info | One domain id appears under multiple services in scope (a fact). |
 | `missing-realizes` | info | A deploy node lacks a `realizes` property. |
 | `missing-runtime` | info | A deploy node lacks a `runtime` property. |

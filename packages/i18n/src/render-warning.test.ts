@@ -55,6 +55,7 @@ const SAMPLES: Record<WarningKind, Warning> = {
   "unassigned-queue": { kind: "unassigned-queue", params: { queueId: "EventBus" } },
   "unassigned-storage": { kind: "unassigned-storage", params: { storageId: "Assets" } },
   "unassigned-usecase": { kind: "unassigned-usecase", params: { usecaseId: "PlaceOrder" } },
+  "unassigned-resource": { kind: "unassigned-resource", params: { resourceId: "Order" } },
   "entity-anchor-collision": { kind: "entity-anchor-collision", params: { id: "Order" } },
   "cross-system-ref-implicit-external": {
     kind: "cross-system-ref-implicit-external",
@@ -150,6 +151,7 @@ const IDENTIFIERS: Record<WarningKind, string[]> = {
   "unassigned-queue": ["EventBus"],
   "unassigned-storage": ["Assets"],
   "unassigned-usecase": ["PlaceOrder"],
+  "unassigned-resource": ["Order"],
   "entity-anchor-collision": ["Order"],
   "cross-system-ref-implicit-external": ["Other.Svc"],
   "cross-system-ref-unresolved": ["Missing.Svc"],

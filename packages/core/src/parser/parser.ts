@@ -1135,17 +1135,12 @@ export class Parser {
       end = this.expect(TokenType.RightBrace);
     }
 
-    // Warn for inline resources (no dot-notation, no parent infra block).
-    // Resources tagged [external] intentionally have no database parent (they represent
-    // external APIs, queues, or services) so the warning is suppressed for them.
-    if (!ref && !tags.includes("external")) {
-      this.diagnostics.push({
-        severity: "warning",
-        code: "unassigned-resource",
-        params: { resourceId: id },
-        loc: this.range(start.loc, end.loc),
-      });
-    }
+    // Inline resources (no dot-notation) that resolve to no store are surfaced
+    // by the resolver's `detectUnassignedResources`, not here: a bare
+    // `resource Order` may resolve to a unique `entity Order` declared anywhere
+    // in the model, which the parser (single-declaration scope) cannot see.
+    // Keeping the check model-wide is what makes the zero-edit promotion work
+    // (the warning disappears once the matching entity is declared).
 
     let operations: ResourceOperation[] | undefined;
     if (properties.operations && properties.operations.length > 0) {

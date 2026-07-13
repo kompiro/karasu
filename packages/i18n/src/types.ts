@@ -224,6 +224,7 @@ export type Translations = {
   "warning.sharedInfraFanIn.checkDatabasePerService": string;
   "warning.unassignedDomain.message": (params: { display: string }) => string;
   "warning.unassignedUsecase.message": (params: { usecaseId: string }) => string;
+  "warning.unassignedResource.message": (params: { resourceId: string }) => string;
   "warning.entityAnchorCollision.message": (params: { id: string }) => string;
   "warning.unassignedService.message": (params: { display: string }) => string;
   "warning.unassignedClient.message": (params: { display: string }) => string;
@@ -370,7 +371,6 @@ export type Translations = {
   }) => string;
   "diagnostic.linkUrlSchemeNotAllowed.message": (params: { url: string; scheme: string }) => string;
   "diagnostic.edgeSourceMismatch.message": (params: { from: string; parentId: string }) => string;
-  "diagnostic.unassignedResource.message": (params: { resourceId: string }) => string;
   "diagnostic.clientResourceInvalidKind.message": (params: {
     kind: string;
     name: string;
