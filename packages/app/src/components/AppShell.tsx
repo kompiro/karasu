@@ -204,6 +204,10 @@ export function AppShell({
     displayMode,
     styleSource,
     effectiveTheme,
+    // Carry the system view's Group-by axis into the export / all-layers SVGs
+    // so team boundary frames reach those surfaces (#1879). Exports keep the
+    // full structure (no collapse) by design.
+    views.system.groupBy === "team" ? "team" : undefined,
   );
 
   const hasSidebar = !!(sidebarHeaderContent || sidebarContent);

@@ -18,6 +18,7 @@ const RESERVED_KEYWORDS = new Set([
   "service",
   "domain",
   "usecase",
+  "entity",
   "resource",
   "capability",
   "user",

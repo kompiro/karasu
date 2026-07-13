@@ -125,4 +125,29 @@ system Shop {
       expect(allCollapsed.svg).not.toContain(`data-node-id="${id}"`);
     }
   });
+
+  it("dashes an against-flow (backward) inter-group edge in grouped mode (#1859 P2c-A, AC-4)", () => {
+    // Search (catalog band, below) → Wallet (payments band, above) runs against
+    // the top-to-bottom flow with no return path (acyclic), so it renders
+    // dashed — distinct from a cyclic edge, which keeps its own styling.
+    const withBack = SYS.replace(
+      'Search -> Catalog "read"',
+      'Search -> Catalog "read"\n  Search -> Wallet "notify"',
+    );
+    const grouped = compile(withBack, { diagramType: "system", groupBy: "team" });
+    if (grouped.diagramType !== "system") throw new Error("expected system view");
+    // The Search→Wallet edge group carries a dashed stroke; a plain forward
+    // edge (Billing→Wallet) does not.
+    const backEdge = grouped.svg.match(
+      /<g[^>]*data-edge-from="Search"[^>]*data-edge-to="Wallet"[\s\S]*?<\/g>/,
+    );
+    expect(backEdge).not.toBeNull();
+    expect(backEdge![0]).toContain('stroke-dasharray="8 4"');
+
+    const fwdEdge = grouped.svg.match(
+      /<g[^>]*data-edge-from="Billing"[^>]*data-edge-to="Wallet"[\s\S]*?<\/g>/,
+    );
+    expect(fwdEdge).not.toBeNull();
+    expect(fwdEdge![0]).not.toContain("stroke-dasharray");
+  });
 });

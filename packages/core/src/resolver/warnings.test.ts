@@ -489,6 +489,146 @@ system ECPlatform {
   });
 });
 
+describe("entity-anchor-collision warning (#1870)", () => {
+  const builtin = getBuiltinStyleSheet();
+
+  it("warns when two entities in different domains share an id", () => {
+    const krs = `
+system EC {
+  service OrderService {
+    domain Ordering {
+      entity Order {}
+    }
+  }
+  service ReportService {
+    domain Reporting {
+      entity Order {}
+    }
+  }
+}
+    `;
+    const file = Parser.parse(krs).value;
+    const collisions = analyze(file, [builtin]).filter((w) => w.kind === "entity-anchor-collision");
+    expect(collisions).toHaveLength(1);
+    expect(collisions[0].params.id).toBe("Order");
+  });
+
+  it("warns when an entity id equals a domain id", () => {
+    const krs = `
+system EC {
+  service OrderService {
+    domain Order {
+      entity Order {}
+    }
+  }
+}
+    `;
+    const file = Parser.parse(krs).value;
+    const collisions = analyze(file, [builtin]).filter((w) => w.kind === "entity-anchor-collision");
+    expect(collisions).toHaveLength(1);
+    expect(collisions[0].params.id).toBe("Order");
+  });
+
+  it("does not warn when entity ids are unique across the model", () => {
+    const krs = `
+system EC {
+  service OrderService {
+    domain Ordering {
+      entity Order {}
+      entity Customer {}
+    }
+  }
+}
+    `;
+    const file = Parser.parse(krs).value;
+    const collisions = analyze(file, [builtin]).filter((w) => w.kind === "entity-anchor-collision");
+    expect(collisions).toHaveLength(0);
+  });
+
+  it("warns when a same-id domain is dispersed across systems and each holds a same-id entity", () => {
+    // domain D in two systems are two distinct domain NODES, so entity E under
+    // each produces two distinct #krs-entity-E anchors — a real collision that
+    // id-based domain counting would miss.
+    const krs = `
+system A {
+  domain D {
+    entity E {}
+  }
+}
+system B {
+  domain D {
+    entity E {}
+  }
+}
+    `;
+    const file = Parser.parse(krs).value;
+    const collisions = analyze(file, [builtin]).filter((w) => w.kind === "entity-anchor-collision");
+    expect(collisions).toHaveLength(1);
+    expect(collisions[0].params.id).toBe("E");
+  });
+
+  it("does not double-report same-parent duplicate entities (that is a duplicate-node-id-parent error)", () => {
+    const krs = `
+system EC {
+  service OrderService {
+    domain Ordering {
+      entity Order {}
+      entity Order {}
+    }
+  }
+}
+    `;
+    const file = Parser.parse(krs).value;
+    const collisions = analyze(file, [builtin]).filter((w) => w.kind === "entity-anchor-collision");
+    expect(collisions).toHaveLength(0);
+  });
+
+  it("is a warning-register diagnostic, not info", () => {
+    expect(warningSeverity("entity-anchor-collision")).toBe("warning");
+  });
+});
+
+describe("entity relations are excluded from cyclic-dependency detection (#1870)", () => {
+  const builtin = getBuiltinStyleSheet();
+
+  it("does not flag a self-referential entity relation as a cycle", () => {
+    const krs = `
+system EC {
+  service OrderService {
+    domain Ordering {
+      entity Category {
+        Category -> Category "parent"
+      }
+    }
+  }
+}
+    `;
+    const file = Parser.parse(krs).value;
+    const cycles = analyze(file, [builtin]).filter((w) => w.kind === "cyclic-dependency");
+    expect(cycles).toHaveLength(0);
+  });
+
+  it("does not flag mutually-referencing entities as a cycle", () => {
+    const krs = `
+system EC {
+  service OrderService {
+    domain Ordering {
+      entity Order {
+        Order -> Line "has"
+      }
+      entity Line {
+        Line -> Order "belongs to"
+      }
+    }
+  }
+}
+    `;
+    const file = Parser.parse(krs).value;
+    const cycles = analyze(file, [builtin]).filter((w) => w.kind === "cyclic-dependency");
+    expect(cycles).toHaveLength(0);
+  });
+});
+
 describe("unassigned-service warning", () => {
   it("warns for each top-level service not wrapped in a system", () => {
     const krs = `
@@ -1779,6 +1919,9 @@ describe("warningSeverity — exhaustive register map", () => {
     "unassigned-queue": "warning",
     "unassigned-storage": "warning",
     "unassigned-usecase": "warning",
+    // Deep-link addressability degrades, but the model still renders and
+    // resolves — a defect worth surfacing, not a style-school fact.
+    "entity-anchor-collision": "warning",
     "cross-system-ref-implicit-external": "warning",
     "cross-system-ref-unresolved": "warning",
     "unresolved-edge-endpoint": "warning",

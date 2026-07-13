@@ -521,6 +521,60 @@ system ECPlatform {
 - 設計初期段階でドメイン概念を先に列挙する
 - サービス再編中にドメインを一時的に「仮置き」する
 
+### `entity` 宣言 — 概念レベルのドメインエンティティ
+
+`entity` は `domain` が所有する概念データエンティティ（`domain` の子として宣言）。
+オンボーディングで読み手が知りたいこと — どのエンティティが存在し、どう関連し、
+誰が所有するか（親 domain が所有権を含意）— を表す。**スキーマではない**:
+entity は名前・関連・任意の物理対応のみを持ち、**属性（カラム・型・インデックス）は
+持たない**。この「属性を持たない」線が、entity を DB スキーマ非目標の
+「ゆっくり変化する構造」側に留める（[`docs/concepts.md`](../concepts.md) の非目標節）。
+物理スキーマは対象外のまま、概念レベルの ER 層が入ってくる。
+
+```krs
+service OrderService {
+  domain Ordering {
+    entity Order {
+      label "注文"
+      table OrderDB.orders           // 物理対応（任意・dot 記法）
+      Order -> Customer "発注者"      // 関連（Customer は他ドメイン所有でも可）
+      Order -> Product  "品目"
+    }
+    entity Payment {}
+  }
+}
+```
+
+**物理対応 — `table <InfraId>.<subId>`。** entity は infra サブリソース 1 つに
+dot 記法で対応づけられる（`table OrderDB.orders`）。対応は任意 — 対応のない
+entity は前向き設計・ボトムアップの正当な中間状態。v1 では dot 形式のみ受け付け、
+bare な `table orders` は `expected-id-after` を出す。
+
+**関連 — 関連 1 つ = edge 1 本。** entity 間の関連は既存の edge 構文
+（`->` 同期 / `-->` 非同期）を、参照を保持する側の entity ブロック内で宣言する。
+service / domain 間の依存 edge と異なり、entity の関連は両方向に読める 1 つの事実
+なので、参照を持つ側に **1 本だけ**書く:
+
+- `Order -> Customer` は Order が参照を保持する（AR: `Order belongs_to :customer`、
+  物理的には `orders.customer_id`）。逆方向（`Customer has_many :orders`）は含意され、
+  2 本目の edge は書かない。
+- **edge origin scope** 規則が適用される: `entity Order { … }` 内の explicit な
+  関連は `Order` を起点にしなければならず、`Customer -> Order` と書くと
+  `edge-source-mismatch` になる。これが向きの規則（起点 = 参照保持側）を強制する。
+- カーディナリティタグ（`[n:1]` / `[n:m]`）と、entity 関連の domain エッジへの
+  畳み上げは **v1 の対象外** — 関連は当面ラベルのみ。
+
+**配置。** `entity` は `domain` の子としてのみ有効。それ以外の場所で宣言すると
+`entity-not-in-domain` を出し、その entity は破棄される。
+
+**anchor 名前空間。** entity id と domain id は 1 つの deep-link 名前空間
+（`entity` ビュートークン）を共有する。両者にまたがって同じ id が使われる
+（entity id が複数 domain で重複、または entity id が domain id と一致）と
+`entity-anchor-collision` 警告を出す（deep-link のアドレス可能性は劣化するが
+描画は止まらない）。[`docs/spec/diagnostics.ja.md`](diagnostics.ja.md) を参照。
+
+> Related TPLs: [TPL-20260711-01](../test-perspectives/TPL-20260711-01-entity-carries-no-attributes.md) — `entity` は名前・関連・物理対応のみを受け付け、属性的宣言（カラム・型）は拒否する。モデルを DB スキーマ非目標の構造側に保つ。
+
 ### エッジ宣言
 
 ```

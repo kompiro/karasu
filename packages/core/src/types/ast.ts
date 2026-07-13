@@ -8,6 +8,7 @@ export type LogicalNodeKind =
   | "service"
   | "domain"
   | "usecase"
+  | "entity"
   | "resource"
   | "user"
   | "client"
@@ -117,6 +118,27 @@ export interface DomainNode extends BaseNodeFields {
 export interface UsecaseNode extends BaseNodeFields {
   kind: "usecase";
   properties: CommonProperties;
+}
+
+/**
+ * A conceptual domain entity (a `domain` child). Carries only identity,
+ * relations (as `edges`), ownership (implied by its parent domain), and an
+ * optional physical mapping to an infra sub-resource — **never attributes**
+ * (columns / types / indexes). This "no attributes" line keeps the model on
+ * the slowly-changing structural side of the DB-schema non-goal: physical
+ * schema stays out of scope, conceptual entities and their relations come in.
+ * See `docs/design/domain-entity-modeling.md`.
+ */
+export interface EntityNode extends BaseNodeFields {
+  kind: "entity";
+  properties: CommonProperties;
+  /**
+   * Physical mapping to an infra sub-resource, written `table <InfraId>.<subId>`.
+   * `parent` is the infra block id (e.g. "OrderDB"), `child` is the leaf id
+   * (e.g. "orders"). Undefined when the entity has no physical mapping yet —
+   * the legitimate forward-design / bottom-up intermediate state.
+   */
+  tableRef?: { parent: string; child: string };
 }
 
 export interface ResourceNode extends BaseNodeFields {
@@ -246,6 +268,7 @@ export type KrsNode =
   | ServiceNode
   | DomainNode
   | UsecaseNode
+  | EntityNode
   | ResourceNode
   | UserNode
   | ClientNode
@@ -485,6 +508,7 @@ export interface DiagnosticParamsByCode {
     nodeKind: string;
   };
   "infra-not-in-context": { infraKind: string; parentKind: string };
+  "entity-not-in-domain": { parentKind: string };
   "legend-not-top-level": { parentKind: string };
   "expected-id-or-string": { context: string };
   "expected-node-id": { kind: string };

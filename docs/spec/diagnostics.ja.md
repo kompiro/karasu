@@ -49,10 +49,11 @@ karasu は未解決参照に対し **warn-don't-error**（spec §S6）に従う�
 
 | Code | Severity | 発火条件 |
 | --- | --- | --- |
-| `edge-source-mismatch` | error | `service` / `domain` ブロック内の explicit な edge source が所属ブロック id と一致しない（**edge origin scope** 規則）。 |
+| `edge-source-mismatch` | error | `service` / `domain` / `entity` ブロック内の explicit な edge source が所属ブロック id と一致しない（**edge origin scope** 規則。`entity` では関連の向き — 起点 = 参照を保持する側 — を強制する）。 |
 | `ambiguous-edge-base` | warning | 同じ `from → to` の base を持つ edge が複数あり、識別する author id が無い。 |
 | `service-outside-system` | warning | `service` が `system` の外で宣言されている。 |
 | `infra-not-in-context` | error | infra ブロック（`database` / `queue` / `storage`）が `system` の直接の子でない。 |
+| `entity-not-in-domain` | error | `entity` が `domain` の子以外の場所で宣言されている。 |
 | `legend-not-top-level` | error | `legend` ブロックがトップレベル以外で宣言されている。 |
 | `top-level-declaration` | error | `user` またはエッジが `system` ブロック内ではなくトップレベルで宣言されている。 |
 | `system-property-conflict` | warning | merge された import 間で `system` の `label` / `description` が衝突する。 |
@@ -66,7 +67,8 @@ id は宣言 scope 内で一意であること。ownership は primary owner を
 | Code | Severity | 発火条件 |
 | --- | --- | --- |
 | `duplicate-edge-id` | error | author 指定の edge id が別の edge id と衝突する。 |
-| `duplicate-node-id-parent` | error | node id が直近の親の中で重複する。 |
+| `duplicate-node-id-parent` | error | node id が直近の親の中で重複する（1 つの `domain` 配下で `usecase` と `entity` が同じ id を持つケースも含む）。 |
+| `entity-anchor-collision` | warning | `entity` deep-link の名前空間（{全 domain id} ∪ {全 entity id}）で id が複数のターゲットに使われている — entity id が複数 domain にまたがって重複、または entity id が domain id と一致。deep-link の解決が曖昧になるが描画自体は成立する。 |
 | `duplicate-node-in-system` | error | node id が `system` 内で重複する。 |
 | `duplicate-node-in-deploy` | error | node id が `deploy` ブロック内で重複する。 |
 | `duplicate-team-id` | error | team id が重複する。 |

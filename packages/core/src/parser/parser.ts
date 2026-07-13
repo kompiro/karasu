@@ -60,6 +60,7 @@ const LOGICAL_KEYWORDS = new Set<string>([
   "service",
   "domain",
   "usecase",
+  "entity",
   "resource",
   "user",
   "client",
@@ -253,6 +254,19 @@ export class Parser {
           this.error("top-level-declaration", { construct: "user" });
           this.parseNodeDecl();
           break;
+        case TokenType.Entity: {
+          // An `entity` is only valid as a `domain` child. Consume the whole
+          // declaration and emit the dedicated diagnostic (not the generic
+          // unexpected-token cascade) so the canonical mistake reads clearly.
+          const stray = this.parseNodeDecl();
+          this.diagnostics.push({
+            severity: "error",
+            code: "entity-not-in-domain",
+            params: { parentKind: "top level" },
+            loc: stray.loc,
+          });
+          break;
+        }
         default:
           // A top-level edge (`A -> B`) is likewise only valid inside a
           // `system`; surface the same dedicated diagnostic and consume it.
@@ -270,6 +284,12 @@ export class Parser {
     }
 
     file.ownerIndex = this.buildOwnerIndex(file.organizations);
+    // Top-level (system-less) services get the same per-parent duplicate-child
+    // check as services nested in a system, so e.g. a usecase and entity
+    // sharing an id under a parked service's domain are caught.
+    for (const service of file.services) {
+      this.collectNodeIds(service.children, new Set<string>());
+    }
     file.nodePathIndex = this.buildNodePathIndex(file.systems, file.domains, [
       ...file.databases,
       ...file.queues,
@@ -367,6 +387,7 @@ export class Parser {
       handles?: string[];
       delivers?: string[];
       operations?: ParsedOperation[];
+      tableRef?: { parent: string; child: string };
     },
     parentId?: string,
   ): void {
@@ -444,6 +465,53 @@ export class Parser {
           }
         } else {
           this.error("property-not-for-node-kind", { property: "operations", nodeKind: kind });
+          this.advance();
+        }
+        continue;
+      }
+
+      // Property: table (entity only) — physical mapping `table <InfraId>.<subId>`
+      // to an infra sub-resource. Dot notation is required; the bare-id form is
+      // reserved. Unlike the infra-leaf `table` block (parsed inside
+      // parseInfraBlock), here `table` is a property keyword, so it never
+      // collides with infra-block parsing.
+      if (token.type === TokenType.Table) {
+        if (kind === "entity") {
+          this.advance();
+          // Require the full `<InfraId>.<subId>` form. Guard BOTH sides so a
+          // malformed mapping (`table .orders`, `table OrderDB.`, `table orders`)
+          // leaves tableRef undefined, emits exactly one diagnostic, and never
+          // consumes a stray token (`.`, `}`) as an id.
+          const isId = (t: TokenType) =>
+            t === TokenType.Identifier || t === TokenType.StringLiteral;
+          if (isId(this.peek().type)) {
+            const parentTok = this.advance();
+            if (this.peek().type === TokenType.Dot) {
+              this.advance(); // consume '.'
+              if (isId(this.peek().type)) {
+                const childTok = this.advance();
+                properties.tableRef = { parent: parentTok.value, child: childTok.value };
+              } else {
+                // Missing sub-id — do NOT consume the following token (`}`, etc.).
+                this.error("expected-id-after", { property: "table" });
+              }
+            } else {
+              this.error("expected-id-after", { property: "table" });
+            }
+          } else {
+            this.error("expected-id-or-string", { context: "entity table infra id" });
+            // Consume a stray `.<id>` so we recover in one diagnostic, not three.
+            if (this.peek().type === TokenType.Dot) {
+              this.advance();
+              if (isId(this.peek().type)) this.advance();
+            }
+          }
+        } else {
+          this.error("unexpected-token-in-block", {
+            blockKind: kind,
+            tokenType: String(token.type),
+            value: token.value,
+          });
           this.advance();
         }
         continue;
@@ -547,6 +615,32 @@ export class Parser {
             parentKind: kind,
           });
           this.advance();
+          continue;
+        }
+        // `entity` is only valid as a `domain` child. Consume the full
+        // declaration for clean error recovery, then drop it.
+        if (token.value === "entity" && kind !== "domain") {
+          const node = this.parseNodeDecl();
+          this.diagnostics.push({
+            severity: "error",
+            code: "entity-not-in-domain",
+            params: { parentKind: kind },
+            loc: node.loc,
+          });
+          continue;
+        }
+        // An `entity` block accepts no node children — only relations, a
+        // `table` mapping, and label / description (the "no attributes"
+        // invariant, TPL-20260711-01). Reject and drop any nested logical
+        // node (usecase / resource / …) instead of silently attaching it.
+        if (kind === "entity") {
+          const node = this.parseNodeDecl();
+          this.diagnostics.push({
+            severity: "error",
+            code: "unexpected-token-in-block",
+            params: { blockKind: "entity", tokenType: String(token.type), value: token.value },
+            loc: node.loc,
+          });
           continue;
         }
         children.push(this.parseNodeDecl());
@@ -817,6 +911,7 @@ export class Parser {
       type === TokenType.Service ||
       type === TokenType.Domain ||
       type === TokenType.Usecase ||
+      type === TokenType.Entity ||
       type === TokenType.Resource ||
       type === TokenType.User ||
       type === TokenType.Client ||
@@ -876,6 +971,7 @@ export class Parser {
       capabilities?: import("../types/ast.js").ClientCapability[];
       handles?: string[];
       delivers?: string[];
+      tableRef?: { parent: string; child: string };
     } = {
       links: [],
     };
@@ -887,7 +983,12 @@ export class Parser {
 
     if (this.peek().type === TokenType.LeftBrace) {
       this.advance();
-      const parentId = kind === "service" || kind === "domain" ? id : undefined;
+      // service / domain / entity own their edges' origin scope: an explicit
+      // edge inside the block must start at the block id (edge-source-mismatch
+      // otherwise). For entity this enforces the relation direction rule —
+      // origin = the reference-holding entity.
+      const parentId =
+        kind === "service" || kind === "domain" || kind === "entity" ? id : undefined;
       this.parseBlockContentsWithProperties(children, edges, kind, properties, parentId);
       end = this.expect(TokenType.RightBrace);
     }
@@ -965,6 +1066,16 @@ export class Parser {
             description: properties.description,
             links: properties.links,
           },
+        };
+      case "entity":
+        return {
+          ...base,
+          kind,
+          properties: {
+            description: properties.description,
+            links: properties.links,
+          },
+          ...(properties.tableRef ? { tableRef: properties.tableRef } : {}),
         };
     }
 
@@ -1950,6 +2061,9 @@ export class Parser {
     // Index top-level domains (not nested in any system)
     // Each top-level domain is its own scope; no cross-domain uniqueness check needed here.
     for (const domain of domains) {
+      // Duplicate-child check within the domain (e.g. a usecase and entity
+      // sharing an id), symmetric with the per-service check inside systems.
+      this.collectNodeIds(domain.children, new Set<string>());
       walk(domain, [], new Map<string, number>(), []);
     }
     // Index top-level infra nodes (database/queue/storage) and their sub-resources.

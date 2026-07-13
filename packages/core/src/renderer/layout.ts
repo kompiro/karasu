@@ -16,6 +16,7 @@ import {
   wrapLayerIntoRows,
 } from "./layer-layout-logics.js";
 import { routeOrthogonalEdges } from "./edge-routing-channels.js";
+import { routeGroupedEdges } from "./edge-routing-groups.js";
 import { distributePorts } from "./edge-routing-ports.js";
 import { distributeChannelLanes } from "./edge-routing-lanes.js";
 import { markParallelBundles } from "./edge-routing-bundles.js";
@@ -774,6 +775,12 @@ interface LayoutOptions {
   collapsedCategories?: ReadonlySet<CategoryId>;
   groupBy?: "team";
   collapsedGroups?: ReadonlySet<string>;
+  /**
+   * Per-edge diff state keyed `${from}->${to}` (compare/diff mode). Passed
+   * through to `collapseGroups` so a collapsed team's re-targeted stub edges
+   * keep their diff decoration, re-keyed onto the stub id (#1886).
+   */
+  edgeDiffState?: ReadonlyMap<string, string>;
 }
 
 export function layout(viewSlice: ViewSlice, options: LayoutOptions = {}): LayoutResult {
@@ -785,6 +792,7 @@ export function layout(viewSlice: ViewSlice, options: LayoutOptions = {}): Layou
     collapsedCategories,
     groupBy,
     collapsedGroups,
+    edgeDiffState,
   } = options;
   const { LAYER_GAP, NODE_GAP, MAX_LAYER_WIDTH } = getLayoutConstants(displayMode);
   // Build the inherited-annotations map from the focused container's subtree
@@ -839,13 +847,23 @@ export function layout(viewSlice: ViewSlice, options: LayoutOptions = {}): Layou
   // are disjoint, so composing the two remaps (category first, then group) is
   // order-independent in practice; identity outside collapse.
   let remapGhostEndpoint: (id: string) => string = collapsedCat.remapEndpoint;
+  // Diff state re-keyed onto collapsed-group stub edges (#1886). Empty unless a
+  // team collapses in compare/diff mode; merged into the render lookup below.
+  let foldedEdgeDiffState = new Map<string, string>();
   if (groupBy === "team" && ownerIndex) {
-    const collapsed = collapseGroups(allNodes, allEdges, ownerIndex, collapsedGroups);
+    const collapsed = collapseGroups(
+      allNodes,
+      allEdges,
+      ownerIndex,
+      collapsedGroups,
+      edgeDiffState,
+    );
     allNodes = collapsed.nodes;
     allEdges = collapsed.edges;
     stubGroup = collapsed.stubGroup;
     const groupRemap = collapsed.remapEndpoint;
     remapGhostEndpoint = (id) => groupRemap(collapsedCat.remapEndpoint(id));
+    foldedEdgeDiffState = collapsed.foldedEdgeDiffState;
   }
   /** Group a node belongs to — its team owner, or the group a collapse stub stands in for. */
   const groupIdOf = (id: string): string | null => ownerIndex?.get(id) ?? stubGroup.get(id) ?? null;
@@ -1207,10 +1225,21 @@ export function layout(viewSlice: ViewSlice, options: LayoutOptions = {}): Layou
   // See ADR-20260429-01 and Issue #996.
   distributePorts(layoutNodes, layoutEdges);
 
-  // Phase 2: orthogonal channel routing for skip-layer edges that would
-  // cross intermediate node cards. Sets `waypoints` only when needed.
-  // See ADR-20260429-01.
-  routeOrthogonalEdges(layoutNodes, layoutEdges);
+  // Orthogonal routing. In Group-by mode the two-level band layout adds group
+  // frames a straight edge would pierce, which the skip-layer router does not
+  // treat as obstacles; route through side gutters instead so no edge crosses a
+  // node or frame interior (#1859, P2c-A). Ungrouped keeps the skip-layer
+  // channel router unchanged, so "Group by: none" stays byte-identical.
+  // See ADR-20260429-01 and docs/design/system-view-grouping.md § "P2c 実装設計".
+  if (groupBands) {
+    routeGroupedEdges(
+      layoutNodes,
+      layoutEdges,
+      containers.filter((c) => c.group),
+    );
+  } else {
+    routeOrthogonalEdges(layoutNodes, layoutEdges);
+  }
 
   // Phase 3: stagger horizontal segments that share an inter-row channel
   // across distinct lanes. No-op when each channel hosts ≤ 1 edge.
@@ -1237,6 +1266,7 @@ export function layout(viewSlice: ViewSlice, options: LayoutOptions = {}): Layou
     containers,
     width: totalWidth,
     height: totalHeight,
+    foldedEdgeDiffState: foldedEdgeDiffState.size > 0 ? foldedEdgeDiffState : undefined,
   };
 }
 

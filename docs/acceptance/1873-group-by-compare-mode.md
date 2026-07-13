@@ -36,7 +36,11 @@ after-slice を team フレームで囲めるようにする。Gap 2（Show All 
 - [x] compare 中に「Group by: Team」を選ぶと `compileSystemDiff` が `groupBy` 付きで再コンパイルされる
 - [x] `useSystemView` の diff-compile 経路が `groupBy` / `collapsedGroups` / `collapsedCategories` / `interactive` を転送する
 
-### 既知の制約（follow-up #1886）
+### 既知の制約（follow-up #1886）— ✅ 解決済み（[AT-1886](1886-group-by-diff-placement-and-edge-state.md)）
+
+> #1886 で before ∪ after のマージ ownerIndex（after 勝ち）と集約 stub エッジの diff-state 再キーを
+> 実装し、下記 2 点は解消した。以下は当時の制約の記録。
+
 
 diff の grouping は **after-side の `ownerIndex`** のみを軸にする。before にしか存在しない要素は所属チームを解決できないため:
 

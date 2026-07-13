@@ -17,6 +17,7 @@ export function useViewSvg(
   displayMode: DisplayMode | undefined,
   styleSource?: string,
   theme?: DiagramTheme,
+  groupBy?: "team",
 ) {
   const emptyStateLabels = useEmptyStateLabels();
   const badgeLabels = useAnnotationBadgeLabels();
@@ -30,11 +31,12 @@ export function useViewSvg(
         emptyStateLabels,
         theme,
         badgeLabels,
+        groupBy,
       );
     } catch {
       return undefined;
     }
-  }, [fileContent, displayMode, styleSource, emptyStateLabels, theme, badgeLabels]);
+  }, [fileContent, displayMode, styleSource, emptyStateLabels, theme, badgeLabels, groupBy]);
 
   const allLayersResult = useMemo(() => {
     if (!fileContent) return undefined;
@@ -46,11 +48,12 @@ export function useViewSvg(
         emptyStateLabels,
         theme,
         badgeLabels,
+        groupBy,
       );
     } catch {
       return undefined;
     }
-  }, [fileContent, displayMode, styleSource, emptyStateLabels, theme, badgeLabels]);
+  }, [fileContent, displayMode, styleSource, emptyStateLabels, theme, badgeLabels, groupBy]);
 
   const orgAllLayersResult = useMemo(() => {
     if (!fileContent) return undefined;
@@ -94,11 +97,12 @@ export function useViewSvg(
         emptyStateLabels,
         theme,
         badgeLabels,
+        groupBy,
       );
     } catch {
       return undefined;
     }
-  }, [fileContent, displayMode, styleSource, emptyStateLabels, theme, badgeLabels]);
+  }, [fileContent, displayMode, styleSource, emptyStateLabels, theme, badgeLabels, groupBy]);
 
   // All functions parse the same styleSource, so diagnostics are identical.
   // Take from the first available result to avoid duplication.

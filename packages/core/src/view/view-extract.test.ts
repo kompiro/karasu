@@ -778,6 +778,37 @@ system ECPlatform {
     });
   });
 
+  describe("entities are excluded from the domain drill-down view (#1870)", () => {
+    const ENTITY_KRS = `
+system EC {
+  service OrderService {
+    domain Ordering {
+      usecase PlaceOrder {}
+      entity Order {
+        Order -> Customer "placed by"
+      }
+      entity Customer {}
+    }
+  }
+}
+`;
+    it("does not render entity nodes as childNodes in the domain view", () => {
+      const systems = parseSystem(ENTITY_KRS);
+      const view = extractView(systems, ["EC", "OrderService", "Ordering"]);
+      const ids = view.childNodes.map((n) => n.id);
+      expect(ids).toContain("PlaceOrder");
+      expect(ids).not.toContain("Order");
+      expect(ids).not.toContain("Customer");
+    });
+
+    it("does not surface entity relation edges in the domain view", () => {
+      const systems = parseSystem(ENTITY_KRS);
+      const view = extractView(systems, ["EC", "OrderService", "Ordering"]);
+      const edgeKeys = view.childEdges.map((e) => `${e.from}->${e.to}`);
+      expect(edgeKeys).not.toContain("Order->Customer");
+    });
+  });
+
   describe("domain view with infra resources (UseCase diagram)", () => {
     it("promotes dot-notation resource nodes to domain-level childNodes", () => {
       const systems = parseSystem(INFRA_KRS);

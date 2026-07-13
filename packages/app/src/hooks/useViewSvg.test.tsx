@@ -78,3 +78,46 @@ describe("useViewSvg > displayMode threading to Full View / All Layers", () => {
     expect(icon.current.drillDownSvg).not.toBe(shape.current.drillDownSvg);
   });
 });
+
+// A two-team system so `groupBy: "team"` produces boundary frames on the
+// root system band of the export SVGs.
+const GROUPED_SOURCE = `system Shop {
+  service Billing { label "Billing" }
+  service Search { label "Search" }
+  Billing -> Search "read"
+}
+
+organization Org {
+  team "payments" { label "Payments" owns Billing }
+  team "catalog" { label "Catalog" owns Search }
+}`;
+
+describe("useViewSvg > groupBy threading to export SVGs (#1879)", () => {
+  it("threads groupBy: team into the All Layers / drill-down / all-views SVGs", () => {
+    const { result: plain } = renderHook(() => useViewSvg(GROUPED_SOURCE, "shape"));
+    const { result: grouped } = renderHook(() =>
+      useViewSvg(GROUPED_SOURCE, "shape", undefined, undefined, "team"),
+    );
+
+    // Without groupBy the exports carry no team frames…
+    expect(plain.current.allLayersSvg).not.toContain('data-group="true"');
+    expect(plain.current.drillDownSvg).not.toContain('data-group="true"');
+    expect(plain.current.allViewsSvg).not.toContain('data-group="true"');
+
+    // …and with groupBy: team every system-view export surface gains them.
+    expect(grouped.current.allLayersSvg).toContain('data-group="true"');
+    expect(grouped.current.drillDownSvg).toContain('data-group="true"');
+    expect(grouped.current.allViewsSvg).toContain('data-group="true"');
+  });
+
+  it("reactively re-renders the export SVGs when groupBy flips", () => {
+    const { result, rerender } = renderHook(
+      ({ g }: { g?: "team" }) => useViewSvg(GROUPED_SOURCE, "shape", undefined, undefined, g),
+      { initialProps: { g: undefined as "team" | undefined } },
+    );
+
+    expect(result.current.allLayersSvg).not.toContain('data-group="true"');
+    rerender({ g: "team" });
+    expect(result.current.allLayersSvg).toContain('data-group="true"');
+  });
+});

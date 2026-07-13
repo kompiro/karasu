@@ -230,6 +230,8 @@ export const en: Translations = {
     `Domain "${display}" is not assigned to any service`,
   "warning.unassignedUsecase.message": ({ usecaseId }) =>
     `Usecase "${usecaseId}" is not assigned to any domain`,
+  "warning.entityAnchorCollision.message": ({ id }) =>
+    `Entity anchor id "${id}" is claimed by more than one domain or entity; #krs-entity-${id} deep-links are ambiguous`,
   "warning.unassignedService.message": ({ display }) =>
     `Service "${display}" is not assigned to any system`,
   "warning.unassignedClient.message": ({ display }) =>
@@ -329,6 +331,8 @@ export const en: Translations = {
   "diagnostic.propertyNotForNodeKind.operations": `"operations" property is only valid for resource declarations inside a usecase`,
   "diagnostic.infraNotInContext.message": ({ infraKind, parentKind }) =>
     `"${infraKind}" is only valid as a direct child of system, not inside "${parentKind}"`,
+  "diagnostic.entityNotInDomain.message": ({ parentKind }) =>
+    `"entity" is only valid as a child of domain, not inside "${parentKind}"`,
   "diagnostic.legendNotTopLevel.message": ({ parentKind }) =>
     `legend blocks are only allowed at the top level of a file, not inside "${parentKind}"`,
   "diagnostic.expectedIdOrString.message": ({ context }) =>
