@@ -41,6 +41,12 @@ export function distributeChannelLanes(layoutEdges: LayoutEdge[]): void {
   for (const edge of layoutEdges) {
     if (!edge.waypoints || edge.waypoints.length !== 2) continue;
     const [w0, w1] = edge.waypoints;
+    // Vertical corridors — the Group-by side gutters and aggregation trunks
+    // (#1859) share x across both waypoints. They are not horizontal channel
+    // edges; staggering their y would shear the spine off its ports. Skip them
+    // explicitly, not just via the y-delta test (a gutter/trunk whose endpoints
+    // happen to share a mid-height would otherwise slip through as horizontal).
+    if (w0.x === w1.x) continue;
     if (Math.abs(w0.y - w1.y) > CHANNEL_KEY_QUANTUM) continue;
     const key = Math.round(w0.y / CHANNEL_KEY_QUANTUM) * CHANNEL_KEY_QUANTUM;
     const left = Math.min(w0.x, w1.x);
