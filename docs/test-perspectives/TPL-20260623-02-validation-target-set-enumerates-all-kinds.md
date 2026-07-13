@@ -65,7 +65,7 @@ valid-target set を構築・変更するとき、以下を確認する:
 
 ## 派生元 spec
 
-- `docs/spec/syntax.md` / `docs/spec/syntax.ja.md` — §Writing physical diagrams（`realizes` の対象 kind）, §team node（`owns` の対象 kind）
+- `docs/spec/syntax.md` / `docs/spec/syntax.ja.md` — §Writing physical diagrams（`realizes` の対象 kind）, §team node（`owns` の対象 kind）, §`entity` declaration（bare `resource` の解決先に `entity` を追加。resource→store の target set を `deriveInfraEdges` / `detectSharedInfraFanIn` / `detectUnassignedResources` で同期する）
 - 関連決定: [ADR-20260623-02](../adr/20260623-02-client-realize-owns-target.md)（client を realizes / owns の valid-target に追加）
 
 ## 関連テスト

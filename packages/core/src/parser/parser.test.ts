@@ -1049,10 +1049,9 @@ system Test {
   }
 }
     `);
-    // Inline resource without dot-notation emits an "unassigned-resource" warning
-    expect(result.diagnostics).toHaveLength(1);
-    expect(result.diagnostics[0].severity).toBe("warning");
-    expect(result.diagnostics[0].code).toBe("unassigned-resource");
+    // The "unassigned-resource" warning is now raised by the resolver
+    // (`analyze()`), not the parser — parsing itself is clean.
+    expect(result.diagnostics).toHaveLength(0);
     const resource = result.value.systems[0].children[0].children[0].children[0].children[0];
     expect(resource.kind).toBe("resource");
     expect(resource.properties.links).toHaveLength(1);
@@ -2565,101 +2564,10 @@ system EC {
     });
   });
 
-  describe("unassigned-resource warning", () => {
-    it("emits warning for inline resource not assigned to a database", () => {
-      const result = Parser.parse(`
-system ECPlatform {
-  service A {
-    domain X {
-      usecase B {
-        resource OrderTable { label "注文テーブル" }
-      }
-    }
-  }
-}
-      `);
-      expect(result.diagnostics).toHaveLength(1);
-      expect(result.diagnostics[0].severity).toBe("warning");
-      expect(result.diagnostics[0]).toMatchObject({
-        code: "unassigned-resource",
-        params: { resourceId: "OrderTable" },
-      });
-    });
-
-    it("emits one warning per unassigned inline resource", () => {
-      const result = Parser.parse(`
-system ECPlatform {
-  service A {
-    domain X {
-      usecase B {
-        resource TableA { label "A" }
-        resource TableB { label "B" }
-        resource TableC { label "C" }
-      }
-    }
-  }
-}
-      `);
-      const warnings = result.diagnostics.filter((d) => d.severity === "warning");
-      expect(warnings).toHaveLength(3);
-    });
-
-    it("emits only a warning (not error) for unresolved dot-notation reference", () => {
-      // database OrderDB is not declared but resource OrderDB.C is referenced
-      const result = Parser.parse(`
-system ECPlatform {
-  service A {
-    domain X {
-      usecase B {
-        resource OrderDB.C
-      }
-    }
-  }
-}
-      `);
-      const errors = result.diagnostics.filter((d) => d.severity === "error");
-      expect(errors).toHaveLength(0);
-      // No warning for dot-notation: unresolved reference check is deferred to a later phase
-      const warnings = result.diagnostics.filter((d) => d.severity === "warning");
-      expect(warnings).toHaveLength(0);
-    });
-
-    it("does not emit warning for [external]-tagged inline resource", () => {
-      const result = Parser.parse(`
-system ECPlatform {
-  service A {
-    domain X {
-      usecase B {
-        resource InventoryAPI [external] { label "在庫API" }
-        resource PaymentAPI [external] { label "決済API" }
-      }
-    }
-  }
-}
-      `);
-      // [external] resources intentionally have no database parent — no warning
-      const warnings = result.diagnostics.filter((d) => d.severity === "warning");
-      expect(warnings).toHaveLength(0);
-    });
-
-    it("emits warning for non-external inline resource but not for external sibling", () => {
-      const result = Parser.parse(`
-system ECPlatform {
-  service A {
-    domain X {
-      usecase B {
-        resource OrderTable { label "注文テーブル" }
-        resource ExternalAPI [external] { label "外部API" }
-      }
-    }
-  }
-}
-      `);
-      const warnings = result.diagnostics.filter((d) => d.severity === "warning");
-      expect(warnings).toHaveLength(1);
-      expect(JSON.stringify(warnings[0].params)).toContain("OrderTable");
-    });
-  });
+  // NOTE: the `unassigned-resource` warning moved from the parser to the
+  // resolver (`analyze()`) so a bare `resource <id>` can be promoted by an
+  // `entity` declared elsewhere in the model. Its coverage now lives in
+  // `resolver/warnings.test.ts` (see "unassigned-resource / entity resolution").
 
   describe("resource operations", () => {
     function findResource(file: KrsFile, id: string) {
