@@ -126,15 +126,21 @@ GitHub 純正の大型ランナー。**Team / Enterprise（= org）プラン限�
 
 ## 現時点の方針
 
-**案1 Ubicloud を第一候補として、検証優先（verification-first）で進める。**
-「個人アカウント repo で使えるか」が公式ドキュメントで未確定なので、設計を固める
-前に **GitHub App を実際にインストールして `kompiro/karasu` が dashboard に
-現れるか**をゼロコストで確認する。これが最短の可否判定になる。
+**案1 Ubicloud を採用し、まず試用（trial）する。** 比較の結果、drop-in で
+移行でき（`runs-on:` 1 行）、GitHub ホスト比 〜7〜10x という価格優位が個人負担の
+コスト制約に最も合致するため、Ubicloud を第一候補ではなく採用案として確定する。
 
-判定に応じて分岐する:
+ただし「個人アカウント repo で使えるか」は公式ドキュメントで未確定なので、
+本格移行の前に **GitHub App を実際にインストールして `kompiro/karasu` が
+dashboard に現れるか**をゼロコストで確認し、そのまま `ci.yml` で試用パイロットに
+入る。これが最短の可否判定であり、試用の第一歩を兼ねる。
 
-1. Ubicloud が個人 repo で使える → Ubicloud を採用し、パイロット → 段階移行。
-2. Ubicloud が NG → 案2 BuildJet を同様に検証。
+試用結果に応じて分岐する:
+
+1. Ubicloud が個人 repo で使え、パイロット計測も妥当 → そのまま段階移行し、
+   ADR 昇格で採用を確定する。
+2. Ubicloud が個人 repo で **使えない**、または計測が期待外れ → 案2 BuildJet を
+   同様に試用（fallback）。
 3. 両方 NG → 案3 self-hosted を検討するか、案5 現状維持に倒す
    （個人 OSS では self-hosted の運用負荷が見合わない可能性が高い）。
 
@@ -174,12 +180,15 @@ GitHub 純正の大型ランナー。**Team / Enterprise（= org）プラン限�
   nightly（`e2e-nightly.yml`）が最終セーフティネットとして残る。paid SaaS の
   課金は個人負担になる点に留意。
 
-## 未解決の問い / 決めないこと
+## 決めないこと（意図的な非決定）
 
-- **プロバイダの最終確定**は本 Design Doc では決めない。実装フェーズの可否検証
-  （GitHub App インストール）の結果を待って確定する。
+- **プロバイダ**は Ubicloud に確定した（上記「現時点の方針」）。ただし個人 repo での
+  利用可否は GitHub App インストールで確認するまで実証されておらず、NG だった場合の
+  fallback として BuildJet → self-hosted → 現状維持の順で倒す方針も併せて確定する。
 - Organization への repo 移管は **意図的に検討対象外**とする（個人アカウント維持が
   ユーザーの要望のため）。将来 Blacksmith / Depot / GitHub larger runners を
   使いたくなった場合に初めて再検討する論点。
 - キャッシュ最適化（専用 cache action の採用）はパイロット後の任意ステップとし、
   本設計では方針提示に留める。
+- ランナーサイズの最終値はパイロット計測で決める（本設計では 2 vCPU / 4+ vCPU の
+  目安のみ）。
