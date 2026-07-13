@@ -46,6 +46,41 @@ const GROUP_FRAME_PAD_TOP = CONTAINER_LABEL_HEIGHT;
 const GROUP_FRAME_PAD_BOTTOM = 16;
 const GROUP_FRAME_TITLE_GAP = GROUP_FRAME_PAD_TOP + GROUP_FRAME_PAD_BOTTOM;
 
+/**
+ * Build one dashed titled boundary frame per team from final node positions and
+ * append them to `out`. Members of a group occupy a contiguous row band
+ * (guaranteed by `assignGroupedLayers`), so the frames are disjoint by
+ * construction. Shared by the single-system focus path and the multi-system
+ * root path (#1884) — both mint the same `__group_<team>__` frame, so the two
+ * grouping paths cannot drift on frame geometry (TPL-20260510-11).
+ */
+function buildGroupFrames(
+  nodes: readonly LayoutNode[],
+  groupOrder: readonly string[],
+  groupIdOf: (id: string) => string | null,
+  out: ContainerRect[],
+): void {
+  for (const groupId of groupOrder) {
+    const members = nodes.filter((n) => groupIdOf(n.id) === groupId);
+    if (members.length === 0) continue;
+    const minX = Math.min(...members.map((n) => n.x));
+    const minY = Math.min(...members.map((n) => n.y));
+    const maxX = Math.max(...members.map((n) => n.x + n.width));
+    const maxY = Math.max(...members.map((n) => n.y + n.height));
+    out.push({
+      id: `__group_${groupId}__`,
+      label: groupId,
+      x: minX - GROUP_FRAME_PAD_X,
+      y: minY - GROUP_FRAME_PAD_TOP,
+      width: maxX - minX + GROUP_FRAME_PAD_X * 2,
+      height: maxY - minY + GROUP_FRAME_PAD_TOP + GROUP_FRAME_PAD_BOTTOM,
+      ghost: false,
+      group: true,
+      groupId,
+    });
+  }
+}
+
 const ICON_CARD_WIDTH = 160;
 const ICON_CARD_HEIGHT_WITH_DESC = 100;
 const ICON_CARD_HEIGHT_NO_DESC = 56;
@@ -842,6 +877,9 @@ export function layout(viewSlice: ViewSlice, options: LayoutOptions = {}): Layou
       layoutHints,
       edgeDirections,
       collapsedCategories,
+      groupBy,
+      collapsedGroups,
+      edgeDiffState,
     );
   }
 
@@ -1183,30 +1221,10 @@ export function layout(viewSlice: ViewSlice, options: LayoutOptions = {}): Layou
   containers.reverse();
 
   // Group boundary frames (#1858, P2a): one dashed titled frame enclosing each
-  // team's members. Members of a group occupy a contiguous row band (guaranteed
-  // by `assignGroupedLayers`), so the groups stack vertically and their frames
-  // are disjoint by construction — the overlap the flat layout could not avoid
-  // (design § P1 measurement 1). Built from final node positions.
+  // team's members (design § P1 measurement 1). Built from final node positions
+  // via the shared helper the multi-system path also uses (#1884).
   if (groupBands && ownerIndex) {
-    for (const groupId of groupOrder) {
-      const members = [...layoutNodes.values()].filter((n) => groupIdOf(n.id) === groupId);
-      if (members.length === 0) continue;
-      const minX = Math.min(...members.map((n) => n.x));
-      const minY = Math.min(...members.map((n) => n.y));
-      const maxX = Math.max(...members.map((n) => n.x + n.width));
-      const maxY = Math.max(...members.map((n) => n.y + n.height));
-      containers.push({
-        id: `__group_${groupId}__`,
-        label: groupId,
-        x: minX - GROUP_FRAME_PAD_X,
-        y: minY - GROUP_FRAME_PAD_TOP,
-        width: maxX - minX + GROUP_FRAME_PAD_X * 2,
-        height: maxY - minY + GROUP_FRAME_PAD_TOP + GROUP_FRAME_PAD_BOTTOM,
-        ghost: false,
-        group: true,
-        groupId,
-      });
-    }
+    buildGroupFrames([...layoutNodes.values()], groupOrder, groupIdOf, containers);
   }
 
   // Place ghost nodes
@@ -1365,6 +1383,9 @@ function layoutMultipleSystems(
   layoutHints?: Map<string, ResolvedLayoutHints>,
   edgeDirections?: Map<string, EdgeDirection>,
   collapsedCategories?: ReadonlySet<CategoryId>,
+  groupBy?: "team",
+  collapsedGroups?: ReadonlySet<string>,
+  edgeDiffState?: ReadonlyMap<string, string>,
 ): LayoutResult {
   const { LAYER_GAP, NODE_GAP, MAX_LAYER_WIDTH } = getLayoutConstants(displayMode);
   // Multi-system view places only services (one nesting level), and a system's
@@ -1373,6 +1394,14 @@ function layoutMultipleSystems(
   const allLayoutNodes = new Map<string, LayoutNode>();
   const allContainers: ContainerRect[] = [];
   const allEdges: LayoutEdge[] = [];
+  // Group-by-team (#1884): diff-state re-keyed onto collapsed-group stub edges,
+  // accumulated across systems (empty unless a team collapses in diff mode).
+  const foldedEdgeDiffState = new Map<string, string>();
+  // Endpoint id → collapse-stub id, accumulated across systems, so cross-system
+  // edges whose endpoint was folded into a collapsed team re-anchor onto the
+  // stub instead of being dropped (#1884; mirrors the single-system ghost-edge
+  // remap). Identity for un-collapsed endpoints.
+  const crossSystemRemap = new Map<string, string>();
 
   let offsetX = CONTAINER_PADDING;
   const offsetY = CONTAINER_PADDING;
@@ -1389,19 +1418,86 @@ function layoutMultipleSystems(
       si === 0 ? viewSlice.childNodes : sys.children,
       collapsedCategories,
     );
-    const nodeIds = rawNodes.map((n) => n.id);
+
+    // Group-by-team (#1884): apply the P2a grouping *inside this system's frame*
+    // (per-(system, team) frames — a team that owns members in two systems shows
+    // one frame in each; cross-system spanning frames stay out of scope, see
+    // docs/design/system-view-grouping.md). Reuses the single-system machinery:
+    // fold collapsed teams to `<Team> (N)` stubs, then band nodes by team via
+    // `assignGroupedLayers`. Gated on group-by so ungrouped output is unchanged.
+    let workNodes = rawNodes;
+    let workEdges: KrsEdge[] = sys.edges;
+    let groupedLayers: Map<string, number> | null = null;
+    let groupBandsS: Map<string, GroupBand> | null = null;
+    let groupOrderS: string[] = [];
+    let groupIdOf: (id: string) => string | null = () => null;
+    if (groupBy === "team" && ownerIndex && ownerIndex.size > 0) {
+      // Scope stub ids by system id so a team owning members in ≥2 systems gets
+      // a distinct `__group_collapsed_<sys>_<team>__` stub per system instead of
+      // one colliding id that would overwrite in `allLayoutNodes` (#1884).
+      const collapsed = collapseGroups(
+        rawNodes,
+        sys.edges,
+        ownerIndex,
+        collapsedGroups,
+        edgeDiffState,
+        sys.id,
+      );
+      const stubGroup = collapsed.stubGroup;
+      const gidOf = (id: string): string | null => ownerIndex.get(id) ?? stubGroup.get(id) ?? null;
+      const groupedNodes: GroupedNode[] = collapsed.nodes.map((n) => ({
+        id: n.id,
+        groupId: gidOf(n.id),
+        ungroupedRank: systemTier(n),
+      }));
+      // Team declaration order (first-appearance in `ownerIndex`); `assignGroupedLayers`
+      // filters to the groups actually present in this system.
+      const declaredGroupOrder = [...new Set(ownerIndex.values())];
+      const grouped = assignGroupedLayers(
+        groupedNodes,
+        collapsed.edges.map((e) => ({ from: e.from, to: e.to })),
+        declaredGroupOrder,
+      );
+      if (grouped) {
+        workNodes = collapsed.nodes;
+        workEdges = collapsed.edges;
+        groupedLayers = grouped.layers;
+        groupBandsS = grouped.groupBands;
+        groupOrderS = grouped.groupOrder;
+        groupIdOf = gidOf;
+        for (const [k, v] of collapsed.foldedEdgeDiffState) foldedEdgeDiffState.set(k, v);
+        // Record each folded member → stub so cross-system edges re-anchor onto
+        // the stub instead of dropping (#1884). Only when a team actually
+        // collapsed — `remapEndpoint` is identity otherwise.
+        if (collapsedGroups && collapsedGroups.size > 0) {
+          for (const n of rawNodes) {
+            const mapped = collapsed.remapEndpoint(n.id);
+            if (mapped !== n.id) crossSystemRemap.set(n.id, mapped);
+          }
+        }
+      }
+    }
+
+    const nodeIds = workNodes.map((n) => n.id);
     const idSet = new Set(nodeIds);
-    // Only include intra-system edges for layout ordering
-    const forcedLayers = assignForcedSystemLayers(rawNodes, sys.edges);
+    // Only include intra-system edges for layout ordering. In group-by mode the
+    // team bands come from `assignGroupedLayers` (non-null `groupedLayers`) and
+    // win over the kind-tier layering.
+    const forcedLayers = groupedLayers ?? assignForcedSystemLayers(workNodes, workEdges);
     let layers: Map<string, number>;
     if (forcedLayers) {
       layers = forcedLayers;
     } else {
-      const { adj, inDegree } = buildGraph(nodeIds, sys.edges, edgeDirections);
+      const { adj, inDegree } = buildGraph(nodeIds, workEdges, edgeDirections);
       layers = assignLayers(nodeIds, adj, inDegree);
     }
     if (edgeDirections) {
-      layers = applyDirectionHintsToForcedLayers(layers, sys.edges, edgeDirections);
+      layers = applyDirectionHintsToForcedLayers(layers, workEdges, edgeDirections);
+    }
+    // Group bands start a new titled frame; reserve vertical room for the title.
+    const groupStartLayer = new Map<number, string>();
+    if (groupBandsS) {
+      for (const [gid, band] of groupBandsS) groupStartLayer.set(band.min, gid);
     }
 
     const nodesByLayer = new Map<number, string[]>();
@@ -1410,14 +1506,14 @@ function layoutMultipleSystems(
       nodesByLayer.get(layer)!.push(id);
     }
     const nodeMap = new Map<string, KrsNode>();
-    for (const node of rawNodes) nodeMap.set(node.id, node);
+    for (const node of workNodes) nodeMap.set(node.id, node);
 
     const sortedLayers = Array.from(nodesByLayer.keys()).sort((a, b) => a - b);
 
     // Build predecessors map for barycenter heuristic
     const predecessorsMap = new Map<string, string[]>();
     for (const id of nodeIds) predecessorsMap.set(id, []);
-    for (const edge of sys.edges) {
+    for (const edge of workEdges) {
       if (idSet.has(edge.from) && idSet.has(edge.to)) {
         predecessorsMap.get(edge.to)!.push(edge.from);
       }
@@ -1449,7 +1545,7 @@ function layoutMultipleSystems(
           : innerSorted;
       const sortedLayer = applyEdgeDirectionWithinLayer(
         bucketed.map((item) => item.id),
-        sys.edges,
+        workEdges,
         edgeDirections,
         layers,
       ).map((id) => ({ id }));
@@ -1474,6 +1570,8 @@ function layoutMultipleSystems(
       } else {
         subRowY = NODE_GAP;
       }
+      // Reserve room above a group band's first layer for its frame title.
+      if (groupStartLayer.has(layerIdx)) subRowY += GROUP_FRAME_TITLE_GAP;
 
       for (const item of sortedLayer) {
         const nid = item.id;
@@ -1569,20 +1667,33 @@ function layoutMultipleSystems(
       allLayoutNodes.set(id, node);
     }
 
-    // Move [external] services to side columns for this system (#1728).
-    // Run per-system so each system's externals are placed relative to that
-    // system's own in-boundary nodes, not the global figure.
-    const sideExternals = placeExternalServicesOnSides(
-      rawNodes,
-      new Set([sys.id]),
-      allLayoutNodes,
-      allContainers,
-      sys.edges,
-      layoutHints,
-    );
+    // Group boundary frames (#1884): one dashed titled frame per team, enclosing
+    // that team's members *within this system's frame* (per-(system, team)),
+    // via the shared helper the single-system path also uses. Built from final
+    // (offset) node positions. A team that spans systems is framed once per
+    // system, so two frames intentionally share the same `__group_<team>__`
+    // container id (app collapse is keyed by team id → collapse-everywhere).
+    if (groupBandsS) {
+      buildGroupFrames([...localNodes.values()], groupOrderS, groupIdOf, allContainers);
+    }
+
+    // Move [external] services to side columns for this system (#1728). Skipped
+    // in group-by mode: externals belong to their group's frame (or the trailing
+    // un-grouped band), so pulling them to the canvas sides would break that
+    // placement (mirrors the single-system path).
+    const sideExternals = groupBandsS
+      ? new Map<string, "left" | "right">()
+      : placeExternalServicesOnSides(
+          workNodes,
+          new Set([sys.id]),
+          allLayoutNodes,
+          allContainers,
+          sys.edges,
+          layoutHints,
+        );
 
     // Intra-system edges
-    for (const edge of sys.edges) {
+    for (const edge of workEdges) {
       if (idSet.has(edge.from) && idSet.has(edge.to)) {
         const le = computeEdgePoints(edge, allLayoutNodes, layers, sideExternals);
         if (le) {
@@ -1596,15 +1707,35 @@ function layoutMultipleSystems(
     offsetX += containerRect.width + GHOST_MARGIN * 3;
   }
 
-  // Cross-system edges
+  // Cross-system edges. When a team is collapsed (#1884), an endpoint here may
+  // have been folded into that team's stub — re-anchor onto the stub via
+  // `crossSystemRemap` instead of silently dropping the edge (mirrors the
+  // single-system ghost-edge remap; TPL-20260624-02: a collapsed node's edges
+  // must resolve both endpoints). De-dupe *only* re-targeted edges (one stub can
+  // absorb several), so authored parallel cross-system edges between two
+  // expanded nodes are untouched and the un-collapsed path stays byte-identical.
+  const seenCrossStub = new Set<string>();
   for (const edge of viewSlice.crossSystemEdges) {
-    const fromNode = allLayoutNodes.get(edge.from);
-    const toNode = allLayoutNodes.get(edge.to.slice(edge.to.indexOf(".") + 1));
+    const fromId = crossSystemRemap.get(edge.from) ?? edge.from;
+    const dot = edge.to.indexOf(".");
+    const toService = edge.to.slice(dot + 1);
+    const toServiceRemapped = crossSystemRemap.get(toService) ?? toService;
+    const retargeted = fromId !== edge.from || toServiceRemapped !== toService;
+    const toField =
+      toServiceRemapped !== toService ? edge.to.slice(0, dot + 1) + toServiceRemapped : edge.to;
+    const fromNode = allLayoutNodes.get(fromId);
+    const toNode = allLayoutNodes.get(toServiceRemapped);
     if (!fromNode || !toNode) continue;
+    if (retargeted) {
+      const key = `${fromId}->${toField}`;
+      if (seenCrossStub.has(key)) continue;
+      seenCrossStub.add(key);
+    }
     allEdges.push({
-      from: edge.from,
-      to: edge.to,
-      label: edge.label,
+      from: fromId,
+      to: toField,
+      // A re-targeted edge stands for one-or-more real edges, so drop its label.
+      label: retargeted ? undefined : edge.label,
       fromPoint: {
         x: fromNode.x + fromNode.width,
         y: fromNode.y + fromNode.height / 2,
@@ -1637,6 +1768,7 @@ function layoutMultipleSystems(
     containers: allContainers,
     width: totalWidth,
     height: totalHeight,
+    foldedEdgeDiffState: foldedEdgeDiffState.size > 0 ? foldedEdgeDiffState : undefined,
   };
 }
 
