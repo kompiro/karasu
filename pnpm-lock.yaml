@@ -33,9 +33,12 @@ importers:
       '@changesets/cli':
         specifier: ^2.31.0
         version: 2.31.0(@types/node@25.6.0)
+      '@karasu-tools/core':
+        specifier: workspace:*
+        version: link:packages/core
       '@kompiro/adr-tools':
-        specifier: ^0.0.6
-        version: 0.0.6
+        specifier: ^0.0.7
+        version: 0.0.7(@karasu-tools/core@packages+core)
       '@kompiro/tpl-tools':
         specifier: ^0.0.6
         version: 0.0.6
@@ -1001,10 +1004,15 @@ packages:
   '@keyv/serialize@1.1.1':
     resolution: {integrity: sha512-dXn3FZhPv0US+7dtJsIi2R+c7qWYiReoEh5zUntWCf4oSpMNib8FDhSoed6m3QyZdx5hK7iLFkYk3rNxwt8vTA==}
 
-  '@kompiro/adr-tools@0.0.6':
-    resolution: {integrity: sha512-x4+R3W3KQ5KqevkGKH1a5r5S6bSJ0NRHCD2wRCGRGPBzVdYSOSyZ+ai2I5/lPYza3sUSBKWXCxwpAJg8ALoz6w==}
+  '@kompiro/adr-tools@0.0.7':
+    resolution: {integrity: sha512-OjNTyYwWvJxa12y89ju9yWTpw0s1KZYeBfvSOqaKwgoUB9mgjqOEdvLnWzhV5yqwgvr2+KdslPzaImpdbrSWhA==}
     engines: {node: '>=20.0.0'}
     hasBin: true
+    peerDependencies:
+      '@karasu-tools/core': '>=0.2.0'
+    peerDependenciesMeta:
+      '@karasu-tools/core':
+        optional: true
 
   '@kompiro/tpl-tools@0.0.6':
     resolution: {integrity: sha512-1jzhVsauHIOtH7lfqre0iJgsudhJPnsRMEJdpdh3NhlRc6G1N5Wcdp8KXXKEdu0nrQ/6F031iAiWpKwuC0CLyg==}
@@ -7196,9 +7204,11 @@ snapshots:
 
   '@keyv/serialize@1.1.1': {}
 
-  '@kompiro/adr-tools@0.0.6':
+  '@kompiro/adr-tools@0.0.7(@karasu-tools/core@packages+core)':
     dependencies:
       js-yaml: 4.2.0
+    optionalDependencies:
+      '@karasu-tools/core': link:packages/core
 
   '@kompiro/tpl-tools@0.0.6':
     dependencies:
@@ -8503,7 +8513,7 @@ snapshots:
       obug: 2.1.1
       std-env: 4.0.0
       tinyrainbow: 3.1.0
-      vitest: 4.1.4(@types/node@25.6.0)(@vitest/coverage-v8@4.1.4)(jsdom@29.0.2)(vite@8.0.16(@types/node@25.6.0)(esbuild@0.28.1)(jiti@2.6.1)(tsx@4.21.0)(yaml@2.8.3))
+      vitest: 4.1.4(@types/node@25.6.0)(@vitest/coverage-v8@4.1.4)(jsdom@29.0.2)(vite@8.0.16(@types/node@25.6.0)(esbuild@0.28.1)(jiti@2.6.1)(tsx@4.22.4)(yaml@2.8.3))
 
   '@vitest/expect@4.1.4':
     dependencies:

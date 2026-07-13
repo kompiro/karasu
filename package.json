@@ -48,6 +48,7 @@
     "adr:visualize": "adr visualize",
     "adr:regenerate": "adr regenerate",
     "adr:check-assumptions": "adr check-assumptions",
+    "adr:check-permalinks": "adr check-permalinks",
     "lint:e2e-page-goto": "tsx scripts/lint/no-direct-page-goto.ts",
     "lint:concept-adr-refs": "tsx scripts/lint/concept-adr-refs.ts",
     "lint:spec-structure-sync": "tsx scripts/lint/spec-structure-sync.ts",
@@ -62,7 +63,8 @@
   },
   "devDependencies": {
     "@changesets/cli": "^2.31.0",
-    "@kompiro/adr-tools": "^0.0.6",
+    "@karasu-tools/core": "workspace:*",
+    "@kompiro/adr-tools": "^0.0.7",
     "@kompiro/tpl-tools": "^0.0.6",
     "@types/node": "^25.6.0",
     "knip": "^6.6.0",

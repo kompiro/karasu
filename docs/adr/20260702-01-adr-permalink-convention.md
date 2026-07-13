@@ -12,6 +12,12 @@ assumptions:
   - "file: docs/guide/adr-permalinks.ja.md"
   - "file: docs/test-perspectives/TPL-20260630-03-adr-permalink-records-source.md"
   - "symbol: packages/app/src/utils/inline-share.ts :: buildShareUrls"
+permalink:
+  # First dogfood of this convention (worked example of a deep permalink),
+  # now that #1830 validation is live (`pnpm adr:check-permalinks`). No
+  # `short`: the taka link is optional; `source` is the record.
+  - source: examples/en/payment-platform/system.krs#krs-system-Gateway
+    view: system
 ---
 
 # ADR-20260702-01: ADR から karasu 構造へリンクする permalink 規約（taka 短縮 + 必須 source）
